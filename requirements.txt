@@ -1,0 +1,6 @@
+# Superfrog RE environment (Python 3.9+)
+amitools      # ADF inspection / Amiga tooling
+capstone      # m68k disassembly (analysis)
+machine68k    # Musashi 68000 core — runs the game's own ATN! decompressor
+pillow        # PNG rendering (render_levels / find_secrets / export_annotated)
+numpy         # tile/grid array ops (rendering + secret detection)

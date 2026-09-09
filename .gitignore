@@ -1,0 +1,12 @@
+# Python
+venv/
+__pycache__/
+*.pyc
+
+# Generated / extracted artifacts (regenerate with the tools)
+build/
+renders/    # derived game-art PNGs — reproducible from build/ via the tools
+
+# Copyrighted Superfrog disk images — supply your own; never committed/distributed
+*.zip
+*.adf
