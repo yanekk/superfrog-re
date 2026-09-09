@@ -1,0 +1,109 @@
+disk   #   decomp    comp  ok  class          name
+d1     1    15092    1752  ok  hunk-exe       d1_c01_hunk-exe_15092.bin
+d1     2    29716   11670  ok  binary/gfx     d1_c02_binary-gfx_29716.bin
+d1     3   331532  166938  ok  hunk-exe       d1_c03_hunk-exe_331532.bin
+d1     4    61440   19966  ok  binary/gfx     d1_c04_binary-gfx_61440.bin
+d1     5    60446   54398  ok  binary/gfx     d1_c05_binary-gfx_60446.bin
+d1     6    61440   25614  ok  binary/gfx     d1_c06_binary-gfx_61440.bin
+d1     7    57664   21174  ok  binary/gfx     d1_c07_binary-gfx_57664.bin
+d1     8    51264   15790  ok  binary/gfx     d1_c08_binary-gfx_51264.bin
+d1     9    51264   15020  ok  binary/gfx     d1_c09_binary-gfx_51264.bin
+d1    10    31370   23978  ok  binary/gfx     d1_c10_binary-gfx_31370.bin
+d1    11    61440   20422  ok  binary/gfx     d1_c11_binary-gfx_61440.bin
+d1    12    61440   18106  ok  binary/gfx     d1_c12_binary-gfx_61440.bin
+d1    13    10240     868  ok  binary/gfx     d1_c13_binary-gfx_10240.bin
+d1    14     6968    5290  ok  binary/gfx     d1_c14_binary-gfx_6968.bin
+d1    15    25422   23542  ok  binary/gfx     d1_c15_binary-gfx_25422.bin
+d1    16    40514   34778  X   binary/gfx     d1_c16_binary-gfx_40514.bin
+d1    17    71136   15636  ok  binary/gfx     d1_c17_binary-gfx_71136.bin
+d1    18   134400   63694  ok  binary/gfx     d1_c18_binary-gfx_134400.bin
+d1    19    64000   29896  ok  binary/gfx     d1_c19_binary-gfx_64000.bin
+d1    20    26880    4538  ok  binary/gfx     d1_c20_binary-gfx_26880.bin
+d1    21    53588    5800  ok  level 300x84   d1_c21_level_53588.bin
+d1    22    53588    9886  ok  level 300x84   d1_c22_level_53588.bin
+d1    23    53588    8710  ok  level 300x84   d1_c23_level_53588.bin
+d1    24    53588   11104  ok  level 300x84   d1_c24_level_53588.bin
+d1    25    51264   18698  ok  binary/gfx     d1_c25_binary-gfx_51264.bin
+d1    26    40122   35450  ok  binary/gfx     d1_c26_binary-gfx_40122.bin
+d1    27    72144   14596  ok  binary/gfx     d1_c27_binary-gfx_72144.bin
+d1    28   134400   67248  ok  binary/gfx     d1_c28_binary-gfx_134400.bin
+d1    29    64000   31420  ok  binary/gfx     d1_c29_binary-gfx_64000.bin
+d1    30    26880    1552  ok  binary/gfx     d1_c30_binary-gfx_26880.bin
+d1    31    53588    5794  ok  level 300x84   d1_c31_level_53588.bin
+d1    32    53588   12676  ok  level 300x84   d1_c32_level_53588.bin
+d1    33    53588   13724  ok  level 300x84   d1_c33_level_53588.bin
+d1    34    53588   16544  ok  level 300x84   d1_c34_level_53588.bin
+d2     1    31370   23978  ok  binary/gfx     d2_c01_binary-gfx_31370.bin
+d2     2    61440   20422  ok  binary/gfx     d2_c02_binary-gfx_61440.bin
+d2     3    61440   18106  ok  binary/gfx     d2_c03_binary-gfx_61440.bin
+d2     4    10240     868  ok  binary/gfx     d2_c04_binary-gfx_10240.bin
+d2     5     6968    5290  ok  binary/gfx     d2_c05_binary-gfx_6968.bin
+d2     6    25422   23542  ok  binary/gfx     d2_c06_binary-gfx_25422.bin
+d2     7    36282   29240  ok  binary/gfx     d2_c07_binary-gfx_36282.bin
+d2     8    71136   15510  ok  binary/gfx     d2_c08_binary-gfx_71136.bin
+d2     9   134400   64558  ok  binary/gfx     d2_c09_binary-gfx_134400.bin
+d2    10    64000   29182  ok  binary/gfx     d2_c10_binary-gfx_64000.bin
+d2    11    26880    2360  ok  binary/gfx     d2_c11_binary-gfx_26880.bin
+d2    12    53588    5444  ok  level 300x84   d2_c12_level_53588.bin
+d2    13    53588   10520  ok  level 300x84   d2_c13_level_53588.bin
+d2    14    53588   10600  ok  level 300x84   d2_c14_level_53588.bin
+d2    15    53588   14640  ok  level 300x84   d2_c15_level_53588.bin
+d2    16    51264   22344  ok  binary/gfx     d2_c16_binary-gfx_51264.bin
+d2    17    39024   31304  ok  binary/gfx     d2_c17_binary-gfx_39024.bin
+d2    18    72144   17588  ok  binary/gfx     d2_c18_binary-gfx_72144.bin
+d2    19   134400   57806  ok  binary/gfx     d2_c19_binary-gfx_134400.bin
+d2    20    64000   30980  ok  binary/gfx     d2_c20_binary-gfx_64000.bin
+d2    21    26880    1586  ok  binary/gfx     d2_c21_binary-gfx_26880.bin
+d2    22    53588    6662  ok  level 300x84   d2_c22_level_53588.bin
+d2    23    53588   13746  ok  level 300x84   d2_c23_level_53588.bin
+d2    24    53588   10432  ok  level 300x84   d2_c24_level_53588.bin
+d2    25    53588   17510  ok  level 300x84   d2_c25_level_53588.bin
+d2    26    51264   23822  ok  binary/gfx     d2_c26_binary-gfx_51264.bin
+d2    27    41680   30006  ok  binary/gfx     d2_c27_binary-gfx_41680.bin
+d2    28    72144   11666  ok  binary/gfx     d2_c28_binary-gfx_72144.bin
+d2    29   134400   45978  ok  binary/gfx     d2_c29_binary-gfx_134400.bin
+d2    30    64000   24520  ok  binary/gfx     d2_c30_binary-gfx_64000.bin
+d2    31    26880    1476  ok  binary/gfx     d2_c31_binary-gfx_26880.bin
+d2    32    53588    4870  ok  level 300x84   d2_c32_level_53588.bin
+d2    33    53588   13106  ok  level 300x84   d2_c33_level_53588.bin
+d2    34    53588   12414  ok  level 300x84   d2_c34_level_53588.bin
+d2    35    53588   15970  ok  level 300x84   d2_c35_level_53588.bin
+d2    36    51264   20352  ok  binary/gfx     d2_c36_binary-gfx_51264.bin
+d2    37    16352   13104  ok  binary/gfx     d2_c37_binary-gfx_16352.bin
+d2    38    33876   30296  ok  binary/gfx     d2_c38_binary-gfx_33876.bin
+d2    39    70464   21972  X   binary/gfx     d2_c39_binary-gfx_70464.bin
+d2    40   102400   36776  ok  binary/gfx     d2_c40_binary-gfx_102400.bin
+d2    41    64000   21122  ok  binary/gfx     d2_c41_binary-gfx_64000.bin
+d2    42    53588    3178  ok  level 300x84   d2_c42_level_53588.bin
+d2    43    51264   20846  ok  binary/gfx     d2_c43_binary-gfx_51264.bin
+d2    44    38956   29826  ok  binary/gfx     d2_c44_binary-gfx_38956.bin
+d2    45    71136    7938  ok  binary/gfx     d2_c45_binary-gfx_71136.bin
+d3     1    15092    1718  ok  hunk-exe       d3_c01_hunk-exe_15092.bin
+d3     2   182080   42762  ok  hunk-exe       d3_c02_hunk-exe_182080.bin
+d3     3   101528   83714  ok  binary/gfx     d3_c03_binary-gfx_101528.bin
+d3     4   343164  269060  ok  hunk-exe       d3_c04_hunk-exe_343164.bin
+d3     5   204800   18548  ok  binary/gfx     d3_c05_binary-gfx_204800.bin
+d3     6   204800   13302  ok  binary/gfx     d3_c06_binary-gfx_204800.bin
+d3     7   204800    6966  ok  binary/gfx     d3_c07_binary-gfx_204800.bin
+d3     8   204800   28612  ok  binary/gfx     d3_c08_binary-gfx_204800.bin
+d3     9   247146   75842  ok  IFF:ANIM       d3_c09_IFF_ANIM_247146.bin
+d3    10   125032   76030  ok  IFF:ANIM       d3_c10_IFF_ANIM_125032.bin
+d4     1    51264   24886  ok  binary/gfx     d4_c01_binary-gfx_51264.bin
+d4     2    53588    6488  ok  level 300x84   d4_c02_level_53588.bin
+d4     3    53588   13894  ok  level 300x84   d4_c03_level_53588.bin
+d4     4    53588   14592  ok  level 300x84   d4_c04_level_53588.bin
+d4     5    53588   18458  ok  level 300x84   d4_c05_level_53588.bin
+d4     6      500     350  ok  tag:PAGE       d4_c06_tag_PAGE_500.bin
+d4     7   134400   38532  ok  binary/gfx     d4_c07_binary-gfx_134400.bin
+d4     8    64000   30606  ok  binary/gfx     d4_c08_binary-gfx_64000.bin
+d4     9    26880    2850  ok  binary/gfx     d4_c09_binary-gfx_26880.bin
+d4    10   134400   26888  ok  binary/gfx     d4_c10_binary-gfx_134400.bin
+d4    11    64000   13758  ok  binary/gfx     d4_c11_binary-gfx_64000.bin
+d4    12    26880     616  ok  binary/gfx     d4_c12_binary-gfx_26880.bin
+d4    13    53588    1984  ok  level 300x84   d4_c13_level_53588.bin
+d4    14    53588    6488  ok  level 300x84   d4_c14_level_53588.bin
+d4    15    53588   13874  ok  level 300x84   d4_c15_level_53588.bin
+d4    16    53588   14306  X   binary/gfx     d4_c16_binary-gfx_53588.bin
+d4    17    53588   18444  ok  level 300x84   d4_c17_level_53588.bin
+
+103/106 decompressed OK; 29 T7MP levels -> build/decomp/
