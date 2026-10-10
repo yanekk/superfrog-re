@@ -30,7 +30,7 @@ pub struct Chunk { pub disk: DiskSlot, pub index: u16, pub offset: u32, pub deco
 pub fn carve(adf: &Adf) -> Vec<Chunk>                               // same chunks, same order as tools/atn.py
 ```
 
-The SHA-1s live as constants in `identify.rs`. A digest is not disk data (it cannot reproduce it), so
+The SHA-1s live as hex-string constants in `identify.rs` (strings, not `[u8; 20]` literals, which the purity test's array rule would flag). A digest is not disk data (it cannot reproduce it), so
 this is allowed by DESIGN §2.3.
 
 ## Tests

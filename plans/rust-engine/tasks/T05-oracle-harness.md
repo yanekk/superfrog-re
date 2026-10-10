@@ -17,7 +17,7 @@ DESIGN §2.1, §3.2 (`sf-oracle`), §3.5 (tool caches), §5, §5.2.
 
 - `tools/setup/oracle.sh` — fetches vAmiga at the commit pinned in `engine/crates/sf-oracle/VAMIGA_COMMIT`,
   applies `engine/crates/sf-oracle/patches/*.patch` (T00's findings), builds the core and shim into
-  `~/.cache/superfrog-re/vamiga/<commit>/` under a lock so parallel worktrees build once. No-op when present.
+  `~/.cache/superfrog-re/vamiga/<commit>/` under a lock so parallel worktrees build once. No-op when present. It runs unattended in every worktree's setup, so it calls `tools/setup/install-brew-deps.sh` when cmake is missing and leaves `git status` clean.
 - `engine/crates/sf-oracle/shim/{shim.h,shim.cpp}` — C API over the core.
 - `engine/crates/sf-oracle/{build.rs,src/lib.rs,src/amiga.rs,src/trace.rs}`
 - `engine/crates/sf-core/src/input.rs` — `FrameInput` (the type both sides take; pure).

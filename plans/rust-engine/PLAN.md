@@ -65,7 +65,7 @@ under scripted control in the oracle, and the code map tells every later task wh
 
 | # | Task | Depends on |
 |---|---|---|
-| [T12](tasks/T12-core-state.md) | core-state | T05, T07 |
+| [T12](tasks/T12-core-state.md) | core-state | T05, T06, T07 |
 | [T13](tasks/T13-renderer.md) | renderer | T08, T12 |
 | [T14](tasks/T14-frog-and-level.md) | frog-and-level | T06, T11, T12, T13 |
 | [T15](tasks/T15-items-and-scoring.md) | items-and-scoring | T14 |
@@ -84,7 +84,7 @@ headless.
 | # | Task | Depends on |
 |---|---|---|
 | [T22](tasks/T22-app-rig.md) | app-rig | T09, T10, T12, T13 |
-| [T23](tasks/T23-app-shell.md) | app-shell | T22 |
+| [T23](tasks/T23-app-shell.md) | app-shell | T21, T22 |
 | [T24](tasks/T24-macos-menus.md) | macos-menus | T23 |
 | [T25](tasks/T25-controls-and-gamepad.md) | controls-and-gamepad | T24 |
 | [T26](tasks/T26-save-states.md) | save-states | T24 |
@@ -116,18 +116,21 @@ drill. At the end: the owner plays it.
 ## Critical path
 
 ```
-T01 → T03 → T04 → T07 → T12 → T13 → T14 → T15 → T16 → T18 → T21 → T29 → T30
+T01 → T03 → T04 → T07 → T12 → T13 → T14 → T15 → T16 → T18 → T21 → T23 → T24 → T25 → T29 → T30
 ```
 
 T00 and T05 run alongside T01–T04. T02 can start at once. T08–T11 run beside T12. T19 and T20 run
-beside the enemy tasks, and all of Phase 3 up to T28 runs beside Phase 2's mechanics.
+beside the enemy tasks, and T22 beside Phase 2's mechanics. T23 onward waits for T21, because
+T23–T28 test the real game (the frog in W1-1, the title, progress, saving mid-level, widescreen on
+the slot screen); owner's decision 2026-10-10 to keep those checks in the tasks rather than move them
+to the drill.
 
 Leaves (tasks nothing depends on): only T30.
 
 ## Parallel width
 
-31 tasks · longest dependency chain 13 · up to 8 could run at once (for example T16, T17, T19, T20,
-T25, T26, T27, T28). Every edge is a real use: a task depends on what its code calls or its tests
+31 tasks · longest dependency chain 16 · up to 5 could run at once (for example T16, T17, T19, T20,
+T22). Every edge is a real use: a task depends on what its code calls or its tests
 compare against.
 
 ## Rough sizing

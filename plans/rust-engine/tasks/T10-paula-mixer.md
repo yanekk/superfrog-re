@@ -29,6 +29,9 @@ impl Paula {
 }
 ```
 
+`resample.rs` is the one pure file allowed floating point and filter tables (DESIGN §3.1); channel
+modelling in `channel.rs` stays integer.
+
 `ChipMemory` is the engine's view of where samples live (`sf-core` provides it from `GameData`), so the
 mixer never owns game data.
 

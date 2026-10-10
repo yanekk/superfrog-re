@@ -16,7 +16,9 @@ DESIGN §2.3, §3.5 (`re/symbols.toml`, `~/.cache/superfrog-re/re/`).
 ## Files
 
 - `re/symbols.toml` — schema below, seeded with what docs/02–03 already know.
-- `tools/re_listing.py` — hunk parse + capstone m68k disassembly of a decompressed exe, applying
+- `tools/re_listing.py` — hunk parse and relocation through amitools (`amitools.binfmt.hunk`:
+  `HunkReader`, `HunkRelocate`, already in `requirements.txt`; owner, 2026-10-10, rather than a second
+  reader), then capstone m68k disassembly of a decompressed exe, applying
   symbols, emitting a listing with labels, comments and cross-references to
   `~/.cache/superfrog-re/re/<chunk>.lst`.
 - `tools/test_re_listing.py`
@@ -44,7 +46,7 @@ tools/re_listing.py <chunk-id> [--out DIR] [--xrefs]
 
 ## Tests
 
-- [ ] hunk parse of all five exes gives hunk count, types and sizes that sum to the chunk.
+- [ ] hunk parse (amitools) of all five exes gives hunk count, types and sizes that sum to the chunk.
 - [ ] relocation entries are applied, so absolute references show as `hunk+offset` labels.
 - [ ] a symbol in `symbols.toml` appears as a label at its offset and in xrefs of a referencing instruction.
 - [ ] a duplicate name or overlapping data symbol is rejected with the line number.
@@ -55,6 +57,7 @@ tools/re_listing.py <chunk-id> [--out DIR] [--xrefs]
 - [ ] `tools/re_listing.py d1_c03 --xrefs` produces a labelled listing of the main executable.
 - [ ] The ATN! routine (docs/02) appears under its symbol name in the `d1_c01`/stage listing it lives in.
 - [ ] `docs/RE-WORKBENCH.md` says how to regenerate, and FINDINGS says whether Ghidra was adopted.
+- [ ] If amitools mishandles one of the five exes, a FINDINGS row says how, before any own parser is written.
 
 ## Outside actions
 

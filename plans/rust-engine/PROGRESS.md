@@ -9,7 +9,7 @@ touching the task you pick up, and append yours there.
 **Sixty words to a Notes cell, counted.** Flat prose. The cell is an index for the next session;
 the account is the commit message. Whoever writes a cell also fixes the over-budget cell they walk past.
 
-**Plan reviewed:** not yet
+**Plan reviewed:** 2026-10-10 — 7 fixed, 7 decided with the user
 
 **Status:** Plan written; nothing built.
 **Last updated:** 2026-10-10
@@ -34,7 +34,7 @@ done · ⛔ blocked, needs a human.
 | T09 | asset-cache | T03, T08 | ⬜ | |
 | T10 | paula-mixer | T01, T05 | ⬜ | |
 | T11 | audio-driver | T06, T07 | ⬜ | |
-| T12 | core-state | T05, T07 | ⬜ | |
+| T12 | core-state | T05, T06, T07 | ⬜ | |
 | T13 | renderer | T08, T12 | ⬜ | |
 | T14 | frog-and-level | T06, T11, T12, T13 | ⬜ | |
 | T15 | items-and-scoring | T14 | ⬜ | |
@@ -45,7 +45,7 @@ done · ⛔ blocked, needs a human.
 | T20 | front-end | T08, T11, T12, T13 | ⬜ | |
 | T21 | game-flow | T18, T19, T20 | ⬜ | |
 | T22 | app-rig | T09, T10, T12, T13 | ⬜ | |
-| T23 | app-shell | T22 | ⬜ | |
+| T23 | app-shell | T21, T22 | ⬜ | |
 | T24 | macos-menus | T23 | ⬜ | |
 | T25 | controls-and-gamepad | T24 | ⬜ | |
 | T26 | save-states | T24 | ⬜ | |

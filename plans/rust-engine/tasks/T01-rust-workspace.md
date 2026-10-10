@@ -37,13 +37,14 @@ pub fn disk_dir() -> Result<PathBuf, String>   // SUPERFROG_DISKS, else <git com
 tools/check_no_disk_data.py [--disks DIR]   # exit 1 listing file:offset for any 128-byte run shared with a decompressed chunk
 ```
 
-The check indexes every decompressed chunk (via `tools/unpack.py`'s output in a temp dir) at 64-byte
+The check indexes every decompressed chunk (produced into a temp dir with `tools/atn.py`'s carver and decompressor; `tools/unpack.py` writes only into `build/`) at 64-byte
 stride and scans each tracked file at 1-byte stride, which finds any copied run of 127 bytes or more.
 
 ## Tests
 
 - [ ] purity: a fixture source using `std::fs`, `Instant`, `HashMap`, `f32`, or a 17-element integer
       array in a pure crate is flagged; the real pure crates pass.
+- [ ] purity: `sf-paula/src/resample.rs` alone is exempt from the float and array rules (DESIGN §3.1); the same code in any other pure file is flagged.
 - [ ] purity: `sf-app`'s dependency tree contains no `sf-oracle`, `sf-conform` or `sf-e2e`.
 - [ ] purity: a pure crate depending on a crate outside the allowlist is flagged.
 - [ ] `disk_dir()` honours `SUPERFROG_DISKS`, falls back to the main checkout, and errs clearly.

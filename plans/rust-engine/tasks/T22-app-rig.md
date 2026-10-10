@@ -15,7 +15,7 @@ DESIGN §2.5, §3.2 (`sf-app`, `sf-e2e`), §5 (End to end), §5.2.
 
 ## Files
 
-- `engine/crates/sf-app/src/{main.rs,args.rs,video.rs,audio.rs,pacing.rs,home.rs,script.rs,capture.rs}`
+- `engine/crates/sf-app/src/{main.rs,args.rs,video.rs,audio.rs,pacing.rs,home.rs,script.rs,capture.rs,input.rs}` — `input.rs` is the one point where winit events become `FrameInput` (a fixed default mapping here; T23 makes it remappable)
 - `engine/crates/sf-e2e/src/{lib.rs,app.rs,os.rs}`, `engine/crates/sf-e2e/tests/smoke.rs`
 - `engine/crates/sf-e2e/README.md` — how to run each layer, and the one-time permission grant.
 
@@ -35,7 +35,7 @@ pub struct App;  impl App {
 pub struct Captured { pub frames: Vec<Image>, pub audio_wav: PathBuf, pub exit: ExitStatus }
 ```
 
-Under `--script`, events enter where winit events are translated (`input.rs` in T23), so everything
+Under `--script`, events enter where winit events are translated (`input.rs`), so everything
 after that point is the real code path.
 
 ## End to end (the worker drives this)
@@ -54,7 +54,7 @@ after that point is the real code path.
 
 ## Done when
 
-- [ ] Both layers have at least one green test; the script-layer smoke runs in the test block.
+- [ ] Both layers have at least one green test; the script-layer smoke runs in the test block; the OS layer runs only under `SF_E2E_OS=1` (DESIGN §5) and was run green with it.
 - [ ] The seatbelt flags behave as DESIGN §5.2 says, each with a test.
 - [ ] The permission grant was obtained or is waiting on the owner in PROGRESS "Blocked on the user".
 

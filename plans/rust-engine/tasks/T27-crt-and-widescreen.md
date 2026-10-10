@@ -19,7 +19,7 @@ DESIGN §2.7.
 ## Interface
 
 `Settings.crt`, `Settings.widescreen`; widescreen picks `View { extra_columns_each_side }` to fill
-16:9 at the current integer scale (53 columns each side at 320 wide).
+16:9 at the current integer scale: `(16/9 × display height − 320) / 2` columns each side, from the display window height T13 records (67 for 256 lines).
 
 ## End to end (the worker drives this)
 

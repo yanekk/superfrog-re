@@ -1,6 +1,6 @@
 # T23 — app-shell
 
-**Phase:** 3 · **Depends on:** T22 · **Weight:** medium
+**Phase:** 3 · **Depends on:** T21, T22 · **Weight:** medium
 
 ## Goal
 
@@ -15,7 +15,7 @@ DESIGN §2.2, §2.5, §2.6, §2.7 (scaling, fullscreen), §2.9, §2.11, §3.5.
 
 ## Files
 
-- `engine/crates/sf-app/src/{import.rs,input.rs,settings.rs,progress.rs,lock.rs,atomic_write.rs,window.rs}`
+- `engine/crates/sf-app/src/{import.rs,settings.rs,progress.rs,lock.rs,atomic_write.rs,window.rs}`; `input.rs` (T22) — the fixed mapping becomes `KeyMap`
 - `engine/crates/sf-app/src/main.rs` — wires import → cache → game loop.
 - `engine/crates/sf-e2e/tests/{import.rs,window.rs,persist.rs}`
 
@@ -31,6 +31,7 @@ pub fn atomic_write(path: &Path, bytes: &[u8]) -> io::Result<()>   // temp in sa
 
 - suite: `sf-e2e` (T22) · sizes: 1×, 2×, 3×, fullscreen on the built-in display (`--allow-fullscreen`, ≤ 300 frames)
 - [ ] empty temp home → the import prompt appears; the script layer supplies the four zips → cache written, title reached.
+- [ ] the picker cancelled, or only two disks chosen → the message names the missing disks; "Choose Disks…" reopens the picker, "Quit" exits with nothing written.
 - [ ] a wrong zip offered → the message names the slot; a missing disk → names it; nothing written to the cache.
 - [ ] corrupt the cache → next launch re-imports silently; also move the remembered disks → next launch asks again.
 - [ ] arrow keys and fire move the frog in W1-1 exactly as the same `FrameInput` script does headless (frames equal).

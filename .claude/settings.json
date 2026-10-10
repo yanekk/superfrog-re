@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(tools/setup/install-rust.sh)",
+      "Bash(tools/setup/install-brew-deps.sh)",
+      "Bash(tools/setup/install-ghidra.sh)",
+      "Bash(tools/setup/oracle.sh)"
+    ]
+  }
+}

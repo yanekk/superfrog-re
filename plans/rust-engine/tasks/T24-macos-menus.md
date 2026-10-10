@@ -20,11 +20,11 @@ DESIGN §2.7, §7 (native menus).
 ## Interface
 
 ```rust
-pub enum Command { ImportDisks, Scale(Scale), ToggleFullscreen, Pause, Reset, Quit /* T25–T28 add variants */ }
+pub enum Command { ImportDisks, ContinueFromProgress, Scale(Scale), ToggleFullscreen, Pause, Reset, Quit /* T25–T28 add variants */ }
 pub fn build_menu() -> MenuBar;  pub fn on_command(app: &mut AppState, c: Command);
 ```
 
-Menus: Superfrog (About, Quit ⌘Q) · File (Import Disks…) · Game (Pause, Reset) · View (Scale 1×/2×/3×/Auto, Fullscreen ⌃⌘F).
+Menus: Superfrog (About, Quit ⌘Q) · File (Import Disks…) · Game (Continue from World N, Pause, Reset) · View (Scale 1×/2×/3×/Auto, Fullscreen ⌃⌘F).
 
 ## End to end (the worker drives this)
 
@@ -33,6 +33,8 @@ Menus: Superfrog (About, Quit ⌘Q) · File (Import Disks…) · Game (Pause, Re
 - [ ] script layer: each `Command` → same effect.
 - [ ] Pause stops `Game::step` (frame counter stays) and resumes exactly where it was.
 - [ ] Reset returns to power-on; frames then equal a fresh launch.
+- [ ] Continue from World N: disabled with no progress; with progress for world N, frames equal
+      entering that world's password on the title (`Game::start_at`, DESIGN §2.9).
 
 ## Done when
 

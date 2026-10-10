@@ -1,6 +1,6 @@
 # T12 — core-state
 
-**Phase:** 2 · **Depends on:** T05, T07 · **Weight:** medium
+**Phase:** 2 · **Depends on:** T05, T06, T07 · **Weight:** medium
 
 ## Goal
 

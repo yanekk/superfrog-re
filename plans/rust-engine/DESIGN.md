@@ -140,6 +140,9 @@ a state then running N frames must give the same frames as having never saved.
 
 Settings (scale, fullscreen, CRT, widescreen, key and pad bindings) and progress (the furthest world
 reached, offered as a start point so passwords need not be retyped) persist in the app-data folder.
+The start point is the menu item Game → "Continue from World N", disabled until World 2 is reached; it
+starts that world exactly as its password would (`Game::start_at`), so nothing new is drawn in the game
+(owner, 2026-10-10).
 High scores last for the session only, as on the Amiga (owner's decision). A damaged settings or
 progress file is replaced by defaults with a one-line message, never a refusal to start, since losing
 a preference is cheaper than locking the player out.
@@ -157,6 +160,8 @@ engine also exports any disk level to this format (locally, for the owner; never
 
 - Wrong, missing or damaged disk: refused at import with a message naming the slot (§2.2).
 - Damaged or stale cache: re-import, else ask for the disks (§2.2).
+- Disk picker cancelled, or fewer than four disks chosen: a message naming the missing disks with
+  "Choose Disks…" and "Quit" (owner, 2026-10-10), so the player always knows what is missing.
 - Crash or power loss mid-write of the cache, settings, progress or a save state: every file is written
   to a temporary name in the same folder, flushed, then renamed over the old one, so a reader sees the
   old file or the new one and never half of one.
@@ -199,7 +204,10 @@ that leaks into the shell becomes a rule only the slow rig can check.
 Enforced by `engine/crates/sf-conform/tests/purity.rs` (T01): it scans the pure crates' sources for
 `std::fs`, `std::time`, `std::net`, `std::thread`, `std::env`, `std::process`, `Instant`, `SystemTime`,
 `HashMap`, `HashSet`, `f32`, `f64`, and integer array literals over 16 elements (§2.3), and checks their
-`cargo metadata` dependencies against an allowlist. If that test fails, the fix is to move the code to
+`cargo metadata` dependencies against an allowlist. One exception (owner, 2026-10-10):
+`sf-paula/src/resample.rs` may use floating point and filter tables, because it only turns Paula's
+channel output into host-rate audio; that output feeds no game state and is not compared frame-exactly
+(the per-channel taps before it are). The test exempts that one file and nothing else. If that test fails, the fix is to move the code to
 the shell side or read the data from the disks, never to relax the test.
 
 ### 3.2 Modules
@@ -226,7 +234,7 @@ the shell side or read the data from the disks, never to relax the test.
 ```
 Game::new(data: &GameData, start: Start) -> Game          // Start::PowerOn | Start::Transplant(AmigaMemory) | Start::Level(LevelId)
 Game::step(&mut self, input: FrameInput) -> FrameOut       // one PAL frame
-FrameOut { picture: Picture, paula: Vec<PaulaWrite> }       // Picture = indexed pixels + per-line palette
+FrameOut { picture: Picture, paula: Vec<PaulaWrite>, disk_prompt: Option<DiskPrompt> }  // Picture = indexed pixels + per-line palette; disk_prompt added by T21
 Game::render(&self, view: View) -> Picture                  // View { extra_columns_each_side }
 Game::probe(&self) -> Vec<(VarId, u32)>                     // values at the original's addresses
 Game::save(&self) -> Vec<u8>; Game::load(&GameData, &[u8]) -> Result<Game, StateError>
@@ -316,7 +324,11 @@ items through System Events and captures the window, so the real macOS input and
 for each control at least once; it needs Accessibility and Screen Recording granted once (§5.1).
 Sizes: window scale 1×, 2× and 3× (320×256, 640×512, 960×768 game area), widescreen at 2×, and
 fullscreen on the built-in display. The free backend is the asset cache built from the owner's disks
-into the temp home. Both layers are in the test block once they exist, bounded by `--max-frames`.
+into the temp home. The script layer is in the test block once it exists, bounded by `--max-frames`.
+The OS layer runs only with `SF_E2E_OS=1`, set by the worker of the task that adds an OS-layer test and
+by the drill (owner, 2026-10-10): it posts real keys and clicks to whichever app is in front, so in the
+shared test block it would type into the owner's apps and parallel workers would fight over focus.
+Without the variable those tests report themselves skipped, never passed.
 
 ### 5.1 What the test command cannot reach
 
@@ -341,7 +353,8 @@ Never run the app fullscreen without a frame cap during a task, and never run th
 ### 5.3 Outside the code — who acts
 
 Nothing in this plan touches a cloud account, paid service or another person. The actions are
-installs on this Mac, which the owner moved to `worker` on 2026-10-10 ("workers install, no prompt").
+installs on this Mac, which the owner moved to `worker` on 2026-10-10 ("workers install, no prompt")
+and confirmed at plan review the same day.
 No credentials are needed by any action (measured: none of the rows uses a login).
 
 | Action | Command (exact, wrapped) | Bin | Why this bin | Way back | Expected cost | Login check |
