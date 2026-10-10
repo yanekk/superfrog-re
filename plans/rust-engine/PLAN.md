@@ -1,0 +1,155 @@
+# Implementation plan
+
+31 tasks in 4 phases. Each has a file in [tasks/](tasks/) with its goal, the files it touches, the
+interfaces it defines, and what "done" means.
+
+Track state in [PROGRESS.md](PROGRESS.md). Read [DESIGN.md](DESIGN.md) first.
+
+---
+
+## Shape of the build
+
+- **The reference comes first.** Every mechanic is judged by comparison with the original running in
+  vAmiga (DESIGN §2.1), so the spike proving that comparison is possible (T00) and the permanent
+  harness (T05, T06) come before any game code. Without them "frame-exact" is a claim nobody can check.
+- **Everything is proven headless before anything opens a window.** Phases 1 and 2 build and verify
+  the whole game as pure functions against the oracle; Phase 3 wires a window, sound and menus onto a
+  core already known to match the original.
+- **Understand before porting.** T07 maps the executables once, so the mechanic tasks start from a
+  shared map instead of each rediscovering the main loop. T07 may re-split the mechanic tasks; that is
+  an amendment to this plan, made with the owner.
+- **The small thing before the big thing.** One level with only the frog (T14) before items, enemies
+  and bosses; scripted runs from transplanted sync points before a whole game from power-on (T21).
+
+```
+Phase 0  ▸  T00                       prove the oracle            throwaway
+Phase 1  ▸  T01 … T11                 foundations, headless       no window
+Phase 2  ▸  T12 … T21                 the game, frame-exact       no window
+Phase 3  ▸  T22 … T30                 the app                     window, menus, pad
+```
+
+---
+
+## Phase 0 — Prove the ground
+
+| # | Task | Depends on |
+|---|---|---|
+| [T00](tasks/T00-oracle-spike.md) | oracle-spike | — |
+
+**T00 gates the whole verification design** (DESIGN §2.1, §3.2 `sf-oracle`, §7). If vAmiga boots the
+disks headless, deterministically, with per-frame input and readable memory, frame and Paula state,
+T05 builds on it. If it boots but one capability is missing, T05 adds it to the shim (the core is
+ours to patch, MPL-2.0). If it cannot boot or is not deterministic, the plan stops and the owner
+chooses between another emulator core and a weaker definition of exactness.
+
+## Phase 1 — Foundations, headless
+
+| # | Task | Depends on |
+|---|---|---|
+| [T01](tasks/T01-rust-workspace.md) | rust-workspace | — |
+| [T02](tasks/T02-re-workbench.md) | re-workbench | — |
+| [T03](tasks/T03-disk-import.md) | disk-import | T01 |
+| [T04](tasks/T04-atn-decompressor.md) | atn-decompressor | T03 |
+| [T05](tasks/T05-oracle-harness.md) | oracle-harness | T00, T01 |
+| [T06](tasks/T06-routine-oracle.md) | routine-oracle | T04, T05 |
+| [T07](tasks/T07-exe-map.md) | exe-map | T02, T04, T05 |
+| [T08](tasks/T08-asset-decode.md) | asset-decode | T04, T07 |
+| [T09](tasks/T09-asset-cache.md) | asset-cache | T03, T08 |
+| [T10](tasks/T10-paula-mixer.md) | paula-mixer | T01, T05 |
+| [T11](tasks/T11-audio-driver.md) | audio-driver | T06, T07 |
+
+At the end: the disks import into a verified cache in Rust, every asset decodes, the original runs
+under scripted control in the oracle, and the code map tells every later task where to look.
+
+## Phase 2 — The game, frame-exact
+
+| # | Task | Depends on |
+|---|---|---|
+| [T12](tasks/T12-core-state.md) | core-state | T05, T07 |
+| [T13](tasks/T13-renderer.md) | renderer | T08, T12 |
+| [T14](tasks/T14-frog-and-level.md) | frog-and-level | T06, T11, T12, T13 |
+| [T15](tasks/T15-items-and-scoring.md) | items-and-scoring | T14 |
+| [T16](tasks/T16-enemies-worlds-1-3.md) | enemies-worlds-1-3 | T15 |
+| [T17](tasks/T17-enemies-worlds-4-6.md) | enemies-worlds-4-6 | T15 |
+| [T18](tasks/T18-bosses.md) | bosses | T16, T17 |
+| [T19](tasks/T19-slot-and-bonus.md) | slot-and-bonus | T15 |
+| [T20](tasks/T20-front-end.md) | front-end | T08, T11, T12, T13 |
+| [T21](tasks/T21-game-flow.md) | game-flow | T18, T19, T20 |
+
+At the end: a scripted game from power-on to the end sequence matches the original frame for frame,
+headless.
+
+## Phase 3 — The app
+
+| # | Task | Depends on |
+|---|---|---|
+| [T22](tasks/T22-app-rig.md) | app-rig | T09, T10, T12, T13 |
+| [T23](tasks/T23-app-shell.md) | app-shell | T22 |
+| [T24](tasks/T24-macos-menus.md) | macos-menus | T23 |
+| [T25](tasks/T25-controls-and-gamepad.md) | controls-and-gamepad | T24 |
+| [T26](tasks/T26-save-states.md) | save-states | T24 |
+| [T27](tasks/T27-crt-and-widescreen.md) | crt-and-widescreen | T24 |
+| [T28](tasks/T28-level-override.md) | level-override | T14, T24 |
+| [T29](tasks/T29-app-drill.md) | app-drill | T21, T25, T26, T27, T28 |
+| [T30](tasks/T30-acceptance.md) | acceptance | T29 |
+
+T22 is the rig task: it comes before every surface task and they depend on it. T29 is the phase's
+drill. At the end: the owner plays it.
+
+---
+
+## The main path, builder and wirer
+
+| Step | Built by | Wired by |
+|---|---|---|
+| Launch `superfrog` | T22 (`sf-app/src/main.rs`) | T22 |
+| Find or ask for disks, import, verify cache | T03, T04, T08, T09 | T23 (import flow in `sf-app/src/import.rs`, called from `main.rs`) |
+| Power-on → intro → title → options/passwords | T20 | T21 (`sf-core/src/flow.rs`), run by the game loop T22/T23 |
+| Play a level: frog, items, enemies, bosses | T14–T18 | T14 (`sf-core/src/level/mod.rs` object dispatch; T15–T18 register into it) |
+| Slot machine and bonus levels between levels | T19 | T21 |
+| Picture to the window | T13 | T22 (`sf-app/src/video.rs`) |
+| Sound to the speakers | T11, T10 | T22 (`sf-app/src/audio.rs`) |
+| Keyboard / pad to the game | T23, T25 | T23 (`sf-app/src/input.rs`), T25 adds the pad |
+| Menus, settings, save states, CRT, widescreen, level files | T24–T28 | T24 (`sf-app/src/menu.rs`); each feature task adds its items there |
+| Progress remembered, passwords offered | T21 (`Progress` in core), T23 (file) | T23 |
+
+## Critical path
+
+```
+T01 → T03 → T04 → T07 → T12 → T13 → T14 → T15 → T16 → T18 → T21 → T29 → T30
+```
+
+T00 and T05 run alongside T01–T04. T02 can start at once. T08–T11 run beside T12. T19 and T20 run
+beside the enemy tasks, and all of Phase 3 up to T28 runs beside Phase 2's mechanics.
+
+Leaves (tasks nothing depends on): only T30.
+
+## Parallel width
+
+31 tasks · longest dependency chain 13 · up to 8 could run at once (for example T16, T17, T19, T20,
+T25, T26, T27, T28). Every edge is a real use: a task depends on what its code calls or its tests
+compare against.
+
+## Rough sizing
+
+| Weight | Tasks |
+|---|---|
+| **Heavy** | T05, T07, T13, T14, T16, T17, T18, T20 |
+| **Medium** | T00, T04, T06, T08, T11, T12, T15, T19, T21, T22, T23, T29, T30 |
+| **Light** | T01, T02, T03, T09, T10, T24, T25, T26, T27, T28 |
+
+Where it will overrun: T07 (330 KB of 68000 code plus four other executables; it is a map, not a full
+understanding, and must stop at that), and the enemy and boss tasks, whose size is unknown until T07
+counts the object types. T13 risks overrunning on copper effects (per-line palette changes) and on how
+the original composes bobs and hardware sprites.
+
+## Decisions still open
+
+- **Lag and timing-dependent randomness** (DESIGN §2.1). T07 measures whether the original ever takes
+  more than one frame per main-loop pass and whether its random seed depends on CPU timing. If either
+  is true, the owner decides how frame-exact is defined there; this blocks T12's final layout of
+  `Game::step`, not T00–T11.
+- **The real task split for enemies and bosses.** T07 reports the object types per world; if
+  T16–T18 are each more than one session, this plan is amended with the owner before they start.
+- **Which Kickstart boots the crack** (T00). Does not block design.
+- **Ghidra or a capstone workbench** (T02). Does not block design.

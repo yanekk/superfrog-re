@@ -1,0 +1,411 @@
+---
+setup:
+  - python3 -m venv venv && venv/bin/pip install -q --disable-pip-version-check -r requirements.txt
+  - [ ! -x tools/setup/oracle.sh ] || tools/setup/oracle.sh
+test:
+  - NO_COLOR=1 venv/bin/python -m unittest discover -q -s . -p 'test_*.py' || [ $? -eq 5 ]
+  - [ ! -f engine/Cargo.toml ] || (cd engine && CARGO_TERM_COLOR=never cargo test -q --workspace)
+---
+
+# Superfrog in Rust — Design
+
+## 1. Purpose
+
+A hand-written Rust program that plays the complete Superfrog (Team 17, 1993, Amiga) natively on a
+modern Mac. The player supplies their own four Amiga disk images once; the program imports them and
+plays the game with no emulator involved. It is a clean reimplementation: every mechanic is
+understood from the original 68000 code and rewritten as readable Rust, not machine-translated.
+
+It is for the project owner first, and for anyone who owns the disks. It is also the playable target
+the later map editor needs, which is why it can play an edited level (§2.10).
+
+### Success criteria
+
+- Given the same inputs from the same starting point, the Rust engine produces the same picture, the
+  same sound-chip activity and the same game variables as the original, every frame, on every
+  scripted conformance run (§2.1), including a scripted run from boot to the end sequence.
+- Every part of the original is present: intro and story, title, options and passwords, every level
+  and boss of every world, the slot machine and bonus levels, game over, the end sequence, music and
+  sound effects.
+- Nothing derived from the disks is in the repository or in the built program (§2.3).
+- The owner plays a session on this Mac with the 8BitDo Ultimate 2 and says it is Superfrog.
+
+### Stance
+
+- Frame-exact, not "feels the same". The original is the specification, and an automated comparison
+  against it is the only judge of a mechanic; a port that "looks right" is not done.
+- The original's quirks and bugs are kept. Only behaviour that would crash or hang the original gets a
+  safe replacement, each one listed in §2.11, because those cases cannot be compared anyway.
+- Our code, their data. The engine contains no Team 17 bytes; it reads everything from the player's
+  disks.
+- Readable Rust. Each mechanic is a named module with names from our reverse engineering, so the
+  editor and later mods can build on it.
+
+---
+
+## 2. Behaviour specification
+
+### 2.1 What frame-exact means
+
+Each step of the engine is one PAL vertical blank (one "frame"). Starting from a sync point (the
+original's state captured by the reference emulator and transplanted into the engine, or power-on for
+a whole-game run) and feeding the same joystick/keyboard state per frame, three things must match on
+every frame:
+
+1. The displayed picture inside the game's display window, compared as 12-bit OCS colour per pixel.
+2. The ordered list of Paula (sound chip) register writes made during that frame.
+3. Every game variable the engine models, compared with the original's memory at the addresses the
+   engine's layout table (§3.3) names.
+
+(1) and (2) are what the player perceives and are the definition; (3) is what makes a divergence
+findable, since a picture difference usually shows up frames after the variable that caused it. The
+comparison runner reports the first frame and the first variable that differ.
+
+Whether the original ever runs its main loop slower than once per frame (lag), and whether its
+randomness depends on CPU timing, are not yet known; T07 measures both. If either is true, the
+consequence for this definition is a decision for the owner (PLAN.md, open decisions).
+
+### 2.2 Disks and import
+
+- Accepted input is exactly the four "[cr CSL]" disk images the owner has, zipped or as raw `.adf`,
+  identified by SHA-1 of the ADF contents. Any other image is refused with a message naming the disk
+  slot it was offered for and whether it is missing, damaged or a different version. Supporting other
+  dumps was declined (§8) because each would need its own verification.
+- Import happens once. The disks are decoded into a cache in the app-data folder (§3.5). The cache
+  records its format version, the engine version that wrote it, and a hash of its contents.
+- On launch the cache is verified. If it is missing, damaged or from another cache format version, the
+  engine re-imports from the disk paths it remembered; if those are gone or changed, it asks for the
+  disks again. The disks are opened read-only and nothing is written beside them.
+
+### 2.3 Copyright boundary
+
+- Graphics, sound, levels, strings and every numeric table the game uses are read from the player's
+  disks at import, located by chunk and offset. None are copied into Rust source, tests, docs or
+  fixtures. The reason: the repository and the built program must be shareable without carrying any
+  Team 17 data.
+- Facts about the original (addresses, offsets, sizes, formats, the meaning of a variable) are ours to
+  write down and are committed. A disassembly listing or decompiled output of the original is not; it
+  is regenerated outside git (§5).
+- Recorded conformance traces and captured frames are derived from the disks and live in a cache
+  outside the repository (§3.5).
+- Enforced by `tools/check_no_disk_data.py` (T01), which fails if any tracked file contains a run of 128
+  or more bytes found in any disk chunk, and by the purity test (§3.1), which flags integer array
+  literals of more than 16 elements in the pure crates. A flagged table must be read from the disks
+  instead; the check is never relaxed for it.
+
+### 2.4 Unpacking
+
+The `ATN!` decompressor is hand-ported to Rust and proven byte-identical to the emulated original
+(`tools/atn.py`) on every chunk that decodes there. The emulated version stays in the repository as
+the reference. This replaces the old rule "do not reimplement it", which held while emulation was
+acceptable; the shipped game may not contain an emulator (the owner's requirement, 2026-10-10). The
+three chunks the Python harness fails on (`d1_c16`, `d2_c39`, `d4_c16`) are checked against the
+original's own memory after the game loads them (T07).
+
+### 2.5 Timing
+
+The engine runs at the PAL frame rate, 49.92 Hz, on any display, because game speed, music tempo and
+frame-exactness are all defined per PAL frame. On a 60 Hz or variable-rate display the newest
+completed frame is presented at each display refresh; frames are never interpolated, because an
+interpolated frame is not a frame the original drew. The audio device's sample clock paces the
+simulation so sound never drifts from picture.
+
+### 2.6 Input
+
+The original reads one joystick (directions + fire) and some keys. The engine maps keyboard keys and
+gamepad buttons onto exactly those original inputs and nothing else, so the simulation cannot tell
+which device was used. Bindings are remappable and remembered (§2.9). A gamepad connected or
+disconnected mid-game changes nothing but which device feeds the mapping.
+
+### 2.7 Display options
+
+- Integer scaling only (1× to the largest that fits) in a resizable window, or fullscreen with the
+  largest integer scale and black borders, because non-integer scaling smears pixel art unevenly.
+- CRT filter: an optional shader applied after scaling. It changes presentation only.
+- Widescreen: the renderer draws extra columns of the level on each side using the same state. Game
+  logic is identical in every mode, so frame-exactness holds in all of them (owner's decision,
+  2026-10-10). Objects the original has not activated stay invisible or frozen at the edges; this is
+  the accepted cost. Enforced by a test: the centre 320 columns of a widescreen frame equal the 4:3
+  frame for every frame of the conformance runs.
+
+### 2.8 Save states
+
+Save and load anywhere through the menu. A save state is the serialized engine state, tagged with the
+engine build identity and the asset cache hash. A state written by a different build is refused with a
+message rather than loaded, because the state layout changes as mechanics are added and a
+half-compatible load would silently corrupt a game (owner's decision: no cross-version states). Loading
+a state then running N frames must give the same frames as having never saved.
+
+### 2.9 What persists
+
+Settings (scale, fullscreen, CRT, widescreen, key and pad bindings) and progress (the furthest world
+reached, offered as a start point so passwords need not be retyped) persist in the app-data folder.
+High scores last for the session only, as on the Amiga (owner's decision). A damaged settings or
+progress file is replaced by defaults with a one-line message, never a refusal to start, since losing
+a preference is cheaper than locking the player out.
+
+### 2.10 Level override (the editor's target)
+
+The engine can play a level from a `.sflevel` file in place of the disk level it names. The format is
+JSON: `{"format":"sflevel","version":1,"replaces":"W1-1","sections":{"<name>":"<base64>"}}`, where the
+sections are the original per-level files in their original formats (at least `t7mp`; T07/T08 settle
+whether object placement lives in another file). Reusing the original formats means one loader serves
+disk levels and override files, so an unchanged export plays frame-identically by construction. The
+engine also exports any disk level to this format (locally, for the owner; never committed).
+
+### 2.11 Unhappy paths
+
+- Wrong, missing or damaged disk: refused at import with a message naming the slot (§2.2).
+- Damaged or stale cache: re-import, else ask for the disks (§2.2).
+- Crash or power loss mid-write of the cache, settings, progress or a save state: every file is written
+  to a temporary name in the same folder, flushed, then renamed over the old one, so a reader sees the
+  old file or the new one and never half of one.
+- Two copies running: the second one shows a message and quits, because two writers to progress and
+  settings would race. A lock file in the app-data folder holding the PID decides; a stale lock (dead
+  PID) is taken over.
+- Original crash or hang conditions (a pointer run off a table, an infinite loop): reproduced up to
+  the point of failure, then replaced by the safest nearby behaviour, each listed here with its
+  address when found. None are known yet.
+- A save state from another build: refused (§2.8). An `.sflevel` with a bad version, missing section
+  or malformed T7MP: refused with the reason, and the disk level is played instead only if the player
+  chooses it.
+- Audio device missing or lost: the game keeps running silently on a wall-clock pacer, since sound is
+  not needed to play.
+
+---
+
+## 3. Architecture
+
+### 3.1 The boundary
+
+```
+engine/crates/sf-disk     pure   ADF/zip bytes -> identified disks -> chunks -> ATN! decompression
+engine/crates/sf-assets   pure   chunks -> GameData (exe hunks, T7MP, gfx, sound, tables by offset), cache codec
+engine/crates/sf-core     pure   the game: State, Game::step, renderer, audio driver, layout table
+engine/crates/sf-paula    pure   Paula register writes -> PCM
+engine/crates/sf-app      shell  the `superfrog` binary: window, GPU, audio device, input, menus, files
+engine/crates/sf-oracle   shell  test tooling: vAmiga full-system reference + Moira routine runner
+engine/crates/sf-conform  shell  test tooling: conformance runner, input scripts, trace cache
+engine/crates/sf-e2e      shell  end-to-end tests driving the built app
+```
+
+The pure crates take everything as parameters and return values. They read no clock, touch no file,
+socket, thread, environment or process, use no floating point and no randomly-seeded hash map. The
+reason for each: a clock or file makes a test depend on the machine; floating point and hash-map order
+are the classic ways two runs of a "deterministic" simulation drift apart, and frame-exactness is
+defined bit for bit. Everything on the pure side is testable exhaustively in milliseconds; every rule
+that leaks into the shell becomes a rule only the slow rig can check.
+
+Enforced by `engine/crates/sf-conform/tests/purity.rs` (T01): it scans the pure crates' sources for
+`std::fs`, `std::time`, `std::net`, `std::thread`, `std::env`, `std::process`, `Instant`, `SystemTime`,
+`HashMap`, `HashSet`, `f32`, `f64`, and integer array literals over 16 elements (§2.3), and checks their
+`cargo metadata` dependencies against an allowlist. If that test fails, the fix is to move the code to
+the shell side or read the data from the disks, never to relax the test.
+
+### 3.2 Modules
+
+- `sf-disk`: `identify(bytes) -> DiskId`, chunk carving (port of `tools/atn.py`'s carver),
+  `atn::decompress`. Depends on nothing but a pure zip reader.
+- `sf-assets`: decoders for each chunk class and `GameData`, the complete decoded content the game
+  needs, plus its versioned cache encoding. Depends on `sf-disk`.
+- `sf-core`: one module per area of the game (frog, items, enemies per world, bosses, slot, front end,
+  flow), the renderer, the audio driver and `layout` (§3.3). Depends on `sf-assets` types.
+- `sf-paula`: Paula channel model at the Paula clock and a band-limited resampler to the host rate.
+- `sf-app`: winit (window, events), wgpu (scaling, CRT shader), cpal (audio), gilrs (gamepad),
+  muda (macOS menu bar), rfd (file dialogs), serde/toml (settings). SDL2 is permitted (§5) and held in
+  reserve should gilrs fail the 8BitDo or wgpu fail a need.
+- `sf-oracle`: a C++ shim over the vAmiga core (MPL-2.0) and its Moira CPU (MIT), built outside the
+  repo (§5), exposed to Rust via `cc`/FFI. Never a dependency of `sf-app`; the purity/dependency test
+  also asserts that `sf-app`'s dependency tree contains no `sf-oracle`, because the shipped game may
+  not contain an emulator.
+- `sf-conform`: input scripts, sync points, the per-frame comparison, trace caching, divergence
+  reports.
+
+### 3.3 The decision function
+
+```
+Game::new(data: &GameData, start: Start) -> Game          // Start::PowerOn | Start::Transplant(AmigaMemory) | Start::Level(LevelId)
+Game::step(&mut self, input: FrameInput) -> FrameOut       // one PAL frame
+FrameOut { picture: Picture, paula: Vec<PaulaWrite> }       // Picture = indexed pixels + per-line palette
+Game::render(&self, view: View) -> Picture                  // View { extra_columns_each_side }
+Game::probe(&self) -> Vec<(VarId, u32)>                     // values at the original's addresses
+Game::save(&self) -> Vec<u8>; Game::load(&GameData, &[u8]) -> Result<Game, StateError>
+```
+
+`Game` is a function of `GameData`, its start and the input sequence and nothing else. The `layout`
+module is the single table pairing each modelled variable with the original's address and width; both
+transplant (`Start::Transplant`) and `probe` are driven from it, so a variable is either fully mapped
+or not mapped at all.
+
+### 3.4 Data flow
+
+Import: disk files (shell) → `sf-disk` → `sf-assets::GameData` → cache file (shell). Play: cache →
+`GameData` → `Game`; each 1/49.92 s the shell reads input, maps it to `FrameInput`, calls `step`,
+hands `paula` to `sf-paula` → audio device and `render(view)` → GPU. Conformance: `sf-oracle` runs
+the original with the same `FrameInput`s and `sf-conform` compares `FrameOut` and `probe` frame by
+frame.
+
+### 3.5 Storage
+
+- App data: `~/Library/Application Support/Superfrog-RE/` containing `cache/assets-v{N}.bin`,
+  `settings.toml`, `progress.toml`, `states/*.sfstate`, `disks.toml` (remembered disk paths), `lock`.
+  `--home <dir>` or `SUPERFROG_HOME` overrides it; every test sets it (§5.2).
+- All writes are temp-file-then-rename in the same folder (§2.11).
+- Tool caches outside git: `~/.cache/superfrog-re/vamiga/<commit>/` (built reference emulator),
+  `~/.cache/superfrog-re/traces/` (oracle traces keyed by disk set hash, vAmiga commit and script hash),
+  `~/.cache/superfrog-re/re/` (generated disassembly and decompilation).
+- Committed RE knowledge: `re/symbols.toml` (address, name, kind, signature, note per entry) and
+  `docs/08-…` onward.
+
+---
+
+## 4. Testing
+
+- **Unit tests** on the pure crates: decoders, the decompressor, each mechanic's rules, the mixer.
+- **Routine conformance**: a ported routine and the original routine (run on Moira from a memory
+  snapshot by `sf-oracle`) are given the same inputs, many of them generated; outputs and memory
+  effects must match.
+- **Frame conformance**: scripted input runs from sync points, compared per §2.1 against vAmiga. The
+  short runs are in the test block; the full suite (every level completed, the whole game from boot)
+  is `cd engine && cargo run -q --release -p sf-conform -- all`, run by the mechanic tasks, the drill
+  and acceptance, because it takes minutes.
+- **End to end**: the real app driven by `sf-e2e` (§5, End to end).
+- What none of these prove: that the 8BitDo pad works on real hardware, and that a person playing it
+  finds it right (§5.1).
+
+Input scripts are written by workers (owner's decision, 2026-10-10): text files of `frame: inputs`
+lines under `engine/conform/scripts/`, steering by reading the oracle's state. They contain inputs
+only, never disk data, so they are committed.
+
+---
+
+## 5. Environment — read this before running anything
+
+| | |
+|---|---|
+| OS | macOS 26.5.1, Apple Silicon (arm64) |
+| Language / runtime | Rust stable via rustup (installed by T01); Python 3.14.8 (Homebrew) for the existing tools |
+| Toolchain | Apple clang 21 (Xcode CLT); Homebrew; cmake via brew (T00) |
+| Reference emulator | vAmiga core, pinned commit (T00 picks; `899da5dd` was current on 2026-09-30), built headless into `~/.cache/superfrog-re/vamiga/` |
+| Kickstart ROMs | `~/amiga-roms/` (`kick1.3.rom`, `KICK204.ROM`, `kick40068.A1200.rom`, `Kick.rom`, all 512 KB). Override with `SUPERFROG_KICKSTART`. Never copied into the repo or a cache |
+| Disk images | the four zips in the main checkout root; tests find them via `SUPERFROG_DISKS`, else `$(git rev-parse --path-format=absolute --git-common-dir)/..`. A test that needs them and cannot find them fails with that message rather than skipping |
+| **Deliberately absent** | No Ghidra or Java yet (T02 decides; the Ghidra MCP server is configured but nothing serves it). FS-UAE 3.2.35 is installed but is not the oracle: it cannot be scripted per frame. No Windows/Linux machine, so nothing here is verified there |
+
+**The test command.** The `test` lines of the block at the top of this file. The first runs the
+Python suite (none exist yet, so exit 5 is accepted). The second runs the Rust workspace once it
+exists. `cargo test -q` prints one line of dots and one result line per test binary; for detail run
+`cargo test --workspace -- --nocapture` in `engine/`. Colour: the session environment sets
+`COLORTERM=truecolor` and nothing forces colour, but `CARGO_TERM_COLOR=never` and `NO_COLOR=1` are set
+inside the commands so nothing depends on the caller.
+
+**Setup.** A fresh worktree needs the venv (gitignored, measured clean on 2026-10-10, 3 s) and, once
+T05 lands, `tools/setup/oracle.sh`, which builds vAmiga into the shared cache only if that commit is not
+already there, so parallel worktrees share one build. Rust itself is a machine install (T01), not a
+per-worktree step.
+
+**Dependencies.** Anything is allowed, including C libraries via Homebrew (owner, 2026-10-10). Each
+new crate or library is named in the task that adds it with one line of why. The pure crates stay on
+the allowlist in the purity test; adding to it needs a reason that the crate is pure.
+
+**End to end.** Nothing exists in the repo today. T22 adds `sf-e2e` with two layers. The script layer
+launches the real `superfrog` binary with `--home <tmp> --script <file> --capture <dir> --max-frames N`;
+the script's events enter at the point where winit events are translated, so key mapping, menus
+commands and the game loop are exercised in the real process, and every presented frame and the mixed
+audio are written to the capture folder. The OS layer posts real key events with CGEvent, clicks menu
+items through System Events and captures the window, so the real macOS input and menu path is proven
+for each control at least once; it needs Accessibility and Screen Recording granted once (§5.1).
+Sizes: window scale 1×, 2× and 3× (320×256, 640×512, 960×768 game area), widescreen at 2×, and
+fullscreen on the built-in display. The free backend is the asset cache built from the owner's disks
+into the temp home. Both layers are in the test block once they exist, bounded by `--max-frames`.
+
+### 5.1 What the test command cannot reach
+
+| Cannot be tested automatically | Why it needs a person |
+|---|---|
+| The 8BitDo Ultimate 2 drives the game | A physical pad cannot be simulated at the HID level here |
+| A play session feels like Superfrog, and sound comes out of the speakers | A real person's reaction; the speakers are hardware |
+| Granting Accessibility and Screen Recording to the terminal that runs the OS-layer tests | A macOS privacy grant only the user can click |
+
+### 5.2 Seatbelts
+
+| Flag / mechanism | Default | Effect |
+|---|---|---|
+| `--max-frames N` (app) / frame cap (oracle) | required under `--script`; oracle 20 000 | process exits after N frames; a test without it is refused |
+| `--timeout S` | 120 under `--script` | wall-clock kill of the app and any child |
+| `--home DIR` / `SUPERFROG_HOME` | the real app-data folder | tests always pass a temp dir, so a test never touches the owner's settings, progress or states |
+| windowed under `--script` | on | a scripted run cannot go fullscreen unless it also passes `--allow-fullscreen`, which requires `--max-frames ≤ 300` |
+| read-only disks and ROMs | always | the importer and the oracle open them read-only and write nothing beside them |
+
+Never run the app fullscreen without a frame cap during a task, and never run the oracle without one.
+
+### 5.3 Outside the code — who acts
+
+Nothing in this plan touches a cloud account, paid service or another person. The actions are
+installs on this Mac, which the owner moved to `worker` on 2026-10-10 ("workers install, no prompt").
+No credentials are needed by any action (measured: none of the rows uses a login).
+
+| Action | Command (exact, wrapped) | Bin | Why this bin | Way back | Expected cost | Login check |
+|---|---|---|---|---|---|---|
+| Install Rust | `tools/setup/install-rust.sh` | worker | owner's decision, 2026-10-10 | `rustup self uninstall` | free | — |
+| Install brew build deps (cmake) | `tools/setup/install-brew-deps.sh` | worker | owner's decision, 2026-10-10 | `brew uninstall cmake` | free | — |
+| Install Ghidra (only if T02 adopts it) | `tools/setup/install-ghidra.sh` | worker | owner's decision, 2026-10-10 | `brew uninstall --cask ghidra; brew uninstall openjdk` | free | — |
+| Fetch and build vAmiga at the pinned commit | `tools/setup/oracle.sh` | worker | builds into a cache outside the repo | delete `~/.cache/superfrog-re/vamiga` | free | — |
+| Download crates during `cargo build` | (cargo) | worker | ordinary build | `cargo clean` | free | — |
+| Grant Accessibility + Screen Recording to the terminal | System Settings | person | macOS privacy grant | revoke in System Settings | — | — |
+| Use the 8BitDo pad / play the session | — | person | physical device, human judgement | — | — | — |
+
+---
+
+## 6. Recovery
+
+The game cannot lock anyone out. Fullscreen exits with Esc-then-menu, Cmd+Ctrl+F or Cmd+Q. To reset
+everything, quit and delete `~/Library/Application Support/Superfrog-RE/`; the next launch asks for
+the disks. The tool caches in `~/.cache/superfrog-re/` can be deleted at any time and are rebuilt.
+
+---
+
+## 7. Decisions and rationale
+
+- **Clean reimplementation, not static recompilation or a hybrid** (owner, 2026-10-10). Readable,
+  moddable code that pairs with the editor; faithfulness is bought with the conformance suite instead.
+- **Frame-exact** (owner). Defined in §2.1. Requires a scriptable reference emulator.
+- **vAmiga as the reference, not FS-UAE or a homemade harness** (planner). FS-UAE has no per-frame
+  scripting or memory access. A homemade harness would need its own blitter, copper and display
+  emulation to produce frames, i.e. writing an emulator. The vAmiga core is MPL-2.0 with an MIT CPU,
+  has a headless build (`Core/Headless.cpp`), and can be linked into test-only tooling. T00 proves it.
+- **Moira for routine-level tests rather than the Python `machine68k`** (planner). One C++ tree builds
+  both oracles and is callable in-process from Rust tests; the Python tools stay as the `ATN!`
+  reference only.
+- **Python tools kept as references, not rebuilt or retired** (planner, Stage 4 survey). `atn.py`,
+  `t7mp.py` and `render_levels.py` are the yardsticks for the Rust decoders; `find_secrets.py` and
+  `export_annotated.py` serve the editor and are untouched. The Rust versions exist because the
+  shipped game cannot run Python.
+- **Port `ATN!` to Rust** rather than shipping a tiny 68k core for import (owner). §2.4.
+- **Everything from the disks, nothing embedded** (owner). §2.3.
+- **Only the owner's disk set** (owner). §2.2.
+- **One-time import to a cache** rather than decoding every launch (owner).
+- **Native macOS menus and dialogs**, nothing new drawn in-game (owner). The original's screens stay
+  untouched; no mock was built, since the in-game look is the original's and the menus follow macOS
+  conventions.
+- **Widescreen is visual only** (owner). §2.7.
+- **Keep all original bugs, fix crashes only** (owner). §1 Stance, §2.11.
+- **Persist settings and progress; not high scores; save states are build-specific** (owner). §2.8,
+  §2.9.
+- **Workers write the input scripts** (owner). §4.
+- **winit/wgpu/cpal/gilrs/muda/rfd over SDL2** (planner). Pure-Rust crates avoid a Homebrew runtime
+  dependency for the shipped app; SDL2 stays permitted as the fallback for gamepad or windowing.
+- **PAL rate 49.92 Hz, no interpolation, audio-clock pacing** (planner). §2.5.
+- **RE notes committed as our own symbols file; listings regenerated** (planner). §2.3.
+
+---
+
+## 8. Explicitly out of scope
+
+- The map editor itself: a later plan; this one only gives it a target (§2.10).
+- Windows, Linux and web builds: macOS only (owner); nothing here can verify the others.
+- Other disk versions (IPF/original release, CD32, other cracks): each needs its own verification (owner).
+- Saved high scores: session-only like the original (owner).
+- Save states across engine builds: refused instead (owner).
+- Gameplay changes in any mode, including widescreen and an optional "fixes" toggle: frame-exactness
+  is the product (owner).
+- Shipping or bundling any disk data, ROM or the reference emulator.
