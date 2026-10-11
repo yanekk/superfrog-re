@@ -13,7 +13,7 @@ the account is the commit message. Whoever writes a cell also fixes the over-bud
 
 **Status:** T00 done; vAmiga 899da5dd is the oracle.
 **Last updated:** 2026-10-11
-**Next `pir-work` will:** T05 oracle-harness once T01 is done (T01, T02 can run beside it).
+**Next `pir-work` will:** T05 oracle-harness, now that T00 and T01 are done.
 
 ## Tasks
 
@@ -22,11 +22,11 @@ done · ⛔ blocked, needs a human.
 
 | # | Task | Depends on | State | Notes |
 |---|---|---|---|---|
-| T00 | oracle-spike | — | ✅ | Reviewed: answers held. Own probe on kept build: two 11 300-frame KS 1.3 runs identical, title seen, KS 2.04 boots, Kick.rom refused; snapshot restore exact except texture row 312 (vblank). Fixed: tools/ tests never discovered (added `tools/__init__.py`), brew script untested (3 tests, mutation red). AROS, A1200 claims read-only. |
-| T01 | rust-workspace | — | ⬜ | |
-| T02 | re-workbench | — | ⬜ | |
-| T03 | disk-import | T01 | ⬜ | |
-| T04 | atn-decompressor | T03 | ⬜ | |
+| T00 | oracle-spike | — | ✅ | Reviewed: answers held. Own probe on kept build: two 11 300-frame KS 1.3 runs identical, title seen, KS 2.04 boots, Kick.rom refused; snapshot restore exact except texture row 312 (vblank). Fixed: brew script untested (3 tests, mutation red). AROS, A1200 claims read-only. |
+| T01 | rust-workspace | — | ✅ | |
+| T02 | re-workbench | — | ✅ | |
+| T03 | disk-import | T01 | ✅ | |
+| T04 | atn-decompressor | T03 | ✅ | |
 | T05 | oracle-harness | T00, T01 | ⬜ | |
 | T06 | routine-oracle | T04, T05 | ⬜ | |
 | T07 | exe-map | T02, T04, T05 | ⬜ | |

@@ -19,8 +19,10 @@ derived by the tools.
 
 ## What's known (don't re-derive)
 - **Disks** are a custom trackloader: back-to-back sector-aligned `ATN!` chunks.
-- **`ATN!` is a custom cruncher.** We decode it by *emulating the game's own 68k
-  decompressor* under Musashi (`tools/atn.py`) — do **not** try to reimplement it.
+- **`ATN!` is a custom cruncher.** The Rust port in `engine/crates/sf-disk/src/atn.rs`
+  is the product decoder; `tools/atn.py` (the game's own 68k routine, emulated under
+  Musashi) is the reference it is tested against. Both decode 103/106 chunks as carved;
+  the other 3 need the next sector for their trailer (`docs/03`).
 - **Levels** are `T7MP` files: `[tag][u32 len][data]`. `BODY` = `300×84` grid of
   16-bit cells = `tile index (low 10 bits) | flags (high 6 bits)`.
 - **Graphics:** 840 per-tile `16×16` 5bpp tiles per world; the 32-colour OCS palette

@@ -21,6 +21,7 @@ supply your own copies in the repo root before running the tools.
 | Disk format identified (custom trackloader, no AmigaDOS FS) | ✅ |
 | `ATN!` container format cracked | ✅ |
 | `ATN!` decompressor working (via 68k emulation of the game's own routine) | ✅ 103/106 chunks |
+| `ATN!` decompressor ported to Rust (`sf-disk`), byte-identical to the emulation; stragglers decode with the next sector | ✅ 106/106 |
 | All chunks extracted & classified (levels / gfx / exe / anim / text) | ✅ |
 | **T7MP level format decoded** (dimensions, palettes, tilemap `BODY`) | ✅ |
 | `BODY` cell split: tile index = `cell & 0x3FF`, flags = `cell >> 10` | ✅ |
@@ -53,10 +54,11 @@ python tools/render_levels.py      # -> build/levels/*.png  (all 29 levels + mon
 
 1. Each disk is a back-to-back sequence of sector-aligned **`ATN!` chunks**
    (`magic`, `decomp_size`, `comp_size`, compressed data + trailer).
-2. `ATN!` is a custom cruncher not handled by public tools. Instead of porting
-   it, we **run the game's own decompressor** (68k routine at disk-1 offset
-   `0x400+0x2da`, found by its `cmpi.l #$41544e21,(a0)+` magic check) on a
-   Musashi CPU core (`machine68k`) — exact by construction.
+2. `ATN!` is a custom cruncher not handled by public tools. The tools **run the
+   game's own decompressor** (68k routine at disk-1 offset `0x400+0x2da`, found by
+   its `cmpi.l #$41544e21,(a0)+` magic check) on a Musashi CPU core
+   (`machine68k`) — exact by construction. The engine uses a Rust port
+   (`sf-disk/src/atn.rs`) tested byte-for-byte against it.
 3. Decompressed level files are **`T7MP`** — a flat `[tag][u32 len][data]`
    format whose `BODY` tag is an `XBLK × YBLK` grid of 16-bit tile indices.
 
@@ -70,6 +72,19 @@ Full analysis in [`docs/`](docs/) (read in order):
 - [`07-secret-passages.md`](docs/07-secret-passages.md) — collision flags, fake-wall (flag 38) secret passages
 - [`LEVEL-INDEX.md`](docs/LEVEL-INDEX.md) — level ids + tile addressing (`<level-id>:<col>,<row>`)
 
+## Rust engine
+
+A frame-exact Rust reimplementation of the game lives in [`engine/`](engine/); the plan, design and
+progress are in [`plans/rust-engine/`](plans/rust-engine/). Setup and tests:
+
+```bash
+tools/setup/install-rust.sh                 # rustup via Homebrew + the pinned toolchain (idempotent)
+cd engine && cargo test -q --workspace      # includes the purity test (DESIGN §3.1)
+venv/bin/python tools/check_no_disk_data.py # no disk bytes in the repo (DESIGN §2.3)
+```
+
+Both tests read the disks from `SUPERFROG_DISKS`, else from the main checkout root.
+
 ## Tools
 
 | File | Purpose |
@@ -81,3 +96,4 @@ Full analysis in [`docs/`](docs/) (read in order):
 | `tools/render_levels.py` | render all levels to PNG (tileset + palette + tilemap) |
 | `tools/find_secrets.py` | find fake-wall secret passages, overlay + `SECRETS.md` |
 | `tools/export_annotated.py` | per-level PNG with a coordinate grid + level id (tile addressing) |
+| `tools/check_no_disk_data.py` | fail if any repo file carries a 128-byte run of disk data |

@@ -1,0 +1,11 @@
+# The Superfrog engine workspace. Pure crates (sf-disk, sf-assets, sf-core, sf-paula) hold the game;
+# shell crates hold the app and the test tooling. The boundary is DESIGN §3.1, enforced by
+# crates/sf-conform/tests/purity.rs.
+[workspace]
+resolver = "3"
+members = ["crates/*"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+publish = false

@@ -1,0 +1,12 @@
+[package]
+name = "sf-disk"
+version.workspace = true
+edition.workspace = true
+publish.workspace = true
+
+[dependencies]
+# DEFLATE decoder for the zipped disks: pure (bytes in, bytes out; no I/O, clock or floats). T03.
+miniz_oxide = "0.9.1"
+
+[dev-dependencies]
+sf-conform = { path = "../sf-conform" }

@@ -1,0 +1,261 @@
+# Our names for places in Superfrog's code. Committed; the listings they label are not.
+# Read by tools/re_listing.py; see docs/RE-WORKBENCH.md.
+#
+# exe    chunk id (dN_cNN, 1-based as in docs/05) or a raw region (d1_boot, d1_stage15)
+# hunk   hunk index (0 for a raw region)
+# offset byte offset within that hunk
+# name   identifier, unique within one exe
+# kind   func | data | table | var
+# size   bytes; required for data, table and var, which may not overlap
+# note   one line
+
+# --- disk 1 bootblock (docs/02) ---
+[[sym]]
+exe = "d1_boot"
+hunk = 0
+offset = 0xc
+name = "boot_entry"
+kind = "func"
+note = "standard bootblock entry: bsr $300, AllocMem 0x1000, read disk 0x400, jump to it"
+
+[[sym]]
+exe = "d1_boot"
+hunk = 0
+offset = 0x300
+name = "boot_load_stage2"
+kind = "func"
+note = "reads 0x5000 bytes from disk 0xD5400 to 0x40000 and calls it"
+
+# --- disk 1 stage-1.5 loader, disk 0x400..0x1600 (docs/02, docs/03) ---
+[[sym]]
+exe = "d1_stage15"
+hunk = 0
+offset = 0x0
+name = "stage15_entry"
+kind = "func"
+note = "start of the buffer the bootblock reads from disk 0x400 and jumps to"
+
+[[sym]]
+exe = "d1_stage15"
+hunk = 0
+offset = 0x2da
+name = "atn_decompress"
+kind = "func"
+note = "ATN! chunk decompressor: a0 = chunk, a1 = dest; d0 = -1 on success (docs/03)"
+
+[[sym]]
+exe = "d1_stage15"
+hunk = 0
+offset = 0x42a
+name = "atn_lenbase_tab"
+kind = "table"
+size = 4
+note = "ATN! decoder: per-code base added to the length (docs/03 +0x42A)"
+
+[[sym]]
+exe = "d1_stage15"
+hunk = 0
+offset = 0x42e
+name = "atn_lenbits_tab"
+kind = "table"
+size = 12
+note = "ATN! decoder: bits to read per length code (docs/03 +0x42E)"
+
+[[sym]]
+exe = "d1_stage15"
+hunk = 0
+offset = 0x43a
+name = "hunk_load"
+kind = "func"
+note = "loads a 0x3F3 hunk exe at a0 to a1, hunks back to back, applies HUNK_RELOC32"
+
+[[sym]]
+exe = "d1_stage15"
+hunk = 0
+offset = 0x534
+name = "disk_track_helper"
+kind = "func"
+note = "disk/track helper (docs/02)"
+
+# --- d1_c01 ---
+[[sym]]
+exe = "d1_c01"
+hunk = 0
+offset = 0x0
+name = "start"
+kind = "func"
+note = "first instruction of hunk 0, where the loader enters the executable"
+
+[[sym]]
+exe = "d1_c01"
+hunk = 0
+offset = 0x33a4
+name = "atn_decompress"
+kind = "func"
+note = "ATN! chunk decompressor: a0 = chunk, a1 = dest; d0 = -1 on success (docs/03)"
+
+[[sym]]
+exe = "d1_c01"
+hunk = 0
+offset = 0x34f4
+name = "atn_lenbase_tab"
+kind = "table"
+size = 4
+note = "ATN! decoder: per-code base added to the length (docs/03 +0x42A)"
+
+[[sym]]
+exe = "d1_c01"
+hunk = 0
+offset = 0x34f8
+name = "atn_lenbits_tab"
+kind = "table"
+size = 12
+note = "ATN! decoder: bits to read per length code (docs/03 +0x42E)"
+
+# --- d3_c01 ---
+[[sym]]
+exe = "d3_c01"
+hunk = 0
+offset = 0x0
+name = "start"
+kind = "func"
+note = "first instruction of hunk 0, where the loader enters the executable"
+
+[[sym]]
+exe = "d3_c01"
+hunk = 0
+offset = 0x33a4
+name = "atn_decompress"
+kind = "func"
+note = "ATN! chunk decompressor: a0 = chunk, a1 = dest; d0 = -1 on success (docs/03)"
+
+[[sym]]
+exe = "d3_c01"
+hunk = 0
+offset = 0x34f4
+name = "atn_lenbase_tab"
+kind = "table"
+size = 4
+note = "ATN! decoder: per-code base added to the length (docs/03 +0x42A)"
+
+[[sym]]
+exe = "d3_c01"
+hunk = 0
+offset = 0x34f8
+name = "atn_lenbits_tab"
+kind = "table"
+size = 12
+note = "ATN! decoder: bits to read per length code (docs/03 +0x42E)"
+
+# --- d3_c02 ---
+[[sym]]
+exe = "d3_c02"
+hunk = 0
+offset = 0x0
+name = "start"
+kind = "func"
+note = "first instruction of hunk 0, where the loader enters the executable"
+
+[[sym]]
+exe = "d3_c02"
+hunk = 0
+offset = 0x2c2f4
+name = "atn_decompress"
+kind = "func"
+note = "ATN! chunk decompressor: a0 = chunk, a1 = dest; d0 = -1 on success (docs/03)"
+
+[[sym]]
+exe = "d3_c02"
+hunk = 0
+offset = 0x2c444
+name = "atn_lenbase_tab"
+kind = "table"
+size = 4
+note = "ATN! decoder: per-code base added to the length (docs/03 +0x42A)"
+
+[[sym]]
+exe = "d3_c02"
+hunk = 0
+offset = 0x2c448
+name = "atn_lenbits_tab"
+kind = "table"
+size = 12
+note = "ATN! decoder: bits to read per length code (docs/03 +0x42E)"
+
+# --- d1_c03 ---
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x0
+name = "start"
+kind = "func"
+note = "first instruction of hunk 0, where the loader enters the executable"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0xce58
+name = "atn_decompress"
+kind = "func"
+note = "ATN! chunk decompressor: a0 = chunk, a1 = dest; d0 = -1 on success (docs/03)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0xcfaa
+name = "atn_lenbase_tab"
+kind = "table"
+size = 4
+note = "ATN! decoder: per-code base added to the length (docs/03 +0x42A)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0xcfae
+name = "atn_lenbits_tab"
+kind = "table"
+size = 12
+note = "ATN! decoder: bits to read per length code (docs/03 +0x42E)"
+
+# --- d3_c04 ---
+[[sym]]
+exe = "d3_c04"
+hunk = 0
+offset = 0x0
+name = "start"
+kind = "func"
+note = "first instruction of hunk 0, where the loader enters the executable"
+
+[[sym]]
+exe = "d3_c04"
+hunk = 0
+offset = 0xcf5c
+name = "atn_decompress"
+kind = "func"
+note = "ATN! chunk decompressor: a0 = chunk, a1 = dest; d0 = -1 on success (docs/03)"
+
+[[sym]]
+exe = "d3_c04"
+hunk = 0
+offset = 0xd0ae
+name = "atn_lenbase_tab"
+kind = "table"
+size = 4
+note = "ATN! decoder: per-code base added to the length (docs/03 +0x42A)"
+
+[[sym]]
+exe = "d3_c04"
+hunk = 0
+offset = 0xd0b2
+name = "atn_lenbits_tab"
+kind = "table"
+size = 12
+note = "ATN! decoder: bits to read per length code (docs/03 +0x42E)"
+
+[[sym]]
+exe = "d3_c04"
+hunk = 0
+offset = 0x3d0
+name = "hunk_load"
+kind = "func"
+note = "same code as d1_stage15 hunk_load"
