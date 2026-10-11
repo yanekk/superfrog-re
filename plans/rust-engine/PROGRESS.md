@@ -35,7 +35,7 @@ done · ⛔ blocked, needs a human.
 | T10 | paula-mixer | T01, T05 | ✅ | |
 | T11 | audio-driver | T06, T07 | ⬜ | |
 | T12 | core-state | T05, T06, T07 | ✅ | |
-| T13 | renderer | T08, T12 | ⬜ | |
+| T13 | renderer | T08, T12 | 🔍 | Copper/Denise/sprite renderer, 25 render cases (~9 200 frames equal, ~0.4 ms/frame), 8 new tests. Deviations: play field from display buffers in state, not the map (owner); oracle test in sf-conform; Picture keeps T12 fields plus `splits`; minimal `Scene::Level`; no colour cycling exists; W6 alt maps and final level unreachable; late-redraw frames skipped. |
 | T14 | frog-and-level | T06, T11, T12, T13 | ⬜ | |
 | T15 | items-and-scoring | T14 | ⬜ | |
 | T16 | enemies-worlds-1-3 | T15 | ⬜ | |
@@ -57,7 +57,7 @@ done · ⛔ blocked, needs a human.
 A Notes cell holds what was built or what the review found, the test count, and one line per
 deviation from the task doc. A ✅ task's cell may be cut to one line once the next task has been reviewed.
 
-**Review queue:** *(empty)*
+**Review queue:** T13
 
 ## Blocked on the user
 

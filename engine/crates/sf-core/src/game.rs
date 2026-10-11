@@ -1,11 +1,14 @@
 //! The decision function (DESIGN §3.3): `Game` is a function of the [`GameData`], its [`Start`]
 //! and the inputs, and nothing else.
 
+use std::sync::Arc;
+
 use sf_assets::{GameData, LevelId};
 use sf_paula::PaulaWrite;
 
 use crate::input::FrameInput;
 use crate::layout::{AmigaMemory, VarId};
+use crate::render::{DisplayData, Picture, View};
 use crate::rng::Rng;
 use crate::scene::Scene;
 use crate::state::State;
@@ -41,58 +44,6 @@ pub enum Pacing {
     Late,
 }
 
-/// Presentation choices that change the picture and nothing else (DESIGN §2.7).
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash)]
-pub struct View {
-    /// Extra lores columns of the level drawn on each side for widescreen; 0 for 4:3.
-    pub extra_columns_each_side: u16,
-}
-
-/// A frame as Denise would show it: palette indices inside the display window, and each line's
-/// 32-colour palette (the copper may change it per line). `left` and `top` are the window's
-/// position in DIWSTRT's units (lores pixel, raster line), as the oracle reports them.
-#[derive(Debug, Clone, Default, PartialEq, Eq, Hash)]
-pub struct Picture {
-    pub left: u16,
-    pub top: u16,
-    pub width: u16,
-    pub height: u16,
-    /// Row-major, `width * height` palette indices; 32..=63 are extra-half-brite.
-    pub pixels: Vec<u8>,
-    /// One palette per line, 12-bit OCS colour `0x0RGB`.
-    pub palettes: Vec<[u16; 32]>,
-}
-
-/// The PAL display window the original opens on its title screen: DIWSTRT `$2C81`, 320×256.
-const DEFAULT_WINDOW: (u16, u16, u16, u16) = (0x81, 0x2C, 320, 256);
-
-impl Picture {
-    /// The default window, every pixel colour 0, every colour black.
-    pub fn black(view: View) -> Picture {
-        let (left, top, width, height) = DEFAULT_WINDOW;
-        let width = width + 2 * view.extra_columns_each_side;
-        Picture {
-            left: left - view.extra_columns_each_side,
-            top,
-            width,
-            height,
-            pixels: vec![0; width as usize * height as usize],
-            palettes: vec![[0; 32]; height as usize],
-        }
-    }
-
-    /// The 12-bit colour shown at (`x`, `y`).
-    pub fn rgb12(&self, x: u16, y: u16) -> u16 {
-        let i = self.pixels[y as usize * self.width as usize + x as usize];
-        let pal = &self.palettes[y as usize];
-        if i < 32 {
-            pal[i as usize]
-        } else {
-            pal[(i & 31) as usize] >> 1 & 0x777
-        }
-    }
-}
-
 /// What one frame produced.
 #[derive(Debug, Clone, Default, PartialEq, Eq, Hash)]
 pub struct FrameOut {
@@ -104,6 +55,8 @@ pub struct FrameOut {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Game {
     state: State,
+    /// What the display reads from the disks (shared: it never changes once built).
+    display: Arc<DisplayData>,
     scene: Scene,
     /// The seed a power-on start is waiting to put in place.
     seed: Option<Rng>,
@@ -111,15 +64,22 @@ pub struct Game {
 }
 
 impl Game {
-    pub fn new(_data: &GameData, start: Start) -> Game {
-        let (state, seed) = match start {
-            Start::PowerOn { seed } => (State::default(), Some(seed)),
-            Start::Transplant(mem) => (State::transplant(&mem), None),
-            Start::Level(_) => (State::default(), None),
+    pub fn new(data: &GameData, start: Start) -> Game {
+        Game::with_display(Arc::new(DisplayData::new(data)), start)
+    }
+
+    /// [`Game::new`] with the disks' display content already built, as a caller making many
+    /// games from one [`GameData`] (conformance runs) keeps it.
+    pub fn with_display(display: Arc<DisplayData>, start: Start) -> Game {
+        let (state, scene, seed) = match start {
+            Start::PowerOn { seed } => (State::default(), Scene::Placeholder, Some(seed)),
+            Start::Transplant(mem) => (State::transplant(&mem), Scene::of(&mem), None),
+            Start::Level(_) => (State::default(), Scene::Placeholder, None),
         };
         Game {
             state,
-            scene: Scene::Placeholder,
+            display,
+            scene,
             seed,
             frame: 0,
         }
@@ -140,8 +100,9 @@ impl Game {
         }
     }
 
+    /// The frame the original shows for this state (DESIGN §3.3), widened by `view`.
     pub fn render(&self, view: View) -> Picture {
-        self.scene.render(&self.state, view)
+        self.scene.render(&self.state, &self.display, view)
     }
 
     /// Every modelled variable's value, as the original would hold it at its [`crate::LAYOUT`]
@@ -203,22 +164,5 @@ mod tests {
         let g = Game::new(&GameData::default(), Start::PowerOn { seed });
         assert_eq!(g.pending_seed(), Some(seed));
         assert_eq!(g.state(), &State::default());
-    }
-
-    #[test]
-    fn widescreen_widens_the_window_by_the_extra_columns() {
-        let p = Picture::black(View {
-            extra_columns_each_side: 32,
-        });
-        assert_eq!((p.left, p.width), (0x81 - 32, 384));
-    }
-
-    #[test]
-    fn extra_half_brite_halves_the_colour() {
-        let mut p = Picture::black(View::default());
-        p.palettes[0][3] = 0xFE8;
-        p.pixels[0] = 35;
-        p.pixels[1] = 3;
-        assert_eq!((p.rgb12(0, 0), p.rgb12(1, 0)), (0x774, 0xFE8));
     }
 }

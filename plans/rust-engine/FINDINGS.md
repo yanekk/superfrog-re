@@ -18,6 +18,12 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-11 | 🔄 | Owner, T13: the two display buffers (h3+$10600, $22f30) are engine state; the play field renders from them, the map only for widescreen. T14–T18 must port the original's tile, animation and bob blits into them. Save states grow ~150 KB. |
+| 2026-10-11 | 📌 | T13: ~4% of level frames have late redraws (copper, panel or shown buffer rewritten after the beam). Transplant render tests list and skip them; stepping conformance (T14 on) must still match them, e.g. by applying blits in beam order. |
+| 2026-10-11 | 📌 | T13: LAYOUT now carries the level's display (copper list, panel, both buffers, map, camera, ~230 KB). A vars-comparing case in a level diverges until T14's mechanics write them. |
+| 2026-10-11 | 📌 | T13: no colour cycling in levels. Level palettes change only in the start fade (h0+$153a4), exit fade ($155a0) and boss flash ($151b2). T08's "COLOR06 cycling, inferred" was not seen in 8 500 frames of W1-1. |
+| 2026-10-11 | 📌 | T13: oracle reaches every W1–W6 level and WB-1 by level code (sync::reach); W6's alt maps need a second drive and the final level has no code, so neither is rendered-tested. |
+| 2026-10-11 | 📌 | T13, for the bob port: blitter ignores bit 0 of a recorded destination; buffer 0's draw x survives only in its seam sub-record (+$8c), the upper one is already the next pass's. Sprites only show on lines with a bitplane fetch. |
 | 2026-10-11 | 📌 | T08: level palette = 32 colours after `LnLP` (+$11300), proven on W1-1's copper (COLOR06 differs: cycling, inferred). `render_levels.py`'s W6 palette is L2ET read misaligned (wrong colours); its LB/LW use W6 tiles. docs/06 corrected. |
 | 2026-10-11 | 📌 | T08: W6 has two map sets, both `L6MA1`–`4`: d4_c02–05 (one drive) and d4_c14–17 (DF1–3 with disk 1, h0+$a144); maps 2–4 differ. docs/LEVEL-INDEX's "W6-5..7" are these copies; left unedited (scope). |
 | 2026-10-11 | 📌 | T08: the game's ANIM player (h0+$ab02 open, $ab82 next) is pure: on the routine oracle it plays END1 in 0.5 s. Hall font at h0+$378ca, charset h0+$322e. Neither is in `re/symbols.toml` yet (scope). |
@@ -25,7 +31,6 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 | 2026-10-11 | 📌 | T08: the purity lexer counts a `("name", 1, 18)` tuple array as an integer table. So the chunk catalogue keeps only the game's file names in source; disk and sector come from its `file_table`. |
 | 2026-10-11 | 📌 | T12: `rng_seed` (h0+$1607a) has no `rts`; it runs on into `rng_next`, so seeding also advances the state once. `Rng::seeded` does both; symbols.toml note corrected; docs/08 "RNG" does not say it. |
 | 2026-10-11 | 📌 | T12: title eye-blink timers h0+$1368/$136a count down per frame and at -2 call `rng_range($4b)`. With `boot-to-title`, the RNG holds still from frame 4 405 to 4 461: the title-rng case's window. |
-| 2026-10-11 | 📌 | T12 stubbed `GameData` and `LevelId` in `sf-assets/src/gamedata.rs` because `Game::new` needs them. T08 replaces `GameData`; keep `LevelId`'s `W1-1` parser (sf-conform cases use it). |
 | 2026-10-11 | 📌 | T12: sync-point snapshots are cached in `~/.cache/superfrog-re/sync/`, keyed by vAmiga build, ROM and disk file hashes and the script. Delete to force a fresh run; diff PNGs go to `$TMPDIR/sf-conform/`. |
 | 2026-10-11 | 🐞 | T07 review: vAmiga's `Defaults::fallbacks()` fills a static map unlocked on first use; machines powered on in parallel could read it half-filled ("Invalid key: ROM_PATH", seen once). Fixed: `sf_amiga_new` sets up under a mutex. No other set-up path. |
 | 2026-10-11 | 🔄 | Owner, lag: conformance runs feed the original's 25 Hz pass schedule (from the oracle) to the engine; VBL work runs at one fixed point in a late pass; leftover divergence is reported as lag and re-synced. Normal play never lags. |
@@ -42,7 +47,6 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 | 2026-10-11 | 📌 | An oracle step's writes and taps run from just after its frame's start to just after the next one's: a position going backwards marks the next frame's first clocks. `sf-paula` and the T10 test carry them over. |
 | 2026-10-11 | 📌 | vAmiga's own mix: 2 048 samples of pre-fill, point-sampled (no anti-aliasing), synthesised once per frame 50 lines behind. Ours differs by 0.18 relative RMS on the title music, all high-frequency; T10 tolerance 0.25. |
 | 2026-10-11 | 📌 | Not modelled, not asked by T10: the A500's analog low-pass (~4.4 kHz) and the LED filter. `sf-paula` outputs the raw DAC mix, band-limited. Whether the app needs them is T22/T30's call. |
-| 2026-10-11 | 🐞 | Fixed in T10: the shim drained host audio with `copyMono(8192)`, an underflow every frame that padded the stream. It now copies exactly what is there. |
 | 2026-10-11 | 📌 | vAmiga builds Moira with `MOIRA_VIRTUAL_API false`, memory hooks in its `CPU.cpp`; T06 compiles a second copy with `-Dvamiga=sf_moira` and two stub headers. Calls start through `reset()`, with `read16OnReset` handing it the entry and stack. |
 | 2026-10-11 | 🐞 | T05 review sweep: `sf_conform::disks::python_decompress` uses scratch dir `sf-atn-ref-<pid>`, removed before use; two threads calling it at once would delete each other's disks. One caller per process today. Not fixed. |
 | 2026-10-11 | 📌 | vAmiga snapshots omit the joystick, mouse-button (2-frame debounced `Sticky`) and key-down state, and ports "detect" their device on first use. The shim pins mouse/joystick devices and re-seats held input on restore (patch 0003). |

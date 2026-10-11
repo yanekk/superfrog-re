@@ -46,7 +46,16 @@ fn run_cases(paths: &[PathBuf]) -> Result<bool, String> {
     for p in paths {
         let case = Case::load(p)?;
         match sf_conform::run(&case) {
-            Ok(()) => println!("{}: ok, {} frames", case.name, case.frames),
+            Ok(o) => {
+                print!("{}: ok, {} frames", case.name, o.frames);
+                if case.compare.render {
+                    print!(", {} rendered", o.rendered);
+                }
+                println!();
+                for (f, why) in &o.skipped {
+                    println!("  frame {f} left out: {why}");
+                }
+            }
             Err(d) => {
                 green = false;
                 print!("{}: {d}", case.name);
