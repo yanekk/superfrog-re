@@ -12,8 +12,8 @@ the account is the commit message. Whoever writes a cell also fixes the over-bud
 **Plan reviewed:** 2026-10-10 — 7 fixed, 7 decided with the user
 
 **Status:** Plan written; nothing built.
-**Last updated:** 2026-10-10
-**Next `pir-work` will:** T00 oracle-spike, because every later test rests on the reference emulator; T01 and T02 can run beside it.
+**Last updated:** 2026-10-11
+**Next `pir-work` will:** review T07; then T08 (needs T07) and, with T06, T11 and T12. A plan review re-splits T16–T18 before T16 (owner, 2026-10-11).
 
 ## Tasks
 
@@ -29,7 +29,7 @@ done · ⛔ blocked, needs a human.
 | T04 | atn-decompressor | T03 | ✅ | |
 | T05 | oracle-harness | T00, T01 | ✅ | |
 | T06 | routine-oracle | T04, T05 | ⬜ | |
-| T07 | exe-map | T02, T04, T05 | ⬜ | |
+| T07 | exe-map | T02, T04, T05 | 🔍 | docs/08–09, 168 symbols, 8 oracle tests. New object types: W1 12, W2 17, W3 18, W4 23, W5 11, W6 11, bonus 15; no per-world bosses. Deviations: added `Amiga::cpu()` (lag needs the PC); d2_c39/d4_c16 not reached in RAM; PLAN.md not amended: owner re-splits T16–T18 at plan review. |
 | T08 | asset-decode | T04, T07 | ⬜ | |
 | T09 | asset-cache | T03, T08 | ⬜ | |
 | T10 | paula-mixer | T01, T05 | ⬜ | |
@@ -57,9 +57,9 @@ done · ⛔ blocked, needs a human.
 A Notes cell holds what was built or what the review found, the test count, and one line per
 deviation from the task doc. A ✅ task's cell may be cut to one line once the next task has been reviewed.
 
-**Review queue:** *(empty)*
+**Review queue:** T07
 
 ## Blocked on the user
 
 Nothing yet. Expected later: granting Accessibility and Screen Recording to the terminal (T22), the
-8BitDo check (T25), the play session (T30), and the open decisions in PLAN.md once T07 reports.
+8BitDo check (T25) and the play session (T30). T07's lag and RNG decisions are made (FINDINGS 2026-10-11).

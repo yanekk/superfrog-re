@@ -100,6 +100,31 @@ pub(crate) fn hash_bytes(data: &[u8], seed: u64) -> u64 {
     h ^ (h >> 32)
 }
 
+/// The 68000's registers at a frame boundary (after [`Amiga::step`]).
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash)]
+pub struct CpuRegs {
+    pub d: [u32; 8],
+    /// `a[7]` is the active stack pointer (SSP in supervisor mode, else USP).
+    pub a: [u32; 8],
+    /// The address of the instruction being executed.
+    pub pc: u32,
+    pub sr: u16,
+    pub usp: u32,
+    pub ssp: u32,
+}
+
+impl CpuRegs {
+    /// The interrupt priority mask in SR (0..7).
+    pub fn ipl(&self) -> u8 {
+        ((self.sr >> 8) & 7) as u8
+    }
+
+    /// Supervisor mode.
+    pub fn supervisor(&self) -> bool {
+        self.sr & 0x2000 != 0
+    }
+}
+
 /// The whole machine at one frame boundary, with the frame number and the input then held.
 #[derive(Clone, PartialEq, Eq)]
 pub struct Snapshot {
@@ -222,6 +247,21 @@ impl Amiga {
                     std::slice::from_raw_parts(slow, s).to_vec()
                 },
             }
+        }
+    }
+
+    /// The CPU's registers as they are now: at the end of the last frame, just before the next
+    /// vertical blank's interrupt is taken.
+    pub fn cpu(&self) -> CpuRegs {
+        let mut r = ffi::SfCpuRegs::default();
+        unsafe { ffi::sf_amiga_cpu(self.raw, &mut r) };
+        CpuRegs {
+            d: r.d,
+            a: r.a,
+            pc: r.pc,
+            sr: r.sr as u16,
+            usp: r.usp,
+            ssp: r.ssp,
         }
     }
 

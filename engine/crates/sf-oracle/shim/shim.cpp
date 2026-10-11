@@ -300,6 +300,19 @@ const uint8_t *sf_amiga_slow(const sf_amiga *a, size_t *len)
     return mem.slow;
 }
 
+void sf_amiga_cpu(const sf_amiga *a, sf_cpu_regs *out)
+{
+    auto &cpu = const_cast<sf_amiga *>(a)->amiga().cpu;
+    for (int i = 0; i < 8; i++) {
+        out->d[i] = cpu.getD(i);
+        out->a[i] = cpu.getA(i);
+    }
+    out->pc = cpu.getPC0();
+    out->sr = cpu.getSR();
+    out->usp = cpu.getUSP();
+    out->ssp = cpu.getISP();
+}
+
 uint8_t *sf_amiga_snapshot(sf_amiga *a, size_t *len, char *err, size_t err_len)
 {
     uint8_t *out = nullptr;

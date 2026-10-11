@@ -13,7 +13,7 @@ mod config;
 mod ffi;
 mod trace;
 
-pub use amiga::{Amiga, AmigaMemory, FrameCapture, Rgb12Frame, Snapshot};
+pub use amiga::{Amiga, AmigaMemory, CpuRegs, FrameCapture, Rgb12Frame, Snapshot};
 pub use config::{DEFAULT_MAX_FRAMES, OracleConfig, OracleError};
 pub use sf_core::input::{FrameInput, Joy, KeySet};
 pub use sf_disk::DiskSlot;

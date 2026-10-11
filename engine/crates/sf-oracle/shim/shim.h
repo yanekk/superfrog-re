@@ -69,6 +69,18 @@ void sf_amiga_diw(const sf_amiga *a, uint16_t *diwstrt, uint16_t *diwstop);
 const uint8_t *sf_amiga_chip(const sf_amiga *a, size_t *len);
 const uint8_t *sf_amiga_slow(const sf_amiga *a, size_t *len);
 
+/* The 68000's registers as they stand after the last step (at the frame boundary): d0-d7, a0-a7
+ * (a7 the active stack pointer), the address of the instruction being executed, SR, USP and SSP. */
+typedef struct {
+    uint32_t d[8];
+    uint32_t a[8];
+    uint32_t pc;
+    uint32_t sr;
+    uint32_t usp;
+    uint32_t ssp;
+} sf_cpu_regs;
+void sf_amiga_cpu(const sf_amiga *a, sf_cpu_regs *out);
+
 /* The whole machine state as a vAmiga snapshot. The returned buffer is freed with sf_buffer_free. */
 uint8_t *sf_amiga_snapshot(sf_amiga *a, size_t *len, char *err, size_t err_len);
 void sf_buffer_free(uint8_t *buf);
