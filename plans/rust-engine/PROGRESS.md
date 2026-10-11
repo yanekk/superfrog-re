@@ -12,8 +12,8 @@ the account is the commit message. Whoever writes a cell also fixes the over-bud
 **Plan reviewed:** 2026-10-10 — 7 fixed, 7 decided with the user
 
 **Status:** Plan written; nothing built.
-**Last updated:** 2026-10-10
-**Next `pir-work` will:** T00 oracle-spike, because every later test rests on the reference emulator; T01 and T02 can run beside it.
+**Last updated:** 2026-10-11
+**Next `pir-work` will:** T00 oracle-spike, then T05; with T04 done, T06 and T07 wait only on T05.
 
 ## Tasks
 
@@ -26,7 +26,7 @@ done · ⛔ blocked, needs a human.
 | T01 | rust-workspace | — | ✅ | |
 | T02 | re-workbench | — | ✅ | |
 | T03 | disk-import | T01 | ✅ | |
-| T04 | atn-decompressor | T03 | 🔍 | `sf_disk::decompress` ported from the 68k routine; identical on 103/103, stragglers decode with next sector. 4 tests (reference, stragglers, malformed, 10k fuzz with counting allocator). Deviations: added `AtnError::TooLarge` (decomp_size ≥ carver bound); Python runner lives in `sf-conform` (purity test); fuzz in own `tests/atn_fuzz.rs`. |
+| T04 | atn-decompressor | T03 | ✅ | Review clean, no fix commit. Identical to tools/atn.py on 103/103 and on stragglers with next sector, rechecked by own probe (fresh emulator per chunk, SHA-1 diff, 212 decodes). Four core mutations (offset delta, d3 start bit, header order, literal index) all red; purity test catches process use in tests. Overrun on unwritten-output reads `read-only`. |
 | T05 | oracle-harness | T00, T01 | ⬜ | |
 | T06 | routine-oracle | T04, T05 | ⬜ | |
 | T07 | exe-map | T02, T04, T05 | ⬜ | |
@@ -57,7 +57,7 @@ done · ⛔ blocked, needs a human.
 A Notes cell holds what was built or what the review found, the test count, and one line per
 deviation from the task doc. A ✅ task's cell may be cut to one line once the next task has been reviewed.
 
-**Review queue:** T04
+**Review queue:** *(empty)*
 
 ## Blocked on the user
 
