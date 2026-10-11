@@ -17,7 +17,7 @@ use crate::amiga::{Amiga, AmigaMemory, FrameCapture, Rgb12Frame, SLOW_BASE, Snap
 use crate::config::{OracleConfig, OracleError};
 
 /// Bump when the file layout or what a trace records changes.
-const TRACE_FORMAT: u32 = 1;
+const TRACE_FORMAT: u32 = 2;
 const MAGIC: &[u8; 8] = b"SFTRACE\0";
 
 /// Where a scripted run starts.

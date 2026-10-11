@@ -42,10 +42,36 @@ pub struct FrameCapture {
     pub picture: Rgb12Frame,
     /// Paula register writes made during the frame, in order (DESIGN §2.1 (2)).
     pub paula: Vec<PaulaWrite>,
-    /// Per-channel DAC taps. Always empty: T00 found none to tap (the core mixes in floating
-    /// point for the host); the mixer is judged on `paula` instead.
+    /// Every new value a channel's DAC took during the frame, in order, as [`AudioTap`]s packed
+    /// four `i16`s each (`channel, vpos, hpos, sample * volume`); read them with
+    /// [`FrameCapture::taps`]. The core patch 0004 reports them (T10).
     pub audio: Vec<i16>,
 }
+
+/// One new value on a channel's DAC: from beam position (`vpos`, `hpos`) the channel outputs
+/// `value` = sample byte times volume (0..=64), until its next tap.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct AudioTap {
+    pub channel: u8,
+    pub vpos: u16,
+    pub hpos: u16,
+    pub value: i16,
+}
+
+impl FrameCapture {
+    /// The DAC taps packed in [`FrameCapture::audio`].
+    pub fn taps(&self) -> impl Iterator<Item = AudioTap> + '_ {
+        self.audio.chunks_exact(4).map(|t| AudioTap {
+            channel: t[0] as u8,
+            vpos: t[1] as u16,
+            hpos: t[2] as u16,
+            value: t[3],
+        })
+    }
+}
+
+/// The rate of [`Amiga::mixed_audio`].
+pub const MIX_RATE: u32 = ffi::SF_AUDIO_RATE;
 
 /// Chip RAM (at 0x000000) and slow RAM (at 0xC00000), copied.
 #[derive(Debug, Clone, Default, PartialEq, Eq, Hash)]
@@ -83,6 +109,17 @@ impl AmigaMemory {
     /// A fast 64-bit digest of both RAMs (not cryptographic; for comparing runs).
     pub fn hash(&self) -> u64 {
         hash_bytes(&self.slow, hash_bytes(&self.chip, 0x5346_4f52_4143_4c45))
+    }
+}
+
+/// What the mixer's DMA reads: chip RAM only, as Agnus sees it (an address past the RAM reads 0).
+impl sf_paula::ChipMemory for AmigaMemory {
+    fn chip_word(&self, addr: u32) -> u16 {
+        let a = addr as usize;
+        match self.chip.get(a..a + 2) {
+            Some(w) => u16::from_be_bytes([w[0], w[1]]),
+            None => 0,
+        }
     }
 }
 
@@ -194,7 +231,7 @@ impl Amiga {
         Ok(FrameCapture {
             picture: self.picture(),
             paula: self.paula(),
-            audio: Vec::new(),
+            audio: self.taps(),
         })
     }
 
@@ -308,6 +345,47 @@ impl Amiga {
             return Err(OracleError::Emulator(err.message()));
         }
         Ok(())
+    }
+
+    /// vAmiga's own stereo mix of the last frame at [`MIX_RATE`], `[left, right]` in -1..1:
+    /// channels 0/3 left and 1/2 right, no filter, nearest-sample resampling (shim.h). It fades in
+    /// over the first 10 000 samples after power-on.
+    pub fn mixed_audio(&self) -> Vec<[f32; 2]> {
+        let mut ptr = std::ptr::null();
+        let n = unsafe { ffi::sf_amiga_audio_out(self.raw, &mut ptr) };
+        if n == 0 {
+            return Vec::new();
+        }
+        unsafe { std::slice::from_raw_parts(ptr, 2 * n) }
+            .chunks_exact(2)
+            .map(|p| [p[0], p[1]])
+            .collect()
+    }
+
+    /// Lines in the frame the last step ran: 313 (long) or 312 (short). Superfrog's frames are not
+    /// all long: Agnus alternates them while BPLCON0's LACE bit is set and keeps the last kind when
+    /// it is cleared (FINDINGS 2026-10-11, T10).
+    pub fn frame_lines(&self) -> u32 {
+        unsafe { ffi::sf_amiga_frame_lines(self.raw) as u32 }
+    }
+
+    fn taps(&self) -> Vec<i16> {
+        let mut ptr = std::ptr::null();
+        let n = unsafe { ffi::sf_amiga_audio_taps(self.raw, &mut ptr) };
+        if n == 0 {
+            return Vec::new();
+        }
+        unsafe { std::slice::from_raw_parts(ptr, n) }
+            .iter()
+            .flat_map(|t| {
+                [
+                    t.channel as i16,
+                    t.vpos as i16,
+                    t.hpos as i16,
+                    t.sample as i16 * t.volume as i16,
+                ]
+            })
+            .collect()
     }
 
     fn paula(&self) -> Vec<PaulaWrite> {

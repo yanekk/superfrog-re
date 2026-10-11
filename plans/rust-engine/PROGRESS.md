@@ -32,7 +32,7 @@ done · ⛔ blocked, needs a human.
 | T07 | exe-map | T02, T04, T05 | ⬜ | |
 | T08 | asset-decode | T04, T07 | ⬜ | |
 | T09 | asset-cache | T03, T08 | ⬜ | |
-| T10 | paula-mixer | T01, T05 | ⬜ | |
+| T10 | paula-mixer | T01, T05 | 🔍 | Channel model, Kaiser-sinc resampler; 10 unit + 2 oracle tests, taps identical through title music. Deviations: taps i16 sample×volume; oracle test in sf-conform (purity scan); sf-oracle gained patch 0004, taps, mix, frame_lines; `set_frame_lines` (312-line frames, FINDINGS); writes land at beam position; no period clamp (DMA-starved). |
 | T11 | audio-driver | T06, T07 | ⬜ | |
 | T12 | core-state | T05, T06, T07 | ⬜ | |
 | T13 | renderer | T08, T12 | ⬜ | |
@@ -57,7 +57,7 @@ done · ⛔ blocked, needs a human.
 A Notes cell holds what was built or what the review found, the test count, and one line per
 deviation from the task doc. A ✅ task's cell may be cut to one line once the next task has been reviewed.
 
-**Review queue:** *(empty)*
+**Review queue:** T10
 
 ## Blocked on the user
 
