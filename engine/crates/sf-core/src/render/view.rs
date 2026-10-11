@@ -10,10 +10,11 @@ pub struct View {
 
 /// A frame as Denise would show it: palette indices inside the display window, and each line's
 /// 32-colour palette as the copper leaves it at the window's left edge. `left` and `top` are the
-/// window's position in DIWSTRT's units (lores pixel, raster line), as the oracle reports them.
+/// window's position in DIWSTRT's units (lores pixel, raster line), as the oracle reports them;
+/// a widescreen window can start left of the hardware's position 0, so `left` is signed.
 #[derive(Debug, Clone, Default, PartialEq, Eq, Hash)]
 pub struct Picture {
-    pub left: u16,
+    pub left: i32,
     pub top: u16,
     pub width: u16,
     pub height: u16,
@@ -41,7 +42,7 @@ const DEFAULT_WINDOW: (u16, u16, u16, u16) = (0x81, 0x2C, 320, 256);
 impl Picture {
     /// A window of `width` × `height` at (`left`, `top`), every pixel colour 0, every colour
     /// black.
-    pub fn blank(left: u16, top: u16, width: u16, height: u16) -> Picture {
+    pub fn blank(left: i32, top: u16, width: u16, height: u16) -> Picture {
         Picture {
             left,
             top,
@@ -57,7 +58,7 @@ impl Picture {
     pub fn black(view: View) -> Picture {
         let (left, top, width, height) = DEFAULT_WINDOW;
         let n = view.extra_columns_each_side;
-        Picture::blank(left - n, top, width + 2 * n, height)
+        Picture::blank(left as i32 - n as i32, top, width + 2 * n, height)
     }
 
     /// The 12-bit colour shown at (`x`, `y`).
@@ -108,6 +109,14 @@ mod tests {
             extra_columns_each_side: 32,
         });
         assert_eq!((p.left, p.width), (0x81 - 32, 384));
+    }
+
+    #[test]
+    fn a_window_wider_than_the_hardware_s_left_edge_starts_below_0() {
+        let p = Picture::black(View {
+            extra_columns_each_side: 150,
+        });
+        assert_eq!((p.left, p.width), (0x81 - 150, 620));
     }
 
     #[test]

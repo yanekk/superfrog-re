@@ -139,8 +139,12 @@ pub fn run_with(
 const CLEAN_BUFFER: u32 = sf_core::layout::h3(0x35860);
 
 /// Whether a render that differs is explained by a late redraw: the copper list, the panel or a
-/// display buffer changed during the frame, and every pixel that differs shows what the beam could have seen
-/// there instead: the frame before's panel and buffers, or, mid-erase, the clean background.
+/// display buffer changed during the frame, and every pixel that differs lies where that change
+/// shows, i.e. where some alternative (the frame before's copper, panel or buffers, or, mid-erase,
+/// the clean background) draws differently from the end of the frame. The alternative need not
+/// draw the original's pixel itself: the beam saw a mix of old and new that no single alternative
+/// reproduces (10 of the 25 render cases have such a frame). So a renderer defect confined to
+/// what changed this frame is left out here, not caught; stepping conformance (T14 on) catches it.
 fn late_redraw(
     display: &Arc<DisplayData>,
     mem: &AmigaMemory,

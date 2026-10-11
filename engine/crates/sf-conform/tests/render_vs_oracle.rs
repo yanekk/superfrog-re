@@ -124,13 +124,14 @@ fn widescreen_keeps_the_centre_and_shows_colour_0_off_the_map() {
     for g in transplanted(&[0, 120, 240]) {
         let narrow = g.render(View::default());
         let w = narrow.width as usize;
-        for n in [32u16, 53, 80] {
+        // 150: a 21:9 window, wider than the hardware's own left edge allows.
+        for n in [32u16, 53, 80, 150] {
             let wide = g.render(View {
                 extra_columns_each_side: n,
             });
             assert_eq!(
                 (wide.width as usize, wide.left),
-                (w + 2 * n as usize, narrow.left - n)
+                (w + 2 * n as usize, narrow.left - n as i32)
             );
             assert_eq!(
                 colours(&wide, n as usize, w),

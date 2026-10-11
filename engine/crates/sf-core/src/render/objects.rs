@@ -165,7 +165,7 @@ pub(super) fn compose(pic: &mut Picture, rows: &[Row], field: &Field, extra: usi
             continue;
         }
         for (x, px) in line.iter_mut().enumerate() {
-            let at = pic.left as i32 + x as i32;
+            let at = pic.left + x as i32;
             let bits = |n: usize| {
                 let s = row.sprites[n]?;
                 let i = at - s.hstart as i32 - SPRITE_DELAY;

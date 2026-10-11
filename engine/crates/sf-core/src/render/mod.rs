@@ -284,7 +284,7 @@ pub(crate) fn level(state: &State, data: &DisplayData, view: View) -> Picture {
     let lines = end.lines();
     let n = view.extra_columns_each_side;
     let mut pic = Picture::blank(
-        hstart - n,
+        hstart as i32 - n as i32,
         lines.start,
         hstop - hstart + 2 * n,
         lines.end - lines.start,
@@ -318,7 +318,7 @@ impl Denise<'_> {
     /// what each line shows under the sprites.
     fn walk(&mut self, pic: &mut Picture) -> Vec<Row> {
         let width = pic.width as usize;
-        let left = pic.left as i32;
+        let left = pic.left;
         let mut rows = Vec::with_capacity(pic.height as usize);
         let mut field = playfield::Lines::default();
         for line in 0..pic.top + pic.height {
@@ -402,7 +402,7 @@ impl Denise<'_> {
                 break;
             }
             self.next += 1;
-            let x = 2 * w.h as i32 - pic.left as i32;
+            let x = 2 * w.h as i32 - pic.left;
             let on_line = y.filter(|&y| w.line == pic.top + y as u16);
             match w.reg {
                 r if (reg::COLOR00..reg::COLOR00 + 64).contains(&r) => {

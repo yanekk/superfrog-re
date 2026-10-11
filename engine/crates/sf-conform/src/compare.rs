@@ -82,14 +82,14 @@ pub struct PixelMismatch {
     pub window: Option<(String, String)>,
 }
 
-fn window(left: u16, top: u16, w: u16, h: u16) -> String {
+fn window(left: i32, top: u16, w: u16, h: u16) -> String {
     format!("{left:#x},{top:#x} {w}x{h}")
 }
 
 /// The first pixel, row-major, at which the engine's picture differs from the original's, over the
 /// area both cover; and whether the windows themselves differ.
 pub fn picture(ours: &Picture, theirs: &Rgb12Frame) -> Option<PixelMismatch> {
-    let a = window(theirs.left, theirs.top, theirs.width, theirs.height);
+    let a = window(theirs.left as i32, theirs.top, theirs.width, theirs.height);
     let b = window(ours.left, ours.top, ours.width, ours.height);
     let win = (a != b).then_some((a, b));
     let (w, h) = (ours.width.min(theirs.width), ours.height.min(theirs.height));
