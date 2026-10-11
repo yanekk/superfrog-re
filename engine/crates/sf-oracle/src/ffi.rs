@@ -17,6 +17,17 @@ pub struct SfCustomWrite {
 }
 
 #[repr(C)]
+#[derive(Clone, Copy, Default)]
+pub struct SfCpuRegs {
+    pub d: [u32; 8],
+    pub a: [u32; 8],
+    pub pc: u32,
+    pub sr: u32,
+    pub usp: u32,
+    pub ssp: u32,
+}
+
+#[repr(C)]
 #[derive(Clone, Copy)]
 pub struct SfAudioTap {
     pub channel: u8,
@@ -61,6 +72,7 @@ unsafe extern "C" {
     pub fn sf_amiga_diw(a: *const SfAmiga, diwstrt: *mut u16, diwstop: *mut u16);
     pub fn sf_amiga_chip(a: *const SfAmiga, len: *mut usize) -> *const u8;
     pub fn sf_amiga_slow(a: *const SfAmiga, len: *mut usize) -> *const u8;
+    pub fn sf_amiga_cpu(a: *const SfAmiga, out: *mut SfCpuRegs);
     pub fn sf_amiga_snapshot(
         a: *mut SfAmiga,
         len: *mut usize,

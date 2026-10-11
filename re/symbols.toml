@@ -259,3 +259,1416 @@ offset = 0x3d0
 name = "hunk_load"
 kind = "func"
 note = "same code as d1_stage15 hunk_load"
+
+# --- d1_c01 (T07, docs/08 and docs/09) ---
+
+[[sym]]
+exe = "d1_c01"
+hunk = 0
+offset = 0x3306
+name = "boot_main"
+kind = "func"
+note = "loads d1_c03 and d1_c02 with its trackloader, decompresses, relocates d1_c03 and jumps (a0 = d1_c02)"
+
+[[sym]]
+exe = "d1_c01"
+hunk = 0
+offset = 0x3398
+name = "boot_file_game"
+kind = "data"
+size = 6
+note = "trackloader entry for d1_c03: start sector $38, $162 sectors"
+
+[[sym]]
+exe = "d1_c01"
+hunk = 0
+offset = 0x339e
+name = "boot_file_picture"
+kind = "data"
+size = 6
+note = "trackloader entry for d1_c02 (Accessing disk picture): sector $18, $20 sectors"
+
+[[sym]]
+exe = "d1_c01"
+hunk = 0
+offset = 0x351a
+name = "boot_hunk_relocate"
+kind = "func"
+note = "relocates a hunk executable in place (a0 exe, a1 dest)"
+
+[[sym]]
+exe = "d1_c01"
+hunk = 0
+offset = 0x3658
+name = "boot_trackload"
+kind = "func"
+note = "trackloader (11 sectors/track): a0 = file entry, a1 = dest"
+
+
+# --- d3_c01 (T07, docs/08 and docs/09) ---
+
+[[sym]]
+exe = "d3_c01"
+hunk = 0
+offset = 0x3306
+name = "boot_main"
+kind = "func"
+note = "same bootstrap as d1_c01 (sector $38/$18); never loaded: unused leftover (docs/08)"
+
+[[sym]]
+exe = "d3_c01"
+hunk = 0
+offset = 0x3680
+name = "trackload12"
+kind = "func"
+note = "trackloader assuming 12 sectors/track; unused"
+
+
+# --- d1_c03 (T07, docs/08 and docs/09) ---
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x6
+name = "game_full_mode"
+kind = "var"
+size = 2
+note = "1 = booted game; 0 = return to the OS (dev)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x8
+name = "loader_mode"
+kind = "var"
+size = 2
+note = "2 = trackloader; 0/1 = DOS / DF0: paths (dev, never written)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0xa
+name = "start_world"
+kind = "var"
+size = 4
+note = "1..7, from the password"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0xe
+name = "start_level"
+kind = "var"
+size = 4
+note = "1..4, from the password"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x18
+name = "attract_mode"
+kind = "var"
+size = 4
+note = "-1 while the attract demo runs"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x1e
+name = "final_level_flag"
+kind = "var"
+size = 2
+note = "set for the final level (LW) (inferred)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x26
+name = "init_and_script"
+kind = "func"
+note = "init calls, then the top-level game script"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x5c
+name = "top_loop"
+kind = "func"
+note = "title / attract / game"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x7d6
+name = "frog"
+kind = "data"
+size = 0x56
+note = "player record head: +0 x, +2 y, +4 vx, +6 vy; the record runs on past the vars below (docs/09)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x82c
+name = "player_died"
+kind = "var"
+size = 2
+note = "makes level_frame_loop return (inferred)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x832
+name = "coins_left_for_exit"
+kind = "var"
+size = 2
+note = "the exit lock spawns while coins remain"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x834
+name = "score"
+kind = "var"
+size = 4
+note = "player score"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x876
+name = "level_clock"
+kind = "var"
+size = 4
+note = "level clock digits (4:00 set by each level loader)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x9d6
+name = "logic_running"
+kind = "var"
+size = 2
+note = "set by level_frame_loop: the VBL handler runs level work and counts"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x9d8
+name = "vbl_count"
+kind = "var"
+size = 2
+note = "VBLs since the last 25 Hz pass; the pass runs when it reaches 2"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x9dc
+name = "shooter_mode"
+kind = "var"
+size = 2
+note = "bonus-level mode flag"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x9de
+name = "abort_flag"
+kind = "var"
+size = 2
+note = "ESC / demo fire"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x9e4
+name = "opt_lives"
+kind = "var"
+size = 2
+note = "options: 0..2 = 3/5/7 lives"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x9e6
+name = "opt_game_mode"
+kind = "var"
+size = 2
+note = "options: 0 easy, 1 normal"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x9f0
+name = "level_started"
+kind = "var"
+size = 2
+note = "set by level_start"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x9f6
+name = "demo_index"
+kind = "var"
+size = 2
+note = "attract demo 0..2"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x9fa
+name = "obj_world_offset"
+kind = "var"
+size = 4
+note = "world selector into obj_flag_jumptab: $100 per world"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0xa06
+name = "level_state"
+kind = "var"
+size = 4
+note = "negative while playing; 1 exit, 2 bonus end, $64 boss done, $190 death"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0xa12
+name = "ram_cache_base"
+kind = "var"
+size = 4
+note = "disk-1 RAM cache from the bootstrap (0 on 512K+512K)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0xaa6
+name = "level_frame_loop"
+kind = "func"
+note = "in-level loop: wait vbl_count>=2, clear, run the 25 Hz pass"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0xb66
+name = "game_start_at"
+kind = "func"
+note = "password check, then jump to the start world/level"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0xbb2
+name = "level_resume_jump"
+kind = "func"
+note = "jumps to resume_target"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0xbda
+name = "resume_target"
+kind = "var"
+size = 4
+note = "level entry game_start_at jumps to"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0xbde
+name = "start_resume_table"
+kind = "table"
+size = 0x8c
+note = "7 x $14: world entry + L1..L4 resume addresses"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0xde0
+name = "frog_die"
+kind = "func"
+note = "frog death"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x109e
+name = "title_screen"
+kind = "func"
+note = "title, menu and options"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x1958
+name = "opt_cursor"
+kind = "var"
+size = 2
+note = "options menu row 0..3"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x195c
+name = "options_input"
+kind = "func"
+note = "options menu input"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x1a00
+name = "options_draw"
+kind = "func"
+note = "options menu drawing"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x1e98
+name = "award_pages"
+kind = "func"
+note = "features and bonus tables (AWA1/AWA2)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x20e0
+name = "hiscore_and_credits"
+kind = "func"
+note = "name entry, hall of talent, credits"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x22b8
+name = "attract_abort"
+kind = "var"
+size = 2
+note = "fire during attract screens"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x22ba
+name = "password_entry"
+kind = "func"
+note = "level code entry"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x242a
+name = "password_buf"
+kind = "data"
+size = 6
+note = "typed password"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x2432
+name = "password_check"
+kind = "func"
+note = "matches password_buf against password_table"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x2464
+name = "password_for_level"
+kind = "func"
+note = "password of the current world/level, for display"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x24dc
+name = "password_table"
+kind = "table"
+size = 0x118
+note = "28 x 10: 6 digits + handler; W1L1..W6L4 then 4 bonus codes"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x2bba
+name = "hiscore_name_entry"
+kind = "func"
+note = "CONGRATULATIONS name entry"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x2e56
+name = "hall_of_talent"
+kind = "func"
+note = "high-score table screen"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x2f90
+name = "hiscore_table"
+kind = "table"
+size = 0x50
+note = "10 x 8 (inferred)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x3030
+name = "credits_scroll"
+kind = "func"
+note = "credits"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x3902
+name = "title_intro_anim"
+kind = "func"
+note = "title animation"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x3de8
+name = "progress_map_show"
+kind = "func"
+note = "Superfrog's Progress map before each level"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x3eaa
+name = "progress_map_end"
+kind = "func"
+note = "tears the progress map down"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x3f22
+name = "progress_map_vbl"
+kind = "func"
+note = "animates the progress map from the VBL handler"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x40da
+name = "world"
+kind = "var"
+size = 4
+note = "current world 1..6; 7 = bonus level"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x40de
+name = "level"
+kind = "var"
+size = 4
+note = "current level 1..4"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x4116
+name = "world_intro_show"
+kind = "func"
+note = "world loading picture LnLP with LOADING ... PLEASE WAIT"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x4220
+name = "world_intro_end"
+kind = "func"
+note = "tears the world intro down"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x42aa
+name = "end_world_pic_w1"
+kind = "func"
+note = "end-of-world picture L1ET (also $42be..$4326 for W2-W6)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x433c
+name = "end_world_pic_show"
+kind = "func"
+note = "shows an LnET picture"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x4466
+name = "level_tally"
+kind = "func"
+note = "after each level: bonus counts, points or slot machine"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x49dc
+name = "slot_machine"
+kind = "func"
+note = "slot machine (FRUT/FRUC/FRUM)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x6952
+name = "level_start"
+kind = "func"
+note = "starts a level"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x6a64
+name = "bonus_frame"
+kind = "func"
+note = "bonus-level per-frame work"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x6c94
+name = "info_screen_inft"
+kind = "func"
+note = "hidden info screen (INFT, disk 4)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x73ba
+name = "wait_line_0"
+kind = "func"
+note = "waits for VPOS $ff then $00"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x73d0
+name = "wait_frame_raster"
+kind = "func"
+note = "waits for VPOS $ff then $2b: the 50 Hz pace of every non-level screen"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x7442
+name = "pause"
+kind = "func"
+note = "pause until fire or P"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x749c
+name = "game_over_check"
+kind = "func"
+note = "after a level: game over or continue"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x74d0
+name = "game_over_seq"
+kind = "func"
+note = "GAME OVER"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x75f2
+name = "level_exit_fade"
+kind = "func"
+note = "level exit fade"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x766e
+name = "init_save_boot_args"
+kind = "func"
+note = "keeps the bootstrap's a0/a1/a2"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x7722
+name = "rng_seed_from_cia"
+kind = "func"
+note = "seeds the RNG from CIA-B TOD ($bfd802)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x80f0
+name = "spud_update"
+kind = "func"
+note = "the frog's thrown spud"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x8c3a
+name = "level_init_lb"
+kind = "func"
+note = "level init, bonus level"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x8cd8
+name = "level_init_w1"
+kind = "func"
+note = "level init, world 1 (W2-W6 at $8d2e $8d84 $8dda $8e30 $8e86)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x8edc
+name = "level_init_lw"
+kind = "func"
+note = "level init, final level"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x8f3a
+name = "demo_init"
+kind = "func"
+note = "attract demo init"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x902e
+name = "frog_reset"
+kind = "func"
+note = "frog reset at level (re)start"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x9172
+name = "load_hero"
+kind = "func"
+note = "loads HERO (d1_c04)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x922e
+name = "ram_cache_fill"
+kind = "func"
+note = "preloads disk-1 files into the RAM cache when there is one"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x94a0
+name = "world_load_w1"
+kind = "func"
+note = "world 1: FX, MU, intro, BM, BO, MS (W2-W6 at $9722 $9976 $9bca $9e1e $a072)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x9552
+name = "level_load_w1_l1"
+kind = "func"
+note = "W1 level 1: clock, progress map, L1MA1 (L2-L4 at $95c6 $963a $96ae)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0xa39e
+name = "world_load_lb"
+kind = "func"
+note = "bonus level files (world 7)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0xa426
+name = "level_load_lb"
+kind = "func"
+note = "bonus level map"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0xa49a
+name = "world_load_lw"
+kind = "func"
+note = "final level files"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0xa508
+name = "level_load_lw"
+kind = "func"
+note = "final level map, 10:00 clock"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0xa580
+name = "demo_world_load"
+kind = "func"
+note = "attract demo: W1 files"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0xa5ec
+name = "demo_level_load"
+kind = "func"
+note = "attract demo: W1-1 map"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0xa65c
+name = "end_seq_load"
+kind = "func"
+note = "loads END1/END2 (disk 3)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0xa6e4
+name = "end_sequence"
+kind = "func"
+note = "plays the end animations"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0xad5c
+name = "read_disk_id"
+kind = "func"
+note = "reads the 4-byte disk ID at disk offset $dbffc"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0xade4
+name = "disk_request"
+kind = "func"
+note = "finds the wanted disk in any drive, else runs the insert-disk prompt"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0xaf64
+name = "drive_disk_cache"
+kind = "table"
+size = 0x10
+note = "disk ID last seen in DF0..DF3"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0xaf84
+name = "load_file"
+kind = "func"
+note = "loads and decompresses a file: a0 name, a2 file-table entry, a1 dest"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0xaf98
+name = "load_file_raw"
+kind = "func"
+note = "loads a file without decompressing"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0xb098
+name = "track_read"
+kind = "func"
+note = "reads sectors through the trackloader"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0xb11e
+name = "disk_id_table"
+kind = "table"
+size = 0x10
+note = "required disk ID per file-table disk index"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0xb666
+name = "probe_drives"
+kind = "func"
+note = "finds the connected drives"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0xb6f8
+name = "access_overlay_show"
+kind = "func"
+note = "shows the Accessing-disk overlay"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0xb774
+name = "overlays_end"
+kind = "func"
+note = "removes the overlays"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0xcbfe
+name = "file_table"
+kind = "table"
+size = 0x23a
+note = "95 x 6: start sector, sector count, disk index 0..3 (docs/08)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0xcfba
+name = "hunk_relocate"
+kind = "func"
+note = "relocates an embedded hunk executable"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0xd0cc
+name = "collide_all"
+kind = "func"
+note = "spud vs objects, frog vs objects"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0xd2f6
+name = "obj_build_hitboxes"
+kind = "func"
+note = "rebuilds the hitbox list from the slots"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0xe2e2
+name = "frog_tiles"
+kind = "func"
+note = "frog vs map-cell markers (VBL)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0xfe34
+name = "frog_input_anim"
+kind = "func"
+note = "reads JOY1DAT for the frog (VBL)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x11b6a
+name = "hw_takeover"
+kind = "func"
+note = "installs the level-3 handler, INTENA = VERTB|COPER"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x11bf8
+name = "vbl_handler"
+kind = "func"
+note = "level-3 interrupt: VBL work, and the copper interrupt's queued blits"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x11d2c
+name = "level_clock_tick"
+kind = "func"
+note = "level clock: one second per 50 VBLs"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x123d4
+name = "display_timer"
+kind = "var"
+size = 2
+note = "decremented every VBL: times intro/map/end pictures"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x1298c
+name = "sprite_anim_a"
+kind = "table"
+size = 0x44
+note = "frame list for a hardware-sprite record: 8-byte entries, ends $ffffffff (inferred)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x129d0
+name = "sprite_anim_b"
+kind = "table"
+size = 0x44
+note = "frame list for a hardware-sprite record: 8-byte entries, ends $ffffffff (inferred)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x12a72
+name = "sfx_play"
+kind = "func"
+note = "plays sound effect d0 on channel d1"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x1327a
+name = "music_fade_wait"
+kind = "func"
+note = "fades the music out and stops it"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x147e4
+name = "sample_stream"
+kind = "func"
+note = "streams a sample on channel 3 (VBL)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x148b8
+name = "sample_play"
+kind = "func"
+note = "starts a streamed sample"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x15ff2
+name = "kbd_poll"
+kind = "func"
+note = "reads CIA-A SDR every second VBL into key_down/key_up"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x16076
+name = "kbd_toggle"
+kind = "var"
+size = 1
+note = "keyboard is polled every second VBL"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x16078
+name = "key_down"
+kind = "var"
+size = 1
+note = "last raw key code pressed ($19 P pause, $45 ESC)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x16079
+name = "key_up"
+kind = "var"
+size = 1
+note = "last raw key code released"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x1607a
+name = "rng_seed"
+kind = "func"
+note = "rng_state = (d0, d1 + d0)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x16084
+name = "rng_next"
+kind = "func"
+note = "next 64-bit RNG state; d0 = new high long"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x160c0
+name = "rng_range"
+kind = "func"
+note = "random 0..d0"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x160d4
+name = "rng_state"
+kind = "var"
+size = 8
+note = "64-bit RNG state (d0:d1)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x1693e
+name = "copper_irq_blits"
+kind = "func"
+note = "copper interrupt: runs the queued blits"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x17334
+name = "map_rows"
+kind = "var"
+size = 4
+note = "pointer one row above the in-RAM map; rows $260 bytes, cell = tile<<6|flags"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x1777c
+name = "map_spawn_scan_screen"
+kind = "func"
+note = "spawns the objects of the whole screen at level start"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x17810
+name = "map_spawn_scan_edges"
+kind = "func"
+note = "spawns objects at the scrolling edge (VBL)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x178ec
+name = "obj_flag_jumptab"
+kind = "table"
+size = 0x700
+note = "7 x 64 bra.w per world, by map-cell marker (docs/09)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x19b42
+name = "build_bob_draw_list"
+kind = "func"
+note = "spud first, then the objects"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x1b324
+name = "obj_run_all"
+kind = "func"
+note = "runs each live slot's update routine (25 Hz pass)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x1b3d8
+name = "obj_spawn_cell"
+kind = "func"
+note = "spawns a template at a map cell"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x1b4e6
+name = "obj_spawn_cell_alt"
+kind = "func"
+note = "variant of obj_spawn_cell"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x1b5d0
+name = "obj_spawn_coin_forced"
+kind = "func"
+note = "coin spawner that may evict a visible slot"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x1b706
+name = "obj_spawn_at_xy"
+kind = "func"
+note = "spawns at a pixel position, de-duplicated"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x1b822
+name = "obj_spawn_at_xy_nodedup"
+kind = "func"
+note = "spawns at a pixel position"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x1b90e
+name = "obj_free"
+kind = "func"
+note = "frees a slot and its bob"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x1b95e
+name = "obj_despawn_if_offscreen"
+kind = "func"
+note = "frees an off-screen evictable slot"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x1ba16
+name = "bob_free_list"
+kind = "table"
+size = 0x54
+note = "pointers to free bob records"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x1ba6a
+name = "obj_count"
+kind = "var"
+size = 2
+note = "live object slots"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x1ba6c
+name = "obj_slots"
+kind = "table"
+size = 0x9b0
+note = "20 x $7c object slots (docs/09)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x1c5bc
+name = "frog_hurt"
+kind = "func"
+note = "frog takes a hit"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x1c6e2
+name = "obj_templates"
+kind = "table"
+size = 0x6cc0
+note = "160 x $ae object templates"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x23582
+name = "touch_kill_1hit"
+kind = "func"
+note = "touch handler: dies in one hit or stomp"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x2360e
+name = "touch_spud_damage"
+kind = "func"
+note = "touch handler: spud takes $20 hit points"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x236ac
+name = "touch_hurt"
+kind = "func"
+note = "touch handler: always hurts the frog"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x236b4
+name = "touch_boss_hit"
+kind = "func"
+note = "touch handler: boss hit counter"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x238e2
+name = "touch_bonus_enemy"
+kind = "func"
+note = "touch handler: bonus-level enemies"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x239f6
+name = "touch_coin"
+kind = "func"
+note = "touch handler: coin"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x23f60
+name = "coin_init"
+kind = "func"
+note = "coin init"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x23f86
+name = "coin_update"
+kind = "func"
+note = "coin update"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x259ae
+name = "final_boss_init"
+kind = "func"
+note = "final boss (witch) init (inferred)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x25a16
+name = "final_boss_update"
+kind = "func"
+note = "final boss update"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x298d2
+name = "bob_records"
+kind = "table"
+size = 0x1630
+note = "20 x $11c bob records"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x35fee
+name = "ovl_insert_disk"
+kind = "data"
+size = 4
+note = "start of an embedded ATN! hunk exe: the insert-disk prompt"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x36a04
+name = "ovl_accessing_disk"
+kind = "data"
+size = 4
+note = "start of an embedded ATN! hunk exe: the Accessing-disk overlay"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x37a0a
+name = "pic_progress_map"
+kind = "data"
+size = 4
+note = "start of an embedded ATN! picture: Superfrog's Progress map"
+
+
+# --- d3_c02 (T07, docs/08 and docs/09) ---
+
+[[sym]]
+exe = "d3_c02"
+hunk = 0
+offset = 0x2b326
+name = "d3boot_main"
+kind = "func"
+note = "disk-3 boot: shows its picture, loads d3_c04 + d3_c03, relocates d3_c04, jumps"
+
+[[sym]]
+exe = "d3_c02"
+hunk = 0
+offset = 0x2b4c4
+name = "d3boot_trackload"
+kind = "func"
+note = "disk-3 trackloader"
+
+
+# --- d3_c04 (T07, docs/08 and docs/09) ---
+
+[[sym]]
+exe = "d3_c04"
+hunk = 0
+offset = 0x16
+name = "intro_skip"
+kind = "var"
+size = 2
+note = "set to skip the remaining intro scenes"
+
+[[sym]]
+exe = "d3_c04"
+hunk = 0
+offset = 0x20
+name = "intro_main"
+kind = "func"
+note = "story intro (Eric Schwartz): ~16 scenes, then asks for disk 1 and boots d1_c01"
+
+[[sym]]
+exe = "d3_c04"
+hunk = 0
+offset = 0xc38e
+name = "intro_wait_disk1"
+kind = "func"
+note = "waits for fire and disk ID \"2222\" (disk 1)"
+
+[[sym]]
+exe = "d3_c04"
+hunk = 0
+offset = 0xc876
+name = "intro_trackload"
+kind = "func"
+note = "the intro's own trackloader"
+
+[[sym]]
+exe = "d3_c04"
+hunk = 0
+offset = 0xcf26
+name = "intro_file_table"
+kind = "table"
+size = 0x20
+note = "4 x 8 bytes: d3_c05..c08 (picture banks)"

@@ -40,9 +40,19 @@ port, identically, to exactly `decomp_size` bytes:
 | `d2_c39` | `Truncated` | 70 464 bytes |
 | `d4_c16` | `Truncated` | 53 588 bytes, a **T7MP level** (300 × 84 `BODY`) |
 
-Whether the game's own loader reads those extra bytes the same way (it loads
-whole tracks) is checked against its memory in T07. The carvers
-(`tools/atn.py`, `sf_disk::carve`) still stop at the old boundary.
+**Checked against the game (T07, `sf-oracle/tests/exe_map_claims.rs`):**
+
+- The game's `file_table` (docs/08) gives each file's sector count, and for all three it reads
+  past the carver's last sector. They are W1's music `L1MU` (`d1_c16`), the bonus level's loading
+  picture `LBLP` (`d2_c39`) and level W6-3 `L6MA3` (`d4_c16`).
+- After the World 1 load, `d1_c16` sits in RAM at `$73EF6` and equals the Rust output with the next
+  sector appended, byte for byte. The only exception is its first `$C0` bytes: the module's sample
+  table, whose offsets the music replayer turns into absolute pointers.
+- `d2_c39` and `d4_c16` load only after the bonus level and W6-2 are reached. No scripted run gets
+  that far yet, so they are not compared in RAM. T21's whole-game run reaches both.
+
+The carvers (`tools/atn.py`, `sf_disk::carve`) still stop at the old boundary. The game's sector
+counts in `file_table` are the true file lengths (T08/T09).
 
 ## Algorithm (as ported)
 

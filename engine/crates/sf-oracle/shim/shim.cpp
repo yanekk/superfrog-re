@@ -238,6 +238,10 @@ sf_amiga *sf_amiga_new(const uint8_t *rom, size_t rom_len, char *err, size_t err
         vamiga_custom_write_hook = hook;
         vamiga_audio_sample_hook = sampleHook;
     });
+    // vAmiga fills its static table of option defaults on first use without a lock; a machine set
+    // up on another thread meanwhile can read it half-filled ("Invalid key: ROM_PATH").
+    static std::mutex setting_up;
+    std::lock_guard<std::mutex> one_at_a_time(setting_up);
     auto a = std::make_unique<sf_amiga>();
     auto rc = guarded(err, err_len, "setting up the emulator", [&] {
         a->emu().initialize();
@@ -355,6 +359,19 @@ const uint8_t *sf_amiga_slow(const sf_amiga *a, size_t *len)
     auto &mem = const_cast<sf_amiga *>(a)->amiga().mem;
     *len = size_t(mem.getConfig().slowSize);
     return mem.slow;
+}
+
+void sf_amiga_cpu(const sf_amiga *a, sf_cpu_regs *out)
+{
+    auto &cpu = const_cast<sf_amiga *>(a)->amiga().cpu;
+    for (int i = 0; i < 8; i++) {
+        out->d[i] = cpu.getD(i);
+        out->a[i] = cpu.getA(i);
+    }
+    out->pc = cpu.getPC0();
+    out->sr = cpu.getSR();
+    out->usp = cpu.getUSP();
+    out->ssp = cpu.getISP();
 }
 
 uint8_t *sf_amiga_snapshot(sf_amiga *a, size_t *len, char *err, size_t err_len)

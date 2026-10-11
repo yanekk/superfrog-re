@@ -15,7 +15,9 @@ mod ffi;
 mod routine;
 mod trace;
 
-pub use amiga::{Amiga, AmigaMemory, AudioTap, FrameCapture, MIX_RATE, Rgb12Frame, Snapshot};
+pub use amiga::{
+    Amiga, AmigaMemory, AudioTap, CpuRegs, FrameCapture, MIX_RATE, Rgb12Frame, Snapshot,
+};
 pub use config::{DEFAULT_MAX_FRAMES, OracleConfig, OracleError};
 pub use routine::{
     CallError, CallResult, Cpu68k, Hunk, HunkError, HunkKind, HunkMap, MEM_SIZE, RETURN_SENTINEL,

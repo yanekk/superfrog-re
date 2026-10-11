@@ -18,6 +18,16 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-11 | 🐞 | T07 review: vAmiga's `Defaults::fallbacks()` fills a static map unlocked on first use; machines powered on in parallel could read it half-filled ("Invalid key: ROM_PATH", seen once). Fixed: `sf_amiga_new` sets up under a mutex. No other set-up path. |
+| 2026-10-11 | 🔄 | Owner, lag: conformance runs feed the original's 25 Hz pass schedule (from the oracle) to the engine; VBL work runs at one fixed point in a late pass; leftover divergence is reported as lag and re-synced. Normal play never lags. |
+| 2026-10-11 | 🔄 | Owner, RNG: the seed is part of the start. Transplants copy `rng_state` (h0+$160d4, 8 bytes); power-on conformance runs take the oracle's seed for that script; normal play seeds from the host clock. |
+| 2026-10-11 | 🔄 | Owner: T16–T18 re-split at plan review, before T16 starts. Proposed: one task per world (W1 12, W2 17, W3 18, W4 23, W5 11, W6 11 new types); T18 = final level + witch; bonus level's 15 types to T19. |
+| 2026-10-11 | 📌 | T07 lag: level logic is 25 Hz (`level_frame_loop` waits for 2 VBLs); frog, camera, clock run 50 Hz in the VBL. The pass overran on 71 of 2 311 W1-1 play frames, 32 of 721 demo frames; title screens never. |
+| 2026-10-11 | 📌 | RNG seeded once at h0+$7722 from `$bfd802` (CIA-B TOD, hsyncs since power-on). Clicking the crack intro 100 frames later shifts all RAM by 100 frames except `rng_state` and the stack. |
+| 2026-10-11 | 📌 | Object placement is in the T7MP BODY: the 6-bit field is a per-world object marker (docs/09), so `.sflevel` needs only `t7mp`. docs/04 "Still open" and docs/07's solid rule (W3/W4 markers 24–28) are now wrong; left unedited (scope). |
+| 2026-10-11 | 📌 | Stragglers: the game's `file_table` reads a sector past the carve for all three. d1_c16 (W1 music) matches in RAM bar its relocated sample table; d2_c39 (bonus loading picture) and d4_c16 (W6-3) need T21's long run. |
+| 2026-10-11 | 📌 | Disk 3 boots the story intro (d3_c02 → d3_c04), which then boots disk 1; d1_c03 never loads them; d3_c01 is unused. Whether the engine plays the intro is T20/T21's call. Music modules are "P41A" (The Player 4.1A) for T11. |
+| 2026-10-11 | 📌 | `Amiga::cpu()` (shim only, no core patch): a step ends with the CPU at the level-3 handler's entry, so the interrupted main-program PC is the long at SSP+2. `exe_map_claims` adds ~45 s (three oracle runs) to the test block. |
 | 2026-10-11 | 📌 | T10 review: `sf-paula` puts two full-scale channels at exactly ±32 768, so the band-limited step's ringing overshoot clamps on full-scale content (probe peaked at 32 768). Left as is; output headroom is T22's call. |
 | 2026-10-11 | 📌 | Frames are not all 313 lines: the game sets then clears BPLCON0 LACE (frame 1 332), LOF sticks short, so the title music runs 312-line frames, 50.08 Hz. DESIGN §2.5 says 49.92; sf-core/T22 pacing must model LOF. |
 | 2026-10-11 | 📌 | An oracle step's writes and taps run from just after its frame's start to just after the next one's: a position going backwards marks the next frame's first clocks. `sf-paula` and the T10 test carry them over. |
