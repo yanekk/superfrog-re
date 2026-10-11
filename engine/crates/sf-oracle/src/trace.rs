@@ -7,6 +7,7 @@
 
 use std::fs;
 use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicU64, Ordering};
 
 use sf_core::input::FrameInput;
 use sf_disk::sha1_hex;
@@ -279,7 +280,10 @@ fn store(dir: &Path, path: &Path, trace: &Trace) -> Result<(), OracleError> {
     file.extend_from_slice(trace.key.as_bytes());
     file.extend_from_slice(&hash_bytes(&payload, 0).to_le_bytes());
     file.extend_from_slice(&payload);
-    let tmp = dir.join(format!(".{}.{}.tmp", trace.key, std::process::id()));
+    // Unique per write, not only per process: parallel tests may store the same trace at once.
+    static WRITES: AtomicU64 = AtomicU64::new(0);
+    let n = WRITES.fetch_add(1, Ordering::Relaxed);
+    let tmp = dir.join(format!(".{}.{}.{n}.tmp", trace.key, std::process::id()));
     fs::write(&tmp, &file).map_err(cache)?;
     fs::rename(&tmp, path).map_err(cache)
 }
@@ -510,6 +514,29 @@ mod tests {
         ] {
             assert_ne!(k, snap_base);
         }
+    }
+
+    #[test]
+    fn threads_storing_the_same_trace_all_succeed() {
+        // Parallel tests in one process can make the same run at once; each write needs its own
+        // temporary file, or one thread renames another's away and its store fails.
+        let dir = std::env::temp_dir().join(format!("sf-trace-race-{}", std::process::id()));
+        let t = sample();
+        let path = dir.join("k.trace");
+        let failed: usize = (0..4)
+            .map(|_| {
+                let (dir, path, t) = (dir.clone(), path.clone(), t.clone());
+                std::thread::spawn(move || {
+                    (0..100).filter(|_| store(&dir, &path, &t).is_err()).count()
+                })
+            })
+            .collect::<Vec<_>>()
+            .into_iter()
+            .map(|h| h.join().unwrap())
+            .sum();
+        assert_eq!(failed, 0, "{failed} of 400 concurrent stores failed");
+        assert_eq!(decode(&fs::read(&path).unwrap(), "k").unwrap(), t);
+        fs::remove_dir_all(&dir).unwrap();
     }
 
     fn sample() -> Trace {
