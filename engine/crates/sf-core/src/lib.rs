@@ -6,9 +6,12 @@
 //! and probe the engine's values back out.
 
 pub mod audio;
+pub mod frog;
 pub mod game;
 pub mod input;
 pub mod layout;
+pub mod level;
+pub mod mem;
 pub mod render;
 pub mod rng;
 pub mod scene;

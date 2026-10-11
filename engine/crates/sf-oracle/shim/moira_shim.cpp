@@ -8,6 +8,7 @@
 #include "Moira.h"
 
 #include <cstring>
+#include <map>
 #include <new>
 #include <vector>
 
@@ -43,6 +44,8 @@ public:
     bool hw = false;
     u16 beam = 0;
     std::vector<sf_hw_write> hwWrites;
+    // Bytes a hardware read returns (sf_cpu_set_hw_read), by address; any other reads 0.
+    std::map<u32, u8> hwReads;
 
     static bool is_custom(u32 a) { return (a & 0xFFFE00) == 0xDFF000; }
 
@@ -61,7 +64,8 @@ public:
         if (is_hardware(a)) {
             if (!hw) { fault(a); return 0; }
             if (a == 0xDFF006 || a == 0xDFF007) return u8(beam++);
-            return 0;
+            auto it = hwReads.find(a);
+            return it == hwReads.end() ? 0 : it->second;
         }
         return mem[a];
     }
@@ -224,6 +228,11 @@ size_t sf_cpu_journal(const sf_cpu *c, const uint32_t **addrs, const uint8_t **o
 void sf_cpu_rollback(sf_cpu *c) { c->cpu.rollback(); }
 
 void sf_cpu_set_hw(sf_cpu *c, int on) { c->cpu.hw = on != 0; }
+
+void sf_cpu_set_hw_read(sf_cpu *c, uint32_t addr, uint8_t value)
+{
+    c->cpu.hwReads[addr & 0xFFFFFF] = value;
+}
 
 size_t sf_cpu_hw_writes(const sf_cpu *c, const sf_hw_write **out)
 {

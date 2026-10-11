@@ -164,6 +164,7 @@ unsafe extern "C" {
     pub fn sf_cpu_journal(c: *const SfCpu, addrs: *mut *const u32, olds: *mut *const u8) -> usize;
     pub fn sf_cpu_rollback(c: *mut SfCpu);
     pub fn sf_cpu_set_hw(c: *mut SfCpu, on: c_int);
+    pub fn sf_cpu_set_hw_read(c: *mut SfCpu, addr: u32, value: u8);
     pub fn sf_cpu_hw_writes(c: *const SfCpu, out: *mut *const SfHwWrite) -> usize;
 }
 

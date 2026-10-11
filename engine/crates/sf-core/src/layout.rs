@@ -3,9 +3,15 @@
 //! ([`State::probe`]) are both driven from [`LAYOUT`], so a variable is either fully mapped or not
 //! mapped at all; there is no third state in which a half-mapped variable could hide a divergence.
 //!
-//! Adding a variable: a [`VarId`], an entry here, a field in [`State`] and its arm in
-//! `State::bytes`/`State::set_bytes` (the match is exhaustive, so the compiler asks for both).
-//! The tests check that every id has exactly one entry and that entries do not overlap.
+//! Adding a variable is one line in the [`layout!`] list below: it makes the [`VarId`], the
+//! [`LAYOUT`] entry and the bytes [`State`] keeps for it. The list is in address order, so a
+//! variable is found by address with a binary search; the tests check the order, that entries do
+//! not overlap and that byte runs are whole longs.
+//!
+//! The engine keeps every variable as the original's bytes at the original's address (as the
+//! sound driver does, T11): the 68000 code overlays words and bytes and keeps pointers to its own
+//! tables, and a byte-exact copy keeps every such quirk. A write to an address no entry covers is a
+//! bug (a variable the port uses but the table does not map), so [`State::write`] panics on it.
 //!
 //! [`State`]: crate::State
 //! [`State::transplant`]: crate::State::transplant
@@ -60,51 +66,6 @@ impl Width {
     }
 }
 
-/// A modelled variable. Names are the ones in `re/symbols.toml`.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
-pub enum VarId {
-    /// `rng_state` (h0+$160d4): the 64-bit RNG state, `rng_next`'s low long then its high long.
-    RngState,
-    /// `camera_y` (h0+$16660): the camera's level y (docs/12).
-    CameraY,
-    /// `camera_x` (h0+$16664): the camera's level x.
-    CameraX,
-    /// `scroll_column` (h0+$172b0): the play-field column the vertical blank last scrolled to, as
-    /// the address of its first word in the shown buffer (docs/12 "Scroll").
-    ScrollColumn,
-    /// `map_rows` (h0+$17334): one row above the in-RAM map.
-    MapRows,
-    /// `world` (h0+$40da): 1..6, 7 the bonus level.
-    World,
-    /// `level_map` (h1+$218e0): the map, 84 rows of 304 cells, `tile << 6 | marker`.
-    LevelMap,
-    /// `playfield_buffer_0` (h3+$10600) and `_1` (h3+$22f30): the two display buffers the play
-    /// field is shown from, five planes of `$3b70` bytes each (docs/12 "The play field").
-    PlayfieldBuffer0,
-    PlayfieldBuffer1,
-    /// `level_copper` (h2+$6bd0): the level's copper list (docs/12 "The copper list").
-    LevelCopper,
-    /// `panel_bitmap` (h3+$4b390): the status panel, five planes of 14 lines (docs/12 "Panel").
-    PanelBitmap,
-}
-
-impl VarId {
-    /// Every id, in declaration order.
-    pub const ALL: &[VarId] = &[
-        VarId::RngState,
-        VarId::CameraY,
-        VarId::CameraX,
-        VarId::ScrollColumn,
-        VarId::MapRows,
-        VarId::World,
-        VarId::LevelMap,
-        VarId::PlayfieldBuffer0,
-        VarId::PlayfieldBuffer1,
-        VarId::LevelCopper,
-        VarId::PanelBitmap,
-    ];
-}
-
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct VarDef {
     pub id: VarId,
@@ -142,83 +103,71 @@ pub const MAP_ROW_CELLS: u32 = 304;
 /// Bytes in one display buffer: five planes of `$3b70`.
 pub const PLAYFIELD_BUFFER_BYTES: u32 = 0x12930;
 
-/// Every modelled variable of the original (DESIGN §3.3). T12 models the RNG and T13 what the
-/// level's picture is drawn from; each mechanic task adds its own.
-pub static LAYOUT: &[VarDef] = &[
-    VarDef {
-        id: VarId::RngState,
-        name: "rng_state",
-        addr: h0(0x160d4),
-        width: Width::Bytes(8),
-    },
-    VarDef {
-        id: VarId::CameraY,
-        name: "camera_y",
-        addr: h0(0x16660),
-        width: Width::L,
-    },
-    VarDef {
-        id: VarId::CameraX,
-        name: "camera_x",
-        addr: h0(0x16664),
-        width: Width::L,
-    },
-    VarDef {
-        id: VarId::ScrollColumn,
-        name: "scroll_column",
-        addr: h0(0x172b0),
-        width: Width::L,
-    },
-    VarDef {
-        id: VarId::MapRows,
-        name: "map_rows",
-        addr: h0(0x17334),
-        width: Width::L,
-    },
-    VarDef {
-        id: VarId::World,
-        name: "world",
-        addr: h0(0x40da),
-        width: Width::L,
-    },
-    VarDef {
-        id: VarId::LevelMap,
-        name: "level_map",
-        addr: h1(0x218e0),
-        width: Width::Bytes(MAP_ROWS * MAP_ROW_CELLS * 2),
-    },
-    VarDef {
-        id: VarId::PlayfieldBuffer0,
-        name: "playfield_buffer_0",
-        addr: h3(0x10600),
-        width: Width::Bytes(PLAYFIELD_BUFFER_BYTES),
-    },
-    VarDef {
-        id: VarId::PlayfieldBuffer1,
-        name: "playfield_buffer_1",
-        addr: h3(0x22f30),
-        width: Width::Bytes(PLAYFIELD_BUFFER_BYTES),
-    },
-    VarDef {
-        id: VarId::LevelCopper,
-        name: "level_copper",
-        addr: h2(0x6bd0),
-        width: Width::Bytes(0x400),
-    },
-    VarDef {
-        id: VarId::PanelBitmap,
-        name: "panel_bitmap",
-        addr: h3(0x4b390),
-        width: Width::Bytes(5 * 0x2a0),
-    },
-];
+
+/// Declares the variables: `Id = "symbol name", address, width;`, in address order.
+macro_rules! layout {
+    ($( $(#[$doc:meta])* $id:ident = $name:literal, $addr:expr, $width:expr; )*) => {
+        /// A modelled variable. Names are the ones in `re/symbols.toml`.
+        #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
+        pub enum VarId { $( $(#[$doc])* $id, )* }
+
+        impl VarId {
+            /// Every id, in [`LAYOUT`] order.
+            pub const ALL: &[VarId] = &[ $( VarId::$id, )* ];
+        }
+
+        /// Every modelled variable of the original (DESIGN §3.3), in address order. T12 models
+        /// the RNG, T13 what the level's picture is drawn from, T14 the level and the frog; each
+        /// mechanic task adds its own.
+        pub static LAYOUT: &[VarDef] = &[
+            $( VarDef { id: VarId::$id, name: $name, addr: $addr, width: $width }, )*
+        ];
+    };
+}
+
+layout! {
+    /// `level_copper` (h2+$6bd0): the level's copper list (docs/12 "The copper list").
+    LevelCopper = "level_copper", h2(0x6bd0), Width::Bytes(0x400);
+    /// `playfield_buffer_0` (h3+$10600) and `_1` (h3+$22f30): the two display buffers the play
+    /// field is shown from, five planes of `$3b70` bytes each (docs/12 "The play field").
+    PlayfieldBuffer0 = "playfield_buffer_0", h3(0x10600), Width::Bytes(PLAYFIELD_BUFFER_BYTES);
+    PlayfieldBuffer1 = "playfield_buffer_1", h3(0x22f30), Width::Bytes(PLAYFIELD_BUFFER_BYTES);
+    /// `panel_bitmap` (h3+$4b390): the status panel, five planes of 14 lines (docs/12 "Panel").
+    PanelBitmap = "panel_bitmap", h3(0x4b390), Width::Bytes(5 * 0x2a0);
+    /// `attract_mode` (h0+$18): -1 while the attract demo runs.
+    AttractMode = "attract_mode", h0(0x18), Width::L;
+    /// `frog` (h0+$7d6): the frog's record (docs/09 "The frog"), one entry per field.
+    FrogX = "frog_x", h0(0x7d6), Width::W;
+    FrogY = "frog_y", h0(0x7d8), Width::W;
+    FrogVx = "frog_vx", h0(0x7da), Width::W;
+    FrogVy = "frog_vy", h0(0x7dc), Width::W;
+    FrogFrozen = "frog_frozen", h0(0x85e), Width::W;
+    /// `world` (h0+$40da): 1..6, 7 the bonus level.
+    World = "world", h0(0x40da), Width::L;
+    /// `rng_state` (h0+$160d4): the 64-bit RNG state, `rng_next`'s low long then its high long.
+    RngState = "rng_state", h0(0x160d4), Width::Bytes(8);
+    /// `camera_y` (h0+$16660): the camera's level y (docs/12).
+    CameraY = "camera_y", h0(0x16660), Width::L;
+    /// `camera_x` (h0+$16664): the camera's level x.
+    CameraX = "camera_x", h0(0x16664), Width::L;
+    /// `scroll_column` (h0+$172b0): the play-field column the vertical blank last scrolled to, as
+    /// the address of its first word in the shown buffer (docs/12 "Scroll").
+    ScrollColumn = "scroll_column", h0(0x172b0), Width::L;
+    /// `map_rows` (h0+$17334): one row above the in-RAM map.
+    MapRows = "map_rows", h0(0x17334), Width::L;
+    /// `level_map` (h1+$218e0): the map, 84 rows of 304 cells, `tile << 6 | marker`.
+    LevelMap = "level_map", h1(0x218e0), Width::Bytes(MAP_ROWS * MAP_ROW_CELLS * 2);
+}
 
 /// The entry for `id`.
 pub fn def(id: VarId) -> &'static VarDef {
-    LAYOUT
-        .iter()
-        .find(|d| d.id == id)
-        .expect("every VarId has a LAYOUT entry (tested)")
+    &LAYOUT[id as usize]
+}
+
+/// The index in [`LAYOUT`] of the entry covering `addr`, if any.
+pub fn index_of(addr: u32) -> Option<usize> {
+    let i = LAYOUT.partition_point(|d| d.addr <= addr).checked_sub(1)?;
+    (addr < LAYOUT[i].addr + LAYOUT[i].width.len()).then_some(i)
 }
 
 /// The original's memory as transplant reads it: one byte per CPU address.
@@ -259,6 +208,23 @@ mod tests {
             assert_eq!(LAYOUT.iter().filter(|d| d.id == *id).count(), 1, "{id:?}");
         }
         assert_eq!(LAYOUT.len(), VarId::ALL.len());
+        for (i, d) in LAYOUT.iter().enumerate() {
+            assert_eq!(d.id as usize, i, "{}", d.name);
+            assert_eq!(def(d.id).name, d.name);
+        }
+    }
+
+    #[test]
+    fn the_table_is_in_address_order_and_found_by_address() {
+        for w in LAYOUT.windows(2) {
+            assert!(w[0].addr < w[1].addr, "{} before {}", w[0].name, w[1].name);
+        }
+        for (i, d) in LAYOUT.iter().enumerate() {
+            assert_eq!(index_of(d.addr), Some(i), "{}", d.name);
+            assert_eq!(index_of(d.addr + d.width.len() - 1), Some(i), "{}", d.name);
+        }
+        assert_eq!(index_of(0), None);
+        assert_eq!(index_of(0xF0_0000), None);
     }
 
     #[test]

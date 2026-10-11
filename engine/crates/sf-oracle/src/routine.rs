@@ -359,6 +359,13 @@ impl Cpu68k {
         unsafe { ffi::sf_cpu_set_hw(self.raw.as_ptr(), on as i32) }
     }
 
+    /// In hardware mode, make a read of the byte at `addr` (a custom register or a CIA's) return
+    /// `value` from now on: the joystick (`JOY1DAT`, `$DFF00C`), the fire buttons (CIA-A PRA,
+    /// `$BFE001`). VHPOSR keeps stepping; every other hardware byte reads 0.
+    pub fn set_hardware_read(&mut self, addr: u32, value: u8) {
+        unsafe { ffi::sf_cpu_set_hw_read(self.raw.as_ptr(), addr, value) }
+    }
+
     /// Put a call's memory changes back: what [`Cpu68k::call`] undid, for a caller that runs a
     /// routine many times over and wants each run to see the last one's effects. Writes for which
     /// `keep(addr)` is false (the call's own stack, say) are left out.

@@ -76,6 +76,10 @@ typedef struct {
  * CIA writes are dropped. */
 void sf_cpu_set_hw(sf_cpu *c, int on);
 
+/* In hardware mode, what a read of the byte at `addr` (a custom register or a CIA's) returns from now
+ * on, until set again: a joystick's JOY1DAT, CIA-A's fire buttons. VHPOSR keeps counting. */
+void sf_cpu_set_hw_read(sf_cpu *c, uint32_t addr, uint8_t value);
+
 /* The custom-chip writes of the last call, in order. Valid until the next call. */
 size_t sf_cpu_hw_writes(const sf_cpu *c, const sf_hw_write **out);
 

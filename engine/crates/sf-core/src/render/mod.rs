@@ -38,6 +38,8 @@ pub struct DisplayData {
     /// Each world's tiles (16 × 16 colour indices), by [`World::ALL`] order: what widescreen's
     /// extra columns are drawn from.
     worlds: Vec<WorldDisplay>,
+    /// The game's hunk 0 as loaded ([`crate::mem::loaded_hunk0`]): the tables the mechanics read.
+    pub(crate) h0: Vec<u8>,
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
@@ -73,7 +75,18 @@ impl DisplayData {
                 tiles: w.tiles.tiles.clone(),
             })
             .collect();
-        DisplayData { h2, hero, worlds }
+        let h0 = game.map(crate::mem::loaded_hunk0).unwrap_or_default();
+        DisplayData {
+            h2,
+            hero,
+            worlds,
+            h0,
+        }
+    }
+
+    /// The game's hunk 0 as loaded: what the ported routines read the game's tables from.
+    pub fn h0(&self) -> &[u8] {
+        &self.h0
     }
 
     /// The world the `world` variable names: 1..6, 7 the bonus level.
@@ -154,7 +167,7 @@ impl<'a> Mem<'a> {
         Mem {
             state,
             data,
-            world: data.world(state.world),
+            world: data.world(state.world()),
         }
     }
 

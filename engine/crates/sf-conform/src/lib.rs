@@ -13,6 +13,7 @@ pub mod compare;
 pub mod disks;
 pub mod reference;
 pub mod report;
+pub mod routine;
 pub mod script;
 pub mod sync;
 

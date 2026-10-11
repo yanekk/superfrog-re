@@ -40,7 +40,7 @@ fn transplant_then_probe_returns_the_originals_values() {
         .collect();
     assert_eq!(game.probe(), want);
     // The title has seeded the RNG: a zero state would make this test vacuous.
-    assert_ne!(game.state().rng, Rng::default());
+    assert_ne!(game.state().rng(), Rng::default());
 }
 
 #[test]
