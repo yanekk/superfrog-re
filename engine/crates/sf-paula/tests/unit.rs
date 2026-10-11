@@ -256,3 +256,49 @@ fn writes_listed_after_the_frame_wrapped_land_at_the_next_frames_start() {
     let expected = CLOCKS_PER_FRAME as usize + 2 * CLOCKS_PER_LINE as usize + 0x0D;
     assert_eq!(ch[0], (expected, 0x10 * 64));
 }
+
+#[test]
+fn with_dma_off_the_cpu_plays_a_word_per_interrupt_and_intreq_lands_a_clock_late() {
+    // Interrupt mode: AUD0DAT from the CPU plays one word, raises the interrupt, and the channel
+    // stops at the word's end while the interrupt is pending. A DAT write then does nothing until
+    // INTREQ clears it, and an INTREQ write lands one clock after it is made (68000, vAmiga
+    // `Paula::pokeINTREQ`), so a DAT in the same clock is still ignored.
+    let line = CLOCKS_PER_LINE as usize;
+    let writes = [
+        at(0x9C, 0x0780, 10, 0),
+        at(0xA8, 64, 10, 1),
+        at(0xA6, 100, 10, 2),
+        at(0xAA, 0x1020, 20, 0),
+        at(0xAA, 0x5060, 30, 0),
+        at(0x9C, 0x0080, 40, 0),
+        at(0xAA, 0x7008, 40, 0),
+        at(0xAA, 0x3040, 40, 1),
+    ];
+    let (taps, _) = run(48_000, &writes, &Mem(vec![0; 16]), 1);
+    let (a, b) = (20 * line, 40 * line + 1);
+    assert_eq!(
+        changes(&taps[0]),
+        [
+            (a, 0x10 * 64),
+            (a + 100, 0x20 * 64),
+            (b, 0x30 * 64),
+            (b + 100, 0x40 * 64)
+        ]
+    );
+}
+
+#[test]
+fn dmacon_lands_two_clocks_after_its_write() {
+    // DMACON lands 2 clocks late (vAmiga `Agnus::pokeDMACON`). Written at hpos 225 it lands at the
+    // next line's clock 0, just after Agnus took that line's requests, so the channel's first
+    // request waits a line longer than one written at hpos 224.
+    let line = CLOCKS_PER_LINE as usize;
+    let mem = Mem::with(0x100, &[10, 20, 30, 40]);
+    for (hpos, first) in [(224, 2 * line + 0x0D), (225, 3 * line + 0x0D)] {
+        let mut writes = play(0, 0x100, 2, 428, 64);
+        writes.pop();
+        writes.push(at(0x96, 0x8201, 0, hpos));
+        let (taps, _) = run(48_000, &writes, &mem, 1);
+        assert_eq!(changes(&taps[0])[0], (first, 640), "DMACON at hpos {hpos}");
+    }
+}
