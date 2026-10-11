@@ -57,6 +57,8 @@ const FREE: usize = 0xd6;
 const FADE: usize = 0;
 const FADE_SPEED: usize = 1;
 const FADE_COUNT: usize = 2;
+/// Where the shadow copy lands at a fade's end: `sfx_steal` (`$13024`), in the effect block.
+const STRAY: usize = 0xc2;
 const fn sh(n: usize) -> usize {
     4 + n * 16
 }
@@ -189,7 +191,7 @@ impl AudioDriver {
     }
 
     /// The fade `music_fade_wait` starts (`$2001`) before it waits up to 100 frames for the music
-    /// to stop.
+    /// to stop; then it runs `music_stop` ([`AudioDriver::stop_music`]) whether or not it has.
     pub fn fade_out(&mut self) {
         self.shadow.set_w(FADE, 0x2001);
     }
@@ -666,7 +668,6 @@ impl AudioDriver {
         if self.shadow.w(FADE) != 0 {
             let k = self.shadow.b(FADE_COUNT).wrapping_sub(1);
             self.shadow.set_b(FADE_COUNT, k);
-            let mut apply = true;
             if (k as i8) < 0 {
                 self.shadow.set_b(FADE_COUNT, self.shadow.b(FADE_SPEED));
                 let ceiling = self.shadow.b(FADE).wrapping_sub(1);
@@ -674,15 +675,21 @@ impl AudioDriver {
                 if ceiling == 0 {
                     self.music_stop(data, out);
                     self.shadow.set_w(FADE, 0);
-                    apply = false;
+                    // `music_stop` leaves `a1` past its last clear, at `sfx_steal`, so the copy
+                    // below lands there in RAM instead of on Paula.
+                    for n in 0..4 {
+                        let s = sh(n);
+                        for i in 0..10 {
+                            self.sfx.set_b(STRAY + n * 16 + i, self.shadow.b(s + i));
+                        }
+                    }
+                    return;
                 }
             }
-            if apply {
-                let ceiling = (self.shadow.b(FADE) & 0x3f) as u16;
-                for n in 0..4 {
-                    if ceiling < self.shadow.w(sh(n) + 8) {
-                        self.shadow.set_w(sh(n) + 8, ceiling);
-                    }
+            let ceiling = (self.shadow.b(FADE) & 0x3f) as u16;
+            for n in 0..4 {
+                if ceiling < self.shadow.w(sh(n) + 8) {
+                    self.shadow.set_w(sh(n) + 8, ceiling);
                 }
             }
         }

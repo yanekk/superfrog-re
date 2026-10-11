@@ -27,6 +27,8 @@ const MUSIC_TICK: u32 = 0x13424;
 const MUSIC_DMA: u32 = 0x13cc4;
 const STREAM_TICK: u32 = 0x147e4;
 const SAMPLE_PLAY: u32 = 0x148b8;
+const START_FADE: u32 = 0x146ae;
+const FADE: u32 = H0 + 0x146e0;
 const STREAM_TABLE: u32 = 0x1491e;
 const ATTRACT_MODE: u32 = H0 + 0x18;
 const MUSIC_ON: u32 = H0 + 0x13420;
@@ -272,6 +274,27 @@ impl Pair {
         self.check(&format!("play_sample {k}"), theirs, ours);
     }
 
+    fn start_fade(&mut self, word: u16) {
+        let theirs = self.orig.call(START_FADE, word as u32, 0, 0);
+        self.ours.start_fade(word);
+        self.check(&format!("start_fade {word:#x}"), theirs, Vec::new());
+    }
+
+    /// `music_fade_wait` (`$1327a`) without its frame waits: the fade word, the frames (up to 100)
+    /// until the music stops, then the `music_stop` it falls into.
+    fn music_fade_wait(&mut self) {
+        self.orig.load(FADE, &[0x20, 0x01]);
+        self.ours.fade_out();
+        self.check("music_fade_wait", Vec::new(), Vec::new());
+        for _ in 0..100 {
+            if self.orig.byte(MUSIC_ON + 1) == 0 {
+                break;
+            }
+            self.tick();
+        }
+        self.music_stop();
+    }
+
     fn sfx_busy(&self, chan: u8) -> bool {
         let rec = [0x12f62, 0x12f88, 0x12fbc, 0x12ff0][chan as usize];
         self.orig.byte(H0 + rec) != 0 || self.orig.byte(H0 + rec + 1) != 0
@@ -486,6 +509,50 @@ fn effects_during_music_match_the_original() {
             p.tick();
         }
     }
+}
+
+/// The fades: `music_fade_wait`'s over a world's music, and `$146ae`'s with slower speeds and
+/// higher ceilings, with an effect holding a channel when it starts.
+#[test]
+fn fades_match_the_original() {
+    let mut fades = 0;
+    for (t, word) in [
+        (TuneId::World(2), None),
+        (TuneId::World(5), Some(0x4002)),
+        (TuneId::Bonus, Some(0x7f00)),
+        (TuneId::Title, Some(0x1003)),
+    ] {
+        let mut p = start_tune(t);
+        for _ in 0..300 {
+            p.tick();
+        }
+        if let Some(b) = bank_for(t) {
+            let bank = data().bank(b);
+            let e = (0..=255u8)
+                .find(|&i| bank[i as usize * 4..i as usize * 4 + 4] != [0; 4])
+                .unwrap();
+            p.play_sfx(e, 2);
+            p.tick();
+        }
+        match word {
+            None => p.music_fade_wait(),
+            Some(w) => {
+                p.start_fade(w);
+                let mut ticks = 0;
+                while p.ours.music_on() {
+                    p.tick();
+                    ticks += 1;
+                    assert!(ticks < 20_000, "{t:?}: the fade {w:#x} never ended");
+                }
+            }
+        }
+        assert!(!p.ours.music_on(), "{t:?}");
+        for _ in 0..10 {
+            p.tick();
+        }
+        fades += 1;
+    }
+    assert_eq!(fades, 4);
 }
 
 /// The title music on the full-system reference: the driver, transplanted at the first frame of

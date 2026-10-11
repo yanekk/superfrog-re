@@ -24,8 +24,9 @@ pub use sf_paula::PaulaWrite;
 
 /// The original's driver variables, as runs of hunk 0: `(h0 offset, length)`.
 pub mod vars {
-    /// `sfx_chan0..3` (`$12f62`, `$12f88`, `$12fbc`, `$12ff0`) and `sfx_steal` (`$13024`).
-    pub const SFX: (u32, usize) = (0x12f62, 0xc3);
+    /// `sfx_chan0..3` (`$12f62`, `$12f88`, `$12fbc`, `$12ff0`), `sfx_steal` (`$13024`) and the
+    /// unused bytes after it that the shadow copy at a fade's end lands on (to `$13060`).
+    pub const SFX: (u32, usize) = (0x12f62, 0xfe);
     /// `music_on` (`$13420`, a word) and the two bytes after it; `$13423` makes `F` speeds one slower.
     pub const MUSIC_ON: (u32, usize) = (0x13420, 4);
     /// The replayer: four channel records of `$2c` (`$144dc`), its globals (`$1458c`) and the

@@ -111,7 +111,7 @@ reproducing the 68000's word results.
 |---|---|---|---|
 | `music_start` | `$13126` | `play_music` / `music_start` | world intro, title, credits, slot machine, end sequence; nothing if music is on |
 | `music_stop` | `$132a0` | `stop_music` | the game's flow; also from the fade's end |
-| `music_fade_wait` | `$1327a` | `fade_out`, then the caller waits up to 100 frames for `music_on` to drop | between scenes |
+| `music_fade_wait` | `$1327a` | `fade_out`, then the caller waits up to 100 frames for `music_on` to drop, then `stop_music` (it falls into `music_stop`, so a fade that ended stops twice) | between scenes |
 | `$146ae` | | `start_fade(word)` | nothing in the listing refers to it |
 | `sfx_bank_init` | `$12a26` | `sfx_bank_init` | world loads, slot machine |
 | `sfx_play` | `$12a72` (`d0` effect, `d1` channel) | `play_sfx` | the frog, items, objects, slot machine |
@@ -130,7 +130,9 @@ itself at those points.
 
 - **Shadow copy**: for each channel music holds, pointer, length, period, volume from the shadow
   block (`$146e4`, 16 bytes a channel) to Paula, after the fade (`$146e0`: ceiling byte, frames per
-  step byte, counter) has capped each volume. The fade's end calls `music_stop`.
+  step byte, counter) has capped each volume. The fade's end calls `music_stop`, which leaves `a1`
+  at `sfx_steal` (`$13024`): that frame's copy goes to RAM from there (16 bytes a channel, to
+  `$1305e`, unused but for `sfx_steal`'s high byte), not to Paula.
 - **DMA stage**: if a note started this tick, DMACON switches the channels on; when a pattern ends
   the next position is taken; each music channel's shadow is pointed at its instrument's loop, which
   reaches Paula at the next tick's copy.
@@ -143,7 +145,7 @@ All in hunk 0; `sf_core::audio::vars` lists them and `AudioDriver::transplant` /
 
 | Block | Address | Bytes |
 |---|---|---|
-| effect channel records 0–3, `sfx_steal` | `$12f62` | `$c3` (records at +0, +$26, +$5a, +$8e) |
+| effect channel records 0–3, `sfx_steal`, the unused bytes the fade's end writes | `$12f62` | `$fe` (records at +0, +$26, +$5a, +$8e) |
 | `music_on` and the speed flag `$13423` | `$13420` | 4 |
 | replayer channels (4 × `$2c`), globals (`$1458c`), free bytes (`$145b2`) | `$144dc` | `$da` |
 | fade and shadow | `$146e0` | `$44` |
