@@ -38,6 +38,14 @@ public:
 
     sf_call_status status {};
 
+    // Hardware mode (sf_cpu_set_hw): custom-chip writes are recorded instead of refused, VHPOSR
+    // counts up on every read so raster waits end, and the CIAs read 0 and ignore writes.
+    bool hw = false;
+    u16 beam = 0;
+    std::vector<sf_hw_write> hwWrites;
+
+    static bool is_custom(u32 a) { return (a & 0xFFFE00) == 0xDFF000; }
+
     explicit FlatCpu(Amiga &ref) : Moira(ref), mem(SF_CPU_MEM_SIZE, 0), dirty(SF_CPU_MEM_SIZE / 64, 0) { }
 
     void fault(u32 a) {
@@ -50,13 +58,22 @@ public:
 
     u8 rd8(u32 a) {
         a &= kMemMask;
-        if (is_hardware(a)) { fault(a); return 0; }
+        if (is_hardware(a)) {
+            if (!hw) { fault(a); return 0; }
+            if (a == 0xDFF006 || a == 0xDFF007) return u8(beam++);
+            return 0;
+        }
         return mem[a];
     }
 
     void wr8(u32 a, u8 v) {
         a &= kMemMask;
-        if (is_hardware(a)) { fault(a); return; }
+        if (is_hardware(a)) {
+            if (!hw) { fault(a); return; }
+            // A byte written to a custom register reaches both halves of the data bus.
+            if (is_custom(a)) hwWrites.push_back({ u16(a & 0x1FE), u16(v << 8 | v) });
+            return;
+        }
         u64 bit = u64(1) << (a & 63);
         if (!(dirty[a >> 6] & bit)) {
             dirty[a >> 6] |= bit;
@@ -67,7 +84,14 @@ public:
     }
 
     u16 rd16(u32 a) { return u16(rd8(a) << 8 | rd8(a + 1)); }
-    void wr16(u32 a, u16 v) { wr8(a, u8(v >> 8)); wr8(a + 1, u8(v)); }
+    void wr16(u32 a, u16 v) {
+        if (hw && is_hardware(a & kMemMask)) {
+            if (is_custom(a & kMemMask)) hwWrites.push_back({ u16(a & 0x1FE), v });
+            return;
+        }
+        wr8(a, u8(v >> 8));
+        wr8(a + 1, u8(v));
+    }
 
     void rollback() {
         for (size_t i = jaddr.size(); i-- > 0;) {
@@ -80,6 +104,7 @@ public:
 
     void call(u32 entry, sf_regs *r, u32 sentinel, u64 max_instr, sf_call_status *out) {
         status = {};
+        hwWrites.clear();
         resetSsp = r->a[7];
         resetPc = entry;
         overrideVectors = true;
@@ -197,5 +222,13 @@ size_t sf_cpu_journal(const sf_cpu *c, const uint32_t **addrs, const uint8_t **o
 }
 
 void sf_cpu_rollback(sf_cpu *c) { c->cpu.rollback(); }
+
+void sf_cpu_set_hw(sf_cpu *c, int on) { c->cpu.hw = on != 0; }
+
+size_t sf_cpu_hw_writes(const sf_cpu *c, const sf_hw_write **out)
+{
+    *out = c->cpu.hwWrites.data();
+    return c->cpu.hwWrites.size();
+}
 
 }

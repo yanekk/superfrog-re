@@ -18,6 +18,10 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-11 | 📌 | T11: `Cpu68k::set_hardware(true)` runs routines that drive Paula: writes recorded in `hw_writes`, VHPOSR steps per read, CIAs read 0. Routines waiting on DMA or interrupts still time out. `Cpu68k::apply` keeps a call's memory changes. |
+| 2026-10-11 | 📌 | T11: Paula pointers are absolute, so files must sit where the game puts them: a world's module right after its bank's effects (`sfx_bank_init` sets h0+$9ec), the title's MUSC at the bank's own place. |
+| 2026-10-11 | 📌 | T11: the title's main loop writes DMACON $8020/$8400 and INTENA $4000/$c000 pairs around loading. The audio comparison filters them; whole-frame Paula comparison (T12 on) must expect them from non-sound code. |
+| 2026-10-11 | 📌 | T11, left alone: no `sf-core::layout` (T12) – driver variables are `sf_core::audio::vars` and docs/11. Final level's sound bank unchecked. The mixer's chip view needs the stream buffer (`stream_source`) and loaded files (T22). |
 | 2026-10-11 | 🐞 | T07 review: vAmiga's `Defaults::fallbacks()` fills a static map unlocked on first use; machines powered on in parallel could read it half-filled ("Invalid key: ROM_PATH", seen once). Fixed: `sf_amiga_new` sets up under a mutex. No other set-up path. |
 | 2026-10-11 | 🔄 | Owner, lag: conformance runs feed the original's 25 Hz pass schedule (from the oracle) to the engine; VBL work runs at one fixed point in a late pass; leftover divergence is reported as lag and re-synced. Normal play never lags. |
 | 2026-10-11 | 🔄 | Owner, RNG: the seed is part of the start. Transplants copy `rng_state` (h0+$160d4, 8 bytes); power-on conformance runs take the oracle's seed for that script; normal play seeds from the host clock. |

@@ -10,3 +10,6 @@ publish.workspace = true
 # The mixer against the reference emulator (tests/paula_vs_oracle.rs, T10).
 sf-oracle = { path = "../sf-oracle" }
 sf-paula = { path = "../sf-paula" }
+# The sound driver against the original's routines and the reference (tests/audio_driver.rs, T11).
+sf-core = { path = "../sf-core" }
+sf-disk = { path = "../sf-disk" }

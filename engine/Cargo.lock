@@ -89,6 +89,8 @@ dependencies = [
 name = "sf-conform"
 version = "0.1.0"
 dependencies = [
+ "sf-core",
+ "sf-disk",
  "sf-oracle",
  "sf-paula",
 ]
@@ -98,6 +100,7 @@ name = "sf-core"
 version = "0.1.0"
 dependencies = [
  "sf-assets",
+ "sf-paula",
 ]
 
 [[package]]
