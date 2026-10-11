@@ -10,3 +10,6 @@ publish.workspace = true
 # The mixer against the reference emulator (tests/paula_vs_oracle.rs, T10).
 sf-oracle = { path = "../sf-oracle" }
 sf-paula = { path = "../sf-paula" }
+# The asset decoders against the reference emulator (tests/graphics_vs_oracle.rs, T08).
+sf-assets = { path = "../sf-assets" }
+sf-disk = { path = "../sf-disk" }

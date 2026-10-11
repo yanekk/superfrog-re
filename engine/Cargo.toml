@@ -19,6 +19,10 @@ opt-level = 2
 [profile.dev.package.sf-paula]
 opt-level = 2
 
+# Decoding all of GameData (two IFF ANIMs, eight bob sheets) runs dozens of times in its tests.
+[profile.dev.package.sf-assets]
+opt-level = 2
+
 # Its oracle tests compare the mixer's output with the reference at every Paula clock.
 [profile.dev.package.sf-conform]
 opt-level = 2

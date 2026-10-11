@@ -12,8 +12,8 @@ the account is the commit message. Whoever writes a cell also fixes the over-bud
 **Plan reviewed:** 2026-10-10 — 7 fixed, 7 decided with the user
 
 **Status:** Plan written; nothing built.
-**Last updated:** 2026-10-10
-**Next `pir-work` will:** T00 oracle-spike, because every later test rests on the reference emulator; T01 and T02 can run beside it.
+**Last updated:** 2026-10-11
+**Next `pir-work` will:** review T08, then T09 asset-cache, which caches the `GameData` T08 builds.
 
 ## Tasks
 
@@ -30,7 +30,7 @@ done · ⛔ blocked, needs a human.
 | T05 | oracle-harness | T00, T01 | ✅ | |
 | T06 | routine-oracle | T04, T05 | ✅ | |
 | T07 | exe-map | T02, T04, T05 | ✅ | |
-| T08 | asset-decode | T04, T07 | ⬜ | |
+| T08 | asset-decode | T04, T07 | 🔍 | sf-assets: unpack, catalogue, decode (exes, tables, T7MP codec, tiles, palettes, pictures, sheets, font, ANIM); docs/10. 14 tests. Dev: oracle test in sf-conform/tests (threads barred). Dev: ChunkId has sector; catalogue from file_table. Dev: 30 maps (W6 second set). Dev: sound, intro, d1_c02, INFT kept raw. Dev: ANIM vs game's player, not a screen. Dev: W6/LB/LW not vs Python (its palette wrong). |
 | T09 | asset-cache | T03, T08 | ⬜ | |
 | T10 | paula-mixer | T01, T05 | ✅ | |
 | T11 | audio-driver | T06, T07 | ⬜ | |
@@ -57,7 +57,7 @@ done · ⛔ blocked, needs a human.
 A Notes cell holds what was built or what the review found, the test count, and one line per
 deviation from the task doc. A ✅ task's cell may be cut to one line once the next task has been reviewed.
 
-**Review queue:** *(empty)*
+**Review queue:** T08
 
 ## Blocked on the user
 
