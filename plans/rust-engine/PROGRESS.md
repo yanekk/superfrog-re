@@ -11,9 +11,9 @@ the account is the commit message. Whoever writes a cell also fixes the over-bud
 
 **Plan reviewed:** 2026-10-10 — 7 fixed, 7 decided with the user
 
-**Status:** Plan written; nothing built.
-**Last updated:** 2026-10-10
-**Next `pir-work` will:** T00 oracle-spike, because every later test rests on the reference emulator; T01 and T02 can run beside it.
+**Status:** Building; T01 and T03 done.
+**Last updated:** 2026-10-11
+**Next `pir-work` will:** T04 atn-decompressor (T03 done), beside T00 oracle-spike and T02 re-workbench.
 
 ## Tasks
 
@@ -25,7 +25,7 @@ done · ⛔ blocked, needs a human.
 | T00 | oracle-spike | — | ⬜ | |
 | T01 | rust-workspace | — | ✅ | |
 | T02 | re-workbench | — | ⬜ | |
-| T03 | disk-import | T01 | 🔍 | `sf-disk`: own zip reader + miniz_oxide (and adler2) on ALLOWED, hand SHA-1, carver port; 26 tests incl. real disks, Python-carver and inventory checks, fuzz. Deviations: extra `sha1.rs`; `Chunk.index` 1-based; zip-entry names reported as "entry in file"; sf-conform gains `read_disk_files`, `python_carve`. |
+| T03 | disk-import | T01 | ✅ | Review clean, no fix commit. SHA-1s matched `shasum`; zips from `zip`, `ditto` (with `__MACOSX`), a commented zip and data-descriptor entries all identify; mutations of carve rounding, duplicate detection and CRC check went red. Deviations held; message wording kept (spec only requires naming slot or file). |
 | T04 | atn-decompressor | T03 | ⬜ | |
 | T05 | oracle-harness | T00, T01 | ⬜ | |
 | T06 | routine-oracle | T04, T05 | ⬜ | |
@@ -57,7 +57,7 @@ done · ⛔ blocked, needs a human.
 A Notes cell holds what was built or what the review found, the test count, and one line per
 deviation from the task doc. A ✅ task's cell may be cut to one line once the next task has been reviewed.
 
-**Review queue:** T03
+**Review queue:** *(empty)*
 
 ## Blocked on the user
 
