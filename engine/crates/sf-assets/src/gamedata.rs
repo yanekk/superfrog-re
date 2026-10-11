@@ -3,6 +3,7 @@
 
 use std::collections::BTreeMap;
 use std::fmt;
+use std::str::FromStr;
 
 use sf_disk::{Adf, Chunk, DiskSet, DiskSlot, carve, decompress};
 
@@ -110,6 +111,33 @@ impl fmt::Display for LevelId {
     }
 }
 
+/// The ids the user types (`W1-1`): worlds 1–6, levels 1–4, the one-drive maps.
+impl FromStr for LevelId {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<LevelId, String> {
+        let bad = || format!("`{s}` is not a level id like W1-1 (worlds 1-6, levels 1-4)");
+        let (w, l) = s
+            .strip_prefix('W')
+            .and_then(|r| r.split_once('-'))
+            .ok_or_else(bad)?;
+        // Digits only: `parse` would also take a leading `+`.
+        let num = |d: &str| match d.as_bytes() {
+            [c @ b'0'..=b'9'] => Ok(c - b'0'),
+            _ => Err(bad()),
+        };
+        let (world, level) = (num(w)?, num(l)?);
+        if !(1..=6).contains(&world) || !(1..=4).contains(&level) {
+            return Err(bad());
+        }
+        Ok(LevelId {
+            world: World::ALL[world as usize - 1],
+            level,
+            alt: false,
+        })
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct LevelData {
     pub id: LevelId,
@@ -120,8 +148,9 @@ pub struct LevelData {
     pub extra: BTreeMap<String, Vec<u8>>,
 }
 
-/// The complete decoded content of the four disks.
-#[derive(Debug, Clone, PartialEq, Eq)]
+/// The complete decoded content of the four disks. `Default` is the empty one, for code whose
+/// tests need no content yet (`Game::new` before the mechanics read it).
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct GameData {
     pub levels: BTreeMap<LevelId, LevelData>,
     /// In [`World::ALL`] order.
@@ -552,5 +581,23 @@ impl GameData {
     /// The palette a level is drawn with.
     pub fn level_palette(&self, id: LevelId) -> Palette {
         self.world(id.world).palette
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn level_ids_round_trip_and_bad_ones_are_refused() {
+        let id: LevelId = "W3-2".parse().unwrap();
+        assert_eq!((id.world, id.level, id.alt), (World::W3, 2, false));
+        assert_eq!(id.to_string(), "W3-2");
+        assert_eq!("W6-4".parse::<LevelId>().unwrap().world, World::W6);
+        for bad in [
+            "W0-1", "W7-1", "W1-5", "1-1", "W1", "W1-x", "", "W+1-1", "W1-+2",
+        ] {
+            assert!(bad.parse::<LevelId>().is_err(), "{bad}");
+        }
     }
 }

@@ -34,7 +34,7 @@ done · ⛔ blocked, needs a human.
 | T09 | asset-cache | T03, T08 | ⬜ | |
 | T10 | paula-mixer | T01, T05 | ✅ | |
 | T11 | audio-driver | T06, T07 | ⬜ | |
-| T12 | core-state | T05, T06, T07 | ⬜ | |
+| T12 | core-state | T05, T06, T07 | ✅ | |
 | T13 | renderer | T08, T12 | ⬜ | |
 | T14 | frog-and-level | T06, T11, T12, T13 | ⬜ | |
 | T15 | items-and-scoring | T14 | ⬜ | |

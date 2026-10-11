@@ -5,11 +5,18 @@ edition.workspace = true
 publish.workspace = true
 
 [dependencies]
+# The engine under test and the types it shares with the oracle.
+sf-core = { path = "../sf-core" }
+sf-assets = { path = "../sf-assets" }
+sf-paula = { path = "../sf-paula" }
+# The original, run by the reference emulator (sf-oracle's dev-dependency on this crate is a
+# test-only cycle, which Cargo allows).
+sf-oracle = { path = "../sf-oracle" }
+# SHA-1 for the sync-point cache key.
+sf-disk = { path = "../sf-disk" }
+# Compresses the diff PNG (already in the workspace for sf-oracle's traces).
+miniz_oxide = "0.9.1"
+# Case files are TOML (T12 interface).
+toml = "0.9"
 
 [dev-dependencies]
-# The mixer against the reference emulator (tests/paula_vs_oracle.rs, T10).
-sf-oracle = { path = "../sf-oracle" }
-sf-paula = { path = "../sf-paula" }
-# The asset decoders against the reference emulator (tests/graphics_vs_oracle.rs, T08).
-sf-assets = { path = "../sf-assets" }
-sf-disk = { path = "../sf-disk" }

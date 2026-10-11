@@ -35,7 +35,7 @@ pub struct HiscoreEntry {
     pub rest: u32,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct Tables {
     /// `file_table`, d1_c03 h0+$cbfe: 95 entries of 6 bytes.
     pub file_table: Vec<FileEntry>,
