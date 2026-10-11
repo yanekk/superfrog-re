@@ -11,9 +11,9 @@ the account is the commit message. Whoever writes a cell also fixes the over-bud
 
 **Plan reviewed:** 2026-10-10 — 7 fixed, 7 decided with the user
 
-**Status:** T00–T04 done; T05 oracle harness implemented, awaiting review.
+**Status:** T00–T05 done; the oracle harness is reviewed.
 **Last updated:** 2026-10-11
-**Next `pir-work` will:** review T05 oracle-harness; then T06, T07 and T10, which wait on it.
+**Next `pir-work` will:** T06, T07 and T10, which waited on the oracle harness.
 
 ## Tasks
 
@@ -27,7 +27,7 @@ done · ⛔ blocked, needs a human.
 | T02 | re-workbench | — | ✅ | |
 | T03 | disk-import | T01 | ✅ | |
 | T04 | atn-decompressor | T03 | ✅ | |
-| T05 | oracle-harness | T00, T01 | 🔍 | vAmiga shim, `Amiga`, trace cache, `FrameInput`, `PaulaWrite`; 6 oracle + 13 unit + 3 Python tests, 11 s. Deviations: `step`/`cached_trace` return `Result`; `Joy::PORT1_BUTTON` added (intro click); shim built by build.rs; cache `vamiga/<commit>/<patch hash>/`; patches 0002–0003 for stepping and input re-seat; `audio` always empty (no taps). |
+| T05 | oracle-harness | T00, T01 | ✅ | Review: 3 fixes, each reproduced and test-locked: snapshot-start cache key lacked held input; same-key stores shared a temp file; two `oracle.sh` waiters could both take a stale lock. Fresh-cache build 2m43, then no-op; restore-reseat mutation caught; Copper/byte-write hook paths read-only. Deviations held. 8 sf-oracle unit + 6 oracle + 4 Python tests, ~15 s. |
 | T06 | routine-oracle | T04, T05 | ⬜ | |
 | T07 | exe-map | T02, T04, T05 | ⬜ | |
 | T08 | asset-decode | T04, T07 | ⬜ | |
@@ -57,7 +57,7 @@ done · ⛔ blocked, needs a human.
 A Notes cell holds what was built or what the review found, the test count, and one line per
 deviation from the task doc. A ✅ task's cell may be cut to one line once the next task has been reviewed.
 
-**Review queue:** T05
+**Review queue:** *(empty)*
 
 ## Blocked on the user
 

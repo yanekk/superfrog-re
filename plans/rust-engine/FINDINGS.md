@@ -18,6 +18,7 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-11 | 🐞 | T05 review sweep: `sf_conform::disks::python_decompress` uses scratch dir `sf-atn-ref-<pid>`, removed before use; two threads calling it at once would delete each other's disks. One caller per process today. Not fixed. |
 | 2026-10-11 | 📌 | vAmiga snapshots omit the joystick, mouse-button (2-frame debounced `Sticky`) and key-down state, and ports "detect" their device on first use. The shim pins mouse/joystick devices and re-seats held input on restore (patch 0003). |
 | 2026-10-11 | 📌 | Texture column for lores DIW position h is `4 * (h - 0x24)`: Denise's counter starts each line at HBLANK_MIN×2. Title window is DIWSTRT 0x2C81, 320×256; the crack intro uses a wider hires window. |
 | 2026-10-11 | 📌 | T05, worker-driven: port-1 click held at frames 1 000–1 004 gives the title by 4 500 (seen: frog in cape, ©1993 Team 17); a click at 300 is ignored. Release build ~430–490 frames/s. |
