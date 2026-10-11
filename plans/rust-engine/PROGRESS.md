@@ -12,7 +12,7 @@ the account is the commit message. Whoever writes a cell also fixes the over-bud
 **Plan reviewed:** 2026-10-10 — 7 fixed, 7 decided with the user
 
 **Status:** Plan written; nothing built.
-**Last updated:** 2026-10-10
+**Last updated:** 2026-10-11
 **Next `pir-work` will:** T00 oracle-spike, because every later test rests on the reference emulator; T01 and T02 can run beside it.
 
 ## Tasks
@@ -24,7 +24,7 @@ done · ⛔ blocked, needs a human.
 |---|---|---|---|---|
 | T00 | oracle-spike | — | ⬜ | |
 | T01 | rust-workspace | — | ⬜ | |
-| T02 | re-workbench | — | ⬜ | |
+| T02 | re-workbench | — | 🔍 | re_listing.py (amitools+capstone, labels, xrefs), symbols.toml seeded, Ghidra adopted: re_ghidra_import.py + SuperfrogSymbols.java, install-ghidra.sh, docs. 13 tests. Deviations: Ghidra is a brew formula, not cask; added tools/__init__.py so discover finds tools tests; raw ids d1_boot/d1_stage15; absent hunks become empty BSS (FINDINGS). |
 | T03 | disk-import | T01 | ⬜ | |
 | T04 | atn-decompressor | T03 | ⬜ | |
 | T05 | oracle-harness | T00, T01 | ⬜ | |
@@ -57,7 +57,7 @@ done · ⛔ blocked, needs a human.
 A Notes cell holds what was built or what the review found, the test count, and one line per
 deviation from the task doc. A ✅ task's cell may be cut to one line once the next task has been reviewed.
 
-**Review queue:** *(empty)*
+**Review queue:** T02
 
 ## Blocked on the user
 
