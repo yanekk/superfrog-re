@@ -208,6 +208,10 @@ sf_amiga *sf_amiga_new(const uint8_t *rom, size_t rom_len, char *err, size_t err
 {
     static std::once_flag installed;
     std::call_once(installed, [] { vamiga_custom_write_hook = hook; });
+    // vAmiga fills its static table of option defaults on first use without a lock; a machine set
+    // up on another thread meanwhile can read it half-filled ("Invalid key: ROM_PATH").
+    static std::mutex setting_up;
+    std::lock_guard<std::mutex> one_at_a_time(setting_up);
     auto a = std::make_unique<sf_amiga>();
     auto rc = guarded(err, err_len, "setting up the emulator", [&] {
         a->emu().initialize();
