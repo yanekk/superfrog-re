@@ -10,3 +10,5 @@ sf-disk = { path = "../sf-disk" }
 [dev-dependencies]
 # Finds the owner's disks (tests only; the levels and graphics tests need the real content).
 sf-conform = { path = "../sf-conform" }
+# Checks the hand-written BLAKE3 in src/blake3.rs (tests only; the crate itself builds with `cc`).
+blake3 = "1"
