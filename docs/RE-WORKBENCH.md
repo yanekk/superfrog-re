@@ -119,6 +119,47 @@ a data symbol has no size, or a kind or key is unknown. A symbol past the end of
 hunk is refused when that exe is listed. The same routine in several executables gets
 one entry per exe (see `atn_decompress`).
 
+## Differential-testing a routine
+
+Once a routine is read and ported, test the port against the original on many inputs.
+`sf_oracle::Cpu68k` runs one routine of the original alone on Moira (vAmiga's 68000
+core): flat 24-bit memory, no chipset, no Kickstart. Fill memory, `call` the routine
+with chosen registers, and compare what comes back with the port's answer.
+
+1. **Memory.** `Cpu68k::new(amiga.memory())` starts from a sync point of the full
+   oracle (the game's variables as they really are); `Cpu68k::new(AmigaMemory { .. })`
+   with zeroed RAM suits a self-contained routine. Then `load_exe(&exe, at)` places an
+   executable as the game's loader does (hunks back to back; `map.addr(n, off)` turns a
+   `symbols.toml` `hN+$off` into an address), or `write(addr, bytes)` places a raw
+   region or the routine's input.
+2. **Call.** `cpu.call(entry, regs, max_instr)` resets the CPU, pushes a return address
+   below `regs.a[7]` (give it a stack), and runs until the routine returns. It gives the
+   final registers, every byte changed as `(addr, old, new)`, and the instruction count.
+   Memory is put back afterwards, so one `Cpu68k` serves thousands of calls.
+3. **Errors.** `Timeout` once `max_instr` instructions have run; `CustomChipAccess { pc,
+   addr }` when the routine touches `$DFF000`–`$DFF1FF` or a CIA (`$BFxxxx`), which means
+   it belongs in a frame-conformance test on `sf_oracle::Amiga` instead;
+   `IllegalInstruction`, `Exception` and `Halted` for the rest.
+
+Example, the ATN! decompressor against its port (`engine/crates/sf-oracle/tests/routine.rs`
+runs it on all 103 chunks in about a second):
+
+```rust
+let mut cpu = Cpu68k::new(AmigaMemory { chip: vec![0; 512 << 10], slow: vec![0; 512 << 10] });
+cpu.write(0x1000, &disk1[0x400..0x1600]);         // d1_stage15, raw
+cpu.write(0x40_0000, &chunk.raw);                 // the input
+let mut regs = Regs::default();                   // sr = $2700
+(regs.a[0], regs.a[1], regs.a[7]) = (0x40_0000, 0x60_0000, 0x30_0000);
+let got = cpu.call(0x1000 + 0x2DA, regs, 200_000_000)?;   // atn_decompress
+assert_eq!(got.regs.d[0], 0xFFFF_FFFF);
+assert_eq!(got.bytes_after(&cpu, 0x60_0000, want.len()), sf_disk::decompress(&chunk.raw)?);
+```
+
+For a game-logic routine, generate the inputs (every value of a small state, or a few
+thousand seeded ones), write them where the routine reads them, call, and compare the
+port's result with `got.regs` and `got.writes`; a mismatch names the input that splits
+them.
+
 ## Tests
 
 `tools/test_re_listing.py` and `tools/test_re_ghidra_import.py`, run by the test command.
