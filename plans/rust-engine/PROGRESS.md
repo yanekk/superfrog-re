@@ -13,7 +13,7 @@ the account is the commit message. Whoever writes a cell also fixes the over-bud
 
 **Status:** Plan written; nothing built.
 **Last updated:** 2026-10-10
-**Next `pir-work` will:** T00 oracle-spike, because every later test rests on the reference emulator; T01 and T02 can run beside it.
+**Next `pir-work` will:** review T06.
 
 ## Tasks
 
@@ -28,7 +28,7 @@ done · ⛔ blocked, needs a human.
 | T03 | disk-import | T01 | ✅ | |
 | T04 | atn-decompressor | T03 | ✅ | |
 | T05 | oracle-harness | T00, T01 | ✅ | |
-| T06 | routine-oracle | T04, T05 | ⬜ | |
+| T06 | routine-oracle | T04, T05 | 🔍 | Moira compiled alone (own namespace, stub headers); flat 16 MB, journalled writes rolled back per call. 12 tests; ATN! matches sf-disk on all 103 chunks in ~1 s. Deviations: build.rs builds Moira, not oracle.sh; `load_exe` returns Result; CallError adds Exception, Halted; `writes` lists changed bytes only; sf-conform dev-dep finds disks. |
 | T07 | exe-map | T02, T04, T05 | ⬜ | |
 | T08 | asset-decode | T04, T07 | ⬜ | |
 | T09 | asset-cache | T03, T08 | ⬜ | |
@@ -57,7 +57,7 @@ done · ⛔ blocked, needs a human.
 A Notes cell holds what was built or what the review found, the test count, and one line per
 deviation from the task doc. A ✅ task's cell may be cut to one line once the next task has been reviewed.
 
-**Review queue:** *(empty)*
+**Review queue:** T06
 
 ## Blocked on the user
 

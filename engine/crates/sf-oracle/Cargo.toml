@@ -15,6 +15,10 @@ miniz_oxide = "0.9.1"
 
 [build-dependencies]
 # Compiles the C++ shim over the vAmiga core.
-cc = "1"
+cc = { version = "1", features = ["parallel"] }
 # SHA-1 of the patch set, to find the build tools/setup/oracle.sh made (same hash as the script).
 sf-disk = { path = "../sf-disk" }
+
+[dev-dependencies]
+# Finds the owner's disks for the ATN! cross-check (tests only; sf-conform has no dependencies).
+sf-conform = { path = "../sf-conform" }

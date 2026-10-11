@@ -87,3 +87,52 @@ impl ErrBuf {
         String::from_utf8_lossy(&bytes).into_owned()
     }
 }
+
+// The routine runner (`shim/moira_shim.h`).
+
+#[repr(C)]
+pub struct SfCpu {
+    _private: [u8; 0],
+}
+
+pub const SF_CPU_MEM_SIZE: usize = 0x100_0000;
+
+#[repr(C)]
+#[derive(Clone, Copy, Default)]
+pub struct SfRegs {
+    pub d: [u32; 8],
+    pub a: [u32; 8],
+    pub sr: u16,
+}
+
+pub const SF_CALL_RETURNED: u32 = 0;
+pub const SF_CALL_TIMEOUT: u32 = 1;
+pub const SF_CALL_CUSTOM: u32 = 2;
+pub const SF_CALL_EXCEPTION: u32 = 3;
+pub const SF_CALL_HALTED: u32 = 4;
+
+#[repr(C)]
+#[derive(Clone, Copy, Default)]
+pub struct SfCallStatus {
+    pub status: u32,
+    pub pc: u32,
+    pub addr: u32,
+    pub vector: u16,
+    pub instr: u64,
+}
+
+unsafe extern "C" {
+    pub fn sf_cpu_new() -> *mut SfCpu;
+    pub fn sf_cpu_free(c: *mut SfCpu);
+    pub fn sf_cpu_mem(c: *mut SfCpu) -> *mut u8;
+    pub fn sf_cpu_call(
+        c: *mut SfCpu,
+        entry: u32,
+        regs: *mut SfRegs,
+        sentinel: u32,
+        max_instr: u64,
+        out: *mut SfCallStatus,
+    );
+    pub fn sf_cpu_journal(c: *const SfCpu, addrs: *mut *const u32, olds: *mut *const u8) -> usize;
+    pub fn sf_cpu_rollback(c: *mut SfCpu);
+}
