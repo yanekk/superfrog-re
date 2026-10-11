@@ -26,7 +26,7 @@ done · ⛔ blocked, needs a human.
 | T01 | rust-workspace | — | ✅ | |
 | T02 | re-workbench | — | ✅ | |
 | T03 | disk-import | T01 | ✅ | |
-| T04 | atn-decompressor | T03 | ⬜ | |
+| T04 | atn-decompressor | T03 | 🔍 | `sf_disk::decompress` ported from the 68k routine; identical on 103/103, stragglers decode with next sector. 4 tests (reference, stragglers, malformed, 10k fuzz with counting allocator). Deviations: added `AtnError::TooLarge` (decomp_size ≥ carver bound); Python runner lives in `sf-conform` (purity test); fuzz in own `tests/atn_fuzz.rs`. |
 | T05 | oracle-harness | T00, T01 | ⬜ | |
 | T06 | routine-oracle | T04, T05 | ⬜ | |
 | T07 | exe-map | T02, T04, T05 | ⬜ | |
@@ -57,7 +57,7 @@ done · ⛔ blocked, needs a human.
 A Notes cell holds what was built or what the review found, the test count, and one line per
 deviation from the task doc. A ✅ task's cell may be cut to one line once the next task has been reviewed.
 
-**Review queue:** *(empty)*
+**Review queue:** T04
 
 ## Blocked on the user
 

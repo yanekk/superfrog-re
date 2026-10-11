@@ -18,6 +18,8 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-11 | 📌 | Stragglers `d1_c16`, `d2_c39`, `d4_c16`: the 46-byte trailer at `comp_size` runs past the carved sector. With the next sector appended both decoders agree; `d4_c16` is a 300×84 T7MP level. Carvers unchanged; T08/T09 must extend. |
+| 2026-10-11 | 📌 | The purity test scans pure crates' `tests/` too: code there that runs Python or touches files belongs in `sf-conform` (`python_carve`, `python_decompress`). |
 | 2026-10-11 | 📌 | capstone m68k prints a pc-relative operand as opcode+2+disp, wrong by 2 after `movem`'s mask or `btst #n`. T02 review fixed `re_listing.py`; sweep found no other disassembler in the repo. |
 | 2026-10-11 | 📌 | T02: Ghidra adopted. Ghidra 12.0 (brew formula, not cask) and the ghidra-amiga extension were already installed, contrary to DESIGN §5. Headless import takes 6–30 s and needs JAVA_HOME (openjdk@21). |
 | 2026-10-11 | 🐞 | amitools: `HunkReader.read_mem` breaks on bytes (use `read_file_obj` with BytesIO). `HunkRelocate` raises IndexError on `d1_c03` and `d3_c04`, which declare four hunks but carry two. Fixed by adding empty BSS hunks; no own parser. |

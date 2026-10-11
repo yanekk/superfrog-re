@@ -13,7 +13,7 @@ const SECTOR: usize = 512;
 const HEADER: usize = 12;
 /// The Python carver's sanity bounds, kept identical so both find the same chunks.
 const MAX_COMP: u32 = 900_000;
-const MAX_DECOMP: u32 = 4_000_000;
+pub(crate) const MAX_DECOMP: u32 = 4_000_000;
 
 /// One `ATN!` chunk as it sits on the disk, still compressed.
 #[derive(Clone, PartialEq, Eq)]
