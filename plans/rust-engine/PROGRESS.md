@@ -13,7 +13,7 @@ the account is the commit message. Whoever writes a cell also fixes the over-bud
 
 **Status:** Plan written; nothing built.
 **Last updated:** 2026-10-10
-**Next `pir-work` will:** T00 oracle-spike, because every later test rests on the reference emulator; T01 and T02 can run beside it.
+**Next `pir-work` will:** T11 audio-driver and T13 renderer, both now unblocked; T22 app-rig waits on T13.
 
 ## Tasks
 
@@ -31,7 +31,7 @@ done · ⛔ blocked, needs a human.
 | T06 | routine-oracle | T04, T05 | ✅ | |
 | T07 | exe-map | T02, T04, T05 | ✅ | |
 | T08 | asset-decode | T04, T07 | ✅ | |
-| T09 | asset-cache | T03, T08 | 🔍 | Cache codec, `decide`, hand-ported BLAKE3; 9 tests. Fresh import 287 ms, cache decode 43 ms (20 MB). Deviations: BLAKE3 hand-written in `src/blake3.rs` (crate builds with `cc`, off allowlist; crate is a dev-dep check). Speed test in `sf-conform/tests/asset_cache_speed.rs` (purity bans clocks in sf-assets tests). |
+| T09 | asset-cache | T03, T08 | ✅ | Review clean, no fix commit. Codec, `decide`, hand BLAKE3 (crate pulls `cc`); 9+2 tests; import 246 ms vs decode 32 ms. Probed header-field flips (all detected), decide wording over 5 disk sets; hash-check and Reimport mutations went red; both deviations held by executed checks. |
 | T10 | paula-mixer | T01, T05 | ✅ | |
 | T11 | audio-driver | T06, T07 | ⬜ | |
 | T12 | core-state | T05, T06, T07 | ✅ | |
@@ -57,7 +57,7 @@ done · ⛔ blocked, needs a human.
 A Notes cell holds what was built or what the review found, the test count, and one line per
 deviation from the task doc. A ✅ task's cell may be cut to one line once the next task has been reviewed.
 
-**Review queue:** T09
+**Review queue:** —
 
 ## Blocked on the user
 
