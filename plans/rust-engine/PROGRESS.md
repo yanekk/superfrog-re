@@ -24,7 +24,7 @@ done · ⛔ blocked, needs a human.
 |---|---|---|---|---|
 | T00 | oracle-spike | — | ⬜ | |
 | T01 | rust-workspace | — | ✅ | |
-| T02 | re-workbench | — | ⬜ | |
+| T02 | re-workbench | — | ✅ | |
 | T03 | disk-import | T01 | ⬜ | |
 | T04 | atn-decompressor | T03 | ⬜ | |
 | T05 | oracle-harness | T00, T01 | ⬜ | |
