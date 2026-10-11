@@ -18,6 +18,12 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-11 | 🐞 | T05 review sweep: `sf_conform::disks::python_decompress` uses scratch dir `sf-atn-ref-<pid>`, removed before use; two threads calling it at once would delete each other's disks. One caller per process today. Not fixed. |
+| 2026-10-11 | 📌 | vAmiga snapshots omit the joystick, mouse-button (2-frame debounced `Sticky`) and key-down state, and ports "detect" their device on first use. The shim pins mouse/joystick devices and re-seats held input on restore (patch 0003). |
+| 2026-10-11 | 📌 | Texture column for lores DIW position h is `4 * (h - 0x24)`: Denise's counter starts each line at HBLANK_MIN×2. Title window is DIWSTRT 0x2C81, 320×256; the crack intro uses a wider hires window. |
+| 2026-10-11 | 📌 | T05, worker-driven: port-1 click held at frames 1 000–1 004 gives the title by 4 500 (seen: frog in cape, ©1993 Team 17); a click at 300 is ignored. Release build ~430–490 frames/s. |
+| 2026-10-11 | 📌 | Stepping vAmiga without its thread: set `Thread::state` by hand (switchState throws unless launched), mark HALTED before `~VAmiga`, disable the unread message queue. `oracle.sh` core build: 2 min. |
+| 2026-10-11 | 📌 | sf-oracle locates disks itself (`OracleConfig::locate`), duplicating `sf_conform::disks`: depending on sf-conform would cycle once sf-conform uses the oracle. Merge if a shared shell crate appears. |
 | 2026-10-11 | 📌 | T00 review: after `.vasnap` restore, RAM and Paula match for 3 199 frames, but the 912×313 texture differs on row 312 only (vblank filler `0x444444` vs `0x222222`), every other frame. Compare the display window only, as T05 plans. |
 | 2026-10-11 | 📌 | T00 review, worker-driven probe: with no input, frame 11 200 is still the crack intro; a port-1 click at frame 3 000 gives the title at 6 350–6 700. Two 11 300-frame runs identical. KS 2.04 boots; Kick.rom refused. |
 | 2026-10-11 | 📌 | T00, worker-driven: captured frame 11 200 (KS 1.3, power-on) shows the Superfrog title as the original: frog in cape, "©1993 Team 17 Software Ltd", "Lucozade is a trademark". Attract mode, tables, credits, World 1-1 play also seen. |

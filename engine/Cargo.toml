@@ -9,3 +9,8 @@ members = ["crates/*"]
 version = "0.1.0"
 edition = "2024"
 publish = false
+
+# The oracle's tests step the emulator thousands of frames and hash 1 MB of RAM per frame; its Rust
+# side is optimised even in test builds so the test block stays within its time budget (T05).
+[profile.dev.package.sf-oracle]
+opt-level = 2
