@@ -11,9 +11,9 @@ the account is the commit message. Whoever writes a cell also fixes the over-bud
 
 **Plan reviewed:** 2026-10-10 — 7 fixed, 7 decided with the user
 
-**Status:** Plan written; nothing built.
-**Last updated:** 2026-10-10
-**Next `pir-work` will:** T00 oracle-spike, because every later test rests on the reference emulator; T01 and T02 can run beside it.
+**Status:** T00–T04 done; T05 oracle harness implemented, awaiting review.
+**Last updated:** 2026-10-11
+**Next `pir-work` will:** review T05 oracle-harness; then T06, T07 and T10, which wait on it.
 
 ## Tasks
 
@@ -27,7 +27,7 @@ done · ⛔ blocked, needs a human.
 | T02 | re-workbench | — | ✅ | |
 | T03 | disk-import | T01 | ✅ | |
 | T04 | atn-decompressor | T03 | ✅ | |
-| T05 | oracle-harness | T00, T01 | ⬜ | |
+| T05 | oracle-harness | T00, T01 | 🔍 | vAmiga shim, `Amiga`, trace cache, `FrameInput`, `PaulaWrite`; 6 oracle + 13 unit + 3 Python tests, 11 s. Deviations: `step`/`cached_trace` return `Result`; `Joy::PORT1_BUTTON` added (intro click); shim built by build.rs; cache `vamiga/<commit>/<patch hash>/`; patches 0002–0003 for stepping and input re-seat; `audio` always empty (no taps). |
 | T06 | routine-oracle | T04, T05 | ⬜ | |
 | T07 | exe-map | T02, T04, T05 | ⬜ | |
 | T08 | asset-decode | T04, T07 | ⬜ | |
@@ -57,7 +57,7 @@ done · ⛔ blocked, needs a human.
 A Notes cell holds what was built or what the review found, the test count, and one line per
 deviation from the task doc. A ✅ task's cell may be cut to one line once the next task has been reviewed.
 
-**Review queue:** *(empty)*
+**Review queue:** T05
 
 ## Blocked on the user
 
