@@ -6,5 +6,5 @@ publish.workspace = true
 
 [dependencies]
 sf-assets = { path = "../sf-assets" }
-# PaulaWrite, the event the driver produces (shared with the mixer and the oracle).
+# PaulaWrite, the sound chip's event that FrameOut carries (pure, already on the allowlist).
 sf-paula = { path = "../sf-paula" }

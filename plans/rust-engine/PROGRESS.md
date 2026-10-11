@@ -13,7 +13,7 @@ the account is the commit message. Whoever writes a cell also fixes the over-bud
 
 **Status:** Plan written; nothing built.
 **Last updated:** 2026-10-11
-**Next `pir-work` will:** the next ⬜ task whose dependencies are ✅ (T08 or T12).
+**Next `pir-work` will:** the next ⬜ task whose dependencies are ✅ (T09 or T13).
 
 ## Tasks
 
@@ -30,11 +30,11 @@ done · ⛔ blocked, needs a human.
 | T05 | oracle-harness | T00, T01 | ✅ | |
 | T06 | routine-oracle | T04, T05 | ✅ | |
 | T07 | exe-map | T02, T04, T05 | ✅ | |
-| T08 | asset-decode | T04, T07 | ⬜ | |
+| T08 | asset-decode | T04, T07 | ✅ | |
 | T09 | asset-cache | T03, T08 | ⬜ | |
 | T10 | paula-mixer | T01, T05 | ✅ | |
 | T11 | audio-driver | T06, T07 | ✅ | Review: one defect fixed, the fade's end wrote Paula where the original's copy lands in RAM at sfx_steal; new fade conformance test locks it. Seven deviations held. Probed against the disassembly; mutations of row repeat and priority caught, divu-overflow branch unreachable. Driver variables listed in docs/11, not yet in layout (T12). |
-| T12 | core-state | T05, T06, T07 | ⬜ | |
+| T12 | core-state | T05, T06, T07 | ✅ | |
 | T13 | renderer | T08, T12 | ⬜ | |
 | T14 | frog-and-level | T06, T11, T12, T13 | ⬜ | |
 | T15 | items-and-scoring | T14 | ⬜ | |

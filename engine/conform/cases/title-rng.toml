@@ -1,0 +1,6 @@
+# The title screen, idle, comparing the modelled variables only. The title's eye-blink timers
+# call rng_range when they run out (h0+$12de, h0+$134c); from frame 4 410 the RNG holds still
+# for 50 frames, which the engine's placeholder scene reproduces. Picture and Paula wait for T20.
+sync = { script = "boot-to-title", frame = 4410 }
+frames = 50
+compare = ["vars"]

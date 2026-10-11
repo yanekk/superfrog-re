@@ -61,9 +61,14 @@ every frame:
 findable, since a picture difference usually shows up frames after the variable that caused it. The
 comparison runner reports the first frame and the first variable that differ.
 
-Whether the original ever runs its main loop slower than once per frame (lag), and whether its
-randomness depends on CPU timing, are not yet known; T07 measures both. If either is true, the
-consequence for this definition is a decision for the owner (PLAN.md, open decisions).
+Lag and randomness (T07 measured both; owner, 2026-10-11). In a level the original's main loop runs
+a 25 Hz pass every second frame and sometimes overruns it (docs/08 "Lag"). Conformance runs feed the
+original's schedule to the engine: `Game::step_paced(input, Pacing)`, where `Pacing::Late` says the
+original's pass was still running at that frame's vertical blank, read from the oracle; the engine
+then runs the interrupt's work at one fixed point in the late pass, and divergence left over is
+reported as lag and re-synced. Normal play (`Game::step`) is always `Pacing::OnTime`: it never lags.
+The RNG is seeded once from a clock, so the seed is part of the start: a transplant copies
+`rng_state`, a power-on conformance run takes the oracle's seed, normal play seeds from the host clock.
 
 ### 2.2 Disks and import
 
@@ -232,8 +237,9 @@ the shell side or read the data from the disks, never to relax the test.
 ### 3.3 The decision function
 
 ```
-Game::new(data: &GameData, start: Start) -> Game          // Start::PowerOn | Start::Transplant(AmigaMemory) | Start::Level(LevelId)
-Game::step(&mut self, input: FrameInput) -> FrameOut       // one PAL frame
+Game::new(data: &GameData, start: Start) -> Game          // Start::PowerOn { seed } | Start::Transplant(AmigaMemory) | Start::Level(LevelId)
+Game::step(&mut self, input: FrameInput) -> FrameOut       // one PAL frame of normal play
+Game::step_paced(&mut self, input, pacing: Pacing) -> FrameOut  // on the original's schedule (§2.1)
 FrameOut { picture: Picture, paula: Vec<PaulaWrite>, disk_prompt: Option<DiskPrompt> }  // Picture = indexed pixels + per-line palette; disk_prompt added by T21
 Game::render(&self, view: View) -> Picture                  // View { extra_columns_each_side }
 Game::probe(&self) -> Vec<(VarId, u32)>                     // values at the original's addresses
