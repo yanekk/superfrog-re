@@ -11,9 +11,9 @@ the account is the commit message. Whoever writes a cell also fixes the over-bud
 
 **Plan reviewed:** 2026-10-10 — 7 fixed, 7 decided with the user
 
-**Status:** T01 implemented, awaiting review.
+**Status:** T01 done.
 **Last updated:** 2026-10-11
-**Next `pir-work` will:** review T01; T00 oracle-spike and T02 continue beside it.
+**Next `pir-work` will:** T03 disk-import (T01 done); T00 oracle-spike and T02 continue beside it.
 
 ## Tasks
 
@@ -23,7 +23,7 @@ done · ⛔ blocked, needs a human.
 | # | Task | Depends on | State | Notes |
 |---|---|---|---|---|
 | T00 | oracle-spike | — | ⬜ | |
-| T01 | rust-workspace | — | 🔍 | Rust 1.99.0 pinned; 8-crate workspace; purity test, `disk_dir`, no-disk-data check. 13 Rust + 3 Python tests. Deviations: purity also flags float and >16-byte byte-string literals, scans pure crates' tests, checks deps transitively; disk check also indexes raw ADFs, scans untracked files, skips <4-distinct-byte blocks; install script `brew link`s keg-only rustup. |
+| T01 | rust-workspace | — | ✅ | Reviewed: two fixes. Purity lexer misread `5usize` as a float exponent; disk check missed copies whose block also occurs earlier on the disks (78/300 probe copies). Both reproduced, fixed, tested. Mutated array limit and run threshold: red. Deviations all held by probes (test-dir scan, transitive deps, ADF and untracked hits). 13 Rust + 4 Python tests. |
 | T02 | re-workbench | — | ⬜ | |
 | T03 | disk-import | T01 | ⬜ | |
 | T04 | atn-decompressor | T03 | ⬜ | |
@@ -57,7 +57,7 @@ done · ⛔ blocked, needs a human.
 A Notes cell holds what was built or what the review found, the test count, and one line per
 deviation from the task doc. A ✅ task's cell may be cut to one line once the next task has been reviewed.
 
-**Review queue:** T01
+**Review queue:** *(empty)*
 
 ## Blocked on the user
 
