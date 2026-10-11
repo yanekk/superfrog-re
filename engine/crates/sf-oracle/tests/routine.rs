@@ -166,6 +166,18 @@ fn a_byte_rewritten_with_its_own_value_is_not_a_write() {
 }
 
 #[test]
+fn the_stack_pointer_keeps_all_32_bits() {
+    // rts: returns at once, a7 back where it was, high byte and all.
+    let mut cpu = with_code(&[0x4E75]);
+    for a7 in [0, 0x8030_0000] {
+        let mut r = Regs::default();
+        r.a[7] = a7;
+        let got = cpu.call(0x2000, r, 10).unwrap();
+        assert_eq!((got.regs.a[7], got.instr), (a7, 1), "a7 = {a7:08x}");
+    }
+}
+
+#[test]
 fn max_instr_stops_an_infinite_loop() {
     // loop: bra.s loop
     let mut cpu = with_code(&[0x60FE]);

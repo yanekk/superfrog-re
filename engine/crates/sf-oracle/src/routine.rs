@@ -356,7 +356,9 @@ impl Cpu68k {
         regs: Regs,
         max_instr: u64,
     ) -> Result<CallResult, CallError> {
-        let sp = regs.a[7].wrapping_sub(4) & (MEM_SIZE as u32 - 1);
+        // The CPU gets all 32 bits of the stack pointer; memory sees the low 24, as the bus does.
+        let sp_reg = regs.a[7].wrapping_sub(4);
+        let sp = sp_reg & (MEM_SIZE as u32 - 1);
         assert!(
             sp as usize + 4 <= MEM_SIZE,
             "the stack pointer must leave room below it for the return address"
@@ -369,7 +371,7 @@ impl Cpu68k {
             a: regs.a,
             sr: regs.sr,
         };
-        r.a[7] = sp;
+        r.a[7] = sp_reg;
         let mut st = SfCallStatus::default();
         unsafe {
             ffi::sf_cpu_call(
