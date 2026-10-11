@@ -13,7 +13,7 @@ the account is the commit message. Whoever writes a cell also fixes the over-bud
 
 **Status:** Plan written; nothing built.
 **Last updated:** 2026-10-11
-**Next `pir-work` will:** T00 oracle-spike, because every later test rests on the reference emulator; T01 can run beside it (T02 done).
+**Next `pir-work` will:** T00 oracle-spike, because every later test rests on the reference emulator; T01 and T02 are done.
 
 ## Tasks
 
@@ -23,7 +23,7 @@ done · ⛔ blocked, needs a human.
 | # | Task | Depends on | State | Notes |
 |---|---|---|---|---|
 | T00 | oracle-spike | — | ⬜ | |
-| T01 | rust-workspace | — | ⬜ | |
+| T01 | rust-workspace | — | ✅ | |
 | T02 | re-workbench | — | ✅ | Review: fixed pc-relative targets 2 bytes short after movem/btst #n, and the sweep swallowing atn_decompress in d1_c01/d3_c01 (now resyncs at every symbol); a test locks each. Probed d1_c03 listing, real Ghidra import, discovery; relocation mutation went red. Deviations held. 15 tests. |
 | T03 | disk-import | T01 | ⬜ | |
 | T04 | atn-decompressor | T03 | ⬜ | |

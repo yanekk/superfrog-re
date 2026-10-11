@@ -1,0 +1,11 @@
+[package]
+name = "sf-app"
+version.workspace = true
+edition.workspace = true
+publish.workspace = true
+
+[[bin]]
+name = "superfrog"
+path = "src/main.rs"
+
+[dependencies]
