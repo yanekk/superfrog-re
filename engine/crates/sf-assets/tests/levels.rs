@@ -273,6 +273,40 @@ fn a_damaged_chunk_is_refused_by_name() {
     assert!(e.to_string().contains("ANHD operation 7"), "{e}");
 }
 
+/// A later frame carrying a `BMHD` of another size is refused, not drawn into buffers sized for
+/// the first frame (it panicked).
+#[test]
+fn an_anim_frame_resized_mid_file_is_refused() {
+    let id = named("END2", 0);
+    let b = chunk(id);
+    let forms: Vec<usize> = b
+        .windows(4)
+        .enumerate()
+        .filter(|(_, w)| *w == b"FORM")
+        .map(|(i, _)| i)
+        .collect();
+    // The outer FORM ANIM, frame 0's FORM ILBM, then frame 1's.
+    let f1 = forms[2];
+    assert_eq!(&b[f1 + 8..f1 + 12], b"ILBM");
+    let mut bmhd = [0u8; 28];
+    bmhd[..4].copy_from_slice(b"BMHD");
+    bmhd[4..8].copy_from_slice(&20u32.to_be_bytes());
+    bmhd[8..10].copy_from_slice(&320u16.to_be_bytes());
+    bmhd[10..12].copy_from_slice(&600u16.to_be_bytes());
+    bmhd[16] = 5;
+    bmhd[18] = 1;
+    let mut c = b[..f1 + 12].to_vec();
+    c.extend_from_slice(&bmhd);
+    c.extend_from_slice(&b[f1 + 12..]);
+    for at in [0, f1] {
+        let len = u32::from_be_bytes(c[at + 4..at + 8].try_into().unwrap()) + 28;
+        c[at + 4..at + 8].copy_from_slice(&len.to_be_bytes());
+    }
+    let e = decode_anim(AnimId::End2, id, &c).unwrap_err();
+    assert_eq!(e.chunk, id);
+    assert!(e.to_string().contains("BMHD"), "{e}");
+}
+
 /// The pure decoders on every prefix of a real file (sampled) never panic.
 #[test]
 fn decoders_never_panic_on_a_prefix() {

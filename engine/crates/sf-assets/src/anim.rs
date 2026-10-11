@@ -74,6 +74,13 @@ pub fn decode_anim(id: AnimId, chunk_id: ChunkId, bytes: &[u8]) -> Result<Anim, 
         while k < form.len() {
             let (t, p, n) = chunk(&f, k)?;
             match &t.0 {
+                // The buffers are sized by the first frame's; a later one may only repeat it.
+                b"BMHD" if !frames.is_empty() && header != Some(p) => {
+                    return Err(bad(format!(
+                        "frame {}: a BMHD of another size",
+                        frames.len()
+                    )));
+                }
                 b"BMHD" => header = Some(p),
                 b"CMAP" => {
                     for (i, c) in p.chunks_exact(3).take(32).enumerate() {
