@@ -1308,7 +1308,7 @@ hunk = 0
 offset = 0x1607a
 name = "rng_seed"
 kind = "func"
-note = "rng_state = (d0, d1 + d0)"
+note = "rng_state = (d0, d1 + d0), then runs on into rng_next (no rts)"
 
 [[sym]]
 exe = "d1_c03"

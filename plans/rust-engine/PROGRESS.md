@@ -13,7 +13,7 @@ the account is the commit message. Whoever writes a cell also fixes the over-bud
 
 **Status:** Plan written; nothing built.
 **Last updated:** 2026-10-10
-**Next `pir-work` will:** T00 oracle-spike, because every later test rests on the reference emulator; T01 and T02 can run beside it.
+**Next `pir-work` will:** review T12 core-state (🔍); T13, T14, T20 and T22 build on its `Game`, `LAYOUT` and runner.
 
 ## Tasks
 
@@ -34,7 +34,7 @@ done · ⛔ blocked, needs a human.
 | T09 | asset-cache | T03, T08 | ⬜ | |
 | T10 | paula-mixer | T01, T05 | ✅ | |
 | T11 | audio-driver | T06, T07 | ⬜ | |
-| T12 | core-state | T05, T06, T07 | ⬜ | |
+| T12 | core-state | T05, T06, T07 | 🔍 | LAYOUT/State/Rng, placeholder Scene, `Game::step_paced(Pacing)`, sf-conform runner and CLI; title-rng case green; 30 tests. Deviations: AtLevel only W1-1 (passwords are T20); `PictureDiff` struct, not PathBuf; `Bytes(n)` probed as longs; `Start::PowerOn{seed}`; `case.rs`, `conform/cases/`; GameData/LevelId stubs for T08. |
 | T13 | renderer | T08, T12 | ⬜ | |
 | T14 | frog-and-level | T06, T11, T12, T13 | ⬜ | |
 | T15 | items-and-scoring | T14 | ⬜ | |
@@ -57,7 +57,7 @@ done · ⛔ blocked, needs a human.
 A Notes cell holds what was built or what the review found, the test count, and one line per
 deviation from the task doc. A ✅ task's cell may be cut to one line once the next task has been reviewed.
 
-**Review queue:** *(empty)*
+**Review queue:** T12
 
 ## Blocked on the user
 
