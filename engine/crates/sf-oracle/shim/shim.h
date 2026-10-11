@@ -27,6 +27,20 @@ typedef struct {
     uint16_t hpos;
 } sf_custom_write;
 
+/* One new value on a channel's DAC (Paula's penhi/penlo): the channel 0..3, the sample byte, the
+ * volume 0..64 it is played at, and the beam position. The DAC holds it until the next one. */
+typedef struct {
+    uint8_t channel;
+    int8_t sample;
+    uint16_t volume;
+    uint16_t vpos;
+    uint16_t hpos;
+} sf_audio_tap;
+
+/* The host rate the core's own mixer runs at: stereo, channels 0/3 hard left and 1/2 hard right, no
+ * filter, no adaptive rate, nearest-sample resampling. */
+#define SF_AUDIO_RATE 48000
+
 /* Input bits for sf_amiga_step. Directions, fire: the joystick in port 2. PORT1_BUTTON: the left
  * mouse button in port 1 (the same pin as a port-1 joystick's fire). */
 enum {
@@ -56,6 +70,17 @@ int sf_amiga_step(sf_amiga *a, uint32_t joy, const uint8_t keys[16], char *err, 
 /* The writes to the Paula-related registers made during the last step, in order: DMACON (0x96),
  * INTENA (0x9A), INTREQ (0x9C), ADKCON (0x9E) and AUD0..3 (0xA0..0xDE). Valid until the next step. */
 size_t sf_amiga_paula_writes(const sf_amiga *a, const sf_custom_write **out);
+
+/* The DAC values the four channels took during the last step, in order. Valid until the next step. */
+size_t sf_amiga_audio_taps(const sf_amiga *a, const sf_audio_tap **out);
+
+/* The core's own mix of the last step at SF_AUDIO_RATE: `2 * n` floats, left then right, for the
+ * returned n. Valid until the next step. */
+size_t sf_amiga_audio_out(const sf_amiga *a, const float **out);
+
+/* How many lines the frame the last step ran has: 313 for a long frame, 312 for a short one. Agnus
+ * alternates them while BPLCON0's LACE bit is set and keeps the last one when it is cleared. */
+int sf_amiga_frame_lines(const sf_amiga *a);
 
 /* The finished frame: `*stride` 32-bit entries per row (one per super-hires pixel, 0xAARRGGBB with
  * each channel the OCS 4-bit value times 17), `*rows` rows, row = vertical beam position, entry

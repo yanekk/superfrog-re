@@ -33,6 +33,9 @@ fn main() {
     println!("cargo:rerun-if-changed=patches");
     println!("cargo:rerun-if-changed=shim/shim.cpp");
     println!("cargo:rerun-if-changed=shim/shim.h");
+    println!("cargo:rerun-if-changed=shim/moira_shim.cpp");
+    println!("cargo:rerun-if-changed=shim/moira_shim.h");
+    println!("cargo:rerun-if-changed=shim/moira-stub");
     println!("cargo:rerun-if-changed={}", dest.join(".done").display());
     if !dest.join(".done").exists() {
         panic!(
@@ -63,6 +66,7 @@ fn main() {
         }
     }
     build.compile("sfshim");
+    build_moira(&dest);
 
     for lib in read_lines(&dest.join("libs.txt")) {
         let lib = Path::new(&lib);
@@ -80,6 +84,36 @@ fn main() {
     println!("cargo:rustc-link-lib=dylib=c++");
     println!("cargo:rustc-link-lib=framework=CoreMIDI");
     println!("cargo:rustc-link-lib=framework=CoreFoundation");
+}
+
+/// The routine runner (T06): Moira compiled alone from the fetched vAmiga tree, with
+/// `shim/moira-stub` standing in for the two vAmiga headers it includes, and its `vamiga` namespace
+/// renamed so it cannot collide with the Moira inside libVACore. None of vAmiga's other headers are
+/// on the include path.
+fn build_moira(dest: &Path) {
+    let moira = dest.join("src/Core/Components/CPU/Moira");
+    let mut build = cc::Build::new();
+    build
+        .cpp(true)
+        .std("c++20")
+        .include("shim/moira-stub")
+        .include(&moira)
+        .include("shim")
+        .define("vamiga", "sf_moira")
+        .define("NDEBUG", None)
+        .opt_level(2)
+        .warnings(false)
+        .file("shim/moira_shim.cpp");
+    for f in [
+        "Moira.cpp",
+        "MoiraCore68000.cpp",
+        "MoiraCore68010.cpp",
+        "MoiraCore68020.cpp",
+        "MoiraDebugger.cpp",
+    ] {
+        build.file(moira.join(f));
+    }
+    build.compile("sfmoira");
 }
 
 fn read_lines(path: &Path) -> Vec<String> {

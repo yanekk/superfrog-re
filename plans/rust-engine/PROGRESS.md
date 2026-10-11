@@ -13,7 +13,7 @@ the account is the commit message. Whoever writes a cell also fixes the over-bud
 
 **Status:** Plan written; nothing built.
 **Last updated:** 2026-10-11
-**Next `pir-work` will:** T08 (needs T07) and, with T06, T11 and T12. A plan review re-splits T16–T18 before T16 (owner, 2026-10-11).
+**Next `pir-work` will:** T08, T11 and T12 (T06 and T07 are done). A plan review re-splits T16–T18 before T16 (owner, 2026-10-11).
 
 ## Tasks
 
@@ -28,11 +28,11 @@ done · ⛔ blocked, needs a human.
 | T03 | disk-import | T01 | ✅ | |
 | T04 | atn-decompressor | T03 | ✅ | |
 | T05 | oracle-harness | T00, T01 | ✅ | |
-| T06 | routine-oracle | T04, T05 | ⬜ | |
+| T06 | routine-oracle | T04, T05 | ✅ | |
 | T07 | exe-map | T02, T04, T05 | ✅ | docs/08–09, 168 symbols, 8 oracle tests; object types W1 12, W2 17, W3 18, W4 23, W5 11, W6 11, bonus 15. Review: fixed vAmiga set-up race (parallel power-on, "Invalid key: ROM_PATH"); probed boundary PCs, mutated `cpu()` SSP (red); symbols cross-checked. Boss and late-straggler claims read-only. PLAN.md split awaits owner's plan review. |
 | T08 | asset-decode | T04, T07 | ⬜ | |
 | T09 | asset-cache | T03, T08 | ⬜ | |
-| T10 | paula-mixer | T01, T05 | ⬜ | |
+| T10 | paula-mixer | T01, T05 | ✅ | |
 | T11 | audio-driver | T06, T07 | ⬜ | |
 | T12 | core-state | T05, T06, T07 | ⬜ | |
 | T13 | renderer | T08, T12 | ⬜ | |

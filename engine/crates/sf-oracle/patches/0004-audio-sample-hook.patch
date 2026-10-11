@@ -1,0 +1,32 @@
+diff --git a/Core/Components/Paula/Audio/StateMachine.cpp b/Core/Components/Paula/Audio/StateMachine.cpp
+--- a/Core/Components/Paula/Audio/StateMachine.cpp
++++ b/Core/Components/Paula/Audio/StateMachine.cpp
+@@ -14,6 +14,10 @@
+ #include "utl/io.h"
+ 
+ namespace vamiga {
++
++// superfrog-re (sf-oracle): called whenever a channel's DAC takes a new value (penhi/penlo), with
++// the channel, the sample byte, the volume and the beam position. Null unless a client installs it.
++void (*vamiga_audio_sample_hook)(int channel, i8 sample, u16 volume, isize vpos, isize hpos) = nullptr;
+ 
+ template <isize nr>
+ StateMachine<nr>::StateMachine(Amiga& ref) : SubComponent(ref)
+@@ -158,6 +162,8 @@
+ 
+     i8 sample = (i8)HI_BYTE(buffer);
+     i16 scaled = (i16)(sample * audvol);
++
++    if (vamiga_audio_sample_hook) vamiga_audio_sample_hook(int(nr), sample, audvol, agnus.pos.v, agnus.pos.h);
+     
+     logmsg(LOG_AUD, "penhi: %d %d\n", sample, scaled);
+ 
+@@ -183,6 +189,8 @@
+     i8 sample = (i8)LO_BYTE(buffer);
+     i16 scaled = (i16)(sample * audvol);
+ 
++    if (vamiga_audio_sample_hook) vamiga_audio_sample_hook(int(nr), sample, audvol, agnus.pos.v, agnus.pos.h);
++
+     logmsg(LOG_AUD, "penlo: %d %d\n", sample, scaled);
+ 
+     if (!sampler.isFull()) {
