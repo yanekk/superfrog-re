@@ -29,7 +29,7 @@ done · ⛔ blocked, needs a human.
 | T04 | atn-decompressor | T03 | ✅ | |
 | T05 | oracle-harness | T00, T01 | ✅ | |
 | T06 | routine-oracle | T04, T05 | ✅ | |
-| T07 | exe-map | T02, T04, T05 | ⬜ | |
+| T07 | exe-map | T02, T04, T05 | ✅ | |
 | T08 | asset-decode | T04, T07 | ⬜ | |
 | T09 | asset-cache | T03, T08 | ⬜ | |
 | T10 | paula-mixer | T01, T05 | ✅ | |
