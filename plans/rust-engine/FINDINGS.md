@@ -18,6 +18,8 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-12 | 📌 | T13 review: owner added T31 render-remaining-levels. T13 renders 25 of 29 levels; W6's alt maps 2–4 need DF1–DF3 (oracle has df0 only) and the final level has no level code (password entries 24–27 all lead to the bonus level). |
+| 2026-10-12 | 📌 | T13 review: `late_redraw` excuses a differing pixel wherever an alternative differs from end-of-frame, not where it matches the original (strict matching fails 10 of 25 cases on genuine mixed frames). A renderer defect confined to changed regions is skipped, not caught. |
 | 2026-10-11 | 🔄 | Owner, T13: the two display buffers (h3+$10600, $22f30) are engine state; the play field renders from them, the map only for widescreen. T14–T18 must port the original's tile, animation and bob blits into them. Save states grow ~150 KB. |
 | 2026-10-11 | 📌 | T13: ~4% of level frames have late redraws (copper, panel or shown buffer rewritten after the beam). Transplant render tests list and skip them; stepping conformance (T14 on) must still match them, e.g. by applying blits in beam order. |
 | 2026-10-11 | 📌 | T13: LAYOUT now carries the level's display (copper list, panel, both buffers, map, camera, ~230 KB). A vars-comparing case in a level diverges until T14's mechanics write them. |

@@ -13,7 +13,7 @@ the account is the commit message. Whoever writes a cell also fixes the over-bud
 
 **Status:** Plan written; nothing built.
 **Last updated:** 2026-10-10
-**Next `pir-work` will:** T00 oracle-spike, because every later test rests on the reference emulator; T01 and T02 can run beside it.
+**Next `pir-work` will:** T09, T11 and T31 (T31 unblocked by T13); T14 and T20 then wait only on T11.
 
 ## Tasks
 
@@ -35,7 +35,7 @@ done · ⛔ blocked, needs a human.
 | T10 | paula-mixer | T01, T05 | ✅ | |
 | T11 | audio-driver | T06, T07 | ⬜ | |
 | T12 | core-state | T05, T06, T07 | ✅ | |
-| T13 | renderer | T08, T12 | 🔍 | Copper/Denise/sprite renderer, 25 render cases (~9 200 frames equal, ~0.4 ms/frame), 8 new tests. Deviations: play field from display buffers in state, not the map (owner); oracle test in sf-conform; Picture keeps T12 fields plus `splits`; minimal `Scene::Level`; no colour cycling exists; W6 alt maps and final level unreachable; late-redraw frames skipped. |
+| T13 | renderer | T08, T12 | ✅ | Review: widescreen panicked for 130+ extra columns, fixed (signed `Picture.left`, n=150 test). Deviations held: buffers as state (owner), no colour cycling (all 25 levels measured), no final-level code. 25 of 29 levels; rest is T31 (owner). Mutated sprite delay/colour/priority and copper wake: caught. ~0.4 ms/frame measured. |
 | T14 | frog-and-level | T06, T11, T12, T13 | ⬜ | |
 | T15 | items-and-scoring | T14 | ⬜ | |
 | T16 | enemies-worlds-1-3 | T15 | ⬜ | |
@@ -53,11 +53,12 @@ done · ⛔ blocked, needs a human.
 | T28 | level-override | T14, T24 | ⬜ | |
 | T29 | app-drill | T21, T25, T26, T27, T28 | ⬜ | |
 | T30 | acceptance | T29 | ⬜ | |
+| T31 | render-remaining-levels | T13 | ⬜ | Added by T13 review (owner): W6 alt maps 2–4 and the final level, rendered against the original. |
 
 A Notes cell holds what was built or what the review found, the test count, and one line per
 deviation from the task doc. A ✅ task's cell may be cut to one line once the next task has been reviewed.
 
-**Review queue:** T13
+**Review queue:** *(empty)*
 
 ## Blocked on the user
 
