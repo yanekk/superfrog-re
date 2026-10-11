@@ -15,6 +15,18 @@ custom **trackloader** disk (typical Team 17). The DOS bootblock on disks 1 & 3
 exists only so the disk boots; its code is a custom loader (see
 [`02-boot-chain.md`](02-boot-chain.md)).
 
+## Accepted images (SHA-1)
+
+The Rust importer (`engine/crates/sf-disk/src/identify.rs`) accepts exactly these four ADFs,
+the "[cr CSL]" set, by SHA-1 of the 901,120-byte image (zipped or raw):
+
+| Disk | SHA-1 of the `.adf` |
+|------|---------------------|
+| 1 | `14f177b59787c3c8a667e6c9ac78ce02874f59f7` |
+| 2 | `c5528eac0c09fed318cb25fa8d75069b780e44f0` |
+| 3 | `99ac304d5665991d7f9b2e792e7e8d2762ff5aa4` |
+| 4 | `f5ef23973fb5d5822224738aceda0091e795382c` |
+
 ## The `ATN!` container
 
 All game data is a back-to-back sequence of **sector-aligned `ATN!` chunks**:
