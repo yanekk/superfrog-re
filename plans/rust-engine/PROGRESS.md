@@ -23,7 +23,7 @@ done · ⛔ blocked, needs a human.
 | # | Task | Depends on | State | Notes |
 |---|---|---|---|---|
 | T00 | oracle-spike | — | ⬜ | |
-| T01 | rust-workspace | — | ⬜ | |
+| T01 | rust-workspace | — | ✅ | |
 | T02 | re-workbench | — | ⬜ | |
 | T03 | disk-import | T01 | ⬜ | |
 | T04 | atn-decompressor | T03 | ⬜ | |
