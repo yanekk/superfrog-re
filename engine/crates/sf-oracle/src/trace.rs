@@ -32,7 +32,14 @@ impl SyncPoint {
     fn key(&self) -> String {
         match self {
             SyncPoint::PowerOn => "power-on".to_string(),
-            SyncPoint::Snapshot(s) => format!("snapshot {} {}", s.frame, sha1_hex(&s.bytes)),
+            // The held input is restored beside the bytes, which do not carry it (shim.cpp).
+            SyncPoint::Snapshot(s) => format!(
+                "snapshot {} {:02x} {:032x} {}",
+                s.frame,
+                s.input.joy.bits(),
+                s.input.keys.0,
+                sha1_hex(&s.bytes)
+            ),
         }
     }
 }
@@ -482,6 +489,26 @@ mod tests {
             trace_key("c-p", "rom", "disks", &SyncPoint::PowerOn, &s, 11),
         ] {
             assert_ne!(k, base);
+        }
+        // A snapshot start is keyed by its frame and by the input then held, which restore
+        // re-seats and the snapshot's bytes do not carry, as well as by its bytes.
+        let snap_key = |f: fn(&mut Snapshot)| {
+            let mut sn = Snapshot {
+                frame: 5,
+                input: FrameInput::NONE,
+                bytes: vec![1, 2],
+            };
+            f(&mut sn);
+            trace_key("c-p", "rom", "disks", &SyncPoint::Snapshot(sn), &s, 10)
+        };
+        let snap_base = snap_key(|_| {});
+        for k in [
+            snap_key(|sn| sn.frame = 6),
+            snap_key(|sn| sn.bytes = vec![1, 3]),
+            snap_key(|sn| sn.input = FrameInput::key(0x19)),
+            snap_key(|sn| sn.input = FrameInput::joy(Joy::FIRE)),
+        ] {
+            assert_ne!(k, snap_base);
         }
     }
 
