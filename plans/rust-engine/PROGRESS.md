@@ -13,7 +13,7 @@ the account is the commit message. Whoever writes a cell also fixes the over-bud
 
 **Status:** Plan written; nothing built.
 **Last updated:** 2026-10-10
-**Next `pir-work` will:** T09, T11 and T31 (T31 unblocked by T13); T14 and T20 then wait only on T11.
+**Next `pir-work` will:** T14 frog-and-level, T20 front-end, T22 app-rig and T31 render-remaining-levels, all unblocked once T13 merges.
 
 ## Tasks
 
@@ -31,9 +31,9 @@ done · ⛔ blocked, needs a human.
 | T06 | routine-oracle | T04, T05 | ✅ | |
 | T07 | exe-map | T02, T04, T05 | ✅ | |
 | T08 | asset-decode | T04, T07 | ✅ | |
-| T09 | asset-cache | T03, T08 | ⬜ | |
+| T09 | asset-cache | T03, T08 | ✅ | |
 | T10 | paula-mixer | T01, T05 | ✅ | |
-| T11 | audio-driver | T06, T07 | ⬜ | |
+| T11 | audio-driver | T06, T07 | ✅ | |
 | T12 | core-state | T05, T06, T07 | ✅ | |
 | T13 | renderer | T08, T12 | ✅ | Review: widescreen panicked for 130+ extra columns, fixed (signed `Picture.left`, n=150 test). Deviations held: buffers as state (owner), no colour cycling (all 25 levels measured), no final-level code. 25 of 29 levels; rest is T31 (owner). Mutated sprite delay/colour/priority and copper wake: caught. ~0.4 ms/frame measured. |
 | T14 | frog-and-level | T06, T11, T12, T13 | ⬜ | |
