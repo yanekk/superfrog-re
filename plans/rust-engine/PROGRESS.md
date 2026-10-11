@@ -13,7 +13,7 @@ the account is the commit message. Whoever writes a cell also fixes the over-bud
 
 **Status:** Plan written; nothing built.
 **Last updated:** 2026-10-11
-**Next `pir-work` will:** T00 oracle-spike, because every later test rests on the reference emulator; T01 and T02 can run beside it.
+**Next `pir-work` will:** T00 oracle-spike, because every later test rests on the reference emulator; T01 can run beside it (T02 done).
 
 ## Tasks
 
@@ -24,7 +24,7 @@ done · ⛔ blocked, needs a human.
 |---|---|---|---|---|
 | T00 | oracle-spike | — | ⬜ | |
 | T01 | rust-workspace | — | ⬜ | |
-| T02 | re-workbench | — | 🔍 | re_listing.py (amitools+capstone, labels, xrefs), symbols.toml seeded, Ghidra adopted: re_ghidra_import.py + SuperfrogSymbols.java, install-ghidra.sh, docs. 13 tests. Deviations: Ghidra is a brew formula, not cask; added tools/__init__.py so discover finds tools tests; raw ids d1_boot/d1_stage15; absent hunks become empty BSS (FINDINGS). |
+| T02 | re-workbench | — | ✅ | Review: fixed pc-relative targets 2 bytes short after movem/btst #n, and the sweep swallowing atn_decompress in d1_c01/d3_c01 (now resyncs at every symbol); a test locks each. Probed d1_c03 listing, real Ghidra import, discovery; relocation mutation went red. Deviations held. 15 tests. |
 | T03 | disk-import | T01 | ⬜ | |
 | T04 | atn-decompressor | T03 | ⬜ | |
 | T05 | oracle-harness | T00, T01 | ⬜ | |
@@ -57,7 +57,7 @@ done · ⛔ blocked, needs a human.
 A Notes cell holds what was built or what the review found, the test count, and one line per
 deviation from the task doc. A ✅ task's cell may be cut to one line once the next task has been reviewed.
 
-**Review queue:** T02
+**Review queue:** *(empty)*
 
 ## Blocked on the user
 
