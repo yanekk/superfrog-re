@@ -25,7 +25,7 @@ done · ⛔ blocked, needs a human.
 | T00 | oracle-spike | — | ⬜ | |
 | T01 | rust-workspace | — | ✅ | |
 | T02 | re-workbench | — | ⬜ | |
-| T03 | disk-import | T01 | ⬜ | |
+| T03 | disk-import | T01 | 🔍 | `sf-disk`: own zip reader + miniz_oxide (and adler2) on ALLOWED, hand SHA-1, carver port; 26 tests incl. real disks, Python-carver and inventory checks, fuzz. Deviations: extra `sha1.rs`; `Chunk.index` 1-based; zip-entry names reported as "entry in file"; sf-conform gains `read_disk_files`, `python_carve`. |
 | T04 | atn-decompressor | T03 | ⬜ | |
 | T05 | oracle-harness | T00, T01 | ⬜ | |
 | T06 | routine-oracle | T04, T05 | ⬜ | |
@@ -57,7 +57,7 @@ done · ⛔ blocked, needs a human.
 A Notes cell holds what was built or what the review found, the test count, and one line per
 deviation from the task doc. A ✅ task's cell may be cut to one line once the next task has been reviewed.
 
-**Review queue:** *(empty)*
+**Review queue:** T03
 
 ## Blocked on the user
 

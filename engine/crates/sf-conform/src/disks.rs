@@ -61,6 +61,88 @@ pub fn main_checkout() -> Result<PathBuf, String> {
         .ok_or_else(|| format!("git common dir {} has no parent", common.display()))
 }
 
+/// The disk files in the folder `disk_dir` finds, as (file name, bytes), in disk order. Only the
+/// `.zip`/`.adf` files whose name says `disk N of 4` are read.
+pub fn read_disk_files() -> Result<Vec<(String, Vec<u8>)>, String> {
+    let dir = disk_dir()?;
+    let mut files = Vec::new();
+    for e in std::fs::read_dir(&dir).map_err(|e| format!("{}: {e}", dir.display()))? {
+        let path = e.map_err(|e| e.to_string())?.path();
+        let name = path
+            .file_name()
+            .unwrap_or_default()
+            .to_string_lossy()
+            .into_owned();
+        let lower = name.to_lowercase();
+        if (lower.ends_with(".zip") || lower.ends_with(".adf"))
+            && (1..=4).any(|n| lower.contains(&format!("disk {n} of 4")))
+        {
+            let bytes = std::fs::read(&path).map_err(|e| format!("{}: {e}", path.display()))?;
+            files.push((name, bytes));
+        }
+    }
+    files.sort();
+    Ok(files)
+}
+
+/// One chunk as `tools/atn.py` carves it: offset, decompressed size, compressed size, the length
+/// of the carved bytes and their SHA-1.
+pub type PyChunk = (u32, u32, u32, usize, String);
+
+/// The chunks the Python carver (`carve_chunks` in `tools/atn.py`) finds in `adf`, run in the
+/// worktree's venv (the test block's setup makes it).
+pub fn python_carve(adf: &[u8]) -> Result<Vec<PyChunk>, String> {
+    use std::io::Write;
+    use std::process::Stdio;
+    let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../..");
+    let python = root.join("venv/bin/python");
+    let script = "import sys, hashlib\n\
+                  sys.path.insert(0, sys.argv[1])\n\
+                  from atn import carve_chunks\n\
+                  for o, d, c, b in carve_chunks(sys.stdin.buffer.read()):\n    \
+                  print(o, d, c, len(b), hashlib.sha1(b).hexdigest())\n";
+    let mut child = Command::new(&python)
+        .arg("-c")
+        .arg(script)
+        .arg(root.join("tools"))
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .map_err(|e| {
+            format!(
+                "could not run {} ({e}); run the test block's setup",
+                python.display()
+            )
+        })?;
+    child
+        .stdin
+        .take()
+        .expect("piped stdin")
+        .write_all(adf)
+        .map_err(|e| format!("writing to the Python carver: {e}"))?;
+    let out = child.wait_with_output().map_err(|e| e.to_string())?;
+    if !out.status.success() {
+        return Err(format!(
+            "the Python carver failed: {}",
+            String::from_utf8_lossy(&out.stderr).trim()
+        ));
+    }
+    String::from_utf8_lossy(&out.stdout)
+        .lines()
+        .map(|l| {
+            let f: Vec<&str> = l.split_whitespace().collect();
+            let num = |i: usize| f.get(i).and_then(|v| v.parse::<u64>().ok());
+            match (num(0), num(1), num(2), num(3), f.get(4)) {
+                (Some(o), Some(d), Some(c), Some(n), Some(h)) if f.len() == 5 => {
+                    Ok((o as u32, d as u32, c as u32, n as usize, h.to_string()))
+                }
+                _ => Err(format!("unexpected line from the Python carver: {l}")),
+            }
+        })
+        .collect()
+}
+
 /// `None` if `dir` holds all four disks (zipped or raw), else what is wrong with it.
 fn missing_disks(dir: &Path) -> Option<String> {
     let entries = match std::fs::read_dir(dir) {
