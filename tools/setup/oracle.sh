@@ -8,8 +8,9 @@
 # (sf-oracle's build.rs computes the same one), so changing a patch builds afresh beside the old one.
 #
 # No-op when the build is there. Parallel worktrees build once: a lock directory holds the builder's
-# PID, the others wait for it, and a lock left by a dead process is taken over. Writes nothing in the
-# repository. Overrides (for tests): SUPERFROG_CACHE (default ~/.cache/superfrog-re), VAMIGA_URL.
+# PID, the others wait for it, and a lock left by a dead process is taken over by one of them.
+# Writes nothing in the repository. Overrides (for tests): SUPERFROG_CACHE (default
+# ~/.cache/superfrog-re), VAMIGA_URL, ORACLE_LOCK_POLL (seconds between looks at the lock, default 2).
 set -eu
 
 ROOT=$(cd "$(dirname "$0")/../.." && pwd)
@@ -17,6 +18,7 @@ ORACLE="$ROOT/engine/crates/sf-oracle"
 COMMIT=$(tr -d ' \n' < "$ORACLE/VAMIGA_COMMIT")
 CACHE=${SUPERFROG_CACHE:-$HOME/.cache/superfrog-re}
 URL=${VAMIGA_URL:-https://github.com/dirkwhoffmann/vAmiga.git}
+POLL=${ORACLE_LOCK_POLL:-2}
 
 PATCHES=$(ls "$ORACLE"/patches/*.patch 2>/dev/null | LC_ALL=C sort || true)
 if [ -n "$PATCHES" ]; then
@@ -38,25 +40,34 @@ fi
 mkdir -p "$(dirname "$DEST")"
 
 # Take the lock, or wait for whoever holds it; a lock whose PID is dead is stale and taken over.
-waited=0
+started=$(date +%s)
+said=-60
 while ! mkdir "$LOCK" 2>/dev/null; do
     holder=$(cat "$LOCK/pid" 2>/dev/null || true)
-    if [ -n "$holder" ] && ! kill -0 "$holder" 2>/dev/null; then
-        say "taking over a stale lock left by PID $holder"
-        rm -rf "$LOCK"
+    # Every waiter sees the dead PID; only the one holding $LOCK.takeover removes the lock, and only
+    # while it still names that PID, so a lock another waiter has just taken is never removed.
+    if [ -n "$holder" ] && ! kill -0 "$holder" 2>/dev/null && mkdir "$LOCK.takeover" 2>/dev/null; then
+        if [ "$(cat "$LOCK/pid" 2>/dev/null || true)" = "$holder" ]; then
+            say "taking over a stale lock left by PID $holder"
+            rm -rf "$LOCK"
+        fi
+        rmdir "$LOCK.takeover"
         continue
     fi
     if [ -f "$DEST/.done" ]; then
         say "built by PID ${holder:-?} while waiting"
         exit 0
     fi
+    waited=$(($(date +%s) - started))
     if [ "$waited" -ge 3600 ]; then
         say "gave up after waiting ${waited}s for PID ${holder:-?} holding $LOCK" >&2
         exit 1
     fi
-    [ $((waited % 60)) -eq 0 ] && say "waiting for PID ${holder:-?} to finish building vAmiga"
-    sleep 2
-    waited=$((waited + 2))
+    if [ $((waited - said)) -ge 60 ]; then
+        say "waiting for PID ${holder:-?} to finish building vAmiga"
+        said=$waited
+    fi
+    sleep "$POLL"
 done
 echo $$ > "$LOCK/pid"
 trap 'rm -rf "$LOCK" "$DEST.tmp"' EXIT INT TERM

@@ -81,6 +81,25 @@ class OracleSh(unittest.TestCase):
         self.assertFalse(Path(f"{self.dest}.tmp").exists())
         self.assertFalse((self.dest / ".done").exists())
 
+    def test_only_one_of_many_waiters_takes_over_a_dead_builders_lock(self):
+        # After a crash, every worktree's setup runs at once against the dead builder's lock. Each
+        # sees the dead PID; only one may remove the lock, or a second removes the first's live lock
+        # and two builds share one scratch tree. Each run's fetch fails, so they finish fast.
+        lock = Path(f"{self.dest}.lock")
+        url = str(Path(self.cache, "no-such-repo"))
+        env = dict(os.environ, SUPERFROG_CACHE=self.cache, VAMIGA_URL=url, ORACLE_LOCK_POLL="0.05")
+        for trial in range(3):
+            lock.mkdir()
+            dead = subprocess.Popen(["/usr/bin/true"])
+            dead.wait()
+            (lock / "pid").write_text(f"{dead.pid}\n")
+            runs = [subprocess.Popen(["/bin/sh", str(SCRIPT)], env=env, stdout=subprocess.PIPE,
+                                     stderr=subprocess.DEVNULL, text=True) for _ in range(12)]
+            outs = [r.communicate(timeout=120)[0] for r in runs]
+            takeovers = sum(o.count("stale lock") for o in outs)
+            self.assertEqual(takeovers, 1, f"trial {trial}: {takeovers} runs took over the lock")
+            self.assertFalse(lock.exists())
+
 
 if __name__ == "__main__":
     unittest.main()
