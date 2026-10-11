@@ -280,20 +280,26 @@ class Namer:
 
 
 def _refs(ins, exe, hunk):
-    """[(target address, how)] for the references one instruction makes."""
+    """[(target address, how, address capstone prints)] for the references one instruction makes."""
     refs = []
     off = ins.address - hunk.base
     for o in range(off, off + ins.size - 3):
         if (hunk.index, o) in exe.relocs:
             t, delta = exe.relocs[(hunk.index, o)]
-            refs.append((exe.hunks[t].base + delta, 'abs'))
+            refs.append((exe.hunks[t].base + delta, 'abs', exe.hunks[t].base + delta))
+    ext = 2     # where the pc-relative extension word sits: after the opcode,
+    if ins.mnemonic.startswith('movem'):
+        ext += 2                                # movem's register mask,
     for op in ins.operands:
+        if op.type == M.M68K_OP_IMM:
+            ext += 2                            # and btst/bchg/bclr/bset's bit number
         if op.type == M.M68K_OP_BR_DISP:
-            refs.append((ins.address + 2 + op.br_disp.disp, 'branch'))
+            t = ins.address + 2 + op.br_disp.disp
+            refs.append((t, 'branch', t))
         elif op.type == M.M68K_OP_MEM and op.address_mode in (M.M68K_AM_PCI_DISP,
                                                                 M.M68K_AM_PCI_INDEX_8_BIT_DISP):
-            # pc-relative is source-only, so its extension word follows the opcode
-            refs.append((ins.address + 2 + op.mem.disp, 'pcrel'))
+            # the 68000 counts from the extension word; capstone always prints from +2
+            refs.append((ins.address + ext + op.mem.disp, 'pcrel', ins.address + 2 + op.mem.disp))
     return refs
 
 
@@ -307,6 +313,7 @@ def _decode(exe, namer):
             continue
         data_syms = {h.base + s.offset: s for a, s in namer.sized
                      if s.kind != 'func' and s.hunk == h.index}
+        stops = sorted(set(data_syms) | {a for a in namer.at if h.base < a < h.base + h.size})
         pos = 0
         while pos < h.size:
             addr = h.base + pos
@@ -318,8 +325,10 @@ def _decode(exe, namer):
                     rows.append((h, addr + k, len(chunk), 'dc.b ' + ','.join(f'${b:02x}' for b in chunk), []))
                 pos += n
                 continue
-            # stop the sweep at the next data symbol so it is not swallowed
-            nxt = min([a for a in data_syms if a > addr] + [h.base + h.size])
+            # stop the sweep at the next symbol so a data symbol or a function entry
+            # is not swallowed by an instruction decoded out of step
+            i = bisect.bisect_right(stops, addr)
+            nxt = stops[i] if i < len(stops) else h.base + h.size
             ins = next(md.disasm(h.data[pos:nxt - h.base], addr, 1), None)
             if ins is not None and ins.id == 0:     # capstone's own "invalid" word
                 ins = None
@@ -330,14 +339,14 @@ def _decode(exe, namer):
                 continue
             refs = _refs(ins, exe, h)
             text = f"{ins.mnemonic:<8} {ins.op_str}".rstrip()
-            for target, how in refs:
+            for target, how, shown in refs:
                 label = namer.name(target)
                 if label is None:
                     continue
                 # capstone prints relocated, branch and pc-relative targets as $hex
-                new = re.sub(rf'\${target:x}(\.l)?\b', label, text)
+                new = re.sub(rf'\${shown:x}(\.l)?\b', label, text)
                 text = new if new != text else f"{text}   ; {label}"
-            rows.append((h, addr, ins.size, text, refs))
+            rows.append((h, addr, ins.size, text, [(t, how) for t, how, _ in refs]))
             pos += ins.size
     return rows
 

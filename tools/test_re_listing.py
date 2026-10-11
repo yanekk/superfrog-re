@@ -73,6 +73,21 @@ class HunkParse(unittest.TestCase):
         self.assertGreater(checked, 100)
 
 
+class PcRelative(unittest.TestCase):
+    def test_target_counts_from_the_displacement_word(self):
+        # The 68000 adds the displacement to the address of its own extension word, which
+        # follows movem's register mask and btst's bit number (capstone counts from +2).
+        code = bytes.fromhex('4e71' '4cfa7fffff9e' '083a00030004' '41fa0072' '4e71' * 64)
+        exe = R.load_exe(code)
+        syms = R.load_symbols('t', '[[sym]]\nexe = "x"\nhunk = 0\noffset = 0x10\nname = "here"\nkind = "func"\n')
+        rows = {addr: (text, refs) for _, addr, _, text, refs in R._decode(exe, R.Namer(exe, []))}
+        self.assertEqual(rows[2][1], [(2 + 4 - 0x62, 'pcrel')])
+        self.assertEqual(rows[8][1], [(0x10, 'pcrel')])
+        self.assertEqual(rows[14][1], [(14 + 2 + 0x72, 'pcrel')])
+        text = R.listing('x', exe, syms)
+        self.assertRegex(text, r'\n00000008  083a00030004 +btst\.b +#\$3, here\(pc\)\n')
+
+
 SYMS = '''
 [[sym]]
 exe = "d1_c01"
@@ -166,6 +181,20 @@ size = 4
                 # movem.l d2-d5/a2-a4,-(a7) then, ten bytes in, cmpi.l #'ATN!',(a0)+
                 self.assertEqual(code[s.offset:s.offset + 4].hex(), '48e73c38')
                 self.assertEqual(code[s.offset + 10:s.offset + 16], b'\x0c\x98ATN!')
+
+    def test_every_committed_func_starts_an_instruction(self):
+        # a linear sweep out of step must not swallow a known function entry
+        syms = R.load_symbols()
+        for cid in ['d1_stage15', *EXES]:
+            with self.subTest(cid):
+                exe = R.load_exe(Disks.chunk(cid))
+                mine = [s for s in syms if s.exe == cid]
+                lines = R.listing(cid, exe, mine).splitlines()
+                for s in mine:
+                    if s.kind == 'func':
+                        i = lines.index(f'{s.name}:')
+                        self.assertTrue(lines[i + 1].startswith(f'{exe.hunks[s.hunk].base + s.offset:08x}  '),
+                                        lines[i + 1])
 
 
 class Run(unittest.TestCase):

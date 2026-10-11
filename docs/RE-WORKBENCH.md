@@ -62,8 +62,13 @@ atn_decompress:
   the nearest preceding `func` symbol plus an offset, else `hN+$off`.
 - Code is a linear sweep, so data inside a code hunk decodes as nonsense until a
   `data`/`table`/`var` symbol covers it; it is then printed as `dc.b`. Words capstone
-  cannot decode are `dc.w`. A label that lands mid-instruction is noted as
-  `falls inside this instruction`; that is usually data, or a sweep out of step.
+  cannot decode are `dc.w`. The sweep restarts at every symbol, so naming a function
+  entry in `symbols.toml` puts the sweep back in step there. A referenced address that
+  lands mid-instruction is noted as `falls inside this instruction`; that is usually
+  data, or a sweep out of step.
+- A pc-relative operand is resolved from its own extension word, as the 68000 does
+  (after `movem`'s register mask or `btst`'s bit number); capstone's own text counts
+  from opcode+2 and is wrong by 2 there, so the listing prints the name instead.
 
 Search a listing with `grep -n '^atn_decompress:' ~/.cache/superfrog-re/re/*.lst`, or
 `grep -n 'h1+\$9fe' …` for every use of an address.
