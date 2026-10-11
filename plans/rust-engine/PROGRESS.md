@@ -11,9 +11,9 @@ the account is the commit message. Whoever writes a cell also fixes the over-bud
 
 **Plan reviewed:** 2026-10-10 — 7 fixed, 7 decided with the user
 
-**Status:** Building; T01 and T03 done.
+**Status:** Building; T01, T02 and T03 done.
 **Last updated:** 2026-10-11
-**Next `pir-work` will:** T04 atn-decompressor (T03 done), beside T00 oracle-spike and T02 re-workbench.
+**Next `pir-work` will:** T04 atn-decompressor beside T00 oracle-spike; T05 waits on T00.
 
 ## Tasks
 
@@ -24,7 +24,7 @@ done · ⛔ blocked, needs a human.
 |---|---|---|---|---|
 | T00 | oracle-spike | — | ⬜ | |
 | T01 | rust-workspace | — | ✅ | |
-| T02 | re-workbench | — | ⬜ | |
+| T02 | re-workbench | — | ✅ | |
 | T03 | disk-import | T01 | ✅ | Review clean, no fix commit. SHA-1s matched `shasum`; zips from `zip`, `ditto` (with `__MACOSX`), a commented zip and data-descriptor entries all identify; mutations of carve rounding, duplicate detection and CRC check went red. Deviations held; message wording kept (spec only requires naming slot or file). |
 | T04 | atn-decompressor | T03 | ⬜ | |
 | T05 | oracle-harness | T00, T01 | ⬜ | |
