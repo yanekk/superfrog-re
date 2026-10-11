@@ -146,3 +146,24 @@ fn camera_follow_matches_the_original() {
         rig.check("camera_follow", case, 0xdb92, &s, camera_follow);
     }
 }
+
+#[test]
+fn the_boot_s_tables_are_the_original_s() {
+    use sf_core::layout::Ram;
+    let mem = level();
+    let rom = sf_conform::display_data();
+    let rom = rom.rom();
+    for (from, len) in [(0x17330, 0x16c), (0x174d6, 0x4c), (0x176c4, 0x60)] {
+        for a in (0..len).map(|k| sf_core::layout::h0(from + k)) {
+            assert_eq!(rom.byte(1, a), Some(mem.byte(a)), "h0 ${:x}", a - sf_core::layout::H0);
+        }
+    }
+    for k in 0..0xe00 {
+        let a = sf_core::mem::TILE_PTRS + k;
+        assert_eq!(rom.byte(1, a), Some(mem.byte(a)), "${a:x}");
+    }
+    // W1's tiles where the game loaded them.
+    for a in (sf_core::layout::H1..sf_core::layout::H1 + 840 * 160).step_by(97) {
+        assert_eq!(rom.byte(1, a), Some(mem.byte(a)), "${a:x}");
+    }
+}

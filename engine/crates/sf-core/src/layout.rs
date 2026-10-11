@@ -249,8 +249,6 @@ layout! {
     /// `scroll_column` (h0+$172b0): the play-field column the vertical blank last scrolled to, as
     /// the address of its first word in the shown buffer (docs/12 "Scroll").
     ScrollColumn = "scroll_column", h0(0x172b0), Width::L;
-    /// `map_rows` (h0+$17334): one row above the in-RAM map.
-    MapRows = "map_rows", h0(0x17334), Width::L;
     /// `frog_sprite_left`, `_right` (h0+$1aff4, h0+$1b010): the frog's two hardware-sprite
     /// records (`$1c` bytes: screen x, y, height, attached, copper words, data, animation).
     FrogSpriteLeft = "frog_sprite_left", h0(0x1aff4), Width::Bytes(0x1c);

@@ -34,26 +34,151 @@ fn loaded(h: &Hunk) -> Vec<u8> {
     b
 }
 
+/// What the game's memory holds that never changes once it is set up: hunk 0 as loaded, with the
+/// tables the boot builds in it, and the files each world loads (its tiles). Built once from the
+/// disks; the ported routines read it where no [`crate::LAYOUT`] variable is.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct Rom {
+    /// Hunk 0 ([`loaded_hunk0`]) with the boot's tables in it ([`boot_tables`]).
+    pub h0: Vec<u8>,
+    /// Other regions the boot fills, by address.
+    pub regions: Vec<(u32, Vec<u8>)>,
+    /// Per `world` value (index 0 for world 1 … 6, then the bonus level, then the final level):
+    /// the regions that world's files fill.
+    pub worlds: Vec<Vec<(u32, Vec<u8>)>>,
+}
+
+/// `tile_ptrs` (h1+$30fe0): the boot's table of 896 pointers to the tiles, `$a0` bytes apart from
+/// h1+0, where each world's `LnBM` is loaded (h0+$172ea).
+pub const TILE_PTRS: u32 = H1 + 0x30fe0;
+
+/// The tables the boot builds once (`rng_seed_from_cia`'s calls at h0+$7734..$7746), each run
+/// until the end mark the executable holds after it: the map's row pointers (h0+$1730c), the
+/// display ring's row pointers (h0+$174a0) and its row offsets (h0+$176a2), all in hunk 0; the
+/// tile pointers ([`TILE_PTRS`], h0+$172ea) are returned as a region of hunk 1.
+pub fn boot_tables(h0: &mut [u8]) -> Vec<(u32, Vec<u8>)> {
+    fn get(h: &[u8], a: u32) -> Option<u32> {
+        let o = a.checked_sub(H0)? as usize;
+        Some(u32::from_be_bytes(h.get(o..o + 4)?.try_into().ok()?))
+    }
+    fn put(h: &mut [u8], a: u32, v: &[u8]) {
+        let o = (a - H0) as usize;
+        h[o..o + v.len()].copy_from_slice(v);
+    }
+    if h0.len() < 0x17800 {
+        return Vec::new();
+    }
+    // h0+$1730c: row pointers from one row above the map's first, `$260` apart.
+    let mut a = H0 + 0x17330;
+    let mut v = H1 + 0x21680 - 0x260;
+    while get(h0, a).is_some_and(|x| (x as i32) >= 0) {
+        put(h0, a, &v.to_be_bytes());
+        a += 4;
+        v += 0x260;
+    }
+    // h0+$174a0: the ring's row pointers into playfield_buffer_0, `$300` apart, wrapping after
+    // `$3900`.
+    let buffer0 = H3 + 0x10600;
+    let mut a = H0 + 0x174d6;
+    let mut v = buffer0;
+    while get(h0, a).is_some_and(|x| (x as i32) >= 0) {
+        put(h0, a, &v.to_be_bytes());
+        a += 4;
+        v += 0x300;
+        if v == buffer0 + 0x3900 {
+            v = buffer0;
+        }
+    }
+    // h0+$176a2: words 0, $10, … $120, repeating.
+    let mut a = H0 + 0x176c4;
+    let mut v = 0u16;
+    while get(h0, a).is_some_and(|x| (x as i32 >> 16) >= 0) {
+        put(h0, a, &v.to_be_bytes());
+        a += 2;
+        v += 0x10;
+        if v == 0x130 {
+            v = 0;
+        }
+    }
+    // h0+$172ea: 896 tile pointers.
+    let tiles: Vec<u8> = (0..0x380u32)
+        .flat_map(|k| (H1 + k * 0xa0).to_be_bytes())
+        .collect();
+    vec![(TILE_PTRS, tiles)]
+}
+
+impl Rom {
+    pub fn new(data: &sf_assets::GameData) -> Rom {
+        let Some(game) = data.exes.iter().find(|e| e.id == sf_assets::ExeId::Game) else {
+            return Rom::default();
+        };
+        let mut h0 = loaded_hunk0(game);
+        let regions = boot_tables(&mut h0);
+        let order = [
+            sf_assets::World::W1,
+            sf_assets::World::W2,
+            sf_assets::World::W3,
+            sf_assets::World::W4,
+            sf_assets::World::W5,
+            sf_assets::World::W6,
+            sf_assets::World::Bonus,
+            sf_assets::World::Final,
+        ];
+        let worlds = order
+            .iter()
+            .map(|&w| {
+                data.worlds
+                    .iter()
+                    .find(|g| g.world == w)
+                    .map(|g| vec![(H1, g.tiles.encode())])
+                    .unwrap_or_default()
+            })
+            .collect();
+        Rom {
+            h0,
+            regions,
+            worlds,
+        }
+    }
+
+    /// The byte at `addr` with `world` loaded, if this image holds it.
+    pub fn byte(&self, world: u32, addr: u32) -> Option<u8> {
+        let within = |regions: &[(u32, Vec<u8>)]| {
+            regions.iter().find_map(|(at, b)| {
+                let o = addr.checked_sub(*at)? as usize;
+                b.get(o).copied()
+            })
+        };
+        if let Some(o) = addr.checked_sub(H0)
+            && let Some(&v) = self.h0.get(o as usize)
+        {
+            return Some(v);
+        }
+        within(&self.regions).or_else(|| {
+            let w = (world as usize).checked_sub(1)?;
+            within(self.worlds.get(w)?)
+        })
+    }
+}
+
 /// The 68000's view of memory for the ported routines.
 pub struct Bus<'a> {
     pub st: &'a mut State,
-    /// Hunk 0 as loaded ([`loaded_hunk0`]): what an address no variable covers reads, inside it.
-    pub h0: &'a [u8],
+    pub rom: &'a Rom,
 }
 
 impl<'a> Bus<'a> {
-    pub fn new(st: &'a mut State, h0: &'a [u8]) -> Bus<'a> {
-        Bus { st, h0 }
+    pub fn new(st: &'a mut State, rom: &'a Rom) -> Bus<'a> {
+        Bus { st, rom }
     }
 
-    /// The byte at `addr`: the state's variable there, else the loaded executable, else 0.
+    /// The byte at `addr`: the state's variable there, else the fixed image, else 0.
     pub fn b(&self, addr: u32) -> u8 {
         let addr = addr & 0xFF_FFFF;
-        self.st.read(addr).unwrap_or_else(|| {
-            addr.checked_sub(H0)
-                .and_then(|o| self.h0.get(o as usize).copied())
-                .unwrap_or(0)
-        })
+        self.st
+            .read(addr)
+            .or_else(|| self.rom.byte(self.st.world(), addr))
+            .unwrap_or(0)
     }
 
     pub fn w(&self, addr: u32) -> u16 {
@@ -114,12 +239,15 @@ mod tests {
 
     #[test]
     fn variables_shadow_the_executable() {
-        let mut h0 = vec![0u8; 0x20000];
+        let mut rom = Rom {
+            h0: vec![0u8; 0x20000],
+            ..Rom::default()
+        };
         let world = def(VarId::World).addr;
-        h0[(world - H0) as usize + 3] = 5;
-        h0[0x100] = 0x77;
+        rom.h0[(world - H0) as usize + 3] = 5;
+        rom.h0[0x100] = 0x77;
         let mut st = State::default();
-        let mut bus = Bus::new(&mut st, &h0);
+        let mut bus = Bus::new(&mut st, &rom);
         assert_eq!(bus.l(world), 0, "the variable, not the file");
         assert_eq!(bus.b(H0 + 0x100), 0x77, "the file where no variable is");
         assert_eq!(bus.b(0x10), 0, "outside both");

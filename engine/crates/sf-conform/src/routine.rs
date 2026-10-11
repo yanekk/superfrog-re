@@ -194,7 +194,7 @@ impl<'d> Rig<'d> {
         let mut paula: Vec<PaulaWrite> = Vec::new();
         {
             let mut ctx = LevelCtx {
-                bus: Bus::new(&mut st, self.display.h0()),
+                bus: Bus::new(&mut st, self.display.rom()),
                 hw: setup.hw,
                 audio: &mut audio,
                 sound: self.sound,
