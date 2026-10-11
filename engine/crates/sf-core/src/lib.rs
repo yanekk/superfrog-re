@@ -5,6 +5,7 @@
 //! in [`layout::LAYOUT`] with its address, so conformance can transplant the original's memory in
 //! and probe the engine's values back out.
 
+pub mod audio;
 pub mod game;
 pub mod input;
 pub mod layout;

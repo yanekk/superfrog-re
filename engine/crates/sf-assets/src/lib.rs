@@ -16,6 +16,7 @@ mod gamedata;
 mod launch;
 mod palette;
 mod picture;
+pub mod sound;
 mod sprites;
 mod t7mp;
 mod tables;

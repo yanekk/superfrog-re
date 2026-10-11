@@ -1672,3 +1672,392 @@ name = "intro_file_table"
 kind = "table"
 size = 0x20
 note = "4 x 8 bytes: d3_c05..c08 (picture banks)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x12a26
+name = "sfx_bank_init"
+kind = "func"
+note = "builds the sfx sample and effect pointer tables from LnFX"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x12c50
+name = "sfx_chan_ptrs"
+kind = "table"
+size = 0x10
+note = "four pointers to the sfx channel records"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x12c60
+name = "sfx_tick"
+kind = "func"
+note = "per-VBL sound-effect envelope player, channels 3..0"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x12f62
+name = "sfx_chan0"
+kind = "var"
+size = 0x26
+note = "sfx channel record 0"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x12f88
+name = "sfx_chan1"
+kind = "var"
+size = 0x34
+note = "sfx channel record 1"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x12fbc
+name = "sfx_chan2"
+kind = "var"
+size = 0x34
+note = "sfx channel record 2"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x12ff0
+name = "sfx_chan3"
+kind = "var"
+size = 0x34
+note = "sfx channel record 3"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x13024
+name = "sfx_steal"
+kind = "var"
+size = 2
+note = "byte: set while sfx_play restarts a busy channel (the next byte is padding)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x13126
+name = "music_start"
+kind = "func"
+note = "starts the loaded P41A module (h0+$9ec) with interrupts off"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x13144
+name = "p41_init"
+kind = "func"
+note = "The Player 4.1A init: relocates the module, resets channel state"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x132a0
+name = "music_stop"
+kind = "func"
+note = "stops music and every effect, silences Paula"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x1339e
+name = "p41_saved_regs"
+kind = "var"
+size = 0x40
+note = "registers saved around the replayer"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x133de
+name = "p41_regs"
+kind = "var"
+size = 0x40
+note = "the replayer's own register set, kept between ticks"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x1341e
+name = "p41_rts"
+kind = "func"
+note = "rts"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x13420
+name = "music_on"
+kind = "var"
+size = 2
+note = "nonzero while a module is playing"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x13424
+name = "music_tick"
+kind = "func"
+note = "per-VBL music entry: p41_play then p41_fade"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x1343c
+name = "p41_play"
+kind = "func"
+note = "The Player 4.1A per-tick routine"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x13492
+name = "p41_fx_tab"
+kind = "table"
+size = 0x20
+note = "effect jump table: 16 word offsets from itself"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x134b2
+name = "p41_fx_e"
+kind = "func"
+note = "effect E: extended commands (9 retrig, C note cut, D note delay)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x13548
+name = "p41_arp_tab"
+kind = "table"
+size = 0x20
+note = "tick -> 0,1,2 arpeggio step (mod-3 table)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x13568
+name = "p41_fx_8"
+kind = "func"
+note = "effect 8: arpeggio (this replayer numbers it 8; 0 is no effect)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x135a2
+name = "p41_periods"
+kind = "table"
+size = 0x4a0
+note = "16 finetunes x 37 Amiga periods (entry 0 repeats entry 1)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x9ec
+name = "module_addr"
+kind = "var"
+size = 4
+note = "where the music module is loaded; sfx_bank_init sets it past the bank's effects"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x13b34
+name = "p41_fetch"
+kind = "func"
+note = "reads every channel's next row from its pattern stream, one tick before it plays"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x13bdc
+name = "p41_row"
+kind = "func"
+note = "tick 0: plays the fetched rows (notes, row-time effects, DMACON)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x13cc4
+name = "music_dma"
+kind = "func"
+note = "VBL after music_tick: DMA on for new notes, next position, loop pointers to the shadow"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x13ec0
+name = "p41_fx_e_tab"
+kind = "table"
+size = 0x20
+note = "row-time E commands: 16 word offsets from itself"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x13f5e
+name = "p41_finetunes"
+kind = "table"
+size = 0x20
+note = "E5: finetune -> byte offset into p41_periods (74 per step)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x140bc
+name = "p41_vibrato_tab"
+kind = "table"
+size = 0x400
+note = "16 depths x 32 words of half sine, for vibrato and tremolo"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x144bc
+name = "p41_row_fx_tab"
+kind = "table"
+size = 0x20
+note = "row-time effects: 16 word offsets from itself"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x144dc
+name = "p41_channels"
+kind = "var"
+size = 0xb0
+note = "four replayer channel records of $2c bytes (docs/11)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x1458c
+name = "p41_globals"
+kind = "var"
+size = 0x26
+note = "replayer globals: tick, DMA mask, rows left, speed, positions (docs/11)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x145b2
+name = "music_free"
+kind = "var"
+size = 4
+note = "$ff while music may use the channel, else the effect on it; channel 3 first"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x145b6
+name = "p41_shadow_out"
+kind = "func"
+note = "music fade, then the shadow registers to Paula for channels music holds"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x146ae
+name = "music_fade_start"
+kind = "func"
+note = "d0 -> fade word; hands every channel back to music"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x146d6
+name = "music_fade_busy"
+kind = "func"
+note = "waits for the fade word to clear"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x146e0
+name = "music_fade"
+kind = "var"
+size = 4
+note = "fade: ceiling byte, frames per step, counter"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x146e4
+name = "p41_shadow"
+kind = "var"
+size = 0x40
+note = "shadow Paula registers, 16 bytes a channel: pointer, length, period, volume"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x148b0
+name = "stream_ptr"
+kind = "var"
+size = 4
+note = "the streamed sample's next 160 bytes"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x148b4
+name = "stream_left"
+kind = "var"
+size = 2
+note = "words left to stream, $ffff idle"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x148b6
+name = "stream_volume"
+kind = "var"
+size = 2
+note = "the streamed sample's volume"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x1491e
+name = "stream_table"
+kind = "table"
+size = 0x80
+note = "sample_play's 8 entries: pointer, byte length, volume"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x1499e
+name = "sfx_samples"
+kind = "table"
+size = 0x400
+note = "sfx_bank_init: 256 sample pointers"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x14d9e
+name = "sfx_effects"
+kind = "table"
+size = 0x400
+note = "sfx_bank_init: 256 effect pointers"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x4814c
+name = "music_header_backup"
+kind = "var"
+size = 0x200
+note = "the module's first 512 bytes before music_start relocated them"

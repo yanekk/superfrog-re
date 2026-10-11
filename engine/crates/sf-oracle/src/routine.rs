@@ -51,6 +51,9 @@ pub struct CallResult {
     pub writes: Vec<(u32, u8, u8)>,
     /// Instructions executed, its final `rts` included.
     pub instr: u64,
+    /// In hardware mode ([`Cpu68k::set_hardware`]): every custom-chip write, in order, as
+    /// `(offset from $DFF000, word)`. Empty otherwise.
+    pub hw_writes: Vec<(u16, u16)>,
 }
 
 impl CallResult {
@@ -346,6 +349,27 @@ impl Cpu68k {
         Ok(HunkMap { hunks })
     }
 
+    /// Hardware mode, off by default: for routines that drive the custom chips themselves (the
+    /// sound driver, T11). A custom-chip write is recorded in [`CallResult::hw_writes`] instead of
+    /// ending the call with [`CallError::CustomChipAccess`]; a byte write is recorded as that byte on
+    /// both halves. VHPOSR (`$DFF006`) steps on every read so raster waits end; other custom
+    /// registers and the CIAs read 0, and CIA writes are dropped. Nothing else of the chipset is
+    /// modelled: a routine that waits on DMA or an interrupt still times out.
+    pub fn set_hardware(&mut self, on: bool) {
+        unsafe { ffi::sf_cpu_set_hw(self.raw.as_ptr(), on as i32) }
+    }
+
+    /// Put a call's memory changes back: what [`Cpu68k::call`] undid, for a caller that runs a
+    /// routine many times over and wants each run to see the last one's effects. Writes for which
+    /// `keep(addr)` is false (the call's own stack, say) are left out.
+    pub fn apply(&mut self, result: &CallResult, keep: impl Fn(u32) -> bool) {
+        for &(a, _, new) in &result.writes {
+            if keep(a) {
+                self.memory_mut()[a as usize] = new;
+            }
+        }
+    }
+
     /// Run the routine at `entry` with `regs` until it returns, at most `max_instr` instructions.
     ///
     /// The CPU is reset, [`RETURN_SENTINEL`] is pushed below `regs.a[7]`, and the routine starts
@@ -385,7 +409,16 @@ impl Cpu68k {
         };
 
         let mut writes = Vec::new();
+        let mut hw_writes = Vec::new();
         if st.status == ffi::SF_CALL_RETURNED {
+            let mut hw = std::ptr::null();
+            let n = unsafe { ffi::sf_cpu_hw_writes(self.raw.as_ptr(), &mut hw) };
+            if n > 0 {
+                hw_writes = unsafe { std::slice::from_raw_parts(hw, n) }
+                    .iter()
+                    .map(|w| (w.reg, w.value))
+                    .collect();
+            }
             let (mut addrs, mut olds) = (std::ptr::null(), std::ptr::null());
             let n = unsafe { ffi::sf_cpu_journal(self.raw.as_ptr(), &mut addrs, &mut olds) };
             if n > 0 {
@@ -417,6 +450,7 @@ impl Cpu68k {
                 },
                 writes,
                 instr: st.instr,
+                hw_writes,
             }),
             ffi::SF_CALL_TIMEOUT => Err(CallError::Timeout),
             ffi::SF_CALL_CUSTOM => Err(CallError::CustomChipAccess {

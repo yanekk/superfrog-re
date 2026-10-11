@@ -18,6 +18,13 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-11 | 📌 | T11 review, at merge: T12 landed `LAYOUT` without the driver's variables, and no task doc maps them (docs/11 lists them; `sf_core::audio::vars` has the blocks). T14, the first to step the driver from `Game`, is the natural owner. |
+| 2026-10-11 | 🐞 | T11 review: at a fade's end `music_stop` leaves `a1` at `sfx_steal`, so the original's shadow copy writes RAM `$13024..$1305e`, not Paula. The driver wrote Paula. Fixed; `fades_match_the_original` locks it. Only that caller uses `a1` afterwards. |
+| 2026-10-11 | 📌 | T11 review: fake unverified against real: Moira hardware mode records a byte write to a custom register as that byte on both halves. The driver never makes one; nothing checks it against vAmiga. |
+| 2026-10-11 | 📌 | T11: `Cpu68k::set_hardware(true)` runs routines that drive Paula: writes recorded in `hw_writes`, VHPOSR steps per read, CIAs read 0. Routines waiting on DMA or interrupts still time out. `Cpu68k::apply` keeps a call's memory changes. |
+| 2026-10-11 | 📌 | T11: Paula pointers are absolute, so files must sit where the game puts them: a world's module right after its bank's effects (`sfx_bank_init` sets h0+$9ec), the title's MUSC at the bank's own place. |
+| 2026-10-11 | 📌 | T11: the title's main loop writes DMACON $8020/$8400 and INTENA $4000/$c000 pairs around loading. The audio comparison filters them; whole-frame Paula comparison (T12 on) must expect them from non-sound code. |
+| 2026-10-11 | 📌 | T11, left alone: no `sf-core::layout` (T12) – driver variables are `sf_core::audio::vars` and docs/11. Final level's sound bank unchecked. The mixer's chip view needs the stream buffer (`stream_source`) and loaded files (T22). |
 | 2026-10-11 | 📌 | T08: level palette = 32 colours after `LnLP` (+$11300), proven on W1-1's copper (COLOR06 differs: cycling, inferred). `render_levels.py`'s W6 palette is L2ET read misaligned (wrong colours); its LB/LW use W6 tiles. docs/06 corrected. |
 | 2026-10-11 | 📌 | T08: W6 has two map sets, both `L6MA1`–`4`: d4_c02–05 (one drive) and d4_c14–17 (DF1–3 with disk 1, h0+$a144); maps 2–4 differ. docs/LEVEL-INDEX's "W6-5..7" are these copies; left unedited (scope). |
 | 2026-10-11 | 📌 | T08: the game's ANIM player (h0+$ab02 open, $ab82 next) is pure: on the routine oracle it plays END1 in 0.5 s. Hall font at h0+$378ca, charset h0+$322e. Neither is in `re/symbols.toml` yet (scope). |
