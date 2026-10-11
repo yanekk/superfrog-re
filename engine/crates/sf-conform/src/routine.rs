@@ -193,8 +193,10 @@ impl<'d> Rig<'d> {
         let audio_before = audio.vars(self.sound);
         let mut paula: Vec<PaulaWrite> = Vec::new();
         {
+            let dispatch = sf_core::level::Dispatch::default();
             let mut ctx = LevelCtx {
                 bus: Bus::new(&mut st, self.display.rom()),
+                dispatch: &dispatch,
                 hw: setup.hw,
                 audio: &mut audio,
                 sound: self.sound,

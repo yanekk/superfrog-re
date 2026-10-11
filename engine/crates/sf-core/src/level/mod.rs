@@ -61,9 +61,84 @@ pub fn joy1dat(j: Joy) -> u16 {
     r << 1 | (r ^ d) | l << 9 | (l ^ u) << 8
 }
 
+/// An object slot (docs/09 "The slot record"): `obj_slots` + `$7c` × n.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Object {
+    /// The slot record's address.
+    pub slot: u32,
+}
+
+/// What a bob draw adds to the frame (filled by T15–T18 as their kinds draw).
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct DrawList {
+    /// Bob records to draw, in order.
+    pub bobs: Vec<u32>,
+}
+
+/// One kind of object: the original's template, by its index in `obj_templates` (h0+$1c6e2,
+/// `$ae` bytes each), so a transplanted slot maps to its kind one to one.
+pub trait ObjectKind: Sync {
+    /// The 25 Hz update (the slot's `+$04` routine).
+    fn update(&self, obj: &mut Object, lvl: &mut LevelCtx);
+    /// Its bob, if it shows.
+    fn draw(&self, obj: &Object, out: &mut DrawList);
+}
+
+/// What a map marker spawns (docs/09 "Placement"): the stub `obj_flag_jumptab` (h0+$178ec)
+/// runs for `(world, marker)`, with the cell's address.
+pub type MarkerSpawn = fn(lvl: &mut LevelCtx, cell: u32);
+
+/// The object dispatch: object kinds by template index, and marker spawners by world and marker.
+/// T14 registers none, so a level runs with the frog alone; items, enemies and bosses (T15–T18)
+/// register theirs.
+#[derive(Default)]
+pub struct Dispatch {
+    kinds: Vec<(u16, &'static dyn ObjectKind)>,
+    markers: Vec<((u8, u8), MarkerSpawn)>,
+}
+
+impl std::fmt::Debug for Dispatch {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Dispatch")
+            .field("kinds", &self.kinds.iter().map(|k| k.0).collect::<Vec<_>>())
+            .field("markers", &self.markers.iter().map(|m| m.0).collect::<Vec<_>>())
+            .finish()
+    }
+}
+
+/// Add an object kind under the original's template index.
+pub fn register(dispatch: &mut Dispatch, type_id: u16, kind: &'static dyn ObjectKind) {
+    dispatch.kinds.retain(|k| k.0 != type_id);
+    dispatch.kinds.push((type_id, kind));
+}
+
+impl Dispatch {
+    /// The kind registered under `type_id`.
+    pub fn kind(&self, type_id: u16) -> Option<&'static dyn ObjectKind> {
+        self.kinds.iter().find(|k| k.0 == type_id).map(|k| k.1)
+    }
+
+    /// Add the spawner for `marker` (1..64) in world table `world` (`obj_world_offset / $100`:
+    /// 0..5 for W1–W6 and the final level, 6 the bonus level).
+    pub fn register_marker(&mut self, world: u8, marker: u8, spawn: MarkerSpawn) {
+        self.markers.retain(|m| m.0 != (world, marker));
+        self.markers.push(((world, marker), spawn));
+    }
+
+    /// The spawner for `marker` in world table `world`; `None` while nothing models it.
+    pub fn marker(&self, world: u8, marker: u8) -> Option<MarkerSpawn> {
+        self.markers
+            .iter()
+            .find(|m| m.0 == (world, marker))
+            .map(|m| m.1)
+    }
+}
+
 /// What a ported level routine works on.
 pub struct LevelCtx<'a> {
     pub bus: Bus<'a>,
+    /// The object kinds and marker spawners registered.
+    pub dispatch: &'a Dispatch,
     pub hw: Hw,
     pub audio: &'a mut AudioDriver,
     pub sound: &'a SoundData,
