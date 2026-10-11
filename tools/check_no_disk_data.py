@@ -11,10 +11,11 @@ that are not ignored) for a run of 128 or more bytes found in a chunk or in a ra
 Exit 0 when clean, 1 listing `file:offset (N bytes, same as <source>+offset)` for every hit,
 2 when the disks cannot be found. FILEs default to the repository's files.
 
-How: every chunk is indexed at a 64-byte stride; each file is scanned at a 1-byte stride, so any
-copied run of 127 bytes or more contains one indexed block. A hit is then extended byte by byte
-and reported if the shared run is 128 bytes or longer. Blocks with fewer than 4 distinct byte
-values (zero fill, solid colour) are not indexed: they are not data anyone could recover.
+How: every chunk is indexed at a 64-byte stride, keeping every place a block occurs; each file is
+scanned at a 1-byte stride, so any copied run of 127 bytes or more contains one indexed block. A
+hit is extended byte by byte against each place and reported if the longest shared run is 128
+bytes or longer. Blocks with fewer than 4 distinct byte values (zero fill, solid colour) are not
+indexed: they are not data anyone could recover.
 
 A flagged table must be read from the disks instead; this check is never relaxed for it.
 """
@@ -94,7 +95,7 @@ def build_index(sources):
         for off in range(0, len(data) - BLOCK + 1, BLOCK):
             block = data[off:off + BLOCK]
             if len(set(block)) >= MIN_DISTINCT:
-                index.setdefault(block, (si, off))
+                index.setdefault(block, []).append((si, off))
     return index
 
 
@@ -104,19 +105,22 @@ def scan(data, index, sources):
     pos = 0
     n = len(data)
     while pos + BLOCK <= n:
-        ref = index.get(data[pos:pos + BLOCK])
-        if ref is None:
+        refs = index.get(data[pos:pos + BLOCK])
+        if refs is None:
             pos += 1
             continue
-        si, soff = ref
-        src = sources[si][1]
-        back = 0
-        while pos - back > 0 and soff - back > 0 and data[pos - back - 1] == src[soff - back - 1]:
-            back += 1
-        fwd = BLOCK
-        while pos + fwd < n and soff + fwd < len(src) and data[pos + fwd] == src[soff + fwd]:
-            fwd += 1
-        run = back + fwd
+        # The block may occur at several places on the disks; measure the run against each.
+        run, back, fwd, si, soff = 0, 0, 0, 0, 0
+        for rsi, rsoff in refs:
+            src = sources[rsi][1]
+            b = 0
+            while pos - b > 0 and rsoff - b > 0 and data[pos - b - 1] == src[rsoff - b - 1]:
+                b += 1
+            f = BLOCK
+            while pos + f < n and rsoff + f < len(src) and data[pos + f] == src[rsoff + f]:
+                f += 1
+            if b + f > run:
+                run, back, fwd, si, soff = b + f, b, f, rsi, rsoff
         if run >= MIN_RUN:
             hits.append((pos - back, run, sources[si][0], soff - back))
             pos += fwd

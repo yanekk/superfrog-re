@@ -40,6 +40,36 @@ class CheckNoDiskData(unittest.TestCase):
         self.assertIn(f'{path}:48 (200 bytes, same as ', r.stdout)
         self.assertIn('do not relax this check', r.stderr)
 
+    def test_flags_a_copy_whose_block_also_occurs_elsewhere(self):
+        # A 130-byte copy holds one indexed block; if that block also occurs at another place on
+        # the disks, the run must be measured against every place, not only the first indexed.
+        sources = check.disk_sources(self.adfs)
+        first = {}
+        for si, (label, data) in enumerate(sources):
+            for off in range(0, len(data) - check.BLOCK + 1, check.BLOCK):
+                block = data[off:off + check.BLOCK]
+                if len(set(block)) < check.MIN_DISTINCT:
+                    continue
+                if block not in first:
+                    first[block] = (si, off)
+                    continue
+                fsi, foff = first[block]
+                fsrc = sources[fsi][1]
+                if off < 33 or off + 97 > len(data) or len(set(data[off - 33:off + 97])) < 16:
+                    continue
+                piece = data[off - 33:off + 97]
+                if fsrc[max(0, foff - 33):foff + 97] == piece:
+                    continue  # the first place holds the same 130 bytes; not the case under test
+                with tempfile.TemporaryDirectory() as d:
+                    path = os.path.join(d, 'dup.bin')
+                    with open(path, 'wb') as f:
+                        f.write(piece)
+                    r = run(path)
+                self.assertEqual(r.returncode, 1, f'{label}+{off - 33}: ' + r.stdout + r.stderr)
+                self.assertIn(f'{path}:0 (130 bytes, same as ', r.stdout)
+                return
+        self.fail('no block occurs twice on the disks')
+
     def test_a_short_copy_is_not_flagged(self):
         _label, piece = self.chunk_bytes(100)
         with tempfile.TemporaryDirectory() as d:

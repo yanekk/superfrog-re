@@ -27,6 +27,9 @@ const RESAMPLER: &str = "sf-paula/src/resample.rs";
 const FORBIDDEN_STD: [&str; 6] = ["fs", "time", "net", "thread", "env", "process"];
 const FORBIDDEN_IDENTS: [&str; 4] = ["Instant", "SystemTime", "HashMap", "HashSet"];
 const MAX_TABLE: usize = 16;
+const INT_SUFFIXES: [&str; 12] = [
+    "u8", "u16", "u32", "u64", "u128", "usize", "i8", "i16", "i32", "i64", "i128", "isize",
+];
 
 const FIX: &str = "move the code, do not relax the test";
 
@@ -112,7 +115,12 @@ fn lex(src: &str) -> Vec<(Tok, usize)> {
             }
             let text: String = s[start..i].iter().collect();
             let hex = text.starts_with("0x") || text.starts_with("0b") || text.starts_with("0o");
-            if !hex && (text.contains('e') || text.contains('E')) && !text.contains("e_") {
+            // an integer suffix may hold an `e` (`5usize`), an exponent never follows one
+            let digits = INT_SUFFIXES
+                .iter()
+                .find_map(|x| text.strip_suffix(x))
+                .unwrap_or(&text);
+            if !hex && (digits.contains('e') || digits.contains('E')) {
                 float = true; // 1e3
             }
             if text.ends_with("f32") || text.ends_with("f64") {
@@ -454,6 +462,8 @@ fn each_forbidden_pattern_is_flagged() {
         "const X: u32 = 1.5 as u32;",
         "const X: u32 = 1e3 as u32;",
         "const X: u32 = 2f32 as u32;",
+        "const X: u32 = 1E3 as u32;",
+        "const X: u32 = 2e-3 as u32;",
         &format!("const T: [u8; 17] = {SEVENTEEN};"),
         "const T: [i16; 17] = [-1, 0x2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 0b1_0001];",
         "const T: [[u8; 3]; 6] = [[1, 2, 3], [1, 2, 3], [1, 2, 3], [1, 2, 3], [1, 2, 3], [1, 2, 3]];",
@@ -484,6 +494,7 @@ fn ordinary_pure_code_is_not_flagged() {
             let _ = (0..10).len() + t.1.0 as usize + 1.max(2);
             let _ = ['a', 'b', '\n'];
             let _ = vec![1u8; 300];
+            let _ = 5usize + 3isize as usize + 1_000_usize;
             0x1e3 + 0b1e0_u32.count_ones() + c as u32
         }
     "##
