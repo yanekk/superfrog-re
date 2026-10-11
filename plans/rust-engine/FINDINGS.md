@@ -18,6 +18,7 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-11 | 📌 | T10 review: `sf-paula` puts two full-scale channels at exactly ±32 768, so the band-limited step's ringing overshoot clamps on full-scale content (probe peaked at 32 768). Left as is; output headroom is T22's call. |
 | 2026-10-11 | 📌 | Frames are not all 313 lines: the game sets then clears BPLCON0 LACE (frame 1 332), LOF sticks short, so the title music runs 312-line frames, 50.08 Hz. DESIGN §2.5 says 49.92; sf-core/T22 pacing must model LOF. |
 | 2026-10-11 | 📌 | An oracle step's writes and taps run from just after its frame's start to just after the next one's: a position going backwards marks the next frame's first clocks. `sf-paula` and the T10 test carry them over. |
 | 2026-10-11 | 📌 | vAmiga's own mix: 2 048 samples of pre-fill, point-sampled (no anti-aliasing), synthesised once per frame 50 lines behind. Ours differs by 0.18 relative RMS on the title music, all high-frequency; T10 tolerance 0.25. |
