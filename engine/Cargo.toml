@@ -14,3 +14,11 @@ publish = false
 # side is optimised even in test builds so the test block stays within its time budget (T05).
 [profile.dev.package.sf-oracle]
 opt-level = 2
+
+# The mixer runs four channels at 3.5 MHz; the oracle comparison runs it for thousands of frames.
+[profile.dev.package.sf-paula]
+opt-level = 2
+
+# Its oracle tests compare the mixer's output with the reference at every Paula clock.
+[profile.dev.package.sf-conform]
+opt-level = 2

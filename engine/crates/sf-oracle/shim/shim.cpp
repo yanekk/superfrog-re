@@ -1,6 +1,7 @@
 // sf-oracle's C API over the vAmiga core; see shim.h. Built by sf-oracle's build.rs against the core
 // that tools/setup/oracle.sh builds with engine/crates/sf-oracle/patches applied:
 //   0001 installs `vamiga_custom_write_hook`, called on every custom-register write (CPU and Copper);
+//   0004 installs `vamiga_audio_sample_hook`, called whenever a channel's DAC takes a new value;
 //   0002 makes `SfShimAccess` a friend of `Emulator`, so the emulator can be stepped without its thread.
 
 #include "shim.h"
@@ -20,6 +21,7 @@
 namespace vamiga {
 
 extern void (*vamiga_custom_write_hook)(u32 addr, u16 value, int accessor, isize vpos, isize hpos);
+extern void (*vamiga_audio_sample_hook)(int channel, i8 sample, u16 volume, isize vpos, isize hpos);
 
 // Reaches Emulator's private stepping functions (patch 0002). vAmiga normally runs these on its own
 // thread, paced by the wall clock; the oracle calls them directly, one frame per call.
@@ -101,6 +103,15 @@ void hook(u32 addr, u16 value, int, isize vpos, isize hpos)
     }
 }
 
+thread_local std::vector<sf_audio_tap> *tapping = nullptr;
+
+void sampleHook(int channel, i8 sample, u16 volume, isize vpos, isize hpos)
+{
+    if (tapping) {
+        tapping->push_back(sf_audio_tap { u8(channel), sample, volume, u16(vpos), u16(hpos) });
+    }
+}
+
 void fail(char *err, size_t len, const char *what)
 {
     if (err && len) { std::snprintf(err, len, "%s", what); }
@@ -132,7 +143,9 @@ struct sf_amiga {
     std::vector<sf_custom_write> writes;
     uint32_t joy = 0;
     uint8_t keys[16] = { };
-    std::vector<float> audioScratch = std::vector<float>(8192);
+    std::vector<sf_audio_tap> taps;
+    std::vector<float> mixed;
+    int lines = 0;
 
     Emulator &emu() { return *va.emu; }
     Amiga &amiga() { return SfShimAccess::main(*va.emu); }
@@ -148,6 +161,20 @@ struct sf_amiga {
         emu().set(Opt::HOST_TEX_FORMAT, (i64)TexFormat::ARGB);
         amiga().controlPort1.setDevice(ControlPortDevice::MOUSE);
         amiga().controlPort2.setDevice(ControlPortDevice::JOYSTICK);
+        // The core's mix, kept for sf-paula's comparison (shim.h, SF_AUDIO_RATE): the hardware's
+        // pairing with nothing added, at a fixed rate (the adaptive rate follows the wall clock).
+        emu().set(Opt::HOST_SAMPLE_RATE, SF_AUDIO_RATE);
+        emu().set(Opt::AUD_ASR, false);
+        emu().set(Opt::AUD_FASTPATH, false);
+        emu().set(Opt::AUD_SAMPLING_METHOD, (i64)SamplingMethod::NONE);
+        emu().set(Opt::AUD_FILTER_TYPE, (i64)FilterType::NONE);
+        for (auto [opt, pan] : { std::pair { Opt::AUD_PAN0, 300 }, { Opt::AUD_PAN1, 100 },
+                                 { Opt::AUD_PAN2, 100 }, { Opt::AUD_PAN3, 300 } }) {
+            emu().set(opt, pan); // 300: all left, 100: all right (AudioPort::setOption)
+        }
+        for (auto opt : { Opt::AUD_VOL0, Opt::AUD_VOL1, Opt::AUD_VOL2, Opt::AUD_VOL3 }) emu().set(opt, 100);
+        emu().set(Opt::AUD_VOLL, 50);
+        emu().set(Opt::AUD_VOLR, 50);
     }
 
     void configure()
@@ -207,7 +234,10 @@ extern "C" {
 sf_amiga *sf_amiga_new(const uint8_t *rom, size_t rom_len, char *err, size_t err_len)
 {
     static std::once_flag installed;
-    std::call_once(installed, [] { vamiga_custom_write_hook = hook; });
+    std::call_once(installed, [] {
+        vamiga_custom_write_hook = hook;
+        vamiga_audio_sample_hook = sampleHook;
+    });
     auto a = std::make_unique<sf_amiga>();
     auto rc = guarded(err, err_len, "setting up the emulator", [&] {
         a->emu().initialize();
@@ -250,18 +280,28 @@ int sf_amiga_power_on(sf_amiga *a, char *err, size_t err_len)
 int sf_amiga_step(sf_amiga *a, uint32_t joy, const uint8_t keys[16], char *err, size_t err_len)
 {
     a->writes.clear();
+    a->taps.clear();
     a->input(joy, keys);
     capturing = &a->writes;
+    tapping = &a->taps;
+    // A step runs from just after one frame's start to just after the next one's (the CPU finishes
+    // its instruction), so the frame it runs is the one starting now.
+    a->lines = int(a->amiga().agnus.pos.vCnt());
     auto rc = guarded(err, err_len, "running a frame", [&] {
         try {
             SfShimAccess::step(a->emu());
         } catch (StateChangeException &) {
             throw std::runtime_error("the emulator stopped mid-frame (a CPU halt or a breakpoint)");
         }
-        // Nobody plays the host audio; drain it so the stream never overflows.
-        a->amiga().audioPort.copyMono(a->audioScratch.data(), isize(a->audioScratch.size()));
+        // Keep the frame's mix and empty the stream, so it never overflows. Exactly what is there
+        // is taken: asking the port for more counts as an underflow, which pads the stream.
+        auto &stream = a->amiga().audioPort.stream;
+        auto n = stream.count();
+        a->mixed.resize(size_t(2 * n));
+        stream.copyInterleaved(a->mixed.data(), n);
     });
     capturing = nullptr;
+    tapping = nullptr;
     return rc;
 }
 
@@ -269,6 +309,23 @@ size_t sf_amiga_paula_writes(const sf_amiga *a, const sf_custom_write **out)
 {
     *out = a->writes.data();
     return a->writes.size();
+}
+
+size_t sf_amiga_audio_taps(const sf_amiga *a, const sf_audio_tap **out)
+{
+    *out = a->taps.data();
+    return a->taps.size();
+}
+
+int sf_amiga_frame_lines(const sf_amiga *a)
+{
+    return a->lines;
+}
+
+size_t sf_amiga_audio_out(const sf_amiga *a, const float **out)
+{
+    *out = a->mixed.data();
+    return a->mixed.size() / 2;
 }
 
 const uint32_t *sf_amiga_texture(const sf_amiga *a, size_t *stride, size_t *rows)

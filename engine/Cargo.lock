@@ -88,6 +88,10 @@ dependencies = [
 [[package]]
 name = "sf-conform"
 version = "0.1.0"
+dependencies = [
+ "sf-oracle",
+ "sf-paula",
+]
 
 [[package]]
 name = "sf-core"
