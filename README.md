@@ -70,6 +70,19 @@ Full analysis in [`docs/`](docs/) (read in order):
 - [`07-secret-passages.md`](docs/07-secret-passages.md) — collision flags, fake-wall (flag 38) secret passages
 - [`LEVEL-INDEX.md`](docs/LEVEL-INDEX.md) — level ids + tile addressing (`<level-id>:<col>,<row>`)
 
+## Rust engine
+
+A frame-exact Rust reimplementation of the game lives in [`engine/`](engine/); the plan, design and
+progress are in [`plans/rust-engine/`](plans/rust-engine/). Setup and tests:
+
+```bash
+tools/setup/install-rust.sh                 # rustup via Homebrew + the pinned toolchain (idempotent)
+cd engine && cargo test -q --workspace      # includes the purity test (DESIGN §3.1)
+venv/bin/python tools/check_no_disk_data.py # no disk bytes in the repo (DESIGN §2.3)
+```
+
+Both tests read the disks from `SUPERFROG_DISKS`, else from the main checkout root.
+
 ## Tools
 
 | File | Purpose |
@@ -81,3 +94,4 @@ Full analysis in [`docs/`](docs/) (read in order):
 | `tools/render_levels.py` | render all levels to PNG (tileset + palette + tilemap) |
 | `tools/find_secrets.py` | find fake-wall secret passages, overlay + `SECRETS.md` |
 | `tools/export_annotated.py` | per-level PNG with a coordinate grid + level id (tile addressing) |
+| `tools/check_no_disk_data.py` | fail if any repo file carries a 128-byte run of disk data |
