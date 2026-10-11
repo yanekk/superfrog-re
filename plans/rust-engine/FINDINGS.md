@@ -18,6 +18,8 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-11 | 🐞 | T11 review: at a fade's end `music_stop` leaves `a1` at `sfx_steal`, so the original's shadow copy writes RAM `$13024..$1305e`, not Paula. The driver wrote Paula. Fixed; `fades_match_the_original` locks it. Only that caller uses `a1` afterwards. |
+| 2026-10-11 | 📌 | T11 review: fake unverified against real: Moira hardware mode records a byte write to a custom register as that byte on both halves. The driver never makes one; nothing checks it against vAmiga. |
 | 2026-10-11 | 📌 | T11: `Cpu68k::set_hardware(true)` runs routines that drive Paula: writes recorded in `hw_writes`, VHPOSR steps per read, CIAs read 0. Routines waiting on DMA or interrupts still time out. `Cpu68k::apply` keeps a call's memory changes. |
 | 2026-10-11 | 📌 | T11: Paula pointers are absolute, so files must sit where the game puts them: a world's module right after its bank's effects (`sfx_bank_init` sets h0+$9ec), the title's MUSC at the bank's own place. |
 | 2026-10-11 | 📌 | T11: the title's main loop writes DMACON $8020/$8400 and INTENA $4000/$c000 pairs around loading. The audio comparison filters them; whole-frame Paula comparison (T12 on) must expect them from non-sound code. |

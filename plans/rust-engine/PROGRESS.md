@@ -13,7 +13,7 @@ the account is the commit message. Whoever writes a cell also fixes the over-bud
 
 **Status:** Plan written; nothing built.
 **Last updated:** 2026-10-11
-**Next `pir-work` will:** review T11 audio-driver.
+**Next `pir-work` will:** the next ⬜ task whose dependencies are ✅ (T08 or T12).
 
 ## Tasks
 
@@ -33,7 +33,7 @@ done · ⛔ blocked, needs a human.
 | T08 | asset-decode | T04, T07 | ⬜ | |
 | T09 | asset-cache | T03, T08 | ⬜ | |
 | T10 | paula-mixer | T01, T05 | ✅ | |
-| T11 | audio-driver | T06, T07 | 🔍 | sf-core::audio (P41A replayer, effects, streamer), sf-assets::sound, Moira hardware mode. 10 tests: 6 oracle (sf-conform/tests/audio_driver.rs), 4 pure. Deviations: play_sfx takes a channel (priority is the effect's); four per-VBL ticks plus tick(); oracle tests in sf-conform (purity); no `sf-conform -- all`, all in the block (~12 s); variables in docs/11, no layout yet. |
+| T11 | audio-driver | T06, T07 | ✅ | Review: one defect fixed, the fade's end wrote Paula where the original's copy lands in RAM at sfx_steal; new fade conformance test locks it. Seven deviations held. Probed against the disassembly; mutations of row repeat and priority caught, divu-overflow branch unreachable. Driver variables listed in docs/11, not yet in layout (T12). |
 | T12 | core-state | T05, T06, T07 | ⬜ | |
 | T13 | renderer | T08, T12 | ⬜ | |
 | T14 | frog-and-level | T06, T11, T12, T13 | ⬜ | |
@@ -57,7 +57,7 @@ done · ⛔ blocked, needs a human.
 A Notes cell holds what was built or what the review found, the test count, and one line per
 deviation from the task doc. A ✅ task's cell may be cut to one line once the next task has been reviewed.
 
-**Review queue:** T11
+**Review queue:** *(empty)*
 
 ## Blocked on the user
 
