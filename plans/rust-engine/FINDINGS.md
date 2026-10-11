@@ -18,6 +18,14 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-12 | 📌 | T13 review: owner added T31 render-remaining-levels. T13 renders 25 of 29 levels; W6's alt maps 2–4 need DF1–DF3 (oracle has df0 only) and the final level has no level code (password entries 24–27 all lead to the bonus level). |
+| 2026-10-12 | 📌 | T13 review: `late_redraw` excuses a differing pixel wherever an alternative differs from end-of-frame, not where it matches the original (strict matching fails 10 of 25 cases on genuine mixed frames). A renderer defect confined to changed regions is skipped, not caught. |
+| 2026-10-11 | 🔄 | Owner, T13: the two display buffers (h3+$10600, $22f30) are engine state; the play field renders from them, the map only for widescreen. T14–T18 must port the original's tile, animation and bob blits into them. Save states grow ~150 KB. |
+| 2026-10-11 | 📌 | T13: ~4% of level frames have late redraws (copper, panel or shown buffer rewritten after the beam). Transplant render tests list and skip them; stepping conformance (T14 on) must still match them, e.g. by applying blits in beam order. |
+| 2026-10-11 | 📌 | T13: LAYOUT now carries the level's display (copper list, panel, both buffers, map, camera, ~230 KB). A vars-comparing case in a level diverges until T14's mechanics write them. |
+| 2026-10-11 | 📌 | T13: no colour cycling in levels. Level palettes change only in the start fade (h0+$153a4), exit fade ($155a0) and boss flash ($151b2). T08's "COLOR06 cycling, inferred" was not seen in 8 500 frames of W1-1. |
+| 2026-10-11 | 📌 | T13: oracle reaches every W1–W6 level and WB-1 by level code (sync::reach); W6's alt maps need a second drive and the final level has no code, so neither is rendered-tested. |
+| 2026-10-11 | 📌 | T13, for the bob port: blitter ignores bit 0 of a recorded destination; buffer 0's draw x survives only in its seam sub-record (+$8c), the upper one is already the next pass's. Sprites only show on lines with a bitplane fetch. |
 | 2026-10-11 | 📌 | T11 review, at merge: T12 landed `LAYOUT` without the driver's variables, and no task doc maps them (docs/11 lists them; `sf_core::audio::vars` has the blocks). T14, the first to step the driver from `Game`, is the natural owner. |
 | 2026-10-11 | 🐞 | T11 review: at a fade's end `music_stop` leaves `a1` at `sfx_steal`, so the original's shadow copy writes RAM `$13024..$1305e`, not Paula. The driver wrote Paula. Fixed; `fades_match_the_original` locks it. Only that caller uses `a1` afterwards. |
 | 2026-10-11 | 📌 | T11 review: fake unverified against real: Moira hardware mode records a byte write to a custom register as that byte on both halves. The driver never makes one; nothing checks it against vAmiga. |
@@ -32,7 +40,6 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 | 2026-10-11 | 📌 | T08: the purity lexer counts a `("name", 1, 18)` tuple array as an integer table. So the chunk catalogue keeps only the game's file names in source; disk and sector come from its `file_table`. |
 | 2026-10-11 | 📌 | T12: `rng_seed` (h0+$1607a) has no `rts`; it runs on into `rng_next`, so seeding also advances the state once. `Rng::seeded` does both; symbols.toml note corrected; docs/08 "RNG" does not say it. |
 | 2026-10-11 | 📌 | T12: title eye-blink timers h0+$1368/$136a count down per frame and at -2 call `rng_range($4b)`. With `boot-to-title`, the RNG holds still from frame 4 405 to 4 461: the title-rng case's window. |
-| 2026-10-11 | 📌 | T12 stubbed `GameData` and `LevelId` in `sf-assets/src/gamedata.rs` because `Game::new` needs them. T08 replaces `GameData`; keep `LevelId`'s `W1-1` parser (sf-conform cases use it). |
 | 2026-10-11 | 📌 | T12: sync-point snapshots are cached in `~/.cache/superfrog-re/sync/`, keyed by vAmiga build, ROM and disk file hashes and the script. Delete to force a fresh run; diff PNGs go to `$TMPDIR/sf-conform/`. |
 | 2026-10-11 | 🐞 | T07 review: vAmiga's `Defaults::fallbacks()` fills a static map unlocked on first use; machines powered on in parallel could read it half-filled ("Invalid key: ROM_PATH", seen once). Fixed: `sf_amiga_new` sets up under a mutex. No other set-up path. |
 | 2026-10-11 | 🔄 | Owner, lag: conformance runs feed the original's 25 Hz pass schedule (from the oracle) to the engine; VBL work runs at one fixed point in a late pass; leftover divergence is reported as lag and re-synced. Normal play never lags. |
@@ -49,7 +56,6 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 | 2026-10-11 | 📌 | An oracle step's writes and taps run from just after its frame's start to just after the next one's: a position going backwards marks the next frame's first clocks. `sf-paula` and the T10 test carry them over. |
 | 2026-10-11 | 📌 | vAmiga's own mix: 2 048 samples of pre-fill, point-sampled (no anti-aliasing), synthesised once per frame 50 lines behind. Ours differs by 0.18 relative RMS on the title music, all high-frequency; T10 tolerance 0.25. |
 | 2026-10-11 | 📌 | Not modelled, not asked by T10: the A500's analog low-pass (~4.4 kHz) and the LED filter. `sf-paula` outputs the raw DAC mix, band-limited. Whether the app needs them is T22/T30's call. |
-| 2026-10-11 | 🐞 | Fixed in T10: the shim drained host audio with `copyMono(8192)`, an underflow every frame that padded the stream. It now copies exactly what is there. |
 | 2026-10-11 | 📌 | vAmiga builds Moira with `MOIRA_VIRTUAL_API false`, memory hooks in its `CPU.cpp`; T06 compiles a second copy with `-Dvamiga=sf_moira` and two stub headers. Calls start through `reset()`, with `read16OnReset` handing it the entry and stack. |
 | 2026-10-11 | 🐞 | T05 review sweep: `sf_conform::disks::python_decompress` uses scratch dir `sf-atn-ref-<pid>`, removed before use; two threads calling it at once would delete each other's disks. One caller per process today. Not fixed. |
 | 2026-10-11 | 📌 | vAmiga snapshots omit the joystick, mouse-button (2-frame debounced `Sticky`) and key-down state, and ports "detect" their device on first use. The shim pins mouse/joystick devices and re-seats held input on restore (patch 0003). |

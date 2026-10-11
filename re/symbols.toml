@@ -1673,6 +1673,34 @@ kind = "table"
 size = 0x20
 note = "4 x 8 bytes: d3_c05..c08 (picture banks)"
 
+# T13: the level display (docs/12).
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x16660
+name = "camera_y"
+kind = "var"
+size = 4
+note = "camera's level y; the vertical blank scrolls to it + $17 (docs/12)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x16664
+name = "camera_x"
+kind = "var"
+size = 4
+note = "camera's level x; the vertical blank scrolls to it + 7 (docs/12)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x1700a
+name = "scroll_latch"
+kind = "func"
+note = "VBL: camera -> BPLCON1, bitplane pointers, ring-seam wait and scroll_column in the level copper list"
+
 [[sym]]
 exe = "d1_c03"
 hunk = 0
@@ -1680,6 +1708,102 @@ offset = 0x12a26
 name = "sfx_bank_init"
 kind = "func"
 note = "builds the sfx sample and effect pointer tables from LnFX"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x172b0
+name = "scroll_column"
+kind = "var"
+size = 4
+note = "address of the shown column's first word in the shown display buffer"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0xfa7c
+name = "tile_anim_draw"
+kind = "func"
+note = "queued map cells: tile + 1, drawn into the clean buffer and blitted into both display buffers"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x19120
+name = "bob_draw"
+kind = "func"
+note = "erases each bob from the clean buffer and cookie-cuts it into the back buffer (docs/12)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x19ce0
+name = "hero_sprite_frames"
+kind = "func"
+note = "HERO and its mirror -> attached sprite frames at h3+$4c0b0 (docs/12)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x1a6f4
+name = "hero_rects"
+kind = "table"
+size = 0x900
+note = "12-byte frame rectangles of HERO: x, y, w, h, two offsets"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 1
+offset = 0x218e0
+name = "level_map"
+kind = "data"
+size = 0xc780
+note = "84 rows of 304 cells, tile << 6 | marker (map_rows + $260)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 2
+offset = 0x6bd0
+name = "level_copper"
+kind = "data"
+size = 0x400
+note = "the level's copper list (docs/12)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 3
+offset = 0x10600
+name = "playfield_buffer_0"
+kind = "data"
+size = 0x12930
+note = "display buffer: 5 planes of $3b70, a ring of 19 tile rows (docs/12)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 3
+offset = 0x22f30
+name = "playfield_buffer_1"
+kind = "data"
+size = 0x12930
+note = "display buffer 1"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 3
+offset = 0x35860
+name = "playfield_clean"
+kind = "data"
+size = 0x12930
+note = "clean background buffer: tiles only; bobs are erased from it"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 3
+offset = 0x4b390
+name = "panel_bitmap"
+kind = "data"
+size = 0xd20
+note = "status panel: 5 planes of 14 lines, $2a0 apart"
 
 [[sym]]
 exe = "d1_c03"

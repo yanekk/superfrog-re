@@ -14,7 +14,7 @@ use sf_assets::{LevelId, World};
 use sf_core::input::{FrameInput, Joy, KeySet};
 use sf_core::layout::{AmigaMemory, Ram, h0};
 use sf_core::{Pacing, Rng};
-use sf_disk::sha1_hex;
+use sf_disk::{DiskSlot, sha1_hex};
 use sf_oracle::{Amiga, CpuRegs, OracleConfig, Snapshot};
 
 use crate::case::script_path;
@@ -27,9 +27,9 @@ pub enum SyncPoint {
     PowerOn,
     /// Run the named script from power-on for `frame` frames.
     AtFrame { script: String, frame: u32 },
-    /// The first frame of a level, reached the way a player would. Only W1-1 so far: START GAME
-    /// from the title menu (`scripts/start-w1-1.txt`). Other levels need the password path through
-    /// the options screen, which T20 ports.
+    /// The first frame of a level, reached the way a player would: W1-1 by START GAME from the
+    /// title menu (`scripts/start-w1-1.txt`), every other level of W1–W6 and the bonus level by
+    /// typing its level code on the options screen, inserting each disk the game asks for.
     AtLevel(LevelId),
 }
 
@@ -59,6 +59,14 @@ const LEVEL: u32 = h0(0x40de);
 const RNG_STATE: u32 = h0(0x160d4);
 /// W1-1 is playable by frame ~7 290 of `start-w1-1` (T07); stop looking well after.
 const LEVEL_SEARCH: u32 = 9_000;
+/// The password path loads up to two worlds' files across disk swaps: W6-4 is playable by about
+/// frame 12 000.
+const PASSWORD_SEARCH: u32 = 20_000;
+/// `password_table` (h0+$24dc): 28 entries of six ASCII digits and a handler; W1-1..W6-4 in order,
+/// then the bonus level's.
+const PASSWORD_TABLE: u32 = h0(0x24dc);
+/// The disk ID `disk_request` is looking for (h0+$af54): `2222`..`5555` for disks 1–4.
+const WANTED_DISK: u32 = h0(0xaf54);
 
 fn word(m: &AmigaMemory, a: u32) -> u32 {
     (m.byte(a) as u32) << 8 | m.byte(a + 1) as u32
@@ -122,13 +130,10 @@ pub fn reach(sync: &SyncPoint, script: &InputScript, frames: u32) -> Result<Sync
                 Ok(())
             })
         }
+        SyncPoint::AtLevel(id) if (id.world, id.level, id.alt) != (World::W1, 1, false) => {
+            by_password(*id, frames)
+        }
         SyncPoint::AtLevel(id) => {
-            if (id.world, id.level, id.alt) != (World::W1, 1, false) {
-                return Err(format!(
-                    "AtLevel({id}): only W1-1 is reachable so far; other levels need the \
-                     password path through the options screen (T20)"
-                ));
-            }
             let s = InputScript::load(&script_path("start-w1-1"))?;
             let key = format!("level {id} script\n{}", s.to_oracle().canonical());
             at_snapshot(&key, frames, LEVEL_SEARCH, |a| {
@@ -143,6 +148,81 @@ pub fn reach(sync: &SyncPoint, script: &InputScript, frames: u32) -> Result<Sync
             })
         }
     }
+}
+
+/// The options screen's way into a level (docs/12 "Reaching every level"): from the title menu
+/// pick OPTIONS, move to LEVEL CODE (the entry starts as the cursor reaches it), type the level's
+/// six digits as raw keys 01..0A, leave the options and START GAME. The digits are read from the
+/// original's own `password_table` as it runs, so no code is written down here. Whenever the game
+/// asks for a disk, that disk goes in.
+fn by_password(id: LevelId, frames: u32) -> Result<Synced, String> {
+    let (world, entry) = match id.world {
+        World::Bonus if id.level == 1 && !id.alt => (7, 24),
+        w @ (World::W2 | World::W3 | World::W4 | World::W5 | World::W6 | World::W1)
+            if !id.alt && (1..=4).contains(&id.level) =>
+        {
+            let n = World::ALL.iter().position(|&x| x == w).unwrap_or(0) as u32;
+            (n + 1, 4 * n + id.level as u32 - 1)
+        }
+        _ => {
+            return Err(format!(
+                "AtLevel({id}): not reachable by a level code on one drive"
+            ));
+        }
+    };
+    // Title menu, OPTIONS, three times down to LEVEL CODE.
+    const MENU: &str = "1000: M\n1005: -\n4600: F\n4605: -\n4650: D\n4655: -\n4700: F\n4705: -\n\
+                        4800: D\n4810: -\n4840: D\n4850: -\n4880: D\n4890: -\n";
+    const TYPE_FROM: u32 = 4980;
+    let key = format!("level {id} by level code v1\n{MENU}");
+    at_snapshot(&key, frames, PASSWORD_SEARCH, |a| {
+        let mut script = InputScript::parse(MENU).map_err(|e| e.to_string())?;
+        let mut disk = 0;
+        for f in 0..PASSWORD_SEARCH {
+            if f == TYPE_FROM {
+                let m = core_memory(a.memory());
+                let mut text = String::from(MENU);
+                let mut t = TYPE_FROM;
+                for k in 0..6 {
+                    let digit = m.byte(PASSWORD_TABLE + 10 * entry + k);
+                    let code = match digit {
+                        b'0' => 0x0a,
+                        b'1'..=b'9' => digit - b'0',
+                        _ => return Err(format!("password_table entry {entry} is not digits")),
+                    };
+                    text += &format!("{t}: K{code:02X}\n{}: -\n", t + 6);
+                    t += 16;
+                }
+                // Leave the options (cursor back on LIVES), fire for the menu, START GAME.
+                text += &format!("{}: F\n{}: -\n", t + 40, t + 45);
+                text += &format!("{}: F\n{}: -\n", t + 140, t + 145);
+                text += &format!("{}: F\n{}: -\n", t + 200, t + 205);
+                script = InputScript::parse(&text).map_err(|e| e.to_string())?;
+            }
+            a.step(script.input_at(f)).map_err(|e| e.to_string())?;
+            let m = core_memory(a.memory());
+            if f > TYPE_FROM {
+                let want = long(&m, WANTED_DISK);
+                if want != disk {
+                    disk = want;
+                    let slot = match want {
+                        0x3232_3232 => Some(DiskSlot::D1),
+                        0x3333_3333 => Some(DiskSlot::D2),
+                        0x3434_3434 => Some(DiskSlot::D3),
+                        0x3535_3535 => Some(DiskSlot::D4),
+                        _ => None,
+                    };
+                    if let Some(s) = slot {
+                        a.insert_disk(0, s);
+                    }
+                }
+            }
+            if in_level(&m) && long(&m, WORLD) == world && long(&m, LEVEL) == id.level as u32 {
+                return Ok(());
+            }
+        }
+        Err(format!("{id} not reached in {PASSWORD_SEARCH} frames"))
+    })
 }
 
 fn power_on(frames: u32) -> Result<Amiga, String> {

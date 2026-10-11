@@ -26,3 +26,7 @@ opt-level = 2
 # Its oracle tests compare the mixer's output with the reference at every Paula clock.
 [profile.dev.package.sf-conform]
 opt-level = 2
+
+# The renderer draws thousands of transplanted frames in the conformance tests (T13).
+[profile.dev.package.sf-core]
+opt-level = 2

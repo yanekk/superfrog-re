@@ -1,14 +1,61 @@
 //! The game's state: every original variable the engine models, as typed Rust, plus the
 //! conversions to and from the original's memory that [`LAYOUT`] drives.
+//!
+//! What the level's picture is drawn from (T13, docs/12) is kept in the original's own form: the
+//! copper list, the panel's bitplanes and the two display buffers. The renderer reads them as
+//! Denise would, so a transplanted state draws the original's frame, and a mechanic task writes
+//! them as the original does (its tile, animation and bob blits; owner, 2026-10-11).
 
-use crate::layout::{LAYOUT, Ram, VarId};
+use crate::layout::{LAYOUT, MAP_ROW_CELLS, MAP_ROWS, Ram, VarId, def};
 use crate::rng::Rng;
 
 /// What the original keeps in memory, as far as the engine models it. A power-on state is all
 /// zero, as the oracle's RAM is (FINDINGS 2026-10-11: RAM zeroed).
-#[derive(Debug, Clone, Default, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct State {
     pub rng: Rng,
+    /// `camera_x`, `camera_y`: the level pixel the camera follows (docs/12 "Scroll").
+    pub camera: Camera,
+    /// `scroll_column`: the vertical blank's last scroll, as the address of the shown column.
+    pub scroll_column: u32,
+    /// `map_rows`: one row above `level_map` in the original's memory.
+    pub map_rows: u32,
+    /// `world`: 1..6, 7 the bonus level.
+    pub world: u32,
+    /// `level_map`: [`MAP_ROWS`] rows of [`MAP_ROW_CELLS`] cells, `tile << 6 | marker`.
+    pub map: Vec<u16>,
+    /// `playfield_buffer_0` and `_1`: the display buffers' bitplanes, as the original's bytes.
+    pub buffers: [Vec<u8>; 2],
+    /// `level_copper`: the level's copper list, as the original's bytes.
+    pub copper: Vec<u8>,
+    /// `panel_bitmap`: the status panel's five bitplanes.
+    pub panel: Vec<u8>,
+}
+
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash)]
+pub struct Camera {
+    pub x: u32,
+    pub y: u32,
+}
+
+impl Default for State {
+    fn default() -> State {
+        let len = |id| def(id).width.len() as usize;
+        State {
+            rng: Rng::default(),
+            camera: Camera::default(),
+            scroll_column: 0,
+            map_rows: 0,
+            world: 0,
+            map: vec![0; (MAP_ROWS * MAP_ROW_CELLS) as usize],
+            buffers: [
+                vec![0; len(VarId::PlayfieldBuffer0)],
+                vec![0; len(VarId::PlayfieldBuffer1)],
+            ],
+            copper: vec![0; len(VarId::LevelCopper)],
+            panel: vec![0; len(VarId::PanelBitmap)],
+        }
+    }
 }
 
 impl State {
@@ -61,17 +108,68 @@ impl State {
         }
     }
 
+    /// The bytes of a variable kept in the original's own form, by address: `len` bytes at
+    /// `addr` when one such variable covers them all. The renderer reads the copper list, the
+    /// panel and the display buffers through this, as the hardware reads memory.
+    pub fn raw(&self, addr: u32, len: u32) -> Option<&[u8]> {
+        let (id, at) = LAYOUT
+            .iter()
+            .find(|d| addr >= d.addr && addr + len <= d.addr + d.width.len())
+            .map(|d| (d.id, (addr - d.addr) as usize))?;
+        let bytes: &[u8] = match id {
+            VarId::PlayfieldBuffer0 => &self.buffers[0],
+            VarId::PlayfieldBuffer1 => &self.buffers[1],
+            VarId::LevelCopper => &self.copper,
+            VarId::PanelBitmap => &self.panel,
+            _ => return None,
+        };
+        Some(&bytes[at..at + len as usize])
+    }
+
     /// `id`'s value as the original stores it (big-endian, its [`crate::VarDef`]'s width).
     fn bytes(&self, id: VarId) -> Vec<u8> {
+        let long = |v: u32| v.to_be_bytes().to_vec();
         match id {
             VarId::RngState => self.rng.to_bytes().to_vec(),
+            VarId::CameraY => long(self.camera.y),
+            VarId::CameraX => long(self.camera.x),
+            VarId::ScrollColumn => long(self.scroll_column),
+            VarId::MapRows => long(self.map_rows),
+            VarId::World => long(self.world),
+            VarId::LevelMap => self.map.iter().flat_map(|c| c.to_be_bytes()).collect(),
+            VarId::PlayfieldBuffer0 => self.buffers[0].clone(),
+            VarId::PlayfieldBuffer1 => self.buffers[1].clone(),
+            VarId::LevelCopper => self.copper.clone(),
+            VarId::PanelBitmap => self.panel.clone(),
         }
     }
 
     fn set_bytes(&mut self, id: VarId, b: &[u8]) {
+        let long = |b: &[u8]| u32::from_be_bytes(b[..4].try_into().expect("4 bytes"));
         match id {
             VarId::RngState => self.rng = Rng::from_bytes(b.try_into().expect("8 bytes")),
+            VarId::CameraY => self.camera.y = long(b),
+            VarId::CameraX => self.camera.x = long(b),
+            VarId::ScrollColumn => self.scroll_column = long(b),
+            VarId::MapRows => self.map_rows = long(b),
+            VarId::World => self.world = long(b),
+            VarId::LevelMap => {
+                self.map = b
+                    .chunks_exact(2)
+                    .map(|c| u16::from_be_bytes([c[0], c[1]]))
+                    .collect()
+            }
+            VarId::PlayfieldBuffer0 => self.buffers[0] = b.to_vec(),
+            VarId::PlayfieldBuffer1 => self.buffers[1] = b.to_vec(),
+            VarId::LevelCopper => self.copper = b.to_vec(),
+            VarId::PanelBitmap => self.panel = b.to_vec(),
         }
+    }
+
+    /// The map cell at (`col`, `row`); `None` outside the map's 300 × 84 cells.
+    pub fn cell(&self, col: i32, row: i32) -> Option<u16> {
+        ((0..300).contains(&col) && (0..MAP_ROWS as i32).contains(&row))
+            .then(|| self.map[(row * MAP_ROW_CELLS as i32 + col) as usize])
     }
 }
 
@@ -100,13 +198,37 @@ mod tests {
                 hi: 0x0506_0708
             }
         );
+        let p = s.probe();
         assert_eq!(
-            s.probe(),
-            vec![
+            &p[..2],
+            &[
                 (VarId::RngState, 0x0102_0304),
                 (VarId::RngState, 0x0506_0708)
             ]
         );
+        assert!(p[2..].iter().all(|&(_, v)| v == 0));
+    }
+
+    #[test]
+    fn every_variable_round_trips_through_memory() {
+        let mut m = memory_with_rng([0; 8]);
+        let mut n = 0u8;
+        for d in LAYOUT {
+            for k in 0..d.width.len() {
+                n = n.wrapping_mul(31).wrapping_add(7);
+                let a = d.addr + k;
+                if a >= SLOW_BASE {
+                    m.slow[(a - SLOW_BASE) as usize] = n;
+                } else {
+                    m.chip[a as usize] = n;
+                }
+            }
+        }
+        let s = State::transplant(&m);
+        let pieces: Vec<_> = LAYOUT.iter().flat_map(|d| d.pieces()).collect();
+        for (p, (id, v)) in pieces.iter().zip(s.probe()) {
+            assert_eq!((p.id, p.read(&m)), (id, v), "{}", p.name);
+        }
     }
 
     #[test]
@@ -117,5 +239,25 @@ mod tests {
         assert_eq!(s.rng, Rng { lo: 0, hi: 0xAABB });
         s.poke(0x100, &[1]);
         assert_eq!(s.rng, Rng { lo: 0, hi: 0xAABB });
+    }
+
+    #[test]
+    fn raw_reads_only_whole_runs_inside_one_raw_variable() {
+        let mut s = State::default();
+        let at = def(VarId::LevelCopper).addr;
+        s.copper[4] = 9;
+        assert_eq!(s.raw(at + 4, 2), Some(&[9, 0][..]));
+        assert_eq!(s.raw(at + 0x3ff, 2), None);
+        assert_eq!(s.raw(def(VarId::CameraX).addr, 4), None);
+    }
+
+    #[test]
+    fn cells_outside_the_map_are_none() {
+        let mut s = State::default();
+        s.map[MAP_ROW_CELLS as usize + 2] = 0x3E09;
+        assert_eq!(s.cell(2, 1), Some(0x3E09));
+        assert_eq!(s.cell(-1, 1), None);
+        assert_eq!(s.cell(300, 1), None);
+        assert_eq!(s.cell(0, 84), None);
     }
 }

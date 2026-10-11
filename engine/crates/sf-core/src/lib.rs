@@ -9,12 +9,14 @@ pub mod audio;
 pub mod game;
 pub mod input;
 pub mod layout;
+pub mod render;
 pub mod rng;
 pub mod scene;
 pub mod state;
 
-pub use game::{FrameOut, Game, Pacing, Picture, Start, View};
+pub use game::{FrameOut, Game, Pacing, Start};
 pub use layout::{AmigaMemory, LAYOUT, Ram, VarDef, VarId, Width};
+pub use render::{DisplayData, Picture, Split, View, to_rgb12};
 pub use rng::Rng;
 pub use scene::Scene;
 pub use sf_assets::{GameData, LevelId};

@@ -92,6 +92,7 @@ headless.
 | [T28](tasks/T28-level-override.md) | level-override | T14, T24 |
 | [T29](tasks/T29-app-drill.md) | app-drill | T21, T25, T26, T27, T28 |
 | [T30](tasks/T30-acceptance.md) | acceptance | T29 |
+| [T31](tasks/T31-render-remaining-levels.md) | render-remaining-levels | T13 |
 
 T22 is the rig task: it comes before every surface task and they depend on it. T29 is the phase's
 drill. At the end: the owner plays it.

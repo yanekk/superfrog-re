@@ -111,11 +111,19 @@ impl fmt::Display for LevelId {
     }
 }
 
-/// The ids the user types (`W1-1`): worlds 1–6, levels 1–4, the one-drive maps.
+/// The ids the user types (`W1-1`): worlds 1–6, levels 1–4, the one-drive maps; `WB-1` the bonus
+/// level.
 impl FromStr for LevelId {
     type Err = String;
 
     fn from_str(s: &str) -> Result<LevelId, String> {
+        if s == "WB-1" {
+            return Ok(LevelId {
+                world: World::Bonus,
+                level: 1,
+                alt: false,
+            });
+        }
         let bad = || format!("`{s}` is not a level id like W1-1 (worlds 1-6, levels 1-4)");
         let (w, l) = s
             .strip_prefix('W')
@@ -594,6 +602,11 @@ mod tests {
         assert_eq!((id.world, id.level, id.alt), (World::W3, 2, false));
         assert_eq!(id.to_string(), "W3-2");
         assert_eq!("W6-4".parse::<LevelId>().unwrap().world, World::W6);
+        let bonus: LevelId = "WB-1".parse().unwrap();
+        assert_eq!(
+            (bonus.world, bonus.to_string()),
+            (World::Bonus, "WB-1".to_string())
+        );
         for bad in [
             "W0-1", "W7-1", "W1-5", "1-1", "W1", "W1-x", "", "W+1-1", "W1-+2",
         ] {

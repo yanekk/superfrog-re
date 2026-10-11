@@ -21,6 +21,8 @@ pub struct Divergence {
     pub first_var: Option<(VarDef, u32, u32)>,
     pub picture_diff: Option<PictureDiff>,
     pub paula_diff: Option<String>,
+    /// The picture rendered from the original's memory at this frame, where it differs.
+    pub render_diff: Option<PictureDiff>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -40,11 +42,15 @@ impl fmt::Display for Divergence {
                 d.name, d.addr, d.width
             )?;
         }
-        if let Some(p) = &self.picture_diff {
+        for (what, p) in [
+            ("picture", &self.picture_diff),
+            ("render from the original's memory", &self.render_diff),
+        ] {
+            let Some(p) = p else { continue };
             if let Some((x, y, theirs, ours)) = p.mismatch.first {
                 writeln!(
                     f,
-                    "  picture: first pixel ({x}, {y}): original ${theirs:03x}, engine ${ours:03x}"
+                    "  {what}: first pixel ({x}, {y}): original ${theirs:03x}, engine ${ours:03x}"
                 )?;
             }
             if let Some((theirs, ours)) = &p.mismatch.window {
@@ -92,15 +98,17 @@ pub fn write_diff_png(
             put(x as usize, y as usize, theirs.pixel(x, y));
         }
     }
+    let colours = sf_core::to_rgb12(ours);
+    let ours_at = |x: u16, y: u16| colours[y as usize * wo + x as usize];
     for y in 0..ours.height {
         for x in 0..ours.width {
-            put(wt + gap + x as usize, y as usize, ours.rgb12(x, y));
+            put(wt + gap + x as usize, y as usize, ours_at(x, y));
         }
     }
     for y in 0..theirs.height {
         for x in 0..theirs.width {
             let t = theirs.pixel(x, y);
-            let differs = x >= ours.width || y >= ours.height || ours.rgb12(x, y) != t;
+            let differs = x >= ours.width || y >= ours.height || ours_at(x, y) != t;
             let c = if differs { 0xF00 } else { t >> 2 & 0x333 };
             put(wt + gap + wo + gap + x as usize, y as usize, c);
         }

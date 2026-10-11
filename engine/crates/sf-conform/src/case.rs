@@ -14,6 +14,9 @@ pub struct Compare {
     pub picture: bool,
     /// The ordered Paula register writes.
     pub paula: bool,
+    /// The picture the renderer draws from the original's memory transplanted afresh each frame
+    /// (no engine stepping): what proves the renderer while the mechanics are not ported yet.
+    pub render: bool,
 }
 
 impl Compare {
@@ -21,11 +24,13 @@ impl Compare {
         vars: true,
         picture: true,
         paula: true,
+        render: false,
     };
     pub const VARS: Compare = Compare {
         vars: true,
         picture: false,
         paula: false,
+        render: false,
     };
 }
 
@@ -125,12 +130,21 @@ impl Case {
                         Some("vars") => c.vars = true,
                         Some("picture") => c.picture = true,
                         Some("paula") => c.paula = true,
-                        _ => return Err(format!("compare: {v} is not vars, picture or paula")),
+                        Some("render") => c.render = true,
+                        _ => {
+                            return Err(format!(
+                                "compare: {v} is not vars, picture, paula or render"
+                            ));
+                        }
                     }
                 }
                 c
             }
-            Some(_) => return Err("compare is a list of \"vars\", \"picture\", \"paula\"".into()),
+            Some(_) => {
+                return Err(
+                    "compare is a list of \"vars\", \"picture\", \"paula\", \"render\"".into(),
+                );
+            }
         };
         Ok(Case {
             name: name.to_string(),

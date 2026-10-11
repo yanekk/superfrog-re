@@ -16,8 +16,20 @@ pub fn frame(
     theirs_mem: &AmigaMemory,
     ours: &FrameOut,
     theirs: &FrameCapture,
+    rendered: Option<&Picture>,
 ) -> Option<Divergence> {
     let c = case.compare;
+    let render_diff = rendered
+        .and_then(|r| picture(r, &theirs.picture).map(|d| (r, d)))
+        .map(|(r, d)| {
+            report::write_diff_png(
+                &format!("{}-render", case.name),
+                frame,
+                r,
+                &theirs.picture,
+                d,
+            )
+        });
     let first_var = c.vars.then(|| vars(probe, theirs_mem)).flatten();
     let picture_diff = c
         .picture
@@ -25,7 +37,11 @@ pub fn frame(
         .flatten()
         .map(|d| report::write_diff_png(&case.name, frame, &ours.picture, &theirs.picture, d));
     let paula_diff = c.paula.then(|| paula(&ours.paula, &theirs.paula)).flatten();
-    if first_var.is_none() && picture_diff.is_none() && paula_diff.is_none() {
+    if first_var.is_none()
+        && picture_diff.is_none()
+        && paula_diff.is_none()
+        && render_diff.is_none()
+    {
         return None;
     }
     Some(Divergence {
@@ -33,6 +49,7 @@ pub fn frame(
         first_var,
         picture_diff,
         paula_diff,
+        render_diff,
     })
 }
 
@@ -65,20 +82,24 @@ pub struct PixelMismatch {
     pub window: Option<(String, String)>,
 }
 
-fn window(left: u16, top: u16, w: u16, h: u16) -> String {
+fn window(left: i32, top: u16, w: u16, h: u16) -> String {
     format!("{left:#x},{top:#x} {w}x{h}")
 }
 
 /// The first pixel, row-major, at which the engine's picture differs from the original's, over the
 /// area both cover; and whether the windows themselves differ.
 pub fn picture(ours: &Picture, theirs: &Rgb12Frame) -> Option<PixelMismatch> {
-    let a = window(theirs.left, theirs.top, theirs.width, theirs.height);
+    let a = window(theirs.left as i32, theirs.top, theirs.width, theirs.height);
     let b = window(ours.left, ours.top, ours.width, ours.height);
     let win = (a != b).then_some((a, b));
     let (w, h) = (ours.width.min(theirs.width), ours.height.min(theirs.height));
+    let colours = sf_core::to_rgb12(ours);
     let first = (0..h)
         .flat_map(|y| (0..w).map(move |x| (x, y)))
-        .map(|(x, y)| (x, y, theirs.pixel(x, y), ours.rgb12(x, y)))
+        .map(|(x, y)| {
+            let o = colours[y as usize * ours.width as usize + x as usize];
+            (x, y, theirs.pixel(x, y), o)
+        })
         .find(|p| p.2 != p.3);
     (first.is_some() || win.is_some()).then_some(PixelMismatch { first, window: win })
 }
