@@ -68,6 +68,8 @@ fn bad_lines_say_why() {
         ("1: K80", "00..7F"),
         ("1: K1", "two hex digits"),
         ("-3: R", "not a frame number"),
+        ("+3: R", "not a frame number"),
+        ("1: K+1", "two hex digits"),
     ] {
         let e = InputScript::parse(text).unwrap_err();
         assert!(e.why.contains(says), "{text}: {e}");

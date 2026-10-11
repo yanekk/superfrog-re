@@ -32,8 +32,12 @@ impl FromStr for LevelId {
             .strip_prefix('W')
             .and_then(|r| r.split_once('-'))
             .ok_or_else(bad)?;
-        let world: u8 = w.parse().map_err(|_| bad())?;
-        let level: u8 = l.parse().map_err(|_| bad())?;
+        // Digits only: `parse` would also take a leading `+`.
+        let num = |d: &str| match d.as_bytes() {
+            [c @ b'0'..=b'9'] => Ok(c - b'0'),
+            _ => Err(bad()),
+        };
+        let (world, level) = (num(w)?, num(l)?);
         if !(1..=6).contains(&world) || !(1..=4).contains(&level) {
             return Err(bad());
         }
@@ -50,7 +54,9 @@ mod tests {
         let id: LevelId = "W3-2".parse().unwrap();
         assert_eq!((id.world, id.level), (3, 2));
         assert_eq!(id.to_string(), "W3-2");
-        for bad in ["W0-1", "W7-1", "W1-5", "1-1", "W1", "W1-x", ""] {
+        for bad in [
+            "W0-1", "W7-1", "W1-5", "1-1", "W1", "W1-x", "", "W+1-1", "W1-+2",
+        ] {
             assert!(bad.parse::<LevelId>().is_err(), "{bad}");
         }
     }

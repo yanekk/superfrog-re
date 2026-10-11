@@ -61,7 +61,14 @@ fn watch(spec: &str) -> Result<VarDef, String> {
     let bad = || format!("--watch {spec}: expected NAME=ADDR:W, ADDR h0+<hex> or 0x<hex>, W B|W|L");
     let (name, rest) = spec.split_once('=').unwrap_or(("", spec));
     let (addr, w) = rest.rsplit_once(':').ok_or_else(bad)?;
-    let hex = |s: &str| u32::from_str_radix(s.trim_start_matches('$'), 16).map_err(|_| bad());
+    let hex = |s: &str| {
+        let s = s.trim_start_matches('$');
+        s.bytes()
+            .all(|b| b.is_ascii_hexdigit())
+            .then(|| u32::from_str_radix(s, 16).ok())
+            .flatten()
+            .ok_or_else(bad)
+    };
     let addr = match (addr.strip_prefix("h0+"), addr.strip_prefix("0x")) {
         (Some(off), _) => h0(hex(off)?),
         (_, Some(a)) => hex(a)?,

@@ -59,10 +59,13 @@ impl InputScript {
             let (frame, tokens) = body
                 .split_once(':')
                 .ok_or_else(|| err(format!("`{body}`: expected `<frame>: <inputs>`")))?;
+            let frame = frame.trim();
             let frame: u32 = frame
-                .trim()
-                .parse()
-                .map_err(|_| err(format!("`{}` is not a frame number", frame.trim())))?;
+                .bytes()
+                .all(|b| b.is_ascii_digit())
+                .then(|| frame.parse().ok())
+                .flatten()
+                .ok_or_else(|| err(format!("`{frame}` is not a frame number")))?;
             if let Some(&(prev, _)) = lines.last()
                 && frame <= prev
             {
@@ -81,9 +84,11 @@ impl InputScript {
                     "F" => input.joy = input.joy | Joy::FIRE,
                     "M" => input.joy = input.joy | Joy::PORT1_BUTTON,
                     k if k.starts_with('K') => {
-                        let code = u8::from_str_radix(&k[1..], 16)
-                            .ok()
-                            .filter(|&c| c < 0x80 && k.len() == 3)
+                        let hex = &k[1..];
+                        let code = (hex.len() == 2 && hex.bytes().all(|b| b.is_ascii_hexdigit()))
+                            .then(|| u8::from_str_radix(hex, 16).ok())
+                            .flatten()
+                            .filter(|&c| c < 0x80)
                             .ok_or_else(|| {
                                 err(format!("`{k}`: a key is K and two hex digits, 00..7F"))
                             })?;
