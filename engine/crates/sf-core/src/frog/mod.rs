@@ -21,6 +21,12 @@ pub mod f {
     /// Velocity, pixels per frame.
     pub const VX: u32 = 0x04;
     pub const VY: u32 = 0x06;
+    /// Facing: negative while the frog faces left (inferred from the camera's use).
+    pub const FACING: u32 = 0x12;
+    /// Negative while the frog climbs (inferred from the camera's use).
+    pub const CLIMB: u32 = 0x14;
+    /// Non-zero: the camera stays where it is.
+    pub const CAMERA_HELD: u32 = 0x48;
     /// Non-zero: the frog does not move ([`super::physics::frog_move`]).
     pub const FROZEN: u32 = 0x88;
 }

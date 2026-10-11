@@ -72,6 +72,12 @@ fn any_input(g: &mut Gen) -> Hw {
     Hw::of(FrameInput::joy(j))
 }
 
+/// 0, 1, -1 or anything.
+fn edgy(g: &mut Gen) -> u16 {
+    let any = g.next() as u16;
+    g.pick(&[0, 1, 0xffff, any])
+}
+
 /// A word that is usually small and sometimes anything.
 fn small_word(g: &mut Gen) -> u16 {
     match g.below(4) {
@@ -98,5 +104,45 @@ fn frog_move_matches_the_original() {
         }
         s.poke_w(FROG + f::FROZEN, if g.one_in(8) { 1 } else { 0 });
         rig.check("frog_move", case, 0xdb58, &s, frog::physics::frog_move);
+    }
+}
+
+#[test]
+fn camera_follow_matches_the_original() {
+    use sf_core::level::camera::*;
+    let mut rig = rig();
+    let mut g = Gen::new(2);
+    for case in 0..CASES {
+        let mut s = Setup {
+            hw: any_input(&mut g),
+            ..Setup::default()
+        };
+        let (x, y) = (g.below(0x1400) as u16, g.below(0x600) as u16);
+        s.poke_w(FROG + f::X, x);
+        s.poke_w(FROG + f::Y, y);
+        s.poke_w(FROG + f::VX, small_word(&mut g));
+        s.poke_w(FROG + f::VY, small_word(&mut g));
+        let near = |g: &mut Gen, v: u16, off: u16| {
+            if g.one_in(5) {
+                g.next() as u16
+            } else {
+                v.wrapping_sub(off).wrapping_add(g.below(41) as u16).wrapping_sub(20)
+            }
+        };
+        let cx = near(&mut g, x, 0x90);
+        let cy = near(&mut g, y, 0x70);
+        s.poke_l(CAMERA_X, if g.one_in(10) { g.next() as u32 } else { cx as u32 });
+        s.poke_l(CAMERA_Y, if g.one_in(10) { g.next() as u32 } else { cy as u32 });
+        s.poke_w(LEVEL_WIDTH, if g.one_in(4) { g.next() as u16 } else { 0x12c0 });
+        s.poke_w(LEVEL_HEIGHT, if g.one_in(4) { g.next() as u16 } else { 0x540 });
+        s.poke_b(SCROLL_DIRS, g.next() as u8);
+        s.poke_w(FROG + f::FACING, edgy(&mut g));
+        s.poke_w(FROG + f::CLIMB, edgy(&mut g));
+        s.poke_w(FROG + f::CAMERA_HELD, if g.one_in(6) { 1 } else { 0 });
+        s.poke_w(SHOOTER_MODE, if g.one_in(6) { 1 } else { 0 });
+        s.poke_w(FINAL_LEVEL_FLAG, if g.one_in(6) { 1 } else { 0 });
+        s.poke_w(SPRITES_HIDDEN, if g.one_in(6) { 1 } else { 0 });
+        s.poke_w(SHOOTER_HALF_STEP, g.pick(&[0, 0xffff]));
+        rig.check("camera_follow", case, 0xdb92, &s, camera_follow);
     }
 }

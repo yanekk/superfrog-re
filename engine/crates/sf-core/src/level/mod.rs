@@ -7,6 +7,7 @@
 //! ported routine works on: the original's memory as the engine models it, the hardware the frame
 //! reads, and the sound driver.
 
+pub mod camera;
 pub mod collision;
 pub mod load;
 
@@ -19,6 +20,13 @@ use crate::mem::Bus;
 
 /// `attract_mode` (h0+$18): -1 while the attract demo runs; sound is silent then.
 pub const ATTRACT_MODE: u32 = h0(0x18);
+
+/// Whether a 68000 result with these 16 bits leaves the N flag clear: what `bpl` after a `cmp`
+/// or `tst` tests. It is not a signed comparison (overflow is ignored), so the ported code uses it
+/// wherever the original branches on N alone.
+pub fn n_clear(result: u16) -> bool {
+    (result as i16) >= 0
+}
 
 /// What the custom chips and CIAs answer this frame: the original reads the joystick and the fire
 /// button itself, wherever it needs them (docs/08 "Input"); within a frame they hold still.
