@@ -18,6 +18,8 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-12 | 🔄 | Owner, T20: the engine starts at the game program's start (h0 `init_and_script`), not power-on; Kickstart and the crack intro are not reproduced. Disk loads are not modelled frame by frame: the runner skips the original's load frames and re-syncs. |
+| 2026-10-12 | 📌 | T20 added T32 story-intro (disk-3 program, oracle boots disk 1) and T33 attract-demo (needs T14–T16), owner's yes. Neither blocks T21; T21's "intro" and whole-game run may need T32 and T33 first. |
 | 2026-10-12 | 📌 | T13 review: owner added T31 render-remaining-levels. T13 renders 25 of 29 levels; W6's alt maps 2–4 need DF1–DF3 (oracle has df0 only) and the final level has no level code (password entries 24–27 all lead to the bonus level). |
 | 2026-10-12 | 📌 | T13 review: `late_redraw` excuses a differing pixel wherever an alternative differs from end-of-frame, not where it matches the original (strict matching fails 10 of 25 cases on genuine mixed frames). A renderer defect confined to changed regions is skipped, not caught. |
 | 2026-10-11 | 🔄 | Owner, T13: the two display buffers (h3+$10600, $22f30) are engine state; the play field renders from them, the map only for widescreen. T14–T18 must port the original's tile, animation and bob blits into them. Save states grow ~150 KB. |
