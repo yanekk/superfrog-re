@@ -4,50 +4,83 @@
 (Teemu Suutari's decompression library) or other public tools, so there is no
 off-the-shelf decoder.
 
-## How we decode it: emulation
+## How we decode it
 
-Rather than risk a hand-port of its variable-length code table + trailer
-handling, we run **the game's own decompressor routine** on a real 68000 core
-(`machine68k`, Musashi). This is exact by construction.
+Two decoders, one the reference for the other (DESIGN §2.4 of `plans/rust-engine`):
 
-- The routine lives in the disk-1 stage-1.5 loader, raw code at file offset
-  `0x400..0x1600`, entry at `+0x2DA`. It is identified unambiguously by its first
-  real instruction: `cmpi.l #$41544E21,(a0)+` ("ATN!").
-- `tools/atn.py` loads that code segment at `0x1000`, places a full carved chunk
-  at `0x400000`, points `a0`→source and `a1`→dest, and calls `+0x2DA`. A `STOP`
-  instruction at the fake return address halts the CPU cleanly on `rts`.
-- Success is confirmed by the routine's own return code in `d0` (`0xFFFFFFFF`)
-  **and** the output length matching `decomp_size`.
+- **The product decoder** is a hand port to Rust, `engine/crates/sf-disk/src/atn.rs`
+  (`sf_disk::decompress`). The shipped game contains no emulator.
+- **The reference** is `tools/atn.py`, which runs **the game's own routine** on a
+  real 68000 core (`machine68k`, Musashi) and is exact by construction. The
+  Rust port is tested byte-for-byte against it (`sf-disk/tests/atn_reference.rs`).
 
-Result: **103 / 106 chunks decode exactly.** The 3 stragglers
-(`d1_c16`, `d2_c39`, `d4_c16`) hit an edge case in the harness (they read past
-the loaded window) and are the only ones flagged `X` — revisit by widening the
-emulation window / trailer capture.
+The routine lives in the disk-1 stage-1.5 loader, raw code at file offset
+`0x400..0x1600`, entry at `+0x2DA` (`atn_decompress` in `re/symbols.toml`). It is
+identified by its first real instruction: `cmpi.l #$41544E21,(a0)+` ("ATN!").
+`tools/atn.py` loads that segment at `0x1000`, places a carved chunk at
+`0x400000`, points `a0`→source and `a1`→dest, and calls `+0x2DA`; a `STOP` at
+the fake return address halts the CPU on `rts`. Success is the routine's own
+return code, `d0 = -1`.
 
-> **`d4_c16` is exactly 53,588 bytes — the T7MP level size** — but is classified
-> `binary/gfx` because it failed to decompress. It is very likely a **level** that
-> did not unpack (possibly a hidden/30th level or a duplicate), not graphics.
-> Getting it to decode is the way to confirm. (`d1_c16` and `d2_c39` are other sizes.)
+Result: **103 / 106 chunks decode as carved, and the Rust port is identical on
+all 103.**
 
-## Algorithm (from the disassembly)
+### The three stragglers: the trailer crosses a sector
 
-Backward, byte-wise LZ. Pointers: `a3` = source (read backward via `-(a3)`),
-`a4` = dest (written backward via `-(a4)`), `a5` = dest base (stop condition).
+`d1_c16`, `d2_c39` and `d4_c16` fail as carved because their 46-byte trailer
+(below) starts at `comp_size` and runs past the sector the carver stops at: the
+carver ends a chunk at `12 + comp_size` rounded up to 512, which leaves only
+38, 44 and 30 bytes for the trailer. The rest is in the next disk sector. With
+that sector appended, **all three decode** in both the emulator and the Rust
+port, identically, to exactly `decomp_size` bytes:
 
-```
-a3 = src + comp_size          ; end of compressed region
-a4 = dst + decomp_size         ; end of output
-copy 12 trailer bytes over the source header; load d2 (long), d3 (word) from trailer
-copy 7 longs from trailer into a stack table (offset bases)
-loop until a4 == a5:
-    bit reader: MSB-first, `add.b d3,d3`; refill `move.b -(a3),d3 / addx.b d3,d3`
-    a prefix code selects: literal / short match / long match, with the copy
-    length and offset-bit-count driven by small PC-relative tables at +0x42A/+0x42E
-    matches copy backward: `move.b -(a2),-(a4)` with a2 = a4 + base + extra
-```
+| Chunk | Carved, Rust says | With next sector |
+|---|---|---|
+| `d1_c16` | `Truncated` | 40 514 bytes |
+| `d2_c39` | `Truncated` | 70 464 bytes |
+| `d4_c16` | `Truncated` | 53 588 bytes, a **T7MP level** (300 × 84 `BODY`) |
 
-The exact grammar is not needed for extraction (we emulate), but the disassembly
-is preserved in git history / `docs` notes for anyone porting a native decoder.
+Whether the game's own loader reads those extra bytes the same way (it loads
+whole tracks) is checked against its memory in T07. The carvers
+(`tools/atn.py`, `sf_disk::carve`) still stop at the old boundary.
+
+## Algorithm (as ported)
+
+All integers big-endian. Chunk = `"ATN!" | decomp_size | comp_size | stream…`,
+trailer at `chunk + comp_size`, 46 bytes:
+
+| Trailer bytes | Use |
+|---|---|
+| 0..12 | copied over the 12-byte header (longs in reverse order: `0..4`→`8..12`, `4..8`→`4..8`, `8..12`→`0..4`); the stream's last-read bytes |
+| 12..16 | `d2`: the first literal run's length |
+| 16..18 | `d3`: bit buffer (low byte). If bit 15 is clear, the stream starts one byte lower (`comp_size - 1`) |
+| 18..46 | table `T`, 28 bytes: words `T[0..8]` short offset bases, `T[8..16]` long offset bases (signed), bytes `T[16..28]` offset bit counts |
+
+Source `a3` reads backward from the stream end down to the chunk start; output
+`a4` writes backward from `decomp_size` down to 0.
+
+- **Bits:** `add.b d3,d3` gives the top bit; when the byte becomes 0, refill
+  `d3 = *--a3` and `addx.b d3,d3` (the old carry becomes the new low bit, the
+  new byte's top bit is the bit returned). A sentinel-bit scheme, MSB first.
+- **Loop:** copy `d2` literal bytes (`*--a4 = *--a3`). Stop when `a4` reaches
+  the start; success needs `a3` exactly at the chunk start too. Otherwise:
+- **Match length / class** (unary prefix): `0`→2 (class 0), `10`→3 (1),
+  `110`→4 (2), `1110`→5 (3), `11110`+3 bits→6..13 (3), `11111`+a whole byte read
+  from the source→that byte, 0 meaning 256 (3).
+- **Next literal run `d2`:** `0` → `bits(L[class])`; `11` →
+  `bits(L[class+8]) + B[class]`; `10` → `bits(L[class+4]) + 2`, with
+  `B = 06 0a 0a 12` (`+0x42A`) and `L = 01 01 01 01 02 03 03 04 04 05 07 0e`
+  (`+0x42E`).
+- **Match offset:** `0` → base 0, `n = T[16+class]`; `11` → base
+  `T.w[8+2·class]`, `n = T[16+class+8]`; `10` → base `T.w[2·class]`,
+  `n = T[16+class+4]`. `extra = bits(n)` (n = 0 reads 256 bits, keeping the low 32).
+- **Copy:** `a2 = a4 + 1 + base + extra`; `len` times `*--a4 = *--a2`
+  (byte by byte, so overlapping runs repeat).
+
+The Rust port refuses what the original would do silently: writing below the
+output start (it decodes on without writing to report the stream's true length,
+`LengthMismatch`), a match reading outside the output (`Overrun`), and reading
+before the chunk start (`LengthMismatch`).
 
 ## Bonus: the stage-2 *backward bit-LZ* (different codec)
 
