@@ -13,7 +13,7 @@ the account is the commit message. Whoever writes a cell also fixes the over-bud
 
 **Status:** Plan written; nothing built.
 **Last updated:** 2026-10-11
-**Next `pir-work` will:** review T08, then T09 asset-cache, which caches the `GameData` T08 builds.
+**Next `pir-work` will:** T09 asset-cache, which caches the `GameData` T08 builds.
 
 ## Tasks
 
@@ -30,7 +30,7 @@ done · ⛔ blocked, needs a human.
 | T05 | oracle-harness | T00, T01 | ✅ | |
 | T06 | routine-oracle | T04, T05 | ✅ | |
 | T07 | exe-map | T02, T04, T05 | ✅ | |
-| T08 | asset-decode | T04, T07 | 🔍 | sf-assets: unpack, catalogue, decode (exes, tables, T7MP codec, tiles, palettes, pictures, sheets, font, ANIM); docs/10. 14 tests. Dev: oracle test in sf-conform/tests (threads barred). Dev: ChunkId has sector; catalogue from file_table. Dev: 30 maps (W6 second set). Dev: sound, intro, d1_c02, INFT kept raw. Dev: ANIM vs game's player, not a screen. Dev: W6/LB/LW not vs Python (its palette wrong). |
+| T08 | asset-decode | T04, T07 | ✅ | Review: one defect fixed, a corrupt ANIM whose later frame resizes panicked (test locks it). Five deviations held by their tests. Ran sf-assets, oracle, purity, no-disk-data; mutations of tile bit order and ANIM buffer swap went red. Probed a crafted END2. docs/06 tileset chunk numbers read-only. 15 tests. |
 | T09 | asset-cache | T03, T08 | ⬜ | |
 | T10 | paula-mixer | T01, T05 | ✅ | |
 | T11 | audio-driver | T06, T07 | ⬜ | |
@@ -57,7 +57,7 @@ done · ⛔ blocked, needs a human.
 A Notes cell holds what was built or what the review found, the test count, and one line per
 deviation from the task doc. A ✅ task's cell may be cut to one line once the next task has been reviewed.
 
-**Review queue:** T08
+**Review queue:** *(empty)*
 
 ## Blocked on the user
 
