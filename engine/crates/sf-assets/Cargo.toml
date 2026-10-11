@@ -6,3 +6,7 @@ publish.workspace = true
 
 [dependencies]
 sf-disk = { path = "../sf-disk" }
+
+[dev-dependencies]
+# Finds the owner's disks (tests only; the levels and graphics tests need the real content).
+sf-conform = { path = "../sf-conform" }

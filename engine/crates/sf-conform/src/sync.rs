@@ -10,7 +10,7 @@ use std::ops::Range;
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicU64, Ordering};
 
-use sf_assets::LevelId;
+use sf_assets::{LevelId, World};
 use sf_core::input::{FrameInput, Joy, KeySet};
 use sf_core::layout::{AmigaMemory, Ram, h0};
 use sf_core::{Pacing, Rng};
@@ -123,7 +123,7 @@ pub fn reach(sync: &SyncPoint, script: &InputScript, frames: u32) -> Result<Sync
             })
         }
         SyncPoint::AtLevel(id) => {
-            if (id.world, id.level) != (1, 1) {
+            if (id.world, id.level, id.alt) != (World::W1, 1, false) {
                 return Err(format!(
                     "AtLevel({id}): only W1-1 is reachable so far; other levels need the \
                      password path through the options screen (T20)"

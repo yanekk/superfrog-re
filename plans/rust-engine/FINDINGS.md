@@ -18,6 +18,11 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-11 | 📌 | T08: level palette = 32 colours after `LnLP` (+$11300), proven on W1-1's copper (COLOR06 differs: cycling, inferred). `render_levels.py`'s W6 palette is L2ET read misaligned (wrong colours); its LB/LW use W6 tiles. docs/06 corrected. |
+| 2026-10-11 | 📌 | T08: W6 has two map sets, both `L6MA1`–`4`: d4_c02–05 (one drive) and d4_c14–17 (DF1–3 with disk 1, h0+$a144); maps 2–4 differ. docs/LEVEL-INDEX's "W6-5..7" are these copies; left unedited (scope). |
+| 2026-10-11 | 📌 | T08: the game's ANIM player (h0+$ab02 open, $ab82 next) is pure: on the routine oracle it plays END1 in 0.5 s. Hall font at h0+$378ca, charset h0+$322e. Neither is in `re/symbols.toml` yet (scope). |
+| 2026-10-11 | 📌 | T08 open: MPIC/FRUT palettes come from the copper (T20/T19); `LnLP`'s trailing 672/1 680 bytes and `LnMS`'s meaning unexplained; intro banks d3_c05–08 kept raw, layout ambiguous (T20). Not reached by oracle: ET, FRUT/FRUC/FRUM, W2–W6 LP. |
+| 2026-10-11 | 📌 | T08: the purity lexer counts a `("name", 1, 18)` tuple array as an integer table. So the chunk catalogue keeps only the game's file names in source; disk and sector come from its `file_table`. |
 | 2026-10-11 | 📌 | T12: `rng_seed` (h0+$1607a) has no `rts`; it runs on into `rng_next`, so seeding also advances the state once. `Rng::seeded` does both; symbols.toml note corrected; docs/08 "RNG" does not say it. |
 | 2026-10-11 | 📌 | T12: title eye-blink timers h0+$1368/$136a count down per frame and at -2 call `rng_range($4b)`. With `boot-to-title`, the RNG holds still from frame 4 405 to 4 461: the title-rng case's window. |
 | 2026-10-11 | 📌 | T12 stubbed `GameData` and `LevelId` in `sf-assets/src/gamedata.rs` because `Game::new` needs them. T08 replaces `GameData`; keep `LevelId`'s `W1-1` parser (sf-conform cases use it). |
