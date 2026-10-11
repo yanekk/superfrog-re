@@ -11,9 +11,9 @@ the account is the commit message. Whoever writes a cell also fixes the over-bud
 
 **Plan reviewed:** 2026-10-10 — 7 fixed, 7 decided with the user
 
-**Status:** Plan written; nothing built.
-**Last updated:** 2026-10-10
-**Next `pir-work` will:** T00 oracle-spike, because every later test rests on the reference emulator; T01 and T02 can run beside it.
+**Status:** T00 implemented, awaiting review.
+**Last updated:** 2026-10-11
+**Next `pir-work` will:** review T00 oracle-spike; then T05 oracle-harness once T01 is done (T01, T02 can run beside it).
 
 ## Tasks
 
@@ -22,7 +22,7 @@ done · ⛔ blocked, needs a human.
 
 | # | Task | Depends on | State | Notes |
 |---|---|---|---|---|
-| T00 | oracle-spike | — | ⬜ | |
+| T00 | oracle-spike | — | 🔍 | Spike answered all questions (FINDINGS 2026-10-11): `899da5dd` builds, KS 1.3 boots, runs reproducible, snapshots restore exactly. Kept `tools/setup/install-brew-deps.sh`; scratch deleted. Branches: no fallback tag, no nondeterminism hunt. Deviations: AROS fails, so the oracle needs the owner's ROM; Paula log needs a core hook; spike build kept outside `vamiga/<commit>/`, which T05 owns. |
 | T01 | rust-workspace | — | ⬜ | |
 | T02 | re-workbench | — | ⬜ | |
 | T03 | disk-import | T01 | ⬜ | |
@@ -57,7 +57,7 @@ done · ⛔ blocked, needs a human.
 A Notes cell holds what was built or what the review found, the test count, and one line per
 deviation from the task doc. A ✅ task's cell may be cut to one line once the next task has been reviewed.
 
-**Review queue:** *(empty)*
+**Review queue:** T00
 
 ## Blocked on the user
 
