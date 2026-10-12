@@ -34,6 +34,28 @@ impl Compare {
     };
 }
 
+/// What a case leaves out because the engine does not model it yet (`[[exclude]]` in the case
+/// file, each with the task that will model it): see [`crate::freeze`].
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Excluded {
+    /// The original's objects are frozen out from power-on.
+    Objects,
+    /// The status panel's bitmap and the picture's panel lines are not compared.
+    Panel,
+    /// Listed only: what the case's input never makes the original do (the spud thrown, the
+    /// level finished…), so nothing needs freezing.
+    Unreached,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Exclusion {
+    pub what: Excluded,
+    /// What it is, in the case file's words.
+    pub note: String,
+    /// The task that will model it.
+    pub task: String,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Case {
     pub name: String,
@@ -42,6 +64,13 @@ pub struct Case {
     pub script: InputScript,
     pub frames: u32,
     pub compare: Compare,
+    pub exclude: Vec<Exclusion>,
+}
+
+impl Case {
+    pub fn excludes(&self, what: Excluded) -> bool {
+        self.exclude.iter().any(|e| e.what == what)
+    }
 }
 
 /// `engine/conform/scripts/`.
@@ -78,8 +107,10 @@ impl Case {
     pub fn parse(name: &str, text: &str) -> Result<Case, String> {
         let t: toml::Table = text.parse().map_err(|e: toml::de::Error| e.to_string())?;
         for k in t.keys() {
-            if !["sync", "script", "frames", "compare"].contains(&k.as_str()) {
-                return Err(format!("unknown key `{k}` (sync, script, frames, compare)"));
+            if !["sync", "script", "frames", "compare", "exclude"].contains(&k.as_str()) {
+                return Err(format!(
+                    "unknown key `{k}` (sync, script, frames, compare, exclude)"
+                ));
             }
         }
         let sync = match t.get("sync") {
@@ -146,12 +177,37 @@ impl Case {
                 );
             }
         };
+        let mut exclude = Vec::new();
+        if let Some(v) = t.get("exclude") {
+            let items = v.as_array().ok_or("exclude is a list of [[exclude]] tables")?;
+            for e in items {
+                let e = e.as_table().ok_or("each exclude is a table")?;
+                let s = |k: &str| {
+                    e.get(k)
+                        .and_then(|v| v.as_str())
+                        .map(str::to_string)
+                        .ok_or(format!("exclude needs `{k}`"))
+                };
+                let what = match s("what")?.as_str() {
+                    "objects" => Excluded::Objects,
+                    "panel" => Excluded::Panel,
+                    "unreached" => Excluded::Unreached,
+                    w => return Err(format!("exclude: `{w}` is not objects, panel or unreached")),
+                };
+                exclude.push(Exclusion {
+                    what,
+                    note: s("note")?,
+                    task: s("task")?,
+                });
+            }
+        }
         Ok(Case {
             name: name.to_string(),
             sync,
             script,
             frames,
             compare,
+            exclude,
         })
     }
 }

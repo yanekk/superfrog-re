@@ -287,6 +287,27 @@ impl Amiga {
         }
     }
 
+    /// `len` bytes of chip or slow RAM from `addr` (0 outside RAM), without copying the rest.
+    pub fn peek(&self, addr: u32, len: usize) -> Vec<u8> {
+        unsafe {
+            let (mut c, mut s) = (0usize, 0usize);
+            let chip = ffi::sf_amiga_chip(self.raw, &mut c);
+            let slow = ffi::sf_amiga_slow(self.raw, &mut s);
+            (0..len as u32)
+                .map(|k| {
+                    let a = (addr + k) as usize & 0xFF_FFFF;
+                    if a < c {
+                        *chip.add(a)
+                    } else if a >= 0xC0_0000 && a - 0xC0_0000 < s && !slow.is_null() {
+                        *slow.add(a - 0xC0_0000)
+                    } else {
+                        0
+                    }
+                })
+                .collect()
+        }
+    }
+
     /// Write `bytes` into chip or slow RAM at `addr`, between frames: how a conformance case
     /// freezes what the engine does not model yet (patching the original's own code). Bytes
     /// outside RAM are dropped.

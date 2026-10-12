@@ -184,7 +184,15 @@ impl Rom {
             return Rom::default();
         };
         let mut h0 = loaded_hunk0(game);
-        let regions = boot_tables(&mut h0);
+        let mut regions = boot_tables(&mut h0);
+        // Hunk 2's contents (`d1_c02`'s data block): the panel's and HUD's graphics.
+        if let Some(b) = data.raw.get("accessing-picture") {
+            let h2 = match b.get(..4) {
+                Some([0, 0, 3, 0xea]) => b[8..].to_vec(),
+                _ => b.clone(),
+            };
+            regions.push((H2, h2));
+        }
         let order = [
             sf_assets::World::W1,
             sf_assets::World::W2,

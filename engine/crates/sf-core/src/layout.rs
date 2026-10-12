@@ -236,16 +236,23 @@ layout! {
     FrogAE = "frog_ae", h0(0x884), Width::W;
     FrogB0 = "frog_b0", h0(0x886), Width::W;
     FrogB2 = "frog_b2", h0(0x888), Width::W;
+    /// `logic_running`, `vbl_count` (h0+$9d6, h0+$9d8): the level's main loop is running, and the
+    /// vertical blanks since its last pass.
+    LogicRunning = "logic_running", h0(0x9d6), Width::W;
+    VblCount = "vbl_count", h0(0x9d8), Width::W;
     /// `vbl_pass_flag` (h0+$9da): set by the vertical blank, cleared by the buffer flip.
     VblPassFlag = "vbl_pass_flag", h0(0x9da), Width::W;
     /// `shooter_mode` (h0+$9dc): the bonus level's auto-scrolling mode.
     ShooterMode = "shooter_mode", h0(0x9dc), Width::W;
+    /// `screen_fades_off` (h0+$9e0): outside a level, fades step every second frame.
+    ScreenFadesOff = "screen_fades_off", h0(0x9e0), Width::W;
     /// `sprites_hidden` (h0+$9e2): the frog's sprites stay where they are.
     SpritesHidden = "sprites_hidden", h0(0x9e2), Width::W;
     /// `opt_lives`, `opt_game_mode` (h0+$9e4, h0+$9e6): the options screen's lives (0..2 for
     /// 3/5/7) and game mode (0 easy, 1 normal).
     OptLives = "opt_lives", h0(0x9e4), Width::W;
     OptGameMode = "opt_game_mode", h0(0x9e6), Width::W;
+    ModuleAddr = "module_addr", h0(0x9ec), Width::L;
     /// `frog_exit_sprites` (h0+$9f8): the frog shows in the second pair of sprite records.
     FrogExitSprites = "frog_exit_sprites", h0(0x9f8), Width::W;
     /// `obj_world_offset` (h0+$9fa): the world's row of the object tables, `$100` a world.
@@ -255,6 +262,9 @@ layout! {
     /// `level_width`, `level_height` (h0+$a22, h0+$a24): the level's size in pixels.
     LevelWidth = "level_width", h0(0xa22), Width::W;
     LevelHeight = "level_height", h0(0xa24), Width::W;
+    ExtraLifeShown = "extra_life_shown", h0(0xdd4), Width::W;
+    /// `screen_fade_toggle` (h0+$3ca0).
+    ScreenFadeToggle = "screen_fade_toggle", h0(0x3ca0), Width::W;
     /// `world` (h0+$40da): 1..6, 7 the bonus level.
     World = "world", h0(0x40da), Width::L;
     /// `entry_fall` (h0+$6c92): how fast the frog drops in at a level's start.
@@ -263,6 +273,15 @@ layout! {
     PassageCell = "passage_cell", h0(0x776c), Width::L;
     /// `passage_toggle` (h0+$7770).
     PassageToggle = "passage_toggle", h0(0x7770), Width::W;
+    /// The panel's drawing (`level::panel`): `lives_icon_shown` (h0+$87c0), `score_digit`
+    /// (h0+$8a74), `score_text` (h0+$8ab4..$8ac0), `clock_digit` and `clock_shown` (h0+$8be0,
+    /// h0+$8be2), `extra_life_shown` (h0+$dd4), `number_started` and `number_text` (h0+$161aa,
+    /// h0+$161b2).
+    LivesIconShown = "lives_icon_shown", h0(0x87c0), Width::W;
+    ScoreDigit = "score_digit", h0(0x8a74), Width::W;
+    ScoreText = "score_text", h0(0x8ab4), Width::Bytes(0xc);
+    ClockDigit = "clock_digit", h0(0x8be0), Width::W;
+    ClockShown = "clock_shown", h0(0x8be2), Width::Bytes(4);
     /// `hitboxes` (h0+$d350): the objects' hitboxes, 12 bytes each, rebuilt each pass.
     Hitboxes = "hitboxes", h0(0xd350), Width::Bytes(0x600);
     /// `shooter_half_step` (h0+$de28): the bonus level's camera creeps on every second frame.
@@ -292,12 +311,26 @@ layout! {
     DemoAt = "demo_at", h0(0x11a2e), Width::L;
     /// `clock_ticks` (h0+$11dfc): vertical blanks into the level clock's current second.
     ClockTicks = "clock_ticks", h0(0x11dfc), Width::W;
+    /// `display_timer` (h0+$123d4): counted down each vertical blank.
+    DisplayTimer = "display_timer", h0(0x123d4), Width::W;
+    /// The sound driver's variables (T11, `audio::vars`), mirrored from the driver after each
+    /// frame: its effect channels (from h0+$12f60), `music_on`, the replayer's channels and
+    /// globals, the fade and shadow registers, the streamer, the sample and effect tables, the
+    /// module's address and its header's backup.
+    SoundSfx = "sfx_chan0", h0(0x12f60), Width::Bytes(0x100);
+    SoundMusicOn = "music_on", h0(0x13420), Width::L;
+    SoundP41 = "p41_channels", h0(0x144dc), Width::Bytes(0xdc);
+    SoundShadow = "music_fade", h0(0x146e0), Width::Bytes(0x44);
+    SoundStream = "stream_ptr", h0(0x148b0), Width::Bytes(8);
+    SoundTables = "sfx_samples", h0(0x1499e), Width::Bytes(0x800);
     /// `fades` (h0+$157d8): the four palette fade records, `$1f2` bytes each (`level::fade`).
     Fades = "fades", h0(0x157d8), Width::Bytes(0x7c8);
     /// `kbd_toggle`, `key_down`, `key_up`, and the byte after them (h0+$16076..$16079).
     Keyboard = "kbd_toggle", h0(0x16076), Width::Bytes(4);
     /// `rng_state` (h0+$160d4): the 64-bit RNG state, `rng_next`'s low long then its high long.
     RngState = "rng_state", h0(0x160d4), Width::Bytes(8);
+    NumberStarted = "number_started", h0(0x161aa), Width::L;
+    NumberText = "number_text", h0(0x161b2), Width::Bytes(0xc);
     /// The scroller (h0+$16604..$1668c): rows and columns drawn by the last pass (with a word
     /// either side, which the comparisons read), its row and column shifts, the frame toggle,
     /// tiles a line, the pending-blits flag and the count drawn.
@@ -353,6 +386,7 @@ layout! {
     /// `bob_frames` (h0+$2aee2..$2ed32): the bobs' animation lists and frame records, which the
     /// level's set-up builds for its world (h0+$1995a).
     BobFrames = "bob_frames", h0(0x2aee2), Width::Bytes(0x3e50);
+    SoundHeaderBackup = "music_header_backup", h0(0x4814c), Width::Bytes(0x200);
     /// `level_map` (h1+$218e0): the map, 84 rows of 304 cells, `tile << 6 | marker`, and the
     /// rows the loader adds under it (a floor of `$3d` cells) up to the tile pointers.
     LevelMap = "level_map", h1(0x218e0), Width::Bytes(LEVEL_MAP_BYTES);

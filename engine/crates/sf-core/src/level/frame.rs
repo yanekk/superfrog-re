@@ -88,10 +88,10 @@ pub fn pass(c: &mut LevelCtx) {
     crate::level::objects::bob_draw(c);
     pass::buffer_flip(c);
     pass::tile_anim_draw(c);
-    // (h0+$8620: the panel's lives, coins and clock digits, T15.)
+    crate::level::panel::panel_update(c);
     pass::pause_check(c);
     pass::passage_step(c);
-    // (h0+$d9e: the extra life every 200 000 points and the lives digits, T15.)
+    crate::level::panel::extra_life(c);
     pass::time_up_check(c);
     let b = &mut c.bus;
     let ls = b.l(collision::LEVEL_STATE);

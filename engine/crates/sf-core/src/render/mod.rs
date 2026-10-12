@@ -29,7 +29,7 @@ pub const HERO_SPRITES: u32 = h3(0x4c0b0);
 
 /// The parts of the original's memory the display reads that the disks decide, laid out where
 /// the original keeps them, built once from [`GameData`].
-#[derive(Debug, Clone, Default, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct DisplayData {
     /// Hunk 2's contents (`d1_c02`'s data block): the HUD's sprite digits, the panel's parts.
     h2: Vec<u8>,
@@ -41,11 +41,20 @@ pub struct DisplayData {
     /// What the game's memory holds that never changes once set up ([`crate::mem::Rom`]): the
     /// tables the mechanics read.
     pub(crate) rom: crate::mem::Rom,
+    /// What the sound driver reads from the disks (T11's), from the decoded data; a test's empty
+    /// `GameData` gets an empty one.
+    pub(crate) sound: crate::audio::SoundData,
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 struct WorldDisplay {
     tiles: Vec<[u8; 256]>,
+}
+
+impl Default for DisplayData {
+    fn default() -> DisplayData {
+        DisplayData::new(&GameData::default())
+    }
 }
 
 impl DisplayData {
@@ -81,7 +90,14 @@ impl DisplayData {
             hero,
             worlds,
             rom: crate::mem::Rom::new(data),
+            sound: crate::audio::SoundData::from_game_data(data)
+                .unwrap_or_else(|_| crate::audio::SoundData::from_parts(vec![0; 0x50000], vec![], vec![], vec![])),
         }
+    }
+
+    /// What the sound driver reads from the disks.
+    pub fn sound(&self) -> &crate::audio::SoundData {
+        &self.sound
     }
 
     /// What the ported routines read the game's fixed tables from.

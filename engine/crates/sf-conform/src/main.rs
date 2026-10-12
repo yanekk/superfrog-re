@@ -111,15 +111,25 @@ fn record(path: &Path, rest: &[String]) -> Result<bool, String> {
             _ => return Err(USAGE.to_string()),
         }
     }
-    let synced = sync::reach(&case.sync, &case.script, case.frames)?;
+    let synced = sync::reach_frozen(
+        &case.sync,
+        &case.script,
+        case.frames,
+        case.excludes(sf_conform::Excluded::Objects),
+    )?;
     let mut amiga = synced.amiga;
     println!(
         "# {}: oracle from {:?}, frames counted from there",
         case.name, case.sync
     );
     let mut prev: Option<Vec<u32>> = None;
+    let frozen = case.excludes(sf_conform::Excluded::Objects);
+    let display = sf_conform::display_data();
     for f in 0..case.frames {
         let input = case.script.input_at(f);
+        if frozen {
+            sf_conform::freeze::freeze_objects(&mut amiga, &display);
+        }
         amiga.step(input).map_err(|e| e.to_string())?;
         let mem = sync::core_memory(amiga.memory());
         let vals: Vec<u32> = shown.iter().map(|d| d.read(&mem as &dyn Ram)).collect();

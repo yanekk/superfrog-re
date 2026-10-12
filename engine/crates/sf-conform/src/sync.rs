@@ -109,10 +109,31 @@ pub fn pacing(cpu: &CpuRegs, m: &AmigaMemory) -> Pacing {
 /// Bring the oracle to `sync`, with room for `frames` more frames of `script` (the case's own,
 /// which from power-on decides when the original seeds its RNG).
 pub fn reach(sync: &SyncPoint, script: &InputScript, frames: u32) -> Result<Synced, String> {
+    reach_frozen(sync, script, frames, false)
+}
+
+/// One frame of the original, its objects frozen out first when `frozen` ([`crate::freeze`]).
+fn step(a: &mut Amiga, input: FrameInput, frozen: bool) -> Result<(), String> {
+    if frozen {
+        crate::freeze::freeze_objects(a, &crate::display_data());
+    }
+    a.step(input).map(|_| ()).map_err(|e| e.to_string())
+}
+
+/// [`reach`], with the original's objects frozen out from power-on when `frozen` (a separate
+/// snapshot in the cache).
+pub fn reach_frozen(
+    sync: &SyncPoint,
+    script: &InputScript,
+    frames: u32,
+    frozen: bool,
+) -> Result<Synced, String> {
+    let tag = if frozen { "objects frozen v1\n" } else { "" };
     match sync {
         SyncPoint::PowerOn => {
             let seed = power_on_seed(script, frames)?;
             let amiga = power_on(frames)?;
+            let _ = frozen;
             let memory = core_memory(amiga.memory());
             Ok(Synced {
                 amiga,
@@ -122,23 +143,23 @@ pub fn reach(sync: &SyncPoint, script: &InputScript, frames: u32) -> Result<Sync
         }
         SyncPoint::AtFrame { script, frame } => {
             let s = InputScript::load(&script_path(script))?;
-            let key = format!("frame {frame} script\n{}", s.to_oracle().canonical());
+            let key = format!("{tag}frame {frame} script\n{}", s.to_oracle().canonical());
             at_snapshot(&key, frames, *frame, |a| {
                 for f in 0..*frame {
-                    a.step(s.input_at(f)).map_err(|e| e.to_string())?;
+                    step(a, s.input_at(f), frozen)?;
                 }
                 Ok(())
             })
         }
         SyncPoint::AtLevel(id) if (id.world, id.level, id.alt) != (World::W1, 1, false) => {
-            by_password(*id, frames)
+            by_password(*id, frames, frozen)
         }
         SyncPoint::AtLevel(id) => {
             let s = InputScript::load(&script_path("start-w1-1"))?;
-            let key = format!("level {id} script\n{}", s.to_oracle().canonical());
+            let key = format!("{tag}level {id} script\n{}", s.to_oracle().canonical());
             at_snapshot(&key, frames, LEVEL_SEARCH, |a| {
                 for f in 0..LEVEL_SEARCH {
-                    a.step(s.input_at(f)).map_err(|e| e.to_string())?;
+                    step(a, s.input_at(f), frozen)?;
                     let m = core_memory(a.memory());
                     if in_level(&m) && long(&m, WORLD) == 1 && long(&m, LEVEL) == 1 {
                         return Ok(());
@@ -155,7 +176,7 @@ pub fn reach(sync: &SyncPoint, script: &InputScript, frames: u32) -> Result<Sync
 /// six digits as raw keys 01..0A, leave the options and START GAME. The digits are read from the
 /// original's own `password_table` as it runs, so no code is written down here. Whenever the game
 /// asks for a disk, that disk goes in.
-fn by_password(id: LevelId, frames: u32) -> Result<Synced, String> {
+fn by_password(id: LevelId, frames: u32, frozen: bool) -> Result<Synced, String> {
     let (world, entry) = match id.world {
         World::Bonus if id.level == 1 && !id.alt => (7, 24),
         w @ (World::W2 | World::W3 | World::W4 | World::W5 | World::W6 | World::W1)
@@ -174,7 +195,8 @@ fn by_password(id: LevelId, frames: u32) -> Result<Synced, String> {
     const MENU: &str = "1000: M\n1005: -\n4600: F\n4605: -\n4650: D\n4655: -\n4700: F\n4705: -\n\
                         4800: D\n4810: -\n4840: D\n4850: -\n4880: D\n4890: -\n";
     const TYPE_FROM: u32 = 4980;
-    let key = format!("level {id} by level code v1\n{MENU}");
+    let tag = if frozen { "objects frozen v1\n" } else { "" };
+    let key = format!("{tag}level {id} by level code v1\n{MENU}");
     at_snapshot(&key, frames, PASSWORD_SEARCH, |a| {
         let mut script = InputScript::parse(MENU).map_err(|e| e.to_string())?;
         let mut disk = 0;
@@ -199,7 +221,7 @@ fn by_password(id: LevelId, frames: u32) -> Result<Synced, String> {
                 text += &format!("{}: F\n{}: -\n", t + 200, t + 205);
                 script = InputScript::parse(&text).map_err(|e| e.to_string())?;
             }
-            a.step(script.input_at(f)).map_err(|e| e.to_string())?;
+            step(a, script.input_at(f), frozen)?;
             let m = core_memory(a.memory());
             if f > TYPE_FROM {
                 let want = long(&m, WANTED_DISK);

@@ -11,13 +11,14 @@
 pub mod case;
 pub mod compare;
 pub mod disks;
+pub mod freeze;
 pub mod reference;
 pub mod report;
 pub mod routine;
 pub mod script;
 pub mod sync;
 
-pub use case::{Case, Compare, cases_dir, scripts_dir};
+pub use case::{Case, Compare, Excluded, Exclusion, cases_dir, scripts_dir};
 pub use report::{Divergence, PictureDiff};
 pub use script::InputScript;
 pub use sync::SyncPoint;
@@ -79,7 +80,8 @@ pub fn run_with(
     case: &Case,
     mut before_step: impl FnMut(u32, &mut Game),
 ) -> Result<Outcome, Divergence> {
-    let synced = sync::reach(&case.sync, &case.script, case.frames)
+    let frozen = case.excludes(case::Excluded::Objects);
+    let synced = sync::reach_frozen(&case.sync, &case.script, case.frames, frozen)
         .unwrap_or_else(|e| panic!("{}: {e}", case.name));
     let mut amiga = synced.amiga;
     let mut prev = synced.memory.clone();
@@ -97,6 +99,9 @@ pub fn run_with(
     };
     for f in 0..case.frames {
         let input = case.script.input_at(f);
+        if frozen {
+            freeze::freeze_objects(&mut amiga, &display);
+        }
         let theirs = amiga
             .step(input)
             .unwrap_or_else(|e| panic!("{}: oracle, frame {f}: {e}", case.name));

@@ -14,6 +14,7 @@ pub mod fade;
 pub mod frame;
 pub mod load;
 pub mod objects;
+pub mod panel;
 pub mod pass;
 pub mod scroll;
 pub mod spawn;
@@ -121,6 +122,12 @@ impl std::fmt::Debug for Dispatch {
             .field("markers", &self.markers.iter().map(|m| m.0).collect::<Vec<_>>())
             .finish()
     }
+}
+
+/// The dispatch a game runs with: every kind and spawner ported so far (none in T14).
+pub fn standard_dispatch() -> &'static Dispatch {
+    static D: std::sync::OnceLock<Dispatch> = std::sync::OnceLock::new();
+    D.get_or_init(Dispatch::default)
 }
 
 /// Add an object kind under the original's template index.

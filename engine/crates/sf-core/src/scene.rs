@@ -3,11 +3,22 @@
 
 use sf_paula::PaulaWrite;
 
+use crate::audio::AudioDriver;
 use crate::game::Pacing;
-use crate::input::FrameInput;
 use crate::layout::{Ram, h0};
+use crate::level::{Hw, LevelCtx};
+use crate::mem::Bus;
 use crate::render::{self, DisplayData, Picture, View};
 use crate::state::State;
+
+/// What a scene's frame works on: the state, what the disks decide, the sound driver and the
+/// hardware the frame reads.
+pub struct Machine<'a> {
+    pub state: &'a mut State,
+    pub display: &'a DisplayData,
+    pub audio: &'a mut AudioDriver,
+    pub hw: Hw,
+}
 
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash)]
 pub enum Scene {
@@ -15,7 +26,8 @@ pub enum Scene {
     /// mechanic tasks land, every start is here.
     #[default]
     Placeholder,
-    /// In a level. T13 draws it; T14 runs it (until then a step changes nothing).
+    /// In a level: the frog, the camera, scrolling, the clock and sound (T14); objects come with
+    /// T15–T18.
     Level,
 }
 
@@ -36,16 +48,39 @@ impl Scene {
         }
     }
 
-    /// Run one frame of this scene; returns the Paula writes it made, in order.
+    /// Run one frame of this scene; returns the Paula writes it made, in order, and the picture
+    /// the frame shows when it is not the state's at the frame's end: a level's is drawn after
+    /// the vertical blank, before the pass, whose drawing (the panel's digits, a redrawn tile)
+    /// the beam has passed by the time the pass gets to it (docs/12 "Late redraws").
     pub fn step(
         &mut self,
-        _state: &mut State,
-        _input: FrameInput,
-        _pacing: Pacing,
-    ) -> Vec<PaulaWrite> {
+        m: &mut Machine,
+        pacing: Pacing,
+        view: View,
+    ) -> (Vec<PaulaWrite>, Option<Picture>) {
+        let mut out = Vec::new();
+        let mut picture = None;
         match self {
-            Scene::Placeholder | Scene::Level => Vec::new(),
+            Scene::Placeholder => {}
+            Scene::Level => {
+                let mut c = LevelCtx {
+                    bus: Bus::new(m.state, m.display.rom()),
+                    dispatch: crate::level::standard_dispatch(),
+                    hw: m.hw,
+                    audio: m.audio,
+                    sound: m.display.sound(),
+                    paula: &mut out,
+                };
+                crate::level::frame::vbl(&mut c);
+                picture = Some(render::level(c.bus.st, m.display, view));
+                // A late pass (DESIGN §2.1) runs here too: what is left over is the runner's lag.
+                let _ = pacing;
+                if crate::level::frame::pass_due(&c) {
+                    crate::level::frame::pass(&mut c);
+                }
+            }
         }
+        (out, picture)
     }
 
     pub fn render(&self, state: &State, display: &DisplayData, view: View) -> Picture {
