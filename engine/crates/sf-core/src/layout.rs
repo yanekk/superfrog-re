@@ -108,8 +108,16 @@ pub enum VarId {
     OptFlash,
     /// h0+$22b8: `attract_abort`.
     AttractAbort,
-    /// h0+$2426..$2434: the level-code entry's cursor and `password_buf`.
+    /// h0+$2424..$2434: the level-code entry's flash counter, its cursor and `password_buf`.
     PasswordBuf,
+    /// h0+$3258: where the text writer (h0+$30fc) stopped.
+    TextPtr,
+    /// h0+$86e..$876: the game mode's tuning (`frog+$98`..`$9e`), set by the options screen.
+    FrogMode,
+    /// h0+$87c0: set to -1 as a game starts.
+    GameStartFlag,
+    /// h0+$11a24..$11a32: the frog's start values the title sets as a game starts.
+    FrogStart,
     /// h0+$37e2..$3922: the palettes the title and its menu fade to (five of 32 colours).
     TitleTargets,
     /// h0+$3ba0..$3ca4: the title's two fade palettes and the VBL's every-other-frame toggle.
@@ -169,6 +177,10 @@ impl VarId {
         VarId::OptFlash,
         VarId::AttractAbort,
         VarId::PasswordBuf,
+        VarId::TextPtr,
+        VarId::FrogMode,
+        VarId::GameStartFlag,
+        VarId::FrogStart,
         VarId::TitleTargets,
         VarId::TitlePalettes,
         VarId::IntroBlit,
@@ -380,7 +392,31 @@ pub static LAYOUT: &[VarDef] = &[
     VarDef {
         id: VarId::PasswordBuf,
         name: "password_buf",
-        addr: h0(0x2426),
+        addr: h0(0x2424),
+        width: Width::Bytes(0x10),
+    },
+    VarDef {
+        id: VarId::TextPtr,
+        name: "text_ptr",
+        addr: h0(0x3258),
+        width: Width::L,
+    },
+    VarDef {
+        id: VarId::FrogMode,
+        name: "frog_mode",
+        addr: h0(0x86e),
+        width: Width::Bytes(8),
+    },
+    VarDef {
+        id: VarId::GameStartFlag,
+        name: "game_start_flag",
+        addr: h0(0x87c0),
+        width: Width::W,
+    },
+    VarDef {
+        id: VarId::FrogStart,
+        name: "frog_start",
+        addr: h0(0x11a24),
         width: Width::Bytes(0xe),
     },
     VarDef {

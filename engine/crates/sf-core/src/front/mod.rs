@@ -17,8 +17,10 @@
 //! skip the original's frames spent loading.
 
 pub mod blit;
+mod common;
 pub mod data;
 pub mod fade;
+mod menu;
 pub mod password;
 pub mod sprite;
 mod title;
@@ -43,10 +45,13 @@ pub(crate) const fn h2(off: u32) -> u32 {
 const PICTURE_END: u16 = 0x12b;
 /// Where the interrupt's work is over and a busy-waiting main program goes on (measured).
 const VBL_END_LINE: u16 = 0x14;
+/// The line of the next frame on which the CPU, held off by a blit with priority, takes the
+/// interrupt (measured on the options screen's exit: the interrupt's acknowledge on line 41).
+pub(crate) const STALL_VBL_LINE: u16 = 30;
 /// Lines in a PAL frame.
 pub(crate) const FRAME_LINES: u16 = 313;
 /// CPU cycles in one raster line (227 DMA cycles of two).
-const BEAM_CYCLES_PER_LINE: u32 = 454;
+pub(crate) const BEAM_CYCLES_PER_LINE: u32 = 454;
 /// `wait_frame_raster` returns on this line (`$12b`) after passing `$ff`.
 const RASTER_LINE: u16 = 0x12b;
 
@@ -68,6 +73,9 @@ pub(crate) enum Yield {
     Masked(u16),
     /// Interrupts back on: an interrupt that waited is taken now, then this goes on.
     Interrupt,
+    /// The CPU is busy (interrupts on) up to this line counted from this frame's start, which
+    /// can be frames away: unpacking a picture.
+    Busy(u32),
     /// This routine is over.
     Return,
 }
@@ -80,8 +88,15 @@ pub(crate) enum Routine {
     IntroAnim(title::IntroAnim),
     FadeIn(title::TitleFadeIn),
     Password(password::Entry),
-    MusicFadeWait(title::MusicFadeWait),
-    MusicStart(title::MusicStart),
+    MusicFadeWait(common::MusicFadeWait),
+    MusicStart(common::MusicStart),
+    FadeSetup(common::FadeSetup),
+    PaletteWait(common::PaletteWait),
+    FireUp(common::FireUp),
+    Frames(common::Frames),
+    Menu(menu::Menu),
+    Options(menu::Options),
+    TitleExit(title::TitleExit),
 }
 
 impl Routine {
@@ -94,6 +109,13 @@ impl Routine {
             Routine::Password(r) => r.run(cx),
             Routine::MusicFadeWait(r) => r.run(cx),
             Routine::MusicStart(r) => r.run(cx),
+            Routine::FadeSetup(r) => r.run(cx),
+            Routine::PaletteWait(r) => r.run(cx),
+            Routine::FireUp(r) => r.run(cx),
+            Routine::Frames(r) => r.run(cx),
+            Routine::Menu(r) => r.run(cx),
+            Routine::Options(r) => r.run(cx),
+            Routine::TitleExit(r) => r.run(cx),
         }
     }
 }
@@ -148,6 +170,17 @@ pub(crate) struct Cx<'a> {
     pub resync: Vec<(u32, u32)>,
     /// CPU jobs done at once that the original may run past the frame's end.
     pub jobs: Vec<crate::game::Job>,
+    /// What a routine hands back to its caller (the menu's choice).
+    pub ret: u32,
+    /// The line a long job began on (the memory it wrote before it shows from there).
+    pub busy_from: Option<u16>,
+    /// A blit holding the CPU off the bus ran past the frame's end: the next frame's interrupt,
+    /// and the end of this frame for conformance, come on this line of the next frame.
+    pub stall: Option<u16>,
+    /// An unpacking begun this frame (see [`Unpack`]).
+    pub unpack: Option<Unpack>,
+    /// Frames since the front end started (for jobs that span frames).
+    pub frame: u32,
     pub seed: Option<Rng>,
     pub unported: Vec<&'static str>,
 }
@@ -232,8 +265,28 @@ impl Cx<'_> {
         (self.line >= FRAME_LINES).then(|| Yield::Masked(self.line - FRAME_LINES))
     }
 
+    /// `atn_decompress` of `bytes` into `at`, taking `cycles`: the memory holds the result at
+    /// once; the picture shows it arriving as the original's decompressor writes it, backwards
+    /// from its end at an even pace, over the frames it takes ([`Unpack`]).
+    pub fn unpack(&mut self, at: u32, bytes: &[u8], cycles: u32) {
+        let old = self.s.read(at, bytes.len() as u32);
+        self.s.write(at, bytes);
+        let start = self.frame as u64 * FRAME_LINES as u64 + self.line as u64;
+        self.busy(cycles);
+        let end = start + cycles.div_ceil(BEAM_CYCLES_PER_LINE) as u64;
+        self.unpack = Some(Unpack {
+            at,
+            old,
+            start,
+            end,
+        });
+    }
+
     /// The CPU is busy for `cycles` 7 MHz cycles (a blit it waits for): the beam moves on.
     pub fn busy(&mut self, cycles: u32) {
+        if self.busy_from.is_none() {
+            self.busy_from = Some(self.line);
+        }
         self.line =
             (self.line as u32 + cycles.div_ceil(BEAM_CYCLES_PER_LINE)).min(u16::MAX as u32) as u16;
     }
@@ -254,12 +307,26 @@ struct Frame {
     routine: Routine,
     /// What it waits for, and the line it started waiting on.
     wait: Option<(Yield, u16)>,
+    /// While the CPU is busy past the frame's end ([`Yield::Busy`]): what the routine gave back
+    /// when it ran, to act on once the CPU is free.
+    deferred: Option<Yield>,
 }
 
 /// The front end's program: the main program's call stack and the hardware state the engine
 /// tracks outside memory.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Front {
+    /// Frames stepped.
+    frame: u32,
+    /// Paula writes the CPU made after the frame's end, which belong to the next frame.
+    carry: Vec<PaulaWrite>,
+    /// After a stall: the line this frame's interrupt comes on, and the copper's writes before it
+    /// went with the last frame.
+    stalled: Option<u16>,
+    /// An unpacking the picture shows in progress.
+    unpack: Option<Unpack>,
+    /// The last value a routine handed back (kept across frames).
+    ret: u32,
     /// Power-on: the boot's work is still to do (it runs at the start of the first frame).
     booting: bool,
     stack: Vec<Frame>,
@@ -268,6 +335,29 @@ pub struct Front {
     seed: Option<Rng>,
     /// Paths not ported that this front end has run into (empty in every conformance case).
     pub unported: Vec<&'static str>,
+}
+
+/// An unpacking in progress, for the picture: where, what was there, and when it began and ends
+/// (in lines since the front end started).
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub(crate) struct Unpack {
+    at: u32,
+    old: Vec<u8>,
+    start: u64,
+    end: u64,
+}
+
+impl Unpack {
+    /// Bytes of the unpacked data not yet written by the end of frame `frame`: from the start.
+    fn pending(&self, frame: u32) -> usize {
+        let t = (frame as u64 + 1) * FRAME_LINES as u64;
+        if t >= self.end {
+            return 0;
+        }
+        let done = t.saturating_sub(self.start) as u128 * self.old.len() as u128
+            / (self.end - self.start) as u128;
+        self.old.len() - done as usize
+    }
 }
 
 /// One frame of the front end.
@@ -283,10 +373,16 @@ impl Front {
     /// Switch on: the game program starts (`init_and_script`) with the RNG seed it will take.
     pub fn power_on(seed: Rng) -> Front {
         Front {
+            frame: 0,
+            carry: Vec::new(),
+            stalled: None,
+            unpack: None,
+            ret: 0,
             booting: true,
             stack: vec![Frame {
                 routine: Routine::Title(title::Title::after_boot()),
                 wait: None,
+                deferred: None,
             }],
             cop1lc: h2(0x6fd8),
             keyboard: Keyboard::default(),
@@ -319,12 +415,18 @@ impl Front {
             s.audio = crate::audio::AudioDriver::transplant(d, &|a| mem.byte(a), &files);
         }
         Some(Front {
+            frame: 0,
+            carry: Vec::new(),
+            stalled: None,
+            unpack: None,
+            ret: 0,
             booting: false,
             stack: stack
                 .into_iter()
                 .map(|(routine, wait)| Frame {
                     routine,
                     wait: wait.map(|w| (w, 0)),
+                    deferred: None,
                 })
                 .collect(),
             cop1lc: title::cop1lc_of(&chain),
@@ -358,6 +460,11 @@ impl Front {
                 load: None,
                 resync: Vec::new(),
                 jobs: Vec::new(),
+                ret: 0,
+                busy_from: None,
+                stall: None,
+                unpack: None,
+                frame: self.frame,
                 seed: self.seed.take(),
                 unported: Vec::new(),
             };
@@ -384,6 +491,11 @@ impl Front {
             load: None,
             resync: Vec::new(),
             jobs: Vec::new(),
+            ret: self.ret,
+            busy_from: None,
+            stall: None,
+            unpack: None,
+            frame: self.frame,
             seed: self.seed,
             unported: Vec::new(),
         };
@@ -407,6 +519,7 @@ impl Front {
                 Yield::Call(r) => self.stack.push(Frame {
                     routine: *r,
                     wait: None,
+                    deferred: None,
                 }),
                 w => top.wait = Some((w, cx.line)),
             }
@@ -416,10 +529,14 @@ impl Front {
                 }
             }
         }
-        let vbl_line = cx.line.max(1);
+        let stalled = self.stalled.take();
+        let vbl_line = stalled.unwrap_or(cx.line.max(1));
+        cx.paula.extend(self.carry.drain(..));
+        let from_carry = cx.paula.len();
         let from = cx.paula.len();
         let palette_due = vbl::run(&mut cx);
-        cx.line = cx.line.max(VBL_END_LINE);
+        // The interrupt takes about as long wherever it starts.
+        cx.line = cx.line.max(VBL_END_LINE).max(vbl_line + VBL_END_LINE - 9);
         history.push((VBL_END_LINE, window(cx.s, cop1lc)));
         if palette_due {
             cx.line = vbl::PALETTE_LINE;
@@ -428,7 +545,7 @@ impl Front {
         }
         // The interrupt's writes, on the lines it runs: all near the top but its acknowledge,
         // after the palette copy when that ran.
-        for w in cx.paula[from..].iter_mut() {
+        for w in cx.paula[from.max(from_carry)..].iter_mut() {
             w.vpos = vbl_line;
         }
         let ack = cx.paula.len();
@@ -439,8 +556,26 @@ impl Front {
         // The main program, part by part, until it waits beyond the picture.
         let mut before = Some(Vec::new());
         self.run_main_split(&mut cx, PICTURE_END, &mut before);
-        let before = before.unwrap_or_default();
-        history.push((cx.line.max(VBL_END_LINE), window(cx.s, cop1lc)));
+        let mut before = before.unwrap_or_default();
+        if let Some(u) = cx.unpack.take() {
+            self.unpack = Some(u);
+        }
+        // An unpacking the beam sees half done: the part not yet written shows what was there.
+        if let Some(u) = &self.unpack {
+            let n = u.pending(self.frame);
+            if n == 0 {
+                self.unpack = None;
+            } else {
+                let mut st = cx.s.clone();
+                st.write(u.at, &u.old[..n]);
+                before.push((FRAME_LINES, st));
+            }
+        }
+        let main_line = match cx.busy_from {
+            Some(l) if cx.line >= FRAME_LINES => l,
+            _ => cx.line,
+        };
+        history.push((main_line.max(VBL_END_LINE), window(cx.s, cop1lc)));
         let copper_word = |addr: u32, line: u16| -> u16 {
             let snap = history
                 .iter()
@@ -474,7 +609,7 @@ impl Front {
         // made on line 0, before the interrupt's.
         let early: Vec<PaulaWrite> = copper
             .iter()
-            .filter(|w| is_paula(w.reg))
+            .filter(|w| is_paula(w.reg) && stalled.is_none_or(|s| w.line >= s))
             .map(|w| PaulaWrite {
                 reg: w.reg,
                 value: w.value,
@@ -483,9 +618,41 @@ impl Front {
             })
             .collect();
         self.run_main(&mut cx, u16::MAX);
+        let mut picture = picture;
+        let mut next_copper = Vec::new();
+        if let Some(t) = cx.stall {
+            // The CPU held off the bus into the next frame: the frame ends for conformance when it
+            // takes the interrupt, after the next frame's copper has begun.
+            let writes = render::copper_writes(cx.s, display, cx.cop1lc);
+            let mut fetch = render::copper::Fetch::default();
+            for w in writes.iter().filter(|w| w.line < t) {
+                fetch.write(w.reg, w.value);
+                if is_paula(w.reg) {
+                    next_copper.push(PaulaWrite {
+                        reg: w.reg,
+                        value: w.value,
+                        hpos: 0,
+                        vpos: 0,
+                    });
+                }
+            }
+            if fetch.diwstrt != 0 || fetch.diwstop != 0 {
+                let (h0, h1) = (fetch.diwstrt & 0xff, fetch.diwstop & 0xff | 0x100);
+                let lines = fetch.lines();
+                picture = picture.rewindow(
+                    h0 as i32,
+                    lines.start,
+                    h1.saturating_sub(h0),
+                    lines.end.saturating_sub(lines.start),
+                );
+            }
+        }
+        self.stalled = cx.stall;
         let load = cx.load;
         let resync = std::mem::take(&mut cx.resync);
         let jobs = std::mem::take(&mut cx.jobs);
+        self.ret = cx.ret;
+        self.frame += 1;
         self.cop1lc = cx.cop1lc;
         self.keyboard = cx.keyboard;
         self.seed = cx.seed;
@@ -496,6 +663,13 @@ impl Front {
         let mut all = early;
         all.extend(paula);
         all.sort_by_key(|w| w.vpos);
+        // What the CPU wrote after the frame's end goes with the next frame.
+        let split = all.partition_point(|w| w.vpos < FRAME_LINES);
+        self.carry = all.split_off(split);
+        for w in &mut self.carry {
+            w.vpos -= FRAME_LINES;
+        }
+        all.extend(next_copper);
         for w in &mut all {
             w.vpos = 0;
         }
@@ -536,6 +710,7 @@ impl Front {
                         Yield::Poll => (*since == 0).then_some(cx.line),
                         Yield::Masked(_) => None,
                         Yield::Interrupt => Some(cx.line),
+                        Yield::Busy(l) => (*l < FRAME_LINES as u32).then_some(*l as u16),
                         _ => Some(cx.line),
                     };
                     match wake {
@@ -553,11 +728,29 @@ impl Front {
                 }
             }
             let (first, line) = (cx.paula.len(), cx.line);
-            let y = top.routine.run(cx);
+            let pending = before.as_ref().map_or(0, |b| b.len()).wrapping_sub(1);
+            let y = match top.deferred.take() {
+                Some(y) => y,
+                None => top.routine.run(cx),
+            };
+            // What the part wrote shows below where the beam is once it is done.
+            if let Some(b) = before.as_mut() {
+                if let Some(e) = b.get_mut(pending) {
+                    if e.0 == line {
+                        e.0 = cx.line.max(e.0);
+                    }
+                }
+            }
             for w in &mut cx.paula[first..] {
                 if w.vpos == 0 {
                     w.vpos = line;
                 }
+            }
+            if cx.line >= FRAME_LINES && !matches!(y, Yield::Masked(_)) {
+                // Busy past the frame's end: the rest waits for the CPU.
+                top.deferred = Some(y);
+                top.wait = Some((Yield::Busy(cx.line as u32), 0));
+                return;
             }
             match y {
                 Yield::Call(r) => {
@@ -565,6 +758,7 @@ impl Front {
                     self.stack.push(Frame {
                         routine: *r,
                         wait: None,
+                        deferred: None,
                     });
                 }
                 Yield::Return => {
@@ -584,8 +778,11 @@ impl Front {
     /// counts as begun at line 0 of this one.
     pub(crate) fn new_frame(&mut self) {
         for f in &mut self.stack {
-            if let Some((_, since)) = &mut f.wait {
+            if let Some((w, since)) = &mut f.wait {
                 *since = 0;
+                if let Yield::Busy(l) = w {
+                    *l = l.saturating_sub(FRAME_LINES as u32);
+                }
             }
         }
     }

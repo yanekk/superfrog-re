@@ -92,6 +92,45 @@ impl Picture {
         }
     }
 
+    /// This picture seen through another display window: what lies outside this one shows each
+    /// line's colour 0 (the border), and lines outside it show the first or last line's palette.
+    pub fn rewindow(&self, left: i32, top: u16, width: u16, height: u16) -> Picture {
+        let mut p = Picture::blank(left, top, width, height);
+        for y in 0..height as i32 {
+            let sy = y + top as i32 - self.top as i32;
+            let src = sy.clamp(0, self.height as i32 - 1).max(0) as usize;
+            if self.height > 0 {
+                p.palettes[y as usize] = self.palettes[src];
+            }
+            if sy < 0 || sy >= self.height as i32 {
+                continue;
+            }
+            for x in 0..width as i32 {
+                let sx = x + left - self.left;
+                if (0..self.width as i32).contains(&sx) {
+                    p.pixels[(y * width as i32 + x) as usize] =
+                        self.pixels[sy as usize * self.width as usize + sx as usize];
+                }
+            }
+        }
+        p.splits = self
+            .splits
+            .iter()
+            .filter_map(|s| {
+                let y = s.y as i32 + self.top as i32 - top as i32;
+                let x = s.x as i32 + self.left - left;
+                ((0..height as i32).contains(&y) && (0..width as i32).contains(&x)).then_some(
+                    Split {
+                        y: y as u16,
+                        x: x as u16,
+                        ..*s
+                    },
+                )
+            })
+            .collect();
+        p
+    }
+
     /// The 12-bit colour shown at (`x`, `y`).
     pub fn rgb12(&self, x: u16, y: u16) -> u16 {
         let i = self.pixels[y as usize * self.width as usize + x as usize];

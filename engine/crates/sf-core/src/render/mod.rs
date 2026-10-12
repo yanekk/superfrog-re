@@ -310,6 +310,17 @@ pub(crate) fn screen(
     draw(&mem, copper_word, cop1lc, 0, false)
 }
 
+/// The copper's writes on a frame of the list at `cop1lc`, as `state` holds it.
+pub(crate) fn copper_writes(state: &State, data: &DisplayData, cop1lc: u32) -> Vec<Write> {
+    let mem = Mem::new(state, data);
+    let word = |a: u32, _: u16| mem.word(a);
+    let mut start = Fetch::default();
+    for w in copper::run_timed(&word, cop1lc, Fetch::default()) {
+        start.write(w.reg, w.value);
+    }
+    copper::run_timed(&word, cop1lc, start)
+}
+
 fn draw(
     mem: &Mem,
     word: &dyn Fn(u32, u16) -> u16,

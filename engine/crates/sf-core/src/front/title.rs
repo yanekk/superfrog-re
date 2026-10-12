@@ -5,6 +5,7 @@
 use sf_assets::sound::{BANK_ADDR, TuneId};
 
 use super::blit::Blit;
+use super::common::{FadeKind, MusicFadeWait, MusicStart, call, fade, palette_wait};
 use super::data::OVERLAY_AT;
 use super::fade::{self, RECORDS, Rec};
 use super::{Cx, Routine, Yield, at, h2, sprite};
@@ -37,7 +38,7 @@ pub const BUFFER_1: u32 = h3(0x22f30);
 pub const BLANK_COPPER: u32 = h2(0x6fd8);
 pub const TITLE_COPPER: u32 = h2(0x7158);
 /// One plane of a 320 × 256 screen.
-const PLANE: u32 = 0x2800;
+pub(super) const PLANE: u32 = 0x2800;
 
 /// Return address in `top_loop` after `overlays_end`'s fade wait: where the original is once the
 /// title's loads are over (h0+$b7e2, inside `overlays_end`).
@@ -191,9 +192,7 @@ impl Title {
                                 cx.s.audio.stop_music(d, &mut quiet);
                             }
                         } else {
-                            return Yield::Call(Box::new(Routine::MusicFadeWait(
-                                MusicFadeWait::default(),
-                            )));
+                            return call(Routine::MusicFadeWait(MusicFadeWait::default()));
                         }
                     }
                 }
@@ -254,13 +253,89 @@ impl Title {
                     cx.s.set_l(ATTRACT_MODE, 0xffff_ffff);
                     self.pc = 7;
                 }
+                // Attract mode, or START GAME: the title's end (h0+$1180).
                 7 => {
-                    cx.unported("attract mode");
-                    return Yield::Raster;
+                    self.pc = 11;
+                    return call(Routine::TitleExit(TitleExit::default()));
+                }
+                // Fire: the menu.
+                8 => {
+                    self.pc = 9;
+                    return call(Routine::Menu(super::menu::Menu::default()));
+                }
+                9 => {
+                    if cx.ret == 0 {
+                        self.pc = 7;
+                        continue;
+                    }
+                    self.pc = 10;
+                    return call(Routine::Options(super::menu::Options::default()));
+                }
+                // Back from the options: the title's intro again (h0+$1122).
+                10 => {
+                    self.pc = 3;
+                }
+                _ => return Yield::Return,
+            }
+        }
+    }
+}
+
+/// `$1180`: the title's end, for attract mode or a game: the title fades out, the music too unless
+/// attract mode goes on, and the game's start values are set.
+#[derive(Debug, Clone, Default, PartialEq, Eq, Hash)]
+pub(crate) struct TitleExit {
+    pc: u8,
+}
+
+impl TitleExit {
+    pub(super) fn run(&mut self, cx: &mut Cx) -> Yield {
+        loop {
+            self.pc += 1;
+            match self.pc {
+                1 => {
+                    if cx.s.w(at(0x12)) != 0 {
+                        self.pc = 5;
+                        continue;
+                    }
+                    return fade(FadeKind::Out, 0, at(0x3ba0), 0x20, at(0x1cc2));
+                }
+                2 => return fade(FadeKind::Out, 1, at(0x3c20), 0x20, at(0x1cec)),
+                3 => return palette_wait(0),
+                4 => return palette_wait(1),
+                5 => cx.cop1lc = BLANK_COPPER,
+                6 => {
+                    if cx.s.w(at(0x24)) == 0 && cx.s.l(ATTRACT_MODE) == 0 && cx.s.audio.music_on() {
+                        return call(Routine::MusicFadeWait(MusicFadeWait::default()));
+                    }
                 }
                 _ => {
-                    cx.unported("title menu");
-                    return Yield::Raster;
+                    let mode = cx.s.w(at(0x9e6));
+                    cx.s.set_w(at(0x9e8), mode);
+                    let attract = cx.s.l(ATTRACT_MODE) != 0;
+                    if attract {
+                        cx.s.set_w(at(0x9e6), 1);
+                    }
+                    cx.s.set_l(at(0x11a24), 1);
+                    cx.s.set_w(at(0x11a28), 0);
+                    cx.s.set_w(at(0x11a2a), 0);
+                    cx.s.set_w(at(0x11a2c), 2);
+                    let v = cx.s.l(at(0x9f2));
+                    cx.s.set_l(at(0x11a2e), v);
+                    // $8f90 sets up the frog's record for a level (T14 models it).
+                    cx.s.set_w(at(0x87c0), 0xffff);
+                    cx.s.set_w(at(0x9de), 0);
+                    cx.s.set_w(TITLE_FADING, 0);
+                    cx.s.set_w(at(0x9dc), 0);
+                    if attract {
+                        // Three demos, all of W1-1.
+                        let k = cx.s.w(at(0x9f6));
+                        let next = k.wrapping_add(1);
+                        cx.s.set_w(at(0x9f6), if (next as i16) < 3 { next } else { 0 });
+                        cx.s.set_l(START_WORLD, 1);
+                        cx.s.set_l(START_LEVEL, 1);
+                    }
+                    return Yield::Return;
                 }
             }
         }
@@ -279,7 +354,7 @@ fn hiscore_check(cx: &mut Cx) -> bool {
 }
 
 /// `$136c`: the blink timers and the four eye sprites at their places.
-fn eyes_init(cx: &mut Cx) {
+pub(super) fn eyes_init(cx: &mut Cx) {
     cx.s.set_w(BLINK[0], 0x4b);
     cx.s.set_w(BLINK[1], 0x23);
     for r in EYES {
@@ -372,96 +447,41 @@ impl OverlayEnd {
     }
 }
 
-/// `music_fade_wait` (h0+$1327a): fade the music out, wait up to 100 frames for it to stop, stop.
-#[derive(Debug, Clone, Default, PartialEq, Eq, Hash)]
-pub(crate) struct MusicFadeWait {
-    pc: u8,
-    count: u16,
-}
-
-impl MusicFadeWait {
-    pub(super) fn run(&mut self, cx: &mut Cx) -> Yield {
-        if self.pc == 0 {
-            cx.s.audio.fade_out();
-            self.count = 0x64;
-            self.pc = 1;
-            return Yield::Raster;
-        }
-        self.count -= 1;
-        if self.count != 0 && cx.s.audio.music_on() {
-            return Yield::Raster;
-        }
-        if let Some(d) = cx.data.sound.as_ref() {
-            let mut out = Vec::new();
-            cx.s.audio.stop_music(d, &mut out);
-            cx.paula.extend(out);
-        }
-        Yield::Return
-    }
-}
-
-/// `music_start` (h0+$13126) with the title's module: interrupts off, `p41_init`, interrupts on.
-/// `p41_init` takes 20 lines on the title's module (measured: INTENA off on line 309, on again on
-/// line 16 of the next frame), so started late in a frame it delays the next frame's interrupt.
-#[derive(Debug, Clone, Default, PartialEq, Eq, Hash)]
-pub(crate) struct MusicStart {
-    pc: u8,
-    /// The caller's return address (where the original is once `music_start` is over).
-    pub ret: u32,
-}
-
-const P41_INIT_LINES: u16 = 20;
-
-impl MusicStart {
-    pub(super) fn run(&mut self, cx: &mut Cx) -> Yield {
-        if self.pc == 0 {
-            if cx.s.audio.music_on() {
-                return Yield::Return;
-            }
-            cx.s.audio.set_module_addr(BANK_ADDR);
-            cx.wr(INTENA, 0x4000);
-            let v = |(off, len): (u32, usize)| (at(off), len as u32);
-            use crate::audio::vars;
-            cx.jobs.push(crate::game::Job {
-                inside: self.ret,
-                writes: vec![
-                    v(vars::MUSIC_ON),
-                    v(vars::P41),
-                    v(vars::SHADOW),
-                    v(vars::HEADER_BACKUP),
-                ],
-            });
-            let module = match cx.data.sound.as_ref() {
-                Some(d) => cx.s.audio.p41_init_head(d),
-                None => false,
-            };
-            self.pc = if module { 1 } else { 2 };
-            cx.line += P41_INIT_LINES;
-            if cx.line >= super::FRAME_LINES {
-                return Yield::Masked(cx.line - super::FRAME_LINES);
-            }
-        }
-        if let (1, Some(d)) = (self.pc, cx.data.sound.as_ref()) {
-            let mut out = Vec::new();
-            cx.s.audio.p41_init_tail(d, &mut out);
-            cx.paula.extend(out);
-        }
-        cx.wr(INTENA, 0xc000);
-        Yield::Return
-    }
-}
-
-/// The blits the title uses, each between COPER off and on.
-fn blit_planes(cx: &mut Cx, mut b: Blit, planes: u32, a_step: u32, d_step: u32, nasty: bool) {
+/// The blits the title uses, each between COPER off and on. With the blitter given priority
+/// (`nasty`), a blit that runs into the next frame holds the CPU off the bus: the frame's
+/// interrupt waits for it (`cx.stall`), and its memory is compared once the original's call
+/// (return address `inside`) is over.
+fn blit_planes(
+    cx: &mut Cx,
+    mut b: Blit,
+    planes: u32,
+    a_step: u32,
+    d_step: u32,
+    nasty: bool,
+    inside: Option<u32>,
+) {
     cx.wr(INTENA, 0x0010);
     if nasty {
         cx.wr(DMACON, 0x8400);
     }
+    let start = cx.line;
+    let first_d = b.pt[3];
     for _ in 0..planes {
         b.run(cx.s);
         cx.busy(b.cycles());
         b.pt[0] = b.pt[0].wrapping_add(a_step);
         b.pt[3] = b.pt[3].wrapping_add(d_step);
+    }
+    if nasty && start < super::FRAME_LINES && cx.line >= super::FRAME_LINES {
+        cx.stall = Some(super::STALL_VBL_LINE);
+        // The interrupt, taken in the middle, holds the blit's end back by its own length.
+        cx.line += 11;
+        if let Some(inside) = inside {
+            cx.jobs.push(crate::game::Job {
+                inside,
+                writes: vec![(first_d, b.pt[3] - first_d)],
+            });
+        }
     }
     cx.wr(INTENA, 0x8010);
 }
@@ -474,11 +494,11 @@ fn blit_clear(cx: &mut Cx, from: u32, lines: u16) {
         size: (lines << 6) + 0x14,
         ..Blit::default()
     };
-    blit_planes(cx, b, 6, 0, PLANE, false);
+    blit_planes(cx, b, 6, 0, PLANE, false, None);
 }
 
 /// `$1b18`: copy `lines` lines of buffer 1 into buffer 0 from line `from`.
-fn blit_restore(cx: &mut Cx, from: u32, lines: u16) {
+pub(super) fn blit_restore(cx: &mut Cx, from: u32, lines: u16, inside: u32) {
     let b = Blit {
         con0: 0x09f0,
         afwm: 0xffff,
@@ -487,7 +507,7 @@ fn blit_restore(cx: &mut Cx, from: u32, lines: u16) {
         size: (lines << 6) + 0x14,
         ..Blit::default()
     };
-    blit_planes(cx, b, 6, PLANE, PLANE, true);
+    blit_planes(cx, b, 6, PLANE, PLANE, true, Some(inside));
 }
 
 /// `$3d0a`: the eyes' current frame into buffer 0 at (`x`, `y`), shifted to `x`.
@@ -510,7 +530,7 @@ fn blit_eyes(cx: &mut Cx, x: u16, y: u16) {
         size: 0x903,
         ..Blit::default()
     };
-    blit_planes(cx, b, 6, 0x8e8, PLANE, true);
+    blit_planes(cx, b, 6, 0x8e8, PLANE, true, None);
 }
 
 /// `title_intro_anim` (h0+$3902): the eyes bounce in from the right in the dark, blink, and the
@@ -532,8 +552,12 @@ impl IntroAnim {
             match self.pc {
                 0 => {
                     if cx.s.audio.music_on() {
-                        cx.unported("title_intro_anim with music on");
-                        return Yield::Return;
+                        // $3aec: the music is on (back from the options): no intro, the menu's
+                        // line out of the way, the title's list from the next frame.
+                        cx.s.set_w(h2(0x7338), 0x7401);
+                        menu_line_off(cx);
+                        self.pc = 30;
+                        return Yield::Raster;
                     }
                     blit_clear(cx, 0x30, 0x40);
                     self.pc = 1;
@@ -579,10 +603,7 @@ impl IntroAnim {
                 // The music, and the eyes blink.
                 4 => {
                     self.pc = 24;
-                    return Yield::Call(Box::new(Routine::MusicStart(MusicStart {
-                        pc: 0,
-                        ret: at(0x39ac),
-                    })));
+                    return call(Routine::MusicStart(MusicStart::returning_to(at(0x39ac))));
                 }
                 24 => {
                     cx.s.set_l(INTRO_SOURCE, at(0x3dd0));
@@ -682,10 +703,7 @@ impl IntroAnim {
                 // $3a96: music (again), then at line $a0 the picture comes back under the eyes.
                 20 => {
                     self.pc = 25;
-                    return Yield::Call(Box::new(Routine::MusicStart(MusicStart {
-                        pc: 0,
-                        ret: at(0x3aaa),
-                    })));
+                    return call(Routine::MusicStart(MusicStart::returning_to(at(0x3aaa))));
                 }
                 25 => {
                     self.pc = 21;
@@ -693,7 +711,7 @@ impl IntroAnim {
                 }
                 21 => {
                     cx.s.set_w(h2(0x7338), 0x7401);
-                    blit_restore(cx, 0x30, 0x40);
+                    blit_restore(cx, 0x30, 0x40, at(0x3ad0));
                     self.frames = 0x32;
                     self.pc = 22;
                 }
@@ -703,6 +721,10 @@ impl IntroAnim {
                     }
                     self.pc = 23;
                     return Yield::Raster;
+                }
+                30 => {
+                    cx.cop1lc = TITLE_COPPER;
+                    return Yield::Return;
                 }
                 23 => {
                     self.frames -= 1;
@@ -726,68 +748,40 @@ pub(crate) struct TitleFadeIn {
 
 impl TitleFadeIn {
     pub(super) fn run(&mut self, cx: &mut Cx) -> Yield {
-        loop {
-            match self.pc {
-                // $1c0e: each half's fade in is set up with interrupts off (`$153a4`).
-                0 | 2 => {
-                    let r = (self.pc / 2) as usize;
-                    cx.s.set_w(RECORDS[r].at + fade::SPEED, 1);
-                    let rec = (RECORDS[r].at, 0x1f2);
-                    self.pc += 1;
-                    let inside = at([0x1c38, 0x1c62][r]);
-                    if let Some(y) =
-                        cx.masked_job(fade_setup_cycles(0x20), inside, vec![rec, (TOGGLE, 2)])
-                    {
-                        return y;
-                    }
-                }
-                1 | 3 => {
-                    let r = (self.pc / 2) as usize;
-                    let (list, target) = [(0x3ba0, 0x37e2), (0x3c20, 0x3822)][r];
-                    cx.s.set_w(TOGGLE, 0);
-                    fade::fade_in(cx.s, RECORDS[r], at(list), at(target), 0x20);
-                    cx.wr(INTENA, fade::INTENA_ON);
-                    self.pc += 1;
-                    return Yield::Interrupt;
-                }
-                4 => return self.poll(cx, 0),
-                5 => return self.poll(cx, 1),
-                _ => return Yield::Return,
+        self.pc += 1;
+        match self.pc {
+            1 => fade(
+                FadeKind::In { target: at(0x37e2) },
+                0,
+                at(0x3ba0),
+                0x20,
+                at(0x1c38),
+            ),
+            2 => fade(
+                FadeKind::In { target: at(0x3822) },
+                1,
+                at(0x3c20),
+                0x20,
+                at(0x1c62),
+            ),
+            3 => palette_wait(0),
+            4 => palette_wait(1),
+            _ => {
+                menu_line_off(cx);
+                Yield::Return
             }
         }
     }
-
-    /// `$3ca2`: copy three of the lower palette's colours to the menu line's MOVEs until the fade
-    /// of record `r` is over, then both palettes into the copper list.
-    fn poll(&mut self, cx: &mut Cx, r: usize) -> Yield {
-        for (from, to) in [(0x7340, 0x73e0), (0x738c, 0x73e4), (0x73b8, 0x73e8)] {
-            let v = cx.s.l(h2(from));
-            cx.s.set_l(h2(to), v);
-        }
-        if !fade::done(cx.s, RECORDS[r]) {
-            return Yield::Poll;
-        }
-        super::vbl::palette_copy(cx);
-        if r == 0 {
-            self.pc = 5;
-            return self.poll(cx, 1);
-        }
-        for (k, v) in [0x7401ff00u32, 0x00980000, 0x00980000, 0x00980000]
-            .into_iter()
-            .enumerate()
-        {
-            cx.s.set_l(h2(0x73bc) + 4 * k as u32, v);
-        }
-        self.pc = 6;
-        Yield::Return
-    }
 }
 
-/// About how long a fade set-up (`$153a4`, `$155a0`) takes with interrupts off: three divisions
-/// for each colour (the 68000's `divu` takes 76 to 140 cycles) and clearing its accumulators.
-/// Measured on the title's: 44 and 51 lines for 32 colours.
-fn fade_setup_cycles(colours: u32) -> u32 {
-    1200 + colours * 3 * 220
+/// The menu's line (h2+$73bc: a WAIT and three MOVEs) out of the way, below the picture.
+pub(super) fn menu_line_off(cx: &mut Cx) {
+    for (k, v) in [0x7401ff00u32, 0x00980000, 0x00980000, 0x00980000]
+        .into_iter()
+        .enumerate()
+    {
+        cx.s.set_l(h2(0x73bc) + 4 * k as u32, v);
+    }
 }
 
 /// The title's routines on the original's call stack, from where its main program is (`chain`:
