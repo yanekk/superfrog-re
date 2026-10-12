@@ -218,3 +218,98 @@ fn land_from_air(c: &mut LevelCtx, mut floor: u16, side: bool) {
         b.set_w(FROG + f::ON_GROUND, 1);
     }
 }
+
+/// h0+$e4fc: a frog moving up stops under a ceiling: the cell above its head and, past ground
+/// cells, the ones beside it in the way it faces.
+pub fn head_probe(c: &mut LevelCtx) {
+    let b = &mut c.bus;
+    if n_clear(b.w(FROG + f::VY)) {
+        return;
+    }
+    let (x, y) = (b.w(FROG + f::X), b.w(FROG + f::Y));
+    let mut a2 = cell_at(b, x, y.wrapping_sub(0x10))
+        .wrapping_add(2)
+        .wrapping_add(0x4c0);
+    let step = |b: &Bus, a2: u32| {
+        if b.w(FROG + f::FACING) != 0 {
+            a2.wrapping_add(2)
+        } else {
+            a2.wrapping_sub(2)
+        }
+    };
+    loop {
+        let m = marker(b, a2.wrapping_add(0x260));
+        if m >= 0x3e {
+            a2 = step(b, a2);
+            continue;
+        }
+        if m != 0x3d {
+            let m = marker(b, a2);
+            if m == 0x3f || m == 0x3d {
+                break;
+            }
+        }
+        // h0+$e56e: the next cell on.
+        let m = marker(b, a2.wrapping_add(0x262));
+        if m >= 0x3e {
+            a2 = step(b, a2);
+            continue;
+        }
+        if m == 0x3d {
+            return;
+        }
+        let m = marker(b, a2.wrapping_add(2));
+        if m != 0x3f && m != 0x3d {
+            return;
+        }
+        break;
+    }
+    b.set_w(FROG + f::Y, (b.w(FROG + f::Y) & 0xfff0).wrapping_add(0x10));
+    b.set_w(FROG + f::VY, 0);
+    b.set_w(FROG + f::HEAD_BUMP, 1);
+    b.set_w(FROG + f::AIR, 8);
+}
+
+/// `slope_anims_right`, `_left` (h0+$dee8, h0+$df6c): walking animations by the slope under the
+/// frog, a long each, indexed by the slope (negative indices reach the table before).
+const SLOPE_ANIMS_RIGHT: u32 = h0(0xdee8);
+const SLOPE_ANIMS_LEFT: u32 = h0(0xdf6c);
+/// Animations below this address face right (the frog's tables are in two halves).
+pub const LEFT_ANIMS: u32 = h0(0x10b7e);
+const SLOPE_FRAME_RIGHT: u32 = h0(0x1050e);
+const SLOPE_FRAME_LEFT: u32 = h0(0x10ce6);
+
+/// h0+$de2a: the slope of the ground cell's tile (its height 13 pixels in less 2 in) picks the
+/// walking animation, and the frames of a step in both walking animations follow it.
+pub fn slope_anim(c: &mut LevelCtx) {
+    let b = &mut c.bus;
+    let tile = ((b.w(b.l(FROG + f::GROUND_CELL)) & 0xffc0) >> 6) as u32;
+    let heights = TILE_HEIGHTS + tile * 16;
+    let slope = b.b(heights + 0xd).wrapping_sub(b.b(heights + 2)) as i8 as i16;
+    b.set_w(FROG + f::SLOPE, slope as u16);
+    let mut index = (slope as i32 * 4) as u32;
+    let table = if b.w(FROG + f::FACING) != 0 {
+        SLOPE_ANIMS_LEFT
+    } else {
+        SLOPE_ANIMS_RIGHT
+    };
+    if b.w(FROG + f::ON_PLATFORM) != 0 {
+        index = 0;
+    }
+    let anim = b.l(table.wrapping_add(index));
+    b.set_l(FROG + f::SLOPE_ANIM, anim);
+    let frame = b.l(anim);
+    let other = frame.wrapping_add(0xc);
+    if !n_clear_l(anim.wrapping_sub(LEFT_ANIMS)) {
+        b.set_l(SLOPE_FRAME_RIGHT, frame);
+        b.set_l(SLOPE_FRAME_LEFT, other);
+    } else {
+        b.set_l(SLOPE_FRAME_LEFT, frame);
+        b.set_l(SLOPE_FRAME_RIGHT, other);
+    }
+}
+
+/// [`n_clear`] for a long result.
+pub fn n_clear_l(result: u32) -> bool {
+    (result as i32) >= 0
+}

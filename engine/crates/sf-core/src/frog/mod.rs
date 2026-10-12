@@ -24,6 +24,8 @@ pub mod f {
     /// Frames in the air since leaving the ground, counted from 1 by the ground probe; 0 on the
     /// ground (inferred).
     pub const AIR: u32 = 0x0a;
+    /// Set for a frame when the frog's head hits a ceiling (h0+$e4fc); `frog_tiles` clears it.
+    pub const HEAD_BUMP: u32 = 0x1e;
     /// Facing: negative while the frog faces left (inferred from the camera's use).
     pub const FACING: u32 = 0x12;
     /// Negative while the frog climbs (inferred from the camera's use).

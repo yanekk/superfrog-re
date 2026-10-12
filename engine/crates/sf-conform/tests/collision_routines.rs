@@ -54,3 +54,34 @@ fn ground_probe_matches_the_original() {
         rig.check("ground_probe", case, 0xdfb0, &s, collision::ground_probe);
     }
 }
+
+#[test]
+fn head_probe_matches_the_original() {
+    let mut rig = rig();
+    let mut g = Gen::new(12);
+    for case in 0..CASES {
+        let mut s = Setup {
+            hw: any_input(&mut g),
+            ..Setup::default()
+        };
+        frog_among_cells(&mut g, &mut s);
+        rig.check("head_probe", case, 0xe4fc, &s, collision::head_probe);
+    }
+}
+
+#[test]
+fn slope_anim_matches_the_original() {
+    let mut rig = rig();
+    let mut g = Gen::new(13);
+    for case in 0..CASES {
+        let mut s = Setup {
+            hw: any_input(&mut g),
+            ..Setup::default()
+        };
+        frog_among_cells(&mut g, &mut s);
+        let (c, r) = (g.below(300) as u32, g.below(84) as u32);
+        s.poke_w(cell(c, r), (g.below(840) as u16) << 6 | any_marker(&mut g));
+        s.poke_l(FROG + f::GROUND_CELL, cell(c, r));
+        rig.check("slope_anim", case, 0xde2a, &s, collision::slope_anim);
+    }
+}

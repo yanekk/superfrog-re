@@ -237,6 +237,10 @@ layout! {
     World = "world", h0(0x40da), Width::L;
     /// `shooter_half_step` (h0+$de28): the bonus level's camera creeps on every second frame.
     ShooterHalfStep = "shooter_half_step", h0(0xde28), Width::W;
+    /// `slope_frame_right`, `slope_frame_left` (h0+$1050e, h0+$10ce6): the frame of one step in
+    /// each walking animation, which the slope under the frog rewrites (h0+$de2a).
+    SlopeFrameRight = "slope_frame_right", h0(0x1050e), Width::L;
+    SlopeFrameLeft = "slope_frame_left", h0(0x10ce6), Width::L;
     /// `rng_state` (h0+$160d4): the 64-bit RNG state, `rng_next`'s low long then its high long.
     RngState = "rng_state", h0(0x160d4), Width::Bytes(8);
     /// `camera_y` (h0+$16660): the camera's level y (docs/12).
