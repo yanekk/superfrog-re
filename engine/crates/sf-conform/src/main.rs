@@ -139,7 +139,7 @@ fn record(path: &Path, rest: &[String]) -> Result<bool, String> {
         &case.sync,
         &case.script,
         case.frames,
-        case.excludes(sf_conform::Excluded::Objects),
+        case.excludes(sf_conform::Excluded::Enemies),
     )?;
     let mut amiga = synced.amiga;
     // As `run` does: from the end sequence on, every disk the original asks for goes in.
@@ -150,7 +150,7 @@ fn record(path: &Path, rest: &[String]) -> Result<bool, String> {
         case.name, case.sync
     );
     let mut prev: Option<Vec<u32>> = None;
-    let frozen = case.excludes(sf_conform::Excluded::Objects);
+    let frozen = case.excludes(sf_conform::Excluded::Enemies);
     let display = sf_conform::display_data();
     for f in 0..case.frames {
         let input = case.script.input_at(f);

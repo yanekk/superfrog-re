@@ -326,7 +326,7 @@ pub const PASSAGE_CELL: u32 = h0(0x776c);
 const ICE_TICK: u32 = h0(0xeb28);
 const PUSH_TICK: u32 = h0(0xebf0);
 /// `no_death` (h0+$14): non-zero, hazards do nothing (a cheat, inferred).
-const NO_DEATH: u32 = h0(0x14);
+pub const NO_DEATH: u32 = h0(0x14);
 /// `obj_world_offset` (h0+$9fa): the world's row of the object tables (`$100` per world).
 pub const OBJ_WORLD_OFFSET: u32 = h0(0x9fa);
 /// `obj_templates` (h0+$1c6e2): the object templates, `$ae` bytes each.
@@ -474,15 +474,15 @@ fn handle(c: &mut LevelCtx, table: Table, m: u16, a2: u32, d7: bool) {
             }
         }
         (Head, 7) => launcher(c, a2),
-        (Feet, 4) => bounce_pad(c, a2, 4, 0x4c2),
-        (Feet, 5) => bounce_pad(c, a2, 5, 0x414),
+        (Feet, 4) => bounce_pad(c, a2, 4),
+        (Feet, 5) => bounce_pad(c, a2, 5),
         (Middle, 38) => passage(c, a2),
         (_, 56) => ice(c),
         (_, 46) => conveyor(c, -4),
         (_, 47) => conveyor(c, 4),
         (_, 57) => push(c),
         (_, 48..=51) => {
-            // h0+$f6be: a bump block. It opens into its item: an object (T15).
+            // h0+$f6be: a switch: its gate opens (`crate::items::fixtures::switch`).
             if let Some(bump) = c.dispatch.bump_block {
                 bump(c, a2);
             }
@@ -505,7 +505,7 @@ fn handle(c: &mut LevelCtx, table: Table, m: u16, a2: u32, d7: bool) {
         }
         (_, 39..=43) => spring(c, m),
         (_, 55) => {
-            // h0+$ed8a: a pickup drawn in the tiles (fruit, clocks, lives…), by tile: an item (T15).
+            // h0+$ed8a: a pickup drawn in the tiles, by tile (`crate::items::pickups`).
             if let Some(pickup) = c.dispatch.tile_pickup {
                 pickup(c, a2);
             }
@@ -565,7 +565,7 @@ fn spring(c: &mut LevelCtx, m: u16) {
 }
 
 /// h0+$e8ce: a launcher (marker 7) throws the frog away from the wall beside it, 20 a frame (4
-/// less from a standing start on `$3f` ground), and spawns its spring object (T15–T18).
+/// less from a standing start on `$3f` ground), and spawns its spring object.
 fn launcher(c: &mut LevelCtx, mut a2: u32) {
     let b = &mut c.bus;
     if b.w(FROG + f::HURT) != 0 {
@@ -584,20 +584,23 @@ fn launcher(c: &mut LevelCtx, mut a2: u32) {
     if marker(b, a2.wrapping_sub(0x260)) == 7 {
         a2 = a2.wrapping_sub(0x260);
     }
-    if marker(b, a2.wrapping_sub(4)) < 0x3a {
+    let left = marker(b, a2.wrapping_sub(4)) < 0x3a;
+    if left {
         b.set_w(FROG + f::VX, 0xffecu16.wrapping_add(d7));
     } else {
         b.set_w(FROG + f::X, b.w(FROG + f::X).wrapping_add(0x10));
         b.set_w(FROG + f::VX, 0x14u16.wrapping_add(d7.wrapping_neg()));
     }
     b.set_w(FROG + f::VY, 0xfffb);
-    // The original spawns the launcher's object here (obj_spawn_cell, template +$61e or +$6cc).
+    if let Some(spring) = c.dispatch.launcher {
+        spring(c, a2, left);
+    }
     crate::frog::anim::place_frog_sprites(c);
 }
 
 /// h0+$e9cc / h0+$ea22: a bounce pad (markers 4 and 5) under a falling frog bounces it
-/// (h0+$11626) and spawns the pad's object (template `+template`) (T15–T18).
-fn bounce_pad(c: &mut LevelCtx, _a2: u32, _m: u16, _template: u32) {
+/// (h0+$11626) and spawns the pad's object, which throws it up the next pass.
+fn bounce_pad(c: &mut LevelCtx, a2: u32, m: u16) {
     let b = &mut c.bus;
     if !n_clear(b.w(FROG + f::VY).wrapping_sub(3)) || b.w(FROG + f::HURT) != 0 {
         return;
@@ -605,6 +608,9 @@ fn bounce_pad(c: &mut LevelCtx, _a2: u32, _m: u16, _template: u32) {
     bounce(c);
     if c.bus.w(FROG + f::AIR) == 0 {
         return;
+    }
+    if let Some(pad) = c.dispatch.bounce_pad {
+        pad(c, a2, m);
     }
     crate::frog::anim::place_frog_sprites(c);
 }

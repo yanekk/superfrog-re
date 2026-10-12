@@ -24,7 +24,8 @@ use crate::layout::{LAYOUT, MAP_ROW_CELLS, MAP_ROWS, Ram, VarId, def, h0, index_
 use crate::rng::Rng;
 
 /// What the original keeps in memory, as far as the engine models it. A power-on state is all
-/// zero, as the oracle's RAM is (FINDINGS 2026-10-11: RAM zeroed).
+/// zero, as the oracle's RAM is (FINDINGS 2026-10-11: RAM zeroed), but for `ExecBase` at address
+/// 4, which Kickstart sets before the game starts.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct State {
     /// Each [`LAYOUT`] entry's bytes, in table order (empty for the sound driver's, in `audio`).
@@ -58,9 +59,12 @@ fn audio_var(id: VarId) -> Option<usize> {
     })
 }
 
+/// `ExecBase` (address 4) as Kickstart 1.3 leaves it with slow RAM, the oracle's machine.
+pub const EXEC_BASE: u32 = 0x00c0_0276;
+
 impl Default for State {
     fn default() -> State {
-        State {
+        let mut s = State {
             vars: LAYOUT
                 .iter()
                 .map(|d| match audio_var(d.id) {
@@ -70,7 +74,9 @@ impl Default for State {
                 .collect(),
             audio: AudioDriver::blank(),
             scratch: BTreeMap::new(),
-        }
+        };
+        s.set_l(4, EXEC_BASE);
+        s
     }
 }
 

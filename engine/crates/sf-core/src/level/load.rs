@@ -87,6 +87,7 @@ fn boot_image(st: &mut State, display: &DisplayData) {
                 _ if (HERO_SPRITES..HERO_SPRITES + hero.len() as u32).contains(&a) => {
                     hero[(a - HERO_SPRITES) as usize]
                 }
+                4..8 => crate::state::EXEC_BASE.to_be_bytes()[a as usize - 4],
                 _ => 0,
             })
             .collect();

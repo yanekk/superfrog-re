@@ -38,8 +38,9 @@ impl Compare {
 /// file, each with the task that will model it): see [`crate::freeze`].
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Excluded {
-    /// The original's objects are frozen out from power-on.
-    Objects,
+    /// The original's objects the engine has no kind for (enemies, each world's scenery) are
+    /// frozen out from power-on ([`crate::freeze`]).
+    Enemies,
     /// The status panel's bitmap and the picture's panel lines are not compared.
     Panel,
     /// Listed only: what the case's input never makes the original do (the spud thrown, the
@@ -193,10 +194,10 @@ impl Case {
                         .ok_or(format!("exclude needs `{k}`"))
                 };
                 let what = match s("what")?.as_str() {
-                    "objects" => Excluded::Objects,
+                    "enemies" => Excluded::Enemies,
                     "panel" => Excluded::Panel,
                     "unreached" => Excluded::Unreached,
-                    w => return Err(format!("exclude: `{w}` is not objects, panel or unreached")),
+                    w => return Err(format!("exclude: `{w}` is not enemies, panel or unreached")),
                 };
                 exclude.push(Exclusion {
                     what,

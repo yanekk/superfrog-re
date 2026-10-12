@@ -89,7 +89,7 @@ pub fn run_with(
     case: &Case,
     mut before_step: impl FnMut(u32, &mut Game),
 ) -> Result<Outcome, Divergence> {
-    let frozen = case.excludes(case::Excluded::Objects);
+    let frozen = case.excludes(case::Excluded::Enemies);
     let synced = sync::reach_frozen(&case.sync, &case.script, case.frames + LOAD_SEARCH, frozen)
         .unwrap_or_else(|e| panic!("{}: {e}", case.name));
     let mut amiga = synced.amiga;

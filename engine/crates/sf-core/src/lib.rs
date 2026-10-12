@@ -10,6 +10,7 @@ pub mod frog;
 pub mod front;
 pub mod game;
 pub mod input;
+pub mod items;
 pub mod layout;
 pub mod level;
 pub mod mem;

@@ -86,13 +86,6 @@ fn slope_anim_matches_the_original() {
     }
 }
 
-/// The original's spawns, bump blocks and tile pickups return at once: objects and items are not
-/// modelled yet (T15–T18), as the frog-only case files freeze them.
-fn freeze_objects(s: &mut Setup) {
-    for at in [0x1b3d8, 0x1b706, 0x1b822, 0xf6be, 0xed8a] {
-        s.poke_w(sf_core::layout::h0(at), 0x4e75);
-    }
-}
 
 /// Markers `frog_tiles` reacts to, and ground.
 fn handled_marker(g: &mut Gen) -> u16 {
@@ -116,7 +109,6 @@ fn frog_tiles_matches_the_original() {
             hw: any_input(&mut g),
             ..Setup::default()
         };
-        freeze_objects(&mut s);
         frog_among_cells(&mut g, &mut s);
         let x = 48 + g.below(4600) as u16;
         let y = 48 + g.below(1200) as u16;

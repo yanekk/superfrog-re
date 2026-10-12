@@ -2881,10 +2881,10 @@ note = "T14 LAYOUT variable"
 exe = "d1_c03"
 hunk = 0
 offset = 0x830
-name = "frog_5a"
+name = "frog_hearts"
 kind = "var"
 size = 0x2
-note = "T14 LAYOUT variable"
+note = "hearts left: the panel's icon (`frog_hurt` takes one, a bottle fills them to 4) (T15)"
 
 [[sym]]
 exe = "d1_c03"
@@ -2962,46 +2962,46 @@ note = "T14 LAYOUT variable"
 exe = "d1_c03"
 hunk = 0
 offset = 0x848
-name = "frog_72"
+name = "frog_spud_flying"
 kind = "var"
 size = 0x2
-note = "T14 LAYOUT variable"
+note = "the spud is in flight (T15)"
 
 [[sym]]
 exe = "d1_c03"
 hunk = 0
 offset = 0x84a
-name = "frog_74"
+name = "frog_spud_x"
 kind = "var"
 size = 0x2
-note = "T14 LAYOUT variable"
+note = "the spud's level x ($639c parked) (T15)"
 
 [[sym]]
 exe = "d1_c03"
 hunk = 0
 offset = 0x84c
-name = "frog_76"
+name = "frog_spud_y"
 kind = "var"
 size = 0x2
-note = "T14 LAYOUT variable"
+note = "the spud's level y (T15)"
 
 [[sym]]
 exe = "d1_c03"
 hunk = 0
 offset = 0x84e
-name = "frog_78"
+name = "frog_spud_vx"
 kind = "var"
 size = 0x2
-note = "T14 LAYOUT variable"
+note = "the spud's x speed (T15)"
 
 [[sym]]
 exe = "d1_c03"
 hunk = 0
 offset = 0x850
-name = "frog_7a"
+name = "frog_spud_vy"
 kind = "var"
 size = 0x2
-note = "T14 LAYOUT variable"
+note = "the spud's y speed (T15)"
 
 [[sym]]
 exe = "d1_c03"
@@ -3016,10 +3016,10 @@ note = "T14 LAYOUT variable"
 exe = "d1_c03"
 hunk = 0
 offset = 0x854
-name = "frog_7e"
+name = "frog_tile_coins"
 kind = "var"
 size = 0x2
-note = "T14 LAYOUT variable"
+note = "coins taken from the map's tiles (h0+$ede0) (T15)"
 
 [[sym]]
 exe = "d1_c03"
@@ -3196,28 +3196,19 @@ note = "T14 LAYOUT variable"
 exe = "d1_c03"
 hunk = 0
 offset = 0x880
-name = "frog_aa"
+name = "frog_next_life"
 kind = "var"
-size = 0x2
-note = "T14 LAYOUT variable"
-
-[[sym]]
-exe = "d1_c03"
-hunk = 0
-offset = 0x882
-name = "frog_ac"
-kind = "var"
-size = 0x2
-note = "T14 LAYOUT variable"
+size = 0x4
+note = "the score at which the next extra life comes, every 200 000 (T15)"
 
 [[sym]]
 exe = "d1_c03"
 hunk = 0
 offset = 0x884
-name = "frog_ae"
+name = "frog_spud_wait"
 kind = "var"
 size = 0x2
-note = "T14 LAYOUT variable"
+note = "passes after a throw before the spud tests walls (T15)"
 
 [[sym]]
 exe = "d1_c03"

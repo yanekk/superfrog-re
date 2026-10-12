@@ -4,6 +4,6 @@ script = "frog-explore"
 frames = 1000
 
 [[exclude]]
-what = "objects"
-note = "the original's object spawns, bump blocks and tile pickups return at once from power-on"
-task = "T15–T18"
+what = "enemies"
+note = "the original's marker spawners the engine has none for (enemies, the world's scenery) and the bubble return at once from power-on"
+task = "T16–T18"

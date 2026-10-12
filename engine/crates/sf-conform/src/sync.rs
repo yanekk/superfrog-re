@@ -214,7 +214,7 @@ pub fn reach_frozen(
     frames: u32,
     frozen: bool,
 ) -> Result<Synced, String> {
-    let tag = if frozen { "objects frozen v1\n" } else { "" };
+    let tag = if frozen { crate::freeze::tag() } else { String::new() };
     match sync {
         SyncPoint::PowerOn => {
             let seed = power_on_seed(script, frames)?;

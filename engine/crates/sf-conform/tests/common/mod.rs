@@ -80,7 +80,6 @@ pub fn small_word(g: &mut Gen) -> u16 {
     }
 }
 
-
 /// The address of map cell (`col`, `row`) in `level_map`.
 pub fn cell(col: u32, row: u32) -> u32 {
     h1(0x218e0) + 2 * (row * MAP_ROW_CELLS + col)

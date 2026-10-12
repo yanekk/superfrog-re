@@ -210,12 +210,6 @@ fn any_frog(g: &mut Gen, s: &mut Setup) {
     s.poke_l(h0(0x160d8), hi);
 }
 
-/// The routines that spawn objects return at once in the original, as in the frog-only cases.
-fn freeze_objects(s: &mut Setup) {
-    for at in [0x1b3d8, 0x1b706, 0x1b822, 0xf6be, 0xed8a] {
-        s.poke_w(sf_core::layout::h0(at), 0x4e75);
-    }
-}
 
 fn frog_check(name: &str, entry: u32, seed: u64, port: fn(&mut sf_core::level::LevelCtx)) {
     let mut rig = rig();
@@ -226,7 +220,8 @@ fn frog_check(name: &str, entry: u32, seed: u64, port: fn(&mut sf_core::level::L
             hw: any_input(&mut g),
             ..Setup::default()
         };
-        freeze_objects(&mut s);
+        // The bubble a pushing surface makes is not modelled (T17), as the case files freeze it.
+        s.pokes.extend(sf_conform::freeze::unported_spawn_patches());
         any_frog(&mut g, &mut s);
         if !rig.check(name, case, entry, &s, port) {
             skipped += 1;
@@ -275,7 +270,7 @@ fn frog_air_anim_on_pushing_surfaces_matches_the_original() {
     let (mut croaks, mut locks) = (0, 0);
     for case in 0..CASES {
         let mut s = Setup::default();
-        freeze_objects(&mut s);
+        s.pokes.extend(sf_conform::freeze::unported_spawn_patches());
         any_frog(&mut g, &mut s);
         if g.one_in(4) {
             s.hw = any_input(&mut g);
@@ -325,7 +320,6 @@ fn frog_level_entry_matches_the_original() {
     let mut g = Gen::new(28);
     for case in 0..CASES {
         let mut s = Setup::default();
-        freeze_objects(&mut s);
         any_frog(&mut g, &mut s);
         s.poke_w(h0(0x9e2), (!g.one_in(8)) as u16);
         s.poke_w(h0(0x6c92), g.below(10) as u16);

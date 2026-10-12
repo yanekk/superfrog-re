@@ -80,7 +80,7 @@ pub fn pass_due(c: &LevelCtx) -> bool {
 /// The 25 Hz pass (`level_frame_loop`'s body, h0+$ab8).
 pub fn pass(c: &mut LevelCtx) {
     c.bus.set_w(VBL_COUNT, 0);
-    crate::level::objects::spud_update(c);
+    crate::items::powerups::spud_update(c);
     crate::level::objects::obj_run_all(c);
     crate::level::objects::obj_build_hitboxes(c);
     crate::level::objects::collide_all(c);
@@ -92,7 +92,7 @@ pub fn pass(c: &mut LevelCtx) {
     pass::pause_check(c);
     pass::passage_step(c);
     crate::level::panel::extra_life(c);
-    pass::time_up_check(c);
+    crate::level::death::time_up_check(c);
     let b = &mut c.bus;
     let ls = b.l(collision::LEVEL_STATE);
     if crate::level::collision::n_clear_l(ls.wrapping_add(1)) {
