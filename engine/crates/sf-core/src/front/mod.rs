@@ -24,10 +24,12 @@ pub mod fade;
 mod menu;
 pub mod password;
 pub mod sprite;
+pub mod story;
 mod title;
 mod vbl;
 
 pub use data::FrontData;
+pub use story::{Story, StoryData};
 
 use sf_paula::PaulaWrite;
 

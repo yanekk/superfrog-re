@@ -40,6 +40,8 @@ pub struct DisplayData {
     worlds: Vec<WorldDisplay>,
     /// What the front end reads from the disks.
     pub front: crate::front::FrontData,
+    /// What the story intro reads from the disks.
+    pub story: crate::front::StoryData,
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
@@ -80,6 +82,7 @@ impl DisplayData {
             hero,
             worlds,
             front: crate::front::FrontData::new(data),
+            story: crate::front::StoryData::new(data),
         }
     }
 
@@ -163,6 +166,9 @@ pub(crate) struct Mem<'a> {
     state: &'a State,
     data: &'a DisplayData,
     world: Option<&'a WorldDisplay>,
+    /// The story intro's memory, which is all of RAM as the original's bytes: read before
+    /// anything else.
+    flat: Option<&'a crate::front::story::StoryMem>,
 }
 
 impl<'a> Mem<'a> {
@@ -171,6 +177,7 @@ impl<'a> Mem<'a> {
             state,
             data,
             world: data.world(state.world),
+            flat: None,
         }
     }
 
@@ -186,6 +193,9 @@ impl<'a> Mem<'a> {
     }
 
     fn whole(&self, addr: u32, len: u32) -> Option<&'a [u8]> {
+        if let Some(f) = self.flat {
+            return f.slice(addr, len);
+        }
         if let Some(b) = self.state.raw(addr, len) {
             return Some(b);
         }
@@ -205,6 +215,8 @@ impl<'a> Mem<'a> {
 /// Lores pixels from a line's first fetched bit to its display (Denise's pipeline): the fetch
 /// index of window pixel `x` is `left + x - (2 * DDFSTRT + 17) - delay` (docs/12, measured).
 const PIPELINE: i32 = 17;
+/// The hires counterpart of [`PIPELINE`], in hires pixels (see `Planes::index_hires`).
+const HIRES_PIPELINE: i32 = 2;
 /// The DMA cycle of sprite 0's slot; sprite `n`'s is four cycles later per sprite.
 const SPRITE_SLOT: u16 = 0x15;
 
@@ -251,6 +263,14 @@ impl Planes {
     /// position `left + x`.
     fn index(&self, p: usize, left: i32) -> i32 {
         left - (2 * self.fetch.first_cycle() as i32 + PIPELINE) - self.delay(p)
+    }
+
+    /// In hires, the fetched hires pixel the first half of lores position `left` shows: a hires
+    /// fetch reaches the screen 16 hires pixels (8 lores) sooner after its first cycle than a lores
+    /// one (pixel 0 at `$81` with DDFSTRT `$3c`, against `$38` in lores); the delay counts in lores
+    /// pixels.
+    fn index_hires(&self, p: usize, left: i32) -> i32 {
+        2 * left - 4 * self.fetch.first_cycle() as i32 - HIRES_PIPELINE - 2 * self.delay(p)
     }
 
     /// The play field's priority against the sprite pairs: in single-playfield mode Denise
@@ -311,6 +331,22 @@ pub(crate) fn screen(
     carry: Option<Fetch>,
 ) -> (Picture, Vec<Write>) {
     let mem = Mem::new(state, data);
+    draw(&mem, copper_word, cop1lc, 0, false, carry)
+}
+
+/// A screen of the story intro (T32): as [`screen`], every read from the intro's memory `mem`.
+pub(crate) fn story_screen(
+    mem: &crate::front::story::StoryMem,
+    empty: &State,
+    data: &DisplayData,
+    cop1lc: u32,
+    copper_word: &dyn Fn(u32, u16) -> u16,
+    carry: Option<Fetch>,
+) -> (Picture, Vec<Write>) {
+    let mem = Mem {
+        flat: Some(mem),
+        ..Mem::new(empty, data)
+    };
     draw(&mem, copper_word, cop1lc, 0, false, carry)
 }
 

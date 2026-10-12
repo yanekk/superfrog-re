@@ -181,13 +181,15 @@ impl std::fmt::Debug for Snapshot {
 }
 
 /// One emulator instance: an A500 (OCS, 512K chip + 512K slow, no clock, RAM zeroed, PAL) with
-/// the owner's Kickstart and disk 1 in df0. Deterministic: the same inputs from the same start give
+/// the owner's Kickstart and disk 1 (or [`OracleConfig::boot`]'s) in df0. Deterministic: the same inputs from the same start give
 /// the same frames (FINDINGS 2026-10-11).
 pub struct Amiga {
     raw: *mut SfAmiga,
     disks: DiskSet,
     max_frames: u32,
     drives: u8,
+    /// The disk last put in df0 (a restored snapshot does not change it).
+    df0: DiskSlot,
     frame: u32,
     input: FrameInput,
 }
@@ -202,7 +204,7 @@ impl Drop for Amiga {
 }
 
 impl Amiga {
-    /// Read the ROM and disks (read-only), insert disk 1 and switch on. Frame 0 is next.
+    /// Read the ROM and disks (read-only), insert the boot disk ([`OracleConfig::boot`]) and switch on. Frame 0 is next.
     pub fn power_on(cfg: &OracleConfig) -> Result<Amiga, OracleError> {
         let (rom, disks) = cfg.load()?;
         let mut err = ErrBuf::new();
@@ -215,6 +217,7 @@ impl Amiga {
             disks,
             max_frames: cfg.max_frames,
             drives: cfg.drives,
+            df0: cfg.boot,
             frame: 0,
             input: FrameInput::NONE,
         };
@@ -227,7 +230,7 @@ impl Amiga {
             }
         }
         amiga
-            .insert(0, DiskSlot::D1)
+            .insert(0, cfg.boot)
             .map_err(|e| OracleError::Setup(e.to_string()))?;
         let rc = unsafe { ffi::sf_amiga_power_on(amiga.raw, err.ptr(), ErrBuf::LEN) };
         if rc != 0 {
@@ -393,9 +396,17 @@ impl Amiga {
         }
     }
 
+    /// Whether disk 1 is the disk last put in df0.
+    pub fn disk1_in(&self) -> bool {
+        self.df0 == DiskSlot::D1
+    }
+
     fn insert(&mut self, drive: u8, slot: DiskSlot) -> Result<(), OracleError> {
         if drive >= self.drives {
             return Err(OracleError::NoDrive(drive));
+        }
+        if drive == 0 {
+            self.df0 = slot;
         }
         let adf = disk(&self.disks, slot);
         let mut err = ErrBuf::new();

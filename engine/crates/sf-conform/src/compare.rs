@@ -1,6 +1,6 @@
 //! One frame of the engine against one frame of the original (DESIGN §2.1).
 
-use sf_core::layout::{AmigaMemory, LAYOUT, VarDef, VarId};
+use sf_core::layout::{AmigaMemory, VarDef, VarId};
 use sf_core::{FrameOut, Picture};
 use sf_oracle::{FrameCapture, Rgb12Frame};
 use sf_paula::PaulaWrite;
@@ -12,6 +12,7 @@ use crate::report::{self, Divergence};
 pub fn frame(
     case: &Case,
     frame: u32,
+    layout: &[VarDef],
     probe: &[(VarId, u32)],
     theirs_mem: &AmigaMemory,
     ours: &FrameOut,
@@ -31,7 +32,10 @@ pub fn frame(
                 d,
             )
         });
-    let first_var = c.vars.then(|| vars(probe, theirs_mem, masked)).flatten();
+    let first_var = c
+        .vars
+        .then(|| vars(layout, probe, theirs_mem, masked))
+        .flatten();
     let picture_diff = c
         .picture
         .then(|| picture(&ours.picture, &theirs.picture))
@@ -55,7 +59,7 @@ pub fn frame(
         unported: Vec::new(),
         var_detail: first_var
             .map(|(d, _, _)| {
-                var_diffs(probe, theirs_mem, d.id)
+                var_diffs(layout, probe, theirs_mem, d.id)
                     .into_iter()
                     .take(40)
                     .collect()
@@ -65,9 +69,14 @@ pub fn frame(
 }
 
 /// Every piece of `id`'s entry that differs, as `offset: original/engine`, for a report.
-pub fn var_diffs(probe: &[(VarId, u32)], theirs: &AmigaMemory, id: VarId) -> Vec<String> {
-    let pieces: Vec<VarDef> = LAYOUT.iter().flat_map(|d| d.pieces()).collect();
-    let base = LAYOUT.iter().find(|d| d.id == id).map_or(0, |d| d.addr);
+pub fn var_diffs(
+    layout: &[VarDef],
+    probe: &[(VarId, u32)],
+    theirs: &AmigaMemory,
+    id: VarId,
+) -> Vec<String> {
+    let pieces: Vec<VarDef> = layout.iter().flat_map(|d| d.pieces()).collect();
+    let base = layout.iter().find(|d| d.id == id).map_or(0, |d| d.addr);
     pieces
         .into_iter()
         .zip(probe)
@@ -83,11 +92,12 @@ pub fn var_diffs(probe: &[(VarId, u32)], theirs: &AmigaMemory, id: VarId) -> Vec
 /// original's value, engine's value). Pieces inside a `masked` run (address, length) are not
 /// compared: memory a job of the original's CPU has not finished writing (DESIGN §2.1).
 pub fn vars(
+    layout: &[VarDef],
     probe: &[(VarId, u32)],
     theirs: &AmigaMemory,
     masked: &[(u32, u32)],
 ) -> Option<(VarDef, u32, u32)> {
-    let pieces: Vec<VarDef> = LAYOUT.iter().flat_map(|d| d.pieces()).collect();
+    let pieces: Vec<VarDef> = layout.iter().flat_map(|d| d.pieces()).collect();
     assert_eq!(
         pieces.len(),
         probe.len(),

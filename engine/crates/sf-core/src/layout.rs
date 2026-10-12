@@ -156,6 +156,11 @@ pub enum VarId {
     AudioSfxTables,
     AudioModuleAddr,
     AudioHeaderBackup,
+    /// The story intro's (T32, `front::story`), compared only while it runs: disk 3's boot
+    /// program's fade record (`d3_c02` h0+$2be18).
+    StoryBootFade,
+    /// Its two field copper lists and the black one (h0+$2c00c..$2c2b4).
+    StoryBootCopper,
 }
 
 impl VarId {

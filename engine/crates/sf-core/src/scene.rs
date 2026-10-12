@@ -20,6 +20,8 @@ pub enum Scene {
     /// The front end: boot, title, menus, attract screens (T20; the program is `Game`'s
     /// [`crate::front::Front`]).
     Front,
+    /// The story intro disk 3 boots (T32; `Game`'s [`crate::front::Story`]).
+    Story,
 }
 
 /// `logic_running` (h0+$9d6): set by `level_frame_loop` while a level plays.
@@ -47,13 +49,13 @@ impl Scene {
         _pacing: Pacing,
     ) -> Vec<PaulaWrite> {
         match self {
-            Scene::Placeholder | Scene::Level | Scene::Front => Vec::new(),
+            Scene::Placeholder | Scene::Level | Scene::Front | Scene::Story => Vec::new(),
         }
     }
 
     pub fn render(&self, state: &State, display: &DisplayData, view: View) -> Picture {
         match self {
-            Scene::Placeholder | Scene::Front => Picture::black(view),
+            Scene::Placeholder | Scene::Front | Scene::Story => Picture::black(view),
             Scene::Level => render::level(state, display, view),
         }
     }

@@ -89,6 +89,9 @@ pub fn run_with(
         SyncPoint::PowerOn => Start::PowerOn {
             seed: synced.seed.unwrap_or_default(),
         },
+        SyncPoint::PowerOnDisk3 => Start::Disk3 {
+            seed: synced.seed.unwrap_or_default(),
+        },
         SyncPoint::AtFrame { .. } => Start::Resume {
             memory: synced.memory,
             cpu: sync::core_cpu(&amiga.cpu()),
@@ -108,8 +111,7 @@ pub fn run_with(
     let mut jobs: Vec<(sf_core::Job, bool, u32)> = Vec::new();
     for f in 0..case.frames {
         let input = case.script.input_at(of);
-        let mut theirs = amiga
-            .step(input)
+        let mut theirs = sync::step_inserting(&mut amiga, input)
             .unwrap_or_else(|e| panic!("{}: oracle, frame {of}: {e}", case.name));
         of += 1;
         let mut mem = sync::core_memory(amiga.memory());
@@ -141,8 +143,7 @@ pub fn run_with(
                     "{}: the original's load ({end:x?}) was not over within {LOAD_SEARCH} frames of the engine's (frame {f})",
                     case.name
                 );
-                theirs = amiga
-                    .step(case.script.input_at(of))
+                theirs = sync::step_inserting(&mut amiga, case.script.input_at(of))
                     .unwrap_or_else(|e| panic!("{}: oracle, frame {of}: {e}", case.name));
                 of += 1;
                 prev_mem = std::mem::replace(&mut mem, sync::core_memory(amiga.memory()));
@@ -158,10 +159,11 @@ pub fn run_with(
             };
             let redo = |line: Option<u16>| {
                 let mut g = before.clone();
-                take(&mut g, &prev_mem, sf_core::front::RUNS_DURING_LOAD);
+                take(&mut g, &prev_mem, before.runs_during_load());
                 g.set_load_line(line);
                 let out = g.step_paced(input, pacing);
-                take(&mut g, &mem, sf_core::front::LOAD_LEAVES);
+                let leaves = g.load_leaves();
+                take(&mut g, &mem, leaves);
                 take(&mut g, &mem, &out.resync);
                 (g, out)
             };
@@ -175,7 +177,8 @@ pub fn run_with(
                     .chain(ours.jobs.iter().flat_map(|j| j.writes.clone()))
                     .collect();
                 let fits = |g: &Game, out: &FrameOut| {
-                    compare::frame(case, f, &g.probe(), &mem, out, &theirs, None, &masked).is_none()
+                    compare::frame(case, f, g.layout(), &g.probe(), &mem, out, &theirs, None, &masked)
+                        .is_none()
                 };
                 if !fits(&game, &ours) {
                     for line in (0..sf_core::front::FRAME_LINES).step_by(2) {
@@ -222,6 +225,7 @@ pub fn run_with(
         let d = compare::frame(
             case,
             f,
+            game.layout(),
             &game.probe(),
             &mem,
             &ours,
