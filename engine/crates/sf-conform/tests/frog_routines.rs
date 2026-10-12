@@ -336,3 +336,40 @@ fn frog_level_entry_matches_the_original() {
         rig.check("frog_level_entry", case, 0x6bd4, &s, frog::anim::frog_level_entry);
     }
 }
+
+/// Any bytes in every field of the frog's `$200`-byte record, and any options.
+fn any_record(g: &mut Gen, s: &mut Setup) {
+    use sf_core::layout::h0;
+    any_frog(g, s);
+    for o in (0..0x200).step_by(2) {
+        if g.one_in(3) {
+            s.poke_w(FROG + o, edgy(g));
+        }
+    }
+    s.poke_w(h0(0x9e4), g.pick(&[0, 1, 2, 3, 0xffff]));
+    s.poke_w(h0(0x9e6), g.pick(&[0, 1, 2, 0xffff]));
+    s.poke_l(h0(0x445e), g.next() as u32);
+    s.a[0] = FROG;
+}
+
+#[test]
+fn frog_new_game_matches_the_original() {
+    let mut rig = rig();
+    let mut g = Gen::new(29);
+    for case in 0..CASES {
+        let mut s = Setup::default();
+        any_record(&mut g, &mut s);
+        rig.check("frog_new_game", case, 0x8f90, &s, |c| frog::frog_new_game(&mut c.bus));
+    }
+}
+
+#[test]
+fn frog_reset_matches_the_original() {
+    let mut rig = rig();
+    let mut g = Gen::new(30);
+    for case in 0..CASES {
+        let mut s = Setup::default();
+        any_record(&mut g, &mut s);
+        rig.check("frog_reset", case, 0x902e, &s, |c| frog::frog_reset(&mut c.bus));
+    }
+}

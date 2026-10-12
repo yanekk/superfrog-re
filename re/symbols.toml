@@ -401,9 +401,9 @@ exe = "d1_c03"
 hunk = 0
 offset = 0x7d6
 name = "frog"
-kind = "data"
-size = 0x56
-note = "player record head: +0 x, +2 y, +4 vx, +6 vy; the record runs on past the vars below (docs/09)"
+kind = "var"
+size = 2
+note = "the frog's record ($200 bytes, docs/09), from its x (LAYOUT frog_x); each field below is named"
 
 [[sym]]
 exe = "d1_c03"
@@ -1134,6 +1134,24 @@ offset = 0xb774
 name = "overlays_end"
 kind = "func"
 note = "removes the overlays"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0xc2d6
+name = "file_names"
+kind = "table"
+size = 0x54e
+note = "97 x 14: load_file's names for the trackloader (SDDISK1:HERO ...); entry = (a0 - $c2d6) / 14 (T14)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0xc824
+name = "dos_file_names"
+kind = "table"
+size = 0x3ca
+note = "97 x 10: the same files as DF0:..DF3: paths, for loader_mode 0/1 (dev, h0+$afe4) (T14)"
 
 [[sym]]
 exe = "d1_c03"
@@ -2404,3 +2422,1440 @@ name = "extra_life_shown"
 kind = "var"
 size = 2
 note = "set while the extra-life check has drawn the lives (T14)"
+
+# --- T14: the frog's record and the level's variables, as sf_core::layout::LAYOUT names them ---
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x14
+name = "no_death"
+kind = "var"
+size = 0x2
+note = "`no_death` (h0+$14): non-zero, hazards do nothing (inferred: a cheat)."
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x1c
+name = "demo_record_on"
+kind = "var"
+size = 0x2
+note = "h0+$1c: `demo_record` (h0+$11a32) records the joystick while it is set (a developer's switch)."
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x7d8
+name = "frog_y"
+kind = "var"
+size = 0x2
+note = "T14 LAYOUT variable"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x7da
+name = "frog_vx"
+kind = "var"
+size = 0x2
+note = "T14 LAYOUT variable"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x7dc
+name = "frog_vy"
+kind = "var"
+size = 0x2
+note = "T14 LAYOUT variable"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x7de
+name = "frog_08"
+kind = "var"
+size = 0x2
+note = "T14 LAYOUT variable"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x7e0
+name = "frog_0a"
+kind = "var"
+size = 0x2
+note = "T14 LAYOUT variable"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x7e2
+name = "frog_0c"
+kind = "var"
+size = 0x2
+note = "T14 LAYOUT variable"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x7e4
+name = "frog_0e"
+kind = "var"
+size = 0x2
+note = "T14 LAYOUT variable"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x7e6
+name = "frog_10"
+kind = "var"
+size = 0x2
+note = "T14 LAYOUT variable"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x7e8
+name = "frog_facing"
+kind = "var"
+size = 0x2
+note = "T14 LAYOUT variable"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x7ea
+name = "frog_climb"
+kind = "var"
+size = 0x2
+note = "T14 LAYOUT variable"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x7ec
+name = "frog_16"
+kind = "var"
+size = 0x2
+note = "T14 LAYOUT variable"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x7ee
+name = "frog_18"
+kind = "var"
+size = 0x2
+note = "T14 LAYOUT variable"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x7f0
+name = "frog_1a"
+kind = "var"
+size = 0x2
+note = "T14 LAYOUT variable"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x7f2
+name = "frog_1c"
+kind = "var"
+size = 0x2
+note = "T14 LAYOUT variable"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x7f4
+name = "frog_1e"
+kind = "var"
+size = 0x2
+note = "T14 LAYOUT variable"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x7f6
+name = "frog_20"
+kind = "var"
+size = 0x2
+note = "T14 LAYOUT variable"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x7f8
+name = "frog_22"
+kind = "var"
+size = 0x2
+note = "T14 LAYOUT variable"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x7fa
+name = "frog_24"
+kind = "var"
+size = 0x2
+note = "T14 LAYOUT variable"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x7fc
+name = "frog_26"
+kind = "var"
+size = 0x2
+note = "T14 LAYOUT variable"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x7fe
+name = "frog_28"
+kind = "var"
+size = 0x2
+note = "T14 LAYOUT variable"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x800
+name = "frog_2a"
+kind = "var"
+size = 0x2
+note = "T14 LAYOUT variable"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x802
+name = "frog_anim"
+kind = "var"
+size = 0x4
+note = "T14 LAYOUT variable"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x806
+name = "frog_anim_step"
+kind = "var"
+size = 0x4
+note = "T14 LAYOUT variable"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x80a
+name = "frog_34"
+kind = "var"
+size = 0x2
+note = "T14 LAYOUT variable"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x80c
+name = "frog_36"
+kind = "var"
+size = 0x2
+note = "T14 LAYOUT variable"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x80e
+name = "frog_38"
+kind = "var"
+size = 0x2
+note = "T14 LAYOUT variable"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x810
+name = "frog_3a"
+kind = "var"
+size = 0x2
+note = "T14 LAYOUT variable"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x812
+name = "frog_3c"
+kind = "var"
+size = 0x2
+note = "T14 LAYOUT variable"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x814
+name = "frog_3e"
+kind = "var"
+size = 0x2
+note = "T14 LAYOUT variable"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x816
+name = "frog_40"
+kind = "var"
+size = 0x2
+note = "T14 LAYOUT variable"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x818
+name = "frog_42"
+kind = "var"
+size = 0x2
+note = "T14 LAYOUT variable"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x81a
+name = "frog_44"
+kind = "var"
+size = 0x2
+note = "T14 LAYOUT variable"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x81c
+name = "frog_46"
+kind = "var"
+size = 0x2
+note = "T14 LAYOUT variable"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x81e
+name = "frog_camera_held"
+kind = "var"
+size = 0x2
+note = "T14 LAYOUT variable"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x820
+name = "frog_4a"
+kind = "var"
+size = 0x2
+note = "T14 LAYOUT variable"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x822
+name = "frog_4c"
+kind = "var"
+size = 0x2
+note = "T14 LAYOUT variable"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x824
+name = "frog_4e"
+kind = "var"
+size = 0x2
+note = "T14 LAYOUT variable"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x826
+name = "frog_50"
+kind = "var"
+size = 0x2
+note = "T14 LAYOUT variable"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x828
+name = "frog_52"
+kind = "var"
+size = 0x2
+note = "T14 LAYOUT variable"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x82a
+name = "frog_54"
+kind = "var"
+size = 0x2
+note = "T14 LAYOUT variable"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x82e
+name = "frog_58"
+kind = "var"
+size = 0x2
+note = "T14 LAYOUT variable"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x830
+name = "frog_5a"
+kind = "var"
+size = 0x2
+note = "T14 LAYOUT variable"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x838
+name = "frog_62"
+kind = "var"
+size = 0x2
+note = "T14 LAYOUT variable"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x83a
+name = "frog_64"
+kind = "var"
+size = 0x2
+note = "T14 LAYOUT variable"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x83c
+name = "frog_66"
+kind = "var"
+size = 0x2
+note = "T14 LAYOUT variable"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x83e
+name = "frog_68"
+kind = "var"
+size = 0x2
+note = "T14 LAYOUT variable"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x840
+name = "frog_6a"
+kind = "var"
+size = 0x2
+note = "T14 LAYOUT variable"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x842
+name = "frog_6c"
+kind = "var"
+size = 0x2
+note = "T14 LAYOUT variable"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x844
+name = "frog_6e"
+kind = "var"
+size = 0x2
+note = "T14 LAYOUT variable"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x846
+name = "frog_70"
+kind = "var"
+size = 0x2
+note = "T14 LAYOUT variable"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x848
+name = "frog_72"
+kind = "var"
+size = 0x2
+note = "T14 LAYOUT variable"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x84a
+name = "frog_74"
+kind = "var"
+size = 0x2
+note = "T14 LAYOUT variable"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x84c
+name = "frog_76"
+kind = "var"
+size = 0x2
+note = "T14 LAYOUT variable"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x84e
+name = "frog_78"
+kind = "var"
+size = 0x2
+note = "T14 LAYOUT variable"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x850
+name = "frog_7a"
+kind = "var"
+size = 0x2
+note = "T14 LAYOUT variable"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x852
+name = "frog_7c"
+kind = "var"
+size = 0x2
+note = "T14 LAYOUT variable"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x854
+name = "frog_7e"
+kind = "var"
+size = 0x2
+note = "T14 LAYOUT variable"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x856
+name = "frog_80"
+kind = "var"
+size = 0x2
+note = "T14 LAYOUT variable"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x858
+name = "frog_82"
+kind = "var"
+size = 0x2
+note = "T14 LAYOUT variable"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x85a
+name = "frog_84"
+kind = "var"
+size = 0x2
+note = "T14 LAYOUT variable"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x85c
+name = "frog_86"
+kind = "var"
+size = 0x2
+note = "T14 LAYOUT variable"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x85e
+name = "frog_frozen"
+kind = "var"
+size = 0x2
+note = "T14 LAYOUT variable"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x860
+name = "frog_8a"
+kind = "var"
+size = 0x2
+note = "T14 LAYOUT variable"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x862
+name = "frog_8c"
+kind = "var"
+size = 0x2
+note = "T14 LAYOUT variable"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x864
+name = "frog_8e"
+kind = "var"
+size = 0x2
+note = "T14 LAYOUT variable"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x866
+name = "frog_90"
+kind = "var"
+size = 0x2
+note = "T14 LAYOUT variable"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x868
+name = "frog_92"
+kind = "var"
+size = 0x2
+note = "T14 LAYOUT variable"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x86a
+name = "frog_94"
+kind = "var"
+size = 0x2
+note = "T14 LAYOUT variable"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x86c
+name = "frog_96"
+kind = "var"
+size = 0x2
+note = "T14 LAYOUT variable"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x86e
+name = "frog_98"
+kind = "var"
+size = 0x2
+note = "T14 LAYOUT variable"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x870
+name = "frog_9a"
+kind = "var"
+size = 0x2
+note = "T14 LAYOUT variable"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x872
+name = "frog_9c"
+kind = "var"
+size = 0x2
+note = "T14 LAYOUT variable"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x874
+name = "frog_9e"
+kind = "var"
+size = 0x2
+note = "T14 LAYOUT variable"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x87a
+name = "frog_a4"
+kind = "var"
+size = 0x2
+note = "T14 LAYOUT variable"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x87c
+name = "frog_a6"
+kind = "var"
+size = 0x2
+note = "T14 LAYOUT variable"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x87e
+name = "frog_a8"
+kind = "var"
+size = 0x2
+note = "T14 LAYOUT variable"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x880
+name = "frog_aa"
+kind = "var"
+size = 0x2
+note = "T14 LAYOUT variable"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x882
+name = "frog_ac"
+kind = "var"
+size = 0x2
+note = "T14 LAYOUT variable"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x884
+name = "frog_ae"
+kind = "var"
+size = 0x2
+note = "T14 LAYOUT variable"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x886
+name = "frog_b0"
+kind = "var"
+size = 0x2
+note = "T14 LAYOUT variable"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x888
+name = "frog_b2"
+kind = "var"
+size = 0x2
+note = "T14 LAYOUT variable"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x88a
+name = "frog_rest"
+kind = "var"
+size = 0x14c
+note = "The rest of the frog's `$200`-byte record, to h0+$9d6, which `frog_new_game` clears."
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x9da
+name = "vbl_pass_flag"
+kind = "var"
+size = 0x2
+note = "`vbl_pass_flag` (h0+$9da): set by the vertical blank, cleared by the buffer flip."
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x9e0
+name = "screen_fades_off"
+kind = "var"
+size = 0x2
+note = "`screen_fades_off` (h0+$9e0): outside a level, fades step every second frame."
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x9e2
+name = "sprites_hidden"
+kind = "var"
+size = 0x2
+note = "`sprites_hidden` (h0+$9e2): the frog's sprites stay where they are."
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x9f8
+name = "frog_exit_sprites"
+kind = "var"
+size = 0x2
+note = "`frog_exit_sprites` (h0+$9f8): the frog shows in the second pair of sprite records."
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0xa1a
+name = "level_start_x"
+kind = "var"
+size = 0x4
+note = "`level_start_x`, `level_start_y` (h0+$a1a, $a1e): the camera's start, from the map's start marker (`$35`, …"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0xa1e
+name = "level_start_y"
+kind = "var"
+size = 0x4
+note = "T14 LAYOUT variable"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0xa22
+name = "level_width"
+kind = "var"
+size = 0x2
+note = "`level_width`, `level_height` (h0+$a22, h0+$a24): the level's size in pixels."
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0xa24
+name = "level_height"
+kind = "var"
+size = 0x2
+note = "T14 LAYOUT variable"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x3ca0
+name = "screen_fade_toggle"
+kind = "var"
+size = 0x2
+note = "`screen_fade_toggle` (h0+$3ca0)."
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x445e
+name = "coins_collected"
+kind = "var"
+size = 0x4
+note = "`coins_collected` (h0+$445e): coins taken since the last tally (`touch_coin` counts them)."
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x6c92
+name = "entry_fall"
+kind = "var"
+size = 0x2
+note = "`entry_fall` (h0+$6c92): how fast the frog drops in at a level's start."
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x776c
+name = "passage_cell"
+kind = "var"
+size = 0x4
+note = "`passage_cell` (h0+$776c): the fake-wall cell the frog entered (marker 38)."
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x87c0
+name = "lives_icon_shown"
+kind = "var"
+size = 0x2
+note = "The panel's drawing (`level::panel`): `lives_icon_shown` (h0+$87c0), `score_digit` (h0+$8a74), …"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x8a74
+name = "score_digit"
+kind = "var"
+size = 0x2
+note = "T14 LAYOUT variable"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x8ab4
+name = "score_text"
+kind = "var"
+size = 0xc
+note = "T14 LAYOUT variable"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x8be0
+name = "clock_digit"
+kind = "var"
+size = 0x2
+note = "T14 LAYOUT variable"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x8be2
+name = "clock_shown"
+kind = "var"
+size = 0x4
+note = "T14 LAYOUT variable"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0xd350
+name = "hitboxes"
+kind = "var"
+size = 0x600
+note = "`hitboxes` (h0+$d350): the objects' hitboxes, 12 bytes each, rebuilt each pass."
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0xde28
+name = "shooter_half_step"
+kind = "var"
+size = 0x2
+note = "`shooter_half_step` (h0+$de28): the bonus level's camera creeps on every second frame."
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0xeb28
+name = "ice_tick"
+kind = "var"
+size = 0x2
+note = "`ice_tick`, `push_tick` (h0+$eb28, h0+$ebf0): frames on an icy or a pushing surface."
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0xebf0
+name = "push_tick"
+kind = "var"
+size = 0x2
+note = "T14 LAYOUT variable"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0xfa68
+name = "tile_anim_queue"
+kind = "var"
+size = 0x10
+note = "`tile_anim_queue` (h0+$fa68): cells waiting to show their next tile."
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x10182
+name = "fall_history"
+kind = "var"
+size = 0x10
+note = "`fall_history` (h0+$10182): a hurt frog's y on each of the last eight frames."
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x1050e
+name = "slope_frame_right"
+kind = "var"
+size = 0x4
+note = "`slope_frame_right`, `slope_frame_left` (h0+$1050e, h0+$10ce6): the frame of one step in each walking …"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x10ce6
+name = "slope_frame_left"
+kind = "var"
+size = 0x4
+note = "T14 LAYOUT variable"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x1194e
+name = "shooter_decay"
+kind = "var"
+size = 0x2
+note = "`shooter_decay` (h0+$1194e): toggles every frame in the bonus level."
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x11a24
+name = "demo_running"
+kind = "var"
+size = 0x4
+note = "`demo_running`, `demo_fire`, `demo_left`, `demo_at` (h0+$11a24..$11a2e): the attract demo's playback …"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x11a28
+name = "demo_fire"
+kind = "var"
+size = 0x2
+note = "T14 LAYOUT variable"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x11a2a
+name = "demo_joy"
+kind = "var"
+size = 0x2
+note = "`demo_joy` (h0+$11a2a): the attract demo's joystick, read instead of JOY1DAT."
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x11a2c
+name = "demo_left"
+kind = "var"
+size = 0x2
+note = "T14 LAYOUT variable"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x11a2e
+name = "demo_at"
+kind = "var"
+size = 0x4
+note = "T14 LAYOUT variable"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x11aa2
+name = "demo_record_at"
+kind = "var"
+size = 0x4
+note = "`demo_record_at` (h0+$11aa2): where `demo_record` writes; `level_start` points it at the world's demo …"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x11dfc
+name = "clock_ticks"
+kind = "var"
+size = 0x2
+note = "`clock_ticks` (h0+$11dfc): vertical blanks into the level clock's current second."
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x157d8
+name = "fades"
+kind = "var"
+size = 0x7c8
+note = "`fades` (h0+$157d8): the four palette fade records, `$1f2` bytes each (`level::fade`)."
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x161aa
+name = "number_started"
+kind = "var"
+size = 0x4
+note = "T14 LAYOUT variable"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x161b2
+name = "number_text"
+kind = "var"
+size = 0xc
+note = "T14 LAYOUT variable"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x162e4
+name = "marker_cells"
+kind = "var"
+size = 0x10
+note = "`marker_cells` (h0+$162e4): the cells of the map's first marker `$30`..`$33` each (h0+$1625e), one long a …"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x163d0
+name = "coins_total"
+kind = "var"
+size = 0x2
+note = "`coins_total` (h0+$163d0), `items_total` (h0+$163d2): the map's coins (marker 8), and its coins and …"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x163d2
+name = "items_total"
+kind = "var"
+size = 0x2
+note = "T14 LAYOUT variable"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x16604
+name = "rows_drawn"
+kind = "var"
+size = 0x28
+note = "The scroller (h0+$16604..$1668c): rows and columns drawn by the last pass (with a word either side, which …"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x1662c
+name = "cols_drawn"
+kind = "var"
+size = 0x30
+note = "T14 LAYOUT variable"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x1665e
+name = "shown_buffer"
+kind = "var"
+size = 0x2
+note = "`shown_buffer` (h0+$1665e): 1 while buffer 0 is shown, 2 while buffer 1 is."
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x16668
+name = "scroller_row_shift"
+kind = "var"
+size = 0x4
+note = "T14 LAYOUT variable"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x1666c
+name = "scroller_col_shift_x"
+kind = "var"
+size = 0x4
+note = "T14 LAYOUT variable"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x16674
+name = "scroller_toggle"
+kind = "var"
+size = 0x2
+note = "T14 LAYOUT variable"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x16676
+name = "scroller_tiles_per_line"
+kind = "var"
+size = 0x4
+note = "T14 LAYOUT variable"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x1667a
+name = "scroller_row_shift_x"
+kind = "var"
+size = 0x4
+note = "T14 LAYOUT variable"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x1667e
+name = "scroller_col_shift_y"
+kind = "var"
+size = 0x4
+note = "T14 LAYOUT variable"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x16682
+name = "scroll_dirs"
+kind = "var"
+size = 0x2
+note = "`scroll_dirs` (h0+$16682): which way the camera last moved (bits 1 right, 2 left, 3 down, 4 up)."
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x16688
+name = "blits_pending"
+kind = "var"
+size = 0x2
+note = "T14 LAYOUT variable"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x1668a
+name = "scroller_drawn"
+kind = "var"
+size = 0x2
+note = "T14 LAYOUT variable"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x16752
+name = "shooter_column"
+kind = "var"
+size = 0x4
+note = "`shooter_column` (h0+$16752), `blit_next` (h0+$16756), `blit_queue` (h0+$1675a, 23 × 16 bytes; its end …"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x16756
+name = "blit_next"
+kind = "var"
+size = 0x4
+note = "T14 LAYOUT variable"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x1675a
+name = "blit_queue"
+kind = "var"
+size = 0x170
+note = "T14 LAYOUT variable"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x18bc8
+name = "bob_draw_vars"
+kind = "var"
+size = 0x20
+note = "`bob_draw_vars` (h0+$18bc8..$18be8): the bob drawer's camera, seam lines, column, seam pass flag and …"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x18be8
+name = "line_offsets"
+kind = "var"
+size = 0x27c
+note = "`line_offsets` (h0+$18be8): each play-field line's byte offset (`$30` a line), built by the level's set-up."
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x1aff4
+name = "frog_sprite_left"
+kind = "var"
+size = 0x1c
+note = "`frog_sprite_left`, `_right` (h0+$1aff4, h0+$1b010): the frog's two hardware-sprite records (`$1c` bytes: …"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x1b010
+name = "frog_sprite_right"
+kind = "var"
+size = 0x1c
+note = "T14 LAYOUT variable"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x1b02c
+name = "exit_sprite_left"
+kind = "var"
+size = 0x1c
+note = "`exit_sprite_left`, `_right` (h0+$1b02c, h0+$1b048): the second pair of frog sprites."
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x1b048
+name = "exit_sprite_right"
+kind = "var"
+size = 0x1c
+note = "T14 LAYOUT variable"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x2970a
+name = "bob_draw_list"
+kind = "var"
+size = 0xa8
+note = "`bob_draw_list` (h0+$2970a..): a 0, the bobs to draw, a 0."
+
+[[sym]]
+exe = "d1_c03"
+hunk = 1
+offset = 0x31de0
+name = "level_palette"
+kind = "var"
+size = 0x40
+note = "`level_palette` (h1+$31de0): the level's 32 colours, from its map's `PALA` (h0+$1622a); the fades fade to it."
+
+[[sym]]
+exe = "d1_c03"
+hunk = 2
+offset = 0x68a8
+name = "exit_sprite_copper"
+kind = "var"
+size = 0x40
+note = "`exit_sprite_copper` (h2+$68a8): the sprite moves the second pair of frog sprite records writes …"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x8f90
+name = "frog_new_game"
+kind = "func"
+note = "the frog's record for a new game: cleared, lives, score, tuning, then frog_reset (T14)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x8bf6
+name = "panel_clear"
+kind = "func"
+note = "the panel's planes into the level copper list, and cleared (T14)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x6ad2
+name = "frog_drop_in_start"
+kind = "func"
+note = "the frog's drop-in (or its shooter-mode place), sprites hidden, logic running (T14)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x8510
+name = "panel_slide_in"
+kind = "func"
+note = "the panel slides in from the middle over $18 frames (T14)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x862e
+name = "panel_sprite_digits"
+kind = "func"
+note = "frog+$5c as two sprite digits (T14)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x11dfe
+name = "clock_at_start"
+kind = "func"
+note = "the easy game's doubled minutes, the clock's colours and digits (T14)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x1622a
+name = "map_palette"
+kind = "func"
+note = "the 32 colours after the map's PALA tag into level_palette (T14)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x16202
+name = "map_body_to_front"
+kind = "func"
+note = "moves a map file's BODY to the file's start (T14)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x1625e
+name = "map_find_marker_cells"
+kind = "func"
+note = "each marker $30..$33's first cell into marker_cells (T14)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x162f4
+name = "map_find_start"
+kind = "func"
+note = "the camera's start from the start marker $35 (T14)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x16374
+name = "map_count_coins"
+kind = "func"
+note = "coins (marker 8) and items counted; coins_left_for_exit (T14)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x1647a
+name = "map_unpack"
+kind = "func"
+note = "the map's BODY into level_map, cells turned tile<<6|marker (T14)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x164c2
+name = "scroller_reset"
+kind = "func"
+note = "the scroller's state and blit queue cleared (T14)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x164fa
+name = "level_start_point"
+kind = "func"
+note = "frog and camera from level_start_x/y, kept inside; scroller reset; first scroll (T14)"
