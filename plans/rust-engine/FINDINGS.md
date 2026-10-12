@@ -18,6 +18,9 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-12 | 🐞 | T31: docs/10 and the T08 row had W6's map sets backwards. One drive plays d4_c14–c17 (`alt`); any connected df1–df3 gives c02–c05 (`probe_drives`: 0 = connected). T13's render-w6-2..4 rendered alt; now reached with df1. |
+| 2026-10-12 | 🔄 | Owner, T31: the final level is reached by writing `level_state` = 1 on W6-4's first frame (no code, cheat or trainer leads there). Its score and lives are not a playthrough's. `Amiga::write_memory` exists for this alone. |
+| 2026-10-12 | 📌 | T31: with an empty df1 connected the boot reaches the title 219 frames sooner. With disks 2–4 in df1–df3 the crack stalls on ACCESSING DISK past frame 20 000; not investigated (one empty df1 suffices). |
 | 2026-10-12 | 📌 | T13 review: owner added T31 render-remaining-levels. T13 renders 25 of 29 levels; W6's alt maps 2–4 need DF1–DF3 (oracle has df0 only) and the final level has no level code (password entries 24–27 all lead to the bonus level). |
 | 2026-10-12 | 📌 | T13 review: `late_redraw` excuses a differing pixel wherever an alternative differs from end-of-frame, not where it matches the original (strict matching fails 10 of 25 cases on genuine mixed frames). A renderer defect confined to changed regions is skipped, not caught. |
 | 2026-10-11 | 🔄 | Owner, T13: the two display buffers (h3+$10600, $22f30) are engine state; the play field renders from them, the map only for widescreen. T14–T18 must port the original's tile, animation and bob blits into them. Save states grow ~150 KB. |

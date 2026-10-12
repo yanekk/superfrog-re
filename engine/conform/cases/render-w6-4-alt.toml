@@ -1,0 +1,7 @@
+# The renderer on W6-4's second map (d4_c17), the one a one-drive A500 plays: each of 400
+# frames of a walk, the original's memory transplanted into a fresh engine and rendered, against
+# the original's picture (T31).
+sync = { level = "W6-4alt" }
+script = "render-walk"
+frames = 400
+compare = ["render"]

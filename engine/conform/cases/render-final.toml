@@ -1,0 +1,7 @@
+# The renderer on the final level, reached by forcing W6-4's exit (docs/12 "Reaching every level"):
+# each of 400 frames of a walk, the original's memory transplanted into a fresh engine and
+# rendered, against the original's picture (T31).
+sync = { level = "WW-1" }
+script = "render-walk"
+frames = 400
+compare = ["render"]

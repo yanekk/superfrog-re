@@ -13,7 +13,7 @@ the account is the commit message. Whoever writes a cell also fixes the over-bud
 
 **Status:** Plan written; nothing built.
 **Last updated:** 2026-10-10
-**Next `pir-work` will:** T00 oracle-spike, because every later test rests on the reference emulator; T01 and T02 can run beside it.
+**Next `pir-work` will:** review T31 (render-remaining-levels).
 
 ## Tasks
 
@@ -53,12 +53,12 @@ done · ⛔ blocked, needs a human.
 | T28 | level-override | T14, T24 | ⬜ | |
 | T29 | app-drill | T21, T25, T26, T27, T28 | ⬜ | |
 | T30 | acceptance | T29 | ⬜ | |
-| T31 | render-remaining-levels | T13 | ⬜ | |
+| T31 | render-remaining-levels | T13 | 🔍 | Oracle `drives` (default 1), `write_memory`; routes for W6-2..4 both sets and WW-1; four cases green, `all` 30/30; 12 tests. Deviations: one drive gives `alt`, df1 the first set (doc had it backwards), T13's W6 cases re-routed; final level by forced W6-4 exit (owner); `LevelId` parses `W6-2alt`, `WW-1`. |
 
 A Notes cell holds what was built or what the review found, the test count, and one line per
 deviation from the task doc. A ✅ task's cell may be cut to one line once the next task has been reviewed.
 
-**Review queue:** *(empty)*
+**Review queue:** T31
 
 ## Blocked on the user
 
