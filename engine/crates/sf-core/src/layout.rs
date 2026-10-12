@@ -280,6 +280,8 @@ layout! {
     DemoJoy = "demo_joy", h0(0x11a2a), Width::W;
     DemoLeft = "demo_left", h0(0x11a2c), Width::W;
     DemoAt = "demo_at", h0(0x11a2e), Width::L;
+    /// `fades` (h0+$157d8): the four palette fade records, `$1f2` bytes each (`level::fade`).
+    Fades = "fades", h0(0x157d8), Width::Bytes(0x7c8);
     /// `rng_state` (h0+$160d4): the 64-bit RNG state, `rng_next`'s low long then its high long.
     RngState = "rng_state", h0(0x160d4), Width::Bytes(8);
     /// The scroller (h0+$16604..$1668c): rows and columns drawn by the last pass (with a word

@@ -9,6 +9,7 @@
 
 pub mod camera;
 pub mod collision;
+pub mod fade;
 pub mod load;
 pub mod scroll;
 pub mod spawn;

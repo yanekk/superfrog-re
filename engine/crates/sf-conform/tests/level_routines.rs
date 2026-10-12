@@ -93,3 +93,45 @@ fn copper_irq_blits_match_the_original() {
         rig.check("copper_irq_blits", case, 0x1693e, &s, scroll::copper_irq_blits);
     }
 }
+
+/// Fade records in every mode, part way through, over the level copper list's palette moves.
+fn fading(g: &mut Gen, s: &mut Setup, mode: u16) {
+    use sf_core::level::fade::FADES;
+    for r in FADES {
+        s.poke_w(r, if g.one_in(3) { g.below(4) as u16 } else { mode });
+        s.poke_w(r + 2, g.below(3) as u16);
+        s.poke_w(r + 4, g.below(3) as u16);
+        s.poke_w(r + 6, g.one_in(5) as u16);
+        s.poke_w(r + 8, 1 + g.below(32) as u16);
+        s.poke_l(r + 0xa, scroll::LEVEL_COPPER + 2 * g.below(0x100) as u32);
+        s.poke_l(r + 0xe, scroll::LEVEL_COPPER + 0x2d2 - 4 * g.below(16) as u32);
+        for k in 0..0x60u32 {
+            s.poke_b(r + 0x12 + k, g.pick(&[0, 1, 0xff, 2]));
+        }
+        for k in 0..0x60u32 {
+            s.poke_w(r + 0x72 + 2 * k, g.below(0x120) as u16);
+            s.poke_w(r + 0x132 + 2 * k, g.below(0x1000) as u16);
+        }
+    }
+    for k in 0..0x60u32 {
+        s.poke_w(scroll::LEVEL_COPPER + 0x2d4 + 4 * k - 0xc0, g.next() as u16 & 0xfff);
+    }
+}
+
+#[test]
+fn fades_match_the_original() {
+    use sf_core::level::fade;
+    let mut rig = rig();
+    let mut g = Gen::new(34);
+    let kinds: [(u32, u16, fn(&mut sf_core::level::LevelCtx)); 3] = [
+        (0x15456, 2, fade::fade_in_tick),
+        (0x156aa, 3, fade::fade_out_tick),
+        (0x1528c, 1, fade::stepped_tick),
+    ];
+    for case in 0..CASES {
+        let (entry, mode, port) = kinds[case % 3];
+        let mut s = Setup::default();
+        fading(&mut g, &mut s, mode);
+        rig.check("fades", case, entry, &s, port);
+    }
+}
