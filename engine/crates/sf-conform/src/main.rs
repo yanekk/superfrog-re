@@ -129,6 +129,9 @@ fn record(path: &Path, rest: &[String]) -> Result<bool, String> {
     }
     let synced = sync::reach(&case.sync, &case.script, case.frames)?;
     let mut amiga = synced.amiga;
+    // As `run` does: from the end sequence on, every disk the original asks for goes in.
+    let mut disks =
+        (case.sync == sync::SyncPoint::EndSequence).then(|| sync::Disks::at(&synced.memory));
     println!(
         "# {}: oracle from {:?}, frames counted from there",
         case.name, case.sync
@@ -137,6 +140,9 @@ fn record(path: &Path, rest: &[String]) -> Result<bool, String> {
     for f in 0..case.frames {
         let input = case.script.input_at(f);
         let capture = amiga.step(input).map_err(|e| e.to_string())?;
+        if let Some(d) = disks.as_mut() {
+            d.serve(&mut amiga);
+        }
         let mem = sync::core_memory(amiga.memory());
         let mut vals: Vec<u32> = shown.iter().map(|d| d.read(&mem as &dyn Ram)).collect();
         let at = if trace {
