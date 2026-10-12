@@ -77,6 +77,9 @@ impl fmt::Display for Divergence {
                     "  {what}: first pixel ({x}, {y}): original ${theirs:03x}, engine ${ours:03x}"
                 )?;
             }
+            if let Some((a, b, n)) = p.mismatch.rows {
+                writeln!(f, "  {what}: {n} pixels differ, on rows {a} to {b}")?;
+            }
             if let Some((theirs, ours)) = &p.mismatch.window {
                 writeln!(f, "  display window: original {theirs}, engine {ours}")?;
             }

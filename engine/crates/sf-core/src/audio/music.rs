@@ -420,13 +420,11 @@ impl AudioDriver {
                     self.p41.set_w(c + VOLUME, 0);
                 }
             }
-            0xd0 => {
-                if x == self.p41.w(TICK) {
-                    let on = self.p41.w(DMA_ON) | self.p41.w(c + DMA_BIT) | 0x8000;
-                    self.p41.set_w(DMA_ON, on);
-                    self.restart_sample(data, n);
-                    self.p41.set_b(DMA_PENDING, 0xff);
-                }
+            0xd0 if x == self.p41.w(TICK) => {
+                let on = self.p41.w(DMA_ON) | self.p41.w(c + DMA_BIT) | 0x8000;
+                self.p41.set_w(DMA_ON, on);
+                self.restart_sample(data, n);
+                self.p41.set_b(DMA_PENDING, 0xff);
             }
             _ => {}
         }

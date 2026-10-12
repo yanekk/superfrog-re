@@ -116,6 +116,8 @@ pub struct PixelMismatch {
     pub first: Option<(u16, u16, u16, u16)>,
     /// The display windows, when they differ: (original's, engine's) as `left,top widthxheight`.
     pub window: Option<(String, String)>,
+    /// Rows that differ: (first, last, how many pixels in all).
+    pub rows: Option<(u16, u16, u32)>,
 }
 
 fn window(left: i32, top: u16, w: u16, h: u16) -> String {
@@ -130,14 +132,24 @@ pub fn picture(ours: &Picture, theirs: &Rgb12Frame) -> Option<PixelMismatch> {
     let win = (a != b).then_some((a, b));
     let (w, h) = (ours.width.min(theirs.width), ours.height.min(theirs.height));
     let colours = sf_core::to_rgb12(ours);
-    let first = (0..h)
+    let differing: Vec<(u16, u16, u16, u16)> = (0..h)
         .flat_map(|y| (0..w).map(move |x| (x, y)))
         .map(|(x, y)| {
             let o = colours[y as usize * ours.width as usize + x as usize];
             (x, y, theirs.pixel(x, y), o)
         })
-        .find(|p| p.2 != p.3);
-    (first.is_some() || win.is_some()).then_some(PixelMismatch { first, window: win })
+        .filter(|p| p.2 != p.3)
+        .collect();
+    let first = differing.first().copied();
+    let rows = first.map(|f| {
+        let last = differing.last().map_or(f.1, |l| l.1);
+        (f.1, last, differing.len() as u32)
+    });
+    (first.is_some() || win.is_some()).then_some(PixelMismatch {
+        first,
+        window: win,
+        rows,
+    })
 }
 
 /// The first Paula write that differs in register or value (beam positions are the original's

@@ -16,6 +16,7 @@
 //! return address the original reaches once its load is over ([`Front::load`]), so conformance can
 //! skip the original's frames spent loading.
 
+mod attract;
 pub mod blit;
 mod common;
 pub mod data;
@@ -49,7 +50,7 @@ const VBL_END_LINE: u16 = 0x14;
 /// interrupt (measured on the options screen's exit: the interrupt's acknowledge on line 41).
 pub(crate) const STALL_VBL_LINE: u16 = 30;
 /// Lines in a PAL frame.
-pub(crate) const FRAME_LINES: u16 = 313;
+pub const FRAME_LINES: u16 = 313;
 /// CPU cycles in one raster line (227 DMA cycles of two).
 pub(crate) const BEAM_CYCLES_PER_LINE: u32 = 454;
 /// `wait_frame_raster` returns on this line (`$12b`) after passing `$ff`.
@@ -97,6 +98,10 @@ pub(crate) enum Routine {
     Menu(menu::Menu),
     Options(menu::Options),
     TitleExit(title::TitleExit),
+    TopLoop(attract::TopLoop),
+    AwardPages(attract::AwardPages),
+    HiscoreCredits(attract::HiscoreCredits),
+    HallOfTalent(attract::HallOfTalent),
 }
 
 impl Routine {
@@ -116,6 +121,10 @@ impl Routine {
             Routine::Menu(r) => r.run(cx),
             Routine::Options(r) => r.run(cx),
             Routine::TitleExit(r) => r.run(cx),
+            Routine::TopLoop(r) => r.run(cx),
+            Routine::AwardPages(r) => r.run(cx),
+            Routine::HiscoreCredits(r) => r.run(cx),
+            Routine::HallOfTalent(r) => r.run(cx),
         }
     }
 }
@@ -169,8 +178,12 @@ pub(crate) struct Cx<'a> {
     pub line: u16,
     /// COP1LC: the copper list the next frame starts.
     pub cop1lc: u32,
-    /// The original's return address once a load this frame is over.
-    pub load: Option<u32>,
+    /// Where the original is once a load this frame is over.
+    pub load: Option<crate::game::LoadEnd>,
+    /// The line the runner says the original's load ended on (conformance only).
+    pub load_line: Option<u16>,
+    /// At a load: the copper list then, and the line the load ends on with the list's bytes.
+    pub load_point: Option<(u32, (u16, Snapshot))>,
     /// Memory a load this frame wrote that the engine does not model (a file kept packed),
     /// taken from the original when its load is over.
     pub resync: Vec<(u32, u32)>,
@@ -180,6 +193,13 @@ pub(crate) struct Cx<'a> {
     pub ret: u32,
     /// The line a long job began on (the memory it wrote before it shows from there).
     pub busy_from: Option<u16>,
+    /// The line from which a part of the main program shows in this frame's picture, when it is not
+    /// where the part ends (a blit the beam overtakes: [`Cx::reveal`]).
+    pub reveal: Option<u16>,
+    /// With `reveal`: what the beam saw of the part's memory, when not simply before or after.
+    pub reveal_state: Option<State>,
+    /// The display registers this frame (as the copper left them last frame).
+    pub fetch: render::copper::Fetch,
     /// A blit holding the CPU off the bus ran past the frame's end: the next frame's interrupt,
     /// and the end of this frame for conformance, come on this line of the next frame.
     pub stall: Option<u16>,
@@ -266,7 +286,10 @@ impl Cx<'_> {
         writes: Vec<(u32, u32)>,
     ) -> Option<Yield> {
         self.wr(crate::audio::INTENA, 0x4000);
-        self.jobs.push(crate::game::Job { inside, writes });
+        self.jobs.push(crate::game::Job {
+            inside: vec![inside],
+            writes,
+        });
         self.busy(cycles);
         (self.line >= FRAME_LINES).then(|| Yield::Masked(self.line - FRAME_LINES))
     }
@@ -274,7 +297,11 @@ impl Cx<'_> {
     /// `atn_decompress` of `bytes` into `at`, taking `cycles`: the memory holds the result at
     /// once; the picture shows it arriving as the original's decompressor writes it, backwards
     /// from its end at an even pace, over the frames it takes ([`Unpack`]).
-    pub fn unpack(&mut self, at: u32, bytes: &[u8], cycles: u32) {
+    pub fn unpack(&mut self, at: u32, bytes: &[u8], cycles: u32, inside: &[u32]) {
+        self.jobs.push(crate::game::Job {
+            inside: inside.to_vec(),
+            writes: vec![(at, bytes.len() as u32)],
+        });
         let old = self.s.read(at, bytes.len() as u32);
         self.s.write(at, bytes);
         let start = self.frame as u64 * FRAME_LINES as u64 + self.line as u64;
@@ -286,6 +313,20 @@ impl Cx<'_> {
             start,
             end,
         });
+    }
+
+    /// An instant load is over: conformance finds the original past it as `end` says; the main
+    /// program goes on from the line the runner gave, if it gave one.
+    pub fn loaded(&mut self, end: crate::game::LoadEnd) {
+        self.load = Some(end);
+        if let Some(l) = self.load_line.take() {
+            self.line = self.line.max(l);
+        }
+        let snap = Snapshot {
+            at: self.cop1lc,
+            bytes: self.s.read(self.cop1lc, 0x800),
+        };
+        self.load_point = Some((self.cop1lc, (self.line, snap)));
     }
 
     /// The CPU is busy for `cycles` 7 MHz cycles (a blit it waits for): the beam moves on.
@@ -300,10 +341,6 @@ impl Cx<'_> {
     /// A path of the original's code the engine does not follow yet: recorded, so a test fails.
     pub fn unported(&mut self, what: &'static str) {
         self.unported.push(what);
-    }
-
-    pub fn sound(&self) -> Option<&sf_assets::sound::SoundData> {
-        self.data.sound.as_ref()
     }
 }
 
@@ -322,6 +359,10 @@ struct Frame {
 /// tracks outside memory.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Front {
+    /// The display registers (window, fetch, bitplanes on) as the last frame's copper left them.
+    fetch: Option<render::copper::Fetch>,
+    /// For conformance: the line the next load ends on in the original ([`Cx::load_line`]).
+    pub(crate) load_line: Option<u16>,
     /// Frames stepped.
     frame: u32,
     /// Paula writes the CPU made after the frame's end, which belong to the next frame.
@@ -370,7 +411,7 @@ impl Unpack {
 pub struct FrontOut {
     pub picture: Picture,
     pub paula: Vec<PaulaWrite>,
-    pub load: Option<u32>,
+    pub load: Option<crate::game::LoadEnd>,
     pub resync: Vec<(u32, u32)>,
     pub jobs: Vec<crate::game::Job>,
 }
@@ -380,16 +421,25 @@ impl Front {
     pub fn power_on(seed: Rng) -> Front {
         Front {
             frame: 0,
+            fetch: None,
+            load_line: None,
             carry: Vec::new(),
             stalled: None,
             unpack: None,
             ret: 0,
             booting: true,
-            stack: vec![Frame {
-                routine: Routine::Title(title::Title::after_boot()),
-                wait: None,
-                deferred: None,
-            }],
+            stack: vec![
+                Frame {
+                    routine: Routine::TopLoop(attract::TopLoop::after_title()),
+                    wait: None,
+                    deferred: None,
+                },
+                Frame {
+                    routine: Routine::Title(title::Title::after_boot()),
+                    wait: None,
+                    deferred: None,
+                },
+            ],
             cop1lc: h2(0x6fd8),
             keyboard: Keyboard::default(),
             seed: Some(seed),
@@ -422,6 +472,8 @@ impl Front {
         }
         Some(Front {
             frame: 0,
+            fetch: None,
+            load_line: None,
             carry: Vec::new(),
             stalled: None,
             unpack: None,
@@ -442,6 +494,40 @@ impl Front {
         })
     }
 
+    /// The boot's work, which is all load: done at once, before the first frame.
+    pub fn boot(&mut self, s: &mut State, display: &DisplayData) {
+        if std::mem::take(&mut self.booting) {
+            let mut quiet = Vec::new();
+            let mut cx = Cx {
+                s: &mut *s,
+                data: &display.front,
+                display,
+                input: FrameInput::NONE,
+                paula: &mut quiet,
+                keyboard: self.keyboard,
+                line: 0,
+                cop1lc: self.cop1lc,
+                load: None,
+                load_line: None,
+                load_point: None,
+                resync: Vec::new(),
+                jobs: Vec::new(),
+                ret: 0,
+                busy_from: None,
+                reveal: None,
+                reveal_state: None,
+                fetch: self.fetch.unwrap_or_default(),
+                stall: None,
+                unpack: None,
+                frame: self.frame,
+                seed: self.seed.take(),
+                unported: Vec::new(),
+            };
+            title::boot(&mut cx);
+            self.cop1lc = cx.cop1lc;
+        }
+    }
+
     /// The copper list the frame starts with.
     pub fn cop1lc(&self) -> u32 {
         self.cop1lc
@@ -452,30 +538,8 @@ impl Front {
         self.keyboard.feed(input.keys);
         self.new_frame();
         let mut paula = Vec::new();
-        if std::mem::take(&mut self.booting) {
-            let mut quiet = Vec::new();
-            let mut cx = Cx {
-                s: &mut *s,
-                data: &display.front,
-                display,
-                input,
-                paula: &mut quiet,
-                keyboard: self.keyboard,
-                line: 0,
-                cop1lc: self.cop1lc,
-                load: None,
-                resync: Vec::new(),
-                jobs: Vec::new(),
-                ret: 0,
-                busy_from: None,
-                stall: None,
-                unpack: None,
-                frame: self.frame,
-                seed: self.seed.take(),
-                unported: Vec::new(),
-            };
-            title::boot(&mut cx);
-            self.cop1lc = cx.cop1lc;
+        if self.booting {
+            self.boot(s, display);
         }
         let window = |s: &State, c: u32| Snapshot {
             at: c,
@@ -495,10 +559,15 @@ impl Front {
             line: 0,
             cop1lc: self.cop1lc,
             load: None,
+            load_line: self.load_line.take(),
+            load_point: None,
             resync: Vec::new(),
             jobs: Vec::new(),
             ret: self.ret,
             busy_from: None,
+            reveal: None,
+            reveal_state: None,
+            fetch: self.fetch.unwrap_or_default(),
             stall: None,
             unpack: None,
             frame: self.frame,
@@ -537,7 +606,7 @@ impl Front {
         }
         let stalled = self.stalled.take();
         let vbl_line = stalled.unwrap_or(cx.line.max(1));
-        cx.paula.extend(self.carry.drain(..));
+        cx.paula.append(&mut self.carry);
         let from_carry = cx.paula.len();
         let from = cx.paula.len();
         let palette_due = vbl::run(&mut cx);
@@ -582,6 +651,16 @@ impl Front {
             _ => cx.line,
         };
         history.push((main_line.max(VBL_END_LINE), window(cx.s, cop1lc)));
+        // A frame that loaded stands for the original's frame the load ended on, long after the
+        // load began: its copper list is the one set before the load, as the load left it.
+        let cop1lc = match cx.load_point.take() {
+            Some((list, snap)) => {
+                history.retain(|(l, _)| *l > snap.0);
+                history.insert(0, (0, snap.1));
+                list
+            }
+            None => cop1lc,
+        };
         let copper_word = |addr: u32, line: u16| -> u16 {
             let snap = history
                 .iter()
@@ -591,10 +670,16 @@ impl Front {
                 .unwrap_or(&history[0].1);
             snap.word(addr).unwrap_or_else(|| cx.s.w(addr))
         };
-        let (mut picture, copper) = render::screen(cx.s, display, cop1lc, &copper_word);
+        let carry = self.fetch;
+        let (mut picture, copper) = render::screen(cx.s, display, cop1lc, &copper_word, carry);
+        let mut end = carry.unwrap_or_default();
+        for w in &copper {
+            end.write(w.reg, w.value);
+        }
+        self.fetch = Some(end);
         // Lines the beam drew before a part of the main program ran show the memory before it.
         for (k, (line, st)) in before.iter().enumerate().rev() {
-            let (older, _) = render::screen(st, display, cop1lc, &copper_word);
+            let (older, _) = render::screen(st, display, cop1lc, &copper_word, carry);
             let from = before.get(k.wrapping_sub(1)).map_or(0, |b| b.0);
             if (older.width, older.height, older.top)
                 != (picture.width, picture.height, picture.top)
@@ -624,7 +709,6 @@ impl Front {
             })
             .collect();
         self.run_main(&mut cx, u16::MAX);
-        let mut picture = picture;
         let mut next_copper = Vec::new();
         if let Some(t) = cx.stall {
             // The CPU held off the bus into the next frame: the frame ends for conformance when it
@@ -662,7 +746,7 @@ impl Front {
         self.cop1lc = cx.cop1lc;
         self.keyboard = cx.keyboard;
         self.seed = cx.seed;
-        self.unported.extend(cx.unported.drain(..));
+        self.unported.append(&mut cx.unported);
         // In beam order: the copper's writes among the CPU's (lines are approximate for the CPU's:
         // the interrupt's at the top, the main program's where it woke). Positions are not
         // compared (the engine is not cycle-timed), so they are cleared.
@@ -721,10 +805,10 @@ impl Front {
                     };
                     match wake {
                         Some(l) if l < until => {
-                            if let Some(b) = before.as_mut() {
-                                if l > VBL_END_LINE {
-                                    b.push((l, cx.s.clone()));
-                                }
+                            if let Some(b) = before.as_mut()
+                                && l > VBL_END_LINE
+                            {
+                                b.push((l, cx.s.clone()));
                             }
                             cx.line = cx.line.max(l);
                             top.wait = None;
@@ -740,11 +824,13 @@ impl Front {
                 None => top.routine.run(cx),
             };
             // What the part wrote shows below where the beam is once it is done.
-            if let Some(b) = before.as_mut() {
-                if let Some(e) = b.get_mut(pending) {
-                    if e.0 == line {
-                        e.0 = cx.line.max(e.0);
-                    }
+            if let Some(b) = before.as_mut()
+                && let Some(e) = b.get_mut(pending)
+                && e.0 == line
+            {
+                e.0 = cx.reveal.take().unwrap_or(cx.line.max(e.0));
+                if let Some(st) = cx.reveal_state.take() {
+                    e.1 = st;
                 }
             }
             for w in &mut cx.paula[first..] {
@@ -800,7 +886,7 @@ fn is_paula(reg: u16) -> bool {
 
 /// The copper list's bytes at one moment.
 #[derive(Debug, Clone)]
-struct Snapshot {
+pub(crate) struct Snapshot {
     at: u32,
     bytes: Vec<u8>,
 }
@@ -853,13 +939,36 @@ pub(crate) const fn at(off: u32) -> u32 {
     h0(off)
 }
 
-/// What a load leaves that the engine does not model, taken from the original when the engine's
-/// instant load ends (DESIGN §2.1): `kbd_toggle`, flipped every frame while the original loads,
-/// and the trackloader's sector buffer (h0+$b35a points it at h3+$35860, below the overlay).
-pub const RESYNC_AFTER_LOAD: &[(u32, u32)] = &[
-    (h0(0x16076), 1),
+/// What runs on by itself while the original loads, taken from the original as it was just
+/// before the frame the engine's instant load is compared on (DESIGN §2.1): `kbd_toggle`, flipped
+/// every frame, and the keys it polls, and the sound driver, which plays on in the vertical blank.
+pub const RUNS_DURING_LOAD: &[(u32, u32)] = &[
+    (h0(0x16076), 4),
     (
-        crate::layout::h3(0x35860),
-        data::OVERLAY_AT - crate::layout::h3(0x35860),
+        h0(crate::audio::vars::SFX.0),
+        crate::audio::vars::SFX.1 as u32,
+    ),
+    (
+        h0(crate::audio::vars::MUSIC_ON.0),
+        crate::audio::vars::MUSIC_ON.1 as u32,
+    ),
+    (
+        h0(crate::audio::vars::P41.0),
+        crate::audio::vars::P41.1 as u32,
+    ),
+    (
+        h0(crate::audio::vars::SHADOW.0),
+        crate::audio::vars::SHADOW.1 as u32,
+    ),
+    (
+        h0(crate::audio::vars::STREAM.0),
+        crate::audio::vars::STREAM.1 as u32,
     ),
 ];
+
+/// What a load leaves that the engine does not model, taken from the original once the load is
+/// over: the trackloader's sector buffer (h0+$b35a points it at h3+$35860, below the overlay).
+pub const LOAD_LEAVES: &[(u32, u32)] = &[(
+    crate::layout::h3(0x35860),
+    data::OVERLAY_AT - crate::layout::h3(0x35860),
+)];

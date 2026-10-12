@@ -176,11 +176,7 @@ impl Options {
                     let packed: Vec<u8> = (0..0x215 * 4).map(|k| cx.b(at(0x3464c) + k)).collect();
                     cx.s.write(BUFFER_0, &packed);
                     let pic = cx.data.file("h0@3464c").to_vec();
-                    cx.jobs.push(crate::game::Job {
-                        inside: at(0x175c),
-                        writes: vec![(BUFFER_0, 0x12930)],
-                    });
-                    cx.unpack(BUFFER_0, &pic, OPTIONS_UNPACK_CYCLES);
+                    cx.unpack(BUFFER_0, &pic, OPTIONS_UNPACK_CYCLES, &[at(0x175c)]);
                     self.pc = 50;
                     return Yield::Interrupt;
                 }
@@ -314,11 +310,7 @@ impl Options {
                     let packed: Vec<u8> = (0..0x458 * 4).map(|k| cx.b(at(0x34e92) + k)).collect();
                     cx.s.write(BUFFER_1 + 0xf000, &packed);
                     let eyes = cx.data.file("h0@34e92").to_vec();
-                    cx.jobs.push(crate::game::Job {
-                        inside: at(0x1950),
-                        writes: vec![(BUFFER_1 + 0xf000, 0x3930)],
-                    });
-                    cx.unpack(BUFFER_1 + 0xf000, &eyes, EYES_UNPACK_CYCLES);
+                    cx.unpack(BUFFER_1 + 0xf000, &eyes, EYES_UNPACK_CYCLES, &[at(0x1950)]);
                     return Yield::Return;
                 }
             }

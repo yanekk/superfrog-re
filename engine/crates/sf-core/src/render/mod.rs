@@ -126,7 +126,9 @@ fn hero_sprites(hero: &[u8], game: &sf_assets::ExeImage) -> Vec<u8> {
         return Vec::new();
     }
     let mirrored: Vec<u8> = hero
-        .chunks_exact(4)
+        .as_chunks::<4>()
+        .0
+        .iter()
         .flat_map(|l| {
             u32::from_be_bytes([l[0], l[1], l[2], l[3]])
                 .reverse_bits()
@@ -292,6 +294,7 @@ pub(crate) fn level(state: &State, data: &DisplayData, view: View) -> Picture {
         LEVEL_COPPER,
         view.extra_columns_each_side,
         true,
+        None,
     )
     .0
 }
@@ -305,9 +308,10 @@ pub(crate) fn screen(
     data: &DisplayData,
     cop1lc: u32,
     copper_word: &dyn Fn(u32, u16) -> u16,
+    carry: Option<Fetch>,
 ) -> (Picture, Vec<Write>) {
     let mem = Mem::new(state, data);
-    draw(&mem, copper_word, cop1lc, 0, false)
+    draw(&mem, copper_word, cop1lc, 0, false, carry)
 }
 
 /// The copper's writes on a frame of the list at `cop1lc`, as `state` holds it.
@@ -327,12 +331,17 @@ fn draw(
     cop1lc: u32,
     n: u16,
     level: bool,
+    carry: Option<Fetch>,
 ) -> (Picture, Vec<Write>) {
-    // The frame starts with the setup the list leaves at its end, as the previous frame did.
-    let mut start = Fetch::default();
-    for w in copper::run_timed(word, cop1lc, Fetch::default()) {
-        start.write(w.reg, w.value);
-    }
+    // The frame starts with the registers as the last frame left them (`carry`); without them,
+    // with the setup the list leaves at its end, as if the last frame ran it too.
+    let start = carry.unwrap_or_else(|| {
+        let mut f = Fetch::default();
+        for w in copper::run_timed(word, cop1lc, Fetch::default()) {
+            f.write(w.reg, w.value);
+        }
+        f
+    });
     let writes = copper::run_timed(word, cop1lc, start);
     let mut end = start;
     for w in &writes {

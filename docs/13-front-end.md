@@ -1,0 +1,84 @@
+# 13 — The front end
+
+Everything around the levels, as `engine/crates/sf-core/src/front` ports it from the game
+executable `d1_c03` (addresses `hN+$off`, docs/08): boot, the title and its intro, the menu, the
+options and level codes, and attract mode up to its demo. Claims marked **(oracle)** are checked by
+the `front-*` cases in `engine/conform/cases/` and `engine/crates/sf-conform/tests/front.rs`;
+**(code)** comes from reading the listing.
+
+## Where the engine starts (owner, 2026-10-12)
+
+The engine's power-on is the moment the game program starts (`init_and_script` h0+$26). The
+Kickstart screens and the crack's intro on disk 1 are not the game's and are not reproduced. Disk
+loads are instant: a frame that loads reports where the original's main program is once its load
+is over (`FrameOut::load`: a return address it reaches, or a call it leaves), the runner skips the
+original's frames until then, takes from the original what runs on by itself while it loads (the
+keyboard poll's toggle and keys, the sound driver: `front::RUNS_DURING_LOAD`) and what a load
+leaves that the engine does not model (the trackloader's sector buffer at h3+$35860, `HPIC` kept
+packed in hunk 1: `front::LOAD_LEAVES`, `FrameOut::resync`), and finds the line the original's
+load ended on by trying them (`Game::set_load_line`).
+
+The disk-3 story intro is T32; the attract demo is T33.
+
+## Scene flow (code, oracle)
+
+```
+boot: init_save_boot_args, hw_takeover, Accessing-disk overlay (fades in), probe drives,
+      load_hero, rng_seed_from_cia (+ the level display's tables), title_screen's loads
+top_loop $5c:
+  title_screen $109e:
+    overlays_end (the overlay fades out, 16 steps a frame)
+    $136c eyes' sprites, $1d0c title copper list on buffer 0, black
+    title_intro_anim $3902: eyes bounce in from the right (h0+$3cca bounce table), music starts,
+      the eyes blink (5 frames from h0+$3dd0..$3de4), bounce on left, line $a0: picture back under
+      them; fire skips to the end. With music on (back from the options): none of it.
+    $1c0e both halves fade in (records 0 and 1, every other frame copied at line $7c)
+    idle 400 frames ($2ee with h0+$24), eyes blinking (timers h0+$1368/$136a, rng_range($4b)+$4b)
+      fire -> menu $1406: START GAME / OPTIONS, flashing (h0+$168c), up/down
+        OPTIONS -> $16be: lives, game mode, save high scores, level code; back -> $1122 (intro)
+    $1180: title out (fade), music fade unless attract, game start values
+  award_pages $1e98 (attract, or a new high score): AWA1, AWA2, 300 frames each
+  hiscore_and_credits $20e0: HPIC unpacked, hall of talent (20 lines in, 350 frames, 20 out),
+    credits (a line every second frame at line $c5, text every 24), fire/mouse/Esc abort
+  then the attract demo (T33) or the game (T21)
+```
+
+## Timing the engine keeps (oracle)
+
+The main program paces itself on the beam: `wait_frame_raster` (line `$ff`, then `$12b`), busy
+waits on fade records (`$1519e`, `$3ca2`), and waits for lines (`$a0`, `$8d`, `$c4`/`$c5`). The
+vertical blank runs at the top of each frame. The engine runs each routine as a state machine to
+its next wait and draws the picture as the beam saw memory: copper words read before a write show
+the old value, lines a main-program part ran under show what was there before it.
+
+- **Interrupts off past a frame's end.** A fade set-up (`$151b2`, `$153a4`, `$155a0`: divisions,
+  ~44–51 lines for 32 colours) or `music_start` (`p41_init`, 20 lines on `MUSC`) begun late in a
+  frame runs into the next one; that frame's interrupt waits for it.
+- **Blits with priority** (DMACON `$8400`) that run past a frame's end hold the CPU off the bus:
+  the reference emulator's frame then ends when the CPU takes the interrupt, about line 30 of the
+  next frame, after the copper's first writes of it (its DMACON and window).
+- **CPU jobs spanning frames** (owner, 2026-10-12): unpacking the options picture (12 frames), the
+  eyes (12), `HPIC` (49), drawing text: the engine does them at once; their memory is compared once
+  the original is out of the call (`FrameOut::jobs`). The picture shows an unpacking arriving from
+  its end at an even pace.
+- **The beam overtaking a blit**: the credits' scroll (272 lines of one plane, from line `$c5`)
+  shows each word new only if the blitter wrote it before the bitplane fetch read it
+  (`blit::word_times`).
+- `clr.w` to a custom register writes twice on the real 68000: the prefetched word, then 0.
+
+## The keyboard (oracle)
+
+`kbd_poll` (every second frame) reads CIA-A's serial register: the last byte the keyboard sent,
+`!(code << 1 | released)`. Once it has handled a new byte it writes `$ff` there, which reads as
+key 0 pressed: `key_down` and `key_up` both 0. At power-on the register holds `$7e` released.
+
+## Level codes (code, oracle)
+
+There is no password algorithm. `password_table` (h0+$24dc) holds 28 entries of six ASCII digits
+and a routine; each routine is `move.l #world,start_world; move.l #level,start_level; rts`.
+Entries 0–23 start W1-1 to W6-4 in order, 24–27 the bonus level. `password_check` (h0+$2432)
+takes the first entry whose six digits equal `password_buf`; a code not in the table leaves the
+start as the entry set it (0, 0). The entry (h0+$22ba) maps raw keys through h0+$2e30 (codes,
+`$ff`-ended) to characters at h0+$2e0a; Backspace (`$41`) starts again; Escape (`$45`), Return
+(`$44`) or fire end it, as does the sixth digit. `sf_core::front::password` reads the table from
+the disks (DESIGN §2.3); all 1 000 000 six-digit codes agree with the original's routine.

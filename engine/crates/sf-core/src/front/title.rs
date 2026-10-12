@@ -13,7 +13,6 @@ use crate::audio::{DMACON, File, INTENA};
 use crate::layout::h3;
 
 // The original's variables (docs/08, re/symbols.toml).
-pub const GAME_FULL_MODE: u32 = at(0x6);
 pub const START_WORLD: u32 = at(0xa);
 pub const START_LEVEL: u32 = at(0xe);
 pub const ATTRACT_MODE: u32 = at(0x18);
@@ -125,22 +124,15 @@ pub(super) fn fade_out(cx: &mut Cx, rec: Rec, list: u32, n: u16) {
     cx.wr(INTENA, fade::INTENA_ON);
 }
 
-pub(super) fn fade_in(cx: &mut Cx, rec: Rec, list: u32, target: u32, n: u16) {
-    cx.wr(INTENA, fade::INTENA_OFF);
-    cx.s.set_w(TOGGLE, 0);
-    fade::fade_in(cx.s, rec, list, target, n);
-    cx.wr(INTENA, fade::INTENA_ON);
-}
-
 /// `$1d6c`, `$1dd2`: the title's files. The title music (`MUSC`) at h3+$64c70; the title picture
 /// (`MPIC`, six planes) in display buffer 0 and copied to buffer 1, and the eyes' graphics (packed
 /// at h0+$34e92) after it in buffer 1.
 fn load_title(cx: &mut Cx) {
-    if let Some(d) = cx.data.sound.as_ref() {
-        if !cx.s.audio.music_on() {
-            cx.s.audio
-                .file_loaded(d, BANK_ADDR, File::Tune(TuneId::Title));
-        }
+    if let Some(d) = cx.data.sound.as_ref()
+        && !cx.s.audio.music_on()
+    {
+        cx.s.audio
+            .file_loaded(d, BANK_ADDR, File::Tune(TuneId::Title));
     }
     let pic = cx.data.file("MPIC").to_vec();
     cx.s.write(BUFFER_0, &pic[..pic.len().min(0xf000)]);
@@ -206,7 +198,7 @@ impl Title {
                             overlay_show(cx);
                         }
                         load_title(cx);
-                        cx.load = Some(AFTER_TITLE_LOAD);
+                        cx.loaded(crate::game::LoadEnd::Reached(AFTER_TITLE_LOAD));
                     } else {
                         cx.unported("title_screen after an aborted attract screen");
                     }
@@ -322,7 +314,17 @@ impl TitleExit {
                     cx.s.set_w(at(0x11a2c), 2);
                     let v = cx.s.l(at(0x9f2));
                     cx.s.set_l(at(0x11a2e), v);
-                    // $8f90 sets up the frog's record for a level (T14 models it).
+                    // $8f90: the frog's record for a new game (T14 models the rest of it): the
+                    // score cleared, the game mode's tuning.
+                    cx.s.set_l(at(0x834), 0);
+                    let tuning: [u16; 4] = if cx.s.w(at(0x9e6)) == 0 {
+                        [0xfffb, 6, 2, 0xfffe]
+                    } else {
+                        [0xfffa, 4, 1, 0xfffe]
+                    };
+                    for (k, w) in tuning.into_iter().enumerate() {
+                        cx.s.set_w(at(0x86e) + 2 * k as u32, w);
+                    }
                     cx.s.set_w(at(0x87c0), 0xffff);
                     cx.s.set_w(at(0x9de), 0);
                     cx.s.set_w(TITLE_FADING, 0);
@@ -414,34 +416,32 @@ pub(crate) struct OverlayEnd {
 
 impl OverlayEnd {
     pub(super) fn run(&mut self, cx: &mut Cx) -> Yield {
-        loop {
-            match self.pc {
-                0 => {
-                    if cx.s.l(at(0x445a)) != 0 || cx.s.l(at(0x4112)) != 0 {
-                        cx.unported("overlays_end with another overlay up");
-                    }
-                    if cx.s.l(OVERLAY_PALETTE) == 0 {
-                        if cx.s.l(at(0x42a6)) != 0 {
-                            cx.unported("world_intro_end");
-                        }
-                        return Yield::Return;
-                    }
-                    cx.s.set_w(RECORDS[0].at + fade::SPEED, 1);
-                    self.pc = 1;
-                    return Yield::Fade(RECORDS[0]);
+        match self.pc {
+            0 => {
+                if cx.s.l(at(0x445a)) != 0 || cx.s.l(at(0x4112)) != 0 {
+                    cx.unported("overlays_end with another overlay up");
                 }
-                1 => {
-                    let list = cx.s.l(OVERLAY_PALETTE);
-                    fade_out(cx, RECORDS[0], list, 0x10);
-                    self.pc = 2;
-                    return Yield::Fade(RECORDS[0]);
-                }
-                _ => {
-                    cx.cop1lc = BLANK_COPPER;
-                    cx.s.set_l(OVERLAY_PALETTE, 0);
-                    cx.s.set_l(OVERLAY_TARGET, 0);
+                if cx.s.l(OVERLAY_PALETTE) == 0 {
+                    if cx.s.l(at(0x42a6)) != 0 {
+                        cx.unported("world_intro_end");
+                    }
                     return Yield::Return;
                 }
+                cx.s.set_w(RECORDS[0].at + fade::SPEED, 1);
+                self.pc = 1;
+                Yield::Fade(RECORDS[0])
+            }
+            1 => {
+                let list = cx.s.l(OVERLAY_PALETTE);
+                fade_out(cx, RECORDS[0], list, 0x10);
+                self.pc = 2;
+                Yield::Fade(RECORDS[0])
+            }
+            _ => {
+                cx.cop1lc = BLANK_COPPER;
+                cx.s.set_l(OVERLAY_PALETTE, 0);
+                cx.s.set_l(OVERLAY_TARGET, 0);
+                Yield::Return
             }
         }
     }
@@ -472,18 +472,25 @@ fn blit_planes(
         b.pt[0] = b.pt[0].wrapping_add(a_step);
         b.pt[3] = b.pt[3].wrapping_add(d_step);
     }
-    if nasty && start < super::FRAME_LINES && cx.line >= super::FRAME_LINES {
-        cx.stall = Some(super::STALL_VBL_LINE);
-        // The interrupt, taken in the middle, holds the blit's end back by its own length.
-        cx.line += 11;
-        if let Some(inside) = inside {
-            cx.jobs.push(crate::game::Job {
-                inside,
-                writes: vec![(first_d, b.pt[3] - first_d)],
-            });
-        }
+    if nasty && let Some(inside) = inside {
+        stalled_past(cx, start, (first_d, b.pt[3] - first_d), inside);
     }
     cx.wr(INTENA, 0x8010);
+}
+
+/// After a blit with priority begun on line `start`: if it ran past the frame's end, the CPU was
+/// held off the bus and the next frame's interrupt waits for it (`cx.stall`), its end later by
+/// the interrupt's length, and its memory (`writes`) is compared once the original is out of the
+/// call returning to `inside`.
+pub(super) fn stalled_past(cx: &mut Cx, start: u16, writes: (u32, u32), inside: u32) {
+    if start < super::FRAME_LINES && cx.line >= super::FRAME_LINES {
+        cx.stall = Some(super::STALL_VBL_LINE);
+        cx.line += 11;
+        cx.jobs.push(crate::game::Job {
+            inside: vec![inside],
+            writes: vec![writes],
+        });
+    }
 }
 
 /// `$1ba6`: clear `lines` lines of buffer 0's six planes from line `from`.
@@ -794,14 +801,20 @@ pub(super) fn resume(
     let in_raster_wait = |pc: u32| (at(0x73d0)..at(0x73e6)).contains(&pc);
     match chain {
         // The idle loop (h0+$114a): d0 frames left before attract mode.
-        [pc, r, ..] if in_raster_wait(*pc) && *r == at(0x114e) => Some(vec![(
-            Routine::Title(Title {
-                pc: 6,
-                boot: false,
-                count: cpu.d[0] as u16,
-            }),
-            Some(Yield::Raster),
-        )]),
+        [pc, r, ..] if in_raster_wait(*pc) && *r == at(0x114e) => Some(vec![
+            (
+                Routine::TopLoop(super::attract::TopLoop::after_title()),
+                None,
+            ),
+            (
+                Routine::Title(Title {
+                    pc: 6,
+                    boot: false,
+                    count: cpu.d[0] as u16,
+                }),
+                Some(Yield::Raster),
+            ),
+        ]),
         _ => None,
     }
 }

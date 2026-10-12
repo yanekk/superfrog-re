@@ -103,6 +103,39 @@ impl Blit {
     }
 }
 
+/// The last fixed DMA slot (refresh to `$07`, disk to `$0d`, audio to `$13`).
+pub const FIXED_TO: u16 = 0x0d;
+
+/// When each destination word of a blit with priority is written, as the blitter takes the bus
+/// cycles nothing else does: not the fixed slots (refresh, disk, audio: the odd cycles to `$13`),
+/// not the bitplanes' (`fetch`), two a word (an A-to-D copy). Starts on (`line`, `h`); returns each
+/// word's (line, h) in order. Copper and sprite slots are not counted (measured on the credits).
+pub fn word_times(
+    words: u32,
+    line: u16,
+    h: u16,
+    fetch: &crate::render::copper::Fetch,
+) -> Vec<(u16, u16)> {
+    let mut out = Vec::with_capacity(words as usize);
+    let (mut l, mut c) = (line, h);
+    let mut half = false;
+    while (out.len() as u32) < words {
+        let fixed = c % 2 == 1 && c <= FIXED_TO;
+        if !fixed && !fetch.takes(l % 313, c) {
+            if half {
+                out.push((l, c));
+            }
+            half = !half;
+        }
+        c += 1;
+        if c >= crate::render::copper::LINE_CYCLES {
+            c = 0;
+            l += 1;
+        }
+    }
+    out
+}
+
 /// The minterm function of A, B and C.
 fn logic(m: u8, a: u16, b: u16, c: u16) -> u16 {
     let mut d = 0;

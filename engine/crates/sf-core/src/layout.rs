@@ -138,6 +138,12 @@ pub enum VarId {
     SpriteRecs,
     /// h2+$6fd0..$73fc: every copper list but the level's (title, menus, blank).
     FrontCopper,
+    /// h2+$6110..$6270: the award pages' copper list.
+    AwardCopper,
+    /// h0+$32b4..$33ea: the hall of talent's ten lines of text, built from `hiscore_table`.
+    HallText,
+    /// h0+$161aa..$161be: the number-to-text routine's (h0+$160dc) flag and digits.
+    NumberText,
     /// h3+$35860..$48190: the level's clean background buffer (docs/12 "Bobs"); outside a level
     /// the Accessing-disk overlay program is unpacked into it (at h3+$3a560) and run from there.
     CleanBuffer,
@@ -191,6 +197,9 @@ impl VarId {
         VarId::Keyboard,
         VarId::SpriteRecs,
         VarId::FrontCopper,
+        VarId::AwardCopper,
+        VarId::HallText,
+        VarId::NumberText,
         VarId::CleanBuffer,
         VarId::AudioSfx,
         VarId::AudioMusicOn,
@@ -478,6 +487,24 @@ pub static LAYOUT: &[VarDef] = &[
         name: "front_copper",
         addr: h2(0x6fd0),
         width: Width::Bytes(0x42c),
+    },
+    VarDef {
+        id: VarId::AwardCopper,
+        name: "award_copper",
+        addr: h2(0x6110),
+        width: Width::Bytes(0x160),
+    },
+    VarDef {
+        id: VarId::HallText,
+        name: "hall_text",
+        addr: h0(0x32b4),
+        width: Width::Bytes(0x136),
+    },
+    VarDef {
+        id: VarId::NumberText,
+        name: "number_text",
+        addr: h0(0x161aa),
+        width: Width::Bytes(0x14),
     },
     VarDef {
         id: VarId::CleanBuffer,

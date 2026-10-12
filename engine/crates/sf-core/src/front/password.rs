@@ -77,7 +77,7 @@ const CODE_COLOURS: u32 = h2(0x737e);
 /// call (return address `inside`) is over.
 pub(super) fn draw_code(cx: &mut Cx, inside: u32) {
     cx.jobs.push(crate::game::Job {
-        inside,
+        inside: vec![inside],
         writes: vec![(BUFFER_0 + 0x127f, 8 * 0x28), (at(0x3258), 4)],
     });
     text(cx, BUF, BUFFER_0 + 0x127f);

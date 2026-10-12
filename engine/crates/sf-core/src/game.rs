@@ -66,10 +66,10 @@ pub struct FrameOut {
     pub picture: Picture,
     /// The frame's Paula register writes, in order (DESIGN §2.1 (2)).
     pub paula: Vec<PaulaWrite>,
-    /// The frame loaded from disk, which the engine does at once (owner, 2026-10-12): the return
-    /// address the original's main program reaches once its load is over, so conformance can
-    /// skip the original's frames spent loading (DESIGN §2.1).
-    pub load: Option<u32>,
+    /// The frame loaded from disk, which the engine does at once (owner, 2026-10-12): where the
+    /// original's main program is once its load is over, so conformance can skip the original's
+    /// frames spent loading (DESIGN §2.1).
+    pub load: Option<LoadEnd>,
     /// With `load`: memory the load wrote that the engine does not model, `(address, length)`.
     pub resync: Vec<(u32, u32)>,
     /// CPU jobs the engine did at once that the original's CPU may still be running at the end
@@ -77,11 +77,22 @@ pub struct FrameOut {
     pub jobs: Vec<Job>,
 }
 
+/// How conformance knows the original's load is over.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum LoadEnd {
+    /// The original's main program has this return address on its stack (a call it makes after
+    /// the load).
+    Reached(u32),
+    /// The original's main program has been in the call with this return address (the load) and
+    /// is out of it again.
+    Left(u32),
+}
+
 /// A CPU job of the original's that can run past the end of a frame.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Job {
-    /// The return address on the original's stack while the job runs.
-    pub inside: u32,
+    /// Return addresses on the original's stack while the job runs (any one of them).
+    pub inside: Vec<u32>,
     /// The memory it writes, `(address, length)`.
     pub writes: Vec<(u32, u32)>,
 }
@@ -126,6 +137,10 @@ impl Game {
             }
             Start::Level(_) => (State::default(), Scene::Placeholder, None, None),
         };
+        let (mut state, mut front) = (state, front);
+        if let Some(f) = front.as_mut() {
+            f.boot(&mut state, &display);
+        }
         Game {
             state,
             display,
@@ -172,6 +187,15 @@ impl Game {
         match (self.scene, &self.shown) {
             (Scene::Front, Some(p)) => p.widened(view),
             _ => self.scene.render(&self.state, &self.display, view),
+        }
+    }
+
+    /// For conformance: the line of the frame on which the original's load, which the engine does
+    /// at once, ended. The engine's main program goes on from there after its next load (normal
+    /// play goes on at once). The runner finds the line by trying them (DESIGN §2.1).
+    pub fn set_load_line(&mut self, line: Option<u16>) {
+        if let Some(f) = self.front.as_mut() {
+            f.load_line = line;
         }
     }
 

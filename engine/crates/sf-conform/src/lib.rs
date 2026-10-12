@@ -25,7 +25,7 @@ use std::sync::{Arc, OnceLock};
 
 use sf_assets::GameData;
 use sf_core::layout::{AmigaMemory, LAYOUT, Ram, VarId};
-use sf_core::{DisplayData, Game, Picture, Scene, Start, View};
+use sf_core::{DisplayData, FrameOut, Game, LoadEnd, Picture, Scene, Start, View};
 
 /// The owner's disks decoded, once per process.
 pub fn game_data() -> &'static GameData {
@@ -115,31 +115,77 @@ pub fn run_with(
         let mut mem = sync::core_memory(amiga.memory());
         let pacing = sync::pacing(&amiga.cpu(), &mem);
         before_step(f, &mut game);
-        let ours = game.step_paced(input, pacing);
-        if let Some(resume) = ours.load {
+        let before = game.clone();
+        let mut ours = game.step_paced(input, pacing);
+        if let Some(end) = ours.load {
             // The engine loaded at once; the original is compared once its load is over.
             let mut n = 0;
-            while !sync::main_chain(&amiga.cpu(), &mem)
-                .iter()
-                .take(4)
-                .any(|&a| a == resume)
-            {
+            let mut seen = false;
+            let mut prev_mem = mem.clone();
+            loop {
+                let chain = sync::main_chain(&amiga.cpu(), &mem);
+                let over = match end {
+                    LoadEnd::Reached(a) => chain.iter().take(4).any(|&x| x == a),
+                    LoadEnd::Left(a) => {
+                        let inside = chain.contains(&a);
+                        seen |= inside;
+                        seen && !inside
+                    }
+                };
+                if over {
+                    break;
+                }
                 n += 1;
                 assert!(
                     n < LOAD_SEARCH,
-                    "{}: the original did not reach ${resume:x} within {LOAD_SEARCH} frames of the engine's load (frame {f})",
+                    "{}: the original's load ({end:x?}) was not over within {LOAD_SEARCH} frames of the engine's (frame {f})",
                     case.name
                 );
                 theirs = amiga
                     .step(case.script.input_at(of))
                     .unwrap_or_else(|e| panic!("{}: oracle, frame {of}: {e}", case.name));
                 of += 1;
-                mem = sync::core_memory(amiga.memory());
+                prev_mem = std::mem::replace(&mut mem, sync::core_memory(amiga.memory()));
             }
-            // What runs on by itself while the original loads is taken from it.
-            for &(addr, len) in sf_core::front::RESYNC_AFTER_LOAD.iter().chain(&ours.resync) {
-                let bytes: Vec<u8> = (addr..addr + len).map(|a| mem.byte(a)).collect();
-                game.poke(addr, &bytes);
+            // The engine's frame again, with what runs on by itself while the original loads (the
+            // keyboard's poll, the music) as the original had it just before this frame, then
+            // what the load left that the engine does not model, as it is after it.
+            let take = |g: &mut Game, from: &AmigaMemory, runs: &[(u32, u32)]| {
+                for &(addr, len) in runs {
+                    let bytes: Vec<u8> = (addr..addr + len).map(|a| from.byte(a)).collect();
+                    g.poke(addr, &bytes);
+                }
+            };
+            let redo = |line: Option<u16>| {
+                let mut g = before.clone();
+                take(&mut g, &prev_mem, sf_core::front::RUNS_DURING_LOAD);
+                g.set_load_line(line);
+                let out = g.step_paced(input, pacing);
+                take(&mut g, &mem, sf_core::front::LOAD_LEAVES);
+                take(&mut g, &mem, &out.resync);
+                (g, out)
+            };
+            (game, ours) = redo(None);
+            // The line the original's load ended on, which decides where the work after it falls
+            // (DESIGN §2.1): the first one on which the engine's frame matches the original's.
+            if let LoadEnd::Left(_) = end {
+                let masked: Vec<(u32, u32)> = jobs
+                    .iter()
+                    .flat_map(|(j, _, _)| j.writes.clone())
+                    .chain(ours.jobs.iter().flat_map(|j| j.writes.clone()))
+                    .collect();
+                let fits = |g: &Game, out: &FrameOut| {
+                    compare::frame(case, f, &g.probe(), &mem, out, &theirs, None, &masked).is_none()
+                };
+                if !fits(&game, &ours) {
+                    for line in (0..sf_core::front::FRAME_LINES).step_by(2) {
+                        let (g, out) = redo(Some(line));
+                        if fits(&g, &out) {
+                            (game, ours) = (g, out);
+                            break;
+                        }
+                    }
+                }
             }
         }
         // Memory a job is still writing in the original is compared once the job is over (owner,
@@ -151,7 +197,7 @@ pub fn run_with(
         jobs.extend(ours.jobs.iter().map(|j| (j.clone(), false, 0)));
         let chain = sync::main_chain(&amiga.cpu(), &mem);
         jobs.retain_mut(|(j, seen, age)| {
-            let inside = chain.contains(&j.inside);
+            let inside = j.inside.iter().any(|a| chain.contains(a));
             let keep = inside || (!*seen && *age < 2);
             *seen |= inside;
             *age += 1;
@@ -173,23 +219,8 @@ pub fn run_with(
                 rendered = Some(r);
             }
         }
-        // On a frame the engine loaded on, what runs by itself (the keyboard's every-other-frame
-        // poll) cannot be in step before the re-sync: its Paula writes are not compared.
-        let loaded_case;
-        let case_here = if ours.load.is_some() && case.compare.paula {
-            loaded_case = Case {
-                compare: Compare {
-                    paula: false,
-                    ..case.compare
-                },
-                ..case.clone()
-            };
-            &loaded_case
-        } else {
-            case
-        };
         let d = compare::frame(
-            case_here,
+            case,
             f,
             &game.probe(),
             &mem,
