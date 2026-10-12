@@ -260,13 +260,10 @@ fn seed_cache() -> &'static Path {
             let _ = e.read_to_string(&mut err);
         }
         assert!(status.success(), "importing the disks failed ({status}): {err}");
-        let cache = home.join("cache");
-        let file = std::fs::read_dir(&cache)
-            .expect("cache folder")
-            .filter_map(|e| e.ok().map(|e| e.path()))
-            .filter(|p| p.extension().is_some_and(|x| x == "bin"))
-            .max()
-            .expect("the import wrote no cache");
+        // The file this build reads, by name: an older format's file may sit beside it, and
+        // `assets-v9.bin` sorts after `assets-v10.bin`.
+        let file = home.join(format!("cache/assets-v{}.bin", sf_assets::CACHE_FORMAT));
+        assert!(file.is_file(), "the import wrote no {}", file.display());
         file
     })
 }

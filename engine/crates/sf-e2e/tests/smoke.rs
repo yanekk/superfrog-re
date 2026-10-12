@@ -100,6 +100,20 @@ fn a_script_s_events_reach_the_game_as_its_input() {
 }
 
 #[test]
+fn losing_focus_lets_go_of_every_held_key() {
+    // macOS sends no key-up for a key held while the window loses focus (winit 0.30 resets only
+    // the modifiers), so the app lets go of everything held, or the frog runs on after Cmd-Tab.
+    let mut app = App::launch(LaunchOpts {
+        max_frames: 30,
+        ..Default::default()
+    });
+    let c = app.run_script("10: down ArrowLeft\n10: down KeyP\n20: blur\n");
+    assert!(c.exit.success(), "{}", c.stderr);
+    let want: String = (10..20).map(|n| format!("{n} 04 19\n")).collect();
+    assert_eq!(c.inputs, want, "held from step 10, released by the focus loss before step 20");
+}
+
+#[test]
 fn max_frames_ends_the_run_by_itself_with_status_0_at_the_pal_rate() {
     let mut app = App::launch(LaunchOpts {
         max_frames: 100,

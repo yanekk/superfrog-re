@@ -87,6 +87,9 @@ pub enum HostInput {
     Key { code: KeyCode, pressed: bool },
     /// The left mouse button over the window.
     MouseLeft { pressed: bool },
+    /// The window lost focus. macOS sends no key-up for a key held across it (winit resets only
+    /// the modifiers), so everything held is let go.
+    FocusLost,
 }
 
 /// The winit code a script's key name stands for.
@@ -124,6 +127,10 @@ impl Input {
                 if pressed {
                     self.tapped.joy = self.tapped.joy | Joy::PORT1_BUTTON;
                 }
+            }
+            HostInput::FocusLost => {
+                self.held.clear();
+                self.mouse = false;
             }
         }
     }
@@ -196,6 +203,16 @@ mod tests {
         i.event(key(KeyCode::ArrowLeft, false));
         i.frame();
         assert_eq!(i.frame().joy, Joy::LEFT);
+    }
+
+    #[test]
+    fn losing_focus_lets_go_of_everything_held() {
+        let mut i = Input::default();
+        i.event(key(KeyCode::ArrowLeft, true));
+        i.event(HostInput::MouseLeft { pressed: true });
+        i.frame();
+        i.event(HostInput::FocusLost);
+        assert_eq!(i.frame(), FrameInput::NONE);
     }
 
     #[test]

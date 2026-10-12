@@ -324,6 +324,7 @@ impl ApplicationHandler for App {
                     });
                 }
             }
+            WindowEvent::Focused(false) => self.input.event(HostInput::FocusLost),
             WindowEvent::MouseInput {
                 state,
                 button: MouseButton::Left,

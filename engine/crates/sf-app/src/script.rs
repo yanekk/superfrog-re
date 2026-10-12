@@ -11,6 +11,7 @@
 //! 30: press Space       # down, and up again before the next frame
 //! 40: mouse down        # the left mouse button
 //! 41: mouse up
+//! 45: blur              # the window loses focus
 //! 50: hang              # the main thread stops dead: proves --timeout
 //! ```
 
@@ -71,6 +72,7 @@ impl Script {
                         pressed: words[2] == "down",
                     })]
                 }
+                (Some("blur"), 2) => vec![Event::Input(HostInput::FocusLost)],
                 (Some("hang"), 2) => vec![Event::Hang],
                 _ => return Err(err("unknown event")),
             };
