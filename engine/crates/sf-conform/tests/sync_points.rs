@@ -19,7 +19,9 @@ const MAP_ROWS: u32 = h0(0x17334);
 
 /// How many of `level`'s cells hold the tile its own BODY gives there.
 fn tiles_matching(m: &AmigaMemory, level: &str) -> usize {
-    let body = &game_data().levels[&level.parse::<LevelId>().unwrap()].t7mp.body;
+    let body = &game_data().levels[&level.parse::<LevelId>().unwrap()]
+        .t7mp
+        .body;
     let base = long(m, MAP_ROWS);
     (0..body.len())
         .filter(|&i| {
@@ -83,9 +85,28 @@ fn each_sync_point_has_its_own_map_in_ram() {
         for (reached, other) in [(&first, &alt), (&alt, &first)] {
             let m = at(reached);
             let (own, theirs) = (tiles_matching(&m, reached), tiles_matching(&m, other));
-            assert!(own > theirs, "{reached}: {own} tiles its own, {theirs} {other}'s");
+            assert!(
+                own > theirs,
+                "{reached}: {own} tiles its own, {theirs} {other}'s"
+            );
         }
     }
     let m = at("WW-1");
     assert_eq!(tiles_matching(&m, "WW-1"), 300 * 84);
+}
+
+/// The end sequence's sync point: after the final level's forced exit, the original has just
+/// entered `end_seq_load` (T35).
+#[test]
+fn the_end_sequence_starts_in_end_seq_load() {
+    use sf_conform::sync::{self, SyncPoint};
+    let s = sync::reach(
+        &SyncPoint::EndSequence,
+        &sf_conform::InputScript::idle(),
+        10,
+    )
+    .unwrap_or_else(|e| panic!("{e}"));
+    let chain = sync::main_chain(&s.amiga.cpu(), &s.memory);
+    assert!(chain.contains(&sf_core::layout::h0(0x7b6)), "{chain:x?}");
+    assert_eq!(s.memory.byte(FINAL_LEVEL_FLAG + 1), 1);
 }

@@ -34,6 +34,11 @@ impl TopLoop {
         TopLoop { pc: 1 }
     }
 
+    /// In `end_seq_load`, after the final level (h0+$7b6 on the stack): the end sequence next.
+    pub fn after_end_seq_load() -> TopLoop {
+        TopLoop { pc: 21 }
+    }
+
     pub(super) fn run(&mut self, cx: &mut Cx) -> Yield {
         loop {
             match self.pc {
@@ -72,6 +77,19 @@ impl TopLoop {
                         cx.unported("the attract demo (T33)");
                     }
                     return Yield::Raster;
+                }
+                // h0+$7b6: the end sequence, then `game_full_mode` decides: the title again, or
+                // the game's end ($7c6: back to the system).
+                21 => {
+                    self.pc = 22;
+                    return call(Routine::EndSequence(Default::default()));
+                }
+                22 => {
+                    if cx.s.w(at(0x6)) == 0 {
+                        cx.unported("the game's end after the end sequence (h0+$7c6)");
+                        return Yield::Raster;
+                    }
+                    self.pc = 0;
                 }
                 _ => unreachable!("TopLoop pc {}", self.pc),
             }

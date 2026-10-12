@@ -147,6 +147,24 @@ pub enum VarId {
     /// h3+$35860..$48190: the level's clean background buffer (docs/12 "Bobs"); outside a level
     /// the Accessing-disk overlay program is unpacked into it (at h3+$3a560) and run from there.
     CleanBuffer,
+    /// h3+$0..$10600: in a level a world's bobs (`LnBO`); the end sequence unpacks `END1` and
+    /// `END2` from here on, over the display buffers (T35).
+    BobSheet,
+    /// h3+$48190..$4b390: between the clean buffer and the panel; the end sequence's second
+    /// ANIM buffer starts in it (h3+$49890).
+    Hunk3Gap,
+    /// h3+$4c0b0..$64b70: the frog's attached-sprite frames (`hero_sprite_frames` h0+$19ce0).
+    HeroFrames,
+    /// h0+$19ddc..$1a6dc: their table, 96 pairs of 12-byte records (frames, offset, height),
+    /// the frog's own then its mirror image's.
+    HeroTable,
+    /// h2+$5efc..$6058: the end sequence's copper list (five planes, its palette at h2+$5fa4).
+    EndCopper,
+    /// h0+$3b18c..$3b1ae: the ANIM player's record (`crate::front::anim::RECORD`).
+    AnimPlayer,
+    /// h0+$aa40..$aac0: the end sequence's two palettes, white (the last picture's flash) and the
+    /// pictures' own, which the fades read.
+    EndPalettes,
     /// The sound driver's variables (`crate::audio::vars`).
     AudioSfx,
     AudioMusicOn,
@@ -201,6 +219,13 @@ impl VarId {
         VarId::HallText,
         VarId::NumberText,
         VarId::CleanBuffer,
+        VarId::BobSheet,
+        VarId::Hunk3Gap,
+        VarId::HeroFrames,
+        VarId::HeroTable,
+        VarId::EndCopper,
+        VarId::AnimPlayer,
+        VarId::EndPalettes,
         VarId::AudioSfx,
         VarId::AudioMusicOn,
         VarId::AudioP41,
@@ -511,6 +536,48 @@ pub static LAYOUT: &[VarDef] = &[
         name: "clean_buffer",
         addr: h3(0x35860),
         width: Width::Bytes(PLAYFIELD_BUFFER_BYTES),
+    },
+    VarDef {
+        id: VarId::BobSheet,
+        name: "bob_sheet",
+        addr: h3(0),
+        width: Width::Bytes(0x10600),
+    },
+    VarDef {
+        id: VarId::Hunk3Gap,
+        name: "hunk3_gap",
+        addr: h3(0x48190),
+        width: Width::Bytes(0x3200),
+    },
+    VarDef {
+        id: VarId::HeroFrames,
+        name: "hero_frames",
+        addr: h3(0x4c0b0),
+        width: Width::Bytes(0x18ac0),
+    },
+    VarDef {
+        id: VarId::HeroTable,
+        name: "hero_table",
+        addr: h0(0x19ddc),
+        width: Width::Bytes(0x900),
+    },
+    VarDef {
+        id: VarId::EndCopper,
+        name: "end_copper",
+        addr: h2(0x5efc),
+        width: Width::Bytes(0x15c),
+    },
+    VarDef {
+        id: VarId::AnimPlayer,
+        name: "anim_player",
+        addr: h0(0x3b18c),
+        width: Width::Bytes(0x22),
+    },
+    VarDef {
+        id: VarId::EndPalettes,
+        name: "end_palettes",
+        addr: h0(0xaa40),
+        width: Width::Bytes(0x80),
     },
     VarDef {
         id: VarId::AudioSfx,

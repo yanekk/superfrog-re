@@ -1056,6 +1056,71 @@ note = "plays the end animations"
 [[sym]]
 exe = "d1_c03"
 hunk = 0
+offset = 0xa890
+name = "end_play_end1"
+kind = "func"
+note = "END1: open, show, fade in, hold 200, 54 passes of two frames, 2 rasters each (T35)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0xa95e
+name = "end_play_end2"
+kind = "func"
+note = "END2: open, show, fade in, hold 100, 11 passes of two frames, 3 rasters each"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0xaa40
+name = "end_palettes"
+kind = "table"
+size = 0x80
+note = "white, then the end pictures' 32 colours"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0xaac0
+name = "end_show_a"
+kind = "func"
+note = "end copper list (h2+$5efc) shows the ANIM's buffer A; $aaca buffer B"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0xab02
+name = "anim_open"
+kind = "func"
+note = "IFF ANIM open: a0/a1 buffers, a2 file, a3 record, d0 bytes a row, d1 rows (docs/10)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0xab82
+name = "anim_next"
+kind = "func"
+note = "next ANIM frame's DLTA (op 5) into the buffer not shown; d0 != 0 at the end"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0xac96
+name = "anim_ilbm_body"
+kind = "func"
+note = "first frame: BMHD into the record, ByteRun1 BODY into a1"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0xad2a
+name = "anim_byterun1_row"
+kind = "func"
+note = "one row of ByteRun1 (d4 bytes) from a0 to a1"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
 offset = 0xad5c
 name = "read_disk_id"
 kind = "func"
@@ -1741,6 +1806,24 @@ offset = 0x19ce0
 name = "hero_sprite_frames"
 kind = "func"
 note = "HERO and its mirror -> attached sprite frames at h3+$4c0b0 (docs/12)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x19ddc
+name = "hero_table"
+kind = "table"
+size = 0x900
+note = "96 pairs of 12-byte records (frames, offset, rows): the frog's, then its mirror image's (T35)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x3b18c
+name = "anim_record"
+kind = "var"
+size = 0x22
+note = "the ANIM player's record (sf_core::front::anim::RECORD)"
 
 [[sym]]
 exe = "d1_c03"

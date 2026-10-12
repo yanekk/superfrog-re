@@ -89,7 +89,7 @@ pub fn run_with(
         SyncPoint::PowerOn => Start::PowerOn {
             seed: synced.seed.unwrap_or_default(),
         },
-        SyncPoint::AtFrame { .. } => Start::Resume {
+        SyncPoint::AtFrame { .. } | SyncPoint::EndSequence => Start::Resume {
             memory: synced.memory,
             cpu: sync::core_cpu(&amiga.cpu()),
         },
@@ -106,11 +106,18 @@ pub fn run_with(
     // Jobs the engine did at once that the original's CPU may still be running.
     // Each with whether the original has been seen in it yet, and frames since reported.
     let mut jobs: Vec<(sf_core::Job, bool, u32)> = Vec::new();
+    // From the end sequence on, whenever the original asks for a disk it goes in, as a player
+    // would. Other cases keep the drive as their sync point left it: inserting a disk changes the
+    // timing of what follows (power-on's RNG seed among it).
+    let mut disks = (case.sync == SyncPoint::EndSequence).then(|| sync::Disks::at(&prev));
     for f in 0..case.frames {
         let input = case.script.input_at(of);
         let mut theirs = amiga
             .step(input)
             .unwrap_or_else(|e| panic!("{}: oracle, frame {of}: {e}", case.name));
+        if let Some(d) = disks.as_mut() {
+            d.serve(&mut amiga);
+        }
         of += 1;
         let mut mem = sync::core_memory(amiga.memory());
         let pacing = sync::pacing(&amiga.cpu(), &mem);
@@ -144,6 +151,9 @@ pub fn run_with(
                 theirs = amiga
                     .step(case.script.input_at(of))
                     .unwrap_or_else(|e| panic!("{}: oracle, frame {of}: {e}", case.name));
+                if let Some(d) = disks.as_mut() {
+                    d.serve(&mut amiga);
+                }
                 of += 1;
                 prev_mem = std::mem::replace(&mut mem, sync::core_memory(amiga.memory()));
             }
@@ -168,7 +178,7 @@ pub fn run_with(
             (game, ours) = redo(None);
             // The line the original's load ended on, which decides where the work after it falls
             // (DESIGN §2.1): the first one on which the engine's frame matches the original's.
-            if let LoadEnd::Left(_) = end {
+            {
                 let masked: Vec<(u32, u32)> = jobs
                     .iter()
                     .flat_map(|(j, _, _)| j.writes.clone())
