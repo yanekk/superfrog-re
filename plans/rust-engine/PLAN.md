@@ -93,6 +93,10 @@ headless.
 | [T29](tasks/T29-app-drill.md) | app-drill | T21, T25, T26, T27, T28 |
 | [T30](tasks/T30-acceptance.md) | acceptance | T29 |
 | [T31](tasks/T31-render-remaining-levels.md) | render-remaining-levels | T13 |
+| [T32](tasks/T32-story-intro.md) | story-intro | T20; blocks T21 |
+| [T33](tasks/T33-attract-demo.md) | attract-demo | T16, T20 |
+| [T34](tasks/T34-game-over.md) | game-over | T15, T20; blocks T21 |
+| [T35](tasks/T35-end-sequence.md) | end-sequence | T20; blocks T21 |
 
 T22 is the rig task: it comes before every surface task and they depend on it. T29 is the phase's
 drill. At the end: the owner plays it.

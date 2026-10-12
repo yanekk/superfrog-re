@@ -18,6 +18,15 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-12 | 🐞 | T20 review, fixed: fire skipping the title intro diverged a frame later; the engine's restore blit took 102 lines, the original's 161–308. `Cx::blit_wait` charges bitplane fetch slots; `front-skip-*` cases, one in the test block. |
+| 2026-10-12 | 📌 | T20 review sweep, not fixed: CPU jobs (`Cx::busy`: text drawing, unpacking, masked jobs) take no display DMA contention either; no case diverges on it. |
+| 2026-10-12 | 📌 | T20 review: after a palette fade the original's main program resumes about line 42, the engine's at `VBL_END_LINE` (20). Blit timing absorbs it; a slot-exact blit model (`word_times`) exposes it. |
+| 2026-10-12 | 📌 | T20 for T21: the progress map (`progress_map_show` h0+$3de8, `progress_map_vbl`) is shown during level loads, so T21 ports it; the VBL records it unported (`h0+$4112`). The options' hi-score save writes the disk: unported. |
+| 2026-10-12 | 📌 | T20: the original's frame ends when the CPU takes the interrupt; a priority blit or masked job past line 312 moves it (copper's line-0 writes and window go with the earlier frame). `clr.w` to a custom register writes the prefetch word, then 0. |
+| 2026-10-12 | 📌 | T20 added T34 game-over (needs T14/T15's objects and bobs) and T35 end-sequence (disk-3 ANIM, CPU-timed), owner's yes. Both block T21 (review, owner's yes): its whole-game run needs them. |
+| 2026-10-12 | 🐞 | T20, left open (owner): at the original's frame 6416 the credits' scroll blit and the beam cross inside one row, 4 pixels differ; `front-attract` stops at 2 270 frames. T33 runs this stretch again. |
+| 2026-10-12 | 🔄 | Owner, T20: the engine starts at the game program's start (h0 `init_and_script`), not power-on; Kickstart and the crack intro are not reproduced. Disk loads are not modelled frame by frame: the runner skips the original's load frames and re-syncs. |
+| 2026-10-12 | 📌 | T20 added T32 story-intro (disk-3 program, oracle boots disk 1) and T33 attract-demo (needs T14–T16), owner's yes. T32 blocks T21 (review, owner's yes); T33 blocks nothing. |
 | 2026-10-12 | 🐞 | T31: docs/10 and the T08 row had W6's map sets backwards. One drive plays d4_c14–c17 (`alt`); any connected df1–df3 gives c02–c05 (`probe_drives`: 0 = connected). T13's render-w6-2..4 rendered alt; now reached with df1. |
 | 2026-10-12 | 🔄 | Owner, T31: the final level is reached by writing `level_state` = 1 on W6-4's first frame (no code, cheat or trainer leads there). Its score and lives are not a playthrough's. `Amiga::write_memory` exists for this alone. |
 | 2026-10-12 | 📌 | T31: with an empty df1 connected the boot reaches the title 219 frames sooner. With disks 2–4 in df1–df3 the crack stalls on ACCESSING DISK past frame 20 000; not investigated (one empty df1 suffices). |

@@ -215,7 +215,15 @@ fn second_copies_equal_the_first() {
 #[test]
 fn a_damaged_chunk_is_refused_by_name() {
     // Not read: what decode keeps as bytes, and the second copies on disk 2.
-    let mut unread: Vec<ChunkId> = data().raw.keys().map(|n| named(n, 0)).collect();
+    // (Raw entries that are not files by the game's name, such as the pictures packed in the game,
+    // are read from chunks already in the list.)
+    let names: Vec<&str> = catalogue(chunks()).unwrap().iter().map(|c| c.0).collect();
+    let mut unread: Vec<ChunkId> = data()
+        .raw
+        .keys()
+        .filter(|n| names.contains(&n.as_str()))
+        .map(|n| named(n, 0))
+        .collect();
     unread.extend(["L1FX", "FRUT", "FRUC", "FRUM", "LFFX", "LFMU"].map(|n| named(n, 1)));
     let decodes_with = |id: ChunkId, bytes: Vec<u8>| {
         let mut set = chunks().to_vec();

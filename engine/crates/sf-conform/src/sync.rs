@@ -104,6 +104,18 @@ fn long(m: &AmigaMemory, a: u32) -> u32 {
     word(m, a) << 16 | word(m, a + 2)
 }
 
+/// The oracle's CPU as the engine's type.
+pub fn core_cpu(c: &CpuRegs) -> sf_core::Cpu {
+    sf_core::Cpu {
+        d: c.d,
+        a: c.a,
+        pc: c.pc,
+        sr: c.sr,
+        usp: c.usp,
+        ssp: c.ssp,
+    }
+}
+
 /// The oracle's memory as the engine's type.
 pub fn core_memory(m: sf_oracle::AmigaMemory) -> AmigaMemory {
     AmigaMemory {
@@ -132,6 +144,31 @@ pub fn pacing(cpu: &CpuRegs, m: &AmigaMemory) -> Pacing {
     } else {
         Pacing::OnTime
     }
+}
+
+/// Where the main program was at the end of a frame: its PC, then each long on its stack that is
+/// a return address into the game's code (a long just after a `jsr`/`bsr`), innermost first. For
+/// tracing which loop of a scene a frame belongs to.
+pub fn main_chain(cpu: &CpuRegs, m: &AmigaMemory) -> Vec<u32> {
+    let (pc, mut sp) = if cpu.pc == VBL_HANDLER {
+        (long(m, cpu.ssp + 2), cpu.ssp + 6)
+    } else {
+        (cpu.pc, cpu.a[7])
+    };
+    let code = h0(0)..h0(0x4834c);
+    let mut chain = vec![pc];
+    let top = (sp & !0xFFFF) + 0x1_0000;
+    while sp + 4 <= top.min(sp + 0x400) && chain.len() < 8 {
+        let a = long(m, sp);
+        // A return address follows a jsr abs.l (6 bytes, $4eb9) or a bsr.w (4 bytes, $6100).
+        let call = code.contains(&a)
+            && (word(m, a - 6) == 0x4eb9 && long(m, a - 4) >= h0(0) || word(m, a - 4) == 0x6100);
+        if call {
+            chain.push(a);
+        }
+        sp += 2;
+    }
+    chain
 }
 
 /// Bring the oracle to `sync`, with room for `frames` more frames of `script` (the case's own,

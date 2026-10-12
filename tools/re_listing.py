@@ -4,8 +4,9 @@
     tools/re_listing.py <chunk-id> [--out DIR] [--xrefs] [--symbols FILE]
 
 <chunk-id> is a decompressed ATN! chunk (`d1_c03` = disk 1, chunk 3, 1-based as in
-docs/05) holding an Amiga hunk executable, or a raw code region of a disk
-(`d1_boot`, `d1_stage15`; see RAW_REGIONS). The chunk is read straight from the
+docs/05) holding an Amiga hunk executable, a raw code region of a disk
+(`d1_boot`, `d1_stage15`; see RAW_REGIONS), or an ATN! block embedded in a chunk's
+first hunk, `<chunk-id>@<hex offset>` (`d1_c03@36a04`, the Accessing-disk overlay). The chunk is read straight from the
 player's disks (SUPERFROG_DISKS, else the main checkout root) and decompressed in
 memory with tools/atn.py; nothing is written to build/.
 
@@ -81,6 +82,17 @@ def load_chunk(chunk_id, disks):
     if chunk_id in RAW_REGIONS:
         d, lo, hi = RAW_REGIONS[chunk_id]
         return disks[d][lo:hi]
+    if '@' in chunk_id:
+        outer, off = chunk_id.split('@', 1)
+        h0 = load_exe(load_chunk(outer, disks)).hunks[0].data
+        at = int(off, 16)
+        if h0[at:at + 4] != b'ATN!':
+            raise SystemExit(f"{chunk_id}: no ATN! block at h0+${at:x}")
+        dsz, csz = int.from_bytes(h0[at + 4:at + 8], 'big'), int.from_bytes(h0[at + 8:at + 12], 'big')
+        out, ok = ATNDecompressor(disks[1]).decompress(h0[at:at + 12 + csz + 64], dsz)
+        if not ok:
+            raise SystemExit(f"{chunk_id}: ATN! decompression failed (docs/03)")
+        return out
     m = re.fullmatch(r'd(\d)_c(\d+)', chunk_id)
     if not m or int(m.group(1)) not in disks:
         raise SystemExit(f"unknown chunk id {chunk_id!r} (want dN_cNN or one of {', '.join(RAW_REGIONS)})")

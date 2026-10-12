@@ -1,0 +1,4 @@
+# The title intro skipped by fire (T20 review): see scripts/title-skip-left.txt.
+sync = "power-on"
+script = "title-skip-left"
+frames = 900

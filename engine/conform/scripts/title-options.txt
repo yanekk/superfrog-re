@@ -1,0 +1,19 @@
+# Power-on to the options screen and back (T20): click through the crack intro, fire opens the
+# title menu, down to OPTIONS, fire; down through the options, fire on an option, then back up to
+# LIVES and fire to leave.
+1000: M
+1005: -
+4600: F
+4605: -
+4650: D
+4655: -
+4700: F
+4705: -
+4900: D
+4905: -
+4950: R
+4955: -
+5000: U
+5005: -
+5050: F
+5055: -

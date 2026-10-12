@@ -34,7 +34,7 @@ use crate::t7mp::{T7mp, Tag};
 use crate::tables::{FileEntry, HiscoreEntry, PasswordEntry, Tables};
 use crate::tiles::{TileMasks, Tileset, WorldGfx};
 
-pub const CACHE_FORMAT: u32 = 1;
+pub const CACHE_FORMAT: u32 = 2;
 
 const MAGIC: [u8; 8] = *b"SFRE-GDC";
 

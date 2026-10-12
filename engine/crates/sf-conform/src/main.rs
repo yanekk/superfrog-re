@@ -1,8 +1,11 @@
 //! `sf-conform run <case.toml>` — one case; exit 1 on a divergence.
 //! `sf-conform all` — every case in `engine/conform/cases/`.
-//! `sf-conform record <case.toml> [--watch NAME=ADDR:W]... [--every]` — the original's state per
-//! frame of a case, for writing scripts: every `LAYOUT` variable and each watched address
-//! (`h0+9d8:W`, `0xc17074:L`, width B, W or L), printed on frames where something changed.
+//! `sf-conform record <case.toml> [--watch NAME=ADDR:W]... [--every] [--only] [--trace] [--png DIR]`
+//! — the original's state per frame of a case, for writing scripts and porting: every `LAYOUT`
+//! variable (none with `--only`) and each watched address (`h0+9d8:W`, `0xc17074:L`, width B, W
+//! or L), printed on frames where something changed. `--trace` adds where the main program was at
+//! the frame's end (its PC and the return addresses on its stack, as `h0+$x`), `--png` writes the
+//! original's picture of every printed frame to `DIR/frame<N>.png`.
 
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
@@ -10,7 +13,7 @@ use std::process::ExitCode;
 use sf_conform::{Case, InputScript, cases_dir, sync};
 use sf_core::layout::{LAYOUT, Ram, VarDef, VarId, Width, h0};
 
-const USAGE: &str = "usage: sf-conform run <case.toml> | all | record <case.toml> [--watch NAME=ADDR:W]... [--every]";
+const USAGE: &str = "usage: sf-conform run <case.toml> | all | record <case.toml> [--watch NAME=ADDR:W]... [--every] [--only] [--trace] [--png DIR]";
 
 fn main() -> ExitCode {
     let args: Vec<String> = std::env::args().skip(1).collect();
@@ -102,14 +105,27 @@ fn watch(spec: &str) -> Result<VarDef, String> {
 fn record(path: &Path, rest: &[String]) -> Result<bool, String> {
     let case = Case::load(path)?;
     let mut every = false;
+    let mut trace = false;
+    let mut png_dir: Option<PathBuf> = None;
     let mut shown: Vec<VarDef> = LAYOUT.iter().flat_map(|d| d.pieces()).collect();
+    let layout_pieces = shown.len();
+    let mut only = false;
     let mut it = rest.iter();
     while let Some(a) = it.next() {
         match a.as_str() {
             "--every" => every = true,
+            "--only" => only = true,
+            "--trace" => trace = true,
+            "--png" => png_dir = Some(PathBuf::from(it.next().ok_or(USAGE)?)),
             "--watch" => shown.push(watch(it.next().ok_or(USAGE)?)?),
             _ => return Err(USAGE.to_string()),
         }
+    }
+    if only {
+        shown.drain(..layout_pieces);
+    }
+    if let Some(d) = &png_dir {
+        std::fs::create_dir_all(d).map_err(|e| format!("{}: {e}", d.display()))?;
     }
     let synced = sync::reach(&case.sync, &case.script, case.frames)?;
     let mut amiga = synced.amiga;
@@ -120,17 +136,48 @@ fn record(path: &Path, rest: &[String]) -> Result<bool, String> {
     let mut prev: Option<Vec<u32>> = None;
     for f in 0..case.frames {
         let input = case.script.input_at(f);
-        amiga.step(input).map_err(|e| e.to_string())?;
+        let capture = amiga.step(input).map_err(|e| e.to_string())?;
         let mem = sync::core_memory(amiga.memory());
-        let vals: Vec<u32> = shown.iter().map(|d| d.read(&mem as &dyn Ram)).collect();
+        let mut vals: Vec<u32> = shown.iter().map(|d| d.read(&mem as &dyn Ram)).collect();
+        let at = if trace {
+            let chain = sync::main_chain(&amiga.cpu(), &mem);
+            vals.extend(&chain);
+            let names: Vec<String> = chain
+                .iter()
+                .map(|&a| format!("h0+${:x}", a - h0(0)))
+                .collect();
+            format!(" | at {}", names.join(" < "))
+        } else {
+            String::new()
+        };
         if every || prev.as_ref() != Some(&vals) {
+            if let Some(d) = &png_dir {
+                let p = &capture.picture;
+                let rgb: Vec<u8> = p
+                    .pixels
+                    .iter()
+                    .flat_map(|&c| {
+                        [
+                            (c >> 8 & 15) as u8 * 17,
+                            (c >> 4 & 15) as u8 * 17,
+                            (c & 15) as u8 * 17,
+                        ]
+                    })
+                    .collect();
+                let path = d.join(format!("frame{f}.png"));
+                std::fs::write(
+                    &path,
+                    sf_conform::report::png(p.width as u32, p.height as u32, &rgb),
+                )
+                .map_err(|e| format!("{}: {e}", path.display()))?;
+            }
             let cols: Vec<String> = shown
                 .iter()
                 .zip(&vals)
                 .map(|(d, v)| format!("{}@{:x}={v:x}", d.name, d.addr))
                 .collect();
             println!(
-                "{f}: {}  | {:?} | {}",
+                "{f}: {}  | {:?} | {}{at}",
                 InputScript::format_input(input),
                 sync::pacing(&amiga.cpu(), &mem),
                 cols.join(" ")

@@ -1,0 +1,7 @@
+# Attract mode (T20): from power-on the title waits 400 frames, fades out, and the award pages,
+# the hall of talent and the credits follow. It stops before frame 2275 (the original's 6416),
+# where the beam and the credits scroll's blit race within one row at a finer timing than the
+# engine models (4 pixels; FINDINGS 2026-10-12). The attract demo is T33.
+sync = "power-on"
+script = "boot-to-title"
+frames = 2270

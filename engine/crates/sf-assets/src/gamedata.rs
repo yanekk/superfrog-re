@@ -567,6 +567,17 @@ pub fn decode(chunks: &[(ChunkId, Vec<u8>)]) -> Result<GameData, AssetError> {
     for w in &World::ALL[..7] {
         keep(&w.file("MU"))?;
     }
+    // The front end (T20) loads these as files into memory, not as decoded pictures.
+    for name in ["MPIC", "HPIC", "AWA1", "AWA2"] {
+        keep(name)?;
+    }
+    // Disk 2's copy of `L1FX`: the effects of worlds 3 to 6 (docs/11).
+    let (_, r) = c.named("L1FX", 1)?;
+    raw.insert("L1FX-2".to_string(), r.data.to_vec());
+    // Pictures packed in the game's hunk 0 that the title and the options screen unpack.
+    for at in [0x3464c, 0x34e92, 0x36a04] {
+        raw.insert(format!("h0@{at:x}"), packed(&game, at, "packed picture")?);
+    }
 
     Ok(GameData {
         levels,

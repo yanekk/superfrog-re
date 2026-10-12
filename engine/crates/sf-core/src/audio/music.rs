@@ -6,7 +6,7 @@
 //! Paula; `$145b6` copies the shadow to Paula for the channels no effect holds, after applying the
 //! fade. Only DMACON and INTENA are written directly.
 
-use super::{AudioDriver, DMACON, HEADER_LEN, INTENA, PaulaWrite, SoundData, wr};
+use super::{AudioDriver, DMACON, HEADER_LEN, INTENA, PaulaWrite, SoundData, clr, wr};
 
 /// A channel record in the replayer block: 44 bytes from `$144dc`.
 const fn ch(n: usize) -> usize {
@@ -92,20 +92,43 @@ impl AudioDriver {
         wr(out, INTENA, 0xc000);
     }
 
-    /// `p41_init` (`$13144`).
-    fn p41_init(&mut self, data: &SoundData, out: &mut Vec<PaulaWrite>) {
+    /// `p41_init` (`$13144`) and the `INTENA` on after it: [`AudioDriver::music_start`] without
+    /// its first write, for a caller that splits it in time.
+    pub fn music_start_body(&mut self, data: &SoundData, out: &mut Vec<PaulaWrite>) {
+        if self.p41_init_head(data) {
+            self.p41_init_tail(data, out);
+        }
+        wr(out, INTENA, 0xc000);
+    }
+
+    /// `p41_init`'s first part, which runs in a few lines: the module header kept.
+    /// False when there is no module at the module address (`p41_init` stops there).
+    pub fn p41_init_head(&mut self, data: &SoundData) -> bool {
         // bset #1,$bfe001 (the LED filter off) is a CIA write, not Paula's.
         self.music_on.set_w(0, 0);
         self.shadow.set_w(FADE, 0);
         let base = self.module_addr;
         if self.mem.l(data, base) != u32::from_be_bytes(*b"P41A") {
-            return;
+            return false;
         }
         for i in 0..HEADER_LEN {
             let v = self.mem.b(data, base + i);
             self.backup.set_b(i as usize, v);
         }
+        true
+    }
+
+    /// `p41_init` (`$13144`).
+    fn p41_init(&mut self, data: &SoundData, out: &mut Vec<PaulaWrite>) {
+        if self.p41_init_head(data) {
+            self.p41_init_tail(data, out);
+        }
+    }
+
+    /// The rest of `p41_init`: the module relocated, the channels set to its first position.
+    pub fn p41_init_tail(&mut self, data: &SoundData, out: &mut Vec<PaulaWrite>) {
         self.music_on.set_w(0, 1);
+        let base = self.module_addr;
         let h = base + 4;
         self.p41.set_l(MODULE, h);
         for f in [4, 8, 0xc] {
@@ -148,8 +171,9 @@ impl AudioDriver {
         self.p41.set_l(FETCH_DELAY, 0);
         self.p41.set_w(TICK, 0);
         wr(out, DMACON, 0x000f);
+        // `clr.w` each AUDxVOL (h0+$13254): the last is followed by `move.w #6,8(a3)`.
         for n in 0..4u16 {
-            wr(out, 0xa8 + n * 16, 0);
+            clr(out, 0xa8 + n * 16, if n < 3 { 0x4279 } else { 0x377c });
         }
         self.p41.set_w(SPEED, 6);
         self.p41.set_w(FETCH_TICK, 5);
@@ -168,7 +192,8 @@ impl AudioDriver {
             }
         }
         wr(out, 0xd4, 2);
-        wr(out, 0xd8, 0);
+        // `clr.w $dff0d8` (h0+$1333e), then `move.w #$ffff,...` ($33fc).
+        clr(out, 0xd8, 0x33fc);
         self.stream.set_w(4, 0xffff);
         for i in 0..4 {
             self.p41.set_b(FREE + i, 0xff);
@@ -395,13 +420,11 @@ impl AudioDriver {
                     self.p41.set_w(c + VOLUME, 0);
                 }
             }
-            0xd0 => {
-                if x == self.p41.w(TICK) {
-                    let on = self.p41.w(DMA_ON) | self.p41.w(c + DMA_BIT) | 0x8000;
-                    self.p41.set_w(DMA_ON, on);
-                    self.restart_sample(data, n);
-                    self.p41.set_b(DMA_PENDING, 0xff);
-                }
+            0xd0 if x == self.p41.w(TICK) => {
+                let on = self.p41.w(DMA_ON) | self.p41.w(c + DMA_BIT) | 0x8000;
+                self.p41.set_w(DMA_ON, on);
+                self.restart_sample(data, n);
+                self.p41.set_b(DMA_PENDING, 0xff);
             }
             _ => {}
         }

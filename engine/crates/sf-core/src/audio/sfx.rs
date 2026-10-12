@@ -6,7 +6,9 @@
 //! and a period and a volume ramp, and says what follows it. A channel an effect holds is marked in
 //! the replayer's "free" bytes, so music leaves it alone until the effect ends.
 
-use super::{AudioDriver, BANK_ADDR, DMACON, INTENA, PaulaWrite, STREAM_BUFFER, SoundData, wr};
+use super::{
+    AudioDriver, BANK_ADDR, DMACON, INTENA, PaulaWrite, STREAM_BUFFER, SoundData, clr, wr,
+};
 
 /// Where channel `n`'s record starts in the effect block (`$12f62`): channel 0's is 38 bytes,
 /// the others 52.
@@ -329,7 +331,8 @@ impl AudioDriver {
         if (left as i16) < 0 {
             wr(out, DMACON, 8);
             wr(out, 0xd4, 2);
-            wr(out, 0xd8, 0);
+            // `clr.w $dff0d8` (h0+$14890), then `move.w #$ffff,...` ($33fc).
+            clr(out, 0xd8, 0x33fc);
             self.stream.set_w(4, 0xffff);
             self.p41.set_b(free_byte(3), 0xff);
             return;

@@ -61,6 +61,76 @@ impl Picture {
         Picture::blank(left as i32 - n as i32, top, width + 2 * n, height)
     }
 
+    /// This picture widened by `view`'s extra columns on each side, which show each line's colour
+    /// 0 (the border outside the display window) where the screen is not a level's.
+    pub fn widened(&self, view: View) -> Picture {
+        let n = view.extra_columns_each_side as usize;
+        if n == 0 {
+            return self.clone();
+        }
+        let (w, h) = (self.width as usize, self.height as usize);
+        let mut pixels = vec![0u8; (w + 2 * n) * h];
+        for y in 0..h {
+            pixels[y * (w + 2 * n) + n..y * (w + 2 * n) + n + w]
+                .copy_from_slice(&self.pixels[y * w..(y + 1) * w]);
+        }
+        Picture {
+            left: self.left - n as i32,
+            top: self.top,
+            width: (w + 2 * n) as u16,
+            height: self.height,
+            pixels,
+            palettes: self.palettes.clone(),
+            splits: self
+                .splits
+                .iter()
+                .map(|s| Split {
+                    x: s.x + n as u16,
+                    ..*s
+                })
+                .collect(),
+        }
+    }
+
+    /// This picture seen through another display window: what lies outside this one shows each
+    /// line's colour 0 (the border), and lines outside it show the first or last line's palette.
+    pub fn rewindow(&self, left: i32, top: u16, width: u16, height: u16) -> Picture {
+        let mut p = Picture::blank(left, top, width, height);
+        for y in 0..height as i32 {
+            let sy = y + top as i32 - self.top as i32;
+            let src = sy.clamp(0, self.height as i32 - 1).max(0) as usize;
+            if self.height > 0 {
+                p.palettes[y as usize] = self.palettes[src];
+            }
+            if sy < 0 || sy >= self.height as i32 {
+                continue;
+            }
+            for x in 0..width as i32 {
+                let sx = x + left - self.left;
+                if (0..self.width as i32).contains(&sx) {
+                    p.pixels[(y * width as i32 + x) as usize] =
+                        self.pixels[sy as usize * self.width as usize + sx as usize];
+                }
+            }
+        }
+        p.splits = self
+            .splits
+            .iter()
+            .filter_map(|s| {
+                let y = s.y as i32 + self.top as i32 - top as i32;
+                let x = s.x as i32 + self.left - left;
+                ((0..height as i32).contains(&y) && (0..width as i32).contains(&x)).then_some(
+                    Split {
+                        y: y as u16,
+                        x: x as u16,
+                        ..*s
+                    },
+                )
+            })
+            .collect();
+        p
+    }
+
     /// The 12-bit colour shown at (`x`, `y`).
     pub fn rgb12(&self, x: u16, y: u16) -> u16 {
         let i = self.pixels[y as usize * self.width as usize + x as usize];

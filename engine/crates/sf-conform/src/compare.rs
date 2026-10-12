@@ -17,6 +17,7 @@ pub fn frame(
     ours: &FrameOut,
     theirs: &FrameCapture,
     rendered: Option<&Picture>,
+    masked: &[(u32, u32)],
 ) -> Option<Divergence> {
     let c = case.compare;
     let render_diff = rendered
@@ -30,7 +31,7 @@ pub fn frame(
                 d,
             )
         });
-    let first_var = c.vars.then(|| vars(probe, theirs_mem)).flatten();
+    let first_var = c.vars.then(|| vars(probe, theirs_mem, masked)).flatten();
     let picture_diff = c
         .picture
         .then(|| picture(&ours.picture, &theirs.picture))
@@ -50,12 +51,42 @@ pub fn frame(
         picture_diff,
         paula_diff,
         render_diff,
+        oracle_frame: None,
+        unported: Vec::new(),
+        var_detail: first_var
+            .map(|(d, _, _)| {
+                var_diffs(probe, theirs_mem, d.id)
+                    .into_iter()
+                    .take(40)
+                    .collect()
+            })
+            .unwrap_or_default(),
     })
 }
 
+/// Every piece of `id`'s entry that differs, as `offset: original/engine`, for a report.
+pub fn var_diffs(probe: &[(VarId, u32)], theirs: &AmigaMemory, id: VarId) -> Vec<String> {
+    let pieces: Vec<VarDef> = LAYOUT.iter().flat_map(|d| d.pieces()).collect();
+    let base = LAYOUT.iter().find(|d| d.id == id).map_or(0, |d| d.addr);
+    pieces
+        .into_iter()
+        .zip(probe)
+        .filter(|(p, _)| p.id == id)
+        .filter_map(|(p, &(_, ours))| {
+            let t = p.read(theirs);
+            (t != ours).then(|| format!("+{:x}: {t:x}/{ours:x}", p.addr - base))
+        })
+        .collect()
+}
+
 /// The first `LAYOUT` piece whose engine value differs from the original's memory: (piece,
-/// original's value, engine's value).
-pub fn vars(probe: &[(VarId, u32)], theirs: &AmigaMemory) -> Option<(VarDef, u32, u32)> {
+/// original's value, engine's value). Pieces inside a `masked` run (address, length) are not
+/// compared: memory a job of the original's CPU has not finished writing (DESIGN §2.1).
+pub fn vars(
+    probe: &[(VarId, u32)],
+    theirs: &AmigaMemory,
+    masked: &[(u32, u32)],
+) -> Option<(VarDef, u32, u32)> {
     let pieces: Vec<VarDef> = LAYOUT.iter().flat_map(|d| d.pieces()).collect();
     assert_eq!(
         pieces.len(),
@@ -65,6 +96,11 @@ pub fn vars(probe: &[(VarId, u32)], theirs: &AmigaMemory) -> Option<(VarDef, u32
     pieces
         .into_iter()
         .zip(probe)
+        .filter(|(p, _)| {
+            !masked
+                .iter()
+                .any(|&(a, n)| p.addr < a + n && a < p.addr + p.width.len())
+        })
         .map(|(p, &(id, ours))| {
             assert_eq!(p.id, id, "probe out of LAYOUT order");
             (p, p.read(theirs), ours)
@@ -80,6 +116,8 @@ pub struct PixelMismatch {
     pub first: Option<(u16, u16, u16, u16)>,
     /// The display windows, when they differ: (original's, engine's) as `left,top widthxheight`.
     pub window: Option<(String, String)>,
+    /// Rows that differ: (first, last, how many pixels in all).
+    pub rows: Option<(u16, u16, u32)>,
 }
 
 fn window(left: i32, top: u16, w: u16, h: u16) -> String {
@@ -94,14 +132,24 @@ pub fn picture(ours: &Picture, theirs: &Rgb12Frame) -> Option<PixelMismatch> {
     let win = (a != b).then_some((a, b));
     let (w, h) = (ours.width.min(theirs.width), ours.height.min(theirs.height));
     let colours = sf_core::to_rgb12(ours);
-    let first = (0..h)
+    let differing: Vec<(u16, u16, u16, u16)> = (0..h)
         .flat_map(|y| (0..w).map(move |x| (x, y)))
         .map(|(x, y)| {
             let o = colours[y as usize * ours.width as usize + x as usize];
             (x, y, theirs.pixel(x, y), o)
         })
-        .find(|p| p.2 != p.3);
-    (first.is_some() || win.is_some()).then_some(PixelMismatch { first, window: win })
+        .filter(|p| p.2 != p.3)
+        .collect();
+    let first = differing.first().copied();
+    let rows = first.map(|f| {
+        let last = differing.last().map_or(f.1, |l| l.1);
+        (f.1, last, differing.len() as u32)
+    });
+    (first.is_some() || win.is_some()).then_some(PixelMismatch {
+        first,
+        window: win,
+        rows,
+    })
 }
 
 /// The first Paula write that differs in register or value (beam positions are the original's
@@ -120,13 +168,27 @@ pub fn paula(ours: &[PaulaWrite], theirs: &[PaulaWrite]) -> Option<String> {
         .get(k)
         .map(|w| format!(" (original's beam at line {}, clock {})", w.vpos, w.hpos))
         .unwrap_or_default();
-    Some(format!(
+    let list = |ws: &[PaulaWrite]| {
+        ws.iter()
+            .map(|w| format!("{}=${:04x}", reg_name(w.reg), w.value))
+            .collect::<Vec<_>>()
+            .join(" ")
+    };
+    let mut text = format!(
         "write #{k}: original {}, engine {}{at}; {} writes in the original, {} in the engine",
         show(theirs.get(k)),
         show(ours.get(k)),
         theirs.len(),
         ours.len()
-    ))
+    );
+    if theirs.len().max(ours.len()) <= 40 {
+        text += &format!(
+            "\n    original: {}\n    engine:   {}",
+            list(theirs),
+            list(ours)
+        );
+    }
+    Some(text)
 }
 
 /// A Paula register's name from its offset from `$DFF000`.
