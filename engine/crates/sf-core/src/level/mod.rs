@@ -10,6 +10,7 @@
 pub mod camera;
 pub mod collision;
 pub mod load;
+pub mod scroll;
 
 use sf_paula::PaulaWrite;
 

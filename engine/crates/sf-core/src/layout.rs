@@ -130,7 +130,7 @@ layout! {
     /// writes (`exit_sprite_left`, `_right`), two attached pairs of `$10` bytes each.
     ExitSpriteCopper = "exit_sprite_copper", h2(0x68a8), Width::Bytes(0x40);
     /// `level_copper` (h2+$6bd0): the level's copper list (docs/12 "The copper list").
-    LevelCopper = "level_copper", h2(0x6bd0), Width::Bytes(0x400);
+    LevelCopper = "level_copper", h2(0x6bd0), Width::Bytes(0x408);
     /// `playfield_buffer_0` (h3+$10600) and `_1` (h3+$22f30): the two display buffers the play
     /// field is shown from, five planes of `$3b70` bytes each (docs/12 "The play field").
     PlayfieldBuffer0 = "playfield_buffer_0", h3(0x10600), Width::Bytes(PLAYFIELD_BUFFER_BYTES);
@@ -277,6 +277,8 @@ layout! {
     DemoAt = "demo_at", h0(0x11a2e), Width::L;
     /// `rng_state` (h0+$160d4): the 64-bit RNG state, `rng_next`'s low long then its high long.
     RngState = "rng_state", h0(0x160d4), Width::Bytes(8);
+    /// `shown_buffer` (h0+$1665e): 1 while buffer 0 is shown, 2 while buffer 1 is.
+    ShownBuffer = "shown_buffer", h0(0x1665e), Width::W;
     /// `camera_y` (h0+$16660): the camera's level y (docs/12).
     CameraY = "camera_y", h0(0x16660), Width::L;
     /// `camera_x` (h0+$16664): the camera's level x.
