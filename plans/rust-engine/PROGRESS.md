@@ -57,12 +57,12 @@ done · ⛔ blocked, needs a human.
 | T32 | story-intro | T20; blocks T21 | ⬜ | |
 | T33 | attract-demo | T16, T20 | ⬜ | |
 | T34 | game-over | T15, T20; blocks T21 | ⬜ | |
-| T35 | end-sequence | T20; blocks T21 | ⬜ | |
+| T35 | end-sequence | T20; blocks T21 | 🔍 | `front/{ending,anim,hero}.rs`, `end-sequence` sync, case `ending` (2 500 frames) green; 3 tests. Deviations: load_hero ported (boot too); six LAYOUT runs added (all of hunk 3, CACHE_FORMAT 3); RNG reseed taken from original; overlay fade-out timed; runner inserts asked-for disks (this case only), searches Reached loads' line. See commit. |
 
 A Notes cell holds what was built or what the review found, the test count, and one line per
 deviation from the task doc. A ✅ task's cell may be cut to one line once the next task has been reviewed.
 
-**Review queue:** *(empty)*
+**Review queue:** T35
 
 ## Blocked on the user
 

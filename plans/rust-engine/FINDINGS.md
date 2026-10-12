@@ -18,6 +18,9 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-12 | 📌 | T35: CPU work spanning frames (`ending::CpuWork`): main program from line 22, 3.6 cycles a word per fetched plane past four; fits all 129 ANIM decodes within 2 lines of line 255. Same model untested elsewhere (T20's `busy` is flat). |
+| 2026-10-12 | 📌 | T35: `music_stop` from line 299 ends on line 1 next frame (masked); a load frame now drops writes carried from the last frame. MusicFadeWait models it; TitleExit's game-start fade (T21) goes through it untested. |
+| 2026-10-12 | 📌 | T35, for T14: `load_hero` (hero frames h3+$4c0b0, table h0+$19ddc) is ported in `front::hero` and runs at boot; it clears the level map. The original reseeds the RNG after the end sequence from CIA-B TOD. |
 | 2026-10-12 | 🐞 | T20 review, fixed: fire skipping the title intro diverged a frame later; the engine's restore blit took 102 lines, the original's 161–308. `Cx::blit_wait` charges bitplane fetch slots; `front-skip-*` cases, one in the test block. |
 | 2026-10-12 | 📌 | T20 review sweep, not fixed: CPU jobs (`Cx::busy`: text drawing, unpacking, masked jobs) take no display DMA contention either; no case diverges on it. |
 | 2026-10-12 | 📌 | T20 review: after a palette fade the original's main program resumes about line 42, the engine's at `VBL_END_LINE` (20). Blit timing absorbs it; a slot-exact blit model (`word_times`) exposes it. |

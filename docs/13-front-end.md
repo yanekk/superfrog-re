@@ -2,9 +2,9 @@
 
 Everything around the levels, as `engine/crates/sf-core/src/front` ports it from the game
 executable `d1_c03` (addresses `hN+$off`, docs/08): boot, the title and its intro, the menu, the
-options and level codes, and attract mode up to its demo. Claims marked **(oracle)** are checked by
-the `front-*` cases in `engine/conform/cases/` and `engine/crates/sf-conform/tests/front.rs`;
-**(code)** comes from reading the listing.
+options and level codes, attract mode up to its demo, and the end sequence. Claims marked
+**(oracle)** are checked by the `front-*` and `ending` cases in `engine/conform/cases/` and
+`engine/crates/sf-conform/tests/front.rs`; **(code)** comes from reading the listing.
 
 ## Where the engine starts (owner, 2026-10-12)
 
@@ -18,7 +18,8 @@ leaves that the engine does not model (the trackloader's sector buffer at h3+$35
 packed in hunk 1: `front::LOAD_LEAVES`, `FrameOut::resync`), and finds the line the original's
 load ended on by trying them (`Game::set_load_line`).
 
-The disk-3 story intro is T32; the attract demo is T33.
+The disk-3 story intro is T32; the attract demo is T33. The end sequence (T35) is entered from the
+sync point `end-sequence` (below).
 
 ## Scene flow (code, oracle)
 
@@ -70,6 +71,53 @@ the old value, lines a main-program part ran under show what was there before it
   shows each word new only if the blitter wrote it before the bitplane fetch read it
   (`blit::word_times`).
 - `clr.w` to a custom register writes twice on the real 68000: the prefetched word, then 0.
+
+## The end sequence (T35; code, oracle)
+
+```
+top_loop $784 (final level) -> music_fade_wait -> end_seq_load $a65c -> end_sequence $a6e4
+  -> game_full_mode set: top_loop again (the title); else $7c6, back to the system (not ported)
+end_seq_load: logic off, blank list, Accessing-disk overlay, END1 -> h1+$0 and END2 -> h1+$13880
+  (disk 3, kept packed), music_fade_wait, MUSC (disk 1) -> h3+$64c70, music_start, overlays_end
+end_sequence:
+  END1 unpacked to h3+$0 (blank display); end_play_end1 $a890: anim_open $ab02 into buffer A
+    (h3+$3d090), copied to B (h3+$49890); A shown (list h2+$5efc, five planes); fade in to h0+$aa80;
+    hold 200; 54 passes: anim_next $ab82 into B, 2 rasters, show B, next into A, 2 rasters, show A
+  hold 100, fade out
+  END2 unpacked (under the faded five-plane display); end_play_end2 $a95e: the same, hold 100,
+    11 passes of 3 rasters, ending after the last pass's first half
+  hold 60; palette white; one more frame; fade from white (h0+$aa40) to the picture, A shown;
+    hold 450; fade out; blank list
+  hunk 1 ($d4a8 longs) and hunk 3 ($192dc longs) cleared; music_fade_wait; load_hero;
+    rng_seed_from_cia; password_buf six spaces
+```
+
+- **Entering it** (`sf-conform`'s `end-sequence` sync point): the final level is reached as T31
+  reaches it, its exit forced on its first frame (`level_state` = 1); the case starts at the end of
+  the first frame the original is in `end_seq_load`. The runner inserts each disk the game asks
+  for, as a player would (`sync::Disks`; this case only: a disk inserted changes the timing after it).
+- **CPU work over frames** (`front::ending::CpuWork`): unpacking, the first frame's ByteRun1 body
+  and each delta are done at once and their cycles spent on the beam. A delta's and the body's
+  cycles are the original code's own, instruction by instruction as the 68000 manual times them
+  (`front::anim`). The main program has the CPU from line 22 (the vertical blank plays the title
+  music throughout), and a lowres fetch past the fourth plane takes 3.6 CPU cycles a word from it
+  (72 a line under five planes); a decode after a wait first spends 600 cycles on the wait's end
+  and showing the last frame. Fitted to the original's registers at the frame ends inside a
+  decode: all 129 decodes of `END1` and `END2` then end in the original's frame, on the original's
+  side of line 255 (`wait_frame_raster` matches `$ff` exactly), the closest within 2 lines. Each
+  decode's memory is compared once the original is out of `anim_next` (`FrameOut::jobs`).
+- **Unpacking**: `END1` 24 080 000 cycles, `END2` 21 046 000 under the display (measured: where the
+  original's body decode had got to at the end of the frame its unpacking ended in).
+- **`music_stop`** runs about 15 lines with interrupts off: from `music_fade_wait`'s raster wait
+  (line 299) it ends on line 1 of the next frame, whose interrupt waits for it.
+- **`load_hero`** (`front::hero`, at boot too): `HERO` and a copy with each long bit-reversed (its
+  32-pixel strips mirrored) cut into 2 × 96 frames of four attached sprites at h3+$4c0b0, their
+  table at h0+$19ddc; it clears h1+$20d00..$30fe0, the level's map with it.
+- **The RNG**: `rng_seed_from_cia` reseeds from CIA-B's time-of-day counter, which the engine does
+  not keep. Conformance takes the original's state once the load before it is over; normal play
+  goes on with the RNG as it is.
+- **A frame that loads** drops the CPU's writes carried over from the frame before (the end of a
+  `music_stop`): they were made in the frame the load began, which conformance skips.
 
 ## The keyboard (oracle)
 
