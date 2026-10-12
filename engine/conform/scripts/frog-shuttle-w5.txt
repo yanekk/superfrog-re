@@ -1,0 +1,45 @@
+# W5-1, the frog alone, kept clear of the shaft ahead (it sinks and dies there at frame 832 on
+# frog-shuttle, whose right turns drift it right): after its drop-in, run right for 64 frames and
+# left for 76 in turns, jumping 20 frames into each (up held for 14).
+150: R
+170: R U
+184: R
+214: L
+234: L U
+248: L
+290: R
+310: R U
+324: R
+354: L
+374: L U
+388: L
+430: R
+450: R U
+464: R
+494: L
+514: L U
+528: L
+570: R
+590: R U
+604: R
+634: L
+654: L U
+668: L
+710: R
+730: R U
+744: R
+774: L
+794: L U
+808: L
+850: R
+870: R U
+884: R
+914: L
+934: L U
+948: L
+990: R
+1010: R U
+1024: R
+1054: L
+1074: L U
+1088: L

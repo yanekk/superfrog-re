@@ -1,0 +1,9 @@
+# The frog alone in W2-1 for 1 000 frames: running and jumping right, then left.
+sync = { level = "W2-1" }
+script = "frog-explore"
+frames = 1000
+
+[[exclude]]
+what = "objects"
+note = "the original's object spawns, bump blocks and tile pickups return at once from power-on"
+task = "T15–T18"

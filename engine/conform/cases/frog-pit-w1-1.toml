@@ -1,0 +1,15 @@
+# The frog runs into W1-1's first pit and dies: the fall, the hazard (frog_kill), the death sample
+# and animation. Ends before the level's loop exits for the restart (frame 277).
+sync = { level = "W1-1" }
+script = "frog-pit"
+frames = 276
+
+[[exclude]]
+what = "objects"
+note = "the original's object spawns, bump blocks and tile pickups return at once from power-on"
+task = "T15–T18"
+
+[[exclude]]
+what = "unreached"
+note = "the restart after a death (the level's loop ends at frame 277)"
+task = "T15"

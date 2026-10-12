@@ -1,0 +1,41 @@
+# A level, the frog alone, kept clear of the pits ahead: after its drop-in, run right and left in
+# turns of 70 frames, jumping 20 frames into each (up held for 14).
+150: R
+170: R U
+184: R
+220: L
+240: L U
+254: L
+290: R
+310: R U
+324: R
+360: L
+380: L U
+394: L
+430: R
+450: R U
+464: R
+500: L
+520: L U
+534: L
+570: R
+590: R U
+604: R
+640: L
+660: L U
+674: L
+710: R
+730: R U
+744: R
+780: L
+800: L U
+814: L
+850: R
+870: R U
+884: R
+920: L
+940: L U
+954: L
+990: R
+1010: R U
+1024: R
