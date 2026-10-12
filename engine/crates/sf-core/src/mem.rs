@@ -107,6 +107,53 @@ pub fn boot_tables(h0: &mut [u8]) -> Vec<(u32, Vec<u8>)> {
     vec![(TILE_PTRS, tiles)]
 }
 
+/// `tile_heights` (h1+$31e20): per tile, 16 bytes, one per pixel column: how high the tile's
+/// mask stands in that column (16 minus the rows clear above its first set pixel, 0 for an empty
+/// column; a tile with no pixel at all is 15 everywhere). Built by h0+$d950 when a world loads,
+/// from `LnMS`, which the game reads as a 320-pixel-wide picture of 42 rows of 20 tiles.
+pub const TILE_HEIGHTS: u32 = H1 + 0x31e20;
+
+/// h0+$d950 over a world's masks.
+pub fn tile_heights(m: &sf_assets::TileMasks) -> Vec<u8> {
+    // The file's bytes, which TileMasks keeps as 32-byte runs.
+    let raw: Vec<u8> = m
+        .masks
+        .iter()
+        .flat_map(|t| t.iter().flat_map(|w| w.to_be_bytes()))
+        .collect();
+    let word = |o: usize| u16::from_be_bytes([raw[o], raw[o + 1]]);
+    let mut out = Vec::with_capacity(840 * 16);
+    for row in 0..42 {
+        for col in 0..20 {
+            let base = row * 16 * 40 + col * 2;
+            let mut sum = 0u8;
+            for bit in 0..16 {
+                let mask = 0x8000u16 >> bit;
+                let mut h = 16u8;
+                let mut at = base;
+                loop {
+                    let set = word(at) & mask != 0;
+                    at += 40;
+                    if set {
+                        break;
+                    }
+                    h -= 1;
+                    if h == 0 {
+                        break;
+                    }
+                }
+                sum = sum.wrapping_add(h);
+                out.push(h);
+            }
+            if sum == 0 {
+                let n = out.len();
+                out[n - 16..].fill(15);
+            }
+        }
+    }
+    out
+}
+
 impl Rom {
     pub fn new(data: &sf_assets::GameData) -> Rom {
         let Some(game) = data.exes.iter().find(|e| e.id == sf_assets::ExeId::Game) else {
@@ -130,7 +177,13 @@ impl Rom {
                 data.worlds
                     .iter()
                     .find(|g| g.world == w)
-                    .map(|g| vec![(H1, g.tiles.encode())])
+                    .map(|g| {
+                        let mut r = vec![(H1, g.tiles.encode())];
+                        if let Some(m) = &g.masks {
+                            r.push((TILE_HEIGHTS, tile_heights(m)));
+                        }
+                        r
+                    })
                     .unwrap_or_default()
             })
             .collect();

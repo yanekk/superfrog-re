@@ -21,12 +21,27 @@ pub mod f {
     /// Velocity, pixels per frame.
     pub const VX: u32 = 0x04;
     pub const VY: u32 = 0x06;
+    /// Frames in the air since leaving the ground, counted from 1 by the ground probe; 0 on the
+    /// ground (inferred).
+    pub const AIR: u32 = 0x0a;
     /// Facing: negative while the frog faces left (inferred from the camera's use).
     pub const FACING: u32 = 0x12;
     /// Negative while the frog climbs (inferred from the camera's use).
     pub const CLIMB: u32 = 0x14;
+    /// Non-zero while the frog stands on the ground.
+    pub const ON_GROUND: u32 = 0x24;
+    /// Which side the slope probe last stepped to: 1 left, 2 right, 0 neither.
+    pub const SLOPE_SIDE: u32 = 0x28;
     /// Non-zero: the camera stays where it is.
     pub const CAMERA_HELD: u32 = 0x48;
+    /// The ground under the frog: the steepness its tile's heights give (h0+$de2a).
+    pub const SLOPE: u32 = 0x4a;
+    /// The animation the slope picks (a pointer into the frog's animation tables).
+    pub const SLOPE_ANIM: u32 = 0x4c;
+    /// The map cell the frog stands on (a pointer into `level_map`).
+    pub const GROUND_CELL: u32 = 0x50;
+    /// Non-zero while the frog rides a platform.
+    pub const ON_PLATFORM: u32 = 0x54;
     /// Non-zero: the frog does not move ([`super::physics::frog_move`]).
     pub const FROZEN: u32 = 0x88;
 }
