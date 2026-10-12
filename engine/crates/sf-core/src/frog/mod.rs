@@ -21,6 +21,8 @@ pub mod f {
     /// Velocity, pixels per frame.
     pub const VX: u32 = 0x04;
     pub const VY: u32 = 0x06;
+    /// The current walking speed limit (it grows a step at a time to `MAX_SPEED`).
+    pub const SPEED: u32 = 0x08;
     /// Frames in the air since leaving the ground, counted from 1 by the ground probe; 0 on the
     /// ground (inferred).
     pub const AIR: u32 = 0x0a;
@@ -28,16 +30,28 @@ pub mod f {
     pub const HEAD_BUMP: u32 = 0x1e;
     /// Counts frames for gravity: vy grows by one each time it passes [`GRAVITY_DELAY`] (or 3).
     pub const GRAVITY_TICK: u32 = 0x0c;
-    /// The animation playing (a pointer to its list of steps).
+    /// The animation playing (a pointer to its list of steps: 8 bytes each, a frame pointer
+    /// (negative ends the list, which starts again) and frames to show it at `+6`).
     pub const ANIM: u32 = 0x2c;
+    /// The step showing.
+    pub const ANIM_STEP: u32 = 0x30;
+    /// Frames left on the step; `$ffff` starts the animation at its first step.
+    pub const ANIM_TIME: u32 = 0x34;
     /// Set by a wall on the right (h0+$f2da) or a `$3d` edge: the frog stopped there.
     pub const WALL_RIGHT: u32 = 0x0e;
     /// Set by a wall on the left (h0+$f334) or a `$3d` edge.
     pub const WALL_LEFT: u32 = 0x10;
     /// Facing: negative while the frog faces left (inferred from the camera's use).
     pub const FACING: u32 = 0x12;
-    /// Negative while the frog climbs (inferred from the camera's use).
+    /// -1 while the frog moves down (its y grew since the last frame), 0 while it moves up.
     pub const CLIMB: u32 = 0x14;
+    /// The frog's position the frame before (x, y; written as a long).
+    pub const PREV_X: u32 = 0x18;
+    pub const PREV_Y: u32 = 0x1a;
+    /// Frames in the air between walking speed steps (h0+$1175e).
+    pub const AIR_STEP: u32 = 0x1c;
+    /// Counts to 4: the walking speed limit rises or falls a step each time.
+    pub const SPEED_TICK: u32 = 0x22;
     /// Frames a spring or launcher holds the frog's animation (set to `$18`/`$1e`).
     pub const LAUNCHED: u32 = 0x2a;
     /// The current frame's sprite offset from the frog: x, y (words; written as a long).
@@ -46,8 +60,16 @@ pub mod f {
     /// Hurt: non-zero while the frog is hurt or dying and may not be hurt again (also read as a
     /// long with `DYING`).
     pub const HURT: u32 = 0x3a;
+    /// Set once a hurt or dying frog has landed (its fall stopped).
+    pub const LANDED: u32 = 0x3c;
     /// Dying.
     pub const DYING: u32 = 0x3e;
+    /// Toggles: friction acts every second frame; the walking speed rises every second frame.
+    pub const FRICTION_TOGGLE: u32 = 0x40;
+    pub const RIGHT_TOGGLE: u32 = 0x42;
+    pub const LEFT_TOGGLE: u32 = 0x44;
+    /// Frames between friction steps while hurt.
+    pub const HURT_FRICTION: u32 = 0x46;
     /// Non-zero while the frog stands on the ground.
     pub const ON_GROUND: u32 = 0x24;
     /// Which side the slope probe last stepped to: 1 left, 2 right, 0 neither.
@@ -72,10 +94,24 @@ pub mod f {
     pub const SLIDE_TICK: u32 = 0x6c;
     /// Set while on a pushing surface this frame.
     pub const PUSHED: u32 = 0x6e;
+    /// Set while fire was held in the air (the jump sound played).
+    pub const FIRE_HELD: u32 = 0x64;
     /// The spud may be thrown (docs/09).
     pub const SPUD_ON: u32 = 0x7c;
+    /// The walking speed limit on the ground; it falls back to `BASE_SPEED` when a speed-up
+    /// runs out (`SPEED_UP`).
+    pub const MAX_SPEED: u32 = 0x82;
+    /// Frames the frog's sitting sound repeats after (h0+$11056).
+    pub const SIT_TIME: u32 = 0x86;
     /// Set while a spring carries the frog: the frog's sprites drop below the play field.
     pub const SPRING: u32 = 0x84;
+    /// Set while the frog crouches (down held); `CROUCH_TIME` counts 5 frames after.
+    pub const CROUCH: u32 = 0x66;
+    pub const CROUCH_TIME: u32 = 0x70;
+    /// A special animation by index into h0+$11036 / h0+$11046 (0 none).
+    pub const SPECIAL_ANIM: u32 = 0x80;
+    /// Set while fire may start a flight (h0+$11056).
+    pub const FLIGHT: u32 = 0x90;
     /// Non-zero: the frog does not move ([`super::physics::frog_move`]).
     pub const FROZEN: u32 = 0x88;
     /// Set while the frog goes through a secret passage (marker 38, h0+$ea78).
@@ -86,10 +122,24 @@ pub mod f {
     pub const LAUNCH_HOLD: u32 = 0x8e;
     /// A shield: non-zero, hazards do not hurt.
     pub const SHIELD: u32 = 0x92;
+    /// Frames left with the animation locked ([`super::anim::frog_set_anim`] does nothing).
+    pub const ANIM_LOCK: u32 = 0x94;
+    /// Frames a sound of the frog sitting on a pushing surface waits (h0+$11056).
+    pub const IDLE_SOUND: u32 = 0x96;
     /// The speed a bounce pad gives (vy, h0+$11626).
     pub const BOUNCE_VY: u32 = 0x98;
     /// Frames between gravity steps in the air.
     pub const GRAVITY_DELAY: u32 = 0x9a;
+    /// Frames between walking speed steps in the air.
+    pub const AIR_STEP_DELAY: u32 = 0x9c;
+    /// Extra walking speed in the air.
+    pub const AIR_SPEED: u32 = 0x9e;
+    /// Jump presses counted while in the air (h0+$11056).
+    pub const JUMP_PRESSES: u32 = 0xa6;
+    /// Frames a speed-up lasts; negative when none.
+    pub const SPEED_UP: u32 = 0xa8;
+    /// The base walking speed limit: in the air, and what `MAX_SPEED` returns to.
+    pub const BASE_SPEED: u32 = 0xb0;
     /// Toggles every frame of a held jump ([`super::anim::frog_jump_float`]).
     pub const FLOAT_TOGGLE: u32 = 0xa4;
 }

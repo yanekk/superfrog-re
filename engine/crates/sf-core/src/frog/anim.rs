@@ -4,6 +4,7 @@
 use crate::frog::{FROG, f};
 use crate::layout::h0;
 use crate::level::camera::{FROG_SPRITE_LEFT, FROG_SPRITE_RIGHT, SHOOTER_MODE};
+use crate::level::collision::{LEFT_ANIMS, n_clear_l};
 use crate::level::{LevelCtx, n_clear};
 use crate::mem::Bus;
 
@@ -159,3 +160,263 @@ pub fn frog_jump_float(c: &mut LevelCtx) {
         b.set_w(FROG + f::AIR, 0x20);
     }
 }
+
+/// `frog_anim_lock` is the frog's `ANIM_LOCK` field (h0+$86a), which the routines name by address.
+fn locked(b: &Bus) -> bool {
+    b.w(FROG + f::ANIM_LOCK) != 0
+}
+
+/// `frog_set_anim` (h0+$102e6): start animation `a1` from its first step, unless locked or
+/// already playing.
+pub fn frog_set_anim(c: &mut LevelCtx, a1: u32) {
+    if locked(&c.bus) {
+        return;
+    }
+    set_anim(&mut c.bus, a1);
+}
+
+/// h0+$102f0, the body of [`frog_set_anim`] without the lock.
+pub fn set_anim(b: &mut Bus, a1: u32) {
+    if b.l(FROG + f::ANIM) == a1 {
+        return;
+    }
+    b.set_l(FROG + f::ANIM, a1);
+    b.set_l(FROG + f::ANIM_STEP, a1);
+    b.set_w(FROG + f::ANIM_TIME, 0xffff);
+}
+
+/// `frog_set_anim_free` (h0+$1030e): [`frog_set_anim`], unless a special animation plays or the
+/// frog is hurt or dying.
+pub fn frog_set_anim_free(c: &mut LevelCtx, a1: u32) {
+    let b = &mut c.bus;
+    if locked(b) || b.w(FROG + f::SPECIAL_ANIM) != 0 || b.l(FROG + f::HURT) != 0 {
+        return;
+    }
+    set_anim(b, a1);
+}
+
+/// `frog_set_anim_at` (h0+$1034c): start animation `a1` at step `a2`, unless locked, hurt or
+/// already playing.
+pub fn frog_set_anim_at(c: &mut LevelCtx, a1: u32, a2: u32) {
+    let b = &mut c.bus;
+    if locked(b) || b.l(FROG + f::HURT) != 0 || b.l(FROG + f::ANIM) == a1 {
+        return;
+    }
+    b.set_l(FROG + f::ANIM, a1);
+    b.set_l(FROG + f::ANIM_STEP, a2);
+    b.set_w(FROG + f::ANIM_TIME, 0xffff);
+}
+
+/// `frog_exit_sprites` (h0+$9f8): non-zero, the frog shows in the second pair of sprite records
+/// (the level-end sequence).
+pub const EXIT_SPRITES: u32 = h0(0x9f8);
+/// The second pair (h0+$1b02c, h0+$1b048).
+pub const EXIT_SPRITE_LEFT: u32 = h0(0x1b02c);
+pub const EXIT_SPRITE_RIGHT: u32 = h0(0x1b048);
+
+/// `frog_anim_tick` (h0+$10222): the animation's step runs out, the next one (the list starts
+/// again at its end) gives the frame: its sprite offset, its height, and the data pointers the
+/// copper list's sprite moves get, the two halves of each attached pair one sprite apart.
+pub fn frog_anim_tick(c: &mut LevelCtx) {
+    let b = &mut c.bus;
+    let time = b.w(FROG + f::ANIM_TIME);
+    if time != 0xffff {
+        let time = time.wrapping_sub(1);
+        b.set_w(FROG + f::ANIM_TIME, time);
+        if n_clear(time) {
+            return;
+        }
+        b.set_l(FROG + f::ANIM_STEP, b.l(FROG + f::ANIM_STEP).wrapping_add(8));
+    }
+    let mut step = b.l(FROG + f::ANIM_STEP);
+    if (b.l(step) as i32) < 0 {
+        step = b.l(FROG + f::ANIM);
+        b.set_l(FROG + f::ANIM_STEP, step);
+    }
+    b.set_w(FROG + f::ANIM_TIME, b.w(step.wrapping_add(6)));
+    let frame = b.l(step);
+    b.set_l(FROG + f::SPRITE_DX, b.l(frame.wrapping_add(4)));
+    let (a5, a6) = if b.w(EXIT_SPRITES) != 0 {
+        (EXIT_SPRITE_LEFT, EXIT_SPRITE_RIGHT)
+    } else {
+        (FROG_SPRITE_LEFT, FROG_SPRITE_RIGHT)
+    };
+    let height = b.w(frame.wrapping_add(8));
+    b.set_w(a5 + spr::HEIGHT, height);
+    b.set_w(a6 + spr::HEIGHT, height);
+    // The data pointer of each sprite: (height + 1) longs apart (control words and data).
+    let size = (height as i16 as i32 as u32) & 0xffff_0000
+        | (height.wrapping_add(1).wrapping_shl(2)) as u32;
+    let mut data = b.l(frame);
+    b.set_l(a5 + 0xc, data);
+    for s in [a5, a6] {
+        if s == a6 {
+            b.set_l(a6 + 0xc, data);
+        }
+        let cop = b.l(s + spr::COPPER);
+        for half in [0u32, 0x10] {
+            b.set_w(cop + half + 6, data as u16);
+            b.set_w(cop + half + 2, (data >> 16) as u16);
+            data = data.wrapping_add(size);
+        }
+    }
+}
+
+/// `fall_history` (h0+$10182..$10190): a hurt frog's y on each of the last eight frames, newest
+/// first.
+const FALL_HISTORY: [u32; 8] = [
+    0x10182, 0x10184, 0x10186, 0x10188, 0x1018a, 0x1018c, 0x1018e, 0x10190,
+];
+
+/// `frog_input_anim` (h0+$fe34): the animation the joystick and the frog's motion call for, and
+/// the hurt and dying animations, which end in the blink or the death.
+pub fn frog_input_anim(c: &mut LevelCtx) {
+    let b = &mut c.bus;
+    if b.l(FROG + f::HURT) != 0 {
+        return hurt_anim(c);
+    }
+    let d7 = c.hw.joy1dat & 0x303;
+    let b = &mut c.bus;
+    let facing = b.w(FROG + f::FACING) != 0;
+    if b.w(FROG + f::AIR) != 0 {
+        let mut d0 = b.w(FROG + f::VY);
+        if n_clear(d0.wrapping_sub(9)) {
+            d0 = 8;
+        }
+        if !n_clear(d0.wrapping_add(8)) {
+            d0 = 0xfff8;
+        }
+        let d0 = d0.wrapping_neg();
+        if n_clear(d0) {
+            let table = match (b.w(FROG + f::VX) != 0, facing) {
+                (true, false) => h0(0x101da),
+                (true, true) => h0(0x101fe),
+                (false, false) => h0(0x101b6),
+                (false, true) => h0(0x10192),
+            };
+            let a1 = b.l(table + 4 * d0 as u32);
+            return frog_set_anim_free(c, a1);
+        }
+    } else {
+        if !n_clear(b.w(FROG + f::VY).wrapping_sub(3)) || b.w(FROG + f::ON_GROUND) != 0 {
+            return;
+        }
+        if (b.w(FROG + f::SLIDING) != 0 || b.w(FROG + f::PUSHED) != 0) && b.w(FROG + f::CLIMB) == 0
+        {
+            return;
+        }
+    }
+    // h0+$feda.
+    let a1 = if d7 == 0 && b.w(FROG + f::VX) == 0 {
+        if facing { h0(0x10542) } else { h0(0x10d0e) }
+    } else if n_clear(b.w(FROG + f::VY).wrapping_sub(6)) && {
+        let cell = crate::level::collision::cell_at(
+            b,
+            b.w(FROG + f::X).wrapping_add(8),
+            b.w(FROG + f::Y),
+        )
+        .wrapping_add(0x982);
+        crate::level::collision::marker(b, cell) >= 0x3a
+            || crate::level::collision::marker(b, cell.wrapping_add(0x260)) >= 0x3a
+    } {
+        if facing { h0(0x10566) } else { h0(0x10d32) }
+    } else if facing {
+        h0(0x10572)
+    } else {
+        h0(0x10d3e)
+    };
+    frog_set_anim_free(c, a1);
+}
+
+/// h0+$ff7c: hurt and dying. When the animation reaches its end mark (`ANIM_TIME` `$4e20`) the
+/// frog blinks, or is dead; until then a frog that has stopped falling plays its landing sound.
+fn hurt_anim(c: &mut LevelCtx) {
+    let b = &mut c.bus;
+    let low = !n_clear_l(b.l(FROG + f::ANIM).wrapping_sub(LEFT_ANIMS));
+    let a1 = if b.w(FROG + f::DYING) != 0 {
+        if b.w(SHOOTER_MODE) != 0 {
+            if low { h0(0x10646) } else { h0(0x10e1e) }
+        } else if low {
+            h0(0x1063e)
+        } else {
+            h0(0x10e16)
+        }
+    } else if low {
+        h0(0x1077a)
+    } else {
+        h0(0x10f52)
+    };
+    frog_set_anim(c, a1);
+    let b = &mut c.bus;
+    if n_clear(b.w(FROG + f::ANIM_TIME).wrapping_sub(0x4e20)) {
+        b.set_w(FROG + f::HURT, 0);
+        b.set_w(FROG + f::LANDED, 0);
+        b.set_w(FROG + f::BLINK, 0x4b);
+        if b.w(OPT_GAME_MODE) == 0 {
+            b.set_w(FROG + f::BLINK, 0x96);
+        }
+        if b.w(FROG + f::DYING) != 0 {
+            b.set_w(PLAYER_DIED, 1);
+        }
+        let a1 = if n_clear_l(b.l(FROG + f::ANIM).wrapping_sub(LEFT_ANIMS)) {
+            h0(0x10492)
+        } else {
+            h0(0x10c9a)
+        };
+        b.set_l(FROG + f::ANIM, a1);
+        return;
+    }
+    let falls = [h0(0x1063e), h0(0x10e16), h0(0x1077a), h0(0x10f52)];
+    let (step, anim) = (b.l(FROG + f::ANIM_STEP), b.l(FROG + f::ANIM));
+    let falling = [
+        (step, 0),
+        (step, 1),
+        (anim, 0),
+        (anim, 1),
+        (step, 2),
+        (step, 3),
+        (anim, 2),
+        (anim, 3),
+    ]
+    .iter()
+    .any(|&(v, k)| v == falls[k]);
+    let y = b.w(FROG + f::Y);
+    if falling
+        && n_clear(b.w(FROG + f::ANIM_TIME).wrapping_sub(0x11))
+        && FALL_HISTORY.iter().all(|&a| b.w(h0(a)) == y)
+    {
+        return landed(c);
+    }
+    // h0+$100c0: the history moves on.
+    for k in (1..8).rev() {
+        b.set_w(h0(FALL_HISTORY[k]), b.w(h0(FALL_HISTORY[k - 1])));
+    }
+    b.set_w(h0(FALL_HISTORY[0]), y);
+    if b.w(FROG + f::DYING) == 0 && b.w(FROG + f::LANDED) != 0 {
+        return;
+    }
+    if !n_clear(b.w(FROG + f::VY)) {
+        return;
+    }
+    let cell = crate::level::collision::cell_at(b, b.w(FROG + f::X).wrapping_add(8), y)
+        .wrapping_add(0x982);
+    if crate::level::collision::marker(b, cell) < 0x3a {
+        return;
+    }
+    landed(c);
+}
+
+/// h0+$1015c: a hurt frog has landed: the animation runs on, and a hurt (not dying) frog thuds.
+fn landed(c: &mut LevelCtx) {
+    let b = &mut c.bus;
+    b.set_w(FROG + f::ANIM_TIME, 0);
+    b.set_w(FROG + f::LANDED, 1);
+    if b.w(FROG + f::DYING) == 0 {
+        c.sfx(0xe, 3);
+    }
+}
+
+/// `opt_game_mode` (h0+$9e6): 0 easy (the blink after a hit lasts twice as long).
+const OPT_GAME_MODE: u32 = h0(0x9e6);
+/// `player_died` (h0+$82c): the frog's `+$56`.
+const PLAYER_DIED: u32 = h0(0x82c);

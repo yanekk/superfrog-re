@@ -126,6 +126,9 @@ macro_rules! layout {
 }
 
 layout! {
+    /// `exit_sprite_copper` (h2+$68a8): the sprite moves the second pair of frog sprite records
+    /// writes (`exit_sprite_left`, `_right`), two attached pairs of `$10` bytes each.
+    ExitSpriteCopper = "exit_sprite_copper", h2(0x68a8), Width::Bytes(0x40);
     /// `level_copper` (h2+$6bd0): the level's copper list (docs/12 "The copper list").
     LevelCopper = "level_copper", h2(0x6bd0), Width::Bytes(0x400);
     /// `playfield_buffer_0` (h3+$10600) and `_1` (h3+$22f30): the two display buffers the play
@@ -232,6 +235,12 @@ layout! {
     ShooterMode = "shooter_mode", h0(0x9dc), Width::W;
     /// `sprites_hidden` (h0+$9e2): the frog's sprites stay where they are.
     SpritesHidden = "sprites_hidden", h0(0x9e2), Width::W;
+    /// `opt_lives`, `opt_game_mode` (h0+$9e4, h0+$9e6): the options screen's lives (0..2 for
+    /// 3/5/7) and game mode (0 easy, 1 normal).
+    OptLives = "opt_lives", h0(0x9e4), Width::W;
+    OptGameMode = "opt_game_mode", h0(0x9e6), Width::W;
+    /// `frog_exit_sprites` (h0+$9f8): the frog shows in the second pair of sprite records.
+    FrogExitSprites = "frog_exit_sprites", h0(0x9f8), Width::W;
     /// `level_state` (h0+$a06): negative while playing; 1 exit, 2 bonus end, $64 boss, $190 death.
     LevelState = "level_state", h0(0xa06), Width::L;
     /// `level_width`, `level_height` (h0+$a22, h0+$a24): the level's size in pixels.
@@ -246,12 +255,24 @@ layout! {
     /// `ice_tick`, `push_tick` (h0+$eb28, h0+$ebf0): frames on an icy or a pushing surface.
     IceTick = "ice_tick", h0(0xeb28), Width::W;
     PushTick = "push_tick", h0(0xebf0), Width::W;
+    /// `fall_history` (h0+$10182): a hurt frog's y on each of the last eight frames.
+    FallHistory = "fall_history", h0(0x10182), Width::Bytes(16);
     /// `slope_frame_right`, `slope_frame_left` (h0+$1050e, h0+$10ce6): the frame of one step in
     /// each walking animation, which the slope under the frog rewrites (h0+$de2a).
     SlopeFrameRight = "slope_frame_right", h0(0x1050e), Width::L;
     SlopeFrameLeft = "slope_frame_left", h0(0x10ce6), Width::L;
+    /// `frog_idle_timer` (h0+$11350).
+    FrogIdleTimer = "frog_idle_timer", h0(0x11350), Width::W;
+    /// `shooter_decay` (h0+$1194e): toggles every frame in the bonus level.
+    ShooterDecay = "shooter_decay", h0(0x1194e), Width::W;
+    /// `demo_running`, `demo_fire`, `demo_left`, `demo_at` (h0+$11a24..$11a2e): the attract
+    /// demo's playback (`demo_joy` is between them).
+    DemoRunning = "demo_running", h0(0x11a24), Width::L;
+    DemoFire = "demo_fire", h0(0x11a28), Width::W;
     /// `demo_joy` (h0+$11a2a): the attract demo's joystick, read instead of JOY1DAT.
     DemoJoy = "demo_joy", h0(0x11a2a), Width::W;
+    DemoLeft = "demo_left", h0(0x11a2c), Width::W;
+    DemoAt = "demo_at", h0(0x11a2e), Width::L;
     /// `rng_state` (h0+$160d4): the 64-bit RNG state, `rng_next`'s low long then its high long.
     RngState = "rng_state", h0(0x160d4), Width::Bytes(8);
     /// `camera_y` (h0+$16660): the camera's level y (docs/12).
@@ -268,6 +289,9 @@ layout! {
     /// records (`$1c` bytes: screen x, y, height, attached, copper words, data, animation).
     FrogSpriteLeft = "frog_sprite_left", h0(0x1aff4), Width::Bytes(0x1c);
     FrogSpriteRight = "frog_sprite_right", h0(0x1b010), Width::Bytes(0x1c);
+    /// `exit_sprite_left`, `_right` (h0+$1b02c, h0+$1b048): the second pair of frog sprites.
+    ExitSpriteLeft = "exit_sprite_left", h0(0x1b02c), Width::Bytes(0x1c);
+    ExitSpriteRight = "exit_sprite_right", h0(0x1b048), Width::Bytes(0x1c);
     /// `level_map` (h1+$218e0): the map, 84 rows of 304 cells, `tile << 6 | marker`.
     LevelMap = "level_map", h1(0x218e0), Width::Bytes(MAP_ROWS * MAP_ROW_CELLS * 2);
 }

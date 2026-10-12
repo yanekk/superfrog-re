@@ -52,10 +52,11 @@ pub struct Rom {
 /// h1+0, where each world's `LnBM` is loaded (h0+$172ea).
 pub const TILE_PTRS: u32 = H1 + 0x30fe0;
 
-/// The tables the boot builds once (`rng_seed_from_cia`'s calls at h0+$7734..$7746), each run
-/// until the end mark the executable holds after it: the map's row pointers (h0+$1730c), the
-/// display ring's row pointers (h0+$174a0) and its row offsets (h0+$176a2), all in hunk 0; the
-/// tile pointers ([`TILE_PTRS`], h0+$172ea) are returned as a region of hunk 1.
+/// The tables the boot builds once (`rng_seed_from_cia`'s calls at h0+$7734..$7746 and
+/// `load_hero`'s), each run until the end mark the executable holds after it: the map's row
+/// pointers (h0+$1730c), the display ring's row pointers (h0+$174a0) and its row offsets
+/// (h0+$176a2), the frog's frame records (h0+$19d8a), all in hunk 0; the tile pointers
+/// ([`TILE_PTRS`], h0+$172ea) are returned as a region of hunk 1.
 pub fn boot_tables(h0: &mut [u8]) -> Vec<(u32, Vec<u8>)> {
     fn get(h: &[u8], a: u32) -> Option<u32> {
         let o = a.checked_sub(H0)? as usize;
@@ -98,6 +99,29 @@ pub fn boot_tables(h0: &mut [u8]) -> Vec<(u32, Vec<u8>)> {
         v += 0x10;
         if v == 0x130 {
             v = 0;
+        }
+    }
+    // h0+$19d8a (load_hero's): the frog's frame records, two interleaved tables of `$18`-byte
+    // strides from h0+$19ddc and h0+$19de8 (each until its end mark): the frame's sprite data in
+    // h3+$4c0b0 (`(height + 1) × 16` bytes each), its offset long from `hero_rects` (h0+$1a6f4,
+    // 12-byte rectangles) and its height.
+    let mut rect = H0 + 0x1a6f4;
+    let mut data = H3 + 0x4c0b0;
+    for table in [0x19ddc, 0x19de8] {
+        let mut a = H0 + table;
+        loop {
+            let h = u16::from_be_bytes([h0[(rect - H0) as usize + 6], h0[(rect - H0) as usize + 7]]);
+            let size = ((h.wrapping_add(1) as u8 as i8 as i16 as u16) as u32) << 4;
+            put(h0, a, &data.to_be_bytes());
+            data = data.wrapping_add(size);
+            let off = get(h0, rect + 8).unwrap_or(0);
+            put(h0, a + 4, &off.to_be_bytes());
+            put(h0, a + 8, &h.to_be_bytes());
+            rect += 0xc;
+            a += 0x18;
+            if get(h0, a).is_none_or(|x| (x as i32) < 0) {
+                break;
+            }
         }
     }
     // h0+$172ea: 896 tile pointers.

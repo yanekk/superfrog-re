@@ -2202,3 +2202,171 @@ offset = 0x11352
 name = "frog_jump_float"
 kind = "func"
 note = "while up is held 12..31 frames into a jump, every other frame takes 1 more off vy (T14)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0xdb58
+name = "frog_move"
+kind = "func"
+note = "frog moves by its velocity; a negative coordinate stops at 0 (T14)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0xdb92
+name = "camera_follow"
+kind = "func"
+note = "camera follows the frog with a lag, keeps inside the level, places the frog sprites (T14)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0xde2a
+name = "frog_slope_anim"
+kind = "func"
+note = "the ground tile slope picks the walking animation (T14)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0xdfb0
+name = "frog_ground_probe"
+kind = "func"
+note = "lands the frog on the ground under it (T14)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0xe4fc
+name = "frog_head_probe"
+kind = "func"
+note = "a rising frog stops under a ceiling (T14)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0xeb2a
+name = "marker_conveyor_left"
+kind = "func"
+note = "frog on marker 46: pushed left (T14)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x10222
+name = "frog_anim_tick"
+kind = "func"
+note = "steps the frog animation, writes its sprite pointers into the copper list (T14)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x102e6
+name = "frog_set_anim"
+kind = "func"
+note = "starts animation a1 unless frozen ($86a) (T14)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x1030e
+name = "frog_set_anim_free"
+kind = "func"
+note = "starts animation a1 unless frozen, hurt or carried (T14)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x1034c
+name = "frog_set_anim_at"
+kind = "func"
+note = "starts animation a1 at step a2 (T14)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x11056
+name = "frog_air_anim"
+kind = "func"
+note = "animation and sound of a frog in the air, the shield, launchers, idle sounds (VBL, T14)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x113be
+name = "frog_walk_input"
+kind = "func"
+note = "left/right walking and running (VBL, T14)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x11626
+name = "frog_bounce"
+kind = "func"
+note = "bounce pad: up at the bounce speed (T14)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x11990
+name = "demo_play"
+kind = "func"
+note = "attract demo: feeds the recorded joystick (T14)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x11a32
+name = "demo_record"
+kind = "func"
+note = "dev: records the joystick while h0+$1c is set (T14)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x19bbe
+name = "place_frog_sprites"
+kind = "func"
+note = "frog sprites follow the frame offset, hidden off screen (T14)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x1b23e
+name = "sprite_to_copper"
+kind = "func"
+note = "a sprite record into its copper words (T14)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x1c482
+name = "frog_kill"
+kind = "func"
+note = "a hazard costs a life (T14)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x9148
+name = "frog_life_reset"
+kind = "func"
+note = "what losing a life resets (T14)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x6bd4
+name = "frog_level_entry"
+kind = "func"
+note = "VBL: the frog drops in at a level start while sprites_hidden (T14)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x11e62
+name = "frog_exit_walk"
+kind = "func"
+note = "VBL: scripted frog movement at the level end (T14)"
