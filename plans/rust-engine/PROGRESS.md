@@ -12,8 +12,8 @@ the account is the commit message. Whoever writes a cell also fixes the over-bud
 **Plan reviewed:** 2026-10-10 — 7 fixed, 7 decided with the user
 
 **Status:** Plan written; nothing built.
-**Last updated:** 2026-10-10
-**Next `pir-work` will:** review T14 (frog-and-level).
+**Last updated:** 2026-10-12
+**Next `pir-work` will:** start T15 (items-and-scoring), T19, T28 or T35, whichever the run dispatches.
 
 ## Tasks
 
@@ -36,7 +36,7 @@ done · ⛔ blocked, needs a human.
 | T11 | audio-driver | T06, T07 | ✅ | |
 | T12 | core-state | T05, T06, T07 | ✅ | |
 | T13 | renderer | T08, T12 | ✅ | |
-| T14 | frog-and-level | T06, T11, T12, T13 | 🔍 | Frog, level frame, camera, scroll, panel, sound, `Start::Level` (level/load.rs); 9 frog cases, 29-level entry test, 28 routine tests. Deviations: routine tests in sf-conform/tests (purity rule); W5-1 on `frog-shuttle-w5`; entry leaves title/progress-map leftovers, listed (T21); feature branch merged early, State/LAYOUT reconciled; `frog_new_game` replaces T20's partial write. |
+| T14 | frog-and-level | T06, T11, T12, T13 | ✅ | Review fixed: purity test red (frog_reset 57-element table); frog_move edge clamp untested; lag re-sync hid the fake-wall dig in frog-run-w1-1 (re-sync-free map test added); 54 frog fields renamed from frog_NN in LAYOUT/symbols. Probed the frame-562 re-sync; mutated passage dig, edge clamp, frog_reset. Five deviations held. Dispatch unwired, Pacing::Late ignored: FINDINGS. |
 | T15 | items-and-scoring | T14 | ⬜ | |
 | T16 | enemies-worlds-1-3 | T15 | ⬜ | |
 | T17 | enemies-worlds-4-6 | T15 | ⬜ | |
@@ -62,7 +62,7 @@ done · ⛔ blocked, needs a human.
 A Notes cell holds what was built or what the review found, the test count, and one line per
 deviation from the task doc. A ✅ task's cell may be cut to one line once the next task has been reviewed.
 
-**Review queue:** T14
+**Review queue:** empty
 
 ## Blocked on the user
 
