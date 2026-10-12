@@ -248,6 +248,8 @@ layout! {
     LevelHeight = "level_height", h0(0xa24), Width::W;
     /// `world` (h0+$40da): 1..6, 7 the bonus level.
     World = "world", h0(0x40da), Width::L;
+    /// `entry_fall` (h0+$6c92): how fast the frog drops in at a level's start.
+    EntryFall = "entry_fall", h0(0x6c92), Width::W;
     /// `passage_cell` (h0+$776c): the fake-wall cell the frog entered (marker 38).
     PassageCell = "passage_cell", h0(0x776c), Width::L;
     /// `shooter_half_step` (h0+$de28): the bonus level's camera creeps on every second frame.

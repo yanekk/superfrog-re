@@ -420,3 +420,79 @@ fn landed(c: &mut LevelCtx) {
 const OPT_GAME_MODE: u32 = h0(0x9e6);
 /// `player_died` (h0+$82c): the frog's `+$56`.
 const PLAYER_DIED: u32 = h0(0x82c);
+
+/// `entry_fall` (h0+$6c92): how fast the frog's sprites drop at a level's start, up to 8.
+const ENTRY_FALL: u32 = h0(0x6c92);
+/// `sprites_hidden` (h0+$9e2): set while the frog's entry runs (the camera leaves its sprites).
+const ENTRY: u32 = h0(0x9e2);
+
+/// `frog_level_entry` (h0+$6bd4): at a level's start the frog drops in from above the screen
+/// (h0+$6b22 sets it up): its animation runs, and once it reaches its falling step the sprites
+/// fall faster each frame until they reach the frog's place, which ends the entry. In the bonus
+/// level it flies in from the left instead.
+pub fn frog_level_entry(c: &mut LevelCtx) {
+    if c.bus.w(ENTRY) == 0 {
+        return;
+    }
+    frog_anim_tick(c);
+    let b = &mut c.bus;
+    let (cx, cy) = (
+        b.w(crate::level::camera::CAMERA_X + 2),
+        b.w(crate::level::camera::CAMERA_Y + 2),
+    );
+    if b.w(SHOOTER_MODE) != 0 {
+        // h0+$6b86.
+        b.set_w(FROG + f::X, cx.wrapping_add(0x80));
+        b.set_w(FROG + f::Y, cy.wrapping_add(0x5c));
+        for s in [FROG_SPRITE_LEFT, FROG_SPRITE_RIGHT] {
+            b.set_w(s + spr::X, b.w(s + spr::X).wrapping_add(4));
+        }
+        place_frog_sprites(c);
+        let b = &mut c.bus;
+        if n_clear(b.w(FROG_SPRITE_LEFT + spr::X).wrapping_sub(0x80)) {
+            b.set_w(FROG + f::BLINK, 0x64);
+            b.set_w(ENTRY, 0);
+        }
+        return;
+    }
+    if n_clear(b.w(FROG + f::ANIM_TIME).wrapping_sub(0x1f40)) {
+        if !n_clear(b.w(ENTRY_FALL).wrapping_sub(8)) {
+            b.set_w(ENTRY_FALL, b.w(ENTRY_FALL).wrapping_add(1));
+        }
+        let fall = b.w(ENTRY_FALL);
+        for s in [FROG_SPRITE_LEFT, FROG_SPRITE_RIGHT] {
+            b.set_w(s + spr::Y, b.w(s + spr::Y).wrapping_add(fall));
+        }
+    }
+    let mut ground = 0x70u16;
+    if b.w(crate::level::camera::FINAL_LEVEL_FLAG) != 0 {
+        ground = ground.wrapping_add(0x50);
+    }
+    if n_clear(ground.wrapping_sub(b.w(FROG_SPRITE_LEFT + spr::Y))) {
+        return place_frog_sprites(c);
+    }
+    // h0+$6c3a: landed.
+    b.set_w(FROG + f::ANIM_TIME, 0);
+    b.set_w(FROG + f::SPRITE_DY, 0);
+    b.set_w(FROG + f::Y, b.w(FROG_SPRITE_LEFT + spr::Y).wrapping_add(cy));
+    let stunned = b.w(h0(0x1c)) != 0 || b.w(h0(0x12)) == 0;
+    if stunned {
+        b.set_l(FROG + f::ANIM, h0(0x1077a));
+    }
+    b.set_w(FROG + f::FACING, 0xffff);
+    if stunned {
+        b.set_w(FROG + f::HURT, 1);
+    }
+    b.set_w(ENTRY, 0);
+}
+
+/// `frog_exit_walk` (h0+$11e62): the frog's walk across the end-of-world picture, a state
+/// machine through code addresses (h0+$11e92) while `frog_exit_sprites` is set. That screen is
+/// the game flow's (T21); in a level the flag is clear and this does nothing.
+pub fn frog_exit_walk(c: &mut LevelCtx) {
+    debug_assert_eq!(
+        c.bus.w(EXIT_SPRITES),
+        0,
+        "the end-of-world walk is not ported (T21)"
+    );
+}

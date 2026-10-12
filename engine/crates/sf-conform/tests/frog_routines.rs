@@ -314,3 +314,25 @@ fn frog_air_anim_on_pushing_surfaces_matches_the_original() {
     }
     assert!(croaks > 1000 && locks > 1000, "{croaks} croak and {locks} lock setups");
 }
+
+#[test]
+fn frog_level_entry_matches_the_original() {
+    use sf_core::layout::h0;
+    use sf_core::level::camera::{FROG_SPRITE_LEFT, FROG_SPRITE_RIGHT};
+    let mut rig = rig();
+    let mut g = Gen::new(28);
+    for case in 0..CASES {
+        let mut s = Setup::default();
+        freeze_objects(&mut s);
+        any_frog(&mut g, &mut s);
+        s.poke_w(h0(0x9e2), (!g.one_in(8)) as u16);
+        s.poke_w(h0(0x6c92), g.below(10) as u16);
+        s.poke_w(FROG + f::ANIM_TIME, g.pick(&[0x1f3f, 0x1f40, 0x1f41, 3, 0xffff]));
+        s.poke_w(h0(0x1e), g.one_in(5) as u16);
+        for sp in [FROG_SPRITE_LEFT, FROG_SPRITE_RIGHT] {
+            s.poke_w(sp, 0x60 + g.below(0x40) as u16);
+            s.poke_w(sp + 2, 0x40 + g.below(0x80) as u16);
+        }
+        rig.check("frog_level_entry", case, 0x6bd4, &s, frog::anim::frog_level_entry);
+    }
+}
