@@ -23,8 +23,10 @@ fn frog_move_matches_the_original() {
             hw: any_input(&mut g),
             ..Setup::default()
         };
+        // A quarter near the level's left or top edge, where a step past 0 is clamped.
         for o in [f::X, f::Y] {
-            s.poke_w(FROG + o, g.below(0x1400) as u16);
+            let p = if g.one_in(4) { g.below(24) } else { g.below(0x1400) };
+            s.poke_w(FROG + o, p as u16);
         }
         for o in [f::VX, f::VY] {
             s.poke_w(FROG + o, small_word(&mut g));

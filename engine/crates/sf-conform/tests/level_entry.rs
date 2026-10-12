@@ -225,3 +225,48 @@ fn a_game_started_at_a_level_plays_as_the_original() {
         );
     }
 }
+
+/// The fake wall at W1-1:94,51 opens in the engine as in the original, with no re-sync to cover
+/// it: `frog-run-w1-1` re-syncs after the original's lag at the passage (frames 559–561), which
+/// copies the original's map into the engine and so cannot fail on the dig. Here a game started
+/// at W1-1 runs `frog-run-right` on its own, and `level_map` must equal the original's on every
+/// frame the original is not mid-pass, through the dig and 60 frames past it.
+#[test]
+fn the_fake_wall_opens_as_in_the_original_without_a_re_sync() {
+    use sf_core::layout::{VarId, def};
+    let display = display_data();
+    let id: LevelId = "W1-1".parse().unwrap();
+    let script = InputScript::load(&sf_conform::case::script_path("frog-run-right")).unwrap();
+    let frames = 620;
+    let synced = sync::reach_frozen(&SyncPoint::AtLevel(id), &script, frames, true).unwrap();
+    let mut amiga = synced.amiga;
+    let mut game = Game::with_display(display.clone(), Start::Level(id));
+    let map = def(VarId::LevelMap);
+    let at_start = game.state().var(VarId::LevelMap).into_owned();
+    let mut lagged = 0;
+    for f in 0..frames {
+        sf_conform::freeze::freeze_objects(&mut amiga, &display);
+        let input = script.input_at(f);
+        amiga.step(input).unwrap();
+        let mem = sync::core_memory(amiga.memory());
+        game.step_paced(input, sync::pacing(&amiga.cpu(), &mem));
+        if sync::mid_pass(&amiga.cpu(), &mem) {
+            lagged += 1;
+            continue;
+        }
+        let ours = game.state().var(VarId::LevelMap);
+        let theirs: Vec<u8> = (0..map.width.len()).map(|k| mem.byte(map.addr + k)).collect();
+        if let Some(k) = ours.iter().zip(&theirs).position(|(a, b)| a != b) {
+            panic!("frame {f}: level_map+${k:x} is ${:02x} in the original, ${:02x} in the engine", theirs[k], ours[k]);
+        }
+    }
+    assert!(lagged > 0, "the original no longer lags at the passage: the case needs no re-sync");
+    let dug = game
+        .state()
+        .var(VarId::LevelMap)
+        .iter()
+        .zip(&at_start)
+        .filter(|(a, b)| a != b)
+        .count();
+    assert!(dug > 20, "the passage dug {dug} bytes of the map");
+}
