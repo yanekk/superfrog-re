@@ -23,7 +23,7 @@ pub struct OracleConfig {
     /// [`crate::Amiga::step`] refuses to run frame `max_frames` and beyond.
     pub max_frames: u32,
     /// Drives connected, df0 first: 1 (the A500 as sold, the default) to 4. Drives past df0 start
-    /// empty; W6's second map set needs df1–df3 (docs/12 "Reaching every level").
+    /// empty; W6-2..4's first map set needs one of df1–df3 (docs/12 "Reaching every level").
     pub drives: u8,
 }
 
