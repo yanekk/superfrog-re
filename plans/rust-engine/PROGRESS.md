@@ -11,9 +11,9 @@ the account is the commit message. Whoever writes a cell also fixes the over-bud
 
 **Plan reviewed:** 2026-10-10 — 7 fixed, 7 decided with the user
 
-**Status:** Plan written; nothing built.
-**Last updated:** 2026-10-10
-**Next `pir-work` will:** T00 oracle-spike, because every later test rests on the reference emulator; T01 and T02 can run beside it.
+**Status:** Phases 0–2 under way; T00–T13 done; T22 awaiting review.
+**Last updated:** 2026-10-12
+**Next `pir-work` will:** review T22 app-rig; T14 frog-and-level and T31 are open beside it.
 
 ## Tasks
 
@@ -44,7 +44,7 @@ done · ⛔ blocked, needs a human.
 | T19 | slot-and-bonus | T15 | ⬜ | |
 | T20 | front-end | T08, T11, T12, T13 | ⬜ | |
 | T21 | game-flow | T18, T19, T20 | ⬜ | |
-| T22 | app-rig | T09, T10, T12, T13 | ⬜ | |
+| T22 | app-rig | T09, T10, T12, T13 | 🔍 | `superfrog` (winit/wgpu/cpal: args, home, script, input, pacer, capture) and sf-e2e script and OS layers. 26 unit, 8 e2e, 2 OS (ignored; green under SF_E2E_OS=1). Deviations: mixer reads zero chip (Game has no chip view, T14); scripts silent on the wall clock; menus via AX, capture via CGWindowListCreateImage; `--max-frames 0` imports only. |
 | T23 | app-shell | T21, T22 | ⬜ | |
 | T24 | macos-menus | T23 | ⬜ | |
 | T25 | controls-and-gamepad | T24 | ⬜ | |
@@ -58,9 +58,9 @@ done · ⛔ blocked, needs a human.
 A Notes cell holds what was built or what the review found, the test count, and one line per
 deviation from the task doc. A ✅ task's cell may be cut to one line once the next task has been reviewed.
 
-**Review queue:** *(empty)*
+**Review queue:** T22
 
 ## Blocked on the user
 
-Nothing yet. Expected later: granting Accessibility and Screen Recording to the terminal (T22), the
+T22's grant is in effect: Accessibility and Screen Recording work for WezTerm (2026-10-12). Expected later: the
 8BitDo check (T25), the play session (T30), and the open decisions in PLAN.md once T07 reports.
