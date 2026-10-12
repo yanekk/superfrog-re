@@ -157,6 +157,7 @@ impl<'d> Rig<'d> {
         self.cpu.set_hardware_read(0xDF_F00C, hi);
         self.cpu.set_hardware_read(0xDF_F00D, lo);
         self.cpu.set_hardware_read(0xBF_E001, setup.hw.ciaa_pra());
+        self.cpu.set_hardware_read(0xBF_EC01, setup.hw.sdr);
         let regs = Regs {
             d: setup.d,
             a: {

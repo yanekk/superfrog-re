@@ -135,3 +135,36 @@ fn fades_match_the_original() {
         rig.check("fades", case, entry, &s, port);
     }
 }
+
+#[test]
+fn level_clock_tick_matches_the_original() {
+    use sf_core::level::clock;
+    let mut rig = rig();
+    let mut g = Gen::new(35);
+    for case in 0..CASES {
+        let mut s = Setup::default();
+        for k in 0..4u32 {
+            let d = if g.one_in(3) { 0 } else { g.below(10) as u8 };
+            s.poke_b(h0(0x876) + k, d);
+        }
+        let any = g.below(0x40) as u16;
+        s.poke_w(h0(0x11dfc), g.pick(&[0, 0x18, 0x19, 0x31, 0x32, any]));
+        s.poke_l(h0(0x40da), g.pick(&[1, 2, 7]));
+        rig.check("level_clock_tick", case, 0x11d2c, &s, clock::level_clock_tick);
+    }
+}
+
+#[test]
+fn kbd_poll_matches_the_original() {
+    use sf_core::level::clock;
+    let mut rig = rig();
+    let mut g = Gen::new(36);
+    for case in 0..CASES / 10 {
+        let mut s = Setup::default();
+        s.hw.sdr = g.next() as u8;
+        s.poke_b(h0(0x16076), g.pick(&[0, 0xff]));
+        s.poke_b(h0(0x16078), g.next() as u8);
+        s.poke_b(h0(0x16079), g.next() as u8);
+        rig.check("kbd_poll", case, 0x15ff2, &s, clock::kbd_poll);
+    }
+}
