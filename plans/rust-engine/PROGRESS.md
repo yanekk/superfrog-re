@@ -44,7 +44,7 @@ done · ⛔ blocked, needs a human.
 | T19 | slot-and-bonus | T15 | ⬜ | |
 | T20 | front-end | T08, T11, T12, T13 | ⬜ | |
 | T21 | game-flow | T18, T19, T20 | ⬜ | |
-| T22 | app-rig | T09, T10, T12, T13 | ⬜ | |
+| T22 | app-rig | T09, T10, T12, T13 | ✅ | |
 | T23 | app-shell | T21, T22 | ⬜ | |
 | T24 | macos-menus | T23 | ⬜ | |
 | T25 | controls-and-gamepad | T24 | ⬜ | |
