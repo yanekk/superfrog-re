@@ -329,6 +329,23 @@ impl Cx<'_> {
         self.load_point = Some((self.cop1lc, (self.line, snap)));
     }
 
+    /// The CPU waits for a blit: [`blit::Blit::cycles`], and on each line the display fetches
+    /// bitplanes on, the slots the fetch takes from the blitter as well (1.23 CPU cycles a slot,
+    /// measured: the title intro's 64-line restore under six planes runs from line 161 to 308).
+    pub fn blit_wait(&mut self, b: &blit::Blit) {
+        if self.busy_from.is_none() {
+            self.busy_from = Some(self.line);
+        }
+        let per_line = (self.fetch.planes() * self.fetch.words()) as u32 * 123 / 100;
+        let mut need = b.cycles();
+        while need > 0 && self.line < u16::MAX {
+            let shown = self.fetch.lines().contains(&(self.line % FRAME_LINES));
+            let free = BEAM_CYCLES_PER_LINE - if shown { per_line } else { 0 };
+            need = need.saturating_sub(free);
+            self.line += 1;
+        }
+    }
+
     /// The CPU is busy for `cycles` 7 MHz cycles (a blit it waits for): the beam moves on.
     pub fn busy(&mut self, cycles: u32) {
         if self.busy_from.is_none() {

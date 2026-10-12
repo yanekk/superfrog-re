@@ -119,3 +119,14 @@ fn the_level_code_entry_matches_the_original() {
         panic!("{d}");
     }
 }
+
+/// Fire skipping the title's intro, held on into the fade-in (the case `front-skip-blink`): the
+/// restore blit's length under the six-plane display decides the frame the fade-in starts on.
+#[test]
+fn fire_skipping_the_title_intro_matches_the_original() {
+    let case = sf_conform::Case::load(&sf_conform::cases_dir().join("front-skip-blink.toml"))
+        .unwrap_or_else(|e| panic!("{e}"));
+    if let Err(d) = sf_conform::run(&case) {
+        panic!("{d}");
+    }
+}

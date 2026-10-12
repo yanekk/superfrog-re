@@ -1,0 +1,5 @@
+# Power-on to the title (T20 review): fire in the 50 frames after the first blink: the intro skips to its end.
+1000: M
+1005: -
+4020: F
+4025: -

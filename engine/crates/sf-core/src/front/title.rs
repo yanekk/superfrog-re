@@ -468,7 +468,7 @@ fn blit_planes(
     let first_d = b.pt[3];
     for _ in 0..planes {
         b.run(cx.s);
-        cx.busy(b.cycles());
+        cx.blit_wait(&b);
         b.pt[0] = b.pt[0].wrapping_add(a_step);
         b.pt[3] = b.pt[3].wrapping_add(d_step);
     }

@@ -76,7 +76,7 @@ impl Menu {
                     };
                     for _ in 0..6 {
                         b.run(cx.s);
-                        cx.busy(b.cycles());
+                        cx.blit_wait(&b);
                         b.pt[0] += 0x8e8;
                         b.pt[3] += PLANE;
                     }

@@ -31,7 +31,7 @@ top_loop $5c:
     $136c eyes' sprites, $1d0c title copper list on buffer 0, black
     title_intro_anim $3902: eyes bounce in from the right (h0+$3cca bounce table), music starts,
       the eyes blink (5 frames from h0+$3dd0..$3de4), bounce on left, line $a0: picture back under
-      them; fire skips to the end. With music on (back from the options): none of it.
+      them; fire (not the mouse or a key) skips to the end (oracle). With music on (back from the options): none of it.
     $1c0e both halves fade in (records 0 and 1, every other frame copied at line $7c)
     idle 400 frames ($2ee with h0+$24), eyes blinking (timers h0+$1368/$136a, rng_range($4b)+$4b)
       fire -> menu $1406: START GAME / OPTIONS, flashing (h0+$168c), up/down
@@ -61,6 +61,10 @@ the old value, lines a main-program part ran under show what was there before it
   eyes (12), `HPIC` (49), drawing text: the engine does them at once; their memory is compared once
   the original is out of the call (`FrameOut::jobs`). The picture shows an unpacking arriving from
   its end at an even pace.
+- **Blits under the display** (review, 2026-10-12): a blit the CPU waits for takes its words'
+  cycles plus, on each line the display fetches bitplanes on, 1.23 cycles per fetch slot
+  (`Cx::blit_wait`; measured on the intro's restore, lines 161–308 under six planes). It decides the
+  frame the fade-in starts on when fire skips the intro and is held (`front-skip-*`).
 - **The beam overtaking a blit**: the credits' scroll (272 lines of one plane, from line `$c5`)
   shows each word new only if the blitter wrote it before the bitplane fetch read it
   (`blit::word_times`).
