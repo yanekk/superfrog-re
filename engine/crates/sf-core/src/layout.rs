@@ -100,6 +100,9 @@ impl VarDef {
 pub const MAP_ROWS: u32 = 84;
 pub const MAP_ROW_CELLS: u32 = 304;
 
+/// Bytes of `level_map`: from h1+$218e0 to the boot's tile pointers at h1+$30fe0.
+pub const LEVEL_MAP_BYTES: u32 = 0x30fe0 - 0x218e0;
+
 /// Bytes in one display buffer: five planes of `$3b70`.
 pub const PLAYFIELD_BUFFER_BYTES: u32 = 0x12930;
 
@@ -135,6 +138,8 @@ layout! {
     /// field is shown from, five planes of `$3b70` bytes each (docs/12 "The play field").
     PlayfieldBuffer0 = "playfield_buffer_0", h3(0x10600), Width::Bytes(PLAYFIELD_BUFFER_BYTES);
     PlayfieldBuffer1 = "playfield_buffer_1", h3(0x22f30), Width::Bytes(PLAYFIELD_BUFFER_BYTES);
+    /// `playfield_clean` (h3+$35860): the clean background, tiles only; bobs are erased from it.
+    PlayfieldClean = "playfield_clean", h3(0x35860), Width::Bytes(PLAYFIELD_BUFFER_BYTES);
     /// `panel_bitmap` (h3+$4b390): the status panel, five planes of 14 lines (docs/12 "Panel").
     PanelBitmap = "panel_bitmap", h3(0x4b390), Width::Bytes(5 * 0x2a0);
     /// `no_death` (h0+$14): non-zero, hazards do nothing (inferred: a cheat).
@@ -277,15 +282,33 @@ layout! {
     DemoAt = "demo_at", h0(0x11a2e), Width::L;
     /// `rng_state` (h0+$160d4): the 64-bit RNG state, `rng_next`'s low long then its high long.
     RngState = "rng_state", h0(0x160d4), Width::Bytes(8);
+    /// The scroller (h0+$16604..$1668c): rows and columns drawn by the last pass (with a word
+    /// either side, which the comparisons read), its row and column shifts, the frame toggle,
+    /// tiles a line, the pending-blits flag and the count drawn.
+    ScrollerRowsDrawn = "rows_drawn", h0(0x16604), Width::Bytes(0x28);
+    ScrollerColsDrawn = "cols_drawn", h0(0x1662c), Width::Bytes(0x30);
     /// `shown_buffer` (h0+$1665e): 1 while buffer 0 is shown, 2 while buffer 1 is.
     ShownBuffer = "shown_buffer", h0(0x1665e), Width::W;
     /// `camera_y` (h0+$16660): the camera's level y (docs/12).
     CameraY = "camera_y", h0(0x16660), Width::L;
     /// `camera_x` (h0+$16664): the camera's level x.
     CameraX = "camera_x", h0(0x16664), Width::L;
+    ScrollerRowShift = "scroller_row_shift", h0(0x16668), Width::L;
+    ScrollerColShiftX = "scroller_col_shift_x", h0(0x1666c), Width::L;
+    ScrollerToggle = "scroller_toggle", h0(0x16674), Width::W;
+    ScrollerTilesPerLine = "scroller_tiles_per_line", h0(0x16676), Width::L;
+    ScrollerRowShiftX = "scroller_row_shift_x", h0(0x1667a), Width::L;
+    ScrollerColShiftY = "scroller_col_shift_y", h0(0x1667e), Width::L;
     /// `scroll_dirs` (h0+$16682): which way the camera last moved (bits 1 right, 2 left, 3
     /// down, 4 up).
     ScrollDirs = "scroll_dirs", h0(0x16682), Width::B;
+    BlitsPending = "blits_pending", h0(0x16688), Width::W;
+    ScrollerDrawn = "scroller_drawn", h0(0x1668a), Width::W;
+    /// `shooter_column` (h0+$16752), `blit_next` (h0+$16756), `blit_queue` (h0+$1675a, 23 × 16
+    /// bytes; its end mark follows).
+    ShooterColumn = "shooter_column", h0(0x16752), Width::L;
+    BlitNext = "blit_next", h0(0x16756), Width::L;
+    BlitQueue = "blit_queue", h0(0x1675a), Width::Bytes(0x170);
     /// `scroll_column` (h0+$172b0): the play-field column the vertical blank last scrolled to, as
     /// the address of its first word in the shown buffer (docs/12 "Scroll").
     ScrollColumn = "scroll_column", h0(0x172b0), Width::L;
@@ -296,8 +319,9 @@ layout! {
     /// `exit_sprite_left`, `_right` (h0+$1b02c, h0+$1b048): the second pair of frog sprites.
     ExitSpriteLeft = "exit_sprite_left", h0(0x1b02c), Width::Bytes(0x1c);
     ExitSpriteRight = "exit_sprite_right", h0(0x1b048), Width::Bytes(0x1c);
-    /// `level_map` (h1+$218e0): the map, 84 rows of 304 cells, `tile << 6 | marker`.
-    LevelMap = "level_map", h1(0x218e0), Width::Bytes(MAP_ROWS * MAP_ROW_CELLS * 2);
+    /// `level_map` (h1+$218e0): the map, 84 rows of 304 cells, `tile << 6 | marker`, and the
+    /// rows the loader adds under it (a floor of `$3d` cells) up to the tile pointers.
+    LevelMap = "level_map", h1(0x218e0), Width::Bytes(LEVEL_MAP_BYTES);
 }
 
 /// The entry for `id`.

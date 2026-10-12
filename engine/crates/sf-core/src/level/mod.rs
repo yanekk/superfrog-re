@@ -11,6 +11,7 @@ pub mod camera;
 pub mod collision;
 pub mod load;
 pub mod scroll;
+pub mod spawn;
 
 use sf_paula::PaulaWrite;
 
@@ -167,6 +168,17 @@ impl LevelCtx<'_> {
         if self.bus.l(ATTRACT_MODE) == 0 {
             self.audio.play_sample(self.sound, k, self.paula);
         }
+    }
+
+    /// A write to a custom register the frame comparison records (DMACON, INTENA, INTREQ and the
+    /// audio registers): the level's own interrupt and DMA writes go out in order with sound's.
+    pub fn custom(&mut self, reg: u16, value: u16) {
+        self.paula.push(PaulaWrite {
+            reg,
+            value,
+            hpos: 0,
+            vpos: 0,
+        });
     }
 
     /// `rng_range` (h0+$160c0): a number in `0..=n`.

@@ -275,7 +275,7 @@ mod tests {
         let at = def(VarId::LevelCopper).addr;
         s.var_mut(VarId::LevelCopper)[4] = 9;
         assert_eq!(s.raw(at + 4, 2), Some(&[9, 0][..]));
-        assert_eq!(s.raw(at + 0x3ff, 2), None);
+        assert_eq!(s.raw(at + 0x407, 2), None);
         assert_eq!(s.read(at + 4), Some(9));
         assert_eq!(s.read(0xF0_0000), None);
     }
