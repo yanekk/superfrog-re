@@ -23,6 +23,10 @@ DESIGN §2.1, docs/08 "Scene flow".
 - `engine/crates/sf-core/src/level/` — the demo's recorded input feeding the frog (T14's input path).
 - `engine/conform/cases/attract-*`; `docs/13-front-end.md` — the demo's input format and timing.
 
+## Interface
+
+None new: the demo runs inside `Game::step`, reached from T20's attract cycle under `Start::PowerOn`.
+
 ## Tests
 
 - [ ] title attract mode cycling for 5 000 frames, demo included (the test T20's doc asked for).

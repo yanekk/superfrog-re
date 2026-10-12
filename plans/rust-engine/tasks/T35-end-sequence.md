@@ -1,6 +1,6 @@
 # T35 — end-sequence
 
-**Phase:** 2 · **Depends on:** T20 · **Weight:** heavy
+**Phase:** 2 · **Depends on:** T20; blocks T21 · **Weight:** heavy
 
 Added by T20 (owner, 2026-10-12): the end sequence (`end_seq_load` h0+$a65c, `end_sequence`
 h0+$a6e4) loads `END1` and `END2` from disk 3 into hunk 1, unpacks each into hunk 3 and plays it
@@ -25,6 +25,10 @@ DESIGN §2.1; docs/08 "Scene flow"; docs/13; T08's ANIM decoder (`sf_assets::dec
   level has no level code: a transplant of the original's memory and CPU there, built by driving
   the oracle or by writing the state the end sequence reads).
 - `engine/conform/{scripts,cases}/ending-*`; `docs/13-front-end.md` — the end sequence's timings.
+
+## Interface
+
+None new in `sf-core`; `sf-conform`'s `SyncPoint` gains a variant for the end sequence's start.
 
 ## Tests
 

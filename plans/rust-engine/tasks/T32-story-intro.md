@@ -1,6 +1,6 @@
 # T32 — story-intro
 
-**Phase:** 2 · **Depends on:** T20 · **Weight:** heavy
+**Phase:** 2 · **Depends on:** T20; blocks T21 · **Weight:** heavy
 
 Added by T20 (owner, 2026-10-12): the Team 17 logo and Eric Schwartz's story intro are a separate
 program on disk 3 (`d3_c02` boots `d3_c04`, docs/08), played only when disk 3 is booted. The

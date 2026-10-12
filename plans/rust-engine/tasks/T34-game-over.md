@@ -1,6 +1,6 @@
 # T34 — game-over
 
-**Phase:** 2 · **Depends on:** T15, T20 · **Weight:** medium
+**Phase:** 2 · **Depends on:** T15, T20; blocks T21 · **Weight:** medium
 
 Added by T20 (owner, 2026-10-12): `game_over_seq` (h0+$74d0) is not a front-end screen. It spawns
 a level object (`obj_spawn_at_xy_nodedup` with `obj_templates+$ae`, at the camera plus
@@ -23,6 +23,10 @@ DESIGN §2.1; docs/08 "Scene flow"; docs/13.
 
 - `engine/crates/sf-core/src/front/gameover.rs` (T20's `front` module, a routine like the title's)
 - `engine/conform/{scripts,cases}/game-over-*`; `docs/13-front-end.md` — the game-over section.
+
+## Interface
+
+None new: game over is a routine on T20's `front` stack, entered from the level through `Game::step`.
 
 ## Tests
 
