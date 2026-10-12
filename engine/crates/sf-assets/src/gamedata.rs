@@ -314,7 +314,11 @@ pub fn unpack_chunk(adf: &Adf, chunk: &Chunk) -> Result<Vec<u8>, AssetError> {
     }
 }
 
-/// Every chunk of the four disks, decompressed, in disk order: what [`decode`] takes.
+/// Every chunk of the four disks, decompressed, in disk order: what [`decode`] takes. After them
+/// come the sector spans the story intro reads by its own `intro_file_table` (`d3_c04`
+/// h0+$cf26), raw as its trackloader leaves them in memory: two of them hold several packed
+/// banks back to back, past the first, which carving does not find (docs/13). They are disk 3
+/// "chunks" numbered from [`INTRO_SPAN_INDEX`].
 pub fn unpack(set: &DiskSet) -> Result<Vec<(ChunkId, Vec<u8>)>, AssetError> {
     let mut out = Vec::new();
     for s in DiskSlot::ALL {
@@ -326,8 +330,36 @@ pub fn unpack(set: &DiskSet) -> Result<Vec<(ChunkId, Vec<u8>)>, AssetError> {
             ));
         }
     }
+    let (d, i) = INTRO;
+    let intro = out
+        .iter()
+        .find(|(c, _)| c.disk == d && c.index == i)
+        .map(|(c, b)| parse_exe(ExeId::Intro, *c, b))
+        .ok_or_else(|| AssetError::new(ChunkId::new(d, i, 0), "intro", Why::Missing))??;
+    let adf = &set.disk(DiskSlot::D3).bytes;
+    for k in 0..INTRO_SPANS {
+        let at = INTRO_FILE_TABLE + 6 * k;
+        let entry = intro.bytes(0, at, 4, "intro_file_table")?;
+        let (sector, count) = (
+            u16::from_be_bytes([entry[0], entry[1]]),
+            u16::from_be_bytes([entry[2], entry[3]]),
+        );
+        let (from, to) = (sector as usize * 512, (sector as usize + count as usize) * 512);
+        let id = ChunkId::new(DiskSlot::D3, INTRO_SPAN_INDEX + k as u16, sector);
+        let span = adf
+            .get(from..to)
+            .ok_or_else(|| AssetError::new(id, "intro span", Why::Missing))?;
+        out.push((id, span.to_vec()));
+    }
     Ok(out)
 }
+
+/// `intro_file_table` (`d3_c04` h0+$cf26): four entries of a start sector, a sector count and a
+/// spare word, the files `d3_c05`..`d3_c08` as the intro loads them.
+const INTRO_FILE_TABLE: u32 = 0xcf26;
+const INTRO_SPANS: u32 = 4;
+/// The chunk index [`unpack`] gives the first of the story intro's sector spans.
+pub const INTRO_SPAN_INDEX: u16 = 0x100;
 
 struct Chunks<'a> {
     by_id: BTreeMap<ChunkId, &'a [u8]>,
@@ -570,6 +602,15 @@ pub fn decode(chunks: &[(ChunkId, Vec<u8>)]) -> Result<GameData, AssetError> {
     // The front end (T20) loads these as files into memory, not as decoded pictures.
     for name in ["MPIC", "HPIC", "AWA1", "AWA2"] {
         keep(name)?;
+    }
+    // The story intro's sector spans, raw (see `unpack`).
+    for (id, bytes) in chunks {
+        if id.disk == DiskSlot::D3 && id.index >= INTRO_SPAN_INDEX {
+            raw.insert(
+                format!("intro-span-{}", id.index - INTRO_SPAN_INDEX + 1),
+                bytes.clone(),
+            );
+        }
     }
     // Disk 2's copy of `L1FX`: the effects of worlds 3 to 6 (docs/11).
     let (_, r) = c.named("L1FX", 1)?;

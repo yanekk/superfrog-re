@@ -14,6 +14,9 @@ pub const INTRO_H0: u32 = 0xc0_0fa0;
 pub const INTRO_H1: u32 = 0xc5_3100;
 pub const INTRO_H2: u32 = 0x400;
 pub const INTRO_H3: u32 = 0x1_8fd4;
+/// The BSS hunks' sizes, from the intro's header.
+pub const INTRO_H1_BYTES: u32 = 0x2_1340;
+pub const INTRO_H3_BYTES: u32 = 0x6_26b0;
 const INTRO_BASES: [u32; 4] = [INTRO_H0, INTRO_H1, INTRO_H2, INTRO_H3];
 
 /// The story's disk content.
@@ -27,6 +30,8 @@ pub struct StoryData {
     pub chip: Vec<u8>,
     /// The picture banks `d3_c05`..`d3_c08`, as the intro's `load_file` leaves them (unpacked).
     pub banks: [Vec<u8>; 4],
+    /// The sector spans `intro_file_table` names, raw: what `load_file` (h0+$c3fa) reads.
+    pub spans: [Vec<u8>; 4],
 }
 
 impl StoryData {
@@ -49,11 +54,18 @@ impl StoryData {
                 .cloned()
                 .unwrap_or_default()
         };
+        let span = |n: usize| {
+            data.raw
+                .get(&format!("intro-span-{n}"))
+                .cloned()
+                .unwrap_or_default()
+        };
         StoryData {
             boot,
             intro,
             chip,
             banks: [bank(1), bank(2), bank(3), bank(4)],
+            spans: [span(1), span(2), span(3), span(4)],
         }
     }
 }

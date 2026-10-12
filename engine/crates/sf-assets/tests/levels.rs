@@ -169,7 +169,12 @@ fn the_catalogue_names_every_chunk_by_the_game_file_table() {
     let mut ids: Vec<ChunkId> = cat.iter().map(|c| c.1).collect();
     ids.sort();
     ids.dedup();
-    assert_eq!(ids, chunks().iter().map(|c| c.0).collect::<Vec<_>>());
+    let carved: Vec<ChunkId> = chunks()
+        .iter()
+        .map(|c| c.0)
+        .filter(|c| c.index < INTRO_SPAN_INDEX)
+        .collect();
+    assert_eq!(ids, carved);
     let game = chunk(named("game", 0));
     for (name, _) in &cat[..95] {
         let s = format!("SDDISK1:{name}\0");
@@ -193,13 +198,37 @@ fn the_catalogue_names_every_chunk_by_the_game_file_table() {
         assert_eq!(named(name, nth).to_string(), id, "{name} #{nth}");
     }
     // Sectors are the carver's offsets.
-    for (id, _) in chunks() {
+    for (id, _) in chunks().iter().filter(|c| c.0.index < INTRO_SPAN_INDEX) {
         let c = carve(disks().disk(id.disk))
             .into_iter()
             .find(|c| c.index == id.index)
             .unwrap();
         assert_eq!(id.sector as u32 * 512, c.offset, "{id}");
     }
+}
+
+/// The story intro's four sector spans follow the carved chunks, raw: `d3_c05` and `d3_c06` are
+/// one packed bank each, the last two several back to back (docs/13), and decode keeps them all.
+#[test]
+fn the_story_intro_s_sector_spans_are_kept_raw() {
+    let spans: Vec<&(ChunkId, Vec<u8>)> = chunks()
+        .iter()
+        .filter(|c| c.0.index >= INTRO_SPAN_INDEX)
+        .collect();
+    assert_eq!(spans.len(), 4);
+    for (k, ((id, bytes), sectors)) in spans.iter().zip([0x25, 0x1b, 0x10a, 0x110]).enumerate() {
+        assert_eq!((id.disk, bytes.len()), (sf_disk::DiskSlot::D3, sectors * 512), "{id}");
+        assert!(bytes.starts_with(b"ATN!"), "{id}");
+        assert_eq!(data().raw[&format!("intro-span-{}", k + 1)], *bytes);
+        // The first packed bank of each is the carved chunk at that sector.
+        let carved = chunks()
+            .iter()
+            .find(|c| c.0.index < INTRO_SPAN_INDEX && c.0.disk == id.disk && c.0.sector == id.sector)
+            .unwrap();
+        assert_eq!(sf_disk::decompress(bytes).unwrap(), carved.1, "{id}");
+    }
+    let packed = |b: &[u8]| b.windows(4).filter(|w| *w == b"ATN!").count();
+    assert_eq!((packed(&spans[2].1), packed(&spans[3].1)), (6, 4));
 }
 
 /// The one-drive copies on disk 2 are the same files as on disk 1; decode reads disk 1's.

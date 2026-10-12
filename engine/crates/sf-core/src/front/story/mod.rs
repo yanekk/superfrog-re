@@ -8,10 +8,17 @@
 //! ([`Story::layout`]). Loads are instant (owner, 2026-10-12): a frame that loads reports where
 //! the original is once its load is over, as the front end's do.
 
+pub mod bobs;
 pub mod boot;
+pub mod clock;
 pub mod data;
 pub mod fade;
+pub mod intro;
 pub mod mem;
+pub mod ops;
+pub mod scenes;
+pub mod sound;
+pub mod vbl;
 
 pub use data::StoryData;
 pub use mem::StoryMem;
@@ -23,6 +30,20 @@ use crate::layout::{VarDef, VarId, Width};
 use crate::render::copper::Fetch;
 use crate::render::{DisplayData, Picture};
 use crate::state::State;
+
+/// `hN+$off` of the intro program (`d3_c04`), as `d3_c02` places its hunks.
+pub const fn h0(off: u32) -> u32 {
+    data::INTRO_H0 + off
+}
+pub const fn h1(off: u32) -> u32 {
+    data::INTRO_H1 + off
+}
+pub const fn h2(off: u32) -> u32 {
+    data::INTRO_H2 + off
+}
+pub const fn h3(off: u32) -> u32 {
+    data::INTRO_H3 + off
+}
 
 /// What a story routine gives back at the end of its work in a frame.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -128,6 +149,10 @@ impl Cx<'_> {
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 enum Stage {
     Boot(boot::Boot),
+    /// The boot program is done; the intro takes over from the next frame (a load).
+    BootDone,
+    /// The intro, and its frame count.
+    Intro(Box<intro::Intro>, u64),
     /// The story is over: the game starts.
     Over,
 }
@@ -178,6 +203,70 @@ pub static BOOT_LAYOUT: &[VarDef] = &[
     },
 ];
 
+/// The modelled variables while the intro runs.
+pub static INTRO_LAYOUT: &[VarDef] = &[
+    VarDef {
+        id: VarId::StoryVars,
+        name: "intro_vars",
+        addr: h0(0x16),
+        width: Width::Bytes(10),
+    },
+    VarDef {
+        id: VarId::StoryRows,
+        name: "buffer_toggle_rows",
+        addr: h0(0x84e0),
+        width: Width::Bytes(4 + 400),
+    },
+    VarDef {
+        id: VarId::StoryObjects,
+        name: "objects",
+        addr: h0(0x8b68),
+        width: Width::Bytes(0x8bb0 - 0x8b68 + 16 * 0xb0),
+    },
+    VarDef {
+        id: VarId::StoryFrames,
+        name: "frame_descriptors",
+        addr: h0(0x97be),
+        width: Width::Bytes(0xafd6 - 0x97be),
+    },
+    VarDef {
+        id: VarId::StoryShown,
+        name: "draw_shown_frozen",
+        addr: h0(0xb42e),
+        width: Width::Bytes(10),
+    },
+    VarDef {
+        id: VarId::StoryFades,
+        name: "fade_records",
+        addr: h0(0xbb70),
+        width: Width::Bytes(4 * 0x1f2),
+    },
+    VarDef {
+        id: VarId::StoryCopper,
+        name: "intro_copper",
+        addr: h2(0xda5a),
+        width: Width::Bytes(0xdc9a - 0xda5a),
+    },
+    VarDef {
+        id: VarId::StoryText,
+        name: "text_page",
+        addr: h3(0),
+        width: Width::Bytes(0x5e00),
+    },
+    VarDef {
+        id: VarId::StoryBuffers,
+        name: "display_buffers",
+        addr: bobs::BUFFER_A,
+        width: Width::Bytes(2 * 5 * bobs::PLANE),
+    },
+    VarDef {
+        id: VarId::StoryClean,
+        name: "clean_background",
+        addr: bobs::CLEAN,
+        width: Width::Bytes(5 * bobs::PLANE + 0x40),
+    },
+];
+
 impl Story {
     /// Switch on with disk 3 in df0: the boot program starts.
     pub fn power_on(data: &StoryData) -> Story {
@@ -202,8 +291,25 @@ impl Story {
     /// The variables conformance compares now.
     pub fn layout(&self) -> &'static [VarDef] {
         match self.stage {
-            Stage::Boot(_) => BOOT_LAYOUT,
+            Stage::Boot(_) | Stage::BootDone => BOOT_LAYOUT,
+            Stage::Intro(..) => INTRO_LAYOUT,
             Stage::Over => &[],
+        }
+    }
+
+    /// What runs on by itself while the original loads (the vertical blank's work).
+    pub fn runs_during_load(&self) -> &'static [(u32, u32)] {
+        match self.stage {
+            Stage::Intro(..) => intro::RUNS_DURING_LOAD,
+            _ => &[],
+        }
+    }
+
+    /// The intro's main-program clock (lines since its start), while it runs (for tooling).
+    pub fn intro_clock(&self) -> Option<u64> {
+        match &self.stage {
+            Stage::Intro(i, _) => Some(i.t),
+            _ => None,
         }
     }
 
@@ -222,6 +328,14 @@ impl Story {
         // Agnus flips the field at each frame's start while interlace is on.
         if self.lace {
             self.lof = !self.lof;
+        }
+        if self.stage == Stage::BootDone {
+            // The boot program unpacks and relocates the intro and starts it (a load).
+            self.cop1lc = scenes::BLACK_LIST;
+            self.stage = Stage::Intro(
+                Box::new(intro::Intro::start(&mut self.mem, &display.story)),
+                0,
+            );
         }
         let list = self.cop1lc;
         // The copper reads its list at the frame's top, before any of this frame's work.
@@ -249,18 +363,86 @@ impl Story {
             cx.load = Some(LoadEnd::Reached(boot::RET_FIRST_WAIT));
             cx.line = BOOT_START_LINE;
         }
+        let mut resync = Vec::new();
+        let mut after_handler: Option<(u16, Vec<u8>)> = None;
         let wait = match &mut self.stage {
             Stage::Boot(b) => b.run(&mut cx),
-            Stage::Over => Wait::Over,
+            Stage::Intro(i, n) => {
+                let load_line = cx.load_line.take();
+                drop(cx);
+                let f = i.frame(&mut self.mem, data, input, *n, load_line, list);
+                *n += 1;
+                // A load's frame shows the list set before the load, as the load left memory.
+                let (list, copper, at_handler) = match f.list_at_load {
+                    Some(l) => (l, self.mem.read(l, 0x400), None),
+                    None => (list, copper, Some((f.handler.1, f.copper))),
+                };
+                paula = f.paula;
+                if let Some(c) = f.cop1lc {
+                    self.cop1lc = c;
+                }
+                resync = f.resync;
+                after_handler = at_handler;
+                let w = if i.ended { Wait::Over } else { Wait::Frame };
+                return self.finish(
+                    empty,
+                    display,
+                    list,
+                    copper,
+                    after_handler,
+                    f.load,
+                    resync,
+                    f.jobs,
+                    None,
+                    paula,
+                    w,
+                );
+            }
+            Stage::BootDone | Stage::Over => Wait::Over,
         };
         let (load, jobs, bplcon0) = (cx.load, cx.jobs, cx.bplcon0);
         self.cop1lc = cx.cop1lc;
+        self.finish(
+            empty,
+            display,
+            list,
+            copper,
+            after_handler,
+            load,
+            resync,
+            jobs,
+            bplcon0,
+            paula,
+            wait,
+        )
+    }
+
+    /// The frame's picture and the hand-over between stages.
+    #[allow(clippy::too_many_arguments)]
+    fn finish(
+        &mut self,
+        empty: &State,
+        display: &DisplayData,
+        list: u32,
+        copper: Vec<u8>,
+        after_handler: Option<(u16, Vec<u8>)>,
+        load: Option<LoadEnd>,
+        resync: Vec<(u32, u32)>,
+        jobs: Vec<Job>,
+        bplcon0: Option<u16>,
+        paula: Vec<PaulaWrite>,
+        wait: Wait,
+    ) -> StoryOut {
         let picture = match self.fetch {
             None => Picture::blank(0x81, 0x2c, 320, 200),
             Some(carry) => {
-                let word = |a: u32, _line: u16| {
+                let word = |a: u32, line: u16| {
                     let o = a.wrapping_sub(list) as usize;
-                    match copper.get(o..o + 2) {
+                    let snap = match &after_handler {
+                        Some((l, after)) if line >= *l => after,
+                        _ => &copper,
+                    };
+                    match snap.get(o..o + 2) {
                         Some(w) => u16::from_be_bytes([w[0], w[1]]),
                         None => self.mem.w(a),
                     }
@@ -294,16 +476,40 @@ impl Story {
             self.lace = f.bplcon0 & 4 != 0;
         }
         if wait == Wait::Over {
-            self.stage = Stage::Over;
+            self.stage = match self.stage {
+                Stage::Boot(_) => Stage::BootDone,
+                _ => Stage::Over,
+            };
         }
         self.frame += 1;
         StoryOut {
             picture,
             paula,
             load,
-            resync: Vec::new(),
+            resync,
             jobs,
             over: self.stage == Stage::Over,
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// With no disks the boot program's data is empty, but the stages still follow each other.
+    #[test]
+    fn the_boot_hands_over_to_the_intro_with_a_load() {
+        let display = DisplayData::new(&sf_assets::GameData::default());
+        let empty = State::default();
+        let mut s = Story::power_on(&display.story);
+        let mut loads = Vec::new();
+        for f in 0..200 {
+            let out = s.step(&empty, &display, crate::input::FrameInput::NONE);
+            if out.load.is_some() {
+                loads.push((f, out.load));
+            }
+        }
+        assert!(loads.len() >= 2, "{loads:?}");
     }
 }

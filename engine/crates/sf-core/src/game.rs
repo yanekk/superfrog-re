@@ -269,7 +269,7 @@ impl Game {
     /// §2.1): the front end's [`crate::front::RUNS_DURING_LOAD`], nothing yet for the story.
     pub fn runs_during_load(&self) -> &'static [(u32, u32)] {
         match &self.story {
-            Some(_) => &[],
+            Some(s) => s.runs_during_load(),
             None => crate::front::RUNS_DURING_LOAD,
         }
     }
@@ -299,6 +299,11 @@ impl Game {
             Some(s) => s.mem.read(addr, len),
             None => self.state.read(addr, len),
         }
+    }
+
+    /// The story intro's program, while it runs (for tooling).
+    pub fn story(&self) -> Option<&crate::front::Story> {
+        self.story.as_deref()
     }
 
     pub fn state(&self) -> &State {

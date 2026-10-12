@@ -1670,8 +1670,8 @@ hunk = 0
 offset = 0xcf26
 name = "intro_file_table"
 kind = "table"
-size = 0x20
-note = "4 x 8 bytes: d3_c05..c08 (picture banks)"
+size = 0x18
+note = "4 x 6 bytes: start sector, sector count, spare word: d3_c05..c08 (bob banks; c07/c08 hold several packed back to back)"
 
 # T13: the level display (docs/12).
 

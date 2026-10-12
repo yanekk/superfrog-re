@@ -161,6 +161,26 @@ pub enum VarId {
     StoryBootFade,
     /// Its two field copper lists and the black one (h0+$2c00c..$2c2b4).
     StoryBootCopper,
+    /// The intro's (`d3_c04`): `intro_skip`, `vbl_flag`, `vbl_count`, the frame table pointer.
+    StoryVars,
+    /// `buffer_toggle` and the row table.
+    StoryRows,
+    /// The object list and the sixteen objects.
+    StoryObjects,
+    /// The frame descriptors.
+    StoryFrames,
+    /// `draw_buffer`, `shown_buffer`, `planes_frozen`.
+    StoryShown,
+    /// The four fade records.
+    StoryFades,
+    /// The copper lists (text pages, scenes, black).
+    StoryCopper,
+    /// The text page's three planes and palette.
+    StoryText,
+    /// The two display buffers.
+    StoryBuffers,
+    /// The clean background and the scene's palette after it.
+    StoryClean,
 }
 
 impl VarId {
