@@ -56,6 +56,21 @@ unsafe extern "C" {
         err: *mut c_char,
         err_len: usize,
     ) -> c_int;
+    pub fn sf_amiga_write(
+        a: *mut SfAmiga,
+        addr: u32,
+        bytes: *const u8,
+        len: usize,
+        err: *mut c_char,
+        err_len: usize,
+    ) -> c_int;
+    pub fn sf_amiga_connect_drive(
+        a: *mut SfAmiga,
+        drive: c_int,
+        connected: c_int,
+        err: *mut c_char,
+        err_len: usize,
+    ) -> c_int;
     pub fn sf_amiga_power_on(a: *mut SfAmiga, err: *mut c_char, err_len: usize) -> c_int;
     pub fn sf_amiga_step(
         a: *mut SfAmiga,

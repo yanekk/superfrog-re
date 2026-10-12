@@ -174,15 +174,17 @@ pub fn cached_trace_in(
     frames: u32,
 ) -> Result<(Trace, CacheOutcome), OracleError> {
     let (rom, disks) = cfg.load()?;
-    let disks_sha1 = sha1_hex(
-        disks
-            .disks
-            .iter()
-            .map(|d| sha1_hex(&d.bytes))
-            .collect::<Vec<_>>()
-            .join(" ")
-            .as_bytes(),
-    );
+    let mut disks_text = disks
+        .disks
+        .iter()
+        .map(|d| sha1_hex(&d.bytes))
+        .collect::<Vec<_>>()
+        .join(" ");
+    // One drive keeps the keys it always had; any other set-up never shares them.
+    if cfg.drives != 1 {
+        disks_text += &format!(" drives {}", cfg.drives);
+    }
+    let disks_sha1 = sha1_hex(disks_text.as_bytes());
     let key = trace_key(
         crate::BUILD,
         &sha1_hex(&rom),

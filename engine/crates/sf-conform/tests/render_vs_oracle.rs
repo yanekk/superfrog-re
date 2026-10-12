@@ -4,8 +4,8 @@
 //! test keeps processes and files out of the pure crates' tests).
 //!
 //! The test block's share: W1-1, whose sync point is the cheapest to reach. Every level of W1–W6
-//! and the bonus level, 400 frames each, is in `engine/conform/cases/render-*.toml`, run by
-//! `sf-conform -- all`.
+//! (W6-2..4 in both map sets), the bonus level and the final level, 400 frames each, is in
+//! `engine/conform/cases/render-*.toml`, run by `sf-conform -- all`.
 
 use sf_conform::{Case, InputScript, LATE_REDRAW, NOT_A_LEVEL, display_data, sync};
 use sf_core::layout::{Ram, h0};

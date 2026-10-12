@@ -23,8 +23,10 @@ name is a string in the game]
   on disk 2 (`d2_c01`–`c06`) so a one-drive game need not swap back. `decode` reads disk 1's. The W1–2
   and W3–6 sound effects are the same file. [disks]
 - **W6 has two sets of maps**, both called `L6MA1`–`4`: `d4_c02`–`c05` (entries 42–45) and
-  `d4_c14`–`c17` (entries 6–9). `level_load` (h0+$a144) takes the second set only when DF1–DF3 are
-  connected and the disk in DF0 is disk 1; an A500 with one drive plays the first. Map 1 is the same
+  `d4_c14`–`c17` (entries 6–9). `level_load` (h0+$a144) takes the second set when none of DF1–DF3 is
+  connected (`probe_drives` stores 0 for a connected drive, `$1e` for none) and DF0's disk is not
+  disk 1: an A500 with one drive plays the second set, any second drive gives the first **(oracle,
+  T31)**. Map 1 is the same
   file; maps 2–4 differ in their start position (`REMX`/`REMY`) and up to ~830 bytes of cells.
   `GameData` keeps both (`LevelId::alt`). docs/LEVEL-INDEX.md's "W6-5..W6-7" are these copies.
 - **Stragglers.** `d1_c16` (`L1MU`), `d2_c39` (`LBLP`) and `d4_c16` (W6-3, second set) keep their
