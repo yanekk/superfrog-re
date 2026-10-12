@@ -357,6 +357,11 @@ impl SoundData {
         })
     }
 
+    /// Whether this holds every tune and bank (not an empty stand-in a test built).
+    pub fn is_complete(&self) -> bool {
+        self.tunes.len() == TuneId::ALL.len() && self.banks.len() == BankId::ALL.len()
+    }
+
     /// The module bytes, as on disk (unrelocated).
     pub fn tune(&self, t: TuneId) -> &[u8] {
         &self

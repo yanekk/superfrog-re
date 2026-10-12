@@ -88,6 +88,7 @@ unsafe extern "C" {
     pub fn sf_amiga_chip(a: *const SfAmiga, len: *mut usize) -> *const u8;
     pub fn sf_amiga_slow(a: *const SfAmiga, len: *mut usize) -> *const u8;
     pub fn sf_amiga_cpu(a: *const SfAmiga, out: *mut SfCpuRegs);
+    pub fn sf_amiga_poke(a: *mut SfAmiga, addr: u32, bytes: *const u8, len: usize);
     pub fn sf_amiga_snapshot(
         a: *mut SfAmiga,
         len: *mut usize,
@@ -179,6 +180,7 @@ unsafe extern "C" {
     pub fn sf_cpu_journal(c: *const SfCpu, addrs: *mut *const u32, olds: *mut *const u8) -> usize;
     pub fn sf_cpu_rollback(c: *mut SfCpu);
     pub fn sf_cpu_set_hw(c: *mut SfCpu, on: c_int);
+    pub fn sf_cpu_set_hw_read(c: *mut SfCpu, addr: u32, value: u8);
     pub fn sf_cpu_hw_writes(c: *const SfCpu, out: *mut *const SfHwWrite) -> usize;
 }
 

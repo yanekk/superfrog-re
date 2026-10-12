@@ -17,7 +17,7 @@ const PLANE: usize = 0x3c00;
 /// The whole of `load_hero` once its load is over, at once.
 pub(super) fn load_hero(cx: &mut Cx) {
     // $172d6: h1+$20d00..$30fe0 cleared, the level's map with it.
-    cx.s.map.fill(0);
+    cx.s.var_mut(VarId::LevelMap).fill(0);
     let hero = cx.data.file("HERO").to_vec();
     // Without the disks (a test's empty data) there is no table to walk.
     if hero.is_empty() {

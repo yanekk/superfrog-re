@@ -31,10 +31,23 @@ pub fn frame(
                 d,
             )
         });
-    let first_var = c.vars.then(|| vars(probe, theirs_mem, masked)).flatten();
+    let skip_panel = case.excludes(crate::case::Excluded::Panel);
+    let first_var = c
+        .vars
+        .then(|| {
+            vars_except(probe, theirs_mem, masked, |id| {
+                (skip_panel && id == VarId::PanelBitmap)
+                    || case
+                        .only_vars
+                        .as_ref()
+                        .is_some_and(|only| !only.iter().any(|n| n == sf_core::layout::def(id).name))
+            })
+        })
+        .flatten();
+    let from_row = if skip_panel { PANEL_ROWS } else { 0 };
     let picture_diff = c
         .picture
-        .then(|| picture(&ours.picture, &theirs.picture))
+        .then(|| picture_from(&ours.picture, &theirs.picture, from_row))
         .flatten()
         .map(|d| report::write_diff_png(&case.name, frame, &ours.picture, &theirs.picture, d));
     let paula_diff = c.paula.then(|| paula(&ours.paula, &theirs.paula)).flatten();
@@ -64,6 +77,10 @@ pub fn frame(
     })
 }
 
+/// The picture rows of the status panel and the two black lines under it (window lines `$27` to
+/// `$35`), which a case excluding the panel does not compare.
+pub const PANEL_ROWS: u16 = 0x36 - 0x27;
+
 /// Every piece of `id`'s entry that differs, as `offset: original/engine`, for a report.
 pub fn var_diffs(probe: &[(VarId, u32)], theirs: &AmigaMemory, id: VarId) -> Vec<String> {
     let pieces: Vec<VarDef> = LAYOUT.iter().flat_map(|d| d.pieces()).collect();
@@ -87,6 +104,16 @@ pub fn vars(
     theirs: &AmigaMemory,
     masked: &[(u32, u32)],
 ) -> Option<(VarDef, u32, u32)> {
+    vars_except(probe, theirs, masked, |_| false)
+}
+
+/// [`vars`], leaving out the variables `skip` says.
+pub fn vars_except(
+    probe: &[(VarId, u32)],
+    theirs: &AmigaMemory,
+    masked: &[(u32, u32)],
+    skip: impl Fn(VarId) -> bool,
+) -> Option<(VarDef, u32, u32)> {
     let pieces: Vec<VarDef> = LAYOUT.iter().flat_map(|d| d.pieces()).collect();
     assert_eq!(
         pieces.len(),
@@ -105,7 +132,7 @@ pub fn vars(
             assert_eq!(p.id, id, "probe out of LAYOUT order");
             (p, p.read(theirs), ours)
         })
-        .find(|(_, theirs, ours)| theirs != ours)
+        .find(|(p, theirs, ours)| theirs != ours && !skip(p.id))
 }
 
 /// Where two pictures first differ, before the PNG is written.
@@ -127,12 +154,17 @@ fn window(left: i32, top: u16, w: u16, h: u16) -> String {
 /// The first pixel, row-major, at which the engine's picture differs from the original's, over the
 /// area both cover; and whether the windows themselves differ.
 pub fn picture(ours: &Picture, theirs: &Rgb12Frame) -> Option<PixelMismatch> {
+    picture_from(ours, theirs, 0)
+}
+
+/// [`picture`] from row `from` down.
+pub fn picture_from(ours: &Picture, theirs: &Rgb12Frame, from: u16) -> Option<PixelMismatch> {
     let a = window(theirs.left as i32, theirs.top, theirs.width, theirs.height);
     let b = window(ours.left, ours.top, ours.width, ours.height);
     let win = (a != b).then_some((a, b));
     let (w, h) = (ours.width.min(theirs.width), ours.height.min(theirs.height));
     let colours = sf_core::to_rgb12(ours);
-    let differing: Vec<(u16, u16, u16, u16)> = (0..h)
+    let differing: Vec<(u16, u16, u16, u16)> = (from.min(h)..h)
         .flat_map(|y| (0..w).map(move |x| (x, y)))
         .map(|(x, y)| {
             let o = colours[y as usize * ours.width as usize + x as usize];
@@ -186,6 +218,14 @@ pub fn paula(ours: &[PaulaWrite], theirs: &[PaulaWrite]) -> Option<String> {
             "\n    original: {}\n    engine:   {}",
             list(theirs),
             list(ours)
+        );
+    } else {
+        let from = k.saturating_sub(2);
+        let around = |ws: &[PaulaWrite]| list(&ws[from.min(ws.len())..(from + 6).min(ws.len())]);
+        text += &format!(
+            "\n    original from #{from}: {}\n    engine from #{from}: {}",
+            around(theirs),
+            around(ours)
         );
     }
     Some(text)

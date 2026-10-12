@@ -29,7 +29,7 @@ pub const HERO_SPRITES: u32 = h3(0x4c0b0);
 
 /// The parts of the original's memory the display reads that the disks decide, laid out where
 /// the original keeps them, built once from [`GameData`].
-#[derive(Debug, Clone, Default, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct DisplayData {
     /// Hunk 2's contents (`d1_c02`'s data block): the HUD's sprite digits, the panel's parts.
     h2: Vec<u8>,
@@ -38,13 +38,28 @@ pub struct DisplayData {
     /// Each world's tiles (16 × 16 colour indices), by [`World::ALL`] order: what widescreen's
     /// extra columns are drawn from.
     worlds: Vec<WorldDisplay>,
+    /// What the game's memory holds that never changes once set up ([`crate::mem::Rom`]): the
+    /// tables the mechanics read.
+    pub(crate) rom: crate::mem::Rom,
+    /// What the sound driver reads from the disks (T11's), from the decoded data; a test's empty
+    /// `GameData` gets an empty one.
+    pub(crate) sound: crate::audio::SoundData,
     /// What the front end reads from the disks.
     pub front: crate::front::FrontData,
+    /// Each level's `T7MP` file as `load_file` leaves it in memory (decompressed), for
+    /// [`crate::level::load`].
+    pub(crate) levels: std::collections::BTreeMap<sf_assets::LevelId, Vec<u8>>,
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 struct WorldDisplay {
     tiles: Vec<[u8; 256]>,
+}
+
+impl Default for DisplayData {
+    fn default() -> DisplayData {
+        DisplayData::new(&GameData::default())
+    }
 }
 
 impl DisplayData {
@@ -80,7 +95,30 @@ impl DisplayData {
             hero,
             worlds,
             front: crate::front::FrontData::new(data),
+            levels: data
+                .levels
+                .iter()
+                .map(|(id, l)| (*id, sf_assets::t7mp_encode(&l.t7mp)))
+                .collect(),
+            rom: crate::mem::Rom::new(data),
+            sound: crate::audio::SoundData::from_game(data)
+                .unwrap_or_else(|_| crate::audio::SoundData::from_parts(vec![0; 0x50000], vec![], vec![], vec![])),
         }
+    }
+
+    /// What the sound driver reads from the disks.
+    pub fn sound(&self) -> &crate::audio::SoundData {
+        &self.sound
+    }
+
+    /// The frog's sprite frames as `load_hero` leaves them at [`HERO_SPRITES`].
+    pub fn hero(&self) -> &[u8] {
+        &self.hero
+    }
+
+    /// What the ported routines read the game's fixed tables from.
+    pub fn rom(&self) -> &crate::mem::Rom {
+        &self.rom
     }
 
     /// `len` bytes of hunk 2 from `off` as the bootstrap leaves it (0 past what the disks give).
@@ -170,7 +208,7 @@ impl<'a> Mem<'a> {
         Mem {
             state,
             data,
-            world: data.world(state.world),
+            world: data.world(state.world()),
         }
     }
 

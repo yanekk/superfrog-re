@@ -54,6 +54,14 @@ fn run_cases(paths: &[PathBuf]) -> Result<bool, String> {
                 if case.compare.render {
                     print!(", {} rendered", o.rendered);
                 }
+                if !o.straddled.is_empty() {
+                    print!(
+                        "; lag (the original mid-pass) at {} frame(s) {:?}, re-synced at {:?}",
+                        o.straddled.len(),
+                        o.straddled,
+                        o.resynced
+                    );
+                }
                 println!();
                 for (f, why) in &o.skipped {
                     println!("  frame {f} left out: {why}");
@@ -127,7 +135,12 @@ fn record(path: &Path, rest: &[String]) -> Result<bool, String> {
     if let Some(d) = &png_dir {
         std::fs::create_dir_all(d).map_err(|e| format!("{}: {e}", d.display()))?;
     }
-    let synced = sync::reach(&case.sync, &case.script, case.frames)?;
+    let synced = sync::reach_frozen(
+        &case.sync,
+        &case.script,
+        case.frames,
+        case.excludes(sf_conform::Excluded::Objects),
+    )?;
     let mut amiga = synced.amiga;
     // As `run` does: from the end sequence on, every disk the original asks for goes in.
     let mut disks =
@@ -137,8 +150,13 @@ fn record(path: &Path, rest: &[String]) -> Result<bool, String> {
         case.name, case.sync
     );
     let mut prev: Option<Vec<u32>> = None;
+    let frozen = case.excludes(sf_conform::Excluded::Objects);
+    let display = sf_conform::display_data();
     for f in 0..case.frames {
         let input = case.script.input_at(f);
+        if frozen {
+            sf_conform::freeze::freeze_objects(&mut amiga, &display);
+        }
         let capture = amiga.step(input).map_err(|e| e.to_string())?;
         if let Some(d) = disks.as_mut() {
             d.serve(&mut amiga);

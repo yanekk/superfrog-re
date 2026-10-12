@@ -155,6 +155,18 @@ pub fn pacing(cpu: &CpuRegs, m: &AmigaMemory) -> Pacing {
     }
 }
 
+/// Whether the original's frame ended with its main loop in the middle of a level's pass (not
+/// parked in `level_frame_loop`'s wait): its memory is then part way through what the engine does
+/// in one go, a lag the runner reports and re-syncs (DESIGN §2.1; owner, 2026-10-11).
+pub fn mid_pass(cpu: &CpuRegs, m: &AmigaMemory) -> bool {
+    let main_pc = if cpu.pc == VBL_HANDLER {
+        long(m, cpu.ssp + 2)
+    } else {
+        cpu.pc
+    };
+    in_level(m) && !LEVEL_WAIT.contains(&main_pc)
+}
+
 /// Where the main program was at the end of a frame: its PC, then each long on its stack that is
 /// a return address into the game's code (a long just after a `jsr`/`bsr`), innermost first. For
 /// tracing which loop of a scene a frame belongs to.
@@ -183,10 +195,31 @@ pub fn main_chain(cpu: &CpuRegs, m: &AmigaMemory) -> Vec<u32> {
 /// Bring the oracle to `sync`, with room for `frames` more frames of `script` (the case's own,
 /// which from power-on decides when the original seeds its RNG).
 pub fn reach(sync: &SyncPoint, script: &InputScript, frames: u32) -> Result<Synced, String> {
+    reach_frozen(sync, script, frames, false)
+}
+
+/// One frame of the original, its objects frozen out first when `frozen` ([`crate::freeze`]).
+fn step(a: &mut Amiga, input: FrameInput, frozen: bool) -> Result<(), String> {
+    if frozen {
+        crate::freeze::freeze_objects(a, &crate::display_data());
+    }
+    a.step(input).map(|_| ()).map_err(|e| e.to_string())
+}
+
+/// [`reach`], with the original's objects frozen out from power-on when `frozen` (a separate
+/// snapshot in the cache).
+pub fn reach_frozen(
+    sync: &SyncPoint,
+    script: &InputScript,
+    frames: u32,
+    frozen: bool,
+) -> Result<Synced, String> {
+    let tag = if frozen { "objects frozen v1\n" } else { "" };
     match sync {
         SyncPoint::PowerOn => {
             let seed = power_on_seed(script, frames)?;
             let amiga = power_on(frames)?;
+            let _ = frozen;
             let memory = core_memory(amiga.memory());
             Ok(Synced {
                 amiga,
@@ -196,24 +229,24 @@ pub fn reach(sync: &SyncPoint, script: &InputScript, frames: u32) -> Result<Sync
         }
         SyncPoint::AtFrame { script, frame } => {
             let s = InputScript::load(&script_path(script))?;
-            let key = format!("frame {frame} script\n{}", s.to_oracle().canonical());
+            let key = format!("{tag}frame {frame} script\n{}", s.to_oracle().canonical());
             at_snapshot(&key, 1, frames, *frame, |a| {
                 for f in 0..*frame {
-                    a.step(s.input_at(f)).map_err(|e| e.to_string())?;
+                    step(a, s.input_at(f), frozen)?;
                 }
                 Ok(())
             })
         }
         SyncPoint::AtLevel(id) if (id.world, id.level, id.alt) != (World::W1, 1, false) => {
-            by_password(*id, frames)
+            by_password(*id, frames, frozen)
         }
         SyncPoint::EndSequence => end_sequence(frames),
         SyncPoint::AtLevel(id) => {
             let s = InputScript::load(&script_path("start-w1-1"))?;
-            let key = format!("level {id} script\n{}", s.to_oracle().canonical());
+            let key = format!("{tag}level {id} script\n{}", s.to_oracle().canonical());
             at_snapshot(&key, 1, frames, LEVEL_SEARCH, |a| {
                 for f in 0..LEVEL_SEARCH {
-                    a.step(s.input_at(f)).map_err(|e| e.to_string())?;
+                    step(a, s.input_at(f), frozen)?;
                     let m = core_memory(a.memory());
                     if in_level(&m) && long(&m, WORLD) == 1 && long(&m, LEVEL) == 1 {
                         return Ok(());
@@ -290,10 +323,11 @@ fn password_key(id: LevelId, r: &Route) -> (String, String) {
 /// asks for a disk, that disk goes in. W6-2..4 without `alt` run with an empty df1 connected; the
 /// final level runs W6-4 and then sets `level_state` to 1, the exit's own value, so the original
 /// tallies W6-4 and starts the final level by its own code.
-fn by_password(id: LevelId, frames: u32) -> Result<Synced, String> {
+fn by_password(id: LevelId, frames: u32, frozen: bool) -> Result<Synced, String> {
     let r = route(id).ok_or_else(|| format!("AtLevel({id}): no such level"))?;
     let (_, key) = password_key(id, &r);
-    at_snapshot(&key, r.drives, frames, search(&r), |a| drive_to(a, id, &r))
+    let key = if frozen { format!("objects frozen v1\n{key}") } else { key };
+    at_snapshot(&key, r.drives, frames, search(&r), |a| drive_to(a, id, &r, frozen))
 }
 
 fn search(r: &Route) -> u32 {
@@ -304,8 +338,8 @@ fn search(r: &Route) -> u32 {
     }
 }
 
-/// [`by_password`]'s way there, on `a` from power-on.
-fn drive_to(a: &mut Amiga, id: LevelId, r: &Route) -> Result<(), String> {
+/// [`by_password`]'s way there, on `a` from power-on, its objects frozen out when `frozen`.
+fn drive_to(a: &mut Amiga, id: LevelId, r: &Route, frozen: bool) -> Result<(), String> {
     let lead = if r.drives == 1 { 0 } else { DF1_LEAD };
     let type_from = TYPE_FROM - lead;
     let (menu, _) = password_key(id, r);
@@ -334,7 +368,7 @@ fn drive_to(a: &mut Amiga, id: LevelId, r: &Route) -> Result<(), String> {
             text += &format!("{}: F\n{}: -\n", t + 200, t + 205);
             script = InputScript::parse(&text).map_err(|e| e.to_string())?;
         }
-        a.step(script.input_at(f)).map_err(|e| e.to_string())?;
+        step(a, script.input_at(f), frozen)?;
         let m = core_memory(a.memory());
         if f > type_from {
             let want = long(&m, WANTED_DISK);
@@ -378,7 +412,7 @@ fn end_sequence(frames: u32) -> Result<Synced, String> {
     let (_, key) = password_key(id, &r);
     let key = format!("{key}end sequence: level_state = 1, to end_seq_load v1\n");
     at_snapshot(&key, r.drives, frames, search(&r) + END_SEARCH, |a| {
-        drive_to(a, id, &r)?;
+        drive_to(a, id, &r, false)?;
         a.write_memory(LEVEL_STATE, &1u32.to_be_bytes());
         let mut disks = Disks::at(&core_memory(a.memory()));
         for _ in 0..END_SEARCH {

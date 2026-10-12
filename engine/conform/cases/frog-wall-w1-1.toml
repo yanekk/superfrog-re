@@ -1,0 +1,10 @@
+# The frog walks into a wall: W1-1's tunnel pillar, with jumps against its low ceiling, turning
+# back and walking into it again.
+sync = { level = "W1-1" }
+script = "frog-wall"
+frames = 600
+
+[[exclude]]
+what = "objects"
+note = "the original's object spawns, bump blocks and tile pickups return at once from power-on"
+task = "T15–T18"

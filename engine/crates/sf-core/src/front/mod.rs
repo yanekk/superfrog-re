@@ -27,7 +27,7 @@ mod hero;
 mod menu;
 pub mod password;
 pub mod sprite;
-mod title;
+pub(crate) mod title;
 mod vbl;
 
 pub use data::FrontData;

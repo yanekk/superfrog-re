@@ -6,11 +6,13 @@ use std::sync::Arc;
 use sf_assets::{GameData, LevelId};
 use sf_paula::PaulaWrite;
 
-use crate::input::FrameInput;
-use crate::layout::{AmigaMemory, VarId};
+use crate::audio::AudioDriver;
+use crate::input::{FrameInput, KeySet};
+use crate::layout::{AmigaMemory, Ram, VarId, h0};
+use crate::level::Hw;
 use crate::render::{DisplayData, Picture, View};
 use crate::rng::Rng;
-use crate::scene::Scene;
+use crate::scene::{Machine, Scene};
 use crate::state::State;
 
 /// Where a game starts.
@@ -110,6 +112,37 @@ pub struct Game {
     /// The seed a power-on start is waiting to put in place.
     seed: Option<Rng>,
     frame: u32,
+    /// The keyboard: the keys held last frame, and the byte it last sent, which CIA-A's serial
+    /// register holds (the code shifted up one, bit 0 set for a key going up, all inverted).
+    keys: KeySet,
+    sdr: u8,
+}
+
+/// `key_down`, `key_up` (h0+$16078, h0+$16079).
+const KEY_DOWN: u32 = h0(0x16078);
+const KEY_UP: u32 = h0(0x16079);
+
+/// The byte the keyboard sends for `code` going down or up.
+fn key_byte(code: u8, up: bool) -> u8 {
+    !(code << 1 | up as u8)
+}
+
+/// The sound driver and the keyboard's last byte as the original's memory `mem` has them.
+fn level_io(display: &DisplayData, mem: &AmigaMemory) -> (AudioDriver, u8) {
+    let word = |a: u32| (mem.byte(a) as u32) << 8 | mem.byte(a + 1) as u32;
+    let long = |a: u32| word(a) << 16 | word(a + 2);
+    let files = if display.sound().is_complete() {
+        crate::audio::files_for(long(h0(0x40da)), long(h0(0x9ec)))
+    } else {
+        Vec::new()
+    };
+    let audio = AudioDriver::transplant(display.sound(), &|a| mem.byte(a), &files);
+    // The keyboard's last byte, as the last poll decoded it.
+    let sdr = match (mem.byte(KEY_DOWN), mem.byte(KEY_UP)) {
+        (0, up) if up != 0 => key_byte(up, true),
+        (down, _) => key_byte(down, false),
+    };
+    (audio, sdr)
 }
 
 impl Game {
@@ -120,6 +153,7 @@ impl Game {
     /// [`Game::new`] with the disks' display content already built, as a caller making many
     /// games from one [`GameData`] (conformance runs) keeps it.
     pub fn with_display(display: Arc<DisplayData>, start: Start) -> Game {
+        let mut sdr = 0xff;
         let (state, scene, seed, front) = match start {
             Start::PowerOn { seed } => (
                 State::default(),
@@ -127,15 +161,26 @@ impl Game {
                 Some(seed),
                 Some(crate::front::Front::power_on(seed)),
             ),
-            Start::Transplant(mem) => (State::transplant(&mem), Scene::of(&mem), None, None),
+            Start::Transplant(mem) => {
+                let mut state = State::transplant(&mem);
+                (state.audio, sdr) = level_io(&display, &mem);
+                (state, Scene::of(&mem), None, None)
+            }
             Start::Resume { memory, cpu } => {
                 let mut state = State::transplant(&memory);
                 match crate::front::Front::resume(&mut state, &display, &memory, &cpu) {
                     Some(f) => (state, Scene::Front, None, Some(f)),
-                    None => (state, Scene::of(&memory), None, None),
+                    None => {
+                        (state.audio, sdr) = level_io(&display, &memory);
+                        (state, Scene::of(&memory), None, None)
+                    }
                 }
             }
-            Start::Level(_) => (State::default(), Scene::Placeholder, None, None),
+            Start::Level(id) => {
+                let mut state = State::default();
+                crate::level::load::enter(&mut state, &display, id);
+                (state, Scene::Level, None, None)
+            }
         };
         let (mut state, mut front) = (state, front);
         if let Some(f) = front.as_mut() {
@@ -149,6 +194,8 @@ impl Game {
             shown: None,
             seed,
             frame: 0,
+            keys: KeySet::NONE,
+            sdr,
         }
     }
 
@@ -159,6 +206,18 @@ impl Game {
 
     /// One PAL frame on the original's schedule (conformance runs; see [`Pacing`]).
     pub fn step_paced(&mut self, input: FrameInput, pacing: Pacing) -> FrameOut {
+        // A key going down or up this frame is the byte the keyboard sends (the last one wins).
+        for code in input.keys.codes() {
+            if !self.keys.contains(code) {
+                self.sdr = key_byte(code, false);
+            }
+        }
+        for code in self.keys.codes() {
+            if !input.keys.contains(code) {
+                self.sdr = key_byte(code, true);
+            }
+        }
+        self.keys = input.keys;
         self.frame += 1;
         if let (Scene::Front, Some(front)) = (self.scene, self.front.as_mut()) {
             self.seed = None;
@@ -172,9 +231,18 @@ impl Game {
                 jobs: out.jobs,
             };
         }
-        let paula = self.scene.step(&mut self.state, input, pacing);
+        let mut hw = Hw::of(input);
+        hw.sdr = self.sdr;
+        let (paula, shown) = {
+            let mut m = Machine {
+                state: &mut self.state,
+                display: &self.display,
+                hw,
+            };
+            self.scene.step(&mut m, pacing, View::default())
+        };
         FrameOut {
-            picture: self.render(View::default()),
+            picture: shown.unwrap_or_else(|| self.render(View::default())),
             paula,
             load: None,
             resync: Vec::new(),
@@ -264,6 +332,6 @@ mod tests {
         let seed = Rng::seeded(1, 2);
         let g = Game::new(&GameData::default(), Start::PowerOn { seed });
         assert_eq!(g.scene(), Scene::Front);
-        assert_eq!(g.state().rng, seed);
+        assert_eq!(g.state().rng(), seed);
     }
 }

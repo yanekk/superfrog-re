@@ -154,17 +154,11 @@ impl Original {
     }
 }
 
-/// Our writes as the routine oracle records them. A `clr.w` to a custom register writes twice on
-/// the full machine (the prefetched word, then 0: what vAmiga, the frame oracle, records and the
-/// driver emits), once on the routine oracle's Moira: the first of each such pair is dropped.
+/// Our writes as register and value. A `clr.w` to a custom register writes twice (the prefetched
+/// word, then 0), on the full machine and on the routine oracle's Moira alike (its shim writes the
+/// data bus's word on a read of a write-only register, as vAmiga does).
 fn rv(w: &[PaulaWrite]) -> Vec<(u16, u16)> {
-    let v: Vec<(u16, u16)> = w.iter().map(PaulaWrite::reg_value).collect();
-    let prefetch = [0x4279, 0x377c, 0x33fc];
-    v.iter()
-        .enumerate()
-        .filter(|&(i, &(reg, val))| !(prefetch.contains(&val) && v.get(i + 1) == Some(&(reg, 0))))
-        .map(|(_, &x)| x)
-        .collect()
+    w.iter().map(PaulaWrite::reg_value).collect()
 }
 
 /// Both sides, run in step; every step compares writes and variables.

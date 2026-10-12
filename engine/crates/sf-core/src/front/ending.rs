@@ -356,16 +356,20 @@ impl EndSequence {
                     cx.cop1lc = BLANK_COPPER;
                     return Yield::Raster;
                 }
-                // Hunks 1 and 3 cleared, a long at a time (the map is the only part of hunk 1
-                // the engine holds); the loops are inline, so the original is inside one while
-                // its PC is.
+                // Hunks 1 and 3 cleared, a long at a time (of hunk 1 the engine holds the
+                // variables in it: the map, the level's palette); the loops are inline, so the
+                // original is inside one while its PC is.
                 71 => {
-                    cx.s.map.fill(0);
-                    let map = def(VarId::LevelMap);
+                    let cleared = h1(0)..h1(HUNK1_CLEARED);
+                    let mut runs = Vec::new();
+                    for d in crate::layout::LAYOUT.iter().filter(|d| cleared.contains(&d.addr)) {
+                        cx.s.var_mut(d.id).fill(0);
+                        runs.push((d.addr, d.width.len()));
+                    }
                     return work(
                         (HUNK1_CLEARED / 4) * CLEAR_LONG_CYCLES,
                         &[at(0xa840), at(0xa842), at(0xa844)],
-                        vec![(map.addr, map.width.len())],
+                        runs,
                     );
                 }
                 72 => {
