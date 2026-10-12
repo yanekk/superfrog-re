@@ -22,6 +22,9 @@ pub struct OracleConfig {
     pub disks: [PathBuf; 4],
     /// [`crate::Amiga::step`] refuses to run frame `max_frames` and beyond.
     pub max_frames: u32,
+    /// Drives connected, df0 first: 1 (the A500 as sold, the default) to 4. Drives past df0 start
+    /// empty; W6-2..4's first map set needs one of df1–df3 (docs/12 "Reaching every level").
+    pub drives: u8,
 }
 
 impl OracleConfig {
@@ -75,7 +78,17 @@ impl OracleConfig {
             kickstart,
             disks,
             max_frames,
+            drives: 1,
         })
+    }
+
+    /// The same set-up with `drives` drives connected (1..=4).
+    pub fn with_drives(self, drives: u8) -> OracleConfig {
+        assert!(
+            (1..=4).contains(&drives),
+            "an Amiga has 1 to 4 floppy drives"
+        );
+        OracleConfig { drives, ..self }
     }
 
     /// Read the Kickstart and identify the four disks. Every file is opened read-only.
@@ -129,7 +142,7 @@ pub enum OracleError {
     FrameCap { max_frames: u32 },
     /// The emulator failed while running (a CPU halt, a corrupt snapshot).
     Emulator(String),
-    /// A drive the A500 does not have, or a disk that is not one of the four.
+    /// A drive that is not connected.
     NoDrive(u8),
     /// The trace cache could not be read or written.
     Cache(String),
@@ -146,7 +159,10 @@ impl fmt::Display for OracleError {
                 )
             }
             OracleError::Emulator(m) => write!(f, "oracle emulator: {m}"),
-            OracleError::NoDrive(d) => write!(f, "oracle: no drive df{d} (the A500 has df0 only)"),
+            OracleError::NoDrive(d) => write!(
+                f,
+                "oracle: no drive df{d} (connect it with OracleConfig::with_drives)"
+            ),
             OracleError::Cache(m) => write!(f, "oracle trace cache: {m}"),
         }
     }

@@ -61,6 +61,13 @@ void sf_amiga_free(sf_amiga *a);
 int sf_amiga_insert_disk(sf_amiga *a, int drive, const uint8_t *adf, size_t len, char *err, size_t err_len);
 int sf_amiga_eject_disk(sf_amiga *a, int drive, char *err, size_t err_len);
 
+/* Write `len` bytes at `addr` between frames, as a debugger would. Refused unless every byte is in
+ * chip or slow RAM as the CPU sees it now (the Kickstart's overlay maps ROM at 0 after a reset). */
+int sf_amiga_write(sf_amiga *a, uint32_t addr, const uint8_t *bytes, size_t len, char *err, size_t err_len);
+
+/* Connect (or disconnect) drive 1..3 before power-on; a new machine has drive 0 only. */
+int sf_amiga_connect_drive(sf_amiga *a, int drive, int connected, char *err, size_t err_len);
+
 int sf_amiga_power_on(sf_amiga *a, char *err, size_t err_len);
 
 /* Hold `joy` (SF_JOY_* bits) and the keys whose raw Amiga key codes are set in `keys` (bit k of

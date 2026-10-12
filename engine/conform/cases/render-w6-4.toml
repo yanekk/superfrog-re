@@ -1,5 +1,6 @@
-# The renderer on W6-4: each of 400 frames of a walk, the original's memory transplanted
-# into a fresh engine and rendered, against the original's picture (T13).
+# The renderer on W6-4's first map (d4_c05), reached with df1 connected: each of 400
+# frames of a walk, the original's memory transplanted into a fresh engine and rendered, against
+# the original's picture (T13; T31 moved it to the first map set).
 sync = { level = "W6-4" }
 script = "render-walk"
 frames = 400

@@ -44,7 +44,7 @@ done · ⛔ blocked, needs a human.
 | T19 | slot-and-bonus | T15 | ⬜ | |
 | T20 | front-end | T08, T11, T12, T13 | ✅ | Review: fire skipping the title intro diverged (restore blit 102 lines, original 161–308), fixed by `Cx::blit_wait`, five skip cases; `front-options-all` added (a lives-limit mutation passed before); T32/T34/T35 now block T21. Probed oracle INTENA lines; three mutations caught; deviations held. Hi-score disk save unported, read-only. |
 | T21 | game-flow | T18, T19, T20 | ⬜ | |
-| T22 | app-rig | T09, T10, T12, T13 | ⬜ | |
+| T22 | app-rig | T09, T10, T12, T13 | ✅ | |
 | T23 | app-shell | T21, T22 | ⬜ | |
 | T24 | macos-menus | T23 | ⬜ | |
 | T25 | controls-and-gamepad | T24 | ⬜ | |
@@ -53,7 +53,7 @@ done · ⛔ blocked, needs a human.
 | T28 | level-override | T14, T24 | ⬜ | |
 | T29 | app-drill | T21, T25, T26, T27, T28 | ⬜ | |
 | T30 | acceptance | T29 | ⬜ | |
-| T31 | render-remaining-levels | T13 | ⬜ | |
+| T31 | render-remaining-levels | T13 | ✅ | |
 | T32 | story-intro | T20; blocks T21 | ⬜ | |
 | T33 | attract-demo | T16, T20 | ⬜ | |
 | T34 | game-over | T15, T20; blocks T21 | ⬜ | |
