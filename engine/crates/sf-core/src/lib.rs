@@ -6,6 +6,7 @@
 //! and probe the engine's values back out.
 
 pub mod audio;
+pub mod front;
 pub mod game;
 pub mod input;
 pub mod layout;
@@ -14,7 +15,7 @@ pub mod rng;
 pub mod scene;
 pub mod state;
 
-pub use game::{FrameOut, Game, Pacing, Start};
+pub use game::{Cpu, FrameOut, Game, Job, Pacing, Start};
 pub use layout::{AmigaMemory, LAYOUT, Ram, VarDef, VarId, Width};
 pub use render::{DisplayData, Picture, Split, View, to_rgb12};
 pub use rng::Rng;

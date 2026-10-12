@@ -159,7 +159,15 @@ fn a_streamed_sample_plays_160_bytes_a_frame_then_stops() {
     assert_eq!(frames[1], play);
     assert_eq!(
         frames[2],
-        vec![(0xd6, 1), (0x96, 8), (0x96, 8), (0xd4, 2), (0xd8, 0)]
+        // `clr.w $dff0d8` writes the prefetched word first, as the real 68000 does.
+        vec![
+            (0xd6, 1),
+            (0x96, 8),
+            (0x96, 8),
+            (0xd4, 2),
+            (0xd8, 0x33fc),
+            (0xd8, 0)
+        ]
     );
     assert!(frames[3].is_empty());
     assert_eq!(a.stream_source(), None);

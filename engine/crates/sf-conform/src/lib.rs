@@ -24,7 +24,7 @@ pub use sync::SyncPoint;
 use std::sync::{Arc, OnceLock};
 
 use sf_assets::GameData;
-use sf_core::layout::{AmigaMemory, LAYOUT, VarId};
+use sf_core::layout::{AmigaMemory, LAYOUT, Ram, VarId};
 use sf_core::{DisplayData, Game, Picture, Scene, Start, View};
 
 /// The owner's disks decoded, once per process.
@@ -49,6 +49,9 @@ pub fn display_data() -> Arc<DisplayData> {
         .get_or_init(|| Arc::new(DisplayData::new(game_data())))
         .clone()
 }
+
+/// The most frames the original may spend on one load the engine did at once.
+const LOAD_SEARCH: u32 = 20_000;
 
 /// What a green run compared: the frames, and for a `render` case the frames it left out, each
 /// with the reason.
@@ -78,13 +81,17 @@ pub fn run_with(
     case: &Case,
     mut before_step: impl FnMut(u32, &mut Game),
 ) -> Result<Outcome, Divergence> {
-    let synced = sync::reach(&case.sync, &case.script, case.frames)
+    let synced = sync::reach(&case.sync, &case.script, case.frames + LOAD_SEARCH)
         .unwrap_or_else(|e| panic!("{}: {e}", case.name));
     let mut amiga = synced.amiga;
     let mut prev = synced.memory.clone();
     let start = match &case.sync {
         SyncPoint::PowerOn => Start::PowerOn {
             seed: synced.seed.unwrap_or_default(),
+        },
+        SyncPoint::AtFrame { .. } => Start::Resume {
+            memory: synced.memory,
+            cpu: sync::core_cpu(&amiga.cpu()),
         },
         _ => Start::Transplant(synced.memory),
     };
@@ -94,15 +101,52 @@ pub fn run_with(
         frames: case.frames,
         ..Outcome::default()
     };
+    // The original's frame, counted from the sync point: ahead of the engine's after a load.
+    let mut of = 0u32;
+    // Jobs the engine did at once that the original's CPU may still be running.
+    let mut jobs: Vec<sf_core::Job> = Vec::new();
     for f in 0..case.frames {
-        let input = case.script.input_at(f);
-        let theirs = amiga
+        let input = case.script.input_at(of);
+        let mut theirs = amiga
             .step(input)
-            .unwrap_or_else(|e| panic!("{}: oracle, frame {f}: {e}", case.name));
-        let mem = sync::core_memory(amiga.memory());
+            .unwrap_or_else(|e| panic!("{}: oracle, frame {of}: {e}", case.name));
+        of += 1;
+        let mut mem = sync::core_memory(amiga.memory());
         let pacing = sync::pacing(&amiga.cpu(), &mem);
         before_step(f, &mut game);
         let ours = game.step_paced(input, pacing);
+        if let Some(resume) = ours.load {
+            // The engine loaded at once; the original is compared once its load is over.
+            let mut n = 0;
+            while !sync::main_chain(&amiga.cpu(), &mem)
+                .iter()
+                .take(4)
+                .any(|&a| a == resume)
+            {
+                n += 1;
+                assert!(
+                    n < LOAD_SEARCH,
+                    "{}: the original did not reach ${resume:x} within {LOAD_SEARCH} frames of the engine's load (frame {f})",
+                    case.name
+                );
+                theirs = amiga
+                    .step(case.script.input_at(of))
+                    .unwrap_or_else(|e| panic!("{}: oracle, frame {of}: {e}", case.name));
+                of += 1;
+                mem = sync::core_memory(amiga.memory());
+            }
+            // What runs on by itself while the original loads is taken from it.
+            for &(addr, len) in sf_core::front::RESYNC_AFTER_LOAD.iter().chain(&ours.resync) {
+                let bytes: Vec<u8> = (addr..addr + len).map(|a| mem.byte(a)).collect();
+                game.poke(addr, &bytes);
+            }
+        }
+        // Memory a job is still writing in the original is compared once the job is over (owner,
+        // 2026-10-12).
+        jobs.extend(ours.jobs.iter().cloned());
+        let chain = sync::main_chain(&amiga.cpu(), &mem);
+        jobs.retain(|j| chain.contains(&j.inside));
+        let masked: Vec<(u32, u32)> = jobs.iter().flat_map(|j| j.writes.clone()).collect();
         let mut rendered = None;
         if case.compare.render {
             let g = Game::with_display(display.clone(), Start::Transplant(mem.clone()));
@@ -118,16 +162,45 @@ pub fn run_with(
                 rendered = Some(r);
             }
         }
+        // On a frame the engine loaded on, what runs by itself (the keyboard's every-other-frame
+        // poll) cannot be in step before the re-sync: its Paula writes are not compared.
+        let loaded_case;
+        let case_here = if ours.load.is_some() && case.compare.paula {
+            loaded_case = Case {
+                compare: Compare {
+                    paula: false,
+                    ..case.compare
+                },
+                ..case.clone()
+            };
+            &loaded_case
+        } else {
+            case
+        };
         let d = compare::frame(
-            case,
+            case_here,
             f,
             &game.probe(),
             &mem,
             &ours,
             &theirs,
             rendered.as_ref(),
+            &masked,
         );
-        if let Some(d) = d {
+        let unported = game.unported().to_vec();
+        if d.is_some() || !unported.is_empty() {
+            let mut d = d.unwrap_or(Divergence {
+                frame: f,
+                first_var: None,
+                picture_diff: None,
+                paula_diff: None,
+                render_diff: None,
+                oracle_frame: None,
+                unported: Vec::new(),
+                var_detail: Vec::new(),
+            });
+            d.unported = unported;
+            d.oracle_frame = (of != f + 1).then_some(of - 1);
             return Err(d);
         }
         prev = mem;

@@ -137,7 +137,13 @@ impl Beam {
 /// Run the copper list at `start` for one frame from the vertical blank, `word` reading chip
 /// memory. `fetch` is the bitplane setup the frame starts with (the previous frame's, as the
 /// list left it). Returns every register write in beam order.
-pub fn run(word: &dyn Fn(u32) -> u16, start: u32, mut fetch: Fetch) -> Vec<Write> {
+pub fn run(word: &dyn Fn(u32) -> u16, start: u32, fetch: Fetch) -> Vec<Write> {
+    run_timed(&|a, _| word(a), start, fetch)
+}
+
+/// [`run`], `word(addr, line)` reading the list as the copper sees it on that line: a list the CPU
+/// rewrites during the frame is read old above the line it was rewritten on, new below.
+pub fn run_timed(word: &dyn Fn(u32, u16) -> u16, start: u32, mut fetch: Fetch) -> Vec<Write> {
     let mut writes = Vec::new();
     let free = |fetch: &Fetch, b: Beam| {
         if b.h == 0xE0 {
@@ -166,13 +172,13 @@ pub fn run(word: &dyn Fn(u32) -> u16, start: u32, mut fetch: Fetch) -> Vec<Write
         if b.line >= FRAME_LINES {
             break;
         }
-        let w1 = word(pc);
+        let w1 = word(pc, b.line);
         pc += 2;
         b = next_free(&fetch, b.plus(2));
         if b.line >= FRAME_LINES {
             break;
         }
-        let w2 = word(pc);
+        let w2 = word(pc, b.line);
         pc += 2;
         if w1 & 1 == 0 {
             let reg = w1 & 0x1FE;

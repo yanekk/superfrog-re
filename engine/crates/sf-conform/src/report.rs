@@ -23,6 +23,13 @@ pub struct Divergence {
     pub paula_diff: Option<String>,
     /// The picture rendered from the original's memory at this frame, where it differs.
     pub render_diff: Option<PictureDiff>,
+    /// The original's frame compared, counted from the sync point, when it is not `frame`: the
+    /// original spent frames loading that the engine does at once (DESIGN §2.1).
+    pub oracle_frame: Option<u32>,
+    /// Paths of the original the engine reached and does not follow yet.
+    pub unported: Vec<&'static str>,
+    /// Every differing piece of the first differing variable (up to 40).
+    pub var_detail: Vec<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -34,13 +41,30 @@ pub struct PictureDiff {
 
 impl fmt::Display for Divergence {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        writeln!(f, "diverged at frame {}", self.frame)?;
+        match self.oracle_frame {
+            Some(o) => writeln!(
+                f,
+                "diverged at frame {} (the original's frame {o})",
+                self.frame
+            )?,
+            None => writeln!(f, "diverged at frame {}", self.frame)?,
+        }
+        for u in &self.unported {
+            writeln!(f, "  the engine reached a path it does not follow yet: {u}")?;
+        }
         if let Some((d, theirs, ours)) = &self.first_var {
             writeln!(
                 f,
                 "  variable {} at ${:06x} ({:?}): original ${theirs:x}, engine ${ours:x}",
                 d.name, d.addr, d.width
             )?;
+            if self.var_detail.len() > 1 {
+                writeln!(
+                    f,
+                    "    all of it that differs (original/engine): {}",
+                    self.var_detail.join(" ")
+                )?;
+            }
         }
         for (what, p) in [
             ("picture", &self.picture_diff),

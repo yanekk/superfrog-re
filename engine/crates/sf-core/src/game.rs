@@ -26,6 +26,22 @@ pub enum Start {
     Transplant(AmigaMemory),
     /// Enter a level as the original does (T14).
     Level(LevelId),
+    /// Continue from the original's memory and its CPU at a sync point: the transplant, and where
+    /// the original's main program was, so a front-end routine goes on from the same place with
+    /// the same registers (T20). A place the engine does not know continues as a transplant.
+    Resume { memory: AmigaMemory, cpu: Cpu },
+}
+
+/// The original's CPU at the end of a frame, just before the vertical blank's interrupt: the main
+/// program's registers.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash)]
+pub struct Cpu {
+    pub d: [u32; 8],
+    pub a: [u32; 8],
+    pub pc: u32,
+    pub sr: u16,
+    pub usp: u32,
+    pub ssp: u32,
 }
 
 /// How the original's main loop kept time on this frame (DESIGN §2.1; owner, 2026-10-11).
@@ -50,6 +66,24 @@ pub struct FrameOut {
     pub picture: Picture,
     /// The frame's Paula register writes, in order (DESIGN §2.1 (2)).
     pub paula: Vec<PaulaWrite>,
+    /// The frame loaded from disk, which the engine does at once (owner, 2026-10-12): the return
+    /// address the original's main program reaches once its load is over, so conformance can
+    /// skip the original's frames spent loading (DESIGN §2.1).
+    pub load: Option<u32>,
+    /// With `load`: memory the load wrote that the engine does not model, `(address, length)`.
+    pub resync: Vec<(u32, u32)>,
+    /// CPU jobs the engine did at once that the original's CPU may still be running at the end
+    /// of this frame (owner, 2026-10-12): conformance compares their memory once it is done.
+    pub jobs: Vec<Job>,
+}
+
+/// A CPU job of the original's that can run past the end of a frame.
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct Job {
+    /// The return address on the original's stack while the job runs.
+    pub inside: u32,
+    /// The memory it writes, `(address, length)`.
+    pub writes: Vec<(u32, u32)>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -58,6 +92,10 @@ pub struct Game {
     /// What the display reads from the disks (shared: it never changes once built).
     display: Arc<DisplayData>,
     scene: Scene,
+    /// The front end's program, while [`Scene::Front`] runs.
+    front: Option<crate::front::Front>,
+    /// The front end's last picture: drawn as the beam saw the frame, mid-step.
+    shown: Option<Picture>,
     /// The seed a power-on start is waiting to put in place.
     seed: Option<Rng>,
     frame: u32,
@@ -71,15 +109,29 @@ impl Game {
     /// [`Game::new`] with the disks' display content already built, as a caller making many
     /// games from one [`GameData`] (conformance runs) keeps it.
     pub fn with_display(display: Arc<DisplayData>, start: Start) -> Game {
-        let (state, scene, seed) = match start {
-            Start::PowerOn { seed } => (State::default(), Scene::Placeholder, Some(seed)),
-            Start::Transplant(mem) => (State::transplant(&mem), Scene::of(&mem), None),
-            Start::Level(_) => (State::default(), Scene::Placeholder, None),
+        let (state, scene, seed, front) = match start {
+            Start::PowerOn { seed } => (
+                State::default(),
+                Scene::Front,
+                Some(seed),
+                Some(crate::front::Front::power_on(seed)),
+            ),
+            Start::Transplant(mem) => (State::transplant(&mem), Scene::of(&mem), None, None),
+            Start::Resume { memory, cpu } => {
+                let mut state = State::transplant(&memory);
+                match crate::front::Front::resume(&mut state, &display, &memory, &cpu) {
+                    Some(f) => (state, Scene::Front, None, Some(f)),
+                    None => (state, Scene::of(&memory), None, None),
+                }
+            }
+            Start::Level(_) => (State::default(), Scene::Placeholder, None, None),
         };
         Game {
             state,
             display,
             scene,
+            front,
+            shown: None,
             seed,
             frame: 0,
         }
@@ -92,17 +144,41 @@ impl Game {
 
     /// One PAL frame on the original's schedule (conformance runs; see [`Pacing`]).
     pub fn step_paced(&mut self, input: FrameInput, pacing: Pacing) -> FrameOut {
-        let paula = self.scene.step(&mut self.state, input, pacing);
         self.frame += 1;
+        if let (Scene::Front, Some(front)) = (self.scene, self.front.as_mut()) {
+            self.seed = None;
+            let out = front.step(&mut self.state, &self.display, input);
+            self.shown = Some(out.picture.clone());
+            return FrameOut {
+                picture: out.picture,
+                paula: out.paula,
+                load: out.load,
+                resync: out.resync,
+                jobs: out.jobs,
+            };
+        }
+        let paula = self.scene.step(&mut self.state, input, pacing);
         FrameOut {
             picture: self.render(View::default()),
             paula,
+            load: None,
+            resync: Vec::new(),
+            jobs: Vec::new(),
         }
     }
 
     /// The frame the original shows for this state (DESIGN §3.3), widened by `view`.
     pub fn render(&self, view: View) -> Picture {
-        self.scene.render(&self.state, &self.display, view)
+        match (self.scene, &self.shown) {
+            (Scene::Front, Some(p)) => p.widened(view),
+            _ => self.scene.render(&self.state, &self.display, view),
+        }
+    }
+
+    /// Front-end paths the engine has run into that are not ported yet (empty in every
+    /// conformance case; a test fails on any).
+    pub fn unported(&self) -> &[&'static str] {
+        self.front.as_ref().map_or(&[], |f| &f.unported[..])
     }
 
     /// Every modelled variable's value, as the original would hold it at its [`crate::LAYOUT`]

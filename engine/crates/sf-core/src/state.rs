@@ -6,6 +6,9 @@
 //! Denise would, so a transplanted state draws the original's frame, and a mechanic task writes
 //! them as the original does (its tile, animation and bob blits; owner, 2026-10-11).
 
+use std::collections::BTreeMap;
+
+use crate::audio::AudioDriver;
 use crate::layout::{LAYOUT, MAP_ROW_CELLS, MAP_ROWS, Ram, VarId, def};
 use crate::rng::Rng;
 
@@ -30,6 +33,14 @@ pub struct State {
     pub copper: Vec<u8>,
     /// `panel_bitmap`: the status panel's five bitplanes.
     pub panel: Vec<u8>,
+    /// The runs of memory kept as the original's bytes ([`VarId::is_raw_region`], the front end's
+    /// variables and copper lists), in [`LAYOUT`] order; the sound driver's are in `audio`.
+    pub ram: Vec<Vec<u8>>,
+    /// The sound driver (docs/11), its variables the original's own.
+    pub audio: AudioDriver,
+    /// Bytes the engine wrote outside every modelled variable, by address: kept so a read after
+    /// such a write sees it, never compared. A test asserts the front end leaves it empty.
+    pub scratch: BTreeMap<u32, u8>,
 }
 
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash)]
@@ -54,8 +65,35 @@ impl Default for State {
             ],
             copper: vec![0; len(VarId::LevelCopper)],
             panel: vec![0; len(VarId::PanelBitmap)],
+            ram: raw_regions()
+                .map(|d| vec![0; d.width.len() as usize])
+                .collect(),
+            audio: AudioDriver::blank(),
+            scratch: BTreeMap::new(),
         }
     }
+}
+
+/// The [`LAYOUT`] entries kept in `State::ram`, in order.
+fn raw_regions() -> impl Iterator<Item = &'static crate::VarDef> {
+    LAYOUT
+        .iter()
+        .filter(|d| d.id.is_raw_region() && audio_var(d.id).is_none())
+}
+
+/// The sound driver's variable block a [`VarId`] names: its index in `audio::vars::ALL`.
+fn audio_var(id: VarId) -> Option<usize> {
+    Some(match id {
+        VarId::AudioSfx => 0,
+        VarId::AudioMusicOn => 1,
+        VarId::AudioP41 => 2,
+        VarId::AudioShadow => 3,
+        VarId::AudioStream => 4,
+        VarId::AudioSfxTables => 5,
+        VarId::AudioModuleAddr => 6,
+        VarId::AudioHeaderBackup => 7,
+        _ => return None,
+    })
 }
 
 impl State {
@@ -121,9 +159,98 @@ impl State {
             VarId::PlayfieldBuffer1 => &self.buffers[1],
             VarId::LevelCopper => &self.copper,
             VarId::PanelBitmap => &self.panel,
+            id if id.is_raw_region() && audio_var(id).is_none() => {
+                &self.ram[raw_regions().position(|d| d.id == id)?]
+            }
             _ => return None,
         };
         Some(&bytes[at..at + len as usize])
+    }
+
+    /// The modelled bytes covering `addr..addr + len`, writable: a display buffer, the level's
+    /// copper list, the panel or a run in `ram`.
+    fn raw_mut(&mut self, addr: u32, len: u32) -> Option<&mut [u8]> {
+        let (id, at) = LAYOUT
+            .iter()
+            .find(|d| addr >= d.addr && addr + len <= d.addr + d.width.len())
+            .map(|d| (d.id, (addr - d.addr) as usize))?;
+        let bytes: &mut [u8] = match id {
+            VarId::PlayfieldBuffer0 => &mut self.buffers[0],
+            VarId::PlayfieldBuffer1 => &mut self.buffers[1],
+            VarId::LevelCopper => &mut self.copper,
+            VarId::PanelBitmap => &mut self.panel,
+            id if id.is_raw_region() && audio_var(id).is_none() => {
+                let k = raw_regions().position(|d| d.id == id)?;
+                &mut self.ram[k]
+            }
+            _ => return None,
+        };
+        Some(&mut bytes[at..at + len as usize])
+    }
+
+    // --- The original's memory, by address, as the front end's code reads and writes it. ---
+
+    /// The byte at `addr`: a modelled run's, else what the engine last wrote there, else 0.
+    pub fn b(&self, addr: u32) -> u8 {
+        if let Some(b) = self.raw(addr, 1) {
+            return b[0];
+        }
+        // The sound driver's variables, read only (the driver writes them itself).
+        for (k, &(off, len)) in crate::audio::vars::ALL.iter().enumerate() {
+            let at = crate::layout::h0(off);
+            if (at..at + len as u32).contains(&addr) {
+                return self.audio.var_block(k)[(addr - at) as usize];
+            }
+        }
+        self.scratch.get(&addr).copied().unwrap_or(0)
+    }
+
+    pub fn w(&self, addr: u32) -> u16 {
+        u16::from_be_bytes([self.b(addr), self.b(addr.wrapping_add(1))])
+    }
+
+    pub fn l(&self, addr: u32) -> u32 {
+        (self.w(addr) as u32) << 16 | self.w(addr.wrapping_add(2)) as u32
+    }
+
+    pub fn set_b(&mut self, addr: u32, v: u8) {
+        match self.raw_mut(addr, 1) {
+            Some(b) => b[0] = v,
+            None => {
+                self.scratch.insert(addr, v);
+            }
+        }
+    }
+
+    pub fn set_w(&mut self, addr: u32, v: u16) {
+        let [a, b] = v.to_be_bytes();
+        self.set_b(addr, a);
+        self.set_b(addr.wrapping_add(1), b);
+    }
+
+    pub fn set_l(&mut self, addr: u32, v: u32) {
+        self.set_w(addr, (v >> 16) as u16);
+        self.set_w(addr.wrapping_add(2), v as u16);
+    }
+
+    /// `bytes` written from `addr` on.
+    pub fn write(&mut self, addr: u32, bytes: &[u8]) {
+        match self.raw_mut(addr, bytes.len() as u32) {
+            Some(b) => b.copy_from_slice(bytes),
+            None => {
+                for (k, &v) in bytes.iter().enumerate() {
+                    self.set_b(addr + k as u32, v);
+                }
+            }
+        }
+    }
+
+    /// `len` bytes from `addr` on.
+    pub fn read(&self, addr: u32, len: u32) -> Vec<u8> {
+        match self.raw(addr, len) {
+            Some(b) => b.to_vec(),
+            None => (0..len).map(|k| self.b(addr + k)).collect(),
+        }
     }
 
     /// `id`'s value as the original stores it (big-endian, its [`crate::VarDef`]'s width).
@@ -141,6 +268,13 @@ impl State {
             VarId::PlayfieldBuffer1 => self.buffers[1].clone(),
             VarId::LevelCopper => self.copper.clone(),
             VarId::PanelBitmap => self.panel.clone(),
+            id => match audio_var(id) {
+                Some(k) => self.audio.var_block(k),
+                None => self.ram[raw_regions()
+                    .position(|d| d.id == id)
+                    .expect("every raw region is in ram")]
+                .clone(),
+            },
         }
     }
 
@@ -163,6 +297,15 @@ impl State {
             VarId::PlayfieldBuffer1 => self.buffers[1] = b.to_vec(),
             VarId::LevelCopper => self.copper = b.to_vec(),
             VarId::PanelBitmap => self.panel = b.to_vec(),
+            id => match audio_var(id) {
+                Some(k) => self.audio.set_var_block(k, b),
+                None => {
+                    let k = raw_regions()
+                        .position(|d| d.id == id)
+                        .expect("every raw region is in ram");
+                    self.ram[k] = b.to_vec();
+                }
+            },
         }
     }
 

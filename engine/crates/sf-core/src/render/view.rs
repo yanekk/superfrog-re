@@ -61,6 +61,37 @@ impl Picture {
         Picture::blank(left as i32 - n as i32, top, width + 2 * n, height)
     }
 
+    /// This picture widened by `view`'s extra columns on each side, which show each line's colour
+    /// 0 (the border outside the display window) where the screen is not a level's.
+    pub fn widened(&self, view: View) -> Picture {
+        let n = view.extra_columns_each_side as usize;
+        if n == 0 {
+            return self.clone();
+        }
+        let (w, h) = (self.width as usize, self.height as usize);
+        let mut pixels = vec![0u8; (w + 2 * n) * h];
+        for y in 0..h {
+            pixels[y * (w + 2 * n) + n..y * (w + 2 * n) + n + w]
+                .copy_from_slice(&self.pixels[y * w..(y + 1) * w]);
+        }
+        Picture {
+            left: self.left - n as i32,
+            top: self.top,
+            width: (w + 2 * n) as u16,
+            height: self.height,
+            pixels,
+            palettes: self.palettes.clone(),
+            splits: self
+                .splits
+                .iter()
+                .map(|s| Split {
+                    x: s.x + n as u16,
+                    ..*s
+                })
+                .collect(),
+        }
+    }
+
     /// The 12-bit colour shown at (`x`, `y`).
     pub fn rgb12(&self, x: u16, y: u16) -> u16 {
         let i = self.pixels[y as usize * self.width as usize + x as usize];

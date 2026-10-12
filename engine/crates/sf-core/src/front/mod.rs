@@ -1,0 +1,662 @@
+//! The front end (T20, docs/13-front-end.md): everything around the levels, as the original's own
+//! routines run it: boot, the title and its intro, the menu, options and level codes, the attract
+//! screens, game over and the end sequence.
+//!
+//! The original paces these screens on the beam: its main program waits for a raster line
+//! (`wait_frame_raster`: line `$12b`, below the picture), for a fade to finish, or for a given
+//! line, and the vertical-blank interrupt runs sound, fades and the keyboard at the top of every
+//! frame. The engine keeps that schedule: each routine is a resumable state machine ([`Routine`])
+//! that runs until it waits ([`Yield`]), and a frame runs the interrupt, then each part of the main
+//! program in the order of the lines it wakes on, drawing the picture as the beam would see the
+//! memory (writes to the copper list after the copper read a word show from the next frame).
+//!
+//! State is the original's memory, kept in its own form ([`State`]'s modelled runs), read and
+//! written at the original's addresses, so a transplanted state continues and a probe compares
+//! byte for byte. Loading from disk is instant (owner, 2026-10-12): a step that loads reports the
+//! return address the original reaches once its load is over ([`Front::load`]), so conformance can
+//! skip the original's frames spent loading.
+
+pub mod blit;
+pub mod data;
+pub mod fade;
+pub mod password;
+pub mod sprite;
+mod title;
+mod vbl;
+
+pub use data::FrontData;
+
+use sf_paula::PaulaWrite;
+
+use crate::input::FrameInput;
+use crate::layout::{H2, h0};
+use crate::render::{self, DisplayData, Picture};
+use crate::rng::Rng;
+use crate::state::State;
+
+pub(crate) const fn h2(off: u32) -> u32 {
+    H2 + off
+}
+
+/// Main-program work from this line on shows next frame (the picture ends on line `$12b`; work
+/// that wakes on it starts after the beam has drawn it).
+const PICTURE_END: u16 = 0x12b;
+/// Where the interrupt's work is over and a busy-waiting main program goes on (measured).
+const VBL_END_LINE: u16 = 0x14;
+/// Lines in a PAL frame.
+pub(crate) const FRAME_LINES: u16 = 313;
+/// CPU cycles in one raster line (227 DMA cycles of two).
+const BEAM_CYCLES_PER_LINE: u32 = 454;
+/// `wait_frame_raster` returns on this line (`$12b`) after passing `$ff`.
+const RASTER_LINE: u16 = 0x12b;
+
+/// What a routine waits for when it gives the CPU back.
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub(crate) enum Yield {
+    /// `wait_frame_raster` (h0+$73d0): line `$ff`, then line `$12b`.
+    Raster,
+    /// A busy wait for the beam to reach line `n`.
+    Line(u16),
+    /// `$1519e`: until the fade record's done flag is set (by the vertical blank).
+    Fade(fade::Rec),
+    /// A busy loop with work in it: run again after the next vertical blank.
+    Poll,
+    /// Run a subroutine first.
+    Call(Box<Routine>),
+    /// The CPU went on past the end of the frame with interrupts off: it goes on in the next
+    /// frame up to this line before the vertical blank's interrupt is taken.
+    Masked(u16),
+    /// Interrupts back on: an interrupt that waited is taken now, then this goes on.
+    Interrupt,
+    /// This routine is over.
+    Return,
+}
+
+/// The front end's routines, each a state machine over the original's code.
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub(crate) enum Routine {
+    Title(title::Title),
+    Overlay(title::OverlayEnd),
+    IntroAnim(title::IntroAnim),
+    FadeIn(title::TitleFadeIn),
+    Password(password::Entry),
+    MusicFadeWait(title::MusicFadeWait),
+    MusicStart(title::MusicStart),
+}
+
+impl Routine {
+    fn run(&mut self, cx: &mut Cx) -> Yield {
+        match self {
+            Routine::Title(r) => r.run(cx),
+            Routine::Overlay(r) => r.run(cx),
+            Routine::IntroAnim(r) => r.run(cx),
+            Routine::FadeIn(r) => r.run(cx),
+            Routine::Password(r) => r.run(cx),
+            Routine::MusicFadeWait(r) => r.run(cx),
+            Routine::MusicStart(r) => r.run(cx),
+        }
+    }
+}
+
+/// The keyboard as the original's `kbd_poll` sees it: the last byte the keyboard sent.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub(crate) struct Keyboard {
+    /// (raw code, released): before any key, what the keyboard's power-up stream ends with,
+    /// which reads as `$7e` released.
+    pub last: (u8, bool),
+    held: crate::input::KeySet,
+}
+
+impl Default for Keyboard {
+    fn default() -> Keyboard {
+        Keyboard {
+            last: (0x7e, true),
+            held: crate::input::KeySet::NONE,
+        }
+    }
+}
+
+impl Keyboard {
+    /// The keyboard sends a byte for each key pressed or released since the last frame.
+    fn feed(&mut self, keys: crate::input::KeySet) {
+        let changed = self.held.0 ^ keys.0;
+        for code in 0..128u8 {
+            if changed >> code & 1 == 1 {
+                self.last = (code, !keys.contains(code));
+            }
+        }
+        self.held = keys;
+    }
+}
+
+/// What a routine sees while it runs.
+pub(crate) struct Cx<'a> {
+    pub s: &'a mut State,
+    pub data: &'a FrontData,
+    pub display: &'a DisplayData,
+    pub input: FrameInput,
+    pub paula: &'a mut Vec<PaulaWrite>,
+    pub keyboard: Keyboard,
+    /// The line the beam is on while this code runs.
+    pub line: u16,
+    /// COP1LC: the copper list the next frame starts.
+    pub cop1lc: u32,
+    /// The original's return address once a load this frame is over.
+    pub load: Option<u32>,
+    /// Memory a load this frame wrote that the engine does not model (a file kept packed),
+    /// taken from the original when its load is over.
+    pub resync: Vec<(u32, u32)>,
+    /// CPU jobs done at once that the original may run past the frame's end.
+    pub jobs: Vec<crate::game::Job>,
+    pub seed: Option<Rng>,
+    pub unported: Vec<&'static str>,
+}
+
+impl Cx<'_> {
+    /// The fire button of the joystick in port 2 (CIA-A PRA bit 7, low when pressed).
+    pub fn fire(&self) -> bool {
+        self.input.joy.contains(crate::input::Joy::FIRE)
+    }
+
+    /// The left mouse button in port 1 (CIA-A PRA bit 6).
+    pub fn mouse_button(&self) -> bool {
+        self.input.joy.contains(crate::input::Joy::PORT1_BUTTON)
+    }
+
+    /// JOY1DAT's direction bits as the code tests them (`andi.w #$303`): `$100` up, `$1` down,
+    /// `$200` left, `$2` right, as the counters' XOR encodes a held direction.
+    pub fn joy1dat(&self) -> u16 {
+        use crate::input::Joy;
+        let j = self.input.joy;
+        let (up, down, left, right) = (
+            j.contains(Joy::UP),
+            j.contains(Joy::DOWN),
+            j.contains(Joy::LEFT),
+            j.contains(Joy::RIGHT),
+        );
+        // Y1 = up xor left... as JOY1DAT encodes it: bit 9 = left, bit 1 = right, bit 8 = up
+        // xor left, bit 0 = down xor right.
+        let b9 = left as u16;
+        let b1 = right as u16;
+        let b8 = (up ^ left) as u16;
+        let b0 = (down ^ right) as u16;
+        b9 << 9 | b8 << 8 | b1 << 1 | b0
+    }
+
+    /// A write to a Paula register (DMACON, INTENA...) by the CPU, on the line the beam is on.
+    pub fn wr(&mut self, reg: u16, value: u16) {
+        self.paula.push(PaulaWrite {
+            reg,
+            value,
+            hpos: 0,
+            vpos: self.line.max(1),
+        });
+    }
+
+    /// A byte of the original's memory: a modelled run's, else what the engine wrote there, else
+    /// what the disks put there (hunk 0's code and tables, hunk 2), else 0.
+    pub fn b(&self, addr: u32) -> u8 {
+        if self.s.raw(addr, 1).is_some() || self.s.scratch.contains_key(&addr) {
+            return self.s.b(addr);
+        }
+        if (crate::layout::H0..crate::layout::H1).contains(&addr) {
+            return self.data.h0_b(addr - crate::layout::H0);
+        }
+        if (crate::layout::H2..crate::layout::H3).contains(&addr) {
+            return self.display.h2_bytes(addr - crate::layout::H2, 1)[0];
+        }
+        self.s.b(addr)
+    }
+
+    pub fn w(&self, addr: u32) -> u16 {
+        u16::from_be_bytes([self.b(addr), self.b(addr + 1)])
+    }
+
+    pub fn l(&self, addr: u32) -> u32 {
+        (self.w(addr) as u32) << 16 | self.w(addr + 2) as u32
+    }
+
+    /// The CPU starts a job of about `cycles` with interrupts off (`INTENA $4000`): the beam moves
+    /// on, and a job that runs past the frame's end returns the [`Yield::Masked`] to finish it with
+    /// in the next frame. The job's memory, `writes`, is compared once the original is out of the
+    /// call whose return address is `inside` (owner, 2026-10-12).
+    pub fn masked_job(
+        &mut self,
+        cycles: u32,
+        inside: u32,
+        writes: Vec<(u32, u32)>,
+    ) -> Option<Yield> {
+        self.wr(crate::audio::INTENA, 0x4000);
+        self.jobs.push(crate::game::Job { inside, writes });
+        self.busy(cycles);
+        (self.line >= FRAME_LINES).then(|| Yield::Masked(self.line - FRAME_LINES))
+    }
+
+    /// The CPU is busy for `cycles` 7 MHz cycles (a blit it waits for): the beam moves on.
+    pub fn busy(&mut self, cycles: u32) {
+        self.line =
+            (self.line as u32 + cycles.div_ceil(BEAM_CYCLES_PER_LINE)).min(u16::MAX as u32) as u16;
+    }
+
+    /// A path of the original's code the engine does not follow yet: recorded, so a test fails.
+    pub fn unported(&mut self, what: &'static str) {
+        self.unported.push(what);
+    }
+
+    pub fn sound(&self) -> Option<&sf_assets::sound::SoundData> {
+        self.data.sound.as_ref()
+    }
+}
+
+/// A routine on the call stack and what it waits for.
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+struct Frame {
+    routine: Routine,
+    /// What it waits for, and the line it started waiting on.
+    wait: Option<(Yield, u16)>,
+}
+
+/// The front end's program: the main program's call stack and the hardware state the engine
+/// tracks outside memory.
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct Front {
+    /// Power-on: the boot's work is still to do (it runs at the start of the first frame).
+    booting: bool,
+    stack: Vec<Frame>,
+    cop1lc: u32,
+    keyboard: Keyboard,
+    seed: Option<Rng>,
+    /// Paths not ported that this front end has run into (empty in every conformance case).
+    pub unported: Vec<&'static str>,
+}
+
+/// One frame of the front end.
+pub struct FrontOut {
+    pub picture: Picture,
+    pub paula: Vec<PaulaWrite>,
+    pub load: Option<u32>,
+    pub resync: Vec<(u32, u32)>,
+    pub jobs: Vec<crate::game::Job>,
+}
+
+impl Front {
+    /// Switch on: the game program starts (`init_and_script`) with the RNG seed it will take.
+    pub fn power_on(seed: Rng) -> Front {
+        Front {
+            booting: true,
+            stack: vec![Frame {
+                routine: Routine::Title(title::Title::after_boot()),
+                wait: None,
+            }],
+            cop1lc: h2(0x6fd8),
+            keyboard: Keyboard::default(),
+            seed: Some(seed),
+            unported: Vec::new(),
+        }
+    }
+
+    /// The front end as the original's memory and CPU leave it at the end of a frame, when its main
+    /// program is in a routine the engine knows (`None` otherwise).
+    pub fn resume(
+        s: &mut State,
+        display: &DisplayData,
+        mem: &crate::layout::AmigaMemory,
+        cpu: &crate::game::Cpu,
+    ) -> Option<Front> {
+        let chain = main_chain(mem, cpu);
+        let stack = title::resume(&chain, cpu, mem)?;
+        // The sound driver reads the files the game put in chip RAM: the title's module.
+        if let Some(d) = display.front.sound.as_ref() {
+            let files = if s.audio.module_addr() == sf_assets::sound::BANK_ADDR {
+                vec![(
+                    sf_assets::sound::BANK_ADDR,
+                    crate::audio::File::Tune(sf_assets::sound::TuneId::Title),
+                )]
+            } else {
+                Vec::new()
+            };
+            use crate::layout::Ram;
+            s.audio = crate::audio::AudioDriver::transplant(d, &|a| mem.byte(a), &files);
+        }
+        Some(Front {
+            booting: false,
+            stack: stack
+                .into_iter()
+                .map(|(routine, wait)| Frame {
+                    routine,
+                    wait: wait.map(|w| (w, 0)),
+                })
+                .collect(),
+            cop1lc: title::cop1lc_of(&chain),
+            keyboard: Keyboard::default(),
+            seed: None,
+            unported: Vec::new(),
+        })
+    }
+
+    /// The copper list the frame starts with.
+    pub fn cop1lc(&self) -> u32 {
+        self.cop1lc
+    }
+
+    /// One frame.
+    pub fn step(&mut self, s: &mut State, display: &DisplayData, input: FrameInput) -> FrontOut {
+        self.keyboard.feed(input.keys);
+        self.new_frame();
+        let mut paula = Vec::new();
+        if std::mem::take(&mut self.booting) {
+            let mut quiet = Vec::new();
+            let mut cx = Cx {
+                s: &mut *s,
+                data: &display.front,
+                display,
+                input,
+                paula: &mut quiet,
+                keyboard: self.keyboard,
+                line: 0,
+                cop1lc: self.cop1lc,
+                load: None,
+                resync: Vec::new(),
+                jobs: Vec::new(),
+                seed: self.seed.take(),
+                unported: Vec::new(),
+            };
+            title::boot(&mut cx);
+            self.cop1lc = cx.cop1lc;
+        }
+        let window = |s: &State, c: u32| Snapshot {
+            at: c,
+            bytes: s.read(c, 0x800),
+        };
+        // The copper list as each part of the frame leaves it.
+        let mut history: Vec<(u16, Snapshot)> = vec![(0, window(s, self.cop1lc))];
+        let cop1lc = self.cop1lc;
+        let data = &display.front;
+        let mut cx = Cx {
+            s,
+            data,
+            display,
+            input,
+            paula: &mut paula,
+            keyboard: self.keyboard,
+            line: 0,
+            cop1lc: self.cop1lc,
+            load: None,
+            resync: Vec::new(),
+            jobs: Vec::new(),
+            seed: self.seed,
+            unported: Vec::new(),
+        };
+        // Work the main program carried over from the last frame with interrupts off.
+        let masked = match self.stack.last() {
+            Some(Frame {
+                wait: Some((Yield::Masked(l), _)),
+                ..
+            }) => Some(*l),
+            _ => None,
+        };
+        if let Some(l) = masked {
+            // Only the masked part: the interrupt is taken as soon as it turns them back on.
+            cx.line = l;
+            let top = self.stack.last_mut().expect("a frame");
+            top.wait = None;
+            match top.routine.run(&mut cx) {
+                Yield::Return => {
+                    self.stack.pop();
+                }
+                Yield::Call(r) => self.stack.push(Frame {
+                    routine: *r,
+                    wait: None,
+                }),
+                w => top.wait = Some((w, cx.line)),
+            }
+            for w in cx.paula.iter_mut() {
+                if w.vpos == 0 {
+                    w.vpos = l;
+                }
+            }
+        }
+        let vbl_line = cx.line.max(1);
+        let from = cx.paula.len();
+        let palette_due = vbl::run(&mut cx);
+        cx.line = cx.line.max(VBL_END_LINE);
+        history.push((VBL_END_LINE, window(cx.s, cop1lc)));
+        if palette_due {
+            cx.line = vbl::PALETTE_LINE;
+            vbl::palette_copy(&mut cx);
+            history.push((vbl::PALETTE_LINE, window(cx.s, cop1lc)));
+        }
+        // The interrupt's writes, on the lines it runs: all near the top but its acknowledge,
+        // after the palette copy when that ran.
+        for w in cx.paula[from..].iter_mut() {
+            w.vpos = vbl_line;
+        }
+        let ack = cx.paula.len();
+        vbl::end(&mut cx);
+        for w in &mut cx.paula[ack..] {
+            w.vpos = cx.line;
+        }
+        // The main program, part by part, until it waits beyond the picture.
+        let mut before = Some(Vec::new());
+        self.run_main_split(&mut cx, PICTURE_END, &mut before);
+        let before = before.unwrap_or_default();
+        history.push((cx.line.max(VBL_END_LINE), window(cx.s, cop1lc)));
+        let copper_word = |addr: u32, line: u16| -> u16 {
+            let snap = history
+                .iter()
+                .rev()
+                .find(|(l, _)| *l <= line)
+                .map(|(_, s)| s)
+                .unwrap_or(&history[0].1);
+            snap.word(addr).unwrap_or_else(|| cx.s.w(addr))
+        };
+        let (mut picture, copper) = render::screen(cx.s, display, cop1lc, &copper_word);
+        // Lines the beam drew before a part of the main program ran show the memory before it.
+        for (k, (line, st)) in before.iter().enumerate().rev() {
+            let (older, _) = render::screen(st, display, cop1lc, &copper_word);
+            let from = before.get(k.wrapping_sub(1)).map_or(0, |b| b.0);
+            if (older.width, older.height, older.top)
+                != (picture.width, picture.height, picture.top)
+            {
+                continue;
+            }
+            let w = picture.width as usize;
+            for y in 0..picture.height as usize {
+                let raster = picture.top + y as u16;
+                if raster >= from && raster < *line {
+                    picture.pixels[y * w..(y + 1) * w]
+                        .copy_from_slice(&older.pixels[y * w..(y + 1) * w]);
+                    picture.palettes[y] = older.palettes[y];
+                }
+            }
+        }
+        // The copper's own writes to Paula's registers (the list's DMACON) come first: they are
+        // made on line 0, before the interrupt's.
+        let early: Vec<PaulaWrite> = copper
+            .iter()
+            .filter(|w| is_paula(w.reg))
+            .map(|w| PaulaWrite {
+                reg: w.reg,
+                value: w.value,
+                hpos: 0,
+                vpos: w.line,
+            })
+            .collect();
+        self.run_main(&mut cx, u16::MAX);
+        let load = cx.load;
+        let resync = std::mem::take(&mut cx.resync);
+        let jobs = std::mem::take(&mut cx.jobs);
+        self.cop1lc = cx.cop1lc;
+        self.keyboard = cx.keyboard;
+        self.seed = cx.seed;
+        self.unported.extend(cx.unported.drain(..));
+        // In beam order: the copper's writes among the CPU's (lines are approximate for the CPU's:
+        // the interrupt's at the top, the main program's where it woke). Positions are not
+        // compared (the engine is not cycle-timed), so they are cleared.
+        let mut all = early;
+        all.extend(paula);
+        all.sort_by_key(|w| w.vpos);
+        for w in &mut all {
+            w.vpos = 0;
+        }
+        FrontOut {
+            picture,
+            paula: all,
+            load,
+            resync,
+            jobs,
+        }
+    }
+
+    /// Run the main program's parts that wake before line `until` this frame.
+    fn run_main(&mut self, cx: &mut Cx, until: u16) {
+        self.run_main_split(cx, until, &mut None);
+    }
+
+    /// [`Front::run_main`], keeping in `before` the state as it was before each part that runs
+    /// while the beam draws the picture (the lines above see it, the lines below what it did).
+    fn run_main_split(&mut self, cx: &mut Cx, until: u16, before: &mut Option<Vec<(u16, State)>>) {
+        loop {
+            let Some(top) = self.stack.last_mut() else {
+                return;
+            };
+            match &top.wait {
+                None => {}
+                Some((w, since)) => {
+                    let wake = match w {
+                        Yield::Raster => {
+                            if *since < 0xff && cx.line <= RASTER_LINE {
+                                Some(RASTER_LINE)
+                            } else {
+                                None
+                            }
+                        }
+                        Yield::Line(n) => (*since < *n && cx.line <= *n).then_some(*n),
+                        Yield::Fade(rec) => fade::done(cx.s, *rec).then_some(cx.line),
+                        Yield::Poll => (*since == 0).then_some(cx.line),
+                        Yield::Masked(_) => None,
+                        Yield::Interrupt => Some(cx.line),
+                        _ => Some(cx.line),
+                    };
+                    match wake {
+                        Some(l) if l < until => {
+                            if let Some(b) = before.as_mut() {
+                                if l > VBL_END_LINE {
+                                    b.push((l, cx.s.clone()));
+                                }
+                            }
+                            cx.line = cx.line.max(l);
+                            top.wait = None;
+                        }
+                        _ => return,
+                    }
+                }
+            }
+            let (first, line) = (cx.paula.len(), cx.line);
+            let y = top.routine.run(cx);
+            for w in &mut cx.paula[first..] {
+                if w.vpos == 0 {
+                    w.vpos = line;
+                }
+            }
+            match y {
+                Yield::Call(r) => {
+                    top.wait = None;
+                    self.stack.push(Frame {
+                        routine: *r,
+                        wait: None,
+                    });
+                }
+                Yield::Return => {
+                    self.stack.pop();
+                    if self.stack.is_empty() {
+                        cx.unported("the front end's program ran off its end");
+                        return;
+                    }
+                }
+                Yield::Fade(rec) if fade::done(cx.s, rec) => {}
+                w => top.wait = Some((w, cx.line)),
+            }
+        }
+    }
+
+    /// The frame is the start of a new frame for every wait: a wait begun on an earlier frame
+    /// counts as begun at line 0 of this one.
+    pub(crate) fn new_frame(&mut self) {
+        for f in &mut self.stack {
+            if let Some((_, since)) = &mut f.wait {
+                *since = 0;
+            }
+        }
+    }
+}
+
+fn is_paula(reg: u16) -> bool {
+    matches!(reg, 0x96 | 0x9a | 0x9c | 0x9e) || (0xa0..0xe0).contains(&reg)
+}
+
+/// The copper list's bytes at one moment.
+#[derive(Debug, Clone)]
+struct Snapshot {
+    at: u32,
+    bytes: Vec<u8>,
+}
+
+impl Snapshot {
+    fn word(&self, addr: u32) -> Option<u16> {
+        let o = addr.checked_sub(self.at)? as usize;
+        Some(u16::from_be_bytes([
+            *self.bytes.get(o)?,
+            *self.bytes.get(o + 1)?,
+        ]))
+    }
+}
+
+/// Where the original's main program was at the end of a frame: its PC, then each long on its
+/// stack that is a return address into the game's code (after a `jsr abs.l` or a `bsr.w`),
+/// innermost first. At a frame's end the CPU stands at the vertical blank's handler, with the
+/// interrupted PC on the supervisor stack.
+pub fn main_chain(mem: &crate::layout::AmigaMemory, cpu: &crate::game::Cpu) -> Vec<u32> {
+    use crate::layout::Ram;
+    let long = |a: u32| {
+        (mem.byte(a) as u32) << 24
+            | (mem.byte(a + 1) as u32) << 16
+            | (mem.byte(a + 2) as u32) << 8
+            | mem.byte(a + 3) as u32
+    };
+    let word = |a: u32| (mem.byte(a) as u32) << 8 | mem.byte(a + 1) as u32;
+    let (pc, mut sp) = if cpu.pc == h0(0x11bf8) {
+        (long(cpu.ssp + 2), cpu.ssp + 6)
+    } else {
+        (cpu.pc, cpu.a[7])
+    };
+    let code = h0(0)..h0(0x4834c);
+    let mut chain = vec![pc];
+    let top = (sp & !0xFFFF) + 0x1_0000;
+    while sp + 4 <= top.min(sp + 0x400) && chain.len() < 8 {
+        let a = long(sp);
+        let call = code.contains(&a)
+            && (word(a - 6) == 0x4eb9 && long(a - 4) >= h0(0) || word(a - 4) == 0x6100);
+        if call {
+            chain.push(a);
+        }
+        sp += 2;
+    }
+    chain
+}
+
+/// `h0+$off` in the original's memory.
+pub(crate) const fn at(off: u32) -> u32 {
+    h0(off)
+}
+
+/// What a load leaves that the engine does not model, taken from the original when the engine's
+/// instant load ends (DESIGN §2.1): `kbd_toggle`, flipped every frame while the original loads,
+/// and the trackloader's sector buffer (h0+$b35a points it at h3+$35860, below the overlay).
+pub const RESYNC_AFTER_LOAD: &[(u32, u32)] = &[
+    (h0(0x16076), 1),
+    (
+        crate::layout::h3(0x35860),
+        data::OVERLAY_AT - crate::layout::h3(0x35860),
+    ),
+];
