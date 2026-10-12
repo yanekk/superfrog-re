@@ -16,7 +16,7 @@ use crate::frog::{self, FROG};
 use crate::layout::{H0, H1, H2, H3, LAYOUT, h0, h1};
 use crate::level::{Hw, LevelCtx, camera, collision, scroll, standard_dispatch};
 use crate::mem::Bus;
-use crate::render::DisplayData;
+use crate::render::{DisplayData, HERO_SPRITES};
 use crate::state::State;
 
 /// `logic_running` (h0+$9d6).
@@ -75,13 +75,18 @@ pub fn enter(st: &mut State, display: &DisplayData, id: LevelId) {
 }
 
 /// Every modelled variable as the game's loader leaves memory: hunk 0 as loaded (with the boot's
-/// tables), hunk 2's data; hunks 1 and 3 are cleared. Then what the boot sets (`init_and_script`).
+/// tables), hunk 2's data; hunks 1 and 3 are cleared. Then what the boot sets (`init_and_script`):
+/// the frog's sprite frames among it (`load_hero`).
 fn boot_image(st: &mut State, display: &DisplayData) {
+    let hero = display.hero();
     for d in LAYOUT {
         let bytes: Vec<u8> = (d.addr..d.addr + d.width.len())
             .map(|a| match a {
                 _ if (H0..H1).contains(&a) => display.rom().byte(0, a).unwrap_or(0),
                 _ if (H2..H3).contains(&a) => display.h2_bytes(a - H2, 1)[0],
+                _ if (HERO_SPRITES..HERO_SPRITES + hero.len() as u32).contains(&a) => {
+                    hero[(a - HERO_SPRITES) as usize]
+                }
                 _ => 0,
             })
             .collect();

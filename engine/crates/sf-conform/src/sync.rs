@@ -34,6 +34,11 @@ pub enum SyncPoint {
     /// connected and their `alt` maps on one drive. The final level, which has no code, is reached
     /// by forcing W6-4's exit (docs/12 "Reaching every level").
     AtLevel(LevelId),
+    /// The end sequence's start (T35): the final level reached as `AtLevel` reaches it, its exit
+    /// forced on its first frame the same way (`level_state` = 1), and the original run on, every
+    /// disk it asks for inserted, to the end of the first frame on which its main program is in
+    /// `end_seq_load` (top_loop's call, return address h0+$7b6).
+    EndSequence,
 }
 
 /// The oracle at a sync point.
@@ -77,6 +82,10 @@ const FINAL_SEARCH: u32 = 30_000;
 /// With df1 connected the boot reaches the title 219 frames sooner (measured on the oracle, 2026-10-12);
 /// every input from the title on comes that much earlier.
 const DF1_LEAD: u32 = 219;
+/// `top_loop`'s call of `end_seq_load` returns here.
+const IN_END_SEQ_LOAD: u32 = h0(0x7b6);
+/// The final level's forced exit reaches `end_seq_load` about 80 frames on.
+const END_SEARCH: u32 = 1_000;
 /// Title menu, OPTIONS, three times down to LEVEL CODE; the first is the crack intro's click.
 const MENU: [(u32, &str); 14] = [
     (1000, "M"),
@@ -231,6 +240,7 @@ pub fn reach_frozen(
         SyncPoint::AtLevel(id) if (id.world, id.level, id.alt) != (World::W1, 1, false) => {
             by_password(*id, frames, frozen)
         }
+        SyncPoint::EndSequence => end_sequence(frames),
         SyncPoint::AtLevel(id) => {
             let s = InputScript::load(&script_path("start-w1-1"))?;
             let key = format!("{tag}level {id} script\n{}", s.to_oracle().canonical());
@@ -315,72 +325,146 @@ fn password_key(id: LevelId, r: &Route) -> (String, String) {
 /// tallies W6-4 and starts the final level by its own code.
 fn by_password(id: LevelId, frames: u32, frozen: bool) -> Result<Synced, String> {
     let r = route(id).ok_or_else(|| format!("AtLevel({id}): no such level"))?;
-    let lead = if r.drives == 1 { 0 } else { DF1_LEAD };
-    let type_from = TYPE_FROM - lead;
-    let (menu, key) = password_key(id, &r);
+    let (_, key) = password_key(id, &r);
     let key = if frozen { format!("objects frozen v1\n{key}") } else { key };
-    let search = if r.finish_w6_4 {
+    at_snapshot(&key, r.drives, frames, search(&r), |a| drive_to(a, id, &r, frozen))
+}
+
+fn search(r: &Route) -> u32 {
+    if r.finish_w6_4 {
         FINAL_SEARCH
     } else {
         PASSWORD_SEARCH
-    };
-    at_snapshot(&key, r.drives, frames, search, |a| {
-        let mut script = InputScript::parse(&menu).map_err(|e| e.to_string())?;
-        let mut disk = 0;
-        let mut forced = false;
-        for f in 0..search {
-            if f == type_from {
-                let m = core_memory(a.memory());
-                let mut text = menu.clone();
-                let mut t = type_from;
-                for k in 0..6 {
-                    let digit = m.byte(PASSWORD_TABLE + 10 * r.entry + k);
-                    let code = match digit {
-                        b'0' => 0x0a,
-                        b'1'..=b'9' => digit - b'0',
-                        _ => return Err(format!("password_table entry {} is not digits", r.entry)),
-                    };
-                    text += &format!("{t}: K{code:02X}\n{}: -\n", t + 6);
-                    t += 16;
-                }
-                // Leave the options (cursor back on LIVES), fire for the menu, START GAME.
-                text += &format!("{}: F\n{}: -\n", t + 40, t + 45);
-                text += &format!("{}: F\n{}: -\n", t + 140, t + 145);
-                text += &format!("{}: F\n{}: -\n", t + 200, t + 205);
-                script = InputScript::parse(&text).map_err(|e| e.to_string())?;
-            }
-            step(a, script.input_at(f), frozen)?;
+    }
+}
+
+/// [`by_password`]'s way there, on `a` from power-on, its objects frozen out when `frozen`.
+fn drive_to(a: &mut Amiga, id: LevelId, r: &Route, frozen: bool) -> Result<(), String> {
+    let lead = if r.drives == 1 { 0 } else { DF1_LEAD };
+    let type_from = TYPE_FROM - lead;
+    let (menu, _) = password_key(id, r);
+    let search = search(r);
+    let mut script = InputScript::parse(&menu).map_err(|e| e.to_string())?;
+    let mut disk = 0;
+    let mut forced = false;
+    for f in 0..search {
+        if f == type_from {
             let m = core_memory(a.memory());
-            if f > type_from {
-                let want = long(&m, WANTED_DISK);
-                if want != disk {
-                    disk = want;
-                    let slot = match want {
-                        0x3232_3232 => Some(DiskSlot::D1),
-                        0x3333_3333 => Some(DiskSlot::D2),
-                        0x3434_3434 => Some(DiskSlot::D3),
-                        0x3535_3535 => Some(DiskSlot::D4),
-                        _ => None,
-                    };
-                    if let Some(s) = slot {
-                        a.insert_disk(0, s);
-                    }
+            let mut text = menu.clone();
+            let mut t = type_from;
+            for k in 0..6 {
+                let digit = m.byte(PASSWORD_TABLE + 10 * r.entry + k);
+                let code = match digit {
+                    b'0' => 0x0a,
+                    b'1'..=b'9' => digit - b'0',
+                    _ => return Err(format!("password_table entry {} is not digits", r.entry)),
+                };
+                text += &format!("{t}: K{code:02X}\n{}: -\n", t + 6);
+                t += 16;
+            }
+            // Leave the options (cursor back on LIVES), fire for the menu, START GAME.
+            text += &format!("{}: F\n{}: -\n", t + 40, t + 45);
+            text += &format!("{}: F\n{}: -\n", t + 140, t + 145);
+            text += &format!("{}: F\n{}: -\n", t + 200, t + 205);
+            script = InputScript::parse(&text).map_err(|e| e.to_string())?;
+        }
+        step(a, script.input_at(f), frozen)?;
+        let m = core_memory(a.memory());
+        if f > type_from {
+            let want = long(&m, WANTED_DISK);
+            if want != disk {
+                disk = want;
+                let slot = match want {
+                    0x3232_3232 => Some(DiskSlot::D1),
+                    0x3333_3333 => Some(DiskSlot::D2),
+                    0x3434_3434 => Some(DiskSlot::D3),
+                    0x3535_3535 => Some(DiskSlot::D4),
+                    _ => None,
+                };
+                if let Some(s) = slot {
+                    a.insert_disk(0, s);
                 }
             }
-            let at_level = in_level(&m) && long(&m, WORLD) == r.world && long(&m, LEVEL) == r.level;
-            if r.finish_w6_4 {
-                if at_level && !forced && word(&m, FINAL_LEVEL_FLAG) == 0 {
-                    a.write_memory(LEVEL_STATE, &1u32.to_be_bytes());
-                    forced = true;
-                } else if forced && in_level(&m) && word(&m, FINAL_LEVEL_FLAG) != 0 {
-                    return Ok(());
-                }
-            } else if at_level {
+        }
+        let at_level = in_level(&m) && long(&m, WORLD) == r.world && long(&m, LEVEL) == r.level;
+        if r.finish_w6_4 {
+            if at_level && !forced && word(&m, FINAL_LEVEL_FLAG) == 0 {
+                a.write_memory(LEVEL_STATE, &1u32.to_be_bytes());
+                forced = true;
+            } else if forced && in_level(&m) && word(&m, FINAL_LEVEL_FLAG) != 0 {
+                return Ok(());
+            }
+        } else if at_level {
+            return Ok(());
+        }
+    }
+    Err(format!("{id} not reached in {search} frames"))
+}
+
+/// [`SyncPoint::EndSequence`].
+fn end_sequence(frames: u32) -> Result<Synced, String> {
+    let id = LevelId {
+        world: World::Final,
+        level: 1,
+        alt: false,
+    };
+    let r = route(id).ok_or("the final level has a route")?;
+    let (_, key) = password_key(id, &r);
+    let key = format!("{key}end sequence: level_state = 1, to end_seq_load v1\n");
+    at_snapshot(&key, r.drives, frames, search(&r) + END_SEARCH, |a| {
+        drive_to(a, id, &r, false)?;
+        a.write_memory(LEVEL_STATE, &1u32.to_be_bytes());
+        let mut disks = Disks::at(&core_memory(a.memory()));
+        for _ in 0..END_SEARCH {
+            a.step(FrameInput::NONE).map_err(|e| e.to_string())?;
+            disks.serve(a);
+            let m = core_memory(a.memory());
+            if main_chain(&a.cpu(), &m).contains(&IN_END_SEQ_LOAD) {
                 return Ok(());
             }
         }
-        Err(format!("{id} not reached in {search} frames"))
+        Err(format!(
+            "end_seq_load not reached in {END_SEARCH} frames of the final level"
+        ))
     })
+}
+
+/// The player at the drive: whenever the game asks for a disk (`disk_request`'s wanted ID, h0+$af54)
+/// that is not in df0, that disk goes in.
+pub struct Disks {
+    wanted: u32,
+}
+
+impl Disks {
+    /// The drive as it is in the original's memory `m`: holding the disk last asked for, or disk 1
+    /// before any was.
+    pub fn at(m: &AmigaMemory) -> Disks {
+        Disks {
+            wanted: match long(m, WANTED_DISK) {
+                0 => 0x3232_3232,
+                w => w,
+            },
+        }
+    }
+
+    /// After a frame of the original's.
+    pub fn serve(&mut self, a: &mut Amiga) {
+        let want = long(&core_memory(a.memory()), WANTED_DISK);
+        if want == self.wanted || want == 0 {
+            return;
+        }
+        self.wanted = want;
+        let slot = match want {
+            0x3232_3232 => Some(DiskSlot::D1),
+            0x3333_3333 => Some(DiskSlot::D2),
+            0x3434_3434 => Some(DiskSlot::D3),
+            0x3535_3535 => Some(DiskSlot::D4),
+            _ => None,
+        };
+        if let Some(s) = slot {
+            a.insert_disk(0, s);
+        }
+    }
 }
 
 fn power_on(frames: u32) -> Result<Amiga, String> {

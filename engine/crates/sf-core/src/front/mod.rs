@@ -16,11 +16,14 @@
 //! return address the original reaches once its load is over ([`Front::load`]), so conformance can
 //! skip the original's frames spent loading.
 
+pub mod anim;
 mod attract;
 pub mod blit;
 mod common;
 pub mod data;
+mod ending;
 pub mod fade;
+mod hero;
 mod menu;
 pub mod password;
 pub mod sprite;
@@ -102,6 +105,9 @@ pub(crate) enum Routine {
     AwardPages(attract::AwardPages),
     HiscoreCredits(attract::HiscoreCredits),
     HallOfTalent(attract::HallOfTalent),
+    EndSeqLoad(ending::EndSeqLoad),
+    EndSequence(ending::EndSequence),
+    CpuWork(ending::CpuWork),
 }
 
 impl Routine {
@@ -125,6 +131,9 @@ impl Routine {
             Routine::AwardPages(r) => r.run(cx),
             Routine::HiscoreCredits(r) => r.run(cx),
             Routine::HallOfTalent(r) => r.run(cx),
+            Routine::EndSeqLoad(r) => r.run(cx),
+            Routine::EndSequence(r) => r.run(cx),
+            Routine::CpuWork(r) => r.run(cx),
         }
     }
 }
@@ -152,6 +161,20 @@ impl Default for Keyboard {
 }
 
 impl Keyboard {
+    /// The register as `kbd_poll` last left `key_down` and `key_up` (h0+$16078): the last byte
+    /// it handled, or `$ff` once it has (both read 0).
+    fn from_keys(key_down: u8, key_up: u8) -> Keyboard {
+        let sdr = match (key_down, key_up) {
+            (_, up) if up != 0 => !(up << 1 | 1),
+            (down, _) if down != 0 => !(down << 1),
+            _ => 0xff,
+        };
+        Keyboard {
+            sdr,
+            ..Keyboard::default()
+        }
+    }
+
     /// The keyboard sends a byte for each key pressed or released since the last frame.
     fn feed(&mut self, keys: crate::input::KeySet) {
         let changed = self.held.0 ^ keys.0;
@@ -473,7 +496,7 @@ impl Front {
         cpu: &crate::game::Cpu,
     ) -> Option<Front> {
         let chain = main_chain(mem, cpu);
-        let stack = title::resume(&chain, cpu, mem)?;
+        let stack = ending::resume(&chain).or_else(|| title::resume(&chain, cpu, mem))?;
         // The sound driver reads the files the game put in chip RAM: the title's module.
         if let Some(d) = display.front.sound.as_ref() {
             let files = if s.audio.module_addr() == sf_assets::sound::BANK_ADDR {
@@ -505,7 +528,7 @@ impl Front {
                 })
                 .collect(),
             cop1lc: title::cop1lc_of(&chain),
-            keyboard: Keyboard::default(),
+            keyboard: Keyboard::from_keys(s.b(vbl::KEY_DOWN), s.b(vbl::KEY_UP)),
             seed: None,
             unported: Vec::new(),
         })
@@ -767,6 +790,12 @@ impl Front {
         // In beam order: the copper's writes among the CPU's (lines are approximate for the CPU's:
         // the interrupt's at the top, the main program's where it woke). Positions are not
         // compared (the engine is not cycle-timed), so they are cleared.
+        // A frame that loads stands for the original's frame its load ended on: what the CPU
+        // wrote before this frame's interrupt (the end of work carried over from the last frame)
+        // was written in the frame the load began, which conformance skips.
+        if load.is_some() {
+            paula.drain(..from_carry);
+        }
         let mut all = early;
         all.extend(paula);
         all.sort_by_key(|w| w.vpos);

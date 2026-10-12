@@ -143,6 +143,8 @@ macro_rules! layout {
 }
 
 layout! {
+    /// h2+$5efc..$6058: the end sequence's copper list (five planes, its palette at h2+$5fa4).
+    EndCopper = "end_copper", h2(0x5efc), Width::Bytes(0x15c);
     /// h2+$6110..$6270: the award pages' copper list.
     AwardCopper = "award_copper", h2(0x6110), Width::Bytes(0x160);
     /// `exit_sprite_copper` (h2+$68a8): the sprite moves the second pair of frog sprite records
@@ -152,14 +154,22 @@ layout! {
     LevelCopper = "level_copper", h2(0x6bd0), Width::Bytes(0x400);
     /// h2+$6fd0..$73fc: every copper list but the level's (title, menus, blank).
     FrontCopper = "front_copper", h2(0x6fd0), Width::Bytes(0x42c);
+    /// h3+$0..$10600: in a level a world's bobs (`LnBO`); the end sequence unpacks `END1` and
+    /// `END2` from here on, over the display buffers (T35).
+    BobSheet = "bob_sheet", h3(0), Width::Bytes(0x10600);
     /// `playfield_buffer_0` (h3+$10600) and `_1` (h3+$22f30): the two display buffers the play
     /// field is shown from, five planes of `$3b70` bytes each (docs/12 "The play field").
     PlayfieldBuffer0 = "playfield_buffer_0", h3(0x10600), Width::Bytes(PLAYFIELD_BUFFER_BYTES);
     PlayfieldBuffer1 = "playfield_buffer_1", h3(0x22f30), Width::Bytes(PLAYFIELD_BUFFER_BYTES);
     /// `playfield_clean` (h3+$35860): the clean background, tiles only; bobs are erased from it.
     PlayfieldClean = "playfield_clean", h3(0x35860), Width::Bytes(PLAYFIELD_BUFFER_BYTES);
+    /// h3+$48190..$4b390: between the clean buffer and the panel; the end sequence's second
+    /// ANIM buffer starts in it (h3+$49890).
+    Hunk3Gap = "hunk3_gap", h3(0x48190), Width::Bytes(0x3200);
     /// `panel_bitmap` (h3+$4b390): the status panel, five planes of 14 lines (docs/12 "Panel").
     PanelBitmap = "panel_bitmap", h3(0x4b390), Width::Bytes(5 * 0x2a0);
+    /// h3+$4c0b0..$64b70: the frog's attached-sprite frames (`hero_sprite_frames` h0+$19ce0).
+    HeroFrames = "hero_frames", h3(0x4c0b0), Width::Bytes(0x18ac0);
     /// The front end's flags (T20, docs/13), h0+$6..$26: `game_full_mode` (h0+$6), `loader_mode`,
     /// `start_world`, `start_level` (from a level code), the words between them, `attract_mode`,
     /// `final_level_flag`.
@@ -355,6 +365,9 @@ layout! {
     ScoreText = "score_text", h0(0x8ab4), Width::Bytes(0xc);
     ClockDigit = "clock_digit", h0(0x8be0), Width::W;
     ClockShown = "clock_shown", h0(0x8be2), Width::Bytes(4);
+    /// h0+$aa40..$aac0: the end sequence's two palettes, white (the last picture's flash) and the
+    /// pictures' own, which the fades read.
+    EndPalettes = "end_palettes", h0(0xaa40), Width::Bytes(0x80);
     /// h0+$b806..$b80e: the Accessing-disk overlay's palettes while it is up.
     OverlayUp = "overlay_up", h0(0xb806), Width::Bytes(8);
     /// `hitboxes` (h0+$d350): the objects' hitboxes, 12 bytes each, rebuilt each pass.
@@ -456,6 +469,9 @@ layout! {
     /// `line_offsets` (h0+$18be8): each play-field line's byte offset (`$30` a line), built by
     /// the level's set-up.
     LineOffsets = "line_offsets", h0(0x18be8), Width::Bytes(0x27c);
+    /// h0+$19ddc..$1a6dc: their table, 96 pairs of 12-byte records (frames, offset, height),
+    /// the frog's own then its mirror image's.
+    HeroTable = "hero_table", h0(0x19ddc), Width::Bytes(0x900);
     /// `frog_sprite_left`, `_right` (h0+$1aff4, h0+$1b010): the frog's two hardware-sprite
     /// records (`$1c` bytes: screen x, y, height, attached, copper words, data, animation).
     FrogSpriteLeft = "frog_sprite_left", h0(0x1aff4), Width::Bytes(0x1c);
@@ -477,6 +493,8 @@ layout! {
     /// `bob_frames` (h0+$2aee2..$2ed32): the bobs' animation lists and frame records, which the
     /// level's set-up builds for its world (h0+$1995a).
     BobFrames = "bob_frames", h0(0x2aee2), Width::Bytes(0x3e50);
+    /// h0+$3b18c..$3b1ae: the ANIM player's record (`crate::front::anim::RECORD`).
+    AnimPlayer = "anim_player", h0(0x3b18c), Width::Bytes(0x22);
     AudioHeaderBackup = "module_header_backup", h0(crate::audio::vars::HEADER_BACKUP.0), Width::Bytes(crate::audio::vars::HEADER_BACKUP.1 as u32);
     /// `level_map` (h1+$218e0): the map, 84 rows of 304 cells, `tile << 6 | marker`, and the
     /// rows the loader adds under it (a floor of `$3d` cells) up to the tile pointers.

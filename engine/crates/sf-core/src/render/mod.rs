@@ -111,6 +111,11 @@ impl DisplayData {
         &self.sound
     }
 
+    /// The frog's sprite frames as `load_hero` leaves them at [`HERO_SPRITES`].
+    pub fn hero(&self) -> &[u8] {
+        &self.hero
+    }
+
     /// What the ported routines read the game's fixed tables from.
     pub fn rom(&self) -> &crate::mem::Rom {
         &self.rom
