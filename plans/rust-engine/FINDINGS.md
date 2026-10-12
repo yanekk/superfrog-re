@@ -18,6 +18,11 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-12 | 📌 | T22 review: sf-e2e frame-0/400 and audio equality pass vacuously today: PowerOn is the black Placeholder scene and the app mixes zero chip, so a gutted presenter or mixer stays green. They gain teeth once T14/T20 draw and sound. |
+| 2026-10-12 | 📌 | T22 review, worker-driven: reran the OS layer under SF_E2E_OS=1 from WezTerm, 2 passed (CGEvent key, CGWindowListCreateImage capture, AX menu Quit). |
+| 2026-10-12 | 📌 | T22, worker-driven: OS layer green from WezTerm. A posted Left reached steps 45–47; the window captured 320×288, title bar over the black 320×256 frame; AX "Quit superfrog" closed it. Early captures came back fully transparent, later ones real. |
+| 2026-10-12 | 📌 | T22, macOS 26: `screencapture` is refused from the terminal and System Events times out on an ungranted Automation prompt, so sf-e2e captures via CGWindowListCreateImage (JXA) and presses menus via AX. Window-server bounds sit 3 pt inside winit's outer size. |
+| 2026-10-12 | 📌 | T22, left alone: `Game` exposes no chip memory or frame length, so the app mixes against zero chip and paces 313-line frames (T14 must add both). Fire is Space, arrows the stick (T23 remaps). No lock file yet (T23). |
 | 2026-10-12 | 📌 | T13 review: owner added T31 render-remaining-levels. T13 renders 25 of 29 levels; W6's alt maps 2–4 need DF1–DF3 (oracle has df0 only) and the final level has no level code (password entries 24–27 all lead to the bonus level). |
 | 2026-10-12 | 📌 | T13 review: `late_redraw` excuses a differing pixel wherever an alternative differs from end-of-frame, not where it matches the original (strict matching fails 10 of 25 cases on genuine mixed frames). A renderer defect confined to changed regions is skipped, not caught. |
 | 2026-10-11 | 🔄 | Owner, T13: the two display buffers (h3+$10600, $22f30) are engine state; the play field renders from them, the map only for widescreen. T14–T18 must port the original's tile, animation and bob blits into them. Save states grow ~150 KB. |
