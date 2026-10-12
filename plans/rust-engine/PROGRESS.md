@@ -13,7 +13,7 @@ the account is the commit message. Whoever writes a cell also fixes the over-bud
 
 **Status:** Plan written; nothing built.
 **Last updated:** 2026-10-12
-**Next `pir-work` will:** start T15 (items-and-scoring), T19, T28 or T35, whichever the run dispatches.
+**Next `pir-work` will:** start T15 (items-and-scoring), T19 or T28, whichever the run dispatches.
 
 ## Tasks
 
