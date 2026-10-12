@@ -302,6 +302,10 @@ layout! {
     FrontA0a = "front_a0a", h0(0xa0a), Width::Bytes(8);
     RamCacheBase = "ram_cache_base", h0(0xa12), Width::L;
     FrontA16 = "front_a16", h0(0xa16), Width::L;
+    /// `level_start_x`, `level_start_y` (h0+$a1a, $a1e): the camera's start, from the map's start
+    /// marker (`$35`, h0+$162f4); the frog starts `$90`, `$70` from it (h0+$164fa).
+    LevelStartX = "level_start_x", h0(0xa1a), Width::L;
+    LevelStartY = "level_start_y", h0(0xa1e), Width::L;
     /// `level_width`, `level_height` (h0+$a22, h0+$a24): the level's size in pixels.
     LevelWidth = "level_width", h0(0xa22), Width::W;
     LevelHeight = "level_height", h0(0xa24), Width::W;
@@ -334,6 +338,8 @@ layout! {
     IntroBlit = "intro_blit", h0(0x3dc8), Width::L;
     /// `world` (h0+$40da): 1..6, 7 the bonus level.
     World = "world", h0(0x40da), Width::L;
+    /// `level` (h0+$40de): 1..4, the level of the world.
+    Level = "level", h0(0x40de), Width::L;
     /// `coins_collected` (h0+$445e): coins taken since the last tally (`touch_coin` counts them).
     CoinsCollected = "coins_collected", h0(0x445e), Width::L;
     /// `entry_fall` (h0+$6c92): how fast the frog drops in at a level's start.
@@ -380,6 +386,9 @@ layout! {
     DemoJoy = "demo_joy", h0(0x11a2a), Width::W;
     DemoLeft = "demo_left", h0(0x11a2c), Width::W;
     DemoAt = "demo_at", h0(0x11a2e), Width::L;
+    /// `demo_record_at` (h0+$11aa2): where `demo_record` writes; `level_start` points it at the
+    /// world's demo (h0+$9f2).
+    DemoRecordAt = "demo_record_at", h0(0x11aa2), Width::L;
     /// h0+$11b64..$11b6a: the mouse counters and the pointer's position.
     Mouse = "mouse", h0(0x11b64), Width::Bytes(6);
     /// `clock_ticks` (h0+$11dfc): vertical blanks into the level clock's current second.
@@ -401,6 +410,13 @@ layout! {
     NumberStarted = "number_started", h0(0x161aa), Width::L;
     Number161ae = "number_161ae", h0(0x161ae), Width::L;
     NumberText = "number_text", h0(0x161b2), Width::Bytes(0xc);
+    /// `marker_cells` (h0+$162e4): the cells of the map's first marker `$30`..`$33` each
+    /// (h0+$1625e), one long a marker.
+    MarkerCells = "marker_cells", h0(0x162e4), Width::Bytes(0x10);
+    /// `coins_total` (h0+$163d0), `items_total` (h0+$163d2): the map's coins (marker 8), and its
+    /// coins and marker-9 cells (h0+$16374).
+    CoinsTotal = "coins_total", h0(0x163d0), Width::W;
+    ItemsTotal = "items_total", h0(0x163d2), Width::W;
     /// The scroller (h0+$16604..$1668c): rows and columns drawn by the last pass (with a word
     /// either side, which the comparisons read), its row and column shifts, the frame toggle,
     /// tiles a line, the pending-blits flag and the count drawn.
@@ -420,7 +436,9 @@ layout! {
     ScrollerColShiftY = "scroller_col_shift_y", h0(0x1667e), Width::L;
     /// `scroll_dirs` (h0+$16682): which way the camera last moved (bits 1 right, 2 left, 3
     /// down, 4 up).
-    ScrollDirs = "scroll_dirs", h0(0x16682), Width::B;
+    ScrollDirs = "scroll_dirs", h0(0x16682), Width::W;
+    /// h0+$16684: cleared with the scroller's state (h0+$164c2).
+    Scroller16684 = "scroller_16684", h0(0x16684), Width::L;
     BlitsPending = "blits_pending", h0(0x16688), Width::W;
     ScrollerDrawn = "scroller_drawn", h0(0x1668a), Width::W;
     /// `shooter_column` (h0+$16752), `blit_next` (h0+$16756), `blit_queue` (h0+$1675a, 23 × 16
@@ -465,6 +483,9 @@ layout! {
     /// `level_map` (h1+$218e0): the map, 84 rows of 304 cells, `tile << 6 | marker`, and the
     /// rows the loader adds under it (a floor of `$3d` cells) up to the tile pointers.
     LevelMap = "level_map", h1(0x218e0), Width::Bytes(LEVEL_MAP_BYTES);
+    /// `level_palette` (h1+$31de0): the level's 32 colours, from its map's `PALA` (h0+$1622a);
+    /// the fades fade to it.
+    LevelPalette = "level_palette", h1(0x31de0), Width::Bytes(0x40);
 }
 
 /// The entry for `id`.

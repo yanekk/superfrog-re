@@ -46,6 +46,9 @@ pub struct DisplayData {
     pub(crate) sound: crate::audio::SoundData,
     /// What the front end reads from the disks.
     pub front: crate::front::FrontData,
+    /// Each level's `T7MP` file as `load_file` leaves it in memory (decompressed), for
+    /// [`crate::level::load`].
+    pub(crate) levels: std::collections::BTreeMap<sf_assets::LevelId, Vec<u8>>,
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
@@ -92,6 +95,11 @@ impl DisplayData {
             hero,
             worlds,
             front: crate::front::FrontData::new(data),
+            levels: data
+                .levels
+                .iter()
+                .map(|(id, l)| (*id, sf_assets::t7mp_encode(&l.t7mp)))
+                .collect(),
             rom: crate::mem::Rom::new(data),
             sound: crate::audio::SoundData::from_game(data)
                 .unwrap_or_else(|_| crate::audio::SoundData::from_parts(vec![0; 0x50000], vec![], vec![], vec![])),

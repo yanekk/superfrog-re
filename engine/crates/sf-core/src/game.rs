@@ -176,7 +176,11 @@ impl Game {
                     }
                 }
             }
-            Start::Level(_) => (State::default(), Scene::Placeholder, None, None),
+            Start::Level(id) => {
+                let mut state = State::default();
+                crate::level::load::enter(&mut state, &display, id);
+                (state, Scene::Level, None, None)
+            }
         };
         let (mut state, mut front) = (state, front);
         if let Some(f) = front.as_mut() {

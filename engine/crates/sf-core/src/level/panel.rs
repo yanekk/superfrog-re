@@ -214,7 +214,7 @@ pub fn extra_life(c: &mut LevelCtx) {
 }
 
 /// h0+$88de: the lives digit (0 to 5).
-fn lives_count(c: &mut LevelCtx) {
+pub(crate) fn lives_count(c: &mut LevelCtx) {
     let mut n = c.bus.w(FROG + f::LIVES);
     if !n_clear(n.wrapping_sub(5)) {
     } else {
@@ -225,4 +225,91 @@ fn lives_count(c: &mut LevelCtx) {
     }
     let src = h2(0x21c0).wrapping_add((n as u32) * 0xa);
     blit_panel(c, src, PANEL + 0x12, 0x32, 0x26, 0x385);
+}
+
+/// What `level_start` (h0+$6952) draws of the panel, in its order: the two sprite digits
+/// (h0+$862e), the panel sliding in (h0+$8510), the lives count (h0+$88de) and icon (h0+$8728),
+/// the clock (h0+$11dfe) and the score (h0+$8982, seven times from `score_digit = $a`).
+pub fn draw_at_start(c: &mut LevelCtx) {
+    sprite_digits(&mut c.bus);
+    slide_in(c);
+    lives_count(c);
+    let b = &mut c.bus;
+    let v = b.w(FROG + 0x5a);
+    b.set_w(LIVES_ICON_SHOWN, v);
+    let k = if n_clear(v) { v } else { 0 };
+    let src = h2(0x2580).wrapping_add((k.wrapping_mul(4)) as i16 as i32 as u32);
+    blit_panel(c, src, PANEL + 0x20, 0x38, 0x2c, 0x382);
+    clock_at_start(c);
+    c.bus.set_w(SCORE_DIGIT, 0xa);
+    for _ in 0..7 {
+        score_digit(c);
+    }
+}
+
+/// h0+$862e: the frog's `+$5c` (0..99) as two sprite digits, by pointing the copper MOVEs of the
+/// two digit sprites (their records' `+8`, at h0+$1b130 and $1b14c) at the tens' and the ones'
+/// frames (tables at h0+$86c2 and $86ee; the entry before each is blank, for 0).
+fn sprite_digits(b: &mut Bus) {
+    let n = b.w(FROG + 0x5c);
+    let (tens, ones) = if n == 0 {
+        (-1i32, -1i32)
+    } else {
+        ((n / 10) as i32, (n % 10) as i32)
+    };
+    for (k, table, rec) in [(tens, h0(0x86c2), h0(0x1b130)), (ones, h0(0x86ee), h0(0x1b14c))] {
+        let frame = b.l(table.wrapping_add((4 * k) as u32));
+        let at = b.l(rec);
+        for (o, v) in [(0, frame), (0x10, frame.wrapping_add(0x78))] {
+            b.set_w(at + o + 6, v as u16);
+            b.set_w(at + o + 2, (v >> 16) as u16);
+        }
+    }
+}
+
+/// h0+$8510: the panel's picture (hunk 2 from h2+$14a0) slides in from the middle in `$18` steps,
+/// a frame each (the display window opened to line `$27` first). Each step copies its seven
+/// stripes of two lines, a word wider on each side; what is left is the last step's.
+fn slide_in(c: &mut LevelCtx) {
+    let b = &mut c.bus;
+    b.set_w(h2(0x6bd0) + 6, 0x2779);
+    let (mut a1, mut a4, mut width) = (PANEL + 0x2e, h2(0x14fe), 1u32);
+    let (a0, a5) = (h2(0x14a0), PANEL + 0x30);
+    for _ in 0..0x18 {
+        for row in 0..7 {
+            for plane in 0..5 {
+                let o = row * 0x60 + plane * PANEL_PLANE;
+                for w in 0..width {
+                    let v = b.w(a0 + o + 2 * w);
+                    b.set_w(a1 + o + 2 * w, v);
+                    let v = b.w(a4 + o + 2 * w);
+                    b.set_w(a5 + o + 2 * w, v);
+                }
+            }
+        }
+        width += 1;
+        a1 -= 2;
+        a4 -= 2;
+    }
+}
+
+/// `clock_ticks` (h0+$11dfc).
+const CLOCK_TICKS: u32 = h0(0x11dfc);
+
+/// h0+$11dfe: in the easy game the minutes doubled (at most 9); the clock's colours into the
+/// copper list (`level_copper+$1f2`, `$1f6`), its ticks reset, and its four digits drawn.
+fn clock_at_start(c: &mut LevelCtx) {
+    let b = &mut c.bus;
+    if b.w(h0(0x9e6)) == 0 {
+        let m = b.b(h0(0x877)).wrapping_add(b.b(h0(0x877)));
+        b.set_b(h0(0x877), if (m.wrapping_sub(0xa) as i8) < 0 { m } else { 9 });
+    }
+    b.set_w(h2(0x6bd0) + 0x1f2, 0x149);
+    b.set_w(h2(0x6bd0) + 0x1f6, 0xbf);
+    b.set_w(CLOCK_TICKS, 0);
+    b.set_w(CLOCK_DIGIT, 0);
+    b.set_l(CLOCK_SHOWN, 0xffff_ffff);
+    for _ in 0..4 {
+        clock_digit(c);
+    }
 }

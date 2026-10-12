@@ -246,6 +246,10 @@ impl Rom {
     }
 }
 
+/// `final_level_flag` (h0+$1e): set while the final level plays, whose files (`LW*`) replace
+/// world 6's.
+const FINAL_LEVEL_FLAG: u32 = H0 + 0x1e;
+
 /// The 68000's view of memory for the ported routines.
 pub struct Bus<'a> {
     pub st: &'a mut State,
@@ -257,13 +261,16 @@ impl<'a> Bus<'a> {
         Bus { st, rom }
     }
 
-    /// The byte at `addr`: the state's variable there, else the fixed image, else 0.
+    /// The byte at `addr`: the state's variable there, else the fixed image (with the files of
+    /// the world loaded: the final level's while `final_level_flag` is set), else 0.
     pub fn b(&self, addr: u32) -> u8 {
         let addr = addr & 0xFF_FFFF;
-        self.st
-            .byte(addr)
-            .or_else(|| self.rom.byte(self.st.world(), addr))
-            .unwrap_or(0)
+        self.st.byte(addr).unwrap_or_else(|| {
+            let final_level = self.st.byte(FINAL_LEVEL_FLAG + 1).unwrap_or(0) != 0
+                || self.st.byte(FINAL_LEVEL_FLAG).unwrap_or(0) != 0;
+            let world = if final_level { 8 } else { self.st.world() };
+            self.rom.byte(world, addr).unwrap_or(0)
+        })
     }
 
     pub fn w(&self, addr: u32) -> u16 {

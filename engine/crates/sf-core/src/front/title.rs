@@ -47,7 +47,7 @@ const AFTER_TITLE_LOAD: u32 = at(0xb7e2);
 /// 0, ExecBase (`$c00276`, in slow RAM) and the bus-error vector (`$fc0818`, in the ROM). Not
 /// the game's data: the music replayer reads them through an empty instrument (docs/11), so the
 /// title music's silent channels carry them (measured on the oracle).
-const KICKSTART_LOW_CHIP: [u8; 12] = [0, 0, 0, 0, 0, 0xc0, 0x02, 0x76, 0, 0xfc, 0x08, 0x18];
+pub(crate) const KICKSTART_LOW_CHIP: [u8; 12] = [0, 0, 0, 0, 0, 0xc0, 0x02, 0x76, 0, 0xfc, 0x08, 0x18];
 
 /// What the frames before the title leave in memory, built at once (loads are instant, owner
 /// 2026-10-12): `init_save_boot_args`, `hw_takeover`, the Accessing-disk overlay, the seeded RNG,
