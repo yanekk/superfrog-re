@@ -307,7 +307,7 @@ struct Denise<'a> {
 /// The level's picture.
 pub(crate) fn level(state: &State, data: &DisplayData, view: View) -> Picture {
     let mem = Mem::new(state, data);
-    let word = |a: u32, _: u16| mem.word(a);
+    let word = |a: u32, _: u16, _: u16| mem.word(a);
     draw(
         &mem,
         &word,
@@ -331,7 +331,7 @@ pub(crate) fn screen(
     carry: Option<Fetch>,
 ) -> (Picture, Vec<Write>) {
     let mem = Mem::new(state, data);
-    draw(&mem, copper_word, cop1lc, 0, false, carry)
+    draw(&mem, &|a, line, _| copper_word(a, line), cop1lc, 0, false, carry)
 }
 
 /// A screen of the story intro (T32): as [`screen`], every read from the intro's memory `mem`.
@@ -340,7 +340,7 @@ pub(crate) fn story_screen(
     empty: &State,
     data: &DisplayData,
     cop1lc: u32,
-    copper_word: &dyn Fn(u32, u16) -> u16,
+    copper_word: &dyn Fn(u32, u16, u16) -> u16,
     carry: Option<Fetch>,
 ) -> (Picture, Vec<Write>) {
     let mem = Mem {
@@ -363,7 +363,7 @@ pub(crate) fn copper_writes(state: &State, data: &DisplayData, cop1lc: u32) -> V
 
 fn draw(
     mem: &Mem,
-    word: &dyn Fn(u32, u16) -> u16,
+    word: &dyn Fn(u32, u16, u16) -> u16,
     cop1lc: u32,
     n: u16,
     level: bool,
@@ -373,12 +373,12 @@ fn draw(
     // with the setup the list leaves at its end, as if the last frame ran it too.
     let start = carry.unwrap_or_else(|| {
         let mut f = Fetch::default();
-        for w in copper::run_timed(word, cop1lc, Fetch::default()) {
+        for w in copper::run_beam(word, cop1lc, Fetch::default()) {
             f.write(w.reg, w.value);
         }
         f
     });
-    let writes = copper::run_timed(word, cop1lc, start);
+    let writes = copper::run_beam(word, cop1lc, start);
     let mut end = start;
     for w in &writes {
         end.write(w.reg, w.value);

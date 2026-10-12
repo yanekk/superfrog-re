@@ -115,7 +115,7 @@ pub fn run_with(
             .unwrap_or_else(|e| panic!("{}: oracle, frame {of}: {e}", case.name));
         of += 1;
         let mut mem = sync::core_memory(amiga.memory());
-        let pacing = sync::pacing(&amiga.cpu(), &mem);
+        let mut pacing = sync::pacing(&amiga.cpu(), &mem);
         before_step(f, &mut game);
         let before = game.clone();
         let mut ours = game.step_paced(input, pacing);
@@ -148,6 +148,8 @@ pub fn run_with(
                 of += 1;
                 prev_mem = std::mem::replace(&mut mem, sync::core_memory(amiga.memory()));
             }
+            // The schedule as the original is once its load is over.
+            pacing = sync::pacing(&amiga.cpu(), &mem);
             // The engine's frame again, with what runs on by itself while the original loads (the
             // keyboard's poll, the music) as the original had it just before this frame, then
             // what the load left that the engine does not model, as it is after it.

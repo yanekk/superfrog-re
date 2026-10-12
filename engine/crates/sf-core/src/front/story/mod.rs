@@ -63,6 +63,22 @@ const KICKSTART_DIWSTOP: u16 = 0xf4c1;
 /// `wait_raster` ends in the next frame (oracle).
 const BOOT_START_LINE: u16 = 0x130;
 
+/// What Kickstart 1.3 leaves in chip RAM's first longs (its reset stack word, ExecBase at $C00276,
+/// the bus and address error vectors), which the music replayer reads through a zero instrument
+/// pointer (measured on the oracle; the owner's ROM).
+const KICKSTART_LOW: [u8; 12] = [0, 0, 0, 0, 0x00, 0xc0, 0x02, 0x76, 0x00, 0xfc, 0x08, 0x18];
+
+/// Lines into the handler from which the copper's reads see its writes.
+const COPPER_SEES_HANDLER: u16 = 2;
+
+/// The DMA cycle of line 0 by which the CPU has taken the vertical blank's interrupt: copper
+/// writes before it go with the frame before (oracle: the black list's DMACON on cycle 12).
+const BEFORE_IRQ: u16 = 0x14;
+
+fn is_paula(reg: u16) -> bool {
+    matches!(reg, 0x96 | 0x9a | 0x9c | 0x9e) || (0xa0..0xe0).contains(&reg)
+}
+
 /// Lines in a long frame; a short one has one fewer.
 const LONG_FRAME: u16 = 313;
 
@@ -265,12 +281,49 @@ pub static INTRO_LAYOUT: &[VarDef] = &[
         addr: bobs::CLEAN,
         width: Width::Bytes(5 * bobs::PLANE + 0x40),
     },
+    VarDef {
+        id: VarId::StorySfx,
+        name: "sfx_records",
+        addr: h0(0x38efc),
+        width: Width::Bytes(0xfe),
+    },
+    VarDef {
+        id: VarId::StoryMusicOn,
+        name: "music_on",
+        addr: h0(0x39296),
+        width: Width::Bytes(4),
+    },
+    VarDef {
+        id: VarId::StoryReplayer,
+        name: "p41_vars",
+        addr: h0(0x3a352),
+        width: Width::Bytes(0xda),
+    },
+    VarDef {
+        id: VarId::StoryShadow,
+        name: "music_fade_shadow",
+        addr: h0(0x3a556),
+        width: Width::Bytes(0x44),
+    },
+    VarDef {
+        id: VarId::StoryStream,
+        name: "stream",
+        addr: h0(0x3a726),
+        width: Width::Bytes(8),
+    },
+    VarDef {
+        id: VarId::StoryTimeline,
+        name: "timeline",
+        addr: h0(0xb1f4),
+        width: Width::Bytes(6),
+    },
 ];
 
 impl Story {
     /// Switch on with disk 3 in df0: the boot program starts.
     pub fn power_on(data: &StoryData) -> Story {
         let mut mem = StoryMem::default();
+        mem.write(0, &KICKSTART_LOW);
         mem.write(data::BOOT_BASE, &data.boot);
         let cop1lc = boot::start(&mut mem);
         Story {
@@ -324,6 +377,7 @@ impl Story {
         empty: &State,
         display: &DisplayData,
         input: crate::input::FrameInput,
+        pacing: crate::game::Pacing,
     ) -> StoryOut {
         // Agnus flips the field at each frame's start while interlace is on.
         if self.lace {
@@ -370,12 +424,14 @@ impl Story {
             Stage::Intro(i, n) => {
                 let load_line = cx.load_line.take();
                 drop(cx);
-                let f = i.frame(&mut self.mem, data, input, *n, load_line, list);
+                let f = i.frame(&mut self.mem, data, input, *n, load_line, list, pacing);
                 *n += 1;
                 // A load's frame shows the list set before the load, as the load left memory.
                 let (list, copper, at_handler) = match f.list_at_load {
                     Some(l) => (l, self.mem.read(l, 0x400), None),
-                    None => (list, copper, Some((f.handler.1, f.copper))),
+                    // The handler's writes (bitplane pointers, a fade's colours) are in place by the
+                    // time the copper reads the list past its wait for line $20.
+                    None => (list, copper, Some((f.handler.0 + COPPER_SEES_HANDLER, f.copper))),
                 };
                 paula = f.paula;
                 if let Some(c) = f.cop1lc {
@@ -384,12 +440,18 @@ impl Story {
                 resync = f.resync;
                 after_handler = at_handler;
                 let w = if i.ended { Wait::Over } else { Wait::Frame };
+                let fade_writes = if f.list_at_load.is_none() {
+                    f.fade_writes
+                } else {
+                    Vec::new()
+                };
                 return self.finish(
                     empty,
                     display,
                     list,
                     copper,
                     after_handler,
+                    fade_writes,
                     f.load,
                     resync,
                     f.jobs,
@@ -408,6 +470,7 @@ impl Story {
             list,
             copper,
             after_handler,
+            Vec::new(),
             load,
             resync,
             jobs,
@@ -426,18 +489,32 @@ impl Story {
         list: u32,
         copper: Vec<u8>,
         after_handler: Option<(u16, Vec<u8>)>,
+        fade_writes: Vec<(u32, u16, u16, u16)>,
         load: Option<LoadEnd>,
         resync: Vec<(u32, u32)>,
         jobs: Vec<Job>,
         bplcon0: Option<u16>,
-        paula: Vec<PaulaWrite>,
+        mut paula: Vec<PaulaWrite>,
         wait: Wait,
     ) -> StoryOut {
         let picture = match self.fetch {
             None => Picture::blank(0x81, 0x2c, 320, 200),
             Some(carry) => {
-                let word = |a: u32, line: u16| {
+                let word = |a: u32, line: u16, h: u16| {
                     let o = a.wrapping_sub(list) as usize;
+                    // A word the handler's fade step rewrites, component by component: as its last
+                    // write before the copper's read left it.
+                    let mut rewritten = fade_writes.iter().filter(|w| w.0 == a).peekable();
+                    if rewritten.peek().is_some() {
+                        let last = rewritten
+                            .filter(|w| (line, h) >= (w.1, w.2))
+                            .last()
+                            .map(|w| w.3);
+                        return last.unwrap_or_else(|| match copper.get(o..o + 2) {
+                            Some(w) => u16::from_be_bytes([w[0], w[1]]),
+                            None => self.mem.w(a),
+                        });
+                    }
                     let snap = match &after_handler {
                         Some((l, after)) if line >= *l => after,
                         _ => &copper,
@@ -451,6 +528,16 @@ impl Story {
                     crate::render::story_screen(&self.mem, empty, display, list, &word, Some(carry));
                 let mut end = carry;
                 for w in &writes {
+                    // The copper's writes to Paula's registers, but those it makes before the CPU
+                    // takes the vertical blank's interrupt: the last frame had them.
+                    if is_paula(w.reg) && (w.line, w.h) >= (0, BEFORE_IRQ) {
+                        paula.push(PaulaWrite {
+                            reg: w.reg,
+                            value: w.value,
+                            hpos: 0,
+                            vpos: w.line,
+                        });
+                    }
                     end.write(w.reg, w.value);
                     match w.reg {
                         0x80 => self.cop1lc = (w.value as u32) << 16 | self.cop1lc & 0xffff,
@@ -475,6 +562,26 @@ impl Story {
         if let Some(f) = self.fetch {
             self.lace = f.bplcon0 & 4 != 0;
         }
+        // The next frame's copper, up to the interrupt, ends this frame on the original.
+        if let Some(carry) = self.fetch
+            && !matches!(self.stage, Stage::Boot(_) | Stage::BootDone)
+        {
+            let mem = &self.mem;
+            let next = crate::render::copper::run_timed(&|a, _| mem.w(a), self.cop1lc, carry);
+            for w in next
+                .iter()
+                .take_while(|w| (w.line, w.h) < (0, BEFORE_IRQ))
+                .filter(|w| is_paula(w.reg))
+            {
+                paula.push(PaulaWrite {
+                    reg: w.reg,
+                    value: w.value,
+                    hpos: 0,
+                    vpos: crate::render::copper::FRAME_LINES,
+                });
+            }
+        }
+        paula.sort_by_key(|w| w.vpos);
         if wait == Wait::Over {
             self.stage = match self.stage {
                 Stage::Boot(_) => Stage::BootDone,
@@ -505,7 +612,12 @@ mod tests {
         let mut s = Story::power_on(&display.story);
         let mut loads = Vec::new();
         for f in 0..200 {
-            let out = s.step(&empty, &display, crate::input::FrameInput::NONE);
+            let out = s.step(
+                &empty,
+                &display,
+                crate::input::FrameInput::NONE,
+                crate::game::Pacing::Unpaced,
+            );
             if out.load.is_some() {
                 loads.push((f, out.load));
             }

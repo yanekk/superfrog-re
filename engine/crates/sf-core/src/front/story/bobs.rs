@@ -176,8 +176,8 @@ pub fn clear_buffers(m: &mut StoryMem, clock: &mut BlitClock) {
     }
 }
 
-/// `bobs_draw` (h0+$87de, `draw_frame` h0+$96b0's work): one draw of every object into the buffer
-/// not shown, which becomes the one to show.
+/// `bobs_draw` (h0+$87ec, `draw_frame` h0+$96b0's work): one draw of every object into the buffer
+/// not shown, which becomes the one to show once the draw is over (h0+$87de).
 pub fn draw(m: &mut StoryMem, clock: &mut BlitClock) {
     let (mut d0, mut d1) = (BUFFER_A, BUFFER_B);
     let t = !m.w(TOGGLE);
@@ -223,8 +223,8 @@ pub fn draw(m: &mut StoryMem, clock: &mut BlitClock) {
         step_anim(m, o);
         draw_object(m, clock, o + d2, d0);
     }
-    let drawn = m.l(DRAWN);
-    m.set_l(SHOWN, drawn);
+    // `shown_buffer` takes `draw_buffer` when the draw is over: the caller's (it can be frames
+    // later).
 }
 
 /// The CPU's time per object in the restore pass when nothing is restored.

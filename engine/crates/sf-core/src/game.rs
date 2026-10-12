@@ -56,11 +56,18 @@ pub struct Cpu {
 /// "Lag"). Normal play never lags; conformance runs feed the original's schedule from the oracle.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash)]
 pub enum Pacing {
-    /// The main loop was waiting when this frame's vertical blank came: normal play, always.
+    /// No schedule given: the engine keeps its own time (normal play, always). In a level this is
+    /// [`Pacing::OnTime`]; in the story intro the engine's own timing model decides when its long
+    /// jobs end.
     #[default]
+    Unpaced,
+    /// The main loop was waiting when this frame's vertical blank came.
     OnTime,
     /// The original's main loop was still in its pass at this frame's vertical blank. The engine
-    /// then runs the interrupt's work at one fixed point in the late pass.
+    /// then runs the interrupt's work at one fixed point in the late pass. In the story intro
+    /// (owner, 2026-10-12): the original was still in a long job (a draw, an unpack, a scene's
+    /// set-up), and the engine's job in progress ends no sooner; [`Pacing::OnTime`] there means it
+    /// had ended, and the engine's ends with the frame.
     Late,
 }
 
@@ -166,14 +173,14 @@ impl Game {
 
     /// One PAL frame of normal play: the main loop is never late.
     pub fn step(&mut self, input: FrameInput) -> FrameOut {
-        self.step_paced(input, Pacing::OnTime)
+        self.step_paced(input, Pacing::Unpaced)
     }
 
     /// One PAL frame on the original's schedule (conformance runs; see [`Pacing`]).
     pub fn step_paced(&mut self, input: FrameInput, pacing: Pacing) -> FrameOut {
         self.frame += 1;
         if let (Scene::Story, Some(story)) = (self.scene, self.story.as_mut()) {
-            let out = story.step(&self.state, &self.display, input);
+            let out = story.step(&self.state, &self.display, input, pacing);
             if !out.over {
                 self.shown = Some(out.picture.clone());
                 return FrameOut {

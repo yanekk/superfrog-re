@@ -102,6 +102,8 @@ pub struct BlitClock {
     pub handler: u32,
     /// Blits run so far.
     pub blits: u32,
+    /// Where the handler started at each blank the run passed (it waits for the blit in progress).
+    pub handlers: Vec<Beam>,
 }
 
 impl BlitClock {
@@ -112,6 +114,7 @@ impl BlitClock {
             blanks: 0,
             handler,
             blits: 0,
+            handlers: Vec::new(),
         }
     }
 
@@ -143,6 +146,7 @@ impl BlitClock {
         while self.now.line >= frame * (self.blanks + 1) {
             self.blanks += 1;
             let at = Beam::at_line(frame * self.blanks).max(self.now);
+            self.handlers.push(at);
             self.now = at.plus(self.handler);
         }
     }

@@ -32,6 +32,8 @@ pub struct StoryData {
     pub banks: [Vec<u8>; 4],
     /// The sector spans `intro_file_table` names, raw: what `load_file` (h0+$c3fa) reads.
     pub spans: [Vec<u8>; 4],
+    /// What the sound driver reads from the intro's hunk 0 (its replayer's tables).
+    pub sound: Option<sf_assets::sound::SoundData>,
 }
 
 impl StoryData {
@@ -62,10 +64,11 @@ impl StoryData {
         };
         StoryData {
             boot,
-            intro,
+            intro: intro.clone(),
             chip,
             banks: [bank(1), bank(2), bank(3), bank(4)],
             spans: [span(1), span(2), span(3), span(4)],
+            sound: Some(super::sound::sound_data(&intro)),
         }
     }
 }

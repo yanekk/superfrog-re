@@ -181,6 +181,18 @@ pub enum VarId {
     StoryBuffers,
     /// The clean background and the scene's palette after it.
     StoryClean,
+    /// The intro's sound driver (the game's at other addresses): the effect records,
+    StorySfx,
+    /// `music_on`,
+    StoryMusicOn,
+    /// the replayer's channels and globals,
+    StoryReplayer,
+    /// the fade and the shadow registers,
+    StoryShadow,
+    /// the streamer,
+    StoryStream,
+    /// and the intro's timeline of sound events.
+    StoryTimeline,
 }
 
 impl VarId {

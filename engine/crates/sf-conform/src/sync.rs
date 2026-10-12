@@ -137,6 +137,14 @@ fn in_level(m: &AmigaMemory) -> bool {
 /// `level_frame_loop`'s wait and the pass was due. Every other screen paces on a raster wait and
 /// is never late.
 pub fn pacing(cpu: &CpuRegs, m: &AmigaMemory) -> Pacing {
+    // The story intro: late while the original is in a long job at the blank (owner, 2026-10-12).
+    if long(m, 0x6c) == INTRO_VBL {
+        return if sf_core::front::story::intro::busy(&main_chain(cpu, m)) {
+            Pacing::Late
+        } else {
+            Pacing::OnTime
+        };
+    }
     // A step ends at the level-3 handler's entry; the interrupted PC is on the stack (FINDINGS).
     let main_pc = if cpu.pc == VBL_HANDLER {
         long(m, cpu.ssp + 2)

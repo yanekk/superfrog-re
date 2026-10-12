@@ -179,9 +179,85 @@ impl AudioDriver {
         self.p41.set_w(FETCH_TICK, 5);
     }
 
+    /// The story intro's `music_start` (`d3_c04` h0+$390c2): nothing if music is on; else, with
+    /// interrupts off, its `p41_init` (h0+$390e0) of the module at `module`, its samples at
+    /// `samples` (0: the module's own). The intro's init keeps no header backup and leaves the
+    /// volumes alone.
+    pub fn music_start_intro(
+        &mut self,
+        data: &SoundData,
+        module: u32,
+        samples: u32,
+        out: &mut Vec<PaulaWrite>,
+    ) {
+        if self.music_on.w(0) != 0 {
+            return;
+        }
+        wr(out, INTENA, 0x4000);
+        self.music_on.set_w(0, 0);
+        self.shadow.set_w(FADE, 0);
+        if self.mem.l(data, module) == u32::from_be_bytes(*b"P41A") {
+            self.music_on.set_w(0, 1);
+            let h = module + 4;
+            self.p41.set_l(MODULE, h);
+            for f in [4, 8, 0xc] {
+                let v = self.mem.l(data, h + f).wrapping_add(h);
+                self.mem.set_l(h + f, v);
+            }
+            if samples != 0 {
+                self.mem.set_l(h + 0xc, samples);
+            }
+            let base = self.mem.l(data, h + 0xc);
+            let count = (self.mem.b(data, h + 2) as u16).wrapping_sub(1) as u32 + 1;
+            for i in 0..count {
+                let e = h + 0x10 + i * 0x10;
+                let v = self.mem.l(data, e).wrapping_add(base);
+                self.mem.set_l(e, v);
+                let v = self.mem.l(data, e + 6).wrapping_add(base);
+                self.mem.set_l(e + 6, v);
+            }
+            for n in 0..4 {
+                for o in 0..42 {
+                    self.p41.set_b(ch(n) + o, 0);
+                }
+            }
+            let patterns = self.mem.l(data, h + 4);
+            self.p41.set_l(PATTERNS, patterns);
+            let mut pos = self.mem.l(data, h + 8);
+            self.p41.set_l(POSITIONS, pos);
+            let mut at = patterns;
+            for n in 0..4 {
+                let off = sext(self.mem.w(data, pos));
+                pos += 2;
+                if n < 3 {
+                    self.p41.set_l(ch(n) + STREAM, patterns.wrapping_add(off));
+                } else {
+                    at = at.wrapping_add(off);
+                    self.p41.set_l(ch(n) + STREAM, at);
+                }
+            }
+            self.p41.set_l(POSITION, pos);
+            self.p41.set_w(ROWS_LEFT, 0x3f);
+            self.p41.set_w(FETCH_AT_ROW, 0);
+            self.p41.set_l(FETCH_DELAY, 0);
+            self.p41.set_w(TICK, 0);
+            wr(out, DMACON, 0x000f);
+            self.p41.set_w(SPEED, 6);
+            self.p41.set_w(FETCH_TICK, 5);
+        }
+        wr(out, INTENA, 0xc000);
+    }
+
     /// `music_stop` (`$132a0`): music and every effect stopped, Paula silenced, the module header
     /// put back as it was before `music_start` relocated it.
     pub fn music_stop(&mut self, _data: &SoundData, out: &mut Vec<PaulaWrite>) {
+        if self.intro {
+            // The story intro's `music_stop` (h0+$391fc).
+            self.music_on.set_w(0, 0);
+            self.shadow.set_w(FADE, 0);
+            wr(out, DMACON, 0x000f);
+            return;
+        }
         wr(out, INTENA, 0x4000);
         self.music_on.set_w(0, 0);
         self.shadow.set_w(FADE, 0);
@@ -698,6 +774,11 @@ impl AudioDriver {
                 if ceiling == 0 {
                     self.music_stop(data, out);
                     self.shadow.set_w(FADE, 0);
+                    if self.intro {
+                        // The intro's `music_stop` leaves `a1` on Paula: the copy goes on there.
+                        self.shadow_copy(out);
+                        return;
+                    }
                     // `music_stop` leaves `a1` past its last clear, at `sfx_steal`, so the copy
                     // below lands there in RAM instead of on Paula.
                     for n in 0..4 {
@@ -716,6 +797,11 @@ impl AudioDriver {
                 }
             }
         }
+        self.shadow_copy(out);
+    }
+
+    /// Each channel music holds, from the shadow to Paula.
+    fn shadow_copy(&mut self, out: &mut Vec<PaulaWrite>) {
         for n in 0..4 {
             if self.free(n) {
                 let s = sh(n);

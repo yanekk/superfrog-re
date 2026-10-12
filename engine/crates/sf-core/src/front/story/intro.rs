@@ -17,7 +17,7 @@ use super::fade::Rec;
 use super::mem::StoryMem;
 use super::ops::Op;
 use super::{data, h0, scenes};
-use crate::game::{Job, LoadEnd};
+use crate::game::{Job, LoadEnd, Pacing};
 use crate::render::copper::Fetch;
 
 /// `intro_skip`: set by the vertical blank on fire or the mouse button.
@@ -35,17 +35,42 @@ pub const FADES: [Rec; 4] = [
     Rec::intro(h0(0xc146)),
 ];
 
-/// Lines the vertical blank's handler takes when nothing delays it (oracle: the main program's
-/// first write after a blank is on line 16 to 18).
-pub const HANDLER_LINES: u64 = 16;
+/// Lines the vertical blank's handler takes when it has nothing but its own work (its 8-line
+/// wait included), with the music playing, and per colour a fade step works on (oracle: its
+/// acknowledge on line 12 idle, 17 with music, about 46 while a 32-colour fade steps).
+const HANDLER_BASE: u64 = 12;
+const HANDLER_MUSIC: u64 = 5;
+const HANDLER_PER_32_COLOURS: u64 = 34;
+
+/// The handler's length this frame, from what it is about to do.
+pub fn handler_lines(m: &StoryMem) -> u64 {
+    let mut lines = HANDLER_BASE;
+    if super::sound::music_on(m) {
+        lines += HANDLER_MUSIC;
+    }
+    for r in &FADES {
+        let kind = m.w(r.at + super::fade::KIND);
+        let steps = m.w(r.at + super::fade::COUNTER).wrapping_add(1) >= m.w(r.at + super::fade::SPEED);
+        if (1..=3).contains(&kind) && !r.done(m) && steps {
+            lines += HANDLER_PER_32_COLOURS * m.w(r.at + super::fade::COUNT) as u64 / 32;
+        }
+    }
+    lines
+}
 /// Lines in each of the intro's frames (interlace is off and the frames stay long).
 pub const LINES: u64 = 313;
 
-/// A fade set-up's CPU time, with interrupts off: per colour (oracle: 14 lines for 8 colours,
-/// 42 for 32).
-const FADE_SETUP_LINES_PER_8: u64 = 14;
+/// A fade's set-up's CPU time, with interrupts off (oracle: a fade in takes 14 lines for 8
+/// colours and 42 for 32; a fade out 17 for 8).
+fn fade_setup_lines(kind: u8, count: u16) -> u64 {
+    let c = count as u64;
+    match kind {
+        3 => 5 + 3 * c / 2,
+        _ => 5 + 37 * c / 32,
+    }
+}
 /// Clearing the masks (`clr.b` 40 960 times, h0+$8408), in lines of CPU.
-const MASK_CLEAR_LINES: u64 = 2806;
+const MASK_CLEAR_LINES: u64 = 3022;
 
 /// Where the original is while it clears the buffers and sets up the objects (`buffers_clear`'s
 /// waits, `objects_init`'s calls, the draws in it): the return addresses of their calls.
@@ -75,6 +100,33 @@ const SETUP_WRITES: [(u32, u32); 7] = [
     (h0(0xb42e), 8),
     (bobs::BUFFER_A, 2 * 5 * bobs::PLANE),
     (bobs::MASKS, 0xa000),
+];
+
+/// Whether the original's main program is in one of its long jobs (a draw, a scene's set-up, an
+/// unpack) at the end of a frame, from where it is (`chain`: its PC, then the return addresses on
+/// its stack): what conformance feeds the intro as [`Pacing`] (owner, 2026-10-12).
+pub fn busy(chain: &[u32]) -> bool {
+    chain.iter().any(|a| {
+        BUSY_RETURNS.contains(a) || scenes::UNPACK_FRAMES.iter().any(|(r, _)| r == a)
+    })
+}
+
+/// Return addresses of the calls that make the long jobs: `draw_frame` in `draw_frames`,
+/// `draw_next` and `objects_init`; `objects_init`'s own calls; `buffers_clear`'s blitter waits.
+const BUSY_RETURNS: [u32; 13] = [
+    h0(0x8442),
+    h0(0x84de),
+    h0(0x97b8),
+    h0(0x97bc),
+    h0(0x972e),
+    h0(0x974c),
+    h0(0x976a),
+    h0(0x9782),
+    h0(0x9792),
+    h0(0x97b4),
+    h0(0x8358),
+    h0(0x8392),
+    h0(0x83b2),
 ];
 
 /// Return addresses on the original's stack while a step runs (for conformance's loads and jobs).
@@ -153,6 +205,11 @@ pub struct Intro {
     pub ended: bool,
     /// The copper list the display runs (the last COP1LC written).
     shown_list: u32,
+    /// Where the handlers of coming frames start, when a draw's blit holds them off (line since
+    /// the intro's start).
+    handler_at: Vec<u64>,
+    /// This frame's schedule from conformance ([`Pacing`]); `Unpaced` in normal play.
+    pacing: Pacing,
     /// The main program's Paula writes not yet given out, at their times (some fall in a later
     /// frame: a job's last write).
     writes: Vec<(u64, PaulaWrite)>,
@@ -170,6 +227,8 @@ pub struct IntroFrame {
     pub handler: (u16, u16),
     /// The copper list `list` as the handler left it.
     pub copper: Vec<u8>,
+    /// The colour words the handler's fade step rewrote, with the beam position of each write.
+    pub fade_writes: Vec<(u32, u16, u16, u16)>,
     /// A load this frame: the COP1LC then (the frame stands for the original's frame the load
     /// ended on, whose list is the one set before it).
     pub list_at_load: Option<u32>,
@@ -195,6 +254,14 @@ fn bus(list: u32, audio: bool) -> Bus {
     }
 }
 
+/// The sound driver's tables (empty without disks).
+fn sound_data(data: &data::StoryData) -> &sf_assets::sound::SoundData {
+    static EMPTY: std::sync::OnceLock<sf_assets::sound::SoundData> = std::sync::OnceLock::new();
+    data.sound.as_ref().unwrap_or_else(|| {
+        EMPTY.get_or_init(|| sf_assets::sound::SoundData::from_parts(Vec::new(), Vec::new(), Vec::new(), Vec::new()))
+    })
+}
+
 /// One draw, as a routine of its own: `draw_frames(1)`.
 static DRAW_1: &[Op] = &[Op::Draw(1)];
 /// `draw_next`.
@@ -204,6 +271,12 @@ static DRAW_ONCE: &[Op] = &[Op::DrawOnce];
 /// the fades and the colours they work on, `intro_skip`.
 pub const RUNS_DURING_LOAD: &[(u32, u32)] = &[
     (h0(0x16), 6),
+    (h0(0xb1f4), 6),
+    (h0(0x38efc), 0xfe),
+    (h0(0x39296), 4),
+    (h0(0x3a352), 0xda),
+    (h0(0x3a556), 0x44),
+    (h0(0x3a726), 8),
     (h0(0xbb70), 4 * 0x1f2),
     (super::h2(0xdb02), 0x20),
     (super::h2(0xdbe6), 0x80),
@@ -232,6 +305,8 @@ impl Intro {
             first: true,
             ended: false,
             shown_list: scenes::BLACK_LIST,
+            pacing: Pacing::Unpaced,
+            handler_at: Vec::new(),
             writes: Vec::new(),
         }
     }
@@ -246,7 +321,9 @@ impl Intro {
         frame: u64,
         load_line: Option<u16>,
         list: u32,
+        pacing: Pacing,
     ) -> IntroFrame {
+        self.pacing = pacing;
         let top = frame * LINES;
         let end = top + LINES;
         let mut out = IntroFrame {
@@ -255,21 +332,35 @@ impl Intro {
             resync: Vec::new(),
             jobs: Vec::new(),
             cop1lc: None,
-            handler: (0, HANDLER_LINES as u16),
+            handler: (0, 0),
             copper: Vec::new(),
+            fade_writes: Vec::new(),
             list_at_load: None,
         };
-        // The handler: at the top, or once a masked set-up lets it in.
-        let at = top.max(self.masked_until);
+        // The handler: at the top, once a masked set-up lets it in, or once the blit in progress
+        // is over.
+        self.handler_at.retain(|&a| a >= top);
+        let held = self.handler_at.first().copied().filter(|&a| a < end).unwrap_or(top);
+        let at = top.max(self.masked_until).max(held);
         if let Wait::Masked(until) = self.wait
             && until > top
         {
-            // The set-up's own end (interrupts on) comes first.
+            // The set-up's own end (interrupts on) comes first, before the handler's writes.
             self.finish_busy(m, until);
+            let (due, later): (Vec<_>, Vec<_>) = std::mem::take(&mut self.writes)
+                .into_iter()
+                .partition(|(t, _)| *t <= until);
+            self.writes = later;
+            out.paula.extend(due.into_iter().map(|(_, mut w)| {
+                w.vpos = 0;
+                w
+            }));
         }
         let mut writes = Vec::new();
-        super::vbl::run(m, input, &mut writes);
-        let handler_end = at + HANDLER_LINES;
+        let handler = handler_lines(m);
+        let steps = super::vbl::run(m, sound_data(data), input, &mut writes);
+        out.fade_writes = super::vbl::fade_write_times(&steps, (at - top) as u16);
+        let handler_end = at + handler;
         for w in &mut writes {
             w.vpos = (at - top) as u16;
         }
@@ -284,7 +375,7 @@ impl Intro {
             && until > at
         {
             self.wait = Wait::Busy {
-                until: until + HANDLER_LINES,
+                until: until + handler,
                 blank_extends: true,
             };
         }
@@ -297,7 +388,8 @@ impl Intro {
             // original is compared once it has left that unpack, on the line it left it.
             out.load = Some(LoadEnd::Left(RET_TEXT_1_UNPACK));
             out.resync.push((VBL_FLAG, 4));
-            self.t = top + load_line.map_or(HANDLER_LINES, u64::from);
+            out.resync.push((h0(0xb1f4), 6));
+            self.t = top + load_line.map_or(handler, u64::from);
         }
         self.run(m, data, input, top, end, &mut out, load_line, list);
         // The main program's writes due this frame, among the handler's in beam order.
@@ -310,13 +402,45 @@ impl Intro {
         out
     }
 
+    /// Whether, on its own timing, the program would be out of every job at this frame's end
+    /// once the job in progress ends.
+    fn idle_at(
+        &self,
+        m: &StoryMem,
+        data: &data::StoryData,
+        input: crate::input::FrameInput,
+        top: u64,
+        end: u64,
+        list: u32,
+    ) -> bool {
+        let mut trial = self.clone();
+        trial.pacing = Pacing::Unpaced;
+        let mut tm = m.clone();
+        let mut out = IntroFrame {
+            paula: Vec::new(),
+            load: None,
+            resync: Vec::new(),
+            jobs: Vec::new(),
+            cop1lc: None,
+            handler: (0, 0),
+            copper: Vec::new(),
+            fade_writes: Vec::new(),
+            list_at_load: None,
+        };
+        trial.run(&mut tm, data, input, top, end, &mut out, None, list);
+        !matches!(trial.wait, Wait::Busy { .. })
+    }
+
     /// The end of a busy stretch at `at`: its deferred part.
     fn finish_busy(&mut self, m: &mut StoryMem, at: u64) {
-        self.t = at;
+        self.t = self.t.max(at);
         self.wait = Wait::Run;
         match std::mem::replace(&mut self.then, Then::Nothing) {
             Then::Nothing => {}
             Then::DrawEnd => {
+                if option_env!("SF_DRAWLOG").is_some() {
+                    eprintln!("DRAWEND t {} (frame {} line {}) pacing {:?}", at, at / LINES, at % LINES, self.pacing);
+                }
                 let drawn = m.l(bobs::DRAWN);
                 m.set_l(bobs::SHOWN, drawn);
                 self.write_at(at, 0x96, 0x0400);
@@ -365,11 +489,29 @@ impl Intro {
                     }
                     self.wait = Wait::Run;
                 }
-                Wait::Busy { until, .. } | Wait::Masked(until) => {
+                Wait::Masked(until) => {
                     if until >= end {
                         return;
                     }
                     self.finish_busy(m, until);
+                }
+                Wait::Busy { until, .. } => {
+                    if until >= end {
+                        if self.pacing != Pacing::OnTime {
+                            return;
+                        }
+                        // The original's job was over by this blank: so is the engine's.
+                        self.finish_busy(m, end - 1);
+                    } else if self.pacing == Pacing::Late && self.idle_at(m, data, input, top, end, list) {
+                        // The original is still in a job at this blank: the engine's goes on.
+                        self.wait = Wait::Busy {
+                            until: end + 1,
+                            blank_extends: false,
+                        };
+                        return;
+                    } else {
+                        self.finish_busy(m, until);
+                    }
                 }
             }
             if self.ended || !self.step(m, data, input, top, end, out, load_line, list) {
@@ -381,6 +523,13 @@ impl Intro {
     fn write(&mut self, out: &mut IntroFrame, reg: u16, value: u16) {
         let _ = out;
         self.write_at(self.t, reg, value);
+    }
+
+    /// Writes made now, in order.
+    fn writes_now(&mut self, ws: Vec<PaulaWrite>) {
+        for w in ws {
+            self.write_at(self.t, w.reg, w.value);
+        }
     }
 
     /// A Paula write at line `at` (since the intro's start).
@@ -411,7 +560,7 @@ impl Intro {
             h: 0,
         };
         let b = bus(self.shown_list, super::sound::music_on(m));
-        BlitClock::new(b, start, (HANDLER_LINES * 227) as u32)
+        BlitClock::new(b, start, (handler_lines(m) * 227) as u32)
     }
 
     /// Lines from now to the clock's end.
@@ -424,6 +573,12 @@ impl Intro {
         self.write(out, 0x96, 0x8400);
         let mut clock = self.clock(m);
         bobs::draw(m, &mut clock);
+        let base = self.t - self.t % LINES;
+        self.handler_at = clock
+            .handlers
+            .iter()
+            .map(|b| base + b.line as u64)
+            .collect();
         out.jobs.push(Job {
             inside: vec![h0(0x8442), h0(0x84de), h0(0x97b8), h0(0x97bc)],
             writes: vec![
@@ -478,6 +633,7 @@ impl Intro {
         m: &mut StoryMem,
         out: &mut IntroFrame,
         count: u16,
+        kind: u8,
         set: impl FnOnce(&mut StoryMem),
     ) -> bool {
         if self.phase() == 0 {
@@ -489,7 +645,7 @@ impl Intro {
         }
         self.write(out, 0x9a, 0x4000);
         set(m);
-        let lines = FADE_SETUP_LINES_PER_8 * count as u64 / 8;
+        let lines = fade_setup_lines(kind, count);
         self.masked_until = self.t + lines;
         self.wait = Wait::Masked(self.t + lines);
         self.then = Then::IntenaOn;
@@ -714,7 +870,7 @@ impl Intro {
                 if phase == 0 {
                     m.set_w(FADES[0].at + super::fade::SPEED, speed);
                 }
-                return self.fade_setup(m, out, count, |m| {
+                return self.fade_setup(m, out, count, 2, |m| {
                     FADES[0].start_in(m, list, palette, count)
                 });
             }
@@ -722,7 +878,7 @@ impl Intro {
                 if phase == 0 {
                     m.set_w(FADES[0].at + super::fade::SPEED, speed);
                 }
-                return self.fade_setup(m, out, count, |m| FADES[0].start_out(m, list, count));
+                return self.fade_setup(m, out, count, 3, |m| FADES[0].start_out(m, list, count));
             }
             Op::FadeAcross {
                 from,
@@ -734,7 +890,7 @@ impl Intro {
                 if phase == 0 {
                     m.set_w(FADES[0].at + super::fade::SPEED, speed);
                 }
-                return self.fade_setup(m, out, count, |m| {
+                return self.fade_setup(m, out, count, 1, |m| {
                     FADES[0].start_across(m, from, to, list, count)
                 });
             }
@@ -792,11 +948,15 @@ impl Intro {
                 self.next();
             }
             Op::Music { module, samples } => {
-                super::sound::music_start(m, module, samples, &mut |r, v| self.write(out, r, v));
+                let mut w = Vec::new();
+                super::sound::music_start(m, sound_data(data), module, samples, &mut w);
+                self.writes_now(w);
                 self.next();
             }
             Op::MusicStop => {
-                super::sound::music_stop(m, &mut |r, v| self.write(out, r, v));
+                let mut w = Vec::new();
+                super::sound::music_stop(m, &mut w);
+                self.writes_now(w);
                 self.next();
             }
             Op::MusicFadeStop => match phase {
@@ -811,7 +971,9 @@ impl Intro {
                     let n = self.n() - 1;
                     self.set_n(n);
                     if n == 0 || !super::sound::music_on(m) {
-                        super::sound::music_stop(m, &mut |r, v| self.write(out, r, v));
+                        let mut w = Vec::new();
+                        super::sound::music_stop(m, &mut w);
+                        self.writes_now(w);
                         self.next();
                     } else {
                         m.set_w(VBL_FLAG, 0);
@@ -820,7 +982,9 @@ impl Intro {
                 }
             },
             Op::Sfx(d0, d1) => {
-                super::sound::sfx_play(m, d0, d1, &mut |r, v| self.write(out, r, v));
+                let mut w = Vec::new();
+                super::sound::sfx_play(m, sound_data(data), d0, d1, &mut w);
+                self.writes_now(w);
                 self.next();
             }
             Op::MoveLeftUntil {
