@@ -21,7 +21,7 @@ pub mod spawn;
 
 use sf_paula::PaulaWrite;
 
-use crate::audio::{AudioDriver, SoundData};
+use crate::audio::SoundData;
 use crate::input::{FrameInput, Joy};
 use crate::layout::h0;
 use crate::mem::Bus;
@@ -164,7 +164,6 @@ pub struct LevelCtx<'a> {
     /// The object kinds and marker spawners registered.
     pub dispatch: &'a Dispatch,
     pub hw: Hw,
-    pub audio: &'a mut AudioDriver,
     pub sound: &'a SoundData,
     /// The frame's Paula writes, in order.
     pub paula: &'a mut Vec<PaulaWrite>,
@@ -174,7 +173,7 @@ impl LevelCtx<'_> {
     /// `sfx_play` (h0+$12a72): effect `effect` on `channel`, unless the attract demo runs.
     pub fn sfx(&mut self, effect: u8, channel: u8) {
         if self.bus.l(ATTRACT_MODE) == 0 {
-            self.audio
+            self.bus.st.audio
                 .play_sfx(self.sound, effect, channel, self.paula);
         }
     }
@@ -182,7 +181,7 @@ impl LevelCtx<'_> {
     /// `sample_play` (h0+$148b8): stream sample `k` on channel 3, unless the attract demo runs.
     pub fn sample(&mut self, k: usize) {
         if self.bus.l(ATTRACT_MODE) == 0 {
-            self.audio.play_sample(self.sound, k, self.paula);
+            self.bus.st.audio.play_sample(self.sound, k, self.paula);
         }
     }
 

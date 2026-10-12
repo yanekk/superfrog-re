@@ -197,12 +197,12 @@ impl<'d> Rig<'d> {
 
         // The port.
         let mut st = self.state.clone();
+        st.audio = self.audio.clone();
         for (a, b) in &setup.pokes {
             st.poke(*a, b);
         }
         let before = st.clone();
-        let mut audio = self.audio.clone();
-        let audio_before = audio.vars(self.sound);
+        let audio_before = st.audio.vars(self.sound);
         let mut paula: Vec<PaulaWrite> = Vec::new();
         {
             let dispatch = sf_core::level::Dispatch::default();
@@ -210,7 +210,6 @@ impl<'d> Rig<'d> {
                 bus: Bus::new(&mut st, self.display.rom()),
                 dispatch: &dispatch,
                 hw: setup.hw,
-                audio: &mut audio,
                 sound: self.sound,
                 paula: &mut paula,
             };
@@ -219,7 +218,7 @@ impl<'d> Rig<'d> {
 
         // Bytes: every byte the original changed, the port changed to the same value, and the
         // port changed nothing else.
-        let audio_after = audio.vars(self.sound);
+        let audio_after = st.audio.vars(self.sound);
         let in_audio = |a: u32| {
             audio_before
                 .iter()

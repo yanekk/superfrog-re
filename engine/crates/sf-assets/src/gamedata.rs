@@ -92,8 +92,9 @@ impl World {
 }
 
 /// A level, addressed as docs/LEVEL-INDEX.md does (`W1-1`, `WB-1`, `WW-1`). `alt` marks W6's
-/// second set of maps (d4_c14–c17, file-table entries 6–9), which the game loads instead of
-/// d4_c02–c05 only when a second drive holds disk 1 (h0+$a144); they differ in a few cells.
+/// second set of maps (d4_c14–c17, file-table entries 6–9), which `level_load` (h0+$a144) takes
+/// instead of d4_c02–c05 when no drive past df0 is connected and df0 does not hold disk 1: what a
+/// one-drive A500 plays. They differ in a few cells.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct LevelId {
     pub world: World,
@@ -111,18 +112,31 @@ impl fmt::Display for LevelId {
     }
 }
 
-/// The ids the user types (`W1-1`): worlds 1–6, levels 1–4, the one-drive maps; `WB-1` the bonus
-/// level.
+/// The ids the user types (`W1-1`): worlds 1–6, levels 1–4, the first map set; `W6-2alt`..`W6-4alt`
+/// W6's second map set; `WB-1` the bonus level, `WW-1` the final level. Every id `Display` prints.
 impl FromStr for LevelId {
     type Err = String;
 
     fn from_str(s: &str) -> Result<LevelId, String> {
-        if s == "WB-1" {
-            return Ok(LevelId {
-                world: World::Bonus,
-                level: 1,
-                alt: false,
-            });
+        let one = |world| LevelId {
+            world,
+            level: 1,
+            alt: false,
+        };
+        match s {
+            "WB-1" => return Ok(one(World::Bonus)),
+            "WW-1" => return Ok(one(World::Final)),
+            _ => {}
+        }
+        if let Some(plain) = s.strip_prefix("W6-").and_then(|l| l.strip_suffix("alt")) {
+            return match plain {
+                "2" | "3" | "4" => Ok(LevelId {
+                    world: World::W6,
+                    level: plain.as_bytes()[0] - b'0',
+                    alt: true,
+                }),
+                _ => Err(format!("`{s}`: only W6-2..W6-4 have a second map")),
+            };
         }
         let bad = || format!("`{s}` is not a level id like W1-1 (worlds 1-6, levels 1-4)");
         let (w, l) = s
@@ -553,9 +567,17 @@ pub fn decode(chunks: &[(ChunkId, Vec<u8>)]) -> Result<GameData, AssetError> {
     for w in &World::ALL[..7] {
         keep(&w.file("MU"))?;
     }
-    // Worlds 3 to 6 load disk 2's copy of L1FX, a different bank under the same name (T14).
+    // The front end (T20) loads these as files into memory, not as decoded pictures.
+    for name in ["MPIC", "HPIC", "AWA1", "AWA2"] {
+        keep(name)?;
+    }
+    // Disk 2's copy of `L1FX`: the effects of worlds 3 to 6 (docs/11).
     let (_, r) = c.named("L1FX", 1)?;
-    raw.insert(SECOND_L1FX.to_string(), r.data.to_vec());
+    raw.insert("L1FX-2".to_string(), r.data.to_vec());
+    // Pictures packed in the game's hunk 0 that the title and the options screen unpack.
+    for at in [0x3464c, 0x34e92, 0x36a04] {
+        raw.insert(format!("h0@{at:x}"), packed(&game, at, "packed picture")?);
+    }
 
     Ok(GameData {
         levels,
@@ -569,9 +591,6 @@ pub fn decode(chunks: &[(ChunkId, Vec<u8>)]) -> Result<GameData, AssetError> {
         raw,
     })
 }
-
-/// The key [`GameData::raw`] keeps disk 2's `L1FX` under: worlds 3–6's sound effects.
-pub const SECOND_L1FX: &str = "L1FX@disk2";
 
 /// An `ATN!` chunk packed inside the game's hunk 0 at `at`, decompressed.
 fn packed(game: &ExeImage, at: u32, what: &str) -> Result<Vec<u8>, AssetError> {
@@ -613,8 +632,14 @@ mod tests {
             (bonus.world, bonus.to_string()),
             (World::Bonus, "WB-1".to_string())
         );
+        for id in ["W6-2alt", "W6-4alt", "WW-1"] {
+            assert_eq!(id.parse::<LevelId>().unwrap().to_string(), id);
+        }
+        assert!("W6-3alt".parse::<LevelId>().unwrap().alt);
+        assert_eq!("WW-1".parse::<LevelId>().unwrap().world, World::Final);
         for bad in [
-            "W0-1", "W7-1", "W1-5", "1-1", "W1", "W1-x", "", "W+1-1", "W1-+2",
+            "W0-1", "W7-1", "W1-5", "1-1", "W1", "W1-x", "", "W+1-1", "W1-+2", "W6-1alt",
+            "W6-5alt", "W5-2alt", "WW-2", "WB-2",
         ] {
             assert!(bad.parse::<LevelId>().is_err(), "{bad}");
         }

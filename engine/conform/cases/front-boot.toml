@@ -1,0 +1,6 @@
+# Power-on to the title, untouched (T20): the engine starts where the game program starts and
+# loads at once; the original's frames up to the end of the title's loads are skipped. Then the
+# Accessing-disk overlay fades out, the eyes bounce in, the title fades in and waits.
+sync = "power-on"
+script = "boot-to-title"
+frames = 500

@@ -111,8 +111,19 @@ colour cycling in a level (W1-1, 8 500 frames watched).
 `sync::reach` gets the oracle into W1-1 by START GAME and into every other level of W1–W6 and the
 bonus level by the options screen: OPTIONS, three times down (the code entry starts as the cursor
 arrives), six digits as raw keys `01`–`0A` read from the original's own `password_table`, then fire
-three times. Whenever `disk_request`'s wanted ID (h0+$af54) changes, that disk goes in. W6's second
-map set needs a second drive and the final level has no code; neither is reached.
+three times. Whenever `disk_request`'s wanted ID (h0+$af54) changes, that disk goes in.
+
+W6-2..4 have two map sets (docs/10). On one drive the original loads the second (`W6-2alt`..); for
+the first (`W6-2`..) the oracle runs with df1 connected and empty, which `probe_drives` sees as a
+second drive. With df1 connected the boot reaches the title 219 frames sooner, so every menu input
+from frame 4 600 on comes 219 frames earlier **(oracle)**. W6-1's two files are the same.
+
+The final level (`WW-1`) has no code: `game_start_at` refuses `start_world` 8 and up, entries 24–27
+all start the bonus level, and neither the game nor the crack has a cheat or trainer. Only W6-4's
+exit leads there (top_loop+$716). So the oracle reaches W6-4 by its code and writes 1, the exit's own
+value, into `level_state` (h0+$a06) on the level's first frame; the original then tallies W6-4,
+loads the LW files and starts the final level by its own code (`final_level_flag`, h0+$1e, set).
+Score and lives there are not a real playthrough's (owner, 2026-10-12).
 
 ## Late redraws
 

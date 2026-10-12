@@ -187,6 +187,7 @@ pub struct Amiga {
     raw: *mut SfAmiga,
     disks: DiskSet,
     max_frames: u32,
+    drives: u8,
     frame: u32,
     input: FrameInput,
 }
@@ -213,9 +214,18 @@ impl Amiga {
             raw,
             disks,
             max_frames: cfg.max_frames,
+            drives: cfg.drives,
             frame: 0,
             input: FrameInput::NONE,
         };
+        for d in 1..cfg.drives {
+            let rc = unsafe {
+                ffi::sf_amiga_connect_drive(amiga.raw, d as i32, 1, err.ptr(), ErrBuf::LEN)
+            };
+            if rc != 0 {
+                return Err(OracleError::Setup(err.message()));
+            }
+        }
         amiga
             .insert(0, DiskSlot::D1)
             .map_err(|e| OracleError::Setup(e.to_string()))?;
@@ -384,8 +394,26 @@ impl Amiga {
         self.input = s.input;
     }
 
-    /// Swap the disk in `drive` for `slot`'s, as a player answering the game's prompt does. The
-    /// A500 has one drive; anything but 0 panics. The core ejects first and inserts after the
+    /// Write `bytes` at `addr` in chip or slow RAM before the next frame. Not a player's input:
+    /// only for a sync point the original offers no input route to (docs/12 "Reaching every
+    /// level"). Panics unless every byte is chip or slow RAM as the CPU sees it now.
+    pub fn write_memory(&mut self, addr: u32, bytes: &[u8]) {
+        let mut err = ErrBuf::new();
+        let rc = unsafe {
+            ffi::sf_amiga_write(
+                self.raw,
+                addr,
+                bytes.as_ptr(),
+                bytes.len(),
+                err.ptr(),
+                ErrBuf::LEN,
+            )
+        };
+        assert_eq!(rc, 0, "vAmiga refused a memory write: {}", err.message());
+    }
+
+    /// Swap the disk in `drive` for `slot`'s, as a player answering the game's prompt does. A
+    /// drive the set-up did not connect ([`OracleConfig::drives`]) panics. The core ejects first and inserts after the
     /// drive's swap delay, as the hardware would see it.
     pub fn insert_disk(&mut self, drive: u8, slot: DiskSlot) {
         if let Err(e) = self.insert(drive, slot) {
@@ -394,7 +422,7 @@ impl Amiga {
     }
 
     fn insert(&mut self, drive: u8, slot: DiskSlot) -> Result<(), OracleError> {
-        if drive != 0 {
+        if drive >= self.drives {
             return Err(OracleError::NoDrive(drive));
         }
         let adf = disk(&self.disks, slot);

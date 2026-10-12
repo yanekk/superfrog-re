@@ -301,10 +301,9 @@ impl SoundData {
         })
     }
 
-    /// The same from decoded [`crate::GameData`] (its raw sound files and the game's hunk 0), as
-    /// the engine has it at run time from the asset cache.
-    pub fn from_game_data(g: &crate::GameData) -> Result<SoundData, SoundError> {
-        let h0 = g
+    /// The same, from decoded [`crate::GameData`] (the asset cache) instead of the disks.
+    pub fn from_game(data: &crate::GameData) -> Result<SoundData, SoundError> {
+        let h0 = data
             .exes
             .iter()
             .find(|e| e.id == crate::ExeId::Game)
@@ -314,26 +313,22 @@ impl SoundData {
         if h0.len() < STREAM_TABLE + STREAM_SAMPLES * 16 {
             return Err(SoundError::BadGame);
         }
-        let raw = |name: &str| g.raw.get(name).cloned().ok_or(SoundError::NoGame);
+        let raw = |name: &str| data.raw.get(name).cloned().ok_or(SoundError::NoGame);
         let mut tunes = Vec::new();
         for t in TuneId::ALL {
             let name = match t {
                 TuneId::Title => "MUSC".to_string(),
-                TuneId::World(w) => format!("L{w}MU"),
+                TuneId::World(n) => format!("L{n}MU"),
                 TuneId::Bonus => "LBMU".to_string(),
                 TuneId::Slot => "LFMU".to_string(),
             };
-            let m = raw(&name)?;
-            if m.get(..4) != Some(b"P41A") {
-                return Err(SoundError::NotAModule(t));
-            }
-            tunes.push((t, m));
+            tunes.push((t, raw(&name)?));
         }
         let mut banks = Vec::new();
         for b in BankId::ALL {
             let name = match b {
                 BankId::Worlds12 => "L1FX",
-                BankId::Worlds36 => crate::gamedata::SECOND_L1FX,
+                BankId::Worlds36 => "L1FX-2",
                 BankId::Bonus => "LBFX",
                 BankId::Slot => "LFFX",
             };

@@ -159,7 +159,7 @@ fn a_streamed_sample_plays_160_bytes_a_frame_then_stops() {
     assert_eq!(frames[1], play);
     assert_eq!(
         frames[2],
-        // `clr.w AUD3VOL` writes the data bus's last word (the next opcode, $33fc) first.
+        // `clr.w $dff0d8` writes the prefetched word first, as the real 68000 does.
         vec![
             (0xd6, 1),
             (0x96, 8),

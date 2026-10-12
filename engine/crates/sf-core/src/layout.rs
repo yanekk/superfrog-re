@@ -51,7 +51,7 @@ pub enum Width {
     B,
     W,
     L,
-    /// A run of `n` bytes, `n` a multiple of 4; probed as `n / 4` longs (see [`VarDef::pieces`]).
+    /// A run of `n` bytes; probed as longs, then a word and a byte for a tail (see [`VarDef::pieces`]).
     Bytes(u32),
 }
 
@@ -76,17 +76,31 @@ pub struct VarDef {
 
 impl VarDef {
     /// The units probe and comparison work in: the entry itself for `B`, `W` and `L`; for
-    /// `Bytes(n)` one `L` per four bytes, each with the entry's id and name and its own address,
-    /// so a divergence names the exact long that differs.
+    /// `Bytes(n)` one `L` per four bytes (then a `W` and a `B` for a tail), each with the entry's
+    /// id and name and its own address, so a divergence names the exact long that differs.
     pub fn pieces(&self) -> impl Iterator<Item = VarDef> + '_ {
-        let (n, w) = match self.width {
-            Width::Bytes(n) => (n / 4, Width::L),
-            w => (1, w),
+        let widths: Vec<Width> = match self.width {
+            Width::Bytes(n) => {
+                let mut v = vec![Width::L; (n / 4) as usize];
+                if n % 4 >= 2 {
+                    v.push(Width::W);
+                }
+                if n % 2 == 1 {
+                    v.push(Width::B);
+                }
+                v
+            }
+            w => vec![w],
         };
-        (0..n).map(move |k| VarDef {
-            addr: self.addr + 4 * k,
-            width: w,
-            ..*self
+        let mut at = self.addr;
+        widths.into_iter().map(move |w| {
+            let d = VarDef {
+                addr: at,
+                width: w,
+                ..*self
+            };
+            at += w.len();
+            d
         })
     }
 
@@ -129,11 +143,15 @@ macro_rules! layout {
 }
 
 layout! {
+    /// h2+$6110..$6270: the award pages' copper list.
+    AwardCopper = "award_copper", h2(0x6110), Width::Bytes(0x160);
     /// `exit_sprite_copper` (h2+$68a8): the sprite moves the second pair of frog sprite records
     /// writes (`exit_sprite_left`, `_right`), two attached pairs of `$10` bytes each.
     ExitSpriteCopper = "exit_sprite_copper", h2(0x68a8), Width::Bytes(0x40);
     /// `level_copper` (h2+$6bd0): the level's copper list (docs/12 "The copper list").
-    LevelCopper = "level_copper", h2(0x6bd0), Width::Bytes(0x408);
+    LevelCopper = "level_copper", h2(0x6bd0), Width::Bytes(0x400);
+    /// h2+$6fd0..$73fc: every copper list but the level's (title, menus, blank).
+    FrontCopper = "front_copper", h2(0x6fd0), Width::Bytes(0x42c);
     /// `playfield_buffer_0` (h3+$10600) and `_1` (h3+$22f30): the two display buffers the play
     /// field is shown from, five planes of `$3b70` bytes each (docs/12 "The play field").
     PlayfieldBuffer0 = "playfield_buffer_0", h3(0x10600), Width::Bytes(PLAYFIELD_BUFFER_BYTES);
@@ -142,12 +160,24 @@ layout! {
     PlayfieldClean = "playfield_clean", h3(0x35860), Width::Bytes(PLAYFIELD_BUFFER_BYTES);
     /// `panel_bitmap` (h3+$4b390): the status panel, five planes of 14 lines (docs/12 "Panel").
     PanelBitmap = "panel_bitmap", h3(0x4b390), Width::Bytes(5 * 0x2a0);
+    /// The front end's flags (T20, docs/13), h0+$6..$26: `game_full_mode` (h0+$6), `loader_mode`,
+    /// `start_world`, `start_level` (from a level code), the words between them, `attract_mode`,
+    /// `final_level_flag`.
+    GameFullMode = "game_full_mode", h0(0x6), Width::W;
+    LoaderMode = "loader_mode", h0(0x8), Width::W;
+    StartWorld = "start_world", h0(0xa), Width::L;
+    StartLevel = "start_level", h0(0xe), Width::L;
+    Front12 = "front_12", h0(0x12), Width::W;
     /// `no_death` (h0+$14): non-zero, hazards do nothing (inferred: a cheat).
     NoDeath = "no_death", h0(0x14), Width::W;
+    Front16 = "front_16", h0(0x16), Width::W;
     /// `attract_mode` (h0+$18): -1 while the attract demo runs.
     AttractMode = "attract_mode", h0(0x18), Width::L;
+    /// h0+$1c: `demo_record` (h0+$11a32) records the joystick while it is set (a developer's switch).
+    DemoRecordOn = "demo_record_on", h0(0x1c), Width::W;
     /// `final_level_flag` (h0+$1e): set for the final level.
     FinalLevelFlag = "final_level_flag", h0(0x1e), Width::W;
+    Front20 = "front_20", h0(0x20), Width::Bytes(6);
     /// `frog` (h0+$7d6): the frog's record (docs/09 "The frog"), one entry per field; the
     /// `frog_NN` names are fields not yet understood, by offset.
     FrogX = "frog_x", h0(0x7d6), Width::W;
@@ -236,6 +266,8 @@ layout! {
     FrogAE = "frog_ae", h0(0x884), Width::W;
     FrogB0 = "frog_b0", h0(0x886), Width::W;
     FrogB2 = "frog_b2", h0(0x888), Width::W;
+    /// The rest of the frog's `$200`-byte record, to h0+$9d6, which `frog_new_game` clears.
+    FrogRest = "frog_rest", h0(0x88a), Width::Bytes(0x14c);
     /// `logic_running`, `vbl_count` (h0+$9d6, h0+$9d8): the level's main loop is running, and the
     /// vertical blanks since its last pass.
     LogicRunning = "logic_running", h0(0x9d6), Width::W;
@@ -244,6 +276,7 @@ layout! {
     VblPassFlag = "vbl_pass_flag", h0(0x9da), Width::W;
     /// `shooter_mode` (h0+$9dc): the bonus level's auto-scrolling mode.
     ShooterMode = "shooter_mode", h0(0x9dc), Width::W;
+    AbortFlag = "abort_flag", h0(0x9de), Width::W;
     /// `screen_fades_off` (h0+$9e0): outside a level, fades step every second frame.
     ScreenFadesOff = "screen_fades_off", h0(0x9e0), Width::W;
     /// `sprites_hidden` (h0+$9e2): the frog's sprites stay where they are.
@@ -252,21 +285,57 @@ layout! {
     /// 3/5/7) and game mode (0 easy, 1 normal).
     OptLives = "opt_lives", h0(0x9e4), Width::W;
     OptGameMode = "opt_game_mode", h0(0x9e6), Width::W;
-    ModuleAddr = "module_addr", h0(0x9ec), Width::L;
+    Front9e8 = "front_9e8", h0(0x9e8), Width::L;
+    /// The sound driver's variables (`crate::audio::vars`), kept by the driver in [`crate::State`]'s
+    /// `audio`: `module_addr` (h0+$9ec) here, the rest further on.
+    AudioModuleAddr = "module_addr", h0(crate::audio::vars::MODULE_ADDR.0), Width::Bytes(crate::audio::vars::MODULE_ADDR.1 as u32);
+    LevelStarted = "level_started", h0(0x9f0), Width::W;
+    Front9f2 = "front_9f2", h0(0x9f2), Width::L;
+    DemoIndex = "demo_index", h0(0x9f6), Width::W;
     /// `frog_exit_sprites` (h0+$9f8): the frog shows in the second pair of sprite records.
     FrogExitSprites = "frog_exit_sprites", h0(0x9f8), Width::W;
     /// `obj_world_offset` (h0+$9fa): the world's row of the object tables, `$100` a world.
     ObjWorldOffset = "obj_world_offset", h0(0x9fa), Width::L;
+    Front9fe = "front_9fe", h0(0x9fe), Width::Bytes(8);
     /// `level_state` (h0+$a06): negative while playing; 1 exit, 2 bonus end, $64 boss, $190 death.
     LevelState = "level_state", h0(0xa06), Width::L;
+    FrontA0a = "front_a0a", h0(0xa0a), Width::Bytes(8);
+    RamCacheBase = "ram_cache_base", h0(0xa12), Width::L;
+    FrontA16 = "front_a16", h0(0xa16), Width::L;
     /// `level_width`, `level_height` (h0+$a22, h0+$a24): the level's size in pixels.
     LevelWidth = "level_width", h0(0xa22), Width::W;
     LevelHeight = "level_height", h0(0xa24), Width::W;
     ExtraLifeShown = "extra_life_shown", h0(0xdd4), Width::W;
+    /// h0+$1368..$136c: the title's two eye-blink timers.
+    TitleBlink = "title_blink", h0(0x1368), Width::Bytes(4);
+    /// h0+$1686..$168c: the menu's flash counter and its colour pointer.
+    TitleMenu = "title_menu", h0(0x1686), Width::Bytes(6);
+    /// h0+$1958..$195c: `opt_cursor` and the hi-score-save option.
+    OptCursor = "opt_cursor", h0(0x1958), Width::Bytes(4);
+    /// h0+$1b16: the options' flash.
+    OptFlash = "opt_flash", h0(0x1b16), Width::B;
+    AttractAbort = "attract_abort", h0(0x22b8), Width::W;
+    /// h0+$2424..$2434: the level-code entry's flash counter, its cursor and `password_buf`.
+    PasswordBuf = "password_buf", h0(0x2424), Width::Bytes(0x10);
+    /// h0+$2f90..$3028: `hiscore_table`: ten scores (a long and a long) and ten names.
+    HiscoreTable = "hiscore_table", h0(0x2f90), Width::Bytes(0x98);
+    /// h0+$3258: where the text writer (h0+$30fc) stopped.
+    TextPtr = "text_ptr", h0(0x3258), Width::L;
+    /// h0+$32b4..$33ea: the hall of talent's ten lines of text, built from `hiscore_table`.
+    HallText = "hall_text", h0(0x32b4), Width::Bytes(0x136);
+    /// h0+$37e2..$3922: the palettes the title and its menu fade to (five of 32 colours).
+    TitleTargets = "title_targets", h0(0x37e2), Width::Bytes(0x140);
+    /// h0+$3ba0..$3ca0: the title's two fade palettes (the VBL's toggle after them is
+    /// `screen_fade_toggle`).
+    TitlePalettes = "title_palettes", h0(0x3ba0), Width::Bytes(0x100);
     /// `screen_fade_toggle` (h0+$3ca0).
     ScreenFadeToggle = "screen_fade_toggle", h0(0x3ca0), Width::W;
+    /// h0+$3dc8: the title intro's blit source pointer.
+    IntroBlit = "intro_blit", h0(0x3dc8), Width::L;
     /// `world` (h0+$40da): 1..6, 7 the bonus level.
     World = "world", h0(0x40da), Width::L;
+    /// `coins_collected` (h0+$445e): coins taken since the last tally (`touch_coin` counts them).
+    CoinsCollected = "coins_collected", h0(0x445e), Width::L;
     /// `entry_fall` (h0+$6c92): how fast the frog drops in at a level's start.
     EntryFall = "entry_fall", h0(0x6c92), Width::W;
     /// `passage_cell` (h0+$776c): the fake-wall cell the frog entered (marker 38).
@@ -282,6 +351,8 @@ layout! {
     ScoreText = "score_text", h0(0x8ab4), Width::Bytes(0xc);
     ClockDigit = "clock_digit", h0(0x8be0), Width::W;
     ClockShown = "clock_shown", h0(0x8be2), Width::Bytes(4);
+    /// h0+$b806..$b80e: the Accessing-disk overlay's palettes while it is up.
+    OverlayUp = "overlay_up", h0(0xb806), Width::Bytes(8);
     /// `hitboxes` (h0+$d350): the objects' hitboxes, 12 bytes each, rebuilt each pass.
     Hitboxes = "hitboxes", h0(0xd350), Width::Bytes(0x600);
     /// `shooter_half_step` (h0+$de28): the bonus level's camera creeps on every second frame.
@@ -309,20 +380,18 @@ layout! {
     DemoJoy = "demo_joy", h0(0x11a2a), Width::W;
     DemoLeft = "demo_left", h0(0x11a2c), Width::W;
     DemoAt = "demo_at", h0(0x11a2e), Width::L;
+    /// h0+$11b64..$11b6a: the mouse counters and the pointer's position.
+    Mouse = "mouse", h0(0x11b64), Width::Bytes(6);
     /// `clock_ticks` (h0+$11dfc): vertical blanks into the level clock's current second.
     ClockTicks = "clock_ticks", h0(0x11dfc), Width::W;
     /// `display_timer` (h0+$123d4): counted down each vertical blank.
     DisplayTimer = "display_timer", h0(0x123d4), Width::W;
-    /// The sound driver's variables (T11, `audio::vars`), mirrored from the driver after each
-    /// frame: its effect channels (from h0+$12f60), `music_on`, the replayer's channels and
-    /// globals, the fade and shadow registers, the streamer, the sample and effect tables, the
-    /// module's address and its header's backup.
-    SoundSfx = "sfx_chan0", h0(0x12f60), Width::Bytes(0x100);
-    SoundMusicOn = "music_on", h0(0x13420), Width::L;
-    SoundP41 = "p41_channels", h0(0x144dc), Width::Bytes(0xdc);
-    SoundShadow = "music_fade", h0(0x146e0), Width::Bytes(0x44);
-    SoundStream = "stream_ptr", h0(0x148b0), Width::Bytes(8);
-    SoundTables = "sfx_samples", h0(0x1499e), Width::Bytes(0x800);
+    AudioSfx = "sfx_chan0", h0(crate::audio::vars::SFX.0), Width::Bytes(crate::audio::vars::SFX.1 as u32);
+    AudioMusicOn = "music_on", h0(crate::audio::vars::MUSIC_ON.0), Width::Bytes(crate::audio::vars::MUSIC_ON.1 as u32);
+    AudioP41 = "p41_channels", h0(crate::audio::vars::P41.0), Width::Bytes(crate::audio::vars::P41.1 as u32);
+    AudioShadow = "music_fade", h0(crate::audio::vars::SHADOW.0), Width::Bytes(crate::audio::vars::SHADOW.1 as u32);
+    AudioStream = "stream_ptr", h0(crate::audio::vars::STREAM.0), Width::Bytes(crate::audio::vars::STREAM.1 as u32);
+    AudioSfxTables = "sfx_samples", h0(crate::audio::vars::SFX_TABLES.0), Width::Bytes(crate::audio::vars::SFX_TABLES.1 as u32);
     /// `fades` (h0+$157d8): the four palette fade records, `$1f2` bytes each (`level::fade`).
     Fades = "fades", h0(0x157d8), Width::Bytes(0x7c8);
     /// `kbd_toggle`, `key_down`, `key_up`, and the byte after them (h0+$16076..$16079).
@@ -330,6 +399,7 @@ layout! {
     /// `rng_state` (h0+$160d4): the 64-bit RNG state, `rng_next`'s low long then its high long.
     RngState = "rng_state", h0(0x160d4), Width::Bytes(8);
     NumberStarted = "number_started", h0(0x161aa), Width::L;
+    Number161ae = "number_161ae", h0(0x161ae), Width::L;
     NumberText = "number_text", h0(0x161b2), Width::Bytes(0xc);
     /// The scroller (h0+$16604..$1668c): rows and columns drawn by the last pass (with a word
     /// either side, which the comparisons read), its row and column shifts, the frame toggle,
@@ -361,6 +431,9 @@ layout! {
     /// `scroll_column` (h0+$172b0): the play-field column the vertical blank last scrolled to, as
     /// the address of its first word in the shown buffer (docs/12 "Scroll").
     ScrollColumn = "scroll_column", h0(0x172b0), Width::L;
+    /// `map_rows` (h0+$17334): one row above the in-RAM map; a front-end write (the title sets it),
+    /// shadowing the boot's row-pointer table there.
+    MapRows = "map_rows", h0(0x17334), Width::L;
     /// `bob_draw_vars` (h0+$18bc8..$18be8): the bob drawer's camera, seam lines, column, seam
     /// pass flag and `bob_buffer` (h0+$18be4, the display buffer it drew into).
     BobDrawVars = "bob_draw_vars", h0(0x18bc8), Width::Bytes(0x20);
@@ -374,6 +447,8 @@ layout! {
     /// `exit_sprite_left`, `_right` (h0+$1b02c, h0+$1b048): the second pair of frog sprites.
     ExitSpriteLeft = "exit_sprite_left", h0(0x1b02c), Width::Bytes(0x1c);
     ExitSpriteRight = "exit_sprite_right", h0(0x1b048), Width::Bytes(0x1c);
+    /// h0+$1b10c..$1b208: hardware-sprite records (pointer, title eyes, menu cursor).
+    SpriteRecs = "sprite_recs", h0(0x1b10c), Width::Bytes(0xfc);
     /// `bob_free_list` (h0+$1ba16), `obj_count` (h0+$1ba6a), `obj_slots` (h0+$1ba6c).
     BobFreeList = "bob_free_list", h0(0x1ba16), Width::Bytes(0x54);
     ObjCount = "obj_count", h0(0x1ba6a), Width::W;
@@ -386,7 +461,7 @@ layout! {
     /// `bob_frames` (h0+$2aee2..$2ed32): the bobs' animation lists and frame records, which the
     /// level's set-up builds for its world (h0+$1995a).
     BobFrames = "bob_frames", h0(0x2aee2), Width::Bytes(0x3e50);
-    SoundHeaderBackup = "music_header_backup", h0(0x4814c), Width::Bytes(0x200);
+    AudioHeaderBackup = "module_header_backup", h0(crate::audio::vars::HEADER_BACKUP.0), Width::Bytes(crate::audio::vars::HEADER_BACKUP.1 as u32);
     /// `level_map` (h1+$218e0): the map, 84 rows of 304 cells, `tile << 6 | marker`, and the
     /// rows the loader adds under it (a floor of `$3d` cells) up to the tile pointers.
     LevelMap = "level_map", h1(0x218e0), Width::Bytes(LEVEL_MAP_BYTES);
@@ -461,7 +536,7 @@ mod tests {
     }
 
     #[test]
-    fn entries_do_not_overlap_and_byte_runs_are_whole_longs() {
+    fn entries_do_not_overlap_and_byte_runs_are_not_empty() {
         let mut spans: Vec<(u32, u32, &str)> = LAYOUT
             .iter()
             .map(|d| (d.addr, d.addr + d.width.len(), d.name))
@@ -472,7 +547,9 @@ mod tests {
         }
         for d in LAYOUT {
             if let Width::Bytes(n) = d.width {
-                assert!(n > 0 && n.is_multiple_of(4), "{}: Bytes({n})", d.name);
+                assert!(n > 0, "{}: Bytes({n})", d.name);
+                let total: u32 = d.pieces().map(|p| p.width.len()).sum();
+                assert_eq!(total, n, "{}: pieces cover the run", d.name);
             }
         }
     }

@@ -3,7 +3,7 @@
 //!
 //! The 68000 code keeps pointers to its own tables in its variables, reads a long where it wrote
 //! two words and a byte of a word it wrote whole; a byte-exact copy keeps all of that, so the port
-//! reads and writes the original's addresses ([`State::read`], [`State::write`]) and names them
+//! reads and writes the original's addresses ([`State::byte`], [`State::write_byte`]) and names them
 //! with accessors. What the level's picture is drawn from (T13, docs/12) is kept the same way: the
 //! copper list, the panel's bitplanes and the two display buffers, which the renderer reads as
 //! Denise would and the mechanics write as the original's blits do (owner, 2026-10-11).
@@ -11,16 +11,29 @@
 //! Only [`LAYOUT`]'s variables live here. What the game reads but never writes (its tables, the
 //! graphics it loaded) comes from the disks ([`crate::DisplayData`]); [`crate::mem::Ram`] puts the
 //! two together.
+//!
+//! The sound driver's variables (`crate::audio::vars`) are the exception: the driver keeps them
+//! itself ([`State::audio`]), and the state reads and writes them there. A write the front end makes
+//! outside every variable is kept in [`State::scratch`] (T20), never compared.
 
-use crate::layout::{LAYOUT, MAP_ROW_CELLS, MAP_ROWS, Ram, VarId, def, index_of};
+use std::borrow::Cow;
+use std::collections::BTreeMap;
+
+use crate::audio::AudioDriver;
+use crate::layout::{LAYOUT, MAP_ROW_CELLS, MAP_ROWS, Ram, VarId, def, h0, index_of};
 use crate::rng::Rng;
 
 /// What the original keeps in memory, as far as the engine models it. A power-on state is all
 /// zero, as the oracle's RAM is (FINDINGS 2026-10-11: RAM zeroed).
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct State {
-    /// Each [`LAYOUT`] entry's bytes, in table order.
+    /// Each [`LAYOUT`] entry's bytes, in table order (empty for the sound driver's, in `audio`).
     vars: Vec<Vec<u8>>,
+    /// The sound driver (docs/11), its variables the original's own.
+    pub audio: AudioDriver,
+    /// Bytes the front end wrote outside every modelled variable, by address: kept so a read
+    /// after such a write sees it, never compared. A test asserts the front end leaves it empty.
+    pub scratch: BTreeMap<u32, u8>,
 }
 
 /// `camera_x`, `camera_y`: the level pixel the camera follows (docs/12 "Scroll").
@@ -30,13 +43,33 @@ pub struct Camera {
     pub y: u32,
 }
 
+/// The sound driver's variable block a [`VarId`] names: its index in `audio::vars::ALL`.
+fn audio_var(id: VarId) -> Option<usize> {
+    Some(match id {
+        VarId::AudioSfx => 0,
+        VarId::AudioMusicOn => 1,
+        VarId::AudioP41 => 2,
+        VarId::AudioShadow => 3,
+        VarId::AudioStream => 4,
+        VarId::AudioSfxTables => 5,
+        VarId::AudioModuleAddr => 6,
+        VarId::AudioHeaderBackup => 7,
+        _ => return None,
+    })
+}
+
 impl Default for State {
     fn default() -> State {
         State {
             vars: LAYOUT
                 .iter()
-                .map(|d| vec![0; d.width.len() as usize])
+                .map(|d| match audio_var(d.id) {
+                    Some(_) => Vec::new(),
+                    None => vec![0; d.width.len() as usize],
+                })
                 .collect(),
+            audio: AudioDriver::blank(),
+            scratch: BTreeMap::new(),
         }
     }
 }
@@ -44,27 +77,32 @@ impl Default for State {
 impl State {
     /// The state the original's memory holds: every [`LAYOUT`] entry read from `ram`.
     pub fn transplant(ram: &dyn Ram) -> State {
-        State {
-            vars: LAYOUT
-                .iter()
-                .map(|d| (0..d.width.len()).map(|k| ram.byte(d.addr + k)).collect())
-                .collect(),
+        let mut s = State::default();
+        for (i, d) in LAYOUT.iter().enumerate() {
+            let bytes: Vec<u8> = (0..d.width.len()).map(|k| ram.byte(d.addr + k)).collect();
+            match audio_var(d.id) {
+                Some(k) => s.audio.set_var_block(k, &bytes),
+                None => s.vars[i] = bytes,
+            }
         }
+        s
     }
 
     /// Every [`LAYOUT`] entry's value, in table order, one pair per [`crate::VarDef::pieces`] piece.
     pub fn probe(&self) -> Vec<(VarId, u32)> {
         LAYOUT
             .iter()
-            .zip(&self.vars)
-            .flat_map(|(d, bytes)| {
-                d.pieces().map(move |p| {
-                    let at = (p.addr - d.addr) as usize;
-                    let v = bytes[at..at + p.width.len() as usize]
-                        .iter()
-                        .fold(0u32, |v, &b| v << 8 | b as u32);
-                    (d.id, v)
-                })
+            .flat_map(|d| {
+                let bytes = self.var(d.id);
+                d.pieces()
+                    .map(|p| {
+                        let at = (p.addr - d.addr) as usize;
+                        let v = bytes[at..at + p.width.len() as usize]
+                            .iter()
+                            .fold(0u32, |v, &b| v << 8 | b as u32);
+                        (d.id, v)
+                    })
+                    .collect::<Vec<_>>()
             })
             .collect()
     }
@@ -75,13 +113,13 @@ impl State {
     pub fn poke(&mut self, addr: u32, bytes: &[u8]) {
         for (k, &b) in bytes.iter().enumerate() {
             let a = addr + k as u32;
-            if let Some(i) = index_of(a) {
-                self.vars[i][(a - LAYOUT[i].addr) as usize] = b;
+            if index_of(a).is_some() {
+                self.put(a, b);
             }
         }
     }
 
-    /// `len` bytes at `addr`, when one variable covers them all.
+    /// `len` bytes at `addr`, when one variable covers them all (not the sound driver's).
     pub fn raw(&self, addr: u32, len: u32) -> Option<&[u8]> {
         let i = index_of(addr)?;
         let at = (addr - LAYOUT[i].addr) as usize;
@@ -95,9 +133,38 @@ impl State {
         self.vars[i].get_mut(at..at + len as usize)
     }
 
+    /// The sound driver's block covering `addr`: (its index, the offset in it).
+    fn audio_at(addr: u32) -> Option<(usize, usize)> {
+        crate::audio::vars::ALL
+            .iter()
+            .enumerate()
+            .find_map(|(k, &(off, len))| {
+                let o = addr.checked_sub(h0(off))? as usize;
+                (o < len).then_some((k, o))
+            })
+    }
+
     /// The byte at `addr`, when a variable covers it.
-    pub fn read(&self, addr: u32) -> Option<u8> {
-        self.raw(addr & 0xFF_FFFF, 1).map(|b| b[0])
+    pub fn byte(&self, addr: u32) -> Option<u8> {
+        let addr = addr & 0xFF_FFFF;
+        self.raw(addr, 1).map(|b| b[0]).or_else(|| {
+            let (k, o) = State::audio_at(addr)?;
+            Some(self.audio.var_block(k)[o])
+        })
+    }
+
+    /// Write the byte at `addr` into the variable covering it; false when none does.
+    fn put(&mut self, addr: u32, v: u8) -> bool {
+        if let Some(b) = self.raw_mut(addr, 1) {
+            b[0] = v;
+        } else if let Some((k, o)) = State::audio_at(addr) {
+            let mut block = self.audio.var_block(k);
+            block[o] = v;
+            self.audio.set_var_block(k, &block);
+        } else {
+            return false;
+        }
+        true
     }
 
     /// Write the byte at `addr`, as the original's code does.
@@ -105,26 +172,85 @@ impl State {
     /// # Panics
     /// When no [`LAYOUT`] variable covers `addr`: the port writes a variable the table does not
     /// map, which would leave it out of every transplant and comparison.
-    pub fn write(&mut self, addr: u32, v: u8) {
+    pub fn write_byte(&mut self, addr: u32, v: u8) {
         let addr = addr & 0xFF_FFFF;
-        match self.raw_mut(addr, 1) {
-            Some(b) => b[0] = v,
-            None => panic!("write to ${addr:06x}, which no LAYOUT variable covers"),
+        if !self.put(addr, v) {
+            panic!("write to ${addr:06x}, which no LAYOUT variable covers");
+        }
+    }
+
+    // --- The original's memory, by address, as the front end's code reads and writes it. ---
+
+    /// The byte at `addr`: a variable's, else what the front end last wrote there, else 0.
+    pub fn b(&self, addr: u32) -> u8 {
+        self.byte(addr)
+            .or_else(|| self.scratch.get(&addr).copied())
+            .unwrap_or(0)
+    }
+
+    pub fn w(&self, addr: u32) -> u16 {
+        u16::from_be_bytes([self.b(addr), self.b(addr.wrapping_add(1))])
+    }
+
+    pub fn l(&self, addr: u32) -> u32 {
+        (self.w(addr) as u32) << 16 | self.w(addr.wrapping_add(2)) as u32
+    }
+
+    /// Write the byte at `addr`: into its variable, else into [`State::scratch`].
+    pub fn set_b(&mut self, addr: u32, v: u8) {
+        if !self.put(addr, v) {
+            self.scratch.insert(addr, v);
+        }
+    }
+
+    pub fn set_w(&mut self, addr: u32, v: u16) {
+        let [a, b] = v.to_be_bytes();
+        self.set_b(addr, a);
+        self.set_b(addr.wrapping_add(1), b);
+    }
+
+    pub fn set_l(&mut self, addr: u32, v: u32) {
+        self.set_w(addr, (v >> 16) as u16);
+        self.set_w(addr.wrapping_add(2), v as u16);
+    }
+
+    /// `bytes` written from `addr` on.
+    pub fn write(&mut self, addr: u32, bytes: &[u8]) {
+        match self.raw_mut(addr, bytes.len() as u32) {
+            Some(b) => b.copy_from_slice(bytes),
+            None => {
+                for (k, &v) in bytes.iter().enumerate() {
+                    self.set_b(addr + k as u32, v);
+                }
+            }
+        }
+    }
+
+    /// `len` bytes from `addr` on.
+    pub fn read(&self, addr: u32, len: u32) -> Vec<u8> {
+        match self.raw(addr, len) {
+            Some(b) => b.to_vec(),
+            None => (0..len).map(|k| self.b(addr + k)).collect(),
         }
     }
 
     /// A whole variable's bytes.
-    pub fn var(&self, id: VarId) -> &[u8] {
-        &self.vars[id as usize]
+    pub fn var(&self, id: VarId) -> Cow<'_, [u8]> {
+        match audio_var(id) {
+            Some(k) => Cow::Owned(self.audio.var_block(k)),
+            None => Cow::Borrowed(&self.vars[id as usize]),
+        }
     }
 
+    /// A whole variable's bytes, to write (not the sound driver's: the driver writes those).
     pub fn var_mut(&mut self, id: VarId) -> &mut [u8] {
+        assert!(audio_var(id).is_none(), "{id:?} is the sound driver's");
         &mut self.vars[id as usize]
     }
 
     /// The long at the start of `id`.
     fn long(&self, id: VarId) -> u32 {
-        let b = self.var(id);
+        let b = &self.vars[id as usize];
         u32::from_be_bytes([b[0], b[1], b[2], b[3]])
     }
 
@@ -133,7 +259,7 @@ impl State {
     }
 
     pub fn rng(&self) -> Rng {
-        Rng::from_bytes(self.var(VarId::RngState).try_into().expect("8 bytes"))
+        Rng::from_bytes(self.vars[VarId::RngState as usize][..].try_into().expect("8 bytes"))
     }
 
     pub fn set_rng(&mut self, r: Rng) {
@@ -161,6 +287,15 @@ impl State {
         self.set_long(VarId::ScrollColumn, v);
     }
 
+    /// `map_rows`: one row above the in-RAM map.
+    pub fn map_rows(&self) -> u32 {
+        self.long(VarId::MapRows)
+    }
+
+    pub fn set_map_rows(&mut self, v: u32) {
+        self.set_long(VarId::MapRows, v);
+    }
+
     /// `world`: 1..6, 7 the bonus level.
     pub fn world(&self) -> u32 {
         self.long(VarId::World)
@@ -172,7 +307,7 @@ impl State {
 
     /// `level_map`: [`MAP_ROWS`] rows of [`MAP_ROW_CELLS`] cells, `tile << 6 | marker`.
     pub fn map(&self) -> &[u8] {
-        self.var(VarId::LevelMap)
+        &self.vars[VarId::LevelMap as usize]
     }
 
     /// The map cell at (`col`, `row`); `None` outside the map's 300 × 84 cells.
@@ -191,7 +326,7 @@ impl State {
     }
 
     /// The bytes of `id` as [`LAYOUT`] places them: for checks that walk the table.
-    pub fn bytes_of(&self, id: VarId) -> (u32, &[u8]) {
+    pub fn bytes_of(&self, id: VarId) -> (u32, Cow<'_, [u8]>) {
         (def(id).addr, self.var(id))
     }
 }
@@ -275,15 +410,34 @@ mod tests {
         let at = def(VarId::LevelCopper).addr;
         s.var_mut(VarId::LevelCopper)[4] = 9;
         assert_eq!(s.raw(at + 4, 2), Some(&[9, 0][..]));
-        assert_eq!(s.raw(at + 0x407, 2), None);
-        assert_eq!(s.read(at + 4), Some(9));
-        assert_eq!(s.read(0xF0_0000), None);
+        assert_eq!(s.raw(at + 0x3ff, 2), None);
+        assert_eq!(s.byte(at + 4), Some(9));
+        assert_eq!(s.byte(0xF0_0000), None);
+    }
+
+    #[test]
+    fn the_sound_driver_s_variables_are_read_and_written_in_the_driver() {
+        let mut s = State::default();
+        let at = h0(crate::audio::vars::MUSIC_ON.0);
+        s.write_byte(at + 1, 0x5a);
+        assert_eq!(s.byte(at + 1), Some(0x5a));
+        assert_eq!(s.audio.var_block(1)[1], 0x5a);
+        assert!(s.raw(at, 1).is_none());
+        assert!(s.scratch.is_empty());
     }
 
     #[test]
     #[should_panic(expected = "no LAYOUT variable covers")]
     fn a_write_outside_the_table_is_refused() {
-        State::default().write(0xF0_0000, 1);
+        State::default().write_byte(0xF0_0000, 1);
+    }
+
+    #[test]
+    fn a_front_end_write_outside_the_table_is_kept_aside() {
+        let mut s = State::default();
+        s.set_w(0x100, 0x1234);
+        assert_eq!(s.w(0x100), 0x1234);
+        assert_eq!(s.scratch.len(), 2);
     }
 
     #[test]

@@ -5,3 +5,13 @@ edition.workspace = true
 publish.workspace = true
 
 [dependencies]
+# The engine the captures are compared against, headless, and the data it decodes from the cache.
+sf-core = { path = "../sf-core" }
+sf-assets = { path = "../sf-assets" }
+sf-paula = { path = "../sf-paula" }
+# Finds the owner's disks (DESIGN §5, "Disk images").
+sf-conform = { path = "../sf-conform" }
+# Reads the app's captured frames and the OS layer's window captures.
+png = "0.18"
+# Launches the app in its own process group and checks the group is gone afterwards.
+libc = "0.2"

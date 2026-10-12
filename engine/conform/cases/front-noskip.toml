@@ -1,0 +1,4 @@
+# The title intro not skipped by the mouse or a key (T20 review).
+sync = "power-on"
+script = "title-noskip"
+frames = 900

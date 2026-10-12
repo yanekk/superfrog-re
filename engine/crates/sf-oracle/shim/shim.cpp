@@ -276,6 +276,27 @@ int sf_amiga_eject_disk(sf_amiga *a, int drive, char *err, size_t err_len)
     return guarded(err, err_len, "ejecting a disk", [&] { a->va.df[drive]->ejectDisk(); });
 }
 
+int sf_amiga_write(sf_amiga *a, uint32_t addr, const uint8_t *bytes, size_t len, char *err, size_t err_len)
+{
+    auto &mem = a->amiga().mem;
+    for (size_t i = 0; i < len; i++) {
+        auto src = mem.cpuMemSrc[((addr + i) & 0xFFFFFF) >> 16];
+        if (src != MemSrc::CHIP && src != MemSrc::SLOW) {
+            fail(err, err_len, "the address is not chip or slow RAM as the CPU sees it now");
+            return 1;
+        }
+    }
+    return guarded(err, err_len, "writing memory", [&] { mem.patch(addr, bytes, isize(len)); });
+}
+
+int sf_amiga_connect_drive(sf_amiga *a, int drive, int connected, char *err, size_t err_len)
+{
+    if (drive < 1 || drive > 3) { fail(err, err_len, "drive 0 is always connected; 1..3 can be"); return 1; }
+    return guarded(err, err_len, "connecting a drive", [&] {
+        a->emu().set(Opt::DRIVE_CONNECT, connected != 0, { drive });
+    });
+}
+
 int sf_amiga_power_on(sf_amiga *a, char *err, size_t err_len)
 {
     return guarded(err, err_len, "powering on", [&] { SfShimAccess::powerOn(a->emu()); });

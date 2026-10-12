@@ -3,7 +3,6 @@
 
 use sf_paula::PaulaWrite;
 
-use crate::audio::AudioDriver;
 use crate::game::Pacing;
 use crate::layout::{Ram, h0};
 use crate::level::{Hw, LevelCtx};
@@ -16,7 +15,6 @@ use crate::state::State;
 pub struct Machine<'a> {
     pub state: &'a mut State,
     pub display: &'a DisplayData,
-    pub audio: &'a mut AudioDriver,
     pub hw: Hw,
 }
 
@@ -29,6 +27,9 @@ pub enum Scene {
     /// In a level: the frog, the camera, scrolling, the clock and sound (T14); objects come with
     /// T15–T18.
     Level,
+    /// The front end: boot, title, menus, attract screens (T20; the program is `Game`'s
+    /// [`crate::front::Front`]).
+    Front,
 }
 
 /// `logic_running` (h0+$9d6): set by `level_frame_loop` while a level plays.
@@ -61,13 +62,12 @@ impl Scene {
         let mut out = Vec::new();
         let mut picture = None;
         match self {
-            Scene::Placeholder => {}
+            Scene::Placeholder | Scene::Front => {}
             Scene::Level => {
                 let mut c = LevelCtx {
                     bus: Bus::new(m.state, m.display.rom()),
                     dispatch: crate::level::standard_dispatch(),
                     hw: m.hw,
-                    audio: m.audio,
                     sound: m.display.sound(),
                     paula: &mut out,
                 };
@@ -85,7 +85,7 @@ impl Scene {
 
     pub fn render(&self, state: &State, display: &DisplayData, view: View) -> Picture {
         match self {
-            Scene::Placeholder => Picture::black(view),
+            Scene::Placeholder | Scene::Front => Picture::black(view),
             Scene::Level => render::level(state, display, view),
         }
     }

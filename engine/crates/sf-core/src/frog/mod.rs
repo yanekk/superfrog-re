@@ -9,6 +9,7 @@ pub mod anim;
 pub mod physics;
 
 use crate::layout::h0;
+use crate::mem::Bus;
 
 /// The frog's record.
 pub const FROG: u32 = h0(0x7d6);
@@ -143,6 +144,70 @@ pub mod f {
     /// Toggles every frame of a held jump ([`super::anim::frog_jump_float`]).
     pub const FLOAT_TOGGLE: u32 = 0xa4;
 }
+
+/// `opt_lives` (h0+$9e4), `opt_game_mode` (h0+$9e6): the options screen's choices.
+const OPT_LIVES: u32 = h0(0x9e4);
+const OPT_GAME_MODE: u32 = h0(0x9e6);
+/// `coins_collected` (h0+$445e): coins taken since the last tally (`touch_coin` counts them).
+const COINS_COLLECTED: u32 = h0(0x445e);
+
+/// `frog_new_game` (h0+$8f90): the frog's record for a new game, as `title_screen` leaves it
+/// (h0+$11ec): all `$200` bytes cleared, the lives the options give, the score and the coins
+/// cleared, the game mode's tuning, then [`frog_reset`].
+pub fn frog_new_game(b: &mut Bus) {
+    for k in 0..0x80 {
+        b.set_l(FROG + 4 * k, 0);
+    }
+    let lives = match b.w(OPT_LIVES) {
+        0 => 2,
+        1 => 4,
+        _ => 6,
+    };
+    b.set_w(FROG + 0x58, lives);
+    b.set_w(FROG + 0x7e, 0);
+    b.set_w(FROG + 0x90, 0);
+    b.set_w(FROG + f::SPUD_ON, 0);
+    b.set_l(FROG + 0xa0, 0);
+    b.set_l(FROG + 0x5e, 0);
+    b.set_l(FROG + 0xaa, 200_000);
+    b.set_l(COINS_COLLECTED, 0);
+    let (tuning, base) = if b.w(OPT_GAME_MODE) == 0 {
+        ([0xfffb, 6, 2, 0xfffe], 5)
+    } else {
+        ([0xfffa, 4, 1, 0xfffe], 6)
+    };
+    for (k, w) in tuning.into_iter().enumerate() {
+        b.set_w(FROG + f::BOUNCE_VY + 2 * k as u32, w);
+    }
+    b.set_w(FROG + f::BASE_SPEED, base);
+    frog_reset(b);
+}
+
+/// `frog_reset` (h0+$902e): the frog's record at a level's (re)start: still, the walking speed
+/// limit at 7, the standing animation from its first step, no speed-up.
+pub fn frog_reset(b: &mut Bus) {
+    const CLEARED: [u32; 57] = [
+        0x04, 0x06, 0x0a, 0x0c, 0x0e, 0x10, 0x12, 0x14, 0x16, 0x18, 0x1a, 0x1c, 0x1e, 0x20,
+        0x22, 0x24, 0x28, 0x2a, 0x36, 0x38, 0x3a, 0x3c, 0x3e, 0x40, 0x42, 0x44, 0x46, 0x48,
+        0x4a, 0x4c, 0x54, 0x56, 0x62, 0x64, 0x66, 0x68, 0x6a, 0x6c, 0x6e, 0x70, 0x72, 0x74,
+        0x76, 0x78, 0x7a, 0x80, 0x84, 0x86, 0x88, 0x8a, 0x8c, 0x92, 0x94, 0x96, 0xa4, 0xa6,
+        0xae,
+    ];
+    b.set_w(FROG + f::SPEED, 7);
+    b.set_w(FROG + 0x5a, 4);
+    for o in CLEARED {
+        b.set_w(FROG + o, 0);
+    }
+    b.set_l(FROG + f::ANIM, STAND_ANIM);
+    b.set_l(FROG + f::ANIM_STEP, STAND_ANIM);
+    b.set_w(FROG + f::ANIM_TIME, 0xffff);
+    b.set_w(FROG + 0x8e, 0xffff);
+    b.set_w(FROG + f::SPEED_UP, 0xffff);
+    b.set_w(FROG + 0x82, b.w(FROG + f::BASE_SPEED));
+}
+
+/// The standing animation `frog_reset` starts (h0+$10d8e).
+const STAND_ANIM: u32 = h0(0x10d8e);
 
 /// `frog_life_reset` (h0+$9148): what losing a life resets.
 pub fn frog_life_reset(c: &mut crate::level::LevelCtx) {

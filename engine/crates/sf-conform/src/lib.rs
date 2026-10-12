@@ -26,8 +26,8 @@ pub use sync::SyncPoint;
 use std::sync::{Arc, OnceLock};
 
 use sf_assets::GameData;
-use sf_core::layout::{AmigaMemory, LAYOUT, VarId};
-use sf_core::{DisplayData, FrameOut, Game, Picture, Scene, Start, View};
+use sf_core::layout::{AmigaMemory, LAYOUT, Ram, VarId};
+use sf_core::{DisplayData, FrameOut, Game, LoadEnd, Picture, Scene, Start, View};
 
 /// The owner's disks decoded, once per process.
 pub fn game_data() -> &'static GameData {
@@ -51,6 +51,9 @@ pub fn display_data() -> Arc<DisplayData> {
         .get_or_init(|| Arc::new(DisplayData::new(game_data())))
         .clone()
 }
+
+/// The most frames the original may spend on one load the engine did at once.
+const LOAD_SEARCH: u32 = 20_000;
 
 /// What a green run compared: the frames, and for a `render` case the frames it left out, each
 /// with the reason.
@@ -87,13 +90,17 @@ pub fn run_with(
     mut before_step: impl FnMut(u32, &mut Game),
 ) -> Result<Outcome, Divergence> {
     let frozen = case.excludes(case::Excluded::Objects);
-    let synced = sync::reach_frozen(&case.sync, &case.script, case.frames, frozen)
+    let synced = sync::reach_frozen(&case.sync, &case.script, case.frames + LOAD_SEARCH, frozen)
         .unwrap_or_else(|e| panic!("{}: {e}", case.name));
     let mut amiga = synced.amiga;
     let mut prev = synced.memory.clone();
     let start = match &case.sync {
         SyncPoint::PowerOn => Start::PowerOn {
             seed: synced.seed.unwrap_or_default(),
+        },
+        SyncPoint::AtFrame { .. } => Start::Resume {
+            memory: synced.memory,
+            cpu: sync::core_cpu(&amiga.cpu()),
         },
         _ => Start::Transplant(synced.memory),
     };
@@ -104,27 +111,107 @@ pub fn run_with(
         ..Outcome::default()
     };
     let mut after_lag = false;
+    // The original's frame, counted from the sync point: ahead of the engine's after a load.
+    let mut of = 0u32;
+    // Jobs the engine did at once that the original's CPU may still be running.
+    // Each with whether the original has been seen in it yet, and frames since reported.
+    let mut jobs: Vec<(sf_core::Job, bool, u32)> = Vec::new();
     for f in 0..case.frames {
-        let input = case.script.input_at(f);
+        let input = case.script.input_at(of);
         if frozen {
             freeze::freeze_objects(&mut amiga, &display);
         }
-        let theirs = amiga
+        let mut theirs = amiga
             .step(input)
-            .unwrap_or_else(|e| panic!("{}: oracle, frame {f}: {e}", case.name));
-        let mem = sync::core_memory(amiga.memory());
-        let cpu = amiga.cpu();
-        let pacing = sync::pacing(&cpu, &mem);
+            .unwrap_or_else(|e| panic!("{}: oracle, frame {of}: {e}", case.name));
+        of += 1;
+        let mut mem = sync::core_memory(amiga.memory());
+        let pacing = sync::pacing(&amiga.cpu(), &mem);
         before_step(f, &mut game);
         // A case comparing only fresh renders does not step the engine (its scenes may not model
         // what the original runs there yet).
         let stepped = case.compare.vars || case.compare.picture || case.compare.paula;
-        let ours = if stepped {
-            game.step_paced(input, pacing)
-        } else {
-            FrameOut::default()
-        };
-        if stepped && sync::mid_pass(&cpu, &mem) {
+        let mut ours = FrameOut::default();
+        if stepped {
+            let before = game.clone();
+            ours = game.step_paced(input, pacing);
+            if let Some(end) = ours.load {
+                // The engine loaded at once; the original is compared once its load is over.
+                let mut n = 0;
+                let mut seen = false;
+                let mut prev_mem = mem.clone();
+                loop {
+                    let chain = sync::main_chain(&amiga.cpu(), &mem);
+                    let over = match end {
+                        LoadEnd::Reached(a) => chain.iter().take(4).any(|&x| x == a),
+                        LoadEnd::Left(a) => {
+                            let inside = chain.contains(&a);
+                            seen |= inside;
+                            seen && !inside
+                        }
+                    };
+                    if over {
+                        break;
+                    }
+                    n += 1;
+                    assert!(
+                        n < LOAD_SEARCH,
+                        "{}: the original's load ({end:x?}) was not over within {LOAD_SEARCH} frames of the engine's (frame {f})",
+                        case.name
+                    );
+                    if frozen {
+                        freeze::freeze_objects(&mut amiga, &display);
+                    }
+                    theirs = amiga
+                        .step(case.script.input_at(of))
+                        .unwrap_or_else(|e| panic!("{}: oracle, frame {of}: {e}", case.name));
+                    of += 1;
+                    prev_mem = std::mem::replace(&mut mem, sync::core_memory(amiga.memory()));
+                }
+                // The engine's frame again, with what runs on by itself while the original loads
+                // (the keyboard's poll, the music) as the original had it just before this frame,
+                // then what the load left that the engine does not model, as it is after it.
+                let take = |g: &mut Game, from: &AmigaMemory, runs: &[(u32, u32)]| {
+                    for &(addr, len) in runs {
+                        let bytes: Vec<u8> = (addr..addr + len).map(|a| from.byte(a)).collect();
+                        g.poke(addr, &bytes);
+                    }
+                };
+                let redo = |line: Option<u16>| {
+                    let mut g = before.clone();
+                    take(&mut g, &prev_mem, sf_core::front::RUNS_DURING_LOAD);
+                    g.set_load_line(line);
+                    let out = g.step_paced(input, pacing);
+                    take(&mut g, &mem, sf_core::front::LOAD_LEAVES);
+                    take(&mut g, &mem, &out.resync);
+                    (g, out)
+                };
+                (game, ours) = redo(None);
+                // The line the original's load ended on, which decides where the work after it
+                // falls (DESIGN §2.1): the first one on which the engine's frame matches the
+                // original's.
+                if let LoadEnd::Left(_) = end {
+                    let masked: Vec<(u32, u32)> = jobs
+                        .iter()
+                        .flat_map(|(j, _, _)| j.writes.clone())
+                        .chain(ours.jobs.iter().flat_map(|j| j.writes.clone()))
+                        .collect();
+                    let fits = |g: &Game, out: &FrameOut| {
+                        compare::frame(case, f, &g.probe(), &mem, out, &theirs, None, &masked).is_none()
+                    };
+                    if !fits(&game, &ours) {
+                        for line in (0..sf_core::front::FRAME_LINES).step_by(2) {
+                            let (g, out) = redo(Some(line));
+                            if fits(&g, &out) {
+                                (game, ours) = (g, out);
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        if stepped && sync::mid_pass(&amiga.cpu(), &mem) {
             outcome.straddled.push(f);
             after_lag = true;
             prev = mem;
@@ -133,7 +220,7 @@ pub fn run_with(
         if stepped && after_lag {
             after_lag = false;
             if case.compare.vars
-                && let Some((v, theirs, ours)) = compare::vars(&game.probe(), &mem)
+                && let Some((v, theirs, ours)) = compare::vars(&game.probe(), &mem, &[])
             {
                 game = Game::with_display(display.clone(), Start::Transplant(mem.clone()));
                 outcome.resynced.push((
@@ -144,6 +231,22 @@ pub fn run_with(
             prev = mem;
             continue;
         }
+        // Memory a job is still writing in the original is compared once the job is over (owner,
+        // 2026-10-12).
+        // A job is pending until the original has been in it and left it (it may not have begun
+        // yet when the engine, which does all at once, reports it).
+        // One the original is never seen in at a frame's end it finished within a frame: it is
+        // dropped once it is two frames old.
+        jobs.extend(ours.jobs.iter().map(|j| (j.clone(), false, 0)));
+        let chain = sync::main_chain(&amiga.cpu(), &mem);
+        jobs.retain_mut(|(j, seen, age)| {
+            let inside = j.inside.iter().any(|a| chain.contains(a));
+            let keep = inside || (!*seen && *age < 2);
+            *seen |= inside;
+            *age += 1;
+            keep
+        });
+        let masked: Vec<(u32, u32)> = jobs.iter().flat_map(|(j, _, _)| j.writes.clone()).collect();
         let mut rendered = None;
         if case.compare.render {
             let g = Game::with_display(display.clone(), Start::Transplant(mem.clone()));
@@ -167,8 +270,22 @@ pub fn run_with(
             &ours,
             &theirs,
             rendered.as_ref(),
+            &masked,
         );
-        if let Some(d) = d {
+        let unported = game.unported().to_vec();
+        if d.is_some() || !unported.is_empty() {
+            let mut d = d.unwrap_or(Divergence {
+                frame: f,
+                first_var: None,
+                picture_diff: None,
+                paula_diff: None,
+                render_diff: None,
+                oracle_frame: None,
+                unported: Vec::new(),
+                var_detail: Vec::new(),
+            });
+            d.unported = unported;
+            d.oracle_frame = (of != f + 1).then_some(of - 1);
             return Err(d);
         }
         prev = mem;

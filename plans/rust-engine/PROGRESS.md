@@ -42,9 +42,9 @@ done · ⛔ blocked, needs a human.
 | T17 | enemies-worlds-4-6 | T15 | ⬜ | |
 | T18 | bosses | T16, T17 | ⬜ | |
 | T19 | slot-and-bonus | T15 | ⬜ | |
-| T20 | front-end | T08, T11, T12, T13 | ⬜ | |
+| T20 | front-end | T08, T11, T12, T13 | ✅ | |
 | T21 | game-flow | T18, T19, T20 | ⬜ | |
-| T22 | app-rig | T09, T10, T12, T13 | ⬜ | |
+| T22 | app-rig | T09, T10, T12, T13 | ✅ | |
 | T23 | app-shell | T21, T22 | ⬜ | |
 | T24 | macos-menus | T23 | ⬜ | |
 | T25 | controls-and-gamepad | T24 | ⬜ | |
@@ -53,7 +53,11 @@ done · ⛔ blocked, needs a human.
 | T28 | level-override | T14, T24 | ⬜ | |
 | T29 | app-drill | T21, T25, T26, T27, T28 | ⬜ | |
 | T30 | acceptance | T29 | ⬜ | |
-| T31 | render-remaining-levels | T13 | ⬜ | |
+| T31 | render-remaining-levels | T13 | ✅ | |
+| T32 | story-intro | T20; blocks T21 | ⬜ | |
+| T33 | attract-demo | T16, T20 | ⬜ | |
+| T34 | game-over | T15, T20; blocks T21 | ⬜ | |
+| T35 | end-sequence | T20; blocks T21 | ⬜ | |
 
 A Notes cell holds what was built or what the review found, the test count, and one line per
 deviation from the task doc. A ✅ task's cell may be cut to one line once the next task has been reviewed.

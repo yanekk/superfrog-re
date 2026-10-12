@@ -261,7 +261,7 @@ impl<'a> Bus<'a> {
     pub fn b(&self, addr: u32) -> u8 {
         let addr = addr & 0xFF_FFFF;
         self.st
-            .read(addr)
+            .byte(addr)
             .or_else(|| self.rom.byte(self.st.world(), addr))
             .unwrap_or(0)
     }
@@ -274,15 +274,15 @@ impl<'a> Bus<'a> {
         (self.w(addr) as u32) << 16 | self.w(addr.wrapping_add(2)) as u32
     }
 
-    /// Write a byte (see [`State::write`]: only a [`crate::LAYOUT`] variable may be written).
+    /// Write a byte (see [`State::write_byte`]: only a [`crate::LAYOUT`] variable may be written).
     pub fn set_b(&mut self, addr: u32, v: u8) {
-        self.st.write(addr, v);
+        self.st.write_byte(addr, v);
     }
 
     pub fn set_w(&mut self, addr: u32, v: u16) {
         let [a, b] = v.to_be_bytes();
-        self.st.write(addr, a);
-        self.st.write(addr.wrapping_add(1), b);
+        self.st.write_byte(addr, a);
+        self.st.write_byte(addr.wrapping_add(1), b);
     }
 
     pub fn set_l(&mut self, addr: u32, v: u32) {

@@ -44,6 +44,8 @@ pub struct DisplayData {
     /// What the sound driver reads from the disks (T11's), from the decoded data; a test's empty
     /// `GameData` gets an empty one.
     pub(crate) sound: crate::audio::SoundData,
+    /// What the front end reads from the disks.
+    pub front: crate::front::FrontData,
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
@@ -89,8 +91,9 @@ impl DisplayData {
             h2,
             hero,
             worlds,
+            front: crate::front::FrontData::new(data),
             rom: crate::mem::Rom::new(data),
-            sound: crate::audio::SoundData::from_game_data(data)
+            sound: crate::audio::SoundData::from_game(data)
                 .unwrap_or_else(|_| crate::audio::SoundData::from_parts(vec![0; 0x50000], vec![], vec![], vec![])),
         }
     }
@@ -103,6 +106,13 @@ impl DisplayData {
     /// What the ported routines read the game's fixed tables from.
     pub fn rom(&self) -> &crate::mem::Rom {
         &self.rom
+    }
+
+    /// `len` bytes of hunk 2 from `off` as the bootstrap leaves it (0 past what the disks give).
+    pub fn h2_bytes(&self, off: u32, len: u32) -> Vec<u8> {
+        (off..off + len)
+            .map(|a| self.h2.get(a as usize).copied().unwrap_or(0))
+            .collect()
     }
 
     /// The world the `world` variable names: 1..6, 7 the bonus level.
@@ -141,7 +151,9 @@ fn hero_sprites(hero: &[u8], game: &sf_assets::ExeImage) -> Vec<u8> {
         return Vec::new();
     }
     let mirrored: Vec<u8> = hero
-        .chunks_exact(4)
+        .as_chunks::<4>()
+        .0
+        .iter()
         .flat_map(|l| {
             u32::from_be_bytes([l[0], l[1], l[2], l[3]])
                 .reverse_bits()
@@ -293,33 +305,83 @@ struct Denise<'a> {
     planes: Planes,
     colours: [u16; 32],
     sprites: [objects::Sprite; 8],
+    /// A level's screen: lines fetched from a display buffer are play-field rows (widescreen).
+    level: bool,
 }
 
 /// The level's picture.
 pub(crate) fn level(state: &State, data: &DisplayData, view: View) -> Picture {
     let mem = Mem::new(state, data);
-    let word = |a: u32| mem.word(a);
-    // The frame starts with the setup the list leaves at its end, as the previous frame did.
+    let word = |a: u32, _: u16| mem.word(a);
+    draw(
+        &mem,
+        &word,
+        LEVEL_COPPER,
+        view.extra_columns_each_side,
+        true,
+        None,
+    )
+    .0
+}
+
+/// A screen outside a level (the front end): the copper list at `cop1lc` run for the frame,
+/// `copper_word(addr, line)` giving each word of it as the copper reads it on that line (a list the
+/// CPU rewrote during the frame), every other read from `state`. Also returns the copper's
+/// register writes, for the ones Paula's conformance sees (DMACON, INTENA).
+pub(crate) fn screen(
+    state: &State,
+    data: &DisplayData,
+    cop1lc: u32,
+    copper_word: &dyn Fn(u32, u16) -> u16,
+    carry: Option<Fetch>,
+) -> (Picture, Vec<Write>) {
+    let mem = Mem::new(state, data);
+    draw(&mem, copper_word, cop1lc, 0, false, carry)
+}
+
+/// The copper's writes on a frame of the list at `cop1lc`, as `state` holds it.
+pub(crate) fn copper_writes(state: &State, data: &DisplayData, cop1lc: u32) -> Vec<Write> {
+    let mem = Mem::new(state, data);
+    let word = |a: u32, _: u16| mem.word(a);
     let mut start = Fetch::default();
-    for w in copper::run(&word, LEVEL_COPPER, Fetch::default()) {
+    for w in copper::run_timed(&word, cop1lc, Fetch::default()) {
         start.write(w.reg, w.value);
     }
-    let writes = copper::run(&word, LEVEL_COPPER, start);
+    copper::run_timed(&word, cop1lc, start)
+}
+
+fn draw(
+    mem: &Mem,
+    word: &dyn Fn(u32, u16) -> u16,
+    cop1lc: u32,
+    n: u16,
+    level: bool,
+    carry: Option<Fetch>,
+) -> (Picture, Vec<Write>) {
+    // The frame starts with the registers as the last frame left them (`carry`); without them,
+    // with the setup the list leaves at its end, as if the last frame ran it too.
+    let start = carry.unwrap_or_else(|| {
+        let mut f = Fetch::default();
+        for w in copper::run_timed(word, cop1lc, Fetch::default()) {
+            f.write(w.reg, w.value);
+        }
+        f
+    });
+    let writes = copper::run_timed(word, cop1lc, start);
     let mut end = start;
     for w in &writes {
         end.write(w.reg, w.value);
     }
     let (hstart, hstop) = (end.diwstrt & 0xFF, end.diwstop & 0xFF | 0x100);
     let lines = end.lines();
-    let n = view.extra_columns_each_side;
     let mut pic = Picture::blank(
         hstart as i32 - n as i32,
         lines.start,
-        hstop - hstart + 2 * n,
-        lines.end - lines.start,
+        hstop.saturating_sub(hstart) + 2 * n,
+        lines.end.saturating_sub(lines.start),
     );
     let mut denise = Denise {
-        mem: &mem,
+        mem,
         writes: &writes,
         next: 0,
         planes: Planes {
@@ -328,11 +390,16 @@ pub(crate) fn level(state: &State, data: &DisplayData, view: View) -> Picture {
         },
         colours: [0; 32],
         sprites: Default::default(),
+        level,
     };
     let rows = denise.walk(&mut pic);
-    let field = playfield::Field::draw(state, &mem, &rows, pic.width, n);
+    let field = if level {
+        playfield::Field::draw(mem.state, mem, &rows, pic.width, n)
+    } else {
+        playfield::Field::default()
+    };
     objects::compose(&mut pic, &rows, &field, n as usize);
-    pic
+    (pic, writes)
 }
 
 /// What the walk learns about one picture line.
@@ -373,7 +440,12 @@ impl Denise<'_> {
                 let x0 = self.planes.index(0, left);
                 let words = self.planes.fetch.words() as i32;
                 let stride = 2 * words + self.planes.modulo[0] as i32;
-                under = match field.line(self.mem.state, self.planes.pt[0], stride) {
+                let line = if self.level {
+                    field.line(self.mem.state, self.planes.pt[0], stride)
+                } else {
+                    None
+                };
+                under = match line {
                     Some((y, x)) => Under::Field { y, x0: x + x0 },
                     None => Under::Fetched,
                 };

@@ -70,6 +70,12 @@ reported as lag and re-synced. Normal play (`Game::step`) is always `Pacing::OnT
 The RNG is seeded once from a clock, so the seed is part of the start: a transplant copies
 `rng_state`, a power-on conformance run takes the oracle's seed, normal play seeds from the host clock.
 
+Where the engine starts, and loads (owner, 2026-10-12). Power-on for the engine is the moment the
+game program (`d1_c03`) starts: the Kickstart screens and the crack's intro are not the game's and are
+not reproduced. Disk loads are not modelled frame by frame: in the engine a load is instant, and
+conformance runs skip the original's frames spent loading and re-sync the engine's variables when
+the load ends, as they do after lag.
+
 ### 2.2 Disks and import
 
 - Accepted input is exactly the four "[cr CSL]" disk images the owner has, zipped or as raw `.adf`,

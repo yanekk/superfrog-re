@@ -77,8 +77,18 @@ fn a_picture_divergence_writes_a_png_outside_the_repo_and_names_the_first_pixel(
         name: "picture-test".into(),
         ..title_case()
     };
-    let d = sf_conform::run(&case).expect_err("a black picture matched the title");
-    assert_eq!(d.frame, 0);
+    // The title's copper list planted black (both palettes' MOVE values) on frame 3.
+    let d = sf_conform::run_with(&case, |f, game| {
+        if f == 3 {
+            for k in 0..32 {
+                for list in [0x7236, 0x733e] {
+                    game.poke(sf_core::layout::h2(list) + 4 * k, &[0, 0]);
+                }
+            }
+        }
+    })
+    .expect_err("a black picture matched the title");
+    assert_eq!(d.frame, 3);
     let p = d
         .picture_diff
         .clone()
@@ -103,7 +113,7 @@ fn a_picture_divergence_writes_a_png_outside_the_repo_and_names_the_first_pixel(
     assert!(d.to_string().contains(&format!("first pixel ({x}, {y})")));
 }
 
-/// The title music writes to Paula every frame; the placeholder scene writes nothing.
+/// The title music writes to Paula every frame; stopped (`music_on` planted 0), it writes nothing.
 #[test]
 fn a_paula_divergence_shows_the_first_differing_write_with_its_index() {
     let case = Case {
@@ -114,13 +124,15 @@ fn a_paula_divergence_shows_the_first_differing_write_with_its_index() {
         name: "paula-test".into(),
         ..title_case()
     };
-    let d = sf_conform::run(&case).expect_err("silence matched the title music");
+    let d = sf_conform::run_with(&case, |f, game| {
+        if f == 3 {
+            game.poke(sf_core::layout::h0(0x13420), &[0, 0]);
+        }
+    })
+    .expect_err("silence matched the title music");
+    assert_eq!(d.frame, 3);
     let p = d.paula_diff.expect("no Paula difference reported");
-    assert!(
-        p.starts_with("write #0: original AUD") || p.starts_with("write #0: original DMACON"),
-        "{p}"
-    );
-    assert!(p.contains("engine nothing"), "{p}");
+    assert!(p.starts_with("write #1: original AUD"), "{p}");
 }
 
 // --- the RNG against the original's routines on Moira ---

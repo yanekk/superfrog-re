@@ -84,7 +84,7 @@ pub const HEADER_LEN: u32 = 0x200;
 pub const LOW_CHIP: usize = 12;
 
 /// A run of the original's memory: big-endian reads and writes at its own offsets.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub(crate) struct Block(pub(crate) Vec<u8>);
 
 impl Block {
@@ -109,7 +109,7 @@ impl Block {
 }
 
 /// A file the game put in chip RAM.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum File {
     Tune(TuneId),
     Bank(BankId),
@@ -117,7 +117,7 @@ pub enum File {
 
 /// Chip RAM as the driver sees it: the files loaded into it (the latest wins where they overlap),
 /// the bytes the driver wrote, and the first [`LOW_CHIP`] bytes.
-#[derive(Debug, Clone, PartialEq, Eq, Default)]
+#[derive(Debug, Clone, PartialEq, Eq, Default, Hash)]
 pub struct Mem {
     files: Vec<(u32, File)>,
     written: BTreeMap<u32, u8>,
@@ -187,11 +187,19 @@ pub(crate) fn wr(out: &mut Vec<PaulaWrite>, reg: u16, value: u16) {
     });
 }
 
+/// A `clr.w` to a custom register, as the 68000 does it on the real machine (and the reference
+/// emulator): two writes, the first of the word the CPU has prefetched (the next instruction's
+/// first word, `prefetch`), then 0.
+pub(crate) fn clr(out: &mut Vec<PaulaWrite>, reg: u16, prefetch: u16) {
+    wr(out, reg, prefetch);
+    wr(out, reg, 0);
+}
+
 pub(crate) const DMACON: u16 = 0x96;
 pub(crate) const INTENA: u16 = 0x9a;
 
 /// The sound driver: the original's driver variables and the chip RAM it reads.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct AudioDriver {
     pub(crate) sfx: Block,
     pub(crate) music_on: Block,
@@ -219,6 +227,61 @@ impl AudioDriver {
             backup: block(vars::HEADER_BACKUP),
             mem: Mem::default(),
         }
+    }
+
+    /// Every variable zero and no file loaded: what a [`crate::State`] holds before the game has
+    /// set the driver up.
+    pub fn blank() -> AudioDriver {
+        let block = |(_, len): (u32, usize)| Block(vec![0; len]);
+        AudioDriver {
+            sfx: block(vars::SFX),
+            music_on: block(vars::MUSIC_ON),
+            p41: block(vars::P41),
+            shadow: block(vars::SHADOW),
+            stream: block(vars::STREAM),
+            tables: block(vars::SFX_TABLES),
+            module_addr: 0,
+            backup: block(vars::HEADER_BACKUP),
+            mem: Mem::default(),
+        }
+    }
+
+    /// Variable block `k` of [`vars::ALL`], as the original's bytes.
+    pub fn var_block(&self, k: usize) -> Vec<u8> {
+        match k {
+            0 => self.sfx.0.clone(),
+            1 => self.music_on.0.clone(),
+            2 => self.p41.0.clone(),
+            3 => self.shadow.0.clone(),
+            4 => self.stream.0.clone(),
+            5 => self.tables.0.clone(),
+            6 => self.module_addr.to_be_bytes().to_vec(),
+            _ => self.backup.0.clone(),
+        }
+    }
+
+    /// Overwrite variable block `k` of [`vars::ALL`] with the original's bytes.
+    pub fn set_var_block(&mut self, k: usize, b: &[u8]) {
+        match k {
+            0 => self.sfx.0 = b.to_vec(),
+            1 => self.music_on.0 = b.to_vec(),
+            2 => self.p41.0 = b.to_vec(),
+            3 => self.shadow.0 = b.to_vec(),
+            4 => self.stream.0 = b.to_vec(),
+            5 => self.tables.0 = b.to_vec(),
+            6 => self.module_addr = Block(b.to_vec()).l(0),
+            _ => self.backup.0 = b.to_vec(),
+        }
+    }
+
+    /// The first [`LOW_CHIP`] bytes of chip RAM, which a zero instrument pointer reads.
+    pub fn set_low_chip(&mut self, low: [u8; LOW_CHIP]) {
+        self.mem.low = low;
+    }
+
+    /// The files in chip RAM the driver reads, latest last.
+    pub fn files(&self) -> &[(u32, File)] {
+        &self.mem.files
     }
 
     /// A state taken from the original's memory (`read(addr)` gives the byte at a RAM address):

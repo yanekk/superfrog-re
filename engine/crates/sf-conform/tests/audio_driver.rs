@@ -154,6 +154,9 @@ impl Original {
     }
 }
 
+/// Our writes as register and value. A `clr.w` to a custom register writes twice (the prefetched
+/// word, then 0), on the full machine and on the routine oracle's Moira alike (its shim writes the
+/// data bus's word on a read of a write-only register, as vAmiga does).
 fn rv(w: &[PaulaWrite]) -> Vec<(u16, u16)> {
     w.iter().map(PaulaWrite::reg_value).collect()
 }

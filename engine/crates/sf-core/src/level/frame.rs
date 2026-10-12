@@ -26,7 +26,7 @@ pub fn vbl(c: &mut LevelCtx) {
         b.set_w(VBL_COUNT, b.w(VBL_COUNT).wrapping_add(1));
         scroll::scroll_latch(c);
         c.bus.set_w(PASS_FLAG, 1);
-        c.audio.stream_tick(c.sound, c.paula);
+        c.bus.st.audio.stream_tick(c.sound, c.paula);
         frog::anim::frog_level_entry(c);
         let b = &c.bus;
         if b.w(camera::SHOOTER_MODE) != 0 || b.w(camera::SPRITES_HIDDEN) == 0 {
@@ -42,16 +42,16 @@ pub fn vbl(c: &mut LevelCtx) {
             frog::physics::frog_move(c);
             camera::camera_follow(c);
         }
-        c.audio.music_tick(c.sound, c.paula);
+        c.bus.st.audio.music_tick(c.sound, c.paula);
         scroll::scroller(c);
         spawn::scan_edges(c);
     } else {
-        c.audio.stream_tick(c.sound, c.paula);
+        c.bus.st.audio.stream_tick(c.sound, c.paula);
     }
     frog::anim::frog_exit_walk(c);
     debug_assert_ne!(c.bus.w(LOGIC_RUNNING), 0, "only a level's vertical blank is ported");
-    c.audio.music_dma_tick(c.sound, c.paula);
-    c.audio.sfx_tick(c.sound, c.paula);
+    c.bus.st.audio.music_dma_tick(c.sound, c.paula);
+    c.bus.st.audio.sfx_tick(c.sound, c.paula);
     // (progress_map_vbl, h0+$3f22: the progress map's, off in a level.)
     clock::kbd_poll(c);
     let b = &mut c.bus;
