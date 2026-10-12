@@ -33,7 +33,15 @@ pub fn frame(
     let skip_panel = case.excludes(crate::case::Excluded::Panel);
     let first_var = c
         .vars
-        .then(|| vars_except(probe, theirs_mem, |id| skip_panel && id == VarId::PanelBitmap))
+        .then(|| {
+            vars_except(probe, theirs_mem, |id| {
+                (skip_panel && id == VarId::PanelBitmap)
+                    || case
+                        .only_vars
+                        .as_ref()
+                        .is_some_and(|only| !only.iter().any(|n| n == sf_core::layout::def(id).name))
+            })
+        })
         .flatten();
     let from_row = if skip_panel { PANEL_ROWS } else { 0 };
     let picture_diff = c

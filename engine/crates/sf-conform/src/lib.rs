@@ -27,7 +27,7 @@ use std::sync::{Arc, OnceLock};
 
 use sf_assets::GameData;
 use sf_core::layout::{AmigaMemory, LAYOUT, VarId};
-use sf_core::{DisplayData, Game, Picture, Scene, Start, View};
+use sf_core::{DisplayData, FrameOut, Game, Picture, Scene, Start, View};
 
 /// The owner's disks decoded, once per process.
 pub fn game_data() -> &'static GameData {
@@ -108,7 +108,14 @@ pub fn run_with(
         let mem = sync::core_memory(amiga.memory());
         let pacing = sync::pacing(&amiga.cpu(), &mem);
         before_step(f, &mut game);
-        let ours = game.step_paced(input, pacing);
+        // A case comparing only fresh renders does not step the engine (its scenes may not model
+        // what the original runs there yet).
+        let stepped = case.compare.vars || case.compare.picture || case.compare.paula;
+        let ours = if stepped {
+            game.step_paced(input, pacing)
+        } else {
+            FrameOut::default()
+        };
         let mut rendered = None;
         if case.compare.render {
             let g = Game::with_display(display.clone(), Start::Transplant(mem.clone()));

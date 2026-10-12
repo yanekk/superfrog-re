@@ -95,8 +95,11 @@ impl Game {
             Start::Transplant(mem) => {
                 let word = |a: u32| (mem.byte(a) as u32) << 8 | mem.byte(a + 1) as u32;
                 let long = |a: u32| word(a) << 16 | word(a + 2);
-                let files =
-                    crate::audio::files_for(long(h0(0x40da)), long(h0(0x9ec)));
+                let files = if display.sound().is_complete() {
+                    crate::audio::files_for(long(h0(0x40da)), long(h0(0x9ec)))
+                } else {
+                    Vec::new()
+                };
                 audio = AudioDriver::transplant(display.sound(), &|a| mem.byte(a), &files);
                 // The keyboard's last byte, as the last poll decoded it.
                 sdr = match (mem.byte(KEY_DOWN), mem.byte(KEY_UP)) {

@@ -65,6 +65,9 @@ pub struct Case {
     pub frames: u32,
     pub compare: Compare,
     pub exclude: Vec<Exclusion>,
+    /// When set, only these `LAYOUT` variables (by name) are compared: for a scene that models
+    /// only some of what the original changes there (the title before T20, say).
+    pub only_vars: Option<Vec<String>>,
 }
 
 impl Case {
@@ -107,9 +110,9 @@ impl Case {
     pub fn parse(name: &str, text: &str) -> Result<Case, String> {
         let t: toml::Table = text.parse().map_err(|e: toml::de::Error| e.to_string())?;
         for k in t.keys() {
-            if !["sync", "script", "frames", "compare", "exclude"].contains(&k.as_str()) {
+            if !["sync", "script", "frames", "compare", "exclude", "vars"].contains(&k.as_str()) {
                 return Err(format!(
-                    "unknown key `{k}` (sync, script, frames, compare, exclude)"
+                    "unknown key `{k}` (sync, script, frames, compare, exclude, vars)"
                 ));
             }
         }
@@ -201,6 +204,23 @@ impl Case {
                 });
             }
         }
+        let only_vars = match t.get("vars") {
+            None => None,
+            Some(v) => {
+                let names: Vec<String> = v
+                    .as_array()
+                    .ok_or("vars is a list of LAYOUT names")?
+                    .iter()
+                    .map(|n| n.as_str().map(str::to_string).ok_or("vars holds names"))
+                    .collect::<Result<_, _>>()?;
+                for n in &names {
+                    if !sf_core::LAYOUT.iter().any(|d| d.name == n) {
+                        return Err(format!("vars: `{n}` is not a LAYOUT variable"));
+                    }
+                }
+                Some(names)
+            }
+        };
         Ok(Case {
             name: name.to_string(),
             sync,
@@ -208,6 +228,7 @@ impl Case {
             frames,
             compare,
             exclude,
+            only_vars,
         })
     }
 }
