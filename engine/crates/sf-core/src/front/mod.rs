@@ -120,19 +120,23 @@ impl Routine {
     }
 }
 
-/// The keyboard as the original's `kbd_poll` sees it: the last byte the keyboard sent.
+/// The keyboard as the original's `kbd_poll` sees it: CIA-A's serial data register, which holds
+/// the last byte the keyboard sent (`!(code << 1 | released)`), and whether that byte is new
+/// (the serial-port flag). Once `kbd_poll` has handled a new byte it writes `$ff` there.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub(crate) struct Keyboard {
-    /// (raw code, released): before any key, what the keyboard's power-up stream ends with,
-    /// which reads as `$7e` released.
-    pub last: (u8, bool),
+    pub sdr: u8,
+    pub new: bool,
     held: crate::input::KeySet,
 }
 
 impl Default for Keyboard {
+    /// At power-on the register holds what the keyboard's start-up ends with: `$7e` released
+    /// (measured), never acknowledged.
     fn default() -> Keyboard {
         Keyboard {
-            last: (0x7e, true),
+            sdr: !(0x7e << 1 | 1),
+            new: false,
             held: crate::input::KeySet::NONE,
         }
     }
@@ -144,7 +148,9 @@ impl Keyboard {
         let changed = self.held.0 ^ keys.0;
         for code in 0..128u8 {
             if changed >> code & 1 == 1 {
-                self.last = (code, !keys.contains(code));
+                let up = !keys.contains(code) as u8;
+                self.sdr = !(code << 1 | up);
+                self.new = true;
             }
         }
         self.held = keys;

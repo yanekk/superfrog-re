@@ -107,7 +107,11 @@ fn kbd_poll(cx: &mut Cx) {
         return;
     }
     wr(cx.paula, INTENA, 0x0008);
-    let (code, up) = cx.keyboard.last;
+    let d0 = !cx.keyboard.sdr;
+    let (code, up) = (d0 >> 1 & 0x7f, d0 & 1 == 1);
+    if std::mem::take(&mut cx.keyboard.new) {
+        cx.keyboard.sdr = 0xff;
+    }
     if up {
         cx.s.set_b(KEY_UP, code);
         cx.s.set_b(KEY_DOWN, 0);

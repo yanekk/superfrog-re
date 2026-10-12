@@ -185,7 +185,7 @@ impl Options {
                     return Yield::Interrupt;
                 }
                 50 => {
-                    password::draw_code(cx);
+                    password::draw_code(cx, at(0x1760));
                     self.pc = 1;
                     return fade(
                         FadeKind::In { target: at(0x38e2) },

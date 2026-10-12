@@ -25,14 +25,14 @@ pub struct Password(pub [u8; 6]);
 
 /// One entry of the game's table: the digits and where its routine starts the game.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct Entry6 {
+pub struct CodeEntry {
     pub password: Password,
     pub start: Progress,
 }
 
 /// The table as the game holds it: each entry's digits, and its routine read for the two values it
 /// sets (`move.l #world,start_world; move.l #level,start_level; rts`).
-pub fn table(data: &super::FrontData) -> Vec<Entry6> {
+pub fn table(data: &super::FrontData) -> Vec<CodeEntry> {
     (0..28)
         .filter_map(|k| {
             let e = 0x24dc + 10 * k;
@@ -40,7 +40,7 @@ pub fn table(data: &super::FrontData) -> Vec<Entry6> {
             let handler = data.h0_l(e + 6).checked_sub(crate::layout::H0)?;
             let world = data.h0_l(handler + 2);
             let level = data.h0_l(handler + 12);
-            (data.h0_w(handler) == 0x23fc && data.h0_w(handler + 10) == 0x23fc).then(|| Entry6 {
+            (data.h0_w(handler) == 0x23fc && data.h0_w(handler + 10) == 0x23fc).then(|| CodeEntry {
                 password: Password(digits.try_into().expect("six")),
                 start: Progress {
                     world: world as u8,
@@ -52,7 +52,7 @@ pub fn table(data: &super::FrontData) -> Vec<Entry6> {
 }
 
 /// The code that starts the game at `progress`: the first entry of the table that does.
-pub fn password_for(table: &[Entry6], progress: &Progress) -> Option<Password> {
+pub fn password_for(table: &[CodeEntry], progress: &Progress) -> Option<Password> {
     table
         .iter()
         .find(|e| e.start == *progress)
@@ -61,7 +61,7 @@ pub fn password_for(table: &[Entry6], progress: &Progress) -> Option<Password> {
 
 /// Where a code starts the game, as `password_check` (h0+$2432) finds it: the first entry whose
 /// six digits match; `None` for a code the game does not know (it starts W1-1 then).
-pub fn decode_password(table: &[Entry6], p: &Password) -> Option<Progress> {
+pub fn decode_password(table: &[CodeEntry], p: &Password) -> Option<Progress> {
     table.iter().find(|e| e.password == *p).map(|e| e.start)
 }
 
@@ -72,8 +72,14 @@ const FLASH: u32 = at(0x2424);
 /// The code's six copper colours (h2+$737e, 16 MOVEs).
 const CODE_COLOURS: u32 = h2(0x737e);
 
-/// `$2412`: the typed code drawn into the options picture (plane 0, h0+$30fc's 8 × 8 font).
-pub(super) fn draw_code(cx: &mut Cx) {
+/// `$2412`: the typed code drawn into the options picture (plane 0, h0+$30fc's 8 × 8 font). It
+/// runs late in the frame and can run past its end: its memory is compared once the original's
+/// call (return address `inside`) is over.
+pub(super) fn draw_code(cx: &mut Cx, inside: u32) {
+    cx.jobs.push(crate::game::Job {
+        inside,
+        writes: vec![(BUFFER_0 + 0x127f, 8 * 0x28), (at(0x3258), 4)],
+    });
     text(cx, BUF, BUFFER_0 + 0x127f);
 }
 
@@ -81,7 +87,11 @@ pub(super) fn draw_code(cx: &mut Cx) {
 /// character, eight lines `$28` apart; a space clears, a character the font lacks ends it.
 pub(super) fn text(cx: &mut Cx, from: u32, mut to: u32) {
     let mut a = from;
+    // About how long it takes, in CPU cycles: the charset searched a byte at a time, eight byte
+    // moves a character.
+    let mut cycles = 40u32;
     loop {
+        cycles += 30;
         let c = cx.b(a);
         a += 1;
         if c & 0x80 != 0 {
@@ -91,6 +101,7 @@ pub(super) fn text(cx: &mut Cx, from: u32, mut to: u32) {
             for r in 0..8 {
                 cx.s.set_b(to + 0x28 * r, 0);
             }
+            cycles += 8 * 20;
             to += 1;
             continue;
         }
@@ -106,6 +117,7 @@ pub(super) fn text(cx: &mut Cx, from: u32, mut to: u32) {
                 break true;
             }
         };
+        cycles += k * 26;
         if !found {
             break;
         }
@@ -114,9 +126,11 @@ pub(super) fn text(cx: &mut Cx, from: u32, mut to: u32) {
             let v = cx.b(glyph + 0x28 * r);
             cx.s.set_b(to + 0x28 * r, v);
         }
+        cycles += 8 * 28;
         to += 1;
     }
     cx.s.set_l(at(0x3258), a);
+    cx.busy(cycles);
 }
 
 /// `password_entry` (h0+$22ba): type six digits; Backspace starts again, Escape, Return or fire
@@ -144,7 +158,7 @@ impl Entry {
                     for k in 0..16 {
                         cx.s.set_w(CODE_COLOURS + 4 * k, 0xfff);
                     }
-                    draw_code(cx);
+                    draw_code(cx, at(0x233c));
                     cx.s.set_w(FLASH, 0);
                     self.pc = 1;
                 }
@@ -209,11 +223,16 @@ impl Entry {
                         continue;
                     }
                     cx.s.set_l(BUF_AT, at_ + 1);
-                    draw_code(cx);
+                    draw_code(cx, at(0x23ea));
                     self.pc = 1;
+                    return Yield::Interrupt;
+                }
+                3 => {
+                    draw_code(cx, at(0x23f2));
+                    self.pc = 4;
+                    return Yield::Interrupt;
                 }
                 _ => {
-                    draw_code(cx);
                     check(cx);
                     for k in 0..16 {
                         cx.s.set_w(CODE_COLOURS + 4 * k, 0);

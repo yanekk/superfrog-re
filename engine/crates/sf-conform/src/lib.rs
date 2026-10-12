@@ -104,8 +104,8 @@ pub fn run_with(
     // The original's frame, counted from the sync point: ahead of the engine's after a load.
     let mut of = 0u32;
     // Jobs the engine did at once that the original's CPU may still be running.
-    // Each with whether the original has been seen in it yet.
-    let mut jobs: Vec<(sf_core::Job, bool)> = Vec::new();
+    // Each with whether the original has been seen in it yet, and frames since reported.
+    let mut jobs: Vec<(sf_core::Job, bool, u32)> = Vec::new();
     for f in 0..case.frames {
         let input = case.script.input_at(of);
         let mut theirs = amiga
@@ -146,15 +146,18 @@ pub fn run_with(
         // 2026-10-12).
         // A job is pending until the original has been in it and left it (it may not have begun
         // yet when the engine, which does all at once, reports it).
-        jobs.extend(ours.jobs.iter().map(|j| (j.clone(), false)));
+        // One the original is never seen in at a frame's end it finished within a frame: it is
+        // dropped once it is two frames old.
+        jobs.extend(ours.jobs.iter().map(|j| (j.clone(), false, 0)));
         let chain = sync::main_chain(&amiga.cpu(), &mem);
-        jobs.retain_mut(|(j, seen)| {
+        jobs.retain_mut(|(j, seen, age)| {
             let inside = chain.contains(&j.inside);
-            let keep = inside || !*seen;
+            let keep = inside || (!*seen && *age < 2);
             *seen |= inside;
+            *age += 1;
             keep
         });
-        let masked: Vec<(u32, u32)> = jobs.iter().flat_map(|(j, _)| j.writes.clone()).collect();
+        let masked: Vec<(u32, u32)> = jobs.iter().flat_map(|(j, _, _)| j.writes.clone()).collect();
         let mut rendered = None;
         if case.compare.render {
             let g = Game::with_display(display.clone(), Start::Transplant(mem.clone()));
