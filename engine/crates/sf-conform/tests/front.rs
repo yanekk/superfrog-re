@@ -99,3 +99,23 @@ fn each_world_and_level_has_a_code_that_starts_it() {
     let code = password::password_for(&table, &bonus).expect("the bonus level has codes");
     assert_eq!(password::decode_password(&table, &code), Some(bonus));
 }
+
+/// Power-on to the title, frame for frame (the case `front-boot`), in the test block.
+#[test]
+fn power_on_to_the_title_matches_the_original() {
+    let case = sf_conform::Case::load(&sf_conform::cases_dir().join("front-boot.toml"))
+        .unwrap_or_else(|e| panic!("{e}"));
+    if let Err(d) = sf_conform::run(&case) {
+        panic!("{d}");
+    }
+}
+
+/// The level-code entry, frame for frame (the case `front-password`).
+#[test]
+fn the_level_code_entry_matches_the_original() {
+    let case = sf_conform::Case::load(&sf_conform::cases_dir().join("front-password.toml"))
+        .unwrap_or_else(|e| panic!("{e}"));
+    if let Err(d) = sf_conform::run(&case) {
+        panic!("{d}");
+    }
+}

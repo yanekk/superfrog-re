@@ -972,3 +972,62 @@ pub const LOAD_LEAVES: &[(u32, u32)] = &[(
     crate::layout::h3(0x35860),
     data::OVERLAY_AT - crate::layout::h3(0x35860),
 )];
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::input::KeySet;
+
+    #[test]
+    fn the_keyboard_sends_a_byte_per_change_and_reads_ff_once_handled() {
+        let mut k = Keyboard::default();
+        // Power-on: $7e released, never acknowledged.
+        assert_eq!((!k.sdr >> 1 & 0x7f, !k.sdr & 1), (0x7e, 1));
+        assert!(!k.new);
+        k.feed(KeySet::key(0x19));
+        assert_eq!((!k.sdr >> 1 & 0x7f, !k.sdr & 1, k.new), (0x19, 0, true));
+        k.feed(KeySet::key(0x19));
+        assert!(k.new, "holding a key sends nothing more");
+        k.feed(KeySet::NONE);
+        assert_eq!((!k.sdr >> 1 & 0x7f, !k.sdr & 1), (0x19, 1));
+    }
+
+    #[test]
+    fn a_fade_out_reaches_black_and_says_so() {
+        let mut s = State::default();
+        let rec = fade::RECORDS[0];
+        let list = h0(0x3ba0);
+        for k in 0..4 {
+            s.set_w(list + 4 * k + 2, [0xfff, 0x842, 0x00f, 0x000][k as usize]);
+        }
+        s.set_w(rec.at + fade::SPEED, 1);
+        fade::fade_out(&mut s, rec, list, 4);
+        let mut frames = 0;
+        while !fade::done(&s, rec) {
+            fade::step_out(&mut s);
+            frames += 1;
+            assert!(frames < 40);
+        }
+        assert!((0..4).all(|k| s.w(list + 4 * k + 2) == 0));
+        assert!((15..=17).contains(&frames), "{frames}");
+    }
+
+    #[test]
+    fn a_blit_copies_a_shifted_word_run_with_its_masks() {
+        let mut s = State::default();
+        let src = crate::layout::h3(0x10600);
+        let dst = src + 0x100;
+        s.write(src, &[0x12, 0x34, 0x56, 0x78]);
+        blit::Blit {
+            con0: 0x09f0 | 4 << 12,
+            afwm: 0xffff,
+            alwm: 0xffff,
+            pt: [src, 0, 0, dst],
+            size: 1 << 6 | 2,
+            ..blit::Blit::default()
+        }
+        .run(&mut s);
+        assert_eq!(s.read(dst, 4), [0x01, 0x23, 0x45, 0x67]);
+        assert!(s.scratch.is_empty(), "a display buffer is modelled memory");
+    }
+}

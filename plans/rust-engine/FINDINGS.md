@@ -18,6 +18,10 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-12 | 📌 | T20 for T21: the progress map (`progress_map_show` h0+$3de8, `progress_map_vbl`) is shown during level loads, so T21 ports it; the VBL records it unported (`h0+$4112`). The options' hi-score save writes the disk: unported. |
+| 2026-10-12 | 📌 | T20: the original's frame ends when the CPU takes the interrupt; a priority blit or masked job past line 312 moves it (copper's line-0 writes and window go with the earlier frame). `clr.w` to a custom register writes the prefetch word, then 0. |
+| 2026-10-12 | 📌 | T20 added T34 game-over (needs T14/T15's objects and bobs) and T35 end-sequence (disk-3 ANIM, CPU-timed), owner's yes. Neither blocks T21; T21's whole-game run needs both. |
+| 2026-10-12 | 🐞 | T20, left open (owner): at the original's frame 6416 the credits' scroll blit and the beam cross inside one row, 4 pixels differ; `front-attract` stops at 2 270 frames. T33 runs this stretch again. |
 | 2026-10-12 | 🔄 | Owner, T20: the engine starts at the game program's start (h0 `init_and_script`), not power-on; Kickstart and the crack intro are not reproduced. Disk loads are not modelled frame by frame: the runner skips the original's load frames and re-syncs. |
 | 2026-10-12 | 📌 | T20 added T32 story-intro (disk-3 program, oracle boots disk 1) and T33 attract-demo (needs T14–T16), owner's yes. Neither blocks T21; T21's "intro" and whole-game run may need T32 and T33 first. |
 | 2026-10-12 | 📌 | T13 review: owner added T31 render-remaining-levels. T13 renders 25 of 29 levels; W6's alt maps 2–4 need DF1–DF3 (oracle has df0 only) and the final level has no level code (password entries 24–27 all lead to the bonus level). |

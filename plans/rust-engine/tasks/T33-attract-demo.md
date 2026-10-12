@@ -27,6 +27,8 @@ DESIGN §2.1, docs/08 "Scene flow".
 
 - [ ] title attract mode cycling for 5 000 frames, demo included (the test T20's doc asked for).
 - [ ] each of the three `demo_index` entries, and an abort by fire in the middle of the demo.
+- [ ] the credits before the demo past the original's frame 6416, where T20 left the scroll's blit
+      and the beam crossing inside one row (4 pixels; FINDINGS 2026-10-12, `front::attract::scroll`).
 
 ## Done when
 

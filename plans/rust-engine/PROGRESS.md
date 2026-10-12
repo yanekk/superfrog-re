@@ -42,7 +42,7 @@ done · ⛔ blocked, needs a human.
 | T17 | enemies-worlds-4-6 | T15 | ⬜ | |
 | T18 | bosses | T16, T17 | ⬜ | |
 | T19 | slot-and-bonus | T15 | ⬜ | |
-| T20 | front-end | T08, T11, T12, T13 | ⬜ | |
+| T20 | front-end | T08, T11, T12, T13 | 🔍 | Boot→title, menu, options, level codes (all 10⁶ vs original), attract to demo: 4 `front-*` cases, 6 tests. Deviations: story intro→T32, demo→T33, game over→T34, ending→T35 (owner); progress map left to T21; hi-score disk save unported; credits 4-px race (FINDINGS); `password_for(table, …)` takes the disks' table. |
 | T21 | game-flow | T18, T19, T20 | ⬜ | |
 | T22 | app-rig | T09, T10, T12, T13 | ⬜ | |
 | T23 | app-shell | T21, T22 | ⬜ | |
@@ -56,11 +56,13 @@ done · ⛔ blocked, needs a human.
 | T31 | render-remaining-levels | T13 | ⬜ | |
 | T32 | story-intro | T20 | ⬜ | |
 | T33 | attract-demo | T16, T20 | ⬜ | |
+| T34 | game-over | T15, T20 | ⬜ | |
+| T35 | end-sequence | T20 | ⬜ | |
 
 A Notes cell holds what was built or what the review found, the test count, and one line per
 deviation from the task doc. A ✅ task's cell may be cut to one line once the next task has been reviewed.
 
-**Review queue:** *(empty)*
+**Review queue:** T20
 
 ## Blocked on the user
 

@@ -67,8 +67,14 @@ cannot see (docs/12 "Late redraws"). Stepping cases must still match those frame
 Sync points:
 
 - `sync = "power-on"`: both switch on; the engine gets the RNG seed the original chose on this run.
+  The engine starts where the game program does and loads at once (owner, 2026-10-12): its first
+  frame is compared with the original's first frame after the title's loads, and every later load
+  skips the original's frames until its load is over (docs/13 "Where the engine starts").
+- A front-end routine's memory that the original's CPU is still writing at a frame's end (an
+  unpacking, a long blit) is compared once the original is out of it (`FrameOut::jobs`).
 - `sync = { script = "<name>", frame = N }`: the original runs the script from power-on for N frames;
-  the engine starts from its memory there (every `LAYOUT` variable transplanted).
+  the engine starts from its memory there (every `LAYOUT` variable transplanted) and its CPU, so a
+  front-end routine the engine knows goes on from the same place (`Start::Resume`).
 - `sync = { level = "W1-1" }`: the first in-level frame, reached the way a player would: W1-1 by
   START GAME (`scripts/start-w1-1.txt`), any other level of W1–W6 and the bonus level (`"WB-1"`) by
   typing its level code on the options screen, the disks swapped as the game asks (docs/12
