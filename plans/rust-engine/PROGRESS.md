@@ -57,12 +57,12 @@ done · ⛔ blocked, needs a human.
 | T32 | story-intro | T20; blocks T21 | ⬜ | |
 | T33 | attract-demo | T16, T20 | ⬜ | |
 | T34 | game-over | T15, T20; blocks T21 | ⬜ | |
-| T35 | end-sequence | T20; blocks T21 | 🔍 | `front/{ending,anim,hero}.rs`, `end-sequence` sync, case `ending` (2 500 frames) green; 3 tests. Deviations: load_hero ported (boot too); six LAYOUT runs added (all of hunk 3, CACHE_FORMAT 3); RNG reseed taken from original; overlay fade-out timed; runner inserts asked-for disks (this case only), searches Reached loads' line. See commit. |
+| T35 | end-sequence | T20; blocks T21 | ✅ | Review: one fix, `record` now inserts the disks asked for (it sat in end_seq_load's disk wait), no test. Probed: the original leaves end_sequence at its frame 3280, the case reaches 4406 (title). Mutations caught: stolen-cycles constant (red, frame 533), delta skip (ANIM test). All front-*, title-rng, render-final green. |
 
 A Notes cell holds what was built or what the review found, the test count, and one line per
 deviation from the task doc. A ✅ task's cell may be cut to one line once the next task has been reviewed.
 
-**Review queue:** T35
+**Review queue:** *(empty)*
 
 ## Blocked on the user
 
