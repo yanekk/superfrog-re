@@ -259,10 +259,11 @@ mod tests {
     }
 
     #[test]
-    fn power_on_holds_its_seed_for_the_boot_scene() {
+    fn power_on_boots_the_front_end_with_its_seed() {
+        // The boot is all load, so it is done at once: the RNG holds the seed the start gave.
         let seed = Rng::seeded(1, 2);
         let g = Game::new(&GameData::default(), Start::PowerOn { seed });
-        assert_eq!(g.pending_seed(), Some(seed));
-        assert_eq!(g.state(), &State::default());
+        assert_eq!(g.scene(), Scene::Front);
+        assert_eq!(g.state().rng, seed);
     }
 }
