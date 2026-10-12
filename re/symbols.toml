@@ -2370,3 +2370,37 @@ offset = 0x11e62
 name = "frog_exit_walk"
 kind = "func"
 note = "VBL: scripted frog movement at the level end (T14)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x7770
+name = "passage_toggle"
+kind = "var"
+size = 2
+note = "toggles each pass while the frog goes down a secret passage (T14)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x7772
+name = "passage_step"
+kind = "func"
+note = "pass: the frog goes through a secret passage (marker 38), the camera with it (T14)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0xdd6
+name = "time_up_check"
+kind = "func"
+note = "pass: the level clock at 0:00 (T15)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0xdd4
+name = "extra_life_shown"
+kind = "var"
+size = 2
+note = "set while the extra-life check has drawn the lives (T14)"

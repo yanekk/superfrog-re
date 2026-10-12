@@ -12,6 +12,7 @@ pub mod clock;
 pub mod collision;
 pub mod fade;
 pub mod load;
+pub mod pass;
 pub mod scroll;
 pub mod spawn;
 

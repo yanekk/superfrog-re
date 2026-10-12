@@ -7,6 +7,7 @@
 
 #include "Moira.h"
 
+#include <algorithm>
 #include <cstring>
 #include <map>
 #include <new>
@@ -46,6 +47,75 @@ public:
     std::vector<sf_hw_write> hwWrites;
     // Bytes a hardware read returns (sf_cpu_set_hw_read), by address; any other reads 0.
     std::map<u32, u8> hwReads;
+    // The blitter's registers ($DFF040-$DFF074, by word): a write to BLTSIZE runs the blit at
+    // once, in area mode, into this memory (journalled like the CPU's writes).
+    u16 blt[0x1c] = {};
+
+    u16 mem16(u32 a) { a &= kMemMask & ~1u; return u16(mem[a] << 8 | mem[a + 1]); }
+    void put16(u32 a, u16 v) { a &= kMemMask & ~1u; wr8(a, u8(v >> 8)); wr8(a + 1, u8(v)); }
+
+    void blit(u16 size) {
+        auto r = [&](u32 off) { return blt[(off - 0x40) / 2]; };
+        auto ptr = [&](u32 off) { return (u32(r(off)) << 16 | r(off + 2)) & 0x7FFFE; };
+        u16 con0 = r(0x40), con1 = r(0x42);
+        if (con1 & 1) return;  // line mode: not used by the routines tested
+        bool desc = con1 & 2;
+        int ash = con0 >> 12, bsh = con1 >> 12;
+        bool useA = con0 & 0x800, useB = con0 & 0x400, useC = con0 & 0x200, useD = con0 & 0x100;
+        u8 mt = u8(con0);
+        u32 h = size >> 6 ? size >> 6 : 1024, w = size & 63 ? size & 63 : 64;
+        u32 apt = ptr(0x50), bpt = ptr(0x4c), cpt = ptr(0x48), dpt = ptr(0x54);
+        i32 step = desc ? -2 : 2;
+        i32 amod = i16(r(0x64)), bmod = i16(r(0x62)), cmod = i16(r(0x60)), dmod = i16(r(0x66));
+        if (desc) { amod = -amod; bmod = -bmod; cmod = -cmod; dmod = -dmod; }
+        u16 adat = r(0x74), bdat = r(0x72), cdat = r(0x70);
+        u16 aold = 0, bold = 0;
+        for (u32 y = 0; y < h; y++) {
+            for (u32 x = 0; x < w; x++) {
+                u16 a = useA ? mem16(apt) : adat;
+                if (useA) apt += step;
+                if (x == 0) a &= r(0x44);
+                if (x == w - 1) a &= r(0x46);
+                u16 b = useB ? mem16(bpt) : bdat;
+                if (useB) bpt += step;
+                u16 c = useC ? mem16(cpt) : cdat;
+                if (useC) cpt += step;
+                u16 as, bs;
+                if (!desc) {
+                    as = u16((u32(aold) << 16 | a) >> ash);
+                    bs = u16((u32(bold) << 16 | b) >> bsh);
+                } else {
+                    as = u16(((u32(a) << 16 | aold) << ash) >> 16);
+                    bs = u16(((u32(b) << 16 | bold) << bsh) >> 16);
+                }
+                aold = a;
+                bold = b;
+                u16 d = 0;
+                if (mt & 0x80) d |= as & bs & c;
+                if (mt & 0x40) d |= as & bs & ~c;
+                if (mt & 0x20) d |= as & ~bs & c;
+                if (mt & 0x10) d |= as & ~bs & ~c;
+                if (mt & 0x08) d |= ~as & bs & c;
+                if (mt & 0x04) d |= ~as & bs & ~c;
+                if (mt & 0x02) d |= ~as & ~bs & c;
+                if (mt & 0x01) d |= ~as & ~bs & ~c;
+                if (useD) { put16(dpt, d); dpt += step; }
+            }
+            if (useA) apt += amod;
+            if (useB) bpt += bmod;
+            if (useC) cpt += cmod;
+            if (useD) dpt += dmod;
+        }
+    }
+
+    void custom_write(u32 a, u16 v) {
+        u32 reg = a & 0x1FE;
+        hwWrites.push_back({ u16(reg), v });
+        if (reg >= 0x40 && reg < 0x78) {
+            blt[(reg - 0x40) / 2] = v;
+            if (reg == 0x58) blit(v);
+        }
+    }
 
     static bool is_custom(u32 a) { return (a & 0xFFFE00) == 0xDFF000; }
 
@@ -75,7 +145,7 @@ public:
         if (is_hardware(a)) {
             if (!hw) { fault(a); return; }
             // A byte written to a custom register reaches both halves of the data bus.
-            if (is_custom(a)) hwWrites.push_back({ u16(a & 0x1FE), u16(v << 8 | v) });
+            if (is_custom(a)) custom_write(a, u16(v << 8 | v));
             return;
         }
         u64 bit = u64(1) << (a & 63);
@@ -90,7 +160,7 @@ public:
     u16 rd16(u32 a) { return u16(rd8(a) << 8 | rd8(a + 1)); }
     void wr16(u32 a, u16 v) {
         if (hw && is_hardware(a & kMemMask)) {
-            if (is_custom(a & kMemMask)) hwWrites.push_back({ u16(a & 0x1FE), v });
+            if (is_custom(a & kMemMask)) custom_write(a & kMemMask, v);
             return;
         }
         wr8(a, u8(v >> 8));
@@ -109,6 +179,7 @@ public:
     void call(u32 entry, sf_regs *r, u32 sentinel, u64 max_instr, sf_call_status *out) {
         status = {};
         hwWrites.clear();
+        std::fill(std::begin(blt), std::end(blt), u16(0));
         resetSsp = r->a[7];
         resetPc = entry;
         overrideVectors = true;

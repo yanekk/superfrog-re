@@ -191,19 +191,6 @@ impl<'d> Rig<'d> {
             }
             r => r.unwrap_or_else(|e| panic!("{name} case {case}: the original: {e}")),
         };
-        // Moira has no blitter: the blits the routine started are done here, on its memory as it
-        // left it (the routines compared start blits only after their own writes).
-        let blitted = {
-            let cpu = &self.cpu;
-            let after: BTreeMap<u32, u8> = r.writes.iter().map(|w| (w.0, w.2)).collect();
-            let read = |a: u32| after.get(&a).copied().unwrap_or(cpu.read(a, 1)[0]);
-            let mut changed: BTreeMap<u32, u8> = BTreeMap::new();
-            for (a, v) in blitter(&r.hw_writes, &read) {
-                changed.insert(a, v);
-            }
-            changed.retain(|&a, v| *v != read(a));
-            changed
-        };
         for (a, b) in saved.iter().rev() {
             self.cpu.write(*a, b);
         }
@@ -239,8 +226,7 @@ impl<'d> Rig<'d> {
                 .any(|(at, b)| (*at..*at + b.len() as u32).contains(&a))
         };
         let mut theirs: BTreeMap<u32, u8> = BTreeMap::new();
-        let all_writes = r.writes.iter().map(|w| (w.0, w.2)).chain(blitted);
-        for (a, new) in all_writes {
+        for &(a, _, new) in &r.writes {
             if STACK_AREA.contains(&a) {
                 continue;
             }
@@ -315,46 +301,3 @@ impl<'d> Rig<'d> {
 
 /// The blitter's registers (offsets from `$DFF000`).
 const BLITTER: Range<u16> = 0x40..0x76;
-
-/// The memory writes the blits in `hw` make, in order, reading memory through `read` (and the
-/// blits' own earlier writes). Only what the game's routines use is modelled: area mode,
-/// ascending, no shifts, D = A (`BLTCON0` minterm `$f0`).
-fn blitter(hw: &[(u16, u16)], read: &dyn Fn(u32) -> u8) -> Vec<(u32, u8)> {
-    let mut regs = [0u16; 0x40];
-    let mut out: Vec<(u32, u8)> = Vec::new();
-    let mut mem: BTreeMap<u32, u8> = BTreeMap::new();
-    for &(reg, v) in hw {
-        if !BLITTER.contains(&reg) {
-            continue;
-        }
-        regs[(reg / 2) as usize] = v;
-        if reg != 0x58 {
-            continue;
-        }
-        let r = |o: u16| regs[(o / 2) as usize];
-        let ptr = |o: u16| ((r(o) as u32) << 16 | r(o + 2) as u32) & 0x7_fffe;
-        let (con0, con1) = (r(0x40), r(0x42));
-        assert!(
-            con0 & 0x0fff == 0x09f0 && con1 == 0,
-            "blit BLTCON0 ${con0:04x} BLTCON1 ${con1:04x} is not modelled in the rig"
-        );
-        let h = match v >> 6 { 0 => 1024, h => h as u32 };
-        let w = match v & 0x3f { 0 => 64, w => w as u32 };
-        let (mut a, mut d) = (ptr(0x50), ptr(0x54));
-        let (am, dm) = (r(0x64) as i16 as i32 as u32, r(0x66) as i16 as i32 as u32);
-        for _ in 0..h {
-            for _ in 0..w {
-                for k in 0..2 {
-                    let byte = mem.get(&(a + k)).copied().unwrap_or_else(|| read(a + k));
-                    mem.insert(d + k, byte);
-                    out.push((d + k, byte));
-                }
-                a = a.wrapping_add(2);
-                d = d.wrapping_add(2);
-            }
-            a = a.wrapping_add(am);
-            d = d.wrapping_add(dm);
-        }
-    }
-    out
-}

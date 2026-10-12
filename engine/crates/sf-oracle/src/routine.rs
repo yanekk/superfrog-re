@@ -350,9 +350,11 @@ impl Cpu68k {
     }
 
     /// Hardware mode, off by default: for routines that drive the custom chips themselves (the
-    /// sound driver, T11). A custom-chip write is recorded in [`CallResult::hw_writes`] instead of
-    /// ending the call with [`CallError::CustomChipAccess`]; a byte write is recorded as that byte on
-    /// both halves. VHPOSR (`$DFF006`) steps on every read so raster waits end; other custom
+    /// sound driver, T11; the level's blits, T14). A custom-chip write is recorded in
+    /// [`CallResult::hw_writes`] instead of ending the call with [`CallError::CustomChipAccess`]; a
+    /// byte write is recorded as that byte on both halves. A write to BLTSIZE runs the blit there
+    /// and then, in area mode (channels, shifts, masks, minterm, descending; no line mode or fill),
+    /// its writes journalled with the CPU's; the blitter's registers start each call at 0. VHPOSR (`$DFF006`) steps on every read so raster waits end; other custom
     /// registers and the CIAs read 0, and CIA writes are dropped. Nothing else of the chipset is
     /// modelled: a routine that waits on DMA or an interrupt still times out.
     pub fn set_hardware(&mut self, on: bool) {

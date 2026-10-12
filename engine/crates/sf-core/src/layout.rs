@@ -236,6 +236,8 @@ layout! {
     FrogAE = "frog_ae", h0(0x884), Width::W;
     FrogB0 = "frog_b0", h0(0x886), Width::W;
     FrogB2 = "frog_b2", h0(0x888), Width::W;
+    /// `vbl_pass_flag` (h0+$9da): set by the vertical blank, cleared by the buffer flip.
+    VblPassFlag = "vbl_pass_flag", h0(0x9da), Width::W;
     /// `shooter_mode` (h0+$9dc): the bonus level's auto-scrolling mode.
     ShooterMode = "shooter_mode", h0(0x9dc), Width::W;
     /// `sprites_hidden` (h0+$9e2): the frog's sprites stay where they are.
@@ -246,6 +248,8 @@ layout! {
     OptGameMode = "opt_game_mode", h0(0x9e6), Width::W;
     /// `frog_exit_sprites` (h0+$9f8): the frog shows in the second pair of sprite records.
     FrogExitSprites = "frog_exit_sprites", h0(0x9f8), Width::W;
+    /// `obj_world_offset` (h0+$9fa): the world's row of the object tables, `$100` a world.
+    ObjWorldOffset = "obj_world_offset", h0(0x9fa), Width::L;
     /// `level_state` (h0+$a06): negative while playing; 1 exit, 2 bonus end, $64 boss, $190 death.
     LevelState = "level_state", h0(0xa06), Width::L;
     /// `level_width`, `level_height` (h0+$a22, h0+$a24): the level's size in pixels.
@@ -257,11 +261,15 @@ layout! {
     EntryFall = "entry_fall", h0(0x6c92), Width::W;
     /// `passage_cell` (h0+$776c): the fake-wall cell the frog entered (marker 38).
     PassageCell = "passage_cell", h0(0x776c), Width::L;
+    /// `passage_toggle` (h0+$7770).
+    PassageToggle = "passage_toggle", h0(0x7770), Width::W;
     /// `shooter_half_step` (h0+$de28): the bonus level's camera creeps on every second frame.
     ShooterHalfStep = "shooter_half_step", h0(0xde28), Width::W;
     /// `ice_tick`, `push_tick` (h0+$eb28, h0+$ebf0): frames on an icy or a pushing surface.
     IceTick = "ice_tick", h0(0xeb28), Width::W;
     PushTick = "push_tick", h0(0xebf0), Width::W;
+    /// `tile_anim_queue` (h0+$fa68): cells waiting to show their next tile.
+    TileAnimQueue = "tile_anim_queue", h0(0xfa68), Width::Bytes(16);
     /// `fall_history` (h0+$10182): a hurt frog's y on each of the last eight frames.
     FallHistory = "fall_history", h0(0x10182), Width::Bytes(16);
     /// `slope_frame_right`, `slope_frame_left` (h0+$1050e, h0+$10ce6): the frame of one step in
@@ -318,6 +326,8 @@ layout! {
     /// `scroll_column` (h0+$172b0): the play-field column the vertical blank last scrolled to, as
     /// the address of its first word in the shown buffer (docs/12 "Scroll").
     ScrollColumn = "scroll_column", h0(0x172b0), Width::L;
+    /// `bob_buffer` (h0+$18be4): the display buffer the bobs were drawn into this pass.
+    BobBuffer = "bob_buffer", h0(0x18be4), Width::W;
     /// `frog_sprite_left`, `_right` (h0+$1aff4, h0+$1b010): the frog's two hardware-sprite
     /// records (`$1c` bytes: screen x, y, height, attached, copper words, data, animation).
     FrogSpriteLeft = "frog_sprite_left", h0(0x1aff4), Width::Bytes(0x1c);

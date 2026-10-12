@@ -168,3 +168,72 @@ fn kbd_poll_matches_the_original() {
         rig.check("kbd_poll", case, 0x15ff2, &s, clock::kbd_poll);
     }
 }
+
+#[test]
+fn buffer_flip_matches_the_original() {
+    use sf_core::level::pass;
+    let mut rig = rig();
+    let mut g = Gen::new(37);
+    for case in 0..CASES / 10 {
+        let mut s = Setup::default();
+        s.poke_w(h0(0x18be4), g.below(2) as u16);
+        s.poke_w(h0(0x9da), g.below(2) as u16);
+        s.poke_w(h0(0x1665e), g.pick(&[1, 2]));
+        rig.check("buffer_flip", case, 0x172b4, &s, pass::buffer_flip);
+    }
+}
+
+/// A cell on or near the screen, in the map, with the camera about it.
+fn near_cell(g: &mut Gen, s: &mut Setup) -> (u32, u32) {
+    let cx = 0x10 + g.below(0x12c0 - 0x168 - 0x10 + 1) as u32;
+    let cy = 0x20 + g.below(0x540 - 0xf0 - 0x20 + 1) as u32;
+    s.poke_l(h0(0x16664), cx);
+    s.poke_l(h0(0x16660), cy);
+    let col = ((cx as i32 - 0x30 + g.below(0x1b0) as i32) / 16).clamp(2, 297) as u32;
+    let row = ((cy as i32 - 0x20 + g.below(0x140) as i32) / 16).clamp(2, 81) as u32;
+    (col, row)
+}
+
+#[test]
+fn tile_anim_draw_matches_the_original() {
+    use sf_core::level::pass;
+    let mut rig = rig();
+    let mut g = Gen::new(38);
+    for case in 0..CASES / 20 {
+        let mut s = Setup::default();
+        for k in 0..4u32 {
+            let cell_addr = if g.one_in(3) {
+                0
+            } else {
+                let (c, r) = near_cell(&mut g, &mut s);
+                s.poke_w(cell(c, r), (g.below(838) as u16) << 6 | g.below(64) as u16);
+                cell(c, r)
+            };
+            s.poke_l(h0(0xfa68) + 4 * k, cell_addr);
+        }
+        rig.check("tile_anim_draw", case, 0xfa7c, &s, pass::tile_anim_draw);
+    }
+}
+
+#[test]
+fn passage_step_matches_the_original() {
+    use sf_core::frog::{FROG, f};
+    use sf_core::level::pass;
+    let mut rig = rig();
+    let mut g = Gen::new(39);
+    for case in 0..CASES / 10 {
+        let mut s = Setup::default();
+        let (col, row) = near_cell(&mut g, &mut s);
+        for r in row.saturating_sub(4)..(row + 5).min(84) {
+            for c in col.saturating_sub(3)..(col + 4).min(300) {
+                let m = g.pick(&[0, 0x26, 0x26, 0x3e, 0x3d, 0x3f, 0x3e]);
+                s.poke_w(cell(c, r), (g.below(838) as u16) << 6 | m);
+            }
+        }
+        s.poke_l(h0(0x776c), cell(col, row));
+        s.poke_w(FROG + f::IN_PASSAGE, (!g.one_in(8)) as u16);
+        s.poke_w(h0(0x7770), g.pick(&[0, 0xffff]));
+        s.poke_l(h0(0x9fa), 0x100 * g.below(6) as u32);
+        rig.check("passage_step", case, 0x7772, &s, pass::passage_step);
+    }
+}
