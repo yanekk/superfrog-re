@@ -9,3 +9,20 @@ name = "superfrog"
 path = "src/main.rs"
 
 [dependencies]
+# The game and its data (DESIGN §3.1). Never sf-oracle: the shipped game may not contain an emulator.
+sf-disk = { path = "../sf-disk" }
+sf-assets = { path = "../sf-assets" }
+sf-core = { path = "../sf-core" }
+sf-paula = { path = "../sf-paula" }
+# The window and its events (DESIGN §3.2).
+winit = "0.30"
+# Integer scaling on the GPU, and later the CRT shader (DESIGN §2.7, §3.2).
+wgpu = "30"
+# Blocks on wgpu's adapter and device requests at start-up.
+pollster = "0.4"
+# The audio device, whose sample clock paces the game (DESIGN §2.5).
+cpal = "0.16"
+# Captured frames are PNGs a person or a test can open (DESIGN §5, End to end).
+png = "0.18"
+# The --timeout seatbelt stops the app's whole process group (DESIGN §5.2).
+libc = "0.2"
