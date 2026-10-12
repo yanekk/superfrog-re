@@ -167,6 +167,25 @@ top_loop $5c:
   game over (game_over_seq $74d0) ─> top_loop
 ```
 
+### Entering a level (T14, `sf_core::level::load`)
+
+From a level's loader to its first frame (`level_frame_loop`), every step proven against the
+original for all 29 levels:
+
+- `map_unpack` (`$1647a`): the map file lands in `playfield_buffer_1`; its `BODY` goes to
+  `level_map + $4c0` (row 0), 300 cells a row plus 4 of padding, each cell rotated right 10
+  (`tile | marker << 10` becomes `tile << 6 | marker`). `map_palette` (`$1622a`) copies 32 colours
+  from `$44` past the `PALA` tag to `level_palette` (h1+$31de0), the fade's target.
+- `map_find_start` (`$162f4`): the first start marker (`$35`) gives the camera's start: its cell's
+  pixel less (`$9b`, `$ae`), at least 0, `$40` higher in the final level; (`$10`, `$160`) without
+  one. The bonus level starts at (0, 0). `level_start_point` (`$164fa`) puts the frog `$90`, `$70`
+  from it and keeps the camera within (`$10`, `$20`)..(`width − $168`, `height − $f0`).
+- `map_count_coins` (`$16374`): `coins_left_for_exit` = the coins (marker 8), at most 99.
+- `level_start` (`$6952`) runs the frog once, fades the palette in (over by the first frame), slides
+  the panel in over `$18` frames (`$8510`), draws its digits, starts the drop-in (`$6ad2`) and the
+  music if it is off.
+- The final level is world 6 with `final_level_flag` set; its files (`LW*`) replace W6's tiles.
+
 `level_state` (`$a06`): negative while playing; the exit sets 1, the bonus level's end 2, the
 witch's defeat `$64`, a death `$190` (then the level restarts). Passwords: `password_table`
 (`$24dc`), 28 entries of 6 digits and a handler; entries 0–23 start W1L1..W6L4, 24–27 the bonus

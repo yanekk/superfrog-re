@@ -13,7 +13,7 @@ the account is the commit message. Whoever writes a cell also fixes the over-bud
 
 **Status:** Plan written; nothing built.
 **Last updated:** 2026-10-10
-**Next `pir-work` will:** T00 oracle-spike, because every later test rests on the reference emulator; T01 and T02 can run beside it.
+**Next `pir-work` will:** review T14 (frog-and-level).
 
 ## Tasks
 
@@ -36,7 +36,7 @@ done · ⛔ blocked, needs a human.
 | T11 | audio-driver | T06, T07 | ✅ | |
 | T12 | core-state | T05, T06, T07 | ✅ | |
 | T13 | renderer | T08, T12 | ✅ | |
-| T14 | frog-and-level | T06, T11, T12, T13 | ⬜ | |
+| T14 | frog-and-level | T06, T11, T12, T13 | 🔍 | Frog, level frame, camera, scroll, panel, sound, `Start::Level` (level/load.rs); 9 frog cases, 29-level entry test, 28 routine tests. Deviations: routine tests in sf-conform/tests (purity rule); W5-1 on `frog-shuttle-w5`; entry leaves title/progress-map leftovers, listed (T21); feature branch merged early, State/LAYOUT reconciled; `frog_new_game` replaces T20's partial write. |
 | T15 | items-and-scoring | T14 | ⬜ | |
 | T16 | enemies-worlds-1-3 | T15 | ⬜ | |
 | T17 | enemies-worlds-4-6 | T15 | ⬜ | |
@@ -62,7 +62,7 @@ done · ⛔ blocked, needs a human.
 A Notes cell holds what was built or what the review found, the test count, and one line per
 deviation from the task doc. A ✅ task's cell may be cut to one line once the next task has been reviewed.
 
-**Review queue:** *(empty)*
+**Review queue:** T14
 
 ## Blocked on the user
 
