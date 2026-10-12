@@ -31,7 +31,8 @@ top_loop $5c:
     $136c eyes' sprites, $1d0c title copper list on buffer 0, black
     title_intro_anim $3902: eyes bounce in from the right (h0+$3cca bounce table), music starts,
       the eyes blink (5 frames from h0+$3dd0..$3de4), bounce on left, line $a0: picture back under
-      them; fire (not the mouse or a key) skips to the end (oracle). With music on (back from the options): none of it.
+      them; fire (not the mouse or a key) skips to the end (oracle). With music on (back from the
+      options): none of it.
     $1c0e both halves fade in (records 0 and 1, every other frame copied at line $7c)
     idle 400 frames ($2ee with h0+$24), eyes blinking (timers h0+$1368/$136a, rng_range($4b)+$4b)
       fire -> menu $1406: START GAME / OPTIONS, flashing (h0+$168c), up/down

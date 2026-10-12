@@ -42,7 +42,7 @@ done · ⛔ blocked, needs a human.
 | T17 | enemies-worlds-4-6 | T15 | ⬜ | |
 | T18 | bosses | T16, T17 | ⬜ | |
 | T19 | slot-and-bonus | T15 | ⬜ | |
-| T20 | front-end | T08, T11, T12, T13 | 🔍 | Boot→title, menu, options, level codes (all 10⁶ vs original), attract to demo: 4 `front-*` cases, 6 tests. Deviations: story intro→T32, demo→T33, game over→T34, ending→T35 (owner); progress map left to T21; hi-score disk save unported; credits 4-px race (FINDINGS); `password_for(table, …)` takes the disks' table. |
+| T20 | front-end | T08, T11, T12, T13 | ✅ | Review: fire skipping the title intro diverged (restore blit 102 lines, original 161–308), fixed by `Cx::blit_wait`, five skip cases; `front-options-all` added (a lives-limit mutation passed before); T32/T34/T35 now block T21. Probed oracle INTENA lines; three mutations caught; deviations held. Hi-score disk save unported, read-only. |
 | T21 | game-flow | T18, T19, T20 | ⬜ | |
 | T22 | app-rig | T09, T10, T12, T13 | ⬜ | |
 | T23 | app-shell | T21, T22 | ⬜ | |
@@ -62,7 +62,7 @@ done · ⛔ blocked, needs a human.
 A Notes cell holds what was built or what the review found, the test count, and one line per
 deviation from the task doc. A ✅ task's cell may be cut to one line once the next task has been reviewed.
 
-**Review queue:** T20
+**Review queue:** *(empty)*
 
 ## Blocked on the user
 

@@ -18,6 +18,9 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-12 | 🐞 | T20 review, fixed: fire skipping the title intro diverged a frame later; the engine's restore blit took 102 lines, the original's 161–308. `Cx::blit_wait` charges bitplane fetch slots; `front-skip-*` cases, one in the test block. |
+| 2026-10-12 | 📌 | T20 review sweep, not fixed: CPU jobs (`Cx::busy`: text drawing, unpacking, masked jobs) take no display DMA contention either; no case diverges on it. |
+| 2026-10-12 | 📌 | T20 review: after a palette fade the original's main program resumes about line 42, the engine's at `VBL_END_LINE` (20). Blit timing absorbs it; a slot-exact blit model (`word_times`) exposes it. |
 | 2026-10-12 | 📌 | T20 for T21: the progress map (`progress_map_show` h0+$3de8, `progress_map_vbl`) is shown during level loads, so T21 ports it; the VBL records it unported (`h0+$4112`). The options' hi-score save writes the disk: unported. |
 | 2026-10-12 | 📌 | T20: the original's frame ends when the CPU takes the interrupt; a priority blit or masked job past line 312 moves it (copper's line-0 writes and window go with the earlier frame). `clr.w` to a custom register writes the prefetch word, then 0. |
 | 2026-10-12 | 📌 | T20 added T34 game-over (needs T14/T15's objects and bobs) and T35 end-sequence (disk-3 ANIM, CPU-timed), owner's yes. Both block T21 (review, owner's yes): its whole-game run needs them. |
