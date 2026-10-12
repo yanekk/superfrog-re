@@ -301,6 +301,67 @@ impl SoundData {
         })
     }
 
+    /// The same from decoded [`crate::GameData`] (its raw sound files and the game's hunk 0), as
+    /// the engine has it at run time from the asset cache.
+    pub fn from_game_data(g: &crate::GameData) -> Result<SoundData, SoundError> {
+        let h0 = g
+            .exes
+            .iter()
+            .find(|e| e.id == crate::ExeId::Game)
+            .and_then(|e| e.hunks.first())
+            .map(|h| h.data.clone())
+            .ok_or(SoundError::NoGame)?;
+        if h0.len() < STREAM_TABLE + STREAM_SAMPLES * 16 {
+            return Err(SoundError::BadGame);
+        }
+        let raw = |name: &str| g.raw.get(name).cloned().ok_or(SoundError::NoGame);
+        let mut tunes = Vec::new();
+        for t in TuneId::ALL {
+            let name = match t {
+                TuneId::Title => "MUSC".to_string(),
+                TuneId::World(w) => format!("L{w}MU"),
+                TuneId::Bonus => "LBMU".to_string(),
+                TuneId::Slot => "LFMU".to_string(),
+            };
+            let m = raw(&name)?;
+            if m.get(..4) != Some(b"P41A") {
+                return Err(SoundError::NotAModule(t));
+            }
+            tunes.push((t, m));
+        }
+        let mut banks = Vec::new();
+        for b in BankId::ALL {
+            let name = match b {
+                BankId::Worlds12 => "L1FX",
+                BankId::Worlds36 => crate::gamedata::SECOND_L1FX,
+                BankId::Bonus => "LBFX",
+                BankId::Slot => "LFFX",
+            };
+            banks.push((b, raw(name)?));
+        }
+        let mut stream = Vec::new();
+        for k in 0..STREAM_SAMPLES {
+            let e = STREAM_TABLE + k * 16;
+            let (off, len) = (be32(&h0, e) as usize, be32(&h0, e + 4));
+            let bytes = h0
+                .get(off..off + len as usize)
+                .ok_or(SoundError::BadGame)?
+                .to_vec();
+            stream.push(StreamSample {
+                addr: H0 + off as u32,
+                bytes,
+                len,
+                volume: be16(&h0, e + 10),
+            });
+        }
+        Ok(SoundData {
+            h0,
+            tunes,
+            banks,
+            stream,
+        })
+    }
+
     /// The module bytes, as on disk (unrelocated).
     pub fn tune(&self, t: TuneId) -> &[u8] {
         &self

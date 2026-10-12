@@ -287,6 +287,13 @@ impl Amiga {
         }
     }
 
+    /// Write `bytes` into chip or slow RAM at `addr`, between frames: how a conformance case
+    /// freezes what the engine does not model yet (patching the original's own code). Bytes
+    /// outside RAM are dropped.
+    pub fn poke(&mut self, addr: u32, bytes: &[u8]) {
+        unsafe { ffi::sf_amiga_poke(self.raw, addr, bytes.as_ptr(), bytes.len()) }
+    }
+
     /// The CPU's registers as they are now: at the end of the last frame, just before the next
     /// vertical blank's interrupt is taken.
     pub fn cpu(&self) -> CpuRegs {

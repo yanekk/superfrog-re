@@ -93,6 +93,8 @@ void sf_amiga_diw(const sf_amiga *a, uint16_t *diwstrt, uint16_t *diwstop);
 /* Chip and slow RAM: the address of the emulator's own buffers and their sizes in bytes. */
 const uint8_t *sf_amiga_chip(const sf_amiga *a, size_t *len);
 const uint8_t *sf_amiga_slow(const sf_amiga *a, size_t *len);
+/* Write `len` bytes into chip or slow RAM from `addr` (between frames): test tooling's patches. */
+void sf_amiga_poke(sf_amiga *a, uint32_t addr, const uint8_t *bytes, size_t len);
 
 /* The 68000's registers as they stand after the last step (at the frame boundary): d0-d7, a0-a7
  * (a7 the active stack pointer), the address of the instruction being executed, SR, USP and SSP. */

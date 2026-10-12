@@ -237,3 +237,34 @@ fn passage_step_matches_the_original() {
         rig.check("passage_step", case, 0x7772, &s, pass::passage_step);
     }
 }
+
+#[test]
+fn bob_draw_matches_the_original() {
+    use sf_core::level::objects;
+    let mut rig = rig();
+    let mut g = Gen::new(40);
+    for case in 0..CASES / 20 {
+        let mut s = Setup::default();
+        // The camera near where W1-1 starts, so the bobs in memory are about the screen.
+        let (x0, y0) = (rig.state().camera().x as i32, rig.state().camera().y as i32);
+        let dx = g.below(129) as i32 - 64;
+        let dy = g.below(129) as i32 - 64;
+        s.poke_l(h0(0x16664), (x0 + dx).max(0x10) as u32);
+        s.poke_l(h0(0x16660), (y0 + dy).max(0x20) as u32);
+        s.poke_w(h0(0x18be4), g.pick(&[0, 0xffff]));
+        s.poke_w(h0(0x9da), 1);
+        rig.check("bob_draw", case, 0x19120, &s, objects::bob_draw);
+    }
+}
+
+#[test]
+fn bob_draw_list_and_hitboxes_match_the_original() {
+    use sf_core::level::objects;
+    let mut rig = rig();
+    for (entry, name, port) in [
+        (0x19b42, "build_bob_draw_list", objects::build_bob_draw_list as fn(&mut sf_core::level::LevelCtx)),
+        (0xd2f6, "obj_build_hitboxes", objects::obj_build_hitboxes),
+    ] {
+        rig.check(name, 0, entry, &Setup::default(), port);
+    }
+}

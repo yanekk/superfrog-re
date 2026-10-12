@@ -263,6 +263,8 @@ layout! {
     PassageCell = "passage_cell", h0(0x776c), Width::L;
     /// `passage_toggle` (h0+$7770).
     PassageToggle = "passage_toggle", h0(0x7770), Width::W;
+    /// `hitboxes` (h0+$d350): the objects' hitboxes, 12 bytes each, rebuilt each pass.
+    Hitboxes = "hitboxes", h0(0xd350), Width::Bytes(0x600);
     /// `shooter_half_step` (h0+$de28): the bonus level's camera creeps on every second frame.
     ShooterHalfStep = "shooter_half_step", h0(0xde28), Width::W;
     /// `ice_tick`, `push_tick` (h0+$eb28, h0+$ebf0): frames on an icy or a pushing surface.
@@ -326,8 +328,12 @@ layout! {
     /// `scroll_column` (h0+$172b0): the play-field column the vertical blank last scrolled to, as
     /// the address of its first word in the shown buffer (docs/12 "Scroll").
     ScrollColumn = "scroll_column", h0(0x172b0), Width::L;
-    /// `bob_buffer` (h0+$18be4): the display buffer the bobs were drawn into this pass.
-    BobBuffer = "bob_buffer", h0(0x18be4), Width::W;
+    /// `bob_draw_vars` (h0+$18bc8..$18be8): the bob drawer's camera, seam lines, column, seam
+    /// pass flag and `bob_buffer` (h0+$18be4, the display buffer it drew into).
+    BobDrawVars = "bob_draw_vars", h0(0x18bc8), Width::Bytes(0x20);
+    /// `line_offsets` (h0+$18be8): each play-field line's byte offset (`$30` a line), built by
+    /// the level's set-up.
+    LineOffsets = "line_offsets", h0(0x18be8), Width::Bytes(0x27c);
     /// `frog_sprite_left`, `_right` (h0+$1aff4, h0+$1b010): the frog's two hardware-sprite
     /// records (`$1c` bytes: screen x, y, height, attached, copper words, data, animation).
     FrogSpriteLeft = "frog_sprite_left", h0(0x1aff4), Width::Bytes(0x1c);
@@ -335,6 +341,18 @@ layout! {
     /// `exit_sprite_left`, `_right` (h0+$1b02c, h0+$1b048): the second pair of frog sprites.
     ExitSpriteLeft = "exit_sprite_left", h0(0x1b02c), Width::Bytes(0x1c);
     ExitSpriteRight = "exit_sprite_right", h0(0x1b048), Width::Bytes(0x1c);
+    /// `bob_free_list` (h0+$1ba16), `obj_count` (h0+$1ba6a), `obj_slots` (h0+$1ba6c).
+    BobFreeList = "bob_free_list", h0(0x1ba16), Width::Bytes(0x54);
+    ObjCount = "obj_count", h0(0x1ba6a), Width::W;
+    ObjSlots = "obj_slots", h0(0x1ba6c), Width::Bytes(0x9b0);
+    /// `bob_draw_list` (h0+$2970a..): a 0, the bobs to draw, a 0.
+    BobDrawList = "bob_draw_list", h0(0x2970a), Width::Bytes(0xa8);
+    /// `bob_records` (h0+$297b2..$2aee2): the spud's bob and the 20 objects' (`$11c` bytes,
+    /// four sub-records each), each with its level position in the long before it.
+    BobRecords = "bob_records", h0(0x297b2), Width::Bytes(0x1730);
+    /// `bob_frames` (h0+$2aee2..$2ed32): the bobs' animation lists and frame records, which the
+    /// level's set-up builds for its world (h0+$1995a).
+    BobFrames = "bob_frames", h0(0x2aee2), Width::Bytes(0x3e50);
     /// `level_map` (h1+$218e0): the map, 84 rows of 304 cells, `tile << 6 | marker`, and the
     /// rows the loader adds under it (a floor of `$3d` cells) up to the tile pointers.
     LevelMap = "level_map", h1(0x218e0), Width::Bytes(LEVEL_MAP_BYTES);

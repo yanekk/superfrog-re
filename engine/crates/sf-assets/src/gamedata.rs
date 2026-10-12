@@ -553,6 +553,9 @@ pub fn decode(chunks: &[(ChunkId, Vec<u8>)]) -> Result<GameData, AssetError> {
     for w in &World::ALL[..7] {
         keep(&w.file("MU"))?;
     }
+    // Worlds 3 to 6 load disk 2's copy of L1FX, a different bank under the same name (T14).
+    let (_, r) = c.named("L1FX", 1)?;
+    raw.insert(SECOND_L1FX.to_string(), r.data.to_vec());
 
     Ok(GameData {
         levels,
@@ -566,6 +569,9 @@ pub fn decode(chunks: &[(ChunkId, Vec<u8>)]) -> Result<GameData, AssetError> {
         raw,
     })
 }
+
+/// The key [`GameData::raw`] keeps disk 2's `L1FX` under: worlds 3–6's sound effects.
+pub const SECOND_L1FX: &str = "L1FX@disk2";
 
 /// An `ATN!` chunk packed inside the game's hunk 0 at `at`, decompressed.
 fn packed(game: &ExeImage, at: u32, what: &str) -> Result<Vec<u8>, AssetError> {

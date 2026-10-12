@@ -73,6 +73,7 @@ unsafe extern "C" {
     pub fn sf_amiga_chip(a: *const SfAmiga, len: *mut usize) -> *const u8;
     pub fn sf_amiga_slow(a: *const SfAmiga, len: *mut usize) -> *const u8;
     pub fn sf_amiga_cpu(a: *const SfAmiga, out: *mut SfCpuRegs);
+    pub fn sf_amiga_poke(a: *mut SfAmiga, addr: u32, bytes: *const u8, len: usize);
     pub fn sf_amiga_snapshot(
         a: *mut SfAmiga,
         len: *mut usize,
