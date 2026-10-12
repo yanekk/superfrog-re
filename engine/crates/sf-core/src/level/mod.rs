@@ -95,6 +95,12 @@ pub type MarkerSpawn = fn(lvl: &mut LevelCtx, cell: u32);
 pub struct Dispatch {
     kinds: Vec<(u16, &'static dyn ObjectKind)>,
     markers: Vec<((u8, u8), MarkerSpawn)>,
+    /// A bump block the frog hit (markers 48–51, h0+$f6be), with the cell's address: it opens
+    /// into its item (T15). `None`: nothing happens.
+    pub bump_block: Option<MarkerSpawn>,
+    /// A pickup drawn in the map's tiles that the frog touched (marker 55, h0+$ed8a): fruit,
+    /// clocks, lives (T15). `None`: nothing happens.
+    pub tile_pickup: Option<MarkerSpawn>,
 }
 
 impl std::fmt::Debug for Dispatch {

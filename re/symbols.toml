@@ -2185,3 +2185,20 @@ name = "music_header_backup"
 kind = "var"
 size = 0x200
 note = "the module's first 512 bytes before music_start relocated them"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x11350
+name = "frog_idle_timer"
+kind = "var"
+size = 2
+note = "frames the frog has stood idle, wraps at $40 (T14)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x11352
+name = "frog_jump_float"
+kind = "func"
+note = "while up is held 12..31 frames into a jump, every other frame takes 1 more off vy (T14)"

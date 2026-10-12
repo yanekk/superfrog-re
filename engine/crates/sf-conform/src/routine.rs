@@ -137,7 +137,8 @@ impl<'d> Rig<'d> {
     }
 
     /// Run the original routine at `h0+$entry` and `port` from `setup`; panic naming `name`, the
-    /// case number and the first difference.
+    /// case number and the first difference. Returns false, comparing nothing, when the original
+    /// does not return: a state it hangs or crashes on (DESIGN §2.11).
     pub fn check(
         &mut self,
         name: &str,
@@ -145,7 +146,7 @@ impl<'d> Rig<'d> {
         entry: u32,
         setup: &Setup,
         port: impl FnOnce(&mut LevelCtx),
-    ) {
+    ) -> bool {
         // The original.
         let mut saved = Vec::new();
         for (a, b) in &setup.pokes {
@@ -181,7 +182,14 @@ impl<'d> Rig<'d> {
         for (a, b) in saved.iter().rev() {
             self.cpu.write(*a, b);
         }
-        let r = result.unwrap_or_else(|e| panic!("{name} case {case}: the original: {e}"));
+        let r = match result {
+            // A state the original hangs or crashes on (an address error from a pointer read off a
+            // table's end): nothing to compare; the test decides how rare that must be.
+            Err(sf_oracle::CallError::Timeout | sf_oracle::CallError::Exception { .. }) => {
+                return false;
+            }
+            r => r.unwrap_or_else(|e| panic!("{name} case {case}: the original: {e}")),
+        };
 
         // The port.
         let mut st = self.state.clone();
@@ -277,5 +285,6 @@ impl<'d> Rig<'d> {
                 r.hw_writes, ours
             );
         }
+        true
     }
 }

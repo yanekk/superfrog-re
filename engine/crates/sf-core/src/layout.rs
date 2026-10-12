@@ -134,6 +134,8 @@ layout! {
     PlayfieldBuffer1 = "playfield_buffer_1", h3(0x22f30), Width::Bytes(PLAYFIELD_BUFFER_BYTES);
     /// `panel_bitmap` (h3+$4b390): the status panel, five planes of 14 lines (docs/12 "Panel").
     PanelBitmap = "panel_bitmap", h3(0x4b390), Width::Bytes(5 * 0x2a0);
+    /// `no_death` (h0+$14): non-zero, hazards do nothing (inferred: a cheat).
+    NoDeath = "no_death", h0(0x14), Width::W;
     /// `attract_mode` (h0+$18): -1 while the attract demo runs.
     AttractMode = "attract_mode", h0(0x18), Width::L;
     /// `final_level_flag` (h0+$1e): set for the final level.
@@ -230,17 +232,26 @@ layout! {
     ShooterMode = "shooter_mode", h0(0x9dc), Width::W;
     /// `sprites_hidden` (h0+$9e2): the frog's sprites stay where they are.
     SpritesHidden = "sprites_hidden", h0(0x9e2), Width::W;
+    /// `level_state` (h0+$a06): negative while playing; 1 exit, 2 bonus end, $64 boss, $190 death.
+    LevelState = "level_state", h0(0xa06), Width::L;
     /// `level_width`, `level_height` (h0+$a22, h0+$a24): the level's size in pixels.
     LevelWidth = "level_width", h0(0xa22), Width::W;
     LevelHeight = "level_height", h0(0xa24), Width::W;
     /// `world` (h0+$40da): 1..6, 7 the bonus level.
     World = "world", h0(0x40da), Width::L;
+    /// `passage_cell` (h0+$776c): the fake-wall cell the frog entered (marker 38).
+    PassageCell = "passage_cell", h0(0x776c), Width::L;
     /// `shooter_half_step` (h0+$de28): the bonus level's camera creeps on every second frame.
     ShooterHalfStep = "shooter_half_step", h0(0xde28), Width::W;
+    /// `ice_tick`, `push_tick` (h0+$eb28, h0+$ebf0): frames on an icy or a pushing surface.
+    IceTick = "ice_tick", h0(0xeb28), Width::W;
+    PushTick = "push_tick", h0(0xebf0), Width::W;
     /// `slope_frame_right`, `slope_frame_left` (h0+$1050e, h0+$10ce6): the frame of one step in
     /// each walking animation, which the slope under the frog rewrites (h0+$de2a).
     SlopeFrameRight = "slope_frame_right", h0(0x1050e), Width::L;
     SlopeFrameLeft = "slope_frame_left", h0(0x10ce6), Width::L;
+    /// `demo_joy` (h0+$11a2a): the attract demo's joystick, read instead of JOY1DAT.
+    DemoJoy = "demo_joy", h0(0x11a2a), Width::W;
     /// `rng_state` (h0+$160d4): the 64-bit RNG state, `rng_next`'s low long then its high long.
     RngState = "rng_state", h0(0x160d4), Width::Bytes(8);
     /// `camera_y` (h0+$16660): the camera's level y (docs/12).
