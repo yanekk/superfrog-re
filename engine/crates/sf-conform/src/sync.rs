@@ -106,6 +106,18 @@ pub fn pacing(cpu: &CpuRegs, m: &AmigaMemory) -> Pacing {
     }
 }
 
+/// Whether the original's frame ended with its main loop in the middle of a level's pass (not
+/// parked in `level_frame_loop`'s wait): its memory is then part way through what the engine does
+/// in one go, a lag the runner reports and re-syncs (DESIGN §2.1; owner, 2026-10-11).
+pub fn mid_pass(cpu: &CpuRegs, m: &AmigaMemory) -> bool {
+    let main_pc = if cpu.pc == VBL_HANDLER {
+        long(m, cpu.ssp + 2)
+    } else {
+        cpu.pc
+    };
+    in_level(m) && !LEVEL_WAIT.contains(&main_pc)
+}
+
 /// Bring the oracle to `sync`, with room for `frames` more frames of `script` (the case's own,
 /// which from power-on decides when the original seeds its RNG).
 pub fn reach(sync: &SyncPoint, script: &InputScript, frames: u32) -> Result<Synced, String> {

@@ -329,6 +329,8 @@ impl AudioDriver {
         if (left as i16) < 0 {
             wr(out, DMACON, 8);
             wr(out, 0xd4, 2);
+            // `clr.w AUD3VOL` (h0+$14890): the bus's word first (the next opcode), then 0.
+            wr(out, 0xd8, 0x33fc);
             wr(out, 0xd8, 0);
             self.stream.set_w(4, 0xffff);
             self.p41.set_b(free_byte(3), 0xff);

@@ -157,7 +157,24 @@ public:
         mem[a] = v;
     }
 
-    u16 rd16(u32 a) { return u16(rd8(a) << 8 | rd8(a + 1)); }
+    // The last word on the data bus (vAmiga's `Memory::dataBus`): what a CPU read of a
+    // write-only custom register writes into it (vAmiga `peekCustomFaulty16`, after UAE).
+    u16 bus = 0;
+
+    static bool custom_readable(u32 reg) {
+        return (reg >= 0x002 && reg <= 0x01E) || reg == 0x07C || (reg >= 0x180 && reg <= 0x1BE);
+    }
+
+    u16 rd16(u32 a) {
+        u32 m = a & kMemMask;
+        if (hw && is_custom(m) && !custom_readable(m & 0x1FE)) {
+            custom_write(m & ~1u, bus);
+            return bus;
+        }
+        u16 v = u16(rd8(a) << 8 | rd8(a + 1));
+        if (!is_hardware(m)) bus = v;
+        return v;
+    }
     void wr16(u32 a, u16 v) {
         if (hw && is_hardware(a & kMemMask)) {
             if (is_custom(a & kMemMask)) custom_write(a & kMemMask, v);
@@ -180,6 +197,7 @@ public:
         status = {};
         hwWrites.clear();
         std::fill(std::begin(blt), std::end(blt), u16(0));
+        bus = 0;
         resetSsp = r->a[7];
         resetPc = entry;
         overrideVectors = true;

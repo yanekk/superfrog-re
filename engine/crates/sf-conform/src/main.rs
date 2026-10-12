@@ -51,6 +51,14 @@ fn run_cases(paths: &[PathBuf]) -> Result<bool, String> {
                 if case.compare.render {
                     print!(", {} rendered", o.rendered);
                 }
+                if !o.straddled.is_empty() {
+                    print!(
+                        "; lag (the original mid-pass) at {} frame(s) {:?}, re-synced at {:?}",
+                        o.straddled.len(),
+                        o.straddled,
+                        o.resynced
+                    );
+                }
                 println!();
                 for (f, why) in &o.skipped {
                     println!("  frame {f} left out: {why}");
@@ -102,15 +110,21 @@ fn watch(spec: &str) -> Result<VarDef, String> {
 fn record(path: &Path, rest: &[String]) -> Result<bool, String> {
     let case = Case::load(path)?;
     let mut every = false;
-    let mut shown: Vec<VarDef> = LAYOUT.iter().flat_map(|d| d.pieces()).collect();
+    let mut watched: Vec<VarDef> = Vec::new();
     let mut it = rest.iter();
     while let Some(a) = it.next() {
         match a.as_str() {
             "--every" => every = true,
-            "--watch" => shown.push(watch(it.next().ok_or(USAGE)?)?),
+            "--watch" => watched.push(watch(it.next().ok_or(USAGE)?)?),
             _ => return Err(USAGE.to_string()),
         }
     }
+    // With watches, only they are shown: LAYOUT has grown past what a line can hold.
+    let shown: Vec<VarDef> = if watched.is_empty() {
+        LAYOUT.iter().flat_map(|d| d.pieces()).collect()
+    } else {
+        watched
+    };
     let synced = sync::reach_frozen(
         &case.sync,
         &case.script,

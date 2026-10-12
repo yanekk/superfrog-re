@@ -149,6 +149,9 @@ impl AudioDriver {
         self.p41.set_w(TICK, 0);
         wr(out, DMACON, 0x000f);
         for n in 0..4u16 {
+            // `clr.w` reads before it writes; on the reference that read of a write-only register
+            // first writes the data bus's word, the next instruction's opcode (h0+$13254..$13266).
+            wr(out, 0xa8 + n * 16, if n == 3 { 0x377c } else { 0x4279 });
             wr(out, 0xa8 + n * 16, 0);
         }
         self.p41.set_w(SPEED, 6);
@@ -168,6 +171,8 @@ impl AudioDriver {
             }
         }
         wr(out, 0xd4, 2);
+        // `clr.w AUD3VOL` (h0+$1333e): the bus's word first (the next opcode), then 0.
+        wr(out, 0xd8, 0x33fc);
         wr(out, 0xd8, 0);
         self.stream.set_w(4, 0xffff);
         for i in 0..4 {

@@ -60,6 +60,12 @@ pub struct Outcome {
     /// Frames whose transplanted render was compared against the original's picture.
     pub rendered: u32,
     pub skipped: Vec<(u32, &'static str)>,
+    /// Frames the original ended in the middle of a level's pass (lag): not compared, nor the
+    /// next frame's picture and Paula writes, which carry the rest of that pass.
+    pub straddled: Vec<u32>,
+    /// Frames after such a lag on which the variables still differed, so the engine was re-synced
+    /// from the original's memory (DESIGN §2.1), with the first variable that differed.
+    pub resynced: Vec<(u32, String)>,
 }
 
 /// Why a `render` case leaves a frame out.
@@ -97,6 +103,7 @@ pub fn run_with(
         frames: case.frames,
         ..Outcome::default()
     };
+    let mut after_lag = false;
     for f in 0..case.frames {
         let input = case.script.input_at(f);
         if frozen {
@@ -106,7 +113,8 @@ pub fn run_with(
             .step(input)
             .unwrap_or_else(|e| panic!("{}: oracle, frame {f}: {e}", case.name));
         let mem = sync::core_memory(amiga.memory());
-        let pacing = sync::pacing(&amiga.cpu(), &mem);
+        let cpu = amiga.cpu();
+        let pacing = sync::pacing(&cpu, &mem);
         before_step(f, &mut game);
         // A case comparing only fresh renders does not step the engine (its scenes may not model
         // what the original runs there yet).
@@ -116,6 +124,26 @@ pub fn run_with(
         } else {
             FrameOut::default()
         };
+        if stepped && sync::mid_pass(&cpu, &mem) {
+            outcome.straddled.push(f);
+            after_lag = true;
+            prev = mem;
+            continue;
+        }
+        if stepped && after_lag {
+            after_lag = false;
+            if case.compare.vars
+                && let Some((v, theirs, ours)) = compare::vars(&game.probe(), &mem)
+            {
+                game = Game::with_display(display.clone(), Start::Transplant(mem.clone()));
+                outcome.resynced.push((
+                    f,
+                    format!("{} at ${:06x}: original ${theirs:x}, engine ${ours:x}", v.name, v.addr),
+                ));
+            }
+            prev = mem;
+            continue;
+        }
         let mut rendered = None;
         if case.compare.render {
             let g = Game::with_display(display.clone(), Start::Transplant(mem.clone()));
