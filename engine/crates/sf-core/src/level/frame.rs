@@ -142,7 +142,7 @@ pub fn main_program(c: &mut LevelCtx, pending: Option<beam::Pending>, pacing: cr
     match resume {
         Some((clock, hw)) => {
             c.clock = clock;
-            c.bus.line = clock.line;
+            c.bus.at = clock.nominal();
             c.hw = hw;
             let f = c.frames.as_mut().expect("frames");
             f.from = c.paula.len();

@@ -78,6 +78,10 @@ int sf_amiga_step(sf_amiga *a, uint32_t joy, const uint8_t keys[16], char *err, 
  * INTENA (0x9A), INTREQ (0x9C), ADKCON (0x9E) and AUD0..3 (0xA0..0xDE). Valid until the next step. */
 size_t sf_amiga_paula_writes(const sf_amiga *a, const sf_custom_write **out);
 
+/* The blits started during the last step (BLTSIZE writes), in order: the value and the beam
+ * position. Valid until the next step. */
+size_t sf_amiga_blit_starts(const sf_amiga *a, const sf_custom_write **out);
+
 /* The DAC values the four channels took during the last step, in order. Valid until the next step. */
 size_t sf_amiga_audio_taps(const sf_amiga *a, const sf_audio_tap **out);
 
@@ -129,6 +133,8 @@ typedef struct {
     uint32_t sr;
     uint32_t sp;
     uint32_t stack[SF_STACK_LONGS];
+    /* The line's DMA slots' owners as vAmiga records them (its BusOwner, by slot). */
+    uint8_t owners[228];
 } sf_line_sample;
 void sf_amiga_set_profile(sf_amiga *a, int on);
 size_t sf_amiga_line_samples(const sf_amiga *a, const sf_line_sample **out);

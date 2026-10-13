@@ -87,6 +87,17 @@ using namespace vamiga;
 
 namespace {
 
+// The DMA debugger's copy of a line's bus owners (private to it): reached by the explicit
+// instantiation rule, which skips access checks. For timing studies only.
+template <typename Tag, typename Tag::type M> struct Rob {
+    friend typename Tag::type get(Tag) { return M; }
+};
+struct OwnersTag {
+    using type = BusOwner (DmaDebugger::*)[HPOS_CNT];
+    friend type get(OwnersTag);
+};
+template struct Rob<OwnersTag, &DmaDebugger::busOwner>;
+
 // The registers kept from the write hook (DESIGN §2.1 (2), FINDINGS 2026-10-11).
 bool isPaulaReg(u32 reg)
 {
@@ -96,10 +107,16 @@ bool isPaulaReg(u32 reg)
 // The capture the hook appends to: the one being stepped on this thread, if any.
 thread_local std::vector<sf_custom_write> *capturing = nullptr;
 
+// The blits started (BLTSIZE written) during the step being run on this thread, if any.
+thread_local std::vector<sf_custom_write> *blitting = nullptr;
+
 void hook(u32 addr, u16 value, int, isize vpos, isize hpos)
 {
     if (capturing && isPaulaReg(addr)) {
         capturing->push_back(sf_custom_write { u16(addr), value, u16(vpos), u16(hpos) });
+    }
+    if (blitting && addr == 0x58) {
+        blitting->push_back(sf_custom_write { u16(addr), value, u16(vpos), u16(hpos) });
     }
 }
 
@@ -148,6 +165,7 @@ struct sf_amiga {
     int lines = 0;
     bool profile = false;
     std::vector<sf_line_sample> samples;
+    std::vector<sf_custom_write> blits;
 
     Emulator &emu() { return *va.emu; }
     Amiga &amiga() { return SfShimAccess::main(*va.emu); }
@@ -226,6 +244,8 @@ struct sf_amiga {
                 for (int k = 0; k < SF_STACK_LONGS; k++) {
                     s.stack[k] = m.mem.spypeek32<Accessor::CPU>(s.sp + 4 * u32(k));
                 }
+                auto &owners = m.agnus.dmaDebugger.*get(OwnersTag());
+                for (int h = 0; h < 228 && h < HPOS_CNT; h++) s.owners[h] = u8(owners[h]);
                 samples.push_back(s);
             }
         }
@@ -344,7 +364,9 @@ int sf_amiga_step(sf_amiga *a, uint32_t joy, const uint8_t keys[16], char *err, 
     a->writes.clear();
     a->taps.clear();
     a->input(joy, keys);
+    a->blits.clear();
     capturing = &a->writes;
+    blitting = &a->blits;
     tapping = &a->taps;
     // A step runs from just after one frame's start to just after the next one's (the CPU finishes
     // its instruction), so the frame it runs is the one starting now.
@@ -367,6 +389,7 @@ int sf_amiga_step(sf_amiga *a, uint32_t joy, const uint8_t keys[16], char *err, 
         stream.copyInterleaved(a->mixed.data(), n);
     });
     capturing = nullptr;
+    blitting = nullptr;
     tapping = nullptr;
     return rc;
 }
@@ -374,6 +397,7 @@ int sf_amiga_step(sf_amiga *a, uint32_t joy, const uint8_t keys[16], char *err, 
 void sf_amiga_set_profile(sf_amiga *a, int on)
 {
     a->profile = on != 0;
+    a->emu().set(Opt::XRAY_MODE, (i64)(on > 1 ? XRayMode::XRAY_DMA : XRayMode::XRAY_NONE));
     a->samples.clear();
 }
 
@@ -381,6 +405,12 @@ size_t sf_amiga_line_samples(const sf_amiga *a, const sf_line_sample **out)
 {
     *out = a->samples.data();
     return a->samples.size();
+}
+
+size_t sf_amiga_blit_starts(const sf_amiga *a, const sf_custom_write **out)
+{
+    *out = a->blits.data();
+    return a->blits.size();
 }
 
 size_t sf_amiga_paula_writes(const sf_amiga *a, const sf_custom_write **out)

@@ -23,10 +23,10 @@ const FETCH_LINES: std::ops::Range<u16> = 0x27..0x12c;
 /// CPU cycles a fetching line takes from the CPU: the fifth plane's fetches use slots the CPU
 /// would (fitted).
 const FETCH_STOLEN_CYCLES: u32 = 40;
-/// DMA slots a line leaves the blitter: the whole line but for refresh, audio and sprites, and on
-/// a fetching line the bitplanes' 5 × 20 too (fitted).
-const FREE_SLOTS: u32 = 203;
-const FREE_SLOTS_FETCHING: u32 = 103;
+/// A level line's bitplane fetch: its slots, from DDFSTRT (`$28`, a word early for the
+/// scroll) to DDFSTOP's last unit (`$d8` + 8).
+const FETCH_FROM: u32 = 0x28;
+const FETCH_TO: u32 = 0xe0;
 
 /// What the level's work costs, in CPU cycles, fitted to the original's beam positions on the
 /// oracle (the `items-*` and `frog-*` cases' frames): [`COSTS`] by [`Cost`].
@@ -118,9 +118,10 @@ pub enum Cost {
     BobShown,
     BobPlane,
     /// The flip, the tile animation queue and a cell it redraws (80 words into the clean
-    /// buffer by the CPU, then copied by the blitter).
+    /// buffer by the CPU, then copied by the blitter, each plane's copy into each buffer set up).
     AfterDraw,
     Redraw,
+    RedrawPlane,
     /// The panel's update (a digit drawn by the CPU) and a panel blit's set-up.
     Panel,
     PanelBlit,
@@ -186,6 +187,7 @@ impl Cost {
         Cost::BobPlane,
         Cost::AfterDraw,
         Cost::Redraw,
+        Cost::RedrawPlane,
         Cost::Panel,
         Cost::PanelBlit,
         Cost::PassTail,
@@ -250,7 +252,8 @@ impl Cost {
             Cost::BobShown => 223,
             Cost::BobPlane => 142,
             Cost::AfterDraw => 493,
-            Cost::Redraw => 8815,
+            Cost::Redraw => 4000,
+            Cost::RedrawPlane => 40,
             Cost::Panel => 1327,
             Cost::PanelBlit => 647,
             Cost::PassTail => 1144,
@@ -339,24 +342,91 @@ impl Clock {
         }
     }
 
+    /// Whether the blitter may have DMA slot `slot` of line `line`: not the memory refresh's
+    /// (`$01`, `$03`, `$05`, `$e2`), and on a fetching line not the five planes' (lores: five of
+    /// each 8 slots from DDFSTRT `$28` to DDFSTOP `$d8`'s end). Audio and sprite fetches, which
+    /// come and go, are not counted (the oracle's DMA debugger, measured).
+    fn blitter_slot(line: u16, slot: u32) -> bool {
+        if matches!(slot, 1 | 3 | 5 | 0xe2) {
+            return false;
+        }
+        if Clock::fetching(line) && (FETCH_FROM..FETCH_TO).contains(&slot) {
+            return matches!((slot - FETCH_FROM) % 8, 0 | 2 | 4);
+        }
+        true
+    }
+
     /// The blitter has the bus for `slots` DMA slots, the CPU waiting.
     pub fn blit(&mut self, mut slots: u32) {
-        loop {
-            let per = if Clock::fetching(self.line) {
-                FREE_SLOTS_FETCHING
-            } else {
-                FREE_SLOTS
-            };
-            // What is left of the line, in the blitter's slots.
-            let left = (LINE_CYCLES - self.into.min(LINE_CYCLES)) * per / LINE_CYCLES;
-            if slots < left {
-                self.into += slots * LINE_CYCLES / per;
-                return;
+        let mut slot = self.into / 2;
+        while slots > 0 {
+            if slot >= LINE_SLOTS {
+                slot = 0;
+                self.line = self.line.saturating_add(1);
             }
-            slots -= left;
+            if Clock::blitter_slot(self.line, slot) {
+                slots -= 1;
+            }
+            slot += 1;
+        }
+        self.into = 2 * slot;
+        if self.into >= LINE_CYCLES {
             self.into = 0;
             self.line = self.line.saturating_add(1);
         }
+    }
+
+    /// A blit of `words` words with BLTCON0 `con0`, started (BLTSIZE written) here, cycle by
+    /// cycle as the reference emulator's blitter runs it (vAmiga's `SlowBlitter`): two start-up
+    /// cycles, then one micro-instruction a cycle, each that uses the bus waiting for a DMA slot
+    /// free to it: per word a read for each of A, B and C it uses, then the pipelined D write of
+    /// the word before (the first word's only waits for a free slot); after the last word one
+    /// cycle needing no bus, then the last word's D. Returns where each word's D write was made;
+    /// the clock is left where the blit ended.
+    pub fn blit_cycles(&mut self, words: u32, con0: u16) -> Vec<u32> {
+        let reads = (con0 >> 9 & 7).count_ones();
+        let mut slot = self.into / 2;
+        let mut line = self.line;
+        // The next cycle that may run an instruction: with `bus`, the next free one.
+        let mut next = |bus: bool| loop {
+            slot += 1;
+            if slot >= LINE_SLOTS {
+                slot -= LINE_SLOTS;
+                line = line.saturating_add(1);
+            }
+            if !bus || Clock::blitter_slot(line, slot) {
+                return line as u32 * LINE_CYCLES + 2 * slot;
+            }
+        };
+        // BLTSIZE takes effect a cycle after its write; the blit starts on the next two cycles
+        // that find the bus free.
+        next(false);
+        next(true);
+        next(true);
+        let mut out = Vec::with_capacity(words as usize);
+        for w in 0..words {
+            for _ in 0..reads {
+                next(true);
+            }
+            let at = next(true);
+            if w > 0 {
+                out.push(at);
+            }
+        }
+        next(false);
+        out.push(next(true));
+        let end = line as u32 * LINE_CYCLES + 2 * (slot + 1);
+        self.line = (end / LINE_CYCLES) as u16;
+        self.into = end % LINE_CYCLES;
+        if con0 & 0x100 == 0 {
+            out.clear();
+        }
+        out
+    }
+
+    /// The position in [`LINE_CYCLES`] from the frame's start.
+    pub fn nominal(&self) -> u32 {
+        self.line as u32 * LINE_CYCLES + self.into
     }
 
     /// The horizontal position in DMA slots, as the beam counts it.
@@ -475,11 +545,11 @@ mod tests {
     #[test]
     fn a_blit_takes_longer_under_the_display() {
         let mut blank = Clock::START;
-        blank.blit(FREE_SLOTS * 2);
+        blank.blit(400);
         assert_eq!(blank.line, 2);
         let mut shown = Clock { line: 0x40, into: 0 };
-        shown.blit(FREE_SLOTS * 2);
-        assert!(shown.line > 0x43);
+        shown.blit(400);
+        assert!(shown.line > 0x42);
         assert_eq!(slots_per_word(0x0fca), 4);
         assert_eq!(slots_per_word(0x09f0), 2);
     }

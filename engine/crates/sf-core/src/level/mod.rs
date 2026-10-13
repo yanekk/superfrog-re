@@ -215,6 +215,17 @@ pub struct LevelCtx<'a> {
     pub frames: Option<Box<beam::Frames>>,
     /// The Paula writes given the beam's position so far.
     stamped: usize,
+    /// In conformance: where the original made each of the step's own frame's Paula writes, as
+    /// (line, slot); the clock is set there as the engine makes each ([`crate::Game::anchor_writes`]).
+    pub schedule: Vec<(u16, u16)>,
+    /// In conformance: where the original started each of the frame's blits (BLTSIZE, line,
+    /// slot), and the next to match ([`crate::Game::anchor_blits`]).
+    pub blits: Vec<(u16, u16, u16)>,
+    blit_next: usize,
+    /// A blit ran since the last anchored point.
+    blitted: bool,
+    /// The last anchored point: where the beam was, and the display writes logged by then.
+    anchored_at: Option<(u32, usize)>,
     /// Which of the pass's calls is running (`level_frame_loop`'s, in order: [`frame::pass`]).
     pub phase: u8,
     /// The copper interrupt is masked (INTENA `$0010`: the pass's blits mask it), and one has been
@@ -244,6 +255,11 @@ impl<'a> LevelCtx<'a> {
             trace: None,
             frames: None,
             stamped,
+            schedule: Vec::new(),
+            anchored_at: None,
+            blits: Vec::new(),
+            blit_next: 0,
+            blitted: false,
             phase: 0,
             coper_masked: false,
             coper_pending: false,
@@ -254,11 +270,11 @@ impl<'a> LevelCtx<'a> {
 impl LevelCtx<'_> {
     /// The Paula writes made since the beam last moved happened where it is.
     fn stamp(&mut self) {
-        let (vpos, hpos) = (self.clock.line, self.clock.hpos());
         let fresh = self.stamped < self.paula.len();
         for k in self.stamped..self.paula.len() {
-            self.paula[k].vpos = vpos;
-            self.paula[k].hpos = hpos;
+            self.scheduled(k);
+            self.paula[k].vpos = self.clock.line;
+            self.paula[k].hpos = self.clock.hpos();
             if let Some(t) = self.trace.as_mut() {
                 t.push(beam::Tick::Write(k as u32));
             }
@@ -289,7 +305,70 @@ impl LevelCtx<'_> {
         }
         self.tick(beam::Tick::Cpu(k, n));
         self.clock.cpu(n * self.costs[k as usize]);
-        self.bus.line = self.clock.line;
+        self.bus.at = self.clock.nominal();
+    }
+
+    /// The Paula write with index `k` is being made: in the step's own frame, with a schedule,
+    /// the clock is where the original made it.
+    fn scheduled(&mut self, k: usize) {
+        let Some(f) = self.frames.as_ref() else {
+            return;
+        };
+        if f.at.is_none_or(|a| a + 1 != f.specs.len()) || k < f.out_from {
+            return;
+        }
+        if let Some(&(line, hpos)) = self.schedule.get(k - f.out_from) {
+            self.anchor_to(beam::Clock {
+                line,
+                into: 2 * hpos as u32,
+            });
+        }
+    }
+
+    /// The clock is set to `to`, where the original was at this point: what was written to the
+    /// display since the last such point is put between the two as the costs spread it,
+    /// stretched to fit.
+    fn anchor_to(&mut self, to: beam::Clock) {
+        let (now, target) = (self.clock.nominal(), to.nominal());
+        // A blit's writes are placed by its own cycles from its start, not stretched.
+        let blitted = std::mem::take(&mut self.blitted);
+        if let (Some((from, at)), Some(log)) = (self.anchored_at, self.bus.log.as_mut())
+            && now > from
+            && !blitted
+        {
+            for w in &mut log.writes[at..] {
+                if w.2 >= from {
+                    let t = (w.2 - from) as u64 * target.saturating_sub(from) as u64;
+                    w.2 = from + (t / (now - from) as u64) as u32;
+                }
+            }
+        }
+        self.clock = to;
+        self.bus.at = target;
+        self.anchored_at = Some((target, self.bus.log.as_ref().map_or(0, |l| l.writes.len())));
+    }
+
+    /// In the step's own frame, with a schedule: a blit of `words` words starts where the
+    /// original started its next blit of that size.
+    fn scheduled_blit(&mut self, words: u32) {
+        let Some(f) = self.frames.as_ref() else {
+            return;
+        };
+        if f.at.is_none_or(|a| a + 1 != f.specs.len()) {
+            return;
+        }
+        let size_words = |s: u16| {
+            (match s >> 6 { 0 => 1024, h => h as u32 }) * (match s & 0x3f { 0 => 64, w => w as u32 })
+        };
+        let from = self.blit_next;
+        if let Some(j) = (from..self.blits.len().min(from + 3)).find(|&j| size_words(self.blits[j].0) == words) {
+            self.blit_next = j + 1;
+            let (_, line, hpos) = self.blits[j];
+            self.anchor_to(beam::Clock {
+                line,
+                into: 2 * hpos as u32,
+            });
+        }
     }
 
     /// The Paula writes the frame being run has made so far (0 outside the main program).
@@ -320,7 +399,7 @@ impl LevelCtx<'_> {
                 line: cut.line,
                 into: 2 * cut.hpos as u32,
             };
-            self.bus.line = self.clock.line;
+            self.bus.at = self.clock.nominal();
         }
     }
 
@@ -397,7 +476,7 @@ impl LevelCtx<'_> {
             let f = self.frames.as_mut().expect("frames");
             f.from = self.paula.len();
             self.clock = self.clock.next_frame();
-            self.bus.line = self.clock.line;
+            self.bus.at = self.clock.nominal();
             if own {
                 f.out_from = self.paula.len();
                 self.bus.log = Some(crate::mem::WriteLog::default());
@@ -433,6 +512,7 @@ impl LevelCtx<'_> {
         self.stamp();
         for k in from..self.paula.len() {
             let w = self.paula[k];
+            self.scheduled(k);
             self.paula[k].vpos = self.clock.line;
             self.paula[k].hpos = self.clock.hpos();
             self.tick(beam::Tick::Write(k as u32));
@@ -446,7 +526,7 @@ impl LevelCtx<'_> {
             self.tick(beam::Tick::Cpu(c, 1));
             self.clock.cpu(self.costs[c as usize]);
         }
-        self.bus.line = self.clock.line;
+        self.bus.at = self.clock.nominal();
         self.anchor();
     }
 
@@ -456,17 +536,22 @@ impl LevelCtx<'_> {
         self.tick(beam::Tick::Wait(n));
         self.clock.line = self.clock.line.saturating_add(n);
         self.clock.into = 0;
-        self.bus.line = self.clock.line;
+        self.bus.at = self.clock.nominal();
     }
 
     /// The CPU waits while the blitter runs `words` words of a blit with BLTCON0 `con0`.
     pub fn blit_words(&mut self, words: u32, con0: u16) {
         self.interrupt_due();
         self.stamp();
+        self.scheduled_blit(words);
         let slots = words * beam::slots_per_word(con0);
         self.tick(beam::Tick::Blit(slots));
-        self.clock.blit(slots);
-        self.bus.line = self.clock.line;
+        let times = self.clock.blit_cycles(words, con0);
+        self.blitted = true;
+        self.bus.at = self.clock.nominal();
+        if !times.is_empty() {
+            self.bus.span = Some((times, 0));
+        }
     }
 
     /// `sfx_play` (h0+$12a72): effect `effect` on `channel`, unless the attract demo runs.
@@ -496,6 +581,7 @@ impl LevelCtx<'_> {
         self.stamp();
         self.interrupt_due_at(true);
         self.tick(beam::Tick::Write(self.paula.len() as u32));
+        self.scheduled(self.paula.len());
         self.paula.push(PaulaWrite {
             reg,
             value,

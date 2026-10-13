@@ -70,6 +70,7 @@ pub fn redraw_cell(c: &mut LevelCtx, cell: u32, tile: u16) {
     c.custom(0x96, 0x8400);
     for dst in [buffer0, buffer0.wrapping_add(BUFFER_BYTES)] {
         for p in 0..5u32 {
+            c.spend(Cost::RedrawPlane);
             c.blit_words(16, 0x09f0);
             let (s, d) = (clean.wrapping_add(PLANE * p), dst.wrapping_add(PLANE * p));
             for line in 0..16u32 {

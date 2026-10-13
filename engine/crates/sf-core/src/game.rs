@@ -131,6 +131,9 @@ pub struct Game {
     pending: Option<crate::level::beam::Pending>,
     /// The level a [`Start::Level`] game entered.
     entered: Option<LevelId>,
+    /// For the next step: where the original made that frame's Paula writes.
+    schedule: Vec<(u16, u16)>,
+    blits: Vec<(u16, u16, u16)>,
 }
 
 /// `key_down`, `key_up` (h0+$16078, h0+$16079).
@@ -220,6 +223,8 @@ impl Game {
             trace: None,
             pending: None,
             entered,
+            schedule: Vec::new(),
+            blits: Vec::new(),
         }
     }
 
@@ -269,6 +274,8 @@ impl Game {
                 },
                 costs: &self.costs,
                 trace: self.trace.as_mut(),
+                schedule: std::mem::take(&mut self.schedule),
+                blits: std::mem::take(&mut self.blits),
             };
             self.scene.step(&mut m, &mut self.pending, pacing, View::default())
         };
@@ -343,6 +350,21 @@ impl Game {
                 crate::level::frog_only_dispatch(),
             );
         }
+    }
+
+    /// For conformance (owner, 2026-10-13): the next step's level work is put on the beam where
+    /// the original made that frame's Paula writes, `(line, slot)` in order: as the engine makes
+    /// its own frame's `k`th write, its clock is set to the `k`th. Its own costs place the work
+    /// between them ([`crate::level::beam`]); normal play has only those.
+    pub fn anchor_writes(&mut self, writes: &[(u16, u16)]) {
+        self.schedule = writes.to_vec();
+    }
+
+    /// For conformance, with [`Game::anchor_writes`]: where the original started the next
+    /// step's blits, `(BLTSIZE, line, slot)` in order; each of the engine's own frame's blits
+    /// starts at the next of its size.
+    pub fn anchor_blits(&mut self, blits: &[(u16, u16, u16)]) {
+        self.blits = blits.to_vec();
     }
 
     /// For fitting the level's costs on the beam: run with `costs`.

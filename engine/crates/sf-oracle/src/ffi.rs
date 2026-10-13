@@ -49,6 +49,7 @@ pub struct SfLineSample {
     pub sr: u32,
     pub sp: u32,
     pub stack: [u32; SF_STACK_LONGS],
+    pub owners: [u8; 228],
 }
 
 /// shim.h's SF_AUDIO_RATE.
@@ -102,6 +103,7 @@ unsafe extern "C" {
     pub fn sf_amiga_chip(a: *const SfAmiga, len: *mut usize) -> *const u8;
     pub fn sf_amiga_slow(a: *const SfAmiga, len: *mut usize) -> *const u8;
     pub fn sf_amiga_cpu(a: *const SfAmiga, out: *mut SfCpuRegs);
+    pub fn sf_amiga_blit_starts(a: *const SfAmiga, out: *mut *const SfCustomWrite) -> usize;
     pub fn sf_amiga_set_profile(a: *mut SfAmiga, on: c_int);
     pub fn sf_amiga_line_samples(a: *const SfAmiga, out: *mut *const SfLineSample) -> usize;
     pub fn sf_amiga_poke(a: *mut SfAmiga, addr: u32, bytes: *const u8, len: usize);

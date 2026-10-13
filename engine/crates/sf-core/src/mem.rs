@@ -254,19 +254,25 @@ const FINAL_LEVEL_FLAG: u32 = H0 + 0x1e;
 pub struct Bus<'a> {
     pub st: &'a mut State,
     pub rom: &'a Rom,
-    /// The beam's line, for [`Bus::log`].
-    pub line: u16,
+    /// Where the beam is (in [`crate::level::beam::LINE_CYCLES`] from the frame's start), for
+    /// [`Bus::log`].
+    pub at: u32,
     /// When kept: what was written to memory the display reads, as it was before, with the
     /// beam's line ([`WriteLog`]).
     pub log: Option<WriteLog>,
+    /// A blit being written: where the beam was (in [`crate::level::beam::LINE_CYCLES`] from the
+    /// frame's start) as each of its words was written, and the bytes written so far. Its writes
+    /// are logged there.
+    pub span: Option<(Vec<u32>, usize)>,
 }
 
 /// The writes made to memory the display reads (the copper list, the panel, the display
-/// buffers): `(address, the byte before, the beam's line)`, in the order made. A picture line
-/// drawn before a write shows the byte as it was ([`crate::render`]).
+/// buffers): `(address, the byte before, where the beam was)`, in the order made, the beam's
+/// place in [`crate::level::beam::LINE_CYCLES`] from the frame's start. What the display fetches
+/// before a write shows the byte as it was ([`crate::render`]).
 #[derive(Debug, Clone, Default, PartialEq, Eq, Hash)]
 pub struct WriteLog {
-    pub writes: Vec<(u32, u8, u16)>,
+    pub writes: Vec<(u32, u8, u32)>,
 }
 
 impl WriteLog {
@@ -294,16 +300,25 @@ impl<'a> Bus<'a> {
         Bus {
             st,
             rom,
-            line: 0,
+            at: 0,
             log: None,
+            span: None,
         }
     }
 
     fn note(&mut self, addr: u32) {
+        let mut at = self.at;
+        if let Some((times, done)) = self.span.as_mut() {
+            at = times[(*done / 2).min(times.len() - 1)];
+            *done += 1;
+            if *done >= 2 * times.len() {
+                self.span = None;
+            }
+        }
         if let Some(log) = self.log.as_mut() {
             let addr = addr & 0xFF_FFFF;
             if WriteLog::shown(addr) {
-                log.writes.push((addr, self.st.byte(addr).unwrap_or(0), self.line));
+                log.writes.push((addr, self.st.byte(addr).unwrap_or(0), at));
             }
         }
     }

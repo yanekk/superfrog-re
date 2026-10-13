@@ -142,6 +142,8 @@ pub fn run_with(
         let stepped = case.compare.vars || case.compare.picture || case.compare.paula;
         let mut ours = FrameOut::default();
         if stepped {
+            game.anchor_writes(&theirs.paula.iter().map(|w| (w.vpos, w.hpos)).collect::<Vec<_>>());
+            game.anchor_blits(&amiga.blit_starts());
             let before = game.clone();
             ours = game.step_paced(input, pacing);
             if let Some(end) = ours.load {
@@ -230,6 +232,7 @@ pub fn run_with(
             if (a..=b).contains(&f) {
                 let l = |ws: &[sf_paula::PaulaWrite]| ws.iter().filter(|w| w.reg < 0xa0).map(|w| format!("{:02x}={:04x}@{}", w.reg, w.value, w.vpos)).collect::<Vec<_>>().join(" ");
                 eprintln!("SHOW {f} {:?}\n  o: {}\n  e: {}", pacing, l(&theirs.paula), l(&ours.paula));
+                eprintln!("  blits: {}", amiga.blit_starts().iter().map(|b| format!("{:04x}@{}.{}", b.0, b.1, b.2)).collect::<Vec<_>>().join(" "));
             }
         }
         if std::env::var("T36_STATS").is_ok() && stepped && (after_lag || sync::mid_pass(&amiga.cpu(), &mem)) {
@@ -327,6 +330,17 @@ pub fn run_with(
             rendered.as_ref(),
             &masked,
         );
+        if d.as_ref().is_some_and(|d| d.picture_diff.is_some()) && std::env::var("T36_DUMP").is_ok() {
+            let c = sf_core::to_rgb12(&ours.picture);
+            for y in 0..theirs.picture.height.min(ours.picture.height) {
+                let mut row = String::new();
+                for x in 0..theirs.picture.width.min(ours.picture.width) {
+                    let (o, e) = (theirs.picture.pixel(x, y), c[y as usize * ours.picture.width as usize + x as usize]);
+                    if o != e { row += &format!(" {x}:{o:03x}/{e:03x}"); }
+                }
+                if !row.is_empty() { eprintln!("DUMP y{y} (line {}):{row}", y + theirs.picture.top); }
+            }
+        }
         let unported = game.unported().to_vec();
         if d.is_some() || !unported.is_empty() {
             let mut d = d.unwrap_or(Divergence {

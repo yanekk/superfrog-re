@@ -22,6 +22,9 @@ pub struct Machine<'a> {
     /// ([`crate::level::beam`]).
     pub costs: &'a [u32; crate::level::beam::Cost::COUNT],
     pub trace: Option<&'a mut Vec<crate::level::beam::Tick>>,
+    /// In conformance: where the original made the frame's Paula writes ([`LevelCtx::schedule`]).
+    pub schedule: Vec<(u16, u16)>,
+    pub blits: Vec<(u16, u16, u16)>,
 }
 
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash)]
@@ -81,6 +84,8 @@ impl Scene {
                     &mut out,
                 );
                 c.costs = *m.costs;
+                c.schedule = std::mem::take(&mut m.schedule);
+                c.blits = std::mem::take(&mut m.blits);
                 if m.trace.is_some() {
                     c.trace = Some(Vec::new());
                 }
@@ -94,7 +99,19 @@ impl Scene {
                 }
                 *pending = f.pending;
                 let log = f.log.unwrap_or_default();
-                picture = Some(render::level_as_drawn(c.bus.st, m.display, view, &log));
+                if crate::level::DEBUG.load(std::sync::atomic::Ordering::Relaxed) {
+                    let mut runs: Vec<(u32, u32, u32, usize)> = Vec::new();
+                    for &(a, _, t) in &log.writes {
+                        match runs.last_mut() {
+                            Some(r) if t / 454 == r.1 / 454 && a / 0x3b70 == r.2 / 0x3b70 => { r.1 = t; r.3 += 1; }
+                            _ => runs.push((t, t, a, 1)),
+                        }
+                    }
+                    for &(a, _, t) in &log.writes { if (0x3b900..0x3bf00).contains(&a) && t / 454 > 185 { eprintln!("  W ${a:x} at {}.{}", t / 454, t % 454); } }
+                    for r in runs { eprintln!("  LOG line {}.{}..{}.{} from ${:x}: {} bytes", r.0 / 454, r.0 % 454, r.1 / 454, r.1 % 454, r.2, r.3); }
+                }
+                let empty = crate::mem::WriteLog::default();
+                picture = Some(render::level_as_drawn(c.bus.st, m.display, view, if false { &empty } else { &log }));
                 drop(c);
                 out.truncate(f.out_to.unwrap_or(out.len()));
                 out.drain(..f.out_from);

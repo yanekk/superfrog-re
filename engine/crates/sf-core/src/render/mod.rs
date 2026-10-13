@@ -217,9 +217,10 @@ pub(crate) struct Mem<'a> {
     /// Writes made during the frame ([`crate::mem::WriteLog`]), by address: `(address, the byte
     /// before, the beam's line)`, each address's in the order made. A line drawn before a write
     /// sees the byte before it.
-    undo: Vec<(u32, u8, u16)>,
-    /// The line the beam is drawing.
+    undo: Vec<(u32, u8, u32)>,
+    /// The line the beam is drawing, and the DMA slot its bitplane fetch starts on.
     line: std::cell::Cell<u16>,
+    pub(super) fetch_start: std::cell::Cell<u16>,
 }
 
 impl<'a> Mem<'a> {
@@ -230,6 +231,7 @@ impl<'a> Mem<'a> {
             world: data.world(state.world()),
             undo: Vec::new(),
             line: std::cell::Cell::new(0),
+            fetch_start: std::cell::Cell::new(0),
         }
     }
 
@@ -257,7 +259,9 @@ impl<'a> Mem<'a> {
         if self.undo.is_empty() {
             return b;
         }
-        let line = self.line.get();
+        // The beam fetches a line's words from DDFSTRT on, a word every 8 slots.
+        let line = self.line.get() as u32 * crate::level::beam::LINE_CYCLES
+            + 2 * self.fetch_start.get() as u32;
         let from = self.undo.partition_point(|w| w.0 < addr);
         let mut out: Option<Vec<u8>> = None;
         let mut done = None;
@@ -265,8 +269,12 @@ impl<'a> Mem<'a> {
             if a >= addr + len {
                 break;
             }
+            let fetched = line + 2 * 8 * ((a - addr) / 2);
+            if crate::level::DEBUG.load(std::sync::atomic::Ordering::Relaxed) && self.line.get() == 159 {
+                eprintln!("  FETCH line 191 ${addr:x}+{} written {}.{} fetched {}.{} -> {}", a - addr, at / 454, at % 454, fetched / 454, fetched % 454, if at >= fetched { "old" } else { "new" });
+            }
             // The first write the beam has not seen holds what it sees.
-            if at >= line && done != Some(a) {
+            if at >= fetched && done != Some(a) {
                 out.get_or_insert_with(|| b.to_vec())[(a - addr) as usize] = old;
                 done = Some(a);
             }
@@ -536,7 +544,9 @@ impl Denise<'_> {
                 };
                 if let Some(y) = y {
                     let row = &mut pic.pixels[y * width..(y + 1) * width];
+                    self.mem.fetch_start.set(self.planes.fetch.first_cycle());
                     panel::fetch(self.mem, &self.planes, left, row);
+                    self.mem.fetch_start.set(0);
                 }
                 let words = self.planes.fetch.words() as i32;
                 for p in 0..self.planes.fetch.planes() as usize {
