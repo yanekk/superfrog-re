@@ -162,6 +162,10 @@ pub fn main_program(c: &mut LevelCtx, pending: Option<beam::Pending>, pacing: cr
     while !c.frames.as_ref().is_some_and(|f| f.done) {
         if pass_due(c) {
             run_pass(c, false);
+            if c.bus.w(LOGIC_RUNNING) == 0 {
+                // `level_frame_loop` returns: the rest of the frame is `top_loop`'s (T37).
+                c.loop_over();
+            }
         } else {
             // Waiting for the next vertical blank.
             if c.clock.line < beam::FRAME_LINES {
@@ -199,7 +203,16 @@ pub fn pass_due(c: &LevelCtx) -> bool {
     b.w(LOGIC_RUNNING) != 0 && crate::level::n_clear(b.w(VBL_COUNT).wrapping_sub(2))
 }
 
-/// The 25 Hz pass (`level_frame_loop`'s body, h0+$ab8).
+/// `player_died` (h0+$82c), `abort_flag` (h0+$9de), `game_full_mode` (h0+$6), `key_down`
+/// (h0+$16078).
+const PLAYER_DIED: u32 = h0(0x82c);
+const ABORT_FLAG: u32 = h0(0x9de);
+const GAME_FULL_MODE: u32 = h0(0x6);
+const KEY_DOWN: u32 = h0(0x16078);
+
+/// The 25 Hz pass (`level_frame_loop`'s body, h0+$ab8). The loop ends after it (`logic_running`
+/// cleared, h0+$b5e) when `level_state` has counted down to 0 (the exit), the frog's death has
+/// played out (`player_died`), or ESC is down (`abort_flag`; in the attract demo, fire too).
 pub fn pass(c: &mut LevelCtx) {
     c.enter_phase(0);
     c.spend(Cost::PassEntry);
@@ -238,5 +251,17 @@ pub fn pass(c: &mut LevelCtx) {
     let ls = b.l(collision::LEVEL_STATE);
     if crate::level::collision::n_clear_l(ls.wrapping_add(1)) {
         b.set_l(collision::LEVEL_STATE, ls.wrapping_sub(1));
+    }
+    let over = b.l(collision::LEVEL_STATE) == 0 || b.w(PLAYER_DIED) != 0 || {
+        let demo_stop = b.l(crate::level::ATTRACT_MODE) != 0 && c.hw.fire;
+        let esc = b.b(KEY_DOWN) == 0x45;
+        if demo_stop || esc {
+            b.set_w(ABORT_FLAG, 1);
+            debug_assert_ne!(b.w(GAME_FULL_MODE), 0, "a game run from a disk loader exits to it");
+        }
+        demo_stop || esc
+    };
+    if over {
+        b.set_w(LOGIC_RUNNING, 0);
     }
 }

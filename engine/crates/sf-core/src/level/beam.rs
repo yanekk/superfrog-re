@@ -511,6 +511,8 @@ pub struct Frames {
     pub pending: Option<Pending>,
     /// What the step's own frame wrote to the display's memory.
     pub log: Option<crate::mem::WriteLog>,
+    /// `level_frame_loop` returned in the step's own frame, the beam on this line (T37).
+    pub ended: Option<u16>,
 }
 
 impl Frames {

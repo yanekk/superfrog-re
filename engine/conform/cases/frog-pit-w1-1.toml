@@ -1,8 +1,10 @@
 # The frog runs into W1-1's first pit and dies: the fall, the hazard (frog_kill), the death sample
-# and animation. Ends before the level's loop exits for the restart (frame 277).
+# and animation; at frame 277 the level's loop ends (`player_died`) and `level_exit_fade` fades the
+# palette out and closes the window, the blank copper list showing from frame 290 (T37). Ends
+# before `level_init_w1` runs again (frame 293).
 sync = { level = "W1-1" }
 script = "frog-pit"
-frames = 276
+frames = 292
 
 [[exclude]]
 what = "objects"
@@ -11,5 +13,5 @@ task = "T36 (items in frame cases), T16–T18 (enemies)"
 
 [[exclude]]
 what = "unreached"
-note = "the restart after a death (the level's loop ends at frame 277)"
+note = "the restart after the death: level_init_w1 and level_start again (frame 293 on)"
 task = "T37"

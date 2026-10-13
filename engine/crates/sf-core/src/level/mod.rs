@@ -12,6 +12,7 @@ pub mod bobs;
 pub mod camera;
 pub mod clock;
 pub mod death;
+pub mod exit;
 pub mod collision;
 pub mod fade;
 pub mod frame;
@@ -200,6 +201,29 @@ pub fn call(c: &mut LevelCtx, addr: u32, slot: u32, d7: u16) {
         Some(f) => f(c, slot, d7),
         None => debug_assert!(false, "slot routine ${:x} is not ported", addr.wrapping_sub(h0(0))),
     }
+}
+
+/// How a level's loop ended (`level_frame_loop`, then `level_exit_fade` and `game_over_check`),
+/// as the game flow is told ([`crate::Game::level_outcome`]).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum LevelOutcome {
+    /// The exit was reached; the tally's result (T38).
+    Completed { tally: Tally },
+    /// A life was lost: the level starts again from its start point.
+    Died,
+    /// The clock ran out, which ends the game (`frog_die` takes every life).
+    TimeUp,
+    /// The last life was lost, or ESC left the game.
+    GameOver,
+}
+
+/// What the level-complete tally gave (`level_tally`, h0+$4466; T38).
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash)]
+pub struct Tally {
+    /// Pages of 5 000 points earned (h0+$4796).
+    pub pages: u16,
+    /// The player took the slot machine instead of the points (h0+$4798).
+    pub slot_machine: bool,
 }
 
 /// What a ported level routine works on.
@@ -522,6 +546,19 @@ impl LevelCtx<'_> {
                 });
             }
         }
+    }
+
+    /// `level_frame_loop` has returned in the step's own frame (T37): the step is over where the
+    /// beam is, its frame's rest is the program after the loop's ([`exit`]).
+    pub fn loop_over(&mut self) {
+        self.stamp();
+        let line = self.clock.line;
+        let f = self.frames.as_mut().expect("the main program's frames");
+        debug_assert!(matches!(f.current(), Some((true, _))), "the loop ends in the step's own frame");
+        f.done = true;
+        f.ended = Some(line);
+        f.out_to = Some(self.paula.len());
+        f.log = self.bus.log.take();
     }
 
     /// The sound driver's writes from `from` on were made one after another, each costing what

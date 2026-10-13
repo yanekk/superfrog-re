@@ -19,7 +19,7 @@
 pub mod anim;
 mod attract;
 pub mod blit;
-mod common;
+pub(crate) mod common;
 pub mod data;
 mod ending;
 pub mod fade;
@@ -110,6 +110,10 @@ pub(crate) enum Routine {
     EndSeqLoad(ending::EndSeqLoad),
     EndSequence(ending::EndSequence),
     CpuWork(ending::CpuWork),
+    /// After a level's loop: `level_exit_fade` and `game_over_check` (T37, `crate::level::exit`).
+    LevelOver(crate::level::exit::LevelOver),
+    /// The level is over this way; what follows is not ported yet.
+    Outcome(crate::level::LevelOutcome),
 }
 
 impl Routine {
@@ -136,6 +140,15 @@ impl Routine {
             Routine::EndSeqLoad(r) => r.run(cx),
             Routine::EndSequence(r) => r.run(cx),
             Routine::CpuWork(r) => r.run(cx),
+            Routine::LevelOver(r) => r.run(cx),
+            Routine::Outcome(o) => {
+                cx.unported(match o {
+                    crate::level::LevelOutcome::Died => "the level's restart after a death (T37)",
+                    crate::level::LevelOutcome::Completed { .. } => "the level's tally (T38)",
+                    _ => "game over (T34)",
+                });
+                Yield::Poll
+            }
         }
     }
 }
@@ -538,6 +551,90 @@ impl Front {
         })
     }
 
+    /// The program a level hands over to when its loop ends (`level_frame_loop` returns into
+    /// `top_loop`): `routine` on top, the level's copper list showing.
+    pub(crate) fn after_level(s: &State, routine: Routine) -> Front {
+        Front {
+            frame: 0,
+            fetch: None,
+            load_line: None,
+            carry: Vec::new(),
+            stalled: None,
+            unpack: None,
+            ret: 0,
+            booting: false,
+            stack: vec![Frame {
+                routine,
+                wait: None,
+                deferred: None,
+            }],
+            cop1lc: render::LEVEL_COPPER,
+            keyboard: Keyboard::from_keys(s.b(vbl::KEY_DOWN), s.b(vbl::KEY_UP)),
+            seed: None,
+            unported: Vec::new(),
+        }
+    }
+
+    /// The rest of a frame the level scene began: the main program from `line` on, after the
+    /// loop's last pass. Returns its Paula writes (those past the frame's end go with the next
+    /// frame's) and the CPU jobs it began.
+    pub(crate) fn finish_frame(
+        &mut self,
+        s: &mut State,
+        display: &DisplayData,
+        input: FrameInput,
+        line: u16,
+    ) -> (Vec<PaulaWrite>, Vec<crate::game::Job>) {
+        // The level's own poll has handled this frame's keyboard byte.
+        self.keyboard.held = input.keys;
+        let mut paula = Vec::new();
+        let mut cx = Cx {
+            s,
+            data: &display.front,
+            display,
+            input,
+            paula: &mut paula,
+            keyboard: self.keyboard,
+            line,
+            cop1lc: self.cop1lc,
+            load: None,
+            load_line: None,
+            load_point: None,
+            resync: Vec::new(),
+            jobs: Vec::new(),
+            ret: self.ret,
+            busy_from: None,
+            reveal: None,
+            reveal_state: None,
+            fetch: self.fetch.unwrap_or_default(),
+            stall: None,
+            unpack: None,
+            frame: self.frame,
+            seed: None,
+            unported: Vec::new(),
+        };
+        self.run_main(&mut cx, u16::MAX);
+        self.stalled = cx.stall;
+        self.ret = cx.ret;
+        self.cop1lc = cx.cop1lc;
+        self.keyboard = cx.keyboard;
+        self.unported.append(&mut cx.unported);
+        let jobs = std::mem::take(&mut cx.jobs);
+        for w in &mut paula {
+            if w.vpos == 0 {
+                w.vpos = line;
+            }
+        }
+        paula.sort_by_key(|w| w.vpos);
+        let split = paula.partition_point(|w| w.vpos < FRAME_LINES);
+        self.carry = paula.split_off(split);
+        for w in &mut self.carry {
+            w.vpos -= FRAME_LINES;
+        }
+        self.frame += 1;
+        (paula, jobs)
+    }
+
     /// The boot's work, which is all load: done at once, before the first frame.
     pub fn boot(&mut self, s: &mut State, display: &DisplayData) {
         if std::mem::take(&mut self.booting) {
@@ -716,6 +813,15 @@ impl Front {
         };
         let carry = self.fetch;
         let (mut picture, copper) = render::screen(cx.s, display, cop1lc, &copper_word, carry);
+        if cop1lc == render::LEVEL_COPPER {
+            // `level_exit_fade` moves the window's top down: the picture is cut to where it is as
+            // the next field starts (T37).
+            let top = cx.s.b(render::LEVEL_COPPER + 6) as u16;
+            if top > picture.top {
+                let down = top - picture.top;
+                picture = picture.rewindow(picture.left, top, picture.width, picture.height.saturating_sub(down));
+            }
+        }
         let mut end = carry.unwrap_or_default();
         for w in &copper {
             end.write(w.reg, w.value);
