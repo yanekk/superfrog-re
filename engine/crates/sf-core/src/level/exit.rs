@@ -77,11 +77,17 @@ impl LevelOver {
     pub(crate) fn run(&mut self, cx: &mut Cx) -> Yield {
         match self.pc {
             0 => {
-                // `game_over_seq` (T34) runs first when the last life is gone.
-                if cx.s.l(ATTRACT_MODE) == 0 && (cx.s.w(LIVES) as i16) < 0 {
-                    self.pc = 9;
-                    return call(Routine::Outcome(outcome_of_loop(cx.s)));
+                // `game_over_seq` first, outside the attract demo (it is over at once unless the
+                // last life is gone).
+                self.pc = 10;
+                if cx.s.l(ATTRACT_MODE) == 0 {
+                    return call(Routine::GameOverSeq(crate::front::GameOverSeq::new(
+                        self.frog_only,
+                    )));
                 }
+                Yield::Interrupt
+            }
+            10 => {
                 self.pc = 1;
                 fade(FadeKind::Out, 0, PALETTE, 0x20, AFTER_FADE_SETUP)
             }
@@ -110,8 +116,11 @@ impl LevelOver {
             4 => {
                 cx.cop1lc = BLANK_COPPER;
                 self.pc = 9;
-                // `game_over_check`: ESC (`abort_flag`) leaves the game (T34), a death goes
+                // `game_over_check`: ESC (`abort_flag`) or no lives leave the game, a death goes
                 // round `top_loop` again, the exit to the tally (T38).
+                if crate::front::GameOverCheck::ends(cx) {
+                    return call(Routine::GameOverCheck(Default::default()));
+                }
                 match outcome_of_loop(cx.s) {
                     LevelOutcome::Died => call(Routine::Restart(Restart {
                         pc: 0,

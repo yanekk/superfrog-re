@@ -35,6 +35,10 @@ pub enum Stream {
     },
 }
 
+/// The handler's last instructions after its acknowledge's write (`INTREQ = $20`): the rest of
+/// `move.w #$20, INTREQ`, `movem.l (a7)+, d0-d7/a0-a6`, `rte` (oracle, T53).
+pub const TAIL: &str = "pprrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrprrrpp";
+
 /// The interrupt's entry (the exception, Moira's 68000 order) and `intro_vbl` up to its call of
 /// the fades: saving the registers, the frame flag and count, `planes_show`'s call.
 const ENTRY: &[&str] = &[

@@ -23,6 +23,7 @@ pub(crate) mod common;
 pub mod data;
 mod ending;
 pub mod fade;
+mod gameover;
 mod hero;
 mod menu;
 pub mod password;
@@ -32,6 +33,8 @@ pub(crate) mod title;
 mod vbl;
 
 pub use data::FrontData;
+pub(crate) use gameover::{GameOverCheck, GameOverSeq};
+pub use gameover::GAME_OVER;
 pub use story::{Story, StoryData};
 
 use sf_paula::PaulaWrite;
@@ -93,6 +96,9 @@ pub(crate) enum Yield {
     Busy(u32),
     /// This routine is over.
     Return,
+    /// A `jmp` out of the call stack: the program goes on with this routine alone (game over's
+    /// `jmp top_loop`).
+    Jump(Box<Routine>),
 }
 
 /// The front end's routines, each a state machine over the original's code.
@@ -132,6 +138,9 @@ pub(crate) enum Routine {
     LevelLoop,
     /// The level is over this way; what follows is not ported yet.
     Outcome(crate::level::LevelOutcome),
+    /// `game_over_seq` and `game_over_check`'s way out of the game (T34).
+    GameOverSeq(gameover::GameOverSeq),
+    GameOverCheck(gameover::GameOverCheck),
     /// The slot machine (T92) and, below it, the level's tally that called it.
     Slot(crate::slot::Routine),
     SlotOver(crate::slot::SlotOver),
@@ -172,11 +181,12 @@ impl Routine {
                     crate::level::LevelOutcome::Completed { .. } => {
                         "the next level after the tally (T21)"
                     }
-                    crate::level::LevelOutcome::TimeUp => "game over, the time up (T34)",
-                    _ => "game over (T34)",
+                    _ => "a level's end the engine does not follow",
                 });
                 Yield::Poll
             }
+            Routine::GameOverSeq(r) => r.run(cx),
+            Routine::GameOverCheck(r) => r.run(cx),
             Routine::Slot(r) => r.run(cx),
             Routine::SlotOver(r) => r.run(cx),
         }
@@ -468,6 +478,9 @@ pub struct Front {
     /// A copper interrupt requested (INTREQ `$8010`) while it is masked, and not acknowledged: the
     /// next vertical blank's handler takes that branch first (h0+$11d1a) and acknowledges it (T37).
     coper: bool,
+    /// After a level run with no object kinds (`crate::Game::frog_only`): the level's vertical
+    /// blank, when it runs here (game over), runs so too.
+    frog_only: bool,
     /// Paths not ported that this front end has run into (empty in every conformance case).
     pub unported: Vec<&'static str>,
 }
@@ -534,6 +547,7 @@ impl Front {
             keyboard: Keyboard::default(),
             seed: Some(seed),
             coper: false,
+            frog_only: false,
             unported: Vec::new(),
         }
     }
@@ -582,6 +596,7 @@ impl Front {
             keyboard: Keyboard::from_keys(s.b(vbl::KEY_DOWN), s.b(vbl::KEY_UP)),
             seed: None,
             coper: false,
+            frog_only: false,
             unported: Vec::new(),
         })
     }
@@ -591,7 +606,7 @@ impl Front {
     /// last byte: one the level's poll has handled reads `$ff` from then on (ESC's is not read
     /// again, measured on `frog-esc-w1-1`), except the power-on byte, never acknowledged; one sent
     /// since that poll is still new.
-    pub(crate) fn after_level(s: &State, sdr: u8, routine: Routine) -> Front {
+    pub(crate) fn after_level(s: &State, sdr: u8, routine: Routine, frog_only: bool) -> Front {
         let handled = Keyboard::from_keys(s.b(vbl::KEY_DOWN), s.b(vbl::KEY_UP));
         let keyboard = if sdr != handled.sdr {
             Keyboard {
@@ -622,6 +637,7 @@ impl Front {
             keyboard,
             seed: None,
             coper: false,
+            frog_only,
             unported: Vec::new(),
         }
     }
@@ -834,7 +850,14 @@ impl Front {
         } else {
             Vec::new()
         };
-        let palette_due = vbl::run(&mut cx);
+        let level_vbl = cx.s.w(gameover::LOGIC_RUNNING) != 0;
+        let palette_due = if level_vbl {
+            // The level's own handler (game over runs the level's logic, T34).
+            cx.line = gameover::level_vbl(&mut cx, self.frog_only, vbl_line);
+            false
+        } else {
+            vbl::run(&mut cx)
+        };
         // The interrupt takes about as long wherever it starts.
         cx.line = cx.line.max(VBL_END_LINE).max(vbl_line + VBL_END_LINE - 9);
         let after = window(cx.s, cop1lc);
@@ -871,10 +894,13 @@ impl Front {
         for w in cx.paula[from.max(from_carry)..].iter_mut() {
             w.vpos = vbl_line;
         }
-        let ack = cx.paula.len();
-        vbl::end(&mut cx);
-        for w in &mut cx.paula[ack..] {
-            w.vpos = cx.line;
+        // (The level's handler made its acknowledge itself.)
+        if !level_vbl {
+            let ack = cx.paula.len();
+            vbl::end(&mut cx);
+            for w in &mut cx.paula[ack..] {
+                w.vpos = cx.line;
+            }
         }
         // The main program, part by part, until it waits beyond the picture.
         let mut before = Some(Vec::new());
@@ -1125,6 +1151,14 @@ impl Front {
                         cx.unported("the front end's program ran off its end");
                         return;
                     }
+                }
+                Yield::Jump(r) => {
+                    self.stack.clear();
+                    self.stack.push(Frame {
+                        routine: *r,
+                        wait: None,
+                        deferred: None,
+                    });
                 }
                 Yield::Fade(rec) if fade::done(cx.s, rec) => {}
                 w => top.wait = Some((w, cx.line)),

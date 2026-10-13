@@ -3,7 +3,10 @@
 //! copper list and on its memory as it was at that write, against every register write the
 //! original's draw made: BLTSIZE above all. The vertical blank's handler a draw holds off is the
 //! original's: the CPU leaves the program where the oracle took the interrupt and comes back after
-//! the handler's acknowledge (`INTREQ = $20`) and its tail.
+//! the handler's acknowledge (`INTREQ = $20`) and its tail. A draw the handler lets go of (its
+//! wait in `draw_frames` or `draw_next`) runs from that handler's acknowledge, through the
+//! instructions to the draw ([`intro::handler_to_draw`], T54), so its DMACON `$8400` is checked
+//! too.
 //!
 //! Only the draws before the intro's first sound effect are checked: `story::sim` has no audio DMA
 //! yet (T96), and from scene 1's effect (oracle frame 3 034, line 48) Paula's slot `$0D` holds the
@@ -14,7 +17,7 @@ use std::ops::Range;
 
 use sf_conform::{Case, sync};
 use sf_core::front::story::sim::{self, Fixed, Sim};
-use sf_core::front::story::{StoryMem, bobs, cpu::LINE, mem::RAM_BYTES};
+use sf_core::front::story::{StoryMem, bobs, cpu::LINE, intro, mem::RAM_BYTES, vbl};
 use sf_core::render::copper::{self, Fetch};
 
 /// The oracle's frames from here on are followed: COP1LC is picked up from the CPU's writes (it
@@ -23,6 +26,9 @@ const FROM: u32 = 3_000;
 /// Scene 1's draws (from oracle frame 3 027) before its first sound effect starts in 3 034: the
 /// draw starting in 3 033 runs into it.
 const SCENE_1: Range<u32> = 3_022..3_033;
+/// Scene 3's first draws by `draw_next` (h0+$84ca, from oracle frame 5 882), whose wait is on
+/// `vbl_count` (T54).
+const SCENE_3: Range<u32> = 5_880..5_900;
 /// Scene 4's draws before its first sound effect (6 240, line 17).
 const SCENE_4: Range<u32> = 6_192..6_238;
 
@@ -33,10 +39,6 @@ const DMACON: u16 = 0x096;
 const INTREQ: u16 = 0x09c;
 const COP1LCH: u16 = 0x080;
 const COP1LCL: u16 = 0x082;
-
-/// The vertical blank handler's last instructions after its acknowledge's write: the rest of
-/// `move.w #$20, INTREQ`, `movem.l (a7)+, d0-d7/a0-a6`, `rte`.
-const HANDLER_TAIL: &str = "pprrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrprrrpp";
 
 /// One oracle frame, its times counted from its own start.
 struct Frame {
@@ -52,6 +54,8 @@ struct Frame {
     fetch: Fetch,
     /// DMACON as the frame found it.
     dmacon: u16,
+    /// The PC the frame's handler returned to ([`sync::intro_resumes`]).
+    resumes: Option<u32>,
 }
 
 /// A beam position of the step as a cycle from the frame's start (`next`: in the frame after).
@@ -60,8 +64,9 @@ fn cycle(vpos: u16, hpos: u16, next: bool) -> u32 {
 }
 
 /// Step the oracle through the last of `ranges`, checking each draw that starts in one of them;
-/// gives the oracle frames of the draws checked.
-fn check_draws(ranges: &[Range<u32>]) -> Vec<u32> {
+/// gives the oracle frames of the draws checked, each with whether it ran from the handler's
+/// acknowledge.
+fn check_draws(ranges: &[Range<u32>]) -> Vec<(u32, bool)> {
     let upto = ranges.iter().map(|r| r.end).max().unwrap() + 3;
     let case = Case::load(&sf_conform::cases_dir().join("story-intro.toml"))
         .unwrap_or_else(|e| panic!("{e}"));
@@ -89,6 +94,7 @@ fn check_draws(ranges: &[Range<u32>]) -> Vec<u32> {
         } else {
             Vec::new()
         };
+        let resumes = sync::intro_resumes(&amiga);
         sync::step_inserting(&mut amiga, case.script.input_at(of)).unwrap();
         of += 1;
         let raw = amiga.cpu_writes();
@@ -133,6 +139,7 @@ fn check_draws(ranges: &[Range<u32>]) -> Vec<u32> {
             copper_writes,
             fetch,
             dmacon: dma,
+            resumes,
         };
         for w in &frame.copper_writes {
             fetch.write(w.reg, w.value);
@@ -150,29 +157,29 @@ fn check_draws(ranges: &[Range<u32>]) -> Vec<u32> {
         if window.len() > 3 {
             window.pop_front();
         }
-        if window.len() == 3 && ranges.iter().any(|r| r.contains(&window[0].number)) {
-            if check_draw(window.make_contiguous()) {
-                checked.push(window[0].number);
-            }
+        if window.len() == 3
+            && ranges.iter().any(|r| r.contains(&window[0].number))
+            && let Some(from_ack) = check_draw(window.make_contiguous())
+        {
+            checked.push((window[0].number, from_ack));
         }
     }
     checked
 }
 
-/// The draw starting in `frames[0]`, if one does: run and compared.
-fn check_draw(frames: &[Frame]) -> bool {
+/// The draw starting in `frames[0]`, if one does: run and compared; whether it was run from the
+/// handler's acknowledge before it (T54).
+fn check_draw(frames: &[Frame]) -> Option<bool> {
     let a = &frames[0];
     let n = a.number;
     // The draw's first writes: DMACON $8400, BLTAFWM/BLTALWM, then BLTCON0 $09f0 (long writes).
-    let Some(at) = a.writes.windows(5).position(|w| {
+    let at = a.writes.windows(5).position(|w| {
         w[0].1 == DMACON
             && w[0].2 == 0x8400
             && w[1].1 == BLTAFWM
             && w[3].1 == BLTCON0
             && w[3].2 == 0x09f0
-    }) else {
-        return false;
-    };
+    })?;
     assert!(
         !a.writes[..at]
             .iter()
@@ -233,17 +240,43 @@ fn check_draw(frames: &[Frame]) -> bool {
     let fixed = frames.iter().fold(Fixed::new(), |fx, f| {
         fx.frame(&f.copper, &f.copper_writes, f.fetch)
     });
-    let mut s = Sim::new(start - 1, &fixed, a.dmacon);
+    // A draw the handler let go of runs from its acknowledge: the handler's tail, the wait's last
+    // turn and the calls to it, as the intro times it (T54); one the main program came to by
+    // itself from its DMACON write.
+    let lead = a.resumes.and_then(intro::handler_to_draw).and_then(|lead| {
+        let ack = a.writes[..at]
+            .iter()
+            .rev()
+            .find(|w| w.1 == INTREQ && w.2 == 0x0020)?
+            .0;
+        Some((ack, lead))
+    });
+    let (t0, from) = match &lead {
+        Some((ack, _)) => (ack + 1, 0),
+        None => (start - 1, from),
+    };
+    let mut s = Sim::new(t0, &fixed, a.dmacon);
+    if let Some((_, lead)) = &lead {
+        lead.run(&mut s, 0, &mut |_| {});
+    }
     let mut pending: VecDeque<(u32, u32)> = handlers.iter().copied().collect();
     let mut entries = Vec::new();
+    // Where the intro takes a blank's interrupt in a draw: at the first instruction end that sees
+    // its request, from line 0, cycle `IRQ_ENTRY` on (`Intro::time_draw`).
+    let mut blank = (t0 / sim::FRAME + 1) * sim::FRAME + intro::IRQ_ENTRY;
+    let mut taken = Vec::new();
     prog.run(&mut s, from, &mut |s| {
+        if s.irq_seen(blank) {
+            taken.push(s.t);
+            blank += sim::FRAME;
+        }
         if let Some(&(e, ack)) = pending.front()
             && s.t >= e
         {
             entries.push((s.t, e));
             pending.pop_front();
             s.t = ack + 1;
-            s.run(HANDLER_TAIL);
+            s.run(vbl::TAIL);
         }
     });
     if let Some(i) = s.regs.iter().zip(&theirs).position(|(a, b)| a != b) {
@@ -261,6 +294,10 @@ fn check_draw(frames: &[Frame]) -> bool {
             "oracle frame {n}: the interrupt's instruction end"
         );
     }
+    assert_eq!(
+        taken, irqs,
+        "oracle frame {n}: the handlers the draw holds off start where the original's did"
+    );
     let blits = |w: &[(u32, u16, u16)]| -> Vec<(u32, u16)> {
         w.iter()
             .filter(|w| w.1 == BLTSIZE)
@@ -273,14 +310,24 @@ fn check_draw(frames: &[Frame]) -> bool {
         "oracle frame {n}: BLTSIZE writes"
     );
     assert_eq!(s.regs, theirs, "oracle frame {n}: every register write");
-    true
+    Some(lead.is_some())
 }
 
-/// Every draw of scenes 1 and 4 before their first sound effect: 4 and 16 (about 25 s).
+/// Every draw of scenes 1 and 4 before their first sound effect and scene 3's first by
+/// `draw_next`: 4, 16 and 10 (about 25 s). Those the handler lets go of (all but the two after
+/// scene 4's masks and the first of scene 3's) run from its acknowledge (T54).
 #[test]
 fn draws_before_the_sound_write_their_blits_on_the_originals_cycles() {
-    let checked = check_draws(&[SCENE_1, SCENE_4]);
-    let one = checked.iter().filter(|f| SCENE_1.contains(f)).count();
-    let four = checked.len() - one;
-    assert_eq!((one, four), (4, 16), "draws checked: {checked:?}");
+    let checked = check_draws(&[SCENE_1, SCENE_3, SCENE_4]);
+    let count = |r: &Range<u32>| checked.iter().filter(|f| r.contains(&f.0)).count();
+    assert_eq!(
+        (count(&SCENE_1), count(&SCENE_3), count(&SCENE_4)),
+        (4, 10, 16),
+        "draws checked: {checked:?}"
+    );
+    let from_ack = checked.iter().filter(|f| f.1).count();
+    assert_eq!(
+        from_ack, 27,
+        "draws run from the handler's end: {checked:?}"
+    );
 }

@@ -93,6 +93,12 @@ pub mod op {
     pub const ADDI_W_DI: &str = "pprpw";
     pub const TST_W_DI: &str = "prp";
     pub const CLR_W_DI: &str = "prpw";
+    /// `tst.w abs.l`; `cmpi.w #i, abs.l`; `clr.w abs.l`.
+    pub const TST_W_ABS_L: &str = "pprp";
+    pub const CMPI_W_ABS_L: &str = "ppprp";
+    pub const CLR_W_ABS_L: &str = "pprpw";
+    /// `move.l Dn, -(An)`.
+    pub const MOVE_L_DN_PREDEC: &str = "pww";
     /// `move.w d(An), Dn`; `cmp.w d(An), Dn`; `movea.l d(An), An`; `move.w #i, d(An)`.
     pub const MOVE_W_DI_DN: &str = "prp";
     pub const CMP_W_DI_DN: &str = "prp";

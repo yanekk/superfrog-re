@@ -197,6 +197,8 @@ pub struct Sim<'a> {
     pub writes: Vec<u32>,
     /// The CPU's custom-register writes ([`Sim::write_reg`]), in order: (cycle, register, value).
     pub regs: Vec<(u32, u16, u16)>,
+    /// The cycle the CPU's last access asked for the bus in (before any wait for it).
+    pub asked: u32,
 }
 
 impl<'a> Sim<'a> {
@@ -215,6 +217,7 @@ impl<'a> Sim<'a> {
             events: Vec::new(),
             writes: Vec::new(),
             regs: Vec::new(),
+            asked: t,
         }
     }
 
@@ -318,6 +321,7 @@ impl<'a> Sim<'a> {
         self.t += 1;
         self.run_to(self.t);
         let asked = self.t;
+        self.asked = asked;
         while self.fixed.taken(self.t) || self.blitter_took(self.t) {
             self.t += 1;
             self.cycle(self.t, self.t - asked >= 3);
@@ -347,6 +351,14 @@ impl<'a> Sim<'a> {
     /// `n` idle DMA cycles.
     pub fn idle(&mut self, n: u32) {
         self.t += n;
+    }
+
+    /// Whether the instruction that has just ended takes an interrupt that can be taken from cycle
+    /// `from` (a blank's: its line 0, cycle 10): the CPU looks at the request when its last access
+    /// asks for the bus, so one held off the bus across `from` (by a blit) ends without it and the
+    /// next takes it (oracle, T54: frame 3 025's draw).
+    pub fn irq_seen(&self, from: u32) -> bool {
+        self.asked + 1 >= from
     }
 
     /// A read of DMACONR as an instruction's data access (`r`): whether the blitter was busy then.

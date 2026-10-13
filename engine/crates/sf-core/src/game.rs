@@ -50,6 +50,16 @@ pub struct Cpu {
     pub ssp: u32,
 }
 
+/// For conformance, the story intro: where the original's vertical-blank handler ended, which
+/// decides where a draw after it starts (owner, T46; T54).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct HandlerEnd {
+    /// The beam (line, DMA cycle) of its acknowledge's write (`INTREQ = $20`).
+    pub ack: (u16, u16),
+    /// The main program's instruction the interrupt came in before (the PC it returns to).
+    pub resumes: u32,
+}
+
 /// How the original's main loop kept time on this frame (DESIGN §2.1; owner, 2026-10-11).
 ///
 /// In a level the original's main loop runs one 25 Hz pass every second vertical blank, and the
@@ -355,6 +365,7 @@ impl Game {
                 s,
                 sdr,
                 crate::front::Routine::LevelOver(crate::level::exit::LevelOver::new(frog_only)),
+                frog_only,
             );
             let (more, jobs) = front.finish_frame(s, &display, input, line);
             ended = Some((front, more, jobs));
@@ -423,6 +434,15 @@ impl Game {
     pub fn set_handler_entry(&mut self, at: Option<(u16, u16)>) {
         if let Some(s) = self.story.as_mut() {
             s.handler_entry = at;
+        }
+    }
+
+    /// For conformance, the story intro: where the original's handler of this frame ended and what
+    /// it returned to ([`HandlerEnd`]), which decides where a draw after it starts (owner,
+    /// 2026-10-13; T54). Normal play estimates it.
+    pub fn set_handler_end(&mut self, end: Option<HandlerEnd>) {
+        if let Some(s) = self.story.as_mut() {
+            s.handler_end = end;
         }
     }
 

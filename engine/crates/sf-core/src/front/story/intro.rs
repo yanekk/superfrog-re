@@ -17,7 +17,7 @@ use super::fade::Rec;
 use super::mem::StoryMem;
 use super::ops::Op;
 use super::{data, h0, scenes, sim};
-use crate::game::{Job, LoadEnd, Pacing};
+use crate::game::{HandlerEnd, Job, LoadEnd, Pacing};
 use crate::render::copper::Fetch;
 
 /// `intro_skip`: set by the vertical blank on fire or the mouse button.
@@ -60,7 +60,53 @@ pub fn handler_lines(m: &StoryMem) -> u64 {
 }
 /// The DMA cycle of its line the vertical blank's interrupt is taken on when the main program waits
 /// for the blank (oracle: line 0, cycle 10, in every idle frame of the first scene).
-const IRQ_ENTRY: u32 = 10;
+pub const IRQ_ENTRY: u32 = 10;
+
+/// Where the main program waits for the blank before a draw, as the instruction the interrupt came
+/// in before (the PC the handler returns to): `draw_frames`' `tst.w vbl_flag` (h0+$8434) and its
+/// `beq.b` ($843a); `draw_next`'s `cmpi.w #2, vbl_count` ($84ca) and its `bmi.b` ($84d2).
+pub const FRAMES_TST: u32 = h0(0x8434);
+pub const FRAMES_BEQ: u32 = h0(0x843a);
+pub const NEXT_CMPI: u32 = h0(0x84ca);
+pub const NEXT_BMI: u32 = h0(0x84d2);
+
+/// The CPU's work from the handler's acknowledge (`INTREQ = $20`) to `bobs_draw`'s first
+/// instruction, the interrupt having come in before `resumes` (one of the four above): the
+/// handler's tail, the wait's last turn (a branch the interrupt came in before is taken: the test
+/// before it read the old value), the call of `draw_frame` (h0+$96b0) and its set-up. `None` for
+/// another PC: the main program was not waiting to draw.
+pub fn handler_to_draw(resumes: u32) -> Option<sim::Prog> {
+    use super::cpu::op;
+    let mut p = sim::Prog::new();
+    p.ins(super::vbl::TAIL);
+    match resumes {
+        FRAMES_TST | FRAMES_BEQ => {
+            if resumes == FRAMES_BEQ {
+                p.branch(true, false);
+            }
+            p.ins(op::TST_W_ABS_L);
+            p.branch(false, false);
+            p.ins(op::MOVE_L_DN_PREDEC); // move.l d0, -(a7)
+        }
+        NEXT_CMPI | NEXT_BMI => {
+            if resumes == NEXT_BMI {
+                p.branch(true, false);
+            }
+            p.ins(op::CMPI_W_ABS_L);
+            p.branch(false, false);
+            p.ins(op::CLR_W_ABS_L); // clr.w vbl_count
+        }
+        _ => return None,
+    }
+    p.ins(op::BSR); // bsr.w draw_frame
+    p.ins(op::LEA_ABS_L);
+    p.ins(op::LEA_ABS_L);
+    for _ in 0..3 {
+        p.ins(op::MOVEA_L_IM); // move.l #i, d0 / d1 / d3
+    }
+    p.ins(op::BSR); // bsr.w bobs_draw
+    Some(p)
+}
 
 /// DMACON as a draw finds it: DMA, the blitter's and the bitplanes' on.
 const DRAW_DMACON: u16 = sim::dmacon::DMAEN | sim::dmacon::BLTEN | 0x0100;
@@ -204,6 +250,18 @@ impl Frame {
     }
 }
 
+/// A draw on the bus ([`Intro::time_draw`]), its times counted from its frame's start.
+struct Timed {
+    /// The cycle its program ends on.
+    end: u32,
+    /// Its DMACON `$8400` write.
+    dmacon: u32,
+    /// Where each handler it holds off started.
+    handlers: Vec<u32>,
+    /// The blanks it holds the CPU through ([`BlitClock`]'s `merged`).
+    merged: Vec<u32>,
+}
+
 /// The program, its memory, the copper list and the jobs reported, kept before a job's end.
 type Checkpoint = Box<(Intro, StoryMem, Option<u32>, usize)>;
 
@@ -241,6 +299,11 @@ pub struct Intro {
     /// The main program's Paula writes not yet given out, at their times (some fall in a later
     /// frame: a job's last write).
     writes: Vec<(u64, PaulaWrite)>,
+    /// This frame's handler has just let the main program go from its wait (`vbl_flag`, or
+    /// `vbl_count` reaching two): a draw now starts from the handler's end.
+    fresh: bool,
+    /// For conformance: where the original's handler of this frame ended ([`HandlerEnd`]).
+    handler_end: Option<HandlerEnd>,
 }
 
 /// What a frame of the intro gives back besides memory.
@@ -343,6 +406,8 @@ impl Intro {
             checkpoint: None,
             load_state: Vec::new(),
             writes: Vec::new(),
+            fresh: false,
+            handler_end: None,
         }
     }
 
@@ -360,9 +425,12 @@ impl Intro {
         pacing: Pacing,
         load_state: Vec<(u32, Vec<u8>)>,
         entry: Option<(u16, u16)>,
+        handler_end: Option<HandlerEnd>,
         merged: Option<bool>,
     ) -> IntroFrame {
         self.pacing = pacing;
+        self.handler_end = handler_end;
+        self.fresh = false;
         self.load_state = load_state;
         let top = frame * LINES;
         let end = top + LINES;
@@ -437,6 +505,7 @@ impl Intro {
             }
             if self.wait == Wait::Vbl {
                 self.wait = Wait::Run;
+                self.fresh = true;
             }
             self.t = self.t.max(handler_end);
         }
@@ -549,6 +618,7 @@ impl Intro {
                         return;
                     }
                     self.wait = Wait::Run;
+                    self.fresh = true;
                 }
                 Wait::Fade(r) => {
                     if !FADES[r as usize].done(m) {
@@ -656,20 +726,28 @@ impl Intro {
     }
 
     /// A draw starting now (`bobs_draw`): its program run on the bus ([`Intro::time_draw`]), its
-    /// end deferred.
-    fn draw(&mut self, m: &mut StoryMem, out: &mut IntroFrame) {
-        self.write(out, 0x96, 0x8400);
+    /// end deferred. `after`: the main program has just left its wait for the blank, by default
+    /// at this instruction ([`handler_to_draw`]); the draw starts from the handler's end.
+    fn draw(&mut self, m: &mut StoryMem, out: &mut IntroFrame, after: Option<u32>) {
         let prog = bobs::draw(m);
-        let (end, handlers, merged) = self.time_draw(m, &prog);
+        let lead = after.and_then(|default| {
+            // Conformance gives the original's acknowledge and the instruction it returned to;
+            // normal play takes the acknowledge at the start of the line the handler ends on.
+            let (ack, resumes) = match self.handler_end {
+                Some(e) => (
+                    e.ack.0 as u32 * super::cpu::LINE + e.ack.1 as u32,
+                    e.resumes,
+                ),
+                None => ((self.t % LINES) as u32 * super::cpu::LINE, default),
+            };
+            Some((ack, handler_to_draw(resumes)?))
+        });
+        let timed = self.time_draw(m, &prog, lead);
         let base = self.t - self.t % LINES;
-        self.handler_at = handlers
-            .iter()
-            .map(|&t| base + (t / super::cpu::LINE) as u64)
-            .collect();
-        self.merged = merged
-            .iter()
-            .map(|&t| base + (t / super::cpu::LINE) as u64)
-            .collect();
+        let line = |t: u32| base + (t / super::cpu::LINE) as u64;
+        self.write_at(line(timed.dmacon), 0x96, 0x8400);
+        self.handler_at = timed.handlers.iter().map(|&t| line(t)).collect();
+        self.merged = timed.merged.iter().map(|&t| line(t)).collect();
         out.jobs.push(Job {
             inside: vec![h0(0x8442), h0(0x84de), h0(0x97b8), h0(0x97bc)],
             writes: vec![
@@ -680,36 +758,51 @@ impl Intro {
                 (bobs::TOGGLE, 2),
             ],
         });
-        let lines = ((end / super::cpu::LINE) as u64 + 1).saturating_sub(self.t % LINES);
+        let lines = (line(timed.end) + 1).saturating_sub(self.t);
         self.busy(lines, false, Then::DrawEnd);
     }
 
-    /// A draw's program run on the bus from the start of this line: the CPU and the blitter on
-    /// the shown list's copper and bitplane fetch ([`sim`]), the vertical blank's handler taking
-    /// the CPU at the first instruction's end past each blank's entry, waiting for the bus and
-    /// then working its length; a blank the CPU is held past the next one is served by that one's
-    /// handler ([`BlitClock`]'s `merged`). Gives the cycle the program ends on, where each handler
-    /// started and the merged blanks, counted from this frame's start.
-    fn time_draw(&self, m: &StoryMem, prog: &sim::Prog) -> (u32, Vec<u32>, Vec<u32>) {
+    /// A draw's program run on the bus from the start of this line, or after `lead` from its
+    /// cycle on (the handler's acknowledge and the CPU's work from there to the draw): the CPU and
+    /// the blitter on the shown list's copper and bitplane fetch ([`sim`]), the vertical blank's
+    /// handler taking the CPU at the first instruction's end that sees each blank's request
+    /// ([`sim::Sim::irq_seen`]), waiting for the bus and then working its length; a blank the CPU is held past the next one is served
+    /// by that one's handler ([`BlitClock`]'s `merged`). Times are counted from this frame's
+    /// start.
+    fn time_draw(&self, m: &StoryMem, prog: &sim::Prog, lead: Option<(u32, sim::Prog)>) -> Timed {
         let fixed = self.fixed(m, 3);
-        let start = (self.t % LINES) as u32 * super::cpu::LINE;
+        let start = match &lead {
+            // The acknowledge's write took its cycle: the CPU goes on from the next.
+            Some((ack, _)) => ack + 1,
+            None => (self.t % LINES) as u32 * super::cpu::LINE,
+        };
         let mut s = sim::Sim::new(start, &fixed, DRAW_DMACON);
         let handler = (handler_lines(m) as u32 * super::cpu::LINE).saturating_sub(2);
         let (mut handlers, mut merged) = (Vec::new(), Vec::new());
         let mut next = sim::FRAME + IRQ_ENTRY;
-        prog.run(&mut s, 0, &mut |s| {
-            while s.t >= next + sim::FRAME {
+        let mut take = |s: &mut sim::Sim| {
+            while s.irq_seen(next + sim::FRAME) {
                 merged.push(next - IRQ_ENTRY);
                 next += sim::FRAME;
             }
-            if s.t >= next {
+            if s.irq_seen(next) {
                 handlers.push(s.t);
                 s.run("p");
                 s.idle(handler);
                 next += sim::FRAME;
             }
-        });
-        (s.t, handlers, merged)
+        };
+        if let Some((_, lead)) = &lead {
+            lead.run(&mut s, 0, &mut take);
+        }
+        prog.run(&mut s, 0, &mut take);
+        let dmacon = s.regs.iter().find(|w| w.1 == 0x96).map_or(start, |w| w.0);
+        Timed {
+            end: s.t,
+            dmacon,
+            handlers,
+            merged,
+        }
     }
 
     /// The fixed DMA of `frames` frames from this one under the shown copper list: its copper
@@ -813,6 +906,7 @@ impl Intro {
         if self.t >= end {
             return false;
         }
+        let fresh = std::mem::take(&mut self.fresh);
         let Some(&Frame { script, pc, .. }) = self.stack.last() else {
             self.ended = true;
             return false;
@@ -975,7 +1069,7 @@ impl Intro {
                 }
                 1 | 2 => {
                     self.set_phase(phase + 1);
-                    self.draw(m, out);
+                    self.draw(m, out, None);
                 }
                 _ => self.next(),
             },
@@ -1006,7 +1100,7 @@ impl Intro {
                 }
                 2 => {
                     self.set_phase(3);
-                    self.draw(m, out);
+                    self.draw(m, out, fresh.then_some(FRAMES_BEQ));
                 }
                 _ => {
                     let n = self.n() - 1;
@@ -1026,7 +1120,7 @@ impl Intro {
                     }
                     m.set_w(VBL_COUNT, 0);
                     self.set_phase(1);
-                    self.draw(m, out);
+                    self.draw(m, out, fresh.then_some(NEXT_BMI));
                 }
                 _ => self.next(),
             },

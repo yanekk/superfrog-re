@@ -1,0 +1,13 @@
+# W1-1 with its items live: the speed-up, the fake wall at 94,51 into the hidden cave, the bounce
+# pad at 16,67 and the coins up the shaft it throws the frog through; score, the panel and the
+# picture every frame (T83). Not in the test block: red at frames 402 and 786 on two lag faults
+# in the engine, T101's to fix.
+sync = { level = "W1-1" }
+script = "items-pad-w1-1"
+frames = 860
+resync = false
+
+[[exclude]]
+what = "enemies"
+note = "the original's marker spawners the engine has none for (enemies, the world's scenery)"
+task = "T16–T18"

@@ -172,6 +172,17 @@ impl Case {
                     start: name("start")?,
                 }
             }
+            Some(toml::Value::Table(s)) if s.contains_key("game-over") => {
+                if let Some(k) = s.keys().find(|k| k.as_str() != "game-over") {
+                    return Err(format!("sync: unknown key `{k}` beside `game-over`"));
+                }
+                SyncPoint::GameOver {
+                    script: s["game-over"]
+                        .as_str()
+                        .ok_or("sync.game-over is a script name")?
+                        .to_string(),
+                }
+            }
             Some(toml::Value::Table(s)) if s.contains_key("level") => {
                 if let Some(k) = s.keys().find(|k| !["level", "clock", "exit"].contains(&k.as_str())) {
                     return Err(format!(
@@ -224,7 +235,7 @@ impl Case {
             },
             _ => {
                 return Err(
-                    "sync is \"power-on\", \"power-on-disk3\", \"end-sequence\", { script = \"…\", frame = N }, { level = \"W1-1\" } or { slot = \"…\", start = \"…\" }"
+                    "sync is \"power-on\", \"power-on-disk3\", \"end-sequence\", { script = \"…\", frame = N }, { level = \"W1-1\" }, { slot = \"…\", start = \"…\" } or { game-over = \"…\" }"
                         .into(),
                 );
             }

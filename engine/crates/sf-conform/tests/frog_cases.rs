@@ -22,30 +22,18 @@ fn frog_pit_w1_1() {
     green("frog-pit-w1-1");
 }
 
-/// The clock run out in W1-1 (set to 0:03): green to the frame before the level's loop ends, and
-/// on that frame the engine is at game over (`game_over_seq`, T34's) after the time ran out.
+/// The clock run out in W1-1 (set to 0:03), to the frame before the level's loop ends into game
+/// over (`game-over-timeup-w1-1` goes on to the title, T34).
 #[test]
 fn frog_timeup_w1_1() {
     green("frog-timeup-w1-1");
-    let mut case =
-        sf_conform::Case::load(&sf_conform::cases_dir().join("frog-timeup-w1-1.toml")).unwrap();
-    case.frames += 1;
-    let d = sf_conform::run(&case).expect_err("game over is T34's");
-    assert_eq!(d.frame, 269);
-    assert_eq!(d.unported, ["game over, the time up (T34)"]);
 }
 
-/// ESC in W1-1 (T37 review): green through the exit fade to the frame before the ESC path's
-/// music fade, which is game over's (T34).
+/// ESC in W1-1 (T37 review): green through the exit fade (`game-over-esc-w1-1` goes on to the
+/// title, T34).
 #[test]
 fn frog_esc_w1_1() {
     green("frog-esc-w1-1");
-    let mut case =
-        sf_conform::Case::load(&sf_conform::cases_dir().join("frog-esc-w1-1.toml")).unwrap();
-    case.frames += 1;
-    let d = sf_conform::run(&case).expect_err("the ESC path is T34's");
-    assert_eq!(d.frame, 77);
-    assert_eq!(d.unported, ["game over (T34)"]);
 }
 
 /// Against the tunnel's pillar, with head bumps.
@@ -103,4 +91,18 @@ fn tally_w1_1() {
 #[test]
 fn tally_slot_w1_1() {
     green("tally-slot-w1-1");
+}
+
+/// W1-2 with its items live, 650 frames: the wings and their flight, the spud taken and thrown,
+/// with no re-sync (T83).
+#[test]
+fn items_wings_w1_2() {
+    green("items-wings-w1-2");
+}
+
+/// W1-1 with its items live, 800 frames: the checkpoint and the speed-up until it ends, with no
+/// re-sync (T83).
+#[test]
+fn items_checkpoint_w1_1() {
+    green("items-checkpoint-w1-1");
 }
