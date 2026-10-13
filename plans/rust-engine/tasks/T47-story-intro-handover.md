@@ -1,6 +1,6 @@
-# T43 — story-intro-handover
+# T47 — story-intro-handover
 
-**Phase:** 2 · **Depends on:** T42; blocks T21 · **Weight:** medium
+**Phase:** 2 · **Depends on:** T46; blocks T21 · **Weight:** medium
 
 Split from T32 (owner, 2026-10-13).
 

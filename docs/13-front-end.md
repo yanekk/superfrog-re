@@ -18,7 +18,7 @@ leaves that the engine does not model (the trackloader's sector buffer at h3+$35
 packed in hunk 1: `front::LOAD_LEAVES`, `FrameOut::resync`), and finds the line the original's
 load ended on by trying them (`Game::set_load_line`).
 
-The disk-3 story intro is below (T32, finished by T42–T44); the attract demo is T33. The end
+The disk-3 story intro is below (T32, finished by T46–T48); the attract demo is T33. The end
 sequence (T35) is entered from the sync point `end-sequence` (below).
 
 ## Scene flow (code, oracle)
@@ -93,7 +93,7 @@ and the bootblock are the load. The engine runs it as `front::story` with its ow
 1258–1738 text page 2 (in, 400 frames, out)      1739–1756 scene 2 set-up   1757– scene 2
 then      text 3 + scene 3, scenes 4–9 (banks unpacked from h1, backgrounds from h0), text 4,
           scenes 10–15 (MAIN in story/scenes.rs, 15 scenes and 4 text pages), END: "insert
-          disk 1" (c38e waits for fire), the hand-over to the game (T43)
+          disk 1" (c38e waits for fire), the hand-over to the game (T47)
 ```
 
 The handler (h0+$b102, each frame at the top): frame flag and count, the shown buffer's plane
@@ -114,7 +114,7 @@ Timing the engine keeps (oracle, frames 0–539):
 - **Unpacks** (`cf5c`): measured frames per call (`UNPACK_FRAMES`), ending on line 160.
 - **Copper and Paula**: the copper's Paula writes before the CPU takes the interrupt (line 0,
   clock $14) belong to the frame before. Copper colour words a fade rewrites are read as the beam
-  found them, component by component (`vbl::fade_write_times`; not yet exact, T42).
+  found them, component by component (`vbl::fade_write_times`; not yet exact, T46).
 - **Schedule feeding** (owner, 2026-10-12): whether the original is still in a long job (a draw,
   a set-up) at each vertical blank is fed by conformance (`Pacing::Late`/`OnTime` from the
   original's call chain, as level lag is); play uses the engine's own timing (`Pacing::Unpaced`).

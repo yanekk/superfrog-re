@@ -13,7 +13,7 @@ the account is the commit message. Whoever writes a cell also fixes the over-bud
 
 **Status:** Plan written; nothing built.
 **Last updated:** 2026-10-10
-**Next `pir-work` will:** T42 story-intro-scenes, the intro past frame 539 (T43, T44 follow it).
+**Next `pir-work` will:** T46 story-intro-scenes, the intro past frame 539 (T47, T48 follow it).
 
 ## Tasks
 
@@ -38,8 +38,8 @@ done · ⛔ blocked, needs a human.
 | T13 | renderer | T08, T12 | ✅ | |
 | T14 | frog-and-level | T06, T11, T12, T13 | ✅ | |
 | T15 | items-and-scoring | T14 | ✅ | |
-| T16 | enemies-worlds-1-3 | T15 | ⬜ | |
-| T17 | enemies-worlds-4-6 | T15 | ⬜ | |
+| T16 | enemies-worlds-1-3 | T15 | ✅ | |
+| T17 | enemies-worlds-4-6 | T15 | ✅ | |
 | T18 | bosses | T16, T17 | ⬜ | |
 | T19 | slot-and-bonus | T15 | ⬜ | |
 | T20 | front-end | T08, T11, T12, T13 | ✅ | |
@@ -54,16 +54,22 @@ done · ⛔ blocked, needs a human.
 | T29 | app-drill | T21, T25, T26, T27, T28 | ⬜ | |
 | T30 | acceptance | T29 | ⬜ | |
 | T31 | render-remaining-levels | T13 | ✅ | |
-| T32 | story-intro | T20; blocks T21 | ✅ | Review: clean bar an Interface section added to T42–T44 docs. story-intro green; mutations (fade step /16, intro music rows) red, a timeline one survived (unreached by 539). Probes: 545 frames diverge at 540 as claimed; real-data play reaches the game, untouched and with fire, no panic. Unpaced deviation held. |
-| T42 | story-intro-scenes | T32; blocks T21 | ⬜ | |
-| T43 | story-intro-handover | T42; blocks T21 | ⬜ | |
-| T44 | story-intro-skips | T42, T43; blocks T21 | ⬜ | |
+| T32 | story-intro | T20; blocks T21 | ✅ | Review: clean bar an Interface section added to T46–T48 docs. story-intro green; mutations (fade step /16, intro music rows) red, a timeline one survived (unreached by 539). Probes: 545 frames diverge at 540 as claimed; real-data play reaches the game, untouched and with fire, no panic. Unpaced deviation held. |
+| T46 | story-intro-scenes | T32; blocks T21 | ⬜ | |
+| T47 | story-intro-handover | T46; blocks T21 | ⬜ | |
+| T48 | story-intro-skips | T46, T47; blocks T21 | ⬜ | |
 | T33 | attract-demo | T16, T20 | ⬜ | |
 | T34 | game-over | T15, T20; blocks T21 | ⬜ | |
 | T35 | end-sequence | T20; blocks T21 | ✅ | |
 | T36 | items-on-the-beam | T15 | ⬜ | |
 | T37 | level-restart | T36; blocks T34 | ⬜ | |
 | T38 | level-tally | T37; blocks T21 | ⬜ | |
+| T39 | enemies-world-5 | T16, T38; blocks T18 | ⬜ | |
+| T40 | enemies-world-6 | T38; blocks T18 | ⬜ | |
+| T41 | enemies-world-4 | T38; blocks T18 | ⬜ | |
+| T42 | enemies-world-1 | T38; blocks T18, T33 | ⬜ | |
+| T43 | enemies-world-2 | T38; blocks T18, T39 | ⬜ | |
+| T44 | enemies-world-3 | T38; blocks T18 | ⬜ | |
 
 A Notes cell holds what was built or what the review found, the test count, and one line per
 deviation from the task doc. A ✅ task's cell may be cut to one line once the next task has been reviewed.

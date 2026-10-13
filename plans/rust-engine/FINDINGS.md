@@ -18,12 +18,16 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
-| 2026-10-13 | 🐞 | T32 review, open for T43: in normal play the engine's intro hands over to the game untouched (probe: frame 9 282, no input); `END` has no fire wait, though `Start::Disk3`'s doc says fire is pressed. |
-| 2026-10-13 | 📌 | T32 added T42 story-intro-scenes, T43 story-intro-handover, T44 story-intro-skips (first numbered T36–T38, which T15 took; owner renumbered 2026-10-13) (owner: rewind to the last working milestone, split the rest). All block T21. T32 stops at frame 539; T42's doc lists what its scan left. |
-| 2026-10-13 | 📌 | T32 for T42: the runner's load-line search fits on the picture, so a fade-timing change in a load frame moves the line found and the next frames. A draft cycle-exact fade-step model did that; reverted. |
+| 2026-10-13 | 🐞 | T32 review, open for T47: in normal play the engine's intro hands over to the game untouched (probe: frame 9 282, no input); `END` has no fire wait, though `Start::Disk3`'s doc says fire is pressed. |
+| 2026-10-13 | 📌 | T32 added T46 story-intro-scenes, T47 story-intro-handover, T48 story-intro-skips (first numbered T36–T38, then T42–T44; T15 and T16 took those; owner renumbered 2026-10-13) (owner: rewind to the last working milestone, split the rest). All block T21. T32 stops at frame 539; T46's doc lists what its scan left. |
+| 2026-10-13 | 📌 | T32 for T46: the runner's load-line search fits on the picture, so a fade-timing change in a load frame moves the line found and the next frames. A draft cycle-exact fade-step model did that; reverted. |
 | 2026-10-13 | 📌 | T32 deviation from DESIGN §2.1: `Game::step` uses a new `Pacing::Unpaced` (the engine's own timing) instead of `OnTime`; only the story intro reads it. DESIGN §2.1 still says `OnTime`. |
 | 2026-10-12 | 🔄 | Owner, T32: conformance feeds the intro whether the original is still in a long job at each blank (`Pacing::Late`/`OnTime` from its call chain, as level lag); normal play uses the engine's own timing model. |
 | 2026-10-12 | 📌 | T32: the intro's sound is the game's T11 driver at shifted addresses (`AudioDriver::intro_from`); music start/stop differ slightly. d3_c07/c08 are four raw sector spans (`intro_file_table` h0+$cf26), kept as `INTRO_SPAN_INDEX` chunks. |
+| 2026-10-13 | 📌 | T16 review sweep, not fixed: branch `pir/rust-engine-T19` adds T39 bonus-level, but the feature branch already has T39 enemies-world-5 (T17). Adoption will reject it as a collision. |
+| 2026-10-13 | 🔄 | Owner, T16: closed as the per-world split like T17, nothing built. T42 W1 (blocks T33), T43 W2 (blocks T39, which reuses 6 W2 types), T44 W3; all after T38, blocking T18. |
+| 2026-10-13 | 🐞 | T16 review: a `done` merge folds the row to ✅ whatever the branch says (pir loop.mjs reconcile), so a worker's ⛔ park never lands. Owner chose: move the work to a new task, close T16. |
+| 2026-10-13 | 🔄 | Owner, T17: enemies in worlds 4–6 parked until T36–T38 and split by world; T17 closed as the split. T41 W4, T39 W5, T40 W6 (witch stays T18). "Split them" may cover T16 too. |
 | 2026-10-13 | 🔄 | Owner, T15: stop and split; T36–T38 added (picture/lag/entry, restart, tally). Draft on local branch `t15-flow-wip`. |
 | 2026-10-13 | 📌 | T15: an undrawn bob's step pointer is 0, so despawn reads width/height from ExecBase ($C00276): `low_vectors`. Items lag W1-1's pass 86/700 frames. |
 | 2026-10-12 | 📌 | T14 review: the lag re-sync loads the original's whole memory, so a divergence landing on a lag frame is erased: `frog-run-w1-1` stayed green with fake walls not digging. A case crossing lag needs a re-sync-free check (level_entry's fake-wall test). |

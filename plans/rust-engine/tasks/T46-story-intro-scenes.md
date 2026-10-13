@@ -1,4 +1,4 @@
-# T42 — story-intro-scenes
+# T46 — story-intro-scenes
 
 **Phase:** 2 · **Depends on:** T32; blocks T21 · **Weight:** heavy
 
