@@ -24,6 +24,11 @@
 - Probe: the DMA profile (`Amiga::set_dma_profile`, `LineSample::owners`) reports each line's
   owners one sample late and stops while a BLTPRI blit starves the CPU.
 
+## Interface
+
+`copper::run_bus` keeps its signature; only the cycles it pushes into `bus` change. New
+`sf-conform` test `story_blits.rs`.
+
 ## Files
 
 `engine/crates/sf-core/src/render/copper.rs`; a test in `engine/crates/sf-conform/tests/` (new

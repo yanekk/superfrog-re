@@ -471,6 +471,26 @@ mod tests {
     }
 
     #[test]
+    fn every_program_has_the_hrm_word_length_and_bus_cycles() {
+        // Cycles a word, by USEA..USED, from the HRM table in vAmiga's `SlowBlitter.cpp`.
+        const WORD: [u32; 16] = [2, 2, 2, 3, 3, 3, 3, 4, 2, 2, 2, 3, 3, 3, 3, 4];
+        for ch in 0..16u16 {
+            for n in [1u32, 5] {
+                let mut s = Sim::new(0, &Free, ON);
+                s.poke(90, 0x40, ch << 8);
+                s.poke(100, 0x58, 1 << 6 | n as u16);
+                s.finish(1000);
+                let t: Vec<u32> = s.events.iter().map(|e| e.t).collect();
+                let w = WORD[ch as usize];
+                assert_eq!(t, [103, 103 + w * n, 105 + w * n], "channels {ch:x}, {n} words");
+                // A, B, C fetch every word; D writes every word but the first, then once more.
+                let fetches = (ch >> 1).count_ones() * n + (ch & 1) as u32 * n;
+                assert_eq!(s.taken.len() as u32, fetches, "channels {ch:x}, {n} words");
+            }
+        }
+    }
+
+    #[test]
     fn the_blitter_waits_for_the_fixed_dma_and_dma_on() {
         // Refresh at $01, $03, $05: written at 0, the start waits for 2, 4 and 6.
         let refresh = Fixed::new();

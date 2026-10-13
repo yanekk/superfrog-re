@@ -18,6 +18,11 @@ objects with `$cfca`/`$2fca`/`$4fca`/`$8fca`) begin, free and end on the origina
 - Check every blit of the frame; if a later one runs without BLTPRI the CPU matters (BLS) and
   belongs to T53: say so and check up to it.
 
+## Interface
+
+None new: `story::sim` and `copper::run_bus` as T52 and T89 leave them; one more frame in
+`story_blits.rs`.
+
 ## Files
 
 `engine/crates/sf-conform/tests/story_blits.rs` (T89's test, one more frame); `render/copper.rs`
