@@ -127,6 +127,12 @@ headless.
 | [T77](tasks/T77-bonus-enemies-b.md) | bonus-enemies-b | T70, T76; blocks T21 |
 | [T78](tasks/T78-bonus-enemy-death.md) | bonus-enemy-death | T70, T75; blocks T21 |
 | [T79](tasks/T79-bonus-level-frames.md) | bonus-level-frames | T70, T37, T75, T76, T77, T78; blocks T21 |
+| [T81](tasks/T81-beam-cleanup.md) | beam-cleanup | T36; blocks T37 |
+| [T82](tasks/T82-beam-tests.md) | beam-tests | T81 |
+| [T83](tasks/T83-items-w1.md) | items-w1 | T81 |
+| [T84](tasks/T84-items-w3.md) | items-w3 | T81 |
+| [T85](tasks/T85-items-w2.md) | items-w2 | T81 |
+| [T86](tasks/T86-items-launchers.md) | items-launchers | T81 |
 
 T22 is the rig task: it comes before every surface task and they depend on it. T29 is the phase's
 drill. At the end: the owner plays it.

@@ -1,0 +1,10 @@
+# W2-2 with its items live: five kinds of fruit and the spud taken in the room left of the start,
+# then the spud thrown and caught; score, the panel and the picture every frame.
+sync = { level = "W2-2" }
+script = "items-fruit-w2-2"
+frames = 650
+
+[[exclude]]
+what = "enemies"
+note = "the original's marker spawners the engine has none for (enemies, the world's scenery)"
+task = "T16–T18"

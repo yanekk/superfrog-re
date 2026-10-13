@@ -88,6 +88,12 @@ done · ⛔ blocked, needs a human.
 | T54 | story-handler-end-feed | T53; blocks T56 | ⬜ | |
 | T55 | story-intro-sound-timing | T50; blocks T56 | ⬜ | |
 | T56 | story-intro-to-insert-disk | T49, T50, T54, T55; blocks T21, T47, T48 | ⬜ | |
+| T81 | beam-cleanup | T36; blocks T37 | ⬜ | |
+| T82 | beam-tests | T81 | ⬜ | |
+| T83 | items-w1 | T81 | ⬜ | |
+| T84 | items-w3 | T81 | ⬜ | |
+| T85 | items-w2 | T81 | ⬜ | |
+| T86 | items-launchers | T81 | ⬜ | |
 
 A Notes cell holds what was built or what the review found, the test count, and one line per
 deviation from the task doc. A ✅ task's cell may be cut to one line once the next task has been reviewed.

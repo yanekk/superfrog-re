@@ -44,7 +44,7 @@ fn main() {
         if std::env::var("NOFEED").is_err() {
             game.set_handler_entry(entry);
         }
-        let mut pacing = sync::pacing(&amiga.cpu(), &sync::core_memory(amiga.memory()));
+        let mut pacing = sync::pacing(&amiga.cpu(), &sync::core_memory(amiga.memory()), &cap.paula);
         let mut out = game.step_paced(input, pacing);
         if let Some(end) = out.load {
             let mut seen = false;
@@ -69,7 +69,7 @@ fn main() {
                 irqs = amiga.irqs();
                 of += 1;
             }
-            pacing = sync::pacing(&amiga.cpu(), &sync::core_memory(amiga.memory()));
+            pacing = sync::pacing(&amiga.cpu(), &sync::core_memory(amiga.memory()), &cap.paula);
             let m = sync::core_memory(amiga.memory());
             let take = |g: &mut Game, from: &sf_core::AmigaMemory, runs: &[(u32, u32)]| {
                 for &(addr, len) in runs {

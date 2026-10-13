@@ -430,7 +430,7 @@ impl Intro {
         }
         self.checkpoint = None;
         self.run(m, data, input, top, end, &mut out, load_line, list);
-        if self.pacing == Pacing::Late
+        if matches!(self.pacing, Pacing::Late { .. })
             && !matches!(self.wait, Wait::Busy { .. })
             && let Some(c) = self.checkpoint.take()
         {
@@ -555,7 +555,7 @@ impl Intro {
                         // The original's job was over by this blank: so is the engine's.
                         self.finish_busy(m, end - 1);
                     } else {
-                        if self.pacing == Pacing::Late {
+                        if matches!(self.pacing, Pacing::Late { .. }) {
                             // Kept in case the original turns out to be still in this job.
                             self.checkpoint = Some(Box::new((
                                 self.clone(),
