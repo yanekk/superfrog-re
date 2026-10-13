@@ -522,6 +522,11 @@ layout! {
     /// `obj_templates` (h0+$1c6e2): 160 templates of `$ae` bytes; a spawner writes the position
     /// into one before copying its head into a slot (docs/09 "The slot record").
     ObjTemplates = "obj_templates", h0(0x1c6e2), Width::Bytes(160 * 0xae);
+    /// The bonus level's animation toggles (`bonus::enemies`), words inside the code that the
+    /// listing reads as instructions: `bonus_toggle_114` (h0+$28ad8) and `bonus_toggle_113`
+    /// (h0+$28b4a), flipped by each spawn of those types to pick one of two animations.
+    BonusToggle114 = "bonus_toggle_114", h0(0x28ad8), Width::W;
+    BonusToggle113 = "bonus_toggle_113", h0(0x28b4a), Width::W;
     /// `bob_draw_list` (h0+$2970a..): a 0, the bobs to draw, a 0.
     BobDrawList = "bob_draw_list", h0(0x2970a), Width::Bytes(0xa8);
     /// `bob_records` (h0+$297b2..$2aee2): the spud's bob and the 20 objects' (`$11c` bytes,

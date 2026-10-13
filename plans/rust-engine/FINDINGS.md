@@ -18,6 +18,7 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-13 | 📌 | T76 for T75's merge: both create `bonus/mod.rs` (keep both modules and both `register_all` lines). T76 copied T75's `bonus_rig`/`sound_files` hunks verbatim, so those merge clean. |
 | 2026-10-13 | 📌 | T71 review: T71 ran `cargo fmt` over ~20 files outside its scope; formatting only. It conflicted at merge, so those files were restored to the feature branch's version. |
 | 2026-10-13 | 🔄 | T71 split at pir's context line: its `re/symbols.toml` slot routines and tables moved to T87 and T88 (both block T72); everything else of T71 committed. |
 | 2026-10-13 | 📌 | T49 review: the fade set-up job's `inside` ranges are not defended by any test (emptying them leaves `story-scene1-out` green: the two-frame grace masks 1242 anyway). Checked by probe: PC h0+$b94e at 1242's end. |

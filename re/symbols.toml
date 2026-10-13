@@ -1659,6 +1659,24 @@ note = "final boss update"
 [[sym]]
 exe = "d1_c03"
 hunk = 0
+offset = 0x28ad8
+name = "bonus_toggle_114"
+kind = "var"
+size = 2
+note = "bonus type 114's init flips it to pick one of two animations (T76)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x28b4a
+name = "bonus_toggle_113"
+kind = "var"
+size = 2
+note = "bonus type 113's init flips it to pick one of two animations (T76)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
 offset = 0x298d2
 name = "bob_records"
 kind = "table"
