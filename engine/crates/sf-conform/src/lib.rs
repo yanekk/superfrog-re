@@ -27,7 +27,7 @@ use std::sync::{Arc, OnceLock};
 
 use sf_assets::GameData;
 use sf_core::layout::{AmigaMemory, LAYOUT, Ram, VarId};
-use sf_core::{DisplayData, FrameOut, Game, LoadEnd, Picture, Scene, Start, View};
+use sf_core::{DisplayData, FrameOut, Game, LoadEnd, Picture, Start, View};
 
 /// The owner's disks decoded, once per process.
 pub fn game_data() -> &'static GameData {

@@ -126,9 +126,11 @@ fn bonus_death_wb_1() {
 /// The bonus level completed (T79): 16 deaths on the way, marker 55, the loop's end, the exit
 /// fade; the engine's outcome is the exit. Its only re-syncs are T101's (a frame the original
 /// ends inside phase 6, before `buffer_flip`), pinned here so no other lag frame is excused.
+/// Frame 8127, the first after the fade, is the end picture's, every variable equal: the last
+/// fade frame's `shooter_off` (h0+$7494) is seen only there.
 #[test]
 fn bonus_end_wb_1() {
-    let case =
+    let mut case =
         sf_conform::Case::load(&sf_conform::cases_dir().join("bonus-end-wb-1.toml")).unwrap();
     let mut last = None;
     let o = sf_conform::run_with(&case, |_, g| last = g.level_outcome())
@@ -140,4 +142,9 @@ fn bonus_end_wb_1() {
         matches!(last, Some(sf_core::level::LevelOutcome::Completed { .. })),
         "{last:?}"
     );
+    case.frames += 1;
+    let d = sf_conform::run(&case).expect_err("the end picture is T21's");
+    assert_eq!(d.frame, 8127);
+    assert_eq!(d.unported, ["the bonus level's end picture (T21)"]);
+    assert!(d.first_var.is_none(), "{d}");
 }
