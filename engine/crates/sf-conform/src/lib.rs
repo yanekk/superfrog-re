@@ -314,6 +314,7 @@ fn run_inner(
                         render_diff: None,
                         oracle_frame: (of != f + 1).then_some(of - 1),
                         unported: Vec::new(),
+                        level_outcome: None,
                         var_detail: compare::var_diffs(game.layout(), &game.probe(), &mem, v.id)
                             .into_iter()
                             .take(40)
@@ -398,10 +399,12 @@ fn run_inner(
                 render_diff: None,
                 oracle_frame: None,
                 unported: Vec::new(),
+                level_outcome: None,
                 var_detail: Vec::new(),
                 resync: false,
             });
             d.unported = unported;
+            d.level_outcome = game.level_outcome();
             d.oracle_frame = (of != f + 1).then_some(of - 1);
             match found.as_mut() {
                 Some(all) => all.push(d),

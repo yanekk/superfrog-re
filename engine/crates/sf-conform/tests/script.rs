@@ -122,6 +122,8 @@ fn case_files_parse_and_refuse_what_they_do_not_know() {
             seconds: 3
         }
     );
+    let c = Case::parse("x", "sync = { level = \"W1-1\", exit = true }\nframes = 3").unwrap();
+    assert_eq!(c.sync, SyncPoint::Exit("W1-1".parse().unwrap()));
     let c = Case::parse(
         "x",
         "sync = \"power-on\"\nframes = 9\n[[exclude]]\nwhat = \"picture\"\nframes = [3, 5]\n\
@@ -144,6 +146,8 @@ fn case_files_parse_and_refuse_what_they_do_not_know() {
         "sync = { level = \"W1-1\", clock = \"0:3\" }\nframes = 3",
         "sync = { level = \"W1-1\", clock = \"10:00\" }\nframes = 3",
         "sync = { level = \"W1-1\", clock = \"0:60\" }\nframes = 3",
+        "sync = { level = \"W1-1\", exit = 1 }\nframes = 3",
+        "sync = { level = \"W1-1\", clock = \"0:03\", exit = true }\nframes = 3",
         "sync = \"power-on\"\nframes = 3\n[[exclude]]\nwhat = \"picture\"\nnote = \"n\"\ntask = \"T1\"",
         "sync = \"power-on\"\nframes = 3\n[[exclude]]\nwhat = \"picture\"\nframes = [5, 3]\nnote = \"n\"\ntask = \"T1\"",
     ] {

@@ -58,6 +58,10 @@ pub enum SyncPoint {
     /// A level's first frame as [`SyncPoint::AtLevel`] reaches it, its clock (`level_clock`,
     /// h0+$876) then set to `seconds` (T37: a time-up case without waiting four minutes).
     Clock { level: LevelId, seconds: u16 },
+    /// A level's first frame as [`SyncPoint::AtLevel`] reaches it, its exit then forced
+    /// (`level_state` = 1, as [`SyncPoint::Slot`] forces it; T38: the tally without playing the
+    /// level to its exit).
+    Exit(LevelId),
 }
 
 /// The oracle at a sync point.
@@ -381,6 +385,12 @@ pub fn reach_frozen(
             let (m, s) = (seconds / 60, seconds % 60);
             let digits = [(m / 10) as u8, (m % 10) as u8, (s / 10) as u8, (s % 10) as u8];
             synced.amiga.write_memory(LEVEL_CLOCK, &digits);
+            synced.memory = core_memory(synced.amiga.memory());
+            Ok(synced)
+        }
+        SyncPoint::Exit(level) => {
+            let mut synced = reach_frozen(&SyncPoint::AtLevel(*level), script, frames, frozen)?;
+            synced.amiga.write_memory(LEVEL_STATE, &1u32.to_be_bytes());
             synced.memory = core_memory(synced.amiga.memory());
             Ok(synced)
         }

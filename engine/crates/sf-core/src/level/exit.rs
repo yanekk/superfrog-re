@@ -1,7 +1,8 @@
 //! What follows a level's loop (`top_loop` after `level_frame_loop`, docs/08 "Scene flow"): the
 //! exit fade (`level_exit_fade`, h0+$75f2: `game_over_seq` first, then the palette faded out
 //! while the display window closes from the top a line a frame), `game_over_check` (h0+$749c),
-//! then the level again after a death or, the exit reached, the tally (`level_tally`, T38).
+//! then the level again after a death or, the exit reached, the tally (`level_tally`,
+//! [`crate::level::tally`]).
 //!
 //! These run on the front end's program (`crate::front`): the main program waits on the beam
 //! between them, and the vertical blank runs with the level's logic stopped.
@@ -116,6 +117,9 @@ impl LevelOver {
                         pc: 0,
                         frog_only: self.frog_only,
                     })),
+                    LevelOutcome::Completed { .. } => {
+                        call(Routine::Tally(crate::level::tally::LevelTally::default()))
+                    }
                     o => call(Routine::Outcome(o)),
                 }
             }
@@ -147,7 +151,7 @@ fn init_inside(id: LevelId) -> Vec<u32> {
 
 /// A level routine run on the front end's program, its Paula writes made on the line the beam is
 /// on.
-fn with_level(cx: &mut Cx, frog_only: bool, f: impl FnOnce(&mut LevelCtx)) {
+pub(crate) fn with_level(cx: &mut Cx, frog_only: bool, f: impl FnOnce(&mut LevelCtx)) {
     let (_, writes) = level_ctx(cx, frog_only, false, f);
     for w in writes {
         cx.wr(w.reg, w.value);

@@ -158,7 +158,7 @@ fn clock_digit(c: &mut LevelCtx) {
 
 /// `number_to_text` (h0+$160dc): `n` in decimal at `number_text`, no leading zeros (nothing at
 /// all for 0); over 999 999 999, nine nines.
-fn number_to_text(b: &mut Bus, mut n: u32) {
+pub(crate) fn number_to_text(b: &mut Bus, mut n: u32) {
     for k in 0..3 {
         b.set_l(NUMBER_TEXT + 4 * k, 0);
     }

@@ -124,6 +124,8 @@ pub(crate) enum Routine {
     /// `level_init_wN` and `level_start` again after a death (T37).
     Restart(crate::level::exit::Restart),
     LevelStart(crate::level::exit::LevelStart),
+    /// `level_tally` after the exit (T38).
+    Tally(crate::level::tally::LevelTally),
     /// Level work done at once, replayed on the beam (T37).
     Timeline(crate::level::timeline::Timeline),
     /// `level_frame_loop` is entered again: the game goes back to the level scene.
@@ -162,11 +164,14 @@ impl Routine {
             Routine::LevelOver(r) => r.run(cx),
             Routine::Restart(r) => r.run(cx),
             Routine::LevelStart(r) => r.run(cx),
+            Routine::Tally(r) => r.run(cx),
             Routine::Timeline(r) => r.run(cx),
             Routine::LevelLoop => Yield::Poll,
             Routine::Outcome(o) => {
                 cx.unported(match o {
-                    crate::level::LevelOutcome::Completed { .. } => "the level's tally (T38)",
+                    crate::level::LevelOutcome::Completed { .. } => {
+                        "the next level after the tally (T21)"
+                    }
                     crate::level::LevelOutcome::TimeUp => "game over, the time up (T34)",
                     _ => "game over (T34)",
                 });
@@ -686,6 +691,15 @@ impl Front {
     fn note_coper(&mut self, writes: &[PaulaWrite]) {
         for w in writes.iter().filter(|w| w.reg == 0x9c && w.value & 0x10 != 0) {
             self.coper = w.value & 0x8000 != 0;
+        }
+    }
+
+    /// How the level is over, once the program after its loop has decided it (the tally's
+    /// result, T38).
+    pub(crate) fn outcome(&self) -> Option<crate::level::LevelOutcome> {
+        match self.stack.last().map(|f| &f.routine) {
+            Some(Routine::Outcome(o)) => Some(*o),
+            _ => None,
         }
     }
 

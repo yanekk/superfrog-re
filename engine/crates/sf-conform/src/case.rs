@@ -173,14 +173,22 @@ impl Case {
                 }
             }
             Some(toml::Value::Table(s)) if s.contains_key("level") => {
-                if let Some(k) = s.keys().find(|k| !["level", "clock"].contains(&k.as_str())) {
-                    return Err(format!("sync: unknown key `{k}` beside `level` (level, clock)"));
+                if let Some(k) = s.keys().find(|k| !["level", "clock", "exit"].contains(&k.as_str())) {
+                    return Err(format!(
+                        "sync: unknown key `{k}` beside `level` (level, clock, exit)"
+                    ));
                 }
                 let level = s["level"]
                     .as_str()
                     .ok_or("sync.level is a string like \"W1-1\"")?
                     .parse()?;
+                let exit = match s.get("exit") {
+                    None => false,
+                    Some(v) => v.as_bool().ok_or("sync.exit is true or false")?,
+                };
                 match s.get("clock") {
+                    None if exit => SyncPoint::Exit(level),
+                    Some(_) if exit => return Err("sync: `clock` and `exit` together".into()),
                     None => SyncPoint::AtLevel(level),
                     Some(v) => {
                         let bad = || "sync.clock is \"M:SS\", under 10 minutes".to_string();
