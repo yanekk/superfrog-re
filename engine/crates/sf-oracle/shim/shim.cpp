@@ -146,6 +146,8 @@ struct sf_amiga {
     std::vector<sf_audio_tap> taps;
     std::vector<float> mixed;
     int lines = 0;
+    bool profile = false;
+    std::vector<sf_line_sample> samples;
 
     Emulator &emu() { return *va.emu; }
     Amiga &amiga() { return SfShimAccess::main(*va.emu); }
@@ -193,6 +195,41 @@ struct sf_amiga {
         emu().set(Opt::DRIVE_CONNECT, true, { 0 });
         emu().set(Opt::DRIVE_CONNECT, false, { 1, 2, 3 });
         fixedSettings();
+    }
+
+    // One frame with the CPU paused at the end of every line to be sampled (sf_amiga_set_profile).
+    // The end-of-line trap pauses the core between two instructions; it goes on from there. No trap
+    // is set on the frame's last lines, so a pause never falls between the frame's end and the
+    // vertical sync's flag; one that lands past the frame's end swallowed that flag (both raised
+    // within one long instruction, a blit holding the bus) and ends the step there.
+    void profiledFrame()
+    {
+        samples.clear();
+        auto &m = amiga();
+        bool first = true;
+        isize last = -1;
+        for (;;) {
+            m.agnus.dmaDebugger.eolTrap = m.agnus.pos.v < 309;
+            try {
+                if (first) {
+                    first = false;
+                    SfShimAccess::step(emu());
+                } else {
+                    m.computeFrame();
+                }
+                break;
+            } catch (StateChangeException &) {
+                if (m.agnus.pos.v < last) break;
+                last = m.agnus.pos.v;
+                sf_line_sample s { u16(m.agnus.pos.v), u16(m.agnus.pos.h), m.cpu.getPC0(),
+                                   u32(m.cpu.getSR()), m.cpu.getSP(), { } };
+                for (int k = 0; k < SF_STACK_LONGS; k++) {
+                    s.stack[k] = m.mem.spypeek32<Accessor::CPU>(s.sp + 4 * u32(k));
+                }
+                samples.push_back(s);
+            }
+        }
+        m.agnus.dmaDebugger.eolTrap = false;
     }
 
     // Queue the commands that turn the held input into `j`/`k`; update() applies them.
@@ -313,10 +350,14 @@ int sf_amiga_step(sf_amiga *a, uint32_t joy, const uint8_t keys[16], char *err, 
     // its instruction), so the frame it runs is the one starting now.
     a->lines = int(a->amiga().agnus.pos.vCnt());
     auto rc = guarded(err, err_len, "running a frame", [&] {
-        try {
-            SfShimAccess::step(a->emu());
-        } catch (StateChangeException &) {
-            throw std::runtime_error("the emulator stopped mid-frame (a CPU halt or a breakpoint)");
+        if (a->profile) {
+            a->profiledFrame();
+        } else {
+            try {
+                SfShimAccess::step(a->emu());
+            } catch (StateChangeException &) {
+                throw std::runtime_error("the emulator stopped mid-frame (a CPU halt or a breakpoint)");
+            }
         }
         // Keep the frame's mix and empty the stream, so it never overflows. Exactly what is there
         // is taken: asking the port for more counts as an underflow, which pads the stream.
@@ -328,6 +369,18 @@ int sf_amiga_step(sf_amiga *a, uint32_t joy, const uint8_t keys[16], char *err, 
     capturing = nullptr;
     tapping = nullptr;
     return rc;
+}
+
+void sf_amiga_set_profile(sf_amiga *a, int on)
+{
+    a->profile = on != 0;
+    a->samples.clear();
+}
+
+size_t sf_amiga_line_samples(const sf_amiga *a, const sf_line_sample **out)
+{
+    *out = a->samples.data();
+    return a->samples.size();
 }
 
 size_t sf_amiga_paula_writes(const sf_amiga *a, const sf_custom_write **out)

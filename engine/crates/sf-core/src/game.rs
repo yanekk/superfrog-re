@@ -54,12 +54,17 @@ pub struct Cpu {
 /// "Lag"). Normal play never lags; conformance runs feed the original's schedule from the oracle.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash)]
 pub enum Pacing {
-    /// The main loop was waiting when this frame's vertical blank came: normal play, always.
+    /// The main loop finished its work before this frame's end: normal play, always.
     #[default]
     OnTime,
-    /// The original's main loop was still in its pass at this frame's vertical blank. The engine
-    /// then runs the interrupt's work at one fixed point in the late pass.
-    Late,
+    /// The original's frame ended with its main loop in the middle of a pass, so the next
+    /// vertical blank comes there: after the frame's `writes`th Paula write, the last at beam
+    /// line `line`, slot `hpos`, in the pass's `phase`th call (`level_frame_loop`'s, in order from
+    /// `spud_update`; [`crate::level::frame::pass`]). The engine ends its frame between the same
+    /// two writes, in the same call, at the point its clock reaches the frame's end counting from
+    /// that write (T36), and runs the rest of the pass in the next frame, after that frame's
+    /// interrupt.
+    Late { writes: u16, line: u16, hpos: u16, phase: u8 },
 }
 
 /// What one frame produced.
@@ -118,6 +123,12 @@ pub struct Game {
     sdr: u8,
     /// The level runs with no object kinds ([`Game::frog_only`]).
     frog_only: bool,
+    /// What a level's work costs on the beam ([`crate::level::beam`]), and the last frame's clock
+    /// steps when kept ([`Game::keep_trace`]).
+    costs: [u32; crate::level::beam::Cost::COUNT],
+    trace: Option<Vec<crate::level::beam::Tick>>,
+    /// A level's pass the last frame ended in the middle of ([`crate::level::beam::Pending`]).
+    pending: Option<crate::level::beam::Pending>,
 }
 
 /// `key_down`, `key_up` (h0+$16078, h0+$16079).
@@ -199,6 +210,9 @@ impl Game {
             keys: KeySet::NONE,
             sdr,
             frog_only: false,
+            costs: crate::level::beam::COSTS,
+            trace: None,
+            pending: None,
         }
     }
 
@@ -246,8 +260,10 @@ impl Game {
                 } else {
                     crate::level::standard_dispatch()
                 },
+                costs: &self.costs,
+                trace: self.trace.as_mut(),
             };
-            self.scene.step(&mut m, pacing, View::default())
+            self.scene.step(&mut m, &mut self.pending, pacing, View::default())
         };
         FrameOut {
             picture: shown.unwrap_or_else(|| self.render(View::default())),
@@ -310,6 +326,21 @@ impl Game {
     /// objects are all frozen out (T14's frog cases).
     pub fn frog_only(&mut self) {
         self.frog_only = true;
+    }
+
+    /// For fitting the level's costs on the beam: run with `costs`.
+    pub fn set_costs(&mut self, costs: [u32; crate::level::beam::Cost::COUNT]) {
+        self.costs = costs;
+    }
+
+    /// For fitting the level's costs on the beam: keep each frame's clock steps.
+    pub fn keep_trace(&mut self) {
+        self.trace = Some(Vec::new());
+    }
+
+    /// The last frame's clock steps, while kept.
+    pub fn trace(&self) -> &[crate::level::beam::Tick] {
+        self.trace.as_deref().unwrap_or(&[])
     }
 
     /// Frames stepped since the start.

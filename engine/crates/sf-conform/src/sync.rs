@@ -61,7 +61,6 @@ const VBL_HANDLER: u32 = h0(0x11bf8);
 /// `level_frame_loop`'s wait for `vbl_count` (docs/08).
 const LEVEL_WAIT: Range<u32> = h0(0xaae)..h0(0xab8);
 const LOGIC_RUNNING: u32 = h0(0x9d6);
-const VBL_COUNT: u32 = h0(0x9d8);
 const LEVEL_STATE: u32 = h0(0xa06);
 const WORLD: u32 = h0(0x40da);
 const LEVEL: u32 = h0(0x40de);
@@ -139,21 +138,48 @@ fn in_level(m: &AmigaMemory) -> bool {
 }
 
 /// How the original's main loop kept time on the frame that just ended (owner, 2026-10-11; docs/08
-/// "Lag"): late when, in a level, the vertical blank came while the main loop was not parked in
-/// `level_frame_loop`'s wait and the pass was due. Every other screen paces on a raster wait and
-/// is never late.
-pub fn pacing(cpu: &CpuRegs, m: &AmigaMemory) -> Pacing {
-    // A step ends at the level-3 handler's entry; the interrupted PC is on the stack (FINDINGS).
-    let main_pc = if cpu.pc == VBL_HANDLER {
-        long(m, cpu.ssp + 2)
-    } else {
-        cpu.pc
-    };
-    if in_level(m) && !LEVEL_WAIT.contains(&main_pc) && word(m, VBL_COUNT) >= 1 {
-        Pacing::Late
+/// "Lag"): late when, in a level, the frame ended with the main loop in the middle of a pass
+/// rather than parked in `level_frame_loop`'s wait, so the next vertical blank comes in the
+/// middle of it (T36); the frame's Paula writes say where. Every other screen paces on a raster
+/// wait and is never late.
+/// The frame's Paula writes say where in the pass it ended ([`Pacing::Late`]).
+pub fn pacing(cpu: &CpuRegs, m: &AmigaMemory, writes: &[sf_paula::PaulaWrite]) -> Pacing {
+    if mid_pass(cpu, m) {
+        let last = writes.last().copied().unwrap_or_default();
+        Pacing::Late {
+            writes: writes.len() as u16,
+            line: last.vpos,
+            hpos: last.hpos,
+            phase: pass_phase(cpu, m),
+        }
     } else {
         Pacing::OnTime
     }
+}
+
+/// The return addresses of `level_frame_loop`'s calls in its pass, in order (h0+$abe..$b00).
+const PASS_CALLS: [u32; 13] = [
+    0xac2, 0xac8, 0xace, 0xad4, 0xada, 0xae0, 0xae6, 0xaec, 0xaf0, 0xaf6, 0xafa, 0xb00, 0xb06,
+];
+
+/// Which of the pass's calls the main program is in at the frame's end: the call whose return
+/// address is on its stack, or, between calls, the next one (13 past the last).
+pub fn pass_phase(cpu: &CpuRegs, m: &AmigaMemory) -> u8 {
+    let chain = main_chain(cpu, m);
+    let body = h0(0xab8)..h0(0xb66);
+    for (k, &a) in chain.iter().enumerate() {
+        if !body.contains(&a) {
+            continue;
+        }
+        let at = a - h0(0);
+        let mut calls = PASS_CALLS.iter();
+        return if k > 0 {
+            calls.position(|&r| r == at).unwrap_or(13) as u8
+        } else {
+            calls.position(|&r| r > at).unwrap_or(13) as u8
+        };
+    }
+    13
 }
 
 /// Whether the original's frame ended with its main loop in the middle of a level's pass (not

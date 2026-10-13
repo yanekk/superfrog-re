@@ -8,6 +8,7 @@
 use crate::frog::{FROG, f};
 use crate::layout::{h0, h3};
 use crate::level::camera::{CAMERA_X, CAMERA_Y, SCROLL_DIRS, SHOOTER_MODE, SPRITES_HIDDEN};
+use crate::level::beam::Cost;
 use crate::level::{LevelCtx, n_clear};
 use crate::mem::Bus;
 
@@ -28,7 +29,9 @@ pub const BOB_FREE_LIST: u32 = h0(0x1ba16);
 pub fn obj_run_all(c: &mut LevelCtx) {
     for k in 0..SLOTS {
         let slot = OBJ_SLOTS + k * SLOT_SIZE;
+        c.spend(Cost::ObjSlot);
         if c.bus.l(slot + 0x40) != 0 {
+            c.spend(Cost::ObjUpdate);
             let update = c.bus.l(slot + 4);
             crate::level::call(c, update, slot, 0);
         }
@@ -127,6 +130,7 @@ fn fill_slot(c: &mut LevelCtx, slot: u32, template: u32, cell: u32) {
         b.set_l(bob + o, look);
     }
     let init = b.l(template);
+    c.spend(Cost::Spawn);
     crate::level::call(c, init, slot, 0);
     let b = &mut c.bus;
     b.set_w(OBJ_COUNT, b.w(OBJ_COUNT).wrapping_add(1));
@@ -320,10 +324,12 @@ pub fn bob_anim(b: &mut Bus, slot: u32, anim: u32) {
 
 /// `obj_build_hitboxes` (h0+$d2f6): every live slot's hitboxes, offset by its position.
 pub fn obj_build_hitboxes(c: &mut LevelCtx) {
+    let (mut slots, mut boxes) = (0, 0);
     let b = &mut c.bus;
     let mut out = HITBOXES;
     for k in 0..SLOTS {
         let slot = OBJ_SLOTS + k * SLOT_SIZE;
+        slots += 1;
         if b.l(slot + 0x40) == 0 {
             continue;
         }
@@ -332,6 +338,7 @@ pub fn obj_build_hitboxes(c: &mut LevelCtx) {
             continue;
         }
         loop {
+            boxes += 1;
             let (dx, dy) = (b.w(hb + 4), b.w(hb + 6));
             let x1 = b.w(slot + 8).wrapping_add(dx);
             b.set_w(out, x1);
@@ -348,6 +355,8 @@ pub fn obj_build_hitboxes(c: &mut LevelCtx) {
         }
     }
     b.set_w(out, 0xffff);
+    c.spend_n(Cost::HitboxSlot, slots);
+    c.spend_n(Cost::Hitbox, boxes);
 }
 
 /// The hitbox entries overlapping x `x1..x2`, y `y1..y2`, walked as the original walks the list
@@ -383,6 +392,14 @@ const OPT_GAME_MODE: u32 = h0(0x9e6);
 /// platform until an object says otherwise). The hitbox list is the one this pass built; a
 /// handler that frees a slot does not change it.
 pub fn collide_all(c: &mut LevelCtx) {
+    let mut entries = 0;
+    let mut at = HITBOXES;
+    while n_clear(c.bus.w(at)) {
+        entries += 1;
+        at += 12;
+    }
+    c.spend(Cost::Collide);
+    c.spend_n(Cost::CollideEntry, 2 * entries);
     spud_touches(c);
     frog_touches(c);
     debug_assert_eq!(c.bus.w(SHOOTER_MODE), 0, "the bonus level's collisions are T19's");
@@ -452,6 +469,8 @@ fn frog_touches(c: &mut LevelCtx) {
 /// `build_bob_draw_list` (h0+$19b42): the spud, the slots' bobs (those in front first), then
 /// the free bobs that still have something on screen to erase.
 pub fn build_bob_draw_list(c: &mut LevelCtx) {
+    c.spend(Cost::DrawList);
+    c.spend_n(Cost::DrawListSlot, SLOTS);
     let b = &mut c.bus;
     let mut out = BOB_DRAW_LIST;
     b.set_l(out, SPUD_BOB);
@@ -526,6 +545,11 @@ struct Blit {
     cmod: u16,
     dmod: u16,
     size: u16,
+}
+
+/// The words a blit of BLTSIZE `size` moves.
+fn blit_words(size: u16) -> u32 {
+    (match size >> 6 { 0 => 1024, h => h as u32 }) * (match size & 0x3f { 0 => 64, w => w as u32 })
 }
 
 /// The blitter in area mode, ascending (what the drawer uses): A shifted and masked, B shifted,
@@ -617,6 +641,14 @@ pub fn bob_draw(c: &mut LevelCtx) {
     let b = &mut c.bus;
     b.set_l(BD_CAMERA_X, b.l(h0(0x16664)));
     b.set_l(BD_CAMERA_Y, b.l(h0(0x16660)));
+    // (The camera is latched first: an interrupt in the drawer's set-up comes after it.)
+    let mut bobs = 0;
+    while c.bus.l(BOB_DRAW_LIST + 4 * bobs) != 0 {
+        bobs += 1;
+    }
+    c.spend(Cost::BobDraw);
+    c.spend_n(Cost::BobPosition, bobs);
+    let b = &mut c.bus;
     // The seam: the screen line where the ring wraps.
     let mut d1 = (b.w(BD_CY) as u32).wrapping_add(0xffff_fff4);
     let d3 = d1 & 0xffff_0000 | (d1 as u16 & 0xf) as u32;
@@ -697,6 +729,7 @@ fn screen_positions(b: &mut Bus) {
 /// the bobs' sub-records `sub` on: first (unless this is the seam's part) each bob's last
 /// drawing is erased, going down the list; then each is drawn, going back up it.
 fn draw_part(c: &mut LevelCtx, back: u32, sub: u32) {
+    c.spend(Cost::BobPart);
     c.custom(0x96, 0x8400);
     let mut at = BOB_DRAW_LIST;
     if c.bus.w(BD_SEAM) != 0 {
@@ -708,6 +741,7 @@ fn draw_part(c: &mut LevelCtx, back: u32, sub: u32) {
             let rec = c.bus.l(at).wrapping_add(sub);
             at += 4;
             for part in [rec, rec + 0x8c] {
+                c.spend(Cost::BobEraseLook);
                 let dest = c.bus.l(part + 0x10);
                 if dest != 0 {
                     erase(c, part, dest);
@@ -740,8 +774,11 @@ fn erase(c: &mut LevelCtx, part: u32, dest: u32) {
     if !n_clear_l(b.l(part + 0x2c).wrapping_sub(BUFFER_1)) {
         src = src.wrapping_add(BUFFER_BYTES);
     }
+    c.spend(Cost::BobErase);
     c.custom(0x9a, 0x0010);
     for p in 0..5 {
+        c.spend(Cost::BobPlane);
+        c.blit_words(blit_words(size), 0x09f0);
         blit(
             &mut c.bus,
             Blit {
@@ -772,6 +809,7 @@ fn n_clear_l(v: u32) -> bool {
 /// clipped to the part of the screen being drawn and cookie-cut into the back buffer, or, for a
 /// bob drawn into the background (`+4` negative, h0+$19708), copied into it.
 fn draw_bob(c: &mut LevelCtx, bob: u32, back: u32, sub: u32) {
+    c.spend(Cost::Bob);
     let b = &mut c.bus;
     b.set_l(bob + SUB, b.l(bob));
     let rec;
@@ -893,8 +931,11 @@ fn draw_bob(c: &mut LevelCtx, bob: u32, back: u32, sub: u32) {
     let (cmod, bmod) = (b.w(rec + 0x26), b.w(rec + 0x24));
     let mut src = b.l(rec + 0x20);
     let step = b.l(a3 + 0x16);
+    c.spend(Cost::BobShown);
     c.custom(0x9a, 0x0010);
     for p in 0..5u32 {
+        c.spend(Cost::BobPlane);
+        c.blit_words(blit_words(size), 0x0fca);
         blit(
             &mut c.bus,
             Blit {
@@ -1014,8 +1055,11 @@ fn draw_background(c: &mut LevelCtx, rec: u32, frame_at: u32, back: u32) {
     let mut src = b.l(rec + 0x20);
     let step = b.l(a3 + 0x16);
     let shift = (b.w(rec) & 0xf).wrapping_shl(12);
+    c.spend(Cost::BobShown);
     c.custom(0x9a, 0x0010);
     for p in 0..5u32 {
+        c.spend(Cost::BobPlane);
+        c.blit_words(blit_words(size), 0x09f0);
         blit(
             &mut c.bus,
             Blit {

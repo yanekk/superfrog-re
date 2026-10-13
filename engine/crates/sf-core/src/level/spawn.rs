@@ -6,6 +6,7 @@
 
 use crate::layout::h0;
 use crate::level::collision::{MAP_ROWS, OBJ_WORLD_OFFSET};
+use crate::level::beam::Cost;
 use crate::level::{LevelCtx, n_clear};
 use crate::mem::Bus;
 
@@ -25,9 +26,12 @@ fn scan_origin(b: &Bus) -> u32 {
 
 /// Run the spawner of each marker `1..$39` in `n` cells from `at`, `step` bytes apart.
 fn scan(c: &mut LevelCtx, mut at: u32, n: u32, step: u32) {
+    c.spend(Cost::Scan);
     for _ in 0..n {
+        c.spend(Cost::ScanCell);
         let m = c.bus.w(at) & 0x3f;
         if m != 0 && !n_clear(m.wrapping_sub(0x3a)) {
+            c.spend(Cost::Spawner);
             let world = (c.bus.l(OBJ_WORLD_OFFSET) >> 8) as u8;
             if let Some(spawn) = c.dispatch.marker(world, m as u8) {
                 spawn(c, at);

@@ -16,7 +16,7 @@ mod routine;
 mod trace;
 
 pub use amiga::{
-    Amiga, AmigaMemory, AudioTap, CpuRegs, FrameCapture, MIX_RATE, Rgb12Frame, Snapshot,
+    Amiga, AmigaMemory, AudioTap, CpuRegs, FrameCapture, LineSample, MIX_RATE, Rgb12Frame, Snapshot,
 };
 pub use config::{DEFAULT_MAX_FRAMES, OracleConfig, OracleError};
 pub use routine::{

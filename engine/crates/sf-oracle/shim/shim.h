@@ -115,6 +115,24 @@ typedef struct {
 } sf_cpu_regs;
 void sf_amiga_cpu(const sf_amiga *a, sf_cpu_regs *out);
 
+/* Where the CPU was as each raster line ended during the last step, for timing studies (test tooling
+ * that measures the original's CPU time): the line, the address of the instruction last executed,
+ * SR, the active stack pointer and the first longs on the stack. Recorded only while profiling is on
+ * (sf_amiga_set_profile); the run is the same with it on or off, the CPU only pauses between
+ * instructions to be looked at. A line on which no instruction ended (a blit holding the bus) has
+ * no sample. Valid until the next step. */
+#define SF_STACK_LONGS 64
+typedef struct {
+    uint16_t vpos;
+    uint16_t hpos;
+    uint32_t pc;
+    uint32_t sr;
+    uint32_t sp;
+    uint32_t stack[SF_STACK_LONGS];
+} sf_line_sample;
+void sf_amiga_set_profile(sf_amiga *a, int on);
+size_t sf_amiga_line_samples(const sf_amiga *a, const sf_line_sample **out);
+
 /* The whole machine state as a vAmiga snapshot. The returned buffer is freed with sf_buffer_free. */
 uint8_t *sf_amiga_snapshot(sf_amiga *a, size_t *len, char *err, size_t err_len);
 void sf_buffer_free(uint8_t *buf);

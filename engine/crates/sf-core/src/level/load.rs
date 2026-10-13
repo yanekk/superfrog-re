@@ -58,16 +58,16 @@ pub fn enter(st: &mut State, display: &DisplayData, id: LevelId) {
     boot_image(st, display);
     world_sound(st, display, id);
     let mut paula = Vec::new();
-    let mut c = LevelCtx {
-        bus: Bus::new(st, display.rom()),
-        dispatch: standard_dispatch(),
-        hw: Hw {
+    let mut c = LevelCtx::new(
+        Bus::new(st, display.rom()),
+        standard_dispatch(),
+        Hw {
             sdr: 0xff,
             ..Hw::default()
         },
-        sound: display.sound(),
-        paula: &mut paula,
-    };
+        display.sound(),
+        &mut paula,
+    );
     new_game(&mut c, id);
     level_load(&mut c, display, id);
     level_init(&mut c, id);

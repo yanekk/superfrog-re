@@ -5,6 +5,7 @@ use crate::frog::{FROG, f};
 use crate::layout::h0;
 use crate::level::collision::{MAP_ROWS, OBJ_WORLD_OFFSET, PASSAGE_CELL, marker};
 use crate::level::scroll::{BUFFER_BYTES, SHOWN_BUFFER};
+use crate::level::beam::Cost;
 use crate::level::{LevelCtx, n_clear};
 use crate::mem::{Bus, TILE_PTRS};
 
@@ -64,10 +65,12 @@ pub fn redraw_cell(c: &mut LevelCtx, cell: u32, tile: u16) {
             src = src.wrapping_add(2);
         }
     }
+    c.spend(Cost::Redraw);
     c.custom(0x9a, 0x0010);
     c.custom(0x96, 0x8400);
     for dst in [buffer0, buffer0.wrapping_add(BUFFER_BYTES)] {
         for p in 0..5u32 {
+            c.blit_words(16, 0x09f0);
             let (s, d) = (clean.wrapping_add(PLANE * p), dst.wrapping_add(PLANE * p));
             for line in 0..16u32 {
                 let v = c.bus.w(s.wrapping_add(0x30 * line) & 0x7_fffe);

@@ -209,7 +209,7 @@ fn a_game_started_at_a_level_plays_as_the_original() {
         let input = script.input_at(f);
         let theirs = amiga.step(input).unwrap();
         let mem = sync::core_memory(amiga.memory());
-        let ours = game.step_paced(input, sync::pacing(&amiga.cpu(), &mem));
+        let ours = game.step_paced(input, sync::pacing(&amiga.cpu(), &mem, &theirs.paula));
         let probe = game.probe();
         for v in watched {
             let d = def(v);
@@ -254,9 +254,9 @@ fn the_fake_wall_opens_as_in_the_original_without_a_re_sync() {
     for f in 0..frames {
         Freeze::Objects.apply(&mut amiga, &display);
         let input = script.input_at(f);
-        amiga.step(input).unwrap();
+        let theirs = amiga.step(input).unwrap();
         let mem = sync::core_memory(amiga.memory());
-        game.step_paced(input, sync::pacing(&amiga.cpu(), &mem));
+        game.step_paced(input, sync::pacing(&amiga.cpu(), &mem, &theirs.paula));
         if sync::mid_pass(&amiga.cpu(), &mem) {
             lagged += 1;
             continue;

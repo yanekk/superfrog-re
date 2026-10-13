@@ -37,6 +37,20 @@ pub struct SfAudioTap {
     pub hpos: u16,
 }
 
+/// shim.h's SF_STACK_LONGS.
+pub const SF_STACK_LONGS: usize = 64;
+
+#[repr(C)]
+#[derive(Clone, Copy)]
+pub struct SfLineSample {
+    pub vpos: u16,
+    pub hpos: u16,
+    pub pc: u32,
+    pub sr: u32,
+    pub sp: u32,
+    pub stack: [u32; SF_STACK_LONGS],
+}
+
 /// shim.h's SF_AUDIO_RATE.
 pub const SF_AUDIO_RATE: u32 = 48_000;
 
@@ -88,6 +102,8 @@ unsafe extern "C" {
     pub fn sf_amiga_chip(a: *const SfAmiga, len: *mut usize) -> *const u8;
     pub fn sf_amiga_slow(a: *const SfAmiga, len: *mut usize) -> *const u8;
     pub fn sf_amiga_cpu(a: *const SfAmiga, out: *mut SfCpuRegs);
+    pub fn sf_amiga_set_profile(a: *mut SfAmiga, on: c_int);
+    pub fn sf_amiga_line_samples(a: *const SfAmiga, out: *mut *const SfLineSample) -> usize;
     pub fn sf_amiga_poke(a: *mut SfAmiga, addr: u32, bytes: *const u8, len: usize);
     pub fn sf_amiga_snapshot(
         a: *mut SfAmiga,

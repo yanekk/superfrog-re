@@ -18,6 +18,10 @@ pub struct Machine<'a> {
     pub hw: Hw,
     /// The object kinds the level runs with.
     pub dispatch: &'a crate::level::Dispatch,
+    /// What the level's work costs on the beam, and the clock's steps when kept
+    /// ([`crate::level::beam`]).
+    pub costs: &'a [u32; crate::level::beam::Cost::COUNT],
+    pub trace: Option<&'a mut Vec<crate::level::beam::Tick>>,
 }
 
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash)]
@@ -52,12 +56,15 @@ impl Scene {
     }
 
     /// Run one frame of this scene; returns the Paula writes it made, in order, and the picture
-    /// the frame shows when it is not the state's at the frame's end: a level's is drawn after
-    /// the vertical blank, before the pass, whose drawing (the panel's digits, a redrawn tile)
-    /// the beam has passed by the time the pass gets to it (docs/12 "Late redraws").
+    /// the frame shows when it is not the state's at the frame's end. A level's frame is its main
+    /// program on the beam ([`crate::level::frame::main_program`]): its picture is drawn as the
+    /// beam saw it, a write the pass made after the beam had passed a line not showing there
+    /// (docs/12 "Late redraws"); a pass the original's frame ends in the middle of (`pacing`) is
+    /// `pending` into the next frame.
     pub fn step(
         &mut self,
         m: &mut Machine,
+        pending: &mut Option<crate::level::beam::Pending>,
         pacing: Pacing,
         view: View,
     ) -> (Vec<PaulaWrite>, Option<Picture>) {
@@ -66,20 +73,31 @@ impl Scene {
         match self {
             Scene::Placeholder | Scene::Front => {}
             Scene::Level => {
-                let mut c = LevelCtx {
-                    bus: Bus::new(m.state, m.display.rom()),
-                    dispatch: m.dispatch,
-                    hw: m.hw,
-                    sound: m.display.sound(),
-                    paula: &mut out,
-                };
-                crate::level::frame::vbl(&mut c);
-                picture = Some(render::level(c.bus.st, m.display, view));
-                // A late pass (DESIGN §2.1) runs here too: what is left over is the runner's lag.
-                let _ = pacing;
-                if crate::level::frame::pass_due(&c) {
-                    crate::level::frame::pass(&mut c);
+                let mut c = LevelCtx::new(
+                    Bus::new(m.state, m.display.rom()),
+                    m.dispatch,
+                    m.hw,
+                    m.display.sound(),
+                    &mut out,
+                );
+                c.costs = *m.costs;
+                if m.trace.is_some() {
+                    c.trace = Some(Vec::new());
                 }
+                crate::level::frame::main_program(&mut c, pending.take(), pacing);
+                if let (Some(t), Some(out)) = (c.trace.take(), m.trace.as_mut()) {
+                    **out = t;
+                }
+                let f = c.frames.take().expect("the main program's frames");
+                if let Some(mid) = f.mid {
+                    *c.bus.st = *mid;
+                }
+                *pending = f.pending;
+                let log = f.log.unwrap_or_default();
+                picture = Some(render::level_as_drawn(c.bus.st, m.display, view, &log));
+                drop(c);
+                out.truncate(f.out_to.unwrap_or(out.len()));
+                out.drain(..f.out_from);
             }
         }
         (out, picture)

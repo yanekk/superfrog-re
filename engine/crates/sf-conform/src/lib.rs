@@ -135,7 +135,7 @@ pub fn run_with(
         }
         of += 1;
         let mut mem = sync::core_memory(amiga.memory());
-        let pacing = sync::pacing(&amiga.cpu(), &mem);
+        let pacing = sync::pacing(&amiga.cpu(), &mem, &theirs.paula);
         before_step(f, &mut game);
         // A case comparing only fresh renders does not step the engine (its scenes may not model
         // what the original runs there yet).
@@ -221,17 +221,59 @@ pub fn run_with(
                 }
             }
         }
+        if let Ok(r) = std::env::var("T36_SHOW") {
+            let (a, b) = r.split_once('-').map(|(a, b)| (a.parse::<u32>().unwrap(), b.parse::<u32>().unwrap())).unwrap();
+            sf_core::level::DEBUG.store((a..=b).contains(&(f + 1)), std::sync::atomic::Ordering::Relaxed);
+        }
+        if let Ok(r) = std::env::var("T36_SHOW") {
+            let (a, b) = r.split_once('-').map(|(a, b)| (a.parse::<u32>().unwrap(), b.parse::<u32>().unwrap())).unwrap();
+            if (a..=b).contains(&f) {
+                let l = |ws: &[sf_paula::PaulaWrite]| ws.iter().filter(|w| w.reg < 0xa0).map(|w| format!("{:02x}={:04x}@{}", w.reg, w.value, w.vpos)).collect::<Vec<_>>().join(" ");
+                eprintln!("SHOW {f} {:?}\n  o: {}\n  e: {}", pacing, l(&theirs.paula), l(&ours.paula));
+            }
+        }
+        if std::env::var("T36_STATS").is_ok() && stepped && (after_lag || sync::mid_pass(&amiga.cpu(), &mem)) {
+            let p = compare::paula(&ours.paula, &theirs.paula).is_none();
+            let q = compare::picture(&ours.picture, &theirs.picture).is_none();
+            if !q {
+                let d = report::write_diff_png(&case.name, f, &ours.picture, &theirs.picture, compare::picture(&ours.picture, &theirs.picture).unwrap());
+                eprintln!("T36D {f} {:?}", d);
+            }
+            eprintln!("T36 {f} {} paula {} picture {}", if after_lag { "after" } else { "mid" }, p, q);
+        }
+        if std::env::var("T36_MIDVARS").is_ok() && stepped && sync::mid_pass(&amiga.cpu(), &mem) {
+            let probe = game.probe();
+            let mut names: Vec<String> = Vec::new();
+            for d in LAYOUT {
+                let n = compare::var_diffs(&probe, &mem, d.id).len();
+                if n > 0 { names.push(format!("{}({n})", d.name)); }
+            }
+            eprintln!("MIDVARS {f}: {}", names.join(" "));
+        }
         if stepped && sync::mid_pass(&amiga.cpu(), &mem) {
             outcome.straddled.push(f);
             after_lag = true;
             prev = mem;
             continue;
         }
+        if stepped && after_lag && std::env::var("T36_STRICT").is_ok() {
+            if let Some(d) = compare::paula(&ours.paula, &theirs.paula) {
+                eprintln!("T36P {f}: {d}");
+            }
+            if compare::picture(&ours.picture, &theirs.picture).is_some() && std::env::var("T36_PIC").is_ok() {
+                let d = report::write_diff_png(&case.name, f, &ours.picture, &theirs.picture, compare::picture(&ours.picture, &theirs.picture).unwrap());
+                panic!("after-lag frame {f}: picture differs: {d:?}");
+            }
+        }
         if stepped && after_lag {
             after_lag = false;
             if case.compare.vars
                 && let Some((v, theirs, ours)) = compare::vars(&game.probe(), &mem, &[])
             {
+                if std::env::var("T36_NORESYNC").is_ok() {
+                    let d = compare::var_diffs(&game.probe(), &mem, v.id);
+                    panic!("frame {f}: {} differs after lag: {:?}", v.name, &d[..d.len().min(30)]);
+                }
                 game = Game::with_display(display.clone(), Start::Transplant(mem.clone()));
                 if frog_only {
                     game.frog_only();

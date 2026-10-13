@@ -201,6 +201,12 @@ pub(crate) struct Mem<'a> {
     state: &'a State,
     data: &'a DisplayData,
     world: Option<&'a WorldDisplay>,
+    /// Writes made during the frame ([`crate::mem::WriteLog`]), by address: `(address, the byte
+    /// before, the beam's line)`, each address's in the order made. A line drawn before a write
+    /// sees the byte before it.
+    undo: Vec<(u32, u8, u16)>,
+    /// The line the beam is drawing.
+    line: std::cell::Cell<u16>,
 }
 
 impl<'a> Mem<'a> {
@@ -209,18 +215,59 @@ impl<'a> Mem<'a> {
             state,
             data,
             world: data.world(state.world()),
+            undo: Vec::new(),
+            line: std::cell::Cell::new(0),
         }
     }
 
-    /// `len` bytes at `addr`, from the one place that holds them all, else byte by byte.
-    pub fn bytes(&self, addr: u32, len: u32) -> std::borrow::Cow<'a, [u8]> {
-        if let Some(b) = self.whole(addr, len) {
-            return b.into();
+    /// `state` as the beam saw it, with the frame's writes in `log` made as it went.
+    fn with_log(state: &'a State, data: &'a DisplayData, log: &crate::mem::WriteLog) -> Mem<'a> {
+        let mut undo = log.writes.clone();
+        // A stable sort keeps each address's writes in the order made.
+        undo.sort_by_key(|w| w.0);
+        Mem {
+            undo,
+            ..Mem::new(state, data)
         }
-        (addr..addr + len)
-            .map(|a| self.whole(a, 1).map_or(0, |b| b[0]))
-            .collect::<Vec<u8>>()
-            .into()
+    }
+
+    /// `len` bytes at `addr` as the beam sees them on its line, from the one place that holds
+    /// them all, else byte by byte.
+    pub fn bytes(&self, addr: u32, len: u32) -> std::borrow::Cow<'a, [u8]> {
+        let b: std::borrow::Cow<'a, [u8]> = match self.whole(addr, len) {
+            Some(b) => b.into(),
+            None => (addr..addr + len)
+                .map(|a| self.whole(a, 1).map_or(0, |b| b[0]))
+                .collect::<Vec<u8>>()
+                .into(),
+        };
+        if self.undo.is_empty() {
+            return b;
+        }
+        let line = self.line.get();
+        let from = self.undo.partition_point(|w| w.0 < addr);
+        let mut out: Option<Vec<u8>> = None;
+        let mut done = None;
+        for &(a, old, at) in &self.undo[from..] {
+            if a >= addr + len {
+                break;
+            }
+            // The first write the beam has not seen holds what it sees.
+            if at >= line && done != Some(a) {
+                out.get_or_insert_with(|| b.to_vec())[(a - addr) as usize] = old;
+                done = Some(a);
+            }
+        }
+        match out {
+            Some(v) => v.into(),
+            None => b,
+        }
+    }
+
+    /// The word at `addr` as the beam sees it on `line`.
+    fn word_at(&self, addr: u32, line: u16) -> u16 {
+        self.line.set(line);
+        self.word(addr)
     }
 
     fn whole(&self, addr: u32, len: u32) -> Option<&'a [u8]> {
@@ -324,8 +371,19 @@ struct Denise<'a> {
 
 /// The level's picture.
 pub(crate) fn level(state: &State, data: &DisplayData, view: View) -> Picture {
-    let mem = Mem::new(state, data);
-    let word = |a: u32, _: u16| mem.word(a);
+    level_as_drawn(state, data, view, &crate::mem::WriteLog::default())
+}
+
+/// The level's picture as the beam drew it: `state` at the frame's end, less what `log` says
+/// was written after the beam had passed.
+pub(crate) fn level_as_drawn(
+    state: &State,
+    data: &DisplayData,
+    view: View,
+    log: &crate::mem::WriteLog,
+) -> Picture {
+    let mem = Mem::with_log(state, data, log);
+    let word = |a: u32, line: u16| mem.word_at(a, line);
     draw(
         &mem,
         &word,
@@ -431,6 +489,7 @@ impl Denise<'_> {
         let mut rows = Vec::with_capacity(pic.height as usize);
         let mut field = playfield::Lines::default();
         for line in 0..pic.top + pic.height {
+            self.mem.line.set(line);
             let y = line.checked_sub(pic.top).map(|y| y as usize);
             let mut cuts = [None; 8];
             let mut palette = None;
