@@ -134,6 +134,13 @@ pub fn standard_dispatch() -> &'static Dispatch {
     })
 }
 
+/// No object kinds at all: the frog plays the level alone (conformance against T14's frog-only
+/// cases, whose original has every object frozen out).
+pub fn frog_only_dispatch() -> &'static Dispatch {
+    static D: std::sync::OnceLock<Dispatch> = std::sync::OnceLock::new();
+    D.get_or_init(Dispatch::default)
+}
+
 /// Add an object kind under the original's template index.
 pub fn register(dispatch: &mut Dispatch, type_id: u16, kind: &'static ObjectKind) {
     dispatch.kinds.retain(|k| k.0 != type_id);

@@ -18,9 +18,9 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-13 | 🔄 | Owner, T15: stop and split; T36–T38 added (picture/lag/entry, restart, tally). Draft on local branch `t15-flow-wip`. |
+| 2026-10-13 | 📌 | T15: an undrawn bob's step pointer is 0, so despawn reads width/height from ExecBase ($C00276): `low_vectors`. Items lag W1-1's pass 86/700 frames. |
 | 2026-10-12 | 📌 | T14 review: the lag re-sync loads the original's whole memory, so a divergence landing on a lag frame is erased: `frog-run-w1-1` stayed green with fake walls not digging. A case crossing lag needs a re-sync-free check (level_entry's fake-wall test). |
-| 2026-10-12 | 📌 | T14 review, not fixed: `Scene::step` ignores `Pacing::Late`, against DESIGN §2.1's fixed point in the late pass. No frog case is ever Late; objects (T15–T18) will make passes overrun. |
-| 2026-10-12 | 📌 | T14 review, for T15: `obj_run_all` only asserts no slot is live: nothing calls `Dispatch::kind` yet, and how a slot names its template index is undecided. |
 | 2026-10-12 | 📌 | T14 review sweep, not fixed: `any_frog` (frog_routines.rs) keeps the frog at x, y ≥ 48: the frog routines' edge handling near column or row 0 is never generated. |
 | 2026-10-12 | 📌 | T14: the final level is world 6 with `final_level_flag`; its LW tiles and heights replace W6's. `Bus::b` picks Rom slot 8 by the flag; any reader of world files must too. |
 | 2026-10-12 | 📌 | T14: W5-1's shuttle drifted the frog into a shaft where it sinks (`frog_sprite_dy` counts) and dies at 832, the screen closing; that death path is T15's. `frog-shuttle-w5` keeps it clear. |

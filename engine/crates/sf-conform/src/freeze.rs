@@ -1,6 +1,9 @@
 //! What a case leaves out of the original because the engine does not model it yet (every
 //! exclusion listed in the case file with the task that will model it).
 //!
+//! `objects` (T14's frog cases): no object comes into play in the original: its spawners, bump
+//! blocks and tile pickups return at once, and the engine runs with no object kinds
+//! ([`sf_core::Game::frog_only`]): the frog plays the level alone on both sides.
 //! `enemies`: the objects the engine has no kind for never come into play in the original. Each
 //! world's marker stub in `obj_flag_jumptab` that the engine's dispatch has no spawner for
 //! (enemies and each world's scenery, T16–T18) returns at once, and so does each spawn the frog's
@@ -24,6 +27,61 @@ const UNPORTED_SPAWNS: [(u32, &str); 1] = [(0x1130a, "T17")];
 
 fn word(b: &[u8], at: usize) -> u16 {
     u16::from_be_bytes([b[at], b[at + 1]])
+}
+
+/// What a case freezes out of the original.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Freeze {
+    None,
+    /// Every object (T14's frog cases).
+    Objects,
+    /// The objects the engine has no kind for.
+    Enemies,
+}
+
+/// The routines T14's freeze patches to return: the five spawners (h0+$1b3d8, $1b4e6, $1b5d0,
+/// $1b706, $1b822), the bump blocks (h0+$f6be) and the tile pickups (h0+$ed8a).
+const RETURN_AT_ONCE: [u32; 7] = [0x1b3d8, 0x1b4e6, 0x1b5d0, 0x1b706, 0x1b822, 0xf6be, 0xed8a];
+
+impl Freeze {
+    /// The sync point's cache key line: a snapshot taken with another freeze is another snapshot.
+    pub fn tag(self) -> String {
+        match self {
+            Freeze::None => String::new(),
+            Freeze::Objects => "objects frozen v1\n".to_string(),
+            Freeze::Enemies => tag(),
+        }
+    }
+
+    /// Patch the original as this freeze has it (see the module's notes).
+    pub fn apply(self, a: &mut Amiga, display: &DisplayData) {
+        match self {
+            Freeze::None => {}
+            Freeze::Objects => freeze_all(a, display),
+            Freeze::Enemies => freeze_objects(a, display),
+        }
+    }
+}
+
+/// T14's freeze: the spawners, bump blocks and tile pickups return at once, and every marker stub.
+fn freeze_all(a: &mut Amiga, display: &DisplayData) {
+    let rom = &display.rom().h0;
+    if rom.len() < (JUMPTAB + 4 * WORLDS * MARKERS) as usize {
+        return;
+    }
+    let mem = a.peek(h0(0), rom.len().min(0x30000));
+    for &off in &RETURN_AT_ONCE {
+        let o = off as usize;
+        if word(&mem, o) == word(rom, o) && word(rom, o) != 0x4e75 {
+            a.poke(h0(off), &[0x4e, 0x75]);
+        }
+    }
+    for k in 0..WORLDS * MARKERS {
+        let o = (JUMPTAB + 4 * k) as usize;
+        if mem[o..o + 4] == rom[o..o + 4] {
+            a.poke(h0(JUMPTAB + 4 * k), &[0x4e, 0x75, 0x4e, 0x71]);
+        }
+    }
 }
 
 /// The `(world, marker)` stubs frozen: those the engine's dispatch has no spawner for.
@@ -55,7 +113,7 @@ pub fn unported_spawn_patches() -> Vec<(u32, Vec<u8>)> {
         .collect()
 }
 
-/// Patch the original's unmodelled objects out, once the game's hunk 0 is in memory (each patch
+/// The `enemies` freeze: patch the original's unmodelled objects out, once the game's hunk 0 is in memory (each patch
 /// checks its code is the executable's before writing; already patched code is left alone).
 pub fn freeze_objects(a: &mut Amiga, display: &DisplayData) {
     let rom = &display.rom().h0;

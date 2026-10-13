@@ -5,11 +5,11 @@ script = "frog-pit"
 frames = 276
 
 [[exclude]]
-what = "enemies"
-note = "the original's marker spawners the engine has none for (enemies, the world's scenery) and the bubble return at once from power-on"
-task = "T16–T18"
+what = "objects"
+note = "the original's object spawns, bump blocks and tile pickups return at once from power-on; the engine runs frog-only"
+task = "T36 (items in frame cases), T16–T18 (enemies)"
 
 [[exclude]]
 what = "unreached"
 note = "the restart after a death (the level's loop ends at frame 277)"
-task = "T15"
+task = "T37"

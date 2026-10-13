@@ -92,16 +92,18 @@ the task that will model it (DESIGN §2.1):
 
 ```toml
 [[exclude]]
-what = "enemies"     # "enemies", "panel" or "unreached"
-note = "the original's marker spawners the engine has none for (enemies, the world's scenery) and the bubble return at once from power-on"
-task = "T16–T18"
+what = "objects"     # "objects", "enemies", "panel" or "unreached"
+note = "the original's object spawns, bump blocks and tile pickups return at once from power-on"
+task = "T36"
 ```
 
-- `enemies`: each world's marker spawner the engine's dispatch has none for (enemies and the
-  world's scenery), and the frog-side spawns no task has ported yet (`freeze::UNPORTED_SPAWNS`),
-  are made to return at once from power-on (`sf_conform::freeze`), so the original plays the level
-  with the objects the engine models (coins, items, pads, launchers, switches: T15) and no others.
-  The sync point is cached per set frozen. The frog and item cases run so.
+- `objects`: the original's object spawners, bump blocks and tile pickups are made to return at
+  once from power-on (`sf_conform::freeze`), and the engine runs with no object kinds
+  (`Game::frog_only`): the frog plays the level alone on both sides (a separate cached sync point).
+  The frog cases (`cases/frog-*.toml`) run so.
+- `enemies`: only each world's marker spawners the engine's dispatch has none for (enemies, the
+  world's scenery) and the frog-side spawns no task has ported (`freeze::UNPORTED_SPAWNS`) are
+  frozen; the items play on both sides (`cases/items-*.toml`). The sync point is cached per set.
 - `panel`: the panel's bitmap and the picture's panel lines are not compared.
 - `unreached`: listed only: what the case's input never makes the original do (the restart after
   a death), so there is nothing to freeze.

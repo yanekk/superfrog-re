@@ -38,6 +38,9 @@ impl Compare {
 /// file, each with the task that will model it): see [`crate::freeze`].
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Excluded {
+    /// Every object of the original is frozen out from power-on and the engine runs with none
+    /// (T14's frog cases, [`crate::freeze`]).
+    Objects,
     /// The original's objects the engine has no kind for (enemies, each world's scenery) are
     /// frozen out from power-on ([`crate::freeze`]).
     Enemies,
@@ -74,6 +77,18 @@ pub struct Case {
 impl Case {
     pub fn excludes(&self, what: Excluded) -> bool {
         self.exclude.iter().any(|e| e.what == what)
+    }
+
+    /// What the case freezes out of the original.
+    pub fn freeze(&self) -> crate::freeze::Freeze {
+        use crate::freeze::Freeze;
+        if self.excludes(Excluded::Objects) {
+            Freeze::Objects
+        } else if self.excludes(Excluded::Enemies) {
+            Freeze::Enemies
+        } else {
+            Freeze::None
+        }
     }
 }
 
@@ -194,10 +209,11 @@ impl Case {
                         .ok_or(format!("exclude needs `{k}`"))
                 };
                 let what = match s("what")?.as_str() {
+                    "objects" => Excluded::Objects,
                     "enemies" => Excluded::Enemies,
                     "panel" => Excluded::Panel,
                     "unreached" => Excluded::Unreached,
-                    w => return Err(format!("exclude: `{w}` is not enemies, panel or unreached")),
+                    w => return Err(format!("exclude: `{w}` is not objects, enemies, panel or unreached")),
                 };
                 exclude.push(Exclusion {
                     what,

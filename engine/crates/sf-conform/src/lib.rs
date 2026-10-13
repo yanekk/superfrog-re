@@ -89,7 +89,7 @@ pub fn run_with(
     case: &Case,
     mut before_step: impl FnMut(u32, &mut Game),
 ) -> Result<Outcome, Divergence> {
-    let frozen = case.excludes(case::Excluded::Enemies);
+    let frozen = case.freeze();
     let synced = sync::reach_frozen(&case.sync, &case.script, case.frames + LOAD_SEARCH, frozen)
         .unwrap_or_else(|e| panic!("{}: {e}", case.name));
     let mut amiga = synced.amiga;
@@ -105,7 +105,11 @@ pub fn run_with(
         _ => Start::Transplant(synced.memory),
     };
     let display = display_data();
+    let frog_only = frozen == freeze::Freeze::Objects;
     let mut game = Game::with_display(display.clone(), start);
+    if frog_only {
+        game.frog_only();
+    }
     let mut outcome = Outcome {
         frames: case.frames,
         ..Outcome::default()
@@ -122,9 +126,7 @@ pub fn run_with(
     let mut disks = (case.sync == SyncPoint::EndSequence).then(|| sync::Disks::at(&prev));
     for f in 0..case.frames {
         let input = case.script.input_at(of);
-        if frozen {
-            freeze::freeze_objects(&mut amiga, &display);
-        }
+        frozen.apply(&mut amiga, &display);
         let mut theirs = amiga
             .step(input)
             .unwrap_or_else(|e| panic!("{}: oracle, frame {of}: {e}", case.name));
@@ -166,9 +168,7 @@ pub fn run_with(
                         "{}: the original's load ({end:x?}) was not over within {LOAD_SEARCH} frames of the engine's (frame {f})",
                         case.name
                     );
-                    if frozen {
-                        freeze::freeze_objects(&mut amiga, &display);
-                    }
+                    frozen.apply(&mut amiga, &display);
                     theirs = amiga
                         .step(case.script.input_at(of))
                         .unwrap_or_else(|e| panic!("{}: oracle, frame {of}: {e}", case.name));
@@ -233,6 +233,9 @@ pub fn run_with(
                 && let Some((v, theirs, ours)) = compare::vars(&game.probe(), &mem, &[])
             {
                 game = Game::with_display(display.clone(), Start::Transplant(mem.clone()));
+                if frog_only {
+                    game.frog_only();
+                }
                 outcome.resynced.push((
                     f,
                     format!("{} at ${:06x}: original ${theirs:x}, engine ${ours:x}", v.name, v.addr),

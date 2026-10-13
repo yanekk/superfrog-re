@@ -576,7 +576,8 @@ mod tests {
             assert_eq!(index_of(d.addr), Some(i), "{}", d.name);
             assert_eq!(index_of(d.addr + d.width.len() - 1), Some(i), "{}", d.name);
         }
-        assert_eq!(index_of(0), None);
+        assert_eq!(index_of(0), Some(0), "low_vectors");
+        assert_eq!(index_of(8), None);
         assert_eq!(index_of(0xF0_0000), None);
     }
 

@@ -7,6 +7,7 @@
 //! through, listed below with the task that models it.
 
 use sf_assets::LevelId;
+use sf_conform::freeze::Freeze;
 use sf_conform::{InputScript, SyncPoint, display_data, sync};
 use sf_core::layout::{AmigaMemory, LAYOUT, Ram, VarDef};
 use sf_core::{Game, Start, View};
@@ -196,12 +197,13 @@ fn a_game_started_at_a_level_plays_as_the_original() {
     let id: LevelId = "W1-1".parse().unwrap();
     let script = InputScript::load(&sf_conform::case::script_path("frog-run-right")).unwrap();
     let frames = 500;
-    let synced = sync::reach_frozen(&SyncPoint::AtLevel(id), &script, frames, true).unwrap();
+    let synced = sync::reach_frozen(&SyncPoint::AtLevel(id), &script, frames, Freeze::Objects).unwrap();
     let mut amiga = synced.amiga;
     let mut game = Game::with_display(display.clone(), Start::Level(id));
+    game.frog_only();
     let watched = [VarId::FrogX, VarId::FrogY, VarId::CameraX, VarId::CameraY];
     for f in 0..frames {
-        sf_conform::freeze::freeze_objects(&mut amiga, &display);
+        Freeze::Objects.apply(&mut amiga, &display);
         let input = script.input_at(f);
         let theirs = amiga.step(input).unwrap();
         let mem = sync::core_memory(amiga.memory());
@@ -240,14 +242,15 @@ fn the_fake_wall_opens_as_in_the_original_without_a_re_sync() {
     let id: LevelId = "W1-1".parse().unwrap();
     let script = InputScript::load(&sf_conform::case::script_path("frog-run-right")).unwrap();
     let frames = 620;
-    let synced = sync::reach_frozen(&SyncPoint::AtLevel(id), &script, frames, true).unwrap();
+    let synced = sync::reach_frozen(&SyncPoint::AtLevel(id), &script, frames, Freeze::Objects).unwrap();
     let mut amiga = synced.amiga;
     let mut game = Game::with_display(display.clone(), Start::Level(id));
+    game.frog_only();
     let map = def(VarId::LevelMap);
     let at_start = game.state().var(VarId::LevelMap).into_owned();
     let mut lagged = 0;
     for f in 0..frames {
-        sf_conform::freeze::freeze_objects(&mut amiga, &display);
+        Freeze::Objects.apply(&mut amiga, &display);
         let input = script.input_at(f);
         amiga.step(input).unwrap();
         let mem = sync::core_memory(amiga.memory());
