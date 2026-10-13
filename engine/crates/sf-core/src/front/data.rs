@@ -79,7 +79,7 @@ impl FrontData {
 
 /// Hunk `hunk` of `exe` as the loader leaves it: its data padded to its size, each relocated long
 /// plus its target hunk's base from `bases`.
-pub fn relocate(exe: &ExeImage, hunk: usize, bases: &[u32]) -> Vec<u8> {
+pub(crate) fn relocate(exe: &ExeImage, hunk: usize, bases: &[u32]) -> Vec<u8> {
     let Some(h) = exe.hunks.get(hunk) else {
         return Vec::new();
     };

@@ -103,6 +103,22 @@ headless.
 | [T39](tasks/T39-enemies-world-5.md) | enemies-world-5 | T16, T38; blocks T18 |
 | [T40](tasks/T40-enemies-world-6.md) | enemies-world-6 | T38; blocks T18 |
 | [T41](tasks/T41-enemies-world-4.md) | enemies-world-4 | T38; blocks T18 |
+| [T42](tasks/T42-enemies-world-1.md) | enemies-world-1 | T38; blocks T18, T33 |
+| [T43](tasks/T43-enemies-world-2.md) | enemies-world-2 | T38; blocks T18, T39 |
+| [T44](tasks/T44-enemies-world-3.md) | enemies-world-3 | T38; blocks T18 |
+| [T46](tasks/T46-story-intro-scenes.md) | story-intro-scenes | T32; blocks T21 |
+| [T47](tasks/T47-story-intro-handover.md) | story-intro-handover | T46; blocks T21 |
+| [T48](tasks/T48-story-intro-skips.md) | story-intro-skips | T46, T47; blocks T21 |
+| [T70](tasks/T70-bonus-level.md) | bonus-level | T15; blocks T21 |
+| [T71](tasks/T71-slot-sync.md) | slot-sync | T15 |
+| [T72](tasks/T72-slot-screen.md) | slot-screen | T71 |
+| [T73](tasks/T73-slot-rounds.md) | slot-rounds | T72 |
+| [T74](tasks/T74-slot-prizes.md) | slot-prizes | T73; blocks T21 |
+| [T75](tasks/T75-bonus-shots.md) | bonus-shots | T70; blocks T21 |
+| [T76](tasks/T76-bonus-enemies-a.md) | bonus-enemies-a | T70; blocks T21 |
+| [T77](tasks/T77-bonus-enemies-b.md) | bonus-enemies-b | T70, T76; blocks T21 |
+| [T78](tasks/T78-bonus-enemy-death.md) | bonus-enemy-death | T70, T75; blocks T21 |
+| [T79](tasks/T79-bonus-level-frames.md) | bonus-level-frames | T70, T37, T75, T76, T77, T78; blocks T21 |
 | [T81](tasks/T81-beam-cleanup.md) | beam-cleanup | T36; blocks T37 |
 | [T82](tasks/T82-beam-tests.md) | beam-tests | T81 |
 | [T83](tasks/T83-items-w1.md) | items-w1 | T81 |

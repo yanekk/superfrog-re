@@ -67,7 +67,7 @@ fn main() {
             // keep the engine on the original's memory after a lag, as the runner does
         }
         if after_mid { continue; }
-        if sf_conform::compare::vars(&game.probe(), &mem, &[]).is_some() && !mid {
+        if sf_conform::compare::vars(game.layout(), &game.probe(), &mem, &[]).is_some() && !mid {
             game = Game::with_display(display.clone(), Start::Transplant(mem.clone()));
             if frozen == sf_conform::freeze::Freeze::Objects { game.frog_only(); }
         }

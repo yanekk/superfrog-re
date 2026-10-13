@@ -97,7 +97,7 @@ fn main() {
                 });
             }
             after_mid = mid;
-            if !mid && sf_conform::compare::vars(&game.probe(), &mem, &[]).is_some() {
+            if !mid && sf_conform::compare::vars(game.layout(), &game.probe(), &mem, &[]).is_some() {
                 game = new(mem.clone());
             }
         }

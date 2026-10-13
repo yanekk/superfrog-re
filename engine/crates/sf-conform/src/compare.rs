@@ -1,6 +1,6 @@
 //! One frame of the engine against one frame of the original (DESIGN §2.1).
 
-use sf_core::layout::{AmigaMemory, LAYOUT, VarDef, VarId};
+use sf_core::layout::{AmigaMemory, VarDef, VarId};
 use sf_core::{FrameOut, Picture};
 use sf_oracle::{FrameCapture, Rgb12Frame};
 use sf_paula::PaulaWrite;
@@ -9,9 +9,11 @@ use crate::case::Case;
 use crate::report::{self, Divergence};
 
 /// The case's comparisons on frame `frame`: `None` when all match.
+#[allow(clippy::too_many_arguments)]
 pub fn frame(
     case: &Case,
     frame: u32,
+    layout: &[VarDef],
     probe: &[(VarId, u32)],
     theirs_mem: &AmigaMemory,
     ours: &FrameOut,
@@ -35,12 +37,12 @@ pub fn frame(
     let first_var = c
         .vars
         .then(|| {
-            vars_except(probe, theirs_mem, masked, |id| {
-                (skip_panel && id == VarId::PanelBitmap)
+            vars_except(layout, probe, theirs_mem, masked, |d| {
+                (skip_panel && d.id == VarId::PanelBitmap)
                     || case
                         .only_vars
                         .as_ref()
-                        .is_some_and(|only| !only.iter().any(|n| n == sf_core::layout::def(id).name))
+                        .is_some_and(|only| !only.iter().any(|n| n == d.name))
             })
         })
         .flatten();
@@ -68,7 +70,7 @@ pub fn frame(
         unported: Vec::new(),
         var_detail: first_var
             .map(|(d, _, _)| {
-                var_diffs(probe, theirs_mem, d.id)
+                var_diffs(layout, probe, theirs_mem, d.id)
                     .into_iter()
                     .take(40)
                     .collect()
@@ -82,9 +84,14 @@ pub fn frame(
 pub const PANEL_ROWS: u16 = 0x36 - 0x27;
 
 /// Every piece of `id`'s entry that differs, as `offset: original/engine`, for a report.
-pub fn var_diffs(probe: &[(VarId, u32)], theirs: &AmigaMemory, id: VarId) -> Vec<String> {
-    let pieces: Vec<VarDef> = LAYOUT.iter().flat_map(|d| d.pieces()).collect();
-    let base = LAYOUT.iter().find(|d| d.id == id).map_or(0, |d| d.addr);
+pub fn var_diffs(
+    layout: &[VarDef],
+    probe: &[(VarId, u32)],
+    theirs: &AmigaMemory,
+    id: VarId,
+) -> Vec<String> {
+    let pieces: Vec<VarDef> = layout.iter().flat_map(|d| d.pieces()).collect();
+    let base = layout.iter().find(|d| d.id == id).map_or(0, |d| d.addr);
     pieces
         .into_iter()
         .zip(probe)
@@ -100,21 +107,23 @@ pub fn var_diffs(probe: &[(VarId, u32)], theirs: &AmigaMemory, id: VarId) -> Vec
 /// original's value, engine's value). Pieces inside a `masked` run (address, length) are not
 /// compared: memory a job of the original's CPU has not finished writing (DESIGN §2.1).
 pub fn vars(
+    layout: &[VarDef],
     probe: &[(VarId, u32)],
     theirs: &AmigaMemory,
     masked: &[(u32, u32)],
 ) -> Option<(VarDef, u32, u32)> {
-    vars_except(probe, theirs, masked, |_| false)
+    vars_except(layout, probe, theirs, masked, |_| false)
 }
 
 /// [`vars`], leaving out the variables `skip` says.
 pub fn vars_except(
+    layout: &[VarDef],
     probe: &[(VarId, u32)],
     theirs: &AmigaMemory,
     masked: &[(u32, u32)],
-    skip: impl Fn(VarId) -> bool,
+    skip: impl Fn(&VarDef) -> bool,
 ) -> Option<(VarDef, u32, u32)> {
-    let pieces: Vec<VarDef> = LAYOUT.iter().flat_map(|d| d.pieces()).collect();
+    let pieces: Vec<VarDef> = layout.iter().flat_map(|d| d.pieces()).collect();
     assert_eq!(
         pieces.len(),
         probe.len(),
@@ -132,7 +141,7 @@ pub fn vars_except(
             assert_eq!(p.id, id, "probe out of LAYOUT order");
             (p, p.read(theirs), ours)
         })
-        .find(|(p, theirs, ours)| theirs != ours && !skip(p.id))
+        .find(|(p, theirs, ours)| theirs != ours && !skip(p))
 }
 
 /// Where two pictures first differ, before the PNG is written.

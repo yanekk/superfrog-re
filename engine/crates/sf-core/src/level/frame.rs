@@ -114,7 +114,7 @@ pub fn main_program(c: &mut LevelCtx, pending: Option<beam::Pending>, pacing: cr
     let own = beam::FrameSpec {
         hw: c.hw,
         cut: match pacing {
-            crate::Pacing::OnTime => None,
+            crate::Pacing::Unpaced | crate::Pacing::OnTime => None,
             crate::Pacing::Late {
                 writes,
                 line,

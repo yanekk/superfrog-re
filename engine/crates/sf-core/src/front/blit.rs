@@ -4,6 +4,32 @@
 
 use crate::state::State;
 
+/// Memory a blit reads and writes: the front end's [`State`], or the story intro's RAM.
+pub trait BlitMem {
+    fn blit_w(&self, addr: u32) -> u16;
+    fn blit_set_w(&mut self, addr: u32, v: u16);
+}
+
+impl BlitMem for State {
+    fn blit_w(&self, addr: u32) -> u16 {
+        self.w(addr)
+    }
+
+    fn blit_set_w(&mut self, addr: u32, v: u16) {
+        self.set_w(addr, v)
+    }
+}
+
+impl BlitMem for crate::front::story::StoryMem {
+    fn blit_w(&self, addr: u32) -> u16 {
+        self.w(addr)
+    }
+
+    fn blit_set_w(&mut self, addr: u32, v: u16) {
+        self.set_w(addr, v)
+    }
+}
+
 /// One area blit's registers.
 #[derive(Debug, Clone, Copy, Default)]
 pub struct Blit {
@@ -36,7 +62,7 @@ impl Blit {
     }
 
     /// Run the blit. Returns the pointers as the blitter leaves them.
-    pub fn run(&self, s: &mut State) -> [u32; 4] {
+    pub fn run<M: BlitMem>(&self, s: &mut M) -> [u32; 4] {
         let h = match self.size >> 6 {
             0 => 1024,
             n => n as u32,
@@ -62,7 +88,7 @@ impl Blit {
                 let mut v = [0u16; 3];
                 for (k, val) in v.iter_mut().enumerate() {
                     if uses[k] {
-                        *val = s.w(pt[k]);
+                        *val = s.blit_w(pt[k]);
                         pt[k] = (pt[k] as i32 + step) as u32;
                     }
                 }
@@ -88,7 +114,7 @@ impl Blit {
                 b_old = v[1];
                 let d = logic(minterm, a_sh as u16, b_sh as u16, v[2]);
                 if uses[3] {
-                    s.set_w(pt[3], d);
+                    s.blit_set_w(pt[3], d);
                     pt[3] = (pt[3] as i32 + step) as u32;
                 }
             }
@@ -137,7 +163,7 @@ pub fn word_times(
 }
 
 /// The minterm function of A, B and C.
-fn logic(m: u8, a: u16, b: u16, c: u16) -> u16 {
+pub(crate) fn logic(m: u8, a: u16, b: u16, c: u16) -> u16 {
     let mut d = 0;
     for bit in 0..8 {
         if m >> bit & 1 == 1 {

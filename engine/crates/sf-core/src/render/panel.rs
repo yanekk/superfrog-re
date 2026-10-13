@@ -13,6 +13,7 @@ pub(super) fn fetch(mem: &Mem, planes: &Planes, left: i32, row: &mut [u8]) {
     // Lores: a fetch unit of 8 slots takes plane 1 last, then 2, 3, 4, 5 at these slots.
     const SLOT: [u16; 6] = [7, 3, 5, 1, 6, 2];
     let first = mem.fetch_start.get();
+    let hires = planes.fetch.hires();
     for p in 0..planes.fetch.planes() as usize {
         if first != 0 {
             mem.fetch_start.set(first + SLOT[p]);
@@ -20,7 +21,12 @@ pub(super) fn fetch(mem: &Mem, planes: &Planes, left: i32, row: &mut [u8]) {
         let data = mem.bytes(planes.pt[p], 2 * words as u32);
         let start = planes.index(p, left);
         for (x, px) in row.iter_mut().enumerate() {
-            let i = start + x as i32;
+            // Hires: a lores pixel shows the first of its two hires pixels, as the capture keeps.
+            let i = if hires {
+                planes.index_hires(p, left) + 2 * x as i32
+            } else {
+                start + x as i32
+            };
             if (0..16 * words).contains(&i) {
                 let (byte, bit) = ((i / 8) as usize, 7 - i % 8);
                 *px |= (data[byte] >> bit & 1) << p;

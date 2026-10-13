@@ -134,6 +134,7 @@ impl Case {
         }
         let sync = match t.get("sync") {
             Some(toml::Value::String(s)) if s == "power-on" => SyncPoint::PowerOn,
+            Some(toml::Value::String(s)) if s == "power-on-disk3" => SyncPoint::PowerOnDisk3,
             Some(toml::Value::String(s)) if s == "end-sequence" => SyncPoint::EndSequence,
             Some(toml::Value::Table(s)) if s.contains_key("level") => SyncPoint::AtLevel(
                 s["level"]
@@ -155,7 +156,7 @@ impl Case {
             },
             _ => {
                 return Err(
-                    "sync is \"power-on\", \"end-sequence\", { script = \"…\", frame = N } or { level = \"W1-1\" }"
+                    "sync is \"power-on\", \"power-on-disk3\", \"end-sequence\", { script = \"…\", frame = N } or { level = \"W1-1\" }"
                         .into(),
                 );
             }

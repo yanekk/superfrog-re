@@ -38,10 +38,10 @@ done · ⛔ blocked, needs a human.
 | T13 | renderer | T08, T12 | ✅ | |
 | T14 | frog-and-level | T06, T11, T12, T13 | ✅ | |
 | T15 | items-and-scoring | T14 | ✅ | |
-| T16 | enemies-worlds-1-3 | T15 | ⬜ | |
+| T16 | enemies-worlds-1-3 | T15 | ✅ | |
 | T17 | enemies-worlds-4-6 | T15 | ✅ | |
 | T18 | bosses | T16, T17 | ⬜ | |
-| T19 | slot-and-bonus | T15 | ⬜ | |
+| T19 | slot-and-bonus | T15 | ✅ | |
 | T20 | front-end | T08, T11, T12, T13 | ✅ | |
 | T21 | game-flow | T18, T19, T20 | ⬜ | |
 | T22 | app-rig | T09, T10, T12, T13 | ✅ | |
@@ -54,7 +54,7 @@ done · ⛔ blocked, needs a human.
 | T29 | app-drill | T21, T25, T26, T27, T28 | ⬜ | |
 | T30 | acceptance | T29 | ⬜ | |
 | T31 | render-remaining-levels | T13 | ✅ | |
-| T32 | story-intro | T20; blocks T21 | ⬜ | |
+| T32 | story-intro | T20; blocks T21 | ✅ | |
 | T33 | attract-demo | T16, T20 | ⬜ | |
 | T34 | game-over | T15, T20; blocks T21 | ⬜ | |
 | T35 | end-sequence | T20; blocks T21 | ✅ | |
@@ -64,6 +64,22 @@ done · ⛔ blocked, needs a human.
 | T39 | enemies-world-5 | T16, T38; blocks T18 | ⬜ | |
 | T40 | enemies-world-6 | T38; blocks T18 | ⬜ | |
 | T41 | enemies-world-4 | T38; blocks T18 | ⬜ | |
+| T42 | enemies-world-1 | T38; blocks T18, T33 | ⬜ | |
+| T43 | enemies-world-2 | T38; blocks T18, T39 | ⬜ | |
+| T44 | enemies-world-3 | T38; blocks T18 | ⬜ | |
+| T46 | story-intro-scenes | T32; blocks T21 | ⬜ | |
+| T47 | story-intro-handover | T46; blocks T21 | ⬜ | |
+| T48 | story-intro-skips | T46, T47; blocks T21 | ⬜ | |
+| T70 | bonus-level | T15; blocks T21 | ✅ | |
+| T71 | slot-sync | T15 | ⬜ | |
+| T72 | slot-screen | T71 | ⬜ | |
+| T73 | slot-rounds | T72 | ⬜ | |
+| T74 | slot-prizes | T73; blocks T21 | ⬜ | |
+| T75 | bonus-shots | T70; blocks T21 | ⬜ | |
+| T76 | bonus-enemies-a | T70; blocks T21 | ⬜ | |
+| T77 | bonus-enemies-b | T70, T76; blocks T21 | ⬜ | |
+| T78 | bonus-enemy-death | T70, T75; blocks T21 | ⬜ | |
+| T79 | bonus-level-frames | T70, T37, T75, T76, T77, T78; blocks T21 | ⬜ | |
 | T81 | beam-cleanup | T36; blocks T37 | ⬜ | |
 | T82 | beam-tests | T81 | ⬜ | |
 | T83 | items-w1 | T81 | ⬜ | |

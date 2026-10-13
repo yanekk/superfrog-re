@@ -122,6 +122,9 @@ pub struct Mem {
     files: Vec<(u32, File)>,
     written: BTreeMap<u32, u8>,
     low: [u8; LOW_CHIP],
+    /// Runs of chip RAM given as they are (the story intro's: its hunk 2 holds the modules,
+    /// samples and effects), read after the driver's own writes.
+    image: Vec<(u32, Vec<u8>)>,
 }
 
 impl Mem {
@@ -136,6 +139,11 @@ impl Mem {
         let addr = addr & 0xFF_FFFF;
         if let Some(&v) = self.written.get(&addr) {
             return v;
+        }
+        for (at, bytes) in &self.image {
+            if addr >= *at && ((addr - at) as usize) < bytes.len() {
+                return bytes[(addr - at) as usize];
+            }
         }
         for &(at, f) in self.files.iter().rev() {
             let bytes = Mem::file_bytes(data, f);
@@ -210,9 +218,68 @@ pub struct AudioDriver {
     pub(crate) module_addr: u32,
     pub(crate) backup: Block,
     pub(crate) mem: Mem,
+    /// The story intro's copy of the driver (`d3_c04`), which differs from the game's in
+    /// `music_stop` (h0+$391fc: music off and the audio DMA off, nothing more).
+    pub(crate) intro: bool,
+}
+
+/// Where each variable block of [`vars::ALL`] is in the story intro's memory (its driver is the
+/// game's code at other addresses, its variables in the same order around it). Its effect tables
+/// are in hunk 2 and its module address and header backup do not exist (`None`).
+pub struct IntroVars {
+    pub sfx: u32,
+    pub music_on: u32,
+    pub p41: u32,
+    pub shadow: u32,
+    pub stream: u32,
+    /// The sample pointers and the effect pointers.
+    pub samples: u32,
+    pub effects: u32,
 }
 
 impl AudioDriver {
+    /// The story intro's driver as its memory holds it: `read(addr)` gives a byte, `chip` is the
+    /// run of chip RAM the driver reads modules, samples and effects from.
+    pub fn intro_from(
+        read: &dyn Fn(u32) -> u8,
+        at: &IntroVars,
+        chip: (u32, Vec<u8>),
+    ) -> AudioDriver {
+        let block =
+            |base: u32, len: usize| Block((0..len as u32).map(|i| read(base + i)).collect());
+        let mut tables = block(at.samples, 0x400);
+        tables.0.extend(block(at.effects, 0x400).0);
+        let mut d = AudioDriver::blank();
+        d.sfx = block(at.sfx, vars::SFX.1);
+        d.music_on = block(at.music_on, vars::MUSIC_ON.1);
+        d.p41 = block(at.p41, vars::P41.1);
+        d.shadow = block(at.shadow, vars::SHADOW.1);
+        d.stream = block(at.stream, vars::STREAM.1);
+        d.tables = tables;
+        d.mem.image = vec![chip];
+        for i in 0..LOW_CHIP {
+            d.mem.low[i] = read(i as u32);
+        }
+        d.intro = true;
+        d
+    }
+
+    /// The story intro's variables to write back to its memory, `(address, bytes)`, and the
+    /// bytes of chip RAM the driver wrote (a module it relocated).
+    #[allow(clippy::type_complexity)]
+    pub fn intro_vars(&self, at: &IntroVars) -> (Vec<(u32, Vec<u8>)>, Vec<(u32, u8)>) {
+        (
+            vec![
+                (at.sfx, self.sfx.0.clone()),
+                (at.music_on, self.music_on.0.clone()),
+                (at.p41, self.p41.0.clone()),
+                (at.shadow, self.shadow.0.clone()),
+                (at.stream, self.stream.0.clone()),
+            ],
+            self.mem.written.iter().map(|(&a, &v)| (a, v)).collect(),
+        )
+    }
+
     /// Power-on: every variable as the executable holds it before the game runs.
     pub fn new(data: &SoundData) -> AudioDriver {
         let block = |(off, len): (u32, usize)| Block(data.h0_bytes(off, len));
@@ -226,6 +293,7 @@ impl AudioDriver {
             module_addr: Block(data.h0_bytes(vars::MODULE_ADDR.0, 4)).l(0),
             backup: block(vars::HEADER_BACKUP),
             mem: Mem::default(),
+            intro: false,
         }
     }
 
@@ -243,6 +311,7 @@ impl AudioDriver {
             module_addr: 0,
             backup: block(vars::HEADER_BACKUP),
             mem: Mem::default(),
+            intro: false,
         }
     }
 

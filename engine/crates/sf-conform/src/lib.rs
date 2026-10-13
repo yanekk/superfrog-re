@@ -98,6 +98,9 @@ pub fn run_with(
         SyncPoint::PowerOn => Start::PowerOn {
             seed: synced.seed.unwrap_or_default(),
         },
+        SyncPoint::PowerOnDisk3 => Start::Disk3 {
+            seed: synced.seed.unwrap_or_default(),
+        },
         SyncPoint::AtFrame { .. } | SyncPoint::EndSequence => Start::Resume {
             memory: synced.memory,
             cpu: sync::core_cpu(&amiga.cpu()),
@@ -127,15 +130,14 @@ pub fn run_with(
     for f in 0..case.frames {
         let input = case.script.input_at(of);
         frozen.apply(&mut amiga, &display);
-        let mut theirs = amiga
-            .step(input)
+        let mut theirs = sync::step_inserting(&mut amiga, input)
             .unwrap_or_else(|e| panic!("{}: oracle, frame {of}: {e}", case.name));
         if let Some(d) = disks.as_mut() {
             d.serve(&mut amiga);
         }
         of += 1;
         let mut mem = sync::core_memory(amiga.memory());
-        let pacing = sync::pacing(&amiga.cpu(), &mem, &theirs.paula);
+        let mut pacing = sync::pacing(&amiga.cpu(), &mem, &theirs.paula);
         before_step(f, &mut game);
         // A case comparing only fresh renders does not step the engine (its scenes may not model
         // what the original runs there yet).
@@ -171,8 +173,7 @@ pub fn run_with(
                         case.name
                     );
                     frozen.apply(&mut amiga, &display);
-                    theirs = amiga
-                        .step(case.script.input_at(of))
+                    theirs = sync::step_inserting(&mut amiga, case.script.input_at(of))
                         .unwrap_or_else(|e| panic!("{}: oracle, frame {of}: {e}", case.name));
                     if let Some(d) = disks.as_mut() {
                         d.serve(&mut amiga);
@@ -180,6 +181,8 @@ pub fn run_with(
                     of += 1;
                     prev_mem = std::mem::replace(&mut mem, sync::core_memory(amiga.memory()));
                 }
+                // The schedule as the original is once its load is over.
+                pacing = sync::pacing(&amiga.cpu(), &mem, &theirs.paula);
                 // The engine's frame again, with what runs on by itself while the original loads
                 // (the keyboard's poll, the music) as the original had it just before this frame,
                 // then what the load left that the engine does not model, as it is after it.
@@ -191,10 +194,21 @@ pub fn run_with(
                 };
                 let redo = |line: Option<u16>| {
                     let mut g = before.clone();
-                    take(&mut g, &prev_mem, sf_core::front::RUNS_DURING_LOAD);
+                    if before.story().is_some() {
+                        // The intro puts them in place at its load, after what came before it.
+                        let runs = before
+                            .runs_during_load()
+                            .iter()
+                            .map(|&(a, n)| (a, (a..a + n).map(|x| prev_mem.byte(x)).collect()))
+                            .collect();
+                        g.set_load_state(runs);
+                    } else {
+                        take(&mut g, &prev_mem, before.runs_during_load());
+                    }
                     g.set_load_line(line);
                     let out = g.step_paced(input, pacing);
-                    take(&mut g, &mem, sf_core::front::LOAD_LEAVES);
+                    let leaves = g.load_leaves();
+                    take(&mut g, &mem, leaves);
                     take(&mut g, &mem, &out.resync);
                     (g, out)
                 };
@@ -209,7 +223,18 @@ pub fn run_with(
                         .chain(ours.jobs.iter().flat_map(|j| j.writes.clone()))
                         .collect();
                     let fits = |g: &Game, out: &FrameOut| {
-                        compare::frame(case, f, &g.probe(), &mem, out, &theirs, None, &masked).is_none()
+                        compare::frame(
+                            case,
+                            f,
+                            g.layout(),
+                            &g.probe(),
+                            &mem,
+                            out,
+                            &theirs,
+                            None,
+                            &masked,
+                        )
+                        .is_none()
                     };
                     if !fits(&game, &ours) {
                         for line in (0..sf_core::front::FRAME_LINES).step_by(2) {
@@ -247,8 +272,8 @@ pub fn run_with(
         if std::env::var("T36_MIDVARS").is_ok() && stepped && sync::mid_pass(&amiga.cpu(), &mem) {
             let probe = game.probe();
             let mut names: Vec<String> = Vec::new();
-            for d in LAYOUT {
-                let n = compare::var_diffs(&probe, &mem, d.id).len();
+            for d in game.layout() {
+                let n = compare::var_diffs(game.layout(), &probe, &mem, d.id).len();
                 if n > 0 { names.push(format!("{}({n})", d.name)); }
             }
             eprintln!("MIDVARS {f}: {}", names.join(" "));
@@ -271,10 +296,10 @@ pub fn run_with(
         if stepped && after_lag {
             after_lag = false;
             if case.compare.vars
-                && let Some((v, theirs, ours)) = compare::vars(&game.probe(), &mem, &[])
+                && let Some((v, theirs, ours)) = compare::vars(game.layout(), &game.probe(), &mem, &[])
             {
                 if std::env::var("T36_NORESYNC").is_ok() {
-                    let d = compare::var_diffs(&game.probe(), &mem, v.id);
+                    let d = compare::var_diffs(game.layout(), &game.probe(), &mem, v.id);
                     panic!("frame {f}: {} differs after lag: {:?}", v.name, &d[..d.len().min(30)]);
                 }
                 game = Game::with_display(display.clone(), Start::Transplant(mem.clone()));
@@ -323,6 +348,7 @@ pub fn run_with(
         let d = compare::frame(
             case,
             f,
+            game.layout(),
             &game.probe(),
             &mem,
             &ours,
