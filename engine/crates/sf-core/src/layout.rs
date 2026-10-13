@@ -549,6 +549,11 @@ layout! {
     /// `reward_power_count` (h0+$23e20, 9 in the executable).
     RewardLifeCount = "reward_life_count", h0(0x23de4), Width::W;
     RewardPowerCount = "reward_power_count", h0(0x23e20), Width::W;
+    /// W4's enemies' variables (`enemies::w4`), inside the code: `swooper_phase` (h0+$243b4),
+    /// the quarter of its loop the next swooper starts on; `chain_link_count` (h0+$262ba), the
+    /// mace's links counted as marker 17 spawns them (W6's mace uses it too).
+    SwooperPhase = "swooper_phase", h0(0x243b4), Width::W;
+    ChainLinkCount = "chain_link_count", h0(0x262ba), Width::L;
     /// The bonus level's animation toggles (`bonus::enemies`), words inside the code that the
     /// listing reads as instructions: `bonus_toggle_114` (h0+$28ad8) and `bonus_toggle_113`
     /// (h0+$28b4a), flipped by each spawn of those types to pick one of two animations.
