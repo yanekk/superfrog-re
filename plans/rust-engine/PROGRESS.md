@@ -79,7 +79,7 @@ done · ⛔ blocked, needs a human.
 | T76 | bonus-enemies-a | T70; blocks T21 | ✅ | |
 | T77 | bonus-enemies-b | T70, T76; blocks T21 | ✅ | |
 | T78 | bonus-enemy-death | T70, T75; blocks T21 | ✅ | |
-| T79 | bonus-level-frames | T70, T37, T75, T76, T77, T78; blocks T21 | 🔍 | `Scene::Bonus`; `bonus::frame` (death with a life left stays in the loop); `bonus_visit`; `lives` sync key. 3 frame cases (enter, death, end) in `frog_cases`, 2 routine tests. Deviations: `Scene::Bonus` runs Level's program, outcome via `Game::level_outcome`; cases in `frog_cases.rs`; `bonus-end-wb-1` re-syncs twice (T101); no table read. |
+| T79 | bonus-level-frames | T70, T37, T75, T76, T77, T78; blocks T21 | ✅ | Review fixed one: `bonus_end_wb_1` now checks frame 8127 (end picture, every variable equal), locking h0+$7494's `shooter_mode` clear, whose mutation survived; unused `Scene` import dropped. Probed `top_loop` h0+$618–$666 and `level_init_lb` in the listing; mutated `goes_on` and the resumed-pass `after_pass`, both red. Deviations held. |
 | T49 | story-fade-setup-job | T46; blocks T56 | ✅ | |
 | T50 | story-objects-init-display | T49; blocks T56 | ✅ | |
 | T51 | story-oracle-blit-tooling | T46; blocks T52 | ✅ | |
@@ -111,7 +111,7 @@ done · ⛔ blocked, needs a human.
 A Notes cell holds what was built or what the review found, the test count, and one line per
 deviation from the task doc. A ✅ task's cell may be cut to one line once the next task has been reviewed.
 
-**Review queue:** T79
+**Review queue:** *(empty)*
 
 ## Blocked on the user
 
