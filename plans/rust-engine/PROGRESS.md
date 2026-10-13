@@ -13,7 +13,7 @@ the account is the commit message. Whoever writes a cell also fixes the over-bud
 
 **Status:** Plan written; nothing built.
 **Last updated:** 2026-10-10
-**Next `pir-work` will:** T00 oracle-spike, because every later test rests on the reference emulator; T01 and T02 can run beside it.
+**Next `pir-work` will:** review T89, then T90 (it shares `story_blits.rs`).
 
 ## Tasks
 
@@ -96,13 +96,13 @@ done · ⛔ blocked, needs a human.
 | T86 | items-launchers | T81 | ⬜ | |
 | T87 | slot-symbols-routines | T71; blocks T72 | ✅ | |
 | T88 | slot-symbols-tables | T71; blocks T72 | ⬜ | |
-| T89 | story-copper-bus-cycles | T52; blocks T53 | ⬜ | |
+| T89 | story-copper-bus-cycles | T52; blocks T53 | 🔍 | `run_bus` as vAmiga: VBLANK takes cycle 0, WAIT1/WAIT2/wake-up take nothing, `$E0` asked-at is blocked. `story_blits.rs`: five masks match to the cycle; +1 copper unit test. Deviation: test carries BLTCON0/DMACON across frames (3017-3020 write no BLTCON0). |
 | T90 | story-draw-blits-oracle | T89; blocks T53 | ⬜ | |
 
 A Notes cell holds what was built or what the review found, the test count, and one line per
 deviation from the task doc. A ✅ task's cell may be cut to one line once the next task has been reviewed.
 
-**Review queue:** *(empty)*
+**Review queue:** T89
 
 ## Blocked on the user
 
