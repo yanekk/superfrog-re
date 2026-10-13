@@ -13,7 +13,7 @@ the account is the commit message. Whoever writes a cell also fixes the over-bud
 
 **Status:** Plan written; nothing built.
 **Last updated:** 2026-10-10
-**Next `pir-work` will:** review T15; T16, T17, T19 and T36 can then start beside each other.
+**Next `pir-work` will:** T16, T17, T19 and T36, beside each other.
 
 ## Tasks
 
@@ -37,7 +37,7 @@ done · ⛔ blocked, needs a human.
 | T12 | core-state | T05, T06, T07 | ✅ | |
 | T13 | renderer | T08, T12 | ✅ | |
 | T14 | frog-and-level | T06, T11, T12, T13 | ✅ | |
-| T15 | items-and-scoring | T14 | 🔍 | Object core (dispatch by routine address, spawners, collide_all), coin family, exit lock, pads, launchers, switches, tile pickups, spud, frog_hurt/frog_die; 11 routine tests; items-run-w1-1 vars+Paula 700 frames. Deviations: picture, restart, tally, Start::Level objects, cases split to T36–T38 (owner, 2026-10-13); routine tests in sf-conform; `enemies` freeze added. |
+| T15 | items-and-scoring | T14 | ✅ | Object core, coins, lock, pads, launchers, switches, tile pickups, spud. Review: fixed level_entry red on every level (obj_templates unexcused) and T36–T38 docs missing parts. Probed items-run-w1-1: 4 coins, 25 tile coins taken, 33 re-syncs all level_copper lag. Bottle-offset and last-coin mutations caught. Picture, restart, tally, LevelOutcome: T36–T38 (owner). |
 | T16 | enemies-worlds-1-3 | T15 | ⬜ | |
 | T17 | enemies-worlds-4-6 | T15 | ⬜ | |
 | T18 | bosses | T16, T17 | ⬜ | |
@@ -65,7 +65,7 @@ done · ⛔ blocked, needs a human.
 A Notes cell holds what was built or what the review found, the test count, and one line per
 deviation from the task doc. A ✅ task's cell may be cut to one line once the next task has been reviewed.
 
-**Review queue:** T15
+**Review queue:** *(empty)*
 
 ## Blocked on the user
 
