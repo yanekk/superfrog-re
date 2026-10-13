@@ -18,6 +18,7 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-13 | 🐞 | T81 review, not fixed: `cargo clippy --all-targets` on sf-core, sf-conform, sf-oracle has 14 pre-existing warnings (result_large_err, should_implement_trait `next`, as_chunks, needless late init, fade_probe `mut`); none in T81's lines. |
 | 2026-10-13 | 🐞 | T81, not fixed: `level_entry` red on the feature branch: every level's `slot_copper` (T71's LAYOUT variable, h2+$65e4) differs, original `$140f440`, engine `$1400000`; level entry never writes it. Not from T81's diff. |
 | 2026-10-13 | 🐞 | T78, not fixed: `purity.rs`'s scanner flags a hex literal ending `f64`/`f32` (`0x2cf64`) as a float. Worked around with `0x2CF64`; the scanner should skip suffix checks on hex. |
 | 2026-10-13 | 📌 | T78: `reward_power_count` (h0+$23e20) is 9 in the executable, `shot_cycle_table` non-zero; `State::default` zeroes LAYOUT vars, so a booted game (T79/T21) must seed them from hunk 0. |
