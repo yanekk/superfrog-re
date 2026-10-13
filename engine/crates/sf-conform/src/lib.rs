@@ -93,20 +93,30 @@ pub fn run_with(
     case: &Case,
     before_step: impl FnMut(u32, &mut Game),
 ) -> Result<Outcome, Divergence> {
-    run_inner(case, before_step, None)
+    run_inner(case, before_step, &mut |_, _, _| {}, None)
+}
+
+/// [`run`], calling `after_step(frame, ours, theirs)` with both sides' Paula writes of each frame
+/// compared: the hook a test uses to check what the comparison leaves out (a write's beam).
+pub fn run_observing(
+    case: &Case,
+    mut after_step: impl FnMut(u32, &[sf_paula::PaulaWrite], &[sf_paula::PaulaWrite]),
+) -> Result<Outcome, Divergence> {
+    run_inner(case, |_, _| {}, &mut after_step, None)
 }
 
 /// [`run`], going on past each divergence: every frame that differs, in order (for finding what
 /// is left in a long case; the engine is not re-synced, so later ones may follow from earlier).
 pub fn scan(case: &Case) -> Vec<Divergence> {
     let mut found = Vec::new();
-    let _ = run_inner(case, |_, _| {}, Some(&mut found));
+    let _ = run_inner(case, |_, _| {}, &mut |_, _, _| {}, Some(&mut found));
     found
 }
 
 fn run_inner(
     case: &Case,
     mut before_step: impl FnMut(u32, &mut Game),
+    after_step: &mut dyn FnMut(u32, &[sf_paula::PaulaWrite], &[sf_paula::PaulaWrite]),
     mut found: Option<&mut Vec<Divergence>>,
 ) -> Result<Outcome, Divergence> {
     let frozen = case.freeze();
@@ -369,6 +379,7 @@ fn run_inner(
                 rendered = Some(r);
             }
         }
+        after_step(f, &ours.paula, &theirs.paula);
         let d = compare::frame(
             case,
             f,

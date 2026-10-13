@@ -3,12 +3,31 @@
 
 /// Power-on with disk 3 through the logo, the intro's load, the first text page and the first
 /// scene with its music and effects, frame for frame (the case `story-intro`), in the test block.
+/// Its comparison of Paula writes leaves their beam out; a draw's DMACON `$8400` is checked on its
+/// line here: from engine frame 538 on, scene 1's draws the handler lets go of start from the
+/// original's fed handler end (T54). The earlier ones (521, 536, 537) start elsewhere.
 #[test]
 fn the_intro_from_disk_3_matches_the_original() {
     let case = sf_conform::Case::load(&sf_conform::cases_dir().join("story-intro.toml"))
         .unwrap_or_else(|e| panic!("{e}"));
-    if let Err(d) = sf_conform::run(&case) {
+    let mut draws = Vec::new();
+    let result = sf_conform::run_observing(&case, |f, ours, theirs| {
+        let starts = |ws: &[sf_paula::PaulaWrite]| {
+            ws.iter()
+                .filter(|w| w.reg == 0x96 && w.value == 0x8400)
+                .map(|w| w.vpos)
+                .collect::<Vec<_>>()
+        };
+        if f >= 538 && !starts(theirs).is_empty() {
+            draws.push((f, starts(ours), starts(theirs)));
+        }
+    });
+    if let Err(d) = result {
         panic!("{d}");
+    }
+    assert!(draws.len() >= 5, "draws checked: {draws:?}");
+    for (f, ours, theirs) in &draws {
+        assert_eq!(ours, theirs, "engine frame {f}: the draw's DMACON $8400 lines");
     }
 }
 
