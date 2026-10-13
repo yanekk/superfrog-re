@@ -72,6 +72,9 @@ pub struct Case {
     /// When set, only these `LAYOUT` variables (by name) are compared: for a scene that models
     /// only some of what the original changes there (the title before T20, say).
     pub only_vars: Option<Vec<String>>,
+    /// Whether the runner may re-sync the engine from the original's memory when a variable
+    /// still differs on the frame after a lag (`resync = false` makes that a divergence).
+    pub resync: bool,
 }
 
 impl Case {
@@ -126,9 +129,11 @@ impl Case {
     pub fn parse(name: &str, text: &str) -> Result<Case, String> {
         let t: toml::Table = text.parse().map_err(|e: toml::de::Error| e.to_string())?;
         for k in t.keys() {
-            if !["sync", "script", "frames", "compare", "exclude", "vars"].contains(&k.as_str()) {
+            if !["sync", "script", "frames", "compare", "exclude", "vars", "resync"]
+                .contains(&k.as_str())
+            {
                 return Err(format!(
-                    "unknown key `{k}` (sync, script, frames, compare, exclude, vars)"
+                    "unknown key `{k}` (sync, script, frames, compare, exclude, vars, resync)"
                 ));
             }
         }
@@ -264,6 +269,10 @@ impl Case {
                 Some(names)
             }
         };
+        let resync = match t.get("resync") {
+            None => true,
+            Some(v) => v.as_bool().ok_or("resync is true or false")?,
+        };
         Ok(Case {
             name: name.to_string(),
             sync,
@@ -272,6 +281,7 @@ impl Case {
             compare,
             exclude,
             only_vars,
+            resync,
         })
     }
 }

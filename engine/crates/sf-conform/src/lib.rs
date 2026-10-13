@@ -67,7 +67,8 @@ pub struct Outcome {
     /// next frame's picture and Paula writes, which carry the rest of that pass.
     pub straddled: Vec<u32>,
     /// Frames after such a lag on which the variables still differed, so the engine was re-synced
-    /// from the original's memory (DESIGN §2.1), with the first variable that differed.
+    /// from the original's memory (DESIGN §2.1), with the first variable that differed. Always
+    /// empty for a case with `resync = false`: there each is a divergence.
     pub resynced: Vec<(u32, String)>,
     /// Frames whose picture matched only with the rows of the engine's beam races left out
     /// (`FrameOut::beam_races`, owner 2026-10-13).
@@ -296,6 +297,26 @@ fn run_inner(
                 && let Some((v, theirs, ours)) =
                     compare::vars(game.layout(), &game.probe(), &mem, &[])
             {
+                if !case.resync {
+                    let d = Divergence {
+                        frame: f,
+                        first_var: Some((v, theirs, ours)),
+                        picture_diff: None,
+                        paula_diff: None,
+                        render_diff: None,
+                        oracle_frame: (of != f + 1).then_some(of - 1),
+                        unported: Vec::new(),
+                        var_detail: compare::var_diffs(game.layout(), &game.probe(), &mem, v.id)
+                            .into_iter()
+                            .take(40)
+                            .collect(),
+                        resync: true,
+                    };
+                    match found.as_mut() {
+                        Some(all) => all.push(d),
+                        None => return Err(d),
+                    }
+                }
                 game = Game::with_display(display.clone(), Start::Transplant(mem.clone()));
                 if frog_only {
                     game.frog_only();
@@ -370,6 +391,7 @@ fn run_inner(
                 oracle_frame: None,
                 unported: Vec::new(),
                 var_detail: Vec::new(),
+                resync: false,
             });
             d.unported = unported;
             d.oracle_frame = (of != f + 1).then_some(of - 1);

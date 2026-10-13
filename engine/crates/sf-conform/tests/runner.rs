@@ -43,6 +43,40 @@ fn transplant_then_probe_returns_the_originals_values() {
     assert_ne!(game.state().rng(), Rng::default());
 }
 
+/// A variable planted on a lagging frame, first compared on the frame after it: re-synced away by
+/// default, a divergence with `resync = false` (T82; the T36 review's silent re-sync). Planted
+/// before the lagging frame's step: one planted before the next is lost, as that step carries on
+/// the pass the lagging frame began.
+#[test]
+fn a_resync_after_lag_fails_a_case_that_forbids_it() {
+    let full = Case::load(&sf_conform::cases_dir().join("items-run-w1-1.toml")).unwrap();
+    assert!(!full.resync);
+    let lag = sf_conform::run(&full).unwrap_or_else(|d| panic!("{d}")).straddled[0];
+    let after = lag + 1;
+    let plant = |f: u32, game: &mut Game| {
+        if f == lag {
+            game.poke(def(VarId::HiscoreTable).addr, &[0x5a]);
+        }
+    };
+    let short = Case {
+        frames: after + 2,
+        ..full.clone()
+    };
+    let d = sf_conform::run_with(&short, plant).expect_err("the planted change was not seen");
+    assert_eq!(d.frame, after, "{d}");
+    assert!(d.resync, "{d}");
+    assert_eq!(d.first_var.unwrap().0.name, "hiscore_table");
+    assert!(d.to_string().contains("resync = false"), "{d}");
+    let lenient = Case {
+        resync: true,
+        ..short
+    };
+    let o = sf_conform::run_with(&lenient, plant).unwrap_or_else(|d| panic!("{d}"));
+    assert_eq!(o.resynced.len(), 1);
+    assert_eq!(o.resynced[0].0, after);
+    assert!(o.resynced[0].1.starts_with("hiscore_table"), "{:?}", o.resynced);
+}
+
 #[test]
 fn a_planted_one_variable_divergence_is_named_with_its_frame() {
     let case = title_case();
