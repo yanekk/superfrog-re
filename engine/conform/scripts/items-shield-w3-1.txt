@@ -1,0 +1,62 @@
+# W3-1, enemies frozen: from the start left to the bottle at 11,40 (frame ~203), right onto the
+# pad at 25,40 and over the pillar to the pad at 33,40 (~359), the slow-down at 42,40 (~423), the
+# speed-up at 78,42 (~533), the wings at 79,41 (~537) and the shield at 81,36 (~563); then idle.
+# Planned on the engine (T84, `examples/plan W3-1 11,40 25,39`, then `28,28 33,39` and
+# `42,40 78,42 79,41 81,36` each with `--prefix`).
+0: -
+144: L
+148: U L
+152: -
+160: U
+164: -
+204: U R
+208: U
+240: -
+241: R
+245: L
+249: R
+253: L
+257: U
+261: R F
+265: U
+273: R
+277: -
+281: R
+285: U
+309: -
+313: L
+317: R
+321: L
+325: R
+329: L
+333: R
+337: L
+341: R
+345: L
+349: R
+353: L
+357: -
+358: U
+366: U R
+370: U
+378: -
+382: R
+390: -
+398: L
+402: -
+406: R
+418: -
+424: R
+436: U
+508: R
+512: U
+520: -
+528: U
+532: -
+534: R
+538: -
+546: U
+550: -
+554: L F
+558: R
+562: -
