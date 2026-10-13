@@ -72,7 +72,7 @@ done · ⛔ blocked, needs a human.
 | T48 | story-intro-skips | T46, T47; blocks T21 | ⬜ | |
 | T70 | bonus-level | T15; blocks T21 | ✅ | |
 | T71 | slot-sync | T15 | ✅ | |
-| T72 | slot-screen | T71 | ⬜ | |
+| T72 | slot-screen | T71 | 🔍 | Split at pir's context line, no code kept: T91 beam races, T92 loads to the attract loop, T93 attract drawing, T94 interrupt timing and the 300-frame case (blocks T73). Oracle measurements in their docs. |
 | T73 | slot-rounds | T72 | ⬜ | |
 | T74 | slot-prizes | T73; blocks T21 | ⬜ | |
 | T75 | bonus-shots | T70; blocks T21 | ✅ | |
@@ -98,11 +98,15 @@ done · ⛔ blocked, needs a human.
 | T88 | slot-symbols-tables | T71; blocks T72 | ✅ | |
 | T89 | story-copper-bus-cycles | T52; blocks T53 | ⬜ | |
 | T90 | story-draw-blits-oracle | T89; blocks T53 | ⬜ | |
+| T91 | slot-beam-races | T72 | ⬜ | |
+| T92 | slot-load | T72 | ⬜ | |
+| T93 | slot-attract-draw | T72, T91, T92 | ⬜ | |
+| T94 | slot-interrupt-timing | T72, T91, T93; blocks T73 | ⬜ | |
 
 A Notes cell holds what was built or what the review found, the test count, and one line per
 deviation from the task doc. A ✅ task's cell may be cut to one line once the next task has been reviewed.
 
-**Review queue:** *(empty)*
+**Review queue:** T72
 
 ## Blocked on the user
 

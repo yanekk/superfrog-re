@@ -18,6 +18,7 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-13 | 🔄 | T72 split at pir's context line, no code kept: T91 slot-beam-races, T92 slot-load, T93 slot-attract-draw, T94 slot-interrupt-timing (blocks T73). The oracle's frame-by-frame timings T72 measured are in their docs. |
 | 2026-10-13 | 🐞 | `test_every_committed_func_starts_an_instruction` cannot fail: the listing realigns at every label, so a func offset mid-instruction still passes. Open for every committed func but `atn_decompress` and T87's twenty, which have byte checks. Found reviewing T87. |
 | 2026-10-13 | 📌 | T77: `bob_draw_vars` (h0+$18bc8) starts on marker 15's `bra.w` displacement ($2810); intact at WB-1 (marker 15's test compares). Marker 55 sets `level_state` 2 (T79). `obj_path_xy` (h0+$1c41c) is ready for the bosses. |
 | 2026-10-13 | 🐞 | Open: `level_entry::every_level_is_entered_as_the_original_enters_it` red on every level, `slot_copper` original $140f440, engine $1400000. Same on T76's base ffbad9f (T71's slot variables in `LAYOUT`); T76 review, not fixed. |
