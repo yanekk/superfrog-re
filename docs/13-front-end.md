@@ -113,8 +113,15 @@ Timing the engine keeps (oracle, frames 0–539):
 - **Blits** on vAmiga's slow-blitter cycle counts (ABCD 4n+1, AD 2n+2, ABD 3n+2) on the bus left
   by refresh, audio (with music) and bitplane fetch (`story::clock`); 40 DMA cycles of CPU set-up
   per blit, 300 per object. The handler waits for the blit in progress.
-- **`objects_init`'s CPU**: 656 124 DMA cycles plus 206 per animation frame it prepares
-  (h0+$8724): scene 1's 145 frames and scene 2's 199 put the mask blits 3022 and 3071 lines on.
+- **`objects_init`'s CPU**: 36 274 DMA cycles plus 206 per animation frame it prepares
+  (h0+$8724), then the masks' clearing (h0+$8408, 40 960 turns of `rpw pnn npp`) timed on the
+  bus: 15.13 cycles a turn on refresh's bus (scenes 1–3, black list), about 18 under scene 4's
+  five planes, which it runs under (no black list after `scene_out`, T50).
+- **Held blanks merge**: a blit that holds the CPU through a whole frame (scene 4's second mask
+  blit, ~400 lines under the display) leaves that frame's blank request set, and the next blank's
+  handler serves both. The oracle's step then runs two video frames (`Amiga::frames_run`), and
+  conformance steps the engine twice for it (owner, T50). When the last mask blit started on a
+  fetched line, DMACON = $400 comes before the handler it held (frames 3191, 3760, 4238).
 - **Unpacks** (`cf5c`): measured frames per call (`UNPACK_FRAMES`), ending on line 160.
 - **Copper and Paula**: the copper's Paula writes before the CPU takes the interrupt (line 0,
   clock $14) belong to the frame before. Copper colour words a fade rewrites are read as the beam
