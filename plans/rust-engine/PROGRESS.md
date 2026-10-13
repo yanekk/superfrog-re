@@ -95,14 +95,14 @@ done · ⛔ blocked, needs a human.
 | T85 | items-w2 | T81 | ⬜ | |
 | T86 | items-launchers | T81 | ⬜ | |
 | T87 | slot-symbols-routines | T71; blocks T72 | ⬜ | |
-| T88 | slot-symbols-tables | T71; blocks T72 | ⬜ | |
+| T88 | slot-symbols-tables | T71; blocks T72 | 🔍 | Six slot_* tables in re/symbols.toml (d1_c03 h0, kind table), sized as the doc says; listing labels all six (slot_ladder at $57b6). No new tests; test_re_listing green. No deviations. |
 | T89 | story-copper-bus-cycles | T52; blocks T53 | ⬜ | |
 | T90 | story-draw-blits-oracle | T89; blocks T53 | ⬜ | |
 
 A Notes cell holds what was built or what the review found, the test count, and one line per
 deviation from the task doc. A ✅ task's cell may be cut to one line once the next task has been reviewed.
 
-**Review queue:** *(empty)*
+**Review queue:** T88
 
 ## Blocked on the user
 
