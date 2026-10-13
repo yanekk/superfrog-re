@@ -549,6 +549,13 @@ layout! {
     /// `reward_power_count` (h0+$23e20, 9 in the executable).
     RewardLifeCount = "reward_life_count", h0(0x23de4), Width::W;
     RewardPowerCount = "reward_power_count", h0(0x23e20), Width::W;
+    /// W6's enemies' variables (`enemies::w6`), inside the code: `chain_link_count` (h0+$262ba),
+    /// the mace's links counted as marker 17 spawns them; `thrower_vx` (h0+$281d6);
+    /// `flier_facing_right` (h0+$28322); `cannon_aim` (h0+$28454), the next shot's vx and vy.
+    ChainLinkCount = "chain_link_count", h0(0x262ba), Width::L;
+    ThrowerVx = "thrower_vx", h0(0x281d6), Width::W;
+    FlierFacingRight = "flier_facing_right", h0(0x28322), Width::W;
+    CannonAim = "cannon_aim", h0(0x28454), Width::L;
     /// The bonus level's animation toggles (`bonus::enemies`), words inside the code that the
     /// listing reads as instructions: `bonus_toggle_114` (h0+$28ad8) and `bonus_toggle_113`
     /// (h0+$28b4a), flipped by each spawn of those types to pick one of two animations.
