@@ -5,6 +5,7 @@
 //! is a long run, so the oracle's snapshot there is cached outside git, keyed by everything that
 //! decides it (`~/.cache/superfrog-re/sync/`, `SUPERFROG_CACHE` replacing the root).
 
+use crate::freeze::Freeze;
 use std::fs;
 use std::ops::Range;
 use std::path::PathBuf;
@@ -195,14 +196,12 @@ pub fn main_chain(cpu: &CpuRegs, m: &AmigaMemory) -> Vec<u32> {
 /// Bring the oracle to `sync`, with room for `frames` more frames of `script` (the case's own,
 /// which from power-on decides when the original seeds its RNG).
 pub fn reach(sync: &SyncPoint, script: &InputScript, frames: u32) -> Result<Synced, String> {
-    reach_frozen(sync, script, frames, false)
+    reach_frozen(sync, script, frames, crate::freeze::Freeze::None)
 }
 
 /// One frame of the original, its objects frozen out first when `frozen` ([`crate::freeze`]).
-fn step(a: &mut Amiga, input: FrameInput, frozen: bool) -> Result<(), String> {
-    if frozen {
-        crate::freeze::freeze_objects(a, &crate::display_data());
-    }
+fn step(a: &mut Amiga, input: FrameInput, frozen: Freeze) -> Result<(), String> {
+    frozen.apply(a, &crate::display_data());
     a.step(input).map(|_| ()).map_err(|e| e.to_string())
 }
 
@@ -212,9 +211,9 @@ pub fn reach_frozen(
     sync: &SyncPoint,
     script: &InputScript,
     frames: u32,
-    frozen: bool,
+    frozen: Freeze,
 ) -> Result<Synced, String> {
-    let tag = if frozen { "objects frozen v1\n" } else { "" };
+    let tag = frozen.tag();
     match sync {
         SyncPoint::PowerOn => {
             let seed = power_on_seed(script, frames)?;
@@ -323,10 +322,10 @@ fn password_key(id: LevelId, r: &Route) -> (String, String) {
 /// asks for a disk, that disk goes in. W6-2..4 without `alt` run with an empty df1 connected; the
 /// final level runs W6-4 and then sets `level_state` to 1, the exit's own value, so the original
 /// tallies W6-4 and starts the final level by its own code.
-fn by_password(id: LevelId, frames: u32, frozen: bool) -> Result<Synced, String> {
+fn by_password(id: LevelId, frames: u32, frozen: Freeze) -> Result<Synced, String> {
     let r = route(id).ok_or_else(|| format!("AtLevel({id}): no such level"))?;
     let (_, key) = password_key(id, &r);
-    let key = if frozen { format!("objects frozen v1\n{key}") } else { key };
+    let key = format!("{}{key}", frozen.tag());
     at_snapshot(&key, r.drives, frames, search(&r), |a| drive_to(a, id, &r, frozen))
 }
 
@@ -339,7 +338,7 @@ fn search(r: &Route) -> u32 {
 }
 
 /// [`by_password`]'s way there, on `a` from power-on, its objects frozen out when `frozen`.
-fn drive_to(a: &mut Amiga, id: LevelId, r: &Route, frozen: bool) -> Result<(), String> {
+fn drive_to(a: &mut Amiga, id: LevelId, r: &Route, frozen: Freeze) -> Result<(), String> {
     let lead = if r.drives == 1 { 0 } else { DF1_LEAD };
     let type_from = TYPE_FROM - lead;
     let (menu, _) = password_key(id, r);
@@ -412,7 +411,7 @@ fn end_sequence(frames: u32) -> Result<Synced, String> {
     let (_, key) = password_key(id, &r);
     let key = format!("{key}end sequence: level_state = 1, to end_seq_load v1\n");
     at_snapshot(&key, r.drives, frames, search(&r) + END_SEARCH, |a| {
-        drive_to(a, id, &r, false)?;
+        drive_to(a, id, &r, Freeze::None)?;
         a.write_memory(LEVEL_STATE, &1u32.to_be_bytes());
         let mut disks = Disks::at(&core_memory(a.memory()));
         for _ in 0..END_SEARCH {

@@ -250,7 +250,7 @@ pub fn draw_at_start(c: &mut LevelCtx) {
 /// h0+$862e: the frog's `+$5c` (0..99) as two sprite digits, by pointing the copper MOVEs of the
 /// two digit sprites (their records' `+8`, at h0+$1b130 and $1b14c) at the tens' and the ones'
 /// frames (tables at h0+$86c2 and $86ee; the entry before each is blank, for 0).
-fn sprite_digits(b: &mut Bus) {
+pub(crate) fn sprite_digits(b: &mut Bus) {
     let n = b.w(FROG + 0x5c);
     let (tens, ones) = if n == 0 {
         (-1i32, -1i32)

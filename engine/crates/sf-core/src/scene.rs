@@ -16,6 +16,8 @@ pub struct Machine<'a> {
     pub state: &'a mut State,
     pub display: &'a DisplayData,
     pub hw: Hw,
+    /// The object kinds the level runs with.
+    pub dispatch: &'a crate::level::Dispatch,
 }
 
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash)]
@@ -66,7 +68,7 @@ impl Scene {
             Scene::Level => {
                 let mut c = LevelCtx {
                     bus: Bus::new(m.state, m.display.rom()),
-                    dispatch: crate::level::standard_dispatch(),
+                    dispatch: m.dispatch,
                     hw: m.hw,
                     sound: m.display.sound(),
                     paula: &mut out,

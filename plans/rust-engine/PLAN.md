@@ -97,6 +97,9 @@ headless.
 | [T33](tasks/T33-attract-demo.md) | attract-demo | T16, T20 |
 | [T34](tasks/T34-game-over.md) | game-over | T15, T20; blocks T21 |
 | [T35](tasks/T35-end-sequence.md) | end-sequence | T20; blocks T21 |
+| [T36](tasks/T36-items-on-the-beam.md) | items-on-the-beam | T15 |
+| [T37](tasks/T37-level-restart.md) | level-restart | T36; blocks T34 |
+| [T38](tasks/T38-level-tally.md) | level-tally | T37; blocks T21 |
 
 T22 is the rig task: it comes before every surface task and they depend on it. T29 is the phase's
 drill. At the end: the owner plays it.

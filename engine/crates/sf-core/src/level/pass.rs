@@ -225,8 +225,3 @@ const KEY_DOWN: u32 = h0(0x16078);
 pub fn pause_check(c: &mut LevelCtx) {
     debug_assert_ne!(c.bus.b(KEY_DOWN), 0x19, "pause is not ported (T21)");
 }
-
-/// `time_up_check` (h0+$dd6): at 0:00 the frog dies (`frog_die`, T15).
-pub fn time_up_check(c: &mut LevelCtx) {
-    debug_assert_ne!(c.bus.l(FROG + 0xa0), 0, "time up is not ported (T15)");
-}

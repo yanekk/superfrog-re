@@ -9,6 +9,7 @@
 
 pub mod camera;
 pub mod clock;
+pub mod death;
 pub mod collision;
 pub mod fade;
 pub mod frame;
@@ -73,73 +74,92 @@ pub fn joy1dat(j: Joy) -> u16 {
     r << 1 | (r ^ d) | l << 9 | (l ^ u) << 8
 }
 
-/// An object slot (docs/09 "The slot record"): `obj_slots` + `$7c` × n.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct Object {
-    /// The slot record's address.
-    pub slot: u32,
-}
+/// A slot routine of the original's (docs/09 "The slot record"): `slot` is the slot record (`a0`,
+/// or `a5` for a touch handler), `d7` what touched it (0 the frog, 1 the spud; ignored by init and
+/// update routines).
+pub type SlotFn = fn(c: &mut LevelCtx, slot: u32, d7: u16);
 
-/// What a bob draw adds to the frame (filled by T15–T18 as their kinds draw).
-#[derive(Debug, Clone, Default, PartialEq, Eq)]
-pub struct DrawList {
-    /// Bob records to draw, in order.
-    pub bobs: Vec<u32>,
-}
-
-/// One kind of object: the original's template, by its index in `obj_templates` (h0+$1c6e2,
-/// `$ae` bytes each), so a transplanted slot maps to its kind one to one.
-pub trait ObjectKind: Sync {
-    /// The 25 Hz update (the slot's `+$04` routine).
-    fn update(&self, obj: &mut Object, lvl: &mut LevelCtx);
-    /// Its bob, if it shows.
-    fn draw(&self, obj: &Object, out: &mut DrawList);
+/// One kind of object: the original's template (`obj_templates` h0+$1c6e2, `$ae` bytes each) and
+/// every routine a slot of the kind may hold, by the original's address. A slot names its routines
+/// by those addresses (`+$00` init, `+$04` update, `+$10` touch), as the original's memory has
+/// them, so a transplanted slot runs on as it would there.
+#[derive(Debug)]
+pub struct ObjectKind {
+    pub name: &'static str,
+    pub routines: &'static [(u32, SlotFn)],
 }
 
 /// What a map marker spawns (docs/09 "Placement"): the stub `obj_flag_jumptab` (h0+$178ec)
 /// runs for `(world, marker)`, with the cell's address.
 pub type MarkerSpawn = fn(lvl: &mut LevelCtx, cell: u32);
 
-/// The object dispatch: object kinds by template index, and marker spawners by world and marker.
-/// T14 registers none, so a level runs with the frog alone; items, enemies and bosses (T15–T18)
-/// register theirs.
+/// The object dispatch: object kinds by template index and their routines by address, marker
+/// spawners by world and marker, and the frog's reactions that make objects. Items (T15),
+/// enemies and bosses (T16–T18) register theirs.
 #[derive(Default)]
 pub struct Dispatch {
-    kinds: Vec<(u16, &'static dyn ObjectKind)>,
+    kinds: Vec<(u16, &'static ObjectKind)>,
+    routines: Vec<(u32, SlotFn)>,
     markers: Vec<((u8, u8), MarkerSpawn)>,
-    /// A bump block the frog hit (markers 48–51, h0+$f6be), with the cell's address: it opens
-    /// into its item (T15). `None`: nothing happens.
+    /// A switch the frog touched (markers 48–51, h0+$f6be), with the cell's address: it opens
+    /// its gate and turns into its lever. `None`: nothing happens.
     pub bump_block: Option<MarkerSpawn>,
     /// A pickup drawn in the map's tiles that the frog touched (marker 55, h0+$ed8a): fruit,
-    /// clocks, lives (T15). `None`: nothing happens.
+    /// clocks, lives, power-ups. `None`: nothing happens.
     pub tile_pickup: Option<MarkerSpawn>,
+    /// The object of a bounce pad (marker 4 or 5, the cell and the marker) the frog bounced off
+    /// (h0+$e9ea). `None`: none spawns.
+    pub bounce_pad: Option<fn(&mut LevelCtx, u32, u16)>,
+    /// The spring of a launcher (marker 7) that threw the frog: the cell, and whether it threw it
+    /// left (h0+$e94a). `None`: none spawns.
+    pub launcher: Option<fn(&mut LevelCtx, u32, bool)>,
 }
 
 impl std::fmt::Debug for Dispatch {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("Dispatch")
-            .field("kinds", &self.kinds.iter().map(|k| k.0).collect::<Vec<_>>())
+            .field("kinds", &self.kinds.iter().map(|k| (k.0, k.1.name)).collect::<Vec<_>>())
             .field("markers", &self.markers.iter().map(|m| m.0).collect::<Vec<_>>())
             .finish()
     }
 }
 
-/// The dispatch a game runs with: every kind and spawner ported so far (none in T14).
+/// The dispatch a game runs with: every kind and spawner ported so far.
 pub fn standard_dispatch() -> &'static Dispatch {
+    static D: std::sync::OnceLock<Dispatch> = std::sync::OnceLock::new();
+    D.get_or_init(|| {
+        let mut d = Dispatch::default();
+        crate::items::register_all(&mut d);
+        d
+    })
+}
+
+/// No object kinds at all: the frog plays the level alone (conformance against T14's frog-only
+/// cases, whose original has every object frozen out).
+pub fn frog_only_dispatch() -> &'static Dispatch {
     static D: std::sync::OnceLock<Dispatch> = std::sync::OnceLock::new();
     D.get_or_init(Dispatch::default)
 }
 
 /// Add an object kind under the original's template index.
-pub fn register(dispatch: &mut Dispatch, type_id: u16, kind: &'static dyn ObjectKind) {
+pub fn register(dispatch: &mut Dispatch, type_id: u16, kind: &'static ObjectKind) {
     dispatch.kinds.retain(|k| k.0 != type_id);
     dispatch.kinds.push((type_id, kind));
+    for &(addr, f) in kind.routines {
+        dispatch.routines.retain(|r| r.0 != addr);
+        dispatch.routines.push((addr, f));
+    }
 }
 
 impl Dispatch {
     /// The kind registered under `type_id`.
-    pub fn kind(&self, type_id: u16) -> Option<&'static dyn ObjectKind> {
+    pub fn kind(&self, type_id: u16) -> Option<&'static ObjectKind> {
         self.kinds.iter().find(|k| k.0 == type_id).map(|k| k.1)
+    }
+
+    /// The ported routine for the original's routine at `addr` (an absolute address).
+    pub fn routine(&self, addr: u32) -> Option<SlotFn> {
+        self.routines.iter().find(|r| r.0 == addr).map(|r| r.1)
     }
 
     /// Add the spawner for `marker` (1..64) in world table `world` (`obj_world_offset / $100`:
@@ -155,6 +175,20 @@ impl Dispatch {
             .iter()
             .find(|m| m.0 == (world, marker))
             .map(|m| m.1)
+    }
+
+    /// Every `(world, marker)` with a spawner.
+    pub fn markers(&self) -> impl Iterator<Item = (u8, u8)> + '_ {
+        self.markers.iter().map(|m| m.0)
+    }
+}
+
+/// Run the original's slot routine at `addr` on `slot`: the ported one, or, for a routine nothing
+/// ports yet, nothing (a debug build stops: every object a game meets has its kind registered).
+pub fn call(c: &mut LevelCtx, addr: u32, slot: u32, d7: u16) {
+    match c.dispatch.routine(addr) {
+        Some(f) => f(c, slot, d7),
+        None => debug_assert!(false, "slot routine ${:x} is not ported", addr.wrapping_sub(h0(0))),
     }
 }
 

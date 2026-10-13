@@ -116,6 +116,8 @@ pub struct Game {
     /// register holds (the code shifted up one, bit 0 set for a key going up, all inverted).
     keys: KeySet,
     sdr: u8,
+    /// The level runs with no object kinds ([`Game::frog_only`]).
+    frog_only: bool,
 }
 
 /// `key_down`, `key_up` (h0+$16078, h0+$16079).
@@ -196,6 +198,7 @@ impl Game {
             frame: 0,
             keys: KeySet::NONE,
             sdr,
+            frog_only: false,
         }
     }
 
@@ -238,6 +241,11 @@ impl Game {
                 state: &mut self.state,
                 display: &self.display,
                 hw,
+                dispatch: if self.frog_only {
+                    crate::level::frog_only_dispatch()
+                } else {
+                    crate::level::standard_dispatch()
+                },
             };
             self.scene.step(&mut m, pacing, View::default())
         };
@@ -296,6 +304,12 @@ impl Game {
     /// The seed a power-on start has not yet put in place.
     pub fn pending_seed(&self) -> Option<Rng> {
         self.seed
+    }
+
+    /// Run levels with no object kinds: the frog alone, for conformance against an original whose
+    /// objects are all frozen out (T14's frog cases).
+    pub fn frog_only(&mut self) {
+        self.frog_only = true;
     }
 
     /// Frames stepped since the start.

@@ -143,6 +143,11 @@ macro_rules! layout {
 }
 
 layout! {
+    /// Chip RAM's first two longs: 0 and `ExecBase` (the reset vectors as Kickstart leaves them:
+    /// `$00C00276` under Kickstart 1.3 with slow RAM, measured). The game reads them through a null
+    /// pointer: a bob never drawn has no animation step yet, so `obj_despawn_if_offscreen` takes
+    /// the long at 0 for its frame record and its width and height from address 4.
+    LowVectors = "low_vectors", 0, Width::Bytes(8);
     /// h2+$5efc..$6058: the end sequence's copper list (five planes, its palette at h2+$5fa4).
     EndCopper = "end_copper", h2(0x5efc), Width::Bytes(0x15c);
     /// h2+$6110..$6270: the award pages' copper list.
@@ -231,7 +236,7 @@ layout! {
     FrogOnPlatform = "frog_on_platform", h0(0x82a), Width::W;
     PlayerDied = "player_died", h0(0x82c), Width::W;
     FrogLives = "frog_lives", h0(0x82e), Width::W;
-    Frog5A = "frog_5a", h0(0x830), Width::W;
+    FrogHearts = "frog_hearts", h0(0x830), Width::W;
     CoinsLeftForExit = "coins_left_for_exit", h0(0x832), Width::W;
     Score = "score", h0(0x834), Width::L;
     Frog62 = "frog_62", h0(0x838), Width::W;
@@ -242,13 +247,13 @@ layout! {
     FrogSlideTick = "frog_slide_tick", h0(0x842), Width::W;
     FrogPushed = "frog_pushed", h0(0x844), Width::W;
     FrogCrouchTime = "frog_crouch_time", h0(0x846), Width::W;
-    Frog72 = "frog_72", h0(0x848), Width::W;
-    Frog74 = "frog_74", h0(0x84a), Width::W;
-    Frog76 = "frog_76", h0(0x84c), Width::W;
-    Frog78 = "frog_78", h0(0x84e), Width::W;
-    Frog7A = "frog_7a", h0(0x850), Width::W;
+    FrogSpudFlying = "frog_spud_flying", h0(0x848), Width::W;
+    FrogSpudX = "frog_spud_x", h0(0x84a), Width::W;
+    FrogSpudY = "frog_spud_y", h0(0x84c), Width::W;
+    FrogSpudVx = "frog_spud_vx", h0(0x84e), Width::W;
+    FrogSpudVy = "frog_spud_vy", h0(0x850), Width::W;
     FrogSpudOn = "frog_spud_on", h0(0x852), Width::W;
-    Frog7E = "frog_7e", h0(0x854), Width::W;
+    FrogTileCoins = "frog_tile_coins", h0(0x854), Width::W;
     FrogSpecialAnim = "frog_special_anim", h0(0x856), Width::W;
     FrogMaxSpeed = "frog_max_speed", h0(0x858), Width::W;
     FrogSpring = "frog_spring", h0(0x85a), Width::W;
@@ -269,9 +274,9 @@ layout! {
     FrogFloatToggle = "frog_float_toggle", h0(0x87a), Width::W;
     FrogJumpPresses = "frog_jump_presses", h0(0x87c), Width::W;
     FrogSpeedUp = "frog_speed_up", h0(0x87e), Width::W;
-    FrogAA = "frog_aa", h0(0x880), Width::W;
-    FrogAC = "frog_ac", h0(0x882), Width::W;
-    FrogAE = "frog_ae", h0(0x884), Width::W;
+    /// The score at which the next extra life comes (every 200 000, h0+$d9e).
+    FrogNextLife = "frog_next_life", h0(0x880), Width::L;
+    FrogSpudWait = "frog_spud_wait", h0(0x884), Width::W;
     FrogBaseSpeed = "frog_base_speed", h0(0x886), Width::W;
     FrogB2 = "frog_b2", h0(0x888), Width::W;
     /// The rest of the frog's `$200`-byte record, to h0+$9d6, which `frog_new_game` clears.
@@ -485,6 +490,9 @@ layout! {
     BobFreeList = "bob_free_list", h0(0x1ba16), Width::Bytes(0x54);
     ObjCount = "obj_count", h0(0x1ba6a), Width::W;
     ObjSlots = "obj_slots", h0(0x1ba6c), Width::Bytes(0x9b0);
+    /// `obj_templates` (h0+$1c6e2): 160 templates of `$ae` bytes; a spawner writes the position
+    /// into one before copying its head into a slot (docs/09 "The slot record").
+    ObjTemplates = "obj_templates", h0(0x1c6e2), Width::Bytes(160 * 0xae);
     /// `bob_draw_list` (h0+$2970a..): a 0, the bobs to draw, a 0.
     BobDrawList = "bob_draw_list", h0(0x2970a), Width::Bytes(0xa8);
     /// `bob_records` (h0+$297b2..$2aee2): the spud's bob and the 20 objects' (`$11c` bytes,
@@ -568,7 +576,8 @@ mod tests {
             assert_eq!(index_of(d.addr), Some(i), "{}", d.name);
             assert_eq!(index_of(d.addr + d.width.len() - 1), Some(i), "{}", d.name);
         }
-        assert_eq!(index_of(0), None);
+        assert_eq!(index_of(0), Some(0), "low_vectors");
+        assert_eq!(index_of(8), None);
         assert_eq!(index_of(0xF0_0000), None);
     }
 

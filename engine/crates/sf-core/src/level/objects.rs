@@ -1,12 +1,13 @@
-//! The objects' side of the 25 Hz pass (docs/09): the spud, the slots' updates, hitboxes and
-//! collisions, and the bobs. T14 runs a level with no object kinds registered (T15–T18 add them);
-//! what runs here is what the original does whatever the objects: the frog's platform flag, the
-//! hitbox list, the bob draw list and the bob drawer, which erases and draws every bob into the
-//! back display buffer.
+//! The objects' side of the 25 Hz pass (docs/09): the slots and their spawners, the slots'
+//! updates, hitboxes and collisions, and the bobs. The kinds themselves (items T15, enemies and
+//! bosses T16–T18) register their routines into the level's dispatch; what is here is what the
+//! original does whatever the objects: spawning into a free slot, freeing, the hitbox list,
+//! touches, the bob draw list and the bob drawer, which erases and draws every bob into the back
+//! display buffer.
 
 use crate::frog::{FROG, f};
 use crate::layout::{h0, h3};
-use crate::level::camera::{SHOOTER_MODE, SPRITES_HIDDEN};
+use crate::level::camera::{CAMERA_X, CAMERA_Y, SCROLL_DIRS, SHOOTER_MODE, SPRITES_HIDDEN};
 use crate::level::{LevelCtx, n_clear};
 use crate::mem::Bus;
 
@@ -22,36 +23,299 @@ pub const SPUD_BOB: u32 = h0(0x297b6);
 pub const BOB_DRAW_LIST: u32 = h0(0x2970e);
 /// `bob_free_list` (h0+$1ba16).
 pub const BOB_FREE_LIST: u32 = h0(0x1ba16);
-/// The spud's parked frame (`bob_records+$162c`).
-const SPUD_PARKED: u32 = h0(0x2aefe);
 
-/// `spud_update` (h0+$80f0): with no spud to throw, it is parked far off at x `$639c`.
-pub fn spud_update(c: &mut LevelCtx) {
-    let b = &mut c.bus;
-    debug_assert_eq!(b.w(SHOOTER_MODE), 0, "the bonus level's spud is T19's");
-    let off = b.w(FROG + f::SPUD_ON) == 0 || b.w(SPRITES_HIDDEN) != 0;
-    debug_assert!(off, "a thrown spud is not ported (T15)");
-    if off {
-        park_spud(b);
-    }
-}
-
-/// h0+$82d4: the spud out of play.
-fn park_spud(b: &mut Bus) {
-    b.set_w(FROG + 0x72, 0);
-    b.set_w(FROG + 0x74, 0x639c);
-    b.set_l(SPUD_BOB - 4, b.l(FROG + 0x74));
-    b.set_l(SPUD_BOB + 0x28, SPUD_PARKED);
-    b.set_l(SPUD_BOB + 0x42, SPUD_PARKED);
-}
-
-/// `obj_run_all` (h0+$1b324): each live slot's update. No kind is registered in T14; the
-/// frog-only cases freeze the original's objects, so no slot is live.
+/// `obj_run_all` (h0+$1b324): each live slot's update routine (`+$04`), in slot order.
 pub fn obj_run_all(c: &mut LevelCtx) {
     for k in 0..SLOTS {
         let slot = OBJ_SLOTS + k * SLOT_SIZE;
-        debug_assert_eq!(c.bus.l(slot + 0x40), 0, "objects are T15–T18's");
+        if c.bus.l(slot + 0x40) != 0 {
+            let update = c.bus.l(slot + 4);
+            crate::level::call(c, update, slot, 0);
+        }
     }
+}
+
+/// `obj_count` (h0+$1ba6a).
+pub const OBJ_COUNT: u32 = h0(0x1ba6a);
+/// `obj_templates` (h0+$1c6e2): 160 templates of `$ae` bytes.
+pub const OBJ_TEMPLATES: u32 = h0(0x1c6e2);
+/// The slot's first `$34` bytes come from its template.
+const TEMPLATE_HEAD: u32 = 0x34;
+/// `map_rows` (h0+$17334): a pointer to each map row, from one row above the first.
+const MAP_ROWS: u32 = h0(0x17334);
+
+/// What a spawner leaves in the registers its callers read: `d0` 0 when a slot was found (some
+/// paths leave it so even when none was: the original's), `d1`, and `a0` the slot (0 for none).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Spawned {
+    pub d0: u32,
+    pub d1: u32,
+    pub a0: u32,
+}
+
+/// The slot the spawner settles on (`a1`) after its search, or `None`: no slot.
+fn find_free(c: &mut LevelCtx) -> Option<u32> {
+    if let Some(s) = (0..SLOTS)
+        .map(|k| OBJ_SLOTS + k * SLOT_SIZE)
+        .find(|&s| c.bus.l(s + 0x40) == 0)
+    {
+        return Some(s);
+    }
+    // Every slot full: an evictable one off the screen is reclaimed.
+    for k in 0..SLOTS {
+        let s = OBJ_SLOTS + k * SLOT_SIZE;
+        if c.bus.w(s + 0x2a) != 0 {
+            obj_despawn_if_offscreen(c, s, 0);
+            if c.bus.l(s + 0x40) == 0 {
+                return Some(s);
+            }
+        }
+    }
+    None
+}
+
+/// A free bob record for `slot` from `bob_free_list` (its entry taken), or false: none.
+fn take_bob(b: &mut Bus, slot: u32) -> bool {
+    for k in 0..SLOTS {
+        let entry = BOB_FREE_LIST + 4 * k;
+        if b.l(entry) != 0 {
+            b.set_l(slot + 0x50, b.l(entry));
+            b.set_l(slot + 0x4c, entry);
+            b.set_l(entry, 0);
+            return true;
+        }
+    }
+    false
+}
+
+/// The pixel position of map cell `cell`, offset by `dx`, `dy` (words): `(cell − map_rows) /
+/// $260` gives the row and, as the remainder, the column's byte offset.
+fn cell_position(b: &Bus, cell: u32, dx: u16, dy: u16) -> (u16, u16) {
+    let d = cell.wrapping_sub(b.l(MAP_ROWS));
+    let (row, rem) = if d / 0x260 > 0xffff {
+        // divu overflow: the register keeps the dividend.
+        (d as u16, (d >> 16) as u16)
+    } else {
+        ((d / 0x260) as u16, (d % 0x260) as u16)
+    };
+    (dx.wrapping_add(rem.wrapping_shl(3)), dy.wrapping_add(row.wrapping_shl(4)))
+}
+
+/// The map cell under pixel `x`, `y` less one cell (h0+$1b79c): what a pixel spawn records as its
+/// cell.
+fn pixel_cell(b: &Bus, x: u16, y: u16) -> u32 {
+    let col = (x >> 4).wrapping_add(x >> 4);
+    let row = (y >> 4).wrapping_mul(4);
+    b.l(MAP_ROWS.wrapping_add(row as i16 as i32 as u32))
+        .wrapping_add(col as u32)
+        .wrapping_sub(2)
+}
+
+/// The end every spawner shares (h0+$1b47a…): the slot takes the template's position, its cell,
+/// the template's first `$34` bytes, its bob's look from `+$26`; then the template's init routine
+/// runs on it and `obj_count` grows.
+fn fill_slot(c: &mut LevelCtx, slot: u32, template: u32, cell: u32) {
+    let b = &mut c.bus;
+    b.set_l(slot + 0x44, b.l(template + 8));
+    b.set_l(slot + 0x40, cell);
+    for k in 0..TEMPLATE_HEAD / 4 {
+        b.set_l(slot + 4 * k, b.l(template + 4 * k));
+    }
+    let bob = b.l(slot + 0x50);
+    let look = b.l(slot + 0x26);
+    for o in [4, 0x4a, 0x90, 0xd6] {
+        b.set_l(bob + o, look);
+    }
+    let init = b.l(template);
+    crate::level::call(c, init, slot, 0);
+    let b = &mut c.bus;
+    b.set_w(OBJ_COUNT, b.w(OBJ_COUNT).wrapping_add(1));
+}
+
+/// `obj_spawn_cell` (h0+$1b3d8): `template` at map cell `cell`, `dx`, `dy` pixels into it,
+/// unless the cell already has a live slot (that slot is returned, `d1` -1).
+pub fn obj_spawn_cell(c: &mut LevelCtx, template: u32, cell: u32, dx: u16, dy: u16) -> Spawned {
+    if let Some(s) = (0..SLOTS)
+        .map(|k| OBJ_SLOTS + k * SLOT_SIZE)
+        .find(|&s| c.bus.l(s + 0x40) == cell)
+    {
+        return Spawned { d0: 0, d1: 0xffff_ffff, a0: s };
+    }
+    // With no slot the original sets d0 to -1, then clears it.
+    spawn_at_cell(c, template, cell, dx, dy).map_or(
+        Spawned { d0: 0, d1: dy as u32, a0: 0 },
+        |(s, _)| Spawned { d0: 0, d1: 0, a0: s },
+    )
+}
+
+/// `obj_spawn_cell_alt` (h0+$1b4e6): [`obj_spawn_cell`] without looking for a live slot there.
+pub fn obj_spawn_cell_alt(c: &mut LevelCtx, template: u32, cell: u32, dx: u16, dy: u16) -> Spawned {
+    spawn_at_cell(c, template, cell, dx, dy).map_or(
+        Spawned { d0: 0xffff_ffff, d1: dy as u32, a0: 0 },
+        |(s, y)| Spawned { d0: 0, d1: y as u32, a0: s },
+    )
+}
+
+/// The cell spawners' search and fill: the slot and the y it took, or `None` (nothing changed
+/// but evictions).
+fn spawn_at_cell(c: &mut LevelCtx, template: u32, cell: u32, dx: u16, dy: u16) -> Option<(u32, u16)> {
+    let slot = find_free(c)?;
+    if !take_bob(&mut c.bus, slot) {
+        return None;
+    }
+    let (x, y) = cell_position(&c.bus, cell, dx, dy);
+    c.bus.set_w(template + 8, x);
+    c.bus.set_w(template + 0xa, y);
+    fill_slot(c, slot, template, cell);
+    Some((slot, y))
+}
+
+/// `obj_spawn_coin_forced` (h0+$1b5d0): a coin at map cell `cell`. With every slot full and none
+/// evictable off the screen, the first slot that is neither evictable nor a coin is freed for it.
+pub fn obj_spawn_coin_forced(c: &mut LevelCtx, template: u32, cell: u32, dx: u16, dy: u16) -> Spawned {
+    let slots = || (0..SLOTS).map(|k| OBJ_SLOTS + k * SLOT_SIZE);
+    if let Some(s) = slots().find(|&s| c.bus.l(s + 0x40) == cell) {
+        return Spawned { d0: 0, d1: dy as u32, a0: s };
+    }
+    let none = Spawned { d0: 0xffff_ffff, d1: dy as u32, a0: template };
+    let slot = match find_free(c) {
+        Some(s) => s,
+        None => {
+            let coin_init = h0(0x23f60);
+            let Some(s) = slots()
+                .find(|&s| c.bus.w(s + 0x2a) == 0 && c.bus.l(s) != coin_init)
+            else {
+                return none;
+            };
+            obj_free(c, s, 0);
+            s
+        }
+    };
+    if !take_bob(&mut c.bus, slot) {
+        return none;
+    }
+    let (x, y) = cell_position(&c.bus, cell, dx, dy);
+    c.bus.set_w(template + 8, x);
+    c.bus.set_w(template + 0xa, y);
+    fill_slot(c, slot, template, cell);
+    Spawned { d0: 0, d1: y as u32, a0: slot }
+}
+
+/// `obj_spawn_at_xy` (h0+$1b706): `template` at level pixel `x`, `y`, unless a live slot was
+/// spawned at that very position (that slot is returned, `d1` -1).
+pub fn obj_spawn_at_xy(c: &mut LevelCtx, template: u32, x: u16, y: u16) -> Spawned {
+    let at = (x as u32) << 16 | y as u32;
+    if let Some(s) = (0..SLOTS)
+        .map(|k| OBJ_SLOTS + k * SLOT_SIZE)
+        .find(|&s| c.bus.l(s + 0x44) == at)
+    {
+        return Spawned { d0: 0, d1: 0xffff_ffff, a0: s };
+    }
+    spawn_at_pixel(c, template, x, y).map_or(
+        Spawned { d0: 0xffff_ffff, d1: 0, a0: 0 },
+        |s| Spawned { d0: 0, d1: 0, a0: s },
+    )
+}
+
+/// `obj_spawn_at_xy_nodedup` (h0+$1b822): [`obj_spawn_at_xy`] without looking for a slot there.
+pub fn obj_spawn_at_xy_nodedup(c: &mut LevelCtx, template: u32, x: u16, y: u16) -> Spawned {
+    spawn_at_pixel(c, template, x, y).map_or(
+        Spawned { d0: 0xffff_ffff, d1: y as u32, a0: 0 },
+        |s| Spawned { d0: 0, d1: y as u32, a0: s },
+    )
+}
+
+/// The pixel spawners' search and fill.
+fn spawn_at_pixel(c: &mut LevelCtx, template: u32, x: u16, y: u16) -> Option<u32> {
+    let slot = find_free(c)?;
+    if !take_bob(&mut c.bus, slot) {
+        return None;
+    }
+    c.bus.set_w(template + 8, x);
+    c.bus.set_w(template + 0xa, y);
+    let cell = pixel_cell(&c.bus, x, y);
+    fill_slot(c, slot, template, cell);
+    Some(slot)
+}
+
+/// `obj_free` (h0+$1b90e): the slot is emptied and its bob parked (`$7d00`, `$7d00`) and given
+/// back to `bob_free_list`.
+pub fn obj_free(c: &mut LevelCtx, slot: u32, _d7: u16) {
+    let b = &mut c.bus;
+    if b.l(slot + 0x40) == 0 {
+        return;
+    }
+    let entry = b.l(slot + 0x4c);
+    let bob = b.l(slot + 0x50);
+    b.set_w(bob + 0x1a, 0);
+    b.set_l(bob.wrapping_sub(4), 0x7d00_7d00);
+    b.set_l(entry, bob);
+    b.set_l(slot + 0x50, 0);
+    b.set_l(slot + 0x40, 0);
+    b.set_l(slot + 0x44, 0);
+    b.set_w(OBJ_COUNT, b.w(OBJ_COUNT).wrapping_sub(1));
+}
+
+/// h0+$1b9ee: every slot freed (a level's set-up).
+pub fn obj_free_all(c: &mut LevelCtx) {
+    for k in 0..SLOTS {
+        obj_free(c, OBJ_SLOTS + k * SLOT_SIZE, 0);
+    }
+}
+
+/// The frame record a slot's bob shows: its animation step's frame (`(bob+$16)` → `(…)`).
+fn shown_frame(b: &Bus, slot: u32) -> u32 {
+    let bob = b.l(slot + 0x50);
+    b.l(b.l(bob + 0x16))
+}
+
+/// h0+$1b940: freed once its right edge is left of the camera.
+pub fn obj_free_if_left_behind(c: &mut LevelCtx, slot: u32, _d7: u16) {
+    let b = &c.bus;
+    let frame = shown_frame(b, slot);
+    let d0 = b.w(CAMERA_X + 2).wrapping_sub(b.w(frame + 4));
+    if n_clear(d0.wrapping_sub(b.w(slot + 8))) {
+        obj_free(c, slot, 0);
+    }
+}
+
+/// `obj_despawn_if_offscreen` (h0+$1b95e): freed once it is out of the screen on a side the
+/// camera last moved away from (`scroll_dirs`; every side in the bonus level): `$170` right of
+/// the camera, `$30` past the left edge by its width, `$150` below, `$30` above by its height.
+pub fn obj_despawn_if_offscreen(c: &mut LevelCtx, slot: u32, _d7: u16) {
+    let b = &c.bus;
+    if b.l(slot + 0x40) == 0 {
+        return;
+    }
+    let dirs = if b.w(SHOOTER_MODE) != 0 { 0xff } else { b.b(SCROLL_DIRS) };
+    let frame = shown_frame(b, slot);
+    let (x, y) = (b.w(slot + 8), b.w(slot + 0xa));
+    let (cx, cy) = (b.w(CAMERA_X + 2), b.w(CAMERA_Y + 2));
+    let gone = (dirs & 4 != 0 && n_clear(x.wrapping_sub(0x170).wrapping_sub(cx)))
+        || (dirs & 2 != 0
+            && !n_clear(x.wrapping_add(b.w(frame + 4)).wrapping_add(0x30).wrapping_sub(cx)))
+        || (dirs & 0x10 != 0 && n_clear(y.wrapping_sub(0x150).wrapping_sub(cy)))
+        || (dirs & 8 != 0
+            && !n_clear(y.wrapping_add(b.w(frame + 6)).wrapping_add(0x30).wrapping_sub(cy)));
+    if gone {
+        obj_free(c, slot, 0);
+    }
+}
+
+/// A slot routine that does nothing (`rts`: h0+$7d4, h0+$29708).
+pub fn nothing(_c: &mut LevelCtx, _slot: u32, _d7: u16) {}
+
+/// A slot's bob takes its position (`bob − 4` = `+$08` x, y).
+pub fn bob_follow(b: &mut Bus, slot: u32) {
+    let bob = b.l(slot + 0x50);
+    b.set_l(bob.wrapping_sub(4), b.l(slot + 8));
+}
+
+/// Start a slot's bob on animation `anim` (`+$28` and `+$42`: the drawer starts it next pass).
+pub fn bob_anim(b: &mut Bus, slot: u32, anim: u32) {
+    let bob = b.l(slot + 0x50);
+    b.set_l(bob + 0x28, anim);
+    b.set_l(bob + 0x42, anim);
 }
 
 /// `obj_build_hitboxes` (h0+$d2f6): every live slot's hitboxes, offset by its position.
@@ -86,8 +350,9 @@ pub fn obj_build_hitboxes(c: &mut LevelCtx) {
     b.set_w(out, 0xffff);
 }
 
-/// Walk the hitbox list for boxes overlapping x `x1..x2`, y `y1..y2` (the original's tests: an
-/// entry is skipped when it ends left of or starts right of the box, and likewise down).
+/// The hitbox entries overlapping x `x1..x2`, y `y1..y2`, walked as the original walks the list
+/// (an entry is passed over when it ends left of or starts right of the box, and likewise down):
+/// each entry's slot, in order.
 fn overlapping(b: &Bus, x1: u16, x2: u16, y1: u16, y2: u16) -> Vec<u32> {
     let mut hits = Vec::new();
     let mut at = HITBOXES;
@@ -107,27 +372,81 @@ fn overlapping(b: &Bus, x1: u16, x2: u16, y1: u16, y2: u16) -> Vec<u32> {
     hits
 }
 
+/// `touch_spud_damage` (h0+$2360e): the touch handler the spud passes over.
+const TOUCH_SPUD_DAMAGE: u32 = h0(0x2360e);
+/// The hidden coin spring's update (h0+$2408a): the spud sets it off although it is immune.
+const SPRING_UPDATE: u32 = h0(0x2408a);
+/// `opt_game_mode` (h0+$9e6): 0 the easy game.
+const OPT_GAME_MODE: u32 = h0(0x9e6);
+
 /// `collide_all` (h0+$d0cc): the spud against the objects, then the frog (which is off any
-/// platform until an object says otherwise). A touch runs the object's handler, which no kind
-/// in T14 has.
+/// platform until an object says otherwise). The hitbox list is the one this pass built; a
+/// handler that frees a slot does not change it.
 pub fn collide_all(c: &mut LevelCtx) {
+    spud_touches(c);
+    frog_touches(c);
+    debug_assert_eq!(c.bus.w(SHOOTER_MODE), 0, "the bonus level's collisions are T19's");
+}
+
+/// h0+$d284: the spud's 16-pixel box against every object's: each hit runs the object's touch
+/// handler with d7 = 1, unless the object takes no spud damage (`touch_spud_damage`), has no
+/// contact (`+$1c` negative) or is immune (`$7d00`; the hidden coin spring is hit anyway).
+fn spud_touches(c: &mut LevelCtx) {
     let b = &c.bus;
     let (sx, sy) = (b.w(FROG + 0x74), b.w(FROG + 0x76));
-    let hits = overlapping(b, sx, sx.wrapping_add(0x10), sy, sy.wrapping_add(0x10));
-    debug_assert!(hits.is_empty(), "spud touches are T15–T18's");
-    let b = &mut c.bus;
-    if b.w(SPRITES_HIDDEN) == 0 {
-        b.set_w(FROG + f::ON_PLATFORM, 0);
-        let x1 = b.w(FROG + f::X).wrapping_add(4).wrapping_add(0xe);
-        let mut y1 = b.w(FROG + f::Y).wrapping_add(4).wrapping_add(0x16);
-        let (x2, y2) = (x1.wrapping_add(0xa), y1.wrapping_add(0x20));
-        if b.w(FROG + f::CROUCH) != 0 {
-            y1 = y1.wrapping_add(0xb);
+    for slot in overlapping(b, sx, sx.wrapping_add(0x10), sy, sy.wrapping_add(0x10)) {
+        let b = &c.bus;
+        let touch = b.l(slot + 0x10);
+        if touch == TOUCH_SPUD_DAMAGE || !n_clear(b.w(slot + 0x1c)) {
+            continue;
         }
-        let hits = overlapping(b, x1, x2, y1, y2);
-        debug_assert!(hits.is_empty(), "frog touches are T15–T18's");
+        if b.l(slot + 4) != SPRING_UPDATE && b.w(slot + 0x1c) == 0x7d00 {
+            continue;
+        }
+        crate::level::call(c, touch, slot, 1);
     }
-    debug_assert_eq!(c.bus.w(SHOOTER_MODE), 0, "the bonus level's collisions are T19's");
+}
+
+/// h0+$d0e0: the frog's box against every object's. Landing on a stompable object (falling,
+/// its feet above the object's top) bounces the frog and runs the touch handler; a passive one's
+/// handler runs on any contact; any other with contact (`+$1c` not negative) hurts the frog
+/// (`frog_hurt`) unless it is hurt already.
+fn frog_touches(c: &mut LevelCtx) {
+    let b = &mut c.bus;
+    if b.w(SPRITES_HIDDEN) != 0 {
+        return;
+    }
+    b.set_w(FROG + f::ON_PLATFORM, 0);
+    let x1 = b.w(FROG + f::X).wrapping_add(4).wrapping_add(0xe);
+    let mut y1 = b.w(FROG + f::Y).wrapping_add(4).wrapping_add(0x16);
+    let (x2, y2) = (x1.wrapping_add(0xa), y1.wrapping_add(0x20));
+    if b.w(FROG + f::CROUCH) != 0 {
+        y1 = y1.wrapping_add(0xb);
+    }
+    for slot in overlapping(b, x1, x2, y1, y2) {
+        let b = &mut c.bus;
+        let hurt = b.w(FROG + f::HURT) != 0;
+        if b.w(slot + 0x2e) != 0
+            && !hurt
+            && n_clear(b.w(FROG + f::VY))
+            && !n_clear(b.w(FROG + f::Y).wrapping_add(0x29).wrapping_sub(b.w(slot + 0xa)))
+        {
+            let vy = if b.w(OPT_GAME_MODE) == 0 { 0xffff } else { 0xfffe };
+            b.set_w(FROG + f::VY, vy);
+            let touch = b.l(slot + 0x10);
+            crate::level::call(c, touch, slot, 0);
+            continue;
+        }
+        if b.w(slot + 0x2e) == 0 && b.w(slot + 0x30) != 0 {
+            let touch = b.l(slot + 0x10);
+            crate::level::call(c, touch, slot, 0);
+            continue;
+        }
+        if b.w(slot + 0x30) != 0 || !n_clear(b.w(slot + 0x1c)) || hurt {
+            continue;
+        }
+        crate::level::death::frog_hurt(c, slot);
+    }
 }
 
 /// `build_bob_draw_list` (h0+$19b42): the spud, the slots' bobs (those in front first), then

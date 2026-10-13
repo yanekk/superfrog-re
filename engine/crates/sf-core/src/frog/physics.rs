@@ -133,7 +133,7 @@ fn fire(c: &LevelCtx) -> bool {
 }
 
 /// h0+$11614: up jumps, unless the spud is off and fire is held (then nothing is walked).
-fn up(c: &mut LevelCtx) {
+pub(crate) fn up(c: &mut LevelCtx) {
     if c.bus.w(FROG + f::SPUD_ON) == 0 && fire(c) {
         return no_walk(c);
     }
