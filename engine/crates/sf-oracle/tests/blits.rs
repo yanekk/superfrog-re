@@ -66,3 +66,33 @@ fn a_frame_of_the_intro_has_its_bltsize_writes_and_each_blits_begin_free_end() {
     // Other registers are kept too: the blits are set up through BLTCON0 before each starts.
     assert!(a.cpu_writes().iter().any(|w| w.reg == 0x40));
 }
+
+/// A blit started late in a frame frees and ends past the frame's end: those events are flagged
+/// `next`, come last, and the step still counts one frame (frame 3 015, measured, T51 review).
+#[test]
+fn a_blit_run_past_the_frames_end_is_flagged_next() {
+    let cfg = OracleConfig::locate(DEFAULT_MAX_FRAMES)
+        .unwrap_or_else(|e| panic!("{e}"))
+        .with_boot(DiskSlot::D3);
+    let mut a = Amiga::power_on(&cfg).unwrap();
+    for _ in 0..SCENE.start {
+        a.step(FrameInput::NONE).unwrap();
+    }
+    let events = SCENE
+        .clone()
+        .find_map(|_| {
+            a.step(FrameInput::NONE).unwrap();
+            let events = a.blit_events();
+            events.iter().any(|e| e.next).then_some(events)
+        })
+        .expect("a frame of the intro whose last blit runs past its end");
+    assert_eq!(a.frames_run(), 1);
+    let first_next = events.iter().position(|e| e.next).unwrap();
+    assert!(events[first_next..].iter().all(|e| e.next), "{events:?}");
+    // The next frame's events sit at its top, before any line the frame's own events reached.
+    let last_own = events[..first_next].last().map_or(0, |e| e.vpos);
+    assert!(
+        events[first_next..].iter().all(|e| e.vpos < last_own),
+        "{events:?}"
+    );
+}
