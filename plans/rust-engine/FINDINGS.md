@@ -18,6 +18,9 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-13 | 📌 | T46 added T49–T56 (owner: stop, split the rest; owner's yes given). T56 carries T46's done-when and blocks T21, T47, T48. |
+| 2026-10-13 | 🔄 | Owner, T46: conformance feeds the original's handler entry (patch 0005 `Amiga::irqs`) and, for draws, its end (`INTREQ=$20` beam); normal play estimates (entry line 0 cycle 10). |
+| 2026-10-13 | 📌 | T46: an oracle step runs until the CPU ends an instruction past the frame's end; a blit holding the CPU stretches it. Masks' DMACON $400 precedes the held handler iff the last mask blit started on a fetched line. |
 | 2026-10-13 | 🐞 | T32 review, open for T47: in normal play the engine's intro hands over to the game untouched (probe: frame 9 282, no input); `END` has no fire wait, though `Start::Disk3`'s doc says fire is pressed. |
 | 2026-10-13 | 📌 | T32 added T46 story-intro-scenes, T47 story-intro-handover, T48 story-intro-skips (first numbered T36–T38, then T42–T44; T15 and T16 took those; owner renumbered 2026-10-13) (owner: rewind to the last working milestone, split the rest). All block T21. T32 stops at frame 539; T46's doc lists what its scan left. |
 | 2026-10-13 | 📌 | T32 for T46: the runner's load-line search fits on the picture, so a fade-timing change in a load frame moves the line found and the next frames. A draft cycle-exact fade-step model did that; reverted. |
