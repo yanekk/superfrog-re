@@ -6,6 +6,7 @@
 //! and probe the engine's values back out.
 
 pub mod audio;
+pub mod bonus;
 pub mod frog;
 pub mod front;
 pub mod game;

@@ -28,10 +28,13 @@ const MAP_ROWS: u32 = h0(0x17334);
 /// `spud_update` (h0+$80f0): with the spud (`+$7c`) fire on the ground or a platform throws it, in
 /// the way the joystick points (up, up and forward, forward); in flight it steers back to the frog
 /// three pixels a pass, splats on a wall, and is gone off the screen or once the frog catches it.
-/// Fire in the air (or no spud) puts it away.
+/// Fire in the air (or no spud) puts it away. In shooter mode the frog fires shots instead
+/// ([`crate::bonus::shots::shooter_spud`]).
 pub fn spud_update(c: &mut LevelCtx) {
+    if c.bus.w(SHOOTER_MODE) != 0 {
+        return crate::bonus::shots::shooter_spud(c);
+    }
     let b = &mut c.bus;
-    debug_assert_eq!(b.w(SHOOTER_MODE), 0, "the bonus level's spud is T19's");
     if b.w(FROG + f::SPUD_ON) == 0 || b.w(SPRITES_HIDDEN) != 0 {
         return park(b);
     }
