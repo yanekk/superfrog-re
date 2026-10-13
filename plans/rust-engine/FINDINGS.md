@@ -18,6 +18,8 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-13 | 🐞 | T75: `sf_conform::routine::sound_files` gave world 7 the W3–6 effect bank, unlike `audio::files_for`; any WB routine test playing an effect diverged. Fixed to the bonus bank. |
+| 2026-10-13 | 📌 | T75: at WB-1 the five shots are the only live objects (slots 0–4), with no hitboxes and touch `$7d4`; T78 adds the shot-hits-bonus-enemy case to `bonus_routines.rs`. |
 | 2026-10-13 | 📌 | T70 review: T76/T77 read the bonus paths from the bus with named addresses, as `items` and `audio::music` do, not from sf-assets `Tables` as T70's Done-when said. Kept; T79 still says `Tables`. |
 | 2026-10-13 | 🐞 | T70 review: T76's 122 spawned T77's 123 while T76/T77 ran in parallel; a spawn runs the init via `level::call`, asserting when unported. Fixed: 123 moved to T76, T77 depends on T76. |
 | 2026-10-13 | 🔄 | Owner, T70: frame cases wait for T36/T37 (like T16/T17); routines first. pir's context warning split all of T70, unbuilt, into T75–T79. Bonus row of `obj_flag_jumptab`: markers 1–15, 55. |
