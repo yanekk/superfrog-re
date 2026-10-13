@@ -60,7 +60,7 @@ done · ⛔ blocked, needs a human.
 | T35 | end-sequence | T20; blocks T21 | ✅ | |
 | T36 | items-on-the-beam | T15 | ✅ | |
 | T37 | level-restart | T36; blocks T34 | ✅ | |
-| T38 | level-tally | T37; blocks T21 | 🔍 | `level/tally.rs`, a new file (not exit.rs). W1-1's exit forced (`sync {level, exit=true}`, T19's way), not played. Cases `tally-w1-1` (points, 185 frames), `tally-slot-w1-1` (to the slot's loads); 4 routine tests ($47f6, $4992, $479a, $d9e); pages arithmetic unit-tested (inline). `Scene::of` keys on `logic_running` alone. DESIGN §2.11 gains the coins' divide by zero. |
+| T38 | level-tally | T37; blocks T21 | ✅ | Review clean, no fix commit. Port matched line by line to the h0+$4466 listing; tile-coin, coin, clamp and zero-page paths probed against the original by planted values, green; items<5 crash reproduced. Four mutations red. `all`: only slot-load and story-scene4-sound red, same on base. |
 | T39 | enemies-world-5 | T16, T38; blocks T18 | ⬜ | |
 | T40 | enemies-world-6 | T38; blocks T18 | ⬜ | |
 | T41 | enemies-world-4 | T38; blocks T18 | ⬜ | |
@@ -110,7 +110,7 @@ done · ⛔ blocked, needs a human.
 A Notes cell holds what was built or what the review found, the test count, and one line per
 deviation from the task doc. A ✅ task's cell may be cut to one line once the next task has been reviewed.
 
-**Review queue:** T38
+**Review queue:** *(empty)*
 
 ## Blocked on the user
 

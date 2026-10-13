@@ -18,6 +18,7 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-14 | 📌 | T38 review, not fixed: `LevelTally` drops `level_tally`'s first test (`game_full_mode` 0, a game run from a disk loader, returns at once). Unreachable from the engine's boot; no assertion guards it. |
 | 2026-10-14 | 🐞 | Not T38's: `slot-load` red at frame 0 on the feature branch (75f0c29) too: `playfield_clean` keeps the packed `FRUT`; `slot::resume` is never called, so its `Resume` start falls to the placeholder scene. |
 | 2026-10-14 | 📌 | T38: tally cases force W1-1's exit (`sync = { level, exit = true }`). `tally-slot-w1-1` is green to `slot_machine`'s loads (frame 86, T95's). `level/tally.rs` `print` is a third port of h0+$6f3a (`slot::print_text`, Cx-based). |
 | 2026-10-14 | 📌 | Coordinator, night of 2026-10-13, under the owner's 2026-10-11 lag rule; owner to confirm: conformance feeds which story blanks had a handler (T55 `Game::set_blank_merged`); normal play keeps the engine's estimate, wrong at 3437. |
