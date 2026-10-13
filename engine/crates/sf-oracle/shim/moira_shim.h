@@ -41,6 +41,7 @@ typedef struct {
     uint32_t addr;    /* SF_CALL_CUSTOM: the address accessed */
     uint16_t vector;  /* SF_CALL_EXCEPTION: the exception vector number */
     uint64_t instr;   /* instructions executed */
+    uint64_t cycles;  /* Moira's clock when the call ended: CPU cycles, from 0 at its start */
 } sf_call_status;
 
 sf_cpu *sf_cpu_new(void);

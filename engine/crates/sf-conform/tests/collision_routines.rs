@@ -86,7 +86,6 @@ fn slope_anim_matches_the_original() {
     }
 }
 
-
 /// Markers `frog_tiles` reacts to, and ground.
 fn handled_marker(g: &mut Gen) -> u16 {
     match g.below(3) {
@@ -117,7 +116,10 @@ fn frog_tiles_matches_the_original() {
         let (col, row) = ((x + 8) as u32 / 16, (y.wrapping_sub(16)) as u32 / 16);
         for r in row.saturating_sub(2)..(row + 7).min(84) {
             for c in col.saturating_sub(4)..(col + 6).min(300) {
-                s.poke_w(cell(c, r), (g.below(840) as u16) << 6 | handled_marker(&mut g));
+                s.poke_w(
+                    cell(c, r),
+                    (g.below(840) as u16) << 6 | handled_marker(&mut g),
+                );
             }
         }
         for (o, v) in [
@@ -144,7 +146,10 @@ fn frog_tiles_matches_the_original() {
         let wall = g.below(5);
         s.poke_w(FROG + f::WALL_RIGHT, (wall == 0) as u16);
         s.poke_w(FROG + f::WALL_LEFT, (wall == 1) as u16);
-        s.poke_l(FROG + f::ANIM, g.pick(&[h0(0x10d8e), h0(0x10566), h0(0x10542), h0(0x1077a)]));
+        s.poke_l(
+            FROG + f::ANIM,
+            g.pick(&[h0(0x10d8e), h0(0x10566), h0(0x10542), h0(0x1077a)]),
+        );
         s.poke_w(h0(0xeb28), g.below(6) as u16);
         s.poke_w(h0(0xebf0), g.below(10) as u16);
         s.poke_w(h0(0x14), g.one_in(10) as u16);
@@ -155,5 +160,8 @@ fn frog_tiles_matches_the_original() {
     }
     // The original spins for ever when the frog faces left between two `$3d` edges with both
     // wall flags set (h0+$e3fe, DESIGN §2.11); the generator makes that often (~1.7 %).
-    assert!(hung < CASES / 30, "the original hung or crashed on {hung} states");
+    assert!(
+        hung < CASES / 30,
+        "the original hung or crashed on {hung} states"
+    );
 }

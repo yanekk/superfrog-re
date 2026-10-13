@@ -101,10 +101,12 @@ pub fn run_with(
         SyncPoint::PowerOnDisk3 => Start::Disk3 {
             seed: synced.seed.unwrap_or_default(),
         },
-        SyncPoint::AtFrame { .. } | SyncPoint::EndSequence => Start::Resume {
-            memory: synced.memory,
-            cpu: sync::core_cpu(&amiga.cpu()),
-        },
+        SyncPoint::AtFrame { .. } | SyncPoint::EndSequence | SyncPoint::Slot { .. } => {
+            Start::Resume {
+                memory: synced.memory,
+                cpu: sync::core_cpu(&amiga.cpu()),
+            }
+        }
         _ => Start::Transplant(synced.memory),
     };
     let display = display_data();
@@ -255,7 +257,8 @@ pub fn run_with(
         if stepped && after_lag {
             after_lag = false;
             if case.compare.vars
-                && let Some((v, theirs, ours)) = compare::vars(game.layout(), &game.probe(), &mem, &[])
+                && let Some((v, theirs, ours)) =
+                    compare::vars(game.layout(), &game.probe(), &mem, &[])
             {
                 game = Game::with_display(display.clone(), Start::Transplant(mem.clone()));
                 if frog_only {
@@ -263,7 +266,10 @@ pub fn run_with(
                 }
                 outcome.resynced.push((
                     f,
-                    format!("{} at ${:06x}: original ${theirs:x}, engine ${ours:x}", v.name, v.addr),
+                    format!(
+                        "{} at ${:06x}: original ${theirs:x}, engine ${ours:x}",
+                        v.name, v.addr
+                    ),
                 ));
             }
             prev = mem;

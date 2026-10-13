@@ -44,6 +44,17 @@ pub enum SyncPoint {
     /// disk it asks for inserted, to the end of the first frame on which its main program is in
     /// `end_seq_load` (top_loop's call, return address h0+$7b6).
     EndSequence,
+    /// The slot machine's start (T71): W1-1 reached as `AtLevel` reaches it, by the `start` script
+    /// (`start-w1-1` when `None`), `script` played in W1-1 to its last line's frame, then the
+    /// level's exit forced (`level_state` = 1, as for the final level); in `level_tally`'s choice up
+    /// is held until the slot machine is picked, then fire pressed on every 4th frame counted from the
+    /// forced exit. The sync point
+    /// is the end of the first frame on which the main program is in `slot_machine` (its return
+    /// address, h0+$478e, on the stack).
+    Slot {
+        script: String,
+        start: Option<String>,
+    },
 }
 
 /// The oracle at a sync point.
@@ -87,6 +98,19 @@ const FINAL_SEARCH: u32 = 30_000;
 /// With df1 connected the boot reaches the title 219 frames sooner (measured on the oracle, 2026-10-12);
 /// every input from the title on comes that much earlier.
 const DF1_LEAD: u32 = 219;
+/// The script [`SyncPoint::Slot`] reaches W1-1 by when it names none.
+pub const DEFAULT_START: &str = "start-w1-1";
+/// `attract_mode` (h0+$18): set while the attract demo plays, which a late START GAME reaches.
+const ATTRACT_MODE: u32 = h0(0x18);
+/// `level_tally`'s choice between points and the slot machine: its loop polls the joystick from
+/// h0+$467e to h0+$46e2, and h0+$4798 is 1 once up picked the slot.
+const TALLY_WAIT: Range<u32> = h0(0x467e)..h0(0x46e2);
+const TALLY_SLOT: u32 = h0(0x4798);
+/// `level_tally`'s call of `slot_machine` returns here.
+pub const IN_SLOT_MACHINE: u32 = h0(0x478e);
+/// The slot machine is entered 73 frames after the forced exit (measured, T19); stop looking well
+/// after.
+const SLOT_SEARCH: u32 = 1_000;
 /// `top_loop`'s call of `end_seq_load` returns here.
 const IN_END_SEQ_LOAD: u32 = h0(0x7b6);
 /// The final level's forced exit reaches `end_seq_load` about 80 frames on.
@@ -267,21 +291,96 @@ pub fn reach_frozen(
             by_password(*id, frames, frozen)
         }
         SyncPoint::EndSequence => end_sequence(frames),
-        SyncPoint::AtLevel(id) => {
-            let s = InputScript::load(&script_path("start-w1-1"))?;
-            let key = format!("{tag}level {id} script\n{}", s.to_oracle().canonical());
-            at_snapshot(&key, 1, frames, LEVEL_SEARCH, |a| {
-                for f in 0..LEVEL_SEARCH {
-                    step(a, s.input_at(f), frozen)?;
-                    let m = core_memory(a.memory());
-                    if in_level(&m) && long(&m, WORLD) == 1 && long(&m, LEVEL) == 1 {
-                        return Ok(());
-                    }
-                }
-                Err(format!("W1-1 not reached in {LEVEL_SEARCH} frames"))
+        SyncPoint::Slot { script, start } => slot(script, start.as_deref(), frames),
+        SyncPoint::AtLevel(_) => {
+            let s = InputScript::load(&script_path(DEFAULT_START))?;
+            at_snapshot(&w1_1_key(&tag, &s), 1, frames, LEVEL_SEARCH, |a| {
+                to_w1_1(a, &s, frozen)
             })
         }
     }
+}
+
+/// The snapshot key of W1-1 reached by the menu script `start`: for `start-w1-1` the key
+/// `AtLevel(W1-1)` has always had, so its snapshots are found again.
+fn w1_1_key(tag: &str, start: &InputScript) -> String {
+    format!("{tag}level W1-1 script\n{}", start.to_oracle().canonical())
+}
+
+/// From power-on to W1-1's first frame by `start`, a menu script.
+fn to_w1_1(a: &mut Amiga, start: &InputScript, frozen: Freeze) -> Result<(), String> {
+    for f in 0..LEVEL_SEARCH {
+        step(a, start.input_at(f), frozen)?;
+        let m = core_memory(a.memory());
+        if in_level(&m) && long(&m, WORLD) == 1 && long(&m, LEVEL) == 1 {
+            return Ok(());
+        }
+    }
+    Err(format!("W1-1 not reached in {LEVEL_SEARCH} frames"))
+}
+
+/// W1-1's first frame by the menu script `start`, failing if it is the attract demo's W1-1 (a
+/// START GAME too late lands there). For [`SyncPoint::Slot`] and its tests.
+pub fn w1_1_by(start: &str) -> Result<Synced, String> {
+    let s = InputScript::load(&script_path(start))?;
+    let synced = at_snapshot(&w1_1_key("", &s), 1, 1, LEVEL_SEARCH, |a| {
+        to_w1_1(a, &s, Freeze::None)
+    })?;
+    if long(&synced.memory, ATTRACT_MODE) != 0 {
+        return Err(format!("{start}: W1-1 is reached in the attract demo"));
+    }
+    Ok(synced)
+}
+
+/// [`SyncPoint::Slot`].
+fn slot(script: &str, start: Option<&str>, frames: u32) -> Result<Synced, String> {
+    let start = start.unwrap_or(DEFAULT_START);
+    let menu = InputScript::load(&script_path(start))?;
+    let s = InputScript::load(&script_path(script))?;
+    let play = s.lines.last().map_or(0, |l| l.0);
+    let key = format!(
+        "slot v1\nW1-1 by\n{}in W1-1\n{}",
+        menu.to_oracle().canonical(),
+        s.to_oracle().canonical()
+    );
+    let reach = LEVEL_SEARCH + play + SLOT_SEARCH;
+    at_snapshot(&key, 1, frames, reach, |a| {
+        to_w1_1(a, &menu, Freeze::None)?;
+        if long(&core_memory(a.memory()), ATTRACT_MODE) != 0 {
+            return Err(format!("{start}: W1-1 is reached in the attract demo"));
+        }
+        for f in 0..play {
+            step(a, s.input_at(f), Freeze::None)?;
+        }
+        a.write_memory(LEVEL_STATE, &1u32.to_be_bytes());
+        for n in 0..SLOT_SEARCH {
+            let m = core_memory(a.memory());
+            let chain = main_chain(&a.cpu(), &m);
+            let input = if !TALLY_WAIT.contains(&chain[0]) {
+                FrameInput::NONE
+            } else if word(&m, TALLY_SLOT) != 1 {
+                FrameInput {
+                    joy: Joy::UP,
+                    ..FrameInput::NONE
+                }
+            } else if n % 4 == 0 {
+                FrameInput {
+                    joy: Joy::FIRE,
+                    ..FrameInput::NONE
+                }
+            } else {
+                FrameInput::NONE
+            };
+            step(a, input, Freeze::None)?;
+            let m = core_memory(a.memory());
+            if main_chain(&a.cpu(), &m).contains(&IN_SLOT_MACHINE) {
+                return Ok(());
+            }
+        }
+        Err(format!(
+            "slot_machine not reached in {SLOT_SEARCH} frames of W1-1's forced exit"
+        ))
+    })
 }
 
 /// How [`by_password`] gets to a level.
@@ -353,7 +452,9 @@ fn by_password(id: LevelId, frames: u32, frozen: Freeze) -> Result<Synced, Strin
     let r = route(id).ok_or_else(|| format!("AtLevel({id}): no such level"))?;
     let (_, key) = password_key(id, &r);
     let key = format!("{}{key}", frozen.tag());
-    at_snapshot(&key, r.drives, frames, search(&r), |a| drive_to(a, id, &r, frozen))
+    at_snapshot(&key, r.drives, frames, search(&r), |a| {
+        drive_to(a, id, &r, frozen)
+    })
 }
 
 fn search(r: &Route) -> u32 {
@@ -718,6 +819,18 @@ mod tests {
             text += &format!("disk {}\n", sha1_hex(&fs::read(d).unwrap()));
         }
         assert_eq!(k1, sha1_hex(format!("{text}x").as_bytes()));
+    }
+
+    /// W1-1's snapshots, cached under T13's key, are found again now the start script is a
+    /// parameter.
+    #[test]
+    fn w1_1_keeps_its_key() {
+        let s = InputScript::load(&script_path(DEFAULT_START)).unwrap();
+        assert_eq!(
+            w1_1_key("", &s),
+            format!("level {} script\n{}", id("W1-1"), s.to_oracle().canonical())
+        );
+        assert!(w1_1_key("", &s).starts_with("level W1-1 script\n"));
     }
 
     #[test]

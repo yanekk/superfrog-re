@@ -133,7 +133,10 @@ fn every_level_is_entered_as_the_original_enters_it() {
         let d = diffs(&theirs, &game);
         for must in ["frog_x", "frog_y", "camera_x", "camera_y"] {
             if let Some(v) = d.iter().find(|v| v.0 == must) {
-                failures.push(format!("{id}: {} original ${:x}, engine ${:x}", v.0, v.2, v.3));
+                failures.push(format!(
+                    "{id}: {} original ${:x}, engine ${:x}",
+                    v.0, v.2, v.3
+                ));
             }
         }
         let excused = |name: &str| {
@@ -199,7 +202,8 @@ fn a_game_started_at_a_level_plays_as_the_original() {
     let id: LevelId = "W1-1".parse().unwrap();
     let script = InputScript::load(&sf_conform::case::script_path("frog-run-right")).unwrap();
     let frames = 500;
-    let synced = sync::reach_frozen(&SyncPoint::AtLevel(id), &script, frames, Freeze::Objects).unwrap();
+    let synced =
+        sync::reach_frozen(&SyncPoint::AtLevel(id), &script, frames, Freeze::Objects).unwrap();
     let mut amiga = synced.amiga;
     let mut game = Game::with_display(display.clone(), Start::Level(id));
     game.frog_only();
@@ -244,7 +248,8 @@ fn the_fake_wall_opens_as_in_the_original_without_a_re_sync() {
     let id: LevelId = "W1-1".parse().unwrap();
     let script = InputScript::load(&sf_conform::case::script_path("frog-run-right")).unwrap();
     let frames = 620;
-    let synced = sync::reach_frozen(&SyncPoint::AtLevel(id), &script, frames, Freeze::Objects).unwrap();
+    let synced =
+        sync::reach_frozen(&SyncPoint::AtLevel(id), &script, frames, Freeze::Objects).unwrap();
     let mut amiga = synced.amiga;
     let mut game = Game::with_display(display.clone(), Start::Level(id));
     game.frog_only();
@@ -262,12 +267,20 @@ fn the_fake_wall_opens_as_in_the_original_without_a_re_sync() {
             continue;
         }
         let ours = game.state().var(VarId::LevelMap);
-        let theirs: Vec<u8> = (0..map.width.len()).map(|k| mem.byte(map.addr + k)).collect();
+        let theirs: Vec<u8> = (0..map.width.len())
+            .map(|k| mem.byte(map.addr + k))
+            .collect();
         if let Some(k) = ours.iter().zip(&theirs).position(|(a, b)| a != b) {
-            panic!("frame {f}: level_map+${k:x} is ${:02x} in the original, ${:02x} in the engine", theirs[k], ours[k]);
+            panic!(
+                "frame {f}: level_map+${k:x} is ${:02x} in the original, ${:02x} in the engine",
+                theirs[k], ours[k]
+            );
         }
     }
-    assert!(lagged > 0, "the original no longer lags at the passage: the case needs no re-sync");
+    assert!(
+        lagged > 0,
+        "the original no longer lags at the passage: the case needs no re-sync"
+    );
     let dug = game
         .state()
         .var(VarId::LevelMap)
