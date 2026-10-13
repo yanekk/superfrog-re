@@ -13,6 +13,20 @@ points added (5 000 a page) and the extra life check, the fade out. The slot mac
 W1-1 finished to the tally and past it, every frame matching the original; `LevelOutcome::
 Completed { tally }` carries the pages and the choice.
 
+## Files
+
+- `engine/crates/sf-core/src/level/{exit,mod}.rs`, `scene.rs` (the draft's `exit.rs` has the loop's end)
+- `engine/conform/{scripts,cases}/tally-*`; `engine/crates/sf-conform/tests/frog_cases.rs`
+
+## Interface
+
+`LevelOutcome::Completed { tally }` (T37's type), the tally's pages and the points-or-slot choice.
+
+## Tests
+
+- [ ] routine conformance for the tally's page and points routines.
+- [ ] frame conformance: W1-1 finished, through the tally with points chosen (the slot is T19's).
+
 ## Done when
 
 - [ ] A W1-1 completion case, through the tally, green in `sf-conform -- all`.

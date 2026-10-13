@@ -22,10 +22,21 @@ first step waits a frame when it ends past line `$40`), the slide's picture at l
 A death in a level, the time up and the last life lost play as the original from the loop's end
 to the level's loop again (or to `game_over_seq`), every frame.
 
+## Files
+
+- `engine/crates/sf-core/src/level/{exit,death,timeline,mod}.rs`, `front/mod.rs`, `game.rs`, `scene.rs`
+- `engine/conform/{scripts,cases}/frog-pit-*`, a time-up case; `engine/crates/sf-conform/tests/frog_cases.rs`
+
 ## Interface
 
 `LevelOutcome { Completed { tally }, Died, TimeUp, GameOver }` in `sf_core::level`, set when the
 loop ends (T15's task doc named it; the draft on `t15-flow-wip` has it); `Game::level_outcome()`.
+
+## Tests
+
+- [ ] routine conformance for `level_exit_fade`, `game_over_check` and `level_start`.
+- [ ] frame conformance: `frog-pit-w1-1` through the restart; time up to `game_over_seq`;
+      variables and Paula every frame.
 
 ## Done when
 

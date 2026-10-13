@@ -29,6 +29,17 @@ Items and their pickups frame-exact in the picture, and every level entered with
    h0+$f382), each power-up active until it ends (spud thrown, wings, speed, shield), the hidden
    coin spring, switches, pads, launchers; score, lives and clock equal every frame.
 
+## Interface
+
+`LevelCtx::spend(cycles)`, the pass's CPU time on the beam; `Scene::step` honouring
+`Pacing::Late`; `Start::Level` entering with the level's objects spawned.
+
+## Tests
+
+- [ ] routine conformance for the time model's calibration points and `map_spawn_scan_screen`.
+- [ ] frame conformance, picture included: the item cases of goal 4, with no re-sync.
+- [ ] `level_entry.rs` with the objects group gone from `NOT_MODELLED`.
+
 ## Files
 
 - `engine/crates/sf-core/src/level/{objects.rs,frame.rs,timeline.rs,bobs.rs,load.rs}`, `scene.rs`
