@@ -17,9 +17,9 @@
 //! skip the original's frames spent loading.
 
 pub mod anim;
-mod attract;
+pub(crate) mod attract;
 pub mod blit;
-mod common;
+pub(crate) mod common;
 pub mod data;
 mod ending;
 pub mod fade;
@@ -110,6 +110,9 @@ pub(crate) enum Routine {
     EndSeqLoad(ending::EndSeqLoad),
     EndSequence(ending::EndSequence),
     CpuWork(ending::CpuWork),
+    /// The slot machine (T92) and, below it, the level's tally that called it.
+    Slot(crate::slot::Routine),
+    SlotOver(crate::slot::SlotOver),
 }
 
 impl Routine {
@@ -136,6 +139,8 @@ impl Routine {
             Routine::EndSeqLoad(r) => r.run(cx),
             Routine::EndSequence(r) => r.run(cx),
             Routine::CpuWork(r) => r.run(cx),
+            Routine::Slot(r) => r.run(cx),
+            Routine::SlotOver(r) => r.run(cx),
         }
     }
 }
