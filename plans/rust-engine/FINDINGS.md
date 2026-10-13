@@ -18,6 +18,12 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-13 | 📌 | T77: `bob_draw_vars` (h0+$18bc8) starts on marker 15's `bra.w` displacement ($2810); intact at WB-1 (marker 15's test compares). Marker 55 sets `level_state` 2 (T79). `obj_path_xy` (h0+$1c41c) is ready for the bosses. |
+| 2026-10-13 | 🐞 | Open: `level_entry::every_level_is_entered_as_the_original_enters_it` red on every level, `slot_copper` original $140f440, engine $1400000. Same on T76's base ffbad9f (T71's slot variables in `LAYOUT`); T76 review, not fixed. |
+| 2026-10-13 | 📌 | T76 for T75's merge: both create `bonus/mod.rs` (keep both modules and both `register_all` lines). T76 copied T75's `bonus_rig`/`sound_files` hunks verbatim, so those merge clean. |
+| 2026-10-13 | 🐞 | T78, not fixed: `purity.rs`'s scanner flags a hex literal ending `f64`/`f32` (`0x2cf64`) as a float. Worked around with `0x2CF64`; the scanner should skip suffix checks on hex. |
+| 2026-10-13 | 📌 | T78: `reward_power_count` (h0+$23e20) is 9 in the executable, `shot_cycle_table` non-zero; `State::default` zeroes LAYOUT vars, so a booted game (T79/T21) must seed them from hunk 0. |
+| 2026-10-13 | 📌 | T78: `bonus::death::become_reward(c, slot, dx)` is h0+$23c14 for the enemies tasks; `touch_spud_damage` (h0+$2360e, $23662) itself stays unported. |
 | 2026-10-13 | 🐞 | T52 review: `run_bus` skips `$E0` when the copper is turned away there; vAmiga marks it BLOCKED so the blitter cannot take it, but `story::sim::Fixed` leaves it free. Open, for T89. |
 | 2026-10-13 | 📌 | T52 split at pir's context warning: `story::sim` kept; oracle checks moved to T89 (masks; `run_bus` takes one copper cycle too many at line 0) and T90 (first draw's restores). Both block T53. |
 | 2026-10-13 | 📌 | T51 review sweep: `Irq::next` (sf-oracle) has no direct test; only `sync::handler_entry` uses it. Left as is. |

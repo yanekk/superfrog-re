@@ -1619,6 +1619,82 @@ note = "touch handler: bonus-level enemies"
 [[sym]]
 exe = "d1_c03"
 hunk = 0
+offset = 0x23956
+name = "death_fall"
+kind = "func"
+note = "a shot bonus enemy falls away; at bob +$1a >= $7530 it becomes a reward, d0 = 8 (T78)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x23c14
+name = "become_reward"
+kind = "func"
+note = "a killed enemy (touch_bonus_enemy, touch_spud_damage) snaps to the ground and becomes a reward; d0 = dx (T78)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x23de4
+name = "reward_life_count"
+kind = "var"
+size = 0x2
+note = "shooter-mode rewards since the last life: every $28th is a life (T78)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x23de6
+name = "reward_wave"
+kind = "table"
+size = 0x3a
+note = "shooter-mode reward: y offsets of its wave, ended by $80 (T78)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x23e20
+name = "reward_power_count"
+kind = "var"
+size = 0x2
+note = "shooter-mode rewards since the last power-up: every 10th is one; 9 in the exe (T78)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x23e22
+name = "reward_float"
+kind = "func"
+note = "reward update in shooter mode: one left a pass along the wave, freed after $20 (T78)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x23e6c
+name = "reward_arc"
+kind = "func"
+note = "reward update outside shooter mode: rises on its arc until $7d00 (T78)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x23e90
+name = "reward_arc_table"
+kind = "table"
+size = 0x1c
+note = "reward: y offsets of its arc, ended by $7d00 (T78)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x23eac
+name = "touch_reward"
+kind = "func"
+note = "touch handler: reward taken once its arc is over; life / shot power, 200 points (T78)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
 offset = 0x239f6
 name = "touch_coin"
 kind = "func"
@@ -1655,6 +1731,33 @@ offset = 0x25a16
 name = "final_boss_update"
 kind = "func"
 note = "final boss update"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x28ad8
+name = "bonus_toggle_114"
+kind = "var"
+size = 2
+note = "bonus type 114's init flips it to pick one of two animations (T76)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x28b4a
+name = "bonus_toggle_113"
+kind = "var"
+size = 2
+note = "bonus type 113's init flips it to pick one of two animations (T76)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x293ce
+name = "bonus_fly_off"
+kind = "var"
+size = 2
+note = "bonus marker 11 sets it; 127/128's inits clear it; while set they fly off left (T77)"
 
 [[sym]]
 exe = "d1_c03"
