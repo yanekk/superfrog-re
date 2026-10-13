@@ -100,11 +100,11 @@ headless.
 | [T36](tasks/T36-items-on-the-beam.md) | items-on-the-beam | T15 |
 | [T37](tasks/T37-level-restart.md) | level-restart | T36; blocks T34 |
 | [T38](tasks/T38-level-tally.md) | level-tally | T37; blocks T21 |
-| [T39](tasks/T39-bonus-level.md) | bonus-level | T15; blocks T21 |
-| [T40](tasks/T40-slot-sync.md) | slot-sync | T15 |
-| [T41](tasks/T41-slot-screen.md) | slot-screen | T40 |
-| [T42](tasks/T42-slot-rounds.md) | slot-rounds | T41 |
-| [T43](tasks/T43-slot-prizes.md) | slot-prizes | T42; blocks T21 |
+| [T70](tasks/T70-bonus-level.md) | bonus-level | T15; blocks T21 |
+| [T71](tasks/T71-slot-sync.md) | slot-sync | T15 |
+| [T72](tasks/T72-slot-screen.md) | slot-screen | T71 |
+| [T73](tasks/T73-slot-rounds.md) | slot-rounds | T72 |
+| [T74](tasks/T74-slot-prizes.md) | slot-prizes | T73; blocks T21 |
 
 T22 is the rig task: it comes before every surface task and they depend on it. T29 is the phase's
 drill. At the end: the owner plays it.

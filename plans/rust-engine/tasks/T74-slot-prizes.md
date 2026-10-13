@@ -1,6 +1,6 @@
-# T43 — slot-prizes
+# T74 — slot-prizes
 
-**Phase:** 2 · **Depends on:** T42; blocks T21 · **Weight:** medium
+**Phase:** 2 · **Depends on:** T73; blocks T21 · **Weight:** medium
 
 Added by T19 (owner, 2026-10-13). The prize ladder, gamble, hi-lo game and jackpot, each in a green
 case; the slot's documentation. Completes what T19 was for.
@@ -39,7 +39,7 @@ case; the slot's documentation. Completes what T19 was for.
 
 ## Interface
 
-No new type: the prizes fill T42's `SlotOutcome { award: Award { points, lives } }`.
+No new type: the prizes fill T73's `SlotOutcome { award: Award { points, lives } }`.
 
 ## Tests
 

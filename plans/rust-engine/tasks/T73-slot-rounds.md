@@ -1,6 +1,6 @@
-# T42 — slot-rounds
+# T73 — slot-rounds
 
-**Phase:** 2 · **Depends on:** T41 · **Weight:** medium
+**Phase:** 2 · **Depends on:** T72 · **Weight:** medium
 
 Added by T19 (owner, 2026-10-13). The machine played: rounds, spins, the payout check, the score's
 count-up, the end. T19 had `slot-fire` green (807 frames) before it was discarded.
@@ -13,7 +13,7 @@ collected, frame-exact; `Scene::Slot` returns `SlotOutcome { award }`.
 ## The original (h0 offsets)
 
 - Main loop $4d4a: DMACON $8020; unless the free-spin flag ($49d0): hold menu $5de2, spin $5a06;
-  payout $4eae (d7 out); award $51c4 (T43; here: collect only); count $50b6; clr.l $49d2; free spin
+  payout $4eae (d7 out); award $51c4 (T74; here: collect only); count $50b6; clr.l $49d2; free spin
   $4e28; loop while coins ($49c6, signed) ≥ 1. Then 100 frames or fire; fade out (list h2+$6688);
   blank list; score = $49d6; `music_fade_wait`; if `level` < 4: the bank copied back from h1 (CPU,
   $3e80 longs at ~39 cycles: four frames, `CpuWork`), `sfx_bank_init`, `music_start`; return.

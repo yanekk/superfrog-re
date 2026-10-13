@@ -1,15 +1,15 @@
-# T40 — slot-sync
+# T71 — slot-sync
 
 **Phase:** 2 · **Depends on:** T15 · **Weight:** light
 
-Added by T19 (owner, 2026-10-13: T19 stopped, its slot machine cut into T40–T43). T19's worker
+Added by T19 (owner, 2026-10-13: T19 stopped, its slot machine cut into T71–T74). T19's worker
 built and proved all of this once; the code was discarded uncommitted. What it learned is below
 so this task is a rebuild, not research.
 
 ## Goal
 
 The oracle can be brought to the slot machine's start, and the engine has the slot's data and
-variables, so T41–T43 only port code.
+variables, so T72–T74 only port code.
 
 ## What to build
 
@@ -35,8 +35,8 @@ variables, so T41–T43 only port code.
   `slot_lamps` $6842 ($d0), `slot_palette` $6912 ($40, the fade target: fades read it from memory,
   so the engine writes it there from hunk 0 at the machine's start), `text_plane` $706e (W).
 - **Moira cycles** (test tooling): `sf_call_status.cycles` = Moira's clock after a call
-  (`moira_shim.cpp`, `.h`, `ffi.rs`, `CallResult::cycles`), for T41's calibration.
-- `re/symbols.toml`: the slot's routines and tables (docs/13 of T43 lists them; T19's list:
+  (`moira_shim.cpp`, `.h`, `ffi.rs`, `CallResult::cycles`), for T72's calibration.
+- `re/symbols.toml`: the slot's routines and tables (docs/13 of T74 lists them; T19's list:
   $4e28 free spin, $4eae payout, $50b6 count, $51c4 award, $5528 collect, $5628 jackpot, $57e2
   hi-lo, $598e hi-lo spin, $5a06 spin, $5d48 reel stop, $5de2 hold menu, $5eb4 menu, $6238/$6258
   lamps off/on, $6276 attract, $62f4 digits, $645e lamps, $6558 reels, $661e init, $6f3a print;

@@ -1,6 +1,6 @@
-# T41 — slot-screen
+# T72 — slot-screen
 
-**Phase:** 2 · **Depends on:** T40 · **Weight:** medium
+**Phase:** 2 · **Depends on:** T71 · **Weight:** medium
 
 Added by T19 (owner, 2026-10-13). The slot machine's screen up to and through its attract loop,
 and the drawing-on-the-beam model the rest of the slot needs. T19 had this green (`slot-attract`,
