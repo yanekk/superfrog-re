@@ -3,8 +3,10 @@
 //! entry, at frame 0 (the frame `level_frame_loop` starts on).
 //!
 //! The frog's position and the camera must be equal, and so must the picture and every modelled
-//! variable, but for what the original's way there leaves and the engine's entry does not go
-//! through, listed below with the task that models it.
+//! variable, the objects the level starts with among them (T36), but for what the original's way
+//! there leaves and the engine's entry does not go through, listed below with the task that
+//! models it. The original has the objects the engine has no kind for frozen out, as in the item
+//! cases.
 
 use sf_assets::LevelId;
 use sf_conform::freeze::Freeze;
@@ -63,22 +65,22 @@ const NOT_MODELLED: &[(&[&str], &str, &str)] = &[
          outside the picture, the music's place (it plays from the world's intro screen on)",
         "T21",
     ),
+];
+
+/// Objects a level's set-up places itself, not from its map's markers, by level: (level, names,
+/// why, task). Every other level's objects are the original's from its frame 0 (T36).
+const SET_UP_OBJECTS: &[(&str, &[&str], &str, &str)] = &[
     (
-        &[
-            "line_offsets",
-            "bob_records",
-            "bob_frames",
-            "bob_free_list",
-            "obj_count",
-            "obj_slots",
-            "obj_templates",
-            "bob_sheet",
-            "hunk3_gap",
-        ],
-        "the objects the level starts with, and their bobs: the world's bob graphics (`LnBO`) the \
-         world's load puts in hunk 3, which only objects draw from; the templates the spawners \
-         write each object's place into",
-        "T36, T16–T18",
+        "WB-1",
+        &["obj_slots", "obj_count", "obj_templates", "bob_free_list", "bob_records"],
+        "the bonus level's first objects (h0+$7e3e)",
+        "T19",
+    ),
+    (
+        "WW-1",
+        &["obj_slots", "obj_templates", "bob_records"],
+        "the objects the final level's set-up places (the witch's)",
+        "T18",
     ),
 ];
 
@@ -100,8 +102,10 @@ const FINAL_LEVEL: &[&str] = &[
     "bob_draw_list",
 ];
 
+/// The original at the level's frame 0, the objects the engine has no kind for (enemies, each
+/// world's scenery: T16–T18) frozen out as in the item cases (`sf_conform::freeze`).
 fn original(id: LevelId) -> AmigaMemory {
-    sync::reach(&SyncPoint::AtLevel(id), &InputScript::idle(), 1)
+    sync::reach_frozen(&SyncPoint::AtLevel(id), &InputScript::idle(), 1, Freeze::Enemies)
         .unwrap_or_else(|e| panic!("{id}: {e}"))
         .memory
 }
@@ -139,6 +143,9 @@ fn every_level_is_entered_as_the_original_enters_it() {
         let excused = |name: &str| {
             NOT_MODELLED.iter().any(|g| g.0.contains(&name))
                 || (id.to_string() == "WW-1" && FINAL_LEVEL.contains(&name))
+                || SET_UP_OBJECTS
+                    .iter()
+                    .any(|g| g.0 == id.to_string() && g.1.contains(&name))
         };
         for v in d.iter().filter(|v| !excused(v.0)) {
             failures.push(format!(

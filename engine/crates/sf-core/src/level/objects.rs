@@ -531,20 +531,20 @@ const SUB: u32 = 0x46;
 
 /// One blit of the drawer: BLTCON0/1, masks, the four pointers and modulos, BLTSIZE.
 #[derive(Clone, Copy)]
-struct Blit {
-    con0: u16,
-    con1: u16,
-    afwm: u16,
-    alwm: u16,
-    a: u32,
-    b: u32,
-    c: u32,
-    d: u32,
-    amod: u16,
-    bmod: u16,
-    cmod: u16,
-    dmod: u16,
-    size: u16,
+pub(crate) struct Blit {
+    pub(crate) con0: u16,
+    pub(crate) con1: u16,
+    pub(crate) afwm: u16,
+    pub(crate) alwm: u16,
+    pub(crate) a: u32,
+    pub(crate) b: u32,
+    pub(crate) c: u32,
+    pub(crate) d: u32,
+    pub(crate) amod: u16,
+    pub(crate) bmod: u16,
+    pub(crate) cmod: u16,
+    pub(crate) dmod: u16,
+    pub(crate) size: u16,
 }
 
 /// The words a blit of BLTSIZE `size` moves.
@@ -554,7 +554,7 @@ fn blit_words(size: u16) -> u32 {
 
 /// The blitter in area mode, ascending (what the drawer uses): A shifted and masked, B shifted,
 /// C, minterm, into D.
-fn blit(b: &mut Bus, x: Blit) {
+pub(crate) fn blit(b: &mut Bus, x: Blit) {
     let h = match x.size >> 6 {
         0 => 1024,
         h => h as u32,

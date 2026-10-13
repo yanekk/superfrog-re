@@ -54,6 +54,8 @@ pub struct DisplayData {
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 struct WorldDisplay {
     tiles: Vec<[u8; 256]>,
+    /// `LnBO` as the world's load leaves it in hunk 3: five planes of 320 × 320.
+    bobs: Vec<u8>,
 }
 
 impl Default for DisplayData {
@@ -88,6 +90,7 @@ impl DisplayData {
             .iter()
             .map(|w| WorldDisplay {
                 tiles: w.tiles.tiles.clone(),
+                bobs: w.bobs.sheet.to_planar(),
             })
             .collect();
         DisplayData {
@@ -126,6 +129,16 @@ impl DisplayData {
         (off..off + len)
             .map(|a| self.h2.get(a as usize).copied().unwrap_or(0))
             .collect()
+    }
+
+    /// The bob sheet (`LnBO`) of `world` (W1..W6, the bonus and the final level) as its load
+    /// leaves it in hunk 3; empty when the disks are not there.
+    pub(crate) fn bob_sheet(&self, world: World) -> &[u8] {
+        World::ALL
+            .iter()
+            .position(|&x| x == world)
+            .and_then(|i| self.worlds.get(i))
+            .map_or(&[], |w| &w.bobs[..])
     }
 
     /// The world the `world` variable names: 1..6, 7 the bonus level.

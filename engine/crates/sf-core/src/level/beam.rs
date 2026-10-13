@@ -302,7 +302,7 @@ pub struct Clock {
     /// The line, counted from the frame's vertical blank; past [`FRAME_LINES`] when work runs on
     /// past the frame's end.
     pub line: u16,
-    /// CPU cycles of the line already used.
+    /// How far into the line, in [`LINE_CYCLES`] (the beam's own pace, two a DMA slot).
     pub into: u32,
 }
 
@@ -327,11 +327,13 @@ impl Clock {
     pub fn cpu(&mut self, mut cycles: u32) {
         loop {
             let per = Clock::cpu_cycles(self.line);
-            if self.into + cycles < per {
-                self.into += cycles;
+            // What is left of the line, in the CPU's cycles.
+            let left = (LINE_CYCLES - self.into.min(LINE_CYCLES)) * per / LINE_CYCLES;
+            if cycles < left {
+                self.into += cycles * LINE_CYCLES / per;
                 return;
             }
-            cycles -= per - self.into;
+            cycles -= left;
             self.into = 0;
             self.line = self.line.saturating_add(1);
         }
@@ -466,7 +468,8 @@ mod tests {
         let mut c = Clock { line: 0x30, into: 0 };
         c.cpu(LINE_CYCLES);
         assert_eq!(c.line, 0x31);
-        assert_eq!(c.into, FETCH_STOLEN_CYCLES);
+        let per = LINE_CYCLES - FETCH_STOLEN_CYCLES;
+        assert_eq!(c.into, FETCH_STOLEN_CYCLES * LINE_CYCLES / per);
     }
 
     #[test]

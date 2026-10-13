@@ -129,6 +129,8 @@ pub struct Game {
     trace: Option<Vec<crate::level::beam::Tick>>,
     /// A level's pass the last frame ended in the middle of ([`crate::level::beam::Pending`]).
     pending: Option<crate::level::beam::Pending>,
+    /// The level a [`Start::Level`] game entered.
+    entered: Option<LevelId>,
 }
 
 /// `key_down`, `key_up` (h0+$16078, h0+$16079).
@@ -167,6 +169,10 @@ impl Game {
     /// games from one [`GameData`] (conformance runs) keeps it.
     pub fn with_display(display: Arc<DisplayData>, start: Start) -> Game {
         let mut sdr = 0xff;
+        let entered = match start {
+            Start::Level(id) => Some(id),
+            _ => None,
+        };
         let (state, scene, seed, front) = match start {
             Start::PowerOn { seed } => (
                 State::default(),
@@ -213,6 +219,7 @@ impl Game {
             costs: crate::level::beam::COSTS,
             trace: None,
             pending: None,
+            entered,
         }
     }
 
@@ -326,6 +333,16 @@ impl Game {
     /// objects are all frozen out (T14's frog cases).
     pub fn frog_only(&mut self) {
         self.frog_only = true;
+        // A level entered and not yet played is entered again without its objects.
+        if let (Some(id), 0) = (self.entered, self.frame) {
+            self.state = State::default();
+            crate::level::load::enter_with(
+                &mut self.state,
+                &self.display,
+                id,
+                crate::level::frog_only_dispatch(),
+            );
+        }
     }
 
     /// For fitting the level's costs on the beam: run with `costs`.

@@ -8,6 +8,7 @@
 //! reads, and the sound driver.
 
 pub mod beam;
+pub mod bobs;
 pub mod camera;
 pub mod clock;
 pub mod death;
