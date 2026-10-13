@@ -18,6 +18,8 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-13 | 🐞 | T16 review: a `done` merge folds T16 to ✅ (pir loop.mjs reconcile; adoption keeps the feature row ⬜), so the ⛔ park never lands: T16 closes unbuilt, T33 dispatches without W1 enemies. Raised with the owner. |
+| 2026-10-13 | 📌 | T16 review: W5 shares 6 types with W2 (docs/09 table); T17 and T40 may both port them. T40 names only W1 sharing; left as is. |
 | 2026-10-13 | 🔄 | Owner, T16: park T16 until T38 ✅ and split by world: T16 = W1, T40 = W2, T41 = W3 (`T38; blocks T18`). T16's row still says T15 only; it waits by being ⛔. |
 | 2026-10-13 | 🔄 | Owner, T15: stop and split; T36–T38 added (picture/lag/entry, restart, tally). Draft on local branch `t15-flow-wip`. |
 | 2026-10-13 | 📌 | T15: an undrawn bob's step pointer is 0, so despawn reads width/height from ExecBase ($C00276): `low_vectors`. Items lag W1-1's pass 86/700 frames. |

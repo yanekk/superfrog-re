@@ -38,7 +38,7 @@ done · ⛔ blocked, needs a human.
 | T13 | renderer | T08, T12 | ✅ | |
 | T14 | frog-and-level | T06, T11, T12, T13 | ✅ | |
 | T15 | items-and-scoring | T14 | ✅ | |
-| T16 | enemies-worlds-1-3 | T15 | ⛔ | Owner 2026-10-13: parked until T38 ✅ (frame cases need T36–T38); now world 1 only, W2/W3 split to T40/T41. Nothing built. |
+| T16 | enemies-worlds-1-3 | T15 | ⛔ | Owner 2026-10-13: parked until T38 ✅ (frame cases need T36–T38); now world 1 only, W2/W3 split to T40/T41. Nothing built. Review 2026-10-13: T40/T41 shape held (pir adoptNewTaskRows run: no errors; counts, offsets vs docs/09); stays ⛔, not ✅; park-at-merge defect in FINDINGS. |
 | T17 | enemies-worlds-4-6 | T15 | ⬜ | |
 | T18 | bosses | T16, T17 | ⬜ | |
 | T19 | slot-and-bonus | T15 | ⬜ | |
