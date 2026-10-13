@@ -215,6 +215,8 @@ pub struct Story {
     pub(crate) load_state: Vec<(u32, Vec<u8>)>,
     /// For conformance: where the original took the next frame's interrupt (line, DMA cycle).
     pub(crate) handler_entry: Option<(u16, u16)>,
+    /// For conformance: where the original's handler of the next frame ended (T54).
+    pub(crate) handler_end: Option<crate::game::HandlerEnd>,
     /// For conformance: whether the next frame's blank goes without a handler (merged into the
     /// next one's), as the original's did.
     pub(crate) blank_merged: Option<bool>,
@@ -357,6 +359,7 @@ impl Story {
             load_line: None,
             load_state: Vec::new(),
             handler_entry: None,
+            handler_end: None,
             blank_merged: None,
             frame: 0,
         }
@@ -449,6 +452,7 @@ impl Story {
                 drop(cx);
                 let load_state = std::mem::take(&mut self.load_state);
                 let entry = self.handler_entry.take();
+                let end = self.handler_end.take();
                 let f = i.frame(
                     &mut self.mem,
                     data,
@@ -459,6 +463,7 @@ impl Story {
                     pacing,
                     load_state,
                     entry,
+                    end,
                     merged,
                 );
                 *n += 1;

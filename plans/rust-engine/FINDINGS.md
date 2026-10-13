@@ -18,6 +18,10 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-14 | 🐞 | T54 review, open: the engine's draw `$8400` still lands 1–4 lines off the original's in 70 frames before 3437 (521, 536, 537 among them; cause not probed); `DRAWS` compares values only, so frames still match. |
+| 2026-10-14 | 📌 | T54: the scan's first divergence, engine frame 3437 (O 6452), is an `objects_init` set-up, not a draw: its mask blits run long in the original (held handlers at lines 281/37/138/252, engine 251/4/69/176); `sfx_records` differ there too. |
+| 2026-10-14 | 📌 | T54: a handler a draw holds off still runs the engine's `handler_lines` length; `story_draws` resumes from the oracle's acknowledge, so that length stays untested (as T53's review noted). |
+| 2026-10-14 | 🔄 | Owner, T54: conformance feeds the PC the intro's handler returned to with its end; the entry does not tell `tst.w` from `beq.b` (`handler_end_probe`: entry cycles 10, 14, 16 come with both). |
 | 2026-10-14 | 📌 | T34: the front's `Yield::Busy` lets work spilled past a frame's end run during the next vertical blank; the original's interrupt stops it. Game over resumes after the handler; other `Busy` users may be early by its length. |
 | 2026-10-14 | 🐞 | Not T34's: `slot-load` diverges at frame 0 on the feature branch: `slot::resume` is never called (`Front::resume` lacks it, "never used" warning), so the engine shows nothing. T95's to wire. |
 | 2026-10-14 | 📌 | T83 coverage: `items-wings-w1-2` wings, flight (lasts until a life is lost), spud taken and thrown, coins, a fake wall; `items-checkpoint-w1-1` checkpoint, speed-up to its end (500 frames); red `items-pad-w1-1` adds pad, bottle, spud (T101). |
