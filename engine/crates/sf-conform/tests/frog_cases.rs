@@ -35,6 +35,19 @@ fn frog_timeup_w1_1() {
     assert_eq!(d.unported, ["game over, the time up (T34)"]);
 }
 
+/// ESC in W1-1 (T37 review): green through the exit fade to the frame before the ESC path's
+/// music fade, which is game over's (T34).
+#[test]
+fn frog_esc_w1_1() {
+    green("frog-esc-w1-1");
+    let mut case =
+        sf_conform::Case::load(&sf_conform::cases_dir().join("frog-esc-w1-1.toml")).unwrap();
+    case.frames += 1;
+    let d = sf_conform::run(&case).expect_err("the ESC path is T34's");
+    assert_eq!(d.frame, 77);
+    assert_eq!(d.unported, ["game over (T34)"]);
+}
+
 /// Against the tunnel's pillar, with head bumps.
 #[test]
 fn frog_wall_w1_1() {

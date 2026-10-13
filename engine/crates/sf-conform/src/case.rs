@@ -178,11 +178,14 @@ impl Case {
                     Some(v) => {
                         let bad = || "sync.clock is \"M:SS\", under 10 minutes".to_string();
                         let (m, sec) = v.as_str().and_then(|c| c.split_once(':')).ok_or_else(bad)?;
+                        if m.len() != 1 || sec.len() != 2 {
+                            return Err(bad());
+                        }
                         let (m, sec): (u16, u16) = (
                             m.parse().map_err(|_| bad())?,
                             sec.parse().map_err(|_| bad())?,
                         );
-                        if m > 9 || sec > 59 || sec.to_string().len() > 2 {
+                        if sec > 59 {
                             return Err(bad());
                         }
                         SyncPoint::Clock {

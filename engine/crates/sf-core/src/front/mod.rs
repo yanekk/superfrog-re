@@ -577,8 +577,23 @@ impl Front {
     }
 
     /// The program a level hands over to when its loop ends (`level_frame_loop` returns into
-    /// `top_loop`): `routine` on top, the level's copper list showing.
-    pub(crate) fn after_level(s: &State, routine: Routine) -> Front {
+    /// `top_loop`): `routine` on top, the level's copper list showing. `sdr` is the keyboard's
+    /// last byte: one the level's poll has handled reads `$ff` from then on (ESC's is not read
+    /// again, measured on `frog-esc-w1-1`), except the power-on byte, never acknowledged; one sent
+    /// since that poll is still new.
+    pub(crate) fn after_level(s: &State, sdr: u8, routine: Routine) -> Front {
+        let handled = Keyboard::from_keys(s.b(vbl::KEY_DOWN), s.b(vbl::KEY_UP));
+        let keyboard = if sdr != handled.sdr {
+            Keyboard {
+                sdr,
+                new: true,
+                ..Keyboard::default()
+            }
+        } else if sdr == Keyboard::default().sdr {
+            handled
+        } else {
+            Keyboard::from_keys(0, 0)
+        };
         Front {
             frame: 0,
             fetch: None,
@@ -594,7 +609,7 @@ impl Front {
                 deferred: None,
             }],
             cop1lc: render::LEVEL_COPPER,
-            keyboard: Keyboard::from_keys(s.b(vbl::KEY_DOWN), s.b(vbl::KEY_UP)),
+            keyboard,
             seed: None,
             coper: false,
             unported: Vec::new(),
