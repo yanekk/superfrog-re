@@ -150,6 +150,7 @@ pub fn main_program(c: &mut LevelCtx, pending: Option<beam::Pending>, pacing: cr
             f.from = c.paula.len();
             f.pass_frames = vec![f.specs[0]];
             run_pass(c, true);
+            after_pass(c);
         }
         None => {
             c.clock = beam::Clock {
@@ -162,10 +163,7 @@ pub fn main_program(c: &mut LevelCtx, pending: Option<beam::Pending>, pacing: cr
     while !c.frames.as_ref().is_some_and(|f| f.done) {
         if pass_due(c) {
             run_pass(c, false);
-            if c.bus.w(LOGIC_RUNNING) == 0 {
-                // `level_frame_loop` returns: the rest of the frame is `top_loop`'s (T37).
-                c.loop_over();
-            }
+            after_pass(c);
         } else {
             // Waiting for the next vertical blank.
             if c.clock.line < beam::FRAME_LINES {
@@ -177,6 +175,19 @@ pub fn main_program(c: &mut LevelCtx, pending: Option<beam::Pending>, pacing: cr
             c.frames.as_mut().expect("frames").past_end = false;
             c.frame_end();
         }
+    }
+}
+
+/// After a pass: when `level_frame_loop` has returned, the rest of the frame is `top_loop`'s
+/// (T37); in the bonus level after a death, the frog back on the screen and the loop again (T79).
+fn after_pass(c: &mut LevelCtx) {
+    if c.bus.w(LOGIC_RUNNING) != 0 {
+        return;
+    }
+    if crate::bonus::frame::goes_on(&c.bus) {
+        crate::bonus::frame::back_on_screen(c);
+    } else {
+        c.loop_over();
     }
 }
 

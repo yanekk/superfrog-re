@@ -5,6 +5,7 @@
 
 pub mod death;
 pub mod enemies;
+pub mod frame;
 pub mod shots;
 
 use crate::level::{Dispatch, register, register_routines};

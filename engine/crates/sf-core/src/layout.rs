@@ -419,6 +419,9 @@ layout! {
     ScoreText = "score_text", h0(0x8ab4), Width::Bytes(0xc);
     ClockDigit = "clock_digit", h0(0x8be0), Width::W;
     ClockShown = "clock_shown", h0(0x8be2), Width::Bytes(4);
+    /// `bonus_visit` (h0+$8cd6): a word inside the code `level_init_lb` reads for the bonus
+    /// level's start row (2 lower, 3 lower still, cleared from 3 on); nothing in the game sets it.
+    BonusVisit = "bonus_visit", h0(0x8cd6), Width::W;
     /// h0+$aa40..$aac0: the end sequence's two palettes, white (the last picture's flash) and the
     /// pictures' own, which the fades read.
     EndPalettes = "end_palettes", h0(0xaa40), Width::Bytes(0x80);

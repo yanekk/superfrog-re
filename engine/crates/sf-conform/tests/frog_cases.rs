@@ -106,3 +106,60 @@ fn items_wings_w1_2() {
 fn items_checkpoint_w1_1() {
     green("items-checkpoint-w1-1");
 }
+
+/// The bonus level entered (T79): 600 frames from its first, the frog flown about and firing,
+/// with no re-sync.
+#[test]
+fn bonus_enter_wb_1() {
+    green("bonus-enter-wb-1");
+}
+
+/// The bonus level failed (T79): two deaths with a life left, each putting the frog back on the
+/// screen without leaving the loop (no outcome reaches the game flow), then the last life lost
+/// and the loop's end in frame 2448: game over. Green to frame 2447; frame 2448, the first of
+/// `game_over_seq`, diverges after a lag (FINDINGS, T79 review), pinned here with its outcome.
+#[test]
+fn bonus_death_wb_1() {
+    let mut case =
+        sf_conform::Case::load(&sf_conform::cases_dir().join("bonus-death-wb-1.toml")).unwrap();
+    let mut first = None;
+    if let Err(d) = sf_conform::run_with(&case, |f, g| {
+        if first.is_none() {
+            first = g.level_outcome().map(|o| (f, o));
+        }
+    }) {
+        panic!("bonus-death-wb-1: {d}");
+    }
+    // Neither earlier death ends the loop.
+    assert_eq!(first, None);
+    case.frames += 1;
+    let d = sf_conform::run(&case).expect_err("game over in the bonus level, open");
+    assert_eq!(d.frame, 2448);
+    assert_eq!(d.level_outcome, Some(sf_core::level::LevelOutcome::GameOver));
+}
+
+/// The bonus level completed (T79): 16 deaths on the way, marker 55, the loop's end, the exit
+/// fade; the engine's outcome is the exit. Its only re-syncs are T101's (a frame the original
+/// ends inside phase 6, before `buffer_flip`), pinned here so no other lag frame is excused.
+/// Frame 8127, the first after the fade, is the end picture's, every variable equal: the last
+/// fade frame's `shooter_off` (h0+$7494) is seen only there.
+#[test]
+fn bonus_end_wb_1() {
+    let mut case =
+        sf_conform::Case::load(&sf_conform::cases_dir().join("bonus-end-wb-1.toml")).unwrap();
+    let mut last = None;
+    let o = sf_conform::run_with(&case, |_, g| last = g.level_outcome())
+        .unwrap_or_else(|d| panic!("bonus-end-wb-1: {d}"));
+    let resynced: Vec<u32> = o.resynced.iter().map(|r| r.0).collect();
+    assert_eq!(resynced, [4284, 7814], "{:?}", o.resynced);
+    assert!(o.resynced.iter().all(|r| r.1.starts_with("level_copper")), "{:?}", o.resynced);
+    assert!(
+        matches!(last, Some(sf_core::level::LevelOutcome::Completed { .. })),
+        "{last:?}"
+    );
+    case.frames += 1;
+    let d = sf_conform::run(&case).expect_err("the end picture is T21's");
+    assert_eq!(d.frame, 8127);
+    assert_eq!(d.unported, ["the bonus level's end picture (T21)"]);
+    assert!(d.first_var.is_none(), "{d}");
+}

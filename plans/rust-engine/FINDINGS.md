@@ -18,6 +18,11 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-14 | 🐞 | T79 review, open (T34 meets T79 at merge): game over in the bonus level diverges at `bonus-death-wb-1` frame 2448, after a lag: `playfield_buffer_0`, then the copper's buffer pointers a flip apart. Likely T101's class; case cut to 2447, divergence pinned. |
+| 2026-10-14 | 🐞 | T79, fixed: `main_program` looked for the loop's end only after a fresh pass; a loop ending in a resumed (lag-cut) pass stalled, in any level. Now after both (`level/frame.rs` `after_pass`). |
+| 2026-10-14 | 📌 | T79: `bonus-end-wb-1` re-syncs at 4284 and 7814, both T101's phase-6 cut, pinned in `frog_cases::bonus_end_wb_1`. Once T101 lands: `resync = false`, drop the pin. Runs ~110 s (two runs: the second sees frame 8127). |
+| 2026-10-14 | 📌 | T79: `bonus_visit` (h0+$8cd6) picks `level_init_lb`'s start row, but nothing sets it (password entries 24–27 share handler h0+$25f8): the bonus level always starts at the top. Ported, routine-tested by poking it. |
+| 2026-10-14 | 📌 | T79: a divergence on the frame after a lag now lists the engine's unported paths (`sf-conform` `run_inner`); before, a game over reached mid-pass read as a bare variable difference. |
 | 2026-10-14 | 📌 | T38 review, not fixed: `LevelTally` drops `level_tally`'s first test (`game_full_mode` 0, a game run from a disk loader, returns at once). Unreachable from the engine's boot; no assertion guards it. |
 | 2026-10-14 | 📌 | T38: tally cases force W1-1's exit (`sync = { level, exit = true }`). `tally-slot-w1-1` is green to `slot_machine`'s loads (frame 86, T95's). `level/tally.rs` `print` is a third port of h0+$6f3a (`slot::print_text`, Cx-based). |
 | 2026-10-14 | 🐞 | T54 review, open: the engine's draw `$8400` still lands 1–4 lines off the original's in 70 frames before 3437 (521, 536, 537 among them; cause not probed); `DRAWS` compares values only, so frames still match. |
@@ -51,11 +56,9 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 | 2026-10-13 | 🔄 | T72 split at pir's context line, no code kept: T91 slot-beam-races, T92 slot-load, T93 slot-attract-draw, T94 slot-interrupt-timing (blocks T73). The oracle's frame-by-frame timings T72 measured are in their docs. |
 | 2026-10-13 | 📌 | T89: vAmiga's copper allocates only COP_VBLANK (cycle 0) and its fetches; WAIT1/WAIT2/wake-up merely wait. BFD irrelevant to the masks (end WAIT `$fffe` has BFD). Oracle blits need BLTCON0/DMACON carried from earlier frames. |
 | 2026-10-13 | 🐞 | `test_every_committed_func_starts_an_instruction` cannot fail: the listing realigns at every label, so a func offset mid-instruction still passes. Open for every committed func but `atn_decompress` and T87's twenty, which have byte checks. Found reviewing T87. |
-| 2026-10-13 | 📌 | T77: `bob_draw_vars` (h0+$18bc8) starts on marker 15's `bra.w` displacement ($2810); intact at WB-1 (marker 15's test compares). Marker 55 sets `level_state` 2 (T79). `obj_path_xy` (h0+$1c41c) is ready for the bosses. |
+| 2026-10-13 | 📌 | T77: `bob_draw_vars` (h0+$18bc8) starts on marker 15's `bra.w` displacement ($2810); intact at WB-1 (marker 15's test compares). Marker 55 sets `level_state` 2 (`bonus-end-wb-1`). `obj_path_xy` (h0+$1c41c) is ready for the bosses. |
 | 2026-10-13 | 🐞 | Open: `level_entry::every_level_is_entered_as_the_original_enters_it` red on every level, `slot_copper` original $140f440, engine $1400000. Same on T76's base ffbad9f (T71's slot variables in `LAYOUT`); T76 review, not fixed. |
-| 2026-10-13 | 📌 | T76 for T75's merge: both create `bonus/mod.rs` (keep both modules and both `register_all` lines). T76 copied T75's `bonus_rig`/`sound_files` hunks verbatim, so those merge clean. |
 | 2026-10-13 | 🐞 | T78, not fixed: `purity.rs`'s scanner flags a hex literal ending `f64`/`f32` (`0x2cf64`) as a float. Worked around with `0x2CF64`; the scanner should skip suffix checks on hex. |
-| 2026-10-13 | 📌 | T78: `reward_power_count` (h0+$23e20) is 9 in the executable, `shot_cycle_table` non-zero; `State::default` zeroes LAYOUT vars, so a booted game (T79/T21) must seed them from hunk 0. |
 | 2026-10-13 | 📌 | T78: `bonus::death::become_reward(c, slot, dx)` is h0+$23c14 for the enemies tasks; `touch_spud_damage` (h0+$2360e, $23662) itself stays unported. |
 | 2026-10-13 | 🐞 | T52 review: `run_bus` skips `$E0` when the copper is turned away there; vAmiga marks it BLOCKED so the blitter cannot take it, but `story::sim::Fixed` leaves it free. Fixed in T89. |
 | 2026-10-13 | 📌 | T52 split at pir's context warning: `story::sim` kept; oracle checks moved to T89 (masks; `run_bus` takes one copper cycle too many at line 0) and T90 (first draw's restores). Both block T53. |
@@ -74,7 +77,7 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 | 2026-10-13 | 📌 | T46 added T49–T56 (owner: stop, split the rest; owner's yes given). T56 carries T46's done-when and blocks T21, T47, T48. |
 | 2026-10-13 | 🔄 | Owner, T46: conformance feeds the original's handler entry (patch 0005 `Amiga::irqs`) and, for draws, its end (`INTREQ=$20` beam); normal play estimates (entry line 0 cycle 10). |
 | 2026-10-13 | 📌 | T46: an oracle step runs until the CPU ends an instruction past the frame's end; a blit holding the CPU stretches it. Masks' DMACON $400 precedes the held handler iff the last mask blit started on a fetched line. |
-| 2026-10-13 | 📌 | T70 review: T76/T77 read the bonus paths from the bus with named addresses, as `items` and `audio::music` do, not from sf-assets `Tables` as T70's Done-when said. Kept; T79 still says `Tables`. |
+| 2026-10-13 | 📌 | T70 review: T76/T77 read the bonus paths from the bus with named addresses, as `items` and `audio::music` do, not from sf-assets `Tables` as T70's Done-when said. Kept; T79 reads no table. |
 | 2026-10-13 | 🐞 | T70 review: T76's 122 spawned T77's 123 while T76/T77 ran in parallel; a spawn runs the init via `level::call`, asserting when unported. Fixed: 123 moved to T76, T77 depends on T76. |
 | 2026-10-13 | 🔄 | Owner, T70: frame cases wait for T36/T37 (like T16/T17); routines first. pir's context warning split all of T70, unbuilt, into T75–T79. Bonus row of `obj_flag_jumptab`: markers 1–15, 55. |
 | 2026-10-13 | 🔄 | Owner, T19: its split-off tasks T39–T43 renumbered T70–T74, clearing the collision with the feature branch's T39–T44 enemies tasks. |
