@@ -117,6 +117,16 @@ headless.
 | [T54](tasks/T54-story-handler-end-feed.md) | story-handler-end-feed | T53; blocks T56 |
 | [T55](tasks/T55-story-intro-sound-timing.md) | story-intro-sound-timing | T50; blocks T56 |
 | [T56](tasks/T56-story-intro-to-insert-disk.md) | story-intro-to-insert-disk | T49, T50, T54, T55; blocks T21, T47, T48 |
+| [T70](tasks/T70-bonus-level.md) | bonus-level | T15; blocks T21 |
+| [T71](tasks/T71-slot-sync.md) | slot-sync | T15 |
+| [T72](tasks/T72-slot-screen.md) | slot-screen | T71 |
+| [T73](tasks/T73-slot-rounds.md) | slot-rounds | T72 |
+| [T74](tasks/T74-slot-prizes.md) | slot-prizes | T73; blocks T21 |
+| [T75](tasks/T75-bonus-shots.md) | bonus-shots | T70; blocks T21 |
+| [T76](tasks/T76-bonus-enemies-a.md) | bonus-enemies-a | T70; blocks T21 |
+| [T77](tasks/T77-bonus-enemies-b.md) | bonus-enemies-b | T70, T76; blocks T21 |
+| [T78](tasks/T78-bonus-enemy-death.md) | bonus-enemy-death | T70, T75; blocks T21 |
+| [T79](tasks/T79-bonus-level-frames.md) | bonus-level-frames | T70, T37, T75, T76, T77, T78; blocks T21 |
 
 T22 is the rig task: it comes before every surface task and they depend on it. T29 is the phase's
 drill. At the end: the owner plays it.
