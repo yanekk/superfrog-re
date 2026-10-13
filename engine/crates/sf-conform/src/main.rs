@@ -95,6 +95,9 @@ fn run_cases(paths: &[PathBuf]) -> Result<bool, String> {
                         o.resynced
                     );
                 }
+                if !o.raced.is_empty() {
+                    print!("; beam races excused at {} frame(s)", o.raced.len());
+                }
                 println!();
                 for (f, why) in &o.skipped {
                     println!("  frame {f} left out: {why}");

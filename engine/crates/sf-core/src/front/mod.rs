@@ -456,6 +456,8 @@ pub struct FrontOut {
     pub load: Option<crate::game::LoadEnd>,
     pub resync: Vec<(u32, u32)>,
     pub jobs: Vec<crate::game::Job>,
+    /// [`crate::game::FrameOut::beam_races`].
+    pub beam_races: Vec<(u16, u16)>,
 }
 
 impl Front {
@@ -817,6 +819,7 @@ impl Front {
             load,
             resync,
             jobs,
+            beam_races: Vec::new(),
         }
     }
 

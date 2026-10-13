@@ -94,6 +94,30 @@ pub struct FrameOut {
     /// CPU jobs the engine did at once that the original's CPU may still be running at the end
     /// of this frame (owner, 2026-10-12): conformance compares their memory once it is done.
     pub jobs: Vec<Job>,
+    /// Raster-line ranges `start..end` a drawing step wrote while the beam was within
+    /// [`RACE_LINES`] of them (owner, 2026-10-13): the original's picture there depends on which
+    /// side of the beam its write fell, so conformance excuses a pixel differing only on them.
+    pub beam_races: Vec<(u16, u16)>,
+}
+
+/// How near the beam, in lines, a drawing step's write must be to race it.
+pub const RACE_LINES: u16 = 4;
+
+/// The lines `start..end` a drawing step wrote with the beam on line `beam`, when the beam was
+/// within [`RACE_LINES`] of them (above, inside or just past them): the range to put in
+/// [`FrameOut::beam_races`].
+pub fn beam_race((start, end): (u16, u16), beam: u16) -> Option<(u16, u16)> {
+    if start >= end {
+        return None;
+    }
+    let gap = if beam < start {
+        start - beam
+    } else if beam >= end {
+        beam - (end - 1)
+    } else {
+        0
+    };
+    (gap <= RACE_LINES).then_some((start, end))
 }
 
 /// How conformance knows the original's load is over.
@@ -278,6 +302,7 @@ impl Game {
                     load: out.load,
                     resync: out.resync,
                     jobs: out.jobs,
+                    beam_races: Vec::new(),
                 };
             }
             // The intro has handed over: the game starts as a disk-1 power-on does, and its first
@@ -301,6 +326,7 @@ impl Game {
                 load: out.load,
                 resync: out.resync,
                 jobs: out.jobs,
+                beam_races: out.beam_races,
             };
         }
         let mut hw = Hw::of(input);
@@ -328,6 +354,7 @@ impl Game {
             load: None,
             resync: Vec::new(),
             jobs: Vec::new(),
+            beam_races: Vec::new(),
         }
     }
 
@@ -510,6 +537,19 @@ impl Game {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn a_write_races_the_beam_within_four_lines_of_it() {
+        use super::beam_race;
+        assert_eq!(beam_race((120, 130), 118), Some((120, 130)));
+        assert_eq!(beam_race((120, 130), 116), Some((120, 130)));
+        assert_eq!(beam_race((120, 130), 125), Some((120, 130)));
+        assert_eq!(beam_race((120, 130), 133), Some((120, 130)));
+        assert_eq!(beam_race((120, 130), 110), None);
+        assert_eq!(beam_race((120, 130), 115), None);
+        assert_eq!(beam_race((120, 130), 134), None);
+        assert_eq!(beam_race((120, 120), 120), None);
+    }
+
     use super::*;
 
     #[test]
