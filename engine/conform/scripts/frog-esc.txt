@@ -1,0 +1,6 @@
+# W1-1, the frog standing: ESC (raw key $45) pressed at frame 60, released at 64. The level's poll
+# reads it and the loop ends (`abort_flag`) at frame 61; `level_exit_fade` fades out and closes the
+# window, then the ESC path to the title begins at frame 77 (T34's).
+0: -
+60: K45
+64: -

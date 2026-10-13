@@ -8,6 +8,7 @@ use crate::frog;
 use crate::layout::{h0, h2, h3};
 use crate::level::camera;
 use crate::level::LevelCtx;
+use crate::level::beam::Cost;
 use crate::level::objects::{BOB_DRAW_LIST, BOB_FREE_LIST, Blit, blit};
 use crate::mem::Bus;
 
@@ -33,18 +34,24 @@ pub fn bob_setup(c: &mut LevelCtx) {
     let b = &mut c.bus;
     b.set_w(BOB_BUFFER, 0);
     park_free(b);
-    frame_records(b, SHARED_FRAMES, SHARED_TABLE);
+    let mut n = frame_records(b, SHARED_FRAMES, SHARED_TABLE);
     let table = b.l(WORLD_TABLE);
-    frame_records(b, WORLD_FRAMES, table);
+    n += frame_records(b, WORLD_FRAMES, table);
+    c.spend_n(Cost::FrameRecord, n);
+    let mut n = 0;
     for list in [SPUD_FRAMES, SHARED_FRAMES, WORLD_FRAMES] {
-        blit_params(b, list);
+        n += blit_params(&mut c.bus, list);
     }
-    sub_records(b);
+    c.spend_n(Cost::BlitParams, n);
+    let n = sub_records(&mut c.bus);
+    c.spend_n(Cost::SubRecords, n);
     let b = &mut c.bus;
     for k in 0..SHEET_PLANE {
         b.set_b(MASK + k, 0);
     }
+    c.spend_n(Cost::MaskClearByte, SHEET_PLANE);
     masks(c);
+    c.spend(Cost::BobSprites);
     let b = &mut c.bus;
     sprite_attach(b, camera::FROG_SPRITE_LEFT);
     sprite_attach(b, camera::FROG_SPRITE_RIGHT);
@@ -79,9 +86,11 @@ fn park_free(b: &mut Bus) {
 
 /// h0+$18e8a: each frame record of the list at `list` (8-byte entries, the record first, ending
 /// with a negative long) takes six words from `table` (x, y in the sheet, width less 16, height,
-/// hot spot x, y) and the sheet's, the mask's and the plane's places.
-fn frame_records(b: &mut Bus, mut list: u32, mut table: u32) {
+/// hot spot x, y) and the sheet's, the mask's and the plane's places. Returns how many.
+fn frame_records(b: &mut Bus, mut list: u32, mut table: u32) -> u32 {
+    let mut n = 0;
     loop {
+        n += 1;
         let rec = b.l(list);
         for o in [0, 2, 4, 6, 8, 0xa] {
             let mut v = b.w(table);
@@ -97,15 +106,18 @@ fn frame_records(b: &mut Bus, mut list: u32, mut table: u32) {
         b.set_l(rec + 0x16, SHEET_PLANE);
         list = list.wrapping_add(8);
         if (b.l(list) as i32) < 0 {
-            return;
+            return n;
         }
     }
 }
 
 /// h0+$18f6c: each frame record of the list at `list` gets its blit's modulos, size and the
 /// addresses of its first word in the sheet and the mask (h0+$18f78), for a `$30`-byte line.
-fn blit_params(b: &mut Bus, mut list: u32) {
+/// Returns how many.
+fn blit_params(b: &mut Bus, mut list: u32) -> u32 {
+    let mut n = 0;
     loop {
+        n += 1;
         let rec = b.l(list);
         let width = b.w(rec + 4) >> 3;
         b.set_w(rec + 0x22, 0x30u16.wrapping_sub(width));
@@ -117,15 +129,15 @@ fn blit_params(b: &mut Bus, mut list: u32) {
         b.set_l(rec + 0x1c, at.wrapping_add(b.l(rec + 0x10)));
         list = list.wrapping_add(8);
         if (b.l(list) as i32) < 0 {
-            return;
+            return n;
         }
     }
 }
 
 /// h0+$18ef8: the line offsets (`$30` a line), and each bob record of the draw list started on its
 /// animation's first step, its first sub-record copied to the second, then both to the third and
-/// fourth.
-fn sub_records(b: &mut Bus) {
+/// fourth. Returns how many bob records.
+fn sub_records(b: &mut Bus) -> u32 {
     b.set_w(BOB_BUFFER, 0);
     for k in 0..0x13d {
         b.set_w(LINE_OFFSETS + 2 * k, (k * 0x30) as u16);
@@ -149,9 +161,11 @@ fn sub_records(b: &mut Bus) {
         }
     }
     let mut at = first;
+    let mut n = 0;
     loop {
         let rec = b.l(at);
         at += 4;
+        n += 1;
         for k in 0..0x46 {
             b.set_w(rec + 0x8c + 2 * k, b.w(rec + 2 * k));
         }
@@ -159,12 +173,14 @@ fn sub_records(b: &mut Bus) {
             break;
         }
     }
+    n
 }
 
 /// h0+$18fd6: the mask cleared, then every plane of the sheet ORed into it.
 fn masks(c: &mut LevelCtx) {
     let size = 0x140u16 << 6 | 0x14;
     c.custom(0x96, 0x8400);
+    c.spend_n(Cost::MaskClear10, 0x140 * 0x14 / 10);
     blit(
         &mut c.bus,
         Blit {
@@ -184,6 +200,7 @@ fn masks(c: &mut LevelCtx) {
         },
     );
     for p in 0..5 {
+        c.spend_n(Cost::MaskOr10, 0x140 * 0x14 / 10);
         let b = &mut c.bus;
         blit(
             b,

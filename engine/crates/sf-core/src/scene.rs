@@ -65,13 +65,15 @@ impl Scene {
     /// program on the beam ([`crate::level::frame::main_program`]): its picture is drawn as the
     /// beam saw it, a write the pass made after the beam had passed a line not showing there
     /// (docs/12 "Late redraws"); a pass the original's frame ends in the middle of (`pacing`) is
-    /// `pending` into the next frame.
+    /// `pending` into the next frame. When `level_frame_loop` returns in the frame (T37), `after`
+    /// runs the frame's rest from the line the beam is on, before the picture is drawn.
     pub fn step(
         &mut self,
         m: &mut Machine,
         pending: &mut Option<crate::level::beam::Pending>,
         pacing: Pacing,
         view: View,
+        after: &mut dyn FnMut(&mut State, u16),
     ) -> (Vec<PaulaWrite>, Option<Picture>) {
         let mut out = Vec::new();
         let mut picture = None;
@@ -100,8 +102,27 @@ impl Scene {
                     *c.bus.st = *mid;
                 }
                 *pending = f.pending;
-                let log = f.log.unwrap_or_default();
-                picture = Some(render::level_as_drawn(c.bus.st, m.display, view, &log));
+                let mut log = f.log.unwrap_or_default();
+                let mut window = None;
+                if let Some(line) = f.ended {
+                    // The program after the loop moves the window's top down (`level_exit_fade`):
+                    // the beam fetched this field from where the copper had it, the picture is
+                    // cut to where it is as the next field starts.
+                    let diw = render::LEVEL_COPPER + 6;
+                    let old = c.bus.st.byte(diw).unwrap_or(0);
+                    after(c.bus.st, line);
+                    let new = c.bus.st.byte(diw).unwrap_or(0);
+                    if new != old {
+                        let at = crate::level::beam::Clock { line, into: 0 }.nominal();
+                        log.writes.push((diw, old, at));
+                        window = Some(new.wrapping_sub(old) as u16);
+                    }
+                }
+                let mut p = render::level_as_drawn(c.bus.st, m.display, view, &log);
+                if let Some(down) = window {
+                    p = p.rewindow(p.left, p.top + down, p.width, p.height.saturating_sub(down));
+                }
+                picture = Some(p);
                 drop(c);
                 out.truncate(f.out_to.unwrap_or(out.len()));
                 out.drain(..f.out_from);

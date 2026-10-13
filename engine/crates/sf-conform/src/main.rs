@@ -2,12 +2,13 @@
 //! `sf-conform all` — every case in `engine/conform/cases/`.
 //! `sf-conform scan <case.toml>` — one case run to its end past each divergence: one line per
 //! frame that differs (what differs first in it), for finding what is left.
-//! `sf-conform record <case.toml> [--watch NAME=ADDR:W]... [--every] [--only] [--trace] [--png DIR]`
+//! `sf-conform record <case.toml> [--watch NAME=ADDR:W]... [--every] [--only] [--trace] [--paula] [--png DIR]`
 //! — the original's state per frame of a case, for writing scripts and porting: every `LAYOUT`
 //! variable (none with `--only`) and each watched address (`h0+9d8:W`, `0xc17074:L`, width B, W
 //! or L), printed on frames where something changed. `--trace` adds where the main program was at
 //! the frame's end (its PC and the return addresses on its stack, as `h0+$x`), `--png` writes the
-//! original's picture of every printed frame to `DIR/frame<N>.png`.
+//! original's picture of every printed frame to `DIR/frame<N>.png`, `--paula` its Paula writes
+//! (register=value@line).
 
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
@@ -15,7 +16,7 @@ use std::process::ExitCode;
 use sf_conform::{Case, InputScript, cases_dir, sync};
 use sf_core::layout::{LAYOUT, Ram, VarDef, VarId, Width, h0};
 
-const USAGE: &str = "usage: sf-conform run <case.toml> | all | scan <case.toml> | record <case.toml> [--watch NAME=ADDR:W]... [--every] [--only] [--trace] [--png DIR]";
+const USAGE: &str = "usage: sf-conform run <case.toml> | all | scan <case.toml> | record <case.toml> [--watch NAME=ADDR:W]... [--every] [--only] [--trace] [--paula] [--png DIR]";
 
 fn main() -> ExitCode {
     let args: Vec<String> = std::env::args().skip(1).collect();
@@ -150,6 +151,7 @@ fn record(path: &Path, rest: &[String]) -> Result<bool, String> {
     let case = Case::load(path)?;
     let mut every = false;
     let mut trace = false;
+    let mut paula = false;
     let mut png_dir: Option<PathBuf> = None;
     let mut shown: Vec<VarDef> = LAYOUT.iter().flat_map(|d| d.pieces()).collect();
     let layout_pieces = shown.len();
@@ -160,6 +162,7 @@ fn record(path: &Path, rest: &[String]) -> Result<bool, String> {
             "--every" => every = true,
             "--only" => only = true,
             "--trace" => trace = true,
+            "--paula" => paula = true,
             "--png" => png_dir = Some(PathBuf::from(it.next().ok_or(USAGE)?)),
             "--watch" => shown.push(watch(it.next().ok_or(USAGE)?)?),
             _ => return Err(USAGE.to_string()),
@@ -240,6 +243,21 @@ fn record(path: &Path, rest: &[String]) -> Result<bool, String> {
                 sync::pacing(&amiga.cpu(), &mem, &capture.paula),
                 cols.join(" ")
             );
+            if paula {
+                let ws: Vec<String> = capture
+                    .paula
+                    .iter()
+                    .map(|w| {
+                        format!(
+                            "{}={:04x}@{}",
+                            sf_conform::compare::reg_name(w.reg),
+                            w.value,
+                            w.vpos
+                        )
+                    })
+                    .collect();
+                println!("    paula: {}", ws.join(" "));
+            }
         }
         prev = Some(vals);
     }

@@ -18,6 +18,11 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-13 | 🐞 | Not T37's (its review's sweep): the level's `kbd_poll` (`Game::sdr`, `level/clock.rs`) re-reads a key's byte every poll; the original reads it once, then `$ff` (`frog-esc-w1-1`, frames 61→63). Only the power-on `$7e` byte repeats. |
+| 2026-10-13 | 🐞 | Not T37's (same sweep): `Front` resumed from memory (`front/mod.rs`, `Keyboard::from_keys(key_down, key_up)`) re-reads a key byte already handled, where the original reads `$ff`. |
+| 2026-10-13 | 🔄 | Owner, T37: T100 front-vbl-timing added (first numbered T96, renumbered at merge; blocks T21). The fade in's copper reads colours mid-step, by the music player's per-row timing; `frog-pit-w1-1` leaves the picture out on frames 308–323 meanwhile. |
+| 2026-10-13 | 🐞 | Not T37's: `level_entry::every_level_is_entered_as_the_original_enters_it` fails on the feature branch for all 29 levels: `slot_copper` original `$140f440`, engine `$1400000`. |
+| 2026-10-13 | 📌 | T37: `items-run-w1-1` (death at 655, loop end 712) could now run past the restart; not tried. `sf-conform record --paula` prints the original's Paula writes with their lines. |
 | 2026-10-13 | 📌 | T82: a poke planted just before the after-lag step is lost (that step carries on the lagging frame's pass); plant on the lag frame. Free-running costs on items-run-w1-1: signed median 0.75 lines, unsigned 1.9. |
 | 2026-10-13 | 🔄 | Owner: T92 hit pir's context line with only an uncompiled draft committed; the rest passed to T95 slot-load-finish (blocks T93). The oracle timeline is in T95's doc and T92's WIP commit. |
 | 2026-10-13 | 🔄 | Owner, T50: an oracle step that runs two video frames (a blit holds the CPU through one; `frames_run` = 2) is compared against two engine frames, writes joined. Scene 4 frame 3188 is the first. |
