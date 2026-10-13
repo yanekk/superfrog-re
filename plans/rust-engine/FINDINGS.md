@@ -18,7 +18,7 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
-| 2026-10-13 | 🔄 | Owner, T17: park T17 until T36–T38, split by world. T17 = W4; T39 W5, T40 W6 (witch stays T18). T17's row cannot take the T38 dependency; hold it in the run. "Split them" may cover T16 too. |
+| 2026-10-13 | 🔄 | Owner, T17: enemies in worlds 4–6 parked until T36–T38 and split by world; T17 closed as the split. T41 W4, T39 W5, T40 W6 (witch stays T18). "Split them" may cover T16 too. |
 | 2026-10-13 | 🔄 | Owner, T15: stop and split; T36–T38 added (picture/lag/entry, restart, tally). Draft on local branch `t15-flow-wip`. |
 | 2026-10-13 | 📌 | T15: an undrawn bob's step pointer is 0, so despawn reads width/height from ExecBase ($C00276): `low_vectors`. Items lag W1-1's pass 86/700 frames. |
 | 2026-10-12 | 📌 | T14 review: the lag re-sync loads the original's whole memory, so a divergence landing on a lag frame is erased: `frog-run-w1-1` stayed green with fake walls not digging. A case crossing lag needs a re-sync-free check (level_entry's fake-wall test). |

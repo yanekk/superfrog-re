@@ -5,10 +5,9 @@
 > If T07's object-type count shows this is more than one session, it is split with the owner and this
 > doc is superseded by the split; say so here with the date.
 
-> **Split 2026-10-13 (owner): parked until T38, then split by world.** This task is now **world 4
-> only** (23 new types, 15 that hurt). World 5 is T39, world 6 (less the witch, T18's) is T40.
-> Start it only after T36–T38 are ✅; its row cannot carry that dependency (an existing row is not
-> edited), so the run holds it back. Read "worlds 4–6" below as "world 4".
+> **Split 2026-10-13 (owner), and this doc is superseded by it.** T17 was parked until T36–T38
+> and closed as the split itself: world 4 is T41, world 5 T39, world 6 (less the witch, T18's) T40,
+> each after T38 and blocking T18. Nothing below is built under T17.
 
 ## Goal
 

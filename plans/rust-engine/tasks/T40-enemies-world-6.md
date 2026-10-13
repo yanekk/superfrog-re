@@ -1,6 +1,6 @@
 # T40 — enemies-world-6
 
-**Phase:** 2 · **Depends on:** T17, T38; blocks T18 · **Weight:** heavy
+**Phase:** 2 · **Depends on:** T38; blocks T18 · **Weight:** heavy
 
 Added by T17 (owner, 2026-10-13): T17 was parked until T36–T38 and split by world. World 6 and the
 final level have 11 new types; the witch (marker 1, template h0+$221f6, init $259ae, update $25a16)

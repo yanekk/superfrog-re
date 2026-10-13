@@ -1,6 +1,6 @@
 # T39 — enemies-world-5
 
-**Phase:** 2 · **Depends on:** T16, T17, T38; blocks T18 · **Weight:** heavy
+**Phase:** 2 · **Depends on:** T16, T38; blocks T18 · **Weight:** heavy
 
 Added by T17 (owner, 2026-10-13): T17 was parked until T36–T38 and split by world. World 5 has 11
 new types plus 6 shared with world 2 (T16 ports those; reuse them). Template, init, update and touch

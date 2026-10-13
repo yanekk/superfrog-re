@@ -39,7 +39,7 @@ done · ⛔ blocked, needs a human.
 | T14 | frog-and-level | T06, T11, T12, T13 | ✅ | |
 | T15 | items-and-scoring | T14 | ✅ | |
 | T16 | enemies-worlds-1-3 | T15 | ⬜ | |
-| T17 | enemies-worlds-4-6 | T15 | ⬜ | |
+| T17 | enemies-worlds-4-6 | T15 | 🔍 | Owner, 2026-10-13: parked until T36–T38 and split by world instead of built. No code. Added T41 (W4), T39 (W5), T40 (W6 less the witch), each after T38, blocking T18. Deviation: the whole goal moved to those tasks. |
 | T18 | bosses | T16, T17 | ⬜ | |
 | T19 | slot-and-bonus | T15 | ⬜ | |
 | T20 | front-end | T08, T11, T12, T13 | ✅ | |
@@ -61,13 +61,14 @@ done · ⛔ blocked, needs a human.
 | T36 | items-on-the-beam | T15 | ⬜ | |
 | T37 | level-restart | T36; blocks T34 | ⬜ | |
 | T38 | level-tally | T37; blocks T21 | ⬜ | |
-| T39 | enemies-world-5 | T16, T17, T38; blocks T18 | ⬜ | |
-| T40 | enemies-world-6 | T17, T38; blocks T18 | ⬜ | |
+| T39 | enemies-world-5 | T16, T38; blocks T18 | ⬜ | |
+| T40 | enemies-world-6 | T38; blocks T18 | ⬜ | |
+| T41 | enemies-world-4 | T38; blocks T18 | ⬜ | |
 
 A Notes cell holds what was built or what the review found, the test count, and one line per
 deviation from the task doc. A ✅ task's cell may be cut to one line once the next task has been reviewed.
 
-**Review queue:** *(empty)*
+**Review queue:** T17 (a plan split, no code)
 
 ## Blocked on the user
 
