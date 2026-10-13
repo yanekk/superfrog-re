@@ -2,7 +2,8 @@
 // that tools/setup/oracle.sh builds with engine/crates/sf-oracle/patches applied:
 //   0001 installs `vamiga_custom_write_hook`, called on every custom-register write (CPU and Copper);
 //   0004 installs `vamiga_audio_sample_hook`, called whenever a channel's DAC takes a new value;
-//   0005 installs `vamiga_irq_hook`, called as the CPU starts an interrupt's exception;
+//   0005 installs `vamiga_irq_hook`, called as the CPU starts an interrupt's exception, and
+//        `vamiga_blit_hook`, called as a blit begins, frees the busy flag and ends;
 //   0002 makes `SfShimAccess` a friend of `Emulator`, so the emulator can be stepped without its thread.
 
 #include "shim.h"
@@ -24,6 +25,7 @@ namespace vamiga {
 extern void (*vamiga_custom_write_hook)(u32 addr, u16 value, int accessor, isize vpos, isize hpos);
 extern void (*vamiga_audio_sample_hook)(int channel, i8 sample, u16 volume, isize vpos, isize hpos);
 extern void (*vamiga_irq_hook)(int level, isize vpos, isize hpos);
+extern void (*vamiga_blit_hook)(int event, isize vpos, isize hpos);
 
 // Reaches Emulator's private stepping functions (patch 0002). vAmiga normally runs these on its own
 // thread, paced by the wall clock; the oracle calls them directly, one frame per call.
@@ -112,8 +114,14 @@ thread_local std::vector<sf_custom_write> *capturing = nullptr;
 // The blits started (BLTSIZE written) during the step being run on this thread, if any.
 thread_local std::vector<sf_custom_write> *blitting = nullptr;
 
-void hook(u32 addr, u16 value, int, isize vpos, isize hpos)
+// Every custom-register write the CPU makes during the step being run on this thread, if any.
+thread_local std::vector<sf_custom_write> *cpuWriting = nullptr;
+
+void hook(u32 addr, u16 value, int accessor, isize vpos, isize hpos)
 {
+    if (cpuWriting && accessor == 0) {
+        cpuWriting->push_back(sf_custom_write { u16(addr), value, u16(vpos), u16(hpos) });
+    }
     if (capturing && isPaulaReg(addr)) {
         capturing->push_back(sf_custom_write { u16(addr), value, u16(vpos), u16(hpos) });
     }
@@ -141,6 +149,16 @@ void irqHook(int level, isize vpos, isize hpos)
     if (interrupting) {
         u8 next = interrupted && interrupted->agnus.pos.frame > stepFrame;
         interrupting->push_back(sf_irq { u8(level), next, u16(vpos), u16(hpos) });
+    }
+}
+
+thread_local std::vector<sf_blit_event> *blitEvents = nullptr;
+
+void blitHook(int event, isize vpos, isize hpos)
+{
+    if (blitEvents) {
+        u8 next = interrupted && interrupted->agnus.pos.frame > stepFrame;
+        blitEvents->push_back(sf_blit_event { u8(event), next, u16(vpos), u16(hpos) });
     }
 }
 
@@ -182,6 +200,9 @@ struct sf_amiga {
     bool profile = false;
     std::vector<sf_line_sample> samples;
     std::vector<sf_custom_write> blits;
+    std::vector<sf_custom_write> cpuWrites;
+    std::vector<sf_blit_event> blitEvents;
+    int framesRun = 0;
 
     Emulator &emu() { return *va.emu; }
     Amiga &amiga() { return SfShimAccess::main(*va.emu); }
@@ -311,6 +332,7 @@ sf_amiga *sf_amiga_new(const uint8_t *rom, size_t rom_len, char *err, size_t err
         vamiga_custom_write_hook = hook;
         vamiga_audio_sample_hook = sampleHook;
         vamiga_irq_hook = irqHook;
+        vamiga_blit_hook = blitHook;
     });
     // vAmiga fills its static table of option defaults on first use without a lock; a machine set
     // up on another thread meanwhile can read it half-filled ("Invalid key: ROM_PATH").
@@ -383,8 +405,12 @@ int sf_amiga_step(sf_amiga *a, uint32_t joy, const uint8_t keys[16], char *err, 
     a->irqs.clear();
     a->input(joy, keys);
     a->blits.clear();
+    a->cpuWrites.clear();
+    a->blitEvents.clear();
     capturing = &a->writes;
     blitting = &a->blits;
+    cpuWriting = &a->cpuWrites;
+    blitEvents = &a->blitEvents;
     tapping = &a->taps;
     interrupting = &a->irqs;
     interrupted = &a->amiga();
@@ -409,8 +435,11 @@ int sf_amiga_step(sf_amiga *a, uint32_t joy, const uint8_t keys[16], char *err, 
         a->mixed.resize(size_t(2 * n));
         stream.copyInterleaved(a->mixed.data(), n);
     });
+    a->framesRun = int(a->amiga().agnus.pos.frame - stepFrame);
     capturing = nullptr;
     blitting = nullptr;
+    cpuWriting = nullptr;
+    blitEvents = nullptr;
     tapping = nullptr;
     interrupting = nullptr;
     interrupted = nullptr;
@@ -452,6 +481,23 @@ size_t sf_amiga_irqs(const sf_amiga *a, const sf_irq **out)
 {
     *out = a->irqs.data();
     return a->irqs.size();
+}
+
+size_t sf_amiga_cpu_writes(const sf_amiga *a, const sf_custom_write **out)
+{
+    *out = a->cpuWrites.data();
+    return a->cpuWrites.size();
+}
+
+size_t sf_amiga_blit_events(const sf_amiga *a, const sf_blit_event **out)
+{
+    *out = a->blitEvents.data();
+    return a->blitEvents.size();
+}
+
+int sf_amiga_frames_run(const sf_amiga *a)
+{
+    return a->framesRun;
 }
 
 int sf_amiga_frame_lines(const sf_amiga *a)

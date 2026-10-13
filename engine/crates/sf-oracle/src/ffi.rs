@@ -61,6 +61,15 @@ pub struct SfIrq {
     pub hpos: u16,
 }
 
+#[repr(C)]
+#[derive(Clone, Copy)]
+pub struct SfBlitEvent {
+    pub event: u8,
+    pub next: u8,
+    pub vpos: u16,
+    pub hpos: u16,
+}
+
 /// shim.h's SF_AUDIO_RATE.
 pub const SF_AUDIO_RATE: u32 = 48_000;
 
@@ -107,6 +116,9 @@ unsafe extern "C" {
     pub fn sf_amiga_audio_taps(a: *const SfAmiga, out: *mut *const SfAudioTap) -> usize;
     pub fn sf_amiga_irqs(a: *const SfAmiga, out: *mut *const SfIrq) -> usize;
     pub fn sf_amiga_frame_lines(a: *const SfAmiga) -> c_int;
+    pub fn sf_amiga_cpu_writes(a: *const SfAmiga, out: *mut *const SfCustomWrite) -> usize;
+    pub fn sf_amiga_blit_events(a: *const SfAmiga, out: *mut *const SfBlitEvent) -> usize;
+    pub fn sf_amiga_frames_run(a: *const SfAmiga) -> c_int;
     pub fn sf_amiga_audio_out(a: *const SfAmiga, out: *mut *const f32) -> usize;
     pub fn sf_amiga_texture(a: *const SfAmiga, stride: *mut usize, rows: *mut usize) -> *const u32;
     pub fn sf_amiga_diw(a: *const SfAmiga, diwstrt: *mut u16, diwstop: *mut u16);

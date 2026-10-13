@@ -46,6 +46,17 @@ typedef struct {
     uint16_t hpos;
 } sf_irq;
 
+/* A blitter event: SF_BLIT_BEGIN as a blit begins, SF_BLIT_FREE as its busy flag clears (BLTBUSY
+ * reads 0 from then on), SF_BLIT_END as it ends; the beam position then, and whether it was in the
+ * next frame, as for sf_irq. */
+enum { SF_BLIT_BEGIN = 0, SF_BLIT_FREE = 1, SF_BLIT_END = 2 };
+typedef struct {
+    uint8_t event;
+    uint8_t next;
+    uint16_t vpos;
+    uint16_t hpos;
+} sf_blit_event;
+
 /* The host rate the core's own mixer runs at: stereo, channels 0/3 hard left and 1/2 hard right, no
  * filter, no adaptive rate, nearest-sample resampling. */
 #define SF_AUDIO_RATE 48000
@@ -96,6 +107,16 @@ size_t sf_amiga_audio_taps(const sf_amiga *a, const sf_audio_tap **out);
 
 /* The interrupts the CPU took during the last step, in order. Valid until the next step. */
 size_t sf_amiga_irqs(const sf_amiga *a, const sf_irq **out);
+
+/* Every custom-register write the CPU made during the last step, in order (the Copper's are not
+ * kept). Valid until the next step. */
+size_t sf_amiga_cpu_writes(const sf_amiga *a, const sf_custom_write **out);
+
+/* The blitter's events during the last step, in order (core patch 0005). Valid until the next step. */
+size_t sf_amiga_blit_events(const sf_amiga *a, const sf_blit_event **out);
+
+/* How many frames the last step ran: Agnus's frame count at its end minus at its start. */
+int sf_amiga_frames_run(const sf_amiga *a);
 
 /* The core's own mix of the last step at SF_AUDIO_RATE: `2 * n` floats, left then right, for the
  * returned n. Valid until the next step. */
