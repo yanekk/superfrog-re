@@ -536,6 +536,14 @@ layout! {
     /// `reward_power_count` (h0+$23e20, 9 in the executable).
     RewardLifeCount = "reward_life_count", h0(0x23de4), Width::W;
     RewardPowerCount = "reward_power_count", h0(0x23e20), Width::W;
+    /// The bonus level's animation toggles (`bonus::enemies`), words inside the code that the
+    /// listing reads as instructions: `bonus_toggle_114` (h0+$28ad8) and `bonus_toggle_113`
+    /// (h0+$28b4a), flipped by each spawn of those types to pick one of two animations.
+    BonusToggle114 = "bonus_toggle_114", h0(0x28ad8), Width::W;
+    BonusToggle113 = "bonus_toggle_113", h0(0x28b4a), Width::W;
+    /// `bonus_fly_off` (h0+$293ce): a word inside the code, set by the bonus level's marker 11
+    /// and cleared by the inits of 127 and 128; while it is set those fly off left.
+    BonusFlyOff = "bonus_fly_off", h0(0x293ce), Width::W;
     /// `bob_draw_list` (h0+$2970a..): a 0, the bobs to draw, a 0.
     BobDrawList = "bob_draw_list", h0(0x2970a), Width::Bytes(0xa8);
     /// `bob_records` (h0+$297b2..$2aee2): the spud's bob and the 20 objects' (`$11c` bytes,

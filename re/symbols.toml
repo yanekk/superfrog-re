@@ -1735,6 +1735,33 @@ note = "final boss update"
 [[sym]]
 exe = "d1_c03"
 hunk = 0
+offset = 0x28ad8
+name = "bonus_toggle_114"
+kind = "var"
+size = 2
+note = "bonus type 114's init flips it to pick one of two animations (T76)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x28b4a
+name = "bonus_toggle_113"
+kind = "var"
+size = 2
+note = "bonus type 113's init flips it to pick one of two animations (T76)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x293ce
+name = "bonus_fly_off"
+kind = "var"
+size = 2
+note = "bonus marker 11 sets it; 127/128's inits clear it; while set they fly off left (T77)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
 offset = 0x298d2
 name = "bob_records"
 kind = "table"
@@ -4086,3 +4113,219 @@ offset = 0x164fa
 name = "level_start_point"
 kind = "func"
 note = "frog and camera from level_start_x/y, kept inside; scroller reset; first scroll (T14)"
+
+# --- the slot machine (T71; docs/13) ---
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x4e28
+name = "slot_free_spin"
+kind = "func"
+note = "after a win with coins left, 6 in 100 sets h0+$49d0: the next round skips hold, spin and coin and pays the same line again"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x4eae
+name = "slot_payout"
+kind = "func"
+note = "the reels' line scored; the prize out in d7"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x50b6
+name = "slot_count_win"
+kind = "func"
+note = "counts slot_win into the score (slot_count is the variable)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x51c4
+name = "slot_award"
+kind = "func"
+note = "awards the prize d7 names, lighting the ladder"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x5528
+name = "slot_collect"
+kind = "func"
+note = "collects the ladder's rung"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x5628
+name = "slot_jackpot"
+kind = "func"
+note = "the jackpot prize"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x57e2
+name = "slot_hilo_game"
+kind = "func"
+note = "the hi-lo gamble (slot_hilo is the variable)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x598e
+name = "slot_hilo_spin"
+kind = "func"
+note = "turns the hi-lo number, skipping its start"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x5a06
+name = "slot_spin_reels"
+kind = "func"
+note = "spins the three reels (slot_spin is the variable)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x5d48
+name = "slot_reel_stop"
+kind = "func"
+note = "stops a reel"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x5de2
+name = "slot_hold_menu"
+kind = "func"
+note = "the hold menu before a spin"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x5eb4
+name = "slot_run_menu"
+kind = "func"
+note = "pointer menu; fire picks the stop (slot_menu is the variable)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x6238
+name = "slot_lamps_off"
+kind = "func"
+note = "clears 26 lamp records"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x6258
+name = "slot_lamps_on"
+kind = "func"
+note = "lights the lamp records"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x6276
+name = "slot_attract_frame"
+kind = "func"
+note = "one attract frame: reels 0,9,$18, a pattern row into the lamps"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x62f4
+name = "slot_digits"
+kind = "func"
+note = "draws the slot's digits"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x645e
+name = "slot_draw_lamps"
+kind = "func"
+note = "blits each lamp on the sixth plane"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x6558
+name = "slot_draw_reels"
+kind = "func"
+note = "draws the reels from FRUC"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x661e
+name = "slot_init"
+kind = "func"
+note = "reels 0,$b,$16, lamps pointed at their rects"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x6f3a
+name = "print_text"
+kind = "func"
+note = "prints text; also the tally's and the info screen's; sets text_plane"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x57b6
+name = "slot_ladder"
+kind = "table"
+size = 0x2c
+note = "prize ladder: ten slot_lamps record pointers, bottom rung first, 0-ended"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x606a
+name = "slot_pointer_stops"
+kind = "table"
+size = 0xc
+note = "hold menu pointer's x at each stop, left to right, $ffff-ended"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x668a
+name = "slot_reel_frames"
+kind = "table"
+size = 0x80
+note = "reel symbols: 32 x (x, y) in FRUC, by reel position"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x670a
+name = "slot_lamp_rects"
+kind = "table"
+size = 0x138
+note = "lamps' rectangles: 26 x (x, y, w, h + 2 words), in slot_lamps order"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x3b1ae
+name = "slot_attract_later"
+kind = "table"
+size = 0x13a
+note = "lamp attract pattern from the 10th to the 30th time: 6 rows of 26 words, then $ff80"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x3b2e8
+name = "slot_attract_first"
+kind = "table"
+size = 0x1a2
+note = "lamp attract pattern for the first nine times: 8 rows of 26 words, then $ff80"

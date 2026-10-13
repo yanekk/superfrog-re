@@ -323,6 +323,20 @@ pub fn bob_anim(b: &mut Bus, slot: u32, anim: u32) {
     b.set_l(bob + 0x42, anim);
 }
 
+/// h0+$1c41c: a slot follows a path of positions (longs: x, y) at `+$54`, starting over from
+/// `+$58` at a −1 long; it takes the next one, moved by `dx`, `dy`.
+pub fn obj_path_xy(b: &mut Bus, slot: u32, dx: u16, dy: u16) {
+    let mut at = b.l(slot + 0x54);
+    if b.l(at) == 0xffff_ffff {
+        at = b.l(slot + 0x58);
+        b.set_l(slot + 0x54, at);
+    }
+    b.set_l(slot + 8, b.l(at));
+    b.set_w(slot + 8, b.w(slot + 8).wrapping_add(dx));
+    b.set_w(slot + 0xa, b.w(slot + 0xa).wrapping_add(dy));
+    b.set_l(slot + 0x54, b.l(slot + 0x54).wrapping_add(4));
+}
+
 /// `obj_build_hitboxes` (h0+$d2f6): every live slot's hitboxes, offset by its position.
 pub fn obj_build_hitboxes(c: &mut LevelCtx) {
     let mut out = HITBOXES;

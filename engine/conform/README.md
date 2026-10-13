@@ -139,3 +139,14 @@ with where each blit started (`Amiga::blit_starts`). The engine's fitted costs (
 place its work between anchors; normal play has only the costs. The costs are refitted with
 `cargo run --release --example fit -- <case.toml>...`, which prints `Cost::cycles`'s arms; the
 `profile` example shows where the original's CPU is, line by line.
+
+## Beam races
+
+The engine draws a step at once; the original's CPU or blitter writes the picture while the beam is
+drawing it, so a write landing near the beam shows on one frame or the next depending on a few
+cycles. A drawing step that wrote raster lines while the beam was within 4 lines of them
+(`sf_core::game::RACE_LINES`, owner 2026-10-13) reports them in `FrameOut::beam_races`. When a
+frame's picture differs from the original's, but matches with those lines left out
+(`compare::picture_except`), the frame is excused, never silently: it counts in `Outcome::raced`, and
+a green run prints `beam races excused at N frame(s)`. A pixel differing on any other line still
+diverges.

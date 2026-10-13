@@ -1,5 +1,7 @@
 //! One frame of the engine against one frame of the original (DESIGN §2.1).
 
+use std::ops::Range;
+
 use sf_core::layout::{AmigaMemory, VarDef, VarId};
 use sf_core::{FrameOut, Picture};
 use sf_oracle::{FrameCapture, Rgb12Frame};
@@ -46,11 +48,12 @@ pub fn frame(
             })
         })
         .flatten();
-    let from_row = if skip_panel { PANEL_ROWS } else { 0 };
+    let from_row = picture_rows_from(case);
     let picture_diff = c
         .picture
         .then(|| picture_from(&ours.picture, &theirs.picture, from_row))
         .flatten()
+        .filter(|_| !raced_only(ours, &theirs.picture, from_row))
         .map(|d| report::write_diff_png(&case.name, frame, &ours.picture, &theirs.picture, d));
     let paula_diff = c.paula.then(|| paula(&ours.paula, &theirs.paula)).flatten();
     if first_var.is_none()
@@ -77,6 +80,15 @@ pub fn frame(
             })
             .unwrap_or_default(),
     })
+}
+
+/// The first picture row `case` compares.
+pub fn picture_rows_from(case: &Case) -> u16 {
+    if case.excludes(crate::case::Excluded::Panel) {
+        PANEL_ROWS
+    } else {
+        0
+    }
 }
 
 /// The picture rows of the status panel and the two black lines under it (window lines `$27` to
@@ -168,12 +180,44 @@ pub fn picture(ours: &Picture, theirs: &Rgb12Frame) -> Option<PixelMismatch> {
 
 /// [`picture`] from row `from` down.
 pub fn picture_from(ours: &Picture, theirs: &Rgb12Frame, from: u16) -> Option<PixelMismatch> {
+    picture_except(ours, theirs, std::slice::from_ref(&(0..from)))
+}
+
+/// The picture rows of a frame's beam races (`FrameOut::beam_races`, raster lines) in a picture
+/// whose first row is raster line `top`.
+pub fn race_rows(races: &[(u16, u16)], top: u16) -> Vec<Range<u16>> {
+    races
+        .iter()
+        .map(|&(a, b)| a.saturating_sub(top)..b.saturating_sub(top))
+        .collect()
+}
+
+/// Whether the engine's picture differs from the original's from row `from` down, but matches it
+/// once the rows of the frame's beam races are left out: a frame conformance excuses and counts
+/// (`Outcome::raced`).
+pub fn raced_only(ours: &FrameOut, theirs: &Rgb12Frame, from: u16) -> bool {
+    if ours.beam_races.is_empty() {
+        return false;
+    }
+    let mut rows = race_rows(&ours.beam_races, ours.picture.top);
+    rows.push(0..from);
+    picture_from(&ours.picture, theirs, from).is_some()
+        && picture_except(&ours.picture, theirs, &rows).is_none()
+}
+
+/// [`picture`], leaving out the picture rows in `rows`.
+pub fn picture_except(
+    ours: &Picture,
+    theirs: &Rgb12Frame,
+    rows: &[Range<u16>],
+) -> Option<PixelMismatch> {
     let a = window(theirs.left as i32, theirs.top, theirs.width, theirs.height);
     let b = window(ours.left, ours.top, ours.width, ours.height);
     let win = (a != b).then_some((a, b));
     let (w, h) = (ours.width.min(theirs.width), ours.height.min(theirs.height));
     let colours = sf_core::to_rgb12(ours);
-    let differing: Vec<(u16, u16, u16, u16)> = (from.min(h)..h)
+    let differing: Vec<(u16, u16, u16, u16)> = (0..h)
+        .filter(|y| !rows.iter().any(|r| r.contains(y)))
         .flat_map(|y| (0..w).map(move |x| (x, y)))
         .map(|(x, y)| {
             let o = colours[y as usize * ours.width as usize + x as usize];
@@ -275,6 +319,100 @@ mod tests {
             hpos: 0,
             vpos: 0,
         }
+    }
+
+    fn frame(colour: u16) -> Rgb12Frame {
+        Rgb12Frame {
+            left: 0,
+            top: 0x2c,
+            width: 4,
+            height: 6,
+            pixels: vec![colour; 24],
+            hires_detail: false,
+        }
+    }
+
+    fn ours() -> Picture {
+        let mut p = Picture {
+            left: 0,
+            top: 0x2c,
+            width: 4,
+            height: 6,
+            pixels: vec![1; 24],
+            palettes: vec![[0; 32]; 6],
+            splits: Vec::new(),
+        };
+        p.palettes.iter_mut().for_each(|c| c[1] = 0x123);
+        p
+    }
+
+    #[test]
+    fn picture_except_ignores_exactly_the_given_rows() {
+        let mut theirs = frame(0x123);
+        assert_eq!(picture_except(&ours(), &theirs, &[]), None);
+        // Rows 2 and 3 differ.
+        for x in 0..4 {
+            theirs.pixels[2 * 4 + x] = 0xf00;
+            theirs.pixels[3 * 4 + x] = 0xf00;
+        }
+        assert_eq!(picture_except(&ours(), &theirs, &[2..4]), None);
+        assert_eq!(
+            picture_except(&ours(), &theirs, &[1..3]).unwrap().first,
+            Some((0, 3, 0xf00, 0x123))
+        );
+        assert_eq!(
+            picture_except(&ours(), &theirs, &[]).unwrap().rows,
+            Some((2, 3, 8))
+        );
+        // A differing pixel outside the rows still diverges.
+        theirs.pixels[5 * 4 + 1] = 0x0f0;
+        assert_eq!(
+            picture_except(&ours(), &theirs, &[2..4]).unwrap().first,
+            Some((1, 5, 0x0f0, 0x123))
+        );
+    }
+
+    #[test]
+    fn a_frame_differing_only_on_raced_lines_is_excused() {
+        let mut out = FrameOut {
+            picture: ours(),
+            ..FrameOut::default()
+        };
+        let mut theirs = frame(0x123);
+        theirs.pixels[2 * 4] = 0xf00;
+        assert!(!raced_only(&out, &theirs, 0), "no races, no excuse");
+        out.beam_races = vec![(0x2c + 2, 0x2c + 3)];
+        assert!(raced_only(&out, &theirs, 0));
+        assert!(!raced_only(&out, &frame(0x123), 0), "nothing to excuse");
+        theirs.pixels[4] = 0xf00;
+        assert!(!raced_only(&out, &theirs, 0), "row 1 is not raced");
+        assert!(raced_only(&out, &theirs, 2), "row 1 is under the panel");
+    }
+
+    #[test]
+    fn a_frame_differing_only_on_raced_lines_does_not_diverge() {
+        let case = Case::parse(
+            "raced",
+            "sync = \"power-on\"\nframes = 1\ncompare = [\"picture\"]",
+        )
+        .unwrap();
+        let out = FrameOut {
+            picture: ours(),
+            beam_races: vec![(0x2c + 2, 0x2c + 3)],
+            ..FrameOut::default()
+        };
+        let mut picture = frame(0x123);
+        picture.pixels[2 * 4] = 0xf00;
+        let theirs = FrameCapture {
+            picture,
+            paula: Vec::new(),
+            audio: Vec::new(),
+        };
+        let mem = AmigaMemory {
+            chip: Vec::new(),
+            slow: Vec::new(),
+        };
+        assert!(super::frame(&case, 0, &[], &[], &mem, &out, &theirs, None, &[]).is_none());
     }
 
     #[test]
