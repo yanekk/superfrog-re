@@ -18,6 +18,7 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-13 | 📌 | T49 review: the fade set-up job's `inside` ranges are not defended by any test (emptying them leaves `story-scene1-out` green: the two-frame grace masks 1242 anyway). Checked by probe: PC h0+$b94e at 1242's end. |
 | 2026-10-13 | 📌 | T46 review, for T54: the fade writes' `HandlerBus` holds refresh and copper cycles only, no bitplane fetches; a handler held into the display (fed entries 155:88, 90:182) is timed uncontended. Those frames are green today. |
 | 2026-10-13 | 📌 | T46 added T49–T56 (owner: stop, split the rest; owner's yes given). T56 carries T46's done-when and blocks T21, T47, T48. |
 | 2026-10-13 | 🔄 | Owner, T46: conformance feeds the original's handler entry (patch 0005 `Amiga::irqs`) and, for draws, its end (`INTREQ=$20` beam); normal play estimates (entry line 0 cycle 10). |
