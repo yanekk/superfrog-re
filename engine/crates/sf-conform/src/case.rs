@@ -129,8 +129,10 @@ impl Case {
     pub fn parse(name: &str, text: &str) -> Result<Case, String> {
         let t: toml::Table = text.parse().map_err(|e: toml::de::Error| e.to_string())?;
         for k in t.keys() {
-            if !["sync", "script", "frames", "compare", "exclude", "vars", "resync"]
-                .contains(&k.as_str())
+            if ![
+                "sync", "script", "frames", "compare", "exclude", "vars", "resync",
+            ]
+            .contains(&k.as_str())
             {
                 return Err(format!(
                     "unknown key `{k}` (sync, script, frames, compare, exclude, vars, resync)"

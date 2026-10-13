@@ -685,7 +685,12 @@ fn map_spawn_scan_screen_matches_the_original() {
     let mut g = Gen::new(110);
     let frozen: Vec<(u32, Vec<u8>)> = sf_conform::freeze::frozen_markers()
         .into_iter()
-        .map(|(w, m)| (JUMPTAB + 4 * (w as u32 * 64 + m as u32), vec![0x4e, 0x75, 0x4e, 0x71]))
+        .map(|(w, m)| {
+            (
+                JUMPTAB + 4 * (w as u32 * 64 + m as u32),
+                vec![0x4e, 0x75, 0x4e, 0x71],
+            )
+        })
         .collect();
     for case in 0..300 {
         let mut s = Setup::default();

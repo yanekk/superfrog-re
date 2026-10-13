@@ -51,7 +51,9 @@ fn transplant_then_probe_returns_the_originals_values() {
 fn a_resync_after_lag_fails_a_case_that_forbids_it() {
     let full = Case::load(&sf_conform::cases_dir().join("items-run-w1-1.toml")).unwrap();
     assert!(!full.resync);
-    let lag = sf_conform::run(&full).unwrap_or_else(|d| panic!("{d}")).straddled[0];
+    let lag = sf_conform::run(&full)
+        .unwrap_or_else(|d| panic!("{d}"))
+        .straddled[0];
     let after = lag + 1;
     let plant = |f: u32, game: &mut Game| {
         if f == lag {
@@ -74,7 +76,11 @@ fn a_resync_after_lag_fails_a_case_that_forbids_it() {
     let o = sf_conform::run_with(&lenient, plant).unwrap_or_else(|d| panic!("{d}"));
     assert_eq!(o.resynced.len(), 1);
     assert_eq!(o.resynced[0].0, after);
-    assert!(o.resynced[0].1.starts_with("hiscore_table"), "{:?}", o.resynced);
+    assert!(
+        o.resynced[0].1.starts_with("hiscore_table"),
+        "{:?}",
+        o.resynced
+    );
 }
 
 #[test]
