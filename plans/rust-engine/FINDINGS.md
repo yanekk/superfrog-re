@@ -18,6 +18,11 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-13 | 📌 | T82: a poke planted just before the after-lag step is lost (that step carries on the lagging frame's pass); plant on the lag frame. Free-running costs on items-run-w1-1: signed median 0.75 lines, unsigned 1.9. |
+| 2026-10-13 | 🔄 | Owner: T92 hit pir's context line with only an uncompiled draft committed; the rest passed to T95 slot-load-finish (blocks T93). The oracle timeline is in T95's doc and T92's WIP commit. |
+| 2026-10-13 | 🔄 | Owner, T50: an oracle step that runs two video frames (a blit holds the CPU through one; `frames_run` = 2) is compared against two engine frames, writes joined. Scene 4 frame 3188 is the first. |
+| 2026-10-13 | 📌 | T50: in scene 4 the oracle's slot owners show no audio DMA under the masks' clearing; the CPU model leaves audio out. The blitter's `Bus::free` still takes audio every line (T52's to check). |
+| 2026-10-13 | 🐞 | T81 review, not fixed: `cargo clippy --all-targets` on sf-core, sf-conform, sf-oracle has 14 pre-existing warnings (result_large_err, should_implement_trait `next`, as_chunks, needless late init, fade_probe `mut`); none in T81's lines. |
 | 2026-10-13 | 📌 | T53 review: T96's interface has the intro feed audio writes timed by T55, but T96 depends only on T53; its intro half may wait on T55. Intro's in-draw handler length is untested (zeroing it passes `story`); T54 covers it. |
 | 2026-10-13 | 📌 | T53 added T96 (owner's yes): `story::sim` lacks audio DMA; from scene 1's effect (frame 3 034) AUD0's slot `$0D` delays blits. Scene 4's draws overrun frame starts, so draw checks need RAM at DMACON `$8400` (`Amiga::watch_write`). |
 | 2026-10-13 | 📌 | T90: the first draw (oracle frame 3 027) is 40 blits, all under BLTPRI (set 51,108); `story::sim` on T89's `Fixed` matches every one with no change, so five-plane fetch timing holds. T53 needs no BLS for this draw. |
@@ -41,7 +46,6 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 | 2026-10-13 | 🔄 | T71 split at pir's context line: its `re/symbols.toml` slot routines and tables moved to T87 and T88 (both block T72); everything else of T71 committed. |
 | 2026-10-13 | 📌 | T49 review: the fade set-up job's `inside` ranges are not defended by any test (emptying them leaves `story-scene1-out` green: the two-frame grace masks 1242 anyway). Checked by probe: PC h0+$b94e at 1242's end. |
 | 2026-10-13 | 🔄 | Owner, T36 review: of the split-off tasks only T81 blocks T37 (they share level/mod.rs, scene.rs, game.rs); T82–T86 run alongside T37. |
-| 2026-10-13 | 🐞 | T36 review: ignoring the cut's loop step re-syncs items-run-w1-1 at frame 334, yet `frog_cases` stays green: the runner re-syncs silently. Open until T82's `resync = false`. |
 | 2026-10-13 | 🔄 | Owner, T36: conformance anchors the engine's beam at the original's Paula writes and blit starts; normal play uses the cost model only. Then stopped T36; rest split into T81–T86. |
 | 2026-10-13 | 📌 | T36: vAmiga's blitter (SlowBlitter) starts 2 cycles after BLTSIZE, takes odd slots $07–$35 when free; refresh $01/$03/$05/$E2. Ground truth via the DMA debugger's bus owners (`set_dma_profile`). Lag needs the cut's loop step, not the clock. |
 | 2026-10-13 | 📌 | T46 review, for T54: the fade writes' `HandlerBus` holds refresh and copper cycles only, no bitplane fetches; a handler held into the display (fed entries 155:88, 90:182) is timed uncontended. Those frames are green today. |
@@ -73,7 +77,6 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 | 2026-10-13 | 🔄 | Owner, T17: enemies in worlds 4–6 parked until T36–T38 and split by world; T17 closed as the split. T41 W4, T39 W5, T40 W6 (witch stays T18). "Split them" may cover T16 too. |
 | 2026-10-13 | 🔄 | Owner, T15: stop and split; T36–T38 added (picture/lag/entry, restart, tally). Draft on local branch `t15-flow-wip`. |
 | 2026-10-13 | 📌 | T15: an undrawn bob's step pointer is 0, so despawn reads width/height from ExecBase ($C00276): `low_vectors`. Items lag W1-1's pass 86/700 frames. |
-| 2026-10-12 | 📌 | T14 review: the lag re-sync loads the original's whole memory, so a divergence landing on a lag frame is erased: `frog-run-w1-1` stayed green with fake walls not digging. A case crossing lag needs a re-sync-free check (level_entry's fake-wall test). |
 | 2026-10-12 | 📌 | T14 review sweep, not fixed: `any_frog` (frog_routines.rs) keeps the frog at x, y ≥ 48: the frog routines' edge handling near column or row 0 is never generated. |
 | 2026-10-12 | 📌 | T14: the final level is world 6 with `final_level_flag`; its LW tiles and heights replace W6's. `Bus::b` picks Rom slot 8 by the flag; any reader of world files must too. |
 | 2026-10-12 | 📌 | T14: W5-1's shuttle drifted the frog into a shaft where it sinks (`frog_sprite_dy` counts) and dies at 832, the screen closing; that death path is T15's. `frog-shuttle-w5` keeps it clear. |

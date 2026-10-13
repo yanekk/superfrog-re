@@ -67,7 +67,8 @@ pub struct Outcome {
     /// next frame's picture and Paula writes, which carry the rest of that pass.
     pub straddled: Vec<u32>,
     /// Frames after such a lag on which the variables still differed, so the engine was re-synced
-    /// from the original's memory (DESIGN §2.1), with the first variable that differed.
+    /// from the original's memory (DESIGN §2.1), with the first variable that differed. Always
+    /// empty for a case with `resync = false`: there each is a divergence.
     pub resynced: Vec<(u32, String)>,
     /// Frames whose picture matched only with the rows of the engine's beam races left out
     /// (`FrameOut::beam_races`, owner 2026-10-13).
@@ -169,11 +170,18 @@ fn run_inner(
         let stepped = case.compare.vars || case.compare.picture || case.compare.paula;
         let mut ours = FrameOut::default();
         if stepped {
+            // The original's step ran two video frames (a blit held its CPU through the first's
+            // end and the whole second): the engine runs both, compared together (owner, T50).
+            let mut held = Vec::new();
+            if amiga.frames_run() == 2 {
+                held = game.step_paced(input, pacing).paula;
+            }
             game.anchor_writes(&theirs.paula.iter().map(|w| (w.vpos, w.hpos)).collect::<Vec<_>>());
             game.anchor_blits(&amiga.blit_starts());
             let before = game.clone();
             game.set_handler_entry(entry);
             ours = game.step_paced(input, pacing);
+            ours.paula.splice(0..0, held);
             if let Some(end) = ours.load {
                 // The engine loaded at once; the original is compared once its load is over.
                 let mut n = 0;
@@ -277,50 +285,11 @@ fn run_inner(
                 }
             }
         }
-        if let Ok(r) = std::env::var("T36_SHOW") {
-            let (a, b) = r.split_once('-').map(|(a, b)| (a.parse::<u32>().unwrap(), b.parse::<u32>().unwrap())).unwrap();
-            sf_core::level::DEBUG.store((a..=b).contains(&(f + 1)), std::sync::atomic::Ordering::Relaxed);
-        }
-        if let Ok(r) = std::env::var("T36_SHOW") {
-            let (a, b) = r.split_once('-').map(|(a, b)| (a.parse::<u32>().unwrap(), b.parse::<u32>().unwrap())).unwrap();
-            if (a..=b).contains(&f) {
-                let l = |ws: &[sf_paula::PaulaWrite]| ws.iter().filter(|w| w.reg < 0xa0).map(|w| format!("{:02x}={:04x}@{}", w.reg, w.value, w.vpos)).collect::<Vec<_>>().join(" ");
-                eprintln!("SHOW {f} {:?}\n  o: {}\n  e: {}", pacing, l(&theirs.paula), l(&ours.paula));
-                eprintln!("  blits: {}", amiga.blit_starts().iter().map(|b| format!("{:04x}@{}.{}", b.0, b.1, b.2)).collect::<Vec<_>>().join(" "));
-            }
-        }
-        if std::env::var("T36_STATS").is_ok() && stepped && (after_lag || sync::mid_pass(&amiga.cpu(), &mem)) {
-            let p = compare::paula(&ours.paula, &theirs.paula).is_none();
-            let q = compare::picture(&ours.picture, &theirs.picture).is_none();
-            if !q {
-                let d = report::write_diff_png(&case.name, f, &ours.picture, &theirs.picture, compare::picture(&ours.picture, &theirs.picture).unwrap());
-                eprintln!("T36D {f} {:?}", d);
-            }
-            eprintln!("T36 {f} {} paula {} picture {}", if after_lag { "after" } else { "mid" }, p, q);
-        }
-        if std::env::var("T36_MIDVARS").is_ok() && stepped && sync::mid_pass(&amiga.cpu(), &mem) {
-            let probe = game.probe();
-            let mut names: Vec<String> = Vec::new();
-            for d in game.layout() {
-                let n = compare::var_diffs(game.layout(), &probe, &mem, d.id).len();
-                if n > 0 { names.push(format!("{}({n})", d.name)); }
-            }
-            eprintln!("MIDVARS {f}: {}", names.join(" "));
-        }
         if stepped && sync::mid_pass(&amiga.cpu(), &mem) {
             outcome.straddled.push(f);
             after_lag = true;
             prev = mem;
             continue;
-        }
-        if stepped && after_lag && std::env::var("T36_STRICT").is_ok() {
-            if let Some(d) = compare::paula(&ours.paula, &theirs.paula) {
-                eprintln!("T36P {f}: {d}");
-            }
-            if compare::picture(&ours.picture, &theirs.picture).is_some() && std::env::var("T36_PIC").is_ok() {
-                let d = report::write_diff_png(&case.name, f, &ours.picture, &theirs.picture, compare::picture(&ours.picture, &theirs.picture).unwrap());
-                panic!("after-lag frame {f}: picture differs: {d:?}");
-            }
         }
         if stepped && after_lag {
             after_lag = false;
@@ -328,9 +297,25 @@ fn run_inner(
                 && let Some((v, theirs, ours)) =
                     compare::vars(game.layout(), &game.probe(), &mem, &[])
             {
-                if std::env::var("T36_NORESYNC").is_ok() {
-                    let d = compare::var_diffs(game.layout(), &game.probe(), &mem, v.id);
-                    panic!("frame {f}: {} differs after lag: {:?}", v.name, &d[..d.len().min(30)]);
+                if !case.resync {
+                    let d = Divergence {
+                        frame: f,
+                        first_var: Some((v, theirs, ours)),
+                        picture_diff: None,
+                        paula_diff: None,
+                        render_diff: None,
+                        oracle_frame: (of != f + 1).then_some(of - 1),
+                        unported: Vec::new(),
+                        var_detail: compare::var_diffs(game.layout(), &game.probe(), &mem, v.id)
+                            .into_iter()
+                            .take(40)
+                            .collect(),
+                        resync: true,
+                    };
+                    match found.as_mut() {
+                        Some(all) => all.push(d),
+                        None => return Err(d),
+                    }
                 }
                 game = Game::with_display(display.clone(), Start::Transplant(mem.clone()));
                 if frog_only {
@@ -395,17 +380,6 @@ fn run_inner(
         {
             outcome.raced.push(f);
         }
-        if d.as_ref().is_some_and(|d| d.picture_diff.is_some()) && std::env::var("T36_DUMP").is_ok() {
-            let c = sf_core::to_rgb12(&ours.picture);
-            for y in 0..theirs.picture.height.min(ours.picture.height) {
-                let mut row = String::new();
-                for x in 0..theirs.picture.width.min(ours.picture.width) {
-                    let (o, e) = (theirs.picture.pixel(x, y), c[y as usize * ours.picture.width as usize + x as usize]);
-                    if o != e { row += &format!(" {x}:{o:03x}/{e:03x}"); }
-                }
-                if !row.is_empty() { eprintln!("DUMP y{y} (line {}):{row}", y + theirs.picture.top); }
-            }
-        }
         let unported = game.unported().to_vec();
         if d.is_some() || !unported.is_empty() {
             let mut d = d.unwrap_or(Divergence {
@@ -417,6 +391,7 @@ fn run_inner(
                 oracle_frame: None,
                 unported: Vec::new(),
                 var_detail: Vec::new(),
+                resync: false,
             });
             d.unported = unported;
             d.oracle_frame = (of != f + 1).then_some(of - 1);

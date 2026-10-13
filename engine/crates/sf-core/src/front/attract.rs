@@ -574,7 +574,7 @@ fn build_table(cx: &mut Cx) {
 
 /// `$160dc`: `n` as decimal digits at h0+$161b2 without leading zeros (nine 9s above 999 999 999),
 /// zero-filled after.
-fn number_text(cx: &mut Cx, n: u32) {
+pub(crate) fn number_text(cx: &mut Cx, n: u32) {
     let buf = at(0x161b2);
     for k in 0..12 {
         cx.s.set_b(buf + k, 0);

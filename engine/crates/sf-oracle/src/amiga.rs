@@ -330,7 +330,9 @@ impl Amiga {
     }
 
     /// The blits the last step started, in order: BLTSIZE as written and the beam's (line,
-    /// slot) then.
+    /// slot) then. Always recorded (a BLTSIZE write starts a blit). Conformance anchors the
+    /// engine's blits at these (`Game::anchor_blits`, T36): each of the engine's starts where the
+    /// original started the next one of its size.
     pub fn blit_starts(&self) -> Vec<(u16, u16, u16)> {
         let mut p = std::ptr::null();
         let n = unsafe { ffi::sf_amiga_blit_starts(self.raw, &mut p) };
@@ -344,13 +346,24 @@ impl Amiga {
     }
 
     /// Sample the CPU at the end of every raster line from the next step on (or stop): test
-    /// tooling that measures where the original's CPU time goes. The run itself is unchanged.
+    /// tooling that measures where the original's CPU time goes ([`Amiga::line_samples`]: the
+    /// PC, the status register and the top of the stack, from which the running routine and its
+    /// callers are read; the `profile` and `fit` examples of `sf-conform`, T36). The run itself
+    /// is unchanged: the end-of-line trap pauses the core between two instructions and it goes
+    /// on from there; no trap is set on the frame's last four lines, so a pause cannot fall
+    /// between the frame's end and the vertical sync.
     pub fn set_profile(&mut self, on: bool) {
         unsafe { ffi::sf_amiga_set_profile(self.raw, on as std::os::raw::c_int) };
     }
 
-    /// [`Amiga::set_profile`], and the DMA slots' owners of each line too (the reference
-    /// emulator's DMA debugger: it draws over the picture meanwhile).
+    /// [`Amiga::set_profile`], and each line's DMA slot owners too ([`LineSample::owners`]): who
+    /// had the bus in each of its slots (vAmiga's `BusOwner`: CPU, bitplane, blitter, copper,
+    /// …), to measure what the display and the blitter take from the CPU on a line. The owners are
+    /// the reference emulator's DMA debugger's per-line copy, a private member the shim reaches
+    /// through the explicit-instantiation access trick (`shim.cpp`, `Rob`/`OwnersTag`: an
+    /// explicit template instantiation may name a private member). The debugger is on meanwhile
+    /// (X-ray DMA mode), so it draws over the picture: for timing studies only, never in a
+    /// comparison. Stopped with `set_profile(false)`.
     pub fn set_dma_profile(&mut self) {
         unsafe { ffi::sf_amiga_set_profile(self.raw, 2) };
     }

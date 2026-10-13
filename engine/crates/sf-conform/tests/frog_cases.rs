@@ -36,8 +36,15 @@ fn frog_run_w1_1() {
 }
 
 /// W1-1 with its items live, 700 frames: coins, the exit lock, the panel and score (T15), the
-/// picture as the beam drew it (T36).
+/// picture as the beam drew it (T36), with no re-sync after a lag (T82).
 #[test]
 fn items_run_w1_1() {
     green("items-run-w1-1");
+}
+
+/// W2-2 with its items live, 650 frames: five kinds of fruit and the spud taken, the spud thrown
+/// and caught, with no re-sync after a lag (T82).
+#[test]
+fn items_fruit_w2_2() {
+    green("items-fruit-w2-2");
 }
