@@ -18,6 +18,9 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-14 | 📌 | T54: the scan's first divergence, engine frame 3437 (O 6452), is an `objects_init` set-up, not a draw: its mask blits run long in the original (held handlers at lines 281/37/138/252, engine 251/4/69/176); `sfx_records` differ there too. |
+| 2026-10-14 | 📌 | T54: a handler a draw holds off still runs the engine's `handler_lines` length; `story_draws` resumes from the oracle's acknowledge, so that length stays untested (as T53's review noted). |
+| 2026-10-14 | 🔄 | Owner, T54: conformance feeds the PC the intro's handler returned to with its end; the entry does not tell `tst.w` from `beq.b` (`handler_end_probe`: entry cycles 10, 14, 16 come with both). |
 | 2026-10-13 | 📌 | T82: a poke planted just before the after-lag step is lost (that step carries on the lagging frame's pass); plant on the lag frame. Free-running costs on items-run-w1-1: signed median 0.75 lines, unsigned 1.9. |
 | 2026-10-13 | 🔄 | Owner: T92 hit pir's context line with only an uncompiled draft committed; the rest passed to T95 slot-load-finish (blocks T93). The oracle timeline is in T95's doc and T92's WIP commit. |
 | 2026-10-13 | 🔄 | Owner, T50: an oracle step that runs two video frames (a blit holds the CPU through one; `frames_run` = 2) is compared against two engine frames, writes joined. Scene 4 frame 3188 is the first. |

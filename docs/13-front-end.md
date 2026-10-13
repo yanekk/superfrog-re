@@ -122,6 +122,14 @@ Timing the engine keeps (oracle, frames 0–539):
   handler serves both. The oracle's step then runs two video frames (`Amiga::frames_run`), and
   conformance steps the engine twice for it (owner, T50). When the last mask blit started on a
   fetched line, DMACON = $400 comes before the handler it held (frames 3191, 3760, 4238).
+- **A draw's start** (T54): a draw the handler lets go of (`draw_frames`' `vbl_flag` wait,
+  `draw_next`'s `vbl_count` wait) starts from the handler's acknowledge (`INTREQ = $20`): its
+  tail, the wait's last turn (a branch the interrupt came in before is taken), the calls and
+  `draw_frame`'s set-up, then `bobs_draw` (`intro::handler_to_draw`, run on `story::sim`).
+  Conformance feeds the acknowledge's beam and the PC the handler returned to (the entry does not
+  tell `tst.w` from `beq.b`); normal play takes the acknowledge at the start of its line. A
+  handler a draw holds off is taken at the first instruction end whose last access asked for the
+  bus from line 0, cycle 10 on: one held off the bus by a blit across it ends without it.
 - **Unpacks** (`cf5c`): measured frames per call (`UNPACK_FRAMES`), ending on line 160.
 - **Copper and Paula**: the copper's Paula writes before the CPU takes the interrupt (line 0,
   clock $14) belong to the frame before. Copper colour words a fade rewrites are read as the beam
