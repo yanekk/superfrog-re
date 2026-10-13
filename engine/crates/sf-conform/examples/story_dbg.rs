@@ -4,10 +4,12 @@
 //!   differing variable); group them into ranges to see what is left.
 //! - `BRIEF=1` (`EVENTS=1`, `ALLW=1`): per frame the original's call chain and the jobs, with
 //!   both sides' DMACON/INTENA writes (or every write) and their lines.
-//! - `FROM=n`: print from frame `n` on; `REGS=1` (with `BRIEF`): the original's PC, d0, a0;
-//!   `BLITS=1`: the original's blit starts (BLTSIZE, line, slot).
+//! - `FROM=n`: print from frame `n` on.
 //! - otherwise: per frame the chain and the watched memory, both sides; `ROW=y,x` prints 24
 //!   pixels of row `y` from `x`, both sides.
+//! - with `BRIEF=1` or the default (T51): `BLITS=1` lists the original's BLTCON0/BLTSIZE writes and
+//!   blitter events (begin, free, end; `+` past the frame's end) with their beam; `REGS=1` its CPU
+//!   registers at the frame's end; `CMP=addr:len` (hex) the bytes there that differ, both sides.
 use sf_conform::{Case, sync};
 use sf_core::layout::Ram;
 use sf_core::{Game, Start};
@@ -200,16 +202,6 @@ fn main() {
             continue;
         }
         if std::env::var("BRIEF").is_ok() {
-            if std::env::var("REGS").is_ok() {
-                let c = amiga.cpu();
-                println!(
-                    "  pc {:x} d0 {:x} a0 {:x} frames {}",
-                    c.pc.wrapping_sub(0xc00fa0),
-                    c.d[0],
-                    c.a[0],
-                    amiga.frames_run()
-                );
-            }
             println!(
                 "F {f} O {} t {t} chain {} jobs {} load {}",
                 of - 1,
@@ -226,15 +218,13 @@ fn main() {
                     .collect::<Vec<_>>()
                     .join(" ")
             };
-            if std::env::var("BLITS").is_ok() {
-                println!("  blits {:x?}", amiga.blit_starts());
-            }
             if std::env::var("IRQS").is_ok() {
                 println!("  irqs {:?}", amiga.irqs());
             }
             if std::env::var("EVENTS").is_ok() {
                 println!("  ours {}\n  orig {}", ev(&out.paula), ev(&cap.paula));
             }
+            extras(&amiga, &game, &m);
             continue;
         }
         println!(
@@ -278,5 +268,75 @@ fn main() {
                 println!("  {a:06x} ours {}", hex(&ours));
             }
         }
+        extras(&amiga, &game, &m);
+    }
+}
+
+/// `BLITS=1`, `REGS=1` and `CMP=addr:len` (T51): what times the original's blits, its CPU
+/// registers, and the bytes in a range that differ between it and the engine.
+fn extras(amiga: &sf_oracle::Amiga, game: &Game, m: &sf_core::AmigaMemory) {
+    if std::env::var("BLITS").is_ok() {
+        let writes: Vec<String> = amiga
+            .cpu_writes()
+            .iter()
+            .filter(|w| w.reg == 0x40 || w.reg == 0x58)
+            .map(|w| {
+                let name = if w.reg == 0x40 { "con0" } else { "size" };
+                format!("{name}={:x}@{},{}", w.value, w.vpos, w.hpos)
+            })
+            .collect();
+        println!("  blit writes {}", writes.join(" "));
+        let events: Vec<String> = amiga
+            .blit_events()
+            .iter()
+            .map(|e| {
+                let kind = match e.kind {
+                    sf_oracle::BlitEventKind::Begin => "begin",
+                    sf_oracle::BlitEventKind::Free => "free",
+                    sf_oracle::BlitEventKind::End => "end",
+                };
+                let next = if e.next { "+" } else { "" };
+                format!("{kind}@{next}{},{}", e.vpos, e.hpos)
+            })
+            .collect();
+        println!(
+            "  blit events (frames run {}) {}",
+            amiga.frames_run(),
+            events.join(" ")
+        );
+    }
+    if std::env::var("REGS").is_ok() {
+        let r = amiga.cpu();
+        let hex = |v: &[u32]| {
+            v.iter()
+                .map(|x| format!("{x:08x}"))
+                .collect::<Vec<_>>()
+                .join(" ")
+        };
+        println!(
+            "  regs pc {:06x} sr {:04x} usp {:08x} ssp {:08x}\n  regs d {}\n  regs a {}",
+            r.pc,
+            r.sr,
+            r.usp,
+            r.ssp,
+            hex(&r.d),
+            hex(&r.a)
+        );
+    }
+    if let Ok(spec) = std::env::var("CMP") {
+        let (x, n) = spec.split_once(':').expect("CMP=addr:len");
+        let addr = u32::from_str_radix(x.trim_start_matches("0x"), 16).unwrap();
+        let len = u32::from_str_radix(n, 16).unwrap();
+        let ours = game.peek(addr, len);
+        let differ: Vec<String> = (addr..addr + len)
+            .zip(&ours)
+            .filter(|&(a, &o)| m.byte(a) != o)
+            .map(|(a, &o)| format!("{a:06x}:{:02x}/{o:02x}", m.byte(a)))
+            .collect();
+        println!(
+            "  cmp {addr:06x}+{len:x} {} differ (orig/ours) {}",
+            differ.len(),
+            differ.join(" ")
+        );
     }
 }

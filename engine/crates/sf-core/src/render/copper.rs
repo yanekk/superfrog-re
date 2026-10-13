@@ -153,8 +153,11 @@ pub fn run_beam(word: &dyn Fn(u32, u16, u16) -> u16, start: u32, fetch: Fetch) -
     run_bus(word, start, fetch, &mut Vec::new())
 }
 
-/// [`run_beam`], also giving every bus cycle the copper takes (its fetches, a WAIT's two cycles
-/// and its wake-up), in order: what the CPU finds taken.
+/// [`run_beam`], also giving every bus cycle the copper takes, in order: what the CPU and the
+/// blitter find taken. As vAmiga's `Copper::serviceEvent` has it, the vertical blank's restart
+/// allocates cycle 0 and each instruction word's fetch its cycle; WAIT1, WAIT2 (SKIP1, SKIP2) and
+/// the wake-up only wait for a free cycle without taking it. Cycle `$E0` is the copper's whenever
+/// it asks for the bus there (`Agnus::busIsFree` marks it BLOCKED): nobody else gets it.
 pub fn run_bus(
     word: &dyn Fn(u32, u16, u16) -> u16,
     start: u32,
@@ -174,25 +177,34 @@ pub fn run_bus(
         }
         !fetch.takes(b.line, b.h)
     };
-    let next_free = |fetch: &Fetch, mut b: Beam| {
-        while b.line < FRAME_LINES && !free(fetch, b) {
+    // Whether the copper gets cycle `b` when it asks for it; asked at $E0, it blocks it.
+    let ask = |fetch: &Fetch, b: Beam, bus: &mut Vec<Beam>| {
+        if b.h == 0xE0 && !fetch.takes(b.line, b.h) {
+            bus.push(b);
+        }
+        free(fetch, b)
+    };
+    let next_free = |fetch: &Fetch, mut b: Beam, bus: &mut Vec<Beam>| {
+        while b.line < FRAME_LINES && !ask(fetch, b, bus) {
             b = b.plus(1);
         }
         b
     };
     let mut pc = start;
-    // The vertical blank restarts the copper at COP1LC; its first fetch is two cycles later.
+    // The vertical blank restarts the copper at COP1LC, taking cycle 0; its first fetch is two
+    // cycles later.
+    bus.push(Beam { line: 0, h: 0 });
     let mut b = Beam { line: 0, h: 2 };
     let mut skip = false;
     for _ in 0..8192 {
-        b = next_free(&fetch, b);
+        b = next_free(&fetch, b, bus);
         if b.line >= FRAME_LINES {
             break;
         }
         let w1 = word(pc, b.line, b.h);
         bus.push(b);
         pc += 2;
-        b = next_free(&fetch, b.plus(2));
+        b = next_free(&fetch, b.plus(2), bus);
         if b.line >= FRAME_LINES {
             break;
         }
@@ -217,11 +229,9 @@ pub fn run_bus(
             continue;
         }
         let (comp, mask) = (w1 & 0xFFFE, (w2 & 0x7FFE) | 0x8001);
-        // WAIT1 and WAIT2 (or SKIP1 and SKIP2) each take a bus cycle.
-        b = next_free(&fetch, b.plus(2));
-        bus.push(b);
-        b = next_free(&fetch, b.plus(2));
-        bus.push(b);
+        // WAIT1 and WAIT2 (or SKIP1 and SKIP2) each wait for a free cycle.
+        b = next_free(&fetch, b.plus(2), bus);
+        b = next_free(&fetch, b.plus(2), bus);
         if w2 & 1 == 1 {
             skip = comparator(b.plus(2), comp, mask);
             b = b.plus(2);
@@ -236,11 +246,10 @@ pub fn run_bus(
         }
         b = trigger;
         while b.line < FRAME_LINES
-            && !(free(&fetch, b) && b.h.is_multiple_of(2) && comparator(b, comp, mask))
+            && !(ask(&fetch, b, bus) && b.h.is_multiple_of(2) && comparator(b, comp, mask))
         {
             b = b.plus(1);
         }
-        bus.push(b);
         b = b.plus(2);
     }
     writes
@@ -334,6 +343,28 @@ mod tests {
                 },
             ]
         );
+    }
+
+    #[test]
+    fn the_copper_takes_the_vblank_cycle_and_its_fetches_but_not_a_waits() {
+        // The intro's scene-1 list (T89): three moves and the end. Nine cycles: 0 and the eight
+        // fetches; WAIT1 and WAIT2 ($12, $14) only wait for the bus.
+        let w = [
+            0x0180, 0x0000, 0x0100, 0x0200, 0x0096, 0x0020, 0xFFFF, 0xFFFE,
+        ];
+        let mut bus = Vec::new();
+        run_bus(&|a, _, _| list(&w)(a), 0, Fetch::default(), &mut bus);
+        let h: Vec<u16> = bus.iter().map(|b| b.h).collect();
+        assert!(bus.iter().all(|b| b.line == 0));
+        assert_eq!(h, [0, 2, 4, 6, 8, 10, 12, 14, 16]);
+        // WAIT $10,$DC wakes at $DA (the comparator runs two cycles ahead), taking nothing; the
+        // move fetches at $DC and $DE, the next instruction asks at $E0 (blocking it) and
+        // fetches at $E1.
+        let w = [0x10DD, 0xFFFE, 0x0180, 0x0123, 0xFFFF, 0xFFFE];
+        let mut bus = Vec::new();
+        run_bus(&|a, _, _| list(&w)(a), 0, Fetch::default(), &mut bus);
+        let line: Vec<u16> = bus.iter().filter(|b| b.line == 0x10).map(|b| b.h).collect();
+        assert_eq!(&line[..4], &[0xDC, 0xDE, 0xE0, 0xE1]);
     }
 
     #[test]

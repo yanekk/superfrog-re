@@ -132,6 +132,7 @@ pub fn standard_dispatch() -> &'static Dispatch {
     D.get_or_init(|| {
         let mut d = Dispatch::default();
         crate::items::register_all(&mut d);
+        crate::bonus::register_all(&mut d);
         d
     })
 }
@@ -147,7 +148,13 @@ pub fn frog_only_dispatch() -> &'static Dispatch {
 pub fn register(dispatch: &mut Dispatch, type_id: u16, kind: &'static ObjectKind) {
     dispatch.kinds.retain(|k| k.0 != type_id);
     dispatch.kinds.push((type_id, kind));
-    for &(addr, f) in kind.routines {
+    register_routines(dispatch, kind.routines);
+}
+
+/// Add slot routines by the original's address alone: ones a slot turns to (a killed enemy's,
+/// a reward's) that no template names.
+pub fn register_routines(dispatch: &mut Dispatch, routines: &[(u32, SlotFn)]) {
+    for &(addr, f) in routines {
         dispatch.routines.retain(|r| r.0 != addr);
         dispatch.routines.push((addr, f));
     }

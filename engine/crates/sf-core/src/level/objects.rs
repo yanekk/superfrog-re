@@ -323,6 +323,20 @@ pub fn bob_anim(b: &mut Bus, slot: u32, anim: u32) {
     b.set_l(bob + 0x42, anim);
 }
 
+/// h0+$1c41c: a slot follows a path of positions (longs: x, y) at `+$54`, starting over from
+/// `+$58` at a −1 long; it takes the next one, moved by `dx`, `dy`.
+pub fn obj_path_xy(b: &mut Bus, slot: u32, dx: u16, dy: u16) {
+    let mut at = b.l(slot + 0x54);
+    if b.l(at) == 0xffff_ffff {
+        at = b.l(slot + 0x58);
+        b.set_l(slot + 0x54, at);
+    }
+    b.set_l(slot + 8, b.l(at));
+    b.set_w(slot + 8, b.w(slot + 8).wrapping_add(dx));
+    b.set_w(slot + 0xa, b.w(slot + 0xa).wrapping_add(dy));
+    b.set_l(slot + 0x54, b.l(slot + 0x54).wrapping_add(4));
+}
+
 /// `obj_build_hitboxes` (h0+$d2f6): every live slot's hitboxes, offset by its position.
 pub fn obj_build_hitboxes(c: &mut LevelCtx) {
     let mut out = HITBOXES;
@@ -357,7 +371,7 @@ pub fn obj_build_hitboxes(c: &mut LevelCtx) {
 /// The hitbox entries overlapping x `x1..x2`, y `y1..y2`, walked as the original walks the list
 /// (an entry is passed over when it ends left of or starts right of the box, and likewise down):
 /// each entry's slot, in order.
-fn overlapping(b: &Bus, x1: u16, x2: u16, y1: u16, y2: u16) -> Vec<u32> {
+pub fn overlapping(b: &Bus, x1: u16, x2: u16, y1: u16, y2: u16) -> Vec<u32> {
     let mut hits = Vec::new();
     let mut at = HITBOXES;
     while n_clear(b.w(at)) {
@@ -384,8 +398,8 @@ const SPRING_UPDATE: u32 = h0(0x2408a);
 const OPT_GAME_MODE: u32 = h0(0x9e6);
 
 /// `collide_all` (h0+$d0cc): the spud against the objects, then the frog (which is off any
-/// platform until an object says otherwise). The hitbox list is the one this pass built; a
-/// handler that frees a slot does not change it.
+/// platform until an object says otherwise), then in shooter mode the frog's shots. The hitbox
+/// list is the one this pass built; a handler that frees a slot does not change it.
 pub fn collide_all(c: &mut LevelCtx) {
     let mut entries = 0;
     let mut at = HITBOXES;
@@ -398,7 +412,9 @@ pub fn collide_all(c: &mut LevelCtx) {
     spud_touches(c);
     c.step_done();
     frog_touches(c);
-    debug_assert_eq!(c.bus.w(SHOOTER_MODE), 0, "the bonus level's collisions are T19's");
+    if c.bus.w(SHOOTER_MODE) != 0 {
+        crate::bonus::shots::shot_touches(c);
+    }
 }
 
 /// h0+$d284: the spud's 16-pixel box against every object's: each hit runs the object's touch
