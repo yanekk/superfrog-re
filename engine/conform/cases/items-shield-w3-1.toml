@@ -1,11 +1,11 @@
 # W3-1 with its items live: the bottle at 11,40, the pads at 25,40 and 33,40 (over the spiked
 # pillar), the slow-down at 42,40, the speed-up at 78,42, the wings at 79,41 and the shield at
-# 81,36, then flying idle until the shield (400 frames) and the speed-up (500) run out; score, the
-# panel and the picture every frame (T84). Not in the test block: red at frame 244 (a lag in the
-# pad bounce) and 366 (the frog's bob in a beam race), T102's to fix.
+# 81,36, then idle until the speed-up (500 frames, out at 1084) and the shield (400, out at 1087)
+# run out; score, the panel and the picture every frame (T84). Not in the test block: red at frame
+# 244 (a lag in the pad bounce) and 366 (the frog's bob in a beam race), T102's to fix.
 sync = { level = "W3-1" }
 script = "items-shield-w3-1"
-frames = 1050
+frames = 1130
 resync = false
 
 [[exclude]]

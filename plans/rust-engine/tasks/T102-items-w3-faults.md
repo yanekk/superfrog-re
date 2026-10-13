@@ -3,7 +3,7 @@
 **Phase:** 2 · **Depends on:** T101; blocks T21 · **Weight:** medium
 
 Added by T84 (owner, 2026-10-14). T84's W3-1 item case `items-shield-w3-1` (committed, not in the
-test block) matches the original on all 1 050 frames but two engine faults. Neither is in the
+test block) matches the original on all 1 130 frames but two engine faults. Neither is in the
 pickups.
 
 ## Goal
