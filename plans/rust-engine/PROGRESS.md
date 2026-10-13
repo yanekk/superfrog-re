@@ -60,7 +60,7 @@ done · ⛔ blocked, needs a human.
 | T35 | end-sequence | T20; blocks T21 | ✅ | |
 | T36 | items-on-the-beam | T15 | ✅ | |
 | T37 | level-restart | T36; blocks T34 | ✅ | |
-| T38 | level-tally | T37; blocks T21 | ⬜ | |
+| T38 | level-tally | T37; blocks T21 | 🔍 | `level/tally.rs`, a new file (not exit.rs). W1-1's exit forced (`sync {level, exit=true}`, T19's way), not played. Cases `tally-w1-1` (points, 185 frames), `tally-slot-w1-1` (to the slot's loads); 4 routine tests ($47f6, $4992, $479a, $d9e); pages arithmetic unit-tested (inline). `Scene::of` keys on `logic_running` alone. DESIGN §2.11 gains the coins' divide by zero. |
 | T39 | enemies-world-5 | T16, T38; blocks T18 | ⬜ | |
 | T40 | enemies-world-6 | T38; blocks T18 | ⬜ | |
 | T41 | enemies-world-4 | T38; blocks T18 | ⬜ | |
@@ -110,7 +110,7 @@ done · ⛔ blocked, needs a human.
 A Notes cell holds what was built or what the review found, the test count, and one line per
 deviation from the task doc. A ✅ task's cell may be cut to one line once the next task has been reviewed.
 
-**Review queue:** *(empty)*
+**Review queue:** T38
 
 ## Blocked on the user
 

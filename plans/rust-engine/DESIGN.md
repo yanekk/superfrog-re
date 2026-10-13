@@ -188,7 +188,9 @@ engine also exports any disk level to this format (locally, for the owner; never
   PID) is taken over.
 - Original crash or hang conditions (a pointer run off a table, an infinite loop): reproduced up to
   the point of failure, then replaced by the safest nearby behaviour, each listed here with its
-  address when found. None are known yet.
+  address when found:
+  - `level_tally` (h0+$4550): a coin taken in a level with fewer than five items divides by zero;
+    the coins give no page (T38; no level on the disks has so few, an edited one may).
 - A save state from another build: refused (§2.8). An `.sflevel` with a bad version, missing section
   or malformed T7MP: refused with the reason, and the disk level is played instead only if the player
   chooses it.

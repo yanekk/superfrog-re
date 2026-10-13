@@ -235,7 +235,11 @@ fn outcome(cx: &Cx) -> LevelOutcome {
 
 /// h0+$467e: the line the choice is on lit, the other not.
 fn choice_colours(cx: &mut Cx) {
-    let (slot, points) = if cx.s.w(CHOICE) != 0 { (LIT, UNLIT) } else { (UNLIT, LIT) };
+    let (slot, points) = if cx.s.w(CHOICE) != 0 {
+        (LIT, UNLIT)
+    } else {
+        (UNLIT, LIT)
+    };
     cx.s.set_w(SLOT_COLOUR, slot);
     cx.s.set_w(POINTS_COLOUR, points);
 }
@@ -258,7 +262,9 @@ pub fn pages_of(s: &State) -> (u16, u16, u16) {
 /// coins give none.
 pub fn pages(minutes: [u8; 2], tile_coins: u16, coins: u16, items: u16) -> (u16, u16, u16) {
     let clamp = |q: u16| (q as i16).clamp(0, 5) as u16;
-    let mins = (minutes[0] as u16).wrapping_mul(10).wrapping_add(minutes[1] as u16);
+    let mins = (minutes[0] as u16)
+        .wrapping_mul(10)
+        .wrapping_add(minutes[1] as u16);
     let time = clamp(mins >> 1);
     let tile = clamp(tile_coins / 0x14);
     let coins = match items / 5 {

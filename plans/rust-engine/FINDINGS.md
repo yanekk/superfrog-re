@@ -18,12 +18,13 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-14 | 🐞 | Not T38's: `slot-load` red at frame 0 on the feature branch (75f0c29) too: `playfield_clean` keeps the packed `FRUT`; `slot::resume` is never called, so its `Resume` start falls to the placeholder scene. |
+| 2026-10-14 | 📌 | T38: tally cases force W1-1's exit (`sync = { level, exit = true }`). `tally-slot-w1-1` is green to `slot_machine`'s loads (frame 86, T95's). `level/tally.rs` `print` is a third port of h0+$6f3a (`slot::print_text`, Cx-based). |
 | 2026-10-14 | 📌 | Coordinator, night of 2026-10-13, under the owner's 2026-10-11 lag rule; owner to confirm: conformance feeds which story blanks had a handler (T55 `Game::set_blank_merged`); normal play keeps the engine's estimate, wrong at 3437. |
 | 2026-10-14 | 📌 | T55 review, not fixed: `sf-conform` load-search loop never recomputes `late`, and its redo frame gets no `set_blank_merged`. Latent: every load step to 8200 had one handler, none late. |
 | 2026-10-13 | 🐞 | Not T37's (its review's sweep): the level's `kbd_poll` (`Game::sdr`, `level/clock.rs`) re-reads a key's byte every poll; the original reads it once, then `$ff` (`frog-esc-w1-1`, frames 61→63). Only the power-on `$7e` byte repeats. |
 | 2026-10-13 | 🐞 | Not T37's (same sweep): `Front` resumed from memory (`front/mod.rs`, `Keyboard::from_keys(key_down, key_up)`) re-reads a key byte already handled, where the original reads `$ff`. |
 | 2026-10-13 | 🔄 | Owner, T37: T100 front-vbl-timing added (first numbered T96, renumbered at merge; blocks T21). The fade in's copper reads colours mid-step, by the music player's per-row timing; `frog-pit-w1-1` leaves the picture out on frames 308–323 meanwhile. |
-| 2026-10-13 | 🐞 | Not T37's: `level_entry::every_level_is_entered_as_the_original_enters_it` fails on the feature branch for all 29 levels: `slot_copper` original `$140f440`, engine `$1400000`. |
 | 2026-10-13 | 📌 | T37: `items-run-w1-1` (death at 655, loop end 712) could now run past the restart; not tried. `sf-conform record --paula` prints the original's Paula writes with their lines. |
 | 2026-10-13 | 📌 | T82: a poke planted just before the after-lag step is lost (that step carries on the lagging frame's pass); plant on the lag frame. Free-running costs on items-run-w1-1: signed median 0.75 lines, unsigned 1.9. |
 | 2026-10-13 | 🔄 | Owner: T92 hit pir's context line with only an uncompiled draft committed; the rest passed to T95 slot-load-finish (blocks T93). The oracle timeline is in T95's doc and T92's WIP commit. |
@@ -65,10 +66,7 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 | 2026-10-13 | 🐞 | T70 review: T76's 122 spawned T77's 123 while T76/T77 ran in parallel; a spawn runs the init via `level::call`, asserting when unported. Fixed: 123 moved to T76, T77 depends on T76. |
 | 2026-10-13 | 🔄 | Owner, T70: frame cases wait for T36/T37 (like T16/T17); routines first. pir's context warning split all of T70, unbuilt, into T75–T79. Bonus row of `obj_flag_jumptab`: markers 1–15, 55. |
 | 2026-10-13 | 🔄 | Owner, T19: its split-off tasks T39–T43 renumbered T70–T74, clearing the collision with the feature branch's T39–T44 enemies tasks. |
-| 2026-10-13 | 📌 | T19 review: T16's doc puts oracle tests in `sf-core/tests/enemies_w1_3.rs`; purity forbids the emulator there, so they belong in `sf-conform/tests/`. Not fixed. |
-| 2026-10-13 | 📌 | T19 review: T17's doc puts oracle tests in `sf-core/tests/enemies_w4_6.rs`; they belong in `sf-conform/tests/` (purity). Not fixed. |
-| 2026-10-13 | 📌 | T19 review: T18's doc puts oracle tests in `sf-core/tests/bosses.rs`; they belong in `sf-conform/tests/` (purity). Not fixed. |
-| 2026-10-13 | 📌 | T19 review: T21's doc puts its frame-conformance test in `sf-core/tests/flow.rs`; an oracle test belongs in `sf-conform/tests/` (purity). Not fixed. |
+| 2026-10-13 | 📌 | T19 review: T16, T17 and T18's docs put oracle tests in `sf-core/tests/` (`enemies_w1_3.rs`, `enemies_w4_6.rs`, `bosses.rs`), T21's in `sf-core/tests/flow.rs`; purity forbids the emulator there, so they belong in `sf-conform/tests/`. Not fixed. |
 | 2026-10-13 | 🔄 | Owner, T19: stopped; uncommitted slot port discarded. T71–T74 added (sync, screen, rounds, prizes); their docs keep its measurements (cycles, contention, interrupt length). |
 | 2026-10-13 | 🔄 | Owner, T19: slot cases reach the slot by forcing W1-1's exit (`level_state` = 1), a second use of `write_memory`; the tally's choice by up, then fire. |
 | 2026-10-13 | 🔄 | Owner, T19: the slot redraws lamps while the beam draws; a pixel differing only on lines an engine blit wrote within 4 lines of the beam is excused, counted per case. |

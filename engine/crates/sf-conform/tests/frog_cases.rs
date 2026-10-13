@@ -97,3 +97,10 @@ fn tally_w1_1() {
         })
     );
 }
+
+/// The tally's other choice (T38): up, then fire, the picture faded out and the slot machine
+/// entered with the pages as its coins; green to the slot machine's loads (T92, T95).
+#[test]
+fn tally_slot_w1_1() {
+    green("tally-slot-w1-1");
+}
