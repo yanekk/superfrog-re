@@ -71,15 +71,17 @@ done · ⛔ blocked, needs a human.
 | T47 | story-intro-handover | T46; blocks T21 | ⬜ | |
 | T48 | story-intro-skips | T46, T47; blocks T21 | ⬜ | |
 | T70 | bonus-level | T15; blocks T21 | ⬜ | |
-| T71 | slot-sync | T15 | ⬜ | |
+| T71 | slot-sync | T15 | 🔍 | Built: `SyncPoint::Slot` (73 frames, load end 759, as T19), start scripts (RNG 1/3 steps), FRUT/FRUC/FRUM raw, `CACHE_FORMAT` 4, slot `Tables`, LAYOUT, `CallResult::cycles` (1 650); 6 tests. Fire counted from the forced exit (`n % 4 == 0`). Cycles test in `sync_points.rs`. `re/symbols.toml` split to T87, T88 (context line). |
 | T72 | slot-screen | T71 | ⬜ | |
 | T73 | slot-rounds | T72 | ⬜ | |
 | T74 | slot-prizes | T73; blocks T21 | ⬜ | |
+| T87 | slot-symbols-routines | T71; blocks T72 | ⬜ | |
+| T88 | slot-symbols-tables | T71; blocks T72 | ⬜ | |
 
 A Notes cell holds what was built or what the review found, the test count, and one line per
 deviation from the task doc. A ✅ task's cell may be cut to one line once the next task has been reviewed.
 
-**Review queue:** *(empty)*
+**Review queue:** T71
 
 ## Blocked on the user
 
