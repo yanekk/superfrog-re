@@ -18,6 +18,7 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-13 | 📌 | T49 review: the fade set-up job's `inside` ranges are not defended by any test (emptying them leaves `story-scene1-out` green: the two-frame grace masks 1242 anyway). Checked by probe: PC h0+$b94e at 1242's end. |
 | 2026-10-13 | 🔄 | Owner, T36 review: of the split-off tasks only T81 blocks T37 (they share level/mod.rs, scene.rs, game.rs); T82–T86 run alongside T37. |
 | 2026-10-13 | 🐞 | T36 review: ignoring the cut's loop step re-syncs items-run-w1-1 at frame 334, yet `frog_cases` stays green: the runner re-syncs silently. Open until T82's `resync = false`. |
 | 2026-10-13 | 🔄 | Owner, T36: conformance anchors the engine's beam at the original's Paula writes and blit starts; normal play uses the cost model only. Then stopped T36; rest split into T81–T86. |
