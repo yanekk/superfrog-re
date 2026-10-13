@@ -387,6 +387,15 @@ impl Game {
         }
     }
 
+    /// For conformance, the story intro: whether the next frame's vertical blank goes without a
+    /// handler, as the original's did when a blit held its CPU through the whole frame (its
+    /// request is a latch; the next blank's handler serves both). `None`: the engine's own model.
+    pub fn set_blank_merged(&mut self, merged: Option<bool>) {
+        if let Some(s) = self.story.as_mut() {
+            s.blank_merged = merged;
+        }
+    }
+
     /// For conformance, the story intro: the memory that runs on by itself while the original
     /// loads ([`Game::runs_during_load`]'s runs, as the original had them just before the frame
     /// its load ended on), put in place at the moment the engine's instant load happens in its

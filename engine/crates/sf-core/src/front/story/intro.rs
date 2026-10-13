@@ -357,6 +357,7 @@ impl Intro {
         pacing: Pacing,
         load_state: Vec<(u32, Vec<u8>)>,
         entry: Option<(u16, u16)>,
+        merged: Option<bool>,
     ) -> IntroFrame {
         self.pacing = pacing;
         self.load_state = load_state;
@@ -406,7 +407,7 @@ impl Intro {
         }
         self.merged.retain(|&t| t >= top);
         let handler = handler_lines(m);
-        if self.merged.first() == Some(&top) {
+        if merged.unwrap_or(self.merged.first() == Some(&top)) {
             // No handler this frame: the next frame's serves this blank too.
             out.copper = m.read(list, 0x400);
         } else {
