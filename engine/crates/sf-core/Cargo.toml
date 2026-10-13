@@ -6,5 +6,8 @@ publish.workspace = true
 
 [dependencies]
 sf-assets = { path = "../sf-assets" }
+# The story intro unpacks its banks as it plays, with the ATN! decompressor (pure, on the
+# allowlist).
+sf-disk = { path = "../sf-disk" }
 # PaulaWrite, the sound chip's event that FrameOut carries (pure, already on the allowlist).
 sf-paula = { path = "../sf-paula" }

@@ -106,6 +106,9 @@ headless.
 | [T42](tasks/T42-enemies-world-1.md) | enemies-world-1 | T38; blocks T18, T33 |
 | [T43](tasks/T43-enemies-world-2.md) | enemies-world-2 | T38; blocks T18, T39 |
 | [T44](tasks/T44-enemies-world-3.md) | enemies-world-3 | T38; blocks T18 |
+| [T46](tasks/T46-story-intro-scenes.md) | story-intro-scenes | T32; blocks T21 |
+| [T47](tasks/T47-story-intro-handover.md) | story-intro-handover | T46; blocks T21 |
+| [T48](tasks/T48-story-intro-skips.md) | story-intro-skips | T46, T47; blocks T21 |
 
 T22 is the rig task: it comes before every surface task and they depend on it. T29 is the phase's
 drill. At the end: the owner plays it.

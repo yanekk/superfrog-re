@@ -18,6 +18,12 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-13 | 🐞 | T32 review, open for T47: in normal play the engine's intro hands over to the game untouched (probe: frame 9 282, no input); `END` has no fire wait, though `Start::Disk3`'s doc says fire is pressed. |
+| 2026-10-13 | 📌 | T32 added T46 story-intro-scenes, T47 story-intro-handover, T48 story-intro-skips (first numbered T36–T38, then T42–T44; T15 and T16 took those; owner renumbered 2026-10-13) (owner: rewind to the last working milestone, split the rest). All block T21. T32 stops at frame 539; T46's doc lists what its scan left. |
+| 2026-10-13 | 📌 | T32 for T46: the runner's load-line search fits on the picture, so a fade-timing change in a load frame moves the line found and the next frames. A draft cycle-exact fade-step model did that; reverted. |
+| 2026-10-13 | 📌 | T32 deviation from DESIGN §2.1: `Game::step` uses a new `Pacing::Unpaced` (the engine's own timing) instead of `OnTime`; only the story intro reads it. DESIGN §2.1 still says `OnTime`. |
+| 2026-10-12 | 🔄 | Owner, T32: conformance feeds the intro whether the original is still in a long job at each blank (`Pacing::Late`/`OnTime` from its call chain, as level lag); normal play uses the engine's own timing model. |
+| 2026-10-12 | 📌 | T32: the intro's sound is the game's T11 driver at shifted addresses (`AudioDriver::intro_from`); music start/stop differ slightly. d3_c07/c08 are four raw sector spans (`intro_file_table` h0+$cf26), kept as `INTRO_SPAN_INDEX` chunks. |
 | 2026-10-13 | 📌 | T16 review sweep, not fixed: branch `pir/rust-engine-T19` adds T39 bonus-level, but the feature branch already has T39 enemies-world-5 (T17). Adoption will reject it as a collision. |
 | 2026-10-13 | 🔄 | Owner, T16: closed as the per-world split like T17, nothing built. T42 W1 (blocks T33), T43 W2 (blocks T39, which reuses 6 W2 types), T44 W3; all after T38, blocking T18. |
 | 2026-10-13 | 🐞 | T16 review: a `done` merge folds the row to ✅ whatever the branch says (pir loop.mjs reconcile), so a worker's ⛔ park never lands. Owner chose: move the work to a new task, close T16. |
@@ -54,7 +60,7 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 | 2026-10-11 | 📌 | T08: level palette = 32 colours after `LnLP` (+$11300), proven on W1-1's copper (COLOR06 differs: cycling, inferred). `render_levels.py`'s W6 palette is L2ET read misaligned (wrong colours); its LB/LW use W6 tiles. docs/06 corrected. |
 | 2026-10-11 | 📌 | T08: W6 has two map sets, both `L6MA1`–`4`: d4_c02–05 (one drive) and d4_c14–17 (DF1–3 with disk 1, h0+$a144); maps 2–4 differ. docs/LEVEL-INDEX's "W6-5..7" are these copies; left unedited (scope). |
 | 2026-10-11 | 📌 | T08: hall font at h0+$378ca, charset h0+$322e; not in `re/symbols.toml` yet (the ANIM player is, T35). |
-| 2026-10-11 | 📌 | T08 open: MPIC/FRUT palettes come from the copper (T20/T19); `LnLP`'s trailing 672/1 680 bytes and `LnMS`'s meaning unexplained; intro banks d3_c05–08 kept raw, layout ambiguous (T20). Not reached by oracle: ET, FRUT/FRUC/FRUM, W2–W6 LP. |
+| 2026-10-11 | 📌 | T08 open: MPIC/FRUT palettes come from the copper (T20/T19); `LnLP`'s trailing 672/1 680 bytes and `LnMS`'s meaning unexplained; intro banks d3_c05–08: d3_c04 unpacks them itself (T32, `front::story`). Not reached by oracle: ET, FRUT/FRUC/FRUM, W2–W6 LP. |
 | 2026-10-11 | 📌 | T08: the purity lexer counts a `("name", 1, 18)` tuple array as an integer table. So the chunk catalogue keeps only the game's file names in source; disk and sector come from its `file_table`. |
 | 2026-10-11 | 📌 | T12: title eye-blink timers h0+$1368/$136a count down per frame and at -2 call `rng_range($4b)`. With `boot-to-title`, the RNG holds still from frame 4 405 to 4 461: the title-rng case's window. |
 | 2026-10-11 | 🔄 | Owner, lag: conformance runs feed the original's 25 Hz pass schedule (from the oracle) to the engine; VBL work runs at one fixed point in a late pass; leftover divergence is reported as lag and re-synced. Normal play never lags. |
@@ -64,7 +70,7 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 | 2026-10-11 | 📌 | RNG seeded once at h0+$7722 from `$bfd802` (CIA-B TOD, hsyncs since power-on). Clicking the crack intro 100 frames later shifts all RAM by 100 frames except `rng_state` and the stack. |
 | 2026-10-11 | 📌 | Object placement is in the T7MP BODY: the 6-bit field is a per-world object marker (docs/09), so `.sflevel` needs only `t7mp`. docs/04 "Still open" and docs/07's solid rule (W3/W4 markers 24–28) are now wrong; left unedited (scope). |
 | 2026-10-11 | 📌 | Stragglers d1_c16, d2_c39, d4_c16: the 46-byte trailer runs a sector past the carve; with it both decoders agree (d4_c16 is a T7MP level). d1_c16 matches in RAM bar its relocated samples; d2_c39, d4_c16 need T21's long run. |
-| 2026-10-11 | 📌 | Disk 3 boots the story intro (d3_c02 → d3_c04), which then boots disk 1; d1_c03 never loads them; d3_c01 is unused. Whether the engine plays the intro is T20/T21's call. Music modules are "P41A" (The Player 4.1A) for T11. |
+| 2026-10-11 | 📌 | Disk 3 boots the story intro (d3_c02 → d3_c04), which then boots disk 1; d1_c03 never loads them; d3_c01 is unused. T32 plays it (`Start::Disk3`, docs/13). Music modules are "P41A" (The Player 4.1A) for T11. |
 | 2026-10-11 | 📌 | `Amiga::cpu()` (shim only, no core patch): a step ends with the CPU at the level-3 handler's entry, so the interrupted main-program PC is the long at SSP+2. `exe_map_claims` adds ~45 s (three oracle runs) to the test block. |
 | 2026-10-11 | 📌 | T10 review: `sf-paula` puts two full-scale channels at exactly ±32 768, so the band-limited step's ringing overshoot clamps on full-scale content (probe peaked at 32 768). Left as is; output headroom is T22's call. |
 | 2026-10-11 | 📌 | Frames are not all 313 lines: the game sets then clears BPLCON0 LACE (frame 1 332), LOF sticks short, so the title music runs 312-line frames, 50.08 Hz. DESIGN §2.5 says 49.92; sf-core/T22 pacing must model LOF. |

@@ -123,10 +123,11 @@ pub const PLAYFIELD_BUFFER_BYTES: u32 = 0x12930;
 
 /// Declares the variables: `Id = "symbol name", address, width;`, in address order.
 macro_rules! layout {
-    ($( $(#[$doc:meta])* $id:ident = $name:literal, $addr:expr, $width:expr; )*) => {
+    ($( $(#[$doc:meta])* $id:ident = $name:literal, $addr:expr, $width:expr; )*
+     @outside { $( $(#[$xdoc:meta])* $xid:ident, )* }) => {
         /// A modelled variable. Names are the ones in `re/symbols.toml`.
         #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
-        pub enum VarId { $( $(#[$doc])* $id, )* }
+        pub enum VarId { $( $(#[$doc])* $id, )* $( $(#[$xdoc])* $xid, )* }
 
         impl VarId {
             /// Every id, in [`LAYOUT`] order.
@@ -510,6 +511,47 @@ layout! {
     /// `level_palette` (h1+$31de0): the level's 32 colours, from its map's `PALA` (h0+$1622a);
     /// the fades fade to it.
     LevelPalette = "level_palette", h1(0x31de0), Width::Bytes(0x40);
+    // Ids with no entry here (not in `VarId::ALL`): a program with its own memory map keeps its
+    // own table of them.
+    @outside {
+        /// The story intro's (T32, `front::story`), compared only while it runs: disk 3's boot
+        /// program's fade record (`d3_c02` h0+$2be18).
+        StoryBootFade,
+        /// Its two field copper lists and the black one (h0+$2c00c..$2c2b4).
+        StoryBootCopper,
+        /// The intro's (`d3_c04`): `intro_skip`, `vbl_flag`, `vbl_count`, the frame table pointer.
+        StoryVars,
+        /// `buffer_toggle` and the row table.
+        StoryRows,
+        /// The object list and the sixteen objects.
+        StoryObjects,
+        /// The frame descriptors.
+        StoryFrames,
+        /// `draw_buffer`, `shown_buffer`, `planes_frozen`.
+        StoryShown,
+        /// The four fade records.
+        StoryFades,
+        /// The copper lists (text pages, scenes, black).
+        StoryCopper,
+        /// The text page's three planes and palette.
+        StoryText,
+        /// The two display buffers.
+        StoryBuffers,
+        /// The clean background and the scene's palette after it.
+        StoryClean,
+        /// The intro's sound driver (the game's at other addresses): the effect records,
+        StorySfx,
+        /// `music_on`,
+        StoryMusicOn,
+        /// the replayer's channels and globals,
+        StoryReplayer,
+        /// the fade and the shadow registers,
+        StoryShadow,
+        /// the streamer,
+        StoryStream,
+        /// and the intro's timeline of sound events.
+        StoryTimeline,
+    }
 }
 
 /// The entry for `id`.

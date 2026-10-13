@@ -18,8 +18,8 @@ leaves that the engine does not model (the trackloader's sector buffer at h3+$35
 packed in hunk 1: `front::LOAD_LEAVES`, `FrameOut::resync`), and finds the line the original's
 load ended on by trying them (`Game::set_load_line`).
 
-The disk-3 story intro is T32; the attract demo is T33. The end sequence (T35) is entered from the
-sync point `end-sequence` (below).
+The disk-3 story intro is below (T32, finished by T46–T48); the attract demo is T33. The end
+sequence (T35) is entered from the sync point `end-sequence` (below).
 
 ## Scene flow (code, oracle)
 
@@ -71,6 +71,55 @@ the old value, lines a main-program part ran under show what was there before it
   shows each word new only if the blitter wrote it before the bitplane fetch read it
   (`blit::word_times`).
 - `clr.w` to a custom register writes twice on the real 68000: the prefetched word, then 0.
+
+## The disk-3 intro (T32; code, oracle)
+
+`Start::Disk3` is the moment disk 3's logo program `d3_c02` starts, after its bootblock: Kickstart
+and the bootblock are the load. The engine runs it as `front::story` with its own 512K memory
+(chip and slow), not the game's `State`. Frames below count from that start (case
+`story-intro`); **(oracle)** up to frame 539, the rest **(code)** and the debugger's runs.
+
+```
+0–66      Team 17 logo (d3_c02): hires, 4 planes, interlaced (two copper lists by field),
+          fades in, loads the intro (d3_c04 ATN!, instant), fades out
+67        intro_main (d3_c04 h0, hunks h0 $C00FA0, h1 $C53100, h2 $400 = d3_c03, h3 $18FD4)
+68–105    text page 1: unpacked (cf5c, ~37 frames, part of the load), faded in (8 colours)
+106–505   page shown, 400 frames or fire/mouse (WaitOrFire)
+506–520   text_out: fade out
+521–537   scene 1 set-up: buffers cleared (2 blits), objects_init (masks: CPU clear + 5 blits,
+          frames 532–536), two draws, fade in (32 colours)
+538–1241  scene 1 plays, music $c51e: a draw every second frame (double-buffered bobs)
+1242–1257 scene 1 out (fade with wait, black list)
+1258–1738 text page 2 (in, 400 frames, out)      1739–1756 scene 2 set-up   1757– scene 2
+then      text 3 + scene 3, scenes 4–9 (banks unpacked from h1, backgrounds from h0), text 4,
+          scenes 10–15 (MAIN in story/scenes.rs, 15 scenes and 4 text pages), END: "insert
+          disk 1" (c38e waits for fire), the hand-over to the game (T47)
+```
+
+The handler (h0+$b102, each frame at the top): frame flag and count, the shown buffer's plane
+pointers (unless frozen), the music's sample stream, the fades (in, out, across: 4 records), fire
+or the mouse button sets `intro_skip`, the music and effects (the game's own driver, T11, at the
+intro's addresses: `AudioDriver::intro_from`), the timeline of sound events. A `SkipCheck` after
+each scene goes to END once skip is set.
+
+Timing the engine keeps (oracle, frames 0–539):
+
+- **Handler length**: 12 lines, 17 with music, plus 34 lines per 32 colours a stepping fade
+  changes. A fade's set-up runs with interrupts off: in 5 + 37/32 lines a colour, out 5 + 3/2.
+- **Blits** on vAmiga's slow-blitter cycle counts (ABCD 4n+1, AD 2n+2, ABD 3n+2) on the bus left
+  by refresh, audio (with music) and bitplane fetch (`story::clock`); 40 DMA cycles of CPU set-up
+  per blit, 300 per object. The handler waits for the blit in progress.
+- **`objects_init`'s CPU**: 656 124 DMA cycles plus 206 per animation frame it prepares
+  (h0+$8724): scene 1's 145 frames and scene 2's 199 put the mask blits 3022 and 3071 lines on.
+- **Unpacks** (`cf5c`): measured frames per call (`UNPACK_FRAMES`), ending on line 160.
+- **Copper and Paula**: the copper's Paula writes before the CPU takes the interrupt (line 0,
+  clock $14) belong to the frame before. Copper colour words a fade rewrites are read as the beam
+  found them, component by component (`vbl::fade_write_times`; not yet exact, T46).
+- **Schedule feeding** (owner, 2026-10-12): whether the original is still in a long job (a draw,
+  a set-up) at each vertical blank is fed by conformance (`Pacing::Late`/`OnTime` from the
+  original's call chain, as level lag is); play uses the engine's own timing (`Pacing::Unpaced`).
+- **Loads** are instant as on disk 1: what runs on during them (the handler's sound variables,
+  `RUNS_DURING_LOAD`) is taken from the original at the load, and the handler re-run.
 
 ## The end sequence (T35; code, oracle)
 

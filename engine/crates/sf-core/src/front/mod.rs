@@ -27,10 +27,12 @@ mod hero;
 mod menu;
 pub mod password;
 pub mod sprite;
+pub mod story;
 pub(crate) mod title;
 mod vbl;
 
 pub use data::FrontData;
+pub use story::{Story, StoryData};
 
 use sf_paula::PaulaWrite;
 
