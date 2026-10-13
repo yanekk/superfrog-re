@@ -18,6 +18,7 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-13 | 📌 | T71 review: T71 ran `cargo fmt` over ~20 files outside its scope (sf-core, sf-conform tests); formatting only, checked against base formatted. Likely merge conflicts with parallel tasks. Not reverted. |
 | 2026-10-13 | 🔄 | T71 split at pir's context line: its `re/symbols.toml` slot routines and tables moved to T87 and T88 (both block T72); everything else of T71 committed. |
 | 2026-10-13 | 🔄 | Owner, T19: its split-off tasks T39–T43 renumbered T70–T74, clearing the collision with the feature branch's T39–T44 enemies tasks. |
 | 2026-10-13 | 📌 | T19 review: T16's doc puts oracle tests in `sf-core/tests/enemies_w1_3.rs`; purity forbids the emulator there, so they belong in `sf-conform/tests/`. Not fixed. |

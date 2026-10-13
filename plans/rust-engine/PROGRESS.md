@@ -71,7 +71,7 @@ done · ⛔ blocked, needs a human.
 | T47 | story-intro-handover | T46; blocks T21 | ⬜ | |
 | T48 | story-intro-skips | T46, T47; blocks T21 | ⬜ | |
 | T70 | bonus-level | T15; blocks T21 | ⬜ | |
-| T71 | slot-sync | T15 | 🔍 | Built: `SyncPoint::Slot` (73 frames, load end 759, as T19), start scripts (RNG 1/3 steps), FRUT/FRUC/FRUM raw, `CACHE_FORMAT` 4, slot `Tables`, LAYOUT, `CallResult::cycles` (1 650); 6 tests. Fire counted from the forced exit (`n % 4 == 0`). Cycles test in `sync_points.rs`. `re/symbols.toml` split to T87, T88 (context line). |
+| T71 | slot-sync | T15 | ✅ | Review: stale `slot v1` snapshot sat 71 frames past W1-1, not 73; key now v2 and the 73 locked (fire-phase mutation survived, now red). T87/T88 got Interface; T87 told to avoid LAYOUT's slot names. Probed fire phases (71–74), attract refusal, Moira cycles (rts 16), table-offset mutation; front/runner/frog green. symbols.toml in T87, T88. |
 | T72 | slot-screen | T71 | ⬜ | |
 | T73 | slot-rounds | T72 | ⬜ | |
 | T74 | slot-prizes | T73; blocks T21 | ⬜ | |
@@ -81,7 +81,7 @@ done · ⛔ blocked, needs a human.
 A Notes cell holds what was built or what the review found, the test count, and one line per
 deviation from the task doc. A ✅ task's cell may be cut to one line once the next task has been reviewed.
 
-**Review queue:** T71
+**Review queue:** *(empty)*
 
 ## Blocked on the user
 
