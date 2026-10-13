@@ -96,7 +96,7 @@ done · ⛔ blocked, needs a human.
 | T86 | items-launchers | T81 | ⬜ | |
 | T87 | slot-symbols-routines | T71; blocks T72 | ✅ | |
 | T88 | slot-symbols-tables | T71; blocks T72 | ✅ | |
-| T89 | story-copper-bus-cycles | T52; blocks T53 | ⬜ | |
+| T89 | story-copper-bus-cycles | T52; blocks T53 | ✅ | |
 | T90 | story-draw-blits-oracle | T89; blocks T53 | ⬜ | |
 | T91 | slot-beam-races | T72 | ⬜ | |
 | T92 | slot-load | T72 | ⬜ | |
