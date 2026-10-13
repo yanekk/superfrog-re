@@ -1,0 +1,12 @@
+# W1-1 with its items live: the checkpoint at 34,42, the speed-up at 48,42 and its 500 frames
+# (the walking limit 6 -> 9 and back), coins on the way; score, the panel and the picture every
+# frame (T83).
+sync = { level = "W1-1" }
+script = "items-checkpoint-w1-1"
+frames = 800
+resync = false
+
+[[exclude]]
+what = "enemies"
+note = "the original's marker spawners the engine has none for (enemies, the world's scenery)"
+task = "T16–T18"

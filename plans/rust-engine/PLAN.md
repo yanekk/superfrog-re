@@ -145,6 +145,7 @@ headless.
 | [T96](tasks/T96-story-audio-dma-slots.md) | story-audio-dma-slots | T53; blocks T56 |
 | [T97](tasks/T97-story-split-handler.md) | story-split-handler | T54; blocks T56 |
 | [T100](tasks/T100-front-vbl-timing.md) | front-vbl-timing | T37; blocks T21 |
+| [T101](tasks/T101-lag-long-pass.md) | lag-long-pass | T81, T82; blocks T21 |
 
 T22 is the rig task: it comes before every surface task and they depend on it. T29 is the phase's
 drill. At the end: the owner plays it.

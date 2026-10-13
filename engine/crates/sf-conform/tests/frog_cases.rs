@@ -74,3 +74,17 @@ fn items_run_w1_1() {
 fn items_fruit_w2_2() {
     green("items-fruit-w2-2");
 }
+
+/// W1-2 with its items live, 650 frames: the wings and their flight, the spud taken and thrown,
+/// with no re-sync (T83).
+#[test]
+fn items_wings_w1_2() {
+    green("items-wings-w1-2");
+}
+
+/// W1-1 with its items live, 800 frames: the checkpoint and the speed-up until it ends, with no
+/// re-sync (T83).
+#[test]
+fn items_checkpoint_w1_1() {
+    green("items-checkpoint-w1-1");
+}

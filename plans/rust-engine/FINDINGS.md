@@ -18,6 +18,8 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-14 | 📌 | T83 coverage: `items-wings-w1-2` wings, flight (lasts until a life is lost), spud taken and thrown, coins, a fake wall; `items-checkpoint-w1-1` checkpoint, speed-up to its end (500 frames); red `items-pad-w1-1` adds pad, bottle, spud (T101). |
+| 2026-10-14 | 🔄 | Owner, T83: added T101 lag-long-pass (blocks T21): the bounce-pad case `items-pad-w1-1` diverges at 402 (cut inside phase 6 before `buffer_flip`) and 786 (a pass across three frames). Case committed outside the test block. |
 | 2026-10-14 | 📌 | Coordinator, night of 2026-10-13, under the owner's 2026-10-11 lag rule; owner to confirm: conformance feeds which story blanks had a handler (T55 `Game::set_blank_merged`); normal play keeps the engine's estimate, wrong at 3437. |
 | 2026-10-14 | 📌 | T55 review, not fixed: `sf-conform` load-search loop never recomputes `late`, and its redo frame gets no `set_blank_merged`. Latent: every load step to 8200 had one handler, none late. |
 | 2026-10-13 | 🐞 | Not T37's (its review's sweep): the level's `kbd_poll` (`Game::sdr`, `level/clock.rs`) re-reads a key's byte every poll; the original reads it once, then `$ff` (`frog-esc-w1-1`, frames 61→63). Only the power-on `$7e` byte repeats. |

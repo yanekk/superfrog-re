@@ -1,0 +1,50 @@
+# W1-2, enemies frozen: from the start left to the wings at 149,11 (frame ~384), flying on fire
+# held in the air, then the spud at 129,13 (frame ~464); then the spud thrown. Planned on the
+# engine (T83, `examples/plan W1-2 149,11 129,13`).
+0: -
+144: U L
+148: U
+156: -
+160: L
+180: -
+188: R
+192: -
+244: U
+248: -
+264: U
+268: -
+272: L
+276: -
+280: R
+288: -
+292: R
+296: L
+308: -
+336: R
+344: -
+348: L
+352: -
+360: L
+376: U L
+380: -
+384: L F
+388: -
+408: L F
+412: U L
+416: U
+428: L
+432: U
+444: R F
+448: U
+452: L F
+456: L
+460: -
+500: F
+506: -
+560: U
+566: U F
+570: U
+574: U F
+578: U
+582: U F
+586: -
