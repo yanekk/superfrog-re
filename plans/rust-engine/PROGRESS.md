@@ -75,7 +75,7 @@ done · ⛔ blocked, needs a human.
 | T72 | slot-screen | T71 | ⬜ | |
 | T73 | slot-rounds | T72 | ⬜ | |
 | T74 | slot-prizes | T73; blocks T21 | ⬜ | |
-| T75 | bonus-shots | T70; blocks T21 | 🔍 | `sf_core::bonus::shots`: templates 110–112, spawn_shots (wired into `level_init`), shooter spud, shot_update, shots_faster, collide_all shooter branch; 6 tests in `bonus_routines.rs` (WB-1 rig). Deviation: `routine::sound_files` gave world 7 the W3–6 sfx bank; now the bonus bank. |
+| T75 | bonus-shots | T70; blocks T21 | ✅ | Review: one fix, the shot_update symbols note said "right of" camera x+$200. Five routines checked against the listing; mutations caught (park bound, extra shots both-gone, level_init wiring via level_entry); sound_files deviation held by revert. 6 tests in `bonus_routines.rs`. |
 | T76 | bonus-enemies-a | T70; blocks T21 | ⬜ | |
 | T77 | bonus-enemies-b | T70, T76; blocks T21 | ⬜ | |
 | T78 | bonus-enemy-death | T70, T75; blocks T21 | ⬜ | |
@@ -84,7 +84,7 @@ done · ⛔ blocked, needs a human.
 A Notes cell holds what was built or what the review found, the test count, and one line per
 deviation from the task doc. A ✅ task's cell may be cut to one line once the next task has been reviewed.
 
-**Review queue:** T75
+**Review queue:** *(empty)*
 
 ## Blocked on the user
 
