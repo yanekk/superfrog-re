@@ -100,10 +100,7 @@ pub fn tag() -> String {
         .iter()
         .map(|(w, m)| format!("{w}:{m}"))
         .collect();
-    let spawns: Vec<String> = UNPORTED_SPAWNS
-        .iter()
-        .map(|s| format!("{:x}", s.0))
-        .collect();
+    let spawns: Vec<String> = UNPORTED_SPAWNS.iter().map(|s| format!("{:x}", s.0)).collect();
     format!("frozen v2 {} / {}\n", markers.join(","), spawns.join(","))
 }
 

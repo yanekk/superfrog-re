@@ -362,10 +362,7 @@ impl EndSequence {
                 71 => {
                     let cleared = h1(0)..h1(HUNK1_CLEARED);
                     let mut runs = Vec::new();
-                    for d in crate::layout::LAYOUT
-                        .iter()
-                        .filter(|d| cleared.contains(&d.addr))
-                    {
+                    for d in crate::layout::LAYOUT.iter().filter(|d| cleared.contains(&d.addr)) {
                         cx.s.var_mut(d.id).fill(0);
                         runs.push((d.addr, d.width.len()));
                     }

@@ -90,10 +90,7 @@ pub fn sound_files(world: u32, module_addr: u32) -> Vec<(u32, File)> {
         1..=6 => TuneId::World(world as u8),
         _ => TuneId::Bonus,
     };
-    vec![
-        (BANK_ADDR, File::Bank(bank)),
-        (module_addr, File::Tune(tune)),
-    ]
+    vec![(BANK_ADDR, File::Bank(bank)), (module_addr, File::Tune(tune))]
 }
 
 /// Both sides of a routine comparison, from one memory.

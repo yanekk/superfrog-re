@@ -18,10 +18,7 @@ fn scroll_latch_matches_the_original() {
         s.poke_l(h0(0x16660), 0x20 + g.below(0x480) as u32);
         s.poke_w(h0(0x1665e), g.pick(&[1, 2]));
         if g.one_in(3) {
-            s.poke_w(
-                scroll::LEVEL_COPPER + 0x35c,
-                g.pick(&[0xffdf, 0xffd7, 0x30df]),
-            );
+            s.poke_w(scroll::LEVEL_COPPER + 0x35c, g.pick(&[0xffdf, 0xffd7, 0x30df]));
             s.poke_w(scroll::LEVEL_COPPER + 0x35e, 0xfffe);
         }
         rig.check("scroll_latch", case, 0x1700a, &s, scroll::scroll_latch);
@@ -40,16 +37,10 @@ fn scrolled(g: &mut Gen, s: &mut Setup) {
         (y as u16).wrapping_add(g.below(65) as u16).wrapping_sub(32),
     );
     for k in 0..17u32 {
-        s.poke_w(
-            h0(0x16606) + 2 * k,
-            (py & 0xfff0).wrapping_add(16 * k as u16),
-        );
+        s.poke_w(h0(0x16606) + 2 * k, (py & 0xfff0).wrapping_add(16 * k as u16));
     }
     for k in 0..23u32 {
-        s.poke_w(
-            h0(0x1662c) + 2 * k,
-            (px.wrapping_add(5) & 0xfff0).wrapping_add(16 * k as u16),
-        );
+        s.poke_w(h0(0x1662c) + 2 * k, (px.wrapping_add(5) & 0xfff0).wrapping_add(16 * k as u16));
     }
     s.poke_w(h0(0x16674), g.pick(&[0, 0xff00]));
     s.poke_w(h0(0x1665e), g.pick(&[1, 2]));
@@ -99,13 +90,7 @@ fn copper_irq_blits_match_the_original() {
                 s.poke_l(e + 0xa, src);
             }
         }
-        rig.check(
-            "copper_irq_blits",
-            case,
-            0x1693e,
-            &s,
-            scroll::copper_irq_blits,
-        );
+        rig.check("copper_irq_blits", case, 0x1693e, &s, scroll::copper_irq_blits);
     }
 }
 
@@ -119,10 +104,7 @@ fn fading(g: &mut Gen, s: &mut Setup, mode: u16) {
         s.poke_w(r + 6, g.one_in(5) as u16);
         s.poke_w(r + 8, 1 + g.below(32) as u16);
         s.poke_l(r + 0xa, scroll::LEVEL_COPPER + 2 * g.below(0x100) as u32);
-        s.poke_l(
-            r + 0xe,
-            scroll::LEVEL_COPPER + 0x2d2 - 4 * g.below(16) as u32,
-        );
+        s.poke_l(r + 0xe, scroll::LEVEL_COPPER + 0x2d2 - 4 * g.below(16) as u32);
         for k in 0..0x60u32 {
             s.poke_b(r + 0x12 + k, g.pick(&[0, 1, 0xff, 2]));
         }
@@ -132,10 +114,7 @@ fn fading(g: &mut Gen, s: &mut Setup, mode: u16) {
         }
     }
     for k in 0..0x60u32 {
-        s.poke_w(
-            scroll::LEVEL_COPPER + 0x2d4 + 4 * k - 0xc0,
-            g.next() as u16 & 0xfff,
-        );
+        s.poke_w(scroll::LEVEL_COPPER + 0x2d4 + 4 * k - 0xc0, g.next() as u16 & 0xfff);
     }
 }
 
@@ -171,13 +150,7 @@ fn level_clock_tick_matches_the_original() {
         let any = g.below(0x40) as u16;
         s.poke_w(h0(0x11dfc), g.pick(&[0, 0x18, 0x19, 0x31, 0x32, any]));
         s.poke_l(h0(0x40da), g.pick(&[1, 2, 7]));
-        rig.check(
-            "level_clock_tick",
-            case,
-            0x11d2c,
-            &s,
-            clock::level_clock_tick,
-        );
+        rig.check("level_clock_tick", case, 0x11d2c, &s, clock::level_clock_tick);
     }
 }
 
@@ -289,11 +262,7 @@ fn bob_draw_list_and_hitboxes_match_the_original() {
     use sf_core::level::objects;
     let mut rig = rig();
     for (entry, name, port) in [
-        (
-            0x19b42,
-            "build_bob_draw_list",
-            objects::build_bob_draw_list as fn(&mut sf_core::level::LevelCtx),
-        ),
+        (0x19b42, "build_bob_draw_list", objects::build_bob_draw_list as fn(&mut sf_core::level::LevelCtx)),
         (0xd2f6, "obj_build_hitboxes", objects::obj_build_hitboxes),
     ] {
         rig.check(name, 0, entry, &Setup::default(), port);

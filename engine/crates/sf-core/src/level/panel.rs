@@ -208,10 +208,7 @@ pub fn extra_life(c: &mut LevelCtx) {
             if !crate::level::collision::n_clear_l(score.wrapping_sub(b.l(FROG + NEXT_LIFE))) {
                 break;
             }
-            b.set_l(
-                FROG + NEXT_LIFE,
-                b.l(FROG + NEXT_LIFE).wrapping_add(0x30d40),
-            );
+            b.set_l(FROG + NEXT_LIFE, b.l(FROG + NEXT_LIFE).wrapping_add(0x30d40));
             b.set_w(FROG + f::LIVES, b.w(FROG + f::LIVES).wrapping_add(1));
         }
     }
@@ -263,10 +260,7 @@ pub(crate) fn sprite_digits(b: &mut Bus) {
     } else {
         ((n / 10) as i32, (n % 10) as i32)
     };
-    for (k, table, rec) in [
-        (tens, h0(0x86c2), h0(0x1b130)),
-        (ones, h0(0x86ee), h0(0x1b14c)),
-    ] {
+    for (k, table, rec) in [(tens, h0(0x86c2), h0(0x1b130)), (ones, h0(0x86ee), h0(0x1b14c))] {
         let frame = b.l(table.wrapping_add((4 * k) as u32));
         let at = b.l(rec);
         for (o, v) in [(0, frame), (0x10, frame.wrapping_add(0x78))] {
@@ -311,14 +305,7 @@ fn clock_at_start(c: &mut LevelCtx) {
     let b = &mut c.bus;
     if b.w(h0(0x9e6)) == 0 {
         let m = b.b(h0(0x877)).wrapping_add(b.b(h0(0x877)));
-        b.set_b(
-            h0(0x877),
-            if (m.wrapping_sub(0xa) as i8) < 0 {
-                m
-            } else {
-                9
-            },
-        );
+        b.set_b(h0(0x877), if (m.wrapping_sub(0xa) as i8) < 0 { m } else { 9 });
     }
     b.set_w(h2(0x6bd0) + 0x1f2, 0x149);
     b.set_w(h2(0x6bd0) + 0x1f6, 0xbf);

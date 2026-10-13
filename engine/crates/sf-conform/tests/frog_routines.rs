@@ -25,11 +25,7 @@ fn frog_move_matches_the_original() {
         };
         // A quarter near the level's left or top edge, where a step past 0 is clamped.
         for o in [f::X, f::Y] {
-            let p = if g.one_in(4) {
-                g.below(24)
-            } else {
-                g.below(0x1400)
-            };
+            let p = if g.one_in(4) { g.below(24) } else { g.below(0x1400) };
             s.poke_w(FROG + o, p as u16);
         }
         for o in [f::VX, f::VY] {
@@ -59,37 +55,15 @@ fn camera_follow_matches_the_original() {
             if g.one_in(5) {
                 g.next() as u16
             } else {
-                v.wrapping_sub(off)
-                    .wrapping_add(g.below(41) as u16)
-                    .wrapping_sub(20)
+                v.wrapping_sub(off).wrapping_add(g.below(41) as u16).wrapping_sub(20)
             }
         };
         let cx = near(&mut g, x, 0x90);
         let cy = near(&mut g, y, 0x70);
-        s.poke_l(
-            CAMERA_X,
-            if g.one_in(10) {
-                g.next() as u32
-            } else {
-                cx as u32
-            },
-        );
-        s.poke_l(
-            CAMERA_Y,
-            if g.one_in(10) {
-                g.next() as u32
-            } else {
-                cy as u32
-            },
-        );
-        s.poke_w(
-            LEVEL_WIDTH,
-            if g.one_in(4) { g.next() as u16 } else { 0x12c0 },
-        );
-        s.poke_w(
-            LEVEL_HEIGHT,
-            if g.one_in(4) { g.next() as u16 } else { 0x540 },
-        );
+        s.poke_l(CAMERA_X, if g.one_in(10) { g.next() as u32 } else { cx as u32 });
+        s.poke_l(CAMERA_Y, if g.one_in(10) { g.next() as u32 } else { cy as u32 });
+        s.poke_w(LEVEL_WIDTH, if g.one_in(4) { g.next() as u16 } else { 0x12c0 });
+        s.poke_w(LEVEL_HEIGHT, if g.one_in(4) { g.next() as u16 } else { 0x540 });
         s.poke_b(SCROLL_DIRS, g.next() as u8);
         s.poke_w(FROG + f::FACING, edgy(&mut g));
         s.poke_w(FROG + f::CLIMB, edgy(&mut g));
@@ -108,19 +82,9 @@ fn the_boot_s_tables_are_the_original_s() {
     let mem = level();
     let rom = sf_conform::display_data();
     let rom = rom.rom();
-    for (from, len) in [
-        (0x17330, 0x16c),
-        (0x174d6, 0x4c),
-        (0x176c4, 0x60),
-        (0x19ddc, 0x900),
-    ] {
+    for (from, len) in [(0x17330, 0x16c), (0x174d6, 0x4c), (0x176c4, 0x60), (0x19ddc, 0x900)] {
         for a in (0..len).map(|k| sf_core::layout::h0(from + k)) {
-            assert_eq!(
-                rom.byte(1, a),
-                Some(mem.byte(a)),
-                "h0 ${:x}",
-                a - sf_core::layout::H0
-            );
+            assert_eq!(rom.byte(1, a), Some(mem.byte(a)), "h0 ${:x}", a - sf_core::layout::H0);
         }
     }
     for k in 0..0xe00 {
@@ -147,9 +111,7 @@ fn any_anim(g: &mut Gen) -> (u32, u32) {
     let m = level();
     let long = |a: u32| (0..4).fold(0u32, |v, k| v << 8 | m.byte(a + k) as u32);
     let anim = h0(g.pick(&ANIMS));
-    let steps = (0..)
-        .take_while(|k| (long(anim + 8 * k) as i32) >= 0)
-        .count() as u64;
+    let steps = (0..).take_while(|k| (long(anim + 8 * k) as i32) >= 0).count() as u64;
     (anim, anim + 8 * g.below(steps.max(1)) as u32)
 }
 
@@ -169,10 +131,7 @@ fn any_frog(g: &mut Gen, s: &mut Setup) {
     s.poke_l(FROG + f::ANIM, anim);
     s.poke_l(FROG + f::ANIM_STEP, step);
     s.poke_l(FROG + f::SLOPE_ANIM, any_anim(g).0);
-    s.poke_w(
-        FROG + f::ANIM_TIME,
-        g.pick(&[0xffff, 0, 1, 2, 5, 0x11, 0x4e1f, 0x4e20]),
-    );
+    s.poke_w(FROG + f::ANIM_TIME, g.pick(&[0xffff, 0, 1, 2, 5, 0x11, 0x4e1f, 0x4e20]));
     for (o, v) in [
         (f::AIR, g.pick(&[0, 0, 1, 2, 4, 0xc, 0x10, 0x1c, 0x20])),
         (f::ON_GROUND, g.below(2) as u16),
@@ -186,14 +145,7 @@ fn any_frog(g: &mut Gen, s: &mut Setup) {
         (f::SHIELD, if g.one_in(8) { g.below(3) as u16 } else { 0 }),
         (f::LAUNCH_HOLD, g.pick(&[0, 0, 0, 1, 5, 0xffff])),
         (f::LAUNCHED, g.pick(&[0, 0, 1, 3])),
-        (
-            f::SPECIAL_ANIM,
-            if g.one_in(8) {
-                1 + g.below(3) as u16
-            } else {
-                0
-            },
-        ),
+        (f::SPECIAL_ANIM, if g.one_in(8) { 1 + g.below(3) as u16 } else { 0 }),
         (f::SIT_TIME, g.below(5) as u16),
         (f::IDLE_SOUND, g.below(3) as u16),
         (f::CROUCH, g.below(2) as u16),
@@ -241,10 +193,7 @@ fn any_frog(g: &mut Gen, s: &mut Setup) {
     s.poke_l(FROG + f::GROUND_CELL, cell(col, (row + 2).min(83)));
     let hist = if g.one_in(3) { y } else { y.wrapping_add(1) };
     for k in 0..8 {
-        s.poke_w(
-            h0(0x10182) + 2 * k,
-            if g.one_in(10) { hist ^ 1 } else { hist },
-        );
+        s.poke_w(h0(0x10182) + 2 * k, if g.one_in(10) { hist ^ 1 } else { hist });
     }
     s.poke_w(h0(0x11350), g.below(0x41) as u16);
     s.poke_w(h0(0x9f8), g.one_in(8) as u16);
@@ -260,6 +209,7 @@ fn any_frog(g: &mut Gen, s: &mut Setup) {
     s.poke_l(h0(0x160d4), lo);
     s.poke_l(h0(0x160d8), hi);
 }
+
 
 fn frog_check(name: &str, entry: u32, seed: u64, port: fn(&mut sf_core::level::LevelCtx)) {
     let mut rig = rig();
@@ -277,10 +227,7 @@ fn frog_check(name: &str, entry: u32, seed: u64, port: fn(&mut sf_core::level::L
             skipped += 1;
         }
     }
-    assert!(
-        skipped < CASES / 100,
-        "{name}: the original hung or crashed on {skipped} states"
-    );
+    assert!(skipped < CASES / 100, "{name}: the original hung or crashed on {skipped} states");
 }
 
 #[test]
@@ -295,12 +242,7 @@ fn frog_input_anim_matches_the_original() {
 
 #[test]
 fn frog_walk_input_matches_the_original() {
-    frog_check(
-        "frog_walk_input",
-        0x113be,
-        23,
-        frog::physics::frog_walk_input,
-    );
+    frog_check("frog_walk_input", 0x113be, 23, frog::physics::frog_walk_input);
 }
 
 #[test]
@@ -315,12 +257,7 @@ fn frog_jump_float_matches_the_original() {
 
 #[test]
 fn place_frog_sprites_matches_the_original() {
-    frog_check(
-        "place_frog_sprites",
-        0x19bbe,
-        26,
-        frog::anim::place_frog_sprites,
-    );
+    frog_check("place_frog_sprites", 0x19bbe, 26, frog::anim::place_frog_sprites);
 }
 
 /// The rare ends of `frog_air_anim`: sitting on a pushing surface (the croak, with its random
@@ -367,21 +304,12 @@ fn frog_air_anim_on_pushing_surfaces_matches_the_original() {
         s.poke_l(h0(0x18), 0);
         s.poke_l(h0(0x40da), g.pick(&[1, 1, 5]));
         let croak = s.hw.joy1dat & 0x303 == 0;
-        if rig.check(
-            "frog_air_anim (pushing)",
-            case,
-            0x11056,
-            &s,
-            frog::physics::frog_air_anim,
-        ) {
+        if rig.check("frog_air_anim (pushing)", case, 0x11056, &s, frog::physics::frog_air_anim) {
             croaks += croak as u32;
             locks += (m == 0x39) as u32;
         }
     }
-    assert!(
-        croaks > 1000 && locks > 1000,
-        "{croaks} croak and {locks} lock setups"
-    );
+    assert!(croaks > 1000 && locks > 1000, "{croaks} croak and {locks} lock setups");
 }
 
 #[test]
@@ -395,22 +323,13 @@ fn frog_level_entry_matches_the_original() {
         any_frog(&mut g, &mut s);
         s.poke_w(h0(0x9e2), (!g.one_in(8)) as u16);
         s.poke_w(h0(0x6c92), g.below(10) as u16);
-        s.poke_w(
-            FROG + f::ANIM_TIME,
-            g.pick(&[0x1f3f, 0x1f40, 0x1f41, 3, 0xffff]),
-        );
+        s.poke_w(FROG + f::ANIM_TIME, g.pick(&[0x1f3f, 0x1f40, 0x1f41, 3, 0xffff]));
         s.poke_w(h0(0x1e), g.one_in(5) as u16);
         for sp in [FROG_SPRITE_LEFT, FROG_SPRITE_RIGHT] {
             s.poke_w(sp, 0x60 + g.below(0x40) as u16);
             s.poke_w(sp + 2, 0x40 + g.below(0x80) as u16);
         }
-        rig.check(
-            "frog_level_entry",
-            case,
-            0x6bd4,
-            &s,
-            frog::anim::frog_level_entry,
-        );
+        rig.check("frog_level_entry", case, 0x6bd4, &s, frog::anim::frog_level_entry);
     }
 }
 
@@ -436,9 +355,7 @@ fn frog_new_game_matches_the_original() {
     for case in 0..CASES {
         let mut s = Setup::default();
         any_record(&mut g, &mut s);
-        rig.check("frog_new_game", case, 0x8f90, &s, |c| {
-            frog::frog_new_game(&mut c.bus)
-        });
+        rig.check("frog_new_game", case, 0x8f90, &s, |c| frog::frog_new_game(&mut c.bus));
     }
 }
 
@@ -449,8 +366,6 @@ fn frog_reset_matches_the_original() {
     for case in 0..CASES {
         let mut s = Setup::default();
         any_record(&mut g, &mut s);
-        rig.check("frog_reset", case, 0x902e, &s, |c| {
-            frog::frog_reset(&mut c.bus)
-        });
+        rig.check("frog_reset", case, 0x902e, &s, |c| frog::frog_reset(&mut c.bus));
     }
 }

@@ -208,11 +208,7 @@ fn set_cell_tile(c: &mut LevelCtx, cell: u32, tile: u16) {
     let tile = v >> 6;
     let d = cell.wrapping_sub(b.l(MAP_ROWS));
     let (q, r) = (d / 0x260, d % 0x260);
-    let (row, rem) = if q > 0xffff {
-        (d as u16, (d >> 16) as u16)
-    } else {
-        (q as u16, r as u16)
-    };
+    let (row, rem) = if q > 0xffff { (d as u16, (d >> 16) as u16) } else { (q as u16, r as u16) };
     let x = rem.wrapping_shl(3);
     let y = row.wrapping_shl(4);
     let left = b.w(h0(0x16666)).wrapping_sub(0x20);

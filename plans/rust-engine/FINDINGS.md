@@ -18,7 +18,7 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
-| 2026-10-13 | 📌 | T71 review: T71 ran `cargo fmt` over ~20 files outside its scope (sf-core, sf-conform tests); formatting only, checked against base formatted. Likely merge conflicts with parallel tasks. Not reverted. |
+| 2026-10-13 | 📌 | T71 review: T71 ran `cargo fmt` over ~20 files outside its scope; formatting only. It conflicted at merge, so those files were restored to the feature branch's version. |
 | 2026-10-13 | 🔄 | T71 split at pir's context line: its `re/symbols.toml` slot routines and tables moved to T87 and T88 (both block T72); everything else of T71 committed. |
 | 2026-10-13 | 🔄 | Owner, T36 review: of the split-off tasks only T81 blocks T37 (they share level/mod.rs, scene.rs, game.rs); T82–T86 run alongside T37. |
 | 2026-10-13 | 🐞 | T36 review: ignoring the cut's loop step re-syncs items-run-w1-1 at frame 334, yet `frog_cases` stays green: the runner re-syncs silently. Open until T82's `resync = false`. |

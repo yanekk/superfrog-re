@@ -168,7 +168,12 @@ fn record(path: &Path, rest: &[String]) -> Result<bool, String> {
     if let Some(d) = &png_dir {
         std::fs::create_dir_all(d).map_err(|e| format!("{}: {e}", d.display()))?;
     }
-    let synced = sync::reach_frozen(&case.sync, &case.script, case.frames, case.freeze())?;
+    let synced = sync::reach_frozen(
+        &case.sync,
+        &case.script,
+        case.frames,
+        case.freeze(),
+    )?;
     let mut amiga = synced.amiga;
     // As `run` does: from the end sequence on, every disk the original asks for goes in.
     let mut disks =

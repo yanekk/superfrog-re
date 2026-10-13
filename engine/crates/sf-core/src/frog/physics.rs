@@ -20,7 +20,9 @@ pub fn frog_move(c: &mut LevelCtx) {
     }
 }
 
-use crate::frog::anim::{DEMO_JOY, frog_set_anim, frog_set_anim_at, frog_set_anim_free, set_anim};
+use crate::frog::anim::{
+    DEMO_JOY, frog_set_anim, frog_set_anim_at, frog_set_anim_free, set_anim,
+};
 use crate::layout::h0;
 use crate::level::camera::SHOOTER_MODE;
 use crate::level::collision::{LEFT_ANIMS, bounce, n_clear_l};
@@ -89,10 +91,7 @@ pub fn frog_walk_input(c: &mut LevelCtx) {
     }
     b.set_l(FROG + f::PREV_X, b.l(FROG + f::X));
     if b.w(FROG + f::CROUCH_TIME) != 0 {
-        b.set_w(
-            FROG + f::CROUCH_TIME,
-            b.w(FROG + f::CROUCH_TIME).wrapping_sub(1),
-        );
+        b.set_w(FROG + f::CROUCH_TIME, b.w(FROG + f::CROUCH_TIME).wrapping_sub(1));
     }
     if b.w(FROG + f::CROUCH) != 0 {
         b.set_w(FROG + f::CROUCH_TIME, 5);
@@ -113,10 +112,7 @@ pub fn frog_walk_input(c: &mut LevelCtx) {
     if b.w(SHOOTER_MODE) != 0 {
         return shooter_input(b, joy);
     }
-    let (wall_r, wall_l) = (
-        b.w(FROG + f::WALL_RIGHT) != 0,
-        b.w(FROG + f::WALL_LEFT) != 0,
-    );
+    let (wall_r, wall_l) = (b.w(FROG + f::WALL_RIGHT) != 0, b.w(FROG + f::WALL_LEFT) != 0);
     match joy {
         0x100 => return up(c),
         0x103 => return up_side(c, false),
@@ -166,10 +162,7 @@ fn up_side(c: &mut LevelCtx, left: bool) {
     }
     b.set_w(FROG + f::AIR, 1);
     let speed = b.w(FROG + f::SPEED);
-    b.set_w(
-        FROG + f::VX,
-        if left { speed.wrapping_neg() } else { speed },
-    );
+    b.set_w(FROG + f::VX, if left { speed.wrapping_neg() } else { speed });
     b.set_w(FROG + f::GRAVITY_TICK, 3);
     b.set_w(FROG + f::VY, b.w(FROG + f::BOUNCE_VY));
     b.set_w(FROG + f::HEAD_BUMP, 1);
@@ -206,11 +199,7 @@ fn walk(c: &mut LevelCtx, left: bool) {
     frog_set_anim_at(c, anim, step);
     let b = &mut c.bus;
     if b.w(FROG + f::AIR) == 0 {
-        let toggle = if left {
-            f::LEFT_TOGGLE
-        } else {
-            f::RIGHT_TOGGLE
-        };
+        let toggle = if left { f::LEFT_TOGGLE } else { f::RIGHT_TOGGLE };
         let t = !b.w(FROG + toggle);
         b.set_w(FROG + toggle, t);
         if t == 0 {
@@ -267,34 +256,19 @@ fn no_walk(c: &mut LevelCtx) {
         if brake && vx != 0 {
             b.set_w(
                 FROG + f::VX,
-                if n_clear(vx) {
-                    vx.wrapping_sub(1)
-                } else {
-                    vx.wrapping_add(1)
-                },
+                if n_clear(vx) { vx.wrapping_sub(1) } else { vx.wrapping_add(1) },
             );
         }
     }
     // h0+$11584: a steep slope (4 or more) or a slow frog takes the slope's animation.
     let slope = b.w(FROG + f::SLOPE);
-    let steep = n_clear(
-        (if n_clear(slope) {
-            slope
-        } else {
-            slope.wrapping_neg()
-        })
-        .wrapping_sub(4),
-    );
+    let steep = n_clear((if n_clear(slope) { slope } else { slope.wrapping_neg() }).wrapping_sub(4));
     let vx = b.w(FROG + f::VX);
     let speed = if n_clear(vx) { vx } else { vx.wrapping_neg() };
     let anim = b.l(FROG + f::ANIM);
     if !steep && n_clear(speed.wrapping_sub(5)) {
         // h0+$115ec: fast: the running animation.
-        let a1 = if anim > LEFT_ANIMS {
-            h0(0x10cd6)
-        } else {
-            h0(0x104fe)
-        };
+        let a1 = if anim > LEFT_ANIMS { h0(0x10cd6) } else { h0(0x104fe) };
         return frog_set_anim_free(c, a1);
     }
     if !steep && anim == h0(0x10cd6) {
@@ -362,10 +336,7 @@ const SHOOTER_DECAY: u32 = h0(0x1194e);
 pub fn frog_air_anim(c: &mut LevelCtx) {
     let b = &mut c.bus;
     if b.w(FROG + f::ANIM_LOCK) != 0 {
-        b.set_w(
-            FROG + f::ANIM_LOCK,
-            b.w(FROG + f::ANIM_LOCK).wrapping_sub(1),
-        );
+        b.set_w(FROG + f::ANIM_LOCK, b.w(FROG + f::ANIM_LOCK).wrapping_sub(1));
     }
     if b.w(FROG + f::HURT) != 0 {
         return;
@@ -402,10 +373,7 @@ pub fn frog_air_anim(c: &mut LevelCtx) {
             if n_clear(b.w(FROG + f::VY).wrapping_sub(1))
                 && !n_clear(b.w(FROG + f::JUMP_PRESSES).wrapping_sub(8))
             {
-                b.set_w(
-                    FROG + f::JUMP_PRESSES,
-                    b.w(FROG + f::JUMP_PRESSES).wrapping_add(1),
-                );
+                b.set_w(FROG + f::JUMP_PRESSES, b.w(FROG + f::JUMP_PRESSES).wrapping_add(1));
                 let vy = b.w(FROG + f::VY).wrapping_sub(2);
                 b.set_w(FROG + f::VY, vy);
                 if !n_clear(vy.wrapping_add(2)) {
@@ -422,11 +390,7 @@ pub fn frog_air_anim(c: &mut LevelCtx) {
         if s == 0 {
             b.set_w(FROG + f::BLINK, 0x28);
         }
-        let mut a1 = if b.w(FROG + f::FACING) != 0 {
-            h0(0x103f6)
-        } else {
-            h0(0x10bce)
-        };
+        let mut a1 = if b.w(FROG + f::FACING) != 0 { h0(0x103f6) } else { h0(0x10bce) };
         if b.w(FROG + f::Y) != b.w(FROG + f::PREV_Y) {
             a1 += 0xc;
             if b.w(FROG + f::CLIMB) != 0 {
@@ -439,22 +403,14 @@ pub fn frog_air_anim(c: &mut LevelCtx) {
     let hold = b.w(FROG + f::LAUNCH_HOLD);
     if hold != 0 && n_clear(hold) {
         b.set_w(FROG + f::LAUNCH_HOLD, hold.wrapping_sub(1));
-        let a1 = if b.w(FROG + f::FACING) == 0 {
-            h0(0x1041a)
-        } else {
-            h0(0x10bf2)
-        };
+        let a1 = if b.w(FROG + f::FACING) == 0 { h0(0x1041a) } else { h0(0x10bf2) };
         return frog_set_anim(c, a1);
     }
     if b.w(SHOOTER_MODE) != 0 {
         return frog_set_anim(c, h0(0x10b7e));
     }
     if b.w(FROG + f::SPECIAL_ANIM) != 0 {
-        let table = if b.w(FROG + f::FACING) != 0 {
-            h0(0x11046)
-        } else {
-            h0(0x11036)
-        };
+        let table = if b.w(FROG + f::FACING) != 0 { h0(0x11046) } else { h0(0x11036) };
         let k = b.w(FROG + f::SPECIAL_ANIM).wrapping_mul(4);
         let a1 = b.l(table.wrapping_add(k as i16 as i32 as u32));
         frog_set_anim(c, a1);
@@ -473,8 +429,7 @@ pub fn frog_air_anim(c: &mut LevelCtx) {
     let fast = n_clear(vx.wrapping_sub(7)) || !n_clear(vx.wrapping_add(6));
     let steep = n_clear(slope.wrapping_sub(1)) || !n_clear(slope.wrapping_add(1));
     let mut sit = false;
-    if fast
-        && steep
+    if fast && steep
         && b.w(FROG + f::CLIMB) != 0
         && c.hw.joy1dat & 0x303 == 0
         && (b.w(FROG + f::SLIDING) != 0 || b.w(FROG + f::PUSHED) != 0)
@@ -536,11 +491,7 @@ pub fn frog_air_anim(c: &mut LevelCtx) {
     }
     let b = &mut c.bus;
     b.set_w(FROG + f::ANIM_LOCK, 2);
-    let a1 = if b.w(FROG + f::FACING) != 0 {
-        h0(0x103b2)
-    } else {
-        h0(0x10b8a)
-    };
+    let a1 = if b.w(FROG + f::FACING) != 0 { h0(0x103b2) } else { h0(0x10b8a) };
     set_anim(b, a1);
 }
 
@@ -592,9 +543,5 @@ pub fn demo_play(c: &mut LevelCtx) {
 /// `demo_record` (h0+$11a32): a development recorder of the joystick, on while h0+$1c is set,
 /// which nothing in the game sets; not ported beyond its test.
 pub fn demo_record(c: &mut LevelCtx) {
-    debug_assert_eq!(
-        c.bus.w(h0(0x1c)),
-        0,
-        "the demo recorder is a development leftover"
-    );
+    debug_assert_eq!(c.bus.w(h0(0x1c)), 0, "the demo recorder is a development leftover");
 }

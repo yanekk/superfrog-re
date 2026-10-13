@@ -102,10 +102,7 @@ fn cell_position(b: &Bus, cell: u32, dx: u16, dy: u16) -> (u16, u16) {
     } else {
         ((d / 0x260) as u16, (d % 0x260) as u16)
     };
-    (
-        dx.wrapping_add(rem.wrapping_shl(3)),
-        dy.wrapping_add(row.wrapping_shl(4)),
-    )
+    (dx.wrapping_add(rem.wrapping_shl(3)), dy.wrapping_add(row.wrapping_shl(4)))
 }
 
 /// The map cell under pixel `x`, `y` less one cell (h0+$1b79c): what a pixel spawn records as its
@@ -147,52 +144,26 @@ pub fn obj_spawn_cell(c: &mut LevelCtx, template: u32, cell: u32, dx: u16, dy: u
         .map(|k| OBJ_SLOTS + k * SLOT_SIZE)
         .find(|&s| c.bus.l(s + 0x40) == cell)
     {
-        return Spawned {
-            d0: 0,
-            d1: 0xffff_ffff,
-            a0: s,
-        };
+        return Spawned { d0: 0, d1: 0xffff_ffff, a0: s };
     }
     // With no slot the original sets d0 to -1, then clears it.
     spawn_at_cell(c, template, cell, dx, dy).map_or(
-        Spawned {
-            d0: 0,
-            d1: dy as u32,
-            a0: 0,
-        },
-        |(s, _)| Spawned {
-            d0: 0,
-            d1: 0,
-            a0: s,
-        },
+        Spawned { d0: 0, d1: dy as u32, a0: 0 },
+        |(s, _)| Spawned { d0: 0, d1: 0, a0: s },
     )
 }
 
 /// `obj_spawn_cell_alt` (h0+$1b4e6): [`obj_spawn_cell`] without looking for a live slot there.
 pub fn obj_spawn_cell_alt(c: &mut LevelCtx, template: u32, cell: u32, dx: u16, dy: u16) -> Spawned {
     spawn_at_cell(c, template, cell, dx, dy).map_or(
-        Spawned {
-            d0: 0xffff_ffff,
-            d1: dy as u32,
-            a0: 0,
-        },
-        |(s, y)| Spawned {
-            d0: 0,
-            d1: y as u32,
-            a0: s,
-        },
+        Spawned { d0: 0xffff_ffff, d1: dy as u32, a0: 0 },
+        |(s, y)| Spawned { d0: 0, d1: y as u32, a0: s },
     )
 }
 
 /// The cell spawners' search and fill: the slot and the y it took, or `None` (nothing changed
 /// but evictions).
-fn spawn_at_cell(
-    c: &mut LevelCtx,
-    template: u32,
-    cell: u32,
-    dx: u16,
-    dy: u16,
-) -> Option<(u32, u16)> {
+fn spawn_at_cell(c: &mut LevelCtx, template: u32, cell: u32, dx: u16, dy: u16) -> Option<(u32, u16)> {
     let slot = find_free(c)?;
     if !take_bob(&mut c.bus, slot) {
         return None;
@@ -206,31 +177,18 @@ fn spawn_at_cell(
 
 /// `obj_spawn_coin_forced` (h0+$1b5d0): a coin at map cell `cell`. With every slot full and none
 /// evictable off the screen, the first slot that is neither evictable nor a coin is freed for it.
-pub fn obj_spawn_coin_forced(
-    c: &mut LevelCtx,
-    template: u32,
-    cell: u32,
-    dx: u16,
-    dy: u16,
-) -> Spawned {
+pub fn obj_spawn_coin_forced(c: &mut LevelCtx, template: u32, cell: u32, dx: u16, dy: u16) -> Spawned {
     let slots = || (0..SLOTS).map(|k| OBJ_SLOTS + k * SLOT_SIZE);
     if let Some(s) = slots().find(|&s| c.bus.l(s + 0x40) == cell) {
-        return Spawned {
-            d0: 0,
-            d1: dy as u32,
-            a0: s,
-        };
+        return Spawned { d0: 0, d1: dy as u32, a0: s };
     }
-    let none = Spawned {
-        d0: 0xffff_ffff,
-        d1: dy as u32,
-        a0: template,
-    };
+    let none = Spawned { d0: 0xffff_ffff, d1: dy as u32, a0: template };
     let slot = match find_free(c) {
         Some(s) => s,
         None => {
             let coin_init = h0(0x23f60);
-            let Some(s) = slots().find(|&s| c.bus.w(s + 0x2a) == 0 && c.bus.l(s) != coin_init)
+            let Some(s) = slots()
+                .find(|&s| c.bus.w(s + 0x2a) == 0 && c.bus.l(s) != coin_init)
             else {
                 return none;
             };
@@ -245,11 +203,7 @@ pub fn obj_spawn_coin_forced(
     c.bus.set_w(template + 8, x);
     c.bus.set_w(template + 0xa, y);
     fill_slot(c, slot, template, cell);
-    Spawned {
-        d0: 0,
-        d1: y as u32,
-        a0: slot,
-    }
+    Spawned { d0: 0, d1: y as u32, a0: slot }
 }
 
 /// `obj_spawn_at_xy` (h0+$1b706): `template` at level pixel `x`, `y`, unless a live slot was
@@ -260,39 +214,19 @@ pub fn obj_spawn_at_xy(c: &mut LevelCtx, template: u32, x: u16, y: u16) -> Spawn
         .map(|k| OBJ_SLOTS + k * SLOT_SIZE)
         .find(|&s| c.bus.l(s + 0x44) == at)
     {
-        return Spawned {
-            d0: 0,
-            d1: 0xffff_ffff,
-            a0: s,
-        };
+        return Spawned { d0: 0, d1: 0xffff_ffff, a0: s };
     }
     spawn_at_pixel(c, template, x, y).map_or(
-        Spawned {
-            d0: 0xffff_ffff,
-            d1: 0,
-            a0: 0,
-        },
-        |s| Spawned {
-            d0: 0,
-            d1: 0,
-            a0: s,
-        },
+        Spawned { d0: 0xffff_ffff, d1: 0, a0: 0 },
+        |s| Spawned { d0: 0, d1: 0, a0: s },
     )
 }
 
 /// `obj_spawn_at_xy_nodedup` (h0+$1b822): [`obj_spawn_at_xy`] without looking for a slot there.
 pub fn obj_spawn_at_xy_nodedup(c: &mut LevelCtx, template: u32, x: u16, y: u16) -> Spawned {
     spawn_at_pixel(c, template, x, y).map_or(
-        Spawned {
-            d0: 0xffff_ffff,
-            d1: y as u32,
-            a0: 0,
-        },
-        |s| Spawned {
-            d0: 0,
-            d1: y as u32,
-            a0: s,
-        },
+        Spawned { d0: 0xffff_ffff, d1: y as u32, a0: 0 },
+        |s| Spawned { d0: 0, d1: y as u32, a0: s },
     )
 }
 
@@ -358,28 +292,16 @@ pub fn obj_despawn_if_offscreen(c: &mut LevelCtx, slot: u32, _d7: u16) {
     if b.l(slot + 0x40) == 0 {
         return;
     }
-    let dirs = if b.w(SHOOTER_MODE) != 0 {
-        0xff
-    } else {
-        b.b(SCROLL_DIRS)
-    };
+    let dirs = if b.w(SHOOTER_MODE) != 0 { 0xff } else { b.b(SCROLL_DIRS) };
     let frame = shown_frame(b, slot);
     let (x, y) = (b.w(slot + 8), b.w(slot + 0xa));
     let (cx, cy) = (b.w(CAMERA_X + 2), b.w(CAMERA_Y + 2));
     let gone = (dirs & 4 != 0 && n_clear(x.wrapping_sub(0x170).wrapping_sub(cx)))
         || (dirs & 2 != 0
-            && !n_clear(
-                x.wrapping_add(b.w(frame + 4))
-                    .wrapping_add(0x30)
-                    .wrapping_sub(cx),
-            ))
+            && !n_clear(x.wrapping_add(b.w(frame + 4)).wrapping_add(0x30).wrapping_sub(cx)))
         || (dirs & 0x10 != 0 && n_clear(y.wrapping_sub(0x150).wrapping_sub(cy)))
         || (dirs & 8 != 0
-            && !n_clear(
-                y.wrapping_add(b.w(frame + 6))
-                    .wrapping_add(0x30)
-                    .wrapping_sub(cy),
-            ));
+            && !n_clear(y.wrapping_add(b.w(frame + 6)).wrapping_add(0x30).wrapping_sub(cy)));
     if gone {
         obj_free(c, slot, 0);
     }
@@ -476,11 +398,7 @@ pub fn collide_all(c: &mut LevelCtx) {
     spud_touches(c);
     c.step_done();
     frog_touches(c);
-    debug_assert_eq!(
-        c.bus.w(SHOOTER_MODE),
-        0,
-        "the bonus level's collisions are T19's"
-    );
+    debug_assert_eq!(c.bus.w(SHOOTER_MODE), 0, "the bonus level's collisions are T19's");
 }
 
 /// h0+$d284: the spud's 16-pixel box against every object's: each hit runs the object's touch
@@ -524,17 +442,9 @@ fn frog_touches(c: &mut LevelCtx) {
         if b.w(slot + 0x2e) != 0
             && !hurt
             && n_clear(b.w(FROG + f::VY))
-            && !n_clear(
-                b.w(FROG + f::Y)
-                    .wrapping_add(0x29)
-                    .wrapping_sub(b.w(slot + 0xa)),
-            )
+            && !n_clear(b.w(FROG + f::Y).wrapping_add(0x29).wrapping_sub(b.w(slot + 0xa)))
         {
-            let vy = if b.w(OPT_GAME_MODE) == 0 {
-                0xffff
-            } else {
-                0xfffe
-            };
+            let vy = if b.w(OPT_GAME_MODE) == 0 { 0xffff } else { 0xfffe };
             b.set_w(FROG + f::VY, vy);
             let touch = b.l(slot + 0x10);
             crate::level::call(c, touch, slot, 0);
@@ -658,12 +568,7 @@ pub(crate) fn blit(b: &mut Bus, x: Blit) {
     );
     let (ash, bsh) = ((x.con0 >> 12) as u32, (x.con1 >> 12) as u32);
     let mt = x.con0 as u8;
-    let (mut pa, mut pb, mut pc, mut pd) = (
-        x.a & 0x7_fffe,
-        x.b & 0x7_fffe,
-        x.c & 0x7_fffe,
-        x.d & 0x7_fffe,
-    );
+    let (mut pa, mut pb, mut pc, mut pd) = (x.a & 0x7_fffe, x.b & 0x7_fffe, x.c & 0x7_fffe, x.d & 0x7_fffe);
     let (mut aold, mut bold) = (0u16, 0u16);
     for _ in 0..h {
         for col in 0..w {
@@ -1094,10 +999,7 @@ fn draw_background(c: &mut LevelCtx, rec: u32, frame_at: u32, back: u32) {
         let words = neg >> 4;
         b.set_w(rec + 0x1e, b.w(rec + 0x1e).wrapping_sub(words));
         let bytes = words.wrapping_mul(2);
-        b.set_l(
-            rec + 0x20,
-            b.l(rec + 0x20).wrapping_add(bytes as i16 as i32 as u32),
-        );
+        b.set_l(rec + 0x20, b.l(rec + 0x20).wrapping_add(bytes as i16 as i32 as u32));
         b.set_w(rec + 0x26, b.w(rec + 0x26).wrapping_add(bytes));
         b.set_w(rec + 0x24, b.w(rec + 0x24).wrapping_add(bytes));
         let d6 = 0xfu16.wrapping_sub(neg & 0xf);
@@ -1135,10 +1037,7 @@ fn draw_background(c: &mut LevelCtx, rec: u32, frame_at: u32, back: u32) {
         b.set_l(rec + 0x20, b.l(rec + 0x20).wrapping_add(skip));
         index = b.w(BD_CLEAN_TOP).wrapping_mul(2).wrapping_sub(d5);
     } else {
-        index = y
-            .wrapping_add(b.w(BD_CLEAN_TOP))
-            .wrapping_mul(2)
-            .wrapping_sub(d5);
+        index = y.wrapping_add(b.w(BD_CLEAN_TOP)).wrapping_mul(2).wrapping_sub(d5);
     }
     a1 = a1.wrapping_add(line_offset_long(b, index));
     if (b.w(rec) as i16) < 0 && !n_clear(b.w(rec + 2).wrapping_sub(1)) {

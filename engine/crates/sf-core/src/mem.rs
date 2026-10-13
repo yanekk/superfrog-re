@@ -110,8 +110,7 @@ pub fn boot_tables(h0: &mut [u8]) -> Vec<(u32, Vec<u8>)> {
     for table in [0x19ddc, 0x19de8] {
         let mut a = H0 + table;
         loop {
-            let h =
-                u16::from_be_bytes([h0[(rect - H0) as usize + 6], h0[(rect - H0) as usize + 7]]);
+            let h = u16::from_be_bytes([h0[(rect - H0) as usize + 6], h0[(rect - H0) as usize + 7]]);
             let size = ((h.wrapping_add(1) as u8 as i8 as i16 as u16) as u32) << 4;
             put(h0, a, &data.to_be_bytes());
             data = data.wrapping_add(size);
@@ -371,21 +370,21 @@ mod tests {
     #[test]
     fn hunk0_is_relocated_to_each_target_s_base() {
         let b = loaded(&Hunk {
-            kind: HunkKind::Code,
-            mem: 0,
-            size: 16,
-            data: vec![0, 0, 0, 8, 0, 0, 0, 4, 9, 9],
-            relocs: vec![
-                Reloc {
-                    target: 0,
-                    offsets: vec![0],
-                },
-                Reloc {
-                    target: 3,
-                    offsets: vec![4],
-                },
-            ],
-            present: true,
+                kind: HunkKind::Code,
+                mem: 0,
+                size: 16,
+                data: vec![0, 0, 0, 8, 0, 0, 0, 4, 9, 9],
+                relocs: vec![
+                    Reloc {
+                        target: 0,
+                        offsets: vec![0],
+                    },
+                    Reloc {
+                        target: 3,
+                        offsets: vec![4],
+                    },
+                ],
+                present: true,
         });
         assert_eq!(b.len(), 16);
         assert_eq!(&b[..4], &(H0 + 8).to_be_bytes());

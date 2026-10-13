@@ -107,9 +107,8 @@ impl DisplayData {
                 .map(|(id, l)| (*id, sf_assets::t7mp_encode(&l.t7mp)))
                 .collect(),
             rom: crate::mem::Rom::new(data),
-            sound: crate::audio::SoundData::from_game(data).unwrap_or_else(|_| {
-                crate::audio::SoundData::from_parts(vec![0; 0x50000], vec![], vec![], vec![])
-            }),
+            sound: crate::audio::SoundData::from_game(data)
+                .unwrap_or_else(|_| crate::audio::SoundData::from_parts(vec![0; 0x50000], vec![], vec![], vec![])),
         }
     }
 
