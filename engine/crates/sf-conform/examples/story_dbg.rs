@@ -40,8 +40,10 @@ fn main() {
     let mut irqs = Vec::new();
     for f in 0..frames {
         let input = case.script.input_at(of);
+        let resumes = sync::intro_resumes(&amiga);
         let mut cap = sync::step_inserting(&mut amiga, input).unwrap();
         let mut entry = sync::handler_entry(&irqs, &amiga.irqs());
+        let mut handler_end = sync::handler_end(&cap.paula, resumes);
         irqs = amiga.irqs();
         of += 1;
         let mut pacing = sync::pacing(&amiga.cpu(), &sync::core_memory(amiga.memory()), &cap.paula);
@@ -53,6 +55,7 @@ fn main() {
         let before = game.clone();
         if std::env::var("NOFEED").is_err() {
             game.set_handler_entry(entry);
+            game.set_handler_end(handler_end);
         }
         let mut out = game.step_paced(input, pacing);
         out.paula.splice(0..0, held);
@@ -74,8 +77,10 @@ fn main() {
                     break;
                 }
                 prev_mem = sync::core_memory(amiga.memory());
+                let resumes = sync::intro_resumes(&amiga);
                 cap = sync::step_inserting(&mut amiga, case.script.input_at(of)).unwrap();
                 entry = sync::handler_entry(&irqs, &amiga.irqs());
+                handler_end = sync::handler_end(&cap.paula, resumes);
                 irqs = amiga.irqs();
                 of += 1;
             }
@@ -98,6 +103,7 @@ fn main() {
                 g.set_load_line(line);
                 if std::env::var("NOFEED").is_err() {
                     g.set_handler_entry(entry);
+                    g.set_handler_end(handler_end);
                 }
                 let o = g.step_paced(input, pacing);
                 let leaves = g.load_leaves();
@@ -157,6 +163,21 @@ fn main() {
                     .collect();
                 println!("PAL F {f} {}", s.join("  "));
             }
+        }
+        if std::env::var("DRAWS").is_ok() {
+            // `DRAWS=1` (T54): frames whose DMACON writes (a draw's `$8400` and `$0400` above all)
+            // differ in value or order, both sides with their lines.
+            let dmacon = |ws: &[sf_paula::PaulaWrite]| {
+                ws.iter()
+                    .filter(|w| w.reg == 0x96)
+                    .map(|w| (w.value, w.vpos))
+                    .collect::<Vec<_>>()
+            };
+            let (o, t) = (dmacon(&out.paula), dmacon(&cap.paula));
+            if o.iter().map(|w| w.0).ne(t.iter().map(|w| w.0)) {
+                println!("DRAW F {f} O {} ours {o:x?} orig {t:x?}", of - 1);
+            }
+            continue;
         }
         if std::env::var("SCAN").is_ok() {
             let pd = sf_conform::compare::picture(&out.picture, &cap.picture);

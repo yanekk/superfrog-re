@@ -154,9 +154,11 @@ fn run_inner(
     for f in 0..case.frames {
         let input = case.script.input_at(of);
         frozen.apply(&mut amiga, &display);
+        let resumes = sync::intro_resumes(&amiga);
         let mut theirs = sync::step_inserting(&mut amiga, input)
             .unwrap_or_else(|e| panic!("{}: oracle, frame {of}: {e}", case.name));
         let mut entry = sync::handler_entry(&irqs, &amiga.irqs());
+        let mut handler_end = sync::handler_end(&theirs.paula, resumes);
         irqs = amiga.irqs();
         if let Some(d) = disks.as_mut() {
             d.serve(&mut amiga);
@@ -180,6 +182,7 @@ fn run_inner(
             game.anchor_blits(&amiga.blit_starts());
             let before = game.clone();
             game.set_handler_entry(entry);
+            game.set_handler_end(handler_end);
             ours = game.step_paced(input, pacing);
             ours.paula.splice(0..0, held);
             if let Some(end) = ours.load {
@@ -207,9 +210,11 @@ fn run_inner(
                         case.name
                     );
                     frozen.apply(&mut amiga, &display);
+                    let resumes = sync::intro_resumes(&amiga);
                     theirs = sync::step_inserting(&mut amiga, case.script.input_at(of))
                         .unwrap_or_else(|e| panic!("{}: oracle, frame {of}: {e}", case.name));
                     entry = sync::handler_entry(&irqs, &amiga.irqs());
+                    handler_end = sync::handler_end(&theirs.paula, resumes);
                     irqs = amiga.irqs();
                     if let Some(d) = disks.as_mut() {
                         d.serve(&mut amiga);
@@ -243,6 +248,7 @@ fn run_inner(
                     }
                     g.set_load_line(line);
                     g.set_handler_entry(entry);
+                    g.set_handler_end(handler_end);
                     let out = g.step_paced(input, pacing);
                     let leaves = g.load_leaves();
                     take(&mut g, &mem, leaves);
