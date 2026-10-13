@@ -59,7 +59,7 @@ done · ⛔ blocked, needs a human.
 | T34 | game-over | T15, T20; blocks T21 | ⬜ | |
 | T35 | end-sequence | T20; blocks T21 | ✅ | |
 | T36 | items-on-the-beam | T15 | ✅ | |
-| T37 | level-restart | T36; blocks T34 | ⬜ | |
+| T37 | level-restart | T36; blocks T34 | 🔍 | Restart: level_init replayed on the beam (timeline.rs), LevelStart, back to the loop. frog-pit 420 frames green; frog-timeup green to 268 (`clock` sync); 2 routine tests. Deviations: level_exit_fade frame-tested only (waits on the VBL's fade). frog-pit picture excluded 308–323, T96 (owner). Time-up ends before game_over_seq (T34). Code in exit.rs, not death.rs. |
 | T38 | level-tally | T37; blocks T21 | ⬜ | |
 | T39 | enemies-world-5 | T16, T38; blocks T18 | ⬜ | |
 | T40 | enemies-world-6 | T38; blocks T18 | ⬜ | |
@@ -102,11 +102,12 @@ done · ⛔ blocked, needs a human.
 | T92 | slot-load | T72 | ⬜ | |
 | T93 | slot-attract-draw | T72, T91, T92 | ⬜ | |
 | T94 | slot-interrupt-timing | T72, T91, T93; blocks T73 | ⬜ | |
+| T96 | front-vbl-timing | T37 | ⬜ | |
 
 A Notes cell holds what was built or what the review found, the test count, and one line per
 deviation from the task doc. A ✅ task's cell may be cut to one line once the next task has been reviewed.
 
-**Review queue:** *(empty)*
+**Review queue:** T37
 
 ## Blocked on the user
 
