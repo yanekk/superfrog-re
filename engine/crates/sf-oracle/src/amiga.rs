@@ -80,6 +80,37 @@ pub struct Irq {
     pub hpos: u16,
 }
 
+/// A custom-register write the CPU made ([`Amiga::cpu_writes`]): the register's offset from
+/// 0xDFF000, the value, and the beam (line, DMA cycle) as it was made.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct CpuWrite {
+    pub reg: u16,
+    pub value: u16,
+    pub vpos: u16,
+    pub hpos: u16,
+}
+
+/// What a [`BlitEvent`] marks.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum BlitEventKind {
+    /// The blit begins (vAmiga's `Blitter::beginBlit`).
+    Begin,
+    /// Its busy flag clears: BLTBUSY reads 0 from here (`Blitter::clearBusyFlag`).
+    Free,
+    /// It ends (`Blitter::endBlit`).
+    End,
+}
+
+/// A blitter event ([`Amiga::blit_events`]).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct BlitEvent {
+    pub kind: BlitEventKind,
+    /// It happened in the next frame: the step runs on into the next frame's start.
+    pub next: bool,
+    pub vpos: u16,
+    pub hpos: u16,
+}
+
 /// The rate of [`Amiga::mixed_audio`].
 pub const MIX_RATE: u32 = ffi::SF_AUDIO_RATE;
 
@@ -565,6 +596,55 @@ impl Amiga {
                 ]
             })
             .collect()
+    }
+
+    /// Every custom-register write the CPU made during the last step, in order, with the beam as
+    /// each was made (the Copper's are not kept).
+    pub fn cpu_writes(&self) -> Vec<CpuWrite> {
+        let mut ptr = std::ptr::null();
+        let n = unsafe { ffi::sf_amiga_cpu_writes(self.raw, &mut ptr) };
+        if n == 0 {
+            return Vec::new();
+        }
+        unsafe { std::slice::from_raw_parts(ptr, n) }
+            .iter()
+            .map(|w| CpuWrite {
+                reg: w.reg,
+                value: w.value,
+                vpos: w.vpos,
+                hpos: w.hpos,
+            })
+            .collect()
+    }
+
+    /// The blitter's events during the last step, in order: each blit's begin, busy flag clearing
+    /// and end, with the beam (line, DMA cycle) then (core patch 0005).
+    pub fn blit_events(&self) -> Vec<BlitEvent> {
+        let mut ptr = std::ptr::null();
+        let n = unsafe { ffi::sf_amiga_blit_events(self.raw, &mut ptr) };
+        if n == 0 {
+            return Vec::new();
+        }
+        unsafe { std::slice::from_raw_parts(ptr, n) }
+            .iter()
+            .map(|e| BlitEvent {
+                kind: match e.event {
+                    0 => BlitEventKind::Begin,
+                    1 => BlitEventKind::Free,
+                    _ => BlitEventKind::End,
+                },
+                next: e.next != 0,
+                vpos: e.vpos,
+                hpos: e.hpos,
+            })
+            .collect()
+    }
+
+    /// How many frames the last step ran: Agnus's frame count at its end minus at its start. A
+    /// step runs until the CPU ends an instruction past the frame's end, so a blit holding the CPU
+    /// can carry it into the next frame (FINDINGS 2026-10-13, T46); normally 1.
+    pub fn frames_run(&self) -> u32 {
+        unsafe { ffi::sf_amiga_frames_run(self.raw) as u32 }
     }
 
     /// The interrupts the CPU took during the last step, in order: their level and the beam position

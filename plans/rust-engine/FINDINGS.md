@@ -20,6 +20,14 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 |---|---|---|
 | 2026-10-13 | 🐞 | Open: `level_entry::every_level_is_entered_as_the_original_enters_it` red on every level, `slot_copper` original $140f440, engine $1400000. Same on T76's base ffbad9f (T71's slot variables in `LAYOUT`); T76 review, not fixed. |
 | 2026-10-13 | 📌 | T76 for T75's merge: both create `bonus/mod.rs` (keep both modules and both `register_all` lines). T76 copied T75's `bonus_rig`/`sound_files` hunks verbatim, so those merge clean. |
+| 2026-10-13 | 🐞 | T78, not fixed: `purity.rs`'s scanner flags a hex literal ending `f64`/`f32` (`0x2cf64`) as a float. Worked around with `0x2CF64`; the scanner should skip suffix checks on hex. |
+| 2026-10-13 | 📌 | T78: `reward_power_count` (h0+$23e20) is 9 in the executable, `shot_cycle_table` non-zero; `State::default` zeroes LAYOUT vars, so a booted game (T79/T21) must seed them from hunk 0. |
+| 2026-10-13 | 📌 | T78: `bonus::death::become_reward(c, slot, dx)` is h0+$23c14 for the enemies tasks; `touch_spud_damage` (h0+$2360e, $23662) itself stays unported. |
+| 2026-10-13 | 📌 | T51 review sweep: `Irq::next` (sf-oracle) has no direct test; only `sync::handler_entry` uses it. Left as is. |
+| 2026-10-13 | 📌 | T51 review: story_dbg `BLITS`/`REGS` after a load print only the load's last oracle step, not every step the load ran. Left as is. |
+| 2026-10-13 | 📌 | T51: a step's last blit's free/end often fall past the frame's end (`BlitEvent::next`) while `frames_run` stays 1; patch 0005 changed, so every worktree rebuilds vAmiga once (`tools/setup/oracle.sh`). |
+| 2026-10-13 | 🐞 | T75: `sf_conform::routine::sound_files` gave world 7 the W3–6 effect bank, unlike `audio::files_for`; any WB routine test playing an effect diverged. Fixed to the bonus bank. |
+| 2026-10-13 | 📌 | T75: at WB-1 the five shots are the only live objects (slots 0–4), with no hitboxes and touch `$7d4`; T78 adds the shot-hits-bonus-enemy case to `bonus_routines.rs`. |
 | 2026-10-13 | 📌 | T71 review: T71 ran `cargo fmt` over ~20 files outside its scope; formatting only. It conflicted at merge, so those files were restored to the feature branch's version. |
 | 2026-10-13 | 🔄 | T71 split at pir's context line: its `re/symbols.toml` slot routines and tables moved to T87 and T88 (both block T72); everything else of T71 committed. |
 | 2026-10-13 | 📌 | T49 review: the fade set-up job's `inside` ranges are not defended by any test (emptying them leaves `story-scene1-out` green: the two-frame grace masks 1242 anyway). Checked by probe: PC h0+$b94e at 1242's end. |

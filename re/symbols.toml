@@ -1619,6 +1619,82 @@ note = "touch handler: bonus-level enemies"
 [[sym]]
 exe = "d1_c03"
 hunk = 0
+offset = 0x23956
+name = "death_fall"
+kind = "func"
+note = "a shot bonus enemy falls away; at bob +$1a >= $7530 it becomes a reward, d0 = 8 (T78)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x23c14
+name = "become_reward"
+kind = "func"
+note = "a killed enemy (touch_bonus_enemy, touch_spud_damage) snaps to the ground and becomes a reward; d0 = dx (T78)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x23de4
+name = "reward_life_count"
+kind = "var"
+size = 0x2
+note = "shooter-mode rewards since the last life: every $28th is a life (T78)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x23de6
+name = "reward_wave"
+kind = "table"
+size = 0x3a
+note = "shooter-mode reward: y offsets of its wave, ended by $80 (T78)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x23e20
+name = "reward_power_count"
+kind = "var"
+size = 0x2
+note = "shooter-mode rewards since the last power-up: every 10th is one; 9 in the exe (T78)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x23e22
+name = "reward_float"
+kind = "func"
+note = "reward update in shooter mode: one left a pass along the wave, freed after $20 (T78)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x23e6c
+name = "reward_arc"
+kind = "func"
+note = "reward update outside shooter mode: rises on its arc until $7d00 (T78)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x23e90
+name = "reward_arc_table"
+kind = "table"
+size = 0x1c
+note = "reward: y offsets of its arc, ended by $7d00 (T78)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x23eac
+name = "touch_reward"
+kind = "func"
+note = "touch handler: reward taken once its arc is over; life / shot power, 200 points (T78)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
 offset = 0x239f6
 name = "touch_coin"
 kind = "func"
@@ -2498,6 +2574,101 @@ name = "passage_toggle"
 kind = "var"
 size = 2
 note = "toggles each pass while the frog goes down a secret passage (T14)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x7e3e
+name = "spawn_shots"
+kind = "func"
+note = "bonus level: the frog's five shots, x camera x+$160, y that x+$130 (T75)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x7f0a
+name = "shot_spawn_x"
+kind = "var"
+size = 0x4
+note = "where spawn_shots put the shots: x (T75)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x7f0e
+name = "shot_spawn_y"
+kind = "var"
+size = 0x4
+note = "where spawn_shots put the shots: y, x+$130 by the original's slip (T75)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x7f12
+name = "shot_power"
+kind = "var"
+size = 0x2
+note = "bonus level: non-zero once the two extra shots fire; halved, extra damage (T75)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x7f14
+name = "shooter_spud"
+kind = "func"
+note = "spud_update in shooter mode: fire sends the shots (T75)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x8008
+name = "shots_faster"
+kind = "func"
+note = "every shot's +$c speed up by one, but one at $1e (T75)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x8070
+name = "shot_update"
+kind = "func"
+note = "a shot's update: moves while x <= camera x+$200; off screen up or down, parked there (T75)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x80c6
+name = "shot_delay"
+kind = "var"
+size = 0x2
+note = "passes until fire sends the next shot (T75)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x80c8
+name = "shot_cycle"
+kind = "var"
+size = 0x4
+note = "the entry of shot_cycle_table the next shot comes from (T75)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x80cc
+name = "shot_cycle_table"
+kind = "table"
+size = 0x10
+note = "pointers to the first three of shots, then 0 (T75)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x80dc
+name = "shots"
+kind = "var"
+size = 0x14
+note = "the five shots' slots; the last two are the extra shots (T75)"
 
 [[sym]]
 exe = "d1_c03"

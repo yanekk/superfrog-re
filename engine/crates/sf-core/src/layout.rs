@@ -390,6 +390,16 @@ layout! {
     PassageCell = "passage_cell", h0(0x776c), Width::L;
     /// `passage_toggle` (h0+$7770).
     PassageToggle = "passage_toggle", h0(0x7770), Width::W;
+    /// The frog's shots in the bonus level (`bonus::shots`): where they were spawned
+    /// (`shot_spawn_x`, `shot_spawn_y`, h0+$7f0a, $7f0e), `shot_power` (h0+$7f12), `shot_delay`
+    /// (h0+$80c6), `shot_cycle` and its table (h0+$80c8, $80cc) and the five `shots` (h0+$80dc).
+    ShotSpawnX = "shot_spawn_x", h0(0x7f0a), Width::L;
+    ShotSpawnY = "shot_spawn_y", h0(0x7f0e), Width::L;
+    ShotPower = "shot_power", h0(0x7f12), Width::W;
+    ShotDelay = "shot_delay", h0(0x80c6), Width::W;
+    ShotCycle = "shot_cycle", h0(0x80c8), Width::L;
+    ShotCycleTable = "shot_cycle_table", h0(0x80cc), Width::Bytes(0x10);
+    Shots = "shots", h0(0x80dc), Width::Bytes(0x14);
     /// The panel's drawing (`level::panel`): `lives_icon_shown` (h0+$87c0), `score_digit`
     /// (h0+$8a74), `score_text` (h0+$8ab4..$8ac0), `clock_digit` and `clock_shown` (h0+$8be0,
     /// h0+$8be2), `extra_life_shown` (h0+$dd4), `number_started` and `number_text` (h0+$161aa,
@@ -522,6 +532,10 @@ layout! {
     /// `obj_templates` (h0+$1c6e2): 160 templates of `$ae` bytes; a spawner writes the position
     /// into one before copying its head into a slot (docs/09 "The slot record").
     ObjTemplates = "obj_templates", h0(0x1c6e2), Width::Bytes(160 * 0xae);
+    /// The bonus level's reward counters (`bonus::death`): `reward_life_count` (h0+$23de4),
+    /// `reward_power_count` (h0+$23e20, 9 in the executable).
+    RewardLifeCount = "reward_life_count", h0(0x23de4), Width::W;
+    RewardPowerCount = "reward_power_count", h0(0x23e20), Width::W;
     /// The bonus level's animation toggles (`bonus::enemies`), words inside the code that the
     /// listing reads as instructions: `bonus_toggle_114` (h0+$28ad8) and `bonus_toggle_113`
     /// (h0+$28b4a), flipped by each spawn of those types to pick one of two animations.
