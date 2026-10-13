@@ -333,6 +333,9 @@ impl Game {
             self.seed = None;
             let out = front.step(&mut self.state, &self.display, input);
             self.shown = Some(out.picture.clone());
+            if let Some(o) = front.outcome() {
+                self.outcome = Some(o);
+            }
             if front.in_level_loop() {
                 // `level_start` is over and `level_frame_loop` entered (T37): the level scene
                 // from the next frame.

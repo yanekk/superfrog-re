@@ -28,6 +28,8 @@ pub struct Divergence {
     pub oracle_frame: Option<u32>,
     /// Paths of the original the engine reached and does not follow yet.
     pub unported: Vec<&'static str>,
+    /// How the engine's last level ended, once one has ([`sf_core::Game::level_outcome`]).
+    pub level_outcome: Option<sf_core::level::LevelOutcome>,
     /// Every differing piece of the first differing variable (up to 40).
     pub var_detail: Vec<String>,
     /// The variables differed on the frame after a lag, where the runner would re-sync the
