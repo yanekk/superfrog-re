@@ -235,7 +235,16 @@ pub(crate) fn lives_count(c: &mut LevelCtx) {
 /// the clock (h0+$11dfe) and the score (h0+$8982, seven times from `score_digit = $a`).
 pub fn draw_at_start(c: &mut LevelCtx) {
     sprite_digits(&mut c.bus);
-    slide_in(c);
+    slide_begin(&mut c.bus);
+    for k in 0..SLIDE_STEPS {
+        slide_step(&mut c.bus, k);
+    }
+    after_slide(c);
+}
+
+/// What `level_start` draws once the panel is in: the lives count and icon, the clock and the
+/// score.
+pub(crate) fn after_slide(c: &mut LevelCtx) {
     lives_count(c);
     let b = &mut c.bus;
     let v = b.w(FROG + 0x5a);
@@ -270,29 +279,32 @@ pub(crate) fn sprite_digits(b: &mut Bus) {
     }
 }
 
-/// h0+$8510: the panel's picture (hunk 2 from h2+$14a0) slides in from the middle in `$18` steps,
-/// a frame each (the display window opened to line `$27` first). Each step copies its seven
-/// stripes of two lines, a word wider on each side; what is left is the last step's.
-fn slide_in(c: &mut LevelCtx) {
-    let b = &mut c.bus;
+/// The steps of the panel's slide (h0+$8510): `$18`, a frame each.
+pub const SLIDE_STEPS: u32 = 0x18;
+
+/// h0+$8510's start: the display window opened to line `$27`. (Its INTENA and blitter set-up
+/// are the caller's.)
+pub(crate) fn slide_begin(b: &mut Bus) {
     b.set_w(h2(0x6bd0) + 6, 0x2779);
-    let (mut a1, mut a4, mut width) = (PANEL + 0x2e, h2(0x14fe), 1u32);
+}
+
+/// Step `k` of h0+$8510's slide: the panel's picture (hunk 2 from h2+$14a0) slides in from the
+/// middle, each step copying its seven stripes of two lines, `k + 1` words wide on each side; what
+/// is left is the last step's.
+pub fn slide_step(b: &mut Bus, k: u32) {
+    let width = k + 1;
+    let (a1, a4) = (PANEL + 0x2e - 2 * k, h2(0x14fe) - 2 * k);
     let (a0, a5) = (h2(0x14a0), PANEL + 0x30);
-    for _ in 0..0x18 {
-        for row in 0..7 {
-            for plane in 0..5 {
-                let o = row * 0x60 + plane * PANEL_PLANE;
-                for w in 0..width {
-                    let v = b.w(a0 + o + 2 * w);
-                    b.set_w(a1 + o + 2 * w, v);
-                    let v = b.w(a4 + o + 2 * w);
-                    b.set_w(a5 + o + 2 * w, v);
-                }
+    for row in 0..7 {
+        for plane in 0..5 {
+            let o = row * 0x60 + plane * PANEL_PLANE;
+            for w in 0..width {
+                let v = b.w(a0 + o + 2 * w);
+                b.set_w(a1 + o + 2 * w, v);
+                let v = b.w(a4 + o + 2 * w);
+                b.set_w(a5 + o + 2 * w, v);
             }
         }
-        width += 1;
-        a1 -= 2;
-        a4 -= 2;
     }
 }
 

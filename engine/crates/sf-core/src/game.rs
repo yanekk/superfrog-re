@@ -323,6 +323,13 @@ impl Game {
             self.seed = None;
             let out = front.step(&mut self.state, &self.display, input);
             self.shown = Some(out.picture.clone());
+            if front.in_level_loop() {
+                // `level_start` is over and `level_frame_loop` entered (T37): the level scene
+                // from the next frame.
+                self.front = None;
+                self.scene = Scene::Level;
+                self.pending = None;
+            }
             return FrameOut {
                 picture: out.picture,
                 paula: out.paula,
@@ -336,12 +343,13 @@ impl Game {
         hw.sdr = self.sdr;
         let mut ended: Option<(crate::front::Front, Vec<PaulaWrite>, Vec<Job>)> = None;
         let display = Arc::clone(&self.display);
+        let frog_only = self.frog_only;
         let mut after = |s: &mut State, line: u16| {
             // `level_frame_loop` returned: what follows runs on the front end's program, from
             // where the loop's last pass ended (T37, `crate::level::exit`).
             let mut front = crate::front::Front::after_level(
                 s,
-                crate::front::Routine::LevelOver(Default::default()),
+                crate::front::Routine::LevelOver(crate::level::exit::LevelOver::new(frog_only)),
             );
             let (more, jobs) = front.finish_frame(s, &display, input, line);
             ended = Some((front, more, jobs));

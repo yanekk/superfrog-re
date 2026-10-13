@@ -75,6 +75,7 @@ pub fn scan_screen(c: &mut LevelCtx) {
     for row in 0..0x12u32 {
         let mut at = start.wrapping_add(row * 0x260);
         for _ in 0..0x18 {
+            c.spend(Cost::ScreenScanCell);
             let m = c.bus.w(at) & 0x3f;
             if let Some(spawn) = c.dispatch.marker(world, m as u8) {
                 spawn(c, at);

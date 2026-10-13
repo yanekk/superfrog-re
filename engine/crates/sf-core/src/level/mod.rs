@@ -22,6 +22,7 @@ pub mod panel;
 pub mod pass;
 pub mod scroll;
 pub mod spawn;
+pub mod timeline;
 
 use sf_paula::PaulaWrite;
 
