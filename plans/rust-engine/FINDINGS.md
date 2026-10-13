@@ -20,6 +20,7 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 |---|---|---|
 | 2026-10-13 | 🐞 | T75: `sf_conform::routine::sound_files` gave world 7 the W3–6 effect bank, unlike `audio::files_for`; any WB routine test playing an effect diverged. Fixed to the bonus bank. |
 | 2026-10-13 | 📌 | T75: at WB-1 the five shots are the only live objects (slots 0–4), with no hitboxes and touch `$7d4`; T78 adds the shot-hits-bonus-enemy case to `bonus_routines.rs`. |
+| 2026-10-13 | 📌 | T49 review: the fade set-up job's `inside` ranges are not defended by any test (emptying them leaves `story-scene1-out` green: the two-frame grace masks 1242 anyway). Checked by probe: PC h0+$b94e at 1242's end. |
 | 2026-10-13 | 🔄 | Owner, T36 review: of the split-off tasks only T81 blocks T37 (they share level/mod.rs, scene.rs, game.rs); T82–T86 run alongside T37. |
 | 2026-10-13 | 🐞 | T36 review: ignoring the cut's loop step re-syncs items-run-w1-1 at frame 334, yet `frog_cases` stays green: the runner re-syncs silently. Open until T82's `resync = false`. |
 | 2026-10-13 | 🔄 | Owner, T36: conformance anchors the engine's beam at the original's Paula writes and blit starts; normal play uses the cost model only. Then stopped T36; rest split into T81–T86. |
