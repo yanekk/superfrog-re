@@ -25,7 +25,8 @@ and the fade-in set-up, up to the attract loop's first raster wait (h0+$4d24).
 
 ## Left
 
-- `pub(crate) mod slot;` in `sf-core/src/lib.rs`; make the draft compile; fix it where wrong.
+- The draft compiles (T92's review added `pub(crate) mod slot;`) but is unwired and unrun; fix it
+  where wrong.
 - `Scene::Slot { coins_in }` (`scene.rs`, coins from h0+$49c6), run by `Front` in `game.rs` like
   `Scene::Front`.
 - `Front::resume`: try `slot::resume`; transplant the sound driver with
