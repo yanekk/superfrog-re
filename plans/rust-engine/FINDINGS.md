@@ -18,6 +18,8 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-14 | 📌 | Coordinator, night of 2026-10-13, under the owner's 2026-10-11 lag rule; owner to confirm: conformance feeds which story blanks had a handler (T55 `Game::set_blank_merged`); normal play keeps the engine's estimate, wrong at 3437. |
+| 2026-10-14 | 📌 | T55 review, not fixed: `sf-conform` load-search loop never recomputes `late`, and its redo frame gets no `set_blank_merged`. Latent: every load step to 8200 had one handler, none late. |
 | 2026-10-13 | 📌 | T55 added T97 story-split-handler (owner's yes): a blit holds the original's handler mid-way across a frame end (6682/6683); the engine runs it whole. Depends on T54, blocks T56. |
 | 2026-10-13 | 📌 | T55: scan from `power-on-disk3` to 9300 frames panics (oracle cap) in a load search near 8200; set-up slips at 4562 and 7227 (`intro_vars`, `frame_descriptors`) precede it. T56's. Scans to 8200 finish. |
 | 2026-10-13 | 🔄 | Owner, T50: an oracle step that runs two video frames (a blit holds the CPU through one; `frames_run` = 2) is compared against two engine frames, writes joined. Scene 4 frame 3188 is the first. |

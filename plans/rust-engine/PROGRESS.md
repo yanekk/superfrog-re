@@ -86,7 +86,7 @@ done · ⛔ blocked, needs a human.
 | T52 | story-blitter-bus-sim | T51; blocks T53 | ✅ | |
 | T53 | story-draw-cpu-program | T52; blocks T54 | ⬜ | |
 | T54 | story-handler-end-feed | T53; blocks T56 | ⬜ | |
-| T55 | story-intro-sound-timing | T50; blocks T56 | 🔍 | Conformance feeds which frames the original's blank had a handler (`sync::handlers`, `Game::set_blank_merged`); slip at 3437 gone, no AUD/sfx miss to 8200. 1 unit + 1 ignored scan test, case `story-scene4-sound`. Deviations: touches sf-conform, game.rs; new feed beyond T46's; done-when unmet: draw ends (T53/T54), split handler → T97, scan past ~8200 runs away (T56). |
+| T55 | story-intro-sound-timing | T50; blocks T56 | ✅ | Review clean, no fix commit. Handler-per-frame feed; scan reproduced (1408/8200, no AUD/sfx miss). Ignoring the feed fails the scan test at 3437; dropping `late` fails the unit test. Done-when unmet, carried by T54 (draw ends; INTENA 4529 traced to one), T97, T56 (owner). Feed accepted provisionally (FINDINGS). |
 | T56 | story-intro-to-insert-disk | T49, T50, T54, T55; blocks T21, T47, T48 | ⬜ | |
 | T81 | beam-cleanup | T36; blocks T37 | ✅ | |
 | T82 | beam-tests | T81 | ⬜ | |
@@ -107,7 +107,7 @@ done · ⛔ blocked, needs a human.
 A Notes cell holds what was built or what the review found, the test count, and one line per
 deviation from the task doc. A ✅ task's cell may be cut to one line once the next task has been reviewed.
 
-**Review queue:** T55
+**Review queue:** *(empty)*
 
 ## Blocked on the user
 
