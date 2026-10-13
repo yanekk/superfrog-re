@@ -58,6 +58,12 @@ pub enum SyncPoint {
     /// A level's first frame as [`SyncPoint::AtLevel`] reaches it, its clock (`level_clock`,
     /// h0+$876) then set to `seconds` (T37: a time-up case without waiting four minutes).
     Clock { level: LevelId, seconds: u16 },
+    /// Game over after the last life (T34): W1-1 reached as [`SyncPoint::AtLevel`] reaches it,
+    /// `frog_lives` (h0+$82e) set to 0 on its first frame, `script` played from there until the
+    /// frog's death has ended the level's loop and the original's main program is in
+    /// `game_over_seq` (h0+$7600 on its stack). The sync point is the end of the frame before:
+    /// the level is transplanted, and the case's first frame is the one game over begins in.
+    GameOver { script: String },
 }
 
 /// The oracle at a sync point.
@@ -82,6 +88,12 @@ const LOGIC_RUNNING: u32 = h0(0x9d6);
 const LEVEL_STATE: u32 = h0(0xa06);
 /// `level_clock` (h0+$876): four digits, minutes first.
 const LEVEL_CLOCK: u32 = h0(0x876);
+/// `frog_lives` (h0+$82e).
+const FROG_LIVES: u32 = h0(0x82e);
+/// `level_exit_fade`'s return address from `game_over_seq`.
+const IN_GAME_OVER: u32 = h0(0x7600);
+/// Frames of W1-1 the game-over sync point's script has to lose the last life in.
+const GAME_OVER_SEARCH: u32 = 3_000;
 const WORLD: u32 = h0(0x40da);
 const LEVEL: u32 = h0(0x40de);
 const RNG_STATE: u32 = h0(0x160d4);
@@ -233,7 +245,9 @@ pub fn mid_pass(cpu: &CpuRegs, m: &AmigaMemory) -> bool {
     } else {
         cpu.pc
     };
-    in_level(m) && !LEVEL_WAIT.contains(&main_pc)
+    // `game_over_seq` runs the level's logic outside its loop (T34): its passes are front-end
+    // work, whose memory the engine reports as jobs.
+    in_level(m) && !LEVEL_WAIT.contains(&main_pc) && !main_chain(cpu, m).contains(&IN_GAME_OVER)
 }
 
 /// How far the loop of the pass's call the main program is in had got at the frame's end, as
@@ -381,6 +395,41 @@ pub fn reach_frozen(
             let (m, s) = (seconds / 60, seconds % 60);
             let digits = [(m / 10) as u8, (m % 10) as u8, (s / 10) as u8, (s % 10) as u8];
             synced.amiga.write_memory(LEVEL_CLOCK, &digits);
+            synced.memory = core_memory(synced.amiga.memory());
+            Ok(synced)
+        }
+        SyncPoint::GameOver { script } => {
+            let w1_1 = LevelId {
+                world: World::W1,
+                level: 1,
+                alt: false,
+            };
+            let s = InputScript::load(&script_path(script))?;
+            let at_level = || -> Result<Synced, String> {
+                let mut synced = reach_frozen(
+                    &SyncPoint::AtLevel(w1_1),
+                    &InputScript::idle(),
+                    frames,
+                    frozen,
+                )?;
+                synced.amiga.write_memory(FROG_LIVES, &[0, 0]);
+                Ok(synced)
+            };
+            // The frame game over begins in, then the original again to the frame before it.
+            let mut synced = at_level()?;
+            let a = &mut synced.amiga;
+            let begins = (0..GAME_OVER_SEARCH)
+                .find(|&f| {
+                    step(a, s.input_at(f), frozen).is_ok()
+                        && main_chain(&a.cpu(), &core_memory(a.memory())).contains(&IN_GAME_OVER)
+                })
+                .ok_or(format!(
+                    "{script}: game_over_seq not reached in {GAME_OVER_SEARCH} frames of W1-1 with no lives left"
+                ))?;
+            let mut synced = at_level()?;
+            for f in 0..begins {
+                step(&mut synced.amiga, s.input_at(f), frozen)?;
+            }
             synced.memory = core_memory(synced.amiga.memory());
             Ok(synced)
         }

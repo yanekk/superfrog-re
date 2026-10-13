@@ -195,7 +195,13 @@ impl Title {
                             overlay_show(cx);
                         }
                         load_title(cx);
-                        cx.loaded(crate::game::LoadEnd::Reached(AFTER_TITLE_LOAD));
+                        cx.loaded(if self.boot {
+                            crate::game::LoadEnd::Reached(AFTER_TITLE_LOAD)
+                        } else {
+                            // After a game (T34) the overlay is long faded in, and its fade-out's
+                            // set-up begins in the frame the last load (`$1dd2`) ends in.
+                            crate::game::LoadEnd::Left(at(0x1102))
+                        });
                     } else {
                         cx.unported("title_screen after an aborted attract screen");
                     }
