@@ -98,7 +98,7 @@ done · ⛔ blocked, needs a human.
 | T88 | slot-symbols-tables | T71; blocks T72 | ✅ | |
 | T89 | story-copper-bus-cycles | T52; blocks T53 | ⬜ | |
 | T90 | story-draw-blits-oracle | T89; blocks T53 | ⬜ | |
-| T91 | slot-beam-races | T72 | ⬜ | |
+| T91 | slot-beam-races | T72 | 🔍 | `FrameOut::beam_races` + `game::beam_race` (4-line window, symmetric: above, inside or past the range); `compare::picture_except`/`raced_only`, `Outcome::raced: Vec<u32>`; printed in `main.rs`. 3 tests. Deviation: `report.rs` untouched — re-syncs print only in `main.rs`. |
 | T92 | slot-load | T72 | ⬜ | |
 | T93 | slot-attract-draw | T72, T91, T92 | ⬜ | |
 | T94 | slot-interrupt-timing | T72, T91, T93; blocks T73 | ⬜ | |
@@ -106,7 +106,7 @@ done · ⛔ blocked, needs a human.
 A Notes cell holds what was built or what the review found, the test count, and one line per
 deviation from the task doc. A ✅ task's cell may be cut to one line once the next task has been reviewed.
 
-**Review queue:** *(empty)*
+**Review queue:** T91
 
 ## Blocked on the user
 
