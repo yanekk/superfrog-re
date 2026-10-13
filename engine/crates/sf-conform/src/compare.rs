@@ -78,6 +78,7 @@ pub fn frame(
                     .collect()
             })
             .unwrap_or_default(),
+        resync: false,
     })
 }
 

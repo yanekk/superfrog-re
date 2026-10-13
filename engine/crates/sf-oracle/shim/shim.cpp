@@ -117,10 +117,18 @@ thread_local std::vector<sf_custom_write> *blitting = nullptr;
 // Every custom-register write the CPU makes during the step being run on this thread, if any.
 thread_local std::vector<sf_custom_write> *cpuWriting = nullptr;
 
+// The machine whose RAM is copied at the CPU's first write of a value (sf_amiga_watch_write), if
+// any: set for the step being run on this thread.
+thread_local sf_amiga *watching = nullptr;
+void watchHit(sf_amiga *a, u32 addr, u16 value);
+
 void hook(u32 addr, u16 value, int accessor, isize vpos, isize hpos)
 {
     if (cpuWriting && accessor == 0) {
         cpuWriting->push_back(sf_custom_write { u16(addr), value, u16(vpos), u16(hpos) });
+    }
+    if (watching && accessor == 0) {
+        watchHit(watching, addr, value);
     }
     if (capturing && isPaulaReg(addr)) {
         capturing->push_back(sf_custom_write { u16(addr), value, u16(vpos), u16(hpos) });
@@ -203,6 +211,12 @@ struct sf_amiga {
     std::vector<sf_custom_write> cpuWrites;
     std::vector<sf_blit_event> blitEvents;
     int framesRun = 0;
+    // sf_amiga_watch_write: the write watched for (none while reg is 0xFFFF), and RAM at its first
+    // hit in the last step.
+    uint32_t watchReg = 0xFFFF;
+    uint16_t watchValue = 0;
+    bool watched = false;
+    std::vector<uint8_t> watchedChip, watchedSlow;
 
     Emulator &emu() { return *va.emu; }
     Amiga &amiga() { return SfShimAccess::main(*va.emu); }
@@ -323,6 +337,20 @@ struct sf_amiga {
     }
 };
 
+namespace {
+
+void watchHit(sf_amiga *a, u32 addr, u16 value)
+{
+    if (a->watched || addr != a->watchReg || value != a->watchValue) return;
+    auto &mem = a->amiga().mem;
+    a->watchedChip.assign(mem.chip, mem.chip + mem.getConfig().chipSize);
+    if (mem.slow) a->watchedSlow.assign(mem.slow, mem.slow + mem.getConfig().slowSize);
+    else a->watchedSlow.clear();
+    a->watched = true;
+}
+
+}
+
 extern "C" {
 
 sf_amiga *sf_amiga_new(const uint8_t *rom, size_t rom_len, char *err, size_t err_len)
@@ -411,6 +439,8 @@ int sf_amiga_step(sf_amiga *a, uint32_t joy, const uint8_t keys[16], char *err, 
     blitting = &a->blits;
     cpuWriting = &a->cpuWrites;
     blitEvents = &a->blitEvents;
+    a->watched = false;
+    watching = a->watchReg == 0xFFFF ? nullptr : a;
     tapping = &a->taps;
     interrupting = &a->irqs;
     interrupted = &a->amiga();
@@ -440,10 +470,29 @@ int sf_amiga_step(sf_amiga *a, uint32_t joy, const uint8_t keys[16], char *err, 
     blitting = nullptr;
     cpuWriting = nullptr;
     blitEvents = nullptr;
+    watching = nullptr;
     tapping = nullptr;
     interrupting = nullptr;
     interrupted = nullptr;
     return rc;
+}
+
+void sf_amiga_watch_write(sf_amiga *a, uint32_t reg, uint16_t value)
+{
+    a->watchReg = reg;
+    a->watchValue = value;
+    a->watched = false;
+}
+
+int sf_amiga_watched_memory(const sf_amiga *a, const uint8_t **chip, size_t *chip_len,
+                            const uint8_t **slow, size_t *slow_len)
+{
+    if (!a->watched) return 0;
+    *chip = a->watchedChip.data();
+    *chip_len = a->watchedChip.size();
+    *slow = a->watchedSlow.data();
+    *slow_len = a->watchedSlow.size();
+    return 1;
 }
 
 void sf_amiga_set_profile(sf_amiga *a, int on)

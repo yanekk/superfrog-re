@@ -3,6 +3,7 @@
 sync = { level = "W2-2" }
 script = "items-fruit-w2-2"
 frames = 650
+resync = false
 
 [[exclude]]
 what = "enemies"

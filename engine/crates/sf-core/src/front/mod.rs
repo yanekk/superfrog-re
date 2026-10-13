@@ -17,7 +17,7 @@
 //! skip the original's frames spent loading.
 
 pub mod anim;
-mod attract;
+pub(crate) mod attract;
 pub mod blit;
 pub(crate) mod common;
 pub mod data;
@@ -130,6 +130,9 @@ pub(crate) enum Routine {
     LevelLoop,
     /// The level is over this way; what follows is not ported yet.
     Outcome(crate::level::LevelOutcome),
+    /// The slot machine (T92) and, below it, the level's tally that called it.
+    Slot(crate::slot::Routine),
+    SlotOver(crate::slot::SlotOver),
 }
 
 impl Routine {
@@ -169,6 +172,8 @@ impl Routine {
                 });
                 Yield::Poll
             }
+            Routine::Slot(r) => r.run(cx),
+            Routine::SlotOver(r) => r.run(cx),
         }
     }
 }

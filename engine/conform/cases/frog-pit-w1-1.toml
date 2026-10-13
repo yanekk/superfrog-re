@@ -16,4 +16,4 @@ task = "T36 (items in frame cases), T16–T18 (enemies)"
 what = "picture"
 frames = [308, 323]
 note = "level_start's fade in: the copper reads the play field's colours on line $34 while the vertical blank is part-way through stepping them, and how far it has got depends on the music player's work that frame (line 4 or 5 for its first write)"
-task = "T96"
+task = "T100"

@@ -67,7 +67,8 @@ pub struct Outcome {
     /// next frame's picture and Paula writes, which carry the rest of that pass.
     pub straddled: Vec<u32>,
     /// Frames after such a lag on which the variables still differed, so the engine was re-synced
-    /// from the original's memory (DESIGN §2.1), with the first variable that differed.
+    /// from the original's memory (DESIGN §2.1), with the first variable that differed. Always
+    /// empty for a case with `resync = false`: there each is a divergence.
     pub resynced: Vec<(u32, String)>,
     /// Frames whose picture matched only with the rows of the engine's beam races left out
     /// (`FrameOut::beam_races`, owner 2026-10-13).
@@ -169,11 +170,18 @@ fn run_inner(
         let stepped = case.compare.vars || case.compare.picture || case.compare.paula;
         let mut ours = FrameOut::default();
         if stepped {
+            // The original's step ran two video frames (a blit held its CPU through the first's
+            // end and the whole second): the engine runs both, compared together (owner, T50).
+            let mut held = Vec::new();
+            if amiga.frames_run() == 2 {
+                held = game.step_paced(input, pacing).paula;
+            }
             game.anchor_writes(&theirs.paula.iter().map(|w| (w.vpos, w.hpos)).collect::<Vec<_>>());
             game.anchor_blits(&amiga.blit_starts());
             let before = game.clone();
             game.set_handler_entry(entry);
             ours = game.step_paced(input, pacing);
+            ours.paula.splice(0..0, held);
             if let Some(end) = ours.load {
                 // The engine loaded at once; the original is compared once its load is over.
                 let mut n = 0;
@@ -289,6 +297,26 @@ fn run_inner(
                 && let Some((v, theirs, ours)) =
                     compare::vars(game.layout(), &game.probe(), &mem, &[])
             {
+                if !case.resync {
+                    let d = Divergence {
+                        frame: f,
+                        first_var: Some((v, theirs, ours)),
+                        picture_diff: None,
+                        paula_diff: None,
+                        render_diff: None,
+                        oracle_frame: (of != f + 1).then_some(of - 1),
+                        unported: Vec::new(),
+                        var_detail: compare::var_diffs(game.layout(), &game.probe(), &mem, v.id)
+                            .into_iter()
+                            .take(40)
+                            .collect(),
+                        resync: true,
+                    };
+                    match found.as_mut() {
+                        Some(all) => all.push(d),
+                        None => return Err(d),
+                    }
+                }
                 game = Game::with_display(display.clone(), Start::Transplant(mem.clone()));
                 if frog_only {
                     game.frog_only();
@@ -363,6 +391,7 @@ fn run_inner(
                 oracle_frame: None,
                 unported: Vec::new(),
                 var_detail: Vec::new(),
+                resync: false,
             });
             d.unported = unported;
             d.oracle_frame = (of != f + 1).then_some(of - 1);

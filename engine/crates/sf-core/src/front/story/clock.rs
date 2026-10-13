@@ -59,6 +59,23 @@ impl Bus {
         !self.fetch.takes(l, h)
     }
 
+    /// Whether the CPU can use DMA cycle `h` of `line`: refresh's cycles ([`super::cpu::refresh`])
+    /// and the fetch's. Audio's are left out: a channel fetches a word every few lines, and the
+    /// oracle's slot owners under scene 4's masks' clearing show none (T50).
+    pub fn free_to_cpu(&self, line: u32, h: u16) -> bool {
+        let l = (line % FRAME_LINES as u32) as u16;
+        !super::cpu::refresh(h as u32) && !self.fetch.takes(l, h)
+    }
+
+    /// Whether the display fetches on `line`.
+    pub fn fetched(&self, line: u32) -> bool {
+        self.fetch.planes() > 0
+            && self
+                .fetch
+                .lines()
+                .contains(&((line % FRAME_LINES as u32) as u16))
+    }
+
     /// The position after the blitter has had `cycles` free bus cycles from `from`.
     pub fn run(&self, from: Beam, cycles: u32) -> Beam {
         let mut b = from;
@@ -86,10 +103,9 @@ pub fn blit_cycles(abcd: u16, words: u32, rows: u32) -> u32 {
     }
 }
 
-/// The CPU's time between two blits of a draw (wait for BLTBUSY, write five registers), in DMA
-/// cycles; and per object around its blits (clipping, the next blit's set-up).
+/// The CPU's time between two blits outside a draw (wait for BLTBUSY, write five registers), in
+/// DMA cycles. A draw's own CPU time is its program on [`super::sim`] (T53).
 pub const CPU_PER_BLIT: u32 = 40;
-pub const CPU_PER_OBJECT: u32 = 300;
 
 /// A sequence of blits run back to back by the CPU, timed on the bus.
 #[derive(Debug, Clone)]
@@ -104,6 +120,11 @@ pub struct BlitClock {
     pub blits: u32,
     /// Where the handler started at each blank the run passed (it waits for the blit in progress).
     pub handlers: Vec<Beam>,
+    /// The blanks (their first line) a blit held the CPU through to the next one: the interrupt's
+    /// request is a latch, so the next blank's handler serves both.
+    pub merged: Vec<u32>,
+    /// Where the last blit started (after its set-up).
+    pub last_start: Beam,
 }
 
 impl BlitClock {
@@ -115,19 +136,59 @@ impl BlitClock {
             handler,
             blits: 0,
             handlers: Vec::new(),
+            merged: Vec::new(),
+            last_start: from,
         }
     }
 
-    /// The CPU works `cycles` DMA cycles (it gets the bus only between blits).
+    /// The CPU works `cycles` DMA cycles (it gets the bus only between blits). A blank that comes
+    /// meanwhile has its handler at once: the CPU's work goes on after it.
     pub fn cpu(&mut self, cycles: u32) {
-        self.now = self.now.plus(cycles);
         self.blank();
+        let line = LINE_CYCLES as u32;
+        let mut left = cycles;
+        loop {
+            let top = FRAME_LINES as u32 * (self.blanks + 1);
+            let to_top = (top - self.now.line) * line - self.now.h as u32;
+            if left < to_top {
+                self.now = self.now.plus(left);
+                return;
+            }
+            left -= to_top;
+            self.blanks += 1;
+            self.handlers.push(Beam::at_line(top));
+            self.now = Beam::at_line(top).plus(self.handler);
+        }
+    }
+
+    /// The CPU runs a loop of `turns` turns whose body is `ops` (bus accesses and idle cycles,
+    /// [`super::cpu::Cpu::run`]'s letters), each access waiting for a cycle the bus leaves it.
+    pub fn cpu_loop(&mut self, ops: &str, turns: u32) {
+        for _ in 0..turns {
+            for c in ops.bytes() {
+                match c {
+                    b'n' => {
+                        self.now = self.now.plus(1);
+                        continue;
+                    }
+                    b'p' | b'r' | b'w' => {}
+                    _ => continue,
+                }
+                self.now = self.now.plus(1);
+                while !self.bus.free_to_cpu(self.now.line, self.now.h) {
+                    self.now = self.now.plus(1);
+                }
+                self.now = self.now.plus(1);
+            }
+            self.blank();
+        }
     }
 
     /// One blit, after its set-up.
     pub fn blit(&mut self, con0: u16, size: u16) {
         self.blits += 1;
         self.cpu(CPU_PER_BLIT);
+        self.last_start = self.now;
         let rows = match size >> 6 {
             0 => 1024,
             n => n as u32,
@@ -145,6 +206,10 @@ impl BlitClock {
         let frame = FRAME_LINES as u32;
         while self.now.line >= frame * (self.blanks + 1) {
             self.blanks += 1;
+            if self.now.line >= frame * (self.blanks + 1) {
+                self.merged.push(frame * self.blanks);
+                continue;
+            }
             let at = Beam::at_line(frame * self.blanks).max(self.now);
             self.handlers.push(at);
             self.now = at.plus(self.handler);
@@ -180,5 +245,30 @@ mod tests {
         // Inside it the five planes take 100 more.
         let end = bus.run(Beam::at_line(0x50), 119);
         assert_eq!(end, Beam { line: 0x51, h: 0 });
+    }
+
+    #[test]
+    fn the_masks_clearing_is_slowed_by_the_fetch() {
+        // Fifteen DMA cycles a turn plus refresh's waits above the display (the oracle's 15.133),
+        // about eighteen a turn under five lores planes (oracle: 75 accesses, 12.5 turns, a line).
+        let mut c = BlitClock::new(scene_bus(), Beam::at_line(0x10), 0);
+        c.cpu_loop("rpw pnn npp", 150);
+        assert_eq!(c.now.line, 0x10 + 9);
+        let mut c = BlitClock::new(scene_bus(), Beam::at_line(0x50), 0);
+        c.cpu_loop("rpw pnn npp", 125);
+        assert_eq!(c.now.line, 0x50 + 10);
+    }
+
+    #[test]
+    fn a_blit_held_through_a_whole_frame_merges_its_blank_into_the_next() {
+        // Scene 4's first two mask blits (1024 rows of 20 words, A B and D), the first from line 147
+        // as in the original: it holds the next blank's handler, and the second holds the CPU
+        // through the whole frame after.
+        let mut c = BlitClock::new(scene_bus(), Beam::at_line(147), 12 * 227);
+        c.blit(0x0dfc, 0x14);
+        c.blit(0x0dfc, 0x14);
+        assert_eq!(c.merged, vec![2 * FRAME_LINES as u32]);
+        assert_eq!(c.handlers.len(), 2);
+        assert!(c.handlers[1].line > 3 * FRAME_LINES as u32);
     }
 }

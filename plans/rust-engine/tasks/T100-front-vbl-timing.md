@@ -1,6 +1,6 @@
-# T96 — front-vbl-timing
+# T100 — front-vbl-timing
 
-**Phase:** 2 · **Depends on:** T37 · **Weight:** medium
+**Phase:** 2 · **Depends on:** T37; blocks T21 · **Weight:** medium
 
 Added by T37 (owner, 2026-10-13). The front end's vertical blank timed by its work, so a fade's
 colours reach the copper on the original's line between levels.

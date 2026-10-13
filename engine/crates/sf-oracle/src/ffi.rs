@@ -119,6 +119,14 @@ unsafe extern "C" {
     pub fn sf_amiga_cpu_writes(a: *const SfAmiga, out: *mut *const SfCustomWrite) -> usize;
     pub fn sf_amiga_blit_events(a: *const SfAmiga, out: *mut *const SfBlitEvent) -> usize;
     pub fn sf_amiga_frames_run(a: *const SfAmiga) -> c_int;
+    pub fn sf_amiga_watch_write(a: *mut SfAmiga, reg: u32, value: u16);
+    pub fn sf_amiga_watched_memory(
+        a: *const SfAmiga,
+        chip: *mut *const u8,
+        chip_len: *mut usize,
+        slow: *mut *const u8,
+        slow_len: *mut usize,
+    ) -> c_int;
     pub fn sf_amiga_audio_out(a: *const SfAmiga, out: *mut *const f32) -> usize;
     pub fn sf_amiga_texture(a: *const SfAmiga, stride: *mut usize, rows: *mut usize) -> *const u32;
     pub fn sf_amiga_diw(a: *const SfAmiga, diwstrt: *mut u16, diwstop: *mut u16);

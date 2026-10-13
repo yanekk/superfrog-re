@@ -30,6 +30,9 @@ pub struct Divergence {
     pub unported: Vec<&'static str>,
     /// Every differing piece of the first differing variable (up to 40).
     pub var_detail: Vec<String>,
+    /// The variables differed on the frame after a lag, where the runner would re-sync the
+    /// engine, and the case forbids that (`resync = false`).
+    pub resync: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -48,6 +51,12 @@ impl fmt::Display for Divergence {
                 self.frame
             )?,
             None => writeln!(f, "diverged at frame {}", self.frame)?,
+        }
+        if self.resync {
+            writeln!(
+                f,
+                "  after a lag; the runner would re-sync here, and the case sets resync = false"
+            )?;
         }
         for u in &self.unported {
             writeln!(f, "  the engine reached a path it does not follow yet: {u}")?;
