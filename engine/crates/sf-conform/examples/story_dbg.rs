@@ -33,11 +33,17 @@ fn main() {
         },
     );
     let mut of = 0u32;
+    let mut irqs = Vec::new();
     for f in 0..frames {
         let input = case.script.input_at(of);
         let mut cap = sync::step_inserting(&mut amiga, input).unwrap();
+        let mut entry = sync::handler_entry(&irqs, &amiga.irqs());
+        irqs = amiga.irqs();
         of += 1;
         let before = game.clone();
+        if std::env::var("NOFEED").is_err() {
+            game.set_handler_entry(entry);
+        }
         let mut pacing = sync::pacing(&amiga.cpu(), &sync::core_memory(amiga.memory()), &cap.paula);
         let mut out = game.step_paced(input, pacing);
         if let Some(end) = out.load {
@@ -59,6 +65,8 @@ fn main() {
                 }
                 prev_mem = sync::core_memory(amiga.memory());
                 cap = sync::step_inserting(&mut amiga, case.script.input_at(of)).unwrap();
+                entry = sync::handler_entry(&irqs, &amiga.irqs());
+                irqs = amiga.irqs();
                 of += 1;
             }
             pacing = sync::pacing(&amiga.cpu(), &sync::core_memory(amiga.memory()), &cap.paula);
@@ -78,6 +86,9 @@ fn main() {
                     .collect();
                 g.set_load_state(runs);
                 g.set_load_line(line);
+                if std::env::var("NOFEED").is_err() {
+                    g.set_handler_entry(entry);
+                }
                 let o = g.step_paced(input, pacing);
                 let leaves = g.load_leaves();
                 take(&mut g, &m, leaves);
@@ -108,6 +119,35 @@ fn main() {
         }
         let out_pic = out.picture.clone();
         let m = sync::core_memory(amiga.memory());
+        if let Ok(spec) = std::env::var("PAL") {
+            // `PAL=a-b`: per frame in a..b, each (original, engine) colour pair that differs,
+            // with its pixel count and first row.
+            let (a, b) = spec.split_once('-').unwrap();
+            if (a.parse::<u32>().unwrap()..=b.parse::<u32>().unwrap()).contains(&f) {
+                let ours = sf_core::to_rgb12(&out.picture);
+                let (w, h) = (
+                    out.picture.width.min(cap.picture.width),
+                    out.picture.height.min(cap.picture.height),
+                );
+                // Per palette index: the original's colour where the engine's differs.
+                let mut seen: std::collections::BTreeMap<u8, (u16, u16, u32)> = Default::default();
+                for y in 0..h {
+                    for x in 0..w {
+                        let i = y as usize * out.picture.width as usize + x as usize;
+                        let (t, o) = (cap.picture.pixel(x, y), ours[i]);
+                        if t != o {
+                            let e = seen.entry(out.picture.pixels[i]).or_insert((t, o, 0));
+                            e.2 += 1;
+                        }
+                    }
+                }
+                let s: Vec<String> = seen
+                    .iter()
+                    .map(|(i, (t, o, n))| format!("{i}:{t:03x}/{o:03x}x{n}"))
+                    .collect();
+                println!("PAL F {f} {}", s.join("  "));
+            }
+        }
         if std::env::var("SCAN").is_ok() {
             let pd = sf_conform::compare::picture(&out.picture, &cap.picture);
             let ad = sf_conform::compare::paula(&out.paula, &cap.paula);
@@ -165,6 +205,9 @@ fn main() {
                     .collect::<Vec<_>>()
                     .join(" ")
             };
+            if std::env::var("IRQS").is_ok() {
+                println!("  irqs {:?}", amiga.irqs());
+            }
             if std::env::var("EVENTS").is_ok() {
                 println!("  ours {}\n  orig {}", ev(&out.paula), ev(&cap.paula));
             }

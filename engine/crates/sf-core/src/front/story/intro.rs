@@ -58,6 +58,10 @@ pub fn handler_lines(m: &StoryMem) -> u64 {
     }
     lines
 }
+/// The DMA cycle of its line the vertical blank's interrupt is taken on when the main program waits
+/// for the blank (oracle: line 0, cycle 10, in every idle frame of the first scene).
+const IRQ_ENTRY: u32 = 10;
+
 /// Lines in each of the intro's frames (interlace is off and the frames stay long).
 pub const LINES: u64 = 313;
 
@@ -238,8 +242,10 @@ pub struct IntroFrame {
     pub handler: (u16, u16),
     /// The copper list `list` as the handler left it.
     pub copper: Vec<u8>,
-    /// The colour words the handler's fade step rewrote, with the beam position of each write.
-    pub fade_writes: Vec<(u32, u16, u16, u16)>,
+    /// The paths the handler's code took, for the times of its writes to the copper list.
+    pub walk: Option<super::vbl::Handler>,
+    /// The DMA cycle (from the frame's line 0) the handler's interrupt was taken on.
+    pub entry: u32,
     /// A load this frame: the COP1LC then (the frame stands for the original's frame the load
     /// ended on, whose list is the one set before it).
     pub list_at_load: Option<u32>,
@@ -339,6 +345,7 @@ impl Intro {
         list: u32,
         pacing: Pacing,
         load_state: Vec<(u32, Vec<u8>)>,
+        entry: Option<(u16, u16)>,
     ) -> IntroFrame {
         self.pacing = pacing;
         self.load_state = load_state;
@@ -352,7 +359,8 @@ impl Intro {
             cop1lc: None,
             handler: (0, 0),
             copper: Vec::new(),
-            fade_writes: Vec::new(),
+            walk: None,
+            entry: 0,
             list_at_load: None,
         };
         // The handler: at the top, once a masked set-up lets it in, or once the blit in progress
@@ -365,6 +373,12 @@ impl Intro {
             .filter(|&a| a < end)
             .unwrap_or(top);
         let at = top.max(self.masked_until).max(held);
+        // Conformance gives where the original took the interrupt, for its writes' times only:
+        // the schedule keeps the engine's own lines.
+        out.entry = match entry {
+            Some((line, h)) => line as u32 * super::cpu::LINE + h as u32,
+            None => (at - top) as u32 * super::cpu::LINE + IRQ_ENTRY,
+        };
         if let Wait::Masked(until) = self.wait
             && until > top
         {
@@ -381,8 +395,7 @@ impl Intro {
         }
         let mut writes = Vec::new();
         let handler = handler_lines(m);
-        let steps = super::vbl::run(m, sound_data(data), input, &mut writes);
-        out.fade_writes = super::vbl::fade_write_times(&steps, (at - top) as u16);
+        out.walk = Some(super::vbl::run(m, sound_data(data), input, &mut writes));
         let handler_end = at + handler;
         for w in &mut writes {
             w.vpos = (at - top) as u16;
@@ -468,8 +481,8 @@ impl Intro {
         self.writes.retain(|(at, _)| *at > now);
         out.paula.clear();
         let mut writes = Vec::new();
-        let steps = super::vbl::run(m, sound_data(data), input, &mut writes);
-        out.fade_writes = super::vbl::fade_write_times(&steps, 0);
+        out.walk = Some(super::vbl::run(m, sound_data(data), input, &mut writes));
+        out.handler.0 = 0;
         out.paula.extend(writes);
     }
 

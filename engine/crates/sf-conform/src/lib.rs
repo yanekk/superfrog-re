@@ -87,7 +87,23 @@ pub fn run(case: &Case) -> Result<Outcome, Divergence> {
 /// uses to plant a divergence.
 pub fn run_with(
     case: &Case,
+    before_step: impl FnMut(u32, &mut Game),
+) -> Result<Outcome, Divergence> {
+    run_inner(case, before_step, None)
+}
+
+/// [`run`], going on past each divergence: every frame that differs, in order (for finding what
+/// is left in a long case; the engine is not re-synced, so later ones may follow from earlier).
+pub fn scan(case: &Case) -> Vec<Divergence> {
+    let mut found = Vec::new();
+    let _ = run_inner(case, |_, _| {}, Some(&mut found));
+    found
+}
+
+fn run_inner(
+    case: &Case,
     mut before_step: impl FnMut(u32, &mut Game),
+    mut found: Option<&mut Vec<Divergence>>,
 ) -> Result<Outcome, Divergence> {
     let frozen = case.freeze();
     let synced = sync::reach_frozen(&case.sync, &case.script, case.frames + LOAD_SEARCH, frozen)
@@ -127,11 +143,15 @@ pub fn run_with(
     // would. Other cases keep the drive as their sync point left it: inserting a disk changes the
     // timing of what follows (power-on's RNG seed among it).
     let mut disks = (case.sync == SyncPoint::EndSequence).then(|| sync::Disks::at(&prev));
+    // The interrupts the oracle's last step took (one past its end is the next frame's).
+    let mut irqs = Vec::new();
     for f in 0..case.frames {
         let input = case.script.input_at(of);
         frozen.apply(&mut amiga, &display);
         let mut theirs = sync::step_inserting(&mut amiga, input)
             .unwrap_or_else(|e| panic!("{}: oracle, frame {of}: {e}", case.name));
+        let mut entry = sync::handler_entry(&irqs, &amiga.irqs());
+        irqs = amiga.irqs();
         if let Some(d) = disks.as_mut() {
             d.serve(&mut amiga);
         }
@@ -147,6 +167,7 @@ pub fn run_with(
             game.anchor_writes(&theirs.paula.iter().map(|w| (w.vpos, w.hpos)).collect::<Vec<_>>());
             game.anchor_blits(&amiga.blit_starts());
             let before = game.clone();
+            game.set_handler_entry(entry);
             ours = game.step_paced(input, pacing);
             if let Some(end) = ours.load {
                 // The engine loaded at once; the original is compared once its load is over.
@@ -175,6 +196,8 @@ pub fn run_with(
                     frozen.apply(&mut amiga, &display);
                     theirs = sync::step_inserting(&mut amiga, case.script.input_at(of))
                         .unwrap_or_else(|e| panic!("{}: oracle, frame {of}: {e}", case.name));
+                    entry = sync::handler_entry(&irqs, &amiga.irqs());
+                    irqs = amiga.irqs();
                     if let Some(d) = disks.as_mut() {
                         d.serve(&mut amiga);
                     }
@@ -206,6 +229,7 @@ pub fn run_with(
                         take(&mut g, &prev_mem, before.runs_during_load());
                     }
                     g.set_load_line(line);
+                    g.set_handler_entry(entry);
                     let out = g.step_paced(input, pacing);
                     let leaves = g.load_leaves();
                     take(&mut g, &mem, leaves);
@@ -381,7 +405,10 @@ pub fn run_with(
             });
             d.unported = unported;
             d.oracle_frame = (of != f + 1).then_some(of - 1);
-            return Err(d);
+            match found.as_mut() {
+                Some(all) => all.push(d),
+                None => return Err(d),
+            }
         }
         prev = mem;
     }

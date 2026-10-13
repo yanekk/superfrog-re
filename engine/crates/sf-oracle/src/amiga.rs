@@ -70,6 +70,16 @@ impl FrameCapture {
     }
 }
 
+/// An interrupt the CPU took ([`Amiga::irqs`]).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct Irq {
+    pub level: u8,
+    /// It began in the next frame: the step runs on into the next frame's start.
+    pub next: bool,
+    pub vpos: u16,
+    pub hpos: u16,
+}
+
 /// The rate of [`Amiga::mixed_audio`].
 pub const MIX_RATE: u32 = ffi::SF_AUDIO_RATE;
 
@@ -553,6 +563,25 @@ impl Amiga {
                     t.hpos as i16,
                     t.sample as i16 * t.volume as i16,
                 ]
+            })
+            .collect()
+    }
+
+    /// The interrupts the CPU took during the last step, in order: their level and the beam position
+    /// (line, DMA cycle) as each exception began (core patch 0005).
+    pub fn irqs(&self) -> Vec<Irq> {
+        let mut ptr = std::ptr::null();
+        let n = unsafe { ffi::sf_amiga_irqs(self.raw, &mut ptr) };
+        if n == 0 {
+            return Vec::new();
+        }
+        unsafe { std::slice::from_raw_parts(ptr, n) }
+            .iter()
+            .map(|i| Irq {
+                level: i.level,
+                next: i.next != 0,
+                vpos: i.vpos,
+                hpos: i.hpos,
             })
             .collect()
     }

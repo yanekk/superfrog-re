@@ -1,0 +1,26 @@
+diff --git a/Core/Components/CPU/CPU.cpp b/Core/Components/CPU/CPU.cpp
+--- a/Core/Components/CPU/CPU.cpp
++++ b/Core/Components/CPU/CPU.cpp
+@@ -19,6 +19,14 @@
+ #include "utl/io.h"
+ 
+ 
++namespace vamiga {
++
++// superfrog-re (sf-oracle): called as the CPU starts an interrupt's exception, with its level and
++// the beam position. Null unless a client installs it.
++void (*vamiga_irq_hook)(int level, isize vpos, isize hpos) = nullptr;
++
++}
++
+ //
+ // Moira
+ //
+@@ -255,6 +263,7 @@
+ void
+ Moira::willInterrupt(u8 level)
+ {
++    if (vamiga_irq_hook) vamiga_irq_hook(int(level), agnus.pos.v, agnus.pos.h);
+     logmsg(LOG_INT, "Executing level %d IRQ\n", level);
+ }
+ 

@@ -351,6 +351,15 @@ impl Game {
         }
     }
 
+    /// For conformance, the story intro: where the original's CPU took the next frame's
+    /// vertical-blank interrupt (line, DMA cycle), which decides when its handler's writes to the
+    /// copper list land (owner, 2026-10-13). Normal play times it itself.
+    pub fn set_handler_entry(&mut self, at: Option<(u16, u16)>) {
+        if let Some(s) = self.story.as_mut() {
+            s.handler_entry = at;
+        }
+    }
+
     /// For conformance, the story intro: the memory that runs on by itself while the original
     /// loads ([`Game::runs_during_load`]'s runs, as the original had them just before the frame
     /// its load ended on), put in place at the moment the engine's instant load happens in its

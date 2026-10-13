@@ -1,5 +1,7 @@
 //! `sf-conform run <case.toml>` — one case; exit 1 on a divergence.
 //! `sf-conform all` — every case in `engine/conform/cases/`.
+//! `sf-conform scan <case.toml>` — one case run to its end past each divergence: one line per
+//! frame that differs (what differs first in it), for finding what is left.
 //! `sf-conform record <case.toml> [--watch NAME=ADDR:W]... [--every] [--only] [--trace] [--png DIR]`
 //! — the original's state per frame of a case, for writing scripts and porting: every `LAYOUT`
 //! variable (none with `--only`) and each watched address (`h0+9d8:W`, `0xc17074:L`, width B, W
@@ -13,13 +15,14 @@ use std::process::ExitCode;
 use sf_conform::{Case, InputScript, cases_dir, sync};
 use sf_core::layout::{LAYOUT, Ram, VarDef, VarId, Width, h0};
 
-const USAGE: &str = "usage: sf-conform run <case.toml> | all | record <case.toml> [--watch NAME=ADDR:W]... [--every] [--only] [--trace] [--png DIR]";
+const USAGE: &str = "usage: sf-conform run <case.toml> | all | scan <case.toml> | record <case.toml> [--watch NAME=ADDR:W]... [--every] [--only] [--trace] [--png DIR]";
 
 fn main() -> ExitCode {
     let args: Vec<String> = std::env::args().skip(1).collect();
     let result = match args.first().map(String::as_str) {
         Some("run") if args.len() == 2 => run_cases(&[PathBuf::from(&args[1])]),
         Some("all") if args.len() == 1 => all(),
+        Some("scan") if args.len() == 2 => scan(Path::new(&args[1])),
         Some("record") if args.len() >= 2 => record(Path::new(&args[1]), &args[2..]),
         _ => Err(USAGE.to_string()),
     };
@@ -31,6 +34,36 @@ fn main() -> ExitCode {
             ExitCode::from(2)
         }
     }
+}
+
+fn scan(path: &Path) -> Result<bool, String> {
+    let case = Case::load(path)?;
+    let found = sf_conform::scan(&case);
+    for d in &found {
+        let what = if let Some((v, theirs, ours)) = &d.first_var {
+            format!(
+                "var {} at ${:06x}: original ${theirs:x}, engine ${ours:x}",
+                v.name, v.addr
+            )
+        } else if let Some(p) = &d.paula_diff {
+            format!("paula {}", p.lines().next().unwrap_or(""))
+        } else if let Some(p) = &d.picture_diff {
+            format!("picture {:?}", p.mismatch.first)
+        } else {
+            String::from("unported")
+        };
+        let of = d
+            .oracle_frame
+            .map_or(String::new(), |o| format!(" (O {o})"));
+        println!("frame {}{of}: {what}", d.frame);
+    }
+    println!(
+        "{}: {} of {} frames differ",
+        case.name,
+        found.len(),
+        case.frames
+    );
+    Ok(found.is_empty())
 }
 
 fn all() -> Result<bool, String> {

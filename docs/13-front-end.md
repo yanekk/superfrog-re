@@ -77,7 +77,7 @@ the old value, lines a main-program part ran under show what was there before it
 `Start::Disk3` is the moment disk 3's logo program `d3_c02` starts, after its bootblock: Kickstart
 and the bootblock are the load. The engine runs it as `front::story` with its own 512K memory
 (chip and slow), not the game's `State`. Frames below count from that start (case
-`story-intro`); **(oracle)** up to frame 539, the rest **(code)** and the debugger's runs.
+`story-intro`); **(oracle)** up to frame 555, the rest **(code)** and the debugger's runs.
 
 ```
 0–66      Team 17 logo (d3_c02): hires, 4 planes, interlaced (two copper lists by field),
