@@ -324,7 +324,9 @@ fn level_init(c: &mut LevelCtx, id: LevelId) {
         b.set_l(h0(0x16752), 4);
     }
     b.set_l(LEVEL_STATE, 0xffff_ffff);
-    // (The bonus level's first objects, h0+$7e3e, are T19's.)
+    if bonus {
+        crate::bonus::shots::spawn_shots(c);
+    }
 }
 
 /// What `h0+$1995a` sets up that the engine models: each free bob record's first two words

@@ -81,10 +81,10 @@ impl Gen {
 
 /// The world's sound files where the game loads them, for the sound driver's transplant.
 pub fn sound_files(world: u32, module_addr: u32) -> Vec<(u32, File)> {
-    let bank = if world <= 2 {
-        BankId::Worlds12
-    } else {
-        BankId::Worlds36
+    let bank = match world {
+        ..=2 => BankId::Worlds12,
+        7 => BankId::Bonus,
+        _ => BankId::Worlds36,
     };
     let tune = match world {
         1..=6 => TuneId::World(world as u8),
