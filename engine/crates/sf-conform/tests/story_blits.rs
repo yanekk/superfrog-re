@@ -116,8 +116,8 @@ fn scene_1s_masks_and_the_first_draw_begin_free_and_end_on_the_originals_cycles(
         if frame != DRAW {
             assert_eq!(sizes, [0x0014], "oracle frame {frame}: one mask blit");
         } else {
-            // The restores, then the objects: 40 blits. BLTPRI from before the first to past the last, so the
-            // CPU never holds a blit up (T53 needs no BLS here).
+            // The restores, then the objects: 40 blits. BLTPRI from before the first to past the
+            // last, so the CPU never holds a blit up (T53 needs no BLS here).
             assert_eq!(sizes.len(), 40, "oracle frame {frame}: the first draw");
             let mut d = dma_in;
             for w in &f.writes {
