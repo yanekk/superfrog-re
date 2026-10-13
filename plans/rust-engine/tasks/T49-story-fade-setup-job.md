@@ -2,7 +2,7 @@
 
 **Phase:** 2 · **Depends on:** T46; blocks T56 · **Weight:** light
 
-Split from T46 (owner, 2026-10-13: stop and cut the rest into tasks).
+**Split from:** T46 (owner, 2026-10-13: stop and cut the rest into tasks).
 
 ## Goal
 
@@ -16,6 +16,10 @@ In `Intro::fade_setup` push a `Job` whose `inside` is every even address of the 
 (`(from..to).step_by(2).map(h0)`: across $b4b4..$b5c0, in $b6d8..$b7bc, out $b906..$ba42: the PC is
 first in the chain) and whose writes are record 0 (`FADES[0].at`, $1f2) and the copper lists
 (h2+$da5a, $240). With it the runner was green to frame 3184.
+
+## Interface
+
+None new.
 
 ## Files
 

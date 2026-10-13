@@ -2,7 +2,7 @@
 
 **Phase:** 2 · **Depends on:** T51; blocks T53 · **Weight:** medium
 
-Split from T46.
+**Split from:** T46.
 
 ## Goal
 
@@ -21,6 +21,14 @@ against the oracle's BLTSIZE writes and blitter events (T51).
 - With BLTPRI set the blitter never yields; without it, to a CPU that has waited two cycles (BLS).
 - CPU: `cpu.rs`'s access letters; an access waits for a free cycle. DMACON lands two cycles after
   its write.
+
+## Interface
+
+`front::story::sim` (new): the bus model T53's `sim::Prog` runs on.
+
+## Files
+
+`engine/crates/sf-core/src/front/story/` (`sim.rs` new, `cpu.rs`); `render/copper.rs`.
 
 ## Tests
 

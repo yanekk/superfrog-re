@@ -2,7 +2,7 @@
 
 **Phase:** 2 · **Depends on:** T50; blocks T56 · **Weight:** medium
 
-Split from T46.
+**Split from:** T46.
 
 ## Goal
 
@@ -14,6 +14,18 @@ the effects' volume ramps one step apart (`AUD0VOL` 3816, 3872–3990, 4551, 505
 
 Re-scan first (`sf-conform scan` on a case to the intro's end): many of T46's misses were one
 frame-phase slip from frame 3438 that never re-synced, so what is left after T49–T54 is the work.
+
+## Interface
+
+None new.
+
+## Files
+
+`front/story/` (`sound.rs`, `intro.rs`).
+
+## Tests
+
+- [ ] `sf-conform scan` on a case to the insert-disk-1 page lists no Paula-only divergence.
 
 ## Done when
 

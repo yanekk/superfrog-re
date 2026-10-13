@@ -2,7 +2,7 @@
 
 **Phase:** 2 · **Depends on:** T46; blocks T52 · **Weight:** light
 
-Split from T46. Tooling only; no engine change.
+**Split from:** T46. Tooling only; no engine change.
 
 ## Goal
 
@@ -21,6 +21,20 @@ The oracle reports what times the original's blits, so draw timing can be checke
 A step runs until the CPU ends an instruction after the frame's end: a blit holding the CPU makes
 the step, and the events it lists, run into the next frame (events flagged `next`). Changing a
 patch rebuilds vAmiga once (`tools/setup/oracle.sh`, about a minute).
+
+## Interface
+
+`sf_amiga_cpu_writes`, `Amiga::cpu_writes`, `Amiga::blit_events`, `Amiga::frames_run` (above).
+
+## Files
+
+`engine/crates/sf-oracle/` (`patches/0005-irq-entry-hook.patch`, `shim/shim.{h,cpp}`,
+`src/{amiga,ffi,lib}.rs`); `engine/crates/sf-conform/examples/story_dbg.rs`.
+
+## Tests
+
+- [ ] `sf-oracle` tests: a frame of the intro has BLTSIZE writes and blitter events in order
+  begin, free, end.
 
 ## Done when
 

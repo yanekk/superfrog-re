@@ -2,7 +2,7 @@
 
 **Phase:** 2 · **Depends on:** T53; blocks T56 · **Weight:** medium
 
-Split from T46. Owner, 2026-10-13: conformance feeds the original's handler end (and, T46, its
+**Split from:** T46. Owner, 2026-10-13: conformance feeds the original's handler end (and, T46, its
 entry); normal play uses the engine's own estimate.
 
 ## Goal
@@ -17,6 +17,20 @@ handler acknowledged its interrupt (`INTREQ = $20`, in the step's Paula writes w
 
 Which instruction of the wait (`tst.w`, `beq.b`) the interrupt came in on decides 13 cycles:
 derive it from the fed entry, or check both against the oracle's DMACON $8400.
+
+## Interface
+
+`Game::set_handler_end` (conformance only; normal play estimates).
+
+## Files
+
+`sf-core/src/game.rs`, `front/story/` (`mod.rs`, `intro.rs`); `sf-conform/src/` (`lib.rs`,
+`sync.rs`).
+
+## Tests
+
+- [ ] `sf-conform scan` on a case through the scenes the scan reaches: draw ends land in the
+  original's frame.
 
 ## Done when
 

@@ -2,7 +2,7 @@
 
 **Phase:** 2 · **Depends on:** T49; blocks T56 · **Weight:** medium
 
-Split from T46.
+**Split from:** T46.
 
 ## Goal
 
@@ -22,9 +22,18 @@ display still fetches (no black list after `scene_out`), which slows its CPU and
   3760, 4238), else after it (536, 1755, 2863, 3438, 4580, 4974, 5452).
 - The first draw after them ends ~17 lines early in the engine: draw timing is T52–T54's.
 
+## Interface
+
+None new.
+
 ## Files
 
 `front/story/intro.rs`, `front/story/clock.rs`.
+
+## Tests
+
+- [ ] A case to frame 3195 (sync `power-on-disk3`): `sf-conform scan` lists nothing before the
+  first draw-timing miss (outside the test block if slow).
 
 ## Done when
 

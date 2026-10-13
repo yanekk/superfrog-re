@@ -2,7 +2,7 @@
 
 **Phase:** 2 · **Depends on:** T52; blocks T54 · **Weight:** medium
 
-Split from T46.
+**Split from:** T46.
 
 ## Goal
 
@@ -20,6 +20,18 @@ branch for branch as a `sim::Prog`, and the intro times its draws with `sim` in 
 - The instruction letters per addressing mode follow Moira: e.g. `move.l d(An),d(An)` `prrpwwp`,
   `clr.l d(An)` `prrpww`, `addq.l #8,d(An)` `prrpww`, `move.w (An,Dn),Dn` `nprp`, `lsr.l #4`
   `p`+6 idle, `mulu` `p`+17+ones idle, `btst #14,DMACONR` `ppprp`.
+
+## Interface
+
+`sim::Prog`, built by `bobs::draw`.
+
+## Files
+
+`front/story/` (`bobs.rs`, `sim.rs`, `intro.rs`, `clock.rs`).
+
+## Tests
+
+- [ ] The done-when's BLTSIZE check, kept as a test or a tool.
 
 ## Done when
 
