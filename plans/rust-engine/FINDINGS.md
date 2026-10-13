@@ -18,6 +18,7 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-14 | 📌 | T83 coverage: `items-wings-w1-2` wings, flight (lasts until a life is lost), spud taken and thrown, coins, a fake wall; `items-checkpoint-w1-1` checkpoint, speed-up to its end (500 frames); red `items-pad-w1-1` adds pad, bottle, spud (T101). |
 | 2026-10-14 | 🔄 | Owner, T83: added T101 lag-long-pass (blocks T21): the bounce-pad case `items-pad-w1-1` diverges at 402 (cut inside phase 6 before `buffer_flip`) and 786 (a pass across three frames). Case committed outside the test block. |
 | 2026-10-13 | 📌 | T82: a poke planted just before the after-lag step is lost (that step carries on the lagging frame's pass); plant on the lag frame. Free-running costs on items-run-w1-1: signed median 0.75 lines, unsigned 1.9. |
 | 2026-10-13 | 🔄 | Owner: T92 hit pir's context line with only an uncompiled draft committed; the rest passed to T95 slot-load-finish (blocks T93). The oracle timeline is in T95's doc and T92's WIP commit. |
