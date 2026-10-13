@@ -11,6 +11,7 @@
 pub mod bobs;
 pub mod boot;
 pub mod clock;
+pub mod cpu;
 pub mod data;
 pub mod fade;
 pub mod intro;
@@ -67,6 +68,15 @@ const BOOT_START_LINE: u16 = 0x130;
 /// the bus and address error vectors), which the music replayer reads through a zero instrument
 /// pointer (measured on the oracle; the owner's ROM).
 const KICKSTART_LOW: [u8; 12] = [0, 0, 0, 0, 0x00, 0xc0, 0x02, 0x76, 0x00, 0xfc, 0x08, 0x18];
+
+/// The bus the handler finds: refresh and the copper's cycles (sorted).
+struct HandlerBus(Vec<u32>);
+
+impl cpu::Bus for HandlerBus {
+    fn taken(&self, t: u32) -> bool {
+        cpu::refresh(t) || self.0.binary_search(&t).is_ok()
+    }
+}
 
 /// Lines into the handler from which the copper's reads see its writes.
 const COPPER_SEES_HANDLER: u16 = 2;
@@ -202,6 +212,8 @@ pub struct Story {
     pub(crate) load_line: Option<u16>,
     /// For conformance: what runs on by itself during the next load, to put in place at it.
     pub(crate) load_state: Vec<(u32, Vec<u8>)>,
+    /// For conformance: where the original took the next frame's interrupt (line, DMA cycle).
+    pub(crate) handler_entry: Option<(u16, u16)>,
     frame: u32,
 }
 
@@ -340,6 +352,7 @@ impl Story {
             pending: Vec::new(),
             load_line: None,
             load_state: Vec::new(),
+            handler_entry: None,
             frame: 0,
         }
     }
@@ -428,6 +441,7 @@ impl Story {
                 let load_line = cx.load_line.take();
                 drop(cx);
                 let load_state = std::mem::take(&mut self.load_state);
+                let entry = self.handler_entry.take();
                 let f = i.frame(
                     &mut self.mem,
                     data,
@@ -437,6 +451,7 @@ impl Story {
                     list,
                     pacing,
                     load_state,
+                    entry,
                 );
                 *n += 1;
                 // A load's frame shows the list set before the load, as the load left memory.
@@ -457,10 +472,9 @@ impl Story {
                 resync = f.resync;
                 after_handler = at_handler;
                 let w = if i.ended { Wait::Over } else { Wait::Frame };
-                let fade_writes = if f.list_at_load.is_none() {
-                    f.fade_writes
-                } else {
-                    Vec::new()
+                let walk = match (f.list_at_load, f.walk) {
+                    (None, Some(w)) => Some((f.entry, w)),
+                    _ => None,
                 };
                 return self.finish(
                     empty,
@@ -468,7 +482,7 @@ impl Story {
                     list,
                     copper,
                     after_handler,
-                    fade_writes,
+                    walk,
                     f.load,
                     resync,
                     f.jobs,
@@ -487,7 +501,7 @@ impl Story {
             list,
             copper,
             after_handler,
-            Vec::new(),
+            None,
             load,
             resync,
             jobs,
@@ -506,7 +520,7 @@ impl Story {
         list: u32,
         copper: Vec<u8>,
         after_handler: Option<(u16, Vec<u8>)>,
-        fade_writes: Vec<(u32, u16, u16, u16)>,
+        walk: Option<(u32, vbl::Handler)>,
         load: Option<LoadEnd>,
         resync: Vec<(u32, u32)>,
         jobs: Vec<Job>,
@@ -517,18 +531,8 @@ impl Story {
         let picture = match self.fetch {
             None => Picture::blank(0x81, 0x2c, 320, 200),
             Some(carry) => {
-                let word = |a: u32, line: u16, h: u16| {
+                let snap = |a: u32, line: u16| {
                     let o = a.wrapping_sub(list) as usize;
-                    // A word the handler's fade step rewrites, component by component: as its last
-                    // write before the copper's read left it.
-                    let mut rewritten = fade_writes.iter().filter(|w| w.0 == a).peekable();
-                    if rewritten.peek().is_some() {
-                        let last = rewritten.rfind(|w| (line, h) >= (w.1, w.2)).map(|w| w.3);
-                        return last.unwrap_or_else(|| match copper.get(o..o + 2) {
-                            Some(w) => u16::from_be_bytes([w[0], w[1]]),
-                            None => self.mem.w(a),
-                        });
-                    }
                     let snap = match &after_handler {
                         Some((l, after)) if line >= *l => after,
                         _ => &copper,
@@ -537,6 +541,42 @@ impl Story {
                         Some(w) => u16::from_be_bytes([w[0], w[1]]),
                         None => self.mem.w(a),
                     }
+                };
+                // The handler's writes to the fades' colour words, timed on the bus the copper
+                // leaves the CPU (its own cycles, run first: the CPU never holds it up).
+                let fade_writes = match &walk {
+                    Some((entry, h)) => {
+                        let mut taken = Vec::new();
+                        crate::render::copper::run_bus(
+                            &|a, line, _| snap(a, line),
+                            list,
+                            carry,
+                            &mut taken,
+                        );
+                        let bus = HandlerBus(
+                            taken
+                                .iter()
+                                .map(|b| b.line as u32 * cpu::LINE + b.h as u32)
+                                .collect(),
+                        );
+                        vbl::colour_writes(h, *entry, &bus)
+                    }
+                    None => Vec::new(),
+                };
+                let word = |a: u32, line: u16, h: u16| {
+                    // A word the handler's fade step rewrites: as its last write before the
+                    // copper's read left it.
+                    let t = line as u32 * cpu::LINE + h as u32;
+                    let mut rewritten = fade_writes.iter().filter(|w| w.0 == a).peekable();
+                    if rewritten.peek().is_some() {
+                        let o = a.wrapping_sub(list) as usize;
+                        let last = rewritten.rfind(|w| w.1 < t).map(|w| w.2);
+                        return last.unwrap_or_else(|| match copper.get(o..o + 2) {
+                            Some(w) => u16::from_be_bytes([w[0], w[1]]),
+                            None => self.mem.w(a),
+                        });
+                    }
+                    snap(a, line)
                 };
                 let (pic, writes) = crate::render::story_screen(
                     &self.mem,

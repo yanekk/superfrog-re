@@ -2,6 +2,7 @@
 // that tools/setup/oracle.sh builds with engine/crates/sf-oracle/patches applied:
 //   0001 installs `vamiga_custom_write_hook`, called on every custom-register write (CPU and Copper);
 //   0004 installs `vamiga_audio_sample_hook`, called whenever a channel's DAC takes a new value;
+//   0005 installs `vamiga_irq_hook`, called as the CPU starts an interrupt's exception;
 //   0002 makes `SfShimAccess` a friend of `Emulator`, so the emulator can be stepped without its thread.
 
 #include "shim.h"
@@ -22,6 +23,7 @@ namespace vamiga {
 
 extern void (*vamiga_custom_write_hook)(u32 addr, u16 value, int accessor, isize vpos, isize hpos);
 extern void (*vamiga_audio_sample_hook)(int channel, i8 sample, u16 volume, isize vpos, isize hpos);
+extern void (*vamiga_irq_hook)(int level, isize vpos, isize hpos);
 
 // Reaches Emulator's private stepping functions (patch 0002). vAmiga normally runs these on its own
 // thread, paced by the wall clock; the oracle calls them directly, one frame per call.
@@ -112,6 +114,19 @@ void sampleHook(int channel, i8 sample, u16 volume, isize vpos, isize hpos)
     }
 }
 
+thread_local std::vector<sf_irq> *interrupting = nullptr;
+// The machine being stepped and the frame its step runs.
+thread_local Amiga *interrupted = nullptr;
+thread_local i64 stepFrame = 0;
+
+void irqHook(int level, isize vpos, isize hpos)
+{
+    if (interrupting) {
+        u8 next = interrupted && interrupted->agnus.pos.frame > stepFrame;
+        interrupting->push_back(sf_irq { u8(level), next, u16(vpos), u16(hpos) });
+    }
+}
+
 void fail(char *err, size_t len, const char *what)
 {
     if (err && len) { std::snprintf(err, len, "%s", what); }
@@ -144,6 +159,7 @@ struct sf_amiga {
     uint32_t joy = 0;
     uint8_t keys[16] = { };
     std::vector<sf_audio_tap> taps;
+    std::vector<sf_irq> irqs;
     std::vector<float> mixed;
     int lines = 0;
 
@@ -237,6 +253,7 @@ sf_amiga *sf_amiga_new(const uint8_t *rom, size_t rom_len, char *err, size_t err
     std::call_once(installed, [] {
         vamiga_custom_write_hook = hook;
         vamiga_audio_sample_hook = sampleHook;
+        vamiga_irq_hook = irqHook;
     });
     // vAmiga fills its static table of option defaults on first use without a lock; a machine set
     // up on another thread meanwhile can read it half-filled ("Invalid key: ROM_PATH").
@@ -306,9 +323,13 @@ int sf_amiga_step(sf_amiga *a, uint32_t joy, const uint8_t keys[16], char *err, 
 {
     a->writes.clear();
     a->taps.clear();
+    a->irqs.clear();
     a->input(joy, keys);
     capturing = &a->writes;
     tapping = &a->taps;
+    interrupting = &a->irqs;
+    interrupted = &a->amiga();
+    stepFrame = a->amiga().agnus.pos.frame;
     // A step runs from just after one frame's start to just after the next one's (the CPU finishes
     // its instruction), so the frame it runs is the one starting now.
     a->lines = int(a->amiga().agnus.pos.vCnt());
@@ -327,6 +348,8 @@ int sf_amiga_step(sf_amiga *a, uint32_t joy, const uint8_t keys[16], char *err, 
     });
     capturing = nullptr;
     tapping = nullptr;
+    interrupting = nullptr;
+    interrupted = nullptr;
     return rc;
 }
 
@@ -340,6 +363,12 @@ size_t sf_amiga_audio_taps(const sf_amiga *a, const sf_audio_tap **out)
 {
     *out = a->taps.data();
     return a->taps.size();
+}
+
+size_t sf_amiga_irqs(const sf_amiga *a, const sf_irq **out)
+{
+    *out = a->irqs.data();
+    return a->irqs.size();
 }
 
 int sf_amiga_frame_lines(const sf_amiga *a)
