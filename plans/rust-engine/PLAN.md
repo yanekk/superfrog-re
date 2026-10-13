@@ -103,12 +103,12 @@ headless.
 | [T39](tasks/T39-enemies-world-5.md) | enemies-world-5 | T16, T38; blocks T18 |
 | [T40](tasks/T40-enemies-world-6.md) | enemies-world-6 | T38; blocks T18 |
 | [T41](tasks/T41-enemies-world-4.md) | enemies-world-4 | T38; blocks T18 |
-| [T42](tasks/T42-beam-cleanup.md) | beam-cleanup | T36; blocks T37 |
-| [T43](tasks/T43-beam-tests.md) | beam-tests | T42 |
-| [T44](tasks/T44-items-w1.md) | items-w1 | T42 |
-| [T45](tasks/T45-items-w3.md) | items-w3 | T42 |
-| [T46](tasks/T46-items-w2.md) | items-w2 | T42 |
-| [T47](tasks/T47-items-launchers.md) | items-launchers | T42 |
+| [T81](tasks/T81-beam-cleanup.md) | beam-cleanup | T36; blocks T37 |
+| [T82](tasks/T82-beam-tests.md) | beam-tests | T81 |
+| [T83](tasks/T83-items-w1.md) | items-w1 | T81 |
+| [T84](tasks/T84-items-w3.md) | items-w3 | T81 |
+| [T85](tasks/T85-items-w2.md) | items-w2 | T81 |
+| [T86](tasks/T86-items-launchers.md) | items-launchers | T81 |
 
 T22 is the rig task: it comes before every surface task and they depend on it. T29 is the phase's
 drill. At the end: the owner plays it.

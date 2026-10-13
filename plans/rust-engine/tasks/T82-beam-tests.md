@@ -1,8 +1,8 @@
 **Split from:** T36 — carries "green without re-syncs" (made a failure) and the Tests list's routine conformance for `map_spawn_scan_screen` and the time model.
 
-# T43 — beam-tests
+# T82 — beam-tests
 
-**Phase:** 2 · **Depends on:** T42 · **Weight:** light
+**Phase:** 2 · **Depends on:** T81 · **Weight:** light
 
 Added by T36 (owner, 2026-10-13). T36's tests were written and discarded at the stop; rewrite them.
 

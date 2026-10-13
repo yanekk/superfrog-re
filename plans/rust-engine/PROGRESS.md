@@ -58,18 +58,18 @@ done · ⛔ blocked, needs a human.
 | T33 | attract-demo | T16, T20 | ⬜ | |
 | T34 | game-over | T15, T20; blocks T21 | ⬜ | |
 | T35 | end-sequence | T20; blocks T21 | ✅ | |
-| T36 | items-on-the-beam | T15 | ✅ | Split to T42–T47. Review: fixed sf-core lib tests (uncompilable `WorldDisplay` init, stale blit test); committed the picture compare left uncommitted; T42 blocks T37 (owner). Probed both item cases with re-syncs fatal (none); skip-scan_screen mutation red in level_entry; cut-step mutation survives the suite via silent re-sync (T43 carries). |
+| T36 | items-on-the-beam | T15 | ✅ | Split to T81–T86. Review: fixed sf-core lib tests (uncompilable `WorldDisplay` init, stale blit test); committed the picture compare left uncommitted; T81 blocks T37 (owner). Probed both item cases with re-syncs fatal (none); skip-scan_screen mutation red in level_entry; cut-step mutation survives the suite via silent re-sync (T82 carries). |
 | T37 | level-restart | T36; blocks T34 | ⬜ | |
 | T38 | level-tally | T37; blocks T21 | ⬜ | |
 | T39 | enemies-world-5 | T16, T38; blocks T18 | ⬜ | |
 | T40 | enemies-world-6 | T38; blocks T18 | ⬜ | |
 | T41 | enemies-world-4 | T38; blocks T18 | ⬜ | |
-| T42 | beam-cleanup | T36; blocks T37 | ⬜ | |
-| T43 | beam-tests | T42 | ⬜ | |
-| T44 | items-w1 | T42 | ⬜ | |
-| T45 | items-w3 | T42 | ⬜ | |
-| T46 | items-w2 | T42 | ⬜ | |
-| T47 | items-launchers | T42 | ⬜ | |
+| T81 | beam-cleanup | T36; blocks T37 | ⬜ | |
+| T82 | beam-tests | T81 | ⬜ | |
+| T83 | items-w1 | T81 | ⬜ | |
+| T84 | items-w3 | T81 | ⬜ | |
+| T85 | items-w2 | T81 | ⬜ | |
+| T86 | items-launchers | T81 | ⬜ | |
 
 A Notes cell holds what was built or what the review found, the test count, and one line per
 deviation from the task doc. A ✅ task's cell may be cut to one line once the next task has been reviewed.

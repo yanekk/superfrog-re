@@ -1,8 +1,8 @@
 **Split from:** T36 — carries "the item cases compare the picture, green without re-syncs" (goal 4) for world 1.
 
-# T44 — items-w1
+# T83 — items-w1
 
-**Phase:** 2 · **Depends on:** T42 · **Weight:** medium
+**Phase:** 2 · **Depends on:** T81 · **Weight:** medium
 
 Added by T36 (owner, 2026-10-13). One of the item frame cases T36's goal 4 asked for.
 
@@ -15,7 +15,7 @@ included, no re-sync:
   `examples/plan` (`plan W1-2 149,11 129,13`: reached frames 384 and 464).
 - W1-1: the checkpoint at 34,42 (`plan W1-1 34,42`: reached frame 220). The bottle (89,42) and spud
   (86,42) sit on a ledge reached by the mushroom's bounce; the planner fails from below — script by
-  hand or skip (W3-1 has a bottle, T45).
+  hand or skip (W3-1 has a bottle, T84).
 - A bounce pad: W1-1 PAD4 16,67 or W1-2 PAD4 115,43.
 
 Tools: `examples/items_map <level>` lists pickups by kind with cells; `examples/coverage

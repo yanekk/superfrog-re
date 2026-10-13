@@ -1,8 +1,8 @@
 **Split from:** T36 — carries "the item cases compare the picture, green without re-syncs" (goal 4) for W2-1.
 
-# T46 — items-w2
+# T85 — items-w2
 
-**Phase:** 2 · **Depends on:** T42 · **Weight:** medium
+**Phase:** 2 · **Depends on:** T81 · **Weight:** medium
 
 Added by T36 (owner, 2026-10-13). Item frame case near W2-1's start (66,46).
 

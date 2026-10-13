@@ -1,6 +1,6 @@
 **Split from:** T36 — carries no "Done when" item: the scaffolding T36 left.
 
-# T42 — beam-cleanup
+# T81 — beam-cleanup
 
 **Phase:** 2 · **Depends on:** T36; blocks T37 · **Weight:** light
 
@@ -15,7 +15,7 @@ committed; this task turns it into product code and records the design.
    blocks.
 2. Scratch examples in `engine/crates/sf-conform/examples/` (`beam`, `calib`, `copper`, `fit`,
    `profile`, `reach`, `speed`, `coverage`, `plan`, `items_map`, `dma`, `common/`): keep `profile`,
-   `fit`, `coverage`, `plan` and `items_map` (they write item cases: T44–T47) tidied, with a module
+   `fit`, `coverage`, `plan` and `items_map` (they write item cases: T83–T86) tidied, with a module
    doc each and no `/tmp/t36` paths (the engine-symbol table they read goes to a function); delete
    the rest. `fit` must print `Cost::cycles` match arms, not an array (purity test).
 3. Docs: DESIGN §2.1 lag paragraph and docs/08 "Lag" say what `Pacing::Late { writes, line, hpos,

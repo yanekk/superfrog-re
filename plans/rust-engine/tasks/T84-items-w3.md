@@ -1,8 +1,8 @@
 **Split from:** T36 — carries "the item cases compare the picture, green without re-syncs" (goal 4) for W3-1.
 
-# T45 — items-w3
+# T84 — items-w3
 
-**Phase:** 2 · **Depends on:** T42 · **Weight:** medium
+**Phase:** 2 · **Depends on:** T81 · **Weight:** medium
 
 Added by T36 (owner, 2026-10-13). Item frame case near W3-1's start (14,39).
 
