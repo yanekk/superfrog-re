@@ -72,7 +72,7 @@ done · ⛔ blocked, needs a human.
 | T48 | story-intro-skips | T46, T47; blocks T21 | ⬜ | |
 | T70 | bonus-level | T15; blocks T21 | ✅ | |
 | T71 | slot-sync | T15 | ✅ | |
-| T72 | slot-screen | T71 | 🔍 | Split at pir's context line, no code kept: T91 beam races, T92 loads to the attract loop, T93 attract drawing, T94 interrupt timing and the 300-frame case (blocks T73). Oracle measurements in their docs. |
+| T72 | slot-screen | T71 | ✅ | Split at pir's context line, no code kept, into T91–T94 (T94 blocks T73, sole dependent). Review: split docs lacked Interface sections, added; carried Done-when, deps, slugs checked; listing labels and offsets the docs cite confirmed by re_listing. No mutation: docs only. |
 | T73 | slot-rounds | T72 | ⬜ | |
 | T74 | slot-prizes | T73; blocks T21 | ⬜ | |
 | T75 | bonus-shots | T70; blocks T21 | ✅ | |
@@ -106,7 +106,7 @@ done · ⛔ blocked, needs a human.
 A Notes cell holds what was built or what the review found, the test count, and one line per
 deviation from the task doc. A ✅ task's cell may be cut to one line once the next task has been reviewed.
 
-**Review queue:** T72
+**Review queue:** *(empty)*
 
 ## Blocked on the user
 
