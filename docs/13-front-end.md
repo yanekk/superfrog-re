@@ -77,7 +77,9 @@ the old value, lines a main-program part ran under show what was there before it
 `Start::Disk3` is the moment disk 3's logo program `d3_c02` starts, after its bootblock: Kickstart
 and the bootblock are the load. The engine runs it as `front::story` with its own 512K memory
 (chip and slow), not the game's `State`. Frames below count from that start (case
-`story-intro`); **(oracle)** up to frame 555, the rest **(code)** and the debugger's runs.
+`story-intro`); **(oracle)** up to frame 555 in the test block and to 3184 in the slow case
+`story-scene1-out` (about 90 s, an ignored test: `sf-conform run` it), the rest **(code)** and the
+debugger's runs.
 
 ```
 0–66      Team 17 logo (d3_c02): hires, 4 planes, interlaced (two copper lists by field),
@@ -106,6 +108,8 @@ Timing the engine keeps (oracle, frames 0–539):
 
 - **Handler length**: 12 lines, 17 with music, plus 34 lines per 32 colours a stepping fade
   changes. A fade's set-up runs with interrupts off: in 5 + 37/32 lines a colour, out 5 + 3/2.
+  It can run across a frame's end (scene 1's out, frame 1242), so it is a job: record 0 and the
+  copper lists are compared once the original has left the routine (T49).
 - **Blits** on vAmiga's slow-blitter cycle counts (ABCD 4n+1, AD 2n+2, ABD 3n+2) on the bus left
   by refresh, audio (with music) and bitplane fetch (`story::clock`); 40 DMA cycles of CPU set-up
   per blit, 300 per object. The handler waits for the blit in progress.

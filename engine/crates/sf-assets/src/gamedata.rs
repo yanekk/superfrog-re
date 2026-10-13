@@ -607,6 +607,11 @@ pub fn decode(chunks: &[(ChunkId, Vec<u8>)]) -> Result<GameData, AssetError> {
     for name in ["MPIC", "HPIC", "AWA1", "AWA2", "END1", "END2", "HERO"] {
         keep(name)?;
     }
+    // The slot machine (T71) loads its pictures as files over the display buffers: FRUT and FRUC
+    // six planes of 320×256 each, FRUM one.
+    for name in ["FRUT", "FRUC", "FRUM"] {
+        keep(name)?;
+    }
     // The story intro's sector spans, raw (see `unpack`).
     for (id, bytes) in chunks {
         if id.disk == DiskSlot::D3 && id.index >= INTRO_SPAN_INDEX {

@@ -74,6 +74,8 @@ fn fade_setup_lines(kind: u8, count: u16) -> u64 {
         _ => 5 + 37 * c / 32,
     }
 }
+/// The fade set-ups' code, by kind (`fade_across` h0+$b4b4, `fade_in` $b6d8, `fade_out` $b906).
+const FADE_SETUP_CODE: [(u32, u32); 3] = [(0xb4b4, 0xb5c0), (0xb6d8, 0xb7bc), (0xb906, 0xba42)];
 /// `objects_init`'s CPU time before its blits, in DMA cycles: clearing the masks (`clr.b` 40 960
 /// times, h0+$8408) and the rest, plus each animation frame it prepares (h0+$8724). Oracle: the
 /// first scene's 145 frames and the second's 199 put their mask blits 3022 and 3071 lines on.
@@ -696,6 +698,13 @@ impl Intro {
         }
         self.write(out, 0x9a, 0x4000);
         set(m);
+        // With interrupts off it runs across the frame's end: its record and the copper lists are
+        // half written there. The PC heads the original's chain, so every word of the routine.
+        let (from, to) = FADE_SETUP_CODE[kind as usize - 1];
+        out.jobs.push(Job {
+            inside: (from..to).step_by(2).map(h0).collect(),
+            writes: vec![(FADES[0].at, 0x1f2), (scenes::TEXT_LIST, 0x240)],
+        });
         let lines = fade_setup_lines(kind, count);
         self.masked_until = self.t + lines;
         self.wait = Wait::Masked(self.t + lines);

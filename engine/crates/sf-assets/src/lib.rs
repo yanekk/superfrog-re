@@ -36,5 +36,7 @@ pub use palette::Palette;
 pub use picture::{Bitmap, Picture, PictureId};
 pub use sprites::{SpriteBank, SpriteId};
 pub use t7mp::{T7mp, Tag, t7mp_decode, t7mp_encode};
-pub use tables::{FileEntry, HiscoreEntry, PasswordEntry, Tables};
+pub use tables::{
+    FileEntry, HiscoreEntry, LampRect, LampRow, PasswordEntry, ReelFrame, SLOT_LAMPS, Tables,
+};
 pub use tiles::{TILE_BYTES, TileMasks, Tileset, WorldGfx};

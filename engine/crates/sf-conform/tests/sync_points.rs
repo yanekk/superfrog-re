@@ -110,3 +110,87 @@ fn the_end_sequence_starts_in_end_seq_load() {
     assert!(chain.contains(&sf_core::layout::h0(0x7b6)), "{chain:x?}");
     assert_eq!(s.memory.byte(FINAL_LEVEL_FLAG + 1), 1);
 }
+
+/// `slot_state` (h0+$49c6): its first word is the coins the tally put in.
+const SLOT_STATE: u32 = h0(0x49c6);
+const RNG_STATE: u32 = h0(0x160d4);
+
+fn slot(script: &str, start: Option<&str>) -> sync::Synced {
+    sync::reach(
+        &SyncPoint::Slot {
+            script: script.into(),
+            start: start.map(str::to_string),
+        },
+        &InputScript::idle(),
+        1_000,
+    )
+    .unwrap_or_else(|e| panic!("{e}"))
+}
+
+/// The slot machine's sync point (T71): W1-1's exit forced at once, the slot picked in the tally;
+/// the original is in `slot_machine` 73 frames on with W1-1's two clock coins, and its load (FRUT, FRUC, FRUM)
+/// ends 759 frames on (in `overlays_end`, return address h0+$b7e2), as T19 measured.
+#[test]
+fn slot_none_reaches_the_slot_machine_with_two_coins() {
+    let mut s = slot("slot-none", None);
+    let chain = sync::main_chain(&s.amiga.cpu(), &s.memory);
+    assert!(chain.contains(&sync::IN_SLOT_MACHINE), "{chain:x?}");
+    let coins = (s.memory.byte(SLOT_STATE) as u16) << 8 | s.memory.byte(SLOT_STATE + 1) as u16;
+    assert_eq!(coins, 2);
+    // Entered 73 frames after the forced exit (T19), which `slot-none` makes W1-1's first frame.
+    let w1_1 = sync::w1_1_by("start-w1-1").unwrap_or_else(|e| panic!("{e}"));
+    assert_eq!(s.amiga.frame() - w1_1.amiga.frame(), 73);
+    let mut disks = sync::Disks::at(&s.memory);
+    let loaded = (1..=1_000).find(|_| {
+        s.amiga.step(sf_core::input::FrameInput::NONE).unwrap();
+        disks.serve(&mut s.amiga);
+        let m = sync::core_memory(s.amiga.memory());
+        sync::main_chain(&s.amiga.cpu(), &m).contains(&h0(0xb7e2))
+    });
+    assert_eq!(loaded, Some(759));
+}
+
+fn rng_at_w1_1(start: &str) -> sf_core::Rng {
+    let m = sync::w1_1_by(start)
+        .unwrap_or_else(|e| panic!("{e}"))
+        .memory;
+    sf_core::Rng {
+        lo: long(&m, RNG_STATE),
+        hi: long(&m, RNG_STATE + 4),
+    }
+}
+
+/// The title's eye blinks draw from the RNG, so a later START GAME starts W1-1 further on: 50
+/// frames later one step, 120 frames later three, neither in the attract demo (T19's finding).
+#[test]
+fn a_later_start_moves_the_rng_one_and_three_steps() {
+    let base = rng_at_w1_1("start-w1-1");
+    let mut want = base;
+    want.next();
+    assert_eq!(rng_at_w1_1("start-w1-1-blink1"), want, "blink1: one step");
+    want.next();
+    want.next();
+    assert_eq!(rng_at_w1_1("start-w1-1-late"), want, "late: three steps");
+}
+
+/// Moira's clock after a call, for calibrating the engine's CPU time (T72): `$6238` (the slot's
+/// lamps off, 26 lamps) costs 1 650 cycles, as T19 measured.
+#[test]
+fn moira_counts_the_cycles_of_a_call() {
+    let s = slot("slot-none", None);
+    let mut cpu = sf_oracle::Cpu68k::new(sf_oracle::AmigaMemory {
+        chip: s.memory.chip.clone(),
+        slow: s.memory.slow.clone(),
+    });
+    let regs = sf_oracle::Regs {
+        d: [0; 8],
+        a: {
+            let mut a = [0; 8];
+            a[7] = sf_conform::routine::STACK;
+            a
+        },
+        sr: 0x2700,
+    };
+    let r = cpu.call(h0(0x6238), regs, 10_000).unwrap();
+    assert_eq!(r.cycles, 1_650);
+}

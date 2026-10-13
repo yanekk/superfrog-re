@@ -1,0 +1,8 @@
+# Power-on to World 1-1 like start-w1-1, its two menu fires 50 frames later (T71): the title's eye
+# blinks draw from the RNG once more, so W1-1 starts one RNG step on (it never moves in W1-1).
+1000: M
+1005: -
+4650: F
+4655: -
+4750: F
+4755: -

@@ -117,10 +117,12 @@ fn run_inner(
         SyncPoint::PowerOnDisk3 => Start::Disk3 {
             seed: synced.seed.unwrap_or_default(),
         },
-        SyncPoint::AtFrame { .. } | SyncPoint::EndSequence => Start::Resume {
-            memory: synced.memory,
-            cpu: sync::core_cpu(&amiga.cpu()),
-        },
+        SyncPoint::AtFrame { .. } | SyncPoint::EndSequence | SyncPoint::Slot { .. } => {
+            Start::Resume {
+                memory: synced.memory,
+                cpu: sync::core_cpu(&amiga.cpu()),
+            }
+        }
         _ => Start::Transplant(synced.memory),
     };
     let display = display_data();
@@ -320,7 +322,8 @@ fn run_inner(
         if stepped && after_lag {
             after_lag = false;
             if case.compare.vars
-                && let Some((v, theirs, ours)) = compare::vars(game.layout(), &game.probe(), &mem, &[])
+                && let Some((v, theirs, ours)) =
+                    compare::vars(game.layout(), &game.probe(), &mem, &[])
             {
                 if std::env::var("T36_NORESYNC").is_ok() {
                     let d = compare::var_diffs(game.layout(), &game.probe(), &mem, v.id);
@@ -332,7 +335,10 @@ fn run_inner(
                 }
                 outcome.resynced.push((
                     f,
-                    format!("{} at ${:06x}: original ${theirs:x}, engine ${ours:x}", v.name, v.addr),
+                    format!(
+                        "{} at ${:06x}: original ${theirs:x}, engine ${ours:x}",
+                        v.name, v.addr
+                    ),
                 ));
             }
             prev = mem;

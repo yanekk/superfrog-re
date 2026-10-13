@@ -35,6 +35,31 @@ pub struct HiscoreEntry {
     pub rest: u32,
 }
 
+/// Where one reel symbol is in the slot machine's `FRUC` picture (shown from display buffer 1):
+/// its top-left corner in pixels; a symbol is 32 pixels wide and 64 lines tall (`$6584`).
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct ReelFrame {
+    pub x: u16,
+    pub y: u16,
+}
+
+/// One lamp of the slot machine: its rectangle on the screen in pixels, which `$645e` blits on
+/// the sixth plane lit or dark. `rest` is the record's last two words, which `$645e` does not read.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct LampRect {
+    pub x: u16,
+    pub y: u16,
+    pub w: u16,
+    pub h: u16,
+    pub rest: [u16; 2],
+}
+
+/// The slot machine's lamps (`slot_lamps`, h0+$6842: 26 records of 8 bytes).
+pub const SLOT_LAMPS: usize = 26;
+
+/// One row of an attract pattern: each lamp's word, in `slot_lamps` order.
+pub type LampRow = [u16; SLOT_LAMPS];
+
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct Tables {
     /// `file_table`, d1_c03 h0+$cbfe: 95 entries of 6 bytes.
@@ -55,6 +80,21 @@ pub struct Tables {
     /// `obj_templates`, d1_c03 h0+$1c6e2: 160 object templates of $ae bytes (docs/09 "The slot
     /// record"), as stored. Their routine pointers are unrelocated `h0` offsets.
     pub obj_templates: Vec<Vec<u8>>,
+    /// The slot machine's prize ladder, d1_c03 h0+$57b6: the `slot_lamps` record (an `h0`
+    /// offset) of each rung, bottom first, as the file has them up to their 0 terminator (h0+$57de).
+    pub slot_ladder: Vec<u32>,
+    /// The hold menu's pointer stops, d1_c03 h0+$606a: the pointer's x at each, left to right, up
+    /// to their `$ffff` terminator (h0+$6074; h0+$6068 is another, before the first).
+    pub slot_pointer_stops: Vec<u16>,
+    /// The reel symbols, d1_c03 h0+$668a: 32 entries of two words, by reel position.
+    pub slot_reel_frames: Vec<ReelFrame>,
+    /// The lamps' rectangles, d1_c03 h0+$670a: 26 records of `$c` bytes, in `slot_lamps` order.
+    pub slot_lamp_rects: Vec<LampRect>,
+    /// The lamps' attract patterns (`$6276`), rows of 26 words (`$34` bytes), each pattern ended
+    /// by a row starting `$ff80`: the first nine times d1_c03 h0+$3b2e8, then until the 30th time
+    /// h0+$3b1ae. Kept without their terminators.
+    pub slot_attract_first: Vec<LampRow>,
+    pub slot_attract_later: Vec<LampRow>,
 }
 
 impl Tables {
@@ -123,7 +163,64 @@ impl Tables {
         let obj_templates = (0..160)
             .map(|k| Ok(r.bytes(0x1c6e2 + 0xae * k, 0xae)?.to_vec()))
             .collect::<Result<_, AssetError>>()?;
+        let until =
+            |at: usize, step: usize, end: u32, read: &dyn Fn(usize) -> Result<u32, AssetError>| {
+                let mut out = Vec::new();
+                for k in 0..64 {
+                    let v = read(at + step * k)?;
+                    if v == end {
+                        return Ok(out);
+                    }
+                    out.push(v);
+                }
+                Err(r.err(Why::Malformed(format!("table at h0+${at:x} has no end"))))
+            };
+        let slot_ladder = until(0x57b6, 4, 0, &|a| r.u32(a))?;
+        let slot_pointer_stops = until(0x606a, 2, 0xffff, &|a| r.u16(a).map(u32::from))?
+            .into_iter()
+            .map(|v| v as u16)
+            .collect();
+        let slot_reel_frames = (0..32)
+            .map(|k| {
+                Ok(ReelFrame {
+                    x: r.u16(0x668a + 4 * k)?,
+                    y: r.u16(0x668a + 4 * k + 2)?,
+                })
+            })
+            .collect::<Result<_, AssetError>>()?;
+        let slot_lamp_rects = (0..SLOT_LAMPS)
+            .map(|k| {
+                let at = 0x670a + 0xc * k;
+                Ok(LampRect {
+                    x: r.u16(at)?,
+                    y: r.u16(at + 2)?,
+                    w: r.u16(at + 4)?,
+                    h: r.u16(at + 6)?,
+                    rest: [r.u16(at + 8)?, r.u16(at + 10)?],
+                })
+            })
+            .collect::<Result<_, AssetError>>()?;
+        let pattern = |at: usize| -> Result<Vec<LampRow>, AssetError> {
+            let rows = until(at, 2 * SLOT_LAMPS, 0xff80, &|a| r.u16(a).map(u32::from))?.len();
+            (0..rows)
+                .map(|row| {
+                    let mut out = [0u16; SLOT_LAMPS];
+                    for (k, v) in out.iter_mut().enumerate() {
+                        *v = r.u16(at + 2 * SLOT_LAMPS * row + 2 * k)?;
+                    }
+                    Ok(out)
+                })
+                .collect()
+        };
+        let slot_attract_first = pattern(0x3b2e8)?;
+        let slot_attract_later = pattern(0x3b1ae)?;
         Ok(Tables {
+            slot_ladder,
+            slot_pointer_stops,
+            slot_reel_frames,
+            slot_lamp_rects,
+            slot_attract_first,
+            slot_attract_later,
             file_table,
             disk_ids,
             passwords,

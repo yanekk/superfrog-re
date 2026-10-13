@@ -71,16 +71,16 @@ done · ⛔ blocked, needs a human.
 | T47 | story-intro-handover | T46; blocks T21 | ⬜ | |
 | T48 | story-intro-skips | T46, T47; blocks T21 | ⬜ | |
 | T70 | bonus-level | T15; blocks T21 | ✅ | |
-| T71 | slot-sync | T15 | ⬜ | |
+| T71 | slot-sync | T15 | ✅ | |
 | T72 | slot-screen | T71 | ⬜ | |
 | T73 | slot-rounds | T72 | ⬜ | |
 | T74 | slot-prizes | T73; blocks T21 | ⬜ | |
-| T75 | bonus-shots | T70; blocks T21 | ⬜ | |
+| T75 | bonus-shots | T70; blocks T21 | ✅ | |
 | T76 | bonus-enemies-a | T70; blocks T21 | ⬜ | |
 | T77 | bonus-enemies-b | T70, T76; blocks T21 | ⬜ | |
 | T78 | bonus-enemy-death | T70, T75; blocks T21 | ⬜ | |
 | T79 | bonus-level-frames | T70, T37, T75, T76, T77, T78; blocks T21 | ⬜ | |
-| T49 | story-fade-setup-job | T46; blocks T56 | ⬜ | |
+| T49 | story-fade-setup-job | T46; blocks T56 | ✅ | |
 | T50 | story-objects-init-display | T49; blocks T56 | ⬜ | |
 | T51 | story-oracle-blit-tooling | T46; blocks T52 | ✅ | Review: one fix, a test for `BlitEvent::next` (a mutation forcing it off survived). Probed frames 3010–3059: BLTSIZE writes equal `blit_starts`, all begin/free/end, `frames_run` always 1; story_dbg BLITS/REGS/CMP run; kind and accessor mutations red. 2 tests. |
 | T52 | story-blitter-bus-sim | T51; blocks T53 | ⬜ | |
@@ -94,6 +94,8 @@ done · ⛔ blocked, needs a human.
 | T84 | items-w3 | T81 | ⬜ | |
 | T85 | items-w2 | T81 | ⬜ | |
 | T86 | items-launchers | T81 | ⬜ | |
+| T87 | slot-symbols-routines | T71; blocks T72 | ⬜ | |
+| T88 | slot-symbols-tables | T71; blocks T72 | ⬜ | |
 
 A Notes cell holds what was built or what the review found, the test count, and one line per
 deviation from the task doc. A ✅ task's cell may be cut to one line once the next task has been reviewed.

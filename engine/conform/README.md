@@ -79,6 +79,13 @@ Sync points:
   START GAME (`scripts/start-w1-1.txt`), any other level of W1–W6 and the bonus level (`"WB-1"`) by
   typing its level code on the options screen, the disks swapped as the game asks (docs/12
   "Reaching every level"). About 30 s the first time; cached after.
+- `sync = { slot = "<name>", start = "<name>" }`: the slot machine's first frame. W1-1 is reached
+  by the `start` script (`start-w1-1` when left out; `start-w1-1-blink1` and `start-w1-1-late`
+  START GAME later, so the RNG has moved 1 and 3 steps: it never moves in W1-1), the `slot`
+  script is played in W1-1 to its last line's frame, the level's exit is forced (`level_state` =
+  1), up picks the slot machine in the tally and fire goes on every 4th frame. The engine starts
+  from the original's memory and CPU on the first frame `slot_machine` runs (`Start::Resume`).
+  `scripts/slot-none.txt` plays nothing in W1-1: two coins from its clock go in.
 
 Compare only what the engine models. A case comparing the picture before the renderer exists is red
 by construction. A variable is in `LAYOUT` or it is not modelled; to see one that is not, `--watch` it.
