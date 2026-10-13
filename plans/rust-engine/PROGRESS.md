@@ -70,7 +70,7 @@ done · ⛔ blocked, needs a human.
 | T46 | story-intro-scenes | T32; blocks T21 | ⬜ | |
 | T47 | story-intro-handover | T46; blocks T21 | ⬜ | |
 | T48 | story-intro-skips | T46, T47; blocks T21 | ⬜ | |
-| T70 | bonus-level | T15; blocks T21 | ⬜ | |
+| T70 | bonus-level | T15; blocks T21 | ✅ | |
 | T71 | slot-sync | T15 | ⬜ | |
 | T72 | slot-screen | T71 | ⬜ | |
 | T73 | slot-rounds | T72 | ⬜ | |
