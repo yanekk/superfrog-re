@@ -18,6 +18,7 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-13 | 📌 | T53 added T96 (owner's yes): `story::sim` lacks audio DMA; from scene 1's effect (frame 3 034) AUD0's slot `$0D` delays blits. Scene 4's draws overrun frame starts, so draw checks need RAM at DMACON `$8400` (`Amiga::watch_write`). |
 | 2026-10-13 | 📌 | T90: the first draw (oracle frame 3 027) is 40 blits, all under BLTPRI (set 51,108); `story::sim` on T89's `Fixed` matches every one with no change, so five-plane fetch timing holds. T53 needs no BLS for this draw. |
 | 2026-10-13 | 🔄 | T72 split at pir's context line, no code kept: T91 slot-beam-races, T92 slot-load, T93 slot-attract-draw, T94 slot-interrupt-timing (blocks T73). The oracle's frame-by-frame timings T72 measured are in their docs. |
 | 2026-10-13 | 📌 | T89: vAmiga's copper allocates only COP_VBLANK (cycle 0) and its fetches; WAIT1/WAIT2/wake-up merely wait. BFD irrelevant to the masks (end WAIT `$fffe` has BFD). Oracle blits need BLTCON0/DMACON carried from earlier frames. |

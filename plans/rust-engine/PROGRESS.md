@@ -84,7 +84,7 @@ done · ⛔ blocked, needs a human.
 | T50 | story-objects-init-display | T49; blocks T56 | ⬜ | |
 | T51 | story-oracle-blit-tooling | T46; blocks T52 | ✅ | |
 | T52 | story-blitter-bus-sim | T51; blocks T53 | ✅ | |
-| T53 | story-draw-cpu-program | T52; blocks T54 | ⬜ | |
+| T53 | story-draw-cpu-program | T52; blocks T54 | 🔍 | `bobs::draw` returns its `sim::Prog`; intro times draws on `sim`; oracle `watch_write` RAM copy. story_draws: 20 draws exact. Deviations: only draws before each scene's first sound (no audio DMA; T96 carries the full check, owner's yes); CPU_PER_OBJECT removed. |
 | T54 | story-handler-end-feed | T53; blocks T56 | ⬜ | |
 | T55 | story-intro-sound-timing | T50; blocks T56 | ⬜ | |
 | T56 | story-intro-to-insert-disk | T49, T50, T54, T55; blocks T21, T47, T48 | ⬜ | |
@@ -102,11 +102,12 @@ done · ⛔ blocked, needs a human.
 | T92 | slot-load | T72 | ⬜ | |
 | T93 | slot-attract-draw | T72, T91, T92 | ⬜ | |
 | T94 | slot-interrupt-timing | T72, T91, T93; blocks T73 | ⬜ | |
+| T96 | story-audio-dma-slots | T53; blocks T56 | ⬜ | |
 
 A Notes cell holds what was built or what the review found, the test count, and one line per
 deviation from the task doc. A ✅ task's cell may be cut to one line once the next task has been reviewed.
 
-**Review queue:** *(empty)*
+**Review queue:** T53
 
 ## Blocked on the user
 
