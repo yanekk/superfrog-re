@@ -42,13 +42,13 @@ fn prepared(rig: &Rig, pre: &[(u32, Vec<u8>)], f: impl FnOnce(&mut LevelCtx)) ->
     let display = sf_conform::display_data();
     let mut paula = Vec::new();
     {
-        let mut c = LevelCtx {
-            bus: Bus::new(&mut st, display.rom()),
-            dispatch: sf_core::level::standard_dispatch(),
-            hw: Hw::default(),
-            sound: sound(),
-            paula: &mut paula,
-        };
+        let mut c = LevelCtx::new(
+            Bus::new(&mut st, display.rom()),
+            sf_core::level::standard_dispatch(),
+            Hw::default(),
+            sound(),
+            &mut paula,
+        );
         f(&mut c);
     }
     st.set_l(ATTRACT_MODE, attract);
