@@ -390,6 +390,32 @@ mod tests {
     }
 
     #[test]
+    fn a_frame_differing_only_on_raced_lines_does_not_diverge() {
+        let case = Case::parse(
+            "raced",
+            "sync = \"power-on\"\nframes = 1\ncompare = [\"picture\"]",
+        )
+        .unwrap();
+        let out = FrameOut {
+            picture: ours(),
+            beam_races: vec![(0x2c + 2, 0x2c + 3)],
+            ..FrameOut::default()
+        };
+        let mut picture = frame(0x123);
+        picture.pixels[2 * 4] = 0xf00;
+        let theirs = FrameCapture {
+            picture,
+            paula: Vec::new(),
+            audio: Vec::new(),
+        };
+        let mem = AmigaMemory {
+            chip: Vec::new(),
+            slow: Vec::new(),
+        };
+        assert!(super::frame(&case, 0, &[], &[], &mem, &out, &theirs, None, &[]).is_none());
+    }
+
+    #[test]
     fn paula_names_the_first_differing_write_and_its_index() {
         let theirs = [w(0x96, 0x8201), w(0xA8, 64), w(0xB8, 40)];
         assert_eq!(paula(&theirs, &theirs), None);
