@@ -67,7 +67,7 @@ done · ⛔ blocked, needs a human.
 | T42 | enemies-world-1 | T38; blocks T18, T33 | ⬜ | |
 | T43 | enemies-world-2 | T38; blocks T18, T39 | ⬜ | |
 | T44 | enemies-world-3 | T38; blocks T18 | ⬜ | |
-| T46 | story-intro-scenes | T32; blocks T21 | 🔍 | Fade colour writes timed on a 68000 bus model; handler entry fed (vAmiga patch 0005). Story-intro green to 3184 except 1242. Deviation: stopped by owner 2026-10-13; rest split into T49–T56 (T56 carries the done-when). Tools: `sf-conform scan`, `fade_probe`. |
+| T46 | story-intro-scenes | T32; blocks T21 | ✅ | Fade writes timed on a 68000 bus model, handler entry fed; owner stopped it, rest in T49–T56. Review: two fixes. Feed untested (gutted, 540-frame case stayed green): `story-intro` now 556 frames, red without it. Split docs lacked Interface/Files/Tests: filled. Scan to 3185: only 1242, as claimed; fade-timing mutation caught. |
 | T47 | story-intro-handover | T46; blocks T21 | ⬜ | |
 | T48 | story-intro-skips | T46, T47; blocks T21 | ⬜ | |
 | T49 | story-fade-setup-job | T46; blocks T56 | ⬜ | |
@@ -82,7 +82,7 @@ done · ⛔ blocked, needs a human.
 A Notes cell holds what was built or what the review found, the test count, and one line per
 deviation from the task doc. A ✅ task's cell may be cut to one line once the next task has been reviewed.
 
-**Review queue:** T46
+**Review queue:** *(empty)*
 
 ## Blocked on the user
 
