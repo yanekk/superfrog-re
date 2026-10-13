@@ -64,6 +64,9 @@ done · ⛔ blocked, needs a human.
 | T39 | enemies-world-5 | T16, T38; blocks T18 | ⬜ | |
 | T40 | enemies-world-6 | T38; blocks T18 | ⬜ | |
 | T41 | enemies-world-4 | T38; blocks T18 | ⬜ | |
+| T42 | enemies-world-1 | T38; blocks T18, T33 | ⬜ | |
+| T43 | enemies-world-2 | T38; blocks T18, T39 | ⬜ | |
+| T44 | enemies-world-3 | T38; blocks T18 | ⬜ | |
 
 A Notes cell holds what was built or what the review found, the test count, and one line per
 deviation from the task doc. A ✅ task's cell may be cut to one line once the next task has been reviewed.
