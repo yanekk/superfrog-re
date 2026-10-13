@@ -18,6 +18,9 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-13 | 📌 | T70 review: T76/T77 read the bonus paths from the bus with named addresses, as `items` and `audio::music` do, not from sf-assets `Tables` as T70's Done-when said. Kept; T79 still says `Tables`. |
+| 2026-10-13 | 🐞 | T70 review: T76's 122 spawned T77's 123 while T76/T77 ran in parallel; a spawn runs the init via `level::call`, asserting when unported. Fixed: 123 moved to T76, T77 depends on T76. |
+| 2026-10-13 | 🔄 | Owner, T70: frame cases wait for T36/T37 (like T16/T17); routines first. pir's context warning split all of T70, unbuilt, into T75–T79. Bonus row of `obj_flag_jumptab`: markers 1–15, 55. |
 | 2026-10-13 | 🔄 | Owner, T19: its split-off tasks T39–T43 renumbered T70–T74, clearing the collision with the feature branch's T39–T44 enemies tasks. |
 | 2026-10-13 | 📌 | T19 review: T16's doc puts oracle tests in `sf-core/tests/enemies_w1_3.rs`; purity forbids the emulator there, so they belong in `sf-conform/tests/`. Not fixed. |
 | 2026-10-13 | 📌 | T19 review: T17's doc puts oracle tests in `sf-core/tests/enemies_w4_6.rs`; they belong in `sf-conform/tests/` (purity). Not fixed. |
