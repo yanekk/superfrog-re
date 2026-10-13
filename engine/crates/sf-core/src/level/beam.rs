@@ -551,8 +551,9 @@ mod tests {
     #[test]
     fn a_blit_takes_longer_under_the_display() {
         let mut blank = Clock::START;
+        // A line with no fetch leaves the blitter all but the four refresh slots: 223.
         blank.blit(400);
-        assert_eq!(blank.line, 2);
+        assert_eq!(blank.line, 1);
         let mut shown = Clock { line: 0x40, into: 0 };
         shown.blit(400);
         assert!(shown.line > 0x42);
