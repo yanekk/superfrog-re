@@ -58,7 +58,7 @@ done · ⛔ blocked, needs a human.
 | T33 | attract-demo | T16, T20 | ⬜ | |
 | T34 | game-over | T15, T20; blocks T21 | ⬜ | |
 | T35 | end-sequence | T20; blocks T21 | ✅ | |
-| T36 | items-on-the-beam | T15 | 🔍 | Stopped by owner; rest split to T42–T47. Built: beam cost model (`level::beam`), resumable late pass, picture from a timed write log, conformance anchors at original writes/blits (owner), `Pacing::Late` cut, Start::Level objects. `items-run-w1-1`, `items-fruit-w2-2` green with picture, no re-sync. Debug hooks still in (T42). Tests: see T43. |
+| T36 | items-on-the-beam | T15 | ✅ | Split to T42–T47. Review: fixed sf-core lib tests (uncompilable `WorldDisplay` init, stale blit test); committed the picture compare left uncommitted; T42 blocks T37 (owner). Probed both item cases with re-syncs fatal (none); skip-scan_screen mutation red in level_entry; cut-step mutation survives the suite via silent re-sync (T43 carries). |
 | T37 | level-restart | T36; blocks T34 | ⬜ | |
 | T38 | level-tally | T37; blocks T21 | ⬜ | |
 | T39 | enemies-world-5 | T16, T38; blocks T18 | ⬜ | |
@@ -74,7 +74,7 @@ done · ⛔ blocked, needs a human.
 A Notes cell holds what was built or what the review found, the test count, and one line per
 deviation from the task doc. A ✅ task's cell may be cut to one line once the next task has been reviewed.
 
-**Review queue:** T36
+**Review queue:** *(empty)*
 
 ## Blocked on the user
 
