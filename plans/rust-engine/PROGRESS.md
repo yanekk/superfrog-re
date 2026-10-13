@@ -13,7 +13,7 @@ the account is the commit message. Whoever writes a cell also fixes the over-bud
 
 **Status:** Plan written; nothing built.
 **Last updated:** 2026-10-10
-**Next `pir-work` will:** T00 oracle-spike, because every later test rests on the reference emulator; T01 and T02 can run beside it.
+**Next `pir-work` will:** T16, T19 and T36, all ready on T15; T39–T41 follow T38.
 
 ## Tasks
 
@@ -39,7 +39,7 @@ done · ⛔ blocked, needs a human.
 | T14 | frog-and-level | T06, T11, T12, T13 | ✅ | |
 | T15 | items-and-scoring | T14 | ✅ | |
 | T16 | enemies-worlds-1-3 | T15 | ⬜ | |
-| T17 | enemies-worlds-4-6 | T15 | 🔍 | Owner, 2026-10-13: parked until T36–T38 and split by world instead of built. No code. Added T41 (W4), T39 (W5), T40 (W6 less the witch), each after T38, blocking T18. Deviation: the whole goal moved to those tasks. |
+| T17 | enemies-worlds-4-6 | T15 | ✅ | Closed as the owner's split, no code. Review clean, no fix commit: T39–T41 deps exist, no cycle, slugs match files, five parts each, only T17's own row edited, blocks T18; type counts, offsets and witch addresses checked against docs/09. No mutation (documents only). |
 | T18 | bosses | T16, T17 | ⬜ | |
 | T19 | slot-and-bonus | T15 | ⬜ | |
 | T20 | front-end | T08, T11, T12, T13 | ✅ | |
@@ -68,7 +68,7 @@ done · ⛔ blocked, needs a human.
 A Notes cell holds what was built or what the review found, the test count, and one line per
 deviation from the task doc. A ✅ task's cell may be cut to one line once the next task has been reviewed.
 
-**Review queue:** T17 (a plan split, no code)
+**Review queue:** *(empty)*
 
 ## Blocked on the user
 
