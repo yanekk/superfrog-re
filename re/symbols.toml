@@ -4275,3 +4275,57 @@ offset = 0x6f3a
 name = "print_text"
 kind = "func"
 note = "prints text; also the tally's and the info screen's; sets text_plane"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x57b6
+name = "slot_ladder"
+kind = "table"
+size = 0x2c
+note = "prize ladder: ten slot_lamps record pointers, bottom rung first, 0-ended"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x606a
+name = "slot_pointer_stops"
+kind = "table"
+size = 0xc
+note = "hold menu pointer's x at each stop, left to right, $ffff-ended"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x668a
+name = "slot_reel_frames"
+kind = "table"
+size = 0x80
+note = "reel symbols: 32 x (x, y) in FRUC, by reel position"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x670a
+name = "slot_lamp_rects"
+kind = "table"
+size = 0x138
+note = "lamps' rectangles: 26 x (x, y, w, h + 2 words), in slot_lamps order"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x3b1ae
+name = "slot_attract_later"
+kind = "table"
+size = 0x13a
+note = "lamp attract pattern from the 10th to the 30th time: 6 rows of 26 words, then $ff80"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x3b2e8
+name = "slot_attract_first"
+kind = "table"
+size = 0x1a2
+note = "lamp attract pattern for the first nine times: 8 rows of 26 words, then $ff80"
