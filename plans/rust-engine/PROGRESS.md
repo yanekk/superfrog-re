@@ -38,7 +38,7 @@ done · ⛔ blocked, needs a human.
 | T13 | renderer | T08, T12 | ✅ | |
 | T14 | frog-and-level | T06, T11, T12, T13 | ✅ | |
 | T15 | items-and-scoring | T14 | ✅ | |
-| T16 | enemies-worlds-1-3 | T15 | ⬜ | |
+| T16 | enemies-worlds-1-3 | T15 | ⛔ | Owner 2026-10-13: parked until T38 ✅ (frame cases need T36–T38); now world 1 only, W2/W3 split to T40/T41. Nothing built. |
 | T17 | enemies-worlds-4-6 | T15 | ⬜ | |
 | T18 | bosses | T16, T17 | ⬜ | |
 | T19 | slot-and-bonus | T15 | ⬜ | |
@@ -61,6 +61,8 @@ done · ⛔ blocked, needs a human.
 | T36 | items-on-the-beam | T15 | ⬜ | |
 | T37 | level-restart | T36; blocks T34 | ⬜ | |
 | T38 | level-tally | T37; blocks T21 | ⬜ | |
+| T40 | enemies-world-2 | T38; blocks T18 | ⬜ | |
+| T41 | enemies-world-3 | T38; blocks T18 | ⬜ | |
 
 A Notes cell holds what was built or what the review found, the test count, and one line per
 deviation from the task doc. A ✅ task's cell may be cut to one line once the next task has been reviewed.
