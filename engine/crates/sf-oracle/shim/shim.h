@@ -118,6 +118,15 @@ size_t sf_amiga_blit_events(const sf_amiga *a, const sf_blit_event **out);
 /* How many frames the last step ran: Agnus's frame count at its end minus at its start. */
 int sf_amiga_frames_run(const sf_amiga *a);
 
+/* Copy chip and slow RAM at the CPU's first write of `value` to custom register `reg` (its offset
+ * from $DFF000) in each step from now on; reg 0xFFFF stops it. */
+void sf_amiga_watch_write(sf_amiga *a, uint32_t reg, uint16_t value);
+
+/* RAM as it was at the watched write in the last step: 1 and the copies (valid until the next
+ * step), or 0 when the CPU did not make it. */
+int sf_amiga_watched_memory(const sf_amiga *a, const uint8_t **chip, size_t *chip_len,
+                            const uint8_t **slow, size_t *slow_len);
+
 /* The core's own mix of the last step at SF_AUDIO_RATE: `2 * n` floats, left then right, for the
  * returned n. Valid until the next step. */
 size_t sf_amiga_audio_out(const sf_amiga *a, const float **out);
