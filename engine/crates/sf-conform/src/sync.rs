@@ -14,7 +14,7 @@ use std::sync::atomic::{AtomicU64, Ordering};
 use sf_assets::{LevelId, World};
 use sf_core::input::{FrameInput, Joy, KeySet};
 use sf_core::layout::{AmigaMemory, Ram, h0};
-use sf_core::{Pacing, Rng};
+use sf_core::{HandlerEnd, Pacing, Rng};
 use sf_disk::{DiskSlot, sha1_hex};
 use sf_oracle::{Amiga, CpuRegs, OracleConfig, Snapshot};
 
@@ -58,6 +58,10 @@ pub enum SyncPoint {
     /// A level's first frame as [`SyncPoint::AtLevel`] reaches it, its clock (`level_clock`,
     /// h0+$876) then set to `seconds` (T37: a time-up case without waiting four minutes).
     Clock { level: LevelId, seconds: u16 },
+    /// A level's first frame as [`SyncPoint::AtLevel`] reaches it, its exit then forced
+    /// (`level_state` = 1, as [`SyncPoint::Slot`] forces it; T38: the tally without playing the
+    /// level to its exit).
+    Exit(LevelId),
     /// Game over after the last life (T34): W1-1 reached as [`SyncPoint::AtLevel`] reaches it,
     /// `frog_lives` (h0+$82e) set to 0 on its first frame, `script` played from there until the
     /// frog's death has ended the level's loop and the original's main program is in
@@ -395,6 +399,12 @@ pub fn reach_frozen(
             let (m, s) = (seconds / 60, seconds % 60);
             let digits = [(m / 10) as u8, (m % 10) as u8, (s / 10) as u8, (s % 10) as u8];
             synced.amiga.write_memory(LEVEL_CLOCK, &digits);
+            synced.memory = core_memory(synced.amiga.memory());
+            Ok(synced)
+        }
+        SyncPoint::Exit(level) => {
+            let mut synced = reach_frozen(&SyncPoint::AtLevel(*level), script, frames, frozen)?;
+            synced.amiga.write_memory(LEVEL_STATE, &1u32.to_be_bytes());
             synced.memory = core_memory(synced.amiga.memory());
             Ok(synced)
         }
@@ -769,6 +779,27 @@ pub fn handler_entry(before: &[sf_oracle::Irq], now: &[sf_oracle::Irq]) -> Optio
         .chain(now.iter().filter(|i| !i.next))
         .find(|i| i.level == 3)
         .map(|i| (i.vpos, i.hpos))
+}
+
+/// The PC the story intro's vertical-blank handler will return to, when a step of `a` is about to
+/// begin at its entry (a step ends there): where the main program was interrupted.
+pub fn intro_resumes(a: &Amiga) -> Option<u32> {
+    let cpu = a.cpu();
+    (cpu.pc == INTRO_VBL).then(|| main_chain(&cpu, &core_memory(a.memory()))[0])
+}
+
+/// Where the story intro's handler of a step ended (owner, T46; T54): its acknowledge, the step's
+/// first `INTREQ = $20` among its Paula writes, and the PC it returned to ([`intro_resumes`] before
+/// the step).
+pub fn handler_end(paula: &[sf_paula::PaulaWrite], resumes: Option<u32>) -> Option<HandlerEnd> {
+    let resumes = resumes?;
+    paula
+        .iter()
+        .find(|w| w.reg == 0x9c && w.value == 0x20)
+        .map(|w| HandlerEnd {
+            ack: (w.vpos, w.hpos),
+            resumes,
+        })
 }
 
 /// How many vertical-blank handlers the original ran in its last step, and whether the last

@@ -45,15 +45,14 @@ pub enum Scene {
 
 /// `logic_running` (h0+$9d6): set by `level_frame_loop` while a level plays.
 const LOGIC_RUNNING: u32 = h0(0x9d6);
-/// `level_state` (h0+$a06): negative while a level plays.
-const LEVEL_STATE: u32 = h0(0xa06);
 
 impl Scene {
     /// The scene the original's memory is in, for a transplant: a level while
-    /// `level_frame_loop` runs it, otherwise none ported yet.
+    /// `level_frame_loop` runs it (`level_state` counting down to the loop's end once the frog
+    /// dies or the exit is reached, T38), otherwise none ported yet.
     pub fn of(ram: &dyn Ram) -> Scene {
         let word = |a: u32| (ram.byte(a) as u16) << 8 | ram.byte(a + 1) as u16;
-        if word(LOGIC_RUNNING) != 0 && ram.byte(LEVEL_STATE) & 0x80 != 0 {
+        if word(LOGIC_RUNNING) != 0 {
             Scene::Level
         } else {
             Scene::Placeholder

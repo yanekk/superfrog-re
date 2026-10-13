@@ -93,20 +93,30 @@ pub fn run_with(
     case: &Case,
     before_step: impl FnMut(u32, &mut Game),
 ) -> Result<Outcome, Divergence> {
-    run_inner(case, before_step, None)
+    run_inner(case, before_step, &mut |_, _, _| {}, None)
+}
+
+/// [`run`], calling `after_step(frame, ours, theirs)` with both sides' Paula writes of each frame
+/// compared: the hook a test uses to check what the comparison leaves out (a write's beam).
+pub fn run_observing(
+    case: &Case,
+    mut after_step: impl FnMut(u32, &[sf_paula::PaulaWrite], &[sf_paula::PaulaWrite]),
+) -> Result<Outcome, Divergence> {
+    run_inner(case, |_, _| {}, &mut after_step, None)
 }
 
 /// [`run`], going on past each divergence: every frame that differs, in order (for finding what
 /// is left in a long case; the engine is not re-synced, so later ones may follow from earlier).
 pub fn scan(case: &Case) -> Vec<Divergence> {
     let mut found = Vec::new();
-    let _ = run_inner(case, |_, _| {}, Some(&mut found));
+    let _ = run_inner(case, |_, _| {}, &mut |_, _, _| {}, Some(&mut found));
     found
 }
 
 fn run_inner(
     case: &Case,
     mut before_step: impl FnMut(u32, &mut Game),
+    after_step: &mut dyn FnMut(u32, &[sf_paula::PaulaWrite], &[sf_paula::PaulaWrite]),
     mut found: Option<&mut Vec<Divergence>>,
 ) -> Result<Outcome, Divergence> {
     let frozen = case.freeze();
@@ -156,9 +166,11 @@ fn run_inner(
     for f in 0..case.frames {
         let input = case.script.input_at(of);
         frozen.apply(&mut amiga, &display);
+        let resumes = sync::intro_resumes(&amiga);
         let mut theirs = sync::step_inserting(&mut amiga, input)
             .unwrap_or_else(|e| panic!("{}: oracle, frame {of}: {e}", case.name));
         let mut entry = sync::handler_entry(&irqs, &amiga.irqs());
+        let mut handler_end = sync::handler_end(&theirs.paula, resumes);
         let handlers;
         (handlers, late) = sync::handlers(late, &irqs, &amiga.irqs(), &theirs.paula);
         irqs = amiga.irqs();
@@ -187,6 +199,7 @@ fn run_inner(
             game.anchor_blits(&amiga.blit_starts());
             let before = game.clone();
             game.set_handler_entry(entry);
+            game.set_handler_end(handler_end);
             game.set_blank_merged(Some(handlers < amiga.frames_run()));
             ours = game.step_paced(input, pacing);
             ours.paula.splice(0..0, held);
@@ -215,9 +228,11 @@ fn run_inner(
                         case.name
                     );
                     frozen.apply(&mut amiga, &display);
+                    let resumes = sync::intro_resumes(&amiga);
                     theirs = sync::step_inserting(&mut amiga, case.script.input_at(of))
                         .unwrap_or_else(|e| panic!("{}: oracle, frame {of}: {e}", case.name));
                     entry = sync::handler_entry(&irqs, &amiga.irqs());
+                    handler_end = sync::handler_end(&theirs.paula, resumes);
                     irqs = amiga.irqs();
                     if let Some(d) = disks.as_mut() {
                         d.serve(&mut amiga);
@@ -251,6 +266,7 @@ fn run_inner(
                     }
                     g.set_load_line(line);
                     g.set_handler_entry(entry);
+                    g.set_handler_end(handler_end);
                     let out = g.step_paced(input, pacing);
                     let leaves = g.load_leaves();
                     take(&mut g, &mem, leaves);
@@ -314,6 +330,7 @@ fn run_inner(
                         render_diff: None,
                         oracle_frame: (of != f + 1).then_some(of - 1),
                         unported: Vec::new(),
+                        level_outcome: None,
                         var_detail: compare::var_diffs(game.layout(), &game.probe(), &mem, v.id)
                             .into_iter()
                             .take(40)
@@ -371,6 +388,7 @@ fn run_inner(
                 rendered = Some(r);
             }
         }
+        after_step(f, &ours.paula, &theirs.paula);
         let d = compare::frame(
             case,
             f,
@@ -398,10 +416,12 @@ fn run_inner(
                 render_diff: None,
                 oracle_frame: None,
                 unported: Vec::new(),
+                level_outcome: None,
                 var_detail: Vec::new(),
                 resync: false,
             });
             d.unported = unported;
+            d.level_outcome = game.level_outcome();
             d.oracle_frame = (of != f + 1).then_some(of - 1);
             match found.as_mut() {
                 Some(all) => all.push(d),
