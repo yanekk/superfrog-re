@@ -54,7 +54,7 @@ done · ⛔ blocked, needs a human.
 | T29 | app-drill | T21, T25, T26, T27, T28 | ⬜ | |
 | T30 | acceptance | T29 | ⬜ | |
 | T31 | render-remaining-levels | T13 | ✅ | |
-| T32 | story-intro | T20; blocks T21 | ⬜ | |
+| T32 | story-intro | T20; blocks T21 | ✅ | |
 | T33 | attract-demo | T16, T20 | ⬜ | |
 | T34 | game-over | T15, T20; blocks T21 | ⬜ | |
 | T35 | end-sequence | T20; blocks T21 | ✅ | |
