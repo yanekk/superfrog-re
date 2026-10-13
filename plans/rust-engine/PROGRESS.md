@@ -72,7 +72,7 @@ done · ⛔ blocked, needs a human.
 | T48 | story-intro-skips | T46, T47; blocks T21 | ⬜ | |
 | T70 | bonus-level | T15; blocks T21 | ✅ | |
 | T71 | slot-sync | T15 | ✅ | |
-| T72 | slot-screen | T71 | ⬜ | |
+| T72 | slot-screen | T71 | ✅ | |
 | T73 | slot-rounds | T72 | ⬜ | |
 | T74 | slot-prizes | T73; blocks T21 | ⬜ | |
 | T75 | bonus-shots | T70; blocks T21 | ✅ | |
