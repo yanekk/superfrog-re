@@ -1753,6 +1753,15 @@ note = "bonus type 113's init flips it to pick one of two animations (T76)"
 [[sym]]
 exe = "d1_c03"
 hunk = 0
+offset = 0x293ce
+name = "bonus_fly_off"
+kind = "var"
+size = 2
+note = "bonus marker 11 sets it; 127/128's inits clear it; while set they fly off left (T77)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
 offset = 0x298d2
 name = "bob_records"
 kind = "table"

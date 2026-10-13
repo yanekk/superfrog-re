@@ -77,7 +77,7 @@ done · ⛔ blocked, needs a human.
 | T74 | slot-prizes | T73; blocks T21 | ⬜ | |
 | T75 | bonus-shots | T70; blocks T21 | ✅ | |
 | T76 | bonus-enemies-a | T70; blocks T21 | ✅ | |
-| T77 | bonus-enemies-b | T70, T76; blocks T21 | ⬜ | |
+| T77 | bonus-enemies-b | T70, T76; blocks T21 | 🔍 | Templates 124–133, markers 7–15 and 55, `bonus_fly_off` in LAYOUT; 6 routine tests, mutation-checked. Deviations: tests extend T76's `bonus_enemy_routines.rs` (its `with_slot`), not `bonus_routines.rs`; h0+$1c41c is `level::objects::obj_path_xy` (bosses share it). |
 | T78 | bonus-enemy-death | T70, T75; blocks T21 | ✅ | |
 | T79 | bonus-level-frames | T70, T37, T75, T76, T77, T78; blocks T21 | ⬜ | |
 | T49 | story-fade-setup-job | T46; blocks T56 | ✅ | |
@@ -100,7 +100,7 @@ done · ⛔ blocked, needs a human.
 A Notes cell holds what was built or what the review found, the test count, and one line per
 deviation from the task doc. A ✅ task's cell may be cut to one line once the next task has been reviewed.
 
-**Review queue:** *(empty)*
+**Review queue:** T77
 
 ## Blocked on the user
 
