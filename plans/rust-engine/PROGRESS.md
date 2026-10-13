@@ -83,7 +83,7 @@ done · ⛔ blocked, needs a human.
 | T49 | story-fade-setup-job | T46; blocks T56 | ✅ | |
 | T50 | story-objects-init-display | T49; blocks T56 | ⬜ | |
 | T51 | story-oracle-blit-tooling | T46; blocks T52 | ✅ | |
-| T52 | story-blitter-bus-sim | T51; blocks T53 | 🔍 | `story::sim`: `Fixed` (refresh, copper beams, fetch), `Sim` (vAmiga SlowBlitter no-fill programs, BLS, DMACON +2). 4 unit tests. Split at context warn: oracle checks moved to T89 (masks; copper off by one cycle) and T90 (draw restores). |
+| T52 | story-blitter-bus-sim | T51; blocks T53 | ✅ | Review: programs, BLS, STRT1/2, DMACON +2 checked against vAmiga source. Fix: untested programs (mutation of $7 survived), test over all 16. T89/T90 lacked Interface, added. Probe: T90's first restore reproduced to the cycle with BLTSIZE $0e06 (assumed). Oracle checks carried to T89/T90; copper off-by-one read-only. |
 | T53 | story-draw-cpu-program | T52; blocks T54 | ⬜ | |
 | T54 | story-handler-end-feed | T53; blocks T56 | ⬜ | |
 | T55 | story-intro-sound-timing | T50; blocks T56 | ⬜ | |

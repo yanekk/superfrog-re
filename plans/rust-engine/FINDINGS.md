@@ -18,6 +18,7 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-13 | 🐞 | T52 review: `run_bus` skips `$E0` when the copper is turned away there; vAmiga marks it BLOCKED so the blitter cannot take it, but `story::sim::Fixed` leaves it free. Open, for T89. |
 | 2026-10-13 | 📌 | T52 split at pir's context warning: `story::sim` kept; oracle checks moved to T89 (masks; `run_bus` takes one copper cycle too many at line 0) and T90 (first draw's restores). Both block T53. |
 | 2026-10-13 | 📌 | T51 review sweep: `Irq::next` (sf-oracle) has no direct test; only `sync::handler_entry` uses it. Left as is. |
 | 2026-10-13 | 📌 | T51 review: story_dbg `BLITS`/`REGS` after a load print only the load's last oracle step, not every step the load ran. Left as is. |
