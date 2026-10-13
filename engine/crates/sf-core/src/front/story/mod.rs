@@ -18,6 +18,7 @@ pub mod intro;
 pub mod mem;
 pub mod ops;
 pub mod scenes;
+pub mod sim;
 pub mod sound;
 pub mod vbl;
 
