@@ -18,6 +18,8 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-14 | 🐞 | T84 review, not fixed: `examples/plan` steps the engine unpaced, so after the original's lags a planned script can leave the original's route (T84's did). Check item scripts with `record`; `items-pad-w1-1` (red, T101) unchecked. |
+| 2026-10-14 | 📌 | T84 review: W3-1, enemies frozen, wings taken, frog at 79,43: Fire at 600–603 sends the original into a loop at h0+$e402 (from h0+$11c62) it never leaves. Real hang or a freeze artifact, unknown. |
 | 2026-10-14 | 📌 | T84 (corrected in review), against the oracle: shield 400 frames, counting down from 25 frames after it is taken (663 → 688–1087); speed-up 500 (584–1084); slow-down has no duration (stops the frog, speed limit back to base). |
 | 2026-10-14 | 🔄 | Owner, T84: added T102 items-w3-faults (T101; blocks T21): `items-shield-w3-1` red at 244 (lag in the pad bounce, probably T101's) and 366 (frog bob beam race). Case committed outside the test block. |
 | 2026-10-14 | 📌 | T34: the front's `Yield::Busy` lets work spilled past a frame's end run during the next vertical blank; the original's interrupt stops it. Game over resumes after the handler; other `Busy` users may be early by its length. |

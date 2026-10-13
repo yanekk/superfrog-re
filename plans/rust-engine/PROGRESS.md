@@ -91,7 +91,7 @@ done · ⛔ blocked, needs a human.
 | T81 | beam-cleanup | T36; blocks T37 | ✅ | |
 | T82 | beam-tests | T81 | ✅ | |
 | T83 | items-w1 | T81 | ✅ | |
-| T84 | items-w3 | T81 | 🔍 | `items-shield-w3-1` (W3-1: bottle, both pads, slow-down, speed-up, wings, shield; 1 050 frames), no test added. Deviation: red at 244 (lag) and 366 (bob race), engine faults; owner: case outside the test block, T102 to fix. |
+| T84 | items-w3 | T81 | ✅ | Review: case never took slow-down/speed-up/wings/shield in the original (planned unpaced); re-planned from frame 367, 1 130 frames, FINDINGS durations corrected. Still red at 244/366, owner: outside the test block, T102. Probed with `record`, map markers; shield and slow-down-stop mutations caught. |
 | T85 | items-w2 | T81 | ⬜ | |
 | T86 | items-launchers | T81 | ⬜ | |
 | T87 | slot-symbols-routines | T71; blocks T72 | ✅ | |
@@ -112,7 +112,7 @@ done · ⛔ blocked, needs a human.
 A Notes cell holds what was built or what the review found, the test count, and one line per
 deviation from the task doc. A ✅ task's cell may be cut to one line once the next task has been reviewed.
 
-**Review queue:** T84
+**Review queue:** *(empty)*
 
 ## Blocked on the user
 
