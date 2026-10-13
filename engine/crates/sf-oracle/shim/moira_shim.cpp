@@ -225,6 +225,7 @@ public:
             }
         }
         status.instr = n;
+        status.cycles = u64(getClock());
 
         for (int i = 0; i < 8; i++) r->d[i] = getD(i);
         for (int i = 0; i < 8; i++) r->a[i] = getA(i);

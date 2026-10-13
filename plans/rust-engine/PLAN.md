@@ -133,6 +133,8 @@ headless.
 | [T84](tasks/T84-items-w3.md) | items-w3 | T81 |
 | [T85](tasks/T85-items-w2.md) | items-w2 | T81 |
 | [T86](tasks/T86-items-launchers.md) | items-launchers | T81 |
+| [T87](tasks/T87-slot-symbols-routines.md) | slot-symbols-routines | T71; blocks T72 |
+| [T88](tasks/T88-slot-symbols-tables.md) | slot-symbols-tables | T71; blocks T72 |
 
 T22 is the rig task: it comes before every surface task and they depend on it. T29 is the phase's
 drill. At the end: the owner plays it.

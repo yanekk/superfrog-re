@@ -191,6 +191,7 @@ pub struct SfCallStatus {
     pub addr: u32,
     pub vector: u16,
     pub instr: u64,
+    pub cycles: u64,
 }
 
 unsafe extern "C" {

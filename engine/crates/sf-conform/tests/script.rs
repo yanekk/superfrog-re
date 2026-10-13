@@ -122,3 +122,29 @@ fn case_files_parse_and_refuse_what_they_do_not_know() {
         assert!(Case::parse("x", bad).is_err(), "{bad}");
     }
 }
+
+#[test]
+fn a_slot_case_names_its_script_and_maybe_a_start() {
+    use sf_conform::{Case, SyncPoint};
+    let c = Case::parse("s", "sync = { slot = \"slot-none\" }\nframes = 3\n").unwrap();
+    assert_eq!(
+        c.sync,
+        SyncPoint::Slot {
+            script: "slot-none".into(),
+            start: None
+        }
+    );
+    let c = Case::parse(
+        "s",
+        "sync = { slot = \"slot-none\", start = \"start-w1-1-late\" }\nframes = 3\n",
+    )
+    .unwrap();
+    assert_eq!(
+        c.sync,
+        SyncPoint::Slot {
+            script: "slot-none".into(),
+            start: Some("start-w1-1-late".into())
+        }
+    );
+    assert!(Case::parse("s", "sync = { slot = \"x\", frame = 3 }\nframes = 3\n").is_err());
+}

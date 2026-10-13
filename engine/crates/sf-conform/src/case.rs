@@ -136,6 +136,24 @@ impl Case {
             Some(toml::Value::String(s)) if s == "power-on" => SyncPoint::PowerOn,
             Some(toml::Value::String(s)) if s == "power-on-disk3" => SyncPoint::PowerOnDisk3,
             Some(toml::Value::String(s)) if s == "end-sequence" => SyncPoint::EndSequence,
+            Some(toml::Value::Table(s)) if s.contains_key("slot") => {
+                let name = |k: &str| match s.get(k) {
+                    None => Ok(None),
+                    Some(v) => v
+                        .as_str()
+                        .map(|v| Some(v.to_string()))
+                        .ok_or(format!("sync.{k} is a script name")),
+                };
+                if let Some(k) = s.keys().find(|k| !["slot", "start"].contains(&k.as_str())) {
+                    return Err(format!(
+                        "sync: unknown key `{k}` beside `slot` (slot, start)"
+                    ));
+                }
+                SyncPoint::Slot {
+                    script: name("slot")?.unwrap_or_default(),
+                    start: name("start")?,
+                }
+            }
             Some(toml::Value::Table(s)) if s.contains_key("level") => SyncPoint::AtLevel(
                 s["level"]
                     .as_str()
@@ -156,7 +174,7 @@ impl Case {
             },
             _ => {
                 return Err(
-                    "sync is \"power-on\", \"power-on-disk3\", \"end-sequence\", { script = \"…\", frame = N } or { level = \"W1-1\" }"
+                    "sync is \"power-on\", \"power-on-disk3\", \"end-sequence\", { script = \"…\", frame = N }, { level = \"W1-1\" } or { slot = \"…\", start = \"…\" }"
                         .into(),
                 );
             }
@@ -200,7 +218,9 @@ impl Case {
         };
         let mut exclude = Vec::new();
         if let Some(v) = t.get("exclude") {
-            let items = v.as_array().ok_or("exclude is a list of [[exclude]] tables")?;
+            let items = v
+                .as_array()
+                .ok_or("exclude is a list of [[exclude]] tables")?;
             for e in items {
                 let e = e.as_table().ok_or("each exclude is a table")?;
                 let s = |k: &str| {
@@ -214,7 +234,11 @@ impl Case {
                     "enemies" => Excluded::Enemies,
                     "panel" => Excluded::Panel,
                     "unreached" => Excluded::Unreached,
-                    w => return Err(format!("exclude: `{w}` is not objects, enemies, panel or unreached")),
+                    w => {
+                        return Err(format!(
+                            "exclude: `{w}` is not objects, enemies, panel or unreached"
+                        ));
+                    }
                 };
                 exclude.push(Exclusion {
                     what,
