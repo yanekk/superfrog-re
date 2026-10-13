@@ -660,6 +660,36 @@ impl Amiga {
         unsafe { ffi::sf_amiga_frames_run(self.raw) as u32 }
     }
 
+    /// From the next step on, copy chip and slow RAM at the CPU's first write of `value` to the
+    /// custom register `reg` (its offset from `$DFF000`) in each step ([`Amiga::watched_memory`]);
+    /// `None` stops it.
+    pub fn watch_write(&mut self, write: Option<(u16, u16)>) {
+        let (reg, value) = write.map_or((0xffff, 0), |(r, v)| (r as u32, v));
+        unsafe { ffi::sf_amiga_watch_write(self.raw, reg, value) };
+    }
+
+    /// RAM as it was at the watched write ([`Amiga::watch_write`]) in the last step, if the CPU
+    /// made it.
+    pub fn watched_memory(&self) -> Option<AmigaMemory> {
+        let (mut chip, mut slow) = (std::ptr::null(), std::ptr::null());
+        let (mut c, mut s) = (0usize, 0usize);
+        let hit =
+            unsafe { ffi::sf_amiga_watched_memory(self.raw, &mut chip, &mut c, &mut slow, &mut s) };
+        if hit == 0 {
+            return None;
+        }
+        unsafe {
+            Some(AmigaMemory {
+                chip: std::slice::from_raw_parts(chip, c).to_vec(),
+                slow: if s == 0 {
+                    Vec::new()
+                } else {
+                    std::slice::from_raw_parts(slow, s).to_vec()
+                },
+            })
+        }
+    }
+
     /// The interrupts the CPU took during the last step, in order: their level and the beam position
     /// (line, DMA cycle) as each exception began (core patch 0005).
     pub fn irqs(&self) -> Vec<Irq> {

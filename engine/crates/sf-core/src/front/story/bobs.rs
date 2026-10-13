@@ -14,7 +14,9 @@
 //! cookie-cut blit, last object first; the buffer is shown from the next vertical blank.
 
 use super::clock::BlitClock;
+use super::cpu::op;
 use super::mem::StoryMem;
+use super::sim::Prog;
 use super::{h0, h2, h3};
 use crate::front::blit::Blit;
 
@@ -186,99 +188,194 @@ pub fn clear_buffers(m: &mut StoryMem, clock: &mut BlitClock) {
 }
 
 /// `bobs_draw` (h0+$87ec, `draw_frame` h0+$96b0's work): one draw of every object into the buffer
-/// not shown, which becomes the one to show once the draw is over (h0+$87de).
-pub fn draw(m: &mut StoryMem, clock: &mut BlitClock) {
+/// not shown, which becomes the one to show once the draw is over (h0+$87de). Beside the memory
+/// work, the CPU's instructions from h0+$87de's `bsr` to its `rts`, branch for branch, as the bus
+/// accesses [`sim`] runs (T53).
+pub fn draw(m: &mut StoryMem) -> Prog {
+    let mut p = Prog::new();
+    p.ins(op::BSR);
     let (mut d0, mut d1) = (BUFFER_A, BUFFER_B);
+    p.ins(op::CLR_L_DN);
     let t = !m.w(TOGGLE);
     m.set_w(TOGGLE, t);
+    p.ins("pprpw"); // not.w abs.l
     let mut d2 = 0;
+    p.branch(t == 0, false);
     if t != 0 {
         std::mem::swap(&mut d0, &mut d1);
         d2 = 0x2c;
+        p.ins("pn"); // exg
+        p.ins(op::MOVEA_L_IM); // move.l #$2c, d2
     }
+    p.ins(op::ADDQ_L_AN); // addq.l #2, d1
     m.set_l(DRAWN, d0);
+    p.ins("ppwwp"); // move.l d0, abs.l
+    p.wait_blit(true);
+    p.ins(op::LEA_PC);
+    p.ins(op::LEA_ABS_L);
+    p.ins_regs("ppWp", &[(DMACON, 0x8400)]);
+    p.ins_regs("pppWWp", &[(BLTAFWM, 0xffff), (BLTAFWM + 2, 0xffff)]);
+    p.ins_regs("pppWWp", &[(BLTCON0, 0x09f0), (BLTCON1, 0)]);
+    p.ins(op::ADDQ_L_AN); // addq.l #4, a0
     let objs = objects(m);
     // Restore each object's last drawing in this buffer.
-    for &o in &objs {
+    for (i, &o) in objs.iter().enumerate() {
+        p.ins("rrp"); // movea.l (a0)+, a2
+        p.ins(op::ADDQ_L_AN); // adda.l d2, a2
         let a2 = o + d2;
         let dest = m.l(a2 + 0x10);
-        clock.cpu(CPU_RESTORE);
-        if dest == 0 {
-            continue;
+        p.ins(op::MOVEA_L_DI); // move.l $10(a2), d6
+        p.branch(dest == 0, true);
+        if dest != 0 {
+            let size = m.w(a2 + 0x1e);
+            let modulo = m.w(a2 + 0x26);
+            p.ins(op::MOVE_W_DI_DN);
+            p.ins_regs("prpWp", &[(BLTDMOD, modulo)]);
+            p.ins_regs("prpWp", &[(BLTAMOD, modulo)]);
+            p.ins(op::REG); // move.l d6, d4
+            p.ins(op::ADDQ_L_AN); // sub.l d0, d4
+            p.ins(op::MOVEA_L_DI); // move.l 4(a2), d7
+            p.ins(op::ADDQ_L_AN); // add.l d4, d7
+            let mut d6 = dest;
+            let mut d7 = m.l(a2 + 4).wrapping_add(dest.wrapping_sub(d0));
+            for k in 0..5 {
+                let b = Blit {
+                    con0: 0x09f0,
+                    afwm: 0xffff,
+                    alwm: 0xffff,
+                    pt: [d7, 0, 0, d6],
+                    modulo: [modulo as i16, 0, 0, modulo as i16],
+                    size,
+                    ..Blit::default()
+                };
+                b.run(m);
+                p.wait_blit(false);
+                p.ins_regs("pWWp", &long(BLTAPT, d7));
+                p.ins_regs("pWWp", &long(BLTDPT, d6));
+                p.ins_regs("pWp", &[(BLTSIZE, size)]);
+                if k < 4 {
+                    p.ins(op::ADDQ_L_AN);
+                    p.ins(op::ADDQ_L_AN);
+                }
+                d6 = d6.wrapping_add(PLANE);
+                d7 = d7.wrapping_add(PLANE);
+            }
         }
-        let size = m.w(a2 + 0x1e);
-        let modulo = m.w(a2 + 0x26) as i16;
-        let mut d6 = dest;
-        let mut d7 = m.l(a2 + 4).wrapping_add(dest.wrapping_sub(d0));
-        for _ in 0..5 {
-            let b = Blit {
-                con0: 0x09f0,
-                afwm: 0xffff,
-                alwm: 0xffff,
-                pt: [d7, 0, 0, d6],
-                modulo: [modulo, 0, 0, modulo],
-                size,
-                ..Blit::default()
-            };
-            b.run(m);
-            clock.blit(b.con0, size);
-            d6 = d6.wrapping_add(PLANE);
-            d7 = d7.wrapping_add(PLANE);
-        }
+        p.wait_blit(false);
+        p.ins("rrp"); // tst.l (a0)
+        p.branch(i + 1 < objs.len(), true);
     }
     // Step and draw each, last first.
-    for &o in objs.iter().rev() {
-        clock.cpu(super::clock::CPU_PER_OBJECT);
-        step_anim(m, o);
-        draw_object(m, clock, o + d2, d0);
+    p.ins(op::CLR_L_DN);
+    for (i, &o) in objs.iter().rev().enumerate() {
+        p.ins(op::CLR_L_DN);
+        p.ins("nrrp"); // movea.l -(a0), a2
+        step_anim(m, &mut p, o);
+        p.ins(op::ADDQ_L_AN); // adda.l d2, a2
+        draw_object(m, &mut p, o + d2, d0);
+        p.wait_blit(false);
+        p.ins(op::MOVEA_L_DI); // tst.l -4(a0)
+        p.branch(i + 1 < objs.len(), true);
     }
-    // `shown_buffer` takes `draw_buffer` when the draw is over: the caller's (it can be frames
-    // later).
+    p.ins_regs("ppWp", &[(DMACON, 0x0400)]);
+    p.ins(op::RTS);
+    // `shown_buffer` takes `draw_buffer` when the draw is over: the caller's memory work (it can
+    // be frames later), this program's last instructions.
+    p.ins("pprrpwwpp"); // move.l abs.l, abs.l
+    p.ins(op::RTS);
+    p
 }
 
-/// The CPU's time per object in the restore pass when nothing is restored.
-const CPU_RESTORE: u32 = 20;
+/// The custom registers the draw writes.
+const BLTCON0: u16 = 0x040;
+const BLTCON1: u16 = 0x042;
+const BLTAFWM: u16 = 0x044;
+const BLTCPT: u16 = 0x048;
+const BLTBPT: u16 = 0x04c;
+const BLTAPT: u16 = 0x050;
+const BLTDPT: u16 = 0x054;
+const BLTSIZE: u16 = 0x058;
+const BLTCMOD: u16 = 0x060;
+const BLTBMOD: u16 = 0x062;
+const BLTAMOD: u16 = 0x064;
+const BLTDMOD: u16 = 0x066;
+const DMACON: u16 = 0x096;
+
+/// A long's two word writes to `reg`, high word first.
+fn long(reg: u16, v: u32) -> [(u16, u16); 2] {
+    [(reg, (v >> 16) as u16), (reg + 2, v as u16)]
+}
 
 /// An object's animation: a new one asked for (`+$28`) starts; the current frame's count runs
 /// down and the next entry (or the first again after a negative long) takes over.
-fn step_anim(m: &mut StoryMem, o: u32) {
+fn step_anim(m: &mut StoryMem, p: &mut Prog, o: u32) {
     let pos = m.l(o);
     m.set_l(o + 0x2c, pos);
+    p.ins("prrpwwp"); // move.l 0(a2), $2c(a2)
     let new = m.l(o + 0x28);
+    p.ins(op::MOVEA_L_DI); // tst.l $28(a2)
+    p.branch(new == 0, false);
     if new != 0 {
         m.set_l(o + 0x28, 0);
         m.set_l(o + 8, new);
         m.set_l(o + 0x16, new.wrapping_sub(8));
         m.set_w(o + 0x1a, 0);
+        p.ins(op::MOVEA_L_DI); // move.l $28(a2), d4
+        p.ins("prrpww"); // clr.l $28(a2)
+        p.ins("pwwp"); // move.l d4, 8(a2)
+        p.ins(op::ADDQ_L_AN); // subq.l #8, d4
+        p.ins("pwwp"); // move.l d4, $16(a2)
+        p.ins(op::CLR_W_DI);
     }
     let left = m.w(o + 0x1a).wrapping_sub(1);
     m.set_w(o + 0x1a, left);
+    p.ins("prpw"); // subq.w #1, $1a(a2)
+    p.branch((left as i16) >= 0, false);
     if (left as i16) < 0 {
         let mut e = m.l(o + 0x16).wrapping_add(8);
         m.set_l(o + 0x16, e);
-        if (m.l(e) as i32) < 0 {
+        p.ins("prrpww"); // addq.l #8, $16(a2)
+        p.ins(op::MOVEA_L_DI); // movea.l $16(a2), a3
+        p.ins("rrp"); // tst.l (a3)
+        let wraps = (m.l(e) as i32) < 0;
+        p.branch(!wraps, true);
+        if wraps {
             e = m.l(o + 8);
             m.set_l(o + 0x16, e);
+            p.ins(op::MOVEA_L_DI); // movea.l 8(a2), a3
+            p.ins("pwwp"); // move.l a3, $16(a2)
         }
         m.set_w(o + 0x1a, m.w(e + 6));
+        p.ins("prpwp"); // move.w 6(a3), $1a(a2)
     }
     let e = m.l(o + 0x16);
     m.set_l(o + 0x42, e);
+    p.ins("prrpwwp"); // move.l $16(a2), $42(a2)
 }
 
 /// One object's block `a2` drawn into the buffer at `buffer`: clipped to the buffer's 352 × 200,
 /// cut in with its mask; `+$10` keeps where it went (zero when nothing was drawn).
-fn draw_object(m: &mut StoryMem, clock: &mut BlitClock, a2: u32, buffer: u32) {
+fn draw_object(m: &mut StoryMem, p: &mut Prog, a2: u32, buffer: u32) {
     let a3 = m.l(m.l(a2 + 0x16));
     let mut a1 = buffer;
+    p.ins(op::MOVEA_L_DI); // movea.l $16(a2), a3
+    p.ins("rrp"); // movea.l (a3), a3
+    p.ins(op::REG); // movea.l d0, a1
     m.set_l(a2 + 0x1e, m.l(a3 + 0x1a));
     m.set_l(a2 + 0x22, m.l(a3 + 0x1e));
     m.set_w(a2 + 0x26, m.w(a3 + 0x22));
+    p.ins("prrpwwp");
+    p.ins("prrpwwp");
+    p.ins("prpwp");
     let width = m.w(a3 + 4);
     let height = m.w(a3 + 6);
     let mut d7 = m.w(a2).wrapping_add(m.w(a3 + 8));
     let mut a4 = m.l(a3 + 0x24);
     m.set_l(a2 + 0x10, 0);
+    p.ins(op::MOVE_W_DI_DN); // move.w 0(a2), d7
+    p.ins(op::MOVE_W_DI_DN); // add.w 8(a3), d7
+    p.ins(op::MOVEA_L_DI); // movea.l $24(a3), a4
+    p.ins("prrpww"); // clr.l $10(a2)
     let add_w = |m: &mut StoryMem, at: u32, v: u16| {
         let x = m.w(at).wrapping_add(v);
         m.set_w(at, x);
@@ -287,8 +384,15 @@ fn draw_object(m: &mut StoryMem, clock: &mut BlitClock, a2: u32, buffer: u32) {
     let mut d1: u16 = 0;
     // Right edge (`$170`: the buffer's 352 pixels and the shift's extra word).
     let d6 = d7.wrapping_add(width).wrapping_sub(0x170);
+    p.ins(op::REG); // move.w d7, d6
+    p.ins(op::MOVE_W_DI_DN); // add.w 4(a3), d6
+    p.ins(op::ANDI_W_DN); // subi.w #$170, d6
+    p.branch((d6 as i16) < 0, false);
     if (d6 as i16) >= 0 {
-        if (d7.wrapping_sub(0x160) as i16) >= 0 {
+        p.ins(op::ANDI_W_DN); // cmpi.w #$160, d7
+        let off = (d7.wrapping_sub(0x160) as i16) >= 0;
+        p.branch(off, true);
+        if off {
             return;
         }
         let d5 = width.wrapping_sub(d6) >> 4;
@@ -297,13 +401,34 @@ fn draw_object(m: &mut StoryMem, clock: &mut BlitClock, a2: u32, buffer: u32) {
         add_w(m, a2 + 0x24, cut);
         d1 = m.w(a3 + 0x1a) & 0xffc0 | d5;
         m.set_w(a2 + 0x1e, d1);
+        p.ins(op::MOVE_W_DI_DN); // move.w 4(a3), d5
+        p.ins(op::REG); // sub.w d6, d5
+        p.ins_idle("p", shift(4)); // lsr.w #4, d5
+        p.ins(op::MOVE_W_DI_DN); // move.w 4(a3), d6
+        p.ins_idle("p", shift(4)); // lsr.w #4, d6
+        p.ins(op::REG); // sub.w d5, d6
+        p.ins_idle("p", shift(1)); // lsl.w #1, d6
+        p.ins(op::ADD_W_DN_DI);
+        p.ins(op::ADD_W_DN_DI);
+        p.ins(op::MOVE_W_DI_DN); // move.w $1a(a3), d1
+        p.ins(op::ANDI_W_DN);
+        p.ins(op::REG); // add.w d5, d1
+        p.ins("pwp"); // move.w d1, $1e(a2)
     }
     let mut d5: u16 = 0;
+    p.ins(op::REG); // clr.w d5
+    p.ins(op::REG); // move.w d7, d6
+    p.branch((d7 as i16) >= 0, false);
     if (d7 as i16) < 0 {
         // Left edge: whole words cut, and the rest drawn from the row above's end, so the
         // shifted first word falls left of the row.
         d1 = d7.wrapping_add(width);
-        if (d1.wrapping_sub(0x10) as i16) < 0 {
+        p.ins(op::REG); // move.w d7, d1
+        p.ins(op::MOVE_W_DI_DN); // add.w 4(a3), d1
+        p.ins(op::ANDI_W_DN); // cmpi.w #$10, d1
+        let off = (d1.wrapping_sub(0x10) as i16) < 0;
+        p.branch(off, true);
+        if off {
             return;
         }
         let mut d6 = d7.wrapping_neg();
@@ -319,21 +444,62 @@ fn draw_object(m: &mut StoryMem, clock: &mut BlitClock, a2: u32, buffer: u32) {
         let d6 = 0xfu16.wrapping_sub(d1 & 0xf);
         d7 = 0x150u16.wrapping_add(d6).wrapping_add(1);
         d5 = 2;
+        p.ins(op::REG); // neg.w d6
+        p.ins(op::REG); // move.w d6, d1
+        p.ins_idle("p", shift(4)); // lsr.w #4, d6
+        p.ins(op::ADD_W_DN_DI); // sub.w d6, $1e(a2)
+        p.ins_idle("p", shift(1)); // lsl.w #1, d6
+        p.ins(op::REG); // ext.l d6
+        p.ins("prrpww"); // add.l d6, $20(a2)
+        p.ins(op::ADDQ_L_AN); // adda.l d6, a4
+        p.ins(op::ADD_W_DN_DI);
+        p.ins(op::ADD_W_DN_DI);
+        p.ins(op::ANDI_W_DN); // move.w #$f, d6
+        p.ins(op::ANDI_W_DN); // andi.w #$f, d1
+        p.ins(op::REG); // sub.w d1, d6
+        p.ins(op::ANDI_W_DN); // move.w #$150, d7
+        p.ins(op::REG); // add.w d6, d7
+        p.ins(op::ANDI_W_DN); // move.w #2, d5
+        p.ins(op::ANDI_W_DN); // addi.w #1, d7
     }
     a1 = a1.wrapping_add((d7 >> 3) as u32);
+    p.ins_idle("p", shift(3)); // lsr.w #3, d7
+    p.ins(op::ADDQ_L_AN); // adda.l d7, a1
     let mut y = m.w(a2 + 2).wrapping_add(m.w(a3 + 0xa));
     let d6 = y.wrapping_add(height).wrapping_sub(0xc8);
+    p.ins(op::MOVE_W_DI_DN); // move.w 2(a2), d7
+    p.ins(op::MOVE_W_DI_DN); // add.w $a(a3), d7
+    p.ins(op::REG); // move.w d7, d6
+    p.ins(op::MOVE_W_DI_DN); // add.w 6(a3), d6
+    p.ins(op::ANDI_W_DN); // subi.w #$c8, d6
+    p.branch((d6 as i16) < 0, false);
     if (d6 as i16) >= 0 {
-        if (d6.wrapping_sub(height) as i16) >= 0 {
+        p.ins(op::MOVE_W_DI_DN); // cmp.w 6(a3), d6
+        let off = (d6.wrapping_sub(height) as i16) >= 0;
+        p.branch(off, true);
+        if off {
             return;
         }
         let size = m.w(a2 + 0x1e);
         d1 = ((size >> 6).wrapping_sub(d6)) << 6;
         m.set_w(a2 + 0x1e, size & 0x3f | d1);
+        p.ins(op::MOVE_W_DI_DN); // move.w $1e(a2), d1
+        p.ins("pprpw"); // andi.w #$3f, $1e(a2)
+        p.ins_idle("p", shift(6)); // lsr.w #6, d1
+        p.ins(op::REG); // sub.w d6, d1
+        p.ins_idle("p", shift(6)); // lsl.w #6, d1
+        p.ins(op::ADD_W_DN_DI); // or.w d1, $1e(a2)
     }
+    p.ins(op::REG); // tst.w d7
+    p.branch((y as i16) >= 0, false);
     if (y as i16) < 0 {
         let d6 = y.wrapping_neg();
-        if (d6.wrapping_sub(height) as i16) >= 0 {
+        p.ins(op::REG); // move.w d7, d6
+        p.ins(op::REG); // neg.w d6
+        p.ins(op::MOVE_W_DI_DN); // cmp.w 6(a3), d6
+        let off = (d6.wrapping_sub(height) as i16) >= 0;
+        p.branch(off, true);
+        if off {
             return;
         }
         let size = m.w(a2 + 0x1e);
@@ -345,31 +511,89 @@ fn draw_object(m: &mut StoryMem, clock: &mut BlitClock, a2: u32, buffer: u32) {
         a4 = a4.wrapping_add(skip);
         y = 0;
         let _ = y;
+        p.ins(op::REG); // move.w d1, d5
+        p.ins(op::MOVE_W_DI_DN); // move.w $1e(a2), d1
+        p.ins("pprpw"); // andi.w #$3f, $1e(a2)
+        p.ins_idle("p", shift(6)); // lsr.w #6, d1
+        p.ins(op::REG); // sub.w d6, d1
+        p.ins_idle("p", shift(6)); // lsl.w #6, d1
+        p.ins(op::ADD_W_DN_DI); // or.w d1, $1e(a2)
+        p.ins(op::MOVE_W_DI_DN); // move.w $14(a3), d1
+        p.ins_idle("p", 17 + d6.count_ones()); // mulu.w d6, d1
+        p.ins(op::REG); // ext.l d1
+        p.ins("prrpww"); // add.l d1, $20(a2)
+        p.ins(op::ADDQ_L_AN); // adda.l d1, a4
+        p.ins(op::REG); // move.w d5, d1
+        p.ins(op::BCC_TAKEN); // bra.b
     } else {
         let at = (y as i16 as i32 * 2 - d5 as i32) as u32;
         a1 = a1.wrapping_add(m.w(ROWS.wrapping_add(at)) as u32);
+        p.ins(op::REG); // ext.l d7
+        p.ins(op::REG); // add.w d7, d7
+        p.ins(op::REG); // sub.w d5, d7
+        p.ins("nprp"); // move.w (a5,d7.w), d7
+        p.ins(op::ADDQ_L_AN); // adda.l d7, a1
     }
     let _ = d1;
     m.set_l(a2 + 0x10, a1);
+    p.ins("pwwp"); // move.l a1, $10(a2)
     let size = m.w(a2 + 0x1e);
-    let shift = (m.w(a2).wrapping_add(m.w(a3 + 8)) & 0xf) << 12;
-    let modulo_cd = m.w(a2 + 0x26) as i16;
-    let modulo_ab = m.w(a2 + 0x24) as i16;
+    let shift_x = (m.w(a2).wrapping_add(m.w(a3 + 8)) & 0xf) << 12;
+    let modulo_cd = m.w(a2 + 0x26);
+    let modulo_ab = m.w(a2 + 0x24);
     let mut g = m.l(a2 + 0x20);
     let stride = m.l(a3 + 0x16);
-    for _ in 0..5 {
+    p.ins(op::MOVE_W_DI_DN); // move.w $1e(a2), d5
+    p.ins(op::MOVE_W_DI_DN); // move.w 0(a2), d6
+    p.ins(op::MOVE_W_DI_DN); // add.w 8(a3), d6
+    p.ins(op::REG); // swap d6
+    p.ins_idle("p", 6); // lsr.l #4, d6
+    p.ins_regs("pWp", &[(BLTCON1, shift_x)]);
+    p.ins(op::ANDI_W_DN); // ori.w #$fca, d6
+    p.ins_regs("pWp", &[(BLTCON0, shift_x | 0x0fca)]);
+    p.ins_regs("pppWWp", &[(BLTAFWM, 0xffff), (BLTAFWM + 2, 0)]);
+    p.ins_regs("prpWp", &[(BLTCMOD, modulo_cd)]);
+    p.ins_regs("prpWp", &[(BLTDMOD, modulo_cd)]);
+    p.ins_regs("prpWp", &[(BLTBMOD, modulo_ab)]);
+    p.ins_regs("prpWp", &[(BLTAMOD, modulo_ab)]);
+    p.ins(op::MOVEA_L_DI); // move.l $20(a2), d1
+    p.ins(op::MOVEA_L_DI); // move.l $16(a3), d4
+    for k in 0..5 {
         let b = Blit {
-            con0: shift | 0x0fca,
-            con1: shift,
+            con0: shift_x | 0x0fca,
+            con1: shift_x,
             afwm: 0xffff,
             alwm: 0x0000,
             pt: [a4, g, a1, a1],
-            modulo: [modulo_ab, modulo_ab, modulo_cd, modulo_cd],
+            modulo: [
+                modulo_ab as i16,
+                modulo_ab as i16,
+                modulo_cd as i16,
+                modulo_cd as i16,
+            ],
             size,
         };
         b.run(m);
-        clock.blit(b.con0, size);
+        p.wait_blit(false);
+        if k >= 3 {
+            p.ins(op::ADDQ_L_AN); // adda.l d3, a1
+            p.ins(op::ADDQ_L_AN); // add.l d4, d1
+        }
+        p.ins_regs("pWWp", &long(BLTCPT, a1));
+        p.ins_regs("pWWp", &long(BLTDPT, a1));
+        p.ins_regs("pWWp", &long(BLTBPT, g));
+        p.ins_regs("pWWp", &long(BLTAPT, a4));
+        p.ins_regs("pWp", &[(BLTSIZE, size)]);
+        if k < 2 {
+            p.ins(op::ADDQ_L_AN);
+            p.ins(op::ADDQ_L_AN);
+        }
         a1 = a1.wrapping_add(PLANE);
         g = g.wrapping_add(stride);
     }
+}
+
+/// A word shift's internal work by `n` bits, after its prefetch.
+fn shift(n: u32) -> u32 {
+    1 + n
 }
