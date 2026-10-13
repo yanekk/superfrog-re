@@ -1,4 +1,5 @@
 # Power-on with disk 3 (T32): the Team 17 logo, the intro's load, the first text page and the first
-# scene with its sound, up to the first scene's fade out (the colour race there is T46's).
+# scene with its sound, through the first scene's fade out (540-553: the fade's colour writes race
+# the copper; T46 times them from the original's fed handler entry).
 sync = "power-on-disk3"
-frames = 540
+frames = 556
