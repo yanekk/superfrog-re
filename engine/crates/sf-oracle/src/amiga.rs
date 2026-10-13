@@ -548,6 +548,12 @@ impl Amiga {
         unsafe { ffi::sf_amiga_frame_lines(self.raw) as u32 }
     }
 
+    /// Video frames the last step ran: 1, or 2 when the blitter held the CPU through a whole frame
+    /// (a step ends on the first instruction the CPU ends past a frame's start).
+    pub fn frames_run(&self) -> u32 {
+        unsafe { ffi::sf_amiga_frames_run(self.raw) as u32 }
+    }
+
     fn taps(&self) -> Vec<i16> {
         let mut ptr = std::ptr::null();
         let n = unsafe { ffi::sf_amiga_audio_taps(self.raw, &mut ptr) };

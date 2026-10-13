@@ -4,6 +4,8 @@
 //!   differing variable); group them into ranges to see what is left.
 //! - `BRIEF=1` (`EVENTS=1`, `ALLW=1`): per frame the original's call chain and the jobs, with
 //!   both sides' DMACON/INTENA writes (or every write) and their lines.
+//! - `FROM=n`: print from frame `n` on; `REGS=1` (with `BRIEF`): the original's PC, d0, a0;
+//!   `BLITS=1`: the original's blit starts (BLTSIZE, line, slot).
 //! - otherwise: per frame the chain and the watched memory, both sides; `ROW=y,x` prints 24
 //!   pixels of row `y` from `x`, both sides.
 use sf_conform::{Case, sync};
@@ -40,12 +42,18 @@ fn main() {
         let mut entry = sync::handler_entry(&irqs, &amiga.irqs());
         irqs = amiga.irqs();
         of += 1;
+        let mut pacing = sync::pacing(&amiga.cpu(), &sync::core_memory(amiga.memory()), &cap.paula);
+        // A two-frame step of the original: the engine runs both frames (as `sf_conform::run`).
+        let mut held = Vec::new();
+        if amiga.frames_run() == 2 {
+            held = game.step_paced(input, pacing).paula;
+        }
         let before = game.clone();
         if std::env::var("NOFEED").is_err() {
             game.set_handler_entry(entry);
         }
-        let mut pacing = sync::pacing(&amiga.cpu(), &sync::core_memory(amiga.memory()), &cap.paula);
         let mut out = game.step_paced(input, pacing);
+        out.paula.splice(0..0, held);
         if let Some(end) = out.load {
             let mut seen = false;
             let mut prev_mem = sync::core_memory(amiga.memory());
@@ -188,7 +196,20 @@ fn main() {
             .filter(|j| !j.inside.is_empty())
             .map(|j| format!("{:x}", j.inside[0].wrapping_sub(0xc00fa0)))
             .collect();
+        if std::env::var("FROM").is_ok_and(|v| f < v.parse::<u32>().unwrap()) {
+            continue;
+        }
         if std::env::var("BRIEF").is_ok() {
+            if std::env::var("REGS").is_ok() {
+                let c = amiga.cpu();
+                println!(
+                    "  pc {:x} d0 {:x} a0 {:x} frames {}",
+                    c.pc.wrapping_sub(0xc00fa0),
+                    c.d[0],
+                    c.a[0],
+                    amiga.frames_run()
+                );
+            }
             println!(
                 "F {f} O {} t {t} chain {} jobs {} load {}",
                 of - 1,
@@ -205,6 +226,9 @@ fn main() {
                     .collect::<Vec<_>>()
                     .join(" ")
             };
+            if std::env::var("BLITS").is_ok() {
+                println!("  blits {:x?}", amiga.blit_starts());
+            }
             if std::env::var("IRQS").is_ok() {
                 println!("  irqs {:?}", amiga.irqs());
             }

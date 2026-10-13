@@ -81,7 +81,7 @@ done · ⛔ blocked, needs a human.
 | T78 | bonus-enemy-death | T70, T75; blocks T21 | ⬜ | |
 | T79 | bonus-level-frames | T70, T37, T75, T76, T77, T78; blocks T21 | ⬜ | |
 | T49 | story-fade-setup-job | T46; blocks T56 | ✅ | |
-| T50 | story-objects-init-display | T49; blocks T56 | ⬜ | |
+| T50 | story-objects-init-display | T49; blocks T56 | 🔍 | Masks' clearing timed on the bus (`cpu_loop`); held-through blanks merge; shim `frames_run`, harness steps engine twice (owner); DMACON $400 before held handler on fetched lines. Case story-scene4-init, ignored test, 2 clock tests. Deviation: harness and shim changed, not only intro/clock. |
 | T51 | story-oracle-blit-tooling | T46; blocks T52 | ⬜ | |
 | T52 | story-blitter-bus-sim | T51; blocks T53 | ⬜ | |
 | T53 | story-draw-cpu-program | T52; blocks T54 | ⬜ | |

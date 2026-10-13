@@ -164,11 +164,18 @@ fn run_inner(
         let stepped = case.compare.vars || case.compare.picture || case.compare.paula;
         let mut ours = FrameOut::default();
         if stepped {
+            // The original's step ran two video frames (a blit held its CPU through the first's
+            // end and the whole second): the engine runs both, compared together (owner, T50).
+            let mut held = Vec::new();
+            if amiga.frames_run() == 2 {
+                held = game.step_paced(input, pacing).paula;
+            }
             game.anchor_writes(&theirs.paula.iter().map(|w| (w.vpos, w.hpos)).collect::<Vec<_>>());
             game.anchor_blits(&amiga.blit_starts());
             let before = game.clone();
             game.set_handler_entry(entry);
             ours = game.step_paced(input, pacing);
+            ours.paula.splice(0..0, held);
             if let Some(end) = ours.load {
                 // The engine loaded at once; the original is compared once its load is over.
                 let mut n = 0;

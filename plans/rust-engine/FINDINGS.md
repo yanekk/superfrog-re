@@ -18,6 +18,8 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-13 | 🔄 | Owner, T50: an oracle step that runs two video frames (a blit holds the CPU through one; `frames_run` = 2) is compared against two engine frames, writes joined. Scene 4 frame 3188 is the first. |
+| 2026-10-13 | 📌 | T50: in scene 4 the oracle's slot owners show no audio DMA under the masks' clearing; the CPU model leaves audio out. The blitter's `Bus::free` still takes audio every line (T52's to check). |
 | 2026-10-13 | 📌 | T49 review: the fade set-up job's `inside` ranges are not defended by any test (emptying them leaves `story-scene1-out` green: the two-frame grace masks 1242 anyway). Checked by probe: PC h0+$b94e at 1242's end. |
 | 2026-10-13 | 🔄 | Owner, T36 review: of the split-off tasks only T81 blocks T37 (they share level/mod.rs, scene.rs, game.rs); T82–T86 run alongside T37. |
 | 2026-10-13 | 🐞 | T36 review: ignoring the cut's loop step re-syncs items-run-w1-1 at frame 334, yet `frog_cases` stays green: the runner re-syncs silently. Open until T82's `resync = false`. |

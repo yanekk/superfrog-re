@@ -105,6 +105,10 @@ size_t sf_amiga_audio_out(const sf_amiga *a, const float **out);
  * alternates them while BPLCON0's LACE bit is set and keeps the last one when it is cleared. */
 int sf_amiga_frame_lines(const sf_amiga *a);
 
+/* How many video frames the last step ran: one, or two when the blitter held the CPU through a
+ * whole frame (a step ends on the first instruction the CPU ends past a frame's start). */
+int sf_amiga_frames_run(const sf_amiga *a);
+
 /* The finished frame: `*stride` 32-bit entries per row (one per super-hires pixel, 0xAARRGGBB with
  * each channel the OCS 4-bit value times 17), `*rows` rows, row = vertical beam position, entry
  * 4 * h = lores horizontal position h as DIWSTRT counts it. Valid until the next step. */

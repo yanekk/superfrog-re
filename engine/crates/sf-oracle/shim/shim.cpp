@@ -179,6 +179,9 @@ struct sf_amiga {
     std::vector<sf_irq> irqs;
     std::vector<float> mixed;
     int lines = 0;
+    // Video frames the last step ran (T50): two when the CPU, held by the blitter, ends no
+    // instruction in a whole frame.
+    int frames = 1;
     bool profile = false;
     std::vector<sf_line_sample> samples;
     std::vector<sf_custom_write> blits;
@@ -409,6 +412,7 @@ int sf_amiga_step(sf_amiga *a, uint32_t joy, const uint8_t keys[16], char *err, 
         a->mixed.resize(size_t(2 * n));
         stream.copyInterleaved(a->mixed.data(), n);
     });
+    a->frames = int(a->amiga().agnus.pos.frame - stepFrame);
     capturing = nullptr;
     blitting = nullptr;
     tapping = nullptr;
@@ -457,6 +461,11 @@ size_t sf_amiga_irqs(const sf_amiga *a, const sf_irq **out)
 int sf_amiga_frame_lines(const sf_amiga *a)
 {
     return a->lines;
+}
+
+int sf_amiga_frames_run(const sf_amiga *a)
+{
+    return a->frames;
 }
 
 size_t sf_amiga_audio_out(const sf_amiga *a, const float **out)
