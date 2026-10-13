@@ -18,6 +18,7 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-13 | 📌 | T52 split at pir's context warning: `story::sim` kept; oracle checks moved to T89 (masks; `run_bus` takes one copper cycle too many at line 0) and T90 (first draw's restores). Both block T53. |
 | 2026-10-13 | 📌 | T51 review sweep: `Irq::next` (sf-oracle) has no direct test; only `sync::handler_entry` uses it. Left as is. |
 | 2026-10-13 | 📌 | T51 review: story_dbg `BLITS`/`REGS` after a load print only the load's last oracle step, not every step the load ran. Left as is. |
 | 2026-10-13 | 📌 | T51: a step's last blit's free/end often fall past the frame's end (`BlitEvent::next`) while `frames_run` stays 1; patch 0005 changed, so every worktree rebuilds vAmiga once (`tools/setup/oracle.sh`). |
