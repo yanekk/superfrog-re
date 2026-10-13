@@ -29,6 +29,10 @@ DESIGN §1, §2.1, §2.3.
 - **3185–3207, 3432–3631, 3741–3832**: DMACON `$8400`, INTENA `$c000` and the sound's writes
   early or missing; then the effects' volume ramps a step apart (3872–3990).
 
+## Interface
+
+None new: `Start::Disk3` and the sync point `power-on-disk3` as T32 left them.
+
 ## Files
 
 - `engine/crates/sf-core/src/front/story/` (`vbl.rs` fade timing, `intro.rs`, `clock.rs`,

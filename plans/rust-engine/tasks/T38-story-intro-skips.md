@@ -15,6 +15,10 @@ page, each through to the game's title.
 
 DESIGN §1, §2.1.
 
+## Interface
+
+None new: the cases script the inputs from `power-on-disk3`.
+
 ## Files
 
 - `engine/crates/sf-core/src/front/story/` (`boot.rs`, `vbl.rs`, `intro.rs`).

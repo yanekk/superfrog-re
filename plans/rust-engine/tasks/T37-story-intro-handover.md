@@ -16,6 +16,10 @@ as T20's `Start::PowerOn` does (`Game::step_paced` switches `Story` to `Front::p
 
 DESIGN §1, §2.1.
 
+## Interface
+
+None new: `Start::Disk3 { seed }` ends in the game as `Start::PowerOn { seed }` starts it.
+
 ## Files
 
 - `engine/crates/sf-core/src/front/story/` (`scenes.rs` `END`, `intro.rs`, `mod.rs`),
