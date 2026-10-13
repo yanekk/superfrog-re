@@ -109,6 +109,11 @@ headless.
 | [T46](tasks/T46-story-intro-scenes.md) | story-intro-scenes | T32; blocks T21 |
 | [T47](tasks/T47-story-intro-handover.md) | story-intro-handover | T46; blocks T21 |
 | [T48](tasks/T48-story-intro-skips.md) | story-intro-skips | T46, T47; blocks T21 |
+| [T70](tasks/T70-bonus-level.md) | bonus-level | T15; blocks T21 |
+| [T71](tasks/T71-slot-sync.md) | slot-sync | T15 |
+| [T72](tasks/T72-slot-screen.md) | slot-screen | T71 |
+| [T73](tasks/T73-slot-rounds.md) | slot-rounds | T72 |
+| [T74](tasks/T74-slot-prizes.md) | slot-prizes | T73; blocks T21 |
 
 T22 is the rig task: it comes before every surface task and they depend on it. T29 is the phase's
 drill. At the end: the owner plays it.

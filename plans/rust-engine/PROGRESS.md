@@ -70,6 +70,11 @@ done · ⛔ blocked, needs a human.
 | T46 | story-intro-scenes | T32; blocks T21 | ⬜ | |
 | T47 | story-intro-handover | T46; blocks T21 | ⬜ | |
 | T48 | story-intro-skips | T46, T47; blocks T21 | ⬜ | |
+| T70 | bonus-level | T15; blocks T21 | ⬜ | |
+| T71 | slot-sync | T15 | ⬜ | |
+| T72 | slot-screen | T71 | ⬜ | |
+| T73 | slot-rounds | T72 | ⬜ | |
+| T74 | slot-prizes | T73; blocks T21 | ⬜ | |
 
 A Notes cell holds what was built or what the review found, the test count, and one line per
 deviation from the task doc. A ✅ task's cell may be cut to one line once the next task has been reviewed.

@@ -18,6 +18,16 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-13 | 🔄 | Owner, T19: its split-off tasks T39–T43 renumbered T70–T74, clearing the collision with the feature branch's T39–T44 enemies tasks. |
+| 2026-10-13 | 📌 | T19 review: T16's doc puts oracle tests in `sf-core/tests/enemies_w1_3.rs`; purity forbids the emulator there, so they belong in `sf-conform/tests/`. Not fixed. |
+| 2026-10-13 | 📌 | T19 review: T17's doc puts oracle tests in `sf-core/tests/enemies_w4_6.rs`; they belong in `sf-conform/tests/` (purity). Not fixed. |
+| 2026-10-13 | 📌 | T19 review: T18's doc puts oracle tests in `sf-core/tests/bosses.rs`; they belong in `sf-conform/tests/` (purity). Not fixed. |
+| 2026-10-13 | 📌 | T19 review: T21's doc puts its frame-conformance test in `sf-core/tests/flow.rs`; an oracle test belongs in `sf-conform/tests/` (purity). Not fixed. |
+| 2026-10-13 | 🔄 | Owner, T19: stopped; uncommitted slot port discarded. T71–T74 added (sync, screen, rounds, prizes); their docs keep its measurements (cycles, contention, interrupt length). |
+| 2026-10-13 | 🔄 | Owner, T19: slot cases reach the slot by forcing W1-1's exit (`level_state` = 1), a second use of `write_memory`; the tally's choice by up, then fire. |
+| 2026-10-13 | 🔄 | Owner, T19: the slot redraws lamps while the beam draws; a pixel differing only on lines an engine blit wrote within 4 lines of the beam is excused, counted per case. |
+| 2026-10-13 | 📌 | T19: the RNG never moves in W1-1; the title's eye blinks draw from it, so a later START GAME (+50 frames: 1 step; +120: 3) changes the slot's draws. +150 reaches the attract demo. |
+| 2026-10-13 | 🔄 | Owner, T19: split; T19 keeps the slot machine, T70 bonus-level added (15 object types, shooter mode, `level_state` 2). The bonus level follows W5, never the slot. |
 | 2026-10-13 | 🐞 | T32 review, open for T47: in normal play the engine's intro hands over to the game untouched (probe: frame 9 282, no input); `END` has no fire wait, though `Start::Disk3`'s doc says fire is pressed. |
 | 2026-10-13 | 📌 | T32 added T46 story-intro-scenes, T47 story-intro-handover, T48 story-intro-skips (first numbered T36–T38, then T42–T44; T15 and T16 took those; owner renumbered 2026-10-13) (owner: rewind to the last working milestone, split the rest). All block T21. T32 stops at frame 539; T46's doc lists what its scan left. |
 | 2026-10-13 | 📌 | T32 for T46: the runner's load-line search fits on the picture, so a fade-timing change in a load frame moves the line found and the next frames. A draft cycle-exact fade-step model did that; reverted. |
