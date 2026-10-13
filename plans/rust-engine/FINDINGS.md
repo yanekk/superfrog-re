@@ -18,6 +18,7 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-13 | 🐞 | T32 review, open for T37: in normal play the engine's intro hands over to the game untouched (probe: frame 9 282, no input); `END` has no fire wait, though `Start::Disk3`'s doc says fire is pressed. |
 | 2026-10-13 | 📌 | T32 added T36 story-intro-scenes, T37 story-intro-handover, T38 story-intro-skips (owner: rewind to the last working milestone, split the rest). All block T21. T32 stops at frame 539; T36's doc lists what its scan left. |
 | 2026-10-13 | 📌 | T32 for T36: the runner's load-line search fits on the picture, so a fade-timing change in a load frame moves the line found and the next frames. A draft cycle-exact fade-step model did that; reverted. |
 | 2026-10-13 | 📌 | T32 deviation from DESIGN §2.1: `Game::step` uses a new `Pacing::Unpaced` (the engine's own timing) instead of `OnTime`; only the story intro reads it. DESIGN §2.1 still says `OnTime`. |
