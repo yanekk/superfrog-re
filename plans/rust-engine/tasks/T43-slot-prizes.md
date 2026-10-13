@@ -37,6 +37,10 @@ case; the slot's documentation. Completes what T19 was for.
 - `engine/crates/sf-core/src/slot/payout.rs`, `engine/conform/{scripts,cases}/slot-*`,
   `docs/13-front-end.md` (a "slot machine" section), `re/symbols.toml`.
 
+## Interface
+
+No new type: the prizes fill T42's `SlotOutcome { award: Award { points, lives } }`.
+
 ## Tests
 
 - [ ] Cases: `slot-hilo-0`..`8`, `slot-hilo-wrong`, `slot-hold-20000`, `slot-hold-jackpot`,

@@ -43,6 +43,20 @@ variables, so T41–T43 only port code.
   tables $57b6 ladder, $606a pointer stops, $668a reel frames, $670a lamp rects, $3b1ae/$3b2e8
   attract patterns).
 
+## Files
+
+- `engine/crates/sf-conform/src/{sync.rs,case.rs,lib.rs}`, `engine/crates/sf-conform/tests/sync_points.rs`
+- `engine/conform/scripts/{slot-none,start-w1-1-blink1,start-w1-1-late}.txt`
+- `engine/crates/sf-assets/src/{gamedata.rs,cache.rs,tables.rs}`, `engine/crates/sf-core/src/layout.rs`
+- `engine/crates/sf-oracle/shim/moira_shim.{cpp,h}`, `engine/crates/sf-oracle/src/{ffi.rs,routine.rs}`
+- `re/symbols.toml`
+
+## Interface
+
+`SyncPoint::Slot { script: String, start: Option<String> }` (case TOML `sync = { slot = "…", start
+= "…" }`); `GameData`'s raw `FRUT`, `FRUC`, `FRUM`; the slot's tables in `Tables`;
+`CallResult::cycles`.
+
 ## Tests
 
 - [ ] `sync_points` test: `slot-none` reaches the slot (chain has h0+$478e, `slot_state` coins 2).
@@ -52,3 +66,6 @@ variables, so T41–T43 only port code.
 ## Done when
 
 - [ ] The sync point, scripts, assets, LAYOUT entries and cycle count committed and tested.
+- [ ] The slot's tables (ladder $57b6, pointer stops $606a, reel frames $668a, lamp rects $670a,
+  attract patterns $3b1ae/$3b2e8) read through `Tables` with their exe offsets documented (T19's
+  "Done when").

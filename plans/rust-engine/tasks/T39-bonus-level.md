@@ -25,7 +25,8 @@ DESIGN §2.1, §2.3.
 
 - `engine/crates/sf-core/src/bonus/mod.rs` (object kinds registered into T14's dispatch)
 - `engine/crates/sf-core/src/scene.rs` — `Scene::Bonus`.
-- `engine/crates/sf-core/tests/bonus_routines.rs`, `engine/conform/{scripts,cases}/bonus-*`
+- `engine/crates/sf-conform/tests/bonus_routines.rs` (not `sf-core/tests/`: the purity test keeps
+  the emulator out of the pure crates' tests), `engine/conform/{scripts,cases}/bonus-*`
 
 ## Interface
 

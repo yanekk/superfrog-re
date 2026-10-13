@@ -45,6 +45,16 @@ collected, frame-exact; `Scene::Slot` returns `SlotOutcome { award }`.
   in 8 (`$5174`), printed at buffer 0+$7683 with `$6f3a` (stops at `PAGE`).
 - Free spin $4e28: win ≠ 0 and coins: rng(100) < 6 → flag, 20 × (3 frames, $690a lit).
 
+## Files
+
+- `engine/crates/sf-core/src/slot/{mod.rs,reels.rs,payout.rs}`, `game.rs`, `scene.rs`
+- `engine/crates/sf-conform/tests/slot_routines.rs`, `engine/conform/{scripts,cases}/slot-fire*`
+
+## Interface
+
+`Game::enter_slot(coins)`, `Game::slot_outcome()`;
+`SlotOutcome { award: Award { points, lives } }`.
+
 ## Tests
 
 - [ ] Routine conformance on Moira for every reel state (32³) of `$4eae` (flash loop at h0+$504e

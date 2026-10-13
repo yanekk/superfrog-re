@@ -58,6 +58,18 @@ fire, frame-exact in variables, Paula writes and picture (beam races excused, be
   INTENA $10/$8010 lines per frame against the original's Paula `vpos`; this pinned every
   constant above to within 1–3 lines.
 
+## Files
+
+- `engine/crates/sf-core/src/slot/{mod.rs,draw.rs}`, `front/mod.rs`, `scene.rs`, `audio/mod.rs`,
+  `render/` (`SpriteDma`)
+- `engine/crates/sf-conform/src/{compare.rs,report.rs}` (beam races), `engine/conform/README.md`
+- `engine/conform/cases/slot-attract.toml`, `engine/crates/sf-conform/tests/front.rs`
+
+## Interface
+
+`Scene::Slot { coins_in }`; `Routine::Slot(slot::Routine)`, `Routine::SlotOver`;
+`FrameOut::beam_races`, `Outcome::raced`; `AudioDriver::sfx_active`.
+
 ## Tests
 
 - [ ] `slot-attract` (sync `slot = "slot-none"`, 300 frames) green, in the test block.
