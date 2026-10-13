@@ -76,11 +76,16 @@ fn fade_setup_lines(kind: u8, count: u16) -> u64 {
 }
 /// The fade set-ups' code, by kind (`fade_across` h0+$b4b4, `fade_in` $b6d8, `fade_out` $b906).
 const FADE_SETUP_CODE: [(u32, u32); 3] = [(0xb4b4, 0xb5c0), (0xb6d8, 0xb7bc), (0xb906, 0xba42)];
-/// `objects_init`'s CPU time before its blits, in DMA cycles: clearing the masks (`clr.b` 40 960
-/// times, h0+$8408) and the rest, plus each animation frame it prepares (h0+$8724). Oracle: the
-/// first scene's 145 frames and the second's 199 put their mask blits 3022 and 3071 lines on.
-const INIT_CPU: u32 = 656_124;
+/// `objects_init`'s CPU time before its blits, in DMA cycles, but for the masks' clearing: its set-up
+/// plus each animation frame it prepares (h0+$8724). Oracle: the first scene's 145 frames and the
+/// second's 199 put their mask blits 3022 and 3071 lines on (656 124 cycles with the clearing,
+/// which took 619 850 there on refresh's bus).
+const INIT_CPU: u32 = 656_124 - 619_850;
 const INIT_CPU_PER_FRAME: u32 = 206;
+/// The masks' clearing (h0+$8408, `clr.b (a0)+; subq.l #1, d0; bne.b`): its turns and each turn's
+/// bus accesses, timed on the bus as it finds it (a scene's display slows it: T50).
+const CLEAR_TURNS: u32 = 0xa000;
+const CLEAR_LOOP: &str = "rpw pnn npp";
 
 /// Where the original is while it clears the buffers and sets up the objects (`buffers_clear`'s
 /// waits, `objects_init`'s calls, the draws in it): the return addresses of their calls.
@@ -225,6 +230,9 @@ pub struct Intro {
     /// Where the handlers of coming frames start, when a draw's blit holds them off (line since
     /// the intro's start).
     handler_at: Vec<u64>,
+    /// Frames (their first line since the intro's start) a blit holds the CPU through: their
+    /// blank's request is still set at the next blank, and one handler serves both.
+    merged: Vec<u64>,
     /// This frame's schedule from conformance ([`Pacing`]); `Unpaced` in normal play.
     pacing: Pacing,
     /// The main program's Paula writes not yet given out, at their times (some fall in a later
@@ -328,6 +336,7 @@ impl Intro {
             shown_list: scenes::BLACK_LIST,
             pacing: Pacing::Unpaced,
             handler_at: Vec::new(),
+            merged: Vec::new(),
             checkpoint: None,
             load_state: Vec::new(),
             writes: Vec::new(),
@@ -395,32 +404,38 @@ impl Intro {
                 w
             }));
         }
-        let mut writes = Vec::new();
+        self.merged.retain(|&t| t >= top);
         let handler = handler_lines(m);
-        out.walk = Some(super::vbl::run(m, sound_data(data), input, &mut writes));
-        let handler_end = at + handler;
-        for w in &mut writes {
-            w.vpos = (at - top) as u16;
-        }
-        out.handler = ((at - top) as u16, (handler_end - top) as u16);
-        out.copper = m.read(list, 0x400);
-        out.paula.extend(writes);
-        // A CPU job the blank fell into goes on after the handler.
-        if let Wait::Busy {
-            until,
-            blank_extends: true,
-        } = self.wait
-            && until > at
-        {
-            self.wait = Wait::Busy {
-                until: until + handler,
+        if self.merged.first() == Some(&top) {
+            // No handler this frame: the next frame's serves this blank too.
+            out.copper = m.read(list, 0x400);
+        } else {
+            let mut writes = Vec::new();
+            out.walk = Some(super::vbl::run(m, sound_data(data), input, &mut writes));
+            let handler_end = at + handler;
+            for w in &mut writes {
+                w.vpos = (at - top) as u16;
+            }
+            out.handler = ((at - top) as u16, (handler_end - top) as u16);
+            out.copper = m.read(list, 0x400);
+            out.paula.extend(writes);
+            // A CPU job the blank fell into goes on after the handler.
+            if let Wait::Busy {
+                until,
                 blank_extends: true,
-            };
+            } = self.wait
+                && until > at
+            {
+                self.wait = Wait::Busy {
+                    until: until + handler,
+                    blank_extends: true,
+                };
+            }
+            if self.wait == Wait::Vbl {
+                self.wait = Wait::Run;
+            }
+            self.t = self.t.max(handler_end);
         }
-        if self.wait == Wait::Vbl {
-            self.wait = Wait::Run;
-        }
-        self.t = self.t.max(handler_end);
         if std::mem::take(&mut self.first) {
             // The intro's start, its first text page unpacked, all during the load: the
             // original is compared once it has left that unpack, on the line it left it.
@@ -619,6 +634,18 @@ impl Intro {
         BlitClock::new(b, start, (handler_lines(m) * 227) as u32)
     }
 
+    /// Where a blit run started now puts the handlers of the frames it passes, and the blanks it
+    /// holds the CPU through.
+    fn hold(&mut self, clock: &BlitClock) {
+        let base = self.t - self.t % LINES;
+        self.handler_at = clock
+            .handlers
+            .iter()
+            .map(|b| base + b.line as u64)
+            .collect();
+        self.merged = clock.merged.iter().map(|&l| base + l as u64).collect();
+    }
+
     /// Lines from now to the clock's end.
     fn lines_of(&self, clock: &BlitClock) -> u64 {
         (clock.now.line as u64 + 1).saturating_sub(self.t % LINES)
@@ -629,12 +656,7 @@ impl Intro {
         self.write(out, 0x96, 0x8400);
         let mut clock = self.clock(m);
         bobs::draw(m, &mut clock);
-        let base = self.t - self.t % LINES;
-        self.handler_at = clock
-            .handlers
-            .iter()
-            .map(|b| base + b.line as u64)
-            .collect();
+        self.hold(&clock);
         out.jobs.push(Job {
             inside: vec![h0(0x8442), h0(0x84de), h0(0x97b8), h0(0x97bc)],
             writes: vec![
@@ -863,12 +885,31 @@ impl Intro {
                     let mut clock = self.clock(m);
                     let frames = bobs::init(m);
                     clock.cpu(INIT_CPU + INIT_CPU_PER_FRAME * frames);
+                    clock.cpu_loop(CLEAR_LOOP, CLEAR_TURNS);
                     let start = self.lines_of(&clock);
                     bobs::init_masks(m, &mut clock);
                     let lines = self.lines_of(&clock);
+                    self.hold(&clock);
+                    let mut then = Then::MasksEnd;
+                    let last = clock.last_start;
+                    if clock.bus.fetched(last.line)
+                        && let Some(h) = clock.handlers.last().filter(|h| **h > last)
+                        && (h.line % LINES as u32 != 0 || h.h != 0)
+                    {
+                        // The last blit started on a line the display fetches and held the blank's
+                        // handler: the main program writes DMACON first, the handler is entered
+                        // after it (oracle: frames 3191, 3760, 4238; T46, T50).
+                        let base = self.t - self.t % LINES;
+                        let end = base + h.line as u64;
+                        self.write_at(end, 0x96, 0x0400);
+                        if let Some(a) = self.handler_at.last_mut() {
+                            *a = end + 1;
+                        }
+                        then = Then::Nothing;
+                    }
                     self.write_at(self.t + start, 0x96, 0x8400);
                     self.set_phase(1);
-                    self.busy(lines, false, Then::MasksEnd);
+                    self.busy(lines, false, then);
                 }
                 1 | 2 => {
                     self.set_phase(phase + 1);

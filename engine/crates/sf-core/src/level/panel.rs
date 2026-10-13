@@ -72,7 +72,7 @@ fn copy_digit(b: &mut Bus, mut src: u32, mut dst: u32) {
     }
 }
 
-/// h0+$8620: the lives icon (if it changed), a score digit and a clock digit.
+/// `panel_update` (h0+$8620): the lives icon (if it changed), a score digit and a clock digit.
 pub fn panel_update(c: &mut LevelCtx) {
     lives_icon(c);
     score_digit(c);

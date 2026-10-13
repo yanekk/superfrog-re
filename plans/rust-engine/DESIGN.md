@@ -63,10 +63,17 @@ comparison runner reports the first frame and the first variable that differ.
 
 Lag and randomness (T07 measured both; owner, 2026-10-11). In a level the original's main loop runs
 a 25 Hz pass every second frame and sometimes overruns it (docs/08 "Lag"). Conformance runs feed the
-original's schedule to the engine: `Game::step_paced(input, Pacing)`, where `Pacing::Late` says the
-original's pass was still running at that frame's vertical blank, read from the oracle; the engine
-then runs the interrupt's work at one fixed point in the late pass, and divergence left over is
-reported as lag and re-synced. Normal play (`Game::step`) is always `Pacing::OnTime`: it never lags.
+original's schedule to the engine: `Game::step_paced(input, Pacing)`, where `Pacing::Late { writes,
+line, hpos, phase, step }` says the original's pass was still running at that frame's vertical blank,
+read from the oracle: after the frame's `writes`th Paula write, the last at beam `line`, slot `hpos`,
+in the pass's `phase`th call, `step` slots into its loop. The engine ends its frame at the same point
+and runs the rest of the pass after the next interrupt (T36). Where in the frame the engine's work
+falls is its beam clock (`level::beam`): the ported routines say what they cost, fitted to the
+original. Conformance also anchors that clock at the original's own beam positions (owner,
+2026-10-13): `Game::anchor_writes` sets it to where each of the frame's Paula writes was made, and
+`Game::anchor_blits` starts each blit where the original started one of its size; the cost model
+places the work between anchors. Divergence left over is reported as lag and re-synced. Normal play
+(`Game::step`) is always `Pacing::OnTime`, never anchored, and uses the cost model alone: it never lags.
 The RNG is seeded once from a clock, so the seed is part of the start: a transplant copies
 `rng_state`, a power-on conformance run takes the oracle's seed, normal play seeds from the host clock.
 

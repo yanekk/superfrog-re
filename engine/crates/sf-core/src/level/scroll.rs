@@ -133,7 +133,7 @@ const BLIT_NEXT: u32 = h0(0x16756);
 /// `shooter_column` (h0+$16752): the bonus level's next column, 1..19.
 const SHOOTER_COLUMN: u32 = h0(0x16752);
 
-/// The scroller (h0+$1668c), each vertical blank: on alternate frames the rows or the columns of
+/// `scroller` (h0+$1668c), each vertical blank: on alternate frames the rows or the columns of
 /// tiles that came into view since the last pass of that kind are drawn into the clean buffer
 /// and queued for copying into both display buffers, which the copper interrupt does at once
 /// ([`copper_irq_blits`]). In the bonus level a column scrolls in every frame instead.

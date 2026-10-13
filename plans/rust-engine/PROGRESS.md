@@ -81,14 +81,14 @@ done · ⛔ blocked, needs a human.
 | T78 | bonus-enemy-death | T70, T75; blocks T21 | ✅ | |
 | T79 | bonus-level-frames | T70, T37, T75, T76, T77, T78; blocks T21 | ⬜ | |
 | T49 | story-fade-setup-job | T46; blocks T56 | ✅ | |
-| T50 | story-objects-init-display | T49; blocks T56 | ⬜ | |
+| T50 | story-objects-init-display | T49; blocks T56 | ✅ | |
 | T51 | story-oracle-blit-tooling | T46; blocks T52 | ✅ | |
 | T52 | story-blitter-bus-sim | T51; blocks T53 | ✅ | |
 | T53 | story-draw-cpu-program | T52; blocks T54 | ⬜ | |
 | T54 | story-handler-end-feed | T53; blocks T56 | ⬜ | |
 | T55 | story-intro-sound-timing | T50; blocks T56 | ⬜ | |
 | T56 | story-intro-to-insert-disk | T49, T50, T54, T55; blocks T21, T47, T48 | ⬜ | |
-| T81 | beam-cleanup | T36; blocks T37 | ⬜ | |
+| T81 | beam-cleanup | T36; blocks T37 | ✅ | |
 | T82 | beam-tests | T81 | ⬜ | |
 | T83 | items-w1 | T81 | ⬜ | |
 | T84 | items-w3 | T81 | ⬜ | |
@@ -97,7 +97,7 @@ done · ⛔ blocked, needs a human.
 | T87 | slot-symbols-routines | T71; blocks T72 | ✅ | |
 | T88 | slot-symbols-tables | T71; blocks T72 | ✅ | |
 | T89 | story-copper-bus-cycles | T52; blocks T53 | ✅ | |
-| T90 | story-draw-blits-oracle | T89; blocks T53 | ⬜ | |
+| T90 | story-draw-blits-oracle | T89; blocks T53 | ✅ | |
 | T91 | slot-beam-races | T72 | ✅ | |
 | T92 | slot-load | T72 | ✅ | Split to T95 (all Done-when carried). Review: draft broke the build, `crate::slot` undeclared (E0433, reproduced); fixed with `mod slot` in lib.rs. Workspace builds; sf-core lib, script, front, purity green. T95 doc validated. Draft logic unrun, read-only. |
 | T93 | slot-attract-draw | T72, T91, T92 | ⬜ | |
