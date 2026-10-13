@@ -202,8 +202,6 @@ pub fn call(c: &mut LevelCtx, addr: u32, slot: u32, d7: u16) {
     }
 }
 
-pub static DEBUG: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
-
 /// What a ported level routine works on.
 pub struct LevelCtx<'a> {
     pub bus: Bus<'a>,
@@ -482,11 +480,6 @@ impl LevelCtx<'_> {
             return;
         }
         if next < f.specs.len() {
-            if crate::level::DEBUG.load(std::sync::atomic::Ordering::Relaxed) {
-                let from = f.from;
-                let ws: Vec<String> = self.paula[from.min(self.paula.len())..].iter().filter(|w| w.reg < 0xa0).map(|w| format!("{:02x}={:04x}@{}", w.reg, w.value, w.vpos)).collect();
-                eprintln!("  boundary into frame {next} (at {:?}, in_pass {}): frame writes {}", f.at, f.in_pass, ws.join(" "));
-            }
             let f = self.frames.as_mut().expect("frames");
             let spec = f.specs[next];
             let own = next + 1 == f.specs.len();

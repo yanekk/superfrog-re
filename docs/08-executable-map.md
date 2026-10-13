@@ -81,6 +81,16 @@ A late pass means the next one starts late, and the VBL handler's frog work runs
 it. The owner chose (2026-10-11) to feed the original's pass schedule to the engine in conformance
 runs; normal play never lags (FINDINGS).
 
+What conformance feeds is `Pacing::Late { writes, line, hpos, phase, step }`: the frame's Paula
+writes so far (`writes`, the last at beam `line`, slot `hpos`), which of `level_frame_loop`'s 13
+pass calls (`$abe`..`$b06`, from `spud_update`) the main program is in (`phase`), and how many slots
+into that call's loop (`step`). The engine ends its frame there and runs the rest of the pass after
+the next interrupt. The picture depends on where on the beam the work happens (a bob drawn into the
+shown buffer, a tile redrawn below the beam), so the engine keeps a beam clock fed by fitted per-
+routine CPU costs (`sf_core::level::beam`, T36). In conformance the clock is anchored at the
+original's Paula writes and blit starts, read off the oracle (`Game::anchor_writes`,
+`Game::anchor_blits`; owner, 2026-10-13); normal play uses the cost model alone.
+
 ## Input
 
 There is no input routine; each piece of code reads the hardware itself.

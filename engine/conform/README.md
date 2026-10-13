@@ -130,6 +130,16 @@ does not compare it, nor the next frame's picture and Paula writes, which carry 
 pass; on the frame after, if a variable still differs, it re-syncs the engine from the original's
 memory and reports both (`lag … re-synced at …`). Such frames are rare; `frog-run-w1-1` has two.
 
+`Pacing::Late { writes, line, hpos, phase, step }` says where the original's frame ended: after its
+`writes`th Paula write (the last at beam `line`, slot `hpos`), in the pass's `phase`th call, `step`
+slots into its loop; the engine ends its frame at the same point. Each frame the runner also anchors
+the engine's beam clock at the original's own positions (owner, 2026-10-13):
+`Game::anchor_writes` with where each of the frame's Paula writes was made, `Game::anchor_blits`
+with where each blit started (`Amiga::blit_starts`). The engine's fitted costs (`level::beam`)
+place its work between anchors; normal play has only the costs. The costs are refitted with
+`cargo run --release --example fit -- <case.toml>...`, which prints `Cost::cycles`'s arms; the
+`profile` example shows where the original's CPU is, line by line.
+
 ## Beam races
 
 The engine draws a step at once; the original's CPU or blitter writes the picture while the beam is
