@@ -10,6 +10,8 @@ use sf_core::render::copper::{self, Fetch};
 /// Scene 1's five mask blits, by the oracle's frame count after the step that runs them
 /// (measured, T52).
 const MASKS: std::ops::Range<u32> = 3_016..3_021;
+/// The first draw's frame: the restores, then the objects (measured, T52).
+const DRAW: u32 = 3_027;
 /// Frames kept from here on: COP1LC is picked up from the CPU's writes (it sets it in 3 005).
 const FROM: u32 = 3_000;
 
@@ -43,15 +45,15 @@ fn copper_frame(mem: &AmigaMemory, cop1lc: u32, fetch: Fetch) -> CopperFrame {
 }
 
 #[test]
-fn scene_1s_mask_blits_begin_free_and_end_on_the_originals_cycles() {
+fn scene_1s_masks_and_the_first_draw_begin_free_and_end_on_the_originals_cycles() {
     let case = Case::load(&sf_conform::cases_dir().join("story-intro.toml"))
         .unwrap_or_else(|e| panic!("{e}"));
-    let synced = sync::reach(&case.sync, &case.script, MASKS.end + 20).unwrap();
+    let synced = sync::reach(&case.sync, &case.script, DRAW + 20).unwrap();
     let mut amiga = synced.amiga;
     let mut frames = Vec::new();
     let mut cop1lc = 0u32;
     let mut of = 0;
-    while amiga.frame() <= MASKS.end {
+    while amiga.frame() <= DRAW {
         let frame = amiga.frame() + 1;
         let mem = (frame >= FROM).then(|| sync::core_memory(amiga.memory()));
         sync::step_inserting(&mut amiga, case.script.input_at(of)).unwrap();
@@ -102,7 +104,7 @@ fn scene_1s_mask_blits_begin_free_and_end_on_the_originals_cycles() {
                 _ => {}
             }
         }
-        if !MASKS.contains(&frame) {
+        if !MASKS.contains(&frame) && frame != DRAW {
             continue;
         }
         let sizes: Vec<u16> = f
@@ -111,7 +113,22 @@ fn scene_1s_mask_blits_begin_free_and_end_on_the_originals_cycles() {
             .filter(|w| w.reg == BLTSIZE)
             .map(|w| w.value)
             .collect();
-        assert_eq!(sizes, [0x0014], "oracle frame {frame}: one mask blit");
+        if frame != DRAW {
+            assert_eq!(sizes, [0x0014], "oracle frame {frame}: one mask blit");
+        } else {
+            // The restores, then the objects: 40 blits. BLTPRI from before the first to past the
+            // last, so the CPU never holds a blit up (T53 needs no BLS here).
+            assert_eq!(sizes.len(), 40, "oracle frame {frame}: the first draw");
+            let mut d = dma_in;
+            for w in &f.writes {
+                match w.reg {
+                    DMACON if w.value & 0x8000 != 0 => d |= w.value & 0x7ff,
+                    DMACON => d &= !w.value,
+                    BLTSIZE => assert!(d & BLTPRI != 0, "oracle frame {frame}: BLTPRI"),
+                    _ => {}
+                }
+            }
+        }
         // This frame's copper and the next's, one after the other.
         let bus = coppers[k..=k + 1]
             .iter()
@@ -138,9 +155,13 @@ fn scene_1s_mask_blits_begin_free_and_end_on_the_originals_cycles() {
                 (kind, if e.next { t + sim::FRAME } else { t })
             })
             .collect();
-        assert_eq!(theirs.len(), 3, "oracle frame {frame}: {theirs:?}");
+        assert_eq!(
+            theirs.len(),
+            3 * sizes.len(),
+            "oracle frame {frame}: {theirs:?}"
+        );
         assert_eq!(ours, theirs, "oracle frame {frame}");
         checked += 1;
     }
-    assert_eq!(checked, 5);
+    assert_eq!(checked, MASKS.len() + 1);
 }
