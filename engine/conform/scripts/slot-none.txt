@@ -1,0 +1,2 @@
+# Nothing played in W1-1 before the slot machine (T71): its clock alone gives two coins.
+0: -

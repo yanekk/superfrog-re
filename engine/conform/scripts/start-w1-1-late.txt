@@ -1,0 +1,8 @@
+# Power-on to World 1-1 like start-w1-1, its two menu fires 120 frames later (T71): three RNG steps
+# on at W1-1. 150 frames later reaches the attract demo instead.
+1000: M
+1005: -
+4720: F
+4725: -
+4820: F
+4825: -

@@ -51,6 +51,9 @@ pub struct CallResult {
     pub writes: Vec<(u32, u8, u8)>,
     /// Instructions executed, its final `rts` included.
     pub instr: u64,
+    /// CPU cycles it took on Moira's clock (from 0 at the call), its final `rts` included. Moira's
+    /// own timing, with no bus contention: test tooling for calibrating the engine's CPU time.
+    pub cycles: u64,
     /// In hardware mode ([`Cpu68k::set_hardware`]): every custom-chip write, in order, as
     /// `(offset from $DFF000, word)`. Empty otherwise.
     pub hw_writes: Vec<(u16, u16)>,
@@ -462,6 +465,7 @@ impl Cpu68k {
                 },
                 writes,
                 instr: st.instr,
+                cycles: st.cycles,
                 hw_writes,
             }),
             ffi::SF_CALL_TIMEOUT => Err(CallError::Timeout),
