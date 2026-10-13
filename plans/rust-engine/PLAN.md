@@ -97,9 +97,12 @@ headless.
 | [T33](tasks/T33-attract-demo.md) | attract-demo | T16, T20 |
 | [T34](tasks/T34-game-over.md) | game-over | T15, T20; blocks T21 |
 | [T35](tasks/T35-end-sequence.md) | end-sequence | T20; blocks T21 |
-| [T36](tasks/T36-story-intro-scenes.md) | story-intro-scenes | T32; blocks T21 |
-| [T37](tasks/T37-story-intro-handover.md) | story-intro-handover | T36; blocks T21 |
-| [T38](tasks/T38-story-intro-skips.md) | story-intro-skips | T36, T37; blocks T21 |
+| [T36](tasks/T36-items-on-the-beam.md) | items-on-the-beam | T15 |
+| [T37](tasks/T37-level-restart.md) | level-restart | T36; blocks T34 |
+| [T38](tasks/T38-level-tally.md) | level-tally | T37; blocks T21 |
+| [T42](tasks/T42-story-intro-scenes.md) | story-intro-scenes | T32; blocks T21 |
+| [T43](tasks/T43-story-intro-handover.md) | story-intro-handover | T42; blocks T21 |
+| [T44](tasks/T44-story-intro-skips.md) | story-intro-skips | T42, T43; blocks T21 |
 
 T22 is the rig task: it comes before every surface task and they depend on it. T29 is the phase's
 drill. At the end: the owner plays it.

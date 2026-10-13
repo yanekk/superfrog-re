@@ -1,0 +1,9 @@
+# The frog standing in W1-1 for 200 frames, alone: the vertical blank's frog, camera, clock,
+# scrolling and sound, and the pass's bobs, against the original with its objects frozen out.
+sync = { level = "W1-1" }
+frames = 200
+
+[[exclude]]
+what = "objects"
+note = "the original's object spawns, bump blocks and tile pickups return at once from power-on; the engine runs frog-only"
+task = "T36 (items in frame cases), T16–T18 (enemies)"

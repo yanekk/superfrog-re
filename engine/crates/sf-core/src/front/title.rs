@@ -22,7 +22,6 @@ pub const LEVEL_STARTED: u32 = at(0x9f0);
 pub const ATTRACT_ABORT: u32 = at(0x22b8);
 pub const OVERLAY_PALETTE: u32 = at(0xb806);
 pub const OVERLAY_TARGET: u32 = at(0xb80a);
-const TOGGLE: u32 = at(0x3ca0);
 /// The two eye-blink timers and the four eye sprites (h0+$136c).
 const BLINK: [u32; 2] = [at(0x1368), at(0x136a)];
 const EYES: [u32; 4] = [at(0x1b198), at(0x1b1b4), at(0x1b1d0), at(0x1b1ec)];
@@ -47,7 +46,7 @@ const AFTER_TITLE_LOAD: u32 = at(0xb7e2);
 /// 0, ExecBase (`$c00276`, in slow RAM) and the bus-error vector (`$fc0818`, in the ROM). Not
 /// the game's data: the music replayer reads them through an empty instrument (docs/11), so the
 /// title music's silent channels carry them (measured on the oracle).
-const KICKSTART_LOW_CHIP: [u8; 12] = [0, 0, 0, 0, 0, 0xc0, 0x02, 0x76, 0, 0xfc, 0x08, 0x18];
+pub(crate) const KICKSTART_LOW_CHIP: [u8; 12] = [0, 0, 0, 0, 0, 0xc0, 0x02, 0x76, 0, 0xfc, 0x08, 0x18];
 
 /// What the frames before the title leave in memory, built at once (loads are instant, owner
 /// 2026-10-12): `init_save_boot_args`, `hw_takeover`, the Accessing-disk overlay, the seeded RNG,
@@ -82,19 +81,25 @@ pub(super) fn boot(cx: &mut Cx) {
     // hw_takeover (h0+$11b6a): the blank copper list.
     cx.cop1lc = BLANK_COPPER;
     overlay_show(cx);
-    // rng_seed_from_cia (h0+$7722): the seed the start was given; the level display's tables,
-    // of which the engine models the map's row pointer (h0+$1730c).
+    super::hero::load_hero(cx);
+    // rng_seed_from_cia (h0+$7722): the seed the start was given.
     if let Some(seed) = cx.seed.take() {
-        cx.s.rng = seed;
+        cx.s.set_rng(seed);
     }
-    cx.s.map_rows = crate::layout::h1(0x21680);
+    level_tables(cx);
+}
+
+/// The rest of `rng_seed_from_cia` (h0+$7722): the level display's tables, of which the engine
+/// models the map's row pointer (h0+$1730c), and the frame counters cleared.
+pub(super) fn level_tables(cx: &mut Cx) {
+    cx.s.set_map_rows(crate::layout::h1(0x21680));
     cx.s.set_w(at(0x9d8), 0);
     cx.s.set_w(at(0x9da), 0);
 }
 
 /// `access_overlay_show` (h0+$b6f8) when no overlay is up: the Accessing-disk program is unpacked
 /// at [`OVERLAY_AT`] and run: it points its copper list at its picture and fades it in.
-fn overlay_show(cx: &mut Cx) {
+pub(super) fn overlay_show(cx: &mut Cx) {
     let o = &cx.data.overlay;
     cx.s.write(OVERLAY_AT, &o.clone());
     let ov = |off: u32| OVERLAY_AT + off;
@@ -114,14 +119,6 @@ fn overlay_show(cx: &mut Cx) {
     }
     cx.s.set_l(OVERLAY_PALETTE, ov(0x4a82));
     cx.s.set_l(OVERLAY_TARGET, ov(0x4b6e));
-}
-
-/// A fade set-up as the game calls it: interrupts off, the title's toggle cleared, interrupts on.
-pub(super) fn fade_out(cx: &mut Cx, rec: Rec, list: u32, n: u16) {
-    cx.wr(INTENA, fade::INTENA_OFF);
-    cx.s.set_w(TOGGLE, 0);
-    fade::fade_out(cx.s, rec, list, n);
-    cx.wr(INTENA, fade::INTENA_ON);
 }
 
 /// `$1d6c`, `$1dd2`: the title's files. The title music (`MUSC`) at h3+$64c70; the title picture
@@ -314,17 +311,10 @@ impl TitleExit {
                     cx.s.set_w(at(0x11a2c), 2);
                     let v = cx.s.l(at(0x9f2));
                     cx.s.set_l(at(0x11a2e), v);
-                    // $8f90: the frog's record for a new game (T14 models the rest of it): the
-                    // score cleared, the game mode's tuning.
-                    cx.s.set_l(at(0x834), 0);
-                    let tuning: [u16; 4] = if cx.s.w(at(0x9e6)) == 0 {
-                        [0xfffb, 6, 2, 0xfffe]
-                    } else {
-                        [0xfffa, 4, 1, 0xfffe]
-                    };
-                    for (k, w) in tuning.into_iter().enumerate() {
-                        cx.s.set_w(at(0x86e) + 2 * k as u32, w);
-                    }
+                    crate::frog::frog_new_game(&mut crate::mem::Bus::new(
+                        cx.s,
+                        cx.display.rom(),
+                    ));
                     cx.s.set_w(at(0x87c0), 0xffff);
                     cx.s.set_w(at(0x9de), 0);
                     cx.s.set_w(TITLE_FADING, 0);
@@ -402,7 +392,9 @@ fn blink(cx: &mut Cx) {
         sprite::update(cx.s, a);
         sprite::update(cx.s, b);
         if (cx.s.w(timer) as i16) < -2 {
-            let r = cx.s.rng.range(0x4b);
+            let mut rng = cx.s.rng();
+            let r = rng.range(0x4b);
+            cx.s.set_rng(rng);
             cx.s.set_w(timer, r.wrapping_add(0x4b));
         }
     }
@@ -431,10 +423,14 @@ impl OverlayEnd {
                 self.pc = 1;
                 Yield::Fade(RECORDS[0])
             }
+            // The fade-out's set-up with interrupts off (`$155a0`: ~30 lines for 16 colours).
             1 => {
                 let list = cx.s.l(OVERLAY_PALETTE);
-                fade_out(cx, RECORDS[0], list, 0x10);
                 self.pc = 2;
+                fade(FadeKind::Out, 0, list, 0x10, at(0xb7d6))
+            }
+            2 => {
+                self.pc = 3;
                 Yield::Fade(RECORDS[0])
             }
             _ => {

@@ -1,0 +1,10 @@
+# The frog alone running right through W1-1 for 1 500 frames, jumping every 80: running, jumping,
+# landing, slopes, the camera and scrolling both ways, and the frog's sounds.
+sync = { level = "W1-1" }
+script = "frog-run-right"
+frames = 1500
+
+[[exclude]]
+what = "objects"
+note = "the original's object spawns, bump blocks and tile pickups return at once from power-on; the engine runs frog-only"
+task = "T36 (items in frame cases), T16–T18 (enemies)"

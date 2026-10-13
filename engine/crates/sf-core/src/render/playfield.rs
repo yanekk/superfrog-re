@@ -44,9 +44,8 @@ impl Lines {
     /// column.
     pub fn line(&mut self, state: &State, pt: u32, stride: i32) -> Option<(i32, i32)> {
         let buffer = buffer_of(pt)?;
-        let column_bytes = state
-            .scroll_column
-            .checked_sub(BUFFERS[buffer_of(state.scroll_column)?])?;
+        let column = state.scroll_column();
+        let column_bytes = column.checked_sub(BUFFERS[buffer_of(column)?])?;
         let rem = (pt - BUFFERS[buffer]).checked_sub(column_bytes)? as i32;
         if stride <= 0 || rem % stride != 0 {
             return None;
@@ -54,7 +53,7 @@ impl Lines {
         let ring = rem / stride;
         // The first line is nearest the camera (the latched scroll is at most a frame old); each
         // later line follows the one before.
-        let near = self.prev.map_or(state.camera.y as i32 + 7, |p| p + 1);
+        let near = self.prev.map_or(state.camera().y as i32 + 7, |p| p + 1);
         let mut y = near + (ring - RING_OFFSET - near).rem_euclid(RING);
         if y - near > RING / 2 {
             y -= RING;
@@ -138,8 +137,8 @@ mod tests {
     #[test]
     fn a_buffer_line_maps_to_its_level_row_through_the_ring() {
         let mut s = State::default();
-        s.scroll_column = BUFFERS[0] + 2;
-        s.camera.y = 561;
+        s.set_scroll_column(BUFFERS[0] + 2);
+        s.set_camera(crate::state::Camera { x: 0, y: 561 });
         let mut lines = Lines::default();
         // Ring line 280 at column 1: level row 264 + 304, x of fetch pixel 0 is 0.
         assert_eq!(
@@ -165,9 +164,11 @@ mod tests {
     fn past_the_map_s_edges_the_level_is_colour_0() {
         use super::super::{DisplayData, Mem, Row, Under, WorldDisplay};
         let mut s = State::default();
-        s.world = 1;
+        s.set_world(1);
         // Every cell tile 1, tile 1 all colour 7.
-        s.map.fill(1 << 6);
+        for (k, b) in s.var_mut(crate::layout::VarId::LevelMap).iter_mut().enumerate() {
+            *b = if k % 2 == 0 { 0 } else { 1 << 6 };
+        }
         let data = DisplayData {
             worlds: vec![WorldDisplay {
                 tiles: vec![[0; 256], [7; 256]],

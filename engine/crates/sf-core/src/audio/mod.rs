@@ -56,6 +56,28 @@ pub mod vars {
     ];
 }
 
+/// The files in chip RAM when the game is in `world` (1..6, 7 the bonus level) with its module at
+/// `module_addr`: the world's effect bank and module; outside a level the title's module at the
+/// bank's own place.
+pub fn files_for(world: u32, module_addr: u32) -> Vec<(u32, File)> {
+    let bank = if world <= 2 {
+        BankId::Worlds12
+    } else {
+        BankId::Worlds36
+    };
+    match world {
+        1..=6 => vec![
+            (BANK_ADDR, File::Bank(bank)),
+            (module_addr, File::Tune(TuneId::World(world as u8))),
+        ],
+        7 => vec![
+            (BANK_ADDR, File::Bank(BankId::Bonus)),
+            (module_addr, File::Tune(TuneId::Bonus)),
+        ],
+        _ => vec![(BANK_ADDR, File::Tune(TuneId::Title))],
+    }
+}
+
 /// The bytes of the module header the replayer relocates in place, from the module's address.
 pub const HEADER_LEN: u32 = 0x200;
 /// Chip RAM from 0 that a zero instrument pointer makes the replayer read (`inst+6`, `inst+$a`).

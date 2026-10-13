@@ -382,6 +382,17 @@ const uint8_t *sf_amiga_slow(const sf_amiga *a, size_t *len)
     return mem.slow;
 }
 
+void sf_amiga_poke(sf_amiga *a, uint32_t addr, const uint8_t *bytes, size_t len)
+{
+    auto &mem = a->amiga().mem;
+    size_t chip = size_t(mem.getConfig().chipSize), slow = size_t(mem.getConfig().slowSize);
+    for (size_t k = 0; k < len; k++) {
+        uint32_t at = uint32_t(addr + k) & 0xFFFFFF;
+        if (at < chip) mem.chip[at] = bytes[k];
+        else if (at >= 0xC00000 && at - 0xC00000 < slow) mem.slow[at - 0xC00000] = bytes[k];
+    }
+}
+
 void sf_amiga_cpu(const sf_amiga *a, sf_cpu_regs *out)
 {
     auto &cpu = const_cast<sf_amiga *>(a)->amiga().cpu;

@@ -602,8 +602,9 @@ pub fn decode(chunks: &[(ChunkId, Vec<u8>)]) -> Result<GameData, AssetError> {
     for w in &World::ALL[..7] {
         keep(&w.file("MU"))?;
     }
-    // The front end (T20) loads these as files into memory, not as decoded pictures.
-    for name in ["MPIC", "HPIC", "AWA1", "AWA2"] {
+    // The front end (T20) loads these as files into memory, not as decoded pictures; the end
+    // sequence (T35) plays its ANIMs and rebuilds the frog's sprites from the files as loaded.
+    for name in ["MPIC", "HPIC", "AWA1", "AWA2", "END1", "END2", "HERO"] {
         keep(name)?;
     }
     // The story intro's sector spans, raw (see `unpack`).

@@ -142,6 +142,11 @@ impl MusicFadeWait {
             self.pc = 1;
             return Yield::Raster;
         }
+        if self.pc == 2 {
+            // The rest of `music_stop` after the frame's end: interrupts back on.
+            cx.wr(INTENA, 0xc000);
+            return Yield::Return;
+        }
         self.count -= 1;
         if self.count != 0 && cx.s.audio.music_on() {
             return Yield::Raster;
@@ -149,11 +154,23 @@ impl MusicFadeWait {
         if let Some(d) = cx.data.sound.as_ref() {
             let mut out = Vec::new();
             cx.s.audio.stop_music(d, &mut out);
+            // `music_stop` runs with interrupts off (its last write turns them on) for about 15
+            // lines, most of them copying the module's header back (measured: from line 299 to
+            // line 1 of the next frame); begun late, it ends in the next frame.
+            let on = out.pop();
             cx.paula.extend(out);
+            cx.busy(MUSIC_STOP_LINES as u32 * super::BEAM_CYCLES_PER_LINE);
+            if cx.line >= super::FRAME_LINES {
+                self.pc = 2;
+                return Yield::Masked(cx.line - super::FRAME_LINES);
+            }
+            cx.paula.extend(on);
         }
         Yield::Return
     }
 }
+
+const MUSIC_STOP_LINES: u16 = 15;
 
 /// `music_start` (h0+$13126) with the title's module: interrupts off, `p41_init`, interrupts on.
 /// `p41_init` takes 20 lines on the title's module (measured: INTENA off on line 309, on again on

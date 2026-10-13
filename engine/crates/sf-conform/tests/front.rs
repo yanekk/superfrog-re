@@ -130,3 +130,52 @@ fn fire_skipping_the_title_intro_matches_the_original() {
         panic!("{d}");
     }
 }
+
+/// The end sequence, frame for frame from `end_seq_load` back to the title (the case `ending`, T35).
+#[test]
+fn the_end_sequence_matches_the_original() {
+    let case = sf_conform::Case::load(&sf_conform::cases_dir().join("ending.toml"))
+        .unwrap_or_else(|e| panic!("{e}"));
+    if let Err(d) = sf_conform::run(&case) {
+        panic!("{d}");
+    }
+}
+
+/// The port of the game's ANIM player draws every frame of both files as T08's decoder does: the
+/// first into buffer A (copied to B), each delta into the buffer not shown.
+#[test]
+fn the_anim_player_draws_every_frame_as_the_decoder_does() {
+    use sf_assets::AnimId;
+    use sf_core::front::anim::{self, BUFFER_A, BUFFER_B, BUFFER_LEN, FILE};
+    let data = sf_conform::display_data();
+    for (name, id) in [("END1", AnimId::End1), ("END2", AnimId::End2)] {
+        let frames = &sf_conform::game_data().anims[&id].frames;
+        let mut s = sf_core::State::default();
+        s.write(FILE, data.front.file(name));
+        assert!(anim::open(&mut s) > 0);
+        assert_eq!(
+            s.read(BUFFER_A, BUFFER_LEN),
+            frames[0].bitmap.to_planar(),
+            "{name} 0"
+        );
+        assert_eq!(
+            s.read(BUFFER_B, BUFFER_LEN),
+            frames[0].bitmap.to_planar(),
+            "{name} 0, B"
+        );
+        for (k, f) in frames.iter().enumerate().skip(1) {
+            let (end, cycles) = anim::next(&mut s);
+            assert!(!end && cycles > 0, "{name} {k}");
+            let drawn = if k % 2 == 1 { BUFFER_B } else { BUFFER_A };
+            assert_eq!(
+                s.read(drawn, BUFFER_LEN),
+                f.bitmap.to_planar(),
+                "{name} frame {k}"
+            );
+        }
+        assert!(
+            anim::next(&mut s).0,
+            "{name}: the file ends after its last frame"
+        );
+    }
+}

@@ -350,13 +350,25 @@ impl Cpu68k {
     }
 
     /// Hardware mode, off by default: for routines that drive the custom chips themselves (the
-    /// sound driver, T11). A custom-chip write is recorded in [`CallResult::hw_writes`] instead of
-    /// ending the call with [`CallError::CustomChipAccess`]; a byte write is recorded as that byte on
-    /// both halves. VHPOSR (`$DFF006`) steps on every read so raster waits end; other custom
+    /// sound driver, T11; the level's blits, T14). A custom-chip write is recorded in
+    /// [`CallResult::hw_writes`] instead of ending the call with [`CallError::CustomChipAccess`]; a
+    /// byte write is recorded as that byte on both halves. A write to BLTSIZE runs the blit there
+    /// and then, in area mode (channels, shifts, masks, minterm, descending; no line mode or fill),
+    /// its writes journalled with the CPU's; the blitter's registers start each call at 0. A CPU
+    /// word read of a write-only custom register writes the data bus's last word into it, as the
+    /// full-system reference does (vAmiga `peekCustomFaulty16`): `clr.w` of a volume register
+    /// writes the next instruction's opcode, then 0. VHPOSR (`$DFF006`) steps on every read so raster waits end; other custom
     /// registers and the CIAs read 0, and CIA writes are dropped. Nothing else of the chipset is
     /// modelled: a routine that waits on DMA or an interrupt still times out.
     pub fn set_hardware(&mut self, on: bool) {
         unsafe { ffi::sf_cpu_set_hw(self.raw.as_ptr(), on as i32) }
+    }
+
+    /// In hardware mode, make a read of the byte at `addr` (a custom register or a CIA's) return
+    /// `value` from now on: the joystick (`JOY1DAT`, `$DFF00C`), the fire buttons (CIA-A PRA,
+    /// `$BFE001`). VHPOSR keeps stepping; every other hardware byte reads 0.
+    pub fn set_hardware_read(&mut self, addr: u32, value: u8) {
+        unsafe { ffi::sf_cpu_set_hw_read(self.raw.as_ptr(), addr, value) }
     }
 
     /// Put a call's memory changes back: what [`Cpu68k::call`] undid, for a caller that runs a

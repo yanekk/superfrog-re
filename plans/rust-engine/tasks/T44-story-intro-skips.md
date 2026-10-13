@@ -1,6 +1,6 @@
-# T38 — story-intro-skips
+# T44 — story-intro-skips
 
-**Phase:** 2 · **Depends on:** T36, T37; blocks T21 · **Weight:** medium
+**Phase:** 2 · **Depends on:** T42, T43; blocks T21 · **Weight:** medium
 
 Split from T32 (owner, 2026-10-13).
 

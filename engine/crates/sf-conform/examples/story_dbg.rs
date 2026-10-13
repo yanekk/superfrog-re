@@ -1,4 +1,4 @@
-//! The intro's divergence finder (T32, for T36-T38): a story case's oracle and engine side by
+//! The intro's divergence finder (T32, for T42-T44): a story case's oracle and engine side by
 //! side, past the first divergence. `story_dbg <case.toml> <frames> [<addr:len>...]`:
 //! - `SCAN=1`: one `MISS` line per frame whose picture or Paula writes differ (with the first
 //!   differing variable); group them into ranges to see what is left.

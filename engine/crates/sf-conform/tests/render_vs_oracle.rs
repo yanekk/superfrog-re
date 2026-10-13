@@ -144,7 +144,7 @@ fn widescreen_keeps_the_centre_and_shows_colour_0_off_the_map() {
     let wide = start.render(View {
         extra_columns_each_side: 80,
     });
-    let x_shown = start.state().camera.x as usize;
+    let x_shown = start.state().camera().x as usize;
     // Picture column 80 shows level x ~16 (the camera); 64 columns left of the level's x 0 are off
     // the map. Rows of the play field only: below the panel and its black lines.
     for y in 20..wide.height as usize {

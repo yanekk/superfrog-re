@@ -82,6 +82,33 @@ Sync points:
 
 Compare only what the engine models. A case comparing the picture before the renderer exists is red
 by construction. A variable is in `LAYOUT` or it is not modelled; to see one that is not, `--watch` it.
+`vars = ["rng_state"]` compares only the variables named, for a scene that models only some of
+what the original changes there.
+
+## What a case leaves out — `[[exclude]]`
+
+What the original does in a case that the engine does not model yet is listed in the case, with
+the task that will model it (DESIGN §2.1):
+
+```toml
+[[exclude]]
+what = "objects"     # "objects", "enemies", "panel" or "unreached"
+note = "the original's object spawns, bump blocks and tile pickups return at once from power-on"
+task = "T36"
+```
+
+- `objects`: the original's object spawners, bump blocks and tile pickups are made to return at
+  once from power-on (`sf_conform::freeze`), and the engine runs with no object kinds
+  (`Game::frog_only`): the frog plays the level alone on both sides (a separate cached sync point).
+  The frog cases (`cases/frog-*.toml`) run so.
+- `enemies`: only each world's marker spawners the engine's dispatch has none for (enemies, the
+  world's scenery) and the frog-side spawns no task has ported (`freeze::UNPORTED_SPAWNS`) are
+  frozen; the items play on both sides (`cases/items-*.toml`). The sync point is cached per set.
+- `panel`: the panel's bitmap and the picture's panel lines are not compared.
+- `unreached`: listed only: what the case's input never makes the original do (the restart after
+  a death), so there is nothing to freeze.
+
+A `render`-only case does not step the engine at all.
 
 ## Pacing
 
@@ -89,3 +116,9 @@ In a level the original's main loop runs a 25 Hz pass every second frame and som
 (docs/08 "Lag"). The runner reads, each frame, whether the original's pass was still running at the
 vertical blank and hands that to the engine (`Pacing::Late`), so a late pass is not a divergence by
 itself (owner, 2026-10-11). Title-side screens are never late.
+
+A frame the original ends in the middle of a pass (its main loop not parked in
+`level_frame_loop`'s wait) holds memory part way through what the engine does in one go. The runner
+does not compare it, nor the next frame's picture and Paula writes, which carry the rest of that
+pass; on the frame after, if a variable still differs, it re-syncs the engine from the original's
+memory and reports both (`lag … re-synced at …`). Such frames are rare; `frog-run-w1-1` has two.
