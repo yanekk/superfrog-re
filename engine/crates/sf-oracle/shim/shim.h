@@ -37,6 +37,15 @@ typedef struct {
     uint16_t hpos;
 } sf_audio_tap;
 
+/* An interrupt the CPU took: its level, the beam position as its exception began, and whether that
+ * was in the next frame (the step runs on into its start), not the one the step ran. */
+typedef struct {
+    uint8_t level;
+    uint8_t next;
+    uint16_t vpos;
+    uint16_t hpos;
+} sf_irq;
+
 /* The host rate the core's own mixer runs at: stereo, channels 0/3 hard left and 1/2 hard right, no
  * filter, no adaptive rate, nearest-sample resampling. */
 #define SF_AUDIO_RATE 48000
@@ -80,6 +89,9 @@ size_t sf_amiga_paula_writes(const sf_amiga *a, const sf_custom_write **out);
 
 /* The DAC values the four channels took during the last step, in order. Valid until the next step. */
 size_t sf_amiga_audio_taps(const sf_amiga *a, const sf_audio_tap **out);
+
+/* The interrupts the CPU took during the last step, in order. Valid until the next step. */
+size_t sf_amiga_irqs(const sf_amiga *a, const sf_irq **out);
 
 /* The core's own mix of the last step at SF_AUDIO_RATE: `2 * n` floats, left then right, for the
  * returned n. Valid until the next step. */

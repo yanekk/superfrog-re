@@ -618,6 +618,18 @@ pub const INTRO_VBL: u32 = h0(0xb102);
 pub const DISK3_BOOT_BASE: u32 = 0x519d0;
 /// Its hunk 0's length.
 const DISK3_BOOT_LEN: u32 = 0x2c5a8;
+/// Where the original's CPU took the vertical blank's interrupt of the frame a step ran (line, DMA
+/// cycle), from the interrupts of the step before it (`before`, one taken past its end belongs to
+/// this frame) and of the step itself.
+pub fn handler_entry(before: &[sf_oracle::Irq], now: &[sf_oracle::Irq]) -> Option<(u16, u16)> {
+    before
+        .iter()
+        .filter(|i| i.next)
+        .chain(now.iter().filter(|i| !i.next))
+        .find(|i| i.level == 3)
+        .map(|i| (i.vpos, i.hpos))
+}
+
 /// The story intro's hunk 0 length (d3_c04, at the game's own base).
 const INTRO_LEN: u32 = 0x52160;
 

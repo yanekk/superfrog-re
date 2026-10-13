@@ -67,14 +67,27 @@ done · ⛔ blocked, needs a human.
 | T42 | enemies-world-1 | T38; blocks T18, T33 | ⬜ | |
 | T43 | enemies-world-2 | T38; blocks T18, T39 | ⬜ | |
 | T44 | enemies-world-3 | T38; blocks T18 | ⬜ | |
-| T46 | story-intro-scenes | T32; blocks T21 | ⬜ | |
+| T46 | story-intro-scenes | T32; blocks T21 | ✅ | |
 | T47 | story-intro-handover | T46; blocks T21 | ⬜ | |
 | T48 | story-intro-skips | T46, T47; blocks T21 | ⬜ | |
-| T70 | bonus-level | T15; blocks T21 | ⬜ | |
+| T70 | bonus-level | T15; blocks T21 | ✅ | |
 | T71 | slot-sync | T15 | ✅ | Review: stale `slot v1` snapshot sat 71 frames past W1-1, not 73; key now v2 and the 73 locked (fire-phase mutation survived, now red). T87/T88 got Interface; T87 told to avoid LAYOUT's slot names. Probed fire phases (71–74), attract refusal, Moira cycles (rts 16), table-offset mutation; front/runner/frog green. symbols.toml in T87, T88. |
 | T72 | slot-screen | T71 | ⬜ | |
 | T73 | slot-rounds | T72 | ⬜ | |
 | T74 | slot-prizes | T73; blocks T21 | ⬜ | |
+| T75 | bonus-shots | T70; blocks T21 | ⬜ | |
+| T76 | bonus-enemies-a | T70; blocks T21 | ⬜ | |
+| T77 | bonus-enemies-b | T70, T76; blocks T21 | ⬜ | |
+| T78 | bonus-enemy-death | T70, T75; blocks T21 | ⬜ | |
+| T79 | bonus-level-frames | T70, T37, T75, T76, T77, T78; blocks T21 | ⬜ | |
+| T49 | story-fade-setup-job | T46; blocks T56 | ⬜ | |
+| T50 | story-objects-init-display | T49; blocks T56 | ⬜ | |
+| T51 | story-oracle-blit-tooling | T46; blocks T52 | ⬜ | |
+| T52 | story-blitter-bus-sim | T51; blocks T53 | ⬜ | |
+| T53 | story-draw-cpu-program | T52; blocks T54 | ⬜ | |
+| T54 | story-handler-end-feed | T53; blocks T56 | ⬜ | |
+| T55 | story-intro-sound-timing | T50; blocks T56 | ⬜ | |
+| T56 | story-intro-to-insert-disk | T49, T50, T54, T55; blocks T21, T47, T48 | ⬜ | |
 | T87 | slot-symbols-routines | T71; blocks T72 | ⬜ | |
 | T88 | slot-symbols-tables | T71; blocks T72 | ⬜ | |
 

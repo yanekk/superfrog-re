@@ -26,6 +26,37 @@ pub struct Rec {
     pub accs: u32,
 }
 
+/// What one call of a record's step did, as the original's code went.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Walk {
+    /// The record is idle (`kind` 0, or past 3).
+    Other,
+    /// Its fade is over (`done` set).
+    Done,
+    /// Its counter has not reached its speed yet.
+    Waiting,
+    /// It stepped: each colour in turn; `changed` false when nothing changed (the fade is over).
+    Stepped { colours: Vec<Colour>, changed: bool },
+}
+
+/// One colour word of a step: its address and, per component (red, green, blue in the code's
+/// order), whether the code rewrote it, as the word after the component is cleared and after it
+/// is set.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Colour {
+    pub at: u32,
+    pub writes: [Option<(u16, u16)>; 3],
+}
+
+impl Colour {
+    fn at(at: u32) -> Colour {
+        Colour {
+            at,
+            writes: [None; 3],
+        }
+    }
+}
+
 pub const KIND: u32 = 0;
 pub const SPEED: u32 = 2;
 pub const COUNTER: u32 = 4;
@@ -111,38 +142,49 @@ impl Rec {
     /// One call of the record's step (the vertical blank's, or the boot's main loop's): returns
     /// whether it changed a colour (the long case: the original's step then takes lines).
     pub fn step(&self, m: &mut StoryMem) -> bool {
+        matches!(self.step_walk(m), Walk::Stepped { changed: true, .. })
+    }
+
+    /// [`Rec::step`], telling the path the original's code took and each colour's writes.
+    pub fn step_walk(&self, m: &mut StoryMem) -> Walk {
         let kind = m.w(self.at + KIND);
-        if !(1..=3).contains(&kind) || self.done(m) {
-            return false;
+        if !(1..=3).contains(&kind) {
+            return Walk::Other;
+        }
+        if self.done(m) {
+            return Walk::Done;
         }
         let counter = m.w(self.at + COUNTER).wrapping_add(1);
         m.set_w(self.at + COUNTER, counter);
         if (counter.wrapping_sub(m.w(self.at + SPEED)) as i16) < 0 {
-            return false;
+            return Walk::Waiting;
         }
         m.set_w(self.at + COUNTER, 0);
+        let mut colours = Vec::new();
         let changed = match kind {
-            1 => self.step_across(m),
-            2 => self.step_in(m),
-            _ => self.step_out(m),
+            1 => self.step_across(m, &mut colours),
+            2 => self.step_in(m, &mut colours),
+            _ => self.step_out(m, &mut colours),
         };
         if !changed {
             m.set_w(self.at + DONE, 1);
             m.set_w(self.at + KIND, 0);
         }
-        changed
+        Walk::Stepped { colours, changed }
     }
 
-    fn step_in(&self, m: &mut StoryMem) -> bool {
+    fn step_in(&self, m: &mut StoryMem, colours: &mut Vec<Colour>) -> bool {
         let n = m.w(self.at + COUNT) as u32;
         let (list, target) = (m.l(self.at + LIST), m.l(self.at + TARGET));
         let mut changed = false;
         for k in 0..n {
             let a = list + 4 * (k + 1);
             let t = m.w(target + 2 * (k + 1));
+            let mut c = Colour::at(a);
             for (j, sh) in [0u32, 4, 8].into_iter().enumerate() {
                 let mask = 0xf00u16 >> sh;
                 if m.w(a) & mask != t & mask {
+                    let clear = m.w(a) & !mask;
                     let acc_at = self.accs + 6 * k + 2 * j as u32;
                     let acc = m
                         .w(acc_at)
@@ -150,22 +192,26 @@ impl Rec {
                     m.set_w(acc_at, acc);
                     let v = (m.w(a) & !mask).wrapping_add((acc & 0xf00) >> sh);
                     m.set_w(a, v);
+                    c.writes[j] = Some((clear, v));
                     changed = true;
                 }
             }
+            colours.push(c);
         }
         changed
     }
 
-    fn step_out(&self, m: &mut StoryMem) -> bool {
+    fn step_out(&self, m: &mut StoryMem, colours: &mut Vec<Colour>) -> bool {
         let n = m.w(self.at + COUNT) as u32;
         let list = m.l(self.at + LIST);
         let mut changed = false;
         for k in 0..n {
             let a = list + 4 * (k + 1);
+            let mut c = Colour::at(a);
             for (j, sh) in [0u32, 4, 8].into_iter().enumerate() {
                 let mask = 0xf00u16 >> sh;
                 if m.w(a) & mask != 0 {
+                    let clear = m.w(a) & !mask;
                     let acc_at = self.accs + 6 * k + 2 * j as u32;
                     let acc = m
                         .w(acc_at)
@@ -175,20 +221,23 @@ impl Rec {
                     // $f00 are masked off first, so a word shift gives the same.
                     let v = (m.w(a) & !mask).wrapping_add((acc & 0xf00) >> sh);
                     m.set_w(a, v);
+                    c.writes[j] = Some((clear, v));
                     changed = true;
                 }
             }
+            colours.push(c);
         }
         changed
     }
 
-    fn step_across(&self, m: &mut StoryMem) -> bool {
+    fn step_across(&self, m: &mut StoryMem, colours: &mut Vec<Colour>) -> bool {
         let n = m.w(self.at + COUNT) as u32;
         let (list, target) = (m.l(self.at + LIST), m.l(self.at + TARGET));
         let mut same = 0;
         for k in 0..n {
             let a = list + 2 + 4 * k;
             let t = m.w(target + 2 * k);
+            let mut col = Colour::at(a);
             for (j, sh) in [8u32, 4, 0].into_iter().enumerate() {
                 let mask = 0xfu16 << sh;
                 let c = m.w(a);
@@ -198,8 +247,10 @@ impl Rec {
                     let d = m.b(self.dirs + 3 * k + j as u32);
                     let v = ((c >> sh & 0xf) as u8).wrapping_add(d) as u16 & 0xf;
                     m.set_w(a, c & !mask | v << sh);
+                    col.writes[j] = Some((c & !mask, c & !mask | v << sh));
                 }
             }
+            colours.push(col);
         }
         same != 3 * n
     }
