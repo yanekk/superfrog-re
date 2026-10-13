@@ -173,14 +173,30 @@ impl Case {
                 }
             }
             Some(toml::Value::Table(s)) if s.contains_key("level") => {
-                if let Some(k) = s.keys().find(|k| !["level", "clock"].contains(&k.as_str())) {
-                    return Err(format!("sync: unknown key `{k}` beside `level` (level, clock)"));
+                if let Some(k) = s
+                    .keys()
+                    .find(|k| !["level", "clock", "lives"].contains(&k.as_str()))
+                {
+                    return Err(format!(
+                        "sync: unknown key `{k}` beside `level` (level, clock, lives)"
+                    ));
+                }
+                if s.contains_key("clock") && s.contains_key("lives") {
+                    return Err("sync: `clock` or `lives`, not both".into());
                 }
                 let level = s["level"]
                     .as_str()
                     .ok_or("sync.level is a string like \"W1-1\"")?
                     .parse()?;
                 match s.get("clock") {
+                    None if s.contains_key("lives") => SyncPoint::Lives {
+                        level,
+                        lives: s["lives"]
+                            .as_integer()
+                            .and_then(|v| u16::try_from(v).ok())
+                            .filter(|&v| v <= 99)
+                            .ok_or("sync.lives is a number of lives, 0 to 99")?,
+                    },
                     None => SyncPoint::AtLevel(level),
                     Some(v) => {
                         let bad = || "sync.clock is \"M:SS\", under 10 minutes".to_string();

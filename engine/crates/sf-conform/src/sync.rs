@@ -58,6 +58,9 @@ pub enum SyncPoint {
     /// A level's first frame as [`SyncPoint::AtLevel`] reaches it, its clock (`level_clock`,
     /// h0+$876) then set to `seconds` (T37: a time-up case without waiting four minutes).
     Clock { level: LevelId, seconds: u16 },
+    /// A level's first frame as [`SyncPoint::AtLevel`] reaches it, `frog_lives` (h0+$82e) then
+    /// set to `lives` (T79: the bonus level played to its end through the deaths on the way).
+    Lives { level: LevelId, lives: u16 },
 }
 
 /// The oracle at a sync point.
@@ -82,6 +85,8 @@ const LOGIC_RUNNING: u32 = h0(0x9d6);
 const LEVEL_STATE: u32 = h0(0xa06);
 /// `level_clock` (h0+$876): four digits, minutes first.
 const LEVEL_CLOCK: u32 = h0(0x876);
+/// `frog_lives` (h0+$82e).
+const FROG_LIVES: u32 = h0(0x82e);
 const WORLD: u32 = h0(0x40da);
 const LEVEL: u32 = h0(0x40de);
 const RNG_STATE: u32 = h0(0x160d4);
@@ -381,6 +386,12 @@ pub fn reach_frozen(
             let (m, s) = (seconds / 60, seconds % 60);
             let digits = [(m / 10) as u8, (m % 10) as u8, (s / 10) as u8, (s % 10) as u8];
             synced.amiga.write_memory(LEVEL_CLOCK, &digits);
+            synced.memory = core_memory(synced.amiga.memory());
+            Ok(synced)
+        }
+        SyncPoint::Lives { level, lives } => {
+            let mut synced = reach_frozen(&SyncPoint::AtLevel(*level), script, frames, frozen)?;
+            synced.amiga.write_memory(FROG_LIVES, &lives.to_be_bytes());
             synced.memory = core_memory(synced.amiga.memory());
             Ok(synced)
         }

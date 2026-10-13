@@ -1,0 +1,4 @@
+# The bonus level: fire held, the frog left where it is put. Enemies reach it about every 200
+# frames; with the two lives a game started at the bonus level's code has, the third death is
+# the last (frame 2453).
+0: F
