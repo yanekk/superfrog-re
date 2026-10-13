@@ -13,7 +13,7 @@ the account is the commit message. Whoever writes a cell also fixes the over-bud
 
 **Status:** Plan written; nothing built.
 **Last updated:** 2026-10-13
-**Next `pir-work` will:** T16, T17, T36, T70 and T71, all ready on T15; T72–T74 follow T71 in a chain.
+**Next `pir-work` will:** T70 and T71, ready on T15; T72–T74 follow T71 in a chain.
 
 ## Tasks
 
@@ -38,8 +38,8 @@ done · ⛔ blocked, needs a human.
 | T13 | renderer | T08, T12 | ✅ | |
 | T14 | frog-and-level | T06, T11, T12, T13 | ✅ | |
 | T15 | items-and-scoring | T14 | ✅ | |
-| T16 | enemies-worlds-1-3 | T15 | ⬜ | |
-| T17 | enemies-worlds-4-6 | T15 | ⬜ | |
+| T16 | enemies-worlds-1-3 | T15 | ✅ | |
+| T17 | enemies-worlds-4-6 | T15 | ✅ | |
 | T18 | bosses | T16, T17 | ⬜ | |
 | T19 | slot-and-bonus | T15 | ✅ | Stopped by the owner, no code; split into T70 (bonus) and T71–T74 (slot). Review: added T71–T74's missing files/interface sections, T19's dropped Tables item to T71, T70's tests moved to sf-conform (purity). Deps, slugs, blocks T21 checked; cited code identifiers grepped; measurements read-only. |
 | T20 | front-end | T08, T11, T12, T13 | ✅ | |
@@ -54,13 +54,22 @@ done · ⛔ blocked, needs a human.
 | T29 | app-drill | T21, T25, T26, T27, T28 | ⬜ | |
 | T30 | acceptance | T29 | ⬜ | |
 | T31 | render-remaining-levels | T13 | ✅ | |
-| T32 | story-intro | T20; blocks T21 | ⬜ | |
+| T32 | story-intro | T20; blocks T21 | ✅ | |
 | T33 | attract-demo | T16, T20 | ⬜ | |
 | T34 | game-over | T15, T20; blocks T21 | ⬜ | |
 | T35 | end-sequence | T20; blocks T21 | ✅ | |
 | T36 | items-on-the-beam | T15 | ⬜ | |
 | T37 | level-restart | T36; blocks T34 | ⬜ | |
 | T38 | level-tally | T37; blocks T21 | ⬜ | |
+| T39 | enemies-world-5 | T16, T38; blocks T18 | ⬜ | |
+| T40 | enemies-world-6 | T38; blocks T18 | ⬜ | |
+| T41 | enemies-world-4 | T38; blocks T18 | ⬜ | |
+| T42 | enemies-world-1 | T38; blocks T18, T33 | ⬜ | |
+| T43 | enemies-world-2 | T38; blocks T18, T39 | ⬜ | |
+| T44 | enemies-world-3 | T38; blocks T18 | ⬜ | |
+| T46 | story-intro-scenes | T32; blocks T21 | ⬜ | |
+| T47 | story-intro-handover | T46; blocks T21 | ⬜ | |
+| T48 | story-intro-skips | T46, T47; blocks T21 | ⬜ | |
 | T70 | bonus-level | T15; blocks T21 | ⬜ | |
 | T71 | slot-sync | T15 | ⬜ | |
 | T72 | slot-screen | T71 | ⬜ | |

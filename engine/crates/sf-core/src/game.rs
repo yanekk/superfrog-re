@@ -32,6 +32,10 @@ pub enum Start {
     /// the original's main program was, so a front-end routine goes on from the same place with
     /// the same registers (T20). A place the engine does not know continues as a transplant.
     Resume { memory: AmigaMemory, cpu: Cpu },
+    /// Switch on with disk 3 in the drive (T32): the Team 17 logo and the story intro, then, once
+    /// the intro has asked for disk 1 and fire is pressed, the game as [`Start::PowerOn`] starts
+    /// it, with `seed`.
+    Disk3 { seed: Rng },
 }
 
 /// The original's CPU at the end of a frame, just before the vertical blank's interrupt: the main
@@ -54,11 +58,18 @@ pub struct Cpu {
 /// "Lag"). Normal play never lags; conformance runs feed the original's schedule from the oracle.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash)]
 pub enum Pacing {
-    /// The main loop was waiting when this frame's vertical blank came: normal play, always.
+    /// No schedule given: the engine keeps its own time (normal play, always). In a level this is
+    /// [`Pacing::OnTime`]; in the story intro the engine's own timing model decides when its long
+    /// jobs end.
     #[default]
+    Unpaced,
+    /// The main loop was waiting when this frame's vertical blank came.
     OnTime,
     /// The original's main loop was still in its pass at this frame's vertical blank. The engine
-    /// then runs the interrupt's work at one fixed point in the late pass.
+    /// then runs the interrupt's work at one fixed point in the late pass. In the story intro
+    /// (owner, 2026-10-12): the original was still in a long job (a draw, an unpack, a scene's
+    /// set-up), and the engine's job in progress ends no sooner; [`Pacing::OnTime`] there means it
+    /// had ended, and the engine's ends with the frame.
     Late,
 }
 
@@ -107,6 +118,8 @@ pub struct Game {
     scene: Scene,
     /// The front end's program, while [`Scene::Front`] runs.
     front: Option<crate::front::Front>,
+    /// The story intro's program, while [`Scene::Story`] runs.
+    story: Option<Box<crate::front::Story>>,
     /// The front end's last picture: drawn as the beam saw the frame, mid-step.
     shown: Option<Picture>,
     /// The seed a power-on start is waiting to put in place.
@@ -155,6 +168,7 @@ impl Game {
     /// [`Game::new`] with the disks' display content already built, as a caller making many
     /// games from one [`GameData`] (conformance runs) keeps it.
     pub fn with_display(display: Arc<DisplayData>, start: Start) -> Game {
+        let mut story = None;
         let mut sdr = 0xff;
         let (state, scene, seed, front) = match start {
             Start::PowerOn { seed } => (
@@ -183,6 +197,10 @@ impl Game {
                 crate::level::load::enter(&mut state, &display, id);
                 (state, Scene::Level, None, None)
             }
+            Start::Disk3 { seed } => {
+                story = Some(Box::new(crate::front::Story::power_on(&display.story)));
+                (State::default(), Scene::Story, Some(seed), None)
+            }
         };
         let (mut state, mut front) = (state, front);
         if let Some(f) = front.as_mut() {
@@ -193,6 +211,7 @@ impl Game {
             display,
             scene,
             front,
+            story,
             shown: None,
             seed,
             frame: 0,
@@ -204,7 +223,7 @@ impl Game {
 
     /// One PAL frame of normal play: the main loop is never late.
     pub fn step(&mut self, input: FrameInput) -> FrameOut {
-        self.step_paced(input, Pacing::OnTime)
+        self.step_paced(input, Pacing::Unpaced)
     }
 
     /// One PAL frame on the original's schedule (conformance runs; see [`Pacing`]).
@@ -222,6 +241,29 @@ impl Game {
         }
         self.keys = input.keys;
         self.frame += 1;
+        if let (Scene::Story, Some(story)) = (self.scene, self.story.as_mut()) {
+            let out = story.step(&self.state, &self.display, input, pacing);
+            if !out.over {
+                self.shown = Some(out.picture.clone());
+                return FrameOut {
+                    picture: out.picture,
+                    paula: out.paula,
+                    load: out.load,
+                    resync: out.resync,
+                    jobs: out.jobs,
+                };
+            }
+            // The intro has handed over: the game starts as a disk-1 power-on does, and its first
+            // frame stands for this one (the original loads the game meanwhile).
+            let seed = self.seed.take().unwrap_or_default();
+            let mut front = crate::front::Front::power_on(seed);
+            self.state = State::default();
+            front.boot(&mut self.state, &self.display);
+            self.front = Some(front);
+            self.story = None;
+            self.scene = Scene::Front;
+            self.seed = Some(seed);
+        }
         if let (Scene::Front, Some(front)) = (self.scene, self.front.as_mut()) {
             self.seed = None;
             let out = front.step(&mut self.state, &self.display, input);
@@ -261,7 +303,7 @@ impl Game {
     /// The frame the original shows for this state (DESIGN §3.3), widened by `view`.
     pub fn render(&self, view: View) -> Picture {
         match (self.scene, &self.shown) {
-            (Scene::Front, Some(p)) => p.widened(view),
+            (Scene::Front | Scene::Story, Some(p)) => p.widened(view),
             _ => self.scene.render(&self.state, &self.display, view),
         }
     }
@@ -272,6 +314,19 @@ impl Game {
     pub fn set_load_line(&mut self, line: Option<u16>) {
         if let Some(f) = self.front.as_mut() {
             f.load_line = line;
+        }
+        if let Some(s) = self.story.as_mut() {
+            s.load_line = line;
+        }
+    }
+
+    /// For conformance, the story intro: the memory that runs on by itself while the original
+    /// loads ([`Game::runs_during_load`]'s runs, as the original had them just before the frame
+    /// its load ended on), put in place at the moment the engine's instant load happens in its
+    /// next step, after what came before the load in that step.
+    pub fn set_load_state(&mut self, runs: Vec<(u32, Vec<u8>)>) {
+        if let Some(s) = self.story.as_mut() {
+            s.load_state = runs;
         }
     }
 
@@ -284,13 +339,68 @@ impl Game {
     /// Every modelled variable's value, as the original would hold it at its [`crate::LAYOUT`]
     /// address.
     pub fn probe(&self) -> Vec<(VarId, u32)> {
-        self.state.probe()
+        match &self.story {
+            Some(s) => s
+                .layout()
+                .iter()
+                .flat_map(|d| {
+                    d.pieces()
+                        .map(|p| (p.id, p.read(&s.mem)))
+                        .collect::<Vec<_>>()
+                })
+                .collect(),
+            None => self.state.probe(),
+        }
+    }
+
+    /// The variables [`Game::probe`] gives, in its order: [`crate::LAYOUT`], or while the story
+    /// intro runs, its own (its memory map is not the game's).
+    pub fn layout(&self) -> &'static [crate::VarDef] {
+        match &self.story {
+            Some(s) => s.layout(),
+            None => crate::LAYOUT,
+        }
+    }
+
+    /// What runs on by itself while the original loads, which conformance takes from it (DESIGN
+    /// §2.1): the front end's [`crate::front::RUNS_DURING_LOAD`], nothing yet for the story.
+    pub fn runs_during_load(&self) -> &'static [(u32, u32)] {
+        match &self.story {
+            Some(s) => s.runs_during_load(),
+            None => crate::front::RUNS_DURING_LOAD,
+        }
+    }
+
+    /// What a load leaves that the engine does not model: [`crate::front::LOAD_LEAVES`], nothing
+    /// for the story.
+    pub fn load_leaves(&self) -> &'static [(u32, u32)] {
+        match &self.story {
+            Some(_) => &[],
+            None => crate::front::LOAD_LEAVES,
+        }
     }
 
     /// Write `bytes` at `addr` into the modelled variables, as [`State::poke`] does. For
     /// conformance tooling, which plants a known divergence to prove the runner finds it.
     pub fn poke(&mut self, addr: u32, bytes: &[u8]) {
-        self.state.poke(addr, bytes);
+        match self.story.as_mut() {
+            Some(s) => s.mem.write(addr, bytes),
+            None => self.state.poke(addr, bytes),
+        }
+    }
+
+    /// `len` bytes of the original's memory as the engine holds it at `addr` (debugging and
+    /// conformance tooling): the story's memory while it runs, else the modelled state.
+    pub fn peek(&self, addr: u32, len: u32) -> Vec<u8> {
+        match &self.story {
+            Some(s) => s.mem.read(addr, len),
+            None => self.state.read(addr, len),
+        }
+    }
+
+    /// The story intro's program, while it runs (for tooling).
+    pub fn story(&self) -> Option<&crate::front::Story> {
+        self.story.as_deref()
     }
 
     pub fn state(&self) -> &State {

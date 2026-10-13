@@ -184,6 +184,9 @@ pub fn cached_trace_in(
     if cfg.drives != 1 {
         disks_text += &format!(" drives {}", cfg.drives);
     }
+    if cfg.boot != sf_disk::DiskSlot::D1 {
+        disks_text += &format!(" boot {:?}", cfg.boot);
+    }
     let disks_sha1 = sha1_hex(disks_text.as_bytes());
     let key = trace_key(
         crate::BUILD,

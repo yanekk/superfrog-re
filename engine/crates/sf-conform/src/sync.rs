@@ -26,6 +26,10 @@ pub enum SyncPoint {
     /// Switch on with disk 1 in df0; the engine starts with the oracle's RNG seed (owner,
     /// 2026-10-11).
     PowerOn,
+    /// Switch on with disk 3 in df0: the Team 17 logo and the story intro, then the game once
+    /// disk 1 is in (it goes in when the intro asks for it). The engine starts with the seed the
+    /// game takes after the intro.
+    PowerOnDisk3,
     /// Run the named script from power-on for `frame` frames.
     AtFrame { script: String, frame: u32 },
     /// The first frame of a level, reached the way a player would: W1-1 by START GAME from the
@@ -143,6 +147,14 @@ fn in_level(m: &AmigaMemory) -> bool {
 /// `level_frame_loop`'s wait and the pass was due. Every other screen paces on a raster wait and
 /// is never late.
 pub fn pacing(cpu: &CpuRegs, m: &AmigaMemory) -> Pacing {
+    // The story intro: late while the original is in a long job at the blank (owner, 2026-10-12).
+    if long(m, 0x6c) == INTRO_VBL {
+        return if sf_core::front::story::intro::busy(&main_chain(cpu, m)) {
+            Pacing::Late
+        } else {
+            Pacing::OnTime
+        };
+    }
     // A step ends at the level-3 handler's entry; the interrupted PC is on the stack (FINDINGS).
     let main_pc = if cpu.pc == VBL_HANDLER {
         long(m, cpu.ssp + 2)
@@ -172,19 +184,33 @@ pub fn mid_pass(cpu: &CpuRegs, m: &AmigaMemory) -> bool {
 /// a return address into the game's code (a long just after a `jsr`/`bsr`), innermost first. For
 /// tracing which loop of a scene a frame belongs to.
 pub fn main_chain(cpu: &CpuRegs, m: &AmigaMemory) -> Vec<u32> {
-    let (pc, mut sp) = if cpu.pc == VBL_HANDLER {
+    // A step ends at the level-3 handler's entry (the game's, the story intro's or Kickstart's
+    // while the disk-3 boot runs); the interrupted PC is on the supervisor stack.
+    let vector = long(m, 0x6c);
+    let (pc, mut sp) = if cpu.pc == vector {
         (long(m, cpu.ssp + 2), cpu.ssp + 6)
     } else {
         (cpu.pc, cpu.a[7])
     };
-    let code = h0(0)..h0(0x4834c);
+    // Return addresses are looked for in the running program's code: the game's, else the story
+    // intro's and the disk-3 boot's.
+    let code: [std::ops::Range<u32>; 2] = if vector == VBL_HANDLER {
+        [h0(0)..h0(0x4834c), 0..0]
+    } else {
+        [
+            h0(0)..h0(INTRO_LEN),
+            DISK3_BOOT_BASE..DISK3_BOOT_BASE + DISK3_BOOT_LEN,
+        ]
+    };
     let mut chain = vec![pc];
     let top = (sp & !0xFFFF) + 0x1_0000;
     while sp + 4 <= top.min(sp + 0x400) && chain.len() < 8 {
         let a = long(m, sp);
         // A return address follows a jsr abs.l (6 bytes, $4eb9) or a bsr.w (4 bytes, $6100).
-        let call = code.contains(&a)
-            && (word(m, a - 6) == 0x4eb9 && long(m, a - 4) >= h0(0) || word(m, a - 4) == 0x6100);
+        let call = code.iter().any(|c| c.contains(&a))
+            && (word(m, a - 6) == 0x4eb9 && long(m, a - 4) >= h0(0)
+                || word(m, a - 6) == 0x4eb9 && code[1].contains(&long(m, a - 4))
+                || word(m, a - 4) == 0x6100);
         if call {
             chain.push(a);
         }
@@ -215,9 +241,10 @@ pub fn reach_frozen(
 ) -> Result<Synced, String> {
     let tag = frozen.tag();
     match sync {
-        SyncPoint::PowerOn => {
-            let seed = power_on_seed(script, frames)?;
-            let amiga = power_on(frames)?;
+        SyncPoint::PowerOn | SyncPoint::PowerOnDisk3 => {
+            let boot = boot_disk(sync);
+            let seed = power_on_seed(boot, script, frames)?;
+            let amiga = power_on(boot, frames)?;
             let _ = frozen;
             let memory = core_memory(amiga.memory());
             Ok(Synced {
@@ -466,18 +493,54 @@ impl Disks {
     }
 }
 
-fn power_on(frames: u32) -> Result<Amiga, String> {
-    let cfg = OracleConfig::locate(frames).map_err(|e| e.to_string())?;
+/// The disk a power-on sync point boots.
+fn boot_disk(sync: &SyncPoint) -> DiskSlot {
+    match sync {
+        SyncPoint::PowerOnDisk3 => DiskSlot::D3,
+        _ => DiskSlot::D1,
+    }
+}
+
+fn power_on(boot: DiskSlot, frames: u32) -> Result<Amiga, String> {
+    let cfg = OracleConfig::locate(frames)
+        .map_err(|e| e.to_string())?
+        .with_boot(boot);
     Amiga::power_on(&cfg).map_err(|e| e.to_string())
+}
+
+/// The story intro's `intro_wait_disk1` (d3_c04 h0+$c38e) is running: its return address, h0+$310,
+/// is on the main program's stack.
+const INTRO_ASKS_DISK1: u32 = h0(0x310);
+/// Where the story intro's vertical-blank handler is (d3_c04 h0+$b102).
+pub const INTRO_VBL: u32 = h0(0xb102);
+/// Where the disk-3 boot program (`d3_c02`) is loaded (measured on the oracle).
+pub const DISK3_BOOT_BASE: u32 = 0x519d0;
+/// Its hunk 0's length.
+const DISK3_BOOT_LEN: u32 = 0x2c5a8;
+/// The story intro's hunk 0 length (d3_c04, at the game's own base).
+const INTRO_LEN: u32 = 0x52160;
+
+/// One frame of the original, putting disk 1 in df0 once the story intro asks for it (a
+/// disk-3 boot; nothing happens on a disk-1 boot).
+pub fn step_inserting(a: &mut Amiga, input: FrameInput) -> Result<sf_oracle::FrameCapture, String> {
+    let cap = a.step(input).map_err(|e| e.to_string())?;
+    let m = core_memory(a.memory());
+    if long(&m, 0x6c) == INTRO_VBL
+        && !a.disk1_in()
+        && main_chain(&a.cpu(), &m).contains(&INTRO_ASKS_DISK1)
+    {
+        a.insert_disk(0, DiskSlot::D1);
+    }
+    Ok(cap)
 }
 
 /// The RNG state on the frame the original first seeds it (docs/08 "RNG"): the first frame, once
 /// the game owns the vertical blank, on which `rng_state` changes.
-fn power_on_seed(script: &InputScript, frames: u32) -> Result<Option<Rng>, String> {
-    let mut a = power_on(frames)?;
+fn power_on_seed(boot: DiskSlot, script: &InputScript, frames: u32) -> Result<Option<Rng>, String> {
+    let mut a = power_on(boot, frames)?;
     let mut prev = None;
     for f in 0..frames {
-        a.step(script.input_at(f)).map_err(|e| e.to_string())?;
+        step_inserting(&mut a, script.input_at(f))?;
         let m = core_memory(a.memory());
         let rng = (long(&m, RNG_STATE), long(&m, RNG_STATE + 4));
         if long(&m, 0x6c) == VBL_HANDLER {

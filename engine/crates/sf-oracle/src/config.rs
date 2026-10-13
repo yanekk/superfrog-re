@@ -25,6 +25,9 @@ pub struct OracleConfig {
     /// Drives connected, df0 first: 1 (the A500 as sold, the default) to 4. Drives past df0 start
     /// empty; W6-2..4's first map set needs one of df1–df3 (docs/12 "Reaching every level").
     pub drives: u8,
+    /// The disk in df0 at power-on: disk 1 (the game, the default) or disk 3, whose own boot plays
+    /// the story intro before it asks for disk 1 (docs/08).
+    pub boot: DiskSlot,
 }
 
 impl OracleConfig {
@@ -79,6 +82,7 @@ impl OracleConfig {
             disks,
             max_frames,
             drives: 1,
+            boot: DiskSlot::D1,
         })
     }
 
@@ -89,6 +93,11 @@ impl OracleConfig {
             "an Amiga has 1 to 4 floppy drives"
         );
         OracleConfig { drives, ..self }
+    }
+
+    /// The same set-up powered on with `slot`'s disk in df0.
+    pub fn with_boot(self, boot: DiskSlot) -> OracleConfig {
+        OracleConfig { boot, ..self }
     }
 
     /// Read the Kickstart and identify the four disks. Every file is opened read-only.

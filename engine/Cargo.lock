@@ -1803,6 +1803,7 @@ name = "sf-core"
 version = "0.1.0"
 dependencies = [
  "sf-assets",
+ "sf-disk",
  "sf-paula",
 ]
 

@@ -28,7 +28,8 @@ pub use error::{AssetError, Why};
 pub use exe::{ExeId, ExeImage, Hunk, HunkKind, Reloc, parse_exe};
 pub use font::{Font, FontId};
 pub use gamedata::{
-    ChunkId, GameData, LevelData, LevelId, World, catalogue, decode, unpack, unpack_chunk,
+    ChunkId, GameData, INTRO_SPAN_INDEX, LevelData, LevelId, World, catalogue, decode, unpack,
+    unpack_chunk,
 };
 pub use launch::{LaunchAction, LaunchFacts, decide};
 pub use palette::Palette;

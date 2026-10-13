@@ -10,11 +10,17 @@ use super::{Mem, Planes};
 pub(super) fn fetch(mem: &Mem, planes: &Planes, left: i32, row: &mut [u8]) {
     row.fill(0);
     let words = planes.fetch.words() as i32;
+    let hires = planes.fetch.hires();
     for p in 0..planes.fetch.planes() as usize {
         let data = mem.bytes(planes.pt[p], 2 * words as u32);
         let start = planes.index(p, left);
         for (x, px) in row.iter_mut().enumerate() {
-            let i = start + x as i32;
+            // Hires: a lores pixel shows the first of its two hires pixels, as the capture keeps.
+            let i = if hires {
+                planes.index_hires(p, left) + 2 * x as i32
+            } else {
+                start + x as i32
+            };
             if (0..16 * words).contains(&i) {
                 let (byte, bit) = ((i / 8) as usize, 7 - i % 8);
                 *px |= (data[byte] >> bit & 1) << p;
