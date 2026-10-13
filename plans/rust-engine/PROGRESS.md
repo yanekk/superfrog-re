@@ -94,13 +94,13 @@ done · ⛔ blocked, needs a human.
 | T84 | items-w3 | T81 | ⬜ | |
 | T85 | items-w2 | T81 | ⬜ | |
 | T86 | items-launchers | T81 | ⬜ | |
-| T87 | slot-symbols-routines | T71; blocks T72 | 🔍 | 20 slot routines in `re/symbols.toml`; listing test green, `slot_lamps_off:` at $6238. Deviation: five routines renamed, not four, since `slot_spin` ($5dc6) is a `LAYOUT` variable too: `slot_count_win`, `slot_hilo_game`, `slot_spin_reels`, `slot_run_menu`, `slot_attract_frame`. |
+| T87 | slot-symbols-routines | T71; blocks T72 | ✅ | Review fixed slot_free_spin's note (reels don't turn; the next round re-pays the same line) and added a six-byte entry test, since a mid-lea mutation of slot_lamps_off passed the instruction-start test. Five renames held by layout.rs. Probed every entry's boundary and xrefs in the listing. |
 | T88 | slot-symbols-tables | T71; blocks T72 | ⬜ | |
 
 A Notes cell holds what was built or what the review found, the test count, and one line per
 deviation from the task doc. A ✅ task's cell may be cut to one line once the next task has been reviewed.
 
-**Review queue:** T87
+**Review queue:** *(empty)*
 
 ## Blocked on the user
 
