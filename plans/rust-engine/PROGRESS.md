@@ -86,7 +86,7 @@ done · ⛔ blocked, needs a human.
 | T52 | story-blitter-bus-sim | T51; blocks T53 | ✅ | |
 | T53 | story-draw-cpu-program | T52; blocks T54 | ✅ | |
 | T54 | story-handler-end-feed | T53; blocks T56 | ⬜ | |
-| T55 | story-intro-sound-timing | T50; blocks T56 | ⬜ | |
+| T55 | story-intro-sound-timing | T50; blocks T56 | ✅ | |
 | T56 | story-intro-to-insert-disk | T49, T50, T54, T55; blocks T21, T47, T48 | ⬜ | |
 | T81 | beam-cleanup | T36; blocks T37 | ✅ | |
 | T82 | beam-tests | T81 | ✅ | |
