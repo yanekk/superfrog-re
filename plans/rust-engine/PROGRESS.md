@@ -12,8 +12,8 @@ the account is the commit message. Whoever writes a cell also fixes the over-bud
 **Plan reviewed:** 2026-10-10 — 7 fixed, 7 decided with the user
 
 **Status:** Plan written; nothing built.
-**Last updated:** 2026-10-10
-**Next `pir-work` will:** T00 oracle-spike, because every later test rests on the reference emulator; T01 and T02 can run beside it.
+**Last updated:** 2026-10-13
+**Next `pir-work` will:** T16, T17, T36, T39 and T40, all ready on T15; T41–T43 follow T40 in a chain.
 
 ## Tasks
 
@@ -41,7 +41,7 @@ done · ⛔ blocked, needs a human.
 | T16 | enemies-worlds-1-3 | T15 | ⬜ | |
 | T17 | enemies-worlds-4-6 | T15 | ⬜ | |
 | T18 | bosses | T16, T17 | ⬜ | |
-| T19 | slot-and-bonus | T15 | 🔍 | Stopped by the owner: no code kept. Split into T39 (bonus level) and T40–T43 (slot); their docs carry T19's measurements. Owner: W1-1's forced exit reaches the slot; beam races within 4 lines excused. |
+| T19 | slot-and-bonus | T15 | ✅ | Stopped by the owner, no code; split into T39 (bonus) and T40–T43 (slot). Review: added T40–T43's missing files/interface sections, T19's dropped Tables item to T40, T39's tests moved to sf-conform (purity). Deps, slugs, blocks T21 checked; cited code identifiers grepped; measurements read-only. |
 | T20 | front-end | T08, T11, T12, T13 | ✅ | |
 | T21 | game-flow | T18, T19, T20 | ⬜ | |
 | T22 | app-rig | T09, T10, T12, T13 | ✅ | |
@@ -70,7 +70,7 @@ done · ⛔ blocked, needs a human.
 A Notes cell holds what was built or what the review found, the test count, and one line per
 deviation from the task doc. A ✅ task's cell may be cut to one line once the next task has been reviewed.
 
-**Review queue:** T19
+**Review queue:** *(empty)*
 
 ## Blocked on the user
 

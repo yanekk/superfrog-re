@@ -18,6 +18,10 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-13 | 📌 | T19 review: T16's doc puts oracle tests in `sf-core/tests/enemies_w1_3.rs`; purity forbids the emulator there, so they belong in `sf-conform/tests/`. Not fixed. |
+| 2026-10-13 | 📌 | T19 review: T17's doc puts oracle tests in `sf-core/tests/enemies_w4_6.rs`; they belong in `sf-conform/tests/` (purity). Not fixed. |
+| 2026-10-13 | 📌 | T19 review: T18's doc puts oracle tests in `sf-core/tests/bosses.rs`; they belong in `sf-conform/tests/` (purity). Not fixed. |
+| 2026-10-13 | 📌 | T19 review: T21's doc puts its frame-conformance test in `sf-core/tests/flow.rs`; an oracle test belongs in `sf-conform/tests/` (purity). Not fixed. |
 | 2026-10-13 | 🔄 | Owner, T19: stopped; uncommitted slot port discarded. T40–T43 added (sync, screen, rounds, prizes); their docs keep its measurements (cycles, contention, interrupt length). |
 | 2026-10-13 | 🔄 | Owner, T19: slot cases reach the slot by forcing W1-1's exit (`level_state` = 1), a second use of `write_memory`; the tally's choice by up, then fire. |
 | 2026-10-13 | 🔄 | Owner, T19: the slot redraws lamps while the beam draws; a pixel differing only on lines an engine blit wrote within 4 lines of the beam is excused, counted per case. |
