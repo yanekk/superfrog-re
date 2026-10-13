@@ -1,5 +1,5 @@
 # Power-on with disk 3 into scene 4: its set-up (frames 3175-3192) runs under the scene's display
-# (T50). The first draw after the masks ends early from frame 3191 on (T52-T54). Slow (about 80 s):
-# not in the test block; `sf-conform scan` it.
+# (T50); the first draw after the masks is timed by its CPU program (T53). Slow (about 80 s): not in
+# the test block; `cargo test -p sf-conform -- --ignored` runs it.
 sync = "power-on-disk3"
 frames = 3195

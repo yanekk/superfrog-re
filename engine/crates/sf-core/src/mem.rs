@@ -264,6 +264,8 @@ pub struct Bus<'a> {
     /// frame's start) as each of its words was written, and the bytes written so far. Its writes
     /// are logged there.
     pub span: Option<(Vec<u32>, usize)>,
+    /// When kept: the [`crate::LAYOUT`] entries written through this bus, by index.
+    pub written: Option<Vec<bool>>,
 }
 
 /// The writes made to memory the display reads (the copper list, the panel, the display
@@ -303,10 +305,16 @@ impl<'a> Bus<'a> {
             at: 0,
             log: None,
             span: None,
+            written: None,
         }
     }
 
     fn note(&mut self, addr: u32) {
+        if let Some(w) = self.written.as_mut()
+            && let Some(i) = crate::layout::index_of(addr & 0xFF_FFFF)
+        {
+            w[i] = true;
+        }
         let mut at = self.at;
         if let Some((times, done)) = self.span.as_mut() {
             at = times[(*done / 2).min(times.len() - 1)];

@@ -113,6 +113,9 @@ pub mod op {
     pub const MOVE_W_AI_DN: &str = "rp";
     pub const ANDI_W_DN: &str = "pp";
     pub const ADD_W_DN_AI: &str = "rpw";
+    /// `add.w Dn, d(An)` and the other word read-modify-writes of `d(An)` from a register
+    /// (`sub`, `or`, `subq`, `clr`).
+    pub const ADD_W_DN_DI: &str = "prpw";
     pub const ANDI_W_AI: &str = "prpw";
     /// `mulu.w #3, Dn` (34 clocks of work for two set bits).
     pub const MULU_3: &str = "ppnnnnnnnnnnnnnnnnn";

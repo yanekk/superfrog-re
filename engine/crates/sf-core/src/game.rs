@@ -172,6 +172,8 @@ pub struct Game {
     /// For the next step: where the original made that frame's Paula writes.
     schedule: Vec<(u16, u16)>,
     blits: Vec<(u16, u16, u16)>,
+    /// How the last level's loop ended (T37).
+    outcome: Option<crate::level::LevelOutcome>,
 }
 
 /// `key_down`, `key_up` (h0+$16078, h0+$16079).
@@ -269,6 +271,7 @@ impl Game {
             entered,
             schedule: Vec::new(),
             blits: Vec::new(),
+            outcome: None,
         }
     }
 
@@ -320,6 +323,13 @@ impl Game {
             self.seed = None;
             let out = front.step(&mut self.state, &self.display, input);
             self.shown = Some(out.picture.clone());
+            if front.in_level_loop() {
+                // `level_start` is over and `level_frame_loop` entered (T37): the level scene
+                // from the next frame.
+                self.front = None;
+                self.scene = Scene::Level;
+                self.pending = None;
+            }
             return FrameOut {
                 picture: out.picture,
                 paula: out.paula,
@@ -331,7 +341,22 @@ impl Game {
         }
         let mut hw = Hw::of(input);
         hw.sdr = self.sdr;
-        let (paula, shown) = {
+        let mut ended: Option<(crate::front::Front, Vec<PaulaWrite>, Vec<Job>)> = None;
+        let display = Arc::clone(&self.display);
+        let frog_only = self.frog_only;
+        let sdr = self.sdr;
+        let mut after = |s: &mut State, line: u16| {
+            // `level_frame_loop` returned: what follows runs on the front end's program, from
+            // where the loop's last pass ended (T37, `crate::level::exit`).
+            let mut front = crate::front::Front::after_level(
+                s,
+                sdr,
+                crate::front::Routine::LevelOver(crate::level::exit::LevelOver::new(frog_only)),
+            );
+            let (more, jobs) = front.finish_frame(s, &display, input, line);
+            ended = Some((front, more, jobs));
+        };
+        let (mut paula, shown) = {
             let mut m = Machine {
                 state: &mut self.state,
                 display: &self.display,
@@ -346,14 +371,25 @@ impl Game {
                 schedule: std::mem::take(&mut self.schedule),
                 blits: std::mem::take(&mut self.blits),
             };
-            self.scene.step(&mut m, &mut self.pending, pacing, View::default())
+            self.scene
+                .step(&mut m, &mut self.pending, pacing, View::default(), &mut after)
         };
+        let mut jobs = Vec::new();
+        if let Some((front, more, begun)) = ended {
+            self.outcome = Some(crate::level::exit::outcome_of_loop(&self.state));
+            paula.extend(more);
+            jobs = begun;
+            self.front = Some(front);
+            self.scene = Scene::Front;
+            self.pending = None;
+            self.shown = shown.clone();
+        }
         FrameOut {
             picture: shown.unwrap_or_else(|| self.render(View::default())),
             paula,
             load: None,
             resync: Vec::new(),
-            jobs: Vec::new(),
+            jobs,
             beam_races: Vec::new(),
         }
     }
@@ -384,6 +420,15 @@ impl Game {
     pub fn set_handler_entry(&mut self, at: Option<(u16, u16)>) {
         if let Some(s) = self.story.as_mut() {
             s.handler_entry = at;
+        }
+    }
+
+    /// For conformance, the story intro: whether the next frame's vertical blank goes without a
+    /// handler, as the original's did when a blit held its CPU through the whole frame (its
+    /// request is a latch; the next blank's handler serves both). `None`: the engine's own model.
+    pub fn set_blank_merged(&mut self, merged: Option<bool>) {
+        if let Some(s) = self.story.as_mut() {
+            s.blank_merged = merged;
         }
     }
 
@@ -527,6 +572,12 @@ impl Game {
     /// The last frame's clock steps, while kept.
     pub fn trace(&self) -> &[crate::level::beam::Tick] {
         self.trace.as_deref().unwrap_or(&[])
+    }
+
+    /// How the last level's loop ended, once one has (T37): a death the level restarts after,
+    /// the time up, the game over, or the exit.
+    pub fn level_outcome(&self) -> Option<crate::level::LevelOutcome> {
+        self.outcome
     }
 
     /// Frames stepped since the start.

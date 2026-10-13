@@ -110,6 +110,28 @@ fn case_files_parse_and_refuse_what_they_do_not_know() {
     .unwrap();
     assert_eq!(c.sync, SyncPoint::AtLevel("W1-1".parse().unwrap()));
     assert!(c.compare.paula && !c.compare.vars);
+    let c = Case::parse(
+        "x",
+        "sync = { level = \"W1-1\", clock = \"0:03\" }\nframes = 3",
+    )
+    .unwrap();
+    assert_eq!(
+        c.sync,
+        SyncPoint::Clock {
+            level: "W1-1".parse().unwrap(),
+            seconds: 3
+        }
+    );
+    let c = Case::parse(
+        "x",
+        "sync = \"power-on\"\nframes = 9\n[[exclude]]\nwhat = \"picture\"\nframes = [3, 5]\n\
+         note = \"n\"\ntask = \"T1\"\n",
+    )
+    .unwrap();
+    assert_eq!(
+        (2..7).map(|f| c.picture_excluded(f)).collect::<Vec<_>>(),
+        [false, true, true, true, false]
+    );
     for bad in [
         "frames = 3",
         "sync = \"power-on\"",
@@ -118,6 +140,12 @@ fn case_files_parse_and_refuse_what_they_do_not_know() {
         "sync = \"power-on\"\nframes = 3\ncompare = [\"sound\"]",
         "sync = { level = \"W9-1\" }\nframes = 3",
         "sync = { script = \"boot-to-title\" }\nframes = 3",
+        "sync = { level = \"W1-1\", clock = \"0:003\" }\nframes = 3",
+        "sync = { level = \"W1-1\", clock = \"0:3\" }\nframes = 3",
+        "sync = { level = \"W1-1\", clock = \"10:00\" }\nframes = 3",
+        "sync = { level = \"W1-1\", clock = \"0:60\" }\nframes = 3",
+        "sync = \"power-on\"\nframes = 3\n[[exclude]]\nwhat = \"picture\"\nnote = \"n\"\ntask = \"T1\"",
+        "sync = \"power-on\"\nframes = 3\n[[exclude]]\nwhat = \"picture\"\nframes = [5, 3]\nnote = \"n\"\ntask = \"T1\"",
     ] {
         assert!(Case::parse("x", bad).is_err(), "{bad}");
     }

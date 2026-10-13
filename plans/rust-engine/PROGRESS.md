@@ -59,7 +59,7 @@ done · ⛔ blocked, needs a human.
 | T34 | game-over | T15, T20; blocks T21 | ⬜ | |
 | T35 | end-sequence | T20; blocks T21 | ✅ | |
 | T36 | items-on-the-beam | T15 | ✅ | |
-| T37 | level-restart | T36; blocks T34 | ⬜ | |
+| T37 | level-restart | T36; blocks T34 | ✅ | |
 | T38 | level-tally | T37; blocks T21 | ⬜ | |
 | T39 | enemies-world-5 | T16, T38; blocks T18 | ⬜ | |
 | T40 | enemies-world-6 | T38; blocks T18 | ⬜ | |
@@ -84,9 +84,9 @@ done · ⛔ blocked, needs a human.
 | T50 | story-objects-init-display | T49; blocks T56 | ✅ | |
 | T51 | story-oracle-blit-tooling | T46; blocks T52 | ✅ | |
 | T52 | story-blitter-bus-sim | T51; blocks T53 | ✅ | |
-| T53 | story-draw-cpu-program | T52; blocks T54 | ⬜ | |
+| T53 | story-draw-cpu-program | T52; blocks T54 | ✅ | |
 | T54 | story-handler-end-feed | T53; blocks T56 | ⬜ | |
-| T55 | story-intro-sound-timing | T50; blocks T56 | ⬜ | |
+| T55 | story-intro-sound-timing | T50; blocks T56 | ✅ | |
 | T56 | story-intro-to-insert-disk | T49, T50, T54, T55; blocks T21, T47, T48 | ⬜ | |
 | T81 | beam-cleanup | T36; blocks T37 | ✅ | |
 | T82 | beam-tests | T81 | ✅ | |
@@ -103,6 +103,9 @@ done · ⛔ blocked, needs a human.
 | T93 | slot-attract-draw | T72, T91, T92 | ⬜ | |
 | T94 | slot-interrupt-timing | T72, T91, T93; blocks T73 | ⬜ | |
 | T95 | slot-load-finish | T92; blocks T93 | ⬜ | |
+| T96 | story-audio-dma-slots | T53; blocks T56 | ⬜ | |
+| T100 | front-vbl-timing | T37; blocks T21 | ⬜ | |
+| T97 | story-split-handler | T54; blocks T56 | ⬜ | |
 | T101 | lag-long-pass | T81, T82; blocks T21 | ⬜ | |
 
 A Notes cell holds what was built or what the review found, the test count, and one line per
