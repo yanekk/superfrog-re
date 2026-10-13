@@ -18,6 +18,13 @@ pub struct Machine<'a> {
     pub hw: Hw,
     /// The object kinds the level runs with.
     pub dispatch: &'a crate::level::Dispatch,
+    /// What the level's work costs on the beam, and the clock's steps when kept
+    /// ([`crate::level::beam`]).
+    pub costs: &'a [u32; crate::level::beam::Cost::COUNT],
+    pub trace: Option<&'a mut Vec<crate::level::beam::Tick>>,
+    /// In conformance: where the original made the frame's Paula writes ([`LevelCtx::schedule`]).
+    pub schedule: Vec<(u16, u16)>,
+    pub blits: Vec<(u16, u16, u16)>,
 }
 
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash)]
@@ -54,12 +61,15 @@ impl Scene {
     }
 
     /// Run one frame of this scene; returns the Paula writes it made, in order, and the picture
-    /// the frame shows when it is not the state's at the frame's end: a level's is drawn after
-    /// the vertical blank, before the pass, whose drawing (the panel's digits, a redrawn tile)
-    /// the beam has passed by the time the pass gets to it (docs/12 "Late redraws").
+    /// the frame shows when it is not the state's at the frame's end. A level's frame is its main
+    /// program on the beam ([`crate::level::frame::main_program`]): its picture is drawn as the
+    /// beam saw it, a write the pass made after the beam had passed a line not showing there
+    /// (docs/12 "Late redraws"); a pass the original's frame ends in the middle of (`pacing`) is
+    /// `pending` into the next frame.
     pub fn step(
         &mut self,
         m: &mut Machine,
+        pending: &mut Option<crate::level::beam::Pending>,
         pacing: Pacing,
         view: View,
     ) -> (Vec<PaulaWrite>, Option<Picture>) {
@@ -68,20 +78,45 @@ impl Scene {
         match self {
             Scene::Placeholder | Scene::Front | Scene::Story => {}
             Scene::Level => {
-                let mut c = LevelCtx {
-                    bus: Bus::new(m.state, m.display.rom()),
-                    dispatch: m.dispatch,
-                    hw: m.hw,
-                    sound: m.display.sound(),
-                    paula: &mut out,
-                };
-                crate::level::frame::vbl(&mut c);
-                picture = Some(render::level(c.bus.st, m.display, view));
-                // A late pass (DESIGN §2.1) runs here too: what is left over is the runner's lag.
-                let _ = pacing;
-                if crate::level::frame::pass_due(&c) {
-                    crate::level::frame::pass(&mut c);
+                let mut c = LevelCtx::new(
+                    Bus::new(m.state, m.display.rom()),
+                    m.dispatch,
+                    m.hw,
+                    m.display.sound(),
+                    &mut out,
+                );
+                c.costs = *m.costs;
+                c.schedule = std::mem::take(&mut m.schedule);
+                c.blits = std::mem::take(&mut m.blits);
+                if m.trace.is_some() {
+                    c.trace = Some(Vec::new());
                 }
+                crate::level::frame::main_program(&mut c, pending.take(), pacing);
+                if let (Some(t), Some(out)) = (c.trace.take(), m.trace.as_mut()) {
+                    **out = t;
+                }
+                let f = c.frames.take().expect("the main program's frames");
+                if let Some(mid) = f.mid {
+                    *c.bus.st = *mid;
+                }
+                *pending = f.pending;
+                let log = f.log.unwrap_or_default();
+                if crate::level::DEBUG.load(std::sync::atomic::Ordering::Relaxed) {
+                    let mut runs: Vec<(u32, u32, u32, usize)> = Vec::new();
+                    for &(a, _, t) in &log.writes {
+                        match runs.last_mut() {
+                            Some(r) if t / 454 == r.1 / 454 && a / 0x3b70 == r.2 / 0x3b70 => { r.1 = t; r.3 += 1; }
+                            _ => runs.push((t, t, a, 1)),
+                        }
+                    }
+                    for &(a, _, t) in &log.writes { if (0x3b900..0x3bf00).contains(&a) && t / 454 > 185 { eprintln!("  W ${a:x} at {}.{}", t / 454, t % 454); } }
+                    for r in runs { eprintln!("  LOG line {}.{}..{}.{} from ${:x}: {} bytes", r.0 / 454, r.0 % 454, r.1 / 454, r.1 % 454, r.2, r.3); }
+                }
+                let empty = crate::mem::WriteLog::default();
+                picture = Some(render::level_as_drawn(c.bus.st, m.display, view, if false { &empty } else { &log }));
+                drop(c);
+                out.truncate(f.out_to.unwrap_or(out.len()));
+                out.drain(..f.out_from);
             }
         }
         (out, picture)

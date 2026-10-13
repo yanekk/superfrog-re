@@ -65,12 +65,18 @@ pub enum Pacing {
     Unpaced,
     /// The main loop was waiting when this frame's vertical blank came.
     OnTime,
-    /// The original's main loop was still in its pass at this frame's vertical blank. The engine
-    /// then runs the interrupt's work at one fixed point in the late pass. In the story intro
-    /// (owner, 2026-10-12): the original was still in a long job (a draw, an unpack, a scene's
-    /// set-up), and the engine's job in progress ends no sooner; [`Pacing::OnTime`] there means it
-    /// had ended, and the engine's ends with the frame.
-    Late,
+    /// The original's frame ended with its main loop in the middle of a pass, so the next
+    /// vertical blank comes there: after the frame's `writes`th Paula write, the last at beam
+    /// line `line`, slot `hpos`, in the pass's `phase`th call (`level_frame_loop`'s, in order from
+    /// `spud_update`; [`crate::level::frame::pass`]), `step` steps into its loop (slots looked at,
+    /// [`crate::level::beam::NO_STEP`] for a call without). The engine ends its frame between the
+    /// same two writes, at the same step of the same call, or where its clock reaches the frame's
+    /// end counting from that write (T36), and runs the rest of the pass in the next frame, after
+    /// that frame's interrupt. In the story intro (owner, 2026-10-12): the original was still in a
+    /// long job (a draw, an unpack, a scene's set-up), and the engine's job in progress ends no
+    /// sooner; [`Pacing::OnTime`] there means it had ended, and the engine's ends with the frame.
+    /// The intro reads none of the fields.
+    Late { writes: u16, line: u16, hpos: u16, phase: u8, step: u16 },
 }
 
 /// What one frame produced.
@@ -131,6 +137,17 @@ pub struct Game {
     sdr: u8,
     /// The level runs with no object kinds ([`Game::frog_only`]).
     frog_only: bool,
+    /// What a level's work costs on the beam ([`crate::level::beam`]), and the last frame's clock
+    /// steps when kept ([`Game::keep_trace`]).
+    costs: [u32; crate::level::beam::Cost::COUNT],
+    trace: Option<Vec<crate::level::beam::Tick>>,
+    /// A level's pass the last frame ended in the middle of ([`crate::level::beam::Pending`]).
+    pending: Option<crate::level::beam::Pending>,
+    /// The level a [`Start::Level`] game entered.
+    entered: Option<LevelId>,
+    /// For the next step: where the original made that frame's Paula writes.
+    schedule: Vec<(u16, u16)>,
+    blits: Vec<(u16, u16, u16)>,
 }
 
 /// `key_down`, `key_up` (h0+$16078, h0+$16079).
@@ -170,6 +187,10 @@ impl Game {
     pub fn with_display(display: Arc<DisplayData>, start: Start) -> Game {
         let mut story = None;
         let mut sdr = 0xff;
+        let entered = match start {
+            Start::Level(id) => Some(id),
+            _ => None,
+        };
         let (state, scene, seed, front) = match start {
             Start::PowerOn { seed } => (
                 State::default(),
@@ -218,6 +239,12 @@ impl Game {
             keys: KeySet::NONE,
             sdr,
             frog_only: false,
+            costs: crate::level::beam::COSTS,
+            trace: None,
+            pending: None,
+            entered,
+            schedule: Vec::new(),
+            blits: Vec::new(),
         }
     }
 
@@ -288,8 +315,12 @@ impl Game {
                 } else {
                     crate::level::standard_dispatch()
                 },
+                costs: &self.costs,
+                trace: self.trace.as_mut(),
+                schedule: std::mem::take(&mut self.schedule),
+                blits: std::mem::take(&mut self.blits),
             };
-            self.scene.step(&mut m, pacing, View::default())
+            self.scene.step(&mut m, &mut self.pending, pacing, View::default())
         };
         FrameOut {
             picture: shown.unwrap_or_else(|| self.render(View::default())),
@@ -429,6 +460,46 @@ impl Game {
     /// objects are all frozen out (T14's frog cases).
     pub fn frog_only(&mut self) {
         self.frog_only = true;
+        // A level entered and not yet played is entered again without its objects.
+        if let (Some(id), 0) = (self.entered, self.frame) {
+            self.state = State::default();
+            crate::level::load::enter_with(
+                &mut self.state,
+                &self.display,
+                id,
+                crate::level::frog_only_dispatch(),
+            );
+        }
+    }
+
+    /// For conformance (owner, 2026-10-13): the next step's level work is put on the beam where
+    /// the original made that frame's Paula writes, `(line, slot)` in order: as the engine makes
+    /// its own frame's `k`th write, its clock is set to the `k`th. Its own costs place the work
+    /// between them ([`crate::level::beam`]); normal play has only those.
+    pub fn anchor_writes(&mut self, writes: &[(u16, u16)]) {
+        self.schedule = writes.to_vec();
+    }
+
+    /// For conformance, with [`Game::anchor_writes`]: where the original started the next
+    /// step's blits, `(BLTSIZE, line, slot)` in order; each of the engine's own frame's blits
+    /// starts at the next of its size.
+    pub fn anchor_blits(&mut self, blits: &[(u16, u16, u16)]) {
+        self.blits = blits.to_vec();
+    }
+
+    /// For fitting the level's costs on the beam: run with `costs`.
+    pub fn set_costs(&mut self, costs: [u32; crate::level::beam::Cost::COUNT]) {
+        self.costs = costs;
+    }
+
+    /// For fitting the level's costs on the beam: keep each frame's clock steps.
+    pub fn keep_trace(&mut self) {
+        self.trace = Some(Vec::new());
+    }
+
+    /// The last frame's clock steps, while kept.
+    pub fn trace(&self) -> &[crate::level::beam::Tick] {
+        self.trace.as_deref().unwrap_or(&[])
     }
 
     /// Frames stepped since the start.

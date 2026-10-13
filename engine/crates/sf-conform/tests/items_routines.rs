@@ -49,13 +49,13 @@ fn prepared(
     let display = sf_conform::display_data();
     let mut paula = Vec::new();
     {
-        let mut c = LevelCtx {
-            bus: Bus::new(&mut st, display.rom()),
-            dispatch: sf_core::level::standard_dispatch(),
-            hw: Hw::default(),
-            sound: sound(),
-            paula: &mut paula,
-        };
+        let mut c = LevelCtx::new(
+            Bus::new(&mut st, display.rom()),
+            sf_core::level::standard_dispatch(),
+            Hw::default(),
+            sound(),
+            &mut paula,
+        );
         // The enemies the original has live (T16's) are gone first: their routines are not
         // ported.
         for k in 0..20 {

@@ -2,6 +2,7 @@
 //! list (`scroll_latch`, h0+$1700a).
 
 use crate::layout::{h0, h2, h3};
+use crate::level::beam::Cost;
 use crate::level::{LevelCtx, n_clear};
 use crate::mem::Bus;
 
@@ -149,7 +150,16 @@ pub fn scroller(c: &mut LevelCtx) {
     } else {
         draw_cols(b);
     }
-    // (When nothing was drawn the original waits eight raster lines here, h0+$12a14.)
+    let drawn = c.bus.w(DRAWN) as u32;
+    let tiles = drawn * c.bus.l(TILES_PER_LINE);
+    c.spend(Cost::Scroller);
+    c.spend_n(Cost::ScrollQueue, drawn);
+    c.spend_n(Cost::ScrollTile, tiles);
+    if drawn == 0 {
+        // h0+$12a14: nothing was drawn, and the original waits eight raster lines.
+        c.wait_lines(8);
+    }
+    let b = &mut c.bus;
     b.set_l(BLIT_NEXT, BLIT_QUEUE);
     b.set_w(BLITS_PENDING, 1);
     // The copper interrupt, requested: it runs [`copper_irq_blits`] as the handler returns.
@@ -346,10 +356,14 @@ fn blit(b: &mut Bus, src: u32, dst: u32, size: u16, modulo: u16) {
 /// blitter given the bus (DMACON `$8400`, BLTPRI) while it runs.
 fn blit_planes(c: &mut LevelCtx, a1: u32, size: u16, modulo: u16) {
     c.custom(0x96, 0x8400);
+    let words = (match size >> 6 { 0 => 1024, h => h as u32 }) * (match size & 0x3f { 0 => 64, w => w as u32 });
     for p in 0..5u32 {
         let src = a1.wrapping_add(PLANE * p);
+        c.spend(Cost::IrqPlane);
         blit(&mut c.bus, src, src.wrapping_sub(CLEAN_TO_BUFFER_0), size, modulo);
+        c.blit_words(words, 0x09f0);
         blit(&mut c.bus, src, src.wrapping_sub(BUFFER_BYTES), size, modulo);
+        c.blit_words(words, 0x09f0);
     }
     c.custom(0x96, 0x0400);
 }
@@ -370,6 +384,8 @@ pub fn copper_irq_blits(c: &mut LevelCtx) {
         }
         let a1 = b.l(e + 0xa);
         let n = b.w(e + 4);
+        c.spend(Cost::IrqBlits);
+        let b = &mut c.bus;
         if b.w(e + 2) == 0 {
             let modulo = 0x18u16.wrapping_sub(n).wrapping_mul(2);
             blit_planes(c, a1, n | 0x400, modulo);

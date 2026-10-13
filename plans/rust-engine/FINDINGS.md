@@ -20,6 +20,10 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 |---|---|---|
 | 2026-10-13 | 🐞 | T75: `sf_conform::routine::sound_files` gave world 7 the W3–6 effect bank, unlike `audio::files_for`; any WB routine test playing an effect diverged. Fixed to the bonus bank. |
 | 2026-10-13 | 📌 | T75: at WB-1 the five shots are the only live objects (slots 0–4), with no hitboxes and touch `$7d4`; T78 adds the shot-hits-bonus-enemy case to `bonus_routines.rs`. |
+| 2026-10-13 | 🔄 | Owner, T36 review: of the split-off tasks only T81 blocks T37 (they share level/mod.rs, scene.rs, game.rs); T82–T86 run alongside T37. |
+| 2026-10-13 | 🐞 | T36 review: ignoring the cut's loop step re-syncs items-run-w1-1 at frame 334, yet `frog_cases` stays green: the runner re-syncs silently. Open until T82's `resync = false`. |
+| 2026-10-13 | 🔄 | Owner, T36: conformance anchors the engine's beam at the original's Paula writes and blit starts; normal play uses the cost model only. Then stopped T36; rest split into T81–T86. |
+| 2026-10-13 | 📌 | T36: vAmiga's blitter (SlowBlitter) starts 2 cycles after BLTSIZE, takes odd slots $07–$35 when free; refresh $01/$03/$05/$E2. Ground truth via the DMA debugger's bus owners (`set_dma_profile`). Lag needs the cut's loop step, not the clock. |
 | 2026-10-13 | 📌 | T46 review, for T54: the fade writes' `HandlerBus` holds refresh and copper cycles only, no bitplane fetches; a handler held into the display (fed entries 155:88, 90:182) is timed uncontended. Those frames are green today. |
 | 2026-10-13 | 📌 | T46 added T49–T56 (owner: stop, split the rest; owner's yes given). T56 carries T46's done-when and blocks T21, T47, T48. |
 | 2026-10-13 | 🔄 | Owner, T46: conformance feeds the original's handler entry (patch 0005 `Amiga::irqs`) and, for draws, its end (`INTREQ=$20` beam); normal play estimates (entry line 0 cycle 10). |

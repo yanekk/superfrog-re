@@ -4,6 +4,7 @@
 
 use crate::frog::{FROG, f};
 use crate::layout::{h0, h2, h3};
+use crate::level::beam::Cost;
 use crate::level::{LevelCtx, n_clear};
 use crate::mem::Bus;
 
@@ -38,10 +39,12 @@ const NEXT_LIFE: u32 = 0xaa;
 
 /// A panel blit: five planes of `size` from hunk 2 at `src` to the panel at `dst`.
 fn blit_panel(c: &mut LevelCtx, mut src: u32, mut dst: u32, amod: u16, dmod: u16, size: u16) {
+    c.spend(Cost::PanelBlit);
     c.custom(0x9a, 0x0010);
     c.custom(0x96, 0x8400);
     let (h, w) = ((size >> 6) as u32, (size & 0x3f) as u32);
     for _ in 0..5 {
+        c.blit_words(h * w, 0x09f0);
         let (mut s, mut d) = (src, dst);
         for _ in 0..h {
             for _ in 0..w {
