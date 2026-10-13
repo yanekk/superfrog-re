@@ -1,9 +1,9 @@
-# T41 — enemies-world-3
+# T44 — enemies-world-3
 
 **Phase:** 2 · **Depends on:** T38; blocks T18 · **Weight:** heavy
 
-Added by T16 (owner, 2026-10-13: "park T16 until T36–T38 and split them by world"). T16 keeps world
-1; this task is world 3's share of the old "worlds 1–3" task, 18 new types per docs/09. It waits on
+Added by T16 (owner, 2026-10-13: "park T16 until T36–T38 and split them by world"); T16 is closed
+as the split and world 1 is T42. This task is world 3's share of the old "worlds 1–3" task, 18 new types per docs/09. It waits on
 T38 because its frame cases need the objects in the picture and lag (T36), deaths and the restart
 (T37) and the level's exit (T38).
 
@@ -12,7 +12,7 @@ T38 because its frame cases need the objects in the picture and lag (T36), death
 Every enemy and hazard object new in world 3: movement, animation, collision with the frog (both
 ways: hurting the frog, being killed by it), their sound effects, and their activation and
 deactivation as the camera approaches and leaves, which is what makes widescreen visual-only
-(DESIGN §2.7). Types shared with world 1 are T16's; reuse them, do not port them twice.
+(DESIGN §2.7). Types shared with world 1 are T42's; reuse them, do not port them twice.
 
 ## Design sections this implements
 
@@ -22,7 +22,7 @@ DESIGN §2.1, §2.7, docs/09 (object list from T07; per-marker templates by walk
 ## Files
 
 - `engine/crates/sf-core/src/enemies/w3/*.rs`: one file per enemy type, named from `symbols.toml`.
-- `engine/crates/sf-core/src/enemies/mod.rs`: registration, shared with T16, T17 and T40; add only
+- `engine/crates/sf-core/src/enemies/mod.rs`: registration, shared with T39–T43; add only
   this world's `register` lines.
 - `engine/crates/sf-core/tests/enemies_w3.rs`, `engine/conform/{scripts,cases}/enemies-w3-*`
 

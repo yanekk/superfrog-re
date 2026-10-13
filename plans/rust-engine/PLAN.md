@@ -100,8 +100,12 @@ headless.
 | [T36](tasks/T36-items-on-the-beam.md) | items-on-the-beam | T15 |
 | [T37](tasks/T37-level-restart.md) | level-restart | T36; blocks T34 |
 | [T38](tasks/T38-level-tally.md) | level-tally | T37; blocks T21 |
-| [T40](tasks/T40-enemies-world-2.md) | enemies-world-2 | T38; blocks T18 |
-| [T41](tasks/T41-enemies-world-3.md) | enemies-world-3 | T38; blocks T18 |
+| [T39](tasks/T39-enemies-world-5.md) | enemies-world-5 | T16, T38; blocks T18 |
+| [T40](tasks/T40-enemies-world-6.md) | enemies-world-6 | T38; blocks T18 |
+| [T41](tasks/T41-enemies-world-4.md) | enemies-world-4 | T38; blocks T18 |
+| [T42](tasks/T42-enemies-world-1.md) | enemies-world-1 | T38; blocks T18, T33 |
+| [T43](tasks/T43-enemies-world-2.md) | enemies-world-2 | T38; blocks T18, T39 |
+| [T44](tasks/T44-enemies-world-3.md) | enemies-world-3 | T38; blocks T18 |
 
 T22 is the rig task: it comes before every surface task and they depend on it. T29 is the phase's
 drill. At the end: the owner plays it.

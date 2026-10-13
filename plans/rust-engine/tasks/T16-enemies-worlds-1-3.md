@@ -2,10 +2,9 @@
 
 **Phase:** 2 · **Depends on:** T15 · **Weight:** heavy
 
-> **Split by world, owner, 2026-10-13.** This task is now **world 1 only** (12 new types); world 2 is
-> T40 and world 3 is T41. It is **parked until T38 is ✅**: its frame cases need the objects in the
-> picture and lag (T36), deaths and the restart (T37) and the level's exit (T38), which its
-> `Depends on` cell (T15) does not name and cannot gain without editing the row.
+> **Split 2026-10-13 (owner), and this doc is superseded by it.** T16 was parked until T36–T38
+> and closed as the split itself: world 1 is T42, world 2 T43, world 3 T44, each after T38 and
+> blocking T18 (T42 also T33, T43 also T39). Nothing below is built under T16.
 
 ## Goal
 
@@ -20,7 +19,7 @@ DESIGN §2.1, §2.7, docs/09 (object list from T07).
 ## Files
 
 - `engine/crates/sf-core/src/enemies/w1/*.rs`: one file per enemy type, named from `symbols.toml`.
-- `engine/crates/sf-core/src/enemies/mod.rs`: registration, shared with the other enemy tasks (T17, T40, T41); each adds only its own `register` lines.
+- `engine/crates/sf-core/src/enemies/mod.rs`: registration, shared with the other enemy tasks (T39–T44); each adds only its own `register` lines.
 - `engine/crates/sf-core/tests/enemies_w1.rs`, `engine/conform/{scripts,cases}/enemies-w1-*`
 
 ## Interface
