@@ -226,8 +226,10 @@ pub struct LevelCtx<'a> {
     blitted: bool,
     /// The last anchored point: where the beam was, and the display writes logged by then.
     anchored_at: Option<(u32, usize)>,
-    /// Which of the pass's calls is running (`level_frame_loop`'s, in order: [`frame::pass`]).
+    /// Which of the pass's calls is running (`level_frame_loop`'s, in order: [`frame::pass`]),
+    /// and the steps of its loop done (slots looked at; [`LevelCtx::step_done`]).
     pub phase: u8,
+    pub pass_step: u16,
     /// The copper interrupt is masked (INTENA `$0010`: the pass's blits mask it), and one has been
     /// requested meanwhile: it is taken once the pass unmasks it.
     coper_masked: bool,
@@ -261,6 +263,7 @@ impl<'a> LevelCtx<'a> {
             blit_next: 0,
             blitted: false,
             phase: 0,
+            pass_step: 0,
             coper_masked: false,
             coper_pending: false,
         }
@@ -289,6 +292,19 @@ impl LevelCtx<'_> {
         if let Some(trace) = self.trace.as_mut() {
             trace.push(t);
         }
+    }
+
+    /// The pass enters its `phase`th call.
+    pub fn enter_phase(&mut self, phase: u8) {
+        self.phase = phase;
+        self.pass_step = 0;
+    }
+
+    /// A step of the pass's loop is done (a slot looked at): the original's frame may end here
+    /// ([`beam::Cut::step`]).
+    pub fn step_done(&mut self) {
+        self.pass_step = self.pass_step.saturating_add(1);
+        self.interrupt_due();
     }
 
     /// The CPU does work of kind `k` here (see [`beam`]).
@@ -420,10 +436,12 @@ impl LevelCtx<'_> {
             // In the call the original was in, once the clock says; past it, at once; before
             // it, not yet (unless a write it had not made comes first).
             Some((_, Some(cut))) => {
+                let here = self.phase == cut.phase;
                 n >= cut.writes
                     && (writing
                         || self.phase > cut.phase
-                        || (self.phase == cut.phase && past))
+                        || (here && cut.step != beam::NO_STEP && self.pass_step >= cut.step)
+                        || (here && cut.step == beam::NO_STEP && past))
             }
             _ => past,
         };

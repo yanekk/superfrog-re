@@ -151,6 +151,7 @@ pub fn pacing(cpu: &CpuRegs, m: &AmigaMemory, writes: &[sf_paula::PaulaWrite]) -
             line: last.vpos,
             hpos: last.hpos,
             phase: pass_phase(cpu, m),
+            step: pass_step(cpu, m),
         }
     } else {
         Pacing::OnTime
@@ -192,6 +193,58 @@ pub fn mid_pass(cpu: &CpuRegs, m: &AmigaMemory) -> bool {
         cpu.pc
     };
     in_level(m) && !LEVEL_WAIT.contains(&main_pc)
+}
+
+/// How far the loop of the pass's call the main program is in had got at the frame's end, as
+/// the engine counts its steps ([`sf_core::level::LevelCtx::step_done`]): the slots
+/// `obj_run_all` has run (one whose update was running counted done), the slots
+/// `obj_build_hitboxes` has looked at, the entries of `build_bob_draw_list`'s three loops, the
+/// halves of `collide_all` (the spud's, the frog's). [`NO_STEP`] in any other call.
+pub fn pass_step(cpu: &CpuRegs, m: &AmigaMemory) -> u16 {
+    use sf_core::level::beam::NO_STEP;
+    let (pc, sp) = if cpu.pc == VBL_HANDLER {
+        (long(m, cpu.ssp + 2), cpu.ssp + 6)
+    } else {
+        (cpu.pc, cpu.a[7])
+    };
+    let at = pc.wrapping_sub(h0(0));
+    let d = |r: usize| cpu.d[r] as u16;
+    let slot = |down: u16| 20u16.saturating_sub(down);
+    // A return address on the stack (and where).
+    let ret = |r: u32| (0..0x100).step_by(2).map(|k| sp + k).find(|&a| long(m, a) == h0(r));
+    match at {
+        0x1b324..=0x1b32d => 0,
+        0x1b32e..=0x1b33d => slot(d(0)),
+        0x1b33e..=0x1b34d => slot(d(0)) + 1,
+        0xd2f6..=0xd303 => 0,
+        0xd304..=0xd33f => slot(d(7)),
+        0xd340..=0xd34d => slot(d(7)) + 1,
+        0x19b42..=0x19b55 => 0,
+        0x19b56..=0x19b63 => slot(d(0)),
+        0x19b64..=0x19b6d => slot(d(0)) + 1,
+        0x19b6e..=0x19b75 => 20,
+        0x19b76..=0x19b83 => 20 + slot(d(0)),
+        0x19b84..=0x19b8d => 21 + slot(d(0)),
+        0x19b8e..=0x19b95 => 40,
+        0x19b96..=0x19bc0 => 40 + slot(d(0)).saturating_sub(1),
+        0xd0cc => 0,
+        0xd0d0 => 1,
+        0xd0d4..=0xd0df => 2,
+        _ => {
+            // Inside a routine a loop called: the slot whose update runs (`obj_run_all` saved
+            // d0 under the return address), or the half of `collide_all`.
+            if let Some(a) = ret(0x1b33e) {
+                return slot(word(m, a + 6) as u16) + 1;
+            }
+            if ret(0xd0d0).is_some() {
+                return 0;
+            }
+            if ret(0xd0d4).is_some() {
+                return 1;
+            }
+            NO_STEP
+        }
+    }
 }
 
 /// Where the main program was at the end of a frame: its PC, then each long on its stack that is

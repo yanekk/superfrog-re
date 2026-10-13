@@ -60,11 +60,12 @@ pub enum Pacing {
     /// The original's frame ended with its main loop in the middle of a pass, so the next
     /// vertical blank comes there: after the frame's `writes`th Paula write, the last at beam
     /// line `line`, slot `hpos`, in the pass's `phase`th call (`level_frame_loop`'s, in order from
-    /// `spud_update`; [`crate::level::frame::pass`]). The engine ends its frame between the same
-    /// two writes, in the same call, at the point its clock reaches the frame's end counting from
-    /// that write (T36), and runs the rest of the pass in the next frame, after that frame's
-    /// interrupt.
-    Late { writes: u16, line: u16, hpos: u16, phase: u8 },
+    /// `spud_update`; [`crate::level::frame::pass`]), `step` steps into its loop (slots looked at,
+    /// [`crate::level::beam::NO_STEP`] for a call without). The engine ends its frame between the
+    /// same two writes, at the same step of the same call, or where its clock reaches the frame's
+    /// end counting from that write (T36), and runs the rest of the pass in the next frame, after
+    /// that frame's interrupt.
+    Late { writes: u16, line: u16, hpos: u16, phase: u8, step: u16 },
 }
 
 /// What one frame produced.

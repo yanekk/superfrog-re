@@ -120,11 +120,13 @@ pub fn main_program(c: &mut LevelCtx, pending: Option<beam::Pending>, pacing: cr
                 line,
                 hpos,
                 phase,
+                step,
             } => Some(beam::Cut {
                 writes,
                 line,
                 hpos,
                 phase,
+                step,
             }),
         },
     };
@@ -199,39 +201,39 @@ pub fn pass_due(c: &LevelCtx) -> bool {
 
 /// The 25 Hz pass (`level_frame_loop`'s body, h0+$ab8).
 pub fn pass(c: &mut LevelCtx) {
-    c.phase = 0;
+    c.enter_phase(0);
     c.spend(Cost::PassEntry);
     c.bus.set_w(VBL_COUNT, 0);
     c.spend(Cost::Spud);
     crate::items::powerups::spud_update(c);
-    c.phase = 1;
+    c.enter_phase(1);
     crate::level::objects::obj_run_all(c);
-    c.phase = 2;
+    c.enter_phase(2);
     crate::level::objects::obj_build_hitboxes(c);
-    c.phase = 3;
+    c.enter_phase(3);
     crate::level::objects::collide_all(c);
-    c.phase = 4;
+    c.enter_phase(4);
     crate::level::objects::build_bob_draw_list(c);
-    c.phase = 5;
+    c.enter_phase(5);
     crate::level::objects::bob_draw(c);
-    c.phase = 6;
+    c.enter_phase(6);
     c.spend(Cost::AfterDraw);
     pass::buffer_flip(c);
-    c.phase = 7;
+    c.enter_phase(7);
     pass::tile_anim_draw(c);
-    c.phase = 8;
+    c.enter_phase(8);
     c.spend(Cost::Panel);
     crate::level::panel::panel_update(c);
-    c.phase = 9;
+    c.enter_phase(9);
     c.spend(Cost::PassTail);
     pass::pause_check(c);
-    c.phase = 10;
+    c.enter_phase(10);
     pass::passage_step(c);
-    c.phase = 11;
+    c.enter_phase(11);
     crate::level::panel::extra_life(c);
-    c.phase = 12;
+    c.enter_phase(12);
     crate::level::death::time_up_check(c);
-    c.phase = 13;
+    c.enter_phase(13);
     let b = &mut c.bus;
     let ls = b.l(collision::LEVEL_STATE);
     if crate::level::collision::n_clear_l(ls.wrapping_add(1)) {

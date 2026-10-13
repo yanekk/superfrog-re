@@ -35,6 +35,7 @@ pub fn obj_run_all(c: &mut LevelCtx) {
             let update = c.bus.l(slot + 4);
             crate::level::call(c, update, slot, 0);
         }
+        c.step_done();
     }
 }
 
@@ -324,20 +325,14 @@ pub fn bob_anim(b: &mut Bus, slot: u32, anim: u32) {
 
 /// `obj_build_hitboxes` (h0+$d2f6): every live slot's hitboxes, offset by its position.
 pub fn obj_build_hitboxes(c: &mut LevelCtx) {
-    let (mut slots, mut boxes) = (0, 0);
-    let b = &mut c.bus;
     let mut out = HITBOXES;
     for k in 0..SLOTS {
         let slot = OBJ_SLOTS + k * SLOT_SIZE;
-        slots += 1;
-        if b.l(slot + 0x40) == 0 {
-            continue;
-        }
-        let mut hb = b.l(slot + 0x14);
-        if hb == 0 {
-            continue;
-        }
-        loop {
+        c.spend(Cost::HitboxSlot);
+        let b = &mut c.bus;
+        let mut hb = if b.l(slot + 0x40) == 0 { 0 } else { b.l(slot + 0x14) };
+        let mut boxes = 0;
+        while hb != 0 {
             boxes += 1;
             let (dx, dy) = (b.w(hb + 4), b.w(hb + 6));
             let x1 = b.w(slot + 8).wrapping_add(dx);
@@ -353,10 +348,10 @@ pub fn obj_build_hitboxes(c: &mut LevelCtx) {
                 break;
             }
         }
+        c.spend_n(Cost::Hitbox, boxes);
+        c.step_done();
     }
-    b.set_w(out, 0xffff);
-    c.spend_n(Cost::HitboxSlot, slots);
-    c.spend_n(Cost::Hitbox, boxes);
+    c.bus.set_w(out, 0xffff);
 }
 
 /// The hitbox entries overlapping x `x1..x2`, y `y1..y2`, walked as the original walks the list
@@ -401,6 +396,7 @@ pub fn collide_all(c: &mut LevelCtx) {
     c.spend(Cost::Collide);
     c.spend_n(Cost::CollideEntry, 2 * entries);
     spud_touches(c);
+    c.step_done();
     frog_touches(c);
     debug_assert_eq!(c.bus.w(SHOOTER_MODE), 0, "the bonus level's collisions are T19's");
 }
@@ -470,32 +466,33 @@ fn frog_touches(c: &mut LevelCtx) {
 /// the free bobs that still have something on screen to erase.
 pub fn build_bob_draw_list(c: &mut LevelCtx) {
     c.spend(Cost::DrawList);
-    c.spend_n(Cost::DrawListSlot, SLOTS);
-    let b = &mut c.bus;
     let mut out = BOB_DRAW_LIST;
-    b.set_l(out, SPUD_BOB);
+    c.bus.set_l(out, SPUD_BOB);
     out += 4;
     for front in [true, false] {
         for k in 0..SLOTS {
+            c.spend(Cost::DrawListSlot);
+            let b = &mut c.bus;
             let slot = OBJ_SLOTS + k * SLOT_SIZE;
             let bob = b.l(slot + 0x50);
             if bob != 0 && ((b.l(slot + 0x26) as i32) >= 0) == front {
                 b.set_l(out, bob);
                 out += 4;
             }
+            c.step_done();
         }
     }
     for k in 0..SLOTS {
+        c.spend(Cost::DrawListSlot);
+        let b = &mut c.bus;
         let bob = b.l(BOB_FREE_LIST + 4 * k);
-        if bob == 0 {
-            continue;
-        }
-        if [0x10, 0x56, 0x9c, 0xe2].iter().any(|&o| b.l(bob + o) != 0) {
+        if bob != 0 && [0x10, 0x56, 0x9c, 0xe2].iter().any(|&o| b.l(bob + o) != 0) {
             b.set_l(out, bob);
             out += 4;
         }
+        c.step_done();
     }
-    b.set_l(out, 0);
+    c.bus.set_l(out, 0);
 }
 
 /// The bob drawer's variables (h0+$18bca..$18be4).

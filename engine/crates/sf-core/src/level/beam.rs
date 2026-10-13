@@ -102,7 +102,8 @@ pub enum Cost {
     /// frog's walks.
     Collide,
     CollideEntry,
-    /// `build_bob_draw_list` (h0+$19b42): its set-up, and a slot looked at (twice).
+    /// `build_bob_draw_list` (h0+$19b42): its set-up, and a slot looked at (in each of its
+    /// three loops).
     DrawList,
     DrawListSlot,
     /// `bob_draw` (h0+$19120): its set-up, and a bob's screen position.
@@ -242,7 +243,7 @@ impl Cost {
             Cost::Collide => 909,
             Cost::CollideEntry => 45,
             Cost::DrawList => 1058,
-            Cost::DrawListSlot => 163,
+            Cost::DrawListSlot => 54,
             Cost::BobDraw => 1091,
             Cost::BobPosition => 106,
             Cost::BobPart => 640,
@@ -451,7 +452,12 @@ pub struct Cut {
     pub line: u16,
     pub hpos: u16,
     pub phase: u8,
+    /// The steps of that call's loop done, or [`NO_STEP`].
+    pub step: u16,
 }
+
+/// A [`Cut`] whose call has no loop steps counted: the clock decides within it.
+pub const NO_STEP: u16 = 0xffff;
 
 /// A frame the main program runs through: its vertical blank's hardware, and, when it ends in
 /// the middle of a pass, where.
