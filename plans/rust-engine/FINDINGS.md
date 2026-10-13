@@ -18,6 +18,7 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-13 | 🐞 | `test_every_committed_func_starts_an_instruction` cannot fail: the listing realigns at every label, so a func offset mid-instruction still passes. Open for every committed func but `atn_decompress` and T87's twenty, which have byte checks. Found reviewing T87. |
 | 2026-10-13 | 📌 | T77: `bob_draw_vars` (h0+$18bc8) starts on marker 15's `bra.w` displacement ($2810); intact at WB-1 (marker 15's test compares). Marker 55 sets `level_state` 2 (T79). `obj_path_xy` (h0+$1c41c) is ready for the bosses. |
 | 2026-10-13 | 🐞 | Open: `level_entry::every_level_is_entered_as_the_original_enters_it` red on every level, `slot_copper` original $140f440, engine $1400000. Same on T76's base ffbad9f (T71's slot variables in `LAYOUT`); T76 review, not fixed. |
 | 2026-10-13 | 📌 | T76 for T75's merge: both create `bonus/mod.rs` (keep both modules and both `register_all` lines). T76 copied T75's `bonus_rig`/`sound_files` hunks verbatim, so those merge clean. |
