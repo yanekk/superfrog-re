@@ -18,6 +18,7 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-13 | 🐞 | T81, not fixed: `level_entry` red on the feature branch: every level's `slot_copper` (T71's LAYOUT variable, h2+$65e4) differs, original `$140f440`, engine `$1400000`; level entry never writes it. Not from T81's diff. |
 | 2026-10-13 | 🐞 | T78, not fixed: `purity.rs`'s scanner flags a hex literal ending `f64`/`f32` (`0x2cf64`) as a float. Worked around with `0x2CF64`; the scanner should skip suffix checks on hex. |
 | 2026-10-13 | 📌 | T78: `reward_power_count` (h0+$23e20) is 9 in the executable, `shot_cycle_table` non-zero; `State::default` zeroes LAYOUT vars, so a booted game (T79/T21) must seed them from hunk 0. |
 | 2026-10-13 | 📌 | T78: `bonus::death::become_reward(c, slot, dx)` is h0+$23c14 for the enemies tasks; `touch_spud_damage` (h0+$2360e, $23662) itself stays unported. |

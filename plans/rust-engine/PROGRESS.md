@@ -88,7 +88,7 @@ done · ⛔ blocked, needs a human.
 | T54 | story-handler-end-feed | T53; blocks T56 | ⬜ | |
 | T55 | story-intro-sound-timing | T50; blocks T56 | ⬜ | |
 | T56 | story-intro-to-insert-disk | T49, T50, T54, T55; blocks T21, T47, T48 | ⬜ | |
-| T81 | beam-cleanup | T36; blocks T37 | ⬜ | |
+| T81 | beam-cleanup | T36; blocks T37 | 🔍 | Debug hooks and T36_* blocks gone; five examples kept and documented, six deleted; docs written. Deviations: `common/` kept as their shared module; engine symbols come from sf-core doc comments; `level_entry` red on `slot_copper` (T71 LAYOUT var, base branch, FINDINGS). frog-*, items cases, purity green. |
 | T82 | beam-tests | T81 | ⬜ | |
 | T83 | items-w1 | T81 | ⬜ | |
 | T84 | items-w3 | T81 | ⬜ | |
@@ -100,7 +100,7 @@ done · ⛔ blocked, needs a human.
 A Notes cell holds what was built or what the review found, the test count, and one line per
 deviation from the task doc. A ✅ task's cell may be cut to one line once the next task has been reviewed.
 
-**Review queue:** *(empty)*
+**Review queue:** T81
 
 ## Blocked on the user
 
