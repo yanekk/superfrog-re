@@ -366,3 +366,49 @@ fn decoders_never_panic_on_a_prefix() {
         let _ = parse_exe(ExeId::Bootstrap, named("bootstrap", 0), &exe[..cut * 4]);
     }
 }
+
+/// The slot machine's tables and pictures (T71), as the game's code reads them: the ladder's ten
+/// rungs are the first ten lamps, five pointer stops, 32 reel symbols on a 32×64 grid of FRUC, 26
+/// lamps, attract patterns of 8 and 6 rows of 0/1 lamps; FRUT and FRUC six planes of 320×256,
+/// FRUM one.
+#[test]
+fn the_slot_machine_tables_and_pictures() {
+    let t = &data().tables;
+    assert_eq!(
+        t.slot_ladder,
+        (0..10).map(|k| 0x6842 + 8 * k).collect::<Vec<u32>>()
+    );
+    assert_eq!(t.slot_pointer_stops, [0x26, 0x60, 0x90, 0xc0, 0x116]);
+    assert_eq!(t.slot_reel_frames.len(), 32);
+    assert_eq!(t.slot_reel_frames[0], ReelFrame { x: 0, y: 0 });
+    assert_eq!(t.slot_reel_frames[11], ReelFrame { x: 0x20, y: 0x40 });
+    assert!(
+        t.slot_reel_frames
+            .iter()
+            .all(|f| f.x % 32 == 0 && f.y % 64 == 0)
+    );
+    assert_eq!(t.slot_lamp_rects.len(), SLOT_LAMPS);
+    assert_eq!(
+        t.slot_lamp_rects[0],
+        LampRect {
+            x: 0x110,
+            y: 8,
+            w: 0x30,
+            h: 0x20,
+            rest: [0, 0]
+        }
+    );
+    assert!(
+        t.slot_lamp_rects
+            .iter()
+            .all(|r| r.x + r.w <= 320 && r.y + r.h <= 256)
+    );
+    assert_eq!(t.slot_attract_first.len(), 8);
+    assert_eq!(t.slot_attract_later.len(), 6);
+    let rows = t.slot_attract_first.iter().chain(&t.slot_attract_later);
+    assert!(rows.flatten().all(|&v| v <= 1));
+    let d = data();
+    for (name, len) in [("FRUT", 0xf000), ("FRUC", 0xf000), ("FRUM", 0x2800)] {
+        assert_eq!(d.raw[name].len(), len, "{name}");
+    }
+}
