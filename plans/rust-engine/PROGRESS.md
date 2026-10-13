@@ -67,7 +67,7 @@ done · ⛔ blocked, needs a human.
 | T42 | enemies-world-1 | T38; blocks T18, T33 | ⬜ | |
 | T43 | enemies-world-2 | T38; blocks T18, T39 | ⬜ | |
 | T44 | enemies-world-3 | T38; blocks T18 | ⬜ | |
-| T46 | story-intro-scenes | T32; blocks T21 | ⬜ | |
+| T46 | story-intro-scenes | T32; blocks T21 | ✅ | |
 | T47 | story-intro-handover | T46; blocks T21 | ⬜ | |
 | T48 | story-intro-skips | T46, T47; blocks T21 | ⬜ | |
 | T70 | bonus-level | T15; blocks T21 | ✅ | |
