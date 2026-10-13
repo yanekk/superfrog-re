@@ -339,7 +339,7 @@ fn slot(script: &str, start: Option<&str>, frames: u32) -> Result<Synced, String
     let s = InputScript::load(&script_path(script))?;
     let play = s.lines.last().map_or(0, |l| l.0);
     let key = format!(
-        "slot v1\nW1-1 by\n{}in W1-1\n{}",
+        "slot v2\nW1-1 by\n{}in W1-1\n{}",
         menu.to_oracle().canonical(),
         s.to_oracle().canonical()
     );

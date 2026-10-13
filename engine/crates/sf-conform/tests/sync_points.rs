@@ -128,7 +128,7 @@ fn slot(script: &str, start: Option<&str>) -> sync::Synced {
 }
 
 /// The slot machine's sync point (T71): W1-1's exit forced at once, the slot picked in the tally;
-/// the original is in `slot_machine` with W1-1's two clock coins, and its load (FRUT, FRUC, FRUM)
+/// the original is in `slot_machine` 73 frames on with W1-1's two clock coins, and its load (FRUT, FRUC, FRUM)
 /// ends 759 frames on (in `overlays_end`, return address h0+$b7e2), as T19 measured.
 #[test]
 fn slot_none_reaches_the_slot_machine_with_two_coins() {
@@ -137,6 +137,9 @@ fn slot_none_reaches_the_slot_machine_with_two_coins() {
     assert!(chain.contains(&sync::IN_SLOT_MACHINE), "{chain:x?}");
     let coins = (s.memory.byte(SLOT_STATE) as u16) << 8 | s.memory.byte(SLOT_STATE + 1) as u16;
     assert_eq!(coins, 2);
+    // Entered 73 frames after the forced exit (T19), which `slot-none` makes W1-1's first frame.
+    let w1_1 = sync::w1_1_by("start-w1-1").unwrap_or_else(|e| panic!("{e}"));
+    assert_eq!(s.amiga.frame() - w1_1.amiga.frame(), 73);
     let mut disks = sync::Disks::at(&s.memory);
     let loaded = (1..=1_000).find(|_| {
         s.amiga.step(sf_core::input::FrameInput::NONE).unwrap();
