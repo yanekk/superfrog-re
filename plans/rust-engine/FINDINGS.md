@@ -18,6 +18,9 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-13 | 🐞 | T78, not fixed: `purity.rs`'s scanner flags a hex literal ending `f64`/`f32` (`0x2cf64`) as a float. Worked around with `0x2CF64`; the scanner should skip suffix checks on hex. |
+| 2026-10-13 | 📌 | T78: `reward_power_count` (h0+$23e20) is 9 in the executable, `shot_cycle_table` non-zero; `State::default` zeroes LAYOUT vars, so a booted game (T79/T21) must seed them from hunk 0. |
+| 2026-10-13 | 📌 | T78: `bonus::death::become_reward(c, slot, dx)` is h0+$23c14 for the enemies tasks; `touch_spud_damage` (h0+$2360e, $23662) itself stays unported. |
 | 2026-10-13 | 🐞 | T75: `sf_conform::routine::sound_files` gave world 7 the W3–6 effect bank, unlike `audio::files_for`; any WB routine test playing an effect diverged. Fixed to the bonus bank. |
 | 2026-10-13 | 📌 | T75: at WB-1 the five shots are the only live objects (slots 0–4), with no hitboxes and touch `$7d4`; T78 adds the shot-hits-bonus-enemy case to `bonus_routines.rs`. |
 | 2026-10-13 | 📌 | T71 review: T71 ran `cargo fmt` over ~20 files outside its scope; formatting only. It conflicted at merge, so those files were restored to the feature branch's version. |

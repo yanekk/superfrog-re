@@ -13,7 +13,7 @@ the account is the commit message. Whoever writes a cell also fixes the over-bud
 
 **Status:** Plan written; nothing built.
 **Last updated:** 2026-10-10
-**Next `pir-work` will:** T00 oracle-spike, because every later test rests on the reference emulator; T01 and T02 can run beside it.
+**Next `pir-work` will:** review T78 bonus-enemy-death.
 
 ## Tasks
 
@@ -78,7 +78,7 @@ done · ⛔ blocked, needs a human.
 | T75 | bonus-shots | T70; blocks T21 | ✅ | |
 | T76 | bonus-enemies-a | T70; blocks T21 | ⬜ | |
 | T77 | bonus-enemies-b | T70, T76; blocks T21 | ⬜ | |
-| T78 | bonus-enemy-death | T70, T75; blocks T21 | ⬜ | |
+| T78 | bonus-enemy-death | T70, T75; blocks T21 | 🔍 | `bonus/death.rs`: six routines h0+$238e2…$23eac, 7 new routine tests. Deviation: `level::register_routines` added (outside the Files list), since no template names them. Deviation: life look written `0x2CF64` (purity scanner false positive). |
 | T79 | bonus-level-frames | T70, T37, T75, T76, T77, T78; blocks T21 | ⬜ | |
 | T49 | story-fade-setup-job | T46; blocks T56 | ✅ | |
 | T50 | story-objects-init-display | T49; blocks T56 | ⬜ | |
@@ -100,7 +100,7 @@ done · ⛔ blocked, needs a human.
 A Notes cell holds what was built or what the review found, the test count, and one line per
 deviation from the task doc. A ✅ task's cell may be cut to one line once the next task has been reviewed.
 
-**Review queue:** *(empty)*
+**Review queue:** T78
 
 ## Blocked on the user
 
