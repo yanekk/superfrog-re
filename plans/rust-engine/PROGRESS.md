@@ -91,7 +91,7 @@ done · ⛔ blocked, needs a human.
 | T81 | beam-cleanup | T36; blocks T37 | ✅ | |
 | T82 | beam-tests | T81 | ✅ | |
 | T83 | items-w1 | T81 | ✅ | |
-| T84 | items-w3 | T81 | ⬜ | |
+| T84 | items-w3 | T81 | ✅ | |
 | T85 | items-w2 | T81 | ⬜ | |
 | T86 | items-launchers | T81 | ⬜ | |
 | T87 | slot-symbols-routines | T71; blocks T72 | ✅ | |
