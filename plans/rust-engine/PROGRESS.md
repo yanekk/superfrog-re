@@ -96,6 +96,8 @@ done · ⛔ blocked, needs a human.
 | T86 | items-launchers | T81 | ⬜ | |
 | T87 | slot-symbols-routines | T71; blocks T72 | ⬜ | |
 | T88 | slot-symbols-tables | T71; blocks T72 | ⬜ | |
+| T89 | story-copper-bus-cycles | T52; blocks T53 | ⬜ | |
+| T90 | story-draw-blits-oracle | T89; blocks T53 | ⬜ | |
 
 A Notes cell holds what was built or what the review found, the test count, and one line per
 deviation from the task doc. A ✅ task's cell may be cut to one line once the next task has been reviewed.
