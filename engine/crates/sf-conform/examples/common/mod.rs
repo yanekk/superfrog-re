@@ -136,6 +136,17 @@ pub const MARKS: &[(&str, &[&str], Cost)] = &[
     ("panel", &["panel_update"], Cost::Panel),
 ];
 
+/// Panics unless every mark's routine is named in `syms`: a mark whose routine has no name is
+/// never seen, and the fit would quietly lose it.
+pub fn check_marks(syms: &[(u32, String)]) {
+    let lost: Vec<&str> = MARKS
+        .iter()
+        .filter(|m| !m.1.iter().any(|n| syms.iter().any(|s| s.1 == *n)))
+        .map(|m| m.0)
+        .collect();
+    assert!(lost.is_empty(), "marks with no named routine: {lost:?}");
+}
+
 /// The first line each mark's routine is running (PC or on the stack), from a frame's samples.
 pub fn original_marks(
     syms: &[(u32, String)],

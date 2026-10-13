@@ -101,8 +101,7 @@ impl Scene {
                 }
                 *pending = f.pending;
                 let log = f.log.unwrap_or_default();
-                let empty = crate::mem::WriteLog::default();
-                picture = Some(render::level_as_drawn(c.bus.st, m.display, view, if false { &empty } else { &log }));
+                picture = Some(render::level_as_drawn(c.bus.st, m.display, view, &log));
                 drop(c);
                 out.truncate(f.out_to.unwrap_or(out.len()));
                 out.drain(..f.out_from);

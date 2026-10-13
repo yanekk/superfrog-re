@@ -12,7 +12,7 @@
 #![allow(clippy::needless_range_loop)] // the normal equations are solved by index
 #[path = "common/mod.rs"]
 mod common;
-use common::{MARKS, original_marks, syms};
+use common::{MARKS, check_marks, original_marks, syms};
 use sf_conform::{Case, sync};
 use sf_core::level::beam::{COSTS, Clock, Cost, Tick};
 use sf_core::{Game, Start};
@@ -104,6 +104,7 @@ fn report(frames: &[Frame], th: &[f64], what: &str) {
 
 fn main() {
     let syms = syms();
+    check_marks(&syms);
     let mut frames = Vec::new();
     for path in std::env::args().skip(1) {
         let case = Case::load(std::path::Path::new(&path)).unwrap();
