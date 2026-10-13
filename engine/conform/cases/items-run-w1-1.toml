@@ -5,6 +5,8 @@
 sync = { level = "W1-1" }
 script = "frog-run-right"
 frames = 700
+compare = ["vars", "picture", "paula"]
+resync = false
 
 [[exclude]]
 what = "enemies"

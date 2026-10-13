@@ -55,6 +55,7 @@ sync = { script = "boot-to-title", frame = 4410 }   # run that script from power
 script = "walk-right"                               # optional; default: nothing held
 frames = 50                                         # frames compared, from the sync point
 compare = ["vars"]                                  # any of "vars", "picture", "paula", "render"; default all but render
+resync = false                                      # a re-sync after a lag fails the case (default true; see Pacing)
 ```
 
 `render` compares, each frame, the picture the renderer draws from the original's memory transplanted
@@ -128,7 +129,9 @@ A frame the original ends in the middle of a pass (its main loop not parked in
 `level_frame_loop`'s wait) holds memory part way through what the engine does in one go. The runner
 does not compare it, nor the next frame's picture and Paula writes, which carry the rest of that
 pass; on the frame after, if a variable still differs, it re-syncs the engine from the original's
-memory and reports both (`lag … re-synced at …`). Such frames are rare; `frog-run-w1-1` has two.
+memory and reports both (`lag … re-synced at …`). Such frames are rare; `frog-run-w1-1` has two. A
+case with `resync = false` (the `items-*` cases) fails there instead: a re-sync loads the original's
+whole memory and so erases any divergence that lands on a lag frame (T14 review, T36 review).
 
 `Pacing::Late { writes, line, hpos, phase, step }` says where the original's frame ended: after its
 `writes`th Paula write (the last at beam `line`, slot `hpos`), in the pass's `phase`th call, `step`
