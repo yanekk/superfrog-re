@@ -75,7 +75,7 @@ done · ⛔ blocked, needs a human.
 | T72 | slot-screen | T71 | ⬜ | |
 | T73 | slot-rounds | T72 | ⬜ | |
 | T74 | slot-prizes | T73; blocks T21 | ⬜ | |
-| T75 | bonus-shots | T70; blocks T21 | ⬜ | |
+| T75 | bonus-shots | T70; blocks T21 | ✅ | |
 | T76 | bonus-enemies-a | T70; blocks T21 | ⬜ | |
 | T77 | bonus-enemies-b | T70, T76; blocks T21 | ⬜ | |
 | T78 | bonus-enemy-death | T70, T75; blocks T21 | ⬜ | |
