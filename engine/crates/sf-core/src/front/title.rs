@@ -99,7 +99,7 @@ pub(super) fn level_tables(cx: &mut Cx) {
 
 /// `access_overlay_show` (h0+$b6f8) when no overlay is up: the Accessing-disk program is unpacked
 /// at [`OVERLAY_AT`] and run: it points its copper list at its picture and fades it in.
-pub(super) fn overlay_show(cx: &mut Cx) {
+pub(crate) fn overlay_show(cx: &mut Cx) {
     let o = &cx.data.overlay;
     cx.s.write(OVERLAY_AT, &o.clone());
     let ov = |off: u32| OVERLAY_AT + off;

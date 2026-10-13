@@ -55,6 +55,9 @@ pub enum SyncPoint {
         script: String,
         start: Option<String>,
     },
+    /// A level's first frame as [`SyncPoint::AtLevel`] reaches it, its clock (`level_clock`,
+    /// h0+$876) then set to `seconds` (T37: a time-up case without waiting four minutes).
+    Clock { level: LevelId, seconds: u16 },
 }
 
 /// The oracle at a sync point.
@@ -77,6 +80,8 @@ const VBL_HANDLER: u32 = h0(0x11bf8);
 const LEVEL_WAIT: Range<u32> = h0(0xaae)..h0(0xab8);
 const LOGIC_RUNNING: u32 = h0(0x9d6);
 const LEVEL_STATE: u32 = h0(0xa06);
+/// `level_clock` (h0+$876): four digits, minutes first.
+const LEVEL_CLOCK: u32 = h0(0x876);
 const WORLD: u32 = h0(0x40da);
 const LEVEL: u32 = h0(0x40de);
 const RNG_STATE: u32 = h0(0x160d4);
@@ -371,6 +376,14 @@ pub fn reach_frozen(
         }
         SyncPoint::EndSequence => end_sequence(frames),
         SyncPoint::Slot { script, start } => slot(script, start.as_deref(), frames),
+        SyncPoint::Clock { level, seconds } => {
+            let mut synced = reach_frozen(&SyncPoint::AtLevel(*level), script, frames, frozen)?;
+            let (m, s) = (seconds / 60, seconds % 60);
+            let digits = [(m / 10) as u8, (m % 10) as u8, (s / 10) as u8, (s % 10) as u8];
+            synced.amiga.write_memory(LEVEL_CLOCK, &digits);
+            synced.memory = core_memory(synced.amiga.memory());
+            Ok(synced)
+        }
         SyncPoint::AtLevel(_) => {
             let s = InputScript::load(&script_path(DEFAULT_START))?;
             at_snapshot(&w1_1_key(&tag, &s), 1, frames, LEVEL_SEARCH, |a| {

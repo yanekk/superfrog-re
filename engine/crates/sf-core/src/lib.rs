@@ -18,6 +18,7 @@ pub mod mem;
 pub mod render;
 pub mod rng;
 pub mod scene;
+pub(crate) mod slot;
 pub mod state;
 
 pub use game::{Cpu, FrameOut, Game, Job, LoadEnd, Pacing, Start};

@@ -16,7 +16,7 @@ use super::clock::{Beam, BlitClock, Bus};
 use super::fade::Rec;
 use super::mem::StoryMem;
 use super::ops::Op;
-use super::{data, h0, scenes};
+use super::{data, h0, scenes, sim};
 use crate::game::{Job, LoadEnd, Pacing};
 use crate::render::copper::Fetch;
 
@@ -61,6 +61,9 @@ pub fn handler_lines(m: &StoryMem) -> u64 {
 /// The DMA cycle of its line the vertical blank's interrupt is taken on when the main program waits
 /// for the blank (oracle: line 0, cycle 10, in every idle frame of the first scene).
 const IRQ_ENTRY: u32 = 10;
+
+/// DMACON as a draw finds it: DMA, the blitter's and the bitplanes' on.
+const DRAW_DMACON: u16 = sim::dmacon::DMAEN | sim::dmacon::BLTEN | 0x0100;
 
 /// Lines in each of the intro's frames (interlace is off and the frames stay long).
 pub const LINES: u64 = 313;
@@ -652,12 +655,21 @@ impl Intro {
         (clock.now.line as u64 + 1).saturating_sub(self.t % LINES)
     }
 
-    /// A draw starting now (`bobs_draw`): its blits timed, its end deferred.
+    /// A draw starting now (`bobs_draw`): its program run on the bus ([`Intro::time_draw`]), its
+    /// end deferred.
     fn draw(&mut self, m: &mut StoryMem, out: &mut IntroFrame) {
         self.write(out, 0x96, 0x8400);
-        let mut clock = self.clock(m);
-        bobs::draw(m, &mut clock);
-        self.hold(&clock);
+        let prog = bobs::draw(m);
+        let (end, handlers, merged) = self.time_draw(m, &prog);
+        let base = self.t - self.t % LINES;
+        self.handler_at = handlers
+            .iter()
+            .map(|&t| base + (t / super::cpu::LINE) as u64)
+            .collect();
+        self.merged = merged
+            .iter()
+            .map(|&t| base + (t / super::cpu::LINE) as u64)
+            .collect();
         out.jobs.push(Job {
             inside: vec![h0(0x8442), h0(0x84de), h0(0x97b8), h0(0x97bc)],
             writes: vec![
@@ -668,8 +680,57 @@ impl Intro {
                 (bobs::TOGGLE, 2),
             ],
         });
-        let lines = self.lines_of(&clock);
+        let lines = ((end / super::cpu::LINE) as u64 + 1).saturating_sub(self.t % LINES);
         self.busy(lines, false, Then::DrawEnd);
+    }
+
+    /// A draw's program run on the bus from the start of this line: the CPU and the blitter on
+    /// the shown list's copper and bitplane fetch ([`sim`]), the vertical blank's handler taking
+    /// the CPU at the first instruction's end past each blank's entry, waiting for the bus and
+    /// then working its length; a blank the CPU is held past the next one is served by that one's
+    /// handler ([`BlitClock`]'s `merged`). Gives the cycle the program ends on, where each handler
+    /// started and the merged blanks, counted from this frame's start.
+    fn time_draw(&self, m: &StoryMem, prog: &sim::Prog) -> (u32, Vec<u32>, Vec<u32>) {
+        let fixed = self.fixed(m, 3);
+        let start = (self.t % LINES) as u32 * super::cpu::LINE;
+        let mut s = sim::Sim::new(start, &fixed, DRAW_DMACON);
+        let handler = (handler_lines(m) as u32 * super::cpu::LINE).saturating_sub(2);
+        let (mut handlers, mut merged) = (Vec::new(), Vec::new());
+        let mut next = sim::FRAME + IRQ_ENTRY;
+        prog.run(&mut s, 0, &mut |s| {
+            while s.t >= next + sim::FRAME {
+                merged.push(next - IRQ_ENTRY);
+                next += sim::FRAME;
+            }
+            if s.t >= next {
+                handlers.push(s.t);
+                s.run("p");
+                s.idle(handler);
+                next += sim::FRAME;
+            }
+        });
+        (s.t, handlers, merged)
+    }
+
+    /// The fixed DMA of `frames` frames from this one under the shown copper list: its copper
+    /// cycles and the bitplane fetch it sets up.
+    fn fixed(&self, m: &StoryMem, frames: usize) -> sim::Fixed {
+        let mut fetch = bus(self.shown_list, false).fetch;
+        let mut fixed = sim::Fixed::new();
+        for _ in 0..frames {
+            let mut cycles = Vec::new();
+            let writes = crate::render::copper::run_bus(
+                &|a, _, _| m.w(a),
+                self.shown_list,
+                fetch,
+                &mut cycles,
+            );
+            fixed = fixed.frame(&cycles, &writes, fetch);
+            for w in &writes {
+                fetch.write(w.reg, w.value);
+            }
+        }
+        fixed
     }
 
     fn next(&mut self) {

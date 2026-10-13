@@ -150,6 +150,33 @@ pub fn done(s: &State, rec: Rec) -> bool {
     s.w(rec.at + DONE) != 0
 }
 
+/// The colour channels the fades in, then out, due a step this frame look at, in the order the
+/// handler does: each one's word in its copper list, its mask, whether the step changes it, and
+/// whether it is a fade in's (for how long the handler takes, and when the copper sees each).
+pub fn due_channels(s: &State) -> Vec<(u32, u16, bool, bool)> {
+    let mut out = Vec::new();
+    for mode in [2, 3] {
+        for rec in RECORDS {
+            let due = s.w(rec.at + MODE) == mode
+                && s.w(rec.at + DONE) == 0
+                && (s.w(rec.at + COUNTER).wrapping_add(1) as i16) >= (s.w(rec.at + SPEED) as i16);
+            if !due {
+                continue;
+            }
+            let n = s.w(rec.at + COUNT) as u32;
+            let (list, target) = (s.l(rec.at + LIST).wrapping_add(4), s.l(rec.at + TARGET).wrapping_add(2));
+            for k in 0..n {
+                for (mask, _) in CHANNELS {
+                    let cur = s.w(list + 4 * k) & mask;
+                    let changes = if mode == 2 { cur != s.w(target + 2 * k) & mask } else { cur != 0 };
+                    out.push((list + 4 * k, mask, changes, mode == 2));
+                }
+            }
+        }
+    }
+    out
+}
+
 /// The record is due a step this frame: its mode is `mode`, it is running and its counter reached
 /// its speed (the counter restarts).
 fn due(s: &mut State, rec: Rec, mode: u16) -> bool {

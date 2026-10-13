@@ -17,9 +17,9 @@
 //! skip the original's frames spent loading.
 
 pub mod anim;
-mod attract;
+pub(crate) mod attract;
 pub mod blit;
-mod common;
+pub(crate) mod common;
 pub mod data;
 mod ending;
 pub mod fade;
@@ -51,6 +51,15 @@ pub(crate) const fn h2(off: u32) -> u32 {
 const PICTURE_END: u16 = 0x12b;
 /// Where the interrupt's work is over and a busy-waiting main program goes on (measured).
 const VBL_END_LINE: u16 = 0x14;
+/// The vertical blank's fades (T37, fitted to `frog-pit-w1-1`'s fade out and in): the line they
+/// start on from where the handler starts, the cycles a colour channel looked at and changed
+/// takes in a fade in and out, and the lines after the last to the handler's end.
+const FADE_FROM: u16 = 16;
+const FADE_IN_LOOK: u32 = 95;
+const FADE_IN_CHANGE: u32 = 96;
+const FADE_OUT_LOOK: u32 = 71;
+const FADE_OUT_CHANGE: u32 = 119;
+const FADE_TAIL: u16 = 2;
 /// The line of the next frame on which the CPU, held off by a blit with priority, takes the
 /// interrupt (measured on the options screen's exit: the interrupt's acknowledge on line 41).
 pub(crate) const STALL_VBL_LINE: u16 = 30;
@@ -110,6 +119,20 @@ pub(crate) enum Routine {
     EndSeqLoad(ending::EndSeqLoad),
     EndSequence(ending::EndSequence),
     CpuWork(ending::CpuWork),
+    /// After a level's loop: `level_exit_fade` and `game_over_check` (T37, `crate::level::exit`).
+    LevelOver(crate::level::exit::LevelOver),
+    /// `level_init_wN` and `level_start` again after a death (T37).
+    Restart(crate::level::exit::Restart),
+    LevelStart(crate::level::exit::LevelStart),
+    /// Level work done at once, replayed on the beam (T37).
+    Timeline(crate::level::timeline::Timeline),
+    /// `level_frame_loop` is entered again: the game goes back to the level scene.
+    LevelLoop,
+    /// The level is over this way; what follows is not ported yet.
+    Outcome(crate::level::LevelOutcome),
+    /// The slot machine (T92) and, below it, the level's tally that called it.
+    Slot(crate::slot::Routine),
+    SlotOver(crate::slot::SlotOver),
 }
 
 impl Routine {
@@ -136,6 +159,21 @@ impl Routine {
             Routine::EndSeqLoad(r) => r.run(cx),
             Routine::EndSequence(r) => r.run(cx),
             Routine::CpuWork(r) => r.run(cx),
+            Routine::LevelOver(r) => r.run(cx),
+            Routine::Restart(r) => r.run(cx),
+            Routine::LevelStart(r) => r.run(cx),
+            Routine::Timeline(r) => r.run(cx),
+            Routine::LevelLoop => Yield::Poll,
+            Routine::Outcome(o) => {
+                cx.unported(match o {
+                    crate::level::LevelOutcome::Completed { .. } => "the level's tally (T38)",
+                    crate::level::LevelOutcome::TimeUp => "game over, the time up (T34)",
+                    _ => "game over (T34)",
+                });
+                Yield::Poll
+            }
+            Routine::Slot(r) => r.run(cx),
+            Routine::SlotOver(r) => r.run(cx),
         }
     }
 }
@@ -422,6 +460,9 @@ pub struct Front {
     cop1lc: u32,
     keyboard: Keyboard,
     seed: Option<Rng>,
+    /// A copper interrupt requested (INTREQ `$8010`) while it is masked, and not acknowledged: the
+    /// next vertical blank's handler takes that branch first (h0+$11d1a) and acknowledges it (T37).
+    coper: bool,
     /// Paths not ported that this front end has run into (empty in every conformance case).
     pub unported: Vec<&'static str>,
 }
@@ -487,6 +528,7 @@ impl Front {
             cop1lc: h2(0x6fd8),
             keyboard: Keyboard::default(),
             seed: Some(seed),
+            coper: false,
             unported: Vec::new(),
         }
     }
@@ -534,8 +576,122 @@ impl Front {
             cop1lc: title::cop1lc_of(&chain),
             keyboard: Keyboard::from_keys(s.b(vbl::KEY_DOWN), s.b(vbl::KEY_UP)),
             seed: None,
+            coper: false,
             unported: Vec::new(),
         })
+    }
+
+    /// The program a level hands over to when its loop ends (`level_frame_loop` returns into
+    /// `top_loop`): `routine` on top, the level's copper list showing. `sdr` is the keyboard's
+    /// last byte: one the level's poll has handled reads `$ff` from then on (ESC's is not read
+    /// again, measured on `frog-esc-w1-1`), except the power-on byte, never acknowledged; one sent
+    /// since that poll is still new.
+    pub(crate) fn after_level(s: &State, sdr: u8, routine: Routine) -> Front {
+        let handled = Keyboard::from_keys(s.b(vbl::KEY_DOWN), s.b(vbl::KEY_UP));
+        let keyboard = if sdr != handled.sdr {
+            Keyboard {
+                sdr,
+                new: true,
+                ..Keyboard::default()
+            }
+        } else if sdr == Keyboard::default().sdr {
+            handled
+        } else {
+            Keyboard::from_keys(0, 0)
+        };
+        Front {
+            frame: 0,
+            fetch: None,
+            load_line: None,
+            carry: Vec::new(),
+            stalled: None,
+            unpack: None,
+            ret: 0,
+            booting: false,
+            stack: vec![Frame {
+                routine,
+                wait: None,
+                deferred: None,
+            }],
+            cop1lc: render::LEVEL_COPPER,
+            keyboard,
+            seed: None,
+            coper: false,
+            unported: Vec::new(),
+        }
+    }
+
+    /// The rest of a frame the level scene began: the main program from `line` on, after the
+    /// loop's last pass. Returns its Paula writes (those past the frame's end go with the next
+    /// frame's) and the CPU jobs it began.
+    pub(crate) fn finish_frame(
+        &mut self,
+        s: &mut State,
+        display: &DisplayData,
+        input: FrameInput,
+        line: u16,
+    ) -> (Vec<PaulaWrite>, Vec<crate::game::Job>) {
+        // The level's own poll has handled this frame's keyboard byte.
+        self.keyboard.held = input.keys;
+        let mut paula = Vec::new();
+        let mut cx = Cx {
+            s,
+            data: &display.front,
+            display,
+            input,
+            paula: &mut paula,
+            keyboard: self.keyboard,
+            line,
+            cop1lc: self.cop1lc,
+            load: None,
+            load_line: None,
+            load_point: None,
+            resync: Vec::new(),
+            jobs: Vec::new(),
+            ret: self.ret,
+            busy_from: None,
+            reveal: None,
+            reveal_state: None,
+            fetch: self.fetch.unwrap_or_default(),
+            stall: None,
+            unpack: None,
+            frame: self.frame,
+            seed: None,
+            unported: Vec::new(),
+        };
+        self.run_main(&mut cx, u16::MAX);
+        self.stalled = cx.stall;
+        self.ret = cx.ret;
+        self.cop1lc = cx.cop1lc;
+        self.keyboard = cx.keyboard;
+        self.unported.append(&mut cx.unported);
+        let jobs = std::mem::take(&mut cx.jobs);
+        for w in &mut paula {
+            if w.vpos == 0 {
+                w.vpos = line;
+            }
+        }
+        paula.sort_by_key(|w| w.vpos);
+        self.note_coper(&paula);
+        let split = paula.partition_point(|w| w.vpos < FRAME_LINES);
+        self.carry = paula.split_off(split);
+        for w in &mut self.carry {
+            w.vpos -= FRAME_LINES;
+        }
+        self.frame += 1;
+        (paula, jobs)
+    }
+
+    /// A copper interrupt requested, or acknowledged, by these writes in order.
+    fn note_coper(&mut self, writes: &[PaulaWrite]) {
+        for w in writes.iter().filter(|w| w.reg == 0x9c && w.value & 0x10 != 0) {
+            self.coper = w.value & 0x8000 != 0;
+        }
+    }
+
+    /// The level's loop has been entered again (a restart, T37): the level scene goes on.
+    pub(crate) fn in_level_loop(&self) -> bool {
+        matches!(self.stack.last().map(|f| &f.routine), Some(Routine::LevelLoop))
     }
 
     /// The boot's work, which is all load: done at once, before the first frame.
@@ -653,10 +809,44 @@ impl Front {
         cx.paula.append(&mut self.carry);
         let from_carry = cx.paula.len();
         let from = cx.paula.len();
+        if std::mem::take(&mut self.coper) {
+            // h0+$11d1a: the copper interrupt's branch, acknowledged first.
+            cx.wr(0x9c, 0x0010);
+        }
+        // Only on the level's list (T37): the title's fades are timed as they were (T94 has the
+        // slot screen's).
+        let fading = if cop1lc == render::LEVEL_COPPER {
+            fade::due_channels(cx.s)
+        } else {
+            Vec::new()
+        };
         let palette_due = vbl::run(&mut cx);
         // The interrupt takes about as long wherever it starts.
         cx.line = cx.line.max(VBL_END_LINE).max(vbl_line + VBL_END_LINE - 9);
-        history.push((VBL_END_LINE, window(cx.s, cop1lc)));
+        let after = window(cx.s, cop1lc);
+        if fading.is_empty() {
+            history.push((VBL_END_LINE, after));
+        } else {
+            // A fade steps its colours a channel at a time, the handler longer by what it looks at
+            // and what it changes; the copper reads each colour as it is on its line (T37:
+            // `level_start`'s fade in, the play field's colours read on line `$34` half stepped).
+            let mut partial = history[0].1.clone();
+            for &(word, _, _, _) in &fading {
+                partial.copy_word(&history[0].1, word);
+            }
+            history.push((VBL_END_LINE, partial.clone()));
+            let mut t = (vbl_line + FADE_FROM) as u32 * BEAM_CYCLES_PER_LINE;
+            for &(word, mask, changes, fade_in) in &fading {
+                t += if fade_in { FADE_IN_LOOK } else { FADE_OUT_LOOK };
+                if changes {
+                    t += if fade_in { FADE_IN_CHANGE } else { FADE_OUT_CHANGE };
+                    partial.copy_bits(&after, word, mask);
+                    let line = (t / BEAM_CYCLES_PER_LINE) as u16;
+                    history.push((line.max(VBL_END_LINE + 1), partial.clone()));
+                }
+            }
+            cx.line = cx.line.max((t / BEAM_CYCLES_PER_LINE) as u16 + FADE_TAIL);
+        }
         if palette_due {
             cx.line = vbl::PALETTE_LINE;
             vbl::palette_copy(&mut cx);
@@ -716,6 +906,16 @@ impl Front {
         };
         let carry = self.fetch;
         let (mut picture, copper) = render::screen(cx.s, display, cop1lc, &copper_word, carry);
+        if cop1lc == render::LEVEL_COPPER {
+            // `level_exit_fade` moves the window's top down, `level_start`'s slide back up: the
+            // picture is fetched as the copper had it and framed by where the top is as the next
+            // field starts, nothing fetched above the old top (T37).
+            let top = cx.s.b(render::LEVEL_COPPER + 6) as u16;
+            let bottom = picture.top + picture.height;
+            if top != picture.top && top < bottom {
+                picture = picture.rewindow(picture.left, top, picture.width, bottom - top);
+            }
+        }
         let mut end = carry.unwrap_or_default();
         for w in &copper {
             end.write(w.reg, w.value);
@@ -803,6 +1003,7 @@ impl Front {
         let mut all = early;
         all.extend(paula);
         all.sort_by_key(|w| w.vpos);
+        self.note_coper(&all);
         // What the CPU wrote after the frame's end goes with the next frame.
         let split = all.partition_point(|w| w.vpos < FRAME_LINES);
         self.carry = all.split_off(split);
@@ -943,6 +1144,21 @@ pub(crate) struct Snapshot {
 }
 
 impl Snapshot {
+    /// The word at `addr` as `from` has it.
+    fn copy_word(&mut self, from: &Snapshot, addr: u32) {
+        self.copy_bits(from, addr, 0xffff);
+    }
+
+    /// The `mask` bits of the word at `addr` as `from` has them.
+    fn copy_bits(&mut self, from: &Snapshot, addr: u32, mask: u16) {
+        let (Some(a), Some(b)) = (self.word(addr), from.word(addr)) else {
+            return;
+        };
+        let v = a & !mask | b & mask;
+        let o = (addr - self.at) as usize;
+        self.bytes[o..o + 2].copy_from_slice(&v.to_be_bytes());
+    }
+
     fn word(&self, addr: u32) -> Option<u16> {
         let o = addr.checked_sub(self.at)? as usize;
         Some(u16::from_be_bytes([

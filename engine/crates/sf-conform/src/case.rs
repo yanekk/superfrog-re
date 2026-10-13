@@ -49,6 +49,9 @@ pub enum Excluded {
     /// Listed only: what the case's input never makes the original do (the spud thrown, the
     /// level finished…), so nothing needs freezing.
     Unreached,
+    /// The picture is not compared on frames `from..=to` (`frames = [from, to]`): what the beam
+    /// shows there depends on timing the engine does not model yet.
+    Picture { from: u32, to: u32 },
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -72,11 +75,22 @@ pub struct Case {
     /// When set, only these `LAYOUT` variables (by name) are compared: for a scene that models
     /// only some of what the original changes there (the title before T20, say).
     pub only_vars: Option<Vec<String>>,
+    /// Whether the runner may re-sync the engine from the original's memory when a variable
+    /// still differs on the frame after a lag (`resync = false` makes that a divergence).
+    pub resync: bool,
 }
 
 impl Case {
     pub fn excludes(&self, what: Excluded) -> bool {
         self.exclude.iter().any(|e| e.what == what)
+    }
+
+    /// Whether the picture of frame `frame` is left out ([`Excluded::Picture`]).
+    pub fn picture_excluded(&self, frame: u32) -> bool {
+        self.exclude.iter().any(|e| match e.what {
+            Excluded::Picture { from, to } => (from..=to).contains(&frame),
+            _ => false,
+        })
     }
 
     /// What the case freezes out of the original.
@@ -126,9 +140,13 @@ impl Case {
     pub fn parse(name: &str, text: &str) -> Result<Case, String> {
         let t: toml::Table = text.parse().map_err(|e: toml::de::Error| e.to_string())?;
         for k in t.keys() {
-            if !["sync", "script", "frames", "compare", "exclude", "vars"].contains(&k.as_str()) {
+            if ![
+                "sync", "script", "frames", "compare", "exclude", "vars", "resync",
+            ]
+            .contains(&k.as_str())
+            {
                 return Err(format!(
-                    "unknown key `{k}` (sync, script, frames, compare, exclude, vars)"
+                    "unknown key `{k}` (sync, script, frames, compare, exclude, vars, resync)"
                 ));
             }
         }
@@ -154,12 +172,36 @@ impl Case {
                     start: name("start")?,
                 }
             }
-            Some(toml::Value::Table(s)) if s.contains_key("level") => SyncPoint::AtLevel(
-                s["level"]
+            Some(toml::Value::Table(s)) if s.contains_key("level") => {
+                if let Some(k) = s.keys().find(|k| !["level", "clock"].contains(&k.as_str())) {
+                    return Err(format!("sync: unknown key `{k}` beside `level` (level, clock)"));
+                }
+                let level = s["level"]
                     .as_str()
                     .ok_or("sync.level is a string like \"W1-1\"")?
-                    .parse()?,
-            ),
+                    .parse()?;
+                match s.get("clock") {
+                    None => SyncPoint::AtLevel(level),
+                    Some(v) => {
+                        let bad = || "sync.clock is \"M:SS\", under 10 minutes".to_string();
+                        let (m, sec) = v.as_str().and_then(|c| c.split_once(':')).ok_or_else(bad)?;
+                        if m.len() != 1 || sec.len() != 2 {
+                            return Err(bad());
+                        }
+                        let (m, sec): (u16, u16) = (
+                            m.parse().map_err(|_| bad())?,
+                            sec.parse().map_err(|_| bad())?,
+                        );
+                        if sec > 59 {
+                            return Err(bad());
+                        }
+                        SyncPoint::Clock {
+                            level,
+                            seconds: m * 60 + sec,
+                        }
+                    }
+                }
+            }
             Some(toml::Value::Table(s)) => SyncPoint::AtFrame {
                 script: s
                     .get("script")
@@ -234,9 +276,21 @@ impl Case {
                     "enemies" => Excluded::Enemies,
                     "panel" => Excluded::Panel,
                     "unreached" => Excluded::Unreached,
+                    "picture" => {
+                        let r = e
+                            .get("frames")
+                            .and_then(|v| v.as_array())
+                            .map(|a| a.iter().filter_map(|v| v.as_integer()).collect::<Vec<_>>())
+                            .filter(|a| a.len() == 2 && 0 <= a[0] && a[0] <= a[1])
+                            .ok_or("exclude: a picture's needs `frames = [from, to]`")?;
+                        Excluded::Picture {
+                            from: r[0] as u32,
+                            to: r[1] as u32,
+                        }
+                    }
                     w => {
                         return Err(format!(
-                            "exclude: `{w}` is not objects, enemies, panel or unreached"
+                            "exclude: `{w}` is not objects, enemies, panel, unreached or picture"
                         ));
                     }
                 };
@@ -264,6 +318,10 @@ impl Case {
                 Some(names)
             }
         };
+        let resync = match t.get("resync") {
+            None => true,
+            Some(v) => v.as_bool().ok_or("resync is true or false")?,
+        };
         Ok(Case {
             name: name.to_string(),
             sync,
@@ -272,6 +330,7 @@ impl Case {
             compare,
             exclude,
             only_vars,
+            resync,
         })
     }
 }

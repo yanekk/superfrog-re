@@ -103,10 +103,9 @@ pub fn blit_cycles(abcd: u16, words: u32, rows: u32) -> u32 {
     }
 }
 
-/// The CPU's time between two blits of a draw (wait for BLTBUSY, write five registers), in DMA
-/// cycles; and per object around its blits (clipping, the next blit's set-up).
+/// The CPU's time between two blits outside a draw (wait for BLTBUSY, write five registers), in
+/// DMA cycles. A draw's own CPU time is its program on [`super::sim`] (T53).
 pub const CPU_PER_BLIT: u32 = 40;
-pub const CPU_PER_OBJECT: u32 = 300;
 
 /// A sequence of blits run back to back by the CPU, timed on the bus.
 #[derive(Debug, Clone)]

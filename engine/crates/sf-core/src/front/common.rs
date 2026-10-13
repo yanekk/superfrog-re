@@ -180,13 +180,31 @@ pub(crate) struct MusicStart {
     pc: u8,
     /// The caller's return address (where the original is once `music_start` is over).
     pub ret: u32,
+    /// The module stays where the game loaded it (`module_addr`), not the title's place; and
+    /// `p41_init`'s lines when they are not the title module's.
+    keep_module: bool,
+    lines: Option<u16>,
 }
 
 const P41_INIT_LINES: u16 = 20;
 
 impl MusicStart {
     pub fn returning_to(ret: u32) -> MusicStart {
-        MusicStart { pc: 0, ret }
+        MusicStart {
+            ret,
+            ..MusicStart::default()
+        }
+    }
+
+    /// `music_start` on a module the game loaded at its `module_addr` (the slot machine's), whose
+    /// `p41_init` takes `lines` lines.
+    pub fn keeping_module(ret: u32, lines: u16) -> MusicStart {
+        MusicStart {
+            ret,
+            keep_module: true,
+            lines: Some(lines),
+            ..MusicStart::default()
+        }
     }
 
     pub(super) fn run(&mut self, cx: &mut Cx) -> Yield {
@@ -194,7 +212,9 @@ impl MusicStart {
             if cx.s.audio.music_on() {
                 return Yield::Return;
             }
-            cx.s.audio.set_module_addr(BANK_ADDR);
+            if !self.keep_module {
+                cx.s.audio.set_module_addr(BANK_ADDR);
+            }
             use crate::audio::vars;
             let v = |(off, len): (u32, usize)| (at(off), len as u32);
             let writes = vec![
@@ -209,7 +229,7 @@ impl MusicStart {
             };
             self.pc = if module { 1 } else { 2 };
             if let Some(y) = cx.masked_job(
-                P41_INIT_LINES as u32 * super::BEAM_CYCLES_PER_LINE,
+                self.lines.unwrap_or(P41_INIT_LINES) as u32 * super::BEAM_CYCLES_PER_LINE,
                 self.ret,
                 writes,
             ) {

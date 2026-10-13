@@ -673,6 +673,46 @@ fn frog_hurt_and_time_up_match_the_original() {
     }
 }
 
+/// `obj_flag_jumptab` (h0+$178ec): 7 worlds × 64 `bra.w` stubs.
+const JUMPTAB: u32 = h0(0x178ec);
+
+/// `map_spawn_scan_screen` (h0+$1777c), the level's opening scan: the camera anywhere in W1-1,
+/// some slots freed first, and the markers the engine has no spawner for returning at once in
+/// the original (`rts; nop` over their stubs, as the `enemies` freeze has them).
+#[test]
+fn map_spawn_scan_screen_matches_the_original() {
+    let mut rig = rig();
+    let mut g = Gen::new(110);
+    let frozen: Vec<(u32, Vec<u8>)> = sf_conform::freeze::frozen_markers()
+        .into_iter()
+        .map(|(w, m)| {
+            (
+                JUMPTAB + 4 * (w as u32 * 64 + m as u32),
+                vec![0x4e, 0x75, 0x4e, 0x71],
+            )
+        })
+        .collect();
+    for case in 0..300 {
+        let mut s = Setup::default();
+        let free: Vec<u32> = (0..20).filter(|_| g.one_in(3)).collect();
+        s.pokes = prepared(&rig, &[], |c| {
+            for &k in &free {
+                objects::obj_free(c, OBJ_SLOTS + k * SLOT, 0);
+            }
+        });
+        s.pokes.extend(frozen.iter().cloned());
+        s.poke_l(CAMERA_X, g.below(300 * 16 - 320) as u32);
+        s.poke_l(CAMERA_Y, g.below(84 * 16 - 192) as u32);
+        rig.check(
+            "map_spawn_scan_screen",
+            case,
+            0x1777c,
+            &s,
+            sf_core::level::spawn::scan_screen,
+        );
+    }
+}
+
 #[test]
 fn the_items_register_their_markers_in_every_world() {
     let d = sf_core::level::standard_dispatch();

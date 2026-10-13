@@ -195,6 +195,8 @@ pub struct Sim<'a> {
     pub events: Vec<BlitEvent>,
     /// The cycles of the CPU's writes, in order.
     pub writes: Vec<u32>,
+    /// The CPU's custom-register writes ([`Sim::write_reg`]), in order: (cycle, register, value).
+    pub regs: Vec<(u32, u16, u16)>,
 }
 
 impl<'a> Sim<'a> {
@@ -212,6 +214,7 @@ impl<'a> Sim<'a> {
             taken: Vec::new(),
             events: Vec::new(),
             writes: Vec::new(),
+            regs: Vec::new(),
         }
     }
 
@@ -362,6 +365,7 @@ impl<'a> Sim<'a> {
     pub fn write_reg(&mut self, reg: u16, value: u16) -> u32 {
         let at = self.access();
         self.writes.push(at);
+        self.regs.push((at, reg, value));
         self.poke(at, reg, value);
         at
     }
@@ -411,6 +415,116 @@ impl<'a> Sim<'a> {
     /// Whether a blit is pending or running.
     pub fn blitting(&self) -> bool {
         self.blit.is_some()
+    }
+}
+
+/// One step of a [`Prog`].
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Step {
+    /// Accesses and idle cycles ([`cpu`]'s letters `p`, `r`, `w`, `n`).
+    Ops(&'static str),
+    /// `n` idle DMA cycles.
+    Idle(u32),
+    /// A custom-register write (a `w` that reaches [`Sim::write_reg`]).
+    Reg(u16, u16),
+    /// `btst #14,DMACONR` (`ppprp`, the `r` reading BLTBUSY), then `bne` back to it while busy:
+    /// taken `npp`, not taken `nnp`, or `nnpp` for a word displacement (`true`).
+    WaitBlit(bool),
+    /// An instruction's end: where an interrupt can come in.
+    End,
+}
+
+/// A run of the CPU's instructions, branch for branch, as their bus accesses: built by the code
+/// it stands for (`bobs::draw`) beside its memory work, then run on a [`Sim`].
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct Prog {
+    pub steps: Vec<Step>,
+}
+
+impl Prog {
+    pub fn new() -> Prog {
+        Prog::default()
+    }
+
+    /// One instruction of `letters`, each `W` a write of the next of `regs`.
+    pub fn ins_regs(&mut self, letters: &'static str, regs: &[(u16, u16)]) {
+        let mut regs = regs.iter();
+        let mut from = 0;
+        for (i, c) in letters.bytes().enumerate() {
+            if c == b'W' {
+                if from < i {
+                    self.steps.push(Step::Ops(&letters[from..i]));
+                }
+                let &(reg, value) = regs.next().expect("a register for each W");
+                self.steps.push(Step::Reg(reg, value));
+                from = i + 1;
+            }
+        }
+        if from < letters.len() {
+            self.steps.push(Step::Ops(&letters[from..]));
+        }
+        self.steps.push(Step::End);
+    }
+
+    /// One instruction of `letters`.
+    pub fn ins(&mut self, letters: &'static str) {
+        self.ins_regs(letters, &[]);
+    }
+
+    /// One instruction of `letters`, then `idle` DMA cycles of internal work (shifts, `mulu`).
+    pub fn ins_idle(&mut self, letters: &'static str, idle: u32) {
+        self.steps.push(Step::Ops(letters));
+        self.steps.push(Step::Idle(idle));
+        self.steps.push(Step::End);
+    }
+
+    /// A conditional branch: taken `npp`; not taken `nnp`, `nnpp` with a word displacement.
+    pub fn branch(&mut self, taken: bool, word: bool) {
+        self.ins(match (taken, word) {
+            (true, _) => "npp",
+            (false, false) => "nnp",
+            (false, true) => "nnpp",
+        });
+    }
+
+    /// A wait for the blitter: [`Step::WaitBlit`].
+    pub fn wait_blit(&mut self, word: bool) {
+        self.steps.push(Step::WaitBlit(word));
+    }
+
+    /// The step of the first write of `value` to `reg`.
+    pub fn find_reg(&self, reg: u16, value: u16) -> Option<usize> {
+        self.steps.iter().position(|s| *s == Step::Reg(reg, value))
+    }
+
+    /// Run the steps from `from` on `sim`; `end` is called at each instruction's end (where an
+    /// interrupt can come in).
+    pub fn run(&self, sim: &mut Sim, from: usize, end: &mut dyn FnMut(&mut Sim)) {
+        for step in &self.steps[from..] {
+            match *step {
+                Step::Ops(o) => sim.run(o),
+                Step::Idle(n) => sim.idle(n),
+                Step::Reg(reg, value) => {
+                    sim.write_reg(reg, value);
+                }
+                Step::WaitBlit(word) => loop {
+                    sim.run("ppp");
+                    let busy = sim.read_busy();
+                    sim.run("p");
+                    end(sim);
+                    sim.run(match (busy, word) {
+                        (true, _) => "npp",
+                        (false, false) => "nnp",
+                        (false, true) => "nnpp",
+                    });
+                    end(sim);
+                    if !busy {
+                        break;
+                    }
+                },
+                Step::End => end(sim),
+            }
+        }
     }
 }
 
@@ -482,7 +596,11 @@ mod tests {
                 s.finish(1000);
                 let t: Vec<u32> = s.events.iter().map(|e| e.t).collect();
                 let w = WORD[ch as usize];
-                assert_eq!(t, [103, 103 + w * n, 105 + w * n], "channels {ch:x}, {n} words");
+                assert_eq!(
+                    t,
+                    [103, 103 + w * n, 105 + w * n],
+                    "channels {ch:x}, {n} words"
+                );
                 // A, B, C fetch every word; D writes every word but the first, then once more.
                 let fetches = (ch >> 1).count_ones() * n + (ch & 1) as u32 * n;
                 assert_eq!(s.taken.len() as u32, fetches, "channels {ch:x}, {n} words");

@@ -49,8 +49,7 @@ pub fn frame(
         })
         .flatten();
     let from_row = picture_rows_from(case);
-    let picture_diff = c
-        .picture
+    let picture_diff = (c.picture && !case.picture_excluded(frame))
         .then(|| picture_from(&ours.picture, &theirs.picture, from_row))
         .flatten()
         .filter(|_| !raced_only(ours, &theirs.picture, from_row))
@@ -79,6 +78,7 @@ pub fn frame(
                     .collect()
             })
             .unwrap_or_default(),
+        resync: false,
     })
 }
 
