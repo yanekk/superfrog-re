@@ -89,7 +89,7 @@ done · ⛔ blocked, needs a human.
 | T55 | story-intro-sound-timing | T50; blocks T56 | ⬜ | |
 | T56 | story-intro-to-insert-disk | T49, T50, T54, T55; blocks T21, T47, T48 | ⬜ | |
 | T81 | beam-cleanup | T36; blocks T37 | ✅ | |
-| T82 | beam-tests | T81 | 🔍 | `map_spawn_scan_screen` routine test (300 states); `beam.rs` free-running costs (72 %/99.5 %); case key `resync = false` on both `items-*` (runner test); `frog_cases` runs `items-fruit-w2-2`. Deviation: median read as signed (bias, as `fit` reports; unsigned is 1.9). Optional item 4 skipped. |
+| T82 | beam-tests | T81 | ✅ | Review clean, no fix commit. Ran beam, runner, frog_cases, items_routines green; probed beam stats (0.75 signed, 72.1 %/99.5 %, 0 re-syncs); mutations caught: scan rows 0x12→0x11, resync gate off, VblEntry +2000 cycles. Signed-median deviation held by fit.rs's median; item 4 optional, skipped. |
 | T83 | items-w1 | T81 | ⬜ | |
 | T84 | items-w3 | T81 | ⬜ | |
 | T85 | items-w2 | T81 | ⬜ | |
@@ -107,7 +107,7 @@ done · ⛔ blocked, needs a human.
 A Notes cell holds what was built or what the review found, the test count, and one line per
 deviation from the task doc. A ✅ task's cell may be cut to one line once the next task has been reviewed.
 
-**Review queue:** T82
+**Review queue:** empty
 
 ## Blocked on the user
 
