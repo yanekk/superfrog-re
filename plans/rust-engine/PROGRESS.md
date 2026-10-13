@@ -80,7 +80,7 @@ done · ⛔ blocked, needs a human.
 | T77 | bonus-enemies-b | T70, T76; blocks T21 | ⬜ | |
 | T78 | bonus-enemy-death | T70, T75; blocks T21 | ⬜ | |
 | T79 | bonus-level-frames | T70, T37, T75, T76, T77, T78; blocks T21 | ⬜ | |
-| T49 | story-fade-setup-job | T46; blocks T56 | ⬜ | |
+| T49 | story-fade-setup-job | T46; blocks T56 | 🔍 | `fade_setup` pushes a Job (routine's words, record 0, copper lists). Case `story-scene1-out` (3185 frames): run ok, scan 0 differ; its test `#[ignore]`d. Deviation: about 90 s, not 45 s. |
 | T50 | story-objects-init-display | T49; blocks T56 | ⬜ | |
 | T51 | story-oracle-blit-tooling | T46; blocks T52 | ⬜ | |
 | T52 | story-blitter-bus-sim | T51; blocks T53 | ⬜ | |
@@ -92,7 +92,7 @@ done · ⛔ blocked, needs a human.
 A Notes cell holds what was built or what the review found, the test count, and one line per
 deviation from the task doc. A ✅ task's cell may be cut to one line once the next task has been reviewed.
 
-**Review queue:** *(empty)*
+**Review queue:** T49
 
 ## Blocked on the user
 
