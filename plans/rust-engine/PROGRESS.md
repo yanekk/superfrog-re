@@ -97,7 +97,7 @@ done · ⛔ blocked, needs a human.
 | T87 | slot-symbols-routines | T71; blocks T72 | ✅ | |
 | T88 | slot-symbols-tables | T71; blocks T72 | ✅ | |
 | T89 | story-copper-bus-cycles | T52; blocks T53 | ✅ | |
-| T90 | story-draw-blits-oracle | T89; blocks T53 | ⬜ | |
+| T90 | story-draw-blits-oracle | T89; blocks T53 | 🔍 | `story_blits.rs` extended to oracle frame 3 027: all 40 blits (restores, objects) begin/free/end to the cycle, no code change needed. Asserts BLTPRI set at every BLTSIZE, so no blit there is CPU-held (nothing for T53). 1 test. No deviations. |
 | T91 | slot-beam-races | T72 | ⬜ | |
 | T92 | slot-load | T72 | ⬜ | |
 | T93 | slot-attract-draw | T72, T91, T92 | ⬜ | |
@@ -106,7 +106,7 @@ done · ⛔ blocked, needs a human.
 A Notes cell holds what was built or what the review found, the test count, and one line per
 deviation from the task doc. A ✅ task's cell may be cut to one line once the next task has been reviewed.
 
-**Review queue:** *(empty)*
+**Review queue:** T90
 
 ## Blocked on the user
 
