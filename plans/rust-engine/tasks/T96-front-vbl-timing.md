@@ -29,6 +29,10 @@ gone), and the case run on through the second death and restart (900 frames).
 - T94 builds the slot screen's interrupt length from the same parts (`slot::interrupt_lines`);
   share the model if it fits both.
 
+## Interface
+
+None new: the front's vertical blank (`Front::step`) takes as long as its work, fades included.
+
 ## Files
 
 - `engine/crates/sf-core/src/front/{mod.rs,vbl.rs,fade.rs}`, `audio/` (what the music tick did)

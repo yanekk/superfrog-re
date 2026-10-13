@@ -18,6 +18,8 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-13 | 🐞 | Not T37's (its review's sweep): the level's `kbd_poll` (`Game::sdr`, `level/clock.rs`) re-reads a key's byte every poll; the original reads it once, then `$ff` (`frog-esc-w1-1`, frames 61→63). Only the power-on `$7e` byte repeats. |
+| 2026-10-13 | 🐞 | Not T37's (same sweep): `Front` resumed from memory (`front/mod.rs`, `Keyboard::from_keys(key_down, key_up)`) re-reads a key byte already handled, where the original reads `$ff`. |
 | 2026-10-13 | 🔄 | Owner, T37: T96 front-vbl-timing added. The fade in's copper reads colours mid-step, by the music player's per-row timing; `frog-pit-w1-1` leaves the picture out on frames 308–323 meanwhile. |
 | 2026-10-13 | 🐞 | Not T37's: `level_entry::every_level_is_entered_as_the_original_enters_it` fails on the feature branch for all 29 levels: `slot_copper` original `$140f440`, engine `$1400000`. |
 | 2026-10-13 | 📌 | T37: `items-run-w1-1` (death at 655, loop end 712) could now run past the restart; not tried. `sf-conform record --paula` prints the original's Paula writes with their lines. |
