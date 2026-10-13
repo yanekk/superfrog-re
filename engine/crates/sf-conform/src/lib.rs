@@ -161,7 +161,17 @@ pub fn run_with(
             };
             let redo = |line: Option<u16>| {
                 let mut g = before.clone();
-                take(&mut g, &prev_mem, before.runs_during_load());
+                if before.story().is_some() {
+                    // The intro puts them in place at its load, after what came before it.
+                    let runs = before
+                        .runs_during_load()
+                        .iter()
+                        .map(|&(a, n)| (a, (a..a + n).map(|x| prev_mem.byte(x)).collect()))
+                        .collect();
+                    g.set_load_state(runs);
+                } else {
+                    take(&mut g, &prev_mem, before.runs_during_load());
+                }
                 g.set_load_line(line);
                 let out = g.step_paced(input, pacing);
                 let leaves = g.load_leaves();
@@ -179,8 +189,18 @@ pub fn run_with(
                     .chain(ours.jobs.iter().flat_map(|j| j.writes.clone()))
                     .collect();
                 let fits = |g: &Game, out: &FrameOut| {
-                    compare::frame(case, f, g.layout(), &g.probe(), &mem, out, &theirs, None, &masked)
-                        .is_none()
+                    compare::frame(
+                        case,
+                        f,
+                        g.layout(),
+                        &g.probe(),
+                        &mem,
+                        out,
+                        &theirs,
+                        None,
+                        &masked,
+                    )
+                    .is_none()
                 };
                 if !fits(&game, &ours) {
                     for line in (0..sf_core::front::FRAME_LINES).step_by(2) {

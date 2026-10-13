@@ -218,8 +218,13 @@ pub struct IntroVars {
 impl AudioDriver {
     /// The story intro's driver as its memory holds it: `read(addr)` gives a byte, `chip` is the
     /// run of chip RAM the driver reads modules, samples and effects from.
-    pub fn intro_from(read: &dyn Fn(u32) -> u8, at: &IntroVars, chip: (u32, Vec<u8>)) -> AudioDriver {
-        let block = |base: u32, len: usize| Block((0..len as u32).map(|i| read(base + i)).collect());
+    pub fn intro_from(
+        read: &dyn Fn(u32) -> u8,
+        at: &IntroVars,
+        chip: (u32, Vec<u8>),
+    ) -> AudioDriver {
+        let block =
+            |base: u32, len: usize| Block((0..len as u32).map(|i| read(base + i)).collect());
         let mut tables = block(at.samples, 0x400);
         tables.0.extend(block(at.effects, 0x400).0);
         let mut d = AudioDriver::blank();
@@ -239,6 +244,7 @@ impl AudioDriver {
 
     /// The story intro's variables to write back to its memory, `(address, bytes)`, and the
     /// bytes of chip RAM the driver wrote (a module it relocated).
+    #[allow(clippy::type_complexity)]
     pub fn intro_vars(&self, at: &IntroVars) -> (Vec<(u32, Vec<u8>)>, Vec<(u32, u8)>) {
         (
             vec![

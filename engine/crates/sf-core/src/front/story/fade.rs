@@ -75,7 +75,7 @@ impl Rec {
             let c = m.w(list + 2 + 4 * k);
             for (j, sh) in [0u32, 4, 8].into_iter().enumerate() {
                 m.set_w(self.steps + 6 * k + 2 * j as u32, (c << sh & 0xf00) / 15);
-                m.set_w(self.accs + 6 * k + 2 * j as u32, (c << sh) as u16 & 0xf00);
+                m.set_w(self.accs + 6 * k + 2 * j as u32, (c << sh) & 0xf00);
             }
         }
         m.set_w(self.at + COUNT, count);
@@ -144,7 +144,9 @@ impl Rec {
                 let mask = 0xf00u16 >> sh;
                 if m.w(a) & mask != t & mask {
                     let acc_at = self.accs + 6 * k + 2 * j as u32;
-                    let acc = m.w(acc_at).wrapping_add(m.w(self.steps + 6 * k + 2 * j as u32));
+                    let acc = m
+                        .w(acc_at)
+                        .wrapping_add(m.w(self.steps + 6 * k + 2 * j as u32));
                     m.set_w(acc_at, acc);
                     let v = (m.w(a) & !mask).wrapping_add((acc & 0xf00) >> sh);
                     m.set_w(a, v);
@@ -165,7 +167,9 @@ impl Rec {
                 let mask = 0xf00u16 >> sh;
                 if m.w(a) & mask != 0 {
                     let acc_at = self.accs + 6 * k + 2 * j as u32;
-                    let acc = m.w(acc_at).wrapping_sub(m.w(self.steps + 6 * k + 2 * j as u32));
+                    let acc = m
+                        .w(acc_at)
+                        .wrapping_sub(m.w(self.steps + 6 * k + 2 * j as u32));
                     m.set_w(acc_at, acc);
                     // The blue nibble comes down by a long shift: the accumulator's bits above
                     // $f00 are masked off first, so a word shift gives the same.

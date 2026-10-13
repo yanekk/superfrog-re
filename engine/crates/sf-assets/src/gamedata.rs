@@ -344,7 +344,10 @@ pub fn unpack(set: &DiskSet) -> Result<Vec<(ChunkId, Vec<u8>)>, AssetError> {
             u16::from_be_bytes([entry[0], entry[1]]),
             u16::from_be_bytes([entry[2], entry[3]]),
         );
-        let (from, to) = (sector as usize * 512, (sector as usize + count as usize) * 512);
+        let (from, to) = (
+            sector as usize * 512,
+            (sector as usize + count as usize) * 512,
+        );
         let id = ChunkId::new(DiskSlot::D3, INTRO_SPAN_INDEX + k as u16, sector);
         let span = adf
             .get(from..to)

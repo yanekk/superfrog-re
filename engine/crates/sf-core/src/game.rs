@@ -244,6 +244,16 @@ impl Game {
         }
     }
 
+    /// For conformance, the story intro: the memory that runs on by itself while the original
+    /// loads ([`Game::runs_during_load`]'s runs, as the original had them just before the frame
+    /// its load ended on), put in place at the moment the engine's instant load happens in its
+    /// next step, after what came before the load in that step.
+    pub fn set_load_state(&mut self, runs: Vec<(u32, Vec<u8>)>) {
+        if let Some(s) = self.story.as_mut() {
+            s.load_state = runs;
+        }
+    }
+
     /// Front-end paths the engine has run into that are not ported yet (empty in every
     /// conformance case; a test fails on any).
     pub fn unported(&self) -> &[&'static str] {
@@ -257,7 +267,11 @@ impl Game {
             Some(s) => s
                 .layout()
                 .iter()
-                .flat_map(|d| d.pieces().map(|p| (p.id, p.read(&s.mem))).collect::<Vec<_>>())
+                .flat_map(|d| {
+                    d.pieces()
+                        .map(|p| (p.id, p.read(&s.mem)))
+                        .collect::<Vec<_>>()
+                })
                 .collect(),
             None => self.state.probe(),
         }

@@ -331,7 +331,14 @@ pub(crate) fn screen(
     carry: Option<Fetch>,
 ) -> (Picture, Vec<Write>) {
     let mem = Mem::new(state, data);
-    draw(&mem, &|a, line, _| copper_word(a, line), cop1lc, 0, false, carry)
+    draw(
+        &mem,
+        &|a, line, _| copper_word(a, line),
+        cop1lc,
+        0,
+        false,
+        carry,
+    )
 }
 
 /// A screen of the story intro (T32): as [`screen`], every read from the intro's memory `mem`.

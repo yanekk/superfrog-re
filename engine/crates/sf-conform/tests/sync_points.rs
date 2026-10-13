@@ -19,7 +19,9 @@ const MAP_ROWS: u32 = h0(0x17334);
 
 /// How many of `level`'s cells hold the tile its own BODY gives there.
 fn tiles_matching(m: &AmigaMemory, level: &str) -> usize {
-    let body = &game_data().levels[&level.parse::<LevelId>().unwrap()].t7mp.body;
+    let body = &game_data().levels[&level.parse::<LevelId>().unwrap()]
+        .t7mp
+        .body;
     let base = long(m, MAP_ROWS);
     (0..body.len())
         .filter(|&i| {
@@ -83,7 +85,10 @@ fn each_sync_point_has_its_own_map_in_ram() {
         for (reached, other) in [(&first, &alt), (&alt, &first)] {
             let m = at(reached);
             let (own, theirs) = (tiles_matching(&m, reached), tiles_matching(&m, other));
-            assert!(own > theirs, "{reached}: {own} tiles its own, {theirs} {other}'s");
+            assert!(
+                own > theirs,
+                "{reached}: {own} tiles its own, {theirs} {other}'s"
+            );
         }
     }
     let m = at("WW-1");

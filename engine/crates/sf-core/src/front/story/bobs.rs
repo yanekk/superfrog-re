@@ -83,21 +83,24 @@ fn frame_prepare(m: &mut StoryMem, d: u32, row_bytes: u32) {
 
 /// `anim_prepare` (h0+$8718): every frame of the animation at `list` (entries of a frame pointer
 /// and a duration, up to a negative long).
-fn anim_prepare(m: &mut StoryMem, mut list: u32, row_bytes: u32) {
+fn anim_prepare(m: &mut StoryMem, mut list: u32, row_bytes: u32) -> u32 {
+    let mut n = 0;
     loop {
         let d = m.l(list);
         frame_prepare(m, d, row_bytes);
+        n += 1;
         list += 8;
         if (m.l(list) as i32) < 0 {
-            return;
+            return n;
         }
     }
 }
 
 /// `objects_init` (h0+$96d4) up to its two draws: every object back to its start, the scene's
 /// frames from its table, the masks built from the bank, both buffers' pointers. The two draws
-/// that end it are the caller's.
-pub fn init(m: &mut StoryMem, clock: &mut BlitClock) {
+/// that end it are the caller's. This is its CPU part, up to and with the masks' clearing: the
+/// frames it prepared, which its time goes by.
+pub fn init(m: &mut StoryMem) -> u32 {
     m.set_w(TOGGLE, 0);
     m.set_w(h0(0x1a), 0);
     for o in objects(m) {
@@ -125,8 +128,8 @@ pub fn init(m: &mut StoryMem, clock: &mut BlitClock) {
             break;
         }
     }
-    anim_prepare(m, IDLE, 0x2c);
-    anim_prepare(m, DESCRIPTORS, 0x2c);
+    let mut frames = anim_prepare(m, IDLE, 0x2c);
+    frames += anim_prepare(m, DESCRIPTORS, 0x2c);
     // `objects_reset` (h0+$86c6): the row table, then each object's animation from its start and
     // its second block a copy of its first.
     for r in 0..200u32 {
@@ -141,11 +144,17 @@ pub fn init(m: &mut StoryMem, clock: &mut BlitClock) {
         m.write(o + 0x2c, &block);
         let a = m.l(o + 8);
         m.set_w(o + 0x1a, m.w(a + 6));
-        anim_prepare(m, a, 0x2c);
+        frames += anim_prepare(m, a, 0x2c);
     }
-    // The masks: cleared, then each plane of the bank or-ed in (h0+$8408, h0+$8782).
+    // The masks cleared (h0+$8408).
     m.clear(MASKS, 0xa000);
-    let size = (0x400u16 << 6) | (0x140 >> 4);
+    frames
+}
+
+/// `objects_init`'s blits: each plane of the bank or-ed into the masks (h0+$8782).
+pub fn init_masks(m: &mut StoryMem, clock: &mut BlitClock) {
+    // 1024 rows (a height of 0) of 20 words.
+    let size = 0x140u16 >> 4;
     for p in 0..5 {
         let b = Blit {
             con0: 0x0dfc,

@@ -142,13 +142,48 @@ static LOAD_1: &[Op] = &[
 ];
 static IN_1: &[Op] = &scene_in(0x97c);
 static PLAY_1: &[Op] = &[
-    Object { obj: obj(0x8bb0), x: 0x18, y: 0x8c, anim: h0(0x844) },
-    Object { obj: obj(0x8c60), x: 0x88, y: 0x8c, anim: h0(0x844) },
-    Object { obj: obj(0x8d10), x: 0xf8, y: 0x8c, anim: h0(0x844) },
-    Object { obj: obj(0x8dc0), x: 0x5c, y: 0x9c, anim: h0(0x888) },
-    Object { obj: obj(0x8e70), x: 0xc4, y: 0x9c, anim: h0(0x888) },
-    Object { obj: obj(0x8f20), x: 0xb2, y: 0x0e, anim: h0(0x8cc) },
-    Object { obj: obj(0x8fd0), x: 0x7c, y: 0x06, anim: h0(0x8f0) },
+    Object {
+        obj: obj(0x8bb0),
+        x: 0x18,
+        y: 0x8c,
+        anim: h0(0x844),
+    },
+    Object {
+        obj: obj(0x8c60),
+        x: 0x88,
+        y: 0x8c,
+        anim: h0(0x844),
+    },
+    Object {
+        obj: obj(0x8d10),
+        x: 0xf8,
+        y: 0x8c,
+        anim: h0(0x844),
+    },
+    Object {
+        obj: obj(0x8dc0),
+        x: 0x5c,
+        y: 0x9c,
+        anim: h0(0x888),
+    },
+    Object {
+        obj: obj(0x8e70),
+        x: 0xc4,
+        y: 0x9c,
+        anim: h0(0x888),
+    },
+    Object {
+        obj: obj(0x8f20),
+        x: 0xb2,
+        y: 0x0e,
+        anim: h0(0x8cc),
+    },
+    Object {
+        obj: obj(0x8fd0),
+        x: 0x7c,
+        y: 0x06,
+        anim: h0(0x8f0),
+    },
     Draw(0x15e),
     MusicStop,
 ];
@@ -170,9 +205,24 @@ static LOAD_2: &[Op] = &[
 ];
 static IN_2: &[Op] = &scene_in(0x1490);
 static PLAY_2: &[Op] = &[
-    Object { obj: obj(0x8bb0), x: 0, y: 0, anim: h0(0x135c) },
-    Object { obj: obj(0x8c60), x: 0x6c, y: 0x5b, anim: h0(0x12d8) },
-    Object { obj: obj(0x8d10), x: 0xdf, y: 0x73, anim: h0(0x11f4) },
+    Object {
+        obj: obj(0x8bb0),
+        x: 0,
+        y: 0,
+        anim: h0(0x135c),
+    },
+    Object {
+        obj: obj(0x8c60),
+        x: 0x6c,
+        y: 0x5b,
+        anim: h0(0x12d8),
+    },
+    Object {
+        obj: obj(0x8d10),
+        x: 0xdf,
+        y: 0x73,
+        anim: h0(0x11f4),
+    },
     Draw(0xfa),
     MusicStop,
 ];
@@ -199,9 +249,19 @@ static LOAD_3: &[Op] = &[
 ];
 static IN_3: &[Op] = &scene_in(0x1f4c);
 static PLAY_3: &[Op] = &[
-    Object { obj: obj(0x8bb0), x: 0x150, y: 0x20, anim: h0(0x1ef8) },
+    Object {
+        obj: obj(0x8bb0),
+        x: 0x150,
+        y: 0x20,
+        anim: h0(0x1ef8),
+    },
     Timeline(h0(0xb1fa)),
-    MoveLeftUntil { obj: obj(0x8bb0), by: 3, until: 0x78, once: true },
+    MoveLeftUntil {
+        obj: obj(0x8bb0),
+        by: 3,
+        until: 0x78,
+        once: true,
+    },
     SetW(h0(0x8bca), 0),
     Draw(0x1e),
 ];
@@ -228,7 +288,12 @@ const fn unpack2(bank: u32, bank_ret: u32, clean: u32, clean_ret: u32) -> [Op; 2
 static LOAD_4: &[Op] = &unpack2(0x1bbc, 0x25fe, 0x18cca, 0x2610);
 static IN_4: &[Op] = &scene_in(0x26fc);
 static PLAY_4: &[Op] = &[
-    Object { obj: obj(0x8bb0), x: 0x90, y: 0x40, anim: h0(0x2698) },
+    Object {
+        obj: obj(0x8bb0),
+        x: 0x90,
+        y: 0x40,
+        anim: h0(0x2698),
+    },
     Timeline(h0(0xb20a)),
     Draw(0x32),
 ];
@@ -245,8 +310,18 @@ static OUT_4: &[Op] = &[FadeAcross {
 static LOAD_5: &[Op] = &unpack2(0x32c8, 0x2dfc, 0x1cc10, 0x2e0e);
 static IN_5: &[Op] = &scene_in(0x2ef8);
 static PLAY_5: &[Op] = &[
-    Object { obj: obj(0x8bb0), x: 0x40, y: 0x20, anim: h0(0x2e90) },
-    Object { obj: obj(0x8c60), x: 0x50, y: 0x28, anim: h0(0x2eec) },
+    Object {
+        obj: obj(0x8bb0),
+        x: 0x40,
+        y: 0x20,
+        anim: h0(0x2e90),
+    },
+    Object {
+        obj: obj(0x8c60),
+        x: 0x50,
+        y: 0x28,
+        anim: h0(0x2eec),
+    },
     Timeline(h0(0xb232)),
     Draw(0x32),
     Swoop { obj: obj(0x8c60) },
@@ -258,9 +333,24 @@ static OUT_2: &[Op] = &scene_out(2);
 static LOAD_6: &[Op] = &unpack2(0xbb1c, 0x35ee, 0x1ef98, 0x3600);
 static IN_6: &[Op] = &scene_in(0x374e);
 static PLAY_6: &[Op] = &[
-    Object { obj: obj(0x8bb0), x: 0x50, y: 0, anim: h0(0x3682) },
-    Object { obj: obj(0x8c60), x: 0xc0, y: 0, anim: h0(0x36ce) },
-    Object { obj: obj(0x8d10), x: 0xa0, y: 0x18, anim: h0(0x36fa) },
+    Object {
+        obj: obj(0x8bb0),
+        x: 0x50,
+        y: 0,
+        anim: h0(0x3682),
+    },
+    Object {
+        obj: obj(0x8c60),
+        x: 0xc0,
+        y: 0,
+        anim: h0(0x36ce),
+    },
+    Object {
+        obj: obj(0x8d10),
+        x: 0xa0,
+        y: 0x18,
+        anim: h0(0x36fa),
+    },
     Timeline(h0(0xb25a)),
     Draw(0x96),
 ];
@@ -270,9 +360,24 @@ static PLAY_6: &[Op] = &[
 static LOAD_7: &[Op] = &unpack2(0x140b4, 0x3ec8, 0x16c1e, 0x3eda);
 static IN_7: &[Op] = &scene_in(0x4148);
 static PLAY_7: &[Op] = &[
-    Object { obj: obj(0x8d10), x: 0x64, y: 0x40, anim: h0(0x3f5c) },
-    Object { obj: obj(0x8c60), x: 0x90, y: 0x1a, anim: h0(0x3f68) },
-    Object { obj: obj(0x8bb0), x: 0, y: 0x64, anim: h0(0x3fa4) },
+    Object {
+        obj: obj(0x8d10),
+        x: 0x64,
+        y: 0x40,
+        anim: h0(0x3f5c),
+    },
+    Object {
+        obj: obj(0x8c60),
+        x: 0x90,
+        y: 0x1a,
+        anim: h0(0x3f68),
+    },
+    Object {
+        obj: obj(0x8bb0),
+        x: 0,
+        y: 0x64,
+        anim: h0(0x3fa4),
+    },
     Timeline(h0(0xb28e)),
     Draw(0x78),
 ];
@@ -286,7 +391,12 @@ static LOAD_8: &[Op] = &[UnpackCopy {
 }];
 static IN_8: &[Op] = &scene_in(0x4a5c);
 static PLAY_8: &[Op] = &[
-    Object { obj: obj(0x8bb0), x: 0x20, y: 0x10, anim: h0(0x4948) },
+    Object {
+        obj: obj(0x8bb0),
+        x: 0x20,
+        y: 0x10,
+        anim: h0(0x4948),
+    },
     Timeline(h0(0xb29e)),
     Draw(0x82),
 ];
@@ -296,8 +406,18 @@ static PLAY_8: &[Op] = &[
 static LOAD_9: &[Op] = &unpack2(0x1cb60, 0x51f6, 0x16c1e, 0x5208);
 static IN_9: &[Op] = &scene_in(0x5360);
 static PLAY_9: &[Op] = &[
-    Object { obj: obj(0x8bb0), x: 0x80, y: 0x20, anim: h0(0x52a0) },
-    Object { obj: obj(0x8c60), x: 0x10, y: 0x7e, anim: h0(0x5324) },
+    Object {
+        obj: obj(0x8bb0),
+        x: 0x80,
+        y: 0x20,
+        anim: h0(0x52a0),
+    },
+    Object {
+        obj: obj(0x8c60),
+        x: 0x10,
+        y: 0x7e,
+        anim: h0(0x5324),
+    },
     Timeline(h0(0xb2c6)),
     Draw(0x6c),
 ];
@@ -324,36 +444,105 @@ static LOAD_10: &[Op] = &[
 ];
 static IN_10: &[Op] = &scene_in(0x5ff2);
 static PLAY_10: &[Op] = &[
-    Object { obj: obj(0x8bb0), x: 0x53, y: 0x66, anim: h0(0x5efa) },
-    Object { obj: obj(0x8c60), x: 0x48, y: 0x6e, anim: h0(0x5dd6) },
-    Object { obj: obj(0x9600), x: 0x150, y: 0x80, anim: h0(0x5d92) },
+    Object {
+        obj: obj(0x8bb0),
+        x: 0x53,
+        y: 0x66,
+        anim: h0(0x5efa),
+    },
+    Object {
+        obj: obj(0x8c60),
+        x: 0x48,
+        y: 0x6e,
+        anim: h0(0x5dd6),
+    },
+    Object {
+        obj: obj(0x9600),
+        x: 0x150,
+        y: 0x80,
+        anim: h0(0x5d92),
+    },
     Timeline(h0(0xb2e2)),
     Draw(0x3c),
-    Glide { obj: obj(0x9600), flag: h0(0x5cbe) },
+    Glide {
+        obj: obj(0x9600),
+        flag: h0(0x5cbe),
+    },
     SetW(obj(0x9600), 0x190),
     Draw(0x1e),
     SetW(h0(0xb436), 1),
-    FadeOut { list: SCENE_COLOURS, count: 0x20, speed: 2 },
-    UnpackCopy { from: h0(0x2e57c), to: CLEAN, ret: h0(0x5b4c) },
+    FadeOut {
+        list: SCENE_COLOURS,
+        count: 0x20,
+        speed: 2,
+    },
+    UnpackCopy {
+        from: h0(0x2e57c),
+        to: CLEAN,
+        ret: h0(0x5b4c),
+    },
     WaitFade,
-    SetPlanes { moves: SCENE_PLANES, at: CLEAN + 2, row_bytes: 0x2c, count: 5 },
-    FadeIn { list: SCENE_COLOURS, palette: SCENE_PALETTE, count: 0x20, speed: 1 },
+    SetPlanes {
+        moves: SCENE_PLANES,
+        at: CLEAN + 2,
+        row_bytes: 0x2c,
+        count: 5,
+    },
+    FadeIn {
+        list: SCENE_COLOURS,
+        palette: SCENE_PALETTE,
+        count: 0x20,
+        speed: 1,
+    },
     WaitFade,
     Timeline(h0(0xb2fe)),
     WaitVbls(0x96),
-    FadeOut { list: SCENE_COLOURS, count: 0x20, speed: 2 },
+    FadeOut {
+        list: SCENE_COLOURS,
+        count: 0x20,
+        speed: 2,
+    },
     WaitFade,
-    UnpackCopy { from: h0(0x2197c), to: CLEAN, ret: h0(0x5bf6) },
-    SetPlanes { moves: SCENE_PLANES, at: BUFFER_A + 2, row_bytes: 0x2c, count: 5 },
-    FadeIn { list: SCENE_COLOURS, palette: SCENE_PALETTE, count: 0x20, speed: 1 },
+    UnpackCopy {
+        from: h0(0x2197c),
+        to: CLEAN,
+        ret: h0(0x5bf6),
+    },
+    SetPlanes {
+        moves: SCENE_PLANES,
+        at: BUFFER_A + 2,
+        row_bytes: 0x2c,
+        count: 5,
+    },
+    FadeIn {
+        list: SCENE_COLOURS,
+        palette: SCENE_PALETTE,
+        count: 0x20,
+        speed: 1,
+    },
     SetW(h0(0xb436), 0),
     WaitFade,
     Timeline(h0(0xb30e)),
     Draw(0x48),
-    Object { obj: obj(0x8bb0), x: 0x53, y: 0x66, anim: h0(0x5f3e) },
+    Object {
+        obj: obj(0x8bb0),
+        x: 0x53,
+        y: 0x66,
+        anim: h0(0x5f3e),
+    },
     Draw(0x78),
-    Object { obj: obj(0x8bb0), x: 0, y: 0x30, anim: h0(0x5f7a) },
-    Object { obj: obj(0x8c60), x: 0, y: 0x20, anim: h0(0x5fbe) },
+    Object {
+        obj: obj(0x8bb0),
+        x: 0,
+        y: 0x30,
+        anim: h0(0x5f7a),
+    },
+    Object {
+        obj: obj(0x8c60),
+        x: 0,
+        y: 0x20,
+        anim: h0(0x5fbe),
+    },
     Draw(0x32),
     // (h0+$5d90, called after this, is an empty routine.)
 ];
@@ -367,9 +556,24 @@ static LOAD_11: &[Op] = &[Unpack {
 }];
 static IN_11: &[Op] = &[InitObjects(h0(0x6ace))];
 static PLAY_11: &[Op] = &[
-    Object { obj: obj(0x8bb0), x: 0x60, y: 0x66, anim: h0(0x6a16) },
-    Object { obj: obj(0x8c60), x: 0x60, y: 0x66, anim: h0(0x69c6) },
-    Object { obj: obj(0x9600), x: 0x60, y: 0x66, anim: h0(0x69ea) },
+    Object {
+        obj: obj(0x8bb0),
+        x: 0x60,
+        y: 0x66,
+        anim: h0(0x6a16),
+    },
+    Object {
+        obj: obj(0x8c60),
+        x: 0x60,
+        y: 0x66,
+        anim: h0(0x69c6),
+    },
+    Object {
+        obj: obj(0x9600),
+        x: 0x60,
+        y: 0x66,
+        anim: h0(0x69ea),
+    },
     Timeline(h0(0xb342)),
     MusicStop,
     music(0xcb98),
@@ -377,11 +581,26 @@ static PLAY_11: &[Op] = &[
     Draw(0x46),
     SetW(obj(0x8bb0), 0x190),
     SetW(obj(0x9600), 0x190),
-    Object { obj: obj(0x8c60), x: 0x60, y: 0x66, anim: h0(0x6a4a) },
+    Object {
+        obj: obj(0x8c60),
+        x: 0x60,
+        y: 0x66,
+        anim: h0(0x6a4a),
+    },
     Draw(6),
-    Object { obj: obj(0x8bb0), x: 0x60, y: 0x66, anim: h0(0x6a6e) },
+    Object {
+        obj: obj(0x8bb0),
+        x: 0x60,
+        y: 0x66,
+        anim: h0(0x6a6e),
+    },
     Draw(0x64),
-    Object { obj: obj(0x8bb0), x: 0x60, y: 0x66, anim: h0(0x6aa2) },
+    Object {
+        obj: obj(0x8bb0),
+        x: 0x60,
+        y: 0x66,
+        anim: h0(0x6aa2),
+    },
     SetW(obj(0x9600), 0x190),
     SetW(obj(0x8c60), 0x190),
     Draw(0x3c),
@@ -396,9 +615,24 @@ static LOAD_12: &[Op] = &[UnpackCopy {
 }];
 static IN_12: &[Op] = &scene_in(0x6ace);
 static PLAY_12: &[Op] = &[
-    Object { obj: obj(0x9600), x: 0xb8, y: 0x3a, anim: h0(0x7402) },
-    Object { obj: obj(0x9550), x: 0x9a, y: 0x56, anim: h0(0x7446) },
-    Object { obj: obj(0x94a0), x: 0x76, y: 0x10, anim: h0(0x7492) },
+    Object {
+        obj: obj(0x9600),
+        x: 0xb8,
+        y: 0x3a,
+        anim: h0(0x7402),
+    },
+    Object {
+        obj: obj(0x9550),
+        x: 0x9a,
+        y: 0x56,
+        anim: h0(0x7446),
+    },
+    Object {
+        obj: obj(0x94a0),
+        x: 0x76,
+        y: 0x10,
+        anim: h0(0x7492),
+    },
     Timeline(h0(0xb352)),
     Draw(0xf0),
 ];
@@ -408,8 +642,18 @@ static PLAY_12: &[Op] = &[
 static LOAD_13: &[Op] = &unpack2(0x1048c, 0x7a12, 0x2197c, 0x7a24);
 static IN_13: &[Op] = &scene_in(0x7b46);
 static PLAY_13: &[Op] = &[
-    Object { obj: obj(0x8bb0), x: 0x78, y: 0xfffa, anim: h0(0x7ad2) },
-    Object { obj: obj(0x8c60), x: 0x3e, y: 0x56, anim: h0(0x7aa6) },
+    Object {
+        obj: obj(0x8bb0),
+        x: 0x78,
+        y: 0xfffa,
+        anim: h0(0x7ad2),
+    },
+    Object {
+        obj: obj(0x8c60),
+        x: 0x3e,
+        y: 0x56,
+        anim: h0(0x7aa6),
+    },
     Timeline(h0(0xb386)),
     Draw(0x3f),
     SetW(obj(0x8c60), 0x4b),
@@ -431,7 +675,12 @@ static LOAD_14: &[Op] = &[UnpackCopy {
 }];
 static IN_14: &[Op] = &scene_in(0x7b46);
 static PLAY_14: &[Op] = &[
-    Object { obj: obj(0x8bb0), x: 0x60, y: 1, anim: h0(0x7d16) },
+    Object {
+        obj: obj(0x8bb0),
+        x: 0x60,
+        y: 1,
+        anim: h0(0x7d16),
+    },
     Timeline(h0(0xb3a2)),
     Draw(0x16),
 ];
@@ -441,21 +690,57 @@ static PLAY_14: &[Op] = &[
 static LOAD_15: &[Op] = &unpack2(0x1a0cc, 0x7e76, 0x2197c, 0x7e88);
 static IN_15: &[Op] = &scene_in(0x8188);
 static PLAY_15: &[Op] = &[
-    Object { obj: obj(0x8bb0), x: 0xf4, y: 0x6d, anim: h0(0x7f20) },
-    Object { obj: obj(0x8c60), x: 0x48, y: 1, anim: h0(0x7f2c) },
+    Object {
+        obj: obj(0x8bb0),
+        x: 0xf4,
+        y: 0x6d,
+        anim: h0(0x7f20),
+    },
+    Object {
+        obj: obj(0x8c60),
+        x: 0x48,
+        y: 1,
+        anim: h0(0x7f2c),
+    },
     Timeline(h0(0xb3b2)),
     Draw(0x64),
     MusicStop,
     music(0xcf10),
     Sfx(9, 0),
     Draw(0x44),
-    MoveLeftUntil { obj: obj(0x8c60), by: 3, until: -0x60, once: false },
-    Object { obj: obj(0x8c60), x: 0x150, y: 0x56, anim: h0(0x80f8) },
-    MoveLeftUntil { obj: obj(0x8c60), by: 3, until: 0x8c, once: false },
-    Anim { obj: obj(0x8c60), anim: h0(0x812c) },
+    MoveLeftUntil {
+        obj: obj(0x8c60),
+        by: 3,
+        until: -0x60,
+        once: false,
+    },
+    Object {
+        obj: obj(0x8c60),
+        x: 0x150,
+        y: 0x56,
+        anim: h0(0x80f8),
+    },
+    MoveLeftUntil {
+        obj: obj(0x8c60),
+        by: 3,
+        until: 0x8c,
+        once: false,
+    },
+    Anim {
+        obj: obj(0x8c60),
+        anim: h0(0x812c),
+    },
     Draw(0x3c),
-    Anim { obj: obj(0x8c60), anim: h0(0x80f8) },
-    MoveLeftUntil { obj: obj(0x8c60), by: 3, until: -0x40, once: false },
+    Anim {
+        obj: obj(0x8c60),
+        anim: h0(0x80f8),
+    },
+    MoveLeftUntil {
+        obj: obj(0x8c60),
+        by: 3,
+        until: -0x40,
+        once: false,
+    },
 ];
 
 /// `intro_main` (h0+$20) from its fourth step: each scene, `intro_skip` looked at after each.

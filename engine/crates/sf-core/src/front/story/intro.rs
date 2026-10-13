@@ -50,7 +50,8 @@ pub fn handler_lines(m: &StoryMem) -> u64 {
     }
     for r in &FADES {
         let kind = m.w(r.at + super::fade::KIND);
-        let steps = m.w(r.at + super::fade::COUNTER).wrapping_add(1) >= m.w(r.at + super::fade::SPEED);
+        let steps =
+            m.w(r.at + super::fade::COUNTER).wrapping_add(1) >= m.w(r.at + super::fade::SPEED);
         if (1..=3).contains(&kind) && !r.done(m) && steps {
             lines += HANDLER_PER_32_COLOURS * m.w(r.at + super::fade::COUNT) as u64 / 32;
         }
@@ -69,8 +70,11 @@ fn fade_setup_lines(kind: u8, count: u16) -> u64 {
         _ => 5 + 37 * c / 32,
     }
 }
-/// Clearing the masks (`clr.b` 40 960 times, h0+$8408), in lines of CPU.
-const MASK_CLEAR_LINES: u64 = 3022;
+/// `objects_init`'s CPU time before its blits, in DMA cycles: clearing the masks (`clr.b` 40 960
+/// times, h0+$8408) and the rest, plus each animation frame it prepares (h0+$8724). Oracle: the
+/// first scene's 145 frames and the second's 199 put their mask blits 3022 and 3071 lines on.
+const INIT_CPU: u32 = 656_124;
+const INIT_CPU_PER_FRAME: u32 = 206;
 
 /// Where the original is while it clears the buffers and sets up the objects (`buffers_clear`'s
 /// waits, `objects_init`'s calls, the draws in it): the return addresses of their calls.
@@ -106,9 +110,9 @@ const SETUP_WRITES: [(u32, u32); 7] = [
 /// unpack) at the end of a frame, from where it is (`chain`: its PC, then the return addresses on
 /// its stack): what conformance feeds the intro as [`Pacing`] (owner, 2026-10-12).
 pub fn busy(chain: &[u32]) -> bool {
-    chain.iter().any(|a| {
-        BUSY_RETURNS.contains(a) || scenes::UNPACK_FRAMES.iter().any(|(r, _)| r == a)
-    })
+    chain
+        .iter()
+        .any(|a| BUSY_RETURNS.contains(a) || scenes::UNPACK_FRAMES.iter().any(|(r, _)| r == a))
 }
 
 /// Return addresses of the calls that make the long jobs: `draw_frame` in `draw_frames`,
@@ -186,6 +190,9 @@ impl Frame {
     }
 }
 
+/// The program, its memory, the copper list and the jobs reported, kept before a job's end.
+type Checkpoint = Box<(Intro, StoryMem, Option<u32>, usize)>;
+
 /// The intro's main program.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Intro {
@@ -205,6 +212,10 @@ pub struct Intro {
     pub ended: bool,
     /// The copper list the display runs (the last COP1LC written).
     shown_list: u32,
+    /// For conformance: the program and memory just before the last job that ended this frame.
+    checkpoint: Option<Checkpoint>,
+    /// For conformance: what runs on during this frame's load, put in place at the load.
+    load_state: Vec<(u32, Vec<u8>)>,
     /// Where the handlers of coming frames start, when a draw's blit holds them off (line since
     /// the intro's start).
     handler_at: Vec<u64>,
@@ -258,7 +269,9 @@ fn bus(list: u32, audio: bool) -> Bus {
 fn sound_data(data: &data::StoryData) -> &sf_assets::sound::SoundData {
     static EMPTY: std::sync::OnceLock<sf_assets::sound::SoundData> = std::sync::OnceLock::new();
     data.sound.as_ref().unwrap_or_else(|| {
-        EMPTY.get_or_init(|| sf_assets::sound::SoundData::from_parts(Vec::new(), Vec::new(), Vec::new(), Vec::new()))
+        EMPTY.get_or_init(|| {
+            sf_assets::sound::SoundData::from_parts(Vec::new(), Vec::new(), Vec::new(), Vec::new())
+        })
     })
 }
 
@@ -307,12 +320,15 @@ impl Intro {
             shown_list: scenes::BLACK_LIST,
             pacing: Pacing::Unpaced,
             handler_at: Vec::new(),
+            checkpoint: None,
+            load_state: Vec::new(),
             writes: Vec::new(),
         }
     }
 
     /// One frame (number `frame` since the intro started): the vertical blank's handler at its
     /// top, then the main program until it waits past the frame's end.
+    #[allow(clippy::too_many_arguments)]
     pub fn frame(
         &mut self,
         m: &mut StoryMem,
@@ -322,8 +338,10 @@ impl Intro {
         load_line: Option<u16>,
         list: u32,
         pacing: Pacing,
+        load_state: Vec<(u32, Vec<u8>)>,
     ) -> IntroFrame {
         self.pacing = pacing;
+        self.load_state = load_state;
         let top = frame * LINES;
         let end = top + LINES;
         let mut out = IntroFrame {
@@ -340,7 +358,12 @@ impl Intro {
         // The handler: at the top, once a masked set-up lets it in, or once the blit in progress
         // is over.
         self.handler_at.retain(|&a| a >= top);
-        let held = self.handler_at.first().copied().filter(|&a| a < end).unwrap_or(top);
+        let held = self
+            .handler_at
+            .first()
+            .copied()
+            .filter(|&a| a < end)
+            .unwrap_or(top);
         let at = top.max(self.masked_until).max(held);
         if let Wait::Masked(until) = self.wait
             && until > top
@@ -387,11 +410,32 @@ impl Intro {
             // The intro's start, its first text page unpacked, all during the load: the
             // original is compared once it has left that unpack, on the line it left it.
             out.load = Some(LoadEnd::Left(RET_TEXT_1_UNPACK));
+            self.after_load(m, data, input, &mut out);
             out.resync.push((VBL_FLAG, 4));
             out.resync.push((h0(0xb1f4), 6));
             self.t = top + load_line.map_or(handler, u64::from);
         }
+        self.checkpoint = None;
         self.run(m, data, input, top, end, &mut out, load_line, list);
+        if self.pacing == Pacing::Late
+            && !matches!(self.wait, Wait::Busy { .. })
+            && let Some(c) = self.checkpoint.take()
+        {
+            // The original is still in a job at this blank and the engine is not: its last job of
+            // the frame goes on past it.
+            let (mut back, mem, cop1lc, jobs) = *c;
+            if let Wait::Busy { blank_extends, .. } = back.wait {
+                back.wait = Wait::Busy {
+                    until: end + 1,
+                    blank_extends,
+                };
+            }
+            *self = back;
+            *m = mem;
+            out.cop1lc = cop1lc;
+            out.jobs.truncate(jobs);
+        }
+        self.checkpoint = None;
         // The main program's writes due this frame, among the handler's in beam order.
         let (due, later): (Vec<_>, Vec<_>) = std::mem::take(&mut self.writes)
             .into_iter()
@@ -402,33 +446,31 @@ impl Intro {
         out
     }
 
-    /// Whether, on its own timing, the program would be out of every job at this frame's end
-    /// once the job in progress ends.
-    fn idle_at(
-        &self,
-        m: &StoryMem,
+    /// An instant load is over. Under conformance, the frame now stands for the original's frame
+    /// its load ended on: what ran on during the load is put in place, and that frame's handler
+    /// runs on it in place of the one this step began with.
+    fn after_load(
+        &mut self,
+        m: &mut StoryMem,
         data: &data::StoryData,
         input: crate::input::FrameInput,
-        top: u64,
-        end: u64,
-        list: u32,
-    ) -> bool {
-        let mut trial = self.clone();
-        trial.pacing = Pacing::Unpaced;
-        let mut tm = m.clone();
-        let mut out = IntroFrame {
-            paula: Vec::new(),
-            load: None,
-            resync: Vec::new(),
-            jobs: Vec::new(),
-            cop1lc: None,
-            handler: (0, 0),
-            copper: Vec::new(),
-            fade_writes: Vec::new(),
-            list_at_load: None,
-        };
-        trial.run(&mut tm, data, input, top, end, &mut out, None, list);
-        !matches!(trial.wait, Wait::Busy { .. })
+        out: &mut IntroFrame,
+    ) {
+        let state = std::mem::take(&mut self.load_state);
+        if state.is_empty() {
+            return;
+        }
+        for (at, b) in state {
+            m.write(at, &b);
+        }
+        // What the main program wrote before the load was in earlier frames of the original's.
+        let now = self.t;
+        self.writes.retain(|(at, _)| *at > now);
+        out.paula.clear();
+        let mut writes = Vec::new();
+        let steps = super::vbl::run(m, sound_data(data), input, &mut writes);
+        out.fade_writes = super::vbl::fade_write_times(&steps, 0);
+        out.paula.extend(writes);
     }
 
     /// The end of a busy stretch at `at`: its deferred part.
@@ -438,9 +480,6 @@ impl Intro {
         match std::mem::replace(&mut self.then, Then::Nothing) {
             Then::Nothing => {}
             Then::DrawEnd => {
-                if option_env!("SF_DRAWLOG").is_some() {
-                    eprintln!("DRAWEND t {} (frame {} line {}) pacing {:?}", at, at / LINES, at % LINES, self.pacing);
-                }
                 let drawn = m.l(bobs::DRAWN);
                 m.set_l(bobs::SHOWN, drawn);
                 self.write_at(at, 0x96, 0x0400);
@@ -502,14 +541,16 @@ impl Intro {
                         }
                         // The original's job was over by this blank: so is the engine's.
                         self.finish_busy(m, end - 1);
-                    } else if self.pacing == Pacing::Late && self.idle_at(m, data, input, top, end, list) {
-                        // The original is still in a job at this blank: the engine's goes on.
-                        self.wait = Wait::Busy {
-                            until: end + 1,
-                            blank_extends: false,
-                        };
-                        return;
                     } else {
+                        if self.pacing == Pacing::Late {
+                            // Kept in case the original turns out to be still in this job.
+                            self.checkpoint = Some(Box::new((
+                                self.clone(),
+                                m.clone(),
+                                out.cop1lc,
+                                out.jobs.len(),
+                            )));
+                        }
                         self.finish_busy(m, until);
                     }
                 }
@@ -590,9 +631,6 @@ impl Intro {
             ],
         });
         let lines = self.lines_of(&clock);
-        if option_env!("SF_DRAWLOG").is_some() {
-            eprintln!("DRAW {} {} {} {}", self.t / LINES, self.t % LINES, clock.blits, lines);
-        }
         self.busy(lines, false, Then::DrawEnd);
     }
 
@@ -738,7 +776,10 @@ impl Intro {
                 m.write(to, &bytes);
                 out.jobs.push(Job {
                     inside: vec![ret],
-                    writes: vec![(to, bytes.len().max(4 * (((size + 0x32) >> 2) + 4) as usize) as u32)],
+                    writes: vec![(
+                        to,
+                        bytes.len().max(4 * (((size + 0x32) >> 2) + 4) as usize) as u32,
+                    )],
                 });
                 self.next();
                 if ret == RET_TEXT_1_UNPACK {
@@ -746,7 +787,8 @@ impl Intro {
                     return true;
                 }
                 let start = self.t / LINES;
-                let until = ((start + scenes::unpack_frames(ret)) * LINES + scenes::UNPACK_END_LINE)
+                let until = ((start + scenes::unpack_frames(ret)) * LINES
+                    + scenes::UNPACK_END_LINE)
                     .max(self.t);
                 self.wait = Wait::Busy {
                     until,
@@ -761,6 +803,7 @@ impl Intro {
                     _ => raw.clone(),
                 };
                 m.write(to, &bytes);
+                self.after_load(m, data, input, out);
                 out.load = Some(LoadEnd::Left(ret));
                 out.list_at_load = Some(out.cop1lc.unwrap_or(list));
                 out.resync.extend_from_slice(RUNS_DURING_LOAD);
@@ -796,9 +839,10 @@ impl Intro {
                     m.set_l(bobs::SCENE_TABLE, table);
                     // The CPU's set-up and its clearing of the masks, then the mask blits.
                     let mut clock = self.clock(m);
-                    clock.cpu((MASK_CLEAR_LINES * 227) as u32);
+                    let frames = bobs::init(m);
+                    clock.cpu(INIT_CPU + INIT_CPU_PER_FRAME * frames);
                     let start = self.lines_of(&clock);
-                    bobs::init(m, &mut clock);
+                    bobs::init_masks(m, &mut clock);
                     let lines = self.lines_of(&clock);
                     self.write_at(self.t + start, 0x96, 0x8400);
                     self.set_phase(1);

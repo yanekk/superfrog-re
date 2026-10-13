@@ -116,7 +116,13 @@ pub fn music_on(m: &StoryMem) -> bool {
 }
 
 /// `sfx_play` (h0+$38a16): effect `id` on `channel`.
-pub fn sfx_play(m: &mut StoryMem, sd: &SoundData, id: u16, channel: u16, out: &mut Vec<PaulaWrite>) {
+pub fn sfx_play(
+    m: &mut StoryMem,
+    sd: &SoundData,
+    id: u16,
+    channel: u16,
+    out: &mut Vec<PaulaWrite>,
+) {
     session(m, sd, |d, sd| d.play_sfx(sd, id as u8, channel as u8, out));
 }
 

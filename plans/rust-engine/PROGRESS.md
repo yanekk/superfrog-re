@@ -54,7 +54,10 @@ done · ⛔ blocked, needs a human.
 | T29 | app-drill | T21, T25, T26, T27, T28 | ⬜ | |
 | T30 | acceptance | T29 | ⬜ | |
 | T31 | render-remaining-levels | T13 | ✅ | |
-| T32 | story-intro | T20; blocks T21 | ⬜ | |
+| T32 | story-intro | T20; blocks T21 | 🔍 | Disk-3 boot (`Start::Disk3`, `SyncPoint::PowerOnDisk3`), logo, intro program, bobs, fades, sound on T11's driver; frame-exact to frame 539. Cases story-boot, story-intro (test block); 1 test. Deviations: scope cut at 539 (owner, 2026-10-13), rest T36–T38; `story/` a module; `Game::step` uses `Pacing::Unpaced`, DESIGN §2.1 says `OnTime`. |
+| T36 | story-intro-scenes | T32; blocks T21 | ⬜ | |
+| T37 | story-intro-handover | T36; blocks T21 | ⬜ | |
+| T38 | story-intro-skips | T36, T37; blocks T21 | ⬜ | |
 | T33 | attract-demo | T16, T20 | ⬜ | |
 | T34 | game-over | T15, T20; blocks T21 | ⬜ | |
 | T35 | end-sequence | T20; blocks T21 | ⬜ | |
@@ -62,7 +65,7 @@ done · ⛔ blocked, needs a human.
 A Notes cell holds what was built or what the review found, the test count, and one line per
 deviation from the task doc. A ✅ task's cell may be cut to one line once the next task has been reviewed.
 
-**Review queue:** *(empty)*
+**Review queue:** T32
 
 ## Blocked on the user
 

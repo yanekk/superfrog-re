@@ -9,6 +9,7 @@ use crate::case::Case;
 use crate::report::{self, Divergence};
 
 /// The case's comparisons on frame `frame`: `None` when all match.
+#[allow(clippy::too_many_arguments)]
 pub fn frame(
     case: &Case,
     frame: u32,

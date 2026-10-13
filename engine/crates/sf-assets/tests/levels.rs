@@ -217,13 +217,19 @@ fn the_story_intro_s_sector_spans_are_kept_raw() {
         .collect();
     assert_eq!(spans.len(), 4);
     for (k, ((id, bytes), sectors)) in spans.iter().zip([0x25, 0x1b, 0x10a, 0x110]).enumerate() {
-        assert_eq!((id.disk, bytes.len()), (sf_disk::DiskSlot::D3, sectors * 512), "{id}");
+        assert_eq!(
+            (id.disk, bytes.len()),
+            (sf_disk::DiskSlot::D3, sectors * 512),
+            "{id}"
+        );
         assert!(bytes.starts_with(b"ATN!"), "{id}");
         assert_eq!(data().raw[&format!("intro-span-{}", k + 1)], *bytes);
         // The first packed bank of each is the carved chunk at that sector.
         let carved = chunks()
             .iter()
-            .find(|c| c.0.index < INTRO_SPAN_INDEX && c.0.disk == id.disk && c.0.sector == id.sector)
+            .find(|c| {
+                c.0.index < INTRO_SPAN_INDEX && c.0.disk == id.disk && c.0.sector == id.sector
+            })
             .unwrap();
         assert_eq!(sf_disk::decompress(bytes).unwrap(), carved.1, "{id}");
     }

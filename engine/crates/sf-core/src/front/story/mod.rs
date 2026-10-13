@@ -200,6 +200,8 @@ pub struct Story {
     pending: Vec<u8>,
     /// For conformance: the line the next load ends on in the original.
     pub(crate) load_line: Option<u16>,
+    /// For conformance: what runs on by itself during the next load, to put in place at it.
+    pub(crate) load_state: Vec<(u32, Vec<u8>)>,
     frame: u32,
 }
 
@@ -337,6 +339,7 @@ impl Story {
             lof: true,
             pending: Vec::new(),
             load_line: None,
+            load_state: Vec::new(),
             frame: 0,
         }
     }
@@ -424,14 +427,28 @@ impl Story {
             Stage::Intro(i, n) => {
                 let load_line = cx.load_line.take();
                 drop(cx);
-                let f = i.frame(&mut self.mem, data, input, *n, load_line, list, pacing);
+                let load_state = std::mem::take(&mut self.load_state);
+                let f = i.frame(
+                    &mut self.mem,
+                    data,
+                    input,
+                    *n,
+                    load_line,
+                    list,
+                    pacing,
+                    load_state,
+                );
                 *n += 1;
                 // A load's frame shows the list set before the load, as the load left memory.
                 let (list, copper, at_handler) = match f.list_at_load {
                     Some(l) => (l, self.mem.read(l, 0x400), None),
                     // The handler's writes (bitplane pointers, a fade's colours) are in place by the
                     // time the copper reads the list past its wait for line $20.
-                    None => (list, copper, Some((f.handler.0 + COPPER_SEES_HANDLER, f.copper))),
+                    None => (
+                        list,
+                        copper,
+                        Some((f.handler.0 + COPPER_SEES_HANDLER, f.copper)),
+                    ),
                 };
                 paula = f.paula;
                 if let Some(c) = f.cop1lc {
@@ -506,10 +523,7 @@ impl Story {
                     // write before the copper's read left it.
                     let mut rewritten = fade_writes.iter().filter(|w| w.0 == a).peekable();
                     if rewritten.peek().is_some() {
-                        let last = rewritten
-                            .filter(|w| (line, h) >= (w.1, w.2))
-                            .last()
-                            .map(|w| w.3);
+                        let last = rewritten.rfind(|w| (line, h) >= (w.1, w.2)).map(|w| w.3);
                         return last.unwrap_or_else(|| match copper.get(o..o + 2) {
                             Some(w) => u16::from_be_bytes([w[0], w[1]]),
                             None => self.mem.w(a),
@@ -524,8 +538,14 @@ impl Story {
                         None => self.mem.w(a),
                     }
                 };
-                let (pic, writes) =
-                    crate::render::story_screen(&self.mem, empty, display, list, &word, Some(carry));
+                let (pic, writes) = crate::render::story_screen(
+                    &self.mem,
+                    empty,
+                    display,
+                    list,
+                    &word,
+                    Some(carry),
+                );
                 let mut end = carry;
                 for w in &writes {
                     // The copper's writes to Paula's registers, but those it makes before the CPU
