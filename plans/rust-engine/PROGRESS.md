@@ -61,6 +61,9 @@ done · ⛔ blocked, needs a human.
 | T36 | items-on-the-beam | T15 | ⬜ | |
 | T37 | level-restart | T36; blocks T34 | ⬜ | |
 | T38 | level-tally | T37; blocks T21 | ⬜ | |
+| T39 | enemies-world-5 | T16, T38; blocks T18 | ⬜ | |
+| T40 | enemies-world-6 | T38; blocks T18 | ⬜ | |
+| T41 | enemies-world-4 | T38; blocks T18 | ⬜ | |
 
 A Notes cell holds what was built or what the review found, the test count, and one line per
 deviation from the task doc. A ✅ task's cell may be cut to one line once the next task has been reviewed.

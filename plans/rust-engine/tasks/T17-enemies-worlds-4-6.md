@@ -5,6 +5,10 @@
 > If T07's object-type count shows this is more than one session, it is split with the owner and this
 > doc is superseded by the split; say so here with the date.
 
+> **Split 2026-10-13 (owner), and this doc is superseded by it.** T17 was parked until T36–T38
+> and closed as the split itself: world 4 is T41, world 5 T39, world 6 (less the witch, T18's) T40,
+> each after T38 and blocking T18. Nothing below is built under T17.
+
 ## Goal
 
 Every enemy and hazard object in worlds 4–6: movement, animation, collision with the frog (both ways:
