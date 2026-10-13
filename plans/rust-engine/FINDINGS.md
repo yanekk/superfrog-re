@@ -18,6 +18,8 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-13 | 🐞 | Open: `level_entry::every_level_is_entered_as_the_original_enters_it` red on every level, `slot_copper` original $140f440, engine $1400000. Same on T76's base ffbad9f (T71's slot variables in `LAYOUT`); T76 review, not fixed. |
+| 2026-10-13 | 📌 | T76 for T75's merge: both create `bonus/mod.rs` (keep both modules and both `register_all` lines). T76 copied T75's `bonus_rig`/`sound_files` hunks verbatim, so those merge clean. |
 | 2026-10-13 | 🐞 | T78, not fixed: `purity.rs`'s scanner flags a hex literal ending `f64`/`f32` (`0x2cf64`) as a float. Worked around with `0x2CF64`; the scanner should skip suffix checks on hex. |
 | 2026-10-13 | 📌 | T78: `reward_power_count` (h0+$23e20) is 9 in the executable, `shot_cycle_table` non-zero; `State::default` zeroes LAYOUT vars, so a booted game (T79/T21) must seed them from hunk 0. |
 | 2026-10-13 | 📌 | T78: `bonus::death::become_reward(c, slot, dx)` is h0+$23c14 for the enemies tasks; `touch_spud_damage` (h0+$2360e, $23662) itself stays unported. |
