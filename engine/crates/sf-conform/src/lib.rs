@@ -69,6 +69,9 @@ pub struct Outcome {
     /// Frames after such a lag on which the variables still differed, so the engine was re-synced
     /// from the original's memory (DESIGN §2.1), with the first variable that differed.
     pub resynced: Vec<(u32, String)>,
+    /// Frames whose picture matched only with the rows of the engine's beam races left out
+    /// (`FrameOut::beam_races`, owner 2026-10-13).
+    pub raced: Vec<u32>,
 }
 
 /// Why a `render` case leaves a frame out.
@@ -386,6 +389,12 @@ fn run_inner(
             rendered.as_ref(),
             &masked,
         );
+        if d.as_ref().is_none_or(|d| d.picture_diff.is_none())
+            && case.compare.picture
+            && compare::raced_only(&ours, &theirs.picture, compare::picture_rows_from(case))
+        {
+            outcome.raced.push(f);
+        }
         if d.as_ref().is_some_and(|d| d.picture_diff.is_some()) && std::env::var("T36_DUMP").is_ok() {
             let c = sf_core::to_rgb12(&ours.picture);
             for y in 0..theirs.picture.height.min(ours.picture.height) {

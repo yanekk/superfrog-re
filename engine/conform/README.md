@@ -129,3 +129,14 @@ A frame the original ends in the middle of a pass (its main loop not parked in
 does not compare it, nor the next frame's picture and Paula writes, which carry the rest of that
 pass; on the frame after, if a variable still differs, it re-syncs the engine from the original's
 memory and reports both (`lag … re-synced at …`). Such frames are rare; `frog-run-w1-1` has two.
+
+## Beam races
+
+The engine draws a step at once; the original's CPU or blitter writes the picture while the beam is
+drawing it, so a write landing near the beam shows on one frame or the next depending on a few
+cycles. A drawing step that wrote raster lines while the beam was within 4 lines of them
+(`sf_core::game::RACE_LINES`, owner 2026-10-13) reports them in `FrameOut::beam_races`. When a
+frame's picture differs from the original's, but matches with those lines left out
+(`compare::picture_except`), the frame is excused, never silently: it counts in `Outcome::raced`, and
+a green run prints `beam races excused at N frame(s)`. A pixel differing on any other line still
+diverges.

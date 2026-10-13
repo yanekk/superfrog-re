@@ -98,7 +98,7 @@ done · ⛔ blocked, needs a human.
 | T88 | slot-symbols-tables | T71; blocks T72 | ✅ | |
 | T89 | story-copper-bus-cycles | T52; blocks T53 | ✅ | |
 | T90 | story-draw-blits-oracle | T89; blocks T53 | ✅ | Review clean, one comment-wrap fix. Mutating `Fetch::takes` to drop plane 5 reddens frame 3 027 only; probe confirms one DMACON write ($8400 at 51,108), BLTPRI on past the last end, 40 BLTSIZEs. Doc's $2fca/$4fca/$8fca not written this frame (only $09f0, $cfca); timing unaffected. 1 test. |
-| T91 | slot-beam-races | T72 | ⬜ | |
+| T91 | slot-beam-races | T72 | ✅ | |
 | T92 | slot-load | T72 | ⬜ | |
 | T93 | slot-attract-draw | T72, T91, T92 | ⬜ | |
 | T94 | slot-interrupt-timing | T72, T91, T93; blocks T73 | ⬜ | |
