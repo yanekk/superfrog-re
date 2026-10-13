@@ -20,6 +20,10 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 |---|---|---|
 | 2026-10-13 | 🐞 | T75: `sf_conform::routine::sound_files` gave world 7 the W3–6 effect bank, unlike `audio::files_for`; any WB routine test playing an effect diverged. Fixed to the bonus bank. |
 | 2026-10-13 | 📌 | T75: at WB-1 the five shots are the only live objects (slots 0–4), with no hitboxes and touch `$7d4`; T78 adds the shot-hits-bonus-enemy case to `bonus_routines.rs`. |
+| 2026-10-13 | 📌 | T46 review, for T54: the fade writes' `HandlerBus` holds refresh and copper cycles only, no bitplane fetches; a handler held into the display (fed entries 155:88, 90:182) is timed uncontended. Those frames are green today. |
+| 2026-10-13 | 📌 | T46 added T49–T56 (owner: stop, split the rest; owner's yes given). T56 carries T46's done-when and blocks T21, T47, T48. |
+| 2026-10-13 | 🔄 | Owner, T46: conformance feeds the original's handler entry (patch 0005 `Amiga::irqs`) and, for draws, its end (`INTREQ=$20` beam); normal play estimates (entry line 0 cycle 10). |
+| 2026-10-13 | 📌 | T46: an oracle step runs until the CPU ends an instruction past the frame's end; a blit holding the CPU stretches it. Masks' DMACON $400 precedes the held handler iff the last mask blit started on a fetched line. |
 | 2026-10-13 | 📌 | T70 review: T76/T77 read the bonus paths from the bus with named addresses, as `items` and `audio::music` do, not from sf-assets `Tables` as T70's Done-when said. Kept; T79 still says `Tables`. |
 | 2026-10-13 | 🐞 | T70 review: T76's 122 spawned T77's 123 while T76/T77 ran in parallel; a spawn runs the init via `level::call`, asserting when unported. Fixed: 123 moved to T76, T77 depends on T76. |
 | 2026-10-13 | 🔄 | Owner, T70: frame cases wait for T36/T37 (like T16/T17); routines first. pir's context warning split all of T70, unbuilt, into T75–T79. Bonus row of `obj_flag_jumptab`: markers 1–15, 55. |

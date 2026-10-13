@@ -115,9 +115,9 @@ impl Fetch {
 
 /// A beam position: line and DMA cycle.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
-struct Beam {
-    line: u16,
-    h: u16,
+pub struct Beam {
+    pub line: u16,
+    pub h: u16,
 }
 
 impl Beam {
@@ -149,7 +149,18 @@ pub fn run_timed(word: &dyn Fn(u32, u16) -> u16, start: u32, fetch: Fetch) -> Ve
 
 /// [`run_timed`], `word(addr, line, h)` given the DMA cycle of the read as well (a list a routine
 /// rewrites word by word as the copper reads it).
-pub fn run_beam(word: &dyn Fn(u32, u16, u16) -> u16, start: u32, mut fetch: Fetch) -> Vec<Write> {
+pub fn run_beam(word: &dyn Fn(u32, u16, u16) -> u16, start: u32, fetch: Fetch) -> Vec<Write> {
+    run_bus(word, start, fetch, &mut Vec::new())
+}
+
+/// [`run_beam`], also giving every bus cycle the copper takes (its fetches, a WAIT's two cycles
+/// and its wake-up), in order: what the CPU finds taken.
+pub fn run_bus(
+    word: &dyn Fn(u32, u16, u16) -> u16,
+    start: u32,
+    mut fetch: Fetch,
+    bus: &mut Vec<Beam>,
+) -> Vec<Write> {
     let mut writes = Vec::new();
     let free = |fetch: &Fetch, b: Beam| {
         if b.h == 0xE0 {
@@ -179,12 +190,14 @@ pub fn run_beam(word: &dyn Fn(u32, u16, u16) -> u16, start: u32, mut fetch: Fetc
             break;
         }
         let w1 = word(pc, b.line, b.h);
+        bus.push(b);
         pc += 2;
         b = next_free(&fetch, b.plus(2));
         if b.line >= FRAME_LINES {
             break;
         }
         let w2 = word(pc, b.line, b.h);
+        bus.push(b);
         pc += 2;
         if w1 & 1 == 0 {
             let reg = w1 & 0x1FE;
@@ -206,7 +219,9 @@ pub fn run_beam(word: &dyn Fn(u32, u16, u16) -> u16, start: u32, mut fetch: Fetc
         let (comp, mask) = (w1 & 0xFFFE, (w2 & 0x7FFE) | 0x8001);
         // WAIT1 and WAIT2 (or SKIP1 and SKIP2) each take a bus cycle.
         b = next_free(&fetch, b.plus(2));
+        bus.push(b);
         b = next_free(&fetch, b.plus(2));
+        bus.push(b);
         if w2 & 1 == 1 {
             skip = comparator(b.plus(2), comp, mask);
             b = b.plus(2);
@@ -225,6 +240,7 @@ pub fn run_beam(word: &dyn Fn(u32, u16, u16) -> u16, start: u32, mut fetch: Fetc
         {
             b = b.plus(1);
         }
+        bus.push(b);
         b = b.plus(2);
     }
     writes
