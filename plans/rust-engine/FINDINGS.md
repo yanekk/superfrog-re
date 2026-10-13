@@ -18,6 +18,9 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-13 | 🐞 | T78, not fixed: `purity.rs`'s scanner flags a hex literal ending `f64`/`f32` (`0x2cf64`) as a float. Worked around with `0x2CF64`; the scanner should skip suffix checks on hex. |
+| 2026-10-13 | 📌 | T78: `reward_power_count` (h0+$23e20) is 9 in the executable, `shot_cycle_table` non-zero; `State::default` zeroes LAYOUT vars, so a booted game (T79/T21) must seed them from hunk 0. |
+| 2026-10-13 | 📌 | T78: `bonus::death::become_reward(c, slot, dx)` is h0+$23c14 for the enemies tasks; `touch_spud_damage` (h0+$2360e, $23662) itself stays unported. |
 | 2026-10-13 | 📌 | T51 review sweep: `Irq::next` (sf-oracle) has no direct test; only `sync::handler_entry` uses it. Left as is. |
 | 2026-10-13 | 📌 | T51 review: story_dbg `BLITS`/`REGS` after a load print only the load's last oracle step, not every step the load ran. Left as is. |
 | 2026-10-13 | 📌 | T51: a step's last blit's free/end often fall past the frame's end (`BlitEvent::next`) while `frames_run` stays 1; patch 0005 changed, so every worktree rebuilds vAmiga once (`tools/setup/oracle.sh`). |

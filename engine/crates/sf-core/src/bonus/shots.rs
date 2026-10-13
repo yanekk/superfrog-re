@@ -28,8 +28,8 @@ const EXTRA_SHOTS: [u32; 2] = [SHOTS + 0xc, SHOTS + 0x10];
 
 /// The shots' update (h0+$8070), shared by the three kinds.
 const SHOT_UPDATE: u32 = h0(0x8070);
-/// The reward's update (h0+$23e22): a shot passes through it.
-const REWARD_UPDATE: u32 = h0(0x23e22);
+/// The reward's update in shooter mode: a shot passes through it.
+const REWARD_UPDATE: u32 = super::death::REWARD_FLOAT;
 
 /// Template 110: a shot that flies straight (the cycle's three).
 pub static SHOT: ObjectKind = ObjectKind {

@@ -13,12 +13,15 @@ mod common;
 
 use common::*;
 use sf_conform::routine::{Gen, Rig, Setup};
+use sf_core::bonus::death::{
+    REWARD_FLOAT, REWARD_LIFE_COUNT, REWARD_POWER_COUNT, TOUCH_BONUS_ENEMY,
+};
 use sf_core::bonus::shots::{self, SHOT_CYCLE, SHOT_DELAY, SHOT_POWER, SHOTS};
 use sf_core::frog::{FROG, f};
 use sf_core::items::template;
-use sf_core::layout::{LAYOUT, VarId, h0};
+use sf_core::layout::{LAYOUT, Ram, VarId, h0};
 use sf_core::level::objects::{self, OBJ_SLOTS};
-use sf_core::level::{Hw, LevelCtx};
+use sf_core::level::{Hw, LevelCtx, n_clear};
 use sf_core::mem::Bus;
 
 const N: usize = 3000;
@@ -290,4 +293,319 @@ fn collide_all_in_shooter_mode_matches_the_original() {
     }
     enough("collide_all", compared, N);
     assert!(hits * 10 >= N, "only {hits} of {N} cases had a shot hit something");
+}
+
+// What a shot enemy turns into (`sf_core::bonus::death`, T78).
+
+const SHOOTER_MODE: u32 = h0(0x9dc);
+const MAP_ROWS: u32 = h0(0x17334);
+const RNG_STATE: u32 = h0(0x160d4);
+const FROG_LIVES: u32 = h0(0x82e);
+const WAVE: u32 = h0(0x23de6);
+const WAVE_END: u32 = h0(0x23e1e);
+const ARC: u32 = h0(0x23e90);
+const ARC_END: u32 = h0(0x23eaa);
+const LOOKS: [u32; 3] = [h0(0x2cf58), h0(0x2cf64), h0(0x2cf70)];
+
+/// A coin spawned at (`col`, `row`) in the first free slot, as pokes, its slot and its bob.
+fn spawned(rig: &Rig, col: u32, row: u32) -> (Vec<(u32, Vec<u8>)>, u32, u32) {
+    let (mut slot, mut bob) = (0, 0);
+    let pokes = prepared(rig, &[], |c| {
+        slot = objects::obj_spawn_cell_alt(c, template(0), cell(col, row), 0, 0xd).a0;
+        bob = c.bus.l(slot + 0x50);
+    });
+    assert_ne!(slot, 0);
+    (pokes, slot, bob)
+}
+
+/// A slot's position, the camera near it (so the despawn check goes either way) and the frog.
+fn place(g: &mut Gen, s: &mut Setup, slot: u32, x: u16, y: u16) {
+    s.poke_w(slot + 8, x);
+    s.poke_w(slot + 0xa, y);
+    s.poke_l(CAMERA_X, near(g, x.wrapping_sub(0xa0), 0x120) as u32 & 0xffff);
+    s.poke_l(CAMERA_Y, near(g, y.wrapping_sub(0x80), 0xc0) as u32 & 0xffff);
+}
+
+/// A map cell's word: a tile and a marker, the solid ($3a..) and slope ($3e, $3f) ones often.
+fn any_cell(g: &mut Gen) -> u16 {
+    let marker = pick_or_any(g, &[0, 0, 0x18, 0x3a, 0x3b, 0x3d, 0x3e, 0x3f]) & 0x3f;
+    (g.below(840) as u16) << 6 | marker
+}
+
+/// The map cells [`become_reward`](sf_core::bonus::death::become_reward) looks at for a slot at
+/// (`x`, `y`) moved `dx`: the column's cell two above, one above, its own and the one below.
+fn poke_ground(rig: &Rig, g: &mut Gen, s: &mut Setup, x: u16, y: u16, dx: u16) {
+    let col = x.wrapping_add(dx).wrapping_sub(8) >> 4;
+    let row = (y & 0xfff0).wrapping_add(0x10) >> 4;
+    let _ = rig;
+    let at = MAP_ROWS + 4 * row as u32;
+    let m = bonus_level();
+    let rows = u32::from_be_bytes(std::array::from_fn(|k| m.byte(at + k as u32)));
+    let own = rows + 2 * col as u32 + 2;
+    for k in [-2i32, -1, 0, 1] {
+        let v = any_cell(g);
+        s.poke_w(own.wrapping_add((k * 0x260) as u32), v);
+    }
+}
+
+#[test]
+fn touch_bonus_enemy_matches_the_original() {
+    let mut rig = bonus_rig();
+    let mut g = Gen::new(781);
+    let mut compared = 0;
+    for case in 0..N {
+        let (pokes, slot, _) = spawned(&rig, 20 + g.below(250) as u32, 4 + g.below(70) as u32);
+        let mut s = Setup {
+            pokes,
+            ..Setup::default()
+        };
+        s.poke_w(slot + 0x1c, pick_or_any(&mut g, &[0, 1, 2, 3, 0xffff, 0x7fff, 0x8000]));
+        s.poke_w(SHOT_POWER, pick_or_any(&mut g, &[0, 1, 2, 3, 4]));
+        s.a[5] = slot;
+        s.a[0] = FROG;
+        if rig.check("touch_bonus_enemy", case, 0x238e2, &s, |c| {
+            sf_core::bonus::death::touch_bonus_enemy(c, slot, 0)
+        }) {
+            compared += 1;
+        }
+    }
+    enough("touch_bonus_enemy", compared, N);
+}
+
+/// The RNG anywhere, shooter mode on or off, and the reward counters around their turns.
+fn reward_setup(g: &mut Gen, s: &mut Setup) {
+    s.poke_l(RNG_STATE, g.next() as u32);
+    s.poke_l(RNG_STATE + 4, g.next() as u32);
+    s.poke_w(SHOOTER_MODE, g.below(2) as u16);
+    s.poke_w(REWARD_LIFE_COUNT, pick_or_any(g, &[0, 0x26, 0x27, 0x28, 3]));
+    s.poke_w(REWARD_POWER_COUNT, pick_or_any(g, &[0, 8, 9, 10, 9]));
+}
+
+#[test]
+fn death_fall_matches_the_original() {
+    let mut rig = bonus_rig();
+    let mut g = Gen::new(782);
+    let mut compared = 0;
+    let mut became = 0;
+    for case in 0..N {
+        let (col, row) = (20 + g.below(250) as u32, 4 + g.below(70) as u32);
+        let (pokes, slot, bob) = spawned(&rig, col, row);
+        let mut s = Setup {
+            pokes,
+            ..Setup::default()
+        };
+        let (x, y) = (near(&mut g, (col * 16) as u16, 0x10), near(&mut g, (row * 16) as u16, 0x10));
+        let (x, y) = (x.clamp(0x140, 0x1180), y.clamp(0x40, 0x4a0));
+        place(&mut g, &mut s, slot, x, y);
+        poke_ground(&rig, &mut g, &mut s, x, y, 8);
+        reward_setup(&mut g, &mut s);
+        let fall = pick_or_any(&mut g, &[0x7530, 0x752f, 0x7531, 0x8000, 0x7fff, 0]);
+        s.poke_w(bob + 0x1a, fall);
+        s.a[0] = slot;
+        if rig.check("death_fall", case, 0x23956, &s, |c| {
+            sf_core::bonus::death::death_fall(c, slot, 0)
+        }) {
+            compared += 1;
+            became += n_clear(fall.wrapping_sub(0x7530)) as usize;
+        }
+    }
+    enough("death_fall", compared, N);
+    assert!(became * 4 >= N, "only {became} of {N} cases became a reward");
+}
+
+#[test]
+fn become_reward_matches_the_original() {
+    let mut rig = bonus_rig();
+    let mut g = Gen::new(783);
+    let mut compared = 0;
+    let mut kinds = [[0usize; 3]; 2];
+    for case in 0..N {
+        let (col, row) = (20 + g.below(250) as u32, 4 + g.below(70) as u32);
+        let (pokes, slot, bob) = spawned(&rig, col, row);
+        let mut s = Setup {
+            pokes,
+            ..Setup::default()
+        };
+        let x = (near(&mut g, (col * 16) as u16, 0x10)).clamp(0x140, 0x1180);
+        let y = (near(&mut g, (row * 16) as u16, 0x10)).clamp(0x40, 0x4a0);
+        place(&mut g, &mut s, slot, x, y);
+        let dx = pick_or_any(&mut g, &[8, 0, 0xfff8, 0x10]) & 0x1f;
+        poke_ground(&rig, &mut g, &mut s, x, y, dx);
+        reward_setup(&mut g, &mut s);
+        s.poke_l(slot + 0xc, g.next() as u32);
+        s.d[0] = dx as u32;
+        s.a[0] = slot;
+        let shooter = s.pokes.iter().rev().find(|p| p.0 == SHOOTER_MODE).unwrap().1[1] as usize;
+        let mut look = 0;
+        if rig.check("become_reward", case, 0x23c14, &s, |c| {
+            sf_core::bonus::death::become_reward(c, slot, dx);
+            look = c.bus.l(bob + 0x28);
+        }) {
+            compared += 1;
+            if let Some(k) = LOOKS.iter().position(|&l| l == look) {
+                kinds[shooter][k] += 1;
+            }
+        }
+    }
+    enough("become_reward", compared, N);
+    for (mode, k) in kinds.iter().enumerate() {
+        assert!(k.iter().all(|&n| n > 0), "shooter mode {mode}: kinds met {k:?}");
+    }
+}
+
+#[test]
+fn reward_float_matches_the_original() {
+    let mut rig = bonus_rig();
+    let mut g = Gen::new(784);
+    let mut compared = 0;
+    for case in 0..N {
+        let (col, row) = (20 + g.below(250) as u32, 4 + g.below(70) as u32);
+        let (pokes, slot, _) = spawned(&rig, col, row);
+        let mut s = Setup {
+            pokes,
+            ..Setup::default()
+        };
+        s.poke_w(SHOOTER_MODE, 1);
+        s.poke_w(slot + 8, near(&mut g, (col * 16) as u16, 0x10));
+        s.poke_w(slot + 0x60, near(&mut g, (row * 16) as u16, 0x10));
+        // Along the wave, at its end now and then.
+        let at = if g.one_in(4) { WAVE_END } else { WAVE + 2 * g.below(0x1c) as u32 };
+        s.poke_l(slot + 0x6c, at);
+        s.poke_l(slot + 0x70, WAVE);
+        s.poke_w(slot + 0x5c, pick_or_any(&mut g, &[1, 2, 0x20, 0]));
+        s.a[0] = slot;
+        if rig.check("reward_float", case, 0x23e22, &s, |c| {
+            sf_core::bonus::death::reward_float(c, slot, 0)
+        }) {
+            compared += 1;
+        }
+    }
+    enough("reward_float", compared, N);
+}
+
+#[test]
+fn reward_arc_matches_the_original() {
+    let mut rig = bonus_rig();
+    let mut g = Gen::new(785);
+    let mut compared = 0;
+    for case in 0..N {
+        let (pokes, slot, _) = spawned(&rig, 20 + g.below(250) as u32, 4 + g.below(70) as u32);
+        let mut s = Setup {
+            pokes,
+            ..Setup::default()
+        };
+        s.poke_w(SHOOTER_MODE, 0);
+        s.poke_l(slot + 0x64, g.next() as u32);
+        let at = if g.one_in(4) { ARC_END } else { ARC + 2 * g.below(0xe) as u32 };
+        s.poke_l(slot + 0x54, at);
+        s.a[0] = slot;
+        if rig.check("reward_arc", case, 0x23e6c, &s, |c| {
+            sf_core::bonus::death::reward_arc(c, slot, 0)
+        }) {
+            compared += 1;
+        }
+    }
+    enough("reward_arc", compared, N);
+}
+
+#[test]
+fn touch_reward_matches_the_original() {
+    let mut rig = bonus_rig();
+    let slots = shot_slots(&rig);
+    let mut g = Gen::new(786);
+    let mut compared = 0;
+    for case in 0..N {
+        let (pokes, slot, bob) = spawned(&rig, 20 + g.below(250) as u32, 4 + g.below(70) as u32);
+        let mut s = Setup {
+            pokes,
+            ..Setup::default()
+        };
+        s.poke_w(SHOOTER_MODE, g.below(2) as u16);
+        let at = if g.one_in(4) { ARC + 2 * g.below(0xe) as u32 } else { ARC_END };
+        s.poke_l(slot + 0x54, if g.one_in(8) { h0(0x23e68) } else { at });
+        let look = if g.one_in(8) { h0(0x2ce04) } else { g.pick(&LOOKS) };
+        s.poke_l(bob + 8, look);
+        s.poke_w(SHOT_POWER, pick_or_any(&mut g, &[0, 0, 1, 2]));
+        s.poke_w(FROG_LIVES, small_word(&mut g));
+        s.poke_l(FROG + 0x5e, if g.one_in(4) { g.next() as u32 } else { g.below(100_000) as u32 });
+        s.poke_w(FROG + 0x7e, small_word(&mut g));
+        for &k in &slots {
+            s.poke_w(k + 0xc, pick_or_any(&mut g, &[0x18, 0x1d, 0x1e]));
+        }
+        s.a[5] = slot;
+        s.a[0] = FROG;
+        if rig.check("touch_reward", case, 0x23eac, &s, |c| {
+            sf_core::bonus::death::touch_reward(c, slot, 0)
+        }) {
+            compared += 1;
+        }
+    }
+    enough("touch_reward", compared, N);
+}
+
+#[test]
+fn collide_all_with_a_shot_hitting_a_bonus_enemy_matches_the_original() {
+    let mut rig = bonus_rig();
+    let slots = shot_slots(&rig);
+    let mut g = Gen::new(787);
+    let mut compared = 0;
+    let (mut hits, mut kills) = (0, 0);
+    for case in 0..N {
+        let mut s = Setup {
+            hw: any_input(&mut g),
+            ..Setup::default()
+        };
+        // Bonus enemies (coins given the touch and the hit points of one) around a spot, now
+        // and then a reward among them, the shots over them.
+        let (px, py) = (0x140 + g.below(4000) as u32, 64 + g.below(1100) as u32);
+        let n = 1 + g.below(5);
+        let mut pre = Vec::new();
+        for _ in 0..n {
+            let col = (px / 16 + g.below(5) as u32).saturating_sub(2);
+            let row = (py / 16 + g.below(5) as u32).saturating_sub(2);
+            let hp = pick_or_any(&mut g, &[0, 1, 2, 5]);
+            pre.push((col, row, hp, g.one_in(6)));
+        }
+        let mut enemies = Vec::new();
+        s.pokes = prepared(&rig, &[], |c| {
+            for &(col, row, hp, reward) in &pre {
+                let r = objects::obj_spawn_cell_alt(c, template(0), cell(col, row), 0, 0xd);
+                if r.a0 == 0 {
+                    continue;
+                }
+                c.bus.set_l(r.a0 + 0x10, TOUCH_BONUS_ENEMY);
+                c.bus.set_w(r.a0 + 0x1c, hp);
+                if reward {
+                    c.bus.set_l(r.a0 + 4, REWARD_FLOAT);
+                } else {
+                    enemies.push(r.a0);
+                }
+            }
+            objects::obj_build_hitboxes(c);
+        });
+        for &slot in &slots {
+            s.poke_w(slot + 8, near(&mut g, px as u16, 0x30));
+            s.poke_w(slot + 0xa, near(&mut g, py as u16, 0x30));
+        }
+        s.poke_w(SHOT_POWER, pick_or_any(&mut g, &[0, 1, 2, 3]));
+        s.poke_w(FROG + f::X, near(&mut g, px as u16, 0x40));
+        s.poke_w(FROG + f::Y, near(&mut g, py as u16, 0x40));
+        s.poke_w(SPRITES_HIDDEN, g.one_in(10) as u16);
+        s.poke_l(CAMERA_X, px.saturating_sub(0xa0));
+        s.poke_l(CAMERA_Y, py.saturating_sub(0x80));
+        let (mut hit, mut killed) = (false, false);
+        if rig.check("collide_all", case, 0xd0cc, &s, |c| {
+            let before: Vec<u16> = enemies.iter().map(|&k| c.bus.w(k + 0x1c)).collect();
+            objects::collide_all(c);
+            hit = enemies.iter().zip(&before).any(|(&k, &v)| c.bus.w(k + 0x1c) != v);
+            killed = enemies.iter().any(|&k| c.bus.l(k + 4) == h0(0x23956));
+        }) {
+            compared += 1;
+            hits += hit as usize;
+            kills += killed as usize;
+        }
+    }
+    enough("collide_all", compared, N);
+    assert!(hits * 5 >= N, "only {hits} of {N} cases had a shot hit a bonus enemy");
+    assert!(kills * 10 >= N, "only {kills} of {N} cases killed one");
 }
