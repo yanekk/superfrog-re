@@ -18,6 +18,8 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-14 | 📌 | T34: the front's `Yield::Busy` lets work spilled past a frame's end run during the next vertical blank; the original's interrupt stops it. Game over resumes after the handler; other `Busy` users may be early by its length. |
+| 2026-10-14 | 🐞 | Not T34's: `slot-load` diverges at frame 0 on the feature branch: `slot::resume` is never called (`Front::resume` lacks it, "never used" warning), so the engine shows nothing. T95's to wire. |
 | 2026-10-13 | 🐞 | Not T37's (its review's sweep): the level's `kbd_poll` (`Game::sdr`, `level/clock.rs`) re-reads a key's byte every poll; the original reads it once, then `$ff` (`frog-esc-w1-1`, frames 61→63). Only the power-on `$7e` byte repeats. |
 | 2026-10-13 | 🐞 | Not T37's (same sweep): `Front` resumed from memory (`front/mod.rs`, `Keyboard::from_keys(key_down, key_up)`) re-reads a key byte already handled, where the original reads `$ff`. |
 | 2026-10-13 | 🔄 | Owner, T37: T100 front-vbl-timing added (first numbered T96, renumbered at merge; blocks T21). The fade in's copper reads colours mid-step, by the music player's per-row timing; `frog-pit-w1-1` leaves the picture out on frames 308–323 meanwhile. |

@@ -56,7 +56,7 @@ done · ⛔ blocked, needs a human.
 | T31 | render-remaining-levels | T13 | ✅ | |
 | T32 | story-intro | T20; blocks T21 | ✅ | |
 | T33 | attract-demo | T16, T20 | ⬜ | |
-| T34 | game-over | T15, T20; blocks T21 | ⬜ | |
+| T34 | game-over | T15, T20; blocks T21 | 🔍 | `front/gameover.rs`; level VBL in front while `logic_running`. 4 cases green (last life, fire, ESC, time-up), `game_over` test. Deviations: new `game-over` sync transplants the frame before `game_over_seq` (its first can end mid-pass); sign drawn by two passes, no rising; title after a game ends its load at `Left($1102)`. |
 | T35 | end-sequence | T20; blocks T21 | ✅ | |
 | T36 | items-on-the-beam | T15 | ✅ | |
 | T37 | level-restart | T36; blocks T34 | ✅ | |
@@ -109,7 +109,7 @@ done · ⛔ blocked, needs a human.
 A Notes cell holds what was built or what the review found, the test count, and one line per
 deviation from the task doc. A ✅ task's cell may be cut to one line once the next task has been reviewed.
 
-**Review queue:** *(empty)*
+**Review queue:** T34
 
 ## Blocked on the user
 
