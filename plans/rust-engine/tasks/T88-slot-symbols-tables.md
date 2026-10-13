@@ -26,6 +26,10 @@ symbols may not overlap: `anim_record` ends at $3b1ae, the two patterns abut.
 
 - `re/symbols.toml`
 
+## Interface
+
+The six table names, the same as `sf_assets::Tables`' `slot_*` fields; no code reads them.
+
 ## Tests
 
 - [ ] `venv/bin/python -m unittest tools.test_re_listing` green.

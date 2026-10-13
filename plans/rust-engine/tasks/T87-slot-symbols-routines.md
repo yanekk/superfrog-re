@@ -24,11 +24,17 @@ prize `d7` names, lighting the ladder), $5528 `slot_collect`, $5628 `slot_jackpo
 0,9,$18, a pattern row into the lamps), $62f4 `slot_digits`, $645e `slot_draw_lamps` (blits each
 lamp on the sixth plane), $6558 `slot_draw_reels` (from FRUC), $661e `slot_init` (reels 0,$b,$16,
 lamps pointed at their rects), $6f3a `print_text` (also the tally's and the info screen's; sets
-`text_plane`). Check each name is unused first (none was on 2026-10-13).
+`text_plane`). Check each name is unused first (none was on 2026-10-13). `slot_count`, `slot_hilo`,
+`slot_menu` and `slot_attract` are T71's LAYOUT variables ($515a, $5988, $6152, $62ec), whose names
+are the ones in `re/symbols.toml`: give those four routines other names.
 
 ## Files
 
 - `re/symbols.toml`
+
+## Interface
+
+The routine names above, for listings and the slot tasks' doc comments; no code reads them.
 
 ## Tests
 
