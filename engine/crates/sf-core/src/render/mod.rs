@@ -277,9 +277,6 @@ impl<'a> Mem<'a> {
                 break;
             }
             let fetched = line + 2 * 8 * ((a - addr) / 2);
-            if crate::level::DEBUG.load(std::sync::atomic::Ordering::Relaxed) && self.line.get() == 159 {
-                eprintln!("  FETCH line 191 ${addr:x}+{} written {}.{} fetched {}.{} -> {}", a - addr, at / 454, at % 454, fetched / 454, fetched % 454, if at >= fetched { "old" } else { "new" });
-            }
             // The first write the beam has not seen holds what it sees.
             if at >= fetched && done != Some(a) {
                 out.get_or_insert_with(|| b.to_vec())[(a - addr) as usize] = old;
