@@ -26,6 +26,10 @@ the Paula writes match; the pointer hidden by the slot copper list's DMACON $002
 `engine/crates/sf-core/src/{slot/mod.rs,audio/mod.rs,render/}`,
 `engine/conform/cases/slot-attract.toml`, `engine/crates/sf-conform/tests/front.rs`.
 
+## Interface
+
+`slot::interrupt_lines`; `AudioDriver::sfx_active`; `render::SpriteDma` (opt-in).
+
 ## Tests
 
 - [ ] `slot-attract` (sync `slot = "slot-none"`, 300 frames) green, in the test block.

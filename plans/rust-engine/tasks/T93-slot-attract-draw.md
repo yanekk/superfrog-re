@@ -30,6 +30,11 @@ saw it, races excused through T91's `FrameOut::beam_races`.
 `engine/crates/sf-core/src/slot/{mod.rs,draw.rs}`, `front/blit.rs` if a minterm is missing;
 `engine/conform/cases/slot-attract.toml` (sync `slot = "slot-none"`; start at 60 frames).
 
+## Interface
+
+`slot::draw::Draw` (a routine of steps yielding `Busy(line)`); fills T91's
+`FrameOut::beam_races`.
+
 ## Tests
 
 - [ ] `slot-attract` at 60 frames green on vars and picture (races excused, counted).

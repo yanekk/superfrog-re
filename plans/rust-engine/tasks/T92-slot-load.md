@@ -42,6 +42,10 @@ case's sync point, step the oracle, print per frame the chain (h0 offsets), `irq
 `Front::resume`), `scene.rs` (`Scene::Slot { coins_in }`), `game.rs`;
 `engine/conform/cases/slot-load.toml` (sync `slot = "slot-none"`, ~17 frames).
 
+## Interface
+
+`Scene::Slot { coins_in }`; `Routine::Slot(slot::Routine)`, `Routine::SlotOver`.
+
 ## Tests
 
 - [ ] `slot-load` green, in sf-conform's tests (`tests/front.rs`).

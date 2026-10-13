@@ -29,6 +29,11 @@ them is excused (owner, 2026-10-13), counted and printed, never silently.
 `engine/crates/sf-core/src/{game.rs,front/mod.rs}`, `engine/crates/sf-conform/src/{compare.rs,
 report.rs,lib.rs,main.rs}`, `engine/conform/README.md`.
 
+## Interface
+
+`FrameOut::beam_races: Vec<(u16, u16)>`; `compare::picture_except(ours, theirs, rows)`;
+`Outcome::raced`.
+
 ## Tests
 
 - [ ] sf-core unit test: the race-row computation (a step written on lines 120..130 with the beam
