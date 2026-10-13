@@ -532,6 +532,10 @@ layout! {
     /// `obj_templates` (h0+$1c6e2): 160 templates of `$ae` bytes; a spawner writes the position
     /// into one before copying its head into a slot (docs/09 "The slot record").
     ObjTemplates = "obj_templates", h0(0x1c6e2), Width::Bytes(160 * 0xae);
+    /// The bonus level's reward counters (`bonus::death`): `reward_life_count` (h0+$23de4),
+    /// `reward_power_count` (h0+$23e20, 9 in the executable).
+    RewardLifeCount = "reward_life_count", h0(0x23de4), Width::W;
+    RewardPowerCount = "reward_power_count", h0(0x23e20), Width::W;
     /// `bob_draw_list` (h0+$2970a..): a 0, the bobs to draw, a 0.
     BobDrawList = "bob_draw_list", h0(0x2970a), Width::Bytes(0xa8);
     /// `bob_records` (h0+$297b2..$2aee2): the spud's bob and the 20 objects' (`$11c` bytes,
