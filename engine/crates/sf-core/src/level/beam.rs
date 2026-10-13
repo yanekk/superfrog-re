@@ -128,10 +128,30 @@ pub enum Cost {
     PanelBlit,
     /// The rest: the pause, the passage, the extra life, the time.
     PassTail,
+    // --- Between levels: `level_init_wN` (T37, the restart after a death) ---
+    /// `obj_free_all` (h0+$1b9ee), the frog's reset and the start of h0+$1995a.
+    InitStart,
+    /// h0+$1995a's parts: a frame record set (h0+$18e8a), a frame record's blit parameters
+    /// (h0+$18f6c), a bob record's sub-records (h0+$18ef8), a byte of the mask cleared by the CPU,
+    /// ten words of the mask's clear blit and of a plane's OR into it (the blitter's priority on),
+    /// and the sprites' set-up after.
+    FrameRecord,
+    BlitParams,
+    SubRecords,
+    MaskClearByte,
+    MaskClear10,
+    MaskOr10,
+    BobSprites,
+    /// A byte of the panel cleared (h0+$8bf6), `level_start_point`'s camera and scroller reset,
+    /// and a cell `map_spawn_scan_screen` (h0+$1777c) looks at (its handler called for every
+    /// cell, all registers saved and restored).
+    PanelClearByte,
+    StartPoint,
+    ScreenScanCell,
 }
 
 impl Cost {
-    pub const COUNT: usize = Cost::PassTail as usize + 1;
+    pub const COUNT: usize = Cost::ScreenScanCell as usize + 1;
     pub const ALL: [Cost; Cost::COUNT] = [
         Cost::VblEntry,
         Cost::FrogEntry,
@@ -192,6 +212,17 @@ impl Cost {
         Cost::Panel,
         Cost::PanelBlit,
         Cost::PassTail,
+        Cost::InitStart,
+        Cost::FrameRecord,
+        Cost::BlitParams,
+        Cost::SubRecords,
+        Cost::MaskClearByte,
+        Cost::MaskClear10,
+        Cost::MaskOr10,
+        Cost::BobSprites,
+        Cost::PanelClearByte,
+        Cost::StartPoint,
+        Cost::ScreenScanCell,
     ];
 }
 
@@ -258,6 +289,17 @@ impl Cost {
             Cost::Panel => 1327,
             Cost::PanelBlit => 647,
             Cost::PassTail => 1144,
+            Cost::InitStart => 15620,
+            Cost::FrameRecord => 337,
+            Cost::BlitParams => 418,
+            Cost::SubRecords => 1000,
+            Cost::MaskClearByte => 30,
+            Cost::MaskClear10 => 41,
+            Cost::MaskOr10 => 62,
+            Cost::BobSprites => 3000,
+            Cost::PanelClearByte => 29,
+            Cost::StartPoint => 2000,
+            Cost::ScreenScanCell => 386,
         }
     }
 }
@@ -270,6 +312,17 @@ pub const COSTS: [u32; Cost::COUNT] = {
         a[k] = Cost::ALL[k].cycles();
         k += 1;
     }
+    a
+};
+
+/// [`COSTS`] for work done with the screen blank between levels (`level_init_wN`): no plane
+/// fetch takes the CPU's or the blitter's cycles, and the first screen's copies are called
+/// directly, not from the copper interrupt.
+pub const BLANK_COSTS: [u32; Cost::COUNT] = {
+    let mut a = COSTS;
+    a[Cost::ScrollTile as usize] = 1313;
+    a[Cost::IrqBlits as usize] = 450;
+    a[Cost::IrqPlane as usize] = 270;
     a
 };
 
@@ -511,6 +564,8 @@ pub struct Frames {
     pub pending: Option<Pending>,
     /// What the step's own frame wrote to the display's memory.
     pub log: Option<crate::mem::WriteLog>,
+    /// `level_frame_loop` returned in the step's own frame, the beam on this line (T37).
+    pub ended: Option<u16>,
 }
 
 impl Frames {

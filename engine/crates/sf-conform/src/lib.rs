@@ -161,6 +161,8 @@ fn run_inner(
     let mut disks = (case.sync == SyncPoint::EndSequence).then(|| sync::Disks::at(&prev));
     // The interrupts the oracle's last step took (one past its end is the next frame's).
     let mut irqs = Vec::new();
+    // The original's last handler, taken too late to work in its step (it counts in the next).
+    let mut late = false;
     for f in 0..case.frames {
         let input = case.script.input_at(of);
         frozen.apply(&mut amiga, &display);
@@ -169,6 +171,8 @@ fn run_inner(
             .unwrap_or_else(|e| panic!("{}: oracle, frame {of}: {e}", case.name));
         let mut entry = sync::handler_entry(&irqs, &amiga.irqs());
         let mut handler_end = sync::handler_end(&theirs.paula, resumes);
+        let handlers;
+        (handlers, late) = sync::handlers(late, &irqs, &amiga.irqs(), &theirs.paula);
         irqs = amiga.irqs();
         if let Some(d) = disks.as_mut() {
             d.serve(&mut amiga);
@@ -184,8 +188,11 @@ fn run_inner(
         if stepped {
             // The original's step ran two video frames (a blit held its CPU through the first's
             // end and the whole second): the engine runs both, compared together (owner, T50).
+            // Each engine frame has a handler as long as the original ran one for it; the rest
+            // merge into the next blank (T55).
             let mut held = Vec::new();
             if amiga.frames_run() == 2 {
+                game.set_blank_merged(Some(handlers == 0));
                 held = game.step_paced(input, pacing).paula;
             }
             game.anchor_writes(&theirs.paula.iter().map(|w| (w.vpos, w.hpos)).collect::<Vec<_>>());
@@ -193,6 +200,7 @@ fn run_inner(
             let before = game.clone();
             game.set_handler_entry(entry);
             game.set_handler_end(handler_end);
+            game.set_blank_merged(Some(handlers < amiga.frames_run()));
             ours = game.step_paced(input, pacing);
             ours.paula.splice(0..0, held);
             if let Some(end) = ours.load {

@@ -217,6 +217,9 @@ pub struct Story {
     pub(crate) handler_entry: Option<(u16, u16)>,
     /// For conformance: where the original's handler of the next frame ended (T54).
     pub(crate) handler_end: Option<crate::game::HandlerEnd>,
+    /// For conformance: whether the next frame's blank goes without a handler (merged into the
+    /// next one's), as the original's did.
+    pub(crate) blank_merged: Option<bool>,
     frame: u32,
 }
 
@@ -357,6 +360,7 @@ impl Story {
             load_state: Vec::new(),
             handler_entry: None,
             handler_end: None,
+            blank_merged: None,
             frame: 0,
         }
     }
@@ -437,6 +441,8 @@ impl Story {
             cx.load = Some(LoadEnd::Reached(boot::RET_FIRST_WAIT));
             cx.line = BOOT_START_LINE;
         }
+        // Conformance's feed is for this frame only, whatever stage it is in.
+        let merged = self.blank_merged.take();
         let mut resync = Vec::new();
         let mut after_handler: Option<(u16, Vec<u8>)> = None;
         let wait = match &mut self.stage {
@@ -458,6 +464,7 @@ impl Story {
                     load_state,
                     entry,
                     end,
+                    merged,
                 );
                 *n += 1;
                 // A load's frame shows the list set before the load, as the load left memory.

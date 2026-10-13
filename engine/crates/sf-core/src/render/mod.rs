@@ -445,12 +445,13 @@ pub(crate) fn screen(
     carry: Option<Fetch>,
 ) -> (Picture, Vec<Write>) {
     let mem = Mem::new(state, data);
+    // The level's own list (after its loop, T37) shows its playfield as a level frame does.
     draw(
         &mem,
         &|a, line, _| copper_word(a, line),
         cop1lc,
         0,
-        false,
+        cop1lc == LEVEL_COPPER,
         carry,
     )
 }

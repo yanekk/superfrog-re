@@ -38,24 +38,31 @@ fn main() {
     );
     let mut of = 0u32;
     let mut irqs = Vec::new();
+    // The original's last handler, taken too late to work in its step (it counts in the next).
+    let mut late = false;
     for f in 0..frames {
         let input = case.script.input_at(of);
         let resumes = sync::intro_resumes(&amiga);
         let mut cap = sync::step_inserting(&mut amiga, input).unwrap();
         let mut entry = sync::handler_entry(&irqs, &amiga.irqs());
         let mut handler_end = sync::handler_end(&cap.paula, resumes);
+        let handlers;
+        (handlers, late) = sync::handlers(late, &irqs, &amiga.irqs(), &cap.paula);
+        let feed = std::env::var("NOFEED").is_err();
         irqs = amiga.irqs();
         of += 1;
         let mut pacing = sync::pacing(&amiga.cpu(), &sync::core_memory(amiga.memory()), &cap.paula);
         // A two-frame step of the original: the engine runs both frames (as `sf_conform::run`).
         let mut held = Vec::new();
         if amiga.frames_run() == 2 {
+            game.set_blank_merged(feed.then_some(handlers == 0));
             held = game.step_paced(input, pacing).paula;
         }
         let before = game.clone();
-        if std::env::var("NOFEED").is_err() {
+        if feed {
             game.set_handler_entry(entry);
             game.set_handler_end(handler_end);
+            game.set_blank_merged(Some(handlers < amiga.frames_run()));
         }
         let mut out = game.step_paced(input, pacing);
         out.paula.splice(0..0, held);
@@ -296,6 +303,14 @@ fn main() {
 /// `BLITS=1`, `REGS=1` and `CMP=addr:len` (T51): what times the original's blits, its CPU
 /// registers, and the bytes in a range that differ between it and the engine.
 fn extras(amiga: &sf_oracle::Amiga, game: &Game, m: &sf_core::AmigaMemory) {
+    if std::env::var("IRQS").is_ok() {
+        let irqs: Vec<String> = amiga
+            .irqs()
+            .iter()
+            .map(|i| format!("L{}@{}{},{}", i.level, if i.next { "+" } else { "" }, i.vpos, i.hpos))
+            .collect();
+        println!("  irqs (frames run {}) {}", amiga.frames_run(), irqs.join(" "));
+    }
     if std::env::var("BLITS").is_ok() {
         let writes: Vec<String> = amiga
             .cpu_writes()

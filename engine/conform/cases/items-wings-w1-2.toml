@@ -1,0 +1,12 @@
+# W1-2 with its items live: the wings at 149,11 and the flight (it lasts until a life is lost:
+# only `frog_life_reset` clears it), coins on the way, the fake wall it flies through, the spud at
+# 129,13 and the spud thrown; score, the panel and the picture every frame (T83).
+sync = { level = "W1-2" }
+script = "items-wings-w1-2"
+frames = 650
+resync = false
+
+[[exclude]]
+what = "enemies"
+note = "the original's marker spawners the engine has none for (enemies, the world's scenery)"
+task = "T16–T18"

@@ -14,6 +14,7 @@ use sf_assets::{LevelId, World};
 
 use crate::frog::{self, FROG};
 use crate::layout::{H0, H1, H2, H3, LAYOUT, h0, h1};
+use crate::level::beam::Cost;
 use crate::level::{Dispatch, Hw, LevelCtx, camera, collision, scroll, standard_dispatch};
 use crate::mem::Bus;
 use crate::render::{DisplayData, HERO_SPRITES};
@@ -145,6 +146,25 @@ fn new_game(c: &mut LevelCtx, id: LevelId) {
     let (world, level) = if id.world == World::Final { (6, 4) } else { numbers(id) };
     b.set_l(START_WORLD, world);
     b.set_l(START_LEVEL, level);
+}
+
+/// The level the state is in (`world`, `level`, h0+$40da, $40de; the final level by
+/// `final_level_flag`); `None` for numbers no level has. The map set does not matter to a level's
+/// set-up.
+pub fn current(b: &Bus) -> Option<LevelId> {
+    let world = match b.l(WORLD) {
+        _ if b.w(camera::FINAL_LEVEL_FLAG) != 0 => World::Final,
+        1 => World::W1,
+        2 => World::W2,
+        3 => World::W3,
+        4 => World::W4,
+        5 => World::W5,
+        6 => World::W6,
+        7 => World::Bonus,
+        _ => return None,
+    };
+    let level = if world == World::Final { 1 } else { b.l(LEVEL) as u8 };
+    Some(LevelId { world, level, alt: false })
 }
 
 /// `world` and `level` for `id`.
@@ -296,7 +316,7 @@ fn find_start(b: &mut Bus) {
 }
 
 /// `level_init_wN` (h0+$8cd8 …): the objects, the frog, the panel, the camera and the first scroll.
-fn level_init(c: &mut LevelCtx, id: LevelId) {
+pub(crate) fn level_init(c: &mut LevelCtx, id: LevelId) {
     crate::level::objects::obj_free_all(c);
     let (world, _) = numbers(id);
     let (demo, a02, offset): (u32, u32, u32) = match (id.world, world) {
@@ -319,9 +339,11 @@ fn level_init(c: &mut LevelCtx, id: LevelId) {
     b.set_l(h0(0xa02), a02);
     b.set_l(OBJ_WORLD_OFFSET, offset);
     frog::frog_reset(b);
+    c.spend(Cost::InitStart);
     crate::level::bobs::bob_setup(c);
+    panel_clear(&mut c.bus);
+    c.spend_n(Cost::PanelClearByte, PANEL_BYTES);
     let b = &mut c.bus;
-    panel_clear(b);
     if bonus {
         // level_init_lb (h0+$8c3a): the start at the top, lower on the second and third visits
         // (h0+$8cd6 counts them; a game started at the bonus level's code is a first visit).
@@ -339,6 +361,9 @@ fn level_init(c: &mut LevelCtx, id: LevelId) {
     }
 }
 
+/// The panel's bytes (five planes).
+const PANEL_BYTES: u32 = 0xd20;
+
 /// h0+$8bf6: the panel's planes into the copper list (`level_copper+$f0`), and cleared.
 fn panel_clear(b: &mut Bus) {
     let panel = crate::layout::h3(0x4b390);
@@ -348,7 +373,7 @@ fn panel_clear(b: &mut Bus) {
         b.set_w(list + 8 * k + 6, p as u16);
         b.set_w(list + 8 * k + 2, (p >> 16) as u16);
     }
-    for k in 0..0xd20 {
+    for k in 0..PANEL_BYTES {
         b.set_b(panel + k, 0);
     }
 }
@@ -380,6 +405,7 @@ fn start_point(c: &mut LevelCtx) {
         b.set_l(camera::CAMERA_Y, 0x20);
     }
     scroller_reset(b);
+    c.spend(Cost::StartPoint);
     crate::level::spawn::scan_screen(c);
     let b = &mut c.bus;
     for k in 0..0x11 {
@@ -391,8 +417,13 @@ fn start_point(c: &mut LevelCtx) {
         col = col.wrapping_add(0x10);
     }
     b.set_b(h0(0x16674), 0);
+    // The copper interrupt off while the first screen is drawn and copied.
+    c.custom(0x9c, 0x0010);
+    c.custom(0x9a, 0x0010);
     scroll::scroller(c);
     scroll::copper_irq_blits(c);
+    c.custom(0x9c, 0x0010);
+    c.custom(0x9a, 0x8010);
     c.bus.set_b(h0(0x16674), 0);
     scroll::scroll_latch(c);
     c.bus.set_w(camera::SHOOTER_MODE, shooter);
@@ -413,6 +444,14 @@ fn scroller_reset(b: &mut Bus) {
 
 /// `level_start` (h0+$6952): the frog's first step, its sprites, then the level's display.
 fn level_start(c: &mut LevelCtx) {
+    start_frog(c);
+    fade_in(&mut c.bus);
+    crate::level::panel::draw_at_start(c);
+    start_end(c);
+}
+
+/// `level_start` up to its `wait_frame_raster` (h0+$69c0): the frog's first step and its sprites.
+pub fn start_frog(c: &mut LevelCtx) {
     let b = &mut c.bus;
     b.set_w(LEVEL_STARTED, 1);
     let demo = b.l(h0(0x9f2));
@@ -430,8 +469,10 @@ fn level_start(c: &mut LevelCtx) {
     c.bus.set_w(camera::FROG_SPRITE_LEFT + 2, 0xffe0);
     c.bus.set_w(camera::FROG_SPRITE_RIGHT + 2, 0xffe0);
     frog::anim::place_frog_sprites(c);
-    fade_in(&mut c.bus);
-    crate::level::panel::draw_at_start(c);
+}
+
+/// The end of `level_start` (h0+$6a42): the drop-in, and the world's music if it is off.
+pub(crate) fn start_end(c: &mut LevelCtx) {
     drop_in(c);
     if c.bus.l(crate::level::ATTRACT_MODE) == 0 && !c.bus.st.audio.music_on() {
         c.bus.st.audio.music_start(c.sound, c.paula);
