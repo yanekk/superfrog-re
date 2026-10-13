@@ -1,0 +1,12 @@
+# ESC in W1-1 to the title (T34): frog-esc-w1-1's ESC (`abort_flag`) ends the level's loop at
+# frame 61; `game_over_seq` is over at once (lives left), the exit fade, then `game_over_check`
+# leaves the game: the music faded, `top_loop`, the title loaded again (skipped frames), its intro
+# and fade in, and the title's idle from about frame 590.
+sync = { level = "W1-1" }
+script = "frog-esc"
+frames = 650
+
+[[exclude]]
+what = "objects"
+note = "the original's object spawns, bump blocks and tile pickups return at once from power-on; the engine runs frog-only"
+task = "T36 (items in frame cases), T16–T18 (enemies)"

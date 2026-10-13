@@ -76,6 +76,10 @@ Sync points:
 - `sync = { script = "<name>", frame = N }`: the original runs the script from power-on for N frames;
   the engine starts from its memory there (every `LAYOUT` variable transplanted) and its CPU, so a
   front-end routine the engine knows goes on from the same place (`Start::Resume`).
+- `sync = { game-over = "<script>" }`: game over after the last life (T34): W1-1 reached as
+  `{ level = "W1-1" }` reaches it, `frog_lives` set to 0 on its first frame, the script played
+  until the frog's death ends the level's loop into `game_over_seq`. The level is transplanted at
+  the end of the frame before, so the case's first frame is the one game over begins in.
 - `sync = { level = "W1-1" }`: the first in-level frame, reached the way a player would: W1-1 by
   START GAME (`scripts/start-w1-1.txt`), any other level of W1–W6 and the bonus level (`"WB-1"`) by
   typing its level code on the options screen, the disks swapped as the game asks (docs/12

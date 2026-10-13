@@ -56,7 +56,7 @@ done · ⛔ blocked, needs a human.
 | T31 | render-remaining-levels | T13 | ✅ | |
 | T32 | story-intro | T20; blocks T21 | ✅ | |
 | T33 | attract-demo | T16, T20 | ⬜ | |
-| T34 | game-over | T15, T20; blocks T21 | ⬜ | |
+| T34 | game-over | T15, T20; blocks T21 | ✅ | |
 | T35 | end-sequence | T20; blocks T21 | ✅ | |
 | T36 | items-on-the-beam | T15 | ✅ | |
 | T37 | level-restart | T36; blocks T34 | ✅ | |
