@@ -5,6 +5,11 @@
 > If T07's object-type count shows this is more than one session, it is split with the owner and this
 > doc is superseded by the split; say so here with the date.
 
+> **Split 2026-10-13 (owner): parked until T38, then split by world.** This task is now **world 4
+> only** (23 new types, 15 that hurt). World 5 is T39, world 6 (less the witch, T18's) is T40.
+> Start it only after T36–T38 are ✅; its row cannot carry that dependency (an existing row is not
+> edited), so the run holds it back. Read "worlds 4–6" below as "world 4".
+
 ## Goal
 
 Every enemy and hazard object in worlds 4–6: movement, animation, collision with the frog (both ways:
