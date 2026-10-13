@@ -18,6 +18,8 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-13 | 🔄 | Owner, T36: conformance anchors the engine's beam at the original's Paula writes and blit starts; normal play uses the cost model only. Then stopped T36; rest split into T42–T47. |
+| 2026-10-13 | 📌 | T36: vAmiga's blitter (SlowBlitter) starts 2 cycles after BLTSIZE, takes odd slots $07–$35 when free; refresh $01/$03/$05/$E2. Ground truth via the DMA debugger's bus owners (`set_dma_profile`). Lag needs the cut's loop step, not the clock. |
 | 2026-10-13 | 🔄 | Owner, T17: enemies in worlds 4–6 parked until T36–T38 and split by world; T17 closed as the split. T41 W4, T39 W5, T40 W6 (witch stays T18). "Split them" may cover T16 too. |
 | 2026-10-13 | 🔄 | Owner, T15: stop and split; T36–T38 added (picture/lag/entry, restart, tally). Draft on local branch `t15-flow-wip`. |
 | 2026-10-13 | 📌 | T15: an undrawn bob's step pointer is 0, so despawn reads width/height from ExecBase ($C00276): `low_vectors`. Items lag W1-1's pass 86/700 frames. |

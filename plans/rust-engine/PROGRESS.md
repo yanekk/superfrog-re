@@ -58,17 +58,23 @@ done · ⛔ blocked, needs a human.
 | T33 | attract-demo | T16, T20 | ⬜ | |
 | T34 | game-over | T15, T20; blocks T21 | ⬜ | |
 | T35 | end-sequence | T20; blocks T21 | ✅ | |
-| T36 | items-on-the-beam | T15 | ⬜ | |
+| T36 | items-on-the-beam | T15 | 🔍 | Stopped by owner; rest split to T42–T47. Built: beam cost model (`level::beam`), resumable late pass, picture from a timed write log, conformance anchors at original writes/blits (owner), `Pacing::Late` cut, Start::Level objects. `items-run-w1-1`, `items-fruit-w2-2` green with picture, no re-sync. Debug hooks still in (T42). Tests: see T43. |
 | T37 | level-restart | T36; blocks T34 | ⬜ | |
 | T38 | level-tally | T37; blocks T21 | ⬜ | |
 | T39 | enemies-world-5 | T16, T38; blocks T18 | ⬜ | |
 | T40 | enemies-world-6 | T38; blocks T18 | ⬜ | |
 | T41 | enemies-world-4 | T38; blocks T18 | ⬜ | |
+| T42 | beam-cleanup | T36 | ⬜ | |
+| T43 | beam-tests | T42 | ⬜ | |
+| T44 | items-w1 | T42 | ⬜ | |
+| T45 | items-w3 | T42 | ⬜ | |
+| T46 | items-w2 | T42 | ⬜ | |
+| T47 | items-launchers | T42 | ⬜ | |
 
 A Notes cell holds what was built or what the review found, the test count, and one line per
 deviation from the task doc. A ✅ task's cell may be cut to one line once the next task has been reviewed.
 
-**Review queue:** *(empty)*
+**Review queue:** T36
 
 ## Blocked on the user
 
