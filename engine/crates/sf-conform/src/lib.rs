@@ -284,50 +284,11 @@ fn run_inner(
                 }
             }
         }
-        if let Ok(r) = std::env::var("T36_SHOW") {
-            let (a, b) = r.split_once('-').map(|(a, b)| (a.parse::<u32>().unwrap(), b.parse::<u32>().unwrap())).unwrap();
-            sf_core::level::DEBUG.store((a..=b).contains(&(f + 1)), std::sync::atomic::Ordering::Relaxed);
-        }
-        if let Ok(r) = std::env::var("T36_SHOW") {
-            let (a, b) = r.split_once('-').map(|(a, b)| (a.parse::<u32>().unwrap(), b.parse::<u32>().unwrap())).unwrap();
-            if (a..=b).contains(&f) {
-                let l = |ws: &[sf_paula::PaulaWrite]| ws.iter().filter(|w| w.reg < 0xa0).map(|w| format!("{:02x}={:04x}@{}", w.reg, w.value, w.vpos)).collect::<Vec<_>>().join(" ");
-                eprintln!("SHOW {f} {:?}\n  o: {}\n  e: {}", pacing, l(&theirs.paula), l(&ours.paula));
-                eprintln!("  blits: {}", amiga.blit_starts().iter().map(|b| format!("{:04x}@{}.{}", b.0, b.1, b.2)).collect::<Vec<_>>().join(" "));
-            }
-        }
-        if std::env::var("T36_STATS").is_ok() && stepped && (after_lag || sync::mid_pass(&amiga.cpu(), &mem)) {
-            let p = compare::paula(&ours.paula, &theirs.paula).is_none();
-            let q = compare::picture(&ours.picture, &theirs.picture).is_none();
-            if !q {
-                let d = report::write_diff_png(&case.name, f, &ours.picture, &theirs.picture, compare::picture(&ours.picture, &theirs.picture).unwrap());
-                eprintln!("T36D {f} {:?}", d);
-            }
-            eprintln!("T36 {f} {} paula {} picture {}", if after_lag { "after" } else { "mid" }, p, q);
-        }
-        if std::env::var("T36_MIDVARS").is_ok() && stepped && sync::mid_pass(&amiga.cpu(), &mem) {
-            let probe = game.probe();
-            let mut names: Vec<String> = Vec::new();
-            for d in game.layout() {
-                let n = compare::var_diffs(game.layout(), &probe, &mem, d.id).len();
-                if n > 0 { names.push(format!("{}({n})", d.name)); }
-            }
-            eprintln!("MIDVARS {f}: {}", names.join(" "));
-        }
         if stepped && sync::mid_pass(&amiga.cpu(), &mem) {
             outcome.straddled.push(f);
             after_lag = true;
             prev = mem;
             continue;
-        }
-        if stepped && after_lag && std::env::var("T36_STRICT").is_ok() {
-            if let Some(d) = compare::paula(&ours.paula, &theirs.paula) {
-                eprintln!("T36P {f}: {d}");
-            }
-            if compare::picture(&ours.picture, &theirs.picture).is_some() && std::env::var("T36_PIC").is_ok() {
-                let d = report::write_diff_png(&case.name, f, &ours.picture, &theirs.picture, compare::picture(&ours.picture, &theirs.picture).unwrap());
-                panic!("after-lag frame {f}: picture differs: {d:?}");
-            }
         }
         if stepped && after_lag {
             after_lag = false;
@@ -335,10 +296,6 @@ fn run_inner(
                 && let Some((v, theirs, ours)) =
                     compare::vars(game.layout(), &game.probe(), &mem, &[])
             {
-                if std::env::var("T36_NORESYNC").is_ok() {
-                    let d = compare::var_diffs(game.layout(), &game.probe(), &mem, v.id);
-                    panic!("frame {f}: {} differs after lag: {:?}", v.name, &d[..d.len().min(30)]);
-                }
                 game = Game::with_display(display.clone(), Start::Transplant(mem.clone()));
                 if frog_only {
                     game.frog_only();
@@ -401,17 +358,6 @@ fn run_inner(
             && compare::raced_only(&ours, &theirs.picture, compare::picture_rows_from(case))
         {
             outcome.raced.push(f);
-        }
-        if d.as_ref().is_some_and(|d| d.picture_diff.is_some()) && std::env::var("T36_DUMP").is_ok() {
-            let c = sf_core::to_rgb12(&ours.picture);
-            for y in 0..theirs.picture.height.min(ours.picture.height) {
-                let mut row = String::new();
-                for x in 0..theirs.picture.width.min(ours.picture.width) {
-                    let (o, e) = (theirs.picture.pixel(x, y), c[y as usize * ours.picture.width as usize + x as usize]);
-                    if o != e { row += &format!(" {x}:{o:03x}/{e:03x}"); }
-                }
-                if !row.is_empty() { eprintln!("DUMP y{y} (line {}):{row}", y + theirs.picture.top); }
-            }
         }
         let unported = game.unported().to_vec();
         if d.is_some() || !unported.is_empty() {
