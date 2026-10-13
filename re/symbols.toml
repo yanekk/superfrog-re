@@ -4122,7 +4122,7 @@ hunk = 0
 offset = 0x4e28
 name = "slot_free_spin"
 kind = "func"
-note = "a free spin: the reels turn without a coin"
+note = "after a win with coins left, 6 in 100 sets h0+$49d0: the next round skips hold, spin and coin and pays the same line again"
 
 [[sym]]
 exe = "d1_c03"
