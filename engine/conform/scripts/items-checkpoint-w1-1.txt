@@ -1,0 +1,12 @@
+# W1-1, enemies frozen: from the start right to the checkpoint at 34,42 (frame ~220) and the
+# speed-up at 48,42 (frame ~276), then stand while the speed-up runs out (frame ~775; walking
+# back left falls into the pit). Planned on the engine (T83, `examples/plan W1-1 34,42 48,42`).
+0: -
+144: U R
+148: U
+204: -
+220: U R
+224: U
+236: -
+240: R
+272: -

@@ -86,11 +86,11 @@ done · ⛔ blocked, needs a human.
 | T52 | story-blitter-bus-sim | T51; blocks T53 | ✅ | |
 | T53 | story-draw-cpu-program | T52; blocks T54 | ✅ | |
 | T54 | story-handler-end-feed | T53; blocks T56 | ⬜ | |
-| T55 | story-intro-sound-timing | T50; blocks T56 | ⬜ | |
+| T55 | story-intro-sound-timing | T50; blocks T56 | ✅ | |
 | T56 | story-intro-to-insert-disk | T49, T50, T54, T55; blocks T21, T47, T48 | ⬜ | |
 | T81 | beam-cleanup | T36; blocks T37 | ✅ | |
 | T82 | beam-tests | T81 | ✅ | |
-| T83 | items-w1 | T81 | ⬜ | |
+| T83 | items-w1 | T81 | ✅ | |
 | T84 | items-w3 | T81 | ⬜ | |
 | T85 | items-w2 | T81 | ⬜ | |
 | T86 | items-launchers | T81 | ⬜ | |
@@ -105,6 +105,8 @@ done · ⛔ blocked, needs a human.
 | T95 | slot-load-finish | T92; blocks T93 | ⬜ | |
 | T96 | story-audio-dma-slots | T53; blocks T56 | ⬜ | |
 | T100 | front-vbl-timing | T37; blocks T21 | ⬜ | |
+| T97 | story-split-handler | T54; blocks T56 | ⬜ | |
+| T101 | lag-long-pass | T81, T82; blocks T21 | ⬜ | |
 
 A Notes cell holds what was built or what the review found, the test count, and one line per
 deviation from the task doc. A ✅ task's cell may be cut to one line once the next task has been reviewed.

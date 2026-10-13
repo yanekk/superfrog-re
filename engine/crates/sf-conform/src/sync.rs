@@ -771,6 +771,31 @@ pub fn handler_entry(before: &[sf_oracle::Irq], now: &[sf_oracle::Irq]) -> Optio
         .map(|i| (i.vpos, i.hpos))
 }
 
+/// How many vertical-blank handlers the original ran in its last step, and whether the last
+/// one's interrupt came so late that its work (its first write) falls in the next step. A
+/// handler counts in the step it writes in (its sound, its acknowledgement): `carried` is the
+/// last step's late one, `now` this step's interrupts (one past its end counts in the next),
+/// `paula` its writes. Fewer than the video frames the step ran: a blit held the CPU through a
+/// blank, whose request the next handler served too (T55).
+pub fn handlers(
+    carried: bool,
+    before: &[sf_oracle::Irq],
+    now: &[sf_oracle::Irq],
+    paula: &[sf_paula::PaulaWrite],
+) -> (u32, bool) {
+    let taken: Vec<&sf_oracle::Irq> = now.iter().filter(|i| i.level == 3 && !i.next).collect();
+    let late = taken.last().is_some_and(|i| {
+        !paula
+            .iter()
+            .any(|w| (w.vpos, w.hpos) >= (i.vpos, i.hpos))
+    });
+    let n = u32::from(carried)
+        + before.iter().filter(|i| i.level == 3 && i.next).count() as u32
+        + taken.len() as u32
+        - u32::from(late);
+    (n, late)
+}
+
 /// The story intro's hunk 0 length (d3_c04, at the game's own base).
 const INTRO_LEN: u32 = 0x52160;
 
@@ -912,6 +937,45 @@ fn decode(b: &[u8], key: &str) -> Option<Snapshot> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn irq(next: bool, vpos: u16, hpos: u16) -> sf_oracle::Irq {
+        sf_oracle::Irq {
+            level: 3,
+            next,
+            vpos,
+            hpos,
+        }
+    }
+
+    fn write(reg: u16, vpos: u16, hpos: u16) -> sf_paula::PaulaWrite {
+        sf_paula::PaulaWrite {
+            reg,
+            value: 0,
+            vpos,
+            hpos,
+        }
+    }
+
+    /// The oracle's intro, frames 6449-6453 and 6771-6772 (T55): a two-frame step with one
+    /// handler; a handler taken at line 309 whose writes all fall in the next step.
+    #[test]
+    fn a_handler_counts_in_the_step_it_writes_in() {
+        // One interrupt in a two-frame step: one handler, the second blank merged.
+        assert_eq!(
+            handlers(false, &[], &[irq(false, 281, 26)], &[write(0xa8, 282, 0)]),
+            (1, false)
+        );
+        // One past the last step's end belongs to this one.
+        assert_eq!(handlers(false, &[irq(true, 0, 16)], &[], &[]), (1, false));
+        // Taken too late to write: none here, one in the next step.
+        assert_eq!(
+            handlers(false, &[], &[irq(false, 309, 188)], &[write(0x96, 12, 0)]),
+            (0, true)
+        );
+        assert_eq!(handlers(true, &[], &[], &[write(0xa6, 10, 0)]), (1, false));
+        // No interrupt at all: the blank merged into the next.
+        assert_eq!(handlers(false, &[], &[], &[]), (0, false));
+    }
 
     fn id(s: &str) -> LevelId {
         s.parse().unwrap()
