@@ -45,7 +45,10 @@ pub fn ground_probe(c: &mut LevelCtx) {
     ground(c);
     let b = &mut c.bus;
     let vy = b.w(FROG + f::VY);
-    b.set_w(FROG + f::Y, b.w(FROG + f::Y).wrapping_add(vy.wrapping_neg()));
+    b.set_w(
+        FROG + f::Y,
+        b.w(FROG + f::Y).wrapping_add(vy.wrapping_neg()),
+    );
 }
 
 /// h0+$dfd4: lands the frog on the ground under it; a frog standing still beside a drop tries
@@ -106,7 +109,9 @@ fn probe_cell(b: &Bus) -> u32 {
 /// under the frog's middle.
 fn surface(b: &Bus, cell: u32) -> u16 {
     let h = height(b, cell, b.w(FROG + f::X).wrapping_add(8));
-    (b.w(FROG + f::Y) & 0xfff0).wrapping_add(0x10).wrapping_sub(h)
+    (b.w(FROG + f::Y) & 0xfff0)
+        .wrapping_add(0x10)
+        .wrapping_sub(h)
 }
 
 /// h0+$e076: put the frog on the ground under its middle.
@@ -396,7 +401,10 @@ pub fn frog_tiles(c: &mut LevelCtx) {
         y = y.wrapping_add(vy);
     }
     let a2 = cell_at(b, x, y).wrapping_add(0x262);
-    for (k, table) in [Table::Head, Table::Middle, Table::Feet].into_iter().enumerate() {
+    for (k, table) in [Table::Head, Table::Middle, Table::Feet]
+        .into_iter()
+        .enumerate()
+    {
         let at = a2.wrapping_add(0x260 * k as u32);
         let m = marker(&c.bus, at);
         handle(c, table, m, at, false);
@@ -431,7 +439,10 @@ fn walls(c: &mut LevelCtx) {
     // h0+$e3f8: the side the frog faces is tested unless a wall already stopped it there, then the
     // other. (With both wall flags set the original spins here for ever; the side it faces is
     // taken instead, DESIGN §2.11.)
-    let (stopped_r, stopped_l) = (b.w(FROG + f::WALL_RIGHT) != 0, b.w(FROG + f::WALL_LEFT) != 0);
+    let (stopped_r, stopped_l) = (
+        b.w(FROG + f::WALL_RIGHT) != 0,
+        b.w(FROG + f::WALL_LEFT) != 0,
+    );
     let left = if facing {
         !stopped_r || stopped_l
     } else {
@@ -519,7 +530,11 @@ fn handle(c: &mut LevelCtx, table: Table, m: u16, a2: u32, d7: bool) {
 fn wall(c: &mut LevelCtx, a2: u32, d7: bool, left: bool) {
     let b = &mut c.bus;
     if d7 {
-        let beyond = if left { a2.wrapping_add(2) } else { a2.wrapping_sub(2) };
+        let beyond = if left {
+            a2.wrapping_add(2)
+        } else {
+            a2.wrapping_sub(2)
+        };
         for k in 0..3u32 {
             let at = beyond.wrapping_sub(0x260).wrapping_add(0x260 * k);
             if marker(b, at) >= 0x3e {
@@ -682,9 +697,15 @@ fn conveyor(c: &mut LevelCtx, speed: i16) {
     }
     let speed = speed as u16;
     let (wall, slower) = if (speed as i16) < 0 {
-        (f::WALL_LEFT, !n_clear(b.w(FROG + f::VX).wrapping_sub(speed)))
+        (
+            f::WALL_LEFT,
+            !n_clear(b.w(FROG + f::VX).wrapping_sub(speed)),
+        )
     } else {
-        (f::WALL_RIGHT, !n_clear(b.w(FROG + f::VX).wrapping_sub(speed)))
+        (
+            f::WALL_RIGHT,
+            !n_clear(b.w(FROG + f::VX).wrapping_sub(speed)),
+        )
     };
     if b.w(FROG + wall) == 0 && slower {
         b.set_w(FROG + f::VX, speed);
@@ -754,9 +775,12 @@ pub fn frog_kill(c: &mut LevelCtx) {
     let right = !n_clear_l(b.l(FROG + f::ANIM).wrapping_sub(LEFT_ANIMS));
     if b.l(FROG + f::WALL_RIGHT) == 0 {
         let cell = b.l(FROG + f::GROUND_CELL);
-        let (near, far) = if right { (0x4be, 0x4bc) } else { (0x4c2, 0x4c4) };
-        if marker(b, cell.wrapping_sub(near)) >= 0x3a || marker(b, cell.wrapping_sub(far)) >= 0x3a
-        {
+        let (near, far) = if right {
+            (0x4be, 0x4bc)
+        } else {
+            (0x4c2, 0x4c4)
+        };
+        if marker(b, cell.wrapping_sub(near)) >= 0x3a || marker(b, cell.wrapping_sub(far)) >= 0x3a {
             return;
         }
         b.set_w(FROG + f::VX, 0);

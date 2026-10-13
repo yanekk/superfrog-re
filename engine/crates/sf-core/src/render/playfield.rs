@@ -166,7 +166,11 @@ mod tests {
         let mut s = State::default();
         s.set_world(1);
         // Every cell tile 1, tile 1 all colour 7.
-        for (k, b) in s.var_mut(crate::layout::VarId::LevelMap).iter_mut().enumerate() {
+        for (k, b) in s
+            .var_mut(crate::layout::VarId::LevelMap)
+            .iter_mut()
+            .enumerate()
+        {
             *b = if k % 2 == 0 { 0 } else { 1 << 6 };
         }
         let data = DisplayData {

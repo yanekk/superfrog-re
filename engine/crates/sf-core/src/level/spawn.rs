@@ -46,12 +46,20 @@ pub fn scan_edges(c: &mut LevelCtx) {
     }
     let dirs = b.b(crate::level::camera::SCROLL_DIRS);
     let origin = scan_origin(b);
-    let col = if dirs & 4 != 0 { origin } else { origin.wrapping_add(0x2e) };
+    let col = if dirs & 4 != 0 {
+        origin
+    } else {
+        origin.wrapping_add(0x2e)
+    };
     scan(c, col, 0x15, 0x260);
     let b = &c.bus;
     let dirs = b.b(crate::level::camera::SCROLL_DIRS);
     let origin = scan_origin(b);
-    let row = if dirs & 0x10 != 0 { origin } else { origin.wrapping_add(0x2d20) };
+    let row = if dirs & 0x10 != 0 {
+        origin
+    } else {
+        origin.wrapping_add(0x2d20)
+    };
     scan(c, row, 0x19, 2);
 }
 

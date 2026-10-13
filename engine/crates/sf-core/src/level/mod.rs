@@ -9,8 +9,8 @@
 
 pub mod camera;
 pub mod clock;
-pub mod death;
 pub mod collision;
+pub mod death;
 pub mod fade;
 pub mod frame;
 pub mod load;
@@ -118,8 +118,18 @@ pub struct Dispatch {
 impl std::fmt::Debug for Dispatch {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("Dispatch")
-            .field("kinds", &self.kinds.iter().map(|k| (k.0, k.1.name)).collect::<Vec<_>>())
-            .field("markers", &self.markers.iter().map(|m| m.0).collect::<Vec<_>>())
+            .field(
+                "kinds",
+                &self
+                    .kinds
+                    .iter()
+                    .map(|k| (k.0, k.1.name))
+                    .collect::<Vec<_>>(),
+            )
+            .field(
+                "markers",
+                &self.markers.iter().map(|m| m.0).collect::<Vec<_>>(),
+            )
             .finish()
     }
 }
@@ -188,7 +198,11 @@ impl Dispatch {
 pub fn call(c: &mut LevelCtx, addr: u32, slot: u32, d7: u16) {
     match c.dispatch.routine(addr) {
         Some(f) => f(c, slot, d7),
-        None => debug_assert!(false, "slot routine ${:x} is not ported", addr.wrapping_sub(h0(0))),
+        None => debug_assert!(
+            false,
+            "slot routine ${:x} is not ported",
+            addr.wrapping_sub(h0(0))
+        ),
     }
 }
 
@@ -207,7 +221,9 @@ impl LevelCtx<'_> {
     /// `sfx_play` (h0+$12a72): effect `effect` on `channel`, unless the attract demo runs.
     pub fn sfx(&mut self, effect: u8, channel: u8) {
         if self.bus.l(ATTRACT_MODE) == 0 {
-            self.bus.st.audio
+            self.bus
+                .st
+                .audio
                 .play_sfx(self.sound, effect, channel, self.paula);
         }
     }

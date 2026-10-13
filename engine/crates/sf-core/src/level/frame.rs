@@ -49,7 +49,11 @@ pub fn vbl(c: &mut LevelCtx) {
         c.bus.st.audio.stream_tick(c.sound, c.paula);
     }
     frog::anim::frog_exit_walk(c);
-    debug_assert_ne!(c.bus.w(LOGIC_RUNNING), 0, "only a level's vertical blank is ported");
+    debug_assert_ne!(
+        c.bus.w(LOGIC_RUNNING),
+        0,
+        "only a level's vertical blank is ported"
+    );
     c.bus.st.audio.music_dma_tick(c.sound, c.paula);
     c.bus.st.audio.sfx_tick(c.sound, c.paula);
     // (progress_map_vbl, h0+$3f22: the progress map's, off in a level.)

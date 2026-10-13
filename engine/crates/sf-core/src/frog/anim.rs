@@ -226,7 +226,10 @@ pub fn frog_anim_tick(c: &mut LevelCtx) {
         if n_clear(time) {
             return;
         }
-        b.set_l(FROG + f::ANIM_STEP, b.l(FROG + f::ANIM_STEP).wrapping_add(8));
+        b.set_l(
+            FROG + f::ANIM_STEP,
+            b.l(FROG + f::ANIM_STEP).wrapping_add(8),
+        );
     }
     let mut step = b.l(FROG + f::ANIM_STEP);
     if (b.l(step) as i32) < 0 {
@@ -310,12 +313,9 @@ pub fn frog_input_anim(c: &mut LevelCtx) {
     let a1 = if d7 == 0 && b.w(FROG + f::VX) == 0 {
         if facing { h0(0x10542) } else { h0(0x10d0e) }
     } else if n_clear(b.w(FROG + f::VY).wrapping_sub(6)) && {
-        let cell = crate::level::collision::cell_at(
-            b,
-            b.w(FROG + f::X).wrapping_add(8),
-            b.w(FROG + f::Y),
-        )
-        .wrapping_add(0x982);
+        let cell =
+            crate::level::collision::cell_at(b, b.w(FROG + f::X).wrapping_add(8), b.w(FROG + f::Y))
+                .wrapping_add(0x982);
         crate::level::collision::marker(b, cell) >= 0x3a
             || crate::level::collision::marker(b, cell.wrapping_add(0x260)) >= 0x3a
     } {

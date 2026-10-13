@@ -120,7 +120,6 @@ pub const LEVEL_MAP_BYTES: u32 = 0x30fe0 - 0x218e0;
 /// Bytes in one display buffer: five planes of `$3b70`.
 pub const PLAYFIELD_BUFFER_BYTES: u32 = 0x12930;
 
-
 /// Declares the variables: `Id = "symbol name", address, width;`, in address order.
 macro_rules! layout {
     ($( $(#[$doc:meta])* $id:ident = $name:literal, $addr:expr, $width:expr; )*
@@ -153,6 +152,9 @@ layout! {
     EndCopper = "end_copper", h2(0x5efc), Width::Bytes(0x15c);
     /// h2+$6110..$6270: the award pages' copper list.
     AwardCopper = "award_copper", h2(0x6110), Width::Bytes(0x160);
+    /// `slot_copper` (h2+$65e4..$6750): the slot machine's copper list (T71); its fade list at
+    /// h2+$6688, its plane pointers at h2+$6708.
+    SlotCopper = "slot_copper", h2(0x65e4), Width::Bytes(0x16c);
     /// `exit_sprite_copper` (h2+$68a8): the sprite moves the second pair of frog sprite records
     /// writes (`exit_sprite_left`, `_right`), two attached pairs of `$10` bytes each.
     ExitSpriteCopper = "exit_sprite_copper", h2(0x68a8), Width::Bytes(0x40);
@@ -335,6 +337,9 @@ layout! {
     AttractAbort = "attract_abort", h0(0x22b8), Width::W;
     /// h0+$2424..$2434: the level-code entry's flash counter, its cursor and `password_buf`.
     PasswordBuf = "password_buf", h0(0x2424), Width::Bytes(0x10);
+    /// `password_shown` (h0+$24cc): the password the slot machine's prize shows
+    /// (`password_for_level`).
+    PasswordShown = "password_shown", h0(0x24cc), Width::Bytes(0xc);
     /// h0+$2f90..$3028: `hiscore_table`: ten scores (a long and a long) and ten names.
     HiscoreTable = "hiscore_table", h0(0x2f90), Width::Bytes(0x98);
     /// h0+$3258: where the text writer (h0+$30fc) stopped.
@@ -356,8 +361,31 @@ layout! {
     Level = "level", h0(0x40de), Width::L;
     /// `coins_collected` (h0+$445e): coins taken since the last tally (`touch_coin` counts them).
     CoinsCollected = "coins_collected", h0(0x445e), Width::L;
+    /// The slot machine's variables (T71; `slot_machine` h0+$49dc, docs/13): `slot_state`
+    /// (h0+$49c6..$49dc: the coins put in, then the three reels' positions and more), `slot_count`
+    /// (h0+$515a), `slot_prize` (h0+$5526: the ladder's rung), `slot_win` (h0+$57b2), `slot_hilo`
+    /// (h0+$5988), `slot_hilo_start` (h0+$5a04), `slot_spin` (h0+$5dc6), `slot_flash` (h0+$603e),
+    /// `slot_cursor` (h0+$6064: the pointer's stop), `slot_menu` (h0+$6152), `slot_attract`
+    /// (h0+$62ec: the attract pattern's row, its frame count and its pass count), `slot_lamps`
+    /// (h0+$6842: 26 lamps of 8 bytes) and `slot_palette` (h0+$6912: the fade's target, 32
+    /// colours).
+    SlotState = "slot_state", h0(0x49c6), Width::Bytes(0x16);
+    SlotCount = "slot_count", h0(0x515a), Width::Bytes(0x12);
+    SlotPrize = "slot_prize", h0(0x5526), Width::W;
+    SlotWin = "slot_win", h0(0x57b2), Width::L;
+    SlotHilo = "slot_hilo", h0(0x5988), Width::Bytes(6);
+    SlotHiloStart = "slot_hilo_start", h0(0x5a04), Width::W;
+    SlotSpin = "slot_spin", h0(0x5dc6), Width::Bytes(0x1c);
+    SlotFlash = "slot_flash", h0(0x603e), Width::W;
+    SlotCursor = "slot_cursor", h0(0x6064), Width::L;
+    SlotMenu = "slot_menu", h0(0x6152), Width::Bytes(0xe6);
+    SlotAttract = "slot_attract", h0(0x62ec), Width::Bytes(8);
+    SlotLamps = "slot_lamps", h0(0x6842), Width::Bytes(0xd0);
+    SlotPalette = "slot_palette", h0(0x6912), Width::Bytes(0x40);
     /// `entry_fall` (h0+$6c92): how fast the frog drops in at a level's start.
     EntryFall = "entry_fall", h0(0x6c92), Width::W;
+    /// `text_plane` (h0+$706e): which plane the text printer (h0+$6f3a) writes, 1 or 2.
+    TextPlane = "text_plane", h0(0x706e), Width::W;
     /// `passage_cell` (h0+$776c): the fake-wall cell the frog entered (marker 38).
     PassageCell = "passage_cell", h0(0x776c), Width::L;
     /// `passage_toggle` (h0+$7770).

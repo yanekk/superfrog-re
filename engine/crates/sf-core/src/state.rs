@@ -265,7 +265,11 @@ impl State {
     }
 
     pub fn rng(&self) -> Rng {
-        Rng::from_bytes(self.vars[VarId::RngState as usize][..].try_into().expect("8 bytes"))
+        Rng::from_bytes(
+            self.vars[VarId::RngState as usize][..]
+                .try_into()
+                .expect("8 bytes"),
+        )
     }
 
     pub fn set_rng(&mut self, r: Rng) {
