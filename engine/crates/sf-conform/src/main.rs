@@ -234,7 +234,7 @@ fn record(path: &Path, rest: &[String]) -> Result<bool, String> {
             println!(
                 "{f}: {}  | {:?} | {}{at}",
                 InputScript::format_input(input),
-                sync::pacing(&amiga.cpu(), &mem),
+                sync::pacing(&amiga.cpu(), &mem, &capture.paula),
                 cols.join(" ")
             );
         }

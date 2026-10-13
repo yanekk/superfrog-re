@@ -254,11 +254,73 @@ const FINAL_LEVEL_FLAG: u32 = H0 + 0x1e;
 pub struct Bus<'a> {
     pub st: &'a mut State,
     pub rom: &'a Rom,
+    /// Where the beam is (in [`crate::level::beam::LINE_CYCLES`] from the frame's start), for
+    /// [`Bus::log`].
+    pub at: u32,
+    /// When kept: what was written to memory the display reads, as it was before, with the
+    /// beam's line ([`WriteLog`]).
+    pub log: Option<WriteLog>,
+    /// A blit being written: where the beam was (in [`crate::level::beam::LINE_CYCLES`] from the
+    /// frame's start) as each of its words was written, and the bytes written so far. Its writes
+    /// are logged there.
+    pub span: Option<(Vec<u32>, usize)>,
+}
+
+/// The writes made to memory the display reads (the copper list, the panel, the display
+/// buffers): `(address, the byte before, where the beam was)`, in the order made, the beam's
+/// place in [`crate::level::beam::LINE_CYCLES`] from the frame's start. What the display fetches
+/// before a write shows the byte as it was ([`crate::render`]).
+#[derive(Debug, Clone, Default, PartialEq, Eq, Hash)]
+pub struct WriteLog {
+    pub writes: Vec<(u32, u8, u32)>,
+}
+
+impl WriteLog {
+    /// Whether the display reads `addr`.
+    fn shown(addr: u32) -> bool {
+        use crate::layout::{VarId, def};
+        static RANGES: std::sync::OnceLock<Vec<(u32, u32)>> = std::sync::OnceLock::new();
+        RANGES
+            .get_or_init(|| {
+                [VarId::LevelCopper, VarId::PanelBitmap, VarId::PlayfieldBuffer0, VarId::PlayfieldBuffer1]
+                    .iter()
+                    .map(|&id| {
+                        let d = def(id);
+                        (d.addr, d.addr + d.width.len())
+                    })
+                    .collect()
+            })
+            .iter()
+            .any(|&(a, b)| (a..b).contains(&addr))
+    }
 }
 
 impl<'a> Bus<'a> {
     pub fn new(st: &'a mut State, rom: &'a Rom) -> Bus<'a> {
-        Bus { st, rom }
+        Bus {
+            st,
+            rom,
+            at: 0,
+            log: None,
+            span: None,
+        }
+    }
+
+    fn note(&mut self, addr: u32) {
+        let mut at = self.at;
+        if let Some((times, done)) = self.span.as_mut() {
+            at = times[(*done / 2).min(times.len() - 1)];
+            *done += 1;
+            if *done >= 2 * times.len() {
+                self.span = None;
+            }
+        }
+        if let Some(log) = self.log.as_mut() {
+            let addr = addr & 0xFF_FFFF;
+            if WriteLog::shown(addr) {
+                log.writes.push((addr, self.st.byte(addr).unwrap_or(0), at));
+            }
+        }
     }
 
     /// The byte at `addr`: the state's variable there, else the fixed image (with the files of
@@ -283,13 +345,14 @@ impl<'a> Bus<'a> {
 
     /// Write a byte (see [`State::write_byte`]: only a [`crate::LAYOUT`] variable may be written).
     pub fn set_b(&mut self, addr: u32, v: u8) {
+        self.note(addr);
         self.st.write_byte(addr, v);
     }
 
     pub fn set_w(&mut self, addr: u32, v: u16) {
         let [a, b] = v.to_be_bytes();
-        self.st.write_byte(addr, a);
-        self.st.write_byte(addr.wrapping_add(1), b);
+        self.set_b(addr, a);
+        self.set_b(addr.wrapping_add(1), b);
     }
 
     pub fn set_l(&mut self, addr: u32, v: u32) {

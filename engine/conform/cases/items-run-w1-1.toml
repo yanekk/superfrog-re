@@ -1,18 +1,12 @@
 # W1-1 with its items live (coins, the exit lock, hidden coin springs, tile pickups, pads,
 # launchers, switches) for 700 frames of frog-run-right: coins taken, the coin count and its
-# fanfare, the panel's digits and the score. Ends before the death at frame 655 ends the level's
-# loop (frame 712): what follows the loop is T37's.
+# fanfare, the panel's digits, the score and the picture as the beam drew it (T36). Ends before
+# the death at frame 655 ends the level's loop (frame 712): what follows the loop is T37's.
 sync = { level = "W1-1" }
 script = "frog-run-right"
 frames = 700
-compare = ["vars", "paula"]
 
 [[exclude]]
 what = "enemies"
 note = "the original's marker spawners the engine has none for (enemies, the world's scenery) and the bubble return at once from power-on"
 task = "T16–T18"
-
-[[exclude]]
-what = "unreached"
-note = "the picture: the first pass draws the bobs into the shown buffer and a taken pickup's tile is redrawn while the beam is below it; the pass's timing on the beam is T36's"
-task = "T36"

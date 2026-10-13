@@ -14,7 +14,7 @@ use sf_assets::{LevelId, World};
 
 use crate::frog::{self, FROG};
 use crate::layout::{H0, H1, H2, H3, LAYOUT, h0, h1};
-use crate::level::{Hw, LevelCtx, camera, collision, scroll, standard_dispatch};
+use crate::level::{Dispatch, Hw, LevelCtx, camera, collision, scroll, standard_dispatch};
 use crate::mem::Bus;
 use crate::render::{DisplayData, HERO_SPRITES};
 use crate::state::State;
@@ -55,19 +55,24 @@ const ROW: u32 = 0x260;
 /// Leave `st` as the original's memory is on the frame `level_frame_loop` starts for `id`, from
 /// a game started at that level's code.
 pub fn enter(st: &mut State, display: &DisplayData, id: LevelId) {
+    enter_with(st, display, id, standard_dispatch());
+}
+
+/// [`enter`], spawning only the object kinds `dispatch` has (none, for a frog-only game).
+pub fn enter_with(st: &mut State, display: &DisplayData, id: LevelId, dispatch: &Dispatch) {
     boot_image(st, display);
     world_sound(st, display, id);
     let mut paula = Vec::new();
-    let mut c = LevelCtx {
-        bus: Bus::new(st, display.rom()),
-        dispatch: standard_dispatch(),
-        hw: Hw {
+    let mut c = LevelCtx::new(
+        Bus::new(st, display.rom()),
+        dispatch,
+        Hw {
             sdr: 0xff,
             ..Hw::default()
         },
-        sound: display.sound(),
-        paula: &mut paula,
-    };
+        display.sound(),
+        &mut paula,
+    );
     new_game(&mut c, id);
     level_load(&mut c, display, id);
     level_init(&mut c, id);
@@ -174,6 +179,9 @@ fn level_load(c: &mut LevelCtx, display: &DisplayData, id: LevelId) {
     for (k, d) in clock.into_iter().enumerate() {
         b.set_b(LEVEL_CLOCK + k as u32, d);
     }
+    // The world's bobs (`LnBO`), loaded into hunk 3 by `world_load_wN` (the final level's by
+    // `world_load_lw`).
+    b.st.poke(crate::layout::H3, display.bob_sheet(id.world));
     // The map file, as load_file leaves it.
     let file = display.levels.get(&id).cloned().unwrap_or_default();
     for (k, &v) in file.iter().enumerate() {
@@ -289,6 +297,7 @@ fn find_start(b: &mut Bus) {
 
 /// `level_init_wN` (h0+$8cd8 …): the objects, the frog, the panel, the camera and the first scroll.
 fn level_init(c: &mut LevelCtx, id: LevelId) {
+    crate::level::objects::obj_free_all(c);
     let (world, _) = numbers(id);
     let (demo, a02, offset): (u32, u32, u32) = match (id.world, world) {
         (World::Bonus, _) => (0, h0(0x30a30), 0x600),
@@ -310,7 +319,8 @@ fn level_init(c: &mut LevelCtx, id: LevelId) {
     b.set_l(h0(0xa02), a02);
     b.set_l(OBJ_WORLD_OFFSET, offset);
     frog::frog_reset(b);
-    bobs_and_sprites(b);
+    crate::level::bobs::bob_setup(c);
+    let b = &mut c.bus;
     panel_clear(b);
     if bonus {
         // level_init_lb (h0+$8c3a): the start at the top, lower on the second and third visits
@@ -325,53 +335,6 @@ fn level_init(c: &mut LevelCtx, id: LevelId) {
     }
     b.set_l(LEVEL_STATE, 0xffff_ffff);
     // (The bonus level's first objects, h0+$7e3e, are T19's.)
-}
-
-/// What `h0+$1995a` sets up that the engine models: each free bob record's first two words
-/// marked `$c180` (h0+$84f0), the frog's two sprite records pointed into the copper list, the
-/// sprites' colours (`level_copper+$390`, another set in the final level and shooter mode) and
-/// the two panel-digit sprites. (Its bob sheets are the objects', T15–T18.)
-fn bobs_and_sprites(b: &mut Bus) {
-    let mut at = h0(0x1ba16);
-    loop {
-        let rec = b.l(at);
-        if rec == 0 {
-            break;
-        }
-        b.set_w(rec.wrapping_sub(4), 0xc180);
-        b.set_w(rec.wrapping_sub(2), 0xc180);
-        at += 4;
-    }
-    sprite_attach(b, camera::FROG_SPRITE_LEFT);
-    sprite_attach(b, camera::FROG_SPRITE_RIGHT);
-    let alt = b.w(camera::FINAL_LEVEL_FLAG) != 0 || b.w(camera::SHOOTER_MODE) != 0;
-    let from = h0(0x19ac2) + if alt { 0x40 } else { 0 };
-    for k in 0..0x40 {
-        b.set_b(crate::layout::h2(0x6bd0 + 0x390) + k, b.b(from + k));
-    }
-    for rec in [h0(0x1b128), h0(0x1b144)] {
-        sprite_attach(b, rec);
-    }
-    for rec in [h0(0x1b128), h0(0x1b144)] {
-        frog::anim::sprite_to_copper(b, rec);
-    }
-}
-
-/// `$1b208`: point a sprite record's copper MOVEs at its sprite (its animation's first frame,
-/// if it has one), its CTL bits ORed in (`front::sprite::attach`, over the executable's tables).
-fn sprite_attach(b: &mut Bus, rec: u32) {
-    let anim = b.l(rec + 0x10);
-    let data = if anim != 0 {
-        b.set_l(rec + 0x14, anim);
-        b.set_w(rec + 0x18, b.w(anim + 6));
-        b.l(anim)
-    } else {
-        b.l(rec + 0xc)
-    };
-    let mv = b.l(rec + 8);
-    b.set_w(mv + 0xe, b.w(mv + 0xe) | b.w(rec + 6));
-    b.set_w(mv + 6, data as u16);
-    b.set_w(mv + 2, (data >> 16) as u16);
 }
 
 /// h0+$8bf6: the panel's planes into the copper list (`level_copper+$f0`), and cleared.
@@ -415,6 +378,8 @@ fn start_point(c: &mut LevelCtx) {
         b.set_l(camera::CAMERA_Y, 0x20);
     }
     scroller_reset(b);
+    crate::level::spawn::scan_screen(c);
+    let b = &mut c.bus;
     for k in 0..0x11 {
         b.set_w(h0(0x16606) + 2 * k, 0);
     }

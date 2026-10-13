@@ -190,6 +190,21 @@ impl std::fmt::Debug for Snapshot {
     }
 }
 
+/// Where the CPU was as a raster line ended ([`Amiga::line_samples`]).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct LineSample {
+    pub vpos: u16,
+    pub hpos: u16,
+    /// The instruction last executed.
+    pub pc: u32,
+    pub sr: u16,
+    /// The active stack pointer, and the longs from it up.
+    pub sp: u32,
+    pub stack: [u32; ffi::SF_STACK_LONGS],
+    /// With [`Amiga::set_dma_profile`]: the line's DMA slots' owners (vAmiga's `BusOwner`).
+    pub owners: [u8; 228],
+}
+
 /// One emulator instance: an A500 (OCS, 512K chip + 512K slow, no clock, RAM zeroed, PAL) with
 /// the owner's Kickstart and disk 1 (or [`OracleConfig::boot`]'s) in df0. Deterministic: the same inputs from the same start give
 /// the same frames (FINDINGS 2026-10-11).
@@ -281,6 +296,53 @@ impl Amiga {
             paula: self.paula(),
             audio: self.taps(),
         })
+    }
+
+    /// The blits the last step started, in order: BLTSIZE as written and the beam's (line,
+    /// slot) then.
+    pub fn blit_starts(&self) -> Vec<(u16, u16, u16)> {
+        let mut p = std::ptr::null();
+        let n = unsafe { ffi::sf_amiga_blit_starts(self.raw, &mut p) };
+        if n == 0 {
+            return Vec::new();
+        }
+        unsafe { std::slice::from_raw_parts(p, n) }
+            .iter()
+            .map(|w| (w.value, w.vpos, w.hpos))
+            .collect()
+    }
+
+    /// Sample the CPU at the end of every raster line from the next step on (or stop): test
+    /// tooling that measures where the original's CPU time goes. The run itself is unchanged.
+    pub fn set_profile(&mut self, on: bool) {
+        unsafe { ffi::sf_amiga_set_profile(self.raw, on as std::os::raw::c_int) };
+    }
+
+    /// [`Amiga::set_profile`], and the DMA slots' owners of each line too (the reference
+    /// emulator's DMA debugger: it draws over the picture meanwhile).
+    pub fn set_dma_profile(&mut self) {
+        unsafe { ffi::sf_amiga_set_profile(self.raw, 2) };
+    }
+
+    /// The last step's line samples, while profiling is on ([`Amiga::set_profile`]).
+    pub fn line_samples(&self) -> Vec<LineSample> {
+        let mut p = std::ptr::null();
+        let n = unsafe { ffi::sf_amiga_line_samples(self.raw, &mut p) };
+        if n == 0 {
+            return Vec::new();
+        }
+        unsafe { std::slice::from_raw_parts(p, n) }
+            .iter()
+            .map(|s| LineSample {
+                vpos: s.vpos,
+                hpos: s.hpos,
+                pc: s.pc,
+                sr: s.sr as u16,
+                sp: s.sp,
+                stack: s.stack,
+                owners: s.owners,
+            })
+            .collect()
     }
 
     /// Frames run since power-on (also counting those before a restored snapshot).
