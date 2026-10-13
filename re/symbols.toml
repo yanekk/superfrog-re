@@ -2538,7 +2538,7 @@ hunk = 0
 offset = 0x8070
 name = "shot_update"
 kind = "func"
-note = "a shot's update: moves right of the camera's $200, parked off screen (T75)"
+note = "a shot's update: moves while x <= camera x+$200; off screen up or down, parked there (T75)"
 
 [[sym]]
 exe = "d1_c03"
