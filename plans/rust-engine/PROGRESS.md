@@ -82,7 +82,7 @@ done · ⛔ blocked, needs a human.
 | T79 | bonus-level-frames | T70, T37, T75, T76, T77, T78; blocks T21 | ⬜ | |
 | T49 | story-fade-setup-job | T46; blocks T56 | ⬜ | |
 | T50 | story-objects-init-display | T49; blocks T56 | ⬜ | |
-| T51 | story-oracle-blit-tooling | T46; blocks T52 | ⬜ | |
+| T51 | story-oracle-blit-tooling | T46; blocks T52 | 🔍 | Patch 0005 adds `vamiga_blit_hook`; `Amiga::cpu_writes`, `blit_events` (begin/free/end, `next`), `frames_run`; story_dbg `BLITS`/`REGS`/`CMP`. 1 test (`tests/blits.rs`). Deviation: none. The intro's first many-blit frame is oracle frame 3 022 of a disk-3 boot. |
 | T52 | story-blitter-bus-sim | T51; blocks T53 | ⬜ | |
 | T53 | story-draw-cpu-program | T52; blocks T54 | ⬜ | |
 | T54 | story-handler-end-feed | T53; blocks T56 | ⬜ | |
@@ -98,7 +98,7 @@ done · ⛔ blocked, needs a human.
 A Notes cell holds what was built or what the review found, the test count, and one line per
 deviation from the task doc. A ✅ task's cell may be cut to one line once the next task has been reviewed.
 
-**Review queue:** *(empty)*
+**Review queue:** T51
 
 ## Blocked on the user
 
