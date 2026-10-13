@@ -103,7 +103,7 @@ headless.
 | [T39](tasks/T39-enemies-world-5.md) | enemies-world-5 | T16, T38; blocks T18 |
 | [T40](tasks/T40-enemies-world-6.md) | enemies-world-6 | T38; blocks T18 |
 | [T41](tasks/T41-enemies-world-4.md) | enemies-world-4 | T38; blocks T18 |
-| [T42](tasks/T42-beam-cleanup.md) | beam-cleanup | T36 |
+| [T42](tasks/T42-beam-cleanup.md) | beam-cleanup | T36; blocks T37 |
 | [T43](tasks/T43-beam-tests.md) | beam-tests | T42 |
 | [T44](tasks/T44-items-w1.md) | items-w1 | T42 |
 | [T45](tasks/T45-items-w3.md) | items-w3 | T42 |

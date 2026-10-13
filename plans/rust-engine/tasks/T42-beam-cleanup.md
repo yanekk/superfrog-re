@@ -1,6 +1,8 @@
+**Split from:** T36 — carries no "Done when" item: the scaffolding T36 left.
+
 # T42 — beam-cleanup
 
-**Phase:** 2 · **Depends on:** T36 · **Weight:** light
+**Phase:** 2 · **Depends on:** T36; blocks T37 · **Weight:** light
 
 Added by T36 (owner, 2026-10-13: "stop and split the rest"). T36 left its working scaffolding
 committed; this task turns it into product code and records the design.

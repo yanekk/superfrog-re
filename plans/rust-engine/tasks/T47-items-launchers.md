@@ -1,3 +1,5 @@
+**Split from:** T36 — carries "the item cases compare the picture, green without re-syncs" (goal 4): launchers, the 50 000 fruit.
+
 # T47 — items-launchers
 
 **Phase:** 2 · **Depends on:** T42 · **Weight:** medium

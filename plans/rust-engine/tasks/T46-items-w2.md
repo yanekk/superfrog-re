@@ -1,3 +1,5 @@
+**Split from:** T36 — carries "the item cases compare the picture, green without re-syncs" (goal 4) for W2-1.
+
 # T46 — items-w2
 
 **Phase:** 2 · **Depends on:** T42 · **Weight:** medium

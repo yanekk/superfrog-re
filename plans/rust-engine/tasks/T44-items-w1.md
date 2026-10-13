@@ -1,3 +1,5 @@
+**Split from:** T36 — carries "the item cases compare the picture, green without re-syncs" (goal 4) for world 1.
+
 # T44 — items-w1
 
 **Phase:** 2 · **Depends on:** T42 · **Weight:** medium

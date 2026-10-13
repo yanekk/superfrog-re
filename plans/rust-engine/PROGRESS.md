@@ -64,7 +64,7 @@ done · ⛔ blocked, needs a human.
 | T39 | enemies-world-5 | T16, T38; blocks T18 | ⬜ | |
 | T40 | enemies-world-6 | T38; blocks T18 | ⬜ | |
 | T41 | enemies-world-4 | T38; blocks T18 | ⬜ | |
-| T42 | beam-cleanup | T36 | ⬜ | |
+| T42 | beam-cleanup | T36; blocks T37 | ⬜ | |
 | T43 | beam-tests | T42 | ⬜ | |
 | T44 | items-w1 | T42 | ⬜ | |
 | T45 | items-w3 | T42 | ⬜ | |
