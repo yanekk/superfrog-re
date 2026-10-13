@@ -83,7 +83,7 @@ done · ⛔ blocked, needs a human.
 | T49 | story-fade-setup-job | T46; blocks T56 | ✅ | |
 | T50 | story-objects-init-display | T49; blocks T56 | ⬜ | |
 | T51 | story-oracle-blit-tooling | T46; blocks T52 | ✅ | |
-| T52 | story-blitter-bus-sim | T51; blocks T53 | ⬜ | |
+| T52 | story-blitter-bus-sim | T51; blocks T53 | ✅ | |
 | T53 | story-draw-cpu-program | T52; blocks T54 | ⬜ | |
 | T54 | story-handler-end-feed | T53; blocks T56 | ⬜ | |
 | T55 | story-intro-sound-timing | T50; blocks T56 | ⬜ | |
