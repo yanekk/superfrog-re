@@ -18,6 +18,8 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-13 | 📌 | T55 added T97 story-split-handler (owner's yes): a blit holds the original's handler mid-way across a frame end (6682/6683); the engine runs it whole. Depends on T54, blocks T56. |
+| 2026-10-13 | 📌 | T55: scan from `power-on-disk3` to 9300 frames panics (oracle cap) in a load search near 8200; set-up slips at 4562 and 7227 (`intro_vars`, `frame_descriptors`) precede it. T56's. Scans to 8200 finish. |
 | 2026-10-13 | 🔄 | Owner, T50: an oracle step that runs two video frames (a blit holds the CPU through one; `frames_run` = 2) is compared against two engine frames, writes joined. Scene 4 frame 3188 is the first. |
 | 2026-10-13 | 📌 | T50: in scene 4 the oracle's slot owners show no audio DMA under the masks' clearing; the CPU model leaves audio out. The blitter's `Bus::free` still takes audio every line (T52's to check). |
 | 2026-10-13 | 🐞 | T81 review, not fixed: `cargo clippy --all-targets` on sf-core, sf-conform, sf-oracle has 14 pre-existing warnings (result_large_err, should_implement_trait `next`, as_chunks, needless late init, fade_probe `mut`); none in T81's lines. |

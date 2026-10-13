@@ -141,6 +141,7 @@ headless.
 | [T92](tasks/T92-slot-load.md) | slot-load | T72 |
 | [T93](tasks/T93-slot-attract-draw.md) | slot-attract-draw | T72, T91, T92 |
 | [T94](tasks/T94-slot-interrupt-timing.md) | slot-interrupt-timing | T72, T91, T93; blocks T73 |
+| [T97](tasks/T97-story-split-handler.md) | story-split-handler | T54; blocks T56 |
 
 T22 is the rig task: it comes before every surface task and they depend on it. T29 is the phase's
 drill. At the end: the owner plays it.
