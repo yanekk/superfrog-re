@@ -35,7 +35,8 @@ fn frog_run_w1_1() {
     green("frog-run-w1-1");
 }
 
-/// W1-1 with its items live, 700 frames: coins, the exit lock, the panel and score (T15).
+/// W1-1 with its items live, 700 frames: coins, the exit lock, the panel and score (T15), the
+/// picture as the beam drew it (T36).
 #[test]
 fn items_run_w1_1() {
     green("items-run-w1-1");
