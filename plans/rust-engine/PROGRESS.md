@@ -85,7 +85,7 @@ done · ⛔ blocked, needs a human.
 | T51 | story-oracle-blit-tooling | T46; blocks T52 | ✅ | |
 | T52 | story-blitter-bus-sim | T51; blocks T53 | ✅ | |
 | T53 | story-draw-cpu-program | T52; blocks T54 | ✅ | |
-| T54 | story-handler-end-feed | T53; blocks T56 | 🔍 | `Game::set_handler_end` (ack beam + returned-to PC); post-handler draws start there via `intro::handler_to_draw`; held handlers by `Sim::irq_seen`. `story_draws`: 30 draws, 27 from the ack, 7 held handlers exact. DMACON order green to frame 3436. Deviation: interface also feeds the PC (owner, FINDINGS). `story_dbg DRAWS=1`. |
+| T54 | story-handler-end-feed | T53; blocks T56 | ✅ | Review: one fix. Engine-side draw start from the fed end was untested (Paula compare ignores lines): `run_observing` + story-intro now checks `$8400` lines from frame 538. Mutated `irq_seen`, the wait's branch, `clr.w`, the lead: all caught. Draw ends land in the original's frame to 3436; PC-feed deviation held by `handler_end_probe`. |
 | T55 | story-intro-sound-timing | T50; blocks T56 | ⬜ | |
 | T56 | story-intro-to-insert-disk | T49, T50, T54, T55; blocks T21, T47, T48 | ⬜ | |
 | T81 | beam-cleanup | T36; blocks T37 | ✅ | |
@@ -108,7 +108,7 @@ done · ⛔ blocked, needs a human.
 A Notes cell holds what was built or what the review found, the test count, and one line per
 deviation from the task doc. A ✅ task's cell may be cut to one line once the next task has been reviewed.
 
-**Review queue:** T54
+**Review queue:** *(empty)*
 
 ## Blocked on the user
 
