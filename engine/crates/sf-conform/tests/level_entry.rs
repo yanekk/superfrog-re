@@ -71,12 +71,14 @@ const NOT_MODELLED: &[(&[&str], &str, &str)] = &[
             "bob_free_list",
             "obj_count",
             "obj_slots",
+            "obj_templates",
             "bob_sheet",
             "hunk3_gap",
         ],
         "the objects the level starts with, and their bobs: the world's bob graphics (`LnBO`) the \
-         world's load puts in hunk 3, which only objects draw from",
-        "T15–T18",
+         world's load puts in hunk 3, which only objects draw from; the templates the spawners \
+         write each object's place into",
+        "T36, T16–T18",
     ),
 ];
 
