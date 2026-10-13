@@ -1,0 +1,11 @@
+# Game over with the time up in W1-1 (T34): frog-timeup-w1-1's clock runs out at frame 231
+# (`frog_die` takes every life), the level's loop ends at 269 into `game_over_seq` (the GAME OVER
+# sign, the passes, the wait for fire), then the exit fade, the music faded, `top_loop` and the
+# title, idle from frame 1 153.
+sync = { level = "W1-1", clock = "0:03" }
+frames = 1220
+
+[[exclude]]
+what = "enemies"
+note = "the original's marker spawners the engine has none for (enemies, the world's scenery) and the bubble return at once from power-on"
+task = "T16–T18"

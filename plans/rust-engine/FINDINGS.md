@@ -18,6 +18,8 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-14 | 📌 | T34: the front's `Yield::Busy` lets work spilled past a frame's end run during the next vertical blank; the original's interrupt stops it. Game over resumes after the handler; other `Busy` users may be early by its length. |
+| 2026-10-14 | 🐞 | Not T34's: `slot-load` diverges at frame 0 on the feature branch: `slot::resume` is never called (`Front::resume` lacks it, "never used" warning), so the engine shows nothing. T95's to wire. |
 | 2026-10-14 | 📌 | T83 coverage: `items-wings-w1-2` wings, flight (lasts until a life is lost), spud taken and thrown, coins, a fake wall; `items-checkpoint-w1-1` checkpoint, speed-up to its end (500 frames); red `items-pad-w1-1` adds pad, bottle, spud (T101). |
 | 2026-10-14 | 🔄 | Owner, T83: added T101 lag-long-pass (blocks T21): the bounce-pad case `items-pad-w1-1` diverges at 402 (cut inside phase 6 before `buffer_flip`) and 786 (a pass across three frames). Case committed outside the test block. |
 | 2026-10-14 | 📌 | Coordinator, night of 2026-10-13, under the owner's 2026-10-11 lag rule; owner to confirm: conformance feeds which story blanks had a handler (T55 `Game::set_blank_merged`); normal play keeps the engine's estimate, wrong at 3437. |

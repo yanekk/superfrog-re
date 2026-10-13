@@ -1,0 +1,13 @@
+# Game over after the last life (T34): W1-1 with its items live, no lives left (`frog_lives` set
+# to 0 on its first frame), the frog run into the first pit (frog-pit). The case starts on the
+# frame `game_over_seq` begins: the GAME OVER sign spawned over the level and two passes of its
+# objects and bobs with the level's vertical blank on, 350 frames waiting for fire, the exit fade,
+# `game_over_check`'s music fade, `top_loop` and the title loaded again (skipped frames), its intro
+# and fade in, and the title's idle from frame 885.
+sync = { game-over = "frog-pit" }
+frames = 950
+
+[[exclude]]
+what = "enemies"
+note = "the original's marker spawners the engine has none for (enemies, the world's scenery) and the bubble return at once from power-on"
+task = "T16–T18"

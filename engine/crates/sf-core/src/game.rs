@@ -352,6 +352,7 @@ impl Game {
                 s,
                 sdr,
                 crate::front::Routine::LevelOver(crate::level::exit::LevelOver::new(frog_only)),
+                frog_only,
             );
             let (more, jobs) = front.finish_frame(s, &display, input, line);
             ended = Some((front, more, jobs));
