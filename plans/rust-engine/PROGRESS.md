@@ -70,14 +70,14 @@ done · ⛔ blocked, needs a human.
 | T46 | story-intro-scenes | T32; blocks T21 | ⬜ | |
 | T47 | story-intro-handover | T46; blocks T21 | ⬜ | |
 | T48 | story-intro-skips | T46, T47; blocks T21 | ⬜ | |
-| T70 | bonus-level | T15; blocks T21 | 🔍 | Nothing built. Owner chose: routines now, frame cases after T37. Split at pir's context warning before any code: T75 shots, T76/T77 the 15 types' routines, T78 touch_bonus_enemy and rewards, T79 Scene::Bonus and frame cases. Task docs keep the routine map. |
+| T70 | bonus-level | T15; blocks T21 | ✅ | Split only, into T75–T79; every Done-when item carried. Review fixed one gap: T76's 122 spawns 123, whose init `level::call` would assert on, so 123 moved to T76 and T77 depends on T76; T78 takes the shot-hits-enemy case. Spot-checked `$7e3e`, the bonus jumptab row and marker 55 against the listing. |
 | T71 | slot-sync | T15 | ⬜ | |
 | T72 | slot-screen | T71 | ⬜ | |
 | T73 | slot-rounds | T72 | ⬜ | |
 | T74 | slot-prizes | T73; blocks T21 | ⬜ | |
 | T75 | bonus-shots | T70; blocks T21 | ⬜ | |
 | T76 | bonus-enemies-a | T70; blocks T21 | ⬜ | |
-| T77 | bonus-enemies-b | T70; blocks T21 | ⬜ | |
+| T77 | bonus-enemies-b | T70, T76; blocks T21 | ⬜ | |
 | T78 | bonus-enemy-death | T70, T75; blocks T21 | ⬜ | |
 | T79 | bonus-level-frames | T70, T37, T75, T76, T77, T78; blocks T21 | ⬜ | |
 

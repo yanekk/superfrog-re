@@ -30,7 +30,9 @@ offsets are h0; read them in `~/.cache/superfrog-re/re/d1_c03.lst` (`tools/re_li
   hitbox list. The first three use a `$20`×`$10` box, the last two `$20`×`$20`. A reward
   (update h0+$23e22) is skipped. Any other hit runs its touch handler with d7 = 0, a0 = the frog
   and a1 = the shot, and pushes the shot `$280` right. Remove `objects::collide_all`'s debug
-  assertion.
+  assertion. Every bonus enemy's touch is `touch_bonus_enemy`, T78's, and `level::call` stops a
+  debug build on a routine not yet ported: these tests hit objects whose touch is ported, and T78
+  adds the case of a shot hitting a bonus enemy.
 
 Add `$7f0a`, `$7f0e`, `$7f12`, `$80c6`..`$80f0` to `LAYOUT` (and `re/symbols.toml`). `Bus` panics
 on a write to an unmapped address.

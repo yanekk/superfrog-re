@@ -26,7 +26,10 @@ type's touch handler is `touch_bonus_enemy` (h0+$238e2, T78's). Templates (index
 - marker 5 → 120: $28f1a, $28f36. Every 12 passes it spawns a 121 at (+`$20`, +`$1c`).
 - 121 (spawned): $28f7a, $28fae.
 - marker 6 → 122: $28fd8, $29044. A bobbing path at h0+$2900a (ends at `$80`). Every `$28`
-  passes it fires four 123s (template 123 is T77's).
+  passes it fires four 123s.
+- 123 (spawned by 122, and by T77's 126): $2916a, $29180. It moves by its speeds, then
+  `obj_despawn_if_offscreen`. It is here, not in T77, because a spawn runs the template's init
+  through `level::call`, which stops a debug build on a routine not yet ported.
 
 Add the toggles h0+$28ad8 and h0+$28b4a to `LAYOUT` and `re/symbols.toml`. The listing
 mis-disassembles both as code. Read the tables from the bus (the executable is resident), with
@@ -40,7 +43,7 @@ their addresses named in the source, as `items` does.
 
 ## Interface
 
-Kinds registered under templates 113–122; markers 1–6 registered for world table 6.
+Kinds registered under templates 113–123; markers 1–6 registered for world table 6.
 
 ## Tests
 

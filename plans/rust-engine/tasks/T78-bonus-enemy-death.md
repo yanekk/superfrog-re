@@ -39,6 +39,7 @@ Add h0+$23de4 and h0+$23e20 to `LAYOUT` and `re/symbols.toml`.
 
 ## Tests
 
+- [ ] `collide_all` in shooter mode with a shot hitting a bonus enemy (T75 leaves this case).
 - [ ] Routine conformance for h0+$238e2, h0+$23956, h0+$23c14 (shooter mode and not),
       h0+$23e22, h0+$23e6c and h0+$23eac.
 

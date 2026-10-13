@@ -116,7 +116,7 @@ headless.
 | [T74](tasks/T74-slot-prizes.md) | slot-prizes | T73; blocks T21 |
 | [T75](tasks/T75-bonus-shots.md) | bonus-shots | T70; blocks T21 |
 | [T76](tasks/T76-bonus-enemies-a.md) | bonus-enemies-a | T70; blocks T21 |
-| [T77](tasks/T77-bonus-enemies-b.md) | bonus-enemies-b | T70; blocks T21 |
+| [T77](tasks/T77-bonus-enemies-b.md) | bonus-enemies-b | T70, T76; blocks T21 |
 | [T78](tasks/T78-bonus-enemy-death.md) | bonus-enemy-death | T70, T75; blocks T21 |
 | [T79](tasks/T79-bonus-level-frames.md) | bonus-level-frames | T70, T37, T75, T76, T77, T78; blocks T21 |
 
