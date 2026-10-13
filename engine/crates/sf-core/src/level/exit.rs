@@ -1,7 +1,8 @@
 //! What follows a level's loop (`top_loop` after `level_frame_loop`, docs/08 "Scene flow"): the
 //! exit fade (`level_exit_fade`, h0+$75f2: `game_over_seq` first, then the palette faded out
 //! while the display window closes from the top a line a frame), `game_over_check` (h0+$749c),
-//! then the level again after a death or, the exit reached, the tally (`level_tally`, T38).
+//! then the level again after a death or, the exit reached, the tally (`level_tally`,
+//! [`crate::level::tally`]).
 //!
 //! These run on the front end's program (`crate::front`): the main program waits on the beam
 //! between them, and the vertical blank runs with the level's logic stopped.
@@ -80,11 +81,17 @@ impl LevelOver {
     pub(crate) fn run(&mut self, cx: &mut Cx) -> Yield {
         match self.pc {
             0 => {
-                // `game_over_seq` (T34) runs first when the last life is gone.
-                if cx.s.l(ATTRACT_MODE) == 0 && (cx.s.w(LIVES) as i16) < 0 {
-                    self.pc = 9;
-                    return call(Routine::Outcome(outcome_of_loop(cx.s)));
+                // `game_over_seq` first, outside the attract demo (it is over at once unless the
+                // last life is gone).
+                self.pc = 10;
+                if cx.s.l(ATTRACT_MODE) == 0 {
+                    return call(Routine::GameOverSeq(crate::front::GameOverSeq::new(
+                        self.frog_only,
+                    )));
                 }
+                Yield::Interrupt
+            }
+            10 => {
                 self.pc = 1;
                 fade(FadeKind::Out, 0, PALETTE, 0x20, AFTER_FADE_SETUP)
             }
@@ -117,13 +124,20 @@ impl LevelOver {
                     // h0+$7494, the bonus level's: shooter mode off.
                     cx.s.set_w(SHOOTER_MODE, 0);
                 }
-                // `game_over_check`: ESC (`abort_flag`) leaves the game (T34), a death goes
+                // `game_over_check`: ESC (`abort_flag`) or no lives leave the game, a death goes
                 // round `top_loop` again, the exit to the tally (T38).
+                if crate::front::GameOverCheck::ends(cx) {
+                    return call(Routine::GameOverCheck(Default::default()));
+                }
                 match outcome_of_loop(cx.s) {
                     LevelOutcome::Died => call(Routine::Restart(Restart {
                         pc: 0,
                         frog_only: self.frog_only,
                     })),
+                    // The bonus level's end goes to its end picture (h0+$4326, T21), not the tally.
+                    LevelOutcome::Completed { .. } if cx.s.l(WORLD) != BONUS_WORLD => {
+                        call(Routine::Tally(crate::level::tally::LevelTally::default()))
+                    }
                     o => call(Routine::Outcome(o)),
                 }
             }
@@ -155,7 +169,7 @@ fn init_inside(id: LevelId) -> Vec<u32> {
 
 /// A level routine run on the front end's program, its Paula writes made on the line the beam is
 /// on.
-fn with_level(cx: &mut Cx, frog_only: bool, f: impl FnOnce(&mut LevelCtx)) {
+pub(crate) fn with_level(cx: &mut Cx, frog_only: bool, f: impl FnOnce(&mut LevelCtx)) {
     let (_, writes) = level_ctx(cx, frog_only, false, f);
     for w in writes {
         cx.wr(w.reg, w.value);

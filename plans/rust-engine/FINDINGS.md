@@ -18,10 +18,19 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-14 | 🐞 | T79 review, open (T34 meets T79 at merge): game over in the bonus level diverges at `bonus-death-wb-1` frame 2448, after a lag: `playfield_buffer_0`, then the copper's buffer pointers a flip apart. Likely T101's class; case cut to 2447, divergence pinned. |
 | 2026-10-14 | 🐞 | T79, fixed: `main_program` looked for the loop's end only after a fresh pass; a loop ending in a resumed (lag-cut) pass stalled, in any level. Now after both (`level/frame.rs` `after_pass`). |
 | 2026-10-14 | 📌 | T79: `bonus-end-wb-1` re-syncs at 4284 and 7814, both T101's phase-6 cut, pinned in `frog_cases::bonus_end_wb_1`. Once T101 lands: `resync = false`, drop the pin. Runs ~110 s (two runs: the second sees frame 8127). |
 | 2026-10-14 | 📌 | T79: `bonus_visit` (h0+$8cd6) picks `level_init_lb`'s start row, but nothing sets it (password entries 24–27 share handler h0+$25f8): the bonus level always starts at the top. Ported, routine-tested by poking it. |
 | 2026-10-14 | 📌 | T79: a divergence on the frame after a lag now lists the engine's unported paths (`sf-conform` `run_inner`); before, a game over reached mid-pass read as a bare variable difference. |
+| 2026-10-14 | 📌 | T38 review, not fixed: `LevelTally` drops `level_tally`'s first test (`game_full_mode` 0, a game run from a disk loader, returns at once). Unreachable from the engine's boot; no assertion guards it. |
+| 2026-10-14 | 📌 | T38: tally cases force W1-1's exit (`sync = { level, exit = true }`). `tally-slot-w1-1` is green to `slot_machine`'s loads (frame 86, T95's). `level/tally.rs` `print` is a third port of h0+$6f3a (`slot::print_text`, Cx-based). |
+| 2026-10-14 | 🐞 | T54 review, open: the engine's draw `$8400` still lands 1–4 lines off the original's in 70 frames before 3437 (521, 536, 537 among them; cause not probed); `DRAWS` compares values only, so frames still match. |
+| 2026-10-14 | 📌 | T54: the scan's first divergence, engine frame 3437 (O 6452), is an `objects_init` set-up, not a draw: its mask blits run long in the original (held handlers at lines 281/37/138/252, engine 251/4/69/176); `sfx_records` differ there too. |
+| 2026-10-14 | 📌 | T54: a handler a draw holds off still runs the engine's `handler_lines` length; `story_draws` resumes from the oracle's acknowledge, so that length stays untested (as T53's review noted). |
+| 2026-10-14 | 🔄 | Owner, T54: conformance feeds the PC the intro's handler returned to with its end; the entry does not tell `tst.w` from `beq.b` (`handler_end_probe`: entry cycles 10, 14, 16 come with both). |
+| 2026-10-14 | 📌 | T34: the front's `Yield::Busy` lets work spilled past a frame's end run during the next vertical blank; the original's interrupt stops it. Game over resumes after the handler; other `Busy` users may be early by its length. |
+| 2026-10-14 | 🐞 | Not T34's: `slot-load` diverges at frame 0 on the feature branch: `slot::resume` is never called (`Front::resume` lacks it, "never used" warning), so the engine shows nothing. T95's to wire. |
 | 2026-10-14 | 📌 | T83 coverage: `items-wings-w1-2` wings, flight (lasts until a life is lost), spud taken and thrown, coins, a fake wall; `items-checkpoint-w1-1` checkpoint, speed-up to its end (500 frames); red `items-pad-w1-1` adds pad, bottle, spud (T101). |
 | 2026-10-14 | 🔄 | Owner, T83: added T101 lag-long-pass (blocks T21): the bounce-pad case `items-pad-w1-1` diverges at 402 (cut inside phase 6 before `buffer_flip`) and 786 (a pass across three frames). Case committed outside the test block. |
 | 2026-10-14 | 📌 | Coordinator, night of 2026-10-13, under the owner's 2026-10-11 lag rule; owner to confirm: conformance feeds which story blanks had a handler (T55 `Game::set_blank_merged`); normal play keeps the engine's estimate, wrong at 3437. |
@@ -29,7 +38,6 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 | 2026-10-13 | 🐞 | Not T37's (its review's sweep): the level's `kbd_poll` (`Game::sdr`, `level/clock.rs`) re-reads a key's byte every poll; the original reads it once, then `$ff` (`frog-esc-w1-1`, frames 61→63). Only the power-on `$7e` byte repeats. |
 | 2026-10-13 | 🐞 | Not T37's (same sweep): `Front` resumed from memory (`front/mod.rs`, `Keyboard::from_keys(key_down, key_up)`) re-reads a key byte already handled, where the original reads `$ff`. |
 | 2026-10-13 | 🔄 | Owner, T37: T100 front-vbl-timing added (first numbered T96, renumbered at merge; blocks T21). The fade in's copper reads colours mid-step, by the music player's per-row timing; `frog-pit-w1-1` leaves the picture out on frames 308–323 meanwhile. |
-| 2026-10-13 | 🐞 | Not T37's: `level_entry::every_level_is_entered_as_the_original_enters_it` fails on the feature branch for all 29 levels: `slot_copper` original `$140f440`, engine `$1400000`. |
 | 2026-10-13 | 📌 | T37: `items-run-w1-1` (death at 655, loop end 712) could now run past the restart; not tried. `sf-conform record --paula` prints the original's Paula writes with their lines. |
 | 2026-10-13 | 📌 | T82: a poke planted just before the after-lag step is lost (that step carries on the lagging frame's pass); plant on the lag frame. Free-running costs on items-run-w1-1: signed median 0.75 lines, unsigned 1.9. |
 | 2026-10-13 | 🔄 | Owner: T92 hit pir's context line with only an uncompiled draft committed; the rest passed to T95 slot-load-finish (blocks T93). The oracle timeline is in T95's doc and T92's WIP commit. |
@@ -69,10 +77,7 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 | 2026-10-13 | 🐞 | T70 review: T76's 122 spawned T77's 123 while T76/T77 ran in parallel; a spawn runs the init via `level::call`, asserting when unported. Fixed: 123 moved to T76, T77 depends on T76. |
 | 2026-10-13 | 🔄 | Owner, T70: frame cases wait for T36/T37 (like T16/T17); routines first. pir's context warning split all of T70, unbuilt, into T75–T79. Bonus row of `obj_flag_jumptab`: markers 1–15, 55. |
 | 2026-10-13 | 🔄 | Owner, T19: its split-off tasks T39–T43 renumbered T70–T74, clearing the collision with the feature branch's T39–T44 enemies tasks. |
-| 2026-10-13 | 📌 | T19 review: T16's doc puts oracle tests in `sf-core/tests/enemies_w1_3.rs`; purity forbids the emulator there, so they belong in `sf-conform/tests/`. Not fixed. |
-| 2026-10-13 | 📌 | T19 review: T17's doc puts oracle tests in `sf-core/tests/enemies_w4_6.rs`; they belong in `sf-conform/tests/` (purity). Not fixed. |
-| 2026-10-13 | 📌 | T19 review: T18's doc puts oracle tests in `sf-core/tests/bosses.rs`; they belong in `sf-conform/tests/` (purity). Not fixed. |
-| 2026-10-13 | 📌 | T19 review: T21's doc puts its frame-conformance test in `sf-core/tests/flow.rs`; an oracle test belongs in `sf-conform/tests/` (purity). Not fixed. |
+| 2026-10-13 | 📌 | T19 review: T16, T17 and T18's docs put oracle tests in `sf-core/tests/` (`enemies_w1_3.rs`, `enemies_w4_6.rs`, `bosses.rs`), T21's in `sf-core/tests/flow.rs`; purity forbids the emulator there, so they belong in `sf-conform/tests/`. Not fixed. |
 | 2026-10-13 | 🔄 | Owner, T19: stopped; uncommitted slot port discarded. T71–T74 added (sync, screen, rounds, prizes); their docs keep its measurements (cycles, contention, interrupt length). |
 | 2026-10-13 | 🔄 | Owner, T19: slot cases reach the slot by forcing W1-1's exit (`level_state` = 1), a second use of `write_memory`; the tally's choice by up, then fire. |
 | 2026-10-13 | 🔄 | Owner, T19: the slot redraws lamps while the beam draws; a pixel differing only on lines an engine blit wrote within 4 lines of the beam is excused, counted per case. |

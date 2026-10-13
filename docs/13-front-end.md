@@ -122,6 +122,14 @@ Timing the engine keeps (oracle, frames 0–539):
   handler serves both. The oracle's step then runs two video frames (`Amiga::frames_run`), and
   conformance steps the engine twice for it (owner, T50). When the last mask blit started on a
   fetched line, DMACON = $400 comes before the handler it held (frames 3191, 3760, 4238).
+- **A draw's start** (T54): a draw the handler lets go of (`draw_frames`' `vbl_flag` wait,
+  `draw_next`'s `vbl_count` wait) starts from the handler's acknowledge (`INTREQ = $20`): its
+  tail, the wait's last turn (a branch the interrupt came in before is taken), the calls and
+  `draw_frame`'s set-up, then `bobs_draw` (`intro::handler_to_draw`, run on `story::sim`).
+  Conformance feeds the acknowledge's beam and the PC the handler returned to (the entry does not
+  tell `tst.w` from `beq.b`); normal play takes the acknowledge at the start of its line. A
+  handler a draw holds off is taken at the first instruction end whose last access asked for the
+  bus from line 0, cycle 10 on: one held off the bus by a blit across it ends without it.
 - **Unpacks** (`cf5c`): measured frames per call (`UNPACK_FRAMES`), ending on line 160.
 - **Copper and Paula**: the copper's Paula writes before the CPU takes the interrupt (line 0,
   clock $14) belong to the frame before. Copper colour words a fade rewrites are read as the beam
@@ -178,6 +186,35 @@ end_sequence:
   goes on with the RNG as it is.
 - **A frame that loads** drops the CPU's writes carried over from the frame before (the end of a
   `music_stop`): they were made in the frame the load began, which conformance skips.
+
+## Game over (T34; code, oracle)
+
+```
+level_exit_fade $75f2 (attract mode off) -> game_over_seq $74d0 (over at once with lives left):
+  frog_launched $1f4, frog_spring 1, frog_camera_held 1
+  GAME OVER sign (template 1, init $23f3a: frame $2cdf8) at the camera + ($82, $80)
+  logic_running 1; two passes, each on wait_frame_raster:
+    obj_run_all, build_bob_draw_list, the sign's bob first in the list, bob_draw, $172b4, scroll_latch
+  logic_running 0; wait for fire let go, then up to 350 frames for fire
+then the exit fade; game_over_check $749c (ESC or lives < 0): music_fade_wait, jmp top_loop
+  (game_full_mode 0: $7c6, back to the loader, not ported)
+```
+
+- **The level's interrupt runs on** while `logic_running` is set: frog, camera, clock, scroller and
+  music at 50 Hz, as in the level (`front::gameover::level_vbl`).
+- **A pass spans two frames**: it starts on line `$12b`, its first half (objects, draw list) runs
+  past the frame's end, the rest after the next interrupt (which stops the main program
+  meanwhile), and the blits end near line 255, so the next `wait_frame_raster` may wait a frame
+  more. The original's frame can end in `obj_run_all` or `build_bob_draw_list`; their memory is
+  compared once it is out of them (`FrameOut::jobs`), and conformance does not count those frames
+  as level lag.
+- **The title again**: `top_loop` runs `title_screen` with `music_fade_wait` (one frame, the music
+  is off), the Accessing-disk overlay and the title's loads. The overlay is long faded in, so the
+  original starts its fade-out's set-up in the frame its last load (`$1dd2`) ends in; the engine's
+  load frame stands for that frame (`LoadEnd::Left(h0+$1102)`), not the boot's (`h0+$b7e2`).
+- **Cases** (`engine/conform/cases/game-over-*`): the last life lost in W1-1 (sync point
+  `game-over`: lives set to 0, the frog into the first pit; the case starts on the frame
+  `game_over_seq` begins), untouched and with fire, ESC, and the time up, each to the title's idle.
 
 ## The keyboard (oracle)
 

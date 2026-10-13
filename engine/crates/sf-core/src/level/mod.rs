@@ -22,6 +22,7 @@ pub mod panel;
 pub mod pass;
 pub mod scroll;
 pub mod spawn;
+pub mod tally;
 pub mod timeline;
 
 use sf_paula::PaulaWrite;
@@ -135,6 +136,8 @@ pub fn standard_dispatch() -> &'static Dispatch {
         let mut d = Dispatch::default();
         crate::items::register_all(&mut d);
         crate::bonus::register_all(&mut d);
+        // `game_over_seq`'s sign (T34).
+        register(&mut d, 1, &crate::front::GAME_OVER);
         d
     })
 }

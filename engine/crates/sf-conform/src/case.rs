@@ -172,23 +172,45 @@ impl Case {
                     start: name("start")?,
                 }
             }
+            Some(toml::Value::Table(s)) if s.contains_key("game-over") => {
+                if let Some(k) = s.keys().find(|k| k.as_str() != "game-over") {
+                    return Err(format!("sync: unknown key `{k}` beside `game-over`"));
+                }
+                SyncPoint::GameOver {
+                    script: s["game-over"]
+                        .as_str()
+                        .ok_or("sync.game-over is a script name")?
+                        .to_string(),
+                }
+            }
             Some(toml::Value::Table(s)) if s.contains_key("level") => {
                 if let Some(k) = s
                     .keys()
-                    .find(|k| !["level", "clock", "lives"].contains(&k.as_str()))
+                    .find(|k| !["level", "clock", "exit", "lives"].contains(&k.as_str()))
                 {
                     return Err(format!(
-                        "sync: unknown key `{k}` beside `level` (level, clock, lives)"
+                        "sync: unknown key `{k}` beside `level` (level, clock, exit, lives)"
                     ));
                 }
-                if s.contains_key("clock") && s.contains_key("lives") {
-                    return Err("sync: `clock` or `lives`, not both".into());
+                if [s.contains_key("clock"), s.contains_key("exit"), s.contains_key("lives")]
+                    .iter()
+                    .filter(|&&b| b)
+                    .count()
+                    > 1
+                {
+                    return Err("sync: one of `clock`, `exit` and `lives`".into());
                 }
                 let level = s["level"]
                     .as_str()
                     .ok_or("sync.level is a string like \"W1-1\"")?
                     .parse()?;
+                let exit = match s.get("exit") {
+                    None => false,
+                    Some(v) => v.as_bool().ok_or("sync.exit is true or false")?,
+                };
                 match s.get("clock") {
+                    None if exit => SyncPoint::Exit(level),
+                    Some(_) if exit => return Err("sync: `clock` and `exit` together".into()),
                     None if s.contains_key("lives") => SyncPoint::Lives {
                         level,
                         lives: s["lives"]
@@ -232,7 +254,7 @@ impl Case {
             },
             _ => {
                 return Err(
-                    "sync is \"power-on\", \"power-on-disk3\", \"end-sequence\", { script = \"…\", frame = N }, { level = \"W1-1\" } or { slot = \"…\", start = \"…\" }"
+                    "sync is \"power-on\", \"power-on-disk3\", \"end-sequence\", { script = \"…\", frame = N }, { level = \"W1-1\" }, { slot = \"…\", start = \"…\" } or { game-over = \"…\" }"
                         .into(),
                 );
             }

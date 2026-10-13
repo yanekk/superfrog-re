@@ -152,6 +152,10 @@ layout! {
     EndCopper = "end_copper", h2(0x5efc), Width::Bytes(0x15c);
     /// h2+$6110..$6270: the award pages' copper list.
     AwardCopper = "award_copper", h2(0x6110), Width::Bytes(0x160);
+    /// h2+$6270..$63cc: the rest of the tally's copper list (h2+$6268, T38; its first long is the
+    /// award list's last): its window, its palette at h2+$630c, its plane pointers at h2+$638c and
+    /// the two choices' colours.
+    TallyCopper = "tally_copper", h2(0x6270), Width::Bytes(0x15c);
     /// `slot_copper` (h2+$65e4..$6750): the slot machine's copper list (T71); its fade list at
     /// h2+$6688, its plane pointers at h2+$6708.
     SlotCopper = "slot_copper", h2(0x65e4), Width::Bytes(0x16c);
@@ -361,6 +365,12 @@ layout! {
     Level = "level", h0(0x40de), Width::L;
     /// `coins_collected` (h0+$445e): coins taken since the last tally (`touch_coin` counts them).
     CoinsCollected = "coins_collected", h0(0x445e), Width::L;
+    /// `level_tally`'s pages (h0+$4796: the credits earned, 5 000 points each) and its choice
+    /// (h0+$4798: 1 the slot machine), and the text it prints the level by (h0+$49be, `0-0`
+    /// with the world's and level's digits; T38).
+    TallyPages = "tally_pages", h0(0x4796), Width::W;
+    TallyChoice = "tally_choice", h0(0x4798), Width::W;
+    TallyLevelText = "tally_level_text", h0(0x49be), Width::Bytes(3);
     /// The slot machine's variables (T71; `slot_machine` h0+$49dc, docs/13): `slot_state`
     /// (h0+$49c6..$49dc: the coins put in, then the three reels' positions and more), `slot_count`
     /// (h0+$515a), `slot_prize` (h0+$5526: the ladder's rung), `slot_win` (h0+$57b2), `slot_hilo`
@@ -468,6 +478,9 @@ layout! {
     NumberStarted = "number_started", h0(0x161aa), Width::L;
     Number161ae = "number_161ae", h0(0x161ae), Width::L;
     NumberText = "number_text", h0(0x161b2), Width::Bytes(0xc);
+    /// The four bytes after `number_text`: `level_tally`'s padding (h0+$47de) turns sixteen bytes
+    /// from the text's start that are 0 into spaces (T38).
+    NumberPad = "number_pad", h0(0x161be), Width::Bytes(4);
     /// `marker_cells` (h0+$162e4): the cells of the map's first marker `$30`..`$33` each
     /// (h0+$1625e), one long a marker.
     MarkerCells = "marker_cells", h0(0x162e4), Width::Bytes(0x10);

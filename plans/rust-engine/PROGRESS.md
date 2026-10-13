@@ -56,11 +56,11 @@ done · ⛔ blocked, needs a human.
 | T31 | render-remaining-levels | T13 | ✅ | |
 | T32 | story-intro | T20; blocks T21 | ✅ | |
 | T33 | attract-demo | T16, T20 | ⬜ | |
-| T34 | game-over | T15, T20; blocks T21 | ⬜ | |
+| T34 | game-over | T15, T20; blocks T21 | ✅ | |
 | T35 | end-sequence | T20; blocks T21 | ✅ | |
 | T36 | items-on-the-beam | T15 | ✅ | |
 | T37 | level-restart | T36; blocks T34 | ✅ | |
-| T38 | level-tally | T37; blocks T21 | ⬜ | |
+| T38 | level-tally | T37; blocks T21 | ✅ | |
 | T39 | enemies-world-5 | T16, T38; blocks T18 | ⬜ | |
 | T40 | enemies-world-6 | T38; blocks T18 | ⬜ | |
 | T41 | enemies-world-4 | T38; blocks T18 | ⬜ | |
@@ -79,13 +79,13 @@ done · ⛔ blocked, needs a human.
 | T76 | bonus-enemies-a | T70; blocks T21 | ✅ | |
 | T77 | bonus-enemies-b | T70, T76; blocks T21 | ✅ | |
 | T78 | bonus-enemy-death | T70, T75; blocks T21 | ✅ | |
-| T79 | bonus-level-frames | T70, T37, T75, T76, T77, T78; blocks T21 | ✅ | Review fixed one: `bonus_end_wb_1` now checks frame 8127 (end picture, every variable equal), locking h0+$7494's `shooter_mode` clear, whose mutation survived; unused `Scene` import dropped. Probed `top_loop` h0+$618–$666 and `level_init_lb` in the listing; mutated `goes_on` and the resumed-pass `after_pass`, both red. Deviations held. |
+| T79 | bonus-level-frames | T70, T37, T75, T76, T77, T78; blocks T21 | ✅ | Review fixed: `bonus_end_wb_1` now checks frame 8127, locking h0+$7494's `shooter_mode` clear (mutation survived); unused import. Merging T34/T38: bonus completion kept off the tally; game over in the bonus level diverges at 2448 (open, FINDINGS), death case cut to 2447. Mutated `goes_on`, resumed `after_pass`: red. |
 | T49 | story-fade-setup-job | T46; blocks T56 | ✅ | |
 | T50 | story-objects-init-display | T49; blocks T56 | ✅ | |
 | T51 | story-oracle-blit-tooling | T46; blocks T52 | ✅ | |
 | T52 | story-blitter-bus-sim | T51; blocks T53 | ✅ | |
 | T53 | story-draw-cpu-program | T52; blocks T54 | ✅ | |
-| T54 | story-handler-end-feed | T53; blocks T56 | ⬜ | |
+| T54 | story-handler-end-feed | T53; blocks T56 | ✅ | |
 | T55 | story-intro-sound-timing | T50; blocks T56 | ✅ | |
 | T56 | story-intro-to-insert-disk | T49, T50, T54, T55; blocks T21, T47, T48 | ⬜ | |
 | T81 | beam-cleanup | T36; blocks T37 | ✅ | |
