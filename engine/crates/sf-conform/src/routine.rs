@@ -208,13 +208,13 @@ impl<'d> Rig<'d> {
         let audio_before = st.audio.vars(self.sound);
         let mut paula: Vec<PaulaWrite> = Vec::new();
         {
-            let mut ctx = LevelCtx {
-                bus: Bus::new(&mut st, self.display.rom()),
-                dispatch: sf_core::level::standard_dispatch(),
-                hw: setup.hw,
-                sound: self.sound,
-                paula: &mut paula,
-            };
+            let mut ctx = LevelCtx::new(
+                Bus::new(&mut st, self.display.rom()),
+                sf_core::level::standard_dispatch(),
+                setup.hw,
+                self.sound,
+                &mut paula,
+            );
             port(&mut ctx);
         }
 

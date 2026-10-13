@@ -2,6 +2,7 @@
 //! list (`scroll_latch`, h0+$1700a).
 
 use crate::layout::{h0, h2, h3};
+use crate::level::beam::Cost;
 use crate::level::{LevelCtx, n_clear};
 use crate::mem::Bus;
 
@@ -107,10 +108,10 @@ pub fn scroll_latch(c: &mut LevelCtx) {
 /// `$25260` below it, buffer 1 `$12930`.
 pub const CLEAN: u32 = h3(0x35860);
 const CLEAN_TO_BUFFER_0: u32 = 0x25260;
-/// `map_rows` (h0+$17334).
-use crate::level::collision::MAP_ROWS;
 /// `tile_ptrs` (h1+$30fe0).
 use crate::mem::TILE_PTRS;
+/// `map_rows` (h0+$17334).
+use crate::level::collision::MAP_ROWS;
 
 /// The scroller's variables (h0+$16668..$1668a).
 const ROW_SHIFT: u32 = h0(0x16668);
@@ -149,7 +150,16 @@ pub fn scroller(c: &mut LevelCtx) {
     } else {
         draw_cols(b);
     }
-    // (When nothing was drawn the original waits eight raster lines here, h0+$12a14.)
+    let drawn = c.bus.w(DRAWN) as u32;
+    let tiles = drawn * c.bus.l(TILES_PER_LINE);
+    c.spend(Cost::Scroller);
+    c.spend_n(Cost::ScrollQueue, drawn);
+    c.spend_n(Cost::ScrollTile, tiles);
+    if drawn == 0 {
+        // h0+$12a14: nothing was drawn, and the original waits eight raster lines.
+        c.wait_lines(8);
+    }
+    let b = &mut c.bus;
     b.set_l(BLIT_NEXT, BLIT_QUEUE);
     b.set_w(BLITS_PENDING, 1);
     // The copper interrupt, requested: it runs [`copper_irq_blits`] as the handler returns.
@@ -160,10 +170,7 @@ pub fn scroller(c: &mut LevelCtx) {
 fn shooter_scroll(c: &mut LevelCtx) {
     let b = &mut c.bus;
     b.set_w(DRAW_TOGGLE, 0);
-    b.set_b(
-        crate::level::camera::SCROLL_DIRS,
-        b.b(crate::level::camera::SCROLL_DIRS) | 2,
-    );
+    b.set_b(crate::level::camera::SCROLL_DIRS, b.b(crate::level::camera::SCROLL_DIRS) | 2);
     b.set_l(COL_SHIFT_X, 0x18);
     b.set_l(COL_SHIFT_Y, b.l(SHOOTER_COLUMN));
     b.set_l(TILES_PER_LINE, 1);
@@ -172,14 +179,7 @@ fn shooter_scroll(c: &mut LevelCtx) {
     crate::level::spawn::scan_right_column(c);
     let b = &mut c.bus;
     let n = b.l(SHOOTER_COLUMN).wrapping_add(1);
-    b.set_l(
-        SHOOTER_COLUMN,
-        if (n.wrapping_sub(0x14) as i32) < 0 {
-            n
-        } else {
-            1
-        },
-    );
+    b.set_l(SHOOTER_COLUMN, if (n.wrapping_sub(0x14) as i32) < 0 { n } else { 1 });
     b.set_l(BLIT_NEXT, BLIT_QUEUE);
     b.set_w(BLITS_PENDING, 1);
     c.custom(0x9c, 0x8010);
@@ -338,14 +338,8 @@ fn draw_col(b: &mut Bus, x: u32, y: u32) {
 /// A blitter copy (BLTCON0 `$09f0`: D = A, all masks open): `size` as BLTSIZE (height in bits
 /// 15–6, 0 for 1024; width in words in bits 5–0, 0 for 64), both modulos `modulo`.
 fn blit(b: &mut Bus, src: u32, dst: u32, size: u16, modulo: u16) {
-    let h = match size >> 6 {
-        0 => 1024,
-        h => h as u32,
-    };
-    let w = match size & 0x3f {
-        0 => 64,
-        w => w as u32,
-    };
+    let h = match size >> 6 { 0 => 1024, h => h as u32 };
+    let w = match size & 0x3f { 0 => 64, w => w as u32 };
     let (mut s, mut d) = (src & 0x7_fffe, dst & 0x7_fffe);
     for _ in 0..h {
         for _ in 0..w {
@@ -362,22 +356,14 @@ fn blit(b: &mut Bus, src: u32, dst: u32, size: u16, modulo: u16) {
 /// blitter given the bus (DMACON `$8400`, BLTPRI) while it runs.
 fn blit_planes(c: &mut LevelCtx, a1: u32, size: u16, modulo: u16) {
     c.custom(0x96, 0x8400);
+    let words = (match size >> 6 { 0 => 1024, h => h as u32 }) * (match size & 0x3f { 0 => 64, w => w as u32 });
     for p in 0..5u32 {
         let src = a1.wrapping_add(PLANE * p);
-        blit(
-            &mut c.bus,
-            src,
-            src.wrapping_sub(CLEAN_TO_BUFFER_0),
-            size,
-            modulo,
-        );
-        blit(
-            &mut c.bus,
-            src,
-            src.wrapping_sub(BUFFER_BYTES),
-            size,
-            modulo,
-        );
+        c.spend(Cost::IrqPlane);
+        blit(&mut c.bus, src, src.wrapping_sub(CLEAN_TO_BUFFER_0), size, modulo);
+        c.blit_words(words, 0x09f0);
+        blit(&mut c.bus, src, src.wrapping_sub(BUFFER_BYTES), size, modulo);
+        c.blit_words(words, 0x09f0);
     }
     c.custom(0x96, 0x0400);
 }
@@ -398,6 +384,8 @@ pub fn copper_irq_blits(c: &mut LevelCtx) {
         }
         let a1 = b.l(e + 0xa);
         let n = b.w(e + 4);
+        c.spend(Cost::IrqBlits);
+        let b = &mut c.bus;
         if b.w(e + 2) == 0 {
             let modulo = 0x18u16.wrapping_sub(n).wrapping_mul(2);
             blit_planes(c, a1, n | 0x400, modulo);
@@ -405,11 +393,7 @@ pub fn copper_irq_blits(c: &mut LevelCtx) {
             let lines = n.wrapping_shl(4);
             let left = CLEAN.wrapping_add(PLANE).wrapping_sub(a1);
             let q = left / 0x30;
-            let d2 = if q > 0xffff {
-                left
-            } else {
-                left & 0xffff_0000 | q
-            };
+            let d2 = if q > 0xffff { left } else { left & 0xffff_0000 | q };
             let to_end = d2 as u16 & 0xfff0;
             let rest = to_end.wrapping_sub(lines);
             if n_clear(rest) {

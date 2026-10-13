@@ -56,6 +56,8 @@ pub struct DisplayData {
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 struct WorldDisplay {
     tiles: Vec<[u8; 256]>,
+    /// `LnBO` as the world's load leaves it in hunk 3: five planes of 320 × 320.
+    bobs: Vec<u8>,
 }
 
 impl Default for DisplayData {
@@ -90,6 +92,7 @@ impl DisplayData {
             .iter()
             .map(|w| WorldDisplay {
                 tiles: w.tiles.tiles.clone(),
+                bobs: w.bobs.sheet.to_planar(),
             })
             .collect();
         DisplayData {
@@ -130,6 +133,16 @@ impl DisplayData {
         (off..off + len)
             .map(|a| self.h2.get(a as usize).copied().unwrap_or(0))
             .collect()
+    }
+
+    /// The bob sheet (`LnBO`) of `world` (W1..W6, the bonus and the final level) as its load
+    /// leaves it in hunk 3; empty when the disks are not there.
+    pub(crate) fn bob_sheet(&self, world: World) -> &[u8] {
+        World::ALL
+            .iter()
+            .position(|&x| x == world)
+            .and_then(|i| self.worlds.get(i))
+            .map_or(&[], |w| &w.bobs[..])
     }
 
     /// The world the `world` variable names: 1..6, 7 the bonus level.
@@ -205,6 +218,13 @@ pub(crate) struct Mem<'a> {
     state: &'a State,
     data: &'a DisplayData,
     world: Option<&'a WorldDisplay>,
+    /// Writes made during the frame ([`crate::mem::WriteLog`]), by address: `(address, the byte
+    /// before, the beam's line)`, each address's in the order made. A line drawn before a write
+    /// sees the byte before it.
+    undo: Vec<(u32, u8, u32)>,
+    /// The line the beam is drawing, and the DMA slot its bitplane fetch starts on.
+    line: std::cell::Cell<u16>,
+    pub(super) fetch_start: std::cell::Cell<u16>,
     /// The story intro's memory, which is all of RAM as the original's bytes: read before
     /// anything else.
     flat: Option<&'a crate::front::story::StoryMem>,
@@ -216,19 +236,67 @@ impl<'a> Mem<'a> {
             state,
             data,
             world: data.world(state.world()),
+            undo: Vec::new(),
+            line: std::cell::Cell::new(0),
+            fetch_start: std::cell::Cell::new(0),
             flat: None,
         }
     }
 
-    /// `len` bytes at `addr`, from the one place that holds them all, else byte by byte.
-    pub fn bytes(&self, addr: u32, len: u32) -> std::borrow::Cow<'a, [u8]> {
-        if let Some(b) = self.whole(addr, len) {
-            return b.into();
+    /// `state` as the beam saw it, with the frame's writes in `log` made as it went.
+    fn with_log(state: &'a State, data: &'a DisplayData, log: &crate::mem::WriteLog) -> Mem<'a> {
+        let mut undo = log.writes.clone();
+        // A stable sort keeps each address's writes in the order made.
+        undo.sort_by_key(|w| w.0);
+        Mem {
+            undo,
+            ..Mem::new(state, data)
         }
-        (addr..addr + len)
-            .map(|a| self.whole(a, 1).map_or(0, |b| b[0]))
-            .collect::<Vec<u8>>()
-            .into()
+    }
+
+    /// `len` bytes at `addr` as the beam sees them on its line, from the one place that holds
+    /// them all, else byte by byte.
+    pub fn bytes(&self, addr: u32, len: u32) -> std::borrow::Cow<'a, [u8]> {
+        let b: std::borrow::Cow<'a, [u8]> = match self.whole(addr, len) {
+            Some(b) => b.into(),
+            None => (addr..addr + len)
+                .map(|a| self.whole(a, 1).map_or(0, |b| b[0]))
+                .collect::<Vec<u8>>()
+                .into(),
+        };
+        if self.undo.is_empty() {
+            return b;
+        }
+        // The beam fetches a line's words from DDFSTRT on, a word every 8 slots.
+        let line = self.line.get() as u32 * crate::level::beam::LINE_CYCLES
+            + 2 * self.fetch_start.get() as u32;
+        let from = self.undo.partition_point(|w| w.0 < addr);
+        let mut out: Option<Vec<u8>> = None;
+        let mut done = None;
+        for &(a, old, at) in &self.undo[from..] {
+            if a >= addr + len {
+                break;
+            }
+            let fetched = line + 2 * 8 * ((a - addr) / 2);
+            if crate::level::DEBUG.load(std::sync::atomic::Ordering::Relaxed) && self.line.get() == 159 {
+                eprintln!("  FETCH line 191 ${addr:x}+{} written {}.{} fetched {}.{} -> {}", a - addr, at / 454, at % 454, fetched / 454, fetched % 454, if at >= fetched { "old" } else { "new" });
+            }
+            // The first write the beam has not seen holds what it sees.
+            if at >= fetched && done != Some(a) {
+                out.get_or_insert_with(|| b.to_vec())[(a - addr) as usize] = old;
+                done = Some(a);
+            }
+        }
+        match out {
+            Some(v) => v.into(),
+            None => b,
+        }
+    }
+
+    /// The word at `addr` as the beam sees it on `line`.
+    fn word_at(&self, addr: u32, line: u16) -> u16 {
+        self.line.set(line);
+        self.word(addr)
     }
 
     fn whole(&self, addr: u32, len: u32) -> Option<&'a [u8]> {
@@ -345,8 +413,19 @@ struct Denise<'a> {
 
 /// The level's picture.
 pub(crate) fn level(state: &State, data: &DisplayData, view: View) -> Picture {
-    let mem = Mem::new(state, data);
-    let word = |a: u32, _: u16, _: u16| mem.word(a);
+    level_as_drawn(state, data, view, &crate::mem::WriteLog::default())
+}
+
+/// The level's picture as the beam drew it: `state` at the frame's end, less what `log` says
+/// was written after the beam had passed.
+pub(crate) fn level_as_drawn(
+    state: &State,
+    data: &DisplayData,
+    view: View,
+    log: &crate::mem::WriteLog,
+) -> Picture {
+    let mem = Mem::with_log(state, data, log);
+    let word = |a: u32, line: u16, _: u16| mem.word_at(a, line);
     draw(
         &mem,
         &word,
@@ -475,6 +554,7 @@ impl Denise<'_> {
         let mut rows = Vec::with_capacity(pic.height as usize);
         let mut field = playfield::Lines::default();
         for line in 0..pic.top + pic.height {
+            self.mem.line.set(line);
             let y = line.checked_sub(pic.top).map(|y| y as usize);
             let mut cuts = [None; 8];
             let mut palette = None;
@@ -508,7 +588,9 @@ impl Denise<'_> {
                 };
                 if let Some(y) = y {
                     let row = &mut pic.pixels[y * width..(y + 1) * width];
+                    self.mem.fetch_start.set(self.planes.fetch.first_cycle());
                     panel::fetch(self.mem, &self.planes, left, row);
+                    self.mem.fetch_start.set(0);
                 }
                 let words = self.planes.fetch.words() as i32;
                 for p in 0..self.planes.fetch.planes() as usize {

@@ -7,10 +7,12 @@
 //! ported routine works on: the original's memory as the engine models it, the hardware the frame
 //! reads, and the sound driver.
 
+pub mod beam;
+pub mod bobs;
 pub mod camera;
 pub mod clock;
-pub mod collision;
 pub mod death;
+pub mod collision;
 pub mod fade;
 pub mod frame;
 pub mod load;
@@ -39,7 +41,7 @@ pub fn n_clear(result: u16) -> bool {
 
 /// What the custom chips and CIAs answer this frame: the original reads the joystick and the fire
 /// button itself, wherever it needs them (docs/08 "Input"); within a frame they hold still.
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash)]
 pub struct Hw {
     /// `JOY1DAT` (`$DFF00C`): the joystick in port 2, as Denise encodes it.
     pub joy1dat: u16,
@@ -118,18 +120,8 @@ pub struct Dispatch {
 impl std::fmt::Debug for Dispatch {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("Dispatch")
-            .field(
-                "kinds",
-                &self
-                    .kinds
-                    .iter()
-                    .map(|k| (k.0, k.1.name))
-                    .collect::<Vec<_>>(),
-            )
-            .field(
-                "markers",
-                &self.markers.iter().map(|m| m.0).collect::<Vec<_>>(),
-            )
+            .field("kinds", &self.kinds.iter().map(|k| (k.0, k.1.name)).collect::<Vec<_>>())
+            .field("markers", &self.markers.iter().map(|m| m.0).collect::<Vec<_>>())
             .finish()
     }
 }
@@ -196,15 +188,14 @@ impl Dispatch {
 /// Run the original's slot routine at `addr` on `slot`: the ported one, or, for a routine nothing
 /// ports yet, nothing (a debug build stops: every object a game meets has its kind registered).
 pub fn call(c: &mut LevelCtx, addr: u32, slot: u32, d7: u16) {
+    c.spend(beam::routine_cost(addr));
     match c.dispatch.routine(addr) {
         Some(f) => f(c, slot, d7),
-        None => debug_assert!(
-            false,
-            "slot routine ${:x} is not ported",
-            addr.wrapping_sub(h0(0))
-        ),
+        None => debug_assert!(false, "slot routine ${:x} is not ported", addr.wrapping_sub(h0(0))),
     }
 }
+
+pub static DEBUG: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
 
 /// What a ported level routine works on.
 pub struct LevelCtx<'a> {
@@ -215,35 +206,423 @@ pub struct LevelCtx<'a> {
     pub sound: &'a SoundData,
     /// The frame's Paula writes, in order.
     pub paula: &'a mut Vec<PaulaWrite>,
+    /// Where the beam is as the CPU works ([`beam`]), and what the work costs.
+    pub clock: beam::Clock,
+    pub costs: [u32; beam::Cost::COUNT],
+    /// When kept: the clock's steps, for fitting the costs.
+    pub trace: Option<Vec<beam::Tick>>,
+    /// While the main program runs on the beam: its frame boundaries ([`frame::main_program`]).
+    pub frames: Option<Box<beam::Frames>>,
+    /// The Paula writes given the beam's position so far.
+    stamped: usize,
+    /// In conformance: where the original made each of the step's own frame's Paula writes, as
+    /// (line, slot); the clock is set there as the engine makes each ([`crate::Game::anchor_writes`]).
+    pub schedule: Vec<(u16, u16)>,
+    /// In conformance: where the original started each of the frame's blits (BLTSIZE, line,
+    /// slot), and the next to match ([`crate::Game::anchor_blits`]).
+    pub blits: Vec<(u16, u16, u16)>,
+    blit_next: usize,
+    /// A blit ran since the last anchored point.
+    blitted: bool,
+    /// The last anchored point: where the beam was, and the display writes logged by then.
+    anchored_at: Option<(u32, usize)>,
+    /// Which of the pass's calls is running (`level_frame_loop`'s, in order: [`frame::pass`]),
+    /// and the steps of its loop done (slots looked at; [`LevelCtx::step_done`]).
+    pub phase: u8,
+    pub pass_step: u16,
+    /// The copper interrupt is masked (INTENA `$0010`: the pass's blits mask it), and one has been
+    /// requested meanwhile: it is taken once the pass unmasks it.
+    coper_masked: bool,
+    coper_pending: bool,
+}
+
+impl<'a> LevelCtx<'a> {
+    /// A routine's context, the beam at the frame's start.
+    pub fn new(
+        bus: Bus<'a>,
+        dispatch: &'a Dispatch,
+        hw: Hw,
+        sound: &'a SoundData,
+        paula: &'a mut Vec<PaulaWrite>,
+    ) -> LevelCtx<'a> {
+        let stamped = paula.len();
+        LevelCtx {
+            bus,
+            dispatch,
+            hw,
+            sound,
+            paula,
+            clock: beam::Clock::START,
+            costs: beam::COSTS,
+            trace: None,
+            frames: None,
+            stamped,
+            schedule: Vec::new(),
+            anchored_at: None,
+            blits: Vec::new(),
+            blit_next: 0,
+            blitted: false,
+            phase: 0,
+            pass_step: 0,
+            coper_masked: false,
+            coper_pending: false,
+        }
+    }
 }
 
 impl LevelCtx<'_> {
+    /// The Paula writes made since the beam last moved happened where it is.
+    fn stamp(&mut self) {
+        let fresh = self.stamped < self.paula.len();
+        for k in self.stamped..self.paula.len() {
+            self.scheduled(k);
+            self.paula[k].vpos = self.clock.line;
+            self.paula[k].hpos = self.clock.hpos();
+            if let Some(t) = self.trace.as_mut() {
+                t.push(beam::Tick::Write(k as u32));
+            }
+        }
+        self.stamped = self.paula.len();
+        if fresh {
+            self.anchor();
+        }
+    }
+
+    fn tick(&mut self, t: beam::Tick) {
+        if let Some(trace) = self.trace.as_mut() {
+            trace.push(t);
+        }
+    }
+
+    /// The pass enters its `phase`th call.
+    pub fn enter_phase(&mut self, phase: u8) {
+        self.phase = phase;
+        self.pass_step = 0;
+    }
+
+    /// A step of the pass's loop is done (a slot looked at): the original's frame may end here
+    /// ([`beam::Cut::step`]).
+    pub fn step_done(&mut self) {
+        self.pass_step = self.pass_step.saturating_add(1);
+        self.interrupt_due();
+    }
+
+    /// The CPU does work of kind `k` here (see [`beam`]).
+    pub fn spend(&mut self, k: beam::Cost) {
+        self.spend_n(k, 1);
+    }
+
+    /// The CPU does `n` pieces of work of kind `k` here.
+    pub fn spend_n(&mut self, k: beam::Cost, n: u32) {
+        self.interrupt_due();
+        self.stamp();
+        if n == 0 {
+            return;
+        }
+        self.tick(beam::Tick::Cpu(k, n));
+        self.clock.cpu(n * self.costs[k as usize]);
+        self.bus.at = self.clock.nominal();
+    }
+
+    /// The Paula write with index `k` is being made: in the step's own frame, with a schedule,
+    /// the clock is where the original made it.
+    fn scheduled(&mut self, k: usize) {
+        let Some(f) = self.frames.as_ref() else {
+            return;
+        };
+        if f.at.is_none_or(|a| a + 1 != f.specs.len()) || k < f.out_from {
+            return;
+        }
+        if let Some(&(line, hpos)) = self.schedule.get(k - f.out_from) {
+            self.anchor_to(beam::Clock {
+                line,
+                into: 2 * hpos as u32,
+            });
+        }
+    }
+
+    /// The clock is set to `to`, where the original was at this point: what was written to the
+    /// display since the last such point is put between the two as the costs spread it,
+    /// stretched to fit.
+    fn anchor_to(&mut self, to: beam::Clock) {
+        let (now, target) = (self.clock.nominal(), to.nominal());
+        // A blit's writes are placed by its own cycles from its start, not stretched.
+        let blitted = std::mem::take(&mut self.blitted);
+        if let (Some((from, at)), Some(log)) = (self.anchored_at, self.bus.log.as_mut())
+            && now > from
+            && !blitted
+        {
+            for w in &mut log.writes[at..] {
+                if w.2 >= from {
+                    let t = (w.2 - from) as u64 * target.saturating_sub(from) as u64;
+                    w.2 = from + (t / (now - from) as u64) as u32;
+                }
+            }
+        }
+        self.clock = to;
+        self.bus.at = target;
+        self.anchored_at = Some((target, self.bus.log.as_ref().map_or(0, |l| l.writes.len())));
+    }
+
+    /// In the step's own frame, with a schedule: a blit of `words` words starts where the
+    /// original started its next blit of that size.
+    fn scheduled_blit(&mut self, words: u32) {
+        let Some(f) = self.frames.as_ref() else {
+            return;
+        };
+        if f.at.is_none_or(|a| a + 1 != f.specs.len()) {
+            return;
+        }
+        let size_words = |s: u16| {
+            (match s >> 6 { 0 => 1024, h => h as u32 }) * (match s & 0x3f { 0 => 64, w => w as u32 })
+        };
+        let from = self.blit_next;
+        if let Some(j) = (from..self.blits.len().min(from + 3)).find(|&j| size_words(self.blits[j].0) == words) {
+            self.blit_next = j + 1;
+            let (_, line, hpos) = self.blits[j];
+            self.anchor_to(beam::Clock {
+                line,
+                into: 2 * hpos as u32,
+            });
+        }
+    }
+
+    /// The Paula writes the frame being run has made so far (0 outside the main program).
+    pub fn frame_writes_now(&self) -> u16 {
+        self.frame_writes().unwrap_or(0)
+    }
+
+    /// The Paula writes the frame being run has made.
+    fn frame_writes(&self) -> Option<u16> {
+        let f = self.frames.as_ref()?;
+        f.at?;
+        Some(f.pre + (self.paula.len() - f.from) as u16)
+    }
+
+    /// After a write: when it is the last the frame's original made before its end
+    /// ([`beam::Cut`]), the clock goes from where that one was made.
+    fn anchor(&mut self) {
+        let Some(n) = self.frame_writes() else {
+            return;
+        };
+        let f = self.frames.as_mut().expect("frames");
+        if let Some((_, Some(cut))) = f.current()
+            && !f.anchored
+            && n >= cut.writes
+        {
+            f.anchored = true;
+            self.clock = beam::Clock {
+                line: cut.line,
+                into: 2 * cut.hpos as u32,
+            };
+            self.bus.at = self.clock.nominal();
+        }
+    }
+
+    /// In the main program's pass: whether the frame ends here, the next vertical blank coming
+    /// in the middle of the pass. A frame with a cut ends once it has made the cut's writes and
+    /// its clock is past the frame's end, or, `writing`, before it makes one more; one without
+    /// ends when its clock is (and the pass then runs on uninterrupted: the frame was on time).
+    fn interrupt_due_at(&mut self, writing: bool) {
+        let Some(n) = self.frame_writes() else {
+            return;
+        };
+        let f = self.frames.as_ref().expect("frames");
+        if !f.in_pass || f.in_vbl || f.done || f.past_end {
+            return;
+        }
+        let past = self.clock.line >= beam::FRAME_LINES;
+        let due = match f.current() {
+            // In the call the original was in, once the clock says; past it, at once; before
+            // it, not yet (unless a write it had not made comes first).
+            Some((_, Some(cut))) => {
+                let here = self.phase == cut.phase;
+                n >= cut.writes
+                    && (writing
+                        || self.phase > cut.phase
+                        || (here && cut.step != beam::NO_STEP && self.pass_step >= cut.step)
+                        || (here && cut.step == beam::NO_STEP && past))
+            }
+            _ => past,
+        };
+        if due {
+            if self.clock.line < beam::FRAME_LINES {
+                self.clock = beam::Clock {
+                    line: beam::FRAME_LINES,
+                    into: 0,
+                };
+            }
+            self.frame_end();
+        }
+    }
+
+    fn interrupt_due(&mut self) {
+        self.interrupt_due_at(false);
+    }
+
+    /// The beam reaches the frame's end ([`frame::main_program`]): the next frame's vertical
+    /// blank runs (the step's own, or one a pending pass met before), or, after the step's own
+    /// frame, the step is over: in the middle of a pass its frame ends in, the state and the pass
+    /// are kept for the next step; in the middle of a pass its frame ends without (on time), the
+    /// pass runs on uninterrupted.
+    pub fn frame_end(&mut self) {
+        let f = self.frames.as_mut().expect("the main program's frames");
+        let next = f.at.map_or(0, |a| a + 1);
+        if let Some((true, None)) = f.current()
+            && f.in_pass
+        {
+            f.past_end = true;
+            return;
+        }
+        if next < f.specs.len() {
+            if crate::level::DEBUG.load(std::sync::atomic::Ordering::Relaxed) {
+                let from = f.from;
+                let ws: Vec<String> = self.paula[from.min(self.paula.len())..].iter().filter(|w| w.reg < 0xa0).map(|w| format!("{:02x}={:04x}@{}", w.reg, w.value, w.vpos)).collect();
+                eprintln!("  boundary into frame {next} (at {:?}, in_pass {}): frame writes {}", f.at, f.in_pass, ws.join(" "));
+            }
+            let f = self.frames.as_mut().expect("frames");
+            let spec = f.specs[next];
+            let own = next + 1 == f.specs.len();
+            if f.in_pass {
+                f.pass_frames.push(spec);
+            }
+            f.at = Some(next);
+            f.pre = 0;
+            f.anchored = false;
+            f.in_vbl = true;
+            self.stamp();
+            let f = self.frames.as_mut().expect("frames");
+            f.from = self.paula.len();
+            self.clock = self.clock.next_frame();
+            self.bus.at = self.clock.nominal();
+            if own {
+                f.out_from = self.paula.len();
+                self.bus.log = Some(crate::mem::WriteLog::default());
+            }
+            self.hw = spec.hw;
+            frame::vbl(self);
+            let f = self.frames.as_mut().expect("frames");
+            f.in_vbl = false;
+            return;
+        }
+        self.stamp();
+        let f = self.frames.as_mut().expect("frames");
+        f.done = true;
+        f.out_to = Some(self.paula.len());
+        f.log = self.bus.log.take();
+        if f.in_pass {
+            f.mid = Some(Box::new(self.bus.st.clone()));
+            if let Some((start, clock, hw, pre)) = f.pass_start.clone() {
+                f.pending = Some(beam::Pending {
+                    start,
+                    clock,
+                    hw,
+                    pre,
+                    frames: f.pass_frames.clone(),
+                });
+            }
+        }
+    }
+
+    /// The sound driver's writes from `from` on were made one after another, each costing what
+    /// it does: a channel stopped (DMACON without its set bit) `stop`, any other `each`.
+    pub fn audio_spent(&mut self, from: usize, stop: beam::Cost, each: beam::Cost) {
+        self.stamp();
+        for k in from..self.paula.len() {
+            let w = self.paula[k];
+            self.scheduled(k);
+            self.paula[k].vpos = self.clock.line;
+            self.paula[k].hpos = self.clock.hpos();
+            self.tick(beam::Tick::Write(k as u32));
+            let c = if w.reg == 0x96 && w.value & 0x8000 == 0 {
+                stop
+            } else if w.reg == 0x9a && w.value == 0x4000 {
+                beam::Cost::AudioMasked
+            } else {
+                each
+            };
+            self.tick(beam::Tick::Cpu(c, 1));
+            self.clock.cpu(self.costs[c as usize]);
+        }
+        self.bus.at = self.clock.nominal();
+        self.anchor();
+    }
+
+    /// The CPU waits until the beam has passed `n` more lines (a raster wait).
+    pub fn wait_lines(&mut self, n: u16) {
+        self.stamp();
+        self.tick(beam::Tick::Wait(n));
+        self.clock.line = self.clock.line.saturating_add(n);
+        self.clock.into = 0;
+        self.bus.at = self.clock.nominal();
+    }
+
+    /// The CPU waits while the blitter runs `words` words of a blit with BLTCON0 `con0`.
+    pub fn blit_words(&mut self, words: u32, con0: u16) {
+        self.interrupt_due();
+        self.stamp();
+        self.scheduled_blit(words);
+        let slots = words * beam::slots_per_word(con0);
+        self.tick(beam::Tick::Blit(slots));
+        let times = self.clock.blit_cycles(words, con0);
+        self.blitted = true;
+        self.bus.at = self.clock.nominal();
+        if !times.is_empty() {
+            self.bus.span = Some((times, 0));
+        }
+    }
+
     /// `sfx_play` (h0+$12a72): effect `effect` on `channel`, unless the attract demo runs.
     pub fn sfx(&mut self, effect: u8, channel: u8) {
         if self.bus.l(ATTRACT_MODE) == 0 {
-            self.bus
-                .st
-                .audio
+            let at = self.paula.len();
+            self.spend(beam::Cost::SfxPlay);
+            self.bus.st.audio
                 .play_sfx(self.sound, effect, channel, self.paula);
+            self.audio_spent(at, beam::Cost::AudioStop, beam::Cost::AudioWrite);
         }
     }
 
     /// `sample_play` (h0+$148b8): stream sample `k` on channel 3, unless the attract demo runs.
     pub fn sample(&mut self, k: usize) {
         if self.bus.l(ATTRACT_MODE) == 0 {
+            let at = self.paula.len();
+            self.spend(beam::Cost::SfxPlay);
             self.bus.st.audio.play_sample(self.sound, k, self.paula);
+            self.audio_spent(at, beam::Cost::AudioStop, beam::Cost::AudioWrite);
         }
     }
 
     /// A write to a custom register the frame comparison records (DMACON, INTENA, INTREQ and the
     /// audio registers): the level's own interrupt and DMA writes go out in order with sound's.
     pub fn custom(&mut self, reg: u16, value: u16) {
+        self.stamp();
+        self.interrupt_due_at(true);
+        self.tick(beam::Tick::Write(self.paula.len() as u32));
+        self.scheduled(self.paula.len());
         self.paula.push(PaulaWrite {
             reg,
             value,
-            hpos: 0,
-            vpos: 0,
+            hpos: self.clock.hpos(),
+            vpos: self.clock.line,
         });
+        self.stamped = self.paula.len();
+        self.anchor();
+        if reg == 0x9a && value & 0x10 != 0 {
+            self.coper_masked = value & 0x8000 == 0;
+            if !self.coper_masked && std::mem::take(&mut self.coper_pending) {
+                frame::copper_irq(self);
+            }
+        }
+    }
+
+    /// The copper interrupt the scroller requests: taken at once, or once unmasked.
+    pub fn request_copper(&mut self) {
+        if self.coper_masked {
+            self.coper_pending = true;
+        } else {
+            frame::copper_irq(self);
+        }
     }
 
     /// `rng_range` (h0+$160c0): a number in `0..=n`.

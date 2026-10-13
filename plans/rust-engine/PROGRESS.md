@@ -58,7 +58,7 @@ done · ⛔ blocked, needs a human.
 | T33 | attract-demo | T16, T20 | ⬜ | |
 | T34 | game-over | T15, T20; blocks T21 | ⬜ | |
 | T35 | end-sequence | T20; blocks T21 | ✅ | |
-| T36 | items-on-the-beam | T15 | ⬜ | |
+| T36 | items-on-the-beam | T15 | ✅ | |
 | T37 | level-restart | T36; blocks T34 | ⬜ | |
 | T38 | level-tally | T37; blocks T21 | ⬜ | |
 | T39 | enemies-world-5 | T16, T38; blocks T18 | ⬜ | |
@@ -88,6 +88,12 @@ done · ⛔ blocked, needs a human.
 | T54 | story-handler-end-feed | T53; blocks T56 | ⬜ | |
 | T55 | story-intro-sound-timing | T50; blocks T56 | ⬜ | |
 | T56 | story-intro-to-insert-disk | T49, T50, T54, T55; blocks T21, T47, T48 | ⬜ | |
+| T81 | beam-cleanup | T36; blocks T37 | ⬜ | |
+| T82 | beam-tests | T81 | ⬜ | |
+| T83 | items-w1 | T81 | ⬜ | |
+| T84 | items-w3 | T81 | ⬜ | |
+| T85 | items-w2 | T81 | ⬜ | |
+| T86 | items-launchers | T81 | ⬜ | |
 | T87 | slot-symbols-routines | T71; blocks T72 | ⬜ | |
 | T88 | slot-symbols-tables | T71; blocks T72 | ⬜ | |
 

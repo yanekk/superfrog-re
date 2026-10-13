@@ -6,6 +6,7 @@
 
 use crate::layout::h0;
 use crate::level::collision::{MAP_ROWS, OBJ_WORLD_OFFSET};
+use crate::level::beam::Cost;
 use crate::level::{LevelCtx, n_clear};
 use crate::mem::Bus;
 
@@ -25,9 +26,12 @@ fn scan_origin(b: &Bus) -> u32 {
 
 /// Run the spawner of each marker `1..$39` in `n` cells from `at`, `step` bytes apart.
 fn scan(c: &mut LevelCtx, mut at: u32, n: u32, step: u32) {
+    c.spend(Cost::Scan);
     for _ in 0..n {
+        c.spend(Cost::ScanCell);
         let m = c.bus.w(at) & 0x3f;
         if m != 0 && !n_clear(m.wrapping_sub(0x3a)) {
+            c.spend(Cost::Spawner);
             let world = (c.bus.l(OBJ_WORLD_OFFSET) >> 8) as u8;
             if let Some(spawn) = c.dispatch.marker(world, m as u8) {
                 spawn(c, at);
@@ -67,4 +71,26 @@ pub fn scan_edges(c: &mut LevelCtx) {
 pub fn scan_right_column(c: &mut LevelCtx) {
     let at = scan_origin(&c.bus).wrapping_add(0x720).wrapping_add(0x2e);
     scan(c, at, 0x10, 0x260);
+}
+
+/// `map_spawn_scan_screen` (h0+$1777c, from the level's start point): every marker's spawner in
+/// the 18 rows of 24 cells from 32 pixels left of and above the camera (the scan stops at the
+/// map's end).
+pub fn scan_screen(c: &mut LevelCtx) {
+    let start = scan_origin(&c.bus).wrapping_add(2);
+    let end = crate::mem::TILE_PTRS;
+    let world = (c.bus.l(OBJ_WORLD_OFFSET) >> 8) as u8;
+    for row in 0..0x12u32 {
+        let mut at = start.wrapping_add(row * 0x260);
+        for _ in 0..0x18 {
+            let m = c.bus.w(at) & 0x3f;
+            if let Some(spawn) = c.dispatch.marker(world, m as u8) {
+                spawn(c, at);
+            }
+            at = at.wrapping_add(2);
+            if (at.wrapping_sub(end) as i32) >= 0 {
+                return;
+            }
+        }
+    }
 }

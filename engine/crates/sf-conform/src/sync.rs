@@ -76,7 +76,6 @@ const VBL_HANDLER: u32 = h0(0x11bf8);
 /// `level_frame_loop`'s wait for `vbl_count` (docs/08).
 const LEVEL_WAIT: Range<u32> = h0(0xaae)..h0(0xab8);
 const LOGIC_RUNNING: u32 = h0(0x9d6);
-const VBL_COUNT: u32 = h0(0x9d8);
 const LEVEL_STATE: u32 = h0(0xa06);
 const WORLD: u32 = h0(0x40da);
 const LEVEL: u32 = h0(0x40de);
@@ -167,29 +166,57 @@ fn in_level(m: &AmigaMemory) -> bool {
 }
 
 /// How the original's main loop kept time on the frame that just ended (owner, 2026-10-11; docs/08
-/// "Lag"): late when, in a level, the vertical blank came while the main loop was not parked in
-/// `level_frame_loop`'s wait and the pass was due. Every other screen paces on a raster wait and
-/// is never late.
-pub fn pacing(cpu: &CpuRegs, m: &AmigaMemory) -> Pacing {
-    // The story intro: late while the original is in a long job at the blank (owner, 2026-10-12).
+/// "Lag"): late when, in a level, the frame ended with the main loop in the middle of a pass
+/// rather than parked in `level_frame_loop`'s wait, so the next vertical blank comes in the
+/// middle of it (T36); the frame's Paula writes say where ([`Pacing::Late`]). In the story
+/// intro, late while the original is in a long job at the blank (owner, 2026-10-12). Every
+/// other screen paces on a raster wait and is never late.
+pub fn pacing(cpu: &CpuRegs, m: &AmigaMemory, writes: &[sf_paula::PaulaWrite]) -> Pacing {
+    let last = writes.last().copied().unwrap_or_default();
+    let late = |phase, step| Pacing::Late {
+        writes: writes.len() as u16,
+        line: last.vpos,
+        hpos: last.hpos,
+        phase,
+        step,
+    };
     if long(m, 0x6c) == INTRO_VBL {
         return if sf_core::front::story::intro::busy(&main_chain(cpu, m)) {
-            Pacing::Late
+            late(0, sf_core::level::beam::NO_STEP)
         } else {
             Pacing::OnTime
         };
     }
-    // A step ends at the level-3 handler's entry; the interrupted PC is on the stack (FINDINGS).
-    let main_pc = if cpu.pc == VBL_HANDLER {
-        long(m, cpu.ssp + 2)
-    } else {
-        cpu.pc
-    };
-    if in_level(m) && !LEVEL_WAIT.contains(&main_pc) && word(m, VBL_COUNT) >= 1 {
-        Pacing::Late
+    if mid_pass(cpu, m) {
+        late(pass_phase(cpu, m), pass_step(cpu, m))
     } else {
         Pacing::OnTime
     }
+}
+
+/// The return addresses of `level_frame_loop`'s calls in its pass, in order (h0+$abe..$b00).
+const PASS_CALLS: [u32; 13] = [
+    0xac2, 0xac8, 0xace, 0xad4, 0xada, 0xae0, 0xae6, 0xaec, 0xaf0, 0xaf6, 0xafa, 0xb00, 0xb06,
+];
+
+/// Which of the pass's calls the main program is in at the frame's end: the call whose return
+/// address is on its stack, or, between calls, the next one (13 past the last).
+pub fn pass_phase(cpu: &CpuRegs, m: &AmigaMemory) -> u8 {
+    let chain = main_chain(cpu, m);
+    let body = h0(0xab8)..h0(0xb66);
+    for (k, &a) in chain.iter().enumerate() {
+        if !body.contains(&a) {
+            continue;
+        }
+        let at = a - h0(0);
+        let mut calls = PASS_CALLS.iter();
+        return if k > 0 {
+            calls.position(|&r| r == at).unwrap_or(13) as u8
+        } else {
+            calls.position(|&r| r > at).unwrap_or(13) as u8
+        };
+    }
+    13
 }
 
 /// Whether the original's frame ended with its main loop in the middle of a level's pass (not
@@ -202,6 +229,58 @@ pub fn mid_pass(cpu: &CpuRegs, m: &AmigaMemory) -> bool {
         cpu.pc
     };
     in_level(m) && !LEVEL_WAIT.contains(&main_pc)
+}
+
+/// How far the loop of the pass's call the main program is in had got at the frame's end, as
+/// the engine counts its steps ([`sf_core::level::LevelCtx::step_done`]): the slots
+/// `obj_run_all` has run (one whose update was running counted done), the slots
+/// `obj_build_hitboxes` has looked at, the entries of `build_bob_draw_list`'s three loops, the
+/// halves of `collide_all` (the spud's, the frog's). [`NO_STEP`] in any other call.
+pub fn pass_step(cpu: &CpuRegs, m: &AmigaMemory) -> u16 {
+    use sf_core::level::beam::NO_STEP;
+    let (pc, sp) = if cpu.pc == VBL_HANDLER {
+        (long(m, cpu.ssp + 2), cpu.ssp + 6)
+    } else {
+        (cpu.pc, cpu.a[7])
+    };
+    let at = pc.wrapping_sub(h0(0));
+    let d = |r: usize| cpu.d[r] as u16;
+    let slot = |down: u16| 20u16.saturating_sub(down);
+    // A return address on the stack (and where).
+    let ret = |r: u32| (0..0x100).step_by(2).map(|k| sp + k).find(|&a| long(m, a) == h0(r));
+    match at {
+        0x1b324..=0x1b32d => 0,
+        0x1b32e..=0x1b33d => slot(d(0)),
+        0x1b33e..=0x1b34d => slot(d(0)) + 1,
+        0xd2f6..=0xd303 => 0,
+        0xd304..=0xd33f => slot(d(7)),
+        0xd340..=0xd34d => slot(d(7)) + 1,
+        0x19b42..=0x19b55 => 0,
+        0x19b56..=0x19b63 => slot(d(0)),
+        0x19b64..=0x19b6d => slot(d(0)) + 1,
+        0x19b6e..=0x19b75 => 20,
+        0x19b76..=0x19b83 => 20 + slot(d(0)),
+        0x19b84..=0x19b8d => 21 + slot(d(0)),
+        0x19b8e..=0x19b95 => 40,
+        0x19b96..=0x19bc0 => 40 + slot(d(0)).saturating_sub(1),
+        0xd0cc => 0,
+        0xd0d0 => 1,
+        0xd0d4..=0xd0df => 2,
+        _ => {
+            // Inside a routine a loop called: the slot whose update runs (`obj_run_all` saved
+            // d0 under the return address), or the half of `collide_all`.
+            if let Some(a) = ret(0x1b33e) {
+                return slot(word(m, a + 6) as u16) + 1;
+            }
+            if ret(0xd0d0).is_some() {
+                return 0;
+            }
+            if ret(0xd0d4).is_some() {
+                return 1;
+            }
+            NO_STEP
+        }
+    }
 }
 
 /// Where the main program was at the end of a frame: its PC, then each long on its stack that is

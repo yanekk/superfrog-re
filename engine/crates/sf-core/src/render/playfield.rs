@@ -176,6 +176,7 @@ mod tests {
         let data = DisplayData {
             worlds: vec![WorldDisplay {
                 tiles: vec![[0; 256], [7; 256]],
+                bobs: Vec::new(),
             }],
             ..DisplayData::default()
         };
