@@ -18,6 +18,7 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-13 | 🔄 | T72 split at pir's context line, no code kept: T91 slot-beam-races, T92 slot-load, T93 slot-attract-draw, T94 slot-interrupt-timing (blocks T73). The oracle's frame-by-frame timings T72 measured are in their docs. |
 | 2026-10-13 | 📌 | T89: vAmiga's copper allocates only COP_VBLANK (cycle 0) and its fetches; WAIT1/WAIT2/wake-up merely wait. BFD irrelevant to the masks (end WAIT `$fffe` has BFD). Oracle blits need BLTCON0/DMACON carried from earlier frames. |
 | 2026-10-13 | 🐞 | `test_every_committed_func_starts_an_instruction` cannot fail: the listing realigns at every label, so a func offset mid-instruction still passes. Open for every committed func but `atn_decompress` and T87's twenty, which have byte checks. Found reviewing T87. |
 | 2026-10-13 | 📌 | T77: `bob_draw_vars` (h0+$18bc8) starts on marker 15's `bra.w` displacement ($2810); intact at WB-1 (marker 15's test compares). Marker 55 sets `level_state` 2 (T79). `obj_path_xy` (h0+$1c41c) is ready for the bosses. |
