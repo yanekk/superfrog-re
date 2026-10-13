@@ -94,7 +94,7 @@ done · ⛔ blocked, needs a human.
 | T84 | items-w3 | T81 | ⬜ | |
 | T85 | items-w2 | T81 | ⬜ | |
 | T86 | items-launchers | T81 | ⬜ | |
-| T87 | slot-symbols-routines | T71; blocks T72 | ⬜ | |
+| T87 | slot-symbols-routines | T71; blocks T72 | ✅ | |
 | T88 | slot-symbols-tables | T71; blocks T72 | ✅ | Review clean, no fix commit. Six slot_* tables match Tables' offsets; probed the real d1_c03 listing: each terminator sits at its size's end, tables abut anim_record and slot_lamps. Size mutation (overlap) caught by test_re_listing; an offset shift alone is caught by no test. |
 | T89 | story-copper-bus-cycles | T52; blocks T53 | ⬜ | |
 | T90 | story-draw-blits-oracle | T89; blocks T53 | ⬜ | |

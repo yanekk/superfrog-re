@@ -182,6 +182,37 @@ size = 4
                 self.assertEqual(code[s.offset:s.offset + 4].hex(), '48e73c38')
                 self.assertEqual(code[s.offset + 10:s.offset + 16], b'\x0c\x98ATN!')
 
+    def test_slot_routines_point_at_their_first_instruction(self):
+        # the listing realigns at a label, so only the code's own bytes catch an offset out by a word
+        want = {
+            'slot_free_spin': '48e7fffe4ab9',
+            'slot_payout': '4279000049d0',
+            'slot_count_win': '610011806100',
+            'slot_award': '42b9000057b2',
+            'slot_collect': '48e7c000203c',
+            'slot_jackpot': '428030390000',
+            'slot_hilo_game': '33fc00010000',
+            'slot_hilo_spin': '48e7fffe33f9',
+            'slot_spin_reels': '48e7fffe6100',
+            'slot_reel_stop': '0c400000660c',
+            'slot_hold_menu': '610004544279',
+            'slot_run_menu': '42790000615e',
+            'slot_lamps_off': '41f900006842',
+            'slot_lamps_on': '41f900006842',
+            'slot_attract_frame': '610002c22079',
+            'slot_digits': '428042813039',
+            'slot_draw_lamps': '4eb900019054',
+            'slot_draw_reels': '3039000049c8',
+            'slot_init': '427900006152',
+            'print_text': '33fc00010000',
+        }
+        syms = {s.name: s for s in R.load_symbols() if s.exe == 'd1_c03'}
+        code = R.load_exe(Disks.chunk('d1_c03')).hunks[0].data
+        for name, head in want.items():
+            with self.subTest(name):
+                s = syms[name]
+                self.assertEqual(code[s.offset:s.offset + 6].hex(), head)
+
     def test_every_committed_func_starts_an_instruction(self):
         # a linear sweep out of step must not swallow a known function entry
         syms = R.load_symbols()
