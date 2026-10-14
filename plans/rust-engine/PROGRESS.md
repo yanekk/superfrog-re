@@ -73,7 +73,7 @@ done · ⛔ blocked, needs a human.
 | T70 | bonus-level | T15; blocks T21 | ✅ | |
 | T71 | slot-sync | T15 | ✅ | |
 | T72 | slot-screen | T71 | ✅ | |
-| T73 | slot-rounds | T72 | ⬜ | |
+| T73 | slot-rounds | T72 | ✅ | |
 | T74 | slot-prizes | T73; blocks T21 | ⬜ | |
 | T75 | bonus-shots | T70; blocks T21 | ✅ | |
 | T76 | bonus-enemies-a | T70; blocks T21 | ✅ | |
