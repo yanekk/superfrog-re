@@ -62,7 +62,7 @@ done · ⛔ blocked, needs a human.
 | T37 | level-restart | T36; blocks T34 | ✅ | |
 | T38 | level-tally | T37; blocks T21 | ✅ | |
 | T39 | enemies-world-5 | T16, T38; blocks T18 | ✅ | 12 W5 types, 16 stubs; W5-1 route, hurt, activation green; split T123–T126. Review clean, no fix commit: three mutants (shooter turn count, faller reach, shot fall cap) red; frame 595 diverges without its exclusion and with enemies frozen too; split docs valid. Deviation held. |
-| T40 | enemies-world-6 | T38; blocks T18 | ⬜ | |
+| T40 | enemies-world-6 | T38; blocks T18 | ✅ | |
 | T41 | enemies-world-4 | T38; blocks T18 | ✅ | |
 | T42 | enemies-world-1 | T38; blocks T18, T33 | ✅ | |
 | T43 | enemies-world-2 | T38; blocks T18, T39 | ✅ | |
@@ -100,7 +100,7 @@ done · ⛔ blocked, needs a human.
 | T90 | story-draw-blits-oracle | T89; blocks T53 | ✅ | |
 | T91 | slot-beam-races | T72 | ✅ | |
 | T92 | slot-load | T72 | ✅ | |
-| T93 | slot-attract-draw | T72, T91, T92 | ⬜ | |
+| T93 | slot-attract-draw | T72, T91, T92 | ✅ | |
 | T94 | slot-interrupt-timing | T72, T91, T93; blocks T73 | ⬜ | |
 | T95 | slot-load-finish | T92; blocks T93 | ✅ | |
 | T96 | story-audio-dma-slots | T53; blocks T56 | ⬜ | |
@@ -127,6 +127,7 @@ done · ⛔ blocked, needs a human.
 | T124 | enemies-w5-3-case | T39; blocks T18 | ⬜ | |
 | T125 | enemies-w5-4-case | T39; blocks T18 | ⬜ | |
 | T126 | w5-completions | T39, T101, T121, T123, T124, T125; blocks T18 | ⬜ | |
+| T104 | w6-completions | T40, T101, T102; blocks T18 | ⬜ | |
 
 A Notes cell holds what was built or what the review found, the test count, and one line per
 deviation from the task doc. A ✅ task's cell may be cut to one line once the next task has been reviewed.

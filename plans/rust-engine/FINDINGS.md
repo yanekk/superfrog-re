@@ -18,10 +18,12 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-14 | 🐞 | Open, seen in T39's review merge: `purity::the_real_pure_crates_pass` red on `pir/rust-engine` itself: `sf-core/src/slot/draw.rs:285–289` (T93's test module) uses `HashMap`. Not T39's; not fixed. |
 | 2026-10-14 | 🔄 | Owner, T39: W5-2, W5-3, W5-4 frame cases split to T123–T125 and the W5 completions to T126 (after T101, T121 and the cases); each blocks T18. |
 | 2026-10-14 | 🐞 | T39, open, no task: `enemies-w5-1` frame 595 (on time, also with enemies frozen): the engine leaves out the frog's hardware sprites, every variable equal. That frame's picture is excluded. |
 | 2026-10-14 | 📌 | T39: W5-1's re-sync at 979 is `panel_bitmap` after a lag, also with enemies frozen; pinned beside T121's play-field one at 551 (`enemies_w5_cases.rs` accepts both). |
 | 2026-10-14 | 📌 | T39: docs/09's "6 shared with W2" for W5 is 4 (mace 63/64, darts 53/54); marker 24 is W3's flow (98), marker 15 W4's scenery (32). Template 85, the shooters' shot, spawns from an object. |
+| 2026-10-14 | 🔄 | Owner, T93: took T94's `SpriteDma` and the fade-in's handler length (oracle 775–791: ack ~line 50, all lamps late, not T72's 776–778). T94 keeps keyboard, notes, effects terms and 300 frames; slot handler base still ends line 20, original 17–18. |
 | 2026-10-14 | 📌 | T43 merge: W2's darts and mace now use `w3::dart` and `w3::swing`'s updates; the `$64` write is kept as T44 kept it, so T43's skip is gone (spawner test now fills the table, green). |
 | 2026-10-14 | 📌 | T43 merge sweep, not fixed: h0+$23774 (`touch_ledge`) is ported three times, `w2/crumbling_ledge.rs`, `w3/crumble.rs`, `w4/ledge.rs`; dispatch keeps the last registered. Keep one copy. |
 | 2026-10-14 | 📌 | T43 merge sweep, not fixed: h0+$24ef6 (`scenery_stand`) is ported twice, `w2/backdrop.rs` `still` and `w4/scenery.rs`; dispatch keeps the last registered. Keep one copy. |
@@ -58,6 +60,9 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 | 2026-10-14 | 🐞 | T85 review, open: `sf-conform` reads an original that never finishes a pass as endless lag (`mid_pass`, `straddled`) and compares nothing, so a case stays green; old `items-upper-w2-1` had 468 such frames. Swept: switch 49, fruit-w2-2 45, wings-w1-2 24, all sparse. |
 | 2026-10-14 | 📌 | T85 review: `examples/plan` steps the engine unpaced; in the case run W2-1's pad 91,35 bounced two frames later (frog `+$22` out of phase), so planned inputs after it missed. Check a planned script's items through `run_with`. |
 | 2026-10-14 | 📌 | T85: W2-1's fruit 48,22 and extra life 63,35 sit in a closed upper area; with enemies frozen the way in is a jump into the pillar 63-66,36-39 (ground-probe lift, frame ~884 of `items-upper-w2-1`). Flight only flaps. |
+| 2026-10-14 | 📌 | T40 review merge: W6's darts and mace now use W3's `dart::{wait,fly}`, `swing::{update,link_update}` and the merged `common.rs`; W6's own copies dropped. W4's copies remain (T44 row). |
+| 2026-10-14 | 📌 | T40: `examples/plan_exit` plans level runs (engine beam search, checked chunk by chunk on the original, backtracks, --via/--stomp/--hurt); W6 lags a third of frames. A frog on a spring pad diverges in the picture only: T102 goal 3. |
+| 2026-10-14 | 🔄 | Owner, T40: added T104 w6-completions (after T40, T101, T102; blocks T18): W6 exits need every coin (97–189 a map), seven maps. T40 keeps per-level enemy cases, no exclusions; a T101/T102 fault keeps one out of the test block. |
 | 2026-10-14 | 🐞 | T79 review, open (T34 meets T79 at merge): game over in the bonus level diverges at `bonus-death-wb-1` frame 2448, after a lag: `playfield_buffer_0`, then the copper's buffer pointers a flip apart. Likely T101's class; case cut to 2447, divergence pinned. |
 | 2026-10-14 | 🐞 | T79, fixed: `main_program` looked for the loop's end only after a fresh pass; a loop ending in a resumed (lag-cut) pass stalled, in any level. Now after both (`level/frame.rs` `after_pass`). |
 | 2026-10-14 | 📌 | T79: `bonus-end-wb-1` re-syncs at 4284 and 7814, both T101's phase-6 cut, pinned in `frog_cases::bonus_end_wb_1`. Once T101 lands: `resync = false`, drop the pin. Runs ~110 s (two runs: the second sees frame 8127). |

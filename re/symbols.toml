@@ -5915,3 +5915,216 @@ offset = 0x27100
 name = "w5_crusher_back"
 kind = "func"
 note = "W5 crusher: back 2 a pass for $20 passes (T39)"
+
+# --- world 6 enemies (T40) ---
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x25e9a
+name = "dart_left_init"
+kind = "func"
+note = "W6 template 57 (marker 18): look, $20 passes hidden (T40)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x25eb6
+name = "dart_right_init"
+kind = "func"
+note = "W6 template 58 (marker 19): look, $20 passes hidden (T40)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x260c4
+name = "w6_mace_init"
+kind = "func"
+note = "W6 template 67 (marker 17): swing origin, path, chain ends +$6c/+$70 (T40)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x2627e
+name = "w6_mace_link_init"
+kind = "func"
+note = "W6 template 68: link look, its number from chain_link_count (T40)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x27e00
+name = "shot_init"
+kind = "func"
+note = "W6 templates 107/108: look (T40)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x27e1a
+name = "cannon_shot_init"
+kind = "func"
+note = "W6 template 109: look (T40)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x27e34
+name = "w6_shot_update"
+kind = "func"
+note = "W6 shots 107/109: gone on solid ground, else move +$0c/+$0e (T40)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x27e8e
+name = "falling_shot_update"
+kind = "func"
+note = "W6 template 108: every other pass falls faster (to 8), then as shot_update (T40)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x27efa
+name = "strider_init"
+kind = "func"
+note = "W6 template 106 (marker 20) (T40)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x27f2e
+name = "strider_update"
+kind = "func"
+note = "W6 template 106: steps on frames whose +6 is 1, turns at marker $25 (T40)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x27fa0
+name = "w6_walker_init"
+kind = "func"
+note = "W6 template 104 (marker 15) (T40)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x27fd4
+name = "w6_walker_update"
+kind = "func"
+note = "W6 template 104: steps on frames whose +6 is 0, turns at marker $25 (T40)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x2804c
+name = "thrower_init"
+kind = "func"
+note = "W6 template 105 (marker 16) (T40)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x28086
+name = "thrower_walk"
+kind = "func"
+note = "W6 template 105: walks as 104; throws when +$60 runs out (T40)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x2813e
+name = "thrower_throw"
+kind = "func"
+note = "W6 template 105: a falling shot (108) on its animation's 16th pass (T40)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x281d6
+name = "thrower_vx"
+kind = "var"
+size = 0x2
+note = "the thrower's +$0c as it throws (T40)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x281d8
+name = "flier_init"
+kind = "func"
+note = "W6 template 103 (marker 14) (T40)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x2820a
+name = "flier_path"
+kind = "table"
+size = 0x64
+note = "the flier's loop: (x, y) words, ends with a -1 long (T40)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x2826e
+name = "flier_update"
+kind = "func"
+note = "W6 template 103: path, faces the frog, a shot (107) every $40 passes (T40)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x28322
+name = "flier_facing_right"
+kind = "var"
+size = 0x2
+note = "1 while the frog is right of the flier being updated (T40)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x28324
+name = "cannon_init"
+kind = "func"
+note = "W6 template 101 (marker 12) (T40)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x28340
+name = "cannon_update"
+kind = "func"
+note = "W6 template 101: five aims by the frog's x; a shot (109) every $30..$50 passes (T40)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x28454
+name = "cannon_aim"
+kind = "var"
+size = 0x4
+note = "the cannon's next shot's vx, vy words (T40)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x28458
+name = "charger_init"
+kind = "func"
+note = "W6 template 102 (marker 13) (T40)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x28488
+name = "charger_pace"
+kind = "func"
+note = "W6 template 102: paces, may attack after 8 passes left (T40)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x28532
+name = "charger_attack"
+kind = "func"
+note = "W6 template 102: hurts a frog on the ground up to $80 left of it (T40)"
