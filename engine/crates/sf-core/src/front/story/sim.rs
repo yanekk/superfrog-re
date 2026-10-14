@@ -462,7 +462,7 @@ impl<'a> Sim<'a> {
 }
 
 /// One step of a [`Prog`].
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Step {
     /// Accesses and idle cycles ([`cpu`]'s letters `p`, `r`, `w`, `n`).
     Ops(&'static str),
@@ -479,7 +479,7 @@ pub enum Step {
 
 /// A run of the CPU's instructions, branch for branch, as their bus accesses: built by the code
 /// it stands for (`bobs::draw`) beside its memory work, then run on a [`Sim`].
-#[derive(Debug, Clone, Default, PartialEq, Eq)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, Hash)]
 pub struct Prog {
     pub steps: Vec<Step>,
 }
