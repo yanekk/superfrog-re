@@ -153,6 +153,11 @@ headless.
 | [T108](tasks/T108-enemies-w1-3-case.md) | enemies-w1-3-case | T42; blocks T18, T33, T106 |
 | [T109](tasks/T109-enemies-w1-4-case.md) | enemies-w1-4-case | T42; blocks T18, T33, T106 |
 | [T110](tasks/T110-enemies-w1-activation.md) | enemies-w1-activation | T42; blocks T18, T33, T106 |
+| [T111](tasks/T111-enemies-w3-2-case.md) | enemies-w3-2-case | T44; blocks T18 |
+| [T112](tasks/T112-enemies-w3-3-case.md) | enemies-w3-3-case | T44; blocks T18 |
+| [T113](tasks/T113-enemies-w3-4-case.md) | enemies-w3-4-case | T44, T102; blocks T18 |
+| [T114](tasks/T114-enemies-w3-activation.md) | enemies-w3-activation | T44; blocks T18 |
+| [T115](tasks/T115-w3-completions.md) | w3-completions | T44, T101, T102, T111, T112, T113; blocks T18 |
 
 T22 is the rig task: it comes before every surface task and they depend on it. T29 is the phase's
 drill. At the end: the owner plays it.

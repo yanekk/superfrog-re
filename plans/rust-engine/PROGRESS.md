@@ -66,7 +66,7 @@ done · ⛔ blocked, needs a human.
 | T41 | enemies-world-4 | T38; blocks T18 | ⬜ | |
 | T42 | enemies-world-1 | T38; blocks T18, T33 | ✅ | |
 | T43 | enemies-world-2 | T38; blocks T18, T39 | ⬜ | |
-| T44 | enemies-world-3 | T38; blocks T18 | ⬜ | |
+| T44 | enemies-world-3 | T38; blocks T18 | 🔍 | 18 types and swing links ported, 7 routine tests on W3-1's memory; `enemies-w3-1` (1 378 frames, re-syncs 201, 863 pinned) and `enemies-w3-4` (193) green, 2 case tests. Deviations: routine tests in sf-conform (purity); W3-2/3/4 cases, activation, completions split to T111–T115 (owner). |
 | T46 | story-intro-scenes | T32; blocks T21 | ✅ | |
 | T47 | story-intro-handover | T46; blocks T21 | ⬜ | |
 | T48 | story-intro-skips | T46, T47; blocks T21 | ⬜ | |
@@ -114,6 +114,11 @@ done · ⛔ blocked, needs a human.
 | T108 | enemies-w1-3-case | T42; blocks T18, T33, T106 | ⬜ | |
 | T109 | enemies-w1-4-case | T42; blocks T18, T33, T106 | ⬜ | |
 | T110 | enemies-w1-activation | T42; blocks T18, T33, T106 | ⬜ | |
+| T111 | enemies-w3-2-case | T44; blocks T18 | ⬜ | |
+| T112 | enemies-w3-3-case | T44; blocks T18 | ⬜ | |
+| T113 | enemies-w3-4-case | T44, T102; blocks T18 | ⬜ | |
+| T114 | enemies-w3-activation | T44; blocks T18 | ⬜ | |
+| T115 | w3-completions | T44, T101, T102, T111, T112, T113; blocks T18 | ⬜ | |
 
 A Notes cell holds what was built or what the review found, the test count, and one line per
 deviation from the task doc. A ✅ task's cell may be cut to one line once the next task has been reviewed.

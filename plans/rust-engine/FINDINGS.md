@@ -18,6 +18,11 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-14 | 🔄 | Owner, T44: W3-2/3/4 frame cases, activation and the W3 completions split to T111–T115 (each blocks T18; T113 waits on T102, T115 on T101, T102, T111–T113). |
+| 2026-10-14 | 🐞 | T44, not fixed: W3-4 frame 194, the frog jumping off the first crumbling platform: the original draws only part of its bob, every variable equal (T102's beam race); `enemies-w3-4` ends at 193. |
+| 2026-10-14 | 📌 | T44: `dart_wait`/`dart_fly` (h0+$25fa8/$25f42), `swing_update`/`swing_link_update` (h0+$2619c/$262be) and `touch_hurt` serve world 2 (T43) and later worlds too: ported in `enemies/w3/{dart,swing}.rs` and `common.rs`; reuse them. |
+| 2026-10-14 | 📌 | T44: the swing's spawner (h0+$183a8) writes its ball through a null slot pointer into the level 1 autovector ($64) when a link finds no room; kept (LAYOUT `level1_vector`). Whether a level 1 interrupt then crashes is untested. |
+| 2026-10-14 | 📌 | T44: `complete.rs` `--kill` takes the marker's map cell; `--at`, `--near`, `--touch` the frog centre's pixel position, whose row is the map row + 3. W3-1 lags nearly every frame: plan ≤150-frame paced legs. |
 | 2026-10-14 | 📌 | T42 split at pir's context line: T107 (W1-2 case), T108 (W1-3), T109 (W1-4), T110 (activation, a touch_kill_1hit kill); each T42, blocks T18, T33, T106. Uncommitted W1-2 route discarded (facts in T107). |
 | 2026-10-14 | 🐞 | Not T42's, open: with W1's enemies live `game-over-timeup-w1-1` diverges at 271, copper a flip apart in game over's first pass (the T79-review fault); hover costs don't move it. Not in the test block. |
 | 2026-10-14 | 📌 | T42: plan enemy routes in short legs from the paced engine (`examples/complete.rs --paced --prefix`); unpaced plans leave the original's route (it lags, takes fewer coins; the frog died where the plan's lived). |
