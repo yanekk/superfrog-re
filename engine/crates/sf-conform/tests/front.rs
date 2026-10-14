@@ -159,6 +159,28 @@ fn the_slot_machine_loads_as_the_original_does() {
     );
 }
 
+/// The slot machine's attract loop, frame for frame through its fade in and the lamps' pattern
+/// (the case `slot-attract`, T93): the reels and lamps drawn on the beam, the lamps that race it
+/// excused and counted, the pointer hidden by the list's sprite DMA off.
+#[test]
+fn the_slot_machine_attract_loop_draws_as_the_original_does() {
+    let case = sf_conform::Case::load(&sf_conform::cases_dir().join("slot-attract.toml"))
+        .unwrap_or_else(|e| panic!("{e}"));
+    let out = sf_conform::run(&case).unwrap_or_else(|d| panic!("{d}"));
+    assert!(
+        !out.raced.is_empty(),
+        "the lamps race the beam on some frames"
+    );
+    // The excuse is no wider than measured (T93 review: lamp and cut timing off by a little more
+    // excuses 13 frames and stays green).
+    assert!(
+        out.raced.len() <= 9,
+        "beam races excused at {} frames: {:?}",
+        out.raced.len(),
+        out.raced
+    );
+}
+
 /// The port of the game's ANIM player draws every frame of both files as T08's decoder does: the
 /// first into buffer A (copied to B), each delta into the buffer not shown.
 #[test]

@@ -100,7 +100,7 @@ done · ⛔ blocked, needs a human.
 | T90 | story-draw-blits-oracle | T89; blocks T53 | ✅ | |
 | T91 | slot-beam-races | T72 | ✅ | |
 | T92 | slot-load | T72 | ✅ | |
-| T93 | slot-attract-draw | T72, T91, T92 | ⬜ | |
+| T93 | slot-attract-draw | T72, T91, T92 | ✅ | |
 | T94 | slot-interrupt-timing | T72, T91, T93; blocks T73 | ⬜ | |
 | T95 | slot-load-finish | T92; blocks T93 | ✅ | |
 | T96 | story-audio-dma-slots | T53; blocks T56 | ✅ | Review: one fix, the intro's `AudioDma` started with DMAEN off (engine never writes `$8200`) so took no slot in normal play; `AudioDma::booted`, unit test locks it. Probed 7 000 engine frames, ran slow story tests; mutations of `Fixed::taken`'s audio and the `^` poll caught; `SCENE_4` end held. Tests: 412 draws, audio slots 3030–3129. |

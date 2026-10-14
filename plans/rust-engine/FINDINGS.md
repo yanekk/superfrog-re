@@ -18,6 +18,7 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-14 | 🔄 | Owner, T93: took T94's `SpriteDma` and the fade-in's handler length (oracle 775–791: ack ~line 50, all lamps late, not T72's 776–778). T94 keeps keyboard, notes, effects terms and 300 frames; slot handler base still ends line 20, original 17–18. |
 | 2026-10-14 | 🐞 | T96 review: the engine never writes DMACON's DMAEN (original: `$8200` at boot frame 58, loader `$8210`); the intro's `AudioDma` started off and took no slot in normal play. Reproduced by an engine run, fixed with `AudioDma::booted`, unit test locks it. |
 | 2026-10-14 | 📌 | T96 review sweep, not fixed: sf-app's mixer (`main.rs`, `Paula::new`) gets the same DMAEN-less writes, so its channels never fetch even once chip memory is wired; start it with DMAEN on as `AudioDma::booted` does. |
 | 2026-10-14 | 📌 | T96: Moira polls the interrupt level in one chosen access: `move.l Dn/#i, d(An)` at its second write, read-modify-writes at the prefetch before their write. `story::cpu` letters mark it `^`; unmarked, the last access polls. |
