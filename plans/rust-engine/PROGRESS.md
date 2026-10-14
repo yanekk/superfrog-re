@@ -62,7 +62,7 @@ done · ⛔ blocked, needs a human.
 | T37 | level-restart | T36; blocks T34 | ✅ | |
 | T38 | level-tally | T37; blocks T21 | ✅ | |
 | T39 | enemies-world-5 | T16, T38; blocks T18 | ⬜ | |
-| T40 | enemies-world-6 | T38; blocks T18 | 🔍 | 13 W6 types + 3 shared touches ported; 6 routine tests, 6 case tests. Deviations: one file per family, not per type; tests in sf-conform/tests (purity); completions → T104 (owner); types met across W6's cases, not each map (owner); `enemies-w6-4`, `-1-explore` outside block (T102, T101); \$64 write skipped. |
+| T40 | enemies-world-6 | T38; blocks T18 | 🔍 | 13 W6 types + 3 shared touches ported; 6 routine tests, 6 case tests. Deviations: one file per family, not per type; tests in sf-conform/tests (purity); completions → T104 (owner); types met across W6's cases, not each map (owner); `enemies-w6-4`, `-1-explore` outside block (T102, T101); $64 write skipped. |
 | T41 | enemies-world-4 | T38; blocks T18 | ⬜ | |
 | T42 | enemies-world-1 | T38; blocks T18, T33 | ⬜ | |
 | T43 | enemies-world-2 | T38; blocks T18, T39 | ⬜ | |
