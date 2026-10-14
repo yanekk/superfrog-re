@@ -234,7 +234,7 @@ fn climb(body: &[u16], w: usize, h: usize, goal: &[(usize, usize)]) -> Vec<u32> 
     for x in 0..w {
         let mut lands_deadly = false;
         for y in (0..h).rev() {
-            if solid(x, y) {
+            if solid(x, y) || body[y * w + x] >> 10 == 62 {
                 lands_deadly = false;
             } else if deadly(x, y) {
                 lands_deadly = true;
@@ -422,8 +422,15 @@ fn main() {
         let mem = sync::core_memory(amiga.memory());
         let start = Game::with_display(display.clone(), Start::Transplant(mem));
         let lives = start.state().w(FROG + f::LIVES);
-        let target = via.get(goal).copied();
         let needed = start.state().w(FROG + f::COINS_LEFT);
+        // A coin step already met (a resumed plan) is passed at once.
+        while let Some(&Via::Coins(n)) = via.get(goal) {
+            if needed > n {
+                break;
+            }
+            goal += 1;
+        }
+        let target = via.get(goal).copied();
         let live = live_body(start.state());
         let sw = switches(start.state());
         match target {
@@ -442,6 +449,21 @@ fn main() {
             _ => {}
         }
         let field = &goals[goal];
+        if let Ok(spec) = std::env::var("PLAN_DUMP") {
+            // `c0,r0,c1,r1`: the field over that box (in hundreds past 99), then stop.
+            let v: Vec<usize> = spec.split(',').map(|x| x.parse().unwrap()).collect();
+            for r in v[1]..=v[3] {
+                let row: Vec<String> = (v[0]..=v[2])
+                    .map(|c| match field[r * w + c] {
+                        u32::MAX => "  .".into(),
+                        d if d < 1000 => format!("{d:3}"),
+                        d => format!("{:>3}", format!("+{}", (d / 1000).min(99))),
+                    })
+                    .collect();
+                eprintln!("{r:3} {}", row.join(""));
+            }
+            return;
+        }
         let hearts = start.state().w(HEARTS);
         let score = |st: &sf_core::State| -> i64 {
             let (x, y) = frog(st);
