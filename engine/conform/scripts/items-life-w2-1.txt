@@ -1,0 +1,81 @@
+# W2-1, enemies frozen: items-upper-w2-1's route to frame 870 (both hidden coin springs at 62,44 and
+# 63,44 spent from below, hops under the pillar at 63-66,36-39), then a jump to the right that
+# enters the pillar with x 1007: the ground probe's lift (frame ~884) carries the frog up its
+# column 63 onto the extra life at 63,35 (frame ~895, lives 2 to 3), where it stands. Planned on
+# the engine from the original's state (T105, `examples/route_oracle`, `examples/wall_hang_probe`).
+0: -
+144: L
+157: -
+175: U
+290: -
+321: U
+325: L
+329: U
+345: U R
+349: R
+353: U
+361: L
+365: -
+397: U
+401: -
+413: U
+417: -
+461: U
+465: -
+481: U
+485: -
+525: U
+529: -
+541: U
+545: -
+589: U
+593: -
+605: U
+609: L
+613: -
+617: L
+621: U
+625: L
+629: R
+633: -
+637: R
+645: L
+653: U
+657: -
+673: U
+677: -
+681: R
+685: U
+689: -
+693: L
+697: U
+705: -
+709: R
+713: L
+717: U
+721: L
+725: R
+733: L
+737: U L
+741: R
+749: L
+757: R
+765: L
+773: R
+781: U
+785: -
+789: L
+793: U
+805: U R
+809: R
+813: -
+821: R
+829: -
+837: R
+841: -
+845: L
+849: R
+853: U
+857: -
+870: U R
+878: -

@@ -231,3 +231,54 @@ fn bonus_end_wb_1() {
 fn enemies_w4_4_activation() {
     green("enemies-w4-4-activation");
 }
+
+/// A map cell's marker in the engine's memory (`map_rows[1]` h1+$218e0, rows `$260` bytes).
+fn marker(g: &sf_core::Game, col: u32, row: u32) -> u16 {
+    let at = sf_core::layout::h1(0x218e0 + 0x4c0) + row * 0x260 + 2 * col;
+    g.state().w(at) & 0x3f
+}
+
+/// A green run of `name`, seen through `run_with` (T105): for each item cell in `cells`, the frame
+/// that took it (its marker changed; the engine before the next frame), with the lives and score
+/// it took them from and to, and the frames the original ended mid-pass.
+fn takes(name: &str, cells: &[(u32, u32)]) -> (Vec<(u32, (u16, u16), (u32, u32))>, Vec<u32>) {
+    let case = sf_conform::Case::load(&sf_conform::cases_dir().join(format!("{name}.toml")))
+        .unwrap_or_else(|e| panic!("{e}"));
+    let mut seen: Vec<(u16, u32, Vec<u16>)> = Vec::new();
+    let outcome = sf_conform::run_with(&case, |_, g| {
+        let st = g.state();
+        let cells = cells.iter().map(|&(c, r)| marker(g, c, r)).collect();
+        seen.push((st.w(sf_core::frog::FROG + sf_core::frog::f::LIVES), st.l(sf_core::items::SCORE), cells));
+    })
+    .unwrap_or_else(|d| panic!("{name}: {d}"));
+    assert!(outcome.resynced.is_empty(), "{name}: {:?}", outcome.resynced);
+    let found = (0..cells.len())
+        .map(|k| {
+            let f = (1..seen.len())
+                .find(|&f| seen[f].2[k] != seen[0].2[k])
+                .unwrap_or_else(|| panic!("{name}: {:?} not taken", cells[k]));
+            // `seen[f]` is the engine before frame `f`: the take was frame `f - 1`.
+            let (a, b) = (&seen[f - 1], &seen[f]);
+            ((f - 1) as u32, (a.0, b.0), (a.1, b.1))
+        })
+        .collect();
+    (found, outcome.straddled)
+}
+
+/// The first frame from `frame` on whose variables the run compared: `frame` itself, or the one
+/// after the original's lag ends (`run` compares it with no re-sync allowed).
+fn compared_from(frame: u32, straddled: &[u32]) -> u32 {
+    (frame..).find(|f| !straddled.contains(f)).unwrap()
+}
+
+/// W2-1 with its items live, 940 frames: items-upper-w2-1's route to the pillar, then the lift up
+/// its column 63 onto the extra life at 63,35 (T105). The take is frame 895, which the original
+/// lags into 896 on every route found: its lives are compared on 897 (owner, 2026-10-14).
+#[test]
+fn items_life_w2_1() {
+    let (found, straddled) = takes("items-life-w2-1", &[(63, 35)]);
+    let (frame, lives, _) = found[0];
+    assert_eq!(lives.1, lives.0 + 1, "the extra life at frame {frame}");
+    assert_eq!(frame, 895);
+    assert_eq!(compared_from(frame, &straddled), 897, "{straddled:?}");
+}
