@@ -106,3 +106,10 @@ fn items_wings_w1_2() {
 fn items_checkpoint_w1_1() {
     green("items-checkpoint-w1-1");
 }
+
+/// W4-4 with its enemies live (T41): swoopers, scenery and a ledge freed as the camera leaves
+/// them and spawned again as it comes back, on the original's frames.
+#[test]
+fn enemies_w4_4_activation() {
+    green("enemies-w4-4-activation");
+}
