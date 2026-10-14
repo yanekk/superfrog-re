@@ -185,6 +185,11 @@ impl AudioDriver {
         self.sfx.set_b(STEAL, 0);
     }
 
+    /// The effects playing: channels whose record is active (what `sfx_tick` steps each frame).
+    pub fn sfx_active(&self) -> u32 {
+        (0..4).filter(|&n| self.sfx.w(rec(n) + ACTIVE) != 0).count() as u32
+    }
+
     /// `sfx_tick` (`$12c60`): each effect's step, channels 3 down to 0.
     pub fn sfx_tick(&mut self, data: &SoundData, out: &mut Vec<PaulaWrite>) {
         for n in (0..4).rev() {
