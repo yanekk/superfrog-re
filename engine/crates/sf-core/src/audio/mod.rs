@@ -15,6 +15,7 @@
 //! left 0: the engine is not cycle-timed (DESIGN §2.1).
 
 mod music;
+pub use music::TickWork;
 mod sfx;
 
 use std::collections::BTreeMap;

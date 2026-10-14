@@ -73,6 +73,31 @@ fn sext(w: u16) -> u32 {
     w as i16 as i32 as u32
 }
 
+/// What one tick of the music does ([`AudioDriver::tick_work`]), for timing the vertical blank's
+/// handler around it.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct TickWork {
+    /// Music is playing.
+    pub on: bool,
+    /// The tick plays a row (`p41_row`).
+    pub row: bool,
+    /// On a row: the channels with a row, and those whose row starts a note.
+    pub row_live: u32,
+    pub row_notes: u32,
+    /// Between rows: the channels stepping each effect (the low nibble of their row).
+    pub effects: [u32; 16],
+    /// Between rows: the next rows are read (`fetch_rows`): channels with an empty row, a
+    /// repeated row, a row read (from a reference among them), and those taking an instrument.
+    pub fetch: bool,
+    pub fetch_empty: u32,
+    pub fetch_repeat: u32,
+    pub fetch_read: u32,
+    pub fetch_ref: u32,
+    pub fetch_inst: u32,
+    /// The channels music holds, copied from the shadow to Paula.
+    pub shadowed: u32,
+}
+
 impl AudioDriver {
     pub(crate) fn free(&self, n: usize) -> bool {
         self.p41.b(FREE + 3 - n) == 0xff
@@ -304,6 +329,94 @@ impl AudioDriver {
         }
         self.p41_play(data, out);
         self.shadow_to_paula(data, out);
+    }
+
+    /// Whether the next [`AudioDriver::music_tick`] reads the next row of every channel
+    /// (`fetch_rows`, one tick before the row plays): the vertical blank's handler is longer by it.
+    pub fn fetches_rows(&self) -> bool {
+        let tick = self.p41.w(TICK).wrapping_add(1);
+        self.music_on.w(0) != 0
+            && tick != self.p41.w(SPEED)
+            && tick == self.p41.w(FETCH_TICK)
+            && self.p41.w(FETCH_DELAY) == 0
+    }
+
+    /// Whether the next [`AudioDriver::music_tick`] is a tick between rows on which no channel's
+    /// effect is stepped (none playing, or every one held by an effect): its handler is shorter.
+    pub fn quiet_tick(&self) -> bool {
+        self.music_on.w(0) != 0
+            && self.p41.w(TICK).wrapping_add(1) != self.p41.w(SPEED)
+            && (0..4).all(|n| self.p41.w(ch(n) + LIVE) == 0 || !self.free(n))
+    }
+
+    /// What the next [`AudioDriver::music_tick`] will do, which decides how long it takes (T100):
+    /// read-only, from the replayer's state before the tick.
+    pub fn tick_work(&self, data: &SoundData) -> TickWork {
+        let mut w = TickWork {
+            on: self.music_on.w(0) != 0,
+            shadowed: (0..4).filter(|&n| self.free(n)).count() as u32,
+            ..TickWork::default()
+        };
+        if !w.on {
+            return w;
+        }
+        let tick = self.p41.w(TICK).wrapping_add(1);
+        if tick == self.p41.w(SPEED) {
+            w.row = true;
+            if self.p41.w(ROW_DELAY) != 0 {
+                return w;
+            }
+            for n in 0..4 {
+                let c = ch(n);
+                if self.p41.w(c + LIVE) == 0 {
+                    continue;
+                }
+                w.row_live += 1;
+                let effect = self.p41.w(c + ROW) & 0xf;
+                let note = self.free(n) && self.p41.b(c + ROW) & 0x7e != 0;
+                if note && effect != 3 && effect != 5 {
+                    w.row_notes += 1;
+                }
+            }
+            return w;
+        }
+        for n in 0..4 {
+            if self.p41.w(ch(n) + LIVE) != 0 && self.free(n) {
+                w.effects[(self.p41.w(ch(n) + ROW) & 0xf) as usize] += 1;
+            }
+        }
+        if tick == self.p41.w(FETCH_TICK) && self.p41.w(FETCH_DELAY) == 0 {
+            w.fetch = true;
+            for n in 0..4 {
+                let c = ch(n);
+                let count = self.p41.b(c + COUNT);
+                if count != 0 && (count as i8) > 0 {
+                    w.fetch_empty += 1;
+                    continue;
+                }
+                let row = if count != 0 {
+                    w.fetch_repeat += 1;
+                    self.p41.w(c + ROW)
+                } else if self.p41.b(c + BLOCK_COUNT + 1) != 0 {
+                    w.fetch_read += 1;
+                    self.mem.w(data, self.p41.l(c + BLOCK))
+                } else {
+                    w.fetch_read += 1;
+                    let at = self.p41.l(c + STREAM);
+                    if (self.mem.b(data, at) as i8) < 0 {
+                        w.fetch_ref += 1;
+                        let off = sext(self.mem.w(data, at.wrapping_add(2)));
+                        self.mem.w(data, self.p41.l(PATTERNS).wrapping_add(off))
+                    } else {
+                        self.mem.w(data, at)
+                    }
+                };
+                if self.free(n) && row & 0x1f0 != 0 {
+                    w.fetch_inst += 1;
+                }
+            }
+        }
+        w
     }
 
     /// `p41_play` (`$1343c`).
