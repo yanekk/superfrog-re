@@ -895,6 +895,13 @@ impl Front {
             Vec::new()
         };
         let level_vbl = cx.s.w(gameover::LOGIC_RUNNING) != 0;
+        // What the slot screen's handler is about to do that lengthens it (T94).
+        let slot_handler = crate::slot::Handler {
+            fetches_rows: cx.s.audio.fetches_rows(),
+            quiet_tick: cx.s.audio.quiet_tick(),
+            effects: cx.s.audio.sfx_active(),
+            ..Default::default()
+        };
         let palette_due = if level_vbl {
             // The level's own handler (game over runs the level's logic, T34).
             cx.line = gameover::level_vbl(&mut cx, self.frog_only, vbl_line);
@@ -902,8 +909,26 @@ impl Front {
         } else {
             vbl::run(&mut cx)
         };
-        // The interrupt takes about as long wherever it starts.
-        cx.line = cx.line.max(VBL_END_LINE).max(vbl_line + VBL_END_LINE - 9);
+        // The interrupt takes about as long wherever it starts; on the slot screen as long as
+        // what it did (T94).
+        cx.line = if cop1lc == crate::slot::SLOT_COPPER && !level_vbl {
+            let handler = &cx.paula[from..];
+            let h = crate::slot::Handler {
+                keyboard: handler
+                    .iter()
+                    .any(|w| w.reg == crate::audio::INTENA && w.value == 0x0008),
+                dmacon_writes: handler
+                    .iter()
+                    .filter(|w| w.reg == crate::audio::DMACON)
+                    .count() as u32,
+                ..slot_handler
+            };
+            // `vbl_line` is 1 for a handler taken on time.
+            cx.line
+                .max(vbl_line.saturating_sub(1) + crate::slot::interrupt_lines(h))
+        } else {
+            cx.line.max(VBL_END_LINE).max(vbl_line + VBL_END_LINE - 9)
+        };
         let after = window(cx.s, cop1lc);
         if fading.is_empty() {
             history.push((VBL_END_LINE, after));
@@ -1117,8 +1142,11 @@ impl Front {
             w.vpos -= FRAME_LINES;
         }
         all.extend(next_copper);
-        for w in &mut all {
-            w.vpos = 0;
+        // The slot screen's drawing is timed on the beam (T93, T94): its lines are kept.
+        if cop1lc != crate::slot::SLOT_COPPER {
+            for w in &mut all {
+                w.vpos = 0;
+            }
         }
         FrontOut {
             picture,

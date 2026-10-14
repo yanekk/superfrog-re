@@ -41,10 +41,12 @@ const REEL_GAP: u32 = 176;
 const REEL_END: u32 = 198;
 /// The attract pattern's row (h0+$627a..$62ea, a 26-word copy) and `slot_draw_lamps`' start, from
 /// the last reel's INTENA `$8010` to the lamps' `$0010`; from there to the first lamp's blit; a
-/// lamp's set-up between blits (T72: about 520); from the last lamp's blit's end to INTENA `$8010`.
+/// lamp's set-up between blits (T72: about 520; T94: 512 puts the lamps of frames 40-300 on their
+/// lines, T93's 528 drifted a line late by the last); from the last lamp's blit's end to INTENA
+/// `$8010`.
 const PATTERN: u32 = 1_426;
 const LAMPS_REGS: u32 = 514;
-const LAMP_GAP: u32 = 528;
+const LAMP_GAP: u32 = 512;
 const LAMPS_END: u32 = 398;
 /// A blit due on this line or later waits for the frame's interrupt (measured: the eighth reel
 /// blit, due at 312.61, starts after it), and goes on this many cycles into the line the

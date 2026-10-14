@@ -159,22 +159,50 @@ fn the_slot_machine_loads_as_the_original_does() {
     );
 }
 
-/// The slot machine's attract loop, frame for frame through its fade in and the lamps' pattern
-/// (the case `slot-attract`, T93): the reels and lamps drawn on the beam, the lamps that race it
-/// excused and counted, the pointer hidden by the list's sprite DMA off.
+/// The slot machine's attract loop, frame for frame through its fade in and 260 frames of the
+/// lamps' pattern (the case `slot-attract`, T93, T94): the reels and lamps drawn on the beam, the
+/// lamps that race it excused and counted, the pointer hidden by the list's sprite DMA off. From
+/// frame 40, past the fade, each drawing step's DMACON `$8400` and INTENA `$0010`/`$8010` are on
+/// the original's line, the handler as long as the original's (`slot::interrupt_lines`, T94).
 #[test]
 fn the_slot_machine_attract_loop_draws_as_the_original_does() {
     let case = sf_conform::Case::load(&sf_conform::cases_dir().join("slot-attract.toml"))
         .unwrap_or_else(|e| panic!("{e}"));
-    let out = sf_conform::run(&case).unwrap_or_else(|d| panic!("{d}"));
+    let lines = |ws: &[sf_paula::PaulaWrite]| {
+        ws.iter()
+            .filter(|w| {
+                (w.reg == 0x96 && w.value == 0x8400) || (w.reg == 0x9a && w.value & 0x7fff == 0x10)
+            })
+            .map(|w| w.vpos as i32)
+            .collect::<Vec<_>>()
+    };
+    let (mut writes, mut same, mut off) = (0, 0, Vec::new());
+    let out = sf_conform::run_observing(&case, |f, ours, theirs| {
+        if f < 40 {
+            return;
+        }
+        let (ours, theirs) = (lines(ours), lines(theirs));
+        assert_eq!(ours.len(), theirs.len(), "frame {f}: {ours:?} {theirs:?}");
+        writes += ours.len();
+        same += ours.iter().zip(&theirs).filter(|(a, b)| a == b).count();
+        if ours.iter().zip(&theirs).any(|(a, b)| (a - b).abs() > 1) {
+            off.push(f);
+        }
+    })
+    .unwrap_or_else(|d| panic!("{d}"));
+    // Measured (T94): 2 514 of 3 120 on the original's line, every one within a line but on 4
+    // frames whose lamps end 2 lines late. With the fixed handler end (`VBL_END_LINE`) 1 176 and
+    // 221 frames; with T93's lamp gap 2 363 and 123 frames.
+    assert!(same >= 2_500, "{same} of {writes} writes on the original's line");
+    assert!(off.len() <= 4, "frames with a write 2 lines or more off: {off:?}");
     assert!(
         !out.raced.is_empty(),
         "the lamps race the beam on some frames"
     );
-    // The excuse is no wider than measured (T93 review: lamp and cut timing off by a little more
-    // excuses 13 frames and stays green).
+    // The excuse is no wider than measured (T94: 45 frames in 300, 21-36 the fade's; T93 review:
+    // lamp and cut timing off by a little more excuses more and stays green).
     assert!(
-        out.raced.len() <= 9,
+        out.raced.len() <= 45,
         "beam races excused at {} frames: {:?}",
         out.raced.len(),
         out.raced

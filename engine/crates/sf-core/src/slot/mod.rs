@@ -88,6 +88,47 @@ const GLYPH_CYCLES: u32 = 250;
 const COUNT_CYCLES: u32 = 1_500;
 const INIT_CYCLES: u32 = 1_200;
 
+/// The vertical blank's handler on the slot screen, in 68000 cycles from the frame's top to its
+/// acknowledge (T94, fitted to the oracle's acknowledges over `slot-attract`'s frames 40-300: 256
+/// of 260 on their line): 17.6 lines; a line more when it polls the keyboard; 0.85 of a line a
+/// DMACON write (T72 had 4/5); 1.2 lines when the music reads its next rows; 0.8 fewer on a tick
+/// that steps no channel's effect; two lines an effect playing (T72, not seen in the attract loop).
+const HANDLER_CYCLES: u32 = 8_000;
+const KEYBOARD_CYCLES: u32 = 454;
+const DMACON_CYCLES: u32 = 386;
+const FETCH_CYCLES: u32 = 545;
+const QUIET_CYCLES: u32 = 363;
+const EFFECT_CYCLES: u32 = 908;
+
+/// What the vertical blank's handler does on a frame, which decides how long it takes.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub(crate) struct Handler {
+    /// It polls the keyboard (INTENA `$0008`, every other frame).
+    pub(crate) keyboard: bool,
+    /// Its DMACON writes: the music's on a row (`$0000`, `$8000` starting no note; `$1`, `$1`,
+    /// `$8001` one; `$1`, `$2`, `$3`, `$8003` two; `$1`, `$2`, `$4`, `$7`, `$8007` three).
+    pub(crate) dmacon_writes: u32,
+    /// The music reads its next rows ([`crate::audio::AudioDriver::fetches_rows`]).
+    pub(crate) fetches_rows: bool,
+    /// The music's tick steps no channel ([`crate::audio::AudioDriver::quiet_tick`]).
+    pub(crate) quiet_tick: bool,
+    /// The effects playing ([`crate::audio::AudioDriver::sfx_active`]).
+    pub(crate) effects: u32,
+}
+
+/// The line the slot screen's vertical blank handler, taken on time, acknowledges on: where the
+/// main program goes on (the drawing cut by the frame's end, [`draw`]). The fade's steps are
+/// timed apart and lengthen it further (T93).
+pub(crate) fn interrupt_lines(h: Handler) -> u16 {
+    let cycles = HANDLER_CYCLES
+        + h.keyboard as u32 * KEYBOARD_CYCLES
+        + h.dmacon_writes * DMACON_CYCLES
+        + h.fetches_rows as u32 * FETCH_CYCLES
+        + h.effects * EFFECT_CYCLES
+        - h.quiet_tick as u32 * QUIET_CYCLES;
+    (cycles / crate::front::BEAM_CYCLES_PER_LINE) as u16
+}
+
 /// `slot_machine`, from just after its first raster wait (h0+$49e2).
 #[derive(Debug, Clone, Default, PartialEq, Eq, Hash)]
 pub(crate) struct Routine {
@@ -425,4 +466,43 @@ pub(crate) fn resume(chain: &[u32]) -> Option<Vec<(FrontRoutine, Option<Yield>)>
             (FrontRoutine::Slot(Routine::default()), None),
         ]
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{Handler, interrupt_lines};
+
+    fn handler(keyboard: bool, dmacon_writes: u32, fetches_rows: bool, quiet: bool) -> Handler {
+        Handler {
+            keyboard,
+            dmacon_writes,
+            fetches_rows,
+            quiet_tick: quiet,
+            effects: 0,
+        }
+    }
+
+    /// The oracle's acknowledges in `slot-attract` (original frames 798-1058), by what its handler
+    /// did: the line each lands on (where on it, measured, in the comment).
+    #[test]
+    fn the_handler_acknowledges_on_the_originals_line() {
+        for (what, h, line) in [
+            ("nothing", handler(false, 0, false, false), 17), // 17.68
+            ("keyboard", handler(true, 0, false, false), 18), // 18.68
+            ("a row, no note", handler(false, 2, false, false), 19), // 19.1-19.2
+            ("one note", handler(false, 3, false, false), 20), // 20.2-20.4
+            ("two notes", handler(false, 4, false, false), 21), // 21.15
+            ("three notes", handler(false, 5, false, false), 21), // 21.1
+            ("keyboard, rows read", handler(true, 0, true, false), 19), // 19.67
+            ("quiet", handler(false, 0, false, true), 16), // 16.69
+            ("keyboard, quiet", handler(true, 0, false, true), 17), // 17.68
+        ] {
+            assert_eq!(interrupt_lines(h), line, "{what}");
+        }
+        let effect = Handler {
+            effects: 1,
+            ..handler(false, 0, false, false)
+        };
+        assert_eq!(interrupt_lines(effect), 19, "an effect: two lines (T72)");
+    }
 }
