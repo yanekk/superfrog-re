@@ -566,10 +566,19 @@ impl Front {
         cpu: &crate::game::Cpu,
     ) -> Option<Front> {
         let chain = main_chain(mem, cpu);
-        let stack = ending::resume(&chain).or_else(|| title::resume(&chain, cpu, mem))?;
-        // The sound driver reads the files the game put in chip RAM: the title's module.
+        let slot = crate::slot::resume(&chain);
+        let in_slot = slot.is_some();
+        let stack = slot
+            .or_else(|| ending::resume(&chain))
+            .or_else(|| title::resume(&chain, cpu, mem))?;
+        // The sound driver reads the files the game put in chip RAM: the level's bank and module
+        // in the slot machine (it loads its own once resumed), else the title's module.
+        use crate::layout::Ram;
         if let Some(d) = display.front.sound.as_ref() {
-            let files = if s.audio.module_addr() == sf_assets::sound::BANK_ADDR {
+            let long = |a: u32| (0..4).fold(0u32, |v, k| v << 8 | mem.byte(a + k) as u32);
+            let files = if in_slot {
+                crate::audio::files_for(long(h0(0x40da)), long(h0(0x9ec)))
+            } else if s.audio.module_addr() == sf_assets::sound::BANK_ADDR {
                 vec![(
                     sf_assets::sound::BANK_ADDR,
                     crate::audio::File::Tune(sf_assets::sound::TuneId::Title),
@@ -577,7 +586,6 @@ impl Front {
             } else {
                 Vec::new()
             };
-            use crate::layout::Ram;
             s.audio = crate::audio::AudioDriver::transplant(d, &|a| mem.byte(a), &files);
         }
         Some(Front {
@@ -721,6 +729,23 @@ impl Front {
         match self.stack.last().map(|f| &f.routine) {
             Some(Routine::Outcome(o)) => Some(*o),
             _ => None,
+        }
+    }
+
+    /// The scene this front end's program is in: the slot machine while `slot_machine` is on its
+    /// stack (`coins_in` kept from `was` once in it), else the front end.
+    pub(crate) fn scene(&self, s: &State, was: crate::scene::Scene) -> crate::scene::Scene {
+        use crate::scene::Scene;
+        let in_slot = self
+            .stack
+            .iter()
+            .any(|f| matches!(f.routine, Routine::Slot(_)));
+        match (in_slot, was) {
+            (true, Scene::Slot { coins_in }) => Scene::Slot { coins_in },
+            (true, _) => Scene::Slot {
+                coins_in: s.w(crate::slot::COINS),
+            },
+            (false, _) => Scene::Front,
         }
     }
 

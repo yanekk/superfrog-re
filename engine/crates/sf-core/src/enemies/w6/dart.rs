@@ -1,24 +1,21 @@
 //! Templates 57 and 58 (markers 18 and 19): a dart that waits hidden at its spawn point, then
 //! flies left (57) or right (58) at 8 pixels a pass until it reaches solid ground, and waits again.
-//! Only the darts' inits are W6's; their update is shared with templates 53–62 of other worlds.
+//! Only the darts' inits are W6's; their update is W3's (`enemies::w3::dart`), shared with
+//! templates 53–62.
 
-use crate::enemies::common::{NOTHING, TOUCH_HURT, cell_at, solid};
+use crate::enemies::w3::dart::{FLY, WAIT, fly, wait};
 use crate::items::template;
 use crate::layout::h0;
-use crate::level::objects::{bob_anim, bob_follow, obj_spawn_cell};
-use crate::level::{LevelCtx, ObjectKind, n_clear};
-
-/// The darts' update while waiting (h0+$25fa8) and while flying (h0+$25f42).
-pub const WAIT: u32 = h0(0x25fa8);
-pub const FLY: u32 = h0(0x25f42);
+use crate::level::objects::{bob_anim, obj_spawn_cell};
+use crate::level::{LevelCtx, ObjectKind};
 
 /// Template 57: flies left.
 pub static DART_LEFT: ObjectKind = ObjectKind {
     name: "dart (left)",
     routines: &[
         (h0(0x25e9a), dart_left_init),
-        (WAIT, dart_wait),
-        (FLY, dart_fly),
+        (WAIT, wait),
+        (FLY, fly),
     ],
 };
 
@@ -27,8 +24,8 @@ pub static DART_RIGHT: ObjectKind = ObjectKind {
     name: "dart (right)",
     routines: &[
         (h0(0x25eb6), dart_right_init),
-        (WAIT, dart_wait),
-        (FLY, dart_fly),
+        (WAIT, wait),
+        (FLY, fly),
     ],
 };
 
@@ -52,40 +49,4 @@ fn dart_left_init(c: &mut LevelCtx, slot: u32, _d7: u16) {
 fn dart_right_init(c: &mut LevelCtx, slot: u32, _d7: u16) {
     bob_anim(&mut c.bus, slot, h0(0x32b24));
     c.bus.set_w(slot + 0x64, 0x20);
-}
-
-/// h0+$25fa8: harmless and out of sight (its bob at y `$2ee0`) while `+$64` counts down; then
-/// back at its spawn point, flying for `$60` passes' worth of count, and hurting.
-pub fn dart_wait(c: &mut LevelCtx, slot: u32, _d7: u16) {
-    let b = &mut c.bus;
-    b.set_w(slot + 0x30, 1);
-    let t = b.w(slot + 0x64).wrapping_sub(1);
-    b.set_w(slot + 0x64, t);
-    let bob = b.l(slot + 0x50);
-    if n_clear(t) {
-        b.set_w(bob.wrapping_sub(2), 0x2ee0);
-        return;
-    }
-    b.set_w(slot + 0x64, 0x60);
-    b.set_w(bob.wrapping_sub(2), 0x2ee0);
-    b.set_l(slot + 4, FLY);
-    b.set_l(slot + 8, b.l(slot + 0x44));
-    b.set_l(slot + 0x10, TOUCH_HURT);
-}
-
-/// h0+$25f42: it moves `+$0c` a pass; once the cell two steps ahead, 8 pixels up, is solid it
-/// waits again, harmless.
-pub fn dart_fly(c: &mut LevelCtx, slot: u32, _d7: u16) {
-    let b = &mut c.bus;
-    b.set_w(slot + 0x30, 0);
-    let vx = b.w(slot + 0xc);
-    b.set_w(slot + 8, b.w(slot + 8).wrapping_add(vx));
-    bob_follow(b, slot);
-    b.set_w(slot + 0x64, b.w(slot + 0x64).wrapping_sub(1));
-    let x = b.w(slot + 8).wrapping_add(vx.wrapping_add(vx));
-    let cell = cell_at(b, x, b.w(slot + 0xa).wrapping_sub(8));
-    if solid(b, cell) {
-        b.set_l(slot + 4, WAIT);
-        b.set_l(slot + 0x10, NOTHING);
-    }
 }

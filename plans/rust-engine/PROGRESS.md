@@ -62,11 +62,11 @@ done · ⛔ blocked, needs a human.
 | T37 | level-restart | T36; blocks T34 | ✅ | |
 | T38 | level-tally | T37; blocks T21 | ✅ | |
 | T39 | enemies-world-5 | T16, T38; blocks T18 | ⬜ | |
-| T40 | enemies-world-6 | T38; blocks T18 | ✅ | Review: 7 boundary mutations survived (charger reach, cannon aim, flier facing, walker turn probe, mace link count); 3 edge tests added. Mutated, probed shot touch on Moira, reran out-of-block cases (w6-4 frame 1158 pad picture, explore resync 479: as recorded). T104 gained Files/Interface. Completions are T104's; types met across cases (owner). |
-| T41 | enemies-world-4 | T38; blocks T18 | ⬜ | |
-| T42 | enemies-world-1 | T38; blocks T18, T33 | ⬜ | |
+| T40 | enemies-world-6 | T38; blocks T18 | ✅ | Review: 7 boundary mutations survived (charger reach, cannon aim, flier facing, walker turn, mace link count); edge tests added. Probed shot touch, reran out-of-block cases: as recorded. Merge: W6 dart/mace reuse W3's updates, merged common.rs; $64 now written (level1_vector), spawner test covers it. Completions are T104's. |
+| T41 | enemies-world-4 | T38; blocks T18 | ✅ | |
+| T42 | enemies-world-1 | T38; blocks T18, T33 | ✅ | |
 | T43 | enemies-world-2 | T38; blocks T18, T39 | ⬜ | |
-| T44 | enemies-world-3 | T38; blocks T18 | ⬜ | |
+| T44 | enemies-world-3 | T38; blocks T18 | ✅ | |
 | T46 | story-intro-scenes | T32; blocks T21 | ✅ | |
 | T47 | story-intro-handover | T46; blocks T21 | ⬜ | |
 | T48 | story-intro-skips | T46, T47; blocks T21 | ⬜ | |
@@ -92,7 +92,7 @@ done · ⛔ blocked, needs a human.
 | T82 | beam-tests | T81 | ✅ | |
 | T83 | items-w1 | T81 | ✅ | |
 | T84 | items-w3 | T81 | ✅ | |
-| T85 | items-w2 | T81 | ⬜ | |
+| T85 | items-w2 | T81 | ✅ | |
 | T86 | items-launchers | T81 | ⬜ | |
 | T87 | slot-symbols-routines | T71; blocks T72 | ✅ | |
 | T88 | slot-symbols-tables | T71; blocks T72 | ✅ | |
@@ -102,12 +102,24 @@ done · ⛔ blocked, needs a human.
 | T92 | slot-load | T72 | ✅ | |
 | T93 | slot-attract-draw | T72, T91, T92 | ⬜ | |
 | T94 | slot-interrupt-timing | T72, T91, T93; blocks T73 | ⬜ | |
-| T95 | slot-load-finish | T92; blocks T93 | ⬜ | |
+| T95 | slot-load-finish | T92; blocks T93 | ✅ | |
 | T96 | story-audio-dma-slots | T53; blocks T56 | ⬜ | |
 | T100 | front-vbl-timing | T37; blocks T21 | ⬜ | |
 | T97 | story-split-handler | T54; blocks T56 | ⬜ | |
 | T101 | lag-long-pass | T81, T82; blocks T21 | ⬜ | |
 | T102 | items-w3-faults | T101; blocks T21 | ⬜ | |
+| T105 | w2-1-hang-fruit-life | T85; blocks T21 | ⬜ | |
+| T106 | w1-completions | T42, T86, T101; blocks T18 | ⬜ | |
+| T107 | enemies-w1-2-case | T42; blocks T18, T33, T106 | ⬜ | |
+| T108 | enemies-w1-3-case | T42; blocks T18, T33, T106 | ⬜ | |
+| T109 | enemies-w1-4-case | T42; blocks T18, T33, T106 | ⬜ | |
+| T110 | enemies-w1-activation | T42; blocks T18, T33, T106 | ⬜ | |
+| T103 | w4-completions | T41, T101, T102; blocks T18 | ⬜ | |
+| T111 | enemies-w3-2-case | T44; blocks T18 | ⬜ | |
+| T112 | enemies-w3-3-case | T44; blocks T18 | ⬜ | |
+| T113 | enemies-w3-4-case | T44, T102; blocks T18 | ⬜ | |
+| T114 | enemies-w3-activation | T44; blocks T18 | ⬜ | |
+| T115 | w3-completions | T44, T101, T102, T111, T112, T113; blocks T18 | ⬜ | |
 | T104 | w6-completions | T40, T101, T102; blocks T18 | ⬜ | |
 
 A Notes cell holds what was built or what the review found, the test count, and one line per

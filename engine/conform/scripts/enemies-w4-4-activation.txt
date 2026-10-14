@@ -1,0 +1,5 @@
+# W4-4: idle through the drop-in, run right from the start until the swoopers, the scenery and
+# a ledge leave the screen (175-195), then back until they return (278) (T41).
+150: R
+230: L
+330: -

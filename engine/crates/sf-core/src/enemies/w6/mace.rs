@@ -1,35 +1,26 @@
 //! Template 67 (marker 17): a spiked ball swinging along a path below its marker, and template
 //! 68: the five links of its chain, each set between the ball and the chain's anchor in sixths.
-//! Their updates are shared with templates 63–70 of other worlds (other looks).
+//! Their updates are W3's (`enemies::w3::swing`), shared with templates 63–70.
 
 use crate::enemies::common::NOTHING;
+use crate::enemies::w3::swing::{LINK_UPDATE, UPDATE, link_update, update};
 use crate::items::template;
 use crate::layout::h0;
-use crate::level::objects::{
-    OBJ_SLOTS, bob_anim, bob_follow, nothing, obj_free, obj_path_xy, obj_spawn_cell,
-};
+use crate::level::objects::{bob_anim, nothing, obj_spawn_cell};
 use crate::level::{LevelCtx, ObjectKind};
 
 /// `chain_link_count` (h0+$262ba): a long inside the code; the marker's stub counts the links it
 /// spawns in it (1..5), and each link's init keeps its number.
-pub const CHAIN_LINK_COUNT: u32 = h0(0x262ba);
+pub use crate::enemies::w3::swing::LINK_INDEX as CHAIN_LINK_COUNT;
 /// The swing (h0+$26398): positions (x, y words) ending with a −1 long.
-pub const SWING: u32 = h0(0x26398);
-/// The balls' update (h0+$2619c) and the links' (h0+$262be).
-pub const BALL_UPDATE: u32 = h0(0x2619c);
-pub const LINK_UPDATE: u32 = h0(0x262be);
-
-/// The balls' looks (templates 63, 65, 67, 69): a link's ball is gone unless its bob shows one.
-const BALLS: [u32; 4] = [h0(0x32288), h0(0x3156c), h0(0x31c60), h0(0x32bc4)];
-/// The links' looks (templates 64, 66, 68, 70): a ball with fewer than five is gone.
-const LINKS: [u32; 4] = [h0(0x31560), h0(0x31c54), h0(0x32bb8), h0(0x3227c)];
+pub use crate::enemies::w3::swing::PATH as SWING;
 
 /// Template 67: the ball.
 pub static MACE: ObjectKind = ObjectKind {
     name: "mace",
     routines: &[
         (h0(0x260c4), mace_init),
-        (BALL_UPDATE, mace_update),
+        (UPDATE, update),
         (h0(0x29708), nothing),
     ],
 };
@@ -62,10 +53,9 @@ pub fn spawn_67(c: &mut LevelCtx, cell: u32) {
         }
         at = at.wrapping_add(0x260);
         let r = obj_spawn_cell(c, template(68), at, 0, 0);
-        // With no slot the original writes the ball to $64 (a null slot's `+$64`), an interrupt
-        // vector the engine does not keep: left out (no level fills every slot here).
-        if r.d0 as u16 == 0 && r.a0 != 0 {
-            c.bus.set_l(r.a0 + 0x64, ball);
+        // With no slot `a0` is 0 and the ball goes to $64, the level 1 autovector (the original's).
+        if r.d0 as u16 == 0 {
+            c.bus.set_l(r.a0.wrapping_add(0x64), ball);
         }
     }
 }
@@ -86,80 +76,9 @@ fn mace_init(c: &mut LevelCtx, slot: u32, _d7: u16) {
     b.set_w(slot + 0x70, b.w(slot + 0x70).wrapping_sub(2));
 }
 
-/// h0+$2619c: the next swing position from the origin `$50` left; the chain's end on the ball
-/// (8 right, 4 down); gone once fewer than five links are live (any slot whose bob shows a link,
-/// free slots' null bobs read too).
-fn mace_update(c: &mut LevelCtx, slot: u32, _d7: u16) {
-    let b = &mut c.bus;
-    let dx = b.w(slot + 0x64).wrapping_sub(0x50);
-    let dy = b.w(slot + 0x66);
-    obj_path_xy(b, slot, dx, dy);
-    bob_follow(b, slot);
-    b.set_l(slot + 0x6c, b.l(slot + 8));
-    b.set_w(slot + 0x6e, b.w(slot + 0x6e).wrapping_add(4));
-    b.set_w(slot + 0x6c, b.w(slot + 0x6c).wrapping_add(8));
-    let links = (0..20)
-        .map(|k| b.l(OBJ_SLOTS + k * 0x7c + 0x50))
-        .filter(|&bob| {
-            LINKS.contains(&b.l(bob.wrapping_add(8)))
-                || LINKS.contains(&b.l(bob.wrapping_add(0x42)))
-        })
-        .count();
-    if links < 5 {
-        obj_free(c, slot, 0);
-    }
-}
-
 /// h0+$2627e: its look and its number.
 fn link_init(c: &mut LevelCtx, slot: u32, _d7: u16) {
     let b = &mut c.bus;
     bob_anim(b, slot, h0(0x32bb8));
     b.set_l(slot + 0x68, b.l(CHAIN_LINK_COUNT));
-}
-
-/// One coordinate of a link: `n`/6 of the way from the anchor `anchor` to the ball's end `end`
-/// (`mulu.w`, `divu.w #6`: an overflowing quotient leaves the product).
-fn sixths(anchor: u16, end: u16, n: u32) -> u16 {
-    let d = anchor.wrapping_sub(end);
-    let (mag, up) = if d & 0x8000 != 0 {
-        (d.wrapping_neg(), true)
-    } else {
-        (d, false)
-    };
-    let p = mag as u32 * (n & 0xffff);
-    let q = if p / 6 > 0xffff {
-        p as u16
-    } else {
-        (p / 6) as u16
-    };
-    let q = if up { q } else { q.wrapping_neg() };
-    q.wrapping_add(anchor)
-}
-
-/// h0+$262be: gone with its ball (a ball slot freed, or its bob not a ball's); else placed its
-/// number of sixths from the anchor to the ball.
-fn link_update(c: &mut LevelCtx, slot: u32, _d7: u16) {
-    let b = &mut c.bus;
-    let ball = b.l(slot + 0x64);
-    if b.l(ball.wrapping_add(0x40)) == 0 {
-        return obj_free(c, slot, 0);
-    }
-    let bob = b.l(ball.wrapping_add(0x50));
-    if !BALLS.contains(&b.l(bob.wrapping_add(8))) && !BALLS.contains(&b.l(bob.wrapping_add(0x42))) {
-        return obj_free(c, slot, 0);
-    }
-    let n = b.l(slot + 0x68);
-    let x = sixths(
-        b.w(ball.wrapping_add(0x70)),
-        b.w(ball.wrapping_add(0x6c)),
-        n,
-    );
-    b.set_w(slot + 8, x);
-    let y = sixths(
-        b.w(ball.wrapping_add(0x72)),
-        b.w(ball.wrapping_add(0x6e)),
-        n,
-    );
-    b.set_w(slot + 0xa, y);
-    bob_follow(b, slot);
 }

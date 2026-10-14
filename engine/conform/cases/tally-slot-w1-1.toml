@@ -8,5 +8,5 @@ frames = 86
 
 [[exclude]]
 what = "enemies"
-note = "the original's marker spawners the engine has none for (enemies, the world's scenery) and the bubble return at once from power-on"
-task = "T16–T18"
+note = "the bubble (T17's, now T39–T41's) returns at once from power-on; world 1's enemies are live (T42)"
+task = "T39–T41"

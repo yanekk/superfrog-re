@@ -100,6 +100,8 @@ pub struct Rig<'d> {
     audio: AudioDriver,
     sound: &'d SoundData,
     display: &'d DisplayData,
+    /// The cycles the original took in the last [`Rig::check`] that returned (Moira's clock).
+    last_cycles: u64,
 }
 
 /// What differed, for the panic message.
@@ -128,7 +130,14 @@ impl<'d> Rig<'d> {
             audio,
             sound,
             display,
+            last_cycles: 0,
         }
+    }
+
+    /// The CPU cycles the original routine took in the last check it returned from: what a
+    /// routine's beam cost (`sf_core::level::beam::Cost`) is measured from.
+    pub fn last_cycles(&self) -> u64 {
+        self.last_cycles
     }
 
     /// The engine's state the rig starts each check from.
@@ -191,6 +200,7 @@ impl<'d> Rig<'d> {
             }
             r => r.unwrap_or_else(|e| panic!("{name} case {case}: the original: {e}")),
         };
+        self.last_cycles = r.cycles;
         for (a, b) in saved.iter().rev() {
             self.cpu.write(*a, b);
         }

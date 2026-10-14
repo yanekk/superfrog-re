@@ -147,6 +147,18 @@ headless.
 | [T100](tasks/T100-front-vbl-timing.md) | front-vbl-timing | T37; blocks T21 |
 | [T101](tasks/T101-lag-long-pass.md) | lag-long-pass | T81, T82; blocks T21 |
 | [T102](tasks/T102-items-w3-faults.md) | items-w3-faults | T101; blocks T21 |
+| [T103](tasks/T103-w4-completions.md) | w4-completions | T41, T101, T102; blocks T18 |
+| [T105](tasks/T105-w2-1-hang-fruit-life.md) | w2-1-hang-fruit-life | T85; blocks T21 |
+| [T106](tasks/T106-w1-completions.md) | w1-completions | T42, T86, T101; blocks T18 |
+| [T107](tasks/T107-enemies-w1-2-case.md) | enemies-w1-2-case | T42; blocks T18, T33, T106 |
+| [T108](tasks/T108-enemies-w1-3-case.md) | enemies-w1-3-case | T42; blocks T18, T33, T106 |
+| [T109](tasks/T109-enemies-w1-4-case.md) | enemies-w1-4-case | T42; blocks T18, T33, T106 |
+| [T110](tasks/T110-enemies-w1-activation.md) | enemies-w1-activation | T42; blocks T18, T33, T106 |
+| [T111](tasks/T111-enemies-w3-2-case.md) | enemies-w3-2-case | T44; blocks T18 |
+| [T112](tasks/T112-enemies-w3-3-case.md) | enemies-w3-3-case | T44; blocks T18 |
+| [T113](tasks/T113-enemies-w3-4-case.md) | enemies-w3-4-case | T44, T102; blocks T18 |
+| [T114](tasks/T114-enemies-w3-activation.md) | enemies-w3-activation | T44; blocks T18 |
+| [T115](tasks/T115-w3-completions.md) | w3-completions | T44, T101, T102, T111, T112, T113; blocks T18 |
 | [T104](tasks/T104-w6-completions.md) | w6-completions | T40, T101, T102; blocks T18 |
 
 T22 is the rig task: it comes before every surface task and they depend on it. T29 is the phase's

@@ -1,0 +1,10 @@
+# W3-4 with world 3's enemies live (T44), planned by examples/complete.rs: the frog climbs onto the
+# first crumbling platform (287,55) from the start.
+0: -
+150: U
+154: R
+162: -
+170: U L
+174: L
+178: U R
+179: -

@@ -281,15 +281,7 @@ fn spawners_match_the_original() {
         } else {
             cell(col, row.min(60))
         };
-        // Marker 17 needs room for its ball and links (see `spawn_67`).
         if m == 17 {
-            let st = poked(&rig, &s);
-            let free = (0..20)
-                .filter(|&k| st.l(OBJ_SLOTS + k * SLOT + 0x40) == 0)
-                .count();
-            if free < 6 {
-                continue;
-            }
             s.poke_l(mace::CHAIN_LINK_COUNT, g.next() as u32);
         }
         cases += 1;

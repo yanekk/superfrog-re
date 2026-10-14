@@ -62,7 +62,7 @@ fn fly(c: &mut LevelCtx, slot: u32) {
     let x = b.w(slot + 8);
     let y = b.w(slot + 0xa).wrapping_sub(0xa);
     let cell = map_cell(b, (x >> 4).wrapping_mul(2), (y >> 4).wrapping_mul(4)).wrapping_add(0x262);
-    if solid(b, cell) {
+    if solid(b.w(cell) & 0x3f) {
         return obj_free(c, slot, 0);
     }
     b.set_w(slot + 8, b.w(slot + 8).wrapping_add(b.w(slot + 0xc)));

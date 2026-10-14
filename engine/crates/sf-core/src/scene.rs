@@ -39,6 +39,9 @@ pub enum Scene {
     /// The front end: boot, title, menus, attract screens (T20; the program is `Game`'s
     /// [`crate::front::Front`]).
     Front,
+    /// The slot machine (`slot_machine`, T92/T95), run by `Game`'s [`crate::front::Front`] as the
+    /// front end is: `coins_in` is the coins the tally put in (h0+$49c6) as it was entered.
+    Slot { coins_in: u16 },
     /// The story intro disk 3 boots (T32; `Game`'s [`crate::front::Story`]).
     Story,
     /// The bonus level (T79): a level the same main program runs, in shooter mode, where a death
@@ -113,7 +116,7 @@ impl Scene {
         let mut out = Vec::new();
         let mut picture = None;
         match self {
-            Scene::Placeholder | Scene::Front | Scene::Story => {}
+            Scene::Placeholder | Scene::Front | Scene::Slot { .. } | Scene::Story => {}
             Scene::Level | Scene::Bonus(_) => {
                 let mut c = LevelCtx::new(
                     Bus::new(m.state, m.display.rom()),
@@ -168,7 +171,9 @@ impl Scene {
 
     pub fn render(&self, state: &State, display: &DisplayData, view: View) -> Picture {
         match self {
-            Scene::Placeholder | Scene::Front | Scene::Story => Picture::black(view),
+            Scene::Placeholder | Scene::Front | Scene::Slot { .. } | Scene::Story => {
+                Picture::black(view)
+            }
             Scene::Level | Scene::Bonus(_) => render::level(state, display, view),
         }
     }
