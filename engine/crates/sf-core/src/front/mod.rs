@@ -21,7 +21,7 @@ pub(crate) mod attract;
 pub mod blit;
 pub(crate) mod common;
 pub mod data;
-mod ending;
+pub(crate) mod ending;
 pub mod fade;
 mod gameover;
 mod hero;
@@ -144,8 +144,17 @@ pub(crate) enum Routine {
     /// The slot machine (T92) and, below it, the level's tally that called it.
     Slot(crate::slot::Routine),
     SlotOver(crate::slot::SlotOver),
-    /// The slot machine's attract frame drawn on the beam (T93).
+    /// The slot machine's attract frame drawn on the beam (T93), and its lamps or reels (T73).
     SlotDraw(crate::slot::draw::Draw),
+    /// The slot machine's rounds and their parts (T73).
+    SlotRounds(crate::slot::rounds::Rounds),
+    SlotHold(crate::slot::rounds::HoldMenu),
+    SlotMenu(crate::slot::rounds::Menu),
+    SlotSpin(crate::slot::rounds::Spin),
+    SlotFlash(crate::slot::rounds::Flash),
+    SlotAward(crate::slot::rounds::Award),
+    SlotCount(crate::slot::rounds::Count),
+    SlotWork(crate::slot::draw::Work),
 }
 
 impl Routine {
@@ -197,6 +206,14 @@ impl Routine {
             Routine::Slot(r) => r.run(cx),
             Routine::SlotOver(r) => r.run(cx),
             Routine::SlotDraw(r) => r.run(cx),
+            Routine::SlotRounds(r) => r.run(cx),
+            Routine::SlotHold(r) => r.run(cx),
+            Routine::SlotMenu(r) => r.run(cx),
+            Routine::SlotSpin(r) => r.run(cx),
+            Routine::SlotFlash(r) => r.run(cx),
+            Routine::SlotAward(r) => r.run(cx),
+            Routine::SlotCount(r) => r.run(cx),
+            Routine::SlotWork(r) => r.run(cx),
         }
     }
 }
@@ -297,6 +314,8 @@ pub(crate) struct Cx<'a> {
     pub unported: Vec<&'static str>,
     /// [`crate::game::FrameOut::beam_races`]: lines a drawing step wrote near the beam.
     pub races: Vec<(u16, u16)>,
+    /// `slot_machine` returned this frame, giving this (T73).
+    pub slot_outcome: Option<crate::slot::SlotOutcome>,
 }
 
 impl Cx<'_> {
@@ -496,6 +515,8 @@ pub struct Front {
     spren: bool,
     /// Paths not ported that this front end has run into (empty in every conformance case).
     pub unported: Vec<&'static str>,
+    /// What the slot machine gave when it returned (T73).
+    slot_outcome: Option<crate::slot::SlotOutcome>,
 }
 
 /// An unpacking in progress, for the picture: where, what was there, and when it began and ends
@@ -563,6 +584,7 @@ impl Front {
             frog_only: false,
             spren: true,
             unported: Vec::new(),
+            slot_outcome: None,
         }
     }
 
@@ -621,6 +643,7 @@ impl Front {
             frog_only: false,
             spren: true,
             unported: Vec::new(),
+            slot_outcome: None,
         })
     }
 
@@ -663,7 +686,26 @@ impl Front {
             frog_only,
             spren: true,
             unported: Vec::new(),
+            slot_outcome: None,
         }
+    }
+
+    /// The slot machine entered from the level's tally (T73, [`crate::Game::enter_slot`]):
+    /// `slot_machine` on top of the tally's end, the screen blank.
+    pub(crate) fn enter_slot(s: &State, sdr: u8, frog_only: bool) -> Front {
+        let mut f = Front::after_level(
+            s,
+            sdr,
+            Routine::SlotOver(crate::slot::SlotOver),
+            frog_only,
+        );
+        f.stack.push(Frame {
+            routine: Routine::Slot(Default::default()),
+            wait: None,
+            deferred: None,
+        });
+        f.cop1lc = title::BLANK_COPPER;
+        f
     }
 
     /// The rest of a frame the level scene began: the main program from `line` on, after the
@@ -704,6 +746,7 @@ impl Front {
             seed: None,
             unported: Vec::new(),
             races: Vec::new(),
+            slot_outcome: None,
         };
         self.run_main(&mut cx, u16::MAX);
         self.stalled = cx.stall;
@@ -711,6 +754,7 @@ impl Front {
         self.cop1lc = cx.cop1lc;
         self.keyboard = cx.keyboard;
         self.unported.append(&mut cx.unported);
+        self.slot_outcome = self.slot_outcome.or(cx.slot_outcome.take());
         let jobs = std::mem::take(&mut cx.jobs);
         for w in &mut paula {
             if w.vpos == 0 {
@@ -761,6 +805,11 @@ impl Front {
         }
     }
 
+    /// What the slot machine gave, once it has returned (T73).
+    pub(crate) fn slot_outcome(&self) -> Option<crate::slot::SlotOutcome> {
+        self.slot_outcome
+    }
+
     /// The level's loop has been entered again (a restart, T37): the level scene goes on.
     pub(crate) fn in_level_loop(&self) -> bool {
         matches!(self.stack.last().map(|f| &f.routine), Some(Routine::LevelLoop))
@@ -795,6 +844,7 @@ impl Front {
                 seed: self.seed.take(),
                 unported: Vec::new(),
                 races: Vec::new(),
+                slot_outcome: None,
             };
             title::boot(&mut cx);
             self.cop1lc = cx.cop1lc;
@@ -847,6 +897,7 @@ impl Front {
             seed: self.seed,
             unported: Vec::new(),
             races: Vec::new(),
+            slot_outcome: None,
         };
         // Work the main program carried over from the last frame with interrupts off.
         let masked = match self.stack.last() {
@@ -1122,6 +1173,7 @@ impl Front {
         self.keyboard = cx.keyboard;
         self.seed = cx.seed;
         self.unported.append(&mut cx.unported);
+        self.slot_outcome = self.slot_outcome.or(cx.slot_outcome.take());
         // In beam order: the copper's writes among the CPU's (lines are approximate for the CPU's:
         // the interrupt's at the top, the main program's where it woke). Positions are not
         // compared (the engine is not cycle-timed), so they are cleared.

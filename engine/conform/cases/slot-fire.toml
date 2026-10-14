@@ -1,0 +1,6 @@
+# The slot machine's rounds (T73): from `slot_machine`'s first frame (nothing played in W1-1, two
+# coins), the attract loop ended by fire, two rounds (hold menu, spin, payout, count), the end's
+# wait and fade out, and the return to the tally.
+sync = { slot = "slot-none" }
+script = "slot-fire"
+frames = 1800
