@@ -59,7 +59,7 @@ fn main() {
         }
         println!("{ids}:");
         for (k, v) in &found {
-            let shown: Vec<String> = v.iter().take(8).map(|(x, y)| format!("{x},{y}")).collect();
+            let shown: Vec<String> = v.iter().take(std::env::var("ALL").map_or(8, |_| 9999)).map(|(x, y)| format!("{x},{y}")).collect();
             println!("  {k:14} {:3}: {}", v.len(), shown.join(" "));
         }
     }

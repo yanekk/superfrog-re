@@ -138,6 +138,9 @@ done · ⛔ blocked, needs a human.
 | T143 | story-last-fade-out | T56 | ⬜ | |
 | T144 | story-intro-full-green | T56, T140, T141, T142, T143; blocks T21, T47, T48 | ⬜ | |
 | T133 | w2-1-fruit-room | T105; blocks T21 | ⬜ | |
+| T131 | w4-completion-faults | T103, T121, T127; blocks T18, T21 | ⬜ | |
+| T132 | w4-4-completion | T103; blocks T18, T131 | ⬜ | |
+| T145 | w4-4-dart-21 | T132; blocks T18, T131 | ⬜ | |
 
 A Notes cell holds what was built or what the review found, the test count, and one line per
 deviation from the task doc. A ✅ task's cell may be cut to one line once the next task has been reviewed.
