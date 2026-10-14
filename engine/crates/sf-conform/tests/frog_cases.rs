@@ -57,7 +57,7 @@ fn items_run_w1_1() {
 }
 
 /// W2-2 with its items and (T43) its enemies live, 650 frames: five kinds of fruit and the spud
-/// taken, the spud thrown and caught. Its one re-sync is T107's (the original's pass cut inside
+/// taken, the spud thrown and caught. Its one re-sync is T121's (the original's pass cut inside
 /// the bob drawer, frames 261–310), pinned here so no other lag frame is excused.
 #[test]
 fn items_fruit_w2_2() {
@@ -65,7 +65,7 @@ fn items_fruit_w2_2() {
 }
 
 /// A case green but for re-syncs at `frames`, each after the original's pass was cut inside the
-/// bob drawer and differing first in a play-field buffer (T107's, FINDINGS "T43: pinned
+/// bob drawer and differing first in a play-field buffer (T121's, FINDINGS "T43: pinned
 /// re-syncs").
 fn pinned(name: &str, frames: &[u32]) {
     let case = sf_conform::Case::load(&sf_conform::cases_dir().join(format!("{name}.toml")))

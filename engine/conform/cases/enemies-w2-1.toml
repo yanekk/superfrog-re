@@ -1,7 +1,7 @@
 # W2-1's enemies on `items-switch-w2-1`'s route, with nothing frozen (T43): the frog is hurt at 80,
 # stomps a flyer at 395 (it falls, lands and is gone for 200 points), meets hoppers, walkers, a
 # dart, the bouncer, the backdrops, the scenery and the crumbling ledge, and loses a life at 676.
-# The mace and the spikes are beyond the wall at column 144 (T108's completion).
+# The mace and the spikes are beyond the wall at column 144 (T122's completion).
 sync = { level = "W2-1" }
 script = "items-switch-w2-1"
 frames = 760

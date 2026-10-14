@@ -18,8 +18,8 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
-| 2026-10-14 | 📌 | T43: pinned re-syncs (T107's: the original's pass cut inside the bob drawer), all `playfield_buffer_0`: `items-fruit-w2-2` 311 (`frog_cases`), `enemies-w2-2` 560 (`enemies_w2_cases`). |
-| 2026-10-14 | 🔄 | Owner, T43: added T107 bob-draw-cut (T101; blocks T21), T108 w2-completions (T43, T101, T107; blocks T18), and on request T120 conform-no-silent-pass (T05, T36; blocks T21). |
+| 2026-10-14 | 📌 | T43: pinned re-syncs (T121's: the original's pass cut inside the bob drawer), all `playfield_buffer_0`: `items-fruit-w2-2` 311 (`frog_cases`), `enemies-w2-2` 560 (`enemies_w2_cases`). |
+| 2026-10-14 | 🔄 | Owner, T43: added T121 bob-draw-cut (T101; blocks T21), T122 w2-completions (T43, T101, T121; blocks T18), and on request T120 conform-no-silent-pass (T05, T36; blocks T21). |
 | 2026-10-14 | 🐞 | T43, open: `enemies-w2-3` diverges at 408, every frame on time: the engine's bob-drawer DMACON `$8400`/`$0400` pair lands a frame early with many background bobs (ledges). Beam costs need refitting (`examples/fit`); case cut to 407. |
 | 2026-10-14 | 📌 | T43: marker 17's stub writes the mace ball's slot to `$64` (level 1 interrupt vector) when a link finds no slot (a0 = 0). The engine skips it; the routine test never fills the table there. |
 | 2026-10-14 | 🐞 | T43, not fixed: the routine harness does not compare `sample_play`'s state: dropping `touch_stunned`'s sample 2 stays green. Frame cases would catch it. |

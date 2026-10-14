@@ -1,6 +1,6 @@
-# T108 — w2-completions
+# T122 — w2-completions
 
-**Phase:** 2 · **Depends on:** T43, T101, T107; blocks T18 · **Weight:** heavy
+**Phase:** 2 · **Depends on:** T43, T101, T121; blocks T18 · **Weight:** heavy
 
 Added by T43 (owner, 2026-10-14): T43's "a scripted completion of each level in world 2 matches the
 oracle" moved here. T43 built per-level encounter cases (`enemies-w2-*`) meeting the types reachable

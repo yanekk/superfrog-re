@@ -37,7 +37,7 @@ impl Seen {
     }
 }
 
-/// Run `name` green (pinning the listed re-syncs, T107's), recording what it saw.
+/// Run `name` green (pinning the listed re-syncs, T121's), recording what it saw.
 fn run(name: &str, pins: &[u32]) -> Seen {
     let case = sf_conform::Case::load(&sf_conform::cases_dir().join(format!("{name}.toml")))
         .unwrap_or_else(|e| panic!("{e}"));
@@ -108,7 +108,7 @@ fn enemies_w2_1() {
 }
 
 /// W2-3: over the crumbling ledges above the spike pit (none breaks on this route: the frog's box
-/// never meets a ledge's hitbox; T108).
+/// never meets a ledge's hitbox; T122).
 #[test]
 fn enemies_w2_3() {
     let seen = run("enemies-w2-3", &[]);
@@ -116,7 +116,7 @@ fn enemies_w2_3() {
 }
 
 /// W2-2: down the drop and past the dart, which comes out of hiding and flies; the
-/// bouncer, the scenery. One re-sync (T107's), pinned.
+/// bouncer, the scenery. One re-sync (T121's), pinned.
 #[test]
 fn enemies_w2_2() {
     let seen = run("enemies-w2-2", &[560]);
