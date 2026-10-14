@@ -168,7 +168,7 @@ const PAD_JUMP: u32 = 16;
 static GAP: std::sync::atomic::AtomicUsize = std::sync::atomic::AtomicUsize::new(3);
 
 /// [`flood`] with gravity: a step up is only taken within a jump of a cell the frog can stand on
-/// (an open cell over a solid one or a floor, in this column or the next) or in a lift's shaft,
+/// (an open cell over a solid one or a floor, in this column) or in a lift's shaft,
 /// sideways and down always. Where
 /// that leaves a cell no way to `goal`, the plain flood's cost plus 50 000.
 fn climb(body: &[u16], w: usize, h: usize, goal: &[(usize, usize)]) -> Vec<u32> {
@@ -212,9 +212,10 @@ fn climb(body: &[u16], w: usize, h: usize, goal: &[(usize, usize)]) -> Vec<u32> 
             }
         }
     }
+    // In the cell's own column only: ground in the next column (a block's top beside the frog)
+    // does not lift it (W6-2's frog jumped for ever beside a block one row too high).
     let up_ok = |x: usize, y: usize| {
-        let near = [x.wrapping_sub(1), x, x + 1];
-        near.iter().any(|&c| c < w && reach[y * w + c] <= JUMP)
+        reach[y * w + x] <= JUMP
             || solid(x, y)
             || lift(x, y)
             || (y + 1 < h && lift(x, y + 1))
