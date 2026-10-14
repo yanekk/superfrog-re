@@ -61,8 +61,12 @@ const BLANK_COPPER: u32 = crate::front::h2(0x6fd8);
 const LAMPS_CALL: u32 = 60;
 const MENU_FRAME: u32 = 240;
 const MENU_ENTRY: u32 = 400;
-const SPIN_LEAD: u32 = 600;
-const REELS_CALL: u32 = 300;
+const SPIN_LEAD: u32 = 150;
+const REELS_CALL: u32 = 150;
+/// `slot_digits` while the picture shows: fitted to the spin's reels' INTENA lines over `slot-fire`
+/// (1 000 fewer than [`DIGITS_CYCLES`]; the byte copies lose less to the display than
+/// [`super::draw`]'s CPU rate says).
+const DIGITS_ON_BEAM: u32 = DIGITS_CYCLES - 1_000;
 /// The bank's copy back over the level's (h0+$15fb0: $3e80 longs at about 39 cycles).
 const SOUND_COPY_CYCLES: u32 = 0x3e80 * 39;
 
@@ -112,12 +116,11 @@ fn draw_lamps(lead: u32) -> Yield {
 /// its byte copies' time spent.
 fn digits(cx: &mut Cx, inside: u32) -> Yield {
     super::slot_digits(cx);
+    // The digits' rows, in each plane.
     let mut writes = Vec::new();
     for p in 0..6 {
-        for r in 0..0x18 {
-            for at in [0x1ae1, 0xf01] {
-                writes.push((super::BUFFER_0 + p * super::PLANE + at + r * ROW, 4));
-            }
+        for at in [0x1ae0, 0xf00] {
+            writes.push((super::BUFFER_0 + p * super::PLANE + at, 0x18 * ROW));
         }
     }
     cx.jobs.push(crate::game::Job {
@@ -125,7 +128,7 @@ fn digits(cx: &mut Cx, inside: u32) -> Yield {
         writes,
     });
     call(FrontRoutine::SlotWork(Work {
-        left: DIGITS_CYCLES,
+        left: DIGITS_ON_BEAM,
     }))
 }
 
@@ -482,11 +485,14 @@ impl Menu {
                     // (`slot_menu` set) or out of it.
                     let offer = cx.s.w(OFFER) != 0;
                     let allowed = cx.s.w(HOLDS_ALLOWED) != 0;
-                    let (hold, pick) = match x {
-                        ..0x77 => (Some(0), 1),
-                        ..0xa8 => (Some(1), 0),
-                        ..0xea => (Some(2), 2),
-                        _ => (None, 0),
+                    let (hold, pick) = if x < 0x77 {
+                        (Some(0), 1)
+                    } else if x < 0xa8 {
+                        (Some(1), 0)
+                    } else if x < 0xea {
+                        (Some(2), 2)
+                    } else {
+                        (None, 0)
                     };
                     match hold {
                         Some(_) if hilo && pick != 0 => {

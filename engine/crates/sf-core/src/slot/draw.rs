@@ -359,11 +359,11 @@ pub(crate) fn attract_row(s: &mut State, table: &dyn Fn(u32) -> u16) {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::collections::HashMap;
+    use std::collections::BTreeMap;
 
     /// Patterns of two rows each (lamp `k` of row `r` reads `$100 * r + k`), ended by `$ff80`.
-    fn patterns() -> HashMap<u32, u16> {
-        let mut m = HashMap::new();
+    fn patterns() -> BTreeMap<u32, u16> {
+        let mut m = BTreeMap::new();
         for (base, tag) in [(ATTRACT_FIRST, 0x1000), (ATTRACT_LATER, 0x2000)] {
             for r in 0..2 {
                 for k in 0..LAMP_COUNT {
