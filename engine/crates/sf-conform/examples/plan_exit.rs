@@ -47,13 +47,22 @@ fn frog(st: &sf_core::State) -> (i32, i32) {
 /// ground below it (in its column or the next; 20 above a bounce pad, marker 5; `ground`
 /// markers count as ground: a crumbling ledge, an object the map does not show), so a shaft
 /// taller than a jump is one-way; into or out of a wall 1 000 (a gate opens to its switch);
-/// into a deadly cell (6) 40.
+/// into a deadly cell (6) 1 000 too.
 fn flood(body: &[u16], w: usize, h: usize, goal: &[(usize, usize)], ground: &[u16]) -> Vec<u32> {
-    flood_dir(body, w, h, goal, ground, false)
+    flood_dir(body, w, h, goal, ground, false, &[])
 }
 
 /// [`flood`], or with `forward` the cost from `goal` to every cell instead.
-fn flood_dir(body: &[u16], w: usize, h: usize, goal: &[(usize, usize)], ground: &[u16], forward: bool) -> Vec<u32> {
+/// `penalty`, when not empty, is added to the cost of a move into each cell (a stall's tabu).
+fn flood_dir(
+    body: &[u16],
+    w: usize,
+    h: usize,
+    goal: &[(usize, usize)],
+    ground: &[u16],
+    forward: bool,
+    penalty: &[u32],
+) -> Vec<u32> {
     const JUMP: usize = 6;
     let m = |x: usize, y: usize| body[y * w + x] >> 10;
     let wall = |x: usize, y: usize| m(x, y) >= 0x3a;
@@ -63,7 +72,8 @@ fn flood_dir(body: &[u16], w: usize, h: usize, goal: &[(usize, usize)], ground: 
         if wall(x, y) || wall(px, py) {
             1000
         } else if m(x, y) == 6 {
-            40
+            // Spikes: as good as a wall (T103: W4-4's pit at 188,64 drew the frog in to die).
+            1000
         } else {
             1
         }
@@ -115,7 +125,9 @@ fn flood_dir(body: &[u16], w: usize, h: usize, goal: &[(usize, usize)], ground: 
         }
         for (px, py) in near {
             if px < w && py < h {
-                let step = if forward { cost(x, y, px, py) } else { cost(px, py, x, y) };
+                let into = if forward { py * w + px } else { y * w + x };
+                let step = if forward { cost(x, y, px, py) } else { cost(px, py, x, y) }
+                    + penalty.get(into).copied().unwrap_or(0);
                 let nd = here + step;
                 if nd < d[py * w + px] {
                     d[py * w + px] = nd;
@@ -155,12 +167,20 @@ fn map_now(st: &sf_core::State, file: &[u16], ground: &[u16]) -> Vec<u16> {
 const COINS_LEFT: u32 = h0(0x832);
 
 /// The map's cells in memory (`map_rows[1]`, h1): a cell's marker is its low 6 bits.
-fn coin_cells(st: &sf_core::State) -> Vec<(usize, usize)> {
+/// The coins in the map: markers 8 and 9, and the tile pickups (marker 55) whose tile is one of
+/// `tiles`, the world's coins (T103: W4-3 needs some of these).
+fn coin_cells(st: &sf_core::State, tiles: &[u32]) -> Vec<(usize, usize)> {
     let row0 = sf_core::layout::h1(0x218e0 + 0x4c0);
     let mut v = Vec::new();
     for r in 0..84u32 {
         for c in 0..300u32 {
-            if matches!(st.w(row0 + r * 0x260 + 2 * c) & 0x3f, 8 | 9) {
+            let cell = st.w(row0 + r * 0x260 + 2 * c);
+            let coin = match cell & 0x3f {
+                8 | 9 => true,
+                55 => tiles.contains(&((cell >> 6) as u32)),
+                _ => false,
+            };
+            if coin {
                 v.push((c as usize, r as usize));
             }
         }
@@ -266,6 +286,25 @@ fn main() {
         .unwrap_or_else(|e| panic!("{e}"));
     let amiga = &mut synced.amiga;
     let display = sf_conform::display_data();
+    // The world's coin tiles: its pickup table's (h0+$f382) tiles whose handler is the coin's
+    // (h0+$ede0).
+    let coin_tiles: Vec<u32> = {
+        let rom = &display.rom().h0;
+        let l = |a: u32| {
+            let o = a as usize;
+            u32::from_be_bytes([rom[o], rom[o + 1], rom[o + 2], rom[o + 3]])
+        };
+        let world = (id.to_string().as_bytes()[1] - b'1') as u32;
+        let mut at = l(0xf382 + 4 * world) - h0(0);
+        let mut v = Vec::new();
+        while (l(at) as i32) >= 0 {
+            if l(at + 4) == h0(0xede0) {
+                v.push(l(at));
+            }
+            at += 8;
+        }
+        v
+    };
     let acts = [
         Joy::NONE,
         Joy::RIGHT,
@@ -290,6 +329,12 @@ fn main() {
     let mut history: Vec<(sf_oracle::Snapshot, usize, usize, usize)> = Vec::new();
     let mut skip = 0usize;
     let mut backtracks = 0;
+    // Progress (coins needed, switches left, distance) and chunks since it last improved.
+    const STALL: usize = 6;
+    let (mut best, mut since) = ((u16::MAX, usize::MAX, i64::MAX), 0usize);
+    let mut set_aside: Vec<(usize, usize)> = Vec::new();
+    let mut tabu = vec![0u32; 300 * 84];
+    let mut fails_at: std::collections::BTreeMap<usize, u32> = Default::default();
     while inputs.len() < budget {
         let mem = sync::core_memory(amiga.memory());
         let start = Game::with_display(display.clone(), Start::Transplant(mem));
@@ -299,25 +344,34 @@ fn main() {
         let exit_field = flood(&body, w, h, &exits, &ground);
         let (fx, fy) = frog(start.state());
         let here = [((fx.max(0) / 16) as usize, (fy.max(0) / 16) as usize)];
-        let ahead = flood_dir(&body, w, h, &here, &ground, true);
+        let ahead = flood_dir(&body, w, h, &here, &ground, true, &[]);
         // The switches the frog can reach: one opens a gate on the way (W4-2's exit is behind
         // the gate of the switch at 222,4).
+        // A switch is two cells, one above the other; a lone cell with its marker is its gate
+        // (`items::fixtures::switch`).
+        let pair = |k: usize| {
+            let m = body[k] >> 10;
+            (48..=51).contains(&m)
+                && ((k >= w && body[k - w] >> 10 == m) || (k + w < w * h && body[k + w] >> 10 == m))
+        };
         let switches: Vec<(usize, usize)> = (0..w * h)
-            .filter(|&k| (48..=51).contains(&(body[k] >> 10)) && ahead[k] < 1000)
+            .filter(|&k| pair(k) && ahead[k] < 1000)
             .map(|k| (k % w, k / w))
             .collect();
+        let switch_cells: Vec<(usize, usize)> =
+            (0..w * h).filter(|&k| (48..=51).contains(&(body[k] >> 10))).map(|k| (k % w, k / w)).collect();
         goals[goal] = match target {
-            Some(Via::Cell(x, y)) => flood(&body, w, h, &[(x, y)], &ground),
+            Some(Via::Cell(x, y)) => flood_dir(&body, w, h, &[(x, y)], &ground, false, &tabu),
             None if dist(&exit_field, here[0].0, here[0].1) >= 1000 && !switches.is_empty() => {
                 eprintln!("  the exit is out of reach: to {} switches", switches.len());
-                flood(&body, w, h, &switches, &ground)
+                flood_dir(&body, w, h, &switches, &ground, false, &tabu)
             }
-            None => exit_field.clone(),
+            None => flood_dir(&body, w, h, &exits, &ground, false, &tabu),
             _ => Vec::new(),
         };
         if let Some(Via::Coins(_)) = target {
             let back = flood(&body, w, h, &here, &ground);
-            let coins: Vec<(usize, usize)> = coin_cells(start.state())
+            let coins: Vec<(usize, usize)> = coin_cells(start.state(), &coin_tiles)
                 .into_iter()
                 // A coin the frog cannot come back from (only through a wall), with the exit
                 // out of reach from it too, is a trap (W4-1's rooms under the shaft at 125,35).
@@ -326,8 +380,32 @@ fn main() {
                 .filter(|&(c, r)| ahead[r * w + c] < 1000)
                 .filter(|&(c, r)| !skip_boxes.iter().any(|&(c0, r0, c1, r1)| (c0..=c1).contains(&c) && (r0..=r1).contains(&r)))
                 .collect();
+            // Those set aside after a stall, while others are left.
+            let kept: Vec<(usize, usize)> = coins.iter().copied().filter(|c| !set_aside.contains(c)).collect();
+            let coins = if kept.is_empty() {
+                set_aside.clear();
+                coins
+            } else {
+                kept
+            };
             eprintln!("  {} coins in reach", coins.len());
             if reach_only {
+                eprintln!("  coins {coins:?}, switches {switches:?}");
+                // The way the coins' field leads from the frog: each step to the neighbour
+                // nearest the goal.
+                let field = flood(&body, w, h, &coins, &ground);
+                let (mut x, mut y) = here[0];
+                let mut way = Vec::new();
+                for _ in 0..200 {
+                    way.push(format!("{x},{y}:{}", field[y * w + x]));
+                    let nb = [(x.wrapping_sub(1), y), (x + 1, y), (x, y.wrapping_sub(1)), (x, y + 1)];
+                    let Some(&(nx, ny)) = nb.iter().filter(|&&(a, b)| a < w && b < h).min_by_key(|&&(a, b)| field[b * w + a]) else { break };
+                    if field[ny * w + nx] >= field[y * w + x] {
+                        break;
+                    }
+                    (x, y) = (nx, ny);
+                }
+                eprintln!("  way: {}", way.join(" "));
                 // The map, `+` where the exit is in reach, `-` where the frog can go and come
                 // back from, `v` where it can go only,
                 // `#` a wall, `5` a pad.
@@ -348,13 +426,22 @@ fn main() {
             }
             // None left in reach: a switch the frog can reach opens its gate (W4-3's start area
             // opens only so); with no switch either, every coin.
-            let coins = if coins.is_empty() {
-                eprintln!("  {} switches in reach", switches.len());
-                if switches.is_empty() { coin_cells(start.state()) } else { switches.clone() }
+            // Fewer in reach than are needed: the rest are behind gates, so the switches too
+            // (W4-4's coins are mostly behind its four).
+            let needed = start.state().w(COINS_LEFT) as usize;
+            let coins = if !coins.is_empty() && coins.len() < needed && !switches.is_empty() {
+                eprintln!("  {} coins in reach, {needed} needed: to {} switches too ({coins:?}, {switches:?})", coins.len(), switches.len());
+                coins.iter().chain(&switches).copied().collect()
             } else {
                 coins
             };
-            goals[goal] = flood(&body, w, h, &coins, &ground);
+            let coins = if coins.is_empty() {
+                eprintln!("  {} switches in reach", switches.len());
+                if switches.is_empty() { coin_cells(start.state(), &coin_tiles) } else { switches.clone() }
+            } else {
+                coins
+            };
+            goals[goal] = flood_dir(&body, w, h, &coins, &ground, false, &tabu);
         }
         let field = &goals[goal];
         let hearts = start.state().w(HEARTS);
@@ -381,7 +468,14 @@ fn main() {
                     let (cx, cy) = ((x.max(0) / 16) as usize, (y.max(0) / 16) as usize);
                     let d = dist(field, cx, cy);
                     let coins = if matches!(target, Some(Via::Coins(_))) { 4000 * st.w(COINS_LEFT) as i64 } else { 0 };
-                    coins + d * 16 + (16 - (x % 16 - 8).abs()) as i64 / 4 - 400 * st.w(HEARTS) as i64
+                    // A switch pulled (its marker gone) is worth a coin: it is hit in a jump, so
+                    // where the path ends says nothing of it (T103: W4-2's at 191,22).
+                    let row0 = sf_core::layout::h1(0x218e0 + 0x4c0);
+                    let pulled = switch_cells
+                        .iter()
+                        .filter(|&&(c, r)| !(48..=51).contains(&(st.w(row0 + r as u32 * 0x260 + 2 * c as u32) & 0x3f)))
+                        .count() as i64;
+                    coins - 4000 * pulled + d * 16 + (16 - (x % 16 - 8).abs()) as i64 / 4 - 400 * st.w(HEARTS) as i64
                 }
             }
         };
@@ -495,16 +589,35 @@ fn main() {
             }
             amiga.restore(&snap);
             if ok {
-                for &x in &p[..n] {
-                    sync::step_inserting(amiga, x).unwrap();
+                // Up to the frame the level ends on, if it does (T103: it may end mid-chunk,
+                // and the tally that follows is no place to plan).
+                let mut k = 0;
+                while k < n {
+                    sync::step_inserting(amiga, p[k]).unwrap();
+                    k += 1;
+                    let b = amiga.peek(LEVEL_STATE, 4);
+                    if u32::from_be_bytes([b[0], b[1], b[2], b[3]]) == 1 {
+                        break;
+                    }
                 }
-                taken = Some(p[..n].to_vec());
+                taken = Some(p[..k].to_vec());
                 break;
             }
         }
         let Some(p) = taken else {
             eprintln!("frame {}: every path loses a life on the original", inputs.len());
             backtracks += 1;
+            // Failing again and again here: the cells round the frog cost more, as a stall's do.
+            *fails_at.entry(inputs.len()).or_insert(0) += 1;
+            if fails_at[&inputs.len()] % 3 == 0 {
+                let (cx, cy) = here[0];
+                for r in cy.saturating_sub(4)..(cy + 5).min(84) {
+                    for c in cx.saturating_sub(4)..(cx + 5).min(300) {
+                        tabu[r * 300 + c] += 200;
+                    }
+                }
+                eprintln!("  failing at {cx},{cy}: the cells round it cost more");
+            }
             // Three candidates a chunk at most, then the chunk before it.
             let mut popped = history.pop();
             while popped.as_ref().is_some_and(|h| h.3 + 1 >= 3) {
@@ -552,6 +665,38 @@ fn main() {
             st.w(COINS_LEFT),
             st.l(h0(0x876))
         );
+        // Stalled (T103): no coin, no switch, no step nearer the goal in `STALL` chunks. Coins
+        // near the frog are set aside (a ring behind spikes the beam cannot thread, W4-3:145,46);
+        // on the way to a switch or the exit, the cells round it are made dearer (a tabu).
+        let row0 = sf_core::layout::h1(0x218e0 + 0x4c0);
+        let switches_left =
+            (0..84u32 * 300).filter(|&k| (48..=51).contains(&(st.w(row0 + (k / 300) * 0x260 + 2 * (k % 300)) & 0x3f))).count();
+        let (cx, cy) = ((x.max(0) / 16) as usize, (y.max(0) / 16) as usize);
+        let key = (st.w(COINS_LEFT), switches_left, dist(&goals[goal], cx, cy));
+        if key.0 < best.0 || key.1 < best.1 || (key.0 == best.0 && key.1 == best.1 && key.2 < best.2) {
+            (best, since) = (key, 0);
+        } else {
+            since += 1;
+        }
+        if since >= STALL {
+            (best, since) = ((u16::MAX, usize::MAX, i64::MAX), 0);
+            if matches!(via.get(goal), Some(Via::Coins(_))) {
+                let near: Vec<(usize, usize)> = coin_cells(&st, &coin_tiles)
+                    .into_iter()
+                    .filter(|&(c, r)| c.abs_diff(cx) <= 10 && r.abs_diff(cy) <= 10)
+                    .collect();
+                eprintln!("  stalled: {} coins near the frog set aside", near.len());
+                set_aside.extend(near);
+            } else {
+                // The cells round the frog cost more from now on, so the field leads elsewhere.
+                for r in cy.saturating_sub(4)..(cy + 5).min(84) {
+                    for c in cx.saturating_sub(4)..(cx + 5).min(300) {
+                        tabu[r * 300 + c] += 200;
+                    }
+                }
+                eprintln!("  stalled: the cells round {cx},{cy} cost more");
+            }
+        }
         if goal < via.len() && d <= 2 {
             eprintln!("via {:?} at frame {}", via[goal], inputs.len());
             goal += 1;

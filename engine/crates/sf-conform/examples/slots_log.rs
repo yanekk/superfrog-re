@@ -1,7 +1,8 @@
 //! What a case's objects do on the original, frame by frame: every slot that spawns (its
 //! template, the marker and map cell it came from) or is freed, every slot whose update turns
 //! into a killed or stunned enemy's (h0+$23b34, $23bee) or a reward's arc ($23e6c), and every
-//! heart the frog loses, with the slots then within 64 pixels of it. For the coverage lists of
+//! heart the frog loses, with the slots then within 64 pixels of it; when no coin is needed any
+//! more and when `level_state` changes. For the coverage lists of
 //! the completion cases (T103).
 //!
 //! `cargo run --release --example slots_log -- <case.toml>`
@@ -46,6 +47,8 @@ fn main() {
     let slot = |k: u32| h0(SLOTS + k * 0x7c);
     let mut before = vec![(0u32, 0u32, 0u32); 20];
     let mut hearts = w(a, HEARTS);
+    let mut state = l(a, h0(0xa06));
+    let mut coins = w(a, h0(0x832));
     for fr in 0..case.frames {
         sync::step_inserting(a, case.script.input_at(fr)).unwrap();
         for k in 0..20 {
@@ -79,5 +82,14 @@ fn main() {
             println!("{fr}: hurt, hearts {h}; near: {}", near.join("; "));
         }
         hearts = h;
+        // `level_state` (h0+$a06) and the coins still needed (h0+$832).
+        let (st, cn) = (l(a, h0(0xa06)), w(a, h0(0x832)));
+        if st != state {
+            println!("{fr}: level_state {st}");
+        }
+        if cn != coins && cn == 0 {
+            println!("{fr}: no coin needed");
+        }
+        (state, coins) = (st, cn);
     }
 }
