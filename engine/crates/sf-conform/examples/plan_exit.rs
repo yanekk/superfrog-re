@@ -156,6 +156,8 @@ fn flood(body: &[u16], w: usize, h: usize, goal: &[(usize, usize)]) -> Vec<u32> 
 /// bounce pad (markers 4, 5; a guess).
 const JUMP: u32 = 7;
 const PAD_JUMP: u32 = 16;
+/// Cells over death a jump crosses from the nearest cell over safe ground (a 5-cell pit is crossed).
+const GAP: usize = 3;
 
 /// [`flood`] with gravity: a step up is only taken within a jump of a cell the frog can stand on
 /// (an open cell over a solid one or a floor, in this column or the next) or in a lift's shaft,
@@ -224,10 +226,44 @@ fn climb(body: &[u16], w: usize, h: usize, goal: &[(usize, usize)]) -> Vec<u32> 
         d[y * w + x] = 0;
         q.push(std::cmp::Reverse((0u32, x, y)));
     }
+    // A cell over death: falling straight down from it ends on a deadly cell. One is only entered
+    // within `GAP` cells of the row's nearest cell over safe ground, so a long run of spikes or a
+    // pit is crossed by its platforms (W6-1 at 143-161,41).
+    let deadly = |x: usize, y: usize| body[y * w + x] >> 10 == 6;
+    let mut doom = vec![false; w * h];
+    for x in 0..w {
+        let mut lands_deadly = false;
+        for y in (0..h).rev() {
+            if solid(x, y) {
+                lands_deadly = false;
+            } else if deadly(x, y) {
+                lands_deadly = true;
+            }
+            doom[y * w + x] = lands_deadly;
+        }
+    }
+    let mut enterable = vec![true; w * h];
+    for y in 0..h {
+        for x in 0..w {
+            if !doom[y * w + x] {
+                continue;
+            }
+            let safe_within = |dir: isize| {
+                (1..=GAP as isize).any(|k| {
+                    let c = x as isize + dir * k;
+                    c >= 0 && (c as usize) < w && !solid(c as usize, y) && !doom[y * w + c as usize]
+                })
+            };
+            enterable[y * w + x] = safe_within(-1) || safe_within(1);
+        }
+    }
     // Backwards from the goals: a cell before (x, y) is beside it, above it (a fall), or below
     // it when the step up into (x, y) is in a jump's reach.
     while let Some(std::cmp::Reverse((here, x, y))) = q.pop() {
         if here > d[y * w + x] {
+            continue;
+        }
+        if !enterable[y * w + x] && here > 0 {
             continue;
         }
         let mut near = vec![(x.wrapping_sub(1), y), (x + 1, y), (x, y.wrapping_sub(1))];
