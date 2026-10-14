@@ -18,6 +18,10 @@ faults will meet every level's completion (T104, T106, T115, T122, T126), hence 
 
 ## The faults (T103's `sf-conform scan`, 2026-10-14)
 
+`complete-w4-3`'s frames 8886 and 10429 are from T103's first W4-3 route (11016 frames,
+`git show c2e8a9d:engine/conform/scripts/complete-w4-3.txt`); the committed route is green and
+meets neither, so re-run them from that script.
+
 - **The exit fade, palette step a frame early.** `complete-w4-1` frame 2149, four frames after
   `level_state` 1 (2145): the engine writes that frame's fade step into the level copper's palette
   (`level_copper+$2d4`) before the copper reads it, the original after; 83 pixels one colour step

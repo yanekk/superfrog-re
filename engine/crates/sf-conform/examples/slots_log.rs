@@ -34,8 +34,11 @@ fn main() {
         let b = a.peek(x, 2);
         u16::from_be_bytes([b[0], b[1]])
     };
+    // Templates sharing an init routine (141 and 142, the crushers) are named together.
     let template = |a: &sf_oracle::Amiga, init: u32| {
-        (0..160).find(|&k| l(a, h0(TEMPLATES + k * 0xae)) == init)
+        let ks: Vec<String> =
+            (0..160).filter(|&k| l(a, h0(TEMPLATES + k * 0xae)) == init).map(|k| k.to_string()).collect();
+        (!ks.is_empty()).then(|| ks.join("/"))
     };
     let cell = |c: u32| {
         let d = c.wrapping_sub(h1(ROW0));
@@ -56,12 +59,12 @@ fn main() {
             let now = (l(a, s + 0x40), l(a, s), l(a, s + 4));
             let was = before[k as usize];
             if now.0 != 0 && (was.0 == 0 || was.1 != now.1 || was.0 != now.0) {
-                let tm = template(a, now.1).map_or("?".to_string(), |t| t.to_string());
+                let tm = template(a, now.1).unwrap_or_else(|| "?".to_string());
                 println!("{fr}: slot {k} spawns template {tm}, {}", cell(now.0));
             } else if now.0 == 0 && was.0 != 0 {
                 println!("{fr}: slot {k} freed");
             } else if now.0 != 0 && dead.contains(&now.2) && !dead.contains(&was.2) {
-                let tm = template(a, now.1).map_or("?".to_string(), |t| t.to_string());
+                let tm = template(a, now.1).unwrap_or_else(|| "?".to_string());
                 println!("{fr}: slot {k} (template {tm}, {}) killed", cell(now.0));
             }
             before[k as usize] = now;
@@ -74,7 +77,7 @@ fn main() {
                     let s = slot(k);
                     let (x, y) = (w(a, s + 8) as i16 as i32, w(a, s + 0xa) as i16 as i32);
                     (l(a, s + 0x40) != 0 && (x - fx).abs() < 64 && (y - fy).abs() < 64).then(|| {
-                        let tm = template(a, l(a, s)).map_or("?".to_string(), |t| t.to_string());
+                        let tm = template(a, l(a, s)).unwrap_or_else(|| "?".to_string());
                         format!("slot {k} template {tm} ({}) at {},{} from the frog", cell(l(a, s + 0x40)), x - fx, y - fy)
                     })
                 })
