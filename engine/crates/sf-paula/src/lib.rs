@@ -33,6 +33,7 @@ pub trait ChipMemory {
 /// The same state machine as [`Paula`]'s, run on zeroed chip memory: the slots do not depend on the
 /// samples, except with ADKCON's attach modes (a channel's words then set the next one's period or
 /// volume), which the timing this serves does not meet.
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct AudioDma {
     chip: channel::Chip,
     taps: [Vec<i16>; 4],
@@ -63,6 +64,11 @@ impl AudioDma {
             }
         }
         self.chip.run_frame(writes, lines, &Zero, &mut self.taps);
+        // Only the slots are wanted: no state is kept in the DAC values, and an empty list clones
+        // and hashes for nothing.
+        for t in &mut self.taps {
+            t.clear();
+        }
         &self.chip.fetched
     }
 }

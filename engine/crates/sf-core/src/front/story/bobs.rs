@@ -198,7 +198,7 @@ pub fn draw(m: &mut StoryMem) -> Prog {
     p.ins(op::CLR_L_DN);
     let t = !m.w(TOGGLE);
     m.set_w(TOGGLE, t);
-    p.ins("pprpw"); // not.w abs.l
+    p.ins("ppr^pw"); // not.w abs.l
     let mut d2 = 0;
     p.branch(t == 0, false);
     if t != 0 {
@@ -214,8 +214,8 @@ pub fn draw(m: &mut StoryMem) -> Prog {
     p.ins(op::LEA_PC);
     p.ins(op::LEA_ABS_L);
     p.ins_regs("ppWp", &[(DMACON, 0x8400)]);
-    p.ins_regs("pppWWp", &[(BLTAFWM, 0xffff), (BLTAFWM + 2, 0xffff)]);
-    p.ins_regs("pppWWp", &[(BLTCON0, 0x09f0), (BLTCON1, 0)]);
+    p.ins_regs("pppW^Wp", &[(BLTAFWM, 0xffff), (BLTAFWM + 2, 0xffff)]);
+    p.ins_regs("pppW^Wp", &[(BLTCON0, 0x09f0), (BLTCON1, 0)]);
     p.ins(op::ADDQ_L_AN); // addq.l #4, a0
     let objs = objects(m);
     // Restore each object's last drawing in this buffer.
@@ -250,8 +250,8 @@ pub fn draw(m: &mut StoryMem) -> Prog {
                 };
                 b.run(m);
                 p.wait_blit(false);
-                p.ins_regs("pWWp", &long(BLTAPT, d7));
-                p.ins_regs("pWWp", &long(BLTDPT, d6));
+                p.ins_regs("pW^Wp", &long(BLTAPT, d7));
+                p.ins_regs("pW^Wp", &long(BLTDPT, d6));
                 p.ins_regs("pWp", &[(BLTSIZE, size)]);
                 if k < 4 {
                     p.ins(op::ADDQ_L_AN);
@@ -321,20 +321,20 @@ fn step_anim(m: &mut StoryMem, p: &mut Prog, o: u32) {
         m.set_l(o + 0x16, new.wrapping_sub(8));
         m.set_w(o + 0x1a, 0);
         p.ins(op::MOVEA_L_DI); // move.l $28(a2), d4
-        p.ins("prrpww"); // clr.l $28(a2)
-        p.ins("pwwp"); // move.l d4, 8(a2)
+        p.ins("prr^pww"); // clr.l $28(a2)
+        p.ins("pw^wp"); // move.l d4, 8(a2)
         p.ins(op::ADDQ_L_AN); // subq.l #8, d4
-        p.ins("pwwp"); // move.l d4, $16(a2)
+        p.ins("pw^wp"); // move.l d4, $16(a2)
         p.ins(op::CLR_W_DI);
     }
     let left = m.w(o + 0x1a).wrapping_sub(1);
     m.set_w(o + 0x1a, left);
-    p.ins("prpw"); // subq.w #1, $1a(a2)
+    p.ins("pr^pw"); // subq.w #1, $1a(a2)
     p.branch((left as i16) >= 0, false);
     if (left as i16) < 0 {
         let mut e = m.l(o + 0x16).wrapping_add(8);
         m.set_l(o + 0x16, e);
-        p.ins("prrpww"); // addq.l #8, $16(a2)
+        p.ins("prr^pww"); // addq.l #8, $16(a2)
         p.ins(op::MOVEA_L_DI); // movea.l $16(a2), a3
         p.ins("rrp"); // tst.l (a3)
         let wraps = (m.l(e) as i32) < 0;
@@ -343,7 +343,7 @@ fn step_anim(m: &mut StoryMem, p: &mut Prog, o: u32) {
             e = m.l(o + 8);
             m.set_l(o + 0x16, e);
             p.ins(op::MOVEA_L_DI); // movea.l 8(a2), a3
-            p.ins("pwwp"); // move.l a3, $16(a2)
+            p.ins("pw^wp"); // move.l a3, $16(a2)
         }
         m.set_w(o + 0x1a, m.w(e + 6));
         p.ins("prpwp"); // move.w 6(a3), $1a(a2)
@@ -375,7 +375,7 @@ fn draw_object(m: &mut StoryMem, p: &mut Prog, a2: u32, buffer: u32) {
     p.ins(op::MOVE_W_DI_DN); // move.w 0(a2), d7
     p.ins(op::MOVE_W_DI_DN); // add.w 8(a3), d7
     p.ins(op::MOVEA_L_DI); // movea.l $24(a3), a4
-    p.ins("prrpww"); // clr.l $10(a2)
+    p.ins("prr^pww"); // clr.l $10(a2)
     let add_w = |m: &mut StoryMem, at: u32, v: u16| {
         let x = m.w(at).wrapping_add(v);
         m.set_w(at, x);
@@ -450,7 +450,7 @@ fn draw_object(m: &mut StoryMem, p: &mut Prog, a2: u32, buffer: u32) {
         p.ins(op::ADD_W_DN_DI); // sub.w d6, $1e(a2)
         p.ins_idle("p", shift(1)); // lsl.w #1, d6
         p.ins(op::REG); // ext.l d6
-        p.ins("prrpww"); // add.l d6, $20(a2)
+        p.ins("prr^pww"); // add.l d6, $20(a2)
         p.ins(op::ADDQ_L_AN); // adda.l d6, a4
         p.ins(op::ADD_W_DN_DI);
         p.ins(op::ADD_W_DN_DI);
@@ -484,7 +484,7 @@ fn draw_object(m: &mut StoryMem, p: &mut Prog, a2: u32, buffer: u32) {
         d1 = ((size >> 6).wrapping_sub(d6)) << 6;
         m.set_w(a2 + 0x1e, size & 0x3f | d1);
         p.ins(op::MOVE_W_DI_DN); // move.w $1e(a2), d1
-        p.ins("pprpw"); // andi.w #$3f, $1e(a2)
+        p.ins("ppr^pw"); // andi.w #$3f, $1e(a2)
         p.ins_idle("p", shift(6)); // lsr.w #6, d1
         p.ins(op::REG); // sub.w d6, d1
         p.ins_idle("p", shift(6)); // lsl.w #6, d1
@@ -513,7 +513,7 @@ fn draw_object(m: &mut StoryMem, p: &mut Prog, a2: u32, buffer: u32) {
         let _ = y;
         p.ins(op::REG); // move.w d1, d5
         p.ins(op::MOVE_W_DI_DN); // move.w $1e(a2), d1
-        p.ins("pprpw"); // andi.w #$3f, $1e(a2)
+        p.ins("ppr^pw"); // andi.w #$3f, $1e(a2)
         p.ins_idle("p", shift(6)); // lsr.w #6, d1
         p.ins(op::REG); // sub.w d6, d1
         p.ins_idle("p", shift(6)); // lsl.w #6, d1
@@ -521,7 +521,7 @@ fn draw_object(m: &mut StoryMem, p: &mut Prog, a2: u32, buffer: u32) {
         p.ins(op::MOVE_W_DI_DN); // move.w $14(a3), d1
         p.ins_idle("p", 17 + d6.count_ones()); // mulu.w d6, d1
         p.ins(op::REG); // ext.l d1
-        p.ins("prrpww"); // add.l d1, $20(a2)
+        p.ins("prr^pww"); // add.l d1, $20(a2)
         p.ins(op::ADDQ_L_AN); // adda.l d1, a4
         p.ins(op::REG); // move.w d5, d1
         p.ins(op::BCC_TAKEN); // bra.b
@@ -536,7 +536,7 @@ fn draw_object(m: &mut StoryMem, p: &mut Prog, a2: u32, buffer: u32) {
     }
     let _ = d1;
     m.set_l(a2 + 0x10, a1);
-    p.ins("pwwp"); // move.l a1, $10(a2)
+    p.ins("pw^wp"); // move.l a1, $10(a2)
     let size = m.w(a2 + 0x1e);
     let shift_x = (m.w(a2).wrapping_add(m.w(a3 + 8)) & 0xf) << 12;
     let modulo_cd = m.w(a2 + 0x26);
@@ -551,7 +551,7 @@ fn draw_object(m: &mut StoryMem, p: &mut Prog, a2: u32, buffer: u32) {
     p.ins_regs("pWp", &[(BLTCON1, shift_x)]);
     p.ins(op::ANDI_W_DN); // ori.w #$fca, d6
     p.ins_regs("pWp", &[(BLTCON0, shift_x | 0x0fca)]);
-    p.ins_regs("pppWWp", &[(BLTAFWM, 0xffff), (BLTAFWM + 2, 0)]);
+    p.ins_regs("pppW^Wp", &[(BLTAFWM, 0xffff), (BLTAFWM + 2, 0)]);
     p.ins_regs("prpWp", &[(BLTCMOD, modulo_cd)]);
     p.ins_regs("prpWp", &[(BLTDMOD, modulo_cd)]);
     p.ins_regs("prpWp", &[(BLTBMOD, modulo_ab)]);
@@ -579,10 +579,10 @@ fn draw_object(m: &mut StoryMem, p: &mut Prog, a2: u32, buffer: u32) {
             p.ins(op::ADDQ_L_AN); // adda.l d3, a1
             p.ins(op::ADDQ_L_AN); // add.l d4, d1
         }
-        p.ins_regs("pWWp", &long(BLTCPT, a1));
-        p.ins_regs("pWWp", &long(BLTDPT, a1));
-        p.ins_regs("pWWp", &long(BLTBPT, g));
-        p.ins_regs("pWWp", &long(BLTAPT, a4));
+        p.ins_regs("pW^Wp", &long(BLTCPT, a1));
+        p.ins_regs("pW^Wp", &long(BLTDPT, a1));
+        p.ins_regs("pW^Wp", &long(BLTBPT, g));
+        p.ins_regs("pW^Wp", &long(BLTAPT, a4));
         p.ins_regs("pWp", &[(BLTSIZE, size)]);
         if k < 2 {
             p.ins(op::ADDQ_L_AN);

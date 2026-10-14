@@ -213,6 +213,10 @@ pub struct Sim<'a> {
     pub regs: Vec<(u32, u16, u16)>,
     /// The cycle the CPU's last access asked for the bus in (before any wait for it).
     pub asked: u32,
+    /// The next access is the one its instruction looks at the interrupt level in (`^`).
+    poll_next: bool,
+    /// Where this instruction looked at the interrupt level, if not in its last access.
+    polled: Option<u32>,
 }
 
 impl<'a> Sim<'a> {
@@ -232,6 +236,8 @@ impl<'a> Sim<'a> {
             writes: Vec::new(),
             regs: Vec::new(),
             asked: t,
+            poll_next: false,
+            polled: None,
         }
     }
 
@@ -336,6 +342,9 @@ impl<'a> Sim<'a> {
         self.run_to(self.t);
         let asked = self.t;
         self.asked = asked;
+        if std::mem::take(&mut self.poll_next) {
+            self.polled = Some(asked);
+        }
         while self.fixed.taken(self.t) || self.blitter_took(self.t) {
             self.t += 1;
             self.cycle(self.t, self.t - asked >= 3);
@@ -345,11 +354,12 @@ impl<'a> Sim<'a> {
         at
     }
 
-    /// Run the accesses and idle cycles `ops` ([`cpu`]'s letters `p`, `r`, `w`, `n`).
+    /// Run the accesses and idle cycles `ops` ([`cpu`]'s letters `p`, `r`, `w`, `n`, `^`).
     pub fn run(&mut self, ops: &str) {
         for c in ops.bytes() {
             match c {
                 b'n' => self.t += 1,
+                b'^' => self.poll_next = true,
                 b'p' | b'r' => {
                     self.access();
                 }
@@ -368,11 +378,18 @@ impl<'a> Sim<'a> {
     }
 
     /// Whether the instruction that has just ended takes an interrupt that can be taken from cycle
-    /// `from` (a blank's: its line 0, cycle 10): the CPU looks at the request when its last access
-    /// asks for the bus, so one held off the bus across `from` (by a blit) ends without it and the
-    /// next takes it (oracle, T54: frame 3 025's draw).
+    /// `from` (a blank's: its line 0, cycle 10): the CPU looks at the request when its polling
+    /// access asks for the bus (its last, or the one marked `^`), so one held off the bus across
+    /// `from` (by a blit) ends without it and the next takes it (oracle, T54: frame 3 025's draw;
+    /// T96: frame 3 109's, a `move.l Dn, d(An)` polling at its second write).
     pub fn irq_seen(&self, from: u32) -> bool {
-        self.asked + 1 >= from
+        self.polled.unwrap_or(self.asked) + 1 >= from
+    }
+
+    /// An instruction's end: the next one polls at its last access unless marked.
+    fn end_instruction(&mut self) {
+        self.polled = None;
+        self.poll_next = false;
     }
 
     /// A read of DMACONR as an instruction's data access (`r`): whether the blitter was busy then.
@@ -538,17 +555,22 @@ impl Prog {
                     let busy = sim.read_busy();
                     sim.run("p");
                     end(sim);
+                    sim.end_instruction();
                     sim.run(match (busy, word) {
                         (true, _) => "npp",
                         (false, false) => "nnp",
                         (false, true) => "nnpp",
                     });
                     end(sim);
+                    sim.end_instruction();
                     if !busy {
                         break;
                     }
                 },
-                Step::End => end(sim),
+                Step::End => {
+                    end(sim);
+                    sim.end_instruction();
+                }
             }
         }
     }
@@ -703,7 +725,12 @@ mod tests {
         let at = |line: u32, h: u32| line * LINE + h;
         assert_eq!(
             slots[..4],
-            [(at(11, 0x0f), 1), (at(12, 0x0f), 1), (at(13, 0x0f), 1), (at(14, 0x0f), 1)]
+            [
+                (at(11, 0x0f), 1),
+                (at(12, 0x0f), 1),
+                (at(13, 0x0f), 1),
+                (at(14, 0x0f), 1)
+            ]
         );
         let fetch = Fetch::default();
         let f = Fixed::new().frame(&[], &[], fetch).audio(&slots);

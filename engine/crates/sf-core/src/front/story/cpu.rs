@@ -5,7 +5,8 @@
 //! An instruction is the sequence of its bus accesses and idle cycles as the reference emulator's
 //! CPU core (Moira, vAmiga) makes them, written one letter each: `p` a program word (prefetch or
 //! extension word), `r` a data read, `w` a data write, `n` one DMA cycle (two CPU clocks) of
-//! internal work. An access takes two DMA cycles and uses the bus in the second; when another
+//! internal work; `^` before an access marks the one the CPU looks at the interrupt level in (Moira's
+//! `POLL`: the last prefetch unless marked). An access takes two DMA cycles and uses the bus in the second; when another
 //! owner (refresh, the copper, a DMA channel) has that cycle, the CPU waits for the next free one
 //! (vAmiga `Agnus::executeUntilBusIsFree`).
 
@@ -88,17 +89,18 @@ pub mod op {
     pub const BCC_TAKEN: &str = "npp";
     pub const BCC_B_NOT: &str = "nnp";
     pub const BCC_W_NOT: &str = "nnpp";
-    /// `cmpi.w #i, d(An)`; `addi.w #i, d(An)`; `tst.w d(An)`; `clr.w d(An)`.
+    /// `cmpi.w #i, d(An)`; `addi.w #i, d(An)`; `tst.w d(An)`; `clr.w d(An)`. A read-modify-write
+    /// looks at the interrupt level in the prefetch before its write.
     pub const CMPI_W_DI: &str = "pprp";
-    pub const ADDI_W_DI: &str = "pprpw";
+    pub const ADDI_W_DI: &str = "ppr^pw";
     pub const TST_W_DI: &str = "prp";
-    pub const CLR_W_DI: &str = "prpw";
+    pub const CLR_W_DI: &str = "pr^pw";
     /// `tst.w abs.l`; `cmpi.w #i, abs.l`; `clr.w abs.l`.
     pub const TST_W_ABS_L: &str = "pprp";
     pub const CMPI_W_ABS_L: &str = "ppprp";
-    pub const CLR_W_ABS_L: &str = "pprpw";
-    /// `move.l Dn, -(An)`.
-    pub const MOVE_L_DN_PREDEC: &str = "pww";
+    pub const CLR_W_ABS_L: &str = "ppr^pw";
+    /// `move.l Dn, -(An)`: the interrupt level in the prefetch before the writes.
+    pub const MOVE_L_DN_PREDEC: &str = "^pww";
     /// `move.w d(An), Dn`; `cmp.w d(An), Dn`; `movea.l d(An), An`; `move.w #i, d(An)`.
     pub const MOVE_W_DI_DN: &str = "prp";
     pub const CMP_W_DI_DN: &str = "prp";
@@ -118,11 +120,11 @@ pub mod op {
     /// (An)`; `andi.w #i, (An)`; `or.w Dn, (An)`.
     pub const MOVE_W_AI_DN: &str = "rp";
     pub const ANDI_W_DN: &str = "pp";
-    pub const ADD_W_DN_AI: &str = "rpw";
+    pub const ADD_W_DN_AI: &str = "r^pw";
     /// `add.w Dn, d(An)` and the other word read-modify-writes of `d(An)` from a register
     /// (`sub`, `or`, `subq`, `clr`).
-    pub const ADD_W_DN_DI: &str = "prpw";
-    pub const ANDI_W_AI: &str = "prpw";
+    pub const ADD_W_DN_DI: &str = "pr^pw";
+    pub const ANDI_W_AI: &str = "pr^pw";
     /// `mulu.w #3, Dn` (34 clocks of work for two set bits).
     pub const MULU_3: &str = "ppnnnnnnnnnnnnnnnnn";
 
