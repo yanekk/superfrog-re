@@ -202,10 +202,11 @@ fn climb(body: &[u16], w: usize, h: usize, goal: &[(usize, usize)]) -> Vec<u32> 
         near.iter().any(|&c| c < w && reach[y * w + c] <= JUMP) || solid(x, y)
     };
     // A wall dearer than in the plain flood: a long way round beats climbing through one (W6-2's
-    // shaft), and a closed gate is still crossed when nothing else reaches the goal.
+    // shaft), and a closed gate is still crossed when nothing else reaches the goal. A deadly cell
+    // is never crossed (W6-2's bounce pads under spikes).
     let cost = |x: usize, y: usize| match body[y * w + x] >> 10 {
         m if m & 0x18 == 0x18 => 400,
-        6 => 200,
+        6 => u32::MAX,
         _ => 1,
     };
     let mut d = vec![u32::MAX; w * h];
@@ -225,7 +226,7 @@ fn climb(body: &[u16], w: usize, h: usize, goal: &[(usize, usize)]) -> Vec<u32> 
             near.push((x, y + 1));
         }
         for (nx, ny) in near {
-            if nx < w && ny < h {
+            if nx < w && ny < h && cost(nx, ny) != u32::MAX {
                 let nd = here + cost(nx, ny);
                 if nd < d[ny * w + nx] {
                     d[ny * w + nx] = nd;
