@@ -62,7 +62,7 @@ done · ⛔ blocked, needs a human.
 | T37 | level-restart | T36; blocks T34 | ✅ | |
 | T38 | level-tally | T37; blocks T21 | ✅ | |
 | T39 | enemies-world-5 | T16, T38; blocks T18 | ⬜ | |
-| T40 | enemies-world-6 | T38; blocks T18 | ⬜ | |
+| T40 | enemies-world-6 | T38; blocks T18 | ✅ | |
 | T41 | enemies-world-4 | T38; blocks T18 | ✅ | |
 | T42 | enemies-world-1 | T38; blocks T18, T33 | ✅ | |
 | T43 | enemies-world-2 | T38; blocks T18, T39 | ✅ | |
