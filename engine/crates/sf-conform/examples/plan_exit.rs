@@ -220,6 +220,7 @@ fn main() {
             }
         };
         let mut beam: Vec<(Game, Vec<FrameInput>)> = vec![(start, Vec::new())];
+        let mut alive = Vec::new();
         for _ in 0..HORIZON {
             let mut next: Vec<(i64, Game, Vec<FrameInput>)> = Vec::new();
             for (b, path) in &beam {
@@ -254,8 +255,11 @@ fn main() {
                 .map(|(_, n, p)| (n, p))
                 .collect();
             if beam.is_empty() {
+                // Every path dies within the horizon: the shorter ones that were still alive.
+                beam = alive;
                 break;
             }
+            alive = beam.clone();
         }
         // Play the best path's first frames on the original; the next best if that loses a life.
         let snap = amiga.snapshot();

@@ -16,3 +16,27 @@ fn green(name: &str) {
 fn enemies_w6_1() {
     green("enemies-w6-1");
 }
+
+/// W6-2: walker, right dart, mace, cannon, the charger attacking, a hit.
+#[test]
+fn enemies_w6_2() {
+    green("enemies-w6-2");
+}
+
+/// The same run on W6-2's second map.
+#[test]
+fn enemies_w6_2_alt() {
+    green("enemies-w6-2-alt");
+}
+
+/// W6-3: seven of its eight types, the charger stomped and taken, a hit from the thrower.
+#[test]
+fn enemies_w6_3() {
+    green("enemies-w6-3");
+}
+
+/// The same run on W6-3's second map.
+#[test]
+fn enemies_w6_3_alt() {
+    green("enemies-w6-3-alt");
+}

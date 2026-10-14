@@ -1,0 +1,5 @@
+# `enemies-w6-2`'s run on W6-2's second map (d4_c15, one drive), nothing left out (T40).
+sync = { level = "W6-2alt" }
+script = "enemies-w6-2"
+frames = 650
+resync = false
