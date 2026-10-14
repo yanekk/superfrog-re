@@ -483,3 +483,147 @@ fn the_aims_and_counters_are_layout_variables() {
         assert!(sf_core::layout::index_of(a).is_some(), "${a:x}");
     }
 }
+
+/// The charger's attack (h0+$28532) with the frog on each edge of its reach: `$80` left of it,
+/// level with it, its feet at its top and `$20` below. Random frogs almost never land there.
+#[test]
+fn the_chargers_reach_matches_at_its_edges() {
+    let mut rig = w6_rig();
+    let mut g = Gen::new(4005);
+    let port = sf_core::level::standard_dispatch()
+        .routine(h0(0x28532))
+        .expect("ported");
+    let mut case = 0;
+    for dx in [0xffffu16, 0, 1, 0x7f, 0x80, 0x81] {
+        for dy in [0xffffu16, 0, 1, 0x1f, 0x20, 0x21] {
+            for on_ground in [0u16, 1] {
+                case += 1;
+                let mut s = Setup::default();
+                let (slot, bob) = with_slot(&rig, &mut g, &mut s, 102);
+                assert!(slot != 0);
+                let (x, y) = (0x400u16, 0x200u16);
+                s.poke_w(slot + 8, x);
+                s.poke_w(slot + 0xa, y);
+                s.poke_w(bob + 0x1a, 0);
+                s.poke_l(CAMERA_X, 0x360);
+                s.poke_l(CAMERA_Y, 0x180);
+                s.poke_w(FROG, x.wrapping_sub(dx));
+                s.poke_w(FROG + 2, y.wrapping_add(dy).wrapping_sub(0x39));
+                s.poke_w(FROG + 0x24, on_ground);
+                s.poke_w(FROG + 0x3a, 0);
+                s.a[0] = slot;
+                assert!(
+                    rig.check("charger attack", case, 0x28532, &s, |c| port(c, slot, 0)),
+                    "dx {dx:x} dy {dy:x} on_ground {on_ground}: not compared"
+                );
+            }
+        }
+    }
+}
+
+/// The cannon's aim and the flier's facing (their updates) with the frog every pixel from `$a0`
+/// left of them to `$a0` right: each threshold met exactly.
+#[test]
+fn the_aim_and_facing_match_at_every_frog_x() {
+    let mut rig = w6_rig();
+    let mut g = Gen::new(4006);
+    let mut case = 0;
+    for (t, update) in [(101u32, 0x28340u32), (103, 0x2826e)] {
+        let port = sf_core::level::standard_dispatch()
+            .routine(h0(update))
+            .expect("ported");
+        for d in 0..0x140u16 {
+            case += 1;
+            let mut s = Setup::default();
+            let (slot, _) = with_slot(&rig, &mut g, &mut s, t);
+            assert!(slot != 0);
+            let st = poked(&rig, &s);
+            let (x, y) = (st.w(slot + 8), st.w(slot + 0xa));
+            s.poke_w(slot + 0x5c, 5);
+            s.poke_l(CAMERA_X, x.saturating_sub(0xa0) as u32);
+            s.poke_l(CAMERA_Y, y.saturating_sub(0x80) as u32);
+            s.poke_w(FROG, x.wrapping_sub(0xa0).wrapping_add(d));
+            s.poke_w(FROG + 2, y);
+            s.a[0] = slot;
+            assert!(
+                rig.check("aim", case, update, &s, |c| port(c, slot, 0)),
+                "template {t}, frog {d:x} from $a0 left: not compared"
+            );
+        }
+    }
+}
+
+/// The walkers' turn (charger, walker, thrower, strider): the turning marker in one column and
+/// the walker every pixel across it and its neighbours, so the probe's `+3` is met at both edges.
+#[test]
+fn the_walkers_turn_at_the_same_pixel() {
+    let mut rig = w6_rig();
+    let mut g = Gen::new(4007);
+    let mut case = 0;
+    for (t, update) in [
+        (102u32, 0x28488u32),
+        (104, 0x27fd4),
+        (105, 0x28086),
+        (106, 0x27f2e),
+    ] {
+        let port = sf_core::level::standard_dispatch()
+            .routine(h0(update))
+            .expect("ported");
+        for x in 0x3f0u16..0x420 {
+            case += 1;
+            let mut s = Setup::default();
+            let (slot, bob) = with_slot(&rig, &mut g, &mut s, t);
+            assert!(slot != 0);
+            let st = poked(&rig, &s);
+            let probe = st.l(slot + 0x64) + ((0x403u16 >> 4) * 2) as u32 - 0x25e;
+            s.poke_w(probe, st.w(probe) & 0xffc0 | 0x25);
+            s.poke_w(slot + 8, x);
+            s.poke_w(slot + 0xc, if x & 1 == 0 { 3 } else { 0xfffd });
+            s.poke_w(slot + 0x60, 3);
+            step_word(&mut g, &mut s, slot, bob);
+            s.poke_w(slot + 0x70, if t == 106 { 1 } else { 0 });
+            camera_and_frog_near(&rig, &mut g, &mut s, slot);
+            s.a[0] = slot;
+            assert!(
+                rig.check("turn", case, update, &s, |c| port(c, slot, 0)),
+                "template {t}, x {x:x}: not compared"
+            );
+        }
+    }
+}
+
+/// The ball's update with 0 to 5 of its links' bobs showing something else: it goes once fewer
+/// than five show a link. (Clearing a link's `+$40` leaves its bob, so `vary` never gets there.)
+#[test]
+fn the_ball_goes_with_its_fifth_link() {
+    let mut rig = w6_rig();
+    let mut g = Gen::new(4008);
+    let port = sf_core::level::standard_dispatch()
+        .routine(h0(0x2619c))
+        .expect("ported");
+    for case in 0..60 {
+        let gone = case % 6;
+        let mut s = Setup::default();
+        let (slot, _) = with_slot(&rig, &mut g, &mut s, 67);
+        assert!(slot != 0);
+        let st = poked(&rig, &s);
+        let links: Vec<u32> = (0..20)
+            .map(|k| st.l(OBJ_SLOTS + k * SLOT + 0x50))
+            .filter(|&bob| st.l(bob + 0x42) == h0(0x32bb8))
+            .collect();
+        assert_eq!(links.len(), 5);
+        for &bob in &links[..gone] {
+            for at in [8, 0x28, 0x42] {
+                s.poke_l(bob + at, h0(0x32bc4));
+            }
+        }
+        let n = 0x194 / 4;
+        s.poke_l(slot + 0x54, mace::SWING + 4 * g.below(n) as u32);
+        camera_and_frog_near(&rig, &mut g, &mut s, slot);
+        s.a[0] = slot;
+        assert!(
+            rig.check("ball", case, 0x2619c, &s, |c| port(c, slot, 0)),
+            "{gone} links gone: not compared"
+        );
+    }
+}
