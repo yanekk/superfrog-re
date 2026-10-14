@@ -32,8 +32,9 @@ const HORIZON: u32 = 30;
 const HOLD: u32 = 4;
 const COMMIT: usize = 48;
 const BEAM: usize = 24;
-/// Chunks without a coin taken or the distance shortened before the nearest coin is passed over.
-const STALL: u32 = 5;
+/// Chunks without a coin taken or the distance shortened by two cells before the nearest coin, and
+/// every coin within four cells of it, is passed over (a jump's height wobbles the distance).
+const STALL: u32 = 4;
 /// The map's row 0 (`map_rows[1]`, h1), and a row's length in bytes: the live markers.
 const ROW0: u32 = 0x218e0 + 0x4c0;
 const ROW_BYTES: u32 = 0x260;
@@ -378,7 +379,7 @@ fn main() {
             Some(&Via::Coins(n)) => {
                 let left = st.w(FROG + f::COINS_LEFT);
                 let d = dist(&goals[goal], (x.max(0) / 16) as usize, (y.max(0) / 16) as usize);
-                if left < needed || d < best_d {
+                if left < needed || d < best_d.saturating_sub(1) {
                     (stall, best_d) = (0, if left < needed { i64::MAX } else { d });
                 } else {
                     stall += 1;
@@ -386,13 +387,18 @@ fn main() {
                 if stall >= STALL {
                     // No headway: pass over the coin nearest the frog by the map's paths.
                     let here = flood(&t.body, w, h, &[((x.max(0) / 16) as usize, (y.max(0) / 16) as usize)]);
-                    if let Some(&c) = coins(&st, &skipped).iter().min_by_key(|&&(c, r)| here[r * w + c]) {
-                        eprintln!("  passing over the coin at {},{}", c.0, c.1);
-                        skipped.push(c);
+                    let left = coins(&st, &skipped);
+                    if let Some(&(nc, nr)) = left.iter().min_by_key(|&&(c, r)| here[r * w + c]) {
+                        for &(c, r) in &left {
+                            if c.abs_diff(nc) <= 4 && r.abs_diff(nr) <= 4 {
+                                eprintln!("  passing over the coin at {c},{r}");
+                                skipped.push((c, r));
+                            }
+                        }
                     }
                     (stall, best_d) = (0, i64::MAX);
                 }
-                eprintln!("  coins needed {left}");
+                eprintln!("  coins needed {left}, distance {d}, stall {stall}");
                 if left <= n { 0 } else { 99 }
             }
             _ => dist(&goals[goal], (x.max(0) / 16) as usize, (y.max(0) / 16) as usize),
