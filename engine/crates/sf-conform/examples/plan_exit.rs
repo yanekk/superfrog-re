@@ -225,6 +225,13 @@ fn nearest(l: impl Fn(u32) -> u32, w: impl Fn(u32) -> u16, u: u32) -> Option<(i3
     })
 }
 
+/// Whether a slot of `u` (as [`nearest`] takes it) is within 48 pixels of the frog (`frog+$17`,
+/// `+$2a`: where `slots_log` measures from).
+fn hurt_by(st: &sf_core::State, u: u32) -> bool {
+    let (fx, fy) = (st.w(FROG + f::X) as i16 as i32 + 0x17, st.w(FROG + f::Y) as i16 as i32 + 0x2a);
+    nearest(|a| st.l(a), |a| st.w(a), u).is_some_and(|(ox, oy)| (ox - fx).abs() < 48 && (oy - fy).abs() < 48)
+}
+
 /// The field at a cell, or (a cell inside a wall) one more than its nearest open neighbour's;
 /// 100 000 when none is open.
 fn dist(field: &[u32], cx: usize, cy: usize) -> i64 {
@@ -381,6 +388,15 @@ fn main() {
             (0..w * h).filter(|&k| (48..=51).contains(&(body[k] >> 10))).map(|k| (k % w, k / w)).collect();
         goals[goal] = match target {
             Some(Via::Cell(x, y)) => flood_dir(&body, w, h, &[(x, y)], &ground, false, &tabu),
+            // A hurt or a stomp: the `--via` cell before it, to stay by while its object is
+            // not out (T103: a dart waits off screen between flights).
+            Some(Via::Hurt(_) | Via::Stomp(_)) => match via[..goal].iter().rev().find_map(|v| match v {
+                Via::Cell(x, y) => Some((*x, *y)),
+                _ => None,
+            }) {
+                Some(c) => flood_dir(&body, w, h, &[c], &ground, false, &tabu),
+                None => Vec::new(),
+            },
             None if dist(&exit_field, here[0].0, here[0].1) >= 1000 && !switches.is_empty() => {
                 eprintln!("  the exit is out of reach: to {} switches", switches.len());
                 flood_dir(&body, w, h, &switches, &ground, false, &tabu)
@@ -412,7 +428,12 @@ fn main() {
                 eprintln!("  coins {coins:?}, switches {switches:?}");
                 // The way the coins' field leads from the frog: each step to the neighbour
                 // nearest the goal.
-                let field = flood(&body, w, h, &coins, &ground);
+                // To the first `--via` cell instead, if there is one.
+                let to: Vec<(usize, usize)> = match via.iter().find_map(|v| match v { Via::Cell(x, y) => Some((*x, *y)), _ => None }) {
+                    Some(c) => vec![c],
+                    None => coins.clone(),
+                };
+                let field = flood(&body, w, h, &to, &ground);
                 let (mut x, mut y) = here[0];
                 let mut way = Vec::new();
                 for _ in 0..200 {
@@ -479,11 +500,19 @@ fn main() {
                     }) - 400 * st.w(HEARTS) as i64
                 }
                 Some(Via::Hurt(u)) => {
+                    // Hurt by that object: one of its slots within 48 pixels as the heart goes
+                    // (T103: W4-4's walker hurt the frog beside the marker-21 dart's spot).
                     if st.w(HEARTS) < hearts {
-                        return i64::MIN / 4;
+                        return if hurt_by(st, u) { i64::MIN / 4 } else { 1_000_000 };
                     }
                     nearest(|a| st.l(a), |a| st.w(a), u)
-                        .map_or(100_000, |(ox, oy)| ((x - ox - 16).abs() + (y - (oy - 8)).abs()) as i64)
+                        .map_or_else(
+                            || {
+                                let (cx, cy) = ((x.max(0) / 16) as usize, (y.max(0) / 16) as usize);
+                                100_000 + if field.is_empty() { 0 } else { dist(field, cx, cy) * 16 }
+                            },
+                            |(ox, oy)| ((x - ox - 16).abs() + (y - (oy - 8)).abs()) as i64,
+                        )
                 }
                 _ => {
                     let (cx, cy) = ((x.max(0) / 16) as usize, (y.max(0) / 16) as usize);
@@ -677,8 +706,8 @@ fn main() {
             Some(Via::Stomp(_)) => {
                 if killed(|a| st.l(a)) { 0 } else { 99 }
             }
-            Some(Via::Hurt(_)) => {
-                if st.w(HEARTS) < hearts { 0 } else { 99 }
+            Some(Via::Hurt(u)) => {
+                if st.w(HEARTS) < hearts && hurt_by(&st, *u) { 0 } else { 99 }
             }
             Some(Via::Coins(n)) => {
                 if st.w(COINS_LEFT) <= *n { 0 } else { 99 }

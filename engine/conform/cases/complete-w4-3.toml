@@ -1,12 +1,11 @@
 # W4-3 played from its start to its exit with every object live, no exclusions (T103): the switch
-# at 159,11 (frame 1477) whose gate at 122,6 opens the start area, the 99 coins (by frame 10582),
-# then west past the exit to the crushers striking up from 118-132,77, one hurting the frog (11137),
-# back to the exit at frame 11382, the exit fade and the tally; ends on frame 11566 (the next level
-# is T21's: every tally takes 185 frames). Planned by `examples/plan_exit`, checked on the original
-# chunk by chunk. Not in the test block (`sf-conform scan`, T131): red at 8886 (the frog's sprite
-# on a spring pad), 10429 (a sample stream's end, `clr.w AUD3VOL` writing the data bus's last
-# word) and from 11383, the exit fade (the play field, then `level_copper`).
+# at 159,11 (frame 1477) whose gate at 122,6 opens the start area, a floater of marker 22 hurting
+# the frog on the slope at 99-113,57-64 (3670), the 99 coins (by 7674), the crushers striking up
+# from 118-132,77, one hurting the frog (8150), the exit at frame 8485 (`level_state` 1), the exit
+# fade and the tally, fire in its wait taking the points; ends on frame 8669, frame 8670 being the
+# next level's (T21's; every tally takes 185 frames). Planned by `examples/plan_exit`, checked on
+# the original chunk by chunk; `sf-conform scan` finds no frame differing.
 sync = { level = "W4-3" }
 script = "complete-w4-3"
-frames = 11567
+frames = 8670
 resync = false

@@ -231,3 +231,25 @@ fn bonus_end_wb_1() {
 fn enemies_w4_4_activation() {
     green("enemies-w4-4-activation");
 }
+
+/// W4-3 played from its start to its exit and through the tally (T103): the switch opening the
+/// start area, a marker-22 floater and an upward crusher hurting the frog, the 99 coins, the exit
+/// at 8485 and fire taking the points; green to the frame before the next level, and on that
+/// frame the level is completed with the points taken (the next level is T21's).
+#[test]
+fn complete_w4_3() {
+    green("complete-w4-3");
+    let mut case = sf_conform::Case::load(&sf_conform::cases_dir().join("complete-w4-3.toml")).unwrap();
+    case.frames += 1;
+    let d = sf_conform::run(&case).expect_err("the next level is T21's");
+    assert_eq!(d.frame, 8670);
+    assert_eq!(d.unported, ["the next level after the tally (T21)"]);
+    assert!(
+        matches!(
+            d.level_outcome,
+            Some(sf_core::level::LevelOutcome::Completed { tally }) if !tally.slot_machine
+        ),
+        "{:?}",
+        d.level_outcome
+    );
+}

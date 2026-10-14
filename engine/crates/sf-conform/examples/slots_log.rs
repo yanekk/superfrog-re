@@ -75,7 +75,7 @@ fn main() {
                     let (x, y) = (w(a, s + 8) as i16 as i32, w(a, s + 0xa) as i16 as i32);
                     (l(a, s + 0x40) != 0 && (x - fx).abs() < 64 && (y - fy).abs() < 64).then(|| {
                         let tm = template(a, l(a, s)).map_or("?".to_string(), |t| t.to_string());
-                        format!("slot {k} template {tm} ({})", cell(l(a, s + 0x40)))
+                        format!("slot {k} template {tm} ({}) at {},{} from the frog", cell(l(a, s + 0x40)), x - fx, y - fy)
                     })
                 })
                 .collect();
