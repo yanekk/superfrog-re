@@ -140,3 +140,140 @@ fn every_rung_a_line_pays_is_collected_as_the_original_collects_it() {
         }
     }
 }
+
+/// The ladder's lamp records (h0+$57b6), read from the original's hunk.
+fn ladder() -> Vec<u32> {
+    let mem = level();
+    let l = |a: u32| (0..4).fold(0u32, |v, k| v << 8 | mem.byte(a + k) as u32);
+    (0..)
+        .map(|k| l(h0(0x57b6) + 4 * k))
+        .take_while(|&a| a != 0)
+        .collect()
+}
+
+/// The award's stubs: the menu (h0+$5eb4), the ladder's top flash and the bust (h0+$5772,
+/// h0+$5712, both on to frames the rig does not run) return at once; `sfx_play` records its effect
+/// past the lists, inside `slot_menu`.
+fn award_stubs(s: &mut Setup) {
+    for at in [0x5eb4, 0x5772, 0x5712] {
+        s.pokes.push((h0(at), vec![0x4e, 0x75]));
+    }
+    s.pokes.push((h0(0x12a72), vec![0x1a, 0xc0, 0x4e, 0x75]));
+    s.a[5] = h0(0x6220);
+}
+
+/// A recorder writing where [`award_stubs`]' `sfx_play` does.
+fn award_recorder() -> impl FnMut(&mut sf_core::State, u8, u8) {
+    let mut at = h0(0x6220);
+    move |s, id, _| {
+        s.set_b(at, id);
+        at += 1;
+    }
+}
+
+/// The award's memory before it: the win, the score shown, lives, every lamp's two words and the
+/// holds.
+fn award_memory(s: &mut Setup, g: &mut Gen) {
+    s.poke_w(h0(0x615e), 0);
+    s.poke_l(h0(0x57b2), g.next() as u32 % 300_000);
+    s.poke_l(h0(0x49d6), g.next() as u32 % 2_000_000);
+    s.poke_w(h0(0x82e), g.below(10) as u16);
+    for k in 0..26 {
+        s.poke_w(h0(0x6842) + 8 * k, edgy(g));
+        s.poke_w(h0(0x6842) + 8 * k + 6, edgy(g));
+    }
+    for k in 0..3 {
+        s.poke_w(HOLDS + 2 * k, edgy(g));
+    }
+}
+
+/// `slot_award` (h0+$51c4) for every prize but the hi-lo game ($a), the gamble not taken (T74):
+/// the jackpot's rung (0) goes to the ladder's top flash, a line's (1..=8) and any past the
+/// ladder (9, 11: no rung lit) to the menu and `slot_collect`.
+#[test]
+fn every_prize_is_awarded_as_the_original_awards_it() {
+    let mut rig = rig();
+    let mut g = Gen::new(740);
+    let ladder = ladder();
+    let mut case = 0;
+    for d7 in (0..=11u16).filter(|&d| d != 0xa) {
+        for _ in 0..16 {
+            let mut s = Setup::default();
+            award_stubs(&mut s);
+            award_memory(&mut s, &mut g);
+            s.d[7] = d7 as u32;
+            let mut next = None;
+            assert!(rig.check("h0+$51c4", case, 0x51c4, &s, |c| {
+                let mut rec = award_recorder();
+                let n = rounds::award_rung(c.bus.st, &ladder, d7, &mut rec);
+                if n == rounds::Ladder::Offer {
+                    rounds::collect(c.bus.st, d7, &mut rec);
+                }
+                next = Some(n);
+            }));
+            let want = if d7 == 0 {
+                rounds::Ladder::Jackpot
+            } else {
+                rounds::Ladder::Offer
+            };
+            assert_eq!(next, Some(want), "d7 {d7}");
+            case += 1;
+        }
+    }
+}
+
+/// The ladder's scan from h0+$520a, the ladder's lamps left as they were (T74): with a rung lit
+/// already, the scan finds the best one; the bust's (the last) goes to the bust, the jackpot's (the
+/// first) to the ladder's top, any other to the menu offering the gamble, then `slot_collect`.
+#[test]
+fn the_ladder_is_scanned_as_the_original_scans_it() {
+    let mut rig = rig();
+    let mut g = Gen::new(741);
+    let ladder = ladder();
+    let mut seen = std::collections::BTreeSet::new();
+    for case in 0..400 {
+        let mut s = Setup::default();
+        award_stubs(&mut s);
+        award_memory(&mut s, &mut g);
+        // Most rungs out, so each one is the best lit in some case.
+        for &lamp in &ladder {
+            let lit = g.below(6) == 0;
+            s.poke_w(lamp + 6, if lit { edgy(&mut g).max(1) } else { 0 });
+        }
+        let d7 = g.below(12) as u16;
+        s.d[7] = d7 as u32;
+        assert!(rig.check("h0+$520a", case, 0x520a, &s, |c| {
+            let mut rec = award_recorder();
+            let n = rounds::ladder_rung(c.bus.st, &ladder, d7, &mut rec);
+            if n == rounds::Ladder::Offer {
+                rounds::collect(c.bus.st, d7, &mut rec);
+            }
+            seen.insert(format!("{n:?}"));
+        }));
+    }
+    assert_eq!(seen.len(), 3, "{seen:?}");
+}
+
+/// `slot_collect` (h0+$5528) for every rung, the jackpot's (0, `slot_jackpot` stubbed `rts`) and
+/// a wrong hi-lo guess's -1 (T74).
+#[test]
+fn every_rung_is_collected_as_the_original_collects_it() {
+    let mut rig = rig();
+    let mut g = Gen::new(742);
+    let mut case = 0;
+    for d7 in (0..=11u16).chain([0xffff]) {
+        for _ in 0..8 {
+            let mut s = Setup::default();
+            award_stubs(&mut s);
+            s.pokes.push((h0(0x5628), vec![0x4e, 0x75]));
+            award_memory(&mut s, &mut g);
+            s.d[7] = d7 as u32 | if d7 == 0xffff { 0xffff_0000 } else { 0 };
+            let mut jackpot = None;
+            assert!(rig.check("h0+$5528", case, 0x5528, &s, |c| {
+                jackpot = Some(rounds::collect(c.bus.st, d7, &mut award_recorder()));
+            }));
+            assert_eq!(jackpot, Some(d7 == 0), "d7 {d7}");
+            case += 1;
+        }
+    }
+}

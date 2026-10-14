@@ -216,6 +216,32 @@ fn the_slot_machine_plays_its_rounds_as_the_original_does() {
     );
 }
 
+/// The slot machine's prizes (T74), frame for frame (the case `slot-hilo-0`): the line 8 $18 0
+/// starts the hi-lo game, eight guesses right climb its rungs to the jackpot, the coin left is
+/// counted as 5 000, then 150 000 and the next level's code, flashed until fire, to the frame
+/// before `slot_machine` returns. On the next frames it returns, having given 155 000.
+#[test]
+fn the_slot_machine_pays_its_jackpot_as_the_original_does() {
+    let case = sf_conform::Case::load(&sf_conform::cases_dir().join("slot-hilo-0.toml"))
+        .unwrap_or_else(|e| panic!("{e}"));
+    let mut last = None;
+    sf_conform::run_with(&case, |f, g| {
+        if f + 1 == case.frames {
+            last = Some(g.clone());
+        }
+    })
+    .unwrap_or_else(|d| panic!("{d}"));
+    let mut g = last.expect("the last frame");
+    g.step(sf_core::input::FrameInput::NONE);
+    assert_eq!(g.slot_outcome(), None, "not yet returned on the case's last frame");
+    g.step(sf_core::input::FrameInput::NONE);
+    let award = sf_core::Award {
+        points: 155_000,
+        lives: 0,
+    };
+    assert_eq!(g.slot_outcome(), Some(sf_core::SlotOutcome { award }));
+}
+
 /// The slot machine entered from a level as the tally enters it (`Game::enter_slot`, T73), played
 /// by fire alone: its rounds run and it returns, its outcome the score it added.
 #[test]
