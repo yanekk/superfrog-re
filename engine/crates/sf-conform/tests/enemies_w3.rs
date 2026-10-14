@@ -10,12 +10,17 @@ use sf_core::frog::{FROG, f};
 use sf_core::layout::h0;
 use sf_core::level::objects::OBJ_SLOTS;
 
-/// What a case's run showed: every slot update the engine ran (by `h0` offset), and how many
-/// times the frog went from unhurt to hurt.
+/// What a case's run showed: every slot update the engine ran (by `h0` offset), how many
+/// times the frog went from unhurt to hurt (a stunned landing counts too), and how many hearts
+/// it lost (`+$5a`, which only `frog_hurt` takes: an enemy's hurt alone).
 struct Seen {
     updates: BTreeSet<u32>,
     hurts: u32,
+    hearts_lost: u32,
 }
+
+/// The frog's hearts, which `frog_hurt` takes one from.
+const HEARTS: u32 = 0x5a;
 
 /// Run `name`, green but for re-syncs at exactly `resyncs`, and say what the engine's run showed.
 fn run(name: &str, resyncs: &[u32]) -> Seen {
@@ -24,8 +29,10 @@ fn run(name: &str, resyncs: &[u32]) -> Seen {
     let mut seen = Seen {
         updates: BTreeSet::new(),
         hurts: 0,
+        hearts_lost: 0,
     };
     let mut hurt = false;
+    let mut hearts = None;
     let o = sf_conform::run_with(&case, |_, g| {
         let s = g.state();
         for k in 0..20 {
@@ -39,6 +46,11 @@ fn run(name: &str, resyncs: &[u32]) -> Seen {
             seen.hurts += 1;
         }
         hurt = now;
+        let now = s.w(FROG + HEARTS);
+        if hearts.is_some_and(|was| now < was) {
+            seen.hearts_lost += 1;
+        }
+        hearts = Some(now);
     })
     .unwrap_or_else(|d| panic!("{name}: {d}"));
     let got: Vec<u32> = o.resynced.iter().map(|r| r.0).collect();
@@ -90,7 +102,7 @@ fn w3_2() {
     ] {
         assert!(s.updates.contains(&u), "h0+${u:x} never ran: {:x?}", s.updates);
     }
-    assert!(s.hurts >= 4, "hurt {} times", s.hurts);
+    assert!(s.hearts_lost >= 4, "lost {} hearts", s.hearts_lost);
 }
 
 /// W3-4 to its first crumbling platform: the platforms, the scenery below marker 14 (whose update
