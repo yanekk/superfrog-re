@@ -64,7 +64,7 @@ done · ⛔ blocked, needs a human.
 | T39 | enemies-world-5 | T16, T38; blocks T18 | ⬜ | |
 | T40 | enemies-world-6 | T38; blocks T18 | ⬜ | |
 | T41 | enemies-world-4 | T38; blocks T18 | ⬜ | |
-| T42 | enemies-world-1 | T38; blocks T18, T33 | ⬜ | |
+| T42 | enemies-world-1 | T38; blocks T18, T33 | ✅ | |
 | T43 | enemies-world-2 | T38; blocks T18, T39 | ⬜ | |
 | T44 | enemies-world-3 | T38; blocks T18 | ⬜ | |
 | T46 | story-intro-scenes | T32; blocks T21 | ✅ | |
