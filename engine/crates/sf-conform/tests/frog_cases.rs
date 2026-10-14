@@ -188,3 +188,10 @@ fn bonus_end_wb_1() {
     assert_eq!(d.unported, ["the bonus level's end picture (T21)"]);
     assert!(d.first_var.is_none(), "{d}");
 }
+
+/// W4-4 with its enemies live (T41): swoopers, scenery and a ledge freed as the camera leaves
+/// them and spawned again as it comes back, on the original's frames.
+#[test]
+fn enemies_w4_4_activation() {
+    green("enemies-w4-4-activation");
+}

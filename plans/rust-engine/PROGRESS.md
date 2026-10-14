@@ -63,7 +63,7 @@ done · ⛔ blocked, needs a human.
 | T38 | level-tally | T37; blocks T21 | ✅ | |
 | T39 | enemies-world-5 | T16, T38; blocks T18 | ⬜ | |
 | T40 | enemies-world-6 | T38; blocks T18 | ⬜ | |
-| T41 | enemies-world-4 | T38; blocks T18 | ⬜ | |
+| T41 | enemies-world-4 | T38; blocks T18 | ✅ | |
 | T42 | enemies-world-1 | T38; blocks T18, T33 | ✅ | |
 | T43 | enemies-world-2 | T38; blocks T18, T39 | ⬜ | |
 | T44 | enemies-world-3 | T38; blocks T18 | ✅ | Port clean; fix: T111–T115 docs lacked Interface/Tests, added. Probed: 11 logic mutations all red; every live W3 jumptab marker registered; re-syncs 201, 863 follow original lags; frog/render-w3 cases green. Unrecorded `enemies-w3-2` idle stub, green, untested (T111 extends). Split T111–T115 valid. |
@@ -119,6 +119,7 @@ done · ⛔ blocked, needs a human.
 | T113 | enemies-w3-4-case | T44, T102; blocks T18 | ⬜ | |
 | T114 | enemies-w3-activation | T44; blocks T18 | ⬜ | |
 | T115 | w3-completions | T44, T101, T102, T111, T112, T113; blocks T18 | ⬜ | |
+| T103 | w4-completions | T41, T101, T102; blocks T18 | ⬜ | |
 
 A Notes cell holds what was built or what the review found, the test count, and one line per
 deviation from the task doc. A ✅ task's cell may be cut to one line once the next task has been reviewed.

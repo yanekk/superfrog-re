@@ -42,9 +42,9 @@ fn update(c: &mut LevelCtx, slot: u32, _d7: u16) {
     follow_and_despawn(c, slot);
 }
 
-/// `touch_crumble` (h0+$23774): from its animation's `$200`th step timer on, the frog falling or
-/// still: sample 4, the frog's fall stopped once it is 8 or faster, and on the ground the step
-/// timer restarts.
+/// `touch_ledge` (h0+$23774, W4's ledge's too): from its animation's `$200`th step timer on, the
+/// frog falling or still: sample 4, the frog's fall stopped once it is 8 or faster, and on the
+/// ground the step timer restarts.
 fn touch(c: &mut LevelCtx, slot: u32, _d7: u16) {
     let b = &c.bus;
     let bob = b.l(slot + 0x50);

@@ -14,8 +14,8 @@ use crate::level::objects::{
 };
 use crate::level::{LevelCtx, ObjectKind, n_clear};
 
-/// `swing_link_index` (h0+$262ba): the index the next link spawned takes, 1..5 (a long inside
-/// the code).
+/// `chain_link_count` (h0+$262ba, LAYOUT): the index the next link spawned takes, 1..5 (a long
+/// inside the code).
 pub const LINK_INDEX: u32 = h0(0x262ba);
 /// `swing_path` (h0+$26398): pixel offsets (x, y words) of one swing there and back, a −1 long
 /// after the last.
