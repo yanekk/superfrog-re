@@ -609,3 +609,62 @@ fn collide_all_with_a_shot_hitting_a_bonus_enemy_matches_the_original() {
     assert!(hits * 5 >= N, "only {hits} of {N} cases had a shot hit a bonus enemy");
     assert!(kills * 10 >= N, "only {kills} of {N} cases killed one");
 }
+
+/// `bonus_visit` (h0+$8cd6), `level_start_y` (h0+$a1e).
+const BONUS_VISIT: u32 = h0(0x8cd6);
+const START_Y: u32 = h0(0xa1e);
+
+/// `bonus_frame` (h0+$6a64, T79), after `frog_reset` as `top_loop` calls it after a death:
+/// the frog's step, the camera, the panel's digits, lives count and icon, and the frog back on
+/// the screen, from any lives, coins, icon, camera and input.
+#[test]
+fn bonus_frame_matches_the_original() {
+    let mut rig = bonus_rig();
+    let mut g = Gen::new(791);
+    let mut compared = 0;
+    for case in 0..N {
+        let mut s = Setup {
+            hw: any_input(&mut g),
+            ..Setup::default()
+        };
+        s.pokes = prepared(&rig, &[], |c| sf_core::frog::frog_reset(&mut c.bus));
+        let cx = 0x10 + g.below(0x1000) as u16;
+        let cy = g.below(0x300) as u16;
+        s.poke_l(CAMERA_X, cx as u32);
+        s.poke_l(CAMERA_Y, cy as u32);
+        s.poke_w(FROG + f::X, near(&mut g, cx.wrapping_add(0x80), 0x100));
+        s.poke_w(FROG + f::Y, near(&mut g, cy.wrapping_add(0x5c), 0x80));
+        s.poke_w(FROG + 0x58, pick_or_any(&mut g, &[0, 1, 2, 4, 5, 6, 9, 60]));
+        s.poke_w(FROG + 0x5a, g.below(6) as u16);
+        s.poke_w(FROG + 0x5c, g.below(100) as u16);
+        s.poke_w(h0(0x87c0), pick_or_any(&mut g, &[0, 4, 0xffff]));
+        s.poke_w(SPRITES_HIDDEN, g.one_in(2) as u16);
+        if rig.check("bonus_frame", case, 0x6a64, &s, sf_core::bonus::frame::bonus_frame) {
+            compared += 1;
+        }
+    }
+    enough("bonus_frame", compared, N);
+}
+
+/// `level_init_lb` (h0+$8c3a, T79): the bonus level set up again, its start row chosen by
+/// `bonus_visit` (0 or 1 the top, 2 and 3 lower, cleared from 3 on), the five shots spawned.
+#[test]
+fn level_init_lb_matches_the_original() {
+    let mut rig = bonus_rig();
+    let id: sf_assets::LevelId = "WB-1".parse().unwrap();
+    let mut rows = std::collections::BTreeSet::new();
+    for (case, visit) in [0u16, 1, 2, 3, 4, 7, 0x7fff, 0x8000, 0xffff].into_iter().enumerate() {
+        let mut s = Setup::default();
+        s.poke_w(BONUS_VISIT, visit);
+        let mut row = 0;
+        assert!(
+            rig.check("level_init_lb", case, 0x8c3a, &s, |c| {
+                sf_core::level::load::level_init(c, id);
+                row = c.bus.l(START_Y);
+            }),
+            "level_init_lb returns (bonus_visit {visit:x})"
+        );
+        rows.insert(row);
+    }
+    assert_eq!(rows.into_iter().collect::<Vec<_>>(), [0, 0x120, 0x220]);
+}

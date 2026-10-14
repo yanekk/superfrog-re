@@ -30,6 +30,10 @@ const LEVEL_STATE: u32 = h0(0xa06);
 /// `frog_lives` (h0+$82e), `level_clock` (h0+$876).
 const LIVES: u32 = h0(0x82e);
 const LEVEL_CLOCK: u32 = h0(0x876);
+/// `world` (h0+$40da): the bonus level is world 7. `shooter_mode` (h0+$9dc).
+pub(crate) const WORLD: u32 = h0(0x40da);
+pub(crate) const BONUS_WORLD: u32 = 7;
+const SHOOTER_MODE: u32 = h0(0x9dc);
 /// Where `level_exit_fade` is when its fade set-up returns (h0+$762a).
 const AFTER_FADE_SETUP: u32 = h0(0x762a);
 /// Lines the window closes by (`moveq #$e`).
@@ -116,6 +120,10 @@ impl LevelOver {
             4 => {
                 cx.cop1lc = BLANK_COPPER;
                 self.pc = 9;
+                if cx.s.l(WORLD) == BONUS_WORLD {
+                    // h0+$7494, the bonus level's: shooter mode off.
+                    cx.s.set_w(SHOOTER_MODE, 0);
+                }
                 // `game_over_check`: ESC (`abort_flag`) or no lives leave the game, a death goes
                 // round `top_loop` again, the exit to the tally (T38).
                 if crate::front::GameOverCheck::ends(cx) {
@@ -126,7 +134,8 @@ impl LevelOver {
                         pc: 0,
                         frog_only: self.frog_only,
                     })),
-                    LevelOutcome::Completed { .. } => {
+                    // The bonus level's end goes to its end picture (h0+$4326, T21), not the tally.
+                    LevelOutcome::Completed { .. } if cx.s.l(WORLD) != BONUS_WORLD => {
                         call(Routine::Tally(crate::level::tally::LevelTally::default()))
                     }
                     o => call(Routine::Outcome(o)),

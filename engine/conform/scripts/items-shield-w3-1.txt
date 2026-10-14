@@ -1,0 +1,73 @@
+# W3-1, enemies frozen: from the start left to the bottle at 11,40 (frame 203), right onto the
+# pad at 25,40 and over the pillar to the pad at 33,40 (~359), the slow-down at 42,40 (473), the
+# speed-up at 78,42 (584), the wings at 79,41 (587) and the shield at 81,36 (663); then idle.
+# Planned on the engine (T84, `examples/plan W3-1 11,40 25,39`, then `28,28 33,39` with
+# `--prefix`); from frame 367 re-planned from the original's own state (T84 review): `plan` steps
+# the engine unpaced, so after the original's lags its route left the original's, which never got
+# past the pillar. Fire is left out after the wings: there the original hangs (h0+$e402).
+0: -
+144: L
+148: U L
+152: -
+160: U
+164: -
+204: U R
+208: U
+240: -
+241: R
+245: L
+249: R
+253: L
+257: U
+261: R F
+265: U
+273: R
+277: -
+281: R
+285: U
+309: -
+313: L
+317: R
+321: L
+325: R
+329: L
+333: R
+337: L
+341: R
+345: L
+349: R
+353: L
+357: -
+358: U
+366: U R
+367: R
+375: -
+379: R
+383: -
+387: U
+391: -
+443: R
+471: -
+474: R
+494: L
+498: U
+522: -
+526: U
+562: U R
+566: U
+578: -
+585: R
+592: U
+596: -
+600: L
+604: U
+608: L
+612: R
+616: U L
+620: -
+628: R
+632: U R
+636: U
+640: U R
+644: R
+664: -

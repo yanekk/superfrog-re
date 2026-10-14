@@ -835,7 +835,7 @@ hunk = 0
 offset = 0x6a64
 name = "bonus_frame"
 kind = "func"
-note = "bonus-level per-frame work"
+note = "bonus level, after a death with lives left: the frog's step, panel, frog back on screen; the loop again (T79)"
 
 [[sym]]
 exe = "d1_c03"
@@ -868,6 +868,14 @@ offset = 0x7442
 name = "pause"
 kind = "func"
 note = "pause until fire or P"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x7494
+name = "shooter_off"
+kind = "func"
+note = "after the bonus level's exit fade: shooter_mode cleared (T79)"
 
 [[sym]]
 exe = "d1_c03"
@@ -923,7 +931,16 @@ hunk = 0
 offset = 0x8c3a
 name = "level_init_lb"
 kind = "func"
-note = "level init, bonus level"
+note = "level init, bonus level; start row by bonus_visit (T79)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x8cd6
+name = "bonus_visit"
+kind = "var"
+size = 2
+note = "level_init_lb: 2 or 3 starts the bonus level lower, cleared from 3 on; nothing sets it (T79)"
 
 [[sym]]
 exe = "d1_c03"
