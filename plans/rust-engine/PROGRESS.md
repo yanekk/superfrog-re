@@ -65,7 +65,7 @@ done · ⛔ blocked, needs a human.
 | T40 | enemies-world-6 | T38; blocks T18 | ✅ | Review: 7 boundary mutations survived (charger reach, cannon aim, flier facing, walker turn, mace link count); edge tests added. Probed shot touch, reran out-of-block cases: as recorded. Merge: W6 dart/mace reuse W3's updates, merged common.rs; $64 now written (level1_vector), spawner test covers it. Completions are T104's. |
 | T41 | enemies-world-4 | T38; blocks T18 | ✅ | |
 | T42 | enemies-world-1 | T38; blocks T18, T33 | ✅ | |
-| T43 | enemies-world-2 | T38; blocks T18, T39 | ⬜ | |
+| T43 | enemies-world-2 | T38; blocks T18, T39 | ✅ | |
 | T44 | enemies-world-3 | T38; blocks T18 | ✅ | |
 | T46 | story-intro-scenes | T32; blocks T21 | ✅ | |
 | T47 | story-intro-handover | T46; blocks T21 | ⬜ | |
@@ -120,6 +120,9 @@ done · ⛔ blocked, needs a human.
 | T113 | enemies-w3-4-case | T44, T102; blocks T18 | ⬜ | |
 | T114 | enemies-w3-activation | T44; blocks T18 | ⬜ | |
 | T115 | w3-completions | T44, T101, T102, T111, T112, T113; blocks T18 | ⬜ | |
+| T121 | bob-draw-cut | T101; blocks T21 | ⬜ | |
+| T122 | w2-completions | T43, T101, T121; blocks T18 | ⬜ | |
+| T120 | conform-no-silent-pass | T05, T36; blocks T21 | ⬜ | |
 | T104 | w6-completions | T40, T101, T102; blocks T18 | ⬜ | |
 
 A Notes cell holds what was built or what the review found, the test count, and one line per

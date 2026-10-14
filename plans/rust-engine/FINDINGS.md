@@ -18,6 +18,17 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-14 | 📌 | T43 merge: W2's darts and mace now use `w3::dart` and `w3::swing`'s updates; the `$64` write is kept as T44 kept it, so T43's skip is gone (spawner test now fills the table, green). |
+| 2026-10-14 | 📌 | T43 merge sweep, not fixed: h0+$23774 (`touch_ledge`) is ported three times, `w2/crumbling_ledge.rs`, `w3/crumble.rs`, `w4/ledge.rs`; dispatch keeps the last registered. Keep one copy. |
+| 2026-10-14 | 📌 | T43 merge sweep, not fixed: h0+$24ef6 (`scenery_stand`) is ported twice, `w2/backdrop.rs` `still` and `w4/scenery.rs`; dispatch keeps the last registered. Keep one copy. |
+| 2026-10-14 | 📌 | T43 merge sweep, not fixed: h0+$25990 (`swooper_update`) is ported twice, `w2/flyer.rs` `flyer_update` and `w4/swooper.rs`; dispatch keeps the last registered. Keep one copy. |
+| 2026-10-14 | 🐞 | T43 review sweep, not fixed: `enemies_w1_routines.rs:297` draws the marker-search distance uniformly over `1..=$a0`, so `w1/mod.rs:129`'s `$98` bound is likely never hit at its edge (T43's same generator let a `$97` mutant pass). |
+| 2026-10-14 | 📌 | T43: pinned re-syncs (T121's: the original's pass cut inside the bob drawer), all `playfield_buffer_0`: `items-fruit-w2-2` 311 (`frog_cases`), `enemies-w2-2` 560 (`enemies_w2_cases`). |
+| 2026-10-14 | 🔄 | Owner, T43: added T121 bob-draw-cut (T101; blocks T21), T122 w2-completions (T43, T101, T121; blocks T18), and on request T120 conform-no-silent-pass (T05, T36; blocks T21). |
+| 2026-10-14 | 🐞 | T43, open: `enemies-w2-3` diverges at 408, every frame on time: the engine's bob-drawer DMACON `$8400`/`$0400` pair lands a frame early with many background bobs (ledges). Beam costs need refitting (`examples/fit`); case cut to 407. |
+| 2026-10-14 | 📌 | T43: marker 17's stub writes the mace ball's slot to `$64` (level 1 interrupt vector) when a link finds no slot (a0 = 0). The engine skips it; the routine test never fills the table there. |
+| 2026-10-14 | 🐞 | T43, not fixed: the routine harness does not compare `sample_play`'s state: dropping `touch_stunned`'s sample 2 stays green. Frame cases would catch it. |
+| 2026-10-14 | 📌 | T43: W2-1's right half (mace, spikes, exit) is walled off from its start at column 144. Hearts are frog `+$5a`; `+$3a` (hurt) is also set by a level's start drop (frame 80). |
 | 2026-10-14 | 🐞 | Not T95's: every power-on case (`front-boot`, `-password`, `-skip-*`, `-attract`, `-options`, `-noskip`) diverges at frame 0 on `level1_vector` ($64): original $fc0c8e (Kickstart), engine 0. T44 added the variable; power-on `State` lacks the vector. |
 | 2026-10-14 | 🐞 | Open, seen in T44's merge regression: `frog_cases::frog_timeup_w1_1` failed once (busy machine, 204 s run; message not captured), then green 5 times (alone, full file, cold sync cache). Cause unknown; sync cache writes are atomic. |
 | 2026-10-14 | 📌 | T44 merge with T41, not fixed: `w3/{dart,swing}.rs` and `w4/{dart,mace}.rs` both port h0+$25fa8, $25f42, $2619c, $262be; dispatch keeps the last registered (W4's). Keep one copy. Symbols keep T41's `chain_link_count`, `touch_ledge`. |
