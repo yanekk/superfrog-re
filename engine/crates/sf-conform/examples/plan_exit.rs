@@ -465,8 +465,13 @@ fn main() {
                 let (fx, fy) = frog(start.state());
                 let at = dist(&goals[goal], (fx.max(0) / 16) as usize, (fy.max(0) / 16) as usize);
                 if at >= 400 && !sw.is_empty() && std::env::var("PLAN_EXIT_ONLY").is_err() {
-                    eprintln!("  the exit is behind a wall: to the switches first");
-                    goals[goal] = climb(&live, w, h, &sw);
+                    // A switch nearer than the walled exit is pressed first; a farther one would
+                    // not help (it opens a gate elsewhere).
+                    let to_sw = climb(&live, w, h, &sw);
+                    if dist(&to_sw, (fx.max(0) / 16) as usize, (fy.max(0) / 16) as usize) < at {
+                        eprintln!("  the exit is behind a wall: to the switches first");
+                        goals[goal] = to_sw;
+                    }
                 }
             }
             _ => {}
