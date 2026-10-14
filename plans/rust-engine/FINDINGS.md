@@ -18,6 +18,7 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-14 | 🔄 | Owner, T104: added T132 w6-completion-faults (T104; blocks T18, T21): W6 completions diverge at W6-1 530 (`playfield_buffer_0` after lag), W6-4 154 (`level_copper` after lag), W6-3alt 5939 (`AUD3VOL`). Check against T121, T131 first. |
 | 2026-10-14 | 🔄 | Owner, T104: added `Game::step_unseen` (no level picture; render was ~60% of planning). Planners only: T103, T106, T108, T122, T126 step their beams with it, ~2.5× faster. `tests/step_unseen.rs` proves it leaves the game as `step` does. |
 | 2026-10-14 | 🐞 | T100 review sweep, open: 15 cases' `enemies` exclusions name `T39–T41` (all ✅), not the task that will model them: enemies-w1-1, -w3-1, -w3-2, -w3-4, frog-timeup, game-over, -fire, -timeup, items-checkpoint, -pad, -shield-w3-1, -run, -wings-w1-2, tally, tally-slot. Not fixed. |
 | 2026-10-14 | 📌 | T100 review: with vars off (frame-0 `level1_vector`), front-attract, -boot, -skip-wait, -options and ending stay green on T100's `BLANK_COPPER` timing; worker-driven. |
