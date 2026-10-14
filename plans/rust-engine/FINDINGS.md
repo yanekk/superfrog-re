@@ -18,6 +18,7 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-14 | 🔄 | Owner, T41 review: the crawler (markers 13/14, templates 139/138) met no T41 case (its update h0+$26eee never ran on the original in any) and is carried into T103. |
 | 2026-10-14 | 🔄 | Owner, T41: the types no T41 case met (pacers 2/3, crusher-up 16, mace 17, darts 20/21, floater 22) and W4-3 moved into T103's playthroughs. |
 | 2026-10-14 | 🐞 | T41, open: `enemies-w4-4-activation` diverges at 285 (ends at 284): the engine takes a copper interrupt (INTREQ/INTENA `$0010`) in that frame's pass, the original not; seven frames after four respawns. Beam timing, probably T101's. |
 | 2026-10-14 | 📌 | T41 for T40's merge: `enemies/common.rs` is T40's verbatim plus three helpers; both port h0+$25fa8, $25f42, $2619c, $262be and add `chain_link_count` (LAYOUT, symbols.toml). Keep one of each. |
