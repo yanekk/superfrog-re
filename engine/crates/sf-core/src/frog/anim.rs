@@ -29,7 +29,8 @@ pub mod spr {
 const OFF_SCREEN: u16 = 0x150;
 
 /// h0+$19bbe: both frog sprites move by the frame's offset (frog `+$36`, `+$38`) and are hidden
-/// when off screen, below the play field or blinking; then their copper words are written.
+/// when off screen, below the play field or blinking; then, the beam clear of lines `$1d`..`$21`
+/// ([`LevelCtx::sprite_wait`]), their copper words are written.
 pub fn place_frog_sprites(c: &mut LevelCtx) {
     for s in [FROG_SPRITE_LEFT, FROG_SPRITE_RIGHT] {
         let b = &mut c.bus;
@@ -51,7 +52,8 @@ pub fn place_frog_sprites(c: &mut LevelCtx) {
         if b.w(FROG + f::SPRING) != 0 {
             b.set_w(s + spr::Y, 0x104);
         }
-        sprite_to_copper(b, s);
+        c.sprite_wait();
+        sprite_to_copper(&mut c.bus, s);
     }
 }
 
@@ -215,8 +217,10 @@ pub const EXIT_SPRITE_LEFT: u32 = h0(0x1b02c);
 pub const EXIT_SPRITE_RIGHT: u32 = h0(0x1b048);
 
 /// `frog_anim_tick` (h0+$10222): the animation's step runs out, the next one (the list starts
-/// again at its end) gives the frame: its sprite offset, its height, and the data pointers the
-/// copper list's sprite moves get, the two halves of each attached pair one sprite apart.
+/// again at its end) gives the frame: its sprite offset, then, the beam clear of lines `$1d`..`$21`
+/// ([`LevelCtx::sprite_wait`]), its height and the data pointers the copper list's sprite moves
+/// get, the two halves of each attached pair one sprite apart. A write that waits misses this
+/// frame's sprite moves: the frame shows the frame before (a launcher's throw, T86).
 pub fn frog_anim_tick(c: &mut LevelCtx) {
     let b = &mut c.bus;
     let time = b.w(FROG + f::ANIM_TIME);
@@ -241,6 +245,8 @@ pub fn frog_anim_tick(c: &mut LevelCtx) {
     } else {
         (FROG_SPRITE_LEFT, FROG_SPRITE_RIGHT)
     };
+    c.sprite_wait();
+    let b = &mut c.bus;
     let height = b.w(frame.wrapping_add(8));
     b.set_w(a5 + spr::HEIGHT, height);
     b.set_w(a6 + spr::HEIGHT, height);

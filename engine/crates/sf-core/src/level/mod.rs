@@ -591,6 +591,16 @@ impl LevelCtx<'_> {
         self.anchor();
     }
 
+    /// h0+$19c9c: with the beam on lines `$1d`..`$21` (VPOS's low byte, compared signed), the
+    /// CPU waits for line `$22` before it writes a sprite's copper words.
+    pub fn sprite_wait(&mut self) {
+        self.stamp();
+        let v = self.clock.line as u8;
+        if v.wrapping_sub(0x1d) as i8 >= 0 && (v.wrapping_sub(0x22) as i8) < 0 {
+            self.wait_lines(0x22 - v as u16);
+        }
+    }
+
     /// The CPU waits until the beam has passed `n` more lines (a raster wait).
     pub fn wait_lines(&mut self, n: u16) {
         self.stamp();
