@@ -18,6 +18,10 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-14 | 📌 | T73: a line's prize collected (rungs 1–8): memory proven by the h0+$51c4 routine test (review), frame timing unexercised: fire alone pays no line at `start-w1-1`, `-blink1`; `-late` pays hi-lo. T74's `slot-hold-20000` is its first case. |
+| 2026-10-14 | 📌 | T73 review: `Rig::check` compared no registers before `Rig::last_regs`; routine tests whose original returns its answer in a register (d0, d7) checked memory only. Not swept test by test; not fixed. |
+| 2026-10-14 | 📌 | T73: `slot-fire` (reel-stop effects play) lands 3 712 of 4 576 draw writes within a line, after fitting the spin's digits 1 000 cycles under Moira's; a few menu-entry and count draws stay 7–12 lines off, green. |
+| 2026-10-14 | 📌 | T73: the original's frames index slot scripts: its loads take 758, so `slot-fire`'s first fire is frame 798; it returns on engine frame 845 (the case's 845 frames stop before). T93's `draw.rs` `HashMap` fixed (BTreeMap). |
 | 2026-10-14 | 📌 | T97 review: `sf-conform scan` of story-scene4-sound to 9 200 frames misses past 7 824 too (1 254 `frame_descriptors` frames), unlike the story_dbg row; same on base. Handlers taken O 11 310, 11 617 (lines 310, 312) unchecked behind that. |
 | 2026-10-14 | 📌 | T97: `story_dbg SCAN=1` to 9 320 frames reaches engine 9 282 (O ~12 690) before the oracle cap. Misses past 6 683: 7 227–7 824, 8 216–8 217 (a draw's `$0400` after a handler acknowledged on 307), 9 268–9 282. None is a split. |
 | 2026-10-14 | 🐞 | T97, not fixed: in scene 4's long blits (engine 6 680–6 685) the engine's own handler lines are far off (38 against 300, 0 against 211). The split is decided on conformance's fed entry, so normal play misses it. |
@@ -31,7 +35,6 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 | 2026-10-14 | 📌 | T86: no green case takes the extra life or the 20 000 fruit ($f008), both T105's; handlers $efc2–$efec are on no W1–W6 map. Planning: frog `+$02` is the feet; `examples/plan`'s `frog()` reads 42 px low. |
 | 2026-10-14 | 📌 | T94 review: `slot::interrupt_lines`' effect term (+2 lines, T72) is unexercised by `slot-attract`; effects' own DMACON writes also add the DMACON term, possibly counting twice. Check against the oracle in T73. |
 | 2026-10-14 | 📌 | T94: the slot handler's acknowledge moves with the music: 1.2 lines later when it reads rows, 0.8 earlier on a tick stepping no channel. `slot::interrupt_lines` lands 256 of 260 on their line (frames 40–300). |
-| 2026-10-14 | 🐞 | Open, seen in T39's review merge: `purity::the_real_pure_crates_pass` red on `pir/rust-engine` itself: `sf-core/src/slot/draw.rs:285–289` (T93's test module) uses `HashMap`. Not T39's; not fixed. |
 | 2026-10-14 | 🔄 | Owner, T39: W5-2, W5-3, W5-4 frame cases split to T123–T125 and the W5 completions to T126 (after T101, T121 and the cases); each blocks T18. |
 | 2026-10-14 | 🐞 | T39, open, no task: `enemies-w5-1` frame 595 (on time, also with enemies frozen): the engine leaves out the frog's hardware sprites, every variable equal. That frame's picture is excluded. |
 | 2026-10-14 | 📌 | T39: W5-1's re-sync at 979 is `panel_bitmap` after a lag, also with enemies frozen; pinned beside T121's play-field one at 551 (`enemies_w5_cases.rs` accepts both). |

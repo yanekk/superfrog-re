@@ -8,61 +8,62 @@
 //! frame its last load ended on, `overlays_end` waiting on the overlay's fade (h0+$b7e2).
 
 pub(crate) mod draw;
+pub mod rounds;
 
 use crate::front::common::{FadeKind, MusicStart, call, fade};
 use crate::front::{Cx, Routine as FrontRoutine, Yield, at, h2};
-use crate::game::{Job, LoadEnd};
+use crate::game::LoadEnd;
 use crate::layout::{h1, h3};
 
 /// Display buffers 0 and 1 (`playfield_buffer_0`, `_1`): `FRUT`, the machine, in 0 (with `FRUM`,
 /// the lamps' mask, at +$f000); `FRUC`, the reels and digits, in 1.
-const BUFFER_0: u32 = h3(0x10600);
-const BUFFER_1: u32 = h3(0x22f30);
-const PLANE: u32 = 0x2800;
-const ROW: u32 = 0x28;
+pub(super) const BUFFER_0: u32 = h3(0x10600);
+pub(super) const BUFFER_1: u32 = h3(0x22f30);
+pub(super) const PLANE: u32 = 0x2800;
+pub(super) const ROW: u32 = 0x28;
 /// Chip RAM from the effect bank's place that `slot_machine` keeps over the level's map while the
 /// slot's own sound is loaded there (h0+$4b44).
-const SOUND_KEPT: u32 = h3(0x64c70);
-const SOUND_KEPT_AT: u32 = h1(0x20d00);
-const SOUND_KEPT_LEN: u32 = 0xfa00;
+pub(super) const SOUND_KEPT: u32 = h3(0x64c70);
+pub(super) const SOUND_KEPT_AT: u32 = h1(0x20d00);
+pub(super) const SOUND_KEPT_LEN: u32 = 0xfa00;
 
 /// `slot_state` (h0+$49c6): the coins put in, the three reels' positions, the hi-lo count, ...
 pub(crate) const COINS: u32 = at(0x49c6);
-const REELS: u32 = at(0x49c8);
-const HILO: u32 = at(0x49ce);
-const STATE_49D0: u32 = at(0x49d0);
-const STATE_49D2: u32 = at(0x49d2);
-const SCORE_SHOWN: u32 = at(0x49d6);
-const STATE_49DA: u32 = at(0x49da);
+pub(super) const REELS: u32 = at(0x49c8);
+pub(super) const HILO: u32 = at(0x49ce);
+pub(super) const STATE_49D0: u32 = at(0x49d0);
+pub(super) const STATE_49D2: u32 = at(0x49d2);
+pub(super) const SCORE_SHOWN: u32 = at(0x49d6);
+pub(super) const STATE_49DA: u32 = at(0x49da);
 /// `score` (h0+$834).
-const SCORE: u32 = at(0x834);
+pub(super) const SCORE: u32 = at(0x834);
 /// `slot_count_win`'s count (h0+$515a: over; $515c: the score shown) and its text (h0+$5160).
-const COUNT_OVER: u32 = at(0x515a);
-const COUNT_SHOWN: u32 = at(0x515c);
-const COUNT_TEXT: u32 = at(0x5160);
+pub(super) const COUNT_OVER: u32 = at(0x515a);
+pub(super) const COUNT_SHOWN: u32 = at(0x515c);
+pub(super) const COUNT_TEXT: u32 = at(0x5160);
 /// `slot_win` (h0+$57b2).
-const WIN: u32 = at(0x57b2);
+pub(super) const WIN: u32 = at(0x57b2);
 /// `slot_menu` (h0+$6152), the attract pattern (h0+$62ec: its row, $62f0 frames left on it,
 /// $62f2 patterns shown) and its first pattern (h0+$3b2e8).
-const MENU: u32 = at(0x6152);
+pub(super) const MENU: u32 = at(0x6152);
 const ATTRACT_ROW: u32 = at(0x62ec);
 const ATTRACT_LEFT: u32 = at(0x62f0);
 const ATTRACT_PASSES: u32 = at(0x62f2);
 const ATTRACT_FIRST: u32 = at(0x3b2e8);
 /// The lamps (h0+$6842: 26 records of 8 bytes, `+0` lit, `+2` the rectangle, `+6`) and their
 /// rectangles (h0+$670a: x, y, width, height and two words).
-const LAMPS: u32 = at(0x6842);
-const LAMP_RECTS: u32 = at(0x670a);
-const LAMP_COUNT: u32 = 0x1a;
+pub(super) const LAMPS: u32 = at(0x6842);
+pub(super) const LAMP_RECTS: u32 = at(0x670a);
+pub(super) const LAMP_COUNT: u32 = 0x1a;
 /// The mouse pointer's position (h0+$11b66, $11b68) and its sprite record (h0+$1b10c).
-const POINTER_X: u32 = at(0x11b66);
-const POINTER_Y: u32 = at(0x11b68);
+pub(super) const POINTER_X: u32 = at(0x11b66);
+pub(super) const POINTER_Y: u32 = at(0x11b68);
 const POINTER: u32 = at(0x1b10c);
 /// The slot's copper list: its bitplane MOVEs (h2+$6708), its colours (h2+$6688), and the
 /// palette the picture fades in to (h0+$6912).
 pub(crate) const SLOT_COPPER: u32 = h2(0x65e4);
 const PLANE_MOVES: u32 = h2(0x6708);
-const SLOT_COLOURS: u32 = h2(0x6688);
+pub(super) const SLOT_COLOURS: u32 = h2(0x6688);
 const SLOT_PALETTE: u32 = at(0x6912);
 /// The text printer's plane (h0+$706e), its colour (h0+$706f), its characters (h0+$701c) and
 /// its font (h0+$3414c, `$50` a row).
@@ -77,15 +78,15 @@ const P41_INIT_LINES: u16 = 18;
 /// ($645e) less its blits (about 520 a lamp and 120 to start), `slot_digits` ($62f4, byte copies),
 /// and the text printer ($6f3a) on `       0PAGE`, 25 962: about 38 a character looked at in its
 /// table, the rest a glyph's eight rows.
-const LAMPS_OFF_CYCLES: u32 = 1_650;
+pub(super) const LAMPS_OFF_CYCLES: u32 = 1_650;
 const LAMP_CYCLES: u32 = 520;
 const LAMPS_START_CYCLES: u32 = 120;
-const DIGITS_CYCLES: u32 = 47_502;
+pub(super) const DIGITS_CYCLES: u32 = 47_502;
 const CHAR_LOOK_CYCLES: u32 = 38;
 const GLYPH_CYCLES: u32 = 250;
 /// `slot_count_win` around its print (the count, `number_to_text`, h0+$5174) and `slot_init`:
 /// small next to the rest.
-const COUNT_CYCLES: u32 = 1_500;
+pub(super) const COUNT_CYCLES: u32 = 1_500;
 const INIT_CYCLES: u32 = 1_200;
 
 /// The vertical blank's handler on the slot screen, in 68000 cycles from the frame's top to its
@@ -129,10 +130,28 @@ pub(crate) fn interrupt_lines(h: Handler) -> u16 {
     (cycles / crate::front::BEAM_CYCLES_PER_LINE) as u16
 }
 
+/// What the slot machine gave: the points its rounds added to the score and the lives (T73).
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash)]
+pub struct SlotOutcome {
+    pub award: Award,
+}
+
+/// A prize in points and lives.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash)]
+pub struct Award {
+    pub points: u32,
+    pub lives: u16,
+}
+
+/// [`Routine`]'s step once the rounds are over.
+const ROUNDS_OVER: u8 = 100;
+
 /// `slot_machine`, from just after its first raster wait (h0+$49e2).
 #[derive(Debug, Clone, Default, PartialEq, Eq, Hash)]
 pub(crate) struct Routine {
     pc: u8,
+    /// The score and the frog's lives as the slot machine began.
+    entry: (u32, u16),
 }
 
 impl Routine {
@@ -157,32 +176,11 @@ impl Routine {
                 let score = cx.s.l(SCORE);
                 cx.s.set_l(SCORE_SHOWN, score);
                 cx.s.set_l(WIN, 0);
-                count_win_lamps(cx);
-                Yield::Raster
-            }
-            // `slot_count_win`'s count after its raster wait (h0+$5108): nothing won, it is over
-            // at once; the score is printed, into the next frame.
-            4 => {
-                let shown = cx.s.l(COUNT_SHOWN).wrapping_add(0x3e8);
-                cx.s.set_l(COUNT_SHOWN, shown);
-                let score = cx.s.l(SCORE_SHOWN);
-                if (score.wrapping_sub(shown) as i32) < 0 {
-                    cx.s.set_l(COUNT_SHOWN, score);
-                    cx.s.set_w(COUNT_OVER, 1);
-                }
-                if cx.s.w(COUNT_OVER) == 0 {
-                    cx.unported("slot_count_win counting a win");
-                }
-                count_text(cx);
-                let cycles = COUNT_CYCLES + print_text(cx, COUNT_TEXT, BUFFER_0 + 0x7683);
-                cx.jobs.push(Job {
-                    inside: vec![at(0x5150)],
-                    writes: vec![(BUFFER_0 + 0x7683, 8 * ROW)],
-                });
-                cx.busy(cycles);
-                // `slot_count_win` returns, and `slot_machine` goes on at once (h0+$4c80), once
-                // the CPU is through the print (the next frame's, mostly).
-                Yield::Interrupt
+                self.entry = (score, cx.s.w(rounds::LIVES));
+                // `slot_count_win`, then `slot_machine` goes on at once (h0+$4c80), once the CPU
+                // is through the print (the next frame's, mostly).
+                self.pc = 4;
+                call(FrontRoutine::SlotCount(rounds::Count::at_start()))
             }
             5 => set_up(cx),
             6 => fade(
@@ -201,10 +199,22 @@ impl Routine {
             }
             // h0+$4d2a: the attract frame, drawn on the beam.
             9 => call(FrontRoutine::SlotDraw(draw::Draw::default())),
-            // h0+$4d36: the mouse's button or fire ends it.
+            // The rounds are over and `slot_machine` returns: what it gave.
+            ROUNDS_OVER => {
+                let (score, lives) = self.entry;
+                cx.slot_outcome = Some(SlotOutcome {
+                    award: Award {
+                        points: cx.s.l(SCORE).wrapping_sub(score),
+                        lives: cx.s.w(rounds::LIVES).wrapping_sub(lives),
+                    },
+                });
+                Yield::Return
+            }
+            // h0+$4d36: the mouse's button or fire ends it; the rounds (T73).
             _ => {
                 if cx.mouse_button() || cx.fire() {
-                    cx.unported("the slot machine's rounds (T73)");
+                    self.pc = ROUNDS_OVER - 1;
+                    return call(FrontRoutine::SlotRounds(Default::default()));
                 }
                 self.pc = 8;
                 Yield::Raster
@@ -288,7 +298,7 @@ fn load(cx: &mut Cx) {
 }
 
 /// `slot_count_win` (h0+$50b6) up to its raster wait: the lamps off and drawn.
-fn count_win_lamps(cx: &mut Cx) {
+pub(super) fn count_win_lamps(cx: &mut Cx) {
     for k in 0..LAMP_COUNT {
         cx.s.set_w(LAMPS + 8 * k, 0);
         cx.s.set_w(LAMPS + 8 * k + 6, 0);
@@ -327,7 +337,7 @@ pub(crate) fn draw_lamps(cx: &mut Cx) {
 
 /// h0+$5134..$514a before the print: the score as text (`number_to_text`), then h0+$5174's
 /// `       0PAGE` with its digits right-aligned over the spaces (`PAGE` ends the text).
-fn count_text(cx: &mut Cx) {
+pub(super) fn count_text(cx: &mut Cx) {
     let n = cx.s.l(COUNT_SHOWN);
     crate::front::attract::number_text(cx, n);
     let digits = at(0x161b2);
@@ -344,7 +354,7 @@ fn count_text(cx: &mut Cx) {
 /// The text printer (h0+$6f3a): `text`'s characters from the font at `to`, a byte each; `9`
 /// moves on eight, `10` a line of eight rows, `COLORn` sets the colour, `PAGE` or a 0 after a
 /// character not in its table ends it. Returns its 68000 cycles.
-fn print_text(cx: &mut Cx, text: u32, to: u32) -> u32 {
+pub(super) fn print_text(cx: &mut Cx, text: u32, to: u32) -> u32 {
     cx.s.set_w(TEXT_PLANE, 1);
     let (mut a0, mut a1, mut a5) = (text, to, to);
     let mut cycles = 0;
@@ -419,7 +429,7 @@ fn slot_init(cx: &mut Cx) {
 
 /// `slot_digits` (h0+$62f4): the hi-lo count (`--` for $ffff) and the coins, two digits each
 /// (99 at most), copied a byte at a time from `FRUC`'s digits into the machine's six planes.
-fn slot_digits(cx: &mut Cx) {
+pub(super) fn slot_digits(cx: &mut Cx) {
     let hilo = cx.s.w(HILO);
     let (tens, units) = if hilo == 0xffff {
         (10, 10)
