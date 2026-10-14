@@ -1,7 +1,7 @@
 //! Finds inputs that play a level to its exit with every object live, and prints them as an input
 //! script: how the `enemies-w6-*` completion cases' scripts are written (T40).
 //!
-//! `cargo run --release --example plan_exit -- <level> [--via col,row | --stomp <update> | --hurt <update> | --coins N]... [--frames N]
+//! `cargo run --release --example plan_exit -- <level> [--via col,row | --stomp <update|tN> | --hurt <update|tN> | --coins N]... [--frames N]
 //! [--prefix script.txt] [--no-exit] [--out script.txt]` (`--no-exit`: stop at the last `--via`;
 //! `--out`: the script so far, rewritten after each chunk) (a script this printed: its inputs are played first, up to its closing `-` line)
 //!
@@ -189,6 +189,16 @@ fn coin_cells(st: &sf_core::State, tiles: &[u32]) -> Vec<(usize, usize)> {
 }
 
 const SLOTS: u32 = 0x1ba6c;
+/// Marks a `--stomp`/`--hurt` target given as a template (`t<n>`), not an update routine.
+const TEMPLATE: u32 = 0x8000_0000;
+
+/// A `--stomp`/`--hurt` target: an update routine's h0 offset in hex, or `t<n>`, template `n`.
+fn target_arg(a: &str) -> u32 {
+    match a.strip_prefix('t') {
+        Some(t) => TEMPLATE | t.parse::<u32>().unwrap(),
+        None => u32::from_str_radix(a, 16).unwrap(),
+    }
+}
 
 /// Whether a slot runs what a killed or stunned enemy runs (h0+$23b34, $23bee) or a reward's arc
 /// (h0+$23e6c).
@@ -200,8 +210,17 @@ fn killed(l: impl Fn(u32) -> u32) -> bool {
 }
 
 /// The position of the first live slot running update `u` (an h0 offset).
+/// `u` with [`TEMPLATE`] set is a template's number instead (T103, `--hurt t61`): a slot whose
+/// first long is that template's init routine (`obj_templates`, h0+$1c6e2, `$ae` bytes each).
 fn nearest(l: impl Fn(u32) -> u32, w: impl Fn(u32) -> u16, u: u32) -> Option<(i32, i32)> {
-    (0..20).map(|k| h0(SLOTS + k * 0x7c)).find(|&s| l(s + 0x40) != 0 && l(s + 4) == h0(u)).map(|s| {
+    let is = |s: u32| {
+        if u & TEMPLATE != 0 {
+            l(s) == l(h0(0x1c6e2 + (u & !TEMPLATE) * 0xae))
+        } else {
+            l(s + 4) == h0(u)
+        }
+    };
+    (0..20).map(|k| h0(SLOTS + k * 0x7c)).find(|&s| l(s + 0x40) != 0 && is(s)).map(|s| {
         (w(s + 8) as i16 as i32, w(s + 0xa) as i16 as i32)
     })
 }
@@ -238,8 +257,8 @@ fn main() {
                 let (c, r) = args[i + 1].split_once(',').unwrap();
                 via.push(Via::Cell(c.parse().unwrap(), r.parse().unwrap()));
             }
-            "--stomp" => via.push(Via::Stomp(u32::from_str_radix(&args[i + 1], 16).unwrap())),
-            "--hurt" => via.push(Via::Hurt(u32::from_str_radix(&args[i + 1], 16).unwrap())),
+            "--stomp" => via.push(Via::Stomp(target_arg(&args[i + 1]))),
+            "--hurt" => via.push(Via::Hurt(target_arg(&args[i + 1]))),
             "--coins" => via.push(Via::Coins(args[i + 1].parse().unwrap())),
             "--reach-only" => {
                 reach_only = true;
@@ -445,6 +464,8 @@ fn main() {
         }
         let field = &goals[goal];
         let hearts = start.state().w(HEARTS);
+        // The exit is the last goal: reached before the others are done, a path fails.
+        let early_exit = goal < via.len();
         let score = |st: &sf_core::State| -> i64 {
             let (x, y) = frog(st);
             match target {
@@ -519,6 +540,12 @@ fn main() {
                                         {
                                             return None;
                                         }
+                                        // The exit before the last `--via`/`--stomp`/`--hurt`
+                                        // is reached: as bad as a death (T103: W4-3's exit
+                                        // lies on the way to its crushers).
+                                        if early_exit && n.state().l(LEVEL_STATE) != 0xffff_fffe {
+                                            return None;
+                                        }
                                     }
                                     let s = if n.state().l(LEVEL_STATE) == 1 {
                                         i64::MIN / 2
@@ -577,7 +604,9 @@ fn main() {
             let mut ok = true;
             for (k, &x) in p.iter().enumerate() {
                 sync::step_inserting(amiga, x).unwrap();
-                if peek_w(amiga, FROG + f::LIVES) != lives || peek_w(amiga, FROG + f::DYING) != 0 {
+                let b = amiga.peek(LEVEL_STATE, 4);
+                let ended = u32::from_be_bytes([b[0], b[1], b[2], b[3]]) != 0xffff_fffe;
+                if peek_w(amiga, FROG + f::LIVES) != lives || peek_w(amiga, FROG + f::DYING) != 0 || (early_exit && ended) {
                     eprintln!(
                         "  a path dies {k} frames in on the original, frog at {},{}",
                         peek_w(amiga, FROG + f::X),
@@ -595,8 +624,10 @@ fn main() {
                 while k < n {
                     sync::step_inserting(amiga, p[k]).unwrap();
                     k += 1;
+                    // Any change from the level's running −2: the exit's 1 can come and go
+                    // within a frame (W4-4's exit at 15544 shows 0 next).
                     let b = amiga.peek(LEVEL_STATE, 4);
-                    if u32::from_be_bytes([b[0], b[1], b[2], b[3]]) == 1 {
+                    if inputs.len() + k > 10 && u32::from_be_bytes([b[0], b[1], b[2], b[3]]) != 0xffff_fffe {
                         break;
                     }
                 }
@@ -704,7 +735,7 @@ fn main() {
                 break;
             }
         }
-        if st.l(LEVEL_STATE) == 1 {
+        if inputs.len() > 10 && st.l(LEVEL_STATE) != 0xffff_fffe {
             eprintln!("exit at frame {}", inputs.len());
             break;
         }

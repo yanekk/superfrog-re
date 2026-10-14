@@ -1,5 +1,5 @@
 # W4-3 played to its exit (T103): planned by examples/plan_exit, checked on the original chunk
-# by chunk; the level ends at frame 10831, then fire in the tally's wait takes the points.
+# by chunk; the level ends at frame 11382, then fire in the tally's wait takes the points.
 0: -
 144: R
 148: U L
@@ -1056,9 +1056,39 @@
 10588: L
 10592: -
 10608: L
-10800: U
-10820: -
-10828: L
-10832: -
-10901: F
-10905: -
+10800: U R
+10804: R
+10848: U L
+10852: U
+10864: L
+10872: U
+10904: L
+10908: U L
+10912: R
+10916: -
+10920: L
+10924: R
+10928: -
+10936: U
+10940: L
+10960: U
+10964: L
+11000: U
+11068: -
+11072: L
+11112: U
+11124: -
+11132: R
+11140: -
+11224: U R
+11228: R
+11248: U
+11280: R
+11288: U
+11356: R
+11360: U R
+11364: U
+11380: R
+11383: -
+11452: F
+11456: -
