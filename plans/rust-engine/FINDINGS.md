@@ -18,6 +18,7 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-14 | 📌 | T56 review: story cases compare Paula writes without their beam, so set-up job timing is checked only where a test asserts a line. Fade set-up INTENA lines and later scenes' mask DMACON lines are unasserted; not fixed. |
 | 2026-10-14 | 📌 | T56 split at pir's context warning: T128 setup-under-music, T129 fade-colour-race, T130 draw-end-order, T131 last-fade-out, T132 intro-full-green (carries T56's done-when; blocks T21, T47, T48). |
 | 2026-10-14 | 📌 | T56: `story_dbg SCAN=1` skips variable-only frames; `sf-conform scan` counts them. Base had 1 254 `frame_descriptors` frames: `frame_prepare` OR'd where the original adds (descriptors past a scene's table hold code). Fixed. |
 | 2026-10-14 | 📌 | T56: a COP1LC write counts from the next frame's top: scene 1's first buffer clear runs under the text page's three planes (54 lines longer). The engine's `shown_list` switches at once; set-up jobs now take the frame's list. |

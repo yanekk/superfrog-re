@@ -87,7 +87,7 @@ done · ⛔ blocked, needs a human.
 | T53 | story-draw-cpu-program | T52; blocks T54 | ✅ | |
 | T54 | story-handler-end-feed | T53; blocks T56 | ✅ | |
 | T55 | story-intro-sound-timing | T50; blocks T56 | ✅ | |
-| T56 | story-intro-to-insert-disk | T49, T50, T54, T55; blocks T21, T47, T48 | 🔍 | Set-up as sim CPU programs re-timed per frame on fed acks; unpack end lines; `frame_prepare` add fix; full case `story-intro-full` (ignored, red: 36 frames, was 867+). Split at pir's context warning: rest in T128–T132. Deviation: `HandlerEnd.resumes` optional, acks fed every step (commit 85e713f). |
+| T56 | story-intro-to-insert-disk | T49, T50, T54, T55; blocks T21, T47, T48 | ✅ | Review: one fix. Mutation timing the job's first frame under `shown_list` survived every story case; story-intro now checks scene 1's mask DMACON line (7bfd456). Dropping fed acks caught by scene4-init. Story cases green; split T128–T132 valid, T132 carries done-when. Full case's 36-frame red, unpack lines read-only. Deviation held. |
 | T81 | beam-cleanup | T36; blocks T37 | ✅ | |
 | T82 | beam-tests | T81 | ✅ | |
 | T83 | items-w1 | T81 | ✅ | |
