@@ -39,6 +39,18 @@ const STALL: u32 = 4;
 const ROW0: u32 = 0x218e0 + 0x4c0;
 const ROW_BYTES: u32 = 0x260;
 
+/// The live map, as the level file has its cells (marker in the top six bits): an opened gate is
+/// open here, where the file still has it solid.
+fn live_body(st: &sf_core::State) -> Vec<u16> {
+    let mut v = Vec::with_capacity(300 * 84);
+    for r in 0..84 {
+        for c in 0..300 {
+            v.push((st.w(sf_core::layout::h1(ROW0) + r * ROW_BYTES + 2 * c) & 0x3f) << 10);
+        }
+    }
+    v
+}
+
 /// The cells whose live marker is a coin's (8, 9), less `skipped`.
 fn coins(st: &sf_core::State, skipped: &[(usize, usize)]) -> Vec<(usize, usize)> {
     let mut v = Vec::new();
@@ -182,14 +194,8 @@ fn main() {
         .filter(|&k| t.body[k] >> 10 == 54)
         .map(|k| (k % w, k / w))
         .collect();
-    let mut goals: Vec<Vec<u32>> = via
-        .iter()
-        .map(|v| match *v {
-            Via::Cell(x, y) => flood(&t.body, w, h, &[(x, y)]),
-            _ => Vec::new(),
-        })
-        .collect();
-    goals.push(flood(&t.body, w, h, &exits));
+    // Each step's field, flooded over the live map at each chunk.
+    let mut goals: Vec<Vec<u32>> = vec![Vec::new(); via.len() + 1];
     let mut goal = 0;
     // The coin phase's passed-over coins, its stall count and best distance so far.
     let mut skipped: Vec<(usize, usize)> = Vec::new();
@@ -228,14 +234,20 @@ fn main() {
         let lives = start.state().w(FROG + f::LIVES);
         let target = via.get(goal).copied();
         let needed = start.state().w(FROG + f::COINS_LEFT);
-        if let Some(Via::Coins(_)) = target {
-            let mut left = coins(start.state(), &skipped);
-            if left.is_empty() && !skipped.is_empty() {
-                eprintln!("  every coin left was passed over: trying them again");
-                skipped.clear();
-                left = coins(start.state(), &skipped);
+        let live = live_body(start.state());
+        match target {
+            Some(Via::Coins(_)) => {
+                let mut left = coins(start.state(), &skipped);
+                if left.is_empty() && !skipped.is_empty() {
+                    eprintln!("  every coin left was passed over: trying them again");
+                    skipped.clear();
+                    left = coins(start.state(), &skipped);
+                }
+                goals[goal] = flood(&live, w, h, &left);
             }
-            goals[goal] = flood(&t.body, w, h, &left);
+            Some(Via::Cell(x, y)) => goals[goal] = flood(&live, w, h, &[(x, y)]),
+            None => goals[goal] = flood(&live, w, h, &exits),
+            _ => {}
         }
         let field = &goals[goal];
         let hearts = start.state().w(HEARTS);
@@ -386,7 +398,7 @@ fn main() {
                 }
                 if stall >= STALL {
                     // No headway: pass over the coin nearest the frog by the map's paths.
-                    let here = flood(&t.body, w, h, &[((x.max(0) / 16) as usize, (y.max(0) / 16) as usize)]);
+                    let here = flood(&live_body(&st), w, h, &[((x.max(0) / 16) as usize, (y.max(0) / 16) as usize)]);
                     let left = coins(&st, &skipped);
                     if let Some(&(nc, nr)) = left.iter().min_by_key(|&&(c, r)| here[r * w + c]) {
                         for &(c, r) in &left {
