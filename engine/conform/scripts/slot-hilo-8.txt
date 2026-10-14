@@ -1,4 +1,5 @@
-# The hi-lo game (T74) taken at once, by its first turn's spin button. Planned on the engine (examples/slot_plan.rs); frames are the original's.
+# The hi-lo game (T74) taken at once, by its first turn's spin button. Planned on the engine
+# (examples/slot_plan.rs); frames are the original's.
 798: F
 799: -
 807: F

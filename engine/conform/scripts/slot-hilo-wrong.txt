@@ -1,4 +1,5 @@
-# The hi-lo game (T74) lost at its first guess: higher, the number going 7 to 2. Planned on the engine (examples/slot_plan.rs); frames are the original's.
+# The hi-lo game (T74) lost at its first guess: higher, the number going 7 to 2. Planned on the
+# engine (examples/slot_plan.rs); frames are the original's.
 798: F
 799: -
 807: F

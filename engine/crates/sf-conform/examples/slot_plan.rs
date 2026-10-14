@@ -136,7 +136,9 @@ fn main() {
         f: 0,
         lines: Vec::new(),
     };
-    while r.f < 40 {
+    // The attract loop's fire: frame 40 unless `PLAN_FIRE` says.
+    let fire: u32 = std::env::var("PLAN_FIRE").map_or(40, |v| v.parse().unwrap());
+    while r.f < fire {
         r.step(FrameInput::NONE);
     }
     r.lines.push((r.f + LOADS, "F"));

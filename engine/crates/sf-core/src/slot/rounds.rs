@@ -67,6 +67,10 @@ const REELS_CALL: u32 = 150;
 /// (1 000 fewer than [`DIGITS_CYCLES`]; the byte copies lose less to the display than
 /// [`super::draw`]'s CPU rate says).
 const DIGITS_ON_BEAM: u32 = DIGITS_CYCLES - 1_000;
+/// From the spin's last raster wait (line 299) through a paying line's two `sfx_play`s: past the
+/// frame's end, so its flash's lamps change in the next frame (T74, `slot-hold-20000`: the
+/// second's DMACON `$8004` on line 311, the original still in it as the frame ends).
+const PAYOUT_CYCLES: u32 = 6_000;
 /// The bank's copy back over the level's (h0+$15fb0: $3e80 longs at about 39 cycles).
 const SOUND_COPY_CYCLES: u32 = 0x3e80 * 39;
 
@@ -221,6 +225,7 @@ impl Rounds {
                     }
                     self.pc = 4;
                     if self.prize != 0xffff {
+                        cx.busy(PAYOUT_CYCLES);
                         return call(FrontRoutine::SlotFlash(Flash::payout()));
                     }
                 }

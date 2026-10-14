@@ -1,4 +1,6 @@
-# The hi-lo game (T74): 1 guesses right (each higher or lower as the next number makes it right), then taken by the spin button at rung 7. Planned on the engine (examples/slot_plan.rs); frames are the original's.
+# The hi-lo game (T74): 1 guesses right (each higher or lower as the next number makes it right),
+# then taken by the spin button at rung 7. Planned on the engine (examples/slot_plan.rs); frames are
+# the original's.
 798: F
 799: -
 807: F
