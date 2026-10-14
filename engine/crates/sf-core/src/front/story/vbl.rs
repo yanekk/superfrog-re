@@ -337,6 +337,19 @@ pub fn run(
     input: FrameInput,
     paula: &mut Vec<PaulaWrite>,
 ) -> Handler {
+    let h = to_wait(m, sd, input, paula);
+    after_wait(m, sd, paula);
+    h
+}
+
+/// The handler up to its 8-line wait (h0+$38a02, after the music's tick): what it does in the
+/// frame it is taken in, when the wait runs on into the next ([`super::intro`]'s split).
+pub fn to_wait(
+    m: &mut StoryMem,
+    sd: &sf_assets::sound::SoundData,
+    input: FrameInput,
+    paula: &mut Vec<PaulaWrite>,
+) -> Handler {
     let frozen = m.w(FROZEN) != 0;
     m.set_w(VBL_FLAG, 1);
     let c = m.w(VBL_COUNT).wrapping_add(1);
@@ -378,16 +391,21 @@ pub fn run(
     if input.joy.contains(Joy::PORT1_BUTTON) || input.joy.contains(Joy::FIRE) {
         m.set_w(SKIP, 1);
     }
-    super::sound::tick(m, sd, paula);
+    super::sound::music_tick(m, sd, paula);
+    Handler {
+        frozen,
+        stream,
+        calls,
+    }
+}
+
+/// The handler from its wait's end: the rest of its sound and its acknowledge.
+pub fn after_wait(m: &mut StoryMem, sd: &sf_assets::sound::SoundData, paula: &mut Vec<PaulaWrite>) {
+    super::sound::after_wait(m, sd, paula);
     paula.push(PaulaWrite {
         reg: 0x9c,
         value: 0x20,
         hpos: 0,
         vpos: 0,
     });
-    Handler {
-        frozen,
-        stream,
-        calls,
-    }
 }

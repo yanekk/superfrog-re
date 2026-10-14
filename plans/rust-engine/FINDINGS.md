@@ -18,6 +18,10 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-14 | 📌 | T97 review: `sf-conform scan` of story-scene4-sound to 9 200 frames misses past 7 824 too (1 254 `frame_descriptors` frames), unlike the story_dbg row; same on base. Handlers taken O 11 310, 11 617 (lines 310, 312) unchecked behind that. |
+| 2026-10-14 | 📌 | T97: `story_dbg SCAN=1` to 9 320 frames reaches engine 9 282 (O ~12 690) before the oracle cap. Misses past 6 683: 7 227–7 824, 8 216–8 217 (a draw's `$0400` after a handler acknowledged on 307), 9 268–9 282. None is a split. |
+| 2026-10-14 | 🐞 | T97, not fixed: in scene 4's long blits (engine 6 680–6 685) the engine's own handler lines are far off (38 against 300, 0 against 211). The split is decided on conformance's fed entry, so normal play misses it. |
+| 2026-10-14 | 📌 | T97: the intro's 8-line wait (h0+$38a02, VHPOSR's low byte) read on line ≥305 ends on line read+8−256 of the next frame, whose blank it acknowledges. To the insert-disk-1 page: O 7 591, 7 984 (inside T56's slip), 10 087. |
 | 2026-10-14 | 🔄 | Owner, T86 review: added T127 restore-sprite-wait (T101; blocks T21). With T43's W2 enemies, the sprite wait's calls made `items-switch-w2-1` and `enemies-w2-1` red at 442 (engine 0.2 line late); calls left out, `sprite_wait` and its test kept.
 | 2026-10-14 | 📌 | T86 review: the launcher case is held by the launcher's `FrogSprites` cost (tick on line $1e/$1f, past the copper's sprite moves), not the wait: a no-op `sprite_wait` stays green. `sprite_wait` is locked by a `frog_routines` test; its calls are T127's. |
 | 2026-10-14 | 🐞 | T86 review, open: the bounce pad's new `FrogSprites` charge (the original's call at $ea14/$ea6a) is tested by nothing: `items-pad-w1-1` re-syncs at 321 and 790 with it or without; T83 recorded 402/786. T101's case. |

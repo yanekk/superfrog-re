@@ -42,6 +42,25 @@ const HANDLER_BASE: u64 = 12;
 const HANDLER_MUSIC: u64 = 5;
 const HANDLER_PER_32_COLOURS: u64 = 34;
 
+/// The handler's 8-line wait (h0+$38a02, after the music's tick) waits for VHPOSR's low byte to
+/// come round to its read's plus eight; the lines from its end to the handler's end in
+/// [`handler_lines`] (oracle, T97: with the music on, the read 6 lines after the entry, the
+/// acknowledge one after the wait).
+const WAIT_LINES: u64 = 8;
+const AFTER_WAIT: u64 = 3;
+
+/// The lines a handler's wait waits when read on line `read` of its frame: eight, or, when line
+/// `read + 8` is past the frame's last (it does not exist), on to the line of the next frame
+/// whose low byte is the same, `read + 8 - 256` (oracle frames 7591, 7984, 10087: the
+/// acknowledge on lines 64, 61, 59 of the next frame).
+pub fn wait_lines(read: u64) -> u64 {
+    if (LINES - WAIT_LINES..LINES).contains(&read) {
+        WAIT_LINES + LINES - 256
+    } else {
+        WAIT_LINES
+    }
+}
+
 /// The handler's length this frame, from what it is about to do.
 pub fn handler_lines(m: &StoryMem) -> u64 {
     let mut lines = HANDLER_BASE;
@@ -304,6 +323,9 @@ pub struct Intro {
     fresh: bool,
     /// For conformance: where the original's handler of this frame ended ([`HandlerEnd`]).
     handler_end: Option<HandlerEnd>,
+    /// A handler whose wait ran on past its frame's end ([`wait_lines`]): the line its wait ends
+    /// on and the line it ends on (since the intro's start), its rest still to run.
+    tail: Option<(u64, u64)>,
     /// The audio channels' DMA as of this frame's start, run on the frames' Paula writes: the
     /// slots it takes hold up the draws' blits and CPU (T96).
     audio: AudioDma,
@@ -411,6 +433,7 @@ impl Intro {
             writes: Vec::new(),
             fresh: false,
             handler_end: None,
+            tail: None,
             audio: AudioDma::booted(),
         }
     }
@@ -434,7 +457,8 @@ impl Intro {
     ) -> IntroFrame {
         self.pacing = pacing;
         self.handler_end = handler_end;
-        self.fresh = false;
+        // The main program a split handler let go of goes on once its rest has run, below.
+        self.fresh &= self.tail.is_some();
         self.load_state = load_state;
         let top = frame * LINES;
         let end = top + LINES;
@@ -482,13 +506,40 @@ impl Intro {
         }
         self.merged.retain(|&t| t >= top);
         let handler = handler_lines(m);
+        if let Some((wait_end, handler_end)) = self.tail.take() {
+            // The rest of the last frame's handler, from its wait's end.
+            let mut writes = Vec::new();
+            super::vbl::after_wait(m, sound_data(data), &mut writes);
+            for w in &mut writes {
+                w.vpos = wait_end.saturating_sub(top) as u16;
+            }
+            out.paula.extend(writes);
+            self.handler_done(handler_end);
+        }
         if merged.unwrap_or(self.merged.first() == Some(&top)) {
             // No handler this frame: the next frame's serves this blank too.
             out.copper = m.read(list, 0x400);
         } else {
             let mut writes = Vec::new();
-            out.walk = Some(super::vbl::run(m, sound_data(data), input, &mut writes));
-            let handler_end = at + handler;
+            out.walk = Some(super::vbl::to_wait(m, sound_data(data), input, &mut writes));
+            // The wait's read, from where the interrupt was taken (conformance gives the
+            // original's: the engine's own line can be far off while a draw's blits hold the CPU).
+            let read =
+                out.entry as u64 / super::cpu::LINE as u64 + handler - WAIT_LINES - AFTER_WAIT;
+            let split = wait_lines(read) > WAIT_LINES;
+            let wait_end = top + read + wait_lines(read);
+            let handler_end = if split {
+                wait_end + AFTER_WAIT
+            } else {
+                at + handler
+            };
+            if split {
+                // Its acknowledge clears the next blank's request too: that blank has no handler.
+                self.tail = Some((wait_end, handler_end));
+                self.merged.insert(0, top + LINES);
+            } else {
+                super::vbl::after_wait(m, sound_data(data), &mut writes);
+            }
             for w in &mut writes {
                 w.vpos = (at - top) as u16;
             }
@@ -503,15 +554,15 @@ impl Intro {
                 && until > at
             {
                 self.wait = Wait::Busy {
-                    until: until + handler,
+                    until: until + (handler_end - at),
                     blank_extends: true,
                 };
             }
-            if self.wait == Wait::Vbl {
-                self.wait = Wait::Run;
-                self.fresh = true;
+            if split {
+                self.t = self.t.max(handler_end);
+            } else {
+                self.handler_done(handler_end);
             }
-            self.t = self.t.max(handler_end);
         }
         if std::mem::take(&mut self.first) {
             // The intro's start, its first text page unpacked, all during the load: the
@@ -552,6 +603,16 @@ impl Intro {
         out.paula.sort_by_key(|w| w.vpos);
         self.audio.frame(&out.paula, LINES as u32);
         out
+    }
+
+    /// The handler has returned at `end`: the main program goes on from there, let go from its
+    /// wait for the blank.
+    fn handler_done(&mut self, end: u64) {
+        if self.wait == Wait::Vbl {
+            self.wait = Wait::Run;
+            self.fresh = true;
+        }
+        self.t = self.t.max(end);
     }
 
     /// An instant load is over. Under conformance, the frame now stands for the original's frame
@@ -1388,5 +1449,65 @@ mod tests {
                 assert!(fixed.taken(k * sim::FRAME + c));
             }
         }
+    }
+
+    #[test]
+    fn a_wait_read_on_line_305_or_later_runs_on_to_the_next_frame() {
+        assert_eq!(wait_lines(0), 8);
+        assert_eq!(wait_lines(304), 8);
+        // Read on 305, eight lines on is 313, which no frame has: line 57 has the same low byte.
+        assert_eq!(305 + wait_lines(305) - LINES, 57);
+        assert_eq!(312 + wait_lines(312) - LINES, 64);
+        // Read in the next frame already: an ordinary wait.
+        assert_eq!(wait_lines(LINES), 8);
+    }
+
+    /// The handler taken on line `entry` of frame 0 (the main program over, the music off), then
+    /// two frames more: per frame its `vbl_count` and its acknowledges' lines.
+    fn handlers_from(entry: u16) -> Vec<(u16, Vec<u16>)> {
+        let mut m = StoryMem::default();
+        let data = data::StoryData::default();
+        let mut intro = Intro::start(&mut m, &data);
+        intro.first = false;
+        intro.ended = true;
+        (0..3u64)
+            .map(|f| {
+                let out = intro.frame(
+                    &mut m,
+                    &data,
+                    crate::input::FrameInput::NONE,
+                    f,
+                    None,
+                    scenes::BLACK_LIST,
+                    Pacing::Unpaced,
+                    Vec::new(),
+                    (f == 0).then_some((entry, 0)),
+                    None,
+                    None,
+                );
+                let acks = out
+                    .paula
+                    .iter()
+                    .filter(|w| w.reg == 0x9c && w.value == 0x20)
+                    .map(|w| w.vpos)
+                    .collect();
+                (m.w(VBL_COUNT), acks)
+            })
+            .collect()
+    }
+
+    #[test]
+    fn a_handler_whose_wait_runs_past_the_frames_end_ends_in_the_next_which_has_none_of_its_own() {
+        // Idle, the wait is read a line after the entry: on 306 from 305, so it ends on line 58
+        // of frame 1; frame 1's blank, cleared by that acknowledge, gets no handler.
+        assert_eq!(
+            handlers_from(305),
+            vec![(1, vec![]), (1, vec![58]), (2, vec![0])]
+        );
+        // Read on 304: an ordinary handler, all in its frame.
+        assert_eq!(
+            handlers_from(303),
+            vec![(1, vec![0]), (2, vec![0]), (3, vec![0])]
+        );
     }
 }
