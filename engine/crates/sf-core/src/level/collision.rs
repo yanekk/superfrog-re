@@ -432,12 +432,7 @@ fn walls(c: &mut LevelCtx) {
     // other. (With both wall flags set the original spins here for ever; the side it faces is
     // taken instead, DESIGN §2.11.)
     let (stopped_r, stopped_l) = (b.w(FROG + f::WALL_RIGHT) != 0, b.w(FROG + f::WALL_LEFT) != 0);
-    let left = if facing {
-        !stopped_r || stopped_l
-    } else {
-        stopped_l && !stopped_r
-    };
-    let (list, table) = if left {
+    let (list, table) = if probe_left(facing, stopped_r, stopped_l) {
         (PROBE_LEFT, Table::WallLeft)
     } else {
         (PROBE_RIGHT, Table::WallRight)
@@ -457,6 +452,16 @@ fn walls(c: &mut LevelCtx) {
     a2 = a2.wrapping_add(b.l(list + 8));
     let m = marker(b, a2);
     handle(c, table, m, a2, true);
+}
+
+/// h0+$e3f8: whether `walls` takes the left probe list, from the facing flag and the wall flags.
+/// Both wall flags set: the side the frog faces (the original loops for ever, DESIGN §2.11).
+fn probe_left(facing: bool, stopped_r: bool, stopped_l: bool) -> bool {
+    if facing {
+        !stopped_r || stopped_l
+    } else {
+        stopped_l && !stopped_r
+    }
 }
 
 /// One marker's handler from `table` (the original's `jsr (a3,d0.w)`), with the cell's address
@@ -768,4 +773,15 @@ pub fn frog_kill(c: &mut LevelCtx) {
         }
     }
     b.set_w(FROG + f::AIR, 1);
+}
+
+#[cfg(test)]
+mod tests {
+    use super::probe_left;
+
+    #[test]
+    fn both_wall_flags_take_the_side_the_frog_faces_where_the_original_loops() {
+        assert!(probe_left(true, true, true));
+        assert!(!probe_left(false, true, true));
+    }
 }

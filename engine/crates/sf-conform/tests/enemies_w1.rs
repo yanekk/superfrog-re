@@ -6,16 +6,20 @@
 
 use std::collections::BTreeSet;
 
-use sf_core::frog::{FROG, f};
+use sf_core::frog::FROG;
 use sf_core::layout::h0;
 use sf_core::level::objects::OBJ_SLOTS;
 
 /// What a case's run showed: every slot update the engine ran (by `h0` offset), and how many
-/// times the frog went from unhurt to hurt.
+/// times an enemy hurt the frog: its hearts (`+$5a`, `frog_hurt`) went down. Not `f::HURT`
+/// rising: a stunned landing sets that too, as the level's opening drop does (T109 review).
 struct Seen {
     updates: BTreeSet<u32>,
     hurts: u32,
 }
+
+/// The frog's hearts, which `frog_hurt` takes one from.
+const HEARTS: u32 = 0x5a;
 
 /// Run `name`, green but for re-syncs at exactly `resyncs`, and say what the engine's run showed.
 fn run(name: &str, resyncs: &[u32]) -> Seen {
@@ -25,7 +29,7 @@ fn run(name: &str, resyncs: &[u32]) -> Seen {
         updates: BTreeSet::new(),
         hurts: 0,
     };
-    let mut hurt = false;
+    let mut hearts = None;
     let o = sf_conform::run_with(&case, |_, g| {
         let s = g.state();
         for k in 0..20 {
@@ -34,11 +38,11 @@ fn run(name: &str, resyncs: &[u32]) -> Seen {
                 seen.updates.insert(s.l(slot + 4).wrapping_sub(h0(0)));
             }
         }
-        let now = s.w(FROG + f::HURT) != 0;
-        if now && !hurt {
+        let now = s.w(FROG + HEARTS);
+        if hearts.is_some_and(|was| now < was) {
             seen.hurts += 1;
         }
-        hurt = now;
+        hearts = Some(now);
     })
     .unwrap_or_else(|d| panic!("{name}: {d}"));
     let got: Vec<u32> = o.resynced.iter().map(|r| r.0).collect();
@@ -73,6 +77,24 @@ fn w1_2() {
     for u in [HOVER, WALKER, CRAWLER, SPIKER, STOMPED] {
         assert!(s.updates.contains(&u), "h0+${u:x} never ran: {:x?}", s.updates);
     }
-    // The first hurt is the level-entry landing (stunned, frame 81); then the hover, crawler, spiker.
-    assert!(s.hurts >= 4, "hurt {} times", s.hurts);
+    assert!(s.hurts >= 3, "hurt {} times", s.hurts);
+}
+
+/// World 1's types W1-4 has and W1-1 does not (`enemies::w1`): the dropper and its drop, the spout
+/// and its shots (one update for all three).
+const DROPPER: u32 = 0x24dca;
+const DROP: u32 = 0x24b20;
+const SPOUT: u32 = 0x25358;
+const SHOT: u32 = 0x24aac;
+
+/// W1-4: hurt by the sitter, a spiker and a spout's shot; a crawler stomped; the dropper drops;
+/// hovers fly by.
+/// No re-syncs: none of its lags is followed by a divergence.
+#[test]
+fn w1_4() {
+    let s = run("enemies-w1-4", &[]);
+    for u in [SITTER, SPIKER, HOVER, CRAWLER, STOMPED, SPOUT, SHOT, DROPPER, DROP] {
+        assert!(s.updates.contains(&u), "h0+${u:x} never ran: {:x?}", s.updates);
+    }
+    assert!(s.hurts >= 3, "hurt {} times", s.hurts);
 }

@@ -1,0 +1,75 @@
+# W1-4 with world 1's enemies live (T109), planned in legs by examples/complete.rs from the paced
+# engine: hurt by the sitter at 19,27 (~221), down the slope and into the cave, hurt by the spiker
+# at 64,67 (~703), the crawler at 84,67 stomped (~899), hurt by a shot of the spout at 107,66
+# (~1065); then it stands while the dropper at 114,51 drops (from ~1115).
+0: -
+150: R
+170: -
+178: L
+182: -
+186: R
+190: -
+331: U R
+335: U
+347: R
+355: L
+363: -
+382: R
+386: L
+390: R
+398: -
+402: L
+406: -
+426: R
+430: -
+434: L
+438: R
+474: L
+478: U
+486: -
+550: L
+554: R
+582: -
+585: R
+589: -
+593: R
+605: L
+609: -
+621: L
+629: R
+633: -
+653: L
+657: -
+661: R
+689: -
+692: R
+700: -
+821: U R
+825: U
+837: R
+857: -
+861: R
+881: L
+885: U
+889: L
+893: R F
+897: R
+901: -
+913: F
+917: -
+925: F
+929: -
+933: F
+937: -
+945: F
+949: -
+953: F
+957: -
+965: F
+969: -
+973: F
+977: -
+1005: U R
+1009: U
+1065: -
+1066: -
