@@ -77,7 +77,9 @@ fn frame_prepare(m: &mut StoryMem, p: &mut Prog, d: u32, row_bytes: u32) {
     let bytes = (m.w(d + 4) >> 3) as u32;
     m.set_w(d + 0x22, (row_bytes.wrapping_sub(bytes)) as u16);
     m.set_w(d + 0x20, m.w(d + 0x14).wrapping_sub(bytes as u16));
-    m.set_w(d + 0x1a, m.w(d + 6) << 6 | (bytes >> 1) as u16);
+    // `lsl.w #6, d5; add.w d6, d5`: an add, which a descriptor filled from past the scene's table
+    // (code) carries into the height (oracle frame 11 295, T56).
+    m.set_w(d + 0x1a, (m.w(d + 6) << 6).wrapping_add((bytes >> 1) as u16));
     let at = (m.w(d + 2) as u32) * (m.w(d + 0x14) as u32) + (m.w(d) >> 3) as u32;
     m.set_l(d + 0x24, m.l(d + 0xc).wrapping_add(at));
     m.set_l(d + 0x1c, m.l(d + 0x10).wrapping_add(at));
@@ -809,4 +811,21 @@ fn draw_object(m: &mut StoryMem, p: &mut Prog, a2: u32, buffer: u32) {
 /// A word shift's internal work by `n` bits, after its prefetch.
 fn shift(n: u32) -> u32 {
     1 + n
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn a_frames_blit_size_adds_the_words_to_the_shifted_height() {
+        // A descriptor filled from past a scene's table (code: `41f9 00c0 9b60 317c`): the height's
+        // shift carries into the words, as the original's `add.w` does (oracle frame 11 295).
+        let mut m = StoryMem::default();
+        let d = DESCRIPTORS;
+        m.set_w(d + 4, 0x9b60);
+        m.set_w(d + 6, 0x317c);
+        frame_prepare(&mut m, &mut Prog::new(), d, 0x2c);
+        assert_eq!(m.w(d + 0x1a), 0x68b6);
+    }
 }

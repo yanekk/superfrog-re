@@ -82,3 +82,17 @@ fn the_effects_keep_in_step_through_scenes_4_to_6() {
         }
     }
 }
+
+/// Power-on with disk 3 through the whole intro, untouched, to the "insert disk 1" page (the case
+/// `story-intro-full`, T56): every scene's set-up timed on the bus with the original's handlers,
+/// its play, its fades and the text pages. About 5 min: out of the test block, run with
+/// `cargo test -p sf-conform -- --ignored`.
+#[test]
+#[ignore = "slow: about 5 min"]
+fn the_whole_intro_to_the_insert_disk_page_matches_the_original() {
+    let case = sf_conform::Case::load(&sf_conform::cases_dir().join("story-intro-full.toml"))
+        .unwrap_or_else(|e| panic!("{e}"));
+    if let Err(d) = sf_conform::run(&case) {
+        panic!("{d}");
+    }
+}

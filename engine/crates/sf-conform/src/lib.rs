@@ -120,7 +120,10 @@ fn run_inner(
     mut found: Option<&mut Vec<Divergence>>,
 ) -> Result<Outcome, Divergence> {
     let frozen = case.freeze();
-    let synced = sync::reach_frozen(&case.sync, &case.script, case.frames + LOAD_SEARCH, frozen)
+    // The oracle's frame cap: the case's frames, what its loads take (the whole disk-3 intro's
+    // spend more than one search's worth, T56) and one load search more.
+    let cap = 2 * case.frames + LOAD_SEARCH;
+    let synced = sync::reach_frozen(&case.sync, &case.script, cap, frozen)
         .unwrap_or_else(|e| panic!("{}: {e}", case.name));
     let mut amiga = synced.amiga;
     let mut prev = synced.memory.clone();

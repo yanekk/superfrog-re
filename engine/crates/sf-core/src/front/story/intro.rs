@@ -1292,7 +1292,11 @@ impl Intro {
                     }
                 }
                 out.jobs.push(Job {
-                    inside: SETUP_INSIDE.to_vec(),
+                    inside: SETUP_INSIDE
+                        .iter()
+                        .copied()
+                        .chain(BUSY_BODIES.iter().flat_map(|r| r.clone().step_by(2)))
+                        .collect(),
                     writes: SETUP_WRITES.to_vec(),
                 });
                 let prog = bobs::clear_buffers(m);
