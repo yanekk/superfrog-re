@@ -651,11 +651,13 @@ impl LevelCtx<'_> {
         let Some(f) = self.frames.as_ref() else {
             return;
         };
-        if !f.in_pass || f.in_vbl || f.done || f.past_end || matches!(f.current(), Some((true, None))) {
+        let on_time = matches!(f.current(), Some((true, None)));
+        if !f.in_pass || f.in_vbl || f.done || f.past_end || on_time {
             return;
         }
         self.stamp();
-        self.tick(beam::Tick::Wait(beam::FRAME_LINES.saturating_sub(self.clock.line)));
+        let lines = beam::FRAME_LINES.saturating_sub(self.clock.line);
+        self.tick(beam::Tick::Wait(lines));
         if self.clock.line < beam::FRAME_LINES {
             self.clock = beam::Clock {
                 line: beam::FRAME_LINES,
