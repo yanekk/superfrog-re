@@ -18,6 +18,7 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-14 | 📌 | T74 review: `slot_jackpot`'s `password_for_level` is `unported` after a level 5 or in world 7 (the original copies from its caller's `a0`); a jackpot after W6-5 stops the engine. Not reached by any case. |
 | 2026-10-14 | 🔄 | Owner, T74: `slot-hold-jackpot` lands with the attract's fire on frame 41 (40, 50 red: a jackpot flash's sixth lamp starts either side of the interrupt on ~6 colour clocks). T129 slot-lamp-cut (blocks T21) added to model it. |
 | 2026-10-14 | 📌 | T74: from `start-w1-1-blink1`, 8 8 $18's gamble wins (30 000), not the bust T19 planned; the second gamble busts (`slot-gamble`). Unreached at these seeds: the free spin, a gamble lost above the bust. |
 | 2026-10-14 | 📌 | T74: T73's payout flash first ran against the oracle here. Lamps drawn alone from line 299 cost 10 cycles more, 6 more when off (`slot::draw`); a paying line's sounds end past the frame (`PAYOUT_CYCLES`). |

@@ -74,7 +74,7 @@ done · ⛔ blocked, needs a human.
 | T71 | slot-sync | T15 | ✅ | |
 | T72 | slot-screen | T71 | ✅ | |
 | T73 | slot-rounds | T72 | ✅ | |
-| T74 | slot-prizes | T73; blocks T21 | 🔍 | 13 slot cases green (hilo 0–8, -wrong, hold-20000, hold-jackpot, gamble); slot-hilo-0 in test block; award, scan, collect routine tests. Deviations: gamble wins then busts (doc: busts); hold-jackpot fires on 41 (owner; T129 added); lamp timing terms in `draw.rs`, `PAYOUT_CYCLES`: T73's flash never ran; `examples/slot_plan.rs` plans scripts. |
+| T74 | slot-prizes | T73; blocks T21 | ✅ | Review: added task renumbered T128→T129 (number taken on the feature branch), blocks T21 (owner). All 17 slot cases and tally-slot-w1-1 green on the oracle; each case's payout probed; award, gamble, bust, hi-lo, jackpot traced against the listing (read-only); hi-lo skip mutation red in slot-hilo-0. |
 | T75 | bonus-shots | T70; blocks T21 | ✅ | |
 | T76 | bonus-enemies-a | T70; blocks T21 | ✅ | |
 | T77 | bonus-enemies-b | T70, T76; blocks T21 | ✅ | |
@@ -134,7 +134,7 @@ done · ⛔ blocked, needs a human.
 A Notes cell holds what was built or what the review found, the test count, and one line per
 deviation from the task doc. A ✅ task's cell may be cut to one line once the next task has been reviewed.
 
-**Review queue:** T74
+**Review queue:** —
 
 ## Blocked on the user
 
