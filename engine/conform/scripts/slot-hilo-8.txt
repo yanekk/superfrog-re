@@ -1,0 +1,7 @@
+# The hi-lo game taken at once (T74): its first turn's spin button.
+798: F
+799: -
+807: F
+810: -
+1169: F
+1172: -

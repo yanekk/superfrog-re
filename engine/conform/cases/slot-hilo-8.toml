@@ -1,0 +1,4 @@
+# The hi-lo game (T74), taken at its first turn: 10 000.
+sync = { slot = "slot-none", start = "start-w1-1-late" }
+script = "slot-hilo-8"
+frames = 607

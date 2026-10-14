@@ -130,7 +130,10 @@ fn every_rung_a_line_pays_is_collected_as_the_original_collects_it() {
                     s.set_b(at, id);
                     at += 1;
                 };
-                rounds::award_rung(c.bus.st, &ladder, d7, &mut rec).unwrap();
+                assert_eq!(
+                    rounds::award_rung(c.bus.st, &ladder, d7, &mut rec),
+                    rounds::Ladder::Offer
+                );
                 rounds::collect(c.bus.st, d7, &mut rec);
             }));
             case += 1;
