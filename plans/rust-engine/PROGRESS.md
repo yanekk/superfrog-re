@@ -73,7 +73,7 @@ done · ⛔ blocked, needs a human.
 | T70 | bonus-level | T15; blocks T21 | ✅ | |
 | T71 | slot-sync | T15 | ✅ | |
 | T72 | slot-screen | T71 | ✅ | |
-| T73 | slot-rounds | T72 | ⬜ | |
+| T73 | slot-rounds | T72 | ✅ | |
 | T74 | slot-prizes | T73; blocks T21 | ⬜ | |
 | T75 | bonus-shots | T70; blocks T21 | ✅ | |
 | T76 | bonus-enemies-a | T70; blocks T21 | ✅ | |
@@ -93,7 +93,7 @@ done · ⛔ blocked, needs a human.
 | T83 | items-w1 | T81 | ✅ | |
 | T84 | items-w3 | T81 | ✅ | |
 | T85 | items-w2 | T81 | ✅ | |
-| T86 | items-launchers | T81 | ⬜ | |
+| T86 | items-launchers | T81 | ✅ | |
 | T87 | slot-symbols-routines | T71; blocks T72 | ✅ | |
 | T88 | slot-symbols-tables | T71; blocks T72 | ✅ | |
 | T89 | story-copper-bus-cycles | T52; blocks T53 | ✅ | |
@@ -101,13 +101,13 @@ done · ⛔ blocked, needs a human.
 | T91 | slot-beam-races | T72 | ✅ | |
 | T92 | slot-load | T72 | ✅ | |
 | T93 | slot-attract-draw | T72, T91, T92 | ✅ | |
-| T94 | slot-interrupt-timing | T72, T91, T93; blocks T73 | ⬜ | |
+| T94 | slot-interrupt-timing | T72, T91, T93; blocks T73 | ✅ | |
 | T95 | slot-load-finish | T92; blocks T93 | ✅ | |
 | T96 | story-audio-dma-slots | T53; blocks T56 | ✅ | |
 | T100 | front-vbl-timing | T37; blocks T21 | ✅ | Review: fixed 613/658 exclusions naming T100 (now unowned), 613 note missing its second colour; T127 renumbered T130 (taken), blocks T21 (owner); doc interface added. Mutated window top and fade-in set-up, both red; removed each exclusion, each needed; attract/ending green with vars off. Front, level_entry red as on base (logged). |
-| T97 | story-split-handler | T54; blocks T56 | ⬜ | |
-| T101 | lag-long-pass | T81, T82; blocks T21 | ⬜ | |
-| T102 | items-w3-faults | T101; blocks T21 | ⬜ | |
+| T97 | story-split-handler | T54; blocks T56 | ✅ | |
+| T101 | lag-long-pass | T81, T82; blocks T21 | ✅ | |
+| T102 | items-w3-faults | T101; blocks T21 | ✅ | |
 | T105 | w2-1-hang-fruit-life | T85; blocks T21 | ⬜ | |
 | T106 | w1-completions | T42, T86, T101; blocks T18 | ⬜ | |
 | T107 | enemies-w1-2-case | T42; blocks T18, T33, T106 | ⬜ | |
@@ -128,6 +128,8 @@ done · ⛔ blocked, needs a human.
 | T124 | enemies-w5-3-case | T39; blocks T18 | ⬜ | |
 | T125 | enemies-w5-4-case | T39; blocks T18 | ⬜ | |
 | T126 | w5-completions | T39, T101, T121, T123, T124, T125; blocks T18 | ⬜ | |
+| T127 | restore-sprite-wait | T101; blocks T21 | ⬜ | |
+| T128 | w3-4-sprite-race | T127; blocks T113 | ⬜ | |
 | T130 | front-vbl-318 | T100; blocks T21 | ⬜ | |
 
 A Notes cell holds what was built or what the review found, the test count, and one line per

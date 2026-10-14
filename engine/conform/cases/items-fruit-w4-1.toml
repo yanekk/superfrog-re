@@ -1,0 +1,12 @@
+# W4-1 with its items live: enemies-w4-1's route (T41) on to the 50 000-point fruit at 290,34
+# (h0+$effa) and the fruits above it; score, the panel and the picture every frame (T86), with no
+# re-sync since T102.
+sync = { level = "W4-1" }
+script = "items-fruit-w4-1"
+frames = 2360
+resync = false
+
+[[exclude]]
+what = "enemies"
+note = "the original's marker spawners the engine has none for (the world's scenery)"
+task = "T16–T18"

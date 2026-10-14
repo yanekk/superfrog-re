@@ -160,11 +160,15 @@ pub fn main_program(c: &mut LevelCtx, pending: Option<beam::Pending>, pacing: cr
             c.frame_end();
         }
     }
+    // A pass has just returned in this step, with no vertical blank since.
+    let mut ran = resume.is_some();
     while !c.frames.as_ref().is_some_and(|f| f.done) {
-        if pass_due(c) {
+        if pass_due(c) && !(ran && waits_out(c, pacing)) {
             run_pass(c, false);
             after_pass(c);
+            ran = true;
         } else {
+            ran = false;
             // Waiting for the next vertical blank.
             if c.clock.line < beam::FRAME_LINES {
                 c.clock = beam::Clock {
@@ -176,6 +180,17 @@ pub fn main_program(c: &mut LevelCtx, pending: Option<beam::Pending>, pacing: cr
             c.frame_end();
         }
     }
+}
+
+/// A pass due straight after another (the last ran past two vertical blanks) waits for the next
+/// frame: the step's own frame is on time, so the original ended it in `level_frame_loop`'s wait,
+/// and has made every write of its frame already, so it never began the pass (it ended the frame
+/// on the wait's last check, h0+$aae).
+fn waits_out(c: &LevelCtx, pacing: crate::Pacing) -> bool {
+    pacing == crate::Pacing::OnTime
+        && c.frames.as_ref().is_some_and(|f| matches!(f.current(), Some((true, None))))
+        && !c.schedule.is_empty()
+        && c.frame_writes_now() as usize >= c.schedule.len()
 }
 
 /// After a pass: when `level_frame_loop` has returned, the rest of the frame is `top_loop`'s

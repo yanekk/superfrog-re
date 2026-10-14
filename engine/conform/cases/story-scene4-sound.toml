@@ -1,6 +1,8 @@
 # Power-on with disk 3 through scenes 4 to 6 (T55): draws whose blits hold the CPU through a whole
 # frame, so the original's handler serves two blanks; conformance feeds which frames had one.
-# The effects' ramps keep in step; the draws' ends (DMACON $400) still miss (T53, T54). Slow
-# (about 80 s): not in the test block; `sf-conform scan` it.
+# Run past 6683 (T97): a handler taken on line 300 there has its 8-line wait run on into the next
+# frame, which gets no handler of its own. The effects' ramps keep in step; the draws' ends
+# (DMACON $400) still miss (T53, T54). Slow (about 2 min): not in the test block; `sf-conform
+# scan` it.
 sync = "power-on-disk3"
-frames = 5200
+frames = 6700

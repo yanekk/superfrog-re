@@ -168,11 +168,16 @@ fn stream_start(m: &mut StoryMem, at: u32, out: &mut Vec<PaulaWrite>) {
     wr(out, 0x9a, 0xc000);
 }
 
-/// The vertical blank's sound after the fades: the music's tick and its DMA, the effects, the
-/// timeline (h0+$3929a, $39b3a, $38bfa, $b18c; the handler waits eight lines after the music).
-pub fn tick(m: &mut StoryMem, sd: &SoundData, out: &mut Vec<PaulaWrite>) {
+/// The vertical blank's sound after the fades, up to its eight lines' wait (h0+$38a02): the
+/// music's tick (h0+$3929a).
+pub fn music_tick(m: &mut StoryMem, sd: &SoundData, out: &mut Vec<PaulaWrite>) {
+    session(m, sd, |d, sd| d.music_tick(sd, out));
+}
+
+/// The vertical blank's sound after its wait: the music's DMA, the effects, the timeline
+/// (h0+$39b3a, $38bfa, $b18c). The driver keeps nothing between the two but its variables.
+pub fn after_wait(m: &mut StoryMem, sd: &SoundData, out: &mut Vec<PaulaWrite>) {
     session(m, sd, |d, sd| {
-        d.music_tick(sd, out);
         d.music_dma_tick(sd, out);
         d.sfx_tick(sd, out);
     });

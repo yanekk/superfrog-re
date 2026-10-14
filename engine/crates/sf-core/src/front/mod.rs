@@ -21,7 +21,7 @@ pub(crate) mod attract;
 pub mod blit;
 pub(crate) mod common;
 pub mod data;
-mod ending;
+pub(crate) mod ending;
 pub mod fade;
 mod gameover;
 mod hero;
@@ -144,8 +144,17 @@ pub(crate) enum Routine {
     /// The slot machine (T92) and, below it, the level's tally that called it.
     Slot(crate::slot::Routine),
     SlotOver(crate::slot::SlotOver),
-    /// The slot machine's attract frame drawn on the beam (T93).
+    /// The slot machine's attract frame drawn on the beam (T93), and its lamps or reels (T73).
     SlotDraw(crate::slot::draw::Draw),
+    /// The slot machine's rounds and their parts (T73).
+    SlotRounds(crate::slot::rounds::Rounds),
+    SlotHold(crate::slot::rounds::HoldMenu),
+    SlotMenu(crate::slot::rounds::Menu),
+    SlotSpin(crate::slot::rounds::Spin),
+    SlotFlash(crate::slot::rounds::Flash),
+    SlotAward(crate::slot::rounds::Award),
+    SlotCount(crate::slot::rounds::Count),
+    SlotWork(crate::slot::draw::Work),
 }
 
 impl Routine {
@@ -197,6 +206,14 @@ impl Routine {
             Routine::Slot(r) => r.run(cx),
             Routine::SlotOver(r) => r.run(cx),
             Routine::SlotDraw(r) => r.run(cx),
+            Routine::SlotRounds(r) => r.run(cx),
+            Routine::SlotHold(r) => r.run(cx),
+            Routine::SlotMenu(r) => r.run(cx),
+            Routine::SlotSpin(r) => r.run(cx),
+            Routine::SlotFlash(r) => r.run(cx),
+            Routine::SlotAward(r) => r.run(cx),
+            Routine::SlotCount(r) => r.run(cx),
+            Routine::SlotWork(r) => r.run(cx),
         }
     }
 }
@@ -297,6 +314,8 @@ pub(crate) struct Cx<'a> {
     pub unported: Vec<&'static str>,
     /// [`crate::game::FrameOut::beam_races`]: lines a drawing step wrote near the beam.
     pub races: Vec<(u16, u16)>,
+    /// `slot_machine` returned this frame, giving this (T73).
+    pub slot_outcome: Option<crate::slot::SlotOutcome>,
 }
 
 impl Cx<'_> {
@@ -496,6 +515,8 @@ pub struct Front {
     spren: bool,
     /// Paths not ported that this front end has run into (empty in every conformance case).
     pub unported: Vec<&'static str>,
+    /// What the slot machine gave when it returned (T73).
+    slot_outcome: Option<crate::slot::SlotOutcome>,
 }
 
 /// An unpacking in progress, for the picture: where, what was there, and when it began and ends
@@ -563,6 +584,7 @@ impl Front {
             frog_only: false,
             spren: true,
             unported: Vec::new(),
+            slot_outcome: None,
         }
     }
 
@@ -621,6 +643,7 @@ impl Front {
             frog_only: false,
             spren: true,
             unported: Vec::new(),
+            slot_outcome: None,
         })
     }
 
@@ -663,7 +686,26 @@ impl Front {
             frog_only,
             spren: true,
             unported: Vec::new(),
+            slot_outcome: None,
         }
+    }
+
+    /// The slot machine entered from the level's tally (T73, [`crate::Game::enter_slot`]):
+    /// `slot_machine` on top of the tally's end, the screen blank.
+    pub(crate) fn enter_slot(s: &State, sdr: u8, frog_only: bool) -> Front {
+        let mut f = Front::after_level(
+            s,
+            sdr,
+            Routine::SlotOver(crate::slot::SlotOver),
+            frog_only,
+        );
+        f.stack.push(Frame {
+            routine: Routine::Slot(Default::default()),
+            wait: None,
+            deferred: None,
+        });
+        f.cop1lc = title::BLANK_COPPER;
+        f
     }
 
     /// The rest of a frame the level scene began: the main program from `line` on, after the
@@ -704,6 +746,7 @@ impl Front {
             seed: None,
             unported: Vec::new(),
             races: Vec::new(),
+            slot_outcome: None,
         };
         self.run_main(&mut cx, u16::MAX);
         self.stalled = cx.stall;
@@ -711,6 +754,7 @@ impl Front {
         self.cop1lc = cx.cop1lc;
         self.keyboard = cx.keyboard;
         self.unported.append(&mut cx.unported);
+        self.slot_outcome = self.slot_outcome.or(cx.slot_outcome.take());
         let jobs = std::mem::take(&mut cx.jobs);
         for w in &mut paula {
             if w.vpos == 0 {
@@ -761,6 +805,11 @@ impl Front {
         }
     }
 
+    /// What the slot machine gave, once it has returned (T73).
+    pub(crate) fn slot_outcome(&self) -> Option<crate::slot::SlotOutcome> {
+        self.slot_outcome
+    }
+
     /// The level's loop has been entered again (a restart, T37): the level scene goes on.
     pub(crate) fn in_level_loop(&self) -> bool {
         matches!(self.stack.last().map(|f| &f.routine), Some(Routine::LevelLoop))
@@ -795,6 +844,7 @@ impl Front {
                 seed: self.seed.take(),
                 unported: Vec::new(),
                 races: Vec::new(),
+                slot_outcome: None,
             };
             title::boot(&mut cx);
             self.cop1lc = cx.cop1lc;
@@ -847,6 +897,7 @@ impl Front {
             seed: self.seed,
             unported: Vec::new(),
             races: Vec::new(),
+            slot_outcome: None,
         };
         // Work the main program carried over from the last frame with interrupts off.
         let masked = match self.stack.last() {
@@ -906,6 +957,13 @@ impl Front {
                 Some(vbl::fade_start(vbl_line, &work, cx.s.audio.streaming(), keyboard))
             })
             .flatten();
+        // What the slot screen's handler is about to do that lengthens it (T94).
+        let slot_handler = crate::slot::Handler {
+            fetches_rows: cx.s.audio.fetches_rows(),
+            quiet_tick: cx.s.audio.quiet_tick(),
+            effects: cx.s.audio.sfx_active(),
+            ..Default::default()
+        };
         let palette_due = if level_vbl {
             // The level's own handler (game over runs the level's logic, T34).
             cx.line = gameover::level_vbl(&mut cx, self.frog_only, vbl_line);
@@ -913,13 +971,31 @@ impl Front {
         } else {
             vbl::run(&mut cx)
         };
-        // The interrupt takes about as long wherever it starts.
-        cx.line = match fade_from {
-            // No fade due: the dispatch and the rest of the handler (T100).
-            Some(start) if fading.is_empty() => {
-                cx.line.max(((start + vbl::NO_FADE_TAIL) / BEAM_CYCLES_PER_LINE) as u16)
+        // The interrupt takes about as long wherever it starts; on the slot screen as long as
+        // what it did (T94).
+        cx.line = if cop1lc == crate::slot::SLOT_COPPER && !level_vbl {
+            let handler = &cx.paula[from..];
+            let h = crate::slot::Handler {
+                keyboard: handler
+                    .iter()
+                    .any(|w| w.reg == crate::audio::INTENA && w.value == 0x0008),
+                dmacon_writes: handler
+                    .iter()
+                    .filter(|w| w.reg == crate::audio::DMACON)
+                    .count() as u32,
+                ..slot_handler
+            };
+            // `vbl_line` is 1 for a handler taken on time.
+            cx.line
+                .max(vbl_line.saturating_sub(1) + crate::slot::interrupt_lines(h))
+        } else {
+            match fade_from {
+                // No fade due: the dispatch and the rest of the handler (T100).
+                Some(start) if fading.is_empty() => {
+                    cx.line.max(((start + vbl::NO_FADE_TAIL) / BEAM_CYCLES_PER_LINE) as u16)
+                }
+                _ => cx.line.max(VBL_END_LINE).max(vbl_line + VBL_END_LINE - 9),
             }
-            _ => cx.line.max(VBL_END_LINE).max(vbl_line + VBL_END_LINE - 9),
         };
         let after = window(cx.s, cop1lc);
         if fading.is_empty() {
@@ -1125,6 +1201,7 @@ impl Front {
         self.keyboard = cx.keyboard;
         self.seed = cx.seed;
         self.unported.append(&mut cx.unported);
+        self.slot_outcome = self.slot_outcome.or(cx.slot_outcome.take());
         // In beam order: the copper's writes among the CPU's (lines are approximate for the CPU's:
         // the interrupt's at the top, the main program's where it woke). Positions are not
         // compared (the engine is not cycle-timed), so they are cleared.
@@ -1145,8 +1222,11 @@ impl Front {
             w.vpos -= FRAME_LINES;
         }
         all.extend(next_copper);
-        for w in &mut all {
-            w.vpos = 0;
+        // The slot screen's drawing is timed on the beam (T93, T94): its lines are kept.
+        if cop1lc != crate::slot::SLOT_COPPER {
+            for w in &mut all {
+                w.vpos = 0;
+            }
         }
         FrontOut {
             picture,

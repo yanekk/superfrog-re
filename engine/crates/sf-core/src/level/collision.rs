@@ -595,6 +595,7 @@ fn launcher(c: &mut LevelCtx, mut a2: u32) {
     if let Some(spring) = c.dispatch.launcher {
         spring(c, a2, left);
     }
+    c.spend(crate::level::beam::Cost::FrogSprites);
     crate::frog::anim::place_frog_sprites(c);
 }
 
@@ -612,6 +613,7 @@ fn bounce_pad(c: &mut LevelCtx, a2: u32, m: u16) {
     if let Some(pad) = c.dispatch.bounce_pad {
         pad(c, a2, m);
     }
+    c.spend(crate::level::beam::Cost::FrogSprites);
     crate::frog::anim::place_frog_sprites(c);
 }
 
