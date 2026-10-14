@@ -18,6 +18,9 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-14 | 📌 | T97: `story_dbg SCAN=1` to 9 320 frames reaches engine 9 282 (O ~12 690) before the oracle cap. Misses past 6 683: 7 227–7 824, 8 216–8 217 (a draw's `$0400` after a handler acknowledged on 307), 9 268–9 282. None is a split. |
+| 2026-10-14 | 🐞 | T97, not fixed: in scene 4's long blits (engine 6 680–6 685) the engine's own handler lines are far off (38 against 300, 0 against 211). The split is decided on conformance's fed entry, so normal play misses it. |
+| 2026-10-14 | 📌 | T97: the intro's 8-line wait (h0+$38a02, VHPOSR's low byte) read on line ≥305 ends on line read+8−256 of the next frame, whose blank it acknowledges. To the insert-disk-1 page: O 7 591, 7 984 (inside T56's slip), 10 087. |
 | 2026-10-14 | 🔄 | Owner, T93: took T94's `SpriteDma` and the fade-in's handler length (oracle 775–791: ack ~line 50, all lamps late, not T72's 776–778). T94 keeps keyboard, notes, effects terms and 300 frames; slot handler base still ends line 20, original 17–18. |
 | 2026-10-14 | 🐞 | T96 review: the engine never writes DMACON's DMAEN (original: `$8200` at boot frame 58, loader `$8210`); the intro's `AudioDma` started off and took no slot in normal play. Reproduced by an engine run, fixed with `AudioDma::booted`, unit test locks it. |
 | 2026-10-14 | 📌 | T96 review sweep, not fixed: sf-app's mixer (`main.rs`, `Paula::new`) gets the same DMAEN-less writes, so its channels never fetch even once chip memory is wired; start it with DMAEN on as `AudioDma::booted` does. |
