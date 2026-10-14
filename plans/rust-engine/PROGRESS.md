@@ -110,7 +110,7 @@ done · ⛔ blocked, needs a human.
 | T102 | items-w3-faults | T101; blocks T21 | ✅ | |
 | T105 | w2-1-hang-fruit-life | T85; blocks T21 | ⬜ | |
 | T106 | w1-completions | T42, T86, T101; blocks T18 | ⬜ | |
-| T107 | enemies-w1-2-case | T42; blocks T18, T33, T106 | ⬜ | |
+| T107 | enemies-w1-2-case | T42; blocks T18, T33, T106 | 🔍 | `enemies-w1-2`, 1196 frames, green, no re-sync; test `enemies_w1::w1_2`. Walker stomped; hover, crawler, spiker hurt (4). Deviation: sitter not met, left to T106 (FINDINGS). Crawler not killed (never stompable), reward update not run. Found clr.w data-bus defect (FINDINGS). |
 | T108 | enemies-w1-3-case | T42; blocks T18, T33, T106 | ⬜ | |
 | T109 | enemies-w1-4-case | T42; blocks T18, T33, T106 | ⬜ | |
 | T110 | enemies-w1-activation | T42; blocks T18, T33, T106 | ⬜ | |
@@ -141,7 +141,7 @@ done · ⛔ blocked, needs a human.
 A Notes cell holds what was built or what the review found, the test count, and one line per
 deviation from the task doc. A ✅ task's cell may be cut to one line once the next task has been reviewed.
 
-**Review queue:** *(empty)*
+**Review queue:** T107
 
 ## Blocked on the user
 

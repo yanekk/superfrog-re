@@ -18,6 +18,8 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-15 | 🐞 | T107: an in-level sample stream's end, `clr.w AUD3VOL`, first writes the data bus, not always the prefetch: W1-2 frame 820 (a beam-24 crawler leg) wrote $0000 after audio DMA; the engine writes $33fc. Unfixed; routed around. |
+| 2026-10-15 | 📌 | T107: W1-2's sitter (51,25) is not met: far left, past the top corridor's platform leaps. T106's W1-2 completion meets it collecting the far-left coins. `route` waypoints must be cells the frog can stand in. |
 | 2026-10-14 | 📌 | T56 review: story cases compare Paula writes without their beam, so set-up job timing is checked only where a test asserts a line. Fade set-up INTENA lines and later scenes' mask DMACON lines are unasserted; not fixed. |
 | 2026-10-14 | 📌 | T56 split at pir's context warning: T140 setup-under-music, T141 fade-colour-race, T142 draw-end-order, T143 last-fade-out, T144 intro-full-green (carries T56's done-when; blocks T21, T47, T48). Renumbered from T128–T132 by the owner: those were taken. |
 | 2026-10-14 | 📌 | T56: `story_dbg SCAN=1` skips variable-only frames; `sf-conform scan` counts them. Base had 1 254 `frame_descriptors` frames: `frame_prepare` OR'd where the original adds (descriptors past a scene's table hold code). Fixed. |
