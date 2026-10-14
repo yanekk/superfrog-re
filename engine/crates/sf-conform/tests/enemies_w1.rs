@@ -50,6 +50,9 @@ fn run(name: &str, resyncs: &[u32]) -> Seen {
 const SITTER: u32 = 0x249c2;
 const RUNNER: u32 = 0x24854;
 const SPIKER: u32 = 0x248e2;
+const HOVER: u32 = 0x243b6;
+const WALKER: u32 = 0x2496a;
+const CRAWLER: u32 = 0x247b8;
 const STOMPED: u32 = 0x23bee;
 const REWARD: u32 = 0x23e6c;
 
@@ -61,4 +64,14 @@ fn w1_1() {
         assert!(s.updates.contains(&u), "h0+${u:x} never ran: {:x?}", s.updates);
     }
     assert!(s.hurts >= 2, "hurt {} times", s.hurts);
+}
+
+/// W1-2: a walker stomped; a hover, the crawler and a spiker hurt the frog.
+#[test]
+fn w1_2() {
+    let s = run("enemies-w1-2", &[]);
+    for u in [HOVER, WALKER, CRAWLER, SPIKER, STOMPED] {
+        assert!(s.updates.contains(&u), "h0+${u:x} never ran: {:x?}", s.updates);
+    }
+    assert!(s.hurts >= 3, "hurt {} times", s.hurts);
 }
