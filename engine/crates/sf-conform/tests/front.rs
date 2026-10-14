@@ -159,6 +159,122 @@ fn the_slot_machine_loads_as_the_original_does() {
     );
 }
 
+/// The slot machine's rounds, frame for frame from `slot_machine`'s start (the case `slot-fire`,
+/// T73): the attract loop ended by fire, two rounds paying nothing, the end's wait cut by fire, the
+/// fade out, the music faded and the level's sound put back, to the frame before `slot_machine`
+/// returns. On the next frame it returns, having given nothing.
+#[test]
+fn the_slot_machine_plays_its_rounds_as_the_original_does() {
+    let case = sf_conform::Case::load(&sf_conform::cases_dir().join("slot-fire.toml"))
+        .unwrap_or_else(|e| panic!("{e}"));
+    let (mut scenes, mut last) = (Vec::new(), None);
+    // The draws' DMACON $8400 and INTENA $0010/$8010, on the original's line or one off.
+    let lines = |ws: &[sf_paula::PaulaWrite]| {
+        ws.iter()
+            .filter(|w| {
+                (w.reg == 0x96 && w.value == 0x8400) || (w.reg == 0x9a && w.value & 0x7fff == 0x10)
+            })
+            .map(|w| w.vpos as i32)
+            .collect::<Vec<_>>()
+    };
+    let (mut writes, mut near) = (0, 0);
+    sf_conform::run_hooked(
+        &case,
+        |f, g| {
+            scenes.push(g.scene());
+            if f + 1 == case.frames {
+                last = Some(g.clone());
+            }
+        },
+        |f, ours, theirs| {
+            if f < 40 {
+                return;
+            }
+            let (ours, theirs) = (lines(ours), lines(theirs));
+            assert_eq!(ours.len(), theirs.len(), "frame {f}: {ours:?} {theirs:?}");
+            writes += ours.len();
+            near += ours.iter().zip(&theirs).filter(|(a, b)| (*a - *b).abs() <= 1).count();
+        },
+    )
+    .unwrap_or_else(|d| panic!("{d}"));
+    // Measured (T73): 3 712 of 4 576 within a line.
+    assert!(near >= 3_600, "{near} of {writes} writes within a line of the original's");
+    assert!(
+        scenes
+            .iter()
+            .all(|s| *s == sf_core::Scene::Slot { coins_in: 2 }),
+        "{scenes:?}"
+    );
+    let mut g = last.expect("the last frame");
+    g.step(sf_core::input::FrameInput::NONE);
+    assert_eq!(g.slot_outcome(), None, "not yet returned on the case's last frame");
+    g.step(sf_core::input::FrameInput::NONE);
+    assert_eq!(
+        g.slot_outcome(),
+        Some(sf_core::SlotOutcome::default()),
+        "two rounds that paid nothing"
+    );
+}
+
+/// The slot machine's prizes (T74), frame for frame (the case `slot-hilo-0`): the line 8 $18 0
+/// starts the hi-lo game, eight guesses right climb its rungs to the jackpot, the coin left is
+/// counted as 5 000, then 150 000 and the next level's code, flashed until fire, to the frame
+/// before `slot_machine` returns. On the next frames it returns, having given 155 000.
+#[test]
+fn the_slot_machine_pays_its_jackpot_as_the_original_does() {
+    let case = sf_conform::Case::load(&sf_conform::cases_dir().join("slot-hilo-0.toml"))
+        .unwrap_or_else(|e| panic!("{e}"));
+    let mut last = None;
+    sf_conform::run_with(&case, |f, g| {
+        if f + 1 == case.frames {
+            last = Some(g.clone());
+        }
+    })
+    .unwrap_or_else(|d| panic!("{d}"));
+    let mut g = last.expect("the last frame");
+    g.step(sf_core::input::FrameInput::NONE);
+    assert_eq!(g.slot_outcome(), None, "not yet returned on the case's last frame");
+    g.step(sf_core::input::FrameInput::NONE);
+    let award = sf_core::Award {
+        points: 155_000,
+        lives: 0,
+    };
+    assert_eq!(g.slot_outcome(), Some(sf_core::SlotOutcome { award }));
+}
+
+/// The slot machine entered from a level as the tally enters it (`Game::enter_slot`, T73), played
+/// by fire alone: its rounds run and it returns, its outcome the score it added.
+#[test]
+fn a_slot_machine_entered_from_a_level_returns_its_outcome() {
+    use sf_core::input::{FrameInput, Joy};
+    let display = sf_conform::display_data();
+    let mut g = sf_core::Game::with_display(
+        display,
+        sf_core::Start::Level("W1-1".parse().unwrap()),
+    );
+    let score = g.state().l(sf_core::layout::h0(0x834));
+    g.enter_slot(3);
+    assert_eq!(g.scene(), sf_core::Scene::Slot { coins_in: 3 });
+    let mut frames = 0;
+    while g.slot_outcome().is_none() {
+        assert!(frames < 3_000, "the slot machine never returned");
+        let fire = frames % 80 == 40;
+        g.step(FrameInput::joy(if fire { Joy::FIRE } else { Joy::NONE }));
+        frames += 1;
+    }
+    let o = g.slot_outcome().unwrap();
+    assert_eq!(
+        g.state().l(sf_core::layout::h0(0x834)),
+        score + o.award.points,
+        "{o:?}"
+    );
+    assert!(
+        g.unported().iter().all(|u| u.contains("T21")),
+        "{:?}",
+        g.unported()
+    );
+}
+
 /// The slot machine's attract loop, frame for frame through its fade in and 260 frames of the
 /// lamps' pattern (the case `slot-attract`, T93, T94): the reels and lamps drawn on the beam, the
 /// lamps that race it excused and counted, the pointer hidden by the list's sprite DMA off. From

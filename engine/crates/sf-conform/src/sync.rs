@@ -212,7 +212,13 @@ pub fn pacing(cpu: &CpuRegs, m: &AmigaMemory, writes: &[sf_paula::PaulaWrite]) -
         };
     }
     if mid_pass(cpu, m) {
-        late(pass_phase(cpu, m), pass_step(cpu, m))
+        let phase = pass_phase(cpu, m);
+        let step = if phase == FLIP_PHASE {
+            flip_step(cpu, m)
+        } else {
+            pass_step(cpu, m)
+        };
+        late(phase, step)
     } else {
         Pacing::OnTime
     }
@@ -243,6 +249,27 @@ pub fn pass_phase(cpu: &CpuRegs, m: &AmigaMemory) -> u8 {
     13
 }
 
+/// The pass's call to the buffer flip (h0+$172b4, from h0+$ae0).
+const FLIP_PHASE: u8 = 6;
+
+/// How far the buffer flip had got at the frame's end, as the engine counts its steps
+/// (`sf_core::level::pass::buffer_flip`): 0 before its first write, then one more after each of
+/// `vbl_pass_flag` cleared, `shown_buffer` set to 1, and the flip done (`shown_buffer` 2 set or
+/// its test failed: at the `rts`, or the shared one at h0+$16478 the test branches to).
+pub fn flip_step(cpu: &CpuRegs, m: &AmigaMemory) -> u16 {
+    let pc = if cpu.pc == VBL_HANDLER {
+        long(m, cpu.ssp + 2)
+    } else {
+        cpu.pc
+    };
+    match pc.wrapping_sub(h0(0)) {
+        0x172ba..=0x172c1 => 1,
+        0x172c2..=0x172d3 => 2,
+        0x172d4 | 0x16478 => 3,
+        _ => 0,
+    }
+}
+
 /// Whether the original's frame ended with its main loop in the middle of a level's pass (not
 /// parked in `level_frame_loop`'s wait): its memory is then part way through what the engine does
 /// in one go, a lag the runner reports and re-syncs (DESIGN §2.1; owner, 2026-10-11).
@@ -261,7 +288,8 @@ pub fn mid_pass(cpu: &CpuRegs, m: &AmigaMemory) -> bool {
 /// the engine counts its steps ([`sf_core::level::LevelCtx::step_done`]): the slots
 /// `obj_run_all` has run (one whose update was running counted done), the slots
 /// `obj_build_hitboxes` has looked at, the entries of `build_bob_draw_list`'s three loops, the
-/// halves of `collide_all` (the spud's, the frog's). [`NO_STEP`] in any other call.
+/// halves of `collide_all` (the spud's, the frog's) and the hitbox entries the frog's has looked
+/// at. [`NO_STEP`] in any other call.
 pub fn pass_step(cpu: &CpuRegs, m: &AmigaMemory) -> u16 {
     use sf_core::level::beam::NO_STEP;
     let (pc, sp) = if cpu.pc == VBL_HANDLER {
@@ -290,13 +318,22 @@ pub fn pass_step(cpu: &CpuRegs, m: &AmigaMemory) -> u16 {
         0x19b8e..=0x19b95 => 40,
         0x19b96..=0x19bc0 => 40 + slot(d(0)).saturating_sub(1),
         0xd0cc => 0,
-        0xd0d0 => 1,
-        0xd0d4..=0xd0df => 2,
+        0xd0d0 | 0xd0e0..=0xd125 => 1,
+        0xd126..=0xd1cd => frog_walk_step(cpu.a[6]),
+        0xd1ce | 0xd0d4..=0xd0df => frog_walk_step(hitbox_end(m)),
         _ => {
             // Inside a routine a loop called: the slot whose update runs (`obj_run_all` saved
-            // d0 under the return address), or the half of `collide_all`.
+            // d0 under the return address), the hitbox entry whose touch handler runs (the frog's
+            // walk saved d0-d7/a0-a6 under the return address; `frog_hurt` a0/a5 under that), or
+            // the half of `collide_all`.
             if let Some(a) = ret(0x1b33e) {
                 return slot(word(m, a + 6) as u16) + 1;
+            }
+            if let Some(a) = ret(0xd19a).or_else(|| ret(0xd1c6)) {
+                return frog_walk_step(long(m, a + 4 + 56));
+            }
+            if let Some(a) = ret(0xd1b8) {
+                return frog_walk_step(long(m, a + 12 + 56));
             }
             if ret(0xd0d0).is_some() {
                 return 0;
@@ -307,6 +344,25 @@ pub fn pass_step(cpu: &CpuRegs, m: &AmigaMemory) -> u16 {
             NO_STEP
         }
     }
+}
+
+/// `hitboxes` (h0+$d350): the pass's hitbox list, 12 bytes an entry, ended by a negative word.
+const HITBOXES: u32 = h0(0xd350);
+
+/// The step of `collide_all`'s frog half with the walk's pointer at `a6` (h0+$d126 on): 2 once
+/// the frog's box is taken, then one more for each entry looked at (the one whose test or touch
+/// handler is running counted done), as `sf_core::level::objects::frog_touches` counts them.
+fn frog_walk_step(a6: u32) -> u16 {
+    2 + (a6.wrapping_sub(HITBOXES) / 12) as u16
+}
+
+/// Where the hitbox list ends (its negative word): the frog's walk all looked at.
+fn hitbox_end(m: &AmigaMemory) -> u32 {
+    let mut at = HITBOXES;
+    while word(m, at) & 0x8000 == 0 {
+        at += 12;
+    }
+    at
 }
 
 /// Where the main program was at the end of a frame: its PC, then each long on its stack that is
@@ -1015,6 +1071,54 @@ mod tests {
         assert_eq!(handlers(true, &[], &[], &[write(0xa6, 10, 0)]), (1, false));
         // No interrupt at all: the blank merged into the next.
         assert_eq!(handlers(false, &[], &[], &[]), (0, false));
+    }
+
+    /// `collide_all`'s frog half counts 2 once the box is taken, then each hitbox entry looked
+    /// at (the walk's a6), in the walk, in a touch handler it called (a6 saved under the return
+    /// address) and in `frog_hurt` (a0/a5 saved under that); past the walk, all of them.
+    #[test]
+    fn the_frog_walks_step_counts_the_hitbox_entries_looked_at() {
+        let mut m = AmigaMemory {
+            chip: vec![0; 0x1000],
+            slow: vec![0; 0x80000],
+        };
+        let mut poke_l = |a: u32, v: u32| {
+            let at = (a - sf_core::layout::SLOW_BASE) as usize;
+            m.slow[at..at + 4].copy_from_slice(&v.to_be_bytes());
+        };
+        // Three entries, then the list's end.
+        poke_l(HITBOXES + 36, 0x8000_0000);
+        let sp = h0(0x30000);
+        // A touch handler's return into the walk, the walk's registers saved above it (a6 last),
+        // looking at the second entry; `frog_hurt`'s, a0/a5 between, at the third.
+        poke_l(sp, h0(0xd1c6));
+        poke_l(sp + 4 + 56, HITBOXES + 24);
+        let hurt = sp + 0x100;
+        poke_l(hurt, h0(0xd1b8));
+        poke_l(hurt + 12 + 56, HITBOXES + 36);
+        let step = |pc: u32, a6: u32, a7: u32| {
+            let mut a = [0; 8];
+            a[6] = a6;
+            a[7] = a7;
+            let cpu = CpuRegs {
+                d: [0; 8],
+                a,
+                pc: h0(pc),
+                sr: 0,
+                usp: 0,
+                ssp: 0,
+            };
+            pass_step(&cpu, &m)
+        };
+        assert_eq!(step(0xd0cc, 0, sp), 0);
+        assert_eq!(step(0xd0d0, 0, sp), 1);
+        assert_eq!(step(0xd110, 0, sp), 1);
+        assert_eq!(step(0xd126, HITBOXES, sp), 2);
+        assert_eq!(step(0xd146, HITBOXES + 12, sp), 3);
+        assert_eq!(step(0x23f86, 0, sp), 4);
+        assert_eq!(step(0x1c5bc, 0, hurt), 5);
+        assert_eq!(step(0xd1ce, HITBOXES + 36, sp), 5);
+        assert_eq!(step(0xd0d4, 0, sp + 0x200), 5);
     }
 
     fn id(s: &str) -> LevelId {

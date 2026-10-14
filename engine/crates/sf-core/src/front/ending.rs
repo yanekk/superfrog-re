@@ -100,7 +100,7 @@ impl CpuWork {
     }
 }
 
-fn work(cycles: u32, inside: &[u32], writes: Vec<(u32, u32)>) -> Yield {
+pub(crate) fn work(cycles: u32, inside: &[u32], writes: Vec<(u32, u32)>) -> Yield {
     call(Routine::CpuWork(CpuWork::new(cycles, inside, writes)))
 }
 

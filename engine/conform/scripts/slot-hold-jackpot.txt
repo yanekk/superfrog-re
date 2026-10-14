@@ -1,0 +1,22 @@
+# The slot machine (T74) from `start-w1-1-blink1`: the first spin pays nothing, the second allows
+# holds; reel 2 held, it stops on $18 $18 $18: the jackpot by line, every lamp flashed, no coin
+# left, 150 000 and the next level's code, flashed until fire. The attract's fire is on frame 41
+# (the original's 799), not 40: at 40 the sixth lamp of a jackpot flash starts on the other side
+# of the frame's interrupt from the engine's (FINDINGS, T74). Planned on the engine
+# (examples/slot_plan.rs, PLAN_FIRE=41); frames are the original's.
+799: F
+800: -
+808: F
+811: -
+1073: R
+1076: -
+1080: R
+1083: -
+1087: F
+1090: -
+1097: L
+1100: -
+1104: F
+1107: -
+1492: F
+1502: -

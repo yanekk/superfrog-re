@@ -4,9 +4,8 @@
 # `level_exit_fade` fades the palette out and closes the window, `shooter_mode` is cleared
 # (h0+$7494) and `game_over_check` lets it go on. Ends on frame 8126; `frog_cases::bonus_end_wb_1`
 # checks frame 8127 is the bonus level's end picture (h0+$4326, T21's).
-#
-# Re-synced twice, at 4284 and 7814: a frame the original ends inside phase 6 before
-# `buffer_flip`, which the engine cuts after the flip (T101). The test pins those two frames.
+# Frames 4283 and 7813 end inside phase 6, before `buffer_flip`'s writes (T101).
 sync = { level = "WB-1", lives = 60 }
 script = "bonus-fire"
 frames = 8127
+resync = false

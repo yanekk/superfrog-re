@@ -105,6 +105,15 @@ pub fn run_observing(
     run_inner(case, |_, _| {}, &mut after_step, None)
 }
 
+/// [`run`] with both hooks: `before_step(frame, game)` and `after_step(frame, ours, theirs)`.
+pub fn run_hooked(
+    case: &Case,
+    before_step: impl FnMut(u32, &mut Game),
+    mut after_step: impl FnMut(u32, &[sf_paula::PaulaWrite], &[sf_paula::PaulaWrite]),
+) -> Result<Outcome, Divergence> {
+    run_inner(case, before_step, &mut after_step, None)
+}
+
 /// [`run`], going on past each divergence: every frame that differs, in order (for finding what
 /// is left in a long case; the engine is not re-synced, so later ones may follow from earlier).
 pub fn scan(case: &Case) -> Vec<Divergence> {

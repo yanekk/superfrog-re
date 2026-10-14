@@ -48,6 +48,12 @@ const PATTERN: u32 = 1_426;
 const LAMPS_REGS: u32 = 514;
 const LAMP_GAP: u32 = 512;
 const LAMPS_END: u32 = 398;
+/// A lamp's set-up takes longer when the lamp is off (h0+$649e's branch falls through to a second
+/// `move.w`), and past the picture's end, before the frame's interrupt (T74: lamps drawn alone
+/// from line 299 start 5 colour clocks a lamp later than [`LAMP_GAP`] has them; the off lamps of
+/// `slot-hilo-8`'s payout flash put the sixth past the interrupt, as the original's).
+const LAMP_OFF: u32 = 6;
+const LAMP_BLANK: u32 = 10;
 /// A blit due on this line or later waits for the frame's interrupt (measured: the eighth reel
 /// blit, due at 312.61, starts after it), and goes on this many cycles into the line the
 /// interrupt ends on: reels (the CPU back from the handler, out of the blitter wait) and lamps.
@@ -59,10 +65,23 @@ const LAMP_RESUME: u32 = 700;
 const CPU_LOST: u32 = 14;
 const BLITTER_LOST: u32 = 19;
 
+/// What a [`Draw`] draws.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash)]
+pub(crate) enum Part {
+    /// The attract frame (h0+$4d2a): the reels at 0, 9, $18, the pattern's row and the lamps.
+    #[default]
+    Attract,
+    /// `slot_draw_lamps` alone (T73), `lead` cycles from the call to its INTENA `$0010`.
+    Lamps { lead: u32 },
+    /// `slot_draw_reels` alone (T73), `lead` cycles from the call to the first reel's INTENA.
+    Reels { lead: u32 },
+}
+
 /// The attract frame's drawing: 18 reel blits (steps 0–17, a reel's six planes each), then the
-/// pattern's row and the 26 lamps (steps 18–43).
+/// pattern's row and the 26 lamps (steps 18–43); or the lamps or the reels alone ([`Part`]).
 #[derive(Debug, Clone, Default, PartialEq, Eq, Hash)]
 pub(crate) struct Draw {
+    part: Part,
     step: u8,
     /// Where the CPU is: cycles since this frame's start.
     t: u32,
@@ -72,6 +91,18 @@ pub(crate) struct Draw {
 }
 
 impl Draw {
+    pub(crate) fn new(part: Part) -> Draw {
+        Draw {
+            part,
+            step: if matches!(part, Part::Lamps { .. }) {
+                18
+            } else {
+                0
+            },
+            ..Draw::default()
+        }
+    }
+
     pub(crate) fn run(&mut self, cx: &mut Cx) -> Yield {
         let line_start = cx.line as u32 * LINE;
         let (mut t, set_up) = match self.resume.take() {
@@ -85,18 +116,18 @@ impl Draw {
             let (reel, plane) = (k / 6, k % 6);
             if set_up {
                 if plane == 0 {
-                    if reel == 0 {
-                        // h0+$653a: the attract frame's reels.
-                        for (r, v) in [0, 9, 0x18].into_iter().enumerate() {
-                            cx.s.set_w(REELS + 2 * r as u32, v);
+                    let lead = match (reel, self.part) {
+                        (0, Part::Reels { lead }) => lead,
+                        (0, _) => {
+                            // h0+$653a: the attract frame's reels.
+                            for (r, v) in [0, 9, 0x18].into_iter().enumerate() {
+                                cx.s.set_w(REELS + 2 * r as u32, v);
+                            }
+                            REELS_START
                         }
-                    }
-                    t = spend(
-                        &fetch,
-                        t,
-                        if reel == 0 { REELS_START } else { REEL_LOOKUP },
-                        CPU_LOST,
-                    );
+                        _ => REEL_LOOKUP,
+                    };
+                    t = spend(&fetch, t, lead, CPU_LOST);
                     write_at(cx, t, crate::audio::INTENA, 0x0010);
                     write_at(cx, t, crate::audio::DMACON, 0x8400);
                     t = spend(&fetch, t, REEL_REGS, CPU_LOST);
@@ -109,13 +140,19 @@ impl Draw {
             let lamp = k - 18;
             if set_up {
                 if lamp == 0 {
-                    attract_row(cx.s, &|a| cx.data.h0_w(a - at(0)));
-                    t = spend(&fetch, t, PATTERN, CPU_LOST);
+                    let lead = match self.part {
+                        Part::Lamps { lead } => lead,
+                        _ => {
+                            attract_row(cx.s, &|a| cx.data.h0_w(a - at(0)));
+                            PATTERN
+                        }
+                    };
+                    t = spend(&fetch, t, lead, CPU_LOST);
                     write_at(cx, t, crate::audio::INTENA, 0x0010);
                     write_at(cx, t, crate::audio::DMACON, 0x8400);
-                    t = spend(&fetch, t, LAMPS_REGS, CPU_LOST);
+                    t = spend(&fetch, t, LAMPS_REGS + lamp_extra(cx, &fetch, t, lamp), CPU_LOST);
                 } else {
-                    t = spend(&fetch, t, LAMP_GAP, CPU_LOST);
+                    t = spend(&fetch, t, LAMP_GAP + lamp_extra(cx, &fetch, t, lamp), CPU_LOST);
                 }
             }
             lamp_blit(cx, lamp)
@@ -157,7 +194,11 @@ impl Draw {
         self.t = t;
         cx.line = (t / LINE) as u16;
         self.step += 1;
-        if self.step as u32 == 18 + LAMP_COUNT {
+        let last = match self.part {
+            Part::Reels { .. } => 18,
+            _ => 18 + LAMP_COUNT,
+        };
+        if self.step as u32 == last {
             return Yield::Return;
         }
         Yield::Busy(cx.line as u32)
@@ -171,12 +212,63 @@ impl Draw {
     }
 }
 
+/// What lamp `k`'s set-up from `t` takes past [`LAMP_GAP`]: [`LAMP_OFF`] and [`LAMP_BLANK`].
+fn lamp_extra(cx: &Cx, fetch: &Fetch, t: u32, k: u32) -> u32 {
+    let off = if cx.s.w(LAMPS + 8 * k) == 0 { LAMP_OFF } else { 0 };
+    let line = (t / LINE % FRAME_LINES as u32) as u16;
+    if fetch.lines().contains(&line) || line < crate::front::PICTURE_END {
+        0
+    } else {
+        off + LAMP_BLANK
+    }
+}
+
 /// A Paula register written by the CPU at `t`.
 fn write_at(cx: &mut Cx, t: u32, reg: u16, value: u16) {
     let line = cx.line;
     cx.line = (t / LINE) as u16;
     cx.wr(reg, value);
     cx.line = line;
+}
+
+/// The CPU's own work on the beam (T73: `slot_digits`' byte copies), `left` cycles of it, from
+/// where the CPU is: through the frame's end and the interrupt when it runs past it.
+#[derive(Debug, Clone, Default, PartialEq, Eq, Hash)]
+pub(crate) struct Work {
+    pub(crate) left: u32,
+}
+
+impl Work {
+    pub(crate) fn run(&mut self, cx: &mut Cx) -> Yield {
+        let fetch = cx.fetch;
+        let t = cx.line as u32 * LINE;
+        let end = spend(&fetch, t, self.left, CPU_LOST);
+        let frame = FRAME_LINES as u32 * LINE;
+        if end >= frame {
+            self.left -= done(&fetch, t, frame, CPU_LOST);
+            cx.line = FRAME_LINES;
+            return Yield::Interrupt;
+        }
+        cx.line = (end / LINE) as u16;
+        Yield::Return
+    }
+}
+
+/// The work [`spend`] gets done between `t` and `until`.
+fn done(fetch: &Fetch, t: u32, until: u32, lost: u32) -> u32 {
+    let taken = (fetch.planes() as u32 * fetch.words() as u32 * lost / 10).min(LINE - 1);
+    let lines = fetch.lines();
+    (t / LINE..until.div_ceil(LINE))
+        .map(|l| {
+            let (from, to) = ((l * LINE).max(t), ((l + 1) * LINE).min(until));
+            let free = if lines.contains(&((l % FRAME_LINES as u32) as u16)) {
+                LINE - taken
+            } else {
+                LINE
+            };
+            (to - from) * free / LINE
+        })
+        .sum()
 }
 
 /// `cycles` of work from `t` (CPU cycles since the frame's start), a line the display fetches
@@ -284,11 +376,11 @@ pub(crate) fn attract_row(s: &mut State, table: &dyn Fn(u32) -> u16) {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::collections::HashMap;
+    use std::collections::BTreeMap;
 
     /// Patterns of two rows each (lamp `k` of row `r` reads `$100 * r + k`), ended by `$ff80`.
-    fn patterns() -> HashMap<u32, u16> {
-        let mut m = HashMap::new();
+    fn patterns() -> BTreeMap<u32, u16> {
+        let mut m = BTreeMap::new();
         for (base, tag) in [(ATTRACT_FIRST, 0x1000), (ATTRACT_LATER, 0x2000)] {
             for r in 0..2 {
                 for k in 0..LAMP_COUNT {

@@ -1,6 +1,6 @@
 # W1-1 with world 1's enemies live (T42): a sitter stomped into a reward, the runner and a spiker
 # hurting the frog; the hovers, watchers and crawler stand too far along (T106's completion meets
-# them). Re-syncs after lags at 372 and 433 (T101's class) are pinned in `enemies_w1::w1_1`.
+# them). A re-sync after a lag at 372 (a play-field buffer: T121's class) is pinned in `enemies_w1::w1_1`.
 sync = { level = "W1-1" }
 script = "enemies-w1-1"
 frames = 700

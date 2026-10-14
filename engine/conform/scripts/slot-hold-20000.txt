@@ -1,0 +1,17 @@
+# The slot machine (T74) from `start-w1-1-blink1`: the first spin pays nothing, the second allows
+# holds; reel 1 held, it stops on 8 8 $18: 20 000, collected. Planned on the engine
+# (examples/slot_plan.rs); frames are the original's.
+798: F
+799: -
+807: F
+810: -
+1072: R
+1075: -
+1079: F
+1082: -
+1089: L
+1092: -
+1096: F
+1099: -
+1412: F
+1415: -
