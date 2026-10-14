@@ -18,6 +18,7 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-14 | 🔄 | Owner, T102: added T128 w3-4-sprite-race (T127; blocks T113). W3-4 frame 194 (T113's wait on T102) is still red: the frog's sprites cut, `place_frog_sprites` across line $20; re-run after T127, close if green. |
 | 2026-10-14 | 📌 | T102, for T121: its three pinned re-syncs are gone (the drawer's flag wait); `items-fruit-w2-2` and `enemies-w2-2` still `resync = true` with empty pins. Whether the drawer still needs per-bob cut steps is open. |
 | 2026-10-14 | 📌 | T102: `bob_draw` waits for `vbl_pass_flag` (h0+$1918e); a late pass whose last pass flipped since the blank waits out its frame (`LevelCtx::wait_blank`). Cleared pins: `items-fruit-w2-2` 311, `enemies-w2-2` 560, `enemies-w5-1` 551, `items-fruit-w4-1` 206. |
 | 2026-10-14 | 📌 | T102: `collide_all`'s frog walk (h0+$d0e0) takes the frog's box once; a frame ending part way leaves the rest testing that box against post-blank state. Steps: 2 once taken, +1 per hitbox entry; sync reads the walk's a6. |
