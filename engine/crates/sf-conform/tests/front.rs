@@ -171,6 +171,14 @@ fn the_slot_machine_attract_loop_draws_as_the_original_does() {
         !out.raced.is_empty(),
         "the lamps race the beam on some frames"
     );
+    // The excuse is no wider than measured (T93 review: lamp and cut timing off by a little more
+    // excuses 13 frames and stays green).
+    assert!(
+        out.raced.len() <= 9,
+        "beam races excused at {} frames: {:?}",
+        out.raced.len(),
+        out.raced
+    );
 }
 
 /// The port of the game's ANIM player draws every frame of both files as T08's decoder does: the
