@@ -18,6 +18,10 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-14 | 🔄 | Owner, T102: added T128 w3-4-sprite-race (T127; blocks T113). W3-4 frame 194 (T113's wait on T102) is still red: the frog's sprites cut, `place_frog_sprites` across line $20; re-run after T127, close if green. |
+| 2026-10-14 | 📌 | T102, for T121: its three pinned re-syncs are gone (the drawer's flag wait); `items-fruit-w2-2` and `enemies-w2-2` still `resync = true` with empty pins. Whether the drawer still needs per-bob cut steps is open. |
+| 2026-10-14 | 📌 | T102: `bob_draw` waits for `vbl_pass_flag` (h0+$1918e); a late pass whose last pass flipped since the blank waits out its frame (`LevelCtx::wait_blank`). Cleared pins: `items-fruit-w2-2` 311, `enemies-w2-2` 560, `enemies-w5-1` 551, `items-fruit-w4-1` 206. |
+| 2026-10-14 | 📌 | T102: `collide_all`'s frog walk (h0+$d0e0) takes the frog's box once; a frame ending part way leaves the rest testing that box against post-blank state. Steps: 2 once taken, +1 per hitbox entry; sync reads the walk's a6. |
 | 2026-10-14 | 🐞 | T101 review sweep, open: `sample_play` (h0+$148c6..$14910) runs with interrupts off and no raster wait; `LevelCtx::sample` holds no vertical blank across it as `sfx` now does. Untested whether a frame ends there. |
 | 2026-10-14 | 🐞 | T101 review sweep, open: `music_start` (h0+$13130..$1313a) disables interrupts briefly; the engine holds no vertical blank across it. Untested whether a frame ends there. |
 | 2026-10-14 | 🐞 | T101 review sweep, open: `music_stop` (h0+$132a0) disables interrupts; the engine holds no vertical blank across it. Untested whether a frame ends there. |
@@ -35,7 +39,6 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 | 2026-10-14 | 🔄 | Owner, T86 review: added T127 restore-sprite-wait (T101; blocks T21). With T43's W2 enemies, the sprite wait's calls made `items-switch-w2-1` and `enemies-w2-1` red at 442 (engine 0.2 line late); calls left out, `sprite_wait` and its test kept.
 | 2026-10-14 | 📌 | T86 review: the launcher case is held by the launcher's `FrogSprites` cost (tick on line $1e/$1f, past the copper's sprite moves), not the wait: a no-op `sprite_wait` stays green. `sprite_wait` is locked by a `frog_routines` test; its calls are T127's. |
 | 2026-10-14 | 🐞 | T86 review, open: the bounce pad's new `FrogSprites` charge (the original's call at $ea14/$ea6a) is tested by nothing: `items-pad-w1-1` re-syncs at 321 and 790 with it or without; T83 recorded 402/786. T101's case. |
-| 2026-10-14 | 📌 | T86 review: the shield is taken only in `items-shield-w3-1`, red, so no green case takes it yet; T102 goal 4 carries it. |
 | 2026-10-14 | 📌 | T86 for T106: the launcher fault was the frog's pose on the throw frame: the tick reached the sprite pointers past the copper's moves. Fixed by the launcher/pad `FrogSprites` cost; W1-1 frame 2256 should now pass. |
 | 2026-10-14 | 🐞 | Not T86's, open: `level_entry` red on `pir/rust-engine` before T86: every level's `slot_copper` original `$140f440`, engine `$1400000`. |
 | 2026-10-14 | 📌 | T86: no green case takes the extra life or the 20 000 fruit ($f008), both T105's; handlers $efc2–$efec are on no W1–W6 map. Planning: frog `+$02` is the feet; `examples/plan`'s `frog()` reads 42 px low. |
@@ -43,7 +46,7 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 | 2026-10-14 | 📌 | T94: the slot handler's acknowledge moves with the music: 1.2 lines later when it reads rows, 0.8 earlier on a tick stepping no channel. `slot::interrupt_lines` lands 256 of 260 on their line (frames 40–300). |
 | 2026-10-14 | 🔄 | Owner, T39: W5-2, W5-3, W5-4 frame cases split to T123–T125 and the W5 completions to T126 (after T101, T121 and the cases); each blocks T18. |
 | 2026-10-14 | 🐞 | T39, open, no task: `enemies-w5-1` frame 595 (on time, also with enemies frozen): the engine leaves out the frog's hardware sprites, every variable equal. That frame's picture is excluded. |
-| 2026-10-14 | 📌 | T39: W5-1's re-sync at 979 is `panel_bitmap` after a lag, also with enemies frozen; pinned beside T121's play-field one at 551 (`enemies_w5_cases.rs` accepts both). |
+| 2026-10-14 | 📌 | T39: W5-1's re-sync at 979 is `panel_bitmap` after a lag, also with enemies frozen; pinned in `enemies_w5_cases.rs`. |
 | 2026-10-14 | 📌 | T39: docs/09's "6 shared with W2" for W5 is 4 (mace 63/64, darts 53/54); marker 24 is W3's flow (98), marker 15 W4's scenery (32). Template 85, the shooters' shot, spawns from an object. |
 | 2026-10-14 | 🔄 | Owner, T93: took T94's `SpriteDma` and the fade-in's handler length (oracle 775–791: ack ~line 50, all lamps late, not T72's 776–778). T94 keeps keyboard, notes, effects terms and 300 frames; slot handler base still ends line 20, original 17–18. |
 | 2026-10-14 | 🐞 | T96 review: the engine never writes DMACON's DMAEN (original: `$8200` at boot frame 58, loader `$8210`); the intro's `AudioDma` started off and took no slot in normal play. Reproduced by an engine run, fixed with `AudioDma::booted`, unit test locks it. |
@@ -55,7 +58,6 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 | 2026-10-14 | 📌 | T43 merge sweep, not fixed: h0+$24ef6 (`scenery_stand`) is ported twice, `w2/backdrop.rs` `still` and `w4/scenery.rs`; dispatch keeps the last registered. Keep one copy. |
 | 2026-10-14 | 📌 | T43 merge sweep, not fixed: h0+$25990 (`swooper_update`) is ported twice, `w2/flyer.rs` `flyer_update` and `w4/swooper.rs`; dispatch keeps the last registered. Keep one copy. |
 | 2026-10-14 | 🐞 | T43 review sweep, not fixed: `enemies_w1_routines.rs:297` draws the marker-search distance uniformly over `1..=$a0`, so `w1/mod.rs:129`'s `$98` bound is likely never hit at its edge (T43's same generator let a `$97` mutant pass). |
-| 2026-10-14 | 📌 | T43: pinned re-syncs (T121's: the original's pass cut inside the bob drawer), all `playfield_buffer_0`: `items-fruit-w2-2` 311 (`frog_cases`), `enemies-w2-2` 560 (`enemies_w2_cases`). |
 | 2026-10-14 | 🔄 | Owner, T43: added T121 bob-draw-cut (T101; blocks T21), T122 w2-completions (T43, T101, T121; blocks T18), and on request T120 conform-no-silent-pass (T05, T36; blocks T21). |
 | 2026-10-14 | 🐞 | T43, open: `enemies-w2-3` diverges at 408, every frame on time: the engine's bob-drawer DMACON `$8400`/`$0400` pair lands a frame early with many background bobs (ledges). Beam costs need refitting (`examples/fit`); case cut to 407. |
 | 2026-10-14 | 📌 | T43: marker 17's stub writes the mace ball's slot to `$64` (level 1 interrupt vector) when a link finds no slot (a0 = 0). The engine skips it; the routine test never fills the table there. |

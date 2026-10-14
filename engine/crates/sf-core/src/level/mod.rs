@@ -346,6 +346,13 @@ impl LevelCtx<'_> {
         self.interrupt_due();
     }
 
+    /// The pass's loop has got to step `step` ([`LevelCtx::step_done`], for a loop that counts
+    /// its steps itself): the original's frame may end here.
+    pub fn walk_step(&mut self, step: u16) {
+        self.pass_step = step;
+        self.interrupt_due();
+    }
+
     /// The CPU does work of kind `k` here (see [`beam`]).
     pub fn spend(&mut self, k: beam::Cost) {
         self.spend_n(k, 1);
@@ -635,6 +642,29 @@ impl LevelCtx<'_> {
         if v.wrapping_sub(0x1d) as i8 >= 0 && (v.wrapping_sub(0x22) as i8) < 0 {
             self.wait_lines(0x22 - v as u16);
         }
+    }
+
+    /// In the main program's pass, the CPU waits for the next vertical blank (a flag it sets):
+    /// the frame ends here. Not in a frame the original ended on time (it never waited there),
+    /// nor once the step's frame has ended.
+    pub fn wait_blank(&mut self) {
+        let Some(f) = self.frames.as_ref() else {
+            return;
+        };
+        let on_time = matches!(f.current(), Some((true, None)));
+        if !f.in_pass || f.in_vbl || f.done || f.past_end || on_time {
+            return;
+        }
+        self.stamp();
+        let lines = beam::FRAME_LINES.saturating_sub(self.clock.line);
+        self.tick(beam::Tick::Wait(lines));
+        if self.clock.line < beam::FRAME_LINES {
+            self.clock = beam::Clock {
+                line: beam::FRAME_LINES,
+                into: 0,
+            };
+        }
+        self.frame_end();
     }
 
     /// The CPU waits until the beam has passed `n` more lines (a raster wait).

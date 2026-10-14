@@ -372,12 +372,23 @@ pub fn obj_build_hitboxes(c: &mut LevelCtx) {
 /// (an entry is passed over when it ends left of or starts right of the box, and likewise down):
 /// each entry's slot, in order.
 pub fn overlapping(b: &Bus, x1: u16, x2: u16, y1: u16, y2: u16) -> Vec<u32> {
+    overlapping_at(b, x1, x2, y1, y2)
+        .into_iter()
+        .map(|(_, slot)| slot)
+        .collect()
+}
+
+/// [`overlapping`], each slot with how many entries the walk has looked at once it has (its own
+/// counted).
+fn overlapping_at(b: &Bus, x1: u16, x2: u16, y1: u16, y2: u16) -> Vec<(u16, u32)> {
     let mut hits = Vec::new();
     let mut at = HITBOXES;
+    let mut k = 0u16;
     while n_clear(b.w(at)) {
         let (ex1, ex2, ey1, ey2) = (b.w(at), b.w(at + 2), b.w(at + 4), b.w(at + 6));
         let slot = b.l(at + 8);
         at += 12;
+        k += 1;
         if !n_clear(ex2.wrapping_sub(x1))
             || n_clear(ex1.wrapping_sub(x2))
             || !n_clear(ey2.wrapping_sub(y1))
@@ -385,9 +396,18 @@ pub fn overlapping(b: &Bus, x1: u16, x2: u16, y1: u16, y2: u16) -> Vec<u32> {
         {
             continue;
         }
-        hits.push(slot);
+        hits.push((k, slot));
     }
     hits
+}
+
+/// The entries in the hitbox list.
+fn hitbox_entries(b: &Bus) -> u16 {
+    let mut n = 0;
+    while n_clear(b.w(HITBOXES + 12 * n as u32)) {
+        n += 1;
+    }
+    n
 }
 
 /// `touch_spud_damage` (h0+$2360e): the touch handler the spud passes over.
@@ -401,12 +421,7 @@ const OPT_GAME_MODE: u32 = h0(0x9e6);
 /// platform until an object says otherwise), then in shooter mode the frog's shots. The hitbox
 /// list is the one this pass built; a handler that frees a slot does not change it.
 pub fn collide_all(c: &mut LevelCtx) {
-    let mut entries = 0;
-    let mut at = HITBOXES;
-    while n_clear(c.bus.w(at)) {
-        entries += 1;
-        at += 12;
-    }
+    let entries = hitbox_entries(&c.bus) as u32;
     c.spend(Cost::Collide);
     c.spend_n(Cost::CollideEntry, 2 * entries);
     spud_touches(c);
@@ -440,9 +455,16 @@ fn spud_touches(c: &mut LevelCtx) {
 /// its feet above the object's top) bounces the frog and runs the touch handler; a passive one's
 /// handler runs on any contact; any other with contact (`+$1c` not negative) hurts the frog
 /// (`frog_hurt`) unless it is hurt already.
+///
+/// The box is taken once, as the walk begins; the frame may end part way through the walk
+/// ([`LevelCtx::walk_step`]: 2 once the box is taken, one more for each entry looked at), the
+/// rest of it then testing the box as it was against the frog and objects as the vertical blank
+/// left them.
 fn frog_touches(c: &mut LevelCtx) {
+    let entries = hitbox_entries(&c.bus);
     let b = &mut c.bus;
     if b.w(SPRITES_HIDDEN) != 0 {
+        c.walk_step(2 + entries);
         return;
     }
     b.set_w(FROG + f::ON_PLATFORM, 0);
@@ -452,7 +474,10 @@ fn frog_touches(c: &mut LevelCtx) {
     if b.w(FROG + f::CROUCH) != 0 {
         y1 = y1.wrapping_add(0xb);
     }
-    for slot in overlapping(b, x1, x2, y1, y2) {
+    let hits = overlapping_at(b, x1, x2, y1, y2);
+    c.walk_step(2);
+    for (k, slot) in hits {
+        c.walk_step(1 + k);
         let b = &mut c.bus;
         let hurt = b.w(FROG + f::HURT) != 0;
         if b.w(slot + 0x2e) != 0
@@ -464,18 +489,15 @@ fn frog_touches(c: &mut LevelCtx) {
             b.set_w(FROG + f::VY, vy);
             let touch = b.l(slot + 0x10);
             crate::level::call(c, touch, slot, 0);
-            continue;
-        }
-        if b.w(slot + 0x2e) == 0 && b.w(slot + 0x30) != 0 {
+        } else if b.w(slot + 0x2e) == 0 && b.w(slot + 0x30) != 0 {
             let touch = b.l(slot + 0x10);
             crate::level::call(c, touch, slot, 0);
-            continue;
+        } else if b.w(slot + 0x30) == 0 && n_clear(b.w(slot + 0x1c)) && !hurt {
+            crate::level::death::frog_hurt(c, slot);
         }
-        if b.w(slot + 0x30) != 0 || !n_clear(b.w(slot + 0x1c)) || hurt {
-            continue;
-        }
-        crate::level::death::frog_hurt(c, slot);
+        c.walk_step(2 + k);
     }
+    c.walk_step(2 + entries);
 }
 
 /// `build_bob_draw_list` (h0+$19b42): the spud, the slots' bobs (those in front first), then
@@ -512,6 +534,8 @@ pub fn build_bob_draw_list(c: &mut LevelCtx) {
 }
 
 /// The bob drawer's variables (h0+$18bca..$18be4).
+/// `vbl_pass_flag` (h0+$9da): set by the vertical blank, cleared by the buffer flip.
+const PASS_FLAG: u32 = h0(0x9da);
 const BD_CAMERA_X: u32 = h0(0x18bca);
 const BD_CAMERA_Y: u32 = h0(0x18bce);
 /// The camera's low words, as the drawer reads them.
@@ -676,7 +700,12 @@ pub fn bob_draw(c: &mut LevelCtx) {
     let pushed = 0x130u16.wrapping_sub(0x130u16.wrapping_sub(seam)) & 0xfff0;
     b.set_w(BD_CLEAN_TOP, (b.w(BD_TOP) & 0xfff0).wrapping_add(0x10));
     b.set_w(BD_CLEAN_BOTTOM, b.w(BD_BOTTOM));
-    // (h0+$1918e: the drawer waits for the vertical blank's flag, which a pass on time finds set.)
+    // h0+$1918e: the drawer waits for the vertical blank's flag. A pass on time finds it set; a
+    // late one whose last pass flipped since the last blank waits out the frame.
+    if b.w(PASS_FLAG) == 0 {
+        c.wait_blank();
+    }
+    let b = &mut c.bus;
     screen_positions(b);
     b.set_w(BD_SEAM, 0);
     // h0+$19216: the column, and which buffer is the back one.

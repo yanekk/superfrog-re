@@ -116,10 +116,11 @@ fn enemies_w2_3() {
 }
 
 /// W2-2: down the drop and past the dart, which comes out of hiding and flies; the
-/// bouncer, the scenery. One re-sync (T121's), pinned.
+/// bouncer, the scenery. No re-sync: its one at 560 was the bob drawer's wait for the vertical
+/// blank's flag (T102).
 #[test]
 fn enemies_w2_2() {
-    let seen = run("enemies-w2-2", &[560]);
+    let seen = run("enemies-w2-2", &[]);
     met(
         &seen,
         &[
