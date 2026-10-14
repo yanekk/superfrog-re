@@ -242,7 +242,10 @@ impl Game {
             Start::Resume { memory, cpu } => {
                 let mut state = State::transplant(&memory);
                 match crate::front::Front::resume(&mut state, &display, &memory, &cpu) {
-                    Some(f) => (state, Scene::Front, None, Some(f)),
+                    Some(f) => {
+                        let scene = f.scene(&state, Scene::Front);
+                        (state, scene, None, Some(f))
+                    }
                     None => {
                         (state.audio, sdr) = level_io(&display, &memory);
                         (state, Scene::of(&memory), None, None)
@@ -329,9 +332,11 @@ impl Game {
             self.scene = Scene::Front;
             self.seed = Some(seed);
         }
-        if let (Scene::Front, Some(front)) = (self.scene, self.front.as_mut()) {
+        if let (Scene::Front | Scene::Slot { .. }, Some(front)) = (self.scene, self.front.as_mut())
+        {
             self.seed = None;
             let out = front.step(&mut self.state, &self.display, input);
+            self.scene = front.scene(&self.state, self.scene);
             self.shown = Some(out.picture.clone());
             if let Some(o) = front.outcome() {
                 self.outcome = Some(o);
@@ -411,7 +416,7 @@ impl Game {
     /// The frame the original shows for this state (DESIGN §3.3), widened by `view`.
     pub fn render(&self, view: View) -> Picture {
         match (self.scene, &self.shown) {
-            (Scene::Front | Scene::Story, Some(p)) => p.widened(view),
+            (Scene::Front | Scene::Slot { .. } | Scene::Story, Some(p)) => p.widened(view),
             _ => self.scene.render(&self.state, &self.display, view),
         }
     }
