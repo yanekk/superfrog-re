@@ -136,6 +136,94 @@ fn flood(body: &[u16], w: usize, h: usize, goal: &[(usize, usize)]) -> Vec<u32> 
     d
 }
 
+/// Cells a jump rises from where the frog stands (115 pixels measured with UP held), and from a
+/// bounce pad (markers 4, 5; a guess).
+const JUMP: u32 = 7;
+const PAD_JUMP: u32 = 16;
+
+/// [`flood`] with gravity: a step up is only taken within a jump of a cell the frog can stand on
+/// (an open cell over a solid one, in this column or the next), sideways and down always. Where
+/// that leaves a cell no way to `goal`, the plain flood's cost plus 50 000.
+fn climb(body: &[u16], w: usize, h: usize, goal: &[(usize, usize)]) -> Vec<u32> {
+    let solid = |x: usize, y: usize| body[y * w + x] >> 10 & 0x18 == 0x18;
+    // How far a step up into each cell is from the nearest ground below it, a pad's lift taken off.
+    let mut reach = vec![u32::MAX; w * h];
+    for x in 0..w {
+        let mut below = u32::MAX;
+        for y in (0..h).rev() {
+            if solid(x, y) {
+                below = u32::MAX;
+                continue;
+            }
+            if y + 1 < h && solid(x, y + 1) {
+                below = 0;
+            } else if below != u32::MAX {
+                below += 1;
+            }
+            let pad = matches!(body[y * w + x] >> 10, 4 | 5);
+            let lift = if pad { below.saturating_sub(PAD_JUMP - JUMP) } else { below };
+            reach[y * w + x] = lift;
+        }
+    }
+    // Pads lift every cell above them in the column, not only their own.
+    for x in 0..w {
+        let mut pad_at: Option<usize> = None;
+        for y in (0..h).rev() {
+            if solid(x, y) {
+                pad_at = None;
+                continue;
+            }
+            if matches!(body[y * w + x] >> 10, 4 | 5) {
+                pad_at = Some(y);
+            }
+            if let Some(py) = pad_at {
+                let k = &mut reach[y * w + x];
+                *k = (*k).min(((py - y) as u32).saturating_sub(PAD_JUMP - JUMP));
+            }
+        }
+    }
+    let up_ok = |x: usize, y: usize| {
+        let near = [x.wrapping_sub(1), x, x + 1];
+        near.iter().any(|&c| c < w && reach[y * w + c] <= JUMP) || solid(x, y)
+    };
+    let cost = |x: usize, y: usize| match body[y * w + x] >> 10 {
+        m if m & 0x18 == 0x18 => 60,
+        6 => 40,
+        _ => 1,
+    };
+    let mut d = vec![u32::MAX; w * h];
+    let mut q = std::collections::BinaryHeap::new();
+    for &(x, y) in goal {
+        d[y * w + x] = 0;
+        q.push(std::cmp::Reverse((0u32, x, y)));
+    }
+    // Backwards from the goals: a cell before (x, y) is beside it, above it (a fall), or below
+    // it when the step up into (x, y) is in a jump's reach.
+    while let Some(std::cmp::Reverse((here, x, y))) = q.pop() {
+        if here > d[y * w + x] {
+            continue;
+        }
+        let mut near = vec![(x.wrapping_sub(1), y), (x + 1, y), (x, y.wrapping_sub(1))];
+        if up_ok(x, y) {
+            near.push((x, y + 1));
+        }
+        for (nx, ny) in near {
+            if nx < w && ny < h {
+                let nd = here + cost(nx, ny);
+                if nd < d[ny * w + nx] {
+                    d[ny * w + nx] = nd;
+                    q.push(std::cmp::Reverse((nd, nx, ny)));
+                }
+            }
+        }
+    }
+    let plain = flood(body, w, h, goal);
+    d.iter()
+        .zip(&plain)
+        .map(|(&g, &p)| if g != u32::MAX { g } else { p.saturating_add(50_000) })
+        .collect()
+}
+
 /// A step on the way: a cell to reach, an object (by its update routine, h0 offset) to stomp or
 /// kill, or one to be hurt by.
 #[derive(Debug, Clone, Copy)]
@@ -278,10 +366,10 @@ fn main() {
                     left = coins(start.state(), &skipped);
                 }
                 left.extend(sw.iter().filter(|c| !skipped.contains(c)));
-                goals[goal] = flood(&live, w, h, &left);
+                goals[goal] = climb(&live, w, h, &left);
             }
-            Some(Via::Cell(x, y)) => goals[goal] = flood(&live, w, h, &[(x, y)]),
-            None => goals[goal] = flood(&live, w, h, &exits),
+            Some(Via::Cell(x, y)) => goals[goal] = climb(&live, w, h, &[(x, y)]),
+            None => goals[goal] = climb(&live, w, h, &exits),
             _ => {}
         }
         let field = &goals[goal];
@@ -455,7 +543,7 @@ fn main() {
                 }
                 if stall >= STALL {
                     // No headway: pass over the coin nearest the frog by the map's paths.
-                    let here = flood(&live_body(&st), w, h, &[((x.max(0) / 16) as usize, (y.max(0) / 16) as usize)]);
+                    let here = climb(&live_body(&st), w, h, &[((x.max(0) / 16) as usize, (y.max(0) / 16) as usize)]);
                     let mut left = coins(&st, &skipped);
                     left.extend(switches(&st).into_iter().filter(|c| !skipped.contains(c)));
                     if let Some(&(nc, nr)) = left.iter().min_by_key(|&&(c, r)| here[r * w + c]) {
