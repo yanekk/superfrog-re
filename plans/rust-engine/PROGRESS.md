@@ -103,7 +103,7 @@ done · ⛔ blocked, needs a human.
 | T93 | slot-attract-draw | T72, T91, T92 | ✅ | |
 | T94 | slot-interrupt-timing | T72, T91, T93; blocks T73 | ⬜ | |
 | T95 | slot-load-finish | T92; blocks T93 | ✅ | |
-| T96 | story-audio-dma-slots | T53; blocks T56 | ⬜ | |
+| T96 | story-audio-dma-slots | T53; blocks T56 | ✅ | |
 | T100 | front-vbl-timing | T37; blocks T21 | ⬜ | |
 | T97 | story-split-handler | T54; blocks T56 | ⬜ | |
 | T101 | lag-long-pass | T81, T82; blocks T21 | ⬜ | |
