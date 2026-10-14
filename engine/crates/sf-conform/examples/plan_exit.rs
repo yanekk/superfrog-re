@@ -188,9 +188,11 @@ fn climb(body: &[u16], w: usize, h: usize, goal: &[(usize, usize)]) -> Vec<u32> 
         let near = [x.wrapping_sub(1), x, x + 1];
         near.iter().any(|&c| c < w && reach[y * w + c] <= JUMP) || solid(x, y)
     };
+    // A wall dearer than in the plain flood: a long way round beats climbing through one (W6-2's
+    // shaft), and a closed gate is still crossed when nothing else reaches the goal.
     let cost = |x: usize, y: usize| match body[y * w + x] >> 10 {
-        m if m & 0x18 == 0x18 => 60,
-        6 => 40,
+        m if m & 0x18 == 0x18 => 400,
+        6 => 200,
         _ => 1,
     };
     let mut d = vec![u32::MAX; w * h];
