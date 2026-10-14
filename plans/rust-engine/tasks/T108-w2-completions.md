@@ -12,6 +12,13 @@ A scripted run from the start of each of W2-1, W2-2, W2-3 and W2-4 to its exit (
 needs collected: W2-1 needs 35), against the original, frame for frame, `resync = false`, with no
 exclusion.
 
+Also carried from T43's tests (its encounter cases did not reach them): an enemy taking a heart in
+a frame case (none of `enemies-w2-1..3` loses one), an enemy stunned by the spud and then stomped
+into a reward, a crumbling ledge breaking under the frog, and the types no case meets yet: the mace
+(63, 64), the spikes (71, 72), the swooper (37, W2-4 only) and anything of W2-4's (no `enemies-w2-4`
+case: the planner found no way up from its start at 5,73). `examples/plan` takes `hurt` and `kill`
+targets for these (T43).
+
 ## Tools
 
 - `cargo run --release --example plan -- <level> <col,row>... [--prefix <script>]` (beam search on

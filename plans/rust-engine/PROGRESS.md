@@ -65,7 +65,7 @@ done · ⛔ blocked, needs a human.
 | T40 | enemies-world-6 | T38; blocks T18 | ⬜ | |
 | T41 | enemies-world-4 | T38; blocks T18 | ⬜ | |
 | T42 | enemies-world-1 | T38; blocks T18, T33 | ⬜ | |
-| T43 | enemies-world-2 | T38; blocks T18, T39 | ⬜ | |
+| T43 | enemies-world-2 | T38; blocks T18, T39 | 🔍 | All 17 W2 templates plus shared touches (`enemies/`); 6 routine tests, 4 frame tests (activation, W2-1..3). Dev: oracle tests in sf-conform (purity); one file per kind, variants grouped; $64 vector write skipped; completions to T108, lag pins to T107 (owner); W2-4, mace, spikes, swooper, hurts, stuns, ledge break to T108; `enemies-w2-3` cut at 407. |
 | T44 | enemies-world-3 | T38; blocks T18 | ⬜ | |
 | T46 | story-intro-scenes | T32; blocks T21 | ✅ | |
 | T47 | story-intro-handover | T46; blocks T21 | ⬜ | |
@@ -111,11 +111,12 @@ done · ⛔ blocked, needs a human.
 | T105 | w2-1-hang-fruit-life | T85; blocks T21 | ⬜ | |
 | T107 | bob-draw-cut | T101; blocks T21 | ⬜ | |
 | T108 | w2-completions | T43, T101, T107; blocks T18 | ⬜ | |
+| T120 | conform-no-silent-pass | T05, T36; blocks T21 | ⬜ | |
 
 A Notes cell holds what was built or what the review found, the test count, and one line per
 deviation from the task doc. A ✅ task's cell may be cut to one line once the next task has been reviewed.
 
-**Review queue:** *(empty)*
+**Review queue:** T43
 
 ## Blocked on the user
 

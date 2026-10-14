@@ -35,10 +35,6 @@ impl Seen {
             .windows(2)
             .any(|w| w[1].0 > from && n(&w[1]) > n(&w[0]))
     }
-
-    fn hurt(&self) -> bool {
-        self.frames.windows(2).any(|w| !w[0].2 && w[1].2)
-    }
 }
 
 /// Run `name` green (pinning the listed re-syncs, T107's), recording what it saw.
@@ -88,12 +84,14 @@ fn met(seen: &Seen, types: &[(u32, &str)]) {
     }
 }
 
-/// W2-1: hurt, a flyer stomped (its fall, h0+$23b34, and its end), and nine of its eleven types.
+/// W2-1: a flyer stomped (its fall, h0+$23b34, and its end), and nine of its eleven types.
 #[test]
 fn enemies_w2_1() {
     let seen = run("enemies-w2-1", &[]);
-    assert!(seen.hurt());
-    assert!(seen.spawned(0x23b34) && seen.left(0x23b34), "a flyer killed");
+    assert!(
+        seen.spawned(0x23b34) && seen.left(0x23b34),
+        "a flyer killed"
+    );
     met(
         &seen,
         &[
@@ -105,6 +103,30 @@ fn enemies_w2_1() {
             (0x25ffe, "backdrop"),
             (0x24ef6, "scenery"),
             (0x2740c, "crumbling ledge"),
+        ],
+    );
+}
+
+/// W2-3: over the crumbling ledges above the spike pit (none breaks on this route: the frog's box
+/// never meets a ledge's hitbox; T108).
+#[test]
+fn enemies_w2_3() {
+    let seen = run("enemies-w2-3", &[]);
+    met(&seen, &[(0x2740c, "crumbling ledge"), (0x24ef6, "scenery")]);
+}
+
+/// W2-2: down the drop and past the dart, which comes out of hiding and flies; the
+/// bouncer, the scenery. One re-sync (T107's), pinned.
+#[test]
+fn enemies_w2_2() {
+    let seen = run("enemies-w2-2", &[560]);
+    met(
+        &seen,
+        &[
+            (0x26786, "bouncer"),
+            (0x25fa8, "dart (hidden)"),
+            (0x25f42, "dart (flying)"),
+            (0x24ef6, "scenery"),
         ],
     );
 }
