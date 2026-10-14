@@ -66,7 +66,7 @@ done · ⛔ blocked, needs a human.
 | T41 | enemies-world-4 | T38; blocks T18 | ⬜ | |
 | T42 | enemies-world-1 | T38; blocks T18, T33 | ✅ | |
 | T43 | enemies-world-2 | T38; blocks T18, T39 | ⬜ | |
-| T44 | enemies-world-3 | T38; blocks T18 | 🔍 | 18 types and swing links ported, 7 routine tests on W3-1's memory; `enemies-w3-1` (1 378 frames, re-syncs 201, 863 pinned) and `enemies-w3-4` (193) green, 2 case tests. Deviations: routine tests in sf-conform (purity); W3-2/3/4 cases, activation, completions split to T111–T115 (owner). |
+| T44 | enemies-world-3 | T38; blocks T18 | ✅ | Port clean; fix: T111–T115 docs lacked Interface/Tests, added. Probed: 11 logic mutations all red; every live W3 jumptab marker registered; re-syncs 201, 863 follow original lags; frog/render-w3 cases green. Unrecorded `enemies-w3-2` idle stub, green, untested (T111 extends). Split T111–T115 valid. |
 | T46 | story-intro-scenes | T32; blocks T21 | ✅ | |
 | T47 | story-intro-handover | T46; blocks T21 | ⬜ | |
 | T48 | story-intro-skips | T46, T47; blocks T21 | ⬜ | |

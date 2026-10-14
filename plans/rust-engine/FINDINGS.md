@@ -18,6 +18,11 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-14 | 📌 | T44 review sweep, not fixed: `tasks/T106-w1-completions.md` (T42's addition) has no Interface or Tests section; T111–T115's were added in T44's review. |
+| 2026-10-14 | 📌 | T44 review sweep, not fixed: `tasks/T107-enemies-w1-2-case.md` (T42's addition) has no Interface or Tests section; T111–T115's were added in T44's review. |
+| 2026-10-14 | 📌 | T44 review sweep, not fixed: `tasks/T108-enemies-w1-3-case.md` (T42's addition) has no Interface or Tests section; T111–T115's were added in T44's review. |
+| 2026-10-14 | 📌 | T44 review sweep, not fixed: `tasks/T109-enemies-w1-4-case.md` (T42's addition) has no Interface or Tests section; T111–T115's were added in T44's review. |
+| 2026-10-14 | 📌 | T44 review sweep, not fixed: `tasks/T110-enemies-w1-activation.md` (T42's addition) has no Interface or Tests section; T111–T115's were added in T44's review. |
 | 2026-10-14 | 🔄 | Owner, T44: W3-2/3/4 frame cases, activation and the W3 completions split to T111–T115 (each blocks T18; T113 waits on T102, T115 on T101, T102, T111–T113). |
 | 2026-10-14 | 🐞 | T44, not fixed: W3-4 frame 194, the frog jumping off the first crumbling platform: the original draws only part of its bob, every variable equal (T102's beam race); `enemies-w3-4` ends at 193. |
 | 2026-10-14 | 📌 | T44: `dart_wait`/`dart_fly` (h0+$25fa8/$25f42), `swing_update`/`swing_link_update` (h0+$2619c/$262be) and `touch_hurt` serve world 2 (T43) and later worlds too: ported in `enemies/w3/{dart,swing}.rs` and `common.rs`; reuse them. |
