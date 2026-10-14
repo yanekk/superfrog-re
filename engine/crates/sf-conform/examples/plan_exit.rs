@@ -212,10 +212,14 @@ fn climb(body: &[u16], w: usize, h: usize, goal: &[(usize, usize)]) -> Vec<u32> 
             }
         }
     }
-    // In the cell's own column only: ground in the next column (a block's top beside the frog)
-    // does not lift it (W6-2's frog jumped for ever beside a block one row too high).
+    // Ground under the frog's feet: its cell's column or the one to its left (the feet are tested
+    // at x + 8, the cell taken at x + $17; W6-3's frog stands on a wall's top at 113-114,9 from
+    // cell 115). Only ground below the row it rises out of counts, not a ledge level with the
+    // cell it rises into (W6-2's frog jumped for ever beside a block one row too high).
     let up_ok = |x: usize, y: usize| {
-        reach[y * w + x] <= JUMP
+        [x.wrapping_sub(1), x]
+            .iter()
+            .any(|&c| c < w && y + 1 < h && !solid(c, y + 1) && reach[y * w + c] <= JUMP)
             || solid(x, y)
             || lift(x, y)
             || (y + 1 < h && lift(x, y + 1))
