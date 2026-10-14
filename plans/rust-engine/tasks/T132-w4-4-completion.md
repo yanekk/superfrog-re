@@ -6,7 +6,7 @@
 
 Carries T103's "Done when" item for W4-4 (its completion against the oracle) and, of T103's
 types, the pacers (markers 2/3, templates 136/137) and marker 20's dart (template 61), each
-hurting the frog. Marker 21's dart (template 62) is T133's.
+hurting the frog. Marker 21's dart (template 62) is T145's.
 
 ## Goal
 
