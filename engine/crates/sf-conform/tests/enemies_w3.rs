@@ -59,6 +59,8 @@ const SWING_LINK: u32 = 0x262be;
 const JUMPER: u32 = 0x27a5e;
 const STOMPABLE: u32 = 0x27cc0;
 const CRUMBLE: u32 = 0x2747c;
+const BOUNCER: u32 = 0x25caa;
+const SPIKER_STAYING: u32 = 0x27da8;
 const STOMPED: u32 = 0x23bee;
 const REWARD: u32 = 0x23e6c;
 
@@ -74,6 +76,21 @@ fn w3_1() {
         assert!(s.updates.contains(&u), "h0+${u:x} never ran: {:x?}", s.updates);
     }
     assert!(s.hurts >= 3, "hurt {} times", s.hurts);
+}
+
+/// W3-2 to the staying spikers: the bouncer (88) and the staying spiker (97), which no other case
+/// meets, and every other type in the level; a stompable stomped; the frog hurt by the hopper, the
+/// swing's ball, a bouncer and a staying spiker.
+#[test]
+fn w3_2() {
+    let s = run("enemies-w3-2", &[2443]);
+    for u in [
+        BOUNCER, SPIKER_STAYING, PAD, DART_WAIT, DART_FLY, SPIKER, HOPPER, FLOW, SWING, SWING_LINK,
+        STOMPABLE, CRUMBLE, STOMPED,
+    ] {
+        assert!(s.updates.contains(&u), "h0+${u:x} never ran: {:x?}", s.updates);
+    }
+    assert!(s.hurts >= 4, "hurt {} times", s.hurts);
 }
 
 /// W3-4 to its first crumbling platform: the platforms, the scenery below marker 14 (whose update

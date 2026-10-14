@@ -115,7 +115,7 @@ done · ⛔ blocked, needs a human.
 | T109 | enemies-w1-4-case | T42; blocks T18, T33, T106 | ✅ | |
 | T110 | enemies-w1-activation | T42; blocks T18, T33, T106 | ⬜ | |
 | T103 | w4-completions | T41, T101, T102; blocks T18 | ✅ | |
-| T111 | enemies-w3-2-case | T44; blocks T18 | ⬜ | |
+| T111 | enemies-w3-2-case | T44; blocks T18 | 🔍 | `enemies-w3-2` 2802 frames, one re-sync (2443, after a lag) pinned; `enemies_w3::w3_2` asserts every W3-2 type ran, bouncer and staying spiker included, and four hurts. Route: swim under the pillar, west along the top, down the far-left shaft. No deviation. |
 | T112 | enemies-w3-3-case | T44; blocks T18 | ⬜ | |
 | T113 | enemies-w3-4-case | T44, T102; blocks T18 | ⬜ | |
 | T114 | enemies-w3-activation | T44; blocks T18 | ⬜ | |
@@ -145,7 +145,7 @@ done · ⛔ blocked, needs a human.
 A Notes cell holds what was built or what the review found, the test count, and one line per
 deviation from the task doc. A ✅ task's cell may be cut to one line once the next task has been reviewed.
 
-**Review queue:** *(empty)*
+**Review queue:** T111
 
 ## Blocked on the user
 

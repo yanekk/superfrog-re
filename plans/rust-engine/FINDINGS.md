@@ -18,6 +18,7 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-15 | 📌 | T111, W3-2: the start room's only exit is swimming under the pillar at 180–182 (57/24 are water). `plan_exit.rs` (paced) held the original's route where `complete.rs` drifted. Fake wall 155,26 drops back into the start. |
 | 2026-10-15 | 🐞 | T107: an in-level sample stream's end, `clr.w AUD3VOL`, may write the data bus, not the prefetch: W1-2 frame 820 (a beam-24 crawler leg) wrote $0000 after audio DMA; the engine writes $33fc. Unfixed; routed around. |
 | 2026-10-15 | 📌 | T107: W1-2's sitter (51,25) is not met: far left, past the top corridor's platform leaps. T106's W1-2 completion meets it collecting the far-left coins. `route` waypoints must be cells the frog can stand in. |
 | 2026-10-14 | 🐞 | T109 review sweep, not fixed: `enemies_w3.rs:37` counts hurts as `f::HURT` rising, which a stunned landing (a level's opening drop) also sets; its `hurts >=` asserts may pass one enemy hurt short. `enemies_w1` now counts hearts lost. |
