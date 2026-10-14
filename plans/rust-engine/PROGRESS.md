@@ -61,7 +61,7 @@ done · ⛔ blocked, needs a human.
 | T36 | items-on-the-beam | T15 | ✅ | |
 | T37 | level-restart | T36; blocks T34 | ✅ | |
 | T38 | level-tally | T37; blocks T21 | ✅ | |
-| T39 | enemies-world-5 | T16, T38; blocks T18 | 🔍 | 12 W5 types ported, 16 stubs of row `$400`; routine conformance, 7 mutants red. W5-1 cases green: route (pins 551, 979; picture 595 excluded, not enemies'), hurt, activation. Split (owner): T123–T126. Deviation: tests in `sf-conform/tests` (purity), as T43. |
+| T39 | enemies-world-5 | T16, T38; blocks T18 | ✅ | 12 W5 types, 16 stubs; W5-1 route, hurt, activation green; split T123–T126. Review clean, no fix commit: three mutants (shooter turn count, faller reach, shot fall cap) red; frame 595 diverges without its exclusion and with enemies frozen too; split docs valid. Deviation held. |
 | T40 | enemies-world-6 | T38; blocks T18 | ⬜ | |
 | T41 | enemies-world-4 | T38; blocks T18 | ✅ | |
 | T42 | enemies-world-1 | T38; blocks T18, T33 | ✅ | |
@@ -131,7 +131,7 @@ done · ⛔ blocked, needs a human.
 A Notes cell holds what was built or what the review found, the test count, and one line per
 deviation from the task doc. A ✅ task's cell may be cut to one line once the next task has been reviewed.
 
-**Review queue:** T39
+**Review queue:** *(empty)*
 
 ## Blocked on the user
 
