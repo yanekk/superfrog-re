@@ -1,12 +1,7 @@
 # W2-1 with its items live: the hidden coin springs, the lift into the pillar and the speed-up;
-# score, lives, the panel and the picture every frame (T85). Stops at 1010: the original stops in
-# its pass from ~1012 on this route (T105).
+# score, lives, the panel and the picture every frame (T85), world 2's enemies live (T43 review).
+# Stops at 1010: the original stops in its pass from ~1012 on this route (T105).
 sync = { level = "W2-1" }
 script = "items-upper-w2-1"
 frames = 1010
 resync = false
-
-[[exclude]]
-what = "enemies"
-note = "the original's marker spawners the engine has none for (enemies, the world's scenery)"
-task = "T16–T18"

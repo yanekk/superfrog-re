@@ -1,6 +1,6 @@
 //! What a script makes the frog take and set off, run on the engine with the enemies frozen (as
 //! the item cases are): every map marker that changes (with the pickup a taken tile was), every
-//! change to the frog's power-ups and lives, and every object slot whose routine changes.
+//! change to the frog's power-ups, hearts, lives and being hurt, and every object slot whose routine changes.
 //! For writing and checking `items-*` cases.
 //!
 //! `cargo run --example coverage -- <case.toml>` (the case's sync point, script and length), or
@@ -71,6 +71,8 @@ fn main() {
         ("lives", f::LIVES),
         ("launch", f::LAUNCHED),
         ("spring", f::SPRING),
+        ("hurt", f::HURT),
+        ("hearts", 0x5a),
     ];
     let mut pw: Vec<u16> = watch.iter().map(|x| w(&g, x.1)).collect();
     let kinds = |g: &Game| -> Vec<u32> {
