@@ -123,6 +123,8 @@ pub struct Chip {
     carried: Vec<PaulaWrite>,
     /// Clocks since power-on at the start of the current frame.
     frame_start: u64,
+    /// The DMA slots served in the last frame run: (clock in the frame, channel), in order.
+    pub(crate) fetched: Vec<(u32, u8)>,
     /// The clock being run.
     now: u64,
 }
@@ -153,6 +155,7 @@ impl Chip {
             irqs: Vec::new(),
             carried: Vec::new(),
             frame_start: 0,
+            fetched: Vec::new(),
             now: 0,
         }
     }
@@ -176,6 +179,7 @@ impl Chip {
         list.extend_from_slice(&writes[..wrap]);
         self.carried = writes[wrap..].to_vec();
 
+        self.fetched.clear();
         for t in taps.iter_mut() {
             t.clear();
             t.reserve(clocks as usize);
@@ -324,6 +328,8 @@ impl Chip {
             return;
         }
         self.agnus_request[n] = false;
+        self.fetched
+            .push(((self.now - self.frame_start) as u32, n as u8));
         let word = chip.chip_word(self.pt[n] & PTR_MASK);
         self.pt[n] = self.pt[n].wrapping_add(2);
         self.poke_dat(n, word);

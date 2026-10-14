@@ -1,7 +1,7 @@
 //! The CPU and the blitter on the bus, cycle by cycle, as the reference emulator runs them (T52):
 //! what times the intro's draws, whose blits hold the CPU and run into the display.
 //!
-//! Each DMA cycle goes first to the fixed DMA ([`Fixed`]: refresh, the copper, the bitplanes), then
+//! Each DMA cycle goes first to the fixed DMA ([`Fixed`]: refresh, audio, the copper, the bitplanes), then
 //! to the blitter, then to the CPU (vAmiga `Agnus::executeUntil` services its slots in that order;
 //! the CPU asks for the cycle after them, `Agnus::executeUntilBusIsFree`).
 //!
@@ -31,8 +31,9 @@ pub mod dmacon {
     pub const BLTEN: u16 = 0x0040;
 }
 
-/// The cycles the fixed DMA takes: refresh (`$01`, `$03`, `$05`, `$E2`), the copper's
-/// ([`crate::render::copper::run_bus`]) and the bitplanes' ([`Fetch::takes`]), frame after frame.
+/// The cycles the fixed DMA takes: refresh (`$01`, `$03`, `$05`, `$E2`), the audio channels' slots
+/// (`$0D`, `$0F`, `$11`, `$13`, [`Fixed::audio`]), the copper's ([`crate::render::copper::run_bus`])
+/// and the bitplanes' ([`Fetch::takes`]), frame after frame.
 #[derive(Debug, Clone, Default)]
 pub struct Fixed {
     frames: Vec<FixedFrame>,
@@ -43,6 +44,8 @@ pub struct Fixed {
 struct FixedFrame {
     /// The copper's cycles, in order.
     copper: Vec<u32>,
+    /// The audio channels' DMA slots taken, in order.
+    audio: Vec<u32>,
     /// The bitplane set-up from each cycle on: the frame's first, then after each copper write to
     /// one of its registers.
     fetch: Vec<(u32, Fetch)>,
@@ -70,8 +73,18 @@ impl Fixed {
         }
         self.frames.push(FixedFrame {
             copper: copper.iter().map(at).collect(),
+            audio: Vec::new(),
             fetch: changes,
         });
+        self
+    }
+
+    /// The last frame's audio DMA: the slots the channels took, as (cycle in the frame, channel)
+    /// in order ([`sf_paula::AudioDma::frame`], which runs vAmiga's audio state machine on the
+    /// frame's Paula writes: a channel's word fetched in its slot of the line after it asked).
+    pub fn audio(mut self, slots: &[(u32, u8)]) -> Fixed {
+        let f = self.frames.last_mut().expect("a frame to give audio to");
+        f.audio = slots.iter().map(|s| s.0).collect();
         self
     }
 
@@ -93,6 +106,7 @@ impl cpu::Bus for Fixed {
             return false;
         };
         f.copper.binary_search(&r).is_ok()
+            || f.audio.binary_search(&r).is_ok()
             || self
                 .fetch(k, r)
                 .is_some_and(|fe| fe.takes((r / LINE) as u16, (r % LINE) as u16))
@@ -666,6 +680,44 @@ mod tests {
         assert!(!f.taken(at(0x30, 0x3e)) && f.taken(at(0x2f, 0x3e)));
         // Past the frames given: refresh only.
         assert!(f.taken(FRAME + 1) && !f.taken(FRAME + 0x10));
+    }
+
+    #[test]
+    fn audio_dma_takes_its_slots_from_the_cpu_and_the_blitter() {
+        use sf_paula::{AudioDma, PaulaWrite};
+        let w = |vpos: u16, hpos: u16, reg: u16, value: u16| PaulaWrite {
+            reg,
+            value,
+            hpos,
+            vpos,
+        };
+        // Channel 1: AUD1LEN 4, AUD1PER 200, its DMA on at line 10.
+        let writes = [
+            w(10, 0x20, 0xb4, 4),
+            w(10, 0x22, 0xb6, 200),
+            w(10, 0x30, 0x96, 0x8202),
+        ];
+        let slots = AudioDma::new().frame(&writes, 313).to_vec();
+        // Two words in the lines after DMA is on (11, 12), the third after the second plays (13),
+        // then one as each word's two periods (2 x 200 clocks) end: 3 139 asks, line 14 fetches.
+        let at = |line: u32, h: u32| line * LINE + h;
+        assert_eq!(
+            slots[..4],
+            [(at(11, 0x0f), 1), (at(12, 0x0f), 1), (at(13, 0x0f), 1), (at(14, 0x0f), 1)]
+        );
+        let fetch = Fetch::default();
+        let f = Fixed::new().frame(&[], &[], fetch).audio(&slots);
+        use cpu::Bus;
+        assert!(f.taken(at(11, 0x0f)) && !f.taken(at(11, 0x0d)) && !f.taken(at(15, 0x0f)));
+        // A CPU read asking for line 12's slot gets the next cycle; a blit's fetch waits for it.
+        let mut s = Sim::new(at(12, 0x0e), &f, ON);
+        s.run("r");
+        assert_eq!(s.t, at(12, 0x11));
+        let mut s = Sim::new(0, &f, ON);
+        s.poke(at(13, 0x08), 0x40, 0x09f0);
+        s.poke(at(13, 0x08), 0x58, 1 << 6 | 4);
+        s.finish(1000);
+        assert!(!s.blitter_took(at(13, 0x0f)) && s.blitter_took(at(13, 0x10)));
     }
 
     #[test]

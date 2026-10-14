@@ -27,6 +27,46 @@ pub trait ChipMemory {
     fn chip_word(&self, addr: u32) -> u16;
 }
 
+/// The channels' DMA alone: which of their slots (`$0D`, `$0F`, `$11`, `$13`) Agnus serves, frame by
+/// frame, from the frames' register writes (the CPU's and the blitter's bus timing needs them, T96).
+///
+/// The same state machine as [`Paula`]'s, run on zeroed chip memory: the slots do not depend on the
+/// samples, except with ADKCON's attach modes (a channel's words then set the next one's period or
+/// volume), which the timing this serves does not meet.
+pub struct AudioDma {
+    chip: channel::Chip,
+    taps: [Vec<i16>; 4],
+}
+
+impl Default for AudioDma {
+    fn default() -> AudioDma {
+        AudioDma::new()
+    }
+}
+
+impl AudioDma {
+    /// Power-on: every channel idle, DMA off.
+    pub fn new() -> AudioDma {
+        AudioDma {
+            chip: channel::Chip::new(),
+            taps: [Vec::new(), Vec::new(), Vec::new(), Vec::new()],
+        }
+    }
+
+    /// Run one frame of `lines` lines on its writes, as [`Paula::frame`]: the slots the channels'
+    /// DMA took in it, as (clock in the frame, `vpos * 227 + hpos`; channel), in order.
+    pub fn frame(&mut self, writes: &[PaulaWrite], lines: u32) -> &[(u32, u8)] {
+        struct Zero;
+        impl ChipMemory for Zero {
+            fn chip_word(&self, _: u32) -> u16 {
+                0
+            }
+        }
+        self.chip.run_frame(writes, lines, &Zero, &mut self.taps);
+        &self.chip.fetched
+    }
+}
+
 /// The four audio channels, their DMA, and the resampler to the host rate.
 pub struct Paula {
     chip: channel::Chip,
