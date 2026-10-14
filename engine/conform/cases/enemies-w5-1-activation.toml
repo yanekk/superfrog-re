@@ -1,0 +1,6 @@
+# W5-1 with every object live (T39): right past the first pacer and the shooter, then back left;
+# the pacer is freed as the camera leaves it (446) and spawns again on the way back (676).
+sync = { level = "W5-1" }
+script = "enemies-w5-1-activation"
+frames = 720
+resync = false
