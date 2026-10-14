@@ -10,7 +10,6 @@
 
 pub mod bobs;
 pub mod boot;
-pub mod clock;
 pub mod cpu;
 pub mod data;
 pub mod fade;
@@ -70,7 +69,7 @@ const BOOT_START_LINE: u16 = 0x130;
 /// pointer (measured on the oracle; the owner's ROM).
 const KICKSTART_LOW: [u8; 12] = [0, 0, 0, 0, 0x00, 0xc0, 0x02, 0x76, 0x00, 0xfc, 0x08, 0x18];
 
-/// The bus the handler finds: refresh and the copper's cycles (sorted).
+/// The bus the handler finds: refresh, the copper's cycles and the audio channels' slots (sorted).
 struct HandlerBus(Vec<u32>);
 
 impl cpu::Bus for HandlerBus {
@@ -486,7 +485,7 @@ impl Story {
                 after_handler = at_handler;
                 let w = if i.ended { Wait::Over } else { Wait::Frame };
                 let walk = match (f.list_at_load, f.walk) {
-                    (None, Some(w)) => Some((f.entry, w)),
+                    (None, Some(w)) => Some((f.entry, w, f.audio)),
                     _ => None,
                 };
                 return self.finish(
@@ -533,7 +532,7 @@ impl Story {
         list: u32,
         copper: Vec<u8>,
         after_handler: Option<(u16, Vec<u8>)>,
-        walk: Option<(u32, vbl::Handler)>,
+        walk: Option<(u32, vbl::Handler, Vec<u32>)>,
         load: Option<LoadEnd>,
         resync: Vec<(u32, u32)>,
         jobs: Vec<Job>,
@@ -558,7 +557,7 @@ impl Story {
                 // The handler's writes to the fades' colour words, timed on the bus the copper
                 // leaves the CPU (its own cycles, run first: the CPU never holds it up).
                 let fade_writes = match &walk {
-                    Some((entry, h)) => {
+                    Some((entry, h, audio)) => {
                         let mut taken = Vec::new();
                         crate::render::copper::run_bus(
                             &|a, line, _| snap(a, line),
@@ -566,12 +565,13 @@ impl Story {
                             carry,
                             &mut taken,
                         );
-                        let bus = HandlerBus(
-                            taken
-                                .iter()
-                                .map(|b| b.line as u32 * cpu::LINE + b.h as u32)
-                                .collect(),
-                        );
+                        let mut cycles: Vec<u32> = taken
+                            .iter()
+                            .map(|b| b.line as u32 * cpu::LINE + b.h as u32)
+                            .chain(audio.iter().copied())
+                            .collect();
+                        cycles.sort_unstable();
+                        let bus = HandlerBus(cycles);
                         vbl::colour_writes(h, *entry, &bus)
                     }
                     None => Vec::new(),

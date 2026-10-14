@@ -246,6 +246,9 @@ fn main() {
                     .collect::<Vec<_>>()
                     .join(" ")
             };
+            if std::env::var("FED").is_ok() {
+                println!("  fed entry {entry:?} end {handler_end:?} merged {}", handlers < amiga.frames_run());
+            }
             if std::env::var("IRQS").is_ok() {
                 println!("  irqs {:?}", amiga.irqs());
             }

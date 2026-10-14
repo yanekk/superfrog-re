@@ -87,7 +87,7 @@ done · ⛔ blocked, needs a human.
 | T53 | story-draw-cpu-program | T52; blocks T54 | ✅ | |
 | T54 | story-handler-end-feed | T53; blocks T56 | ✅ | |
 | T55 | story-intro-sound-timing | T50; blocks T56 | ✅ | |
-| T56 | story-intro-to-insert-disk | T49, T50, T54, T55; blocks T21, T47, T48 | ⬜ | |
+| T56 | story-intro-to-insert-disk | T49, T50, T54, T55; blocks T21, T47, T48 | ✅ | |
 | T81 | beam-cleanup | T36; blocks T37 | ✅ | |
 | T82 | beam-tests | T81 | ✅ | |
 | T83 | items-w1 | T81 | ✅ | |
@@ -133,6 +133,11 @@ done · ⛔ blocked, needs a human.
 | T130 | front-vbl-318 | T100; blocks T21 | ⬜ | |
 | T129 | slot-lamp-cut | T74; blocks T21 | ⬜ | |
 | T133 | w2-1-fruit-room | T105; blocks T21 | ⬜ | |
+| T140 | story-setup-under-music | T56 | ⬜ | |
+| T141 | story-fade-colour-race | T56 | ⬜ | |
+| T142 | story-draw-end-order | T56 | ⬜ | |
+| T143 | story-last-fade-out | T56 | ⬜ | |
+| T144 | story-intro-full-green | T56, T140, T141, T142, T143; blocks T21, T47, T48 | ⬜ | |
 
 A Notes cell holds what was built or what the review found, the test count, and one line per
 deviation from the task doc. A ✅ task's cell may be cut to one line once the next task has been reviewed.
