@@ -1,6 +1,6 @@
-# T128 — slot-lamp-cut
+# T129 — slot-lamp-cut
 
-**Phase:** 2 · **Depends on:** T74 · **Weight:** medium
+**Phase:** 2 · **Depends on:** T74; blocks T21 · **Weight:** medium
 
 Added by T74 (owner, 2026-10-14). The slot machine draws its lamps (`slot_draw_lamps`, h0+$645e)
 from the raster wait on line 299 into the next frame. Whether a lamp's blit starts before the

@@ -74,7 +74,7 @@ done · ⛔ blocked, needs a human.
 | T71 | slot-sync | T15 | ✅ | |
 | T72 | slot-screen | T71 | ✅ | |
 | T73 | slot-rounds | T72 | ✅ | |
-| T74 | slot-prizes | T73; blocks T21 | 🔍 | 13 slot cases green (hilo 0–8, -wrong, hold-20000, hold-jackpot, gamble); slot-hilo-0 in test block; award, scan, collect routine tests. Deviations: gamble wins then busts (doc: busts); hold-jackpot fires on 41 (owner; T128 added); lamp timing terms in `draw.rs`, `PAYOUT_CYCLES`: T73's flash never ran; `examples/slot_plan.rs` plans scripts. |
+| T74 | slot-prizes | T73; blocks T21 | 🔍 | 13 slot cases green (hilo 0–8, -wrong, hold-20000, hold-jackpot, gamble); slot-hilo-0 in test block; award, scan, collect routine tests. Deviations: gamble wins then busts (doc: busts); hold-jackpot fires on 41 (owner; T129 added); lamp timing terms in `draw.rs`, `PAYOUT_CYCLES`: T73's flash never ran; `examples/slot_plan.rs` plans scripts. |
 | T75 | bonus-shots | T70; blocks T21 | ✅ | |
 | T76 | bonus-enemies-a | T70; blocks T21 | ✅ | |
 | T77 | bonus-enemies-b | T70, T76; blocks T21 | ✅ | |
@@ -129,7 +129,7 @@ done · ⛔ blocked, needs a human.
 | T125 | enemies-w5-4-case | T39; blocks T18 | ⬜ | |
 | T126 | w5-completions | T39, T101, T121, T123, T124, T125; blocks T18 | ⬜ | |
 | T127 | restore-sprite-wait | T101; blocks T21 | ⬜ | |
-| T128 | slot-lamp-cut | T74 | ⬜ | |
+| T129 | slot-lamp-cut | T74; blocks T21 | ⬜ | |
 
 A Notes cell holds what was built or what the review found, the test count, and one line per
 deviation from the task doc. A ✅ task's cell may be cut to one line once the next task has been reviewed.
