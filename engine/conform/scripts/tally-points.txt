@@ -1,0 +1,4 @@
+# The level's tally after W1-1's forced exit (tally-w1-1): fire pressed in the wait for the choice,
+# up never held, so the points are taken.
+70: F
+74: -

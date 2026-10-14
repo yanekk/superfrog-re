@@ -70,6 +70,7 @@ pub fn frame(
         render_diff,
         oracle_frame: None,
         unported: Vec::new(),
+        level_outcome: None,
         var_detail: first_var
             .map(|(d, _, _)| {
                 var_diffs(layout, probe, theirs_mem, d.id)

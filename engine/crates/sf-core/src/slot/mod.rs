@@ -181,15 +181,13 @@ impl Routine {
     }
 }
 
-/// The bottom of the slot machine's stack: `level_tally`, which the engine does not run yet; it
-/// waits and changes nothing.
+/// The bottom of the slot machine's stack: `level_tally` after its call (T38).
 #[derive(Debug, Clone, Default, PartialEq, Eq, Hash)]
 pub(crate) struct SlotOver;
 
 impl SlotOver {
     pub(crate) fn run(&mut self, cx: &mut Cx) -> Yield {
-        cx.unported("level_tally after the slot machine");
-        Yield::Raster
+        crate::level::tally::after_slot(cx)
     }
 }
 

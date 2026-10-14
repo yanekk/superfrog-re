@@ -184,14 +184,41 @@ impl Case {
                 }
             }
             Some(toml::Value::Table(s)) if s.contains_key("level") => {
-                if let Some(k) = s.keys().find(|k| !["level", "clock"].contains(&k.as_str())) {
-                    return Err(format!("sync: unknown key `{k}` beside `level` (level, clock)"));
+                if let Some(k) = s
+                    .keys()
+                    .find(|k| !["level", "clock", "exit", "lives"].contains(&k.as_str()))
+                {
+                    return Err(format!(
+                        "sync: unknown key `{k}` beside `level` (level, clock, exit, lives)"
+                    ));
+                }
+                if [s.contains_key("clock"), s.contains_key("exit"), s.contains_key("lives")]
+                    .iter()
+                    .filter(|&&b| b)
+                    .count()
+                    > 1
+                {
+                    return Err("sync: one of `clock`, `exit` and `lives`".into());
                 }
                 let level = s["level"]
                     .as_str()
                     .ok_or("sync.level is a string like \"W1-1\"")?
                     .parse()?;
+                let exit = match s.get("exit") {
+                    None => false,
+                    Some(v) => v.as_bool().ok_or("sync.exit is true or false")?,
+                };
                 match s.get("clock") {
+                    None if exit => SyncPoint::Exit(level),
+                    Some(_) if exit => return Err("sync: `clock` and `exit` together".into()),
+                    None if s.contains_key("lives") => SyncPoint::Lives {
+                        level,
+                        lives: s["lives"]
+                            .as_integer()
+                            .and_then(|v| u16::try_from(v).ok())
+                            .filter(|&v| v <= 99)
+                            .ok_or("sync.lives is a number of lives, 0 to 99")?,
+                    },
                     None => SyncPoint::AtLevel(level),
                     Some(v) => {
                         let bad = || "sync.clock is \"M:SS\", under 10 minutes".to_string();

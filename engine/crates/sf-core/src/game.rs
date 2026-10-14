@@ -252,7 +252,7 @@ impl Game {
             Start::Level(id) => {
                 let mut state = State::default();
                 crate::level::load::enter(&mut state, &display, id);
-                (state, Scene::Level, None, None)
+                (state, Scene::of_level(id), None, None)
             }
             Start::Disk3 { seed } => {
                 story = Some(Box::new(crate::front::Story::power_on(&display.story)));
@@ -333,11 +333,14 @@ impl Game {
             self.seed = None;
             let out = front.step(&mut self.state, &self.display, input);
             self.shown = Some(out.picture.clone());
+            if let Some(o) = front.outcome() {
+                self.outcome = Some(o);
+            }
             if front.in_level_loop() {
                 // `level_start` is over and `level_frame_loop` entered (T37): the level scene
                 // from the next frame.
                 self.front = None;
-                self.scene = Scene::Level;
+                self.scene = Scene::level(self.state.l(h0(0x40da)), self.state.l(h0(0x40de)));
                 self.pending = None;
             }
             return FrameOut {

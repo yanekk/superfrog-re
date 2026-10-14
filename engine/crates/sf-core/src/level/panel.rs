@@ -86,6 +86,13 @@ fn lives_icon(c: &mut LevelCtx) {
     if v == b.w(LIVES_ICON_SHOWN) {
         return;
     }
+    lives_icon_draw(c);
+}
+
+/// h0+$8728: the icon for the frog's `+$5a`, drawn and kept as the one shown.
+pub(crate) fn lives_icon_draw(c: &mut LevelCtx) {
+    let b = &mut c.bus;
+    let v = b.w(FROG + 0x5a);
     b.set_w(LIVES_ICON_SHOWN, v);
     let k = if n_clear(v) { v } else { 0 };
     let src = h2(0x2580).wrapping_add((k.wrapping_mul(4)) as i16 as i32 as u32);
@@ -158,7 +165,7 @@ fn clock_digit(c: &mut LevelCtx) {
 
 /// `number_to_text` (h0+$160dc): `n` in decimal at `number_text`, no leading zeros (nothing at
 /// all for 0); over 999 999 999, nine nines.
-fn number_to_text(b: &mut Bus, mut n: u32) {
+pub(crate) fn number_to_text(b: &mut Bus, mut n: u32) {
     for k in 0..3 {
         b.set_l(NUMBER_TEXT + 4 * k, 0);
     }
@@ -246,12 +253,7 @@ pub fn draw_at_start(c: &mut LevelCtx) {
 /// score.
 pub(crate) fn after_slide(c: &mut LevelCtx) {
     lives_count(c);
-    let b = &mut c.bus;
-    let v = b.w(FROG + 0x5a);
-    b.set_w(LIVES_ICON_SHOWN, v);
-    let k = if n_clear(v) { v } else { 0 };
-    let src = h2(0x2580).wrapping_add((k.wrapping_mul(4)) as i16 as i32 as u32);
-    blit_panel(c, src, PANEL + 0x20, 0x38, 0x2c, 0x382);
+    lives_icon_draw(c);
     clock_at_start(c);
     c.bus.set_w(SCORE_DIGIT, 0xa);
     for _ in 0..7 {

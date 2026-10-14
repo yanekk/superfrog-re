@@ -1,0 +1,12 @@
+# W1-1's exit forced as in tally-w1-1 (T38), up held from frame 60 in the tally's wait, which
+# lights the slot machine's line, and fire at frame 70 with it: the picture faded out at once (no
+# points, no pause), the coins set from the pages, and `slot_machine` entered. Ends on frame 85,
+# before the slot machine's loads (T92, T95).
+sync = { level = "W1-1", exit = true }
+script = "tally-slot"
+frames = 86
+
+[[exclude]]
+what = "enemies"
+note = "the original's marker spawners the engine has none for (enemies, the world's scenery) and the bubble return at once from power-on"
+task = "T16–T18"

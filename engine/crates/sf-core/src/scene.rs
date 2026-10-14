@@ -41,20 +41,55 @@ pub enum Scene {
     Front,
     /// The story intro disk 3 boots (T32; `Game`'s [`crate::front::Story`]).
     Story,
+    /// The bonus level (T79): a level the same main program runs, in shooter mode, where a death
+    /// with lives left puts the frog back on the screen and the loop runs on
+    /// ([`crate::bonus::frame`]). How its loop ended is [`crate::Game::level_outcome`].
+    Bonus(sf_assets::LevelId),
 }
 
 /// `logic_running` (h0+$9d6): set by `level_frame_loop` while a level plays.
 const LOGIC_RUNNING: u32 = h0(0x9d6);
-/// `level_state` (h0+$a06): negative while a level plays.
-const LEVEL_STATE: u32 = h0(0xa06);
+
+/// `world` (h0+$40da) and `level` (h0+$40de), as the original numbers them (the bonus level is
+/// world 7).
+const WORLD: u32 = h0(0x40da);
+const LEVEL: u32 = h0(0x40de);
 
 impl Scene {
+    /// The level scene for the original's `world` and `level` numbers.
+    pub fn level(world: u32, level: u32) -> Scene {
+        if world == 7 {
+            Scene::Bonus(sf_assets::LevelId {
+                world: sf_assets::World::Bonus,
+                level: level as u8,
+                alt: false,
+            })
+        } else {
+            Scene::Level
+        }
+    }
+
+    /// The level scene for `id`.
+    pub fn of_level(id: sf_assets::LevelId) -> Scene {
+        if id.world == sf_assets::World::Bonus {
+            Scene::Bonus(id)
+        } else {
+            Scene::Level
+        }
+    }
+
+    /// In a level (the bonus level among them).
+    pub fn is_level(&self) -> bool {
+        matches!(self, Scene::Level | Scene::Bonus(_))
+    }
+
     /// The scene the original's memory is in, for a transplant: a level while
-    /// `level_frame_loop` runs it, otherwise none ported yet.
+    /// `level_frame_loop` runs it (`level_state` counting down to the loop's end once the frog
+    /// dies or the exit is reached, T38), otherwise none ported yet.
     pub fn of(ram: &dyn Ram) -> Scene {
         let word = |a: u32| (ram.byte(a) as u16) << 8 | ram.byte(a + 1) as u16;
-        if word(LOGIC_RUNNING) != 0 && ram.byte(LEVEL_STATE) & 0x80 != 0 {
-            Scene::Level
+        if word(LOGIC_RUNNING) != 0 {
+            Scene::level(word(WORLD + 2) as u32, word(LEVEL + 2) as u32)
         } else {
             Scene::Placeholder
         }
@@ -79,7 +114,7 @@ impl Scene {
         let mut picture = None;
         match self {
             Scene::Placeholder | Scene::Front | Scene::Story => {}
-            Scene::Level => {
+            Scene::Level | Scene::Bonus(_) => {
                 let mut c = LevelCtx::new(
                     Bus::new(m.state, m.display.rom()),
                     m.dispatch,
@@ -134,7 +169,7 @@ impl Scene {
     pub fn render(&self, state: &State, display: &DisplayData, view: View) -> Picture {
         match self {
             Scene::Placeholder | Scene::Front | Scene::Story => Picture::black(view),
-            Scene::Level => render::level(state, display, view),
+            Scene::Level | Scene::Bonus(_) => render::level(state, display, view),
         }
     }
 }

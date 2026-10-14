@@ -27,7 +27,7 @@ use std::sync::{Arc, OnceLock};
 
 use sf_assets::GameData;
 use sf_core::layout::{AmigaMemory, LAYOUT, Ram, VarId};
-use sf_core::{DisplayData, FrameOut, Game, LoadEnd, Picture, Scene, Start, View};
+use sf_core::{DisplayData, FrameOut, Game, LoadEnd, Picture, Start, View};
 
 /// The owner's disks decoded, once per process.
 pub fn game_data() -> &'static GameData {
@@ -329,7 +329,8 @@ fn run_inner(
                         paula_diff: None,
                         render_diff: None,
                         oracle_frame: (of != f + 1).then_some(of - 1),
-                        unported: Vec::new(),
+                        unported: game.unported().to_vec(),
+                        level_outcome: game.level_outcome(),
                         var_detail: compare::var_diffs(game.layout(), &game.probe(), &mem, v.id)
                             .into_iter()
                             .take(40)
@@ -376,7 +377,7 @@ fn run_inner(
         if case.compare.render {
             let g = Game::with_display(display.clone(), Start::Transplant(mem.clone()));
             let r = g.render(View::default());
-            if g.scene() != Scene::Level {
+            if !g.scene().is_level() {
                 outcome.skipped.push((f, NOT_A_LEVEL));
             } else if compare::picture(&r, &theirs.picture).is_some()
                 && late_redraw(&display, &mem, &prev, &r, &theirs.picture)
@@ -415,10 +416,12 @@ fn run_inner(
                 render_diff: None,
                 oracle_frame: None,
                 unported: Vec::new(),
+                level_outcome: None,
                 var_detail: Vec::new(),
                 resync: false,
             });
             d.unported = unported;
+            d.level_outcome = game.level_outcome();
             d.oracle_frame = (of != f + 1).then_some(of - 1);
             match found.as_mut() {
                 Some(all) => all.push(d),

@@ -60,7 +60,7 @@ done · ⛔ blocked, needs a human.
 | T35 | end-sequence | T20; blocks T21 | ✅ | |
 | T36 | items-on-the-beam | T15 | ✅ | |
 | T37 | level-restart | T36; blocks T34 | ✅ | |
-| T38 | level-tally | T37; blocks T21 | ⬜ | |
+| T38 | level-tally | T37; blocks T21 | ✅ | |
 | T39 | enemies-world-5 | T16, T38; blocks T18 | ⬜ | |
 | T40 | enemies-world-6 | T38; blocks T18 | ⬜ | |
 | T41 | enemies-world-4 | T38; blocks T18 | ⬜ | |
@@ -79,7 +79,7 @@ done · ⛔ blocked, needs a human.
 | T76 | bonus-enemies-a | T70; blocks T21 | ✅ | |
 | T77 | bonus-enemies-b | T70, T76; blocks T21 | ✅ | |
 | T78 | bonus-enemy-death | T70, T75; blocks T21 | ✅ | |
-| T79 | bonus-level-frames | T70, T37, T75, T76, T77, T78; blocks T21 | ⬜ | |
+| T79 | bonus-level-frames | T70, T37, T75, T76, T77, T78; blocks T21 | ✅ | |
 | T49 | story-fade-setup-job | T46; blocks T56 | ✅ | |
 | T50 | story-objects-init-display | T49; blocks T56 | ✅ | |
 | T51 | story-oracle-blit-tooling | T46; blocks T52 | ✅ | |
@@ -91,7 +91,7 @@ done · ⛔ blocked, needs a human.
 | T81 | beam-cleanup | T36; blocks T37 | ✅ | |
 | T82 | beam-tests | T81 | ✅ | |
 | T83 | items-w1 | T81 | ✅ | |
-| T84 | items-w3 | T81 | ⬜ | |
+| T84 | items-w3 | T81 | ✅ | |
 | T85 | items-w2 | T81 | ✅ | Review fixed: `items-upper-w2-1` took neither fruit 48,22 nor extra life 63,35 (probed), and the original stops in its pass from ~1012, uncompared; cut to 1 010 frames, owner added T105. Switch case probed: springs, gate 502, wings 684. Two engine mutations red. Deviation (two cases) kept; its "only way in" claim read-only. |
 | T86 | items-launchers | T81 | ⬜ | |
 | T87 | slot-symbols-routines | T71; blocks T72 | ✅ | |
@@ -107,6 +107,7 @@ done · ⛔ blocked, needs a human.
 | T100 | front-vbl-timing | T37; blocks T21 | ⬜ | |
 | T97 | story-split-handler | T54; blocks T56 | ⬜ | |
 | T101 | lag-long-pass | T81, T82; blocks T21 | ⬜ | |
+| T102 | items-w3-faults | T101; blocks T21 | ⬜ | |
 | T105 | w2-1-hang-fruit-life | T85; blocks T21 | ⬜ | |
 
 A Notes cell holds what was built or what the review found, the test count, and one line per
