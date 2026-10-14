@@ -1,0 +1,5 @@
+# The hi-lo game (T74) from `start-w1-1-late`'s first spin (8 $18 0): 7 guesses right (each higher or lower as the next number makes it right), then taken by the spin button at rung 1: the score shown doubled (0: nothing scored in W1-1).
+# To the frame before `slot_machine` returns.
+sync = { slot = "slot-none", start = "start-w1-1-late" }
+script = "slot-hilo-1"
+frames = 1280

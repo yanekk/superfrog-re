@@ -35,6 +35,20 @@ impl Run {
     fn step(&mut self, input: FrameInput) {
         self.g.step(input);
         self.f += 1;
+        if std::env::var("PLAN_TRACE").is_ok() {
+            let s = self.g.state();
+            eprintln!(
+                "  {} hilo {} guessed {} pick {} menu {} win {} coins {} x {:x}",
+                self.f,
+                s.w(HILO),
+                s.w(HILO_GUESSED),
+                s.w(h0(0x598a)),
+                s.w(h0(0x6152)),
+                s.l(WIN),
+                s.w(h0(0x49c6)),
+                s.w(POINTER_X)
+            );
+        }
     }
 
     /// `key` held three frames from now, then nothing.
@@ -46,14 +60,18 @@ impl Run {
         self.lines.push((self.f + LOADS, "-"));
     }
 
-    /// Whether a menu reads the joystick on this frame: a move tried on a clone moves the pointer.
+    /// Whether a menu reads the joystick on this frame: a move tried on a clone moves the pointer
+    /// one stop (the menu's entry resets it to the first, which is not a move).
     fn live(&self) -> bool {
-        let s = self.g.state();
-        let c = s.l(CURSOR);
-        let joy = if c == STOPS + 8 { Joy::LEFT } else { Joy::RIGHT };
+        let c = self.g.state().l(CURSOR);
+        let (joy, to) = if c == STOPS + 8 {
+            (Joy::LEFT, STOPS + 6)
+        } else {
+            (Joy::RIGHT, c + 2)
+        };
         let mut t = self.g.clone();
         t.step(FrameInput::joy(joy));
-        t.state().l(CURSOR) != c
+        t.state().l(CURSOR) == to
     }
 
     fn wait_live(&mut self) {
