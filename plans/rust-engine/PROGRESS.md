@@ -111,9 +111,9 @@ done · ⛔ blocked, needs a human.
 | T105 | w2-1-hang-fruit-life | T85; blocks T21 | ✅ | |
 | T106 | w1-completions | T42, T86, T101; blocks T18 | ⬜ | |
 | T107 | enemies-w1-2-case | T42; blocks T18, T33, T106 | ✅ | |
-| T108 | enemies-w1-3-case | T42; blocks T18, T33, T106 | ⬜ | |
+| T108 | enemies-w1-3-case | T42; blocks T18, T33, T106 | ✅ | |
 | T109 | enemies-w1-4-case | T42; blocks T18, T33, T106 | ✅ | |
-| T110 | enemies-w1-activation | T42; blocks T18, T33, T106 | ⬜ | |
+| T110 | enemies-w1-activation | T42; blocks T18, T33, T106 | ✅ | |
 | T103 | w4-completions | T41, T101, T102; blocks T18 | ✅ | |
 | T111 | enemies-w3-2-case | T44; blocks T18 | ✅ | Review: one fix, w3_2's hurts counted the opening stunned landing (frame 81); now four hearts lost, red at five. Probed: pad and scenery 14 both spawn, re-sync 2443 after the original's 2441 lag; the staying spiker's walk gutted goes red. |
 | T112 | enemies-w3-3-case | T44; blocks T18 | ⬜ | |

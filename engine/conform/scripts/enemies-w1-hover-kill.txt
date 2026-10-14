@@ -1,0 +1,19 @@
+# W1-3 with world 1's enemies live (T110), planned by examples/complete.rs (`--kill 57,51`): a
+# jump from the start onto the hover at 57,51, stomped at ~189.
+0: -
+150: L
+156: U
+162: R
+164: -
+166: L
+168: -
+172: L
+176: -
+180: L
+182: -
+204: R
+206: U
+208: L
+210: R
+214: U
+216: -
