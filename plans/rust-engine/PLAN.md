@@ -168,6 +168,8 @@ headless.
 | [T127](tasks/T127-restore-sprite-wait.md) | restore-sprite-wait | T101; blocks T21 |
 | [T128](tasks/T128-w3-4-sprite-race.md) | w3-4-sprite-race | T127; blocks T113 |
 | [T131](tasks/T131-w4-completion-faults.md) | w4-completion-faults | T103, T121, T127; blocks T18, T21 |
+| [T132](tasks/T132-w4-4-completion.md) | w4-4-completion | T103; blocks T18, T131 |
+| [T133](tasks/T133-w4-4-dart-21.md) | w4-4-dart-21 | T132; blocks T18, T131 |
 | [T120](tasks/T120-conform-no-silent-pass.md) | conform-no-silent-pass | T05, T36; blocks T21 |
 | [T104](tasks/T104-w6-completions.md) | w6-completions | T40, T101, T102; blocks T18 |
 

@@ -18,6 +18,7 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-14 | 🔄 | T103 split at pir's context line: T132 w4-4-completion (W4-4's playthrough, pacer and dart-20 hurts; T103; blocks T18, T131), T133 w4-4-dart-21 (dart 21's hurt; T132; blocks T18, T131). W4-4 routes in `/tmp` discarded; their lessons are in T132/T133. |
 | 2026-10-14 | 🔄 | Owner, T103: added T131 w4-completion-faults (T103, T121, T127; blocks T18, T21): the `complete-w4-*` cases' faults outside W4's objects, each mapped to its owner first; the cases stay outside the test block. |
 | 2026-10-14 | 🐞 | T103, open (T131): `clr.w AUD3VOL` at a stream's end writes the data bus's last word, a DMA word in the original (`complete-w4-3` 10429 `$fbfb`, `complete-w4-2` 2383, 5171); the engine always writes `$33fc`. |
 | 2026-10-14 | 🐞 | T103, open (T131): the exit fade's palette step lands a frame early in the engine at `complete-w4-1` 2149 (four frames after the exit, 83 pixels a step off); `complete-w4-2`'s copper differs from its exit on. |
