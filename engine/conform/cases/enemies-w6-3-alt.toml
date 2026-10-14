@@ -1,0 +1,6 @@
+# `enemies-w6-3`'s run on W6-3's second map (d4_c16, one drive), nothing left out (T40): the
+# charger is not stomped there.
+sync = { level = "W6-3alt" }
+script = "enemies-w6-3"
+frames = 1150
+resync = false

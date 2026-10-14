@@ -9,7 +9,7 @@
 //! not over by the next blank shows from the blank after. A fade's set-up runs with interrupts
 //! off, so a blank that comes during it is taken when it ends.
 
-use sf_paula::PaulaWrite;
+use sf_paula::{AudioDma, PaulaWrite};
 
 use super::bobs;
 use super::clock::{Beam, BlitClock, Bus};
@@ -304,6 +304,9 @@ pub struct Intro {
     fresh: bool,
     /// For conformance: where the original's handler of this frame ended ([`HandlerEnd`]).
     handler_end: Option<HandlerEnd>,
+    /// The audio channels' DMA as of this frame's start, run on the frames' Paula writes: the
+    /// slots it takes hold up the draws' blits and CPU (T96).
+    audio: AudioDma,
 }
 
 /// What a frame of the intro gives back besides memory.
@@ -408,6 +411,7 @@ impl Intro {
             writes: Vec::new(),
             fresh: false,
             handler_end: None,
+            audio: AudioDma::booted(),
         }
     }
 
@@ -546,6 +550,7 @@ impl Intro {
         self.writes = later;
         out.paula.extend(due.into_iter().map(|(_, w)| w));
         out.paula.sort_by_key(|w| w.vpos);
+        self.audio.frame(&out.paula, LINES as u32);
         out
     }
 
@@ -742,7 +747,12 @@ impl Intro {
             };
             Some((ack, handler_to_draw(resumes)?))
         });
-        let timed = self.time_draw(m, &prog, lead);
+        // This frame's Paula writes so far, for the audio DMA the draw runs beside.
+        let end = self.t - self.t % LINES + LINES;
+        let mut now = out.paula.clone();
+        now.extend(self.writes.iter().filter(|w| w.0 < end).map(|w| w.1));
+        now.sort_by_key(|w| w.vpos);
+        let timed = self.time_draw(m, &prog, lead, &now);
         let base = self.t - self.t % LINES;
         let line = |t: u32| base + (t / super::cpu::LINE) as u64;
         self.write_at(line(timed.dmacon), 0x96, 0x8400);
@@ -767,10 +777,16 @@ impl Intro {
     /// the blitter on the shown list's copper and bitplane fetch ([`sim`]), the vertical blank's
     /// handler taking the CPU at the first instruction's end that sees each blank's request
     /// ([`sim::Sim::irq_seen`]), waiting for the bus and then working its length; a blank the CPU is held past the next one is served
-    /// by that one's handler ([`BlitClock`]'s `merged`). Times are counted from this frame's
-    /// start.
-    fn time_draw(&self, m: &StoryMem, prog: &sim::Prog, lead: Option<(u32, sim::Prog)>) -> Timed {
-        let fixed = self.fixed(m, 3);
+    /// by that one's handler ([`BlitClock`]'s `merged`). The audio DMA runs on `now`, this
+    /// frame's Paula writes so far ([`Intro::fixed`]). Times are counted from this frame's start.
+    fn time_draw(
+        &self,
+        m: &StoryMem,
+        prog: &sim::Prog,
+        lead: Option<(u32, sim::Prog)>,
+        now: &[PaulaWrite],
+    ) -> Timed {
+        let fixed = self.fixed(m, 3, now);
         let start = match &lead {
             // The acknowledge's write took its cycle: the CPU goes on from the next.
             Some((ack, _)) => ack + 1,
@@ -806,11 +822,14 @@ impl Intro {
     }
 
     /// The fixed DMA of `frames` frames from this one under the shown copper list: its copper
-    /// cycles and the bitplane fetch it sets up.
-    fn fixed(&self, m: &StoryMem, frames: usize) -> sim::Fixed {
+    /// cycles, the bitplane fetch it sets up and the audio channels' slots, this frame's on its
+    /// Paula writes `now`, the next ones' on none (their handlers' writes are not made yet: a
+    /// channel plays on, an effect's next step is missed).
+    fn fixed(&self, m: &StoryMem, frames: usize, now: &[PaulaWrite]) -> sim::Fixed {
         let mut fetch = bus(self.shown_list, false).fetch;
         let mut fixed = sim::Fixed::new();
-        for _ in 0..frames {
+        let mut audio = self.audio.clone();
+        for k in 0..frames {
             let mut cycles = Vec::new();
             let writes = crate::render::copper::run_bus(
                 &|a, _, _| m.w(a),
@@ -818,7 +837,10 @@ impl Intro {
                 fetch,
                 &mut cycles,
             );
-            fixed = fixed.frame(&cycles, &writes, fetch);
+            let writes_k = if k == 0 { now } else { &[] };
+            fixed = fixed
+                .frame(&cycles, &writes, fetch)
+                .audio(audio.frame(writes_k, LINES as u32));
             for w in &writes {
                 fetch.write(w.reg, w.value);
             }
@@ -1319,5 +1341,52 @@ impl Intro {
             }
         }
         true
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::front::story::cpu::Bus;
+
+    fn write(vpos: u16, reg: u16, value: u16) -> PaulaWrite {
+        PaulaWrite {
+            reg,
+            value,
+            hpos: 0,
+            vpos,
+        }
+    }
+
+    #[test]
+    fn a_draw_runs_beside_the_audio_dma_of_this_frames_writes_and_the_channels_playing() {
+        let mut m = StoryMem::default();
+        let mut intro = Intro::start(&mut m, &data::StoryData::default());
+        // The black list: the copper's end alone.
+        m.set_w(scenes::BLACK_LIST, 0xffff);
+        m.set_w(scenes::BLACK_LIST + 2, 0xfffe);
+        // Channel 0 turned on by this frame's writes (line 10), with its bit alone as the sound
+        // driver writes it: its first words in lines 11, 12.
+        let on = [
+            write(10, 0xa4, 4),
+            write(10, 0xa6, 200),
+            write(10, 0x96, 0x8001),
+        ];
+        let at = |line: u32, h: u32| line * super::super::cpu::LINE + h;
+        let fixed = intro.fixed(&m, 1, &on);
+        assert!(fixed.taken(at(11, 0x0d)) && fixed.taken(at(12, 0x0d)));
+        assert!(!intro.fixed(&m, 1, &[]).taken(at(11, 0x0d)));
+        // A frame on, the channel plays on through the frames a draw runs into.
+        intro.audio.frame(&on, LINES as u32);
+        let fixed = intro.fixed(&m, 2, &[]);
+        let mut ahead = intro.audio.clone();
+        for k in 0..2 {
+            let slots = ahead.frame(&[], LINES as u32).to_vec();
+            assert!(slots.len() > 100, "frame {k}: {} slots", slots.len());
+            for (c, n) in slots {
+                assert_eq!(n, 0);
+                assert!(fixed.taken(k * sim::FRAME + c));
+            }
+        }
     }
 }

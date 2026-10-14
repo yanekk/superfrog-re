@@ -60,7 +60,7 @@ fn crusher_init(c: &mut LevelCtx, slot: u32, _d7: u16) {
 
 /// One step of the cycle: once `+$5c` runs out, `next` with `count`; this pass it is harmless or
 /// not (`passive`) and moves `dy`.
-fn step(c: &mut LevelCtx, slot: u32, next: u32, count: u16, passive: u16, dy: u16) {
+pub fn step(c: &mut LevelCtx, slot: u32, next: u32, count: u16, passive: u16, dy: u16) {
     let b = &mut c.bus;
     let t = b.w(slot + 0x5c).wrapping_sub(1);
     b.set_w(slot + 0x5c, t);

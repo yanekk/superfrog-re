@@ -1,0 +1,6 @@
+# W6-1 with every object live on both sides: frog-explore's run right and back (T40). Outside the
+# test block: at frame 479, after the original's pass ran late into it (phase 8), the panel's
+# clock digit differs and the case re-syncs once; a lag fault, T101's (lag-long-pass).
+sync = { level = "W6-1" }
+script = "frog-explore"
+frames = 1000

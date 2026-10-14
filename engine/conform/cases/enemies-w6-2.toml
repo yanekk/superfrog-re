@@ -1,0 +1,8 @@
+# W6-2 with every object live on both sides and nothing left out (T40): the walker, the right
+# dart, a mace and its chain, the cannon and its shots, the charger pacing and attacking, and a
+# hit. The thrower, the left dart and the flier further on are T104's (the owner, 2026-10-14:
+# every type is met across W6's cases). Planned with `examples/plan_exit`.
+sync = { level = "W6-2" }
+script = "enemies-w6-2"
+frames = 650
+resync = false

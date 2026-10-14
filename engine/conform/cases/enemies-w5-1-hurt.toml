@@ -1,0 +1,6 @@
+# W5-1 with every object live (T39): the frog runs into the first pacer and is hurt (246), clears
+# the pit and waits by the shooter, which fires twice (576, 788).
+sync = { level = "W5-1" }
+script = "enemies-w5-1-hurt"
+frames = 900
+resync = false

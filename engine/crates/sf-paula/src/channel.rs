@@ -40,7 +40,7 @@ const INTREQ: u16 = 0x9C;
 const ADKCON: u16 = 0x9E;
 
 /// The state machine's states, named by their HRM numbers.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 enum State {
     S000,
     S001,
@@ -49,7 +49,7 @@ enum State {
     S011,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 struct Channel {
     state: State,
     /// The word being played: high byte first, then low.
@@ -95,7 +95,7 @@ impl Channel {
 }
 
 /// A register change that lands a few clocks after its write.
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 struct Delayed {
     at: u64,
     reg: u16,
@@ -104,7 +104,7 @@ struct Delayed {
 
 /// The four channels, Agnus's audio pointers and requests, and the bits of DMACON, ADKCON and
 /// INTREQ the channels read.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Chip {
     ch: [Channel; 4],
     /// AUDxLC: where each block starts.
@@ -123,6 +123,8 @@ pub struct Chip {
     carried: Vec<PaulaWrite>,
     /// Clocks since power-on at the start of the current frame.
     frame_start: u64,
+    /// The DMA slots served in the last frame run: (clock in the frame, channel), in order.
+    pub(crate) fetched: Vec<(u32, u8)>,
     /// The clock being run.
     now: u64,
 }
@@ -153,6 +155,7 @@ impl Chip {
             irqs: Vec::new(),
             carried: Vec::new(),
             frame_start: 0,
+            fetched: Vec::new(),
             now: 0,
         }
     }
@@ -176,6 +179,7 @@ impl Chip {
         list.extend_from_slice(&writes[..wrap]);
         self.carried = writes[wrap..].to_vec();
 
+        self.fetched.clear();
         for t in taps.iter_mut() {
             t.clear();
             t.reserve(clocks as usize);
@@ -288,7 +292,7 @@ impl Chip {
         }
     }
 
-    fn set_dmacon(&mut self, value: u16) {
+    pub(crate) fn set_dmacon(&mut self, value: u16) {
         let old = self.dmacon;
         let new = if value & 0x8000 != 0 {
             (old | value) & 0x07FF
@@ -324,6 +328,8 @@ impl Chip {
             return;
         }
         self.agnus_request[n] = false;
+        self.fetched
+            .push(((self.now - self.frame_start) as u32, n as u8));
         let word = chip.chip_word(self.pt[n] & PTR_MASK);
         self.pt[n] = self.pt[n].wrapping_add(2);
         self.poke_dat(n, word);

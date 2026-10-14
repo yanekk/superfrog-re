@@ -1,0 +1,6 @@
+# `enemies-w6-4`'s run on W6-4's second map (d4_c17, one drive), nothing left out (T40): every
+# type W6-4 has, the strider among them, the flier killed, a hit.
+sync = { level = "W6-4alt" }
+script = "enemies-w6-4"
+frames = 1400
+resync = false

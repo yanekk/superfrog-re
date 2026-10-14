@@ -1,12 +1,14 @@
 //! The slot machine (T92, docs/13): `slot_machine` (h0+$49dc), which `level_tally` calls when the
 //! player picks it, as a front-end routine ([`crate::front`]): its loads, the overlay's fade-out,
 //! the music's start, the win counted (none yet), the reels, lamps and digits set up and the
-//! picture's fade-in set up, up to the attract loop's first raster wait (h0+$4d24).
+//! picture's fade-in set up, and the attract loop (h0+$4d24, T93: the reels and lamps drawn on
+//! the beam, [`draw`]) until fire or the mouse's button.
 //!
 //! The loads are instant (owner, 2026-10-12): the engine's first frame stands for the original's
 //! frame its last load ended on, `overlays_end` waiting on the overlay's fade (h0+$b7e2).
 
-use crate::front::blit::Blit;
+pub(crate) mod draw;
+
 use crate::front::common::{FadeKind, MusicStart, call, fade};
 use crate::front::{Cx, Routine as FrontRoutine, Yield, at, h2};
 use crate::game::{Job, LoadEnd};
@@ -25,7 +27,7 @@ const SOUND_KEPT_AT: u32 = h1(0x20d00);
 const SOUND_KEPT_LEN: u32 = 0xfa00;
 
 /// `slot_state` (h0+$49c6): the coins put in, the three reels' positions, the hi-lo count, ...
-const COINS: u32 = at(0x49c6);
+pub(crate) const COINS: u32 = at(0x49c6);
 const REELS: u32 = at(0x49c8);
 const HILO: u32 = at(0x49ce);
 const STATE_49D0: u32 = at(0x49d0);
@@ -58,7 +60,7 @@ const POINTER_Y: u32 = at(0x11b68);
 const POINTER: u32 = at(0x1b10c);
 /// The slot's copper list: its bitplane MOVEs (h2+$6708), its colours (h2+$6688), and the
 /// palette the picture fades in to (h0+$6912).
-const SLOT_COPPER: u32 = h2(0x65e4);
+pub(crate) const SLOT_COPPER: u32 = h2(0x65e4);
 const PLANE_MOVES: u32 = h2(0x6708);
 const SLOT_COLOURS: u32 = h2(0x6688);
 const SLOT_PALETTE: u32 = at(0x6912);
@@ -85,6 +87,47 @@ const GLYPH_CYCLES: u32 = 250;
 /// small next to the rest.
 const COUNT_CYCLES: u32 = 1_500;
 const INIT_CYCLES: u32 = 1_200;
+
+/// The vertical blank's handler on the slot screen, in 68000 cycles from the frame's top to its
+/// acknowledge (T94, fitted to the oracle's acknowledges over `slot-attract`'s frames 40-300: 256
+/// of 260 on their line): 17.6 lines; a line more when it polls the keyboard; 0.85 of a line a
+/// DMACON write (T72 had 4/5); 1.2 lines when the music reads its next rows; 0.8 fewer on a tick
+/// that steps no channel's effect; two lines an effect playing (T72, not seen in the attract loop).
+const HANDLER_CYCLES: u32 = 8_000;
+const KEYBOARD_CYCLES: u32 = 454;
+const DMACON_CYCLES: u32 = 386;
+const FETCH_CYCLES: u32 = 545;
+const QUIET_CYCLES: u32 = 363;
+const EFFECT_CYCLES: u32 = 908;
+
+/// What the vertical blank's handler does on a frame, which decides how long it takes.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub(crate) struct Handler {
+    /// It polls the keyboard (INTENA `$0008`, every other frame).
+    pub(crate) keyboard: bool,
+    /// Its DMACON writes: the music's on a row (`$0000`, `$8000` starting no note; `$1`, `$1`,
+    /// `$8001` one; `$1`, `$2`, `$3`, `$8003` two; `$1`, `$2`, `$4`, `$7`, `$8007` three).
+    pub(crate) dmacon_writes: u32,
+    /// The music reads its next rows ([`crate::audio::AudioDriver::fetches_rows`]).
+    pub(crate) fetches_rows: bool,
+    /// The music's tick steps no channel ([`crate::audio::AudioDriver::quiet_tick`]).
+    pub(crate) quiet_tick: bool,
+    /// The effects playing ([`crate::audio::AudioDriver::sfx_active`]).
+    pub(crate) effects: u32,
+}
+
+/// The line the slot screen's vertical blank handler, taken on time, acknowledges on: where the
+/// main program goes on (the drawing cut by the frame's end, [`draw`]). The fade's steps are
+/// timed apart and lengthen it further (T93).
+pub(crate) fn interrupt_lines(h: Handler) -> u16 {
+    let cycles = HANDLER_CYCLES
+        + h.keyboard as u32 * KEYBOARD_CYCLES
+        + h.dmacon_writes * DMACON_CYCLES
+        + h.fetches_rows as u32 * FETCH_CYCLES
+        + h.effects * EFFECT_CYCLES
+        - h.quiet_tick as u32 * QUIET_CYCLES;
+    (cycles / crate::front::BEAM_CYCLES_PER_LINE) as u16
+}
 
 /// `slot_machine`, from just after its first raster wait (h0+$49e2).
 #[derive(Debug, Clone, Default, PartialEq, Eq, Hash)]
@@ -137,27 +180,11 @@ impl Routine {
                     writes: vec![(BUFFER_0 + 0x7683, 8 * ROW)],
                 });
                 cx.busy(cycles);
-                Yield::Return
+                // `slot_count_win` returns, and `slot_machine` goes on at once (h0+$4c80), once
+                // the CPU is through the print (the next frame's, mostly).
+                Yield::Interrupt
             }
-            5 => {
-                cx.s.set_w(STATE_49D0, 0);
-                cx.s.set_l(STATE_49D2, 0);
-                cx.s.set_w(STATE_49DA, 0);
-                slot_init(cx);
-                slot_digits(cx);
-                cx.busy(INIT_CYCLES + DIGITS_CYCLES);
-                cx.s.set_w(POINTER_X, 0x20);
-                cx.s.set_w(POINTER_Y, 0xe8);
-                for k in 0..6 {
-                    let p = BUFFER_0 + k * PLANE;
-                    cx.s.set_w(PLANE_MOVES + 8 * k + 6, p as u16);
-                    cx.s.set_w(PLANE_MOVES + 8 * k + 2, (p >> 16) as u16);
-                }
-                crate::front::sprite::attach(cx.s, POINTER);
-                let rec = crate::front::fade::RECORDS[0];
-                cx.s.set_w(rec.at + crate::front::fade::SPEED, 1);
-                Yield::Fade(rec)
-            }
+            5 => set_up(cx),
             6 => fade(
                 FadeKind::In {
                     target: SLOT_PALETTE,
@@ -172,13 +199,40 @@ impl Routine {
                 cx.cop1lc = SLOT_COPPER;
                 Yield::Raster
             }
+            // h0+$4d2a: the attract frame, drawn on the beam.
+            9 => call(FrontRoutine::SlotDraw(draw::Draw::default())),
+            // h0+$4d36: the mouse's button or fire ends it.
             _ => {
-                cx.unported("the slot machine's attract loop");
-                self.pc -= 1;
+                if cx.mouse_button() || cx.fire() {
+                    cx.unported("the slot machine's rounds (T73)");
+                }
+                self.pc = 8;
                 Yield::Raster
             }
         }
     }
+}
+
+/// h0+$4c80..$4cf0: `slot_init`, `slot_digits`, the pointer, the planes and its sprite, then the
+/// wait for the fade record to be free.
+fn set_up(cx: &mut Cx) -> Yield {
+    cx.s.set_w(STATE_49D0, 0);
+    cx.s.set_l(STATE_49D2, 0);
+    cx.s.set_w(STATE_49DA, 0);
+    slot_init(cx);
+    slot_digits(cx);
+    cx.busy(INIT_CYCLES + DIGITS_CYCLES);
+    cx.s.set_w(POINTER_X, 0x20);
+    cx.s.set_w(POINTER_Y, 0xe8);
+    for k in 0..6 {
+        let p = BUFFER_0 + k * PLANE;
+        cx.s.set_w(PLANE_MOVES + 8 * k + 6, p as u16);
+        cx.s.set_w(PLANE_MOVES + 8 * k + 2, (p >> 16) as u16);
+    }
+    crate::front::sprite::attach(cx.s, POINTER);
+    let rec = crate::front::fade::RECORDS[0];
+    cx.s.set_w(rec.at + crate::front::fade::SPEED, 1);
+    Yield::Fade(rec)
 }
 
 /// The bottom of the slot machine's stack: `level_tally` after its call (T38).
@@ -258,26 +312,16 @@ pub(crate) fn draw_lamps(cx: &mut Cx) {
     use crate::audio::{DMACON, INTENA};
     cx.wr(INTENA, 0x0010);
     cx.wr(DMACON, 0x8400);
-    cx.busy(LAMPS_START_CYCLES);
+    let mut cycles = LAMPS_START_CYCLES;
     for k in 0..LAMP_COUNT {
-        let r = LAMP_RECTS + 12 * k;
-        let (x, y, w, h) = (cx.w(r), cx.w(r + 2), cx.w(r + 4), cx.w(r + 6));
-        let at = (x >> 3) as u32 + y as u32 * ROW;
-        let words = w >> 4;
-        let modulo = (ROW as u16).wrapping_sub(2 * words) as i16;
-        let b = Blit {
-            con0: if cx.s.w(LAMPS + 8 * k) != 0 { 0xdfc } else { 0xd0c },
-            con1: 0,
-            afwm: 0xffff,
-            alwm: 0xffff,
-            pt: [BUFFER_0 + 0xf000 + at, BUFFER_0 + 0xc800 + at, 0, BUFFER_0 + 0xc800 + at],
-            modulo: [modulo, modulo, 0, modulo],
-            size: h << 6 | words,
-        };
+        let (b, _) = draw::lamp_blit(cx, k);
         b.run(cx.s);
-        cx.blit_wait(&b);
-        cx.busy(LAMP_CYCLES);
+        // Two cycles a word a channel here (measured, T72), not the 3 of `Blit::cycles`.
+        cycles += b.cycles() * 2 / 3 + LAMP_CYCLES;
     }
+    // The screen is blank: no fetch slows the blits, and the CPU's time is summed, not rounded
+    // up to a line a step.
+    cx.busy(cycles);
     cx.wr(INTENA, 0x8010);
 }
 
@@ -422,4 +466,43 @@ pub(crate) fn resume(chain: &[u32]) -> Option<Vec<(FrontRoutine, Option<Yield>)>
             (FrontRoutine::Slot(Routine::default()), None),
         ]
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{Handler, interrupt_lines};
+
+    fn handler(keyboard: bool, dmacon_writes: u32, fetches_rows: bool, quiet: bool) -> Handler {
+        Handler {
+            keyboard,
+            dmacon_writes,
+            fetches_rows,
+            quiet_tick: quiet,
+            effects: 0,
+        }
+    }
+
+    /// The oracle's acknowledges in `slot-attract` (original frames 798-1058), by what its handler
+    /// did: the line each lands on (where on it, measured, in the comment).
+    #[test]
+    fn the_handler_acknowledges_on_the_originals_line() {
+        for (what, h, line) in [
+            ("nothing", handler(false, 0, false, false), 17), // 17.68
+            ("keyboard", handler(true, 0, false, false), 18), // 18.68
+            ("a row, no note", handler(false, 2, false, false), 19), // 19.1-19.2
+            ("one note", handler(false, 3, false, false), 20), // 20.2-20.4
+            ("two notes", handler(false, 4, false, false), 21), // 21.15
+            ("three notes", handler(false, 5, false, false), 21), // 21.1
+            ("keyboard, rows read", handler(true, 0, true, false), 19), // 19.67
+            ("quiet", handler(false, 0, false, true), 16), // 16.69
+            ("keyboard, quiet", handler(true, 0, false, true), 17), // 17.68
+        ] {
+            assert_eq!(interrupt_lines(h), line, "{what}");
+        }
+        let effect = Handler {
+            effects: 1,
+            ..handler(false, 0, false, false)
+        };
+        assert_eq!(interrupt_lines(effect), 19, "an effect: two lines (T72)");
+    }
 }
