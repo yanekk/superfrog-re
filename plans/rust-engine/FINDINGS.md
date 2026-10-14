@@ -18,6 +18,7 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-14 | 🔄 | Owner, T104: added `Game::step_unseen` (no level picture; render was ~60% of planning). Planners only: T103, T106, T108, T122, T126 step their beams with it, ~2.5× faster. `tests/step_unseen.rs` proves it leaves the game as `step` does. |
 | 2026-10-14 | 🐞 | T100 review sweep, open: 15 cases' `enemies` exclusions name `T39–T41` (all ✅), not the task that will model them: enemies-w1-1, -w3-1, -w3-2, -w3-4, frog-timeup, game-over, -fire, -timeup, items-checkpoint, -pad, -shield-w3-1, -run, -wings-w1-2, tally, tally-slot. Not fixed. |
 | 2026-10-14 | 📌 | T100 review: with vars off (frame-0 `level1_vector`), front-attract, -boot, -skip-wait, -options and ending stay green on T100's `BLANK_COPPER` timing; worker-driven. |
 | 2026-10-14 | 🔄 | Owner, T100: added T130 front-vbl-318 (blocks T21; renumbered from T127, taken, in review): `frog-pit-w1-1` frame 318, one colour a channel off; the original's handler ~64 cycles longer than frame 648's, same work. Picture excluded meanwhile. |

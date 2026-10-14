@@ -279,7 +279,7 @@ fn main() {
                     let mut dead = false;
                     for _ in 0..HOLD {
                         let x = FrameInput::joy(a);
-                        n.step(x);
+                        n.step_unseen(x);
                         p.push(x);
                         if n.state().w(FROG + f::LIVES) != lives || n.state().w(FROG + f::DYING) != 0 {
                             dead = true;
