@@ -1,10 +1,9 @@
 # W2-1, enemies frozen: both hidden coin springs at 62,44 and 63,44 spent from below (to frame
 # ~300), hops under the pillar at 63-66,36-39 until a jump to the right lifts the frog into it
-# (the ground probe's $3f lift and step-up, frame ~884) onto its ledge at 66,36; across the
-# shafts' fake walls to the pad 91,35, up the column above it, left along the fake corridor at
-# rows 16-19 to the 20 000-point fruit 48,22 (frame ~1332), right through the fake wall into the
-# shaft at 60-63 and down onto the extra life 63,35 (frame ~1437). Planned on the engine (T85,
-# `examples/plan`).
+# (the ground probe's $3f lift and step-up, frame ~884) onto its ledge at 66,36, then down to the
+# speed-up 73,46 (frame 981). Ends at 1010: from ~1012 the original stops in its pass ($c0f39e,
+# frog at 78,42) and nothing more is compared; the fruit 48,22 and extra life 63,35 are T105's.
+# Planned on the engine (T85, `examples/plan`).
 0: -
 144: L
 157: -
@@ -103,54 +102,3 @@
 996: -
 1000: U L
 1004: L
-1012: -
-1018: R
-1026: -
-1030: R
-1034: U R
-1038: U
-1046: -
-1058: U
-1066: L
-1070: -
-1072: R
-1076: -
-1080: U
-1084: R
-1088: U
-1092: L
-1096: U
-1100: -
-1102: L
-1106: U
-1118: R
-1126: -
-1130: R
-1134: U
-1138: -
-1142: L
-1150: -
-1158: L
-1166: -
-1174: L
-1186: U L
-1190: U
-1206: -
-1260: L
-1300: -
-1302: U
-1310: -
-1314: U
-1318: -
-1321: R
-1333: U
-1337: L
-1341: -
-1345: U R
-1349: U
-1353: -
-1369: U
-1385: -
-1386: -
-1390: R
-1460: -

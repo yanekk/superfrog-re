@@ -84,8 +84,8 @@ fn items_switch_w2_1() {
     green("items-switch-w2-1");
 }
 
-/// W2-1 with its items live, 1 480 frames: the climb into the pillar, the pad, the 20 000-point
-/// fruit and the extra life, with no re-sync (T85).
+/// W2-1 with its items live, 1 010 frames: the coin springs, the lift into the pillar and the
+/// speed-up, with no re-sync (T85; the fruit and the extra life are T105's).
 #[test]
 fn items_upper_w2_1() {
     green("items-upper-w2-1");

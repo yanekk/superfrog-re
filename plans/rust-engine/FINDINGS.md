@@ -18,7 +18,10 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
-| 2026-10-14 | 📌 | T85: W2-1's fruit 48,22 and extra life 63,35 sit in a closed upper area; enemies frozen, the only way in is a jump into the pillar 63-66,36-39 (ground-probe lift, frame ~884 of `items-upper-w2-1`). Flight (wings) only flaps. |
+| 2026-10-14 | 📌 | T85 review: added T105 (owner): `items-upper-w2-1` never took the fruit 48,22 or extra life 63,35, and the original stops in its pass from ~1012 (h0+$e3fe..$e412, frog 78,42). Case cut to 1 010 frames. |
+| 2026-10-14 | 🐞 | T85 review, open: `sf-conform` reads an original that never finishes a pass as endless lag (`mid_pass`, `straddled`) and compares nothing, so a case stays green; old `items-upper-w2-1` had 468 such frames. Swept: switch 49, fruit-w2-2 45, wings-w1-2 24, all sparse. |
+| 2026-10-14 | 📌 | T85 review: `examples/plan` steps the engine unpaced; in the case run W2-1's pad 91,35 bounced two frames later (frog `+$22` out of phase), so planned inputs after it missed. Check a planned script's items through `run_with`. |
+| 2026-10-14 | 📌 | T85: W2-1's fruit 48,22 and extra life 63,35 sit in a closed upper area; with enemies frozen the way in is a jump into the pillar 63-66,36-39 (ground-probe lift, frame ~884 of `items-upper-w2-1`). Flight only flaps. |
 | 2026-10-14 | 🐞 | T54 review, open: the engine's draw `$8400` still lands 1–4 lines off the original's in 70 frames before 3437 (521, 536, 537 among them; cause not probed); `DRAWS` compares values only, so frames still match. |
 | 2026-10-14 | 📌 | T54: the scan's first divergence, engine frame 3437 (O 6452), is an `objects_init` set-up, not a draw: its mask blits run long in the original (held handlers at lines 281/37/138/252, engine 251/4/69/176); `sfx_records` differ there too. |
 | 2026-10-14 | 📌 | T54: a handler a draw holds off still runs the engine's `handler_lines` length; `story_draws` resumes from the oracle's acknowledge, so that length stays untested (as T53's review noted). |
