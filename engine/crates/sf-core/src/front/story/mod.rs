@@ -10,7 +10,6 @@
 
 pub mod bobs;
 pub mod boot;
-pub mod clock;
 pub mod cpu;
 pub mod data;
 pub mod fade;

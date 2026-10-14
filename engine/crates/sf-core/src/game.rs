@@ -56,8 +56,9 @@ pub struct Cpu {
 pub struct HandlerEnd {
     /// The beam (line, DMA cycle) of its acknowledge's write (`INTREQ = $20`).
     pub ack: (u16, u16),
-    /// The main program's instruction the interrupt came in before (the PC it returns to).
-    pub resumes: u32,
+    /// The main program's instruction the interrupt came in before (the PC it returns to), when the
+    /// original's step began at the handler's entry.
+    pub resumes: Option<u32>,
 }
 
 /// How the original's main loop kept time on this frame (DESIGN §2.1; owner, 2026-10-11).
