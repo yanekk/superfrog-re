@@ -571,7 +571,7 @@ impl LevelCtx<'_> {
     /// on line `off`: its vertical blank waits for the wait's end, the first line of the new frame
     /// whose VPOS low byte is three past the one the wait read, and INTENA `$c000` (`on`).
     fn interrupts_back(&mut self, on: PaulaWrite, off: u16) {
-        let end = ((off % beam::FRAME_LINES) as u8).wrapping_add(3) as u16;
+        let end = sfx_wait_end(off);
         if self.clock.line < end {
             self.clock = beam::Clock { line: end, into: 0 };
         }
@@ -741,9 +741,25 @@ impl LevelCtx<'_> {
     }
 }
 
+/// The line of the next frame `sfx_play`'s raster wait ends on, begun on line `off` of a frame
+/// that ended in it: the wait reads VPOS's low byte, adds 3 and loops until VPOS's low byte equals
+/// it (h0+$12b28..$12b36), so the line the vertical blank is held to.
+fn sfx_wait_end(off: u16) -> u16 {
+    ((off % beam::FRAME_LINES) as u8).wrapping_add(3) as u16
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn sfx_wait_ends_three_lines_on_by_vposs_low_byte() {
+        // Lines 310..312 read low bytes $36..$38: the next frame's lines 57..59 match them.
+        assert_eq!(sfx_wait_end(310), 57);
+        assert_eq!(sfx_wait_end(312), 59);
+        // A clock run past the frame's end counts on in the next frame.
+        assert_eq!(sfx_wait_end(beam::FRAME_LINES + 2), 5);
+    }
 
     #[test]
     fn joy1dat_encodes_directions_as_denise_does() {
