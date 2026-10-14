@@ -372,7 +372,7 @@ fn frog_reset_matches_the_original() {
 
 /// h0+$19c9c (T86): with VPOS's low byte on `$1d`..`$21` (compared signed) the CPU waits for line
 /// `$22` before it writes a frog sprite's copper words; past the frame's end the beam is on the
-/// next frame's lines. `frog_anim_tick` and `place_frog_sprites` both wait.
+/// next frame's lines. `frog_anim_tick` and `place_frog_sprites` do not call it yet (T127).
 #[test]
 fn the_frog_sprites_wait_out_lines_1d_to_21() {
     use sf_core::level::beam::{Clock, FRAME_LINES};
@@ -406,13 +406,4 @@ fn the_frog_sprites_wait_out_lines_1d_to_21() {
         c.sprite_wait();
         assert_eq!(c.clock.line, to, "sprite_wait from line {from:#x}");
     }
-    c.clock = on(0x1e);
-    frog::anim::place_frog_sprites(&mut c);
-    let line = c.clock.line;
-    assert!(line >= 0x22, "place_frog_sprites from line $1e: {line:#x}");
-    c.bus.set_w(FROG + f::ANIM_TIME, 0xffff);
-    c.clock = on(0x1e);
-    frog::anim::frog_anim_tick(&mut c);
-    let line = c.clock.line;
-    assert!(line >= 0x22, "frog_anim_tick from line $1e: {line:#x}");
 }

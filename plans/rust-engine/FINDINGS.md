@@ -18,10 +18,11 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
-| 2026-10-14 | 📌 | T86 review: the launcher case is held by the launcher's `FrogSprites` cost (tick on line $1e/$1f, past the copper's sprite moves), not the wait: a no-op `sprite_wait` stays green. The wait is locked by a `frog_routines` test. |
+| 2026-10-14 | 🔄 | Owner, T86 review: added T127 restore-sprite-wait (T101; blocks T21). With T43's W2 enemies, the sprite wait's calls made `items-switch-w2-1` and `enemies-w2-1` red at 442 (engine 0.2 line late); calls left out, `sprite_wait` and its test kept.
+| 2026-10-14 | 📌 | T86 review: the launcher case is held by the launcher's `FrogSprites` cost (tick on line $1e/$1f, past the copper's sprite moves), not the wait: a no-op `sprite_wait` stays green. `sprite_wait` is locked by a `frog_routines` test; its calls are T127's. |
 | 2026-10-14 | 🐞 | T86 review, open: the bounce pad's new `FrogSprites` charge (the original's call at $ea14/$ea6a) is tested by nothing: `items-pad-w1-1` re-syncs at 321 and 790 with it or without; T83 recorded 402/786. T101's case. |
 | 2026-10-14 | 📌 | T86 review: the shield is taken only in `items-shield-w3-1`, red, so no green case takes it yet; T102 goal 4 carries it. |
-| 2026-10-14 | 📌 | T86 for T106: the launcher fault was the frog's pose on the throw frame: the tick reached the sprite pointers past the copper's moves. Fixed (`LevelCtx::sprite_wait`, launcher/pad `FrogSprites` cost); W1-1 frame 2256 should now pass. |
+| 2026-10-14 | 📌 | T86 for T106: the launcher fault was the frog's pose on the throw frame: the tick reached the sprite pointers past the copper's moves. Fixed by the launcher/pad `FrogSprites` cost; W1-1 frame 2256 should now pass. |
 | 2026-10-14 | 🐞 | Not T86's, open: `level_entry` red on `pir/rust-engine` before T86: every level's `slot_copper` original `$140f440`, engine `$1400000`. |
 | 2026-10-14 | 📌 | T86: no green case takes the extra life or the 20 000 fruit ($f008), both T105's; handlers $efc2–$efec are on no W1–W6 map. Planning: frog `+$02` is the feet; `examples/plan`'s `frog()` reads 42 px low. |
 | 2026-10-14 | 📌 | T94 review: `slot::interrupt_lines`' effect term (+2 lines, T72) is unexercised by `slot-attract`; effects' own DMACON writes also add the DMACON term, possibly counting twice. Check against the oracle in T73. |

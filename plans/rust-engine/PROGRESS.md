@@ -93,7 +93,7 @@ done · ⛔ blocked, needs a human.
 | T83 | items-w1 | T81 | ✅ | |
 | T84 | items-w3 | T81 | ✅ | |
 | T85 | items-w2 | T81 | ✅ | |
-| T86 | items-launchers | T81 | ✅ | Review: one fix, `sprite_wait` ignored the frame wrap (VPOS low byte past line 313), test reproduced and locks it; wait itself had no test (no-op mutation green), now has. Probed handlers via `items_map`/`coverage`, launcher/pad cost mutations (pad charge untested, logged), pad case vs base. Deviations held. |
+| T86 | items-launchers | T81 | ✅ | Review: fixed `sprite_wait` ignoring the frame wrap (test reproduced, locks it). Its calls broke `items-switch-w2-1`/`enemies-w2-1` at 442 after merging T43; owner: calls out, T127 restores. Probed via `items_map`/`coverage`, cost mutations (pad charge untested, logged). Deviations held. |
 | T87 | slot-symbols-routines | T71; blocks T72 | ✅ | |
 | T88 | slot-symbols-tables | T71; blocks T72 | ✅ | |
 | T89 | story-copper-bus-cycles | T52; blocks T53 | ✅ | |
@@ -128,6 +128,7 @@ done · ⛔ blocked, needs a human.
 | T124 | enemies-w5-3-case | T39; blocks T18 | ⬜ | |
 | T125 | enemies-w5-4-case | T39; blocks T18 | ⬜ | |
 | T126 | w5-completions | T39, T101, T121, T123, T124, T125; blocks T18 | ⬜ | |
+| T127 | restore-sprite-wait | T101; blocks T21 | ⬜ | |
 
 A Notes cell holds what was built or what the review found, the test count, and one line per
 deviation from the task doc. A ✅ task's cell may be cut to one line once the next task has been reviewed.
