@@ -18,6 +18,8 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-14 | 🔄 | Owner, T105: W2-1's extra life is taken on frame 895, which the original always lags into 896; accepted as compared on 897. No way into the fruit room 45-51,14-26 found: T133 w2-1-fruit-room (T105; blocks T21) added. |
+| 2026-10-14 | 📌 | T105: the old `items-upper-w2-1` hang is the original's `frog_tiles` wall loop (h0+$e3fe, both wall flags; DESIGN §2.11), reached only with W2 enemies frozen. Plan a route against the original: `examples/route_oracle` re-plans from its state. |
 | 2026-10-14 | 📌 | T56 review: story cases compare Paula writes without their beam, so set-up job timing is checked only where a test asserts a line. Fade set-up INTENA lines and later scenes' mask DMACON lines are unasserted; not fixed. |
 | 2026-10-14 | 📌 | T56 split at pir's context warning: T140 setup-under-music, T141 fade-colour-race, T142 draw-end-order, T143 last-fade-out, T144 intro-full-green (carries T56's done-when; blocks T21, T47, T48). Renumbered from T128–T132 by the owner: those were taken. |
 | 2026-10-14 | 📌 | T56: `story_dbg SCAN=1` skips variable-only frames; `sf-conform scan` counts them. Base had 1 254 `frame_descriptors` frames: `frame_prepare` OR'd where the original adds (descriptors past a scene's table hold code). Fixed. |
