@@ -141,6 +141,24 @@ fn the_end_sequence_matches_the_original() {
     }
 }
 
+/// The slot machine's loads, frame for frame from `slot_machine`'s start to the attract loop's
+/// first raster wait (the case `slot-load`, T95), in the slot scene with the tally's two coins.
+#[test]
+fn the_slot_machine_loads_as_the_original_does() {
+    let case = sf_conform::Case::load(&sf_conform::cases_dir().join("slot-load.toml"))
+        .unwrap_or_else(|e| panic!("{e}"));
+    let mut scenes = Vec::new();
+    if let Err(d) = sf_conform::run_with(&case, |_, g| scenes.push(g.scene())) {
+        panic!("{d}");
+    }
+    assert!(
+        scenes
+            .iter()
+            .all(|s| *s == sf_core::Scene::Slot { coins_in: 2 }),
+        "{scenes:?}"
+    );
+}
+
 /// The port of the game's ANIM player draws every frame of both files as T08's decoder does: the
 /// first into buffer A (copied to B), each delta into the buffer not shown.
 #[test]
