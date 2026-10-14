@@ -2,10 +2,10 @@
 # and animation; at frame 277 the level's loop ends (`player_died`) and `level_exit_fade` fades the
 # palette out and closes the window; `level_init_w1` runs again over frames 293–307, `level_start`
 # fades the level in and slides the panel in a step a frame, and the level's loop runs again from
-# frame 332 (T37).
+# frame 332 (T37). Run on through the second death (612) and restart to 900 frames (T100).
 sync = { level = "W1-1" }
 script = "frog-pit"
-frames = 420
+frames = 900
 
 [[exclude]]
 what = "objects"
@@ -14,6 +14,18 @@ task = "T36 (items in frame cases), T16–T18 (enemies)"
 
 [[exclude]]
 what = "picture"
-frames = [308, 323]
-note = "level_start's fade in: the copper reads the play field's colours on line $34 while the vertical blank is part-way through stepping them, and how far it has got depends on the music player's work that frame (line 4 or 5 for its first write)"
-task = "T100"
+frames = [318, 318]
+note = "colour 30 read with red stepped (the original's $877, the engine's $887): the original's handler runs about 64 cycles longer here than on frame 648, the same work"
+task = "T130"
+
+[[exclude]]
+what = "picture"
+frames = [613, 613]
+note = "the copper reads a colour mid-step, between the fade out's `andi.w #$ff0f,(a0)` and `add.w d3,(a0)` (the original shows $b0c, green cleared), and one colour the original has not stepped yet ($eee, the engine's $ddd): the engine's steps land early here, as on 658 (owner, T100)"
+task = "unowned: FINDINGS 2026-10-14 (T100)"
+
+[[exclude]]
+what = "picture"
+frames = [658, 658]
+note = "the copper reads colour 31 on line $34 between the fade in's `andi.w #$fff0,(a0)` and `add.w d3,(a0)` (the original shows $ee0, blue cleared): a 12-cycle window no timing model short of the bus's own reaches (owner, T100)"
+task = "unowned: FINDINGS 2026-10-14 (T100)"

@@ -18,6 +18,12 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-14 | 🐞 | T100 review sweep, open: 15 cases' `enemies` exclusions name `T39–T41` (all ✅), not the task that will model them: enemies-w1-1, -w3-1, -w3-2, -w3-4, frog-timeup, game-over, -fire, -timeup, items-checkpoint, -pad, -shield-w3-1, -run, -wings-w1-2, tally, tally-slot. Not fixed. |
+| 2026-10-14 | 📌 | T100 review: with vars off (frame-0 `level1_vector`), front-attract, -boot, -skip-wait, -options and ending stay green on T100's `BLANK_COPPER` timing; worker-driven. |
+| 2026-10-14 | 🔄 | Owner, T100: added T130 front-vbl-318 (blocks T21; renumbered from T127, taken, in review): `frog-pit-w1-1` frame 318, one colour a channel off; the original's handler ~64 cycles longer than frame 648's, same work. Picture excluded meanwhile. |
+| 2026-10-14 | 🔄 | Owner, T100: `frog-pit-w1-1` pictures 613 and 658 excluded: the copper reads a colour between the fade's `andi` and `add` (channel cleared: `$b0c`, `$ee0`). Only bus-cycle emulation reaches it. |
+| 2026-10-14 | 📌 | T100: the front handler waits at `h0+$12a14` until eight lines after `music_tick` ends; the CPU runs at ~17/20 inside the display window. T94's slot handler may share `vbl::fade_start`; the slot list keeps T37's timing. |
+| 2026-10-14 | 🐞 | Open, seen in T39's review merge: `purity::the_real_pure_crates_pass` red on `pir/rust-engine` itself: `sf-core/src/slot/draw.rs:285–289` (T93's test module) uses `HashMap`. Not T39's; not fixed. |
 | 2026-10-14 | 🔄 | Owner, T102: added T128 w3-4-sprite-race (T127; blocks T113). W3-4 frame 194 (T113's wait on T102) is still red: the frog's sprites cut, `place_frog_sprites` across line $20; re-run after T127, close if green. |
 | 2026-10-14 | 📌 | T102, for T121: its three pinned re-syncs are gone (the drawer's flag wait); `items-fruit-w2-2` and `enemies-w2-2` still `resync = true` with empty pins. Whether the drawer still needs per-bob cut steps is open. |
 | 2026-10-14 | 📌 | T102: `bob_draw` waits for `vbl_pass_flag` (h0+$1918e); a late pass whose last pass flipped since the blank waits out its frame (`LevelCtx::wait_blank`). Cleared pins: `items-fruit-w2-2` 311, `enemies-w2-2` 560, `enemies-w5-1` 551, `items-fruit-w4-1` 206. |

@@ -946,6 +946,17 @@ impl Front {
             Vec::new()
         };
         let level_vbl = cx.s.w(gameover::LOGIC_RUNNING) != 0;
+        // On the level's list the fades start after `music_tick` and the line wait after it
+        // (T100): what the tick and the handler will do, before they do it.
+        let level_list = cop1lc == render::LEVEL_COPPER || cop1lc == title::BLANK_COPPER;
+        let fade_from = (level_list && !level_vbl)
+            .then(|| {
+                let d = cx.data.sound.as_ref()?;
+                let work = cx.s.audio.tick_work(d);
+                let keyboard = vbl::polls_keyboard(&cx);
+                Some(vbl::fade_start(vbl_line, &work, cx.s.audio.streaming(), keyboard))
+            })
+            .flatten();
         // What the slot screen's handler is about to do that lengthens it (T94).
         let slot_handler = crate::slot::Handler {
             fetches_rows: cx.s.audio.fetches_rows(),
@@ -978,7 +989,13 @@ impl Front {
             cx.line
                 .max(vbl_line.saturating_sub(1) + crate::slot::interrupt_lines(h))
         } else {
-            cx.line.max(VBL_END_LINE).max(vbl_line + VBL_END_LINE - 9)
+            match fade_from {
+                // No fade due: the dispatch and the rest of the handler (T100).
+                Some(start) if fading.is_empty() => {
+                    cx.line.max(((start + vbl::NO_FADE_TAIL) / BEAM_CYCLES_PER_LINE) as u16)
+                }
+                _ => cx.line.max(VBL_END_LINE).max(vbl_line + VBL_END_LINE - 9),
+            }
         };
         let after = window(cx.s, cop1lc);
         if fading.is_empty() {
@@ -992,17 +1009,28 @@ impl Front {
                 partial.copy_word(&history[0].1, word);
             }
             history.push((VBL_END_LINE, partial.clone()));
-            let mut t = (vbl_line + FADE_FROM) as u32 * BEAM_CYCLES_PER_LINE;
-            for &(word, mask, changes, fade_in) in &fading {
-                t += if fade_in { FADE_IN_LOOK } else { FADE_OUT_LOOK };
-                if changes {
-                    t += if fade_in { FADE_IN_CHANGE } else { FADE_OUT_CHANGE };
+            if let Some(start) = fade_from {
+                let top = cx.s.b(render::LEVEL_COPPER + 6) as u16;
+                let (writes, end) = fade::level_step_times(&fading, start, top);
+                for (&(word, mask, _, _), at) in fading.iter().filter(|c| c.2).zip(writes) {
                     partial.copy_bits(&after, word, mask);
-                    let line = (t / BEAM_CYCLES_PER_LINE) as u16;
+                    let line = (at / BEAM_CYCLES_PER_LINE) as u16;
                     history.push((line.max(VBL_END_LINE + 1), partial.clone()));
                 }
+                cx.line = cx.line.max((end / BEAM_CYCLES_PER_LINE) as u16);
+            } else {
+                let mut t = (vbl_line + FADE_FROM) as u32 * BEAM_CYCLES_PER_LINE;
+                for &(word, mask, changes, fade_in) in &fading {
+                    t += if fade_in { FADE_IN_LOOK } else { FADE_OUT_LOOK };
+                    if changes {
+                        t += if fade_in { FADE_IN_CHANGE } else { FADE_OUT_CHANGE };
+                        partial.copy_bits(&after, word, mask);
+                        let line = (t / BEAM_CYCLES_PER_LINE) as u16;
+                        history.push((line.max(VBL_END_LINE + 1), partial.clone()));
+                    }
+                }
+                cx.line = cx.line.max((t / BEAM_CYCLES_PER_LINE) as u16 + FADE_TAIL);
             }
-            cx.line = cx.line.max((t / BEAM_CYCLES_PER_LINE) as u16 + FADE_TAIL);
         }
         if palette_due {
             cx.line = vbl::PALETTE_LINE;
