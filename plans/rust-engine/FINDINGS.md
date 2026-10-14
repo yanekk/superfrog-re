@@ -18,6 +18,19 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-14 | 🐞 | Open, seen in T44's merge regression: `frog_cases::frog_timeup_w1_1` failed once (busy machine, 204 s run; message not captured), then green 5 times (alone, full file, cold sync cache). Cause unknown; sync cache writes are atomic. |
+| 2026-10-14 | 📌 | T44 merge with T41, not fixed: `w3/{dart,swing}.rs` and `w4/{dart,mace}.rs` both port h0+$25fa8, $25f42, $2619c, $262be; dispatch keeps the last registered (W4's). Keep one copy. Symbols keep T41's `chain_link_count`, `touch_ledge`. |
+| 2026-10-14 | 🐞 | T44 merge sweep, not fixed: `w4/mace.rs` `spawn_69` skips the ball's write through a null slot to $64 when a link finds no room; the original writes it (W3's spawner test, mutation red). |
+| 2026-10-14 | 📌 | T44 review sweep, not fixed: `tasks/T106-w1-completions.md` (T42's addition) has no Interface or Tests section; T111–T115's were added in T44's review. |
+| 2026-10-14 | 📌 | T44 review sweep, not fixed: `tasks/T107-enemies-w1-2-case.md` (T42's addition) has no Interface or Tests section; T111–T115's were added in T44's review. |
+| 2026-10-14 | 📌 | T44 review sweep, not fixed: `tasks/T108-enemies-w1-3-case.md` (T42's addition) has no Interface or Tests section; T111–T115's were added in T44's review. |
+| 2026-10-14 | 📌 | T44 review sweep, not fixed: `tasks/T109-enemies-w1-4-case.md` (T42's addition) has no Interface or Tests section; T111–T115's were added in T44's review. |
+| 2026-10-14 | 📌 | T44 review sweep, not fixed: `tasks/T110-enemies-w1-activation.md` (T42's addition) has no Interface or Tests section; T111–T115's were added in T44's review. |
+| 2026-10-14 | 🔄 | Owner, T44: W3-2/3/4 frame cases, activation and the W3 completions split to T111–T115 (each blocks T18; T113 waits on T102, T115 on T101, T102, T111–T113). |
+| 2026-10-14 | 🐞 | T44, not fixed: W3-4 frame 194, the frog jumping off the first crumbling platform: the original draws only part of its bob, every variable equal (T102's beam race); `enemies-w3-4` ends at 193. |
+| 2026-10-14 | 📌 | T44: `dart_wait`/`dart_fly` (h0+$25fa8/$25f42), `swing_update`/`swing_link_update` (h0+$2619c/$262be) and `touch_hurt` serve world 2 (T43) and later worlds too: ported in `enemies/w3/{dart,swing}.rs` and `common.rs`; reuse them. |
+| 2026-10-14 | 📌 | T44: the swing's spawner (h0+$183a8) writes its ball through a null slot pointer into the level 1 autovector ($64) when a link finds no room; kept (LAYOUT `level1_vector`). Whether a level 1 interrupt then crashes is untested. |
+| 2026-10-14 | 📌 | T44: `complete.rs` `--kill` takes the marker's map cell; `--at`, `--near`, `--touch` the frog centre's pixel position, whose row is the map row + 3. W3-1 lags nearly every frame: plan ≤150-frame paced legs. |
 | 2026-10-14 | 🔄 | Owner, T41 review: the crawler (markers 13/14, templates 139/138) met no T41 case (its update h0+$26eee never ran on the original in any) and is carried into T103. |
 | 2026-10-14 | 🔄 | Owner, T41: the types no T41 case met (pacers 2/3, crusher-up 16, mace 17, darts 20/21, floater 22) and W4-3 moved into T103's playthroughs. |
 | 2026-10-14 | 🐞 | T41, open: `enemies-w4-4-activation` diverges at 285 (ends at 284): the engine takes a copper interrupt (INTREQ/INTENA `$0010`) in that frame's pass, the original not; seven frames after four respawns. Beam timing, probably T101's. |

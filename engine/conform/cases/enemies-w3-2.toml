@@ -1,0 +1,9 @@
+sync = { level = "W3-2" }
+script = "enemies-w3-2"
+frames = 170
+resync = true
+
+[[exclude]]
+what = "enemies"
+note = "the bubble (T17's, now T39–T41's) returns at once from power-on; world 3's enemies are live (T44)"
+task = "T39–T41"

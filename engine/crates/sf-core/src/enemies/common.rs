@@ -1,4 +1,4 @@
-//! What the enemies of worlds 1–6 share (T39–T44): the two touch handlers most of them name, what
+//! What the enemies of worlds 1–6 share (T39–T44): the touch handlers most of them name, what
 //! a killed or stomped enemy turns into, the map tests their updates make, and the direction from
 //! one point to another (h0+$da62) that the watchers face by.
 

@@ -115,6 +115,11 @@ done · ⛔ blocked, needs a human.
 | T109 | enemies-w1-4-case | T42; blocks T18, T33, T106 | ⬜ | |
 | T110 | enemies-w1-activation | T42; blocks T18, T33, T106 | ⬜ | |
 | T103 | w4-completions | T41, T101, T102; blocks T18 | ⬜ | |
+| T111 | enemies-w3-2-case | T44; blocks T18 | ⬜ | |
+| T112 | enemies-w3-3-case | T44; blocks T18 | ⬜ | |
+| T113 | enemies-w3-4-case | T44, T102; blocks T18 | ⬜ | |
+| T114 | enemies-w3-activation | T44; blocks T18 | ⬜ | |
+| T115 | w3-completions | T44, T101, T102, T111, T112, T113; blocks T18 | ⬜ | |
 
 A Notes cell holds what was built or what the review found, the test count, and one line per
 deviation from the task doc. A ✅ task's cell may be cut to one line once the next task has been reviewed.
