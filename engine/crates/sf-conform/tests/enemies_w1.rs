@@ -73,5 +73,6 @@ fn w1_2() {
     for u in [HOVER, WALKER, CRAWLER, SPIKER, STOMPED] {
         assert!(s.updates.contains(&u), "h0+${u:x} never ran: {:x?}", s.updates);
     }
-    assert!(s.hurts >= 3, "hurt {} times", s.hurts);
+    // The first hurt is the level-entry landing (stunned, frame 81); then the hover, crawler, spiker.
+    assert!(s.hurts >= 4, "hurt {} times", s.hurts);
 }
