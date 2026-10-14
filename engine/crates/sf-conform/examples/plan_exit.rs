@@ -1,9 +1,16 @@
 //! Finds inputs that play a level to its exit with every object live, and prints them as an input
 //! script: how the `enemies-w6-*` completion cases' scripts are written (T40).
 //!
-//! `cargo run --release --example plan_exit -- <level> [--via col,row | --stomp <update> | --hurt <update>]... [--frames N]
-//! [--prefix script.txt] [--no-exit] [--out script.txt]` (`--no-exit`: stop at the last `--via`;
+//! `cargo run --release --example plan_exit -- <level> [--via col,row | --stomp <update> | --hurt <update> | --coins N]...
+//! [--frames N] [--prefix script.txt] [--no-exit] [--out script.txt]` (`--no-exit`: stop at the last `--via`;
 //! `--out`: the script so far, rewritten after each chunk) (a script this printed: its inputs are played first, up to its closing `-` line)
+//!
+//! The coin phase (T104): a W6 exit stays shut until `coins_left_for_exit` is 0, so before the
+//! exit the frog takes coins, steering by a field flooded from every coin left in the live map
+//! (markers 8 and 9; a taken coin's marker is cleared), each coin taken worth more than any
+//! distance. `--coins N` is a step that ends when N coins are still needed (to take coins before a
+//! switch's `--via`); one ending at 0 is added before the exit unless given. A coin the frog makes
+//! no headway toward for `STALL` chunks is passed over until no other is left.
 //!
 //! The plan is made on the engine and played on the original as it goes: from the original's
 //! memory a beam search over ten joystick inputs, each held 4 frames, looks `HORIZON` frames
@@ -25,6 +32,25 @@ const HORIZON: u32 = 30;
 const HOLD: u32 = 4;
 const COMMIT: usize = 48;
 const BEAM: usize = 24;
+/// Chunks without a coin taken or the distance shortened before the nearest coin is passed over.
+const STALL: u32 = 5;
+/// The map's row 0 (`map_rows[1]`, h1), and a row's length in bytes: the live markers.
+const ROW0: u32 = 0x218e0 + 0x4c0;
+const ROW_BYTES: u32 = 0x260;
+
+/// The cells whose live marker is a coin's (8, 9), less `skipped`.
+fn coins(st: &sf_core::State, skipped: &[(usize, usize)]) -> Vec<(usize, usize)> {
+    let mut v = Vec::new();
+    for r in 0..84 {
+        for c in 0..300 {
+            let m = st.w(sf_core::layout::h1(ROW0) + r * ROW_BYTES + 2 * c) & 0x3f;
+            if matches!(m, 8 | 9) && !skipped.contains(&(c as usize, r as usize)) {
+                v.push((c as usize, r as usize));
+            }
+        }
+    }
+    v
+}
 
 /// The frog's middle, in map pixels a row up: `/ 16` gives the map cell of its lower half (the
 /// map's pixel rows start one row above its first; the frog stands with its feet at y + `$10`).
@@ -73,6 +99,8 @@ enum Via {
     Cell(usize, usize),
     Stomp(u32),
     Hurt(u32),
+    /// Coins taken until this many are still needed.
+    Coins(u16),
 }
 
 const SLOTS: u32 = 0x1ba6c;
@@ -122,6 +150,7 @@ fn main() {
             }
             "--stomp" => via.push(Via::Stomp(u32::from_str_radix(&args[i + 1], 16).unwrap())),
             "--hurt" => via.push(Via::Hurt(u32::from_str_radix(&args[i + 1], 16).unwrap())),
+            "--coins" => via.push(Via::Coins(args[i + 1].parse().unwrap())),
             "--no-exit" => {
                 no_exit = true;
                 i -= 1;
@@ -142,6 +171,9 @@ fn main() {
         }
         i += 2;
     }
+    if !no_exit && !via.iter().any(|v| matches!(v, Via::Coins(0))) {
+        via.push(Via::Coins(0));
+    }
     let data = sf_conform::game_data();
     let t = &data.levels.iter().find(|l| *l.0 == id).expect("level").1.t7mp;
     let (w, h) = (t.width as usize, t.height as usize);
@@ -158,6 +190,9 @@ fn main() {
         .collect();
     goals.push(flood(&t.body, w, h, &exits));
     let mut goal = 0;
+    // The coin phase's passed-over coins, its stall count and best distance so far.
+    let mut skipped: Vec<(usize, usize)> = Vec::new();
+    let (mut stall, mut best_d) = (0u32, i64::MAX);
 
     let mut synced = sync::reach(&SyncPoint::AtLevel(id), &InputScript::idle(), budget as u32 + 100)
         .unwrap_or_else(|e| panic!("{e}"));
@@ -190,8 +225,18 @@ fn main() {
         let mem = sync::core_memory(amiga.memory());
         let start = Game::with_display(display.clone(), Start::Transplant(mem));
         let lives = start.state().w(FROG + f::LIVES);
-        let field = &goals[goal];
         let target = via.get(goal).copied();
+        let needed = start.state().w(FROG + f::COINS_LEFT);
+        if let Some(Via::Coins(_)) = target {
+            let mut left = coins(start.state(), &skipped);
+            if left.is_empty() && !skipped.is_empty() {
+                eprintln!("  every coin left was passed over: trying them again");
+                skipped.clear();
+                left = coins(start.state(), &skipped);
+            }
+            goals[goal] = flood(&t.body, w, h, &left);
+        }
+        let field = &goals[goal];
         let hearts = start.state().w(HEARTS);
         let score = |st: &sf_core::State| -> i64 {
             let (x, y) = frog(st);
@@ -215,7 +260,10 @@ fn main() {
                 _ => {
                     let (cx, cy) = ((x.max(0) / 16) as usize, (y.max(0) / 16) as usize);
                     let d = dist(field, cx, cy);
+                    // A coin taken is worth more than any distance (the field still has it).
+                    let taken = needed.saturating_sub(st.w(FROG + f::COINS_LEFT)) as i64;
                     d * 16 + (16 - (x % 16 - 8).abs()) as i64 / 4 - 400 * st.w(HEARTS) as i64
+                        - 8000 * taken
                 }
             }
         };
@@ -327,6 +375,26 @@ fn main() {
             Some(Via::Hurt(_)) => {
                 if st.w(HEARTS) < hearts { 0 } else { 99 }
             }
+            Some(&Via::Coins(n)) => {
+                let left = st.w(FROG + f::COINS_LEFT);
+                let d = dist(&goals[goal], (x.max(0) / 16) as usize, (y.max(0) / 16) as usize);
+                if left < needed || d < best_d {
+                    (stall, best_d) = (0, if left < needed { i64::MAX } else { d });
+                } else {
+                    stall += 1;
+                }
+                if stall >= STALL {
+                    // No headway: pass over the coin nearest the frog by the map's paths.
+                    let here = flood(&t.body, w, h, &[((x.max(0) / 16) as usize, (y.max(0) / 16) as usize)]);
+                    if let Some(&c) = coins(&st, &skipped).iter().min_by_key(|&&(c, r)| here[r * w + c]) {
+                        eprintln!("  passing over the coin at {},{}", c.0, c.1);
+                        skipped.push(c);
+                    }
+                    (stall, best_d) = (0, i64::MAX);
+                }
+                eprintln!("  coins needed {left}");
+                if left <= n { 0 } else { 99 }
+            }
             _ => dist(&goals[goal], (x.max(0) / 16) as usize, (y.max(0) / 16) as usize),
         };
         eprintln!(
@@ -341,6 +409,8 @@ fn main() {
         if goal < via.len() && d <= 2 {
             eprintln!("via {:?} at frame {}", via[goal], inputs.len());
             goal += 1;
+            skipped.clear();
+            (stall, best_d) = (0, i64::MAX);
             if no_exit && goal == via.len() {
                 break;
             }
