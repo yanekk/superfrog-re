@@ -114,7 +114,7 @@ done · ⛔ blocked, needs a human.
 | T108 | enemies-w1-3-case | T42; blocks T18, T33, T106 | ⬜ | |
 | T109 | enemies-w1-4-case | T42; blocks T18, T33, T106 | ⬜ | |
 | T110 | enemies-w1-activation | T42; blocks T18, T33, T106 | ⬜ | |
-| T103 | w4-completions | T41, T101, T102; blocks T18 | 🔍 | Kept: `plan_exit` (coins, gates, switches, tabu, `--hurt tN`), `slots_log`; `complete-w4-3` green in the test block (floater, upward crusher hurt); `complete-w4-1`, `-2` red, outside it (T131). Split at pir's context line: W4-4 to T132 (pacers, dart 20), T133 (dart 21). Mace, crawlers hurt in `-2`. Deviation: no W4-4 case. |
+| T103 | w4-completions | T41, T101, T102; blocks T18 | ✅ | Review: one fix, `slots_log` labelled template 142 as 141 (shared init); T131's W4-3 frames re-cited to c2e8a9d's route, rescanned. `complete-w4-3` green, crusher mutation red at 3561; scans of `-1`, `-2` match T131; mace, crawler hurts in `-2` checked by frog position. W4-4 carried by T132, T133; W4-1, -2 green by T131. |
 | T111 | enemies-w3-2-case | T44; blocks T18 | ⬜ | |
 | T112 | enemies-w3-3-case | T44; blocks T18 | ⬜ | |
 | T113 | enemies-w3-4-case | T44, T102; blocks T18 | ⬜ | |
@@ -137,7 +137,7 @@ done · ⛔ blocked, needs a human.
 A Notes cell holds what was built or what the review found, the test count, and one line per
 deviation from the task doc. A ✅ task's cell may be cut to one line once the next task has been reviewed.
 
-**Review queue:** T103
+**Review queue:** —
 
 ## Blocked on the user
 
