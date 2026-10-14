@@ -106,7 +106,7 @@ done · ⛔ blocked, needs a human.
 | T96 | story-audio-dma-slots | T53; blocks T56 | ✅ | |
 | T100 | front-vbl-timing | T37; blocks T21 | ⬜ | |
 | T97 | story-split-handler | T54; blocks T56 | ✅ | |
-| T101 | lag-long-pass | T81, T82; blocks T21 | ⬜ | |
+| T101 | lag-long-pass | T81, T82; blocks T21 | ✅ | |
 | T102 | items-w3-faults | T101; blocks T21 | ⬜ | |
 | T105 | w2-1-hang-fruit-life | T85; blocks T21 | ⬜ | |
 | T106 | w1-completions | T42, T86, T101; blocks T18 | ⬜ | |
