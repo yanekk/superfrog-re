@@ -18,6 +18,13 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-14 | 🔄 | Owner, T41 review: the crawler (markers 13/14, templates 139/138) met no T41 case (its update h0+$26eee never ran on the original in any) and is carried into T103. |
+| 2026-10-14 | 🔄 | Owner, T41: the types no T41 case met (pacers 2/3, crusher-up 16, mace 17, darts 20/21, floater 22) and W4-3 moved into T103's playthroughs. |
+| 2026-10-14 | 🐞 | T41, open: `enemies-w4-4-activation` diverges at 285 (ends at 284): the engine takes a copper interrupt (INTREQ/INTENA `$0010`) in that frame's pass, the original not; seven frames after four respawns. Beam timing, probably T101's. |
+| 2026-10-14 | 📌 | T41 for T40's merge: T40 also ports h0+$25fa8, $25f42, $2619c, $262be and adds `chain_link_count` (LAYOUT, symbols.toml); keep one of each. T41's `common.rs` merged into T42's: T42's kill/stomp, plus `touch_hurt`, `obj_path_y`, the pair scans. |
+| 2026-10-14 | 📌 | T41 merge, not fixed: `w1/mod.rs` `other_end_free` is a private copy of `common::partner_right_free`/`partner_left_free` (h0+$1b350/$1b396). Symbols and LAYOUT keep T42's names (`find_marker_*`, `w1_hover_phase`, `w1_hover_path`) for both worlds. |
+| 2026-10-14 | 📌 | T41: no W4 map uses markers 32/33 (gates 146/147, routine-tested only). W4-2's crawler at 181,70 never spawns: its marker 14 has no 13 to its left. `examples/route` targets are feet cells (`frog+$02` is the feet). |
+| 2026-10-14 | 🔄 | Owner, T41: added T103 w4-completions (T41, T101, T102; blocks T18): scripted playthroughs of W4-1…W4-4 to the exit. T41 keeps per-level enemy cases, no exclusions; one hitting a T101/T102 fault stays outside the test block. |
 | 2026-10-14 | 📌 | T42 split at pir's context line: T107 (W1-2 case), T108 (W1-3), T109 (W1-4), T110 (activation, a touch_kill_1hit kill); each T42, blocks T18, T33, T106. Uncommitted W1-2 route discarded (facts in T107). |
 | 2026-10-14 | 🐞 | Not T42's, open: with W1's enemies live `game-over-timeup-w1-1` diverges at 271, copper a flip apart in game over's first pass (the T79-review fault); hover costs don't move it. Not in the test block. |
 | 2026-10-14 | 📌 | T42: plan enemy routes in short legs from the paced engine (`examples/complete.rs --paced --prefix`); unpaced plans leave the original's route (it lags, takes fewer coins; the frog died where the plan's lived). |

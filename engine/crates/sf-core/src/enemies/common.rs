@@ -5,7 +5,7 @@
 use crate::bonus::death::become_reward;
 use crate::items::SCORE;
 use crate::layout::h0;
-use crate::level::objects::{bob_anim, bob_follow, obj_despawn_if_offscreen, obj_free};
+use crate::level::objects::{OBJ_SLOTS, bob_anim, bob_follow, obj_despawn_if_offscreen, obj_free};
 use crate::level::{LevelCtx, SlotFn, n_clear};
 use crate::mem::Bus;
 
@@ -20,6 +20,8 @@ pub const TOUCH_KILL_1HIT: u32 = h0(0x23582);
 const KILL_FALL: u32 = h0(0x23b34);
 /// `touch_spud_damage` (h0+$2360e).
 pub const TOUCH_SPUD_DAMAGE: u32 = h0(0x2360e);
+/// `touch_hurt` (h0+$236ac).
+pub const TOUCH_HURT: u32 = h0(0x236ac);
 /// h0+$23bee and h0+$23662: the update and touch of an enemy [`touch_spud_damage`] stomped.
 const STOMPED: u32 = h0(0x23bee);
 const TOUCH_STOMPED: u32 = h0(0x23662);
@@ -37,6 +39,7 @@ pub const ROUTINES: &[(u32, SlotFn)] = &[
     (STOMPED, stomped),
     (TOUCH_STOMPED, touch_stomped),
     (NOTHING, crate::level::objects::nothing),
+    (TOUCH_HURT, touch_hurt),
 ];
 
 /// The marker of the map cell `cols` bytes into the row the word `row4` indexes in `map_rows`
@@ -227,4 +230,60 @@ pub fn direction(x0: u16, y0: u16, x1: u16, y1: u16) -> u8 {
         3 => steps + 8,
         _ => 8 - steps,
     }
+}
+
+/// The map cell `col_bytes` (a column times two) into the row whose `map_rows` entry is
+/// `row_index` bytes in (a row times four): the row's index a signed word, the column unsigned,
+/// as `movea.l (a3, d1.w), a2` then `adda.l d0, a2` with a cleared `d0` take them.
+pub fn map_cell(b: &Bus, col_bytes: u16, row_index: u16) -> u32 {
+    b.l(MAP_ROWS.wrapping_add(row_index as i16 as i32 as u32))
+        .wrapping_add(col_bytes as u32)
+}
+
+/// The address of the cell [`marker_right_of`] reads: `(x >> 4) * 2` into row `(y >> 4)`, then 2
+/// bytes on.
+pub fn cell_at(b: &Bus, x: u16, y: u16) -> u32 {
+    map_cell(b, (x >> 4).wrapping_mul(2), (y >> 4).wrapping_mul(4)).wrapping_add(2)
+}
+
+/// `touch_hurt` (h0+$236ac): the frog is hurt.
+pub fn touch_hurt(c: &mut LevelCtx, slot: u32, _d7: u16) {
+    crate::level::death::frog_hurt(c, slot);
+}
+
+/// h0+$1c462: a slot's y follows a path of words at `+$54` (starting over from `+$58` at a `$ffff`
+/// word): the next one plus `dy`.
+pub fn obj_path_y(b: &mut Bus, slot: u32, dy: u16) {
+    let mut at = b.l(slot + 0x54);
+    if b.w(at) == 0xffff {
+        at = b.l(slot + 0x58);
+        b.set_l(slot + 0x54, at);
+    }
+    b.set_w(slot + 0xa, b.w(at).wrapping_add(dy));
+    b.set_l(slot + 0x54, b.l(slot + 0x54).wrapping_add(2));
+}
+
+/// How far a pair's marker looks for its partner: `$98` cells.
+const PARTNER_REACH: u32 = 0x98;
+
+/// Whether a slot is live on map cell `cell`.
+fn cell_live(b: &Bus, cell: u32) -> bool {
+    (0..20).any(|k| b.l(OBJ_SLOTS + k * 0x7c + 0x40) == cell)
+}
+
+/// `find_marker_right` (h0+$1b350): whether the first cell right of `cell` (within `$98`) holding
+/// `marker` has no live slot; false too when there is none. A pair's left end spawns only then.
+pub fn partner_right_free(b: &Bus, cell: u32, marker: u16) -> bool {
+    (1..=PARTNER_REACH)
+        .map(|k| cell.wrapping_add(2 * k))
+        .find(|&a| b.w(a) & 0x3f == marker)
+        .is_some_and(|a| !cell_live(b, a))
+}
+
+/// `find_marker_left` (h0+$1b396): [`partner_right_free`] looking left.
+pub fn partner_left_free(b: &Bus, cell: u32, marker: u16) -> bool {
+    (1..=PARTNER_REACH)
+        .map(|k| cell.wrapping_sub(2 * k))
+        .find(|&a| b.w(a) & 0x3f == marker)
+        .is_some_and(|a| !cell_live(b, a))
 }

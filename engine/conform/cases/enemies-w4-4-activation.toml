@@ -1,0 +1,9 @@
+# W4-4 with every object live, no exclusions (T41): run right from the start until the three
+# swoopers, the scenery and a crumbling ledge are freed off the screen (frames 175-195), then back
+# until they spawn again (278); objects, the picture and Paula every frame. Ends at 284: frame 285
+# diverges (the engine takes a copper interrupt in that frame's pass that the original does not;
+# beam timing, T101's), so the case stops on the last frame both agree.
+sync = { level = "W4-4" }
+script = "enemies-w4-4-activation"
+frames = 284
+resync = false
