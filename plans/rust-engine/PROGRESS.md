@@ -73,7 +73,7 @@ done · ⛔ blocked, needs a human.
 | T70 | bonus-level | T15; blocks T21 | ✅ | |
 | T71 | slot-sync | T15 | ✅ | |
 | T72 | slot-screen | T71 | ✅ | |
-| T73 | slot-rounds | T72 | 🔍 | `slot::rounds`: rounds, menus, spin, payout, count, end; `Game::enter_slot`/`slot_outcome`. `slot-fire` green (845 frames), 2 routine tests, 2 front tests. Deviations: script frames are the original's (fire from 798); collect path ported but no case reaches it (T74's); fixed `draw.rs`' purity `HashMap`. |
+| T73 | slot-rounds | T72 | ✅ | Review: award/collect lit each rung's lamp 6 bytes off, so every collected line stalled; reproduced by a new h0+$51c4 routine test (rungs 1–8), fixed. Payout's prize (d7) uncompared, mutation survived: `Rig::last_regs`, asserted. Spin mutation reddens `slot-fire`. Award's frame timing unexercised (T74). Power-on `front.rs` reds pre-existing. |
 | T74 | slot-prizes | T73; blocks T21 | ⬜ | |
 | T75 | bonus-shots | T70; blocks T21 | ✅ | |
 | T76 | bonus-enemies-a | T70; blocks T21 | ✅ | |
@@ -132,7 +132,7 @@ done · ⛔ blocked, needs a human.
 A Notes cell holds what was built or what the review found, the test count, and one line per
 deviation from the task doc. A ✅ task's cell may be cut to one line once the next task has been reviewed.
 
-**Review queue:** T73
+**Review queue:** *(empty)*
 
 ## Blocked on the user
 

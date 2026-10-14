@@ -18,7 +18,8 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
-| 2026-10-14 | 📌 | T73: a line's prize collected (award, rungs 1–8) is ported but unexercised: fire alone pays no line at `start-w1-1`, `-blink1`; `-late` pays hi-lo. T74's `slot-hold-20000` is its first case. |
+| 2026-10-14 | 📌 | T73: a line's prize collected (rungs 1–8): memory proven by the h0+$51c4 routine test (review), frame timing unexercised: fire alone pays no line at `start-w1-1`, `-blink1`; `-late` pays hi-lo. T74's `slot-hold-20000` is its first case. |
+| 2026-10-14 | 📌 | T73 review: `Rig::check` compared no registers before `Rig::last_regs`; routine tests whose original returns its answer in a register (d0, d7) checked memory only. Not swept test by test; not fixed. |
 | 2026-10-14 | 📌 | T73: `slot-fire` (reel-stop effects play) lands 3 712 of 4 576 draw writes within a line, after fitting the spin's digits 1 000 cycles under Moira's; a few menu-entry and count draws stay 7–12 lines off, green. |
 | 2026-10-14 | 📌 | T73: the original's frames index slot scripts: its loads take 758, so `slot-fire`'s first fire is frame 798; it returns on engine frame 845 (the case's 845 frames stop before). T93's `draw.rs` `HashMap` fixed (BTreeMap). |
 | 2026-10-14 | 📌 | T94 review: `slot::interrupt_lines`' effect term (+2 lines, T72) is unexercised by `slot-attract`; effects' own DMACON writes also add the DMACON term, possibly counting twice. Check against the oracle in T73. |
