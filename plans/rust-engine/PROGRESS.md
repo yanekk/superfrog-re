@@ -73,7 +73,7 @@ done · ⛔ blocked, needs a human.
 | T70 | bonus-level | T15; blocks T21 | ✅ | |
 | T71 | slot-sync | T15 | ✅ | |
 | T72 | slot-screen | T71 | ✅ | |
-| T73 | slot-rounds | T72 | ⬜ | |
+| T73 | slot-rounds | T72 | ✅ | |
 | T74 | slot-prizes | T73; blocks T21 | ⬜ | |
 | T75 | bonus-shots | T70; blocks T21 | ✅ | |
 | T76 | bonus-enemies-a | T70; blocks T21 | ✅ | |
@@ -105,7 +105,7 @@ done · ⛔ blocked, needs a human.
 | T95 | slot-load-finish | T92; blocks T93 | ✅ | |
 | T96 | story-audio-dma-slots | T53; blocks T56 | ✅ | |
 | T100 | front-vbl-timing | T37; blocks T21 | ⬜ | |
-| T97 | story-split-handler | T54; blocks T56 | ⬜ | |
+| T97 | story-split-handler | T54; blocks T56 | ✅ | |
 | T101 | lag-long-pass | T81, T82; blocks T21 | ✅ | Review: one fix, the held-blank line (VPOS low byte + 3) was untested, `+3→+2` survived; `sfx_wait_end` test added. Flip PCs checked against the listing; mutations of flip steps, the hold and `waits_out` go red. Item, enemy, audio cases green; `level_entry` red identically on base. |
 | T102 | items-w3-faults | T101; blocks T21 | ⬜ | |
 | T105 | w2-1-hang-fruit-life | T85; blocks T21 | ⬜ | |

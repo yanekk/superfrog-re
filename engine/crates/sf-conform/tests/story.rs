@@ -62,10 +62,11 @@ fn scene_4s_set_up_under_the_display_matches_the_original() {
 /// Power-on with disk 3 through scenes 4 to 6 (the case `story-scene4-sound`, T55): the effects'
 /// ramps and the vertical blank's counters keep in step through the draws that hold the CPU
 /// through a whole frame (one handler for two blanks, fed by conformance). Every Paula write left
-/// differing is a draw's end or what follows it (DMACON, INTENA: T53, T54). About 80 s: out of
-/// the test block, run with `cargo test -p sf-conform -- --ignored`.
+/// differing is a draw's end or what follows it (DMACON, INTENA: T53, T54). Past engine frame
+/// 6682 a handler's wait runs on into the next frame, its effects' step and acknowledge with it
+/// (T97). About 2 min: out of the test block, run with `cargo test -p sf-conform -- --ignored`.
 #[test]
-#[ignore = "slow: about 80 s"]
+#[ignore = "slow: about 2 min"]
 fn the_effects_keep_in_step_through_scenes_4_to_6() {
     let case = sf_conform::Case::load(&sf_conform::cases_dir().join("story-scene4-sound.toml"))
         .unwrap_or_else(|e| panic!("{e}"));

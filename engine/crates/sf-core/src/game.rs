@@ -184,6 +184,8 @@ pub struct Game {
     blits: Vec<(u16, u16, u16)>,
     /// How the last level's loop ended (T37).
     outcome: Option<crate::level::LevelOutcome>,
+    /// What the slot machine gave, once it has returned (T73).
+    slot_outcome: Option<crate::slot::SlotOutcome>,
 }
 
 /// `key_down`, `key_up` (h0+$16078, h0+$16079).
@@ -285,6 +287,7 @@ impl Game {
             schedule: Vec::new(),
             blits: Vec::new(),
             outcome: None,
+            slot_outcome: None,
         }
     }
 
@@ -340,6 +343,9 @@ impl Game {
             self.shown = Some(out.picture.clone());
             if let Some(o) = front.outcome() {
                 self.outcome = Some(o);
+            }
+            if let Some(o) = front.slot_outcome() {
+                self.slot_outcome = Some(o);
             }
             if front.in_level_loop() {
                 // `level_start` is over and `level_frame_loop` entered (T37): the level scene
@@ -606,6 +612,27 @@ impl Game {
     /// the time up, the game over, or the exit.
     pub fn level_outcome(&self) -> Option<crate::level::LevelOutcome> {
         self.outcome
+    }
+
+    /// The slot machine, entered with `coins` coins put in as `level_tally` enters it (T73), from
+    /// the state as it is (a level's tally over, its sound in chip RAM): `slot_machine` runs from
+    /// the next frame, and returns to the tally's end ([`Game::slot_outcome`]).
+    pub fn enter_slot(&mut self, coins: u16) {
+        self.state.set_w(crate::slot::COINS, coins);
+        self.front = Some(crate::front::Front::enter_slot(
+            &self.state,
+            self.sdr,
+            self.frog_only,
+        ));
+        self.scene = Scene::Slot { coins_in: coins };
+        self.pending = None;
+        self.slot_outcome = None;
+    }
+
+    /// What the slot machine gave, once `slot_machine` has returned (T73): the points its rounds
+    /// added to the score and the lives.
+    pub fn slot_outcome(&self) -> Option<crate::slot::SlotOutcome> {
+        self.slot_outcome
     }
 
     /// Frames stepped since the start.
