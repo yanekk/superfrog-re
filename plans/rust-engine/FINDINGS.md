@@ -18,6 +18,10 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-14 | 🔄 | Owner, T41: the types no T41 case met (pacers 2/3, crusher-up 16, mace 17, darts 20/21, floater 22) and W4-3 moved into T103's playthroughs. |
+| 2026-10-14 | 🐞 | T41, open: `enemies-w4-4-activation` diverges at 285 (ends at 284): the engine takes a copper interrupt (INTREQ/INTENA `$0010`) in that frame's pass, the original not; seven frames after four respawns. Beam timing, probably T101's. |
+| 2026-10-14 | 📌 | T41 for T40's merge: `enemies/common.rs` is T40's verbatim plus three helpers; both port h0+$25fa8, $25f42, $2619c, $262be and add `chain_link_count` (LAYOUT, symbols.toml). Keep one of each. |
+| 2026-10-14 | 📌 | T41: no W4 map uses markers 32/33 (gates 146/147, routine-tested only). W4-2's crawler at 181,70 never spawns: its marker 14 has no 13 to its left. `examples/route` targets are feet cells (`frog+$02` is the feet). |
 | 2026-10-14 | 🔄 | Owner, T41: added T103 w4-completions (T41, T101, T102; blocks T18): scripted playthroughs of W4-1…W4-4 to the exit. T41 keeps per-level enemy cases, no exclusions; one hitting a T101/T102 fault stays outside the test block. |
 | 2026-10-14 | 📌 | T38 review, not fixed: `LevelTally` drops `level_tally`'s first test (`game_full_mode` 0, a game run from a disk loader, returns at once). Unreachable from the engine's boot; no assertion guards it. |
 | 2026-10-14 | 📌 | T38: tally cases force W1-1's exit (`sync = { level, exit = true }`). `tally-slot-w1-1` is green to `slot_machine`'s loads (frame 86, T95's). `level/tally.rs` `print` is a third port of h0+$6f3a (`slot::print_text`, Cx-based). |
