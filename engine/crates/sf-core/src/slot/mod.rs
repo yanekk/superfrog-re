@@ -25,7 +25,7 @@ const SOUND_KEPT_AT: u32 = h1(0x20d00);
 const SOUND_KEPT_LEN: u32 = 0xfa00;
 
 /// `slot_state` (h0+$49c6): the coins put in, the three reels' positions, the hi-lo count, ...
-const COINS: u32 = at(0x49c6);
+pub(crate) const COINS: u32 = at(0x49c6);
 const REELS: u32 = at(0x49c8);
 const HILO: u32 = at(0x49ce);
 const STATE_49D0: u32 = at(0x49d0);
@@ -137,27 +137,11 @@ impl Routine {
                     writes: vec![(BUFFER_0 + 0x7683, 8 * ROW)],
                 });
                 cx.busy(cycles);
-                Yield::Return
+                // `slot_count_win` returns, and `slot_machine` goes on at once (h0+$4c80), once
+                // the CPU is through the print (the next frame's, mostly).
+                Yield::Interrupt
             }
-            5 => {
-                cx.s.set_w(STATE_49D0, 0);
-                cx.s.set_l(STATE_49D2, 0);
-                cx.s.set_w(STATE_49DA, 0);
-                slot_init(cx);
-                slot_digits(cx);
-                cx.busy(INIT_CYCLES + DIGITS_CYCLES);
-                cx.s.set_w(POINTER_X, 0x20);
-                cx.s.set_w(POINTER_Y, 0xe8);
-                for k in 0..6 {
-                    let p = BUFFER_0 + k * PLANE;
-                    cx.s.set_w(PLANE_MOVES + 8 * k + 6, p as u16);
-                    cx.s.set_w(PLANE_MOVES + 8 * k + 2, (p >> 16) as u16);
-                }
-                crate::front::sprite::attach(cx.s, POINTER);
-                let rec = crate::front::fade::RECORDS[0];
-                cx.s.set_w(rec.at + crate::front::fade::SPEED, 1);
-                Yield::Fade(rec)
-            }
+            5 => set_up(cx),
             6 => fade(
                 FadeKind::In {
                     target: SLOT_PALETTE,
@@ -179,6 +163,28 @@ impl Routine {
             }
         }
     }
+}
+
+/// h0+$4c80..$4cf0: `slot_init`, `slot_digits`, the pointer, the planes and its sprite, then the
+/// wait for the fade record to be free.
+fn set_up(cx: &mut Cx) -> Yield {
+    cx.s.set_w(STATE_49D0, 0);
+    cx.s.set_l(STATE_49D2, 0);
+    cx.s.set_w(STATE_49DA, 0);
+    slot_init(cx);
+    slot_digits(cx);
+    cx.busy(INIT_CYCLES + DIGITS_CYCLES);
+    cx.s.set_w(POINTER_X, 0x20);
+    cx.s.set_w(POINTER_Y, 0xe8);
+    for k in 0..6 {
+        let p = BUFFER_0 + k * PLANE;
+        cx.s.set_w(PLANE_MOVES + 8 * k + 6, p as u16);
+        cx.s.set_w(PLANE_MOVES + 8 * k + 2, (p >> 16) as u16);
+    }
+    crate::front::sprite::attach(cx.s, POINTER);
+    let rec = crate::front::fade::RECORDS[0];
+    cx.s.set_w(rec.at + crate::front::fade::SPEED, 1);
+    Yield::Fade(rec)
 }
 
 /// The bottom of the slot machine's stack: `level_tally` after its call (T38).
@@ -258,7 +264,7 @@ pub(crate) fn draw_lamps(cx: &mut Cx) {
     use crate::audio::{DMACON, INTENA};
     cx.wr(INTENA, 0x0010);
     cx.wr(DMACON, 0x8400);
-    cx.busy(LAMPS_START_CYCLES);
+    let mut cycles = LAMPS_START_CYCLES;
     for k in 0..LAMP_COUNT {
         let r = LAMP_RECTS + 12 * k;
         let (x, y, w, h) = (cx.w(r), cx.w(r + 2), cx.w(r + 4), cx.w(r + 6));
@@ -266,7 +272,7 @@ pub(crate) fn draw_lamps(cx: &mut Cx) {
         let words = w >> 4;
         let modulo = (ROW as u16).wrapping_sub(2 * words) as i16;
         let b = Blit {
-            con0: if cx.s.w(LAMPS + 8 * k) != 0 { 0xdfc } else { 0xd0c },
+            con0: if cx.s.w(LAMPS + 8 * k) != 0 { 0xd0c } else { 0xdfc },
             con1: 0,
             afwm: 0xffff,
             alwm: 0xffff,
@@ -275,9 +281,12 @@ pub(crate) fn draw_lamps(cx: &mut Cx) {
             size: h << 6 | words,
         };
         b.run(cx.s);
-        cx.blit_wait(&b);
-        cx.busy(LAMP_CYCLES);
+        // Two cycles a word a channel here (measured, T72), not the 3 of `Blit::cycles`.
+        cycles += b.cycles() * 2 / 3 + LAMP_CYCLES;
     }
+    // The screen is blank: no fetch slows the blits, and the CPU's time is summed, not rounded
+    // up to a line a step.
+    cx.busy(cycles);
     cx.wr(INTENA, 0x8010);
 }
 
