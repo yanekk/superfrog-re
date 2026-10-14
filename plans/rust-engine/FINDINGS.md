@@ -18,6 +18,9 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-14 | 🐞 | T101, open: `enemies-w3-1` re-syncs at 201: the original still in phase 12, its writes all made; the engine ends that pass and starts the next. Cutting at a pass's end needs the original's `vbl_count` in `Pacing::Late`: a check at each phase broke W1/W5 cases. |
+| 2026-10-14 | 📌 | T101: `sfx_play` waits three lines with interrupts off (VPOS low byte + 3, h0+$12b28). Begun near a frame's end it waits to that line of the next frame (~56), the vertical blank held off: `LevelCtx::interrupts_back`. |
+| 2026-10-14 | 📌 | T101: re-syncs gone, pins dropped: `items-run-w1-1` 321, `bonus-end-wb-1` 4284/7814 (now `resync = false`), `enemies-w1-1` 433. `items-pad-w1-1` is in the test block. |
 | 2026-10-14 | 🔄 | Owner, T86 review: added T127 restore-sprite-wait (T101; blocks T21). With T43's W2 enemies, the sprite wait's calls made `items-switch-w2-1` and `enemies-w2-1` red at 442 (engine 0.2 line late); calls left out, `sprite_wait` and its test kept.
 | 2026-10-14 | 📌 | T86 review: the launcher case is held by the launcher's `FrogSprites` cost (tick on line $1e/$1f, past the copper's sprite moves), not the wait: a no-op `sprite_wait` stays green. `sprite_wait` is locked by a `frog_routines` test; its calls are T127's. |
 | 2026-10-14 | 🐞 | T86 review, open: the bounce pad's new `FrogSprites` charge (the original's call at $ea14/$ea6a) is tested by nothing: `items-pad-w1-1` re-syncs at 321 and 790 with it or without; T83 recorded 402/786. T101's case. |
@@ -78,7 +81,6 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 | 2026-10-14 | 🔄 | Owner, T40: added T104 w6-completions (after T40, T101, T102; blocks T18): W6 exits need every coin (97–189 a map), seven maps. T40 keeps per-level enemy cases, no exclusions; a T101/T102 fault keeps one out of the test block. |
 | 2026-10-14 | 🐞 | T79 review, open (T34 meets T79 at merge): game over in the bonus level diverges at `bonus-death-wb-1` frame 2448, after a lag: `playfield_buffer_0`, then the copper's buffer pointers a flip apart. Likely T101's class; case cut to 2447, divergence pinned. |
 | 2026-10-14 | 🐞 | T79, fixed: `main_program` looked for the loop's end only after a fresh pass; a loop ending in a resumed (lag-cut) pass stalled, in any level. Now after both (`level/frame.rs` `after_pass`). |
-| 2026-10-14 | 📌 | T79: `bonus-end-wb-1` re-syncs at 4284 and 7814, both T101's phase-6 cut, pinned in `frog_cases::bonus_end_wb_1`. Once T101 lands: `resync = false`, drop the pin. Runs ~110 s (two runs: the second sees frame 8127). |
 | 2026-10-14 | 📌 | T79: `bonus_visit` (h0+$8cd6) picks `level_init_lb`'s start row, but nothing sets it (password entries 24–27 share handler h0+$25f8): the bonus level always starts at the top. Ported, routine-tested by poking it. |
 | 2026-10-14 | 📌 | T79: a divergence on the frame after a lag now lists the engine's unported paths (`sf-conform` `run_inner`); before, a game over reached mid-pass read as a bare variable difference. |
 | 2026-10-14 | 📌 | T38 review, not fixed: `LevelTally` drops `level_tally`'s first test (`game_full_mode` 0, a game run from a disk loader, returns at once). Unreachable from the engine's boot; no assertion guards it. |
