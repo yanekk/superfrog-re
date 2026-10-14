@@ -44,6 +44,19 @@ const PASSED: usize = 12;
 /// What a frame already spent in a cell adds to ending a path there, in the score's units (16 a
 /// cell of distance).
 const VISIT: i64 = 4;
+/// Paths tried on the original itself when every engine path dies there.
+const ORACLE_TRIES: usize = 48;
+
+/// xorshift64: the original's own search's mutations.
+struct Rng(u64);
+impl Rng {
+    fn next(&mut self) -> u64 {
+        self.0 ^= self.0 << 13;
+        self.0 ^= self.0 >> 7;
+        self.0 ^= self.0 << 17;
+        self.0
+    }
+}
 /// The map's row 0 (`map_rows[1]`, h1), and a row's length in bytes: the live markers.
 const ROW0: u32 = 0x218e0 + 0x4c0;
 const ROW_BYTES: u32 = 0x260;
@@ -324,6 +337,7 @@ fn main() {
     // Passed-over coins and switches, each with the chunk it comes back at.
     let mut passed: Vec<((usize, usize), usize)> = Vec::new();
     let mut chunk = 0usize;
+    let mut rng = Rng(0x9e37_79b9_7f4a_7c15);
     // Frames the original's frog spent in each cell since the last coin or switch.
     let mut visits: std::collections::HashMap<(i32, i32), i64> = Default::default();
     let (mut stall, mut best_d) = (0u32, i64::MAX);
@@ -467,6 +481,8 @@ fn main() {
         // Play the best path's first frames on the original; the next best if that loses a life.
         let snap = amiga.snapshot();
         let mut taken = None;
+        // The cells the original's frog is in over what is kept, counted once `score` is done.
+        let mut been_in: Vec<(i32, i32)> = Vec::new();
         // Paths that end on the ground first: one still falling may be falling to its death just
         // past the horizon.
         let mut order: Vec<&(Game, Vec<FrameInput>)> = beam.iter().collect();
@@ -495,11 +511,59 @@ fn main() {
                         peek_w(amiga, FROG + f::X) as i16 as i32 + 0x17,
                         peek_w(amiga, FROG + f::Y) as i16 as i32 - 0x10,
                     );
-                    *visits.entry((fx / 16, fy / 16)).or_insert(0) += 1;
+                    been_in.push((fx / 16, fy / 16));
                 }
                 taken = Some(p[..n].to_vec());
                 break;
             }
+        }
+        if taken.is_none() {
+            // Every engine path dies on the original (its lag shortens jumps): search on the
+            // original itself, the beam's paths with holds changed at random, scored from its
+            // memory at the path's end.
+            let mut best: Option<(i64, Vec<FrameInput>)> = None;
+            for k in 0..ORACLE_TRIES {
+                let mut p: Vec<FrameInput> = beam.get(k % beam.len().max(1)).map_or(Vec::new(), |b| b.1.clone());
+                p.resize((HORIZON * HOLD) as usize, FrameInput::default());
+                for h in 0..HORIZON as usize {
+                    if rng.next() % 10 < 3 {
+                        let a = FrameInput::joy(acts[(rng.next() % acts.len() as u64) as usize]);
+                        p[h * HOLD as usize..(h + 1) * HOLD as usize].fill(a);
+                    }
+                }
+                let mut ok = true;
+                for &x in &p {
+                    sync::step_inserting(amiga, x).unwrap();
+                    if peek_w(amiga, FROG + f::LIVES) != lives || peek_w(amiga, FROG + f::DYING) != 0 {
+                        ok = false;
+                        break;
+                    }
+                }
+                if ok {
+                    let st = sf_core::State::transplant(&sync::core_memory(amiga.memory()));
+                    let sc = if st.l(LEVEL_STATE) == 1 { i64::MIN / 2 } else { score(&st) };
+                    if best.as_ref().is_none_or(|b| sc < b.0) {
+                        best = Some((sc, p));
+                    }
+                }
+                amiga.restore(&snap);
+            }
+            if let Some((sc, p)) = best {
+                eprintln!("  the original's own search: a path scoring {sc}");
+                let n = p.len().min(COMMIT);
+                for &x in &p[..n] {
+                    sync::step_inserting(amiga, x).unwrap();
+                    let (fx, fy) = (
+                        peek_w(amiga, FROG + f::X) as i16 as i32 + 0x17,
+                        peek_w(amiga, FROG + f::Y) as i16 as i32 - 0x10,
+                    );
+                    been_in.push((fx / 16, fy / 16));
+                }
+                taken = Some(p[..n].to_vec());
+            }
+        }
+        for c in been_in {
+            *visits.entry(c).or_insert(0) += 1;
         }
         let Some(p) = taken else {
             eprintln!("frame {}: every path loses a life on the original", inputs.len());
