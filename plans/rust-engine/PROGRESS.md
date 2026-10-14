@@ -64,7 +64,7 @@ done · ⛔ blocked, needs a human.
 | T39 | enemies-world-5 | T16, T38; blocks T18 | ⬜ | |
 | T40 | enemies-world-6 | T38; blocks T18 | ⬜ | |
 | T41 | enemies-world-4 | T38; blocks T18 | ⬜ | |
-| T42 | enemies-world-1 | T38; blocks T18, T33 | ⬜ | |
+| T42 | enemies-world-1 | T38; blocks T18, T33 | 🔍 | 12 types + 4 children, shared touches, direction_16 ported; routine tests (7, 10 000 states). W1 cases now meet enemies: items-run-w1-1 re-sync 321 pinned (T101). enemies-w1-1 green, 2 re-syncs pinned. Deviation: tests in sf-conform (purity). Split at pir's context line: W1-2/3/4 cases T107–T109, activation T110; completions T106 (owner). |
 | T43 | enemies-world-2 | T38; blocks T18, T39 | ⬜ | |
 | T44 | enemies-world-3 | T38; blocks T18 | ⬜ | |
 | T46 | story-intro-scenes | T32; blocks T21 | ✅ | |
@@ -109,11 +109,15 @@ done · ⛔ blocked, needs a human.
 | T101 | lag-long-pass | T81, T82; blocks T21 | ⬜ | |
 | T102 | items-w3-faults | T101; blocks T21 | ⬜ | |
 | T106 | w1-completions | T42, T86, T101; blocks T18 | ⬜ | |
+| T107 | enemies-w1-2-case | T42; blocks T18, T33, T106 | ⬜ | |
+| T108 | enemies-w1-3-case | T42; blocks T18, T33, T106 | ⬜ | |
+| T109 | enemies-w1-4-case | T42; blocks T18, T33, T106 | ⬜ | |
+| T110 | enemies-w1-activation | T42; blocks T18, T33, T106 | ⬜ | |
 
 A Notes cell holds what was built or what the review found, the test count, and one line per
 deviation from the task doc. A ✅ task's cell may be cut to one line once the next task has been reviewed.
 
-**Review queue:** *(empty)*
+**Review queue:** T42
 
 ## Blocked on the user
 

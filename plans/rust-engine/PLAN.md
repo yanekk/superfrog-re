@@ -148,6 +148,10 @@ headless.
 | [T101](tasks/T101-lag-long-pass.md) | lag-long-pass | T81, T82; blocks T21 |
 | [T102](tasks/T102-items-w3-faults.md) | items-w3-faults | T101; blocks T21 |
 | [T106](tasks/T106-w1-completions.md) | w1-completions | T42, T86, T101; blocks T18 |
+| [T107](tasks/T107-enemies-w1-2-case.md) | enemies-w1-2-case | T42; blocks T18, T33, T106 |
+| [T108](tasks/T108-enemies-w1-3-case.md) | enemies-w1-3-case | T42; blocks T18, T33, T106 |
+| [T109](tasks/T109-enemies-w1-4-case.md) | enemies-w1-4-case | T42; blocks T18, T33, T106 |
+| [T110](tasks/T110-enemies-w1-activation.md) | enemies-w1-activation | T42; blocks T18, T33, T106 |
 
 T22 is the rig task: it comes before every surface task and they depend on it. T29 is the phase's
 drill. At the end: the owner plays it.

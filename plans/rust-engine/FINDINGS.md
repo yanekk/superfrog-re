@@ -18,6 +18,9 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-14 | 📌 | T42 split at pir's context line: T107 (W1-2 case), T108 (W1-3), T109 (W1-4), T110 (activation, a touch_kill_1hit kill); each T42, blocks T18, T33, T106. Uncommitted W1-2 route discarded (facts in T107). |
+| 2026-10-14 | 🐞 | Not T42's, open: with W1's enemies live `game-over-timeup-w1-1` diverges at 271, copper a flip apart in game over's first pass (the T79-review fault); hover costs don't move it. Not in the test block. |
+| 2026-10-14 | 📌 | T42: plan enemy routes in short legs from the paced engine (`examples/complete.rs --paced --prefix`); unpaced plans leave the original's route (it lags, takes fewer coins; the frog died where the plan's lived). |
 | 2026-10-14 | 🔄 | Owner, T42: added T106 w1-completions (T42, T86, T101; blocks T18): a W1 exit needs every coin (90 in W1-1); the leg planner stalled at 58 and met T86's launcher divergence (W1-1 frame 2256). |
 | 2026-10-14 | 🐞 | T79 review, open (T34 meets T79 at merge): game over in the bonus level diverges at `bonus-death-wb-1` frame 2448, after a lag: `playfield_buffer_0`, then the copper's buffer pointers a flip apart. Likely T101's class; case cut to 2447, divergence pinned. |
 | 2026-10-14 | 🐞 | T79, fixed: `main_program` looked for the loop's end only after a fresh pass; a loop ending in a resumed (lag-cut) pass stalled, in any level. Now after both (`level/frame.rs` `after_pass`). |
