@@ -1,0 +1,20 @@
+# W1-1 with world 1's enemies live (T110), the way back planned by examples/complete.rs from the
+# paced engine (`--near 12,39`): right until the camera frees the hovers at 5,30, 8,29 and 11,29
+# (201, 207, 219), back left until they spawn again from their markers (281–295); the sitter at
+# 35,42 is freed on the way back (285).
+0: -
+150: U R
+154: U
+166: R
+210: U R
+214: U
+226: R
+230: L
+231: U L
+235: -
+239: L
+279: U
+303: R
+307: L
+311: -
+343: -
