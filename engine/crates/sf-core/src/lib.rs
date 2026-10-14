@@ -7,6 +7,7 @@
 
 pub mod audio;
 pub mod bonus;
+pub mod enemies;
 pub mod frog;
 pub mod front;
 pub mod game;

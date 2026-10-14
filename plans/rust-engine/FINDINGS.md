@@ -18,6 +18,10 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-14 | 📌 | T42 split at pir's context line: T107 (W1-2 case), T108 (W1-3), T109 (W1-4), T110 (activation, a touch_kill_1hit kill); each T42, blocks T18, T33, T106. Uncommitted W1-2 route discarded (facts in T107). |
+| 2026-10-14 | 🐞 | Not T42's, open: with W1's enemies live `game-over-timeup-w1-1` diverges at 271, copper a flip apart in game over's first pass (the T79-review fault); hover costs don't move it. Not in the test block. |
+| 2026-10-14 | 📌 | T42: plan enemy routes in short legs from the paced engine (`examples/complete.rs --paced --prefix`); unpaced plans leave the original's route (it lags, takes fewer coins; the frog died where the plan's lived). |
+| 2026-10-14 | 🔄 | Owner, T42: added T106 w1-completions (T42, T86, T101; blocks T18): a W1 exit needs every coin (90 in W1-1); the leg planner stalled at 58 and met T86's launcher divergence (W1-1 frame 2256). |
 | 2026-10-14 | 📌 | T85 review: added T105 (owner): `items-upper-w2-1` never took the fruit 48,22 or extra life 63,35, and the original stops in its pass from ~1012 (h0+$e3fe..$e412, frog 78,42). Case cut to 1 010 frames. |
 | 2026-10-14 | 🐞 | T85 review, open: `sf-conform` reads an original that never finishes a pass as endless lag (`mid_pass`, `straddled`) and compares nothing, so a case stays green; old `items-upper-w2-1` had 468 such frames. Swept: switch 49, fruit-w2-2 45, wings-w1-2 24, all sparse. |
 | 2026-10-14 | 📌 | T85 review: `examples/plan` steps the engine unpaced; in the case run W2-1's pad 91,35 bounced two frames later (frog `+$22` out of phase), so planned inputs after it missed. Check a planned script's items through `run_with`. |

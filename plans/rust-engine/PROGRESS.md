@@ -109,6 +109,11 @@ done · ⛔ blocked, needs a human.
 | T101 | lag-long-pass | T81, T82; blocks T21 | ⬜ | |
 | T102 | items-w3-faults | T101; blocks T21 | ⬜ | |
 | T105 | w2-1-hang-fruit-life | T85; blocks T21 | ⬜ | |
+| T106 | w1-completions | T42, T86, T101; blocks T18 | ⬜ | |
+| T107 | enemies-w1-2-case | T42; blocks T18, T33, T106 | ⬜ | |
+| T108 | enemies-w1-3-case | T42; blocks T18, T33, T106 | ⬜ | |
+| T109 | enemies-w1-4-case | T42; blocks T18, T33, T106 | ⬜ | |
+| T110 | enemies-w1-activation | T42; blocks T18, T33, T106 | ⬜ | |
 
 A Notes cell holds what was built or what the review found, the test count, and one line per
 deviation from the task doc. A ✅ task's cell may be cut to one line once the next task has been reviewed.

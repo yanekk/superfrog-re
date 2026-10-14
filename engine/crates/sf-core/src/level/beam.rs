@@ -95,6 +95,10 @@ pub enum Cost {
     Init,
     Touch,
     Routine,
+    /// World 1's hover and watcher updates (h0+$243b6, h0+$26904; T42), about twice any other
+    /// enemy's: measured on Moira over `enemies_w1_routines`' states (medians).
+    HoverUpdate,
+    WatcherUpdate,
     /// `obj_build_hitboxes` (h0+$d2f6): a slot looked at, and a hitbox entered.
     HitboxSlot,
     Hitbox,
@@ -192,6 +196,8 @@ impl Cost {
         Cost::Init,
         Cost::Touch,
         Cost::Routine,
+        Cost::HoverUpdate,
+        Cost::WatcherUpdate,
         Cost::HitboxSlot,
         Cost::Hitbox,
         Cost::Collide,
@@ -269,6 +275,8 @@ impl Cost {
             Cost::Init => 1008,
             Cost::Touch => 2453,
             Cost::Routine => 500,
+            Cost::HoverUpdate => 946,
+            Cost::WatcherUpdate => 1070,
             Cost::HitboxSlot => 76,
             Cost::Hitbox => 131,
             Cost::Collide => 909,
@@ -339,6 +347,8 @@ pub fn routine_cost(addr: u32) -> Cost {
             Cost::Init
         }
         0x239f6 | 0x23a8e | 0x23970 => Cost::Touch,
+        0x243b6 => Cost::HoverUpdate,
+        0x26904 => Cost::WatcherUpdate,
         _ => Cost::Routine,
     }
 }
