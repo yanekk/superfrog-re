@@ -2,7 +2,7 @@
 //! script: how the `enemies-w6-*` completion cases' scripts are written (T40).
 //!
 //! `cargo run --release --example plan_exit -- <level> [--via col,row | --stomp <update> | --hurt <update> | --coins N]...
-//! [--frames N] [--prefix script.txt] [--no-exit] [--out script.txt]` (`--no-exit`: stop at the last `--via`;
+//! [--frames N] [--gap N] [--prefix script.txt] [--no-exit] [--out script.txt]` (`--no-exit`: stop at the last `--via`;
 //! `--out`: the script so far, rewritten after each chunk) (a script this printed: its inputs are played first, up to its closing `-` line)
 //!
 //! The coin phase (T104): a W6 exit stays shut until `coins_left_for_exit` is 0, so before the
@@ -77,19 +77,25 @@ fn live_marker(st: &sf_core::State, c: usize, r: usize) -> u16 {
     st.w(sf_core::layout::h1(ROW0) + r as u32 * ROW_BYTES + 2 * c as u32) & 0x3f
 }
 
-/// The cells of the switches not yet pressed: markers 48–51 with the same one above or below.
+/// The cells of the switches not yet pressed: markers 48–51 with the same one above or below,
+/// whose number a gate has (a single cell of it: W6-4's 51 opens nothing and is never cleared).
 fn switches(st: &sf_core::State) -> Vec<(usize, usize)> {
-    let mut v = Vec::new();
+    let (mut pairs, mut gates) = (Vec::new(), Vec::new());
     for r in 0..84 {
         for c in 0..300 {
             let m = live_marker(st, c, r);
+            if !(48..=51).contains(&m) {
+                continue;
+            }
             let pair = (r > 0 && live_marker(st, c, r - 1) == m) || (r < 83 && live_marker(st, c, r + 1) == m);
-            if (48..=51).contains(&m) && pair {
-                v.push((c, r));
+            if pair {
+                pairs.push((c, r, m));
+            } else {
+                gates.push(m);
             }
         }
     }
-    v
+    pairs.into_iter().filter(|p| gates.contains(&p.2)).map(|(c, r, _)| (c, r)).collect()
 }
 
 /// How many of `cells` (switch cells) no longer hold a switch: pressed.
@@ -156,8 +162,10 @@ fn flood(body: &[u16], w: usize, h: usize, goal: &[(usize, usize)]) -> Vec<u32> 
 /// bounce pad (markers 4, 5; a guess).
 const JUMP: u32 = 7;
 const PAD_JUMP: u32 = 16;
-/// Cells over death a jump crosses from the nearest cell over safe ground (a 5-cell pit is crossed).
-const GAP: usize = 3;
+/// Cells over death a jump crosses from the nearest cell over safe ground: 3 (a 5-cell pit) unless
+/// `--gap` says more. A running jump at full speed (6 pixels a frame) crosses about 17 cells on
+/// the flat, more falling: W6-4's 24 cells of spikes want `--gap 13`.
+static GAP: std::sync::atomic::AtomicUsize = std::sync::atomic::AtomicUsize::new(3);
 
 /// [`flood`] with gravity: a step up is only taken within a jump of a cell the frog can stand on
 /// (an open cell over a solid one or a floor, in this column or the next) or in a lift's shaft,
@@ -249,7 +257,7 @@ fn climb(body: &[u16], w: usize, h: usize, goal: &[(usize, usize)]) -> Vec<u32> 
                 continue;
             }
             let safe_within = |dir: isize| {
-                (1..=GAP as isize).any(|k| {
+                (1..=GAP.load(std::sync::atomic::Ordering::Relaxed) as isize).any(|k| {
                     let c = x as isize + dir * k;
                     c >= 0 && (c as usize) < w && !solid(c as usize, y) && !doom[y * w + c as usize]
                 })
@@ -352,6 +360,7 @@ fn main() {
             }
             "--out" => out = Some(args[i + 1].clone()),
             "--frames" => budget = args[i + 1].parse().unwrap(),
+            "--gap" => GAP.store(args[i + 1].parse().unwrap(), std::sync::atomic::Ordering::Relaxed),
             "--prefix" => {
                 let p = InputScript::load(std::path::Path::new(&args[i + 1])).unwrap();
                 let n: usize = std::fs::read_to_string(&args[i + 1])
@@ -450,7 +459,7 @@ fn main() {
                 goals[goal] = climb(&live, w, h, &exits);
                 let (fx, fy) = frog(start.state());
                 let at = dist(&goals[goal], (fx.max(0) / 16) as usize, (fy.max(0) / 16) as usize);
-                if at >= 400 && !sw.is_empty() {
+                if at >= 400 && !sw.is_empty() && std::env::var("PLAN_EXIT_ONLY").is_err() {
                     eprintln!("  the exit is behind a wall: to the switches first");
                     goals[goal] = climb(&live, w, h, &sw);
                 }
@@ -458,6 +467,33 @@ fn main() {
             _ => {}
         }
         let field = &goals[goal];
+        if let Ok(spec) = std::env::var("PLAN_WALLS") {
+            // `c0,r0,c1,r1`: walls the field's way crosses from each cell (`#` solid, `x` deadly,
+            // `U` no way under gravity), the frog `F`; then stop.
+            let v: Vec<usize> = spec.split(',').map(|x| x.parse().unwrap()).collect();
+            let (fx, fy) = frog(start.state());
+            for r in v[1]..=v[3] {
+                let row: String = (v[0]..=v[2])
+                    .map(|c| {
+                        let m = live[r * w + c] >> 10;
+                        if (c as i32, r as i32) == (fx / 16, fy / 16) {
+                            'F'
+                        } else if m & 0x18 == 0x18 && m != 62 {
+                            '#'
+                        } else if m == 6 {
+                            'x'
+                        } else {
+                            match field[r * w + c] {
+                                d if d >= 50_000 => 'U',
+                                d => std::char::from_digit((d / 400).min(9), 10).unwrap(),
+                            }
+                        }
+                    })
+                    .collect();
+                eprintln!("{r:3} {row}");
+            }
+            return;
+        }
         if let Ok(spec) = std::env::var("PLAN_DUMP") {
             // `c0,r0,c1,r1`: the field over that box (in hundreds past 99), then stop.
             let v: Vec<usize> = spec.split(',').map(|x| x.parse().unwrap()).collect();
