@@ -10,8 +10,9 @@ are non-boss (docs/09: no per-world boss).
 
 It also carries the types T41's cases did not reach (owner, 2026-10-14), all deep in the W4-3 and
 W4-4 mazes: the pacers (markers 2/3, templates 136/137, W4-4 only), the crusher striking up (16,
-142), the mace (17, 69/70), the darts of markers 20 and 21 (61, 62, W4-4 only) and the floater of
-marker 22 (143); and W4-3, which has no T41 case. Each must be met, and hurt the frog or be killed
+142), the mace (17, 69/70), the darts of markers 20 and 21 (61, 62, W4-4 only), the floater of
+marker 22 (143) and the crawlers (13/14, 139/138; T41 review, owner); and W4-3, which has no T41
+case. Each must be met, and hurt the frog or be killed
 where it can, in one of this task's playthroughs.
 
 ## Goal
@@ -24,6 +25,11 @@ played, matching the original on every frame with no exclusions and `resync = fa
 ## Design sections this implements
 
 DESIGN §2.1, §2.7; docs/09.
+
+## Interface
+
+None new: cases and scripts in `sf-conform`'s existing formats (`sync`, `script`, `frames`,
+`resync`), as T41's `enemies-w4-*` cases are.
 
 ## Files
 
