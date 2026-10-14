@@ -18,6 +18,9 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-14 | 🔄 | Owner, T74: `slot-hold-jackpot` lands with the attract's fire on frame 41 (40, 50 red: a jackpot flash's sixth lamp starts either side of the interrupt on ~6 colour clocks). T128 slot-lamp-cut added to model it. |
+| 2026-10-14 | 📌 | T74: from `start-w1-1-blink1`, 8 8 $18's gamble wins (30 000), not the bust T19 planned; the second gamble busts (`slot-gamble`). Unreached at these seeds: the free spin, a gamble lost above the bust. |
+| 2026-10-14 | 📌 | T74: T73's payout flash first ran against the oracle here. Lamps drawn alone from line 299 cost 10 cycles more, 6 more when off (`slot::draw`); a paying line's sounds end past the frame (`PAYOUT_CYCLES`). |
 | 2026-10-14 | 📌 | T73: a line's prize collected (rungs 1–8): memory proven by the h0+$51c4 routine test (review), frame timing unexercised: fire alone pays no line at `start-w1-1`, `-blink1`; `-late` pays hi-lo. T74's `slot-hold-20000` is its first case. |
 | 2026-10-14 | 📌 | T73 review: `Rig::check` compared no registers before `Rig::last_regs`; routine tests whose original returns its answer in a register (d0, d7) checked memory only. Not swept test by test; not fixed. |
 | 2026-10-14 | 📌 | T73: `slot-fire` (reel-stop effects play) lands 3 712 of 4 576 draw writes within a line, after fitting the spin's digits 1 000 cycles under Moira's; a few menu-entry and count draws stay 7–12 lines off, green. |
