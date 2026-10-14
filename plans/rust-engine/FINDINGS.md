@@ -18,6 +18,7 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-15 | 📌 | T108 review: `plan_exit --frames N` is an absolute frame budget, not frames after the prefix; a prefix longer than N plans nothing and exits 0. `--via` a cell steers it off a block top `--hurt` alone cannot leave. |
 | 2026-10-15 | 📌 | T108: W1-3's way to the patrollers is the spring (marker 4) at 105,75: jump on it, it bounces the frog up the 104–107 channel. `complete.rs --at`/`--touch` measure the frog's centre, about three rows below the cell it stands in; `plan_exit` uses map cells. |
 | 2026-10-14 | 🔄 | Owner, T105: W2-1's extra life is taken on frame 895, which the original always lags into 896; accepted as compared on 897. No way into the fruit room 45-51,14-26 found: T133 w2-1-fruit-room (T105; blocks T21) added. |
 | 2026-10-14 | 📌 | T105: the old `items-upper-w2-1` hang is the original's `frog_tiles` wall loop (h0+$e3fe, both wall flags; DESIGN §2.11), reached only with W2 enemies frozen. Plan a route against the original: `examples/route_oracle` re-plans from its state. |
