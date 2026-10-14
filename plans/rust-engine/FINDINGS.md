@@ -18,6 +18,7 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-14 | 🔄 | Owner, T41: added T103 w4-completions (T41, T101, T102; blocks T18): scripted playthroughs of W4-1…W4-4 to the exit. T41 keeps per-level enemy cases, no exclusions; one hitting a T101/T102 fault stays outside the test block. |
 | 2026-10-14 | 📌 | T38 review, not fixed: `LevelTally` drops `level_tally`'s first test (`game_full_mode` 0, a game run from a disk loader, returns at once). Unreachable from the engine's boot; no assertion guards it. |
 | 2026-10-14 | 📌 | T38: tally cases force W1-1's exit (`sync = { level, exit = true }`). `tally-slot-w1-1` is green to `slot_machine`'s loads (frame 86, T95's). `level/tally.rs` `print` is a third port of h0+$6f3a (`slot::print_text`, Cx-based). |
 | 2026-10-14 | 🐞 | T54 review, open: the engine's draw `$8400` still lands 1–4 lines off the original's in 70 frames before 3437 (521, 536, 537 among them; cause not probed); `DRAWS` compares values only, so frames still match. |
