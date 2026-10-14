@@ -11,7 +11,10 @@
 //! vertical pair of markers 48–51, cleared when pressed: it opens the gate whose single cell has
 //! its number), each coin taken or switch pressed worth more than any distance. `--coins N` is a step that ends when N coins are still needed (to take coins before a
 //! switch's `--via`); one ending at 0 is added before the exit unless given. A coin the frog makes
-//! no headway toward for `STALL` chunks is passed over until no other is left.
+//! no headway toward for `STALL` chunks is passed over until no other is left. The field knows
+//! nothing of gravity or bounce pads, so each frame the original's frog spends in a cell makes
+//! ending there `VISIT` worse until the next coin or switch: a stuck frog wanders off to find the
+//! way up.
 //!
 //! The plan is made on the engine and played on the original as it goes: from the original's
 //! memory a beam search over ten joystick inputs, each held 4 frames, looks `HORIZON` frames
@@ -35,7 +38,10 @@ const COMMIT: usize = 48;
 const BEAM: usize = 24;
 /// Chunks without a coin taken or the distance shortened by two cells before the nearest coin, and
 /// every coin within four cells of it, is passed over (a jump's height wobbles the distance).
-const STALL: u32 = 4;
+const STALL: u32 = 8;
+/// What a frame already spent in a cell adds to ending a path there, in the score's units (16 a
+/// cell of distance).
+const VISIT: i64 = 4;
 /// The map's row 0 (`map_rows[1]`, h1), and a row's length in bytes: the live markers.
 const ROW0: u32 = 0x218e0 + 0x4c0;
 const ROW_BYTES: u32 = 0x260;
@@ -224,6 +230,8 @@ fn main() {
     let mut goal = 0;
     // The coin phase's passed-over coins, its stall count and best distance so far.
     let mut skipped: Vec<(usize, usize)> = Vec::new();
+    // Frames the original's frog spent in each cell since the last coin or switch.
+    let mut visits: std::collections::HashMap<(i32, i32), i64> = Default::default();
     let (mut stall, mut best_d) = (0u32, i64::MAX);
 
     let mut synced = sync::reach(&SyncPoint::AtLevel(id), &InputScript::idle(), budget as u32 + 100)
@@ -306,8 +314,14 @@ fn main() {
                     if let Some(Via::Coins(_)) = target {
                         taken += pressed(st, &sw) as i64;
                     }
+                    let been = if let Some(Via::Coins(_)) = target {
+                        visits.get(&(x / 16, y / 16)).copied().unwrap_or(0) * VISIT
+                    } else {
+                        0
+                    };
                     d * 16 + (16 - (x % 16 - 8).abs()) as i64 / 4 - 400 * st.w(HEARTS) as i64
                         - 8000 * taken
+                        + been
                 }
             }
         };
@@ -380,6 +394,11 @@ fn main() {
             if ok {
                 for &x in &p[..n] {
                     sync::step_inserting(amiga, x).unwrap();
+                    let (fx, fy) = (
+                        peek_w(amiga, FROG + f::X) as i16 as i32 + 0x17,
+                        peek_w(amiga, FROG + f::Y) as i16 as i32 - 0x10,
+                    );
+                    *visits.entry((fx / 16, fy / 16)).or_insert(0) += 1;
                 }
                 taken = Some(p[..n].to_vec());
                 break;
@@ -422,6 +441,9 @@ fn main() {
             Some(&Via::Coins(n)) => {
                 let left = st.w(FROG + f::COINS_LEFT);
                 let pushed = pressed(&st, &sw) > 0;
+                if left < needed || pushed {
+                    visits.clear();
+                }
                 if pushed {
                     eprintln!("  a switch pressed");
                 }
