@@ -64,7 +64,7 @@ done · ⛔ blocked, needs a human.
 | T39 | enemies-world-5 | T16, T38; blocks T18 | ⬜ | |
 | T40 | enemies-world-6 | T38; blocks T18 | ⬜ | |
 | T41 | enemies-world-4 | T38; blocks T18 | ⬜ | |
-| T42 | enemies-world-1 | T38; blocks T18, T33 | 🔍 | 12 types + 4 children, shared touches, direction_16 ported; routine tests (7, 10 000 states). W1 cases now meet enemies: items-run-w1-1 re-sync 321 pinned (T101). enemies-w1-1 green, 2 re-syncs pinned. Deviation: tests in sf-conform (purity). Split at pir's context line: W1-2/3/4 cases T107–T109, activation T110; completions T106 (owner). |
+| T42 | enemies-world-1 | T38; blocks T18, T33 | ✅ | Review: port matches the listing; two surviving mutations (patroller 20-slot scan, hover $2a bound) now locked by tests. Probed game-over-timeup (diverges 271, open, logged), the W1 jumptab row (all 15 markers live). Done-when 1–2 carried by T106–T110 (split); T107–T110 docs got Files. Tests in sf-conform (purity): held. |
 | T43 | enemies-world-2 | T38; blocks T18, T39 | ⬜ | |
 | T44 | enemies-world-3 | T38; blocks T18 | ⬜ | |
 | T46 | story-intro-scenes | T32; blocks T21 | ✅ | |
@@ -117,7 +117,7 @@ done · ⛔ blocked, needs a human.
 A Notes cell holds what was built or what the review found, the test count, and one line per
 deviation from the task doc. A ✅ task's cell may be cut to one line once the next task has been reviewed.
 
-**Review queue:** T42
+**Review queue:** *(empty)*
 
 ## Blocked on the user
 
