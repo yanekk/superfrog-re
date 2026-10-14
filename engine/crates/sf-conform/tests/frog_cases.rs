@@ -50,10 +50,21 @@ fn frog_run_w1_1() {
 }
 
 /// W1-1 with its items live, 700 frames: coins, the exit lock, the panel and score (T15), the
-/// picture as the beam drew it (T36), with no re-sync after a lag (T82).
+/// picture as the beam drew it (T36). World 1's enemies are live too (T42): its only re-sync is
+/// T101's (a pass across four frames, `vbl_count` 3 at frame 321), pinned here so no other lag
+/// frame is excused.
 #[test]
 fn items_run_w1_1() {
-    green("items-run-w1-1");
+    pinned("items-run-w1-1", &[321]);
+}
+
+/// A case green but for re-syncs after a lag at exactly `frames` (T101's, until it lands).
+fn pinned(name: &str, frames: &[u32]) {
+    let case = sf_conform::Case::load(&sf_conform::cases_dir().join(format!("{name}.toml")))
+        .unwrap_or_else(|e| panic!("{e}"));
+    let o = sf_conform::run(&case).unwrap_or_else(|d| panic!("{name}: {d}"));
+    let resynced: Vec<u32> = o.resynced.iter().map(|r| r.0).collect();
+    assert_eq!(resynced, frames, "{name}: {:?}", o.resynced);
 }
 
 /// W2-2 with its items and (T43) its enemies live, 650 frames: five kinds of fruit and the spud
@@ -61,13 +72,13 @@ fn items_run_w1_1() {
 /// the bob drawer, frames 261–310), pinned here so no other lag frame is excused.
 #[test]
 fn items_fruit_w2_2() {
-    pinned("items-fruit-w2-2", &[311]);
+    pinned_bob_draw("items-fruit-w2-2", &[311]);
 }
 
 /// A case green but for re-syncs at `frames`, each after the original's pass was cut inside the
 /// bob drawer and differing first in a play-field buffer (T121's, FINDINGS "T43: pinned
 /// re-syncs").
-fn pinned(name: &str, frames: &[u32]) {
+fn pinned_bob_draw(name: &str, frames: &[u32]) {
     let case = sf_conform::Case::load(&sf_conform::cases_dir().join(format!("{name}.toml")))
         .unwrap_or_else(|e| panic!("{e}"));
     assert!(case.resync, "{name}: a pinned case re-syncs");
@@ -194,4 +205,11 @@ fn bonus_end_wb_1() {
     assert_eq!(d.frame, 8127);
     assert_eq!(d.unported, ["the bonus level's end picture (T21)"]);
     assert!(d.first_var.is_none(), "{d}");
+}
+
+/// W4-4 with its enemies live (T41): swoopers, scenery and a ledge freed as the camera leaves
+/// them and spawned again as it comes back, on the original's frames.
+#[test]
+fn enemies_w4_4_activation() {
+    green("enemies-w4-4-activation");
 }

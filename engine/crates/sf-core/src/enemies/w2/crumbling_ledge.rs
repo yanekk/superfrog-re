@@ -2,7 +2,7 @@
 //! two cells below its own); landing on it sets it crumbling, and once its animation reaches the
 //! broken frame the cells are open again. Passive.
 
-use crate::enemies::common::{follow_and_despawn, frog_not_rising};
+use crate::enemies::common::follow_and_despawn;
 use crate::frog::{FROG, f};
 use crate::layout::h0;
 use crate::level::objects::bob_anim;
@@ -39,7 +39,7 @@ fn ledge_update(c: &mut LevelCtx, slot: u32, _d7: u16) {
 /// step's count cleared so the crumbling starts.
 fn touch_ledge(c: &mut LevelCtx, slot: u32, _d7: u16) {
     let bob = c.bus.l(slot + 0x50);
-    if !n_clear(c.bus.w(bob + 0x1a).wrapping_sub(0x200)) || !frog_not_rising(&c.bus) {
+    if !n_clear(c.bus.w(bob + 0x1a).wrapping_sub(0x200)) || !n_clear(c.bus.w(FROG + f::VY)) {
         return;
     }
     c.sample(4);

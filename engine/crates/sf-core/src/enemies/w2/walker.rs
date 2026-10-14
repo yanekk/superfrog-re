@@ -1,8 +1,8 @@
 //! Template 39 (marker 12): walks a step on one frame of its walk, turning at a marker `$25` in
 //! the row above; the spud stuns it (`touch_spud_damage`), then a stomp makes it a reward.
 
-use crate::enemies::common::{follow_and_despawn, marker_at};
-use crate::enemies::w2::bouncer::row_start;
+use crate::enemies::common::{follow_and_despawn, row_base};
+use crate::enemies::w2::marker;
 use crate::layout::h0;
 use crate::level::objects::bob_anim;
 use crate::level::{LevelCtx, ObjectKind, n_clear};
@@ -22,7 +22,7 @@ pub static WALKER: ObjectKind = ObjectKind {
 fn walker_init(c: &mut LevelCtx, slot: u32, _d7: u16) {
     let b = &mut c.bus;
     bob_anim(b, slot, WALK_LEFT);
-    let row = row_start(b.l(slot + 0x40), b.w(slot + 8)).wrapping_add(0x260);
+    let row = row_base(b, slot, 0x260);
     b.set_l(slot + 0x64, row);
     b.set_w(slot + 0x5c, 0);
 }
@@ -41,7 +41,7 @@ fn walker_update(c: &mut LevelCtx, slot: u32, _d7: u16) {
     let at = ((b.w(slot + 8).wrapping_add(3) >> 4).wrapping_mul(2) as u32)
         .wrapping_add(b.l(slot + 0x64))
         .wrapping_sub(0x25e);
-    if marker_at(b, at) == 0x25 {
+    if marker(b, at) == 0x25 {
         let vx = vx.wrapping_neg();
         b.set_w(slot + 0xc, vx);
         b.set_w(slot + 8, b.w(slot + 8).wrapping_add(vx));

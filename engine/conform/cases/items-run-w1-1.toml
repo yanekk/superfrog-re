@@ -2,13 +2,16 @@
 # launchers, switches) for 700 frames of frog-run-right: coins taken, the coin count and its
 # fanfare, the panel's digits, the score and the picture as the beam drew it (T36). Ends before
 # the death at frame 655 ends the level's loop (frame 712): what follows the loop is T37's.
+# World 1's enemies are live (T42): their passes span up to four frames, and frame 321 re-syncs
+# after one (T101's class), pinned in `frog_cases::items_run_w1_1`. Once T101 lands:
+# `resync = false`, drop the pin.
 sync = { level = "W1-1" }
 script = "frog-run-right"
 frames = 700
 compare = ["vars", "picture", "paula"]
-resync = false
+resync = true
 
 [[exclude]]
 what = "enemies"
-note = "the original's marker spawners the engine has none for (enemies, the world's scenery) and the bubble return at once from power-on"
-task = "T16–T18"
+note = "the bubble (T17's, now T39–T41's) returns at once from power-on; world 1's enemies are live (T42)"
+task = "T39–T41"

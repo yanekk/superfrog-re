@@ -2,7 +2,7 @@
 //! passive: touching it hurts the frog only on the frames it is up. Each starts its cycle in step
 //! with a live neighbour of its kind two cells left or right, so a row of them moves as a wave.
 
-use crate::enemies::common::marker_at;
+use crate::enemies::w2::marker;
 use crate::layout::h0;
 use crate::level::objects::OBJ_SLOTS;
 use crate::level::{LevelCtx, ObjectKind};
@@ -59,7 +59,7 @@ fn spikes_init(c: &mut LevelCtx, slot: u32, m: u16, anim: u32, left_ahead: bool)
         (cell.wrapping_sub(4), left_ahead),
         (cell.wrapping_add(4), !left_ahead),
     ] {
-        if marker_at(b, at) != m {
+        if marker(b, at) != m {
             if at == cell.wrapping_sub(4) {
                 continue;
             }

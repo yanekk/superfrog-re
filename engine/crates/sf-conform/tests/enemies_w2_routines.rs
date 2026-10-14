@@ -326,9 +326,9 @@ fn spawners_match_the_original() {
     for case in 0..N {
         let mut s = Setup::default();
         let (m, entry) = g.pick(&STUBS);
-        // A table as `with_slot` makes one; marker 17's links must find room (with none, the
-        // original writes the ball to the level 1 interrupt's vector, which the engine skips).
-        let (other, _) = with_slot(&rig, &mut g, &mut s, FILLER, m != 17);
+        // A table as `with_slot` makes one, now and then full (marker 17's links then write
+        // their ball to `$64`, the level 1 interrupt's vector, as the original does).
+        let (other, _) = with_slot(&rig, &mut g, &mut s, FILLER, true);
         let (col, row) = any_cell(&mut g);
         let at = if other != 0 && g.one_in(5) {
             after(&rig, &s).l(other + 0x40)

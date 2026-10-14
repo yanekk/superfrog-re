@@ -2,7 +2,8 @@
 //! shows) jumps, alternately left and right; stompable while sitting and on its left jumps. The
 //! spud or a stomp stuns it (`touch_spud_damage`) and a second stomp makes it a reward.
 
-use crate::enemies::common::{cell_at, follow_and_despawn, marker_at};
+use crate::enemies::common::{cell_at, follow_and_despawn};
+use crate::enemies::w2::marker;
 use crate::layout::h0;
 use crate::level::objects::bob_anim;
 use crate::level::{LevelCtx, ObjectKind, n_clear};
@@ -64,8 +65,8 @@ fn jumping(c: &mut LevelCtx, slot: u32, _d7: u16) {
     b.set_w(slot + 8, b.w(slot + 8).wrapping_add(b.w(slot + 0xc)));
     b.set_w(slot + 0xa, b.w(slot + 0xa).wrapping_add(b.w(slot + 0xe)));
     b.set_w(slot + 0xe, b.w(slot + 0xe).wrapping_add(1));
-    let below = cell_at(b, b.w(slot + 8).wrapping_sub(0xa), b.w(slot + 0xa)).wrapping_add(0x262);
-    if n_clear(marker_at(b, below).wrapping_sub(0x3a)) {
+    let below = cell_at(b, b.w(slot + 8).wrapping_sub(0xa), b.w(slot + 0xa)).wrapping_add(0x260);
+    if n_clear(marker(b, below).wrapping_sub(0x3a)) {
         b.set_l(slot + 4, SITTING);
         let bob = b.l(slot + 0x50);
         b.set_l(bob + 0x28, LAND);

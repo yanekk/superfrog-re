@@ -148,6 +148,9 @@ layout! {
     /// pointer: a bob never drawn has no animation step yet, so `obj_despawn_if_offscreen` takes
     /// the long at 0 for its frame record and its width and height from address 4.
     LowVectors = "low_vectors", 0, Width::Bytes(8);
+    /// The level 1 interrupt's autovector (`$64`). A swing's spawner with no slot for a link
+    /// writes the ball (or 0) here, through the null slot pointer (`enemies::w3::swing`, T44).
+    Level1Vector = "level1_vector", 0x64, Width::L;
     /// h2+$5efc..$6058: the end sequence's copper list (five planes, its palette at h2+$5fa4).
     EndCopper = "end_copper", h2(0x5efc), Width::Bytes(0x15c);
     /// h2+$6110..$6270: the award pages' copper list.
@@ -552,11 +555,15 @@ layout! {
     /// `reward_power_count` (h0+$23e20, 9 in the executable).
     RewardLifeCount = "reward_life_count", h0(0x23de4), Width::W;
     RewardPowerCount = "reward_power_count", h0(0x23e20), Width::W;
-    /// World 2's enemies (`enemies::w2`), words inside the code: `flyer_next_loop` (h0+$243b4),
-    /// the loop the next flyer takes, and `mace_link_count` (h0+$262ba), the fraction the next
-    /// chain link spawned takes.
-    FlyerNextLoop = "flyer_next_loop", h0(0x243b4), Width::W;
-    MaceLinkCount = "mace_link_count", h0(0x262ba), Width::L;
+    /// World 1's enemies' counters (`enemies::w1`), words inside the code: `w1_hover_phase`
+    /// (h0+$243b4), the path phase the next hover starts on (W4's swoopers step it too), and
+    /// `w1_spout_turn` (h0+$25356), which shot a spout throws next.
+    W1HoverPhase = "w1_hover_phase", h0(0x243b4), Width::W;
+    W1SpoutTurn = "w1_spout_turn", h0(0x25356), Width::W;
+    /// `chain_link_count` (h0+$262ba), a long inside the code: the mace's links counted as marker
+    /// 17 spawns them (`enemies::w4`, and W3's swing as `enemies::w3::swing::LINK_INDEX`; W6's
+    /// mace uses it too).
+    ChainLinkCount = "chain_link_count", h0(0x262ba), Width::L;
     /// The bonus level's animation toggles (`bonus::enemies`), words inside the code that the
     /// listing reads as instructions: `bonus_toggle_114` (h0+$28ad8) and `bonus_toggle_113`
     /// (h0+$28b4a), flipped by each spawn of those types to pick one of two animations.

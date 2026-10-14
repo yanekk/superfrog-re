@@ -18,6 +18,10 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-14 | 📌 | T43 merge: W2's darts and mace now use `w3::dart` and `w3::swing`'s updates; the `$64` write is kept as T44 kept it, so T43's skip is gone (spawner test now fills the table, green). |
+| 2026-10-14 | 📌 | T43 merge sweep, not fixed: h0+$23774 (`touch_ledge`) is ported three times, `w2/crumbling_ledge.rs`, `w3/crumble.rs`, `w4/ledge.rs`; dispatch keeps the last registered. Keep one copy. |
+| 2026-10-14 | 📌 | T43 merge sweep, not fixed: h0+$24ef6 (`scenery_stand`) is ported twice, `w2/backdrop.rs` `still` and `w4/scenery.rs`; dispatch keeps the last registered. Keep one copy. |
+| 2026-10-14 | 📌 | T43 merge sweep, not fixed: h0+$25990 (`swooper_update`) is ported twice, `w2/flyer.rs` `flyer_update` and `w4/swooper.rs`; dispatch keeps the last registered. Keep one copy. |
 | 2026-10-14 | 🐞 | T43 review sweep, not fixed: `enemies_w1_routines.rs:297` draws the marker-search distance uniformly over `1..=$a0`, so `w1/mod.rs:129`'s `$98` bound is likely never hit at its edge (T43's same generator let a `$97` mutant pass). |
 | 2026-10-14 | 📌 | T43: pinned re-syncs (T121's: the original's pass cut inside the bob drawer), all `playfield_buffer_0`: `items-fruit-w2-2` 311 (`frog_cases`), `enemies-w2-2` 560 (`enemies_w2_cases`). |
 | 2026-10-14 | 🔄 | Owner, T43: added T121 bob-draw-cut (T101; blocks T21), T122 w2-completions (T43, T101, T121; blocks T18), and on request T120 conform-no-silent-pass (T05, T36; blocks T21). |
@@ -25,6 +29,30 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 | 2026-10-14 | 📌 | T43: marker 17's stub writes the mace ball's slot to `$64` (level 1 interrupt vector) when a link finds no slot (a0 = 0). The engine skips it; the routine test never fills the table there. |
 | 2026-10-14 | 🐞 | T43, not fixed: the routine harness does not compare `sample_play`'s state: dropping `touch_stunned`'s sample 2 stays green. Frame cases would catch it. |
 | 2026-10-14 | 📌 | T43: W2-1's right half (mace, spikes, exit) is walled off from its start at column 144. Hearts are frog `+$5a`; `+$3a` (hurt) is also set by a level's start drop (frame 80). |
+| 2026-10-14 | 🐞 | Open, seen in T44's merge regression: `frog_cases::frog_timeup_w1_1` failed once (busy machine, 204 s run; message not captured), then green 5 times (alone, full file, cold sync cache). Cause unknown; sync cache writes are atomic. |
+| 2026-10-14 | 📌 | T44 merge with T41, not fixed: `w3/{dart,swing}.rs` and `w4/{dart,mace}.rs` both port h0+$25fa8, $25f42, $2619c, $262be; dispatch keeps the last registered (W4's). Keep one copy. Symbols keep T41's `chain_link_count`, `touch_ledge`. |
+| 2026-10-14 | 🐞 | T44 merge sweep, not fixed: `w4/mace.rs` `spawn_69` skips the ball's write through a null slot to $64 when a link finds no room; the original writes it (W3's spawner test, mutation red). |
+| 2026-10-14 | 📌 | T44 review sweep, not fixed: `tasks/T106-w1-completions.md` (T42's addition) has no Interface or Tests section; T111–T115's were added in T44's review. |
+| 2026-10-14 | 📌 | T44 review sweep, not fixed: `tasks/T107-enemies-w1-2-case.md` (T42's addition) has no Interface or Tests section; T111–T115's were added in T44's review. |
+| 2026-10-14 | 📌 | T44 review sweep, not fixed: `tasks/T108-enemies-w1-3-case.md` (T42's addition) has no Interface or Tests section; T111–T115's were added in T44's review. |
+| 2026-10-14 | 📌 | T44 review sweep, not fixed: `tasks/T109-enemies-w1-4-case.md` (T42's addition) has no Interface or Tests section; T111–T115's were added in T44's review. |
+| 2026-10-14 | 📌 | T44 review sweep, not fixed: `tasks/T110-enemies-w1-activation.md` (T42's addition) has no Interface or Tests section; T111–T115's were added in T44's review. |
+| 2026-10-14 | 🔄 | Owner, T44: W3-2/3/4 frame cases, activation and the W3 completions split to T111–T115 (each blocks T18; T113 waits on T102, T115 on T101, T102, T111–T113). |
+| 2026-10-14 | 🐞 | T44, not fixed: W3-4 frame 194, the frog jumping off the first crumbling platform: the original draws only part of its bob, every variable equal (T102's beam race); `enemies-w3-4` ends at 193. |
+| 2026-10-14 | 📌 | T44: `dart_wait`/`dart_fly` (h0+$25fa8/$25f42), `swing_update`/`swing_link_update` (h0+$2619c/$262be) and `touch_hurt` serve world 2 (T43) and later worlds too: ported in `enemies/w3/{dart,swing}.rs` and `common.rs`; reuse them. |
+| 2026-10-14 | 📌 | T44: the swing's spawner (h0+$183a8) writes its ball through a null slot pointer into the level 1 autovector ($64) when a link finds no room; kept (LAYOUT `level1_vector`). Whether a level 1 interrupt then crashes is untested. |
+| 2026-10-14 | 📌 | T44: `complete.rs` `--kill` takes the marker's map cell; `--at`, `--near`, `--touch` the frog centre's pixel position, whose row is the map row + 3. W3-1 lags nearly every frame: plan ≤150-frame paced legs. |
+| 2026-10-14 | 🔄 | Owner, T41 review: the crawler (markers 13/14, templates 139/138) met no T41 case (its update h0+$26eee never ran on the original in any) and is carried into T103. |
+| 2026-10-14 | 🔄 | Owner, T41: the types no T41 case met (pacers 2/3, crusher-up 16, mace 17, darts 20/21, floater 22) and W4-3 moved into T103's playthroughs. |
+| 2026-10-14 | 🐞 | T41, open: `enemies-w4-4-activation` diverges at 285 (ends at 284): the engine takes a copper interrupt (INTREQ/INTENA `$0010`) in that frame's pass, the original not; seven frames after four respawns. Beam timing, probably T101's. |
+| 2026-10-14 | 📌 | T41 for T40's merge: T40 also ports h0+$25fa8, $25f42, $2619c, $262be and adds `chain_link_count` (LAYOUT, symbols.toml); keep one of each. T41's `common.rs` merged into T42's: T42's kill/stomp, plus `touch_hurt`, `obj_path_y`, the pair scans. |
+| 2026-10-14 | 📌 | T41 merge, not fixed: `w1/mod.rs` `other_end_free` is a private copy of `common::partner_right_free`/`partner_left_free` (h0+$1b350/$1b396). Symbols and LAYOUT keep T42's names (`find_marker_*`, `w1_hover_phase`, `w1_hover_path`) for both worlds. |
+| 2026-10-14 | 📌 | T41: no W4 map uses markers 32/33 (gates 146/147, routine-tested only). W4-2's crawler at 181,70 never spawns: its marker 14 has no 13 to its left. `examples/route` targets are feet cells (`frog+$02` is the feet). |
+| 2026-10-14 | 🔄 | Owner, T41: added T103 w4-completions (T41, T101, T102; blocks T18): scripted playthroughs of W4-1…W4-4 to the exit. T41 keeps per-level enemy cases, no exclusions; one hitting a T101/T102 fault stays outside the test block. |
+| 2026-10-14 | 📌 | T42 split at pir's context line: T107 (W1-2 case), T108 (W1-3), T109 (W1-4), T110 (activation, a touch_kill_1hit kill); each T42, blocks T18, T33, T106. Uncommitted W1-2 route discarded (facts in T107). |
+| 2026-10-14 | 🐞 | Not T42's, open: with W1's enemies live `game-over-timeup-w1-1` diverges at 271, copper a flip apart in game over's first pass (the T79-review fault); hover costs don't move it. Not in the test block. |
+| 2026-10-14 | 📌 | T42: plan enemy routes in short legs from the paced engine (`examples/complete.rs --paced --prefix`); unpaced plans leave the original's route (it lags, takes fewer coins; the frog died where the plan's lived). |
+| 2026-10-14 | 🔄 | Owner, T42: added T106 w1-completions (T42, T86, T101; blocks T18): a W1 exit needs every coin (90 in W1-1); the leg planner stalled at 58 and met T86's launcher divergence (W1-1 frame 2256). |
 | 2026-10-14 | 📌 | T85 review: added T105 (owner): `items-upper-w2-1` never took the fruit 48,22 or extra life 63,35, and the original stops in its pass from ~1012 (h0+$e3fe..$e412, frog 78,42). Case cut to 1 010 frames. |
 | 2026-10-14 | 🐞 | T85 review, open: `sf-conform` reads an original that never finishes a pass as endless lag (`mid_pass`, `straddled`) and compares nothing, so a case stays green; old `items-upper-w2-1` had 468 such frames. Swept: switch 49, fruit-w2-2 45, wings-w1-2 24, all sparse. |
 | 2026-10-14 | 📌 | T85 review: `examples/plan` steps the engine unpaced; in the case run W2-1's pad 91,35 bounced two frames later (frog `+$22` out of phase), so planned inputs after it missed. Check a planned script's items through `run_with`. |

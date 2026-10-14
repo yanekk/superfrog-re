@@ -67,6 +67,11 @@ pub fn register_all(d: &mut Dispatch) {
 
 type MarkerFn = fn(&mut LevelCtx, u32);
 
+/// The marker of map cell `cell` (its low six bits).
+pub fn marker(b: &crate::mem::Bus, cell: u32) -> u16 {
+    b.w(cell) & 0x3f
+}
+
 /// A marker stub's `obj_spawn_cell`: template `t` at `cell`, `dy` pixels down it.
 fn spawn(c: &mut LevelCtx, t: u32, cell: u32, dy: u16) {
     obj_spawn_cell(c, template(t), cell, 0, dy);

@@ -1,0 +1,13 @@
+# W3-4 with world 3's enemies live (T44): the frog stands on the first crumbling platform and
+# jumps for the next, the scenery below marker 14 at 283,58 and the flows beside it. Ends at 193:
+# at 194 the original draws only part of the frog's bob (every variable equal; T102's beam race,
+# as `items-shield-w3-1` at 366). T113 takes the case on from there.
+sync = { level = "W3-4" }
+script = "enemies-w3-4"
+frames = 193
+resync = true
+
+[[exclude]]
+what = "enemies"
+note = "the bubble (T17's, now T39–T41's) returns at once from power-on; world 3's enemies are live (T44)"
+task = "T39–T41"
