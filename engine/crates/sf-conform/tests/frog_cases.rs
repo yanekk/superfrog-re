@@ -118,6 +118,20 @@ fn items_checkpoint_w1_1() {
     green("items-checkpoint-w1-1");
 }
 
+/// W2-1 with its items live, 760 frames: both hidden coin springs knocked empty, the switch at
+/// 116,39 opening its gate, and the wings, with no re-sync (T85).
+#[test]
+fn items_switch_w2_1() {
+    green("items-switch-w2-1");
+}
+
+/// W2-1 with its items live, 1 010 frames: the coin springs, the lift into the pillar and the
+/// speed-up, with no re-sync (T85; the fruit and the extra life are T105's).
+#[test]
+fn items_upper_w2_1() {
+    green("items-upper-w2-1");
+}
+
 /// The bonus level entered (T79): 600 frames from its first, the frog flown about and firing,
 /// with no re-sync.
 #[test]
