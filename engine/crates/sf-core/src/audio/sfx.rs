@@ -127,10 +127,25 @@ impl AudioDriver {
         chan: u8,
         out: &mut Vec<PaulaWrite>,
     ) {
+        if let Some(rest) = self.sfx_play_begin(data, id, chan, out) {
+            self.sfx_play_rest(data, rest, out);
+        }
+    }
+
+    /// `sfx_play` to its raster wait (h0+$12b20..$12b38): interrupts off (INTENA `$4000`), the
+    /// beam waited on for three lines, interrupts on (`$c000`). What is left of it, if anything
+    /// ([`AudioDriver::sfx_play_rest`]): a vertical blank the wait held off comes in between.
+    pub(crate) fn sfx_play_begin(
+        &mut self,
+        data: &SoundData,
+        id: u8,
+        chan: u8,
+        out: &mut Vec<PaulaWrite>,
+    ) -> Option<SfxRest> {
         let n = chan as usize;
         if chan == 3 && self.stream.w(4) != 0xffff {
             self.sfx.set_b(STEAL, 0);
-            return;
+            return None;
         }
         let effect = self.tables.l(EFFECTS + id as usize * 4);
         let r = rec(n);
@@ -138,7 +153,7 @@ impl AudioDriver {
             let playing = self.mem.w(data, self.sfx.l(r + EFFECT).wrapping_add(2));
             if (playing as i16) < (self.mem.w(data, effect.wrapping_add(2)) as i16) {
                 self.sfx.set_b(STEAL, 0);
-                return;
+                return None;
             }
             if self.mem.w(data, effect) != 0 {
                 self.sfx.set_b(STEAL, 1);
@@ -153,6 +168,25 @@ impl AudioDriver {
         }
         wr(out, INTENA, 0x4000);
         wr(out, INTENA, 0xc000);
+        Some(SfxRest {
+            id,
+            chan,
+            effect,
+            steal,
+        })
+    }
+
+    /// The rest of `sfx_play`, after its raster wait (h0+$12b40): the channel's record set up and
+    /// the effect started.
+    pub(crate) fn sfx_play_rest(&mut self, data: &SoundData, rest: SfxRest, out: &mut Vec<PaulaWrite>) {
+        let SfxRest {
+            id,
+            chan,
+            effect,
+            steal,
+        } = rest;
+        let r = rec(chan as usize);
+        let reg = 0xa0 + chan as u16 * 16;
         self.sfx.set_l(r + PER_STEP, 0);
         self.sfx.set_w(r + STEP, 0);
         self.sfx.set_w(r + ACTIVE, 1);
@@ -188,6 +222,11 @@ impl AudioDriver {
     /// The effects playing: channels whose record is active (what `sfx_tick` steps each frame).
     pub fn sfx_active(&self) -> u32 {
         (0..4).filter(|&n| self.sfx.w(rec(n) + ACTIVE) != 0).count() as u32
+    }
+
+    /// A sample streams on channel 3 (`sample_stream` steps it at the handler's start).
+    pub fn streaming(&self) -> bool {
+        self.stream.w(4) != 0xffff
     }
 
     /// `sfx_tick` (`$12c60`): each effect's step, channels 3 down to 0.
@@ -349,4 +388,13 @@ impl AudioDriver {
         wr(out, DMACON, 0x8008);
         wr(out, 0xd6, 0x1bc);
     }
+}
+
+/// What is left of an `sfx_play` after its raster wait ([`AudioDriver::sfx_play_begin`]).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct SfxRest {
+    id: u8,
+    chan: u8,
+    effect: u32,
+    steal: bool,
 }

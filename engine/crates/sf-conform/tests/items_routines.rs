@@ -550,6 +550,73 @@ fn obj_run_all_and_collide_all_match_the_original() {
     }
 }
 
+/// `collide_all`'s frog walk (T102 review): a frame the original ended part way through the walk
+/// ends at the entry it had got to (step 2 once the frog's box is taken, one more per entry looked
+/// at), the entries after it looked at past the vertical blank. Two entries over the frog, a
+/// passive one doing nothing, then one the frog lands on: cut at step 3 the bounce is not in the
+/// frame's state, at step 4 it is.
+#[test]
+fn the_frog_walk_ends_its_frame_at_the_entry_the_original_had_got_to() {
+    use sf_core::level::beam::{Cut, FrameSpec, Frames};
+    let rig = rig();
+    let display = sf_conform::display_data();
+    for (step, bounced) in [(3, false), (4, true)] {
+        let mut st = rig.state().clone();
+        let mut paula = Vec::new();
+        let mut c = LevelCtx::new(
+            Bus::new(&mut st, display.rom()),
+            sf_core::level::standard_dispatch(),
+            Hw::default(),
+            sound(),
+            &mut paula,
+        );
+        let b = &mut c.bus;
+        let (x, y) = (1000u16, 500u16);
+        b.set_w(FROG + f::X, x);
+        b.set_w(FROG + f::Y, y);
+        for o in [f::VY, f::HURT, f::CROUCH] {
+            b.set_w(FROG + o, 0);
+        }
+        b.set_w(h0(0x9e2), 0);
+        b.set_w(h0(0x9dc), 0);
+        for (k, stomp, passive) in [(0, 0, 1), (1, 1, 0)] {
+            let (at, slot) = (objects::HITBOXES + 12 * k, OBJ_SLOTS + SLOT * k);
+            b.set_w(at, x);
+            b.set_w(at + 2, x + 40);
+            b.set_w(at + 4, y);
+            b.set_w(at + 6, y + 80);
+            b.set_l(at + 8, slot);
+            b.set_w(slot + 0x2e, stomp);
+            b.set_w(slot + 0x30, passive);
+            b.set_w(slot + 0xa, y + 0x40);
+            b.set_l(slot + 0x10, h0(0x7d4));
+        }
+        b.set_w(objects::HITBOXES + 24, 0x8000);
+        c.enter_phase(5);
+        let cut = Cut {
+            writes: 0,
+            line: 0,
+            hpos: 0,
+            phase: 5,
+            step,
+        };
+        c.frames = Some(Box::new(Frames {
+            specs: vec![FrameSpec {
+                hw: Hw::default(),
+                cut: Some(cut),
+            }],
+            at: Some(0),
+            in_pass: true,
+            ..Frames::default()
+        }));
+        objects::collide_all(&mut c);
+        let fr = c.frames.take().expect("frames");
+        let mid = fr.mid.expect("the frame ended in the walk");
+        assert_eq!(mid.w(FROG + f::VY) != 0, bounced, "cut at step {step}");
+        assert_ne!(c.bus.w(FROG + f::VY), 0, "the walk runs on past the cut");
+    }
+}
+
 #[test]
 fn spud_update_matches_the_original() {
     let mut rig = rig();

@@ -325,12 +325,18 @@ pub const COSTS: [u32; Cost::COUNT] = {
 
 /// [`COSTS`] for work done with the screen blank between levels (`level_init_wN`): no plane
 /// fetch takes the CPU's or the blitter's cycles, and the first screen's copies are called
-/// directly, not from the copper interrupt.
+/// directly, not from the copper interrupt. T100 refitted two once the front end's handler took
+/// its own length (T37's were fitted to a handler always ending on line 20, about a line and a
+/// half long): the sheet's masks (the restart's long blit ends on line 270, the original's 271)
+/// and the screen scan (the blit chain after it starts on line 82 as the original's, 75 for 73
+/// on the second restart).
 pub const BLANK_COSTS: [u32; Cost::COUNT] = {
     let mut a = COSTS;
     a[Cost::ScrollTile as usize] = 1313;
     a[Cost::IrqBlits as usize] = 450;
     a[Cost::IrqPlane as usize] = 270;
+    a[Cost::MaskOr10 as usize] = 63;
+    a[Cost::ScreenScanCell as usize] = 400;
     a
 };
 

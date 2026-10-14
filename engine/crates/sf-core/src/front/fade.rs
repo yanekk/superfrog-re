@@ -98,6 +98,49 @@ pub fn set_and_step(s: &mut State, rec: Rec, from: u32, target: u32, list: u32, 
     s.set_w(rec.at + DONE, 0);
 }
 
+/// The 68000's `divu.w` time in CPU cycles for `dividend` / `divisor`, without its operand (Jorge
+/// Cwik's exact count: 76 to 136 by the quotient's bits; 10 on overflow).
+fn divu_cycles(dividend: u32, divisor: u16) -> u32 {
+    if dividend >> 16 >= divisor as u32 {
+        return 10;
+    }
+    let (mut d, h) = (dividend, (divisor as u32) << 16);
+    let mut m = 38;
+    for _ in 0..15 {
+        let top = d & 0x8000_0000 != 0;
+        d <<= 1;
+        if top {
+            d = d.wrapping_sub(h);
+        } else {
+            m += 2;
+            if d >= h {
+                d -= h;
+                m -= 1;
+            }
+        }
+    }
+    m * 2
+}
+
+/// How long [`fade_in`]'s set-up takes with interrupts off (T100): clearing the accumulators,
+/// then for each colour three channels' steps, each a `divu.w #$f` whose time depends on the
+/// target (measured: `level_start`'s fade in, from line 299 to line 30 of the next frame).
+pub fn fade_in_cycles(s: &State, target: u32, n: u16) -> u32 {
+    const SETUP: u32 = 2_764;
+    const COLOUR: u32 = 134;
+    (0..n as u32)
+        .map(|k| {
+            let t = s.w(target + 2 * k);
+            COLOUR
+                + CHANNELS
+                    .iter()
+                    .map(|&(_, shift)| 4 + divu_cycles(((t << shift) & 0xf00) as u32, 15))
+                    .sum::<u32>()
+        })
+        .sum::<u32>()
+        + SETUP
+}
+
 /// `$153a4` (mode 2): fade `list`'s colours in towards `target`.
 pub fn fade_in(s: &mut State, rec: Rec, list: u32, target: u32, n: u16) {
     s.set_w(rec.at + MODE, 2);
@@ -323,5 +366,85 @@ pub fn step_set_rec(s: &mut State, rec: Rec) {
         if same / 3 == n {
             finish(s, rec);
         }
+    }
+}
+
+/// The fades' steps on the level's copper list in the front end's handler (T100), timed from
+/// `start` (CPU cycles from the frame's top, [`super::vbl::fade_start`]): a channel looked at and
+/// one changed in a fade in (T37's), in a fade out, and from the last to the acknowledge, in CPU
+/// cycles; from the display window's top line (and this far into it) the CPU gets 17 of every 20
+/// (bitplane DMA). Fitted to the original's acknowledges and pictures in `frog-pit-w1-1`.
+const IN_LOOK: u32 = 95;
+const IN_CHANGE: u32 = 96;
+const OUT_LOOK: u32 = 78;
+const OUT_CHANGE: u32 = 86;
+const IN_TAIL: u32 = 830;
+const OUT_TAIL: u32 = 996;
+const WINDOW_SLOW_FROM: u32 = 186;
+const WINDOW_RATE: (u32, u32) = (17, 20);
+
+/// When each changed channel of `channels` ([`due_channels`]) is written, and when the handler
+/// acknowledges, in cycles from the frame's top: `start` the first channel's, `window_top` the
+/// line the display window starts on.
+pub fn level_step_times(
+    channels: &[(u32, u16, bool, bool)],
+    start: u32,
+    window_top: u16,
+) -> (Vec<u32>, u32) {
+    let slow = window_top as u32 * super::BEAM_CYCLES_PER_LINE + WINDOW_SLOW_FROM;
+    let wall = |work: u32| {
+        let fast = if start < slow {
+            work.min(slow - start)
+        } else {
+            0
+        };
+        start + fast + (work - fast) * WINDOW_RATE.1 / WINDOW_RATE.0
+    };
+    let mut work = 0;
+    let mut writes = Vec::new();
+    for &(_, _, changes, fade_in) in channels {
+        work += if fade_in { IN_LOOK } else { OUT_LOOK };
+        if changes {
+            work += if fade_in { IN_CHANGE } else { OUT_CHANGE };
+            writes.push(wall(work));
+        }
+    }
+    let tail = if channels.iter().any(|c| c.3) {
+        IN_TAIL
+    } else {
+        OUT_TAIL
+    };
+    (writes, wall(work + tail))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{divu_cycles, level_step_times};
+    use crate::front::BEAM_CYCLES_PER_LINE;
+
+    /// The 68000's `divu.w` by its quotient's bits (Cwik's count, checked against his table's
+    /// extremes): a zero quotient is the slowest, an overflow stops at once.
+    #[test]
+    fn divu_takes_the_68000s_time() {
+        assert_eq!(divu_cycles(0, 15), 136);
+        assert_eq!(divu_cycles(0xf00, 15), 134);
+        assert_eq!(divu_cycles(0x700, 15), 126);
+        assert_eq!(divu_cycles(0xffff, 1), 106);
+        assert_eq!(divu_cycles(0x1_0000, 1), 10);
+    }
+
+    /// A channel looked at and one changed, from the start; inside the display window the CPU
+    /// gets 17 cycles of every 20, so the same work takes longer there.
+    #[test]
+    fn steps_slow_down_inside_the_window() {
+        let ch = |changes| (0, 0x0f0, changes, true);
+        let early = 10 * BEAM_CYCLES_PER_LINE;
+        let (writes, end) = level_step_times(&[ch(false), ch(true)], early, 40);
+        assert_eq!(writes, vec![early + 95 + 95 + 96]);
+        assert_eq!(end, early + 286 + 830);
+        let late = 50 * BEAM_CYCLES_PER_LINE;
+        let (writes, end) = level_step_times(&[ch(true)], late, 40);
+        assert_eq!(writes, vec![late + 191 * 20 / 17]);
+        assert_eq!(end, late + (191 + 830) * 20 / 17);
     }
 }

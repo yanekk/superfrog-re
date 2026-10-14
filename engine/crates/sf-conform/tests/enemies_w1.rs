@@ -1,6 +1,6 @@
 //! World 1's enemies in frame cases (T42): one case per level, `engine/conform/cases/enemies-w1-*`,
 //! run against the original with every object live. Each test checks the case is green but for
-//! the re-syncs it pins (T101's, owner 2026-10-14, as `frog_cases::items_run_w1_1` pins its own),
+//! the re-syncs it pins (open lag faults, owner 2026-10-14),
 //! and that the enemies it is meant to meet did what it says: their updates ran, the frog was
 //! hurt, and the ones it kills died (their killed or stomped updates ran).
 
@@ -56,7 +56,7 @@ const REWARD: u32 = 0x23e6c;
 /// W1-1: a sitter stomped into a reward; the runner and a spiker hurt the frog.
 #[test]
 fn w1_1() {
-    let s = run("enemies-w1-1", &[372, 433]);
+    let s = run("enemies-w1-1", &[372]);
     for u in [SITTER, RUNNER, SPIKER, STOMPED, REWARD] {
         assert!(s.updates.contains(&u), "h0+${u:x} never ran: {:x?}", s.updates);
     }

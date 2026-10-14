@@ -75,11 +75,12 @@ fn met(seen: &Seen, types: &[(u32, &str)]) {
 
 /// W5-1 from its start to the second pacer (T39): over the first pacer and the spike pits, under
 /// the watchers, the mace and the fallers (each shakes and falls as the frog comes near), past the
-/// drips, the crushers, the flows and the dart; every W5-1 type but the shot. Two re-syncs pinned,
-/// both seen with enemies frozen too: T121's play field buffer at 551, the panel at 979.
+/// drips, the crushers, the flows and the dart; every W5-1 type but the shot. One re-sync pinned,
+/// seen with enemies frozen too: the panel at 979 (the play field's at 551 was the bob drawer's
+/// wait for the vertical blank's flag, T102).
 #[test]
 fn enemies_w5_1() {
-    let seen = run("enemies-w5-1", &[551, 979]);
+    let seen = run("enemies-w5-1", &[979]);
     met(
         &seen,
         &[
