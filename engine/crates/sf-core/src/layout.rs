@@ -148,6 +148,9 @@ layout! {
     /// pointer: a bob never drawn has no animation step yet, so `obj_despawn_if_offscreen` takes
     /// the long at 0 for its frame record and its width and height from address 4.
     LowVectors = "low_vectors", 0, Width::Bytes(8);
+    /// The level 1 interrupt's autovector (`$64`). A swing's spawner with no slot for a link
+    /// writes the ball (or 0) here, through the null slot pointer (`enemies::w3::swing`, T44).
+    Level1Vector = "level1_vector", 0x64, Width::L;
     /// h2+$5efc..$6058: the end sequence's copper list (five planes, its palette at h2+$5fa4).
     EndCopper = "end_copper", h2(0x5efc), Width::Bytes(0x15c);
     /// h2+$6110..$6270: the award pages' copper list.
@@ -557,6 +560,9 @@ layout! {
     /// which shot a spout throws next.
     W1HoverPhase = "w1_hover_phase", h0(0x243b4), Width::W;
     W1SpoutTurn = "w1_spout_turn", h0(0x25356), Width::W;
+    /// `swing_link_index` (h0+$262ba), a long inside the code: the index along its chain the next
+    /// swing link spawned takes (`enemies::w3::swing`).
+    SwingLinkIndex = "swing_link_index", h0(0x262ba), Width::L;
     /// The bonus level's animation toggles (`bonus::enemies`), words inside the code that the
     /// listing reads as instructions: `bonus_toggle_114` (h0+$28ad8) and `bonus_toggle_113`
     /// (h0+$28b4a), flipped by each spawn of those types to pick one of two animations.

@@ -1,4 +1,4 @@
-//! What the enemies of worlds 1–6 share (T39–T44): the two touch handlers most of them name, what
+//! What the enemies of worlds 1–6 share (T39–T44): the touch handlers most of them name, what
 //! a killed or stomped enemy turns into, the map tests their updates make, and the direction from
 //! one point to another (h0+$da62) that the watchers face by.
 
@@ -20,6 +20,8 @@ pub const TOUCH_KILL_1HIT: u32 = h0(0x23582);
 const KILL_FALL: u32 = h0(0x23b34);
 /// `touch_spud_damage` (h0+$2360e).
 pub const TOUCH_SPUD_DAMAGE: u32 = h0(0x2360e);
+/// `touch_hurt` (h0+$236ac).
+pub const TOUCH_HURT: u32 = h0(0x236ac);
 /// h0+$23bee and h0+$23662: the update and touch of an enemy [`touch_spud_damage`] stomped.
 const STOMPED: u32 = h0(0x23bee);
 const TOUCH_STOMPED: u32 = h0(0x23662);
@@ -37,6 +39,7 @@ pub const ROUTINES: &[(u32, SlotFn)] = &[
     (STOMPED, stomped),
     (TOUCH_STOMPED, touch_stomped),
     (NOTHING, crate::level::objects::nothing),
+    (TOUCH_HURT, touch_hurt),
 ];
 
 /// The marker of the map cell `cols` bytes into the row the word `row4` indexes in `map_rows`
@@ -160,6 +163,11 @@ pub fn touch_spud_damage(c: &mut LevelCtx, slot: u32, _d7: u16) {
     let cell = b.l(slot + 0x40);
     b.set_w(cell, b.w(cell) & 0xffc0);
     c.sfx(6, 2);
+}
+
+/// `touch_hurt` (h0+$236ac): a passive object's touch that hurts the frog (`frog_hurt`).
+pub fn touch_hurt(c: &mut LevelCtx, slot: u32, _d7: u16) {
+    crate::level::death::frog_hurt(c, slot);
 }
 
 /// h0+$23bee: a stomped enemy counts its 4 passes down (`+$5c`, to -1) and is stompable again.

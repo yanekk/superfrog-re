@@ -1,5 +1,5 @@
-//! What the routine-conformance tests share: the original's memory at W1-1, the sound and
-//! display data, and generators for the inputs.
+//! What the routine-conformance tests share: the original's memory at W1-1 (and WB-1, W3-1), the
+//! sound and display data, and generators for the inputs.
 #![allow(dead_code)]
 
 use std::sync::OnceLock;
@@ -40,6 +40,20 @@ pub fn bonus_level() -> &'static AmigaMemory {
     })
 }
 
+/// The original's memory at W3-1's first frame (world 3's enemies, T44).
+pub fn w3_level() -> &'static AmigaMemory {
+    static M: OnceLock<AmigaMemory> = OnceLock::new();
+    M.get_or_init(|| {
+        let s = sync::reach(
+            &SyncPoint::AtLevel("W3-1".parse().unwrap()),
+            &sf_conform::InputScript::idle(),
+            1,
+        )
+        .unwrap_or_else(|e| panic!("{e}"));
+        s.memory
+    })
+}
+
 pub fn sound() -> &'static SoundData {
     static S: OnceLock<SoundData> = OnceLock::new();
     S.get_or_init(|| {
@@ -64,6 +78,13 @@ pub fn bonus_rig() -> Rig<'static> {
     static D: OnceLock<std::sync::Arc<sf_core::DisplayData>> = OnceLock::new();
     let d = D.get_or_init(sf_conform::display_data);
     Rig::new(bonus_level(), sound(), d)
+}
+
+/// A rig on W3-1's first frame ([`w3_level`]).
+pub fn w3_rig() -> Rig<'static> {
+    static D: OnceLock<std::sync::Arc<sf_core::DisplayData>> = OnceLock::new();
+    let d = D.get_or_init(sf_conform::display_data);
+    Rig::new(w3_level(), sound(), d)
 }
 
 /// Any joystick position, fire or not.

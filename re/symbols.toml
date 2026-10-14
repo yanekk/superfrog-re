@@ -4657,6 +4657,337 @@ note = "lamps' rectangles: 26 x (x, y, w, h + 2 words), in slot_lamps order"
 [[sym]]
 exe = "d1_c03"
 hunk = 0
+offset = 0x23774
+name = "touch_crumble"
+kind = "func"
+note = "W3 crumble's touch: from step timer $200 on, the frog falling or still: sample 4, its fall stopped at 8+, on the ground the timer restarts (T44)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x249d2
+name = "w3_scenery_17_init"
+kind = "func"
+note = "W3 template 34 (marker 17): scenery, animation h0+$321ac (T44)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x249e8
+name = "w3_scenery_17_update"
+kind = "func"
+note = "bob follows; obj_despawn_if_offscreen (T44)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x25c8a
+name = "w3_bouncer_init"
+kind = "func"
+note = "W3 template 88 (marker 16): rising at 16 (T44)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x25caa
+name = "w3_bouncer_update"
+kind = "func"
+note = "falls, bouncing off solid ground three cells under (x+16, y); never despawned (T44)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x25e62
+name = "w3_dart_left_init"
+kind = "func"
+note = "W3 template 55 (marker 18): waits $20 passes (T44)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x25e7e
+name = "w3_dart_right_init"
+kind = "func"
+note = "W3 template 56 (marker 19) (T44)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x25f42
+name = "dart_fly"
+kind = "func"
+note = "a dart flies by +$0c until the cell 2*vx ahead is solid, then waits (W2-W6; T44)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x25fa8
+name = "dart_wait"
+kind = "func"
+note = "a dart waits hidden (bob y $2ee0), passive, then flies from its spawn point (W2-W6; T44)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x2607c
+name = "w3_swing_init"
+kind = "func"
+note = "W3 template 65 (marker 27): path round its spawn, the chain's ends in +$6c/+$70 (T44)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x2619c
+name = "swing_update"
+kind = "func"
+note = "a swing's ball follows swing_path; freed when fewer than 5 slots' bobs show a link (W2-W6; T44)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x26260
+name = "w3_swing_link_init"
+kind = "func"
+note = "W3 template 66: a swing's link, index from swing_link_index (T44)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x262ba
+name = "swing_link_index"
+kind = "var"
+size = 0x4
+note = "the index the next swing link spawned takes, 1..5 (T44)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x262be
+name = "swing_link_update"
+kind = "func"
+note = "a link sits index/6 of the way from the chain's top to the ball; freed with its ball (T44)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x26398
+name = "swing_path"
+kind = "table"
+size = 0x194
+note = "x, y word offsets of a swing there and back, -1 long after (T44)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x27466
+name = "w3_crumble_init"
+kind = "func"
+note = "W3 template 150 (marker 36) (T44)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x2747c
+name = "w3_crumble_update"
+kind = "func"
+note = "the two cells below solid ($3e) until the bob's step is h0+$2e8ac (T44)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x27852
+name = "w3_scenery_15_init"
+kind = "func"
+note = "W3 template 90 (marker 15): scenery in the cell below (T44)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x27868
+name = "w3_scenery_14_init"
+kind = "func"
+note = "W3 template 89 (marker 14): scenery in the cell below (T44)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x2787e
+name = "w3_pad_init"
+kind = "func"
+note = "W3 template 87 (marker 5): a bounce pad's picture, up and left of the pad's right cell (T44)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x27894
+name = "w3_scenery_update"
+kind = "func"
+note = "bob follows; obj_despawn_if_offscreen (T44)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x278a4
+name = "w3_shuffler_init"
+kind = "func"
+note = "W3 template 92 (marker 20) (T44)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x278d8
+name = "w3_shuffler_update"
+kind = "func"
+note = "walks only on animation steps whose word +6 is 0; turns at $25 (T44)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x27a18
+name = "w3_jumper_init"
+kind = "func"
+note = "W3 template 95 (marker 28): leaps after $19 passes (T44)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x27a5e
+name = "w3_jumper_update"
+kind = "func"
+note = "walks, then leaps: one-hit kill, vy -(9..12) (T44)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x27b2a
+name = "w3_jumper_leap"
+kind = "func"
+note = "rises until a ceiling or it stops, then circles w1_hover_path (T44)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x27bb4
+name = "w3_jumper_circle"
+kind = "func"
+note = "circles round +$68 for +$60 passes (T44)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x27be0
+name = "w3_jumper_drop"
+kind = "func"
+note = "falls to the ground and walks again, stompable (T44)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x27c90
+name = "w3_stompable_init"
+kind = "func"
+note = "W3 template 91 (marker 26) (T44)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x27cc0
+name = "w3_stompable_update"
+kind = "func"
+note = "walks, turning at $25 from x+3 (T44)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x27d1c
+name = "w3_spiker_init"
+kind = "func"
+note = "W3 templates 96, 97 (markers 25, 13) (T44)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x27d4c
+name = "w3_spiker_update"
+kind = "func"
+note = "walks, turning at $25 from x+3 (T44)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x27da8
+name = "w3_spiker_staying_update"
+kind = "func"
+note = "w3_spiker_update, never despawned (T44)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x285a2
+name = "w3_hopper_init"
+kind = "func"
+note = "W3 template 94 (marker 21) (T44)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x285f0
+name = "w3_hopper_path"
+kind = "table"
+size = 0x2e
+note = "y offsets, $80 after (T44)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x2861e
+name = "w3_hopper_update"
+kind = "func"
+note = "walks bobbing on w3_hopper_path; going right, at the 8th pass leaps unless rng_range(3) is 0 (T44)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x286ee
+name = "w3_hopper_leap"
+kind = "func"
+note = "up from -8, falling a pixel faster every third pass; walks again once falling at 8 (T44)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x2872e
+name = "w3_flow_init"
+kind = "func"
+note = "W3 template 98 (marker 24): starts on the step of a neighbour two cells left or right (T44)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x287a8
+name = "w3_flow_update"
+kind = "func"
+note = "bob follows; obj_despawn_if_offscreen (T44)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x287b8
+name = "w3_drip_init"
+kind = "func"
+note = "W3 template 99 (marker 23): hidden at $6d60 (T44)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x287e0
+name = "w3_drip_update"
+kind = "func"
+note = "waits, falls from its spawn point to a cell marked $3d+, waits 8..12 (T44)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
 offset = 0x3b1ae
 name = "slot_attract_later"
 kind = "table"
