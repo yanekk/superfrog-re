@@ -191,6 +191,9 @@ engine also exports any disk level to this format (locally, for the owner; never
   address when found:
   - `level_tally` (h0+$4550): a coin taken in a level with fewer than five items divides by zero;
     the coins give no page (T38; no level on the disks has so few, an edited one may).
+  - marker 17's stub (h0+$181a6): a mace chain link that finds no free slot has its ball written
+    to `$64`, the level 1 interrupt vector (the next level 1 interrupt would jump into the slot,
+    inferred); the engine skips the write (T43).
 - A save state from another build: refused (§2.8). An `.sflevel` with a bad version, missing section
   or malformed T7MP: refused with the reason, and the disk level is played instead only if the player
   chooses it.

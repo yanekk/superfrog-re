@@ -20,6 +20,16 @@ A conformance case can no longer pass while comparing nothing.
 3. Measure every current case. One that now fails is either fixed or pinned with a reason, as the
    re-sync pins are (`frog_cases.rs`, `enemies_w2_cases.rs`).
 
+## Interface
+
+`sf_conform::Outcome` gains the frames compared and the longest skipped run; `Case` gains a
+per-case pin on the limit only if a case needs one. The case file format is otherwise unchanged.
+
+## Tests
+
+- A run whose skipped stretch passes the limit fails; one under it passes.
+- The old `items-upper-w2-1` script (commit `4789f2e`) run as a case fails on the limit.
+
 ## Files
 
 `engine/crates/sf-conform/src/{lib.rs,report.rs,case.rs}` (the counts, the limit, a per-case pin if

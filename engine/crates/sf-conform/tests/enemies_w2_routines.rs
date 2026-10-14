@@ -337,7 +337,12 @@ fn spawners_match_the_original() {
         };
         // Bouncers: their partner marker somewhere along the row, now and then with a live slot.
         if (m == 2 || m == 3) && !g.one_in(4) {
-            let k = 1 + g.below(0xa0) as u32;
+            // Now and then at the search's last cell (`$98`) or just past it.
+            let k = if g.one_in(3) {
+                g.pick(&[0x97, 0x98, 0x99])
+            } else {
+                1 + g.below(0xa0) as u32
+            };
             let p = if m == 2 { at + 2 * k } else { at - 2 * k };
             poke_marker(&rig, &mut s, p, 5 - m as u16);
             if g.one_in(3) {

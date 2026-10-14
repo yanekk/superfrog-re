@@ -19,6 +19,17 @@ as T101 (`level/frame.rs`, `level/beam.rs`).
 2. Remove every pin it covers: each re-sync T43 pinned in a case (FINDINGS row "T43: pinned
    re-syncs"), making those cases `resync = false`.
 
+## Interface
+
+`bob_draw` gets the original's steps inside phase 5, so `Pacing::Late { phase: 5, step }` names a
+real step; the case format is unchanged.
+
+## Tests
+
+- `items-fruit-w2-2` and `enemies-w2-2` green with `resync = false`, their pins gone from
+  `frog_cases.rs` and `enemies_w2_cases.rs`.
+- Every existing level case stays green.
+
 ## Files
 
 `engine/crates/sf-core/src/level/{objects.rs,frame.rs,beam.rs}`; `engine/crates/sf-conform/src/sync.rs`

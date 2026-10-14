@@ -19,6 +19,16 @@ into a reward, a crumbling ledge breaking under the frog, and the types no case 
 case: the planner found no way up from its start at 5,73). `examples/plan` takes `hurt` and `kill`
 targets for these (T43).
 
+## Interface
+
+Nothing new in the engine: case and script files, and their entries in the conformance tests.
+
+## Tests
+
+- `w2-{1,2,3,4}-complete`: each a frame case ending `Completed`, `resync = false`, no exclusion.
+- Checked through `run_with`, as `enemies_w2_cases.rs` does: a heart taken by an enemy, a spud stun
+  then a stomp into a reward, a ledge breaking, and the mace, spikes and swooper met.
+
 ## Tools
 
 - `cargo run --release --example plan -- <level> <col,row>... [--prefix <script>]` (beam search on
