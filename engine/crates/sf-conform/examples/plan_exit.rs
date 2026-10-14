@@ -11,7 +11,7 @@
 //! vertical pair of markers 48–51, cleared when pressed: it opens the gate whose single cell has
 //! its number), each coin taken or switch pressed worth more than any distance. `--coins N` is a step that ends when N coins are still needed (to take coins before a
 //! switch's `--via`); one ending at 0 is added before the exit unless given. A coin the frog makes
-//! no headway toward for `STALL` chunks is passed over until no other is left. The field knows
+//! no headway toward for `STALL` chunks is passed over for `PASSED` chunks, or until no other is left. The field knows
 //! nothing of gravity or bounce pads, so each frame the original's frog spends in a cell makes
 //! ending there `VISIT` worse until the next coin or switch: a stuck frog wanders off to find the
 //! way up.
@@ -39,6 +39,8 @@ const BEAM: usize = 24;
 /// Chunks without a coin taken or the distance shortened by two cells before the nearest coin, and
 /// every coin within four cells of it, is passed over (a jump's height wobbles the distance).
 const STALL: u32 = 8;
+/// Chunks a passed-over coin stays out of the field.
+const PASSED: usize = 12;
 /// What a frame already spent in a cell adds to ending a path there, in the score's units (16 a
 /// cell of distance).
 const VISIT: i64 = 4;
@@ -317,7 +319,9 @@ fn main() {
     let mut goals: Vec<Vec<u32>> = vec![Vec::new(); via.len() + 1];
     let mut goal = 0;
     // The coin phase's passed-over coins, its stall count and best distance so far.
-    let mut skipped: Vec<(usize, usize)> = Vec::new();
+    // Passed-over coins and switches, each with the chunk it comes back at.
+    let mut passed: Vec<((usize, usize), usize)> = Vec::new();
+    let mut chunk = 0usize;
     // Frames the original's frog spent in each cell since the last coin or switch.
     let mut visits: std::collections::HashMap<(i32, i32), i64> = Default::default();
     let (mut stall, mut best_d) = (0u32, i64::MAX);
@@ -350,6 +354,9 @@ fn main() {
     let mut skip = 0usize;
     let mut backtracks = 0;
     while inputs.len() < budget {
+        chunk += 1;
+        passed.retain(|&(_, until)| until > chunk);
+        let skipped: Vec<(usize, usize)> = passed.iter().map(|&(c, _)| c).collect();
         let mem = sync::core_memory(amiga.memory());
         let start = Game::with_display(display.clone(), Start::Transplant(mem));
         let lives = start.state().w(FROG + f::LIVES);
@@ -362,10 +369,10 @@ fn main() {
                 let mut left = coins(start.state(), &skipped);
                 if left.is_empty() && !skipped.is_empty() {
                     eprintln!("  every coin left was passed over: trying them again");
-                    skipped.clear();
-                    left = coins(start.state(), &skipped);
+                    passed.clear();
+                    left = coins(start.state(), &[]);
                 }
-                left.extend(sw.iter().filter(|c| !skipped.contains(c)));
+                left.extend(sw.iter().filter(|c| !passed.iter().any(|(p, _)| p == *c)));
                 goals[goal] = climb(&live, w, h, &left);
             }
             Some(Via::Cell(x, y)) => goals[goal] = climb(&live, w, h, &[(x, y)]),
@@ -550,7 +557,7 @@ fn main() {
                         for &(c, r) in &left {
                             if c.abs_diff(nc) <= 4 && r.abs_diff(nr) <= 4 {
                                 eprintln!("  passing over the coin at {c},{r}");
-                                skipped.push((c, r));
+                                passed.push(((c, r), chunk + PASSED));
                             }
                         }
                     }
@@ -573,7 +580,7 @@ fn main() {
         if goal < via.len() && d <= 2 {
             eprintln!("via {:?} at frame {}", via[goal], inputs.len());
             goal += 1;
-            skipped.clear();
+            passed.clear();
             (stall, best_d) = (0, i64::MAX);
             if no_exit && goal == via.len() {
                 break;
