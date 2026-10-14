@@ -34,6 +34,18 @@ What T105 learnt about the room (markers from the map; walls are `$3d`, floors `
    level that can, and record in `docs/` (the level docs the map editor will read) that W2-1's
    room at 45-51,14-26 is unreachable in play, with why.
 
+## Interface
+
+No new API. A case in `engine/conform/cases/` with its script, and a test in `frog_cases.rs`
+reading the take through `takes` and `compared_from` (as `items_life_w2_1` does).
+
+## Tests
+
+- The new case runs green with `resync = false`.
+- Its test finds the fruit cell's marker change and asserts the score rose by 20 000 on that
+  frame, compared on the take frame or the first compared frame after it.
+- `items-switch-w2-1`, `items-upper-w2-1` and `items-life-w2-1` stay green.
+
 ## Files
 
 `engine/conform/{cases,scripts}/` (a new case); `engine/crates/sf-conform/tests/frog_cases.rs`;
