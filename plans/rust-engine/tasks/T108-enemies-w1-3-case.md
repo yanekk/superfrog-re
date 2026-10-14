@@ -32,6 +32,10 @@ y `$3b1` (about 61,59), close to the hovers at 57–71,49–52.
 - Enemy positions (col,row) come from the level's BODY markers: 1 hover, 2 sitter, 3 walker,
   10 spout, 11 dropper, 12 crawler, 13 runner, 15 spiker, 16/17 patroller ends, 18 watcher.
 
+## Files
+
+`engine/conform/{scripts,cases}/enemies-w1-3*`, `engine/crates/sf-conform/tests/enemies_w1.rs`.
+
 ## Done when
 
 - [ ] `enemies-w1-3` green (re-syncs pinned, or none), in `sf-conform/tests/enemies_w1.rs`.

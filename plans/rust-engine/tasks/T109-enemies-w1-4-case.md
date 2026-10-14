@@ -33,6 +33,10 @@ starts at x `$b5`, y `$1d1` (about 11,29). Split the case in two if the route is
 - Enemy positions (col,row) come from the level's BODY markers: 1 hover, 2 sitter, 3 walker,
   10 spout, 11 dropper, 12 crawler, 13 runner, 15 spiker, 16/17 patroller ends, 18 watcher.
 
+## Files
+
+`engine/conform/{scripts,cases}/enemies-w1-4*`, `engine/crates/sf-conform/tests/enemies_w1.rs`.
+
 ## Done when
 
 - [ ] `enemies-w1-4` green (re-syncs pinned, or none), in `sf-conform/tests/enemies_w1.rs`.

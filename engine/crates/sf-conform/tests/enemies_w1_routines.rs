@@ -317,6 +317,36 @@ fn spawners_match_the_original() {
     enough("spawners", compared, N);
 }
 
+/// A patroller's end finds its other end's patroller already out in any of the 20 slots
+/// (h0+$1b370, h0+$1b3b4 look through all `$14`), the last one included, and not spawned from a
+/// cell one along from it.
+#[test]
+fn a_patroller_out_in_any_slot_stops_the_spawn() {
+    let mut rig = rig();
+    let mut case = 0;
+    for (marker, entry) in [(16u8, 0x180ceu32), (17, 0x180ec)] {
+        let spawn = sf_core::level::standard_dispatch().marker(0, marker).expect("registered");
+        for k in 0..20 {
+            for off in [0u32, 2] {
+                let mut s = Setup::default();
+                let at = cell(100, 40);
+                let end = if marker == 16 { at + 2 * 7 } else { at - 2 * 7 };
+                let want = if marker == 16 { 0x11 } else { 0x10 };
+                let st = rig.state().clone();
+                s.poke_w(end, st.w(end) & 0xffc0 | want);
+                s.poke_l(OBJ_SLOTS + k * SLOT + 0x40, end + off);
+                s.poke_l(CAMERA_X, 0x600);
+                s.poke_l(CAMERA_Y, 0x200);
+                s.a[3] = at;
+                assert!(rig.check(&format!("marker {marker}, slot {k}"), case, entry, &s, |c| {
+                    spawn(c, at)
+                }));
+                case += 1;
+            }
+        }
+    }
+}
+
 #[test]
 fn inits_match_the_original() {
     let mut rig = rig();
@@ -418,13 +448,6 @@ fn updates_match_the_original() {
         frog_near(&rig, &mut g, &mut s, slot);
         any_rng(&mut g, &mut s);
         s.a[0] = slot;
-        if std::env::var("T42DBG").is_ok_and(|v| v == case.to_string()) {
-            let st = with_pokes(&rig, &s);
-            let (x, y, vx) = (st.w(slot + 8), st.w(slot + 0xa), st.w(slot + 0xc));
-            let rows = st.l(h0(0x17334) + (((y.wrapping_sub(8)) >> 4).wrapping_mul(4)) as i16 as i32 as u32);
-            let a = rows + ((x >> 4) * 2) as u32 + 2;
-            eprintln!("slot {slot:x} x {x:x} y {y:x} vx {vx:x} rows {rows:x} cell {a:x} = {:x} slot40 {:x}", st.w(a), st.l(slot+0x40));
-        }
         let port = sf_core::level::standard_dispatch().routine(h0(update)).expect("ported");
         let ok = rig.check(&format!("update h0+${update:x} (template {t})"), case, update, &s, |c| {
             port(c, slot, 0)
@@ -441,6 +464,47 @@ fn updates_match_the_original() {
             eprintln!("h0+${u:x}: median {} (p10 {}, p90 {}), {} cases", v[v.len() / 2], v[v.len() / 10], v[v.len() * 9 / 10], v.len());
         }
     }
+}
+
+/// The hover's centre drifts after the frog only while within `$2a` of its start (`cmpi.w #$2a`,
+/// `cmpi.w #$ffd6`): each axis at and either side of both bounds, the frog either side or level.
+#[test]
+fn the_hover_drifts_as_the_original_at_its_bounds() {
+    let mut rig = rig();
+    let mut g = Gen::new(4206);
+    let mut case = 0;
+    for off in [0x29u16, 0x2a, 0x2b, 0xffd5, 0xffd6, 0xffd7, 0] {
+        for side in [0xffe0u16, 0, 0x20] {
+            for axis in [0u32, 2] {
+                let mut s = Setup::default();
+                let (slot, _, _) = with_slot(&rig, &mut g, &mut s, 8, 0);
+                if slot == 0 {
+                    continue;
+                }
+                s.poke_l(slot + 0x54, hover::PATH);
+                s.poke_l(slot + 0x58, hover::PATH);
+                let (x, y) = (0x400u16, 0x200u16);
+                s.poke_w(slot + 0x64, x);
+                s.poke_w(slot + 0x66, y);
+                s.poke_w(slot + 0x68, x);
+                s.poke_w(slot + 0x6a, y);
+                s.poke_w(slot + 0x68 + axis, [x, y][axis as usize / 2].wrapping_add(off));
+                camera_near(&rig, &mut g, &mut s, slot);
+                // The path's first offset moves the hover off its centre: the frog is placed from
+                // the position the path gives, either side of it or level.
+                let m = level();
+                let word = |a: u32| (m.byte(a) as u16) << 8 | m.byte(a + 1) as u16;
+                let (px, py) = (x.wrapping_add(word(hover::PATH)), y.wrapping_add(word(hover::PATH + 2)));
+                s.poke_w(FROG + f::X, px.wrapping_add(if axis == 0 { side } else { 0 }));
+                s.poke_w(FROG + f::Y, py.wrapping_add(if axis == 2 { side } else { 0 }));
+                s.a[0] = slot;
+                let port = sf_core::level::standard_dispatch().routine(h0(0x243b6)).expect("ported");
+                assert!(rig.check("hover at a bound", case, 0x243b6, &s, |c| port(c, slot, 0)));
+                case += 1;
+            }
+        }
+    }
+    assert!(case > 30, "only {case} cases");
 }
 
 #[test]

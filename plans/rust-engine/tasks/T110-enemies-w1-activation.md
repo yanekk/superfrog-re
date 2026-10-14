@@ -34,6 +34,10 @@ enemy and back; activation and deactivation frames equal the original", and a ki
 - Enemy positions (col,row) come from the level's BODY markers: 1 hover, 2 sitter, 3 walker,
   10 spout, 11 dropper, 12 crawler, 13 runner, 15 spiker, 16/17 patroller ends, 18 watcher.
 
+## Files
+
+`engine/conform/{scripts,cases}/enemies-w1-activation*` and the kill case's, `engine/crates/sf-conform/tests/enemies_w1.rs`.
+
 ## Done when
 
 - [ ] Both green against the original, in `sf-conform/tests/enemies_w1.rs`.
