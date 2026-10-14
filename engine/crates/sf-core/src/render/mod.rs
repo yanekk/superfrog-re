@@ -405,6 +405,8 @@ struct Denise<'a> {
     sprites: [objects::Sprite; 8],
     /// A level's screen: lines fetched from a display buffer are play-field rows (widescreen).
     level: bool,
+    /// Following SPREN ([`SpriteDma`]): whether it is on, and the CPU's DMACON writes to come.
+    dma: Option<(bool, &'a [(u16, u16)])>,
 }
 
 /// The level's picture.
@@ -429,6 +431,7 @@ pub(crate) fn level_as_drawn(
         view.extra_columns_each_side,
         true,
         None,
+        None,
     )
     .0
 }
@@ -443,6 +446,7 @@ pub(crate) fn screen(
     cop1lc: u32,
     copper_word: &dyn Fn(u32, u16) -> u16,
     carry: Option<Fetch>,
+    dma: Option<&SpriteDma>,
 ) -> (Picture, Vec<Write>) {
     let mem = Mem::new(state, data);
     // The level's own list (after its loop, T37) shows its playfield as a level frame does.
@@ -453,7 +457,45 @@ pub(crate) fn screen(
         0,
         cop1lc == LEVEL_COPPER,
         carry,
+        dma,
     )
+}
+
+const DMACON: u16 = 0x096;
+
+/// DMACON's sprite DMA bit (SPREN) followed through a frame, for a screen that turns it off
+/// (opt-in: the slot machine's list writes DMACON `$0020` on line 107, T93): whether it is on as
+/// the frame starts, and the CPU's DMACON writes, `(line, value)` in line order (the copper's
+/// are in its list).
+#[derive(Debug, Clone, Default)]
+pub(crate) struct SpriteDma {
+    pub on: bool,
+    pub cpu: Vec<(u16, u16)>,
+}
+
+impl SpriteDma {
+    /// SPREN after a DMACON write of `value`.
+    fn write(on: bool, value: u16) -> bool {
+        if value & 0x20 == 0 {
+            on
+        } else {
+            value & 0x8000 != 0
+        }
+    }
+
+    /// SPREN at the frame's end, after the copper's writes and the CPU's in line order.
+    pub(crate) fn at_end(&self, copper: &[Write]) -> bool {
+        let mut writes: Vec<(u16, u16)> = copper
+            .iter()
+            .filter(|w| w.reg == DMACON)
+            .map(|w| (w.line, w.value))
+            .chain(self.cpu.iter().copied())
+            .collect();
+        writes.sort_by_key(|w| w.0);
+        writes
+            .iter()
+            .fold(self.on, |on, w| SpriteDma::write(on, w.1))
+    }
 }
 
 /// A screen of the story intro (T32): as [`screen`], every read from the intro's memory `mem`.
@@ -469,7 +511,7 @@ pub(crate) fn story_screen(
         flat: Some(mem),
         ..Mem::new(empty, data)
     };
-    draw(&mem, copper_word, cop1lc, 0, false, carry)
+    draw(&mem, copper_word, cop1lc, 0, false, carry, None)
 }
 
 /// The copper's writes on a frame of the list at `cop1lc`, as `state` holds it.
@@ -490,6 +532,7 @@ fn draw(
     n: u16,
     level: bool,
     carry: Option<Fetch>,
+    dma: Option<&SpriteDma>,
 ) -> (Picture, Vec<Write>) {
     // The frame starts with the registers as the last frame left them (`carry`); without them,
     // with the setup the list leaves at its end, as if the last frame ran it too.
@@ -524,6 +567,7 @@ fn draw(
         colours: [0; 32],
         sprites: Default::default(),
         level,
+        dma: dma.map(|d| (d.on, d.cpu.as_slice())),
     };
     let rows = denise.walk(&mut pic);
     let field = if level {
@@ -558,13 +602,25 @@ impl Denise<'_> {
             self.apply(line, SPRITE_SLOT, y, pic, &mut palette, &mut cuts);
             let fetching =
                 self.planes.fetch.lines().contains(&line) && self.planes.fetch.planes() > 0;
+            // The CPU's DMACON writes, taken as at their line's start.
+            if let Some((on, cpu)) = &mut self.dma {
+                while let Some((&(l, v), rest)) = cpu.split_first() {
+                    if l > line {
+                        break;
+                    }
+                    *on = SpriteDma::write(*on, v);
+                    *cpu = rest;
+                }
+            }
+            let off = matches!(self.dma, Some((false, _)));
             for (n, s) in self.sprites.iter_mut().enumerate() {
-                // OCS: a fetch window opening at or before a sprite's slot takes it.
+                // OCS: a fetch window opening at or before a sprite's slot takes it; with SPREN
+                // off no sprite fetches.
                 let slot = SPRITE_SLOT + 4 * n as u16;
                 s.dma(
                     line,
                     self.mem,
-                    fetching && self.planes.fetch.first_cycle() <= slot + 1,
+                    off || fetching && self.planes.fetch.first_cycle() <= slot + 1,
                 );
             }
             let first = self.planes.fetch.first_cycle();
@@ -664,7 +720,14 @@ impl Denise<'_> {
                         cuts[n] = Some(x);
                     }
                 }
-                r => self.planes.write(r, w.value),
+                r => {
+                    if r == DMACON
+                        && let Some((on, _)) = &mut self.dma
+                    {
+                        *on = SpriteDma::write(*on, w.value);
+                    }
+                    self.planes.write(r, w.value)
+                }
             }
         }
     }

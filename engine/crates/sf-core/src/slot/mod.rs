@@ -1,12 +1,14 @@
 //! The slot machine (T92, docs/13): `slot_machine` (h0+$49dc), which `level_tally` calls when the
 //! player picks it, as a front-end routine ([`crate::front`]): its loads, the overlay's fade-out,
 //! the music's start, the win counted (none yet), the reels, lamps and digits set up and the
-//! picture's fade-in set up, up to the attract loop's first raster wait (h0+$4d24).
+//! picture's fade-in set up, and the attract loop (h0+$4d24, T93: the reels and lamps drawn on
+//! the beam, [`draw`]) until fire or the mouse's button.
 //!
 //! The loads are instant (owner, 2026-10-12): the engine's first frame stands for the original's
 //! frame its last load ended on, `overlays_end` waiting on the overlay's fade (h0+$b7e2).
 
-use crate::front::blit::Blit;
+pub(crate) mod draw;
+
 use crate::front::common::{FadeKind, MusicStart, call, fade};
 use crate::front::{Cx, Routine as FrontRoutine, Yield, at, h2};
 use crate::game::{Job, LoadEnd};
@@ -58,7 +60,7 @@ const POINTER_Y: u32 = at(0x11b68);
 const POINTER: u32 = at(0x1b10c);
 /// The slot's copper list: its bitplane MOVEs (h2+$6708), its colours (h2+$6688), and the
 /// palette the picture fades in to (h0+$6912).
-const SLOT_COPPER: u32 = h2(0x65e4);
+pub(crate) const SLOT_COPPER: u32 = h2(0x65e4);
 const PLANE_MOVES: u32 = h2(0x6708);
 const SLOT_COLOURS: u32 = h2(0x6688);
 const SLOT_PALETTE: u32 = at(0x6912);
@@ -156,9 +158,14 @@ impl Routine {
                 cx.cop1lc = SLOT_COPPER;
                 Yield::Raster
             }
+            // h0+$4d2a: the attract frame, drawn on the beam.
+            9 => call(FrontRoutine::SlotDraw(draw::Draw::default())),
+            // h0+$4d36: the mouse's button or fire ends it.
             _ => {
-                cx.unported("the slot machine's attract loop");
-                self.pc -= 1;
+                if cx.mouse_button() || cx.fire() {
+                    cx.unported("the slot machine's rounds (T73)");
+                }
+                self.pc = 8;
                 Yield::Raster
             }
         }
@@ -266,20 +273,7 @@ pub(crate) fn draw_lamps(cx: &mut Cx) {
     cx.wr(DMACON, 0x8400);
     let mut cycles = LAMPS_START_CYCLES;
     for k in 0..LAMP_COUNT {
-        let r = LAMP_RECTS + 12 * k;
-        let (x, y, w, h) = (cx.w(r), cx.w(r + 2), cx.w(r + 4), cx.w(r + 6));
-        let at = (x >> 3) as u32 + y as u32 * ROW;
-        let words = w >> 4;
-        let modulo = (ROW as u16).wrapping_sub(2 * words) as i16;
-        let b = Blit {
-            con0: if cx.s.w(LAMPS + 8 * k) != 0 { 0xd0c } else { 0xdfc },
-            con1: 0,
-            afwm: 0xffff,
-            alwm: 0xffff,
-            pt: [BUFFER_0 + 0xf000 + at, BUFFER_0 + 0xc800 + at, 0, BUFFER_0 + 0xc800 + at],
-            modulo: [modulo, modulo, 0, modulo],
-            size: h << 6 | words,
-        };
+        let (b, _) = draw::lamp_blit(cx, k);
         b.run(cx.s);
         // Two cycles a word a channel here (measured, T72), not the 3 of `Blit::cycles`.
         cycles += b.cycles() * 2 / 3 + LAMP_CYCLES;

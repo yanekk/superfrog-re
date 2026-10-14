@@ -18,6 +18,7 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-14 | 🔄 | Owner, T93: took T94's `SpriteDma` and the fade-in's handler length (oracle 775–791: ack ~line 50, all lamps late, not T72's 776–778). T94 keeps keyboard, notes, effects terms and 300 frames; slot handler base still ends line 20, original 17–18. |
 | 2026-10-14 | 📌 | T43 merge: W2's darts and mace now use `w3::dart` and `w3::swing`'s updates; the `$64` write is kept as T44 kept it, so T43's skip is gone (spawner test now fills the table, green). |
 | 2026-10-14 | 📌 | T43 merge sweep, not fixed: h0+$23774 (`touch_ledge`) is ported three times, `w2/crumbling_ledge.rs`, `w3/crumble.rs`, `w4/ledge.rs`; dispatch keeps the last registered. Keep one copy. |
 | 2026-10-14 | 📌 | T43 merge sweep, not fixed: h0+$24ef6 (`scenery_stand`) is ported twice, `w2/backdrop.rs` `still` and `w4/scenery.rs`; dispatch keeps the last registered. Keep one copy. |
