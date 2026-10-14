@@ -1,16 +1,21 @@
 //! The disk-3 intro against the original booted from disk 3 (T32): the cases `story-*` in
 //! `engine/conform/cases/`.
 
+/// The engine frame scene 1's mask blits start in (`objects_init`, h0+$8782).
+const SCENE_1_MASKS: u32 = 532;
+
 /// Power-on with disk 3 through the logo, the intro's load, the first text page and the first
 /// scene with its music and effects, frame for frame (the case `story-intro`), in the test block.
 /// Its comparison of Paula writes leaves their beam out; a draw's DMACON `$8400` is checked on its
 /// line here: from engine frame 538 on, scene 1's draws the handler lets go of start from the
 /// original's fed handler end (T54). The earlier ones (521, 536, 537) start elsewhere.
+/// Scene 1's mask blits' DMACON `$8400` is checked on its line too (T56).
 #[test]
 fn the_intro_from_disk_3_matches_the_original() {
     let case = sf_conform::Case::load(&sf_conform::cases_dir().join("story-intro.toml"))
         .unwrap_or_else(|e| panic!("{e}"));
     let mut draws = Vec::new();
+    let mut masks = None;
     let result = sf_conform::run_observing(&case, |f, ours, theirs| {
         let starts = |ws: &[sf_paula::PaulaWrite]| {
             ws.iter()
@@ -21,10 +26,19 @@ fn the_intro_from_disk_3_matches_the_original() {
         if f >= 538 && !starts(theirs).is_empty() {
             draws.push((f, starts(ours), starts(theirs)));
         }
+        if f == SCENE_1_MASKS {
+            masks = Some((starts(ours), starts(theirs)));
+        }
     });
     if let Err(d) = result {
         panic!("{d}");
     }
+    // Scene 1's set-up job (T56) starts in the frame the text page's list is shown, under its
+    // three planes, though the engine has already switched to the scene's list: its mask blits'
+    // DMACON $8400 lands on the original's line only when that frame is timed under the old list.
+    let (ours, theirs) = masks.expect("engine frame 532 is reached");
+    assert!(!theirs.is_empty(), "the original's mask blits start in engine frame 532");
+    assert_eq!(ours, theirs, "engine frame 532: scene 1's mask blits' DMACON $8400 lines");
     assert!(draws.len() >= 5, "draws checked: {draws:?}");
     for (f, ours, theirs) in &draws {
         assert_eq!(ours, theirs, "engine frame {f}: the draw's DMACON $8400 lines");
