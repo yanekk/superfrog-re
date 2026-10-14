@@ -37,6 +37,16 @@ landed). It waits on T101 and T102 because W3-1 and W3-4 meet both faults early 
   26 stompable (91), 27 swing (65, links 66), 28 jumper (95), 36 crumbling platform (150).
   Stompable: 91, 92, 95 walking; killed by one hit: 95 in the air (the spud too).
 
+## Interface
+
+None new: the conformance case `enemies-w3-N-complete` (N = 1..4), its script, and a `#[test]` in
+`sf-conform/tests/enemies_w3.rs` using `run(name, &[resyncs])`.
+
+## Tests
+
+- [ ] One test per level in `enemies_w3.rs`: the case green to the tally, `level_state` 1 at the
+      exit, re-syncs pinned (or none).
+
 ## Files
 
 `engine/conform/{scripts,cases}/enemies-w3-*-complete*`, `engine/crates/sf-conform/tests/enemies_w3.rs`,

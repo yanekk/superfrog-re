@@ -36,6 +36,16 @@ despawns (not the bouncer, darts, swing or staying spiker, which never do; they 
   26 stompable (91), 27 swing (65, links 66), 28 jumper (95), 36 crumbling platform (150).
   Stompable: 91, 92, 95 walking; killed by one hit: 95 in the air (the spud too).
 
+## Interface
+
+None new: the conformance case `enemies-w3-activation`, its script, and a `#[test]` in
+`sf-conform/tests/enemies_w3.rs` using `run(name, &[resyncs])`.
+
+## Tests
+
+- [ ] `enemies_w3::activation`: the chosen enemy's slot `+$40` goes to 0 and back on the frames
+      the original's does, the case green.
+
 ## Files
 
 `engine/conform/{scripts,cases}/enemies-w3-activation*`, `engine/crates/sf-conform/tests/enemies_w3.rs`.

@@ -35,6 +35,16 @@ planned on W3-3 yet.
   26 stompable (91), 27 swing (65, links 66), 28 jumper (95), 36 crumbling platform (150).
   Stompable: 91, 92, 95 walking; killed by one hit: 95 in the air (the spud too).
 
+## Interface
+
+None new: the conformance case `enemies-w3-3`, its script, and a `#[test]` in
+`sf-conform/tests/enemies_w3.rs` using `run(name, &[resyncs])`.
+
+## Tests
+
+- [ ] `enemies_w3::w3_3`: the case green but for its pinned re-syncs; every type met's update ran,
+      the frog hurt, the stomped ones' updates ran.
+
 ## Files
 
 `engine/conform/{scripts,cases}/enemies-w3-3*`, `engine/crates/sf-conform/tests/enemies_w3.rs`.

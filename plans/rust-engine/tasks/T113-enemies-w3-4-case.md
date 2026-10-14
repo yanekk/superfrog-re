@@ -40,6 +40,16 @@ it jumps from the first platform, every variable equal: the beam race T102 owns 
   26 stompable (91), 27 swing (65, links 66), 28 jumper (95), 36 crumbling platform (150).
   Stompable: 91, 92, 95 walking; killed by one hit: 95 in the air (the spud too).
 
+## Interface
+
+None new: the conformance case `enemies-w3-4` (extended past frame 193), its script, and a `#[test]`
+in `sf-conform/tests/enemies_w3.rs` using `run(name, &[resyncs])`.
+
+## Tests
+
+- [ ] `enemies_w3::w3_4` extended: the case green past the platforms; the updates of 34
+      (h0+$249e8), the drip (h0+$287e0) and every other type met ran, the frog hurt.
+
 ## Files
 
 `engine/conform/{scripts,cases}/enemies-w3-4*`, `engine/crates/sf-conform/tests/enemies_w3.rs`.

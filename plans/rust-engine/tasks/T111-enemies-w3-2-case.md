@@ -39,6 +39,16 @@ or read the wall's markers (it may be a secret passage or springs).
   26 stompable (91), 27 swing (65, links 66), 28 jumper (95), 36 crumbling platform (150).
   Stompable: 91, 92, 95 walking; killed by one hit: 95 in the air (the spud too).
 
+## Interface
+
+None new: the conformance case `enemies-w3-2` (T44 left it as an idle 170-frame stub; extend it),
+its script, and a `#[test]` in `sf-conform/tests/enemies_w3.rs` using `run(name, &[resyncs])`.
+
+## Tests
+
+- [ ] `enemies_w3::w3_2`: the case green but for its pinned re-syncs; the updates of 88, 97 and
+      every type met ran (`run`'s `updates`), the frog hurt (`hurts`), the stomped ones' updates ran.
+
 ## Files
 
 `engine/conform/{scripts,cases}/enemies-w3-2*`, `engine/crates/sf-conform/tests/enemies_w3.rs`.
