@@ -375,6 +375,9 @@ pub struct IntroFrame {
     pub walk: Option<super::vbl::Handler>,
     /// The DMA cycle (from the frame's line 0) the handler's interrupt was taken on.
     pub entry: u32,
+    /// The audio channels' DMA slots this frame (cycles from its line 0), which the handler's CPU
+    /// waits for too.
+    pub audio: Vec<u32>,
     /// A load this frame: the COP1LC then (the frame stands for the original's frame the load
     /// ended on, whose list is the one set before it).
     pub list_at_load: Option<u32>,
@@ -499,6 +502,7 @@ impl Intro {
             copper: Vec::new(),
             walk: None,
             entry: 0,
+            audio: Vec::new(),
             list_at_load: None,
         };
         // The handler: at the top, once a masked set-up lets it in, or once the blit in progress
@@ -651,7 +655,12 @@ impl Intro {
             }
             j.writes[k] = out.paula.clone();
         }
-        self.audio.frame(&out.paula, LINES as u32);
+        out.audio = self
+            .audio
+            .frame(&out.paula, LINES as u32)
+            .iter()
+            .map(|s| s.0)
+            .collect();
         out
     }
 
