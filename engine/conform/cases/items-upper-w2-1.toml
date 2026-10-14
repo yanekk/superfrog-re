@@ -1,0 +1,12 @@
+# W2-1 with its items live: the hidden coin springs, the climb into the pillar, the shafts' coins
+# and fake walls, the bounce pad, the 20 000-point fruit and the extra life; score, lives, the
+# panel and the picture every frame (T85).
+sync = { level = "W2-1" }
+script = "items-upper-w2-1"
+frames = 1480
+resync = false
+
+[[exclude]]
+what = "enemies"
+note = "the original's marker spawners the engine has none for (enemies, the world's scenery)"
+task = "T16–T18"

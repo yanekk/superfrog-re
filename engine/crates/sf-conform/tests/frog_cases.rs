@@ -76,3 +76,17 @@ fn items_wings_w1_2() {
 fn items_checkpoint_w1_1() {
     green("items-checkpoint-w1-1");
 }
+
+/// W2-1 with its items live, 760 frames: both hidden coin springs knocked empty, the switch at
+/// 116,39 opening its gate, and the wings, with no re-sync (T85).
+#[test]
+fn items_switch_w2_1() {
+    green("items-switch-w2-1");
+}
+
+/// W2-1 with its items live, 1 480 frames: the climb into the pillar, the pad, the 20 000-point
+/// fruit and the extra life, with no re-sync (T85).
+#[test]
+fn items_upper_w2_1() {
+    green("items-upper-w2-1");
+}

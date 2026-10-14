@@ -92,7 +92,7 @@ done · ⛔ blocked, needs a human.
 | T82 | beam-tests | T81 | ✅ | |
 | T83 | items-w1 | T81 | ✅ | |
 | T84 | items-w3 | T81 | ⬜ | |
-| T85 | items-w2 | T81 | ⬜ | |
+| T85 | items-w2 | T81 | 🔍 | Two green W2-1 cases, no re-sync, 2 tests: `items-switch-w2-1` (springs, spud, speed-up, checkpoints, switch 116,39 + gate, wings); `items-upper-w2-1` (springs, pillar lift, pad, fruit 48,22, extra life 63,35). Deviation: two cases, not one: the fruit and life sit in a closed upper area, entered only by the lift. |
 | T86 | items-launchers | T81 | ⬜ | |
 | T87 | slot-symbols-routines | T71; blocks T72 | ✅ | |
 | T88 | slot-symbols-tables | T71; blocks T72 | ✅ | |
@@ -111,7 +111,7 @@ done · ⛔ blocked, needs a human.
 A Notes cell holds what was built or what the review found, the test count, and one line per
 deviation from the task doc. A ✅ task's cell may be cut to one line once the next task has been reviewed.
 
-**Review queue:** *(empty)*
+**Review queue:** T85
 
 ## Blocked on the user
 
