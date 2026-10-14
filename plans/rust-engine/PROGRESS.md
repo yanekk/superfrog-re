@@ -107,7 +107,7 @@ done · ⛔ blocked, needs a human.
 | T100 | front-vbl-timing | T37; blocks T21 | ⬜ | |
 | T97 | story-split-handler | T54; blocks T56 | ✅ | |
 | T101 | lag-long-pass | T81, T82; blocks T21 | ✅ | |
-| T102 | items-w3-faults | T101; blocks T21 | 🔍 | Frame 244 was two faults, not T101's: the frog's collision walk now cut per hitbox entry (sync `pass_step` reads a6); `bob_draw` waits for `vbl_pass_flag` (`LevelCtx::wait_blank`). Case green, `resync = false`, in `frog_cases`. 1 unit test. Deviation: goal 3 (366) needed nothing, green since T101. The wait also cleared T121's three pins and `items-fruit-w4-1` 206. W3-4 194 still red: added T128. |
+| T102 | items-w3-faults | T101; blocks T21 | ✅ | Review: one fix commit, a routine test for the walk's per-entry cut (gutting every engine `walk_step` left all cases green). Deviation held: 366 green without change. Mutated the sync step and the drawer's wait (both red at 244); W3-4 194 re-run, still red (T128). T128 given its Interface part. a6 after a touch handler read-only. |
 | T105 | w2-1-hang-fruit-life | T85; blocks T21 | ⬜ | |
 | T106 | w1-completions | T42, T86, T101; blocks T18 | ⬜ | |
 | T107 | enemies-w1-2-case | T42; blocks T18, T33, T106 | ⬜ | |
@@ -134,7 +134,7 @@ done · ⛔ blocked, needs a human.
 A Notes cell holds what was built or what the review found, the test count, and one line per
 deviation from the task doc. A ✅ task's cell may be cut to one line once the next task has been reviewed.
 
-**Review queue:** T102
+**Review queue:** *(empty)*
 
 ## Blocked on the user
 

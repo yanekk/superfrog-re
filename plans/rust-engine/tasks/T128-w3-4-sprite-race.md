@@ -24,6 +24,11 @@ red, and it is not a bob: the frog's hardware sprites show only in part.
 `engine/crates/sf-core/src/frog/anim.rs`; `engine/crates/sf-core/src/level/{mod.rs,beam.rs}`;
 `engine/conform/cases/enemies-w3-4.toml`; `engine/crates/sf-conform/tests/enemies_w3.rs`.
 
+## Interface
+
+Nothing new expected: the fix lands in the existing frog-sprite placement and beam
+(`place_frog_sprites`, `LevelCtx::sprite_wait`).
+
 ## Tests
 
 - `enemies-w3-4` green through frame 194 and on to where its script ends (or the next fault,
