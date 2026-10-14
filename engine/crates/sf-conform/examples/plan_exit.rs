@@ -159,9 +159,9 @@ fn flood(body: &[u16], w: usize, h: usize, goal: &[(usize, usize)]) -> Vec<u32> 
 }
 
 /// Cells a jump rises from where the frog stands (115 pixels measured with UP held), and from a
-/// bounce pad (markers 4, 5; a guess).
+/// bounce pad (markers 4, 5; W6-4's at 281,78 throws the frog 24 rows with no input).
 const JUMP: u32 = 7;
-const PAD_JUMP: u32 = 16;
+const PAD_JUMP: u32 = 24;
 /// Cells over death a jump crosses from the nearest cell over safe ground: 3 (a 5-cell pit) unless
 /// `--gap` says more. A running jump at full speed (6 pixels a frame) crosses about 17 cells on
 /// the flat, more falling: W6-4's 24 cells of spikes want `--gap 13`.
@@ -468,6 +468,40 @@ fn main() {
             _ => {}
         }
         let field = &goals[goal];
+        if std::env::var("PLAN_TRACE").is_ok() {
+            // Downhill from the frog (or `PLAN_TRACE=c,r`): the turns of the field's way and every wall cell it crosses.
+            let (fx, fy) = frog(start.state());
+            let (mut x, mut y) = ((fx.max(0) / 16) as usize, (fy.max(0) / 16) as usize);
+            if let Some((c, r)) = std::env::var("PLAN_TRACE").unwrap().split_once(',') {
+                (x, y) = (c.parse().unwrap(), r.parse().unwrap());
+            }
+            let mut last = (0isize, 0isize);
+            for _ in 0..2000 {
+                let here = field[y * w + x];
+                if here == 0 {
+                    break;
+                }
+                let next = [(x.wrapping_sub(1), y), (x + 1, y), (x, y.wrapping_sub(1)), (x, y + 1)]
+                    .into_iter()
+                    .filter(|&(a, b)| a < w && b < h)
+                    .min_by_key(|&(a, b)| field[b * w + a])
+                    .unwrap();
+                if field[next.1 * w + next.0] >= here {
+                    eprintln!("stuck at {x},{y} ({here})");
+                    break;
+                }
+                let dir = (next.0 as isize - x as isize, next.1 as isize - y as isize);
+                let m = live[next.1 * w + next.0] >> 10;
+                if m & 0x18 == 0x18 && m != 62 {
+                    eprintln!("wall {},{} (marker {m}) from {x},{y}", next.0, next.1);
+                } else if dir != last {
+                    eprintln!("turn at {x},{y} ({here})");
+                }
+                last = dir;
+                (x, y) = next;
+            }
+            return;
+        }
         if let Ok(spec) = std::env::var("PLAN_WALLS") {
             // `c0,r0,c1,r1`: walls the field's way crosses from each cell (`#` solid, `x` deadly,
             // `U` no way under gravity), the frog `F`; then stop.
