@@ -114,7 +114,7 @@ done · ⛔ blocked, needs a human.
 | T108 | enemies-w1-3-case | T42; blocks T18, T33, T106 | ⬜ | |
 | T109 | enemies-w1-4-case | T42; blocks T18, T33, T106 | ⬜ | |
 | T110 | enemies-w1-activation | T42; blocks T18, T33, T106 | ⬜ | |
-| T103 | w4-completions | T41, T101, T102; blocks T18 | ⬜ | |
+| T103 | w4-completions | T41, T101, T102; blocks T18 | ✅ | |
 | T111 | enemies-w3-2-case | T44; blocks T18 | ⬜ | |
 | T112 | enemies-w3-3-case | T44; blocks T18 | ⬜ | |
 | T113 | enemies-w3-4-case | T44, T102; blocks T18 | ⬜ | |
