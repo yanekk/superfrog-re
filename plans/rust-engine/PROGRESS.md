@@ -65,7 +65,7 @@ done · ⛔ blocked, needs a human.
 | T40 | enemies-world-6 | T38; blocks T18 | ⬜ | |
 | T41 | enemies-world-4 | T38; blocks T18 | ⬜ | |
 | T42 | enemies-world-1 | T38; blocks T18, T33 | ⬜ | |
-| T43 | enemies-world-2 | T38; blocks T18, T39 | 🔍 | All 17 W2 templates plus shared touches (`enemies/`); 6 routine tests, 4 frame tests (activation, W2-1..3). Dev: oracle tests in sf-conform (purity); one file per kind, variants grouped; $64 vector write skipped; completions to T122, lag pins to T121 (owner); W2-4, mace, spikes, swooper, hurts, stuns, ledge break to T122; `enemies-w2-3` cut at 407. |
+| T43 | enemies-world-2 | T38; blocks T18, T39 | ✅ | Review: 17 W2 templates, routine tests and four frame cases green. Fixed: stale enemy exclusions dropped from items-upper/switch-w2-1 (green live); bouncer `$98` boundary mutant survived, generator now hits it; T120–T122 docs given Interface and Tests; §2.11 lists the `$64` write. Probed seven mutations; `enemies-w2-3`'s divergence at 408 reproduced. Rest carried to T121/T122 (owner). |
 | T44 | enemies-world-3 | T38; blocks T18 | ⬜ | |
 | T46 | story-intro-scenes | T32; blocks T21 | ✅ | |
 | T47 | story-intro-handover | T46; blocks T21 | ⬜ | |
@@ -116,7 +116,7 @@ done · ⛔ blocked, needs a human.
 A Notes cell holds what was built or what the review found, the test count, and one line per
 deviation from the task doc. A ✅ task's cell may be cut to one line once the next task has been reviewed.
 
-**Review queue:** T43
+**Review queue:** *(empty)*
 
 ## Blocked on the user
 
