@@ -62,7 +62,7 @@ done · ⛔ blocked, needs a human.
 | T37 | level-restart | T36; blocks T34 | ✅ | |
 | T38 | level-tally | T37; blocks T21 | ✅ | |
 | T39 | enemies-world-5 | T16, T38; blocks T18 | ⬜ | |
-| T40 | enemies-world-6 | T38; blocks T18 | 🔍 | 13 W6 types + 3 shared touches ported; 6 routine tests, 6 case tests. Deviations: one file per family, not per type; tests in sf-conform/tests (purity); completions → T104 (owner); types met across W6's cases, not each map (owner); `enemies-w6-4`, `-1-explore` outside block (T102, T101); $64 write skipped. |
+| T40 | enemies-world-6 | T38; blocks T18 | ✅ | Review: 7 boundary mutations survived (charger reach, cannon aim, flier facing, walker turn probe, mace link count); 3 edge tests added. Mutated, probed shot touch on Moira, reran out-of-block cases (w6-4 frame 1158 pad picture, explore resync 479: as recorded). T104 gained Files/Interface. Completions are T104's; types met across cases (owner). |
 | T41 | enemies-world-4 | T38; blocks T18 | ⬜ | |
 | T42 | enemies-world-1 | T38; blocks T18, T33 | ⬜ | |
 | T43 | enemies-world-2 | T38; blocks T18, T39 | ⬜ | |
@@ -113,7 +113,7 @@ done · ⛔ blocked, needs a human.
 A Notes cell holds what was built or what the review found, the test count, and one line per
 deviation from the task doc. A ✅ task's cell may be cut to one line once the next task has been reviewed.
 
-**Review queue:** T40
+**Review queue:** *(empty)*
 
 ## Blocked on the user
 

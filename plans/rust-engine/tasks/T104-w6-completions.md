@@ -14,6 +14,17 @@ A scripted run of each of W6-1, W6-2, W6-3, W6-4 and the alt maps W6-2alt, W6-3a
 every coin to the exit (`level_state` 1), matching the original frame by frame with no
 exclusions, as cases `engine/conform/cases/enemies-w6-<n>[-alt]-complete.toml`.
 
+## Files
+
+- `engine/conform/scripts/enemies-w6-<n>-complete*.txt`, `engine/conform/cases/enemies-w6-<n>[-alt]-complete.toml`
+- `engine/crates/sf-conform/examples/plan_exit.rs`: the coin phase.
+- `engine/crates/sf-conform/tests/enemies_w6_cases.rs`: the cases the test block runs.
+
+## Interface
+
+No engine interface: cases in the existing format (`sync`, `script`, `frames`, `resync = false`),
+run by `sf-conform -- all`; scripts made with `plan_exit`.
+
 ## What T40 left
 
 - `examples/plan_exit.rs`: plans on the engine from the original's memory, beam search toward
