@@ -1,0 +1,8 @@
+# W6-3's second map (d4, `W6-3alt`) completed (T104): from its first frame through all 138 coins
+# and its switches to the exit (`level_state` 1 on frame 12740), every object live, nothing left
+# out. Planned with `examples/plan_exit`, each chunk checked on the original. Outside the test
+# block: the engine leaves the original at frame 5939 (an `AUD3VOL` value), T132's to fix.
+sync = { level = "W6-3alt" }
+script = "enemies-w6-3-alt-complete"
+frames = 12741
+resync = false
