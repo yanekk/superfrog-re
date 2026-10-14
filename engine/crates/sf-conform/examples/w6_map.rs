@@ -17,7 +17,7 @@ fn main() {
         for y in 0..t.height {
             for x in 0..t.width {
                 let m = t.body[(y * t.width + x) as usize] >> 10;
-                if matches!(m, 1 | 8 | 9 | 12..=20 | 45 | 0x35 | 54 | 55 | 0x39) {
+                if matches!(m, 1 | 12..=20 | 48..=51 | 0x35 | 54 | 0x39) {
                     found.entry(m).or_default().push((x, y));
                 }
             }

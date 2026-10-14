@@ -1,0 +1,8 @@
+# W6-1 with every object live on both sides and nothing left out (T40): the flier stomped dead,
+# the walkers, the charger pacing and attacking, the cannon and its shots, the switch at 84,29
+# opening the gate at 111,17, the maces and their chains, both darts, a hit (frame 414) and the
+# thrower throwing. Planned with `examples/plan_exit` (engine-planned, oracle-checked).
+sync = { level = "W6-1" }
+script = "enemies-w6-1"
+frames = 2150
+resync = false

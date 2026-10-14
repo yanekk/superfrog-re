@@ -1,6 +1,7 @@
 //! The cheapest route from a level's start (marker `$35`) to its exit (54) through its map, a step
 //! through an open cell costing 1 and through a solid one (`marker & $18 == $18`) 60, and every
-//! solid cell it crosses: where a switch's gate or the like must open. For steering scripts.
+//! solid cell it crosses: where a switch's gate or the like must open; and each enemy marker's
+//! cheapest instance. For steering scripts.
 //!
 //! `cargo run --release --example map_route -- <level>`
 fn main() {
@@ -47,6 +48,23 @@ fn main() {
         }
     }
     println!("solid crossed: {}", run.join(" "));
+    // Each enemy marker's instance cheapest to reach, and the open cell next to it it is reached by.
+    let d = &d;
+    for mk in 12..=20u16 {
+        let best = (0..w * h)
+            .filter(|&k| t.body[k] >> 10 == mk)
+            .flat_map(|k| {
+                let (x, y) = (k % w, k / w);
+                [(x, y + 1), (x, y.wrapping_sub(1)), (x + 1, y), (x.wrapping_sub(1), y), (x, y + 2)]
+                    .into_iter()
+                    .filter(|&(a, b)| a < w && b < h && !solid(a, b))
+                    .map(move |(a, b)| (d[b * w + a], x, y, a, b))
+            })
+            .min();
+        if let Some((c, x, y, a, b)) = best {
+            println!("marker {mk}: {x},{y} cost {c}, by {a},{b}");
+        }
+    }
     let pts: Vec<String> = path.iter().step_by(8).map(|&k| format!("{},{}", k % w, k / w)).collect();
     println!("route: {}", pts.join(" "));
 }
