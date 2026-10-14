@@ -18,6 +18,11 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-14 | 📌 | T56 review: story cases compare Paula writes without their beam, so set-up job timing is checked only where a test asserts a line. Fade set-up INTENA lines and later scenes' mask DMACON lines are unasserted; not fixed. |
+| 2026-10-14 | 📌 | T56 split at pir's context warning: T140 setup-under-music, T141 fade-colour-race, T142 draw-end-order, T143 last-fade-out, T144 intro-full-green (carries T56's done-when; blocks T21, T47, T48). Renumbered from T128–T132 by the owner: those were taken. |
+| 2026-10-14 | 📌 | T56: `story_dbg SCAN=1` skips variable-only frames; `sf-conform scan` counts them. Base had 1 254 `frame_descriptors` frames: `frame_prepare` OR'd where the original adds (descriptors past a scene's table hold code). Fixed. |
+| 2026-10-14 | 📌 | T56: a COP1LC write counts from the next frame's top: scene 1's first buffer clear runs under the text page's three planes (54 lines longer). The engine's `shown_list` switches at once; set-up jobs now take the frame's list. |
+| 2026-10-14 | 📌 | T56: `fade_probe` prints the wait position at which the copper sees a value; colour `k` is read about `4k` cycles later. Without that offset the engine's fade writes look 4 cycles a colour late; they are within a few. |
 | 2026-10-14 | 📌 | T74 review: `slot_jackpot`'s `password_for_level` is `unported` after a level 5 or in world 7 (the original copies from its caller's `a0`); a jackpot after W6-5 stops the engine. Not reached by any case. |
 | 2026-10-14 | 🔄 | Owner, T74: `slot-hold-jackpot` lands with the attract's fire on frame 41 (40, 50 red: a jackpot flash's sixth lamp starts either side of the interrupt on ~6 colour clocks). T129 slot-lamp-cut (blocks T21) added to model it. |
 | 2026-10-14 | 📌 | T74: from `start-w1-1-blink1`, 8 8 $18's gamble wins (30 000), not the bust T19 planned; the second gamble busts (`slot-gamble`). Unreached at these seeds: the free spin, a gamble lost above the bust. |

@@ -855,9 +855,9 @@ pub fn intro_resumes(a: &Amiga) -> Option<u32> {
 
 /// Where the story intro's handler of a step ended (owner, T46; T54): its acknowledge, the step's
 /// first `INTREQ = $20` among its Paula writes, and the PC it returned to ([`intro_resumes`] before
-/// the step).
+/// the step) when the step began at its entry. The acknowledge alone times the set-up's jobs
+/// (T56).
 pub fn handler_end(paula: &[sf_paula::PaulaWrite], resumes: Option<u32>) -> Option<HandlerEnd> {
-    let resumes = resumes?;
     paula
         .iter()
         .find(|w| w.reg == 0x9c && w.value == 0x20)

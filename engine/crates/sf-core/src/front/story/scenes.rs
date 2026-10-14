@@ -845,52 +845,57 @@ pub static MAIN: &[Op] = &[
     Call(SCENE_OUT_WAIT),
 ];
 
-/// How many frames after the one it starts in each unpack ends, by its call's return address
-/// (measured on the oracle, untouched run). The engine ends it at [`UNPACK_END_LINE`] of that
-/// frame: its line there is not modelled (the main program next waits for a blank, or for the
-/// fade it started, whichever the line).
-pub static UNPACK_FRAMES: &[(u32, u32)] = &[
-    (h0(0x4ec), 13),
-    (h0(0x534), 12),
-    (h0(0x57c), 12),
-    (h0(0x5c4), 13),
-    (h0(0x624), 13),
-    (h0(0x7ac), 37),
-    (h0(0x115c), 53),
-    (h0(0x1e64), 58),
-    (h0(0x1e76), 26),
-    (h0(0x25fe), 62),
-    (h0(0x2610), 42),
-    (h0(0x2dfc), 99),
-    (h0(0x2e0e), 29),
-    (h0(0x35ee), 118),
-    (h0(0x3600), 22),
-    (h0(0x3ec8), 122),
-    (h0(0x3eda), 29),
-    (h0(0x48c6), 22),
-    (h0(0x51f6), 85),
-    (h0(0x5208), 29),
-    (h0(0x5b4c), 42),
-    (h0(0x5bf6), 38),
-    (h0(0x5d22), 103),
-    (h0(0x5d34), 35),
-    (h0(0x698c), 125),
-    (h0(0x7380), 52),
-    (h0(0x7a12), 123),
-    (h0(0x7a24), 38),
-    (h0(0x7c94), 43),
-    (h0(0x7e76), 117),
-    (h0(0x7e88), 38),
+/// How many frames after the one it starts in each unpack ends, by its call's return address,
+/// and the line it ends on in that frame (measured on the oracle, untouched run; the line is the
+/// one after the last the original's CPU was seen inside it, T56).
+pub static UNPACK_FRAMES: &[(u32, u32, u64)] = &[
+    (h0(0x4ec), 13, 105),
+    (h0(0x534), 12, 279),
+    (h0(0x57c), 12, 267),
+    (h0(0x5c4), 13, 146),
+    (h0(0x624), 13, 18),
+    (h0(0x7ac), 37, 192),
+    (h0(0x115c), 53, 276),
+    (h0(0x1e64), 58, 310),
+    (h0(0x1e76), 26, 197),
+    (h0(0x25fe), 62, 250),
+    (h0(0x2610), 42, 169),
+    (h0(0x2dfc), 99, 310),
+    (h0(0x2e0e), 29, 173),
+    (h0(0x35ee), 118, 305),
+    (h0(0x3600), 22, 88),
+    (h0(0x3ec8), 122, 166),
+    (h0(0x3eda), 29, 55),
+    (h0(0x48c6), 22, 217),
+    (h0(0x51f6), 85, 293),
+    (h0(0x5208), 29, 190),
+    (h0(0x5b4c), 42, 147),
+    (h0(0x5bf6), 38, 51),
+    (h0(0x5d22), 103, 79),
+    (h0(0x5d34), 35, 101),
+    (h0(0x698c), 125, 19),
+    (h0(0x7380), 52, 128),
+    (h0(0x7a12), 123, 21),
+    (h0(0x7a24), 38, 85),
+    (h0(0x7c94), 43, 37),
+    (h0(0x7e76), 117, 80),
+    (h0(0x7e88), 38, 164),
 ];
-/// The line an unpack ends on in its last frame.
-pub const UNPACK_END_LINE: u64 = 160;
+
+/// The line the unpack whose call returns to `ret` ends on in its last frame.
+pub fn unpack_end_line(ret: u32) -> u64 {
+    UNPACK_FRAMES
+        .iter()
+        .find(|(r, ..)| *r == ret)
+        .map_or(0, |(.., l)| *l)
+}
 
 /// The frames the unpack whose call returns to `ret` takes.
 pub fn unpack_frames(ret: u32) -> u64 {
     UNPACK_FRAMES
         .iter()
-        .find(|(r, _)| *r == ret)
-        .map_or(0, |(_, n)| *n as u64)
+        .find(|(r, ..)| *r == ret)
+        .map_or(0, |(_, n, _)| *n as u64)
 }
 
 /// `intro_main`'s end (h0+$2f6): the music stopped, the insert-disk-1 page (h0+$5fa) shown, then

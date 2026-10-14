@@ -12,7 +12,6 @@
 use sf_paula::{AudioDma, PaulaWrite};
 
 use super::bobs;
-use super::clock::{Beam, BlitClock, Bus};
 use super::fade::Rec;
 use super::mem::StoryMem;
 use super::ops::Op;
@@ -144,17 +143,6 @@ fn fade_setup_lines(kind: u8, count: u16) -> u64 {
 }
 /// The fade set-ups' code, by kind (`fade_across` h0+$b4b4, `fade_in` $b6d8, `fade_out` $b906).
 const FADE_SETUP_CODE: [(u32, u32); 3] = [(0xb4b4, 0xb5c0), (0xb6d8, 0xb7bc), (0xb906, 0xba42)];
-/// `objects_init`'s CPU time before its blits, in DMA cycles, but for the masks' clearing: its set-up
-/// plus each animation frame it prepares (h0+$8724). Oracle: the first scene's 145 frames and the
-/// second's 199 put their mask blits 3022 and 3071 lines on (656 124 cycles with the clearing,
-/// which took 619 850 there on refresh's bus).
-const INIT_CPU: u32 = 656_124 - 619_850;
-const INIT_CPU_PER_FRAME: u32 = 206;
-/// The masks' clearing (h0+$8408, `clr.b (a0)+; subq.l #1, d0; bne.b`): its turns and each turn's
-/// bus accesses, timed on the bus as it finds it (a scene's display slows it: T50).
-const CLEAR_TURNS: u32 = 0xa000;
-const CLEAR_LOOP: &str = "rpw pnn npp";
-
 /// Where the original is while it clears the buffers and sets up the objects (`buffers_clear`'s
 /// waits, `objects_init`'s calls, the draws in it): the return addresses of their calls.
 const SETUP_INSIDE: [u32; 15] = [
@@ -189,10 +177,16 @@ const SETUP_WRITES: [(u32, u32); 7] = [
 /// unpack) at the end of a frame, from where it is (`chain`: its PC, then the return addresses on
 /// its stack): what conformance feeds the intro as [`Pacing`] (owner, 2026-10-12).
 pub fn busy(chain: &[u32]) -> bool {
-    chain
-        .iter()
-        .any(|a| BUSY_RETURNS.contains(a) || scenes::UNPACK_FRAMES.iter().any(|(r, _)| r == a))
+    chain.first().is_some_and(|pc| BUSY_BODIES.iter().any(|r| r.contains(pc)))
+        || chain
+            .iter()
+            .any(|a| BUSY_RETURNS.contains(a) || scenes::UNPACK_FRAMES.iter().any(|(r, ..)| r == a))
 }
+
+/// The set-up's own code, where the PC can be between two of its calls at a blank (oracle frame
+/// 7577: h0+$96e8, `objects_init`'s first loop): `buffers_clear` from its blits (h0+$834c; before
+/// them it waits for the fades) and `objects_init` (h0+$96d4).
+const BUSY_BODIES: [std::ops::Range<u32>; 2] = [h0(0x834c)..h0(0x83b4), h0(0x96d4)..h0(0x97be)];
 
 /// Return addresses of the calls that make the long jobs: `draw_frame` in `draw_frames`,
 /// `draw_next` and `objects_init`; `objects_init`'s own calls; `buffers_clear`'s blitter waits.
@@ -242,8 +236,6 @@ enum Then {
     Nothing,
     /// A draw is over: `shown_buffer` from `draw_buffer`, the blitter's priority off.
     DrawEnd,
-    /// The masks are built: the blitter's priority off.
-    MasksEnd,
     /// A fade's set-up is over: interrupts back on.
     IntenaOn,
 }
@@ -277,8 +269,39 @@ struct Timed {
     dmacon: u32,
     /// Where each handler it holds off started.
     handlers: Vec<u32>,
-    /// The blanks it holds the CPU through ([`BlitClock`]'s `merged`).
+    /// The blanks it holds the CPU through: their requests are served by the next blank's handler.
     merged: Vec<u32>,
+}
+
+/// A long job of a scene's set-up (`buffers_clear`, `objects_init` with its masks: T56), its
+/// CPU's program run on the bus ([`sim`]) with the handlers of the blanks it passes, timed again
+/// at each frame from its start with the handlers met so far: their ends as conformance gives
+/// them (the original's acknowledge), or the engine's length for each.
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+struct SimJob {
+    prog: std::sync::Arc<sim::Prog>,
+    /// Its first frame (since the intro's start), its first cycle in it, and the copper list that
+    /// frame shows (a COP1LC written in it is the copper's from the next).
+    frame: u64,
+    start: u32,
+    list: u32,
+    /// The audio channels' DMA as of its first frame's start, and each frame's Paula writes since.
+    audio: AudioDma,
+    writes: Vec<Vec<PaulaWrite>>,
+    /// Per frame since its first, the cycle of its handler's acknowledge, when conformance gives it.
+    acks: Vec<Option<u32>>,
+    /// Its DMACON writes as last scheduled (line since the intro's start, value), and its end
+    /// (cycle since the intro's start).
+    scheduled: Vec<(u64, u16)>,
+    end: u64,
+}
+
+/// A [`SimJob`]'s run: times in cycles since the intro's start.
+struct JobTimed {
+    end: u64,
+    dmacon: Vec<(u64, u16)>,
+    handlers: Vec<u64>,
+    merged: Vec<u64>,
 }
 
 /// The program, its memory, the copper list and the jobs reported, kept before a job's end.
@@ -329,6 +352,11 @@ pub struct Intro {
     /// The audio channels' DMA as of this frame's start, run on the frames' Paula writes: the
     /// slots it takes hold up the draws' blits and CPU (T96).
     audio: AudioDma,
+    /// The set-up's job in progress ([`SimJob`]).
+    job: Option<SimJob>,
+    /// The cycle (since the intro's start) a [`SimJob`] ended on, for what the main program does
+    /// next (a draw).
+    resume: Option<u64>,
 }
 
 /// What a frame of the intro gives back besides memory.
@@ -347,28 +375,28 @@ pub struct IntroFrame {
     pub walk: Option<super::vbl::Handler>,
     /// The DMA cycle (from the frame's line 0) the handler's interrupt was taken on.
     pub entry: u32,
+    /// The audio channels' DMA slots this frame (cycles from its line 0), which the handler's CPU
+    /// waits for too.
+    pub audio: Vec<u32>,
     /// A load this frame: the COP1LC then (the frame stands for the original's frame the load
     /// ended on, whose list is the one set before it).
     pub list_at_load: Option<u32>,
 }
 
-/// The bus under copper list `list`: a scene's five lores planes, a text page's three, or none
-/// (the black list); audio when the music plays.
-fn bus(list: u32, audio: bool) -> Bus {
+/// The bitplane fetch under copper list `list` at a frame's start: a scene's five lores planes, a
+/// text page's three, or none (the black list).
+fn fetch(list: u32) -> Fetch {
     let planes = match list {
         scenes::SCENE_LIST => 5,
         scenes::TEXT_LIST => 3,
         _ => 0,
     };
-    Bus {
-        fetch: Fetch {
-            bplcon0: planes << 12 | 0x200,
-            diwstrt: 0x4481,
-            diwstop: 0x0cc1,
-            ddfstrt: 0x38,
-            ddfstop: 0xd0,
-        },
-        audio,
+    Fetch {
+        bplcon0: planes << 12 | 0x200,
+        diwstrt: 0x4481,
+        diwstop: 0x0cc1,
+        ddfstrt: 0x38,
+        ddfstop: 0xd0,
     }
 }
 
@@ -435,6 +463,8 @@ impl Intro {
             handler_end: None,
             tail: None,
             audio: AudioDma::booted(),
+            job: None,
+            resume: None,
         }
     }
 
@@ -472,6 +502,7 @@ impl Intro {
             copper: Vec::new(),
             walk: None,
             entry: 0,
+            audio: Vec::new(),
             list_at_load: None,
         };
         // The handler: at the top, once a masked set-up lets it in, or once the blit in progress
@@ -542,6 +573,7 @@ impl Intro {
             }
             for w in &mut writes {
                 w.vpos = (at - top) as u16;
+                w.hpos = (out.entry % super::cpu::LINE) as u16;
             }
             out.handler = ((at - top) as u16, (handler_end - top) as u16);
             out.copper = m.read(list, 0x400);
@@ -563,6 +595,21 @@ impl Intro {
             } else {
                 self.handler_done(handler_end);
             }
+        }
+        if self.job.is_some() {
+            // The set-up's job, timed again with this frame's handler.
+            let k = frame - self.job.as_ref().map_or(frame, |j| j.frame);
+            let ack = self
+                .handler_end
+                .map(|e| e.ack.0 as u32 * super::cpu::LINE + e.ack.1 as u32);
+            if let Some(j) = &mut self.job {
+                let k = k as usize;
+                if j.acks.len() <= k {
+                    j.acks.resize(k + 1, None);
+                }
+                j.acks[k] = ack;
+            }
+            self.retime(m, top);
         }
         if std::mem::take(&mut self.first) {
             // The intro's start, its first text page unpacked, all during the load: the
@@ -600,8 +647,20 @@ impl Intro {
             .partition(|(at, _)| *at < end);
         self.writes = later;
         out.paula.extend(due.into_iter().map(|(_, w)| w));
-        out.paula.sort_by_key(|w| w.vpos);
-        self.audio.frame(&out.paula, LINES as u32);
+        out.paula.sort_by_key(|w| (w.vpos, w.hpos));
+        if let Some(j) = &mut self.job {
+            let k = (frame - j.frame) as usize;
+            if j.writes.len() <= k {
+                j.writes.resize(k + 1, Vec::new());
+            }
+            j.writes[k] = out.paula.clone();
+        }
+        out.audio = self
+            .audio
+            .frame(&out.paula, LINES as u32)
+            .iter()
+            .map(|s| s.0)
+            .collect();
         out
     }
 
@@ -646,6 +705,17 @@ impl Intro {
     fn finish_busy(&mut self, m: &mut StoryMem, at: u64) {
         self.t = self.t.max(at);
         self.wait = Wait::Run;
+        if let Some(j) = self.job.take() {
+            // Its writes still to come are made by now (the original's job was over).
+            for w in &mut self.writes {
+                if w.1.reg == 0x96 && j.scheduled.contains(&(w.0, w.1.value)) && w.0 > at {
+                    w.0 = at;
+                    w.1.vpos = (at % LINES) as u16;
+                }
+            }
+            let line = super::cpu::LINE as u64;
+            self.resume = Some(j.end.min(at * line));
+        }
         match std::mem::replace(&mut self.then, Then::Nothing) {
             Then::Nothing => {}
             Then::DrawEnd => {
@@ -653,7 +723,6 @@ impl Intro {
                 m.set_l(bobs::SHOWN, drawn);
                 self.write_at(at, 0x96, 0x0400);
             }
-            Then::MasksEnd => self.write_at(at, 0x96, 0x0400),
             Then::IntenaOn => {
                 self.write_at(at, 0x9a, 0xc000);
                 self.masked_until = 0;
@@ -764,31 +833,131 @@ impl Intro {
         self.then = then;
     }
 
-    /// A blit run's clock from now.
-    fn clock(&self, m: &StoryMem) -> BlitClock {
-        let start = Beam {
-            line: (self.t % LINES) as u32,
-            h: 0,
+    /// Start the set-up's job `prog` now ([`SimJob`]): from the cycle the last job ended on, or
+    /// this line's start. `out`: this frame so far, whose Paula writes run the audio DMA.
+    fn start_job(&mut self, m: &StoryMem, out: &IntroFrame, prog: sim::Prog, list: u32) {
+        let line = super::cpu::LINE as u64;
+        let at = self
+            .resume
+            .take()
+            .filter(|r| r / line == self.t)
+            .unwrap_or(self.t * line);
+        let frame = self.t / LINES;
+        let end = frame * LINES + LINES;
+        let mut now = out.paula.clone();
+        now.extend(self.writes.iter().filter(|w| w.0 < end).map(|w| w.1));
+        now.sort_by_key(|w| w.vpos);
+        self.job = Some(SimJob {
+            prog: std::sync::Arc::new(prog),
+            frame,
+            start: (at - frame * LINES * line) as u32,
+            list,
+            audio: self.audio.clone(),
+            writes: vec![now],
+            acks: vec![None],
+            scheduled: Vec::new(),
+            end: at,
+        });
+        self.wait = Wait::Busy {
+            until: self.t + 1,
+            blank_extends: false,
         };
-        let b = bus(self.shown_list, super::sound::music_on(m));
-        BlitClock::new(b, start, (handler_lines(m) * 227) as u32)
+        self.then = Then::Nothing;
+        self.retime(m, frame * LINES);
     }
 
-    /// Where a blit run started now puts the handlers of the frames it passes, and the blanks it
-    /// holds the CPU through.
-    fn hold(&mut self, clock: &BlitClock) {
-        let base = self.t - self.t % LINES;
-        self.handler_at = clock
-            .handlers
-            .iter()
-            .map(|b| base + b.line as u64)
-            .collect();
-        self.merged = clock.merged.iter().map(|&l| base + l as u64).collect();
+    /// The set-up's job timed again from its start ([`Intro::run_job`]), in this frame (from line
+    /// `top`): its end, its DMACON writes still to come, the handlers it holds off and the blanks
+    /// it holds the CPU through.
+    fn retime(&mut self, m: &StoryMem, top: u64) {
+        let Some(mut j) = self.job.take() else {
+            return;
+        };
+        let timed = self.run_job(m, &j);
+        let line = super::cpu::LINE as u64;
+        // What was due before this frame has been given out; the rest is scheduled anew.
+        let sent = j.scheduled.iter().filter(|w| w.0 < top).count();
+        let old: Vec<(u64, u16)> = j.scheduled[sent..].to_vec();
+        self.writes
+            .retain(|w| !(w.1.reg == 0x96 && old.contains(&(w.0, w.1.value))));
+        j.scheduled.truncate(sent);
+        for &(t, v) in timed.dmacon.iter().skip(sent) {
+            let at = (t / line).max(top);
+            self.write_at(at, 0x96, v);
+            // Its cycle in the line, for its order beside the handler's writes.
+            if let Some(w) = self.writes.last_mut() {
+                w.1.hpos = if at == t / line { (t % line) as u16 } else { 0 };
+            }
+            j.scheduled.push((at, v));
+        }
+        j.end = timed.end;
+        if let Wait::Busy { .. } = self.wait {
+            self.wait = Wait::Busy {
+                until: timed.end / line + 1,
+                blank_extends: false,
+            };
+        }
+        self.handler_at = timed.handlers.iter().map(|&t| t / line).collect();
+        self.merged = timed.merged.iter().map(|&t| t / line).collect();
+        self.job = Some(j);
     }
 
-    /// Lines from now to the clock's end.
-    fn lines_of(&self, clock: &BlitClock) -> u64 {
-        (clock.now.line as u64 + 1).saturating_sub(self.t % LINES)
+    /// A [`SimJob`]'s program run on the bus from its start: the CPU and the blitter on the shown
+    /// list's copper and fetch and the audio DMA of each frame's writes ([`Intro::fixed`]), each
+    /// blank's handler taking the CPU at the first instruction end that sees its request, to its
+    /// acknowledge when given, else for the engine's length ([`handler_lines`]).
+    fn run_job(&self, m: &StoryMem, j: &SimJob) -> JobTimed {
+        // The furthest a handler's acknowledge is from its entry (the longest, a fade's, ~50 lines).
+        const ACK_WITHIN: u32 = 60 * super::cpu::LINE;
+        // Frames enough for the longest set-up (the masks' clearing alone is about nine).
+        const FRAMES: usize = 24;
+        let fixed = self.fixed_from(m, &j.audio, &j.writes, FRAMES, j.list);
+        let mut s = sim::Sim::new(j.start, &fixed, DRAW_DMACON);
+        let handler = (handler_lines(m) as u32 * super::cpu::LINE).saturating_sub(2);
+        let (mut handlers, mut merged) = (Vec::new(), Vec::new());
+        let mut next = sim::FRAME + IRQ_ENTRY;
+        let mut take = |s: &mut sim::Sim| {
+            while s.irq_seen(next + sim::FRAME) {
+                merged.push(next - IRQ_ENTRY);
+                next += sim::FRAME;
+            }
+            if s.irq_seen(next) {
+                handlers.push(s.t);
+                let k = (next / sim::FRAME) as usize;
+                // Its acknowledge: this frame's, or, held past the original's step (which ends at
+                // an instruction past the frame's end), the next step's, on this frame's beam.
+                let from = s.t;
+                let ack = [k, k + 1]
+                    .iter()
+                    .filter_map(|&i| j.acks.get(i).copied().flatten())
+                    .map(|a| k as u32 * sim::FRAME + a)
+                    .find(|&a| a > from && a < from + ACK_WITHIN);
+                s.run("p");
+                match ack {
+                    Some(ack) => {
+                        if s.t < ack + 1 {
+                            s.idle(ack + 1 - s.t);
+                        }
+                        s.run(super::vbl::TAIL);
+                    }
+                    None => s.idle(handler),
+                }
+                next += sim::FRAME;
+            }
+        };
+        j.prog.run(&mut s, 0, &mut take);
+        let base = j.frame * LINES * super::cpu::LINE as u64;
+        JobTimed {
+            end: base + s.t as u64,
+            dmacon: s
+                .regs
+                .iter()
+                .filter(|w| w.1 == 0x96)
+                .map(|w| (base + w.0 as u64, w.2))
+                .collect(),
+            handlers: handlers.iter().map(|&t| base + t as u64).collect(),
+            merged: merged.iter().map(|&t| base + t as u64).collect(),
+        }
     }
 
     /// A draw starting now (`bobs_draw`): its program run on the bus ([`Intro::time_draw`]), its
@@ -800,11 +969,11 @@ impl Intro {
             // Conformance gives the original's acknowledge and the instruction it returned to;
             // normal play takes the acknowledge at the start of the line the handler ends on.
             let (ack, resumes) = match self.handler_end {
-                Some(e) => (
-                    e.ack.0 as u32 * super::cpu::LINE + e.ack.1 as u32,
-                    e.resumes,
-                ),
-                None => ((self.t % LINES) as u32 * super::cpu::LINE, default),
+                Some(HandlerEnd {
+                    ack,
+                    resumes: Some(r),
+                }) => (ack.0 as u32 * super::cpu::LINE + ack.1 as u32, r),
+                _ => ((self.t % LINES) as u32 * super::cpu::LINE, default),
             };
             Some((ack, handler_to_draw(resumes)?))
         });
@@ -848,10 +1017,17 @@ impl Intro {
         now: &[PaulaWrite],
     ) -> Timed {
         let fixed = self.fixed(m, 3, now);
+        let line = super::cpu::LINE as u64;
         let start = match &lead {
             // The acknowledge's write took its cycle: the CPU goes on from the next.
             Some((ack, _)) => ack + 1,
-            None => (self.t % LINES) as u32 * super::cpu::LINE,
+            // After a set-up's job: from its end.
+            None => self
+                .resume
+                .filter(|r| r / line == self.t)
+                .map_or((self.t % LINES) as u32 * super::cpu::LINE, |r| {
+                    (r - (self.t - self.t % LINES) * line) as u32
+                }),
         };
         let mut s = sim::Sim::new(start, &fixed, DRAW_DMACON);
         let handler = (handler_lines(m) as u32 * super::cpu::LINE).saturating_sub(2);
@@ -887,18 +1063,27 @@ impl Intro {
     /// Paula writes `now`, the next ones' on none (their handlers' writes are not made yet: a
     /// channel plays on, an effect's next step is missed).
     fn fixed(&self, m: &StoryMem, frames: usize, now: &[PaulaWrite]) -> sim::Fixed {
-        let mut fetch = bus(self.shown_list, false).fetch;
+        self.fixed_from(m, &self.audio, &[now.to_vec()], frames, self.shown_list)
+    }
+
+    /// [`Intro::fixed`] from the audio DMA `audio` at the first frame's start, frame `k`'s on its
+    /// Paula writes `paula[k]` (none past them), the first frame under copper list `first`.
+    fn fixed_from(
+        &self,
+        m: &StoryMem,
+        audio: &AudioDma,
+        paula: &[Vec<PaulaWrite>],
+        frames: usize,
+        first: u32,
+    ) -> sim::Fixed {
+        let mut fetch = fetch(first);
         let mut fixed = sim::Fixed::new();
-        let mut audio = self.audio.clone();
+        let mut audio = audio.clone();
         for k in 0..frames {
             let mut cycles = Vec::new();
-            let writes = crate::render::copper::run_bus(
-                &|a, _, _| m.w(a),
-                self.shown_list,
-                fetch,
-                &mut cycles,
-            );
-            let writes_k = if k == 0 { now } else { &[] };
+            let list = if k == 0 { first } else { self.shown_list };
+            let writes = crate::render::copper::run_bus(&|a, _, _| m.w(a), list, fetch, &mut cycles);
+            let writes_k = paula.get(k).map_or(&[][..], |w| &w[..]);
             fixed = fixed
                 .frame(&cycles, &writes, fetch)
                 .audio(audio.frame(writes_k, LINES as u32));
@@ -1071,7 +1256,7 @@ impl Intro {
                 }
                 let start = self.t / LINES;
                 let until = ((start + scenes::unpack_frames(ret)) * LINES
-                    + scenes::UNPACK_END_LINE)
+                    + scenes::unpack_end_line(ret))
                     .max(self.t);
                 self.wait = Wait::Busy {
                     until,
@@ -1106,49 +1291,24 @@ impl Intro {
                         return true;
                     }
                 }
-                self.write(out, 0x96, 0x8400);
                 out.jobs.push(Job {
-                    inside: SETUP_INSIDE.to_vec(),
+                    inside: SETUP_INSIDE
+                        .iter()
+                        .copied()
+                        .chain(BUSY_BODIES.iter().flat_map(|r| r.clone().step_by(2)))
+                        .collect(),
                     writes: SETUP_WRITES.to_vec(),
                 });
-                let mut clock = self.clock(m);
-                bobs::clear_buffers(m, &mut clock);
-                let lines = self.lines_of(&clock);
+                let prog = bobs::clear_buffers(m);
                 self.next();
-                self.busy(lines, false, Then::Nothing);
+                self.start_job(m, out, prog, list);
             }
             Op::InitObjects(table) => match phase {
                 0 => {
                     m.set_l(bobs::SCENE_TABLE, table);
-                    // The CPU's set-up and its clearing of the masks, then the mask blits.
-                    let mut clock = self.clock(m);
-                    let frames = bobs::init(m);
-                    clock.cpu(INIT_CPU + INIT_CPU_PER_FRAME * frames);
-                    clock.cpu_loop(CLEAR_LOOP, CLEAR_TURNS);
-                    let start = self.lines_of(&clock);
-                    bobs::init_masks(m, &mut clock);
-                    let lines = self.lines_of(&clock);
-                    self.hold(&clock);
-                    let mut then = Then::MasksEnd;
-                    let last = clock.last_start;
-                    if clock.bus.fetched(last.line)
-                        && let Some(h) = clock.handlers.last().filter(|h| **h > last)
-                        && (h.line % LINES as u32 != 0 || h.h != 0)
-                    {
-                        // The last blit started on a line the display fetches and held the blank's
-                        // handler: the main program writes DMACON first, the handler is entered
-                        // after it (oracle: frames 3191, 3760, 4238; T46, T50).
-                        let base = self.t - self.t % LINES;
-                        let end = base + h.line as u64;
-                        self.write_at(end, 0x96, 0x0400);
-                        if let Some(a) = self.handler_at.last_mut() {
-                            *a = end + 1;
-                        }
-                        then = Then::Nothing;
-                    }
-                    self.write_at(self.t + start, 0x96, 0x8400);
+                    let prog = bobs::init(m);
                     self.set_phase(1);
-                    self.busy(lines, false, then);
+                    self.start_job(m, out, prog, list);
                 }
                 1 | 2 => {
                     self.set_phase(phase + 1);
