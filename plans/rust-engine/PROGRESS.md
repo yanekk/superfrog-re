@@ -108,7 +108,7 @@ done · ⛔ blocked, needs a human.
 | T97 | story-split-handler | T54; blocks T56 | ✅ | |
 | T101 | lag-long-pass | T81, T82; blocks T21 | ✅ | |
 | T102 | items-w3-faults | T101; blocks T21 | ✅ | |
-| T105 | w2-1-hang-fruit-life | T85; blocks T21 | 🔍 | Hang: original's `frog_tiles` wall loop (h0+$e3fe), reached only with W2 enemies frozen; §2.11 entry. `items-life-w2-1` takes the extra life; test `items_life_w2_1`. Deviation: take frame 895 always lags, compared on 897 (owner). Fruit unreached: moved to T133 (owner). Tools: `examples/route_oracle`, `wall_hang_probe`. |
+| T105 | w2-1-hang-fruit-life | T85; blocks T21 | ✅ | Review: hang reproduced at 285b3fd (both wall flags, PC h0+$e3fe loop, enemies frozen only); fixed: §2.11 replacement untested, now `probe_left` test (mutation red); T133 doc lacked Interface/Tests. Extra-life mutation reddens `items_life_w2_1`. Deviations held (owner): take compared on 897; fruit to T133. |
 | T106 | w1-completions | T42, T86, T101; blocks T18 | ⬜ | |
 | T107 | enemies-w1-2-case | T42; blocks T18, T33, T106 | ⬜ | |
 | T108 | enemies-w1-3-case | T42; blocks T18, T33, T106 | ⬜ | |
@@ -137,7 +137,7 @@ done · ⛔ blocked, needs a human.
 A Notes cell holds what was built or what the review found, the test count, and one line per
 deviation from the task doc. A ✅ task's cell may be cut to one line once the next task has been reviewed.
 
-**Review queue:** T105
+**Review queue:** *(empty)*
 
 ## Blocked on the user
 
