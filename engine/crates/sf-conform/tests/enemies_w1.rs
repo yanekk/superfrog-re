@@ -100,6 +100,9 @@ fn run(name: &str, resyncs: &[u32]) -> Seen {
 const SITTER: u32 = 0x249c2;
 const RUNNER: u32 = 0x24854;
 const SPIKER: u32 = 0x248e2;
+const HOVER: u32 = 0x243b6;
+const WALKER: u32 = 0x2496a;
+const CRAWLER: u32 = 0x247b8;
 const STOMPED: u32 = 0x23bee;
 const REWARD: u32 = 0x23e6c;
 
@@ -113,15 +116,22 @@ fn w1_1() {
     assert!(s.hurts >= 2, "hurt {} times", s.hurts);
 }
 
+/// W1-2: a walker stomped; a hover, the crawler and a spiker hurt the frog.
+#[test]
+fn w1_2() {
+    let s = run("enemies-w1-2", &[]);
+    for u in [HOVER, WALKER, CRAWLER, SPIKER, STOMPED] {
+        assert!(s.updates.contains(&u), "h0+${u:x} never ran: {:x?}", s.updates);
+    }
+    assert!(s.hurts >= 3, "hurt {} times", s.hurts);
+}
+
 /// World 1's types W1-4 has and W1-1 does not (`enemies::w1`): the dropper and its drop, the spout
-/// and its shots (one update for all three), the crawler; and the hover, which W1-1's case never
-/// reaches.
-const HOVER: u32 = 0x243b6;
+/// and its shots (one update for all three).
 const DROPPER: u32 = 0x24dca;
 const DROP: u32 = 0x24b20;
 const SPOUT: u32 = 0x25358;
 const SHOT: u32 = 0x24aac;
-const CRAWLER: u32 = 0x247b8;
 /// What a killed hover runs (`kill_fall`): it falls until it splats on the ground.
 const KILL_FALL: u32 = 0x23b34;
 
