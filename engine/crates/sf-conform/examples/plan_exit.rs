@@ -6,9 +6,10 @@
 //! `--out`: the script so far, rewritten after each chunk) (a script this printed: its inputs are played first, up to its closing `-` line)
 //!
 //! The coin phase (T104): a W6 exit stays shut until `coins_left_for_exit` is 0, so before the
-//! exit the frog takes coins, steering by a field flooded from every coin left in the live map
-//! (markers 8 and 9; a taken coin's marker is cleared), each coin taken worth more than any
-//! distance. `--coins N` is a step that ends when N coins are still needed (to take coins before a
+//! exit the frog takes coins, steering by a field flooded over the live map from every coin left
+//! (markers 8 and 9; a taken coin's marker is cleared) and every switch not yet pressed (a
+//! vertical pair of markers 48–51, cleared when pressed: it opens the gate whose single cell has
+//! its number), each coin taken or switch pressed worth more than any distance. `--coins N` is a step that ends when N coins are still needed (to take coins before a
 //! switch's `--via`); one ending at 0 is added before the exit unless given. A coin the frog makes
 //! no headway toward for `STALL` chunks is passed over until no other is left.
 //!
@@ -49,6 +50,30 @@ fn live_body(st: &sf_core::State) -> Vec<u16> {
         }
     }
     v
+}
+
+fn live_marker(st: &sf_core::State, c: usize, r: usize) -> u16 {
+    st.w(sf_core::layout::h1(ROW0) + r as u32 * ROW_BYTES + 2 * c as u32) & 0x3f
+}
+
+/// The cells of the switches not yet pressed: markers 48–51 with the same one above or below.
+fn switches(st: &sf_core::State) -> Vec<(usize, usize)> {
+    let mut v = Vec::new();
+    for r in 0..84 {
+        for c in 0..300 {
+            let m = live_marker(st, c, r);
+            let pair = (r > 0 && live_marker(st, c, r - 1) == m) || (r < 83 && live_marker(st, c, r + 1) == m);
+            if (48..=51).contains(&m) && pair {
+                v.push((c, r));
+            }
+        }
+    }
+    v
+}
+
+/// How many of `cells` (switch cells) no longer hold a switch: pressed.
+fn pressed(st: &sf_core::State, cells: &[(usize, usize)]) -> usize {
+    cells.iter().filter(|&&(c, r)| !(48..=51).contains(&live_marker(st, c, r))).count()
 }
 
 /// The cells whose live marker is a coin's (8, 9), less `skipped`.
@@ -235,6 +260,7 @@ fn main() {
         let target = via.get(goal).copied();
         let needed = start.state().w(FROG + f::COINS_LEFT);
         let live = live_body(start.state());
+        let sw = switches(start.state());
         match target {
             Some(Via::Coins(_)) => {
                 let mut left = coins(start.state(), &skipped);
@@ -243,6 +269,7 @@ fn main() {
                     skipped.clear();
                     left = coins(start.state(), &skipped);
                 }
+                left.extend(sw.iter().filter(|c| !skipped.contains(c)));
                 goals[goal] = flood(&live, w, h, &left);
             }
             Some(Via::Cell(x, y)) => goals[goal] = flood(&live, w, h, &[(x, y)]),
@@ -273,8 +300,12 @@ fn main() {
                 _ => {
                     let (cx, cy) = ((x.max(0) / 16) as usize, (y.max(0) / 16) as usize);
                     let d = dist(field, cx, cy);
-                    // A coin taken is worth more than any distance (the field still has it).
-                    let taken = needed.saturating_sub(st.w(FROG + f::COINS_LEFT)) as i64;
+                    // A coin taken or a switch pressed is worth more than any distance (the field
+                    // still has it).
+                    let mut taken = needed.saturating_sub(st.w(FROG + f::COINS_LEFT)) as i64;
+                    if let Some(Via::Coins(_)) = target {
+                        taken += pressed(st, &sw) as i64;
+                    }
                     d * 16 + (16 - (x % 16 - 8).abs()) as i64 / 4 - 400 * st.w(HEARTS) as i64
                         - 8000 * taken
                 }
@@ -390,16 +421,21 @@ fn main() {
             }
             Some(&Via::Coins(n)) => {
                 let left = st.w(FROG + f::COINS_LEFT);
+                let pushed = pressed(&st, &sw) > 0;
+                if pushed {
+                    eprintln!("  a switch pressed");
+                }
                 let d = dist(&goals[goal], (x.max(0) / 16) as usize, (y.max(0) / 16) as usize);
-                if left < needed || d < best_d.saturating_sub(1) {
-                    (stall, best_d) = (0, if left < needed { i64::MAX } else { d });
+                if left < needed || pushed || d < best_d.saturating_sub(1) {
+                    (stall, best_d) = (0, if left < needed || pushed { i64::MAX } else { d });
                 } else {
                     stall += 1;
                 }
                 if stall >= STALL {
                     // No headway: pass over the coin nearest the frog by the map's paths.
                     let here = flood(&live_body(&st), w, h, &[((x.max(0) / 16) as usize, (y.max(0) / 16) as usize)]);
-                    let left = coins(&st, &skipped);
+                    let mut left = coins(&st, &skipped);
+                    left.extend(switches(&st).into_iter().filter(|c| !skipped.contains(c)));
                     if let Some(&(nc, nr)) = left.iter().min_by_key(|&&(c, r)| here[r * w + c]) {
                         for &(c, r) in &left {
                             if c.abs_diff(nc) <= 4 && r.abs_diff(nr) <= 4 {
