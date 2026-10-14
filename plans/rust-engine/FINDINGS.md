@@ -18,6 +18,8 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-15 | 📌 | T108 review: `plan_exit --frames N` is an absolute frame budget, not frames after the prefix; a prefix longer than N plans nothing and exits 0. `--via` a cell steers it off a block top `--hurt` alone cannot leave. |
+| 2026-10-15 | 📌 | T108: W1-3's way to the patrollers is the spring (marker 4) at 105,75: jump on it, it bounces the frog up the 104–107 channel. `complete.rs --at`/`--touch` measure the frog's centre, about three rows below the cell it stands in; `plan_exit` uses map cells. |
 | 2026-10-15 | 🐞 | T107: an in-level sample stream's end, `clr.w AUD3VOL`, may write the data bus, not the prefetch: W1-2 frame 820 (a beam-24 crawler leg) wrote $0000 after audio DMA; the engine writes $33fc. Unfixed; routed around. |
 | 2026-10-15 | 📌 | T107: W1-2's sitter (51,25) is not met: far left, past the top corridor's platform leaps. T106's W1-2 completion meets it collecting the far-left coins. `route` waypoints must be cells the frog can stand in. |
 | 2026-10-15 | 📌 | T110: hovers are stompable (`+$2e` 1, `$1f` hit points); `complete --kill 57,51` in W1-3 stomps one from the start (`--beam 48 --hold 2`). W1-2's spud (129,13) is a pocket walled off from the hovers at 116–120. |

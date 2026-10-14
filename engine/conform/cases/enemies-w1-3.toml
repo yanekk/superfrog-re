@@ -1,0 +1,13 @@
+# W1-3 with world 1's enemies live (T108): a hover hurts the frog, the spring at 105,75 lifts it
+# to the walker, stomped into a reward, and on to the patrollers' arena (139–151,64), where the
+# watcher runs and a patroller hurts it; the spiker and a hover's fall run on the way. Green with
+# no re-sync; asserts in `enemies_w1::w1_3`.
+sync = { level = "W1-3" }
+script = "enemies-w1-3"
+frames = 1200
+resync = true
+
+[[exclude]]
+what = "enemies"
+note = "the bubble (T17's, now T39–T41's) returns at once from power-on; world 1's enemies are live (T42)"
+task = "T39–T41"

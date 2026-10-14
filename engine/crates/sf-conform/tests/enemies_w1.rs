@@ -9,7 +9,7 @@
 use std::collections::BTreeSet;
 
 use sf_core::enemies::common::SPLAT;
-use sf_core::frog::FROG;
+use sf_core::frog::{FROG, f};
 use sf_core::items::SCORE;
 use sf_core::layout::{h0, h1};
 use sf_core::level::objects::OBJ_SLOTS;
@@ -18,11 +18,13 @@ use sf_core::level::objects::OBJ_SLOTS;
 /// times an enemy hurt the frog: its hearts (`+$5a`, `frog_hurt`) went down. Not `f::HURT`
 /// rising: a stunned landing sets that too, as the level's opening drop does (T109 review).
 /// And at the end of each frame (`frames[n]` after frame `n`): every live slot's map cell
-/// (`+$40`), update and bob animation (its bob's `+8`), and the score.
+/// (`+$40`), update and bob animation (its bob's `+8`), and the score. At each hurt, the update
+/// of the live slot nearest the frog (what hurt it), if one is within 64 pixels.
 struct Seen {
     updates: BTreeSet<u32>,
     hurts: u32,
     frames: Vec<(Vec<Live>, u32)>,
+    hurt_by: Vec<Option<u32>>,
 }
 
 /// A live slot at the end of a frame: the map cell it spawned from as (col, row), its update and
@@ -61,6 +63,7 @@ fn run(name: &str, resyncs: &[u32]) -> Seen {
         updates: BTreeSet::new(),
         hurts: 0,
         frames: Vec::new(),
+        hurt_by: Vec::new(),
     };
     let mut hearts = None;
     // Called before each frame is stepped: what it sees is the end of the frame before.
@@ -87,6 +90,18 @@ fn run(name: &str, resyncs: &[u32]) -> Seen {
         let now = s.w(FROG + HEARTS);
         if hearts.is_some_and(|was| now < was) {
             seen.hurts += 1;
+            // The frog's middle against a slot's top middle, in map pixels.
+            let w = |a| s.w(a) as i16 as i32;
+            let (fx, fy) = (w(FROG + f::X) + 0x17, w(FROG + f::Y) + 0x2a);
+            let near = (0..20)
+                .map(|k| OBJ_SLOTS + k * 0x7c)
+                .filter(|&slot| s.l(slot + 0x40) != 0)
+                .map(|slot| {
+                    let (x, y) = (w(slot + 8) + 8, w(slot + 0xa));
+                    ((x - fx).abs() + (y - fy).abs(), s.l(slot + 4).wrapping_sub(h0(0)))
+                })
+                .min();
+            seen.hurt_by.push(near.filter(|n| n.0 < 64).map(|n| n.1));
         }
         hearts = Some(now);
     })
@@ -105,6 +120,8 @@ const WALKER: u32 = 0x2496a;
 const CRAWLER: u32 = 0x247b8;
 const STOMPED: u32 = 0x23bee;
 const REWARD: u32 = 0x23e6c;
+const WATCHER: u32 = 0x26904;
+const PATROLLER: u32 = 0x26a2c;
 
 /// W1-1: a sitter stomped into a reward; the runner and a spiker hurt the frog.
 #[test]
@@ -184,4 +201,18 @@ fn w1_hover_kill() {
     assert_eq!(score(238), score(0), "points before the hover was freed");
     assert_eq!(score(239), score(0) + 200);
     assert_eq!(s.hurts, 0);
+}
+
+/// W1-3: a hover hurts the frog under the start; the spring at 105,75 lifts it to the walker,
+/// stomped into a reward, and on to the arena, where the watcher looks on and a patroller hurts
+/// it; a hover dies falling.
+#[test]
+fn w1_3() {
+    let s = run("enemies-w1-3", &[]);
+    for u in [HOVER, WALKER, SPIKER, WATCHER, PATROLLER, KILL_FALL, STOMPED, REWARD] {
+        assert!(s.updates.contains(&u), "h0+${u:x} never ran: {:x?}", s.updates);
+    }
+    for u in [HOVER, PATROLLER] {
+        assert!(s.hurt_by.contains(&Some(u)), "never hurt by h0+${u:x}: {:x?}", s.hurt_by);
+    }
 }
