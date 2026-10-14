@@ -101,7 +101,7 @@ done · ⛔ blocked, needs a human.
 | T91 | slot-beam-races | T72 | ✅ | |
 | T92 | slot-load | T72 | ✅ | |
 | T93 | slot-attract-draw | T72, T91, T92 | ✅ | |
-| T94 | slot-interrupt-timing | T72, T91, T93; blocks T73 | ⬜ | |
+| T94 | slot-interrupt-timing | T72, T91, T93; blocks T73 | ✅ | |
 | T95 | slot-load-finish | T92; blocks T93 | ✅ | |
 | T96 | story-audio-dma-slots | T53; blocks T56 | ✅ | |
 | T100 | front-vbl-timing | T37; blocks T21 | ⬜ | |
