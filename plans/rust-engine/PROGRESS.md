@@ -102,7 +102,7 @@ done · ⛔ blocked, needs a human.
 | T92 | slot-load | T72 | ✅ | |
 | T93 | slot-attract-draw | T72, T91, T92 | ⬜ | |
 | T94 | slot-interrupt-timing | T72, T91, T93; blocks T73 | ⬜ | |
-| T95 | slot-load-finish | T92; blocks T93 | 🔍 | slot-load green (17 frames); 1 test (`tests/front.rs`, also asserts `Scene::Slot { coins_in: 2 }`). Draft fixes: lamp minterms swapped; lamps' time summed at 2 cycles/word/channel; count no longer returns from `slot_machine`. Kept `slot_dbg.rs` for T93/T94. Power-on `front-*` red from T44's `level1_vector`, not this task. |
+| T95 | slot-load-finish | T92; blocks T93 | ✅ | Review clean, no fix commit. slot-load green, 17 frames; ending and tally-slot green. Mutations each red: lamp minterms, cycle factor, count's Return, title sound files. Probe: scenes Slot{2} throughout. Power-on front-* red identically on base (T44's `level1_vector`, logged). `slot_dbg.rs` kept. |
 | T96 | story-audio-dma-slots | T53; blocks T56 | ⬜ | |
 | T100 | front-vbl-timing | T37; blocks T21 | ⬜ | |
 | T97 | story-split-handler | T54; blocks T56 | ⬜ | |
@@ -124,7 +124,7 @@ done · ⛔ blocked, needs a human.
 A Notes cell holds what was built or what the review found, the test count, and one line per
 deviation from the task doc. A ✅ task's cell may be cut to one line once the next task has been reviewed.
 
-**Review queue:** T95
+**Review queue:** *(empty)*
 
 ## Blocked on the user
 
