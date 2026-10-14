@@ -18,6 +18,8 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-14 | 📌 | T40: dart updates h0+$25fa8/$25f42 (templates 53–62), mace $2619c/$262be (63–70) and touch_kill_1hit/touch_spud_damage/touch_hurt are ported in `enemies/` (w6, common.rs); other worlds register theirs, not new ports. |
+| 2026-10-14 | 📌 | T40: `examples/plan_exit` plans level runs (engine beam search, checked chunk by chunk on the original, backtracks, --via/--stomp/--hurt); W6 lags a third of frames. A frog on a spring pad diverges in the picture only: T102 goal 3. |
 | 2026-10-14 | 🔄 | Owner, T40: added T104 w6-completions (after T40, T101, T102; blocks T18): W6 exits need every coin (97–189 a map), seven maps. T40 keeps per-level enemy cases, no exclusions; a T101/T102 fault keeps one out of the test block. |
 | 2026-10-14 | 🐞 | T79 review, open (T34 meets T79 at merge): game over in the bonus level diverges at `bonus-death-wb-1` frame 2448, after a lag: `playfield_buffer_0`, then the copper's buffer pointers a flip apart. Likely T101's class; case cut to 2447, divergence pinned. |
 | 2026-10-14 | 🐞 | T79, fixed: `main_program` looked for the loop's end only after a fresh pass; a loop ending in a resumed (lag-cut) pass stalled, in any level. Now after both (`level/frame.rs` `after_pass`). |

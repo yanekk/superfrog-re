@@ -40,3 +40,10 @@ fn enemies_w6_3() {
 fn enemies_w6_3_alt() {
     green("enemies-w6-3-alt");
 }
+
+/// W6-4's second map: every type W6-4 has, the strider among them, the flier killed, a hit.
+/// (`enemies-w6-4`, the same run on the first map, waits for T102's pad beam race.)
+#[test]
+fn enemies_w6_4_alt() {
+    green("enemies-w6-4-alt");
+}
