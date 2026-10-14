@@ -150,6 +150,20 @@ fn items_upper_w2_1() {
     green("items-upper-w2-1");
 }
 
+/// W2-2 with its items live, 720 frames: the launchers at 176,6-7 and 182,8-9 throwing the frog
+/// right, left and right again, the throw's frame showing the frog's pose before it (T86).
+#[test]
+fn items_launcher_w2_2() {
+    green("items-launcher-w2-2");
+}
+
+/// W4-1 with its items live, 2 360 frames: enemies-w4-1's route on to the 50 000-point fruit at
+/// 290,34 (T86). Its one re-sync is T102's frame-206 fault, pinned here.
+#[test]
+fn items_fruit_w4_1() {
+    pinned("items-fruit-w4-1", &[206]);
+}
+
 /// The bonus level entered (T79): 600 frames from its first, the frog flown about and firing,
 /// with no re-sync.
 #[test]
