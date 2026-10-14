@@ -68,6 +68,20 @@ pub fn w3_level() -> &'static AmigaMemory {
     })
 }
 
+/// The original's memory at W5-1's first frame (world 5's enemies, T39).
+pub fn w5_level() -> &'static AmigaMemory {
+    static M: OnceLock<AmigaMemory> = OnceLock::new();
+    M.get_or_init(|| {
+        let s = sync::reach(
+            &SyncPoint::AtLevel("W5-1".parse().unwrap()),
+            &sf_conform::InputScript::idle(),
+            1,
+        )
+        .unwrap_or_else(|e| panic!("{e}"));
+        s.memory
+    })
+}
+
 pub fn sound() -> &'static SoundData {
     static S: OnceLock<SoundData> = OnceLock::new();
     S.get_or_init(|| {
@@ -106,6 +120,13 @@ pub fn w3_rig() -> Rig<'static> {
     static D: OnceLock<std::sync::Arc<sf_core::DisplayData>> = OnceLock::new();
     let d = D.get_or_init(sf_conform::display_data);
     Rig::new(w3_level(), sound(), d)
+}
+
+/// A rig on W5-1's first frame ([`w5_level`]).
+pub fn w5_rig() -> Rig<'static> {
+    static D: OnceLock<std::sync::Arc<sf_core::DisplayData>> = OnceLock::new();
+    let d = D.get_or_init(sf_conform::display_data);
+    Rig::new(w5_level(), sound(), d)
 }
 
 /// Any joystick position, fire or not.

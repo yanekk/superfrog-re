@@ -61,7 +61,7 @@ done · ⛔ blocked, needs a human.
 | T36 | items-on-the-beam | T15 | ✅ | |
 | T37 | level-restart | T36; blocks T34 | ✅ | |
 | T38 | level-tally | T37; blocks T21 | ✅ | |
-| T39 | enemies-world-5 | T16, T38; blocks T18 | ⬜ | |
+| T39 | enemies-world-5 | T16, T38; blocks T18 | ✅ | |
 | T40 | enemies-world-6 | T38; blocks T18 | ✅ | |
 | T41 | enemies-world-4 | T38; blocks T18 | ✅ | |
 | T42 | enemies-world-1 | T38; blocks T18, T33 | ✅ | |
@@ -103,7 +103,7 @@ done · ⛔ blocked, needs a human.
 | T93 | slot-attract-draw | T72, T91, T92 | ✅ | |
 | T94 | slot-interrupt-timing | T72, T91, T93; blocks T73 | ✅ | Review clean, no fix commit. Probed: own scan of 260 acknowledges (256 on line), front-boot/-password/-skip-blink divergence scans identical to base, races 47→45 at 300 frames. Mutated keyboard, quiet-tick terms and LAMP_GAP 528: each red. Effects term unexercised; front-boot/-password/-skip and purity red before T94. |
 | T95 | slot-load-finish | T92; blocks T93 | ✅ | |
-| T96 | story-audio-dma-slots | T53; blocks T56 | ⬜ | |
+| T96 | story-audio-dma-slots | T53; blocks T56 | ✅ | |
 | T100 | front-vbl-timing | T37; blocks T21 | ⬜ | |
 | T97 | story-split-handler | T54; blocks T56 | ⬜ | |
 | T101 | lag-long-pass | T81, T82; blocks T21 | ⬜ | |
@@ -124,6 +124,10 @@ done · ⛔ blocked, needs a human.
 | T122 | w2-completions | T43, T101, T121; blocks T18 | ⬜ | |
 | T120 | conform-no-silent-pass | T05, T36; blocks T21 | ⬜ | |
 | T104 | w6-completions | T40, T101, T102; blocks T18 | ⬜ | |
+| T123 | enemies-w5-2-case | T39; blocks T18 | ⬜ | |
+| T124 | enemies-w5-3-case | T39; blocks T18 | ⬜ | |
+| T125 | enemies-w5-4-case | T39; blocks T18 | ⬜ | |
+| T126 | w5-completions | T39, T101, T121, T123, T124, T125; blocks T18 | ⬜ | |
 
 A Notes cell holds what was built or what the review found, the test count, and one line per
 deviation from the task doc. A ✅ task's cell may be cut to one line once the next task has been reviewed.

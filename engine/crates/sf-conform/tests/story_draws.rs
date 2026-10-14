@@ -8,9 +8,9 @@
 //! instructions to the draw ([`intro::handler_to_draw`], T54), so its DMACON `$8400` is checked
 //! too.
 //!
-//! Only the draws before the intro's first sound effect are checked: `story::sim` has no audio DMA
-//! yet (T96), and from scene 1's effect (oracle frame 3 034, line 48) Paula's slot `$0D` holds the
-//! blits up.
+//! The audio channels' DMA slots come from the original's Paula writes, every frame from the sync
+//! point on, through `sf_paula::AudioDma` (T96): from scene 1's effect (oracle frame 3 034, line 48)
+//! channel 0's slot `$0D` holds the blits up.
 
 use std::collections::VecDeque;
 use std::ops::Range;
@@ -19,18 +19,20 @@ use sf_conform::{Case, sync};
 use sf_core::front::story::sim::{self, Fixed, Sim};
 use sf_core::front::story::{StoryMem, bobs, cpu::LINE, intro, mem::RAM_BYTES, vbl};
 use sf_core::render::copper::{self, Fetch};
+use sf_paula::AudioDma;
 
 /// The oracle's frames from here on are followed: COP1LC is picked up from the CPU's writes (it
 /// sets it in 3 005).
 const FROM: u32 = 3_000;
-/// Scene 1's draws (from oracle frame 3 027) before its first sound effect starts in 3 034: the
-/// draw starting in 3 033 runs into it.
-const SCENE_1: Range<u32> = 3_022..3_033;
+/// Scene 1's draws (from oracle frame 3 027), its sound effects from 3 034 on.
+const SCENE_1: Range<u32> = 3_022..3_727;
 /// Scene 3's first draws by `draw_next` (h0+$84ca, from oracle frame 5 882), whose wait is on
 /// `vbl_count` (T54).
 const SCENE_3: Range<u32> = 5_880..5_900;
-/// Scene 4's draws before its first sound effect (6 240, line 17).
-const SCENE_4: Range<u32> = 6_192..6_238;
+/// Scene 4's draws (the last in 6 308, the fade out after it), its first sound effect in 6 240,
+/// line 17. In 6 436 `buffers_clear` starts as a draw does (DMACON `$8400`, the masks, BLTCON0
+/// `$09f0`) but is no draw: it has no DMACON `$0400`.
+const SCENE_4: Range<u32> = 6_192..6_436;
 
 const BLTCON0: u16 = 0x040;
 const BLTAFWM: u16 = 0x044;
@@ -51,6 +53,8 @@ struct Frame {
     irqs: Vec<u32>,
     copper: Vec<copper::Beam>,
     copper_writes: Vec<copper::Write>,
+    /// The audio channels' DMA slots ([`AudioDma::frame`]).
+    audio: Vec<(u32, u8)>,
     fetch: Fetch,
     /// DMACON as the frame found it.
     dmacon: u16,
@@ -79,6 +83,7 @@ fn check_draws(ranges: &[Range<u32>]) -> Vec<(u32, bool)> {
     use sim::dmacon::*;
     let mut dma = DMAEN | BLTEN;
     let mut of = 0;
+    let mut audio = AudioDma::new();
     let mut checked = Vec::new();
     while amiga.frame() < upto {
         let number = amiga.frame() + 1;
@@ -95,8 +100,9 @@ fn check_draws(ranges: &[Range<u32>]) -> Vec<(u32, bool)> {
             Vec::new()
         };
         let resumes = sync::intro_resumes(&amiga);
-        sync::step_inserting(&mut amiga, case.script.input_at(of)).unwrap();
+        let cap = sync::step_inserting(&mut amiga, case.script.input_at(of)).unwrap();
         of += 1;
+        let slots = audio.frame(&cap.paula, amiga.frame_lines()).to_vec();
         let raw = amiga.cpu_writes();
         for w in &raw {
             match w.reg {
@@ -137,6 +143,7 @@ fn check_draws(ranges: &[Range<u32>]) -> Vec<(u32, bool)> {
             irqs,
             copper: bus,
             copper_writes,
+            audio: slots,
             fetch,
             dmacon: dma,
             resumes,
@@ -239,6 +246,7 @@ fn check_draw(frames: &[Frame]) -> Option<bool> {
     let from = prog.find_reg(DMACON, 0x8400).unwrap();
     let fixed = frames.iter().fold(Fixed::new(), |fx, f| {
         fx.frame(&f.copper, &f.copper_writes, f.fetch)
+            .audio(&f.audio)
     });
     // A draw the handler let go of runs from its acknowledge: the handler's tail, the wait's last
     // turn and the calls to it, as the intro times it (T54); one the main program came to by
@@ -313,21 +321,79 @@ fn check_draw(frames: &[Frame]) -> Option<bool> {
     Some(lead.is_some())
 }
 
-/// Every draw of scenes 1 and 4 before their first sound effect and scene 3's first by
-/// `draw_next`: 4, 16 and 10 (about 25 s). Those the handler lets go of (all but the two after
-/// scene 4's masks and the first of scene 3's) run from its acknowledge (T54).
+/// Every draw of scenes 1 and 4, their sound effects' audio DMA among them (T96), and scene 3's
+/// first by `draw_next`: 350, 10 and 52 (about a minute). Those the handler lets go of (all but the
+/// 47 the main program comes to by itself, among them the two after scene 4's masks and the first
+/// of scene 3's) run from its acknowledge (T54).
 #[test]
-fn draws_before_the_sound_write_their_blits_on_the_originals_cycles() {
+fn draws_write_their_blits_on_the_originals_cycles() {
     let checked = check_draws(&[SCENE_1, SCENE_3, SCENE_4]);
     let count = |r: &Range<u32>| checked.iter().filter(|f| r.contains(&f.0)).count();
     assert_eq!(
         (count(&SCENE_1), count(&SCENE_3), count(&SCENE_4)),
-        (4, 10, 16),
+        (350, 10, 52),
         "draws checked: {checked:?}"
     );
     let from_ack = checked.iter().filter(|f| f.1).count();
     assert_eq!(
-        from_ack, 27,
+        from_ack, 365,
         "draws run from the handler's end: {checked:?}"
     );
+}
+
+/// Scene 1's first sound effects: channel 0 from oracle frame 3 034, line 48.
+const EFFECT: Range<u32> = 3_030..3_130;
+
+/// The slots the audio channels' DMA takes (`AudioDma` on the original's Paula writes, every frame
+/// from the sync point on) against the original's DMA profile, across scene 1's first effects: on
+/// every line the profile samples, the same channels in the same slots. The profile's row sampled
+/// at line *L*'s end is line *L − 1*'s (FINDINGS 2026-10-13, T53); a line the CPU is held through
+/// by a blit is not sampled.
+#[test]
+fn audio_dma_takes_the_originals_slots_across_scene_1s_effect() {
+    let case = Case::load(&sf_conform::cases_dir().join("story-intro.toml"))
+        .unwrap_or_else(|e| panic!("{e}"));
+    let synced = sync::reach(&case.sync, &case.script, EFFECT.end + 20).unwrap();
+    let mut amiga = synced.amiga;
+    let mut audio = AudioDma::new();
+    let (mut of, mut compared) = (0, 0);
+    while amiga.frame() + 1 < EFFECT.end {
+        let number = amiga.frame() + 1;
+        if number == EFFECT.start {
+            amiga.set_dma_profile();
+        }
+        let cap = sync::step_inserting(&mut amiga, case.script.input_at(of)).unwrap();
+        of += 1;
+        let ours = audio.frame(&cap.paula, amiga.frame_lines());
+        if !EFFECT.contains(&number) {
+            continue;
+        }
+        let samples = amiga.line_samples();
+        let lines: Vec<u32> = samples
+            .iter()
+            .filter(|s| s.vpos > 0)
+            .map(|s| s.vpos as u32 - 1)
+            .collect();
+        let theirs: Vec<(u32, u8)> = samples
+            .iter()
+            .filter(|s| s.vpos > 0)
+            .flat_map(|s| {
+                (0..4u8).filter_map(move |n| {
+                    let h = 0x0d + 2 * n as usize;
+                    (4..=7)
+                        .contains(&s.owners[h])
+                        .then(|| ((s.vpos as u32 - 1) * LINE + h as u32, s.owners[h] - 4))
+                })
+            })
+            .collect();
+        let ours: Vec<(u32, u8)> = ours
+            .iter()
+            .copied()
+            .filter(|s| lines.contains(&(s.0 / LINE)))
+            .collect();
+        assert_eq!(ours, theirs, "oracle frame {number}: audio slots");
+        compared += theirs.len();
+    }
+    // Channel 0's effect plays through these frames: about a fetch every 3.4 lines it runs.
+    assert!(compared > 1_000, "audio slots compared: {compared}");
 }
