@@ -1,0 +1,9 @@
+# W6-4 with every object live on both sides and nothing left out (T40): every type the map has
+# met (the strider, only here, among them), the flier killed, a hit. Outside the test block: the
+# picture at frame 1158 alone differs, the frog on a spring pad drawn in another animation frame
+# (variables match), the beam race T102 (items-w3-faults, goal 3) names. Planned with
+# `examples/plan_exit`.
+sync = { level = "W6-4" }
+script = "enemies-w6-4"
+frames = 1400
+resync = false

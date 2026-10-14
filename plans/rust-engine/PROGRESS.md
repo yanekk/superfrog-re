@@ -123,6 +123,7 @@ done · ⛔ blocked, needs a human.
 | T121 | bob-draw-cut | T101; blocks T21 | ⬜ | |
 | T122 | w2-completions | T43, T101, T121; blocks T18 | ⬜ | |
 | T120 | conform-no-silent-pass | T05, T36; blocks T21 | ⬜ | |
+| T104 | w6-completions | T40, T101, T102; blocks T18 | ⬜ | |
 
 A Notes cell holds what was built or what the review found, the test count, and one line per
 deviation from the task doc. A ✅ task's cell may be cut to one line once the next task has been reviewed.

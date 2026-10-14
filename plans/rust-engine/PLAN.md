@@ -162,6 +162,7 @@ headless.
 | [T121](tasks/T121-bob-draw-cut.md) | bob-draw-cut | T101; blocks T21 |
 | [T122](tasks/T122-w2-completions.md) | w2-completions | T43, T101, T121; blocks T18 |
 | [T120](tasks/T120-conform-no-silent-pass.md) | conform-no-silent-pass | T05, T36; blocks T21 |
+| [T104](tasks/T104-w6-completions.md) | w6-completions | T40, T101, T102; blocks T18 |
 
 T22 is the rig task: it comes before every surface task and they depend on it. T29 is the phase's
 drill. At the end: the owner plays it.
