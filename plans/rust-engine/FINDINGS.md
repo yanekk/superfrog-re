@@ -18,6 +18,8 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-14 | 🔄 | Owner, T105: W2-1's extra life is taken on frame 895, which the original always lags into 896; accepted as compared on 897. No way into the fruit room 45-51,14-26 found: T133 w2-1-fruit-room (T105; blocks T21) added. |
+| 2026-10-14 | 📌 | T105: the old `items-upper-w2-1` hang is the original's `frog_tiles` wall loop (h0+$e3fe, both wall flags; DESIGN §2.11), reached only with W2 enemies frozen. Plan a route against the original: `examples/route_oracle` re-plans from its state. |
 | 2026-10-14 | 📌 | T74 review: `slot_jackpot`'s `password_for_level` is `unported` after a level 5 or in world 7 (the original copies from its caller's `a0`); a jackpot after W6-5 stops the engine. Not reached by any case. |
 | 2026-10-14 | 🔄 | Owner, T74: `slot-hold-jackpot` lands with the attract's fire on frame 41 (40, 50 red: a jackpot flash's sixth lamp starts either side of the interrupt on ~6 colour clocks). T129 slot-lamp-cut (blocks T21) added to model it. |
 | 2026-10-14 | 📌 | T74: from `start-w1-1-blink1`, 8 8 $18's gamble wins (30 000), not the bust T19 planned; the second gamble busts (`slot-gamble`). Unreached at these seeds: the free spin, a gamble lost above the bust. |

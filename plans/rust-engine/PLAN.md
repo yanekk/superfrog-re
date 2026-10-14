@@ -169,6 +169,7 @@ headless.
 | [T128](tasks/T128-w3-4-sprite-race.md) | w3-4-sprite-race | T127; blocks T113 |
 | [T129](tasks/T129-slot-lamp-cut.md) | slot-lamp-cut | T74; blocks T21 |
 | [T130](tasks/T130-front-vbl-318.md) | front-vbl-318 | T100; blocks T21 |
+| [T133](tasks/T133-w2-1-fruit-room.md) | w2-1-fruit-room | T105; blocks T21 |
 | [T120](tasks/T120-conform-no-silent-pass.md) | conform-no-silent-pass | T05, T36; blocks T21 |
 | [T104](tasks/T104-w6-completions.md) | w6-completions | T40, T101, T102; blocks T18 |
 
