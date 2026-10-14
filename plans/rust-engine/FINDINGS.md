@@ -18,6 +18,9 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-14 | 📌 | T86 for T106: the launcher fault was the frog's pose on the throw frame: h0+$19c9c waits for line $22, so the sprite pointers miss the copper. Fixed (`LevelCtx::sprite_wait`, launcher/pad `FrogSprites` cost); W1-1 frame 2256 should now pass. |
+| 2026-10-14 | 🐞 | Not T86's, open: `level_entry` red on `pir/rust-engine` before T86: every level's `slot_copper` original `$140f440`, engine `$1400000`. |
+| 2026-10-14 | 📌 | T86: no green case takes the extra life or the 20 000 fruit ($f008), both T105's; handlers $efc2–$efec are on no W1–W6 map. Planning: frog `+$02` is the feet; `examples/plan`'s `frog()` reads 42 px low. |
 | 2026-10-14 | 🔄 | Owner, T41 review: the crawler (markers 13/14, templates 139/138) met no T41 case (its update h0+$26eee never ran on the original in any) and is carried into T103. |
 | 2026-10-14 | 🔄 | Owner, T41: the types no T41 case met (pacers 2/3, crusher-up 16, mace 17, darts 20/21, floater 22) and W4-3 moved into T103's playthroughs. |
 | 2026-10-14 | 🐞 | T41, open: `enemies-w4-4-activation` diverges at 285 (ends at 284): the engine takes a copper interrupt (INTREQ/INTENA `$0010`) in that frame's pass, the original not; seven frames after four respawns. Beam timing, probably T101's. |

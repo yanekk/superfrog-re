@@ -93,7 +93,7 @@ done · ⛔ blocked, needs a human.
 | T83 | items-w1 | T81 | ✅ | |
 | T84 | items-w3 | T81 | ✅ | |
 | T85 | items-w2 | T81 | ✅ | |
-| T86 | items-launchers | T81 | ⬜ | |
+| T86 | items-launchers | T81 | 🔍 | Cases `items-launcher-w2-2` (three throws), `items-fruit-w4-1` (50 000 fruit; frame-206 re-sync pinned); 2 tests. Fix: `sprite_wait` (h0+$19c9c) in frog_anim_tick/place_frog_sprites, launcher/pad charge `FrogSprites`. Deviations: launchers 176/182 not 75,27 + switch; fruit W4-1 290,34 (commit). Extra life, 20 000 fruit: T105. |
 | T87 | slot-symbols-routines | T71; blocks T72 | ✅ | |
 | T88 | slot-symbols-tables | T71; blocks T72 | ✅ | |
 | T89 | story-copper-bus-cycles | T52; blocks T53 | ✅ | |
@@ -119,7 +119,7 @@ done · ⛔ blocked, needs a human.
 A Notes cell holds what was built or what the review found, the test count, and one line per
 deviation from the task doc. A ✅ task's cell may be cut to one line once the next task has been reviewed.
 
-**Review queue:** *(empty)*
+**Review queue:** T86
 
 ## Blocked on the user
 
