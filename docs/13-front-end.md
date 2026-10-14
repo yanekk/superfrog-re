@@ -216,6 +216,59 @@ then the exit fade; game_over_check $749c (ESC or lives < 0): music_fade_wait, j
   `game-over`: lives set to 0, the frog into the first pit; the case starts on the frame
   `game_over_seq` begins), untouched and with fire, ESC, and the time up, each to the title's idle.
 
+## The slot machine (T71–T74; code, oracle)
+
+After a level the tally offers the slot machine (up, then fire) for the coins the level's clock
+left; `slot_machine` (h0+$49e2) is the whole of it and returns to the tally. The engine enters it
+with `Game::enter_slot(coins)` and reports what it gave with `Game::slot_outcome`
+(`SlotOutcome { award: Award { points, lives } }`).
+
+```
+slot_machine $49e2: Accessing-disk overlay, FRUT/FRUC/FRUM into the display buffers, the level's
+  sound kept over its map, the slot's effects and music; the score shown; slot_init, digits,
+  pointer; fade in; attract loop $4d24 (reels 0 9 $18, the lamps' pattern) until fire or mouse
+  rounds $4d4a, while coins are left:
+    unless a free spin: hold menu $5de2 (holds allowed when nothing was won or paid last round
+      and rng(8) = 6), spin $5a06 (a coin; $18 $18 $18 spun on unless a reel is held or
+      rng(100) < 10)
+    payout $4eae: the line scored, its lamp flashed 10 times (4 frames off, 4 on)
+    award $51c4 (below), the win counted into the score (1 000 a frame, at once from 160 000)
+    free spin $4e28: after a win with coins left, rng(100) < 6 pays the same line again
+  then 100 frames or fire, fade out, the score taken, the music faded, the level's sound back
+```
+
+- **Lines** (reels' positions, `slot_payout`; the last match wins): 8 $18 0 the hi-lo game,
+  $18 $18 $18 the jackpot (rung 0), 8 8 8 rung 4, 0 0 0 rung 5, 8 8 $18 rung 7, 0 0 $18 rung 8.
+- **The ladder** (`slot_ladder` h0+$57b6, best first): 0 the jackpot, 1 the score shown doubled
+  (the win is the score shown), 2 a life, 3–8 75 000, 50 000, 40 000, 30 000, 20 000, 10 000, 9
+  the bust. The award lights the rung (its lamp record's `+6`), then scans the ladder for it: the
+  bust's goes to the bust (`$5712`: 20 flashes of its lamp, nothing won), the jackpot's to every
+  lamp flashed 20 times and the jackpot; any other flashes the rung above and the one three below
+  with the buttons, and the menu offers the gamble (the rightmost stop).
+- **The gamble**: not taken (the spin button), the rung is collected (`slot_collect` $5528, effect
+  $b). Taken, `rng(100) < 50` awards the rung above again; else the rung three below: the bust if
+  the flashing list (ten records, read past its -1) holds the bust lamp, else 10 flashes of that
+  rung and it is collected.
+- **The hi-lo game** ($57e2) starts at rung 8: each turn flashes take (spin), higher, lower and
+  the rung; higher or lower turns the number (1–10) `rng(50)+50` frames, never stopping where it
+  began; right climbs a rung (rung 0 is the jackpot), wrong flashes the bust lamp 20 times and wins
+  nothing. Take (the spin button, which also costs a coin if one is left) collects the rung.
+- **The jackpot** ($5628): each coin left is won as 5 000 and counted, then 150 000; the next
+  level's code (`password_for_level` $2464: `password_table`'s next entry) is printed under the
+  machine and its lamp flashes until fire.
+- **Drawing on the beam** (oracle): the lamps and reels are blitted from the raster wait on line
+  299 into the next frame (`slot::draw`). A lamp drawn there before the frame's interrupt starts
+  later when it is off (a second `move.w`); whether the sixth lamp starts before the interrupt
+  turns on a few colour clocks, and the engine's cycle model does not always land on the original's
+  side of it (T74, FINDINGS). A paying line's two `sfx_play`s run from line 299 past the frame's
+  end, so its flash starts in the next frame.
+- **Cases** (`engine/conform/cases/slot-*`, reached by forcing W1-1's exit; `start-w1-1-late` and
+  `-blink1` move the RNG, which W1-1 never moves): `slot-attract`, `slot-fire` (rounds paying
+  nothing), `slot-hilo-0`..`8` (taken at each rung, 0 the jackpot), `slot-hilo-wrong`,
+  `slot-hold-20000`, `slot-hold-jackpot`, `slot-gamble` (won, then lost to the bust). Their scripts
+  are planned on the engine by `examples/slot_plan.rs`. Not reached at these seeds: the free spin
+  and a gamble lost above the bust.
+
 ## The keyboard (oracle)
 
 `kbd_poll` (every second frame) reads CIA-A's serial register: the last byte the keyboard sent,

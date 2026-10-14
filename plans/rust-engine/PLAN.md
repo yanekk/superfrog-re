@@ -167,6 +167,8 @@ headless.
 | [T126](tasks/T126-w5-completions.md) | w5-completions | T39, T101, T121, T123, T124, T125; blocks T18 |
 | [T127](tasks/T127-restore-sprite-wait.md) | restore-sprite-wait | T101; blocks T21 |
 | [T128](tasks/T128-w3-4-sprite-race.md) | w3-4-sprite-race | T127; blocks T113 |
+| [T129](tasks/T129-slot-lamp-cut.md) | slot-lamp-cut | T74; blocks T21 |
+| [T130](tasks/T130-front-vbl-318.md) | front-vbl-318 | T100; blocks T21 |
 | [T131](tasks/T131-w4-completion-faults.md) | w4-completion-faults | T103, T121, T127; blocks T18, T21 |
 | [T132](tasks/T132-w4-4-completion.md) | w4-4-completion | T103; blocks T18, T131 |
 | [T133](tasks/T133-w4-4-dart-21.md) | w4-4-dart-21 | T132; blocks T18, T131 |

@@ -74,7 +74,7 @@ done · ⛔ blocked, needs a human.
 | T71 | slot-sync | T15 | ✅ | |
 | T72 | slot-screen | T71 | ✅ | |
 | T73 | slot-rounds | T72 | ✅ | |
-| T74 | slot-prizes | T73; blocks T21 | ⬜ | |
+| T74 | slot-prizes | T73; blocks T21 | ✅ | |
 | T75 | bonus-shots | T70; blocks T21 | ✅ | |
 | T76 | bonus-enemies-a | T70; blocks T21 | ✅ | |
 | T77 | bonus-enemies-b | T70, T76; blocks T21 | ✅ | |
@@ -104,7 +104,7 @@ done · ⛔ blocked, needs a human.
 | T94 | slot-interrupt-timing | T72, T91, T93; blocks T73 | ✅ | |
 | T95 | slot-load-finish | T92; blocks T93 | ✅ | |
 | T96 | story-audio-dma-slots | T53; blocks T56 | ✅ | |
-| T100 | front-vbl-timing | T37; blocks T21 | ⬜ | |
+| T100 | front-vbl-timing | T37; blocks T21 | ✅ | |
 | T97 | story-split-handler | T54; blocks T56 | ✅ | |
 | T101 | lag-long-pass | T81, T82; blocks T21 | ✅ | |
 | T102 | items-w3-faults | T101; blocks T21 | ✅ | |
@@ -130,6 +130,8 @@ done · ⛔ blocked, needs a human.
 | T126 | w5-completions | T39, T101, T121, T123, T124, T125; blocks T18 | ⬜ | |
 | T127 | restore-sprite-wait | T101; blocks T21 | ⬜ | |
 | T128 | w3-4-sprite-race | T127; blocks T113 | ⬜ | |
+| T130 | front-vbl-318 | T100; blocks T21 | ⬜ | |
+| T129 | slot-lamp-cut | T74; blocks T21 | ⬜ | |
 | T131 | w4-completion-faults | T103, T121, T127; blocks T18, T21 | ⬜ | |
 | T132 | w4-4-completion | T103; blocks T18, T131 | ⬜ | |
 | T133 | w4-4-dart-21 | T132; blocks T18, T131 | ⬜ | |

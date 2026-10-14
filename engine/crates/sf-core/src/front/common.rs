@@ -57,7 +57,7 @@ impl FadeSetup {
             let cycles = match self.kind {
                 // Three compares and a byte store for each channel, then the copy.
                 FadeKind::Step { .. } => 300 + n * 265,
-                FadeKind::In { .. } => 1200 + n * 3 * 220,
+                FadeKind::In { target } => fade::fade_in_cycles(cx.s, target, self.colours),
                 FadeKind::Out => 1200 + n * 3 * 280,
             };
             if let Some(y) = cx.masked_job(cycles, self.inside, vec![(rec.at, 0x1f2), (TOGGLE, 2)])

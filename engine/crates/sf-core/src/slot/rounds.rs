@@ -1,7 +1,7 @@
 //! The slot machine's rounds (T73): from the attract loop's fire to `slot_machine`'s return. Each
 //! round (h0+$4d4a) is the hold menu ([`HoldMenu`]) and the spin ([`Spin`]) unless a free spin
-//! skips them, the payout check ([`payout`], its line's lamp flashed), the award (a line's prize
-//! collected; the ladder's gamble, the hi-lo game and the jackpot are T74's), the win counted into
+//! skips them, the payout check ([`payout`], its line's lamp flashed), the award ([`Award`]: the
+//! prize ladder and its gamble, the hi-lo game, the jackpot; T74), the win counted into
 //! the score ([`Count`]) and the free spin's chance; rounds go on while coins are left. Then 100
 //! frames or fire, the picture faded out, the score taken, the music faded, and the level's sound
 //! put back.
@@ -58,7 +58,7 @@ const BLANK_COPPER: u32 = crate::front::h2(0x6fd8);
 /// 68000 cycles, measured on the oracle (T73): from a `bsr slot_draw_lamps` to its INTENA
 /// `$0010` (the blitter wait, the move); the menu's frame before it (the count, the lists); the
 /// spin's work before its reels (the counters and stops); `slot_digits` on the spin's frame.
-const LAMPS_CALL: u32 = 60;
+const LAMPS_CALL: u32 = 110;
 const MENU_FRAME: u32 = 240;
 const MENU_ENTRY: u32 = 400;
 const SPIN_LEAD: u32 = 150;
@@ -67,6 +67,10 @@ const REELS_CALL: u32 = 150;
 /// (1 000 fewer than [`DIGITS_CYCLES`]; the byte copies lose less to the display than
 /// [`super::draw`]'s CPU rate says).
 const DIGITS_ON_BEAM: u32 = DIGITS_CYCLES - 1_000;
+/// From the spin's last raster wait (line 299) through a paying line's two `sfx_play`s: past the
+/// frame's end, so its flash's lamps change in the next frame (T74, `slot-hold-20000`: the
+/// second's DMACON `$8004` on line 311, the original still in it as the frame ends).
+const PAYOUT_CYCLES: u32 = 6_000;
 /// The bank's copy back over the level's (h0+$15fb0: $3e80 longs at about 39 cycles).
 const SOUND_COPY_CYCLES: u32 = 0x3e80 * 39;
 
@@ -221,6 +225,7 @@ impl Rounds {
                     }
                     self.pc = 4;
                     if self.prize != 0xffff {
+                        cx.busy(PAYOUT_CYCLES);
                         return call(FrontRoutine::SlotFlash(Flash::payout()));
                     }
                 }
@@ -677,58 +682,101 @@ impl Spin {
     }
 }
 
-/// A lamp flashed: the payout's line (h0+$504e: 10 times its lamp, if any, 4 frames, then every
-/// lamp 4 frames) and the free spin's (h0+$4e5e: 20 times nothing 3 frames, its lamp 3 frames).
+/// What a flash lights on its second half each pass.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash)]
+enum Lights {
+    /// The payout's line (h0+$504e): its lamp, if any, then every lamp; 4 frames each, 10 times.
+    #[default]
+    Payout,
+    /// The free spin's chance (h0+$4e5e): nothing, then its lamp; 3 frames each, 20 times.
+    FreeSpin,
+    /// The bust (h0+$5738): nothing, then the bust lamp; 2 frames each, 20 times.
+    Bust,
+    /// A wrong hi-lo guess (h0+$5938): nothing, then the win cleared and the bust lamp; 3 frames
+    /// each, 20 times.
+    HiloWrong,
+    /// The ladder's top (h0+$5778): nothing, then every lamp; 2 frames each, 20 times.
+    All,
+    /// A gamble lost (h0+$54d4): nothing, then the rung it fell to; 2 frames each, 10 times.
+    Rung(u32),
+    /// The jackpot (h0+$569e): nothing, then its lamp; 3 frames each, until fire or the mouse's
+    /// button.
+    Jackpot,
+}
+
+/// A flash: each pass the lamps off and drawn after some frames, then what [`Lights`] lights,
+/// drawn after as many.
 #[derive(Debug, Clone, Default, PartialEq, Eq, Hash)]
 pub(crate) struct Flash {
     pc: u8,
     left: u16,
-    free_spin: bool,
+    lights: Lights,
 }
 
 impl Flash {
-    fn payout() -> Flash {
+    fn new(lights: Lights) -> Flash {
+        let left = match lights {
+            Lights::Payout | Lights::Rung(_) => 10,
+            Lights::Jackpot => 0,
+            _ => 20,
+        };
         Flash {
             pc: 0,
-            left: 10,
-            free_spin: false,
+            left,
+            lights,
         }
+    }
+
+    fn payout() -> Flash {
+        Flash::new(Lights::Payout)
     }
 
     fn free_spin() -> Flash {
-        Flash {
-            pc: 0,
-            left: 20,
-            free_spin: true,
-        }
+        Flash::new(Lights::FreeSpin)
     }
 
     pub(crate) fn run(&mut self, cx: &mut Cx) -> Yield {
-        let n = if self.free_spin { 3 } else { 4 };
+        let n = match self.lights {
+            Lights::Payout => 4,
+            Lights::FreeSpin | Lights::HiloWrong | Lights::Jackpot => 3,
+            Lights::Bust | Lights::All | Lights::Rung(_) => 2,
+        };
         self.pc += 1;
         match self.pc {
             1 => {
                 lamps_off(cx.s);
                 let lamp = cx.s.l(STATE_49D2);
-                if !self.free_spin && lamp != 0 {
+                if self.lights == Lights::Payout && lamp != 0 {
                     cx.s.set_w(lamp, 1);
                 }
                 frames(n)
             }
             2 => draw_lamps(0),
             3 => {
-                if self.free_spin {
-                    cx.s.set_w(FREE_SPIN_LAMP, 1);
-                } else {
-                    lamps_on(cx.s);
+                match self.lights {
+                    Lights::Payout | Lights::All => lamps_on(cx.s),
+                    Lights::FreeSpin => cx.s.set_w(FREE_SPIN_LAMP, 1),
+                    Lights::Bust => cx.s.set_w(BUST_LAMP, 1),
+                    Lights::HiloWrong => {
+                        cx.s.set_l(WIN, 0);
+                        cx.s.set_w(BUST_LAMP, 1);
+                    }
+                    Lights::Rung(lamp) => cx.s.set_w(lamp, 1),
+                    Lights::Jackpot => cx.s.set_w(JACKPOT_LAMP, 1),
                 }
                 frames(n)
             }
             4 => draw_lamps(0),
             _ => {
-                self.left -= 1;
-                if self.left == 0 {
-                    return Yield::Return;
+                if self.lights == Lights::Jackpot {
+                    if cx.fire() || cx.mouse_button() {
+                        return Yield::Return;
+                    }
+                } else {
+                    self.left -= 1;
+                    if self.left == 0 {
+                        return Yield::Return;
+                    }
                 }
                 self.pc = 0;
                 self.run(cx)
@@ -737,112 +785,314 @@ impl Flash {
     }
 }
 
-/// `slot_award` (h0+$51c4) for a line's prize: its rung lit, then the menu offering the gamble,
-/// collected when it is not taken. The gamble, the hi-lo game ($a), the jackpot (0) and the
-/// ladder's ends are T74's.
+/// The prize ladder (h0+$57b6): ten lamp records, the best first (the jackpot's), the bust's
+/// last, then 0.
+const LADDER: u32 = at(0x57b6);
+/// The bust lamp (the ladder's last), the jackpot's code lamp, the rung a lost gamble fell to
+/// (h0+$5526), the hi-lo number as the guess was made (h0+$5988) and as its turn began
+/// (h0+$5a04).
+const BUST_LAMP: u32 = at(0x688a);
+const JACKPOT_LAMP: u32 = at(0x6902);
+const GAMBLE_RUNG: u32 = at(0x5526);
+const HILO_GUESSED: u32 = at(0x5988);
+const HILO_TURN: u32 = at(0x5a04);
+/// The hi-lo game's flashing lamps before its rung's: the spin's button (take), higher, lower and
+/// two more.
+const HILO_LAMPS: [u32; 5] = [at(0x68d2), at(0x68ba), at(0x68ca), at(0x68da), at(0x68e2)];
+/// `password_shown` (h0+$24cc) and `password_table` (h0+$24dc: entries of six digits and a
+/// handler, `$28` bytes a world).
+const PASSWORD_SHOWN: u32 = at(0x24cc);
+const PASSWORD_TABLE: u32 = at(0x24dc);
+/// 68000 cycles of a hi-lo turn before its menu's first draw (the sound, the lists).
+const HILO_TURN_CYCLES: u32 = 300;
+
+/// What the ladder's scan (h0+$53ce) leads to.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Ladder {
+    /// A rung lit with the rungs either side flashing: the menu offering the gamble.
+    Offer,
+    /// The bust lamp lit (h0+$5712).
+    Bust,
+    /// The jackpot's rung lit: every lamp flashed, then the jackpot (h0+$5772).
+    Jackpot,
+}
+
+/// The ladder's lamp records (h0+$57b6), up to its 0.
+fn ladder(cx: &Cx) -> Vec<u32> {
+    (0..)
+        .map(|k| cx.l(LADDER + 4 * k))
+        .take_while(|&a| a != 0)
+        .collect()
+}
+
+/// `slot_award` (h0+$51c4): the prize `d7` names. The hi-lo game ($a) first, the jackpot's rung
+/// (0) or a line's (1..=8) lit, then the menu offering the gamble: not taken, the rung is
+/// collected; taken, half the time the rung above is awarded again, else the rung three below
+/// is flashed and collected, or the bust when that is past the ladder.
 #[derive(Debug, Clone, Default, PartialEq, Eq, Hash)]
 pub(crate) struct Award {
     pc: u8,
+    /// The rung (`d7`).
     rung: u16,
+    /// The hi-lo game's rung (`d5`).
+    hilo: u16,
 }
-
-/// The prize ladder (h0+$57b6): ten lamp records, the best first, then 0.
-const LADDER: u32 = at(0x57b6);
 
 impl Award {
     fn new(rung: u16) -> Award {
-        Award { pc: 0, rung }
+        Award {
+            pc: 0,
+            rung,
+            hilo: 0,
+        }
     }
 
     pub(crate) fn run(&mut self, cx: &mut Cx) -> Yield {
-        if self.pc == 1 {
-            if cx.s.w(GAMBLE) != 0 {
-                cx.unported("the slot machine's gamble (T74)");
-                return Yield::Poll;
+        loop {
+            match self.pc {
+                // h0+$51c4.
+                0 => {
+                    cx.s.set_l(WIN, 0);
+                    if self.rung == 0xffff {
+                        return Yield::Return;
+                    }
+                    award_clear(cx.s, &ladder(cx));
+                    self.pc = if self.rung == 0xa { 10 } else { 1 };
+                }
+                // h0+$520a.
+                1 => {
+                    let ladder = ladder(cx);
+                    let mut played = Vec::new();
+                    let next = ladder_rung(cx.s, &ladder, self.rung, &mut |_, id, ch| {
+                        played.push((id, ch))
+                    });
+                    for (id, ch) in played {
+                        sfx(cx, id, ch);
+                    }
+                    match next {
+                        Ladder::Offer => {
+                            self.pc = 2;
+                            return call(FrontRoutine::SlotMenu(Menu::new(LAMPS_OFF_CYCLES)));
+                        }
+                        Ladder::Bust => self.pc = 30,
+                        Ladder::Jackpot => {
+                            self.pc = 5;
+                            return call(FrontRoutine::SlotFlash(Flash::new(Lights::All)));
+                        }
+                    }
+                }
+                // h0+$5466: the gamble.
+                2 => {
+                    if cx.s.w(GAMBLE) == 0 {
+                        self.pc = 4;
+                        continue;
+                    }
+                    if (rng(cx.s, 0x64).wrapping_sub(0x32) as i16) < 0 {
+                        self.rung = self.rung.wrapping_sub(1);
+                        self.pc = 0;
+                        continue;
+                    }
+                    sfx(cx, 9, 3);
+                    self.rung = self.rung.wrapping_add(3);
+                    // Ten of the flashing list's records, past its -1 if shorter.
+                    if (0..10).any(|k| cx.s.l(FLASHING + 4 * k) == BUST_LAMP) {
+                        self.pc = 30;
+                        continue;
+                    }
+                    cx.s.set_w(GAMBLE_RUNG, self.rung);
+                    let lamp = cx.l(LADDER + 4 * (self.rung as i16 as i32 as u32));
+                    self.pc = 4;
+                    return call(FrontRoutine::SlotFlash(Flash::new(Lights::Rung(lamp))));
+                }
+                // `slot_collect`.
+                4 => {
+                    let mut played = Vec::new();
+                    let jackpot = collect(cx.s, self.rung, &mut |_, id, ch| played.push((id, ch)));
+                    for (id, ch) in played {
+                        sfx(cx, id, ch);
+                    }
+                    if !jackpot {
+                        return Yield::Return;
+                    }
+                    self.pc = 5;
+                }
+                5 => {
+                    self.pc = 6;
+                    return call(FrontRoutine::SlotJackpot(Jackpot::default()));
+                }
+                // `slot_hilo_game` (h0+$57e2).
+                10 => {
+                    cx.s.set_w(MENU, 1);
+                    cx.s.set_w(HOLDS_ALLOWED, 0);
+                    lamps_off(cx.s);
+                    self.pc = 11;
+                    return draw_lamps(LAMPS_OFF_CYCLES);
+                }
+                11 => {
+                    self.hilo = 8;
+                    self.pc = 12;
+                    return digits(cx, at(0x57fc));
+                }
+                // h0+$5802: a turn.
+                12 => {
+                    sfx(cx, 8u16.wrapping_sub(self.hilo) as u8, 3);
+                    let lamp = cx.l(LADDER + 4 * self.hilo as u32);
+                    let mut a0 = FLASHING;
+                    for l in HILO_LAMPS.into_iter().chain([lamp, LIST_END]) {
+                        cx.s.set_l(a0, l);
+                        a0 += 4;
+                    }
+                    cx.s.set_l(LIT, LIST_END);
+                    cx.s.set_w(SPIN_PICKED, 0);
+                    self.pc = 13;
+                    return call(FrontRoutine::SlotMenu(Menu::new(HILO_TURN_CYCLES)));
+                }
+                13 => {
+                    if cx.s.w(SPIN_PICKED) != 0 {
+                        self.pc = 17;
+                        continue;
+                    }
+                    lamps_off(cx.s);
+                    self.pc = 14;
+                    return draw_lamps(LAMPS_OFF_CYCLES);
+                }
+                14 => {
+                    self.pc = 15;
+                    return frames(10);
+                }
+                15 => {
+                    let n = cx.s.w(HILO);
+                    cx.s.set_w(HILO_GUESSED, n);
+                    self.pc = 16;
+                    return call(FrontRoutine::SlotHiloSpin(HiloSpin::default()));
+                }
+                // h0+$58a0: higher (1) is right when the number did not fall, lower (2) when it
+                // did not rise.
+                16 => {
+                    let (was, now) = (cx.s.w(HILO_GUESSED), cx.s.w(HILO));
+                    let right = if cx.s.w(HILO_PICK) == 2 {
+                        was.wrapping_sub(now) as i16 >= 0
+                    } else {
+                        now.wrapping_sub(was) as i16 >= 0
+                    };
+                    if right {
+                        self.hilo = self.hilo.wrapping_sub(1);
+                        if self.hilo as i16 >= 1 {
+                            self.pc = 12;
+                            continue;
+                        }
+                        self.hilo = 0;
+                        self.pc = 17;
+                        continue;
+                    }
+                    self.rung = 0xffff;
+                    self.hilo = 0xffff;
+                    cx.s.set_w(MENU, 0);
+                    cx.s.set_w(HOLDS_ALLOWED, 0);
+                    sfx(cx, 9, 3);
+                    // Back with `d7` -1: collected, nothing.
+                    self.pc = 4;
+                    return call(FrontRoutine::SlotFlash(Flash::new(Lights::HiloWrong)));
+                }
+                // h0+$58d0: taken at its rung; the jackpot's (0) lit, any other collected.
+                17 => {
+                    cx.s.set_w(MENU, 0);
+                    cx.s.set_w(HOLDS_ALLOWED, 0);
+                    self.rung = self.hilo;
+                    sfx(cx, 0xa, 3);
+                    self.pc = if self.rung == 0 { 1 } else { 4 };
+                }
+                // h0+$5712: the bust.
+                30 => {
+                    sfx(cx, 9, 3);
+                    cx.s.set_l(WIN, 0);
+                    self.pc = 6;
+                    return call(FrontRoutine::SlotFlash(Flash::new(Lights::Bust)));
+                }
+                _ => return Yield::Return,
             }
-            let mut played = Vec::new();
-            collect(cx.s, self.rung, &mut |_, id, ch| played.push((id, ch)));
-            for (id, ch) in played {
-                sfx(cx, id, ch);
-            }
-            return Yield::Return;
         }
-        self.pc = 1;
-        let ladder: Vec<u32> = (0..)
-            .map(|k| cx.l(LADDER + 4 * k))
-            .take_while(|&a| a != 0)
-            .collect();
-        let mut played = Vec::new();
-        let r = award_rung(cx.s, &ladder, self.rung, &mut |_, id, ch| {
-            played.push((id, ch))
-        });
-        for (id, ch) in played {
-            sfx(cx, id, ch);
-        }
-        if let Err(what) = r {
-            cx.unported(what);
-            return Yield::Poll;
-        }
-        call(FrontRoutine::SlotMenu(Menu::new(LAMPS_OFF_CYCLES)))
     }
 }
 
-/// `slot_award` (h0+$51c4) for a line's prize up to its menu (h0+$5460): the lamps and the
-/// ladder's (`ladder`, h0+$57b6's records) out, rung `d7` lit, its win and sound, then the rungs
-/// either side and the buttons flashing, the holds cleared and the gamble offered. `Err` names
-/// what is T74's: the hi-lo game ($a), the jackpot (0), the ladder's ends.
-pub fn award_rung(
-    s: &mut State,
-    ladder: &[u32],
-    d7: u16,
-    sfx: &mut dyn FnMut(&mut State, u8, u8),
-) -> Result<(), &'static str> {
+/// h0+$51c4..$51f0 past `d7`'s -1: the win cleared, the lamps and the ladder's (`ladder`,
+/// h0+$57b6's records) out.
+fn award_clear(s: &mut State, ladder: &[u32]) {
     s.set_l(WIN, 0);
     lamps_off(s);
     for &lamp in ladder {
         s.set_w(lamp + 6, 0);
         s.set_w(lamp, 0);
     }
-    if matches!(d7, 0 | 0xa) || d7 > 8 {
-        return Err("the slot machine's hi-lo game and jackpot (T74)");
+    s.set_l(WIN, 0);
+}
+
+/// `slot_award` (h0+$51c4) for a prize other than the hi-lo game ($a), up to its menu
+/// (h0+$5460): [`award_clear`] then [`ladder_rung`].
+pub fn award_rung(
+    s: &mut State,
+    ladder: &[u32],
+    d7: u16,
+    sfx: &mut dyn FnMut(&mut State, u8, u8),
+) -> Ladder {
+    award_clear(s, ladder);
+    ladder_rung(s, ladder, d7, sfx)
+}
+
+/// h0+$520a..$5460: rung `d7` lit, its win and sound (the jackpot's, 0, wins nothing yet), then
+/// the ladder scanned for its lit rung: at the bust or the jackpot that is what follows; else the
+/// rung above and three below flash with the buttons, the holds are cleared and the gamble
+/// offered.
+pub fn ladder_rung(
+    s: &mut State,
+    ladder: &[u32],
+    d7: u16,
+    sfx: &mut dyn FnMut(&mut State, u8, u8),
+) -> Ladder {
+    if d7 == 0 {
+        s.set_l(WIN, 0);
+        s.set_w(at(0x6848), 1);
+        sfx(s, 8, 3);
     }
-    let (win, lamp, effect) = rung(s, d7);
-    s.set_l(WIN, win);
-    s.set_w(at(lamp), 1);
-    sfx(s, effect, 3);
-    // h0+$53ce: the rung lit (its `+6`), the rungs either side flashing with the buttons.
-    let Some(k) = ladder.iter().position(|&l| s.w(l + 6) != 0) else {
-        return Err("the slot machine's ladder with no rung lit (T74)");
-    };
-    if k == 0 || k == 9 {
-        return Err("the slot machine's ladder's ends (T74)");
+    if let Some((win, lamp, effect)) = rung(s, d7) {
+        s.set_l(WIN, win);
+        s.set_w(at(lamp), 1);
+        sfx(s, effect, 3);
     }
-    let (mut a2, a3) = (FLASHING, LIT);
-    s.set_l(a2, ladder[k - 1]);
-    a2 += 4;
-    s.set_l(a2, ladder[(k + 3).min(9)]);
-    a2 += 4;
-    s.set_l(a3, ladder[k]);
+    let (mut a2, mut a3) = (FLASHING, LIT);
+    if let Some(k) = ladder.iter().position(|&l| s.w(l + 6) != 0) {
+        if k == 9 {
+            return Ladder::Bust;
+        }
+        if k == 0 {
+            return Ladder::Jackpot;
+        }
+        s.set_l(a2, ladder[k - 1]);
+        a2 += 4;
+        s.set_l(a2, ladder[(k + 3).min(9)]);
+        a2 += 4;
+        s.set_l(a3, ladder[k]);
+        a3 += 4;
+    }
     for lamp in [0x6892, 0x68d2, 0x68da] {
         s.set_l(a2, at(lamp));
         a2 += 4;
     }
     s.set_l(a2, LIST_END);
-    s.set_l(a3 + 4, LIST_END);
+    s.set_l(a3, LIST_END);
     s.set_w(HOLDS_ALLOWED, 0);
     for k in 0..3 {
         s.set_w(HOLDS + 2 * k, 0);
     }
     s.set_w(OFFER, 1);
-    Ok(())
+    Ladder::Offer
 }
 
 /// Rung `d7`'s win (given the win so far), its lamp record's `+6` (h0+$6850 is $684a's) and its
-/// sound (h0+$520a..$53ce; rungs
-/// 1..=8).
-fn rung(s: &mut State, d7: u16) -> (u32, u32, u8) {
+/// sound (h0+$5238..$53ce; rungs 1..=8, else none).
+fn rung(s: &mut State, d7: u16) -> Option<(u32, u32, u8)> {
     let win = s.l(WIN);
-    match d7 {
+    Some(match d7 {
         1 => (s.l(SCORE_SHOWN), 0x6850, 7),
         2 => {
             let lives = s.w(LIVES).wrapping_add(1);
@@ -854,18 +1104,160 @@ fn rung(s: &mut State, d7: u16) -> (u32, u32, u8) {
         5 => (win.wrapping_add(40_000), 0x6870, 3),
         6 => (win.wrapping_add(30_000), 0x6878, 2),
         7 => (win.wrapping_add(20_000), 0x6880, 1),
-        _ => (win.wrapping_add(10_000), 0x6888, 0),
+        8 => (win.wrapping_add(10_000), 0x6888, 0),
+        _ => return None,
+    })
+}
+
+/// `slot_collect` (h0+$5528): its sound, and rung `d7`'s win (h0+$5560..$5626, no sound); true
+/// when it is the jackpot's (0), which follows.
+pub fn collect(s: &mut State, d7: u16, sfx: &mut dyn FnMut(&mut State, u8, u8)) -> bool {
+    sfx(s, 0xb, 3);
+    s.set_l(WIN, 0);
+    if d7 == 0 {
+        s.set_w(at(0x6848), 1);
+        return true;
+    }
+    if let Some((win, lamp, _)) = rung(s, d7) {
+        s.set_l(WIN, win);
+        s.set_w(at(lamp), 1);
+    }
+    false
+}
+
+/// `slot_hilo_spin` (h0+$598e): the hi-lo number turns 50 to 100 frames (1..=10, skipping where it
+/// began), drawn each frame.
+#[derive(Debug, Clone, Default, PartialEq, Eq, Hash)]
+pub(crate) struct HiloSpin {
+    pc: u8,
+    left: u16,
+}
+
+/// The hi-lo number one on: 1..=10.
+fn hilo_step(s: &mut State) {
+    let mut n = s.w(HILO).wrapping_add(1);
+    if (n.wrapping_sub(0xb) as i16) >= 0 {
+        n = 1;
+    }
+    s.set_w(HILO, n);
+}
+
+impl HiloSpin {
+    pub(crate) fn run(&mut self, cx: &mut Cx) -> Yield {
+        loop {
+            match self.pc {
+                0 => {
+                    let n = cx.s.w(HILO);
+                    cx.s.set_w(HILO_TURN, n);
+                    self.left = rng(cx.s, 0x32).wrapping_add(0x32);
+                    self.pc = 1;
+                }
+                1 => {
+                    self.pc = 2;
+                    return Yield::Raster;
+                }
+                2 => {
+                    hilo_step(cx.s);
+                    if cx.s.w(HILO) == cx.s.w(HILO_TURN) {
+                        hilo_step(cx.s);
+                    }
+                    self.pc = 3;
+                    return digits(cx, at(0x59f8));
+                }
+                3 => {
+                    self.left = self.left.wrapping_sub(1);
+                    if self.left == 0 {
+                        return Yield::Return;
+                    }
+                    self.pc = 1;
+                }
+                _ => return Yield::Return,
+            }
+        }
     }
 }
 
-/// `slot_collect` (h0+$5528) for rungs 1..=8: its sound, and the rung's win (h0+$5560..$5626, no
-/// sound).
-pub fn collect(s: &mut State, d7: u16, sfx: &mut dyn FnMut(&mut State, u8, u8)) {
-    sfx(s, 0xb, 3);
-    s.set_l(WIN, 0);
-    let (win, lamp, _) = rung(s, d7);
-    s.set_l(WIN, win);
-    s.set_w(at(lamp), 1);
+/// `slot_jackpot` (h0+$5628): each coin left won as 5 000 and counted, then 150 000 won, the next
+/// level's code printed under the machine and its lamp flashed until fire or the mouse's button.
+#[derive(Debug, Clone, Default, PartialEq, Eq, Hash)]
+pub(crate) struct Jackpot {
+    pc: u8,
+}
+
+impl Jackpot {
+    pub(crate) fn run(&mut self, cx: &mut Cx) -> Yield {
+        loop {
+            match self.pc {
+                0 => {
+                    self.pc = if (cx.s.w(COINS) as i16) < 1 { 4 } else { 1 };
+                }
+                1 => {
+                    cx.s.set_l(WIN, 5_000);
+                    self.pc = 2;
+                    return call(FrontRoutine::SlotCount(Count::on_beam()));
+                }
+                2 => {
+                    self.pc = 3;
+                    return digits(cx, at(0x564a));
+                }
+                3 => {
+                    let coins = cx.s.w(COINS).wrapping_sub(1);
+                    cx.s.set_w(COINS, coins);
+                    if coins != 0 {
+                        self.pc = 1;
+                        continue;
+                    }
+                    self.pc = 4;
+                    return digits(cx, at(0x5658));
+                }
+                4 => {
+                    cx.s.set_l(WIN, 150_000);
+                    sfx(cx, 0x10, 3);
+                    if !password_for_level(cx) {
+                        cx.unported("the slot machine's jackpot after a level 5 or in world 7");
+                        return Yield::Poll;
+                    }
+                    let to = super::BUFFER_0 + 0x7abe;
+                    let cycles = super::print_text(cx, PASSWORD_SHOWN, to);
+                    cx.jobs.push(crate::game::Job {
+                        inside: vec![at(0x5696)],
+                        writes: vec![(to, 8 * ROW)],
+                    });
+                    cx.busy(cycles);
+                    self.pc = 5;
+                    return call(FrontRoutine::SlotFlash(Flash::new(Lights::Jackpot)));
+                }
+                5 => {
+                    sfx(cx, 0x15, 3);
+                    self.pc = 6;
+                    return Yield::Return;
+                }
+                _ => return Yield::Return,
+            }
+        }
+    }
+}
+
+/// `password_for_level` (h0+$2464): the code of the level after `world`/`level` (`password_table`'s
+/// next entry) and `PAGE` at h0+$24cc. False for level 5 or world 7, where the original copies
+/// from whatever its caller's `a0` holds.
+fn password_for_level(cx: &mut Cx) -> bool {
+    let (world, level) = (cx.s.l(WORLD), cx.s.l(LEVEL));
+    if level == 5 || world == 7 {
+        return false;
+    }
+    let world = (world.wrapping_sub(1) as u16).wrapping_mul(0x28) as i16 as i32 as u32;
+    let level = (level.wrapping_sub(1) as u16).wrapping_mul(0xa) as i16 as i32 as u32;
+    let from = PASSWORD_TABLE
+        .wrapping_add(world)
+        .wrapping_add(level)
+        .wrapping_add(0xa);
+    for k in 0..6 {
+        let c = cx.b(from + k);
+        cx.s.set_b(PASSWORD_SHOWN + k, c);
+    }
+    cx.s.write(PASSWORD_SHOWN + 6, b"PAGE");
+    true
 }
 
 /// `slot_count_win` (h0+$50b6): the lamps off and drawn, the win counted into the score shown,
