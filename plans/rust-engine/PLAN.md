@@ -147,6 +147,7 @@ headless.
 | [T100](tasks/T100-front-vbl-timing.md) | front-vbl-timing | T37; blocks T21 |
 | [T101](tasks/T101-lag-long-pass.md) | lag-long-pass | T81, T82; blocks T21 |
 | [T102](tasks/T102-items-w3-faults.md) | items-w3-faults | T101; blocks T21 |
+| [T104](tasks/T104-w6-completions.md) | w6-completions | T40, T101, T102; blocks T18 |
 
 T22 is the rig task: it comes before every surface task and they depend on it. T29 is the phase's
 drill. At the end: the owner plays it.

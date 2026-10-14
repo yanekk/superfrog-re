@@ -18,6 +18,7 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-14 | 🔄 | Owner, T40: added T104 w6-completions (after T40, T101, T102; blocks T18): W6 exits need every coin (97–189 a map), seven maps. T40 keeps per-level enemy cases, no exclusions; a T101/T102 fault keeps one out of the test block. |
 | 2026-10-14 | 🐞 | T79 review, open (T34 meets T79 at merge): game over in the bonus level diverges at `bonus-death-wb-1` frame 2448, after a lag: `playfield_buffer_0`, then the copper's buffer pointers a flip apart. Likely T101's class; case cut to 2447, divergence pinned. |
 | 2026-10-14 | 🐞 | T79, fixed: `main_program` looked for the loop's end only after a fresh pass; a loop ending in a resumed (lag-cut) pass stalled, in any level. Now after both (`level/frame.rs` `after_pass`). |
 | 2026-10-14 | 📌 | T79: `bonus-end-wb-1` re-syncs at 4284 and 7814, both T101's phase-6 cut, pinned in `frog_cases::bonus_end_wb_1`. Once T101 lands: `resync = false`, drop the pin. Runs ~110 s (two runs: the second sees frame 8127). |
