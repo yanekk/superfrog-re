@@ -16,6 +16,7 @@
 
 mod music;
 mod sfx;
+pub use sfx::SfxRest;
 
 use std::collections::BTreeMap;
 
@@ -460,6 +461,24 @@ impl AudioDriver {
     pub fn play_sfx(&mut self, data: &SoundData, sfx: u8, channel: u8, out: &mut Vec<PaulaWrite>) {
         assert!(channel < 4, "Paula has four channels");
         self.sfx_play(data, sfx, channel, out);
+    }
+
+    /// [`AudioDriver::play_sfx`] to its raster wait: interrupts off and on again around it, a
+    /// vertical blank it held off coming before [`AudioDriver::play_sfx_rest`].
+    pub fn play_sfx_begin(
+        &mut self,
+        data: &SoundData,
+        sfx: u8,
+        channel: u8,
+        out: &mut Vec<PaulaWrite>,
+    ) -> Option<SfxRest> {
+        assert!(channel < 4, "Paula has four channels");
+        self.sfx_play_begin(data, sfx, channel, out)
+    }
+
+    /// The rest of [`AudioDriver::play_sfx`] after its raster wait.
+    pub fn play_sfx_rest(&mut self, data: &SoundData, rest: SfxRest, out: &mut Vec<PaulaWrite>) {
+        self.sfx_play_rest(data, rest, out);
     }
 
     /// What the vertical-blank interrupt does for sound outside a level, in its order:

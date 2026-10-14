@@ -19,13 +19,17 @@ const RING_ROWS: u32 = h0(0x174d6);
 const PLANE: u32 = 0x3b70;
 
 /// h0+$172b4: the buffer the bobs were just drawn into is shown from the next vertical blank.
+/// A frame may end before it (step 0, `level_frame_loop`'s call) or after each of its writes
+/// (steps 1–3, [`LevelCtx::step_done`]): the next vertical blank latches the buffer then shown.
 pub fn buffer_flip(c: &mut LevelCtx) {
-    let b = &mut c.bus;
-    b.set_w(PASS_FLAG, 0);
-    b.set_w(SHOWN_BUFFER, 1);
-    if b.w(BOB_BUFFER) != 0 {
-        b.set_w(SHOWN_BUFFER, 2);
+    c.bus.set_w(PASS_FLAG, 0);
+    c.step_done();
+    c.bus.set_w(SHOWN_BUFFER, 1);
+    c.step_done();
+    if c.bus.w(BOB_BUFFER) != 0 {
+        c.bus.set_w(SHOWN_BUFFER, 2);
     }
+    c.step_done();
 }
 
 /// The ring position of map cell `cell` in display buffer 0 (`(cell − map_rows) / $260` gives

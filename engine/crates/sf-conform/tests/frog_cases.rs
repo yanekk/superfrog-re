@@ -50,15 +50,23 @@ fn frog_run_w1_1() {
 }
 
 /// W1-1 with its items live, 700 frames: coins, the exit lock, the panel and score (T15), the
-/// picture as the beam drew it (T36). World 1's enemies are live too (T42): its only re-sync is
-/// T101's (a pass across four frames, `vbl_count` 3 at frame 321), pinned here so no other lag
-/// frame is excused.
+/// picture as the beam drew it (T36). World 1's enemies are live too (T42): a pass across four
+/// frames ends at frame 321 on the wait's last check, the next waiting for the next frame (T101).
 #[test]
 fn items_run_w1_1() {
-    pinned("items-run-w1-1", &[321]);
+    green("items-run-w1-1");
 }
 
-/// A case green but for re-syncs after a lag at exactly `frames` (T101's, until it lands).
+/// W1-1 with its items live, 860 frames: the fake wall, the bounce pad at 16,67 and the coins up
+/// the shaft (T83). The pad bounce lags every frame: passes across three frames, and an effect
+/// started in `sfx_play`'s raster wait as the frame ends, which holds its vertical blank off
+/// until interrupts are back on (T101).
+#[test]
+fn items_pad_w1_1() {
+    green("items-pad-w1-1");
+}
+
+/// A case green but for re-syncs after a lag at exactly `frames`.
 fn pinned(name: &str, frames: &[u32]) {
     let case = sf_conform::Case::load(&sf_conform::cases_dir().join(format!("{name}.toml")))
         .unwrap_or_else(|e| panic!("{e}"));
@@ -196,20 +204,16 @@ fn bonus_death_wb_1() {
 }
 
 /// The bonus level completed (T79): 16 deaths on the way, marker 55, the loop's end, the exit
-/// fade; the engine's outcome is the exit. Its only re-syncs are T101's (a frame the original
-/// ends inside phase 6, before `buffer_flip`), pinned here so no other lag frame is excused.
-/// Frame 8127, the first after the fade, is the end picture's, every variable equal: the last
+/// fade; the engine's outcome is the exit, with no re-sync (frames 4283 and 7813 end inside
+/// phase 6, before `buffer_flip`'s writes: T101). Frame 8127, the first after the fade, is the end picture's, every variable equal: the last
 /// fade frame's `shooter_off` (h0+$7494) is seen only there.
 #[test]
 fn bonus_end_wb_1() {
     let mut case =
         sf_conform::Case::load(&sf_conform::cases_dir().join("bonus-end-wb-1.toml")).unwrap();
     let mut last = None;
-    let o = sf_conform::run_with(&case, |_, g| last = g.level_outcome())
+    sf_conform::run_with(&case, |_, g| last = g.level_outcome())
         .unwrap_or_else(|d| panic!("bonus-end-wb-1: {d}"));
-    let resynced: Vec<u32> = o.resynced.iter().map(|r| r.0).collect();
-    assert_eq!(resynced, [4284, 7814], "{:?}", o.resynced);
-    assert!(o.resynced.iter().all(|r| r.1.starts_with("level_copper")), "{:?}", o.resynced);
     assert!(
         matches!(last, Some(sf_core::level::LevelOutcome::Completed { .. })),
         "{last:?}"
