@@ -5648,3 +5648,270 @@ offset = 0x2740c
 name = "crumbling_ledge_update"
 kind = "func"
 note = "W2 crumbling ledge: marker $3e under it until it shows broken (T43)"
+
+# --- world 5's enemies (T39; docs/09) ---
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x26806
+name = "w5_pacer_79_init"
+kind = "func"
+note = "W5 template 79 (marker 3): from the right end, $20 left (T39)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x26840
+name = "w5_pacer_80_init"
+kind = "func"
+note = "W5 template 80 (marker 2): from the left end (T39)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x26874
+name = "w5_pacer_a_update"
+kind = "func"
+note = "W5 templates 79/80: pace between markers 2 and 3 (T39)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x26aa6
+name = "w5_pacer_81_init"
+kind = "func"
+note = "W5 template 81 (marker 14): from the right end, $20 left (T39)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x26ae0
+name = "w5_pacer_82_init"
+kind = "func"
+note = "W5 template 82 (marker 13): from the left end (T39)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x26b14
+name = "w5_pacer_b_update"
+kind = "func"
+note = "W5 templates 81/82: pace between markers 13 and 14 (T39)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x26b8e
+name = "w5_shooter_83_init"
+kind = "func"
+note = "W5 template 83 (marker 21): from the right end, $20 left (T39)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x26bce
+name = "w5_shooter_84_init"
+kind = "func"
+note = "W5 template 84 (marker 20): from the left end, fires in $a (T39)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x26c08
+name = "w5_shooter_walk"
+kind = "func"
+note = "W5 templates 83/84: pace between markers 20 and 21; +$60 out: stop to fire (T39)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x26cb6
+name = "w5_shooter_fire"
+kind = "func"
+note = "W5 templates 83/84: stand 9 passes, then shoot template 85 (T39)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x26cfa
+name = "w5_shot_init"
+kind = "func"
+note = "W5 template 85, the shooter's shot (T39)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x26d14
+name = "w5_shot_update"
+kind = "func"
+note = "W5 shot: flies left, falls, freed in a solid cell (T39)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x24f06
+name = "w5_faller_init"
+kind = "func"
+note = "W5 template 28 (marker 10) init (T39)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x24f1c
+name = "w5_faller_wait"
+kind = "func"
+note = "W5 faller 28: hangs until the frog is within $40 across (T39)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x24f58
+name = "w5_faller_shake"
+kind = "func"
+note = "W5 faller 28: shakes 3 passes (T39)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x24f88
+name = "w5_faller_fall"
+kind = "func"
+note = "W5 faller 28: falls until the cell below is solid (T39)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x24ff8
+name = "w5_faller_down"
+kind = "func"
+note = "W5 faller 28: lies harmless (T39)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x2500e
+name = "w5_watcher_init"
+kind = "func"
+note = "W5 template 29 (marker 22) init (T39)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x2502a
+name = "w5_watcher_look"
+kind = "func"
+note = "W5 watcher: looks at the frog by direction_16; blinks when +$5c runs out (T39)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x250d0
+name = "w5_watcher_blink"
+kind = "func"
+note = "W5 watcher: blinks, next blink in 50-70 passes (T39)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x25106
+name = "w5_watcher_looks"
+kind = "table"
+size = 0x40
+note = "16 animations by direction (T39)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x25146
+name = "w5_faller_b_init"
+kind = "func"
+note = "W5 template 30 (marker 12) init (T39)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x2515c
+name = "w5_faller_b_wait"
+kind = "func"
+note = "W5 faller 30: hangs until in view below camera top + $20 or the frog is near (T39)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x251a8
+name = "w5_faller_b_shake"
+kind = "func"
+note = "W5 faller 30: shakes 3 passes (T39)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x251d8
+name = "w5_faller_b_fall"
+kind = "func"
+note = "W5 faller 30: falls until the cell below is solid (T39)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x25248
+name = "w5_faller_b_down"
+kind = "func"
+note = "W5 faller 30: lies harmless (T39)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x2525e
+name = "w5_drip_init"
+kind = "func"
+note = "W5 template 31 (marker 11) init (T39)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x25274
+name = "w5_drip_fall"
+kind = "func"
+note = "W5 drip: falls once its bob has shown 4 steps (T39)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x25306
+name = "w5_drip_splash"
+kind = "func"
+note = "W5 drip: splashes 8 passes, back to its spawn height (T39)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x2708c
+name = "w5_crusher_init"
+kind = "func"
+note = "W5 template 140 (marker 16) init (T39)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x270a8
+name = "w5_crusher_wait"
+kind = "func"
+note = "W5 crusher: waits $15 passes, harmless (T39)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x270d2
+name = "w5_crusher_strike"
+kind = "func"
+note = "W5 crusher: strikes $40 down in four passes (T39)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x27100
+name = "w5_crusher_back"
+kind = "func"
+note = "W5 crusher: back 2 a pass for $20 passes (T39)"

@@ -7,6 +7,7 @@ pub mod w1;
 pub mod w2;
 pub mod w3;
 pub mod w4;
+pub mod w5;
 
 use crate::level::{Dispatch, register_routines};
 
@@ -17,4 +18,5 @@ pub fn register_all(d: &mut Dispatch) {
     w2::register_all(d);
     w3::register_all(d);
     w4::register_all(d);
+    w5::register_all(d);
 }
