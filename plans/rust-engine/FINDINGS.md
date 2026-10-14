@@ -18,6 +18,7 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-14 | 🔄 | Owner, T42: added T106 w1-completions (T42, T86, T101; blocks T18): a W1 exit needs every coin (90 in W1-1); the leg planner stalled at 58 and met T86's launcher divergence (W1-1 frame 2256). |
 | 2026-10-14 | 🐞 | T79 review, open (T34 meets T79 at merge): game over in the bonus level diverges at `bonus-death-wb-1` frame 2448, after a lag: `playfield_buffer_0`, then the copper's buffer pointers a flip apart. Likely T101's class; case cut to 2447, divergence pinned. |
 | 2026-10-14 | 🐞 | T79, fixed: `main_program` looked for the loop's end only after a fresh pass; a loop ending in a resumed (lag-cut) pass stalled, in any level. Now after both (`level/frame.rs` `after_pass`). |
 | 2026-10-14 | 📌 | T79: `bonus-end-wb-1` re-syncs at 4284 and 7814, both T101's phase-6 cut, pinned in `frog_cases::bonus_end_wb_1`. Once T101 lands: `resync = false`, drop the pin. Runs ~110 s (two runs: the second sees frame 8127). |
