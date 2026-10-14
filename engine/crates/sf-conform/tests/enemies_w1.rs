@@ -62,3 +62,22 @@ fn w1_1() {
     }
     assert!(s.hurts >= 2, "hurt {} times", s.hurts);
 }
+
+/// World 1's types W1-4 has and W1-1 does not (`enemies::w1`): the dropper and its drop, the spout
+/// and its shots (one update for all three), the crawler.
+const DROPPER: u32 = 0x24dca;
+const DROP: u32 = 0x24b20;
+const SPOUT: u32 = 0x25358;
+const SHOT: u32 = 0x24aac;
+const CRAWLER: u32 = 0x247b8;
+
+/// W1-4: hurt by the sitter, a spiker and a spout's shot; a crawler stomped; the dropper drops.
+/// No re-syncs: none of its lags is followed by a divergence.
+#[test]
+fn w1_4() {
+    let s = run("enemies-w1-4", &[]);
+    for u in [SITTER, SPIKER, CRAWLER, STOMPED, SPOUT, SHOT, DROPPER, DROP] {
+        assert!(s.updates.contains(&u), "h0+${u:x} never ran: {:x?}", s.updates);
+    }
+    assert!(s.hurts >= 3, "hurt {} times", s.hurts);
+}

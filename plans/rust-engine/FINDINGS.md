@@ -18,6 +18,7 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-14 | 🐞 | T109, not fixed: W1-4's spring pad near 111,63 diverges at frame 1194 (frog's pose on the throw, no lag before it) after `enemies-w1-4`'s script plus U R at 1191; T86's launcher/pad class. Blocks reaching W1-4's walkers and watchers. |
 | 2026-10-14 | 📌 | T103 review: templates 141 and 142 (crushers) share an init routine, so `plan_exit --hurt t142` also counts a down crusher; `slots_log` now prints `141/142`. Not fixed in `plan_exit`. |
 | 2026-10-14 | 🔄 | T103 split at pir's context line: T132 w4-4-completion (W4-4's playthrough, pacer and dart-20 hurts; T103; blocks T18, T131), T145 w4-4-dart-21 (renumbered from T133, taken by T105; owner) (dart 21's hurt; T132; blocks T18, T131). W4-4 routes in `/tmp` discarded; their lessons are in T132/T133. |
 | 2026-10-14 | 🔄 | Owner, T103: added T131 w4-completion-faults (T103, T121, T127; blocks T18, T21): the `complete-w4-*` cases' faults outside W4's objects, each mapped to its owner first; the cases stay outside the test block. |
