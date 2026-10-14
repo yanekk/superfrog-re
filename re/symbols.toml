@@ -4509,6 +4509,75 @@ note = "the jackpot prize"
 [[sym]]
 exe = "d1_c03"
 hunk = 0
+offset = 0x5712
+name = "slot_bust"
+kind = "func"
+note = "the bust: effect 9, the win cleared, the bust lamp flashed 20 times (T74)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x5772
+name = "slot_ladder_top"
+kind = "func"
+note = "the jackpot's rung lit: every lamp flashed 20 times, then slot_jackpot (T74)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x5526
+name = "slot_gamble_rung"
+kind = "var"
+size = 2
+note = "the rung a lost gamble fell to, flashed 10 times then collected (T74)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x5988
+name = "slot_hilo_guessed"
+kind = "var"
+size = 2
+note = "the hi-lo number when higher or lower was picked (T74)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x598a
+name = "slot_hilo_pick"
+kind = "var"
+size = 2
+note = "the hi-lo menu's pick: 1 higher, 2 lower (T74)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x598c
+name = "slot_spin_picked"
+kind = "var"
+size = 2
+note = "the menu's spin button picked: in the hi-lo game, take (T74)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x5a04
+name = "slot_hilo_from"
+kind = "var"
+size = 2
+note = "the hi-lo number as its spin began; the spin never stops on it (T74)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x5ea4
+name = "slot_wait_frames"
+kind = "func"
+note = "d7 x wait_frame_raster (T74)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
 offset = 0x57e2
 name = "slot_hilo_game"
 kind = "func"
@@ -4625,7 +4694,7 @@ offset = 0x57b6
 name = "slot_ladder"
 kind = "table"
 size = 0x2c
-note = "prize ladder: ten slot_lamps record pointers, bottom rung first, 0-ended"
+note = "prize ladder: ten slot_lamps record pointers, the jackpot's rung (0) first, the bust's (9) last, 0-ended"
 
 [[sym]]
 exe = "d1_c03"

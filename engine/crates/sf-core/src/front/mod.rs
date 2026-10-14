@@ -154,6 +154,9 @@ pub(crate) enum Routine {
     SlotFlash(crate::slot::rounds::Flash),
     SlotAward(crate::slot::rounds::Award),
     SlotCount(crate::slot::rounds::Count),
+    /// The hi-lo game's number turning, and the jackpot (T74).
+    SlotHiloSpin(crate::slot::rounds::HiloSpin),
+    SlotJackpot(crate::slot::rounds::Jackpot),
     SlotWork(crate::slot::draw::Work),
 }
 
@@ -213,6 +216,8 @@ impl Routine {
             Routine::SlotFlash(r) => r.run(cx),
             Routine::SlotAward(r) => r.run(cx),
             Routine::SlotCount(r) => r.run(cx),
+            Routine::SlotHiloSpin(r) => r.run(cx),
+            Routine::SlotJackpot(r) => r.run(cx),
             Routine::SlotWork(r) => r.run(cx),
         }
     }
