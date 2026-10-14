@@ -13,7 +13,7 @@ the account is the commit message. Whoever writes a cell also fixes the over-bud
 
 **Status:** Plan written; nothing built.
 **Last updated:** 2026-10-10
-**Next `pir-work` will:** T00 oracle-spike, because every later test rests on the reference emulator; T01 and T02 can run beside it.
+**Next `pir-work` will:** T73 slot-rounds, now unblocked by T94.
 
 ## Tasks
 
@@ -101,7 +101,7 @@ done · ⛔ blocked, needs a human.
 | T91 | slot-beam-races | T72 | ✅ | |
 | T92 | slot-load | T72 | ✅ | |
 | T93 | slot-attract-draw | T72, T91, T92 | ✅ | |
-| T94 | slot-interrupt-timing | T72, T91, T93; blocks T73 | 🔍 | `slot::interrupt_lines(Handler)`, in cycles: 17.6 lines, +1 keyboard, +0.85 a DMACON, +2 an effect; `AudioDriver::sfx_active`. slot-attract 300 frames, 45 excused, write-line test; 1 unit test. Deviations: fetch-rows (+1.2) and quiet-tick (−0.8) terms, measured; `LAMP_GAP` 528→512; slot list keeps Paula lines; `SpriteDma` was T93's. |
+| T94 | slot-interrupt-timing | T72, T91, T93; blocks T73 | ✅ | Review clean, no fix commit. Probed: own scan of 260 acknowledges (256 on line), front-boot/-password/-skip-blink divergence scans identical to base, races 47→45 at 300 frames. Mutated keyboard, quiet-tick terms and LAMP_GAP 528: each red. Effects term unexercised; front-boot/-password/-skip and purity red before T94. |
 | T95 | slot-load-finish | T92; blocks T93 | ✅ | |
 | T96 | story-audio-dma-slots | T53; blocks T56 | ⬜ | |
 | T100 | front-vbl-timing | T37; blocks T21 | ⬜ | |
@@ -128,7 +128,7 @@ done · ⛔ blocked, needs a human.
 A Notes cell holds what was built or what the review found, the test count, and one line per
 deviation from the task doc. A ✅ task's cell may be cut to one line once the next task has been reviewed.
 
-**Review queue:** T94
+**Review queue:** *(empty)*
 
 ## Blocked on the user
 

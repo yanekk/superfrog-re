@@ -18,6 +18,7 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-14 | 📌 | T94 review: `slot::interrupt_lines`' effect term (+2 lines, T72) is unexercised by `slot-attract`; effects' own DMACON writes also add the DMACON term, possibly counting twice. Check against the oracle in T73. |
 | 2026-10-14 | 📌 | T94: the slot handler's acknowledge moves with the music: 1.2 lines later when it reads rows, 0.8 earlier on a tick stepping no channel. `slot::interrupt_lines` lands 256 of 260 on their line (frames 40–300). |
 | 2026-10-14 | 🐞 | Not T94's: `purity` red on the feature branch: `slot/draw.rs`'s tests use `HashMap` (T93). |
 | 2026-10-14 | 🔄 | Owner, T93: took T94's `SpriteDma` and the fade-in's handler length (oracle 775–791: ack ~line 50, all lamps late, not T72's 776–778). T94 keeps keyboard, notes, effects terms and 300 frames; slot handler base still ends line 20, original 17–18. |
