@@ -1,0 +1,79 @@
+# W1-3 with world 1's enemies live (T108): hurt by a hover under the start (~229), across the pit
+# and down the stair to the lower cave (past the spiker at 91,77), up the channel on the spring
+# at 105,75 (~760), over the block tops past the walker from 122,51, into the arena: the watcher
+# from 145,61 runs from ~976, a patroller (77/78) hurts the frog at ~1078. Legs 1, 2 and the spring
+# by hand and examples/complete.rs; the rest by examples/plan_exit.rs on the original.
+0: -
+150: U
+154: L
+158: U
+162: R
+166: -
+170: R
+178: L
+182: -
+186: L
+190: R
+194: -
+198: L
+202: U
+206: R
+210: L
+214: -
+218: L
+222: -
+358: R
+378: U R
+382: R
+500: L
+516: -
+520: L
+524: -
+536: R
+540: -
+548: L
+560: -
+572: R
+596: U R
+600: U
+628: R
+632: -
+640: R
+644: -
+648: L
+652: -
+660: L
+664: -
+668: R
+672: -
+700: U
+760: -
+800: R
+812: -
+820: R
+840: -
+844: R
+856: L
+860: R
+864: L
+876: -
+880: U
+884: U R
+888: U
+892: -
+896: R
+944: -
+952: R
+964: L
+968: -
+976: L
+980: U
+984: R
+988: -
+1000: R
+1004: U
+1008: L
+1012: -
+1048: R
+1076: -
+1200: -

@@ -10,11 +10,13 @@ use sf_core::frog::{FROG, f};
 use sf_core::layout::h0;
 use sf_core::level::objects::OBJ_SLOTS;
 
-/// What a case's run showed: every slot update the engine ran (by `h0` offset), and how many
-/// times the frog went from unhurt to hurt.
+/// What a case's run showed: every slot update the engine ran (by `h0` offset), how many
+/// times the frog went from unhurt to hurt, and at each of those the update of the live slot
+/// nearest the frog (what hurt it, or none on the level's drop-in).
 struct Seen {
     updates: BTreeSet<u32>,
     hurts: u32,
+    hurt_by: Vec<Option<u32>>,
 }
 
 /// Run `name`, green but for re-syncs at exactly `resyncs`, and say what the engine's run showed.
@@ -24,6 +26,7 @@ fn run(name: &str, resyncs: &[u32]) -> Seen {
     let mut seen = Seen {
         updates: BTreeSet::new(),
         hurts: 0,
+        hurt_by: Vec::new(),
     };
     let mut hurt = false;
     let o = sf_conform::run_with(&case, |_, g| {
@@ -37,6 +40,18 @@ fn run(name: &str, resyncs: &[u32]) -> Seen {
         let now = s.w(FROG + f::HURT) != 0;
         if now && !hurt {
             seen.hurts += 1;
+            // The frog's middle against a slot's top middle, in map pixels.
+            let w = |a| s.w(a) as i16 as i32;
+            let (fx, fy) = (w(FROG + f::X) + 0x17, w(FROG + f::Y) + 0x2a);
+            let near = (0..20)
+                .map(|k| OBJ_SLOTS + k * 0x7c)
+                .filter(|&slot| s.l(slot + 0x40) != 0)
+                .map(|slot| {
+                    let (x, y) = (w(slot + 8) + 8, w(slot + 0xa));
+                    ((x - fx).abs() + (y - fy).abs(), s.l(slot + 4).wrapping_sub(h0(0)))
+                })
+                .min();
+            seen.hurt_by.push(near.filter(|n| n.0 < 64).map(|n| n.1));
         }
         hurt = now;
     })
@@ -52,6 +67,11 @@ const RUNNER: u32 = 0x24854;
 const SPIKER: u32 = 0x248e2;
 const STOMPED: u32 = 0x23bee;
 const REWARD: u32 = 0x23e6c;
+const HOVER: u32 = 0x243b6;
+const WALKER: u32 = 0x2496a;
+const WATCHER: u32 = 0x26904;
+const PATROLLER: u32 = 0x26a2c;
+const KILLED_FALL: u32 = 0x23b34;
 
 /// W1-1: a sitter stomped into a reward; the runner and a spiker hurt the frog.
 #[test]
@@ -61,4 +81,17 @@ fn w1_1() {
         assert!(s.updates.contains(&u), "h0+${u:x} never ran: {:x?}", s.updates);
     }
     assert!(s.hurts >= 2, "hurt {} times", s.hurts);
+}
+
+/// W1-3: a hover hurts the frog under the start; the spring at 105,75 lifts it past the walker
+/// to the arena, where the watcher looks on and a patroller hurts it; a hover dies falling.
+#[test]
+fn w1_3() {
+    let s = run("enemies-w1-3", &[]);
+    for u in [HOVER, WALKER, SPIKER, WATCHER, PATROLLER, KILLED_FALL] {
+        assert!(s.updates.contains(&u), "h0+${u:x} never ran: {:x?}", s.updates);
+    }
+    for u in [HOVER, PATROLLER] {
+        assert!(s.hurt_by.contains(&Some(u)), "never hurt by h0+${u:x}: {:x?}", s.hurt_by);
+    }
 }
