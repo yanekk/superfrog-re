@@ -100,7 +100,7 @@ done · ⛔ blocked, needs a human.
 | T90 | story-draw-blits-oracle | T89; blocks T53 | ✅ | |
 | T91 | slot-beam-races | T72 | ✅ | |
 | T92 | slot-load | T72 | ✅ | |
-| T93 | slot-attract-draw | T72, T91, T92 | 🔍 | `slot::draw::Draw` (reels, lamps on the beam), `attract_row`; `slot-attract` 60 frames green incl. Paula, races excused at 9; 3 unit tests, 1 case test. Deviation (owner's yes): took T94's `SpriteDma` (opt-in, slot list) and fade-in handler length (level fade timing extended to slot list). Fire/mouse unported (T73). |
+| T93 | slot-attract-draw | T72, T91, T92 | ✅ | Review: one fix, the case test now caps excused races at the measured 9 (CUT_LINE 311, LAMP_GAP 700 were green at 13). Memory checked against the $6276/$6558/$645e listing; minterm, SpriteDma and fade mutations go red; LAMP_GAP 400 survives. front-boot/-password/-skip red as on base (level1_vector). |
 | T94 | slot-interrupt-timing | T72, T91, T93; blocks T73 | ⬜ | |
 | T95 | slot-load-finish | T92; blocks T93 | ✅ | |
 | T96 | story-audio-dma-slots | T53; blocks T56 | ⬜ | |
@@ -124,7 +124,7 @@ done · ⛔ blocked, needs a human.
 A Notes cell holds what was built or what the review found, the test count, and one line per
 deviation from the task doc. A ✅ task's cell may be cut to one line once the next task has been reviewed.
 
-**Review queue:** T93
+**Review queue:** *(empty)*
 
 ## Blocked on the user
 
