@@ -83,12 +83,13 @@ fn w1_1() {
     assert!(s.hurts >= 2, "hurt {} times", s.hurts);
 }
 
-/// W1-3: a hover hurts the frog under the start; the spring at 105,75 lifts it past the walker
-/// to the arena, where the watcher looks on and a patroller hurts it; a hover dies falling.
+/// W1-3: a hover hurts the frog under the start; the spring at 105,75 lifts it to the walker,
+/// stomped into a reward, and on to the arena, where the watcher looks on and a patroller hurts
+/// it; a hover dies falling.
 #[test]
 fn w1_3() {
     let s = run("enemies-w1-3", &[]);
-    for u in [HOVER, WALKER, SPIKER, WATCHER, PATROLLER, KILLED_FALL] {
+    for u in [HOVER, WALKER, SPIKER, WATCHER, PATROLLER, KILLED_FALL, STOMPED, REWARD] {
         assert!(s.updates.contains(&u), "h0+${u:x} never ran: {:x?}", s.updates);
     }
     for u in [HOVER, PATROLLER] {
