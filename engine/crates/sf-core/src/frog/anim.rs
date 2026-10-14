@@ -219,8 +219,9 @@ pub const EXIT_SPRITE_RIGHT: u32 = h0(0x1b048);
 /// `frog_anim_tick` (h0+$10222): the animation's step runs out, the next one (the list starts
 /// again at its end) gives the frame: its sprite offset, then, the beam clear of lines `$1d`..`$21`
 /// ([`LevelCtx::sprite_wait`]), its height and the data pointers the copper list's sprite moves
-/// get, the two halves of each attached pair one sprite apart. A write that waits misses this
-/// frame's sprite moves: the frame shows the frame before (a launcher's throw, T86).
+/// get, the two halves of each attached pair one sprite apart. Writes made after the copper's
+/// sprite moves (a launcher's throw reaches here on line `$1e` or `$1f`, T86) miss them: the
+/// frame shows the pose before.
 pub fn frog_anim_tick(c: &mut LevelCtx) {
     let b = &mut c.bus;
     let time = b.w(FROG + f::ANIM_TIME);

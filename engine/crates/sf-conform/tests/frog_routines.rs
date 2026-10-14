@@ -369,3 +369,50 @@ fn frog_reset_matches_the_original() {
         rig.check("frog_reset", case, 0x902e, &s, |c| frog::frog_reset(&mut c.bus));
     }
 }
+
+/// h0+$19c9c (T86): with VPOS's low byte on `$1d`..`$21` (compared signed) the CPU waits for line
+/// `$22` before it writes a frog sprite's copper words; past the frame's end the beam is on the
+/// next frame's lines. `frog_anim_tick` and `place_frog_sprites` both wait.
+#[test]
+fn the_frog_sprites_wait_out_lines_1d_to_21() {
+    use sf_core::level::beam::{Clock, FRAME_LINES};
+    use sf_core::level::{LevelCtx, standard_dispatch};
+    use sf_core::mem::Bus;
+    let rig = rig();
+    let display = sf_conform::display_data();
+    let mut st = rig.state().clone();
+    let mut paula = Vec::new();
+    let mut c = LevelCtx::new(
+        Bus::new(&mut st, display.rom()),
+        standard_dispatch(),
+        sf_core::level::Hw::default(),
+        sound(),
+        &mut paula,
+    );
+    let n = FRAME_LINES;
+    let on = |line| Clock { line, into: 0 };
+    for (from, to) in [
+        (0x1c, 0x1c),
+        (0x1d, 0x22),
+        (0x21, 0x22),
+        (0x22, 0x22),
+        (0x9d, 0x9d),
+        (0x11d, 0x122),
+        (n + 0x1c, n + 0x1c),
+        (n + 0x1e, n + 0x22),
+        (n + 0x22, n + 0x22),
+    ] {
+        c.clock = on(from);
+        c.sprite_wait();
+        assert_eq!(c.clock.line, to, "sprite_wait from line {from:#x}");
+    }
+    c.clock = on(0x1e);
+    frog::anim::place_frog_sprites(&mut c);
+    let line = c.clock.line;
+    assert!(line >= 0x22, "place_frog_sprites from line $1e: {line:#x}");
+    c.bus.set_w(FROG + f::ANIM_TIME, 0xffff);
+    c.clock = on(0x1e);
+    frog::anim::frog_anim_tick(&mut c);
+    let line = c.clock.line;
+    assert!(line >= 0x22, "frog_anim_tick from line $1e: {line:#x}");
+}
