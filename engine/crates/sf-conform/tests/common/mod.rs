@@ -40,6 +40,20 @@ pub fn bonus_level() -> &'static AmigaMemory {
     })
 }
 
+/// The original's memory at W2-1's first frame.
+pub fn w2_level() -> &'static AmigaMemory {
+    static M: OnceLock<AmigaMemory> = OnceLock::new();
+    M.get_or_init(|| {
+        let s = sync::reach(
+            &SyncPoint::AtLevel("W2-1".parse().unwrap()),
+            &sf_conform::InputScript::idle(),
+            1,
+        )
+        .unwrap_or_else(|e| panic!("{e}"));
+        s.memory
+    })
+}
+
 pub fn sound() -> &'static SoundData {
     static S: OnceLock<SoundData> = OnceLock::new();
     S.get_or_init(|| {
@@ -64,6 +78,13 @@ pub fn bonus_rig() -> Rig<'static> {
     static D: OnceLock<std::sync::Arc<sf_core::DisplayData>> = OnceLock::new();
     let d = D.get_or_init(sf_conform::display_data);
     Rig::new(bonus_level(), sound(), d)
+}
+
+/// A rig on W2-1's first frame ([`w2_level`]).
+pub fn w2_rig() -> Rig<'static> {
+    static D: OnceLock<std::sync::Arc<sf_core::DisplayData>> = OnceLock::new();
+    let d = D.get_or_init(sf_conform::display_data);
+    Rig::new(w2_level(), sound(), d)
 }
 
 /// Any joystick position, fire or not.
