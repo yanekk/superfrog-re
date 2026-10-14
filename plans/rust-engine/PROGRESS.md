@@ -61,7 +61,7 @@ done · ⛔ blocked, needs a human.
 | T36 | items-on-the-beam | T15 | ✅ | |
 | T37 | level-restart | T36; blocks T34 | ✅ | |
 | T38 | level-tally | T37; blocks T21 | ✅ | |
-| T39 | enemies-world-5 | T16, T38; blocks T18 | ⬜ | |
+| T39 | enemies-world-5 | T16, T38; blocks T18 | 🔍 | 12 W5 types ported, 16 stubs of row `$400`; routine conformance, 7 mutants red. W5-1 cases green: route (pins 551, 979; picture 595 excluded, not enemies'), hurt, activation. Split (owner): T123–T126. Deviation: tests in `sf-conform/tests` (purity), as T43. |
 | T40 | enemies-world-6 | T38; blocks T18 | ⬜ | |
 | T41 | enemies-world-4 | T38; blocks T18 | ✅ | |
 | T42 | enemies-world-1 | T38; blocks T18, T33 | ✅ | |
@@ -123,11 +123,15 @@ done · ⛔ blocked, needs a human.
 | T121 | bob-draw-cut | T101; blocks T21 | ⬜ | |
 | T122 | w2-completions | T43, T101, T121; blocks T18 | ⬜ | |
 | T120 | conform-no-silent-pass | T05, T36; blocks T21 | ⬜ | |
+| T123 | enemies-w5-2-case | T39; blocks T18 | ⬜ | |
+| T124 | enemies-w5-3-case | T39; blocks T18 | ⬜ | |
+| T125 | enemies-w5-4-case | T39; blocks T18 | ⬜ | |
+| T126 | w5-completions | T39, T101, T121, T123, T124, T125; blocks T18 | ⬜ | |
 
 A Notes cell holds what was built or what the review found, the test count, and one line per
 deviation from the task doc. A ✅ task's cell may be cut to one line once the next task has been reviewed.
 
-**Review queue:** *(empty)*
+**Review queue:** T39
 
 ## Blocked on the user
 

@@ -18,6 +18,10 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-14 | 🔄 | Owner, T39: W5-2, W5-3, W5-4 frame cases split to T123–T125 and the W5 completions to T126 (after T101, T121 and the cases); each blocks T18. |
+| 2026-10-14 | 🐞 | T39, open, no task: `enemies-w5-1` frame 595 (on time, also with enemies frozen): the engine leaves out the frog's hardware sprites, every variable equal. That frame's picture is excluded. |
+| 2026-10-14 | 📌 | T39: W5-1's re-sync at 979 is `panel_bitmap` after a lag, also with enemies frozen; pinned beside T121's play-field one at 551 (`enemies_w5_cases.rs` accepts both). |
+| 2026-10-14 | 📌 | T39: docs/09's "6 shared with W2" for W5 is 4 (mace 63/64, darts 53/54); marker 24 is W3's flow (98), marker 15 W4's scenery (32). Template 85, the shooters' shot, spawns from an object. |
 | 2026-10-14 | 📌 | T43 merge: W2's darts and mace now use `w3::dart` and `w3::swing`'s updates; the `$64` write is kept as T44 kept it, so T43's skip is gone (spawner test now fills the table, green). |
 | 2026-10-14 | 📌 | T43 merge sweep, not fixed: h0+$23774 (`touch_ledge`) is ported three times, `w2/crumbling_ledge.rs`, `w3/crumble.rs`, `w4/ledge.rs`; dispatch keeps the last registered. Keep one copy. |
 | 2026-10-14 | 📌 | T43 merge sweep, not fixed: h0+$24ef6 (`scenery_stand`) is ported twice, `w2/backdrop.rs` `still` and `w4/scenery.rs`; dispatch keeps the last registered. Keep one copy. |
@@ -33,11 +37,7 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 | 2026-10-14 | 🐞 | Open, seen in T44's merge regression: `frog_cases::frog_timeup_w1_1` failed once (busy machine, 204 s run; message not captured), then green 5 times (alone, full file, cold sync cache). Cause unknown; sync cache writes are atomic. |
 | 2026-10-14 | 📌 | T44 merge with T41, not fixed: `w3/{dart,swing}.rs` and `w4/{dart,mace}.rs` both port h0+$25fa8, $25f42, $2619c, $262be; dispatch keeps the last registered (W4's). Keep one copy. Symbols keep T41's `chain_link_count`, `touch_ledge`. |
 | 2026-10-14 | 🐞 | T44 merge sweep, not fixed: `w4/mace.rs` `spawn_69` skips the ball's write through a null slot to $64 when a link finds no room; the original writes it (W3's spawner test, mutation red). |
-| 2026-10-14 | 📌 | T44 review sweep, not fixed: `tasks/T106-w1-completions.md` (T42's addition) has no Interface or Tests section; T111–T115's were added in T44's review. |
-| 2026-10-14 | 📌 | T44 review sweep, not fixed: `tasks/T107-enemies-w1-2-case.md` (T42's addition) has no Interface or Tests section; T111–T115's were added in T44's review. |
-| 2026-10-14 | 📌 | T44 review sweep, not fixed: `tasks/T108-enemies-w1-3-case.md` (T42's addition) has no Interface or Tests section; T111–T115's were added in T44's review. |
-| 2026-10-14 | 📌 | T44 review sweep, not fixed: `tasks/T109-enemies-w1-4-case.md` (T42's addition) has no Interface or Tests section; T111–T115's were added in T44's review. |
-| 2026-10-14 | 📌 | T44 review sweep, not fixed: `tasks/T110-enemies-w1-activation.md` (T42's addition) has no Interface or Tests section; T111–T115's were added in T44's review. |
+| 2026-10-14 | 📌 | T44 review sweep, not fixed: T42's additions T106–T110 (`tasks/T106-w1-completions.md` … `T110-enemies-w1-activation.md`) have no Interface or Tests section; T111–T115's were added in T44's review. |
 | 2026-10-14 | 🔄 | Owner, T44: W3-2/3/4 frame cases, activation and the W3 completions split to T111–T115 (each blocks T18; T113 waits on T102, T115 on T101, T102, T111–T113). |
 | 2026-10-14 | 🐞 | T44, not fixed: W3-4 frame 194, the frog jumping off the first crumbling platform: the original draws only part of its bob, every variable equal (T102's beam race); `enemies-w3-4` ends at 193. |
 | 2026-10-14 | 📌 | T44: `dart_wait`/`dart_fly` (h0+$25fa8/$25f42), `swing_update`/`swing_link_update` (h0+$2619c/$262be) and `touch_hurt` serve world 2 (T43) and later worlds too: ported in `enemies/w3/{dart,swing}.rs` and `common.rs`; reuse them. |
