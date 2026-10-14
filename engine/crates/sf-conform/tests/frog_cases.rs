@@ -50,10 +50,21 @@ fn frog_run_w1_1() {
 }
 
 /// W1-1 with its items live, 700 frames: coins, the exit lock, the panel and score (T15), the
-/// picture as the beam drew it (T36), with no re-sync after a lag (T82).
+/// picture as the beam drew it (T36). World 1's enemies are live too (T42): its only re-sync is
+/// T101's (a pass across four frames, `vbl_count` 3 at frame 321), pinned here so no other lag
+/// frame is excused.
 #[test]
 fn items_run_w1_1() {
-    green("items-run-w1-1");
+    pinned("items-run-w1-1", &[321]);
+}
+
+/// A case green but for re-syncs after a lag at exactly `frames` (T101's, until it lands).
+fn pinned(name: &str, frames: &[u32]) {
+    let case = sf_conform::Case::load(&sf_conform::cases_dir().join(format!("{name}.toml")))
+        .unwrap_or_else(|e| panic!("{e}"));
+    let o = sf_conform::run(&case).unwrap_or_else(|d| panic!("{name}: {d}"));
+    let resynced: Vec<u32> = o.resynced.iter().map(|r| r.0).collect();
+    assert_eq!(resynced, frames, "{name}: {:?}", o.resynced);
 }
 
 /// W2-2 with its items live, 650 frames: five kinds of fruit and the spud taken, the spud thrown

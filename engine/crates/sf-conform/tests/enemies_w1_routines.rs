@@ -394,6 +394,7 @@ fn vary(rig: &Rig, g: &mut Gen, s: &mut Setup, slot: u32, bob: u32, t: u32) {
 
 #[test]
 fn updates_match_the_original() {
+    let mut cycles = std::collections::BTreeMap::new();
     let mut rig = rig();
     let mut g = Gen::new(4203);
     let mut compared = 0;
@@ -425,11 +426,21 @@ fn updates_match_the_original() {
             eprintln!("slot {slot:x} x {x:x} y {y:x} vx {vx:x} rows {rows:x} cell {a:x} = {:x} slot40 {:x}", st.w(a), st.l(slot+0x40));
         }
         let port = sf_core::level::standard_dispatch().routine(h0(update)).expect("ported");
-        compared += rig.check(&format!("update h0+${update:x} (template {t})"), case, update, &s, |c| {
+        let ok = rig.check(&format!("update h0+${update:x} (template {t})"), case, update, &s, |c| {
             port(c, slot, 0)
-        }) as usize;
+        });
+        if ok {
+            cycles.entry(update).or_insert_with(Vec::new).push(rig.last_cycles());
+        }
+        compared += ok as usize;
     }
     enough("updates", compared, cases);
+    if std::env::var("T42_CYCLES").is_ok() {
+        for (u, mut v) in cycles {
+            v.sort();
+            eprintln!("h0+${u:x}: median {} (p10 {}, p90 {}), {} cases", v[v.len() / 2], v[v.len() / 10], v[v.len() * 9 / 10], v.len());
+        }
+    }
 }
 
 #[test]
