@@ -51,9 +51,9 @@ pub(crate) const fn h2(off: u32) -> u32 {
 
 /// Main-program work from this line on shows next frame (the picture ends on line `$12b`; work
 /// that wakes on it starts after the beam has drawn it).
-const PICTURE_END: u16 = 0x12b;
+pub(crate) const PICTURE_END: u16 = 0x12b;
 /// Where the interrupt's work is over and a busy-waiting main program goes on (measured).
-const VBL_END_LINE: u16 = 0x14;
+pub(crate) const VBL_END_LINE: u16 = 0x14;
 /// The vertical blank's fades (T37, fitted to `frog-pit-w1-1`'s fade out and in): the line they
 /// start on from where the handler starts, the cycles a colour channel looked at and changed
 /// takes in a fade in and out, and the lines after the last to the handler's end.
@@ -144,6 +144,8 @@ pub(crate) enum Routine {
     /// The slot machine (T92) and, below it, the level's tally that called it.
     Slot(crate::slot::Routine),
     SlotOver(crate::slot::SlotOver),
+    /// The slot machine's attract frame drawn on the beam (T93).
+    SlotDraw(crate::slot::draw::Draw),
 }
 
 impl Routine {
@@ -194,6 +196,7 @@ impl Routine {
             Routine::GameOverCheck(r) => r.run(cx),
             Routine::Slot(r) => r.run(cx),
             Routine::SlotOver(r) => r.run(cx),
+            Routine::SlotDraw(r) => r.run(cx),
         }
     }
 }
@@ -292,6 +295,8 @@ pub(crate) struct Cx<'a> {
     pub frame: u32,
     pub seed: Option<Rng>,
     pub unported: Vec<&'static str>,
+    /// [`crate::game::FrameOut::beam_races`]: lines a drawing step wrote near the beam.
+    pub races: Vec<(u16, u16)>,
 }
 
 impl Cx<'_> {
@@ -486,6 +491,9 @@ pub struct Front {
     /// After a level run with no object kinds (`crate::Game::frog_only`): the level's vertical
     /// blank, when it runs here (game over), runs so too.
     frog_only: bool,
+    /// DMACON's sprite DMA bit as the last frame left it (followed on the slot machine's screen,
+    /// [`render::SpriteDma`]).
+    spren: bool,
     /// Paths not ported that this front end has run into (empty in every conformance case).
     pub unported: Vec<&'static str>,
 }
@@ -553,6 +561,7 @@ impl Front {
             seed: Some(seed),
             coper: false,
             frog_only: false,
+            spren: true,
             unported: Vec::new(),
         }
     }
@@ -610,6 +619,7 @@ impl Front {
             seed: None,
             coper: false,
             frog_only: false,
+            spren: true,
             unported: Vec::new(),
         })
     }
@@ -651,6 +661,7 @@ impl Front {
             seed: None,
             coper: false,
             frog_only,
+            spren: true,
             unported: Vec::new(),
         }
     }
@@ -692,6 +703,7 @@ impl Front {
             frame: self.frame,
             seed: None,
             unported: Vec::new(),
+            races: Vec::new(),
         };
         self.run_main(&mut cx, u16::MAX);
         self.stalled = cx.stall;
@@ -782,6 +794,7 @@ impl Front {
                 frame: self.frame,
                 seed: self.seed.take(),
                 unported: Vec::new(),
+                races: Vec::new(),
             };
             title::boot(&mut cx);
             self.cop1lc = cx.cop1lc;
@@ -833,6 +846,7 @@ impl Front {
             frame: self.frame,
             seed: self.seed,
             unported: Vec::new(),
+            races: Vec::new(),
         };
         // Work the main program carried over from the last frame with interrupts off.
         let masked = match self.stack.last() {
@@ -873,9 +887,9 @@ impl Front {
             // h0+$11d1a: the copper interrupt's branch, acknowledged first.
             cx.wr(0x9c, 0x0010);
         }
-        // Only on the level's list (T37): the title's fades are timed as they were (T94 has the
-        // slot screen's).
-        let fading = if cop1lc == render::LEVEL_COPPER {
+        // Only on the level's list (T37) and the slot machine's (T93: its fade in, measured on
+        // the oracle's frames 775-791): the title's fades are timed as they were.
+        let fading = if cop1lc == render::LEVEL_COPPER || cop1lc == crate::slot::SLOT_COPPER {
             fade::due_channels(cx.s)
         } else {
             Vec::new()
@@ -975,7 +989,22 @@ impl Front {
             snap.word(addr).unwrap_or_else(|| cx.s.w(addr))
         };
         let carry = self.fetch;
-        let (mut picture, copper) = render::screen(cx.s, display, cop1lc, &copper_word, carry);
+        // The slot machine's list turns sprite DMA off (its pointer hidden until a round, T93).
+        let dmacon = |paula: &[PaulaWrite]| {
+            let mut w: Vec<(u16, u16)> = paula
+                .iter()
+                .filter(|w| w.reg == crate::audio::DMACON && w.vpos < FRAME_LINES)
+                .map(|w| (w.vpos, w.value))
+                .collect();
+            w.sort_by_key(|w| w.0);
+            w
+        };
+        let dma = (cop1lc == crate::slot::SLOT_COPPER).then(|| render::SpriteDma {
+            on: self.spren,
+            cpu: dmacon(cx.paula),
+        });
+        let (mut picture, copper) =
+            render::screen(cx.s, display, cop1lc, &copper_word, carry, dma.as_ref());
         if cop1lc == render::LEVEL_COPPER {
             // `level_exit_fade` moves the window's top down, `level_start`'s slide back up: the
             // picture is fetched as the copper had it and framed by where the top is as the next
@@ -993,7 +1022,7 @@ impl Front {
         self.fetch = Some(end);
         // Lines the beam drew before a part of the main program ran show the memory before it.
         for (k, (line, st)) in before.iter().enumerate().rev() {
-            let (older, _) = render::screen(st, display, cop1lc, &copper_word, carry);
+            let (older, _) = render::screen(st, display, cop1lc, &copper_word, carry, dma.as_ref());
             let from = before.get(k.wrapping_sub(1)).map_or(0, |b| b.0);
             if (older.width, older.height, older.top)
                 != (picture.width, picture.height, picture.top)
@@ -1023,6 +1052,12 @@ impl Front {
             })
             .collect();
         self.run_main(&mut cx, u16::MAX);
+        let cpu = dmacon(cx.paula);
+        self.spren = render::SpriteDma {
+            on: self.spren,
+            cpu,
+        }
+        .at_end(&copper);
         let mut next_copper = Vec::new();
         if let Some(t) = cx.stall {
             // The CPU held off the bus into the next frame: the frame ends for conformance when it
@@ -1055,6 +1090,7 @@ impl Front {
         let load = cx.load;
         let resync = std::mem::take(&mut cx.resync);
         let jobs = std::mem::take(&mut cx.jobs);
+        let beam_races = std::mem::take(&mut cx.races);
         self.ret = cx.ret;
         self.frame += 1;
         self.cop1lc = cx.cop1lc;
@@ -1090,7 +1126,7 @@ impl Front {
             load,
             resync,
             jobs,
-            beam_races: Vec::new(),
+            beam_races,
         }
     }
 

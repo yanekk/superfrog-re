@@ -1,0 +1,6 @@
+# The slot machine's attract loop (T93): from `slot_machine`'s first frame (nothing played in W1-1,
+# two coins), through the loads (`slot-load`), the fade in and the lamps' attract pattern, the
+# reels and lamps drawn on the beam each frame (h0+$4d24). Lamps that race the beam are excused
+# and counted.
+sync = { slot = "slot-none" }
+frames = 60
