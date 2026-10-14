@@ -1,5 +1,5 @@
 //! Template 135 (marker 1): flies a loop of positions around its spawn point. Spawns take the
-//! loop's four quarters in turn (`swooper_phase`), so a flock spreads out. One hit kills it; it
+//! loop's four quarters in turn (`w1_hover_phase`, which W1's hover shares), so a flock spreads out. One hit kills it; it
 //! can be stomped.
 
 use crate::enemies::common::{TOUCH_KILL_1HIT, touch_kill_1hit};
@@ -10,9 +10,9 @@ use crate::level::objects::{
 };
 use crate::level::{LevelCtx, ObjectKind};
 
-/// `swooper_phase` (h0+$243b4): a word inside the code, the quarter the next spawn starts on.
+/// `w1_hover_phase` (h0+$243b4): a word inside the code, the quarter the next spawn starts on.
 pub const SWOOPER_PHASE: u32 = h0(0x243b4);
-/// The loop (h0+$24454): 204 positions (x, y words), four quarters of `$cc` bytes, ending with
+/// The loop (`w1_hover_path`, h0+$24454): 204 positions (x, y words), four quarters of `$cc` bytes, ending with
 /// a −1 long.
 pub const LOOP: u32 = h0(0x24454);
 const QUARTER: u32 = 0xcc;
@@ -33,7 +33,7 @@ pub fn spawn_135(c: &mut LevelCtx, cell: u32) {
 }
 
 /// h0+$25936: its look (h0+$32220); its origin (`+$64`, also kept at `+$68`) its spawn point;
-/// the loop from the quarter `swooper_phase` names, which moves on (0..3).
+/// the loop from the quarter `w1_hover_phase` names, which moves on (0..3).
 fn swooper_init(c: &mut LevelCtx, slot: u32, _d7: u16) {
     let b = &mut c.bus;
     bob_anim(b, slot, h0(0x32220));

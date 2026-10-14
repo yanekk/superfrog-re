@@ -88,7 +88,7 @@ fn drop_update(c: &mut LevelCtx, slot: u32, _d7: u16) {
     let x = b.w(slot + 8);
     let y = b.w(slot + 0xa).wrapping_add(4).wrapping_sub(0x10);
     let cell = map_cell(b, (x >> 4).wrapping_mul(2), (y >> 4).wrapping_mul(4));
-    if solid(b, cell) {
+    if solid(b.w(cell) & 0x3f) {
         return obj_free(c, slot, 0);
     }
     bob_follow(b, slot);

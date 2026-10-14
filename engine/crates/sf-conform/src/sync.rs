@@ -68,6 +68,9 @@ pub enum SyncPoint {
     /// `game_over_seq` (h0+$7600 on its stack). The sync point is the end of the frame before:
     /// the level is transplanted, and the case's first frame is the one game over begins in.
     GameOver { script: String },
+    /// A level's first frame as [`SyncPoint::AtLevel`] reaches it, `frog_lives` (h0+$82e) then
+    /// set to `lives` (T79: the bonus level played to its end through the deaths on the way).
+    Lives { level: LevelId, lives: u16 },
 }
 
 /// The oracle at a sync point.
@@ -440,6 +443,12 @@ pub fn reach_frozen(
             for f in 0..begins {
                 step(&mut synced.amiga, s.input_at(f), frozen)?;
             }
+            synced.memory = core_memory(synced.amiga.memory());
+            Ok(synced)
+        }
+        SyncPoint::Lives { level, lives } => {
+            let mut synced = reach_frozen(&SyncPoint::AtLevel(*level), script, frames, frozen)?;
+            synced.amiga.write_memory(FROG_LIVES, &lives.to_be_bytes());
             synced.memory = core_memory(synced.amiga.memory());
             Ok(synced)
         }

@@ -133,7 +133,7 @@ pub fn dart_fly(c: &mut LevelCtx, slot: u32, _d7: u16) {
     b.set_w(slot + 0x64, b.w(slot + 0x64).wrapping_sub(1));
     let x = b.w(slot + 8).wrapping_add(vx.wrapping_add(vx));
     let cell = cell_at(b, x, b.w(slot + 0xa).wrapping_sub(8));
-    if solid(b, cell) {
+    if solid(b.w(cell) & 0x3f) {
         b.set_l(slot + 4, WAIT);
         b.set_l(slot + 0x10, NOTHING);
     }

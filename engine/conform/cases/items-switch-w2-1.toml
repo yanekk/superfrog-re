@@ -1,0 +1,12 @@
+# W2-1 with its items live: both hidden coin springs knocked empty from below and their falling
+# coins caught, the spud and the speed-up, two checkpoints, the switch at 116,39 opening its gate,
+# and the wings; score, lives, the panel and the picture every frame (T85).
+sync = { level = "W2-1" }
+script = "items-switch-w2-1"
+frames = 760
+resync = false
+
+[[exclude]]
+what = "enemies"
+note = "the original's marker spawners the engine has none for (enemies, the world's scenery)"
+task = "T16–T18"

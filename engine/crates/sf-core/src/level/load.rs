@@ -39,6 +39,8 @@ const OBJ_WORLD_OFFSET: u32 = h0(0x9fa);
 /// `level_start_x`, `level_start_y` (h0+$a1a, $a1e).
 const START_X: u32 = h0(0xa1a);
 const START_Y: u32 = h0(0xa1e);
+/// `bonus_visit` (h0+$8cd6): `level_init_lb`'s choice of start row.
+const BONUS_VISIT: u32 = h0(0x8cd6);
 /// `entry_fall` (h0+$6c92): the drop-in's frame count.
 const ENTRY_FALL: u32 = h0(0x6c92);
 /// `map_rows` (h0+$17334).
@@ -316,7 +318,7 @@ fn find_start(b: &mut Bus) {
 }
 
 /// `level_init_wN` (h0+$8cd8 …): the objects, the frog, the panel, the camera and the first scroll.
-pub(crate) fn level_init(c: &mut LevelCtx, id: LevelId) {
+pub fn level_init(c: &mut LevelCtx, id: LevelId) {
     crate::level::objects::obj_free_all(c);
     let (world, _) = numbers(id);
     let (demo, a02, offset): (u32, u32, u32) = match (id.world, world) {
@@ -345,10 +347,20 @@ pub(crate) fn level_init(c: &mut LevelCtx, id: LevelId) {
     c.spend_n(Cost::PanelClearByte, PANEL_BYTES);
     let b = &mut c.bus;
     if bonus {
-        // level_init_lb (h0+$8c3a): the start at the top, lower on the second and third visits
-        // (h0+$8cd6 counts them; a game started at the bonus level's code is a first visit).
+        // level_init_lb (h0+$8c3a): the start at the top, lower when `bonus_visit` is 2 or 3,
+        // which is cleared from 3 on. Nothing in the game sets it, so the start is the top.
         b.set_l(START_X, 0);
         b.set_l(START_Y, 0);
+        let visit = b.w(BONUS_VISIT);
+        if visit == 2 {
+            b.set_l(START_Y, 0x120);
+        }
+        if visit == 3 {
+            b.set_l(START_Y, 0x220);
+        }
+        if crate::level::n_clear(visit.wrapping_sub(3)) {
+            b.set_w(BONUS_VISIT, 0);
+        }
     }
     start_point(c);
     let b = &mut c.bus;
@@ -457,6 +469,12 @@ pub fn start_frog(c: &mut LevelCtx) {
     let demo = b.l(h0(0x9f2));
     b.set_l(h0(0x11a2e), demo);
     b.set_l(h0(0x11aa2), demo);
+    frog_first_step(c);
+}
+
+/// What `level_start` (h0+$6970) and `bonus_frame` (h0+$6a6c) both do: the frog's step, the
+/// camera to it, the scroll latched, the sprites placed off the top.
+pub(crate) fn frog_first_step(c: &mut LevelCtx) {
     collision::frog_tiles(c);
     frog::anim::frog_anim_tick(c);
     frog::physics::frog_walk_input(c);
@@ -496,7 +514,7 @@ fn fade_in(b: &mut Bus) {
 /// h0+$6ad2: the frog's drop-in (`frog_level_entry` plays it while the sprites are hidden): its
 /// entry animation, its sprites two pixels left and six up; in shooter mode it is placed on the
 /// screen instead. Then the level's logic runs.
-fn drop_in(c: &mut LevelCtx) {
+pub(crate) fn drop_in(c: &mut LevelCtx) {
     let shooter = c.bus.w(camera::SHOOTER_MODE) != 0;
     frog::anim::frog_set_anim(c, if shooter { h0(0x10b7e) } else { h0(0x10a1a) });
     let b = &mut c.bus;

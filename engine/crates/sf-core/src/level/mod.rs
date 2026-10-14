@@ -137,6 +137,7 @@ pub fn standard_dispatch() -> &'static Dispatch {
         crate::items::register_all(&mut d);
         crate::enemies::register_all(&mut d);
         crate::bonus::register_all(&mut d);
+        crate::enemies::register_all(&mut d);
         // `game_over_seq`'s sign (T34).
         register(&mut d, 1, &crate::front::GAME_OVER);
         d

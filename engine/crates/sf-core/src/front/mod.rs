@@ -178,6 +178,11 @@ impl Routine {
             Routine::LevelLoop => Yield::Poll,
             Routine::Outcome(o) => {
                 cx.unported(match o {
+                    crate::level::LevelOutcome::Completed { .. }
+                        if cx.s.l(crate::level::exit::WORLD) == crate::level::exit::BONUS_WORLD =>
+                    {
+                        "the bonus level's end picture (T21)"
+                    }
                     crate::level::LevelOutcome::Completed { .. } => {
                         "the next level after the tally (T21)"
                     }
