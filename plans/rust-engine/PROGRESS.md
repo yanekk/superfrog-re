@@ -87,7 +87,7 @@ done · ⛔ blocked, needs a human.
 | T53 | story-draw-cpu-program | T52; blocks T54 | ✅ | |
 | T54 | story-handler-end-feed | T53; blocks T56 | ✅ | |
 | T55 | story-intro-sound-timing | T50; blocks T56 | ✅ | |
-| T56 | story-intro-to-insert-disk | T49, T50, T54, T55; blocks T21, T47, T48 | ⬜ | |
+| T56 | story-intro-to-insert-disk | T49, T50, T54, T55; blocks T21, T47, T48 | 🔍 | Set-up as sim CPU programs re-timed per frame on fed acks; unpack end lines; `frame_prepare` add fix; full case `story-intro-full` (ignored, red: 36 frames, was 867+). Split at pir's context warning: rest in T128–T132. Deviation: `HandlerEnd.resumes` optional, acks fed every step (commit 85e713f). |
 | T81 | beam-cleanup | T36; blocks T37 | ✅ | |
 | T82 | beam-tests | T81 | ✅ | |
 | T83 | items-w1 | T81 | ✅ | |
@@ -129,6 +129,11 @@ done · ⛔ blocked, needs a human.
 | T125 | enemies-w5-4-case | T39; blocks T18 | ⬜ | |
 | T126 | w5-completions | T39, T101, T121, T123, T124, T125; blocks T18 | ⬜ | |
 | T127 | restore-sprite-wait | T101; blocks T21 | ⬜ | |
+| T128 | story-setup-under-music | T56 | ⬜ | |
+| T129 | story-fade-colour-race | T56 | ⬜ | |
+| T130 | story-draw-end-order | T56 | ⬜ | |
+| T131 | story-last-fade-out | T56 | ⬜ | |
+| T132 | story-intro-full-green | T56, T128, T129, T130, T131; blocks T21, T47, T48 | ⬜ | |
 
 A Notes cell holds what was built or what the review found, the test count, and one line per
 deviation from the task doc. A ✅ task's cell may be cut to one line once the next task has been reviewed.

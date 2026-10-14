@@ -18,6 +18,10 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-14 | 📌 | T56 split at pir's context warning: T128 setup-under-music, T129 fade-colour-race, T130 draw-end-order, T131 last-fade-out, T132 intro-full-green (carries T56's done-when; blocks T21, T47, T48). |
+| 2026-10-14 | 📌 | T56: `story_dbg SCAN=1` skips variable-only frames; `sf-conform scan` counts them. Base had 1 254 `frame_descriptors` frames: `frame_prepare` OR'd where the original adds (descriptors past a scene's table hold code). Fixed. |
+| 2026-10-14 | 📌 | T56: a COP1LC write counts from the next frame's top: scene 1's first buffer clear runs under the text page's three planes (54 lines longer). The engine's `shown_list` switches at once; set-up jobs now take the frame's list. |
+| 2026-10-14 | 📌 | T56: `fade_probe` prints the wait position at which the copper sees a value; colour `k` is read about `4k` cycles later. Without that offset the engine's fade writes look 4 cycles a colour late; they are within a few. |
 | 2026-10-14 | 📌 | T97 review: `sf-conform scan` of story-scene4-sound to 9 200 frames misses past 7 824 too (1 254 `frame_descriptors` frames), unlike the story_dbg row; same on base. Handlers taken O 11 310, 11 617 (lines 310, 312) unchecked behind that. |
 | 2026-10-14 | 📌 | T97: `story_dbg SCAN=1` to 9 320 frames reaches engine 9 282 (O ~12 690) before the oracle cap. Misses past 6 683: 7 227–7 824, 8 216–8 217 (a draw's `$0400` after a handler acknowledged on 307), 9 268–9 282. None is a split. |
 | 2026-10-14 | 🐞 | T97, not fixed: in scene 4's long blits (engine 6 680–6 685) the engine's own handler lines are far off (38 against 300, 0 against 211). The split is decided on conformance's fed entry, so normal play misses it. |
