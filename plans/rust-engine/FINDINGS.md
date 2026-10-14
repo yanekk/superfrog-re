@@ -18,6 +18,8 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-14 | 🐞 | T96 review: the engine never writes DMACON's DMAEN (original: `$8200` at boot frame 58, loader `$8210`); the intro's `AudioDma` started off and took no slot in normal play. Reproduced by an engine run, fixed with `AudioDma::booted`, unit test locks it. |
+| 2026-10-14 | 📌 | T96 review sweep, not fixed: sf-app's mixer (`main.rs`, `Paula::new`) gets the same DMAEN-less writes, so its channels never fetch even once chip memory is wired; start it with DMAEN on as `AudioDma::booted` does. |
 | 2026-10-14 | 📌 | T96: Moira polls the interrupt level in one chosen access: `move.l Dn/#i, d(An)` at its second write, read-modify-writes at the prefetch before their write. `story::cpu` letters mark it `^`; unmarked, the last access polls. |
 | 2026-10-14 | 📌 | T96: the intro times a draw's audio DMA on this frame's Paula writes only; later frames' handler writes (scene 4 rewrites `AUD0PER` each frame) are unseen. Untested against the oracle: `story_draws` feeds the original's writes. |
 | 2026-10-14 | 📌 | T43 merge: W2's darts and mace now use `w3::dart` and `w3::swing`'s updates; the `$64` write is kept as T44 kept it, so T43's skip is gone (spawner test now fills the table, green). |
