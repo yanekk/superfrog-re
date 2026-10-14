@@ -1,0 +1,14 @@
+# W5-1 (T39): enemies-w5-1-hurt's way to the shooter, then back left past the first pacer.
+0: -
+150: R
+180: R U
+194: R
+364: R U
+404: R
+462: R U
+476: R
+540: L
+560: L U
+580: L
+620: L U
+640: L

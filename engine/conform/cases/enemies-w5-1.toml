@@ -1,0 +1,15 @@
+# W5-1 with every object live (T39), start to the second pacer: over the first pacer and two spike
+# pits, under the watchers, the mace and the fallers, past drips, crushers, flows and the dart:
+# every W5-1 type but the shot (enemies-w5-1-hurt has it). Re-syncs at 551 (T121's play field
+# buffer) and 979 (the panel after a lag) are pinned in enemies_w5_cases.rs; both also with
+# enemies frozen.
+sync = { level = "W5-1" }
+script = "enemies-w5-1"
+frames = 1000
+resync = true
+
+[[exclude]]
+what = "picture"
+frames = [595, 595]
+note = "the engine leaves out the frog's hardware sprites for one frame on time, every variable equal; with enemies frozen too (FINDINGS 2026-10-14, T39)"
+task = "unowned: FINDINGS 2026-10-14 (T39)"
