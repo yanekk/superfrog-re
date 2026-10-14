@@ -110,11 +110,11 @@ done · ⛔ blocked, needs a human.
 | T102 | items-w3-faults | T101; blocks T21 | ✅ | |
 | T105 | w2-1-hang-fruit-life | T85; blocks T21 | ✅ | |
 | T106 | w1-completions | T42, T86, T101; blocks T18 | ⬜ | |
-| T107 | enemies-w1-2-case | T42; blocks T18, T33, T106 | ⬜ | |
+| T107 | enemies-w1-2-case | T42; blocks T18, T33, T106 | ✅ | |
 | T108 | enemies-w1-3-case | T42; blocks T18, T33, T106 | ✅ | Review: deviation "frog kills none" falsified, the walker is stompable (complete.rs --kill at 953); route re-planned, walker stomped, patroller hurt ~1097, green, no re-sync, `w1_3` asserts stomp and reward. Probed hurt attribution (patroller 32 px, next 148); patroller turn mutation and short-case mutation both red. Walker and spiker never hurt the frog. |
-| T109 | enemies-w1-4-case | T42; blocks T18, T33, T106 | ⬜ | |
-| T110 | enemies-w1-activation | T42; blocks T18, T33, T106 | ⬜ | |
-| T103 | w4-completions | T41, T101, T102; blocks T18 | ⬜ | |
+| T109 | enemies-w1-4-case | T42; blocks T18, T33, T106 | ✅ | |
+| T110 | enemies-w1-activation | T42; blocks T18, T33, T106 | ✅ | |
+| T103 | w4-completions | T41, T101, T102; blocks T18 | ✅ | |
 | T111 | enemies-w3-2-case | T44; blocks T18 | ⬜ | |
 | T112 | enemies-w3-3-case | T44; blocks T18 | ⬜ | |
 | T113 | enemies-w3-4-case | T44, T102; blocks T18 | ⬜ | |
@@ -138,6 +138,9 @@ done · ⛔ blocked, needs a human.
 | T143 | story-last-fade-out | T56 | ⬜ | |
 | T144 | story-intro-full-green | T56, T140, T141, T142, T143; blocks T21, T47, T48 | ⬜ | |
 | T133 | w2-1-fruit-room | T105; blocks T21 | ⬜ | |
+| T131 | w4-completion-faults | T103, T121, T127; blocks T18, T21 | ⬜ | |
+| T132 | w4-4-completion | T103; blocks T18, T131 | ⬜ | |
+| T145 | w4-4-dart-21 | T132; blocks T18, T131 | ⬜ | |
 
 A Notes cell holds what was built or what the review found, the test count, and one line per
 deviation from the task doc. A ✅ task's cell may be cut to one line once the next task has been reviewed.

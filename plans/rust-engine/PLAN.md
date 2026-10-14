@@ -175,6 +175,9 @@ headless.
 | [T142](tasks/T142-story-draw-end-order.md) | story-draw-end-order | T56 |
 | [T143](tasks/T143-story-last-fade-out.md) | story-last-fade-out | T56 |
 | [T144](tasks/T144-story-intro-full-green.md) | story-intro-full-green | T56, T140, T141, T142, T143; blocks T21, T47, T48 |
+| [T131](tasks/T131-w4-completion-faults.md) | w4-completion-faults | T103, T121, T127; blocks T18, T21 |
+| [T132](tasks/T132-w4-4-completion.md) | w4-4-completion | T103; blocks T18, T131 |
+| [T145](tasks/T145-w4-4-dart-21.md) | w4-4-dart-21 | T132; blocks T18, T131 |
 | [T120](tasks/T120-conform-no-silent-pass.md) | conform-no-silent-pass | T05, T36; blocks T21 |
 | [T104](tasks/T104-w6-completions.md) | w6-completions | T40, T101, T102; blocks T18 |
 
