@@ -760,88 +760,112 @@ impl Award {
                 cx.unported("the slot machine's gamble (T74)");
                 return Yield::Poll;
             }
-            collect(cx, self.rung);
+            let mut played = Vec::new();
+            collect(cx.s, self.rung, &mut |_, id, ch| played.push((id, ch)));
+            for (id, ch) in played {
+                sfx(cx, id, ch);
+            }
             return Yield::Return;
         }
         self.pc = 1;
-        lamps_off(cx.s);
         let ladder: Vec<u32> = (0..)
             .map(|k| cx.l(LADDER + 4 * k))
             .take_while(|&a| a != 0)
             .collect();
-        for &lamp in &ladder {
-            cx.s.set_w(lamp + 6, 0);
-            cx.s.set_w(lamp, 0);
+        let mut played = Vec::new();
+        let r = award_rung(cx.s, &ladder, self.rung, &mut |_, id, ch| {
+            played.push((id, ch))
+        });
+        for (id, ch) in played {
+            sfx(cx, id, ch);
         }
-        if matches!(self.rung, 0 | 0xa) || self.rung > 8 {
-            cx.unported("the slot machine's hi-lo game and jackpot (T74)");
+        if let Err(what) = r {
+            cx.unported(what);
             return Yield::Poll;
         }
-        let (win, lamp, effect) = rung(cx.s, self.rung);
-        cx.s.set_l(WIN, win);
-        cx.s.set_w(at(lamp), 1);
-        sfx(cx, effect, 3);
-        // h0+$53ce: the rung lit (its `+6`), the rungs either side flashing with the buttons.
-        let Some(k) = ladder
-            .iter()
-            .position(|&l| cx.s.w(l + 6) != 0)
-        else {
-            cx.unported("the slot machine's ladder with no rung lit (T74)");
-            return Yield::Poll;
-        };
-        if k == 0 || k == 9 {
-            cx.unported("the slot machine's ladder's ends (T74)");
-            return Yield::Poll;
-        }
-        let (mut a2, a3) = (FLASHING, LIT);
-        cx.s.set_l(a2, ladder[k - 1]);
-        a2 += 4;
-        cx.s.set_l(a2, ladder[(k + 3).min(9)]);
-        a2 += 4;
-        cx.s.set_l(a3, ladder[k]);
-        for lamp in [0x6892, 0x68d2, 0x68da] {
-            cx.s.set_l(a2, at(lamp));
-            a2 += 4;
-        }
-        cx.s.set_l(a2, LIST_END);
-        cx.s.set_l(a3 + 4, LIST_END);
-        cx.s.set_w(HOLDS_ALLOWED, 0);
-        for k in 0..3 {
-            cx.s.set_w(HOLDS + 2 * k, 0);
-        }
-        cx.s.set_w(OFFER, 1);
         call(FrontRoutine::SlotMenu(Menu::new(LAMPS_OFF_CYCLES)))
     }
 }
 
-/// Rung `d7`'s win (given the win so far), its lamp's `+6` and its sound (h0+$520a..$53ce; rungs
+/// `slot_award` (h0+$51c4) for a line's prize up to its menu (h0+$5460): the lamps and the
+/// ladder's (`ladder`, h0+$57b6's records) out, rung `d7` lit, its win and sound, then the rungs
+/// either side and the buttons flashing, the holds cleared and the gamble offered. `Err` names
+/// what is T74's: the hi-lo game ($a), the jackpot (0), the ladder's ends.
+pub fn award_rung(
+    s: &mut State,
+    ladder: &[u32],
+    d7: u16,
+    sfx: &mut dyn FnMut(&mut State, u8, u8),
+) -> Result<(), &'static str> {
+    s.set_l(WIN, 0);
+    lamps_off(s);
+    for &lamp in ladder {
+        s.set_w(lamp + 6, 0);
+        s.set_w(lamp, 0);
+    }
+    if matches!(d7, 0 | 0xa) || d7 > 8 {
+        return Err("the slot machine's hi-lo game and jackpot (T74)");
+    }
+    let (win, lamp, effect) = rung(s, d7);
+    s.set_l(WIN, win);
+    s.set_w(at(lamp), 1);
+    sfx(s, effect, 3);
+    // h0+$53ce: the rung lit (its `+6`), the rungs either side flashing with the buttons.
+    let Some(k) = ladder.iter().position(|&l| s.w(l + 6) != 0) else {
+        return Err("the slot machine's ladder with no rung lit (T74)");
+    };
+    if k == 0 || k == 9 {
+        return Err("the slot machine's ladder's ends (T74)");
+    }
+    let (mut a2, a3) = (FLASHING, LIT);
+    s.set_l(a2, ladder[k - 1]);
+    a2 += 4;
+    s.set_l(a2, ladder[(k + 3).min(9)]);
+    a2 += 4;
+    s.set_l(a3, ladder[k]);
+    for lamp in [0x6892, 0x68d2, 0x68da] {
+        s.set_l(a2, at(lamp));
+        a2 += 4;
+    }
+    s.set_l(a2, LIST_END);
+    s.set_l(a3 + 4, LIST_END);
+    s.set_w(HOLDS_ALLOWED, 0);
+    for k in 0..3 {
+        s.set_w(HOLDS + 2 * k, 0);
+    }
+    s.set_w(OFFER, 1);
+    Ok(())
+}
+
+/// Rung `d7`'s win (given the win so far), its lamp record's `+6` (h0+$6850 is $684a's) and its
+/// sound (h0+$520a..$53ce; rungs
 /// 1..=8).
 fn rung(s: &mut State, d7: u16) -> (u32, u32, u8) {
     let win = s.l(WIN);
     match d7 {
-        1 => (s.l(SCORE_SHOWN), 0x6850 + 6, 7),
+        1 => (s.l(SCORE_SHOWN), 0x6850, 7),
         2 => {
             let lives = s.w(LIVES).wrapping_add(1);
             s.set_w(LIVES, lives);
-            (0, 0x6858 + 6, 6)
+            (0, 0x6858, 6)
         }
-        3 => (win.wrapping_add(75_000), 0x6860 + 6, 5),
-        4 => (win.wrapping_add(50_000), 0x6868 + 6, 4),
-        5 => (win.wrapping_add(40_000), 0x6870 + 6, 3),
-        6 => (win.wrapping_add(30_000), 0x6878 + 6, 2),
-        7 => (win.wrapping_add(20_000), 0x6880 + 6, 1),
-        _ => (win.wrapping_add(10_000), 0x6888 + 6, 0),
+        3 => (win.wrapping_add(75_000), 0x6860, 5),
+        4 => (win.wrapping_add(50_000), 0x6868, 4),
+        5 => (win.wrapping_add(40_000), 0x6870, 3),
+        6 => (win.wrapping_add(30_000), 0x6878, 2),
+        7 => (win.wrapping_add(20_000), 0x6880, 1),
+        _ => (win.wrapping_add(10_000), 0x6888, 0),
     }
 }
 
 /// `slot_collect` (h0+$5528) for rungs 1..=8: its sound, and the rung's win (h0+$5560..$5626, no
 /// sound).
-fn collect(cx: &mut Cx, d7: u16) {
-    sfx(cx, 0xb, 3);
-    cx.s.set_l(WIN, 0);
-    let (win, lamp, _) = rung(cx.s, d7);
-    cx.s.set_l(WIN, win);
-    cx.s.set_w(at(lamp), 1);
+pub fn collect(s: &mut State, d7: u16, sfx: &mut dyn FnMut(&mut State, u8, u8)) {
+    sfx(s, 0xb, 3);
+    s.set_l(WIN, 0);
+    let (win, lamp, _) = rung(s, d7);
+    s.set_l(WIN, win);
+    s.set_w(at(lamp), 1);
 }
 
 /// `slot_count_win` (h0+$50b6): the lamps off and drawn, the win counted into the score shown,
