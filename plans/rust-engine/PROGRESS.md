@@ -93,7 +93,7 @@ done · ⛔ blocked, needs a human.
 | T83 | items-w1 | T81 | ✅ | |
 | T84 | items-w3 | T81 | ✅ | |
 | T85 | items-w2 | T81 | ✅ | |
-| T86 | items-launchers | T81 | ⬜ | |
+| T86 | items-launchers | T81 | ✅ | |
 | T87 | slot-symbols-routines | T71; blocks T72 | ✅ | |
 | T88 | slot-symbols-tables | T71; blocks T72 | ✅ | |
 | T89 | story-copper-bus-cycles | T52; blocks T53 | ✅ | |
@@ -105,7 +105,7 @@ done · ⛔ blocked, needs a human.
 | T95 | slot-load-finish | T92; blocks T93 | ✅ | |
 | T96 | story-audio-dma-slots | T53; blocks T56 | ✅ | |
 | T100 | front-vbl-timing | T37; blocks T21 | ⬜ | |
-| T97 | story-split-handler | T54; blocks T56 | ⬜ | |
+| T97 | story-split-handler | T54; blocks T56 | ✅ | |
 | T101 | lag-long-pass | T81, T82; blocks T21 | ⬜ | |
 | T102 | items-w3-faults | T101; blocks T21 | ⬜ | |
 | T105 | w2-1-hang-fruit-life | T85; blocks T21 | ⬜ | |
@@ -128,6 +128,7 @@ done · ⛔ blocked, needs a human.
 | T124 | enemies-w5-3-case | T39; blocks T18 | ⬜ | |
 | T125 | enemies-w5-4-case | T39; blocks T18 | ⬜ | |
 | T126 | w5-completions | T39, T101, T121, T123, T124, T125; blocks T18 | ⬜ | |
+| T127 | restore-sprite-wait | T101; blocks T21 | ⬜ | |
 
 A Notes cell holds what was built or what the review found, the test count, and one line per
 deviation from the task doc. A ✅ task's cell may be cut to one line once the next task has been reviewed.
