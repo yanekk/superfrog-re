@@ -14,6 +14,18 @@ task = "T36 (items in frame cases), T16–T18 (enemies)"
 
 [[exclude]]
 what = "picture"
+frames = [318, 318]
+note = "colour 30 read with red stepped (the original's $877, the engine's $887): the original's handler runs about 64 cycles longer here than on frame 648, the same work"
+task = "T127"
+
+[[exclude]]
+what = "picture"
+frames = [613, 613]
+note = "the copper reads a colour mid-step, between the fade out's `andi.w #$ff0f,(a0)` and `add.w d3,(a0)` (the original shows $b0c, green cleared): as on 658 (owner, T100)"
+task = "T100"
+
+[[exclude]]
+what = "picture"
 frames = [658, 658]
 note = "the copper reads colour 31 on line $34 between the fade in's `andi.w #$fff0,(a0)` and `add.w d3,(a0)` (the original shows $ee0, blue cleared): a 12-cycle window no timing model short of the bus's own reaches (owner, T100)"
 task = "T100"

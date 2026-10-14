@@ -104,7 +104,7 @@ done · ⛔ blocked, needs a human.
 | T94 | slot-interrupt-timing | T72, T91, T93; blocks T73 | ⬜ | |
 | T95 | slot-load-finish | T92; blocks T93 | ✅ | |
 | T96 | story-audio-dma-slots | T53; blocks T56 | ✅ | |
-| T100 | front-vbl-timing | T37; blocks T21 | ⬜ | |
+| T100 | front-vbl-timing | T37; blocks T21 | 🔍 | Fades start after `music_tick` and `h0+$12a14`'s eight-line wait (`vbl::fade_start`, `AudioDriver::tick_work`); window slowdown; divu-timed fade-in set-up. 900 frames green, 4 new unit tests. Deviations: pictures 613, 658 excluded (copper mid-step race, owner); 318 to T127 (owner); restart `BLANK_COSTS` refitted (MaskOr10, ScreenScanCell). |
 | T97 | story-split-handler | T54; blocks T56 | ⬜ | |
 | T101 | lag-long-pass | T81, T82; blocks T21 | ⬜ | |
 | T102 | items-w3-faults | T101; blocks T21 | ⬜ | |
@@ -128,11 +128,12 @@ done · ⛔ blocked, needs a human.
 | T124 | enemies-w5-3-case | T39; blocks T18 | ⬜ | |
 | T125 | enemies-w5-4-case | T39; blocks T18 | ⬜ | |
 | T126 | w5-completions | T39, T101, T121, T123, T124, T125; blocks T18 | ⬜ | |
+| T127 | front-vbl-318 | T100 | ⬜ | |
 
 A Notes cell holds what was built or what the review found, the test count, and one line per
 deviation from the task doc. A ✅ task's cell may be cut to one line once the next task has been reviewed.
 
-**Review queue:** *(empty)*
+**Review queue:** T100
 
 ## Blocked on the user
 

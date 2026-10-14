@@ -18,6 +18,9 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-14 | 🔄 | Owner, T100: added T127 front-vbl-318 (T100): `frog-pit-w1-1` frame 318, one colour a channel off; the original's handler ~64 cycles longer than frame 648's, same work. Picture excluded meanwhile. |
+| 2026-10-14 | 🔄 | Owner, T100: `frog-pit-w1-1` pictures 613 and 658 excluded: the copper reads a colour between the fade's `andi` and `add` (channel cleared: `$b0c`, `$ee0`). Only bus-cycle emulation reaches it. |
+| 2026-10-14 | 📌 | T100: the front handler waits at `h0+$12a14` until eight lines after `music_tick` ends; the CPU runs at ~17/20 inside the display window. T94's slot handler may share `vbl::fade_start`; the slot list keeps T37's timing. |
 | 2026-10-14 | 🐞 | Open, seen in T39's review merge: `purity::the_real_pure_crates_pass` red on `pir/rust-engine` itself: `sf-core/src/slot/draw.rs:285–289` (T93's test module) uses `HashMap`. Not T39's; not fixed. |
 | 2026-10-14 | 🔄 | Owner, T39: W5-2, W5-3, W5-4 frame cases split to T123–T125 and the W5 completions to T126 (after T101, T121 and the cases); each blocks T18. |
 | 2026-10-14 | 🐞 | T39, open, no task: `enemies-w5-1` frame 595 (on time, also with enemies frozen): the engine leaves out the frog's hardware sprites, every variable equal. That frame's picture is excluded. |

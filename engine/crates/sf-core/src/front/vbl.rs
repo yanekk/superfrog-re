@@ -205,3 +205,54 @@ pub(super) const NO_FADE_TAIL: u32 = 1_500;
 pub(super) fn polls_keyboard(cx: &Cx) -> bool {
     cx.s.b(KBD_TOGGLE) == 0
 }
+
+#[cfg(test)]
+mod tests {
+    use super::{cost, fade_start};
+    use crate::audio::TickWork;
+    use crate::front::BEAM_CYCLES_PER_LINE as LINE;
+
+    fn tick(effects: &[usize], shadowed: u32) -> TickWork {
+        let mut w = TickWork {
+            on: true,
+            shadowed,
+            ..TickWork::default()
+        };
+        for &e in effects {
+            w.effects[e] += 1;
+        }
+        w
+    }
+
+    /// The fades start eight lines after the line `music_tick` ends on (`h0+$12a14`'s wait), so a
+    /// longer tick moves them a whole line or not at all.
+    #[test]
+    fn the_fades_start_eight_lines_after_the_music() {
+        // Four channels, no effect: 521 + 4 × 84 + 4 × 519 + 90 = 3 023 cycles, line 6.
+        let w = tick(&[0, 0, 0, 0], 4);
+        assert_eq!(fade_start(1, &w, false, false), 14 * LINE + cost::AFTER_WAIT);
+        // A vibrato and a volume slide more: line 7 (frame 644's).
+        let w = tick(&[4, 0, 0, 10, 0, 0], 4);
+        assert_eq!(fade_start(1, &w, false, false), 15 * LINE + cost::AFTER_WAIT);
+        // No channel playing: line 5 (frames 314-317's).
+        let w = tick(&[], 4);
+        assert_eq!(fade_start(1, &w, false, false), 13 * LINE + cost::AFTER_WAIT);
+    }
+
+    /// The keyboard's poll and a row's notes started come after the wait, so they add their time
+    /// whole; a handler entered late starts everything late.
+    #[test]
+    fn the_keyboard_and_a_row_come_after_the_wait() {
+        let w = tick(&[0, 0, 0, 0], 4);
+        let base = fade_start(1, &w, false, false);
+        assert_eq!(fade_start(1, &w, false, true), base + cost::KEYBOARD);
+        let row = TickWork {
+            row: true,
+            ..TickWork { on: true, shadowed: 4, ..TickWork::default() }
+        };
+        // A row with no channel playing: 521 + 339 + 4 × 519 + 90 = 3 026 cycles, line 6.
+        let start = fade_start(1, &row, false, false);
+        assert_eq!(start, 14 * LINE + cost::AFTER_WAIT + cost::ROW_DMA);
+        assert_eq!(fade_start(31, &w, false, false), base + 30 * LINE);
+    }
+}

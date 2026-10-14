@@ -416,3 +416,35 @@ pub fn level_step_times(
     };
     (writes, wall(work + tail))
 }
+
+#[cfg(test)]
+mod tests {
+    use super::{divu_cycles, level_step_times};
+    use crate::front::BEAM_CYCLES_PER_LINE;
+
+    /// The 68000's `divu.w` by its quotient's bits (Cwik's count, checked against his table's
+    /// extremes): a zero quotient is the slowest, an overflow stops at once.
+    #[test]
+    fn divu_takes_the_68000s_time() {
+        assert_eq!(divu_cycles(0, 15), 136);
+        assert_eq!(divu_cycles(0xf00, 15), 134);
+        assert_eq!(divu_cycles(0x700, 15), 126);
+        assert_eq!(divu_cycles(0xffff, 1), 106);
+        assert_eq!(divu_cycles(0x1_0000, 1), 10);
+    }
+
+    /// A channel looked at and one changed, from the start; inside the display window the CPU
+    /// gets 17 cycles of every 20, so the same work takes longer there.
+    #[test]
+    fn steps_slow_down_inside_the_window() {
+        let ch = |changes| (0, 0x0f0, changes, true);
+        let early = 10 * BEAM_CYCLES_PER_LINE;
+        let (writes, end) = level_step_times(&[ch(false), ch(true)], early, 40);
+        assert_eq!(writes, vec![early + 95 + 95 + 96]);
+        assert_eq!(end, early + 286 + 830);
+        let late = 50 * BEAM_CYCLES_PER_LINE;
+        let (writes, end) = level_step_times(&[ch(true)], late, 40);
+        assert_eq!(writes, vec![late + 191 * 20 / 17]);
+        assert_eq!(end, late + (191 + 830) * 20 / 17);
+    }
+}
