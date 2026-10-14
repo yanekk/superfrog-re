@@ -212,7 +212,13 @@ pub fn pacing(cpu: &CpuRegs, m: &AmigaMemory, writes: &[sf_paula::PaulaWrite]) -
         };
     }
     if mid_pass(cpu, m) {
-        late(pass_phase(cpu, m), pass_step(cpu, m))
+        let phase = pass_phase(cpu, m);
+        let step = if phase == FLIP_PHASE {
+            flip_step(cpu, m)
+        } else {
+            pass_step(cpu, m)
+        };
+        late(phase, step)
     } else {
         Pacing::OnTime
     }
@@ -241,6 +247,27 @@ pub fn pass_phase(cpu: &CpuRegs, m: &AmigaMemory) -> u8 {
         };
     }
     13
+}
+
+/// The pass's call to the buffer flip (h0+$172b4, from h0+$ae0).
+const FLIP_PHASE: u8 = 6;
+
+/// How far the buffer flip had got at the frame's end, as the engine counts its steps
+/// (`sf_core::level::pass::buffer_flip`): 0 before its first write, then one more after each of
+/// `vbl_pass_flag` cleared, `shown_buffer` set to 1, and the flip done (`shown_buffer` 2 set or
+/// its test failed: at the `rts`, or the shared one at h0+$16478 the test branches to).
+pub fn flip_step(cpu: &CpuRegs, m: &AmigaMemory) -> u16 {
+    let pc = if cpu.pc == VBL_HANDLER {
+        long(m, cpu.ssp + 2)
+    } else {
+        cpu.pc
+    };
+    match pc.wrapping_sub(h0(0)) {
+        0x172ba..=0x172c1 => 1,
+        0x172c2..=0x172d3 => 2,
+        0x172d4 | 0x16478 => 3,
+        _ => 0,
+    }
 }
 
 /// Whether the original's frame ended with its main loop in the middle of a level's pass (not

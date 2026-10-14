@@ -269,6 +269,9 @@ pub struct LevelCtx<'a> {
     /// requested meanwhile: it is taken once the pass unmasks it.
     coper_masked: bool,
     coper_pending: bool,
+    /// `sfx_play`'s INTENA `$c000` after its raster wait with interrupts off, held while a
+    /// frame's end in the wait is looked for, and the line its INTENA `$4000` was made on.
+    held: Option<(PaulaWrite, u16)>,
 }
 
 impl<'a> LevelCtx<'a> {
@@ -301,6 +304,7 @@ impl<'a> LevelCtx<'a> {
             pass_step: 0,
             coper_masked: false,
             coper_pending: false,
+            held: None,
         }
     }
 }
@@ -530,6 +534,9 @@ impl LevelCtx<'_> {
                 self.bus.log = Some(crate::mem::WriteLog::default());
             }
             self.hw = spec.hw;
+            if let Some((on, off)) = self.held.take() {
+                self.interrupts_back(on, off);
+            }
             frame::vbl(self);
             let f = self.frames.as_mut().expect("frames");
             f.in_vbl = false;
@@ -540,6 +547,12 @@ impl LevelCtx<'_> {
         f.done = true;
         f.out_to = Some(self.paula.len());
         f.log = self.bus.log.take();
+        if let Some((on, _)) = self.held.take() {
+            // Past the step's end: the next step runs the pass again.
+            self.paula.push(on);
+            self.stamped = self.paula.len();
+        }
+        let f = self.frames.as_mut().expect("frames");
         if f.in_pass {
             f.mid = Some(Box::new(self.bus.st.clone()));
             if let Some((start, clock, hw, pre)) = f.pass_start.clone() {
@@ -552,6 +565,28 @@ impl LevelCtx<'_> {
                 });
             }
         }
+    }
+
+    /// A frame ended in `sfx_play`'s raster wait (h0+$12b28), interrupts off since INTENA `$4000`
+    /// on line `off`: its vertical blank waits for the wait's end, the first line of the new frame
+    /// whose VPOS low byte is three past the one the wait read, and INTENA `$c000` (`on`).
+    fn interrupts_back(&mut self, on: PaulaWrite, off: u16) {
+        let end = sfx_wait_end(off);
+        if self.clock.line < end {
+            self.clock = beam::Clock { line: end, into: 0 };
+        }
+        self.bus.at = self.clock.nominal();
+        self.scheduled(self.paula.len());
+        self.paula.push(PaulaWrite {
+            hpos: self.clock.hpos(),
+            vpos: self.clock.line,
+            ..on
+        });
+        self.stamped = self.paula.len();
+        self.tick(beam::Tick::Write(self.stamped as u32 - 1));
+        self.tick(beam::Tick::Cpu(beam::Cost::AudioWrite, 1));
+        self.clock.cpu(self.costs[beam::Cost::AudioWrite as usize]);
+        self.bus.at = self.clock.nominal();
     }
 
     /// `level_frame_loop` has returned in the step's own frame (T37): the step is over where the
@@ -629,10 +664,28 @@ impl LevelCtx<'_> {
     /// `sfx_play` (h0+$12a72): effect `effect` on `channel`, unless the attract demo runs.
     pub fn sfx(&mut self, effect: u8, channel: u8) {
         if self.bus.l(ATTRACT_MODE) == 0 {
-            let at = self.paula.len();
             self.spend(beam::Cost::SfxPlay);
-            self.bus.st.audio
-                .play_sfx(self.sound, effect, channel, self.paula);
+            let at = self.paula.len();
+            let rest = self.bus.st.audio
+                .play_sfx_begin(self.sound, effect, channel, self.paula);
+            let Some(rest) = rest else {
+                self.audio_spent(at, beam::Cost::AudioStop, beam::Cost::AudioWrite);
+                return;
+            };
+            // The raster wait runs with interrupts off: a frame's end in it holds the vertical
+            // blank until INTENA `$c000` ([`LevelCtx::interrupts_back`]).
+            let on = self.paula.pop().expect("sfx_play's INTENA $c000");
+            self.audio_spent(at, beam::Cost::AudioStop, beam::Cost::AudioWrite);
+            let off = self.paula.last().expect("sfx_play's INTENA $4000").vpos;
+            self.held = Some((on, off));
+            self.interrupt_due_at(true);
+            if let Some((on, _)) = self.held.take() {
+                let at = self.paula.len();
+                self.paula.push(on);
+                self.audio_spent(at, beam::Cost::AudioStop, beam::Cost::AudioWrite);
+            }
+            let at = self.paula.len();
+            self.bus.st.audio.play_sfx_rest(self.sound, rest, self.paula);
             self.audio_spent(at, beam::Cost::AudioStop, beam::Cost::AudioWrite);
         }
     }
@@ -640,8 +693,8 @@ impl LevelCtx<'_> {
     /// `sample_play` (h0+$148b8): stream sample `k` on channel 3, unless the attract demo runs.
     pub fn sample(&mut self, k: usize) {
         if self.bus.l(ATTRACT_MODE) == 0 {
-            let at = self.paula.len();
             self.spend(beam::Cost::SfxPlay);
+            let at = self.paula.len();
             self.bus.st.audio.play_sample(self.sound, k, self.paula);
             self.audio_spent(at, beam::Cost::AudioStop, beam::Cost::AudioWrite);
         }
@@ -688,9 +741,25 @@ impl LevelCtx<'_> {
     }
 }
 
+/// The line of the next frame `sfx_play`'s raster wait ends on, begun on line `off` of a frame
+/// that ended in it: the wait reads VPOS's low byte, adds 3 and loops until VPOS's low byte equals
+/// it (h0+$12b28..$12b36), so the line the vertical blank is held to.
+fn sfx_wait_end(off: u16) -> u16 {
+    ((off % beam::FRAME_LINES) as u8).wrapping_add(3) as u16
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn sfx_wait_ends_three_lines_on_by_vposs_low_byte() {
+        // Lines 310..312 read low bytes $36..$38: the next frame's lines 57..59 match them.
+        assert_eq!(sfx_wait_end(310), 57);
+        assert_eq!(sfx_wait_end(312), 59);
+        // A clock run past the frame's end counts on in the next frame.
+        assert_eq!(sfx_wait_end(beam::FRAME_LINES + 2), 5);
+    }
 
     #[test]
     fn joy1dat_encodes_directions_as_denise_does() {

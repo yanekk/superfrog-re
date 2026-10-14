@@ -18,6 +18,12 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-14 | 🐞 | T101 review sweep, open: `sample_play` (h0+$148c6..$14910) runs with interrupts off and no raster wait; `LevelCtx::sample` holds no vertical blank across it as `sfx` now does. Untested whether a frame ends there. |
+| 2026-10-14 | 🐞 | T101 review sweep, open: `music_start` (h0+$13130..$1313a) disables interrupts briefly; the engine holds no vertical blank across it. Untested whether a frame ends there. |
+| 2026-10-14 | 🐞 | T101 review sweep, open: `music_stop` (h0+$132a0) disables interrupts; the engine holds no vertical blank across it. Untested whether a frame ends there. |
+| 2026-10-14 | 🐞 | T101, open: `enemies-w3-1` re-syncs at 201: the original still in phase 12, its writes all made; the engine ends that pass and starts the next. Cutting at a pass's end needs the original's `vbl_count` in `Pacing::Late`: a check at each phase broke W1/W5 cases. |
+| 2026-10-14 | 📌 | T101: `sfx_play` waits three lines with interrupts off (VPOS low byte + 3, h0+$12b28). Begun near a frame's end it waits to that line of the next frame (~56), the vertical blank held off: `LevelCtx::interrupts_back`. |
+| 2026-10-14 | 📌 | T101: re-syncs gone, pins dropped: `items-run-w1-1` 321, `bonus-end-wb-1` 4284/7814 (now `resync = false`), `enemies-w1-1` 433. `items-pad-w1-1` is in the test block. |
 | 2026-10-14 | 📌 | T73: a line's prize collected (rungs 1–8): memory proven by the h0+$51c4 routine test (review), frame timing unexercised: fire alone pays no line at `start-w1-1`, `-blink1`; `-late` pays hi-lo. T74's `slot-hold-20000` is its first case. |
 | 2026-10-14 | 📌 | T73 review: `Rig::check` compared no registers before `Rig::last_regs`; routine tests whose original returns its answer in a register (d0, d7) checked memory only. Not swept test by test; not fixed. |
 | 2026-10-14 | 📌 | T73: `slot-fire` (reel-stop effects play) lands 3 712 of 4 576 draw writes within a line, after fitting the spin's digits 1 000 cycles under Moira's; a few menu-entry and count draws stay 7–12 lines off, green. |
@@ -85,7 +91,6 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 | 2026-10-14 | 🔄 | Owner, T40: added T104 w6-completions (after T40, T101, T102; blocks T18): W6 exits need every coin (97–189 a map), seven maps. T40 keeps per-level enemy cases, no exclusions; a T101/T102 fault keeps one out of the test block. |
 | 2026-10-14 | 🐞 | T79 review, open (T34 meets T79 at merge): game over in the bonus level diverges at `bonus-death-wb-1` frame 2448, after a lag: `playfield_buffer_0`, then the copper's buffer pointers a flip apart. Likely T101's class; case cut to 2447, divergence pinned. |
 | 2026-10-14 | 🐞 | T79, fixed: `main_program` looked for the loop's end only after a fresh pass; a loop ending in a resumed (lag-cut) pass stalled, in any level. Now after both (`level/frame.rs` `after_pass`). |
-| 2026-10-14 | 📌 | T79: `bonus-end-wb-1` re-syncs at 4284 and 7814, both T101's phase-6 cut, pinned in `frog_cases::bonus_end_wb_1`. Once T101 lands: `resync = false`, drop the pin. Runs ~110 s (two runs: the second sees frame 8127). |
 | 2026-10-14 | 📌 | T79: `bonus_visit` (h0+$8cd6) picks `level_init_lb`'s start row, but nothing sets it (password entries 24–27 share handler h0+$25f8): the bonus level always starts at the top. Ported, routine-tested by poking it. |
 | 2026-10-14 | 📌 | T79: a divergence on the frame after a lag now lists the engine's unported paths (`sf-conform` `run_inner`); before, a game over reached mid-pass read as a bare variable difference. |
 | 2026-10-14 | 📌 | T38 review, not fixed: `LevelTally` drops `level_tally`'s first test (`game_full_mode` 0, a game run from a disk loader, returns at once). Unreachable from the engine's boot; no assertion guards it. |
