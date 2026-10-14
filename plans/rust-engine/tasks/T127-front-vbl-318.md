@@ -25,6 +25,10 @@ not explain.
 - Frames 613 and 658 are excluded for another reason (the copper reads a channel between the
   fade's `andi` and `add`); they are not this task's.
 
+## Interface
+
+None new: T100's `vbl::fade_start` and `fade::level_step_times` keep their signatures.
+
 ## Files
 
 - `engine/crates/sf-core/src/front/{vbl.rs,fade.rs}`, `audio/music.rs` (`tick_work`)

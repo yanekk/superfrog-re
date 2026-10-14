@@ -21,11 +21,11 @@ task = "T127"
 [[exclude]]
 what = "picture"
 frames = [613, 613]
-note = "the copper reads a colour mid-step, between the fade out's `andi.w #$ff0f,(a0)` and `add.w d3,(a0)` (the original shows $b0c, green cleared): as on 658 (owner, T100)"
-task = "T100"
+note = "the copper reads a colour mid-step, between the fade out's `andi.w #$ff0f,(a0)` and `add.w d3,(a0)` (the original shows $b0c, green cleared), and one colour the original has not stepped yet ($eee, the engine's $ddd): the engine's steps land early here, as on 658 (owner, T100)"
+task = "unowned: FINDINGS 2026-10-14 (T100)"
 
 [[exclude]]
 what = "picture"
 frames = [658, 658]
 note = "the copper reads colour 31 on line $34 between the fade in's `andi.w #$fff0,(a0)` and `add.w d3,(a0)` (the original shows $ee0, blue cleared): a 12-cycle window no timing model short of the bus's own reaches (owner, T100)"
-task = "T100"
+task = "unowned: FINDINGS 2026-10-14 (T100)"
