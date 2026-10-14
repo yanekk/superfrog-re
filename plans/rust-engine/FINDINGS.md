@@ -18,7 +18,9 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
-| 2026-10-14 | 🔄 | Owner, T100: added T127 front-vbl-318 (T100): `frog-pit-w1-1` frame 318, one colour a channel off; the original's handler ~64 cycles longer than frame 648's, same work. Picture excluded meanwhile. |
+| 2026-10-14 | 🐞 | T100 review sweep, open: 15 cases' `enemies` exclusions name `T39–T41` (all ✅), not the task that will model them: enemies-w1-1, -w3-1, -w3-2, -w3-4, frog-timeup, game-over, -fire, -timeup, items-checkpoint, -pad, -shield-w3-1, -run, -wings-w1-2, tally, tally-slot. Not fixed. |
+| 2026-10-14 | 📌 | T100 review: with vars off (frame-0 `level1_vector`), front-attract, -boot, -skip-wait, -options and ending stay green on T100's `BLANK_COPPER` timing; worker-driven. |
+| 2026-10-14 | 🔄 | Owner, T100: added T130 front-vbl-318 (blocks T21; renumbered from T127, taken, in review): `frog-pit-w1-1` frame 318, one colour a channel off; the original's handler ~64 cycles longer than frame 648's, same work. Picture excluded meanwhile. |
 | 2026-10-14 | 🔄 | Owner, T100: `frog-pit-w1-1` pictures 613 and 658 excluded: the copper reads a colour between the fade's `andi` and `add` (channel cleared: `$b0c`, `$ee0`). Only bus-cycle emulation reaches it. |
 | 2026-10-14 | 📌 | T100: the front handler waits at `h0+$12a14` until eight lines after `music_tick` ends; the CPU runs at ~17/20 inside the display window. T94's slot handler may share `vbl::fade_start`; the slot list keeps T37's timing. |
 | 2026-10-14 | 🐞 | Open, seen in T39's review merge: `purity::the_real_pure_crates_pass` red on `pir/rust-engine` itself: `sf-core/src/slot/draw.rs:285–289` (T93's test module) uses `HashMap`. Not T39's; not fixed. |

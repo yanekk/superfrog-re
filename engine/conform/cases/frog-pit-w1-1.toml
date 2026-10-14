@@ -16,7 +16,7 @@ task = "T36 (items in frame cases), T16–T18 (enemies)"
 what = "picture"
 frames = [318, 318]
 note = "colour 30 read with red stepped (the original's $877, the engine's $887): the original's handler runs about 64 cycles longer here than on frame 648, the same work"
-task = "T127"
+task = "T130"
 
 [[exclude]]
 what = "picture"

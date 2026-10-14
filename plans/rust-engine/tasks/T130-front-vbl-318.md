@@ -1,13 +1,13 @@
-# T127 — front-vbl-318
+# T130 — front-vbl-318
 
-**Phase:** 2 · **Depends on:** T100 · **Weight:** small
+**Phase:** 2 · **Depends on:** T100; blocks T21 · **Weight:** small
 
 Added by T100 (owner, 2026-10-14): the one frame of `frog-pit-w1-1` T100's handler timing does
 not explain.
 
 ## Goal
 
-`frog-pit-w1-1`'s picture compared on frame 318: its `picture` exclusion (task `T127`) gone.
+`frog-pit-w1-1`'s picture compared on frame 318: its `picture` exclusion (task `T130`) gone.
 
 ## What is known (T100)
 

@@ -165,7 +165,7 @@ headless.
 | [T124](tasks/T124-enemies-w5-3-case.md) | enemies-w5-3-case | T39; blocks T18 |
 | [T125](tasks/T125-enemies-w5-4-case.md) | enemies-w5-4-case | T39; blocks T18 |
 | [T126](tasks/T126-w5-completions.md) | w5-completions | T39, T101, T121, T123, T124, T125; blocks T18 |
-| [T127](tasks/T127-front-vbl-318.md) | front-vbl-318 | T100 |
+| [T130](tasks/T130-front-vbl-318.md) | front-vbl-318 | T100; blocks T21 |
 | [T120](tasks/T120-conform-no-silent-pass.md) | conform-no-silent-pass | T05, T36; blocks T21 |
 | [T104](tasks/T104-w6-completions.md) | w6-completions | T40, T101, T102; blocks T18 |
 
