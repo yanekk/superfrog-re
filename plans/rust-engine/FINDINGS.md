@@ -18,6 +18,10 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-14 | 📌 | T85 review: added T105 (owner): `items-upper-w2-1` never took the fruit 48,22 or extra life 63,35, and the original stops in its pass from ~1012 (h0+$e3fe..$e412, frog 78,42). Case cut to 1 010 frames. |
+| 2026-10-14 | 🐞 | T85 review, open: `sf-conform` reads an original that never finishes a pass as endless lag (`mid_pass`, `straddled`) and compares nothing, so a case stays green; old `items-upper-w2-1` had 468 such frames. Swept: switch 49, fruit-w2-2 45, wings-w1-2 24, all sparse. |
+| 2026-10-14 | 📌 | T85 review: `examples/plan` steps the engine unpaced; in the case run W2-1's pad 91,35 bounced two frames later (frog `+$22` out of phase), so planned inputs after it missed. Check a planned script's items through `run_with`. |
+| 2026-10-14 | 📌 | T85: W2-1's fruit 48,22 and extra life 63,35 sit in a closed upper area; with enemies frozen the way in is a jump into the pillar 63-66,36-39 (ground-probe lift, frame ~884 of `items-upper-w2-1`). Flight only flaps. |
 | 2026-10-14 | 🐞 | T79 review, open (T34 meets T79 at merge): game over in the bonus level diverges at `bonus-death-wb-1` frame 2448, after a lag: `playfield_buffer_0`, then the copper's buffer pointers a flip apart. Likely T101's class; case cut to 2447, divergence pinned. |
 | 2026-10-14 | 🐞 | T79, fixed: `main_program` looked for the loop's end only after a fresh pass; a loop ending in a resumed (lag-cut) pass stalled, in any level. Now after both (`level/frame.rs` `after_pass`). |
 | 2026-10-14 | 📌 | T79: `bonus-end-wb-1` re-syncs at 4284 and 7814, both T101's phase-6 cut, pinned in `frog_cases::bonus_end_wb_1`. Once T101 lands: `resync = false`, drop the pin. Runs ~110 s (two runs: the second sees frame 8127). |
