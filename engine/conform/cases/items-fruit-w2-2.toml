@@ -1,11 +1,8 @@
 # W2-2 with its items live: five kinds of fruit and the spud taken in the room left of the start,
-# then the spud thrown and caught; score, the panel and the picture every frame.
+# then the spud thrown and caught; score, the panel and the picture every frame. World 2's enemies
+# live since T43: one re-sync after the original's pass is cut inside the bob drawer (T107's),
+# pinned in `frog_cases::items_fruit_w2_2`.
 sync = { level = "W2-2" }
 script = "items-fruit-w2-2"
 frames = 650
-resync = false
-
-[[exclude]]
-what = "enemies"
-note = "the original's marker spawners the engine has none for (enemies, the world's scenery)"
-task = "T16–T18"
+resync = true
