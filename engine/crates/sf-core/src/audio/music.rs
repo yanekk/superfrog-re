@@ -306,6 +306,24 @@ impl AudioDriver {
         self.shadow_to_paula(data, out);
     }
 
+    /// Whether the next [`AudioDriver::music_tick`] reads the next row of every channel
+    /// (`fetch_rows`, one tick before the row plays): the vertical blank's handler is longer by it.
+    pub fn fetches_rows(&self) -> bool {
+        let tick = self.p41.w(TICK).wrapping_add(1);
+        self.music_on.w(0) != 0
+            && tick != self.p41.w(SPEED)
+            && tick == self.p41.w(FETCH_TICK)
+            && self.p41.w(FETCH_DELAY) == 0
+    }
+
+    /// Whether the next [`AudioDriver::music_tick`] is a tick between rows on which no channel's
+    /// effect is stepped (none playing, or every one held by an effect): its handler is shorter.
+    pub fn quiet_tick(&self) -> bool {
+        self.music_on.w(0) != 0
+            && self.p41.w(TICK).wrapping_add(1) != self.p41.w(SPEED)
+            && (0..4).all(|n| self.p41.w(ch(n) + LIVE) == 0 || !self.free(n))
+    }
+
     /// `p41_play` (`$1343c`).
     fn p41_play(&mut self, data: &SoundData, out: &mut Vec<PaulaWrite>) {
         let tick = self.p41.w(TICK).wrapping_add(1);

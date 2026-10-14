@@ -161,6 +161,11 @@ headless.
 | [T115](tasks/T115-w3-completions.md) | w3-completions | T44, T101, T102, T111, T112, T113; blocks T18 |
 | [T121](tasks/T121-bob-draw-cut.md) | bob-draw-cut | T101; blocks T21 |
 | [T122](tasks/T122-w2-completions.md) | w2-completions | T43, T101, T121; blocks T18 |
+| [T123](tasks/T123-enemies-w5-2-case.md) | enemies-w5-2-case | T39; blocks T18 |
+| [T124](tasks/T124-enemies-w5-3-case.md) | enemies-w5-3-case | T39; blocks T18 |
+| [T125](tasks/T125-enemies-w5-4-case.md) | enemies-w5-4-case | T39; blocks T18 |
+| [T126](tasks/T126-w5-completions.md) | w5-completions | T39, T101, T121, T123, T124, T125; blocks T18 |
+| [T127](tasks/T127-restore-sprite-wait.md) | restore-sprite-wait | T101; blocks T21 |
 | [T120](tasks/T120-conform-no-silent-pass.md) | conform-no-silent-pass | T05, T36; blocks T21 |
 | [T104](tasks/T104-w6-completions.md) | w6-completions | T40, T101, T102; blocks T18 |
 
