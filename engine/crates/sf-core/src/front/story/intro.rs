@@ -411,7 +411,7 @@ impl Intro {
             writes: Vec::new(),
             fresh: false,
             handler_end: None,
-            audio: AudioDma::new(),
+            audio: AudioDma::booted(),
         }
     }
 
@@ -1365,11 +1365,12 @@ mod tests {
         // The black list: the copper's end alone.
         m.set_w(scenes::BLACK_LIST, 0xffff);
         m.set_w(scenes::BLACK_LIST + 2, 0xfffe);
-        // Channel 0 turned on by this frame's writes (line 10): its first words in lines 11, 12.
+        // Channel 0 turned on by this frame's writes (line 10), with its bit alone as the sound
+        // driver writes it: its first words in lines 11, 12.
         let on = [
             write(10, 0xa4, 4),
             write(10, 0xa6, 200),
-            write(10, 0x96, 0x8201),
+            write(10, 0x96, 0x8001),
         ];
         let at = |line: u32, h: u32| line * super::super::cpu::LINE + h;
         let fixed = intro.fixed(&m, 1, &on);

@@ -54,6 +54,15 @@ impl AudioDma {
         }
     }
 
+    /// As the game's boot leaves Agnus: DMA's master switch on (the original's DMACON `$8200` in
+    /// its frame 58, its trackloader's `$8210` after; the engine loads without them), every channel
+    /// idle. The sound driver then turns channels on with their bits alone (`$8001`).
+    pub fn booted() -> AudioDma {
+        let mut a = AudioDma::new();
+        a.chip.set_dmacon(0x8200);
+        a
+    }
+
     /// Run one frame of `lines` lines on its writes, as [`Paula::frame`]: the slots the channels'
     /// DMA took in it, as (clock in the frame, `vpos * 227 + hpos`; channel), in order.
     pub fn frame(&mut self, writes: &[PaulaWrite], lines: u32) -> &[(u32, u8)] {

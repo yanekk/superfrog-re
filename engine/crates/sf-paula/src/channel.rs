@@ -292,7 +292,7 @@ impl Chip {
         }
     }
 
-    fn set_dmacon(&mut self, value: u16) {
+    pub(crate) fn set_dmacon(&mut self, value: u16) {
         let old = self.dmacon;
         let new = if value & 0x8000 != 0 {
             (old | value) & 0x07FF
