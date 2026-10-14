@@ -445,7 +445,16 @@ fn main() {
                 goals[goal] = climb(&live, w, h, &left);
             }
             Some(Via::Cell(x, y)) => goals[goal] = climb(&live, w, h, &[(x, y)]),
-            None => goals[goal] = climb(&live, w, h, &exits),
+            None => {
+                // The exit behind walls (a gate still shut) with a switch left: the switches first.
+                goals[goal] = climb(&live, w, h, &exits);
+                let (fx, fy) = frog(start.state());
+                let at = dist(&goals[goal], (fx.max(0) / 16) as usize, (fy.max(0) / 16) as usize);
+                if at >= 400 && !sw.is_empty() {
+                    eprintln!("  the exit is behind a wall: to the switches first");
+                    goals[goal] = climb(&live, w, h, &sw);
+                }
+            }
             _ => {}
         }
         let field = &goals[goal];
@@ -490,7 +499,7 @@ fn main() {
                     // A coin taken or a switch pressed is worth more than any distance (the field
                     // still has it).
                     let mut taken = needed.saturating_sub(st.w(FROG + f::COINS_LEFT)) as i64;
-                    if let Some(Via::Coins(_)) = target {
+                    if matches!(target, Some(Via::Coins(_)) | None) {
                         taken += pressed(st, &sw) as i64;
                     }
                     let been = if let Some(Via::Coins(_)) = target {
