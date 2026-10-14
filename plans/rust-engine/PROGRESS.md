@@ -106,7 +106,7 @@ done · ⛔ blocked, needs a human.
 | T96 | story-audio-dma-slots | T53; blocks T56 | ✅ | |
 | T100 | front-vbl-timing | T37; blocks T21 | ⬜ | |
 | T97 | story-split-handler | T54; blocks T56 | ⬜ | |
-| T101 | lag-long-pass | T81, T82; blocks T21 | 🔍 | Phase-6 cuts step through `buffer_flip`'s writes (`sync::flip_step`). `sfx_play` split at its interrupts-off raster wait: a frame end there holds the blank till `$c000`. On-time frame: no catch-up pass once the original's writes are made. `items-pad-w1-1` added; four pins dropped. Deviation: `audio/`, `sync.rs` touched too. |
+| T101 | lag-long-pass | T81, T82; blocks T21 | ✅ | Review: one fix, the held-blank line (VPOS low byte + 3) was untested, `+3→+2` survived; `sfx_wait_end` test added. Flip PCs checked against the listing; mutations of flip steps, the hold and `waits_out` go red. Item, enemy, audio cases green; `level_entry` red identically on base. |
 | T102 | items-w3-faults | T101; blocks T21 | ⬜ | |
 | T105 | w2-1-hang-fruit-life | T85; blocks T21 | ⬜ | |
 | T106 | w1-completions | T42, T86, T101; blocks T18 | ⬜ | |
@@ -133,7 +133,7 @@ done · ⛔ blocked, needs a human.
 A Notes cell holds what was built or what the review found, the test count, and one line per
 deviation from the task doc. A ✅ task's cell may be cut to one line once the next task has been reviewed.
 
-**Review queue:** T101
+**Review queue:** *(empty)*
 
 ## Blocked on the user
 

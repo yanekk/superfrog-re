@@ -18,6 +18,9 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-14 | 🐞 | T101 review sweep, open: `sample_play` (h0+$148c6..$14910) runs with interrupts off and no raster wait; `LevelCtx::sample` holds no vertical blank across it as `sfx` now does. Untested whether a frame ends there. |
+| 2026-10-14 | 🐞 | T101 review sweep, open: `music_start` (h0+$13130..$1313a) disables interrupts briefly; the engine holds no vertical blank across it. Untested whether a frame ends there. |
+| 2026-10-14 | 🐞 | T101 review sweep, open: `music_stop` (h0+$132a0) disables interrupts; the engine holds no vertical blank across it. Untested whether a frame ends there. |
 | 2026-10-14 | 🐞 | T101, open: `enemies-w3-1` re-syncs at 201: the original still in phase 12, its writes all made; the engine ends that pass and starts the next. Cutting at a pass's end needs the original's `vbl_count` in `Pacing::Late`: a check at each phase broke W1/W5 cases. |
 | 2026-10-14 | 📌 | T101: `sfx_play` waits three lines with interrupts off (VPOS low byte + 3, h0+$12b28). Begun near a frame's end it waits to that line of the next frame (~56), the vertical blank held off: `LevelCtx::interrupts_back`. |
 | 2026-10-14 | 📌 | T101: re-syncs gone, pins dropped: `items-run-w1-1` 321, `bonus-end-wb-1` 4284/7814 (now `resync = false`), `enemies-w1-1` 433. `items-pad-w1-1` is in the test block. |
