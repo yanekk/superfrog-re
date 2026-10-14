@@ -87,7 +87,7 @@ done · ⛔ blocked, needs a human.
 | T53 | story-draw-cpu-program | T52; blocks T54 | ✅ | |
 | T54 | story-handler-end-feed | T53; blocks T56 | ✅ | |
 | T55 | story-intro-sound-timing | T50; blocks T56 | ✅ | |
-| T56 | story-intro-to-insert-disk | T49, T50, T54, T55; blocks T21, T47, T48 | ✅ | Review: one fix. Mutation timing the job's first frame under `shown_list` survived every story case; story-intro now checks scene 1's mask DMACON line (7bfd456). Dropping fed acks caught by scene4-init. Story cases green; split T128–T132 valid, T132 carries done-when. Full case's 36-frame red, unpack lines read-only. Deviation held. |
+| T56 | story-intro-to-insert-disk | T49, T50, T54, T55; blocks T21, T47, T48 | ✅ | Review: one fix. Mutation timing the job's first frame under `shown_list` survived every story case; story-intro now checks scene 1's mask DMACON line (7bfd456). Dropping fed acks caught by scene4-init. Story cases green; split T140–T144 valid, T144 carries done-when. Full case's 36-frame red, unpack lines read-only. Deviation held. |
 | T81 | beam-cleanup | T36; blocks T37 | ✅ | |
 | T82 | beam-tests | T81 | ✅ | |
 | T83 | items-w1 | T81 | ✅ | |
@@ -129,11 +129,11 @@ done · ⛔ blocked, needs a human.
 | T125 | enemies-w5-4-case | T39; blocks T18 | ⬜ | |
 | T126 | w5-completions | T39, T101, T121, T123, T124, T125; blocks T18 | ⬜ | |
 | T127 | restore-sprite-wait | T101; blocks T21 | ⬜ | |
-| T128 | story-setup-under-music | T56 | ⬜ | |
-| T129 | story-fade-colour-race | T56 | ⬜ | |
-| T130 | story-draw-end-order | T56 | ⬜ | |
-| T131 | story-last-fade-out | T56 | ⬜ | |
-| T132 | story-intro-full-green | T56, T128, T129, T130, T131; blocks T21, T47, T48 | ⬜ | |
+| T140 | story-setup-under-music | T56 | ⬜ | |
+| T141 | story-fade-colour-race | T56 | ⬜ | |
+| T142 | story-draw-end-order | T56 | ⬜ | |
+| T143 | story-last-fade-out | T56 | ⬜ | |
+| T144 | story-intro-full-green | T56, T140, T141, T142, T143; blocks T21, T47, T48 | ⬜ | |
 
 A Notes cell holds what was built or what the review found, the test count, and one line per
 deviation from the task doc. A ✅ task's cell may be cut to one line once the next task has been reviewed.
