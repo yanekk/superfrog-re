@@ -18,6 +18,7 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-14 | 🐞 | Not T95's: every power-on case (`front-boot`, `-password`, `-skip-*`, `-attract`, `-options`, `-noskip`) diverges at frame 0 on `level1_vector` ($64): original $fc0c8e (Kickstart), engine 0. T44 added the variable; power-on `State` lacks the vector. |
 | 2026-10-14 | 🐞 | Open, seen in T44's merge regression: `frog_cases::frog_timeup_w1_1` failed once (busy machine, 204 s run; message not captured), then green 5 times (alone, full file, cold sync cache). Cause unknown; sync cache writes are atomic. |
 | 2026-10-14 | 📌 | T44 merge with T41, not fixed: `w3/{dart,swing}.rs` and `w4/{dart,mace}.rs` both port h0+$25fa8, $25f42, $2619c, $262be; dispatch keeps the last registered (W4's). Keep one copy. Symbols keep T41's `chain_link_count`, `touch_ledge`. |
 | 2026-10-14 | 🐞 | T44 merge sweep, not fixed: `w4/mace.rs` `spawn_69` skips the ball's write through a null slot to $64 when a link finds no room; the original writes it (W3's spawner test, mutation red). |
