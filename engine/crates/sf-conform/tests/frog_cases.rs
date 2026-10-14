@@ -66,21 +66,12 @@ fn items_pad_w1_1() {
     green("items-pad-w1-1");
 }
 
-/// A case green but for re-syncs after a lag at exactly `frames`.
-fn pinned(name: &str, frames: &[u32]) {
-    let case = sf_conform::Case::load(&sf_conform::cases_dir().join(format!("{name}.toml")))
-        .unwrap_or_else(|e| panic!("{e}"));
-    let o = sf_conform::run(&case).unwrap_or_else(|d| panic!("{name}: {d}"));
-    let resynced: Vec<u32> = o.resynced.iter().map(|r| r.0).collect();
-    assert_eq!(resynced, frames, "{name}: {:?}", o.resynced);
-}
-
 /// W2-2 with its items and (T43) its enemies live, 650 frames: five kinds of fruit and the spud
-/// taken, the spud thrown and caught. Its one re-sync is T121's (the original's pass cut inside
-/// the bob drawer, frames 261–310), pinned here so no other lag frame is excused.
+/// taken, the spud thrown and caught. No re-sync: its one at 311 was the bob drawer's wait for
+/// the vertical blank's flag (T102).
 #[test]
 fn items_fruit_w2_2() {
-    pinned_bob_draw("items-fruit-w2-2", &[311]);
+    pinned_bob_draw("items-fruit-w2-2", &[]);
 }
 
 /// A case green but for re-syncs at `frames`, each after the original's pass was cut inside the
@@ -166,10 +157,19 @@ fn items_launcher_w2_2() {
 }
 
 /// W4-1 with its items live, 2 360 frames: enemies-w4-1's route on to the 50 000-point fruit at
-/// 290,34 (T86). Its one re-sync is T102's frame-206 fault, pinned here.
+/// 290,34 (T86), with no re-sync (T102).
 #[test]
 fn items_fruit_w4_1() {
-    pinned("items-fruit-w4-1", &[206]);
+    green("items-fruit-w4-1");
+}
+
+/// W3-1 with its items live, 1 130 frames: the bottle, both pads (the second over the spiked
+/// pillar), the slow-down, the speed-up, the wings and the shield, then idle until the speed-up
+/// and the shield run out, with no re-sync (T102): long lags in the pad bounce, the frog's
+/// collision walk cut by the vertical blank and the bob drawer waiting for its flag.
+#[test]
+fn items_shield_w3_1() {
+    green("items-shield-w3-1");
 }
 
 /// The bonus level entered (T79): 600 frames from its first, the frog flown about and firing,
