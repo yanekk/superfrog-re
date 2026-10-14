@@ -18,6 +18,12 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-14 | 🔄 | Owner, T103: added T131 w4-completion-faults (T103, T121, T127; blocks T18, T21): the `complete-w4-*` cases' faults outside W4's objects, each mapped to its owner first; the cases stay outside the test block. |
+| 2026-10-14 | 🐞 | T103, open (T131): `clr.w AUD3VOL` at a stream's end writes the data bus's last word, a DMA word in the original (`complete-w4-3` 10429 `$fbfb`, `complete-w4-2` 2383, 5171); the engine always writes `$33fc`. |
+| 2026-10-14 | 🐞 | T103, open (T131): the exit fade's palette step lands a frame early in the engine at `complete-w4-1` 2149 (four frames after the exit, 83 pixels a step off); `complete-w4-2`'s copper differs from its exit on. |
+| 2026-10-14 | 🐞 | T103, open (T131): `complete-w4-3` 8886, the frog's sprite on a spring pad differs (every variable equal), as in T40's W6 row; W4-2 red at 1657, 1927, 4964, 7731, 8054, 9097 (lag, bob draw). |
+| 2026-10-14 | 📌 | T103: `examples/plan_exit --coins 0` plans a whole level on the original (`--ground 27,22,24` for W4). Map markers `$3a`+ are walls; base-36 `2` in `map_ascii` is 38 (secret passage); a lone switch marker is its pair's gate. |
+| 2026-10-14 | 📌 | T103: every exit's tally takes 185 frames from `level_state` 1 to the next level's first frame (W4-1 2145→2330, W4-3 10831→11016), fire 70 frames after the exit. |
 | 2026-10-14 | 🔄 | Owner, T102: added T128 w3-4-sprite-race (T127; blocks T113). W3-4 frame 194 (T113's wait on T102) is still red: the frog's sprites cut, `place_frog_sprites` across line $20; re-run after T127, close if green. |
 | 2026-10-14 | 📌 | T102, for T121: its three pinned re-syncs are gone (the drawer's flag wait); `items-fruit-w2-2` and `enemies-w2-2` still `resync = true` with empty pins. Whether the drawer still needs per-bob cut steps is open. |
 | 2026-10-14 | 📌 | T102: `bob_draw` waits for `vbl_pass_flag` (h0+$1918e); a late pass whose last pass flipped since the blank waits out its frame (`LevelCtx::wait_blank`). Cleared pins: `items-fruit-w2-2` 311, `enemies-w2-2` 560, `enemies-w5-1` 551, `items-fruit-w4-1` 206. |
