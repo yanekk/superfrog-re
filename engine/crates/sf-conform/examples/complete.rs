@@ -2,7 +2,12 @@
 //! enemies freeze leaves only what nothing ports frozen), and prints it as an input script: how
 //! the `enemies-w1-*` cases' scripts are written (T42).
 //!
-//! `cargo run --release --example complete -- <level> [--prefix <script>] [--coins <n>] [--paced] [--hold <n>] [--beam <n>] [--steps <n>]`
+//! `cargo run --release --example complete -- <level> [--prefix <script>] [--coins <n>] [--paced] [--hold <n>] [--beam <n>] [--steps <n>] [--kill|--touch|--at <col,row>]...`
+//!
+//! With targets (T42's enemy cases) it plans to each in turn instead of the coins: `--kill` the
+//! enemy spawned from that map cell dies (its marker is cleared), steering by where that enemy is;
+//! `--touch` the frog is hurt within 64 pixels of the cell; `--at` the frog stands within a cell
+//! of it; `--near` it stands within 160 by 100 pixels of it (scenery on the screen). It stops at the first target not reached, printing the script so far.
 //!
 //! From the level's start (after the prefix script), the frog heads for the nearest coin left in
 //! the map (markers 8 and 9; a coin is taken when its marker is cleared), by the beam search
@@ -19,6 +24,7 @@ use sf_conform::{InputScript, SyncPoint, sync};
 use sf_core::frog::{FROG, f};
 use sf_core::input::{FrameInput, Joy};
 use sf_core::layout::{h0, h1};
+use sf_core::level::objects::OBJ_SLOTS;
 use sf_core::{Game, Start};
 
 /// The map's row 0 (`map_rows[1]`, h1), a row's length in bytes, and the level's size in cells.
@@ -159,6 +165,7 @@ fn main() {
     let mut prefix = InputScript::idle();
     let (mut hold, mut width, mut steps) = (4u32, 48usize, 120u32);
     let (mut paced, mut max_coins) = (false, u32::MAX);
+    let mut targets: Vec<(Target, u32, u32)> = Vec::new();
     let mut i = 1;
     while i < args.len() {
         let v = args.get(i + 1).cloned().unwrap_or_default();
@@ -168,6 +175,16 @@ fn main() {
             "--beam" => width = v.parse().unwrap(),
             "--steps" => steps = v.parse().unwrap(),
             "--coins" => max_coins = v.parse().unwrap(),
+            "--kill" | "--touch" | "--at" | "--near" => {
+                let (c, r) = v.split_once(',').expect("col,row");
+                let t = match args[i].as_str() {
+                    "--kill" => Target::Kill,
+                    "--touch" => Target::Touch,
+                    "--near" => Target::Near,
+                    _ => Target::At,
+                };
+                targets.push((t, c.parse().unwrap(), r.parse().unwrap()));
+            }
             "--paced" => {
                 paced = true;
                 i += 1;
@@ -225,6 +242,59 @@ fn main() {
     while inputs.len() < 150 {
         g.step(FrameInput::default());
         inputs.push(FrameInput::default());
+    }
+    if !targets.is_empty() {
+        for &(t, c, r) in &targets {
+            let cell = h1(ROW0) + r * ROW_BYTES + 2 * c;
+            let (cx, cy) = ((c * 16 + 8) as i32, (r * 16 + 8) as i32);
+            // A touch counts from the frog unhurt: wait for the last hurt to wear off.
+            if t == Target::Touch {
+                for _ in 0..300 {
+                    if g.state().w(FROG + f::HURT) == 0 {
+                        break;
+                    }
+                    g.step(FrameInput::default());
+                    inputs.push(FrameInput::default());
+                }
+            }
+            let hurt0 = g.state().w(FROG + f::HURT) != 0;
+            let near = move |n: &Game, d: i32| {
+                let (x, y) = frog(n);
+                (x - cx).abs() < d && (y - cy).abs() < d
+            };
+            let reached = move |n: &Game| match t {
+                Target::Kill => marker(n, c, r) == 0 && n.state().w(FROG + f::ON_GROUND) != 0,
+                Target::Touch => !hurt0 && n.state().w(FROG + f::HURT) != 0 && near(n, 64),
+                Target::At => near(n, 16) && n.state().w(FROG + f::ON_GROUND) != 0,
+                Target::Near => {
+                    let (x, y) = frog(n);
+                    (x - cx).abs() < 160 && (y - cy).abs() < 100 && n.state().w(FROG + f::ON_GROUND) != 0
+                }
+            };
+            // Steer to the enemy spawned from the cell while it is out, else to the cell.
+            let to = match (0..20)
+                .map(|k| OBJ_SLOTS + k * 0x7c)
+                .find(|&s| g.state().l(s + 0x40) == cell)
+            {
+                Some(s) if matches!(t, Target::Kill | Target::Touch) => {
+                    (g.state().w(s + 8) as i32 + 8, g.state().w(s + 0xa) as i32)
+                }
+                _ => (cx, cy),
+            };
+            match search(&g, hold, width, steps, &[to], &reached) {
+                Some((n, p)) => {
+                    inputs.extend(p);
+                    g = n;
+                    eprintln!("{t:?} {c},{r}: frame {}", inputs.len());
+                }
+                None => {
+                    eprintln!("{t:?} {c},{r}: not reached");
+                    break;
+                }
+            }
+        }
+        print_script(&inputs);
+        return;
     }
     // Coins the search could not reach from where it was: left out, all tried again once every
     // other coin is taken or left out (while that took a coin).
@@ -294,6 +364,14 @@ fn main() {
         None => eprintln!("exit {ec},{er}: not reached"),
     }
     print_script(&inputs);
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum Target {
+    Kill,
+    Touch,
+    At,
+    Near,
 }
 
 fn print_script(inputs: &[FrameInput]) {

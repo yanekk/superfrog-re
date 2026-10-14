@@ -1,0 +1,40 @@
+# W1-1 with world 1's enemies live (T42), planned by examples/complete.rs from the paced engine:
+# the sitter at 35,42 stomped (frame ~318) and turned into a reward, hurt by the runner from
+# 72,25 (~440) and by the spiker at 88,50 (~657).
+0: -
+150: U R
+154: U
+166: R
+210: U R
+214: U
+226: R
+234: L
+238: U
+242: -
+282: L
+286: U
+290: -
+294: R
+298: U
+302: -
+319: R
+323: U R
+327: U
+379: -
+383: U R
+395: U
+427: D
+431: R
+435: -
+582: R
+594: -
+598: R
+610: U
+618: -
+622: L
+626: R
+638: U
+650: -
+654: U L
+657: -
+700: -
