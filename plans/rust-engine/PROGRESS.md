@@ -65,7 +65,7 @@ done · ⛔ blocked, needs a human.
 | T40 | enemies-world-6 | T38; blocks T18 | ⬜ | |
 | T41 | enemies-world-4 | T38; blocks T18 | ✅ | |
 | T42 | enemies-world-1 | T38; blocks T18, T33 | ✅ | |
-| T43 | enemies-world-2 | T38; blocks T18, T39 | ✅ | Review: 17 W2 templates, routine tests and four frame cases green. Fixed: stale enemy exclusions dropped from items-upper/switch-w2-1 (green live); bouncer `$98` boundary mutant survived, generator now hits it; T120–T122 docs given Interface and Tests; §2.11 lists the `$64` write. Probed seven mutations; `enemies-w2-3`'s divergence at 408 reproduced. Rest carried to T121/T122 (owner). |
+| T43 | enemies-world-2 | T38; blocks T18, T39 | ✅ | Review: 17 W2 templates, routine tests and four frame cases green. Fixed: stale enemy exclusions dropped from items-upper/switch-w2-1 (green live); bouncer `$98` boundary mutant survived, generator now hits it; T120–T122 docs given Interface and Tests. Merge: darts and mace reuse `w3`'s updates, `$64` write kept as T44's. Probed seven mutations; `enemies-w2-3`'s divergence at 408 reproduced. Rest carried to T121/T122 (owner). |
 | T44 | enemies-world-3 | T38; blocks T18 | ✅ | |
 | T46 | story-intro-scenes | T32; blocks T21 | ✅ | |
 | T47 | story-intro-handover | T46; blocks T21 | ⬜ | |
