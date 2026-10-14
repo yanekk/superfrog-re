@@ -18,6 +18,7 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-14 | 📌 | T97 review: `sf-conform scan` of story-scene4-sound to 9 200 frames misses past 7 824 too (1 254 `frame_descriptors` frames), unlike the story_dbg row; same on base. Handlers taken O 11 310, 11 617 (lines 310, 312) unchecked behind that. |
 | 2026-10-14 | 📌 | T97: `story_dbg SCAN=1` to 9 320 frames reaches engine 9 282 (O ~12 690) before the oracle cap. Misses past 6 683: 7 227–7 824, 8 216–8 217 (a draw's `$0400` after a handler acknowledged on 307), 9 268–9 282. None is a split. |
 | 2026-10-14 | 🐞 | T97, not fixed: in scene 4's long blits (engine 6 680–6 685) the engine's own handler lines are far off (38 against 300, 0 against 211). The split is decided on conformance's fed entry, so normal play misses it. |
 | 2026-10-14 | 📌 | T97: the intro's 8-line wait (h0+$38a02, VHPOSR's low byte) read on line ≥305 ends on line read+8−256 of the next frame, whose blank it acknowledges. To the insert-disk-1 page: O 7 591, 7 984 (inside T56's slip), 10 087. |

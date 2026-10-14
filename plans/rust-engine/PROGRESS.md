@@ -105,7 +105,7 @@ done · ⛔ blocked, needs a human.
 | T95 | slot-load-finish | T92; blocks T93 | ✅ | |
 | T96 | story-audio-dma-slots | T53; blocks T56 | ✅ | |
 | T100 | front-vbl-timing | T37; blocks T21 | ⬜ | |
-| T97 | story-split-handler | T54; blocks T56 | 🔍 | `Intro::frame` splits the handler at its 8-line wait (`vbl::to_wait`/`after_wait`) when read on line ≥305: rest and acknowledge in the next frame, whose blank merges. Read line from the fed entry (engine's own: 38, original 300). Deviation: `story-scene4-sound` extended to 6700, no new case. Two unit tests; `split_probe` example. |
+| T97 | story-split-handler | T54; blocks T56 | ✅ | Review clean, no fix commit. Scan to 6700 green at 6682–6683; same scan to 9200 against base differs only there. Mutations (wait never wraps; no merged blank) red in unit tests and scan. `split_probe` rerun to the insert-disk-1 page: three ≥305 reads. Deviation (case extended) held. |
 | T101 | lag-long-pass | T81, T82; blocks T21 | ⬜ | |
 | T102 | items-w3-faults | T101; blocks T21 | ⬜ | |
 | T105 | w2-1-hang-fruit-life | T85; blocks T21 | ⬜ | |
