@@ -123,6 +123,7 @@ fn frog(st: &sf_core::State) -> (i32, i32) {
 fn flood(body: &[u16], w: usize, h: usize, goal: &[(usize, usize)]) -> Vec<u32> {
     // Solid cells cost 60 (a switch's gate is solid until it opens), deadly ones 40.
     let cost = |x: usize, y: usize| match body[y * w + x] >> 10 {
+        62 => 1,
         m if m & 0x18 == 0x18 => 60,
         6 => 40,
         _ => 1,
@@ -157,10 +158,14 @@ const JUMP: u32 = 7;
 const PAD_JUMP: u32 = 16;
 
 /// [`flood`] with gravity: a step up is only taken within a jump of a cell the frog can stand on
-/// (an open cell over a solid one, in this column or the next), sideways and down always. Where
+/// (an open cell over a solid one or a floor, in this column or the next) or in a lift's shaft,
+/// sideways and down always. Where
 /// that leaves a cell no way to `goal`, the plain flood's cost plus 50 000.
 fn climb(body: &[u16], w: usize, h: usize, goal: &[(usize, usize)]) -> Vec<u32> {
-    let solid = |x: usize, y: usize| body[y * w + x] >> 10 & 0x18 == 0x18;
+    // Marker 62 is a floor the frog passes up through: stacked over a lift cell (44, which raises
+    // a frog standing in it a row a frame) it is a lift's shaft.
+    let solid = |x: usize, y: usize| body[y * w + x] >> 10 & 0x18 == 0x18 && body[y * w + x] >> 10 != 62;
+    let lift = |x: usize, y: usize| matches!(body[y * w + x] >> 10, 44 | 62);
     // How far a step up into each cell is from the nearest ground below it, a pad's lift taken off.
     let mut reach = vec![u32::MAX; w * h];
     for x in 0..w {
@@ -170,7 +175,7 @@ fn climb(body: &[u16], w: usize, h: usize, goal: &[(usize, usize)]) -> Vec<u32> 
                 below = u32::MAX;
                 continue;
             }
-            if y + 1 < h && solid(x, y + 1) {
+            if y + 1 < h && (solid(x, y + 1) || body[(y + 1) * w + x] >> 10 == 62) {
                 below = 0;
             } else if below != u32::MAX {
                 below += 1;
@@ -199,12 +204,16 @@ fn climb(body: &[u16], w: usize, h: usize, goal: &[(usize, usize)]) -> Vec<u32> 
     }
     let up_ok = |x: usize, y: usize| {
         let near = [x.wrapping_sub(1), x, x + 1];
-        near.iter().any(|&c| c < w && reach[y * w + c] <= JUMP) || solid(x, y)
+        near.iter().any(|&c| c < w && reach[y * w + c] <= JUMP)
+            || solid(x, y)
+            || lift(x, y)
+            || (y + 1 < h && lift(x, y + 1))
     };
     // A wall dearer than in the plain flood: a long way round beats climbing through one (W6-2's
     // shaft), and a closed gate is still crossed when nothing else reaches the goal. A deadly cell
     // is never crossed (W6-2's bounce pads under spikes).
     let cost = |x: usize, y: usize| match body[y * w + x] >> 10 {
+        62 => 1,
         m if m & 0x18 == 0x18 => 400,
         6 => u32::MAX,
         _ => 1,
