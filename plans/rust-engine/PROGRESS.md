@@ -122,15 +122,15 @@ done · ⛔ blocked, needs a human.
 | T115 | w3-completions | T44, T101, T102, T111, T112, T113; blocks T18 | ⬜ | |
 | T121 | bob-draw-cut | T101; blocks T21 | ✅ | |
 | T122 | w2-completions | T43, T101, T121; blocks T18 | ✅ | |
-| T120 | conform-no-silent-pass | T05, T36; blocks T21 | ⬜ | |
+| T120 | conform-no-silent-pass | T05, T36; blocks T21 | ✅ | |
 | T104 | w6-completions | T40, T101, T102; blocks T18 | ✅ | |
 | T123 | enemies-w5-2-case | T39; blocks T18 | ✅ | |
 | T124 | enemies-w5-3-case | T39; blocks T18 | ✅ | |
-| T125 | enemies-w5-4-case | T39; blocks T18 | ⬜ | |
+| T125 | enemies-w5-4-case | T39; blocks T18 | ✅ | |
 | T126 | w5-completions | T39, T101, T121, T123, T124, T125; blocks T18 | ⬜ | |
-| T127 | restore-sprite-wait | T101; blocks T21 | ⬜ | |
+| T127 | restore-sprite-wait | T101; blocks T21 | ✅ | |
 | T128 | w3-4-sprite-race | T127; blocks T113 | ⬜ | |
-| T130 | front-vbl-318 | T100; blocks T21 | ⬜ | |
+| T130 | front-vbl-318 | T100; blocks T21 | ✅ | |
 | T129 | slot-lamp-cut | T74; blocks T21 | ✅ | Review clean, no fix commit. All 19 slot cases green; slot_lamps_sim matches the original on 26 draws (1487 cut, 1492 not). Mutations caught: audio slots off reds -40 and hilo-0; anchors off reds five cases. Unreachable all-lamps-fit forced cut read-only. Normal play differs on 2–4 flashes (owner-accepted). |
 | T140 | story-setup-under-music | T56 | ⬜ | |
 | T141 | story-fade-colour-race | T56 | ⬜ | |
@@ -159,6 +159,9 @@ done · ⛔ blocked, needs a human.
 | T166 | w2-2-completion | T122; blocks T18, T155 | ⬜ | |
 | T167 | w2-3-completion | T122; blocks T18, T155 | ⬜ | |
 | T168 | w2-4-completion | T122; blocks T18, T155 | ⬜ | |
+| T169 | power-on-cases-green | T160; blocks T21 | ⬜ | |
+| T170 | game-over-timeup-copper | T34; blocks T21 | ⬜ | |
+| T171 | front-handler-bus-model | T130, T129; blocks T21 | ⬜ | |
 
 A Notes cell holds what was built or what the review found, the test count, and one line per
 deviation from the task doc. A ✅ task's cell may be cut to one line once the next task has been reviewed.

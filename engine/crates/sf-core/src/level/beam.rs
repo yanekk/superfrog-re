@@ -44,6 +44,12 @@ pub enum Cost {
     FrogTiles,
     FrogAir,
     FrogAnim,
+    /// `frog_anim_tick`'s work past its sprite wait (h0+$1027a): the pose's height and data
+    /// pointers into the sprite records and the copper list. Its head ([`Cost::FrogAnim`]) is
+    /// the part before the wait (T127): of the routine's 652 cycles on a new pose, 300 to the
+    /// wait's read of VPOS, 352 after it; the fitted 513 is split in that ratio. Charged after
+    /// the routine on every path, as the fitted total was.
+    FrogAnimTail,
     FrogWalk,
     FrogInput,
     FrogSprites,
@@ -163,6 +169,7 @@ impl Cost {
         Cost::FrogTiles,
         Cost::FrogAir,
         Cost::FrogAnim,
+        Cost::FrogAnimTail,
         Cost::FrogWalk,
         Cost::FrogInput,
         Cost::FrogSprites,
@@ -241,7 +248,8 @@ impl Cost {
             Cost::Demo => 120,
             Cost::FrogTiles => 2122,
             Cost::FrogAir => 570,
-            Cost::FrogAnim => 513,
+            Cost::FrogAnim => 236,
+            Cost::FrogAnimTail => 277,
             Cost::FrogWalk => 845,
             Cost::FrogInput => 546,
             Cost::FrogSprites => 1340,
