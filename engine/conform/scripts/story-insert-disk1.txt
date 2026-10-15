@@ -1,0 +1,6 @@
+# The story intro untouched, then fire on its "insert disk 1" page (shown from O 12 718; disk 1
+# goes in as soon as the intro asks for it), held through the read of disk 1's id (O 12 740-12 824)
+# and let go: the intro fades the page out and boots the game (T47). Held past the read: the engine's
+# frame after an instant load keeps the input of the frame the load began on (FINDINGS 2026-10-15).
+12740: F
+12830: -
