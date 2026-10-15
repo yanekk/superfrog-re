@@ -232,3 +232,12 @@ fn completes(name: &str, pins: &[u32], exit_at: u32) {
 fn enemies_w3_1_complete() {
     completes("enemies-w3-1-complete", &[1018, 1629], 5493);
 }
+
+/// W3-4 played from its start to its exit and through the tally (T115): round the level as
+/// `enemies-w3-4` goes, back up for the coins and down again to the exit at 17774, fire taking the
+/// points. Two re-syncs pinned, each the frame after a lag: the panel at 8779 and `obj_slots` at
+/// 16318. Alone it meets every milestone.
+#[test]
+fn enemies_w3_4_complete() {
+    completes("enemies-w3-4-complete", &[8779, 16318], 17774);
+}

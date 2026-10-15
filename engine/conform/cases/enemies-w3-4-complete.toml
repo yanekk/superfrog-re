@@ -1,0 +1,7 @@
+# W3-4 completed (T115): from its first frame (the frog held to 150) through the coins the exit
+# needs to the exit (17773), every object live, the exit fade and the tally, fire in its wait
+# taking the points. Planned in legs on the original (the script says which).
+sync = { level = "W3-4" }
+script = "enemies-w3-4-complete"
+frames = 17958
+resync = true

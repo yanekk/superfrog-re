@@ -68,6 +68,17 @@ struct Way {
     cells: Vec<(i32, i32)>,
 }
 
+impl Way {
+    /// Frames the frog has been in its last cell, in 32s up to 8: a frog held still (stunned
+    /// after a hurt, W3-2 4861: some 130 frames) makes progress only so.
+    fn still(&self) -> usize {
+        let Some(&last) = self.cells.last() else {
+            return 0;
+        };
+        (self.cells.iter().rev().take_while(|&&c| c == last).count() / 32).min(8)
+    }
+}
+
 /// Whether `st` has made the progress `goal` asks for, from `coins` needed at the start.
 fn done(st: &sf_core::State, goal: Goal, coins: u16) -> bool {
     match goal {
@@ -103,7 +114,16 @@ fn safe(g: &Game, lives: u16) -> bool {
 }
 
 /// Explores from `start` until a way makes progress, or `iters` bursts are spent.
-fn explore(start: &Game, goal: Goal, iters: usize, min_hearts: u16, seed: u64) -> Option<Way> {
+/// `dead`: where earlier steps ended with no way on (cell, coins needed), which a way may not
+/// end in.
+fn explore(
+    start: &Game,
+    goal: Goal,
+    iters: usize,
+    min_hearts: u16,
+    seed: u64,
+    dead: &[((i32, i32), u16)],
+) -> Option<Way> {
     let acts = [
         Joy::NONE,
         Joy::RIGHT,
@@ -118,21 +138,16 @@ fn explore(start: &Game, goal: Goal, iters: usize, min_hearts: u16, seed: u64) -
     let lives = s0.w(FROG + f::LIVES);
     let coins = s0.w(COINS_LEFT);
     let mut rng = Rng(seed | 1);
-    // Key: cell, coins needed, switches left. Value: (the game there, its way, times picked).
-    type Key = ((i32, i32), u16, usize);
+    // Key: cell, coins needed, switches left, frames still there ([`Way::still`]). Value: (the
+    // game there, its way, times picked).
+    type Key = ((i32, i32), u16, usize, usize);
     let mut archive: HashMap<Key, (Game, Way, u32)> = HashMap::new();
-    let key = |st: &sf_core::State| (cell(st), st.w(COINS_LEFT), switches_left(st));
-    archive.insert(
-        key(s0),
-        (
-            start.clone(),
-            Way {
-                inputs: vec![],
-                cells: vec![],
-            },
-            0,
-        ),
-    );
+    let key = |st: &sf_core::State, w: &Way| (cell(st), st.w(COINS_LEFT), switches_left(st), w.still());
+    let none = Way {
+        inputs: vec![],
+        cells: vec![],
+    };
+    archive.insert(key(s0, &none), (start.clone(), none, 0));
     let mut keys: Vec<Key> = archive.keys().copied().collect();
     // How often a burst ended in each key's cell.
     let mut visits: HashMap<Key, u32> = HashMap::new();
@@ -165,7 +180,10 @@ fn explore(start: &Game, goal: Goal, iters: usize, min_hearts: u16, seed: u64) -
                 {
                     break 'burst;
                 }
-                if done(st, goal, coins) && safe(&g, lives) {
+                if done(st, goal, coins)
+                    && !dead.contains(&(cell(st), st.w(COINS_LEFT)))
+                    && safe(&g, lives)
+                {
                     return Some(Way { inputs, cells });
                 }
                 let ended = st.l(LEVEL_STATE) != 0xffff_fffe;
@@ -174,7 +192,11 @@ fn explore(start: &Game, goal: Goal, iters: usize, min_hearts: u16, seed: u64) -
                 }
             }
             let st = g.state();
-            let kk = key(st);
+            let way = Way {
+                inputs: inputs.clone(),
+                cells: cells.clone(),
+            };
+            let kk = key(st, &way);
             *visits.entry(kk).or_insert(0) += 1;
             let better = archive.get(&kk).is_none_or(|e| {
                 (st.w(HEARTS), std::cmp::Reverse(inputs.len()))
@@ -184,17 +206,7 @@ fn explore(start: &Game, goal: Goal, iters: usize, min_hearts: u16, seed: u64) -
                 if !archive.contains_key(&kk) {
                     keys.push(kk);
                 }
-                archive.insert(
-                    kk,
-                    (
-                        g.clone(),
-                        Way {
-                            inputs: inputs.clone(),
-                            cells: cells.clone(),
-                        },
-                        0,
-                    ),
-                );
+                archive.insert(kk, (g.clone(), way, 0));
             }
         }
     }
@@ -202,7 +214,7 @@ fn explore(start: &Game, goal: Goal, iters: usize, min_hearts: u16, seed: u64) -
     // Where it got: the cells reached, by switches left, as boxes, when asked (`EXPLORE_MAP`).
     if let Ok(p) = std::env::var("EXPLORE_MAP") {
         let mut s = String::new();
-        for &((c, r), n, sw) in &keys {
+        for &((c, r), n, sw, _) in &keys {
             s += &format!("{c} {r} {n} {sw}\n");
         }
         std::fs::write(format!("{p}.{seed:x}"), s).unwrap();
@@ -267,6 +279,7 @@ fn main() {
     let mut fails = 0;
     // Each step kept: the original before it, and the inputs' length then.
     let mut history: Vec<(sf_oracle::Snapshot, usize)> = Vec::new();
+    let mut dead: Vec<((i32, i32), u16)> = Vec::new();
     while inputs.len() < budget && goal < goals.len() {
         let start = Game::with_display(
             display.clone(),
@@ -280,7 +293,8 @@ fn main() {
                     let start = start.clone();
                     let g = goals[goal];
                     let sd = seed.wrapping_add(t.wrapping_mul(0x2545_f491_4f6c_dd1d));
-                    s.spawn(move || explore(&start, g, iters, min_hearts, sd))
+                    let dead = &dead;
+                    s.spawn(move || explore(&start, g, iters, min_hearts, sd, dead))
                 })
                 .collect();
             hs.into_iter().filter_map(|h| h.join().unwrap()).collect()
@@ -291,7 +305,10 @@ fn main() {
         let Some(way) = found.into_iter().min_by_key(|w| w.inputs.len()) else {
             fails += 1;
             eprintln!("frame {}: no way found ({fails})", inputs.len());
-            // Back to the step before: the last one kept may have left the frog nowhere to go.
+            // Back to the step before: the last one kept may have left the frog nowhere to go,
+            // and no way may end there again.
+            let st = sf_core::State::transplant(&sync::core_memory(amiga.memory()));
+            dead.push((cell(&st), st.w(COINS_LEFT)));
             if let Some((s, len)) = history.pop() {
                 amiga.restore(&s);
                 inputs.truncate(len);
