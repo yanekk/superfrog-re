@@ -1,9 +1,9 @@
-# T150 — attract-demo-cycles
+# T159 — attract-demo-cycles
 
 **Split from:** T33. Carries T33's "each of the three `demo_index` entries, and an abort by fire"
 tests and "the full cycle in `sf-conform -- all`".
 
-**Phase:** 2 · **Depends on:** T149 · **Weight:** medium
+**Phase:** 2 · **Depends on:** T158 · **Weight:** medium
 
 ## Goal
 
@@ -27,6 +27,11 @@ ending it back to the title.
 - Cases to add: `attract-demo-3.toml` (power-on, about 15 500 frames, three demos; slow: outside
   the test block, in `all`), `attract-abort.toml` (fire held a few frames mid-demo: `demo_play`
   ends it, `level_frame_loop` stops on fire, `LevelOver` back to the title).
+
+## Interface
+
+None new, as T33: the demo runs inside `Game::step`, reached from T20's attract cycle under
+`Start::PowerOn`.
 
 ## Files
 

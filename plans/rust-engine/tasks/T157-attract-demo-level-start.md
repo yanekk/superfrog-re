@@ -1,8 +1,8 @@
-# T148 — attract-demo-level-start
+# T157 — attract-demo-level-start
 
 **Split from:** T33. Carries T33's first demo frame for frame, to the level's exit.
 
-**Phase:** 2 · **Depends on:** T147 · **Weight:** medium
+**Phase:** 2 · **Depends on:** T156 · **Weight:** medium
 
 ## Goal
 
@@ -26,11 +26,16 @@ The first demo's `level_start` and its 721 frames of play green in `front-attrac
 - **3323, fade.** An `E9`/`ED` retrigger between rows makes `music_dma` wait for DMA. Add
   `TickWork::retrigger` (E9: `RETRIG` == 1; ED: low nibble == the new tick) and a
   `RETRIGGER_DMA` cost in `fade_start`: 500 and 775 fail, 600 and 700 pass; 650 used.
-- **3340.** The keyboard handover (T146) must already be in.
+- **3340.** The keyboard handover (T155) must already be in.
 - **4995 (the original's 10035)** needs T127: the frog bumps a block in the blank (a coin
   spawns), so `place_frog_sprites` runs a second time on line `$1e`, after the copper's sprite
   read on `$20`, and the original waits (h0+$19c92). With `sprite_wait` called there it is green.
   Until T127, exclude the picture of that frame (`task = "T127"`).
+
+## Interface
+
+None new, as T33: the demo runs inside `Game::step`, reached from T20's attract cycle under
+`Start::PowerOn`.
 
 ## Files
 

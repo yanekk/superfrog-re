@@ -18,7 +18,7 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
-| 2026-10-15 | 🔄 | T33 split at pir's context line, no code kept: T146 attract-demo-entry, T147 attract-demo-init-timing, T148 attract-demo-level-start, T149 attract-demo-return, T150 attract-demo-cycles. Measured causes in their docs; first demo was green to 7 000 frames. |
+| 2026-10-15 | 🔄 | T33 split at pir's context line, no code kept: T155 attract-demo-entry, T156 attract-demo-init-timing, T157 attract-demo-level-start, T158 attract-demo-return, T159 attract-demo-cycles. Measured causes in their docs; first demo was green to 7 000 frames. |
 | 2026-10-15 | 📌 | T108 review: `plan_exit --frames N` is an absolute frame budget, not frames after the prefix; a prefix longer than N plans nothing and exits 0. `--via` a cell steers it off a block top `--hurt` alone cannot leave. |
 | 2026-10-15 | 📌 | T108: W1-3's way to the patrollers is the spring (marker 4) at 105,75: jump on it, it bounces the frog up the 104–107 channel. `complete.rs --at`/`--touch` measure the frog's centre, about three rows below the cell it stands in; `plan_exit` uses map cells. |
 | 2026-10-15 | 🐞 | T107: an in-level sample stream's end, `clr.w AUD3VOL`, may write the data bus, not the prefetch: W1-2 frame 820 (a beam-24 crawler leg) wrote $0000 after audio DMA; the engine writes $33fc. Unfixed; routed around. |

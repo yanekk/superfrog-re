@@ -1,4 +1,4 @@
-# T146 — attract-demo-entry
+# T155 — attract-demo-entry
 
 **Split from:** T33. Carries T33's "credits past frame 6416" test and the demo's place in the cycle.
 
@@ -38,6 +38,11 @@ context line; what it measured is below, so this is rebuilding, not discovery.
 - When the level loop is entered `Game::step_paced` must copy the front end's keyboard register
   into `Game::sdr` (add `Front::keyboard_sdr`): the original's still holds the power-on `$7e`
   released, read by the level's `kbd_poll` (else `kbd_toggle` diverges at case frame 3340).
+
+## Interface
+
+None new, as T33: the demo runs inside `Game::step`, reached from T20's attract cycle under
+`Start::PowerOn`.
 
 ## Files
 

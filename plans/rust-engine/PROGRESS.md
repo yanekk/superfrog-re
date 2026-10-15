@@ -55,7 +55,7 @@ done · ⛔ blocked, needs a human.
 | T30 | acceptance | T29 | ⬜ | |
 | T31 | render-remaining-levels | T13 | ✅ | |
 | T32 | story-intro | T20; blocks T21 | ✅ | |
-| T33 | attract-demo | T16, T20 | 🔍 | Split at pir's context line, no code kept (none committed; discard refused, see report): T146 entry, T147 init timing, T148 level start, T149 return, T150 cycles carry all of it, with T33's measurements in their docs. |
+| T33 | attract-demo | T16, T20 | 🔍 | Split at pir's context line, no code kept (none committed; discard refused, see report): T155 entry, T156 init timing, T157 level start, T158 return, T159 cycles carry all of it, with T33's measurements in their docs. |
 | T34 | game-over | T15, T20; blocks T21 | ✅ | |
 | T35 | end-sequence | T20; blocks T21 | ✅ | |
 | T36 | items-on-the-beam | T15 | ✅ | |
@@ -141,11 +141,11 @@ done · ⛔ blocked, needs a human.
 | T131 | w4-completion-faults | T103, T121, T127; blocks T18, T21 | ⬜ | |
 | T132 | w4-4-completion | T103; blocks T18, T131 | ⬜ | |
 | T145 | w4-4-dart-21 | T132; blocks T18, T131 | ⬜ | |
-| T146 | attract-demo-entry | T33 | ⬜ | |
-| T147 | attract-demo-init-timing | T146 | ⬜ | |
-| T148 | attract-demo-level-start | T147 | ⬜ | |
-| T149 | attract-demo-return | T148 | ⬜ | |
-| T150 | attract-demo-cycles | T149 | ⬜ | |
+| T155 | attract-demo-entry | T33 | ⬜ | |
+| T156 | attract-demo-init-timing | T155 | ⬜ | |
+| T157 | attract-demo-level-start | T156 | ⬜ | |
+| T158 | attract-demo-return | T157 | ⬜ | |
+| T159 | attract-demo-cycles | T158 | ⬜ | |
 
 A Notes cell holds what was built or what the review found, the test count, and one line per
 deviation from the task doc. A ✅ task's cell may be cut to one line once the next task has been reviewed.

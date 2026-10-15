@@ -1,9 +1,9 @@
-# T149 — attract-demo-return
+# T158 — attract-demo-return
 
 **Split from:** T33. Carries "the return to the title so the cycle repeats" and T33's 5 000-frame
 test.
 
-**Phase:** 2 · **Depends on:** T148 · **Weight:** small
+**Phase:** 2 · **Depends on:** T157 · **Weight:** small
 
 ## Goal
 
@@ -17,8 +17,13 @@ cycle runs on (T20's doc asked for 5 000 frames of attract mode, demo included).
   up in that same part showed as garbage; the original put it up 300 frames earlier. Fix in
   `Front::run_main_split`: when a part makes the frame's load (`cx.load_point` set during it),
   drop that part's `before` entry.
-- **Case frame 5151, window.** See T148: only the next list's first 8 moves count.
+- **Case frame 5151, window.** See T157: only the next list's first 8 moves count.
 - With these and the T127 wait, `front-attract` was green to 7 000 frames.
+
+## Interface
+
+None new, as T33: the demo runs inside `Game::step`, reached from T20's attract cycle under
+`Start::PowerOn`.
 
 ## Files
 

@@ -1,8 +1,8 @@
-# T147 — attract-demo-init-timing
+# T156 — attract-demo-init-timing
 
 **Split from:** T33. Carries the "every frame matching" part of T33's goal over `demo_init`.
 
-**Phase:** 2 · **Depends on:** T146 · **Weight:** medium
+**Phase:** 2 · **Depends on:** T155 · **Weight:** medium
 
 ## Goal
 
@@ -29,6 +29,11 @@ came a frame late, 53 lines. Two model gaps, both fixed in T33's lost work and c
 
 Result then: 8400 at restart 297/67 (orig 69), demo 3303/301 (308); 0400 268 (271) and 3305/190
 (194); 9c=0010 300/287 (281) and 3307/259 (263).
+
+## Interface
+
+None new, as T33: the demo runs inside `Game::step`, reached from T20's attract cycle under
+`Start::PowerOn`.
 
 ## Files
 
