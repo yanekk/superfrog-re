@@ -18,6 +18,9 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-15 | 🐞 | T47, worked round: after a disk swap vAmiga's CIA returns a stale disk-change line on the intro's re-read (h0+$c520, after two head steps), so one fire press fails. `sync::step_inserting` patches h0+$c540 into a second read; the hardware passes first time. |
+| 2026-10-15 | 📌 | T47: after an instant load the runner re-runs the engine's frame with the input of the frame the load began on, not the original's last load frame. `story-insert-disk1` holds fire past the read (O 12740–12830) for that. |
+| 2026-10-15 | 📌 | T47: the intro hands over to the game as a power-on; on that frame `Game::set_handover_state` takes `front::RUNS_DURING_LOAD` (`kbd_toggle` parity) from the original. `story-intro-full` green to 9870, title waiting. |
 | 2026-10-15 | 📌 | T144 review sweep, left alone: `tasks/T141-story-fade-colour-race.md` calls the colour-28 fade (engine 7232–7241) scene 9's; the original's chain there is h0+$736e..$73dc, scene 12 (docs/13 table). |
 | 2026-10-15 | 🐞 | Fixed: `sf-conform record` printed every `LAYOUT` long (~3.5 MB a line); T164's recording reached 38 GB, the disk filled (ENOSPC) and the run crashed. Now entries over 1 KB are left out (`--all-vars`) and output stops at 200 MB (`--max-mb`). |
 | 2026-10-15 | 📌 | T163 review sweep, left alone: `frog/physics.rs`'s `DEMO_LEFT` doc says the recording's entries are three words; the original's (h0+$3ad8c) are a lead-in word then two-word steps, `demo_at` moving 4 bytes. Comment only. |
@@ -256,7 +259,6 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 | 2026-10-13 | 🔄 | Owner, T19: the slot redraws lamps while the beam draws; a pixel differing only on lines an engine blit wrote within 4 lines of the beam is excused, counted per case. |
 | 2026-10-13 | 📌 | T19: the RNG never moves in W1-1; the title's eye blinks draw from it, so a later START GAME (+50 frames: 1 step; +120: 3) changes the slot's draws. +150 reaches the attract demo. |
 | 2026-10-13 | 🔄 | Owner, T19: split; T19 keeps the slot machine, T70 bonus-level added (15 object types, shooter mode, `level_state` 2). The bonus level follows W5, never the slot. |
-| 2026-10-13 | 🐞 | T32 review, open for T47: in normal play the engine's intro hands over to the game untouched (probe: frame 9 282, no input); `END` has no fire wait, though `Start::Disk3`'s doc says fire is pressed. |
 | 2026-10-13 | 📌 | T32 added T46 story-intro-scenes, T47 story-intro-handover, T48 story-intro-skips (first numbered T36–T38, then T42–T44; T15 and T16 took those; owner renumbered 2026-10-13) (owner: rewind to the last working milestone, split the rest). All block T21. T32 stops at frame 539; T46's doc lists what its scan left. |
 | 2026-10-13 | 📌 | T32 for T46: the runner's load-line search fits on the picture, so a fade-timing change in a load frame moves the line found and the next frames. A draft cycle-exact fade-step model did that; reverted. |
 | 2026-10-13 | 📌 | T32 deviation from DESIGN §2.1: `Game::step` uses a new `Pacing::Unpaced` (the engine's own timing) instead of `OnTime`; only the story intro reads it. DESIGN §2.1 still says `OnTime`. |
