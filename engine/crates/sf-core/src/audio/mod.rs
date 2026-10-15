@@ -60,7 +60,8 @@ pub mod vars {
 
 /// The files in chip RAM when the game is in `world` (1..6, 7 the bonus level) with its module at
 /// `module_addr`: the world's effect bank and module; outside a level the title's module at the
-/// bank's own place.
+/// bank's own place. The attract demo plays a world with no bank loaded, the title's module going
+/// on (`sfx_bank_init` never moved the module from [`BANK_ADDR`]).
 pub fn files_for(world: u32, module_addr: u32) -> Vec<(u32, File)> {
     let bank = if world <= 2 {
         BankId::Worlds12
@@ -68,6 +69,7 @@ pub fn files_for(world: u32, module_addr: u32) -> Vec<(u32, File)> {
         BankId::Worlds36
     };
     match world {
+        _ if module_addr == BANK_ADDR => vec![(BANK_ADDR, File::Tune(TuneId::Title))],
         1..=6 => vec![
             (BANK_ADDR, File::Bank(bank)),
             (module_addr, File::Tune(TuneId::World(world as u8))),

@@ -9,6 +9,8 @@
 //!
 //! `col,row`: the frog's feet within a column across and two rows up or down of the cell.
 //! `take,col,row`: the cell's marker changes (an item taken there).
+//! `take,col,row,col2,row2`: the cell's marker changes, steering to the second cell (a switch's
+//! gate opening, steered to the switch; T133).
 use sf_conform::{Case, InputScript, sync};
 use sf_core::frog::{FROG, f};
 use sf_core::input::{FrameInput, Joy};
@@ -24,6 +26,8 @@ const ROW_BYTES: u32 = 0x260;
 enum Target {
     Feet(u32, u32),
     Take(u32, u32),
+    /// The first cell's marker changes, steering to the second (a switch and its gate).
+    TakeVia(u32, u32, u32, u32),
     Wait(u32),
 }
 
@@ -117,6 +121,12 @@ fn main() {
                 let p: Vec<&str> = t.split(',').collect();
                 targets.push(match p[0] {
                     "wait" => Target::Wait(p[1].parse().unwrap()),
+                    "take" if p.len() == 5 => Target::TakeVia(
+                        p[1].parse().unwrap(),
+                        p[2].parse().unwrap(),
+                        p[3].parse().unwrap(),
+                        p[4].parse().unwrap(),
+                    ),
                     "take" => Target::Take(p[1].parse().unwrap(), p[2].parse().unwrap()),
                     c => Target::Feet(c.parse().unwrap(), p[1].parse().unwrap()),
                 });
@@ -164,6 +174,7 @@ fn main() {
     let steps = std::env::var("ROUTE_STEPS").map_or(250, |v| v.parse().unwrap());
     let width_beam = std::env::var("ROUTE_BEAM").map_or(24, |v| v.parse().unwrap());
     'targets: for &t in &targets {
+        let (mut sc, mut sr) = (None, None);
         let (tc, tr, take) = match t {
             Target::Wait(n) => {
                 for _ in 0..n {
@@ -173,6 +184,10 @@ fn main() {
             }
             Target::Feet(c, r) => (c, r, None),
             Target::Take(c, r) => (c, r, Some(oracle_w(&amiga, marker_addr(c, r)))),
+            Target::TakeVia(c, r, s, q) => {
+                (sc, sr) = (Some(s), Some(q));
+                (c, r, Some(oracle_w(&amiga, marker_addr(c, r))))
+            }
         };
         let reached = |w: &dyn Fn(u32) -> u16| match take {
             Some(m) => w(marker_addr(tc, tr)) != m,
@@ -181,7 +196,8 @@ fn main() {
                 (c - tc as i32).abs() <= 1 && (r - tr as i32).abs() <= 2
             }
         };
-        let dist = distances(&open, width, height, tc as usize, tr as usize);
+        let (gc, gr) = (sc.unwrap_or(tc), sr.unwrap_or(tr));
+        let dist = distances(&open, width, height, gc as usize, gr as usize);
         let score = |g: &Game| {
             let fr = frog_of(|a| g.state().w(a));
             let (c, r) = feet(&fr);
@@ -190,7 +206,7 @@ fn main() {
             } else {
                 u32::MAX / 64
             };
-            (d.min(u32::MAX / 64) as i32) * 16 + (fr.x + 8 - (tc * 16 + 8) as i32).abs()
+            (d.min(u32::MAX / 64) as i32) * 16 + (fr.x + 8 - (gc * 16 + 8) as i32).abs()
         };
         let mut replans = 0;
         loop {

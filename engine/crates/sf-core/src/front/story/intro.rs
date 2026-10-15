@@ -774,7 +774,16 @@ impl Intro {
                     self.finish_busy(m, until);
                 }
                 Wait::Busy { until, .. } => {
-                    if until >= end {
+                    let line = super::cpu::LINE as u64;
+                    if let Some(job) = self.job.as_ref().map(|j| j.end)
+                        && until >= end
+                        && job < end * line
+                    {
+                        // The set-up's job ends in the frame's last line: what follows it starts
+                        // in this frame, at the job's end (scene 8's `objects_init`, O 7577).
+                        self.finish_busy(m, end - 1);
+                        self.resume = Some(job);
+                    } else if until >= end {
                         if self.pacing != Pacing::OnTime {
                             return;
                         }
