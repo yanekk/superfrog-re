@@ -44,7 +44,7 @@ fn frog(st: &sf_core::State) -> (i32, i32) {
 /// The cost to `goal` from every cell, along the moves the frog can make (T103). Markers `$3a`
 /// and up are ground and walls (`level/collision.rs`); a secret passage (`$26`) is open. A move
 /// sideways or down through open cells costs 1, up into an open cell only within `JUMP` rows of
-/// ground below it (in its column or the next; 20 above a bounce pad, marker 5; `ground`
+/// ground below it (in its column or the next; 24 above a bounce pad, marker 4 or 5; `ground`
 /// markers count as ground: a crumbling ledge, an object the map does not show), so a shaft
 /// taller than a jump is one-way; into or out of a wall 1 000 (a gate opens to its switch);
 /// into a deadly cell (6) 1 000 too.
@@ -78,15 +78,15 @@ fn flood_dir(
             1
         }
     };
-    // A bounce pad (marker 5) throws the frog this many rows.
-    const PAD: usize = 20;
+    // A bounce pad (marker 4 or 5, T106: W1-3's way up the 104-107 channel) throws the frog this many rows.
+    const PAD: usize = 24;
     // Rows from each cell down to the first floor in its column, and whether that is a pad.
     let mut above = vec![(usize::MAX / 2, false); w * h];
     for x in 0..w {
         let mut d = (usize::MAX / 2, false);
         for y in (0..h).rev() {
             let m = body[y * w + x] >> 10;
-            d = if m == 5 { (0, true) } else if floor(x, y) { (0, false) } else { (d.0 + 1, d.1) };
+            d = if m == 4 || m == 5 { (0, true) } else if floor(x, y) { (0, false) } else { (d.0 + 1, d.1) };
             above[y * w + x] = d;
         }
     }
