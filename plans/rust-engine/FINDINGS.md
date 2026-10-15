@@ -18,6 +18,9 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-15 | 🔄 | Owner, T120 review: `all` red is accepted for T120 once each red case has an owner; added T169 power-on-cases-green (T160; blocks T21) and T170 game-over-timeup-copper (T34; blocks T21), the two red groups no task owned. |
+| 2026-10-15 | 🐞 | T120 review, open (T131): `complete-w4-2` now diverges first at 1657, picture rows 118–157 (351 pixels, $eee/$111), before the logged 2383; same with T120 reverted. |
+| 2026-10-15 | 📌 | T120 measured every case: longest mid-pass runs ≤97 bar complete-w4-3 261, enemies-w6-1 133 (pinned); with after-lag frames up to 969; enemies-w4-2 compares 39 of 650. `all` red only where already logged; story-scene4-sound diverges at 3444 like intro-full (T144). |
 | 2026-10-15 | 🔄 | Owner, T122: added T155 w2-completions-green (T122, T127, T131, T132; blocks T18) and split W2-2/3/4 completions to T166, T167, T168 (T122; blocks T18, T155). `w2-1-complete` committed red, outside the test block. |
 | 2026-10-15 | 🐞 | T122, open (T168): W2-4's original hangs when the frog is pushed into the wall at 20,56 by the closed gate 18,55 (switch 46,66 not pulled): clock and frog frozen from then. Possible DESIGN §2.11 case. |
 | 2026-10-15 | 🐞 | T122, open (T155): `w2-1-complete` red at 1094 (frog sprite, every variable equal: T127/T131) and 1508 (`level_copper` after a lag: T131/T132). Frame 2709 is the next level's. |

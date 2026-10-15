@@ -35,6 +35,9 @@ pub struct Divergence {
     /// The variables differed on the frame after a lag, where the runner would re-sync the
     /// engine, and the case forbids that (`resync = false`).
     pub resync: bool,
+    /// The original ended more frames in a row mid-pass than the case's limit: (the run's first
+    /// frame, the limit). Nothing was compared from that frame to `frame` (T120).
+    pub lag: Option<(u32, u32)>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -58,6 +61,13 @@ impl fmt::Display for Divergence {
             writeln!(
                 f,
                 "  after a lag; the runner would re-sync here, and the case sets resync = false"
+            )?;
+        }
+        if let Some((from, limit)) = self.lag {
+            writeln!(
+                f,
+                "  the original ended every frame mid-pass from frame {from}: {} in a row, past the limit of {limit}, so nothing was compared",
+                self.frame - from + 1
             )?;
         }
         for u in &self.unported {

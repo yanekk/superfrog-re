@@ -159,6 +159,8 @@ done · ⛔ blocked, needs a human.
 | T166 | w2-2-completion | T122; blocks T18, T155 | ⬜ | |
 | T167 | w2-3-completion | T122; blocks T18, T155 | ⬜ | |
 | T168 | w2-4-completion | T122; blocks T18, T155 | ⬜ | |
+| T169 | power-on-cases-green | T160; blocks T21 | ⬜ | |
+| T170 | game-over-timeup-copper | T34; blocks T21 | ⬜ | |
 
 A Notes cell holds what was built or what the review found, the test count, and one line per
 deviation from the task doc. A ✅ task's cell may be cut to one line once the next task has been reviewed.
