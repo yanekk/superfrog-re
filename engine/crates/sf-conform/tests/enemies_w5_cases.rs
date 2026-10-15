@@ -295,11 +295,6 @@ fn enemies_w5_4() {
     );
 }
 
-/// Cases red alone (DESIGN §2.1 check 4) until T184: after a late frame the engine's pass falls a
-/// frame off the original's (`vbl_count`) and play parts later. They are judged by checks 1–3 only
-/// meanwhile; `sf-conform all` still judges check 4 and reports them red.
-const ALONE_RED: &[&str] = &["enemies-w5-2-complete"];
-
 /// `name` run green to its end with re-syncs at exactly `pins` (as [`run`]), the level's outcome
 /// first set on `exit_at`, the exit (`level_state` 1, back to 0 in the same pass), then two frames
 /// more: `top_loop` going on (T183), the level completed with the points taken, no slot machine
@@ -307,9 +302,6 @@ const ALONE_RED: &[&str] = &["enemies-w5-2-complete"];
 fn completes(name: &str, pins: &[u32], exit_at: u32) {
     let mut case = sf_conform::Case::load(&sf_conform::cases_dir().join(format!("{name}.toml")))
         .unwrap_or_else(|e| panic!("{e}"));
-    if ALONE_RED.contains(&name) {
-        case.alone = sf_conform::Alone::Off;
-    }
     let mut exit = None;
     let o = sf_conform::run_with(&case, |fr, g: &mut Game| {
         if exit.is_none() && g.level_outcome().is_some() {
@@ -343,29 +335,30 @@ fn completes(name: &str, pins: &[u32], exit_at: u32) {
 }
 
 /// W5-1 played from its start to its exit and through the tally (T126): the exit at 2254, fire
-/// taking the points. Two re-syncs pinned: the play field buffer at 1497 (T121's class) and the
-/// panel at 2182 after a lag (as `enemies-w5-1`'s at 979). Frame 744's picture (the frog's
-/// sprites, `enemies-w5-1` 595's class) is within the faithful picture tolerance (T181).
+/// taking the points. One re-sync pinned: the panel at 2182 after a lag (as `enemies-w5-1`'s at
+/// 979); the play field buffer's at 1497 was T184's (the engine's pass a frame off). Frame 744's
+/// picture (the frog's sprites, `enemies-w5-1` 595's class) is within the faithful picture
+/// tolerance (T181).
 #[test]
 fn enemies_w5_1_complete() {
-    completes("enemies-w5-1-complete", &[1497, 2182], 2254);
+    completes("enemies-w5-1-complete", &[2182], 2254);
 }
 
 /// W5-2 played from its start to its exit and through the tally (T126): the exit at 6095, fire
-/// taking the points. Two re-syncs pinned: the play field buffer at 2196 (T121's class) and
-/// `vbl_count` at 4681 after a lag (`complete-w4-2`'s 1927, T184's). The frog on the spring pad
-/// (967) and the exit fade's palette step (6095) are within the faithful picture tolerance.
+/// taking the points. No re-sync since T184 kept the engine's pass in step after late frames
+/// (2196 and 4681 were its class). The frog on the spring pad (967) and the exit fade's palette
+/// step (6095) are within the faithful picture tolerance.
 #[test]
 fn enemies_w5_2_complete() {
-    completes("enemies-w5-2-complete", &[2196, 4681], 6095);
+    completes("enemies-w5-2-complete", &[], 6095);
 }
 
 /// W5-3 played from its start to its exit and through the tally (T126): the exit at 6864, fire
-/// taking the points, nothing left out. One re-sync pinned: the play field buffer at 1608
-/// (T121's class).
+/// taking the points, nothing left out. No re-sync: the play field buffer's at 1608 was T184's
+/// (the engine's pass a frame off).
 #[test]
 fn enemies_w5_3_complete() {
-    completes("enemies-w5-3-complete", &[1608], 6864);
+    completes("enemies-w5-3-complete", &[], 6864);
 }
 
 /// W5-4 played from its start to its exit and through the tally (T126): the exit at 8193, fire

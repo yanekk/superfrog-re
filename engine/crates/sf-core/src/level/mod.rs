@@ -481,9 +481,12 @@ impl LevelCtx<'_> {
         let due = match f.current() {
             // In the call the original was in, once the clock says; past it, at once; before
             // it, not yet (unless a write it had not made comes first).
+            // Never in a pass before the original's: one that has met more vertical blanks
+            // (T184).
             Some((_, Some(cut))) => {
                 let here = self.phase == cut.phase;
                 n >= cut.writes
+                    && self.bus.w(frame::VBL_COUNT) <= cut.blanks
                     && (writing
                         || self.phase > cut.phase
                         || (here && cut.step != beam::NO_STEP && self.pass_step >= cut.step)
@@ -504,6 +507,32 @@ impl LevelCtx<'_> {
 
     fn interrupt_due(&mut self) {
         self.interrupt_due_at(false);
+    }
+
+    /// The pass has run to its end: a frame whose original was still in this pass (it had met
+    /// as many vertical blanks, [`beam::Cut::blanks`]) ends here, where the engine would
+    /// otherwise go on into the next pass, even with a write of the original's frame not made
+    /// (T184: `enemies-w6-1-complete` 528, the original at 69 writes in phase 11, the engine at
+    /// 68 at the pass's end).
+    pub fn pass_returns(&mut self) {
+        if self.frame_writes().is_none() {
+            return;
+        }
+        let f = self.frames.as_ref().expect("frames");
+        if !f.in_pass || f.in_vbl || f.done || f.past_end {
+            return;
+        }
+        if let Some((_, Some(cut))) = f.current()
+            && self.bus.w(frame::VBL_COUNT) == cut.blanks
+        {
+            if self.clock.line < beam::FRAME_LINES {
+                self.clock = beam::Clock {
+                    line: beam::FRAME_LINES,
+                    into: 0,
+                };
+            }
+            self.frame_end();
+        }
     }
 
     /// The beam reaches the frame's end ([`frame::main_program`]): the next frame's vertical
