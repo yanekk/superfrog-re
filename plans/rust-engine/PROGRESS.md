@@ -130,7 +130,7 @@ done · ⛔ blocked, needs a human.
 | T126 | w5-completions | T39, T101, T121, T123, T124, T125; blocks T18 | ⬜ | |
 | T127 | restore-sprite-wait | T101; blocks T21 | ⬜ | |
 | T128 | w3-4-sprite-race | T127; blocks T113 | ⬜ | |
-| T130 | front-vbl-318 | T100; blocks T21 | 🔍 | Cause found, not fixed (owner chose so): audio DMA slots under the fade loop, cost set by bus phase; no fitted term works. Exclusions 318, 613, 658 now name T171 (added, owner's yes). Kept: `fade::level_bus_times`, `level_walks`, `story::vbl::fade_calls`, one unit test; four probes. Deviation: picture not compared on 318. |
+| T130 | front-vbl-318 | T100; blocks T21 | ✅ | Cause found, not fixed: audio DMA under the fade loop; 318 picture exclusion carried to T171 (owner's yes, in the implement log). Review: one fix, a test pinning `level_bus_times` to the `add.w` writes (skip mutation survived). Probes rerun: 108/67 audio slots, acks 58:36/58:04, 3 495/3 582 accesses held. Intro fade, frog-pit green. |
 | T129 | slot-lamp-cut | T74; blocks T21 | ⬜ | |
 | T140 | story-setup-under-music | T56 | ⬜ | |
 | T141 | story-fade-colour-race | T56 | ⬜ | |
@@ -166,7 +166,7 @@ done · ⛔ blocked, needs a human.
 A Notes cell holds what was built or what the review found, the test count, and one line per
 deviation from the task doc. A ✅ task's cell may be cut to one line once the next task has been reviewed.
 
-**Review queue:** T130
+**Review queue:** *(empty)*
 
 ## Blocked on the user
 
