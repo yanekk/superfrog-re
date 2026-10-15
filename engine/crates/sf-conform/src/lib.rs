@@ -14,6 +14,7 @@ pub mod case;
 pub mod compare;
 pub mod disks;
 pub mod freeze;
+pub mod milestones;
 pub mod reference;
 pub mod report;
 pub mod routine;
