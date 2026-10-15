@@ -32,3 +32,17 @@ fn w1_1_goes_on_to_w1_2() {
 fn w1_4_goes_on_to_w2_1() {
     assert_eq!(run("chain-w1-4-to-w2-1"), Vec::<&str>::new());
 }
+
+/// P in W1-1 pauses (T191: `pause`, h0+$7442, the pass stopped at its pause check, the vertical
+/// blank's paused path), P again resumes the pass where it stopped, then play on: faithful and
+/// alone.
+#[test]
+fn p_pauses_and_p_resumes_as_the_original_does() {
+    assert_eq!(run("chain-pause"), Vec::<&str>::new());
+}
+
+/// P with fire held pauses; the pause waits for fire to be let go, then fire ends it as P does.
+#[test]
+fn fire_ends_the_pause_as_the_original_does() {
+    assert_eq!(run("chain-pause-fire"), Vec::<&str>::new());
+}

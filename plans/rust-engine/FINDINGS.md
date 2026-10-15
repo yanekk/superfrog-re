@@ -19,6 +19,8 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 | Date | | Finding |
 |---|---|---|
 | 2026-10-15 | 📌 | T193: a debug `superfrog` with `--capture` cost 49 ms CPU a frame (sf-app and the PNG crates unoptimised), so long scripted runs fell behind PAL and hit `--timeout` under load. Dev opt-level 2 for both: 4.3 ms. |
+| 2026-10-15 | 📌 | T191 review merge: the T190-seen `alone.rs` late-cut panic at `level/frame.rs:71` is gone; T191 replaced that `debug_assert` with vbl_handler's `logic_running == 0` path (h0+$11c92). `tests/alone.rs` and `chain` green merged. |
+| 2026-10-15 | 📌 | T191: the level's `kbd_poll` acknowledges each new keyboard byte, which then reads `$ff`; the engine had kept the last byte, leaving `key_up` set. Unhandled: a frame cut late in the pass's tail after unpausing (never seen). |
 | 2026-10-15 | 🐞 | Open, seen at T190's re-merge: `tests/alone.rs` `a_late_cut_the_engine_cannot_reach_ends_the_frame_as_normal_play_does` panics in debug at `level/frame.rs:71` (`LOGIC_RUNNING` debug_assert), identically on `pir/rust-engine` without T190. Not fixed. |
 | 2026-10-15 | 📌 | T190 review: dropping `WorldLoad`'s end-picture `Reached(h0+$411c)` (fix 1) leaves `chain-w1-4-to-w2-1` green: the engine's end picture is then compared against the original's 324 load frames instead of skipping them. Kept per the task doc; no test defends it. |
 | 2026-10-15 | 📌 | T184 merge: T185 changed the same `pass_step` ranges, ending where the entry is decided (T184's ended at its write or `jsr`). Each green on the other's cases (complete-w4-2, enemies-w6-4); T185's kept, as the engine decides and applies an entry at once. |

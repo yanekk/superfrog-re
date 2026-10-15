@@ -35,6 +35,14 @@ pub struct State {
     /// Bytes the front end wrote outside every modelled variable, by address: kept so a read
     /// after such a write sees it, never compared. A test asserts the front end leaves it empty.
     pub scratch: BTreeMap<u32, u8>,
+    /// Where `pause` (h0+$7442) is while a level is paused: the original keeps it in its program
+    /// counter and `d0` (T191).
+    pub pause: Option<crate::level::pass::Pause>,
+    /// In a level, CIA-A's serial-port flag: a keyboard byte has come in that `kbd_poll` has not
+    /// handled; and, once it has, the register holds the `$ff` the poll wrote back (h0+$16038,
+    /// T191).
+    pub kbd_flag: bool,
+    pub kbd_acked: bool,
 }
 
 /// `camera_x`, `camera_y`: the level pixel the camera follows (docs/12 "Scroll").
@@ -76,6 +84,9 @@ impl Default for State {
                 .collect(),
             audio: AudioDriver::blank(),
             scratch: BTreeMap::new(),
+            pause: None,
+            kbd_flag: false,
+            kbd_acked: false,
         };
         s.set_l(4, EXEC_BASE);
         s.set_l(0x64, KICKSTART_LEVEL1);

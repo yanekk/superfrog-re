@@ -70,9 +70,14 @@ const KEY_UP: u32 = h0(0x16079);
 
 /// `kbd_poll` (h0+$15ff2): every second vertical blank the byte in CIA-A's serial register is
 /// the keyboard's last ([`crate::level::Hw::sdr`]): a key going down or up. The original masks the keyboard
-/// interrupt around it (INTENA, INTREQ `$0008`) and hands the line back when a byte came in.
+/// interrupt around it (INTENA, INTREQ `$0008`) and hands the line back when a byte came in,
+/// writing `$ff` to the register, which it then reads (T191: P let go reads as no key after).
 pub fn kbd_poll(c: &mut LevelCtx) {
-    let sdr = c.hw.sdr;
+    if c.hw.key_in {
+        c.bus.st.kbd_flag = true;
+        c.bus.st.kbd_acked = false;
+    }
+    let sdr = if c.bus.st.kbd_acked { 0xff } else { c.hw.sdr };
     let b = &mut c.bus;
     let t = !b.b(KBD_TOGGLE);
     b.set_b(KBD_TOGGLE, t);
@@ -89,6 +94,9 @@ pub fn kbd_poll(c: &mut LevelCtx) {
     } else {
         b.set_b(KEY_UP, code);
         b.set_b(KEY_DOWN, 0);
+    }
+    if std::mem::take(&mut b.st.kbd_flag) {
+        b.st.kbd_acked = true;
     }
     c.custom(0x9c, 0x0008);
 }

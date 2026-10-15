@@ -53,6 +53,8 @@ pub struct Hw {
     /// CIA-A's serial data register (`$BFEC01`): the keyboard's last byte (the code shifted up
     /// one, bit 0 set for a key going up, all inverted).
     pub sdr: u8,
+    /// The keyboard sent [`Hw::sdr`] this frame: CIA-A's serial-port flag goes up.
+    pub key_in: bool,
 }
 
 impl Hw {
@@ -61,6 +63,7 @@ impl Hw {
             joy1dat: joy1dat(input.joy),
             fire: input.joy.contains(Joy::FIRE),
             sdr: 0xff,
+            key_in: false,
         }
     }
 
