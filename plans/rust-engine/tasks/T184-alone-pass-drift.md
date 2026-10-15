@@ -50,6 +50,12 @@ DESIGN §2.1 checks 1 and 4.
   `enemies_w3.rs` `w3_1` and `activation`, `enemies_w5_cases.rs` `enemies_w5_2_complete`, `front.rs`
   `the_attract_cycle_matches_the_original`.
 
+## Interface
+
+No new public interface is required. If the fix needs more of the original's schedule, it goes in
+`sf_core::Pacing` (as `Pacing::Late`'s `phase` and `step` do), filled by `sync::pacing`; check 4's
+runner (`AloneRun` in `sf-conform/src/lib.rs`) keeps passing only the inputs, `Pacing` and seeds.
+
 ## Tests
 
 - [ ] `sf-conform run --alone` on each case in the table and `front-attract`: green, or its first
@@ -60,3 +66,6 @@ DESIGN §2.1 checks 1 and 4.
 
 - [ ] The five tests above run check 4 again (their `Alone::Off` removed), or each that cannot is a
       FINDINGS row with its cause and an owning task.
+- [ ] `tests/alone.rs` `a_case_red_alone_fails_check_4_with_its_milestone_and_first_variable`
+      (T182 review: it pins `enemies-w3-activation` red alone, so the runner's check 4 is shown
+      failing) points at a case still red alone, or at a fault injected into the alone engine.

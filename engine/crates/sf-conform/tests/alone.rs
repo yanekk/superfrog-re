@@ -142,3 +142,23 @@ fn the_w1_1_replay_loses_its_life_to_pacing_and_the_start_not_a_mechanic() {
     let level = Game::with_display(display.clone(), Start::Level("W1-1".parse().unwrap()));
     assert_eq!(level.peek(k.addr, 1), [0]);
 }
+
+/// Check 4 fails a run whose engine, alone, parts from the original: `enemies-w3-activation`
+/// (T182's measurement, T184's to fix) takes a coin the original has not by frame 237, its pass a
+/// frame off from 201. Pins that the runner judges the engine's own milestones, not only reads the
+/// original's; when T184 makes this case green alone, point this at another red one or a fault
+/// injected into the alone engine.
+#[test]
+fn a_case_red_alone_fails_check_4_with_its_milestone_and_first_variable() {
+    let case = Case {
+        alone: Alone::Only,
+        ..case("enemies-w3-activation")
+    };
+    let d = sf_conform::run(&case).expect_err("red alone until T184");
+    let m = d.milestone.as_ref().expect("a check 4 divergence");
+    assert_eq!(m.frame, 237, "{d}");
+    assert_eq!((m.theirs, m.ours.is_some()), (None, true), "{d}");
+    let (at, var) = d.alone_first_var.as_ref().expect("the first differing variable");
+    assert_eq!(*at, 201, "{d}");
+    assert!(var.starts_with("vbl_count"), "{d}");
+}
