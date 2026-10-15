@@ -5,7 +5,7 @@ use crate::frog::{FROG, f};
 use crate::layout::h0;
 use crate::level::collision::{MAP_ROWS, OBJ_WORLD_OFFSET, PASSAGE_CELL, marker};
 use crate::level::scroll::{BUFFER_BYTES, SHOWN_BUFFER};
-use crate::level::beam::Cost;
+use crate::level::beam::{self, Cost};
 use crate::level::{LevelCtx, n_clear};
 use crate::mem::{Bus, TILE_PTRS};
 
@@ -226,10 +226,93 @@ fn set_cell_tile(c: &mut LevelCtx, cell: u32, tile: u16) {
     }
 }
 
-/// `key_down` (h0+$16078).
+/// `key_down` (h0+$16078), `logic_running` (h0+$9d6).
 const KEY_DOWN: u32 = h0(0x16078);
+const LOGIC_RUNNING: u32 = h0(0x9d6);
+/// The raw key P.
+const KEY_P: u8 = 0x19;
 
-/// h0+$71d8: P pauses the game (`pause`, h0+$7442: the game flow's, T21).
-pub fn pause_check(c: &mut LevelCtx) {
-    debug_assert_ne!(c.bus.b(KEY_DOWN), 0x19, "pause is not ported (T21)");
+/// Where `pause` (h0+$7442) is: it keeps the main program in the middle of the pass, frame after
+/// frame, `logic_running` clear (so the vertical blank does only its sound, pointer, keyboard,
+/// timer and fades). Each holds the VPOS low byte it read past line `$38`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum Pause {
+    /// Waiting for the beam past line `$38` (VPOS's low byte, unsigned).
+    Line,
+    /// Waiting for fire to be let go.
+    Release(u8),
+    /// Waiting for P (a new `key_down`) or fire.
+    Held(u8),
+    /// Over: waiting for the beam on the line byte read at the start.
+    Back(u8),
+}
+
+/// h0+$71d8: P pauses the game (`pause`, h0+$7442): `logic_running` cleared, the pass stopped
+/// here until [`pause_run`] says it is over.
+pub fn pause_check(c: &mut LevelCtx) -> bool {
+    if c.bus.b(KEY_DOWN) != KEY_P {
+        return false;
+    }
+    c.bus.set_w(LOGIC_RUNNING, 0);
+    c.bus.st.pause = Some(Pause::Line);
+    pause_run(c);
+    true
+}
+
+/// `pause` from where it is: until the frame's end (false: the vertical blank comes, the pause
+/// goes on in the next frame), or until it is over (true): the line it waited for at the start
+/// come round again, `key_down` cleared and `logic_running` set, the pass to go on.
+pub fn pause_run(c: &mut LevelCtx) -> bool {
+    loop {
+        let Some(p) = c.bus.st.pause else {
+            return true;
+        };
+        let next = match p {
+            // h0+$7448.
+            Pause::Line => match line_where(c, |v| v >= 0x38) {
+                Some(line) => {
+                    wait_to(c, line);
+                    Pause::Release(line as u8)
+                }
+                None => return false,
+            },
+            // h0+$7458.
+            Pause::Release(v) => {
+                if c.hw.fire {
+                    return false;
+                }
+                c.bus.set_b(KEY_DOWN, 0);
+                Pause::Held(v)
+            }
+            // h0+$7468.
+            Pause::Held(v) => {
+                if c.bus.b(KEY_DOWN) != KEY_P && !c.hw.fire {
+                    return false;
+                }
+                Pause::Back(v)
+            }
+            // h0+$747c.
+            Pause::Back(v) => match line_where(c, |b| b == v) {
+                Some(line) => {
+                    wait_to(c, line);
+                    c.bus.set_b(KEY_DOWN, 0);
+                    c.bus.set_w(LOGIC_RUNNING, 1);
+                    c.bus.st.pause = None;
+                    return true;
+                }
+                None => return false,
+            },
+        };
+        c.bus.st.pause = Some(next);
+    }
+}
+
+/// The first line from the beam's on, in this frame, whose VPOS low byte is `ok`.
+fn line_where(c: &LevelCtx, ok: impl Fn(u8) -> bool) -> Option<u16> {
+    (c.clock.line..beam::FRAME_LINES).find(|&l| ok(l as u8))
+}
+
+/// The CPU waits for the beam to reach `line`.
+fn wait_to(c: &mut LevelCtx, line: u16) {
+    c.wait_lines(line - c.clock.line);
 }

@@ -300,7 +300,7 @@ impl Chain {
                 access_overlay_show(cx);
                 return None;
             }
-            Target::WorldLoad(w) => call(Routine::WorldLoad(WorldLoad::new(w, ret))),
+            Target::WorldLoad(w) => call(Routine::WorldLoad(WorldLoad::new(w))),
             Target::ResumeJump => {
                 if cx.s.l(START_WORLD) != 0
                     && cx.s.l(START_LEVEL) != 0
@@ -396,13 +396,12 @@ fn world_sound(cx: &mut Cx, world: u32) {
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub(crate) struct WorldLoad {
     world: u32,
-    ret: u32,
     pc: u8,
 }
 
 impl WorldLoad {
-    fn new(world: u32, ret: u32) -> WorldLoad {
-        WorldLoad { world, ret, pc: 0 }
+    fn new(world: u32) -> WorldLoad {
+        WorldLoad { world, pc: 0 }
     }
 
     pub(super) fn run(&mut self, cx: &mut Cx) -> Yield {
@@ -411,6 +410,11 @@ impl WorldLoad {
             1 => {
                 cx.s.set_l(WORLD, self.world);
                 world_sound(cx, self.world);
+                if cx.s.l(END_PIC_SHOWN) != 0 {
+                    // Under the end-of-world picture: the original is past these loads and in
+                    // h0+$43e0's wait, called from `world_intro_show`.
+                    cx.loaded(LoadEnd::Reached(at(0x411c)));
+                }
                 call(Routine::WorldIntro(WorldIntro::new(self.world)))
             }
             2 => {
@@ -420,7 +424,10 @@ impl WorldLoad {
                     crate::level::load::clear_map_area(&mut c.bus);
                     c.bus.st.poke(crate::layout::H3, display.bob_sheet(world));
                 });
-                cx.loaded(LoadEnd::Left(self.ret));
+                // The original waits for the tiles in `world_intro_end`, called from
+                // `progress_map_show`'s `overlays_end` (under the trackloader the runner's stack
+                // never reaches `top_loop`'s return address).
+                cx.loaded(LoadEnd::Reached(at(0x3df6)));
                 Yield::Return
             }
             _ => Yield::Return,
@@ -1020,8 +1027,10 @@ impl IntroEnd {
             0 => {
                 // The original's loads run under the picture for many frames, so its walk has
                 // begun (holding `display_timer` up) before this looks; after the engine's
-                // instant load it waits for the walk's first vertical blank.
-                let unstarted = cx.s.l(WALK) == at(0x11f44) && cx.s.w(WAIT) == 0x28;
+                // instant load it waits until the walk first sets the timer (W2's walk in from
+                // the left sets none until h0+$1213e).
+                let unstarted =
+                    cx.s.l(WALK) != at(0x7d4) && (cx.s.w(DISPLAY_TIMER) as i16) < 1;
                 if !screen_over(cx) || (unstarted && !cx.fire()) {
                     return Yield::Poll;
                 }
