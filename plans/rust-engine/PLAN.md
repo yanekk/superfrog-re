@@ -211,7 +211,7 @@ original's milestones and passes the faithful checks (DESIGN §2.1), headless.
 | [T161](tasks/T161-attract-demo-init-timing.md) | attract-demo-init-timing | ➖ dropped 2026-10-15 (was: T160) |
 | [T162](tasks/T162-attract-demo-level-start.md) | attract-demo-level-start | T160, T180 |
 | [T163](tasks/T163-attract-demo-return.md) | attract-demo-return | T162 |
-| [T164](tasks/T164-attract-demo-cycles.md) | attract-demo-cycles | T163 |
+| [T164](tasks/T164-attract-demo-cycles.md) | attract-demo-cycles | T163; blocks T21 |
 | [T154](tasks/T154-w1-4-completion.md) | w1-4-completion | T106, T127, T180, T182; blocks T21 |
 | [T165](tasks/T165-w1-1-completion.md) | w1-1-completion | ➖ dropped 2026-10-15 (was: T106, T131; blocks T18) |
 | [T120](tasks/T120-conform-no-silent-pass.md) | conform-no-silent-pass | T05, T36; blocks T21 |
