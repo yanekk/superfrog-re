@@ -1,7 +1,8 @@
-# W1-4 from its start with every object live, no exclusions (T106, T154): the route so far, up
-# the pad at 288,44 to 266,21, then (T154) the 13 coins in reach on foot, to 180,65 with 30 still
-# needed. Green but for a re-sync at 2629 (a lag cut in `panel_update`, as W1-3's at 5079).
+# W1-4 from its start with every object live, no exclusions (T106, T154). T106's route to 1800,
+# then (T154) the lower left's coins and, with the wings T106 took at 5,19, the hill's pad at
+# 28,30 into the sky: to 3768 with 67 coins still needed. T106's route on from 1800 left the
+# left half for good with too few coins (every coin it skipped there is out of reach after).
 sync = { level = "W1-4" }
 script = "complete-w1-4"
-frames = 5062
+frames = 3768
 resync = true
