@@ -305,7 +305,7 @@ pub fn mid_pass(cpu: &CpuRegs, m: &AmigaMemory) -> bool {
 /// `obj_run_all` has run (one whose update was running counted done), the slots
 /// `obj_build_hitboxes` has looked at, the entries of `build_bob_draw_list`'s three loops, the
 /// halves of `collide_all` (the spud's, the frog's) and the hitbox entries the frog's has looked
-/// at. [`NO_STEP`] in any other call.
+/// at (one taken but not yet decided on not counted). [`NO_STEP`] in any other call.
 pub fn pass_step(cpu: &CpuRegs, m: &AmigaMemory) -> u16 {
     use sf_core::level::beam::NO_STEP;
     let (pc, sp) = if cpu.pc == VBL_HANDLER {
@@ -335,6 +335,10 @@ pub fn pass_step(cpu: &CpuRegs, m: &AmigaMemory) -> u16 {
         0x19b96..=0x19bc0 => 40 + slot(d(0)).saturating_sub(1),
         0xd0cc => 0,
         0xd0d0 | 0xd0e0..=0xd125 => 1,
+        // The entry just taken (a6 past it) is not looked at until its stomp, touch or hurt is
+        // decided: those read the frog as the vertical blank leaves it (T185: W6-4's stomp at
+        // 1090, the frame ending at h0+$d14a).
+        0xd132..=0xd17b | 0xd19c..=0xd1ad => frog_walk_step(cpu.a[6]) - 1,
         0xd126..=0xd1cd => frog_walk_step(cpu.a[6]),
         0xd1ce | 0xd0d4..=0xd0df => frog_walk_step(hitbox_end(m)),
         _ => {
@@ -366,8 +370,8 @@ pub fn pass_step(cpu: &CpuRegs, m: &AmigaMemory) -> u16 {
 const HITBOXES: u32 = h0(0xd350);
 
 /// The step of `collide_all`'s frog half with the walk's pointer at `a6` (h0+$d126 on): 2 once
-/// the frog's box is taken, then one more for each entry looked at (the one whose test or touch
-/// handler is running counted done), as `sf_core::level::objects::frog_touches` counts them.
+/// the frog's box is taken, then one more for each entry looked at (the one whose touch handler
+/// is running counted done), as `sf_core::level::objects::frog_touches` counts them.
 fn frog_walk_step(a6: u32) -> u16 {
     2 + (a6.wrapping_sub(HITBOXES) / 12) as u16
 }
@@ -1134,7 +1138,8 @@ mod tests {
 
     /// `collide_all`'s frog half counts 2 once the box is taken, then each hitbox entry looked
     /// at (the walk's a6), in the walk, in a touch handler it called (a6 saved under the return
-    /// address) and in `frog_hurt` (a0/a5 saved under that); past the walk, all of them.
+    /// address) and in `frog_hurt` (a0/a5 saved under that); past the walk, all of them. An entry
+    /// taken (a6 past it) whose stomp, touch or hurt is not yet decided is not counted (T185).
     #[test]
     fn the_frog_walks_step_counts_the_hitbox_entries_looked_at() {
         let mut m = AmigaMemory {
@@ -1173,7 +1178,16 @@ mod tests {
         assert_eq!(step(0xd0d0, 0, sp), 1);
         assert_eq!(step(0xd110, 0, sp), 1);
         assert_eq!(step(0xd126, HITBOXES, sp), 2);
-        assert_eq!(step(0xd146, HITBOXES + 12, sp), 3);
+        assert_eq!(step(0xd12c, HITBOXES + 12, sp), 3);
+        // The first entry taken, the frog not yet tested against it: W6-4's frame 1090 (T185).
+        assert_eq!(step(0xd132, HITBOXES + 12, sp), 2);
+        assert_eq!(step(0xd14a, HITBOXES + 12, sp), 2);
+        assert_eq!(step(0xd17a, HITBOXES + 12, sp), 2);
+        assert_eq!(step(0xd1a8, HITBOXES + 12, sp), 2);
+        // Decided: the bounce made, or the call to `frog_hurt` begun.
+        assert_eq!(step(0xd17c, HITBOXES + 12, sp), 3);
+        assert_eq!(step(0xd1ae, HITBOXES + 12, sp), 3);
+        assert_eq!(step(0xd1c6, HITBOXES + 12, sp), 3);
         assert_eq!(step(0x23f86, 0, sp), 4);
         assert_eq!(step(0x1c5bc, 0, hurt), 5);
         assert_eq!(step(0xd1ce, HITBOXES + 36, sp), 5);
