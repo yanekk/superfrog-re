@@ -4,7 +4,7 @@
 # as `items-shield-w3-1` at 366). T113 takes the case on from there.
 sync = { level = "W3-4" }
 script = "enemies-w3-4"
-frames = 3886
+frames = 4139
 resync = true
 
 [[exclude]]
