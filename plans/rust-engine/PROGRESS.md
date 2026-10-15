@@ -154,12 +154,12 @@ done · ⛔ blocked, needs a human. A task dropped by a plan amendment leaves th
 | T182 | plays-alone | T180; blocks T181, T183 and every completion task | ✅ | |
 | T183 | level-chain | T180, T182; blocks T21 | ⬜ | |
 | T184 | alone-pass-drift | T182; blocks T21, T18, T115, T147, T148, T149, T150, T151, T154, T166, T167, T168 | ⬜ | |
-| T185 | w6-4-lag-frog-fall | T182; blocks T21 | 🔍 | Cause: frame 1090 ends in the frog's hitbox walk (h0+$d14a), entry taken, stomp undecided; `sync::pass_step` counted it done, so the engine stomped before the blank. Fixed there. enemies-w6-4 green, in the test block; 2 tests plus the unit test's cases. Deviation: the fix is in `pass_step`, not the vertical blank the doc suspected. |
+| T185 | w6-4-lag-frog-fall | T182; blocks T21 | ✅ | Review clean, no fix commit. Original's frame 1090 end at h0+$d14a and frog_y 168/169/168 confirmed by `record --trace`; removing the new `pass_step` arm reddens both W6-4 tests; ranges checked against the listing; cases, frog, sync_points, step_unseen, w2/w5/w6 green. Deviation (fix in `pass_step`) held. |
 
 A Notes cell holds what was built or what the review found, the test count, and one line per
 deviation from the task doc. A ✅ task's cell may be cut to one line once the next task has been reviewed.
 
-**Review queue:** T185
+**Review queue:** *(empty)*
 
 ## Blocked on the user
 

@@ -18,6 +18,7 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-15 | 📌 | T185 review, read-only: a frame ending in $d19c..$d1ad (stomp already declined) makes the engine re-decide the stomp with the frog after the blank; the original does not. Unprobed whether any case ends there. |
 | 2026-10-15 | 🐞 | T185, fixed: a frame ending in the frog's hitbox walk with an entry taken but undecided (h0+$d132..$d17b, $d19c..$d1ad) counted it done; the engine stomped before the blank. enemies-w6-4 1090. `sync::pass_step`. |
 | 2026-10-15 | 🐞 | T181 review, fixed: enemies-w4-1, game-over-esc-w1-1, slot-hold-jackpot were green faithful and alone but run by no test; added to `tests/cases.rs`. Sweep: every other case is run by some test or owned red. |
 | 2026-10-15 | 🔄 | Owner, T181: story-intro-full 7237–7241 (colour 28 black in scene 12's fade-in, a ~7 DMA-cycle race) accepted, not modelled; its exclusion says so. Added T185 w6-4-lag-frog-fall (T182; blocks T21) for enemies-w6-4 1120. |
