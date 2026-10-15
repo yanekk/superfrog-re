@@ -339,8 +339,8 @@ fn completes(name: &str, pins: &[u32], exit_at: u32) {
 
 /// W5-1 played from its start to its exit and through the tally (T126): the exit at 2254, fire
 /// taking the points. Two re-syncs pinned: the play field buffer at 1497 (T121's class) and the
-/// panel at 2182 after a lag (as `enemies-w5-1`'s at 979). Frame 744's picture is left out (the
-/// frog's sprites, `enemies-w5-1` 595's class).
+/// panel at 2182 after a lag (as `enemies-w5-1`'s at 979). Frame 744's picture (the frog's
+/// sprites, `enemies-w5-1` 595's class) is within the faithful picture tolerance (T181).
 #[test]
 fn enemies_w5_1_complete() {
     completes("enemies-w5-1-complete", &[1497, 2182], 2254);

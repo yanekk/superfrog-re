@@ -212,6 +212,9 @@ task = "T36"
 - `panel`: the panel's bitmap and the picture's panel lines are not compared.
 - `unreached`: listed only: what the case's input never makes the original do (the restart after
   a death), so there is nothing to freeze.
+- `picture` with `frames = [from, to]`: those frames' pictures are not compared. Only for a
+  difference the owner accepted as not to be modelled (`task = "none (accepted)"`, the date in
+  its note): `story-intro-full` 7237–7241 is the one (T181).
 
 A `render`-only case does not step the engine at all.
 

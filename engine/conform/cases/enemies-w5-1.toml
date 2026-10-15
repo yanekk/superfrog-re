@@ -6,9 +6,3 @@ sync = { level = "W5-1" }
 script = "enemies-w5-1"
 frames = 1000
 resync = true
-
-[[exclude]]
-what = "picture"
-frames = [595, 595]
-note = "the engine leaves out the frog's hardware sprites for one frame on time, every variable equal; with enemies frozen too (FINDINGS 2026-10-14, T39)"
-task = "unowned: FINDINGS 2026-10-14 (T39)"

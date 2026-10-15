@@ -8,9 +8,3 @@ sync = { level = "W5-1" }
 script = "enemies-w5-1-complete"
 frames = 2439
 resync = true
-
-[[exclude]]
-what = "picture"
-frames = [744, 744]
-note = "the engine leaves out the frog's hardware sprites for one frame on time, every variable equal: enemies-w5-1 595's class (FINDINGS 2026-10-14, T39)"
-task = "unowned: FINDINGS 2026-10-14 (T39)"
