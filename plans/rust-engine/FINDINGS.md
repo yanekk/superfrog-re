@@ -18,6 +18,7 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-15 | 🐞 | T114 review: `cargo fmt -p sf-conform --check` fails on `examples/complete.rs:82` (the `score` closure), outside T114; left alone. |
 | 2026-10-15 | 📌 | T111, W3-2: the start room's only exit is swimming under the pillar at 180–182 (57/24 are water). `plan_exit.rs` (paced) held the original's route where `complete.rs` drifted. Fake wall 155,26 drops back into the start. |
 | 2026-10-15 | 📌 | T108 review: `plan_exit --frames N` is an absolute frame budget, not frames after the prefix; a prefix longer than N plans nothing and exits 0. `--via` a cell steers it off a block top `--hurt` alone cannot leave. |
 | 2026-10-15 | 📌 | T108: W1-3's way to the patrollers is the spring (marker 4) at 105,75: jump on it, it bounces the frog up the 104–107 channel. `complete.rs --at`/`--touch` measure the frog's centre, about three rows below the cell it stands in; `plan_exit` uses map cells. |
