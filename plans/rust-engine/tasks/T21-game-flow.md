@@ -8,7 +8,7 @@
 ## Goal
 
 Chain every scene the way the original does: power-on, intro, title, game start or password, world
-and level order, slot machine and bonus levels between levels, boss levels, game over and continue,
+and level order, slot machine and bonus levels between levels, the final level, game over and continue,
 disk-swap prompts, and the end sequence. Exposes progress (furthest world) for the app to remember,
 and is proven by scripted whole games from power-on that the engine plays alone with the original's
 milestones (DESIGN §2.1 check 4).

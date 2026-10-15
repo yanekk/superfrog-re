@@ -11,7 +11,8 @@ Track state in [PROGRESS.md](PROGRESS.md). Read [DESIGN.md](DESIGN.md) first.
 
 - **The reference comes first.** Every mechanic is judged by comparison with the original running in
   vAmiga (DESIGN §2.1), so the spike proving that comparison is possible (T00) and the permanent
-  harness (T05, T06) come before any game code. Without them "frame-exact" is a claim nobody can check.
+  harness (T05, T06) come before any game code. Without them "faithful" (DESIGN §2.1) is a claim nobody
+  can check.
 - **Everything is proven headless before anything opens a window.** Phases 1 and 2 build and verify
   the whole game as pure functions against the oracle; Phase 3 wires a window, sound and menus onto a
   core already known to match the original.
@@ -41,8 +42,9 @@ judged automatically against the original; no task waits on the owner to play or
   dropped tasks' cases included), T183 level-chain (menu → W1-1, level → level, world → world, pause),
   split ahead of T21 so the game plays through the worlds before the final boss exists.
 - **Dropped (➖):** T128, T129, T131, T140–T143, T146, T153, T155, T161, T165, T169, T170, T171.
-  Each chased sub-frame timing. T181 re-judges their cases; a red that survives is a real behaviour
-  difference and gets an owning task then.
+  Each chased sub-frame timing, except T169, whose `level1_vector` fix moves to T183 (or T160) and
+  T155, whose encounter checks move to T181. T181 re-judges their cases; a red that survives is a
+  real behaviour difference and gets an owning task then.
 - **Re-scoped:** every open task doc carries an "Amended" note: green means faithful, completion
   cases are also judged alone. Completion tasks now block T21 instead of T18. T18 is the final level
   and its witch (docs/09: no per-world bosses). T25 tests the pad with simulated input; T30 replaces
@@ -227,7 +229,8 @@ original's milestones and passes the faithful checks (DESIGN §2.1), headless.
 | [T183](tasks/T183-level-chain.md) | level-chain | T180, T182; blocks T21 |
 
 T22 is the rig task: it comes before every surface task and they depend on it. T29 is the phase's
-drill. At the end: the owner plays it.
+drill. At the end: the real app plays a scripted whole game that meets the original's milestones (T30);
+the owner may play it, but that is not a gate (owner, 2026-10-15).
 
 ---
 

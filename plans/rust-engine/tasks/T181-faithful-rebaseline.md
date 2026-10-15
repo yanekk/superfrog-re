@@ -34,6 +34,10 @@ DESIGN §2.1, §4.
 - [ ] Every case still red has a FINDINGS row with its first failing check, frame and cause, and
       an owning task: an open one, or a new task the owner or coordinator approves (CLAUDE.md,
       adding a task in a parallel run).
+- [ ] T155's goal 3, which was behaviour, not timing: `w2-1-complete` checked through `run_with` to
+      meet what the original meets (the mace from 2029, hearts lost at 2061 and 2365, the spikes from
+      2305, the crumbling ledge from 1646 breaking under the frog, the bouncer from 1678, the spud
+      stun at 795), each confirmed on the original first (`examples/script_seen`).
 - [ ] The `complete-w1-1`, `complete-w1-3`, `complete-w4-1..3`, `w2-1-complete`, `enemies-w6-1-complete`
       and `enemies-w6-3-alt-complete` cases (the dropped tasks' targets) are green faithful and alone,
       or owned as above.

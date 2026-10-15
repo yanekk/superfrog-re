@@ -13,12 +13,26 @@ engine on a black screen recording `unported: "a game's start (T21)"` (`front/at
 level's tally it records `"the next level after the tally (T21)"` (`front/mod.rs`,
 `Routine::Outcome`); pause (P) is `debug_assert`ed unported (`level/pass.rs`).
 
-1. START GAME (and the attract demo's fire) starts W1-1 as the original's `level_start` does.
+The original's order is docs/08's: per world `world_load_wN` (`world_intro_show`, the `LnLP`
+loading picture), per level `level_load` (`progress_map_show`, the progress map) then
+`level_init_wN` and `level_start`, and after a world's fourth level `end_world_pic_wN` (`LnET`).
+The engine records `unported` for `world_intro_end` (`front/title.rs`) and `progress_map_vbl`
+(`front/vbl.rs`) on this path today; both are this task's.
+
+1. START GAME (and the attract demo's fire) starts W1-1 as the original does: world 1's loading
+   picture, the progress map, `level_start`.
 2. After the tally (and after the slot machine or bonus level when the tally leads there), the next
-   level; after a world's last level, the world's end picture (`LnET`) and the next world's first
-   level, the disks asked for and answered from the cache as instant loads (DESIGN §2.1 "loads").
+   level through the progress map; after a world's last level, the world's end picture (`LnET`), the
+   next world's loading picture and its first level, the disks asked for and answered from the cache
+   as instant loads (DESIGN §2.1 "loads").
 3. Pause on P, as the original.
 4. Starting from a level code on the options screen enters that level.
+
+Every power-on case is red at frame 0 on `level1_vector` ($64: original `$00fc0c8e`, Kickstart
+1.3's level 1 autovector, engine 0; FINDINGS 2026-10-14, dropped T169). The fix is known
+(`State::default` sets it beside `EXEC_BASE`; `KICKSTART_LEVEL1` in `plans/rust-engine/T33-wip.patch`,
+which T160 also applies). This task lands that line if T160 has not, since `chain-start-w1-1` starts
+at power-on.
 
 ## Design sections this implements
 
@@ -35,8 +49,12 @@ DESIGN §2.1, §2.11 (any path the original would hang on).
 
 - [ ] `chain-start-w1-1`: power-on → title → START GAME → W1-1 play, faithful and alone.
 - [ ] `chain-w1-1-to-w1-2`: `complete-w1-1`'s route continued into W1-2's first 500 frames, alone.
-- [ ] `chain-w1-4-to-w2-1`: W1-4's exit (from `complete-w1-4`'s route, T154's when green, else a
-      transplant at its exit) through the end picture into W2-1, alone.
+      While `complete-w1-1` is not green alone (T182 measured a life lost at 613), the chain is
+      proven from W1-1 reached by START GAME with its exit forced (`level_state` = 1, as the slot
+      sync point does), and the full-route variant waits for its owner.
+- [ ] `chain-w1-4-to-w2-1`: W1-4's exit through the end picture and W2's loading picture into W2-1,
+      alone. `complete-w1-4` reaches only frame 4054 today (T154 open), so the exit is forced as
+      above from W1-4 reached by its level code, and T154's route is used once green.
 - [ ] `chain-pause`: P in W1-1 pauses and resumes, faithful.
 - [ ] `chain-level-code`: a W3-1 code on the options screen enters W3-1, faithful and alone.
 - [ ] e2e: the real binary under `--script` from power-on shows W1-1 play by frame 1 500 (captured

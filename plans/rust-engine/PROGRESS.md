@@ -160,7 +160,7 @@ done · ⛔ blocked, needs a human · ➖ dropped by a plan amendment.
 | T166 | w2-2-completion | T122, T180, T182; blocks T21 | ⬜ | |
 | T167 | w2-3-completion | T122, T180, T182; blocks T21 | ⬜ | |
 | T168 | w2-4-completion | T122, T180, T182; blocks T21 | ⬜ | |
-| T169 | power-on-cases-green | T160; blocks T21 | ➖ | Dropped by the 2026-10-15 amendment (sub-frame timing); cases re-judged by T181. |
+| T169 | power-on-cases-green | T160; blocks T21 | ➖ | Dropped 2026-10-15; its `level1_vector` frame-0 fault (state, not timing) moved to T183 or T160; cases re-judged by T181. |
 | T170 | game-over-timeup-copper | T34; blocks T21 | ➖ | Dropped by the 2026-10-15 amendment (sub-frame timing); cases re-judged by T181. |
 | T171 | front-handler-bus-model | T130, T129; blocks T21 | ➖ | Dropped by the 2026-10-15 amendment (sub-frame timing); cases re-judged by T181. |
 | T180 | faithful-compare | T120; blocks T181, T182 and every open conformance task | ⬜ | |

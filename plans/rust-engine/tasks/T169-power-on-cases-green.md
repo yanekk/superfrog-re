@@ -1,7 +1,8 @@
 # T169 — power-on-cases-green
 
-> **Dropped** by the owner's amendment of 2026-10-15 (DESIGN §2.1 "What faithful means"): it chased
-> sub-frame timing no player perceives. Not to be built. Its cases are re-judged by T181.
+> **Dropped** by the owner's amendment of 2026-10-15. Not to be built. Unlike the other dropped
+> tasks its fault is not timing: `level1_vector` is a state difference at frame 0. Its fix moves to
+> T183 (which needs power-on green) or T160, whichever lands first; its ten cases are re-judged by T181.
 
 **Phase:** 2 · **Depends on:** T160; blocks T21 · **Weight:** small
 

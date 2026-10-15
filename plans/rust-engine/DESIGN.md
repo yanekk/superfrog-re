@@ -64,7 +64,7 @@ and it stays measured against the original.
 Each step of the engine is one PAL vertical blank (one "frame"). Starting from a sync point (the
 original's state captured by the reference emulator and transplanted into the engine, or power-on for
 a whole-game run) and feeding the same joystick/keyboard state per frame, a case passes when all four
-checks hold. `sf-conform`'s default mode (`run`, `all`, `scan`) is these checks (T172).
+checks hold. `sf-conform`'s default mode (`run`, `all`, `scan`) is these checks (T180; check 4 is T182).
 
 1. **State, pass by pass.** Every gameplay variable in `LAYOUT` (§3.3) equals the original's at the
    end of each completed main-loop pass, matched by pass count rather than frame number, so a pass
@@ -86,8 +86,10 @@ checks hold. `sf-conform`'s default mode (`run`, `all`, `scan`) is these checks 
 4. **Plays alone.** The engine is started once from the sync point and then runs with nothing from
    the original: no re-syncs, no beam anchors, no transplant. It gets only the inputs and the
    original's pacing (which frames the original's pass was late), so a lag on the original does not
-   shift the inputs relative to the passes. Its milestones must equal the original's, in the same
-   order, each within ±10 frames of play (the original's load frames are not counted): every scene
+   shift the inputs relative to the passes. The RNG seeds the original reads from its clock (at
+   power-on, and `rng_seed_from_cia` at the end sequence's end) count as inputs, since the engine keeps
+   no clock. Its milestones must equal the original's, in the same order, each within ±10 frames of
+   play (the original's load frames, its waits for a disk swap among them, are not counted): every scene
    change (title, menu, level start, tally, slot machine, bonus level, game over, end sequence),
    every coin and item taken, every enemy killed, every life lost, every level exit, the score at
    each tally, and at the end score, lives and coins equal. This is the check that proves the game
@@ -351,7 +353,8 @@ frame.
   mechanic tasks, the drill and acceptance, because it takes minutes. `--strict` is the frame-exact
   comparison, for diagnosis only.
 - **End to end**: the real app driven by `sf-e2e` (§5, End to end), including a scripted whole game
-  through the real binary whose milestones match the original's (T30).
+  through the real binary, fed the original's pacing as the headless run is, whose milestones match
+  the original's (T29, T30).
 - What none of these prove: that the 8BitDo pad works on real hardware, and that sound comes out of
   the speakers (§5.1). Neither is a gate (owner, 2026-10-15).
 

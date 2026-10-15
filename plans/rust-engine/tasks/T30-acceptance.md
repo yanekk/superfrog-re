@@ -33,7 +33,8 @@ cargo tree -p sf-app | grep -E 'sf-oracle|sf-conform|sf-e2e'   # must print noth
 
 ## End to end (the worker drives this, replacing the owner's session; owner, 2026-10-15)
 
-- [ ] The real binary under `--script` (script layer, `--max-frames` and `--timeout` set) plays the
+- [ ] The real binary under `--script` (script layer, `--max-frames` and `--timeout` set, the
+      original's pacing file as in T29) plays the
       whole-game script from power-on to the end sequence; the captured run's milestones equal the
       original's (DESIGN §2.1 check 4) and its audio capture is non-silent where the original's is.
 - [ ] A soak: 50 000 frames of scripted play through the app with no crash, no `unported` entry, no

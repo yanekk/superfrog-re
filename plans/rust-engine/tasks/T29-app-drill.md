@@ -24,7 +24,7 @@ teardown: confirm no superfrog process remains (pgrep superfrog prints nothing);
 
 - suite: `sf-e2e` · sizes: 1×, 2×, 3×, 2× widescreen, fullscreen, fullscreen widescreen
 - [ ] first run from an empty home: import, intro, title, password, game start.
-- [ ] a full scripted game through the app (script layer) from power-on to the end sequence: its milestones equal the headless whole-game case's (DESIGN §2.1 check 4), and its frames equal the headless engine's own run of the same script (same binary logic, so exact).
+- [ ] a full scripted game through the app (script layer) from power-on to the end sequence, fed the original's pacing as the headless run is (normal play never lags, the original does, so an unpaced run drifts from the script's route): its milestones equal the headless whole-game case's (DESIGN §2.1 check 4), and its frames equal the headless engine's own run of the same script and pacing (same binary logic, so exact). The pacing reaches the app as a test-only file beside `--script`, written by `sf-conform` into the trace cache (outside git, §3.5); without `--script` the app never reads one.
 - [ ] every menu item, every shortcut, Controls window, save/load, export/play level file, at each size.
 - [ ] unlisted things a player would try: resize mid-scroll, fullscreen during the intro, pause during a slot spin, load a state during a boss, Cmd+Q during import, unplug audio output, very long play (50 000 frames).
 - [ ] screens saved to the scratch folder, never the repo.

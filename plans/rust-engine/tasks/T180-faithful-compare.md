@@ -36,14 +36,31 @@ pub fn sound_events(writes: &[PaulaWrite]) -> Vec<SoundEvent>
 
 The tolerance values are not per-case settings. A case cannot loosen them.
 
+A sound event's volume is the one Paula plays (`AUDxVOL`'s low 7 bits, 64 and above as 64), so a
+write that sounds the same compares equal (the `clr.w AUD3VOL` bus words of T131/T146: `$f4fd`
+against `$33fc` is 64 both times; `$0605` against `$33fc` is 5 against 64 and still differs).
+
+No variable a gameplay rule reads (`obj_slots`, `hitboxes`, `level_map`, the frog's, the counters)
+is tagged `presentation`; each tag carries a one-line reason in `layout.rs`, and the README lists
+the tagged variables.
+
+Matching by pass count needs a pass count on both sides: the original's from its main loop parking
+in `level_frame_loop`'s wait (`sync::mid_pass`), the engine's exposed by `Game` (outside a level,
+where the main loop waits every frame, a pass is a frame). The frog, camera and clock run at 50 Hz in
+the vertical blank (docs/08), so two pass ends a frame apart differ by a tick in those variables.
+With the original's pacing fed, pass ends should fall on the same frame on both sides; the worker
+measures whether they ever do not, and if they do, raises with the owner or coordinator how the
+50 Hz variables are compared there rather than choosing.
+
 ## Tests
 
 - [ ] Unit: a one-step colour difference on many pixels is tolerated; 64+ pixels of a wrong sprite
       for 2 frames is tolerated and counted, for 3 frames fails; the 1 % budget fails when exceeded.
 - [ ] Unit: `sound_events` from synthetic write lists; the same events with writes reordered inside a
       frame, or shifted by 2 frames, match; 3 frames or a different sample fails.
-- [ ] Unit: state compared by pass count: a pass ending one frame later on one side is equal; a
-      `presentation` variable differing is not a state difference.
+- [ ] Unit: state compared by pass count: a pass ending one frame later on one side is equal (its
+      50 Hz variables as the note above settles); a `presentation` variable differing is not a state
+      difference.
 - [ ] T120's guards hold in faithful mode: a case comparing nothing, or past `LAG_LIMIT`, fails.
 - [ ] A deliberately broken mechanic (e.g. the frog's jump height off by one) still fails a frog case
       in faithful mode: the loosening did not blind the checks.

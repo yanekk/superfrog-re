@@ -1,6 +1,6 @@
 # T182 — plays-alone
 
-**Phase:** 2 · **Depends on:** T180; blocks T181, T183, T21 and every completion task · **Weight:** medium
+**Phase:** 2 · **Depends on:** T180; blocks T181, T183 and every completion task · **Weight:** medium
 
 Added by the owner's amendment of 2026-10-15 (DESIGN §2.1 check 4).
 
@@ -10,6 +10,18 @@ The check that proves the engine runs on its own. From a case's sync point the e
 once and then runs with nothing from the original (no re-sync, no beam anchor, no transplant): only
 the inputs and the original's pacing. Both sides' milestones are extracted and compared, in order,
 each within ±10 frames of play (the original's load frames not counted).
+
+What "nothing from the original" means against today's runner (`sf-conform/src/lib.rs` `run_inner`):
+the engine still gets each frame's input as the original consumed it (the script indexed by the
+original's frame, its load and disk-wait frames skipped), the original's `Pacing`, and the RNG seeds
+the original read from its clock (DESIGN §2.1 check 4). It gets none of the rest the runner feeds
+today: `anchor_writes`/`anchor_blits`, `set_handler_entry`/`set_handler_end`/`set_blank_merged`,
+`set_load_line` (found by matching the original), `set_load_state` and the pokes of
+`runs_during_load`, `load_leaves` and `FrameOut::resync` after a load. Where the engine needs one of
+those to go on, it supplies it itself as normal play does (a load leaves what the engine's own
+import gives). A `Pacing::Late` whose cut the engine's pass cannot reach once the two have drifted
+(fewer Paula writes, another phase or step) ends the engine's frame on its own clock; it never
+panics.
 
 Measured on 2026-10-15 (amendment session): `Game::new(Start::Level(W1-1))` replaying
 `complete-w1-1.txt` alone loses a life at frame 613, where the original with the same inputs does
@@ -37,8 +49,12 @@ pub enum Milestone { Scene(SceneKind), CoinTaken { left: u16 }, ItemTaken { kind
 pub fn milestones(frames: &[FrameState]) -> Vec<(u64 /* frame of play */, Milestone)>
 ```
 
-`SceneKind` names title, menu, level start, tally, slot machine, bonus level, game over and end
-sequence; the worker extends the enum where the original has a scene this misses.
+`SceneKind` names title, menu, world loading picture (`LnLP`), progress map, level start, tally,
+slot machine, bonus level, end-of-world picture (`LnET`), game over and end sequence; the worker
+extends the enum where the original has a scene this misses. The original keeps no count of kills or
+items taken: those milestones are derived from changes in `obj_slots`, `level_map`, `score` and the
+coin counters, by one function applied to both sides' `LAYOUT` values, so a derivation fault cannot
+make the two sides differ.
 
 ## Tests
 
@@ -47,6 +63,8 @@ sequence; the worker extends the enum where the original has a scene this misses
 - [ ] `complete-w1-2` (green today with re-syncs) run alone: green, or its first differing milestone
       is a FINDINGS row with the cause and the task that owns it.
 - [ ] The W1-1 replay above: its cause found and fixed, or owned by a named task.
+- [ ] Unit: a `Pacing::Late` naming a cut the engine's pass does not reach ends the frame on the
+      engine's clock without a panic.
 
 ## Done when
 
