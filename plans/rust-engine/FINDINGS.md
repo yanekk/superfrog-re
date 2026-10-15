@@ -18,6 +18,7 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-15 | 🔄 | T33 split at pir's context line, code kept as `T33-wip.patch`, uncommitted at the split: T160 attract-demo-entry, T161 attract-demo-init-timing, T162 attract-demo-level-start, T163 attract-demo-return, T164 attract-demo-cycles. Measured causes in their docs; first demo was green to 7 000 frames. |
 | 2026-10-15 | 🔄 | Owner, T121 review: added T153 bob-draw-step-cuts (T121; blocks T21): T121's goal 1, per-bob cut steps in `bob_draw`, unbuilt. Its pins: `enemies-w1-1` 372, and whichever of W3-1 201, W3-3 256, W3-activation 201 are drawer cuts. |
 | 2026-10-15 | 🐞 | T121 review, open (T153): `enemies-w1-1` 372 re-syncs `playfield_buffer_0` after the original's frame 371 ended in phase 5; W3-1 200, W3-3 255, W3-activation 200 are phase-5 lags too. T146's W6-1 530 may be the same. |
 | 2026-10-15 | 📌 | T121: no per-bob steps added to `bob_draw`; each erase and draw writes INTENA, so `Cut::writes` already places a phase-5 cut per bob. Untested: a bob erased with nothing to erase makes no write. |
