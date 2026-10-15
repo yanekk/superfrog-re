@@ -128,7 +128,7 @@ done · ⛔ blocked, needs a human.
 | T124 | enemies-w5-3-case | T39; blocks T18 | ⬜ | |
 | T125 | enemies-w5-4-case | T39; blocks T18 | ⬜ | |
 | T126 | w5-completions | T39, T101, T121, T123, T124, T125; blocks T18 | ⬜ | |
-| T127 | restore-sprite-wait | T101; blocks T21 | 🔍 | Cause: `FrogAnim` charged whole before the wait (engine on $1d, original $1c). Split by 68000 timings into `FrogAnim` 236 + new `FrogAnimTail` 277 (total kept, tail on every path); not refitted with `examples/fit`. Both `sprite_wait` calls back; call-site test added. Level cases green; `level_entry` red, pre-existing. |
+| T127 | restore-sprite-wait | T101; blocks T21 | ✅ | Review clean, no fix commit. `FrogAnim` split 236 + `FrogAnimTail` 277 at the wait; both `sprite_wait` calls back. Probed: listing hand count (head ~280, tail ~352 cycles), mutations (wait removed: call-site test red; split undone: `enemies-w2-1` red at 442), `level_entry` identical red on base. W2 cases and frog cases green. |
 | T128 | w3-4-sprite-race | T127; blocks T113 | ⬜ | |
 | T130 | front-vbl-318 | T100; blocks T21 | ⬜ | |
 | T129 | slot-lamp-cut | T74; blocks T21 | ⬜ | |
@@ -163,7 +163,7 @@ done · ⛔ blocked, needs a human.
 A Notes cell holds what was built or what the review found, the test count, and one line per
 deviation from the task doc. A ✅ task's cell may be cut to one line once the next task has been reviewed.
 
-**Review queue:** T127
+**Review queue:** *(empty)*
 
 ## Blocked on the user
 
