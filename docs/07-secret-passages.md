@@ -83,8 +83,9 @@ No way into it was found on the original (T105, T133), and the map shows why:
 - Its only ways in are fake walls S1 and S2. S1 (52-79, 16-19) is a corridor whose
   floor is row 20; it ends over shaft D (cols 80-84, rows 16-35). S2 (52-59,
   22-24) joins shaft A (cols 60-63, rows 22-39, open below onto the start's
-  floor). Room, corridor and both shafts are solid above (rows 13-15).
-  Everything has to be climbed into from below.
+  floor). All four are closed above: the room by row 13, the corridor and D by
+  row 15, A by the corridor's floor (rows 20-21). Everything has to be climbed
+  into from below.
 - Nothing in there lifts the frog: no pad, spring, launcher or lift in the room,
   the corridor, A or D. A jump rises about 106 px. Wings only slow a fall: fire
   takes 2 off the falling speed, at most 8 times a jump (h0+$11056). The flyers
