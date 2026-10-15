@@ -31,12 +31,14 @@ case!(front_options, "front-options");
 case!(front_skip_bounce, "front-skip-bounce");
 case!(front_skip_left, "front-skip-left");
 case!(front_skip_wait, "front-skip-wait");
+case!(game_over_esc_w1_1, "game-over-esc-w1-1");
 case!(game_over_fire_w1_1, "game-over-fire-w1-1");
 case!(game_over_timeup_w1_1, "game-over-timeup-w1-1");
 case!(story_boot, "story-boot");
 
-// The frog alone in each world, objects frozen; W1-4's green route; W4-2 and W6-1 explored.
+// The frog alone in each world, objects frozen; W1-4's green route; W4-1, W4-2 and W6-1 explored.
 case!(complete_w1_4, "complete-w1-4");
+case!(enemies_w4_1, "enemies-w4-1");
 case!(enemies_w4_2, "enemies-w4-2");
 case!(enemies_w6_1_explore, "enemies-w6-1-explore");
 case!(frog_w2_1, "frog-w2-1");
@@ -57,6 +59,7 @@ case!(slot_hilo_7, "slot-hilo-7");
 case!(slot_hilo_8, "slot-hilo-8");
 case!(slot_hilo_wrong, "slot-hilo-wrong");
 case!(slot_hold_20000, "slot-hold-20000");
+case!(slot_hold_jackpot, "slot-hold-jackpot");
 
 // The renderer on every level but W1-1 (`render_vs_oracle.rs` has W1-1), 400 frames each.
 case!(render_final, "render-final");
