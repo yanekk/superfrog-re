@@ -9,6 +9,16 @@ Carries T104's done-when for W6-4's second map (`sync = { level = "W6-4alt" }`).
 `engine/conform/cases/enemies-w6-4-alt-complete.toml` to W6-4alt's exit, nothing left out,
 `resync = false`; in the test block if green, else outside it naming T146.
 
+## Files
+
+- `engine/conform/scripts/enemies-w6-4-alt-complete.txt`, `engine/conform/cases/enemies-w6-4-alt-complete.toml`
+- `engine/crates/sf-conform/tests/enemies_w6_cases.rs`, if the case is green.
+
+## Interface
+
+None new: a case in the existing format (`sync`, `script`, `frames`, `resync = false`), its
+script made with `examples/plan_exit`.
+
 ## What is known (T104)
 
 - W6-4alt differs from W6-4 in 4 map rows and has no switch 51. T104's planner made identical

@@ -10,6 +10,16 @@ Carries T104's done-when for W6-4 (first map).
 out, `resync = false`. It leaves the original at frame 154 (T146's `level_copper` fault), so
 it stays outside the test block naming T146.
 
+## Files
+
+- `engine/conform/scripts/enemies-w6-4-complete.txt`, `engine/conform/cases/enemies-w6-4-complete.toml`
+- `engine/crates/sf-conform/tests/enemies_w6_cases.rs`, if the case is green.
+
+## Interface
+
+None new: a case in the existing format (`sync`, `script`, `frames`, `resync = false`), its
+script made with `examples/plan_exit`.
+
 ## What is known (T104)
 
 - T104's script took every coin by frame 9 690 (frog at 67,33); `/tmp/t104/W6-4-pre31.txt` is
@@ -22,6 +32,8 @@ it stays outside the test block naming T146.
 - Pitfalls: west of 67 the frog fell into an open pit (13-40, rows 19-40); its way out is the pad
   at 16,42 (24 rows). East, the room 165-196 rows 24-32 holds a thrower that killed every path at
   196,28. Planning from 9 690 to switch 50 with `--via 166,17` was going west when T104 stopped.
+- `/tmp/t104/worktree-leftovers/` (may exist): T104's uncommitted `enemies-w6-4-complete` case and
+  script, its `plan_exit` `PLAN_PATH` patch and its `zz_*` probe examples, saved by T104's review.
 
 ## What T104 left
 

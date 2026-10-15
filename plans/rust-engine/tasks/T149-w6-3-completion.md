@@ -9,6 +9,16 @@ Carries T104's done-when for W6-3 (first map). W6-3alt's is done (`enemies-w6-3-
 `engine/conform/cases/enemies-w6-3-complete.toml` to W6-3's exit (all 138 coins), nothing left
 out, `resync = false`; in the test block if green, else outside it naming T146.
 
+## Files
+
+- `engine/conform/scripts/enemies-w6-3-complete.txt`, `engine/conform/cases/enemies-w6-3-complete.toml`
+- `engine/crates/sf-conform/tests/enemies_w6_cases.rs`, if the case is green.
+
+## Interface
+
+None new: a case in the existing format (`sync`, `script`, `frames`, `resync = false`), its
+script made with `examples/plan_exit`.
+
 ## What is known (T104)
 
 - `enemies-w6-3-alt-complete`'s script also plays W6-3 identically to frame 3 105 (the maps

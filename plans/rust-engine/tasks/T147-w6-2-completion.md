@@ -11,6 +11,16 @@ exit (`level_state` 1), matching the original with `resync = false`, as
 `enemies-w6-2-complete` (script `enemies-w6-2-complete.txt`) to W6-2's exit; in the test block
 (`tests/enemies_w6_cases.rs`) if green, else outside it naming T146.
 
+## Files
+
+- `engine/conform/scripts/enemies-w6-2-complete.txt`, `engine/conform/cases/enemies-w6-2-complete.toml`
+- `engine/crates/sf-conform/tests/enemies_w6_cases.rs`, if the case is green.
+
+## Interface
+
+None new: a case in the existing format (`sync`, `script`, `frames`, `resync = false`), its
+script made with `examples/plan_exit`.
+
 ## What is known (T104)
 
 - W6-2's coins (`coins_left_for_exit` 97 at load) were all taken by about frame 10 900; T104's
@@ -24,6 +34,8 @@ exit (`level_state` 1), matching the original with `resync = false`, as
 - Plan with `--gap 6` (the floor-to-block jump crosses 8 cells of spikes).
 - `/tmp/t104/W6-2-pre33.txt`: T104's script to the ledge (20 692 frames, much of it wasted
   bouncing; replanning from ~10 900 with the hops above would be far shorter).
+- `/tmp/t104/worktree-leftovers/` (may exist): T104's uncommitted `enemies-w6-2-complete` case and
+  script, its `plan_exit` `PLAN_PATH` patch and its `zz_*` probe examples, saved by T104's review.
 
 ## What T104 left
 
