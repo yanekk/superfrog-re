@@ -14,9 +14,11 @@ red only from engine faults other tasks own; this task makes them green once tho
    `engine/crates/sf-conform/tests/frog_cases.rs`, as `complete_w4_3` does (green to the frame before
    the next level; on that frame `level_outcome` is `Completed`).
 3. Check through `run_with` (as `enemies_w2_cases.rs` does) what each completion meets. For
-   `w2-1-complete`, on the original (`examples/script_seen`): the mace from frame 2029, a heart lost
-   at 2061 (the mace), the spikes from 2305, the crumbling ledge from 1646 (whether one breaks under the frog is unchecked: T43 carried a ledge breaking), the bouncer, a spud stun
-   at 795. T166–T168 name theirs.
+   `w2-1-complete`, on the original (`examples/script_seen`): the mace from frame 2029, hearts lost
+   at 2061 (the mace) and 2365, the spikes from 2305, the crumbling ledge from 1646, the bouncer
+   from 1678, a spud stun at 795 (no reward follows it: T168 carries the stun-then-stomp). Carried
+   from T43 through T122: a crumbling ledge breaking under the frog, checked through `run_with`,
+   here or on whichever W2 case (T166–T168) breaks one. T166–T168 name theirs.
 
 ## The red frames (T122's `sf-conform scan`, 2026-10-15)
 
