@@ -94,3 +94,16 @@ fn enemies_w6_3_alt_complete() {
     let resynced: Vec<u32> = o.resynced.iter().map(|r| r.0).collect();
     assert_eq!(resynced, [6129, 12379], "{:?}", o.resynced);
 }
+
+/// W6-3's first map completed (T149): every coin and switch 49 to the exit, green faithful and
+/// alone (254 milestones), re-synced after the lags at 5375 and 5979, as DESIGN §2.1 lets checks
+/// 1–3 do.
+#[test]
+fn enemies_w6_3_complete() {
+    let name = "enemies-w6-3-complete";
+    let case = sf_conform::Case::load(&sf_conform::cases_dir().join(format!("{name}.toml")))
+        .unwrap_or_else(|e| panic!("{e}"));
+    let o = sf_conform::run(&case).unwrap_or_else(|d| panic!("{name}: {d}"));
+    let resynced: Vec<u32> = o.resynced.iter().map(|r| r.0).collect();
+    assert_eq!(resynced, [5375, 5979], "{:?}", o.resynced);
+}

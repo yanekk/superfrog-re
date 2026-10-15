@@ -18,6 +18,7 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-15 | 📌 | T149: `plan_exit_w6` missed W6-3's exit (`level_state` 1 one frame, 7891) and idled on the exit cell to `--frames` (8 000 frames, ~1 h). Watch for `distance 0` repeating; find the frame with `sf-conform record --watch ls=h0+a06:L`. |
 | 2026-10-15 | 📌 | T193: a debug `superfrog` with `--capture` cost 49 ms CPU a frame (sf-app and the PNG crates unoptimised), so long scripted runs fell behind PAL and hit `--timeout` under load. Dev opt-level 2 for both: 4.3 ms. |
 | 2026-10-15 | 📌 | T191 review merge: the T190-seen `alone.rs` late-cut panic at `level/frame.rs:71` is gone; T191 replaced that `debug_assert` with vbl_handler's `logic_running == 0` path (h0+$11c92). `tests/alone.rs` and `chain` green merged. |
 | 2026-10-15 | 📌 | T191: the level's `kbd_poll` acknowledges each new keyboard byte, which then reads `$ff`; the engine had kept the last byte, leaving `key_up` set. Unhandled: a frame cut late in the pass's tail after unpausing (never seen). |
