@@ -145,7 +145,7 @@ done · ⛔ blocked, needs a human. A task dropped by a plan amendment leaves th
 | T162 | attract-demo-level-start | T160, T180 | ✅ | |
 | T163 | attract-demo-return | T162 | ✅ | |
 | T164 | attract-demo-cycles | T163; blocks T21 | ✅ | |
-| T154 | w1-4-completion | T106, T127, T180, T182; blocks T21 | ⬜ | |
+| T154 | w1-4-completion | T106, T127, T180, T182; blocks T21 | ✅ | |
 | T166 | w2-2-completion | T122, T180, T182; blocks T21 | ⬜ | |
 | T167 | w2-3-completion | T122, T180, T182; blocks T21 | ⬜ | |
 | T168 | w2-4-completion | T122, T180, T182; blocks T21 | ⬜ | |
