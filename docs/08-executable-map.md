@@ -104,7 +104,7 @@ came with the pass still running (`Pacing::Late`).
 | W1-1 | `complete-w1-1` | 4 658 | 683 | 15% |
 | W1-2 | `complete-w1-2` | 5 367 | 617 | 11% |
 | W1-3 | `complete-w1-3` | 7 913 | 571 | 7% |
-| W1-4 (to 4054, short of the exit) | `complete-w1-4` | 4 054 | 457 | 11% |
+| W1-4 | `complete-w1-4` | 7 562 | 858 | 11% |
 | W2-1 | `w2-1-complete` | 2 709 | 712 | 26% |
 | W4-1 | `complete-w4-1` | 2 330 | 429 | 18% |
 | W4-2 | `complete-w4-2` | 9 421 | 3 035 | 32% |
