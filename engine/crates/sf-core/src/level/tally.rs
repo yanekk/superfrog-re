@@ -120,13 +120,11 @@ impl LevelTally {
                         cycles += pages_text(c) + points_text(c) + score_text(c);
                     });
                     // The score's print runs into the next frame: what it and the rest write is
-                    // compared once the original is out of it (h0+$479a, called from $4614). With
-                    // more pages to hide the points' print does too (T126: W5-4's, frame 7959).
+                    // compared once the original is out of it (h0+$479a, called from $4614).
                     cx.jobs.push(crate::game::Job {
                         inside: vec![at(0x4618)],
                         writes: vec![
                             (NUMBER_TEXT, 0x10),
-                            (BUFFER_0 + 0x1cfc, 8 * ROW),
                             (BUFFER_0 + 0x1fa5, 8 * ROW),
                             (DIWSTOP_MOVE, 4),
                         ],
