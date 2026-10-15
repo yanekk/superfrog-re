@@ -39,7 +39,7 @@ fn main() -> ExitCode {
 
 fn scan(path: &Path) -> Result<bool, String> {
     let case = Case::load(path)?;
-    let found = sf_conform::scan(&case);
+    let (found, o) = sf_conform::scan_counting(&case);
     for d in &found {
         let what = if let Some((v, theirs, ours)) = &d.first_var {
             format!(
@@ -48,6 +48,8 @@ fn scan(path: &Path) -> Result<bool, String> {
             )
         } else if let Some(p) = &d.paula_diff {
             format!("paula {}", p.lines().next().unwrap_or(""))
+        } else if let Some((from, limit)) = d.lag {
+            format!("mid-pass from frame {from}, past the limit of {limit} frames")
         } else if let Some(p) = &d.picture_diff {
             format!("picture {:?}", p.mismatch.first)
         } else {
@@ -59,10 +61,11 @@ fn scan(path: &Path) -> Result<bool, String> {
         println!("frame {}{of}: {what}", d.frame);
     }
     println!(
-        "{}: {} of {} frames differ",
+        "{}: {} of {} frames differ; {}",
         case.name,
         found.len(),
-        case.frames
+        case.frames,
+        counts(&o)
     );
     Ok(found.is_empty())
 }
@@ -84,7 +87,7 @@ fn run_cases(paths: &[PathBuf]) -> Result<bool, String> {
         let case = Case::load(p)?;
         match sf_conform::run(&case) {
             Ok(o) => {
-                print!("{}: ok, {} frames", case.name, o.frames);
+                print!("{}: ok, {} frames ({})", case.name, o.frames, counts(&o));
                 if case.compare.render {
                     print!(", {} rendered", o.rendered);
                 }
@@ -111,6 +114,19 @@ fn run_cases(paths: &[PathBuf]) -> Result<bool, String> {
         }
     }
     Ok(green)
+}
+
+/// The frames compared, the longest run the original ended mid-pass (the limited one) and the
+/// longest run left out for lag.
+fn counts(o: &sf_conform::Outcome) -> String {
+    let ((mf, mn), (sf, sn)) = (o.longest_mid_pass, o.longest_skip);
+    match sn {
+        0 => format!("{} compared, none left out for lag", o.compared),
+        _ => format!(
+            "{} compared, longest mid-pass run {mn} from frame {mf}, longest left out {sn} from frame {sf}",
+            o.compared
+        ),
+    }
 }
 
 /// `NAME=ADDR:W`, `ADDR:W`; ADDR is `h0+<hex>` or `0x<hex>`.
@@ -174,12 +190,7 @@ fn record(path: &Path, rest: &[String]) -> Result<bool, String> {
     if let Some(d) = &png_dir {
         std::fs::create_dir_all(d).map_err(|e| format!("{}: {e}", d.display()))?;
     }
-    let synced = sync::reach_frozen(
-        &case.sync,
-        &case.script,
-        case.frames,
-        case.freeze(),
-    )?;
+    let synced = sync::reach_frozen(&case.sync, &case.script, case.frames, case.freeze())?;
     let mut amiga = synced.amiga;
     // As `run` does: from the end sequence on, every disk the original asks for goes in.
     let mut disks =

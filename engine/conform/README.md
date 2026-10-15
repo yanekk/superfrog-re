@@ -56,6 +56,7 @@ script = "walk-right"                               # optional; default: nothing
 frames = 50                                         # frames compared, from the sync point
 compare = ["vars"]                                  # any of "vars", "picture", "paula", "render"; default all but render
 resync = false                                      # a re-sync after a lag fails the case (default true; see Pacing)
+lag-limit = { frames = 133, note = "why; the task" } # optional: this case's limit on frames in a row mid-pass (see Pacing)
 ```
 
 `render` compares, each frame, the picture the renderer draws from the original's memory transplanted
@@ -136,6 +137,14 @@ pass; on the frame after, if a variable still differs, it re-syncs the engine fr
 memory and reports both (`lag … re-synced at …`). Such frames are rare; `frog-run-w1-1` has two. A
 case with `resync = false` (the `items-*` cases) fails there instead: a re-sync loads the original's
 whole memory and so erases any divergence that lands on a lag frame (T14 review, T36 review).
+
+An original that never finishes its pass would leave every frame out and the case green comparing
+nothing (T120). So a case fails once more than `LAG_LIMIT` (100) frames in a row end mid-pass;
+the frame after each lag ends the run, as its variables are compared. 100 is fitted to the cases
+(2026-10-15): all but two have runs of 97 or under. Those two, `complete-w4-3` (261) and
+`enemies-w6-1` (133), are pinned at their run with `lag-limit`, each with the task that is to
+shrink it. `run`, `all` and `scan` print each case's frames compared, its longest mid-pass run and
+its longest run left out (the frames after each lag among them, not limited).
 
 `Pacing::Late { writes, line, hpos, phase, step }` says where the original's frame ended: after its
 `writes`th Paula write (the last at beam `line`, slot `hpos`), in the pass's `phase`th call, `step`

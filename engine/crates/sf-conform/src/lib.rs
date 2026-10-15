@@ -18,7 +18,7 @@ pub mod routine;
 pub mod script;
 pub mod sync;
 
-pub use case::{Case, Compare, Excluded, Exclusion, cases_dir, scripts_dir};
+pub use case::{Case, Compare, Excluded, Exclusion, LagLimit, cases_dir, scripts_dir};
 pub use report::{Divergence, PictureDiff};
 pub use script::InputScript;
 pub use sync::SyncPoint;
@@ -73,7 +73,22 @@ pub struct Outcome {
     /// Frames whose picture matched only with the rows of the engine's beam races left out
     /// (`FrameOut::beam_races`, owner 2026-10-13).
     pub raced: Vec<u32>,
+    /// Frames that reached the comparison (every frame but the lag's: `straddled` and the frame
+    /// after each lag, which only checks the variables for a re-sync).
+    pub compared: u32,
+    /// The longest run of `straddled` frames in a row: (its first frame, its length); `(0, 0)`
+    /// when there was none. Past [`LAG_LIMIT`] (or the case's `lag-limit`) the case fails (T120).
+    pub longest_mid_pass: (u32, u32),
+    /// The longest run of frames left out for lag, the frame after each lag among them (only
+    /// the variables are checked there): reported, not limited.
+    pub longest_skip: (u32, u32),
 }
+
+/// The most frames in a row the original may end mid-pass before a case fails: the original
+/// never finishing its pass leaves nothing compared (T120). Fitted to the cases (2026-10-15):
+/// every green one is at 97 or under but complete-w4-3 (261) and enemies-w6-1 (133), pinned; the
+/// old `items-upper-w2-1` hang was 468.
+pub const LAG_LIMIT: u32 = 100;
 
 /// Why a `render` case leaves a frame out.
 pub const LATE_REDRAW: &str = "late redraw: the original rewrote the copper list, the panel or \
@@ -117,9 +132,15 @@ pub fn run_hooked(
 /// [`run`], going on past each divergence: every frame that differs, in order (for finding what
 /// is left in a long case; the engine is not re-synced, so later ones may follow from earlier).
 pub fn scan(case: &Case) -> Vec<Divergence> {
+    scan_counting(case).0
+}
+
+/// [`scan`], with what the run compared.
+pub fn scan_counting(case: &Case) -> (Vec<Divergence>, Outcome) {
     let mut found = Vec::new();
-    let _ = run_inner(case, |_, _| {}, &mut |_, _, _| {}, Some(&mut found));
-    found
+    let o = run_inner(case, |_, _| {}, &mut |_, _, _| {}, Some(&mut found))
+        .expect("a scan collects its divergences");
+    (found, o)
 }
 
 fn run_inner(
@@ -162,6 +183,7 @@ fn run_inner(
         ..Outcome::default()
     };
     let mut after_lag = false;
+    let mut lag = LagRun::new(case.lag_limit.as_ref().map_or(LAG_LIMIT, |l| l.frames));
     // The original's frame, counted from the sync point: ahead of the engine's after a load.
     let mut of = 0u32;
     // Jobs the engine did at once that the original's CPU may still be running.
@@ -324,11 +346,19 @@ fn run_inner(
         if stepped && sync::mid_pass(&amiga.cpu(), &mem) {
             outcome.straddled.push(f);
             after_lag = true;
+            if let Some(from) = lag.left_out(f, true, &mut outcome) {
+                let d = lag_divergence(f, of, from, lag.limit, &game);
+                match found.as_mut() {
+                    Some(all) => all.push(d),
+                    None => return Err(d),
+                }
+            }
             prev = mem;
             continue;
         }
         if stepped && after_lag {
             after_lag = false;
+            lag.left_out(f, false, &mut outcome);
             if case.compare.vars
                 && let Some((v, theirs, ours)) =
                     compare::vars(game.layout(), &game.probe(), &mem, &[])
@@ -348,6 +378,7 @@ fn run_inner(
                             .take(40)
                             .collect(),
                         resync: true,
+                        lag: None,
                     };
                     match found.as_mut() {
                         Some(all) => all.push(d),
@@ -385,6 +416,7 @@ fn run_inner(
             keep
         });
         let masked: Vec<(u32, u32)> = jobs.iter().flat_map(|(j, _, _)| j.writes.clone()).collect();
+        lag.compared(&mut outcome);
         let mut rendered = None;
         if case.compare.render {
             let g = Game::with_display(display.clone(), Start::Transplant(mem.clone()));
@@ -431,6 +463,7 @@ fn run_inner(
                 level_outcome: None,
                 var_detail: Vec::new(),
                 resync: false,
+                lag: None,
             });
             d.unported = unported;
             d.level_outcome = game.level_outcome();
@@ -443,6 +476,76 @@ fn run_inner(
         prev = mem;
     }
     Ok(outcome)
+}
+
+/// The runs of frames left out for lag going on now, against the case's limit.
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct LagRun {
+    /// Frames in a row the original ended mid-pass: (the first, how many).
+    mid_pass: (u32, u32),
+    /// Frames in a row left out, the frame after each lag among them: (the first, how many).
+    skipped: (u32, u32),
+    limit: u32,
+}
+
+impl LagRun {
+    fn new(limit: u32) -> LagRun {
+        LagRun {
+            mid_pass: (0, 0),
+            skipped: (0, 0),
+            limit,
+        }
+    }
+
+    /// Frame `f` left out: the original ended it mid-pass (`mid_pass`), or it is the frame after
+    /// such a one. The run's first frame, once the mid-pass run passes the limit (on that frame
+    /// only, so `scan` reports a run once).
+    fn left_out(&mut self, f: u32, mid_pass: bool, outcome: &mut Outcome) -> Option<u32> {
+        let grow = |run: &mut (u32, u32)| {
+            *run = if run.1 == 0 {
+                (f, 1)
+            } else {
+                (run.0, run.1 + 1)
+            };
+        };
+        grow(&mut self.skipped);
+        if self.skipped.1 > outcome.longest_skip.1 {
+            outcome.longest_skip = self.skipped;
+        }
+        if !mid_pass {
+            self.mid_pass.1 = 0;
+            return None;
+        }
+        grow(&mut self.mid_pass);
+        if self.mid_pass.1 > outcome.longest_mid_pass.1 {
+            outcome.longest_mid_pass = self.mid_pass;
+        }
+        (self.mid_pass.1 == self.limit + 1).then_some(self.mid_pass.0)
+    }
+
+    /// A frame compared: both runs end.
+    fn compared(&mut self, outcome: &mut Outcome) {
+        outcome.compared += 1;
+        self.mid_pass.1 = 0;
+        self.skipped.1 = 0;
+    }
+}
+
+/// The divergence for a mid-pass run from `from` that passed `limit` at frame `f`.
+fn lag_divergence(f: u32, of: u32, from: u32, limit: u32, game: &Game) -> Divergence {
+    Divergence {
+        frame: f,
+        first_var: None,
+        picture_diff: None,
+        paula_diff: None,
+        render_diff: None,
+        oracle_frame: (of != f + 1).then_some(of - 1),
+        unported: game.unported().to_vec(),
+        level_outcome: game.level_outcome(),
+        var_detail: Vec::new(),
+        resync: false,
+        lag: Some((from, limit)),
+    }
 }
 
 /// The original's clean background buffer (h3+$35860): what a bob's erase restores from.
@@ -531,4 +634,76 @@ fn late_redraw(
         .iter()
         .enumerate()
         .all(|(i, &t)| t == colours[0][i] || colours[1..].iter().any(|c| c[i] != colours[0][i]))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Feed `frames` (true: mid-pass, false: the frame after a lag, None: compared) and return
+    /// the frames at which the limit was passed, with the run's first frame.
+    fn feed(limit: u32, frames: &[Option<bool>]) -> (Vec<(u32, u32)>, Outcome) {
+        let mut lag = LagRun::new(limit);
+        let mut o = Outcome::default();
+        let mut failed = Vec::new();
+        for (f, k) in frames.iter().enumerate() {
+            let f = f as u32;
+            match k {
+                Some(mid) => {
+                    if let Some(from) = lag.left_out(f, *mid, &mut o) {
+                        failed.push((f, from));
+                    }
+                }
+                None => lag.compared(&mut o),
+            }
+        }
+        (failed, o)
+    }
+
+    /// The old `items-upper-w2-1` (commit `4789f2e`): compared to ~1012, then the original held
+    /// in its `frog_tiles` wall loop, mid-pass to the end of its 1 480 frames (T85 review, T105).
+    #[test]
+    fn an_original_held_mid_pass_past_the_limit_fails() {
+        let mut trace = vec![None; 1012];
+        trace.extend(vec![Some(true); 468]);
+        let (failed, o) = feed(LAG_LIMIT, &trace);
+        assert_eq!(failed, vec![(1012 + LAG_LIMIT, 1012)]);
+        assert_eq!(o.longest_mid_pass, (1012, 468));
+        assert_eq!(o.compared, 1012);
+    }
+
+    #[test]
+    fn a_mid_pass_run_at_the_limit_passes() {
+        let mut trace = vec![None; 10];
+        trace.extend(vec![Some(true); LAG_LIMIT as usize]);
+        trace.push(Some(false));
+        trace.extend(vec![None; 10]);
+        let (failed, o) = feed(LAG_LIMIT, &trace);
+        assert!(failed.is_empty());
+        assert_eq!(o.longest_mid_pass, (10, LAG_LIMIT));
+        assert_eq!(o.longest_skip, (10, LAG_LIMIT + 1));
+        assert_eq!(o.compared, 20);
+    }
+
+    /// A pass longer than a frame, lagging every other frame: the frames after each lag break
+    /// the mid-pass run (the variables are checked there) but not the run left out.
+    #[test]
+    fn alternating_lag_is_reported_not_limited() {
+        let trace: Vec<Option<bool>> = (0..400).map(|f| Some(f % 2 == 0)).collect();
+        let (failed, o) = feed(LAG_LIMIT, &trace);
+        assert!(failed.is_empty());
+        assert_eq!(o.longest_mid_pass.1, 1);
+        assert_eq!(o.longest_skip, (0, 400));
+        assert_eq!(o.compared, 0);
+    }
+
+    /// One failure per run, so `scan` reports it once; a later run past the limit again.
+    #[test]
+    fn each_run_past_the_limit_fails_once() {
+        let mut trace = vec![Some(true); 5];
+        trace.push(None);
+        trace.extend(vec![Some(true); 4]);
+        let (failed, _) = feed(3, &trace);
+        assert_eq!(failed, vec![(3, 0), (9, 6)]);
+    }
 }
