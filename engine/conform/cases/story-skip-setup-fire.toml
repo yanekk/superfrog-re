@@ -1,0 +1,5 @@
+# Power-on with disk 3, fire in scene 1's set-up: the intro skips to its end after scene 1, then
+# fire on the "insert disk 1" page, into the game to its title waiting (T48).
+sync = "power-on-disk3"
+script = "story-skip-setup-fire"
+frames = 1850

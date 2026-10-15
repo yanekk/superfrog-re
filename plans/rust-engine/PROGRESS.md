@@ -14,7 +14,7 @@ the account is the commit message. Whoever writes a cell also fixes the over-bud
 **Status:** about 100 tasks ✅; T18, T21 and Phase 3 open; amended to faithful.
 **Last updated:** 2026-10-15
 **Amended 2026-10-15 (owner):** faithful replaces frame-exact (DESIGN §2.1, PLAN.md amendment); T180–T183 added, 14 tasks dropped (PLAN.md).
-**Next `pir-work` will:** T181 faithful-rebaseline and T183 level-chain.
+**Next `pir-work` will:** T183 level-chain and T185 w6-4-lag-frog-fall.
 
 ## Tasks
 
@@ -70,7 +70,7 @@ done · ⛔ blocked, needs a human. A task dropped by a plan amendment leaves th
 | T44 | enemies-world-3 | T38; blocks T18 | ✅ | |
 | T46 | story-intro-scenes | T32; blocks T21 | ✅ | |
 | T47 | story-intro-handover | T46; blocks T21 | ✅ | |
-| T48 | story-intro-skips | T46, T47; blocks T21 | ⬜ | |
+| T48 | story-intro-skips | T46, T47; blocks T21 | ✅ | |
 | T70 | bonus-level | T15; blocks T21 | ✅ | |
 | T71 | slot-sync | T15 | ✅ | |
 | T72 | slot-screen | T71 | ✅ | |
@@ -150,10 +150,11 @@ done · ⛔ blocked, needs a human. A task dropped by a plan amendment leaves th
 | T167 | w2-3-completion | T122, T180, T182; blocks T21 | ⬜ | |
 | T168 | w2-4-completion | T122, T180, T182; blocks T21 | ⬜ | |
 | T180 | faithful-compare | T120; blocks T181, T182 and every open conformance task | ✅ | |
-| T181 | faithful-rebaseline | T180, T182; blocks T21 | ⬜ | |
+| T181 | faithful-rebaseline | T180, T182; blocks T21 | ✅ | |
 | T182 | plays-alone | T180; blocks T181, T183 and every completion task | ✅ | |
 | T183 | level-chain | T180, T182; blocks T21 | ⬜ | |
 | T184 | alone-pass-drift | T182; blocks T21, T18, T115, T147, T148, T149, T150, T151, T154, T166, T167, T168 | ✅ | `Pacing::Late` gains `blanks`; `pass_step` counts the tested frog-walk entry not done. Review: clean but for one fix, the stomp write's pc (`$d17c`, not `$d17e`). Ran the table and `front-attract` alone, all green; two mutations (blanks guard, `pass_returns`) red in `alone.rs`; ranges checked against the listing. `sf-conform all` read-only. |
+| T185 | w6-4-lag-frog-fall | T182; blocks T21 | ⬜ | |
 
 A Notes cell holds what was built or what the review found, the test count, and one line per
 deviation from the task doc. A ✅ task's cell may be cut to one line once the next task has been reviewed.

@@ -91,6 +91,36 @@ routine CPU costs (`sf_core::level::beam`, T36). In conformance the clock is anc
 original's Paula writes and blit starts, read off the oracle (`Game::anchor_writes`,
 `Game::anchor_blits`; owner, 2026-10-13); normal play uses the cost model alone.
 
+### Per level, completed (T181)
+
+What the shipped game does not reproduce (DESIGN §2.1: normal play never lags; accepted, owner
+2026-10-15), measured on each completion case by `sf-conform run`'s "the original late at N
+frame(s)": frames of play from the level's first frame through its exit fade and tally (about 185
+frames, never late), the original's loads not counted. A late frame is one whose vertical blank
+came with the pass still running (`Pacing::Late`).
+
+| Level | Case | Frames | Late | Share |
+|---|---|---|---|---|
+| W1-1 | `complete-w1-1` | 4 658 | 683 | 15% |
+| W1-2 | `complete-w1-2` | 5 367 | 617 | 11% |
+| W1-3 | `complete-w1-3` | 7 913 | 571 | 7% |
+| W1-4 (to 4054, short of the exit) | `complete-w1-4` | 4 054 | 457 | 11% |
+| W2-1 | `w2-1-complete` | 2 709 | 712 | 26% |
+| W4-1 | `complete-w4-1` | 2 330 | 429 | 18% |
+| W4-2 | `complete-w4-2` | 9 421 | 3 035 | 32% |
+| W4-3 | `complete-w4-3` | 8 670 | 2 712 | 31% |
+| W4-4 | `complete-w4-4` | 24 384 | 5 641 | 23% |
+| W5-1 | `enemies-w5-1-complete` | 2 439 | 1 113 | 46% |
+| W5-2 | `enemies-w5-2-complete` | 6 279 | 1 803 | 29% |
+| W5-3 | `enemies-w5-3-complete` | 7 048 | 2 130 | 30% |
+| W5-4 | `enemies-w5-4-complete` | 8 378 | 2 185 | 26% |
+| W6-1 | `enemies-w6-1-complete` | 6 752 | 2 066 | 31% |
+| W6-3 (second map) | `enemies-w6-3-alt-complete` | 12 741 | 2 874 | 23% |
+
+W1 runs late on 7–15% of its frames, W2-1 on a quarter, W4–W6 on a quarter to a third, W5-1 on
+nearly half; W4-3 from 3300 and W4-2 from 8499 run a pass longer than a frame for 200+ frames in a row. Levels without
+a completion case yet (W2-2..4, W3, W6-2, W6-4, the bonus level) are their completion tasks' to add.
+
 ## Input
 
 There is no input routine; each piece of code reads the hardware itself.

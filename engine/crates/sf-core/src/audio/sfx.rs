@@ -179,14 +179,17 @@ impl AudioDriver {
     /// The rest of `sfx_play`, after its raster wait (h0+$12b40): the channel's record set up and
     /// the effect started.
     pub(crate) fn sfx_play_rest(&mut self, data: &SoundData, rest: SfxRest, out: &mut Vec<PaulaWrite>) {
+        self.sfx_play_setup(data, rest);
+        self.sfx_play_start(data, rest, out);
+    }
+
+    /// The rest's record set up (h0+$12b40..$12c12), up to its duration: a vertical blank coming
+    /// here has `sfx_tick` see the new effect with no duration, so it ends it at once.
+    pub(crate) fn sfx_play_setup(&mut self, data: &SoundData, rest: SfxRest) {
         let SfxRest {
-            id,
-            chan,
-            effect,
-            steal,
+            id, chan, effect, ..
         } = rest;
         let r = rec(chan as usize);
-        let reg = 0xa0 + chan as u16 * 16;
         self.sfx.set_l(r + PER_STEP, 0);
         self.sfx.set_w(r + STEP, 0);
         self.sfx.set_w(r + ACTIVE, 1);
@@ -200,6 +203,20 @@ impl AudioDriver {
         self.load_ramp(data, r, step, 4, PERIOD, PER_RAMP, 2);
         self.sfx.set_w(r + VOL_RAMP + 2, 0);
         self.load_ramp(data, r, step, 0xa, VOLUME, VOL_RAMP, 4);
+    }
+
+    /// The rest's end (h0+$12c12): the duration, then the effect started on Paula (the period and
+    /// volume as the record holds them).
+    pub(crate) fn sfx_play_start(&mut self, data: &SoundData, rest: SfxRest, out: &mut Vec<PaulaWrite>) {
+        let SfxRest {
+            chan,
+            effect,
+            steal,
+            ..
+        } = rest;
+        let r = rec(chan as usize);
+        let reg = 0xa0 + chan as u16 * 16;
+        let step = effect.wrapping_add(4);
         let sample = self.sample_ptr(self.mem.b(data, step + 1));
         let off = (self.mem.w(data, step + 0x10) & 0xfffe) as u32;
         let start = sample.wrapping_add(4).wrapping_add(off);

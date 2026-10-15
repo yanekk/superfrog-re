@@ -3,8 +3,8 @@
 # right half's coins (35 in all), the mace and the spikes passed, the exit at frame 2523
 # (`level_state` 1), the exit fade and the tally, fire in its wait taking the points; ends on frame
 # 2708, frame 2709 being the next level's (T21's). Planned by `examples/plan_exit`, checked on the
-# original chunk by chunk. Not in the test block: `sf-conform scan` finds frame 1094 (the frog's
-# sprite, every variable equal) and 1508 (`level_copper`) red; T155 makes it green.
+# original chunk by chunk. Green faithful and alone (T181, after its fix of a vertical blank
+# inside `sfx_play`); `enemies_w2_cases.rs` checks what it meets on the way.
 sync = { level = "W2-1" }
 script = "w2-1-complete"
 frames = 2709

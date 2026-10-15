@@ -131,3 +131,66 @@ fn enemies_w2_2() {
         ],
     );
 }
+
+/// W2-1 played from its start to its exit and through the tally (T122, T181; T155's goal 3):
+/// green faithful and alone, then one frame more, the next level's (T21's), with the level
+/// completed. On the way it meets what the original meets there (`examples/script_seen`): a spud
+/// stun at 795, the crumbling ledge from 1646 (the frog never lands on it: it does not break on
+/// this route), the bouncer from 1678, the mace from 2029, the spikes from 2305, and hearts lost
+/// at 2061 (the mace) and 2365. Frames are the engine's after that frame, as `script_seen`'s.
+#[test]
+fn w2_1_complete() {
+    let name = "w2-1-complete";
+    let mut case = sf_conform::Case::load(&sf_conform::cases_dir().join(format!("{name}.toml")))
+        .unwrap_or_else(|e| panic!("{e}"));
+    let mut seen = Seen::default();
+    let mut hearts = Vec::new();
+    let o = sf_conform::run_with(&case, |fr, g: &mut Game| {
+        let st = g.state();
+        let live = (0..20)
+            .map(|k| SLOTS + k * 0x7c)
+            .filter(|&s| st.l(s + 0x40) != 0)
+            .map(|s| st.l(s + 4).wrapping_sub(h0(0)))
+            .collect();
+        let after = fr.wrapping_sub(1);
+        seen.frames
+            .push((after, live, st.w(FROG + f::HURT) != 0, st.w(FROG + f::LIVES)));
+        hearts.push((after, st.w(h0(0x830))));
+    })
+    .unwrap_or_else(|d| panic!("{name}: {d}"));
+    assert!(o.resynced.is_empty(), "{:?}", o.resynced);
+    let first = |u: u32| {
+        seen.frames
+            .iter()
+            .find(|f| f.1.contains(&u))
+            .map(|f| f.0)
+    };
+    for (u, what, at) in [
+        (0x23bee, "spud stunned", 795),
+        (0x2740c, "crumbling ledge", 1646),
+        (0x26786, "bouncer", 1678),
+        (0x2619c, "mace", 2029),
+        (0x26692, "spikes", 2305),
+    ] {
+        assert_eq!(first(u), Some(at), "{what} (h0+${u:x})");
+    }
+    let lost: Vec<u32> = hearts
+        .windows(2)
+        .filter(|w| w[1].1 < w[0].1)
+        .map(|w| w[1].0)
+        .collect();
+    assert_eq!(lost, [2061, 2365]);
+    let end = case.frames;
+    case.frames += 1;
+    let d = sf_conform::run(&case).expect_err("the next level is T21's");
+    assert_eq!(d.frame, end, "{d}");
+    assert_eq!(d.unported, ["the next level after the tally (T21)"]);
+    assert!(
+        matches!(
+            d.level_outcome,
+            Some(sf_core::level::LevelOutcome::Completed { .. })
+        ),
+        "{:?}",
+        d.level_outcome
+    );
+}
