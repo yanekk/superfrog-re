@@ -30,3 +30,21 @@ opt-level = 2
 # The renderer draws thousands of transplanted frames in the conformance tests (T13).
 [profile.dev.package.sf-core]
 opt-level = 2
+
+# The app encodes a PNG of every captured frame and converts every picture to RGBA: unoptimised,
+# with the PNG crates, a frame costs more than a PAL frame's 20 ms, and a long scripted run
+# (sf-e2e's power-on to W1-1, T193) falls behind the pacer and reaches its --timeout.
+[profile.dev.package.sf-app]
+opt-level = 2
+
+[profile.dev.package.png]
+opt-level = 2
+
+[profile.dev.package.fdeflate]
+opt-level = 2
+
+[profile.dev.package.crc32fast]
+opt-level = 2
+
+[profile.dev.package.miniz_oxide]
+opt-level = 2
