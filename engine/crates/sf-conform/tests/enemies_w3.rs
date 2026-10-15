@@ -233,6 +233,15 @@ fn enemies_w3_1_complete() {
     completes("enemies-w3-1-complete", &[1018, 1629], 5493);
 }
 
+/// W3-2 played from its start to its exit and through the tally (T115): the three switches, the
+/// bottom corridor and the right half, the exit at 6994, fire taking the points. Two re-syncs
+/// pinned, each the frame after a lag: the play field buffer at 2758 and `bob_draw_vars` at 6445.
+/// Alone it meets every milestone.
+#[test]
+fn enemies_w3_2_complete() {
+    completes("enemies-w3-2-complete", &[2758, 6445], 6994);
+}
+
 /// W3-4 played from its start to its exit and through the tally (T115): round the level as
 /// `enemies-w3-4` goes, back up for the coins and down again to the exit at 17774, fire taking the
 /// points. Two re-syncs pinned, each the frame after a lag: the panel at 8779 and `obj_slots` at
