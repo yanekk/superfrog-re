@@ -1,0 +1,10 @@
+# W5-3 completed (T126): from its first frame (the frog held to 150) through the coins the exit
+# needs to the exit (the level completed on frame 6864), every object live, the exit fade and the tally,
+# fire in its wait taking the points; ends on frame 7048, the next level's (T21's). Planned by
+# `examples/plan_exit --coins 0 --prefix` (150 idle frames), checked on the original chunk by chunk.
+# Nothing left out; one re-sync, pinned in enemies_w5_cases.rs: the play field buffer at 1608
+# (T121's class).
+sync = { level = "W5-3" }
+script = "enemies-w5-3-complete"
+frames = 7048
+resync = true
