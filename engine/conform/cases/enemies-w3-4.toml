@@ -1,10 +1,13 @@
-# W3-4 with world 3's enemies live (T44): the frog stands on the first crumbling platform and
-# jumps for the next, the scenery below marker 14 at 283,58 and the flows beside it. Ends at 193:
-# at 194 the original draws only part of the frog's bob (every variable equal; T102's beam race,
-# as `items-shield-w3-1` at 366). T113 takes the case on from there.
+# W3-4 with world 3's enemies live (T44, T113), round the level in legs played on the original:
+# from the start up the crumbling platforms, along the top (swing, shuffler, jumper, stompable,
+# hopper, spiker), thrown over the west wall by the pads at 128,37, past the scenery below marker
+# 15 (95,41, ~2412) and over the drips (75-86,48, ~2482), the switch at 12,29 pulled (~2930) to
+# reach the top-left through its pipe, down the left shaft past the darts (~2906) stomping two
+# stompables (~3071, ~3093), along the drip corridor and the bottom to the exit room, where the
+# scenery of marker 17 (270,69) spawns at 6651. Hearts lost at ~1204, ~4512 and ~5056.
 sync = { level = "W3-4" }
 script = "enemies-w3-4"
-frames = 193
+frames = 6668
 resync = true
 
 [[exclude]]
