@@ -168,7 +168,12 @@ headless.
 | [T127](tasks/T127-restore-sprite-wait.md) | restore-sprite-wait | T101; blocks T21 |
 | [T128](tasks/T128-w3-4-sprite-race.md) | w3-4-sprite-race | T127; blocks T113 |
 | [T130](tasks/T130-front-vbl-318.md) | front-vbl-318 | T100; blocks T21 |
-| [T132](tasks/T132-w6-completion-faults.md) | w6-completion-faults | T104; blocks T18, T21 |
+| [T146](tasks/T146-w6-completion-faults.md) | w6-completion-faults | T104; blocks T18, T21 |
+| [T147](tasks/T147-w6-2-completion.md) | w6-2-completion | T104; blocks T18, T146 |
+| [T148](tasks/T148-w6-2-alt-completion.md) | w6-2-alt-completion | T104, T147; blocks T18, T146 |
+| [T149](tasks/T149-w6-3-completion.md) | w6-3-completion | T104; blocks T18, T146 |
+| [T150](tasks/T150-w6-4-completion.md) | w6-4-completion | T104; blocks T18, T146 |
+| [T151](tasks/T151-w6-4-alt-completion.md) | w6-4-alt-completion | T104, T150; blocks T18, T146 |
 | [T120](tasks/T120-conform-no-silent-pass.md) | conform-no-silent-pass | T05, T36; blocks T21 |
 | [T104](tasks/T104-w6-completions.md) | w6-completions | T40, T101, T102; blocks T18 |
 

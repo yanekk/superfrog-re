@@ -123,7 +123,7 @@ done · ⛔ blocked, needs a human.
 | T121 | bob-draw-cut | T101; blocks T21 | ⬜ | |
 | T122 | w2-completions | T43, T101, T121; blocks T18 | ⬜ | |
 | T120 | conform-no-silent-pass | T05, T36; blocks T21 | ⬜ | |
-| T104 | w6-completions | T40, T101, T102; blocks T18 | 🟡 | Deviation from "no engine interface" (owner's yes, 2026-10-14): `Game::step_unseen`, a step without the level picture, planner-only; `tests/step_unseen.rs` locks it to `step`. `plan_exit` coin phase (`--coins`), stall pass-over. |
+| T104 | w6-completions | T40, T101, T102; blocks T18 | 🔍 | Split at pir's context line: kept `plan_exit`'s coin phase and gravity field, `Game::step_unseen` (owner's yes; deviation from "no engine interface") with `tests/step_unseen.rs`, cases W6-1 and W6-3alt (outside the test block, T146). W6-2, W6-2alt, W6-3, W6-4, W6-4alt carried by T147–T151. |
 | T123 | enemies-w5-2-case | T39; blocks T18 | ⬜ | |
 | T124 | enemies-w5-3-case | T39; blocks T18 | ⬜ | |
 | T125 | enemies-w5-4-case | T39; blocks T18 | ⬜ | |
@@ -131,7 +131,12 @@ done · ⛔ blocked, needs a human.
 | T127 | restore-sprite-wait | T101; blocks T21 | ⬜ | |
 | T128 | w3-4-sprite-race | T127; blocks T113 | ⬜ | |
 | T130 | front-vbl-318 | T100; blocks T21 | ⬜ | |
-| T132 | w6-completion-faults | T104; blocks T18, T21 | ⬜ | |
+| T146 | w6-completion-faults | T104; blocks T18, T21 | ⬜ | |
+| T147 | w6-2-completion | T104; blocks T18, T146 | ⬜ | |
+| T148 | w6-2-alt-completion | T104, T147; blocks T18, T146 | ⬜ | |
+| T149 | w6-3-completion | T104; blocks T18, T146 | ⬜ | |
+| T150 | w6-4-completion | T104; blocks T18, T146 | ⬜ | |
+| T151 | w6-4-alt-completion | T104, T150; blocks T18, T146 | ⬜ | |
 
 A Notes cell holds what was built or what the review found, the test count, and one line per
 deviation from the task doc. A ✅ task's cell may be cut to one line once the next task has been reviewed.

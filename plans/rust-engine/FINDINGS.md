@@ -18,7 +18,11 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
-| 2026-10-14 | 🔄 | Owner, T104: added T132 w6-completion-faults (T104; blocks T18, T21): W6 completions diverge at W6-1 530 (`playfield_buffer_0` after lag), W6-4 154 (`level_copper` after lag), W6-3alt 5939 (`AUD3VOL`). Check against T121, T131 first. |
+| 2026-10-15 | 🔄 | T104 split at pir's context line: W6-2, W6-2alt, W6-3, W6-4, W6-4alt completions to T147–T151 (each T104; blocks T18, T146; the alts also on T147, T150). Kept: planner, `step_unseen`, W6-1 and W6-3alt cases. |
+| 2026-10-15 | 📌 | T104, measured: a jump rises 7 rows (115 px); a run jump at full speed (6 px a frame) crosses ~17 cells; a bounce pad lifts 24 rows; marker 62 is a jump-through floor, 44 a lift raising a grounded frog a row a frame. Spikes (6) kill. |
+| 2026-10-15 | 📌 | T104: a run stuck at a precise hop is fastest solved by brute force on the original from a saved state (holds of a few lengths, success = a ground cell box), then `plan_exit --prefix`. T104's probe tool was not committed. |
+| 2026-10-15 | 📌 | T104: `level_state` is 1 for two frames at an exit, then 0; `-1`/`-2` at a level's start and respawn. A planner checking between chunks misses it: cut finished scripts one frame after. |
+| 2026-10-14 | 🔄 | Owner, T104: added T146 w6-completion-faults (T104; blocks T18, T21): W6 completions diverge at W6-1 530 (`playfield_buffer_0` after lag), W6-4 154 (`level_copper` after lag), W6-3alt 5939 (`AUD3VOL`). Check against T121, T131 first. |
 | 2026-10-14 | 🔄 | Owner, T104: added `Game::step_unseen` (no level picture; render was ~60% of planning). Planners only: T103, T106, T108, T122, T126 step their beams with it, ~2.5× faster. `tests/step_unseen.rs` proves it leaves the game as `step` does. |
 | 2026-10-14 | 🐞 | T100 review sweep, open: 15 cases' `enemies` exclusions name `T39–T41` (all ✅), not the task that will model them: enemies-w1-1, -w3-1, -w3-2, -w3-4, frog-timeup, game-over, -fire, -timeup, items-checkpoint, -pad, -shield-w3-1, -run, -wings-w1-2, tally, tally-slot. Not fixed. |
 | 2026-10-14 | 📌 | T100 review: with vars off (frame-0 `level1_vector`), front-attract, -boot, -skip-wait, -options and ending stay green on T100's `BLANK_COPPER` timing; worker-driven. |

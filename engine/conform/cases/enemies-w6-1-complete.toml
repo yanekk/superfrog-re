@@ -1,7 +1,7 @@
 # W6-1 completed (T104): from its first frame through all 97 coins and both switches to the exit
 # (`level_state` 1 on frame 6751), every object live, nothing left out. Planned with
 # `examples/plan_exit`, each chunk checked on the original. Outside the test block: the engine
-# leaves the original at frame 530, after a lag (`playfield_buffer_0`), T132's to fix.
+# leaves the original at frame 530, after a lag (`playfield_buffer_0`), T146's to fix.
 sync = { level = "W6-1" }
 script = "enemies-w6-1-complete"
 frames = 6752
