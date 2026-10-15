@@ -1,17 +1,22 @@
+# W5-4 completed (T126): from its first frame (the frog held to 150) through the coins the exit
+# needs to the exit (the level completed on frame 8193), every object live, the exit fade and the
+# tally, fire in its wait taking the points; ends on frame 8378, the next level's (T21's). Planned by
+# `examples/plan_exit` (the script's header), checked on the original chunk by chunk; re-planned
+# from 5242, where the first plan idled 280 frames in a lagging stretch (a 359-frame mid-pass run).
+# Two frames' pictures left out, both T131's open faults; re-syncs pinned in enemies_w5_cases.rs.
 sync = { level = "W5-4" }
 script = "enemies-w5-4-complete"
-frames = 8111
+frames = 8378
 resync = true
-lag-limit = { frames = 400, note = "probe" }
 
 [[exclude]]
 what = "picture"
 frames = [657, 657]
-note = "probe"
-task = "probe"
+note = "the frog's sprite on the spring pad differs, every variable equal (T131's pad fault, T40's row)"
+task = "T131"
 
 [[exclude]]
 what = "picture"
-frames = [7928, 7928]
-note = "probe"
-task = "probe"
+frames = [8193, 8193]
+note = "the exit fade's palette step a frame early, one colour step off, every variable equal (T131's exit-fade fault)"
+task = "T131"

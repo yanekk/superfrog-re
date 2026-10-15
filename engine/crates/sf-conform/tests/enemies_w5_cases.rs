@@ -354,3 +354,13 @@ fn enemies_w5_2_complete() {
 fn enemies_w5_3_complete() {
     completes("enemies-w5-3-complete", &[1608], 6864);
 }
+
+/// W5-4 played from its start to its exit and through the tally (T126): the exit at 8193, fire
+/// taking the points; the tally's points print runs into the next frame here (more pages to
+/// hide). Two re-syncs pinned: the play field buffer at 3384 (T121's class) and the panel at 7980
+/// after a lag. Frames 657 (the frog on the spring pad) and 8193 (the exit fade's palette step)
+/// leave out the picture, T131's.
+#[test]
+fn enemies_w5_4_complete() {
+    completes("enemies-w5-4-complete", &[3384, 7980], 8193);
+}
