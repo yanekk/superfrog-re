@@ -151,8 +151,9 @@ done · ⛔ blocked, needs a human. A task dropped by a plan amendment leaves th
 | T168 | w2-4-completion | T122, T180, T182; blocks T21 | ⬜ | |
 | T180 | faithful-compare | T120; blocks T181, T182 and every open conformance task | ✅ | |
 | T181 | faithful-rebaseline | T180, T182; blocks T21 | ⬜ | |
-| T182 | plays-alone | T180; blocks T181, T183 and every completion task | ⬜ | |
+| T182 | plays-alone | T180; blocks T181, T183 and every completion task | ✅ | |
 | T183 | level-chain | T180, T182; blocks T21 | ⬜ | |
+| T184 | alone-pass-drift | T182; blocks T21, T18, T115, T147, T148, T149, T150, T151, T154, T166, T167, T168 | ⬜ | |
 
 A Notes cell holds what was built or what the review found, the test count, and one line per
 deviation from the task doc. A ✅ task's cell may be cut to one line once the next task has been reviewed.

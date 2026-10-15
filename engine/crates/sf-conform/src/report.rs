@@ -45,6 +45,11 @@ pub struct Divergence {
     /// Faithful (check 1): the sides ended more than a pass apart: (the original's passes, the
     /// engine's).
     pub passes_apart: Option<(u64, u64)>,
+    /// Check 4: where the engine run alone and the original part ([`crate::milestones`]).
+    pub milestone: Option<crate::milestones::MilestoneDiff>,
+    /// With `milestone`: the first frame the engine run alone ended with a gameplay variable
+    /// unlike the original's (both at a pass's end), and which: where to look for the cause.
+    pub alone_first_var: Option<(u32, String)>,
 }
 
 impl Divergence {
@@ -92,6 +97,12 @@ impl fmt::Display for Divergence {
                 f,
                 "  passes: the original has ended {theirs}, the engine {ours}: more than one apart"
             )?;
+        }
+        if let Some(m) = &self.milestone {
+            writeln!(f, "  plays alone (check 4): {m}")?;
+            if let Some((frame, v)) = &self.alone_first_var {
+                writeln!(f, "    the engine alone first differs at frame {frame}: {v}")?;
+            }
         }
         for u in &self.unported {
             writeln!(f, "  the engine reached a path it does not follow yet: {u}")?;
