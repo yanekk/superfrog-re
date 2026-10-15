@@ -78,6 +78,16 @@ pub struct Case {
     /// Whether the runner may re-sync the engine from the original's memory when a variable
     /// still differs on the frame after a lag (`resync = false` makes that a divergence).
     pub resync: bool,
+    /// The case's own limit on frames in a row the original ends mid-pass, in place of
+    /// [`crate::LAG_LIMIT`] (`lag-limit = { frames = N, note = "…" }`), with why it needs one.
+    pub lag_limit: Option<LagLimit>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct LagLimit {
+    pub frames: u32,
+    /// Why the case needs it, in the case file's words.
+    pub note: String,
 }
 
 impl Case {
@@ -141,12 +151,19 @@ impl Case {
         let t: toml::Table = text.parse().map_err(|e: toml::de::Error| e.to_string())?;
         for k in t.keys() {
             if ![
-                "sync", "script", "frames", "compare", "exclude", "vars", "resync",
+                "sync",
+                "script",
+                "frames",
+                "compare",
+                "exclude",
+                "vars",
+                "resync",
+                "lag-limit",
             ]
             .contains(&k.as_str())
             {
                 return Err(format!(
-                    "unknown key `{k}` (sync, script, frames, compare, exclude, vars, resync)"
+                    "unknown key `{k}` (sync, script, frames, compare, exclude, vars, resync, lag-limit)"
                 ));
             }
         }
@@ -360,6 +377,29 @@ impl Case {
             None => true,
             Some(v) => v.as_bool().ok_or("resync is true or false")?,
         };
+        let lag_limit = match t.get("lag-limit") {
+            None => None,
+            Some(v) => {
+                let bad = "lag-limit is { frames = N, note = \"why\" }";
+                let l = v.as_table().ok_or(bad)?;
+                if let Some(k) = l.keys().find(|k| !["frames", "note"].contains(&k.as_str())) {
+                    return Err(format!("lag-limit: unknown key `{k}` (frames, note)"));
+                }
+                Some(LagLimit {
+                    frames: l
+                        .get("frames")
+                        .and_then(|v| v.as_integer())
+                        .and_then(|v| u32::try_from(v).ok())
+                        .ok_or(bad)?,
+                    note: l
+                        .get("note")
+                        .and_then(|v| v.as_str())
+                        .filter(|n| !n.trim().is_empty())
+                        .ok_or(bad)?
+                        .to_string(),
+                })
+            }
+        };
         Ok(Case {
             name: name.to_string(),
             sync,
@@ -369,6 +409,7 @@ impl Case {
             exclude,
             only_vars,
             resync,
+            lag_limit,
         })
     }
 }

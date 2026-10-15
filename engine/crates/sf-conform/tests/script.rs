@@ -95,6 +95,36 @@ fn the_committed_scripts_parse() {
     }
 }
 
+/// A case's own limit on frames in a row the original ends mid-pass (T120), with its reason.
+#[test]
+fn a_lag_limit_pin_needs_its_frames_and_a_note() {
+    use sf_conform::{Case, LagLimit};
+    let base = "sync = \"power-on\"\nframes = 3\n";
+    assert_eq!(Case::parse("x", base).unwrap().lag_limit, None);
+    let c = Case::parse(
+        "x",
+        &format!("{base}lag-limit = {{ frames = 133, note = \"T104\" }}"),
+    )
+    .unwrap();
+    assert_eq!(
+        c.lag_limit,
+        Some(LagLimit {
+            frames: 133,
+            note: "T104".into()
+        })
+    );
+    for bad in [
+        "lag-limit = 133",
+        "lag-limit = { frames = 133 }",
+        "lag-limit = { frames = 133, note = \" \" }",
+        "lag-limit = { note = \"x\" }",
+        "lag-limit = { frames = -1, note = \"x\" }",
+        "lag-limit = { frames = 1, note = \"x\", task = \"T1\" }",
+    ] {
+        assert!(Case::parse("x", &format!("{base}{bad}")).is_err(), "{bad}");
+    }
+}
+
 #[test]
 fn case_files_parse_and_refuse_what_they_do_not_know() {
     use sf_conform::{Case, Compare, SyncPoint};
@@ -124,11 +154,7 @@ fn case_files_parse_and_refuse_what_they_do_not_know() {
     );
     let c = Case::parse("x", "sync = { level = \"W1-1\", exit = true }\nframes = 3").unwrap();
     assert_eq!(c.sync, SyncPoint::Exit("W1-1".parse().unwrap()));
-    let c = Case::parse(
-        "x",
-        "sync = { level = \"WB-1\", lives = 60 }\nframes = 3",
-    )
-    .unwrap();
+    let c = Case::parse("x", "sync = { level = \"WB-1\", lives = 60 }\nframes = 3").unwrap();
     assert_eq!(
         c.sync,
         SyncPoint::Lives {

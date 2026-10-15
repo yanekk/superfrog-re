@@ -80,6 +80,7 @@ pub fn frame(
             })
             .unwrap_or_default(),
         resync: false,
+        lag: None,
     })
 }
 
