@@ -155,6 +155,10 @@ done · ⛔ blocked, needs a human. A task dropped by a plan amendment leaves th
 | T183 | level-chain | T180, T182; blocks T21 | ⬜ | |
 | T184 | alone-pass-drift | T182; blocks T21, T18, T115, T147, T148, T149, T150, T151, T154, T166, T167, T168 | ⬜ | |
 | T185 | w6-4-lag-frog-fall | T182; blocks T21 | ⬜ | |
+| T190 | chain-world-change | T183; blocks T21 | ⬜ | |
+| T191 | chain-pause | T183; blocks T21 | ⬜ | |
+| T192 | chain-level-code | T183, T190; blocks T21 | ⬜ | |
+| T193 | chain-e2e | T183; blocks T21 | ⬜ | |
 
 A Notes cell holds what was built or what the review found, the test count, and one line per
 deviation from the task doc. A ✅ task's cell may be cut to one line once the next task has been reviewed.

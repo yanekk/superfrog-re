@@ -416,13 +416,22 @@ impl OverlayEnd {
     pub(super) fn run(&mut self, cx: &mut Cx) -> Yield {
         match self.pc {
             0 => {
-                if cx.s.l(at(0x445a)) != 0 || cx.s.l(at(0x4112)) != 0 {
-                    cx.unported("overlays_end with another overlay up");
+                // The screens between levels first (T183): each one's own ending, then back.
+                use super::chain;
+                let end = if cx.s.l(chain::END_PIC_SHOWN) != 0 {
+                    Some(Routine::EndPicEnd(Default::default()))
+                } else if cx.s.l(chain::MAP_SHOWN) != 0 {
+                    Some(Routine::MapEnd(Default::default()))
+                } else if cx.s.l(OVERLAY_PALETTE) == 0 && cx.s.l(chain::INTRO_SHOWN) != 0 {
+                    Some(Routine::IntroEnd(Default::default()))
+                } else {
+                    None
+                };
+                if let Some(r) = end {
+                    self.pc = 9;
+                    return call(r);
                 }
                 if cx.s.l(OVERLAY_PALETTE) == 0 {
-                    if cx.s.l(at(0x42a6)) != 0 {
-                        cx.unported("world_intro_end");
-                    }
                     return Yield::Return;
                 }
                 cx.s.set_w(RECORDS[0].at + fade::SPEED, 1);
@@ -439,6 +448,7 @@ impl OverlayEnd {
                 self.pc = 3;
                 Yield::Fade(RECORDS[0])
             }
+            9 => Yield::Return,
             _ => {
                 cx.cop1lc = BLANK_COPPER;
                 cx.s.set_l(OVERLAY_PALETTE, 0);

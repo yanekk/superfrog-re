@@ -1,0 +1,8 @@
+# World 1 to world 2 (T183): W1-4 reached by its level code, its exit forced on its first frame
+# (`complete-w1-4` reaches only frame 4054 today, T154), the tally's points taken by fire; then
+# `end_world_pic_w1` (L1ET, 600 frames), `music_fade_wait`, `world_load_w2` with W2's effects
+# and music loaded under the end picture, W2's loading picture and the frog's walk in from the
+# left, the progress map, W2-1's start and 500 frames of it, nothing held.
+sync = { level = "W1-4", exit = true }
+script = "tally-points"
+frames = 3000

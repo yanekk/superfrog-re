@@ -30,7 +30,10 @@ pub(super) fn run(cx: &mut Cx) -> bool {
         cx.s.audio.stream_tick(d, cx.paula);
     }
     if cx.s.w(h0(0x9f8)) != 0 {
-        cx.unported("VBL with h0+$9f8 set ($11e62: the end sequence's frog)");
+        if cx.s.l(super::chain::INTRO_SHOWN) == 0 {
+            cx.unported("VBL with h0+$9f8 set ($11e62: the end sequence's frog)");
+        }
+        super::chain::exit_walk_vbl(cx);
     }
     mouse(cx);
     if let Some(d) = data {
@@ -38,8 +41,8 @@ pub(super) fn run(cx: &mut Cx) -> bool {
         cx.s.audio.music_dma_tick(d, cx.paula);
         cx.s.audio.sfx_tick(d, cx.paula);
     }
-    if cx.s.l(h0(0x4112)) != 0 {
-        cx.unported("progress_map_vbl");
+    if cx.s.l(super::chain::MAP_SHOWN) != 0 {
+        super::chain::progress_map_vbl(cx);
     }
     kbd_poll(cx);
     let t = cx.s.w(DISPLAY_TIMER);

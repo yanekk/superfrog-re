@@ -246,7 +246,7 @@ impl Entry {
 }
 
 /// `password_check` (h0+$2432): a code in the table sets where the game starts.
-fn check(cx: &mut Cx) {
+pub(crate) fn check(cx: &mut Cx) {
     let typed: Vec<u8> = (0..6).map(|k| cx.s.b(BUF + k)).collect();
     let table = table(cx.data);
     if let Some(e) = table.iter().find(|e| e.password.0[..] == typed[..]) {

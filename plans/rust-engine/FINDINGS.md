@@ -18,6 +18,12 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-15 | 🐞 | T183 review: `top_loop`'s Bcc added backward displacements unwrapped; each death's `bmi` panicked in debug (`tests/alone.rs` 3 red). Reproduced by debug run, fixed (`wrapping_add`), alone.rs locks it. |
+| 2026-10-15 | 🐞 | T183 review: nine tests still expected T21's stop after a tally (frog_cases 5, enemies_w5_cases 4); the bonus level's end idled with no `unported`. Rewritten to the next level's flow; bonus `unported` restored. |
+| 2026-10-15 | 📌 | T183 review sweep: test-side branch targets add signed displacements unwrapped (`enemies_w2/w3/w4/w5/w6_routines.rs`, `examples/enemies_map.rs`); green today, a backward one would panic in debug. Not fixed. |
+| 2026-10-15 | 📌 | T183 split at pir's context warning: T190 (W1→W2, seven fixes listed in its doc), T191 pause, T192 level code, T193 e2e. `chain-w1-4-to-w2-1.toml` committed red for T190. |
+| 2026-10-15 | 🔄 | Owner, T183: loads under a timed screen (loading picture, map, end picture) count as play for check 4; checks 1–3 take its timer, walk, blink and fades from the original at the load's end. |
+| 2026-10-15 | 📌 | T183: the original's loading picture lasts as long as its walk (W1 1040 frames), never its loads: W1's tiles load 5270–6045 under it. Engine loads instantly, then waits for the walk. |
 | 2026-10-15 | 🐞 | T181 review, fixed: enemies-w4-1, game-over-esc-w1-1, slot-hold-jackpot were green faithful and alone but run by no test; added to `tests/cases.rs`. Sweep: every other case is run by some test or owned red. |
 | 2026-10-15 | 🔄 | Owner, T181: story-intro-full 7237–7241 (colour 28 black in scene 12's fade-in, a ~7 DMA-cycle race) accepted, not modelled; its exclusion says so. Added T185 w6-4-lag-frog-fall (T182; blocks T21) for enemies-w6-4 1120. |
 | 2026-10-15 | 🐞 | T181, fixed: the original's vertical blank can fall inside `sfx_play`'s rest (record set, duration not yet, h0+$12c12); `sfx_tick` then ends the new effect and music retakes channel 3. Greened T180's channel-3 reds (w2-1-complete 1501, enemies-w5-4-complete 3381). |

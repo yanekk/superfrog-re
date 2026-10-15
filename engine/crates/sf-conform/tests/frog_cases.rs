@@ -91,18 +91,20 @@ fn items_fruit_w2_2() {
 
 /// W1-1's exit forced on its first frame (T38): the exit fade, the tally with its two pages for
 /// the time left, fire with up never held taking the points, the hundred frames' pause and the
-/// fade out; green to the frame before the tally returns into `top_loop`, and on that frame the
-/// level is over with the pages and the points taken (the next level is T21's).
+/// fade out; green, and on the frame after, the tally back in `top_loop` (W1-2's load, T183), the
+/// level is over with the pages and the points taken.
 #[test]
 fn tally_w1_1() {
     green("tally-w1-1");
     let mut case = sf_conform::Case::load(&sf_conform::cases_dir().join("tally-w1-1.toml")).unwrap();
-    case.frames += 1;
-    let d = sf_conform::run(&case).expect_err("the next level is T21's");
-    assert_eq!(d.frame, 185);
-    assert_eq!(d.unported, ["the next level after the tally (T21)"]);
+    // Two frames on: the hook runs before each step, so it sees frame 185's end.
+    case.frames += 2;
+    let mut outcome = None;
+    if let Err(d) = sf_conform::run_with(&case, |_, g| outcome = g.level_outcome()) {
+        panic!("{d}");
+    }
     assert_eq!(
-        d.level_outcome,
+        outcome,
         Some(sf_core::level::LevelOutcome::Completed {
             tally: sf_core::level::Tally {
                 pages: 2,
@@ -204,8 +206,9 @@ fn bonus_death_wb_1() {
 
 /// The bonus level completed (T79): 16 deaths on the way, marker 55, the loop's end, the exit
 /// fade; the engine's outcome is the exit, with no re-sync (frames 4283 and 7813 end inside
-/// phase 6, before `buffer_flip`'s writes: T101). Frame 8127, the first after the fade, is the end picture's, every variable equal: the last
-/// fade frame's `shooter_off` (h0+$7494) is seen only there.
+/// phase 6, before `buffer_flip`'s writes: T101). Frame 8127, the first after the fade, is the end
+/// picture's: the last fade frame's `shooter_off` (h0+$7494) is seen only there, and the first
+/// variable apart is `end_pic_shown`, the original's picture up (T183 names it).
 #[test]
 fn bonus_end_wb_1() {
     let mut case =
@@ -221,7 +224,10 @@ fn bonus_end_wb_1() {
     let d = sf_conform::run(&case).expect_err("the end picture is T21's");
     assert_eq!(d.frame, 8127);
     assert_eq!(d.unported, ["the bonus level's end picture (T21)"]);
-    assert!(d.first_var.is_none(), "{d}");
+    assert!(
+        d.first_var.as_ref().is_some_and(|v| v.0.name == "end_pic_shown"),
+        "{d}"
+    );
 }
 
 /// W4-4 with its enemies live (T41): swoopers, scenery and a ledge freed as the camera leaves
@@ -233,47 +239,48 @@ fn enemies_w4_4_activation() {
 
 /// W4-3 played from its start to its exit and through the tally (T103): the switch opening the
 /// start area, a marker-22 floater and an upward crusher hurting the frog, the 99 coins, the exit
-/// at 8485 and fire taking the points; green to the frame before the next level, and on that
-/// frame the level is completed with the points taken (the next level is T21's).
+/// at 8485 and fire taking the points; green, and on the frames after, the tally back in
+/// `top_loop` (W4-4's load, T183), the level completed with the points taken.
 #[test]
 fn complete_w4_3() {
     green("complete-w4-3");
-    let mut case = sf_conform::Case::load(&sf_conform::cases_dir().join("complete-w4-3.toml")).unwrap();
-    case.frames += 1;
-    let d = sf_conform::run(&case).expect_err("the next level is T21's");
-    assert_eq!(d.frame, 8670);
-    assert_eq!(d.unported, ["the next level after the tally (T21)"]);
+    goes_on("complete-w4-3");
+}
+
+/// `name` run two frames past its end (the hook runs before each step, so it sees its last
+/// frame's end): green, nothing unported, the level completed with the points taken and no slot
+/// machine, `top_loop` going on to what follows (T183).
+fn goes_on(name: &str) {
+    let mut case = sf_conform::Case::load(&sf_conform::cases_dir().join(format!("{name}.toml")))
+        .unwrap_or_else(|e| panic!("{e}"));
+    case.frames += 2;
+    let (mut outcome, mut unported) = (None, Vec::new());
+    if let Err(d) = sf_conform::run_with(&case, |_, g| {
+        outcome = g.level_outcome();
+        unported = g.unported().to_vec();
+    }) {
+        panic!("{name}: {d}");
+    }
+    assert_eq!(unported, Vec::<&str>::new(), "{name}");
     assert!(
         matches!(
-            d.level_outcome,
+            outcome,
             Some(sf_core::level::LevelOutcome::Completed { tally }) if !tally.slot_machine
         ),
-        "{:?}",
-        d.level_outcome
+        "{name}: {outcome:?}"
     );
 }
 
-/// `name` run to its end with re-syncs at exactly `pins`, then one frame more: the next level's
-/// (T21's), the level completed with the points taken and no slot machine (T106).
+/// `name` run to its end with re-syncs at exactly `pins`, then on (T106): the level completed with
+/// the points taken and no slot machine, and `top_loop` going on to the next level ([`goes_on`],
+/// T183).
 fn completes(name: &str, pins: &[u32]) {
-    let mut case = sf_conform::Case::load(&sf_conform::cases_dir().join(format!("{name}.toml")))
+    let case = sf_conform::Case::load(&sf_conform::cases_dir().join(format!("{name}.toml")))
         .unwrap_or_else(|e| panic!("{e}"));
     let o = sf_conform::run(&case).unwrap_or_else(|d| panic!("{name}: {d}"));
     let resynced: Vec<u32> = o.resynced.iter().map(|r| r.0).collect();
     assert_eq!(resynced, pins, "{name}: {:?}", o.resynced);
-    let end = case.frames;
-    case.frames += 1;
-    let d = sf_conform::run(&case).expect_err("the next level is T21's");
-    assert_eq!(d.frame, end, "{name}: {d}");
-    assert_eq!(d.unported, ["the next level after the tally (T21)"]);
-    assert!(
-        matches!(
-            d.level_outcome,
-            Some(sf_core::level::LevelOutcome::Completed { tally }) if !tally.slot_machine
-        ),
-        "{name}: {:?}",
-        d.level_outcome
-    );
+    goes_on(name);
 }
 
 /// W1-2 played from its start to its exit and through the tally (T106): the 68 coins, the exit at

@@ -251,10 +251,15 @@ fn set_up(cx: &mut Cx) -> Yield {
 
 /// The bottom of the slot machine's stack: `level_tally` after its call (T38).
 #[derive(Debug, Clone, Default, PartialEq, Eq, Hash)]
-pub(crate) struct SlotOver;
+pub(crate) struct SlotOver {
+    done: bool,
+}
 
 impl SlotOver {
     pub(crate) fn run(&mut self, cx: &mut Cx) -> Yield {
+        if std::mem::replace(&mut self.done, true) {
+            return Yield::Return;
+        }
         crate::level::tally::after_slot(cx)
     }
 }
@@ -476,7 +481,7 @@ fn two_digits(cx: &mut Cx, font: u32, tens: u16, units: u16, to: u32) {
 pub(crate) fn resume(chain: &[u32]) -> Option<Vec<(FrontRoutine, Option<Yield>)>> {
     chain.contains(&at(0x478e)).then(|| {
         vec![
-            (FrontRoutine::SlotOver(SlotOver), None),
+            (FrontRoutine::SlotOver(SlotOver::default()), None),
             (FrontRoutine::Slot(Routine::default()), None),
         ]
     })
