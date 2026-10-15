@@ -321,6 +321,14 @@ pub(crate) struct Cx<'a> {
     pub races: Vec<(u16, u16)>,
     /// `slot_machine` returned this frame, giving this (T73).
     pub slot_outcome: Option<crate::slot::SlotOutcome>,
+    /// The audio channels' DMA as this frame began, which the slot machine's lamps drawn after the
+    /// picture run beside (T129, [`crate::slot`]'s `draw`).
+    pub audio: Option<&'a sf_paula::AudioDma>,
+    /// For conformance: where the original made this frame's Paula writes, in order
+    /// ([`crate::Game::anchor_writes`]); empty in normal play.
+    pub schedule: &'a [(u16, u16)],
+    /// The copper's writes to Paula's registers this frame, first among the frame's writes.
+    pub early: Vec<PaulaWrite>,
 }
 
 impl Cx<'_> {
@@ -522,6 +530,12 @@ pub struct Front {
     pub unported: Vec<&'static str>,
     /// What the slot machine gave when it returned (T73).
     slot_outcome: Option<crate::slot::SlotOutcome>,
+    /// The audio channels' DMA, run on each frame's Paula writes: the slots it takes time the slot
+    /// machine's lamps (T129). It starts idle; the slot machine stops every channel first.
+    audio: sf_paula::AudioDma,
+    /// For conformance, the next frame's: where the original made its Paula writes
+    /// ([`Front::anchor_writes`]).
+    schedule: Vec<(u16, u16)>,
 }
 
 /// An unpacking in progress, for the picture: where, what was there, and when it began and ends
@@ -545,6 +559,23 @@ impl Unpack {
             / (self.end - self.start) as u128;
         self.old.len() - done as usize
     }
+}
+
+/// A frame's Paula writes, in the order they are compared, where they were made: the original's
+/// positions given by conformance ([`Front::anchor_writes`]) when they are as many, else the
+/// engine's own lines, at their start (T129).
+pub(crate) fn anchored(writes: &[PaulaWrite], schedule: &[(u16, u16)]) -> Vec<PaulaWrite> {
+    let mut all = writes.to_vec();
+    if schedule.len() >= all.len() {
+        for (w, &(vpos, hpos)) in all.iter_mut().zip(schedule) {
+            (w.vpos, w.hpos) = (vpos, hpos);
+        }
+    } else {
+        for w in &mut all {
+            w.hpos = 0;
+        }
+    }
+    all
 }
 
 /// One frame of the front end.
@@ -590,6 +621,8 @@ impl Front {
             spren: true,
             unported: Vec::new(),
             slot_outcome: None,
+            audio: sf_paula::AudioDma::booted(),
+            schedule: Vec::new(),
         }
     }
 
@@ -649,6 +682,8 @@ impl Front {
             spren: true,
             unported: Vec::new(),
             slot_outcome: None,
+            audio: sf_paula::AudioDma::booted(),
+            schedule: Vec::new(),
         })
     }
 
@@ -692,6 +727,8 @@ impl Front {
             spren: true,
             unported: Vec::new(),
             slot_outcome: None,
+            audio: sf_paula::AudioDma::booted(),
+            schedule: Vec::new(),
         }
     }
 
@@ -752,6 +789,9 @@ impl Front {
             unported: Vec::new(),
             races: Vec::new(),
             slot_outcome: None,
+            audio: None,
+            schedule: &[],
+            early: Vec::new(),
         };
         self.run_main(&mut cx, u16::MAX);
         self.stalled = cx.stall;
@@ -850,6 +890,9 @@ impl Front {
                 unported: Vec::new(),
                 races: Vec::new(),
                 slot_outcome: None,
+                audio: None,
+                schedule: &[],
+                early: Vec::new(),
             };
             title::boot(&mut cx);
             self.cop1lc = cx.cop1lc;
@@ -877,6 +920,8 @@ impl Front {
         let mut history: Vec<(u16, Snapshot)> = vec![(0, window(s, self.cop1lc))];
         let cop1lc = self.cop1lc;
         let data = &display.front;
+        let audio = self.audio.clone();
+        let schedule = std::mem::take(&mut self.schedule);
         let mut cx = Cx {
             s,
             data,
@@ -903,6 +948,9 @@ impl Front {
             unported: Vec::new(),
             races: Vec::new(),
             slot_outcome: None,
+            audio: Some(&audio),
+            schedule: &schedule,
+            early: Vec::new(),
         };
         // Work the main program carried over from the last frame with interrupts off.
         let masked = match self.stack.last() {
@@ -1160,6 +1208,7 @@ impl Front {
                 vpos: w.line,
             })
             .collect();
+        cx.early = early.clone();
         self.run_main(&mut cx, u16::MAX);
         let cpu = dmacon(cx.paula);
         self.spren = render::SpriteDma {
@@ -1227,6 +1276,8 @@ impl Front {
             w.vpos -= FRAME_LINES;
         }
         all.extend(next_copper);
+        self.audio
+            .frame(&anchored(&all, &schedule), crate::slot::FRAME_LINES as u32);
         // The slot screen's drawing is timed on the beam (T93, T94): its lines are kept.
         if cop1lc != crate::slot::SLOT_COPPER {
             for w in &mut all {
@@ -1241,6 +1292,13 @@ impl Front {
             jobs,
             beam_races,
         }
+    }
+
+    /// For conformance: where the original made the next frame's Paula writes, `(line, slot)` in
+    /// order ([`crate::Game::anchor_writes`]), which the audio DMA the slot machine's lamps run
+    /// beside is timed by (T129).
+    pub fn anchor_writes(&mut self, writes: Vec<(u16, u16)>) {
+        self.schedule = writes;
     }
 
     /// Run the main program's parts that wake before line `until` this frame.
@@ -1471,6 +1529,28 @@ pub const LOAD_LEAVES: &[(u32, u32)] = &[(
 mod tests {
     use super::*;
     use crate::input::KeySet;
+
+    #[test]
+    fn writes_take_the_originals_positions_when_given_for_all_else_their_lines() {
+        let w = |vpos| PaulaWrite {
+            reg: 0x96,
+            value: 0x8001,
+            hpos: 7,
+            vpos,
+        };
+        let ours = [w(1), w(299)];
+        let given = anchored(&ours, &[(15, 145), (299, 88), (300, 4)]);
+        assert_eq!(
+            given.iter().map(|w| (w.vpos, w.hpos)).collect::<Vec<_>>(),
+            [(15, 145), (299, 88)]
+        );
+        // Fewer positions than writes (normal play: none): each at its own line's start.
+        let own = anchored(&ours, &[(15, 145)]);
+        assert_eq!(
+            own.iter().map(|w| (w.vpos, w.hpos)).collect::<Vec<_>>(),
+            [(1, 0), (299, 0)]
+        );
+    }
 
     #[test]
     fn the_keyboard_sends_a_byte_per_change_and_reads_ff_once_handled() {
