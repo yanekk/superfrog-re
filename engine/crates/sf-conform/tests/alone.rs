@@ -40,6 +40,7 @@ fn a_late_cut_the_engine_cannot_reach_ends_the_frame_as_normal_play_does() {
             hpos: 0,
             phase: 3,
             step: NO_STEP,
+            blanks: 1,
         },
         Pacing::Late {
             writes: 500,
@@ -47,6 +48,7 @@ fn a_late_cut_the_engine_cannot_reach_ends_the_frame_as_normal_play_does() {
             hpos: 100,
             phase: 1,
             step: 4,
+            blanks: 0,
         },
     ];
     for late in unreachable {

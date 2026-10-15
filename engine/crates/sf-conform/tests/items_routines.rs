@@ -599,6 +599,7 @@ fn the_frog_walk_ends_its_frame_at_the_entry_the_original_had_got_to() {
             hpos: 0,
             phase: 5,
             step,
+            blanks: 0,
         };
         c.frames = Some(Box::new(Frames {
             specs: vec![FrameSpec {
