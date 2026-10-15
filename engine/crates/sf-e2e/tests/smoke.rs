@@ -365,8 +365,9 @@ fn world_level(game: &Game) -> (u32, u32) {
 /// SPRxCTL (the record's copper words, `frog::anim::spr::COPPER`, and its attached partner's)
 /// set to a start and stop of line 0, so the hardware never shows them.
 fn without_frog(game: &Game) -> sf_core::Picture {
+    use sf_core::level::camera::{FROG_SPRITE_LEFT, FROG_SPRITE_RIGHT};
     let mut g = game.clone();
-    for rec in [sf_core::level::camera::FROG_SPRITE_LEFT, sf_core::level::camera::FROG_SPRITE_RIGHT] {
+    for rec in [FROG_SPRITE_LEFT, FROG_SPRITE_RIGHT] {
         let at = rec + sf_core::frog::anim::spr::COPPER;
         let cop = u32::from_be_bytes(g.peek(at, 4).try_into().unwrap());
         for value in [0xa, 0xe, 0x1a, 0x1e] {

@@ -18,6 +18,7 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-15 | 📌 | T193: a debug `superfrog` with `--capture` cost 49 ms CPU a frame (sf-app and the PNG crates unoptimised), so long scripted runs fell behind PAL and hit `--timeout` under load. Dev opt-level 2 for both: 4.3 ms. |
 | 2026-10-15 | 📌 | T185 review, read-only: a frame ending in $d19c..$d1ad (stomp already declined) makes the engine re-decide the stomp with the frog after the blank; the original does not. Unprobed whether any case ends there. |
 | 2026-10-15 | 🐞 | T185, fixed: a frame ending in the frog's hitbox walk with an entry taken but undecided (h0+$d132..$d17b, $d19c..$d1ad) counted it done; the engine stomped before the blank. enemies-w6-4 1090. `sync::pass_step`. |
 | 2026-10-15 | 🐞 | T183 review: `top_loop`'s Bcc added backward displacements unwrapped; each death's `bmi` panicked in debug (`tests/alone.rs` 3 red). Reproduced by debug run, fixed (`wrapping_add`), alone.rs locks it. |
