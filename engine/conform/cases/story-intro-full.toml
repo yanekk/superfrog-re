@@ -4,3 +4,9 @@
 # 5 min): not in the test block; `cargo test -p sf-conform -- --ignored` runs it.
 sync = "power-on-disk3"
 frames = 9283
+
+[[exclude]]
+what = "picture"
+frames = [7237, 7241]
+note = "scene 9's fade in: colour 28 (green $040..$060) shows black, the engine's fade step clearing its word ~7 DMA cycles before the copper reads it, the original's after (dropped T141's race; owner's threshold question, FINDINGS 2026-10-15)"
+task = "T181"

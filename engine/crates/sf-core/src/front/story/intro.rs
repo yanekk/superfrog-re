@@ -162,9 +162,9 @@ const SETUP_INSIDE: [u32; 15] = [
     h0(0x97b8),
     h0(0x97bc),
 ];
-/// What the set-up writes.
+/// What the set-up writes (from h0+$1a: `vbl_count` and the scene table's pointer).
 const SETUP_WRITES: [(u32, u32); 7] = [
-    (h0(0x1a), 4),
+    (h0(0x1a), 6),
     (h0(0x84e0), 4 + 400),
     (h0(0x8b68), 0x8bb0 - 0x8b68 + 16 * 0xb0),
     (h0(0x97be), 0xafd6 - 0x97be),
@@ -774,7 +774,16 @@ impl Intro {
                     self.finish_busy(m, until);
                 }
                 Wait::Busy { until, .. } => {
-                    if until >= end {
+                    let line = super::cpu::LINE as u64;
+                    if let Some(job) = self.job.as_ref().map(|j| j.end)
+                        && until >= end
+                        && job < end * line
+                    {
+                        // The set-up's job ends in the frame's last line: what follows it starts
+                        // in this frame, at the job's end (scene 8's `objects_init`, O 7577).
+                        self.finish_busy(m, end - 1);
+                        self.resume = Some(job);
+                    } else if until >= end {
                         if self.pacing != Pacing::OnTime {
                             return;
                         }
