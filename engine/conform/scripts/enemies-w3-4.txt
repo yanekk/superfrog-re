@@ -1,4 +1,5 @@
-# W3-4 (T113 scratch)
+# W3-4 with world 3's enemies live (T44, T113): planned in legs on the engine (random runs from
+# the leg's start, kept when they stand in the leg's target), each leg green on the original.
 150: U
 154: R
 162: -
@@ -338,4 +339,59 @@
 5562: U
 5574: R
 5606: D
-5607: -
+5663: L
+5684: U
+5715: U R
+5727: -
+5739: R
+5745: U L
+5749: U
+5773: -
+5776: U
+5781: D
+5813: U R
+5814: U L
+5838: U
+5840: L
+5856: D
+5863: L
+5894: R
+5897: U L
+5945: D
+5949: L
+5957: U
+5958: L
+5962: U L
+5986: L
+6009: D
+6033: U L
+6034: L
+6058: U R
+6060: D
+6076: -
+6082: U
+6083: U R
+6115: R
+6131: D
+6143: L
+6150: U R
+6162: R
+6194: L
+6204: R
+6263: U R
+6275: R
+6287: D
+6295: U
+6310: U R
+6326: U
+6358: -
+6393: L
+6399: R
+6431: U R
+6488: L
+6517: R
+6549: U R
+6620: U
+6632: R
+6656: U
+6668: -

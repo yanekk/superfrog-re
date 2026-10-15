@@ -101,6 +101,8 @@ const STOMPABLE: u32 = 0x27cc0;
 const CRUMBLE: u32 = 0x2747c;
 const BOUNCER: u32 = 0x25caa;
 const SPIKER_STAYING: u32 = 0x27da8;
+const SCENERY_34: u32 = 0x249e8;
+const DRIP: u32 = 0x287e0;
 const STOMPED: u32 = 0x23bee;
 const REWARD: u32 = 0x23e6c;
 
@@ -149,14 +151,21 @@ fn w3_3() {
     assert!(s.hurts >= 3, "hurt {} times", s.hurts);
 }
 
-/// W3-4 to its first crumbling platform: the platforms, the scenery below marker 14 (whose update
-/// is the pads') and the flows.
+/// W3-4 round the level to the exit room (T113): the types no other case meets, the scenery of
+/// marker 17 (34) at 270,69, the scenery below marker 15 (90, at 95,41, whose update is the pads')
+/// and the drips (99), and every other type in the level; two stompables stomped; the frog hurt.
 #[test]
 fn w3_4() {
     let s = run("enemies-w3-4", &[]);
-    for u in [CRUMBLE, PAD, FLOW] {
+    for u in [
+        SCENERY_34, DRIP, CRUMBLE, PAD, FLOW, DART_WAIT, DART_FLY, SHUFFLER, SPIKER, HOPPER, SWING,
+        SWING_LINK, JUMPER, STOMPABLE, STOMPED,
+    ] {
         assert!(s.updates.contains(&u), "h0+${u:x} never ran: {:x?}", s.updates);
     }
+    let met = |at| s.live.iter().any(|l| l.contains(&at));
+    assert!(met((95, 41)), "the scenery below marker 15 never spawned");
+    assert!(s.hearts_lost >= 3, "lost {} hearts", s.hearts_lost);
 }
 
 /// W3-1, activation (DESIGN §2.7): the frog runs right past the hopper at 62,44 until the
