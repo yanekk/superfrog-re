@@ -135,7 +135,7 @@ done · ⛔ blocked, needs a human. A task dropped by a plan amendment leaves th
 | T144 | story-intro-full-green | T56, T180; blocks T21, T47, T48 | ⬜ | |
 | T133 | w2-1-fruit-room | T105, T180; blocks T21 | ⬜ | |
 | T132 | w4-4-completion | T103; blocks T21 | ✅ | |
-| T145 | w4-4-dart-21 | T132; blocks T21 | 🔍 | T132's inputs to 23520, then re-planned: marker 21's dart (192,30) hurts at 23577 (slot within 48 px), exit 24200, tally. New exclusion 24201 (exit-fade palette step) for T181. Deviation: hurt kept by hand, `plan_exit` misses it (FINDINGS). `complete_w4_4` green. |
+| T145 | w4-4-dart-21 | T132; blocks T21 | ✅ | Review clean, no fix commit: slots_log reran shows marker 21's dart (t62, -15,-2) at the 23577 hurt; `complete_w4_4` green; mutation (drop 23572's jump) red, no hurt; dropping the 24201 exclusion red on that frame only. plan_exit chunk-end check read-only. |
 | T147 | w6-2-completion | T104, T180, T182; blocks T21 | ⬜ | |
 | T148 | w6-2-alt-completion | T104, T147, T180, T182; blocks T21 | ⬜ | |
 | T149 | w6-3-completion | T104, T180, T182; blocks T21 | ⬜ | |

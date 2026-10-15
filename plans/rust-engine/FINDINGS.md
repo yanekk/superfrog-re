@@ -18,6 +18,7 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-15 | 📌 | T145 review: `complete-w4-4` with 23572's jump dropped (no dart hurt), the engine diverges from the original at 23671, before the frog's `level_state` goes −1 at 23680. Off the case's route; not pursued.|
 | 2026-10-15 | 🐞 | T145: `plan_exit --hurt` checks `hurt_by` at a chunk's end, 48 frames after the heart goes, so a passing dart's hurt is missed (W4-4 23577). Worked round: keep the inputs through the hurt, plan on. Not fixed. |
 | 2026-10-15 | 📌 | T145: `complete-w4-4`'s exit moved to 24200 (mid-pass); 24201's picture differs, the exit fade's palette step a frame early (W1-1 4475 class), excluded for T181. Other diffs as T132's. |
 | 2026-10-15 | 📌 | T132: `complete-w4-4` differs at 5252 (frog thrown by pad 52,50, on time) and after lags 8030, 23129 (panel), 9003 (play field buffer), 15914 (hitboxes); excluded/pinned for T181 to re-judge. `plan_exit` misread W4-4's initial `level_state` −1 as exit. |
