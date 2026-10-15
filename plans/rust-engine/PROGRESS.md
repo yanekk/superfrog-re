@@ -121,7 +121,7 @@ done · ⛔ blocked, needs a human.
 | T114 | enemies-w3-activation | T44; blocks T18 | ✅ | |
 | T115 | w3-completions | T44, T101, T102, T111, T112, T113; blocks T18 | ⬜ | |
 | T121 | bob-draw-cut | T101; blocks T21 | ✅ | |
-| T122 | w2-completions | T43, T101, T121; blocks T18 | 🔍 | W2-1 to its exit and tally (`w2-1-complete`, 2709 frames), outside the test block, red at 1094 and 1508 (T155). Owner split W2-2/3/4 to T166–T168, greening to T155. `plan_exit`: `--no-tile-coins`, `--jump`, `--launch`, reach map `:`. New examples `try_inputs`, `script_seen`. No test added (case red). |
+| T122 | w2-completions | T43, T101, T121; blocks T18 | ✅ | W2-1 done (`w2-1-complete`, red at 1094, 1508: T155); W2-2/3/4 split to T166–T168 (owner). Review: scan reproduced both reds, original exits at 2523, `script_seen` frames rerun, `plan_exit` flags probed on W2-1/W2-3; fix: T155 now carries the ledge breaking and the 2365 heart. No mutation: no tested code changed. |
 | T120 | conform-no-silent-pass | T05, T36; blocks T21 | ⬜ | |
 | T104 | w6-completions | T40, T101, T102; blocks T18 | ✅ | |
 | T123 | enemies-w5-2-case | T39; blocks T18 | ⬜ | |
@@ -156,7 +156,7 @@ done · ⛔ blocked, needs a human.
 A Notes cell holds what was built or what the review found, the test count, and one line per
 deviation from the task doc. A ✅ task's cell may be cut to one line once the next task has been reviewed.
 
-**Review queue:** T122
+**Review queue:** *(empty)*
 
 ## Blocked on the user
 
