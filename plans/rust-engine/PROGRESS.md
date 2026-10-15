@@ -14,7 +14,7 @@ the account is the commit message. Whoever writes a cell also fixes the over-bud
 **Status:** about 100 tasks ✅; T18, T21 and Phase 3 open; amended to faithful.
 **Last updated:** 2026-10-15
 **Amended 2026-10-15 (owner):** faithful replaces frame-exact (DESIGN §2.1, PLAN.md amendment); T180–T183 added, 14 tasks dropped (PLAN.md).
-**Next `pir-work` will:** review T184; then T181 faithful-rebaseline and T183 level-chain.
+**Next `pir-work` will:** T181 faithful-rebaseline and T183 level-chain.
 
 ## Tasks
 
@@ -153,12 +153,12 @@ done · ⛔ blocked, needs a human. A task dropped by a plan amendment leaves th
 | T181 | faithful-rebaseline | T180, T182; blocks T21 | ⬜ | |
 | T182 | plays-alone | T180; blocks T181, T183 and every completion task | ✅ | |
 | T183 | level-chain | T180, T182; blocks T21 | ⬜ | |
-| T184 | alone-pass-drift | T182; blocks T21, T18, T115, T147, T148, T149, T150, T151, T154, T166, T167, T168 | 🔍 | `Pacing::Late` gains `blanks`: cut only in the original's pass, at its end too. `pass_step`: frog-walk entry under test not done. All table cases, every case alone green; five tests on check 4 again; nine re-sync pins gone. Deviations: check-4 red test plants a frog move (none red alone); `run_with` hooks the alone engine under `Alone::Only`. |
+| T184 | alone-pass-drift | T182; blocks T21, T18, T115, T147, T148, T149, T150, T151, T154, T166, T167, T168 | ✅ | `Pacing::Late` gains `blanks`; `pass_step` counts the tested frog-walk entry not done. Review: clean but for one fix, the stomp write's pc (`$d17c`, not `$d17e`). Ran the table and `front-attract` alone, all green; two mutations (blanks guard, `pass_returns`) red in `alone.rs`; ranges checked against the listing. `sf-conform all` read-only. |
 
 A Notes cell holds what was built or what the review found, the test count, and one line per
 deviation from the task doc. A ✅ task's cell may be cut to one line once the next task has been reviewed.
 
-**Review queue:** T184
+**Review queue:** empty
 
 ## Blocked on the user
 
