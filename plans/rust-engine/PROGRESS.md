@@ -123,7 +123,7 @@ done · ⛔ blocked, needs a human.
 | T121 | bob-draw-cut | T101; blocks T21 | ⬜ | |
 | T122 | w2-completions | T43, T101, T121; blocks T18 | ⬜ | |
 | T120 | conform-no-silent-pass | T05, T36; blocks T21 | ⬜ | |
-| T104 | w6-completions | T40, T101, T102; blocks T18 | 🔍 | Split at pir's context line: kept `plan_exit`'s coin phase and gravity field, `Game::step_unseen` (owner's yes; deviation from "no engine interface") with `tests/step_unseen.rs`, cases W6-1 and W6-3alt (outside the test block, T146). W6-2, W6-2alt, W6-3, W6-4, W6-4alt carried by T147–T151. |
+| T104 | w6-completions | T40, T101, T102; blocks T18 | ✅ | Split: kept `plan_exit` coin phase, `Game::step_unseen` (owner's yes) and cases W6-1, W6-3alt (red at 530, 5939, T146); rest T147–T151. Review fixed W6-3alt's coin count (91, not 138) and the split docs' missing Files/Interface. Probed both scripts reach the exit on the original, lives kept; a skipped `frame` step under `step_unseen` caught. |
 | T123 | enemies-w5-2-case | T39; blocks T18 | ⬜ | |
 | T124 | enemies-w5-3-case | T39; blocks T18 | ⬜ | |
 | T125 | enemies-w5-4-case | T39; blocks T18 | ⬜ | |

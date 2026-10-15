@@ -18,6 +18,7 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-15 | 📌 | T104 review, measured on the original: `coins_left_for_exit` at load equals the marker-8 cells capped at 99 (W6-1 97, W6-2 97 of 97+65 marker 9, W6-3 86, W6-4 99 of 185). T104's 162/138/189 count both markers; W6-4's exit likely opens with coins left (read-only). |
 | 2026-10-15 | 🔄 | T104 split at pir's context line: W6-2, W6-2alt, W6-3, W6-4, W6-4alt completions to T147–T151 (each T104; blocks T18, T146; the alts also on T147, T150). Kept: planner, `step_unseen`, W6-1 and W6-3alt cases. |
 | 2026-10-15 | 📌 | T104, measured: a jump rises 7 rows (115 px); a run jump at full speed (6 px a frame) crosses ~17 cells; a bounce pad lifts 24 rows; marker 62 is a jump-through floor, 44 a lift raising a grounded frog a row a frame. Spikes (6) kill. |
 | 2026-10-15 | 📌 | T104: a run stuck at a precise hop is fastest solved by brute force on the original from a saved state (holds of a few lengths, success = a ground cell box), then `plan_exit --prefix`. T104's probe tool was not committed. |
