@@ -428,6 +428,7 @@ and the owner is not asked to play (owner, 2026-10-15).
 | Flag / mechanism | Default | Effect |
 |---|---|---|
 | `--max-frames N` (app) / frame cap (oracle) | required under `--script`; oracle 20 000 | process exits after N frames; a test without it is refused |
+| `sf-conform record` output cap (`--max-mb N`); entries over 1 KB left out unless `--all-vars` | 200 MB | stops with an error naming the frame and the flag; a recording can no longer fill the disk (2026-10-15: a 38 GB one crashed the run) |
 | `--timeout S` | 120 under `--script` | wall-clock kill of the app and any child |
 | `--home DIR` / `SUPERFROG_HOME` | the real app-data folder | tests always pass a temp dir, so a test never touches the owner's settings, progress or states |
 | windowed under `--script` | on | a scripted run cannot go fullscreen unless it also passes `--allow-fullscreen`, which requires `--max-frames ≤ 300` |
