@@ -74,6 +74,39 @@ fake-wall cells tinted magenta and each passage boxed) + `SECRETS.md` (coordinat
 (The bonus `LB` and world-map `LW` levels have none; a couple of World 6 levels
 have no fake walls at all.)
 
+## Rooms that cannot be reached in play
+
+**W2-1, cols 45-51, rows 14-26** (floor row 27): the room with the 20 000-point
+fruit 48,22 (handler h0+$f008), the fruits 48,23 and 48,26, and a column of coins.
+No way into it was found on the original (T105, T133), and the map shows why:
+
+- Its only ways in are fake walls S1 and S2. S1 (52-79, 16-19) is a corridor whose
+  floor is row 20; it ends over shaft D (cols 80-84, rows 16-35). S2 (52-59,
+  22-24) joins shaft A (cols 60-63, rows 22-39, open below onto the start's
+  floor). All four are closed above: the room by row 13, the corridor and D by
+  row 15, A by the corridor's floor (rows 20-21). Everything has to be climbed
+  into from below.
+- Nothing in there lifts the frog: no pad, spring, launcher or lift in the room,
+  the corridor, A or D. A jump rises about 106 px. Wings only slow a fall: fire
+  takes 2 off the falling speed, at most 8 times a jump (h0+$11056). The flyers
+  hover within about 21 px of where they spawn, and none spawns in A or D.
+- Shaft A: the furthest up it gets is the extra life at 63,35, through the ground
+  probe's lift up the pillar's column. The best jump from there peaks with the
+  frog's feet at row 28, four rows below S2. Its walls (cols 64-65) cannot be
+  climbed.
+- Shaft D: the nearest pad (91-92,35) throws the frog about 22 rows up its own
+  column (89-93). That column's left wall (85-88) is solid apart from S5 (rows
+  20-23). Going left through S5 puts the frog on S5's floor (row 24) or into D,
+  below the corridor's floor. From there it needs about 64 px of height; under
+  S5's solid ceiling (row 19) a jump gives about 30. Searches over bounces off the
+  pad found none that carry the frog through S5 high enough.
+
+The coin trails in A and D zig-zag downwards: the area looks built to be fallen
+through from the corridor, which the shipped map never lets the frog reach. A map
+editor should treat the room as dead. The level's other 20 000-point fruit, 260,25
+(past the exit, which lets the frog through while coins are left), is reachable;
+`items-fruit-w2-1` takes it.
+
 ## Caveats
 
 - Flag **38** is the game's dedicated fake-wall value and gives clean results.
