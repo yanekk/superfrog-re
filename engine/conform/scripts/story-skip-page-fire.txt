@@ -1,0 +1,7 @@
+# Fire on the first text page (shown O 2 589-2 988, `WaitOrFire`): the page ends at once and the
+# handler sets intro_skip; scene 1 plays, then the end: the "insert disk 1" page (up from
+# O 3 465), and fire there: disk 1 goes in, the game starts (T48).
+2700: F
+2705: -
+3500: F
+3505: -

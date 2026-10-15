@@ -1,0 +1,5 @@
+# Power-on with disk 3, fire on the first text page, the mouse button (not read) and then fire on
+# the "insert disk 1" page, into the game to its title waiting (T48).
+sync = "power-on-disk3"
+script = "story-skip-disk1-mouse"
+frames = 1560
