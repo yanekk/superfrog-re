@@ -1,8 +1,7 @@
 # W6-4 with every object live on both sides and nothing left out (T40): every type the map has
 # met (the strider, only here, among them), the flier killed, a hit. Planned with
-# `examples/plan_exit`. Outside the test block: green alone, but after the lagging stretch
-# 1052–1119 the frog's fall is a step behind at 1120 (`frog_y`) and its landing sound at 1120 has
-# no match within 2 frames; T185's (T181).
+# `examples/plan_exit`. Through the lagging stretch 1052–1119: at 1090 the original's frame ends
+# in the frog's hitbox walk before it stomps (T185).
 sync = { level = "W6-4" }
 script = "enemies-w6-4"
 frames = 1400
