@@ -18,6 +18,8 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-15 | 🐞 | T164, fixed: a lag re-sync rebuilt the sound driver over the world's module, but in the attract demo the title's module plays on at BANK_ADDR (`audio::files_for`); attract-demo-3 broke at 13281. |
+| 2026-10-15 | 📌 | T164: T33-wip.patch deleted; T183's doc still points at it for `KICKSTART_LEVEL1`, already in `state.rs` (`State::default`). |
 | 2026-10-15 | 🐞 | Fixed: `sf-conform record` printed every `LAYOUT` long (~3.5 MB a line); T164's recording reached 38 GB, the disk filled (ENOSPC) and the run crashed. Now entries over 1 KB are left out (`--all-vars`) and output stops at 200 MB (`--max-mb`). |
 | 2026-10-15 | 📌 | T163 review sweep, left alone: `frog/physics.rs`'s `DEMO_LEFT` doc says the recording's entries are three words; the original's (h0+$3ad8c) are a lead-in word then two-word steps, `demo_at` moving 4 bytes. Comment only. |
 | 2026-10-15 | 📌 | T163, left alone: `front/attract.rs`'s module doc still says the attract demo is "T33's"; it is built (T160–T163, docs/13 § The attract demo). |
