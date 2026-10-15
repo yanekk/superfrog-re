@@ -44,6 +44,7 @@ pub fn vbl(c: &mut LevelCtx) {
             frog::physics::frog_air_anim(c);
             c.spend(Cost::FrogAnim);
             frog::anim::frog_anim_tick(c);
+            c.spend(Cost::FrogAnimTail);
             c.spend(Cost::FrogWalk);
             frog::physics::frog_walk_input(c);
             c.spend(Cost::FrogInput);
