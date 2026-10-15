@@ -294,6 +294,22 @@ fn complete_w1_3() {
     completes("complete-w1-3", &[5079]);
 }
 
+/// W1-1 played to its exit (T106): green through the exit at 4473, which `level_state` 1 reaches
+/// in a late pass (`sync::mid_pass`), to frame 4474; frame 4475 shows T131's exit-fade palette
+/// step, pinned here until T146 runs the whole case.
+#[test]
+fn complete_w1_1_to_exit_fade() {
+    let mut case = sf_conform::Case::load(&sf_conform::cases_dir().join("complete-w1-1.toml")).unwrap();
+    case.frames = 4475;
+    if let Err(d) = sf_conform::run(&case) {
+        panic!("complete-w1-1: {d}");
+    }
+    case.frames += 1;
+    let d = sf_conform::run(&case).expect_err("the exit fade's palette step, open (T131)");
+    assert_eq!(d.frame, 4475);
+    assert!(d.first_var.is_none() && d.picture_diff.is_some(), "{d}");
+}
+
 /// A map cell's marker in the engine's memory (`map_rows[1]` h1+$218e0, rows `$260` bytes).
 fn marker(g: &sf_core::Game, col: u32, row: u32) -> u16 {
     let at = sf_core::layout::h1(0x218e0 + 0x4c0) + row * 0x260 + 2 * col;
