@@ -105,6 +105,22 @@ fn w3_2() {
     assert!(s.hearts_lost >= 4, "lost {} hearts", s.hearts_lost);
 }
 
+/// W3-3 from the start to the cave below its middle: hoppers, flows, the swing, a spiker, a dart,
+/// the bouncer, the shufflers (one stomped into a reward), crumbling platforms and a jumper; the
+/// frog hurt on the way. The pads and the scenery below marker 14 stand in the level's lower left,
+/// which the case does not reach (T115's completion meets them).
+#[test]
+fn w3_3() {
+    let s = run("enemies-w3-3", &[256]);
+    for u in [
+        HOPPER, FLOW, SWING, SWING_LINK, SPIKER, DART_WAIT, DART_FLY, BOUNCER, SHUFFLER, STOMPED,
+        REWARD, CRUMBLE, JUMPER,
+    ] {
+        assert!(s.updates.contains(&u), "h0+${u:x} never ran: {:x?}", s.updates);
+    }
+    assert!(s.hurts >= 3, "hurt {} times", s.hurts);
+}
+
 /// W3-4 to its first crumbling platform: the platforms, the scenery below marker 14 (whose update
 /// is the pads') and the flows.
 #[test]
