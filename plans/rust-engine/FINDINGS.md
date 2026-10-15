@@ -18,6 +18,9 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-15 | 🔄 | Owner, T129: conformance anchors the slot machine's Paula writes (`Game::anchor_writes`) to time its audio DMA and the lamps' start. Normal play uses the engine's lines: measured, 2–4 of ~70 flashes cut a lamp differently. |
+| 2026-10-15 | 📌 | T129: lamps after the picture, on `story::sim`'s bus, match the original to the cycle (190 draws, 4 cases). VERTB is seen by a poll asking from line 0 cycle 0, not the intro's `IRQ_ENTRY` 10. |
+| 2026-10-15 | 📌 | T129, not fixed: Moira's `mulu.w #i` works (17+set bits)×2 clocks after its prefetch and `jsr abs.l` is `pwwpp`; story's `op::MULU_3` (17 `n`) and `op::JSR_ABS_L` (`ppwwpp`) each run 2 DMA cycles short/long. |
 | 2026-10-15 | 🔄 | Owner, T122: added T155 w2-completions-green (T122, T127, T131, T132; blocks T18) and split W2-2/3/4 completions to T166, T167, T168 (T122; blocks T18, T155). `w2-1-complete` committed red, outside the test block. |
 | 2026-10-15 | 🐞 | T122, open (T168): W2-4's original hangs when the frog is pushed into the wall at 20,56 by the closed gate 18,55 (switch 46,66 not pulled): clock and frog frozen from then. Possible DESIGN §2.11 case. |
 | 2026-10-15 | 🐞 | T122, open (T155): `w2-1-complete` red at 1094 (frog sprite, every variable equal: T127/T131) and 1508 (`level_copper` after a lag: T131/T132). Frame 2709 is the next level's. |
