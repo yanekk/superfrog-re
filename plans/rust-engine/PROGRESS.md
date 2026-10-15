@@ -144,7 +144,7 @@ done · ⛔ blocked, needs a human. A task dropped by a plan amendment leaves th
 | T160 | attract-demo-entry | T33, T180 | ✅ | |
 | T162 | attract-demo-level-start | T160, T180 | ✅ | |
 | T163 | attract-demo-return | T162 | ✅ | |
-| T164 | attract-demo-cycles | T163; blocks T21 | 🔍 | Fix: `audio::files_for` takes a module at BANK_ADDR as the title's (attract demo re-sync, frame 13278, broke the music). attract-demo-3 (15 500 frames, outside the block, `all`) and attract-abort (front.rs test) green; 2 tests. T33-wip.patch deleted, its timing fixes unneeded under faithful. Deviation: no T127 exclusions were needed. |
+| T164 | attract-demo-cycles | T163; blocks T21 | ✅ | Review clean, no fix commit. Ran both cases green (attract-demo-3 15 500 frames, attract-abort) and the two tests; mutating `files_for`'s BANK_ADDR guard reddens the unit test and attract-demo-3 at 13281. `all` picking the cases up read-only. No T127 exclusions needed. |
 | T154 | w1-4-completion | T106, T127, T180, T182; blocks T21 | ⬜ | |
 | T166 | w2-2-completion | T122, T180, T182; blocks T21 | ⬜ | |
 | T167 | w2-3-completion | T122, T180, T182; blocks T21 | ⬜ | |
@@ -157,7 +157,7 @@ done · ⛔ blocked, needs a human. A task dropped by a plan amendment leaves th
 A Notes cell holds what was built or what the review found, the test count, and one line per
 deviation from the task doc. A ✅ task's cell may be cut to one line once the next task has been reviewed.
 
-**Review queue:** T164
+**Review queue:** *(empty)*
 
 ## Blocked on the user
 
