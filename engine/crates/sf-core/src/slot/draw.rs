@@ -14,7 +14,9 @@
 use super::{ATTRACT_FIRST, ATTRACT_LEFT, ATTRACT_PASSES, ATTRACT_ROW};
 use super::{BUFFER_0, BUFFER_1, LAMP_COUNT, LAMP_RECTS, LAMPS, PLANE, REELS, ROW};
 use crate::front::blit::Blit;
-use crate::front::{BEAM_CYCLES_PER_LINE as LINE, Cx, FRAME_LINES, Yield, at};
+use crate::front::story::cpu::{self, Bus};
+use crate::front::story::sim::{self, BlitEventKind, Prog, Sim};
+use crate::front::{BEAM_CYCLES_PER_LINE as LINE, Cx, FRAME_LINES, PICTURE_END, Yield, at};
 use crate::render::copper::Fetch;
 use crate::state::State;
 
@@ -48,16 +50,10 @@ const PATTERN: u32 = 1_426;
 const LAMPS_REGS: u32 = 514;
 const LAMP_GAP: u32 = 512;
 const LAMPS_END: u32 = 398;
-/// A lamp's set-up takes longer when the lamp is off (h0+$649e's branch falls through to a second
-/// `move.w`), and past the picture's end, before the frame's interrupt (T74: lamps drawn alone
-/// from line 299 start 5 colour clocks a lamp later than [`LAMP_GAP`] has them; the off lamps of
-/// `slot-hilo-8`'s payout flash put the sixth past the interrupt, as the original's).
-const LAMP_OFF: u32 = 6;
-const LAMP_BLANK: u32 = 10;
 /// A blit due on this line or later waits for the frame's interrupt (measured: the eighth reel
 /// blit, due at 312.61, starts after it), and goes on this many cycles into the line the
 /// interrupt ends on: reels (the CPU back from the handler, out of the blitter wait) and lamps.
-const CUT_LINE: u32 = 312;
+const CUT_LINE: u32 = super::FRAME_LINES as u32;
 const REEL_RESUME: u32 = 600;
 const LAMP_RESUME: u32 = 700;
 /// Tenths of a CPU cycle a word the display fetches takes from the CPU and from the blitter on its
@@ -88,6 +84,9 @@ pub(crate) struct Draw {
     /// The step was cut by the frame's end: these cycles into the line the interrupt ends on, its
     /// blit is started (`blit`), or what was left of it is done (not `blit`).
     resume: Option<(u32, bool)>,
+    /// Lamps drawn after the picture: each lamp's BLTSIZE write and its blit's end, in DMA cycles
+    /// from the frame's start, as many as start before the frame's interrupt ([`plan`]).
+    plan: Option<Vec<(u32, u32)>>,
 }
 
 impl Draw {
@@ -150,14 +149,31 @@ impl Draw {
                     t = spend(&fetch, t, lead, CPU_LOST);
                     write_at(cx, t, crate::audio::INTENA, 0x0010);
                     write_at(cx, t, crate::audio::DMACON, 0x8400);
-                    t = spend(&fetch, t, LAMPS_REGS + lamp_extra(cx, &fetch, t, lamp), CPU_LOST);
+                    if matches!(self.part, Part::Lamps { .. }) && t >= PICTURE_END as u32 * LINE {
+                        // DMACON's write: where the original made it, else the engine's cycle.
+                        let writes = frame_writes(cx);
+                        let at = match cx.schedule.get(writes.len().wrapping_sub(1)) {
+                            Some(&(line, slot)) => line as u32 * cpu::LINE + slot as u32,
+                            None => t / 2,
+                        };
+                        self.plan = plan(cx, at);
+                    }
+                    if self.plan.is_none() {
+                        t = spend(&fetch, t, LAMPS_REGS, CPU_LOST);
+                    }
                 } else {
-                    t = spend(&fetch, t, LAMP_GAP + lamp_extra(cx, &fetch, t, lamp), CPU_LOST);
+                    t = spend(&fetch, t, LAMP_GAP, CPU_LOST);
                 }
             }
             lamp_blit(cx, lamp)
         };
-        if t >= CUT_LINE * LINE {
+        let planned = (self.plan.as_ref())
+            .zip(k.checked_sub(18))
+            .map(|(p, lamp)| p.get(lamp as usize).copied());
+        if let Some(Some((write, _))) = planned {
+            t = 2 * write;
+        }
+        if matches!(planned, Some(None)) || (planned.is_none() && t >= CUT_LINE * LINE) {
             // The CPU takes the interrupt in the blitter wait; the blit starts after it.
             let resume = if k < 18 { REEL_RESUME } else { LAMP_RESUME };
             self.resume = Some((resume, true));
@@ -173,8 +189,17 @@ impl Draw {
         if start > crate::front::VBL_END_LINE && start < crate::front::PICTURE_END {
             cx.reveal = Some(start);
         }
-        // Two cycles a word a channel (T72), not the 3 of `Blit::cycles`.
-        t = spend(&fetch, t, b.cycles() * 2 / 3, BLITTER_LOST);
+        t = match planned {
+            Some(Some((_, end))) => 2 * end,
+            // Two cycles a word a channel (T72), not the 3 of `Blit::cycles`.
+            _ => spend(&fetch, t, b.cycles() * 2 / 3, BLITTER_LOST),
+        };
+        if self.plan.as_ref().is_some_and(|p| p.len() as u32 == k - 17) {
+            // The last lamp before the interrupt: the next one's set-up is cut by it.
+            self.step += 1;
+            self.resume = Some((LAMP_RESUME, true));
+            return self.cut(cx);
+        }
         if k < 18 && k % 6 == 5 {
             t = spend(&fetch, t, REEL_END, CPU_LOST);
             write_at(cx, t, crate::audio::INTENA, 0x8010);
@@ -207,20 +232,163 @@ impl Draw {
     /// The frame ends inside the step: the rest after the next frame's interrupt.
     fn cut(&mut self, cx: &mut Cx) -> Yield {
         self.t = 0;
+        self.plan = None;
         cx.line = FRAME_LINES;
         Yield::Interrupt
     }
 }
 
-/// What lamp `k`'s set-up from `t` takes past [`LAMP_GAP`]: [`LAMP_OFF`] and [`LAMP_BLANK`].
-fn lamp_extra(cx: &Cx, fetch: &Fetch, t: u32, k: u32) -> u32 {
-    let off = if cx.s.w(LAMPS + 8 * k) == 0 { LAMP_OFF } else { 0 };
-    let line = (t / LINE % FRAME_LINES as u32) as u16;
-    if fetch.lines().contains(&line) || line < crate::front::PICTURE_END {
-        0
-    } else {
-        off + LAMP_BLANK
+/// The frame's Paula writes so far, in the order they are compared: the copper's, then the CPU's
+/// by line (as [`crate::front::Front::step`] orders them at the frame's end).
+fn frame_writes(cx: &Cx) -> Vec<sf_paula::PaulaWrite> {
+    let mut all = cx.early.clone();
+    all.extend(cx.paula.iter().copied());
+    all.sort_by_key(|w| w.vpos);
+    all
+}
+
+/// When a polling access sees the frame's vertical blank: from the next frame's line 0, cycle 0
+/// on, as [`Sim::irq_seen`] counts (oracle, T129: 190 lamp draws of four slot cases, a lamp at
+/// either side of it; not the intro's [`crate::front::story::intro::IRQ_ENTRY`]).
+const IRQ_SEEN: u32 = 1;
+
+/// The bus the lamps run on (DMA cycles from the frame's start, on into the next frame): refresh,
+/// the copper's cycles and the bitplanes' fetch of the shown list, the audio channels' slots.
+struct LampBus {
+    frame: u32,
+    fetch: Fetch,
+    copper: Vec<u32>,
+    audio: Vec<u32>,
+}
+
+impl Bus for LampBus {
+    fn taken(&self, t: u32) -> bool {
+        let r = t % self.frame;
+        cpu::refresh(t)
+            || self.copper.binary_search(&r).is_ok()
+            || self.audio.binary_search(&t).is_ok()
+            || self
+                .fetch
+                .takes((r / cpu::LINE) as u16, (r % cpu::LINE) as u16)
     }
+}
+
+/// `slot_draw_lamps` (h0+$645e) from its DMACON `$8400`, written at DMA cycle `dmacon`, run on the
+/// bus ([`sim`]): each lamp's BLTSIZE write and its blit's end, for the lamps whose write comes
+/// before the CPU takes the frame's interrupt (the rest are cut). `None` without the audio DMA.
+/// The audio slots are this frame's on its writes so far ([`crate::front::anchored`]), then the
+/// next frame's on none (its interrupt's writes come after the lamps' interrupt).
+fn plan(cx: &Cx, dmacon: u32) -> Option<Vec<(u32, u32)>> {
+    let lines = super::FRAME_LINES as u32;
+    let frame = lines * cpu::LINE;
+    let mut dma = cx.audio?.clone();
+    let now = crate::front::anchored(&frame_writes(cx), cx.schedule);
+    let mut audio: Vec<u32> = dma.frame(&now, lines).iter().map(|s| s.0).collect();
+    audio.extend(dma.frame(&[], lines).iter().map(|s| s.0 + frame));
+    let mut beams = Vec::new();
+    crate::render::copper::run_bus(&|a, _, _| cx.w(a), cx.cop1lc, cx.fetch, &mut beams);
+    let mut copper: Vec<u32> = beams
+        .iter()
+        .map(|b| b.line as u32 * cpu::LINE + b.h as u32)
+        .filter(|&c| c < frame)
+        .collect();
+    copper.sort_unstable();
+    let bus = LampBus {
+        frame,
+        fetch: cx.fetch,
+        copper,
+        audio,
+    };
+    let prog = lamps_prog(cx);
+    let mut s = Sim::new(dmacon + 1, &bus, sim::dmacon::DMAEN | sim::dmacon::BLTEN);
+    s.poke(dmacon, crate::audio::DMACON, 0x8400);
+    let mut taken = None;
+    prog.run(&mut s, 0, &mut |s: &mut Sim| {
+        if taken.is_none() && s.irq_seen(frame + IRQ_SEEN) {
+            taken = Some(s.t);
+        }
+    });
+    let taken = taken.unwrap_or(u32::MAX);
+    let ends = s.events.iter().filter(|e| e.kind == BlitEventKind::End);
+    Some(
+        s.regs
+            .iter()
+            .filter(|r| r.1 == 0x058 && r.0 < taken)
+            .zip(ends)
+            .map(|(r, e)| (r.0, e.t))
+            .collect(),
+    )
+}
+
+/// `slot_draw_lamps` from DMACON's write on, as the 68000 runs it ([`cpu`]'s letters, Moira's
+/// timings: `mulu.w #$28` works 38 clocks after its prefetch, `jsr abs.l` reads one extension
+/// word): BLTCON1 and the masks, then per lamp (h0+$6496) its BLTCON0, the pointers and moduli
+/// worked out from its rectangle, BLTSIZE, and the blitter wait (h0+$19054).
+fn lamps_prog(cx: &Cx) -> Prog {
+    let mut p = Prog::new();
+    // DMACON's last prefetch; `clr.w BLTCON1`; `move.l #-1, BLTAFWM`; two `lea`; `move.l #$1a, d7`.
+    for ins in ["p", "ppr^pw", "ppppwwp", "ppp", "ppp", "ppp"] {
+        p.ins(ins);
+    }
+    for k in 0..LAMP_COUNT {
+        let (b, _) = lamp_blit(cx, k);
+        // `move.w #$d0c, d0`; `tst.w (a1)`; `bne` to h0+$64a4, else `move.w #$dfc, d0`.
+        p.ins("pp");
+        p.ins("prp");
+        if b.con0 == 0xd0c {
+            p.ins("npp");
+        } else {
+            p.ins("nnp");
+            p.ins("pp");
+        }
+        p.ins_regs("ppWp", &[(0x040, b.con0)]);
+        // Two `lea`, `clr.l`, `move.w (a0)`, `lsr.w #3`, two `adda.l`, `move.w 2(a0)`,
+        // `mulu.w #$28`, `ext.l`, two `adda.l`, two `clr.l`, `move.w 4(a0)`, `lsr.w #4`,
+        // `move.w 6(a0)`, `lsl.w #6`, `or.w`, `add.w`, `move.w #$28`, `sub.w`.
+        for ins in [
+            "ppp",
+            "ppp",
+            "pn",
+            "rp",
+            "pnnnn",
+            "pnn",
+            "pnn",
+            "prp",
+            "ppnnnnnnnnnnnnnnnnnnn",
+            "p",
+            "pnn",
+            "pnn",
+            "pn",
+            "pn",
+            "prp",
+            "pnnnnn",
+            "prp",
+            "pnnnnnnn",
+            "p",
+            "p",
+            "pp",
+            "p",
+        ] {
+            p.ins(ins);
+        }
+        // The three moduli, the three pointers (a `move.l` polls at its second write), BLTSIZE.
+        for _ in 0..3 {
+            p.ins("ppwp");
+        }
+        for _ in 0..3 {
+            p.ins("ppw^wp");
+        }
+        p.ins_regs("ppWp", &[(0x058, b.size)]);
+        // `jsr` the wait, its loop, `rts`; two `adda.l`, `subq.w`, `bne.w`.
+        p.ins("pwwpp");
+        p.wait_blit(false);
+        p.ins("rrpp");
+        p.ins("pppnn");
+        p.ins("pppnn");
+        p.ins("p");
+        p.ins(if k + 1 < LAMP_COUNT { "npp" } else { "nnpp" });
+    }
+    p
 }
 
 /// A Paula register written by the CPU at `t`.

@@ -242,6 +242,19 @@ fn the_slot_machine_pays_its_jackpot_as_the_original_does() {
     assert_eq!(g.slot_outcome(), Some(sf_core::SlotOutcome { award }));
 }
 
+/// The jackpot's flash with the attract's fire on frames 40 and 50 (T129): its lamps drawn after
+/// the picture start either side of the frame's interrupt by a few colour clocks, as the audio
+/// channels' DMA slots fall in their blits (the sixth of an off-draw is cut at fire 40's frame
+/// 1487, not at 1492). Frame for frame to the frame before `slot_machine` returns.
+#[test]
+fn the_jackpot_flash_cuts_its_lamps_where_the_original_does() {
+    for name in ["slot-hold-jackpot-40", "slot-hold-jackpot-50"] {
+        let case = sf_conform::Case::load(&sf_conform::cases_dir().join(format!("{name}.toml")))
+            .unwrap_or_else(|e| panic!("{e}"));
+        sf_conform::run_with(&case, |_, _| {}).unwrap_or_else(|d| panic!("{name}: {d}"));
+    }
+}
+
 /// The slot machine entered from a level as the tally enters it (`Game::enter_slot`, T73), played
 /// by fire alone: its rounds run and it returns, its outcome the score it added.
 #[test]

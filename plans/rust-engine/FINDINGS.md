@@ -19,6 +19,9 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 | Date | | Finding |
 |---|---|---|
 | 2026-10-15 | 🔄 | Owner: faithful replaces frame-exact (DESIGN §2.1): state per pass, tolerant picture and sound, engine alone meets the original's milestones; no hand checks as gates. T180–T183 added; T128, T131, T140–T143, T146, T153, T155, T161, T165, T169–T171 dropped. |
+| 2026-10-15 | 🔄 | Owner, T129: conformance anchors the slot machine's Paula writes (`Game::anchor_writes`) to time its audio DMA and the lamps' start. Normal play uses the engine's lines: measured, 2–4 of ~70 flashes cut a lamp differently. |
+| 2026-10-15 | 📌 | T129: lamps after the picture, on `story::sim`'s bus, match the original to the cycle (190 draws, 4 cases). VERTB is seen by a poll asking from line 0 cycle 0, not the intro's `IRQ_ENTRY` 10. |
+| 2026-10-15 | 📌 | T129, not fixed: Moira's `mulu.w #i` works (17+set bits)×2 clocks after its prefetch and `jsr abs.l` is `pwwpp`; story's `op::MULU_3` (17 `n`) and `op::JSR_ABS_L` (`ppwwpp`) each run 2 DMA cycles short/long. |
 | 2026-10-15 | 📌 | T130 review: dropping record 3's `bsr` in `story::vbl::fade_calls` (shared intro fade dispatch, ~18 cycles) leaves `the_intro_through_scene_1s_fade_out` green; intro fade timing is not pinned per record. Not fixed. |
 | 2026-10-15 | 🔄 | Owner, T130: added T171 front-handler-bus-model (blocks T21; T170 was taken): `frog-pit-w1-1` 318 is audio DMA under the fade loop, same CPU work as 648; cost depends on bus phase. T171 also owns 613, 658. |
 | 2026-10-15 | 📌 | T125: W5-4 is closed off by switches: 98,37 opens 135,34; 132,9 opens 72,7; 57,20 opens 57,5. Faller 30 at 168/174,5 cannot spawn from the pocket below (scan row two above the camera); the watchers' room is reached round the east. |

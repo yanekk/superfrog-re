@@ -352,6 +352,7 @@ impl Game {
         if let (Scene::Front | Scene::Slot { .. }, Some(front)) = (self.scene, self.front.as_mut())
         {
             self.seed = None;
+            front.anchor_writes(std::mem::take(&mut self.schedule));
             let out = front.step(&mut self.state, &self.display, input);
             self.scene = front.scene(&self.state, self.scene);
             self.shown = Some(out.picture.clone());
@@ -599,7 +600,8 @@ impl Game {
     /// For conformance (owner, 2026-10-13): the next step's level work is put on the beam where
     /// the original made that frame's Paula writes, `(line, slot)` in order: as the engine makes
     /// its own frame's `k`th write, its clock is set to the `k`th. Its own costs place the work
-    /// between them ([`crate::level::beam`]); normal play has only those.
+    /// between them ([`crate::level::beam`]); normal play has only those. On the front end they
+    /// time the audio DMA the slot machine's lamps run beside (T129, owner 2026-10-15).
     pub fn anchor_writes(&mut self, writes: &[(u16, u16)]) {
         self.schedule = writes.to_vec();
     }

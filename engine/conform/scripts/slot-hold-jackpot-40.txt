@@ -1,0 +1,18 @@
+# `slot-hold-jackpot` with the attract's fire on frame 40 (T129). Planned on the engine
+# (examples/slot_plan.rs); frames are the original's.
+798: F
+799: -
+807: F
+810: -
+1072: R
+1075: -
+1079: R
+1082: -
+1086: F
+1089: -
+1096: L
+1099: -
+1103: F
+1106: -
+1491: F
+1501: -
