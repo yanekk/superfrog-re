@@ -18,6 +18,8 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-15 | 🐞 | T164, fixed: a lag re-sync rebuilt the sound driver over the world's module, but in the attract demo the title's module plays on at BANK_ADDR (`audio::files_for`); attract-demo-3 broke at 13281. |
+| 2026-10-15 | 📌 | T164: T33-wip.patch deleted; T183's doc still points at it for `KICKSTART_LEVEL1`, already in `state.rs` (`State::default`). |
 | 2026-10-15 | 📌 | T144 review sweep, left alone: `tasks/T141-story-fade-colour-race.md` calls the colour-28 fade (engine 7232–7241) scene 9's; the original's chain there is h0+$736e..$73dc, scene 12 (docs/13 table). |
 | 2026-10-15 | 📌 | T133: W2-1's room 45-51,14-26 (fruit 48,22) is unreachable in play; why in docs/07. An exit still locked (coins left) lets the frog through: `items-fruit-w2-1` takes the other $f008 fruit, 260,25, past it. |
 | 2026-10-15 | 🐞 | Fixed: `sf-conform record` printed every `LAYOUT` long (~3.5 MB a line); T164's recording reached 38 GB, the disk filled (ENOSPC) and the run crashed. Now entries over 1 KB are left out (`--all-vars`) and output stops at 200 MB (`--max-mb`). |
