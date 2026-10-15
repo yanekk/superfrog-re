@@ -44,7 +44,10 @@ judged automatically against the original; no task waits on the owner to play or
 - **Dropped (➖):** T128, T131, T140–T143, T146, T153, T155, T161, T165, T169, T170, T171.
   Each chased sub-frame timing, except T169, whose `level1_vector` fix moves to T183 (or T160) and
   T155, whose encounter checks move to T181. T181 re-judges their cases; a red that survives is a
-  real behaviour difference and gets an owning task then.
+  real behaviour difference and gets an owning task then. They leave PROGRESS.md's table, whose parser
+  knows no dropped state. T129 was
+  in review when this landed, and T126 and T132 were being built; all three finish as their docs
+  are written, with no wait on T180/T182 (owner). T181 re-judges their cases under the new checks.
 - **Re-scoped:** every open task doc carries an "Amended" note: green means faithful, completion
   cases are also judged alone. Completion tasks now block T21 instead of T18. T18 is the final level
   and its witch (docs/09: no per-world bosses). T25 tests the pad with simulated input; T30 replaces
@@ -186,7 +189,7 @@ original's milestones and passes the faithful checks (DESIGN §2.1), headless.
 | [T123](tasks/T123-enemies-w5-2-case.md) | enemies-w5-2-case | T39; blocks T18 |
 | [T124](tasks/T124-enemies-w5-3-case.md) | enemies-w5-3-case | T39; blocks T18 |
 | [T125](tasks/T125-enemies-w5-4-case.md) | enemies-w5-4-case | T39; blocks T18 |
-| [T126](tasks/T126-w5-completions.md) | w5-completions | T39, T101, T121, T123, T124, T125, T180, T182; blocks T21 |
+| [T126](tasks/T126-w5-completions.md) | w5-completions | T39, T101, T121, T123, T124, T125; blocks T21 |
 | [T127](tasks/T127-restore-sprite-wait.md) | restore-sprite-wait | T101; blocks T21 |
 | [T128](tasks/T128-w3-4-sprite-race.md) | w3-4-sprite-race | ➖ dropped 2026-10-15 (was: T127; blocks T113) |
 | [T129](tasks/T129-slot-lamp-cut.md) | slot-lamp-cut | T74; blocks T21 |
@@ -198,7 +201,7 @@ original's milestones and passes the faithful checks (DESIGN §2.1), headless.
 | [T143](tasks/T143-story-last-fade-out.md) | story-last-fade-out | ➖ dropped 2026-10-15 (was: T56) |
 | [T144](tasks/T144-story-intro-full-green.md) | story-intro-full-green | T56, T180; blocks T21, T47, T48 |
 | [T131](tasks/T131-w4-completion-faults.md) | w4-completion-faults | ➖ dropped 2026-10-15 (was: T103, T121, T127; blocks T18, T21) |
-| [T132](tasks/T132-w4-4-completion.md) | w4-4-completion | T103, T180, T182; blocks T21 |
+| [T132](tasks/T132-w4-4-completion.md) | w4-4-completion | T103; blocks T21 |
 | [T145](tasks/T145-w4-4-dart-21.md) | w4-4-dart-21 | T132; blocks T21 |
 | [T146](tasks/T146-w6-completion-faults.md) | w6-completion-faults | ➖ dropped 2026-10-15 (was: T104; blocks T18, T21) |
 | [T147](tasks/T147-w6-2-completion.md) | w6-2-completion | T104, T180, T182; blocks T21 |

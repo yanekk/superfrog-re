@@ -29,6 +29,8 @@ DESIGN §2.1, §4.
 
 ## Done when
 
+- [ ] Every case judged with check 4 too (T182 makes it the default), and the original's late frames
+      per level recorded in docs/08 "Lag" (DESIGN §2.1: slowdown accepted, measured).
 - [ ] Every case green under the faithful checks is in the test block (the long ones as ignored
       tests named in the README, as today).
 - [ ] Every case still red has a FINDINGS row with its first failing check, frame and cause, and

@@ -74,7 +74,8 @@ checks hold. `sf-conform`'s default mode (`run`, `all`, `scan`) is these checks 
    `LAYOUT` and are judged by checks 2 and 3 instead.
 2. **Picture, within tolerance.** The picture inside the display window, as 12-bit OCS colour per
    pixel. A frame's difference is tolerated when every differing pixel is at most one step off in each
-   of R, G and B, or when fewer than 64 pixels differ (a sprite's edge, a stray line). Any other
+   of R, G and B, or when fewer than 64 pixels differ (a sprite's edge, a stray line); this is not limited in time
+   (owner, 2026-10-15: a small wrong sprite with equal state is accepted). Any other
    difference is tolerated only while it lasts at most 2 frames in a row (one 25 Hz pass), and the
    tolerated frames of this last kind are at most 1% of the case's frames. Every tolerated frame is
    counted and printed: never silent (T120's rule stands).
@@ -97,7 +98,8 @@ checks hold. `sf-conform`'s default mode (`run`, `all`, `scan`) is these checks 
 
 Checks 1–3 may re-sync after a lag as before, which is why check 4 exists: a re-sync can hide a
 divergence, a run alone cannot. A case may name only some checks (`compare = [...]`), but every
-completion case and the whole-game case run check 4.
+case that steps the engine runs check 4 (owner, 2026-10-15: not only the completion and whole-game
+cases, so a re-sync can hide nothing anywhere). A `render`-only case steps nothing and is exempt.
 
 The thresholds above (one colour step, 64 pixels, 2 frames, 1%, ±2 frames, ±10 frames) are the
 owner's bar. A task that finds one wrong raises it with the owner or the coordinator agent; it is
@@ -123,6 +125,9 @@ original. Conformance also anchors that clock at the original's own beam positio
 `Game::anchor_blits` starts each blit where the original started one of its size; the cost model
 places the work between anchors. Divergence left over is reported as lag and re-synced. Normal play
 (`Game::step`) is always `Pacing::OnTime`, never anchored, and uses the cost model alone: it never lags.
+So the shipped game runs smoothly where the original slowed down; accepted (owner, 2026-10-15), and
+measured: `sf-conform` prints per case how many frames the original was late, and T181 records the
+totals per level in docs/08 "Lag".
 The RNG is seeded once from a clock, so the seed is part of the start: a transplant copies
 `rng_state`, a power-on conformance run takes the oracle's seed, normal play seeds from the host clock.
 

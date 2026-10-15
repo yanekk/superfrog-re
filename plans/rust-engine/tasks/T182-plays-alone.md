@@ -68,6 +68,7 @@ make the two sides differ.
 
 ## Done when
 
-- [ ] Every `complete-*` / `*-complete` case on the branch has `alone = true`; each is green alone or
-      its first divergence is in FINDINGS with an owning task.
+- [ ] Check 4 runs on every case that steps the engine (owner, 2026-10-15), not only completion
+      cases: `alone` is on by default and `render`-only cases are exempt. The completion cases are green
+      alone or their first divergence is in FINDINGS with an owning task; the rest are T181's to re-judge.
 - [ ] README updated.

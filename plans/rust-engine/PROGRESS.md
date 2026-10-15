@@ -128,13 +128,13 @@ done · ⛔ blocked, needs a human. A task dropped by a plan amendment leaves th
 | T123 | enemies-w5-2-case | T39; blocks T18 | ✅ | |
 | T124 | enemies-w5-3-case | T39; blocks T18 | ✅ | |
 | T125 | enemies-w5-4-case | T39; blocks T18 | ✅ | |
-| T126 | w5-completions | T39, T101, T121, T123, T124, T125, T180, T182; blocks T21 | ⬜ | |
+| T126 | w5-completions | T39, T101, T121, T123, T124, T125; blocks T21 | ⬜ | |
 | T127 | restore-sprite-wait | T101; blocks T21 | ✅ | |
 | T130 | front-vbl-318 | T100; blocks T21 | ✅ | |
 | T129 | slot-lamp-cut | T74; blocks T21 | ⬜ | |
 | T144 | story-intro-full-green | T56, T180; blocks T21, T47, T48 | ⬜ | |
 | T133 | w2-1-fruit-room | T105, T180; blocks T21 | ⬜ | |
-| T132 | w4-4-completion | T103, T180, T182; blocks T21 | ⬜ | |
+| T132 | w4-4-completion | T103; blocks T21 | ⬜ | |
 | T145 | w4-4-dart-21 | T132; blocks T21 | ⬜ | |
 | T147 | w6-2-completion | T104, T180, T182; blocks T21 | ⬜ | |
 | T148 | w6-2-alt-completion | T104, T147, T180, T182; blocks T21 | ⬜ | |
