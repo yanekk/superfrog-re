@@ -1,0 +1,4 @@
+# Power-on with disk 3, the mouse button in scene 1's set-up: as story-skip-setup-fire (T48).
+sync = "power-on-disk3"
+script = "story-skip-setup-mouse"
+frames = 1850

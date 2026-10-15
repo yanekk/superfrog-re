@@ -10,5 +10,5 @@ frames = 9870
 [[exclude]]
 what = "picture"
 frames = [7237, 7241]
-note = "scene 12's fade in: colour 28 (green $040..$060) shows black, the engine's fade step clearing its word ~7 DMA cycles before the copper reads it, the original's after (dropped T141's race; owner's threshold question, FINDINGS 2026-10-15)"
-task = "T181"
+note = "scene 12's fade in: colour 28 (green $040..$060) shows black, the engine's fade step clearing its word ~7 DMA cycles before the copper reads it, the original's after; accepted by the owner, 2026-10-15 (T181), not to be modelled"
+task = "none (accepted)"

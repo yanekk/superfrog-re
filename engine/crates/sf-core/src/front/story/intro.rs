@@ -1271,12 +1271,17 @@ impl Intro {
                     return true;
                 }
                 let start = self.t / LINES;
-                let until = ((start + scenes::unpack_frames(ret)) * LINES
-                    + scenes::unpack_end_line(ret))
-                    .max(self.t);
-                self.wait = Wait::Busy {
-                    until,
-                    blank_extends: false,
+                self.wait = match scenes::unpack_work(ret) {
+                    Some(work) => Wait::Busy {
+                        until: self.t + work,
+                        blank_extends: true,
+                    },
+                    None => Wait::Busy {
+                        until: ((start + scenes::unpack_frames(ret)) * LINES
+                            + scenes::unpack_end_line(ret))
+                        .max(self.t),
+                        blank_extends: false,
+                    },
                 };
                 self.then = Then::Nothing;
             }

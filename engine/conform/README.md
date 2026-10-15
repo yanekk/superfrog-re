@@ -78,9 +78,9 @@ frame was produced; checks 2 and 3 judge them: the copper lists (`end_copper`, `
 `tally_copper`, `slot_copper`, `exit_sprite_copper`, `level_copper`, `front_copper`, and the
 intro's `StoryBootCopper` and `StoryCopper`), the bitmaps (`bob_sheet`, `playfield_buffer_0`, `_1`,
 `playfield_clean`, `hunk3_gap`, `panel_bitmap`, `hero_frames`, the intro's text page, buffers and
-clean background), `shown_buffer`, the blit queue (`blits_pending`, `blit_next`, `blit_queue`) and
-the sound driver's fade and register shadows (`music_fade`, the intro's `StoryShadow`). No variable
-a gameplay rule reads is tagged.
+clean background), `shown_buffer` and `scroll_column` (the shown column, T181), the blit queue
+(`blits_pending`, `blit_next`, `blit_queue`) and the sound driver's fade and register shadows
+(`music_fade`, the intro's `StoryShadow`). No variable a gameplay rule reads is tagged.
 
 ## Plays alone (DESIGN §2.1 check 4, T182)
 
@@ -120,6 +120,18 @@ ended a pass with a gameplay variable unlike the original's: where to look for t
 Cases red alone are listed in FINDINGS with their owner; a test that runs one keeps checks 1–3
 with `case.alone = Alone::Off` and names the owner (T184: `enemies-w1-1`, `enemies-w3-1`,
 `enemies-w3-activation`, `enemies-w5-2-complete`, `front-attract`).
+
+## Which cases the test block runs (T181)
+
+Every case green under the faithful checks has a test in `crates/sf-conform/tests/`: those with
+assertions of their own beside their subject (`frog_cases.rs`, `enemies_*.rs`, `front.rs`,
+`story.rs`, ...), the rest one line each in `cases.rs`. The slow ones are ignored and run with
+`cargo test -p sf-conform -- --ignored`: `attract-demo-3` (`cases.rs`, about 4 min) and the
+intro's `story-scene1-out`, `story-scene4-init`, `story-scene4-sound` and `story-intro-full`
+(`story.rs`, 80 s to 5 min). A case red today has no test that runs it whole (a test may keep
+checks 1–3 with `Alone::Off`); its FINDINGS row names the first failing check, frame and cause and
+the task that owns it: `complete-w4-2`, `enemies-w1-1`, `enemies-w3-1`, `enemies-w3-activation`,
+`enemies-w5-2-complete`, `enemies-w6-1-complete`, `front-attract` (T184), `enemies-w6-4` (T185).
 
 ## Writing a script — `scripts/<name>.txt`
 
@@ -212,6 +224,9 @@ task = "T36"
 - `panel`: the panel's bitmap and the picture's panel lines are not compared.
 - `unreached`: listed only: what the case's input never makes the original do (the restart after
   a death), so there is nothing to freeze.
+- `picture` with `frames = [from, to]`: those frames' pictures are not compared. Only for a
+  difference the owner accepted as not to be modelled (`task = "none (accepted)"`, the date in
+  its note): `story-intro-full` 7237–7241 is the one (T181).
 
 A `render`-only case does not step the engine at all.
 
@@ -234,9 +249,11 @@ An original that never finishes its pass would leave every frame out and the cas
 nothing (T120). So a case fails once more than `LAG_LIMIT` (100) frames in a row end mid-pass;
 the frame after each lag ends the run, as its variables are compared. 100 is fitted to the cases
 (2026-10-15): all but two have runs of 97 or under. Those two, `complete-w4-3` (261) and
-`enemies-w6-1` (133), are pinned at their run with `lag-limit`, each with the task that is to
-shrink it. `run`, `all` and `scan` print each case's frames compared, its longest mid-pass run and
-its longest run left out (the frames after each lag among them, not limited).
+`enemies-w6-1` (133), are pinned at their run with `lag-limit`, each with its reason (the
+original's slowdown, which the run alone still covers). `run`, `all` and `scan` print each case's
+frames compared, its longest mid-pass run, its longest run left out (the frames after each lag
+among them, not limited) and the frames the original was late (`Outcome::late`: the slowdown
+normal play does not reproduce, DESIGN §2.1; per level in docs/08 "Lag").
 
 `Pacing::Late { writes, line, hpos, phase, step }` says where the original's frame ended: after its
 `writes`th Paula write (the last at beam `line`, slot `hpos`), in the pass's `phase`th call, `step`

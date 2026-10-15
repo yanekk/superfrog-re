@@ -689,6 +689,9 @@ pub fn presentation(id: VarId) -> Option<&'static str> {
         HeroFrames => "the frog's sprite images, copied for its animation",
         StoryText => "the text page's bitmap and palette",
         ShownBuffer => "which display buffer the beam shows",
+        // Written only by the vertical blank's scroll (h0+$17076, +$171cc) and read only into
+        // the level copper list's bitplane pointers (h0+$1728e): it follows `shown_buffer` (T181).
+        ScrollColumn => "the shown column's address in the shown buffer, for the copper list",
         BlitsPending | BlitNext | BlitQueue => "blitter bookkeeping: blits queued for the copper",
         AudioShadow | StoryShadow => "the sound driver's fade and Paula register shadows",
         _ => return None,
@@ -845,5 +848,6 @@ mod tests {
         }
         assert!(presentation(VarId::LevelCopper).is_some());
         assert!(presentation(VarId::PlayfieldBuffer0).is_some());
+        assert!(presentation(VarId::ScrollColumn).is_some());
     }
 }

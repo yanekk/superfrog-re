@@ -467,7 +467,7 @@ impl AudioDriver {
     }
 
     /// [`AudioDriver::play_sfx`] to its raster wait: interrupts off and on again around it, a
-    /// vertical blank it held off coming before [`AudioDriver::play_sfx_rest`].
+    /// vertical blank it held off coming before [`AudioDriver::play_sfx_setup`].
     pub fn play_sfx_begin(
         &mut self,
         data: &SoundData,
@@ -479,9 +479,16 @@ impl AudioDriver {
         self.sfx_play_begin(data, sfx, channel, out)
     }
 
-    /// The rest of [`AudioDriver::play_sfx`] after its raster wait.
-    pub fn play_sfx_rest(&mut self, data: &SoundData, rest: SfxRest, out: &mut Vec<PaulaWrite>) {
-        self.sfx_play_rest(data, rest, out);
+    /// The rest of [`AudioDriver::play_sfx`] after its raster wait, to its first write: the
+    /// channel's record set up but its duration. A vertical blank may come before
+    /// [`AudioDriver::play_sfx_start`].
+    pub fn play_sfx_setup(&mut self, data: &SoundData, rest: SfxRest) {
+        self.sfx_play_setup(data, rest);
+    }
+
+    /// The end of [`AudioDriver::play_sfx`]: the duration set and the effect started.
+    pub fn play_sfx_start(&mut self, data: &SoundData, rest: SfxRest, out: &mut Vec<PaulaWrite>) {
+        self.sfx_play_start(data, rest, out);
     }
 
     /// What the vertical-blank interrupt does for sound outside a level, in its order:

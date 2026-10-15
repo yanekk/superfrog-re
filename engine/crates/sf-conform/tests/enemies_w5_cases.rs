@@ -344,8 +344,8 @@ fn completes(name: &str, pins: &[u32], exit_at: u32) {
 
 /// W5-1 played from its start to its exit and through the tally (T126): the exit at 2254, fire
 /// taking the points. Two re-syncs pinned: the play field buffer at 1497 (T121's class) and the
-/// panel at 2182 after a lag (as `enemies-w5-1`'s at 979). Frame 744's picture is left out (the
-/// frog's sprites, `enemies-w5-1` 595's class).
+/// panel at 2182 after a lag (as `enemies-w5-1`'s at 979). Frame 744's picture (the frog's
+/// sprites, `enemies-w5-1` 595's class) is within the faithful picture tolerance (T181).
 #[test]
 fn enemies_w5_1_complete() {
     completes("enemies-w5-1-complete", &[1497, 2182], 2254);
@@ -353,8 +353,8 @@ fn enemies_w5_1_complete() {
 
 /// W5-2 played from its start to its exit and through the tally (T126): the exit at 6095, fire
 /// taking the points. Two re-syncs pinned: the play field buffer at 2196 (T121's class) and
-/// `vbl_count` at 4681 after a lag (`complete-w4-2`'s 1927 and 4964, T131's). Frames 967 (the
-/// frog on the spring pad) and 6095 (the exit fade's palette step) leave out the picture, T131's.
+/// `vbl_count` at 4681 after a lag (`complete-w4-2`'s 1927, T184's). The frog on the spring pad
+/// (967) and the exit fade's palette step (6095) are within the faithful picture tolerance.
 #[test]
 fn enemies_w5_2_complete() {
     completes("enemies-w5-2-complete", &[2196, 4681], 6095);
@@ -369,14 +369,12 @@ fn enemies_w5_3_complete() {
 }
 
 /// W5-4 played from its start to its exit and through the tally (T126): the exit at 8193, fire
-/// taking the points. Two re-syncs pinned: the play field buffer at 3384 (T121's class) and the panel at 7980
-/// after a lag. Frames 657 (the frog on the spring pad) and 8193 (the exit fade's palette step)
-/// leave out the picture, T131's.
-/// Red under faithful judging (T180): at 3378–3381 the original moves channel 3 to another
-/// sample where the engine keeps the effect fading, on lag frames `--strict` leaves out and a
-/// re-sync then erased (as `enemies-w6-1-complete` 511, `w2-1-complete` 1501). T181 re-judges it.
+/// taking the points. One re-sync pinned: the panel at 7980 after a lag. The frog on the spring
+/// pad (657) and the exit fade's palette step (8193) are within the faithful picture tolerance.
+/// Green faithful since T181: the vertical blank at 3378 falls inside `sfx_play`'s rest, so
+/// `sfx_tick` ends the new effect and music takes channel 3 back, as in the original (the
+/// play field buffer's re-sync at 3384 went with it).
 #[test]
-#[ignore = "red faithful: channel 3's sound at 3381 (T181)"]
 fn enemies_w5_4_complete() {
-    completes("enemies-w5-4-complete", &[3384, 7980], 8193);
+    completes("enemies-w5-4-complete", &[7980], 8193);
 }

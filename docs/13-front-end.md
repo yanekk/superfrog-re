@@ -87,7 +87,7 @@ that case (engine and original agree).
           fades in, loads the intro (d3_c04 ATN!, instant), fades out
 67        intro_main (d3_c04 h0, hunks h0 $C00FA0, h1 $C53100, h2 $400 = d3_c03, h3 $18FD4)
 68–105    text page 1: unpacked (cf5c, ~37 frames, part of the load), faded in (8 colours)
-106–505   page shown, 400 frames or fire/mouse (WaitOrFire)
+106–505   page shown, 400 frames or fire (WaitOrFire; the mouse only sets intro_skip)
 506–520   text_out: fade out
 521–537   scene 1 set-up: buffers cleared (2 blits), objects_init (masks: CPU clear + 5 blits,
           frames 532–536), two draws, fade in (32 colours)
@@ -150,6 +150,16 @@ pointers (unless frozen), the music's sample stream, the fades (in, out, across:
 or the mouse button sets `intro_skip`, the music and effects (the game's own driver, T11, at the
 intro's addresses: `AudioDriver::intro_from`), the timeline of sound events. A `SkipCheck` after
 each scene goes to END once skip is set; after the last scene END follows either way (h0+$2ec).
+
+**Skips (T48; code, oracle).** The logo (`d3_c02`) reads neither button (only CIA-A PRA bit 4, the
+drive). From the intro's start, fire or the mouse button sets `intro_skip` in the handler; a text
+page's `WaitOrFire` (h0+$3ba) ends on fire only. Nothing cuts a scene short: the scene a press
+lands in (its text page, set-up or play) runs to its end, and its `SkipCheck` goes to END (the
+black list, h0+$3a6). The "insert disk 1" page then waits for fire alone. END's page unpack runs
+under shorter handlers after a skip than after scene 15 (whose sound effects keep the driver
+3 lines longer a frame), and ends 49 lines sooner: the engine times it as work the handlers push
+on (`scenes::UNPACK_WORK`). Cases `story-skip-*` (page, set-up and play of scene 1, the logo, the
+insert-disk page), each to the game's title.
 
 Timing the engine keeps (oracle, frames 0–539):
 

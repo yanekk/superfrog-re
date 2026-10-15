@@ -49,6 +49,21 @@ fn frog_run_w1_1() {
     green("frog-run-w1-1");
 }
 
+/// The original's late frames are counted, its slowdown measured (DESIGN §2.1, T181): in
+/// `frog-run-w1-1` its pass is late at the vertical blank twice, the two lags (559, 561); a
+/// title-side case never is.
+#[test]
+fn the_originals_late_frames_are_counted() {
+    let run = |name: &str| {
+        let case = sf_conform::Case::load(&sf_conform::cases_dir().join(format!("{name}.toml")))
+            .unwrap_or_else(|e| panic!("{e}"));
+        sf_conform::run(&case).unwrap_or_else(|d| panic!("{name}: {d}"))
+    };
+    let o = run("frog-run-w1-1");
+    assert_eq!((o.late, o.straddled.as_slice()), (2, &[559, 561][..]));
+    assert_eq!(run("title-rng").late, 0);
+}
+
 /// W1-1 with its items live, 700 frames: coins, the exit lock, the panel and score (T15), the
 /// picture as the beam drew it (T36). World 1's enemies are live too (T42): a pass across four
 /// frames ends at frame 321 on the wait's last check, the next waiting for the next frame (T101).
@@ -289,7 +304,7 @@ fn complete_w1_3() {
 /// at 24200 and fire taking the points. Four re-syncs, each after a lag: the panel at 8030 and
 /// 23129 (as W1-3's 5079), the play field buffer at 9003 (T121's class) and the hitboxes at 15914.
 /// Frame 5252's picture (the frog thrown by a pad) and 24201's (the exit fade's palette step) are
-/// left out in the case.
+/// within the faithful picture tolerance (T181).
 #[test]
 fn complete_w4_4() {
     completes("complete-w4-4", &[8030, 9003, 15914, 23129]);
@@ -309,6 +324,22 @@ fn complete_w1_1_to_exit_fade() {
     let d = sf_conform::run(&case).expect_err("the exit fade's palette step, frame-exact");
     assert_eq!(d.frame, 4475);
     assert!(d.first_var.is_none() && d.picture_diff.is_some(), "{d}");
+}
+
+/// W1-1 played from its start to its exit and through the tally (T106, T181): the 90 coins, the
+/// exit at 4473 after a late pass, fire taking the points; the exit fade's two frames a step off
+/// (4475, 4477) within the faithful picture tolerance. No re-sync.
+#[test]
+fn complete_w1_1() {
+    completes("complete-w1-1", &[]);
+}
+
+/// W4-1 played from its start to its exit and through the tally (T103, T181): the 41 coins the
+/// exit needs, the exit at 2145, fire taking the points; the exit fade's palette step a frame
+/// early at 2149 within the faithful picture tolerance. No re-sync.
+#[test]
+fn complete_w4_1() {
+    completes("complete-w4-1", &[]);
 }
 
 /// A map cell's marker in the engine's memory (`map_rows[1]` h1+$218e0, rows `$260` bytes).

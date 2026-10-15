@@ -1,0 +1,5 @@
+# Power-on with disk 3, fire while scene 1 plays: the intro skips to its end after scene 1, then
+# fire on the "insert disk 1" page, into the game to its title waiting (T48).
+sync = "power-on-disk3"
+script = "story-skip-play-fire"
+frames = 1850

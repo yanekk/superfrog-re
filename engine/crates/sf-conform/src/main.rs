@@ -160,17 +160,18 @@ fn run_cases(paths: &[PathBuf], mode: Mode, alone: bool) -> Result<bool, String>
     Ok(green)
 }
 
-/// The frames compared, the longest run the original ended mid-pass (the limited one) and the
-/// longest run left out for lag.
+/// The frames compared, the longest run the original ended mid-pass (the limited one), the
+/// longest run left out for lag, and the frames the original's pass was late (DESIGN §2.1).
 fn counts(o: &sf_conform::Outcome) -> String {
     let ((mf, mn), (sf, sn)) = (o.longest_mid_pass, o.longest_skip);
-    match sn {
+    let lag = match sn {
         0 => format!("{} compared, none left out for lag", o.compared),
         _ => format!(
             "{} compared, longest mid-pass run {mn} from frame {mf}, longest left out {sn} from frame {sf}",
             o.compared
         ),
-    }
+    };
+    format!("{lag}, the original late at {} frame(s)", o.late)
 }
 
 /// What a faithful run tolerated (DESIGN §2.1: never silent): the picture frames by kind, the

@@ -14,7 +14,7 @@ the account is the commit message. Whoever writes a cell also fixes the over-bud
 **Status:** about 100 tasks ✅; T18, T21 and Phase 3 open; amended to faithful.
 **Last updated:** 2026-10-15
 **Amended 2026-10-15 (owner):** faithful replaces frame-exact (DESIGN §2.1, PLAN.md amendment); T180–T183 added, 14 tasks dropped (PLAN.md).
-**Next `pir-work` will:** T184, T181 and T183's split (T190–T193), then T21; T126 and T132 finish against the faithful bar.
+**Next `pir-work` will:** T184, T185 and T183's split (T190–T193), then T21; T126 and T132 finish against the faithful bar.
 
 ## Tasks
 
@@ -70,7 +70,7 @@ done · ⛔ blocked, needs a human. A task dropped by a plan amendment leaves th
 | T44 | enemies-world-3 | T38; blocks T18 | ✅ | |
 | T46 | story-intro-scenes | T32; blocks T21 | ✅ | |
 | T47 | story-intro-handover | T46; blocks T21 | ✅ | |
-| T48 | story-intro-skips | T46, T47; blocks T21 | ⬜ | |
+| T48 | story-intro-skips | T46, T47; blocks T21 | ✅ | |
 | T70 | bonus-level | T15; blocks T21 | ✅ | |
 | T71 | slot-sync | T15 | ✅ | |
 | T72 | slot-screen | T71 | ✅ | |
@@ -150,10 +150,11 @@ done · ⛔ blocked, needs a human. A task dropped by a plan amendment leaves th
 | T167 | w2-3-completion | T122, T180, T182; blocks T21 | ⬜ | |
 | T168 | w2-4-completion | T122, T180, T182; blocks T21 | ⬜ | |
 | T180 | faithful-compare | T120; blocks T181, T182 and every open conformance task | ✅ | |
-| T181 | faithful-rebaseline | T180, T182; blocks T21 | ⬜ | |
+| T181 | faithful-rebaseline | T180, T182; blocks T21 | ✅ | |
 | T182 | plays-alone | T180; blocks T181, T183 and every completion task | ✅ | |
 | T183 | level-chain | T180, T182; blocks T21 | ✅ | Review: two defects fixed — top_loop's backward `bmi` overflowed in debug (alone.rs red), nine level-end tests still expected T21's stop (bonus end left silent, unported restored). Split docs completed. Probed alone/frog_cases/enemies_w5 in debug; blink-bit mutation caught. Split: T190 world change, T191 pause, T192 code, T193 e2e. |
 | T184 | alone-pass-drift | T182; blocks T21, T18, T115, T147, T148, T149, T150, T151, T154, T166, T167, T168 | ⬜ | |
+| T185 | w6-4-lag-frog-fall | T182; blocks T21 | ⬜ | |
 | T190 | chain-world-change | T183; blocks T21 | ⬜ | |
 | T191 | chain-pause | T183; blocks T21 | ⬜ | |
 | T192 | chain-level-code | T183, T190; blocks T21 | ⬜ | |
