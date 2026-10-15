@@ -18,6 +18,10 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-15 | 📌 | T125: W5-4 is closed off by switches: 98,37 opens 135,34; 132,9 opens 72,7; 57,20 opens 57,5. Faller 30 at 168/174,5 cannot spawn from the pocket below (scan row two above the camera); the watchers' room is reached round the east. |
+| 2026-10-15 | 🐞 | T125, open, no task: `enemies-w5-4` frame 1878 (on time, also with enemies frozen), the frog's sprites differ by the jump-through floor at 190,42, every variable equal: W5-1 595's class. Picture excluded. |
+| 2026-10-15 | 📌 | T125: `enemies-w5-4` meets every W5-4 type (its test asserts each init, the shot 85 included). |
+| 2026-10-15 | 📌 | T125 review, open: `enemies` freeze freezes no W5 enemy marker (all ported by T39), so "re-sync seen with enemies frozen" pins in W5 cases (W5-1 979, W5-3 1129, W5-4 414) check nothing; with `objects` frozen W5-4 has no lag at all. |
 | 2026-10-15 | 📌 | T127: `FrogSprites` (1340) is still charged whole before `place_frog_sprites`, whose two waits come late in each sprite's work; a split like `FrogAnim`/`FrogAnimTail` may be T128's W3-4 race. |
 | 2026-10-15 | 🔄 | Owner, T120 review: `all` red is accepted for T120 once each red case has an owner; added T169 power-on-cases-green (T160; blocks T21) and T170 game-over-timeup-copper (T34; blocks T21), the two red groups no task owned. |
 | 2026-10-15 | 🐞 | T120 review, open (T131): `complete-w4-2` now diverges first at 1657, picture rows 118–157 (351 pixels, $eee/$111), before the logged 2383; same with T120 reverted. |

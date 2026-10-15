@@ -235,3 +235,62 @@ fn enemies_w5_3() {
         ],
     );
 }
+
+/// W5-4 (T125) from its start: up, then east down the ice slope, past the 2/3 pacers (79/80,
+/// markers 2 and 3, spawned as the camera passes 17/28,19 and 64/81,36), to the switch at 98,37,
+/// which opens the gate at 135,34; round the east side and back west along the top into the
+/// watchers' room, where the template-30 fallers (marker 12) fall once in view and the one at
+/// 150,9 hurts the frog (frame 4747). One re-sync pinned: the play field buffer at 414 (T121's
+/// class; freezing enemies freezes nothing in W5, and with every object frozen there is no lag).
+/// On the way it meets every other W5-4 type too.
+#[test]
+fn enemies_w5_4() {
+    let seen = run("enemies-w5-4", &[414]);
+    assert!(
+        seen.frames.windows(2).any(|w| w[0].0 >= 200 && w[1].2 && !w[0].2),
+        "hurt by an enemy"
+    );
+    met_init(
+        &seen,
+        &[
+            (0x25146, "faller 30 (marker 12)"),
+            (0x26806, "pacer 79 (marker 3)"),
+            (0x26840, "pacer 80 (marker 2)"),
+            (0x24f06, "faller 28 (marker 10)"),
+            (0x2525e, "drip (marker 11)"),
+            (0x24eca, "scenery (marker 15)"),
+            (0x26aa6, "pacer 81 (marker 14)"),
+            (0x26ae0, "pacer 82 (marker 13)"),
+            (0x2708c, "crusher (marker 16)"),
+            (0x26154, "mace (marker 17)"),
+            (0x26242, "mace's chain"),
+            (0x25e2a, "dart 53 (marker 18)"),
+            (0x25e46, "dart 54 (marker 19)"),
+            (0x26b8e, "shooter 83 (marker 21)"),
+            (0x26bce, "shooter 84 (marker 20)"),
+            (0x26cfa, "shot 85"),
+            (0x2500e, "watcher (marker 22)"),
+            (0x2872e, "flow (marker 24)"),
+        ],
+    );
+    met(
+        &seen,
+        &[
+            (0x2515c, "faller 30 hanging"),
+            (0x251a8, "faller 30 shaking"),
+            (0x251d8, "faller 30 falling"),
+            (0x25248, "faller 30 down"),
+            (0x26874, "pacer (2/3)"),
+            (0x2502a, "watcher looking"),
+            (0x24f1c, "faller 28 hanging"),
+            (0x25274, "drip falling"),
+            (0x26b14, "pacer (13/14)"),
+            (0x270a8, "crusher waiting"),
+            (0x2619c, "mace"),
+            (0x25f42, "dart (flying)"),
+            (0x26cb6, "shooter firing"),
+            (0x26d14, "shot"),
+            (0x287a8, "flow"),
+        ],
+    );
+}
