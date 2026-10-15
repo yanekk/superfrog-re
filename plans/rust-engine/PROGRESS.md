@@ -14,7 +14,7 @@ the account is the commit message. Whoever writes a cell also fixes the over-bud
 **Status:** about 100 tasks ✅; T18, T21 and Phase 3 open; amended to faithful.
 **Last updated:** 2026-10-15
 **Amended 2026-10-15 (owner):** faithful replaces frame-exact (DESIGN §2.1, PLAN.md amendment); T180–T183 added, 14 tasks dropped (PLAN.md).
-**Next `pir-work` will:** T180 faithful-compare, then T182; T126 and T132 finish against the faithful bar.
+**Next `pir-work` will:** T182 plays-alone; T163 attract-demo-return (try its case before T33-wip.patch's 5121/5151 fixes).
 
 ## Tasks
 
@@ -142,7 +142,7 @@ done · ⛔ blocked, needs a human. A task dropped by a plan amendment leaves th
 | T150 | w6-4-completion | T104, T180, T182; blocks T21 | ⬜ | |
 | T151 | w6-4-alt-completion | T104, T150, T180, T182; blocks T21 | ⬜ | |
 | T160 | attract-demo-entry | T33, T180 | ✅ | |
-| T162 | attract-demo-level-start | T160, T180 | 🔍 | No code: `front-attract` raised to 5120 (before T163's title load), green faithful, no re-syncs, 3 picture frames tolerated. Deviation: the patch's rewindow, late-fade and retrigger fixes not applied, faithful checks need none; 4995 needs no exclusion (T127 in). |
+| T162 | attract-demo-level-start | T160, T180 | ✅ | Review clean, no fix commit. No code: `front-attract` raised to 5120, rerun green (no re-syncs, 3 picture frames tolerated); dropping demo left/right goes red at 3519. Probed to 5600, green. Patch fixes unneeded and 4995 unexcluded, both held by that run. Check 4 not run (T182 unbuilt). |
 | T163 | attract-demo-return | T162 | ⬜ | |
 | T164 | attract-demo-cycles | T163; blocks T21 | ⬜ | |
 | T154 | w1-4-completion | T106, T127, T180, T182; blocks T21 | ⬜ | |
