@@ -131,7 +131,7 @@ done · ⛔ blocked, needs a human.
 | T127 | restore-sprite-wait | T101; blocks T21 | ⬜ | |
 | T128 | w3-4-sprite-race | T127; blocks T113 | ⬜ | |
 | T130 | front-vbl-318 | T100; blocks T21 | ⬜ | |
-| T129 | slot-lamp-cut | T74; blocks T21 | ⬜ | |
+| T129 | slot-lamp-cut | T74; blocks T21 | 🔍 | Lamps after the picture run on `story::sim`'s bus with `AudioDma` slots; exact on 190 draws. Cases -40, -50 green, all slot cases green; 1 front test, 1 unit test. Deviation: conformance anchors front Paula writes (owner yes); LAMP_OFF/LAMP_BLANK removed; story op letters not reused (FINDINGS). |
 | T140 | story-setup-under-music | T56 | ⬜ | |
 | T141 | story-fade-colour-race | T56 | ⬜ | |
 | T142 | story-draw-end-order | T56 | ⬜ | |
@@ -163,7 +163,7 @@ done · ⛔ blocked, needs a human.
 A Notes cell holds what was built or what the review found, the test count, and one line per
 deviation from the task doc. A ✅ task's cell may be cut to one line once the next task has been reviewed.
 
-**Review queue:** *(empty)*
+**Review queue:** T129
 
 ## Blocked on the user
 
