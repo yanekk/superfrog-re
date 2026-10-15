@@ -325,8 +325,9 @@ impl Game {
 
     fn step_inner(&mut self, input: FrameInput, pacing: Pacing, draw: bool) -> FrameOut {
         let out = self.step_body(input, pacing, draw);
+        // Paused, the main loop is in neither its wait nor its pass (T191).
         self.passes_ended = self.pass_clock.frame(
-            self.scene.is_level(),
+            self.scene.is_level() && self.state.pause.is_none(),
             self.pending.is_some(),
             self.state.w(VBL_COUNT),
         );
@@ -336,6 +337,7 @@ impl Game {
 
     fn step_body(&mut self, input: FrameInput, pacing: Pacing, draw: bool) -> FrameOut {
         // A key going down or up this frame is the byte the keyboard sends (the last one wins).
+        let key_in = input.keys != self.keys;
         for code in input.keys.codes() {
             if !self.keys.contains(code) {
                 self.sdr = key_byte(code, false);
@@ -393,6 +395,8 @@ impl Game {
                 // `level_start` is over and `level_frame_loop` entered (T37): the level scene
                 // from the next frame, its poll reading the keyboard's register as it is.
                 self.sdr = front.keyboard_sdr();
+                self.state.kbd_flag = front.keyboard_new();
+                self.state.kbd_acked = false;
                 self.front = None;
                 self.scene = Scene::level(self.state.l(h0(0x40da)), self.state.l(h0(0x40de)));
                 self.pending = None;
@@ -408,6 +412,7 @@ impl Game {
         }
         let mut hw = Hw::of(input);
         hw.sdr = self.sdr;
+        hw.key_in = key_in;
         let mut ended: Option<(crate::front::Front, Vec<PaulaWrite>, Vec<Job>)> = None;
         let display = Arc::clone(&self.display);
         let frog_only = self.frog_only;

@@ -68,7 +68,16 @@ pub fn vbl(c: &mut LevelCtx) {
         c.bus.st.audio.stream_tick(c.sound, c.paula);
     }
     frog::anim::frog_exit_walk(c);
-    debug_assert_ne!(c.bus.w(LOGIC_RUNNING), 0, "only a level's vertical blank is ported");
+    if c.bus.w(LOGIC_RUNNING) == 0 {
+        // Paused (T191): h0+$11aa6, the mouse pointer and its sprite; the music; and h0+$12a14,
+        // a wait until eight lines on from the one it reads.
+        crate::front::vbl::pointer(c.bus.st);
+        let at = c.paula.len();
+        c.spend(Cost::Music);
+        c.bus.st.audio.music_tick(c.sound, c.paula);
+        c.audio_spent(at, Cost::AudioStop, Cost::AudioWrite);
+        c.wait_lines(8);
+    }
     let at = c.paula.len();
     c.bus.st.audio.music_dma_tick(c.sound, c.paula);
     c.bus.st.audio.sfx_tick(c.sound, c.paula);
@@ -164,7 +173,9 @@ pub fn main_program(c: &mut LevelCtx, pending: Option<beam::Pending>, pacing: cr
     // A pass has just returned in this step, with no vertical blank since.
     let mut ran = resume.is_some();
     while !c.frames.as_ref().is_some_and(|f| f.done) {
-        if pass_due(c) && !(ran && waits_out(c, pacing)) {
+        if c.bus.st.pause.is_some() && unpause(c) {
+            ran = true;
+        } else if pass_due(c) && !(ran && waits_out(c, pacing)) {
             run_pass(c, false);
             after_pass(c);
             ran = true;
@@ -197,7 +208,7 @@ fn waits_out(c: &LevelCtx, pacing: crate::Pacing) -> bool {
 /// After a pass: when `level_frame_loop` has returned, the rest of the frame is `top_loop`'s
 /// (T37); in the bonus level after a death, the frog back on the screen and the loop again (T79).
 fn after_pass(c: &mut LevelCtx) {
-    if c.bus.w(LOGIC_RUNNING) != 0 {
+    if c.bus.w(LOGIC_RUNNING) != 0 || c.bus.st.pause.is_some() {
         return;
     }
     if crate::bonus::frame::goes_on(&c.bus) {
@@ -205,6 +216,20 @@ fn after_pass(c: &mut LevelCtx) {
     } else {
         c.loop_over();
     }
+}
+
+/// A paused pass (`pause`, h0+$7442): on to the pause's end, then the rest of the pass
+/// (T191). False while the pause goes on to the frame's end.
+fn unpause(c: &mut LevelCtx) -> bool {
+    if !pass::pause_run(c) {
+        return false;
+    }
+    let f = c.frames.as_mut().expect("frames");
+    f.in_pass = true;
+    pass_tail(c);
+    c.frames.as_mut().expect("frames").in_pass = false;
+    after_pass(c);
+    true
 }
 
 /// One pass of the main loop, interruptible at its frame's end ([`LevelCtx::frame_end`]).
@@ -266,7 +291,16 @@ pub fn pass(c: &mut LevelCtx) {
     crate::level::panel::panel_update(c);
     c.enter_phase(9);
     c.spend(Cost::PassTail);
-    pass::pause_check(c);
+    if pass::pause_check(c) {
+        // Paused: the rest of the pass waits for its end ([`unpause`]).
+        return;
+    }
+    pass_tail(c);
+}
+
+/// The pass after the pause check (`level_frame_loop`'s calls from h0+$af6): the secret passage,
+/// the extra life, the time, then whether the loop is over.
+fn pass_tail(c: &mut LevelCtx) {
     c.enter_phase(10);
     pass::passage_step(c);
     c.enter_phase(11);

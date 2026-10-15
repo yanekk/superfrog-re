@@ -31,7 +31,7 @@ pub mod password;
 pub mod sprite;
 pub mod story;
 pub(crate) mod title;
-mod vbl;
+pub(crate) mod vbl;
 
 pub use data::FrontData;
 pub(crate) use gameover::{GameOverCheck, GameOverSeq};
@@ -923,6 +923,11 @@ impl Front {
     /// once the level scene takes over (T33: the power-on byte, never acknowledged, in the demo).
     pub(crate) fn keyboard_sdr(&self) -> u8 {
         self.keyboard.sdr
+    }
+
+    /// Whether that byte is one the front end's poll has not handled yet (the serial-port flag).
+    pub(crate) fn keyboard_new(&self) -> bool {
+        self.keyboard.new
     }
 
     /// The level's loop has been entered again (a restart, T37): the level scene goes on.
