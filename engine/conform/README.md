@@ -28,6 +28,12 @@ variable and each `--watch` address (`h0+<hex>` is the game's hunk 0, `0x<hex>` 
 width `B`, `W` or `L`; `--every` prints every frame). It is how a script is steered: watch the
 variables the routine you are porting uses, and find the frames where they do what you need.
 
+`record` leaves out `LAYOUT` entries over 1 KB (the playfield buffers, the bob sheet, the level
+map, the object slots: its header line names them); `--all-vars` puts them back, `--watch` reads
+one word of them. It stops with an error once it has written 200 MB of lines and PNGs; `--max-mb N`
+moves the cap. Both exist because a whole-memory recording of a long case reached 38 GB, filled the
+disk and crashed the parallel run (2026-10-15). Prefer `--only` with `--watch` and a short case.
+
 Needs what the oracle needs: `tools/setup/oracle.sh` run, the four disks and Kickstart 1.3
 (DESIGN §5). The first run to a sync point takes ~10 s per 4 000 frames; later runs restore the
 cached snapshot.

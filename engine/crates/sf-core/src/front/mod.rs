@@ -122,6 +122,8 @@ pub(crate) enum Routine {
     AwardPages(attract::AwardPages),
     HiscoreCredits(attract::HiscoreCredits),
     HallOfTalent(attract::HallOfTalent),
+    /// The attract demo's load and set-up (T33).
+    Demo(attract::Demo),
     EndSeqLoad(ending::EndSeqLoad),
     EndSequence(ending::EndSequence),
     CpuWork(ending::CpuWork),
@@ -181,6 +183,7 @@ impl Routine {
             Routine::AwardPages(r) => r.run(cx),
             Routine::HiscoreCredits(r) => r.run(cx),
             Routine::HallOfTalent(r) => r.run(cx),
+            Routine::Demo(r) => r.run(cx),
             Routine::EndSeqLoad(r) => r.run(cx),
             Routine::EndSequence(r) => r.run(cx),
             Routine::CpuWork(r) => r.run(cx),
@@ -853,6 +856,12 @@ impl Front {
     /// What the slot machine gave, once it has returned (T73).
     pub(crate) fn slot_outcome(&self) -> Option<crate::slot::SlotOutcome> {
         self.slot_outcome
+    }
+
+    /// CIA-A's serial register as the front end's keyboard has it: what the level's own poll reads
+    /// once the level scene takes over (T33: the power-on byte, never acknowledged, in the demo).
+    pub(crate) fn keyboard_sdr(&self) -> u8 {
+        self.keyboard.sdr
     }
 
     /// The level's loop has been entered again (a restart, T37): the level scene goes on.

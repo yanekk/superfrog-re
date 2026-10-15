@@ -73,11 +73,12 @@ impl TopLoop {
                     cx.s.set_w(LEVEL_STARTED, 0);
                     if cx.s.l(ATTRACT_MODE) == 0 {
                         cx.unported("a game's start (T21)");
-                    } else {
-                        cx.unported("the attract demo (T33)");
+                        return Yield::Raster;
                     }
-                    return Yield::Raster;
+                    self.pc = 4;
+                    return call(Routine::Demo(Demo::default()));
                 }
+                4 => unreachable!("the attract demo's level loop hands over to the level scene"),
                 // h0+$7b6: the end sequence, then `game_full_mode` decides: the title again, or
                 // the game's end ($7c6: back to the system).
                 21 => {
@@ -96,6 +97,55 @@ impl TopLoop {
         }
     }
 }
+
+/// `top_loop` at h0+$a8 in attract mode: the Accessing-disk overlay, `demo_world_load` and
+/// `demo_level_load` (W1-1's files and map), `overlays_end`, `demo_init` (`level_init_w1`'s work,
+/// the recording at h0+$3ad8c), `level_start`, then `level_frame_loop` with the recorded joystick
+/// (`demo_play`). The loop's end goes through `level_exit_fade` back to the title
+/// ([`crate::level::exit::LevelOver`]). Every `demo_index` plays the same W1-1 recording: the title
+/// gives each the start W1-1 (h0+$1218).
+#[derive(Debug, Clone, Default, PartialEq, Eq, Hash)]
+pub(crate) struct Demo {
+    pc: u8,
+}
+
+impl Demo {
+    pub(super) fn run(&mut self, cx: &mut Cx) -> Yield {
+        self.pc += 1;
+        match self.pc {
+            1 => {
+                if cx.s.l(at(0x445a)) == 0
+                    && cx.s.l(super::title::OVERLAY_PALETTE) == 0
+                    && cx.s.w(LOADER_MODE) != 0
+                {
+                    super::title::overlay_show(cx);
+                }
+                let display = cx.display;
+                crate::level::exit::with_level(cx, false, |c| {
+                    crate::level::load::demo_load(c, display)
+                });
+                // Over once the original waits on the overlay's fade-out (`overlays_end`).
+                cx.loaded(LoadEnd::Reached(at(0xb7e2)));
+                call(Routine::Overlay(super::title::OverlayEnd::default()))
+            }
+            2 => crate::level::exit::init_on_beam(
+                cx,
+                false,
+                sf_assets::LevelId {
+                    world: sf_assets::World::W1,
+                    level: 1,
+                    alt: false,
+                },
+                crate::level::exit::demo_init_inside(),
+            ),
+            3 => call(Routine::LevelStart(Default::default())),
+            _ => unreachable!("the attract demo's level loop hands over to the level scene"),
+        }
+    }
+}
+
+/// `loader_mode` (h0+$8): 0 with no trackloader, when no overlay is shown.
+const LOADER_MODE: u32 = at(0x8);
 
 /// Whether the last game's score is in the high-score table (`hiscore_table` h0+$2f90).
 pub(super) fn new_hiscore(cx: &Cx) -> bool {
@@ -468,6 +518,7 @@ fn scroll(cx: &mut Cx, bytes: u32, inside: u32) {
         }
         cx.reveal = Some(super::FRAME_LINES);
         cx.reveal_state = Some(shown);
+        cx.races.extend(scroll_races(&times));
     }
     let end = times.last().map_or(start, |t| t.0 + 1);
     cx.line = cx.line.max(end);
@@ -477,6 +528,25 @@ fn scroll(cx: &mut Cx, bytes: u32, inside: u32) {
 
 /// The DMA cycle of its line the scroll's blit starts on (after the CPU's wait and set-up).
 const SCROLL_START_H: u16 = 0x80;
+
+/// The rows the scroll's blit wrote with the beam within [`crate::game::RACE_LINES`] of them
+/// (raster lines, merged): where the blitter catches the beam, about row 229. Which words of that
+/// row show new turns on a few DMA cycles the engine does not model (the audio channels' slots
+/// move the original's blit end by up to 70 cycles from frame to frame, measured at its frames
+/// 6412–6418), so they are beam races (owner, 2026-10-13).
+fn scroll_races(times: &[(u16, u16)]) -> Vec<(u16, u16)> {
+    let mut out: Vec<(u16, u16)> = Vec::new();
+    for (y, row) in times.chunks(20).enumerate() {
+        let line = 0x2c + y as u16;
+        if let Some(r) = crate::game::beam_race((line, line + 1), row[0].0) {
+            match out.last_mut() {
+                Some(last) if last.1 == r.0 => last.1 = r.1,
+                _ => out.push(r),
+            }
+        }
+    }
+    out
+}
 
 /// `$3190`: the next line of text (from `h0+$3258`, a zero byte ends it) written into the text
 /// plane's bottom (`+$dc50`) in the twelve-line font (h0+$376ea). False when the text ends (a

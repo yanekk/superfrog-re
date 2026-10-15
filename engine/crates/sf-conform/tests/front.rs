@@ -131,6 +131,18 @@ fn fire_skipping_the_title_intro_matches_the_original() {
     }
 }
 
+/// Attract mode, frame for frame from power-on (the case `front-attract`, T20, T160–T163): the
+/// title, the award pages, the hall of talent, the credits, the demo's play to its exit fade, and
+/// the title's load after it, so the cycle repeats.
+#[test]
+fn the_attract_cycle_matches_the_original() {
+    let case = sf_conform::Case::load(&sf_conform::cases_dir().join("front-attract.toml"))
+        .unwrap_or_else(|e| panic!("{e}"));
+    if let Err(d) = sf_conform::run(&case) {
+        panic!("{d}");
+    }
+}
+
 /// The end sequence, frame for frame from `end_seq_load` back to the title (the case `ending`, T35).
 #[test]
 fn the_end_sequence_matches_the_original() {

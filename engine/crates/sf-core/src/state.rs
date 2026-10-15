@@ -61,6 +61,8 @@ fn audio_var(id: VarId) -> Option<usize> {
 
 /// `ExecBase` (address 4) as Kickstart 1.3 leaves it with slow RAM, the oracle's machine.
 pub const EXEC_BASE: u32 = 0x00c0_0276;
+/// The level 1 interrupt's autovector (address `$64`) as Kickstart 1.3 leaves it (the oracle's).
+pub const KICKSTART_LEVEL1: u32 = 0x00fc_0c8e;
 
 impl Default for State {
     fn default() -> State {
@@ -76,6 +78,7 @@ impl Default for State {
             scratch: BTreeMap::new(),
         };
         s.set_l(4, EXEC_BASE);
+        s.set_l(0x64, KICKSTART_LEVEL1);
         s
     }
 }
