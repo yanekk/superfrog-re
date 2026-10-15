@@ -27,6 +27,10 @@ pub(super) const SOUND_KEPT: u32 = h3(0x64c70);
 pub(super) const SOUND_KEPT_AT: u32 = h1(0x20d00);
 pub(super) const SOUND_KEPT_LEN: u32 = 0xfa00;
 
+/// The slot machine's frames are short, 312 lines (the oracle's, T129): its lamps' timing on the
+/// bus and its audio DMA count them so.
+pub(crate) const FRAME_LINES: u16 = 312;
+
 /// `slot_state` (h0+$49c6): the coins put in, the three reels' positions, the hi-lo count, ...
 pub(crate) const COINS: u32 = at(0x49c6);
 pub(super) const REELS: u32 = at(0x49c8);
