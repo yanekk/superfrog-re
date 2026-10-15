@@ -14,7 +14,7 @@ the account is the commit message. Whoever writes a cell also fixes the over-bud
 **Status:** about 100 tasks ✅; T18, T21 and Phase 3 open; amended to faithful.
 **Last updated:** 2026-10-15
 **Amended 2026-10-15 (owner):** faithful replaces frame-exact (DESIGN §2.1, PLAN.md amendment); T180–T183 added, 14 tasks dropped (PLAN.md).
-**Next `pir-work` will:** T180 faithful-compare, then T182; T126 and T132 finish against the faithful bar.
+**Next `pir-work` will:** T180 faithful-compare, then T182; review T132.
 
 ## Tasks
 
@@ -134,7 +134,7 @@ done · ⛔ blocked, needs a human. A task dropped by a plan amendment leaves th
 | T129 | slot-lamp-cut | T74; blocks T21 | ✅ | |
 | T144 | story-intro-full-green | T56, T180; blocks T21, T47, T48 | ⬜ | |
 | T133 | w2-1-fruit-room | T105, T180; blocks T21 | ⬜ | |
-| T132 | w4-4-completion | T103; blocks T21 | ⬜ | |
+| T132 | w4-4-completion | T103; blocks T21 | 🔍 | `complete-w4-4` to exit 23910 and tally, green in the test block: pacer hurt 2515, dart-20 4717. Deviations: resync on, four lag re-syncs pinned (8030, 9003, 15914, 23129), picture 5252 excluded for T181 (T131 dropped); `plan_exit` early-exit fix (level_state −1 at start). |
 | T145 | w4-4-dart-21 | T132; blocks T21 | ⬜ | |
 | T147 | w6-2-completion | T104, T180, T182; blocks T21 | ⬜ | |
 | T148 | w6-2-alt-completion | T104, T147, T180, T182; blocks T21 | ⬜ | |
