@@ -110,18 +110,21 @@ Timing the engine keeps (oracle, frames 0–539):
   changes. A fade's set-up runs with interrupts off: in 5 + 37/32 lines a colour, out 5 + 3/2.
   It can run across a frame's end (scene 1's out, frame 1242), so it is a job: record 0 and the
   copper lists are compared once the original has left the routine (T49).
-- **Blits** on vAmiga's slow-blitter cycle counts (ABCD 4n+1, AD 2n+2, ABD 3n+2) on the bus left
-  by refresh, audio (with music) and bitplane fetch (`story::clock`); 40 DMA cycles of CPU set-up
-  per blit, 300 per object. The handler waits for the blit in progress.
-- **`objects_init`'s CPU**: 36 274 DMA cycles plus 206 per animation frame it prepares
-  (h0+$8724), then the masks' clearing (h0+$8408, 40 960 turns of `rpw pnn npp`) timed on the
-  bus: 15.13 cycles a turn on refresh's bus (scenes 1–3, black list), about 18 under scene 4's
-  five planes, which it runs under (no black list after `scene_out`, T50).
+- **A scene's set-up** (T56): `buffers_clear` from its first blit (h0+$834c) to the scene's call
+  of `objects_init`, then `objects_init` with its masks' clearing (h0+$8408, 40 960 turns) and
+  mask blits (h0+$8782), are CPU programs instruction by instruction (`bobs::clear_buffers`,
+  `bobs::init`) run on `story::sim` with the blitter, the copper, the fetch and the audio DMA. The
+  job's first frame runs under the list that frame shows (a COP1LC written in it is the copper's
+  from the next: scene 1's first clear runs under the text page's three planes, 54 lines longer
+  than under black). Each blank's handler takes the CPU at the first instruction end that sees its
+  request and holds it to its acknowledge; the job is timed again after every frame's handler,
+  with the handlers seen so far. Its writes are ordered beside the handler's by line and cycle.
 - **Held blanks merge**: a blit that holds the CPU through a whole frame (scene 4's second mask
   blit, ~400 lines under the display) leaves that frame's blank request set, and the next blank's
   handler serves both. The oracle's step then runs two video frames (`Amiga::frames_run`), and
-  conformance steps the engine twice for it (owner, T50). When the last mask blit started on a
-  fetched line, DMACON = $400 comes before the handler it held (frames 3191, 3760, 4238).
+  conformance steps the engine twice for it (owner, T50). Whether the last mask blit's DMACON =
+  $400 comes before the handler it held (frames 3191, 3760, 4238) or after (3438) falls out of the
+  bus.
 - **A draw's start** (T54): a draw the handler lets go of (`draw_frames`' `vbl_flag` wait,
   `draw_next`'s `vbl_count` wait) starts from the handler's acknowledge (`INTREQ = $20`): its
   tail, the wait's last turn (a branch the interrupt came in before is taken), the calls and
@@ -130,10 +133,18 @@ Timing the engine keeps (oracle, frames 0–539):
   tell `tst.w` from `beq.b`); normal play takes the acknowledge at the start of its line. A
   handler a draw holds off is taken at the first instruction end whose last access asked for the
   bus from line 0, cycle 10 on: one held off the bus by a blit across it ends without it.
-- **Unpacks** (`cf5c`): measured frames per call (`UNPACK_FRAMES`), ending on line 160.
+- **Unpacks** (`cf5c`): measured frames per call and the line each ends on (`UNPACK_FRAMES`,
+  `unpack_probe` re-measures them), lines 17 to 310.
 - **Copper and Paula**: the copper's Paula writes before the CPU takes the interrupt (line 0,
   clock $14) belong to the frame before. Copper colour words a fade rewrites are read as the beam
   found them, component by component (`vbl::fade_write_times`; not yet exact, T46).
+- **Fed values** (conformance only; play uses the engine's own): the handler's entry (line, DMA
+  cycle: `Amiga::irqs`, the level-3 interrupt of the step, or one past the last step's end); its
+  end, the step's first `INTREQ = $20` write, with the PC it returned to when the step began at its
+  entry (`sync::handler_end`, `HandlerEnd`); whether a blank had no handler (a step of two video
+  frames with one). A handler a blit held past the original's step (which ends at the first
+  instruction end past the frame's end) acknowledges in the next step: a set-up's job takes the
+  first acknowledge within 60 lines of where its handler starts, this step's or the next's (T56).
 - **Schedule feeding** (owner, 2026-10-12): whether the original is still in a long job (a draw,
   a set-up) at each vertical blank is fed by conformance (`Pacing::Late`/`OnTime` from the
   original's call chain, as level lag is); play uses the engine's own timing (`Pacing::Unpaced`).
@@ -215,6 +226,59 @@ then the exit fade; game_over_check $749c (ESC or lives < 0): music_fade_wait, j
 - **Cases** (`engine/conform/cases/game-over-*`): the last life lost in W1-1 (sync point
   `game-over`: lives set to 0, the frog into the first pit; the case starts on the frame
   `game_over_seq` begins), untouched and with fire, ESC, and the time up, each to the title's idle.
+
+## The slot machine (T71–T74; code, oracle)
+
+After a level the tally offers the slot machine (up, then fire) for the coins the level's clock
+left; `slot_machine` (h0+$49e2) is the whole of it and returns to the tally. The engine enters it
+with `Game::enter_slot(coins)` and reports what it gave with `Game::slot_outcome`
+(`SlotOutcome { award: Award { points, lives } }`).
+
+```
+slot_machine $49e2: Accessing-disk overlay, FRUT/FRUC/FRUM into the display buffers, the level's
+  sound kept over its map, the slot's effects and music; the score shown; slot_init, digits,
+  pointer; fade in; attract loop $4d24 (reels 0 9 $18, the lamps' pattern) until fire or mouse
+  rounds $4d4a, while coins are left:
+    unless a free spin: hold menu $5de2 (holds allowed when nothing was won or paid last round
+      and rng(8) = 6), spin $5a06 (a coin; $18 $18 $18 spun on unless a reel is held or
+      rng(100) < 10)
+    payout $4eae: the line scored, its lamp flashed 10 times (4 frames off, 4 on)
+    award $51c4 (below), the win counted into the score (1 000 a frame, at once from 160 000)
+    free spin $4e28: after a win with coins left, rng(100) < 6 pays the same line again
+  then 100 frames or fire, fade out, the score taken, the music faded, the level's sound back
+```
+
+- **Lines** (reels' positions, `slot_payout`; the last match wins): 8 $18 0 the hi-lo game,
+  $18 $18 $18 the jackpot (rung 0), 8 8 8 rung 4, 0 0 0 rung 5, 8 8 $18 rung 7, 0 0 $18 rung 8.
+- **The ladder** (`slot_ladder` h0+$57b6, best first): 0 the jackpot, 1 the score shown doubled
+  (the win is the score shown), 2 a life, 3–8 75 000, 50 000, 40 000, 30 000, 20 000, 10 000, 9
+  the bust. The award lights the rung (its lamp record's `+6`), then scans the ladder for it: the
+  bust's goes to the bust (`$5712`: 20 flashes of its lamp, nothing won), the jackpot's to every
+  lamp flashed 20 times and the jackpot; any other flashes the rung above and the one three below
+  with the buttons, and the menu offers the gamble (the rightmost stop).
+- **The gamble**: not taken (the spin button), the rung is collected (`slot_collect` $5528, effect
+  $b). Taken, `rng(100) < 50` awards the rung above again; else the rung three below: the bust if
+  the flashing list (ten records, read past its -1) holds the bust lamp, else 10 flashes of that
+  rung and it is collected.
+- **The hi-lo game** ($57e2) starts at rung 8: each turn flashes take (spin), higher, lower and
+  the rung; higher or lower turns the number (1–10) `rng(50)+50` frames, never stopping where it
+  began; right climbs a rung (rung 0 is the jackpot), wrong flashes the bust lamp 20 times and wins
+  nothing. Take (the spin button, which also costs a coin if one is left) collects the rung.
+- **The jackpot** ($5628): each coin left is won as 5 000 and counted, then 150 000; the next
+  level's code (`password_for_level` $2464: `password_table`'s next entry) is printed under the
+  machine and its lamp flashes until fire.
+- **Drawing on the beam** (oracle): the lamps and reels are blitted from the raster wait on line
+  299 into the next frame (`slot::draw`). A lamp drawn there before the frame's interrupt starts
+  later when it is off (a second `move.w`); whether the sixth lamp starts before the interrupt
+  turns on a few colour clocks, and the engine's cycle model does not always land on the original's
+  side of it (T74, FINDINGS). A paying line's two `sfx_play`s run from line 299 past the frame's
+  end, so its flash starts in the next frame.
+- **Cases** (`engine/conform/cases/slot-*`, reached by forcing W1-1's exit; `start-w1-1-late` and
+  `-blink1` move the RNG, which W1-1 never moves): `slot-attract`, `slot-fire` (rounds paying
+  nothing), `slot-hilo-0`..`8` (taken at each rung, 0 the jackpot), `slot-hilo-wrong`,
+  `slot-hold-20000`, `slot-hold-jackpot`, `slot-gamble` (won, then lost to the bust). Their scripts
+  are planned on the engine by `examples/slot_plan.rs`. Not reached at these seeds: the free spin
+  and a gamble lost above the bust.
 
 ## The keyboard (oracle)
 

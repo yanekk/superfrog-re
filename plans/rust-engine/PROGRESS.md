@@ -74,7 +74,7 @@ done · ⛔ blocked, needs a human.
 | T71 | slot-sync | T15 | ✅ | |
 | T72 | slot-screen | T71 | ✅ | |
 | T73 | slot-rounds | T72 | ✅ | |
-| T74 | slot-prizes | T73; blocks T21 | ⬜ | |
+| T74 | slot-prizes | T73; blocks T21 | ✅ | |
 | T75 | bonus-shots | T70; blocks T21 | ✅ | |
 | T76 | bonus-enemies-a | T70; blocks T21 | ✅ | |
 | T77 | bonus-enemies-b | T70, T76; blocks T21 | ✅ | |
@@ -87,7 +87,7 @@ done · ⛔ blocked, needs a human.
 | T53 | story-draw-cpu-program | T52; blocks T54 | ✅ | |
 | T54 | story-handler-end-feed | T53; blocks T56 | ✅ | |
 | T55 | story-intro-sound-timing | T50; blocks T56 | ✅ | |
-| T56 | story-intro-to-insert-disk | T49, T50, T54, T55; blocks T21, T47, T48 | ⬜ | |
+| T56 | story-intro-to-insert-disk | T49, T50, T54, T55; blocks T21, T47, T48 | ✅ | |
 | T81 | beam-cleanup | T36; blocks T37 | ✅ | |
 | T82 | beam-tests | T81 | ✅ | |
 | T83 | items-w1 | T81 | ✅ | |
@@ -108,17 +108,17 @@ done · ⛔ blocked, needs a human.
 | T97 | story-split-handler | T54; blocks T56 | ✅ | |
 | T101 | lag-long-pass | T81, T82; blocks T21 | ✅ | |
 | T102 | items-w3-faults | T101; blocks T21 | ✅ | |
-| T105 | w2-1-hang-fruit-life | T85; blocks T21 | ⬜ | |
+| T105 | w2-1-hang-fruit-life | T85; blocks T21 | ✅ | |
 | T106 | w1-completions | T42, T86, T101; blocks T18 | ⬜ | |
-| T107 | enemies-w1-2-case | T42; blocks T18, T33, T106 | ⬜ | |
-| T108 | enemies-w1-3-case | T42; blocks T18, T33, T106 | ⬜ | |
-| T109 | enemies-w1-4-case | T42; blocks T18, T33, T106 | ⬜ | |
-| T110 | enemies-w1-activation | T42; blocks T18, T33, T106 | ⬜ | |
-| T103 | w4-completions | T41, T101, T102; blocks T18 | ⬜ | |
-| T111 | enemies-w3-2-case | T44; blocks T18 | ⬜ | |
-| T112 | enemies-w3-3-case | T44; blocks T18 | ⬜ | |
+| T107 | enemies-w1-2-case | T42; blocks T18, T33, T106 | ✅ | |
+| T108 | enemies-w1-3-case | T42; blocks T18, T33, T106 | ✅ | |
+| T109 | enemies-w1-4-case | T42; blocks T18, T33, T106 | ✅ | |
+| T110 | enemies-w1-activation | T42; blocks T18, T33, T106 | ✅ | |
+| T103 | w4-completions | T41, T101, T102; blocks T18 | ✅ | |
+| T111 | enemies-w3-2-case | T44; blocks T18 | ✅ | |
+| T112 | enemies-w3-3-case | T44; blocks T18 | ✅ | |
 | T113 | enemies-w3-4-case | T44, T102; blocks T18 | ⬜ | |
-| T114 | enemies-w3-activation | T44; blocks T18 | ⬜ | |
+| T114 | enemies-w3-activation | T44; blocks T18 | ✅ | |
 | T115 | w3-completions | T44, T101, T102, T111, T112, T113; blocks T18 | ⬜ | |
 | T121 | bob-draw-cut | T101; blocks T21 | ⬜ | |
 | T122 | w2-completions | T43, T101, T121; blocks T18 | ⬜ | |
@@ -131,6 +131,16 @@ done · ⛔ blocked, needs a human.
 | T127 | restore-sprite-wait | T101; blocks T21 | ⬜ | |
 | T128 | w3-4-sprite-race | T127; blocks T113 | ⬜ | |
 | T130 | front-vbl-318 | T100; blocks T21 | ⬜ | |
+| T129 | slot-lamp-cut | T74; blocks T21 | ⬜ | |
+| T140 | story-setup-under-music | T56 | ⬜ | |
+| T141 | story-fade-colour-race | T56 | ⬜ | |
+| T142 | story-draw-end-order | T56 | ⬜ | |
+| T143 | story-last-fade-out | T56 | ⬜ | |
+| T144 | story-intro-full-green | T56, T140, T141, T142, T143; blocks T21, T47, T48 | ⬜ | |
+| T133 | w2-1-fruit-room | T105; blocks T21 | ⬜ | |
+| T131 | w4-completion-faults | T103, T121, T127; blocks T18, T21 | ⬜ | |
+| T132 | w4-4-completion | T103; blocks T18, T131 | ⬜ | |
+| T145 | w4-4-dart-21 | T132; blocks T18, T131 | ⬜ | |
 | T146 | w6-completion-faults | T104; blocks T18, T21 | ⬜ | |
 | T147 | w6-2-completion | T104; blocks T18, T146 | ⬜ | |
 | T148 | w6-2-alt-completion | T104, T147; blocks T18, T146 | ⬜ | |

@@ -13,7 +13,6 @@
 //! there from the clean background, then steps each object's animation and draws it with a
 //! cookie-cut blit, last object first; the buffer is shown from the next vertical blank.
 
-use super::clock::BlitClock;
 use super::cpu::op;
 use super::mem::StoryMem;
 use super::sim::Prog;
@@ -72,45 +71,173 @@ pub fn set_planes(m: &mut StoryMem, moves: u32, at: u32, row_bytes: u32, count: 
     }
 }
 
-/// `frame_prepare` (h0+$8724): a frame descriptor's blit, for buffers of `row_bytes` a row.
-fn frame_prepare(m: &mut StoryMem, d: u32, row_bytes: u32) {
+/// `frame_prepare` (h0+$8724): a frame descriptor's blit, for buffers of `row_bytes` a row; its
+/// instructions from its `bsr` on are `p`'s.
+fn frame_prepare(m: &mut StoryMem, p: &mut Prog, d: u32, row_bytes: u32) {
     let bytes = (m.w(d + 4) >> 3) as u32;
     m.set_w(d + 0x22, (row_bytes.wrapping_sub(bytes)) as u16);
     m.set_w(d + 0x20, m.w(d + 0x14).wrapping_sub(bytes as u16));
-    m.set_w(d + 0x1a, m.w(d + 6) << 6 | (bytes >> 1) as u16);
+    // `lsl.w #6, d5; add.w d6, d5`: an add, which a descriptor filled from past the scene's table
+    // (code) carries into the height (oracle frame 11 295, T56).
+    m.set_w(d + 0x1a, (m.w(d + 6) << 6).wrapping_add((bytes >> 1) as u16));
     let at = (m.w(d + 2) as u32) * (m.w(d + 0x14) as u32) + (m.w(d) >> 3) as u32;
     m.set_l(d + 0x24, m.l(d + 0xc).wrapping_add(at));
     m.set_l(d + 0x1c, m.l(d + 0x10).wrapping_add(at));
+    p.ins(op::BSR);
+    p.ins("rrp"); // movea.l (a2), a3
+    p.ins(op::REG); // move.l d0, d2
+    p.ins(op::LEA_ABS_L);
+    p.ins(op::CLR_L_DN); // clr.l d7
+    p.ins(op::MOVE_W_DI_DN);
+    p.ins(SHIFT_3); // lsr.w #3, d7
+    p.ins(op::REG);
+    p.ins(op::REG); // sub.w d7, d2
+    p.ins(MOVE_W_DN_DI);
+    p.ins(op::MOVE_W_DI_DN);
+    p.ins(op::REG);
+    p.ins(MOVE_W_DN_DI);
+    p.ins(op::REG);
+    p.ins(SHIFT_1); // lsr.w #1, d6
+    p.ins(op::MOVE_W_DI_DN);
+    p.ins(SHIFT_6); // lsl.w #6, d5
+    p.ins(op::REG);
+    p.ins(MOVE_W_DN_DI);
+    p.ins(op::MOVE_W_DI_DN);
+    p.ins(op::MOVE_W_DI_DN);
+    p.ins(op::REG); // ext.l d7
+    // `mulu.w d6, d7`: d6 is `$28` (two bits set), 42 clocks.
+    p.ins("pnnnnnnnnnnnnnnnnnnn");
+    p.ins(op::MOVE_W_DI_DN);
+    p.ins(SHIFT_3);
+    p.ins(op::REG);
+    p.ins(op::ADDQ_L_AN); // add.l d6, d7
+    p.ins(op::REG);
+    p.ins(ADD_L_DI_DN); // add.l $c(a3), d6
+    p.ins(MOVE_L_DN_DI);
+    p.ins(ADD_L_DI_DN);
+    p.ins(MOVE_L_DN_DI);
+    p.ins(op::RTS);
 }
 
+/// `lsr`/`lsl` by 1, 3 and 6 ([`op::shift`]).
+const SHIFT_1: &str = "pnn";
+const SHIFT_3: &str = "pnnnn";
+const SHIFT_6: &str = "pnnnnnnn";
+/// `move.w Dn, d(An)`; `move.l Dn, d(An)`; `add.l d(An), Dn`; `move.w (An)+, d(An)`.
+const MOVE_W_DN_DI: &str = "pwp";
+const MOVE_L_DN_DI: &str = "pw^wp";
+const ADD_L_DI_DN: &str = "prrpn";
+const MOVE_W_PI_DI: &str = "rpwp";
+
 /// `anim_prepare` (h0+$8718): every frame of the animation at `list` (entries of a frame pointer
-/// and a duration, up to a negative long).
-fn anim_prepare(m: &mut StoryMem, mut list: u32, row_bytes: u32) -> u32 {
+/// and a duration, up to a negative long), from its call (`p`'s, a `bsr` or a `jsr`) on.
+fn anim_prepare(m: &mut StoryMem, p: &mut Prog, mut list: u32, row_bytes: u32) -> u32 {
     let mut n = 0;
     loop {
         let d = m.l(list);
-        frame_prepare(m, d, row_bytes);
+        frame_prepare(m, p, d, row_bytes);
         n += 1;
         list += 8;
-        if (m.l(list) as i32) < 0 {
+        p.ins(op::ADDQ_L_AN);
+        p.ins("rrp"); // tst.l (a2)
+        let more = (m.l(list) as i32) >= 0;
+        p.branch(more, false);
+        if !more {
+            p.ins(op::RTS);
             return n;
         }
     }
 }
 
-/// `objects_init` (h0+$96d4) up to its two draws: every object back to its start, the scene's
-/// frames from its table, the masks built from the bank, both buffers' pointers. The two draws
-/// that end it are the caller's. This is its CPU part, up to and with the masks' clearing: the
-/// frames it prepared, which its time goes by.
-pub fn init(m: &mut StoryMem) -> u32 {
+/// The scene's set-up from `buffers_clear`'s first blit (h0+$834c, after its waits for the fades)
+/// to its call of `objects_init` (h0+$7ae and its kind): both buffers from the clean background,
+/// the scene's planes in the copper list, its frame table. The CPU's program ([`super::sim`]).
+pub fn clear_buffers(m: &mut StoryMem) -> Prog {
+    let mut p = Prog::new();
+    p.ins_regs("pppWp", &[(DMACON, 0x8400)]);
+    p.ins(op::BSR);
+    p.wait_blit(true);
+    p.ins(op::RTS);
+    p.ins("ppppw^wp"); // move.l #-1, BLTAFWM
+    p.ins_regs("ppppW^Wp", &[(BLTCON0, 0x09f0), (BLTCON1, 0)]);
+    p.ins("pprrpww"); // clr.l BLTAMOD
+    for to in [BUFFER_A, BUFFER_B] {
+        let b = Blit {
+            con0: 0x09f0,
+            afwm: 0xffff,
+            alwm: 0xffff,
+            pt: [CLEAN, 0, 0, to],
+            size: 0xfa16,
+            ..Blit::default()
+        };
+        b.run(m);
+        p.ins("ppppw^wp"); // BLTAPT
+        p.ins("ppppw^wp"); // BLTDPT
+        p.ins_regs("pppWp", &[(BLTSIZE, 0xfa16)]);
+        p.ins(op::BSR);
+        p.wait_blit(true);
+        p.ins(op::RTS);
+    }
+    p.ins(op::RTS);
+    // The scene's: `lea`, `move.l #$2c, d0`, `bsr.w set_planes` (h0+$83b4).
+    p.ins(op::LEA_ABS_L);
+    p.ins(op::MOVEA_L_IM);
+    p.ins(op::BSR);
+    p.ins(op::REG); // move.l a0, d1
+    p.ins("ppnnnnnnnnnnnnnnnnnn"); // mulu.w #$c8, d0: three bits set, 44 clocks
+    p.ins(op::REG); // ext.l
+    p.ins(op::MOVEA_L_IM);
+    p.ins(op::LEA_ABS_L);
+    for k in 0..5 {
+        p.ins(MOVE_W_DN_DI);
+        p.ins(op::REG); // swap
+        p.ins(MOVE_W_DN_DI);
+        p.ins(op::REG);
+        p.ins(op::ADDQ_L_AN); // addq.l #8, a0
+        p.ins(op::ADDQ_L_AN); // add.l d0, d1
+        p.ins(op::SUBQ_W_DN);
+        p.branch(k < 4, false);
+    }
+    p.ins(op::RTS);
+    p.ins("ppppw^wp"); // move.l #table, h0+$1c
+    p
+}
+
+/// `objects_init` (h0+$96d4) up to its two draws, from its call: every object back to its start,
+/// the scene's frames from its table, the masks cleared and built from the bank, both buffers'
+/// pointers. The two draws that end it are the caller's. Its memory work done, the CPU's program
+/// ([`super::sim`]).
+pub fn init(m: &mut StoryMem) -> Prog {
+    let mut p = Prog::new();
+    p.ins(op::JSR_ABS_L);
     m.set_w(TOGGLE, 0);
     m.set_w(h0(0x1a), 0);
+    p.ins(op::CLR_W_ABS_L);
+    p.ins(op::CLR_W_ABS_L);
+    p.ins(op::LEA_ABS_L);
     for o in objects(m) {
         m.set_w(o, 0x17c);
         m.set_w(o + 2, 0x40);
         m.set_l(o + 0x28, IDLE);
+        p.ins("rrp"); // movea.l (a0)+, a1
+        p.ins("pppn"); // cmpa.l #0, a1
+        p.branch(false, false);
+        p.ins(op::MOVE_W_IM_DI);
+        p.ins(op::MOVE_W_IM_DI);
+        p.ins("pppw^wp"); // move.l #idle, $28(a1)
+        p.ins(op::BCC_TAKEN); // bra.b
     }
+    p.ins("rrp");
+    p.ins("pppn");
+    p.branch(true, false);
     // `frames_load` (h0+$868e): each descriptor from the table's six words.
+    for _ in 0..4 {
+        p.ins(op::LEA_ABS_L);
+    }
+    p.ins("pprrp"); // movea.l h0+$1c, a1
+    p.ins(op::MOVEA_L_IM);
+    p.ins(op::MOVEA_L_IM);
+    p.ins(op::BSR);
     let mut table = m.l(SCENE_TABLE);
     let mut list = DESCRIPTORS;
     loop {
@@ -125,19 +252,57 @@ pub fn init(m: &mut StoryMem) -> u32 {
         m.set_l(d + 0xc, MASKS);
         m.set_w(d + 0x14, 0x28);
         m.set_l(d + 0x16, 0xa000);
+        p.ins("rrp"); // movea.l (a0), a5
+        p.ins(MOVE_W_PI_DI);
+        p.ins(MOVE_W_PI_DI);
+        p.ins("rp"); // move.w (a1)+, d2
+        p.ins(op::ANDI_W_DN); // addi.w #$10, d2
+        p.ins(MOVE_W_DN_DI);
+        for _ in 0..3 {
+            p.ins(MOVE_W_PI_DI);
+        }
+        p.ins(MOVE_L_DN_DI);
+        p.ins(MOVE_L_DN_DI);
+        p.ins(MOVE_W_DN_DI);
+        p.ins(MOVE_L_DN_DI);
+        p.ins(op::ADDQ_L_AN);
+        p.ins("rrp"); // tst.l (a0)
         list += 8;
-        if (m.l(list) as i32) < 0 {
+        let more = (m.l(list) as i32) >= 0;
+        p.branch(more, false);
+        if !more {
             break;
         }
     }
-    let mut frames = anim_prepare(m, IDLE, 0x2c);
-    frames += anim_prepare(m, DESCRIPTORS, 0x2c);
+    p.ins(op::RTS);
+    // Each frame's blit: the idle animation's, then the scene's.
+    for at in [IDLE, DESCRIPTORS] {
+        p.ins(op::LEA_ABS_L);
+        p.ins(op::LEA_ABS_L);
+        p.ins(op::MOVEA_L_IM);
+        p.ins(op::MOVEA_L_IM);
+        p.ins(op::JSR_ABS_L);
+        anim_prepare(m, &mut p, at, 0x2c);
+    }
     // `objects_reset` (h0+$86c6): the row table, then each object's animation from its start and
     // its second block a copy of its first.
+    p.ins(op::LEA_ABS_L);
+    p.ins(op::MOVEA_L_IM);
+    p.ins(op::MOVEA_L_IM);
+    p.ins(op::JSR_ABS_L);
+    p.ins(op::LEA_PC);
+    p.ins(op::CLR_L_DN);
+    p.ins(op::ANDI_W_DN); // move.w #$c8, d2
     for r in 0..200u32 {
         m.set_w(ROWS + 2 * r, (r * 0x2c) as u16);
+        p.ins("wp"); // move.w d3, (a1)+
+        p.ins(op::REG);
+        p.ins(op::SUBQ_W_DN);
+        p.branch(r < 199, false);
     }
-    for o in objects(m) {
+    p.ins(op::ADDQ_L_AN);
+    let objs = objects(m);
+    for (i, &o) in objs.iter().enumerate() {
         m.set_w(o + 0x14, 0);
         let a = m.l(o + 8);
         m.set_l(o + 0x16, a);
@@ -146,45 +311,95 @@ pub fn init(m: &mut StoryMem) -> u32 {
         m.write(o + 0x2c, &block);
         let a = m.l(o + 8);
         m.set_w(o + 0x1a, m.w(a + 6));
-        frames += anim_prepare(m, a, 0x2c);
+        p.ins("rrp"); // movea.l (a0), a1
+        p.ins(op::CLR_W_DI);
+        p.ins(op::MOVEA_L_DI);
+        p.ins(MOVE_L_DN_DI);
+        p.ins("prpwp"); // move.w 6(a2), $1a(a1)
+        p.ins(op::REG);
+        p.ins(op::REG);
+        p.ins(op::MOVEA_L_IM); // move.l #$2c, d7
+        p.ins(op::ADDQ_L_AN); // adda.l d7, a2
+        p.ins(op::REG);
+        p.ins(SHIFT_1);
+        for k in 0..0x16 {
+            p.ins("rwp"); // move.w (a3)+, (a2)+
+            p.ins(op::SUBQ_W_DN);
+            p.branch(k < 0x15, false);
+        }
+        p.ins(op::MOVEA_L_DI);
+        p.ins("prpwp");
+        anim_prepare(m, &mut p, a, 0x2c);
+        p.ins(op::ADDQ_L_AN);
+        p.ins("rrp"); // tst.l (a0)
+        p.branch(i + 1 < objs.len(), false);
     }
+    p.ins(op::RTS);
     // The masks cleared (h0+$8408).
     m.clear(MASKS, 0xa000);
-    frames
+    p.ins(op::LEA_ABS_L);
+    p.ins(op::MOVEA_L_IM);
+    p.ins(op::BSR);
+    for k in 0..CLEAR_TURNS {
+        p.ins("rpw"); // clr.b (a0)+
+        p.ins(op::ADDQ_L_AN); // subq.l #1, d0
+        p.branch(k + 1 < CLEAR_TURNS, false);
+    }
+    p.ins(op::RTS);
+    p.ins(op::LEA_ABS_L);
+    p.ins(op::LEA_ABS_L);
+    for _ in 0..3 {
+        p.ins(op::MOVEA_L_IM);
+    }
+    p.ins(op::BSR);
+    init_masks(m, &mut p);
+    p
 }
 
-/// `objects_init`'s blits: each plane of the bank or-ed into the masks (h0+$8782).
-pub fn init_masks(m: &mut StoryMem, clock: &mut BlitClock) {
+/// The masks' clearing's turns.
+const CLEAR_TURNS: u32 = 0xa000;
+
+/// `objects_init`'s blits (h0+$8782, from its first instruction): each plane of the bank or-ed
+/// into the masks.
+fn init_masks(m: &mut StoryMem, p: &mut Prog) {
     // 1024 rows (a height of 0) of 20 words.
     let size = 0x140u16 >> 4;
-    for p in 0..5 {
+    p.ins(op::LEA_ABS_L);
+    p.ins_regs("ppWp", &[(DMACON, 0x8400)]);
+    p.ins("pppw^wp"); // move.l #-1, $44(a6)
+    p.ins_regs("pppW^Wp", &[(BLTCON0, 0x0dfc), (BLTCON1, 0)]);
+    p.ins(op::REG);
+    p.ins(SHIFT_3);
+    p.ins("pnnnnnnnnnnnnnnnnnn"); // mulu.w d2, d3: $400, one bit set, 40 clocks
+    p.ins(SHIFT_6);
+    p.ins("pnnnnn"); // lsr.w #4, d1
+    p.ins(op::REG);
+    p.ins("prrpww"); // clr.l $62(a6)
+    p.ins(op::CLR_W_DI);
+    for k in 0..5 {
         let b = Blit {
             con0: 0x0dfc,
             afwm: 0xffff,
             alwm: 0xffff,
-            pt: [BANK + p * 0xa000, MASKS, 0, MASKS],
+            pt: [BANK + k * 0xa000, MASKS, 0, MASKS],
             size,
             ..Blit::default()
         };
         b.run(m);
-        clock.blit(b.con0, size);
+        p.wait_blit(false);
+        p.ins(MOVE_L_DN_DI);
+        p.ins(MOVE_L_DN_DI);
+        p.ins(MOVE_L_DN_DI);
+        p.ins_regs("pWp", &[(BLTSIZE, size)]);
+        p.ins(op::ADDQ_L_AN); // adda.l d3, a0
+        p.ins(op::SUBQ_W_DN);
+        p.branch(k < 4, false);
     }
-}
-
-/// `buffers_clear` (h0+$8314) after its fade waits: both buffers from the clean background.
-pub fn clear_buffers(m: &mut StoryMem, clock: &mut BlitClock) {
-    for to in [BUFFER_A, BUFFER_B] {
-        let b = Blit {
-            con0: 0x09f0,
-            afwm: 0xffff,
-            alwm: 0xffff,
-            pt: [CLEAN, 0, 0, to],
-            size: 0xfa16,
-            ..Blit::default()
-        };
-        b.run(m);
-        clock.blit(b.con0, b.size);
-    }
+    p.ins_regs("ppWp", &[(DMACON, 0x0400)]);
+    p.ins(op::BSR);
+    p.wait_blit(true);
+    p.ins(op::RTS);
+    p.ins(op::RTS);
 }
 
 /// `bobs_draw` (h0+$87ec, `draw_frame` h0+$96b0's work): one draw of every object into the buffer
@@ -596,4 +811,21 @@ fn draw_object(m: &mut StoryMem, p: &mut Prog, a2: u32, buffer: u32) {
 /// A word shift's internal work by `n` bits, after its prefetch.
 fn shift(n: u32) -> u32 {
     1 + n
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn a_frames_blit_size_adds_the_words_to_the_shifted_height() {
+        // A descriptor filled from past a scene's table (code: `41f9 00c0 9b60 317c`): the height's
+        // shift carries into the words, as the original's `add.w` does (oracle frame 11 295).
+        let mut m = StoryMem::default();
+        let d = DESCRIPTORS;
+        m.set_w(d + 4, 0x9b60);
+        m.set_w(d + 6, 0x317c);
+        frame_prepare(&mut m, &mut Prog::new(), d, 0x2c);
+        assert_eq!(m.w(d + 0x1a), 0x68b6);
+    }
 }

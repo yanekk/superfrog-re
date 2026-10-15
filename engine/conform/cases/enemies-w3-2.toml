@@ -1,6 +1,12 @@
+# W3-2 with world 3's enemies live (T111): the hopper and flows in the start's pool, the spiker
+# and darts east of the pillar, a stompable stomped on the ice ledge, the swing (its ball hurts the
+# frog), the crumbling platforms, the bouncers on the pillars at 101,37 (one hurts the frog), the
+# scenery below marker 14 at 104,51, a pad, and the staying spikers (one hurts the frog). The
+# bouncers by the exit and the east's pads are T115's completion. A re-sync after a lag at 2443
+# (T101's class) is pinned in `enemies_w3::w3_2`.
 sync = { level = "W3-2" }
 script = "enemies-w3-2"
-frames = 170
+frames = 2802
 resync = true
 
 [[exclude]]

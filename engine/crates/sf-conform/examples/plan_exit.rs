@@ -1,20 +1,9 @@
 //! Finds inputs that play a level to its exit with every object live, and prints them as an input
 //! script: how the `enemies-w6-*` completion cases' scripts are written (T40).
 //!
-//! `cargo run --release --example plan_exit -- <level> [--via col,row | --stomp <update> | --hurt <update> | --coins N]...
-//! [--frames N] [--gap N] [--prefix script.txt] [--no-exit] [--out script.txt]` (`--no-exit`: stop at the last `--via`;
+//! `cargo run --release --example plan_exit -- <level> [--via col,row | --stomp <update|tN> | --hurt <update|tN> | --coins N]... [--frames N]
+//! [--prefix script.txt] [--no-exit] [--out script.txt]` (`--no-exit`: stop at the last `--via`;
 //! `--out`: the script so far, rewritten after each chunk) (a script this printed: its inputs are played first, up to its closing `-` line)
-//!
-//! The coin phase (T104): a W6 exit stays shut until `coins_left_for_exit` is 0, so before the
-//! exit the frog takes coins, steering by a field flooded over the live map from every coin left
-//! (markers 8 and 9; a taken coin's marker is cleared) and every switch not yet pressed (a
-//! vertical pair of markers 48–51, cleared when pressed: it opens the gate whose single cell has
-//! its number), each coin taken or switch pressed worth more than any distance. `--coins N` is a step that ends when N coins are still needed (to take coins before a
-//! switch's `--via`); one ending at 0 is added before the exit unless given. A coin the frog makes
-//! no headway toward for `STALL` chunks is passed over for `PASSED` chunks, or until no other is left. The field knows
-//! nothing of gravity or bounce pads, so each frame the original's frog spends in a cell makes
-//! ending there `VISIT` worse until the next coin or switch: a stuck frog wanders off to find the
-//! way up.
 //!
 //! The plan is made on the engine and played on the original as it goes: from the original's
 //! memory a beam search over ten joystick inputs, each held 4 frames, looks `HORIZON` frames
@@ -24,6 +13,12 @@
 //! original's frog alive; else the next-best path is tried. The original lags in a busy level and the engine
 //! free-running does not, so only the original's outcome counts, and each chunk starts from its
 //! memory again.
+//!
+//! `--coins N` (T103): take coins (markers 8, 9) until `N` are still needed (`frog+$5c`, h0+$832;
+//! 0 opens the exit lock), steering by a field flooded from every coin still in the original's
+//! map at the chunk's start, a coin taken worth more than any distance; `--skip c0,r0,c1,r1`
+//! leaves the coins in that box out; `--ground m,...` lets the field climb from cells with those
+//! markers (platform objects: W4's crumbling ledges are 27).
 use sf_conform::{InputScript, SyncPoint, sync};
 use sf_core::frog::{FROG, f};
 use sf_core::input::{FrameInput, Joy};
@@ -36,86 +31,8 @@ const HORIZON: u32 = 30;
 const HOLD: u32 = 4;
 const COMMIT: usize = 48;
 const BEAM: usize = 24;
-/// Chunks without a coin taken or the distance shortened by two cells before the nearest coin, and
-/// every coin within four cells of it, is passed over (a jump's height wobbles the distance).
-const STALL: u32 = 8;
-/// Chunks a passed-over coin stays out of the field.
-const PASSED: usize = 12;
-/// What a frame already spent in a cell adds to ending a path there, in the score's units (16 a
-/// cell of distance).
-const VISIT: i64 = 4;
-/// Paths tried on the original itself when every engine path dies there.
-const ORACLE_TRIES: usize = 48;
-
-/// xorshift64: the original's own search's mutations.
-struct Rng(u64);
-impl Rng {
-    fn next(&mut self) -> u64 {
-        self.0 ^= self.0 << 13;
-        self.0 ^= self.0 >> 7;
-        self.0 ^= self.0 << 17;
-        self.0
-    }
-}
-/// The map's row 0 (`map_rows[1]`, h1), and a row's length in bytes: the live markers.
-const ROW0: u32 = 0x218e0 + 0x4c0;
-const ROW_BYTES: u32 = 0x260;
-
-/// The live map, as the level file has its cells (marker in the top six bits): an opened gate is
-/// open here, where the file still has it solid.
-fn live_body(st: &sf_core::State) -> Vec<u16> {
-    let mut v = Vec::with_capacity(300 * 84);
-    for r in 0..84 {
-        for c in 0..300 {
-            v.push((st.w(sf_core::layout::h1(ROW0) + r * ROW_BYTES + 2 * c) & 0x3f) << 10);
-        }
-    }
-    v
-}
-
-fn live_marker(st: &sf_core::State, c: usize, r: usize) -> u16 {
-    st.w(sf_core::layout::h1(ROW0) + r as u32 * ROW_BYTES + 2 * c as u32) & 0x3f
-}
-
-/// The cells of the switches not yet pressed: markers 48–51 with the same one above or below,
-/// whose number a gate has (a single cell of it: W6-4's 51 opens nothing and is never cleared).
-fn switches(st: &sf_core::State) -> Vec<(usize, usize)> {
-    let (mut pairs, mut gates) = (Vec::new(), Vec::new());
-    for r in 0..84 {
-        for c in 0..300 {
-            let m = live_marker(st, c, r);
-            if !(48..=51).contains(&m) {
-                continue;
-            }
-            let pair = (r > 0 && live_marker(st, c, r - 1) == m) || (r < 83 && live_marker(st, c, r + 1) == m);
-            if pair {
-                pairs.push((c, r, m));
-            } else {
-                gates.push(m);
-            }
-        }
-    }
-    pairs.into_iter().filter(|p| gates.contains(&p.2)).map(|(c, r, _)| (c, r)).collect()
-}
-
-/// How many of `cells` (switch cells) no longer hold a switch: pressed.
-fn pressed(st: &sf_core::State, cells: &[(usize, usize)]) -> usize {
-    cells.iter().filter(|&&(c, r)| !(48..=51).contains(&live_marker(st, c, r))).count()
-}
-
-/// The cells whose live marker is a coin's (8, 9), less `skipped`.
-fn coins(st: &sf_core::State, skipped: &[(usize, usize)]) -> Vec<(usize, usize)> {
-    let mut v = Vec::new();
-    for r in 0..84 {
-        for c in 0..300 {
-            let m = st.w(sf_core::layout::h1(ROW0) + r * ROW_BYTES + 2 * c) & 0x3f;
-            if matches!(m, 8 | 9) && !skipped.contains(&(c as usize, r as usize)) {
-                v.push((c as usize, r as usize));
-            }
-        }
-    }
-    v
-}
+/// A committed path must reach the ground at least this many frames in (T103).
+const GROUNDED: u32 = 56;
 
 /// The frog's middle, in map pixels a row up: `/ 16` gives the map cell of its lower half (the
 /// map's pixel rows start one row above its first; the frog stands with its feet at y + `$10`).
@@ -124,15 +41,63 @@ fn frog(st: &sf_core::State) -> (i32, i32) {
     (w(f::X) + 0x17, w(f::Y) - 0x10)
 }
 
-/// The cost to `goal` from every cell: a step through an open cell 1, through a solid one
-/// (`marker & $18 == $18`) 60, a deadly one (6) 40, with the map as the level's file has it.
-fn flood(body: &[u16], w: usize, h: usize, goal: &[(usize, usize)]) -> Vec<u32> {
-    // Solid cells cost 60 (a switch's gate is solid until it opens), deadly ones 40.
-    let cost = |x: usize, y: usize| match body[y * w + x] >> 10 {
-        62 => 1,
-        m if m & 0x18 == 0x18 => 60,
-        6 => 40,
-        _ => 1,
+/// The cost to `goal` from every cell, along the moves the frog can make (T103). Markers `$3a`
+/// and up are ground and walls (`level/collision.rs`); a secret passage (`$26`) is open. A move
+/// sideways or down through open cells costs 1, up into an open cell only within `JUMP` rows of
+/// ground below it (in its column or the next; 20 above a bounce pad, marker 5; `ground`
+/// markers count as ground: a crumbling ledge, an object the map does not show), so a shaft
+/// taller than a jump is one-way; into or out of a wall 1 000 (a gate opens to its switch);
+/// into a deadly cell (6) 1 000 too.
+fn flood(body: &[u16], w: usize, h: usize, goal: &[(usize, usize)], ground: &[u16]) -> Vec<u32> {
+    flood_dir(body, w, h, goal, ground, false, &[])
+}
+
+/// [`flood`], or with `forward` the cost from `goal` to every cell instead.
+/// `penalty`, when not empty, is added to the cost of a move into each cell (a stall's tabu).
+fn flood_dir(
+    body: &[u16],
+    w: usize,
+    h: usize,
+    goal: &[(usize, usize)],
+    ground: &[u16],
+    forward: bool,
+    penalty: &[u32],
+) -> Vec<u32> {
+    const JUMP: usize = 6;
+    let m = |x: usize, y: usize| body[y * w + x] >> 10;
+    let wall = |x: usize, y: usize| m(x, y) >= 0x3a;
+    let floor = |x: usize, y: usize| m(x, y) >= 0x3a || ground.contains(&m(x, y));
+    // The cost of the move from (px, py) into (x, y).
+    let cost = |px: usize, py: usize, x: usize, y: usize| -> u32 {
+        if wall(x, y) || wall(px, py) {
+            1000
+        } else if m(x, y) == 6 {
+            // Spikes: as good as a wall (T103: W4-4's pit at 188,64 drew the frog in to die).
+            1000
+        } else {
+            1
+        }
+    };
+    // A bounce pad (marker 5) throws the frog this many rows.
+    const PAD: usize = 20;
+    // Rows from each cell down to the first floor in its column, and whether that is a pad.
+    let mut above = vec![(usize::MAX / 2, false); w * h];
+    for x in 0..w {
+        let mut d = (usize::MAX / 2, false);
+        for y in (0..h).rev() {
+            let m = body[y * w + x] >> 10;
+            d = if m == 5 { (0, true) } else if floor(x, y) { (0, false) } else { (d.0 + 1, d.1) };
+            above[y * w + x] = d;
+        }
+    }
+    let climbable = |x: usize, y: usize| {
+        // A solid cell beside it is a wall, not ground.
+        [x.wrapping_sub(1), x, x + 1].iter().any(|&c| {
+            c < w && {
+                let (k, pad) = above[y * w + c];
+                k >= 1 && k <= if pad { PAD } else { JUMP }
+            }
+        })
     };
     let mut d = vec![u32::MAX; w * h];
     let mut q = std::collections::BinaryHeap::new();
@@ -140,164 +105,38 @@ fn flood(body: &[u16], w: usize, h: usize, goal: &[(usize, usize)]) -> Vec<u32> 
         d[y * w + x] = 0;
         q.push(std::cmp::Reverse((0u32, x, y)));
     }
+    // Backwards from the goal: `(px, py)` is a cell a move from which reaches `(x, y)`.
     while let Some(std::cmp::Reverse((here, x, y))) = q.pop() {
         if here > d[y * w + x] {
             continue;
         }
-        let near = [(x.wrapping_sub(1), y), (x + 1, y), (x, y.wrapping_sub(1)), (x, y + 1)];
-        for (nx, ny) in near {
-            if nx < w && ny < h {
-                let nd = here + cost(nx, ny);
-                if nd < d[ny * w + nx] {
-                    d[ny * w + nx] = nd;
-                    q.push(std::cmp::Reverse((nd, nx, ny)));
+        // Backwards, the cells a move from which reaches (x, y); forwards, those (x, y) reaches.
+        let mut near = vec![(x.wrapping_sub(1), y), (x + 1, y)];
+        if forward {
+            near.push((x, y + 1));
+            if y > 0 && (wall(x, y - 1) || climbable(x, y - 1)) {
+                near.push((x, y - 1));
+            }
+        } else {
+            near.push((x, y.wrapping_sub(1)));
+            if wall(x, y) || climbable(x, y) {
+                near.push((x, y + 1));
+            }
+        }
+        for (px, py) in near {
+            if px < w && py < h {
+                let into = if forward { py * w + px } else { y * w + x };
+                let step = if forward { cost(x, y, px, py) } else { cost(px, py, x, y) }
+                    + penalty.get(into).copied().unwrap_or(0);
+                let nd = here + step;
+                if nd < d[py * w + px] {
+                    d[py * w + px] = nd;
+                    q.push(std::cmp::Reverse((nd, px, py)));
                 }
             }
         }
     }
     d
-}
-
-/// Cells a jump rises from where the frog stands (115 pixels measured with UP held), and from a
-/// bounce pad (markers 4, 5; W6-4's at 281,78 throws the frog 24 rows with no input).
-const JUMP: u32 = 7;
-const PAD_JUMP: u32 = 24;
-/// Cells over death a jump crosses from the nearest cell over safe ground: 3 (a 5-cell pit) unless
-/// `--gap` says more. A running jump at full speed (6 pixels a frame) crosses about 17 cells on
-/// the flat, more falling: W6-4's 24 cells of spikes want `--gap 13`.
-static GAP: std::sync::atomic::AtomicUsize = std::sync::atomic::AtomicUsize::new(3);
-
-/// [`flood`] with gravity: a step up is only taken within a jump of a cell the frog can stand on
-/// (an open cell over a solid one or a floor, in this column) or in a lift's shaft,
-/// sideways and down always. Where
-/// that leaves a cell no way to `goal`, the plain flood's cost plus 50 000.
-fn climb(body: &[u16], w: usize, h: usize, goal: &[(usize, usize)]) -> Vec<u32> {
-    // Marker 62 is a floor the frog passes up through: stacked over a lift cell (44, which raises
-    // a frog standing in it a row a frame) it is a lift's shaft.
-    let solid = |x: usize, y: usize| body[y * w + x] >> 10 & 0x18 == 0x18 && body[y * w + x] >> 10 != 62;
-    let lift = |x: usize, y: usize| matches!(body[y * w + x] >> 10, 44 | 62);
-    // How far a step up into each cell is from the nearest ground below it, a pad's lift taken off.
-    let mut reach = vec![u32::MAX; w * h];
-    for x in 0..w {
-        let mut below = u32::MAX;
-        for y in (0..h).rev() {
-            if solid(x, y) {
-                below = u32::MAX;
-                continue;
-            }
-            if y + 1 < h && (solid(x, y + 1) || body[(y + 1) * w + x] >> 10 == 62) {
-                below = 0;
-            } else if below != u32::MAX {
-                below += 1;
-            }
-            let pad = matches!(body[y * w + x] >> 10, 4 | 5);
-            let lift = if pad { below.saturating_sub(PAD_JUMP - JUMP) } else { below };
-            reach[y * w + x] = lift;
-        }
-    }
-    // Pads lift every cell above them in the column, not only their own.
-    for x in 0..w {
-        let mut pad_at: Option<usize> = None;
-        for y in (0..h).rev() {
-            if solid(x, y) {
-                pad_at = None;
-                continue;
-            }
-            if matches!(body[y * w + x] >> 10, 4 | 5) {
-                pad_at = Some(y);
-            }
-            if let Some(py) = pad_at {
-                let k = &mut reach[y * w + x];
-                *k = (*k).min(((py - y) as u32).saturating_sub(PAD_JUMP - JUMP));
-            }
-        }
-    }
-    // Ground under the frog's feet: its cell's column or the one to its left (the feet are tested
-    // at x + 8, the cell taken at x + $17; W6-3's frog stands on a wall's top at 113-114,9 from
-    // cell 115). Only ground below the row it rises out of counts, not a ledge level with the
-    // cell it rises into (W6-2's frog jumped for ever beside a block one row too high).
-    let up_ok = |x: usize, y: usize| {
-        [x.wrapping_sub(1), x]
-            .iter()
-            .any(|&c| c < w && y + 1 < h && !solid(c, y + 1) && reach[y * w + c] <= JUMP)
-            || solid(x, y)
-            || lift(x, y)
-            || (y + 1 < h && lift(x, y + 1))
-    };
-    // A wall dearer than in the plain flood: a long way round beats climbing through one (W6-2's
-    // shaft), and a closed gate is still crossed when nothing else reaches the goal. A deadly cell
-    // is never crossed (W6-2's bounce pads under spikes).
-    let cost = |x: usize, y: usize| match body[y * w + x] >> 10 {
-        62 => 1,
-        m if m & 0x18 == 0x18 => 400,
-        6 => u32::MAX,
-        _ => 1,
-    };
-    let mut d = vec![u32::MAX; w * h];
-    let mut q = std::collections::BinaryHeap::new();
-    for &(x, y) in goal {
-        d[y * w + x] = 0;
-        q.push(std::cmp::Reverse((0u32, x, y)));
-    }
-    // A cell over death: falling straight down from it ends on a deadly cell. One is only entered
-    // within `GAP` cells of the row's nearest cell over safe ground, so a long run of spikes or a
-    // pit is crossed by its platforms (W6-1 at 143-161,41).
-    let deadly = |x: usize, y: usize| body[y * w + x] >> 10 == 6;
-    let mut doom = vec![false; w * h];
-    for x in 0..w {
-        let mut lands_deadly = false;
-        for y in (0..h).rev() {
-            if solid(x, y) || body[y * w + x] >> 10 == 62 {
-                lands_deadly = false;
-            } else if deadly(x, y) {
-                lands_deadly = true;
-            }
-            doom[y * w + x] = lands_deadly;
-        }
-    }
-    let mut enterable = vec![true; w * h];
-    for y in 0..h {
-        for x in 0..w {
-            if !doom[y * w + x] {
-                continue;
-            }
-            let safe_within = |dir: isize| {
-                (1..=GAP.load(std::sync::atomic::Ordering::Relaxed) as isize).any(|k| {
-                    let c = x as isize + dir * k;
-                    c >= 0 && (c as usize) < w && !solid(c as usize, y) && !doom[y * w + c as usize]
-                })
-            };
-            enterable[y * w + x] = safe_within(-1) || safe_within(1);
-        }
-    }
-    // Backwards from the goals: a cell before (x, y) is beside it, above it (a fall), or below
-    // it when the step up into (x, y) is in a jump's reach.
-    while let Some(std::cmp::Reverse((here, x, y))) = q.pop() {
-        if here > d[y * w + x] {
-            continue;
-        }
-        if !enterable[y * w + x] && here > 0 {
-            continue;
-        }
-        let mut near = vec![(x.wrapping_sub(1), y), (x + 1, y), (x, y.wrapping_sub(1))];
-        if up_ok(x, y) {
-            near.push((x, y + 1));
-        }
-        for (nx, ny) in near {
-            if nx < w && ny < h && cost(nx, ny) != u32::MAX {
-                let nd = here + cost(nx, ny);
-                if nd < d[ny * w + nx] {
-                    d[ny * w + nx] = nd;
-                    q.push(std::cmp::Reverse((nd, nx, ny)));
-                }
-            }
-        }
-    }
-    let plain = flood(body, w, h, goal);
-    d.iter()
-        .zip(&plain)
-        .map(|(&g, &p)| if g != u32::MAX { g } else { p.saturating_add(50_000) })
-        .collect()
 }
 
 /// A step on the way: a cell to reach, an object (by its update routine, h0 offset) to stomp or
@@ -307,11 +146,59 @@ enum Via {
     Cell(usize, usize),
     Stomp(u32),
     Hurt(u32),
-    /// Coins taken until this many are still needed.
     Coins(u16),
 }
 
+/// The map's markers as the original's memory has them now, in the file's layout (marker in
+/// the top six bits); a `ground` marker (a platform object's) kept from the file where memory
+/// has cleared it.
+fn map_now(st: &sf_core::State, file: &[u16], ground: &[u16]) -> Vec<u16> {
+    let row0 = sf_core::layout::h1(0x218e0 + 0x4c0);
+    (0..84u32 * 300)
+        .map(|k| {
+            let m = st.w(row0 + (k / 300) * 0x260 + 2 * (k % 300)) & 0x3f;
+            let f = file[k as usize] >> 10;
+            (if m == 0 && ground.contains(&f) { f } else { m }) << 10
+        })
+        .collect()
+}
+
+/// `frog+$5c` (h0+$832): coins still needed before the exit lock (marker 29) goes.
+const COINS_LEFT: u32 = h0(0x832);
+
+/// The map's cells in memory (`map_rows[1]`, h1): a cell's marker is its low 6 bits.
+/// The coins in the map: markers 8 and 9, and the tile pickups (marker 55) whose tile is one of
+/// `tiles`, the world's coins (T103: W4-3 needs some of these).
+fn coin_cells(st: &sf_core::State, tiles: &[u32]) -> Vec<(usize, usize)> {
+    let row0 = sf_core::layout::h1(0x218e0 + 0x4c0);
+    let mut v = Vec::new();
+    for r in 0..84u32 {
+        for c in 0..300u32 {
+            let cell = st.w(row0 + r * 0x260 + 2 * c);
+            let coin = match cell & 0x3f {
+                8 | 9 => true,
+                55 => tiles.contains(&((cell >> 6) as u32)),
+                _ => false,
+            };
+            if coin {
+                v.push((c as usize, r as usize));
+            }
+        }
+    }
+    v
+}
+
 const SLOTS: u32 = 0x1ba6c;
+/// Marks a `--stomp`/`--hurt` target given as a template (`t<n>`), not an update routine.
+const TEMPLATE: u32 = 0x8000_0000;
+
+/// A `--stomp`/`--hurt` target: an update routine's h0 offset in hex, or `t<n>`, template `n`.
+fn target_arg(a: &str) -> u32 {
+    match a.strip_prefix('t') {
+        Some(t) => TEMPLATE | t.parse::<u32>().unwrap(),
+        None => u32::from_str_radix(a, 16).unwrap(),
+    }
+}
 
 /// Whether a slot runs what a killed or stunned enemy runs (h0+$23b34, $23bee) or a reward's arc
 /// (h0+$23e6c).
@@ -323,10 +210,26 @@ fn killed(l: impl Fn(u32) -> u32) -> bool {
 }
 
 /// The position of the first live slot running update `u` (an h0 offset).
+/// `u` with [`TEMPLATE`] set is a template's number instead (T103, `--hurt t61`): a slot whose
+/// first long is that template's init routine (`obj_templates`, h0+$1c6e2, `$ae` bytes each).
 fn nearest(l: impl Fn(u32) -> u32, w: impl Fn(u32) -> u16, u: u32) -> Option<(i32, i32)> {
-    (0..20).map(|k| h0(SLOTS + k * 0x7c)).find(|&s| l(s + 0x40) != 0 && l(s + 4) == h0(u)).map(|s| {
+    let is = |s: u32| {
+        if u & TEMPLATE != 0 {
+            l(s) == l(h0(0x1c6e2 + (u & !TEMPLATE) * 0xae))
+        } else {
+            l(s + 4) == h0(u)
+        }
+    };
+    (0..20).map(|k| h0(SLOTS + k * 0x7c)).find(|&s| l(s + 0x40) != 0 && is(s)).map(|s| {
         (w(s + 8) as i16 as i32, w(s + 0xa) as i16 as i32)
     })
+}
+
+/// Whether a slot of `u` (as [`nearest`] takes it) is within 48 pixels of the frog (`frog+$17`,
+/// `+$2a`: where `slots_log` measures from).
+fn hurt_by(st: &sf_core::State, u: u32) -> bool {
+    let (fx, fy) = (st.w(FROG + f::X) as i16 as i32 + 0x17, st.w(FROG + f::Y) as i16 as i32 + 0x2a);
+    nearest(|a| st.l(a), |a| st.w(a), u).is_some_and(|(ox, oy)| (ox - fx).abs() < 48 && (oy - fy).abs() < 48)
 }
 
 /// The field at a cell, or (a cell inside a wall) one more than its nearest open neighbour's;
@@ -349,6 +252,11 @@ fn main() {
     let mut prefix: Vec<FrameInput> = Vec::new();
     let mut no_exit = false;
     let mut out: Option<String> = None;
+    // Boxes (c0, r0, c1, r1) whose coins `--coins` leaves alone: a room the frog cannot climb
+    // back out of (T103: W4-1's lower rooms, under the shaft at 125,35).
+    let mut ground: Vec<u16> = Vec::new();
+    let mut reach_only = false;
+    let mut skip_boxes: Vec<(usize, usize, usize, usize)> = Vec::new();
     let mut i = 1;
     while i < args.len() {
         match args[i].as_str() {
@@ -356,16 +264,24 @@ fn main() {
                 let (c, r) = args[i + 1].split_once(',').unwrap();
                 via.push(Via::Cell(c.parse().unwrap(), r.parse().unwrap()));
             }
-            "--stomp" => via.push(Via::Stomp(u32::from_str_radix(&args[i + 1], 16).unwrap())),
-            "--hurt" => via.push(Via::Hurt(u32::from_str_radix(&args[i + 1], 16).unwrap())),
+            "--stomp" => via.push(Via::Stomp(target_arg(&args[i + 1]))),
+            "--hurt" => via.push(Via::Hurt(target_arg(&args[i + 1]))),
             "--coins" => via.push(Via::Coins(args[i + 1].parse().unwrap())),
+            "--reach-only" => {
+                reach_only = true;
+                i -= 1;
+            }
+            "--ground" => ground = args[i + 1].split(',').map(|x| x.parse().unwrap()).collect(),
+            "--skip" => {
+                let v: Vec<usize> = args[i + 1].split(',').map(|x| x.parse().unwrap()).collect();
+                skip_boxes.push((v[0], v[1], v[2], v[3]));
+            }
             "--no-exit" => {
                 no_exit = true;
                 i -= 1;
             }
             "--out" => out = Some(args[i + 1].clone()),
             "--frames" => budget = args[i + 1].parse().unwrap(),
-            "--gap" => GAP.store(args[i + 1].parse().unwrap(), std::sync::atomic::Ordering::Relaxed),
             "--prefix" => {
                 let p = InputScript::load(std::path::Path::new(&args[i + 1])).unwrap();
                 let n: usize = std::fs::read_to_string(&args[i + 1])
@@ -380,9 +296,6 @@ fn main() {
         }
         i += 2;
     }
-    if !no_exit && !via.iter().any(|v| matches!(v, Via::Coins(0))) {
-        via.push(Via::Coins(0));
-    }
     let data = sf_conform::game_data();
     let t = &data.levels.iter().find(|l| *l.0 == id).expect("level").1.t7mp;
     let (w, h) = (t.width as usize, t.height as usize);
@@ -390,22 +303,34 @@ fn main() {
         .filter(|&k| t.body[k] >> 10 == 54)
         .map(|k| (k % w, k / w))
         .collect();
-    // Each step's field, flooded over the live map at each chunk.
+    // Each chunk's field, flooded from the original's map as it is then (T103): a switch opens
+    // its gate in memory (W4-2's way to the exit is the switch at 222,4).
     let mut goals: Vec<Vec<u32>> = vec![Vec::new(); via.len() + 1];
     let mut goal = 0;
-    // The coin phase's passed-over coins, its stall count and best distance so far.
-    // Passed-over coins and switches, each with the chunk it comes back at.
-    let mut passed: Vec<((usize, usize), usize)> = Vec::new();
-    let mut chunk = 0usize;
-    let mut rng = Rng(0x9e37_79b9_7f4a_7c15);
-    // Frames the original's frog spent in each cell since the last coin or switch.
-    let mut visits: std::collections::HashMap<(i32, i32), i64> = Default::default();
-    let (mut stall, mut best_d) = (0u32, i64::MAX);
 
     let mut synced = sync::reach(&SyncPoint::AtLevel(id), &InputScript::idle(), budget as u32 + 100)
         .unwrap_or_else(|e| panic!("{e}"));
     let amiga = &mut synced.amiga;
     let display = sf_conform::display_data();
+    // The world's coin tiles: its pickup table's (h0+$f382) tiles whose handler is the coin's
+    // (h0+$ede0).
+    let coin_tiles: Vec<u32> = {
+        let rom = &display.rom().h0;
+        let l = |a: u32| {
+            let o = a as usize;
+            u32::from_be_bytes([rom[o], rom[o + 1], rom[o + 2], rom[o + 3]])
+        };
+        let world = (id.to_string().as_bytes()[1] - b'1') as u32;
+        let mut at = l(0xf382 + 4 * world) - h0(0);
+        let mut v = Vec::new();
+        while (l(at) as i32) >= 0 {
+            if l(at + 4) == h0(0xede0) {
+                v.push(l(at));
+            }
+            at += 8;
+        }
+        v
+    };
     let acts = [
         Joy::NONE,
         Joy::RIGHT,
@@ -426,134 +351,142 @@ fn main() {
     };
     // Each chunk kept: the original before it, the inputs and goal then, and which candidate it
     // took; a chunk with no candidate left takes the one before back and tries its next.
+    let threads = std::thread::available_parallelism().map_or(4, |n| n.get());
     let mut history: Vec<(sf_oracle::Snapshot, usize, usize, usize)> = Vec::new();
     let mut skip = 0usize;
     let mut backtracks = 0;
+    // Progress (coins needed, switches left, distance) and chunks since it last improved.
+    const STALL: usize = 6;
+    let (mut best, mut since) = ((u16::MAX, usize::MAX, i64::MAX), 0usize);
+    let mut set_aside: Vec<(usize, usize)> = Vec::new();
+    let mut tabu = vec![0u32; 300 * 84];
+    let mut fails_at: std::collections::BTreeMap<usize, u32> = Default::default();
     while inputs.len() < budget {
-        chunk += 1;
-        passed.retain(|&(_, until)| until > chunk);
-        let skipped: Vec<(usize, usize)> = passed.iter().map(|&(c, _)| c).collect();
         let mem = sync::core_memory(amiga.memory());
         let start = Game::with_display(display.clone(), Start::Transplant(mem));
         let lives = start.state().w(FROG + f::LIVES);
-        let needed = start.state().w(FROG + f::COINS_LEFT);
-        // A coin step already met (a resumed plan) is passed at once.
-        while let Some(&Via::Coins(n)) = via.get(goal) {
-            if needed > n {
-                break;
-            }
-            goal += 1;
-        }
         let target = via.get(goal).copied();
-        let live = live_body(start.state());
-        let sw = switches(start.state());
-        match target {
-            Some(Via::Coins(_)) => {
-                let mut left = coins(start.state(), &skipped);
-                if left.is_empty() && !skipped.is_empty() {
-                    eprintln!("  every coin left was passed over: trying them again");
-                    passed.clear();
-                    left = coins(start.state(), &[]);
-                }
-                left.extend(sw.iter().filter(|c| !passed.iter().any(|(p, _)| p == *c)));
-                goals[goal] = climb(&live, w, h, &left);
+        let body = map_now(start.state(), &t.body, &ground);
+        let exit_field = flood(&body, w, h, &exits, &ground);
+        let (fx, fy) = frog(start.state());
+        let here = [((fx.max(0) / 16) as usize, (fy.max(0) / 16) as usize)];
+        let ahead = flood_dir(&body, w, h, &here, &ground, true, &[]);
+        // The switches the frog can reach: one opens a gate on the way (W4-2's exit is behind
+        // the gate of the switch at 222,4).
+        // A switch is two cells, one above the other; a lone cell with its marker is its gate
+        // (`items::fixtures::switch`).
+        let pair = |k: usize| {
+            let m = body[k] >> 10;
+            (48..=51).contains(&m)
+                && ((k >= w && body[k - w] >> 10 == m) || (k + w < w * h && body[k + w] >> 10 == m))
+        };
+        let switches: Vec<(usize, usize)> = (0..w * h)
+            .filter(|&k| pair(k) && ahead[k] < 1000)
+            .map(|k| (k % w, k / w))
+            .collect();
+        let switch_cells: Vec<(usize, usize)> =
+            (0..w * h).filter(|&k| (48..=51).contains(&(body[k] >> 10))).map(|k| (k % w, k / w)).collect();
+        goals[goal] = match target {
+            Some(Via::Cell(x, y)) => flood_dir(&body, w, h, &[(x, y)], &ground, false, &tabu),
+            // A hurt or a stomp: the `--via` cell before it, to stay by while its object is
+            // not out (T103: a dart waits off screen between flights).
+            Some(Via::Hurt(_) | Via::Stomp(_)) => match via[..goal].iter().rev().find_map(|v| match v {
+                Via::Cell(x, y) => Some((*x, *y)),
+                _ => None,
+            }) {
+                Some(c) => flood_dir(&body, w, h, &[c], &ground, false, &tabu),
+                None => Vec::new(),
+            },
+            None if dist(&exit_field, here[0].0, here[0].1) >= 1000 && !switches.is_empty() => {
+                eprintln!("  the exit is out of reach: to {} switches", switches.len());
+                flood_dir(&body, w, h, &switches, &ground, false, &tabu)
             }
-            Some(Via::Cell(x, y)) => goals[goal] = climb(&live, w, h, &[(x, y)]),
-            None => {
-                // The exit behind walls (a gate still shut) with a switch left: the switches first.
-                goals[goal] = climb(&live, w, h, &exits);
-                let (fx, fy) = frog(start.state());
-                let at = dist(&goals[goal], (fx.max(0) / 16) as usize, (fy.max(0) / 16) as usize);
-                if at >= 400 && !sw.is_empty() && std::env::var("PLAN_EXIT_ONLY").is_err() {
-                    // A switch nearer than the walled exit is pressed first; a farther one would
-                    // not help (it opens a gate elsewhere).
-                    let to_sw = climb(&live, w, h, &sw);
-                    if dist(&to_sw, (fx.max(0) / 16) as usize, (fy.max(0) / 16) as usize) < at {
-                        eprintln!("  the exit is behind a wall: to the switches first");
-                        goals[goal] = to_sw;
+            None => flood_dir(&body, w, h, &exits, &ground, false, &tabu),
+            _ => Vec::new(),
+        };
+        if let Some(Via::Coins(_)) = target {
+            let back = flood(&body, w, h, &here, &ground);
+            let coins: Vec<(usize, usize)> = coin_cells(start.state(), &coin_tiles)
+                .into_iter()
+                // A coin the frog cannot come back from (only through a wall), with the exit
+                // out of reach from it too, is a trap (W4-1's rooms under the shaft at 125,35).
+                .filter(|&(c, r)| back[r * w + c] < 1000 || exit_field[r * w + c] < 1000)
+                // And one the frog cannot reach yet (behind a gate) is left for later.
+                .filter(|&(c, r)| ahead[r * w + c] < 1000)
+                .filter(|&(c, r)| !skip_boxes.iter().any(|&(c0, r0, c1, r1)| (c0..=c1).contains(&c) && (r0..=r1).contains(&r)))
+                .collect();
+            // Those set aside after a stall, while others are left.
+            let kept: Vec<(usize, usize)> = coins.iter().copied().filter(|c| !set_aside.contains(c)).collect();
+            let coins = if kept.is_empty() {
+                set_aside.clear();
+                coins
+            } else {
+                kept
+            };
+            eprintln!("  {} coins in reach", coins.len());
+            if reach_only {
+                eprintln!("  coins {coins:?}, switches {switches:?}");
+                // The way the coins' field leads from the frog: each step to the neighbour
+                // nearest the goal.
+                // To the first `--via` cell instead, if there is one.
+                let to: Vec<(usize, usize)> = match via.iter().find_map(|v| match v { Via::Cell(x, y) => Some((*x, *y)), _ => None }) {
+                    Some(c) => vec![c],
+                    None => coins.clone(),
+                };
+                let field = flood(&body, w, h, &to, &ground);
+                let (mut x, mut y) = here[0];
+                let mut way = Vec::new();
+                for _ in 0..200 {
+                    way.push(format!("{x},{y}:{}", field[y * w + x]));
+                    let nb = [(x.wrapping_sub(1), y), (x + 1, y), (x, y.wrapping_sub(1)), (x, y + 1)];
+                    let Some(&(nx, ny)) = nb.iter().filter(|&&(a, b)| a < w && b < h).min_by_key(|&&(a, b)| field[b * w + a]) else { break };
+                    if field[ny * w + nx] >= field[y * w + x] {
+                        break;
                     }
+                    (x, y) = (nx, ny);
                 }
+                eprintln!("  way: {}", way.join(" "));
+                // The map, `+` where the exit is in reach, `-` where the frog can go and come
+                // back from, `v` where it can go only,
+                // `#` a wall, `5` a pad.
+                for r in 0..h {
+                    let row: String = (0..w)
+                        .map(|c| match body[r * w + c] >> 10 {
+                            _ if exit_field[r * w + c] < 1000 => '+',
+                            m if m >= 0x3a => '#',
+                            _ if back[r * w + c] < 1000 && ahead[r * w + c] < 1000 => '-',
+                            _ if ahead[r * w + c] < 1000 => 'v',
+                            5 => '5',
+                            _ => '.',
+                        })
+                        .collect();
+                    eprintln!("{r:3} {row}");
+                }
+                return;
             }
-            _ => {}
+            // None left in reach: a switch the frog can reach opens its gate (W4-3's start area
+            // opens only so); with no switch either, every coin.
+            // Fewer in reach than are needed: the rest are behind gates, so the switches too
+            // (W4-4's coins are mostly behind its four).
+            let needed = start.state().w(COINS_LEFT) as usize;
+            let coins = if !coins.is_empty() && coins.len() < needed && !switches.is_empty() {
+                eprintln!("  {} coins in reach, {needed} needed: to {} switches too ({coins:?}, {switches:?})", coins.len(), switches.len());
+                coins.iter().chain(&switches).copied().collect()
+            } else {
+                coins
+            };
+            let coins = if coins.is_empty() {
+                eprintln!("  {} switches in reach", switches.len());
+                if switches.is_empty() { coin_cells(start.state(), &coin_tiles) } else { switches.clone() }
+            } else {
+                coins
+            };
+            goals[goal] = flood_dir(&body, w, h, &coins, &ground, false, &tabu);
         }
         let field = &goals[goal];
-        if std::env::var("PLAN_TRACE").is_ok() {
-            // Downhill from the frog (or `PLAN_TRACE=c,r`): the turns of the field's way and every wall cell it crosses.
-            let (fx, fy) = frog(start.state());
-            let (mut x, mut y) = ((fx.max(0) / 16) as usize, (fy.max(0) / 16) as usize);
-            if let Some((c, r)) = std::env::var("PLAN_TRACE").unwrap().split_once(',') {
-                (x, y) = (c.parse().unwrap(), r.parse().unwrap());
-            }
-            let mut last = (0isize, 0isize);
-            for _ in 0..2000 {
-                let here = field[y * w + x];
-                if here == 0 {
-                    break;
-                }
-                let next = [(x.wrapping_sub(1), y), (x + 1, y), (x, y.wrapping_sub(1)), (x, y + 1)]
-                    .into_iter()
-                    .filter(|&(a, b)| a < w && b < h)
-                    .min_by_key(|&(a, b)| field[b * w + a])
-                    .unwrap();
-                if field[next.1 * w + next.0] >= here {
-                    eprintln!("stuck at {x},{y} ({here})");
-                    break;
-                }
-                let dir = (next.0 as isize - x as isize, next.1 as isize - y as isize);
-                let m = live[next.1 * w + next.0] >> 10;
-                if m & 0x18 == 0x18 && m != 62 {
-                    eprintln!("wall {},{} (marker {m}) from {x},{y}", next.0, next.1);
-                } else if dir != last {
-                    eprintln!("turn at {x},{y} ({here})");
-                }
-                last = dir;
-                (x, y) = next;
-            }
-            return;
-        }
-        if let Ok(spec) = std::env::var("PLAN_WALLS") {
-            // `c0,r0,c1,r1`: walls the field's way crosses from each cell (`#` solid, `x` deadly,
-            // `U` no way under gravity), the frog `F`; then stop.
-            let v: Vec<usize> = spec.split(',').map(|x| x.parse().unwrap()).collect();
-            let (fx, fy) = frog(start.state());
-            for r in v[1]..=v[3] {
-                let row: String = (v[0]..=v[2])
-                    .map(|c| {
-                        let m = live[r * w + c] >> 10;
-                        if (c as i32, r as i32) == (fx / 16, fy / 16) {
-                            'F'
-                        } else if m & 0x18 == 0x18 && m != 62 {
-                            '#'
-                        } else if m == 6 {
-                            'x'
-                        } else {
-                            match field[r * w + c] {
-                                d if d >= 50_000 => 'U',
-                                d => std::char::from_digit((d / 400).min(9), 10).unwrap(),
-                            }
-                        }
-                    })
-                    .collect();
-                eprintln!("{r:3} {row}");
-            }
-            return;
-        }
-        if let Ok(spec) = std::env::var("PLAN_DUMP") {
-            // `c0,r0,c1,r1`: the field over that box (in hundreds past 99), then stop.
-            let v: Vec<usize> = spec.split(',').map(|x| x.parse().unwrap()).collect();
-            for r in v[1]..=v[3] {
-                let row: Vec<String> = (v[0]..=v[2])
-                    .map(|c| match field[r * w + c] {
-                        u32::MAX => "  .".into(),
-                        d if d < 1000 => format!("{d:3}"),
-                        d => format!("{:>3}", format!("+{}", (d / 1000).min(99))),
-                    })
-                    .collect();
-                eprintln!("{r:3} {}", row.join(""));
-            }
-            return;
-        }
         let hearts = start.state().w(HEARTS);
+        // The exit is the last goal: reached before the others are done, a path fails.
+        let early_exit = goal < via.len();
         let score = |st: &sf_core::State| -> i64 {
             let (x, y) = frog(st);
             match target {
@@ -567,56 +500,95 @@ fn main() {
                     }) - 400 * st.w(HEARTS) as i64
                 }
                 Some(Via::Hurt(u)) => {
+                    // Hurt by that object: one of its slots within 48 pixels as the heart goes
+                    // (T103: W4-4's walker hurt the frog beside the marker-21 dart's spot).
                     if st.w(HEARTS) < hearts {
-                        return i64::MIN / 4;
+                        return if hurt_by(st, u) { i64::MIN / 4 } else { 1_000_000 };
                     }
                     nearest(|a| st.l(a), |a| st.w(a), u)
-                        .map_or(100_000, |(ox, oy)| ((x - ox - 16).abs() + (y - (oy - 8)).abs()) as i64)
+                        .map_or_else(
+                            || {
+                                let (cx, cy) = ((x.max(0) / 16) as usize, (y.max(0) / 16) as usize);
+                                100_000 + if field.is_empty() { 0 } else { dist(field, cx, cy) * 16 }
+                            },
+                            |(ox, oy)| ((x - ox - 16).abs() + (y - (oy - 8)).abs()) as i64,
+                        )
                 }
                 _ => {
                     let (cx, cy) = ((x.max(0) / 16) as usize, (y.max(0) / 16) as usize);
                     let d = dist(field, cx, cy);
-                    // A coin taken or a switch pressed is worth more than any distance (the field
-                    // still has it).
-                    let mut taken = needed.saturating_sub(st.w(FROG + f::COINS_LEFT)) as i64;
-                    if matches!(target, Some(Via::Coins(_)) | None) {
-                        taken += pressed(st, &sw) as i64;
-                    }
-                    let been = if let Some(Via::Coins(_)) = target {
-                        visits.get(&(x / 16, y / 16)).copied().unwrap_or(0) * VISIT
-                    } else {
-                        0
-                    };
-                    d * 16 + (16 - (x % 16 - 8).abs()) as i64 / 4 - 400 * st.w(HEARTS) as i64
-                        - 8000 * taken
-                        + been
+                    let coins = if matches!(target, Some(Via::Coins(_))) { 4000 * st.w(COINS_LEFT) as i64 } else { 0 };
+                    // A switch pulled (its marker gone) is worth a coin: it is hit in a jump, so
+                    // where the path ends says nothing of it (T103: W4-2's at 191,22).
+                    let row0 = sf_core::layout::h1(0x218e0 + 0x4c0);
+                    let pulled = switch_cells
+                        .iter()
+                        .filter(|&&(c, r)| !(48..=51).contains(&(st.w(row0 + r as u32 * 0x260 + 2 * c as u32) & 0x3f)))
+                        .count() as i64;
+                    coins - 4000 * pulled + d * 16 + (16 - (x % 16 - 8).abs()) as i64 / 4 - 400 * st.w(HEARTS) as i64
                 }
             }
         };
         let mut beam: Vec<(Game, Vec<FrameInput>)> = vec![(start, Vec::new())];
         let mut alive = Vec::new();
-        for _ in 0..HORIZON {
-            let mut next: Vec<(i64, Game, Vec<FrameInput>)> = Vec::new();
-            for (b, path) in &beam {
-                for &a in &acts {
-                    let mut n = b.clone();
-                    let mut p = path.clone();
-                    let mut dead = false;
-                    for _ in 0..HOLD {
-                        let x = FrameInput::joy(a);
-                        n.step_unseen(x);
-                        p.push(x);
-                        if n.state().w(FROG + f::LIVES) != lives || n.state().w(FROG + f::DYING) != 0 {
-                            dead = true;
-                            break;
-                        }
-                    }
-                    if !dead {
-                        let s = if n.state().l(LEVEL_STATE) == 1 { i64::MIN / 2 } else { score(n.state()) };
-                        next.push((s, n, p));
-                    }
-                }
-            }
+        // Paths on the ground at some depth past `GROUNDED` frames, and their scores (T103).
+        let mut grounded: Vec<(i64, Game, Vec<FrameInput>)> = Vec::new();
+        for depth in 0..HORIZON {
+            // Each beam entry's children, expanded on every core.
+            let jobs: Vec<(&Game, &Vec<FrameInput>, Joy)> =
+                beam.iter().flat_map(|(b, p)| acts.iter().map(move |&a| (b, p, a))).collect();
+            let chunk = jobs.len().div_ceil(threads).max(1);
+            let score = &score;
+            let inputs = &inputs;
+            let mut next: Vec<(i64, Game, Vec<FrameInput>)> = std::thread::scope(|sc| {
+                let hs: Vec<_> = jobs
+                    .chunks(chunk)
+                    .map(|js| {
+                        sc.spawn(move || {
+                            js.iter()
+                                .filter_map(|&(b, path, a)| {
+                                    let mut n = b.clone();
+                                    let mut p = path.clone();
+                                    for _ in 0..HOLD {
+                                        let x = FrameInput::joy(a);
+                                        p.push(x);
+                                        // A path the engine panics on is dropped, its inputs
+                                        // kept for a look (T103: a bob blit past the buffers).
+                                        let stepped = std::panic::catch_unwind(
+                                            std::panic::AssertUnwindSafe(|| n.step(x)),
+                                        );
+                                        if stepped.is_err() {
+                                            let _ = std::fs::write(
+                                                "/tmp/plan_exit-panic.txt",
+                                                script(&inputs.iter().chain(&p).copied().collect::<Vec<_>>()),
+                                            );
+                                            return None;
+                                        }
+                                        if n.state().w(FROG + f::LIVES) != lives
+                                            || n.state().w(FROG + f::DYING) != 0
+                                        {
+                                            return None;
+                                        }
+                                        // The exit before the last `--via`/`--stomp`/`--hurt`
+                                        // is reached: as bad as a death (T103: W4-3's exit
+                                        // lies on the way to its crushers).
+                                        if early_exit && n.state().l(LEVEL_STATE) != 0xffff_fffe {
+                                            return None;
+                                        }
+                                    }
+                                    let s = if n.state().l(LEVEL_STATE) == 1 {
+                                        i64::MIN / 2
+                                    } else {
+                                        score(n.state())
+                                    };
+                                    Some((s, n, p))
+                                })
+                                .collect::<Vec<_>>()
+                        })
+                    })
+                    .collect();
+                hs.into_iter().flat_map(|h| h.join().unwrap()).collect()
+            });
             next.sort_by_key(|x| x.0);
             let mut seen = std::collections::BTreeSet::new();
             beam = next
@@ -633,24 +605,37 @@ fn main() {
                 beam = alive;
                 break;
             }
+            if (depth + 1) * HOLD >= GROUNDED {
+                for (n, p) in &beam {
+                    if n.state().w(FROG + f::ON_GROUND) != 0 || n.state().w(FROG + f::ON_PLATFORM) != 0 {
+                        grounded.push((score(n.state()), n.clone(), p.clone()));
+                    }
+                }
+            }
             alive = beam.clone();
         }
         // Play the best path's first frames on the original; the next best if that loses a life.
         let snap = amiga.snapshot();
         let mut taken = None;
-        // The cells the original's frog is in over what is kept, counted once `score` is done.
-        let mut been_in: Vec<(i32, i32)> = Vec::new();
-        // Paths that end on the ground first: one still falling may be falling to its death just
-        // past the horizon.
-        let mut order: Vec<&(Game, Vec<FrameInput>)> = beam.iter().collect();
-        order.sort_by_key(|(g, _)| g.state().w(FROG + f::ON_GROUND) == 0);
+        // Only paths that reach the ground past `GROUNDED` frames, best first (T103): one still
+        // in the air at its end can be falling into a pit nothing past the horizon escapes, as
+        // W4-1's are. The level's drop-in is the exception: the frog lands only around frame 150.
+        grounded.sort_by_key(|x| x.0);
+        // None grounded (the frog on what neither flag shows): the beam's ends after all.
+        let order: Vec<(&Game, &Vec<FrameInput>)> = if inputs.len() < 200 || grounded.is_empty() {
+            beam.iter().map(|(g, p)| (g, p)).collect()
+        } else {
+            grounded.iter().map(|(_, g, p)| (g, p)).collect()
+        };
         for (_, p) in order.into_iter().skip(skip).take(8) {
             // The whole path must keep the frog alive on the original, not only what is kept.
             let n = p.len().min(COMMIT);
             let mut ok = true;
             for (k, &x) in p.iter().enumerate() {
                 sync::step_inserting(amiga, x).unwrap();
-                if peek_w(amiga, FROG + f::LIVES) != lives || peek_w(amiga, FROG + f::DYING) != 0 {
+                let b = amiga.peek(LEVEL_STATE, 4);
+                let ended = u32::from_be_bytes([b[0], b[1], b[2], b[3]]) != 0xffff_fffe;
+                if peek_w(amiga, FROG + f::LIVES) != lives || peek_w(amiga, FROG + f::DYING) != 0 || (early_exit && ended) {
                     eprintln!(
                         "  a path dies {k} frames in on the original, frog at {},{}",
                         peek_w(amiga, FROG + f::X),
@@ -662,75 +647,43 @@ fn main() {
             }
             amiga.restore(&snap);
             if ok {
-                for &x in &p[..n] {
-                    sync::step_inserting(amiga, x).unwrap();
-                    let (fx, fy) = (
-                        peek_w(amiga, FROG + f::X) as i16 as i32 + 0x17,
-                        peek_w(amiga, FROG + f::Y) as i16 as i32 - 0x10,
-                    );
-                    been_in.push((fx / 16, fy / 16));
-                }
-                taken = Some(p[..n].to_vec());
-                break;
-            }
-        }
-        if taken.is_none() {
-            // Every engine path dies on the original (its lag shortens jumps): search on the
-            // original itself, the beam's paths with holds changed at random, scored from its
-            // memory at the path's end.
-            let mut best: Option<(i64, Vec<FrameInput>)> = None;
-            for k in 0..ORACLE_TRIES {
-                let mut p: Vec<FrameInput> = beam.get(k % beam.len().max(1)).map_or(Vec::new(), |b| b.1.clone());
-                p.resize((HORIZON * HOLD) as usize, FrameInput::default());
-                for h in 0..HORIZON as usize {
-                    if rng.next() % 10 < 3 {
-                        let a = FrameInput::joy(acts[(rng.next() % acts.len() as u64) as usize]);
-                        p[h * HOLD as usize..(h + 1) * HOLD as usize].fill(a);
-                    }
-                }
-                let mut ok = true;
-                for &x in &p {
-                    sync::step_inserting(amiga, x).unwrap();
-                    if peek_w(amiga, FROG + f::LIVES) != lives || peek_w(amiga, FROG + f::DYING) != 0 {
-                        ok = false;
+                // Up to the frame the level ends on, if it does (T103: it may end mid-chunk,
+                // and the tally that follows is no place to plan).
+                let mut k = 0;
+                while k < n {
+                    sync::step_inserting(amiga, p[k]).unwrap();
+                    k += 1;
+                    // Any change from the level's running −2: the exit's 1 can come and go
+                    // within a frame (W4-4's exit at 15544 shows 0 next).
+                    let b = amiga.peek(LEVEL_STATE, 4);
+                    if inputs.len() + k > 10 && u32::from_be_bytes([b[0], b[1], b[2], b[3]]) != 0xffff_fffe {
                         break;
                     }
                 }
-                if ok {
-                    let st = sf_core::State::transplant(&sync::core_memory(amiga.memory()));
-                    let sc = if st.l(LEVEL_STATE) == 1 { i64::MIN / 2 } else { score(&st) };
-                    if best.as_ref().is_none_or(|b| sc < b.0) {
-                        best = Some((sc, p));
-                    }
-                }
-                amiga.restore(&snap);
+                taken = Some(p[..k].to_vec());
+                break;
             }
-            if let Some((sc, p)) = best {
-                eprintln!("  the original's own search: a path scoring {sc}");
-                let n = p.len().min(COMMIT);
-                for &x in &p[..n] {
-                    sync::step_inserting(amiga, x).unwrap();
-                    let (fx, fy) = (
-                        peek_w(amiga, FROG + f::X) as i16 as i32 + 0x17,
-                        peek_w(amiga, FROG + f::Y) as i16 as i32 - 0x10,
-                    );
-                    been_in.push((fx / 16, fy / 16));
-                }
-                taken = Some(p[..n].to_vec());
-            }
-        }
-        for c in been_in {
-            *visits.entry(c).or_insert(0) += 1;
         }
         let Some(p) = taken else {
             eprintln!("frame {}: every path loses a life on the original", inputs.len());
             backtracks += 1;
+            // Failing again and again here: the cells round the frog cost more, as a stall's do.
+            *fails_at.entry(inputs.len()).or_insert(0) += 1;
+            if fails_at[&inputs.len()] % 3 == 0 {
+                let (cx, cy) = here[0];
+                for r in cy.saturating_sub(4)..(cy + 5).min(84) {
+                    for c in cx.saturating_sub(4)..(cx + 5).min(300) {
+                        tabu[r * 300 + c] += 200;
+                    }
+                }
+                eprintln!("  failing at {cx},{cy}: the cells round it cost more");
+            }
             // Three candidates a chunk at most, then the chunk before it.
             let mut popped = history.pop();
             while popped.as_ref().is_some_and(|h| h.3 + 1 >= 3) {
                 popped = history.pop();
             }
-            let Some((s, len, g, sk)) = popped.filter(|_| backtracks <= 60) else {
+            let Some((s, len, g, sk)) = popped.filter(|_| backtracks <= 400) else {
                 break;
             };
             amiga.restore(&s);
@@ -753,63 +706,65 @@ fn main() {
             Some(Via::Stomp(_)) => {
                 if killed(|a| st.l(a)) { 0 } else { 99 }
             }
-            Some(Via::Hurt(_)) => {
-                if st.w(HEARTS) < hearts { 0 } else { 99 }
+            Some(Via::Hurt(u)) => {
+                if st.w(HEARTS) < hearts && hurt_by(&st, *u) { 0 } else { 99 }
             }
-            Some(&Via::Coins(n)) => {
-                let left = st.w(FROG + f::COINS_LEFT);
-                let pushed = pressed(&st, &sw) > 0;
-                if left < needed || pushed {
-                    visits.clear();
-                }
-                if pushed {
-                    eprintln!("  a switch pressed");
-                }
-                let d = dist(&goals[goal], (x.max(0) / 16) as usize, (y.max(0) / 16) as usize);
-                if left < needed || pushed || d < best_d.saturating_sub(1) {
-                    (stall, best_d) = (0, if left < needed || pushed { i64::MAX } else { d });
-                } else {
-                    stall += 1;
-                }
-                if stall >= STALL {
-                    // No headway: pass over the coin nearest the frog by the map's paths.
-                    let here = climb(&live_body(&st), w, h, &[((x.max(0) / 16) as usize, (y.max(0) / 16) as usize)]);
-                    let mut left = coins(&st, &skipped);
-                    left.extend(switches(&st).into_iter().filter(|c| !skipped.contains(c)));
-                    if let Some(&(nc, nr)) = left.iter().min_by_key(|&&(c, r)| here[r * w + c]) {
-                        for &(c, r) in &left {
-                            if c.abs_diff(nc) <= 4 && r.abs_diff(nr) <= 4 {
-                                eprintln!("  passing over the coin at {c},{r}");
-                                passed.push(((c, r), chunk + PASSED));
-                            }
-                        }
-                    }
-                    (stall, best_d) = (0, i64::MAX);
-                }
-                eprintln!("  coins needed {left}, distance {d}, stall {stall}");
-                if left <= n { 0 } else { 99 }
+            Some(Via::Coins(n)) => {
+                if st.w(COINS_LEFT) <= *n { 0 } else { 99 }
             }
             _ => dist(&goals[goal], (x.max(0) / 16) as usize, (y.max(0) / 16) as usize),
         };
         eprintln!(
-            "frame {}: frog {},{} (cell {},{}) goal {goal} distance {d} hearts {}",
+            "frame {}: frog {},{} (cell {},{}) goal {goal} distance {d} hearts {} coins needed {} clock {:x}",
             inputs.len(),
             x,
             y,
             x / 16,
             y / 16,
-            st.w(HEARTS)
+            st.w(HEARTS),
+            st.w(COINS_LEFT),
+            st.l(h0(0x876))
         );
+        // Stalled (T103): no coin, no switch, no step nearer the goal in `STALL` chunks. Coins
+        // near the frog are set aside (a ring behind spikes the beam cannot thread, W4-3:145,46);
+        // on the way to a switch or the exit, the cells round it are made dearer (a tabu).
+        let row0 = sf_core::layout::h1(0x218e0 + 0x4c0);
+        let switches_left =
+            (0..84u32 * 300).filter(|&k| (48..=51).contains(&(st.w(row0 + (k / 300) * 0x260 + 2 * (k % 300)) & 0x3f))).count();
+        let (cx, cy) = ((x.max(0) / 16) as usize, (y.max(0) / 16) as usize);
+        let key = (st.w(COINS_LEFT), switches_left, dist(&goals[goal], cx, cy));
+        if key.0 < best.0 || key.1 < best.1 || (key.0 == best.0 && key.1 == best.1 && key.2 < best.2) {
+            (best, since) = (key, 0);
+        } else {
+            since += 1;
+        }
+        if since >= STALL {
+            (best, since) = ((u16::MAX, usize::MAX, i64::MAX), 0);
+            if matches!(via.get(goal), Some(Via::Coins(_))) {
+                let near: Vec<(usize, usize)> = coin_cells(&st, &coin_tiles)
+                    .into_iter()
+                    .filter(|&(c, r)| c.abs_diff(cx) <= 10 && r.abs_diff(cy) <= 10)
+                    .collect();
+                eprintln!("  stalled: {} coins near the frog set aside", near.len());
+                set_aside.extend(near);
+            } else {
+                // The cells round the frog cost more from now on, so the field leads elsewhere.
+                for r in cy.saturating_sub(4)..(cy + 5).min(84) {
+                    for c in cx.saturating_sub(4)..(cx + 5).min(300) {
+                        tabu[r * 300 + c] += 200;
+                    }
+                }
+                eprintln!("  stalled: the cells round {cx},{cy} cost more");
+            }
+        }
         if goal < via.len() && d <= 2 {
             eprintln!("via {:?} at frame {}", via[goal], inputs.len());
             goal += 1;
-            passed.clear();
-            (stall, best_d) = (0, i64::MAX);
             if no_exit && goal == via.len() {
                 break;
             }
         }
-        if st.l(LEVEL_STATE) == 1 {
+        if inputs.len() > 10 && st.l(LEVEL_STATE) != 0xffff_fffe {
             eprintln!("exit at frame {}", inputs.len());
             break;
         }

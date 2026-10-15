@@ -48,6 +48,12 @@ const PATTERN: u32 = 1_426;
 const LAMPS_REGS: u32 = 514;
 const LAMP_GAP: u32 = 512;
 const LAMPS_END: u32 = 398;
+/// A lamp's set-up takes longer when the lamp is off (h0+$649e's branch falls through to a second
+/// `move.w`), and past the picture's end, before the frame's interrupt (T74: lamps drawn alone
+/// from line 299 start 5 colour clocks a lamp later than [`LAMP_GAP`] has them; the off lamps of
+/// `slot-hilo-8`'s payout flash put the sixth past the interrupt, as the original's).
+const LAMP_OFF: u32 = 6;
+const LAMP_BLANK: u32 = 10;
 /// A blit due on this line or later waits for the frame's interrupt (measured: the eighth reel
 /// blit, due at 312.61, starts after it), and goes on this many cycles into the line the
 /// interrupt ends on: reels (the CPU back from the handler, out of the blitter wait) and lamps.
@@ -144,9 +150,9 @@ impl Draw {
                     t = spend(&fetch, t, lead, CPU_LOST);
                     write_at(cx, t, crate::audio::INTENA, 0x0010);
                     write_at(cx, t, crate::audio::DMACON, 0x8400);
-                    t = spend(&fetch, t, LAMPS_REGS, CPU_LOST);
+                    t = spend(&fetch, t, LAMPS_REGS + lamp_extra(cx, &fetch, t, lamp), CPU_LOST);
                 } else {
-                    t = spend(&fetch, t, LAMP_GAP, CPU_LOST);
+                    t = spend(&fetch, t, LAMP_GAP + lamp_extra(cx, &fetch, t, lamp), CPU_LOST);
                 }
             }
             lamp_blit(cx, lamp)
@@ -203,6 +209,17 @@ impl Draw {
         self.t = 0;
         cx.line = FRAME_LINES;
         Yield::Interrupt
+    }
+}
+
+/// What lamp `k`'s set-up from `t` takes past [`LAMP_GAP`]: [`LAMP_OFF`] and [`LAMP_BLANK`].
+fn lamp_extra(cx: &Cx, fetch: &Fetch, t: u32, k: u32) -> u32 {
+    let off = if cx.s.w(LAMPS + 8 * k) == 0 { LAMP_OFF } else { 0 };
+    let line = (t / LINE % FRAME_LINES as u32) as u16;
+    if fetch.lines().contains(&line) || line < crate::front::PICTURE_END {
+        0
+    } else {
+        off + LAMP_BLANK
     }
 }
 

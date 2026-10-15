@@ -56,8 +56,9 @@ pub struct Cpu {
 pub struct HandlerEnd {
     /// The beam (line, DMA cycle) of its acknowledge's write (`INTREQ = $20`).
     pub ack: (u16, u16),
-    /// The main program's instruction the interrupt came in before (the PC it returns to).
-    pub resumes: u32,
+    /// The main program's instruction the interrupt came in before (the PC it returns to), when the
+    /// original's step began at the handler's entry.
+    pub resumes: Option<u32>,
 }
 
 /// How the original's main loop kept time on this frame (DESIGN §2.1; owner, 2026-10-11).
@@ -304,7 +305,7 @@ impl Game {
     /// [`Game::step`] without drawing a level frame's picture, which nothing in the state reads:
     /// the game is left exactly as `step` leaves it, and the [`FrameOut`]'s picture is empty when
     /// a level frame would have been drawn. For planners only, which step the engine thousands of
-    /// times a frame of plan and never look (T104, `examples/plan_exit`); conformance runs and the
+    /// times a frame of plan and never look (T104, `examples/plan_exit_w6`); conformance runs and the
     /// app keep [`Game::step`]. Locked by `sf-conform`'s `tests/step_unseen.rs`.
     pub fn step_unseen(&mut self, input: FrameInput) -> FrameOut {
         self.step_inner(input, Pacing::Unpaced, false)
