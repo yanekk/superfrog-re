@@ -2,7 +2,7 @@
 
 Everything around the levels, as `engine/crates/sf-core/src/front` ports it from the game
 executable `d1_c03` (addresses `hN+$off`, docs/08): boot, the title and its intro, the menu, the
-options and level codes, attract mode up to its demo, and the end sequence. Claims marked
+options and level codes, attract mode and its demo, and the end sequence. Claims marked
 **(oracle)** are checked by the `front-*` and `ending` cases in `engine/conform/cases/` and
 `engine/crates/sf-conform/tests/front.rs`; **(code)** comes from reading the listing.
 
@@ -18,7 +18,7 @@ leaves that the engine does not model (the trackloader's sector buffer at h3+$35
 packed in hunk 1: `front::LOAD_LEAVES`, `FrameOut::resync`), and finds the line the original's
 load ended on by trying them (`Game::set_load_line`).
 
-The disk-3 story intro is below (T32, finished by T46–T48); the attract demo is T33. The end
+The disk-3 story intro is below (T32, finished by T46–T48); the attract demo is below (T160–T163). The end
 sequence (T35) is entered from the sync point `end-sequence` (below).
 
 ## Scene flow (code, oracle)
@@ -42,7 +42,7 @@ top_loop $5c:
   award_pages $1e98 (attract, or a new high score): AWA1, AWA2, 300 frames each
   hiscore_and_credits $20e0: HPIC unpacked, hall of talent (20 lines in, 350 frames, 20 out),
     credits (a line every second frame at line $c5, text every 24), fire/mouse/Esc abort
-  then the attract demo (T33) or the game (T21)
+  then the attract demo (below; back to title_screen) or the game (T21)
 ```
 
 ## Timing the engine keeps (oracle)
@@ -150,6 +150,30 @@ Timing the engine keeps (oracle, frames 0–539):
   original's call chain, as level lag is); play uses the engine's own timing (`Pacing::Unpaced`).
 - **Loads** are instant as on disk 1: what runs on during them (the handler's sound variables,
   `RUNS_DURING_LOAD`) is taken from the original at the load, and the handler re-run.
+
+## The attract demo (T160–T163; code, oracle)
+
+```
+top_loop $a8 (attract mode): Accessing-disk overlay, demo_world_load, demo_level_load (W1-1),
+  overlays_end, demo_init (level_init_w1's work; the recording at h0+$3ad8c), level_start,
+  level_frame_loop with demo_play $11990 in place of the joystick,
+  level_exit_fade (attract mode on) -> title_screen again: the overlay's fade-out, the title's load
+```
+
+- **Its place**: after the credits, when attract mode is on and nothing aborted (`front::attract`'s
+  `TopLoop`, `Demo`). Every `demo_index` plays the same W1-1 recording; the title gives each the
+  start W1-1 (h0+$1218).
+- **The recording** (oracle: `0001 f000 0061 f003 002b f103 …`): a lead-in word, then two words a
+  step: joystick and fire (`$303`: the directions; fire held while the `$f000` bits are clear), frames
+  it lasts. `demo_at` (h0+$11a2e) moves 4 bytes a step and points at the word before the step, so a
+  `$ffff` there (in a frames slot) ends it. `demo_play` counts `demo_left` (h0+$11a2c) down and
+  takes the next step when it runs out.
+- **Its end**: fire, or the recording's end, clears `demo_running`, sets `level_state` 1 and the
+  frog's lives `$ffff`; `level_frame_loop` also stops on fire in attract mode. The level's exit
+  fade then returns to the title, and the cycle repeats.
+- `front-attract` runs from power-on through the title, the award pages, the hall of talent, the
+  credits and the demo, to the title's load after it (5 200 frames,
+  `the_attract_cycle_matches_the_original`). Three whole cycles and an abort by fire are T164's.
 
 ## The end sequence (T35; code, oracle)
 
