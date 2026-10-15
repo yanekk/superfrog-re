@@ -55,7 +55,7 @@ done · ⛔ blocked, needs a human.
 | T30 | acceptance | T29 | ⬜ | |
 | T31 | render-remaining-levels | T13 | ✅ | |
 | T32 | story-intro | T20; blocks T21 | ✅ | |
-| T33 | attract-demo | T16, T20 | ⬜ | |
+| T33 | attract-demo | T16, T20 | ✅ | |
 | T34 | game-over | T15, T20; blocks T21 | ✅ | |
 | T35 | end-sequence | T20; blocks T21 | ✅ | |
 | T36 | items-on-the-beam | T15 | ✅ | |
@@ -109,7 +109,7 @@ done · ⛔ blocked, needs a human.
 | T101 | lag-long-pass | T81, T82; blocks T21 | ✅ | |
 | T102 | items-w3-faults | T101; blocks T21 | ✅ | |
 | T105 | w2-1-hang-fruit-life | T85; blocks T21 | ✅ | |
-| T106 | w1-completions | T42, T86, T101; blocks T18 | ⬜ | |
+| T106 | w1-completions | T42, T86, T101; blocks T18 | ✅ | |
 | T107 | enemies-w1-2-case | T42; blocks T18, T33, T106 | ✅ | |
 | T108 | enemies-w1-3-case | T42; blocks T18, T33, T106 | ✅ | |
 | T109 | enemies-w1-4-case | T42; blocks T18, T33, T106 | ✅ | |
@@ -124,7 +124,7 @@ done · ⛔ blocked, needs a human.
 | T122 | w2-completions | T43, T101, T121; blocks T18 | ✅ | W2-1 done (`w2-1-complete`, red at 1094, 1508: T155); W2-2/3/4 split to T166–T168 (owner). Review: scan reproduced both reds, original exits at 2523, `script_seen` frames rerun, `plan_exit` flags probed on W2-1/W2-3; fix: T155 now carries the ledge breaking and the 2365 heart. No mutation: no tested code changed. |
 | T120 | conform-no-silent-pass | T05, T36; blocks T21 | ⬜ | |
 | T104 | w6-completions | T40, T101, T102; blocks T18 | ✅ | |
-| T123 | enemies-w5-2-case | T39; blocks T18 | ⬜ | |
+| T123 | enemies-w5-2-case | T39; blocks T18 | ✅ | |
 | T124 | enemies-w5-3-case | T39; blocks T18 | ⬜ | |
 | T125 | enemies-w5-4-case | T39; blocks T18 | ⬜ | |
 | T126 | w5-completions | T39, T101, T121, T123, T124, T125; blocks T18 | ⬜ | |
@@ -152,6 +152,13 @@ done · ⛔ blocked, needs a human.
 | T166 | w2-2-completion | T122; blocks T18, T155 | ⬜ | |
 | T167 | w2-3-completion | T122; blocks T18, T155 | ⬜ | |
 | T168 | w2-4-completion | T122; blocks T18, T155 | ⬜ | |
+| T160 | attract-demo-entry | T33 | ⬜ | |
+| T161 | attract-demo-init-timing | T160 | ⬜ | |
+| T162 | attract-demo-level-start | T161 | ⬜ | |
+| T163 | attract-demo-return | T162 | ⬜ | |
+| T164 | attract-demo-cycles | T163 | ⬜ | |
+| T154 | w1-4-completion | T106, T127; blocks T18 | ⬜ | |
+| T165 | w1-1-completion | T106, T131; blocks T18 | ⬜ | |
 
 A Notes cell holds what was built or what the review found, the test count, and one line per
 deviation from the task doc. A ✅ task's cell may be cut to one line once the next task has been reviewed.

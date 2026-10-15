@@ -164,8 +164,9 @@ fn bonus_enter_wb_1() {
 
 /// The bonus level failed (T79): two deaths with a life left, each putting the frog back on the
 /// screen without leaving the loop (no outcome reaches the game flow), then the last life lost
-/// and the loop's end in frame 2448: game over. Green to frame 2447; frame 2448, the first of
-/// `game_over_seq`, diverges after a lag (FINDINGS, T79 review), pinned here with its outcome.
+/// and the loop's end in frame 2448, after a lag: game over. Green to frame 2448, the first of
+/// `game_over_seq`, since a loop ending in a late pass ends in the next step (T106); frame 2449
+/// diverges (FINDINGS, T79 review), pinned here with its outcome.
 #[test]
 fn bonus_death_wb_1() {
     let mut case =
@@ -182,7 +183,7 @@ fn bonus_death_wb_1() {
     assert_eq!(first, None);
     case.frames += 1;
     let d = sf_conform::run(&case).expect_err("game over in the bonus level, open");
-    assert_eq!(d.frame, 2448);
+    assert_eq!(d.frame, 2449);
     assert_eq!(d.level_outcome, Some(sf_core::level::LevelOutcome::GameOver));
 }
 
@@ -235,6 +236,61 @@ fn complete_w4_3() {
         "{:?}",
         d.level_outcome
     );
+}
+
+/// `name` run to its end with re-syncs at exactly `pins`, then one frame more: the next level's
+/// (T21's), the level completed with the points taken and no slot machine (T106).
+fn completes(name: &str, pins: &[u32]) {
+    let mut case = sf_conform::Case::load(&sf_conform::cases_dir().join(format!("{name}.toml")))
+        .unwrap_or_else(|e| panic!("{e}"));
+    let o = sf_conform::run(&case).unwrap_or_else(|d| panic!("{name}: {d}"));
+    let resynced: Vec<u32> = o.resynced.iter().map(|r| r.0).collect();
+    assert_eq!(resynced, pins, "{name}: {:?}", o.resynced);
+    let end = case.frames;
+    case.frames += 1;
+    let d = sf_conform::run(&case).expect_err("the next level is T21's");
+    assert_eq!(d.frame, end, "{name}: {d}");
+    assert_eq!(d.unported, ["the next level after the tally (T21)"]);
+    assert!(
+        matches!(
+            d.level_outcome,
+            Some(sf_core::level::LevelOutcome::Completed { tally }) if !tally.slot_machine
+        ),
+        "{name}: {:?}",
+        d.level_outcome
+    );
+}
+
+/// W1-2 played from its start to its exit and through the tally (T106): the 68 coins, the exit at
+/// 5182 and fire taking the points, with no re-sync.
+#[test]
+fn complete_w1_2() {
+    completes("complete-w1-2", &[]);
+}
+
+/// W1-3 played from its start to its exit and through the tally (T106): the 75 coins, the spring
+/// at 105,75 out of the basin, the exit at 7728 and fire taking the points. One re-sync, at 5079:
+/// a lag cut inside `panel_update` leaves the panel's digits differing (as W5-1's at 979, pinned
+/// in `enemies_w5_cases`).
+#[test]
+fn complete_w1_3() {
+    completes("complete-w1-3", &[5079]);
+}
+
+/// W1-1 played to its exit (T106): green through the exit at 4473, which `level_state` 1 reaches
+/// in a late pass (`sync::mid_pass`), to frame 4474; frame 4475 shows T131's exit-fade palette
+/// step, pinned here until T165 runs the whole case.
+#[test]
+fn complete_w1_1_to_exit_fade() {
+    let mut case = sf_conform::Case::load(&sf_conform::cases_dir().join("complete-w1-1.toml")).unwrap();
+    case.frames = 4475;
+    if let Err(d) = sf_conform::run(&case) {
+        panic!("complete-w1-1: {d}");
+    }
+    case.frames += 1;
+    let d = sf_conform::run(&case).expect_err("the exit fade's palette step, open (T131)");
+    assert_eq!(d.frame, 4475);
+    assert!(d.first_var.is_none() && d.picture_diff.is_some(), "{d}");
 }
 
 /// A map cell's marker in the engine's memory (`map_rows[1]` h1+$218e0, rows `$260` bytes).

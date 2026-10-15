@@ -598,7 +598,13 @@ impl LevelCtx<'_> {
 
     /// `level_frame_loop` has returned in the step's own frame (T37): the step is over where the
     /// beam is, its frame's rest is the program after the loop's ([`exit`]).
+    /// A frame that has already ended in the middle of this pass (late) keeps its end: the next
+    /// step runs the pass again from its start and the loop returns there (T106: W1-1's exit
+    /// in a late pass).
     pub fn loop_over(&mut self) {
+        if self.frames.as_ref().is_some_and(|f| f.done) {
+            return;
+        }
         self.stamp();
         let line = self.clock.line;
         let f = self.frames.as_mut().expect("the main program's frames");
