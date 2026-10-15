@@ -509,7 +509,7 @@ pub fn level_bus_times(
 
 #[cfg(test)]
 mod tests {
-    use super::{Colour, Walk, divu_cycles, level_bus_times, level_step_times};
+    use super::{Colour, Walk, cpu, divu_cycles, fade_calls, level_bus_times, level_step_times};
     use crate::front::BEAM_CYCLES_PER_LINE;
 
     /// The 68000's `divu.w` by its quotient's bits (Cwik's count, checked against his table's
@@ -550,6 +550,12 @@ mod tests {
         assert_eq!(writes.len(), 2);
         assert!(100 < writes[0] && writes[0] < writes[1] && writes[1] < end);
         assert!(end > ack);
+        // Each is the `add.w` that sets the component, not the `andi.w` that clears it first.
+        let mut c = cpu::Cpu::new(100, &Free);
+        let out = fade_calls(&mut c, &stepping);
+        assert_eq!(out.len(), 4);
+        assert_eq!(writes, [out[1].1, out[3].1]);
+        assert!(out[0].1 < writes[0] && out[2].1 < writes[1]);
         // A taken bus only delays it.
         struct Odd;
         impl Bus for Odd {
