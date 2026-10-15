@@ -5,8 +5,8 @@
 ## Goal
 
 Remappable keys and gamepad support: gilrs feeding the same mapping onto the original's joystick and
-keys (DESIGN §2.6), a Controls window to rebind, hot-plug, and the owner's 8BitDo Ultimate 2 confirmed
-on hardware. SDL2's controller support is the fallback if gilrs does not handle the pad.
+keys (DESIGN §2.6), a Controls window to rebind, hot-plug, and the pad path tested with simulated
+input (owner, 2026-10-15: the 8BitDo hardware check is optional and not a gate). SDL2's controller support is the fallback if gilrs does not handle the pad.
 
 ## Design sections this implements
 
@@ -40,10 +40,10 @@ pub fn map_input(keys: &KeyState, pads: &PadState, km: &KeyMap, pm: &PadMap) -> 
 ## Done when
 
 - [ ] Tests and e2e green.
-- [ ] The owner's pad check below recorded as a ✅ row in FINDINGS (or 🐞 with what failed).
+- [ ] A FINDINGS row says the 8BitDo on hardware is unverified (unless the owner chose to try it).
 - [ ] Bindings persist in `settings.toml`.
 
-## Needs a person
+## Optional, if the owner wants to try the pad (not a gate)
 
 ```
 cd engine && cargo run --release -p sf-app -- --max-frames 15000

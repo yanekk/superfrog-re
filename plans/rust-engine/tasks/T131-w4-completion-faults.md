@@ -1,5 +1,8 @@
 # T131 — w4-completion-faults
 
+> **Dropped** by the owner's amendment of 2026-10-15 (DESIGN §2.1 "What faithful means"): it chased
+> sub-frame timing no player perceives. Not to be built. Its cases are re-judged by T181.
+
 **Phase:** 2 · **Depends on:** T103, T121, T127; blocks T18, T21 · **Weight:** heavy
 
 Added by T103 (owner, 2026-10-14). T103 played W4-1…W4-4 from their starts to their exits and

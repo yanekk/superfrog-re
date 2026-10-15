@@ -1,5 +1,8 @@
 # T140 — story-setup-under-music
 
+> **Dropped** by the owner's amendment of 2026-10-15 (DESIGN §2.1 "What faithful means"): it chased
+> sub-frame timing no player perceives. Not to be built. Its cases are re-judged by T181.
+
 **Split from:** T56. Carries "that case is green" for engine frames 4562–4581 and 8216–8217.
 
 **Phase:** 2 · **Depends on:** T56 · **Weight:** medium

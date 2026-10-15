@@ -21,19 +21,26 @@ the later map editor needs, which is why it can play an edited level (§2.10).
 
 ### Success criteria
 
-- Given the same inputs from the same starting point, the Rust engine produces the same picture, the
-  same sound-chip activity and the same game variables as the original, every frame, on every
-  scripted conformance run (§2.1), including a scripted run from boot to the end sequence.
+- Given the same inputs from the same starting point, the Rust engine is faithful to the original
+  (§2.1) on every scripted conformance run: the same game state pass by pass, a picture and sound no
+  player could tell apart, and, run alone with no help from the original, the same moments of play
+  in the same order (every coin, death, kill, exit and screen). This includes every level of every
+  world completed, and a scripted game from power-on to the end sequence played by the engine alone.
 - Every part of the original is present: intro and story, title, options and passwords, every level
-  and boss of every world, the slot machine and bonus levels, game over, the end sequence, music and
-  sound effects.
+  of every world and the final boss, the slot machine and bonus levels, game over, the end sequence,
+  music and sound effects.
 - Nothing derived from the disks is in the repository or in the built program (§2.3).
-- The owner plays a session on this Mac with the 8BitDo Ultimate 2 and says it is Superfrog.
+- All of the above is established by the agents, headless, against the original on the oracle. No
+  criterion needs the owner to play or look (owner, 2026-10-15).
 
 ### Stance
 
-- Frame-exact, not "feels the same". The original is the specification, and an automated comparison
-  against it is the only judge of a mechanic; a port that "looks right" is not done.
+- Faithful, judged by a machine (owner, 2026-10-15; replaces "frame-exact"). The game must act and
+  feel like the original: the same rules, the same moments of play, a picture and sound a player
+  could not tell apart. It need not reproduce where in a frame the original's CPU, blitter or sound
+  chip did their work. The original is still the specification, and an automated comparison against
+  it is still the only judge of a mechanic; a port that "looks right" to the agent who wrote it is
+  not done.
 - The original's quirks and bugs are kept. Only behaviour that would crash or hang the original gets a
   safe replacement, each one listed in §2.11, because those cases cannot be compared anyway.
 - Our code, their data. The engine contains no Team 17 bytes; it reads everything from the player's
@@ -45,21 +52,61 @@ the later map editor needs, which is why it can play an edited level (§2.10).
 
 ## 2. Behaviour specification
 
-### 2.1 What frame-exact means
+### 2.1 What faithful means
+
+Owner, 2026-10-15. This replaces the frame-exact definition that held from 2026-10-10. Of the 47
+tasks open that day, 37 chased differences no player perceives: a colour one fade step off for one
+frame, a sprite drawn a frame late because the original's blitter raced the beam, a sound-chip
+write some cycles earlier. Meanwhile the engine could not start a game from the menu
+(`unported: "a game's start (T21)"`). The bar moves to what a player perceives. It stays automatic
+and it stays measured against the original.
 
 Each step of the engine is one PAL vertical blank (one "frame"). Starting from a sync point (the
 original's state captured by the reference emulator and transplanted into the engine, or power-on for
-a whole-game run) and feeding the same joystick/keyboard state per frame, three things must match on
-every frame:
+a whole-game run) and feeding the same joystick/keyboard state per frame, a case passes when all four
+checks hold. `sf-conform`'s default mode (`run`, `all`, `scan`) is these checks (T172).
 
-1. The displayed picture inside the game's display window, compared as 12-bit OCS colour per pixel.
-2. The ordered list of Paula (sound chip) register writes made during that frame.
-3. Every game variable the engine models, compared with the original's memory at the addresses the
-   engine's layout table (§3.3) names.
+1. **State, pass by pass.** Every gameplay variable in `LAYOUT` (§3.3) equals the original's at the
+   end of each completed main-loop pass, matched by pass count rather than frame number, so a pass
+   that ends a frame later on one side is not a difference. Frames ending mid-pass are not compared,
+   as before. Variables that only say how the frame was produced (copper lists, bitmap buffers,
+   blitter and beam bookkeeping, the sound driver's register shadows) are tagged `presentation` in
+   `LAYOUT` and are judged by checks 2 and 3 instead.
+2. **Picture, within tolerance.** The picture inside the display window, as 12-bit OCS colour per
+   pixel. A frame's difference is tolerated when every differing pixel is at most one step off in each
+   of R, G and B, or when fewer than 64 pixels differ (a sprite's edge, a stray line). Any other
+   difference is tolerated only while it lasts at most 2 frames in a row (one 25 Hz pass), and the
+   tolerated frames of this last kind are at most 1% of the case's frames. Every tolerated frame is
+   counted and printed: never silent (T120's rule stands).
+3. **Sound, as events.** The Paula writes are reduced to sound events per channel: a sample started
+   (start address, length, period, volume), a period or volume change, a channel stopped. Each of
+   the original's events is matched by the same event on the same channel within ±2 frames, in the
+   same order per channel. The order of writes within a frame and their beam positions are not
+   compared.
+4. **Plays alone.** The engine is started once from the sync point and then runs with nothing from
+   the original: no re-syncs, no beam anchors, no transplant. It gets only the inputs and the
+   original's pacing (which frames the original's pass was late), so a lag on the original does not
+   shift the inputs relative to the passes. Its milestones must equal the original's, in the same
+   order, each within ±10 frames of play (the original's load frames are not counted): every scene
+   change (title, menu, level start, tally, slot machine, bonus level, game over, end sequence),
+   every coin and item taken, every enemy killed, every life lost, every level exit, the score at
+   each tally, and at the end score, lives and coins equal. This is the check that proves the game
+   runs on its own, and the one the whole-level and whole-game cases are judged by.
 
-(1) and (2) are what the player perceives and are the definition; (3) is what makes a divergence
-findable, since a picture difference usually shows up frames after the variable that caused it. The
-comparison runner reports the first frame and the first variable that differ.
+Checks 1–3 may re-sync after a lag as before, which is why check 4 exists: a re-sync can hide a
+divergence, a run alone cannot. A case may name only some checks (`compare = [...]`), but every
+completion case and the whole-game case run check 4.
+
+The thresholds above (one colour step, 64 pixels, 2 frames, 1%, ±2 frames, ±10 frames) are the
+owner's bar. A task that finds one wrong raises it with the owner or the coordinator agent; it is
+never changed in code to make a case green.
+
+The frame-exact comparison stays in `sf-conform` as `--strict`, for diagnosis: when a faithful check
+fails, the strict run shows the first frame and variable that differ. No task's "Done when" requires
+`--strict` green.
+
+How cases line up with the original's timing, which remains how every check aligns the two sides
+(owner, 2026-10-11 and 2026-10-13):
 
 Lag and randomness (T07 measured both; owner, 2026-10-11). In a level the original's main loop runs
 a 25 Hz pass every second frame and sometimes overruns it (docs/08 "Lag"). Conformance runs feed the
@@ -123,7 +170,7 @@ original's own memory after the game loads them (T07).
 ### 2.5 Timing
 
 The engine runs at the PAL frame rate, 49.92 Hz, on any display, because game speed, music tempo and
-frame-exactness are all defined per PAL frame. On a 60 Hz or variable-rate display the newest
+the state check (§2.1) are all defined per PAL frame. On a 60 Hz or variable-rate display the newest
 completed frame is presented at each display refresh; frames are never interpolated, because an
 interpolated frame is not a frame the original drew. The audio device's sample clock paces the
 simulation so sound never drifts from picture.
@@ -141,7 +188,7 @@ disconnected mid-game changes nothing but which device feeds the mapping.
   largest integer scale and black borders, because non-integer scaling smears pixel art unevenly.
 - CRT filter: an optional shader applied after scaling. It changes presentation only.
 - Widescreen: the renderer draws extra columns of the level on each side using the same state. Game
-  logic is identical in every mode, so frame-exactness holds in all of them (owner's decision,
+  logic is identical in every mode, so faithfulness (§2.1) holds in all of them (owner's decision,
   2026-10-10). Objects the original has not activated stay invisible or frozen at the edges; this is
   the accepted cost. Enforced by a test: the centre 320 columns of a widescreen frame equal the 4:3
   frame for every frame of the conformance runs.
@@ -221,7 +268,7 @@ engine/crates/sf-e2e      shell  end-to-end tests driving the built app
 The pure crates take everything as parameters and return values. They read no clock, touch no file,
 socket, thread, environment or process, use no floating point and no randomly-seeded hash map. The
 reason for each: a clock or file makes a test depend on the machine; floating point and hash-map order
-are the classic ways two runs of a "deterministic" simulation drift apart, and frame-exactness is
+are the classic ways two runs of a "deterministic" simulation drift apart, and the state check (§2.1) is
 defined bit for bit. Everything on the pure side is testable exhaustively in milliseconds; every rule
 that leaks into the shell becomes a rule only the slow rig can check.
 
@@ -298,13 +345,15 @@ frame.
 - **Routine conformance**: a ported routine and the original routine (run on Moira from a memory
   snapshot by `sf-oracle`) are given the same inputs, many of them generated; outputs and memory
   effects must match.
-- **Frame conformance**: scripted input runs from sync points, compared per §2.1 against vAmiga. The
-  short runs are in the test block; the full suite (every level completed, the whole game from boot)
-  is `cd engine && cargo run -q --release -p sf-conform -- all`, run by the mechanic tasks, the drill
-  and acceptance, because it takes minutes.
-- **End to end**: the real app driven by `sf-e2e` (§5, End to end).
-- What none of these prove: that the 8BitDo pad works on real hardware, and that a person playing it
-  finds it right (§5.1).
+- **Frame conformance**: scripted input runs from sync points, judged by the faithful checks of §2.1
+  against vAmiga. The short runs are in the test block; the full suite (every level completed, the
+  whole game from boot) is `cd engine && cargo run -q --release -p sf-conform -- all`, run by the
+  mechanic tasks, the drill and acceptance, because it takes minutes. `--strict` is the frame-exact
+  comparison, for diagnosis only.
+- **End to end**: the real app driven by `sf-e2e` (§5, End to end), including a scripted whole game
+  through the real binary whose milestones match the original's (T30).
+- What none of these prove: that the 8BitDo pad works on real hardware, and that sound comes out of
+  the speakers (§5.1). Neither is a gate (owner, 2026-10-15).
 
 Input scripts are written by workers (owner's decision, 2026-10-10): text files of `frame: inputs`
 lines under `engine/conform/scripts/`, steering by reading the oracle's state. They contain inputs
@@ -359,9 +408,12 @@ Without the variable those tests report themselves skipped, never passed.
 
 | Cannot be tested automatically | Why it needs a person |
 |---|---|
-| The 8BitDo Ultimate 2 drives the game | A physical pad cannot be simulated at the HID level here |
-| A play session feels like Superfrog, and sound comes out of the speakers | A real person's reaction; the speakers are hardware |
+| The 8BitDo Ultimate 2 drives the game | A physical pad cannot be simulated at the HID level here. Gamepad support is built and tested with simulated pad input; the hardware check is not a gate and stays marked unverified (owner, 2026-10-15) |
+| Sound comes out of the speakers | The speakers are hardware. The mixed output is checked in captures; not a gate (owner, 2026-10-15) |
 | Granting Accessibility and Screen Recording to the terminal that runs the OS-layer tests | A macOS privacy grant only the user can click |
+
+Whether the game feels like Superfrog is no longer on this list: §2.1's checks are its definition,
+and the owner is not asked to play (owner, 2026-10-15).
 
 ### 5.2 Seatbelts
 
@@ -390,7 +442,7 @@ No credentials are needed by any action (measured: none of the rows uses a login
 | Fetch and build vAmiga at the pinned commit | `tools/setup/oracle.sh` | worker | builds into a cache outside the repo | delete `~/.cache/superfrog-re/vamiga` | free | — |
 | Download crates during `cargo build` | (cargo) | worker | ordinary build | `cargo clean` | free | — |
 | Grant Accessibility + Screen Recording to the terminal | System Settings | person | macOS privacy grant | revoke in System Settings | — | — |
-| Use the 8BitDo pad / play the session | — | person | physical device, human judgement | — | — | — |
+| Use the 8BitDo pad (optional, not a gate) | — | person | physical device | — | — | — |
 
 ---
 
@@ -406,7 +458,14 @@ the disks. The tool caches in `~/.cache/superfrog-re/` can be deleted at any tim
 
 - **Clean reimplementation, not static recompilation or a hybrid** (owner, 2026-10-10). Readable,
   moddable code that pairs with the editor; faithfulness is bought with the conformance suite instead.
-- **Frame-exact** (owner). Defined in §2.1. Requires a scriptable reference emulator.
+- **Frame-exact** (owner, 2026-10-10), **replaced by faithful** (owner, 2026-10-15). Defined in
+  §2.1. Both need a scriptable reference emulator. Frame-exact cost five days of sub-frame timing
+  work (beam races, bus-cycle models, copper colour races) while the engine still could not chain a
+  menu into a level; faithful keeps the automated comparison and drops what a player cannot see or
+  hear. Fifteen tasks that only chased sub-frame timing were dropped (PLAN.md, amendment
+  2026-10-15).
+- **No hand verification as a gate** (owner, 2026-10-15). The agents prove the game headless; the
+  owner's play session and the 8BitDo hardware check are optional.
 - **vAmiga as the reference, not FS-UAE or a homemade harness** (planner). FS-UAE has no per-frame
   scripting or memory access. A homemade harness would need its own blitter, copper and display
   emulation to produce frames, i.e. writing an emulator. The vAmiga core is MPL-2.0 with an MIT CPU,
@@ -444,6 +503,8 @@ the disks. The tool caches in `~/.cache/superfrog-re/` can be deleted at any tim
 - Other disk versions (IPF/original release, CD32, other cracks): each needs its own verification (owner).
 - Saved high scores: session-only like the original (owner).
 - Save states across engine builds: refused instead (owner).
-- Gameplay changes in any mode, including widescreen and an optional "fixes" toggle: frame-exactness
+- Gameplay changes in any mode, including widescreen and an optional "fixes" toggle: faithfulness
   is the product (owner).
+- Sub-frame timing of the original (where in a frame its CPU, blitter, copper or sound chip did
+  their work) beyond what §2.1's checks need (owner, 2026-10-15).
 - Shipping or bundling any disk data, ROM or the reference emulator.

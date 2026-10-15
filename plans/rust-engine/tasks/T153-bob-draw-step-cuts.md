@@ -1,5 +1,8 @@
 # T153 — bob-draw-step-cuts
 
+> **Dropped** by the owner's amendment of 2026-10-15 (DESIGN §2.1 "What faithful means"): it chased
+> sub-frame timing no player perceives. Not to be built. Its cases are re-judged by T181.
+
 **Phase:** 2 · **Depends on:** T121; blocks T21 · **Weight:** medium
 
 Added by the T121 review (owner, 2026-10-15): T121's goal 1, which T121 did not build. T121 removed

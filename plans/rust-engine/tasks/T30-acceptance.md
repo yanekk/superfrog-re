@@ -4,8 +4,8 @@
 
 ## Goal
 
-Close the plan: a final check that the success criteria in DESIGN §1 hold on the merged tree, and the
-owner's own play session with the 8BitDo pad, which is the one judgement no tool can make.
+Close the plan: a final check that the success criteria in DESIGN §1 hold on the merged tree, all of
+them established by the agents headless (owner, 2026-10-15: no play session as a gate).
 
 ## Design sections this implements
 
@@ -29,16 +29,16 @@ cargo tree -p sf-app | grep -E 'sf-oracle|sf-conform|sf-e2e'   # must print noth
 
 - [ ] Every automated check above passes and its output summary is in PROGRESS notes.
 - [ ] README and CLAUDE.md updated.
-- [ ] The owner's verdict below is recorded as a dated ✅ (or 🐞 with what to fix) row in FINDINGS.
+- [ ] The end-to-end checks below green, their worker-driven FINDINGS row written.
 
-## Needs a person
+## End to end (the worker drives this, replacing the owner's session; owner, 2026-10-15)
 
-```
-cd engine && cargo run --release -p sf-app
-```
-(built and imported by the worker beforehand; quit with ⌘Q)
+- [ ] The real binary under `--script` (script layer, `--max-frames` and `--timeout` set) plays the
+      whole-game script from power-on to the end sequence; the captured run's milestones equal the
+      original's (DESIGN §2.1 check 4) and its audio capture is non-silent where the original's is.
+- [ ] A soak: 50 000 frames of scripted play through the app with no crash, no `unported` entry, no
+      frame drift between picture and audio clocks.
+- [ ] A dated, worker-driven FINDINGS row with what was run and seen.
 
-Expect: the game from the Team 17 logo onward, played with the 8BitDo Ultimate 2 and the speakers on,
-for as long as you like (at least one world, ideally with a slot machine and a boss).
-Tell me: whether it is Superfrog as you remember it, and anything that felt or sounded off, with the
-level and roughly what you were doing.
+The owner may still play it (`cd engine && cargo run --release -p sf-app`); that is optional and not
+a gate.

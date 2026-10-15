@@ -1,5 +1,8 @@
 # T161 — attract-demo-init-timing
 
+> **Dropped** by the owner's amendment of 2026-10-15 (DESIGN §2.1 "What faithful means"): it chased
+> sub-frame timing no player perceives. Not to be built. Its cases are re-judged by T181.
+
 **Split from:** T33. Carries the "every frame matching" part of T33's goal over `demo_init`.
 
 **Phase:** 2 · **Depends on:** T160 · **Weight:** medium

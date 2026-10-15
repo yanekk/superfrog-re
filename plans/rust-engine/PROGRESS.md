@@ -11,14 +11,15 @@ the account is the commit message. Whoever writes a cell also fixes the over-bud
 
 **Plan reviewed:** 2026-10-10 — 7 fixed, 7 decided with the user
 
-**Status:** Plan written; nothing built.
-**Last updated:** 2026-10-10
-**Next `pir-work` will:** T00 oracle-spike, because every later test rests on the reference emulator; T01 and T02 can run beside it.
+**Status:** about 100 tasks ✅; T18, T21 and Phase 3 open; amended to faithful.
+**Last updated:** 2026-10-15
+**Amended 2026-10-15 (owner):** faithful replaces frame-exact (DESIGN §2.1, PLAN.md amendment); T180–T183 added, 15 tasks dropped.
+**Next `pir-work` will:** T180 faithful-compare, then T182; T126 and T132 finish against the faithful bar.
 
 ## Tasks
 
 Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review · ✅ reviewed and
-done · ⛔ blocked, needs a human.
+done · ⛔ blocked, needs a human · ➖ dropped by a plan amendment.
 
 | # | Task | Depends on | State | Notes |
 |---|---|---|---|---|
@@ -40,10 +41,10 @@ done · ⛔ blocked, needs a human.
 | T15 | items-and-scoring | T14 | ✅ | |
 | T16 | enemies-worlds-1-3 | T15 | ✅ | |
 | T17 | enemies-worlds-4-6 | T15 | ✅ | |
-| T18 | bosses | T16, T17 | ⬜ | |
+| T18 | bosses | T16, T17, T180, T182 | ⬜ | |
 | T19 | slot-and-bonus | T15 | ✅ | |
 | T20 | front-end | T08, T11, T12, T13 | ✅ | |
-| T21 | game-flow | T18, T19, T20 | ⬜ | |
+| T21 | game-flow | T18, T19, T20, T181, T183; and every row that blocks T21 | ⬜ | |
 | T22 | app-rig | T09, T10, T12, T13 | ✅ | |
 | T23 | app-shell | T21, T22 | ⬜ | |
 | T24 | macos-menus | T23 | ⬜ | |
@@ -117,9 +118,9 @@ done · ⛔ blocked, needs a human.
 | T103 | w4-completions | T41, T101, T102; blocks T18 | ✅ | |
 | T111 | enemies-w3-2-case | T44; blocks T18 | ✅ | |
 | T112 | enemies-w3-3-case | T44; blocks T18 | ✅ | |
-| T113 | enemies-w3-4-case | T44, T102; blocks T18 | ⬜ | |
+| T113 | enemies-w3-4-case | T44, T102, T180; blocks T115, T21 | ⬜ | |
 | T114 | enemies-w3-activation | T44; blocks T18 | ✅ | |
-| T115 | w3-completions | T44, T101, T102, T111, T112, T113; blocks T18 | ⬜ | |
+| T115 | w3-completions | T44, T101, T102, T111, T112, T113, T180, T182; blocks T21 | ⬜ | |
 | T121 | bob-draw-cut | T101; blocks T21 | ✅ | |
 | T122 | w2-completions | T43, T101, T121; blocks T18 | ✅ | |
 | T120 | conform-no-silent-pass | T05, T36; blocks T21 | ✅ | |
@@ -127,41 +128,45 @@ done · ⛔ blocked, needs a human.
 | T123 | enemies-w5-2-case | T39; blocks T18 | ✅ | |
 | T124 | enemies-w5-3-case | T39; blocks T18 | ✅ | |
 | T125 | enemies-w5-4-case | T39; blocks T18 | ✅ | |
-| T126 | w5-completions | T39, T101, T121, T123, T124, T125; blocks T18 | ⬜ | |
+| T126 | w5-completions | T39, T101, T121, T123, T124, T125, T180, T182; blocks T21 | ⬜ | |
 | T127 | restore-sprite-wait | T101; blocks T21 | ✅ | |
-| T128 | w3-4-sprite-race | T127; blocks T113 | ⬜ | |
+| T128 | w3-4-sprite-race | T127; blocks T113 | ➖ | Dropped by the 2026-10-15 amendment (sub-frame timing); cases re-judged by T181. |
 | T130 | front-vbl-318 | T100; blocks T21 | ✅ | |
-| T129 | slot-lamp-cut | T74; blocks T21 | ⬜ | |
-| T140 | story-setup-under-music | T56 | ⬜ | |
-| T141 | story-fade-colour-race | T56 | ⬜ | |
-| T142 | story-draw-end-order | T56 | ⬜ | |
-| T143 | story-last-fade-out | T56 | ⬜ | |
-| T144 | story-intro-full-green | T56, T140, T141, T142, T143; blocks T21, T47, T48 | ⬜ | |
-| T133 | w2-1-fruit-room | T105; blocks T21 | ⬜ | |
-| T131 | w4-completion-faults | T103, T121, T127; blocks T18, T21 | ⬜ | |
-| T132 | w4-4-completion | T103; blocks T18, T131 | ⬜ | |
-| T145 | w4-4-dart-21 | T132; blocks T18, T131 | ⬜ | |
-| T146 | w6-completion-faults | T104; blocks T18, T21 | ⬜ | |
-| T147 | w6-2-completion | T104; blocks T18, T146 | ⬜ | |
-| T148 | w6-2-alt-completion | T104, T147; blocks T18, T146 | ⬜ | |
-| T149 | w6-3-completion | T104; blocks T18, T146 | ⬜ | |
-| T150 | w6-4-completion | T104; blocks T18, T146 | ⬜ | |
-| T151 | w6-4-alt-completion | T104, T150; blocks T18, T146 | ⬜ | |
-| T153 | bob-draw-step-cuts | T121; blocks T21 | ⬜ | |
-| T160 | attract-demo-entry | T33 | ⬜ | |
-| T161 | attract-demo-init-timing | T160 | ⬜ | |
-| T162 | attract-demo-level-start | T161 | ⬜ | |
+| T129 | slot-lamp-cut | T74; blocks T21 | ➖ | Dropped by the 2026-10-15 amendment (sub-frame timing); cases re-judged by T181. |
+| T140 | story-setup-under-music | T56 | ➖ | Dropped by the 2026-10-15 amendment (sub-frame timing); cases re-judged by T181. |
+| T141 | story-fade-colour-race | T56 | ➖ | Dropped by the 2026-10-15 amendment (sub-frame timing); cases re-judged by T181. |
+| T142 | story-draw-end-order | T56 | ➖ | Dropped by the 2026-10-15 amendment (sub-frame timing); cases re-judged by T181. |
+| T143 | story-last-fade-out | T56 | ➖ | Dropped by the 2026-10-15 amendment (sub-frame timing); cases re-judged by T181. |
+| T144 | story-intro-full-green | T56, T180; blocks T21, T47, T48 | ⬜ | |
+| T133 | w2-1-fruit-room | T105, T180; blocks T21 | ⬜ | |
+| T131 | w4-completion-faults | T103, T121, T127; blocks T18, T21 | ➖ | Dropped by the 2026-10-15 amendment (sub-frame timing); cases re-judged by T181. |
+| T132 | w4-4-completion | T103, T180, T182; blocks T21 | ⬜ | |
+| T145 | w4-4-dart-21 | T132; blocks T21 | ⬜ | |
+| T146 | w6-completion-faults | T104; blocks T18, T21 | ➖ | Dropped by the 2026-10-15 amendment (sub-frame timing); cases re-judged by T181. |
+| T147 | w6-2-completion | T104, T180, T182; blocks T21 | ⬜ | |
+| T148 | w6-2-alt-completion | T104, T147, T180, T182; blocks T21 | ⬜ | |
+| T149 | w6-3-completion | T104, T180, T182; blocks T21 | ⬜ | |
+| T150 | w6-4-completion | T104, T180, T182; blocks T21 | ⬜ | |
+| T151 | w6-4-alt-completion | T104, T150, T180, T182; blocks T21 | ⬜ | |
+| T153 | bob-draw-step-cuts | T121; blocks T21 | ➖ | Dropped by the 2026-10-15 amendment (sub-frame timing); cases re-judged by T181. |
+| T160 | attract-demo-entry | T33, T180 | ⬜ | |
+| T161 | attract-demo-init-timing | T160 | ➖ | Dropped by the 2026-10-15 amendment (sub-frame timing); cases re-judged by T181. |
+| T162 | attract-demo-level-start | T160, T180 | ⬜ | |
 | T163 | attract-demo-return | T162 | ⬜ | |
 | T164 | attract-demo-cycles | T163 | ⬜ | |
-| T154 | w1-4-completion | T106, T127; blocks T18 | ⬜ | |
-| T165 | w1-1-completion | T106, T131; blocks T18 | ⬜ | |
-| T155 | w2-completions-green | T122, T127, T131, T132; blocks T18 | ⬜ | |
-| T166 | w2-2-completion | T122; blocks T18, T155 | ⬜ | |
-| T167 | w2-3-completion | T122; blocks T18, T155 | ⬜ | |
-| T168 | w2-4-completion | T122; blocks T18, T155 | ⬜ | |
-| T169 | power-on-cases-green | T160; blocks T21 | ⬜ | |
-| T170 | game-over-timeup-copper | T34; blocks T21 | ⬜ | |
-| T171 | front-handler-bus-model | T130, T129; blocks T21 | ⬜ | |
+| T154 | w1-4-completion | T106, T127, T180, T182; blocks T21 | ⬜ | |
+| T165 | w1-1-completion | T106, T131; blocks T18 | ➖ | Dropped by the 2026-10-15 amendment (sub-frame timing); cases re-judged by T181. |
+| T155 | w2-completions-green | T122, T127, T131, T132; blocks T18 | ➖ | Dropped by the 2026-10-15 amendment (sub-frame timing); cases re-judged by T181. |
+| T166 | w2-2-completion | T122, T180, T182; blocks T21 | ⬜ | |
+| T167 | w2-3-completion | T122, T180, T182; blocks T21 | ⬜ | |
+| T168 | w2-4-completion | T122, T180, T182; blocks T21 | ⬜ | |
+| T169 | power-on-cases-green | T160; blocks T21 | ➖ | Dropped by the 2026-10-15 amendment (sub-frame timing); cases re-judged by T181. |
+| T170 | game-over-timeup-copper | T34; blocks T21 | ➖ | Dropped by the 2026-10-15 amendment (sub-frame timing); cases re-judged by T181. |
+| T171 | front-handler-bus-model | T130, T129; blocks T21 | ➖ | Dropped by the 2026-10-15 amendment (sub-frame timing); cases re-judged by T181. |
+| T180 | faithful-compare | T120; blocks T181, T182 and every open conformance task | ⬜ | |
+| T181 | faithful-rebaseline | T180, T182; blocks T21 | ⬜ | |
+| T182 | plays-alone | T180; blocks T181, T183 and every completion task | ⬜ | |
+| T183 | level-chain | T180, T182; blocks T21 | ⬜ | |
 
 A Notes cell holds what was built or what the review found, the test count, and one line per
 deviation from the task doc. A ✅ task's cell may be cut to one line once the next task has been reviewed.
@@ -170,5 +175,5 @@ deviation from the task doc. A ✅ task's cell may be cut to one line once the n
 
 ## Blocked on the user
 
-Nothing yet. Expected later: granting Accessibility and Screen Recording to the terminal (T22), the
-8BitDo check (T25), the play session (T30), and the open decisions in PLAN.md once T07 reports.
+Nothing. The 8BitDo check (T25) and a play session are optional since 2026-10-15; the Accessibility
+and Screen Recording grant for OS-layer e2e tests remains.

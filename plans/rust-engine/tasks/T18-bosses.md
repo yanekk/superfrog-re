@@ -1,12 +1,19 @@
 # T18 — bosses
 
-**Phase:** 2 · **Depends on:** T16, T17 · **Weight:** heavy
+**Phase:** 2 · **Depends on:** T16, T17, T180, T182 · **Weight:** medium
+
+> **Rewritten** by the owner's amendment of 2026-10-15. The original asked for "every world's boss
+> level"; docs/09 "Bosses" found there is none per world: each world ends with its `LnET` picture
+> (T183), and the one boss is the final level's witch. The re-split of 2026-10-11 already said
+> "T18 becomes the final level and the witch". "Green" means DESIGN §2.1's faithful checks.
 
 ## Goal
 
-Every world's boss level: the boss objects, their attack patterns and phases, hit counting, the
-arena behaviour (camera lock, any special scrolling), and the win and lose transitions. Bosses reuse
-the enemy helpers from T16/T17, which is why this task comes after both.
+The final level (its `LW*` files, `final_level_flag` h0+$1e) and its boss: W6/final-level marker 1,
+template `$221f6`, init `$259ae`, update `$25a16`, touch `touch_boss_hit` (`$236b4`), 128 hit
+points, spawned 8 rows above its marker cell. Its attack patterns and phases, hit counting, the
+palette flash on defeat (`level/fade.rs` mode 1), `level_state = $64`, and the hand-over to the end
+sequence (T35). Any other object type the final level has that no world task ported.
 
 ## Design sections this implements
 
@@ -14,21 +21,23 @@ DESIGN §2.1, docs/09.
 
 ## Files
 
-- `engine/crates/sf-core/src/bosses/{mod.rs,w1.rs … w6.rs}` (named from `symbols.toml`)
-- `engine/crates/sf-core/tests/bosses.rs`, `engine/conform/{scripts,cases}/boss-*`
+- `engine/crates/sf-core/src/bosses/{mod.rs,witch.rs}` (names from `symbols.toml`)
+- `engine/crates/sf-core/tests/bosses.rs`, `engine/conform/{scripts,cases}/final-*`
 
 ## Interface
 
-One `ObjectKind` per boss type id, registered into T14's dispatch; boss outcomes reuse `LevelOutcome`.
+One `ObjectKind` for the witch, registered into T14's dispatch; its outcome reuses `LevelOutcome`.
 
 ## Tests
 
-- [ ] routine conformance for each boss's update and phase-change routines.
-- [ ] frame conformance per boss: a scripted win, a scripted loss (frog dies), and a run that idles
-      for 3 000 frames to exercise every attack pattern.
+- [ ] routine conformance for the witch's update and touch routines.
+- [ ] `final-win`: the final level from its start, the witch beaten, into the end sequence; faithful
+      and alone.
+- [ ] `final-lose`: the frog dies to the witch; faithful.
+- [ ] `final-idle`: 3 000 frames in the arena without hitting her, every attack pattern seen; faithful.
 
 ## Done when
 
-- [ ] Every boss is beaten in a green scripted case (in `sf-conform -- all`), one short case per boss in the test block.
+- [ ] The three cases green in `sf-conform -- all`, one short one in the test block.
 - [ ] Boss variables in `LAYOUT`, names in `symbols.toml`.
-- [ ] No case file excludes anything a boss level does.
+- [ ] No case file excludes anything the final level does.

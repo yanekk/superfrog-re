@@ -1,5 +1,10 @@
 # T133 — w2-1-fruit-room
 
+> **Amended** by the owner, 2026-10-15. "Green", "matches" and "frame-exact" below mean DESIGN §2.1's
+> faithful checks (T180's default mode); a completion case is also judged alone (check 4, T182).
+> Re-sync pins, `resync = false` and `--strict` are not required. Dependencies on dropped tasks
+> are gone; PLAN.md's table is the current list. Where this doc and DESIGN §2.1 disagree, §2.1 wins.
+
 **Phase:** 2 · **Depends on:** T105; blocks T21 · **Weight:** medium
 
 Added by T105 (owner, 2026-10-14). T105 covered W2-1's extra life 63,35 (`items-life-w2-1`) but

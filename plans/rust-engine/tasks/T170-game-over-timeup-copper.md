@@ -1,5 +1,8 @@
 # T170 — game-over-timeup-copper
 
+> **Dropped** by the owner's amendment of 2026-10-15 (DESIGN §2.1 "What faithful means"): it chased
+> sub-frame timing no player perceives. Not to be built. Its cases are re-judged by T181.
+
 **Phase:** 2 · **Depends on:** T34; blocks T21 · **Weight:** small
 
 Added by the T120 review (owner, 2026-10-15): `game-over-timeup-w1-1` is red in

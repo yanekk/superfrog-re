@@ -1,5 +1,10 @@
 # T147 — w6-2-completion
 
+> **Amended** by the owner, 2026-10-15. "Green", "matches" and "frame-exact" below mean DESIGN §2.1's
+> faithful checks (T180's default mode); a completion case is also judged alone (check 4, T182).
+> Re-sync pins, `resync = false` and `--strict` are not required. Dependencies on dropped tasks
+> are gone; PLAN.md's table is the current list. Where this doc and DESIGN §2.1 disagree, §2.1 wins.
+
 **Split from:** T104 · **Phase:** 2 · **Depends on:** T104; blocks T18, T146 · **Weight:** medium
 
 Carries T104's done-when for W6-2: a scripted run from the first frame through every coin to the

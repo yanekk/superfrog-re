@@ -24,11 +24,31 @@ Track state in [PROGRESS.md](PROGRESS.md). Read [DESIGN.md](DESIGN.md) first.
 ```
 Phase 0  ▸  T00                       prove the oracle            throwaway
 Phase 1  ▸  T01 … T11                 foundations, headless       no window
-Phase 2  ▸  T12 … T21                 the game, frame-exact       no window
+Phase 2  ▸  T12 … T21                 the game, faithful          no window
 Phase 3  ▸  T22 … T30                 the app                     window, menus, pad
 ```
 
 ---
+
+## Amendment 2026-10-15 — faithful, not frame-exact (owner)
+
+DESIGN §2.1 now defines "faithful": game state equal pass by pass, picture and sound within a
+tolerance no player perceives, and the engine run alone meeting the original's milestones. Still
+judged automatically against the original; no task waits on the owner to play or look.
+
+- **Added:** T180 faithful-compare (the checks, `--strict` kept for diagnosis), T182 plays-alone (the
+  engine run with nothing from the original), T181 faithful-rebaseline (every case re-judged, the
+  dropped tasks' cases included), T183 level-chain (menu → W1-1, level → level, world → world, pause),
+  split ahead of T21 so the game plays through the worlds before the final boss exists.
+- **Dropped (➖):** T128, T129, T131, T140–T143, T146, T153, T155, T161, T165, T169, T170, T171.
+  Each chased sub-frame timing. T181 re-judges their cases; a red that survives is a real behaviour
+  difference and gets an owning task then.
+- **Re-scoped:** every open task doc carries an "Amended" note: green means faithful, completion
+  cases are also judged alone. Completion tasks now block T21 instead of T18. T18 is the final level
+  and its witch (docs/09: no per-world bosses). T25 tests the pad with simulated input; T30 replaces
+  the owner's play session with a scripted whole game through the real app.
+- **Order:** T180 → T182 → T183 and T181 in parallel → completions, T18, intro and attract work → T21
+  → Phase 3.
 
 ## Phase 0 — Prove the ground
 
@@ -61,7 +81,7 @@ chooses between another emulator core and a weaker definition of exactness.
 At the end: the disks import into a verified cache in Rust, every asset decodes, the original runs
 under scripted control in the oracle, and the code map tells every later task where to look.
 
-## Phase 2 — The game, frame-exact
+## Phase 2 — The game, faithful (frame-exact until 2026-10-15)
 
 | # | Task | Depends on |
 |---|---|---|
@@ -71,13 +91,13 @@ under scripted control in the oracle, and the code map tells every later task wh
 | [T15](tasks/T15-items-and-scoring.md) | items-and-scoring | T14 |
 | [T16](tasks/T16-enemies-worlds-1-3.md) | enemies-worlds-1-3 | T15 |
 | [T17](tasks/T17-enemies-worlds-4-6.md) | enemies-worlds-4-6 | T15 |
-| [T18](tasks/T18-bosses.md) | bosses | T16, T17 |
+| [T18](tasks/T18-bosses.md) | bosses | T16, T17, T180, T182 |
 | [T19](tasks/T19-slot-and-bonus.md) | slot-and-bonus | T15 |
 | [T20](tasks/T20-front-end.md) | front-end | T08, T11, T12, T13 |
-| [T21](tasks/T21-game-flow.md) | game-flow | T18, T19, T20 |
+| [T21](tasks/T21-game-flow.md) | game-flow | T18, T19, T20, T181, T183; and every row that blocks T21 |
 
-At the end: a scripted game from power-on to the end sequence matches the original frame for frame,
-headless.
+At the end: a scripted game from power-on to the end sequence, played by the engine alone, meets the
+original's milestones and passes the faithful checks (DESIGN §2.1), headless.
 
 ## Phase 3 — The app
 
@@ -156,51 +176,55 @@ headless.
 | [T110](tasks/T110-enemies-w1-activation.md) | enemies-w1-activation | T42; blocks T18, T33, T106 |
 | [T111](tasks/T111-enemies-w3-2-case.md) | enemies-w3-2-case | T44; blocks T18 |
 | [T112](tasks/T112-enemies-w3-3-case.md) | enemies-w3-3-case | T44; blocks T18 |
-| [T113](tasks/T113-enemies-w3-4-case.md) | enemies-w3-4-case | T44, T102; blocks T18 |
+| [T113](tasks/T113-enemies-w3-4-case.md) | enemies-w3-4-case | T44, T102, T180; blocks T115, T21 |
 | [T114](tasks/T114-enemies-w3-activation.md) | enemies-w3-activation | T44; blocks T18 |
-| [T115](tasks/T115-w3-completions.md) | w3-completions | T44, T101, T102, T111, T112, T113; blocks T18 |
+| [T115](tasks/T115-w3-completions.md) | w3-completions | T44, T101, T102, T111, T112, T113, T180, T182; blocks T21 |
 | [T121](tasks/T121-bob-draw-cut.md) | bob-draw-cut | T101; blocks T21 |
 | [T122](tasks/T122-w2-completions.md) | w2-completions | T43, T101, T121; blocks T18 |
 | [T123](tasks/T123-enemies-w5-2-case.md) | enemies-w5-2-case | T39; blocks T18 |
 | [T124](tasks/T124-enemies-w5-3-case.md) | enemies-w5-3-case | T39; blocks T18 |
 | [T125](tasks/T125-enemies-w5-4-case.md) | enemies-w5-4-case | T39; blocks T18 |
-| [T126](tasks/T126-w5-completions.md) | w5-completions | T39, T101, T121, T123, T124, T125; blocks T18 |
+| [T126](tasks/T126-w5-completions.md) | w5-completions | T39, T101, T121, T123, T124, T125, T180, T182; blocks T21 |
 | [T127](tasks/T127-restore-sprite-wait.md) | restore-sprite-wait | T101; blocks T21 |
-| [T128](tasks/T128-w3-4-sprite-race.md) | w3-4-sprite-race | T127; blocks T113 |
-| [T129](tasks/T129-slot-lamp-cut.md) | slot-lamp-cut | T74; blocks T21 |
+| [T128](tasks/T128-w3-4-sprite-race.md) | w3-4-sprite-race | ➖ dropped 2026-10-15 (was: T127; blocks T113) |
+| [T129](tasks/T129-slot-lamp-cut.md) | slot-lamp-cut | ➖ dropped 2026-10-15 (was: T74; blocks T21) |
 | [T130](tasks/T130-front-vbl-318.md) | front-vbl-318 | T100; blocks T21 |
-| [T133](tasks/T133-w2-1-fruit-room.md) | w2-1-fruit-room | T105; blocks T21 |
-| [T140](tasks/T140-story-setup-under-music.md) | story-setup-under-music | T56 |
-| [T141](tasks/T141-story-fade-colour-race.md) | story-fade-colour-race | T56 |
-| [T142](tasks/T142-story-draw-end-order.md) | story-draw-end-order | T56 |
-| [T143](tasks/T143-story-last-fade-out.md) | story-last-fade-out | T56 |
-| [T144](tasks/T144-story-intro-full-green.md) | story-intro-full-green | T56, T140, T141, T142, T143; blocks T21, T47, T48 |
-| [T131](tasks/T131-w4-completion-faults.md) | w4-completion-faults | T103, T121, T127; blocks T18, T21 |
-| [T132](tasks/T132-w4-4-completion.md) | w4-4-completion | T103; blocks T18, T131 |
-| [T145](tasks/T145-w4-4-dart-21.md) | w4-4-dart-21 | T132; blocks T18, T131 |
-| [T146](tasks/T146-w6-completion-faults.md) | w6-completion-faults | T104; blocks T18, T21 |
-| [T147](tasks/T147-w6-2-completion.md) | w6-2-completion | T104; blocks T18, T146 |
-| [T148](tasks/T148-w6-2-alt-completion.md) | w6-2-alt-completion | T104, T147; blocks T18, T146 |
-| [T149](tasks/T149-w6-3-completion.md) | w6-3-completion | T104; blocks T18, T146 |
-| [T150](tasks/T150-w6-4-completion.md) | w6-4-completion | T104; blocks T18, T146 |
-| [T151](tasks/T151-w6-4-alt-completion.md) | w6-4-alt-completion | T104, T150; blocks T18, T146 |
-| [T153](tasks/T153-bob-draw-step-cuts.md) | bob-draw-step-cuts | T121; blocks T21 |
-| [T160](tasks/T160-attract-demo-entry.md) | attract-demo-entry | T33 |
-| [T161](tasks/T161-attract-demo-init-timing.md) | attract-demo-init-timing | T160 |
-| [T162](tasks/T162-attract-demo-level-start.md) | attract-demo-level-start | T161 |
+| [T133](tasks/T133-w2-1-fruit-room.md) | w2-1-fruit-room | T105, T180; blocks T21 |
+| [T140](tasks/T140-story-setup-under-music.md) | story-setup-under-music | ➖ dropped 2026-10-15 (was: T56) |
+| [T141](tasks/T141-story-fade-colour-race.md) | story-fade-colour-race | ➖ dropped 2026-10-15 (was: T56) |
+| [T142](tasks/T142-story-draw-end-order.md) | story-draw-end-order | ➖ dropped 2026-10-15 (was: T56) |
+| [T143](tasks/T143-story-last-fade-out.md) | story-last-fade-out | ➖ dropped 2026-10-15 (was: T56) |
+| [T144](tasks/T144-story-intro-full-green.md) | story-intro-full-green | T56, T180; blocks T21, T47, T48 |
+| [T131](tasks/T131-w4-completion-faults.md) | w4-completion-faults | ➖ dropped 2026-10-15 (was: T103, T121, T127; blocks T18, T21) |
+| [T132](tasks/T132-w4-4-completion.md) | w4-4-completion | T103, T180, T182; blocks T21 |
+| [T145](tasks/T145-w4-4-dart-21.md) | w4-4-dart-21 | T132; blocks T21 |
+| [T146](tasks/T146-w6-completion-faults.md) | w6-completion-faults | ➖ dropped 2026-10-15 (was: T104; blocks T18, T21) |
+| [T147](tasks/T147-w6-2-completion.md) | w6-2-completion | T104, T180, T182; blocks T21 |
+| [T148](tasks/T148-w6-2-alt-completion.md) | w6-2-alt-completion | T104, T147, T180, T182; blocks T21 |
+| [T149](tasks/T149-w6-3-completion.md) | w6-3-completion | T104, T180, T182; blocks T21 |
+| [T150](tasks/T150-w6-4-completion.md) | w6-4-completion | T104, T180, T182; blocks T21 |
+| [T151](tasks/T151-w6-4-alt-completion.md) | w6-4-alt-completion | T104, T150, T180, T182; blocks T21 |
+| [T153](tasks/T153-bob-draw-step-cuts.md) | bob-draw-step-cuts | ➖ dropped 2026-10-15 (was: T121; blocks T21) |
+| [T160](tasks/T160-attract-demo-entry.md) | attract-demo-entry | T33, T180 |
+| [T161](tasks/T161-attract-demo-init-timing.md) | attract-demo-init-timing | ➖ dropped 2026-10-15 (was: T160) |
+| [T162](tasks/T162-attract-demo-level-start.md) | attract-demo-level-start | T160, T180 |
 | [T163](tasks/T163-attract-demo-return.md) | attract-demo-return | T162 |
 | [T164](tasks/T164-attract-demo-cycles.md) | attract-demo-cycles | T163 |
-| [T154](tasks/T154-w1-4-completion.md) | w1-4-completion | T106, T127; blocks T18 |
-| [T165](tasks/T165-w1-1-completion.md) | w1-1-completion | T106, T131; blocks T18 |
+| [T154](tasks/T154-w1-4-completion.md) | w1-4-completion | T106, T127, T180, T182; blocks T21 |
+| [T165](tasks/T165-w1-1-completion.md) | w1-1-completion | ➖ dropped 2026-10-15 (was: T106, T131; blocks T18) |
 | [T120](tasks/T120-conform-no-silent-pass.md) | conform-no-silent-pass | T05, T36; blocks T21 |
 | [T104](tasks/T104-w6-completions.md) | w6-completions | T40, T101, T102; blocks T18 |
-| [T155](tasks/T155-w2-completions-green.md) | w2-completions-green | T122, T127, T131, T132; blocks T18 |
-| [T166](tasks/T166-w2-2-completion.md) | w2-2-completion | T122; blocks T18, T155 |
-| [T167](tasks/T167-w2-3-completion.md) | w2-3-completion | T122; blocks T18, T155 |
-| [T168](tasks/T168-w2-4-completion.md) | w2-4-completion | T122; blocks T18, T155 |
-| [T169](tasks/T169-power-on-cases-green.md) | power-on-cases-green | T160; blocks T21 |
-| [T170](tasks/T170-game-over-timeup-copper.md) | game-over-timeup-copper | T34; blocks T21 |
-| [T171](tasks/T171-front-handler-bus-model.md) | front-handler-bus-model | T130, T129; blocks T21 |
+| [T155](tasks/T155-w2-completions-green.md) | w2-completions-green | ➖ dropped 2026-10-15 (was: T122, T127, T131, T132; blocks T18) |
+| [T166](tasks/T166-w2-2-completion.md) | w2-2-completion | T122, T180, T182; blocks T21 |
+| [T167](tasks/T167-w2-3-completion.md) | w2-3-completion | T122, T180, T182; blocks T21 |
+| [T168](tasks/T168-w2-4-completion.md) | w2-4-completion | T122, T180, T182; blocks T21 |
+| [T169](tasks/T169-power-on-cases-green.md) | power-on-cases-green | ➖ dropped 2026-10-15 (was: T160; blocks T21) |
+| [T170](tasks/T170-game-over-timeup-copper.md) | game-over-timeup-copper | ➖ dropped 2026-10-15 (was: T34; blocks T21) |
+| [T171](tasks/T171-front-handler-bus-model.md) | front-handler-bus-model | ➖ dropped 2026-10-15 (was: T130, T129; blocks T21) |
+| [T180](tasks/T180-faithful-compare.md) | faithful-compare | T120; blocks T181, T182 and every open conformance task |
+| [T181](tasks/T181-faithful-rebaseline.md) | faithful-rebaseline | T180, T182; blocks T21 |
+| [T182](tasks/T182-plays-alone.md) | plays-alone | T180; blocks T181, T183 and every completion task |
+| [T183](tasks/T183-level-chain.md) | level-chain | T180, T182; blocks T21 |
 
 T22 is the rig task: it comes before every surface task and they depend on it. T29 is the phase's
 drill. At the end: the owner plays it.

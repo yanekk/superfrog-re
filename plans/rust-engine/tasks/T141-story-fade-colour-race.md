@@ -1,5 +1,8 @@
 # T141 — story-fade-colour-race
 
+> **Dropped** by the owner's amendment of 2026-10-15 (DESIGN §2.1 "What faithful means"): it chased
+> sub-frame timing no player perceives. Not to be built. Its cases are re-judged by T181.
+
 **Split from:** T56. Carries "that case is green" for the fades' colour races.
 
 **Phase:** 2 · **Depends on:** T56 · **Weight:** medium

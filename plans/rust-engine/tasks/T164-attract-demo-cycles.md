@@ -1,5 +1,10 @@
 # T164 — attract-demo-cycles
 
+> **Amended** by the owner, 2026-10-15. "Green", "matches" and "frame-exact" below mean DESIGN §2.1's
+> faithful checks (T180's default mode); a completion case is also judged alone (check 4, T182).
+> Re-sync pins, `resync = false` and `--strict` are not required. Dependencies on dropped tasks
+> are gone; PLAN.md's table is the current list. Where this doc and DESIGN §2.1 disagree, §2.1 wins.
+
 **Split from:** T33. Carries T33's "each of the three `demo_index` entries, and an abort by fire"
 tests and "the full cycle in `sf-conform -- all`".
 

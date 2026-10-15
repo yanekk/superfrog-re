@@ -1,5 +1,8 @@
 # T128 — w3-4-sprite-race
 
+> **Dropped** by the owner's amendment of 2026-10-15 (DESIGN §2.1 "What faithful means"): it chased
+> sub-frame timing no player perceives. Not to be built. Its cases are re-judged by T181.
+
 **Phase:** 2 · **Depends on:** T127; blocks T113 · **Weight:** light
 
 Added by T102 (owner, 2026-10-14). T113 waited on T102 for W3-4 frame 194, "the beam race T102

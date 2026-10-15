@@ -1,5 +1,10 @@
 # T113 — enemies-w3-4-case
 
+> **Amended** by the owner, 2026-10-15. "Green", "matches" and "frame-exact" below mean DESIGN §2.1's
+> faithful checks (T180's default mode); a completion case is also judged alone (check 4, T182).
+> Re-sync pins, `resync = false` and `--strict` are not required. Dependencies on dropped tasks
+> are gone; PLAN.md's table is the current list. Where this doc and DESIGN §2.1 disagree, §2.1 wins.
+
 **Split from:** T44 (owner, 2026-10-14: "five tasks T111–T115"). Carries T44's test "frame conformance per level of world 3" for W3-4 past frame 193.
 
 **Phase:** 2 · **Depends on:** T44, T102; blocks T18 · **Weight:** light

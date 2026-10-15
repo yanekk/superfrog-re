@@ -1,5 +1,10 @@
 # T154 — w1-4-completion
 
+> **Amended** by the owner, 2026-10-15. "Green", "matches" and "frame-exact" below mean DESIGN §2.1's
+> faithful checks (T180's default mode); a completion case is also judged alone (check 4, T182).
+> Re-sync pins, `resync = false` and `--strict` are not required. Dependencies on dropped tasks
+> are gone; PLAN.md's table is the current list. Where this doc and DESIGN §2.1 disagree, §2.1 wins.
+
 **Phase:** 2 · **Depends on:** T106, T127; blocks T18 · **Weight:** heavy
 
 Added by T106 (owner, 2026-10-15). T106 played W1-1 to W1-3 to their exits; W1-4's planner got a

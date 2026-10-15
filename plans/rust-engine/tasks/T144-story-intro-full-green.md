@@ -1,5 +1,10 @@
 # T144 — story-intro-full-green
 
+> **Amended** by the owner, 2026-10-15. "Green", "matches" and "frame-exact" below mean DESIGN §2.1's
+> faithful checks (T180's default mode); a completion case is also judged alone (check 4, T182).
+> Re-sync pins, `resync = false` and `--strict` are not required. Dependencies on dropped tasks
+> are gone; PLAN.md's table is the current list. Where this doc and DESIGN §2.1 disagree, §2.1 wins.
+
 **Split from:** T56. Carries T56's done-when: "that case is green; docs/13's intro timings cover
 every scene, and the fed values (handler entry and end) are written down there".
 
