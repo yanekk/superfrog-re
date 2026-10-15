@@ -10,12 +10,17 @@ use sf_core::frog::{FROG, f};
 use sf_core::layout::h0;
 use sf_core::level::objects::OBJ_SLOTS;
 
-/// What a case's run showed: every slot update the engine ran (by `h0` offset), and how many
-/// times the frog went from unhurt to hurt.
+/// What a case's run showed: every slot update the engine ran (by `h0` offset), how many
+/// times the frog went from unhurt to hurt (a stunned landing counts too), and how many hearts
+/// it lost (`+$5a`, which only `frog_hurt` takes: an enemy's hurt alone).
 struct Seen {
     updates: BTreeSet<u32>,
     hurts: u32,
+    hearts_lost: u32,
 }
+
+/// The frog's hearts, which `frog_hurt` takes one from.
+const HEARTS: u32 = 0x5a;
 
 /// Run `name`, green but for re-syncs at exactly `resyncs`, and say what the engine's run showed.
 fn run(name: &str, resyncs: &[u32]) -> Seen {
@@ -24,8 +29,10 @@ fn run(name: &str, resyncs: &[u32]) -> Seen {
     let mut seen = Seen {
         updates: BTreeSet::new(),
         hurts: 0,
+        hearts_lost: 0,
     };
     let mut hurt = false;
+    let mut hearts = None;
     let o = sf_conform::run_with(&case, |_, g| {
         let s = g.state();
         for k in 0..20 {
@@ -39,6 +46,11 @@ fn run(name: &str, resyncs: &[u32]) -> Seen {
             seen.hurts += 1;
         }
         hurt = now;
+        let now = s.w(FROG + HEARTS);
+        if hearts.is_some_and(|was| now < was) {
+            seen.hearts_lost += 1;
+        }
+        hearts = Some(now);
     })
     .unwrap_or_else(|d| panic!("{name}: {d}"));
     let got: Vec<u32> = o.resynced.iter().map(|r| r.0).collect();
@@ -60,6 +72,7 @@ const JUMPER: u32 = 0x27a5e;
 const STOMPABLE: u32 = 0x27cc0;
 const CRUMBLE: u32 = 0x2747c;
 const BOUNCER: u32 = 0x25caa;
+const SPIKER_STAYING: u32 = 0x27da8;
 const STOMPED: u32 = 0x23bee;
 const REWARD: u32 = 0x23e6c;
 
@@ -75,6 +88,21 @@ fn w3_1() {
         assert!(s.updates.contains(&u), "h0+${u:x} never ran: {:x?}", s.updates);
     }
     assert!(s.hurts >= 3, "hurt {} times", s.hurts);
+}
+
+/// W3-2 to the staying spikers: the bouncer (88) and the staying spiker (97), which no other case
+/// meets, and every other type in the level; a stompable stomped; the frog hurt by the hopper, the
+/// swing's ball, a bouncer and a staying spiker.
+#[test]
+fn w3_2() {
+    let s = run("enemies-w3-2", &[2443]);
+    for u in [
+        BOUNCER, SPIKER_STAYING, PAD, DART_WAIT, DART_FLY, SPIKER, HOPPER, FLOW, SWING, SWING_LINK,
+        STOMPABLE, CRUMBLE, STOMPED,
+    ] {
+        assert!(s.updates.contains(&u), "h0+${u:x} never ran: {:x?}", s.updates);
+    }
+    assert!(s.hearts_lost >= 4, "lost {} hearts", s.hearts_lost);
 }
 
 /// W3-3 from the start to the cave below its middle: hoppers, flows, the swing, a spiker, a dart,
