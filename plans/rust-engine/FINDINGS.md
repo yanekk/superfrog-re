@@ -18,6 +18,10 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-15 | 🔄 | Owner, T180: pass ends fall a frame apart in 32/142 cases (the engine ends a pass the original reports late in its 12th call). Each side's state compared at its own pass end, every variable: 100 such, none differed. |
+| 2026-10-15 | 🔄 | Owner, T180: a sound period/volume change need not be matched when its channel stops within 2 frames (counted, printed). Keeps complete-w4-1 and -w4-3 green, where the engine stops channel 3 a frame early. |
+| 2026-10-15 | 🐞 | T180, owned by T181: faithful sound (lag frames included) catches the engine fading channel 3 where the original switches sample: enemies-w5-4-complete 3381 (its test ignored), enemies-w6-1-complete 511, w2-1-complete 1501. Strict's re-syncs hid it. |
+| 2026-10-15 | 📌 | T180 measured all 142 cases: faithful 123 green, strict 122. complete-w1-1, -w4-1 newly green; complete-w4-2 now fails 1927 (`vbl_count` after lag), enemies-w6-3-alt-complete 6129 (`clock_shown` after lag). |
 | 2026-10-15 | 🔄 | Owner: faithful replaces frame-exact (DESIGN §2.1): state per pass, tolerant picture and sound, engine alone meets the original's milestones; no hand checks as gates. T180–T183 added; T128, T131, T140–T143, T146, T153, T155, T161, T165, T169–T171 dropped. |
 | 2026-10-15 | 📌 | T126 review: W5 completions' exclusions name T131, but T131's done-when covers only `complete-w4-*`; nothing removes them. Play-field-buffer re-syncs (W5-1 1497, W5-2 2196, W5-3 1608, W5-4 3384) persist after T121 landed. |
 | 2026-10-15 | 🐞 | T126, open, no task: with many pages the tally's points print also runs past the frame's end; the engine's job masks only the score's. Repro: df9bad6's `enemies-w5-4-complete` script, frame 7959. Fix tried in 1b2bc81 (reverted: final route misses it). |
