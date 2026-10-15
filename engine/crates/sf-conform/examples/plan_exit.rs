@@ -21,6 +21,9 @@
 //! box (T106: W1-4's pad at 288,44, where the engine's frog sprite differs); `--ground m,...` lets the field climb from cells with those
 //! markers (platform objects: W4's crumbling ledges are 27).
 //!
+//! T154: `--fly`: fire is among the inputs, so with the wings (`frog+$90`) the frog flaps up (eight
+//! flaps an airtime); give `--jump` the rows a flight climbs, so the field leads up into the sky.
+//!
 //! T122: `--no-tile-coins`: only markers 8 and 9 are coins (a tile coin counts in `frog+$7e`, not
 //! toward the exit: W2's); `--jump N`: the field climbs N rows from ground, not 6 (a jump reaches
 //! 3 rows, so 4 is the frog's); `--launch N`: a launcher (marker 7) lifts the field N rows.
@@ -279,6 +282,7 @@ fn main() {
     let mut no_tile_coins = false;
     let mut skip_boxes: Vec<(usize, usize, usize, usize)> = Vec::new();
     let mut avoid: Vec<(usize, usize, usize, usize)> = Vec::new();
+    let mut fly = false;
     let mut i = 1;
     while i < args.len() {
         match args[i].as_str() {
@@ -307,6 +311,10 @@ fn main() {
             "--avoid" => {
                 let v: Vec<usize> = args[i + 1].split(',').map(|x| x.parse().unwrap()).collect();
                 avoid.push((v[0], v[1], v[2], v[3]));
+            }
+            "--fly" => {
+                fly = true;
+                i -= 1;
             }
             "--no-exit" => {
                 no_exit = true;
@@ -363,7 +371,7 @@ fn main() {
         }
         v
     };
-    let acts = [
+    let mut acts = vec![
         Joy::NONE,
         Joy::RIGHT,
         Joy::LEFT,
@@ -372,6 +380,9 @@ fn main() {
         Joy::LEFT | Joy::UP,
         Joy::DOWN,
     ];
+    if fly {
+        acts.extend([Joy::FIRE, Joy::FIRE | Joy::LEFT, Joy::FIRE | Joy::RIGHT, Joy::FIRE | Joy::UP]);
+    }
     let mut inputs: Vec<FrameInput> = Vec::new();
     for &x in &prefix {
         sync::step_inserting(amiga, x).unwrap();
