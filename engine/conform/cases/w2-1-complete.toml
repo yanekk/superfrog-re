@@ -1,0 +1,11 @@
+# W2-1 played from its start to its exit with every object live, no exclusions (T122): the coin
+# shaft at 91,9-19 by its pad, the switch at 116,39 (frame ~1700) opening its gate at 143,37, the
+# right half's coins (35 in all), the mace and the spikes passed, the exit at frame 2523
+# (`level_state` 1), the exit fade and the tally, fire in its wait taking the points; ends on frame
+# 2708, frame 2709 being the next level's (T21's). Planned by `examples/plan_exit`, checked on the
+# original chunk by chunk. Not in the test block: `sf-conform scan` finds frame 1094 (the frog's
+# sprite, every variable equal) and 1508 (`level_copper`) red; T155 makes it green.
+sync = { level = "W2-1" }
+script = "w2-1-complete"
+frames = 2709
+resync = false

@@ -194,6 +194,10 @@ headless.
 | [T165](tasks/T165-w1-1-completion.md) | w1-1-completion | T106, T131; blocks T18 |
 | [T120](tasks/T120-conform-no-silent-pass.md) | conform-no-silent-pass | T05, T36; blocks T21 |
 | [T104](tasks/T104-w6-completions.md) | w6-completions | T40, T101, T102; blocks T18 |
+| [T155](tasks/T155-w2-completions-green.md) | w2-completions-green | T122, T127, T131, T132; blocks T18 |
+| [T166](tasks/T166-w2-2-completion.md) | w2-2-completion | T122; blocks T18, T155 |
+| [T167](tasks/T167-w2-3-completion.md) | w2-3-completion | T122; blocks T18, T155 |
+| [T168](tasks/T168-w2-4-completion.md) | w2-4-completion | T122; blocks T18, T155 |
 
 T22 is the rig task: it comes before every surface task and they depend on it. T29 is the phase's
 drill. At the end: the owner plays it.
