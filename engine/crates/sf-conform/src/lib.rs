@@ -22,18 +22,21 @@ pub mod script;
 pub mod sound_events;
 pub mod sync;
 
-pub use case::{Case, Compare, Excluded, Exclusion, LagLimit, cases_dir, scripts_dir};
+pub use case::{Alone, Case, Compare, Excluded, Exclusion, LagLimit, cases_dir, scripts_dir};
 pub use compare::{Mode, Tolerance};
+pub use milestones::{FrameState, Milestone, MilestoneDiff, Milestones};
 pub use report::{Divergence, PictureDiff};
 pub use script::InputScript;
 pub use sound_events::{SoundEvent, sound_events};
 pub use sync::SyncPoint;
 
+use std::collections::VecDeque;
 use std::sync::{Arc, OnceLock};
 
 use sf_assets::GameData;
-use sf_core::layout::{AmigaMemory, LAYOUT, Ram, VarDef, VarId, h0};
-use sf_core::{DisplayData, FrameOut, Game, LoadEnd, Picture, Start, View};
+use sf_core::input::FrameInput;
+use sf_core::layout::{AmigaMemory, LAYOUT, Ram, VarDef, VarId, def, h0};
+use sf_core::{DisplayData, FrameOut, Game, LoadEnd, Pacing, Picture, Start, View};
 
 /// The owner's disks decoded, once per process.
 pub fn game_data() -> &'static GameData {
@@ -107,6 +110,9 @@ pub struct Outcome {
     /// pass's end; the others' ends were not seen, the next pass running).
     pub pass_skews: Vec<u32>,
     pub pass_held: u32,
+    /// Check 4 (DESIGN §2.1): the original's milestones, each of which the engine run alone met,
+    /// when it ran.
+    pub milestones: Option<Vec<(u64, Milestone)>>,
 }
 
 /// The most frames in a row the original may end mid-pass before a case fails: the original
@@ -172,8 +178,15 @@ fn run_inner(
     case: &Case,
     mut before_step: impl FnMut(u32, &mut Game),
     after_step: &mut dyn FnMut(u32, &[sf_paula::PaulaWrite], &[sf_paula::PaulaWrite]),
-    mut found: Option<&mut Vec<Divergence>>,
+    found: Option<&mut Vec<Divergence>>,
 ) -> Result<Outcome, Divergence> {
+    // `run --alone`: checks 1–3 run on, their failures set aside, and check 4 ends the run.
+    let mut set_aside = Vec::new();
+    let only_alone = case.alone == Alone::Only;
+    let mut found = match found {
+        None if only_alone => Some(&mut set_aside),
+        found => found,
+    };
     let frozen = case.freeze();
     // The oracle's frame cap: the case's frames, what its loads take (the whole disk-3 intro's
     // spend more than one search's worth, T56) and one load search more.
@@ -199,10 +212,21 @@ fn run_inner(
     };
     let display = display_data();
     let frog_only = frozen == freeze::Freeze::Objects;
-    let mut game = Game::with_display(display.clone(), start);
+    let mut game = Game::with_display(display.clone(), start.clone());
     if frog_only {
         game.frog_only();
     }
+    // Check 4: the engine from the same start, given only the inputs, the original's pacing and
+    // the seeds it read from its clock.
+    let mut alone = (case.mode == Mode::Faithful && case.alone != Alone::Off).then(|| {
+        let mut g = Game::with_display(display.clone(), start);
+        if frog_only {
+            g.frog_only();
+        }
+        AloneRun::new(g)
+    });
+    // COP1LC as the original's CPU last wrote it (from the start's as the engine has it).
+    let mut cop = game.cop1lc();
     let mut outcome = Outcome {
         frames: case.frames,
         ..Outcome::default()
@@ -239,6 +263,7 @@ fn run_inner(
         let resumes = sync::intro_resumes(&amiga);
         let mut theirs = sync::step_inserting(&mut amiga, input)
             .unwrap_or_else(|e| panic!("{}: oracle, frame {of}: {e}", case.name));
+        cop = sync::cop1lc(cop, &amiga.cpu_writes());
         let mut entry = sync::handler_entry(&irqs, &amiga.irqs());
         let mut handler_end = sync::handler_end(&theirs.paula, resumes);
         let handlers;
@@ -304,6 +329,7 @@ fn run_inner(
                     paula_theirs.frame(&theirs.paula);
                     theirs = sync::step_inserting(&mut amiga, case.script.input_at(of))
                         .unwrap_or_else(|e| panic!("{}: oracle, frame {of}: {e}", case.name));
+                    cop = sync::cop1lc(cop, &amiga.cpu_writes());
                     entry = sync::handler_entry(&irqs, &amiga.irqs());
                     handler_end = sync::handler_end(&theirs.paula, resumes);
                     irqs = amiga.irqs();
@@ -382,6 +408,10 @@ fn run_inner(
                     }
                 }
             }
+        }
+        if let Some(a) = alone.as_mut() {
+            let twice = amiga.frames_run() == 2;
+            a.frame(f, input, pacing, twice, &mem, cop, &ours.resync);
         }
         let theirs_mid = stepped && sync::mid_pass(&amiga.cpu(), &mem);
         let mut step = compare::PassStep::default();
@@ -595,7 +625,131 @@ fn run_inner(
     outcome.sound_cut_off = sound.cut_off();
     outcome.sound_trailing = sound.trailing;
     outcome.pass_skews = passes.skews;
+    if let Some(a) = alone {
+        match a.judge(case.frames.saturating_sub(1)) {
+            Ok(met) => outcome.milestones = Some(met),
+            Err(d) => {
+                let d = Divergence {
+                    milestone: Some(d.clone()),
+                    ..Divergence::at(d.frame as u32)
+                };
+                if only_alone {
+                    return Err(d);
+                }
+                emit(&mut found, d)?;
+            }
+        }
+    }
     Ok(outcome)
+}
+
+/// Check 4's engine, run alone beside the comparison (DESIGN §2.1; T182), and both sides'
+/// milestones frame by frame of play (the original's loads, which the runner skips, not counted).
+struct AloneRun {
+    game: Game,
+    theirs: Milestones,
+    ours: Milestones,
+    /// The seeds the original read from its clock (`rng_seed_from_cia` at the end sequence's
+    /// end), as the runner's engine met them, and how many the engine run alone has asked for and
+    /// not had: the engine keeps no clock, so they count as inputs.
+    seeds: VecDeque<Vec<u8>>,
+    wanted: u32,
+    /// The engine panicked: the frame of play, and the message. It steps no more.
+    panicked: Option<(u32, String)>,
+}
+
+impl AloneRun {
+    fn new(game: Game) -> AloneRun {
+        AloneRun {
+            game,
+            theirs: Milestones::default(),
+            ours: Milestones::default(),
+            seeds: VecDeque::new(),
+            wanted: 0,
+            panicked: None,
+        }
+    }
+
+    /// Frame of play `f`: the engine steps on `input` and `pacing` (twice when the original's
+    /// step ran two video frames), and each side's state at its end is read. `mem` and `cop1lc`
+    /// are the original's; `resync`, what the runner's engine took from the original after a load
+    /// this frame, says whether it was a clock's seed.
+    #[allow(clippy::too_many_arguments)]
+    fn frame(
+        &mut self,
+        f: u32,
+        input: FrameInput,
+        pacing: Pacing,
+        twice: bool,
+        mem: &AmigaMemory,
+        cop1lc: Option<u32>,
+        resync: &[(u32, u32)],
+    ) {
+        let rng = def(VarId::RngState);
+        let len = rng.width.len();
+        if resync.iter().any(|&(a, _)| a == rng.addr) {
+            self.seeds
+                .push_back((rng.addr..rng.addr + len).map(|a| mem.byte(a)).collect());
+        }
+        if self.panicked.is_none() {
+            let g = &mut self.game;
+            let stepped = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+                if twice {
+                    g.step_paced(input, pacing);
+                }
+                g.step_paced(input, pacing)
+            }));
+            match stepped {
+                Ok(out) => {
+                    if out.resync.iter().any(|&(a, _)| a == rng.addr) {
+                        self.wanted += 1;
+                    }
+                }
+                Err(e) => {
+                    let why = e
+                        .downcast_ref::<String>()
+                        .cloned()
+                        .or_else(|| e.downcast_ref::<&str>().map(|s| s.to_string()))
+                        .unwrap_or_default();
+                    self.panicked = Some((f, why));
+                }
+            }
+            while self.wanted > 0
+                && let Some(seed) = self.seeds.pop_front()
+            {
+                self.game.poke(rng.addr, &seed);
+                self.wanted -= 1;
+            }
+        }
+        let g = &self.game;
+        let ours = match g.story() {
+            Some(_) => FrameState::story(),
+            None => FrameState::read(&|a, n| g.state().read(a, n), g.cop1lc()),
+        };
+        let theirs = if sync::in_story(mem) {
+            FrameState::story()
+        } else {
+            FrameState::read(&|a, n| (a..a + n).map(|x| mem.byte(x)).collect(), cop1lc)
+        };
+        self.ours.frame(f as u64, ours);
+        self.theirs.frame(f as u64, theirs);
+    }
+
+    /// Check 4 at the run's last frame of play: the milestones met, or where they part.
+    fn judge(mut self, last: u32) -> Result<Vec<(u64, Milestone)>, MilestoneDiff> {
+        if let Some((f, why)) = self.panicked {
+            return Err(MilestoneDiff {
+                frame: f as u64,
+                theirs: None,
+                ours: None,
+                why: format!("the engine run alone panicked: {why}"),
+            });
+        }
+        let theirs = self.theirs.end(last as u64).to_vec();
+        let ours = self.ours.end(last as u64);
+        milestones::judge(&theirs, ours, milestones::MILESTONE_FRAMES)?;
+        Ok(theirs)
+    }
 }
 
 /// `vbl_count` (h0+$9d8).

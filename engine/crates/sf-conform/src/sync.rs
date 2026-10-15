@@ -911,6 +911,27 @@ pub fn handlers(
 /// The story intro's hunk 0 length (d3_c04, at the game's own base).
 const INTRO_LEN: u32 = 0x52160;
 
+/// Whether the original is in the story intro (its vertical blank's vector is the intro's), whose
+/// memory map is not the game's.
+pub fn in_story(m: &AmigaMemory) -> bool {
+    long(m, 0x6c) == INTRO_VBL
+}
+
+/// COP1LC as the original's CPU last wrote it (`COP1LCH` `$080`, `COP1LCL` `$082`), from `was`
+/// and its last step's register writes: the copper list each frame starts with.
+pub fn cop1lc(was: Option<u32>, writes: &[sf_oracle::CpuWrite]) -> Option<u32> {
+    let mut c = was;
+    for w in writes {
+        let v = c.unwrap_or(0);
+        c = match w.reg {
+            0x80 => Some(v & 0xffff | (w.value as u32) << 16),
+            0x82 => Some(v & 0xffff_0000 | w.value as u32),
+            _ => c,
+        };
+    }
+    c
+}
+
 /// One frame of the original, putting disk 1 in df0 once the story intro asks for it (a
 /// disk-3 boot; nothing happens on a disk-1 boot).
 pub fn step_inserting(a: &mut Amiga, input: FrameInput) -> Result<sf_oracle::FrameCapture, String> {

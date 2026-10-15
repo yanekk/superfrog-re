@@ -2,9 +2,11 @@
 //! `sf-conform all` — every case in `engine/conform/cases/`.
 //! `sf-conform scan <case.toml>` — one case run to its end past each divergence: one line per
 //! frame that differs (what differs first in it), for finding what is left.
-//! `run`, `all` and `scan` judge faithfully (DESIGN §2.1 checks 1–3) and print per case the
-//! picture frames and sound shifts they tolerated and the re-syncs; `--strict` judges frame-exact
-//! instead, for diagnosis.
+//! `run`, `all` and `scan` judge faithfully (DESIGN §2.1 checks 1–4) and print per case the
+//! picture frames and sound shifts they tolerated, the re-syncs and the milestones the engine met
+//! run alone (check 4: every case that steps the engine); `--strict` judges frame-exact instead,
+//! for diagnosis, without check 4. `run --alone` judges by check 4 only: checks 1–3 end a run at
+//! their first failure, so a case red there never reaches it.
 //! `sf-conform record <case.toml> [--watch NAME=ADDR:W]... [--every] [--only] [--all-vars] [--max-mb N] [--trace] [--paula] [--png DIR]`
 //! — the original's state per frame of a case, for writing scripts and porting: every `LAYOUT`
 //! variable up to 1 KB long (every one with `--all-vars`, none with `--only`) and each watched
@@ -16,10 +18,10 @@
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 
-use sf_conform::{Case, InputScript, Mode, cases_dir, sync};
+use sf_conform::{Alone, Case, InputScript, Mode, cases_dir, sync};
 use sf_core::layout::{LAYOUT, Ram, VarDef, VarId, Width, h0};
 
-const USAGE: &str = "usage: sf-conform [--strict] run <case.toml>... | [--strict] all | [--strict] scan <case.toml> | record <case.toml> [--watch NAME=ADDR:W]... [--every] [--only] [--all-vars] [--max-mb N] [--trace] [--paula] [--png DIR]";
+const USAGE: &str = "usage: sf-conform [--strict | --alone] run <case.toml>... | [--strict] all | [--strict] scan <case.toml> | record <case.toml> [--watch NAME=ADDR:W]... [--every] [--only] [--all-vars] [--max-mb N] [--trace] [--paula] [--png DIR]";
 
 fn main() -> ExitCode {
     let mut args: Vec<String> = std::env::args().skip(1).collect();
@@ -27,10 +29,14 @@ fn main() -> ExitCode {
         args.first().is_some_and(|a| a != "record") && args.iter().any(|a| a == "--strict");
     args.retain(|a| !strict || a != "--strict");
     let mode = if strict { Mode::Strict } else { Mode::Faithful };
+    let alone =
+        !strict && args.first().is_some_and(|a| a == "run") && args.iter().any(|a| a == "--alone");
+    args.retain(|a| !alone || a != "--alone");
     let result = match args.first().map(String::as_str) {
         Some("run") if args.len() >= 2 => run_cases(
             &args[1..].iter().map(PathBuf::from).collect::<Vec<_>>(),
             mode,
+            alone,
         ),
         Some("all") if args.len() == 1 => all(mode),
         Some("scan") if args.len() == 2 => scan(Path::new(&args[1]), mode),
@@ -65,6 +71,8 @@ fn scan(path: &Path, mode: Mode) -> Result<bool, String> {
             format!("sound {s}")
         } else if let Some((theirs, ours)) = d.passes_apart {
             format!("passes apart: original {theirs}, engine {ours}")
+        } else if let Some(m) = &d.milestone {
+            format!("plays alone: {m}")
         } else if let Some((from, limit)) = d.lag {
             format!("mid-pass from frame {from}, past the limit of {limit} frames")
         } else if let Some(p) = &d.picture_diff {
@@ -99,16 +107,25 @@ fn all(mode: Mode) -> Result<bool, String> {
         .filter(|p| p.extension().is_some_and(|x| x == "toml"))
         .collect();
     paths.sort();
-    run_cases(&paths, mode)
+    run_cases(&paths, mode, false)
 }
 
-fn run_cases(paths: &[PathBuf], mode: Mode) -> Result<bool, String> {
+fn run_cases(paths: &[PathBuf], mode: Mode, alone: bool) -> Result<bool, String> {
     let mut green = true;
     for p in paths {
-        let case = Case {
+        let mut case = Case {
             mode,
             ..Case::load(p)?
         };
+        if alone {
+            if case.alone == Alone::Off {
+                return Err(format!(
+                    "{}: --alone: a render-only case steps no engine",
+                    case.name
+                ));
+            }
+            case.alone = Alone::Only;
+        }
         match sf_conform::run(&case) {
             Ok(o) => {
                 print!("{}: ok, {} frames ({})", case.name, o.frames, counts(&o));
@@ -173,6 +190,14 @@ fn tolerated(o: &sf_conform::Outcome) -> Option<String> {
         }
         if o.sound_trailing > 0 {
             t += &format!(", {} change(s) before a stop", o.sound_trailing);
+        }
+        if let Some(m) = &o.milestones {
+            t += &format!("; alone: {} milestone(s) met", m.len());
+            if std::env::var_os("SF_CONFORM_MILESTONES").is_some() {
+                for (f, m) in m {
+                    t += &format!("\n  {f}: {m}");
+                }
+            }
         }
         if !o.pass_skews.is_empty() {
             t += &format!(

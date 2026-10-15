@@ -164,22 +164,15 @@ impl FrameState {
         }
     }
 
-    /// A frame read from a side's memory, `byte(addr)` at the original's addresses.
-    pub fn read(byte: &dyn Fn(u32) -> u8, cop1lc: Option<u32>) -> FrameState {
+    /// A frame read from a side's memory: `read(addr, len)` gives `len` bytes at the original's
+    /// address `addr`.
+    pub fn read(read: &dyn Fn(u32, u32) -> Vec<u8>, cop1lc: Option<u32>) -> FrameState {
         let bytes = |id: VarId| {
             let d = def(id);
-            (d.addr..d.addr + d.width.len())
-                .map(byte)
-                .collect::<Vec<u8>>()
+            read(d.addr, d.width.len())
         };
-        let word = |id: VarId| {
-            let a = def(id).addr;
-            (byte(a) as u16) << 8 | byte(a + 1) as u16
-        };
-        let long = |id: VarId| {
-            let a = def(id).addr;
-            (a..a + 4).fold(0u32, |v, x| v << 8 | byte(x) as u32)
-        };
+        let word = |id: VarId| be_w(&read(def(id).addr, 2), 0);
+        let long = |id: VarId| be_l(&read(def(id).addr, 4), 0);
         FrameState {
             story: false,
             cop1lc,
@@ -278,7 +271,9 @@ impl Milestones {
             if (s.lives as i16) < (p.lives as i16) {
                 push(Milestone::LifeLost { lives: s.lives });
             }
-            if p.level_state < 0 && s.level_state > 0 && s.dying == 0 && p.playing() {
+            // The exit's 1 is often counted down to 0 by the same pass, before the frame ends;
+            // a death sets `$190` with the frog dying.
+            if p.level_state < 0 && s.level_state >= 0 && s.dying == 0 && p.playing() {
                 push(Milestone::LevelExit {
                     world: s.world,
                     level: s.level,
@@ -590,7 +585,7 @@ mod tests {
         // Frame 3: a death; frame 4: the exit.
         s.lives = 2;
         f.push(s.clone());
-        s.level_state = 1;
+        s.level_state = 0;
         f.push(s.clone());
         assert_eq!(
             milestones(&f),
@@ -615,6 +610,23 @@ mod tests {
                         coins: 1
                     }
                 ),
+            ]
+        );
+    }
+
+    #[test]
+    fn a_death_ends_the_level_without_an_exit() {
+        let mut f = vec![level_frame()];
+        let mut s = f[0].clone();
+        s.level_state = 0x190;
+        s.dying = 1;
+        s.lives = 2;
+        f.push(s);
+        assert_eq!(
+            milestones(&f)[1..],
+            [
+                (1, Milestone::LifeLost { lives: 2 }),
+                (1, Milestone::End { score: 0, lives: 2, coins: 0 }),
             ]
         );
     }
