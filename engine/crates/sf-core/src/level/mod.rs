@@ -720,8 +720,13 @@ impl LevelCtx<'_> {
                 self.paula.push(on);
                 self.audio_spent(at, beam::Cost::AudioStop, beam::Cost::AudioWrite);
             }
+            self.bus.st.audio.play_sfx_setup(self.sound, rest);
+            // A frame whose end falls after the wait, before the effect's first write, runs its
+            // vertical blank there: `sfx_tick` sees the new effect without its duration and ends
+            // it, and music takes the channel back (T181: enemies-w6-1-complete 507–509).
+            self.interrupt_due_at(true);
             let at = self.paula.len();
-            self.bus.st.audio.play_sfx_rest(self.sound, rest, self.paula);
+            self.bus.st.audio.play_sfx_start(self.sound, rest, self.paula);
             self.audio_spent(at, beam::Cost::AudioStop, beam::Cost::AudioWrite);
         }
     }

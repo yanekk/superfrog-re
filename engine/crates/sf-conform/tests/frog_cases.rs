@@ -49,6 +49,21 @@ fn frog_run_w1_1() {
     green("frog-run-w1-1");
 }
 
+/// The original's late frames are counted, its slowdown measured (DESIGN §2.1, T181): in
+/// `frog-run-w1-1` its pass is late at the vertical blank twice, the two lags (559, 561); a
+/// title-side case never is.
+#[test]
+fn the_originals_late_frames_are_counted() {
+    let run = |name: &str| {
+        let case = sf_conform::Case::load(&sf_conform::cases_dir().join(format!("{name}.toml")))
+            .unwrap_or_else(|e| panic!("{e}"));
+        sf_conform::run(&case).unwrap_or_else(|d| panic!("{name}: {d}"))
+    };
+    let o = run("frog-run-w1-1");
+    assert_eq!((o.late, o.straddled.as_slice()), (2, &[559, 561][..]));
+    assert_eq!(run("title-rng").late, 0);
+}
+
 /// W1-1 with its items live, 700 frames: coins, the exit lock, the panel and score (T15), the
 /// picture as the beam drew it (T36). World 1's enemies are live too (T42): a pass across four
 /// frames ends at frame 321 on the wait's last check, the next waiting for the next frame (T101).

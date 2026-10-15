@@ -2,8 +2,8 @@
 # coins (all by frame 2888), the switch at 144,35 (frame 4177; its gate at 191,22), the exit
 # reached at frame 9236, the exit fade and the tally; ends on frame 9420, the next level being
 # T21's. Planned by `examples/plan_exit`, checked on the original chunk by chunk. Not in the test
-# block: red from frame 1657 (`sf-conform scan`: 1657, 1927, 2383, 4964, 5171, 7731, 8054, 9097,
-# and the exit fade's copper from 9237), lag, bob-draw, data-bus and exit-fade faults (T131).
+# block: red faithful at 1927 (`vbl_count` a pass off after a late frame) and alone at 7950 (an
+# item the original does not take), T184's (T181).
 sync = { level = "W4-2" }
 script = "complete-w4-2"
 frames = 9421
