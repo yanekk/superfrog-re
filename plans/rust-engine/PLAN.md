@@ -178,6 +178,13 @@ headless.
 | [T131](tasks/T131-w4-completion-faults.md) | w4-completion-faults | T103, T121, T127; blocks T18, T21 |
 | [T132](tasks/T132-w4-4-completion.md) | w4-4-completion | T103; blocks T18, T131 |
 | [T145](tasks/T145-w4-4-dart-21.md) | w4-4-dart-21 | T132; blocks T18, T131 |
+| [T146](tasks/T146-w6-completion-faults.md) | w6-completion-faults | T104; blocks T18, T21 |
+| [T147](tasks/T147-w6-2-completion.md) | w6-2-completion | T104; blocks T18, T146 |
+| [T148](tasks/T148-w6-2-alt-completion.md) | w6-2-alt-completion | T104, T147; blocks T18, T146 |
+| [T149](tasks/T149-w6-3-completion.md) | w6-3-completion | T104; blocks T18, T146 |
+| [T150](tasks/T150-w6-4-completion.md) | w6-4-completion | T104; blocks T18, T146 |
+| [T151](tasks/T151-w6-4-alt-completion.md) | w6-4-alt-completion | T104, T150; blocks T18, T146 |
+| [T153](tasks/T153-bob-draw-step-cuts.md) | bob-draw-step-cuts | T121; blocks T21 |
 | [T160](tasks/T160-attract-demo-entry.md) | attract-demo-entry | T33 |
 | [T161](tasks/T161-attract-demo-init-timing.md) | attract-demo-init-timing | T160 |
 | [T162](tasks/T162-attract-demo-level-start.md) | attract-demo-level-start | T161 |
