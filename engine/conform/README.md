@@ -78,9 +78,9 @@ frame was produced; checks 2 and 3 judge them: the copper lists (`end_copper`, `
 `tally_copper`, `slot_copper`, `exit_sprite_copper`, `level_copper`, `front_copper`, and the
 intro's `StoryBootCopper` and `StoryCopper`), the bitmaps (`bob_sheet`, `playfield_buffer_0`, `_1`,
 `playfield_clean`, `hunk3_gap`, `panel_bitmap`, `hero_frames`, the intro's text page, buffers and
-clean background), `shown_buffer`, the blit queue (`blits_pending`, `blit_next`, `blit_queue`) and
-the sound driver's fade and register shadows (`music_fade`, the intro's `StoryShadow`). No variable
-a gameplay rule reads is tagged.
+clean background), `shown_buffer` and `scroll_column` (the shown column, T181), the blit queue
+(`blits_pending`, `blit_next`, `blit_queue`) and the sound driver's fade and register shadows
+(`music_fade`, the intro's `StoryShadow`). No variable a gameplay rule reads is tagged.
 
 ## Plays alone (DESIGN §2.1 check 4, T182)
 
