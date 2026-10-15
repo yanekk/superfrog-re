@@ -18,6 +18,14 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-15 | 📌 | T104 integrate (owner's choice): T103 and T104 each rewrote `plan_exit` with its own coin phase. T103's stays `examples/plan_exit`; T104's is `examples/plan_exit_w6` (T147–T151 use it). Two near-duplicate planners, not merged. |
+| 2026-10-15 | 📌 | T104 review, measured on the original: `coins_left_for_exit` at load equals the marker-8 cells capped at 99 (W6-1 97, W6-2 97 of 97+65 marker 9, W6-3 86, W6-4 99 of 185). T104's 162/138/189 count both markers; W6-4's exit likely opens with coins left (read-only). |
+| 2026-10-15 | 🔄 | T104 split at pir's context line: W6-2, W6-2alt, W6-3, W6-4, W6-4alt completions to T147–T151 (each T104; blocks T18, T146; the alts also on T147, T150). Kept: planner, `step_unseen`, W6-1 and W6-3alt cases. |
+| 2026-10-15 | 📌 | T104, measured: a jump rises 7 rows (115 px); a run jump at full speed (6 px a frame) crosses ~17 cells; a bounce pad lifts 24 rows; marker 62 is a jump-through floor, 44 a lift raising a grounded frog a row a frame. Spikes (6) kill. |
+| 2026-10-15 | 📌 | T104: a run stuck at a precise hop is fastest solved by brute force on the original from a saved state (holds of a few lengths, success = a ground cell box), then `plan_exit --prefix`. T104's probe tool was not committed. |
+| 2026-10-15 | 📌 | T104: `level_state` is 1 for two frames at an exit, then 0; `-1`/`-2` at a level's start and respawn. A planner checking between chunks misses it: cut finished scripts one frame after. |
+| 2026-10-14 | 🔄 | Owner, T104: added T146 w6-completion-faults (T104; blocks T18, T21): W6 completions diverge at W6-1 530 (`playfield_buffer_0` after lag), W6-4 154 (`level_copper` after lag), W6-3alt 5939 (`AUD3VOL`). Check against T121, T131 first. |
+| 2026-10-14 | 🔄 | Owner, T104: added `Game::step_unseen` (no level picture; render was ~60% of planning). Planners only: T103, T106, T108, T122, T126 step their beams with it, ~2.5× faster. `tests/step_unseen.rs` proves it leaves the game as `step` does. |
 | 2026-10-15 | 🐞 | T114 review: `cargo fmt -p sf-conform --check` fails on `examples/complete.rs:82` (the `score` closure), outside T114; left alone. |
 | 2026-10-15 | 📌 | T111, W3-2: the start room's only exit is swimming under the pillar at 180–182 (57/24 are water). `plan_exit.rs` (paced) held the original's route where `complete.rs` drifted. Fake wall 155,26 drops back into the start. |
 | 2026-10-15 | 📌 | T108 review: `plan_exit --frames N` is an absolute frame budget, not frames after the prefix; a prefix longer than N plans nothing and exits 0. `--via` a cell steers it off a block top `--hurt` alone cannot leave. |
