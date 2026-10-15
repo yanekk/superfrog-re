@@ -1,9 +1,9 @@
-# T187 — chain-level-code
+# T192 — chain-level-code
 
 **Split from:** T183 (its "Starting from a level code on the options screen enters that level" and
 the `chain-level-code` test)
 
-**Phase:** 2 · **Depends on:** T183, T185; blocks T21 · **Weight:** small
+**Phase:** 2 · **Depends on:** T183, T190; blocks T21 · **Weight:** small
 
 ## Goal
 

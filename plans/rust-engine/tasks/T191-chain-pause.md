@@ -1,4 +1,4 @@
-# T186 — chain-pause
+# T191 — chain-pause
 
 **Split from:** T183 (its "Pause on P, as the original" and the `chain-pause` test)
 
