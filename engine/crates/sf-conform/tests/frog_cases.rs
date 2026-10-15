@@ -354,3 +354,15 @@ fn items_life_w2_1() {
     assert_eq!(frame, 895);
     assert_eq!(compared_from(frame, &straddled), 897, "{straddled:?}");
 }
+
+/// W2-1 with its items live, 1 175 frames: the switch bumped, then past the exit while coins are
+/// left onto the 20 000-point fruit at 260,25 (h0+$f008, T133). Its twin 48,22 is in a room play
+/// never reaches (docs/07).
+#[test]
+fn items_fruit_w2_1() {
+    let (found, straddled) = takes("items-fruit-w2-1", &[(260, 25)]);
+    let (frame, _, score) = found[0];
+    assert_eq!(score.1, score.0 + 20_000, "the fruit at frame {frame}");
+    assert_eq!(frame, 1160);
+    assert_eq!(compared_from(frame, &straddled), 1160, "{straddled:?}");
+}
