@@ -338,6 +338,11 @@ pub fn pass_step(cpu: &CpuRegs, m: &AmigaMemory) -> u16 {
         0x19b96..=0x19bc0 => 40 + slot(d(0)).saturating_sub(1),
         0xd0cc => 0,
         0xd0d0 | 0xd0e0..=0xd125 => 1,
+        // The entry read (a6 past it) and tested, nothing of it done yet: its bounds, the
+        // stomp's, the passive's and the hurt's tests, up to the stomp's first write (h0+$d17e)
+        // or a handler's `jsr` (T184: `complete-w4-2` 7894 ended at h0+$d150, before a hurt the
+        // engine had made).
+        0xd132..=0xd17d | 0xd19c..=0xd1b1 | 0xd1be..=0xd1c5 => frog_walk_step(cpu.a[6]) - 1,
         0xd126..=0xd1cd => frog_walk_step(cpu.a[6]),
         0xd1ce | 0xd0d4..=0xd0df => frog_walk_step(hitbox_end(m)),
         _ => {
@@ -369,8 +374,8 @@ pub fn pass_step(cpu: &CpuRegs, m: &AmigaMemory) -> u16 {
 const HITBOXES: u32 = h0(0xd350);
 
 /// The step of `collide_all`'s frog half with the walk's pointer at `a6` (h0+$d126 on): 2 once
-/// the frog's box is taken, then one more for each entry looked at (the one whose test or touch
-/// handler is running counted done), as `sf_core::level::objects::frog_touches` counts them.
+/// the frog's box is taken, then one more for each entry looked at (the one whose touch handler
+/// is running counted done; [`pass_step`] takes one off while it is only being tested), as `sf_core::level::objects::frog_touches` counts them.
 fn frog_walk_step(a6: u32) -> u16 {
     2 + (a6.wrapping_sub(HITBOXES) / 12) as u16
 }
