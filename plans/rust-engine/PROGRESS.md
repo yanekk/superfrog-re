@@ -41,7 +41,7 @@ done · ⛔ blocked, needs a human. A task dropped by a plan amendment leaves th
 | T15 | items-and-scoring | T14 | ✅ | |
 | T16 | enemies-worlds-1-3 | T15 | ✅ | |
 | T17 | enemies-worlds-4-6 | T15 | ✅ | |
-| T18 | bosses | T16, T17, T180, T182 | ⬜ | |
+| T18 | bosses | T16, T17, T180, T182 | ✅ | |
 | T19 | slot-and-bonus | T15 | ✅ | |
 | T20 | front-end | T08, T11, T12, T13 | ✅ | |
 | T21 | game-flow | T18, T19, T20, T181, T183 | ⬜ | |

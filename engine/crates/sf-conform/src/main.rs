@@ -341,9 +341,9 @@ fn record(path: &Path, rest: &[String]) -> Result<bool, String> {
     }
     let synced = sync::reach_frozen(&case.sync, &case.script, case.frames, case.freeze())?;
     let mut amiga = synced.amiga;
-    // As `run` does: from the end sequence on, every disk the original asks for goes in.
-    let mut disks =
-        (case.sync == sync::SyncPoint::EndSequence).then(|| sync::Disks::at(&synced.memory));
+    // As `run` does: from the end sequence on (and in the final level), every disk the original
+    // asks for goes in.
+    let mut disks = case.sync.serves_disks().then(|| sync::Disks::at(&synced.memory));
     println!(
         "# {}: oracle from {:?}, frames counted from there",
         case.name, case.sync
