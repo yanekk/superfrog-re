@@ -1,8 +1,7 @@
 # W4-1 with every object live, no exclusions: every W4-1 type met (markers 1, 10, 12, 15, 18, 19,
 # 24, 25, 26, 27), the frog hurt by three and the swooper stomped dead; objects, score, the panel
-# and the picture every frame (T41). Not in the test block: red at frame 206 only (with re-sync on,
-# the other 2 399 frames match), the playfield's new scroll tiles after a lag as the camera rises,
-# T102's frame-244 fault (T102 goal 1: after T101).
+# and the picture every frame (T41). Green faithful and alone (`tests/cases.rs`, T181); its old
+# frame-206 red (the playfield's new scroll tiles after a lag, T102's) no longer shows.
 sync = { level = "W4-1" }
 script = "enemies-w4-1"
 frames = 2400

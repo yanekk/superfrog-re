@@ -5,21 +5,10 @@
 # mid-pass), the exit fade and the tally, fire in its wait taking the points; ends on frame
 # 24383, frame 24384 being the next level's (T21's). Planned by `examples/plan_exit`, checked on
 # the original chunk by chunk. Four re-syncs, each after a lag, pinned in frog_cases.rs: the panel
-# at 8030 and 23129, the play field buffer at 9003 (T121's class), the hitboxes at 15914. Two
-# pictures left out; T131 is dropped, T181 re-judges them all.
+# at 8030 and 23129, the play field buffer at 9003 (T121's class), the hitboxes at 15914. Nothing
+# left out: the pad's throw (5252) and the exit fade's step (24201) are within the faithful picture
+# tolerance (T181).
 sync = { level = "W4-4" }
 script = "complete-w4-4"
 frames = 24384
 resync = true
-
-[[exclude]]
-what = "picture"
-frames = [5252, 5252]
-note = "the frog thrown by the pad at 52,50 (marker 5) differs, no lag (T103's 8886 and T126's 967/657 pad class)"
-task = "T181"
-
-[[exclude]]
-what = "picture"
-frames = [24201, 24201]
-note = "the exit fade's palette step a frame early after a mid-pass exit ($663 vs $652; W1-1's 4475 class)"
-task = "T181"

@@ -75,6 +75,10 @@ pub struct Outcome {
     /// Frames the original ended in the middle of a level's pass (lag): not compared, nor the
     /// next frame's picture and Paula writes, which carry the rest of that pass.
     pub straddled: Vec<u32>,
+    /// Frames of play on which the original's pass was late at the vertical blank
+    /// (`Pacing::Late`), its load frames not counted: the slowdown the engine does not reproduce
+    /// in normal play, measured (DESIGN §2.1; per level in docs/08 "Lag", T181).
+    pub late: u32,
     /// Frames after such a lag on which the variables still differed, so the engine was re-synced
     /// from the original's memory (DESIGN §2.1), with the first variable that differed. Always
     /// empty for a case with `resync = false`: there each is a divergence.
@@ -414,6 +418,9 @@ fn run_inner(
                     }
                 }
             }
+        }
+        if matches!(pacing, Pacing::Late { .. }) {
+            outcome.late += 1;
         }
         if let Some(a) = alone.as_mut() {
             let twice = amiga.frames_run() == 2;

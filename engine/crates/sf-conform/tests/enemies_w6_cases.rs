@@ -42,8 +42,21 @@ fn enemies_w6_3_alt() {
 }
 
 /// W6-4's second map: every type W6-4 has, the strider among them, the flier killed, a hit.
-/// (`enemies-w6-4`, the same run on the first map, waits for T102's pad beam race.)
+/// (`enemies-w6-4`, the same run on the first map, waits for T185: the frog's fall after a lag.)
 #[test]
 fn enemies_w6_4_alt() {
     green("enemies-w6-4-alt");
+}
+
+/// W6-3's second map completed (T104, T181): all 91 coins and its switches to the exit, green
+/// faithful and alone (193 milestones), re-synced after the lags at 6129 and 12379 (the panel's
+/// clock mid-update), as DESIGN §2.1 lets checks 1–3 do.
+#[test]
+fn enemies_w6_3_alt_complete() {
+    let name = "enemies-w6-3-alt-complete";
+    let case = sf_conform::Case::load(&sf_conform::cases_dir().join(format!("{name}.toml")))
+        .unwrap_or_else(|e| panic!("{e}"));
+    let o = sf_conform::run(&case).unwrap_or_else(|d| panic!("{name}: {d}"));
+    let resynced: Vec<u32> = o.resynced.iter().map(|r| r.0).collect();
+    assert_eq!(resynced, [6129, 12379], "{:?}", o.resynced);
 }

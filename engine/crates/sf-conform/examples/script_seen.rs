@@ -1,6 +1,6 @@
 //! Plays a script on the original and prints each frame the frog's hearts drop and, for each
-//! world-2 object routine watched, the first frame a live slot runs it: what a completion meets
-//! even while its case is red (T122).
+//! world-2 object routine watched, the first frame a live slot runs it, and the first a crumbling
+//! ledge shows broken: what a completion meets even while its case is red (T122, T181).
 //!
 //! `cargo run --release --example script_seen -- <level> <script.txt> <frames>`
 use sf_conform::{InputScript, SyncPoint, sync};
@@ -30,6 +30,8 @@ fn main() {
     ];
     let mut first = vec![None; watch.len()];
     let mut hearts = None;
+    // A crumbling ledge showing its broken frame (h0+$2ebac): it broke under the frog (T181).
+    let mut broken = None;
     for k in 0..n {
         sync::step_inserting(&mut s.amiga, p.input_at(k)).unwrap();
         let st = sf_core::State::transplant(&sync::core_memory(s.amiga.memory()));
@@ -43,6 +45,16 @@ fn main() {
                 first[i] = Some(k);
             }
         }
+        if broken.is_none()
+            && (0..20).any(|j| {
+                let sl = h0(0x1ba6c + j * 0x7c);
+                st.l(sl + 0x40) != 0
+                    && st.l(sl + 4) == h0(0x2740c)
+                    && st.l(st.l(st.l(sl + 0x50) + 0x16)) == h0(0x2ebac)
+            })
+        {
+            broken = Some(k);
+        }
         let h = st.w(h0(0x830));
         if hearts.is_some_and(|x| h < x) {
             println!("frame {k}: hearts {h}, lives {}", st.w(FROG + f::LIVES));
@@ -52,4 +64,5 @@ fn main() {
     for (i, (_, w)) in watch.iter().enumerate() {
         println!("{w}: {:?}", first[i]);
     }
+    println!("crumbling ledge broken: {broken:?}");
 }
