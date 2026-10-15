@@ -30,8 +30,7 @@ const OFF_SCREEN: u16 = 0x150;
 
 /// h0+$19bbe: both frog sprites move by the frame's offset (frog `+$36`, `+$38`) and are hidden
 /// when off screen, below the play field or blinking; then their copper words are written. The
-/// original first waits for the beam to clear lines `$1d`..`$21` ([`LevelCtx::sprite_wait`]); not
-/// yet called here, T127.
+/// original first waits for the beam to clear lines `$1d`..`$21` ([`LevelCtx::sprite_wait`]).
 pub fn place_frog_sprites(c: &mut LevelCtx) {
     for s in [FROG_SPRITE_LEFT, FROG_SPRITE_RIGHT] {
         let b = &mut c.bus;
@@ -53,8 +52,8 @@ pub fn place_frog_sprites(c: &mut LevelCtx) {
         if b.w(FROG + f::SPRING) != 0 {
             b.set_w(s + spr::Y, 0x104);
         }
-        // h0+$19c92's wait (`c.sprite_wait()`) is left out until the beam costs are exact: called,
-        // `items-switch-w2-1` and `enemies-w2-1` miss the frog's pose at frame 442 (T127).
+        // h0+$19c92.
+        c.sprite_wait();
         sprite_to_copper(&mut c.bus, s);
     }
 }
@@ -220,7 +219,7 @@ pub const EXIT_SPRITE_RIGHT: u32 = h0(0x1b048);
 
 /// `frog_anim_tick` (h0+$10222): the animation's step runs out, the next one (the list starts
 /// again at its end) gives the frame: its sprite offset, then (the original first waits for the
-/// beam to clear lines `$1d`..`$21`, [`LevelCtx::sprite_wait`]; not yet called here, T127) its
+/// beam to clear lines `$1d`..`$21`, [`LevelCtx::sprite_wait`]) its
 /// height and the data pointers the copper list's sprite moves get, the two halves of each
 /// attached pair one sprite apart. Writes made after the copper's
 /// sprite moves (a launcher's throw reaches here on line `$1e` or `$1f`, T86) miss them: the
@@ -249,8 +248,9 @@ pub fn frog_anim_tick(c: &mut LevelCtx) {
     } else {
         (FROG_SPRITE_LEFT, FROG_SPRITE_RIGHT)
     };
-    // h0+$1027a's wait (`c.sprite_wait()`) is left out until the beam costs are exact: called,
-    // `items-switch-w2-1` and `enemies-w2-1` miss the frog's pose at frame 442 (T127).
+    // h0+$1027a; what the routine costs past it is `Cost::FrogAnimTail` (T127).
+    c.sprite_wait();
+    let b = &mut c.bus;
     let height = b.w(frame.wrapping_add(8));
     b.set_w(a5 + spr::HEIGHT, height);
     b.set_w(a6 + spr::HEIGHT, height);
