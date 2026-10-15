@@ -13,13 +13,13 @@ the account is the commit message. Whoever writes a cell also fixes the over-bud
 
 **Status:** about 100 tasks ✅; T18, T21 and Phase 3 open; amended to faithful.
 **Last updated:** 2026-10-15
-**Amended 2026-10-15 (owner):** faithful replaces frame-exact (DESIGN §2.1, PLAN.md amendment); T180–T183 added, 15 tasks dropped.
+**Amended 2026-10-15 (owner):** faithful replaces frame-exact (DESIGN §2.1, PLAN.md amendment); T180–T183 added, 14 tasks dropped (PLAN.md).
 **Next `pir-work` will:** T180 faithful-compare, then T182; T126 and T132 finish against the faithful bar.
 
 ## Tasks
 
 Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review · ✅ reviewed and
-done · ⛔ blocked, needs a human · ➖ dropped by a plan amendment.
+done · ⛔ blocked, needs a human. A task dropped by a plan amendment leaves this table (pir reads only these five); PLAN.md lists it.
 
 | # | Task | Depends on | State | Notes |
 |---|---|---|---|---|
@@ -44,7 +44,7 @@ done · ⛔ blocked, needs a human · ➖ dropped by a plan amendment.
 | T18 | bosses | T16, T17, T180, T182 | ⬜ | |
 | T19 | slot-and-bonus | T15 | ✅ | |
 | T20 | front-end | T08, T11, T12, T13 | ✅ | |
-| T21 | game-flow | T18, T19, T20, T181, T183; and every row that blocks T21 | ⬜ | |
+| T21 | game-flow | T18, T19, T20, T181, T183 | ⬜ | |
 | T22 | app-rig | T09, T10, T12, T13 | ✅ | |
 | T23 | app-shell | T21, T22 | ⬜ | |
 | T24 | macos-menus | T23 | ⬜ | |
@@ -130,39 +130,25 @@ done · ⛔ blocked, needs a human · ➖ dropped by a plan amendment.
 | T125 | enemies-w5-4-case | T39; blocks T18 | ✅ | |
 | T126 | w5-completions | T39, T101, T121, T123, T124, T125, T180, T182; blocks T21 | ⬜ | |
 | T127 | restore-sprite-wait | T101; blocks T21 | ✅ | |
-| T128 | w3-4-sprite-race | T127; blocks T113 | ➖ | Dropped by the 2026-10-15 amendment (sub-frame timing); cases re-judged by T181. |
 | T130 | front-vbl-318 | T100; blocks T21 | ✅ | |
-| T129 | slot-lamp-cut | T74; blocks T21 | ➖ | Dropped by the 2026-10-15 amendment (sub-frame timing); cases re-judged by T181. |
-| T140 | story-setup-under-music | T56 | ➖ | Dropped by the 2026-10-15 amendment (sub-frame timing); cases re-judged by T181. |
-| T141 | story-fade-colour-race | T56 | ➖ | Dropped by the 2026-10-15 amendment (sub-frame timing); cases re-judged by T181. |
-| T142 | story-draw-end-order | T56 | ➖ | Dropped by the 2026-10-15 amendment (sub-frame timing); cases re-judged by T181. |
-| T143 | story-last-fade-out | T56 | ➖ | Dropped by the 2026-10-15 amendment (sub-frame timing); cases re-judged by T181. |
+| T129 | slot-lamp-cut | T74; blocks T21 | ⬜ | |
 | T144 | story-intro-full-green | T56, T180; blocks T21, T47, T48 | ⬜ | |
 | T133 | w2-1-fruit-room | T105, T180; blocks T21 | ⬜ | |
-| T131 | w4-completion-faults | T103, T121, T127; blocks T18, T21 | ➖ | Dropped by the 2026-10-15 amendment (sub-frame timing); cases re-judged by T181. |
 | T132 | w4-4-completion | T103, T180, T182; blocks T21 | ⬜ | |
 | T145 | w4-4-dart-21 | T132; blocks T21 | ⬜ | |
-| T146 | w6-completion-faults | T104; blocks T18, T21 | ➖ | Dropped by the 2026-10-15 amendment (sub-frame timing); cases re-judged by T181. |
 | T147 | w6-2-completion | T104, T180, T182; blocks T21 | ⬜ | |
 | T148 | w6-2-alt-completion | T104, T147, T180, T182; blocks T21 | ⬜ | |
 | T149 | w6-3-completion | T104, T180, T182; blocks T21 | ⬜ | |
 | T150 | w6-4-completion | T104, T180, T182; blocks T21 | ⬜ | |
 | T151 | w6-4-alt-completion | T104, T150, T180, T182; blocks T21 | ⬜ | |
-| T153 | bob-draw-step-cuts | T121; blocks T21 | ➖ | Dropped by the 2026-10-15 amendment (sub-frame timing); cases re-judged by T181. |
 | T160 | attract-demo-entry | T33, T180 | ⬜ | |
-| T161 | attract-demo-init-timing | T160 | ➖ | Dropped by the 2026-10-15 amendment (sub-frame timing); cases re-judged by T181. |
 | T162 | attract-demo-level-start | T160, T180 | ⬜ | |
 | T163 | attract-demo-return | T162 | ⬜ | |
 | T164 | attract-demo-cycles | T163 | ⬜ | |
 | T154 | w1-4-completion | T106, T127, T180, T182; blocks T21 | ⬜ | |
-| T165 | w1-1-completion | T106, T131; blocks T18 | ➖ | Dropped by the 2026-10-15 amendment (sub-frame timing); cases re-judged by T181. |
-| T155 | w2-completions-green | T122, T127, T131, T132; blocks T18 | ➖ | Dropped by the 2026-10-15 amendment (sub-frame timing); cases re-judged by T181. |
 | T166 | w2-2-completion | T122, T180, T182; blocks T21 | ⬜ | |
 | T167 | w2-3-completion | T122, T180, T182; blocks T21 | ⬜ | |
 | T168 | w2-4-completion | T122, T180, T182; blocks T21 | ⬜ | |
-| T169 | power-on-cases-green | T160; blocks T21 | ➖ | Dropped 2026-10-15; its `level1_vector` frame-0 fault (state, not timing) moved to T183 or T160; cases re-judged by T181. |
-| T170 | game-over-timeup-copper | T34; blocks T21 | ➖ | Dropped by the 2026-10-15 amendment (sub-frame timing); cases re-judged by T181. |
-| T171 | front-handler-bus-model | T130, T129; blocks T21 | ➖ | Dropped by the 2026-10-15 amendment (sub-frame timing); cases re-judged by T181. |
 | T180 | faithful-compare | T120; blocks T181, T182 and every open conformance task | ⬜ | |
 | T181 | faithful-rebaseline | T180, T182; blocks T21 | ⬜ | |
 | T182 | plays-alone | T180; blocks T181, T183 and every completion task | ⬜ | |

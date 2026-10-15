@@ -465,7 +465,7 @@ the disks. The tool caches in `~/.cache/superfrog-re/` can be deleted at any tim
   §2.1. Both need a scriptable reference emulator. Frame-exact cost five days of sub-frame timing
   work (beam races, bus-cycle models, copper colour races) while the engine still could not chain a
   menu into a level; faithful keeps the automated comparison and drops what a player cannot see or
-  hear. Fifteen tasks that only chased sub-frame timing were dropped (PLAN.md, amendment
+  hear. Fourteen tasks that only chased sub-frame timing were dropped (PLAN.md, amendment
   2026-10-15).
 - **No hand verification as a gate** (owner, 2026-10-15). The agents prove the game headless; the
   owner's play session and the 8BitDo hardware check are optional.

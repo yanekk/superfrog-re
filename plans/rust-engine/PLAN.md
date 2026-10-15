@@ -41,7 +41,7 @@ judged automatically against the original; no task waits on the owner to play or
   engine run with nothing from the original), T181 faithful-rebaseline (every case re-judged, the
   dropped tasks' cases included), T183 level-chain (menu → W1-1, level → level, world → world, pause),
   split ahead of T21 so the game plays through the worlds before the final boss exists.
-- **Dropped (➖):** T128, T129, T131, T140–T143, T146, T153, T155, T161, T165, T169, T170, T171.
+- **Dropped (➖):** T128, T131, T140–T143, T146, T153, T155, T161, T165, T169, T170, T171.
   Each chased sub-frame timing, except T169, whose `level1_vector` fix moves to T183 (or T160) and
   T155, whose encounter checks move to T181. T181 re-judges their cases; a red that survives is a
   real behaviour difference and gets an owning task then.
@@ -96,7 +96,7 @@ under scripted control in the oracle, and the code map tells every later task wh
 | [T18](tasks/T18-bosses.md) | bosses | T16, T17, T180, T182 |
 | [T19](tasks/T19-slot-and-bonus.md) | slot-and-bonus | T15 |
 | [T20](tasks/T20-front-end.md) | front-end | T08, T11, T12, T13 |
-| [T21](tasks/T21-game-flow.md) | game-flow | T18, T19, T20, T181, T183; and every row that blocks T21 |
+| [T21](tasks/T21-game-flow.md) | game-flow | T18, T19, T20, T181, T183 (and every row that lists T21 under blocks) |
 
 At the end: a scripted game from power-on to the end sequence, played by the engine alone, meets the
 original's milestones and passes the faithful checks (DESIGN §2.1), headless.
@@ -189,7 +189,7 @@ original's milestones and passes the faithful checks (DESIGN §2.1), headless.
 | [T126](tasks/T126-w5-completions.md) | w5-completions | T39, T101, T121, T123, T124, T125, T180, T182; blocks T21 |
 | [T127](tasks/T127-restore-sprite-wait.md) | restore-sprite-wait | T101; blocks T21 |
 | [T128](tasks/T128-w3-4-sprite-race.md) | w3-4-sprite-race | ➖ dropped 2026-10-15 (was: T127; blocks T113) |
-| [T129](tasks/T129-slot-lamp-cut.md) | slot-lamp-cut | ➖ dropped 2026-10-15 (was: T74; blocks T21) |
+| [T129](tasks/T129-slot-lamp-cut.md) | slot-lamp-cut | T74; blocks T21 |
 | [T130](tasks/T130-front-vbl-318.md) | front-vbl-318 | T100; blocks T21 |
 | [T133](tasks/T133-w2-1-fruit-room.md) | w2-1-fruit-room | T105, T180; blocks T21 |
 | [T140](tasks/T140-story-setup-under-music.md) | story-setup-under-music | ➖ dropped 2026-10-15 (was: T56) |
