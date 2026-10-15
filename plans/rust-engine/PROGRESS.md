@@ -116,7 +116,7 @@ done · ⛔ blocked, needs a human.
 | T110 | enemies-w1-activation | T42; blocks T18, T33, T106 | ✅ | |
 | T103 | w4-completions | T41, T101, T102; blocks T18 | ✅ | |
 | T111 | enemies-w3-2-case | T44; blocks T18 | ⬜ | |
-| T112 | enemies-w3-3-case | T44; blocks T18 | ⬜ | |
+| T112 | enemies-w3-3-case | T44; blocks T18 | 🔍 | `enemies-w3-3` (1 924 frames) green, re-sync 256 pinned (255 Late on the original); `enemies_w3::w3_3`, 1 test: hopper, flow, swing, spiker, darts, bouncer, shuffler stomped, crumble, jumper, 3+ hurts. Deviation: pads/scenery-14 (lower left, unreachable from the cave) not met; FINDINGS names T115. |
 | T113 | enemies-w3-4-case | T44, T102; blocks T18 | ⬜ | |
 | T114 | enemies-w3-activation | T44; blocks T18 | ⬜ | |
 | T115 | w3-completions | T44, T101, T102, T111, T112, T113; blocks T18 | ⬜ | |
@@ -145,7 +145,7 @@ done · ⛔ blocked, needs a human.
 A Notes cell holds what was built or what the review found, the test count, and one line per
 deviation from the task doc. A ✅ task's cell may be cut to one line once the next task has been reviewed.
 
-**Review queue:** *(empty)*
+**Review queue:** T112
 
 ## Blocked on the user
 
