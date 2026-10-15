@@ -9,10 +9,12 @@ use sf_core::layout::h0;
 const SLOTS: u32 = h0(0x1ba6c);
 
 /// What a case run saw: each frame, every live slot's update routine (h0 offsets), the frog
-/// hurt flag and lives, the score.
+/// hurt flag and lives, the score; and every live slot's init routine (its template's, telling
+/// apart types that share their updates, as darts 53 and 54 do).
 #[derive(Default)]
 struct Seen {
     frames: Vec<(u32, Vec<u32>, bool, u16)>,
+    inits: std::collections::BTreeSet<u32>,
 }
 
 impl Seen {
@@ -45,11 +47,13 @@ fn run(name: &str, pins: &[u32]) -> Seen {
     let mut seen = Seen::default();
     let o = sf_conform::run_with(&case, |fr, g: &mut Game| {
         let st = g.state();
-        let live = (0..20)
+        let slots: Vec<u32> = (0..20)
             .map(|k| SLOTS + k * 0x7c)
             .filter(|&s| st.l(s + 0x40) != 0)
-            .map(|s| st.l(s + 4).wrapping_sub(h0(0)))
             .collect();
+        let live = slots.iter().map(|&s| st.l(s + 4).wrapping_sub(h0(0))).collect();
+        seen.inits
+            .extend(slots.iter().map(|&s| st.l(s).wrapping_sub(h0(0))));
         seen.frames
             .push((fr, live, st.w(FROG + f::HURT) != 0, st.w(FROG + f::LIVES)));
     })
@@ -64,6 +68,13 @@ fn run(name: &str, pins: &[u32]) -> Seen {
         o.resynced
     );
     seen
+}
+
+/// Asserts `seen` had a slot spawned from each of `inits` (init routine, name).
+fn met_init(seen: &Seen, inits: &[(u32, &str)]) {
+    for &(i, what) in inits {
+        assert!(seen.inits.contains(&i), "{what} (init h0+${i:x}) never met");
+    }
 }
 
 /// Asserts `seen` met each of `types` (update routine, name).
@@ -138,4 +149,42 @@ fn enemies_w5_1_activation() {
     }
     assert!(seen.left(0x26b14), "the pacer freed");
     assert!(seen.arrived_after(0x26b14, 600), "the pacer back");
+}
+
+
+/// W5-2 (T123) from its start west over the spike pits to the second dart (54, marker 19 at
+/// 56,17), which hurts the frog (frame 383), down past the drips and the faller into the
+/// shooters' room (it waits for the shooter's shot), under the crushers and east to the pacer
+/// (13/14) on row 30. The 2/3 pacer cannot spawn in W5-2 (no marker 3 within `$98` cells right
+/// of either marker 2); the mace, the flow and dart 53 are W5-1's (FINDINGS 2026-10-15, T123).
+#[test]
+fn enemies_w5_2() {
+    let seen = run("enemies-w5-2", &[]);
+    assert!(
+        seen.frames.windows(2).any(|w| w[0].0 >= 200 && w[1].2 && !w[0].2),
+        "hurt by an enemy"
+    );
+    met_init(&seen, &[(0x25e46, "dart 54 (marker 19)")]);
+    met(
+        &seen,
+        &[
+            (0x25fa8, "dart (hidden)"),
+            (0x25f42, "dart (flying)"),
+            (0x26b14, "pacer (13/14)"),
+            (0x26c08, "shooter walking"),
+            (0x26cb6, "shooter firing"),
+            (0x26d14, "shot"),
+            (0x24f1c, "faller hanging"),
+            (0x24f58, "faller shaking"),
+            (0x24f88, "faller falling"),
+            (0x24ff8, "faller down"),
+            (0x25274, "drip falling"),
+            (0x25306, "drip splashing"),
+            (0x270a8, "crusher waiting"),
+            (0x270d2, "crusher striking"),
+            (0x27100, "crusher going back"),
+            (0x24ef6, "scenery"),
+        ],
+    );
+    assert!(seen.left(0x26d14), "a shot freed");
 }

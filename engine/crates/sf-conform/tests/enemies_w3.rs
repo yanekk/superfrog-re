@@ -7,16 +7,35 @@
 use std::collections::BTreeSet;
 
 use sf_core::frog::{FROG, f};
-use sf_core::layout::h0;
+use sf_core::layout::{h0, h1};
 use sf_core::level::objects::OBJ_SLOTS;
 
 /// What a case's run showed: every slot update the engine ran (by `h0` offset), how many
 /// times the frog went from unhurt to hurt (a stunned landing counts too), and how many hearts
-/// it lost (`+$5a`, which only `frog_hurt` takes: an enemy's hurt alone).
+/// it lost (`+$5a`, which only `frog_hurt` takes: an enemy's hurt alone). And at the end of each
+/// frame (`live[n]` after frame `n`), the map cell (col, row) every live slot spawned from (its
+/// `+$40`).
 struct Seen {
     updates: BTreeSet<u32>,
     hurts: u32,
     hearts_lost: u32,
+    live: Vec<Vec<(u32, u32)>>,
+}
+
+/// The map's row 0 (`map_rows[1]`, h1) and a row's length in bytes, as `examples/complete.rs`.
+const ROW0: u32 = h1(0x218e0 + 0x4c0);
+const ROW_BYTES: u32 = 0x260;
+
+impl Seen {
+    /// The frames at whose end the slot spawned from (`col`, `row`) went away (`false`) or came
+    /// back (`true`), after the first frame.
+    fn comings_and_goings(&self, at: (u32, u32)) -> Vec<(u32, bool)> {
+        let here = |n: usize| self.live[n].contains(&at);
+        (1..self.live.len())
+            .filter(|&n| here(n) != here(n - 1))
+            .map(|n| (n as u32, here(n)))
+            .collect()
+    }
 }
 
 /// The frog's hearts, which `frog_hurt` takes one from.
@@ -30,16 +49,25 @@ fn run(name: &str, resyncs: &[u32]) -> Seen {
         updates: BTreeSet::new(),
         hurts: 0,
         hearts_lost: 0,
+        live: Vec::new(),
     };
     let mut hurt = false;
     let mut hearts = None;
-    let o = sf_conform::run_with(&case, |_, g| {
+    // Called before each frame is stepped: what it sees is the end of the frame before.
+    let o = sf_conform::run_with(&case, |n, g| {
         let s = g.state();
+        let mut live = Vec::new();
         for k in 0..20 {
             let slot = OBJ_SLOTS + k * 0x7c;
-            if s.l(slot + 0x40) != 0 {
+            let cell = s.l(slot + 0x40);
+            if cell != 0 {
                 seen.updates.insert(s.l(slot + 4).wrapping_sub(h0(0)));
+                let off = cell.wrapping_sub(ROW0);
+                live.push((off % ROW_BYTES / 2, off / ROW_BYTES));
             }
+        }
+        if n > 0 {
+            seen.live.push(live);
         }
         let now = s.w(FROG + f::HURT) != 0;
         if now && !hurt {
@@ -105,6 +133,22 @@ fn w3_2() {
     assert!(s.hearts_lost >= 4, "lost {} hearts", s.hearts_lost);
 }
 
+/// W3-3 from the start to the cave below its middle: hoppers, flows, the swing, a spiker, a dart,
+/// the bouncer, the shufflers (one stomped into a reward), crumbling platforms and a jumper; the
+/// frog hurt on the way. The pads and the scenery below marker 14 stand in the level's lower left,
+/// which the case does not reach (T115's completion meets them).
+#[test]
+fn w3_3() {
+    let s = run("enemies-w3-3", &[256]);
+    for u in [
+        HOPPER, FLOW, SWING, SWING_LINK, SPIKER, DART_WAIT, DART_FLY, BOUNCER, SHUFFLER, STOMPED,
+        REWARD, CRUMBLE, JUMPER,
+    ] {
+        assert!(s.updates.contains(&u), "h0+${u:x} never ran: {:x?}", s.updates);
+    }
+    assert!(s.hurts >= 3, "hurt {} times", s.hurts);
+}
+
 /// W3-4 to its first crumbling platform: the platforms, the scenery below marker 14 (whose update
 /// is the pads') and the flows.
 #[test]
@@ -113,4 +157,22 @@ fn w3_4() {
     for u in [CRUMBLE, PAD, FLOW] {
         assert!(s.updates.contains(&u), "h0+${u:x} never ran: {:x?}", s.updates);
     }
+}
+
+/// W3-1, activation (DESIGN §2.7): the frog runs right past the hopper at 62,44 until the
+/// camera's left edge frees it (`obj_despawn_if_offscreen`), steps back until it spawns again from
+/// its marker, and on until it is freed again; then climbs past the spiker at 72,42 until the
+/// camera's bottom edge frees it, drops until it spawns again, and climbs until it is freed
+/// again. On the original's frames: the case is green, and it compares every slot (`obj_slots`)
+/// each frame. Freed, not evicted: the slots are full only by the start, as the coins there spawn
+/// (173–198).
+#[test]
+fn activation() {
+    let s = run("enemies-w3-activation", &[201]);
+    let (out, back) = (false, true);
+    let seen = |at| s.comings_and_goings(at);
+    assert_eq!(seen((62, 44)), [(363, back), (461, out), (481, back), (515, out)], "the hopper");
+    assert_eq!(seen((72, 42)), [(391, back), (573, out), (708, back), (817, out)], "the spiker");
+    assert!(s.updates.contains(&HOPPER) && s.updates.contains(&SPIKER));
+    assert!(s.live[300..].iter().all(|l| l.len() < 20), "a slot could have been evicted");
 }

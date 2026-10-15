@@ -67,28 +67,11 @@ fn items_pad_w1_1() {
 }
 
 /// W2-2 with its items and (T43) its enemies live, 650 frames: five kinds of fruit and the spud
-/// taken, the spud thrown and caught. No re-sync: its one at 311 was the bob drawer's wait for
-/// the vertical blank's flag (T102).
+/// taken, the spud thrown and caught. No re-sync (`resync = false`, T121): its one at 311 was
+/// the bob drawer's wait for the vertical blank's flag (T102).
 #[test]
 fn items_fruit_w2_2() {
-    pinned_bob_draw("items-fruit-w2-2", &[]);
-}
-
-/// A case green but for re-syncs at `frames`, each after the original's pass was cut inside the
-/// bob drawer and differing first in a play-field buffer (T121's, FINDINGS "T43: pinned
-/// re-syncs").
-fn pinned_bob_draw(name: &str, frames: &[u32]) {
-    let case = sf_conform::Case::load(&sf_conform::cases_dir().join(format!("{name}.toml")))
-        .unwrap_or_else(|e| panic!("{e}"));
-    assert!(case.resync, "{name}: a pinned case re-syncs");
-    let o = sf_conform::run(&case).unwrap_or_else(|d| panic!("{name}: {d}"));
-    let resynced: Vec<u32> = o.resynced.iter().map(|r| r.0).collect();
-    assert_eq!(resynced, frames, "{name}: {:?}", o.resynced);
-    assert!(
-        o.resynced.iter().all(|r| r.1.starts_with("playfield_buffer_")),
-        "{name}: {:?}",
-        o.resynced
-    );
+    green("items-fruit-w2-2");
 }
 
 /// W1-1's exit forced on its first frame (T38): the exit fade, the tally with its two pages for

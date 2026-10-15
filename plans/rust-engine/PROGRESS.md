@@ -55,7 +55,7 @@ done · ⛔ blocked, needs a human.
 | T30 | acceptance | T29 | ⬜ | |
 | T31 | render-remaining-levels | T13 | ✅ | |
 | T32 | story-intro | T20; blocks T21 | ✅ | |
-| T33 | attract-demo | T16, T20 | ⬜ | |
+| T33 | attract-demo | T16, T20 | ✅ | |
 | T34 | game-over | T15, T20; blocks T21 | ✅ | |
 | T35 | end-sequence | T20; blocks T21 | ✅ | |
 | T36 | items-on-the-beam | T15 | ✅ | |
@@ -116,15 +116,15 @@ done · ⛔ blocked, needs a human.
 | T110 | enemies-w1-activation | T42; blocks T18, T33, T106 | ✅ | |
 | T103 | w4-completions | T41, T101, T102; blocks T18 | ✅ | |
 | T111 | enemies-w3-2-case | T44; blocks T18 | ✅ | |
-| T112 | enemies-w3-3-case | T44; blocks T18 | ⬜ | |
+| T112 | enemies-w3-3-case | T44; blocks T18 | ✅ | |
 | T113 | enemies-w3-4-case | T44, T102; blocks T18 | ⬜ | |
-| T114 | enemies-w3-activation | T44; blocks T18 | ⬜ | |
+| T114 | enemies-w3-activation | T44; blocks T18 | ✅ | |
 | T115 | w3-completions | T44, T101, T102, T111, T112, T113; blocks T18 | ⬜ | |
-| T121 | bob-draw-cut | T101; blocks T21 | ⬜ | |
+| T121 | bob-draw-cut | T101; blocks T21 | ✅ | |
 | T122 | w2-completions | T43, T101, T121; blocks T18 | ⬜ | |
 | T120 | conform-no-silent-pass | T05, T36; blocks T21 | ⬜ | |
-| T104 | w6-completions | T40, T101, T102; blocks T18 | ⬜ | |
-| T123 | enemies-w5-2-case | T39; blocks T18 | ⬜ | |
+| T104 | w6-completions | T40, T101, T102; blocks T18 | ✅ | |
+| T123 | enemies-w5-2-case | T39; blocks T18 | ✅ | |
 | T124 | enemies-w5-3-case | T39; blocks T18 | ⬜ | |
 | T125 | enemies-w5-4-case | T39; blocks T18 | ⬜ | |
 | T126 | w5-completions | T39, T101, T121, T123, T124, T125; blocks T18 | ⬜ | |
@@ -141,8 +141,20 @@ done · ⛔ blocked, needs a human.
 | T131 | w4-completion-faults | T103, T121, T127; blocks T18, T21 | ⬜ | |
 | T132 | w4-4-completion | T103; blocks T18, T131 | ⬜ | |
 | T145 | w4-4-dart-21 | T132; blocks T18, T131 | ⬜ | |
-| T165 | w1-1-completion | T106, T131; blocks T18 | ⬜ | |
+| T146 | w6-completion-faults | T104; blocks T18, T21 | ⬜ | |
+| T147 | w6-2-completion | T104; blocks T18, T146 | ⬜ | |
+| T148 | w6-2-alt-completion | T104, T147; blocks T18, T146 | ⬜ | |
+| T149 | w6-3-completion | T104; blocks T18, T146 | ⬜ | |
+| T150 | w6-4-completion | T104; blocks T18, T146 | ⬜ | |
+| T151 | w6-4-alt-completion | T104, T150; blocks T18, T146 | ⬜ | |
+| T153 | bob-draw-step-cuts | T121; blocks T21 | ⬜ | |
+| T160 | attract-demo-entry | T33 | ⬜ | |
+| T161 | attract-demo-init-timing | T160 | ⬜ | |
+| T162 | attract-demo-level-start | T161 | ⬜ | |
+| T163 | attract-demo-return | T162 | ⬜ | |
+| T164 | attract-demo-cycles | T163 | ⬜ | |
 | T154 | w1-4-completion | T106, T127; blocks T18 | ⬜ | |
+| T165 | w1-1-completion | T106, T131; blocks T18 | ⬜ | |
 
 A Notes cell holds what was built or what the review found, the test count, and one line per
 deviation from the task doc. A ✅ task's cell may be cut to one line once the next task has been reviewed.
