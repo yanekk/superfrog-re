@@ -75,6 +75,8 @@ Secret passages are boxed and labelled S1.. on each image.
 - S3: cols 71-72, rows 31-33 (6 cells) — id `W2-1:71,31`
 - S4: cols 78-79, rows 29-31 (6 cells) — id `W2-1:78,29`
 - S5: cols 85-88, rows 20-23 (16 cells) — id `W2-1:85,20`
+- The room behind S1/S2 (cols 45-51, rows 14-26, fruit `W2-1:48,22`) cannot be
+  reached in play: see [07](07-secret-passages.md#rooms-that-cannot-be-reached-in-play).
 
 ### W2-2 (d1_c32_level)
 - S1: cols 24-67, rows 61-63 (132 cells) — id `W2-2:24,61`

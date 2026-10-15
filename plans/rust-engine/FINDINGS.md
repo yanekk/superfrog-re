@@ -18,6 +18,7 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-15 | 📌 | T133: W2-1's room 45-51,14-26 (fruit 48,22) is unreachable in play; why in docs/07. An exit still locked (coins left) lets the frog through: `items-fruit-w2-1` takes the other $f008 fruit, 260,25, past it. |
 | 2026-10-15 | 🐞 | Fixed: `sf-conform record` printed every `LAYOUT` long (~3.5 MB a line); T164's recording reached 38 GB, the disk filled (ENOSPC) and the run crashed. Now entries over 1 KB are left out (`--all-vars`) and output stops at 200 MB (`--max-mb`). |
 | 2026-10-15 | 📌 | T163 review sweep, left alone: `frog/physics.rs`'s `DEMO_LEFT` doc says the recording's entries are three words; the original's (h0+$3ad8c) are a lead-in word then two-word steps, `demo_at` moving 4 bytes. Comment only. |
 | 2026-10-15 | 📌 | T163, left alone: `front/attract.rs`'s module doc still says the attract demo is "T33's"; it is built (T160–T163, docs/13 § The attract demo). |
@@ -135,7 +136,6 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 | 2026-10-14 | 🐞 | T86 review, open: the bounce pad's new `FrogSprites` charge (the original's call at $ea14/$ea6a) is tested by nothing: `items-pad-w1-1` re-syncs at 321 and 790 with it or without; T83 recorded 402/786. T101's case. |
 | 2026-10-14 | 📌 | T86 for T106: the launcher fault was the frog's pose on the throw frame: the tick reached the sprite pointers past the copper's moves. Fixed by the launcher/pad `FrogSprites` cost; W1-1 frame 2256 should now pass. |
 | 2026-10-14 | 🐞 | Not T86's, open: `level_entry` red on `pir/rust-engine` before T86: every level's `slot_copper` original `$140f440`, engine `$1400000`. |
-| 2026-10-14 | 📌 | T86: no green case takes the extra life or the 20 000 fruit ($f008), both T105's; handlers $efc2–$efec are on no W1–W6 map. Planning: frog `+$02` is the feet; `examples/plan`'s `frog()` reads 42 px low. |
 | 2026-10-14 | 📌 | T94 review: `slot::interrupt_lines`' effect term (+2 lines, T72) is unexercised by `slot-attract`; effects' own DMACON writes also add the DMACON term, possibly counting twice. Check against the oracle in T73. |
 | 2026-10-14 | 📌 | T94: the slot handler's acknowledge moves with the music: 1.2 lines later when it reads rows, 0.8 earlier on a tick stepping no channel. `slot::interrupt_lines` lands 256 of 260 on their line (frames 40–300). |
 | 2026-10-14 | 🔄 | Owner, T39: W5-2, W5-3, W5-4 frame cases split to T123–T125 and the W5 completions to T126 (after T101, T121 and the cases); each blocks T18. |

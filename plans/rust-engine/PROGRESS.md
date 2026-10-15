@@ -133,7 +133,7 @@ done · ⛔ blocked, needs a human. A task dropped by a plan amendment leaves th
 | T130 | front-vbl-318 | T100; blocks T21 | ✅ | |
 | T129 | slot-lamp-cut | T74; blocks T21 | ✅ | |
 | T144 | story-intro-full-green | T56, T180; blocks T21, T47, T48 | ⬜ | |
-| T133 | w2-1-fruit-room | T105, T180; blocks T21 | ⬜ | |
+| T133 | w2-1-fruit-room | T105, T180; blocks T21 | 🔍 | `items-fruit-w2-1` (1 175 frames, no re-sync): switch bumped, past the still-locked exit, fruit 260,25 taken 1160, +20 000 compared on 1160. Deviation: goal 2 — the 48,22 room is unreachable (docs/07, LEVEL-INDEX); covered by W2-1's own second $f008 fruit, not another level's. `route_oracle` gains `take,c,r,c2,r2`. |
 | T132 | w4-4-completion | T103; blocks T21 | ✅ | |
 | T145 | w4-4-dart-21 | T132; blocks T21 | ✅ | |
 | T147 | w6-2-completion | T104, T180, T182; blocks T21 | ⬜ | |
