@@ -3,7 +3,7 @@
 # fire in its wait taking the points; ends on frame 6279, the next level's (T21's). Planned by
 # `examples/plan_exit --coins 0 --prefix` (150 idle frames), checked on the original chunk by chunk.
 # Nothing left out (T181: the pad and exit-fade frames are within the faithful picture tolerance);
-# re-syncs pinned in enemies_w5_cases.rs.
+# no re-sync since T184.
 sync = { level = "W5-2" }
 script = "enemies-w5-2-complete"
 frames = 6279

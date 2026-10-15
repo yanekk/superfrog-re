@@ -138,7 +138,7 @@ pub fn run(case: &Case) -> Result<Outcome, Divergence> {
 }
 
 /// [`run`], calling `before_step(frame, game)` before the engine steps each frame: the hook a test
-/// uses to plant a divergence.
+/// uses to plant a divergence. With [`Alone::Only`] the engine is check 4's, run alone.
 pub fn run_with(
     case: &Case,
     before_step: impl FnMut(u32, &mut Game),
@@ -281,7 +281,11 @@ fn run_inner(
         of += 1;
         let mut mem = sync::core_memory(amiga.memory());
         let mut pacing = sync::pacing(&amiga.cpu(), &mem, &theirs.paula);
-        before_step(f, &mut game);
+        // Under `--alone` the engine judged is the one run alone, so a planted divergence goes there.
+        match alone.as_mut() {
+            Some(a) if only_alone => before_step(f, &mut a.game),
+            _ => before_step(f, &mut game),
+        }
         // A case comparing only fresh renders does not step the engine (its scenes may not model
         // what the original runs there yet).
         let stepped = case.compare.vars || case.compare.picture || case.compare.paula;
@@ -407,12 +411,14 @@ fn run_inner(
                 // falls (DESIGN §2.1): the first one on which the engine's frame matches the
                 // original's.
                 {
-                    let masked: Vec<(u32, u32)> = jobs
-                        .iter()
-                        .flat_map(|(j, _, _)| j.writes.clone())
-                        .chain(ours.jobs.iter().flat_map(|j| j.writes.clone()))
-                        .collect();
+                    // Each try's own jobs are masked: a fade set up only when the load ends
+                    // earlier is one only that try has.
                     let fits = |g: &Game, out: &FrameOut| {
+                        let masked: Vec<(u32, u32)> = jobs
+                            .iter()
+                            .flat_map(|(j, _, _)| j.writes.clone())
+                            .chain(out.jobs.iter().flat_map(|j| j.writes.clone()))
+                            .collect();
                         compare::frame(
                             case,
                             f,

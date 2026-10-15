@@ -153,9 +153,9 @@ done · ⛔ blocked, needs a human. A task dropped by a plan amendment leaves th
 | T181 | faithful-rebaseline | T180, T182; blocks T21 | ✅ | |
 | T182 | plays-alone | T180; blocks T181, T183 and every completion task | ✅ | |
 | T183 | level-chain | T180, T182; blocks T21 | ✅ | |
-| T184 | alone-pass-drift | T182; blocks T21, T18, T115, T147, T148, T149, T150, T151, T154, T166, T167, T168 | ⬜ | |
+| T184 | alone-pass-drift | T182; blocks T21, T18, T115, T147, T148, T149, T150, T151, T154, T166, T167, T168 | ✅ | |
 | T185 | w6-4-lag-frog-fall | T182; blocks T21 | ✅ | |
-| T190 | chain-world-change | T183; blocks T21 | ⬜ | |
+| T190 | chain-world-change | T183; blocks T21 | ✅ | |
 | T191 | chain-pause | T183; blocks T21 | ⬜ | |
 | T192 | chain-level-code | T183, T190; blocks T21 | ⬜ | |
 | T193 | chain-e2e | T183; blocks T21 | ✅ | Clean, no fix commit. Smoke test green 6 runs (~46 s); kept frames 1000/1700/2000 viewed: loading picture, map, W1-1 with frog. Frog-sprites-off-screen mutation went red. Deviations held: 2 000-frame budget, unread-capture helpers, dev opt-level (no cargo warnings; 49 ms figure read-only). |

@@ -55,18 +55,10 @@ impl Seen {
 /// The frog's hearts, which `frog_hurt` takes one from.
 const HEARTS: u32 = 0x5a;
 
-/// Cases red alone (DESIGN §2.1 check 4) until T184: after a late frame the engine's pass falls a
-/// frame off the original's (`vbl_count`) and play parts later. They are judged by checks 1–3 only
-/// meanwhile; `sf-conform all` still judges check 4 and reports them red.
-const ALONE_RED: &[&str] = &["enemies-w1-1"];
-
 /// Run `name`, green but for re-syncs at exactly `resyncs`, and say what the engine's run showed.
 fn run(name: &str, resyncs: &[u32]) -> Seen {
-    let mut case = sf_conform::Case::load(&sf_conform::cases_dir().join(format!("{name}.toml")))
+    let case = sf_conform::Case::load(&sf_conform::cases_dir().join(format!("{name}.toml")))
         .unwrap_or_else(|e| panic!("{e}"));
-    if ALONE_RED.contains(&name) {
-        case.alone = sf_conform::Alone::Off;
-    }
     let mut seen = Seen {
         updates: BTreeSet::new(),
         hurts: 0,
@@ -134,7 +126,7 @@ const PATROLLER: u32 = 0x26a2c;
 /// W1-1: a sitter stomped into a reward; the runner and a spiker hurt the frog.
 #[test]
 fn w1_1() {
-    let s = run("enemies-w1-1", &[372]);
+    let s = run("enemies-w1-1", &[]);
     for u in [SITTER, RUNNER, SPIKER, STOMPED, REWARD] {
         assert!(s.updates.contains(&u), "h0+${u:x} never ran: {:x?}", s.updates);
     }

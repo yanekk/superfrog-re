@@ -41,18 +41,10 @@ impl Seen {
 /// The frog's hearts, which `frog_hurt` takes one from.
 const HEARTS: u32 = 0x5a;
 
-/// Cases red alone (DESIGN §2.1 check 4) until T184: after a late frame the engine's pass falls a
-/// frame off the original's (`vbl_count`) and play parts later. They are judged by checks 1–3 only
-/// meanwhile; `sf-conform all` still judges check 4 and reports them red.
-const ALONE_RED: &[&str] = &["enemies-w3-1", "enemies-w3-activation"];
-
 /// Run `name`, green but for re-syncs at exactly `resyncs`, and say what the engine's run showed.
 fn run(name: &str, resyncs: &[u32]) -> Seen {
-    let mut case = sf_conform::Case::load(&sf_conform::cases_dir().join(format!("{name}.toml")))
+    let case = sf_conform::Case::load(&sf_conform::cases_dir().join(format!("{name}.toml")))
         .unwrap_or_else(|e| panic!("{e}"));
-    if ALONE_RED.contains(&name) {
-        case.alone = sf_conform::Alone::Off;
-    }
     let mut seen = Seen {
         updates: BTreeSet::new(),
         hurts: 0,
@@ -118,7 +110,7 @@ const REWARD: u32 = 0x23e6c;
 /// hurt by a dart and the swing's ball.
 #[test]
 fn w3_1() {
-    let s = run("enemies-w3-1", &[201, 863]);
+    let s = run("enemies-w3-1", &[863]);
     for u in [
         PAD, DART_WAIT, DART_FLY, SHUFFLER, SPIKER, HOPPER, FLOW, SWING, SWING_LINK, JUMPER,
         STOMPABLE, STOMPED, REWARD,
@@ -185,7 +177,7 @@ fn w3_4() {
 /// (173–198).
 #[test]
 fn activation() {
-    let s = run("enemies-w3-activation", &[201]);
+    let s = run("enemies-w3-activation", &[]);
     let (out, back) = (false, true);
     let seen = |at| s.comings_and_goings(at);
     assert_eq!(seen((62, 44)), [(363, back), (461, out), (481, back), (515, out)], "the hopper");
