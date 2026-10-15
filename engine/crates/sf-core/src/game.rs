@@ -383,7 +383,8 @@ impl Game {
             }
             if front.in_level_loop() {
                 // `level_start` is over and `level_frame_loop` entered (T37): the level scene
-                // from the next frame.
+                // from the next frame, its poll reading the keyboard's register as it is.
+                self.sdr = front.keyboard_sdr();
                 self.front = None;
                 self.scene = Scene::level(self.state.l(h0(0x40da)), self.state.l(h0(0x40de)));
                 self.pending = None;

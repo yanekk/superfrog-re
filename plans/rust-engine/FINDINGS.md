@@ -18,6 +18,11 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-15 | 🐞 | Fixed: `sf-conform record` printed every `LAYOUT` long (~3.5 MB a line); T164's recording reached 38 GB, the disk filled (ENOSPC) and the run crashed. Now entries over 1 KB are left out (`--all-vars`) and output stops at 200 MB (`--max-mb`). |
+| 2026-10-15 | 📌 | T163 review sweep, left alone: `frog/physics.rs`'s `DEMO_LEFT` doc says the recording's entries are three words; the original's (h0+$3ad8c) are a lead-in word then two-word steps, `demo_at` moving 4 bytes. Comment only. |
+| 2026-10-15 | 📌 | T163, left alone: `front/attract.rs`'s module doc still says the attract demo is "T33's"; it is built (T160–T163, docs/13 § The attract demo). |
+| 2026-10-15 | 📌 | T162: under the faithful checks `front-attract` is green to 5600 with none of T33-wip.patch's timing fixes (rewindow, late fade, retrigger); T163 should try its case before applying the patch's 5121/5151 fixes. |
+| 2026-10-15 | 🐞 | T160 review sweep, open: `Start::Level`'s `boot_image` (level/load.rs) resets `level1_vector` to 0 after `State::default` sets it, so `level_entry`'s every-level test stays red on it. Not fixed. |
 | 2026-10-15 | 🔄 | T144, owner's threshold question: a single palette entry one fade step behind for 5 frames during a fade (`story-intro-full` 7237–7241, colour 28 shown black, a ~7-cycle race): should the bar tolerate it, or must the engine match it? Excluded for T181 meanwhile. |
 | 2026-10-15 | 🐞 | T144, fixed: an untouched intro skipped the insert-disk-1 page (MAIN lacked END after scene 15), and scene 15's fade-out (h0+$7ee4) runs at speed 2, not 1. `story-intro-full` now ends at 9312, green. |
 | 2026-10-15 | 📌 | T180 review: `level_entry`'s `every_level_is_entered_as_the_original_enters_it` is red on `level1_vector` (and `slot_copper`) like the power-on cases, identically on T180's base; front.rs's three cases too. Open, no task. |

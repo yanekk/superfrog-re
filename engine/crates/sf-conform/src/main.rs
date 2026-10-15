@@ -5,13 +5,13 @@
 //! `run`, `all` and `scan` judge faithfully (DESIGN §2.1 checks 1–3) and print per case the
 //! picture frames and sound shifts they tolerated and the re-syncs; `--strict` judges frame-exact
 //! instead, for diagnosis.
-//! `sf-conform record <case.toml> [--watch NAME=ADDR:W]... [--every] [--only] [--trace] [--paula] [--png DIR]`
+//! `sf-conform record <case.toml> [--watch NAME=ADDR:W]... [--every] [--only] [--all-vars] [--max-mb N] [--trace] [--paula] [--png DIR]`
 //! — the original's state per frame of a case, for writing scripts and porting: every `LAYOUT`
-//! variable (none with `--only`) and each watched address (`h0+9d8:W`, `0xc17074:L`, width B, W
-//! or L), printed on frames where something changed. `--trace` adds where the main program was at
+//! variable up to 1 KB long (every one with `--all-vars`, none with `--only`) and each watched
+//! address (`h0+9d8:W`, `0xc17074:L`, width B, W or L), printed on frames where something changed. `--trace` adds where the main program was at
 //! the frame's end (its PC and the return addresses on its stack, as `h0+$x`), `--png` writes the
 //! original's picture of every printed frame to `DIR/frame<N>.png`, `--paula` its Paula writes
-//! (register=value@line).
+//! (register=value@line). It stops with an error once it has written 200 MB (`--max-mb N`).
 
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
@@ -19,7 +19,7 @@ use std::process::ExitCode;
 use sf_conform::{Case, InputScript, Mode, cases_dir, sync};
 use sf_core::layout::{LAYOUT, Ram, VarDef, VarId, Width, h0};
 
-const USAGE: &str = "usage: sf-conform [--strict] run <case.toml>... | [--strict] all | [--strict] scan <case.toml> | record <case.toml> [--watch NAME=ADDR:W]... [--every] [--only] [--trace] [--paula] [--png DIR]";
+const USAGE: &str = "usage: sf-conform [--strict] run <case.toml>... | [--strict] all | [--strict] scan <case.toml> | record <case.toml> [--watch NAME=ADDR:W]... [--every] [--only] [--all-vars] [--max-mb N] [--trace] [--paula] [--png DIR]";
 
 fn main() -> ExitCode {
     let mut args: Vec<String> = std::env::args().skip(1).collect();
@@ -219,14 +219,69 @@ fn watch(spec: &str) -> Result<VarDef, String> {
     })
 }
 
+/// `LAYOUT` entries longer than this many bytes (bitmaps, the level map, the object slots) are left out
+/// of `record` unless `--all-vars`: each is printed one long at a time on every changed frame, which
+/// made lines of ~3.5 MB and a 38 GB recording that filled the disk and crashed the run
+/// (2026-10-15, DESIGN §5.2).
+const RECORD_BIG_VAR_BYTES: u32 = 0x400;
+
+/// `record` stops once it has written this much (lines and PNGs) unless `--max-mb` says otherwise.
+const RECORD_DEFAULT_MAX_MB: u64 = 200;
+
+/// The `LAYOUT` entries `record` prints by default, and the names of those it leaves out.
+fn record_layout(all_vars: bool) -> (Vec<VarDef>, Vec<&'static str>) {
+    let mut left_out = Vec::new();
+    let shown = LAYOUT
+        .iter()
+        .filter(|d| match d.width {
+            Width::Bytes(n) if n > RECORD_BIG_VAR_BYTES && !all_vars => {
+                left_out.push(d.name);
+                false
+            }
+            _ => true,
+        })
+        .flat_map(|d| d.pieces())
+        .collect();
+    (shown, left_out)
+}
+
+/// What `record` has written, against its cap.
+struct RecordBudget {
+    written: u64,
+    max: u64,
+}
+
+impl RecordBudget {
+    fn new(max_mb: u64) -> RecordBudget {
+        RecordBudget {
+            written: 0,
+            max: max_mb * 1_000_000,
+        }
+    }
+
+    /// Counts `bytes`; `Err` once the total passes the cap, naming what to do.
+    fn spend(&mut self, bytes: usize, frame: u32) -> Result<(), String> {
+        self.written += bytes as u64;
+        if self.written > self.max {
+            return Err(format!(
+                "record stopped at frame {frame}: output passed {} MB (--max-mb raises the cap; \
+                 --only with --watch, or fewer frames, keeps it small)",
+                self.max / 1_000_000
+            ));
+        }
+        Ok(())
+    }
+}
+
 fn record(path: &Path, rest: &[String]) -> Result<bool, String> {
     let case = Case::load(path)?;
     let mut every = false;
     let mut trace = false;
     let mut paula = false;
     let mut png_dir: Option<PathBuf> = None;
-    let mut shown: Vec<VarDef> = LAYOUT.iter().flat_map(|d| d.pieces()).collect();
-    let layout_pieces = shown.len();
+    let mut all_vars = false;
+    let mut max_mb = RECORD_DEFAULT_MAX_MB;
+    let mut watched: Vec<VarDef> = Vec::new();
     let mut only = false;
     let mut it = rest.iter();
     while let Some(a) = it.next() {
@@ -235,14 +290,26 @@ fn record(path: &Path, rest: &[String]) -> Result<bool, String> {
             "--only" => only = true,
             "--trace" => trace = true,
             "--paula" => paula = true,
+            "--all-vars" => all_vars = true,
+            "--max-mb" => {
+                max_mb = it
+                    .next()
+                    .and_then(|n| n.parse().ok())
+                    .filter(|&n| n > 0)
+                    .ok_or(USAGE)?
+            }
             "--png" => png_dir = Some(PathBuf::from(it.next().ok_or(USAGE)?)),
-            "--watch" => shown.push(watch(it.next().ok_or(USAGE)?)?),
+            "--watch" => watched.push(watch(it.next().ok_or(USAGE)?)?),
             _ => return Err(USAGE.to_string()),
         }
     }
-    if only {
-        shown.drain(..layout_pieces);
-    }
+    let (mut shown, left_out) = if only {
+        (Vec::new(), Vec::new())
+    } else {
+        record_layout(all_vars)
+    };
+    shown.extend(watched);
+    let mut budget = RecordBudget::new(max_mb);
     if let Some(d) = &png_dir {
         std::fs::create_dir_all(d).map_err(|e| format!("{}: {e}", d.display()))?;
     }
@@ -255,6 +322,12 @@ fn record(path: &Path, rest: &[String]) -> Result<bool, String> {
         "# {}: oracle from {:?}, frames counted from there",
         case.name, case.sync
     );
+    if !left_out.is_empty() {
+        println!(
+            "# left out (over {RECORD_BIG_VAR_BYTES} bytes; --all-vars, or --watch one word): {}",
+            left_out.join(" ")
+        );
+    }
     let mut prev: Option<Vec<u32>> = None;
     let frozen = case.freeze();
     let display = sf_conform::display_data();
@@ -293,23 +366,23 @@ fn record(path: &Path, rest: &[String]) -> Result<bool, String> {
                     })
                     .collect();
                 let path = d.join(format!("frame{f}.png"));
-                std::fs::write(
-                    &path,
-                    sf_conform::report::png(p.width as u32, p.height as u32, &rgb),
-                )
-                .map_err(|e| format!("{}: {e}", path.display()))?;
+                let bytes = sf_conform::report::png(p.width as u32, p.height as u32, &rgb);
+                budget.spend(bytes.len(), f)?;
+                std::fs::write(&path, bytes).map_err(|e| format!("{}: {e}", path.display()))?;
             }
             let cols: Vec<String> = shown
                 .iter()
                 .zip(&vals)
                 .map(|(d, v)| format!("{}@{:x}={v:x}", d.name, d.addr))
                 .collect();
-            println!(
+            let line = format!(
                 "{f}: {}  | {:?} | {}{at}",
                 InputScript::format_input(input),
                 sync::pacing(&amiga.cpu(), &mem, &capture.paula),
                 cols.join(" ")
             );
+            budget.spend(line.len() + 1, f)?;
+            println!("{line}");
             if paula {
                 let ws: Vec<String> = capture
                     .paula
@@ -323,10 +396,50 @@ fn record(path: &Path, rest: &[String]) -> Result<bool, String> {
                         )
                     })
                     .collect();
-                println!("    paula: {}", ws.join(" "));
+                let line = format!("    paula: {}", ws.join(" "));
+                budget.spend(line.len() + 1, f)?;
+                println!("{line}");
             }
         }
         prev = Some(vals);
     }
     Ok(true)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn record_leaves_out_the_big_runs_by_default() {
+        let (shown, left_out) = record_layout(false);
+        assert!(left_out.contains(&"playfield_buffer_0"));
+        assert!(left_out.contains(&"bob_sheet"));
+        assert!(
+            !left_out.contains(&"frog_rest"),
+            "the frog's record is small and wanted"
+        );
+        assert!(shown.iter().any(|d| d.name == "frog_rest"));
+        assert!(shown.iter().all(|d| !left_out.contains(&d.name)));
+        let (all, none) = record_layout(true);
+        assert!(none.is_empty());
+        assert!(all.len() > shown.len());
+    }
+
+    #[test]
+    fn a_default_record_line_stays_small() {
+        // ~30 characters per long printed; a line of the default set must stay far below the
+        // 3.5 MB lines that filled the disk.
+        let (shown, _) = record_layout(false);
+        assert!(shown.len() * 30 < 200_000, "{} longs per line", shown.len());
+    }
+
+    #[test]
+    fn the_budget_stops_past_its_cap_and_says_how_to_go_on() {
+        let mut b = RecordBudget::new(1);
+        assert!(b.spend(600_000, 0).is_ok());
+        assert!(b.spend(400_000, 1).is_ok());
+        let e = b.spend(1, 2).unwrap_err();
+        assert!(e.contains("frame 2") && e.contains("--max-mb"), "{e}");
+    }
 }
