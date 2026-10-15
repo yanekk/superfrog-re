@@ -1,8 +1,8 @@
 # W1-4 from its start with every object live, no exclusions (T106, T154). T106's route to 1800,
-# then (T154) the lower left's coins and, with the wings T106 took at 5,19, the hill's pad at
-# 28,30 into the sky: to 3768 with 67 coins still needed. T106's route on from 1800 left the
-# left half for good with too few coins (every coin it skipped there is out of reach after).
+# then (T154) the lower left's coins; with the wings T106 took at 5,19, the hill's pad at 28,30
+# and flaps across to the platforms at 59,22 and 71,22 and the block at 100,19; its coins and the
+# cave's below 118-119: to 4776 with 46 coins still needed.
 sync = { level = "W1-4" }
 script = "complete-w1-4"
-frames = 3768
+frames = 4776
 resync = true
