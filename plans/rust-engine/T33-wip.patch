@@ -1,0 +1,939 @@
+diff --git a/engine/crates/sf-conform/examples/t33_blit_probe.rs b/engine/crates/sf-conform/examples/t33_blit_probe.rs
+new file mode 100644
+index 0000000..9d108c2
+--- /dev/null
++++ b/engine/crates/sf-conform/examples/t33_blit_probe.rs
+@@ -0,0 +1,28 @@
++//! Scratch (T33): the original's blit events on given frames of a power-on case.
++use sf_conform::{Case, sync};
++fn main() {
++    let a: Vec<String> = std::env::args().skip(1).collect();
++    let case = Case::load(std::path::Path::new(&a[0])).unwrap();
++    let frames: Vec<u32> = a[1..].iter().map(|x| x.parse().unwrap()).collect();
++    let last = *frames.iter().max().unwrap();
++    let s = sync::reach(&case.sync, &case.script, last + 20000).unwrap();
++    let mut am = s.amiga;
++    for f in 0..=last {
++        let cap = sync::step_inserting(&mut am, case.script.input_at(f)).unwrap();
++        if frames.contains(&f) {
++            let p = &cap.picture;
++            println!("  window {:x},{:x} {}x{} px(25,15)={:03x} px(25,60)={:03x}", p.left, p.top, p.width, p.height, p.pixel(25, 15), p.pixel(25, 60));
++            println!("== {f}");
++            let ov = am.peek(sf_core::layout::h0(0xb6f0), 4);
++            println!("  b6f0 {:02x?} h3 base {:x}", ov, sf_core::layout::h3(0));
++            let a: u32 = std::env::var("T33_ADDR").ok().and_then(|v| u32::from_str_radix(&v, 16).ok()).unwrap_or(0x6fd0);
++            let m = am.peek(a, 0x100);
++            let w: Vec<String> = m.chunks(4).map(|c| format!("{:02x}{:02x}:{:02x}{:02x}", c[0], c[1], c[2], c[3])).collect();
++            println!("  list {:x} {}", a, w.join(" "));
++            for e in am.blit_events() {
++                println!("  {:?}", e);
++            }
++            for w in am.cpu_writes() { if [0x80u16,0x82,0x88,0x8e,0x90,0x92,0x94,0x100].contains(&w.reg) { println!("  cpu {:x}={:x} at {} {}", w.reg, w.value, w.vpos, w.hpos); } }
++        }
++    }
++}
+diff --git a/engine/crates/sf-conform/examples/t33_irqs.rs b/engine/crates/sf-conform/examples/t33_irqs.rs
+new file mode 100644
+index 0000000..3571380
+--- /dev/null
++++ b/engine/crates/sf-conform/examples/t33_irqs.rs
+@@ -0,0 +1,20 @@
++//! Scratch (T33): the original's interrupts per frame (by level) over frames `from..to` of a case.
++use sf_conform::{Case, sync};
++fn main() {
++    let a: Vec<String> = std::env::args().skip(1).collect();
++    let case = Case::load(std::path::Path::new(&a[0])).unwrap();
++    let from: u32 = a[1].parse().unwrap();
++    let to: u32 = a[2].parse().unwrap();
++    let s = sync::reach(&case.sync, &case.script, to + 20000).unwrap();
++    let mut am = s.amiga;
++    for f in 0..to {
++        sync::step_inserting(&mut am, case.script.input_at(f)).unwrap();
++        if f >= from {
++            let mut n = [0u32; 8];
++            for i in am.irqs() {
++                n[i.level as usize & 7] += 1;
++            }
++            println!("{f} irqs by level {:?}", n);
++        }
++    }
++}
+diff --git a/engine/crates/sf-conform/examples/t33_writes.rs b/engine/crates/sf-conform/examples/t33_writes.rs
+new file mode 100644
+index 0000000..3d0f381
+--- /dev/null
++++ b/engine/crates/sf-conform/examples/t33_writes.rs
+@@ -0,0 +1,26 @@
++//! Scratch (T33): both sides' non-audio Paula writes (DMACON, INTENA, INTREQ...) per frame of a
++//! case, for frames `from..to`. `t33_writes <case> <from> <to>`
++use sf_conform::Case;
++fn main() {
++    let a: Vec<String> = std::env::args().skip(1).collect();
++    let case = Case::load(std::path::Path::new(&a[0])).unwrap();
++    let from: u32 = a[1].parse().unwrap();
++    let to: u32 = a[2].parse().unwrap();
++    let show = |ws: &[sf_paula::PaulaWrite]| {
++        ws.iter()
++            .filter(|w| !(0xa0..0xe0).contains(&w.reg))
++            .map(|w| format!("{:02x}={:04x}@{}.{}", w.reg, w.value, w.vpos, w.hpos))
++            .collect::<Vec<_>>()
++            .join(" ")
++    };
++    let r = sf_conform::run_observing(&case, |f, ours, theirs| {
++        if (from..to).contains(&f) {
++            println!("{f} O: {}", show(theirs));
++            println!("{f} E: {}", show(ours));
++        }
++    });
++    match r {
++        Ok(_) => println!("ok"),
++        Err(d) => println!("{d}"),
++    }
++}
+diff --git a/engine/crates/sf-conform/src/lib.rs b/engine/crates/sf-conform/src/lib.rs
+index 5369325..4200c69 100644
+--- a/engine/crates/sf-conform/src/lib.rs
++++ b/engine/crates/sf-conform/src/lib.rs
+@@ -252,6 +252,7 @@ fn run_inner(
+                     of += 1;
+                     prev_mem = std::mem::replace(&mut mem, sync::core_memory(amiga.memory()));
+                 }
++                if std::env::var_os("T33_KEEP").is_some() { eprintln!("T33 load at engine frame {f}: {end:x?}, original over at {of} after {n} frames"); }
+                 // The schedule as the original is once its load is over.
+                 pacing = sync::pacing(&amiga.cpu(), &mem, &theirs.paula);
+                 // The engine's frame again, with what runs on by itself while the original loads
+@@ -312,6 +313,10 @@ fn run_inner(
+                     if !fits(&game, &ours) {
+                         for line in (0..sf_core::front::FRAME_LINES).step_by(2) {
+                             let (g, out) = redo(Some(line));
++                            if std::env::var_os("T33_LINE").is_some_and(|v| v == line.to_string().as_str()) && std::env::var("T33_FRAME").ok() == Some(f.to_string()) {
++                                eprintln!("T33 engine {:02x?}\nT33 orig   {:02x?}", g.peek(0x4257a, 24), (0x4257au32..0x4257a + 24).map(|a| mem.byte(a)).collect::<Vec<u8>>());
++                                eprintln!("T33 line {line}: {:?}", compare::frame(case, f, g.layout(), &g.probe(), &mem, &out, &theirs, None, &masked).map(|d| d.to_string()));
++                            }
+                             if fits(&g, &out) {
+                                 (game, ours) = (g, out);
+                                 break;
+diff --git a/engine/crates/sf-core/src/audio/music.rs b/engine/crates/sf-core/src/audio/music.rs
+index 297b4ad..37a2ac3 100644
+--- a/engine/crates/sf-core/src/audio/music.rs
++++ b/engine/crates/sf-core/src/audio/music.rs
+@@ -96,6 +96,9 @@ pub struct TickWork {
+     pub fetch_inst: u32,
+     /// The channels music holds, copied from the shadow to Paula.
+     pub shadowed: u32,
++    /// Between rows: an `E9` or `ED` starts its note again, so `music_dma` waits for the DMA as
++    /// on a row (T33).
++    pub retrigger: bool,
+ }
+ 
+ impl AudioDriver {
+@@ -381,8 +384,18 @@ impl AudioDriver {
+             return w;
+         }
+         for n in 0..4 {
+-            if self.p41.w(ch(n) + LIVE) != 0 && self.free(n) {
+-                w.effects[(self.p41.w(ch(n) + ROW) & 0xf) as usize] += 1;
++            let c = ch(n);
++            if self.p41.w(c + LIVE) != 0 && self.free(n) {
++                let effect = self.p41.w(c + ROW) & 0xf;
++                w.effects[effect as usize] += 1;
++                let param = self.p41.b(c + PARAM);
++                if effect == 0xe {
++                    w.retrigger |= match param & 0xf0 {
++                        0x90 => self.p41.w(c + RETRIG) == 1,
++                        0xd0 => (param & 0xf) as u16 == tick,
++                        _ => false,
++                    };
++                }
+             }
+         }
+         if tick == self.p41.w(FETCH_TICK) && self.p41.w(FETCH_DELAY) == 0 {
+diff --git a/engine/crates/sf-core/src/frog/anim.rs b/engine/crates/sf-core/src/frog/anim.rs
+index 8b2b37d..fe6b6ff 100644
+--- a/engine/crates/sf-core/src/frog/anim.rs
++++ b/engine/crates/sf-core/src/frog/anim.rs
+@@ -55,6 +55,7 @@ pub fn place_frog_sprites(c: &mut LevelCtx) {
+         }
+         // h0+$19c92's wait (`c.sprite_wait()`) is left out until the beam costs are exact: called,
+         // `items-switch-w2-1` and `enemies-w2-1` miss the frog's pose at frame 442 (T127).
++        if std::env::var_os("T33_WAIT").is_some() { c.sprite_wait(); }
+         sprite_to_copper(&mut c.bus, s);
+     }
+ }
+diff --git a/engine/crates/sf-core/src/front/attract.rs b/engine/crates/sf-core/src/front/attract.rs
+index 603bfd2..418191c 100644
+--- a/engine/crates/sf-core/src/front/attract.rs
++++ b/engine/crates/sf-core/src/front/attract.rs
+@@ -73,11 +73,12 @@ impl TopLoop {
+                     cx.s.set_w(LEVEL_STARTED, 0);
+                     if cx.s.l(ATTRACT_MODE) == 0 {
+                         cx.unported("a game's start (T21)");
+-                    } else {
+-                        cx.unported("the attract demo (T33)");
++                        return Yield::Raster;
+                     }
+-                    return Yield::Raster;
++                    self.pc = 4;
++                    return call(Routine::Demo(Demo::default()));
+                 }
++                4 => unreachable!("the attract demo's level loop hands over to the level scene"),
+                 // h0+$7b6: the end sequence, then `game_full_mode` decides: the title again, or
+                 // the game's end ($7c6: back to the system).
+                 21 => {
+@@ -97,6 +98,56 @@ impl TopLoop {
+     }
+ }
+ 
++/// `top_loop` at h0+$a8 in attract mode: the Accessing-disk overlay, `demo_world_load` and
++/// `demo_level_load` (W1-1's files and map), `overlays_end`, `demo_init` (`level_init_w1`'s work,
++/// the recording at h0+$3ad8c), `level_start`, then `level_frame_loop` with the recorded joystick
++/// (`demo_play`). The loop's end goes through `level_exit_fade` back to the title
++/// ([`crate::level::exit::LevelOver`]). Every `demo_index` plays the same W1-1 recording: the title
++/// gives each the start W1-1 (h0+$1218).
++#[derive(Debug, Clone, Default, PartialEq, Eq, Hash)]
++pub(crate) struct Demo {
++    pc: u8,
++}
++
++impl Demo {
++    pub(super) fn run(&mut self, cx: &mut Cx) -> Yield {
++        self.pc += 1;
++        match self.pc {
++            1 => {
++                if cx.s.l(at(0x445a)) == 0
++                    && cx.s.l(super::title::OVERLAY_PALETTE) == 0
++                    && cx.s.w(LOADER_MODE) != 0
++                {
++                    super::title::overlay_show(cx);
++                }
++                if std::env::var_os("T33_KEEP").is_some() { eprintln!("T33 demo load at {} load_line {:?}", cx.line, cx.load_line); }
++                let display = cx.display;
++                crate::level::exit::with_level(cx, false, |c| {
++                    crate::level::load::demo_load(c, display)
++                });
++                // Over once the original waits on the overlay's fade-out (`overlays_end`).
++                cx.loaded(LoadEnd::Reached(at(0xb7e2)));
++                call(Routine::Overlay(super::title::OverlayEnd::default()))
++            }
++            2 => { if std::env::var_os("T33_KEEP").is_some() { eprintln!("demo_init at frame {} line {}", cx.frame, cx.line); } crate::level::exit::init_on_beam(
++                cx,
++                false,
++                sf_assets::LevelId {
++                    world: sf_assets::World::W1,
++                    level: 1,
++                    alt: false,
++                },
++                crate::level::exit::demo_init_inside(),
++            )},
++            3 => call(Routine::LevelStart(Default::default())),
++            _ => unreachable!("the attract demo's level loop hands over to the level scene"),
++        }
++    }
++}
++
++/// `loader_mode` (h0+$8): 0 with no trackloader, when no overlay is shown.
++const LOADER_MODE: u32 = at(0x8);
++
+ /// Whether the last game's score is in the high-score table (`hiscore_table` h0+$2f90).
+ pub(super) fn new_hiscore(cx: &Cx) -> bool {
+     let score = cx.s.l(at(0x834));
+@@ -468,6 +519,7 @@ fn scroll(cx: &mut Cx, bytes: u32, inside: u32) {
+         }
+         cx.reveal = Some(super::FRAME_LINES);
+         cx.reveal_state = Some(shown);
++        cx.races.extend(scroll_races(&times));
+     }
+     let end = times.last().map_or(start, |t| t.0 + 1);
+     cx.line = cx.line.max(end);
+@@ -478,6 +530,25 @@ fn scroll(cx: &mut Cx, bytes: u32, inside: u32) {
+ /// The DMA cycle of its line the scroll's blit starts on (after the CPU's wait and set-up).
+ const SCROLL_START_H: u16 = 0x80;
+ 
++/// The rows the scroll's blit wrote with the beam within [`crate::game::RACE_LINES`] of them
++/// (raster lines, merged): where the blitter catches the beam, about row 229. Which words of that
++/// row show new turns on a few DMA cycles the engine does not model (the audio channels' slots
++/// move the original's blit end by up to 70 cycles from frame to frame, measured at its frames
++/// 6412–6418), so they are beam races (owner, 2026-10-13).
++fn scroll_races(times: &[(u16, u16)]) -> Vec<(u16, u16)> {
++    let mut out: Vec<(u16, u16)> = Vec::new();
++    for (y, row) in times.chunks(20).enumerate() {
++        let line = 0x2c + y as u16;
++        if let Some(r) = crate::game::beam_race((line, line + 1), row[0].0) {
++            match out.last_mut() {
++                Some(last) if last.1 == r.0 => last.1 = r.1,
++                _ => out.push(r),
++            }
++        }
++    }
++    out
++}
++
+ /// `$3190`: the next line of text (from `h0+$3258`, a zero byte ends it) written into the text
+ /// plane's bottom (`+$dc50`) in the twelve-line font (h0+$376ea). False when the text ends (a
+ /// negative byte: the credits are over).
+diff --git a/engine/crates/sf-core/src/front/ending.rs b/engine/crates/sf-core/src/front/ending.rs
+index 5411d06..46ecc14 100644
+--- a/engine/crates/sf-core/src/front/ending.rs
++++ b/engine/crates/sf-core/src/front/ending.rs
+@@ -79,12 +79,7 @@ impl CpuWork {
+         if resumed {
+             cx.line = cx.line.max(MAIN_FROM);
+         }
+-        let stolen = match cx.fetch.planes() {
+-            p if p > 4 && !cx.fetch.hires() => {
+-                (p as u32 - 4) * cx.fetch.words() as u32 * STOLEN_TENTHS_PER_WORD / 10
+-            }
+-            _ => 0,
+-        };
++        let stolen = stolen_per_line(&cx.fetch);
+         let shown = cx.fetch.lines();
+         while self.cycles > 0 {
+             if cx.line >= FRAME_LINES - 1 {
+@@ -100,6 +95,18 @@ impl CpuWork {
+     }
+ }
+ 
++/// The CPU cycles a line the display fetches takes from the main program: those of each lowres
++/// plane past the fourth (calibrated on the end sequence; T33 measured the same on a restart's
++/// first frame under the level's five planes).
++pub(crate) fn stolen_per_line(fetch: &crate::render::copper::Fetch) -> u32 {
++    match fetch.planes() {
++        p if p > 4 && !fetch.hires() => {
++            (p as u32 - 4) * fetch.words() as u32 * STOLEN_TENTHS_PER_WORD / 10
++        }
++        _ => 0,
++    }
++}
++
+ pub(crate) fn work(cycles: u32, inside: &[u32], writes: Vec<(u32, u32)>) -> Yield {
+     call(Routine::CpuWork(CpuWork::new(cycles, inside, writes)))
+ }
+diff --git a/engine/crates/sf-core/src/front/mod.rs b/engine/crates/sf-core/src/front/mod.rs
+index c10b6d9..c5a5698 100644
+--- a/engine/crates/sf-core/src/front/mod.rs
++++ b/engine/crates/sf-core/src/front/mod.rs
+@@ -68,6 +68,9 @@ const FADE_TAIL: u16 = 2;
+ pub(crate) const STALL_VBL_LINE: u16 = 30;
+ /// Lines in a PAL frame.
+ pub const FRAME_LINES: u16 = 313;
++/// The new copper list's moves made before an original's frame that ends in work with interrupts
++/// off is over (T33; between the 2 and 36 measured).
++const NEXT_LIST_MOVES: usize = 8;
+ /// CPU cycles in one raster line (227 DMA cycles of two).
+ pub(crate) const BEAM_CYCLES_PER_LINE: u32 = 454;
+ /// `wait_frame_raster` returns on this line (`$12b`) after passing `$ff`.
+@@ -122,6 +125,8 @@ pub(crate) enum Routine {
+     AwardPages(attract::AwardPages),
+     HiscoreCredits(attract::HiscoreCredits),
+     HallOfTalent(attract::HallOfTalent),
++    /// The attract demo's load and set-up (T33).
++    Demo(attract::Demo),
+     EndSeqLoad(ending::EndSeqLoad),
+     EndSequence(ending::EndSequence),
+     CpuWork(ending::CpuWork),
+@@ -181,6 +186,7 @@ impl Routine {
+             Routine::AwardPages(r) => r.run(cx),
+             Routine::HiscoreCredits(r) => r.run(cx),
+             Routine::HallOfTalent(r) => r.run(cx),
++            Routine::Demo(r) => r.run(cx),
+             Routine::EndSeqLoad(r) => r.run(cx),
+             Routine::EndSequence(r) => r.run(cx),
+             Routine::CpuWork(r) => r.run(cx),
+@@ -286,6 +292,8 @@ pub(crate) struct Cx<'a> {
+     pub line: u16,
+     /// COP1LC: the copper list the next frame starts.
+     pub cop1lc: u32,
++    /// The copper list this frame started with (what the display shows while this code runs).
++    pub list: u32,
+     /// Where the original is once a load this frame is over.
+     pub load: Option<crate::game::LoadEnd>,
+     /// The line the runner says the original's load ended on (conformance only).
+@@ -428,11 +436,13 @@ impl Cx<'_> {
+     }
+ 
+     /// An instant load is over: conformance finds the original past it as `end` says; the main
+-    /// program goes on from the line the runner gave, if it gave one.
++    /// program goes on from the line the runner gave, if it gave one: where the original's load
++    /// ended, whatever the engine was still busy with before it (T33: the original did that long
++    /// before this frame).
+     pub fn loaded(&mut self, end: crate::game::LoadEnd) {
+         self.load = Some(end);
+         if let Some(l) = self.load_line.take() {
+-            self.line = self.line.max(l);
++            self.line = l;
+         }
+         let snap = Snapshot {
+             at: self.cop1lc,
+@@ -735,6 +745,7 @@ impl Front {
+             keyboard: self.keyboard,
+             line,
+             cop1lc: self.cop1lc,
++            list: self.cop1lc,
+             load: None,
+             load_line: None,
+             load_point: None,
+@@ -815,6 +826,12 @@ impl Front {
+         self.slot_outcome
+     }
+ 
++    /// CIA-A's serial register as the front end's keyboard has it: what the level's own poll reads
++    /// once the level scene takes over (T33: the power-on byte, never acknowledged, in the demo).
++    pub(crate) fn keyboard_sdr(&self) -> u8 {
++        self.keyboard.sdr
++    }
++
+     /// The level's loop has been entered again (a restart, T37): the level scene goes on.
+     pub(crate) fn in_level_loop(&self) -> bool {
+         matches!(self.stack.last().map(|f| &f.routine), Some(Routine::LevelLoop))
+@@ -833,6 +850,7 @@ impl Front {
+                 keyboard: self.keyboard,
+                 line: 0,
+                 cop1lc: self.cop1lc,
++                list: self.cop1lc,
+                 load: None,
+                 load_line: None,
+                 load_point: None,
+@@ -886,6 +904,7 @@ impl Front {
+             keyboard: self.keyboard,
+             line: 0,
+             cop1lc: self.cop1lc,
++            list: self.cop1lc,
+             load: None,
+             load_line: self.load_line.take(),
+             load_point: None,
+@@ -962,6 +981,7 @@ impl Front {
+                 Some(vbl::fade_start(vbl_line, &work, cx.s.audio.streaming(), keyboard))
+             })
+             .flatten();
++        if std::env::var_os("T33_KEEP").is_some() && !fading.is_empty() { eprintln!("ffade frame {} vbl_line {} fade_from {:?} lines {:?} kb {} recs {:?} fades_off {:x} toggle {:x}", self.frame, vbl_line, fade_from, fade_from.map(|f| f as f32 / 454.0), vbl::polls_keyboard(&cx), fade::RECORDS.iter().map(|r| (cx.s.w(r.at), cx.s.w(r.at+2), cx.s.w(r.at+4), cx.s.w(r.at+6), cx.s.w(r.at+8))).collect::<Vec<_>>(), cx.s.w(h0(0x9e0)), cx.s.w(h0(0x3ca0))); }
+         // What the slot screen's handler is about to do that lengthens it (T94).
+         let slot_handler = crate::slot::Handler {
+             fetches_rows: cx.s.audio.fetches_rows(),
+@@ -1015,9 +1035,17 @@ impl Front {
+             }
+             history.push((VBL_END_LINE, partial.clone()));
+             if let Some(start) = fade_from {
++                // A handler taken late, after work with interrupts off: its fades start later
++                // than the on-time estimate says ([`vbl::LATE_FADE_LINES`]).
++                let start = if vbl_line > 1 {
++                    start + vbl::LATE_FADE_LINES * BEAM_CYCLES_PER_LINE
++                } else {
++                    start
++                };
+                 let top = cx.s.b(render::LEVEL_COPPER + 6) as u16;
+                 let (writes, end) = fade::level_step_times(&fading, start, top);
+                 for (&(word, mask, _, _), at) in fading.iter().filter(|c| c.2).zip(writes) {
++                    if std::env::var_os("T33_KEEP").is_some() { eprintln!("  fade write {:x} mask {:x} line {}", word.wrapping_sub(render::LEVEL_COPPER), mask, at / BEAM_CYCLES_PER_LINE); }
+                     partial.copy_bits(&after, word, mask);
+                     let line = (at / BEAM_CYCLES_PER_LINE) as u16;
+                     history.push((line.max(VBL_END_LINE + 1), partial.clone()));
+@@ -1168,6 +1196,38 @@ impl Front {
+         }
+         .at_end(&copper);
+         let mut next_copper = Vec::new();
++        // Work with interrupts off past the frame's end (a fade's set-up): the original's frame
++        // ends once its CPU is out of the instruction it is in (the set-up's divides), after the
++        // next frame's copper has made the new list's first few moves (T33: the level's list
++        // sets the window in its second move, which shows; the title's in its 36th, which does
++        // not). The first [`NEXT_LIST_MOVES`] count.
++        let masked_on = matches!(
++            self.stack.last(),
++            Some(Frame {
++                wait: Some((Yield::Masked(_), _)),
++                ..
++            })
++        );
++        if cx.stall.is_none() && masked_on && cx.cop1lc != cop1lc {
++            let mut fetch = render::copper::Fetch::default();
++            for w in render::copper_writes(cx.s, display, cx.cop1lc)
++                .iter()
++                .take(NEXT_LIST_MOVES)
++                .filter(|w| w.line == 0)
++            {
++                fetch.write(w.reg, w.value);
++            }
++            if fetch.diwstrt != 0 || fetch.diwstop != 0 {
++                let (h0, h1) = (fetch.diwstrt & 0xff, fetch.diwstop & 0xff | 0x100);
++                let lines = fetch.lines();
++                picture = picture.rewindow(
++                    h0 as i32,
++                    lines.start,
++                    h1.saturating_sub(h0),
++                    lines.end.saturating_sub(lines.start),
++                );
++            }
++        }
+         if let Some(t) = cx.stall {
+             // The CPU held off the bus into the next frame: the frame ends for conformance when it
+             // takes the interrupt, after the next frame's copper has begun.
+@@ -1228,7 +1288,7 @@ impl Front {
+         }
+         all.extend(next_copper);
+         // The slot screen's drawing is timed on the beam (T93, T94): its lines are kept.
+-        if cop1lc != crate::slot::SLOT_COPPER {
++        if cop1lc != crate::slot::SLOT_COPPER && std::env::var_os("T33_KEEP").is_none() {
+             for w in &mut all {
+                 w.vpos = 0;
+             }
+@@ -1290,10 +1350,21 @@ impl Front {
+             }
+             let (first, line) = (cx.paula.len(), cx.line);
+             let pending = before.as_ref().map_or(0, |b| b.len()).wrapping_sub(1);
++            let loaded = cx.load_point.is_some();
+             let y = match top.deferred.take() {
+                 Some(y) => y,
+                 None => top.routine.run(cx),
+             };
++            // A part that loads stands for the original's, which did what comes before its load
++            // long before this frame: the beam sees all of it (T33: the Accessing-disk overlay
++            // put up after the attract demo).
++            if !loaded
++                && cx.load_point.is_some()
++                && let Some(b) = before.as_mut()
++                && b.get(pending).is_some_and(|e| e.0 == line)
++            {
++                b.remove(pending);
++            }
+             // What the part wrote shows below where the beam is once it is done.
+             if let Some(b) = before.as_mut()
+                 && let Some(e) = b.get_mut(pending)
+diff --git a/engine/crates/sf-core/src/front/title.rs b/engine/crates/sf-core/src/front/title.rs
+index 169074a..d3f3ec5 100644
+--- a/engine/crates/sf-core/src/front/title.rs
++++ b/engine/crates/sf-core/src/front/title.rs
+@@ -431,6 +431,7 @@ impl OverlayEnd {
+             }
+             // The fade-out's set-up with interrupts off (`$155a0`: ~30 lines for 16 colours).
+             1 => {
++                if std::env::var_os("T33_KEEP").is_some() { eprintln!("T33 overlay fade-out setup at {}", cx.line); }
+                 let list = cx.s.l(OVERLAY_PALETTE);
+                 self.pc = 2;
+                 fade(FadeKind::Out, 0, list, 0x10, at(0xb7d6))
+diff --git a/engine/crates/sf-core/src/front/vbl.rs b/engine/crates/sf-core/src/front/vbl.rs
+index 110f5a8..db3fe71 100644
+--- a/engine/crates/sf-core/src/front/vbl.rs
++++ b/engine/crates/sf-core/src/front/vbl.rs
+@@ -159,6 +159,7 @@ mod cost {
+     pub const AFTER_WAIT: u32 = 170;
+     pub const KEYBOARD: u32 = 454;
+     pub const ROW_DMA: u32 = 775;
++    pub const RETRIGGER_DMA: u32 = 650;
+ }
+ 
+ /// The cycles from the handler's entry to the end of `music_tick` ([`TickWork`]).
+@@ -195,8 +196,19 @@ pub(super) fn fade_start(entry: u16, music: &TickWork, streaming: bool, keyboard
+         + cost::AFTER_WAIT
+         + if keyboard { cost::KEYBOARD } else { 0 }
+         + if music.row { cost::ROW_DMA } else { 0 }
++        + if music.retrigger { cost::RETRIGGER_DMA } else { 0 }
+ }
+ 
++/// Lines a handler taken late (interrupts back on after a fade's set-up ran past the frame's end)
++/// starts its fades after [`fade_start`] says (T33, measured on the attract demo's `level_start`,
++/// the original's frame 8355: interrupts on at line 30, `$12a14` reads line 36 and waits to 44,
++/// the fades from 47, where the estimate gives 43). One line is the entry: the late handler starts
++/// on the line interrupts come back on, an on-time one on line 0. The rest is the stretch after
++/// the wait, which the estimate puts at 170 cycles and the oracle shows at three lines in both
++/// late and on-time handlers of this run; only the late one's fade is near the copper's colour
++/// reads, so only it is moved.
++pub(super) const LATE_FADE_LINES: u32 = 4;
++
+ /// From [`fade_start`] to the acknowledge when no fade is due (T100: the oracle's acknowledges
+ /// of `level_init`'s frames, 1 492 to 1 510).
+ pub(super) const NO_FADE_TAIL: u32 = 1_500;
+diff --git a/engine/crates/sf-core/src/game.rs b/engine/crates/sf-core/src/game.rs
+index a2e18bf..871c029 100644
+--- a/engine/crates/sf-core/src/game.rs
++++ b/engine/crates/sf-core/src/game.rs
+@@ -350,7 +350,8 @@ impl Game {
+             }
+             if front.in_level_loop() {
+                 // `level_start` is over and `level_frame_loop` entered (T37): the level scene
+-                // from the next frame.
++                // from the next frame, its poll reading the keyboard's register as it is.
++                self.sdr = front.keyboard_sdr();
+                 self.front = None;
+                 self.scene = Scene::level(self.state.l(h0(0x40da)), self.state.l(h0(0x40de)));
+                 self.pending = None;
+diff --git a/engine/crates/sf-core/src/level/beam.rs b/engine/crates/sf-core/src/level/beam.rs
+index 5c0c1fd..2454472 100644
+--- a/engine/crates/sf-core/src/level/beam.rs
++++ b/engine/crates/sf-core/src/level/beam.rs
+@@ -298,11 +298,11 @@ impl Cost {
+             Cost::PanelBlit => 647,
+             Cost::PassTail => 1144,
+             Cost::InitStart => 15620,
+-            Cost::FrameRecord => 337,
++            Cost::FrameRecord => 240,
+             Cost::BlitParams => 418,
+             Cost::SubRecords => 1000,
+             Cost::MaskClearByte => 30,
+-            Cost::MaskClear10 => 41,
++            Cost::MaskClear10 => 44,
+             Cost::MaskOr10 => 62,
+             Cost::BobSprites => 3000,
+             Cost::PanelClearByte => 29,
+@@ -335,7 +335,7 @@ pub const BLANK_COSTS: [u32; Cost::COUNT] = {
+     a[Cost::ScrollTile as usize] = 1313;
+     a[Cost::IrqBlits as usize] = 450;
+     a[Cost::IrqPlane as usize] = 270;
+-    a[Cost::MaskOr10 as usize] = 63;
++    a[Cost::MaskOr10 as usize] = 64;
+     a[Cost::ScreenScanCell as usize] = 400;
+     a
+ };
+diff --git a/engine/crates/sf-core/src/level/bobs.rs b/engine/crates/sf-core/src/level/bobs.rs
+index 112bef5..852c412 100644
+--- a/engine/crates/sf-core/src/level/bobs.rs
++++ b/engine/crates/sf-core/src/level/bobs.rs
+@@ -37,13 +37,16 @@ pub fn bob_setup(c: &mut LevelCtx) {
+     let mut n = frame_records(b, SHARED_FRAMES, SHARED_TABLE);
+     let table = b.l(WORLD_TABLE);
+     n += frame_records(b, WORLD_FRAMES, table);
++    if std::env::var_os("T33_KEEP").is_some() { eprintln!("frame records {n}"); }
+     c.spend_n(Cost::FrameRecord, n);
+     let mut n = 0;
+     for list in [SPUD_FRAMES, SHARED_FRAMES, WORLD_FRAMES] {
+         n += blit_params(&mut c.bus, list);
+     }
++    if std::env::var_os("T33_KEEP").is_some() { eprintln!("blit params {n}"); }
+     c.spend_n(Cost::BlitParams, n);
+     let n = sub_records(&mut c.bus);
++    if std::env::var_os("T33_KEEP").is_some() { eprintln!("sub records {n}"); }
+     c.spend_n(Cost::SubRecords, n);
+     let b = &mut c.bus;
+     for k in 0..SHEET_PLANE {
+diff --git a/engine/crates/sf-core/src/level/exit.rs b/engine/crates/sf-core/src/level/exit.rs
+index fb6f259..35974ee 100644
+--- a/engine/crates/sf-core/src/level/exit.rs
++++ b/engine/crates/sf-core/src/level/exit.rs
+@@ -26,6 +26,9 @@ const BLANK_COPPER: u32 = crate::layout::h2(0x6fd8);
+ /// `attract_mode` (h0+$18), `abort_flag` (h0+$9de), `level_state` (h0+$a06).
+ const ATTRACT_MODE: u32 = h0(0x18);
+ const ABORT_FLAG: u32 = h0(0x9de);
++/// `opt_game_mode` (h0+$9e6), and the player's kept at h0+$9e8 while the demo plays.
++const OPT_GAME_MODE: u32 = h0(0x9e6);
++const GAME_MODE_KEPT: u32 = h0(0x9e8);
+ const LEVEL_STATE: u32 = h0(0xa06);
+ /// `frog_lives` (h0+$82e), `level_clock` (h0+$876).
+ const LIVES: u32 = h0(0x82e);
+@@ -82,9 +85,12 @@ impl LevelOver {
+         match self.pc {
+             0 => {
+                 // `game_over_seq` first, outside the attract demo (it is over at once unless the
+-                // last life is gone).
++                // last life is gone). After the demo `top_loop` puts the game mode back first
++                // (h0+$d2).
+                 self.pc = 10;
+-                if cx.s.l(ATTRACT_MODE) == 0 {
++                if cx.s.l(ATTRACT_MODE) != 0 {
++                    cx.s.set_w(OPT_GAME_MODE, cx.s.w(GAME_MODE_KEPT));
++                } else {
+                     return call(Routine::GameOverSeq(crate::front::GameOverSeq::new(
+                         self.frog_only,
+                     )));
+@@ -124,6 +130,10 @@ impl LevelOver {
+                     // h0+$7494, the bonus level's: shooter mode off.
+                     cx.s.set_w(SHOOTER_MODE, 0);
+                 }
++                if cx.s.l(ATTRACT_MODE) != 0 {
++                    // The attract demo's end: `bra top_loop`, the title again (h0+$e2).
++                    return Yield::Jump(Box::new(Routine::TopLoop(Default::default())));
++                }
+                 // `game_over_check`: ESC (`abort_flag`) or no lives leave the game, a death goes
+                 // round `top_loop` again, the exit to the tally (T38).
+                 if crate::front::GameOverCheck::ends(cx) {
+@@ -167,6 +177,11 @@ fn init_inside(id: LevelId) -> Vec<u32> {
+     offsets.iter().map(|o| h0(base + o)).collect()
+ }
+ 
++/// `demo_init`'s calls' return addresses (h0+$8f3a: `level_init_w1`'s code again).
++pub(crate) fn demo_init_inside() -> Vec<u32> {
++    [6, 0x2e, 0x34, 0x38, 0x4a].iter().map(|o| h0(0x8f3a + o)).collect()
++}
++
+ /// A level routine run on the front end's program, its Paula writes made on the line the beam is
+ /// on.
+ pub(crate) fn with_level(cx: &mut Cx, frog_only: bool, f: impl FnOnce(&mut LevelCtx)) {
+@@ -229,25 +244,7 @@ impl Restart {
+                     cx.unported("a restart in a level with no world and level numbers");
+                     return Yield::Poll;
+                 };
+-                let mut written = Vec::new();
+-                let (trace, ws) = level_ctx(cx, self.frog_only, true, |c| {
+-                    c.bus.written = Some(vec![false; crate::layout::LAYOUT.len()]);
+-                    crate::level::load::level_init(c, id);
+-                    written = c.bus.written.take().unwrap_or_default();
+-                });
+-                let writes = crate::layout::LAYOUT
+-                    .iter()
+-                    .zip(written)
+-                    .filter(|(_, w)| *w)
+-                    .map(|(d, _)| (d.addr, d.width.len()))
+-                    .collect();
+-                let ws: Vec<(u16, u16)> = ws.iter().map(|w| (w.reg, w.value)).collect();
+-                let job = crate::game::Job {
+-                    inside: init_inside(id),
+-                    writes,
+-                };
+-                let t = Timeline::of(&trace, &crate::level::beam::BLANK_COSTS, &ws, job);
+-                call(Routine::Timeline(t))
++                init_on_beam(cx, self.frog_only, id, init_inside(id))
+             }
+             1 => {
+                 self.pc = 2;
+@@ -261,6 +258,27 @@ impl Restart {
+     }
+ }
+ 
++/// `level_init_wN` for `id` done at once, then replayed on the beam: what it cost and its Paula
++/// writes, its memory compared once the original is out of the calls `inside` (T37).
++pub(crate) fn init_on_beam(cx: &mut Cx, frog_only: bool, id: LevelId, inside: Vec<u32>) -> Yield {
++    let mut written = Vec::new();
++    let (trace, ws) = level_ctx(cx, frog_only, true, |c| {
++        c.bus.written = Some(vec![false; crate::layout::LAYOUT.len()]);
++        crate::level::load::level_init(c, id);
++        written = c.bus.written.take().unwrap_or_default();
++    });
++    let writes = crate::layout::LAYOUT
++        .iter()
++        .zip(written)
++        .filter(|(_, w)| *w)
++        .map(|(d, _)| (d.addr, d.width.len()))
++        .collect();
++    let ws: Vec<(u16, u16)> = ws.iter().map(|w| (w.reg, w.value)).collect();
++    let job = crate::game::Job { inside, writes };
++    let t = Timeline::of(&trace, &crate::level::beam::BLANK_COSTS, &ws, job);
++    call(Routine::Timeline(t))
++}
++
+ /// Where `level_start` is when its fade set-up returns (h0+$69f8).
+ const AFTER_FADE_IN_SETUP: u32 = h0(0x69f8);
+ /// The level's fade target (h0+$9fe).
+diff --git a/engine/crates/sf-core/src/level/load.rs b/engine/crates/sf-core/src/level/load.rs
+index 65c57c2..7b684ef 100644
+--- a/engine/crates/sf-core/src/level/load.rs
++++ b/engine/crates/sf-core/src/level/load.rs
+@@ -183,6 +183,12 @@ fn numbers(id: LevelId) -> (u32, u32) {
+     (world, id.level as u32)
+ }
+ 
++/// `demo_world_load` and `demo_level_load` (h0+$a580, $a5ec): `world_load_w1` without its sound
++/// and intro, and `level_load_w1_l1` without its progress map.
++pub(crate) fn demo_load(c: &mut LevelCtx, display: &DisplayData) {
++    level_load(c, display, LevelId { world: World::W1, level: 1, alt: false });
++}
++
+ /// `world_load_wN` and `level_load_wN_lM` (h0+$94a0, $9552 …): what they leave that a level
+ /// reads: the world and level, the clock, the map and what is read off it.
+ fn level_load(c: &mut LevelCtx, display: &DisplayData, id: LevelId) {
+diff --git a/engine/crates/sf-core/src/level/timeline.rs b/engine/crates/sf-core/src/level/timeline.rs
+index c57521b..cd3f324 100644
+--- a/engine/crates/sf-core/src/level/timeline.rs
++++ b/engine/crates/sf-core/src/level/timeline.rs
+@@ -5,95 +5,139 @@
+ //! The ported routines say what they cost as they run ([`super::LevelCtx::spend`], the blits by
+ //! their words); with the context's trace kept, that gives each Paula write's place in CPU cycles
+ //! from the work's start ([`Timeline::of`]). A [`Timeline`] spends those cycles on the lines the
+-//! main program has (all of a line's: the screen is blank meanwhile) and makes each write where it
+-//! falls.
++//! main program has (all of a line's once the screen is blank; less on the lines a display still
++//! fetches, [`crate::front::ending::stolen_per_line`]) and makes each write where it falls.
+ 
+ use crate::front::{BEAM_CYCLES_PER_LINE, Cx, FRAME_LINES, Yield};
+ use crate::game::Job;
+-use crate::level::beam::Tick;
++use crate::level::beam::{Cost, Tick};
+ 
+-/// Work done at once, replayed on the beam: the cycles before each write and the write, then the
+-/// cycles after the last. Its memory is compared once the original is out of it (`job`).
++/// Work done at once, replayed on the beam: its stretches of CPU and blitter time and its writes,
++/// in order. Its memory is compared once the original is out of it (`job`).
+ #[derive(Debug, Clone, PartialEq, Eq, Hash)]
+ pub struct Timeline {
+-    /// `(cycles before it, register, value)`.
+-    steps: Vec<(u32, u16, u16)>,
+-    /// Cycles after the last write.
+-    tail: u32,
++    segs: Vec<Seg>,
+     at: usize,
+-    /// Cycles of the current step still to spend.
++    /// Cycles of the current stretch still to spend.
+     left: u32,
+     /// Cycles of the beam's current line already used.
+     spare: u32,
++    /// The frame ended in a blitter stretch: the blitter went on through the vertical blank.
++    blit_on: bool,
+     job: Option<Job>,
+ }
+ 
++/// A part of a [`Timeline`].
++#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
++enum Seg {
++    /// Cycles of work: the blitter's (which goes on while the CPU takes the vertical blank's
++    /// interrupt), or the CPU's.
++    Work { cycles: u32, blit: bool },
++    Write(u16, u16),
++}
++
+ impl Timeline {
+     /// The timeline of a context's `trace` (with `costs`) and its Paula `writes` (register, value).
++    /// The blits, and the mask's blits costed per ten words ([`Cost::MaskClear10`],
++    /// [`Cost::MaskOr10`]), are the blitter's time.
+     pub fn of(trace: &[Tick], costs: &[u32], writes: &[(u16, u16)], job: Job) -> Timeline {
+-        let mut steps = Vec::new();
+-        let mut cycles = 0u32;
+-        let mut last = 0u32;
++        let mut segs: Vec<Seg> = Vec::new();
++        let work = |segs: &mut Vec<Seg>, n: u32, blit: bool| {
++            if let Some(Seg::Work { cycles, blit: b }) = segs.last_mut()
++                && *b == blit
++            {
++                *cycles += n;
++                return;
++            }
++            segs.push(Seg::Work { cycles: n, blit });
++        };
+         for t in trace {
+             match *t {
+-                Tick::Cpu(k, n) => cycles += n * costs[k as usize],
+-                Tick::Blit(slots) => cycles += 2 * slots,
+-                Tick::Wait(lines) => cycles += lines as u32 * BEAM_CYCLES_PER_LINE,
++                Tick::Cpu(k, n) => {
++                    let blit = matches!(k, Cost::MaskClear10 | Cost::MaskOr10);
++                    work(&mut segs, n * costs[k as usize], blit);
++                }
++                Tick::Blit(slots) => work(&mut segs, 2 * slots, true),
++                Tick::Wait(lines) => work(&mut segs, lines as u32 * BEAM_CYCLES_PER_LINE, false),
+                 Tick::Write(k) => {
+                     if let Some(&(reg, value)) = writes.get(k as usize) {
+-                        steps.push((cycles - last, reg, value));
+-                        last = cycles;
++                        segs.push(Seg::Write(reg, value));
+                     }
+                 }
+             }
+         }
+-        let left = steps.first().map_or(cycles, |s| s.0);
++        let left = match segs.first() {
++            Some(Seg::Work { cycles, .. }) => *cycles,
++            _ => 0,
++        };
+         Timeline {
+-            steps,
+-            tail: cycles - last,
++            segs,
+             at: 0,
+             left,
+             spare: 0,
++            blit_on: false,
+             job: Some(job),
+         }
+     }
+ 
+     /// The cycles in all.
+     pub fn cycles(&self) -> u32 {
+-        self.steps.iter().map(|s| s.0).sum::<u32>() + self.tail
++        self.segs
++            .iter()
++            .map(|s| match s {
++                Seg::Work { cycles, .. } => *cycles,
++                Seg::Write(..) => 0,
++            })
++            .sum()
+     }
+ 
+     pub(crate) fn run(&mut self, cx: &mut Cx) -> Yield {
+         if let Some(j) = self.job.take() {
+             cx.jobs.push(j);
+         }
++        if std::mem::take(&mut self.blit_on) {
++            // The blitter ran on from the frame's top to where the main program is back.
++            self.left = self.left.saturating_sub(cx.line as u32 * BEAM_CYCLES_PER_LINE);
++        }
++        // A display still fetching (a restart's first frame, under the level's planes: its list goes
++        // blank from the next) takes its share of the lines it shows.
++        let stolen = if cx.list == crate::front::title::BLANK_COPPER {
++            0
++        } else {
++            crate::front::ending::stolen_per_line(&cx.fetch)
++        };
++        let shown = cx.fetch.lines();
+         loop {
+-            while self.left > 0 {
+-                if cx.line >= FRAME_LINES - 1 {
+-                    // Past the frame's end: on after the next vertical blank.
+-                    cx.line = FRAME_LINES - 1;
+-                    self.spare = 0;
+-                    return Yield::Poll;
+-                }
+-                let free = BEAM_CYCLES_PER_LINE - self.spare;
+-                if self.left < free {
+-                    self.spare += self.left;
+-                    self.left = 0;
+-                } else {
+-                    self.left -= free;
+-                    self.spare = 0;
+-                    cx.line += 1;
++            match self.segs.get(self.at) {
++                None => return Yield::Return,
++                Some(&Seg::Write(reg, value)) => cx.wr(reg, value),
++                Some(&Seg::Work { blit, .. }) => {
++                    while self.left > 0 {
++                        if cx.line >= FRAME_LINES - 1 {
++                            // Past the frame's end: on after the next vertical blank.
++                            cx.line = FRAME_LINES - 1;
++                            self.spare = 0;
++                            self.blit_on = blit;
++                            return Yield::Poll;
++                        }
++                        let line = if shown.contains(&cx.line) { stolen } else { 0 };
++                        let free = (BEAM_CYCLES_PER_LINE - line).saturating_sub(self.spare);
++                        if self.left < free {
++                            self.spare += self.left;
++                            self.left = 0;
++                        } else {
++                            self.left -= free;
++                            self.spare = 0;
++                            cx.line += 1;
++                        }
++                    }
+                 }
+             }
+-            let Some(&(_, reg, value)) = self.steps.get(self.at) else {
+-                return Yield::Return;
+-            };
+-            cx.wr(reg, value);
+             self.at += 1;
+-            self.left = self.steps.get(self.at).map_or(self.tail, |s| s.0);
+-            if self.left == 0 && self.at >= self.steps.len() {
+-                return Yield::Return;
+-            }
++            self.left = match self.segs.get(self.at) {
++                Some(Seg::Work { cycles, .. }) => *cycles,
++                _ => 0,
++            };
+         }
+     }
+ }
+diff --git a/engine/crates/sf-core/src/state.rs b/engine/crates/sf-core/src/state.rs
+index 92c8dbb..77a6858 100644
+--- a/engine/crates/sf-core/src/state.rs
++++ b/engine/crates/sf-core/src/state.rs
+@@ -61,6 +61,8 @@ fn audio_var(id: VarId) -> Option<usize> {
+ 
+ /// `ExecBase` (address 4) as Kickstart 1.3 leaves it with slow RAM, the oracle's machine.
+ pub const EXEC_BASE: u32 = 0x00c0_0276;
++/// The level 1 interrupt's autovector (address `$64`) as Kickstart 1.3 leaves it (the oracle's).
++pub const KICKSTART_LEVEL1: u32 = 0x00fc_0c8e;
+ 
+ impl Default for State {
+     fn default() -> State {
+@@ -76,6 +78,7 @@ impl Default for State {
+             scratch: BTreeMap::new(),
+         };
+         s.set_l(4, EXEC_BASE);
++        s.set_l(0x64, KICKSTART_LEVEL1);
+         s
+     }
+ }

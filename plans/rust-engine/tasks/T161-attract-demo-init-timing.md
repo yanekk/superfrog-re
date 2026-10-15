@@ -1,13 +1,15 @@
-# T156 — attract-demo-init-timing
+# T161 — attract-demo-init-timing
 
 **Split from:** T33. Carries the "every frame matching" part of T33's goal over `demo_init`.
 
-**Phase:** 2 · **Depends on:** T155 · **Weight:** medium
+**Phase:** 2 · **Depends on:** T160 · **Weight:** medium
 
 ## Goal
 
 `demo_init` on the beam as the original's, in the first demo: its Paula writes in the frames
 and order of the original's (case `front-attract`, frames 3300–3314).
+
+T33's code for this is in `plans/rust-engine/T33-wip.patch` (see T160).
 
 ## What T33 found (oracle, 2026-10-15)
 

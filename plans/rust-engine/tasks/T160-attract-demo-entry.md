@@ -1,4 +1,4 @@
-# T155 — attract-demo-entry
+# T160 — attract-demo-entry
 
 **Split from:** T33. Carries T33's "credits past frame 6416" test and the demo's place in the cycle.
 
@@ -7,8 +7,10 @@
 ## Goal
 
 From the credits into the attract demo's level loop, and back to the title after it, as
-`top_loop` h0+$a8 does. A T33 worker built all of this, then lost it uncommitted at pir's
-context line; what it measured is below, so this is rebuilding, not discovery.
+`top_loop` h0+$a8 does. A T33 worker built all of this and stopped at pir's context line before committing it. Its code,
+for T160 to T164 together, is in `plans/rust-engine/T33-wip.patch` (applies cleanly to the feature
+branch, compiles, never run green as committed code): apply the parts this task names, check them
+against the cases below, and leave the rest of the patch to T161–T164. Delete the patch in T164.
 
 ## What T33 found (oracle, 2026-10-15)
 

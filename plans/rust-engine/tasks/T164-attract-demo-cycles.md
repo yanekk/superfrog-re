@@ -1,14 +1,16 @@
-# T159 — attract-demo-cycles
+# T164 — attract-demo-cycles
 
 **Split from:** T33. Carries T33's "each of the three `demo_index` entries, and an abort by fire"
 tests and "the full cycle in `sf-conform -- all`".
 
-**Phase:** 2 · **Depends on:** T158 · **Weight:** medium
+**Phase:** 2 · **Depends on:** T163 · **Weight:** medium
 
 ## Goal
 
 Three whole attract cycles (`demo_index` 0, 1, 2) green, and fire in the middle of a demo
 ending it back to the title.
+
+T33's code for this is in `plans/rust-engine/T33-wip.patch` (see T160).
 
 ## What T33 found (oracle, 2026-10-15)
 
@@ -45,3 +47,4 @@ None new, as T33: the demo runs inside `Game::step`, reached from T20's attract 
 ## Done when
 
 - [ ] The above; `sf-conform -- all` runs them.
+- [ ] `plans/rust-engine/T33-wip.patch` deleted, whatever of it T160–T164 did not use.

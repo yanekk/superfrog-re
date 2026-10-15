@@ -178,11 +178,11 @@ headless.
 | [T131](tasks/T131-w4-completion-faults.md) | w4-completion-faults | T103, T121, T127; blocks T18, T21 |
 | [T132](tasks/T132-w4-4-completion.md) | w4-4-completion | T103; blocks T18, T131 |
 | [T145](tasks/T145-w4-4-dart-21.md) | w4-4-dart-21 | T132; blocks T18, T131 |
-| [T155](tasks/T155-attract-demo-entry.md) | attract-demo-entry | T33 |
-| [T156](tasks/T156-attract-demo-init-timing.md) | attract-demo-init-timing | T155 |
-| [T157](tasks/T157-attract-demo-level-start.md) | attract-demo-level-start | T156 |
-| [T158](tasks/T158-attract-demo-return.md) | attract-demo-return | T157 |
-| [T159](tasks/T159-attract-demo-cycles.md) | attract-demo-cycles | T158 |
+| [T160](tasks/T160-attract-demo-entry.md) | attract-demo-entry | T33 |
+| [T161](tasks/T161-attract-demo-init-timing.md) | attract-demo-init-timing | T160 |
+| [T162](tasks/T162-attract-demo-level-start.md) | attract-demo-level-start | T161 |
+| [T163](tasks/T163-attract-demo-return.md) | attract-demo-return | T162 |
+| [T164](tasks/T164-attract-demo-cycles.md) | attract-demo-cycles | T163 |
 | [T120](tasks/T120-conform-no-silent-pass.md) | conform-no-silent-pass | T05, T36; blocks T21 |
 | [T104](tasks/T104-w6-completions.md) | w6-completions | T40, T101, T102; blocks T18 |
 
