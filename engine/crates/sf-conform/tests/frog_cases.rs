@@ -296,7 +296,7 @@ fn complete_w1_3() {
 
 /// W1-1 played to its exit (T106): green through the exit at 4473, which `level_state` 1 reaches
 /// in a late pass (`sync::mid_pass`), to frame 4474; frame 4475 shows T131's exit-fade palette
-/// step, pinned here until T146 runs the whole case.
+/// step, pinned here until T165 runs the whole case.
 #[test]
 fn complete_w1_1_to_exit_fade() {
     let mut case = sf_conform::Case::load(&sf_conform::cases_dir().join("complete-w1-1.toml")).unwrap();

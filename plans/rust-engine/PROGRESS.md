@@ -109,7 +109,7 @@ done · ⛔ blocked, needs a human.
 | T101 | lag-long-pass | T81, T82; blocks T21 | ✅ | |
 | T102 | items-w3-faults | T101; blocks T21 | ✅ | |
 | T105 | w2-1-hang-fruit-life | T85; blocks T21 | ✅ | |
-| T106 | w1-completions | T42, T86, T101; blocks T18 | ✅ | Review: one fix, `mid_pass` late-exit change survived mutation; added `complete_w1_1_to_exit_fade` (green to 4474, T131 step pinned 4475). Mutated `loop_over` and after-lag mask, both red. Ran W1-1 scan, W1-4 run, regression set. W1-1 in T146, W1-4 in T154. `plan_exit` changes read-only. 3 tests. |
+| T106 | w1-completions | T42, T86, T101; blocks T18 | ✅ | Review: one fix, `mid_pass` late-exit change survived mutation; added `complete_w1_1_to_exit_fade` (green to 4474, T131 step pinned 4475). Mutated `loop_over` and after-lag mask, both red. Ran W1-1 scan, W1-4 run, regression set. W1-1 in T165, W1-4 in T154. `plan_exit` changes read-only. 3 tests. |
 | T107 | enemies-w1-2-case | T42; blocks T18, T33, T106 | ✅ | |
 | T108 | enemies-w1-3-case | T42; blocks T18, T33, T106 | ✅ | |
 | T109 | enemies-w1-4-case | T42; blocks T18, T33, T106 | ✅ | |
@@ -141,7 +141,7 @@ done · ⛔ blocked, needs a human.
 | T131 | w4-completion-faults | T103, T121, T127; blocks T18, T21 | ⬜ | |
 | T132 | w4-4-completion | T103; blocks T18, T131 | ⬜ | |
 | T145 | w4-4-dart-21 | T132; blocks T18, T131 | ⬜ | |
-| T146 | w1-1-completion | T106, T131; blocks T18 | ⬜ | |
+| T165 | w1-1-completion | T106, T131; blocks T18 | ⬜ | |
 | T154 | w1-4-completion | T106, T127; blocks T18 | ⬜ | |
 
 A Notes cell holds what was built or what the review found, the test count, and one line per
