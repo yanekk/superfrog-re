@@ -18,6 +18,9 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-15 | 🔄 | Owner, T182: added T184 alone-pass-drift (T182; blocks T21, T18, open completion tasks): after a late frame ending in phase 5/12 the engine's pass falls a frame off (`vbl_count`). Five tests keep checks 1–3, naming T184. |
+| 2026-10-15 | 📌 | T182 ran every stepping case alone: red only complete-w4-2 (7950), enemies-w5-2-complete (3261), enemies-w6-1-complete (535), enemies-w1-1 (407), enemies-w3-1/-activation (237), front-attract (end score 7450/7350). All T184's; `vbl_count` parts first. |
+| 2026-10-15 | 📌 | T182: `Start::Level(W1-1)` replaying complete-w1-1 loses a life (555) to pacing (unpaced) and the start (`kbd_toggle`'s phase moves INTENA writes, so write-counted cuts). From its sync, paced, it plays alone green (`tests/alone.rs`). |
 | 2026-10-15 | 📌 | T144 review sweep, left alone: `tasks/T141-story-fade-colour-race.md` calls the colour-28 fade (engine 7232–7241) scene 9's; the original's chain there is h0+$736e..$73dc, scene 12 (docs/13 table). |
 | 2026-10-15 | 📌 | T133: W2-1's room 45-51,14-26 (fruit 48,22) is unreachable in play; why in docs/07. An exit still locked (coins left) lets the frog through: `items-fruit-w2-1` takes the other $f008 fruit, 260,25, past it. |
 | 2026-10-15 | 🐞 | Fixed: `sf-conform record` printed every `LAYOUT` long (~3.5 MB a line); T164's recording reached 38 GB, the disk filled (ENOSPC) and the run crashed. Now entries over 1 KB are left out (`--all-vars`) and output stops at 200 MB (`--max-mb`). |

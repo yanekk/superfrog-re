@@ -13,7 +13,7 @@
 
 use std::fmt;
 
-use sf_core::layout::{LEVEL_MAP_BYTES, MAP_ROW_CELLS, VarId, def, h2};
+use sf_core::layout::{MAP_ROW_CELLS, VarId, def, h2};
 
 /// How far apart, in frames of play, two sides' milestones may be (the owner's bar, DESIGN §2.1:
 /// never changed in code to make a case green).
@@ -454,12 +454,10 @@ pub fn judge(
     }
 }
 
-/// `level_map`'s cells, for the record: its length is whole rows.
-const _: () = assert!(LEVEL_MAP_BYTES % 2 == 0);
-
 #[cfg(test)]
 mod tests {
     use super::*;
+    use sf_core::layout::LEVEL_MAP_BYTES;
 
     fn coins(n: u16) -> (u64, Milestone) {
         (0, Milestone::CoinTaken { left: n })

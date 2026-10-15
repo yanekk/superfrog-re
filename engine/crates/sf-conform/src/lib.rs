@@ -225,7 +225,6 @@ fn run_inner(
         }
         AloneRun::new(g, case.sync == SyncPoint::PowerOnDisk3)
     });
-    let mut alone_first_var = None;
     // COP1LC as the original's CPU last wrote it (from the start's as the engine has it).
     let mut cop = game.cop1lc();
     let mut outcome = Outcome {
@@ -627,7 +626,7 @@ fn run_inner(
     outcome.sound_trailing = sound.trailing;
     outcome.pass_skews = passes.skews;
     if let Some(a) = alone {
-        alone_first_var = a.first_var.clone();
+        let alone_first_var = a.first_var.clone();
         match a.judge(case.frames.saturating_sub(1)) {
             Ok(met) => outcome.milestones = Some(met),
             Err(d) => {
