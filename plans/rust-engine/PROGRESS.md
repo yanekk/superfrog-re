@@ -127,7 +127,7 @@ done · ⛔ blocked, needs a human.
 | T123 | enemies-w5-2-case | T39; blocks T18 | ✅ | |
 | T124 | enemies-w5-3-case | T39; blocks T18 | ✅ | |
 | T125 | enemies-w5-4-case | T39; blocks T18 | ✅ | |
-| T126 | w5-completions | T39, T101, T121, T123, T124, T125; blocks T18 | 🔍 | Four `enemies-w5-N-complete` cases, green to the tally; 4 tests (`completes`). Deviations: re-syncs remain (none expected), pinned; T131-owned picture frames excluded (W5-2, W5-4), W5-1 744 as 595; re-syncs not re-checked frozen (meaningless, T125 review); the outcome frame is asserted, as `level_state` 1 never ends a frame. |
+| T126 | w5-completions | T39, T101, T121, T123, T124, T125; blocks T18 | ✅ | Review: one fix, a W5-4 test comment claiming the reverted points-print overrun. All 10 W5 tests green on the oracle; probe: W5-1 coins 0 before exit, `level_state` never 1 at frame end; route mutations (last jump, tally fire) go red. Exclusions, pins read-only beyond the green run. |
 | T127 | restore-sprite-wait | T101; blocks T21 | ✅ | |
 | T128 | w3-4-sprite-race | T127; blocks T113 | ⬜ | |
 | T130 | front-vbl-318 | T100; blocks T21 | ⬜ | |
@@ -165,7 +165,7 @@ done · ⛔ blocked, needs a human.
 A Notes cell holds what was built or what the review found, the test count, and one line per
 deviation from the task doc. A ✅ task's cell may be cut to one line once the next task has been reviewed.
 
-**Review queue:** T126
+**Review queue:** *(empty)*
 
 ## Blocked on the user
 

@@ -18,6 +18,7 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-15 | 📌 | T126 review: W5 completions' exclusions name T131, but T131's done-when covers only `complete-w4-*`; nothing removes them. Play-field-buffer re-syncs (W5-1 1497, W5-2 2196, W5-3 1608, W5-4 3384) persist after T121 landed. |
 | 2026-10-15 | 🐞 | T126, open, no task: with many pages the tally's points print also runs past the frame's end; the engine's job masks only the score's. Repro: df9bad6's `enemies-w5-4-complete` script, frame 7959. Fix tried in 1b2bc81 (reverted: final route misses it). |
 | 2026-10-15 | 📌 | T126: W5 completions hit T131's faults: spring-pad sprite (W5-2 967, W5-4 657), exit-fade palette (W5-2 6095, W5-4 8193), `vbl_count` after lag (W5-2 4681, pinned). W5-1 744 is 595's class. Re-syncs not re-checked frozen (T125 review). |
 | 2026-10-15 | 📌 | T126: `plan_exit --coins 0`, 150 idle frames first, completes W5-1…3 unaided. W5-4's coin field strands the frog at 286–291,19–26: steer `--via 288,17` then `273,9`. A stall idles the frog; re-plan any long one. |
