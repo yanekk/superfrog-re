@@ -145,7 +145,7 @@ done · ⛔ blocked, needs a human. A task dropped by a plan amendment leaves th
 | T162 | attract-demo-level-start | T160, T180 | ✅ | |
 | T163 | attract-demo-return | T162 | ✅ | |
 | T164 | attract-demo-cycles | T163; blocks T21 | ✅ | |
-| T154 | w1-4-completion | T106, T127, T180, T182; blocks T21 | ⬜ | |
+| T154 | w1-4-completion | T106, T127, T180, T182; blocks T21 | 🔍 | `complete-w1-4` 7562 frames, exit 7377, tally; green faithful and alone (153 milestones), `resync = false`. T106's route kept to 1800 only: after it the left half was out of reach. `frog_cases::complete_w1_4` asserts the exit. Added `plan_exit --fly`, `examples/frog_track`. Deviation: `cases.rs`'s green-only duplicate dropped. |
 | T166 | w2-2-completion | T122, T180, T182; blocks T21 | ⬜ | |
 | T167 | w2-3-completion | T122, T180, T182; blocks T21 | ⬜ | |
 | T168 | w2-4-completion | T122, T180, T182; blocks T21 | ⬜ | |

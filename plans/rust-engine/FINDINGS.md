@@ -18,8 +18,8 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-16 | 📌 | T154: a tile coin (marker 55) counts in `frog+$7e`, never toward W1's exit; W1-4 has six wings (`items_map`); with them, a pad throw plus flaps crosses gaps. `cases.rs`'s green-only `complete_w1_4` replaced by `frog_cases::complete_w1_4`. |
 | 2026-10-15 | 🐞 | T149 review sweep: `enemies_w6_3_alt_complete` (enemies_w6_cases.rs) asserts only its re-sync frames, not the exit; a script cut short would stay green. Open, read-only. |
-| 2026-10-15 | 🐞 | T149 review sweep: `complete_w1_4` (cases.rs `case!`) is `green` only, no exit assertion; a truncated script would pass. Open, read-only. |
 | 2026-10-15 | 📌 | T149 review, measured: W6-3's case takes 98 coins; at the exit 40 of 138 coin cells remain (8 marker-8, 32 marker-9). The exit needs only `coins_left_for_exit` 0. Owner accepted the exit as enough. |
 | 2026-10-15 | 📌 | T149: `plan_exit_w6` missed W6-3's exit (`level_state` 1 one frame, 7891) and idled on the exit cell to `--frames` (8 000 frames, ~1 h). Watch for `distance 0` repeating; find the frame with `sf-conform record --watch ls=h0+a06:L`. |
 | 2026-10-15 | 🐞 | T18, open, not fixed: purity's `the_real_pure_crates_pass` fails on the feature branch: `front/chain.rs` `LEVEL_LOADS` (24 literals, unchanged by T18). Read from the disks or restructure; no owning task. |

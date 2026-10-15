@@ -299,6 +299,22 @@ fn complete_w1_3() {
     completes("complete-w1-3", &[5079]);
 }
 
+/// W1-4 played from its start to its exit and through the tally (T154): T106's route to 1800, the
+/// lower left's coins, the hill's pad at 28,30 with the wings' flaps across to the block at
+/// 100,19, its coins and the cave's, down the shaft at 6-12,54 and the right half's coins; the exit at 7377 with the 96 coins taken, fire taking the points. No re-sync.
+#[test]
+fn complete_w1_4() {
+    completes("complete-w1-4", &[]);
+    let case = sf_conform::Case::load(&sf_conform::cases_dir().join("complete-w1-4.toml")).unwrap();
+    let met = sf_conform::run(&case).unwrap().milestones.expect("check 4 ran");
+    let exits: Vec<u64> = met
+        .iter()
+        .filter(|(_, m)| *m == sf_conform::Milestone::LevelExit { world: 1, level: 4 })
+        .map(|(f, _)| *f)
+        .collect();
+    assert_eq!(exits, [7377]);
+}
+
 /// W4-4 played from its start to its exit and through the tally (T132, T145): the pacer's hurt at
 /// 2515, marker 20's dart's at 4717, a crusher's at 22458, marker 21's dart's at 23577, the exit
 /// at 24200 and fire taking the points. Three re-syncs, each after a lag: the panel at 8030 and
