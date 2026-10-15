@@ -246,8 +246,9 @@ impl Chain {
                 // Bcc
                 _ if op & 0xf000 == 0x6000 => {
                     let (to, next) = match op & 0xff {
-                        0 => (pc + 2 + cx.data.h0_w(pc + 2) as i16 as i32 as u32, pc + 4),
-                        d => (pc + 2 + d as i8 as i32 as u32, pc + 2),
+                        // Displacements back are negative: the sum wraps (a `bmi` after a death).
+                        0 => ((pc + 2).wrapping_add(cx.data.h0_w(pc + 2) as i16 as i32 as u32), pc + 4),
+                        d => ((pc + 2).wrapping_add(d as i8 as i32 as u32), pc + 2),
                     };
                     let taken = match op >> 8 & 0xf {
                         0x0 => true,

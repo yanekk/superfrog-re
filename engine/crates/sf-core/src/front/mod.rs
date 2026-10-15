@@ -1470,8 +1470,21 @@ impl Front {
                 Yield::Return => {
                     self.stack.pop();
                     if self.stack.is_empty() {
-                        // A level entered with no `top_loop` known below it stays over.
+                        // A level entered with no `top_loop` known below it stays over, said
+                        // as what the engine does not follow yet.
                         if let Some(o) = cx.outcome.or(self.outcome) {
+                            cx.unported(match o {
+                                crate::level::LevelOutcome::Completed { .. }
+                                    if cx.s.l(crate::level::exit::WORLD)
+                                        == crate::level::exit::BONUS_WORLD =>
+                                {
+                                    "the bonus level's end picture (T21)"
+                                }
+                                crate::level::LevelOutcome::Completed { .. } => {
+                                    "the next level after the tally (T21)"
+                                }
+                                _ => "a level's end the engine does not follow",
+                            });
                             self.stack.push(Frame {
                                 routine: Routine::Outcome(o),
                                 wait: Some((Yield::Poll, 1)),
