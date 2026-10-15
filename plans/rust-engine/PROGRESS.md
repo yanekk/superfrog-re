@@ -132,7 +132,7 @@ done · ⛔ blocked, needs a human. A task dropped by a plan amendment leaves th
 | T127 | restore-sprite-wait | T101; blocks T21 | ✅ | |
 | T130 | front-vbl-318 | T100; blocks T21 | ✅ | |
 | T129 | slot-lamp-cut | T74; blocks T21 | ✅ | |
-| T144 | story-intro-full-green | T56, T180; blocks T21, T47, T48 | ⬜ | |
+| T144 | story-intro-full-green | T56, T180; blocks T21, T47, T48 | ✅ | |
 | T133 | w2-1-fruit-room | T105, T180; blocks T21 | ✅ | Review: one fix, docs/07 claimed shaft A closed at rows 13-15 (it is rows 20-21). Goal 2 held: 260,25 shares 48,22's tile 785, +20 000 compared on 1160; room map claims checked against W2-1's BODY. Mutated $f008's points, case went red. `route_oracle` take-via read-only. Wings and flyer claims read-only. |
 | T132 | w4-4-completion | T103; blocks T21 | ✅ | |
 | T145 | w4-4-dart-21 | T132; blocks T21 | ✅ | |

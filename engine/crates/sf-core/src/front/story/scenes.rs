@@ -93,16 +93,23 @@ const fn scene_out(speed: u16) -> [Op; 1] {
     }]
 }
 
-/// A scene's fade-out with its wait and the black list (h0+$808, $11b8, $5264, $7ee4).
-static SCENE_OUT_WAIT: &[Op] = &[
-    FadeOut {
-        list: SCENE_COLOURS,
-        count: 0x20,
-        speed: 1,
-    },
-    WaitFade,
-    Cop1lc(BLACK_LIST),
-];
+/// A scene's fade-out at `speed` with its wait and the black list.
+const fn scene_out_wait(speed: u16) -> [Op; 3] {
+    [
+        FadeOut {
+            list: SCENE_COLOURS,
+            count: 0x20,
+            speed,
+        },
+        WaitFade,
+        Cop1lc(BLACK_LIST),
+    ]
+}
+
+/// h0+$808, $11b8 and $5264: at speed 1.
+static SCENE_OUT_WAIT: &[Op] = &scene_out_wait(1);
+/// h0+$7ee4, the last scene's: at speed 2.
+static SCENE_OUT_WAIT_LAST: &[Op] = &scene_out_wait(2);
 
 const fn music(module: u32) -> Op {
     Music {
@@ -842,7 +849,9 @@ pub static MAIN: &[Op] = &[
     Call(LOAD_15),
     Call(IN_15),
     Call(PLAY_15),
-    Call(SCENE_OUT_WAIT),
+    Call(SCENE_OUT_WAIT_LAST),
+    // h0+$2ec: `intro_skip` set or not (h0+$3a6 shows the black list again), the same end.
+    Call(END),
 ];
 
 /// How many frames after the one it starts in each unpack ends, by its call's return address,
