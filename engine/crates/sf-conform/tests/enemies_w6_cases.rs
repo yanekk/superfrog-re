@@ -106,4 +106,14 @@ fn enemies_w6_3_complete() {
     let o = sf_conform::run(&case).unwrap_or_else(|d| panic!("{name}: {d}"));
     let resynced: Vec<u32> = o.resynced.iter().map(|r| r.0).collect();
     assert_eq!(resynced, [5375, 5979], "{:?}", o.resynced);
+    // The run reaches the exit, the coins it needs all taken: a script cut short stays green
+    // otherwise, both sides agreeing on a level not finished.
+    let met = o.milestones.expect("check 4 ran");
+    let exits: Vec<u64> = met
+        .iter()
+        .filter(|(_, m)| *m == sf_conform::Milestone::LevelExit { world: 6, level: 3 })
+        .map(|(f, _)| *f)
+        .collect();
+    assert_eq!(exits, [7891]);
+    assert!(met.iter().any(|(_, m)| *m == sf_conform::Milestone::CoinTaken { left: 0 }));
 }
