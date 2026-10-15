@@ -154,7 +154,7 @@ done · ⛔ blocked, needs a human. A task dropped by a plan amendment leaves th
 | T182 | plays-alone | T180; blocks T181, T183 and every completion task | ✅ | |
 | T183 | level-chain | T180, T182; blocks T21 | ✅ | |
 | T184 | alone-pass-drift | T182; blocks T21, T18, T115, T147, T148, T149, T150, T151, T154, T166, T167, T168 | ⬜ | |
-| T185 | w6-4-lag-frog-fall | T182; blocks T21 | ⬜ | |
+| T185 | w6-4-lag-frog-fall | T182; blocks T21 | ✅ | |
 | T190 | chain-world-change | T183; blocks T21 | ✅ | Review clean, no fix commit. Case green faithful and alone, original milestones met (35/185/805/1964/2295); regression set green (level_entry red identically on base). Mutations of fixes 3, 4, 7 and the CloudSprites tag go red; fix 1's survives, logged. Deviation held by removing the tag (red at frame 478). |
 | T191 | chain-pause | T183; blocks T21 | ⬜ | |
 | T192 | chain-level-code | T183, T190; blocks T21 | ⬜ | |

@@ -19,6 +19,8 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 | Date | | Finding |
 |---|---|---|
 | 2026-10-15 | 📌 | T190 review: dropping `WorldLoad`'s end-picture `Reached(h0+$411c)` (fix 1) leaves `chain-w1-4-to-w2-1` green: the engine's end picture is then compared against the original's 324 load frames instead of skipping them. Kept per the task doc; no test defends it. |
+| 2026-10-15 | 📌 | T185 review, read-only: a frame ending in $d19c..$d1ad (stomp already declined) makes the engine re-decide the stomp with the frog after the blank; the original does not. Unprobed whether any case ends there. |
+| 2026-10-15 | 🐞 | T185, fixed: a frame ending in the frog's hitbox walk with an entry taken but undecided (h0+$d132..$d17b, $d19c..$d1ad) counted it done; the engine stomped before the blank. enemies-w6-4 1090. `sync::pass_step`. |
 | 2026-10-15 | 🐞 | T183 review: `top_loop`'s Bcc added backward displacements unwrapped; each death's `bmi` panicked in debug (`tests/alone.rs` 3 red). Reproduced by debug run, fixed (`wrapping_add`), alone.rs locks it. |
 | 2026-10-15 | 🐞 | T183 review: nine tests still expected T21's stop after a tally (frog_cases 5, enemies_w5_cases 4); the bonus level's end idled with no `unported`. Rewritten to the next level's flow; bonus `unported` restored. |
 | 2026-10-15 | 📌 | T183 review sweep: test-side branch targets add signed displacements unwrapped (`enemies_w2/w3/w4/w5/w6_routines.rs`, `examples/enemies_map.rs`); green today, a backward one would panic in debug. Not fixed. |
