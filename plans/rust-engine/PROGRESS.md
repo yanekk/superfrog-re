@@ -41,7 +41,7 @@ done · ⛔ blocked, needs a human. A task dropped by a plan amendment leaves th
 | T15 | items-and-scoring | T14 | ✅ | |
 | T16 | enemies-worlds-1-3 | T15 | ✅ | |
 | T17 | enemies-worlds-4-6 | T15 | ✅ | |
-| T18 | bosses | T16, T17, T180, T182 | ⬜ | |
+| T18 | bosses | T16, T17, T180, T182 | ✅ | |
 | T19 | slot-and-bonus | T15 | ✅ | |
 | T20 | front-end | T08, T11, T12, T13 | ✅ | |
 | T21 | game-flow | T18, T19, T20, T181, T183 | ⬜ | |
@@ -138,7 +138,7 @@ done · ⛔ blocked, needs a human. A task dropped by a plan amendment leaves th
 | T145 | w4-4-dart-21 | T132; blocks T21 | ✅ | |
 | T147 | w6-2-completion | T104, T180, T182; blocks T21 | ✅ | Reviewed: exit on the original at 8429, 97 coins by 6650 (`record`), alone green 334, faithful red only at 6664 (`scan`). Fixed: T194 doc's "only `blanks: 2` frame" premise (54 such), missing Interface, exit pin added; mutation (script cut at 8300) stays green alone, so no test defends the exit yet (T194). |
 | T148 | w6-2-alt-completion | T104, T147, T180, T182; blocks T21 | ⬜ | |
-| T149 | w6-3-completion | T104, T180, T182; blocks T21 | ⬜ | |
+| T149 | w6-3-completion | T104, T180, T182; blocks T21 | ✅ | |
 | T150 | w6-4-completion | T104, T180, T182; blocks T21 | ⬜ | |
 | T151 | w6-4-alt-completion | T104, T150, T180, T182; blocks T21 | ⬜ | |
 | T160 | attract-demo-entry | T33, T180 | ✅ | |
@@ -156,7 +156,7 @@ done · ⛔ blocked, needs a human. A task dropped by a plan amendment leaves th
 | T184 | alone-pass-drift | T182; blocks T21, T18, T115, T147, T148, T149, T150, T151, T154, T166, T167, T168 | ✅ | |
 | T185 | w6-4-lag-frog-fall | T182; blocks T21 | ✅ | |
 | T190 | chain-world-change | T183; blocks T21 | ✅ | |
-| T191 | chain-pause | T183; blocks T21 | ⬜ | |
+| T191 | chain-pause | T183; blocks T21 | ✅ | |
 | T192 | chain-level-code | T183, T190; blocks T21 | ⬜ | |
 | T193 | chain-e2e | T183; blocks T21 | ✅ | |
 | T194 | w6-2-sfx-double-blank | T147; blocks T21 | ⬜ | |

@@ -94,3 +94,26 @@ fn enemies_w6_3_alt_complete() {
     let resynced: Vec<u32> = o.resynced.iter().map(|r| r.0).collect();
     assert_eq!(resynced, [6129, 12379], "{:?}", o.resynced);
 }
+
+/// W6-3's first map completed (T149): the 98 coins the exit needs and switch 49 to the exit
+/// (40 of the map's 138 coins left, owner 2026-10-15), green faithful and alone (254 milestones),
+/// re-synced after the lags at 5375 and 5979, as DESIGN §2.1 lets checks 1–3 do.
+#[test]
+fn enemies_w6_3_complete() {
+    let name = "enemies-w6-3-complete";
+    let case = sf_conform::Case::load(&sf_conform::cases_dir().join(format!("{name}.toml")))
+        .unwrap_or_else(|e| panic!("{e}"));
+    let o = sf_conform::run(&case).unwrap_or_else(|d| panic!("{name}: {d}"));
+    let resynced: Vec<u32> = o.resynced.iter().map(|r| r.0).collect();
+    assert_eq!(resynced, [5375, 5979], "{:?}", o.resynced);
+    // The run reaches the exit, the coins it needs all taken: a script cut short stays green
+    // otherwise, both sides agreeing on a level not finished.
+    let met = o.milestones.expect("check 4 ran");
+    let exits: Vec<u64> = met
+        .iter()
+        .filter(|(_, m)| *m == sf_conform::Milestone::LevelExit { world: 6, level: 3 })
+        .map(|(f, _)| *f)
+        .collect();
+    assert_eq!(exits, [7891]);
+    assert!(met.iter().any(|(_, m)| *m == sf_conform::Milestone::CoinTaken { left: 0 }));
+}

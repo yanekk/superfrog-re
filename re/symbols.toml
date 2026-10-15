@@ -525,6 +525,15 @@ note = "world selector into obj_flag_jumptab: $100 per world"
 [[sym]]
 exe = "d1_c03"
 hunk = 0
+offset = 0x9fe
+name = "level_palette_ptr"
+kind = "var"
+size = 4
+note = "pointer to the level's palette; touch_boss_hit's flash steps back to it (T18)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
 offset = 0xa06
 name = "level_state"
 kind = "var"
@@ -1647,7 +1656,16 @@ hunk = 0
 offset = 0x236b4
 name = "touch_boss_hit"
 kind = "func"
-note = "touch handler: boss hit counter"
+note = "witch's touch: -1 hp; at 0 white flash (fade 0 mode 1), witch_beaten, level_state $64 (T18)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x23734
+name = "witch_flash"
+kind = "table"
+size = 0x40
+note = "32 colours, all white: the palette touch_boss_hit steps back from (T18)"
 
 [[sym]]
 exe = "d1_c03"
@@ -2007,7 +2025,23 @@ hunk = 0
 offset = 0x259ae
 name = "final_boss_init"
 kind = "func"
-note = "final boss (witch) init (inferred)"
+note = "witch (template 134) init: $160 below the camera, rising; $32 passes' wait (T18)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x259ec
+name = "witch_beaten"
+kind = "func"
+note = "the beaten witch: bob follows, despawn if off screen (T18)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x259fc
+name = "witch_rise_wait"
+kind = "func"
+note = "counts +$6c below 0, then final_boss_update (T18)"
 
 [[sym]]
 exe = "d1_c03"
@@ -2015,7 +2049,41 @@ hunk = 0
 offset = 0x25a16
 name = "final_boss_update"
 kind = "func"
-note = "final boss update"
+note = "witch rising, slowing to 2 a pass; at camera+$70 starts witch_bob (T18)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x25a7c
+name = "witch_bob"
+kind = "func"
+note = "witch bobs on witch_bob_path; at its end with +$68 run out, witch_loop (T18)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x25ade
+name = "witch_bob_path"
+kind = "table"
+size = 0x62
+note = "every 4th byte a word: y from camera top+$20; ends $ffff (T18)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x25b40
+name = "witch_loop"
+kind = "func"
+note = "witch flies witch_loop_path; at its end witch_bob again, same pass (T18)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x25bba
+name = "witch_loop_path"
+kind = "table"
+size = 0xd0
+note = "x, y word pairs from camera top-left (+$20 down); ends $ffffffff (T18)"
 
 [[sym]]
 exe = "d1_c03"

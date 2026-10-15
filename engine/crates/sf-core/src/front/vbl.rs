@@ -88,19 +88,24 @@ pub(super) fn end(cx: &mut Cx) {
 /// `$11aa6` and the pointer's sprite: JOY0DAT never moves on the oracle (no mouse movement is
 /// scripted), so only the clamps change anything.
 fn mouse(cx: &mut Cx) {
+    pointer(cx.s);
+}
+
+/// [`mouse`] on the state alone: the paused level's vertical blank runs it too (T191).
+pub(crate) fn pointer(s: &mut crate::state::State) {
     let joy0dat = 0u16;
-    cx.s.set_w(MOUSE, joy0dat);
-    let x = cx.s.w(MOUSE + 2) as i16;
+    s.set_w(MOUSE, joy0dat);
+    let x = s.w(MOUSE + 2) as i16;
     let x = x.clamp(0, 0x13f);
     let x = if x <= 0 { 0 } else { x };
-    cx.s.set_w(MOUSE + 2, x as u16);
-    let y = cx.s.w(MOUSE + 4) as i16;
+    s.set_w(MOUSE + 2, x as u16);
+    let y = s.w(MOUSE + 4) as i16;
     let y = if y <= 0xc8 { 0xc8 } else { y };
     let y = if (y as u16) >= 0xf0 { 0xf0 } else { y };
-    cx.s.set_w(MOUSE + 4, y as u16);
-    cx.s.set_w(POINTER, x as u16);
-    cx.s.set_w(POINTER + 2, y as u16);
-    sprite::update(cx.s, POINTER);
+    s.set_w(MOUSE + 4, y as u16);
+    s.set_w(POINTER, x as u16);
+    s.set_w(POINTER + 2, y as u16);
+    sprite::update(s, POINTER);
 }
 
 /// `kbd_poll` (`$15ff2`): every second frame, the keyboard's last byte into `key_down`/`key_up`.

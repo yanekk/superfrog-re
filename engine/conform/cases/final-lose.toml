@@ -1,0 +1,7 @@
+# The frog dies to the witch (T18): jumping on its start block, it loses its four hearts to her
+# loop and its life at 2129; the level's loop ends, `top_loop` runs `level_init_lw` and
+# `level_start` again (2233) and she rises anew. Game over from the final level is not here: the
+# last death is a frame early in the engine (FINDINGS 2026-10-15, T18).
+sync = { level = "WW-1" }
+script = "final-lose"
+frames = 2500
