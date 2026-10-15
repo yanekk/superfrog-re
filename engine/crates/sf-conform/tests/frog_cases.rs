@@ -277,6 +277,17 @@ fn complete_w1_3() {
     completes("complete-w1-3", &[5079]);
 }
 
+/// W4-4 played from its start to its exit and through the tally (T132, T145): the pacer's hurt at
+/// 2515, marker 20's dart's at 4717, a crusher's at 22458, marker 21's dart's at 23577, the exit
+/// at 24200 and fire taking the points. Four re-syncs, each after a lag: the panel at 8030 and
+/// 23129 (as W1-3's 5079), the play field buffer at 9003 (T121's class) and the hitboxes at 15914.
+/// Frame 5252's picture (the frog thrown by a pad) and 24201's (the exit fade's palette step) are
+/// left out in the case.
+#[test]
+fn complete_w4_4() {
+    completes("complete-w4-4", &[8030, 9003, 15914, 23129]);
+}
+
 /// W1-1 played to its exit (T106): green through the exit at 4473, which `level_state` 1 reaches
 /// in a late pass (`sync::mid_pass`), to frame 4476. Frame 4475 shows the exit-fade palette one
 /// step off (T131's): faithful tolerates and counts it (T180); `--strict` diverges there.

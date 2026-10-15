@@ -619,7 +619,8 @@ fn main() {
                                         // The exit before the last `--via`/`--stomp`/`--hurt`
                                         // is reached: as bad as a death (T103: W4-3's exit
                                         // lies on the way to its crushers).
-                                        if early_exit && n.state().l(LEVEL_STATE) != 0xffff_fffe {
+                                        // Any state not negative: the level's first frame or two are −1 before −2 (T132).
+                                        if early_exit && (n.state().l(LEVEL_STATE) as i32) >= 0 {
                                             return None;
                                         }
                                         if inside(n.state()) {
@@ -684,7 +685,7 @@ fn main() {
             for (k, &x) in p.iter().enumerate() {
                 sync::step_inserting(amiga, x).unwrap();
                 let b = amiga.peek(LEVEL_STATE, 4);
-                let ended = u32::from_be_bytes([b[0], b[1], b[2], b[3]]) != 0xffff_fffe;
+                let ended = (u32::from_be_bytes([b[0], b[1], b[2], b[3]]) as i32) >= 0;
                 if peek_w(amiga, FROG + f::LIVES) != lives || peek_w(amiga, FROG + f::DYING) != 0 || (early_exit && ended) {
                     eprintln!(
                         "  a path dies {k} frames in on the original, frog at {},{}",
