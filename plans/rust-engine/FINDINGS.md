@@ -19,6 +19,10 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 | Date | | Finding |
 |---|---|---|
 | 2026-10-15 | 🔄 | Owner: faithful replaces frame-exact (DESIGN §2.1): state per pass, tolerant picture and sound, engine alone meets the original's milestones; no hand checks as gates. T180–T183 added; T128, T131, T140–T143, T146, T153, T155, T161, T165, T169–T171 dropped. |
+| 2026-10-15 | 📌 | T126 review: W5 completions' exclusions name T131, but T131's done-when covers only `complete-w4-*`; nothing removes them. Play-field-buffer re-syncs (W5-1 1497, W5-2 2196, W5-3 1608, W5-4 3384) persist after T121 landed. |
+| 2026-10-15 | 🐞 | T126, open, no task: with many pages the tally's points print also runs past the frame's end; the engine's job masks only the score's. Repro: df9bad6's `enemies-w5-4-complete` script, frame 7959. Fix tried in 1b2bc81 (reverted: final route misses it). |
+| 2026-10-15 | 📌 | T126: W5 completions hit T131's faults: spring-pad sprite (W5-2 967, W5-4 657), exit-fade palette (W5-2 6095, W5-4 8193), `vbl_count` after lag (W5-2 4681, pinned). W5-1 744 is 595's class. Re-syncs not re-checked frozen (T125 review). |
+| 2026-10-15 | 📌 | T126: `plan_exit --coins 0`, 150 idle frames first, completes W5-1…3 unaided. W5-4's coin field strands the frog at 286–291,19–26: steer `--via 288,17` then `273,9`. A stall idles the frog; re-plan any long one. |
 | 2026-10-15 | 🔄 | Owner, T129: conformance anchors the slot machine's Paula writes (`Game::anchor_writes`) to time its audio DMA and the lamps' start. Normal play uses the engine's lines: measured, 2–4 of ~70 flashes cut a lamp differently. |
 | 2026-10-15 | 📌 | T129: lamps after the picture, on `story::sim`'s bus, match the original to the cycle (190 draws, 4 cases). VERTB is seen by a poll asking from line 0 cycle 0, not the intro's `IRQ_ENTRY` 10. |
 | 2026-10-15 | 📌 | T129, not fixed: Moira's `mulu.w #i` works (17+set bits)×2 clocks after its prefetch and `jsr abs.l` is `pwwpp`; story's `op::MULU_3` (17 `n`) and `op::JSR_ABS_L` (`ppwwpp`) each run 2 DMA cycles short/long. |

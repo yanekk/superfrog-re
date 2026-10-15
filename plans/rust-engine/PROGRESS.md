@@ -128,7 +128,7 @@ done · ⛔ blocked, needs a human. A task dropped by a plan amendment leaves th
 | T123 | enemies-w5-2-case | T39; blocks T18 | ✅ | |
 | T124 | enemies-w5-3-case | T39; blocks T18 | ✅ | |
 | T125 | enemies-w5-4-case | T39; blocks T18 | ✅ | |
-| T126 | w5-completions | T39, T101, T121, T123, T124, T125; blocks T21 | ⬜ | |
+| T126 | w5-completions | T39, T101, T121, T123, T124, T125; blocks T21 | ✅ | |
 | T127 | restore-sprite-wait | T101; blocks T21 | ✅ | |
 | T130 | front-vbl-318 | T100; blocks T21 | ✅ | |
 | T129 | slot-lamp-cut | T74; blocks T21 | ✅ | |

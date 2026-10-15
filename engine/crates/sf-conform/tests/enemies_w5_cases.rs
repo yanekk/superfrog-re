@@ -294,3 +294,72 @@ fn enemies_w5_4() {
         ],
     );
 }
+
+/// `name` run green to its end with re-syncs at exactly `pins` (as [`run`]), the level's outcome
+/// first set on `exit_at`, the exit (`level_state` 1, back to 0 in the same pass), then one frame more: the next level's (T21's),
+/// the level completed with the points taken, no slot machine (T126).
+fn completes(name: &str, pins: &[u32], exit_at: u32) {
+    let mut case = sf_conform::Case::load(&sf_conform::cases_dir().join(format!("{name}.toml")))
+        .unwrap_or_else(|e| panic!("{e}"));
+    let mut exit = None;
+    let o = sf_conform::run_with(&case, |fr, g: &mut Game| {
+        if exit.is_none() && g.level_outcome().is_some() {
+            exit = Some((fr, g.level_outcome()));
+        }
+    })
+    .unwrap_or_else(|d| panic!("{name}: {d}"));
+    let resynced: Vec<u32> = o.resynced.iter().map(|r| r.0).collect();
+    assert_eq!(resynced, pins, "{name}: {:?}", o.resynced);
+    assert!(
+        matches!(exit, Some((f, Some(sf_core::level::LevelOutcome::Completed { .. }))) if f == exit_at),
+        "{name}: {exit:?}"
+    );
+    let end = case.frames;
+    case.frames += 1;
+    let d = sf_conform::run(&case).expect_err("the next level is T21's");
+    assert_eq!(d.frame, end, "{name}: {d}");
+    assert_eq!(d.unported, ["the next level after the tally (T21)"]);
+    assert!(
+        matches!(
+            d.level_outcome,
+            Some(sf_core::level::LevelOutcome::Completed { tally }) if !tally.slot_machine
+        ),
+        "{name}: {:?}",
+        d.level_outcome
+    );
+}
+
+/// W5-1 played from its start to its exit and through the tally (T126): the exit at 2254, fire
+/// taking the points. Two re-syncs pinned: the play field buffer at 1497 (T121's class) and the
+/// panel at 2182 after a lag (as `enemies-w5-1`'s at 979). Frame 744's picture is left out (the
+/// frog's sprites, `enemies-w5-1` 595's class).
+#[test]
+fn enemies_w5_1_complete() {
+    completes("enemies-w5-1-complete", &[1497, 2182], 2254);
+}
+
+/// W5-2 played from its start to its exit and through the tally (T126): the exit at 6095, fire
+/// taking the points. Two re-syncs pinned: the play field buffer at 2196 (T121's class) and
+/// `vbl_count` at 4681 after a lag (`complete-w4-2`'s 1927 and 4964, T131's). Frames 967 (the
+/// frog on the spring pad) and 6095 (the exit fade's palette step) leave out the picture, T131's.
+#[test]
+fn enemies_w5_2_complete() {
+    completes("enemies-w5-2-complete", &[2196, 4681], 6095);
+}
+
+/// W5-3 played from its start to its exit and through the tally (T126): the exit at 6864, fire
+/// taking the points, nothing left out. One re-sync pinned: the play field buffer at 1608
+/// (T121's class).
+#[test]
+fn enemies_w5_3_complete() {
+    completes("enemies-w5-3-complete", &[1608], 6864);
+}
+
+/// W5-4 played from its start to its exit and through the tally (T126): the exit at 8193, fire
+/// taking the points. Two re-syncs pinned: the play field buffer at 3384 (T121's class) and the panel at 7980
+/// after a lag. Frames 657 (the frog on the spring pad) and 8193 (the exit fade's palette step)
+/// leave out the picture, T131's.
+#[test]
+fn enemies_w5_4_complete() {
+    completes("enemies-w5-4-complete", &[3384, 7980], 8193);
+}
