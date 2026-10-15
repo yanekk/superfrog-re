@@ -356,12 +356,28 @@ fn run_inner(
             prev = mem;
             continue;
         }
+        // Memory a job is still writing in the original is compared once the job is over (owner,
+        // 2026-10-12), after a lag too (T106: W1-1's exit fade set up from a late pass's end).
+        // A job is pending until the original has been in it and left it (it may not have begun
+        // yet when the engine, which does all at once, reports it).
+        // One the original is never seen in at a frame's end it finished within a frame: it is
+        // dropped once it is two frames old.
+        jobs.extend(ours.jobs.iter().map(|j| (j.clone(), false, 0)));
+        let chain = sync::main_chain(&amiga.cpu(), &mem);
+        jobs.retain_mut(|(j, seen, age)| {
+            let inside = j.inside.iter().any(|a| chain.contains(a));
+            let keep = inside || (!*seen && *age < 2);
+            *seen |= inside;
+            *age += 1;
+            keep
+        });
+        let masked: Vec<(u32, u32)> = jobs.iter().flat_map(|(j, _, _)| j.writes.clone()).collect();
         if stepped && after_lag {
             after_lag = false;
             lag.left_out(f, false, &mut outcome);
             if case.compare.vars
                 && let Some((v, theirs, ours)) =
-                    compare::vars(game.layout(), &game.probe(), &mem, &[])
+                    compare::vars(game.layout(), &game.probe(), &mem, &masked)
             {
                 if !case.resync {
                     let d = Divergence {
@@ -400,22 +416,6 @@ fn run_inner(
             prev = mem;
             continue;
         }
-        // Memory a job is still writing in the original is compared once the job is over (owner,
-        // 2026-10-12).
-        // A job is pending until the original has been in it and left it (it may not have begun
-        // yet when the engine, which does all at once, reports it).
-        // One the original is never seen in at a frame's end it finished within a frame: it is
-        // dropped once it is two frames old.
-        jobs.extend(ours.jobs.iter().map(|j| (j.clone(), false, 0)));
-        let chain = sync::main_chain(&amiga.cpu(), &mem);
-        jobs.retain_mut(|(j, seen, age)| {
-            let inside = j.inside.iter().any(|a| chain.contains(a));
-            let keep = inside || (!*seen && *age < 2);
-            *seen |= inside;
-            *age += 1;
-            keep
-        });
-        let masked: Vec<(u32, u32)> = jobs.iter().flat_map(|(j, _, _)| j.writes.clone()).collect();
         lag.compared(&mut outcome);
         let mut rendered = None;
         if case.compare.render {

@@ -1,0 +1,20 @@
+# W5-2 (T123): west from the start (the frog is held until 150) with a floating jump over the
+# first spike pit and the pillar onto the icy block, a jump at once over the second pit onto the
+# next block, and another over the spikes past the second dart (54), which hurts the frog. Down
+# into the shooters' room, stopped (on the ice, left braking) until the shooter has fired, then
+# east under the crushers to the pacer on row 30.
+0: -
+150: L
+188: L U
+215: L
+249: -
+261: L U
+271: L
+317: L U
+324: L
+400: -
+440: R
+580: -
+600: L
+612: -
+700: R

@@ -299,6 +299,19 @@ impl Game {
 
     /// One PAL frame on the original's schedule (conformance runs; see [`Pacing`]).
     pub fn step_paced(&mut self, input: FrameInput, pacing: Pacing) -> FrameOut {
+        self.step_inner(input, pacing, true)
+    }
+
+    /// [`Game::step`] without drawing a level frame's picture, which nothing in the state reads:
+    /// the game is left exactly as `step` leaves it, and the [`FrameOut`]'s picture is empty when
+    /// a level frame would have been drawn. For planners only, which step the engine thousands of
+    /// times a frame of plan and never look (T104, `examples/plan_exit_w6`); conformance runs and the
+    /// app keep [`Game::step`]. Locked by `sf-conform`'s `tests/step_unseen.rs`.
+    pub fn step_unseen(&mut self, input: FrameInput) -> FrameOut {
+        self.step_inner(input, Pacing::Unpaced, false)
+    }
+
+    fn step_inner(&mut self, input: FrameInput, pacing: Pacing, draw: bool) -> FrameOut {
         // A key going down or up this frame is the byte the keyboard sends (the last one wins).
         for code in input.keys.codes() {
             if !self.keys.contains(code) {
@@ -411,7 +424,11 @@ impl Game {
             self.shown = shown.clone();
         }
         FrameOut {
-            picture: shown.unwrap_or_else(|| self.render(View::default())),
+            picture: match shown {
+                Some(p) => p,
+                None if draw => self.render(View::default()),
+                None => Picture::default(),
+            },
             paula,
             load: None,
             resync: Vec::new(),

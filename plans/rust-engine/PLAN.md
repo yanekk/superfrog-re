@@ -178,8 +178,26 @@ headless.
 | [T131](tasks/T131-w4-completion-faults.md) | w4-completion-faults | T103, T121, T127; blocks T18, T21 |
 | [T132](tasks/T132-w4-4-completion.md) | w4-4-completion | T103; blocks T18, T131 |
 | [T145](tasks/T145-w4-4-dart-21.md) | w4-4-dart-21 | T132; blocks T18, T131 |
+| [T146](tasks/T146-w6-completion-faults.md) | w6-completion-faults | T104; blocks T18, T21 |
+| [T147](tasks/T147-w6-2-completion.md) | w6-2-completion | T104; blocks T18, T146 |
+| [T148](tasks/T148-w6-2-alt-completion.md) | w6-2-alt-completion | T104, T147; blocks T18, T146 |
+| [T149](tasks/T149-w6-3-completion.md) | w6-3-completion | T104; blocks T18, T146 |
+| [T150](tasks/T150-w6-4-completion.md) | w6-4-completion | T104; blocks T18, T146 |
+| [T151](tasks/T151-w6-4-alt-completion.md) | w6-4-alt-completion | T104, T150; blocks T18, T146 |
+| [T153](tasks/T153-bob-draw-step-cuts.md) | bob-draw-step-cuts | T121; blocks T21 |
+| [T160](tasks/T160-attract-demo-entry.md) | attract-demo-entry | T33 |
+| [T161](tasks/T161-attract-demo-init-timing.md) | attract-demo-init-timing | T160 |
+| [T162](tasks/T162-attract-demo-level-start.md) | attract-demo-level-start | T161 |
+| [T163](tasks/T163-attract-demo-return.md) | attract-demo-return | T162 |
+| [T164](tasks/T164-attract-demo-cycles.md) | attract-demo-cycles | T163 |
+| [T154](tasks/T154-w1-4-completion.md) | w1-4-completion | T106, T127; blocks T18 |
+| [T165](tasks/T165-w1-1-completion.md) | w1-1-completion | T106, T131; blocks T18 |
 | [T120](tasks/T120-conform-no-silent-pass.md) | conform-no-silent-pass | T05, T36; blocks T21 |
 | [T104](tasks/T104-w6-completions.md) | w6-completions | T40, T101, T102; blocks T18 |
+| [T155](tasks/T155-w2-completions-green.md) | w2-completions-green | T122, T127, T131, T132; blocks T18 |
+| [T166](tasks/T166-w2-2-completion.md) | w2-2-completion | T122; blocks T18, T155 |
+| [T167](tasks/T167-w2-3-completion.md) | w2-3-completion | T122; blocks T18, T155 |
+| [T168](tasks/T168-w2-4-completion.md) | w2-4-completion | T122; blocks T18, T155 |
 | [T169](tasks/T169-power-on-cases-green.md) | power-on-cases-green | T160; blocks T21 |
 | [T170](tasks/T170-game-over-timeup-copper.md) | game-over-timeup-copper | T34; blocks T21 |
 

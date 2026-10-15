@@ -1,0 +1,9 @@
+# W1-1 played from its start to its exit with every object live, no exclusions (T106): the 90
+# coins, the exit at frame 4473 (`level_state` 1) after a late pass, the exit fade and the tally,
+# fire in its wait taking the points; ends on frame 4657, frame 4658 being the next level's. Not in
+# the test block: frames 4475 and 4477 show one palette colour a fade step off (T131's exit-fade
+# fault; T165 carries this case).
+sync = { level = "W1-1" }
+script = "complete-w1-1"
+frames = 4658
+resync = false

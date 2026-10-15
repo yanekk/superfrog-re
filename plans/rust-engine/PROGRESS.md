@@ -55,7 +55,7 @@ done · ⛔ blocked, needs a human.
 | T30 | acceptance | T29 | ⬜ | |
 | T31 | render-remaining-levels | T13 | ✅ | |
 | T32 | story-intro | T20; blocks T21 | ✅ | |
-| T33 | attract-demo | T16, T20 | ⬜ | |
+| T33 | attract-demo | T16, T20 | ✅ | |
 | T34 | game-over | T15, T20; blocks T21 | ✅ | |
 | T35 | end-sequence | T20; blocks T21 | ✅ | |
 | T36 | items-on-the-beam | T15 | ✅ | |
@@ -109,7 +109,7 @@ done · ⛔ blocked, needs a human.
 | T101 | lag-long-pass | T81, T82; blocks T21 | ✅ | |
 | T102 | items-w3-faults | T101; blocks T21 | ✅ | |
 | T105 | w2-1-hang-fruit-life | T85; blocks T21 | ✅ | |
-| T106 | w1-completions | T42, T86, T101; blocks T18 | ⬜ | |
+| T106 | w1-completions | T42, T86, T101; blocks T18 | ✅ | |
 | T107 | enemies-w1-2-case | T42; blocks T18, T33, T106 | ✅ | |
 | T108 | enemies-w1-3-case | T42; blocks T18, T33, T106 | ✅ | |
 | T109 | enemies-w1-4-case | T42; blocks T18, T33, T106 | ✅ | |
@@ -120,11 +120,11 @@ done · ⛔ blocked, needs a human.
 | T113 | enemies-w3-4-case | T44, T102; blocks T18 | ⬜ | |
 | T114 | enemies-w3-activation | T44; blocks T18 | ✅ | |
 | T115 | w3-completions | T44, T101, T102, T111, T112, T113; blocks T18 | ⬜ | |
-| T121 | bob-draw-cut | T101; blocks T21 | ⬜ | |
-| T122 | w2-completions | T43, T101, T121; blocks T18 | ⬜ | |
+| T121 | bob-draw-cut | T101; blocks T21 | ✅ | |
+| T122 | w2-completions | T43, T101, T121; blocks T18 | ✅ | |
 | T120 | conform-no-silent-pass | T05, T36; blocks T21 | ✅ | Review clean, no fix commit. Old `items-upper-w2-1` rerun: green, mid-pass 5; pins 133/261 measured; two limit mutations caught. `all` red only pre-existing, owners: power-on ×10 T169; complete-w4-1/2 T131; story-intro-full, story-scene4-sound T144; enemies-w6-4 T146; game-over-timeup-w1-1 T170 (owner accepted). |
-| T104 | w6-completions | T40, T101, T102; blocks T18 | ⬜ | |
-| T123 | enemies-w5-2-case | T39; blocks T18 | ⬜ | |
+| T104 | w6-completions | T40, T101, T102; blocks T18 | ✅ | |
+| T123 | enemies-w5-2-case | T39; blocks T18 | ✅ | |
 | T124 | enemies-w5-3-case | T39; blocks T18 | ⬜ | |
 | T125 | enemies-w5-4-case | T39; blocks T18 | ⬜ | |
 | T126 | w5-completions | T39, T101, T121, T123, T124, T125; blocks T18 | ⬜ | |
@@ -141,6 +141,24 @@ done · ⛔ blocked, needs a human.
 | T131 | w4-completion-faults | T103, T121, T127; blocks T18, T21 | ⬜ | |
 | T132 | w4-4-completion | T103; blocks T18, T131 | ⬜ | |
 | T145 | w4-4-dart-21 | T132; blocks T18, T131 | ⬜ | |
+| T146 | w6-completion-faults | T104; blocks T18, T21 | ⬜ | |
+| T147 | w6-2-completion | T104; blocks T18, T146 | ⬜ | |
+| T148 | w6-2-alt-completion | T104, T147; blocks T18, T146 | ⬜ | |
+| T149 | w6-3-completion | T104; blocks T18, T146 | ⬜ | |
+| T150 | w6-4-completion | T104; blocks T18, T146 | ⬜ | |
+| T151 | w6-4-alt-completion | T104, T150; blocks T18, T146 | ⬜ | |
+| T153 | bob-draw-step-cuts | T121; blocks T21 | ⬜ | |
+| T160 | attract-demo-entry | T33 | ⬜ | |
+| T161 | attract-demo-init-timing | T160 | ⬜ | |
+| T162 | attract-demo-level-start | T161 | ⬜ | |
+| T163 | attract-demo-return | T162 | ⬜ | |
+| T164 | attract-demo-cycles | T163 | ⬜ | |
+| T154 | w1-4-completion | T106, T127; blocks T18 | ⬜ | |
+| T165 | w1-1-completion | T106, T131; blocks T18 | ⬜ | |
+| T155 | w2-completions-green | T122, T127, T131, T132; blocks T18 | ⬜ | |
+| T166 | w2-2-completion | T122; blocks T18, T155 | ⬜ | |
+| T167 | w2-3-completion | T122; blocks T18, T155 | ⬜ | |
+| T168 | w2-4-completion | T122; blocks T18, T155 | ⬜ | |
 | T169 | power-on-cases-green | T160; blocks T21 | ⬜ | |
 | T170 | game-over-timeup-copper | T34; blocks T21 | ⬜ | |
 

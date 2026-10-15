@@ -1,0 +1,9 @@
+# W1-2 played from its start to its exit with every object live, no exclusions (T106): the 68
+# coins (the last by frame 5056), no hurt, the exit at frame 5182 (`level_state` 1), the exit fade
+# and the tally, fire in its wait taking the points; ends on frame 5366, frame 5367 being the next
+# level's (T21's). Planned by `examples/plan_exit` (a `--via 176,42` off the block at 180-188,38
+# from frame 1740), checked on the original chunk by chunk; `sf-conform scan` finds none differing.
+sync = { level = "W1-2" }
+script = "complete-w1-2"
+frames = 5367
+resync = false
