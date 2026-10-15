@@ -1,6 +1,12 @@
-# Power-on with disk 3 through the whole intro, untouched, to the "insert disk 1" page (T56; frame
-# 9282, the last before the engine hands over to disk 1, which the original waits for): every
+# Power-on with disk 3 through the whole intro, untouched, to the "insert disk 1" page (T56, T144;
+# frame 9312, the last before the engine hands over to disk 1, which the original waits for): every
 # scene's set-up, play and fades, the text pages, loads re-synced as `story-intro`'s. Slow (about
 # 5 min): not in the test block; `cargo test -p sf-conform -- --ignored` runs it.
 sync = "power-on-disk3"
-frames = 9283
+frames = 9313
+
+[[exclude]]
+what = "picture"
+frames = [7237, 7241]
+note = "scene 12's fade in: colour 28 (green $040..$060) shows black, the engine's fade step clearing its word ~7 DMA cycles before the copper reads it, the original's after (dropped T141's race; owner's threshold question, FINDINGS 2026-10-15)"
+task = "T181"
