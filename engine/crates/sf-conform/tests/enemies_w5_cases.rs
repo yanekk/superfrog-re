@@ -188,3 +188,38 @@ fn enemies_w5_2() {
     );
     assert!(seen.left(0x26d14), "a shot freed");
 }
+
+/// W5-4 (T125) from its start: up, then east down the ice slope, past the 2/3 pacers (79/80,
+/// markers 2 and 3, spawned as the camera passes 17/28,19 and 64/81,36), to the switch at 98,37,
+/// which opens the gate at 135,34; round the east side and back west along the top into the
+/// watchers' room, where the template-30 fallers (marker 12) fall once in view and the one at
+/// 150,9 hurts the frog (about frame 4770). One re-sync pinned, seen with enemies frozen too: the
+/// play field buffer at 414 (T121's class). The other W5-4 types are `enemies-w5-1`'s (FINDINGS
+/// 2026-10-15, T125).
+#[test]
+fn enemies_w5_4() {
+    let seen = run("enemies-w5-4", &[414]);
+    assert!(
+        seen.frames.windows(2).any(|w| w[0].0 >= 200 && w[1].2 && !w[0].2),
+        "hurt by an enemy"
+    );
+    met_init(
+        &seen,
+        &[
+            (0x25146, "faller 30 (marker 12)"),
+            (0x26806, "pacer 79 (marker 3)"),
+            (0x26840, "pacer 80 (marker 2)"),
+        ],
+    );
+    met(
+        &seen,
+        &[
+            (0x2515c, "faller 30 hanging"),
+            (0x251a8, "faller 30 shaking"),
+            (0x251d8, "faller 30 falling"),
+            (0x25248, "faller 30 down"),
+            (0x26874, "pacer (2/3)"),
+            (0x2502a, "watcher looking"),
+        ],
+    );
+}

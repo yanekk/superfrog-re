@@ -1,0 +1,15 @@
+# W5-4 with every object live (T125): east down the ice slope past the 2/3 pacers (79/80), the
+# switch at 98,37 and its gate, round the east side into the watchers' room, where the
+# template-30 fallers (marker 12) fall and the one at 150,9 hurts the frog. The other W5-4 types
+# are enemies-w5-1's (FINDINGS 2026-10-15, T125). The re-sync at 414 (play field buffer, T121's
+# class) is pinned in enemies_w5_cases.rs; also with enemies frozen.
+sync = { level = "W5-4" }
+script = "enemies-w5-4"
+frames = 4900
+resync = true
+
+[[exclude]]
+what = "picture"
+frames = [1878, 1878]
+note = "the engine draws the frog's hardware sprites differently for one frame on time (jumping by the jump-through floor at 190,42), every variable equal; with enemies frozen too (FINDINGS 2026-10-15, T125)"
+task = "unowned: FINDINGS 2026-10-14 (T39)"
