@@ -18,6 +18,24 @@ wanted disk, h0+$af54, changes). The code's digits come from `password_table` (e
 `sync.rs`'s `drive_to` shows the typing (raw keys 01..0A, 16 frames apart from `TYPE_FROM`).
 `world_load_w3` (h0+$9976) has world 1's shape; its effects are `L1FX-2` (`BankId::Worlds36`).
 
+## Design sections this implements
+
+DESIGN §2.1.
+
+## Files
+
+- `engine/crates/sf-core/src/front/{chain.rs,password.rs,menu.rs}`.
+- `engine/crates/sf-conform/src/{lib.rs,sync.rs}` (disks served on every case).
+- `engine/conform/{scripts,cases}/chain-level-code*`; `engine/crates/sf-conform/tests/chain.rs`.
+
+## Interface
+
+No new public API.
+
+## Tests
+
+- [ ] `chain-level-code` in `tests/chain.rs`: faithful and alone, no `unported`.
+
 ## Done when
 
 - [ ] `chain-level-code` green, faithful and alone; no `unported`.

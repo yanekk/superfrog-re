@@ -17,6 +17,19 @@ cleared, `logic_running` set, back into the pass (phase 9 of `level::frame::pass
 Rust function, so the pause needs the level scene to stop mid-pass across frames: phases 10–13
 after unpausing.
 
+## Design sections this implements
+
+DESIGN §2.1.
+
+## Files
+
+- `engine/crates/sf-core/src/level/{pass.rs,frame.rs}`.
+- `engine/conform/{scripts,cases}/chain-pause*`; `engine/crates/sf-conform/tests/chain.rs`.
+
+## Interface
+
+No new public API.
+
 ## Tests
 
 - [ ] `chain-pause`: from W1-1's start (`sync = { level = "W1-1" }`), P pressed, held a frame,

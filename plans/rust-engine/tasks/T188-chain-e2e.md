@@ -14,6 +14,23 @@ progress map at 2109, W1-1's level copper list at 2440, the level scene at 2465 
 the frame budget in the task's wording moves (to about 2 600, recorded as a deviation) or the
 script fires earlier; the walk and the map's 300 frames are the original's and stay.
 
+## Design sections this implements
+
+DESIGN §2.1.
+
+## Files
+
+- `engine/crates/sf-e2e/tests/smoke.rs`; a script under `engine/conform/scripts/` if one is needed.
+
+## Interface
+
+None.
+
+## Tests
+
+- [ ] The smoke test above: frames captured non-black and the frog's sprite present by the
+      budget, run by the test command.
+
 ## Done when
 
 - [ ] The smoke test green in the test block.

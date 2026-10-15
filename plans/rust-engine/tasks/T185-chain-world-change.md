@@ -46,6 +46,20 @@ All in T183's branch history only as notes; each was measured to move the case o
 
 After those, checks 1–3 were green over all 3000 frames; check 4 was being re-run.
 
+## Design sections this implements
+
+DESIGN §2.1 ("loads"), §2.11.
+
+## Files
+
+- `engine/crates/sf-core/src/front/{chain.rs,mod.rs}`, `layout.rs`.
+- `engine/crates/sf-conform/src/lib.rs`; `engine/conform/cases/chain-w1-4-to-w2-1.toml`;
+  `engine/crates/sf-conform/tests/chain.rs`.
+
+## Interface
+
+No new public API: `front::chain`'s routines as T183 left them.
+
 ## Tests
 
 - [ ] `chain-w1-4-to-w2-1` green faithful and alone; added to `tests/chain.rs`.
