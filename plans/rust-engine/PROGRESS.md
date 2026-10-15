@@ -70,7 +70,7 @@ done · ⛔ blocked, needs a human. A task dropped by a plan amendment leaves th
 | T44 | enemies-world-3 | T38; blocks T18 | ✅ | |
 | T46 | story-intro-scenes | T32; blocks T21 | ✅ | |
 | T47 | story-intro-handover | T46; blocks T21 | ✅ | |
-| T48 | story-intro-skips | T46, T47; blocks T21 | ⬜ | |
+| T48 | story-intro-skips | T46, T47; blocks T21 | 🔍 | Nine `story-skip-*` cases green to the title, 7 tests (page-fire in block). Fix: END's unpack as handler-pushed work (`scenes::UNPACK_WORK`). Deviations: presses only in scene 1 and text page 1; logo unread, so its cases skip later; `scenes.rs`/`intro.rs` changed, not `boot.rs`/`vbl.rs`. |
 | T70 | bonus-level | T15; blocks T21 | ✅ | |
 | T71 | slot-sync | T15 | ✅ | |
 | T72 | slot-screen | T71 | ✅ | |

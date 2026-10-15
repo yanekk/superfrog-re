@@ -18,6 +18,8 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-15 | 🐞 | T48, fixed: after a skip END's page unpack (h0+$624) ends 49 lines sooner than after scene 15, whose effects keep the handler 3 lines longer a frame; the engine ended a frame late. `scenes::UNPACK_WORK`. |
+| 2026-10-15 | 📌 | T48, left alone: `handler_lines` ignores the sound driver's effect work (h0+$38bfa, ~3 lines a frame per ramping effect); only END's unpack is timed to absorb it. |
 | 2026-10-15 | 🐞 | T47, worked round: after a disk swap vAmiga's CIA returns a stale disk-change line on the intro's re-read (h0+$c520, after two head steps), so one fire press fails. `sync::step_inserting` patches h0+$c540 into a second read; the hardware passes first time (HRM, unverified against real). |
 | 2026-10-15 | 🐞 | T47 review, fixed: the builder's note that `story-insert-disk1` must hold fire past disk 1's id read was false; a one-frame press (O 12740–12741) and a release mid-read (12750) are green. Script comment corrected. |
 | 2026-10-15 | 📌 | T47: the intro hands over to the game as a power-on; on that frame `Game::set_handover_state` takes `front::RUNS_DURING_LOAD` (`kbd_toggle` parity) from the original. `story-intro-full` green to 9870, title waiting. |
