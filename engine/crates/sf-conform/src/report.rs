@@ -13,7 +13,7 @@ use sf_oracle::Rgb12Frame;
 use crate::compare::PixelMismatch;
 
 /// The first frame at which the engine and the original differ, and how.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct Divergence {
     /// Counted from the sync point.
     pub frame: u32,
@@ -38,6 +38,23 @@ pub struct Divergence {
     /// The original ended more frames in a row mid-pass than the case's limit: (the run's first
     /// frame, the limit). Nothing was compared from that frame to `frame` (T120).
     pub lag: Option<(u32, u32)>,
+    /// Faithful (DESIGN §2.1 check 2): why the picture's difference is past the tolerance.
+    pub picture_note: Option<String>,
+    /// Faithful (check 3): the sound event that differs.
+    pub sound_diff: Option<String>,
+    /// Faithful (check 1): the sides ended more than a pass apart: (the original's passes, the
+    /// engine's).
+    pub passes_apart: Option<(u64, u64)>,
+}
+
+impl Divergence {
+    /// Nothing differing yet, at `frame`.
+    pub fn at(frame: u32) -> Divergence {
+        Divergence {
+            frame,
+            ..Divergence::default()
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -68,6 +85,12 @@ impl fmt::Display for Divergence {
                 f,
                 "  the original ended every frame mid-pass from frame {from}: {} in a row, past the limit of {limit}, so nothing was compared",
                 self.frame - from + 1
+            )?;
+        }
+        if let Some((theirs, ours)) = self.passes_apart {
+            writeln!(
+                f,
+                "  passes: the original has ended {theirs}, the engine {ours}: more than one apart"
             )?;
         }
         for u in &self.unported {
@@ -104,10 +127,16 @@ impl fmt::Display for Divergence {
             if let Some((theirs, ours)) = &p.mismatch.window {
                 writeln!(f, "  display window: original {theirs}, engine {ours}")?;
             }
+            if let (Some(why), "picture") = (&self.picture_note, what) {
+                writeln!(f, "  {what}: past the tolerance: {why}")?;
+            }
             writeln!(f, "  diff image: {}", p.path.display())?;
         }
         if let Some(p) = &self.paula_diff {
             writeln!(f, "  paula: {p}")?;
+        }
+        if let Some(s) = &self.sound_diff {
+            writeln!(f, "  sound: {s}")?;
         }
         Ok(())
     }

@@ -1,7 +1,10 @@
-//! `sf-conform run <case.toml>` — one case; exit 1 on a divergence.
+//! `sf-conform run <case.toml>...` — cases; exit 1 on a divergence.
 //! `sf-conform all` — every case in `engine/conform/cases/`.
 //! `sf-conform scan <case.toml>` — one case run to its end past each divergence: one line per
 //! frame that differs (what differs first in it), for finding what is left.
+//! `run`, `all` and `scan` judge faithfully (DESIGN §2.1 checks 1–3) and print per case the
+//! picture frames and sound shifts they tolerated and the re-syncs; `--strict` judges frame-exact
+//! instead, for diagnosis.
 //! `sf-conform record <case.toml> [--watch NAME=ADDR:W]... [--every] [--only] [--trace] [--paula] [--png DIR]`
 //! — the original's state per frame of a case, for writing scripts and porting: every `LAYOUT`
 //! variable (none with `--only`) and each watched address (`h0+9d8:W`, `0xc17074:L`, width B, W
@@ -13,17 +16,24 @@
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 
-use sf_conform::{Case, InputScript, cases_dir, sync};
+use sf_conform::{Case, InputScript, Mode, cases_dir, sync};
 use sf_core::layout::{LAYOUT, Ram, VarDef, VarId, Width, h0};
 
-const USAGE: &str = "usage: sf-conform run <case.toml> | all | scan <case.toml> | record <case.toml> [--watch NAME=ADDR:W]... [--every] [--only] [--trace] [--paula] [--png DIR]";
+const USAGE: &str = "usage: sf-conform [--strict] run <case.toml>... | [--strict] all | [--strict] scan <case.toml> | record <case.toml> [--watch NAME=ADDR:W]... [--every] [--only] [--trace] [--paula] [--png DIR]";
 
 fn main() -> ExitCode {
-    let args: Vec<String> = std::env::args().skip(1).collect();
+    let mut args: Vec<String> = std::env::args().skip(1).collect();
+    let strict =
+        args.first().is_some_and(|a| a != "record") && args.iter().any(|a| a == "--strict");
+    args.retain(|a| !strict || a != "--strict");
+    let mode = if strict { Mode::Strict } else { Mode::Faithful };
     let result = match args.first().map(String::as_str) {
-        Some("run") if args.len() == 2 => run_cases(&[PathBuf::from(&args[1])]),
-        Some("all") if args.len() == 1 => all(),
-        Some("scan") if args.len() == 2 => scan(Path::new(&args[1])),
+        Some("run") if args.len() >= 2 => run_cases(
+            &args[1..].iter().map(PathBuf::from).collect::<Vec<_>>(),
+            mode,
+        ),
+        Some("all") if args.len() == 1 => all(mode),
+        Some("scan") if args.len() == 2 => scan(Path::new(&args[1]), mode),
         Some("record") if args.len() >= 2 => record(Path::new(&args[1]), &args[2..]),
         _ => Err(USAGE.to_string()),
     };
@@ -37,8 +47,11 @@ fn main() -> ExitCode {
     }
 }
 
-fn scan(path: &Path) -> Result<bool, String> {
-    let case = Case::load(path)?;
+fn scan(path: &Path, mode: Mode) -> Result<bool, String> {
+    let case = Case {
+        mode,
+        ..Case::load(path)?
+    };
     let (found, o) = sf_conform::scan_counting(&case);
     for d in &found {
         let what = if let Some((v, theirs, ours)) = &d.first_var {
@@ -48,10 +61,17 @@ fn scan(path: &Path) -> Result<bool, String> {
             )
         } else if let Some(p) = &d.paula_diff {
             format!("paula {}", p.lines().next().unwrap_or(""))
+        } else if let Some(s) = &d.sound_diff {
+            format!("sound {s}")
+        } else if let Some((theirs, ours)) = d.passes_apart {
+            format!("passes apart: original {theirs}, engine {ours}")
         } else if let Some((from, limit)) = d.lag {
             format!("mid-pass from frame {from}, past the limit of {limit} frames")
         } else if let Some(p) = &d.picture_diff {
-            format!("picture {:?}", p.mismatch.first)
+            match &d.picture_note {
+                Some(why) => format!("picture {:?}: {why}", p.mismatch.first),
+                None => format!("picture {:?}", p.mismatch.first),
+            }
         } else {
             String::from("unported")
         };
@@ -61,16 +81,17 @@ fn scan(path: &Path) -> Result<bool, String> {
         println!("frame {}{of}: {what}", d.frame);
     }
     println!(
-        "{}: {} of {} frames differ; {}",
+        "{}: {} of {} frames differ; {}{}",
         case.name,
         found.len(),
         case.frames,
-        counts(&o)
+        counts(&o),
+        tolerated(&o).map_or(String::new(), |t| format!("; {t}"))
     );
     Ok(found.is_empty())
 }
 
-fn all() -> Result<bool, String> {
+fn all(mode: Mode) -> Result<bool, String> {
     let dir = cases_dir();
     let mut paths: Vec<PathBuf> = std::fs::read_dir(&dir)
         .map_err(|e| format!("{}: {e}", dir.display()))?
@@ -78,13 +99,16 @@ fn all() -> Result<bool, String> {
         .filter(|p| p.extension().is_some_and(|x| x == "toml"))
         .collect();
     paths.sort();
-    run_cases(&paths)
+    run_cases(&paths, mode)
 }
 
-fn run_cases(paths: &[PathBuf]) -> Result<bool, String> {
+fn run_cases(paths: &[PathBuf], mode: Mode) -> Result<bool, String> {
     let mut green = true;
     for p in paths {
-        let case = Case::load(p)?;
+        let case = Case {
+            mode,
+            ..Case::load(p)?
+        };
         match sf_conform::run(&case) {
             Ok(o) => {
                 print!("{}: ok, {} frames ({})", case.name, o.frames, counts(&o));
@@ -101,6 +125,9 @@ fn run_cases(paths: &[PathBuf]) -> Result<bool, String> {
                 }
                 if !o.raced.is_empty() {
                     print!("; beam races excused at {} frame(s)", o.raced.len());
+                }
+                if let Some(t) = tolerated(&o) {
+                    print!("; {t}");
                 }
                 println!();
                 for (f, why) in &o.skipped {
@@ -127,6 +154,35 @@ fn counts(o: &sf_conform::Outcome) -> String {
             o.compared
         ),
     }
+}
+
+/// What a faithful run tolerated (DESIGN §2.1: never silent): the picture frames by kind, the
+/// sound events matched frames apart or cut off by the case's end, the frames the passes were a
+/// frame apart. `None` for a strict run.
+fn tolerated(o: &sf_conform::Outcome) -> Option<String> {
+    (o.mode == Mode::Faithful).then(|| {
+        let mut t = format!(
+            "tolerated: picture {} one-step, {} few-pixel, {} short-glitch frame(s); sound {} shift(s)",
+            o.picture_colour_step.len(),
+            o.picture_few_pixels.len(),
+            o.picture_glitches.len(),
+            o.sound_shifts
+        );
+        if o.sound_cut_off > 0 {
+            t += &format!(", {} event(s) cut off by the end", o.sound_cut_off);
+        }
+        if o.sound_trailing > 0 {
+            t += &format!(", {} change(s) before a stop", o.sound_trailing);
+        }
+        if !o.pass_skews.is_empty() {
+            t += &format!(
+                "; passes a frame apart at {} frame(s), {} state(s) compared so",
+                o.pass_skews.len(),
+                o.pass_held
+            );
+        }
+        t
+    })
 }
 
 /// `NAME=ADDR:W`, `ADDR:W`; ADDR is `h0+<hex>` or `0x<hex>`.

@@ -185,6 +185,17 @@ pub fn core_memory(m: sf_oracle::AmigaMemory) -> AmigaMemory {
     }
 }
 
+/// Whether the main program ended the frame parked in `level_frame_loop`'s wait for its next
+/// pass (DESIGN §2.1 check 1: a level's pass ends there; anywhere else a pass is a frame).
+pub fn in_level_wait(cpu: &CpuRegs, m: &AmigaMemory) -> bool {
+    let main_pc = if cpu.pc == VBL_HANDLER {
+        long(m, cpu.ssp + 2)
+    } else {
+        cpu.pc
+    };
+    LEVEL_WAIT.contains(&main_pc)
+}
+
 fn in_level(m: &AmigaMemory) -> bool {
     word(m, LOGIC_RUNNING) != 0 && (long(m, LEVEL_STATE) as i32) < 0
 }

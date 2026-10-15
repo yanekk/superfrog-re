@@ -278,17 +278,17 @@ fn complete_w1_3() {
 }
 
 /// W1-1 played to its exit (T106): green through the exit at 4473, which `level_state` 1 reaches
-/// in a late pass (`sync::mid_pass`), to frame 4474; frame 4475 shows T131's exit-fade palette
-/// step, pinned here until T165 runs the whole case.
+/// in a late pass (`sync::mid_pass`), to frame 4476. Frame 4475 shows the exit-fade palette one
+/// step off (T131's): faithful tolerates and counts it (T180); `--strict` diverges there.
 #[test]
 fn complete_w1_1_to_exit_fade() {
-    let mut case = sf_conform::Case::load(&sf_conform::cases_dir().join("complete-w1-1.toml")).unwrap();
-    case.frames = 4475;
-    if let Err(d) = sf_conform::run(&case) {
-        panic!("complete-w1-1: {d}");
-    }
-    case.frames += 1;
-    let d = sf_conform::run(&case).expect_err("the exit fade's palette step, open (T131)");
+    let mut case =
+        sf_conform::Case::load(&sf_conform::cases_dir().join("complete-w1-1.toml")).unwrap();
+    case.frames = 4476;
+    let o = sf_conform::run(&case).unwrap_or_else(|d| panic!("complete-w1-1: {d}"));
+    assert_eq!(o.picture_colour_step, [4475], "{o:?}");
+    case.mode = sf_conform::Mode::Strict;
+    let d = sf_conform::run(&case).expect_err("the exit fade's palette step, frame-exact");
     assert_eq!(d.frame, 4475);
     assert!(d.first_var.is_none() && d.picture_diff.is_some(), "{d}");
 }

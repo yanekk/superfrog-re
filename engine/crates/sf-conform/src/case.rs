@@ -8,11 +8,12 @@ use crate::sync::SyncPoint;
 /// What a case compares each frame (DESIGN §2.1).
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub struct Compare {
-    /// Every `LAYOUT` variable.
+    /// Every `LAYOUT` variable: pass by pass and but the `presentation` ones (faithful), or
+    /// every one each frame (`--strict`).
     pub vars: bool,
     /// The picture inside the display window, as 12-bit colour.
     pub picture: bool,
-    /// The ordered Paula register writes.
+    /// The sound: as events (faithful), or the ordered Paula register writes (`--strict`).
     pub paula: bool,
     /// The picture the renderer draws from the original's memory transplanted afresh each frame
     /// (no engine stepping): what proves the renderer while the mechanics are not ported yet.
@@ -81,6 +82,9 @@ pub struct Case {
     /// The case's own limit on frames in a row the original ends mid-pass, in place of
     /// [`crate::LAG_LIMIT`] (`lag-limit = { frames = N, note = "…" }`), with why it needs one.
     pub lag_limit: Option<LagLimit>,
+    /// How the case is judged: faithful unless the run asks for `--strict` (not a case file's
+    /// key: a case cannot choose its own bar).
+    pub mode: crate::compare::Mode,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -410,6 +414,7 @@ impl Case {
             only_vars,
             resync,
             lag_limit,
+            mode: crate::compare::Mode::Faithful,
         })
     }
 }

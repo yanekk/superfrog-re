@@ -82,8 +82,12 @@ fn scene_4s_set_up_under_the_display_matches_the_original() {
 #[test]
 #[ignore = "slow: about 2 min"]
 fn the_effects_keep_in_step_through_scenes_4_to_6() {
-    let case = sf_conform::Case::load(&sf_conform::cases_dir().join("story-scene4-sound.toml"))
-        .unwrap_or_else(|e| panic!("{e}"));
+    // The Paula writes themselves: `--strict`.
+    let case = sf_conform::Case {
+        mode: sf_conform::Mode::Strict,
+        ..sf_conform::Case::load(&sf_conform::cases_dir().join("story-scene4-sound.toml"))
+            .unwrap_or_else(|e| panic!("{e}"))
+    };
     for d in sf_conform::scan(&case) {
         if let Some((v, _, _)) = &d.first_var {
             assert_ne!(v.name, "sfx_records", "{d}");
