@@ -223,8 +223,9 @@ fn run_inner(
         if frog_only {
             g.frog_only();
         }
-        AloneRun::new(g)
+        AloneRun::new(g, case.sync == SyncPoint::PowerOnDisk3)
     });
+    let mut alone_first_var = None;
     // COP1LC as the original's CPU last wrote it (from the start's as the engine has it).
     let mut cop = game.cop1lc();
     let mut outcome = Outcome {
@@ -411,7 +412,7 @@ fn run_inner(
         }
         if let Some(a) = alone.as_mut() {
             let twice = amiga.frames_run() == 2;
-            a.frame(f, input, pacing, twice, &mem, cop, &ours.resync);
+            a.frame(case, f, input, pacing, twice, (&amiga, &mem), cop, &ours.resync);
         }
         let theirs_mid = stepped && sync::mid_pass(&amiga.cpu(), &mem);
         let mut step = compare::PassStep::default();
@@ -626,11 +627,13 @@ fn run_inner(
     outcome.sound_trailing = sound.trailing;
     outcome.pass_skews = passes.skews;
     if let Some(a) = alone {
+        alone_first_var = a.first_var.clone();
         match a.judge(case.frames.saturating_sub(1)) {
             Ok(met) => outcome.milestones = Some(met),
             Err(d) => {
                 let d = Divergence {
                     milestone: Some(d.clone()),
+                    alone_first_var,
                     ..Divergence::at(d.frame as u32)
                 };
                 if only_alone {
@@ -656,10 +659,16 @@ struct AloneRun {
     wanted: u32,
     /// The engine panicked: the frame of play, and the message. It steps no more.
     panicked: Option<(u32, String)>,
+    /// For the report: the first frame of play at whose end, both sides at a pass's end, a
+    /// gameplay variable differed, and which (DESIGN §2.1 check 1's comparison, never judged here).
+    first_var: Option<(u32, String)>,
+    /// A disk-3 power-on: the original is in the story (its boot, then the intro) until the game
+    /// program owns the vertical blank.
+    disk3: bool,
 }
 
 impl AloneRun {
-    fn new(game: Game) -> AloneRun {
+    fn new(game: Game, disk3: bool) -> AloneRun {
         AloneRun {
             game,
             theirs: Milestones::default(),
@@ -667,6 +676,8 @@ impl AloneRun {
             seeds: VecDeque::new(),
             wanted: 0,
             panicked: None,
+            first_var: None,
+            disk3,
         }
     }
 
@@ -677,11 +688,12 @@ impl AloneRun {
     #[allow(clippy::too_many_arguments)]
     fn frame(
         &mut self,
+        case: &Case,
         f: u32,
         input: FrameInput,
         pacing: Pacing,
         twice: bool,
-        mem: &AmigaMemory,
+        (amiga, mem): (&sf_oracle::Amiga, &AmigaMemory),
         cop1lc: Option<u32>,
         resync: &[(u32, u32)],
     ) {
@@ -726,11 +738,25 @@ impl AloneRun {
             Some(_) => FrameState::story(),
             None => FrameState::read(&|a, n| g.state().read(a, n), g.cop1lc()),
         };
-        let theirs = if sync::in_story(mem) {
+        self.disk3 &= !sync::game_owns_vbl(mem);
+        let theirs = if self.disk3 || sync::in_story(mem) {
             FrameState::story()
         } else {
             FrameState::read(&|a, n| (a..a + n).map(|x| mem.byte(x)).collect(), cop1lc)
         };
+        if self.first_var.is_none()
+            && !ours.story
+            && !theirs.story
+            && !g.mid_pass()
+            && !sync::mid_pass(&amiga.cpu(), mem)
+            && case.compare.vars
+            && let Some((v, t, o)) = compare::gameplay_vars(case, g.layout(), &g.probe(), mem, &[])
+        {
+            self.first_var = Some((
+                f,
+                format!("{} at ${:06x}: original ${t:x}, engine ${o:x}", v.name, v.addr),
+            ));
+        }
         self.ours.frame(f as u64, ours);
         self.theirs.frame(f as u64, theirs);
     }

@@ -81,6 +81,9 @@ fn complete_w1_2_plays_alone() {
     // The 68 the exit needs, and one more once it is open.
     assert_eq!(count(&|m| matches!(m, Milestone::CoinTaken { .. })), 69);
     assert_eq!(count(&|m| *m == Milestone::CoinTaken { left: 0 }), 2);
+    for left in 1..68 {
+        assert_eq!(count(&|m| *m == Milestone::CoinTaken { left }), 1, "{left}");
+    }
     assert_eq!(count(&|m| matches!(m, Milestone::EnemyKilled { .. })), 5);
     assert!(count(&|m| matches!(m, Milestone::ItemTaken { kind: 55, .. })) > 20);
     assert_eq!(count(&|m| matches!(m, Milestone::LifeLost { .. })), 0);

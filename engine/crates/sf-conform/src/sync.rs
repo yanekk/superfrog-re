@@ -917,6 +917,11 @@ pub fn in_story(m: &AmigaMemory) -> bool {
     long(m, 0x6c) == INTRO_VBL
 }
 
+/// Whether the game program (`d1_c03`) owns the vertical blank: its handler is in the vector.
+pub fn game_owns_vbl(m: &AmigaMemory) -> bool {
+    long(m, 0x6c) == VBL_HANDLER
+}
+
 /// COP1LC as the original's CPU last wrote it (`COP1LCH` `$080`, `COP1LCL` `$082`), from `was`
 /// and its last step's register writes: the copper list each frame starts with.
 pub fn cop1lc(was: Option<u32>, writes: &[sf_oracle::CpuWrite]) -> Option<u32> {

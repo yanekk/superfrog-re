@@ -281,8 +281,11 @@ impl Milestones {
             }
         }
         if p.playing() && s.playing() && p.world == s.world && p.level == s.level {
-            for _ in 0..s.coins_collected.saturating_sub(p.coins_collected).min(99) {
-                push(Milestone::CoinTaken { left: s.coins_left });
+            // Each coin with its own count, as taking it left it: two taken in one frame on one
+            // side and a frame apart on the other are the same milestones.
+            for k in 1..=s.coins_collected.saturating_sub(p.coins_collected).min(99) {
+                let left = p.coins_left.saturating_sub(k as u16).max(s.coins_left);
+                push(Milestone::CoinTaken { left });
             }
             // Kills: a slot that was an enemy (hit points 0 or more, not immune) and still holds
             // the same object, its hit points now below none.
