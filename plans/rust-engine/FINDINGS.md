@@ -18,6 +18,7 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-15 | 🐞 | T123 review, open (T120): `enemies-w5-2` compares 642 of 1000 frames; 358 straddled, longest run 528–641, then every other frame to 957. Green, but the shooter's room and crusher stretch are half-compared. |
 | 2026-10-15 | 📌 | T123: W5-2's 2/3 pacer (79/80) cannot spawn: neither marker 2 (167,15; 219,41) has a marker 3 within `$98` cells right on its row. W5-3 (194/204,72) and W5-4 (17/28,19; 64/81,36) have pairs (T124, T125). |
 | 2026-10-15 | 📌 | T123: `enemies-w5-2` meets every W5-2 type but the mace (63/64), the flow (98) and dart 53, all far from its start; `enemies-w5-1` meets those. W5-2 has no marker 12 or 22. |
 | 2026-10-15 | 📌 | T123: W5-2's start is walled east (darts 125,9/12 unreachable); the frog is held to frame 150. Up held past ~12 frames floats a jump 8 rows high; letting go of a side stops it mid-air; blocks are icy. |
