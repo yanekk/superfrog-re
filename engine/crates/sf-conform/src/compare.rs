@@ -35,18 +35,9 @@ pub fn frame(
                 d,
             )
         });
-    let skip_panel = case.excludes(crate::case::Excluded::Panel);
     let first_var = c
         .vars
-        .then(|| {
-            vars_except(layout, probe, theirs_mem, masked, |d| {
-                (skip_panel && d.id == VarId::PanelBitmap)
-                    || case
-                        .only_vars
-                        .as_ref()
-                        .is_some_and(|only| !only.iter().any(|n| n == d.name))
-            })
-        })
+        .then(|| vars_except(layout, probe, theirs_mem, masked, |d| case_skips(case, d)))
         .flatten();
     let from_row = picture_rows_from(case);
     let picture_diff = (c.picture && !case.picture_excluded(frame))
@@ -79,8 +70,7 @@ pub fn frame(
                     .collect()
             })
             .unwrap_or_default(),
-        resync: false,
-        lag: None,
+        ..Divergence::default()
     })
 }
 
@@ -284,6 +274,263 @@ pub fn paula(ours: &[PaulaWrite], theirs: &[PaulaWrite]) -> Option<String> {
         );
     }
     Some(text)
+}
+
+/// How a case is judged (DESIGN §2.1).
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash)]
+pub enum Mode {
+    /// Checks 1–3: state pass by pass, picture within [`Tolerance`], sound as events. The
+    /// default of `run`, `all` and `scan`.
+    #[default]
+    Faithful,
+    /// Frame-exact, for diagnosis (`--strict`): every variable, pixel and Paula write each frame.
+    Strict,
+}
+
+/// DESIGN §2.1's thresholds: the owner's bar. Not a per-case setting; a case cannot loosen them,
+/// and a task that finds one wrong raises it with the owner rather than changing it.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct Tolerance {
+    /// A pixel this many steps off in each of R, G and B or less is a colour step.
+    pub colour_step: u8,
+    /// A frame with fewer differing pixels than this is tolerated, however long it lasts.
+    pub few_pixels: u32,
+    /// Any other difference is tolerated for at most this many frames in a row…
+    pub glitch_frames: u32,
+    /// …and on at most this percentage of the case's frames.
+    pub glitch_budget_pct: u32,
+    /// A sound event matches the same event this many frames away or nearer.
+    pub sound_frames: u32,
+}
+
+impl Tolerance {
+    pub const OWNER: Tolerance = Tolerance {
+        colour_step: 1,
+        few_pixels: 64,
+        glitch_frames: 2,
+        glitch_budget_pct: 1,
+        sound_frames: 2,
+    };
+}
+
+impl Default for Tolerance {
+    fn default() -> Tolerance {
+        Tolerance::OWNER
+    }
+}
+
+/// How a frame's picture differs from the original's (DESIGN §2.1 check 2).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum PictureClass {
+    Same,
+    /// Every differing pixel at most [`Tolerance::colour_step`] off in each of R, G and B.
+    ColourStep(u32),
+    /// Fewer than [`Tolerance::few_pixels`] pixels differ.
+    FewPixels(u32),
+    /// Any other difference (the display window's among them): this many pixels.
+    Glitch(u32),
+}
+
+/// [`PictureClass`] of the engine's picture against the original's, leaving out the picture rows
+/// in `rows`.
+pub fn classify(
+    ours: &Picture,
+    theirs: &Rgb12Frame,
+    rows: &[Range<u16>],
+    tol: &Tolerance,
+) -> PictureClass {
+    let windows_differ = (theirs.left as i32, theirs.top, theirs.width, theirs.height)
+        != (ours.left, ours.top, ours.width, ours.height);
+    let (w, h) = (ours.width.min(theirs.width), ours.height.min(theirs.height));
+    let colours = sf_core::to_rgb12(ours);
+    let (mut n, mut steps) = (0u32, true);
+    for y in (0..h).filter(|y| !rows.iter().any(|r| r.contains(y))) {
+        for x in 0..w {
+            let (o, t) = (
+                colours[y as usize * ours.width as usize + x as usize],
+                theirs.pixel(x, y),
+            );
+            if o != t {
+                n += 1;
+                let off = |s: u16| ((o >> s & 15) as i16 - (t >> s & 15) as i16).unsigned_abs();
+                steps &= [8, 4, 0].iter().all(|&s| off(s) <= tol.colour_step as u16);
+            }
+        }
+    }
+    match (windows_differ, n) {
+        (false, 0) => PictureClass::Same,
+        (false, n) if steps => PictureClass::ColourStep(n),
+        (false, n) if n < tol.few_pixels => PictureClass::FewPixels(n),
+        (_, n) => PictureClass::Glitch(n),
+    }
+}
+
+/// Check 2 over a case: each frame's [`PictureClass`], the tolerated ones counted.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct PictureJudge {
+    tol: Tolerance,
+    /// The case's frames, which the glitch budget is a percentage of.
+    frames: u32,
+    /// Glitch frames in a row now.
+    run: u32,
+    /// Frames tolerated as a colour step, as a few pixels, as a short glitch.
+    pub colour_step: Vec<u32>,
+    pub few_pixels: Vec<u32>,
+    pub glitches: Vec<u32>,
+}
+
+impl PictureJudge {
+    pub fn new(tol: Tolerance, frames: u32) -> PictureJudge {
+        PictureJudge {
+            tol,
+            frames,
+            ..PictureJudge::default()
+        }
+    }
+
+    /// Frame `f` compared: why its difference is not tolerated, if it is not.
+    pub fn frame(&mut self, f: u32, class: PictureClass) -> Result<(), String> {
+        let n = match class {
+            PictureClass::Glitch(n) => n,
+            other => {
+                self.run = 0;
+                match other {
+                    PictureClass::ColourStep(_) => self.colour_step.push(f),
+                    PictureClass::FewPixels(_) => self.few_pixels.push(f),
+                    _ => {}
+                }
+                return Ok(());
+            }
+        };
+        self.run += 1;
+        self.glitches.push(f);
+        let (limit, pct) = (self.tol.glitch_frames, self.tol.glitch_budget_pct);
+        if self.run > limit {
+            return Err(format!(
+                "{n} pixels differ, {} frames in a row past one colour step: more than {limit}",
+                self.run
+            ));
+        }
+        if self.glitches.len() as u64 * 100 > self.frames as u64 * pct as u64 {
+            return Err(format!(
+                "{n} pixels differ: the {}th frame past the tolerance, over {pct}% of the case's {} frames",
+                self.glitches.len(),
+                self.frames
+            ));
+        }
+        Ok(())
+    }
+}
+
+/// Check 1's timing: the state is compared at the end of each main-loop pass, the original's
+/// `n`th with the engine's `n`th, so a pass ending a frame later on one side is not a difference.
+/// The runner holds the state of the side that ended a pass first, and compares it once the other
+/// side ends the same pass. A pass whose end is not seen (another began and was still running at
+/// the frame's end) is not compared.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct PassMatch {
+    theirs: u64,
+    ours: u64,
+    /// The side whose state at the end of its pass `n` is held.
+    held: Option<(Side, u64)>,
+    /// Frames on which one side had ended more passes than the other.
+    pub skews: Vec<u32>,
+}
+
+/// A side of a comparison.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum Side {
+    Theirs,
+    Ours,
+}
+
+/// What [`PassMatch::frame`] asks of the runner, in this order.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash)]
+pub struct PassStep {
+    /// The other side has ended the pass held: compare its state now with the one held.
+    pub compare_held: bool,
+    /// Both sides ended the same pass now: compare now.
+    pub compare_now: bool,
+    /// This side ended a pass the other has not: hold its state now for when the other does.
+    pub hold: Option<Side>,
+    /// The sides are more than a pass apart: (the original's passes, the engine's).
+    pub apart: Option<(u64, u64)>,
+}
+
+impl PassMatch {
+    /// Frame `f` ended `theirs` passes on the original's side and `ours` on the engine's.
+    pub fn frame(&mut self, f: u32, theirs: u32, ours: u32) -> PassStep {
+        self.theirs += theirs as u64;
+        self.ours += ours as u64;
+        let (t, o) = (self.theirs, self.ours);
+        if t != o {
+            self.skews.push(f);
+        }
+        let mut step = PassStep::default();
+        if t.abs_diff(o) > 1 {
+            step.apart = Some((t, o));
+            self.held = None;
+            return step;
+        }
+        if let Some((side, n)) = self.held {
+            let (count, ended) = match side {
+                Side::Theirs => (o, ours),
+                Side::Ours => (t, theirs),
+            };
+            if count >= n {
+                // The other side's pass `n` ended now (or, past it, unseen).
+                step.compare_held = count == n && ended > 0;
+                self.held = None;
+            }
+        }
+        let ahead = match t.cmp(&o) {
+            std::cmp::Ordering::Greater => (theirs > 0).then_some((Side::Theirs, t)),
+            std::cmp::Ordering::Less => (ours > 0).then_some((Side::Ours, o)),
+            std::cmp::Ordering::Equal => {
+                step.compare_now = theirs > 0 && ours > 0;
+                None
+            }
+        };
+        if let Some(h) = ahead {
+            self.held = Some(h);
+            step.hold = Some(h.0);
+        }
+        step
+    }
+
+    /// The side held can no longer be (its state at the pass's end was not seen).
+    pub fn drop_held(&mut self) {
+        self.held = None;
+    }
+
+    /// The engine re-synced from the original's memory: the sides start level again.
+    pub fn level(&mut self) {
+        self.ours = self.theirs;
+        self.held = None;
+    }
+}
+
+/// [`vars_except`] for the faithful state check: leaves out what `case` leaves out and every
+/// `presentation` variable (DESIGN §2.1 check 1).
+pub fn gameplay_vars(
+    case: &Case,
+    layout: &[VarDef],
+    probe: &[(VarId, u32)],
+    theirs: &AmigaMemory,
+    masked: &[(u32, u32)],
+) -> Option<(VarDef, u32, u32)> {
+    vars_except(layout, probe, theirs, masked, |d| {
+        sf_core::layout::presentation(d.id).is_some() || case_skips(case, d)
+    })
+}
+
+/// Whether `case` leaves variable `d` out of its comparison (the panel, a `vars` list).
+pub fn case_skips(case: &Case, d: &VarDef) -> bool {
+    (case.excludes(crate::case::Excluded::Panel) && d.id == VarId::PanelBitmap)
+        || case
+            .only_vars
+            .as_ref()
+            .is_some_and(|only| !only.iter().any(|n| n == d.name))
 }
 
 /// A Paula register's name from its offset from `$DFF000`.

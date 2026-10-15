@@ -22,7 +22,7 @@ pub mod scene;
 pub mod slot;
 pub mod state;
 
-pub use game::{Cpu, FrameOut, Game, HandlerEnd, Job, LoadEnd, Pacing, Start};
+pub use game::{Cpu, FrameOut, Game, HandlerEnd, Job, LoadEnd, PassClock, Pacing, Start};
 pub use layout::{AmigaMemory, LAYOUT, Ram, VarDef, VarId, Width};
 pub use render::{DisplayData, Picture, Split, View, to_rgb12};
 pub use rng::Rng;

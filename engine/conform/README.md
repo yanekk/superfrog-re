@@ -1,10 +1,11 @@
 # Conformance: scripts and cases
 
 The engine is judged against the original running on the oracle (DESIGN §2.1, §4). A **case**
-brings both to a **sync point**, feeds both the same **input script** frame by frame, and compares
-what DESIGN §2.1 lists: the modelled variables (`LAYOUT` in `sf-core/src/layout.rs`), the picture
-in the display window, and the ordered Paula writes. The runner stops at the first frame that
-differs and says which variable, which pixel (with a diff PNG) and which Paula write.
+brings both to a **sync point**, feeds both the same **input script** frame by frame, and judges
+them by DESIGN §2.1's faithful checks (below): the modelled variables (`LAYOUT` in
+`sf-core/src/layout.rs`) pass by pass, the picture in the display window within a tolerance, and
+the sound as events. The runner stops at the first check that fails and says which variable, which
+pixel (with a diff PNG) or which sound event. `--strict` judges frame-exact instead, for diagnosis.
 
 Everything here is input, never disk data, so it is committed. Diff images and the cached sync
 points are derived from the disks and live outside the repo (temp dir, `~/.cache/superfrog-re/sync/`).
@@ -14,12 +15,14 @@ points are derived from the disks and live outside the repo (temp dir, `~/.cache
 From `engine/`:
 
 ```sh
-cargo run -q --release -p sf-conform -- run conform/cases/title-rng.toml   # one case
+cargo run -q --release -p sf-conform -- run conform/cases/title-rng.toml   # one case (or several)
 cargo run -q --release -p sf-conform -- all                                # every case here
+cargo run -q --release -p sf-conform -- --strict run conform/cases/title-rng.toml  # frame-exact
 cargo run -q --release -p sf-conform -- record conform/cases/title-rng.toml --watch blink=h0+1368:W
 ```
 
-`run` and `all` exit 1 on a divergence. `record` runs only the original and prints, for each frame
+`run`, `all` and `scan` judge faithfully; with `--strict` frame-exact. `run` and `all` exit 1 on
+a divergence. `record` runs only the original and prints, for each frame
 on which something changed, the input held, its pacing (`OnTime`/`Late`, below), every `LAYOUT`
 variable and each `--watch` address (`h0+<hex>` is the game's hunk 0, `0x<hex>` a raw address;
 width `B`, `W` or `L`; `--every` prints every frame). It is how a script is steered: watch the
@@ -28,6 +31,47 @@ variables the routine you are porting uses, and find the frames where they do wh
 Needs what the oracle needs: `tools/setup/oracle.sh` run, the four disks and Kickstart 1.3
 (DESIGN §5). The first run to a sync point takes ~10 s per 4 000 frames; later runs restore the
 cached snapshot.
+
+## The faithful checks (DESIGN §2.1 checks 1–3, T180)
+
+1. **State, pass by pass.** Every `LAYOUT` variable but the `presentation` ones is compared at the
+   end of each main-loop pass, the original's `n`th pass with the engine's `n`th: in a level the
+   25 Hz pass, elsewhere a frame (`sf_core::PassClock`, the same rule on both sides). A pass whose
+   end falls a frame later on one side is compared with each side's state at its own pass's end,
+   the side ending first held (`compare::PassMatch`); a pass whose end is not seen (the next one
+   began and was still running at the frame's end) is not compared, and sides more than a pass
+   apart fail. Frames ending mid-pass are left out, and a lag re-synced, as under Pacing below; a
+   case with `resync = false` fails there on a gameplay variable only.
+2. **Picture, within tolerance.** A frame whose differing pixels are all at most one step off in
+   each of R, G and B, or fewer than 64 pixels, is tolerated however long it lasts. Any other
+   difference (a differing display window among them) is tolerated for at most 2 frames in a row,
+   and on at most 1% of the case's frames (a case under 100 frames has none). Beam races are
+   excused first, as under Beam races. A `render` comparison stays exact.
+3. **Sound, as events.** Each frame's Paula writes become, per channel, a sample started (its
+   address and length as the DMA latched them; the period and volume the frame left), a period or
+   volume change, a channel stopped (`sound_events`). The volume is the one Paula plays (low 7
+   bits, 64 and above as 64). Each of the original's events must be met by the same event on the
+   same channel within ±2 frames, in the same order per channel, and the engine may make none the
+   original does not. A period or volume change followed by its channel's stop within 2 frames
+   need not be met (the stop that much sooner would have left it unheard). All frames' writes
+   count, a lag's among them; what the original plays while it loads is not compared, and the
+   engine's Paula is left as the original's when a load ends or a lag re-syncs.
+
+The thresholds are `Tolerance::OWNER`, the owner's bar: not a case setting, and never changed to
+make a case green. Nothing is tolerated silently: `run`, `all` and `scan` print per case the
+re-syncs (with the lag, as before), then `tolerated:` the picture frames by kind (one-step,
+few-pixel, short-glitch), the sound events matched a frame or more apart, those cut off by the
+case's end and the changes before a stop left unmet, and the frames on which the passes were a
+frame apart with how many states were compared so.
+
+`presentation` variables (`sf_core::layout::presentation`, each with its reason) only say how a
+frame was produced; checks 2 and 3 judge them: the copper lists (`end_copper`, `award_copper`,
+`tally_copper`, `slot_copper`, `exit_sprite_copper`, `level_copper`, `front_copper`, and the
+intro's `StoryBootCopper` and `StoryCopper`), the bitmaps (`bob_sheet`, `playfield_buffer_0`, `_1`,
+`playfield_clean`, `hunk3_gap`, `panel_bitmap`, `hero_frames`, the intro's text page, buffers and
+clean background), `shown_buffer`, the blit queue (`blits_pending`, `blit_next`, `blit_queue`) and
+the sound driver's fade and register shadows (`music_fade`, the intro's `StoryShadow`). No variable
+a gameplay rule reads is tagged.
 
 ## Writing a script — `scripts/<name>.txt`
 
@@ -54,7 +98,7 @@ cached snapshot.
 sync = { script = "boot-to-title", frame = 4410 }   # run that script from power-on, 4 410 frames
 script = "walk-right"                               # optional; default: nothing held
 frames = 50                                         # frames compared, from the sync point
-compare = ["vars"]                                  # any of "vars", "picture", "paula", "render"; default all but render
+compare = ["vars"]                                  # any of "vars", "picture", "paula" (sound), "render"; default all but render
 resync = false                                      # a re-sync after a lag fails the case (default true; see Pacing)
 lag-limit = { frames = 133, note = "why; the task" } # optional: this case's limit on frames in a row mid-pass (see Pacing)
 ```

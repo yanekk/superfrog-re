@@ -18,6 +18,11 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-15 | 📌 | T180 review: `level_entry`'s `every_level_is_entered_as_the_original_enters_it` is red on `level1_vector` (and `slot_copper`) like the power-on cases, identically on T180's base; front.rs's three cases too. Open, no task. |
+| 2026-10-15 | 🔄 | Owner, T180: pass ends fall a frame apart in 32/142 cases (the engine ends a pass the original reports late in its 12th call). Each side's state compared at its own pass end, every variable: 100 such, none differed. |
+| 2026-10-15 | 🔄 | Owner, T180: a sound period/volume change need not be matched when its channel stops within 2 frames (counted, printed). Keeps complete-w4-1 and -w4-3 green, where the engine stops channel 3 a frame early. |
+| 2026-10-15 | 🐞 | T180, owned by T181: faithful sound (lag frames included) catches the engine fading channel 3 where the original switches sample: enemies-w5-4-complete 3381 (its test ignored), enemies-w6-1-complete 511, w2-1-complete 1501. Strict's re-syncs hid it. |
+| 2026-10-15 | 📌 | T180 measured all 142 cases: faithful 123 green, strict 122. complete-w1-1, -w4-1 newly green; complete-w4-2 now fails 1927 (`vbl_count` after lag), enemies-w6-3-alt-complete 6129 (`clock_shown` after lag). |
 | 2026-10-15 | 📌 | T145 review: `complete-w4-4` with 23572's jump dropped (no dart hurt), the engine diverges from the original at 23671, before the frog's `level_state` goes −1 at 23680. Off the case's route; not pursued.|
 | 2026-10-15 | 🐞 | T145: `plan_exit --hurt` checks `hurt_by` at a chunk's end, 48 frames after the heart goes, so a passing dart's hurt is missed (W4-4 23577). Worked round: keep the inputs through the hurt, plan on. Not fixed. |
 | 2026-10-15 | 📌 | T145: `complete-w4-4`'s exit moved to 24200 (mid-pass); 24201's picture differs, the exit fade's palette step a frame early (W1-1 4475 class), excluded for T181. Other diffs as T132's. |

@@ -2,10 +2,12 @@
 //!
 //! A [`Case`] names a sync point, an input script, a frame count and what to compare. [`run`]
 //! brings the original (on the oracle) and the engine to the sync point, feeds both the same input
-//! every frame and compares them; it returns the first frame that differs as a [`Divergence`]
-//! naming the first variable, the first pixel (with a diff PNG) and the first Paula write.
+//! every frame and judges them by the faithful checks (DESIGN §2.1 checks 1–3: state pass by pass,
+//! picture within [`Tolerance`], sound as events), or frame-exact with [`Mode::Strict`]; it returns
+//! the first failure as a [`Divergence`] naming the first variable, the first pixel (with a diff
+//! PNG), the first sound event or Paula write.
 //!
-//! The CLI (`cargo run -q --release -p sf-conform -- run <case.toml> | all | record <case.toml>`)
+//! The CLI (`cargo run -q --release -p sf-conform -- [--strict] run <case.toml> | all | record <case.toml>`)
 //! is in `main.rs`; how to write scripts and cases is in `engine/conform/README.md`.
 
 pub mod case;
@@ -16,17 +18,20 @@ pub mod reference;
 pub mod report;
 pub mod routine;
 pub mod script;
+pub mod sound_events;
 pub mod sync;
 
 pub use case::{Case, Compare, Excluded, Exclusion, LagLimit, cases_dir, scripts_dir};
+pub use compare::{Mode, Tolerance};
 pub use report::{Divergence, PictureDiff};
 pub use script::InputScript;
+pub use sound_events::{SoundEvent, sound_events};
 pub use sync::SyncPoint;
 
 use std::sync::{Arc, OnceLock};
 
 use sf_assets::GameData;
-use sf_core::layout::{AmigaMemory, LAYOUT, Ram, VarId};
+use sf_core::layout::{AmigaMemory, LAYOUT, Ram, VarDef, VarId, h0};
 use sf_core::{DisplayData, FrameOut, Game, LoadEnd, Picture, Start, View};
 
 /// The owner's disks decoded, once per process.
@@ -82,6 +87,25 @@ pub struct Outcome {
     /// The longest run of frames left out for lag, the frame after each lag among them (only
     /// the variables are checked there): reported, not limited.
     pub longest_skip: (u32, u32),
+    /// How the case was judged.
+    pub mode: Mode,
+    /// Faithful (DESIGN §2.1 check 2): frames whose picture difference was tolerated, as a
+    /// colour step, as fewer than 64 pixels, and as a glitch of at most 2 frames.
+    pub picture_colour_step: Vec<u32>,
+    pub picture_few_pixels: Vec<u32>,
+    pub picture_glitches: Vec<u32>,
+    /// Faithful (check 3): sound events matched a frame or more apart, and events whose match
+    /// could only have come after the case's end.
+    pub sound_shifts: u32,
+    pub sound_cut_off: u32,
+    /// Faithful (check 3): period and volume changes left unmatched as their channel stopped
+    /// within the tolerance.
+    pub sound_trailing: u32,
+    /// Faithful (check 1): frames on which one side had ended a pass the other had not, and
+    /// how many of those passes' states were compared a frame apart (each side's at its own
+    /// pass's end; the others' ends were not seen, the next pass running).
+    pub pass_skews: Vec<u32>,
+    pub pass_held: u32,
 }
 
 /// The most frames in a row the original may end mid-pass before a case fails: the original
@@ -197,6 +221,17 @@ fn run_inner(
     let mut irqs = Vec::new();
     // The original's last handler, taken too late to work in its step (it counts in the next).
     let mut late = false;
+    // Faithful (DESIGN §2.1): the picture's tolerated frames, both sides' sound events, and the
+    // state matched by pass, with the side that ended a pass first held.
+    let faithful = case.mode == Mode::Faithful;
+    let tol = Tolerance::OWNER;
+    let mut pictures = compare::PictureJudge::new(tol, case.frames);
+    let mut sound = sound_events::SoundMatch::new(tol.sound_frames);
+    let mut paula_theirs = sound_events::Paula::default();
+    let mut paula_ours = sound_events::Paula::default();
+    let mut passes = compare::PassMatch::default();
+    let mut theirs_clock = sf_core::PassClock::default();
+    let mut held: Option<Held> = None;
     for f in 0..case.frames {
         let input = case.script.input_at(of);
         frozen.apply(&mut amiga, &display);
@@ -263,6 +298,9 @@ fn run_inner(
                     );
                     frozen.apply(&mut amiga, &display);
                     let resumes = sync::intro_resumes(&amiga);
+                    // A load is not modelled frame by frame: what it plays is not compared, but
+                    // leaves Paula as it is when the engine's frame comes.
+                    paula_theirs.frame(&theirs.paula);
                     theirs = sync::step_inserting(&mut amiga, case.script.input_at(of))
                         .unwrap_or_else(|e| panic!("{}: oracle, frame {of}: {e}", case.name));
                     entry = sync::handler_entry(&irqs, &amiga.irqs());
@@ -276,6 +314,7 @@ fn run_inner(
                 }
                 // The schedule as the original is once its load is over.
                 pacing = sync::pacing(&amiga.cpu(), &mem, &theirs.paula);
+                paula_ours = paula_theirs.clone();
                 // The engine's frame again, with what runs on by itself while the original loads
                 // (the keyboard's poll, the music) as the original had it just before this frame,
                 // then what the load left that the engine does not model, as it is after it.
@@ -343,14 +382,64 @@ fn run_inner(
                 }
             }
         }
-        if stepped && sync::mid_pass(&amiga.cpu(), &mem) {
+        let theirs_mid = stepped && sync::mid_pass(&amiga.cpu(), &mem);
+        let mut step = compare::PassStep::default();
+        if faithful && stepped {
+            let vbl_count = (mem.byte(VBL_COUNT) as u16) << 8 | mem.byte(VBL_COUNT + 1) as u16;
+            let ended = theirs_clock.frame(
+                sync::in_level_wait(&amiga.cpu(), &mem),
+                theirs_mid,
+                vbl_count,
+            );
+            step = passes.frame(f, ended, game.passes_ended());
+            if let Some(apart) = step.apart {
+                passes.level();
+                held = None;
+                emit(
+                    &mut found,
+                    Divergence {
+                        passes_apart: Some(apart),
+                        ..frame_divergence(f, of, &game)
+                    },
+                )?;
+            }
+            // Sound is a stream: every frame's writes count, a lag's among them.
+            if case.compare.paula {
+                let t = paula_theirs.frame(&theirs.paula);
+                let o = paula_ours.frame(&ours.paula);
+                if let Err(e) = sound.frame(f, &t, &o) {
+                    emit(
+                        &mut found,
+                        Divergence {
+                            sound_diff: Some(e),
+                            ..frame_divergence(f, of, &game)
+                        },
+                    )?;
+                }
+            }
+        }
+        if theirs_mid {
             outcome.straddled.push(f);
             after_lag = true;
             if let Some(from) = lag.left_out(f, true, &mut outcome) {
                 let d = lag_divergence(f, of, from, lag.limit, &game);
-                match found.as_mut() {
-                    Some(all) => all.push(d),
-                    None => return Err(d),
+                emit(&mut found, d)?;
+            }
+            if faithful {
+                let masked: Vec<(u32, u32)> =
+                    jobs.iter().flat_map(|(j, _, _)| j.writes.clone()).collect();
+                if let Some(v) = pass_state(
+                    case,
+                    step,
+                    &mut passes,
+                    &mut held,
+                    &game,
+                    &mem,
+                    &masked,
+                    !theirs_mid,
+                    &mut outcome.pass_held,
+                ) {
+                    emit(&mut found, state_divergence(f, of, &game, &mem, v))?;
                 }
             }
             prev = mem;
@@ -375,36 +464,48 @@ fn run_inner(
         if stepped && after_lag {
             after_lag = false;
             lag.left_out(f, false, &mut outcome);
+            // Faithful: a re-sync forbidden fails on a gameplay variable only (one the pass
+            // matching compares); the engine is re-synced on any.
+            let gameplay = faithful
+                .then(|| {
+                    pass_state(
+                        case,
+                        step,
+                        &mut passes,
+                        &mut held,
+                        &game,
+                        &mem,
+                        &masked,
+                        !theirs_mid,
+                        &mut outcome.pass_held,
+                    )
+                })
+                .flatten();
             if case.compare.vars
                 && let Some((v, theirs, ours)) =
                     compare::vars(game.layout(), &game.probe(), &mem, &masked)
             {
-                if !case.resync {
+                let fails = if faithful {
+                    gameplay
+                } else {
+                    Some((v, theirs, ours))
+                };
+                if !case.resync
+                    && let Some(v) = fails
+                {
                     let d = Divergence {
-                        frame: f,
-                        first_var: Some((v, theirs, ours)),
-                        picture_diff: None,
-                        paula_diff: None,
-                        render_diff: None,
-                        oracle_frame: (of != f + 1).then_some(of - 1),
-                        unported: game.unported().to_vec(),
-                        level_outcome: game.level_outcome(),
-                        var_detail: compare::var_diffs(game.layout(), &game.probe(), &mem, v.id)
-                            .into_iter()
-                            .take(40)
-                            .collect(),
                         resync: true,
-                        lag: None,
+                        ..state_divergence(f, of, &game, &mem, v)
                     };
-                    match found.as_mut() {
-                        Some(all) => all.push(d),
-                        None => return Err(d),
-                    }
+                    emit(&mut found, d)?;
                 }
                 game = Game::with_display(display.clone(), Start::Transplant(mem.clone()));
                 if frog_only {
                     game.frog_only();
                 }
+                passes.level();
+                held = None;
+                paula_ours = paula_theirs.clone();
                 outcome.resynced.push((
                     f,
                     format!(
@@ -433,17 +534,42 @@ fn run_inner(
             }
         }
         after_step(f, &ours.paula, &theirs.paula);
-        let d = compare::frame(
-            case,
-            f,
-            game.layout(),
-            &game.probe(),
-            &mem,
-            &ours,
-            &theirs,
-            rendered.as_ref(),
-            &masked,
-        );
+        let d = if faithful {
+            let state = pass_state(
+                case,
+                step,
+                &mut passes,
+                &mut held,
+                &game,
+                &mem,
+                &masked,
+                !theirs_mid,
+                &mut outcome.pass_held,
+            );
+            faithful_frame(
+                case,
+                f,
+                &game,
+                &mem,
+                state,
+                &ours,
+                &theirs,
+                rendered.as_ref(),
+                &mut pictures,
+            )
+        } else {
+            compare::frame(
+                case,
+                f,
+                game.layout(),
+                &game.probe(),
+                &mem,
+                &ours,
+                &theirs,
+                rendered.as_ref(),
+                &masked,
+            )
+        };
         if d.as_ref().is_none_or(|d| d.picture_diff.is_none())
             && case.compare.picture
             && compare::raced_only(&ours, &theirs.picture, compare::picture_rows_from(case))
@@ -452,30 +578,185 @@ fn run_inner(
         }
         let unported = game.unported().to_vec();
         if d.is_some() || !unported.is_empty() {
-            let mut d = d.unwrap_or(Divergence {
-                frame: f,
-                first_var: None,
-                picture_diff: None,
-                paula_diff: None,
-                render_diff: None,
-                oracle_frame: None,
-                unported: Vec::new(),
-                level_outcome: None,
-                var_detail: Vec::new(),
-                resync: false,
-                lag: None,
-            });
+            let mut d = d.unwrap_or(Divergence::at(f));
             d.unported = unported;
             d.level_outcome = game.level_outcome();
             d.oracle_frame = (of != f + 1).then_some(of - 1);
-            match found.as_mut() {
-                Some(all) => all.push(d),
-                None => return Err(d),
-            }
+            emit(&mut found, d)?;
         }
         prev = mem;
     }
+    outcome.mode = case.mode;
+    outcome.picture_colour_step = pictures.colour_step;
+    outcome.picture_few_pixels = pictures.few_pixels;
+    outcome.picture_glitches = pictures.glitches;
+    outcome.sound_shifts = sound.shifts;
+    outcome.sound_cut_off = sound.cut_off();
+    outcome.sound_trailing = sound.trailing;
+    outcome.pass_skews = passes.skews;
     Ok(outcome)
+}
+
+/// `vbl_count` (h0+$9d8).
+const VBL_COUNT: u32 = h0(0x9d8);
+
+/// A side's state held at the end of a pass the other side has not ended yet (DESIGN §2.1
+/// check 1).
+enum Held {
+    /// The original's memory, and what of it a job was still writing.
+    Theirs(Box<AmigaMemory>, Vec<(u32, u32)>),
+    /// The engine's probe, and the layout it is in.
+    Ours(&'static [VarDef], Vec<(VarId, u32)>),
+}
+
+/// Check 1 on a frame, as the pass matching's `step` asks: the first gameplay variable that
+/// differs between the two sides' states at the end of the same pass, comparing what is held
+/// with a side's state now, or both sides' now; then holding a side's state if asked.
+/// A side's state is seen at a pass's end unless the frame ended in the middle of the next pass
+/// (`theirs_seen`; the engine's, [`Game::mid_pass`]).
+#[allow(clippy::too_many_arguments)]
+fn pass_state(
+    case: &Case,
+    step: compare::PassStep,
+    passes: &mut compare::PassMatch,
+    held: &mut Option<Held>,
+    game: &Game,
+    mem: &AmigaMemory,
+    masked: &[(u32, u32)],
+    theirs_seen: bool,
+    compared_held: &mut u32,
+) -> Option<(VarDef, u32, u32)> {
+    if !case.compare.vars {
+        return None;
+    }
+    let ours_seen = !game.mid_pass();
+    let mut first = None;
+    if step.compare_held {
+        first = match held.take() {
+            Some(Held::Theirs(m, hm)) if ours_seen => {
+                *compared_held += 1;
+                compare::gameplay_vars(case, game.layout(), &game.probe(), &m, &hm)
+            }
+            Some(Held::Ours(layout, probe)) if theirs_seen => {
+                *compared_held += 1;
+                compare::gameplay_vars(case, layout, &probe, mem, masked)
+            }
+            _ => None,
+        };
+    }
+    if step.compare_now && theirs_seen && ours_seen && first.is_none() {
+        first = compare::gameplay_vars(case, game.layout(), &game.probe(), mem, masked);
+    }
+    match step.hold {
+        Some(compare::Side::Theirs) if theirs_seen => {
+            *held = Some(Held::Theirs(Box::new(mem.clone()), masked.to_vec()));
+        }
+        Some(compare::Side::Ours) if ours_seen => {
+            *held = Some(Held::Ours(game.layout(), game.probe()));
+        }
+        Some(_) => {
+            *held = None;
+            passes.drop_held();
+        }
+        None => {}
+    }
+    first
+}
+
+/// A divergence at frame `f`, with what the engine says of where it is.
+fn frame_divergence(f: u32, of: u32, game: &Game) -> Divergence {
+    Divergence {
+        oracle_frame: (of != f + 1).then_some(of - 1),
+        unported: game.unported().to_vec(),
+        level_outcome: game.level_outcome(),
+        ..Divergence::at(f)
+    }
+}
+
+/// A divergence at frame `f` in variable piece `v`: (piece, the original's, the engine's).
+fn state_divergence(
+    f: u32,
+    of: u32,
+    game: &Game,
+    mem: &AmigaMemory,
+    v: (VarDef, u32, u32),
+) -> Divergence {
+    Divergence {
+        first_var: Some(v),
+        var_detail: compare::var_diffs(game.layout(), &game.probe(), mem, v.0.id)
+            .into_iter()
+            .take(40)
+            .collect(),
+        ..frame_divergence(f, of, game)
+    }
+}
+
+/// Checks 1 and 2 on a compared frame (DESIGN §2.1): `state`, what [`pass_state`] found, and
+/// the picture judged within the tolerance. A `render` comparison stays exact.
+#[allow(clippy::too_many_arguments)]
+fn faithful_frame(
+    case: &Case,
+    f: u32,
+    game: &Game,
+    mem: &AmigaMemory,
+    state: Option<(VarDef, u32, u32)>,
+    ours: &FrameOut,
+    theirs: &sf_oracle::FrameCapture,
+    rendered: Option<&Picture>,
+    pictures: &mut compare::PictureJudge,
+) -> Option<Divergence> {
+    let render_diff = rendered.and_then(|r| {
+        compare::picture(r, &theirs.picture).map(|d| {
+            report::write_diff_png(&format!("{}-render", case.name), f, r, &theirs.picture, d)
+        })
+    });
+    let from_row = compare::picture_rows_from(case);
+    let mut picture_note = None;
+    if case.compare.picture
+        && !case.picture_excluded(f)
+        && !compare::raced_only(ours, &theirs.picture, from_row)
+    {
+        let class = compare::classify(
+            &ours.picture,
+            &theirs.picture,
+            std::slice::from_ref(&(0..from_row)),
+            &Tolerance::OWNER,
+        );
+        picture_note = pictures.frame(f, class).err();
+    }
+    let picture_diff = picture_note.as_ref().and_then(|_| {
+        compare::picture_from(&ours.picture, &theirs.picture, from_row)
+            .map(|d| report::write_diff_png(&case.name, f, &ours.picture, &theirs.picture, d))
+    });
+    if state.is_none() && picture_note.is_none() && render_diff.is_none() {
+        return None;
+    }
+    Some(Divergence {
+        first_var: state,
+        var_detail: state
+            .map(|(d, _, _)| {
+                compare::var_diffs(game.layout(), &game.probe(), mem, d.id)
+                    .into_iter()
+                    .take(40)
+                    .collect()
+            })
+            .unwrap_or_default(),
+        picture_diff,
+        picture_note,
+        render_diff,
+        ..Divergence::at(f)
+    })
+}
+
+/// A divergence found: kept by a scan, else the end of the run.
+fn emit(found: &mut Option<&mut Vec<Divergence>>, d: Divergence) -> Result<(), Divergence> {
+    match found.as_mut() {
+        Some(all) => {
+            all.push(d);
+            Ok(())
+        }
+        None => Err(d),
+    }
 }
 
 /// The runs of frames left out for lag going on now, against the case's limit.
@@ -534,17 +815,8 @@ impl LagRun {
 /// The divergence for a mid-pass run from `from` that passed `limit` at frame `f`.
 fn lag_divergence(f: u32, of: u32, from: u32, limit: u32, game: &Game) -> Divergence {
     Divergence {
-        frame: f,
-        first_var: None,
-        picture_diff: None,
-        paula_diff: None,
-        render_diff: None,
-        oracle_frame: (of != f + 1).then_some(of - 1),
-        unported: game.unported().to_vec(),
-        level_outcome: game.level_outcome(),
-        var_detail: Vec::new(),
-        resync: false,
         lag: Some((from, limit)),
+        ..frame_divergence(f, of, game)
     }
 }
 
@@ -705,5 +977,54 @@ mod tests {
         trace.extend(vec![Some(true); 4]);
         let (failed, _) = feed(3, &trace);
         assert_eq!(failed, vec![(3, 0), (9, 6)]);
+    }
+
+    /// DESIGN §2.1 check 1: a pass ending a frame later on one side is compared with the state
+    /// the other side held at its own pass's end, not with that side's state now (T180 review: a
+    /// mutation comparing now survived every test).
+    #[test]
+    fn a_held_pass_end_is_compared_with_the_other_side_s_pass_end() {
+        let case = Case::parse("state", "sync = \"power-on\"\nframes = 1").unwrap();
+        let x = (sf_core::layout::def(VarId::FrogX).addr - sf_core::layout::SLOW_BASE) as usize;
+        let mem = |frog_x: u8| {
+            let mut m = AmigaMemory {
+                chip: vec![0; 512 * 1024],
+                slow: vec![0; 512 * 1024],
+            };
+            m.slow[x + 1] = frog_x;
+            m
+        };
+        let at_end = |frog_x| Game::new(&GameData::default(), Start::Transplant(mem(frog_x)));
+        let step = compare::PassStep {
+            compare_held: true,
+            ..compare::PassStep::default()
+        };
+        let judge = |held: Held, game: &Game, now: &AmigaMemory| {
+            let mut held = Some(held);
+            let mut n = 0;
+            let v = pass_state(
+                &case,
+                step,
+                &mut compare::PassMatch::default(),
+                &mut held,
+                game,
+                now,
+                &[],
+                true,
+                &mut n,
+            );
+            assert_eq!(n, 1);
+            v.map(|(d, t, o)| (d.name, t, o))
+        };
+        // The original ended pass n with the frog at 5, the engine a frame later at 5; the
+        // original has moved on to 6 since.
+        let held = |frog_x| Held::Theirs(Box::new(mem(frog_x)), Vec::new());
+        assert_eq!(judge(held(5), &at_end(5), &mem(6)), None);
+        assert_eq!(judge(held(4), &at_end(5), &mem(5)), Some(("frog_x", 4, 5)));
+        // The engine ended it first, at 5, and is at 6 when the original ends it at 5.
+        let g = at_end(5);
+        let ours = || Held::Ours(g.layout(), g.probe());
+        assert_eq!(judge(ours(), &at_end(6), &mem(5)), None);
+        assert_eq!(judge(ours(), &at_end(5), &mem(4)), Some(("frog_x", 4, 5)));
     }
 }

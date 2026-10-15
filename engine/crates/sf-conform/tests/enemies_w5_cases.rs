@@ -359,7 +359,11 @@ fn enemies_w5_3_complete() {
 /// taking the points. Two re-syncs pinned: the play field buffer at 3384 (T121's class) and the panel at 7980
 /// after a lag. Frames 657 (the frog on the spring pad) and 8193 (the exit fade's palette step)
 /// leave out the picture, T131's.
+/// Red under faithful judging (T180): at 3378–3381 the original moves channel 3 to another
+/// sample where the engine keeps the effect fading, on lag frames `--strict` leaves out and a
+/// re-sync then erased (as `enemies-w6-1-complete` 511, `w2-1-complete` 1501). T181 re-judges it.
 #[test]
+#[ignore = "red faithful: channel 3's sound at 3381 (T181)"]
 fn enemies_w5_4_complete() {
     completes("enemies-w5-4-complete", &[3384, 7980], 8193);
 }

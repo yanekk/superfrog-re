@@ -190,6 +190,9 @@ fn a_paula_divergence_shows_the_first_differing_write_with_its_index() {
             ..Compare::default()
         },
         name: "paula-test".into(),
+        // The Paula writes themselves are `--strict`'s; faithful hears them as sound events
+        // (`faithful.rs`).
+        mode: sf_conform::Mode::Strict,
         ..title_case()
     };
     let d = sf_conform::run_with(&case, |f, game| {

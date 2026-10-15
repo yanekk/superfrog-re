@@ -637,6 +637,29 @@ layout! {
     }
 }
 
+/// Why `id` is a `presentation` variable, or `None` for a gameplay one (DESIGN §2.1 check 1). A
+/// presentation variable only says how a frame was produced: the faithful state check leaves it out
+/// and the picture and sound checks judge it. No variable a gameplay rule reads is tagged.
+pub fn presentation(id: VarId) -> Option<&'static str> {
+    use VarId::*;
+    Some(match id {
+        EndCopper | AwardCopper | TallyCopper | SlotCopper | ExitSpriteCopper | LevelCopper
+        | FrontCopper | StoryBootCopper | StoryCopper => "a copper list: what the beam shows",
+        BobSheet => "bob graphics, and the end sequence's unpacked pictures over them",
+        PlayfieldBuffer0 | PlayfieldBuffer1 | PlayfieldClean | StoryBuffers | StoryClean => {
+            "a display buffer's bitmap"
+        }
+        Hunk3Gap => "bitmap: the end sequence's second ANIM buffer starts in it",
+        PanelBitmap => "the status panel's bitmap, drawn from the counters",
+        HeroFrames => "the frog's sprite images, copied for its animation",
+        StoryText => "the text page's bitmap and palette",
+        ShownBuffer => "which display buffer the beam shows",
+        BlitsPending | BlitNext | BlitQueue => "blitter bookkeeping: blits queued for the copper",
+        AudioShadow | StoryShadow => "the sound driver's fade and Paula register shadows",
+        _ => return None,
+    })
+}
+
 /// The entry for `id`.
 pub fn def(id: VarId) -> &'static VarDef {
     &LAYOUT[id as usize]
@@ -752,5 +775,40 @@ mod tests {
         assert_eq!(mem.byte(SLOW_BASE + 1), 0xAB);
         assert_eq!(mem.byte(0x100), 0);
         assert_eq!(mem.byte(SLOW_BASE + 4), 0);
+    }
+
+    /// DESIGN §2.1 check 1: what a gameplay rule reads is compared pass by pass, never tagged.
+    #[test]
+    fn no_gameplay_variable_is_presentation() {
+        let gameplay = [
+            "obj_slots",
+            "obj_count",
+            "hitboxes",
+            "level_map",
+            "level_clock",
+            "level_state",
+            "score",
+            "coins_collected",
+            "coins_left_for_exit",
+            "coins_total",
+            "items_total",
+            "rng_state",
+            "camera_x",
+            "camera_y",
+            "vbl_count",
+            "logic_running",
+            "world",
+            "level",
+        ];
+        for d in LAYOUT {
+            let tagged = presentation(d.id).is_some();
+            assert!(
+                !(tagged && (gameplay.contains(&d.name) || d.name.starts_with("frog_"))),
+                "{} is tagged presentation",
+                d.name
+            );
+        }
+        assert!(presentation(VarId::LevelCopper).is_some());
+        assert!(presentation(VarId::PlayfieldBuffer0).is_some());
     }
 }
