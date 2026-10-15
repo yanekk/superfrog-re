@@ -20,7 +20,8 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 |---|---|---|
 | 2026-10-15 | 📌 | T125: W5-4 is closed off by switches: 98,37 opens 135,34; 132,9 opens 72,7; 57,20 opens 57,5. Faller 30 at 168/174,5 cannot spawn from the pocket below (scan row two above the camera); the watchers' room is reached round the east. |
 | 2026-10-15 | 🐞 | T125, open, no task: `enemies-w5-4` frame 1878 (on time, also with enemies frozen), the frog's sprites differ by the jump-through floor at 190,42, every variable equal: W5-1 595's class. Picture excluded. |
-| 2026-10-15 | 📌 | T125: `enemies-w5-4` meets the 2/3 pacers (79/80), the template-30 fallers and the watchers; W5-4's other types (darts, shooter, drips, crushers, mace, flow, 13/14 pacer, scenery, faller 28) are met in `enemies-w5-1`. |
+| 2026-10-15 | 📌 | T125: `enemies-w5-4` meets every W5-4 type (its test asserts each init, the shot 85 included). |
+| 2026-10-15 | 📌 | T125 review, open: `enemies` freeze freezes no W5 enemy marker (all ported by T39), so "re-sync seen with enemies frozen" pins in W5 cases (W5-1 979, W5-4 414) check nothing; with `objects` frozen W5-4 has no lag at all. |
 | 2026-10-15 | 🔄 | Owner, T106: added T154 w1-4-completion (T106, T127; blocks T18): W1-4's last coins need the wings (open sky) or more bounces on the pad at 288,44, which trip the frog-sprite fault. `complete-w1-4` holds the green route to 4054. |
 | 2026-10-15 | 🔄 | Owner, T106: added T165 w1-1-completion (T106, T131; blocks T18): every W1-1 exit found meets T131's exit-fade palette step (frames 4475, 4477, `$bbb` for `$ccc`); `complete-w1-1` committed outside the test block. |
 | 2026-10-15 | 🐞 | T106, fixed: a loop ending in a late pass ended a step early (`loop_over`), `mid_pass` missed passes with `level_state` 1, and after a lag the runner compared jobs unmasked. `bonus-death-wb-1` is now green to 2448; 2449 still diverges. |
