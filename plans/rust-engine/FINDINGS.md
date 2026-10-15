@@ -18,6 +18,9 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-15 | 📌 | T123: W5-2's 2/3 pacer (79/80) cannot spawn: neither marker 2 (167,15; 219,41) has a marker 3 within `$98` cells right on its row. W5-3 (194/204,72) and W5-4 (17/28,19; 64/81,36) have pairs (T124, T125). |
+| 2026-10-15 | 📌 | T123: `enemies-w5-2` meets every W5-2 type but the mace (63/64), the flow (98) and dart 53, all far from its start; `enemies-w5-1` meets those. W5-2 has no marker 12 or 22. |
+| 2026-10-15 | 📌 | T123: W5-2's start is walled east (darts 125,9/12 unreachable); the frog is held to frame 150. Up held past ~12 frames floats a jump 8 rows high; letting go of a side stops it mid-air; blocks are icy. |
 | 2026-10-15 | 🔄 | T33 split at pir's context line, code kept as `T33-wip.patch`, uncommitted at the split: T160 attract-demo-entry, T161 attract-demo-init-timing, T162 attract-demo-level-start, T163 attract-demo-return, T164 attract-demo-cycles. Measured causes in their docs; first demo was green to 7 000 frames. |
 | 2026-10-15 | 🔄 | Owner, T121 review: added T153 bob-draw-step-cuts (T121; blocks T21): T121's goal 1, per-bob cut steps in `bob_draw`, unbuilt. Its pins: `enemies-w1-1` 372, and whichever of W3-1 201, W3-3 256, W3-activation 201 are drawer cuts. |
 | 2026-10-15 | 🐞 | T121 review, open (T153): `enemies-w1-1` 372 re-syncs `playfield_buffer_0` after the original's frame 371 ended in phase 5; W3-1 200, W3-3 255, W3-activation 200 are phase-5 lags too. T146's W6-1 530 may be the same. |

@@ -124,7 +124,7 @@ done · ⛔ blocked, needs a human.
 | T122 | w2-completions | T43, T101, T121; blocks T18 | ⬜ | |
 | T120 | conform-no-silent-pass | T05, T36; blocks T21 | ⬜ | |
 | T104 | w6-completions | T40, T101, T102; blocks T18 | ✅ | |
-| T123 | enemies-w5-2-case | T39; blocks T18 | ⬜ | |
+| T123 | enemies-w5-2-case | T39; blocks T18 | 🔍 | `enemies-w5-2` green 1000 frames, no re-sync; `enemies_w5_2` test (Seen gains inits, `met_init`: dart 54 by its init). Hurt by dart 54. Deviations: 2/3 pacer cannot spawn in W5-2 (T124/T125 have pairs); mace, flow, dart 53 left to `enemies-w5-1` (FINDINGS). |
 | T124 | enemies-w5-3-case | T39; blocks T18 | ⬜ | |
 | T125 | enemies-w5-4-case | T39; blocks T18 | ⬜ | |
 | T126 | w5-completions | T39, T101, T121, T123, T124, T125; blocks T18 | ⬜ | |
@@ -157,7 +157,7 @@ done · ⛔ blocked, needs a human.
 A Notes cell holds what was built or what the review found, the test count, and one line per
 deviation from the task doc. A ✅ task's cell may be cut to one line once the next task has been reviewed.
 
-**Review queue:** *(empty)*
+**Review queue:** T123
 
 ## Blocked on the user
 
