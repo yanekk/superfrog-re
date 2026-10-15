@@ -1,0 +1,17 @@
+sync = { level = "W5-4" }
+script = "enemies-w5-4-complete"
+frames = 8111
+resync = true
+lag-limit = { frames = 400, note = "probe" }
+
+[[exclude]]
+what = "picture"
+frames = [657, 657]
+note = "probe"
+task = "probe"
+
+[[exclude]]
+what = "picture"
+frames = [7928, 7928]
+note = "probe"
+task = "probe"

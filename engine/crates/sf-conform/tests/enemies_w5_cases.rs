@@ -337,3 +337,20 @@ fn completes(name: &str, pins: &[u32], exit_at: u32) {
 fn enemies_w5_1_complete() {
     completes("enemies-w5-1-complete", &[1497, 2182], 2254);
 }
+
+/// W5-2 played from its start to its exit and through the tally (T126): the exit at 6095, fire
+/// taking the points. Two re-syncs pinned: the play field buffer at 2196 (T121's class) and
+/// `vbl_count` at 4681 after a lag (`complete-w4-2`'s 1927 and 4964, T131's). Frames 967 (the
+/// frog on the spring pad) and 6095 (the exit fade's palette step) leave out the picture, T131's.
+#[test]
+fn enemies_w5_2_complete() {
+    completes("enemies-w5-2-complete", &[2196, 4681], 6095);
+}
+
+/// W5-3 played from its start to its exit and through the tally (T126): the exit at 6864, fire
+/// taking the points, nothing left out. One re-sync pinned: the play field buffer at 1608
+/// (T121's class).
+#[test]
+fn enemies_w5_3_complete() {
+    completes("enemies-w5-3-complete", &[1608], 6864);
+}
