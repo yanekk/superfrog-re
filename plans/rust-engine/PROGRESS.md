@@ -150,7 +150,7 @@ done · ⛔ blocked, needs a human. A task dropped by a plan amendment leaves th
 | T167 | w2-3-completion | T122, T180, T182; blocks T21 | ⬜ | |
 | T168 | w2-4-completion | T122, T180, T182; blocks T21 | ⬜ | |
 | T180 | faithful-compare | T120; blocks T181, T182 and every open conformance task | ✅ | |
-| T181 | faithful-rebaseline | T180, T182; blocks T21 | ⬜ | |
+| T181 | faithful-rebaseline | T180, T182; blocks T21 | ✅ | |
 | T182 | plays-alone | T180; blocks T181, T183 and every completion task | ✅ | |
 | T183 | level-chain | T180, T182; blocks T21 | ⬜ | |
 | T184 | alone-pass-drift | T182; blocks T21, T18, T115, T147, T148, T149, T150, T151, T154, T166, T167, T168 | ⬜ | |
