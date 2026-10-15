@@ -26,6 +26,9 @@ const BLANK_COPPER: u32 = crate::layout::h2(0x6fd8);
 /// `attract_mode` (h0+$18), `abort_flag` (h0+$9de), `level_state` (h0+$a06).
 const ATTRACT_MODE: u32 = h0(0x18);
 const ABORT_FLAG: u32 = h0(0x9de);
+/// `opt_game_mode` (h0+$9e6), and the player's kept at h0+$9e8 while the demo plays.
+const OPT_GAME_MODE: u32 = h0(0x9e6);
+const GAME_MODE_KEPT: u32 = h0(0x9e8);
 const LEVEL_STATE: u32 = h0(0xa06);
 /// `frog_lives` (h0+$82e), `level_clock` (h0+$876).
 const LIVES: u32 = h0(0x82e);
@@ -82,9 +85,12 @@ impl LevelOver {
         match self.pc {
             0 => {
                 // `game_over_seq` first, outside the attract demo (it is over at once unless the
-                // last life is gone).
+                // last life is gone). After the demo `top_loop` puts the game mode back first
+                // (h0+$d2).
                 self.pc = 10;
-                if cx.s.l(ATTRACT_MODE) == 0 {
+                if cx.s.l(ATTRACT_MODE) != 0 {
+                    cx.s.set_w(OPT_GAME_MODE, cx.s.w(GAME_MODE_KEPT));
+                } else {
                     return call(Routine::GameOverSeq(crate::front::GameOverSeq::new(
                         self.frog_only,
                     )));
@@ -123,6 +129,10 @@ impl LevelOver {
                 if cx.s.l(WORLD) == BONUS_WORLD {
                     // h0+$7494, the bonus level's: shooter mode off.
                     cx.s.set_w(SHOOTER_MODE, 0);
+                }
+                if cx.s.l(ATTRACT_MODE) != 0 {
+                    // The attract demo's end: `bra top_loop`, the title again (h0+$e2).
+                    return Yield::Jump(Box::new(Routine::TopLoop(Default::default())));
                 }
                 // `game_over_check`: ESC (`abort_flag`) or no lives leave the game, a death goes
                 // round `top_loop` again, the exit to the tally (T38).
@@ -165,6 +175,11 @@ fn init_inside(id: LevelId) -> Vec<u32> {
         ),
     };
     offsets.iter().map(|o| h0(base + o)).collect()
+}
+
+/// `demo_init`'s calls' return addresses (h0+$8f3a: `level_init_w1`'s code again).
+pub(crate) fn demo_init_inside() -> Vec<u32> {
+    [6, 0x2e, 0x34, 0x38, 0x4a].iter().map(|o| h0(0x8f3a + o)).collect()
 }
 
 /// A level routine run on the front end's program, its Paula writes made on the line the beam is
@@ -229,25 +244,7 @@ impl Restart {
                     cx.unported("a restart in a level with no world and level numbers");
                     return Yield::Poll;
                 };
-                let mut written = Vec::new();
-                let (trace, ws) = level_ctx(cx, self.frog_only, true, |c| {
-                    c.bus.written = Some(vec![false; crate::layout::LAYOUT.len()]);
-                    crate::level::load::level_init(c, id);
-                    written = c.bus.written.take().unwrap_or_default();
-                });
-                let writes = crate::layout::LAYOUT
-                    .iter()
-                    .zip(written)
-                    .filter(|(_, w)| *w)
-                    .map(|(d, _)| (d.addr, d.width.len()))
-                    .collect();
-                let ws: Vec<(u16, u16)> = ws.iter().map(|w| (w.reg, w.value)).collect();
-                let job = crate::game::Job {
-                    inside: init_inside(id),
-                    writes,
-                };
-                let t = Timeline::of(&trace, &crate::level::beam::BLANK_COSTS, &ws, job);
-                call(Routine::Timeline(t))
+                init_on_beam(cx, self.frog_only, id, init_inside(id))
             }
             1 => {
                 self.pc = 2;
@@ -259,6 +256,27 @@ impl Restart {
             _ => Yield::Return,
         }
     }
+}
+
+/// `level_init_wN` for `id` done at once, then replayed on the beam: what it cost and its Paula
+/// writes, its memory compared once the original is out of the calls `inside` (T37).
+pub(crate) fn init_on_beam(cx: &mut Cx, frog_only: bool, id: LevelId, inside: Vec<u32>) -> Yield {
+    let mut written = Vec::new();
+    let (trace, ws) = level_ctx(cx, frog_only, true, |c| {
+        c.bus.written = Some(vec![false; crate::layout::LAYOUT.len()]);
+        crate::level::load::level_init(c, id);
+        written = c.bus.written.take().unwrap_or_default();
+    });
+    let writes = crate::layout::LAYOUT
+        .iter()
+        .zip(written)
+        .filter(|(_, w)| *w)
+        .map(|(d, _)| (d.addr, d.width.len()))
+        .collect();
+    let ws: Vec<(u16, u16)> = ws.iter().map(|w| (w.reg, w.value)).collect();
+    let job = crate::game::Job { inside, writes };
+    let t = Timeline::of(&trace, &crate::level::beam::BLANK_COSTS, &ws, job);
+    call(Routine::Timeline(t))
 }
 
 /// Where `level_start` is when its fade set-up returns (h0+$69f8).

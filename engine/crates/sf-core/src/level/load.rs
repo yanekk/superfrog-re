@@ -183,6 +183,12 @@ fn numbers(id: LevelId) -> (u32, u32) {
     (world, id.level as u32)
 }
 
+/// `demo_world_load` and `demo_level_load` (h0+$a580, $a5ec): `world_load_w1` without its sound
+/// and intro, and `level_load_w1_l1` without its progress map.
+pub(crate) fn demo_load(c: &mut LevelCtx, display: &DisplayData) {
+    level_load(c, display, LevelId { world: World::W1, level: 1, alt: false });
+}
+
 /// `world_load_wN` and `level_load_wN_lM` (h0+$94a0, $9552 …): what they leave that a level
 /// reads: the world and level, the clock, the map and what is read off it.
 fn level_load(c: &mut LevelCtx, display: &DisplayData, id: LevelId) {
