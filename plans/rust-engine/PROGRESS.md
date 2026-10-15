@@ -156,7 +156,7 @@ done · ⛔ blocked, needs a human. A task dropped by a plan amendment leaves th
 | T184 | alone-pass-drift | T182; blocks T21, T18, T115, T147, T148, T149, T150, T151, T154, T166, T167, T168 | ⬜ | |
 | T185 | w6-4-lag-frog-fall | T182; blocks T21 | ⬜ | |
 | T190 | chain-world-change | T183; blocks T21 | ⬜ | |
-| T191 | chain-pause | T183; blocks T21 | ⬜ | |
+| T191 | chain-pause | T183; blocks T21 | 🔍 | `pause` ported: pass stops at phase 9 (`State.pause`), vbl's paused path, tail on resume; `chain-pause`, `chain-pause-fire` green alone; 2 tests. Deviations: level `kbd_poll` now acks a byte (`$ff`, `State.kbd_flag/kbd_acked`, `Hw.key_in`), else `key_up` diverges; engine PassClock counts paused frames outside the loop. |
 | T192 | chain-level-code | T183, T190; blocks T21 | ⬜ | |
 | T193 | chain-e2e | T183; blocks T21 | ⬜ | |
 

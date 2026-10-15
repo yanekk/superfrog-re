@@ -18,6 +18,7 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-15 | 📌 | T191: the level's `kbd_poll` acknowledges each new keyboard byte, which then reads `$ff`; the engine had kept the last byte, leaving `key_up` set. Unhandled: a frame cut late in the pass's tail after unpausing (never seen). |
 | 2026-10-15 | 🐞 | T183 review: `top_loop`'s Bcc added backward displacements unwrapped; each death's `bmi` panicked in debug (`tests/alone.rs` 3 red). Reproduced by debug run, fixed (`wrapping_add`), alone.rs locks it. |
 | 2026-10-15 | 🐞 | T183 review: nine tests still expected T21's stop after a tally (frog_cases 5, enemies_w5_cases 4); the bonus level's end idled with no `unported`. Rewritten to the next level's flow; bonus `unported` restored. |
 | 2026-10-15 | 📌 | T183 review sweep: test-side branch targets add signed displacements unwrapped (`enemies_w2/w3/w4/w5/w6_routines.rs`, `examples/enemies_map.rs`); green today, a backward one would panic in debug. Not fixed. |
