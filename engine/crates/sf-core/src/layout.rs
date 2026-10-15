@@ -159,12 +159,22 @@ layout! {
     /// award list's last): its window, its palette at h2+$630c, its plane pointers at h2+$638c and
     /// the two choices' colours.
     TallyCopper = "tally_copper", h2(0x6270), Width::Bytes(0x15c);
+    /// h2+$6494..$65e4: the end-of-world picture's copper list (`end_world_pic_show`, T183): its
+    /// palette at h2+$6538, its plane pointers at h2+$65b8.
+    EndPicCopper = "end_pic_copper", h2(0x6494), Width::Bytes(0x150);
     /// `slot_copper` (h2+$65e4..$6750): the slot machine's copper list (T71); its fade list at
     /// h2+$6688, its plane pointers at h2+$6708.
     SlotCopper = "slot_copper", h2(0x65e4), Width::Bytes(0x16c);
+    /// h2+$6750..$68a8: the world's loading picture's copper list (`world_intro_show`, T183), its
+    /// palette at h2+$67f4 and its first plane pointers at h2+$6874.
+    IntroCopper = "intro_copper", h2(0x6750), Width::Bytes(0x158);
     /// `exit_sprite_copper` (h2+$68a8): the sprite moves the second pair of frog sprite records
     /// writes (`exit_sprite_left`, `_right`), two attached pairs of `$10` bytes each.
     ExitSpriteCopper = "exit_sprite_copper", h2(0x68a8), Width::Bytes(0x40);
+    /// h2+$68e8..$6bd0: the rest of the loading picture's list (its waits and second plane
+    /// pointers at h2+$69bc), then the progress map's (h2+$69f0: its sprite DMA move at h2+$6a96,
+    /// palette at h2+$6a98, planes at h2+$6b18; T183).
+    MapCopper = "map_copper", h2(0x68e8), Width::Bytes(0x2e8);
     /// `level_copper` (h2+$6bd0): the level's copper list (docs/12 "The copper list").
     LevelCopper = "level_copper", h2(0x6bd0), Width::Bytes(0x400);
     /// h2+$6fd0..$73fc: every copper list but the level's (title, menus, blank).
@@ -332,6 +342,8 @@ layout! {
     /// `level_width`, `level_height` (h0+$a22, h0+$a24): the level's size in pixels.
     LevelWidth = "level_width", h0(0xa22), Width::W;
     LevelHeight = "level_height", h0(0xa24), Width::W;
+    /// `resume_target` (h0+$bda): the `top_loop` call a level code's game starts at (T183).
+    ResumeTarget = "resume_target", h0(0xbda), Width::L;
     ExtraLifeShown = "extra_life_shown", h0(0xdd4), Width::W;
     /// h0+$1368..$136c: the title's two eye-blink timers.
     TitleBlink = "title_blink", h0(0x1368), Width::Bytes(4);
@@ -362,10 +374,20 @@ layout! {
     ScreenFadeToggle = "screen_fade_toggle", h0(0x3ca0), Width::W;
     /// h0+$3dc8: the title intro's blit source pointer.
     IntroBlit = "intro_blit", h0(0x3dc8), Width::L;
+    /// h0+$3f50: `progress_map_vbl`'s frame count; bit 5 blinks the marker (T183).
+    MapBlink = "map_blink", h0(0x3f50), Width::W;
     /// `world` (h0+$40da): 1..6, 7 the bonus level.
     World = "world", h0(0x40da), Width::L;
     /// `level` (h0+$40de): 1..4, the level of the world.
     Level = "level", h0(0x40de), Width::L;
+    /// h0+$40e2, h0+$40fa: the progress map's two marker sprite records (`$18` bytes used each).
+    MapMarkers = "map_markers", h0(0x40e2), Width::Bytes(0x30);
+    /// h0+$4112: the progress map is up (`progress_map_show` .. `progress_map_end`).
+    MapShown = "map_shown", h0(0x4112), Width::L;
+    /// h0+$42a6: the world's loading picture has been shown (`world_intro_show`; never cleared).
+    IntroShown = "intro_shown", h0(0x42a6), Width::L;
+    /// h0+$445a: the end-of-world picture is up (`end_world_pic_show` .. h0+$43e0).
+    EndPicShown = "end_pic_shown", h0(0x445a), Width::L;
     /// `coins_collected` (h0+$445e): coins taken since the last tally (`touch_coin` counts them).
     CoinsCollected = "coins_collected", h0(0x445e), Width::L;
     /// `level_tally`'s pages (h0+$4796: the credits earned, 5 000 points each) and its choice
@@ -464,8 +486,18 @@ layout! {
     Mouse = "mouse", h0(0x11b64), Width::Bytes(6);
     /// `clock_ticks` (h0+$11dfc): vertical blanks into the level clock's current second.
     ClockTicks = "clock_ticks", h0(0x11dfc), Width::W;
+    /// h0+$11e92: `frog_exit_walk`'s state, the code address it calls each vertical blank.
+    ExitWalkState = "exit_walk_state", h0(0x11e92), Width::L;
+    /// h0+$11fd8..$11fde: the walk's counters (a wait, a speed, a step).
+    ExitWalkCount = "exit_walk_count", h0(0x11fd8), Width::Bytes(6);
+    /// h0+$122f0..$1233a: the loading picture's clouds' bob (a toggle, three table pointers and
+    /// their tables, three heights).
+    CloudBob = "cloud_bob", h0(0x122f0), Width::Bytes(0x4a);
     /// `display_timer` (h0+$123d4): counted down each vertical blank.
     DisplayTimer = "display_timer", h0(0x123d4), Width::W;
+    /// h0+$12664..$12a14: the clouds' sprite animations, two per world's set-up (`$1b308` points
+    /// their records at them; T183), and the set-up code between them.
+    CloudAnims = "cloud_anims", h0(0x12664), Width::Bytes(0x3b0);
     AudioSfx = "sfx_chan0", h0(crate::audio::vars::SFX.0), Width::Bytes(crate::audio::vars::SFX.1 as u32);
     AudioMusicOn = "music_on", h0(crate::audio::vars::MUSIC_ON.0), Width::Bytes(crate::audio::vars::MUSIC_ON.1 as u32);
     AudioP41 = "p41_channels", h0(crate::audio::vars::P41.0), Width::Bytes(crate::audio::vars::P41.1 as u32);
@@ -542,6 +574,8 @@ layout! {
     /// `exit_sprite_left`, `_right` (h0+$1b02c, h0+$1b048): the second pair of frog sprites.
     ExitSpriteLeft = "exit_sprite_left", h0(0x1b02c), Width::Bytes(0x1c);
     ExitSpriteRight = "exit_sprite_right", h0(0x1b048), Width::Bytes(0x1c);
+    /// h0+$1b064..$1b10c: six sprite records, the loading picture's clouds (T183).
+    CloudSprites = "cloud_sprites", h0(0x1b064), Width::Bytes(0xa8);
     /// h0+$1b10c..$1b208: hardware-sprite records (pointer, title eyes, menu cursor).
     SpriteRecs = "sprite_recs", h0(0x1b10c), Width::Bytes(0xfc);
     /// `bob_free_list` (h0+$1ba16), `obj_count` (h0+$1ba6a), `obj_slots` (h0+$1ba6c).
@@ -643,8 +677,9 @@ layout! {
 pub fn presentation(id: VarId) -> Option<&'static str> {
     use VarId::*;
     Some(match id {
-        EndCopper | AwardCopper | TallyCopper | SlotCopper | ExitSpriteCopper | LevelCopper
-        | FrontCopper | StoryBootCopper | StoryCopper => "a copper list: what the beam shows",
+        EndCopper | AwardCopper | TallyCopper | EndPicCopper | SlotCopper | IntroCopper
+        | ExitSpriteCopper | MapCopper | LevelCopper | FrontCopper | StoryBootCopper
+        | StoryCopper => "a copper list: what the beam shows",
         BobSheet => "bob graphics, and the end sequence's unpacked pictures over them",
         PlayfieldBuffer0 | PlayfieldBuffer1 | PlayfieldClean | StoryBuffers | StoryClean => {
             "a display buffer's bitmap"

@@ -76,18 +76,20 @@ fn items_fruit_w2_2() {
 
 /// W1-1's exit forced on its first frame (T38): the exit fade, the tally with its two pages for
 /// the time left, fire with up never held taking the points, the hundred frames' pause and the
-/// fade out; green to the frame before the tally returns into `top_loop`, and on that frame the
-/// level is over with the pages and the points taken (the next level is T21's).
+/// fade out; green, and on the frame after, the tally back in `top_loop` (W1-2's load, T183), the
+/// level is over with the pages and the points taken.
 #[test]
 fn tally_w1_1() {
     green("tally-w1-1");
     let mut case = sf_conform::Case::load(&sf_conform::cases_dir().join("tally-w1-1.toml")).unwrap();
-    case.frames += 1;
-    let d = sf_conform::run(&case).expect_err("the next level is T21's");
-    assert_eq!(d.frame, 185);
-    assert_eq!(d.unported, ["the next level after the tally (T21)"]);
+    // Two frames on: the hook runs before each step, so it sees frame 185's end.
+    case.frames += 2;
+    let mut outcome = None;
+    if let Err(d) = sf_conform::run_with(&case, |_, g| outcome = g.level_outcome()) {
+        panic!("{d}");
+    }
     assert_eq!(
-        d.level_outcome,
+        outcome,
         Some(sf_core::level::LevelOutcome::Completed {
             tally: sf_core::level::Tally {
                 pages: 2,

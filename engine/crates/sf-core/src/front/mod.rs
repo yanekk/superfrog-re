@@ -19,6 +19,7 @@
 pub mod anim;
 pub(crate) mod attract;
 pub mod blit;
+pub(crate) mod chain;
 pub(crate) mod common;
 pub mod data;
 pub(crate) mod ending;
@@ -160,6 +161,17 @@ pub(crate) enum Routine {
     SlotHiloSpin(crate::slot::rounds::HiloSpin),
     SlotJackpot(crate::slot::rounds::Jackpot),
     SlotWork(crate::slot::draw::Work),
+    /// The game's flow (T183, [`chain`]): `top_loop`'s calls, the world's and the level's loads
+    /// and the screens between levels.
+    Chain(chain::Chain),
+    WorldLoad(chain::WorldLoad),
+    WorldIntro(chain::WorldIntro),
+    LevelLoad(chain::LevelLoad),
+    MapShow(chain::MapShow),
+    MapEnd(chain::MapEnd),
+    IntroEnd(chain::IntroEnd),
+    EndPic(chain::EndPic),
+    EndPicEnd(chain::EndPicEnd),
 }
 
 impl Routine {
@@ -193,19 +205,10 @@ impl Routine {
             Routine::Tally(r) => r.run(cx),
             Routine::Timeline(r) => r.run(cx),
             Routine::LevelLoop => Yield::Poll,
+            // The level is over this way: said, then back to the caller (`top_loop`'s next call).
             Routine::Outcome(o) => {
-                cx.unported(match o {
-                    crate::level::LevelOutcome::Completed { .. }
-                        if cx.s.l(crate::level::exit::WORLD) == crate::level::exit::BONUS_WORLD =>
-                    {
-                        "the bonus level's end picture (T21)"
-                    }
-                    crate::level::LevelOutcome::Completed { .. } => {
-                        "the next level after the tally (T21)"
-                    }
-                    _ => "a level's end the engine does not follow",
-                });
-                Yield::Poll
+                cx.outcome = Some(*o);
+                Yield::Return
             }
             Routine::GameOverSeq(r) => r.run(cx),
             Routine::GameOverCheck(r) => r.run(cx),
@@ -222,6 +225,15 @@ impl Routine {
             Routine::SlotHiloSpin(r) => r.run(cx),
             Routine::SlotJackpot(r) => r.run(cx),
             Routine::SlotWork(r) => r.run(cx),
+            Routine::Chain(r) => r.run(cx),
+            Routine::WorldLoad(r) => r.run(cx),
+            Routine::WorldIntro(r) => r.run(cx),
+            Routine::LevelLoad(r) => r.run(cx),
+            Routine::MapShow(r) => r.run(cx),
+            Routine::MapEnd(r) => r.run(cx),
+            Routine::IntroEnd(r) => r.run(cx),
+            Routine::EndPic(r) => r.run(cx),
+            Routine::EndPicEnd(r) => r.run(cx),
         }
     }
 }
@@ -332,6 +344,12 @@ pub(crate) struct Cx<'a> {
     pub schedule: &'a [(u16, u16)],
     /// The copper's writes to Paula's registers this frame, first among the frame's writes.
     pub early: Vec<PaulaWrite>,
+    /// How the level is over, once the tally (or the exit's check) has said (T183).
+    pub outcome: Option<crate::level::LevelOutcome>,
+    /// For conformance, a frame that loads: what runs on during the original's load as this
+    /// frame's interrupt left it, put back at the load (the main program's work before the load
+    /// was done in the frame the original's load began).
+    pub load_runs: Vec<(u32, Vec<u8>)>,
 }
 
 impl Cx<'_> {
@@ -445,6 +463,9 @@ impl Cx<'_> {
         if let Some(l) = self.load_line.take() {
             self.line = self.line.max(l);
         }
+        for (at, bytes) in std::mem::take(&mut self.load_runs) {
+            self.s.poke(at, &bytes);
+        }
         let snap = Snapshot {
             at: self.cop1lc,
             bytes: self.s.read(self.cop1lc, 0x800),
@@ -533,12 +554,17 @@ pub struct Front {
     pub unported: Vec<&'static str>,
     /// What the slot machine gave when it returned (T73).
     slot_outcome: Option<crate::slot::SlotOutcome>,
+    /// How the last level was over, as its tally said (T183).
+    outcome: Option<crate::level::LevelOutcome>,
     /// The audio channels' DMA, run on each frame's Paula writes: the slots it takes time the slot
     /// machine's lamps (T129). It starts idle; the slot machine stops every channel first.
     audio: sf_paula::AudioDma,
     /// For conformance, the next frame's: where the original made its Paula writes
     /// ([`Front::anchor_writes`]).
     schedule: Vec<(u16, u16)>,
+    /// For conformance, a frame that loads: what runs on by itself while the original loads, as
+    /// it had it ([`crate::Game::set_load_state`]), put in place after the work carried over.
+    pub(crate) load_state: Vec<(u32, Vec<u8>)>,
 }
 
 /// An unpacking in progress, for the picture: where, what was there, and when it began and ends
@@ -624,8 +650,10 @@ impl Front {
             spren: true,
             unported: Vec::new(),
             slot_outcome: None,
+            outcome: None,
             audio: sf_paula::AudioDma::booted(),
             schedule: Vec::new(),
+            load_state: Vec::new(),
         }
     }
 
@@ -660,7 +688,7 @@ impl Front {
             };
             s.audio = crate::audio::AudioDriver::transplant(d, &|a| mem.byte(a), &files);
         }
-        Some(Front {
+        let mut front = Front {
             frame: 0,
             fetch: None,
             load_line: None,
@@ -685,9 +713,15 @@ impl Front {
             spren: true,
             unported: Vec::new(),
             slot_outcome: None,
+            outcome: None,
             audio: sf_paula::AudioDma::booted(),
             schedule: Vec::new(),
-        })
+            load_state: Vec::new(),
+        };
+        if in_slot {
+            front.chain_below(s, &display.front);
+        }
+        Some(front)
     }
 
     /// The program a level hands over to when its loop ends (`level_frame_loop` returns into
@@ -730,20 +764,33 @@ impl Front {
             spren: true,
             unported: Vec::new(),
             slot_outcome: None,
+            outcome: None,
             audio: sf_paula::AudioDma::booted(),
             schedule: Vec::new(),
+            load_state: Vec::new(),
         }
+    }
+
+    /// [`Front::after_level`] with what follows the level's loop: `top_loop`'s own code from its
+    /// `jsr level_exit_fade` when the level is one of its (T183), else the exit fade alone.
+    pub(crate) fn level_over(s: &State, data: &FrontData, sdr: u8, frog_only: bool) -> Front {
+        let routine = match chain::level_call(s, data) {
+            Some(init) => Routine::Chain(chain::Chain::after_loop(init, frog_only)),
+            None => Routine::LevelOver(crate::level::exit::LevelOver::new(frog_only)),
+        };
+        Front::after_level(s, sdr, routine, frog_only)
     }
 
     /// The slot machine entered from the level's tally (T73, [`crate::Game::enter_slot`]):
     /// `slot_machine` on top of the tally's end, the screen blank.
-    pub(crate) fn enter_slot(s: &State, sdr: u8, frog_only: bool) -> Front {
+    pub(crate) fn enter_slot(s: &State, data: &FrontData, sdr: u8, frog_only: bool) -> Front {
         let mut f = Front::after_level(
             s,
             sdr,
-            Routine::SlotOver(crate::slot::SlotOver),
+            Routine::SlotOver(Default::default()),
             frog_only,
         );
+        f.chain_below(s, data);
         f.stack.push(Frame {
             routine: Routine::Slot(Default::default()),
             wait: None,
@@ -751,6 +798,20 @@ impl Front {
         });
         f.cop1lc = title::BLANK_COPPER;
         f
+    }
+
+    /// `top_loop` under the tally this stack ends in, after its `jsr level_tally` (T183).
+    fn chain_below(&mut self, s: &State, data: &FrontData) {
+        if let Some(init) = chain::level_call(s, data) {
+            self.stack.insert(
+                0,
+                Frame {
+                    routine: Routine::Chain(chain::Chain::after_tally(init, self.frog_only)),
+                    wait: None,
+                    deferred: None,
+                },
+            );
+        }
     }
 
     /// The rest of a frame the level scene began: the main program from `line` on, after the
@@ -795,6 +856,8 @@ impl Front {
             audio: None,
             schedule: &[],
             early: Vec::new(),
+            outcome: None,
+            load_runs: Vec::new(),
         };
         self.run_main(&mut cx, u16::MAX);
         self.stalled = cx.stall;
@@ -803,6 +866,7 @@ impl Front {
         self.keyboard = cx.keyboard;
         self.unported.append(&mut cx.unported);
         self.slot_outcome = self.slot_outcome.or(cx.slot_outcome.take());
+        self.outcome = cx.outcome.take().or(self.outcome);
         let jobs = std::mem::take(&mut cx.jobs);
         for w in &mut paula {
             if w.vpos == 0 {
@@ -830,10 +894,7 @@ impl Front {
     /// How the level is over, once the program after its loop has decided it (the tally's
     /// result, T38).
     pub(crate) fn outcome(&self) -> Option<crate::level::LevelOutcome> {
-        match self.stack.last().map(|f| &f.routine) {
-            Some(Routine::Outcome(o)) => Some(*o),
-            _ => None,
-        }
+        self.outcome
     }
 
     /// The scene this front end's program is in: the slot machine while `slot_machine` is on its
@@ -902,6 +963,8 @@ impl Front {
                 audio: None,
                 schedule: &[],
                 early: Vec::new(),
+                outcome: None,
+                load_runs: Vec::new(),
             };
             title::boot(&mut cx);
             self.cop1lc = cx.cop1lc;
@@ -960,6 +1023,8 @@ impl Front {
             audio: Some(&audio),
             schedule: &schedule,
             early: Vec::new(),
+            outcome: None,
+            load_runs: Vec::new(),
         };
         // Work the main program carried over from the last frame with interrupts off.
         let masked = match self.stack.last() {
@@ -990,6 +1055,10 @@ impl Front {
                     w.vpos = l;
                 }
             }
+        }
+        let load_runs: Vec<(u32, u32)> = self.load_state.iter().map(|(a, b)| (*a, b.len() as u32)).collect();
+        for (at, bytes) in std::mem::take(&mut self.load_state) {
+            cx.s.poke(at, &bytes);
         }
         let stalled = self.stalled.take();
         let vbl_line = stalled.unwrap_or(cx.line.max(1));
@@ -1112,6 +1181,10 @@ impl Front {
                 w.vpos = cx.line;
             }
         }
+        cx.load_runs = load_runs
+            .into_iter()
+            .map(|(a, n)| (a, cx.s.read(a, n)))
+            .collect();
         // The main program, part by part, until it waits beyond the picture.
         let mut before = Some(Vec::new());
         self.run_main_split(&mut cx, PICTURE_END, &mut before);
@@ -1165,7 +1238,9 @@ impl Front {
             w.sort_by_key(|w| w.0);
             w
         };
-        let dma = (cop1lc == crate::slot::SLOT_COPPER).then(|| render::SpriteDma {
+        // The progress map's list blinks its marker the same way (T183).
+        let follows_dma = cop1lc == crate::slot::SLOT_COPPER || cop1lc == h2(0x69f0);
+        let dma = follows_dma.then(|| render::SpriteDma {
             on: self.spren,
             cpu: dmacon(cx.paula),
         });
@@ -1265,6 +1340,7 @@ impl Front {
         self.seed = cx.seed;
         self.unported.append(&mut cx.unported);
         self.slot_outcome = self.slot_outcome.or(cx.slot_outcome.take());
+        self.outcome = cx.outcome.take().or(self.outcome);
         // In beam order: the copper's writes among the CPU's (lines are approximate for the CPU's:
         // the interrupt's at the top, the main program's where it woke). Positions are not
         // compared (the engine is not cycle-timed), so they are cleared.
@@ -1394,6 +1470,15 @@ impl Front {
                 Yield::Return => {
                     self.stack.pop();
                     if self.stack.is_empty() {
+                        // A level entered with no `top_loop` known below it stays over.
+                        if let Some(o) = cx.outcome.or(self.outcome) {
+                            self.stack.push(Frame {
+                                routine: Routine::Outcome(o),
+                                wait: Some((Yield::Poll, 1)),
+                                deferred: None,
+                            });
+                            return;
+                        }
                         cx.unported("the front end's program ran off its end");
                         return;
                     }
@@ -1525,6 +1610,20 @@ pub const RUNS_DURING_LOAD: &[(u32, u32)] = &[
         h0(crate::audio::vars::STREAM.0),
         crate::audio::vars::STREAM.1 as u32,
     ),
+    // The screens the original loads under (T183; owner, 2026-10-15): the loading picture's
+    // walk and clouds, the progress map's blink and fade, the end-of-world picture's time, each
+    // run by the vertical blank and waited for by the main program after the load.
+    (h0(0x123d4), 2),                    // display_timer
+    (h0(0x9f8), 2),                      // frog_exit_sprites
+    (h0(0x4112), 4),                     // map_shown
+    (h0(0x11e92), 4),                    // exit_walk_state
+    (h0(0x11fd8), 6),                    // exit_walk_count
+    (h0(0x122f0), 0x4a),                 // cloud_bob
+    (h0(0x1b02c), 0x38 + 0xa8),          // exit_sprite_left, _right, cloud_sprites
+    (h0(0x802), 0xe),                    // frog_anim .. frog_sprite_dy
+    (h0(0x3f50), 2),                     // map_blink
+    (h0(0x157d8), 4 * 0x1f2),            // fades
+    (crate::layout::h2(0x6750), 0x480),  // intro_copper, exit_sprite_copper, map_copper
 ];
 
 /// What a load leaves that the engine does not model, taken from the original once the load is

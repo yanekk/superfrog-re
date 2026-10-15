@@ -67,6 +67,9 @@ pub fn outcome_of_loop(s: &State) -> LevelOutcome {
 #[derive(Debug, Clone, Default, PartialEq, Eq, Hash)]
 pub struct LevelOver {
     pc: u8,
+    /// Run from `top_loop`'s own code ([`crate::front::chain`], T183): over once the screen is
+    /// blank, `game_over_check` and what follows being the caller's.
+    chained: bool,
     /// Lines the window has still to close.
     left: u16,
     /// The level runs with no object kinds (`crate::Game::frog_only`).
@@ -77,6 +80,15 @@ impl LevelOver {
     pub(crate) fn new(frog_only: bool) -> LevelOver {
         LevelOver {
             frog_only,
+            ..LevelOver::default()
+        }
+    }
+
+    /// `level_exit_fade` as `top_loop` calls it ([`crate::front::chain::Chain`]).
+    pub(crate) fn chained(frog_only: bool) -> LevelOver {
+        LevelOver {
+            frog_only,
+            chained: true,
             ..LevelOver::default()
         }
     }
@@ -134,6 +146,9 @@ impl LevelOver {
                     // The attract demo's end: `bra top_loop`, the title again (h0+$e2).
                     return Yield::Jump(Box::new(Routine::TopLoop(Default::default())));
                 }
+                if self.chained {
+                    return Yield::Return;
+                }
                 // `game_over_check`: ESC (`abort_flag`) or no lives leave the game, a death goes
                 // round `top_loop` again, the exit to the tally (T38).
                 if crate::front::GameOverCheck::ends(cx) {
@@ -158,7 +173,7 @@ impl LevelOver {
 
 /// `level_init_wN`'s calls' return addresses (`level_init_lb`'s for the bonus level), where the
 /// original is while it runs.
-fn init_inside(id: LevelId) -> Vec<u32> {
+pub(crate) fn init_inside(id: LevelId) -> Vec<u32> {
     let (base, offsets): (u32, &[u32]) = match id.world {
         World::Bonus => (0x8c3a, &[6, 0x2c, 0x32, 0x36, 0x80, 0x9a]),
         w => (
@@ -313,6 +328,13 @@ pub struct LevelStart {
 }
 
 impl LevelStart {
+    pub(crate) fn new(frog_only: bool) -> LevelStart {
+        LevelStart {
+            frog_only,
+            ..LevelStart::default()
+        }
+    }
+
     pub(crate) fn run(&mut self, cx: &mut Cx) -> Yield {
         use crate::level::panel;
         loop {

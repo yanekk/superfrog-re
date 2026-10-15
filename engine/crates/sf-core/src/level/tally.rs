@@ -198,6 +198,7 @@ impl LevelTally {
                     cx.cop1lc = BLANK_COPPER;
                     let pages = cx.s.w(PAGES);
                     if pages == 0 || cx.s.w(CHOICE) == 0 {
+                        self.pc = 13;
                         return call(Routine::Outcome(outcome(cx)));
                     }
                     cx.s.set_w(SLOT_COINS, pages);
@@ -210,7 +211,11 @@ impl LevelTally {
                     self.pc = 12;
                     return call(Routine::Slot(Default::default()));
                 }
-                _ => return after_slot(cx),
+                12 => {
+                    self.pc = 13;
+                    return after_slot(cx);
+                }
+                _ => return Yield::Return,
             }
         }
     }
