@@ -118,7 +118,7 @@ done · ⛔ blocked, needs a human. A task dropped by a plan amendment leaves th
 | T103 | w4-completions | T41, T101, T102; blocks T18 | ✅ | |
 | T111 | enemies-w3-2-case | T44; blocks T18 | ✅ | |
 | T112 | enemies-w3-3-case | T44; blocks T18 | ✅ | |
-| T113 | enemies-w3-4-case | T44, T102, T180; blocks T115, T21 | ⬜ | |
+| T113 | enemies-w3-4-case | T44, T102, T180; blocks T115, T21 | ✅ | |
 | T114 | enemies-w3-activation | T44; blocks T18 | ✅ | |
 | T115 | w3-completions | T44, T101, T102, T111, T112, T113, T180, T182; blocks T21 | ⬜ | |
 | T121 | bob-draw-cut | T101; blocks T21 | ✅ | |
