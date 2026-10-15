@@ -439,13 +439,11 @@ impl Cx<'_> {
     }
 
     /// An instant load is over: conformance finds the original past it as `end` says; the main
-    /// program goes on from the line the runner gave, if it gave one: where the original's load
-    /// ended, whatever the engine was still busy with before it (T33: the original did that long
-    /// before this frame).
+    /// program goes on from the line the runner gave, if it gave one.
     pub fn loaded(&mut self, end: crate::game::LoadEnd) {
         self.load = Some(end);
         if let Some(l) = self.load_line.take() {
-            self.line = l;
+            self.line = self.line.max(l);
         }
         let snap = Snapshot {
             at: self.cop1lc,
@@ -1359,21 +1357,10 @@ impl Front {
             }
             let (first, line) = (cx.paula.len(), cx.line);
             let pending = before.as_ref().map_or(0, |b| b.len()).wrapping_sub(1);
-            let loaded = cx.load_point.is_some();
             let y = match top.deferred.take() {
                 Some(y) => y,
                 None => top.routine.run(cx),
             };
-            // A part that loads stands for the original's, which did what comes before its load
-            // long before this frame: the beam sees all of it (T33: the Accessing-disk overlay
-            // put up after the attract demo).
-            if !loaded
-                && cx.load_point.is_some()
-                && let Some(b) = before.as_mut()
-                && b.get(pending).is_some_and(|e| e.0 == line)
-            {
-                b.remove(pending);
-            }
             // What the part wrote shows below where the beam is once it is done.
             if let Some(b) = before.as_mut()
                 && let Some(e) = b.get_mut(pending)
