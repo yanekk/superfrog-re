@@ -1,9 +1,11 @@
-# Power-on with disk 3 through the whole intro, untouched, to the "insert disk 1" page (T56, T144;
-# frame 9312, the last before the engine hands over to disk 1, which the original waits for): every
-# scene's set-up, play and fades, the text pages, loads re-synced as `story-intro`'s. Slow (about
-# 5 min): not in the test block; `cargo test -p sf-conform -- --ignored` runs it.
+# Power-on with disk 3 through the whole intro, untouched, to the "insert disk 1" page (T56, T144),
+# then fire there: the page waits for fire, reads disk 1's id, waits for fire to go, fades out, and
+# disk 1's boot starts the game as `front-boot`'s power-on does, to its title waiting (T47; loads
+# re-synced as `story-intro`'s and `front-boot`'s). Slow (about 5 min): not in the test block;
+# `cargo test -p sf-conform -- --ignored` runs it.
 sync = "power-on-disk3"
-frames = 9313
+script = "story-insert-disk1"
+frames = 9870
 
 [[exclude]]
 what = "picture"

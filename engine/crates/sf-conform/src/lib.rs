@@ -334,6 +334,12 @@ fn run_inner(
                             .map(|&(a, n)| (a, (a..a + n).map(|x| prev_mem.byte(x)).collect()))
                             .collect();
                         g.set_load_state(runs);
+                        // Or the intro hands over, and the game's own load is the one that ended.
+                        let runs = sf_core::front::RUNS_DURING_LOAD
+                            .iter()
+                            .map(|&(a, n)| (a, (a..a + n).map(|x| prev_mem.byte(x)).collect()))
+                            .collect();
+                        g.set_handover_state(runs);
                     } else {
                         take(&mut g, &prev_mem, before.runs_during_load());
                     }
