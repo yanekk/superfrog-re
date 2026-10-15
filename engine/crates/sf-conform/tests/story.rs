@@ -115,3 +115,90 @@ fn the_whole_intro_into_the_game_matches_the_original() {
         panic!("{d}");
     }
 }
+
+/// Runs a `story-skip-*` case (T48) and checks the engine left the intro for the game, and is on
+/// the title at the case's end: a run that stayed on the "insert disk 1" page on both sides would
+/// match too.
+fn skips_to_the_title(case: &str) {
+    let case = sf_conform::Case::load(&sf_conform::cases_dir().join(format!("{case}.toml")))
+        .unwrap_or_else(|e| panic!("{e}"));
+    let last = case.frames - 1;
+    let mut scenes = Vec::new();
+    let r = sf_conform::run_with(&case, |f, g| {
+        if scenes.last().is_none_or(|&(_, s)| s != g.scene()) {
+            scenes.push((f, g.scene()));
+        }
+    });
+    if let Err(d) = r {
+        panic!("{d}");
+    }
+    let to_front = scenes
+        .iter()
+        .find(|(_, s)| *s == sf_core::Scene::Front)
+        .unwrap_or_else(|| panic!("{}: the game never started: {scenes:?}", case.name));
+    assert!(
+        to_front.0 + 500 <= last,
+        "{}: the game started at {}, too late to reach its title by {last}",
+        case.name,
+        to_front.0
+    );
+    assert_eq!(
+        scenes.last().map(|s| s.1),
+        Some(sf_core::Scene::Front),
+        "{}",
+        case.name
+    );
+}
+
+/// Fire on the first text page (`WaitOrFire`, the case `story-skip-page-fire`): the page ends at
+/// once and the handler sets `intro_skip`, so scene 1 plays and `SkipCheck` goes to the end: the
+/// "insert disk 1" page, whose unpack runs under shorter handlers than after the last scene
+/// (`scenes::UNPACK_WORK`), then fire there and on into the game to its title.
+#[test]
+fn fire_on_a_text_page_skips_the_intro_as_the_original_does() {
+    skips_to_the_title("story-skip-page-fire");
+}
+
+/// The mouse button on the first text page (the case `story-skip-page-mouse`): `WaitOrFire` reads
+/// fire only, so the page stays its 400 frames, but the handler sets `intro_skip`: scene 1, then
+/// the end. About 50 s: out of the test block, as are the other skip cases.
+#[test]
+#[ignore = "slow: about 50 s"]
+fn the_mouse_on_a_text_page_skips_after_the_scene() {
+    skips_to_the_title("story-skip-page-mouse");
+}
+
+/// Fire or the mouse button during scene 1's set-up (the cases `story-skip-setup-*`): the scene
+/// plays on, `SkipCheck` after it goes to the end.
+#[test]
+#[ignore = "slow: about 50 s each"]
+fn a_press_in_a_scenes_set_up_skips_after_the_scene() {
+    skips_to_the_title("story-skip-setup-fire");
+    skips_to_the_title("story-skip-setup-mouse");
+}
+
+/// Fire or the mouse button while scene 1 plays (the cases `story-skip-play-*`).
+#[test]
+#[ignore = "slow: about 50 s each"]
+fn a_press_while_a_scene_plays_skips_after_the_scene() {
+    skips_to_the_title("story-skip-play-fire");
+    skips_to_the_title("story-skip-play-mouse");
+}
+
+/// Fire or the mouse button on the Team 17 logo (the cases `story-skip-logo-*`): `d3_c02` reads
+/// neither (only CIA-A PRA bit 4, the drive), so the intro runs on untouched until the mouse
+/// button in scene 1 skips it.
+#[test]
+#[ignore = "slow: about 50 s each"]
+fn a_press_on_the_logo_is_not_read() {
+    skips_to_the_title("story-skip-logo-fire");
+    skips_to_the_title("story-skip-logo-mouse");
+}
+
+/// The mouse button on the "insert disk 1" page (the case `story-skip-disk1-mouse`):
+/// `intro_wait_disk1` polls fire only, so the page waits on until fire.
+#[test]
+#[ignore = "slow: about 45 s"]
+fn the_mouse_on_the_insert_disk_page_is_not_read() {
+    skips_to_the_title("story-skip-disk1-mouse");
+}

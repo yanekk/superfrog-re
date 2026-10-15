@@ -1,0 +1,9 @@
+# Fire on the Team 17 logo's fade-in (d3_c02 reads only the drive's bit of CIA-A PRA, and the
+# intro's handler is not in yet): nothing happens. The mouse button in scene 1 then skips (T48),
+# then fire on the "insert disk 1" page (up from O 3 754): disk 1 goes in, the game starts.
+20: F
+40: -
+3500: M
+3505: -
+3790: F
+3795: -
