@@ -407,12 +407,14 @@ fn run_inner(
                 // falls (DESIGN §2.1): the first one on which the engine's frame matches the
                 // original's.
                 {
-                    let masked: Vec<(u32, u32)> = jobs
-                        .iter()
-                        .flat_map(|(j, _, _)| j.writes.clone())
-                        .chain(ours.jobs.iter().flat_map(|j| j.writes.clone()))
-                        .collect();
+                    // Each try's own jobs are masked: a fade set up only when the load ends
+                    // earlier is one only that try has.
                     let fits = |g: &Game, out: &FrameOut| {
+                        let masked: Vec<(u32, u32)> = jobs
+                            .iter()
+                            .flat_map(|(j, _, _)| j.writes.clone())
+                            .chain(out.jobs.iter().flat_map(|j| j.writes.clone()))
+                            .collect();
                         compare::frame(
                             case,
                             f,
