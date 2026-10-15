@@ -18,6 +18,14 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-15 | 🔄 | Owner, T122: added T155 w2-completions-green (T122, T127, T131, T132; blocks T18) and split W2-2/3/4 completions to T166, T167, T168 (T122; blocks T18, T155). `w2-1-complete` committed red, outside the test block. |
+| 2026-10-15 | 🐞 | T122, open (T168): W2-4's original hangs when the frog is pushed into the wall at 20,56 by the closed gate 18,55 (switch 46,66 not pulled): clock and frog frozen from then. Possible DESIGN §2.11 case. |
+| 2026-10-15 | 🐞 | T122, open (T155): `w2-1-complete` red at 1094 (frog sprite, every variable equal: T127/T131) and 1508 (`level_copper` after a lag: T131/T132). Frame 2709 is the next level's. |
+| 2026-10-15 | 📌 | T122: W2's tile coins (marker 55) count in `frog+$7e`, not toward the exit (`--no-tile-coins`). A jump reaches 3 rows (`examples/try_inputs`); a pad about 22. A launcher throws sideways, `vy` −5. |
+| 2026-10-15 | 🔄 | Owner, T106: added T154 w1-4-completion (T106, T127; blocks T18): W1-4's last coins need the wings (open sky) or more bounces on the pad at 288,44, which trip the frog-sprite fault. `complete-w1-4` holds the green route to 4054. |
+| 2026-10-15 | 🔄 | Owner, T106: added T165 w1-1-completion (T106, T131; blocks T18): every W1-1 exit found meets T131's exit-fade palette step (frames 4475, 4477, `$bbb` for `$ccc`); `complete-w1-1` committed outside the test block. |
+| 2026-10-15 | 🐞 | T106, fixed: a loop ending in a late pass ended a step early (`loop_over`), `mid_pass` missed passes with `level_state` 1, and after a lag the runner compared jobs unmasked. `bonus-death-wb-1` is now green to 2448; 2449 still diverges. |
+| 2026-10-15 | 📌 | T106: `plan_exit` needs an idle prefix at a W1 level's start (`0: -` / `20: -`: `level_state` is not yet running at frame 0). Marker 4 is a bounce pad too (W1-3's way out of the basin). |
 | 2026-10-15 | 🐞 | T124, open (T120): `enemies-w5-3` straddles 1024 of 2600 frames (the watchers' room and the bottom corridor nearly every other frame). Green, but those are half-compared. |
 | 2026-10-15 | 📌 | T124: `enemies-w5-3` meets every W5-3 type but the faller (28, marker 10 at 92,39, off the route) and the shooters' shot (85; shooters met walking only); `enemies-w5-1` and `enemies-w5-2` meet both. W5-3 has no marker 12. |
 | 2026-10-15 | 📌 | T124: `examples/plan_exit` routes W5-3 unaided once the frog is free (frame 150): down the shaft at col 133 to the watchers, the chute at 222,63 into the bottom corridor (2/3 pacer, row 72). |

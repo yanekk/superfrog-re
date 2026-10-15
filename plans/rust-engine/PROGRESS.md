@@ -109,7 +109,7 @@ done · ⛔ blocked, needs a human.
 | T101 | lag-long-pass | T81, T82; blocks T21 | ✅ | |
 | T102 | items-w3-faults | T101; blocks T21 | ✅ | |
 | T105 | w2-1-hang-fruit-life | T85; blocks T21 | ✅ | |
-| T106 | w1-completions | T42, T86, T101; blocks T18 | ⬜ | |
+| T106 | w1-completions | T42, T86, T101; blocks T18 | ✅ | |
 | T107 | enemies-w1-2-case | T42; blocks T18, T33, T106 | ✅ | |
 | T108 | enemies-w1-3-case | T42; blocks T18, T33, T106 | ✅ | |
 | T109 | enemies-w1-4-case | T42; blocks T18, T33, T106 | ✅ | |
@@ -121,7 +121,7 @@ done · ⛔ blocked, needs a human.
 | T114 | enemies-w3-activation | T44; blocks T18 | ✅ | |
 | T115 | w3-completions | T44, T101, T102, T111, T112, T113; blocks T18 | ⬜ | |
 | T121 | bob-draw-cut | T101; blocks T21 | ✅ | |
-| T122 | w2-completions | T43, T101, T121; blocks T18 | ⬜ | |
+| T122 | w2-completions | T43, T101, T121; blocks T18 | ✅ | |
 | T120 | conform-no-silent-pass | T05, T36; blocks T21 | ⬜ | |
 | T104 | w6-completions | T40, T101, T102; blocks T18 | ✅ | |
 | T123 | enemies-w5-2-case | T39; blocks T18 | ✅ | |
@@ -153,6 +153,12 @@ done · ⛔ blocked, needs a human.
 | T162 | attract-demo-level-start | T161 | ⬜ | |
 | T163 | attract-demo-return | T162 | ⬜ | |
 | T164 | attract-demo-cycles | T163 | ⬜ | |
+| T154 | w1-4-completion | T106, T127; blocks T18 | ⬜ | |
+| T165 | w1-1-completion | T106, T131; blocks T18 | ⬜ | |
+| T155 | w2-completions-green | T122, T127, T131, T132; blocks T18 | ⬜ | |
+| T166 | w2-2-completion | T122; blocks T18, T155 | ⬜ | |
+| T167 | w2-3-completion | T122; blocks T18, T155 | ⬜ | |
+| T168 | w2-4-completion | T122; blocks T18, T155 | ⬜ | |
 
 A Notes cell holds what was built or what the review found, the test count, and one line per
 deviation from the task doc. A ✅ task's cell may be cut to one line once the next task has been reviewed.

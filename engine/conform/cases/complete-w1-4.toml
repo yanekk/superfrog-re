@@ -1,0 +1,7 @@
+# W1-4 from its start with every object live, no exclusions (T106): the route so far, 4054 frames,
+# up the pad at 288,44 to 266,21 with 43 coins still needed; T154 plays it on to the exit and the
+# tally. Green but for a re-sync at 2629 (a lag cut in `panel_update`, as W1-3's at 5079).
+sync = { level = "W1-4" }
+script = "complete-w1-4"
+frames = 4054
+resync = true
