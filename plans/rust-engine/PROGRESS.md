@@ -130,7 +130,7 @@ done · ⛔ blocked, needs a human.
 | T126 | w5-completions | T39, T101, T121, T123, T124, T125; blocks T18 | ⬜ | |
 | T127 | restore-sprite-wait | T101; blocks T21 | ⬜ | |
 | T128 | w3-4-sprite-race | T127; blocks T113 | ⬜ | |
-| T130 | front-vbl-318 | T100; blocks T21 | ⬜ | |
+| T130 | front-vbl-318 | T100; blocks T21 | 🔍 | Cause found, not fixed (owner chose so): audio DMA slots under the fade loop, cost set by bus phase; no fitted term works. Exclusions 318, 613, 658 now name T171 (added, owner's yes). Kept: `fade::level_bus_times`, `level_walks`, `story::vbl::fade_calls`, one unit test; four probes. Deviation: picture not compared on 318. |
 | T129 | slot-lamp-cut | T74; blocks T21 | ⬜ | |
 | T140 | story-setup-under-music | T56 | ⬜ | |
 | T141 | story-fade-colour-race | T56 | ⬜ | |
@@ -161,11 +161,12 @@ done · ⛔ blocked, needs a human.
 | T168 | w2-4-completion | T122; blocks T18, T155 | ⬜ | |
 | T169 | power-on-cases-green | T160; blocks T21 | ⬜ | |
 | T170 | game-over-timeup-copper | T34; blocks T21 | ⬜ | |
+| T171 | front-handler-bus-model | T130, T129; blocks T21 | ⬜ | |
 
 A Notes cell holds what was built or what the review found, the test count, and one line per
 deviation from the task doc. A ✅ task's cell may be cut to one line once the next task has been reviewed.
 
-**Review queue:** *(empty)*
+**Review queue:** T130
 
 ## Blocked on the user
 
