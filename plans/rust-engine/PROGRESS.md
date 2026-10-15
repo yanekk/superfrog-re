@@ -126,7 +126,7 @@ done · ⛔ blocked, needs a human.
 | T104 | w6-completions | T40, T101, T102; blocks T18 | ✅ | |
 | T123 | enemies-w5-2-case | T39; blocks T18 | ✅ | |
 | T124 | enemies-w5-3-case | T39; blocks T18 | ⬜ | |
-| T125 | enemies-w5-4-case | T39; blocks T18 | 🔍 | `enemies-w5-4` (4900 frames, `plan_exit` on the original) and its test: 2/3 pacers seen from the slope, template-30 fallers met, one hurts the frog. 1 test. Pinned re-sync 414; picture of 1878 excluded (frog sprites, variables equal). Other W5-4 types left to `enemies-w5-1` (FINDINGS). |
+| T125 | enemies-w5-4-case | T39; blocks T18 | ✅ | Reviewed, one fix: the case met every W5-4 type, shot 85 too, but the test asserted three (now all); hurt frame 4747 by faller 30, probed from slot positions. Mutation (faller 30 in-view fall off) went red. Pin 414 and exclusion 1878 rerun; enemies freeze is empty in W5 (FINDINGS). 1 test. |
 | T126 | w5-completions | T39, T101, T121, T123, T124, T125; blocks T18 | ⬜ | |
 | T127 | restore-sprite-wait | T101; blocks T21 | ⬜ | |
 | T128 | w3-4-sprite-race | T127; blocks T113 | ⬜ | |
@@ -159,7 +159,7 @@ done · ⛔ blocked, needs a human.
 A Notes cell holds what was built or what the review found, the test count, and one line per
 deviation from the task doc. A ✅ task's cell may be cut to one line once the next task has been reviewed.
 
-**Review queue:** T125
+**Review queue:** *(empty)*
 
 ## Blocked on the user
 
