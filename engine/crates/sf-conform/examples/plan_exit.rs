@@ -18,7 +18,8 @@
 //! 0 opens the exit lock), steering by a field flooded from every coin still in the original's
 //! map at the chunk's start, a coin taken worth more than any distance; `--skip c0,r0,c1,r1`
 //! leaves the coins in that box out; `--ground m,...` lets the field climb from cells with those
-//! markers (platform objects: W4's crumbling ledges are 27).
+//! markers (platform objects: W4's crumbling ledges are 27). `--no-tile-coins` (T122): only
+//! markers 8 and 9 are coins; a tile coin counts in `frog+$7e`, not toward the exit (W2-2's).
 use sf_conform::{InputScript, SyncPoint, sync};
 use sf_core::frog::{FROG, f};
 use sf_core::input::{FrameInput, Joy};
@@ -256,6 +257,7 @@ fn main() {
     // back out of (T103: W4-1's lower rooms, under the shaft at 125,35).
     let mut ground: Vec<u16> = Vec::new();
     let mut reach_only = false;
+    let mut no_tile_coins = false;
     let mut skip_boxes: Vec<(usize, usize, usize, usize)> = Vec::new();
     let mut i = 1;
     while i < args.len() {
@@ -275,6 +277,10 @@ fn main() {
             "--skip" => {
                 let v: Vec<usize> = args[i + 1].split(',').map(|x| x.parse().unwrap()).collect();
                 skip_boxes.push((v[0], v[1], v[2], v[3]));
+            }
+            "--no-tile-coins" => {
+                no_tile_coins = true;
+                i -= 1;
             }
             "--no-exit" => {
                 no_exit = true;
@@ -314,7 +320,7 @@ fn main() {
     let display = sf_conform::display_data();
     // The world's coin tiles: its pickup table's (h0+$f382) tiles whose handler is the coin's
     // (h0+$ede0).
-    let coin_tiles: Vec<u32> = {
+    let coin_tiles: Vec<u32> = if no_tile_coins { Vec::new() } else {
         let rom = &display.rom().h0;
         let l = |a: u32| {
             let o = a as usize;
@@ -426,6 +432,7 @@ fn main() {
             eprintln!("  {} coins in reach", coins.len());
             if reach_only {
                 eprintln!("  coins {coins:?}, switches {switches:?}");
+                eprintln!("  every coin left {:?}", coin_cells(start.state(), &coin_tiles));
                 // The way the coins' field leads from the frog: each step to the neighbour
                 // nearest the goal.
                 // To the first `--via` cell instead, if there is one.
