@@ -109,7 +109,7 @@ done · ⛔ blocked, needs a human.
 | T101 | lag-long-pass | T81, T82; blocks T21 | ✅ | |
 | T102 | items-w3-faults | T101; blocks T21 | ✅ | |
 | T105 | w2-1-hang-fruit-life | T85; blocks T21 | ✅ | |
-| T106 | w1-completions | T42, T86, T101; blocks T18 | 🔍 | `complete-w1-2` green; `complete-w1-3` green, re-sync 5079 pinned (panel after lag); 2 tests. W1-1 split to T146 (T131's exit-fade step), W1-4 to T154 (needs wings; 4054-frame prefix kept). Deviations: fixed loop end in a late pass, `mid_pass` at `level_state` ≥ 0, job mask after lag; `bonus_death_wb_1` re-pinned to 2449; `plan_exit` `--avoid`, marker-4 pads. |
+| T106 | w1-completions | T42, T86, T101; blocks T18 | ✅ | Review: one fix, `mid_pass` late-exit change survived mutation; added `complete_w1_1_to_exit_fade` (green to 4474, T131 step pinned 4475). Mutated `loop_over` and after-lag mask, both red. Ran W1-1 scan, W1-4 run, regression set. W1-1 in T146, W1-4 in T154. `plan_exit` changes read-only. 3 tests. |
 | T107 | enemies-w1-2-case | T42; blocks T18, T33, T106 | ✅ | |
 | T108 | enemies-w1-3-case | T42; blocks T18, T33, T106 | ✅ | |
 | T109 | enemies-w1-4-case | T42; blocks T18, T33, T106 | ✅ | |
@@ -147,7 +147,7 @@ done · ⛔ blocked, needs a human.
 A Notes cell holds what was built or what the review found, the test count, and one line per
 deviation from the task doc. A ✅ task's cell may be cut to one line once the next task has been reviewed.
 
-**Review queue:** T106
+**Review queue:** *(empty)*
 
 ## Blocked on the user
 
