@@ -126,7 +126,7 @@ done · ⛔ blocked, needs a human.
 | T104 | w6-completions | T40, T101, T102; blocks T18 | ✅ | |
 | T123 | enemies-w5-2-case | T39; blocks T18 | ✅ | |
 | T124 | enemies-w5-3-case | T39; blocks T18 | ✅ | |
-| T125 | enemies-w5-4-case | T39; blocks T18 | ⬜ | |
+| T125 | enemies-w5-4-case | T39; blocks T18 | ✅ | |
 | T126 | w5-completions | T39, T101, T121, T123, T124, T125; blocks T18 | ⬜ | |
 | T127 | restore-sprite-wait | T101; blocks T21 | ✅ | |
 | T128 | w3-4-sprite-race | T127; blocks T113 | ⬜ | |
