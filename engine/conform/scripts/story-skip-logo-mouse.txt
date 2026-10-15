@@ -1,0 +1,9 @@
+# The mouse button on the Team 17 logo's fade-in: as fire, nothing happens. The mouse button in
+# scene 1 then skips (T48),
+# then fire on the "insert disk 1" page (up from O 3 754): disk 1 goes in, the game starts.
+20: M
+40: -
+3500: M
+3505: -
+3790: F
+3795: -

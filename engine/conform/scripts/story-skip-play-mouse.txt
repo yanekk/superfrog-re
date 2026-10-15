@@ -1,0 +1,6 @@
+# The mouse button while scene 1 plays: as fire (T48),
+# then fire on the "insert disk 1" page (up from O 3 754): disk 1 goes in, the game starts.
+3500: M
+3505: -
+3790: F
+3795: -

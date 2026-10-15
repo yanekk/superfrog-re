@@ -891,6 +891,19 @@ pub static UNPACK_FRAMES: &[(u32, u32, u64)] = &[
     (h0(0x7e88), 38, 164),
 ];
 
+/// Unpacks timed as the main program's work, in lines from their call, which each frame's handler
+/// pushes on (T48): the "insert disk 1" page's (h0+$624, [`END`]) runs after the last scene or
+/// after any scene a skip ends, under handlers of different lengths (the sound driver's effects
+/// add 3 lines a frame after scene 15), so a fixed end frame and line fits only one of them.
+/// Fitted to the untouched run (ending O 12 717, line 17); the others are in [`UNPACK_FRAMES`]
+/// (their end) and are timed so.
+pub static UNPACK_WORK: &[(u32, u64)] = &[(h0(0x624), 3846)];
+
+/// The work in lines of the unpack whose call returns to `ret`, if it is timed so.
+pub fn unpack_work(ret: u32) -> Option<u64> {
+    UNPACK_WORK.iter().find(|(r, _)| *r == ret).map(|(_, w)| *w)
+}
+
 /// The line the unpack whose call returns to `ret` ends on in its last frame.
 pub fn unpack_end_line(ret: u32) -> u64 {
     UNPACK_FRAMES
