@@ -136,7 +136,7 @@ done · ⛔ blocked, needs a human. A task dropped by a plan amendment leaves th
 | T133 | w2-1-fruit-room | T105, T180; blocks T21 | ✅ | |
 | T132 | w4-4-completion | T103; blocks T21 | ✅ | |
 | T145 | w4-4-dart-21 | T132; blocks T21 | ✅ | |
-| T147 | w6-2-completion | T104, T180, T182; blocks T21 | ⬜ | |
+| T147 | w6-2-completion | T104, T180, T182; blocks T21 | ✅ | |
 | T148 | w6-2-alt-completion | T104, T147, T180, T182; blocks T21 | ⬜ | |
 | T149 | w6-3-completion | T104, T180, T182; blocks T21 | ✅ | |
 | T150 | w6-4-completion | T104, T180, T182; blocks T21 | ⬜ | |
@@ -159,6 +159,7 @@ done · ⛔ blocked, needs a human. A task dropped by a plan amendment leaves th
 | T191 | chain-pause | T183; blocks T21 | ✅ | |
 | T192 | chain-level-code | T183, T190; blocks T21 | ⬜ | |
 | T193 | chain-e2e | T183; blocks T21 | ✅ | |
+| T194 | w6-2-sfx-double-blank | T147; blocks T21 | ⬜ | |
 
 A Notes cell holds what was built or what the review found, the test count, and one line per
 deviation from the task doc. A ✅ task's cell may be cut to one line once the next task has been reviewed.
