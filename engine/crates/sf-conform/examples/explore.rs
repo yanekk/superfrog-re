@@ -81,6 +81,27 @@ fn done(st: &sf_core::State, goal: Goal, coins: u16) -> bool {
     }
 }
 
+/// Frames the frog must then live through, idle, for a way to count: one ending in a fall onto
+/// spikes is no way on (W3-2: 117,39 over the spikes at row 41).
+const SAFE: usize = 40;
+
+/// Whether the frog in `g` lives through [`SAFE`] idle frames (the exit ends the level first).
+fn safe(g: &Game, lives: u16) -> bool {
+    let mut g = g.clone();
+    for _ in 0..SAFE {
+        let st = g.state();
+        if st.l(LEVEL_STATE) != 0xffff_fffe {
+            return true;
+        }
+        if st.w(FROG + f::LIVES) != lives || st.w(FROG + f::DYING) != 0 {
+            return false;
+        }
+        g.step_unseen(FrameInput::default());
+    }
+    let st = g.state();
+    st.w(FROG + f::LIVES) == lives && st.w(FROG + f::DYING) == 0
+}
+
 /// Explores from `start` until a way makes progress, or `iters` bursts are spent.
 fn explore(start: &Game, goal: Goal, iters: usize, min_hearts: u16, seed: u64) -> Option<Way> {
     let acts = [
@@ -144,7 +165,7 @@ fn explore(start: &Game, goal: Goal, iters: usize, min_hearts: u16, seed: u64) -
                 {
                     break 'burst;
                 }
-                if done(st, goal, coins) {
+                if done(st, goal, coins) && safe(&g, lives) {
                     return Some(Way { inputs, cells });
                 }
                 let ended = st.l(LEVEL_STATE) != 0xffff_fffe;
@@ -244,6 +265,8 @@ fn main() {
     let mut goal = 0;
     let mut seed = 0x9e37_79b9_7f4a_7c15u64;
     let mut fails = 0;
+    // Each step kept: the original before it, and the inputs' length then.
+    let mut history: Vec<(sf_oracle::Snapshot, usize)> = Vec::new();
     while inputs.len() < budget && goal < goals.len() {
         let start = Game::with_display(
             display.clone(),
@@ -268,13 +291,20 @@ fn main() {
         let Some(way) = found.into_iter().min_by_key(|w| w.inputs.len()) else {
             fails += 1;
             eprintln!("frame {}: no way found ({fails})", inputs.len());
-            if fails >= 3 {
+            // Back to the step before: the last one kept may have left the frog nowhere to go.
+            if let Some((s, len)) = history.pop() {
+                amiga.restore(&s);
+                inputs.truncate(len);
+                eprintln!("  back to frame {len}");
+            }
+            if fails >= 4 {
                 break;
             }
             continue;
         };
         // On the original: as far as its frog follows the engine's and lives.
         let snap = amiga.snapshot();
+        let before = inputs.len();
         let mut kept = 0;
         for (k, &x) in way.inputs.iter().enumerate() {
             sync::step_inserting(amiga, x).unwrap();
@@ -314,6 +344,7 @@ fn main() {
             }
             continue;
         }
+        history.push((snap, before));
         fails = 0;
         if let Some(o) = &out {
             std::fs::write(o, script(&inputs)).unwrap();
