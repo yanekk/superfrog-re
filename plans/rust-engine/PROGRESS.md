@@ -136,7 +136,7 @@ done · ⛔ blocked, needs a human. A task dropped by a plan amendment leaves th
 | T133 | w2-1-fruit-room | T105, T180; blocks T21 | ✅ | |
 | T132 | w4-4-completion | T103; blocks T21 | ✅ | |
 | T145 | w4-4-dart-21 | T132; blocks T21 | ✅ | |
-| T147 | w6-2-completion | T104, T180, T182; blocks T21 | 🔍 | Case + script to the exit (8430 frames), both switches; plays alone green, checks 1–3 red at 6661 (sound, `blanks: 2`). No test added. Deviations: outside the test block naming T194, not dropped T146 (owner, added T194); `resync = true` (amendment, as W6-3alt). |
+| T147 | w6-2-completion | T104, T180, T182; blocks T21 | ✅ | Reviewed: exit on the original at 8429, 97 coins by 6650 (`record`), alone green 334, faithful red only at 6664 (`scan`). Fixed: T194 doc's "only `blanks: 2` frame" premise (54 such), missing Interface, exit pin added; mutation (script cut at 8300) stays green alone, so no test defends the exit yet (T194). |
 | T148 | w6-2-alt-completion | T104, T147, T180, T182; blocks T21 | ⬜ | |
 | T149 | w6-3-completion | T104, T180, T182; blocks T21 | ⬜ | |
 | T150 | w6-4-completion | T104, T180, T182; blocks T21 | ⬜ | |
