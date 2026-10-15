@@ -3,7 +3,7 @@
 # exit room) to the exit (`level_state` 1 on frame 8429), every object live, nothing left out.
 # Planned with `examples/plan_exit_w6`, each chunk checked on the original; the climb to switch 50
 # found on the original by hand. Plays alone green (334 milestones). Outside the test block: checks
-# 1–3 fail at 6661, channel 3 period 152 where the original has 128, the case's one pass spanning
+# 1–3 fail at 6661, channel 3 period 152 where the original has 128, a pass spanning
 # two vertical blanks (T194). Re-synced after its lags, as DESIGN §2.1 allows checks 1–3.
 sync = { level = "W6-2" }
 script = "enemies-w6-2-complete"

@@ -19,7 +19,7 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 | Date | | Finding |
 |---|---|---|
 | 2026-10-16 | 🐞 | Open, seen in T147: `purity::the_real_pure_crates_pass` red on `pir/rust-engine`: `sf-core/src/front/chain.rs:96` (T190) has a 24-element integer array literal. Not T147's; not fixed. |
-| 2026-10-16 | 🐞 | T147: added T194 w6-2-sfx-double-blank (owner's yes): `enemies-w6-2-complete` plays alone green but checks 1–3 fail at 6661, channel 3 period 152 vs 128, the one `Pacing::Late { blanks: 2 }` frame. T146 (its old owner) is dropped. |
+| 2026-10-16 | 🐞 | T147: added T194 w6-2-sfx-double-blank (owner's yes): `enemies-w6-2-complete` plays alone green but checks 1–3 fail at 6661, channel 3 period 152 vs 128, a `Pacing::Late { blanks: 2 }` frame (one of 54; T147 review). T146 (its old owner) is dropped. |
 | 2026-10-16 | 📌 | T147: W6-2 needs both switches: 50 (ledge 96-101,6), then 48 (126,7-8), whose gate 210,4 leads round to the exit room's open right side. `PLAN_EXIT_ONLY` strands the frog. Climb to 50 from 114,10: `UR12 R12 -4 R12 L16 UL36 L16 -8 UL24 L10`. |
 | 2026-10-15 | 📌 | T193: a debug `superfrog` with `--capture` cost 49 ms CPU a frame (sf-app and the PNG crates unoptimised), so long scripted runs fell behind PAL and hit `--timeout` under load. Dev opt-level 2 for both: 4.3 ms. |
 | 2026-10-15 | 🐞 | Open, seen at T190's re-merge: `tests/alone.rs` `a_late_cut_the_engine_cannot_reach_ends_the_frame_as_normal_play_does` panics in debug at `level/frame.rs:71` (`LOGIC_RUNNING` debug_assert), identically on `pir/rust-engine` without T190. Not fixed. |
