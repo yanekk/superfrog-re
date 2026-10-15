@@ -14,7 +14,7 @@ the account is the commit message. Whoever writes a cell also fixes the over-bud
 **Status:** about 100 tasks ✅; T18, T21 and Phase 3 open; amended to faithful.
 **Last updated:** 2026-10-15
 **Amended 2026-10-15 (owner):** faithful replaces frame-exact (DESIGN §2.1, PLAN.md amendment); T180–T183 added, 14 tasks dropped (PLAN.md).
-**Next `pir-work` will:** T180 faithful-compare, then T182; T126 and T132 finish against the faithful bar.
+**Next `pir-work` will:** review T181; T183, T184, T185 and the completion tasks against the faithful bar.
 
 ## Tasks
 
@@ -150,7 +150,7 @@ done · ⛔ blocked, needs a human. A task dropped by a plan amendment leaves th
 | T167 | w2-3-completion | T122, T180, T182; blocks T21 | ⬜ | |
 | T168 | w2-4-completion | T122, T180, T182; blocks T21 | ⬜ | |
 | T180 | faithful-compare | T120; blocks T181, T182 and every open conformance task | ✅ | |
-| T181 | faithful-rebaseline | T180, T182; blocks T21 | ⬜ | |
+| T181 | faithful-rebaseline | T180, T182; blocks T21 | 🔍 | 138/146 green faithful; eight red, owned (seven T184, new T185). Fixed a vertical blank inside `sfx_play`; `scroll_column` presentation; late frames counted, docs/08 table; `tests/cases.rs`. Deviations: exclusions dropped where tolerated; w6-3-alt-complete `resync = true` (§2.1); intro 7237–7241 accepted (owner); W2-1's ledge never breaks (FINDINGS). |
 | T182 | plays-alone | T180; blocks T181, T183 and every completion task | ✅ | |
 | T183 | level-chain | T180, T182; blocks T21 | ⬜ | |
 | T184 | alone-pass-drift | T182; blocks T21, T18, T115, T147, T148, T149, T150, T151, T154, T166, T167, T168 | ⬜ | |

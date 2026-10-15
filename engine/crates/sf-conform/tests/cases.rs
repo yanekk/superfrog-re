@@ -1,0 +1,89 @@
+//! Every case in `engine/conform/cases/` that is green under the faithful checks (DESIGN §2.1)
+//! and that no other test runs (T181): each run as `sf-conform run` runs it, checks 1–4 (a
+//! `render` case is exempt from check 4). The cases with their own assertions live with their
+//! subjects (`frog_cases.rs`, `enemies_*`, `front.rs`, ...); a case red today is not here, and its
+//! FINDINGS row names its owner. The slow ones are ignored, named in `engine/conform/README.md`.
+
+fn green(name: &str) {
+    let case = sf_conform::Case::load(&sf_conform::cases_dir().join(format!("{name}.toml")))
+        .unwrap_or_else(|e| panic!("{e}"));
+    if let Err(d) = sf_conform::run(&case) {
+        panic!("{name}: {d}");
+    }
+}
+
+/// One test per case: `case!(fn_name, "case-name")`, `#[ignore = ...]` before it for a slow one.
+macro_rules! case {
+    ($(#[$m:meta])* $f:ident, $name:literal) => {
+        $(#[$m])*
+        #[test]
+        fn $f() {
+            green($name);
+        }
+    };
+}
+
+// The attract demo, the front end and game over.
+case!(#[ignore = "slow: about 4 min"] attract_demo_3, "attract-demo-3");
+case!(front_noskip, "front-noskip");
+case!(front_options_all, "front-options-all");
+case!(front_options, "front-options");
+case!(front_skip_bounce, "front-skip-bounce");
+case!(front_skip_left, "front-skip-left");
+case!(front_skip_wait, "front-skip-wait");
+case!(game_over_fire_w1_1, "game-over-fire-w1-1");
+case!(game_over_timeup_w1_1, "game-over-timeup-w1-1");
+case!(story_boot, "story-boot");
+
+// The frog alone in each world, objects frozen; W1-4's green route; W4-2 and W6-1 explored.
+case!(complete_w1_4, "complete-w1-4");
+case!(enemies_w4_2, "enemies-w4-2");
+case!(enemies_w6_1_explore, "enemies-w6-1-explore");
+case!(frog_w2_1, "frog-w2-1");
+case!(frog_w3_1, "frog-w3-1");
+case!(frog_w4_1, "frog-w4-1");
+case!(frog_w5_1, "frog-w5-1");
+case!(frog_w6_1, "frog-w6-1");
+
+// The slot machine's other prizes and the hi-lo game.
+case!(slot_gamble, "slot-gamble");
+case!(slot_hilo_1, "slot-hilo-1");
+case!(slot_hilo_2, "slot-hilo-2");
+case!(slot_hilo_3, "slot-hilo-3");
+case!(slot_hilo_4, "slot-hilo-4");
+case!(slot_hilo_5, "slot-hilo-5");
+case!(slot_hilo_6, "slot-hilo-6");
+case!(slot_hilo_7, "slot-hilo-7");
+case!(slot_hilo_8, "slot-hilo-8");
+case!(slot_hilo_wrong, "slot-hilo-wrong");
+case!(slot_hold_20000, "slot-hold-20000");
+
+// The renderer on every level but W1-1 (`render_vs_oracle.rs` has W1-1), 400 frames each.
+case!(render_final, "render-final");
+case!(render_w1_2, "render-w1-2");
+case!(render_w1_3, "render-w1-3");
+case!(render_w1_4, "render-w1-4");
+case!(render_w2_1, "render-w2-1");
+case!(render_w2_2, "render-w2-2");
+case!(render_w2_3, "render-w2-3");
+case!(render_w2_4, "render-w2-4");
+case!(render_w3_1, "render-w3-1");
+case!(render_w3_2, "render-w3-2");
+case!(render_w3_3, "render-w3-3");
+case!(render_w3_4, "render-w3-4");
+case!(render_w4_1, "render-w4-1");
+case!(render_w4_2, "render-w4-2");
+case!(render_w4_3, "render-w4-3");
+case!(render_w4_4, "render-w4-4");
+case!(render_w5_1, "render-w5-1");
+case!(render_w5_2, "render-w5-2");
+case!(render_w5_3, "render-w5-3");
+case!(render_w5_4, "render-w5-4");
+case!(render_w6_1, "render-w6-1");
+case!(render_w6_2, "render-w6-2");
+case!(render_w6_2_alt, "render-w6-2-alt");
+case!(render_w6_3, "render-w6-3");
+case!(render_w6_3_alt, "render-w6-3-alt");
+case!(render_w6_4, "render-w6-4");
+case!(render_w6_4_alt, "render-w6-4-alt");
+case!(render_wb_1, "render-wb-1");
