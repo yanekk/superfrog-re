@@ -13,7 +13,7 @@ the account is the commit message. Whoever writes a cell also fixes the over-bud
 
 **Status:** Plan written; nothing built.
 **Last updated:** 2026-10-10
-**Next `pir-work` will:** T00 oracle-spike, because every later test rests on the reference emulator; T01 and T02 can run beside it.
+**Next `pir-work` will:** review T120.
 
 ## Tasks
 
@@ -122,7 +122,7 @@ done · ⛔ blocked, needs a human.
 | T115 | w3-completions | T44, T101, T102, T111, T112, T113; blocks T18 | ⬜ | |
 | T121 | bob-draw-cut | T101; blocks T21 | ⬜ | |
 | T122 | w2-completions | T43, T101, T121; blocks T18 | ⬜ | |
-| T120 | conform-no-silent-pass | T05, T36; blocks T21 | ⬜ | |
+| T120 | conform-no-silent-pass | T05, T36; blocks T21 | 🔍 | `Outcome` counts compared frames, longest mid-pass run (limit `LAG_LIMIT` 100) and longest left out; `lag-limit` pins complete-w4-3 261 (T131), enemies-w6-1 133 (T104). 7 tests. Deviation: old `items-upper-w2-1` no longer hangs; owner: replaced by a hang-trace unit test and a pinned `items-run-w1-1` case. After-lag frames reported, not limited (owner). |
 | T104 | w6-completions | T40, T101, T102; blocks T18 | ⬜ | |
 | T123 | enemies-w5-2-case | T39; blocks T18 | ⬜ | |
 | T124 | enemies-w5-3-case | T39; blocks T18 | ⬜ | |
@@ -145,7 +145,7 @@ done · ⛔ blocked, needs a human.
 A Notes cell holds what was built or what the review found, the test count, and one line per
 deviation from the task doc. A ✅ task's cell may be cut to one line once the next task has been reviewed.
 
-**Review queue:** *(empty)*
+**Review queue:** T120
 
 ## Blocked on the user
 

@@ -18,6 +18,7 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-15 | 📌 | T120 measured every case: longest mid-pass runs ≤97 bar complete-w4-3 261, enemies-w6-1 133 (pinned); with after-lag frames up to 969; enemies-w4-2 compares 39 of 650. `all` red only where already logged; story-scene4-sound diverges at 3444 like intro-full (T144). |
 | 2026-10-15 | 🐞 | T114 review: `cargo fmt -p sf-conform --check` fails on `examples/complete.rs:82` (the `score` closure), outside T114; left alone. |
 | 2026-10-15 | 📌 | T111, W3-2: the start room's only exit is swimming under the pillar at 180–182 (57/24 are water). `plan_exit.rs` (paced) held the original's route where `complete.rs` drifted. Fake wall 155,26 drops back into the start. |
 | 2026-10-15 | 📌 | T108 review: `plan_exit --frames N` is an absolute frame budget, not frames after the prefix; a prefix longer than N plans nothing and exits 0. `--via` a cell steers it off a block top `--hurt` alone cannot leave. |
