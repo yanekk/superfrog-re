@@ -118,7 +118,7 @@ done · ⛔ blocked, needs a human.
 | T111 | enemies-w3-2-case | T44; blocks T18 | ✅ | |
 | T112 | enemies-w3-3-case | T44; blocks T18 | ✅ | |
 | T113 | enemies-w3-4-case | T44, T102; blocks T18 | ⬜ | |
-| T114 | enemies-w3-activation | T44; blocks T18 | 🔍 | Case `enemies-w3-activation` (830 frames, re-sync 201 pinned), `enemies_w3::activation`; `run` now records live cells. Deviation: script is `enemies-w3-1`'s first 830 frames, not a new plan; it frees and respawns a hopper (horizontally) and a spiker (vertically). 1 test. |
+| T114 | enemies-w3-activation | T44; blocks T18 | ✅ | Review clean, no fix commit: original's own slot `+$40` recorded independently matches every pinned frame (363/461/481/515, 391/573/708/817), never 20 slots past 300; lag at 200 before the 201 re-sync; despawn bottom margin +16 px goes red at 573 (+1 px survives, unobservable). 1 test. |
 | T115 | w3-completions | T44, T101, T102, T111, T112, T113; blocks T18 | ⬜ | |
 | T121 | bob-draw-cut | T101; blocks T21 | ⬜ | |
 | T122 | w2-completions | T43, T101, T121; blocks T18 | ⬜ | |
@@ -145,7 +145,7 @@ done · ⛔ blocked, needs a human.
 A Notes cell holds what was built or what the review found, the test count, and one line per
 deviation from the task doc. A ✅ task's cell may be cut to one line once the next task has been reviewed.
 
-**Review queue:** T114
+**Review queue:** —
 
 ## Blocked on the user
 
