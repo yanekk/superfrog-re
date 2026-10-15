@@ -18,6 +18,8 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-15 | 🔄 | Owner, T120 review: `all` red is accepted for T120 once each red case has an owner; added T169 power-on-cases-green (T160; blocks T21) and T170 game-over-timeup-copper (T34; blocks T21), the two red groups no task owned. |
+| 2026-10-15 | 🐞 | T120 review, open (T131): `complete-w4-2` now diverges first at 1657, picture rows 118–157 (351 pixels, $eee/$111), before the logged 2383; same with T120 reverted. |
 | 2026-10-15 | 📌 | T120 measured every case: longest mid-pass runs ≤97 bar complete-w4-3 261, enemies-w6-1 133 (pinned); with after-lag frames up to 969; enemies-w4-2 compares 39 of 650. `all` red only where already logged; story-scene4-sound diverges at 3444 like intro-full (T144). |
 | 2026-10-15 | 🐞 | T114 review: `cargo fmt -p sf-conform --check` fails on `examples/complete.rs:82` (the `score` closure), outside T114; left alone. |
 | 2026-10-15 | 📌 | T111, W3-2: the start room's only exit is swimming under the pillar at 180–182 (57/24 are water). `plan_exit.rs` (paced) held the original's route where `complete.rs` drifted. Fake wall 155,26 drops back into the start. |

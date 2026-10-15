@@ -180,6 +180,8 @@ headless.
 | [T145](tasks/T145-w4-4-dart-21.md) | w4-4-dart-21 | T132; blocks T18, T131 |
 | [T120](tasks/T120-conform-no-silent-pass.md) | conform-no-silent-pass | T05, T36; blocks T21 |
 | [T104](tasks/T104-w6-completions.md) | w6-completions | T40, T101, T102; blocks T18 |
+| [T169](tasks/T169-power-on-cases-green.md) | power-on-cases-green | T160; blocks T21 |
+| [T170](tasks/T170-game-over-timeup-copper.md) | game-over-timeup-copper | T34; blocks T21 |
 
 T22 is the rig task: it comes before every surface task and they depend on it. T29 is the phase's
 drill. At the end: the owner plays it.
