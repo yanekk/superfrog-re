@@ -339,9 +339,9 @@ pub fn pass_step(cpu: &CpuRegs, m: &AmigaMemory) -> u16 {
         0xd0cc => 0,
         0xd0d0 | 0xd0e0..=0xd125 => 1,
         // The entry read (a6 past it) and tested, nothing of it done yet: its bounds, the
-        // stomp's, the passive's and the hurt's tests, up to the stomp's first write (h0+$d17e)
-        // or a handler's `jsr` (T184: `complete-w4-2` 7894 ended at h0+$d150, before a hurt the
-        // engine had made).
+        // stomp's, the passive's and the hurt's tests, up to the stomp's first write (the `move.w`
+        // at h0+$d17c, done from $d182) or a handler's `jsr` (T184: `complete-w4-2` 7894 ended
+        // at h0+$d150, before a hurt the engine had made).
         0xd132..=0xd17d | 0xd19c..=0xd1b7 | 0xd1be..=0xd1c5 => frog_walk_step(cpu.a[6]) - 1,
         0xd126..=0xd1cd => frog_walk_step(cpu.a[6]),
         0xd1ce | 0xd0d4..=0xd0df => frog_walk_step(hitbox_end(m)),
@@ -1188,7 +1188,8 @@ mod tests {
         assert_eq!(step(0xd150, HITBOXES + 12, sp), 2);
         assert_eq!(step(0xd1b2, HITBOXES + 12, sp), 2);
         assert_eq!(step(0xd1c4, HITBOXES + 12, sp), 2);
-        assert_eq!(step(0xd17e, HITBOXES + 12, sp), 3);
+        assert_eq!(step(0xd17c, HITBOXES + 12, sp), 2);
+        assert_eq!(step(0xd182, HITBOXES + 12, sp), 3);
         assert_eq!(step(0xd19a, HITBOXES + 12, sp), 3);
         assert_eq!(step(0xd1c6, HITBOXES + 12, sp + 0x200), 3);
         // Reading the next entry: the one before it done.
