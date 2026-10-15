@@ -18,6 +18,9 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-15 | 🐞 | T18, open, not fixed: purity's `the_real_pure_crates_pass` fails on the feature branch: `front/chain.rs` `LEVEL_LOADS` (24 literals, unchanged by T18). Read from the disks or restructure; no owning task. |
+| 2026-10-15 | 🐞 | T18, open: game over from a level by `player_died` ends the loop a frame early in the engine (WW-1 idle 8 000 frames: last life 7025, `logic_running` 0 at 7102 vs 7103; original's pass spans 5 frames). Not the witch's; T34's class. |
+| 2026-10-15 | 📌 | T18: the witch takes a hit every pass the spud overlaps her (`touch_boss_hit` ignores `d7`): fire 4 frames in 8 beats her in ~1 100 frames. She shoots nothing; her loop takes hearts. WW-1 has only her and the start marker. |
 | 2026-10-15 | 📌 | T184 merge: T185 changed the same `pass_step` ranges, ending where the entry is decided (T184's ended at its write or `jsr`). Each green on the other's cases (complete-w4-2, enemies-w6-4); T185's kept, as the engine decides and applies an entry at once. |
 | 2026-10-15 | 🐞 | T184 review, open: merged with T181, enemies-w6-1-complete goes red under checks 1–3 at 2136 after a lag, `clock_shown` (`resync = false`); alone green. The class T181 re-synced in enemies-w6-3-alt-complete. No owning task. |
 | 2026-10-15 | 📌 | T184: every stepping case plays alone green. `Pacing::Late` carries `blanks` (the original pass's `vbl_count`); the engine cuts only in that pass, at its end too. Re-syncs gone: W1-1 372, W3-1/-activation 201, W5-1 1497, W5-2 2196/4681, W5-3 1608, W5-4 3384, W4-4 9003. |

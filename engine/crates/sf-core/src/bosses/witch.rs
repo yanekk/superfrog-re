@@ -25,9 +25,9 @@ pub const WITCH_LOOP: u32 = h0(0x25b40);
 pub const WITCH_BEATEN: u32 = h0(0x259ec);
 /// `touch_boss_hit` (h0+$236b4).
 pub const TOUCH_BOSS_HIT: u32 = h0(0x236b4);
-/// `witch_bob_path` (h0+$25ade): words, every other one a y below the camera's top less `$20`,
+/// `witch_bob_path` (h0+$25ade): words, every other one a y below the camera's top plus `$20`,
 /// ending at `$ffff`. `witch_loop_path` (h0+$25bba): (x, y) word pairs from the camera's top
-/// left (y less `$20`), ending at a `$ffffffff` long.
+/// left (y plus `$20`), ending at a `$ffffffff` long.
 pub const WITCH_BOB_PATH: u32 = h0(0x25ade);
 pub const WITCH_LOOP_PATH: u32 = h0(0x25bba);
 /// `witch_flash` (h0+$23734): the 32 colours (all white) the palette flashes from as she dies.

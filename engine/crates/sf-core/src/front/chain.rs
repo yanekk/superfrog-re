@@ -84,6 +84,11 @@ enum Target {
     Tally,
     EndPic(u32),
     MusicFadeWait,
+    /// `level_init_lw` (h0+$8edc): the final level's init (T18).
+    FinalInit,
+    /// `end_seq_load` (h0+$a65c) and `end_sequence` (h0+$a6e4), after the final level (T18).
+    EndSeqLoad,
+    EndSequence,
     /// `$adca`, `$add6`: the cracked disk requests, a bare `rts`.
     Nothing,
     ShooterOff,
@@ -103,6 +108,8 @@ const LEVEL_LOADS: [[u32; 4]; 6] = [
 ];
 /// `level_init_wN`.
 const LEVEL_INITS: [u32; 6] = [0x8cd8, 0x8d2e, 0x8d84, 0x8dda, 0x8e30, 0x8e86];
+/// `level_init_lw`: the final level's init.
+const FINAL_INIT: u32 = 0x8edc;
 /// `end_world_pic_wN` (h0+$42aa..$4326): the world before the next, and its picture's file.
 const END_PICS: [(u32, u32); 6] = [
     (0x42aa, 1),
@@ -138,6 +145,9 @@ fn target(off: u32) -> Target {
         0x749c => Target::GameOverCheck,
         0x4466 => Target::Tally,
         0x1327a => Target::MusicFadeWait,
+        FINAL_INIT => Target::FinalInit,
+        0xa65c => Target::EndSeqLoad,
+        0xa6e4 => Target::EndSequence,
         0xadca | 0xadd6 => Target::Nothing,
         0x7494 => Target::ShooterOff,
         _ => Target::Other,
@@ -174,11 +184,17 @@ pub(crate) fn init_call(data: &super::FrontData, world: u32, level: u32) -> Opti
     None
 }
 
-/// Where in `top_loop` the level the state is in has its `jsr level_init_wN` (worlds 1–6; not
-/// in the attract demo, which `top_loop` plays apart).
+/// Where in `top_loop` the level the state is in has its `jsr level_init_wN` (worlds 1–6 and
+/// the final level's `jsr level_init_lw`, by `final_level_flag`; not in the attract demo, which
+/// `top_loop` plays apart).
 pub(crate) fn level_call(s: &crate::state::State, data: &super::FrontData) -> Option<u32> {
-    if s.l(ATTRACT_MODE) != 0 || s.w(at(0x1e)) != 0 {
+    if s.l(ATTRACT_MODE) != 0 {
         return None;
+    }
+    if s.w(at(0x1e)) != 0 {
+        return (GAME_PATH..0x7d4)
+            .step_by(2)
+            .find(|&pc| data.h0_w(pc) == 0x4eb9 && data.h0_l(pc + 2).wrapping_sub(H0) == FINAL_INIT);
     }
     init_call(data, s.l(WORLD), s.l(LEVEL))
 }
@@ -301,6 +317,16 @@ impl Chain {
                 let id = level_id(w, level);
                 exit::init_on_beam(cx, frog_only, id, exit::init_inside(id))
             }
+            Target::FinalInit => {
+                let id = LevelId {
+                    world: World::Final,
+                    level: 1,
+                    alt: false,
+                };
+                exit::init_on_beam(cx, frog_only, id, exit::init_inside(id))
+            }
+            Target::EndSeqLoad => call(Routine::EndSeqLoad(Default::default())),
+            Target::EndSequence => call(Routine::EndSequence(Default::default())),
             Target::LevelStart => call(Routine::LevelStart(exit::LevelStart::new(frog_only))),
             Target::FrameLoop => call(Routine::LevelLoop),
             Target::ExitFade => call(Routine::LevelOver(exit::LevelOver::chained(frog_only))),

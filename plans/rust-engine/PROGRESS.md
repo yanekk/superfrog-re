@@ -41,7 +41,7 @@ done · ⛔ blocked, needs a human. A task dropped by a plan amendment leaves th
 | T15 | items-and-scoring | T14 | ✅ | |
 | T16 | enemies-worlds-1-3 | T15 | ✅ | |
 | T17 | enemies-worlds-4-6 | T15 | ✅ | |
-| T18 | bosses | T16, T17, T180, T182 | ⬜ | |
+| T18 | bosses | T16, T17, T180, T182 | 🔍 | `bosses::witch` (template 134, marker 1, `touch_boss_hit`), 6 routine tests; chain runs WW-1 and `end_seq_load`/`end_sequence`; final-level syncs serve disks. final-win/lose/idle green alone; win-to-level-end in block. Deviations: tests in `sf-conform/tests/` (FINDINGS 2026-10-13); no new LAYOUT vars (slots, fades covered); lose ends before game over (FINDINGS). |
 | T19 | slot-and-bonus | T15 | ✅ | |
 | T20 | front-end | T08, T11, T12, T13 | ✅ | |
 | T21 | game-flow | T18, T19, T20, T181, T183 | ⬜ | |
@@ -163,7 +163,7 @@ done · ⛔ blocked, needs a human. A task dropped by a plan amendment leaves th
 A Notes cell holds what was built or what the review found, the test count, and one line per
 deviation from the task doc. A ✅ task's cell may be cut to one line once the next task has been reviewed.
 
-**Review queue:** *(empty)*
+**Review queue:** T18
 
 ## Blocked on the user
 

@@ -73,6 +73,23 @@ pub enum SyncPoint {
     Lives { level: LevelId, lives: u16 },
 }
 
+impl SyncPoint {
+    /// Whether every disk the original asks for goes in as a player would put it in: from the
+    /// end sequence's start, and in the final level, which goes on into the end sequence's loads
+    /// (T18). Other cases keep the drive as their sync point left it: inserting a disk changes the
+    /// timing of what follows (power-on's RNG seed among it).
+    pub fn serves_disks(&self) -> bool {
+        match self {
+            SyncPoint::EndSequence => true,
+            SyncPoint::AtLevel(id)
+            | SyncPoint::Clock { level: id, .. }
+            | SyncPoint::Exit(id)
+            | SyncPoint::Lives { level: id, .. } => id.world == World::Final,
+            _ => false,
+        }
+    }
+}
+
 /// The oracle at a sync point.
 pub struct Synced {
     pub amiga: Amiga,
