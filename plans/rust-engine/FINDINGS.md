@@ -18,6 +18,9 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-15 | 🐞 | T18, open, not fixed: purity's `the_real_pure_crates_pass` fails on the feature branch: `front/chain.rs` `LEVEL_LOADS` (24 literals, unchanged by T18). Read from the disks or restructure; no owning task. |
+| 2026-10-15 | 🐞 | T18, open: game over from a level by `player_died` ends the loop a frame early in the engine (WW-1 idle 8 000 frames: last life 7025, `logic_running` 0 at 7102 vs 7103; original's pass spans 5 frames). Not the witch's; T34's class. |
+| 2026-10-15 | 📌 | T18: the witch takes a hit every pass the spud overlaps her (`touch_boss_hit` ignores `d7`): fire 4 frames in 8 beats her in ~1 100 frames. She shoots nothing; her loop takes hearts. WW-1 has only her and the start marker. |
 | 2026-10-15 | 📌 | T193: a debug `superfrog` with `--capture` cost 49 ms CPU a frame (sf-app and the PNG crates unoptimised), so long scripted runs fell behind PAL and hit `--timeout` under load. Dev opt-level 2 for both: 4.3 ms. |
 | 2026-10-15 | 📌 | T191 review merge: the T190-seen `alone.rs` late-cut panic at `level/frame.rs:71` is gone; T191 replaced that `debug_assert` with vbl_handler's `logic_running == 0` path (h0+$11c92). `tests/alone.rs` and `chain` green merged. |
 | 2026-10-15 | 📌 | T191: the level's `kbd_poll` acknowledges each new keyboard byte, which then reads `$ff`; the engine had kept the last byte, leaving `key_up` set. Unhandled: a frame cut late in the pass's tail after unpausing (never seen). |

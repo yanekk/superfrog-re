@@ -244,10 +244,9 @@ fn run_inner(
     // Jobs the engine did at once that the original's CPU may still be running.
     // Each with whether the original has been seen in it yet, and frames since reported.
     let mut jobs: Vec<(sf_core::Job, bool, u32)> = Vec::new();
-    // From the end sequence on, whenever the original asks for a disk it goes in, as a player
-    // would. Other cases keep the drive as their sync point left it: inserting a disk changes the
-    // timing of what follows (power-on's RNG seed among it).
-    let mut disks = (case.sync == SyncPoint::EndSequence).then(|| sync::Disks::at(&prev));
+    // From the end sequence on and in the final level, whenever the original asks for a disk it
+    // goes in, as a player would (`SyncPoint::serves_disks`).
+    let mut disks = case.sync.serves_disks().then(|| sync::Disks::at(&prev));
     // The interrupts the oracle's last step took (one past its end is the next frame's).
     let mut irqs = Vec::new();
     // The original's last handler, taken too late to work in its step (it counts in the next).

@@ -165,3 +165,37 @@ fn stepped_step(b: &mut Bus, r: u32) {
         done(b, r);
     }
 }
+
+/// `screen_fade_toggle` (h0+$3ca0).
+const SCREEN_FADE_TOGGLE: u32 = h0(0x3ca0);
+
+/// h0+$151b2 (mode 1), as the witch's defeat calls it in a level: record `r` steps the `n`
+/// colours of the copper list at `list` (its first MOVE) by one a component towards `target`, from
+/// `from`'s colours, which the list gets at once. Interrupts are off while the record changes.
+pub fn stepped_start(c: &mut LevelCtx, r: u32, from: u32, target: u32, list: u32, n: u16) {
+    c.custom(0x9a, 0x4000);
+    let b = &mut c.bus;
+    b.set_w(SCREEN_FADE_TOGGLE, 0);
+    b.set_w(r, 1);
+    b.set_w(r + 8, n);
+    b.set_l(r + 0xa, target);
+    b.set_l(r + 0xe, list);
+    let colours = match n as u8 {
+        0 => 256,
+        k => k as u32,
+    };
+    let mut d = r + 0x12;
+    for k in 0..colours {
+        let (a, t) = (b.w(from + 2 * k), b.w(target + 2 * k));
+        for (mask, _) in COMPONENTS {
+            let (a, t) = (a & mask, t & mask);
+            b.set_b(d, if t < a { 0xff } else { (t > a) as u8 });
+            d += 1;
+        }
+    }
+    for k in 0..colours {
+        b.set_w(list + 2 + 4 * k, b.w(from + 2 * k));
+    }
+    b.set_w(r + 6, 0);
+    c.custom(0x9a, 0xc000);
+}
