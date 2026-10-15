@@ -1,7 +1,7 @@
 //! What the title runs between games and in attract mode (docs/13): `top_loop` (h0+$5c) around
 //! the title, the award pages (`award_pages` h0+$1e98: the features and bonus tables), the hall of
-//! talent and the credits (`hiscore_and_credits` h0+$20e0). The attract demo that follows is
-//! T33's; a game's start is T21's.
+//! talent and the credits (`hiscore_and_credits` h0+$20e0). The attract demo follows
+//! (T160–T163); a game's start goes to `top_loop`'s game path ([`super::chain`], T183).
 
 use super::blit::Blit;
 use super::common::{FadeKind, call, fade, frames};
@@ -50,8 +50,11 @@ impl TopLoop {
                     let attract = cx.s.l(ATTRACT_MODE) != 0;
                     let pages = cx.s.w(at(0x16)) == 0 || (!attract && cx.s.w(at(0x1c)) == 0);
                     if !pages {
-                        cx.unported("a game's start (T21)");
-                        return Yield::Raster;
+                        // h0+$6e: straight to the game's path (T183).
+                        return Yield::Jump(Box::new(Routine::Chain(super::chain::Chain::at(
+                            super::chain::GAME_PATH,
+                            false,
+                        ))));
                     }
                     self.pc = 2;
                     return call(Routine::AwardPages(AwardPages::default()));
@@ -72,8 +75,12 @@ impl TopLoop {
                     }
                     cx.s.set_w(LEVEL_STARTED, 0);
                     if cx.s.l(ATTRACT_MODE) == 0 {
-                        cx.unported("a game's start (T21)");
-                        return Yield::Raster;
+                        // `game_start_at` (h0+$9e): its `jmp` into `top_loop` at the start
+                        // world's entry (T183).
+                        let pc = super::chain::game_start_at(cx);
+                        return Yield::Jump(Box::new(Routine::Chain(super::chain::Chain::at(
+                            pc, false,
+                        ))));
                     }
                     self.pc = 4;
                     return call(Routine::Demo(Demo::default()));

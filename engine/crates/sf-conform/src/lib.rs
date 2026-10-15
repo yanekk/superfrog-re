@@ -229,6 +229,8 @@ fn run_inner(
         }
         AloneRun::new(g, case.sync == SyncPoint::PowerOnDisk3)
     });
+    // The original's frames loading under a timed screen since the engine's load ([`timed_screen`]).
+    let mut under_screen: Vec<(FrameInput, milestones::FrameState)> = Vec::new();
     // COP1LC as the original's CPU last wrote it (from the start's as the engine has it).
     let mut cop = game.cop1lc();
     let mut outcome = Outcome {
@@ -308,6 +310,7 @@ fn run_inner(
             ours.paula.splice(0..0, held);
             if let Some(end) = ours.load {
                 // The engine loaded at once; the original is compared once its load is over.
+                under_screen.clear();
                 let mut n = 0;
                 let mut seen = false;
                 let mut prev_mem = mem.clone();
@@ -346,6 +349,17 @@ fn run_inner(
                     }
                     of += 1;
                     prev_mem = std::mem::replace(&mut mem, sync::core_memory(amiga.memory()));
+                    // A frame the original loads under a screen it times itself counts as play
+                    // for check 4 (owner, 2026-10-15).
+                    if alone.is_some() && cop.is_some_and(timed_screen) {
+                        under_screen.push((
+                            case.script.input_at(of - 1),
+                            milestones::FrameState::read(
+                                &|a, n| (a..a + n).map(|x| mem.byte(x)).collect(),
+                                cop,
+                            ),
+                        ));
+                    }
                 }
                 // The schedule as the original is once its load is over.
                 pacing = sync::pacing(&amiga.cpu(), &mem, &theirs.paula);
@@ -376,7 +390,12 @@ fn run_inner(
                             .collect();
                         g.set_handover_state(runs);
                     } else {
-                        take(&mut g, &prev_mem, before.runs_during_load());
+                        let runs = before
+                            .runs_during_load()
+                            .iter()
+                            .map(|&(a, n)| (a, (a..a + n).map(|x| prev_mem.byte(x)).collect()))
+                            .collect();
+                        g.set_load_state(runs);
                     }
                     g.set_load_line(line);
                     g.set_handler_entry(entry);
@@ -428,7 +447,8 @@ fn run_inner(
         }
         if let Some(a) = alone.as_mut() {
             let twice = amiga.frames_run() == 2;
-            a.frame(case, f, input, pacing, twice, (&amiga, &mem), cop, &ours.resync);
+            let skipped = std::mem::take(&mut under_screen);
+            a.frame(case, f, input, pacing, twice, (&amiga, &mem), cop, &ours.resync, skipped);
         }
         let theirs_mid = stepped && sync::mid_pass(&amiga.cpu(), &mem);
         let mut step = compare::PassStep::default();
@@ -644,7 +664,8 @@ fn run_inner(
     outcome.pass_skews = passes.skews;
     if let Some(a) = alone {
         let alone_first_var = a.first_var.clone();
-        match a.judge(case.frames.saturating_sub(1)) {
+        let last = case.frames.saturating_sub(1) + a.extra;
+        match a.judge(last) {
             Ok(met) => outcome.milestones = Some(met),
             Err(d) => {
                 let d = Divergence {
@@ -681,6 +702,18 @@ struct AloneRun {
     /// A disk-3 power-on: the original is in the story (its boot, then the intro) until the game
     /// program owns the vertical blank.
     disk3: bool,
+    /// Frames of play beyond the runner's: the original's load frames under a screen it times
+    /// itself, which count as play (owner, 2026-10-15; [`timed_screen`]).
+    extra: u32,
+}
+
+/// The copper lists of the screens whose own timers run on while the original loads under them
+/// (T183): the world's loading picture (h2+$6750), the progress map (h2+$69f0), the
+/// end-of-world picture (h2+$6494). The original's frames spent loading under one count as
+/// play for check 4, the engine run alone showing the screen meanwhile.
+pub fn timed_screen(cop1lc: u32) -> bool {
+    use sf_core::layout::h2;
+    [h2(0x6750), h2(0x69f0), h2(0x6494)].contains(&cop1lc)
 }
 
 impl AloneRun {
@@ -694,6 +727,7 @@ impl AloneRun {
             panicked: None,
             first_var: None,
             disk3,
+            extra: 0,
         }
     }
 
@@ -712,6 +746,7 @@ impl AloneRun {
         (amiga, mem): (&sf_oracle::Amiga, &AmigaMemory),
         cop1lc: Option<u32>,
         resync: &[(u32, u32)],
+        skipped: Vec<(FrameInput, FrameState)>,
     ) {
         let rng = def(VarId::RngState);
         let len = rng.width.len();
@@ -773,8 +808,41 @@ impl AloneRun {
                 format!("{} at ${:06x}: original ${t:x}, engine ${o:x}", v.name, v.addr),
             ));
         }
-        self.ours.frame(f as u64, ours);
-        self.theirs.frame(f as u64, theirs);
+        let at = (f + self.extra) as u64;
+        if skipped.is_empty() {
+            self.ours.frame(at, ours);
+            self.theirs.frame(at, theirs);
+            return;
+        }
+        // The engine's load frame stands for the first the original loaded under its screen;
+        // the engine shows the screen through the rest, on their inputs, then this frame's.
+        self.ours.frame(at, ours);
+        let inputs: Vec<FrameInput> = skipped.iter().skip(1).map(|s| s.0).chain([input]).collect();
+        let k = skipped.len() as u64;
+        for (i, (_, st)) in skipped.into_iter().enumerate() {
+            self.theirs.frame(at + i as u64, st);
+        }
+        self.theirs.frame(at + k, theirs);
+        for (i, inp) in inputs.into_iter().enumerate() {
+            if self.panicked.is_none() {
+                let g = &mut self.game;
+                let stepped = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+                    g.step_paced(inp, Pacing::OnTime);
+                }));
+                if let Err(e) = stepped {
+                    let why = e
+                        .downcast_ref::<String>()
+                        .cloned()
+                        .or_else(|| e.downcast_ref::<&str>().map(|s| s.to_string()))
+                        .unwrap_or_default();
+                    self.panicked = Some((f, why));
+                }
+            }
+            let g = &self.game;
+            let st = FrameState::read(&|a, n| g.state().read(a, n), g.cop1lc());
+            self.ours.frame(at + 1 + i as u64, st);
+        }
+        self.extra += k as u32;
     }
 
     /// Check 4 at the run's last frame of play: the milestones met, or where they part.

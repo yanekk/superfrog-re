@@ -232,6 +232,10 @@ original's milestones and passes the faithful checks (DESIGN §2.1), headless.
 | [T183](tasks/T183-level-chain.md) | level-chain | T180, T182; blocks T21 |
 | [T184](tasks/T184-alone-pass-drift.md) | alone-pass-drift | T182; blocks T21, T18, T115, T147, T148, T149, T150, T151, T154, T166, T167, T168 |
 | [T185](tasks/T185-w6-4-lag-frog-fall.md) | w6-4-lag-frog-fall | T182; blocks T21 |
+| [T190](tasks/T190-chain-world-change.md) | chain-world-change | T183; blocks T21 |
+| [T191](tasks/T191-chain-pause.md) | chain-pause | T183; blocks T21 |
+| [T192](tasks/T192-chain-level-code.md) | chain-level-code | T183, T190; blocks T21 |
+| [T193](tasks/T193-chain-e2e.md) | chain-e2e | T183; blocks T21 |
 
 T22 is the rig task: it comes before every surface task and they depend on it. T29 is the phase's
 drill. At the end: the real app plays a scripted whole game that meets the original's milestones (T30);

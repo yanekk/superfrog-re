@@ -180,17 +180,18 @@ fn w2_1_complete() {
         .map(|w| w[1].0)
         .collect();
     assert_eq!(lost, [2061, 2365]);
-    let end = case.frames;
-    case.frames += 1;
-    let d = sf_conform::run(&case).expect_err("the next level is T21's");
-    assert_eq!(d.frame, end, "{d}");
-    assert_eq!(d.unported, ["the next level after the tally (T21)"]);
+    // Two frames on (the hook runs before each step): `top_loop` goes on to the next level (T183).
+    case.frames += 2;
+    let (mut outcome, mut unported) = (None, Vec::new());
+    if let Err(d) = sf_conform::run_with(&case, |_, g| {
+        outcome = g.level_outcome();
+        unported = g.unported().to_vec();
+    }) {
+        panic!("{d}");
+    }
+    assert_eq!(unported, Vec::<&str>::new());
     assert!(
-        matches!(
-            d.level_outcome,
-            Some(sf_core::level::LevelOutcome::Completed { .. })
-        ),
-        "{:?}",
-        d.level_outcome
+        matches!(outcome, Some(sf_core::level::LevelOutcome::Completed { .. })),
+        "{outcome:?}"
     );
 }

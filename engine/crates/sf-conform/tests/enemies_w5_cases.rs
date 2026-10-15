@@ -296,8 +296,9 @@ fn enemies_w5_4() {
 }
 
 /// `name` run green to its end with re-syncs at exactly `pins` (as [`run`]), the level's outcome
-/// first set on `exit_at`, the exit (`level_state` 1, back to 0 in the same pass), then one frame more: the next level's (T21's),
-/// the level completed with the points taken, no slot machine (T126).
+/// first set on `exit_at`, the exit (`level_state` 1, back to 0 in the same pass), then two frames
+/// more: `top_loop` going on (T183), the level completed with the points taken, no slot machine
+/// (T126).
 fn completes(name: &str, pins: &[u32], exit_at: u32) {
     let mut case = sf_conform::Case::load(&sf_conform::cases_dir().join(format!("{name}.toml")))
         .unwrap_or_else(|e| panic!("{e}"));
@@ -314,18 +315,22 @@ fn completes(name: &str, pins: &[u32], exit_at: u32) {
         matches!(exit, Some((f, Some(sf_core::level::LevelOutcome::Completed { .. }))) if f == exit_at),
         "{name}: {exit:?}"
     );
-    let end = case.frames;
-    case.frames += 1;
-    let d = sf_conform::run(&case).expect_err("the next level is T21's");
-    assert_eq!(d.frame, end, "{name}: {d}");
-    assert_eq!(d.unported, ["the next level after the tally (T21)"]);
+    // Two frames on (the hook runs before each step): `top_loop` goes on to what follows (T183).
+    case.frames += 2;
+    let (mut outcome, mut unported) = (None, Vec::new());
+    if let Err(d) = sf_conform::run_with(&case, |_, g: &mut Game| {
+        outcome = g.level_outcome();
+        unported = g.unported().to_vec();
+    }) {
+        panic!("{name}: {d}");
+    }
+    assert_eq!(unported, Vec::<&str>::new(), "{name}");
     assert!(
         matches!(
-            d.level_outcome,
+            outcome,
             Some(sf_core::level::LevelOutcome::Completed { tally }) if !tally.slot_machine
         ),
-        "{name}: {:?}",
-        d.level_outcome
+        "{name}: {outcome:?}"
     );
 }
 
