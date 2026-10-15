@@ -162,9 +162,9 @@ const SETUP_INSIDE: [u32; 15] = [
     h0(0x97b8),
     h0(0x97bc),
 ];
-/// What the set-up writes (from h0+$1a: `vbl_count` and the scene table's pointer).
+/// What the set-up writes.
 const SETUP_WRITES: [(u32, u32); 7] = [
-    (h0(0x1a), 6),
+    (h0(0x1a), 4),
     (h0(0x84e0), 4 + 400),
     (h0(0x8b68), 0x8bb0 - 0x8b68 + 16 * 0xb0),
     (h0(0x97be), 0xafd6 - 0x97be),
