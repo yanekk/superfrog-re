@@ -158,7 +158,7 @@ done · ⛔ blocked, needs a human. A task dropped by a plan amendment leaves th
 | T190 | chain-world-change | T183; blocks T21 | ✅ | |
 | T191 | chain-pause | T183; blocks T21 | ✅ | Review clean, no fix commit: `pause`, paused vbl and `kbd_poll`'s `$ff` ack match the listing; mutations (fire not ending pause, no ack) go red; P held 50 frames and fire-held probes faithful; PassClock change equivalent (vbl_count 0 paused). `level_entry` red identically without the change (known). |
 | T192 | chain-level-code | T183, T190; blocks T21 | ⬜ | |
-| T193 | chain-e2e | T183; blocks T21 | ⬜ | |
+| T193 | chain-e2e | T183; blocks T21 | ✅ | |
 
 A Notes cell holds what was built or what the review found, the test count, and one line per
 deviation from the task doc. A ✅ task's cell may be cut to one line once the next task has been reviewed.

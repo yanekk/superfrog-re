@@ -35,7 +35,8 @@ impl Default for LaunchOpts {
 /// What a run left behind.
 #[derive(Debug)]
 pub struct Captured {
-    /// Frame N is the picture after step N; frame 0 the start.
+    /// Frame N is the picture after step N; frame 0 the start. Empty after
+    /// [`App::run_script_unread`].
     pub frames: Vec<Image>,
     pub audio_wav: PathBuf,
     pub exit: ExitStatus,
@@ -44,6 +45,14 @@ pub struct Captured {
     pub stderr: String,
     /// The capture folder.
     pub dir: PathBuf,
+}
+
+impl Captured {
+    /// Frame `n` as the app wrote it (frame 0 is the start, frame N the picture after step N).
+    pub fn read_frame(&self, n: u64) -> Image {
+        Image::read_png(&self.dir.join(format!("frame-{n:05}.png")))
+            .unwrap_or_else(|e| panic!("{e}"))
+    }
 }
 
 /// The app under test, in its own temporary home. The home is removed when this is dropped,
@@ -86,14 +95,25 @@ impl App {
         let path = dir.with_extension("script");
         std::fs::write(&path, script).expect("writing the script");
         let child = self.spawn(Some(&path), &dir);
-        self.wait(child, &dir)
+        self.wait(child, &dir, true)
+    }
+
+    /// The script layer for a long run: as [`App::run_script`], but `frames` is left empty and the
+    /// test reads the frames it needs by number ([`Captured::read_frame`]), so thousands of them
+    /// are not held in memory at once.
+    pub fn run_script_unread(&mut self, script: &str) -> Captured {
+        let dir = self.capture_dir();
+        let path = dir.with_extension("script");
+        std::fs::write(&path, script).expect("writing the script");
+        let child = self.spawn(Some(&path), &dir);
+        self.wait(child, &dir, false)
     }
 
     /// Wait for the app the OS layer is driving to end by itself, and return what it captured.
     pub fn finish(&mut self) -> Captured {
         let child = self.child.take().expect("no app is running: launch with `os: true`");
         let dir = self.capture_dir_of(self.runs - 1);
-        self.wait(child, &dir)
+        self.wait(child, &dir, true)
     }
 
     pub fn pid(&self) -> Option<u32> {
@@ -138,7 +158,7 @@ impl App {
             .unwrap_or_else(|e| panic!("launching {}: {e}", binary().display()))
     }
 
-    fn wait(&self, mut child: Child, dir: &Path) -> Captured {
+    fn wait(&self, mut child: Child, dir: &Path, read_frames: bool) -> Captured {
         let exit = wait_bounded(
             &mut child,
             Duration::from_secs(self.opts.timeout_s + 30),
@@ -147,7 +167,9 @@ impl App {
         let mut names: Vec<PathBuf> = std::fs::read_dir(dir)
             .map(|d| d.filter_map(|e| e.ok().map(|e| e.path())).collect())
             .unwrap_or_default();
-        names.retain(|p| p.file_name().is_some_and(|n| n.to_string_lossy().starts_with("frame-")));
+        names.retain(|p| {
+            read_frames && p.file_name().is_some_and(|n| n.to_string_lossy().starts_with("frame-"))
+        });
         names.sort();
         let frames = names
             .iter()

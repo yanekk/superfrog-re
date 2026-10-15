@@ -11,7 +11,7 @@ use std::sync::OnceLock;
 use std::time::{Duration, Instant};
 
 use sf_core::input::{FrameInput, Joy};
-use sf_core::{Game, Rng, Start, View};
+use sf_core::{Game, Rng, Start, VarId, View};
 use sf_e2e::{App, Captured, Image, Key, LaunchOpts, binary, os_permissions, read_wav};
 use sf_paula::Paula;
 
@@ -338,4 +338,95 @@ fn os_layer_a_menu_click_reaches_the_app() {
         t.elapsed()
     );
     assert!(c.exit.success(), "{} {}", c.exit, c.stderr);
+}
+
+/// T193's script: fire skips the title's intro, opens its menu and picks START GAME. The loading
+/// picture's walk and the progress map then take the original's time, so W1-1 plays from about
+/// frame 1 900 (engine-only, seed 0 0: the loading picture from 363, the map from 1 529, the
+/// level scene from 1 885).
+const CHAIN_SCRIPT: &str = "100: press Space\n200: press Space\n250: press Space\n";
+const CHAIN_FRAMES: u64 = 2000;
+
+/// The input [`CHAIN_SCRIPT`] gives step `n`.
+fn chain_input(n: u64) -> FrameInput {
+    if [100, 200, 250].contains(&n) { FrameInput::joy(Joy::FIRE) } else { FrameInput::NONE }
+}
+
+/// `world` and `level` (h0+$40da, h0+$40de) as the engine holds them.
+fn world_level(game: &Game) -> (u32, u32) {
+    let long = |v: VarId| {
+        let at = sf_core::LAYOUT.iter().find(|d| d.id == v).unwrap().addr;
+        u32::from_be_bytes(game.peek(at, 4).try_into().unwrap())
+    };
+    (long(VarId::World), long(VarId::Level))
+}
+
+/// The engine's picture with the frog's two sprites hidden: their copper MOVEs to SPRxPOS and
+/// SPRxCTL (the record's copper words, `frog::anim::spr::COPPER`, and its attached partner's)
+/// set to a start and stop of line 0, so the hardware never shows them.
+fn without_frog(game: &Game) -> sf_core::Picture {
+    use sf_core::level::camera::{FROG_SPRITE_LEFT, FROG_SPRITE_RIGHT};
+    let mut g = game.clone();
+    for rec in [FROG_SPRITE_LEFT, FROG_SPRITE_RIGHT] {
+        let at = rec + sf_core::frog::anim::spr::COPPER;
+        let cop = u32::from_be_bytes(g.peek(at, 4).try_into().unwrap());
+        for value in [0xa, 0xe, 0x1a, 0x1e] {
+            g.poke(cop + value, &[0, 0]);
+        }
+    }
+    g.render(View::default())
+}
+
+#[test]
+fn power_on_fire_on_the_title_and_start_game_plays_w1_1() {
+    let mut app = App::launch(LaunchOpts {
+        max_frames: CHAIN_FRAMES,
+        timeout_s: 150,
+        ..Default::default()
+    });
+    let data = cache_data(&app.home);
+    let c = app.run_script_unread(CHAIN_SCRIPT);
+    assert!(c.exit.success(), "the run failed ({}): {}", c.exit, c.stderr);
+    assert_eq!(c.inputs, "100 10 \n200 10 \n250 10 \n", "fire reached the game at 100, 200, 250");
+
+    // The engine alone, headless, from the same start and input: the pictures the app must show.
+    let mut game = headless(&data);
+    let mut level_from = None;
+    let mut want = std::collections::BTreeMap::new();
+    for n in 1..=CHAIN_FRAMES {
+        let pic = game.step(chain_input(n)).picture;
+        if level_from.is_none() && game.scene() == sf_core::Scene::Level {
+            level_from = Some(n);
+        }
+        if n % 100 == 0 || n > CHAIN_FRAMES - 50 {
+            want.insert(n, pic);
+        }
+    }
+    let level_from = level_from.expect("the engine never reached a level");
+    assert_eq!(world_level(&game), (1, 1), "the level played is W1-1");
+    assert!(level_from < CHAIN_FRAMES - 50, "W1-1 plays from frame {level_from}");
+
+    // Every sampled frame is the engine's; the walk, the map and W1-1's are not black (the fades
+    // between them are).
+    for (&n, pic) in &want {
+        let shot = c.read_frame(n);
+        assert_eq!(shot, Image::of_picture(pic), "frame {n} is not the engine's");
+        if n == 1000 || n == 1700 || n > CHAIN_FRAMES - 50 {
+            assert!(shot.rgba.chunks(4).any(|p| p[..3] != [0, 0, 0]), "frame {n} is black");
+        }
+    }
+
+    // The frog's sprite is in the last frame: hiding it changes what the app showed, and only
+    // around the frog.
+    let last = c.read_frame(CHAIN_FRAMES);
+    let hidden = Image::of_picture(&without_frog(&game));
+    let differ: Vec<(u32, u32)> = (0..last.height)
+        .flat_map(|y| (0..last.width).map(move |x| (x, y)))
+        .filter(|&(x, y)| last.rgb(x, y) != hidden.rgb(x, y))
+        .collect();
+    assert!(differ.len() >= 100, "the frog's sprite shows {} pixels", differ.len());
+    let (xs, ys) = (differ.iter().map(|p| p.0), differ.iter().map(|p| p.1));
+    let w = xs.clone().max().unwrap() - xs.min().unwrap();
+    let h = ys.clone().max().unwrap() - ys.min().unwrap();
+    assert!(w < 32 && h < 48, "the hidden sprite changed a {w}×{h} area, not the frog's");
 }
