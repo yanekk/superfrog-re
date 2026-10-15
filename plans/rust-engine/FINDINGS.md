@@ -18,6 +18,10 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-15 | 🔄 | Owner, T122: added T155 w2-completions-green (T122, T127, T131, T132; blocks T18) and split W2-2/3/4 completions to T166, T167, T168 (T122; blocks T18, T155). `w2-1-complete` committed red, outside the test block. |
+| 2026-10-15 | 🐞 | T122, open (T168): W2-4's original hangs when the frog is pushed into the wall at 20,56 by the closed gate 18,55 (switch 46,66 not pulled): clock and frog frozen from then. Possible DESIGN §2.11 case. |
+| 2026-10-15 | 🐞 | T122, open (T155): `w2-1-complete` red at 1094 (frog sprite, every variable equal: T127/T131) and 1508 (`level_copper` after a lag: T131/T132). Frame 2709 is the next level's. |
+| 2026-10-15 | 📌 | T122: W2's tile coins (marker 55) count in `frog+$7e`, not toward the exit (`--no-tile-coins`). A jump reaches 3 rows (`examples/try_inputs`); a pad about 22. A launcher throws sideways, `vy` −5. |
 | 2026-10-15 | 🔄 | Owner, T121 review: added T153 bob-draw-step-cuts (T121; blocks T21): T121's goal 1, per-bob cut steps in `bob_draw`, unbuilt. Its pins: `enemies-w1-1` 372, and whichever of W3-1 201, W3-3 256, W3-activation 201 are drawer cuts. |
 | 2026-10-15 | 🐞 | T121 review, open (T153): `enemies-w1-1` 372 re-syncs `playfield_buffer_0` after the original's frame 371 ended in phase 5; W3-1 200, W3-3 255, W3-activation 200 are phase-5 lags too. T146's W6-1 530 may be the same. |
 | 2026-10-15 | 📌 | T121: no per-bob steps added to `bob_draw`; each erase and draw writes INTENA, so `Cut::writes` already places a phase-5 cut per bob. Untested: a bob erased with nothing to erase makes no write. |

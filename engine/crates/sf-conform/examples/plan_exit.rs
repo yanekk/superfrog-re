@@ -18,8 +18,11 @@
 //! 0 opens the exit lock), steering by a field flooded from every coin still in the original's
 //! map at the chunk's start, a coin taken worth more than any distance; `--skip c0,r0,c1,r1`
 //! leaves the coins in that box out; `--ground m,...` lets the field climb from cells with those
-//! markers (platform objects: W4's crumbling ledges are 27). `--no-tile-coins` (T122): only
-//! markers 8 and 9 are coins; a tile coin counts in `frog+$7e`, not toward the exit (W2-2's).
+//! markers (platform objects: W4's crumbling ledges are 27).
+//!
+//! T122: `--no-tile-coins`: only markers 8 and 9 are coins (a tile coin counts in `frog+$7e`, not
+//! toward the exit: W2's); `--jump N`: the field climbs N rows from ground, not 6 (a jump reaches
+//! 3 rows, so 4 is the frog's); `--launch N`: a launcher (marker 7) lifts the field N rows.
 use sf_conform::{InputScript, SyncPoint, sync};
 use sf_core::frog::{FROG, f};
 use sf_core::input::{FrameInput, Joy};
@@ -64,7 +67,7 @@ fn flood_dir(
     forward: bool,
     penalty: &[u32],
 ) -> Vec<u32> {
-    const JUMP: usize = 6;
+    let jump = JUMP.load(std::sync::atomic::Ordering::Relaxed);
     let m = |x: usize, y: usize| body[y * w + x] >> 10;
     let wall = |x: usize, y: usize| m(x, y) >= 0x3a;
     let floor = |x: usize, y: usize| m(x, y) >= 0x3a || ground.contains(&m(x, y));
@@ -91,14 +94,23 @@ fn flood_dir(
             above[y * w + x] = d;
         }
     }
+    // `--launch N` (T122): a launcher (marker 7) throws the frog up to N rows, within two
+    // columns of it (W2-3's shaft at 61-78,42-58 zig-zags between its walls' launchers).
+    let launch = LAUNCH.load(std::sync::atomic::Ordering::Relaxed);
+    let launched = |x: usize, y: usize| {
+        launch > 0
+            && (x.saturating_sub(2)..(x + 3).min(w))
+                .any(|c| (y..(y + launch).min(h)).any(|r| body[r * w + c] >> 10 == 7))
+    };
     let climbable = |x: usize, y: usize| {
         // A solid cell beside it is a wall, not ground.
-        [x.wrapping_sub(1), x, x + 1].iter().any(|&c| {
-            c < w && {
-                let (k, pad) = above[y * w + c];
-                k >= 1 && k <= if pad { PAD } else { JUMP }
-            }
-        })
+        launched(x, y)
+            || [x.wrapping_sub(1), x, x + 1].iter().any(|&c| {
+                c < w && {
+                    let (k, pad) = above[y * w + c];
+                    k >= 1 && k <= if pad { PAD } else { jump }
+                }
+            })
     };
     let mut d = vec![u32::MAX; w * h];
     let mut q = std::collections::BinaryHeap::new();
@@ -189,6 +201,12 @@ fn coin_cells(st: &sf_core::State, tiles: &[u32]) -> Vec<(usize, usize)> {
     v
 }
 
+/// `--jump N`: rows the flood lets the frog climb from ground (6 by default; a jump reaches 3
+/// rows, so 4 matches the frog, T122).
+static JUMP: std::sync::atomic::AtomicUsize = std::sync::atomic::AtomicUsize::new(6);
+/// `--launch N`: rows a launcher throws the frog up, for the flood (0: launchers are ignored).
+static LAUNCH: std::sync::atomic::AtomicUsize = std::sync::atomic::AtomicUsize::new(0);
+
 const SLOTS: u32 = 0x1ba6c;
 /// Marks a `--stomp`/`--hurt` target given as a template (`t<n>`), not an update routine.
 const TEMPLATE: u32 = 0x8000_0000;
@@ -278,6 +296,8 @@ fn main() {
                 let v: Vec<usize> = args[i + 1].split(',').map(|x| x.parse().unwrap()).collect();
                 skip_boxes.push((v[0], v[1], v[2], v[3]));
             }
+            "--jump" => JUMP.store(args[i + 1].parse().unwrap(), std::sync::atomic::Ordering::Relaxed),
+            "--launch" => LAUNCH.store(args[i + 1].parse().unwrap(), std::sync::atomic::Ordering::Relaxed),
             "--no-tile-coins" => {
                 no_tile_coins = true;
                 i -= 1;
@@ -453,13 +473,14 @@ fn main() {
                     (x, y) = (nx, ny);
                 }
                 eprintln!("  way: {}", way.join(" "));
-                // The map, `+` where the exit is in reach, `-` where the frog can go and come
-                // back from, `v` where it can go only,
-                // `#` a wall, `5` a pad.
+                // The map, `+` where the frog can go and the exit is in reach, `:` where the exit
+                // is in reach but the frog cannot get to, `-` where the frog can go and come
+                // back from, `v` where it can go only, `#` a wall, `5` a pad.
                 for r in 0..h {
                     let row: String = (0..w)
                         .map(|c| match body[r * w + c] >> 10 {
-                            _ if exit_field[r * w + c] < 1000 => '+',
+                            _ if exit_field[r * w + c] < 1000 && ahead[r * w + c] < 1000 => '+',
+                            _ if exit_field[r * w + c] < 1000 => ':',
                             m if m >= 0x3a => '#',
                             _ if back[r * w + c] < 1000 && ahead[r * w + c] < 1000 => '-',
                             _ if ahead[r * w + c] < 1000 => 'v',
