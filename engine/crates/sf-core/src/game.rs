@@ -192,6 +192,9 @@ pub struct Game {
     passes: u64,
     passes_ended: u32,
     pass_clock: PassClock,
+    /// For conformance: what runs on by itself while the original loads the game after the story
+    /// intro ([`crate::front::RUNS_DURING_LOAD`]), put in place when the intro hands over.
+    handover_runs: Vec<(u32, Vec<u8>)>,
 }
 
 /// `key_down`, `key_up` (h0+$16078, h0+$16079).
@@ -297,6 +300,7 @@ impl Game {
             passes: 0,
             passes_ended: 0,
             pass_clock: PassClock::default(),
+            handover_runs: Vec::new(),
         }
     }
 
@@ -347,6 +351,7 @@ impl Game {
         if let (Scene::Story, Some(story)) = (self.scene, self.story.as_mut()) {
             let out = story.step(&self.state, &self.display, input, pacing);
             if !out.over {
+                self.handover_runs.clear();
                 self.shown = Some(out.picture.clone());
                 return FrameOut {
                     picture: out.picture,
@@ -363,6 +368,9 @@ impl Game {
             let mut front = crate::front::Front::power_on(seed);
             self.state = State::default();
             front.boot(&mut self.state, &self.display);
+            for (at, bytes) in std::mem::take(&mut self.handover_runs) {
+                self.state.poke(at, &bytes);
+            }
             self.front = Some(front);
             self.story = None;
             self.scene = Scene::Front;
@@ -512,6 +520,16 @@ impl Game {
     pub fn set_load_state(&mut self, runs: Vec<(u32, Vec<u8>)>) {
         if let Some(s) = self.story.as_mut() {
             s.load_state = runs;
+        }
+    }
+
+    /// For conformance, the story intro's hand-over: what runs on by itself while the original
+    /// loads the game ([`crate::front::RUNS_DURING_LOAD`]'s runs, as the original had them just
+    /// before the frame its load ended on), put in place once the game has booted in the next
+    /// step, if the intro hands over in it (the game's own power-on takes them before its step).
+    pub fn set_handover_state(&mut self, runs: Vec<(u32, Vec<u8>)>) {
+        if self.story.is_some() {
+            self.handover_runs = runs;
         }
     }
 

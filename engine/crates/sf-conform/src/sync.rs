@@ -936,9 +936,20 @@ pub fn cop1lc(was: Option<u32>, writes: &[sf_oracle::CpuWrite]) -> Option<u32> {
     }
     c
 }
+/// The intro's drive check (d3_c04 h0+$c520) after its two head steps: `moveq #0, d0; rts`, no disk.
+const INTRO_NO_DISK: u32 = h0(0xc540);
+/// What the runner puts there once disk 1 is in: `bra.s h0+$c530`, the disk-change line read again.
+const INTRO_READ_AGAIN: [u8; 2] = [0x60, 0xee];
 
 /// One frame of the original, putting disk 1 in df0 once the story intro asks for it (a
 /// disk-3 boot; nothing happens on a disk-1 boot).
+///
+/// The intro's read of disk 1's id (`intro_wait_disk1`) first looks at the disk-change line, finds
+/// it low (a disk was swapped), steps the head in and out and looks again 91 lines later: on the
+/// hardware the steps have set it high by then (HRM). The reference emulator's drive has (a read at
+/// once after that one sees it high) but its CIA's first read after the steps returns the line as it
+/// was, so the intro would take disk 1 for no disk and ask again (T47, FINDINGS 2026-10-15). Its
+/// "no disk" branch is turned into that read again, so one press of fire goes on as on the hardware.
 pub fn step_inserting(a: &mut Amiga, input: FrameInput) -> Result<sf_oracle::FrameCapture, String> {
     let cap = a.step(input).map_err(|e| e.to_string())?;
     let m = core_memory(a.memory());
@@ -947,6 +958,12 @@ pub fn step_inserting(a: &mut Amiga, input: FrameInput) -> Result<sf_oracle::Fra
         && main_chain(&a.cpu(), &m).contains(&INTRO_ASKS_DISK1)
     {
         a.insert_disk(0, DiskSlot::D1);
+        assert_eq!(
+            a.peek(INTRO_NO_DISK, 4),
+            [0x70, 0x00, 0x4e, 0x75],
+            "the intro's drive check is not where it was measured"
+        );
+        a.poke(INTRO_NO_DISK, &INTRO_READ_AGAIN);
     }
     Ok(cap)
 }

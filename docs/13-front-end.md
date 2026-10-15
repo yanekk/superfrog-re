@@ -77,9 +77,10 @@ the old value, lines a main-program part ran under show what was there before it
 `Start::Disk3` is the moment disk 3's logo program `d3_c02` starts, after its bootblock: Kickstart
 and the bootblock are the load. The engine runs it as `front::story` with its own 512K memory
 (chip and slow), not the game's `State`. Frames below count from that start (case
-`story-intro`); **(oracle)** up to frame 555 in the test block, and the whole intro to the
-"insert disk 1" page in the slow case `story-intro-full` (about 5 min, an ignored test: `sf-conform
-run` it; T144). The table past scene 1 is from a run of that case (engine and original agree).
+`story-intro`); **(oracle)** up to frame 555 in the test block, and the whole intro, the "insert
+disk 1" page and the hand-over to the game to its title in the slow case `story-intro-full` (about
+5 min, an ignored test: `sf-conform run` it; T144, T47). The table past scene 1 is from a run of
+that case (engine and original agree).
 
 ```
 0–66      Team 17 logo (d3_c02): hires, 4 planes, interlaced (two copper lists by field),
@@ -122,8 +123,27 @@ scene    text page / load              set-up      play         out
 14       8154–8196                     8197–8217   8218–8260    8261 (speed 2)
 15       8261–8415                     8416–8435   8436–9266    9267–9298 (speed 2), waits
 END      black list and music stop 9299; the page unpacked 9299–9311 (h0+$5fa); faded in 9312;
-         9313 the engine hands over to disk 1 (T47), the original waits for fire (c38e, O 12718)
+         from 9313 (O 12718) intro_wait_disk1 waits for fire (below)
 ```
+
+**The hand-over (T47; code, oracle).** `intro_wait_disk1` (h0+$c38e) polls fire on the joystick
+port (`btst #7, CIAA PRA`, no vertical-blank wait), then reads 4 bytes at disk offset `$dbffc`
+(sector `$77e`, h0+$c462, the intro's trackloader), waits for fire to go up, and checks them for
+`2222`, disk 1's id; any other disk (or none) goes back to the fire wait. Then `text_out` fades the
+page out, the trackloader reads disk 1's 8 sectors from `$b` to `$7c180`, which is unpacked and
+loaded as a hunk file (`d1_c01`, the bootstrap), and the intro jumps there (h0+$388): the game starts
+as a disk-1 power-on starts it, past the crack's own boot chain. The engine waits for fire
+(`Op::WaitFire`), reads instantly (`Op::ReadDiskId`, a load; the original's read spins the motor up
+and seeks, about 85 frames), waits for fire up, runs `text_out`, and on `Op::End` `Game` starts the
+game as `Start::PowerOn` does (`Front::power_on` with the seed the original's game chose), its first
+frame a load that ends where the power-on's does. Case `story-intro-full`: fire held from O 12740 (engine
+9334) to 12830, the read O 12740–12824, then the fade; the game's first compared frame is 9351
+(O 15431), its title waiting by 9870.
+
+- The drive check (h0+$c520) finds the disk-change line low after a swap, steps the head in and out
+  and reads it again 91 lines later. vAmiga's CIA returns the stale value on that read (a read right
+  after it sees it high), so conformance patches the intro's "no disk" branch (h0+$c540) into a
+  second read once it inserts disk 1 (`sync::step_inserting`); on the hardware one press does.
 
 The handler (h0+$b102, each frame at the top): frame flag and count, the shown buffer's plane
 pointers (unless frozen), the music's sample stream, the fades (in, out, across: 4 records), fire

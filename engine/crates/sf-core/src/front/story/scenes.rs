@@ -908,7 +908,8 @@ pub fn unpack_frames(ret: u32) -> u64 {
 }
 
 /// `intro_main`'s end (h0+$2f6): the music stopped, the insert-disk-1 page (h0+$5fa) shown, then
-/// the wait for disk 1 (the game starts).
+/// `intro_wait_disk1` (h0+$c38e: fire down, disk 1's id sector read, fire up), `text_out`, and
+/// disk 1's boot loaded and started (h0+$314: the game starts, [`Op::End`]).
 pub static END: &[Op] = &[
     MusicStop,
     CopyLongs {
@@ -929,5 +930,9 @@ pub static END: &[Op] = &[
     },
     WaitVbl,
     Cop1lc(TEXT_LIST),
+    WaitFire(true),
+    ReadDiskId { ret: h0(0xc3c2) },
+    WaitFire(false),
+    Call(TEXT_OUT),
     End,
 ];

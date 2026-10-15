@@ -146,6 +146,34 @@ fn the_attract_cycle_matches_the_original() {
     }
 }
 
+/// The attract demo ended by fire (the case `attract-abort`, T164): fire held mid-demo stops the
+/// level's loop well before the recording's end, the title comes back, and the next cycle starts
+/// with `demo_index` moved on.
+#[test]
+fn fire_ends_the_attract_demo_as_the_original_does() {
+    let case = sf_conform::Case::load(&sf_conform::cases_dir().join("attract-abort.toml"))
+        .unwrap_or_else(|e| panic!("{e}"));
+    let mut seen = Vec::new();
+    let r = sf_conform::run_with(&case, |f, g| {
+        let s = (g.scene().is_level(), g.state().w(sf_core::layout::h0(0x9f6)));
+        if seen.last().is_none_or(|&(_, l)| l != s) {
+            seen.push((f, s));
+        }
+    });
+    if let Err(d) = r {
+        panic!("{d}");
+    }
+    // In the level from the demo's start, out of it soon after the fire (frame 3963; played to
+    // its end the demo leaves at about 5120), then the next cycle's `demo_index`.
+    let left = seen
+        .iter()
+        .skip_while(|(_, (level, _))| !level)
+        .find(|(_, (level, _))| !level)
+        .map(|&(f, _)| f);
+    assert!(left.is_some_and(|f| (3950..4000).contains(&f)), "{seen:?}");
+    assert_eq!(seen.last().map(|&(_, (l, i))| (l, i)), Some((false, 2)), "{seen:?}");
+}
+
 /// The end sequence, frame for frame from `end_seq_load` back to the title (the case `ending`, T35).
 #[test]
 fn the_end_sequence_matches_the_original() {

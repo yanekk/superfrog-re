@@ -172,3 +172,20 @@ fn a_streamed_sample_plays_160_bytes_a_frame_then_stops() {
     assert!(frames[3].is_empty());
     assert_eq!(a.stream_source(), None);
 }
+
+/// What a re-sync takes to be in chip RAM (T164): a world's bank and module in a level, but the
+/// title's module when the module is still at the bank's place, as in the attract demo, where the
+/// title's music plays on over W1-1.
+#[test]
+fn files_for_keeps_the_titles_module_in_the_attract_demo() {
+    use sf_core::audio::files_for;
+    assert_eq!(files_for(1, BANK_ADDR), [(BANK_ADDR, File::Tune(TuneId::Title))]);
+    assert_eq!(
+        files_for(1, BANK_ADDR + 0x8000),
+        [
+            (BANK_ADDR, File::Bank(BankId::Worlds12)),
+            (BANK_ADDR + 0x8000, File::Tune(TuneId::World(1))),
+        ]
+    );
+    assert_eq!(files_for(0, BANK_ADDR), [(BANK_ADDR, File::Tune(TuneId::Title))]);
+}

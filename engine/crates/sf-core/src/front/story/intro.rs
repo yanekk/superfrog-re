@@ -228,6 +228,8 @@ enum Wait {
     Busy { until: u64, blank_extends: bool },
     /// Interrupts are off until `until`: a blank that comes meanwhile is taken then.
     Masked(u64),
+    /// A poll of the hardware (fire): looked at again in the next frame, after its handler.
+    Poll,
 }
 
 /// What runs at the end of a busy stretch.
@@ -620,6 +622,11 @@ impl Intro {
             out.resync.push((h0(0xb1f4), 6));
             self.t = top + load_line.map_or(handler, u64::from);
         }
+        if self.wait == Wait::Poll {
+            // The poll goes on where the handler left the main program, with this frame's input.
+            self.wait = Wait::Run;
+            self.t = self.t.max(top);
+        }
         self.checkpoint = None;
         self.run(m, data, input, top, end, &mut out, load_line, list);
         if matches!(self.pacing, Pacing::Late { .. })
@@ -746,7 +753,7 @@ impl Intro {
         loop {
             match self.wait {
                 Wait::Run => {}
-                Wait::Vbl => return,
+                Wait::Vbl | Wait::Poll => return,
                 Wait::Count => {
                     // `cmpi.w #2, vbl_count; bmi`: polled until the count reaches two.
                     if (m.w(VBL_COUNT).wrapping_sub(2) as i16) < 0 {
@@ -1287,6 +1294,16 @@ impl Intro {
                 self.t = top + load_line.map_or(self.t - top, u64::from);
                 self.next();
             }
+            Op::ReadDiskId { ret } => {
+                // The sector is read into the trackloader's buffer, which nothing compared holds;
+                // the original is compared once it has left the read.
+                self.after_load(m, data, input, out);
+                out.load = Some(LoadEnd::Left(ret));
+                out.list_at_load = Some(out.cop1lc.unwrap_or(list));
+                out.resync.extend_from_slice(RUNS_DURING_LOAD);
+                self.t = top + load_line.map_or(self.t - top, u64::from);
+                self.next();
+            }
             Op::CopyLongs { from, to, n } => {
                 let b = m.read(from, 4 * n);
                 m.write(to, &b);
@@ -1457,6 +1474,13 @@ impl Intro {
                 }
                 m.set_w(VBL_FLAG, 0);
                 self.wait = Wait::Vbl;
+            }
+            Op::WaitFire(down) => {
+                if input.joy.contains(crate::input::Joy::FIRE) == down {
+                    self.next();
+                    return true;
+                }
+                self.wait = Wait::Poll;
             }
             Op::Timeline(list) => {
                 super::sound::timeline_start(m, list);

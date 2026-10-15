@@ -11,7 +11,7 @@ pub enum Op {
     Call(&'static [Op]),
     /// `intro_skip` set (fire or the mouse button, seen by the vertical blank): on to the end.
     SkipCheck,
-    /// `intro_main`'s end (h0+$2f6): music off, the insert-disk-1 screen and its wait.
+    /// `intro_main`'s end (h0+$314): disk 1's boot loaded and started; the game takes over.
     End,
 
     /// A word or long written, added to or inverted at an address.
@@ -114,6 +114,12 @@ pub enum Op {
     WaitVbls(u16),
     /// `wait_fire` (h0+$3b4): up to `n` vertical blanks, or until fire is down.
     WaitOrFire(u16),
+    /// `intro_wait_disk1`'s polls of fire (`btst #7, CIAA PRA`, h0+$c38e and $c3c2): until it is
+    /// down (`true`) or up (`false`).
+    WaitFire(bool),
+    /// `intro_wait_disk1`'s read of disk 1's id sector (`$77e`, h0+$c462; `ret` is the call's
+    /// return address): a load, instant.
+    ReadDiskId { ret: u32 },
 
     /// `timeline_start` (h0+$b17c): the vertical blank plays this list of sound events.
     Timeline(u32),
