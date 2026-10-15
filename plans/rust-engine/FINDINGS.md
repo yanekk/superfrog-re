@@ -18,6 +18,7 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-15 | 📌 | T113, for T115's W3-4: the switch at 12,29 (marker 48) opens the pipe at 67,23 up to the top-left; the pads at 128,37 throw the frog over the west wall; pads at 71,41 reach the ledge at 63,29. |
 | 2026-10-15 | 🐞 | T164, fixed: a lag re-sync rebuilt the sound driver over the world's module, but in the attract demo the title's module plays on at BANK_ADDR (`audio::files_for`); attract-demo-3 broke at 13281. |
 | 2026-10-15 | 📌 | T164: T33-wip.patch deleted; T183's doc still points at it for `KICKSTART_LEVEL1`, already in `state.rs` (`State::default`). |
 | 2026-10-15 | 📌 | T144 review sweep, left alone: `tasks/T141-story-fade-colour-race.md` calls the colour-28 fade (engine 7232–7241) scene 9's; the original's chain there is h0+$736e..$73dc, scene 12 (docs/13 table). |
