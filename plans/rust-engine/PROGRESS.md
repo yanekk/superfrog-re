@@ -141,7 +141,7 @@ done · ⛔ blocked, needs a human. A task dropped by a plan amendment leaves th
 | T149 | w6-3-completion | T104, T180, T182; blocks T21 | ⬜ | |
 | T150 | w6-4-completion | T104, T180, T182; blocks T21 | ⬜ | |
 | T151 | w6-4-alt-completion | T104, T150, T180, T182; blocks T21 | ⬜ | |
-| T160 | attract-demo-entry | T33, T180 | ⬜ | |
+| T160 | attract-demo-entry | T33, T180 | 🔍 | Applied T33-wip.patch's entry parts: `$64` vector, `Demo` routine, `LevelOver` attract end, keyboard SDR handover, credits beam races. front-attract green to 3300 (45 race frames); 10 regression cases green. Deviation: left out the patch's rewindow, late fade (T162) and `Cx::list` (dropped T161), and its debug output. |
 | T162 | attract-demo-level-start | T160, T180 | ⬜ | |
 | T163 | attract-demo-return | T162 | ⬜ | |
 | T164 | attract-demo-cycles | T163; blocks T21 | ⬜ | |
@@ -157,7 +157,7 @@ done · ⛔ blocked, needs a human. A task dropped by a plan amendment leaves th
 A Notes cell holds what was built or what the review found, the test count, and one line per
 deviation from the task doc. A ✅ task's cell may be cut to one line once the next task has been reviewed.
 
-**Review queue:** *(empty)*
+**Review queue:** T160
 
 ## Blocked on the user
 
