@@ -134,7 +134,7 @@ done · ⛔ blocked, needs a human. A task dropped by a plan amendment leaves th
 | T129 | slot-lamp-cut | T74; blocks T21 | ✅ | |
 | T144 | story-intro-full-green | T56, T180; blocks T21, T47, T48 | ⬜ | |
 | T133 | w2-1-fruit-room | T105, T180; blocks T21 | ⬜ | |
-| T132 | w4-4-completion | T103; blocks T21 | ⬜ | |
+| T132 | w4-4-completion | T103; blocks T21 | ✅ | |
 | T145 | w4-4-dart-21 | T132; blocks T21 | ⬜ | |
 | T147 | w6-2-completion | T104, T180, T182; blocks T21 | ⬜ | |
 | T148 | w6-2-alt-completion | T104, T147, T180, T182; blocks T21 | ⬜ | |
