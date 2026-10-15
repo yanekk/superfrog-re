@@ -789,13 +789,19 @@ impl AloneRun {
         let g = &self.game;
         let ours = match g.story() {
             Some(_) => FrameState::story(),
-            None => FrameState::read(&|a, n| g.state().read(a, n), g.cop1lc()),
+            None => FrameState {
+                mid_pass: g.mid_pass(),
+                ..FrameState::read(&|a, n| g.state().read(a, n), g.cop1lc())
+            },
         };
         self.disk3 &= !sync::game_owns_vbl(mem);
         let theirs = if self.disk3 || sync::in_story(mem) {
             FrameState::story()
         } else {
-            FrameState::read(&|a, n| (a..a + n).map(|x| mem.byte(x)).collect(), cop1lc)
+            FrameState {
+                mid_pass: sync::mid_pass(&amiga.cpu(), mem),
+                ..FrameState::read(&|a, n| (a..a + n).map(|x| mem.byte(x)).collect(), cop1lc)
+            }
         };
         if self.first_var.is_none()
             && !ours.story
