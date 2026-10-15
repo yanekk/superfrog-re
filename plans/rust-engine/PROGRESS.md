@@ -14,7 +14,7 @@ the account is the commit message. Whoever writes a cell also fixes the over-bud
 **Status:** about 100 tasks ✅; T18, T21 and Phase 3 open; amended to faithful.
 **Last updated:** 2026-10-15
 **Amended 2026-10-15 (owner):** faithful replaces frame-exact (DESIGN §2.1, PLAN.md amendment); T180–T183 added, 14 tasks dropped (PLAN.md).
-**Next `pir-work` will:** review T182; then T181, T183 and T184 (check 4's drift) in parallel; completions after T184.
+**Next `pir-work` will:** T181, T183 and T184 (check 4's drift) in parallel; completions after T184.
 
 ## Tasks
 
@@ -151,14 +151,14 @@ done · ⛔ blocked, needs a human. A task dropped by a plan amendment leaves th
 | T168 | w2-4-completion | T122, T180, T182; blocks T21 | ⬜ | |
 | T180 | faithful-compare | T120; blocks T181, T182 and every open conformance task | ✅ | |
 | T181 | faithful-rebaseline | T180, T182; blocks T21 | ⬜ | |
-| T182 | plays-alone | T180; blocks T181, T183 and every completion task | 🔍 | Check 4: `milestones.rs`, an alone engine in `run_inner`, `run --alone`, `Game::cop1lc`; 4 oracle, 7 unit tests. Deviations: no `alone` case key (owner's rule); scenes by COP1LC; kill kind u32, exit by world/level; unreachable Late already ends as normal play (test only). W1-1's loss: pacing and `kbd_toggle`. Added T184 (owner); five tests on checks 1–3. |
+| T182 | plays-alone | T180; blocks T181, T183 and every completion task | ✅ | Review: one fix. The runner's check 4 was never shown red (judge(theirs, theirs) mutation survived); added a test that enemies-w3-activation fails alone at 237 (T184 repoints it); T184 doc got its Interface. Probed run --alone on complete-w1-1, complete-w4-2, ending, story-intro: as claimed. Judge ±10 mutation caught. |
 | T183 | level-chain | T180, T182; blocks T21 | ⬜ | |
 | T184 | alone-pass-drift | T182; blocks T21, T18, T115, T147, T148, T149, T150, T151, T154, T166, T167, T168 | ⬜ | |
 
 A Notes cell holds what was built or what the review found, the test count, and one line per
 deviation from the task doc. A ✅ task's cell may be cut to one line once the next task has been reviewed.
 
-**Review queue:** T182
+**Review queue:** *(empty)*
 
 ## Blocked on the user
 
