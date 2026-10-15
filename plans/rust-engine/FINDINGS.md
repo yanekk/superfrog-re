@@ -18,6 +18,9 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-15 | 🐞 | T124, open (T120): `enemies-w5-3` straddles 1024 of 2600 frames (the watchers' room and the bottom corridor nearly every other frame). Green, but those are half-compared. |
+| 2026-10-15 | 📌 | T124: `enemies-w5-3` meets every W5-3 type but the faller (28, marker 10 at 92,39, off the route) and the shooters' shot (85; shooters met walking only); `enemies-w5-1` and `enemies-w5-2` meet both. W5-3 has no marker 12. |
+| 2026-10-15 | 📌 | T124: `examples/plan_exit` routes W5-3 unaided once the frog is free (frame 150): down the shaft at col 133 to the watchers, the chute at 222,63 into the bottom corridor (2/3 pacer, row 72). |
 | 2026-10-15 | 🐞 | T123 review, open (T120): `enemies-w5-2` compares 642 of 1000 frames; 358 straddled, longest run 528–641, then every other frame to 957. Green, but the shooter's room and crusher stretch are half-compared. |
 | 2026-10-15 | 📌 | T123: W5-2's 2/3 pacer (79/80) cannot spawn: neither marker 2 (167,15; 219,41) has a marker 3 within `$98` cells right on its row. W5-3 (194/204,72) and W5-4 (17/28,19; 64/81,36) have pairs (T124, T125). |
 | 2026-10-15 | 📌 | T123: `enemies-w5-2` meets every W5-2 type but the mace (63/64), the flow (98) and dart 53, all far from its start; `enemies-w5-1` meets those. W5-2 has no marker 12 or 22. |
