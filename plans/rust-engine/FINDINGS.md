@@ -19,6 +19,9 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 | Date | | Finding |
 |---|---|---|
 | 2026-10-15 | 📌 | T127: `FrogSprites` (1340) is still charged whole before `place_frog_sprites`, whose two waits come late in each sprite's work; a split like `FrogAnim`/`FrogAnimTail` may be T128's W3-4 race. |
+| 2026-10-15 | 🔄 | Owner, T120 review: `all` red is accepted for T120 once each red case has an owner; added T169 power-on-cases-green (T160; blocks T21) and T170 game-over-timeup-copper (T34; blocks T21), the two red groups no task owned. |
+| 2026-10-15 | 🐞 | T120 review, open (T131): `complete-w4-2` now diverges first at 1657, picture rows 118–157 (351 pixels, $eee/$111), before the logged 2383; same with T120 reverted. |
+| 2026-10-15 | 📌 | T120 measured every case: longest mid-pass runs ≤97 bar complete-w4-3 261, enemies-w6-1 133 (pinned); with after-lag frames up to 969; enemies-w4-2 compares 39 of 650. `all` red only where already logged; story-scene4-sound diverges at 3444 like intro-full (T144). |
 | 2026-10-15 | 🔄 | Owner, T122: added T155 w2-completions-green (T122, T127, T131, T132; blocks T18) and split W2-2/3/4 completions to T166, T167, T168 (T122; blocks T18, T155). `w2-1-complete` committed red, outside the test block. |
 | 2026-10-15 | 🐞 | T122, open (T168): W2-4's original hangs when the frog is pushed into the wall at 20,56 by the closed gate 18,55 (switch 46,66 not pulled): clock and frog frozen from then. Possible DESIGN §2.11 case. |
 | 2026-10-15 | 🐞 | T122, open (T155): `w2-1-complete` red at 1094 (frog sprite, every variable equal: T127/T131) and 1508 (`level_copper` after a lag: T131/T132). Frame 2709 is the next level's. |
@@ -27,6 +30,9 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 | 2026-10-15 | 🔄 | Owner, T106: added T165 w1-1-completion (T106, T131; blocks T18): every W1-1 exit found meets T131's exit-fade palette step (frames 4475, 4477, `$bbb` for `$ccc`); `complete-w1-1` committed outside the test block. |
 | 2026-10-15 | 🐞 | T106, fixed: a loop ending in a late pass ended a step early (`loop_over`), `mid_pass` missed passes with `level_state` 1, and after a lag the runner compared jobs unmasked. `bonus-death-wb-1` is now green to 2448; 2449 still diverges. |
 | 2026-10-15 | 📌 | T106: `plan_exit` needs an idle prefix at a W1 level's start (`0: -` / `20: -`: `level_state` is not yet running at frame 0). Marker 4 is a bounce pad too (W1-3's way out of the basin). |
+| 2026-10-15 | 🐞 | T124, open (T120): `enemies-w5-3` straddles 1024 of 2600 frames (the watchers' room and the bottom corridor nearly every other frame). Green, but those are half-compared. |
+| 2026-10-15 | 📌 | T124: `enemies-w5-3` meets every W5-3 type but the faller (28, marker 10 at 92,39, off the route) and the shooters' shot (85; shooters met walking only); `enemies-w5-1` and `enemies-w5-2` meet both. W5-3 has no marker 12. |
+| 2026-10-15 | 📌 | T124: `examples/plan_exit` routes W5-3 unaided once the frog is free (frame 150): down the shaft at col 133 to the watchers, the chute at 222,63 into the bottom corridor (2/3 pacer, row 72). |
 | 2026-10-15 | 🐞 | T123 review, open (T120): `enemies-w5-2` compares 642 of 1000 frames; 358 straddled, longest run 528–641, then every other frame to 957. Green, but the shooter's room and crusher stretch are half-compared. |
 | 2026-10-15 | 📌 | T123: W5-2's 2/3 pacer (79/80) cannot spawn: neither marker 2 (167,15; 219,41) has a marker 3 within `$98` cells right on its row. W5-3 (194/204,72) and W5-4 (17/28,19; 64/81,36) have pairs (T124, T125). |
 | 2026-10-15 | 📌 | T123: `enemies-w5-2` meets every W5-2 type but the mace (63/64), the flow (98) and dart 53, all far from its start; `enemies-w5-1` meets those. W5-2 has no marker 12 or 22. |

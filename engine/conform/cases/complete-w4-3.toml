@@ -9,3 +9,6 @@ sync = { level = "W4-3" }
 script = "complete-w4-3"
 frames = 8670
 resync = false
+# From frame 3300 the original's passes run longer than a frame, so 261 frames in a row end
+# mid-pass and nothing is compared there (T120): pinned at that run, to shrink with T131.
+lag-limit = { frames = 261, note = "W4-3's passes run longer than a frame from 3300: 261 frames in a row end mid-pass; T131" }

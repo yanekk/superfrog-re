@@ -188,3 +188,50 @@ fn enemies_w5_2() {
     );
     assert!(seen.left(0x26d14), "a shot freed");
 }
+
+
+/// W5-3 (T124) from its start west along the top past the first shooters and dart 54 (marker 19
+/// at 96,16), down the shaft at col 133 to the watchers (22), east past the mace and the darts
+/// (53) and down the chute into the bottom corridor, west to the switch at 149,58 and back east
+/// to the pacer between markers 2 and 3 (80/79), which hurts the frog (frame 2571). One re-sync
+/// pinned, seen with enemies frozen too: the panel at 1129 after a lag. The faller (28, marker 10
+/// at 92,39) and the shooter's shot (85) are enemies-w5-1's and enemies-w5-2's (FINDINGS
+/// 2026-10-15, T124).
+#[test]
+fn enemies_w5_3() {
+    let seen = run("enemies-w5-3", &[1129]);
+    assert!(
+        seen.frames.windows(2).any(|w| w[0].0 >= 2500 && w[1].2 && !w[0].2),
+        "hurt by the 2/3 pacer"
+    );
+    met_init(
+        &seen,
+        &[
+            (0x26806, "pacer 79 (marker 3)"),
+            (0x26840, "pacer 80 (marker 2)"),
+            (0x25e46, "dart 54 (marker 19)"),
+            (0x2500e, "watcher (marker 22)"),
+        ],
+    );
+    met(
+        &seen,
+        &[
+            (0x26874, "pacer (2/3)"),
+            (0x26b14, "pacer (13/14)"),
+            (0x2502a, "watcher looking"),
+            (0x250d0, "watcher blinking"),
+            (0x25fa8, "dart (hidden)"),
+            (0x25f42, "dart (flying)"),
+            (0x26c08, "shooter walking"),
+            (0x25274, "drip falling"),
+            (0x25306, "drip splashing"),
+            (0x270a8, "crusher waiting"),
+            (0x270d2, "crusher striking"),
+            (0x27100, "crusher going back"),
+            (0x2619c, "mace"),
+            (0x262be, "mace's chain"),
+            (0x287a8, "flow"),
+            (0x24ef6, "scenery"),
+        ],
+    );
+}

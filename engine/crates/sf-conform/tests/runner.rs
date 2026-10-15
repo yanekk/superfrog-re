@@ -83,6 +83,34 @@ fn a_resync_after_lag_fails_a_case_that_forbids_it() {
     );
 }
 
+/// The limit on frames in a row the original ends mid-pass (T120), on a real lag:
+/// `items-run-w1-1`'s longest, 18 frames from 303. Pinned one under it the case fails as the
+/// run passes the pin; pinned at it, it is green. The failure with no pin is `sf_conform`'s
+/// unit test of the old `items-upper-w2-1` hang (T120).
+#[test]
+fn a_case_fails_once_the_original_stays_mid_pass_past_its_limit() {
+    let full = Case::load(&sf_conform::cases_dir().join("items-run-w1-1.toml")).unwrap();
+    assert!(full.lag_limit.is_none());
+    let pinned = |frames: u32| Case {
+        frames: 330,
+        lag_limit: Some(sf_conform::LagLimit {
+            frames,
+            note: "test".into(),
+        }),
+        ..full.clone()
+    };
+    let o = sf_conform::run(&pinned(18)).unwrap_or_else(|d| panic!("{d}"));
+    assert_eq!(o.longest_mid_pass, (303, 18));
+    assert!(o.compared < 330 - 18, "{o:?}");
+    let d = sf_conform::run(&pinned(17)).expect_err("a run past the limit was green");
+    assert_eq!((d.frame, d.lag), (303 + 17, Some((303, 17))), "{d}");
+    assert!(d.first_var.is_none() && d.picture_diff.is_none() && d.paula_diff.is_none());
+    assert!(
+        d.to_string().contains("18 in a row, past the limit of 17"),
+        "{d}"
+    );
+}
+
 #[test]
 fn a_planted_one_variable_divergence_is_named_with_its_frame() {
     let case = title_case();

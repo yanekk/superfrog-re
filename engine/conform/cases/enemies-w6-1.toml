@@ -6,3 +6,7 @@ sync = { level = "W6-1" }
 script = "enemies-w6-1"
 frames = 2150
 resync = false
+# From frame 425 the original's object pass (phase 5, h0+$191xx-$196xx) runs longer than a frame,
+# so 133 frames in a row end mid-pass and nothing is compared there (T120): pinned at that run,
+# to shrink with T104.
+lag-limit = { frames = 133, note = "W6-1's object pass runs longer than a frame from 425: 133 frames in a row end mid-pass; T104" }
