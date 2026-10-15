@@ -158,12 +158,12 @@ done · ⛔ blocked, needs a human. A task dropped by a plan amendment leaves th
 | T190 | chain-world-change | T183; blocks T21 | ⬜ | |
 | T191 | chain-pause | T183; blocks T21 | ⬜ | |
 | T192 | chain-level-code | T183, T190; blocks T21 | ⬜ | |
-| T193 | chain-e2e | T183; blocks T21 | 🔍 | Smoke test: fire 100/200/250, W1-1 from frame 1 885, frames equal the engine's, frog sprite shown (hidden-sprite re-render). 1 test. Deviations: budget 2 000 not 1 500 (walk and map are the original's); `App::run_script_unread`/`Captured::read_frame` added; sf-app and PNG crates opt-level 2 in dev (49 ms/frame, hit --timeout). |
+| T193 | chain-e2e | T183; blocks T21 | ✅ | Clean, no fix commit. Smoke test green 6 runs (~46 s); kept frames 1000/1700/2000 viewed: loading picture, map, W1-1 with frog. Frog-sprites-off-screen mutation went red. Deviations held: 2 000-frame budget, unread-capture helpers, dev opt-level (no cargo warnings; 49 ms figure read-only). |
 
 A Notes cell holds what was built or what the review found, the test count, and one line per
 deviation from the task doc. A ✅ task's cell may be cut to one line once the next task has been reviewed.
 
-**Review queue:** T193
+**Review queue:** *(empty)*
 
 ## Blocked on the user
 
