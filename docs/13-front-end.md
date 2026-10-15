@@ -163,9 +163,11 @@ top_loop $a8 (attract mode): Accessing-disk overlay, demo_world_load, demo_level
 - **Its place**: after the credits, when attract mode is on and nothing aborted (`front::attract`'s
   `TopLoop`, `Demo`). Every `demo_index` plays the same W1-1 recording; the title gives each the
   start W1-1 (h0+$1218).
-- **The recording**: three words a step: start frame, joystick and fire (`$303`: the directions;
-  fire held while the `$f000` bits are clear), frames it lasts. A word `$ffff` ends it. `demo_play` counts `demo_left`
-  (h0+$11a2c) down and takes the next step at `demo_at` (h0+$11a2e).
+- **The recording** (oracle: `0001 f000 0061 f003 002b f103 …`): a lead-in word, then two words a
+  step: joystick and fire (`$303`: the directions; fire held while the `$f000` bits are clear), frames
+  it lasts. `demo_at` (h0+$11a2e) moves 4 bytes a step and points at the word before the step, so a
+  `$ffff` there (in a frames slot) ends it. `demo_play` counts `demo_left` (h0+$11a2c) down and
+  takes the next step when it runs out.
 - **Its end**: fire, or the recording's end, clears `demo_running`, sets `level_state` 1 and the
   frog's lives `$ffff`; `level_frame_loop` also stops on fire in attract mode. The level's exit
   fade then returns to the title, and the cycle repeats.
