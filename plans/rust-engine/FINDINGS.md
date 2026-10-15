@@ -18,6 +18,7 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-15 | 📌 | T132: `complete-w4-4` differs at 5252 (frog thrown by pad 52,50, on time) and after lags 8030, 23129 (panel), 9003 (play field buffer), 15914 (hitboxes); excluded/pinned for T181 to re-judge. `plan_exit` misread W4-4's initial `level_state` −1 as exit. |
 | 2026-10-15 | 🔄 | Owner: faithful replaces frame-exact (DESIGN §2.1): state per pass, tolerant picture and sound, engine alone meets the original's milestones; no hand checks as gates. T180–T183 added; T128, T131, T140–T143, T146, T153, T155, T161, T165, T169–T171 dropped. |
 | 2026-10-15 | 📌 | T126 review: W5 completions' exclusions name T131, but T131's done-when covers only `complete-w4-*`; nothing removes them. Play-field-buffer re-syncs (W5-1 1497, W5-2 2196, W5-3 1608, W5-4 3384) persist after T121 landed. |
 | 2026-10-15 | 🐞 | T126, open, no task: with many pages the tally's points print also runs past the frame's end; the engine's job masks only the score's. Repro: df9bad6's `enemies-w5-4-complete` script, frame 7959. Fix tried in 1b2bc81 (reverted: final route misses it). |

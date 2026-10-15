@@ -277,6 +277,16 @@ fn complete_w1_3() {
     completes("complete-w1-3", &[5079]);
 }
 
+/// W4-4 played from its start to its exit and through the tally (T132): the pacer's hurt at
+/// 2515, marker 20's dart's at 4717, a crusher's at 22458, the exit at 23910 and fire taking the
+/// points. Four re-syncs, each after a lag: the panel at 8030 and 23129 (as W1-3's 5079), the play
+/// field buffer at 9003 (T121's class) and the hitboxes at 15914. Frame 5252's picture (the frog
+/// thrown by a pad) is left out in the case.
+#[test]
+fn complete_w4_4() {
+    completes("complete-w4-4", &[8030, 9003, 15914, 23129]);
+}
+
 /// W1-1 played to its exit (T106): green through the exit at 4473, which `level_state` 1 reaches
 /// in a late pass (`sync::mid_pass`), to frame 4474; frame 4475 shows T131's exit-fade palette
 /// step, pinned here until T165 runs the whole case.
