@@ -143,7 +143,7 @@ done · ⛔ blocked, needs a human. A task dropped by a plan amendment leaves th
 | T151 | w6-4-alt-completion | T104, T150, T180, T182; blocks T21 | ⬜ | |
 | T160 | attract-demo-entry | T33, T180 | ✅ | |
 | T162 | attract-demo-level-start | T160, T180 | ✅ | |
-| T163 | attract-demo-return | T162 | ⬜ | |
+| T163 | attract-demo-return | T162 | 🔍 | `front-attract` to 5200 frames, green faithfully with no engine change; 1 test (`the_attract_cycle_matches_the_original`, ~94 s debug). docs/13 gains an attract-demo section. Deviation: the doc's 5121/5151 fixes (T33-wip.patch) not applied, not needed under faithful checks (FINDINGS T162). |
 | T164 | attract-demo-cycles | T163; blocks T21 | ⬜ | |
 | T154 | w1-4-completion | T106, T127, T180, T182; blocks T21 | ⬜ | |
 | T166 | w2-2-completion | T122, T180, T182; blocks T21 | ⬜ | |
@@ -157,7 +157,7 @@ done · ⛔ blocked, needs a human. A task dropped by a plan amendment leaves th
 A Notes cell holds what was built or what the review found, the test count, and one line per
 deviation from the task doc. A ✅ task's cell may be cut to one line once the next task has been reviewed.
 
-**Review queue:** *(empty)*
+**Review queue:** T163
 
 ## Blocked on the user
 

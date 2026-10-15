@@ -18,6 +18,7 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-15 | 📌 | T163, left alone: `front/attract.rs`'s module doc still says the attract demo is "T33's"; it is built (T160–T163, docs/13 § The attract demo). |
 | 2026-10-15 | 📌 | T162: under the faithful checks `front-attract` is green to 5600 with none of T33-wip.patch's timing fixes (rewindow, late fade, retrigger); T163 should try its case before applying the patch's 5121/5151 fixes. |
 | 2026-10-15 | 🐞 | T160 review sweep, open: `Start::Level`'s `boot_image` (level/load.rs) resets `level1_vector` to 0 after `State::default` sets it, so `level_entry`'s every-level test stays red on it. Not fixed. |
 | 2026-10-15 | 📌 | T180 review: `level_entry`'s `every_level_is_entered_as_the_original_enters_it` is red on `level1_vector` (and `slot_copper`) like the power-on cases, identically on T180's base; front.rs's three cases too. Open, no task. |
