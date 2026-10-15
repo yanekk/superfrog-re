@@ -850,6 +850,8 @@ pub static MAIN: &[Op] = &[
     Call(IN_15),
     Call(PLAY_15),
     Call(SCENE_OUT_WAIT_LAST),
+    // h0+$2ec: `intro_skip` set or not (h0+$3a6 shows the black list again), the same end.
+    Call(END),
 ];
 
 /// How many frames after the one it starts in each unpack ends, by its call's return address,

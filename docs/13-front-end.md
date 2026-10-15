@@ -77,9 +77,9 @@ the old value, lines a main-program part ran under show what was there before it
 `Start::Disk3` is the moment disk 3's logo program `d3_c02` starts, after its bootblock: Kickstart
 and the bootblock are the load. The engine runs it as `front::story` with its own 512K memory
 (chip and slow), not the game's `State`. Frames below count from that start (case
-`story-intro`); **(oracle)** up to frame 555 in the test block and to 3184 in the slow case
-`story-scene1-out` (about 90 s, an ignored test: `sf-conform run` it), the rest **(code)** and the
-debugger's runs.
+`story-intro`); **(oracle)** up to frame 555 in the test block, and the whole intro to the
+"insert disk 1" page in the slow case `story-intro-full` (about 5 min, an ignored test: `sf-conform
+run` it; T144). The table past scene 1 is from a run of that case (engine and original agree).
 
 ```
 0–66      Team 17 logo (d3_c02): hires, 4 planes, interlaced (two copper lists by field),
@@ -92,17 +92,44 @@ debugger's runs.
           frames 532–536), two draws, fade in (32 colours)
 538–1241  scene 1 plays, music $c51e: a draw every second frame (double-buffered bobs)
 1242–1257 scene 1 out (fade with wait, black list)
-1258–1738 text page 2 (in, 400 frames, out)      1739–1756 scene 2 set-up   1757– scene 2
-then      text 3 + scene 3, scenes 4–9 (banks unpacked from h1, backgrounds from h0), text 4,
-          scenes 10–15 (MAIN in story/scenes.rs, 15 scenes and 4 text pages), END: "insert
-          disk 1" (c38e waits for fire), the hand-over to the game (T47)
+1258–1738 text page 2: unpacked, in 1270, scene 2's bank unpacked, shown 1324–1723, out 1724–1738
+```
+
+Every scene past it (MAIN in `story/scenes.rs`; set-up = buffers cleared to the fade in's start,
+play = from the scene's list on, out = the fade-out's set-up; a fade-out without a wait runs on
+under the next scene's unpacks):
+
+```
+scene    text page / load              set-up      play         out
+ 2       (above)                       1739–1756   1757–2255    2256–2271, waits
+ 3       text 3 in 2284, music, bank   2847–2863   2864–3068    3069 (speed 2)
+         unpacked, shown 2369–2768,
+         out 2769–2783, music fades
+         2784–2846
+ 4       banks 3069–3172               3173–3192   3193–3291    3292 (across)
+ 5       3292–3419                     3420–3438   3439–3599    3600 (speed 2)
+ 6       3600–3740                     3741–3761   3762–4066    4067 (speed 2)
+ 7       4067–4218                     4219–4239   4240–4528    4529 (speed 2)
+ 8       4529–4551                     4552–4581   4582–4840    4841 (speed 2)
+ 9       4841–4954                     4955–4974   4975–5189    5190–5205, waits
+10       text 4: in 5219, music,       5437–5453   5454–6543    its own fades (out 5765,
+         bank unpacked to 5357, out                             in 5807, out 5974, in 6044)
+         5358–5372, music fades
+         5373–5436
+11       6544–6668 (objects only)      6669        6669–7156    7157 (speed 2)
+12       7157–7208                     7209–7227   7228–7706    7707 (speed 2)
+13       7707–7867, music, 20 frames   7888–7907   7908–8153    8154 (speed 2)
+14       8154–8196                     8197–8217   8218–8260    8261 (speed 2)
+15       8261–8415                     8416–8435   8436–9266    9267–9298 (speed 2), waits
+END      black list and music stop 9299; the page unpacked 9299–9311 (h0+$5fa); faded in 9312;
+         9313 the engine hands over to disk 1 (T47), the original waits for fire (c38e, O 12718)
 ```
 
 The handler (h0+$b102, each frame at the top): frame flag and count, the shown buffer's plane
 pointers (unless frozen), the music's sample stream, the fades (in, out, across: 4 records), fire
 or the mouse button sets `intro_skip`, the music and effects (the game's own driver, T11, at the
 intro's addresses: `AudioDriver::intro_from`), the timeline of sound events. A `SkipCheck` after
-each scene goes to END once skip is set.
+each scene goes to END once skip is set; after the last scene END follows either way (h0+$2ec).
 
 Timing the engine keeps (oracle, frames 0–539):
 
@@ -119,6 +146,8 @@ Timing the engine keeps (oracle, frames 0–539):
   than under black). Each blank's handler takes the CPU at the first instruction end that sees its
   request and holds it to its acknowledge; the job is timed again after every frame's handler,
   with the handlers seen so far. Its writes are ordered beside the handler's by line and cycle.
+  A job ending in its frame's last line (scene 8's clear, line 312 cycle 39) lets the next step
+  start in that frame at its end cycle: `objects_init` clears `vbl_count` before the blank (T144).
 - **Held blanks merge**: a blit that holds the CPU through a whole frame (scene 4's second mask
   blit, ~400 lines under the display) leaves that frame's blank request set, and the next blank's
   handler serves both. The oracle's step then runs two video frames (`Amiga::frames_run`), and

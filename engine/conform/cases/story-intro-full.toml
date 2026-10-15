@@ -1,9 +1,9 @@
-# Power-on with disk 3 through the whole intro, untouched, to the "insert disk 1" page (T56; frame
-# 9282, the last before the engine hands over to disk 1, which the original waits for): every
+# Power-on with disk 3 through the whole intro, untouched, to the "insert disk 1" page (T56, T144;
+# frame 9312, the last before the engine hands over to disk 1, which the original waits for): every
 # scene's set-up, play and fades, the text pages, loads re-synced as `story-intro`'s. Slow (about
 # 5 min): not in the test block; `cargo test -p sf-conform -- --ignored` runs it.
 sync = "power-on-disk3"
-frames = 9283
+frames = 9313
 
 [[exclude]]
 what = "picture"
