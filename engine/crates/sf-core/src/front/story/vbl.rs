@@ -105,15 +105,22 @@ pub fn colour_writes(h: &Handler, entry: u32, bus: &dyn cpu::Bus) -> Vec<(u32, u
         }
     }
     c.run(op::RTS);
+    fade_calls(&mut c, &h.calls)
+}
+
+/// The handler's calls of the fades' steps, each a `bsr` to a step of `kind` (2 in, 3 out, 1
+/// across) that walks the four records: the writes to the colour words as [`colour_writes`] gives
+/// them. The level's handler (h0+$11cfa, T130) runs the same code.
+pub(crate) fn fade_calls(c: &mut cpu::Cpu, calls: &[(u16, Vec<Walk>)]) -> Vec<(u32, u32, u16)> {
     let mut out = Vec::new();
-    for (kind, walks) in &h.calls {
+    for (kind, walks) in calls {
         c.run(op::BSR);
         for (r, w) in walks.iter().enumerate() {
             c.run(op::LEA_PC);
             if r < 3 {
                 c.run(op::BSR);
             }
-            fade_call(&mut c, *kind, w, &mut out);
+            fade_call(c, *kind, w, &mut out);
         }
     }
     out

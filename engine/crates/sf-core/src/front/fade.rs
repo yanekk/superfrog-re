@@ -7,6 +7,9 @@
 //! before the first value), `+$12` per-channel directions (mode 1), `+$72` per-channel steps,
 //! `+$132` per-channel accumulators, all as the original's code lays them out.
 
+use super::story::cpu::{self, op};
+use super::story::fade::{Colour, Walk};
+use super::story::vbl::fade_calls;
 use crate::layout::h0;
 use crate::state::State;
 
@@ -417,9 +420,96 @@ pub fn level_step_times(
     (writes, wall(work + tail))
 }
 
+/// What each of the level handler's three fade steps (`$15456` in, `$156aa` out, `$1528c`
+/// across, called in that order) will do this frame with the records as they are: per record its
+/// path through the code, a colour's component written where the step changes it (T130). The
+/// code is the one the intro carries a copy of ([`super::story::vbl::fade_calls`]); only the
+/// writes' times are wanted here, so their values are left 0.
+pub fn level_walks(s: &State) -> Vec<(u16, Vec<Walk>)> {
+    [2, 3, 1]
+        .into_iter()
+        .map(|kind| {
+            (
+                kind,
+                RECORDS.iter().map(|&rec| walk(s, rec, kind)).collect(),
+            )
+        })
+        .collect()
+}
+
+fn walk(s: &State, rec: Rec, kind: u16) -> Walk {
+    if s.w(rec.at + MODE) != kind {
+        return Walk::Other;
+    }
+    if s.w(rec.at + DONE) != 0 {
+        return Walk::Done;
+    }
+    if (s.w(rec.at + COUNTER).wrapping_add(1) as i16) < (s.w(rec.at + SPEED) as i16) {
+        return Walk::Waiting;
+    }
+    let n = s.w(rec.at + COUNT) as u32;
+    let (list, target) = match kind {
+        1 => (s.l(rec.at + LIST) + 2, s.l(rec.at + TARGET)),
+        _ => (
+            s.l(rec.at + LIST).wrapping_add(4),
+            s.l(rec.at + TARGET).wrapping_add(2),
+        ),
+    };
+    let mut changed = false;
+    let colours = (0..n)
+        .map(|k| {
+            let (cur, tgt) = (s.w(list + 4 * k), s.w(target + 2 * k));
+            let mut writes = [None; 3];
+            for (j, (mask, _)) in CHANNELS.iter().enumerate() {
+                let changes = match kind {
+                    3 => cur & mask != 0,
+                    _ => cur & mask != tgt & mask,
+                };
+                if changes {
+                    writes[j] = Some((0, 0));
+                    changed = true;
+                }
+            }
+            Colour {
+                at: list + 4 * k,
+                writes,
+            }
+        })
+        .collect();
+    Walk::Stepped { colours, changed }
+}
+
+/// The level handler from its call of the fades (`bsr $15456`, at DMA cycle `from` of the
+/// frame) on the bus `bus`, as the 68000 runs it access by access: the DMA cycle of each write
+/// that sets a changed component (the `add.w`/`or.w` after its `andi.w`), in [`due_channels`]'s
+/// order, and of the acknowledge (`INTREQ = $20`).
+///
+/// Not the engine's timing yet: [`level_step_times`] is (T100). T130 found that only the bus
+/// decides `frog-pit-w1-1`'s frame 318 (the same work as frame 648 under 41 more audio DMA slots,
+/// its acknowledge 32 cycles later), and left this for T171, which models the handler from the
+/// `h0+$12a14` wait on. Run on the original's own bus (`examples/fade_bus`) it gives 3 495
+/// accesses and ends about 2% late from the dispatch the line samples put it at.
+pub fn level_bus_times(
+    walks: &[(u16, Vec<Walk>)],
+    from: u32,
+    bus: &dyn cpu::Bus,
+) -> (Vec<u32>, u32) {
+    let mut c = cpu::Cpu::new(from, bus);
+    let out = fade_calls(&mut c, walks);
+    // `jsr $3b22`: `tst.w screen_fades_off`, clear in a level, `beq.w` to an `rts`; then
+    // `move.w #$20, INTREQ`.
+    c.run(op::JSR_ABS_L);
+    c.run(op::TST_W_ABS_L);
+    c.run(op::BCC_TAKEN);
+    c.run(op::RTS);
+    c.run("pppwp");
+    let ack = *c.writes.last().expect("the acknowledge");
+    (out.iter().skip(1).step_by(2).map(|w| w.1).collect(), ack)
+}
+
 #[cfg(test)]
 mod tests {
-    use super::{divu_cycles, level_step_times};
+    use super::{Colour, Walk, cpu, divu_cycles, fade_calls, level_bus_times, level_step_times};
     use crate::front::BEAM_CYCLES_PER_LINE;
 
     /// The 68000's `divu.w` by its quotient's bits (Cwik's count, checked against his table's
@@ -431,6 +521,50 @@ mod tests {
         assert_eq!(divu_cycles(0x700, 15), 126);
         assert_eq!(divu_cycles(0xffff, 1), 106);
         assert_eq!(divu_cycles(0x1_0000, 1), 10);
+    }
+
+    /// On a free bus the fades' dispatch walks every idle record and the acknowledge follows;
+    /// a record stepping one channel writes it, and each further one comes later.
+    #[test]
+    fn the_bus_model_writes_each_changed_channel_then_acknowledges() {
+        use crate::front::story::cpu::Bus;
+        struct Free;
+        impl Bus for Free {
+            fn taken(&self, _: u32) -> bool {
+                false
+            }
+        }
+        let idle: Vec<_> = [2, 3, 1].map(|k| (k, vec![Walk::Other; 4])).into();
+        let (writes, ack) = level_bus_times(&idle, 100, &Free);
+        assert!(writes.is_empty());
+        let colour = |n: usize| Colour {
+            at: 0,
+            writes: [None, Some((0, 0)), None].map(|w| if n > 0 { w } else { None }),
+        };
+        let mut stepping = idle.clone();
+        stepping[0].1[0] = Walk::Stepped {
+            colours: vec![colour(1), colour(1)],
+            changed: true,
+        };
+        let (writes, end) = level_bus_times(&stepping, 100, &Free);
+        assert_eq!(writes.len(), 2);
+        assert!(100 < writes[0] && writes[0] < writes[1] && writes[1] < end);
+        assert!(end > ack);
+        // Each is the `add.w` that sets the component, not the `andi.w` that clears it first.
+        let mut c = cpu::Cpu::new(100, &Free);
+        let out = fade_calls(&mut c, &stepping);
+        assert_eq!(out.len(), 4);
+        assert_eq!(writes, [out[1].1, out[3].1]);
+        assert!(out[0].1 < writes[0] && out[2].1 < writes[1]);
+        // A taken bus only delays it.
+        struct Odd;
+        impl Bus for Odd {
+            fn taken(&self, t: u32) -> bool {
+                t % 2 == 1
+            }
+        }
+        let (slow, slow_end) = level_bus_times(&stepping, 100, &Odd);
+        assert!(slow[0] > writes[0] && slow_end > end);
     }
 
     /// A channel looked at and one changed, from the start; inside the display window the CPU

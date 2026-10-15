@@ -18,6 +18,8 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-15 | 📌 | T130 review: dropping record 3's `bsr` in `story::vbl::fade_calls` (shared intro fade dispatch, ~18 cycles) leaves `the_intro_through_scene_1s_fade_out` green; intro fade timing is not pinned per record. Not fixed. |
+| 2026-10-15 | 🔄 | Owner, T130: added T171 front-handler-bus-model (blocks T21; T170 was taken): `frog-pit-w1-1` 318 is audio DMA under the fade loop, same CPU work as 648; cost depends on bus phase. T171 also owns 613, 658. |
 | 2026-10-15 | 📌 | T125: W5-4 is closed off by switches: 98,37 opens 135,34; 132,9 opens 72,7; 57,20 opens 57,5. Faller 30 at 168/174,5 cannot spawn from the pocket below (scan row two above the camera); the watchers' room is reached round the east. |
 | 2026-10-15 | 🐞 | T125, open, no task: `enemies-w5-4` frame 1878 (on time, also with enemies frozen), the frog's sprites differ by the jump-through floor at 190,42, every variable equal: W5-1 595's class. Picture excluded. |
 | 2026-10-15 | 📌 | T125: `enemies-w5-4` meets every W5-4 type (its test asserts each init, the shot 85 included). |

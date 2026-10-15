@@ -200,6 +200,7 @@ headless.
 | [T168](tasks/T168-w2-4-completion.md) | w2-4-completion | T122; blocks T18, T155 |
 | [T169](tasks/T169-power-on-cases-green.md) | power-on-cases-green | T160; blocks T21 |
 | [T170](tasks/T170-game-over-timeup-copper.md) | game-over-timeup-copper | T34; blocks T21 |
+| [T171](tasks/T171-front-handler-bus-model.md) | front-handler-bus-model | T130, T129; blocks T21 |
 
 T22 is the rig task: it comes before every surface task and they depend on it. T29 is the phase's
 drill. At the end: the owner plays it.
