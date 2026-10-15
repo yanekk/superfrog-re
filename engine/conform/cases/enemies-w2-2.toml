@@ -1,6 +1,7 @@
 # W2-2 from its start: right, down the drop at columns 103–106, left past the dart at 60,30 (it
 # fires at 483) and down to 80,43 (T43); the bouncer, the dart, the scenery; nothing frozen.
+# No re-sync (T121): its one at 560 went with T102's flag wait.
 sync = { level = "W2-2" }
 script = "enemies-w2-2"
 frames = 880
-resync = true
+resync = false

@@ -18,6 +18,7 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-15 | 📌 | T121: no per-bob steps added to `bob_draw`; each erase and draw writes INTENA, so `Cut::writes` already places a phase-5 cut per bob. Untested: a bob erased with nothing to erase makes no write. |
 | 2026-10-15 | 📌 | T104 integrate (owner's choice): T103 and T104 each rewrote `plan_exit` with its own coin phase. T103's stays `examples/plan_exit`; T104's is `examples/plan_exit_w6` (T147–T151 use it). Two near-duplicate planners, not merged. |
 | 2026-10-15 | 📌 | T104 review, measured on the original: `coins_left_for_exit` at load equals the marker-8 cells capped at 99 (W6-1 97, W6-2 97 of 97+65 marker 9, W6-3 86, W6-4 99 of 185). T104's 162/138/189 count both markers; W6-4's exit likely opens with coins left (read-only). |
 | 2026-10-15 | 🔄 | T104 split at pir's context line: W6-2, W6-2alt, W6-3, W6-4, W6-4alt completions to T147–T151 (each T104; blocks T18, T146; the alts also on T147, T150). Kept: planner, `step_unseen`, W6-1 and W6-3alt cases. |
