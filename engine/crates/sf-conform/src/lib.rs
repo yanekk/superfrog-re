@@ -978,4 +978,53 @@ mod tests {
         let (failed, _) = feed(3, &trace);
         assert_eq!(failed, vec![(3, 0), (9, 6)]);
     }
+
+    /// DESIGN §2.1 check 1: a pass ending a frame later on one side is compared with the state
+    /// the other side held at its own pass's end, not with that side's state now (T180 review: a
+    /// mutation comparing now survived every test).
+    #[test]
+    fn a_held_pass_end_is_compared_with_the_other_side_s_pass_end() {
+        let case = Case::parse("state", "sync = \"power-on\"\nframes = 1").unwrap();
+        let x = (sf_core::layout::def(VarId::FrogX).addr - sf_core::layout::SLOW_BASE) as usize;
+        let mem = |frog_x: u8| {
+            let mut m = AmigaMemory {
+                chip: vec![0; 512 * 1024],
+                slow: vec![0; 512 * 1024],
+            };
+            m.slow[x + 1] = frog_x;
+            m
+        };
+        let at_end = |frog_x| Game::new(&GameData::default(), Start::Transplant(mem(frog_x)));
+        let step = compare::PassStep {
+            compare_held: true,
+            ..compare::PassStep::default()
+        };
+        let judge = |held: Held, game: &Game, now: &AmigaMemory| {
+            let mut held = Some(held);
+            let mut n = 0;
+            let v = pass_state(
+                &case,
+                step,
+                &mut compare::PassMatch::default(),
+                &mut held,
+                game,
+                now,
+                &[],
+                true,
+                &mut n,
+            );
+            assert_eq!(n, 1);
+            v.map(|(d, t, o)| (d.name, t, o))
+        };
+        // The original ended pass n with the frog at 5, the engine a frame later at 5; the
+        // original has moved on to 6 since.
+        let held = |frog_x| Held::Theirs(Box::new(mem(frog_x)), Vec::new());
+        assert_eq!(judge(held(5), &at_end(5), &mem(6)), None);
+        assert_eq!(judge(held(4), &at_end(5), &mem(5)), Some(("frog_x", 4, 5)));
+        // The engine ended it first, at 5, and is at 6 when the original ends it at 5.
+        let g = at_end(5);
+        let ours = || Held::Ours(g.layout(), g.probe());
+        assert_eq!(judge(ours(), &at_end(6), &mem(5)), None);
+        assert_eq!(judge(ours(), &at_end(5), &mem(4)), Some(("frog_x", 4, 5)));
+    }
 }

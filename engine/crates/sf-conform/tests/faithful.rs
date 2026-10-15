@@ -384,3 +384,23 @@ fn silence_fails_the_title_on_its_sound() {
     assert!(s.contains("channel") && s.contains("the engine"), "{s}");
     assert!((3..=20).contains(&d.frame), "{d}");
 }
+
+/// The owner's call (2026-10-15, T180): a period or volume change followed by its channel's stop
+/// within 2 frames need not be met (the stop that much sooner leaves it unheard); counted. A
+/// change heard for longer must be.
+#[test]
+fn a_change_just_before_its_channel_stops_need_not_be_met() {
+    let mut theirs = at(5, start(0x2_3456, 40));
+    theirs.extend([vec![], vec![w(0xC8, 30)], vec![], vec![w(0x96, 0x0004)]]);
+    // The engine stops channel 2 a frame early, never turning it down.
+    let mut ours = at(5, start(0x2_3456, 40));
+    ours.extend([vec![], vec![], vec![w(0x96, 0x0004)]]);
+    let m = compare(&theirs, &ours).unwrap();
+    assert_eq!((m.matched, m.trailing, m.shifts), (3, 1, 1));
+    // Turned down 3 frames before the stop: heard, and missed.
+    let mut heard = at(5, start(0x2_3456, 40));
+    heard.extend([vec![w(0xC8, 30)], vec![], vec![], vec![w(0x96, 0x0004)]]);
+    let mut ours = at(5, start(0x2_3456, 40));
+    ours.extend([vec![], vec![], vec![], vec![w(0x96, 0x0004)]]);
+    assert!(compare(&heard, &ours).is_err());
+}
