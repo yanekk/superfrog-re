@@ -147,6 +147,7 @@ done · ⛔ blocked, needs a human.
 | T149 | w6-3-completion | T104; blocks T18, T146 | ⬜ | |
 | T150 | w6-4-completion | T104; blocks T18, T146 | ⬜ | |
 | T151 | w6-4-alt-completion | T104, T150; blocks T18, T146 | ⬜ | |
+| T153 | bob-draw-step-cuts | T121; blocks T21 | ⬜ | |
 
 A Notes cell holds what was built or what the review found, the test count, and one line per
 deviation from the task doc. A ✅ task's cell may be cut to one line once the next task has been reviewed.
