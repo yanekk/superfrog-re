@@ -102,4 +102,3 @@ fn w3_4() {
         assert!(s.updates.contains(&u), "h0+${u:x} never ran: {:x?}", s.updates);
     }
 }
-
