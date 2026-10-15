@@ -14,7 +14,7 @@ the account is the commit message. Whoever writes a cell also fixes the over-bud
 **Status:** about 100 tasks ✅; T18, T21 and Phase 3 open; amended to faithful.
 **Last updated:** 2026-10-15
 **Amended 2026-10-15 (owner):** faithful replaces frame-exact (DESIGN §2.1, PLAN.md amendment); T180–T183 added, 14 tasks dropped (PLAN.md).
-**Next `pir-work` will:** T180 faithful-compare, then T182; T126 and T132 finish against the faithful bar.
+**Next `pir-work` will:** T184, T181 and T183's split (T185–T188), then T21; T126 and T132 finish against the faithful bar.
 
 ## Tasks
 
@@ -152,7 +152,7 @@ done · ⛔ blocked, needs a human. A task dropped by a plan amendment leaves th
 | T180 | faithful-compare | T120; blocks T181, T182 and every open conformance task | ✅ | |
 | T181 | faithful-rebaseline | T180, T182; blocks T21 | ⬜ | |
 | T182 | plays-alone | T180; blocks T181, T183 and every completion task | ✅ | |
-| T183 | level-chain | T180, T182; blocks T21 | 🔍 | `front/chain.rs`: top_loop interpreted; loading picture, walk, map, end picture. chain-start-w1-1, chain-w1-1-to-w1-2 green alone. Load-under-screen rule (owner). Split at context: T185 world change, T186 pause, T187 level code, T188 e2e. tally_w1_1 now expects W1-2. |
+| T183 | level-chain | T180, T182; blocks T21 | ✅ | Review: two defects fixed — top_loop's backward `bmi` overflowed in debug (alone.rs red), nine level-end tests still expected T21's stop (bonus end left silent, unported restored). Split docs completed. Probed alone/frog_cases/enemies_w5 in debug; blink-bit mutation caught. Split: T185 world change, T186 pause, T187 code, T188 e2e. |
 | T184 | alone-pass-drift | T182; blocks T21, T18, T115, T147, T148, T149, T150, T151, T154, T166, T167, T168 | ⬜ | |
 | T185 | chain-world-change | T183; blocks T21 | ⬜ | |
 | T186 | chain-pause | T183; blocks T21 | ⬜ | |

@@ -18,6 +18,9 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-15 | 🐞 | T183 review: `top_loop`'s Bcc added backward displacements unwrapped; each death's `bmi` panicked in debug (`tests/alone.rs` 3 red). Reproduced by debug run, fixed (`wrapping_add`), alone.rs locks it. |
+| 2026-10-15 | 🐞 | T183 review: nine tests still expected T21's stop after a tally (frog_cases 5, enemies_w5_cases 4); the bonus level's end idled with no `unported`. Rewritten to the next level's flow; bonus `unported` restored. |
+| 2026-10-15 | 📌 | T183 review sweep: test-side branch targets add signed displacements unwrapped (`enemies_w2/w3/w4/w5/w6_routines.rs`, `examples/enemies_map.rs`); green today, a backward one would panic in debug. Not fixed. |
 | 2026-10-15 | 📌 | T183 split at pir's context warning: T185 (W1→W2, seven fixes listed in its doc), T186 pause, T187 level code, T188 e2e. `chain-w1-4-to-w2-1.toml` committed red for T185. |
 | 2026-10-15 | 🔄 | Owner, T183: loads under a timed screen (loading picture, map, end picture) count as play for check 4; checks 1–3 take its timer, walk, blink and fades from the original at the load's end. |
 | 2026-10-15 | 📌 | T183: the original's loading picture lasts as long as its walk (W1 1040 frames), never its loads: W1's tiles load 5270–6045 under it. Engine loads instantly, then waits for the walk. |
