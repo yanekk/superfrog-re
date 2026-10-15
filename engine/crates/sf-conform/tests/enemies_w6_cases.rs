@@ -95,9 +95,9 @@ fn enemies_w6_3_alt_complete() {
     assert_eq!(resynced, [6129, 12379], "{:?}", o.resynced);
 }
 
-/// W6-3's first map completed (T149): every coin and switch 49 to the exit, green faithful and
-/// alone (254 milestones), re-synced after the lags at 5375 and 5979, as DESIGN §2.1 lets checks
-/// 1–3 do.
+/// W6-3's first map completed (T149): the 98 coins the exit needs and switch 49 to the exit
+/// (40 of the map's 138 coins left, owner 2026-10-15), green faithful and alone (254 milestones),
+/// re-synced after the lags at 5375 and 5979, as DESIGN §2.1 lets checks 1–3 do.
 #[test]
 fn enemies_w6_3_complete() {
     let name = "enemies-w6-3-complete";
