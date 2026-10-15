@@ -85,6 +85,34 @@ pub struct Case {
     /// How the case is judged: faithful unless the run asks for `--strict` (not a case file's
     /// key: a case cannot choose its own bar).
     pub mode: crate::compare::Mode,
+    /// Check 4, plays alone (DESIGN §2.1, T182): on for every case that steps the engine (owner,
+    /// 2026-10-15), off for a `render`-only case; not a case file's key, as the bar is not a
+    /// case's to choose. `run --alone` judges by it only.
+    pub alone: Alone,
+}
+
+/// Whether a run judges check 4, plays alone ([`crate::milestones`]).
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub enum Alone {
+    /// A `render`-only case: nothing steps, nothing is judged alone.
+    #[default]
+    Off,
+    /// After checks 1–3, which end the run at their first failure.
+    With,
+    /// Check 4 alone (`run --alone`): checks 1–3 still run, as the runner needs them to skip
+    /// the original's loads, but none of their failures ends the run.
+    Only,
+}
+
+impl Alone {
+    /// What a case comparing `compare` gets by default.
+    pub fn of(compare: Compare) -> Alone {
+        if compare.vars || compare.picture || compare.paula {
+            Alone::With
+        } else {
+            Alone::Off
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -415,6 +443,7 @@ impl Case {
             resync,
             lag_limit,
             mode: crate::compare::Mode::Faithful,
+            alone: Alone::of(compare),
         })
     }
 }

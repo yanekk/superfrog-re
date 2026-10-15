@@ -18,6 +18,9 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-15 | 🔄 | Owner, T182: added T184 alone-pass-drift (T182; blocks T21, T18, open completion tasks): after a late frame ending in phase 5/12 the engine's pass falls a frame off (`vbl_count`). Five tests keep checks 1–3, naming T184. |
+| 2026-10-15 | 📌 | T182 ran every stepping case alone: red only complete-w4-2 (7950), enemies-w5-2-complete (3261), enemies-w6-1-complete (535), enemies-w1-1 (407), enemies-w3-1/-activation (237), front-attract (end score 7450/7350). All T184's; `vbl_count` parts first. |
+| 2026-10-15 | 📌 | T182: `Start::Level(W1-1)` replaying complete-w1-1 loses a life (555) to pacing (unpaced) and the start (`kbd_toggle`'s phase moves INTENA writes, so write-counted cuts). From its sync, paced, it plays alone green (`tests/alone.rs`). |
 | 2026-10-15 | 🐞 | T47, worked round: after a disk swap vAmiga's CIA returns a stale disk-change line on the intro's re-read (h0+$c520, after two head steps), so one fire press fails. `sync::step_inserting` patches h0+$c540 into a second read; the hardware passes first time (HRM, unverified against real). |
 | 2026-10-15 | 🐞 | T47 review, fixed: the builder's note that `story-insert-disk1` must hold fire past disk 1's id read was false; a one-frame press (O 12740–12741) and a release mid-read (12750) are green. Script comment corrected. |
 | 2026-10-15 | 📌 | T47: the intro hands over to the game as a power-on; on that frame `Game::set_handover_state` takes `front::RUNS_DURING_LOAD` (`kbd_toggle` parity) from the original. `story-intro-full` green to 9870, title waiting. |

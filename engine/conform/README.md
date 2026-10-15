@@ -3,9 +3,10 @@
 The engine is judged against the original running on the oracle (DESIGN §2.1, §4). A **case**
 brings both to a **sync point**, feeds both the same **input script** frame by frame, and judges
 them by DESIGN §2.1's faithful checks (below): the modelled variables (`LAYOUT` in
-`sf-core/src/layout.rs`) pass by pass, the picture in the display window within a tolerance, and
-the sound as events. The runner stops at the first check that fails and says which variable, which
-pixel (with a diff PNG) or which sound event. `--strict` judges frame-exact instead, for diagnosis.
+`sf-core/src/layout.rs`) pass by pass, the picture in the display window within a tolerance, the
+sound as events, and the engine run alone meeting the original's milestones. The runner stops at
+the first check that fails and says which variable, which pixel (with a diff PNG), which sound
+event or which milestone. `--strict` judges frame-exact instead, for diagnosis.
 
 Everything here is input, never disk data, so it is committed. Diff images and the cached sync
 points are derived from the disks and live outside the repo (temp dir, `~/.cache/superfrog-re/sync/`).
@@ -18,11 +19,13 @@ From `engine/`:
 cargo run -q --release -p sf-conform -- run conform/cases/title-rng.toml   # one case (or several)
 cargo run -q --release -p sf-conform -- all                                # every case here
 cargo run -q --release -p sf-conform -- --strict run conform/cases/title-rng.toml  # frame-exact
+cargo run -q --release -p sf-conform -- run --alone conform/cases/complete-w1-2.toml  # check 4 only
 cargo run -q --release -p sf-conform -- record conform/cases/title-rng.toml --watch blink=h0+1368:W
 ```
 
-`run`, `all` and `scan` judge faithfully; with `--strict` frame-exact. `run` and `all` exit 1 on
-a divergence. `record` runs only the original and prints, for each frame
+`run`, `all` and `scan` judge faithfully; with `--strict` frame-exact (and without check 4).
+`run --alone` judges by check 4 only: checks 1–3 end a run at their first failure, so a case red
+there would never reach it. `run` and `all` exit 1 on a divergence. `record` runs only the original and prints, for each frame
 on which something changed, the input held, its pacing (`OnTime`/`Late`, below), every `LAYOUT`
 variable and each `--watch` address (`h0+<hex>` is the game's hunk 0, `0x<hex>` a raw address;
 width `B`, `W` or `L`; `--every` prints every frame). It is how a script is steered: watch the
@@ -78,6 +81,45 @@ intro's `StoryBootCopper` and `StoryCopper`), the bitmaps (`bob_sheet`, `playfie
 clean background), `shown_buffer`, the blit queue (`blits_pending`, `blit_next`, `blit_queue`) and
 the sound driver's fade and register shadows (`music_fade`, the intro's `StoryShadow`). No variable
 a gameplay rule reads is tagged.
+
+## Plays alone (DESIGN §2.1 check 4, T182)
+
+Every case that steps the engine (all but `render`-only ones) also runs a second engine from the
+same start, given only what check 4 allows: each frame's input as the original consumed it (its
+load and disk-wait frames skipped), the original's `Pacing`, and the RNG seeds the original read
+from its clock (at power-on in the start; `rng_seed_from_cia` at the end sequence's end, handed
+over when the engine reaches it). It gets none of the rest the comparison's engine is fed: no
+re-sync, no transplant after a load, no beam anchors, handler timings, load lines or the memory
+that runs on during a load. Where a load leaves something, it has what its own instant load gives,
+as in normal play. A `Pacing::Late` whose cut it never reaches (it made fewer writes than the
+original) ends the frame on its own clock, as normal play does; a panic is reported, not raised.
+
+Both sides' milestones are read frame by frame of play (`sf_conform::milestones`) from the same
+`LAYOUT` variables by one function, so a derivation fault cannot make them differ:
+
+- **scene**, by the copper list the frame starts with (COP1LC: the original's as its CPU last wrote
+  it, the engine's as `Game::cop1lc`): title, award pages, hall of talent, attract demo, a level by
+  world and level number, the bonus level, game over (a level's list with the lives below none),
+  tally, slot machine, end sequence, and any other list by its address. The blank list a screen
+  fades through changes no scene. The story intro is one scene (its memory is not the game's);
+- **coin taken** (`coins_collected` up, each coin with the count it left for the exit);
+- **item taken** (a marker cleared from `level_map` that no coin or kill explains: fruit, tile
+  coins, checkpoints), with the marker and its cell;
+- **enemy killed** (a slot's hit points from 0 or more, not immune, to below none, the slot still
+  holding the same object), by its init routine;
+- **life lost** (`frog_lives` down); **level exit** (`level_state` from negative to 0 or more with
+  the frog not dying); **tally** (with the score as it begins); **end** (score, lives, coins at
+  the case's last frame).
+
+The engine's milestones must equal the original's, in order (milestones within 10 frames of each
+other in either order), each within ±10 frames of play (`MILESTONE_FRAMES`, the owner's bar).
+A failure names the first milestone that parts, and the first frame at which the engine alone
+ended a pass with a gameplay variable unlike the original's: where to look for the cause.
+`SF_CONFORM_MILESTONES=1` prints a green run's milestones.
+
+Cases red alone are listed in FINDINGS with their owner; a test that runs one keeps checks 1–3
+with `case.alone = Alone::Off` and names the owner (T184: `enemies-w1-1`, `enemies-w3-1`,
+`enemies-w3-activation`, `enemies-w5-2-complete`, `front-attract`).
 
 ## Writing a script — `scripts/<name>.txt`
 

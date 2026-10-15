@@ -230,6 +230,7 @@ original's milestones and passes the faithful checks (DESIGN §2.1), headless.
 | [T181](tasks/T181-faithful-rebaseline.md) | faithful-rebaseline | T180, T182; blocks T21 |
 | [T182](tasks/T182-plays-alone.md) | plays-alone | T180; blocks T181, T183 and every completion task |
 | [T183](tasks/T183-level-chain.md) | level-chain | T180, T182; blocks T21 |
+| [T184](tasks/T184-alone-pass-drift.md) | alone-pass-drift | T182; blocks T21, T18, T115, T147, T148, T149, T150, T151, T154, T166, T167, T168 |
 
 T22 is the rig task: it comes before every surface task and they depend on it. T29 is the phase's
 drill. At the end: the real app plays a scripted whole game that meets the original's milestones (T30);

@@ -911,6 +911,31 @@ pub fn handlers(
 /// The story intro's hunk 0 length (d3_c04, at the game's own base).
 const INTRO_LEN: u32 = 0x52160;
 
+/// Whether the original is in the story intro (its vertical blank's vector is the intro's), whose
+/// memory map is not the game's.
+pub fn in_story(m: &AmigaMemory) -> bool {
+    long(m, 0x6c) == INTRO_VBL
+}
+
+/// Whether the game program (`d1_c03`) owns the vertical blank: its handler is in the vector.
+pub fn game_owns_vbl(m: &AmigaMemory) -> bool {
+    long(m, 0x6c) == VBL_HANDLER
+}
+
+/// COP1LC as the original's CPU last wrote it (`COP1LCH` `$080`, `COP1LCL` `$082`), from `was`
+/// and its last step's register writes: the copper list each frame starts with.
+pub fn cop1lc(was: Option<u32>, writes: &[sf_oracle::CpuWrite]) -> Option<u32> {
+    let mut c = was;
+    for w in writes {
+        let v = c.unwrap_or(0);
+        c = match w.reg {
+            0x80 => Some(v & 0xffff | (w.value as u32) << 16),
+            0x82 => Some(v & 0xffff_0000 | w.value as u32),
+            _ => c,
+        };
+    }
+    c
+}
 /// The intro's drive check (d3_c04 h0+$c520) after its two head steps: `moveq #0, d0; rts`, no disk.
 const INTRO_NO_DISK: u32 = h0(0xc540);
 /// What the runner puts there once disk 1 is in: `bra.s h0+$c530`, the disk-change line read again.

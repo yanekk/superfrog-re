@@ -614,6 +614,17 @@ impl Game {
         self.scene
     }
 
+    /// The copper list the next frame starts with (COP1LC), which says what screen the game is
+    /// on: a level's ([`crate::render::LEVEL_COPPER`]), the front end's as its program left it,
+    /// `None` in the story intro (its own memory map) and the placeholder.
+    pub fn cop1lc(&self) -> Option<u32> {
+        match (self.scene, &self.front) {
+            (Scene::Front | Scene::Slot { .. }, Some(f)) => Some(f.cop1lc()),
+            (Scene::Level | Scene::Bonus(_), _) => Some(crate::render::LEVEL_COPPER),
+            _ => None,
+        }
+    }
+
     /// The seed a power-on start has not yet put in place.
     pub fn pending_seed(&self) -> Option<Rng> {
         self.seed
