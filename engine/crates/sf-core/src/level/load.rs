@@ -191,7 +191,7 @@ pub(crate) fn demo_load(c: &mut LevelCtx, display: &DisplayData) {
 
 /// `world_load_wN` and `level_load_wN_lM` (h0+$94a0, $9552 …): what they leave that a level
 /// reads: the world and level, the clock, the map and what is read off it.
-fn level_load(c: &mut LevelCtx, display: &DisplayData, id: LevelId) {
+pub(crate) fn level_load(c: &mut LevelCtx, display: &DisplayData, id: LevelId) {
     let (world, level) = numbers(id);
     let b = &mut c.bus;
     b.set_l(WORLD, world);
@@ -237,12 +237,7 @@ fn palette_from_map(b: &mut Bus) {
 /// each of its 84 rows of 300 cells into `level_map`, each cell turned from `tile | marker << 10`
 /// into `tile << 6 | marker`, four cells of padding after each row.
 fn map_unpack(b: &mut Bus) {
-    for k in 0..MAP_AREA_CELLS * 2 {
-        let a = MAP_AREA + k;
-        if crate::layout::index_of(a).is_some() {
-            b.set_b(a, 0);
-        }
-    }
+    clear_map_area(b);
     let Some(body) = (0..0x800).map(|k| LOAD_BUFFER + 4 * k).find(|&a| b.l(a) == 0x424f_4459) else {
         return;
     };
@@ -254,6 +249,17 @@ fn map_unpack(b: &mut Bus) {
         for col in 0..300 {
             let v = b.w(LOAD_BUFFER + 2 * (row * 300 + col));
             b.set_w(MAP_FIRST_ROW + row * ROW + 2 * col, v.rotate_right(10));
+        }
+    }
+}
+
+/// h0+$172d6 (and `map_unpack`'s start): the map's area cleared, five rows above `level_map` to
+/// the tile pointers.
+pub(crate) fn clear_map_area(b: &mut Bus) {
+    for k in 0..MAP_AREA_CELLS * 2 {
+        let a = MAP_AREA + k;
+        if crate::layout::index_of(a).is_some() {
+            b.set_b(a, 0);
         }
     }
 }

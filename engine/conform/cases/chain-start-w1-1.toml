@@ -1,0 +1,6 @@
+# The game's start (T183): power-on, fire on the title, START GAME; the Accessing-disk overlay,
+# W1's loads under its loading picture (the frog's walk, the clouds), the progress map, W1-1's
+# `level_init_w1` and `level_start`, then W1-1 played a little, nothing held.
+sync = "power-on"
+script = "start-w1-1"
+frames = 3200

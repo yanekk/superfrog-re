@@ -612,6 +612,13 @@ pub fn decode(chunks: &[(ChunkId, Vec<u8>)]) -> Result<GameData, AssetError> {
     for name in ["FRUT", "FRUC", "FRUM"] {
         keep(name)?;
     }
+    // The game's flow (T183) loads each world's loading picture (`LnLP`, the bonus level's
+    // `LBLP`) and end-of-world picture (`LnET`) as files over the display buffers.
+    for w in &World::ALL[..6] {
+        keep(&w.file("LP"))?;
+        keep(&w.file("ET"))?;
+    }
+    keep("LBLP")?;
     // The story intro's sector spans, raw (see `unpack`).
     for (id, bytes) in chunks {
         if id.disk == DiskSlot::D3 && id.index >= INTRO_SPAN_INDEX {
@@ -624,8 +631,9 @@ pub fn decode(chunks: &[(ChunkId, Vec<u8>)]) -> Result<GameData, AssetError> {
     // Disk 2's copy of `L1FX`: the effects of worlds 3 to 6 (docs/11).
     let (_, r) = c.named("L1FX", 1)?;
     raw.insert("L1FX-2".to_string(), r.data.to_vec());
-    // Pictures packed in the game's hunk 0 that the title and the options screen unpack.
-    for at in [0x3464c, 0x34e92, 0x36a04] {
+    // Pictures packed in the game's hunk 0 that the title, the options screen and the progress
+    // map (T183) unpack.
+    for at in [0x3464c, 0x34e92, 0x36a04, 0x37a0a] {
         raw.insert(format!("h0@{at:x}"), packed(&game, at, "packed picture")?);
     }
 

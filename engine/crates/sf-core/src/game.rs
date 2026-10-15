@@ -415,12 +415,7 @@ impl Game {
         let mut after = |s: &mut State, line: u16| {
             // `level_frame_loop` returned: what follows runs on the front end's program, from
             // where the loop's last pass ended (T37, `crate::level::exit`).
-            let mut front = crate::front::Front::after_level(
-                s,
-                sdr,
-                crate::front::Routine::LevelOver(crate::level::exit::LevelOver::new(frog_only)),
-                frog_only,
-            );
+            let mut front = crate::front::Front::level_over(s, &display.front, sdr, frog_only);
             let (more, jobs) = front.finish_frame(s, &display, input, line);
             ended = Some((front, more, jobs));
         };
@@ -513,13 +508,21 @@ impl Game {
         }
     }
 
-    /// For conformance, the story intro: the memory that runs on by itself while the original
+    /// For conformance: the memory that runs on by itself while the original
     /// loads ([`Game::runs_during_load`]'s runs, as the original had them just before the frame
     /// its load ended on), put in place at the moment the engine's instant load happens in its
     /// next step, after what came before the load in that step.
     pub fn set_load_state(&mut self, runs: Vec<(u32, Vec<u8>)>) {
         if let Some(s) = self.story.as_mut() {
             s.load_state = runs;
+        } else if let Some(f) = self.front.as_mut() {
+            // The front end's: after the work carried over from the last frame (that was the
+            // frame the original's load began in), before this frame's interrupt (T183).
+            f.load_state = runs;
+        } else {
+            for (at, bytes) in runs {
+                self.state.poke(at, &bytes);
+            }
         }
     }
 
@@ -690,6 +693,7 @@ impl Game {
         self.state.set_w(crate::slot::COINS, coins);
         self.front = Some(crate::front::Front::enter_slot(
             &self.state,
+            &self.display.front,
             self.sdr,
             self.frog_only,
         ));
