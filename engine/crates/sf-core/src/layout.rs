@@ -694,6 +694,9 @@ pub fn presentation(id: VarId) -> Option<&'static str> {
         ScrollColumn => "the shown column's address in the shown buffer, for the copper list",
         BlitsPending | BlitNext | BlitQueue => "blitter bookkeeping: blits queued for the copper",
         AudioShadow | StoryShadow => "the sound driver's fade and Paula register shadows",
+        // The original's frame ends partway through h0+$12408, its clouds' positions a frame
+        // behind its walk state (T190).
+        CloudSprites => "the loading picture's clouds' sprite records: where they are drawn",
         _ => return None,
     })
 }

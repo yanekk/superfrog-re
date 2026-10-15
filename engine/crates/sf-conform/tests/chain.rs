@@ -25,6 +25,14 @@ fn w1_1_goes_on_to_w1_2() {
     assert_eq!(run("chain-w1-1-to-w1-2"), Vec::<&str>::new());
 }
 
+/// W1-4's exit (forced), the tally, W1's end picture (600 frames), the music faded, W2's effects
+/// and music loaded under the picture, W2's loading picture with the frog's walk in from the left,
+/// the progress map, W2-1 played: faithful and alone.
+#[test]
+fn w1_4_goes_on_to_w2_1() {
+    assert_eq!(run("chain-w1-4-to-w2-1"), Vec::<&str>::new());
+}
+
 /// P in W1-1 pauses (T191: `pause`, h0+$7442, the pass stopped at its pause check, the vertical
 /// blank's paused path), P again resumes the pass where it stopped, then play on: faithful and
 /// alone.

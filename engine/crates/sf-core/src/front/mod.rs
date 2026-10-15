@@ -461,7 +461,9 @@ impl Cx<'_> {
     pub fn loaded(&mut self, end: crate::game::LoadEnd) {
         self.load = Some(end);
         if let Some(l) = self.load_line.take() {
-            self.line = self.line.max(l);
+            // The load ended frames after it began, on the runner's line, not past where this
+            // frame had got to; a load begun on line 0 counts as begun last frame.
+            self.line = l.max(1);
         }
         for (at, bytes) in std::mem::take(&mut self.load_runs) {
             self.s.poke(at, &bytes);

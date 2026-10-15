@@ -1,7 +1,7 @@
 # W3-1 with world 3's enemies live (T114), activation (DESIGN §2.7): the hopper at 62,44 freed by
 # the camera's left edge (461), spawned again (481) and freed again (515); the spiker at 72,42
 # freed by its bottom edge (573), spawned again (708) and freed again (817). The frames are
-# pinned in `enemies_w3::activation`, with the re-sync after the lag at 201 (T101's class, as
+# pinned in `enemies_w3::activation`, with no re-sync (the lag at 201 was T184's, as in
 # `enemies-w3-1`, whose route this is).
 sync = { level = "W3-1" }
 script = "enemies-w3-activation"

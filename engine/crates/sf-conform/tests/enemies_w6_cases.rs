@@ -41,8 +41,42 @@ fn enemies_w6_3_alt() {
     green("enemies-w6-3-alt");
 }
 
+/// W6-4: every type the map has met, the strider among them, the flier killed, a hit, through
+/// the lagging stretch 1052–1119 (T185).
+#[test]
+fn enemies_w6_4() {
+    green("enemies-w6-4");
+}
+
+/// T185: W6-4's frame 1090 ends with the original's frog walk taking hitbox entry 11 but not yet
+/// testing the frog against it (h0+$d14a); the vertical blank moves the frog down to $169, then
+/// the walk stomps the object. The engine stomped before the blank, so its frog bounced from
+/// $168, a frame early, and stayed 3 pixels high (its landing at 1120 a frame late).
+#[test]
+fn enemies_w6_4_stomps_after_the_blank_its_frame_ended_before() {
+    let case = sf_conform::Case::load(&sf_conform::cases_dir().join("enemies-w6-4.toml"))
+        .unwrap_or_else(|e| panic!("{e}"));
+    let mut case = case;
+    case.frames = 1094;
+    let mut seen = Vec::new();
+    let _ = sf_conform::run_with(&case, |f, g| {
+        if (1091..=1093).contains(&f) {
+            let pieces = g.layout().iter().flat_map(|d| d.pieces());
+            let y = pieces
+                .zip(g.probe())
+                .find(|(p, _)| p.name == "frog_y")
+                .map(|(_, (_, v))| v);
+            seen.push((f - 1, y));
+        }
+    });
+    // The original's frog_y at the end of each frame (`sf-conform record`).
+    assert_eq!(
+        seen,
+        [(1090, Some(0x168)), (1091, Some(0x169)), (1092, Some(0x168))]
+    );
+}
+
 /// W6-4's second map: every type W6-4 has, the strider among them, the flier killed, a hit.
-/// (`enemies-w6-4`, the same run on the first map, waits for T185: the frog's fall after a lag.)
 #[test]
 fn enemies_w6_4_alt() {
     green("enemies-w6-4-alt");

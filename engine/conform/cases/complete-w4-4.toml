@@ -4,8 +4,8 @@
 # 23520), switch 50 and 51's gates, no coin needed from 18871, the exit at 24200 (`level_state` 1
 # mid-pass), the exit fade and the tally, fire in its wait taking the points; ends on frame
 # 24383, frame 24384 being the next level's (T21's). Planned by `examples/plan_exit`, checked on
-# the original chunk by chunk. Four re-syncs, each after a lag, pinned in frog_cases.rs: the panel
-# at 8030 and 23129, the play field buffer at 9003 (T121's class), the hitboxes at 15914. Nothing
+# the original chunk by chunk. Three re-syncs, each after a lag, pinned in frog_cases.rs: the panel
+# at 8030 and 23129, the hitboxes at 15914 (the play field buffer's at 9003 was T184's). Nothing
 # left out: the pad's throw (5252) and the exit fade's step (24201) are within the faithful picture
 # tolerance (T181).
 sync = { level = "W4-4" }

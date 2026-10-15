@@ -10,7 +10,7 @@ use crate::level::{LevelCtx, camera, clock, collision, fade, pass, scroll, spawn
 
 /// `logic_running` (h0+$9d6), `vbl_count` (h0+$9d8), `vbl_pass_flag` (h0+$9da).
 const LOGIC_RUNNING: u32 = h0(0x9d6);
-const VBL_COUNT: u32 = h0(0x9d8);
+pub(crate) const VBL_COUNT: u32 = h0(0x9d8);
 const PASS_FLAG: u32 = h0(0x9da);
 /// `display_timer` (h0+$123d4).
 const DISPLAY_TIMER: u32 = h0(0x123d4);
@@ -131,12 +131,14 @@ pub fn main_program(c: &mut LevelCtx, pending: Option<beam::Pending>, pacing: cr
                 hpos,
                 phase,
                 step,
+                blanks,
             } => Some(beam::Cut {
                 writes,
                 line,
                 hpos,
                 phase,
                 step,
+                blanks,
             }),
         },
     };
@@ -325,4 +327,5 @@ fn pass_tail(c: &mut LevelCtx) {
     if over {
         b.set_w(LOGIC_RUNNING, 0);
     }
+    c.pass_returns();
 }

@@ -1,8 +1,8 @@
 # W3-1 with world 3's enemies live (T44): the pads' pictures, the darts both ways, the shuffler,
 # spiker, hoppers, flows, the swing, the jumper and a stompable; the shuffler, the jumper and the
 # stompable stomped, the frog hurt by a dart and the swing's ball. The crumbling platforms and the
-# second shuffler stand too far along. Re-syncs after lags at 201 and 863 (T101's class) are pinned in
-# `enemies_w3::w3_1`.
+# second shuffler stand too far along. The re-sync after a lag at 863 (`score_text`) is pinned in
+# `enemies_w3::w3_1`; the one at 201 was T184's (the engine's pass a frame off).
 sync = { level = "W3-1" }
 script = "enemies-w3-1"
 frames = 1378
