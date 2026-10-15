@@ -190,6 +190,8 @@ headless.
 | [T162](tasks/T162-attract-demo-level-start.md) | attract-demo-level-start | T161 |
 | [T163](tasks/T163-attract-demo-return.md) | attract-demo-return | T162 |
 | [T164](tasks/T164-attract-demo-cycles.md) | attract-demo-cycles | T163 |
+| [T154](tasks/T154-w1-4-completion.md) | w1-4-completion | T106, T127; blocks T18 |
+| [T165](tasks/T165-w1-1-completion.md) | w1-1-completion | T106, T131; blocks T18 |
 | [T120](tasks/T120-conform-no-silent-pass.md) | conform-no-silent-pass | T05, T36; blocks T21 |
 | [T104](tasks/T104-w6-completions.md) | w6-completions | T40, T101, T102; blocks T18 |
 

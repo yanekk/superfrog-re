@@ -1,0 +1,11 @@
+# W1-3 played from its start to its exit with every object live, no exclusions (T106): the 75
+# coins, the basin left by the spring (marker 4) at 105,75 up the 104-107 channel, no hurt, the
+# exit at frame 7728 (`level_state` 1), the exit fade and the tally, fire in its wait taking the
+# points; ends on frame 7912, frame 7913 being the next level's (T21's). Planned by
+# `examples/plan_exit`, checked on the original chunk by chunk. One re-sync, at 5079: a lag cut in
+# `panel_update` (phase 8) and the panel's digits differ, as W5-1's at 979; pinned in
+# `frog_cases::complete_w1_3`.
+sync = { level = "W1-3" }
+script = "complete-w1-3"
+frames = 7913
+resync = true

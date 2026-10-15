@@ -153,6 +153,8 @@ done · ⛔ blocked, needs a human.
 | T162 | attract-demo-level-start | T161 | ⬜ | |
 | T163 | attract-demo-return | T162 | ⬜ | |
 | T164 | attract-demo-cycles | T163 | ⬜ | |
+| T154 | w1-4-completion | T106, T127; blocks T18 | ⬜ | |
+| T165 | w1-1-completion | T106, T131; blocks T18 | ⬜ | |
 
 A Notes cell holds what was built or what the review found, the test count, and one line per
 deviation from the task doc. A ✅ task's cell may be cut to one line once the next task has been reviewed.

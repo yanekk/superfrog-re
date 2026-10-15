@@ -280,8 +280,13 @@ pub fn mid_pass(cpu: &CpuRegs, m: &AmigaMemory) -> bool {
         cpu.pc
     };
     // `game_over_seq` runs the level's logic outside its loop (T34): its passes are front-end
-    // work, whose memory the engine reports as jobs.
-    in_level(m) && !LEVEL_WAIT.contains(&main_pc) && !main_chain(cpu, m).contains(&IN_GAME_OVER)
+    // work, whose memory the engine reports as jobs. With `level_state` not negative the frame
+    // can still end in a pass: the exit's 1 is set in the vertical blank, and the pass that counts
+    // it down can run past the frame's end (T106: W1-1's exit, the original in `bob_draw`); once
+    // the loop has returned, `logic_running` is still set in `level_exit_fade`'s set-up.
+    let in_pass = || main_chain(cpu, m).iter().any(|a| (h0(0xab8)..h0(0xb66)).contains(a));
+    (in_level(m) || word(m, LOGIC_RUNNING) != 0 && in_pass())
+        && !LEVEL_WAIT.contains(&main_pc) && !main_chain(cpu, m).contains(&IN_GAME_OVER)
 }
 
 /// How far the loop of the pass's call the main program is in had got at the frame's end, as

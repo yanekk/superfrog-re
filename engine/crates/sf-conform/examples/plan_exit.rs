@@ -17,7 +17,8 @@
 //! `--coins N` (T103): take coins (markers 8, 9) until `N` are still needed (`frog+$5c`, h0+$832;
 //! 0 opens the exit lock), steering by a field flooded from every coin still in the original's
 //! map at the chunk's start, a coin taken worth more than any distance; `--skip c0,r0,c1,r1`
-//! leaves the coins in that box out; `--ground m,...` lets the field climb from cells with those
+//! leaves the coins in that box out; `--avoid c0,r0,c1,r1` drops any path whose frog enters that
+//! box (T106: W1-4's pad at 288,44, where the engine's frog sprite differs); `--ground m,...` lets the field climb from cells with those
 //! markers (platform objects: W4's crumbling ledges are 27).
 use sf_conform::{InputScript, SyncPoint, sync};
 use sf_core::frog::{FROG, f};
@@ -44,7 +45,7 @@ fn frog(st: &sf_core::State) -> (i32, i32) {
 /// The cost to `goal` from every cell, along the moves the frog can make (T103). Markers `$3a`
 /// and up are ground and walls (`level/collision.rs`); a secret passage (`$26`) is open. A move
 /// sideways or down through open cells costs 1, up into an open cell only within `JUMP` rows of
-/// ground below it (in its column or the next; 20 above a bounce pad, marker 5; `ground`
+/// ground below it (in its column or the next; 24 above a bounce pad, marker 4 or 5; `ground`
 /// markers count as ground: a crumbling ledge, an object the map does not show), so a shaft
 /// taller than a jump is one-way; into or out of a wall 1 000 (a gate opens to its switch);
 /// into a deadly cell (6) 1 000 too.
@@ -78,15 +79,15 @@ fn flood_dir(
             1
         }
     };
-    // A bounce pad (marker 5) throws the frog this many rows.
-    const PAD: usize = 20;
+    // A bounce pad (marker 4 or 5, T106: W1-3's way up the 104-107 channel) throws the frog this many rows.
+    const PAD: usize = 24;
     // Rows from each cell down to the first floor in its column, and whether that is a pad.
     let mut above = vec![(usize::MAX / 2, false); w * h];
     for x in 0..w {
         let mut d = (usize::MAX / 2, false);
         for y in (0..h).rev() {
             let m = body[y * w + x] >> 10;
-            d = if m == 5 { (0, true) } else if floor(x, y) { (0, false) } else { (d.0 + 1, d.1) };
+            d = if m == 4 || m == 5 { (0, true) } else if floor(x, y) { (0, false) } else { (d.0 + 1, d.1) };
             above[y * w + x] = d;
         }
     }
@@ -257,6 +258,7 @@ fn main() {
     let mut ground: Vec<u16> = Vec::new();
     let mut reach_only = false;
     let mut skip_boxes: Vec<(usize, usize, usize, usize)> = Vec::new();
+    let mut avoid: Vec<(usize, usize, usize, usize)> = Vec::new();
     let mut i = 1;
     while i < args.len() {
         match args[i].as_str() {
@@ -275,6 +277,10 @@ fn main() {
             "--skip" => {
                 let v: Vec<usize> = args[i + 1].split(',').map(|x| x.parse().unwrap()).collect();
                 skip_boxes.push((v[0], v[1], v[2], v[3]));
+            }
+            "--avoid" => {
+                let v: Vec<usize> = args[i + 1].split(',').map(|x| x.parse().unwrap()).collect();
+                avoid.push((v[0], v[1], v[2], v[3]));
             }
             "--no-exit" => {
                 no_exit = true;
@@ -360,6 +366,19 @@ fn main() {
     let (mut best, mut since) = ((u16::MAX, usize::MAX, i64::MAX), 0usize);
     let mut set_aside: Vec<(usize, usize)> = Vec::new();
     let mut tabu = vec![0u32; 300 * 84];
+    // An `--avoid` box costs as a wall in every field.
+    for &(c0, r0, c1, r1) in &avoid {
+        for r in r0..=r1 {
+            for c in c0..=c1 {
+                tabu[r * 300 + c] += 1000;
+            }
+        }
+    }
+    let inside = |st: &sf_core::State| {
+        let (x, y) = frog(st);
+        let (c, r) = ((x.max(0) / 16) as usize, (y.max(0) / 16) as usize);
+        avoid.iter().any(|&(c0, r0, c1, r1)| (c0..=c1).contains(&c) && (r0..=r1).contains(&r))
+    };
     let mut fails_at: std::collections::BTreeMap<usize, u32> = Default::default();
     while inputs.len() < budget {
         let mem = sync::core_memory(amiga.memory());
@@ -573,6 +592,9 @@ fn main() {
                                         // is reached: as bad as a death (T103: W4-3's exit
                                         // lies on the way to its crushers).
                                         if early_exit && n.state().l(LEVEL_STATE) != 0xffff_fffe {
+                                            return None;
+                                        }
+                                        if inside(n.state()) {
                                             return None;
                                         }
                                     }
