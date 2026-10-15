@@ -152,8 +152,12 @@ done · ⛔ blocked, needs a human. A task dropped by a plan amendment leaves th
 | T180 | faithful-compare | T120; blocks T181, T182 and every open conformance task | ✅ | |
 | T181 | faithful-rebaseline | T180, T182; blocks T21 | ⬜ | |
 | T182 | plays-alone | T180; blocks T181, T183 and every completion task | ✅ | |
-| T183 | level-chain | T180, T182; blocks T21 | ⬜ | |
+| T183 | level-chain | T180, T182; blocks T21 | 🔍 | `front/chain.rs`: top_loop interpreted; loading picture, walk, map, end picture. chain-start-w1-1, chain-w1-1-to-w1-2 green alone. Load-under-screen rule (owner). Split at context: T185 world change, T186 pause, T187 level code, T188 e2e. tally_w1_1 now expects W1-2. |
 | T184 | alone-pass-drift | T182; blocks T21, T18, T115, T147, T148, T149, T150, T151, T154, T166, T167, T168 | ⬜ | |
+| T185 | chain-world-change | T183; blocks T21 | ⬜ | |
+| T186 | chain-pause | T183; blocks T21 | ⬜ | |
+| T187 | chain-level-code | T183, T185; blocks T21 | ⬜ | |
+| T188 | chain-e2e | T183; blocks T21 | ⬜ | |
 
 A Notes cell holds what was built or what the review found, the test count, and one line per
 deviation from the task doc. A ✅ task's cell may be cut to one line once the next task has been reviewed.

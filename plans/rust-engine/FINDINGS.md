@@ -18,6 +18,9 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-15 | 📌 | T183 split at pir's context warning: T185 (W1→W2, seven fixes listed in its doc), T186 pause, T187 level code, T188 e2e. `chain-w1-4-to-w2-1.toml` committed red for T185. |
+| 2026-10-15 | 🔄 | Owner, T183: loads under a timed screen (loading picture, map, end picture) count as play for check 4; checks 1–3 take its timer, walk, blink and fades from the original at the load's end. |
+| 2026-10-15 | 📌 | T183: the original's loading picture lasts as long as its walk (W1 1040 frames), never its loads: W1's tiles load 5270–6045 under it. Engine loads instantly, then waits for the walk. |
 | 2026-10-15 | 🔄 | Owner, T182: added T184 alone-pass-drift (T182; blocks T21, T18, open completion tasks): after a late frame ending in phase 5/12 the engine's pass falls a frame off (`vbl_count`). Five tests keep checks 1–3, naming T184. |
 | 2026-10-15 | 📌 | T182 ran every stepping case alone: red only complete-w4-2 (7950), enemies-w5-2-complete (3261), enemies-w6-1-complete (535), enemies-w1-1 (407), enemies-w3-1/-activation (237), front-attract (end score 7450/7350). All T184's; `vbl_count` parts first. |
 | 2026-10-15 | 📌 | T182: `Start::Level(W1-1)` replaying complete-w1-1 loses a life (555) to pacing (unpaced) and the start (`kbd_toggle`'s phase moves INTENA writes, so write-counted cuts). From its sync, paced, it plays alone green (`tests/alone.rs`). |
