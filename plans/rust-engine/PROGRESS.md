@@ -130,7 +130,7 @@ done · ⛔ blocked, needs a human.
 | T126 | w5-completions | T39, T101, T121, T123, T124, T125; blocks T18 | ✅ | Review: one fix, a W5-4 test comment claiming the reverted points-print overrun. All 10 W5 tests green on the oracle; probe: W5-1 coins 0 before exit, `level_state` never 1 at frame end; route mutations (last jump, tally fire) go red. Exclusions, pins read-only beyond the green run. |
 | T127 | restore-sprite-wait | T101; blocks T21 | ✅ | |
 | T128 | w3-4-sprite-race | T127; blocks T113 | ⬜ | |
-| T130 | front-vbl-318 | T100; blocks T21 | ⬜ | |
+| T130 | front-vbl-318 | T100; blocks T21 | ✅ | |
 | T129 | slot-lamp-cut | T74; blocks T21 | ⬜ | |
 | T140 | story-setup-under-music | T56 | ⬜ | |
 | T141 | story-fade-colour-race | T56 | ⬜ | |
@@ -161,6 +161,7 @@ done · ⛔ blocked, needs a human.
 | T168 | w2-4-completion | T122; blocks T18, T155 | ⬜ | |
 | T169 | power-on-cases-green | T160; blocks T21 | ⬜ | |
 | T170 | game-over-timeup-copper | T34; blocks T21 | ⬜ | |
+| T171 | front-handler-bus-model | T130, T129; blocks T21 | ⬜ | |
 
 A Notes cell holds what was built or what the review found, the test count, and one line per
 deviation from the task doc. A ✅ task's cell may be cut to one line once the next task has been reviewed.
