@@ -1,0 +1,9 @@
+# W5-3 with every object live (T124): west along the top past the shooters and dart 54 (marker 19),
+# down to the watchers, east and down the chute into the bottom corridor, to the switch at 149,58
+# and back east to the pacer between markers 2 and 3, which hurts the frog (2571). One re-sync,
+# the panel at 1129 after a lag (also with enemies frozen). The faller (28) and the shot (85) are
+# enemies-w5-1's and enemies-w5-2's (FINDINGS 2026-10-15, T124).
+sync = { level = "W5-3" }
+script = "enemies-w5-3"
+frames = 2600
+resync = true
