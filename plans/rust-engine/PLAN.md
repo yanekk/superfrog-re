@@ -179,6 +179,7 @@ headless.
 | [T132](tasks/T132-w4-4-completion.md) | w4-4-completion | T103; blocks T18, T131 |
 | [T145](tasks/T145-w4-4-dart-21.md) | w4-4-dart-21 | T132; blocks T18, T131 |
 | [T146](tasks/T146-w1-1-completion.md) | w1-1-completion | T106, T131; blocks T18 |
+| [T154](tasks/T154-w1-4-completion.md) | w1-4-completion | T106, T127; blocks T18 |
 | [T120](tasks/T120-conform-no-silent-pass.md) | conform-no-silent-pass | T05, T36; blocks T21 |
 | [T104](tasks/T104-w6-completions.md) | w6-completions | T40, T101, T102; blocks T18 |
 

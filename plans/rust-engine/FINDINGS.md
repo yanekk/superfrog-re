@@ -18,6 +18,7 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-15 | 🔄 | Owner, T106: added T154 w1-4-completion (T106, T127; blocks T18): W1-4's last coins need the wings (open sky) or more bounces on the pad at 288,44, which trip the frog-sprite fault. `complete-w1-4` holds the green route to 4054. |
 | 2026-10-15 | 🔄 | Owner, T106: added T146 w1-1-completion (T106, T131; blocks T18): every W1-1 exit found meets T131's exit-fade palette step (frames 4475, 4477, `$bbb` for `$ccc`); `complete-w1-1` committed outside the test block. |
 | 2026-10-15 | 🐞 | T106, fixed: a loop ending in a late pass ended a step early (`loop_over`), `mid_pass` missed passes with `level_state` 1, and after a lag the runner compared jobs unmasked. `bonus-death-wb-1` is now green to 2448; 2449 still diverges. |
 | 2026-10-15 | 📌 | T106: `plan_exit` needs an idle prefix at a W1 level's start (`0: -` / `20: -`: `level_state` is not yet running at frame 0). Marker 4 is a bounce pad too (W1-3's way out of the basin). |

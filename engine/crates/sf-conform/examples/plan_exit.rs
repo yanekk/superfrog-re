@@ -17,7 +17,8 @@
 //! `--coins N` (T103): take coins (markers 8, 9) until `N` are still needed (`frog+$5c`, h0+$832;
 //! 0 opens the exit lock), steering by a field flooded from every coin still in the original's
 //! map at the chunk's start, a coin taken worth more than any distance; `--skip c0,r0,c1,r1`
-//! leaves the coins in that box out; `--ground m,...` lets the field climb from cells with those
+//! leaves the coins in that box out; `--avoid c0,r0,c1,r1` drops any path whose frog enters that
+//! box (T106: W1-4's pad at 288,44, where the engine's frog sprite differs); `--ground m,...` lets the field climb from cells with those
 //! markers (platform objects: W4's crumbling ledges are 27).
 use sf_conform::{InputScript, SyncPoint, sync};
 use sf_core::frog::{FROG, f};
@@ -257,6 +258,7 @@ fn main() {
     let mut ground: Vec<u16> = Vec::new();
     let mut reach_only = false;
     let mut skip_boxes: Vec<(usize, usize, usize, usize)> = Vec::new();
+    let mut avoid: Vec<(usize, usize, usize, usize)> = Vec::new();
     let mut i = 1;
     while i < args.len() {
         match args[i].as_str() {
@@ -275,6 +277,10 @@ fn main() {
             "--skip" => {
                 let v: Vec<usize> = args[i + 1].split(',').map(|x| x.parse().unwrap()).collect();
                 skip_boxes.push((v[0], v[1], v[2], v[3]));
+            }
+            "--avoid" => {
+                let v: Vec<usize> = args[i + 1].split(',').map(|x| x.parse().unwrap()).collect();
+                avoid.push((v[0], v[1], v[2], v[3]));
             }
             "--no-exit" => {
                 no_exit = true;
@@ -360,6 +366,19 @@ fn main() {
     let (mut best, mut since) = ((u16::MAX, usize::MAX, i64::MAX), 0usize);
     let mut set_aside: Vec<(usize, usize)> = Vec::new();
     let mut tabu = vec![0u32; 300 * 84];
+    // An `--avoid` box costs as a wall in every field.
+    for &(c0, r0, c1, r1) in &avoid {
+        for r in r0..=r1 {
+            for c in c0..=c1 {
+                tabu[r * 300 + c] += 1000;
+            }
+        }
+    }
+    let inside = |st: &sf_core::State| {
+        let (x, y) = frog(st);
+        let (c, r) = ((x.max(0) / 16) as usize, (y.max(0) / 16) as usize);
+        avoid.iter().any(|&(c0, r0, c1, r1)| (c0..=c1).contains(&c) && (r0..=r1).contains(&r))
+    };
     let mut fails_at: std::collections::BTreeMap<usize, u32> = Default::default();
     while inputs.len() < budget {
         let mem = sync::core_memory(amiga.memory());
@@ -573,6 +592,9 @@ fn main() {
                                         // is reached: as bad as a death (T103: W4-3's exit
                                         // lies on the way to its crushers).
                                         if early_exit && n.state().l(LEVEL_STATE) != 0xffff_fffe {
+                                            return None;
+                                        }
+                                        if inside(n.state()) {
                                             return None;
                                         }
                                     }
