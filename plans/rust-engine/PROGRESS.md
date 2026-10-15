@@ -14,7 +14,7 @@ the account is the commit message. Whoever writes a cell also fixes the over-bud
 **Status:** about 100 tasks ✅; T18, T21 and Phase 3 open; amended to faithful.
 **Last updated:** 2026-10-15
 **Amended 2026-10-15 (owner):** faithful replaces frame-exact (DESIGN §2.1, PLAN.md amendment); T180–T183 added, 14 tasks dropped (PLAN.md).
-**Next `pir-work` will:** T180 faithful-compare, then T182; T126 and T132 finish against the faithful bar.
+**Next `pir-work` will:** T182 plays-alone, then T181 and T183.
 
 ## Tasks
 
@@ -70,7 +70,7 @@ done · ⛔ blocked, needs a human. A task dropped by a plan amendment leaves th
 | T44 | enemies-world-3 | T38; blocks T18 | ✅ | |
 | T46 | story-intro-scenes | T32; blocks T21 | ✅ | |
 | T47 | story-intro-handover | T46; blocks T21 | ✅ | |
-| T48 | story-intro-skips | T46, T47; blocks T21 | 🔍 | Nine `story-skip-*` cases green to the title, 7 tests (page-fire in block). Fix: END's unpack as handler-pushed work (`scenes::UNPACK_WORK`). Deviations: presses only in scene 1 and text page 1; logo unread, so its cases skip later; `scenes.rs`/`intro.rs` changed, not `boot.rs`/`vbl.rs`. |
+| T48 | story-intro-skips | T46, T47; blocks T21 | ✅ | Review clean, no fix commit: all 11 story tests green (9 skip cases, full intro). Removing `UNPACK_WORK` diverges page-fire at 981; `blank_extends` mutation survives (masked by pacing; moves only the line). Unpaced probe: skip ends f+12 l280 as original, untouched one frame early (FINDINGS). Logo/WaitOrFire claims held by cases. |
 | T70 | bonus-level | T15; blocks T21 | ✅ | |
 | T71 | slot-sync | T15 | ✅ | |
 | T72 | slot-screen | T71 | ✅ | |

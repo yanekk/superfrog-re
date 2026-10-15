@@ -18,6 +18,7 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-15 | 📌 | T48 review, measured: unpaced (`Game::step`, no oracle) END's unpack ends f+12 line 280 after a skip, as the original, but f+12 line 285 untouched, a frame before the original's (handler_lines lacks effect work). Paced cases hide it. |
 | 2026-10-15 | 🐞 | T48, fixed: after a skip END's page unpack (h0+$624) ends 49 lines sooner than after scene 15, whose effects keep the handler 3 lines longer a frame; the engine ended a frame late. `scenes::UNPACK_WORK`. |
 | 2026-10-15 | 📌 | T48, left alone: `handler_lines` ignores the sound driver's effect work (h0+$38bfa, ~3 lines a frame per ramping effect); only END's unpack is timed to absorb it. |
 | 2026-10-15 | 🐞 | T47, worked round: after a disk swap vAmiga's CIA returns a stale disk-change line on the intro's re-read (h0+$c520, after two head steps), so one fire press fails. `sync::step_inserting` patches h0+$c540 into a second read; the hardware passes first time (HRM, unverified against real). |
