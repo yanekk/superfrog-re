@@ -89,6 +89,8 @@ const MAGIC: &[u8; 8] = b"SFSYNC\0\0";
 
 /// The level-3 interrupt vector holds `vbl_handler` once the game owns the machine.
 const VBL_HANDLER: u32 = h0(0x11bf8);
+/// `vbl_count` (h0+$9d8): the vertical blanks since the level's pass began.
+const VBL_COUNT: u32 = h0(0x9d8);
 /// `level_frame_loop`'s wait for `vbl_count` (docs/08).
 const LEVEL_WAIT: Range<u32> = h0(0xaae)..h0(0xab8);
 const LOGIC_RUNNING: u32 = h0(0x9d6);
@@ -214,6 +216,7 @@ pub fn pacing(cpu: &CpuRegs, m: &AmigaMemory, writes: &[sf_paula::PaulaWrite]) -
         hpos: last.hpos,
         phase,
         step,
+        blanks: word(m, VBL_COUNT) as u16,
     };
     if long(m, 0x6c) == INTRO_VBL {
         return if sf_core::front::story::intro::busy(&main_chain(cpu, m)) {

@@ -531,6 +531,8 @@ pub struct Cut {
     pub phase: u8,
     /// The steps of that call's loop done, or [`NO_STEP`].
     pub step: u16,
+    /// The vertical blanks the pass had met ([`crate::Pacing::Late`]'s `blanks`).
+    pub blanks: u16,
 }
 
 /// A [`Cut`] whose call has no loop steps counted: the clock decides within it.
