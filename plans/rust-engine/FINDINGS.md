@@ -18,6 +18,7 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-15 | 📌 | T180 review: `level_entry`'s `every_level_is_entered_as_the_original_enters_it` is red on `level1_vector` (and `slot_copper`) like the power-on cases, identically on T180's base; front.rs's three cases too. Open, no task. |
 | 2026-10-15 | 🔄 | Owner, T180: pass ends fall a frame apart in 32/142 cases (the engine ends a pass the original reports late in its 12th call). Each side's state compared at its own pass end, every variable: 100 such, none differed. |
 | 2026-10-15 | 🔄 | Owner, T180: a sound period/volume change need not be matched when its channel stops within 2 frames (counted, printed). Keeps complete-w4-1 and -w4-3 green, where the engine stops channel 3 a frame early. |
 | 2026-10-15 | 🐞 | T180, owned by T181: faithful sound (lag frames included) catches the engine fading channel 3 where the original switches sample: enemies-w5-4-complete 3381 (its test ignored), enemies-w6-1-complete 511, w2-1-complete 1501. Strict's re-syncs hid it. |
