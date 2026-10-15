@@ -295,20 +295,12 @@ fn enemies_w5_4() {
     );
 }
 
-/// Cases red alone (DESIGN §2.1 check 4) until T184: after a late frame the engine's pass falls a
-/// frame off the original's (`vbl_count`) and play parts later. They are judged by checks 1–3 only
-/// meanwhile; `sf-conform all` still judges check 4 and reports them red.
-const ALONE_RED: &[&str] = &["enemies-w5-2-complete"];
-
 /// `name` run green to its end with re-syncs at exactly `pins` (as [`run`]), the level's outcome
 /// first set on `exit_at`, the exit (`level_state` 1, back to 0 in the same pass), then one frame more: the next level's (T21's),
 /// the level completed with the points taken, no slot machine (T126).
 fn completes(name: &str, pins: &[u32], exit_at: u32) {
     let mut case = sf_conform::Case::load(&sf_conform::cases_dir().join(format!("{name}.toml")))
         .unwrap_or_else(|e| panic!("{e}"));
-    if ALONE_RED.contains(&name) {
-        case.alone = sf_conform::Alone::Off;
-    }
     let mut exit = None;
     let o = sf_conform::run_with(&case, |fr, g: &mut Game| {
         if exit.is_none() && g.level_outcome().is_some() {
@@ -338,40 +330,41 @@ fn completes(name: &str, pins: &[u32], exit_at: u32) {
 }
 
 /// W5-1 played from its start to its exit and through the tally (T126): the exit at 2254, fire
-/// taking the points. Two re-syncs pinned: the play field buffer at 1497 (T121's class) and the
-/// panel at 2182 after a lag (as `enemies-w5-1`'s at 979). Frame 744's picture is left out (the
+/// taking the points. One re-sync pinned: the panel at 2182 after a lag (as `enemies-w5-1`'s at
+/// 979); the play field buffer's at 1497 was T184's (the engine's pass a frame off). Frame 744's picture is left out (the
 /// frog's sprites, `enemies-w5-1` 595's class).
 #[test]
 fn enemies_w5_1_complete() {
-    completes("enemies-w5-1-complete", &[1497, 2182], 2254);
+    completes("enemies-w5-1-complete", &[2182], 2254);
 }
 
 /// W5-2 played from its start to its exit and through the tally (T126): the exit at 6095, fire
-/// taking the points. Two re-syncs pinned: the play field buffer at 2196 (T121's class) and
-/// `vbl_count` at 4681 after a lag (`complete-w4-2`'s 1927 and 4964, T131's). Frames 967 (the
+/// taking the points. No re-sync since T184 kept the engine's pass in step after late frames
+/// (2196 and 4681 were its class). Frames 967 (the
 /// frog on the spring pad) and 6095 (the exit fade's palette step) leave out the picture, T131's.
 #[test]
 fn enemies_w5_2_complete() {
-    completes("enemies-w5-2-complete", &[2196, 4681], 6095);
+    completes("enemies-w5-2-complete", &[], 6095);
 }
 
 /// W5-3 played from its start to its exit and through the tally (T126): the exit at 6864, fire
-/// taking the points, nothing left out. One re-sync pinned: the play field buffer at 1608
-/// (T121's class).
+/// taking the points, nothing left out. No re-sync: the play field buffer's at 1608 was T184's
+/// (the engine's pass a frame off).
 #[test]
 fn enemies_w5_3_complete() {
-    completes("enemies-w5-3-complete", &[1608], 6864);
+    completes("enemies-w5-3-complete", &[], 6864);
 }
 
 /// W5-4 played from its start to its exit and through the tally (T126): the exit at 8193, fire
-/// taking the points. Two re-syncs pinned: the play field buffer at 3384 (T121's class) and the panel at 7980
-/// after a lag. Frames 657 (the frog on the spring pad) and 8193 (the exit fade's palette step)
+/// taking the points. One re-sync pinned: the panel at 7980 after a lag (the play field buffer's
+/// at 3384 was T184's). Frames 657 (the frog on the spring pad) and 8193 (the exit fade's palette step)
 /// leave out the picture, T131's.
 /// Red under faithful judging (T180): at 3378–3381 the original moves channel 3 to another
 /// sample where the engine keeps the effect fading, on lag frames `--strict` leaves out and a
 /// re-sync then erased (as `enemies-w6-1-complete` 511, `w2-1-complete` 1501). T181 re-judges it.
+/// Green under `sf-conform all` since T184, the 3384 re-sync gone; the ignore is T181's to lift.
 #[test]
 #[ignore = "red faithful: channel 3's sound at 3381 (T181)"]
 fn enemies_w5_4_complete() {
-    completes("enemies-w5-4-complete", &[3384, 7980], 8193);
+    completes("enemies-w5-4-complete", &[7980], 8193);
 }

@@ -2,7 +2,7 @@
 # needs to the exit (the level completed on frame 6095), every object live, the exit fade and the tally,
 # fire in its wait taking the points; ends on frame 6279, the next level's (T21's). Planned by
 # `examples/plan_exit --coins 0 --prefix` (150 idle frames), checked on the original chunk by chunk.
-# Two frames' pictures left out, both T131's open faults; re-syncs pinned in enemies_w5_cases.rs.
+# Two frames' pictures left out, both T131's open faults; no re-sync since T184.
 sync = { level = "W5-2" }
 script = "enemies-w5-2-complete"
 frames = 6279

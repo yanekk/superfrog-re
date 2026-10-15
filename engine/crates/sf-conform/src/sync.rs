@@ -342,7 +342,7 @@ pub fn pass_step(cpu: &CpuRegs, m: &AmigaMemory) -> u16 {
         // stomp's, the passive's and the hurt's tests, up to the stomp's first write (h0+$d17e)
         // or a handler's `jsr` (T184: `complete-w4-2` 7894 ended at h0+$d150, before a hurt the
         // engine had made).
-        0xd132..=0xd17d | 0xd19c..=0xd1b1 | 0xd1be..=0xd1c5 => frog_walk_step(cpu.a[6]) - 1,
+        0xd132..=0xd17d | 0xd19c..=0xd1b7 | 0xd1be..=0xd1c5 => frog_walk_step(cpu.a[6]) - 1,
         0xd126..=0xd1cd => frog_walk_step(cpu.a[6]),
         0xd1ce | 0xd0d4..=0xd0df => frog_walk_step(hitbox_end(m)),
         _ => {
@@ -1141,7 +1141,7 @@ mod tests {
     }
 
     /// `collide_all`'s frog half counts 2 once the box is taken, then each hitbox entry looked
-    /// at (the walk's a6), in the walk, in a touch handler it called (a6 saved under the return
+    /// at (the walk's a6; the entry only being tested not yet), in the walk, in a touch handler it called (a6 saved under the return
     /// address) and in `frog_hurt` (a0/a5 saved under that); past the walk, all of them.
     #[test]
     fn the_frog_walks_step_counts_the_hitbox_entries_looked_at() {
@@ -1181,7 +1181,18 @@ mod tests {
         assert_eq!(step(0xd0d0, 0, sp), 1);
         assert_eq!(step(0xd110, 0, sp), 1);
         assert_eq!(step(0xd126, HITBOXES, sp), 2);
-        assert_eq!(step(0xd146, HITBOXES + 12, sp), 3);
+        // The first entry read and being tested, nothing of it done: not counted (T184); once
+        // the stomp has set the frog's speed, or a handler's `jsr` has gone, counted.
+        assert_eq!(step(0xd132, HITBOXES + 12, sp), 2);
+        assert_eq!(step(0xd146, HITBOXES + 12, sp), 2);
+        assert_eq!(step(0xd150, HITBOXES + 12, sp), 2);
+        assert_eq!(step(0xd1b2, HITBOXES + 12, sp), 2);
+        assert_eq!(step(0xd1c4, HITBOXES + 12, sp), 2);
+        assert_eq!(step(0xd17e, HITBOXES + 12, sp), 3);
+        assert_eq!(step(0xd19a, HITBOXES + 12, sp), 3);
+        assert_eq!(step(0xd1c6, HITBOXES + 12, sp + 0x200), 3);
+        // Reading the next entry: the one before it done.
+        assert_eq!(step(0xd12c, HITBOXES + 12, sp), 3);
         assert_eq!(step(0x23f86, 0, sp), 4);
         assert_eq!(step(0x1c5bc, 0, hurt), 5);
         assert_eq!(step(0xd1ce, HITBOXES + 36, sp), 5);

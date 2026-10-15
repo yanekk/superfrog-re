@@ -4,6 +4,8 @@
 # T21's. Planned by `examples/plan_exit`, checked on the original chunk by chunk. Not in the test
 # block: red from frame 1657 (`sf-conform scan`: 1657, 1927, 2383, 4964, 5171, 7731, 8054, 9097,
 # and the exit fade's copper from 9237), lag, bob-draw, data-bus and exit-fade faults (T131).
+# Plays alone green (T184); under checks 1–3 the original's 101 mid-pass frames in a row from 7867
+# pass the runner's lag limit of 100.
 sync = { level = "W4-2" }
 script = "complete-w4-2"
 frames = 9421
