@@ -18,6 +18,8 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-15 | 🔄 | T144, owner's threshold question: a single palette entry one fade step behind for 5 frames during a fade (`story-intro-full` 7237–7241, colour 28 shown black, a ~7-cycle race): should the bar tolerate it, or must the engine match it? Excluded for T181 meanwhile. |
+| 2026-10-15 | 🐞 | T144, fixed: an untouched intro skipped the insert-disk-1 page (MAIN lacked END after scene 15), and scene 15's fade-out (h0+$7ee4) runs at speed 2, not 1. `story-intro-full` now ends at 9312, green. |
 | 2026-10-15 | 📌 | T180 review: `level_entry`'s `every_level_is_entered_as_the_original_enters_it` is red on `level1_vector` (and `slot_copper`) like the power-on cases, identically on T180's base; front.rs's three cases too. Open, no task. |
 | 2026-10-15 | 🔄 | Owner, T180: pass ends fall a frame apart in 32/142 cases (the engine ends a pass the original reports late in its 12th call). Each side's state compared at its own pass end, every variable: 100 such, none differed. |
 | 2026-10-15 | 🔄 | Owner, T180: a sound period/volume change need not be matched when its channel stops within 2 frames (counted, printed). Keeps complete-w4-1 and -w4-3 green, where the engine stops channel 3 a frame early. |

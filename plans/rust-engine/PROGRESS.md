@@ -14,7 +14,7 @@ the account is the commit message. Whoever writes a cell also fixes the over-bud
 **Status:** about 100 tasks ✅; T18, T21 and Phase 3 open; amended to faithful.
 **Last updated:** 2026-10-15
 **Amended 2026-10-15 (owner):** faithful replaces frame-exact (DESIGN §2.1, PLAN.md amendment); T180–T183 added, 14 tasks dropped (PLAN.md).
-**Next `pir-work` will:** T180 faithful-compare, then T182; T126 and T132 finish against the faithful bar.
+**Next `pir-work` will:** review T144 (🔍); T182 plays-alone.
 
 ## Tasks
 
@@ -132,7 +132,7 @@ done · ⛔ blocked, needs a human. A task dropped by a plan amendment leaves th
 | T127 | restore-sprite-wait | T101; blocks T21 | ✅ | |
 | T130 | front-vbl-318 | T100; blocks T21 | ✅ | |
 | T129 | slot-lamp-cut | T74; blocks T21 | ✅ | |
-| T144 | story-intro-full-green | T56, T180; blocks T21, T47, T48 | ⬜ | |
+| T144 | story-intro-full-green | T56, T180; blocks T21, T47, T48 | 🔍 | Case green to the insert-disk page (now 9312). Fixed: set-up job ending in a frame's last line; scene 15 fade speed 2; MAIN ends with END. Deviation: 7237–7241 picture excluded for T181 (person's answer; fade race). docs/13 per-scene frame table. No new unit tests: the ignored case covers it. |
 | T133 | w2-1-fruit-room | T105, T180; blocks T21 | ⬜ | |
 | T132 | w4-4-completion | T103; blocks T21 | ✅ | |
 | T145 | w4-4-dart-21 | T132; blocks T21 | ✅ | |
