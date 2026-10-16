@@ -248,7 +248,10 @@ engine also exports any disk level to this format (locally, for the owner; never
   - `frog_tiles`'s wall test (h0+$e3fe..$e412): with both wall flags set (frog `+$0e` and
     `+$10`, the frog lifted into a pillar between two `$3d` edges) it loops for ever; the engine
     takes the probe list of the side the frog faces (T14). Reached on W2-1 with world 2's enemies
-    frozen (T105: frog lifted into the pillar at 77-80,36-39).
+    frozen (T105: frog lifted into the pillar at 77-80,36-39). Also met at W2-4's closed gate
+    (19-20,55-63, two `$3d` columns; switch 46,66): the frog against its left side, x 303, facing
+    left, loops there on the original; the engine falls on (T168, `examples/wall_place`). With the
+    gate closed no search here got the frog to that side (FINDINGS); for the owner.
 - A save state from another build: refused (§2.8). An `.sflevel` with a bad version, missing section
   or malformed T7MP: refused with the reason, and the disk level is played instead only if the player
   chooses it.

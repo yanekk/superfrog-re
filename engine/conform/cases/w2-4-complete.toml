@@ -1,0 +1,16 @@
+# W2-4 played from its start to its exit with every object live, no exclusions (T168): right along
+# row 68, the switch at 46,66 (frame 273) opening the gate at 18,55, back through it and up into the
+# room 1-21,21-44, its pads to the top corridor, the box at 35-44,27-41 and down the shaft at
+# 54-56 into the pit, the wings at 59,73 (2016) and the spud at 62,73, the pad at 85,73 up into the
+# middle (the 79-86,37-41 coins), then with flight up to the top row (85,4 at 4014) and right along
+# it (159,5; 197,4; 218,4), down the right side (203,50; 224,48) to the bottom (231,73, a heart
+# lost to the walker at 6459) and its coins to 284,72, the 99 coins the exit needs (tile coins
+# count elsewhere); the exit at frame 7779 (`level_state` 0), the exit fade and the tally, fire in
+# its wait taking the points; ends on frame 7963, frame 7964 being world 2's end picture's (the
+# engine fades it in while the original still loads it: FINDINGS). Planned by `examples/plan_exit`
+# (`--no-tile-coins --jump 4`, `--fly` from 2112) to 2700 and `examples/explore` on, checked on the
+# original chunk by chunk. Green faithful and alone; `enemies_w2_cases.rs` checks what it meets.
+sync = { level = "W2-4" }
+script = "w2-4-complete"
+frames = 7964
+resync = false

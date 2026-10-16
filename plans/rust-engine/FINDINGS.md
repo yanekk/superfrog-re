@@ -18,6 +18,9 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-16 | 🐞 | T168, no owning task: one frame past `w2-4-complete` (7964, world 2's end picture) diverges: the engine fades L2ET in at once (`display_timer` 600), the original still loads it from disk. No chain case covers W2→W3. |
+| 2026-10-16 | 📌 | T168, T122's W2-4 hang: the frog put at x 303, y 912 facing left, against the closed gate 19-20,55-63, loops on the original; the engine falls on (`wall_place`). Gate closed, no search reached there (`wall_search`, explore). |
+| 2026-10-16 | 📌 | T168: past W2-4's pit `plan_exit`'s field fails (a pad throws ~25 rows, wings only hover); `examples/explore` took 2700 to the exit (~50 min). Hopper: two stomps make a reward; the walker needs the thrown spud first. |
 | 2026-10-16 | 🐞 | T195 review sweep: `sync::mid_pass` takes the copper interrupt's PC for the main program's, so W3-3 4026/5280 (main loop in its wait) read as mid-pass, a lag. Not fixed. |
 | 2026-10-16 | 🐞 | T195 review sweep: `sync::in_level_wait` (check 1's pass end) misses a frame held in the copper interrupt with the main loop in its wait. Not fixed. |
 | 2026-10-16 | 📌 | T195, for T196: W6-4's 5230 (on time, `vbl_count` 2) may be the same hold ending at the vertical blank handler's entry; T195's `sync::pacing` change reads only frames ending inside the copper interrupt. |
