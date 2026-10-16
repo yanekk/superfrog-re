@@ -18,6 +18,7 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-16 | 📌 | T194: the 68000 runs the instruction after INTENA `$c000` before taking a held interrupt; `sfx_play`'s held blank lands after `clr.l $20(a2)`. W6-2 fixed apart from T196: its item 4 is done; T196 need not re-run it. |
 | 2026-10-16 | 📌 | T148: W6-2alt's other enemies hit T147's script at 1461 and wear the planner's frog down; `PLAN_HEART=12000` keeps every heart. Stuck at 140-166,41-44: `--via 91,39`. T147's switch-50 climb works from 114,10 at frame 5456. |
 | 2026-10-16 | 🐞 | T167, for T155: `w2-3-complete` red under checks 1–3 at 2166 (`bob_records`, after a lag) and 6729 (`clock_shown`); `scan`: only these two. Alone green (344 milestones). No crumbling ledge breaks on its route. |
 | 2026-10-16 | 📌 | T167: W2-3's exit needs gate 196,5 (switch 295,62): pad 205,26 → top → shaft 132-139 → slope → tall-room ledges. Launchers reach row 33, never the ledges; S14, S9 are one-way down. Jumps held reach ~7 rows. |

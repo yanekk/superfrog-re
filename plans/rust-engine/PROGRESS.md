@@ -159,14 +159,14 @@ done · ⛔ blocked, needs a human. A task dropped by a plan amendment leaves th
 | T191 | chain-pause | T183; blocks T21 | ✅ | |
 | T192 | chain-level-code | T183, T190; blocks T21 | ⬜ | |
 | T193 | chain-e2e | T183; blocks T21 | ✅ | |
-| T194 | w6-2-sfx-double-blank | T147; blocks T21 | ⬜ | |
+| T194 | w6-2-sfx-double-blank | T147; blocks T21 | 🔍 | Not pacing: `sfx_play`'s held blank (6657 ends in its raster wait) is taken after `clr.l $20(a2)`, so the old effect's tick moves the new one's period index to 1. Split setup into wait_over/record; case green, in the test block; 2 tests (driver, case). Deviation: exit pinned by `level_state` peek and LevelExit 8429, one run. |
 | T195 | w3-3-slot-order | T115; blocks T21 | ⬜ | |
 | T196 | pass-over-two-blanks | T184, T150; blocks T21 | ⬜ | |
 
 A Notes cell holds what was built or what the review found, the test count, and one line per
 deviation from the task doc. A ✅ task's cell may be cut to one line once the next task has been reviewed.
 
-**Review queue:** *(empty)*
+**Review queue:** T194
 
 ## Blocked on the user
 
