@@ -202,6 +202,7 @@ impl Case {
         let sync = match t.get("sync") {
             Some(toml::Value::String(s)) if s == "power-on" => SyncPoint::PowerOn,
             Some(toml::Value::String(s)) if s == "power-on-disk3" => SyncPoint::PowerOnDisk3,
+            Some(toml::Value::String(s)) if s == "power-on-df1" => SyncPoint::PowerOnDf1,
             Some(toml::Value::String(s)) if s == "end-sequence" => SyncPoint::EndSequence,
             Some(toml::Value::Table(s)) if s.contains_key("slot") => {
                 let name = |k: &str| match s.get(k) {
@@ -329,7 +330,7 @@ impl Case {
             },
             _ => {
                 return Err(
-                    "sync is \"power-on\", \"power-on-disk3\", \"end-sequence\", { script = \"…\", frame = N }, { level = \"W1-1\" }, { slot = \"…\", start = \"…\" }, { game-over = \"…\" } or { end-sequence = true, score = N }"
+                    "sync is \"power-on\", \"power-on-disk3\", \"power-on-df1\", \"end-sequence\", { script = \"…\", frame = N }, { level = \"W1-1\" }, { slot = \"…\", start = \"…\" }, { game-over = \"…\" } or { end-sequence = true, score = N }"
                         .into(),
                 );
             }

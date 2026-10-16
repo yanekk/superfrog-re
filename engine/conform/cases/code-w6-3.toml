@@ -1,0 +1,9 @@
+# A level code from power-on (T201): OPTIONS, W6-3's code (password_table entry 22) typed
+# into LEVEL CODE, the options left, START GAME; `game_start_at` takes the code, the world's files
+# load (each disk the original asks for put in), its loading picture, the progress map and
+# W6-3's first frames, nothing held.
+# With an empty df1 connected, so the original loads W6's first map set, as the engine does
+# (docs/10; one drive plays the `alt` set).
+sync = "power-on-df1"
+script = "code-w6-3"
+frames = 2250
