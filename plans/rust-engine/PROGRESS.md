@@ -14,7 +14,7 @@ the account is the commit message. Whoever writes a cell also fixes the over-bud
 **Status:** about 100 tasks ✅; T18, T21 and Phase 3 open; amended to faithful.
 **Last updated:** 2026-10-16
 **Amended 2026-10-15 (owner):** faithful replaces frame-exact (DESIGN §2.1, PLAN.md amendment); T180–T183 added, 14 tasks dropped (PLAN.md).
-**Next `pir-work` will:** review T205, then T206 chain-routes-w3-w4 (plan legs in order: FINDINGS, T205).
+**Next `pir-work` will:** T206 chain-routes-w3-w4 (plan legs in order: FINDINGS, T205).
 
 ## Tasks
 
@@ -170,14 +170,14 @@ done · ⛔ blocked, needs a human. A task dropped by a plan amendment leaves th
 | T202 | whole-game-script | T21, T198, T199; blocks T23, T29 | ✅ | |
 | T203 | whole-game-green | T21, T202; blocks T23, T29 | ⬜ | |
 | T204 | w3-4-template-86 | T201; blocks T203 | ✅ | |
-| T205 | chain-routes-w1-w2 | T202; blocks T203 | 🔍 | chain-w1-2..chain-w2-4 replay; game-whole regenerated to W3-1 (74 590 frames), red at 13886, alone 15053, 72258 (FINDINGS). Tools: whole_game --ablate, --until, --from fix; planners --snap, reject hangs, 1-up no longer a lost life; explore loop fix. Deviations: W1-1 keeps its standalone route; frames set by load arithmetic; test asserts the reach, red until T203. |
+| T205 | chain-routes-w1-w2 | T202; blocks T203 | ✅ | Review clean, no fix commit: whole_game --until W3-1 rerun writes game-whole.txt byte-identical (lives never drop, W3-1 at 84090); --from W2-1 matches; run red 13886, --alone 15053 as recorded; snapshot-format mutation caught. in_wall_loop read-only (matches main_chain). Sibling planners still count a 1-up as a life lost (FINDINGS). |
 | T206 | chain-routes-w3-w4 | T205; blocks T203 | ⬜ | |
 | T207 | chain-routes-w5-w6-final | T206; blocks T203 | ⬜ | |
 
 A Notes cell holds what was built or what the review found, the test count, and one line per
 deviation from the task doc. A ✅ task's cell may be cut to one line once the next task has been reviewed.
 
-**Review queue:** T205
+**Review queue:** *(empty)*
 
 ## Blocked on the user
 

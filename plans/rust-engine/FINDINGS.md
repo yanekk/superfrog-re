@@ -18,6 +18,8 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-16 | 🐞 | T205 review sweep: `examples/plan_exit_w6.rs` 615, 659, 703 still treat a 1-up as a life lost (`LIVES != lives`) and lack `sync::in_wall_loop` and `--snap`; T207 plans W6 with it. Not fixed. |
+| 2026-10-16 | 🐞 | T205 review sweep: `examples/plan.rs` 150, 282, `route.rs` 159, `complete.rs` 113 still reject a 1-up as a life lost (`LIVES != lives`). Not fixed. |
 | 2026-10-16 | 📌 | T205: `game-whole` now 74 590 frames to W3-1's first, run three at once: `run` 227 s (to its divergence), `run --alone` 556 s, `scan` 555 s (692 frames differ). `whole_game --until W3-1` assembles it in 144 s. |
 | 2026-10-16 | 🐞 | T205, `game-whole` check 4: frame 15053 (W1-2, chain-w1-2 ~6200) the engine alone takes a tile coin (marker 55 at 85,53) the original does not within 10 frames. Likely follows the 13886 divergence. For T203. |
 | 2026-10-16 | 🐞 | T205, `game-whole` after W2-4's tally (engine 72258–72925, original 81215–82428): `display_timer` (loading picture) counts from $258 in the engine, $ffff in the original; engine music-fade volumes on channels 0–2 unmatched. For T203. |
