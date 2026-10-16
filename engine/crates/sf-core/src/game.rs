@@ -7,6 +7,7 @@ use sf_assets::{GameData, LevelId};
 use sf_paula::PaulaWrite;
 
 use crate::audio::AudioDriver;
+use crate::front::password::Progress;
 use crate::input::{FrameInput, KeySet};
 use crate::layout::{AmigaMemory, Ram, VarId, h0};
 use crate::level::Hw;
@@ -201,10 +202,40 @@ pub struct Game {
     passes: u64,
     passes_ended: u32,
     pass_clock: PassClock,
+    /// [`Game::progress`].
+    progress: Progress,
     /// For conformance: what runs on by itself while the original loads the game after the story
     /// intro ([`crate::front::RUNS_DURING_LOAD`]), put in place when the intro hands over.
     handover_runs: Vec<(u32, Vec<u8>)>,
 }
+
+/// [`Game::type_code`] gives up waiting for the title after this many frames.
+const START_AT_FRAMES: u32 = 4000;
+
+/// When [`Game::type_code`] presses what on the options screen, in frames: OPTIONS taken after
+/// the menu's down, the first down to LEVEL CODE after that, each next down after the last, the
+/// first digit after the third down, each digit after the last, and fire the last digit's
+/// `digit + leave` frames on.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct CodeTimes {
+    pub options: u32,
+    pub first_down: u32,
+    pub down: u32,
+    pub first_digit: u32,
+    pub digit: u32,
+    pub leave: u32,
+}
+
+/// [`Game::start_at`]'s: `sf-conform`'s `sync::drive_to` (and `chain-level-code`'s script),
+/// proven on the original.
+pub const CODE_TIMES: CodeTimes = CodeTimes {
+    options: 50,
+    first_down: 100,
+    down: 40,
+    first_digit: 100,
+    digit: 16,
+    leave: 40,
+};
 
 /// `key_down`, `key_up` (h0+$16078, h0+$16079).
 const KEY_DOWN: u32 = h0(0x16078);
@@ -309,6 +340,7 @@ impl Game {
             passes: 0,
             passes_ended: 0,
             pass_clock: PassClock::default(),
+            progress: Progress { world: 0, level: 0 },
             handover_runs: Vec::new(),
         }
     }
@@ -341,7 +373,27 @@ impl Game {
             self.state.w(VBL_COUNT),
         );
         self.passes += self.passes_ended as u64;
+        if let Some(p) = self.playing() {
+            self.progress = p;
+        }
         out
+    }
+
+    /// The level a game (not the attract demo) is playing this frame, as a [`Progress`]: the final
+    /// level as W6-4, whose code reaches it.
+    fn playing(&self) -> Option<Progress> {
+        let s = &self.state;
+        if !self.scene.is_level() || s.l(h0(0x18)) != 0 {
+            return None;
+        }
+        let (world, level) = (s.l(h0(0x40da)), s.l(h0(0x40de)));
+        if s.w(h0(0x1e)) != 0 {
+            return Some(Progress { world: 6, level: 4 });
+        }
+        ((1..=7).contains(&world) && (1..=4).contains(&level)).then_some(Progress {
+            world: world as u8,
+            level: level as u8,
+        })
     }
 
     fn step_body(&mut self, input: FrameInput, pacing: Pacing, draw: bool) -> FrameOut {
@@ -640,6 +692,102 @@ impl Game {
             (Scene::Level | Scene::Bonus(_), _) => Some(crate::render::LEVEL_COPPER),
             _ => None,
         }
+    }
+
+    /// Where the game is (T21, DESIGN §2.9): the level a game last played (`world`, `level`,
+    /// h0+$40da, $40de, read while a level runs; the bonus level is world 7, the final level
+    /// counts as W6-4, whose code reaches it), for the app to remember the furthest of. World 0
+    /// until a game has played a level: the attract demo is no game, and the executable's own
+    /// `world` and `level` read W1-1 from power-on.
+    pub fn progress(&self) -> Progress {
+        self.progress
+    }
+
+    /// A game started at `progress` as the original's level code for it starts it (T21, DESIGN
+    /// §2.9: the app's "Continue from World N"): power-on, then the code typed as a player types
+    /// it ([`Game::type_code`]), its digits the player's disks' own
+    /// ([`crate::front::password::password_for`]). The game is handed over on the frame after
+    /// START GAME is taken: the title fades out, then `game_start_at` checks the code and the
+    /// world loads. With the seed [`Rng::default`]; see [`Game::start_at_with`]. A progress no
+    /// code starts (world 0) starts at W1-1, as START GAME with no code does.
+    pub fn start_at(data: &GameData, progress: &Progress) -> Game {
+        Game::start_at_with(Arc::new(DisplayData::new(data)), progress, Rng::default())
+    }
+
+    /// [`Game::start_at`] with the disks' display content already built and the RNG's seed.
+    pub fn start_at_with(display: Arc<DisplayData>, progress: &Progress, seed: Rng) -> Game {
+        use crate::front::password::{password_for, table};
+        let code = password_for(&table(&display.front), progress);
+        let mut g = Game::with_display(display, Start::PowerOn { seed });
+        g.type_code(code.map(|p| p.0), &CODE_TIMES);
+        g
+    }
+
+    /// From the title: the menu's OPTIONS, down to LEVEL CODE, `code`'s digits on the number keys
+    /// (raw codes 01..0A), fire to leave the options, then the menu again and START GAME; with no
+    /// code, START GAME straight away. The menu is driven by what it shows ([`Game::title_waits`]);
+    /// the options screen, which shows nothing the engine reads back, by `times`, frames from
+    /// OPTIONS taken. Returns on the frame after START GAME is taken.
+    pub fn type_code(&mut self, code: Option<[u8; 6]>, times: &CodeTimes) {
+        use crate::input::Joy;
+        let joy = |joy: Joy| FrameInput { joy, ..FrameInput::NONE };
+        let wait = |g: &mut Game| {
+            for _ in 0..START_AT_FRAMES {
+                if g.title_waits() {
+                    return;
+                }
+                g.step(FrameInput::NONE);
+            }
+        };
+        if let Some(code) = code {
+            wait(self);
+            self.step(joy(Joy::FIRE));
+            wait(self);
+            let mut script = vec![
+                (0, joy(Joy::DOWN)),
+                (5, FrameInput::NONE),
+                (times.options, joy(Joy::FIRE)),
+                (times.options + 5, FrameInput::NONE),
+            ];
+            let mut t = times.options + times.first_down;
+            for k in 0..3 {
+                if k > 0 {
+                    t += times.down;
+                }
+                script.push((t, joy(Joy::DOWN)));
+                script.push((t + 10, FrameInput::NONE));
+            }
+            t += times.first_digit;
+            for d in code {
+                let raw = if d == b'0' { 0x0a } else { d.wrapping_sub(b'0') };
+                let keys = crate::input::KeySet::key(raw);
+                script.push((t, FrameInput { keys, ..FrameInput::NONE }));
+                script.push((t + 6, FrameInput::NONE));
+                t += times.digit;
+            }
+            t += times.leave;
+            script.push((t, joy(Joy::FIRE)));
+            script.push((t + 5, FrameInput::NONE));
+            let mut held = FrameInput::NONE;
+            for f in 0..t + 10 {
+                if let Some(&(_, i)) = script.iter().find(|(at, _)| *at == f) {
+                    held = i;
+                }
+                self.step(held);
+            }
+        }
+        // The menu (after the options, the title's intro again), START GAME.
+        wait(self);
+        self.step(joy(Joy::FIRE));
+        wait(self);
+        self.step(joy(Joy::FIRE));
+    }
+
+    /// The title waits in its idle, or its menu for a choice: fire in the next frame opens the
+    /// menu, or takes the item lit (START GAME unless moved). For [`Game::start_at`], and tests
+    /// that drive the title by what it shows rather than by frame.
+    pub fn title_waits(&self) -> bool {
+        self.front.as_ref().is_some_and(|f| f.title_waits())
     }
 
     /// The seed a power-on start has not yet put in place.

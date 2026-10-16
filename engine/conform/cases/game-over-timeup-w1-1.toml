@@ -6,8 +6,3 @@
 # both presentation, the picture within tolerance, so green faithful (T181).
 sync = { level = "W1-1", clock = "0:03" }
 frames = 1220
-
-[[exclude]]
-what = "enemies"
-note = "the bubble (T17's, now T39–T41's) returns at once from power-on; world 1's enemies are live (T42)"
-task = "T39–T41"

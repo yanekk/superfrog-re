@@ -4,8 +4,3 @@ sync = { level = "W2-2" }
 script = "items-launcher-w2-2"
 frames = 720
 resync = false
-
-[[exclude]]
-what = "enemies"
-note = "the original's marker spawners the engine has none for (enemies, the world's scenery)"
-task = "T16–T18"

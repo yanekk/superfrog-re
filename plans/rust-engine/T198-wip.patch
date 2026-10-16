@@ -1,0 +1,758 @@
+diff --git a/engine/crates/sf-conform/src/milestones.rs b/engine/crates/sf-conform/src/milestones.rs
+index 95a2fc3..afb8427 100644
+--- a/engine/crates/sf-conform/src/milestones.rs
++++ b/engine/crates/sf-conform/src/milestones.rs
+@@ -87,6 +87,10 @@ pub enum Milestone {
+     Tally {
+         score: u32,
+     },
++    /// The game asked for a disk not in the drive (`wanted_disk` changed, T21): its number, 1–4.
++    DiskAsked {
++        disk: u8,
++    },
+     /// The run's last frame.
+     End {
+         score: u32,
+@@ -107,6 +111,7 @@ impl fmt::Display for Milestone {
+             Milestone::LifeLost { lives } => write!(f, "life lost ({} left)", *lives as i16),
+             Milestone::LevelExit { world, level } => write!(f, "level exit (W{world}-{level})"),
+             Milestone::Tally { score } => write!(f, "tally (score {score})"),
++            Milestone::DiskAsked { disk } => write!(f, "disk {disk} asked for"),
+             Milestone::End {
+                 score,
+                 lives,
+@@ -139,6 +144,8 @@ pub struct FrameState {
+     pub score: u32,
+     pub obj_slots: Vec<u8>,
+     pub level_map: Vec<u8>,
++    /// The disk ID the game last asked for (`2222`..`5555`).
++    pub wanted_disk: u32,
+     /// The frame ended in the middle of a main-loop pass (the side's own mid-pass test). A cleared
+     /// marker is an item taken only if it is still clear at a frame that ends a pass, two passes
+     /// on ([`ITEM_SETTLE`]; T115): a crumbling platform's spawn clears the marker under it and the
+@@ -194,6 +201,7 @@ impl FrameState {
+             score: long(VarId::Score),
+             obj_slots: bytes(VarId::ObjSlots),
+             level_map: bytes(VarId::LevelMap),
++            wanted_disk: long(VarId::WantedDisk),
+             mid_pass: false,
+         }
+     }
+@@ -310,6 +318,14 @@ impl Milestones {
+         let Some(p) = &self.prev else {
+             return;
+         };
++        if !p.story && !s.story && p.wanted_disk != s.wanted_disk {
++            if let Some(k) = (0x3232_3232..=0x3535_3535u32)
++                .step_by(0x0101_0101)
++                .position(|id| id == s.wanted_disk)
++            {
++                push(Milestone::DiskAsked { disk: k as u8 + 1 });
++            }
++        }
+         if !p.story && !s.story && p.world == s.world && p.level == s.level {
+             if (s.lives as i16) < (p.lives as i16) {
+                 push(Milestone::LifeLost { lives: s.lives });
+diff --git a/engine/crates/sf-conform/tests/chain.rs b/engine/crates/sf-conform/tests/chain.rs
+index 58eba6e..932b33f 100644
+--- a/engine/crates/sf-conform/tests/chain.rs
++++ b/engine/crates/sf-conform/tests/chain.rs
+@@ -21,18 +21,26 @@ fn start_game_reaches_w1_1_as_the_original_does() {
+ /// Power-on, OPTIONS, W3-1's level code typed into LEVEL CODE (its digits read from the disks),
+ /// the options left, START GAME: `game_start_at` takes the code and `top_loop` jumps to world 3's
+ /// entry, W3's loads from disk 2 (each disk the original asks for put in), W3's loading picture,
+-/// the progress map, W3-1 played: faithful and alone, nothing unported on the way.
++/// the progress map, W3-1 played: faithful and alone, nothing unported on the way. Disk 2 is
++/// asked for once, on the same frame of play as the original asks (T21: a milestone).
+ #[test]
+ fn a_level_code_starts_the_game_at_w3_1_as_the_original_does() {
++    use sf_conform::milestones::Milestone;
+     let case = sf_conform::Case::load(&sf_conform::cases_dir().join("chain-level-code.toml"))
+         .unwrap_or_else(|e| panic!("{e}"));
+     let (mut unported, mut world) = (Vec::new(), 0);
+-    if let Err(d) = sf_conform::run_with(&case, |_, g| {
++    let o = sf_conform::run_with(&case, |_, g| {
+         unported = g.unported().to_vec();
+         world = g.state().world();
+-    }) {
+-        panic!("chain-level-code: {d}");
+-    }
++    })
++    .unwrap_or_else(|d| panic!("chain-level-code: {d}"));
++    let asked: Vec<_> = o
++        .milestones
++        .unwrap_or_default()
++        .into_iter()
++        .filter(|(_, m)| matches!(m, Milestone::DiskAsked { .. }))
++        .collect();
++    assert_eq!(asked, [(1494, Milestone::DiskAsked { disk: 2 })]);
+     assert_eq!(unported, Vec::<&str>::new());
+     // A code typed wrong starts at W1-1 on both sides, faithful too: the code must have been taken.
+     assert_eq!(world, 3, "the run did not end in world 3");
+diff --git a/engine/crates/sf-conform/tests/flow.rs b/engine/crates/sf-conform/tests/flow.rs
+index dc46be0..7876275 100644
+--- a/engine/crates/sf-conform/tests/flow.rs
++++ b/engine/crates/sf-conform/tests/flow.rs
+@@ -105,3 +105,26 @@ fn start_at_equals_the_code_typed_on_the_title() {
+         assert_eq!(differ, Vec::<&str>::new(), "W{world}");
+     }
+ }
++
++/// The disks a game asks for on the way into a world (T21): W4's files are on disk 2, W6's music
++/// and loading picture too, its tiles and maps on disk 4. Each prompt is raised once, as the
++/// original's `disk_request` asks; nothing answers it, and the game goes on at once (the app has
++/// every disk), as fast as with no prompt (W1, whose files are all on disk 1, the measure).
++#[test]
++fn disk_prompts_are_raised_as_the_game_asks_and_need_no_answer() {
++    use sf_core::DiskPrompt::Insert;
++    use sf_disk::DiskSlot::{D2, D4};
++    let prompts = |world: u8| {
++        let mut g = Game::start_at_with(display(), &Progress { world, level: 1 }, Rng::default());
++        let mut seen = Vec::new();
++        while !matches!(g.scene(), Scene::Level | Scene::Bonus(_)) {
++            if let Some(p) = g.step(FrameInput::NONE).disk_prompt {
++                seen.push(p);
++            }
++        }
++        seen
++    };
++    assert_eq!(prompts(1), []);
++    assert_eq!(prompts(4), [Insert(D2)]);
++    assert_eq!(prompts(6), [Insert(D2), Insert(D4)]);
++}
+diff --git a/engine/crates/sf-core/src/front/attract.rs b/engine/crates/sf-core/src/front/attract.rs
+index 4c3a3b0..0a82bf0 100644
+--- a/engine/crates/sf-core/src/front/attract.rs
++++ b/engine/crates/sf-core/src/front/attract.rs
+@@ -127,6 +127,8 @@ impl Demo {
+                 {
+                     super::title::overlay_show(cx);
+                 }
++                // `demo_world_load`, `demo_level_load`'s files (h0+$a580..$a65c, disk 1).
++                cx.read_entries(0xa580, 0xa65c);
+                 let display = cx.display;
+                 crate::level::exit::with_level(cx, false, |c| {
+                     crate::level::load::demo_load(c, display)
+@@ -189,6 +191,8 @@ impl AwardPages {
+                 // A page: load it, fade it in, show it.
+                 1 => {
+                     let (name, ret) = [("AWA1", 0x1f06), ("AWA2", 0x1fc8)][self.page as usize];
++                    let lea = [0x1ee6, 0x1fa8][self.page as usize];
++                    cx.read_entries(lea, lea + 14);
+                     let pic = cx.data.file(name).to_vec();
+                     cx.s.write(BUFFER_0, &pic);
+                     cx.loaded(LoadEnd::Left(at(ret)));
+diff --git a/engine/crates/sf-core/src/front/chain.rs b/engine/crates/sf-core/src/front/chain.rs
+index 53950ca..9c905e6 100644
+--- a/engine/crates/sf-core/src/front/chain.rs
++++ b/engine/crates/sf-core/src/front/chain.rs
+@@ -108,15 +108,36 @@ enum Target {
+ 
+ /// `world_load_wN` for worlds 1–6.
+ const WORLD_LOADS: [u32; 6] = [0x94a0, 0x9722, 0x9976, 0x9bca, 0x9e1e, 0xa072];
+-/// `level_load_wN_lM`.
+-const LEVEL_LOADS: [[u32; 4]; 6] = [
+-    [0x9552, 0x95c6, 0x963a, 0x96ae],
+-    [0x97c6, 0x9832, 0x989e, 0x990a],
+-    [0x9a1a, 0x9a86, 0x9af2, 0x9b5e],
+-    [0x9c6e, 0x9cda, 0x9d46, 0x9db2],
+-    [0x9ec2, 0x9f2e, 0x9f9a, 0xa006],
+-    [0xa116, 0xa1b8, 0xa25a, 0xa2fc],
+-];
++/// `level_resume_jump` (h0+$bb2), `level_tally` (h0+$4466).
++const RESUME_JUMP: u32 = 0xbb2;
++const TALLY: u32 = 0x4466;
++
++/// `level_load_wN_lM`'s world and level for the routine at h0+`off`, read from `top_loop` as the
++/// original has it: a world's first level's load is the call after its `world_load_wN`'s
++/// `level_resume_jump`, each next one the call after a `level_tally`.
++fn level_load_of(data: &super::FrontData, off: u32) -> Option<(u32, u8)> {
++    let (mut world, mut level, mut next) = (0, 0u8, false);
++    let mut pc = GAME_PATH;
++    while pc < 0x7d4 {
++        if data.h0_w(pc) != 0x4eb9 {
++            pc += 2;
++            continue;
++        }
++        let to = data.h0_l(pc + 2).wrapping_sub(H0);
++        if next && (1..=6).contains(&world) && level < 4 {
++            level += 1;
++            if to == off {
++                return Some((world, level));
++            }
++        }
++        if let Some(w) = WORLD_LOADS.iter().position(|&a| a == to) {
++            (world, level) = (w as u32 + 1, 0);
++        }
++        next = to == RESUME_JUMP || to == TALLY;
++        pc += 6;
++    }
++    None
++}
+ /// `level_init_wN`.
+ const LEVEL_INITS: [u32; 6] = [0x8cd8, 0x8d2e, 0x8d84, 0x8dda, 0x8e30, 0x8e86];
+ /// `level_init_lw`: the final level's init.
+@@ -135,14 +156,12 @@ const END_PICS: [(u32, u32); 6] = [
+     (0x4326, 6),
+ ];
+ 
+-fn target(off: u32) -> Target {
++fn target(data: &super::FrontData, off: u32) -> Target {
+     if let Some(w) = WORLD_LOADS.iter().position(|&a| a == off) {
+         return Target::WorldLoad(w as u32 + 1);
+     }
+-    for (w, loads) in LEVEL_LOADS.iter().enumerate() {
+-        if let Some(l) = loads.iter().position(|&a| a == off) {
+-            return Target::LevelLoad(w as u32 + 1, l as u8 + 1);
+-        }
++    if let Some((w, l)) = level_load_of(data, off) {
++        return Target::LevelLoad(w, l);
+     }
+     if let Some(w) = LEVEL_INITS.iter().position(|&a| a == off) {
+         return Target::LevelInit(w as u32 + 1);
+@@ -189,6 +208,14 @@ fn level_id(world: u32, level: u8) -> LevelId {
+     LevelId { world, level, alt: false }
+ }
+ 
++/// Where the routine at h0+`from` ends: its first `rts`.
++fn code_end(data: &super::FrontData, from: u32) -> u32 {
++    (from..from + 0x400)
++        .step_by(2)
++        .find(|&pc| data.h0_w(pc) == 0x4e75)
++        .unwrap_or(from)
++}
++
+ /// `jsr` to `to` somewhere in `top_loop`'s game path.
+ fn call_to(data: &super::FrontData, to: u32) -> Option<u32> {
+     (GAME_PATH..0x7d4)
+@@ -343,12 +370,12 @@ impl Chain {
+     fn dispatch(&mut self, cx: &mut Cx, to: u32) -> Option<Yield> {
+         let ret = at(self.pc);
+         let frog_only = self.frog_only;
+-        Some(match target(to) {
++        Some(match target(cx.data, to) {
+             Target::AccessOverlay => {
+                 access_overlay_show(cx);
+                 return None;
+             }
+-            Target::WorldLoad(w) => call(Routine::WorldLoad(WorldLoad::new(w))),
++            Target::WorldLoad(w) => call(Routine::WorldLoad(WorldLoad::new(w, to))),
+             Target::ResumeJump => {
+                 if cx.s.l(START_WORLD) != 0
+                     && cx.s.l(START_LEVEL) != 0
+@@ -358,15 +385,17 @@ impl Chain {
+                 }
+                 return None;
+             }
+-            Target::LevelLoad(w, l) => call(Routine::LevelLoad(LevelLoad::new(level_id(w, l), ret))),
++            Target::LevelLoad(w, l) => {
++                call(Routine::LevelLoad(LevelLoad::new(level_id(w, l), ret, to)))
++            }
+             Target::OverlaysEnd => call(Routine::Overlay(Default::default())),
+             Target::LevelInit(w) => {
+                 let level = cx.s.l(LEVEL) as u8;
+                 let id = level_id(w, level);
+                 exit::init_on_beam(cx, frog_only, id, exit::init_inside(id))
+             }
+-            Target::WorldLoadLb => call(Routine::WorldLoad(WorldLoad::new(exit::BONUS_WORLD))),
+-            Target::LevelLoadLb => call(Routine::LevelLoad(LevelLoad::new(level_id(exit::BONUS_WORLD, 1), ret))),
++            Target::WorldLoadLb => call(Routine::WorldLoad(WorldLoad::new(exit::BONUS_WORLD, to))),
++            Target::LevelLoadLb => call(Routine::LevelLoad(LevelLoad::new(level_id(exit::BONUS_WORLD, 1), ret, to))),
+             Target::LevelInitLb => {
+                 let id = level_id(exit::BONUS_WORLD, 1);
+                 exit::init_on_beam(cx, frog_only, id, exit::init_inside(id))
+@@ -386,7 +415,7 @@ impl Chain {
+                     level: 1,
+                     alt: false,
+                 };
+-                call(Routine::LevelLoad(LevelLoad::new(id, ret)))
++                call(Routine::LevelLoad(LevelLoad::new(id, ret, to)))
+             }
+             Target::FinalInit => {
+                 let id = LevelId {
+@@ -409,7 +438,7 @@ impl Chain {
+                 }
+             }
+             Target::Tally => call(Routine::Tally(Default::default())),
+-            Target::EndPic(w) => call(Routine::EndPic(EndPic::new(w, to == 0x42be))),
++            Target::EndPic(w) => call(Routine::EndPic(EndPic::new(w, to))),
+             Target::MusicFadeWait => call(Routine::MusicFadeWait(MusicFadeWait::default())),
+             Target::Nothing => return None,
+             Target::ShooterOff => {
+@@ -477,18 +506,25 @@ pub(crate) struct WorldLoad {
+     pc: u8,
+     /// `world_load_lw`, returning to `ret`.
+     final_level: Option<u32>,
++    /// Its code (h0 offset).
++    at: u32,
+ }
+ 
++/// h0+$172d6's bytes, and what each takes: `clr.b (a0)+`, `subq.l #1`, `bne` (12 + 8 + 10).
++const MAP_CLEAR_BYTES: u32 = 0x102e0;
++const CLEAR_BYTE_CYCLES: u32 = 30;
++
+ /// `frog_spud_flying` (h0+$848), `final_level_flag` (h0+$1e).
+ const SPUD_FLYING: u32 = at(0x848);
+ const FINAL_LEVEL_FLAG: u32 = at(0x1e);
+ 
+ impl WorldLoad {
+-    fn new(world: u32) -> WorldLoad {
++    fn new(world: u32, at: u32) -> WorldLoad {
+         WorldLoad {
+             world,
+             pc: 0,
+             final_level: None,
++            at,
+         }
+     }
+ 
+@@ -497,27 +533,73 @@ impl WorldLoad {
+             world: 6,
+             pc: 0,
+             final_level: Some(ret),
++            at: 0xa49a,
+         }
+     }
+ 
++    /// h0+$172d6: the map area (h1+$20d00, $102e0 bytes) cleared a byte at a time, which takes
++    /// the CPU about 20 frames under the picture (T21: W6's disk 4 asked for only after it); the
++    /// memory is cleared at once and compared once the original is out of the call.
++    fn clear_map_area(&self, cx: &mut Cx) -> Yield {
++        exit::with_level(cx, false, |c| crate::level::load::clear_map_area(&mut c.bus));
++        let end = code_end(cx.data, self.at);
++        let ret = (self.at..end)
++            .step_by(2)
++            .find(|&pc| cx.data.h0_w(pc) == 0x4eb9 && cx.data.h0_l(pc + 2).wrapping_sub(H0) == 0x172d6)
++            .map_or(at(0x172e8), |pc| at(pc + 6));
++        super::ending::work(
++            MAP_CLEAR_BYTES * CLEAR_BYTE_CYCLES,
++            &[ret, at(0x172e2), at(0x172e4), at(0x172e6)],
++            vec![(crate::layout::h1(0x20d00), MAP_CLEAR_BYTES)],
++        )
++    }
++
++    /// Its files' `file_table` entries: those before its `bsr world_intro_show` (the effects, the
++    /// music, the loading picture last) and those after (the tiles, bobs and masks).
++    fn files(&self, cx: &Cx) -> (Vec<u32>, Vec<u32>) {
++        let end = code_end(cx.data, self.at);
++        let bsr = (self.at..end).step_by(2).find(|&pc| {
++            cx.data.h0_w(pc) == 0x6100
++                && (pc + 2).wrapping_add(cx.data.h0_w(pc + 2) as i16 as i32 as u32) == 0x4116
++        });
++        let split = bsr.unwrap_or(self.at);
++        (
++            super::table_entries(cx.data, self.at, split),
++            super::table_entries(cx.data, split, end),
++        )
++    }
++
+     pub(super) fn run(&mut self, cx: &mut Cx) -> Yield {
+         self.pc += 1;
+         if let Some(ret) = self.final_level {
+-            if self.pc == 1 {
+-                cx.s.set_w(SPUD_FLYING, 1);
+-                cx.s.set_w(FINAL_LEVEL_FLAG, 1);
+-                cx.s.set_l(WORLD, 6);
+-                let display = cx.display;
+-                exit::with_level(cx, false, |c| {
+-                    crate::level::load::clear_map_area(&mut c.bus);
+-                    c.bus.st.poke(crate::layout::H3, display.bob_sheet(World::Final));
+-                });
+-                cx.loaded(LoadEnd::Left(ret));
++            match self.pc {
++                1 => {
++                    cx.s.set_w(SPUD_FLYING, 1);
++                    cx.s.set_w(FINAL_LEVEL_FLAG, 1);
++                    cx.s.set_l(WORLD, 6);
++                    return self.clear_map_area(cx);
++                }
++                2 => {
++                    for e in self.files(cx).1 {
++                        cx.read_entry(e);
++                    }
++                    let display = cx.display;
++                    exit::with_level(cx, false, |c| {
++                        c.bus.st.poke(crate::layout::H3, display.bob_sheet(World::Final));
++                    });
++                    cx.loaded(LoadEnd::Left(ret));
++                }
++                _ => {}
+             }
+             return Yield::Return;
+         }
+         match self.pc {
+             1 => {
++                let (before, _) = self.files(cx);
++                let (sound, picture) = before.split_at(before.len().saturating_sub(1));
++                for &e in sound {
++                    cx.read_entry(e);
++                }
+                 cx.s.set_l(WORLD, self.world);
+                 world_sound(cx, self.world);
+                 if cx.s.l(END_PIC_SHOWN) != 0 {
+@@ -525,13 +607,16 @@ impl WorldLoad {
+                     // h0+$43e0's wait, called from `world_intro_show`.
+                     cx.loaded(LoadEnd::Reached(at(0x411c)));
+                 }
+-                call(Routine::WorldIntro(WorldIntro::new(self.world)))
++                call(Routine::WorldIntro(WorldIntro::new(self.world, picture.first().copied())))
+             }
+-            2 => {
++            2 => self.clear_map_area(cx),
++            3 => {
++                for e in self.files(cx).1 {
++                    cx.read_entry(e);
++                }
+                 let display = cx.display;
+                 let world = level_id(self.world, 1).world;
+                 exit::with_level(cx, false, |c| {
+-                    crate::level::load::clear_map_area(&mut c.bus);
+                     c.bus.st.poke(crate::layout::H3, display.bob_sheet(world));
+                 });
+                 // The original waits for the tiles in `world_intro_end`, called from
+@@ -558,10 +643,10 @@ fn world_file(world: u32, kind: &str) -> String {
+     }
+ }
+ 
+-/// How long the bonus level's loading picture stays up after it is shown: its tiles' and bobs'
+-/// loads on the original (measured on the oracle, one drive: shown on frame 1160 of
+-/// `chain-w5-4-to-bonus`, faded out from 1629).
+-const BONUS_PICTURE_FRAMES: u16 = 468;
++/// How long the bonus level's loading picture stays up once its map area is cleared (h0+$172d6's
++/// 17 frames): its tiles' and bobs' loads on the original (measured on the oracle, one drive: the
++/// picture shown on frame 1160 of `chain-w5-4-to-bonus`, faded out from 1629).
++const BONUS_PICTURE_FRAMES: u16 = 451;
+ 
+ /// `world_intro_show` (h0+$4116) with `LnLP` loaded: the Accessing-disk overlay taken down, the
+ /// picture's planes (an upper and a lower part), the frog and the clouds set up for their walk
+@@ -570,11 +655,13 @@ const BONUS_PICTURE_FRAMES: u16 = 468;
+ pub(crate) struct WorldIntro {
+     world: u32,
+     pc: u8,
++    /// Its picture's `file_table` entry, which its caller sets.
++    entry: Option<u32>,
+ }
+ 
+ impl WorldIntro {
+-    fn new(world: u32) -> WorldIntro {
+-        WorldIntro { world, pc: 0 }
++    fn new(world: u32, entry: Option<u32>) -> WorldIntro {
++        WorldIntro { world, pc: 0, entry }
+     }
+ 
+     pub(super) fn run(&mut self, cx: &mut Cx) -> Yield {
+@@ -590,6 +677,9 @@ impl WorldIntro {
+                     if cx.s.w(GAME_FULL_MODE) == 0 {
+                         return Yield::Return;
+                     }
++                    if let Some(e) = self.entry {
++                        cx.read_entry(e);
++                    }
+                     let pic = cx.data.file(&world_file(self.world, "LP")).to_vec();
+                     cx.s.write(BUFFER_0, &pic);
+                     cx.loaded(LoadEnd::Left(at(0x4132)));
+@@ -997,11 +1087,13 @@ pub(crate) struct LevelLoad {
+     id: LevelId,
+     ret: u32,
+     pc: u8,
++    /// Its code (h0 offset).
++    at: u32,
+ }
+ 
+ impl LevelLoad {
+-    fn new(id: LevelId, ret: u32) -> LevelLoad {
+-        LevelLoad { id, ret, pc: 0 }
++    fn new(id: LevelId, ret: u32, at: u32) -> LevelLoad {
++        LevelLoad { id, ret, pc: 0, at }
+     }
+ 
+     pub(super) fn run(&mut self, cx: &mut Cx) -> Yield {
+@@ -1020,6 +1112,11 @@ impl LevelLoad {
+                 call(Routine::MapShow(Default::default()))
+             }
+             2 => {
++                // The map's file; W6's first set (the engine plays it as a game with a second
++                // drive does; both sets are on disk 4).
++                if let Some(&e) = super::table_entries(cx.data, self.at, code_end(cx.data, self.at)).first() {
++                    cx.read_entry(e);
++                }
+                 let (display, id) = (cx.display, self.id);
+                 exit::with_level(cx, false, |c| crate::level::load::level_load(c, display, id));
+                 match id.world {
+@@ -1211,11 +1308,18 @@ pub(crate) struct EndPic {
+     world: u32,
+     wait: bool,
+     pc: u8,
++    /// Its code (h0 offset).
++    at: u32,
+ }
+ 
+ impl EndPic {
+-    fn new(world: u32, wait: bool) -> EndPic {
+-        EndPic { world, wait, pc: 0 }
++    fn new(world: u32, at: u32) -> EndPic {
++        EndPic {
++            world,
++            wait: at == 0x42be,
++            pc: 0,
++            at,
++        }
+     }
+ 
+     pub(super) fn run(&mut self, cx: &mut Cx) -> Yield {
+@@ -1227,6 +1331,9 @@ impl EndPic {
+                     return Yield::Return;
+                 }
+                 cx.s.set_l(END_PIC_SHOWN, 1);
++                for e in super::table_entries(cx.data, self.at, self.at + 0x14) {
++                    cx.read_entry(e);
++                }
+                 let pic = cx.data.file(&format!("L{}ET", self.world)).to_vec();
+                 cx.s.write(BUFFER_1, &pic);
+                 cx.loaded(LoadEnd::Left(at(0x436a)));
+diff --git a/engine/crates/sf-core/src/front/ending.rs b/engine/crates/sf-core/src/front/ending.rs
+index 5411d06..afc055d 100644
+--- a/engine/crates/sf-core/src/front/ending.rs
++++ b/engine/crates/sf-core/src/front/ending.rs
+@@ -125,6 +125,9 @@ impl EndSeqLoad {
+                 {
+                     super::title::overlay_show(cx);
+                 }
++                // END1, END2 (disk 3), then $1d6c's title music, MUSC (disk 1).
++                cx.read_entries(0xa65c, 0xa6e4);
++                cx.read_entries(0x1d6c, 0x1d90);
+                 // The files are kept packed in hunk 1, which the engine does not model; `END2`'s
+                 // tail over the level's map is taken from the original.
+                 let sectors = cx.data.h0_w(0xcbfe + 6 + 2) as u32;
+diff --git a/engine/crates/sf-core/src/front/hero.rs b/engine/crates/sf-core/src/front/hero.rs
+index 4d2237f..29aafe5 100644
+--- a/engine/crates/sf-core/src/front/hero.rs
++++ b/engine/crates/sf-core/src/front/hero.rs
+@@ -16,6 +16,8 @@ const PLANE: usize = 0x3c00;
+ 
+ /// The whole of `load_hero` once its load is over, at once.
+ pub(super) fn load_hero(cx: &mut Cx) {
++    // `load_hero`'s HERO (h0+$9178, disk 1).
++    cx.read_entries(0x9178, 0x9186);
+     // $172d6: h1+$20d00..$30fe0 cleared, the level's map with it.
+     cx.s.var_mut(VarId::LevelMap).fill(0);
+     let hero = cx.data.file("HERO").to_vec();
+diff --git a/engine/crates/sf-core/src/front/mod.rs b/engine/crates/sf-core/src/front/mod.rs
+index b37001d..da1caf9 100644
+--- a/engine/crates/sf-core/src/front/mod.rs
++++ b/engine/crates/sf-core/src/front/mod.rs
+@@ -353,6 +353,8 @@ pub(crate) struct Cx<'a> {
+     /// A load this frame was given the original's state at its end (conformance only): the
+     /// original's load is over, however long the engine models it as taking.
+     pub load_given: bool,
++    /// A disk the game asked for this frame that was not in the drive (T21).
++    pub disk_prompt: Option<crate::game::DiskPrompt>,
+ }
+ 
+ impl Cx<'_> {
+@@ -505,12 +507,50 @@ impl Cx<'_> {
+             (self.line as u32 + cycles.div_ceil(BEAM_CYCLES_PER_LINE)).min(u16::MAX as u32) as u16;
+     }
+ 
++    /// The file of `file_table`'s entry at h0+`entry` is read (`track_read`, h0+$b098): its disk
++    /// (the entry's third word, an index into `disk_id_table`, h0+$b11e) is looked for in the
++    /// drive, and when the game last asked for another, `disk_request` (h0+$ade4) asks for it
++    /// ([`Cx::disk_prompt`]), the player puts it in and the load goes on (T21). The engine's loads
++    /// are instant, so the answer is too.
++    pub fn read_entry(&mut self, entry: u32) {
++        let disk = self.data.h0_w(entry + 4) & 3;
++        let id = self.data.h0_l(DISK_ID_TABLE + 4 * disk as u32);
++        if self.s.l(at(0xaf54)) != id {
++            self.s.set_l(at(0xaf54), id);
++            self.disk_prompt = Some(crate::game::DiskPrompt::Insert(sf_disk::DiskSlot::ALL[disk as usize]));
++        }
++    }
++
++    /// [`Cx::read_entry`] for every `file_table` entry the original's code between h0+`from` and
++    /// h0+`to` names (`lea file_table+n,a2`), in order.
++    pub fn read_entries(&mut self, from: u32, to: u32) {
++        for e in table_entries(self.data, from, to) {
++            self.read_entry(e);
++        }
++    }
++
+     /// A path of the original's code the engine does not follow yet: recorded, so a test fails.
+     pub fn unported(&mut self, what: &'static str) {
+         self.unported.push(what);
+     }
+ }
+ 
++/// `file_table` (h0+$cbfe): six bytes a file, its first sector, its sectors and its disk.
++pub(crate) const FILE_TABLE: std::ops::Range<u32> = 0xcbfe..0xce58;
++/// `disk_id_table` (h0+$b11e, an h0 offset): the four disks' IDs, `2222` to `5555`.
++const DISK_ID_TABLE: u32 = 0xb11e;
++
++/// The `file_table` entries (h0 offsets) the code between h0+`from` and h0+`to` loads, in order:
++/// each `lea file_table+n,a2` (`$45f9`), which `load_file`'s callers set before the call.
++pub(crate) fn table_entries(data: &FrontData, from: u32, to: u32) -> Vec<u32> {
++    (from..to)
++        .step_by(2)
++        .filter(|&pc| data.h0_w(pc) == 0x45f9)
++        .map(|pc| data.h0_l(pc + 2).wrapping_sub(crate::layout::H0))
++        .filter(|e| FILE_TABLE.contains(e))
++        .collect()
++}
++
+ /// A routine on the call stack and what it waits for.
+ #[derive(Debug, Clone, PartialEq, Eq, Hash)]
+ struct Frame {
+@@ -622,6 +662,8 @@ pub struct FrontOut {
+     pub jobs: Vec<crate::game::Job>,
+     /// [`crate::game::FrameOut::beam_races`].
+     pub beam_races: Vec<(u16, u16)>,
++    /// [`crate::game::FrameOut::disk_prompt`].
++    pub disk_prompt: Option<crate::game::DiskPrompt>,
+ }
+ 
+ impl Front {
+@@ -865,6 +907,7 @@ impl Front {
+             outcome: None,
+             load_runs: Vec::new(),
+             load_given: false,
++            disk_prompt: None,
+         };
+         self.run_main(&mut cx, u16::MAX);
+         self.stalled = cx.stall;
+@@ -988,6 +1031,7 @@ impl Front {
+                 outcome: None,
+                 load_runs: Vec::new(),
+                 load_given: false,
++                disk_prompt: None,
+             };
+             title::boot(&mut cx);
+             self.cop1lc = cx.cop1lc;
+@@ -1049,6 +1093,7 @@ impl Front {
+             outcome: None,
+             load_runs: Vec::new(),
+             load_given: false,
++            disk_prompt: None,
+         };
+         // Work the main program carried over from the last frame with interrupts off.
+         let masked = match self.stack.last() {
+@@ -1354,6 +1399,7 @@ impl Front {
+         }
+         self.stalled = cx.stall;
+         let load = cx.load;
++        let disk_prompt = cx.disk_prompt.take();
+         let resync = std::mem::take(&mut cx.resync);
+         let jobs = std::mem::take(&mut cx.jobs);
+         let beam_races = std::mem::take(&mut cx.races);
+@@ -1400,6 +1446,7 @@ impl Front {
+             resync,
+             jobs,
+             beam_races,
++            disk_prompt,
+         }
+     }
+ 
+diff --git a/engine/crates/sf-core/src/front/title.rs b/engine/crates/sf-core/src/front/title.rs
+index 3a74655..87db9c0 100644
+--- a/engine/crates/sf-core/src/front/title.rs
++++ b/engine/crates/sf-core/src/front/title.rs
+@@ -125,6 +125,8 @@ pub(crate) fn overlay_show(cx: &mut Cx) {
+ /// (`MPIC`, six planes) in display buffer 0 and copied to buffer 1, and the eyes' graphics (packed
+ /// at h0+$34e92) after it in buffer 1.
+ fn load_title(cx: &mut Cx) {
++    // h0+$1dd2's files, HPIC and MPIC (disk 1).
++    cx.read_entries(0x1dd2, 0x1e20);
+     if let Some(d) = cx.data.sound.as_ref()
+         && !cx.s.audio.music_on()
+     {
+diff --git a/engine/crates/sf-core/src/game.rs b/engine/crates/sf-core/src/game.rs
+index 2099728..2141367 100644
+--- a/engine/crates/sf-core/src/game.rs
++++ b/engine/crates/sf-core/src/game.rs
+@@ -119,6 +119,17 @@ pub struct FrameOut {
+     /// [`RACE_LINES`] of them (owner, 2026-10-13): the original's picture there depends on which
+     /// side of the beam its write fell, so conformance excuses a pixel differing only on them.
+     pub beam_races: Vec<(u16, u16)>,
++    /// The game asked for a disk that was not in the drive (T21): the original's insert-disk
++    /// prompt. The engine has every disk (the app's cache), so it goes on at once: the app may
++    /// show the swap, never wait for it.
++    pub disk_prompt: Option<DiskPrompt>,
++}
++
++/// What the original asks the player to do with the drive (T21).
++#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
++pub enum DiskPrompt {
++    /// Put this disk in (`disk_request`, h0+$ade4, found it in no drive).
++    Insert(sf_disk::DiskSlot),
+ }
+ 
+ /// How near the beam, in lines, a drawing step's write must be to race it.
+@@ -423,6 +434,7 @@ impl Game {
+                     resync: out.resync,
+                     jobs: out.jobs,
+                     beam_races: Vec::new(),
++                    disk_prompt: None,
+                 };
+             }
+             // The intro has handed over: the game starts as a disk-1 power-on does, and its first
+@@ -469,6 +481,7 @@ impl Game {
+                 resync: out.resync,
+                 jobs: out.jobs,
+                 beam_races: out.beam_races,
++                disk_prompt: out.disk_prompt,
+             };
+         }
+         let mut hw = Hw::of(input);
+@@ -524,6 +537,7 @@ impl Game {
+             resync: Vec::new(),
+             jobs,
+             beam_races: Vec::new(),
++            disk_prompt: None,
+         }
+     }
+ 
+diff --git a/engine/crates/sf-core/src/layout.rs b/engine/crates/sf-core/src/layout.rs
+index 05f1490..bc0f3b0 100644
+--- a/engine/crates/sf-core/src/layout.rs
++++ b/engine/crates/sf-core/src/layout.rs
+@@ -450,6 +450,9 @@ layout! {
+     /// h0+$aa40..$aac0: the end sequence's two palettes, white (the last picture's flash) and the
+     /// pictures' own, which the fades read.
+     EndPalettes = "end_palettes", h0(0xaa40), Width::Bytes(0x80);
++    /// h0+$af54: the disk ID `disk_request` last asked for (`2222`..`5555`, disks 1–4), which the
++    /// player put in (T21): the disk in the drive, as far as the game knows.
++    WantedDisk = "wanted_disk", h0(0xaf54), Width::L;
+     /// h0+$b806..$b80e: the Accessing-disk overlay's palettes while it is up.
+     OverlayUp = "overlay_up", h0(0xb806), Width::Bytes(8);
+     /// `hitboxes` (h0+$d350): the objects' hitboxes, 12 bytes each, rebuilt each pass.
+diff --git a/engine/crates/sf-core/src/lib.rs b/engine/crates/sf-core/src/lib.rs
+index 18d3aad..e4a369f 100644
+--- a/engine/crates/sf-core/src/lib.rs
++++ b/engine/crates/sf-core/src/lib.rs
+@@ -24,7 +24,7 @@ pub mod slot;
+ pub mod state;
+ 
+ pub use front::password::Progress;
+-pub use game::{CODE_TIMES, CodeTimes, Cpu, FrameOut, Game, HandlerEnd, Job, LoadEnd, PassClock, Pacing, Start};
++pub use game::{CODE_TIMES, CodeTimes, Cpu, DiskPrompt, FrameOut, Game, HandlerEnd, Job, LoadEnd, PassClock, Pacing, Start};
+ pub use layout::{AmigaMemory, LAYOUT, Ram, VarDef, VarId, Width};
+ pub use render::{DisplayData, Picture, Split, View, to_rgb12};
+ pub use rng::Rng;
+diff --git a/engine/crates/sf-core/src/slot/mod.rs b/engine/crates/sf-core/src/slot/mod.rs
+index 7495f74..a850889 100644
+--- a/engine/crates/sf-core/src/slot/mod.rs
++++ b/engine/crates/sf-core/src/slot/mod.rs
+@@ -277,6 +277,15 @@ fn access_overlay_show(cx: &mut Cx) {
+ /// the music faded out and stopped, the sound's chip RAM kept over the level's map, the slot's
+ /// effects (`LFFX`) at the bank's place and its music (`LFMU`) at the level's module address.
+ fn load(cx: &mut Cx) {
++    // `read_disk_id` (h0+$4a96, $4bd4): with disk 1 in the drive its own copies of the files are
++    // read, else disk 2's.
++    if cx.s.l(crate::layout::h0(0xaf54)) == 0x3232_3232 {
++        cx.read_entries(0x4af6, 0x4b3e);
++        cx.read_entries(0x4c22, 0x4c58);
++    } else {
++        cx.read_entries(0x4aa4, 0x4af6);
++        cx.read_entries(0x4be2, 0x4c22);
++    }
+     for (name, to) in [
+         ("FRUT", BUFFER_0),
+         ("FRUC", BUFFER_1),

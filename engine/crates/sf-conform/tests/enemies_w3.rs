@@ -125,7 +125,7 @@ fn w3_1() {
 /// swing's ball, a bouncer and a staying spiker.
 #[test]
 fn w3_2() {
-    let s = run("enemies-w3-2", &[2443]);
+    let s = run("enemies-w3-2", &[]);
     for u in [
         BOUNCER, SPIKER_STAYING, PAD, DART_WAIT, DART_FLY, SPIKER, HOPPER, FLOW, SWING, SWING_LINK,
         STOMPABLE, CRUMBLE, STOMPED,

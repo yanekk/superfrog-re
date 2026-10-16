@@ -5,8 +5,3 @@ sync = { level = "W1-2" }
 script = "items-wings-w1-2"
 frames = 650
 resync = false
-
-[[exclude]]
-what = "enemies"
-note = "the bubble (T17's, now T39–T41's) returns at once from power-on; world 1's enemies are live (T42)"
-task = "T39–T41"

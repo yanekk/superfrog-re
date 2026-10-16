@@ -5,8 +5,3 @@ sync = { level = "W4-1" }
 script = "items-fruit-w4-1"
 frames = 2360
 resync = false
-
-[[exclude]]
-what = "enemies"
-note = "the original's marker spawners the engine has none for (the world's scenery)"
-task = "T16–T18"

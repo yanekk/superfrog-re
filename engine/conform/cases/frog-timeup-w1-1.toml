@@ -4,8 +4,3 @@
 # (T34). Ends on frame 268; `game-over-timeup-w1-1` goes on to the title.
 sync = { level = "W1-1", clock = "0:03" }
 frames = 269
-
-[[exclude]]
-what = "enemies"
-note = "the bubble (T17's, now T39–T41's) returns at once from power-on; world 1's enemies are live (T42)"
-task = "T39–T41"

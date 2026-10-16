@@ -350,6 +350,9 @@ pub(crate) struct Cx<'a> {
     /// frame's interrupt left it, put back at the load (the main program's work before the load
     /// was done in the frame the original's load began).
     pub load_runs: Vec<(u32, Vec<u8>)>,
+    /// A load this frame was given the original's state at its end (conformance only): the
+    /// original's load is over, however long the engine models it as taking.
+    pub load_given: bool,
 }
 
 impl Cx<'_> {
@@ -465,6 +468,7 @@ impl Cx<'_> {
             // frame had got to; a load begun on line 0 counts as begun last frame.
             self.line = l.max(1);
         }
+        self.load_given = !self.load_runs.is_empty();
         for (at, bytes) in std::mem::take(&mut self.load_runs) {
             self.s.poke(at, &bytes);
         }
@@ -777,7 +781,7 @@ impl Front {
     /// `jsr level_exit_fade` when the level is one of its (T183), else the exit fade alone.
     pub(crate) fn level_over(s: &State, data: &FrontData, sdr: u8, frog_only: bool) -> Front {
         let routine = match chain::level_call(s, data) {
-            Some(init) => Routine::Chain(chain::Chain::after_loop(init, frog_only)),
+            Some(init) => Routine::Chain(chain::Chain::after_loop(data, init, frog_only)),
             None => Routine::LevelOver(crate::level::exit::LevelOver::new(frog_only)),
         };
         Front::after_level(s, sdr, routine, frog_only)
@@ -860,6 +864,7 @@ impl Front {
             early: Vec::new(),
             outcome: None,
             load_runs: Vec::new(),
+            load_given: false,
         };
         self.run_main(&mut cx, u16::MAX);
         self.stalled = cx.stall;
@@ -932,6 +937,16 @@ impl Front {
         self.keyboard.new
     }
 
+    /// The title waits in its idle, or its menu for a choice: fire in the next frame opens the
+    /// menu, or takes its item lit (START GAME unless moved).
+    pub(crate) fn title_waits(&self) -> bool {
+        match self.stack.last().map(|f| &f.routine) {
+            Some(Routine::Title(t)) => t.idle(),
+            Some(Routine::Menu(m)) => m.ready(),
+            _ => false,
+        }
+    }
+
     /// The level's loop has been entered again (a restart, T37): the level scene goes on.
     pub(crate) fn in_level_loop(&self) -> bool {
         matches!(self.stack.last().map(|f| &f.routine), Some(Routine::LevelLoop))
@@ -972,6 +987,7 @@ impl Front {
                 early: Vec::new(),
                 outcome: None,
                 load_runs: Vec::new(),
+                load_given: false,
             };
             title::boot(&mut cx);
             self.cop1lc = cx.cop1lc;
@@ -1032,6 +1048,7 @@ impl Front {
             early: Vec::new(),
             outcome: None,
             load_runs: Vec::new(),
+            load_given: false,
         };
         // Work the main program carried over from the last frame with interrupts off.
         let masked = match self.stack.last() {

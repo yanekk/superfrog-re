@@ -89,7 +89,18 @@ enum Target {
     /// `end_seq_load` (h0+$a65c) and `end_sequence` (h0+$a6e4), after the final level (T18).
     EndSeqLoad,
     EndSequence,
-    /// `$adca`, `$add6`: the cracked disk requests, a bare `rts`.
+    /// The bonus level's: `world_load_lb` (h0+$a39e), `level_load_lb` (h0+$a426),
+    /// `level_init_lb` (h0+$8c3a), and after a death `frog_reset` (h0+$902e), `bonus_frame`
+    /// (h0+$6a64).
+    WorldLoadLb,
+    LevelLoadLb,
+    LevelInitLb,
+    FrogReset,
+    BonusFrame,
+    /// The final level's files and map: `world_load_lw` (h0+$a49a), `level_load_lw` (h0+$a508).
+    WorldLoadLw,
+    LevelLoadLw,
+    /// `$adbe`, `$adca`, `$add6`: the cracked disk requests, a bare `rts`.
     Nothing,
     ShooterOff,
     Other,
@@ -110,6 +121,10 @@ const LEVEL_LOADS: [[u32; 4]; 6] = [
 const LEVEL_INITS: [u32; 6] = [0x8cd8, 0x8d2e, 0x8d84, 0x8dda, 0x8e30, 0x8e86];
 /// `level_init_lw`: the final level's init.
 const FINAL_INIT: u32 = 0x8edc;
+/// `level_init_lb`: the bonus level's init.
+const LEVEL_INIT_LB: u32 = 0x8c3a;
+/// `level_frame_loop` (h0+$aa6).
+const FRAME_LOOP: u32 = 0xaa6;
 /// `end_world_pic_wN` (h0+$42aa..$4326): the world before the next, and its picture's file.
 const END_PICS: [(u32, u32); 6] = [
     (0x42aa, 1),
@@ -148,7 +163,14 @@ fn target(off: u32) -> Target {
         FINAL_INIT => Target::FinalInit,
         0xa65c => Target::EndSeqLoad,
         0xa6e4 => Target::EndSequence,
-        0xadca | 0xadd6 => Target::Nothing,
+        0xa39e => Target::WorldLoadLb,
+        0xa426 => Target::LevelLoadLb,
+        LEVEL_INIT_LB => Target::LevelInitLb,
+        0x902e => Target::FrogReset,
+        0x6a64 => Target::BonusFrame,
+        0xa49a => Target::WorldLoadLw,
+        0xa508 => Target::LevelLoadLw,
+        0xadbe | 0xadca | 0xadd6 => Target::Nothing,
         0x7494 => Target::ShooterOff,
         _ => Target::Other,
     }
@@ -161,9 +183,17 @@ fn level_id(world: u32, level: u8) -> LevelId {
         3 => World::W3,
         4 => World::W4,
         5 => World::W5,
+        7 => World::Bonus,
         _ => World::W6,
     };
     LevelId { world, level, alt: false }
+}
+
+/// `jsr` to `to` somewhere in `top_loop`'s game path.
+fn call_to(data: &super::FrontData, to: u32) -> Option<u32> {
+    (GAME_PATH..0x7d4)
+        .step_by(2)
+        .find(|&pc| data.h0_w(pc) == 0x4eb9 && data.h0_l(pc + 2).wrapping_sub(H0) == to)
 }
 
 /// Where in `top_loop` the level `world`.`level` (1–6, 1–4) has its `jsr level_init_wN`: the
@@ -192,9 +222,10 @@ pub(crate) fn level_call(s: &crate::state::State, data: &super::FrontData) -> Op
         return None;
     }
     if s.w(at(0x1e)) != 0 {
-        return (GAME_PATH..0x7d4)
-            .step_by(2)
-            .find(|&pc| data.h0_w(pc) == 0x4eb9 && data.h0_l(pc + 2).wrapping_sub(H0) == FINAL_INIT);
+        return call_to(data, FINAL_INIT);
+    }
+    if s.l(WORLD) == exit::BONUS_WORLD {
+        return call_to(data, LEVEL_INIT_LB);
     }
     init_call(data, s.l(WORLD), s.l(LEVEL))
 }
@@ -219,8 +250,23 @@ impl Chain {
         }
     }
 
-    /// After the level whose `jsr level_init_wN` is at `init`: at its `jsr level_exit_fade`.
-    pub(crate) fn after_loop(init: u32, frog_only: bool) -> Chain {
+    /// After the level whose `jsr level_init_wN` is at `init`: past its `jsr level_frame_loop`
+    /// (followed through the bonus level's `bra` over its restart, h0+$624), at the
+    /// `jsr level_exit_fade` (the bonus level's tests first).
+    pub(crate) fn after_loop(data: &super::FrontData, init: u32, frog_only: bool) -> Chain {
+        let mut pc = init;
+        while pc < 0x7d4 {
+            match data.h0_w(pc) {
+                0x4eb9 if data.h0_l(pc + 2).wrapping_sub(H0) == FRAME_LOOP => {
+                    return Chain::at(pc + 6, frog_only);
+                }
+                0x4eb9 => pc += 6,
+                op if op & 0xff00 == 0x6000 && op & 0xff != 0 => {
+                    pc = (pc + 2).wrapping_add(op as u8 as i8 as i32 as u32);
+                }
+                _ => break,
+            }
+        }
         Chain::at(init + 18, frog_only)
     }
 
@@ -253,6 +299,8 @@ impl Chain {
                     (self.n, self.z) = ((v as i32) < 0, v == 0);
                     self.pc = pc + 6;
                 }
+                // lea abs.l, a0 (`frog` for `frog_reset`, which the engine's takes as given)
+                0x41f9 => self.pc = pc + 6,
                 // move.w abs.l, abs.l
                 0x33f9 => {
                     let v = cx.s.w(cx.data.h0_l(pc + 2));
@@ -316,6 +364,29 @@ impl Chain {
                 let level = cx.s.l(LEVEL) as u8;
                 let id = level_id(w, level);
                 exit::init_on_beam(cx, frog_only, id, exit::init_inside(id))
+            }
+            Target::WorldLoadLb => call(Routine::WorldLoad(WorldLoad::new(exit::BONUS_WORLD))),
+            Target::LevelLoadLb => call(Routine::LevelLoad(LevelLoad::new(level_id(exit::BONUS_WORLD, 1), ret))),
+            Target::LevelInitLb => {
+                let id = level_id(exit::BONUS_WORLD, 1);
+                exit::init_on_beam(cx, frog_only, id, exit::init_inside(id))
+            }
+            Target::FrogReset => {
+                exit::with_level(cx, frog_only, |c| crate::frog::frog_reset(&mut c.bus));
+                return None;
+            }
+            Target::BonusFrame => {
+                exit::with_level(cx, frog_only, crate::bonus::frame::bonus_frame);
+                return None;
+            }
+            Target::WorldLoadLw => call(Routine::WorldLoad(WorldLoad::final_level(ret))),
+            Target::LevelLoadLw => {
+                let id = LevelId {
+                    world: World::Final,
+                    level: 1,
+                    alt: false,
+                };
+                call(Routine::LevelLoad(LevelLoad::new(id, ret)))
             }
             Target::FinalInit => {
                 let id = LevelId {
@@ -383,29 +454,68 @@ fn world_sound(cx: &mut Cx, world: u32) {
     let Some(d) = cx.data.sound.as_ref() else {
         return;
     };
-    let bank = if world <= 2 { BankId::Worlds12 } else { BankId::Worlds36 };
+    let (bank, tune) = match world {
+        exit::BONUS_WORLD => (BankId::Bonus, TuneId::Bonus),
+        1 | 2 => (BankId::Worlds12, TuneId::World(world as u8)),
+        _ => (BankId::Worlds36, TuneId::World(world as u8)),
+    };
     cx.s.audio.file_loaded(d, BANK_ADDR, File::Bank(bank));
     cx.s.audio.sfx_bank_init(d);
     let at = cx.s.audio.module_addr();
-    cx.s.audio.file_loaded(d, at, File::Tune(TuneId::World(world as u8)));
+    cx.s.audio.file_loaded(d, at, File::Tune(tune));
 }
 
-/// `world_load_wN` (h0+$94a0 …): `world` set, the effects and the music loaded, the loading
-/// picture shown (`world_intro_show`), the map area cleared (h0+$172d6), the tiles, bobs and
-/// masks loaded. Loads are instant; the picture's frog walks meanwhile in the vertical blank.
+/// `world_load_wN` (h0+$94a0 …; the bonus level's `world_load_lb`, h0+$a39e): `world` set, the
+/// effects and the music loaded, the loading picture shown (`world_intro_show`), the map area
+/// cleared (h0+$172d6), the tiles, bobs and masks loaded. Loads are instant; the picture's frog
+/// walks meanwhile in the vertical blank. The final level's `world_load_lw` (h0+$a49a) loads no
+/// sound and shows no picture: the spud flying and `final_level_flag` set, `world` 6, the map
+/// area cleared, the LW tiles, bobs and masks.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub(crate) struct WorldLoad {
     world: u32,
     pc: u8,
+    /// `world_load_lw`, returning to `ret`.
+    final_level: Option<u32>,
 }
+
+/// `frog_spud_flying` (h0+$848), `final_level_flag` (h0+$1e).
+const SPUD_FLYING: u32 = at(0x848);
+const FINAL_LEVEL_FLAG: u32 = at(0x1e);
 
 impl WorldLoad {
     fn new(world: u32) -> WorldLoad {
-        WorldLoad { world, pc: 0 }
+        WorldLoad {
+            world,
+            pc: 0,
+            final_level: None,
+        }
+    }
+
+    fn final_level(ret: u32) -> WorldLoad {
+        WorldLoad {
+            world: 6,
+            pc: 0,
+            final_level: Some(ret),
+        }
     }
 
     pub(super) fn run(&mut self, cx: &mut Cx) -> Yield {
         self.pc += 1;
+        if let Some(ret) = self.final_level {
+            if self.pc == 1 {
+                cx.s.set_w(SPUD_FLYING, 1);
+                cx.s.set_w(FINAL_LEVEL_FLAG, 1);
+                cx.s.set_l(WORLD, 6);
+                let display = cx.display;
+                exit::with_level(cx, false, |c| {
+                    crate::level::load::clear_map_area(&mut c.bus);
+                    c.bus.st.poke(crate::layout::H3, display.bob_sheet(World::Final));
+                });
+                cx.loaded(LoadEnd::Left(ret));
+            }
+            return Yield::Return;
+        }
         match self.pc {
             1 => {
                 cx.s.set_l(WORLD, self.world);
@@ -428,12 +538,30 @@ impl WorldLoad {
                 // `progress_map_show`'s `overlays_end` (under the trackloader the runner's stack
                 // never reaches `top_loop`'s return address).
                 cx.loaded(LoadEnd::Reached(at(0x3df6)));
+                if self.world == exit::BONUS_WORLD && !cx.load_given {
+                    // No walk times the bonus level's picture: it is up as long as these loads
+                    // (owner, T21).
+                    return call(Routine::Frames(super::common::Frames(BONUS_PICTURE_FRAMES)));
+                }
                 Yield::Return
             }
             _ => Yield::Return,
         }
     }
 }
+
+/// The world's file `L<n><kind>` (`LB<kind>` for the bonus level, world 7).
+fn world_file(world: u32, kind: &str) -> String {
+    match world {
+        exit::BONUS_WORLD => format!("LB{kind}"),
+        w => format!("L{w}{kind}"),
+    }
+}
+
+/// How long the bonus level's loading picture stays up after it is shown: its tiles' and bobs'
+/// loads on the original (measured on the oracle, one drive: shown on frame 1160 of
+/// `chain-w5-4-to-bonus`, faded out from 1629).
+const BONUS_PICTURE_FRAMES: u16 = 468;
 
 /// `world_intro_show` (h0+$4116) with `LnLP` loaded: the Accessing-disk overlay taken down, the
 /// picture's planes (an upper and a lower part), the frog and the clouds set up for their walk
@@ -462,7 +590,7 @@ impl WorldIntro {
                     if cx.s.w(GAME_FULL_MODE) == 0 {
                         return Yield::Return;
                     }
-                    let pic = cx.data.file(&format!("L{}LP", self.world)).to_vec();
+                    let pic = cx.data.file(&world_file(self.world, "LP")).to_vec();
                     cx.s.write(BUFFER_0, &pic);
                     cx.loaded(LoadEnd::Left(at(0x4132)));
                     return call(Routine::Overlay(Default::default()));
@@ -881,7 +1009,12 @@ impl LevelLoad {
         match self.pc {
             1 => {
                 cx.s.set_l(LEVEL, self.id.level as u32);
-                for (k, d) in [0u8, 4, 0, 0].into_iter().enumerate() {
+                // 4:00, or 10:00 in the bonus and the final level.
+                let clock = match self.id.world {
+                    World::Bonus | World::Final => [1u8, 0, 0, 0],
+                    _ => [0, 4, 0, 0],
+                };
+                for (k, d) in clock.into_iter().enumerate() {
                     cx.s.set_b(LEVEL_CLOCK + k as u32, d);
                 }
                 call(Routine::MapShow(Default::default()))
@@ -889,6 +1022,13 @@ impl LevelLoad {
             2 => {
                 let (display, id) = (cx.display, self.id);
                 exit::with_level(cx, false, |c| crate::level::load::level_load(c, display, id));
+                match id.world {
+                    // `level_load_lb`'s last: `reward_power_count` 9.
+                    World::Bonus => cx.s.set_w(crate::bonus::death::REWARD_POWER_COUNT, 9),
+                    // `level_load_lw`'s: the frog's spud on (`frog+$7c`).
+                    World::Final => cx.s.set_w(at(0x852), 1),
+                    _ => {}
+                }
                 cx.loaded(LoadEnd::Left(self.ret));
                 Yield::Return
             }

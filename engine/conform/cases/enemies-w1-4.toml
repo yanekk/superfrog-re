@@ -6,8 +6,3 @@ sync = { level = "W1-4" }
 script = "enemies-w1-4"
 frames = 1250
 resync = true
-
-[[exclude]]
-what = "enemies"
-note = "the bubble (T17's, now T39–T41's) returns at once from power-on; world 1's enemies are live (T42)"
-task = "T39–T41"

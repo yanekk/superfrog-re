@@ -50,8 +50,8 @@ fn frog_run_w1_1() {
 }
 
 /// The original's late frames are counted, its slowdown measured (DESIGN §2.1, T181): in
-/// `frog-run-w1-1` its pass is late at the vertical blank twice, the two lags (559, 561); a
-/// title-side case never is.
+/// `frog-run-w1-1`, its objects live (T21), its pass is late at the vertical blank on 320 frames,
+/// from 155; a title-side case never is.
 #[test]
 fn the_originals_late_frames_are_counted() {
     let run = |name: &str| {
@@ -60,7 +60,8 @@ fn the_originals_late_frames_are_counted() {
         sf_conform::run(&case).unwrap_or_else(|d| panic!("{name}: {d}"))
     };
     let o = run("frog-run-w1-1");
-    assert_eq!((o.late, o.straddled.as_slice()), (2, &[559, 561][..]));
+    assert_eq!((o.late, o.straddled.len()), (320, 320));
+    assert_eq!(o.straddled[..4], [155, 159, 161, 162]);
     assert_eq!(run("title-rng").late, 0);
 }
 
@@ -207,8 +208,8 @@ fn bonus_death_wb_1() {
 /// The bonus level completed (T79): 16 deaths on the way, marker 55, the loop's end, the exit
 /// fade; the engine's outcome is the exit, with no re-sync (frames 4283 and 7813 end inside
 /// phase 6, before `buffer_flip`'s writes: T101). Frame 8127, the first after the fade, is the end
-/// picture's: the last fade frame's `shooter_off` (h0+$7494) is seen only there, and the first
-/// variable apart is `end_pic_shown`, the original's picture up (T183 names it).
+/// picture's: the last fade frame's `shooter_off` (h0+$7494) is seen only there; `top_loop` goes on
+/// into it (T21; `chain-bonus-to-w6-1` runs it on to W6-1).
 #[test]
 fn bonus_end_wb_1() {
     let mut case =
@@ -221,13 +222,10 @@ fn bonus_end_wb_1() {
         "{last:?}"
     );
     case.frames += 1;
-    let d = sf_conform::run(&case).expect_err("the end picture is T21's");
-    assert_eq!(d.frame, 8127);
-    assert_eq!(d.unported, ["the bonus level's end picture (T21)"]);
-    assert!(
-        d.first_var.as_ref().is_some_and(|v| v.0.name == "end_pic_shown"),
-        "{d}"
-    );
+    let mut unported = Vec::new();
+    sf_conform::run_with(&case, |_, g| unported = g.unported().to_vec())
+        .unwrap_or_else(|d| panic!("bonus-end-wb-1 and its end picture: {d}"));
+    assert_eq!(unported, Vec::<&str>::new());
 }
 
 /// W4-4 with its enemies live (T41): swoopers, scenery and a ledge freed as the camera leaves

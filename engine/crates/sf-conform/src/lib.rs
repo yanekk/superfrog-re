@@ -723,7 +723,9 @@ struct AloneRun {
 /// The copper lists of the screens whose own timers run on while the original loads under them
 /// (T183): the world's loading picture (h2+$6750), the progress map (h2+$69f0), the
 /// end-of-world picture (h2+$6494). The original's frames spent loading under one count as
-/// play for check 4, the engine run alone showing the screen meanwhile.
+/// play for check 4, the engine run alone showing the screen meanwhile. The bonus level's loading
+/// picture (the same list) has no timer: it is up as long as its loads, which the engine holds it
+/// for (owner, T21: `front::chain`'s `BONUS_PICTURE_FRAMES`), so it counts as one too.
 pub fn timed_screen(cop1lc: u32) -> bool {
     use sf_core::layout::h2;
     [h2(0x6750), h2(0x69f0), h2(0x6494)].contains(&cop1lc)
@@ -876,6 +878,14 @@ impl AloneRun {
         }
         let theirs = self.theirs.end(last as u64).to_vec();
         let ours = self.ours.end(last as u64);
+        if std::env::var_os("SF_CONFORM_MILESTONES").is_some() {
+            // Both sides' lists, for a run that parts (a green one prints the original's).
+            for (side, list) in [("original", &theirs[..]), ("engine", ours)] {
+                for (f, m) in list {
+                    eprintln!("  {side} {f}: {m}");
+                }
+            }
+        }
         milestones::judge(&theirs, ours, milestones::MILESTONE_FRAMES)?;
         Ok(theirs)
     }

@@ -154,6 +154,11 @@ pub(crate) struct Title {
 }
 
 impl Title {
+    /// In the title's idle (h0+$1158's loop): fire next frame opens the menu.
+    pub(super) fn idle(&self) -> bool {
+        self.pc == 6
+    }
+
     pub fn after_boot() -> Title {
         Title {
             boot: true,

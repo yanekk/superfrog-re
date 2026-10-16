@@ -29,6 +29,11 @@ pub(crate) struct Menu {
 }
 
 impl Menu {
+    /// Waiting for its frame (h0+$1540): fire next frame takes the item lit.
+    pub(super) fn ready(&self) -> bool {
+        self.pc == 9
+    }
+
     pub(super) fn run(&mut self, cx: &mut Cx) -> Yield {
         loop {
             self.pc += 1;

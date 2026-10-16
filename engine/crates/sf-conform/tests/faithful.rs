@@ -313,7 +313,8 @@ fn a_presentation_variable_differing_is_not_a_state_difference() {
 }
 
 /// T120's guard holds in faithful mode: an original held mid-pass past the limit fails the case
-/// rather than leaving it green comparing nothing (`items-run-w1-1`'s longest run, 18 from 303).
+/// rather than leaving it green comparing nothing (`items-run-w1-1`'s longest run, 20 from 301,
+/// its objects all live since T21).
 #[test]
 fn a_faithful_case_fails_once_the_original_stays_mid_pass_past_its_limit() {
     let full = Case::load(&sf_conform::cases_dir().join("items-run-w1-1.toml")).unwrap();
@@ -326,20 +327,27 @@ fn a_faithful_case_fails_once_the_original_stays_mid_pass_past_its_limit() {
         }),
         ..full.clone()
     };
-    let o = sf_conform::run(&pinned(18)).unwrap_or_else(|d| panic!("{d}"));
-    assert_eq!((o.mode, o.longest_mid_pass), (Mode::Faithful, (303, 18)));
-    let d = sf_conform::run(&pinned(17)).expect_err("a run past the limit was green");
-    assert_eq!((d.frame, d.lag), (303 + 17, Some((303, 17))), "{d}");
+    let o = sf_conform::run(&pinned(20)).unwrap_or_else(|d| panic!("{d}"));
+    assert_eq!((o.mode, o.longest_mid_pass), (Mode::Faithful, (301, 20)));
+    let d = sf_conform::run(&pinned(19)).expect_err("a run past the limit was green");
+    assert_eq!((d.frame, d.lag), (301 + 19, Some((301, 19))), "{d}");
 }
 
 /// The loosening did not blind the checks: the frog's jump one unit stronger than the original's
-/// fails a frog case in faithful mode, on the frog's state at a pass's end.
+/// fails a frog case in faithful mode, on the frog's state at a pass's end. The original's objects
+/// are frozen out here, as the case had them until T21: with them live its first jump falls in
+/// the lag of 155–259, where no pass is compared.
 #[test]
 fn a_jump_off_by_one_fails_a_frog_case_faithfully() {
-    let case = Case {
+    let mut case = Case {
         frames: 260,
         ..Case::load(&sf_conform::cases_dir().join("frog-run-w1-1.toml")).unwrap()
     };
+    case.exclude.push(sf_conform::case::Exclusion {
+        what: sf_conform::case::Excluded::Objects,
+        note: "the judge's test: an original with no objects, and no lag".into(),
+        task: "T21".into(),
+    });
     assert_eq!(case.mode, Mode::Faithful);
     sf_conform::run(&case).unwrap_or_else(|d| panic!("unbroken: {d}"));
     let vy = def(VarId::FrogVy).addr;

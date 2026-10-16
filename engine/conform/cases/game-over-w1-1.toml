@@ -6,8 +6,3 @@
 # and fade in, and the title's idle from frame 885.
 sync = { game-over = "frog-pit" }
 frames = 950
-
-[[exclude]]
-what = "enemies"
-note = "the bubble (T17's, now T39–T41's) returns at once from power-on; world 1's enemies are live (T42)"
-task = "T39–T41"
