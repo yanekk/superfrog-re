@@ -162,7 +162,7 @@ done · ⛔ blocked, needs a human. A task dropped by a plan amendment leaves th
 | T194 | w6-2-sfx-double-blank | T147; blocks T21 | ✅ | |
 | T195 | w3-3-slot-order | T115; blocks T21 | ✅ | |
 | T196 | pass-over-two-blanks | T184, T150; blocks T21 | ✅ | |
-| T197 | w4-3-dmacon-regression | T194; blocks T21 | ⬜ | |
+| T197 | w4-3-dmacon-regression | T194; blocks T21 | ✅ | |
 
 A Notes cell holds what was built or what the review found, the test count, and one line per
 deviation from the task doc. A ✅ task's cell may be cut to one line once the next task has been reviewed.
