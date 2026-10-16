@@ -165,7 +165,7 @@ done · ⛔ blocked, needs a human. A task dropped by a plan amendment leaves th
 | T197 | w4-3-dmacon-regression | T194; blocks T21 | ✅ | |
 | T198 | disk-prompts | T21; blocks T23, T29 | ⬜ | |
 | T199 | live-restart | T21; blocks T23, T29 | ⬜ | |
-| T200 | hiscore-entry | T21; blocks T23, T29 | ⬜ | |
+| T200 | hiscore-entry | T21; blocks T23, T29 | ✅ | |
 | T201 | continue-and-codes | T21, T200; blocks T23, T29 | ⬜ | |
 | T202 | whole-game-script | T21, T198, T199; blocks T23, T29 | ⬜ | |
 | T203 | whole-game-green | T21, T202; blocks T23, T29 | ⬜ | |
