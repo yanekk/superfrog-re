@@ -18,6 +18,7 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-16 | 🐞 | `enemies_w6_cases::enemies_w6_2_complete` is red on `pir/rust-engine` itself (not T198): re-syncs are now `[1977, 6620, 6665]`, the test still expects 1380 too. Some merge removed that lag without updating the test. Left alone (scope). |
 | 2026-10-16 | 📌 | T21 split at pir's context warning into T198 disk-prompts (its uncommitted work in `T198-wip.patch`), T199 live-restart, T200 hiscore-entry, T201 continue-and-codes, T202 whole-game-script, T203 whole-game-green; all block T23, T29. |
 | 2026-10-16 | 🔄 | Owner, T21: the bonus level's loading picture (no walk; up on the original as long as its loads) is held by the engine for the loads' measured time, its frames counted as play, not shown 0.6 s. |
 | 2026-10-16 | 🐞 | T21: game over in the bonus level (`player_died`, its last life) is a frame early in the engine, as the T18 row below: `chain-w5-4-to-bonus` stops at 1900, before it (1905). |
