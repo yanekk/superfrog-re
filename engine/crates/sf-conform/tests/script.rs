@@ -70,11 +70,35 @@ fn bad_lines_say_why() {
         ("-3: R", "not a frame number"),
         ("+3: R", "not a frame number"),
         ("1: K+1", "two hex digits"),
+        ("1: C8", "C<entry 0..27>.<digit 0..5>"),
+        ("1: C28.0", "C<entry 0..27>.<digit 0..5>"),
+        ("1: C8.6", "C<entry 0..27>.<digit 0..5>"),
+        ("1: Cx.1", "C<entry 0..27>.<digit 0..5>"),
     ] {
         let e = InputScript::parse(text).unwrap_err();
         assert!(e.why.contains(says), "{text}: {e}");
         assert_eq!(e.line, 1);
     }
+}
+
+/// `C<entry>.<k>` is the number key of digit `k` of a `password_table` entry, as the table gives
+/// it: 1..9 are raw keys 01..09, 0 is 0A; a table entry that is not digits is an error.
+#[test]
+fn a_code_digit_is_read_from_the_table() {
+    let table = |e: u32, k: u32| match (e, k) {
+        (8, 0) => b'7',
+        (8, 1) => b'0',
+        (3, 5) => b'1',
+        _ => b'x',
+    };
+    let s = InputScript::parse_with("10: C8.0\n11: C8.1 F\n12: C3.5\n", &table).unwrap();
+    assert_eq!(s.input_at(10).keys.codes().collect::<Vec<_>>(), vec![0x07]);
+    assert_eq!(s.input_at(11).keys.codes().collect::<Vec<_>>(), vec![0x0a]);
+    assert_eq!(s.input_at(11).joy, Joy::FIRE);
+    assert_eq!(s.input_at(12).keys.codes().collect::<Vec<_>>(), vec![0x01]);
+    let e = InputScript::parse_with("1: -\n2: C9.2\n", &table).unwrap_err();
+    assert!(e.why.contains("entry 9 is not digits"), "{e}");
+    assert_eq!(e.line, 2);
 }
 
 #[test]
