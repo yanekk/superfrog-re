@@ -170,7 +170,7 @@ done · ⛔ blocked, needs a human. A task dropped by a plan amendment leaves th
 | T202 | whole-game-script | T21, T198, T199; blocks T23, T29 | ✅ | |
 | T203 | whole-game-green | T21, T202; blocks T23, T29 | ⬜ | |
 | T204 | w3-4-template-86 | T201; blocks T203 | ✅ | |
-| T205 | chain-routes-w1-w2 | T202; blocks T203 | ⬜ | |
+| T205 | chain-routes-w1-w2 | T202; blocks T203 | ✅ | |
 | T206 | chain-routes-w3-w4 | T205; blocks T203 | ⬜ | |
 | T207 | chain-routes-w5-w6-final | T206; blocks T203 | ⬜ | |
 
