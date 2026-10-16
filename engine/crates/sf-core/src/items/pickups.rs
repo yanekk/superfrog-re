@@ -73,7 +73,10 @@ pub fn tile_pickup(c: &mut LevelCtx, cell: u32) {
         0xf040 => fruit(c, cell, 10_000),
         0xf04e => fruit(c, cell, 3_500),
         0x7d4 => {}
-        other => debug_assert!(false, "tile pickup handler ${other:x} is not ported"),
+        other => {
+            let text = format!("tile pickup handler h0+${other:x}");
+            c.unported(crate::level::unported_text(text));
+        }
     }
 }
 

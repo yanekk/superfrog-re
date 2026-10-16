@@ -220,8 +220,6 @@ fn frog_check(name: &str, entry: u32, seed: u64, port: fn(&mut sf_core::level::L
             hw: any_input(&mut g),
             ..Setup::default()
         };
-        // The bubble a pushing surface makes is not modelled (T17), as the case files freeze it.
-        s.pokes.extend(sf_conform::freeze::unported_spawn_patches());
         any_frog(&mut g, &mut s);
         if !rig.check(name, case, entry, &s, port) {
             skipped += 1;
@@ -261,20 +259,23 @@ fn place_frog_sprites_matches_the_original() {
 }
 
 /// The rare ends of `frog_air_anim`: sitting on a pushing surface (the croak, with its random
-/// chance) and resting under a marker-`$39` cell (the sitting lock).
+/// chance), resting under a marker-`$39` cell (the sitting lock) and the bubble rising there every
+/// 64 frames (template 86, T204).
 #[test]
 fn frog_air_anim_on_pushing_surfaces_matches_the_original() {
     use sf_core::layout::h0;
     let mut rig = rig();
     let mut g = Gen::new(27);
-    let (mut croaks, mut locks) = (0, 0);
+    let (mut croaks, mut locks, mut bubbles) = (0, 0, 0);
     for case in 0..CASES {
         let mut s = Setup::default();
-        s.pokes.extend(sf_conform::freeze::unported_spawn_patches());
         any_frog(&mut g, &mut s);
         if g.one_in(4) {
             s.hw = any_input(&mut g);
         }
+        let pushed = g.pick(&[0, 1, 1]);
+        let timer = g.pick(&[0, 0x10, 0x3f, 0x3f]);
+        s.poke_w(h0(0x11350), timer);
         let x = 48 + g.below(4600) as u16;
         let y = 48 + g.below(1200) as u16;
         s.poke_w(FROG + f::X, x);
@@ -286,7 +287,7 @@ fn frog_air_anim_on_pushing_surfaces_matches_the_original() {
             (f::LAUNCH_HOLD, 0),
             (f::SPECIAL_ANIM, 0),
             (f::ON_GROUND, 1),
-            (f::PUSHED, g.pick(&[0, 1, 1])),
+            (f::PUSHED, pushed),
             (f::SLIDING, g.below(2) as u16),
             (f::CLIMB, g.pick(&[0, 0xffff, 0xffff])),
             (f::SIT_TIME, g.pick(&[0, 0, 1])),
@@ -307,9 +308,13 @@ fn frog_air_anim_on_pushing_surfaces_matches_the_original() {
         if rig.check("frog_air_anim (pushing)", case, 0x11056, &s, frog::physics::frog_air_anim) {
             croaks += croak as u32;
             locks += (m == 0x39) as u32;
+            bubbles += (m == 0x39 && pushed != 0 && timer == 0x3f) as u32;
         }
     }
-    assert!(croaks > 1000 && locks > 1000, "{croaks} croak and {locks} lock setups");
+    assert!(
+        croaks > 1000 && locks > 1000 && bubbles > 1000,
+        "{croaks} croak, {locks} lock and {bubbles} bubble setups"
+    );
 }
 
 #[test]

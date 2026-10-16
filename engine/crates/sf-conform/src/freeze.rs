@@ -7,8 +7,9 @@
 //! `enemies`: the objects the engine has no kind for never come into play in the original. Each
 //! world's marker stub in `obj_flag_jumptab` that the engine's dispatch has no spawner for
 //! (enemies and each world's scenery, T16–T18) returns at once, and so does each spawn the frog's
-//! own code makes that no task has ported yet (the bubble rising from a pushing surface, T17),
-//! patched into the original's code from power-on, as soon as the game is in memory. Items,
+//! own code makes that no task has ported yet (none since T204 ported the bubble rising from a
+//! pushing surface), patched into the original's code from power-on, as soon as the game is in
+//! memory. Items,
 //! pickups, switches, pads and launchers (T15) play as they do.
 //! `panel`: the status panel's bitmap is not compared, as a variable or in the picture.
 
@@ -21,9 +22,9 @@ use sf_oracle::Amiga;
 const JUMPTAB: u32 = 0x178ec;
 const WORLDS: u32 = 7;
 const MARKERS: u32 = 64;
-/// Frog-side spawns not modelled, as `(jsr's address, task)`: `frog_air_anim`'s bubble
-/// (template 86, h0+$1130a).
-const UNPORTED_SPAWNS: [(u32, &str); 1] = [(0x1130a, "T17")];
+/// Frog-side spawns not modelled, as `(jsr's address, task)`: none (`frog_air_anim`'s bubble,
+/// template 86 at h0+$1130a, was until T204).
+const UNPORTED_SPAWNS: [(u32, &str); 0] = [];
 
 fn word(b: &[u8], at: usize) -> u16 {
     u16::from_be_bytes([b[at], b[at + 1]])
