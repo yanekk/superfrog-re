@@ -44,6 +44,9 @@ pub enum SyncPoint {
     /// disk it asks for inserted, to the end of the first frame on which its main program is in
     /// `end_seq_load` (top_loop's call, return address h0+$7b6).
     EndSequence,
+    /// [`SyncPoint::EndSequence`] with `score` (h0+$834) then set to `score` (T200: the game's end
+    /// with a new high score).
+    EndSequenceScore { score: u32 },
     /// The slot machine's start (T71): W1-1 reached as `AtLevel` reaches it, by the `start` script
     /// (`start-w1-1` when `None`), `script` played in W1-1 to its last line's frame, then the
     /// level's exit forced (`level_state` = 1, as for the final level); in `level_tally`'s choice up
@@ -67,7 +70,8 @@ pub enum SyncPoint {
     /// frog's death has ended the level's loop and the original's main program is in
     /// `game_over_seq` (h0+$7600 on its stack). The sync point is the end of the frame before:
     /// the level is transplanted, and the case's first frame is the one game over begins in.
-    GameOver { script: String },
+    /// With `score`, `score` (h0+$834) is set to it with the lives (T200: a new high score).
+    GameOver { script: String, score: Option<u32> },
     /// A level's first frame as [`SyncPoint::AtLevel`] reaches it, `frog_lives` (h0+$82e) then
     /// set to `lives` (T79: the bonus level played to its end through the deaths on the way).
     Lives { level: LevelId, lives: u16 },
@@ -99,6 +103,8 @@ const LEVEL_STATE: u32 = h0(0xa06);
 const LEVEL_CLOCK: u32 = h0(0x876);
 /// `frog_lives` (h0+$82e).
 const FROG_LIVES: u32 = h0(0x82e);
+/// `score` (h0+$834).
+const SCORE: u32 = h0(0x834);
 /// `level_exit_fade`'s return address from `game_over_seq`.
 const IN_GAME_OVER: u32 = h0(0x7600);
 /// Frames of W1-1 the game-over sync point's script has to lose the last life in.
@@ -512,6 +518,12 @@ pub fn reach_frozen(
             by_password(*id, frames, frozen)
         }
         SyncPoint::EndSequence => end_sequence(frames),
+        SyncPoint::EndSequenceScore { score } => {
+            let mut synced = end_sequence(frames)?;
+            synced.amiga.write_memory(SCORE, &score.to_be_bytes());
+            synced.memory = core_memory(synced.amiga.memory());
+            Ok(synced)
+        }
         SyncPoint::Slot { script, start } => slot(script, start.as_deref(), frames),
         SyncPoint::Clock { level, seconds } => {
             let mut synced = reach_frozen(&SyncPoint::AtLevel(*level), script, frames, frozen)?;
@@ -527,7 +539,7 @@ pub fn reach_frozen(
             synced.memory = core_memory(synced.amiga.memory());
             Ok(synced)
         }
-        SyncPoint::GameOver { script } => {
+        SyncPoint::GameOver { script, score } => {
             let w1_1 = LevelId {
                 world: World::W1,
                 level: 1,
@@ -542,6 +554,9 @@ pub fn reach_frozen(
                     frozen,
                 )?;
                 synced.amiga.write_memory(FROG_LIVES, &[0, 0]);
+                if let Some(score) = score {
+                    synced.amiga.write_memory(SCORE, &score.to_be_bytes());
+                }
                 Ok(synced)
             };
             // The frame game over begins in, then the original again to the frame before it.

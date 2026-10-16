@@ -165,7 +165,7 @@ done · ⛔ blocked, needs a human. A task dropped by a plan amendment leaves th
 | T197 | w4-3-dmacon-regression | T194; blocks T21 | ✅ | |
 | T198 | disk-prompts | T21; blocks T23, T29 | ✅ | Review clean, no fix commit: code is T21's patch byte for byte; flow, chain, front, purity green. Probed `level_load_of` against the old 24-entry table (same, no extras); mutations (always prompt; map clear 0 cycles) red. `end_seq_load`'s disk-3 prompt lost to disk 1 same frame (FINDINGS). w6-2 red on base too. |
 | T199 | live-restart | T21; blocks T23, T29 | ⬜ | |
-| T200 | hiscore-entry | T21; blocks T23, T29 | ⬜ | |
+| T200 | hiscore-entry | T21; blocks T23, T29 | ✅ | |
 | T201 | continue-and-codes | T21, T200; blocks T23, T29 | ⬜ | |
 | T202 | whole-game-script | T21, T198, T199; blocks T23, T29 | ⬜ | |
 | T203 | whole-game-green | T21, T202; blocks T23, T29 | ⬜ | |
