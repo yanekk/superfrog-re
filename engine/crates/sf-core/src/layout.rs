@@ -708,6 +708,25 @@ pub fn presentation(id: VarId) -> Option<&'static str> {
     })
 }
 
+/// [`presentation`] for one piece of a variable: the whole variable's tag, or for `bob_records`
+/// the longs only the bob drawer writes and only it and the erase read (T199). Each bob record
+/// (`$11c` bytes from h0+$297b6, its level position in the long before it) has four
+/// sub-records, `$46` apart: the two buffers' main part and seam part. The first holds the
+/// animation the objects read; of the other three, all but each one's destination pointer
+/// (`+$10`, which `build_bob_draw_list` reads to keep a freed bob listed for its erase).
+pub fn presentation_piece(p: &VarDef) -> Option<&'static str> {
+    presentation(p.id).or_else(|| {
+        let r = (p.addr.wrapping_sub(def(VarId::BobRecords).addr) % BOB_RECORD) as i32 - 4;
+        let dest = |at: i32| (1..4).any(|k| (r..r + 4).contains(&(k * BOB_SUB + 0x10 + at)));
+        (p.id == VarId::BobRecords && r >= BOB_SUB && !dest(0) && !dest(3))
+            .then_some("a bob's drawing records for the other buffer and the seam: how it was drawn")
+    })
+}
+
+/// A bob record with its position long, and a sub-record of it (`bob_records`).
+const BOB_RECORD: u32 = 0x11c;
+const BOB_SUB: i32 = 0x46;
+
 /// The entry for `id`.
 pub fn def(id: VarId) -> &'static VarDef {
     &LAYOUT[id as usize]
@@ -859,5 +878,34 @@ mod tests {
         assert!(presentation(VarId::LevelCopper).is_some());
         assert!(presentation(VarId::PlayfieldBuffer0).is_some());
         assert!(presentation(VarId::ScrollColumn).is_some());
+    }
+
+    /// `bob_records`' pieces (T199): the animation and level position compared, the drawing
+    /// records of the other buffer and the seam left to the picture, but their destination
+    /// pointers, which keep a freed bob in the draw list.
+    #[test]
+    fn only_a_bobs_drawing_records_are_presentation() {
+        let d = def(VarId::BobRecords);
+        let tagged: Vec<u32> = d
+            .pieces()
+            .filter(|p| presentation_piece(p).is_some())
+            .map(|p| p.addr - d.addr)
+            .collect();
+        let rec = |k: u32, at: u32| k * 0x11c + 4 + at;
+        // The 10th object's: its seam part's blit size (`items-shield-w3-1`'s frame 295).
+        assert!(tagged.contains(&0xaa8) && 0xaa8 == rec(9, 0x8c + 0x1c));
+        for k in 0..20 {
+            assert!(!tagged.contains(&(k * 0x11c)), "record {k}'s level position");
+            for at in [0x08, 0x14, 0x18, 0x28, 0x40] {
+                assert!(!tagged.contains(&rec(k, at)), "record {k}'s animation +{at:x}");
+            }
+            for at in [0x56 - 2, 0x56 + 2, 0x9c, 0xe2 - 2, 0xe2 + 2] {
+                assert!(!tagged.contains(&rec(k, at)), "record {k}'s destination +{at:x}");
+            }
+            for at in [0x48, 0x5c, 0x8c, 0xa8, 0xd4, 0x114] {
+                assert!(tagged.contains(&rec(k, at)), "record {k}'s drawing +{at:x}");
+            }
+        }
+        assert!(presentation_piece(def(VarId::BobDrawList)).is_none());
     }
 }

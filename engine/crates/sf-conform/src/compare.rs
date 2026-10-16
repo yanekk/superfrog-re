@@ -511,7 +511,7 @@ impl PassMatch {
 }
 
 /// [`vars_except`] for the faithful state check: leaves out what `case` leaves out and every
-/// `presentation` variable (DESIGN §2.1 check 1).
+/// `presentation` variable or piece (DESIGN §2.1 check 1).
 pub fn gameplay_vars(
     case: &Case,
     layout: &[VarDef],
@@ -520,7 +520,7 @@ pub fn gameplay_vars(
     masked: &[(u32, u32)],
 ) -> Option<(VarDef, u32, u32)> {
     vars_except(layout, probe, theirs, masked, |d| {
-        sf_core::layout::presentation(d.id).is_some() || case_skips(case, d)
+        sf_core::layout::presentation_piece(d).is_some() || case_skips(case, d)
     })
 }
 
