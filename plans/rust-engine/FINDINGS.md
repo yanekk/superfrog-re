@@ -18,6 +18,10 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-16 | 📌 | T150 review: T196 claims T194's W6-2 fault but does not block T194; both may be dispatched and fix it twice. Sweep: other cases' exit-frame comments read-only, pinned ones (W1-2, W1-4, W6-3) agree. |
+| 2026-10-16 | 🔄 | Owner, T150: added T196 pass-over-two-blanks (T184, T150; blocks T21) for `enemies-w6-4-complete`: coins a pass early at 154 after late frames 150–153; alone, objects a frame ahead from 5231 (pass held over 5228–5229). Also owns W2-2's and W6-2's (T194). |
+| 2026-10-16 | 📌 | T150: W6-4's marker 55 cells are pickups (by `tile_pickup`'s table): 85 tile coins, wings at 212,37 233,34 228,77 234,77, speed-ups 231–237,78. The 24 spikes at row 10 are crossed only with wings (fire flaps). |
+| 2026-10-16 | 📌 | T150: `plan_exit_w6` stalls where its field misleads (W6-4: spikes 118–124,18; the pad 239–240,72 under a 2-wide funnel; no wings). A breadth-first search on the engine over held inputs, keyed by 8-px position, found each leg. |
 | 2026-10-16 | 🔄 | Owner, T115: keep the judge fix though no W3 completion needs it now, and add T195 (w3-3-slot-order; T115, blocks T21) for the old W3-3 route's alone divergence rather than only a row here. |
 | 2026-10-16 | 🐞 | T115, owned by T195: `enemies-w3-3-slot-order` (W3-3's old route) is red alone at 6335, a coin fewer: the engine alone's object slots part from the original's at 4053 (all 20 full). The frog's path is identical. |
 | 2026-10-16 | 📌 | T115 (owner's yes): check 4 counts an item only if its marker stays clear two passes; platform spawns clear marker 62 across a pass end. `sf-conform all` 157/160 both ways; complete-w4-4 lost 8, enemies-w3-4 4, all verified transient. |
