@@ -11,10 +11,10 @@ the account is the commit message. Whoever writes a cell also fixes the over-bud
 
 **Plan reviewed:** 2026-10-10 — 7 fixed, 7 decided with the user
 
-**Status:** about 100 tasks ✅; T21 in review, T198–T203 (its split) and Phase 3 open; amended to faithful.
+**Status:** about 100 tasks ✅, T21 among them; T198–T203 (its split) and Phase 3 open; amended to faithful.
 **Last updated:** 2026-10-16
 **Amended 2026-10-15 (owner):** faithful replaces frame-exact (DESIGN §2.1, PLAN.md amendment); T180–T183 added, 14 tasks dropped (PLAN.md).
-**Next `pir-work` will:** review T21; T198 (apply `T198-wip.patch`), T199, T200 in parallel; then T201, T202, T203.
+**Next `pir-work` will:** T198 (apply `T198-wip.patch`), T199, T200 in parallel; then T201, T202, T203.
 
 ## Tasks
 
@@ -44,7 +44,7 @@ done · ⛔ blocked, needs a human. A task dropped by a plan amendment leaves th
 | T18 | bosses | T16, T17, T180, T182 | ✅ | |
 | T19 | slot-and-bonus | T15 | ✅ | |
 | T20 | front-end | T08, T11, T12, T13 | ✅ | |
-| T21 | game-flow | T18, T19, T20, T181, T183 | 🔍 | Split at pir's warning into T198–T203. Kept: bonus/final-level chain (`chain-w5-4-to-bonus`, `chain-bonus-to-w6-1`), 33 cases' exclusions removed, `progress`/`start_at` (`tests/flow.rs`, 3). Deviations: bonus picture held 468 frames (owner); `flow.rs` in sf-conform, not sf-core (disks); judge test freezes objects in code. |
+| T21 | game-flow | T18, T19, T20, T181, T183 | ✅ | Review clean, no fix commit. Kept bonus/final chain, 33 de-excluded cases, `progress`/`start_at`; split T198–T203 valid, carries the unmet done-whens. Ran 7 de-excluded cases (frog-w6-1 now re-syncs once, 479); probed start_at W3-3, W4-2, W6-4; mutated bonus clock, demo check, 468 hold: each caught. |
 | T22 | app-rig | T09, T10, T12, T13 | ✅ | |
 | T23 | app-shell | T21, T22 | ⬜ | |
 | T24 | macos-menus | T23 | ⬜ | |
@@ -173,7 +173,7 @@ done · ⛔ blocked, needs a human. A task dropped by a plan amendment leaves th
 A Notes cell holds what was built or what the review found, the test count, and one line per
 deviation from the task doc. A ✅ task's cell may be cut to one line once the next task has been reviewed.
 
-**Review queue:** T21
+**Review queue:** *(empty)*
 
 ## Blocked on the user
 
