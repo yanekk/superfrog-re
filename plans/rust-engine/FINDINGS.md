@@ -18,6 +18,7 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-16 | 📌 | T151: on W6-4alt the original takes three coins on frame 154, on time; on W6-4 it takes them at 155, after late frames 150–153 (T196's divergence). Same script; the pacing at 153 differs (step 0 vs 1). |
 | 2026-10-16 | 📌 | T150 review: T196 claims T194's W6-2 fault but does not block T194; both may be dispatched and fix it twice. Sweep: other cases' exit-frame comments read-only, pinned ones (W1-2, W1-4, W6-3) agree. |
 | 2026-10-16 | 🔄 | Owner, T150: added T196 pass-over-two-blanks (T184, T150; blocks T21) for `enemies-w6-4-complete`: coins a pass early at 154 after late frames 150–153; alone, objects a frame ahead from 5231 (pass held over 5228–5229). Also owns W2-2's and W6-2's (T194). |
 | 2026-10-16 | 📌 | T150: W6-4's marker 55 cells are pickups (by `tile_pickup`'s table): 85 tile coins, wings at 212,37 233,34 228,77 234,77, speed-ups 231–237,78. The 24 spikes at row 10 are crossed only with wings (fire flaps). |
