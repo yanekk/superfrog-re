@@ -1,0 +1,10 @@
+# W6-2's second map completed (T148): from its first frame through all 97 coins and both switches
+# (50 on the coin room's ledge, then 48, whose gate is the way round to the exit room) to the exit
+# (`level_state` 1 on frame 7336), every object live, nothing left out. T147's W6-2 script to 1420,
+# then planned with `examples/plan_exit_w6` (`PLAN_HEART=12000`, every heart kept; `--via 91,39`
+# out of the floating coins at 140-166,41-44), the climb to switch 50 T147's, its start found on
+# the original. Green faithful and alone (325 milestones), no re-sync.
+sync = { level = "W6-2alt" }
+script = "enemies-w6-2-alt-complete"
+frames = 7337
+resync = true

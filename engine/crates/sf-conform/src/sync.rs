@@ -73,23 +73,6 @@ pub enum SyncPoint {
     Lives { level: LevelId, lives: u16 },
 }
 
-impl SyncPoint {
-    /// Whether every disk the original asks for goes in as a player would put it in: from the
-    /// end sequence's start, and in the final level, which goes on into the end sequence's loads
-    /// (T18). Other cases keep the drive as their sync point left it: inserting a disk changes the
-    /// timing of what follows (power-on's RNG seed among it).
-    pub fn serves_disks(&self) -> bool {
-        match self {
-            SyncPoint::EndSequence => true,
-            SyncPoint::AtLevel(id)
-            | SyncPoint::Clock { level: id, .. }
-            | SyncPoint::Exit(id)
-            | SyncPoint::Lives { level: id, .. } => id.world == World::Final,
-            _ => false,
-        }
-    }
-}
-
 /// The oracle at a sync point.
 pub struct Synced {
     pub amiga: Amiga,
@@ -242,6 +225,15 @@ pub fn pacing(cpu: &CpuRegs, m: &AmigaMemory, writes: &[sf_paula::PaulaWrite]) -
             Pacing::OnTime
         };
     }
+    if in_level(m)
+        && word(m, VBL_COUNT) >= 2
+        && copper_irq_main_pc(cpu, m).is_some_and(|pc| LEVEL_WAIT.contains(&pc))
+    {
+        // The pass was due but never began: the copper interrupt's blits held the CPU through
+        // the frame's end, the main loop still in its wait (T195: W3-3 4026, 5280). The engine
+        // ends the frame as its pass begins, before `vbl_count` is cleared.
+        return late(0, 0);
+    }
     if mid_pass(cpu, m) {
         let phase = pass_phase(cpu, m);
         let step = if phase == FLIP_PHASE {
@@ -253,6 +245,23 @@ pub fn pacing(cpu: &CpuRegs, m: &AmigaMemory, writes: &[sf_paula::PaulaWrite]) -
     } else {
         Pacing::OnTime
     }
+}
+
+/// `vbl_handler`'s call of `copper_irq_blits` returns here (h0+$11d1a).
+const COPPER_IRQ_RETURN: u32 = h0(0x11d1e);
+
+/// When the frame ended inside the copper interrupt's blits (`copper_irq_blits`, its vertical
+/// blank held back behind it at the same level), where the main program was: the PC in the
+/// interrupt's frame, above the 15 registers `vbl_handler` saved and the status register.
+fn copper_irq_main_pc(cpu: &CpuRegs, m: &AmigaMemory) -> Option<u32> {
+    if cpu.pc == VBL_HANDLER || long(m, 0x6c) != VBL_HANDLER {
+        return None;
+    }
+    let sp = cpu.a[7];
+    (sp..sp + 0x100)
+        .step_by(2)
+        .find(|&a| long(m, a) == COPPER_IRQ_RETURN)
+        .map(|a| long(m, a + 4 + 15 * 4 + 2))
 }
 
 /// The return addresses of `level_frame_loop`'s calls in its pass, in order (h0+$abe..$b00).
@@ -813,7 +822,9 @@ fn end_sequence(frames: u32) -> Result<Synced, String> {
 }
 
 /// The player at the drive: whenever the game asks for a disk (`disk_request`'s wanted ID, h0+$af54)
-/// that is not in df0, that disk goes in.
+/// that is not in df0, that disk goes in. Every case runs with one (T192: a level code from
+/// power-on loads its world from disk 2); it acts only when the wanted disk changes, so a case
+/// whose original never asks for another disk runs as it did without.
 pub struct Disks {
     wanted: u32,
 }
@@ -830,9 +841,14 @@ impl Disks {
         }
     }
 
-    /// After a frame of the original's.
+    /// After a frame of the original's. Only the game's own wanted disk counts: before the game
+    /// owns the vertical blank (the boot, disk 3's story intro) h0+$af54 is not its yet.
     pub fn serve(&mut self, a: &mut Amiga) {
-        let want = long(&core_memory(a.memory()), WANTED_DISK);
+        let m = core_memory(a.memory());
+        if long(&m, 0x6c) != VBL_HANDLER {
+            return;
+        }
+        let want = long(&m, WANTED_DISK);
         if want == self.wanted || want == 0 {
             return;
         }

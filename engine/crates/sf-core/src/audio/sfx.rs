@@ -186,11 +186,25 @@ impl AudioDriver {
     /// The rest's record set up (h0+$12b40..$12c12), up to its duration: a vertical blank coming
     /// here has `sfx_tick` see the new effect with no duration, so it ends it at once.
     pub(crate) fn sfx_play_setup(&mut self, data: &SoundData, rest: SfxRest) {
+        self.sfx_play_wait_over(rest);
+        self.sfx_play_record(data, rest);
+    }
+
+    /// The rest's first instruction (h0+$12b40, `clr.l $20(a2)`): the ramps' step indices
+    /// cleared. The 68000 runs it before it takes the vertical blank the raster wait held off,
+    /// so that blank's `sfx_tick` steps the old effect from index 0, and an index it advances
+    /// there is the new effect's (T194: `enemies-w6-2-complete` 6658, the new effect's period
+    /// starting at its second step).
+    pub(crate) fn sfx_play_wait_over(&mut self, rest: SfxRest) {
+        self.sfx.set_l(rec(rest.chan as usize) + PER_STEP, 0);
+    }
+
+    /// The rest's record set up after its first instruction (h0+$12b44..$12c12).
+    pub(crate) fn sfx_play_record(&mut self, data: &SoundData, rest: SfxRest) {
         let SfxRest {
             id, chan, effect, ..
         } = rest;
         let r = rec(chan as usize);
-        self.sfx.set_l(r + PER_STEP, 0);
         self.sfx.set_w(r + STEP, 0);
         self.sfx.set_w(r + ACTIVE, 1);
         self.sfx

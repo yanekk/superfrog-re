@@ -137,17 +137,17 @@ done · ⛔ blocked, needs a human. A task dropped by a plan amendment leaves th
 | T132 | w4-4-completion | T103; blocks T21 | ✅ | |
 | T145 | w4-4-dart-21 | T132; blocks T21 | ✅ | |
 | T147 | w6-2-completion | T104, T180, T182; blocks T21 | ✅ | |
-| T148 | w6-2-alt-completion | T104, T147, T180, T182; blocks T21 | ⬜ | |
+| T148 | w6-2-alt-completion | T104, T147, T180, T182; blocks T21 | ✅ | |
 | T149 | w6-3-completion | T104, T180, T182; blocks T21 | ✅ | |
-| T150 | w6-4-completion | T104, T180, T182; blocks T21 | ⬜ | |
-| T151 | w6-4-alt-completion | T104, T150, T180, T182; blocks T21 | ⬜ | |
+| T150 | w6-4-completion | T104, T180, T182; blocks T21 | ✅ | |
+| T151 | w6-4-alt-completion | T104, T150, T180, T182; blocks T21 | ✅ | |
 | T160 | attract-demo-entry | T33, T180 | ✅ | |
 | T162 | attract-demo-level-start | T160, T180 | ✅ | |
 | T163 | attract-demo-return | T162 | ✅ | |
 | T164 | attract-demo-cycles | T163; blocks T21 | ✅ | |
 | T154 | w1-4-completion | T106, T127, T180, T182; blocks T21 | ✅ | |
 | T166 | w2-2-completion | T122, T180, T182; blocks T21 | ✅ | |
-| T167 | w2-3-completion | T122, T180, T182; blocks T21 | ⬜ | |
+| T167 | w2-3-completion | T122, T180, T182; blocks T21 | ✅ | |
 | T168 | w2-4-completion | T122, T180, T182; blocks T21 | ✅ | Review clean, no fix commit. Ran enemies_w2_cases (7 green); cutting the route at 7700 turns w2_4_complete red; wall_place rerun: original loops at the gate (facing forced left), engine falls. Stomp-stun stands in for spud-stun (same h0+$23bee). T122's in-play hang unreproduced, its script lost. |
 | T180 | faithful-compare | T120; blocks T181, T182 and every open conformance task | ✅ | |
 | T181 | faithful-rebaseline | T180, T182; blocks T21 | ✅ | |
@@ -157,10 +157,11 @@ done · ⛔ blocked, needs a human. A task dropped by a plan amendment leaves th
 | T185 | w6-4-lag-frog-fall | T182; blocks T21 | ✅ | |
 | T190 | chain-world-change | T183; blocks T21 | ✅ | |
 | T191 | chain-pause | T183; blocks T21 | ✅ | |
-| T192 | chain-level-code | T183, T190; blocks T21 | ⬜ | |
+| T192 | chain-level-code | T183, T190; blocks T21 | ✅ | |
 | T193 | chain-e2e | T183; blocks T21 | ✅ | |
-| T194 | w6-2-sfx-double-blank | T147; blocks T21 | ⬜ | |
-| T195 | w3-3-slot-order | T115; blocks T21 | ⬜ | |
+| T194 | w6-2-sfx-double-blank | T147; blocks T21 | ✅ | |
+| T195 | w3-3-slot-order | T115; blocks T21 | ✅ | |
+| T196 | pass-over-two-blanks | T184, T150; blocks T21 | ⬜ | |
 
 A Notes cell holds what was built or what the review found, the test count, and one line per
 deviation from the task doc. A ✅ task's cell may be cut to one line once the next task has been reviewed.
