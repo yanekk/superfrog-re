@@ -18,6 +18,11 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-16 | 🐞 | T195 review sweep: `sync::mid_pass` takes the copper interrupt's PC for the main program's, so W3-3 4026/5280 (main loop in its wait) read as mid-pass, a lag. Not fixed. |
+| 2026-10-16 | 🐞 | T195 review sweep: `sync::in_level_wait` (check 1's pass end) misses a frame held in the copper interrupt with the main loop in its wait. Not fixed. |
+| 2026-10-16 | 📌 | T195, for T196: W6-4's 5230 (on time, `vbl_count` 2) may be the same hold ending at the vertical blank handler's entry; T195's `sync::pacing` change reads only frames ending inside the copper interrupt. |
+| 2026-10-16 | 🐞 | T195, open: `enemies-w3-3-slot-order` still re-syncs at 4028 (`level_copper` original `$e00001`, engine `$e00002`), the frame after the held one; 5282's went. Check 4 unaffected. No owning task. |
+| 2026-10-16 | 📌 | T195: `copper_irq_blits` can hold the CPU past a frame's end with the pass due (`vbl_count` 2, main loop in its wait): W3-3 4026, 5280. Of all 175 cases only `enemies-w3-3-slot-order` has such a frame (oracle scan). |
 | 2026-10-16 | 📌 | T194: the 68000 runs the instruction after INTENA `$c000` before taking a held interrupt; `sfx_play`'s held blank lands after `clr.l $20(a2)`. W6-2 fixed apart from T196: its item 4 is done; T196 need not re-run it. |
 | 2026-10-16 | 📌 | T151: on W6-4alt the original takes three coins on frame 154, on time; on W6-4 it takes them at 155, after late frames 150–153 (T196's divergence). Same script; the pacing at 153 differs (step 0 vs 1). |
 | 2026-10-16 | 🐞 | T192 review sweep: `w1_4_goes_on_to_w2_1` (`tests/chain.rs`) checks only faithfulness; a forced exit that failed on both sides stays green. Not fixed. |
