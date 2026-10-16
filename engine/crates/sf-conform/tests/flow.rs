@@ -1,6 +1,6 @@
 //! The game's flow as the app uses it (T21, DESIGN §2.9): `Game::start_at` from a progress, and
-//! `Game::progress`. Engine only; the flow's faithfulness to the original is `tests/chain.rs`'s
-//! and the whole-game case's.
+//! `Game::progress`. Engine only but for `start_at_equals_the_code_typed_on_the_original`; the
+//! flow's faithfulness to the original is `tests/chain.rs`'s and the whole-game case's.
 
 use sf_core::input::FrameInput;
 use sf_core::layout::presentation;
@@ -73,9 +73,19 @@ fn typed(code: [u8; 6]) -> Game {
 
 /// What the time a player spends on the title decides, which a code typed sooner or later leaves
 /// different: the options screen's flashing colour and the code's (`opt_flash`, `password_buf`'s
-/// first byte), the menu's key-click effects' finished state, the keyboard's last byte, and the
-/// RNG, which the title's blink draws from every idle frame.
-const TITLE_TIME: [&str; 5] = ["opt_flash", "password_buf", "sfx_chan0", "kbd_toggle", "rng_state"];
+/// first byte), the menu's key-click effects' finished state, the keyboard's last byte, the RNG,
+/// which the title's blink draws from every idle frame, and the title's eye-blink timers and the
+/// menu's flash counter where its fire is pressed (`title_blink`, `title_menu`: the same on two
+/// engines whose fire waits for the menu, not on a script's fixed frames, T201).
+const TITLE_TIME: [&str; 7] = [
+    "opt_flash",
+    "password_buf",
+    "sfx_chan0",
+    "kbd_toggle",
+    "rng_state",
+    "title_blink",
+    "title_menu",
+];
 
 /// `start_at` is the code typed on the title (DESIGN §2.9): at each code's first level frame
 /// every gameplay variable is the same but those the title's time decides ([`TITLE_TIME`]). (How
@@ -93,17 +103,50 @@ fn start_at_equals_the_code_typed_on_the_title() {
         to_level(&mut b);
         assert_eq!(a.progress(), at);
         assert_eq!(b.progress(), at, "W{world}: the typed code was not taken");
-        let mut differ: Vec<&str> = a
-            .probe()
-            .into_iter()
-            .zip(b.probe())
-            .filter(|((id, x), (_, y))| presentation(*id).is_none() && x != y)
-            .map(|((id, _), _)| sf_core::LAYOUT.iter().find(|d| d.id == id).map_or("?", |d| d.name))
-            .filter(|n| !TITLE_TIME.contains(n))
-            .collect();
-        differ.dedup();
-        assert_eq!(differ, Vec::<&str>::new(), "W{world}");
+        assert_eq!(differ(&a, &b), Vec::<&str>::new(), "W{world}");
     }
+}
+
+/// The gameplay variables `g` holds that differ from `h`'s, but those the title's time decides.
+fn differ(g: &Game, h: &Game) -> Vec<&'static str> {
+    let mut differ: Vec<&str> = g
+        .probe()
+        .into_iter()
+        .zip(h.probe())
+        .filter(|((id, x), (_, y))| presentation(*id).is_none() && x != y)
+        .map(|((id, _), _)| sf_core::LAYOUT.iter().find(|d| d.id == id).map_or("?", |d| d.name))
+        .filter(|n| !TITLE_TIME.contains(n))
+        .collect();
+    differ.dedup();
+    differ
+}
+
+/// `start_at` against the original (T201): `code-w6-1` types W6-1's code with `CODE_TIMES` on
+/// both sides from power-on, and W6-1's files need disk 4 put in; the case is faithful and alone,
+/// and at W6-1's first frame its engine holds what `start_at(W6-1)` holds at its own, but for
+/// [`TITLE_TIME`].
+#[test]
+fn start_at_equals_the_code_typed_on_the_original() {
+    let at = Progress { world: 6, level: 1 };
+    let case = sf_conform::Case::load(&sf_conform::cases_dir().join("code-w6-1.toml"))
+        .unwrap_or_else(|e| panic!("{e}"));
+    let mut first: Option<Game> = None;
+    let mut unported = Vec::new();
+    if let Err(d) = sf_conform::run_with(&case, |_, g| {
+        unported = g.unported().to_vec();
+        if first.is_none() && g.scene() == Scene::Level {
+            first = Some(g.clone());
+        }
+    }) {
+        panic!("code-w6-1: {d}");
+    }
+    assert_eq!(unported, Vec::<&str>::new());
+    let typed = first.expect("code-w6-1 did not reach a level");
+    assert_eq!(typed.progress(), at, "code-w6-1 did not start W6-1");
+    let mut a = Game::start_at_with(display(), &at, Rng::default());
+    to_level(&mut a);
+    assert_eq!(a.progress(), at);
+    assert_eq!(differ(&a, &typed), Vec::<&str>::new());
 }
 
 /// The disks a game asks for on the way into a world (T21): W4's files are on disk 2, W6's music

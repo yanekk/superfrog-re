@@ -30,6 +30,10 @@ pub enum SyncPoint {
     /// disk 1 is in (it goes in when the intro asks for it). The engine starts with the seed the
     /// game takes after the intro.
     PowerOnDisk3,
+    /// [`SyncPoint::PowerOn`] with an empty df1 connected (T201): W6-2..4's level codes then load
+    /// their first map set, as the engine plays them (docs/10). The boot reaches the title
+    /// [`DF1_LEAD`] frames sooner.
+    PowerOnDf1,
     /// Run the named script from power-on for `frame` frames.
     AtFrame { script: String, frame: u32 },
     /// The first frame of a level, reached the way a player would: W1-1 by START GAME from the
@@ -492,10 +496,11 @@ pub fn reach_frozen(
 ) -> Result<Synced, String> {
     let tag = frozen.tag();
     match sync {
-        SyncPoint::PowerOn | SyncPoint::PowerOnDisk3 => {
+        SyncPoint::PowerOn | SyncPoint::PowerOnDisk3 | SyncPoint::PowerOnDf1 => {
             let boot = boot_disk(sync);
-            let seed = power_on_seed(boot, script, frames)?;
-            let amiga = power_on(boot, frames)?;
+            let drives = if *sync == SyncPoint::PowerOnDf1 { 2 } else { 1 };
+            let seed = power_on_seed(boot, drives, script, frames)?;
+            let amiga = power_on(boot, drives, frames)?;
             let _ = frozen;
             let memory = core_memory(amiga.memory());
             Ok(Synced {
@@ -900,10 +905,11 @@ fn boot_disk(sync: &SyncPoint) -> DiskSlot {
     }
 }
 
-fn power_on(boot: DiskSlot, frames: u32) -> Result<Amiga, String> {
+fn power_on(boot: DiskSlot, drives: u8, frames: u32) -> Result<Amiga, String> {
     let cfg = OracleConfig::locate(frames)
         .map_err(|e| e.to_string())?
-        .with_boot(boot);
+        .with_boot(boot)
+        .with_drives(drives);
     Amiga::power_on(&cfg).map_err(|e| e.to_string())
 }
 
@@ -1036,8 +1042,13 @@ pub fn step_inserting(a: &mut Amiga, input: FrameInput) -> Result<sf_oracle::Fra
 
 /// The RNG state on the frame the original first seeds it (docs/08 "RNG"): the first frame, once
 /// the game owns the vertical blank, on which `rng_state` changes.
-fn power_on_seed(boot: DiskSlot, script: &InputScript, frames: u32) -> Result<Option<Rng>, String> {
-    let mut a = power_on(boot, frames)?;
+fn power_on_seed(
+    boot: DiskSlot,
+    drives: u8,
+    script: &InputScript,
+    frames: u32,
+) -> Result<Option<Rng>, String> {
+    let mut a = power_on(boot, drives, frames)?;
     let mut prev = None;
     for f in 0..frames {
         step_inserting(&mut a, script.input_at(f))?;

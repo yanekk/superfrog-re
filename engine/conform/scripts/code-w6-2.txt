@@ -1,0 +1,36 @@
+# Power-on to W6-2 by its level code (T201): chain-level-code's input with password_table
+# entry 21's digits and every press from the menu on 219 frames sooner (with df1 connected the
+# boot reaches the title that much sooner: `sync.rs`'s DF1_LEAD). The timings are `sync.rs`'s
+# `drive_to`, `Game::type_code`'s CODE_TIMES.
+1000: M
+1005: -
+4381: F
+4386: -
+4431: D
+4436: -
+4481: F
+4486: -
+4581: D
+4591: -
+4621: D
+4631: -
+4661: D
+4671: -
+4761: C21.0
+4767: -
+4777: C21.1
+4783: -
+4793: C21.2
+4799: -
+4809: C21.3
+4815: -
+4825: C21.4
+4831: -
+4841: C21.5
+4847: -
+4897: F
+4902: -
+4997: F
+5002: -
+5057: F
+5062: -

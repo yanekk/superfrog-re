@@ -210,7 +210,7 @@ fn run_inner(
     let mut amiga = synced.amiga;
     let mut prev = synced.memory.clone();
     let start = match &case.sync {
-        SyncPoint::PowerOn => Start::PowerOn {
+        SyncPoint::PowerOn | SyncPoint::PowerOnDf1 => Start::PowerOn {
             seed: synced.seed.unwrap_or_default(),
         },
         SyncPoint::PowerOnDisk3 => Start::Disk3 {
