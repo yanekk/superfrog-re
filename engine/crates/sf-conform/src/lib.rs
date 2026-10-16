@@ -143,7 +143,7 @@ pub fn run_with(
     case: &Case,
     before_step: impl FnMut(u32, &mut Game),
 ) -> Result<Outcome, Divergence> {
-    run_inner(case, before_step, &mut |_, _, _| {}, None)
+    run_inner(case, before_step, &mut |_, _, _| {}, None, false)
 }
 
 /// [`run`], calling `after_step(frame, ours, theirs)` with both sides' Paula writes of each frame
@@ -152,7 +152,7 @@ pub fn run_observing(
     case: &Case,
     mut after_step: impl FnMut(u32, &[sf_paula::PaulaWrite], &[sf_paula::PaulaWrite]),
 ) -> Result<Outcome, Divergence> {
-    run_inner(case, |_, _| {}, &mut after_step, None)
+    run_inner(case, |_, _| {}, &mut after_step, None, false)
 }
 
 /// [`run`] with both hooks: `before_step(frame, game)` and `after_step(frame, ours, theirs)`.
@@ -161,7 +161,16 @@ pub fn run_hooked(
     before_step: impl FnMut(u32, &mut Game),
     mut after_step: impl FnMut(u32, &[sf_paula::PaulaWrite], &[sf_paula::PaulaWrite]),
 ) -> Result<Outcome, Divergence> {
-    run_inner(case, before_step, &mut after_step, None)
+    run_inner(case, before_step, &mut after_step, None, false)
+}
+
+/// [`run_observing`], `after_step` also called on each frame the original ended in the middle of
+/// a pass (lag), which the comparison leaves out but whose Paula writes count (T197).
+pub fn run_observing_lag(
+    case: &Case,
+    mut after_step: impl FnMut(u32, &[sf_paula::PaulaWrite], &[sf_paula::PaulaWrite]),
+) -> Result<Outcome, Divergence> {
+    run_inner(case, |_, _| {}, &mut after_step, None, true)
 }
 
 /// [`run`], going on past each divergence: every frame that differs, in order (for finding what
@@ -173,7 +182,7 @@ pub fn scan(case: &Case) -> Vec<Divergence> {
 /// [`scan`], with what the run compared.
 pub fn scan_counting(case: &Case) -> (Vec<Divergence>, Outcome) {
     let mut found = Vec::new();
-    let o = run_inner(case, |_, _| {}, &mut |_, _, _| {}, Some(&mut found))
+    let o = run_inner(case, |_, _| {}, &mut |_, _, _| {}, Some(&mut found), false)
         .expect("a scan collects its divergences");
     (found, o)
 }
@@ -183,6 +192,7 @@ fn run_inner(
     mut before_step: impl FnMut(u32, &mut Game),
     after_step: &mut dyn FnMut(u32, &[sf_paula::PaulaWrite], &[sf_paula::PaulaWrite]),
     found: Option<&mut Vec<Divergence>>,
+    observe_lag: bool,
 ) -> Result<Outcome, Divergence> {
     // `run --alone`: checks 1–3 run on, their failures set aside, and check 4 ends the run.
     let mut set_aside = Vec::new();
@@ -487,6 +497,9 @@ fn run_inner(
             }
         }
         if theirs_mid {
+            if observe_lag {
+                after_step(f, &ours.paula, &theirs.paula);
+            }
             outcome.straddled.push(f);
             after_lag = true;
             if let Some(from) = lag.left_out(f, true, &mut outcome) {
