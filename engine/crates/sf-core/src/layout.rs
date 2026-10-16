@@ -359,6 +359,10 @@ layout! {
     /// `password_shown` (h0+$24cc): the password the slot machine's prize shows
     /// (`password_for_level`).
     PasswordShown = "password_shown", h0(0x24cc), Width::Bytes(0xc);
+    /// h0+$2d8a..$2d8e: `hiscore_name_entry`'s cursor flash counter and its on/off toggle.
+    HiscoreFlash = "hiscore_flash", h0(0x2d8a), Width::Bytes(4);
+    /// h0+$2dfc..$2e04: the name typed in `hiscore_name_entry` (dots where none is typed).
+    HiscoreName = "hiscore_name", h0(0x2dfc), Width::Bytes(8);
     /// h0+$2f90..$3028: `hiscore_table`: ten scores (a long and a long) and ten names.
     HiscoreTable = "hiscore_table", h0(0x2f90), Width::Bytes(0x98);
     /// h0+$3258: where the text writer (h0+$30fc) stopped.

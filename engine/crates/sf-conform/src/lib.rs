@@ -216,7 +216,10 @@ fn run_inner(
         SyncPoint::PowerOnDisk3 => Start::Disk3 {
             seed: synced.seed.unwrap_or_default(),
         },
-        SyncPoint::AtFrame { .. } | SyncPoint::EndSequence | SyncPoint::Slot { .. } => {
+        SyncPoint::AtFrame { .. }
+        | SyncPoint::EndSequence
+        | SyncPoint::EndSequenceScore { .. }
+        | SyncPoint::Slot { .. } => {
             Start::Resume {
                 memory: synced.memory,
                 cpu: sync::core_cpu(&amiga.cpu()),

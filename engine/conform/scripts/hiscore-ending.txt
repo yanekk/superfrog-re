@@ -1,0 +1,10 @@
+# T200: a name typed in the high-score entry after the end sequence (sync point: end_seq_load,
+# score set): J A N, then Return ends the entry.
+3950: K26
+3953: -
+3960: K20
+3963: -
+3970: K36
+3973: -
+3990: K44
+3993: -

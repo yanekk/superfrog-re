@@ -185,7 +185,10 @@ Sync points:
 - `sync = { game-over = "<script>" }`: game over after the last life (T34): W1-1 reached as
   `{ level = "W1-1" }` reaches it, `frog_lives` set to 0 on its first frame, the script played
   until the frog's death ends the level's loop into `game_over_seq`. The level is transplanted at
-  the end of the frame before, so the case's first frame is the one game over begins in.
+  the end of the frame before, so the case's first frame is the one game over begins in. With
+  `score = N` beside it, `score` is set to N with the lives (T200: a new high score).
+- `sync = { end-sequence = true, score = N }`: `"end-sequence"` with `score` then set to N (T200:
+  the game's end with a new high score).
 - `sync = { level = "W1-1" }`: the first in-level frame (in the final level, `WW-1`, every disk the
   original asks for goes in, so it plays on into the end sequence), reached the way a player would: W1-1 by
   START GAME (`scripts/start-w1-1.txt`), any other level of W1–W6 and the bonus level (`"WB-1"`) by
