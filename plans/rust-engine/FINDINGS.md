@@ -18,6 +18,8 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-16 | 🐞 | T195 review sweep: `sync::mid_pass` takes the copper interrupt's PC for the main program's, so W3-3 4026/5280 (main loop in its wait) read as mid-pass, a lag. Not fixed. |
+| 2026-10-16 | 🐞 | T195 review sweep: `sync::in_level_wait` (check 1's pass end) misses a frame held in the copper interrupt with the main loop in its wait. Not fixed. |
 | 2026-10-16 | 📌 | T195, for T196: W6-4's 5230 (on time, `vbl_count` 2) may be the same hold ending at the vertical blank handler's entry; T195's `sync::pacing` change reads only frames ending inside the copper interrupt. |
 | 2026-10-16 | 🐞 | T195, open: `enemies-w3-3-slot-order` still re-syncs at 4028 (`level_copper` original `$e00001`, engine `$e00002`), the frame after the held one; 5282's went. Check 4 unaffected. No owning task. |
 | 2026-10-16 | 📌 | T195: `copper_irq_blits` can hold the CPU past a frame's end with the pass due (`vbl_count` 2, main loop in its wait): W3-3 4026, 5280. Of all 175 cases only `enemies-w3-3-slot-order` has such a frame (oracle scan). |
