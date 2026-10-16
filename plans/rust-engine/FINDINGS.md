@@ -18,6 +18,9 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-16 | 🔄 | Owner, T196: added T197 w4-3-dmacon-regression (T194; blocks T21): `complete-w4-3` red at 4546 since T194; at 4543 the engine lacks the original's DMACON `$8400` (line 252), so its frame ends in `sfx_play`'s wait. |
+| 2026-10-16 | 🐞 | T196: `w2-2-complete` now plays alone green; checks 1–3 still red at 1229, a different fault: frame 1228 ends inside `obj_despawn_if_offscreen` (h0+$1b9ce), its last `camera_y` check after the blank; the engine runs that update whole. No owner. |
+| 2026-10-16 | 📌 | T196: `Pacing::PassDue` (the original waiting, its pass due) holds the alone engine's pass to the next blank; the frog walk's box counts taken from h0+$d100. `items-pad-w1-1`, red since T194, fixed by a frame-end check before `sfx_play`. |
 | 2026-10-16 | 🐞 | T195 review sweep: `sync::mid_pass` takes the copper interrupt's PC for the main program's, so W3-3 4026/5280 (main loop in its wait) read as mid-pass, a lag. Not fixed. |
 | 2026-10-16 | 🐞 | T195 review sweep: `sync::in_level_wait` (check 1's pass end) misses a frame held in the copper interrupt with the main loop in its wait. Not fixed. |
 | 2026-10-16 | 📌 | T195, for T196: W6-4's 5230 (on time, `vbl_count` 2) may be the same hold ending at the vertical blank handler's entry; T195's `sync::pacing` change reads only frames ending inside the copper interrupt. |
