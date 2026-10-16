@@ -277,6 +277,10 @@ pub struct LevelCtx<'a> {
     /// frame's end in the wait is looked for, the line its INTENA `$4000` was made on, and the
     /// effect whose rest follows the wait.
     held: Option<(PaulaWrite, u16, crate::audio::SfxRest)>,
+    /// The copper interrupt is running, and the first of its Paula writes made past the frame's
+    /// end ([`LevelCtx::irq_frame_end`]).
+    pub(crate) in_coper: bool,
+    over_end: Option<usize>,
 }
 
 impl<'a> LevelCtx<'a> {
@@ -310,6 +314,8 @@ impl<'a> LevelCtx<'a> {
             coper_masked: false,
             coper_pending: false,
             held: None,
+            in_coper: false,
+            over_end: None,
         }
     }
 }
@@ -546,6 +552,12 @@ impl LevelCtx<'_> {
     /// are kept for the next step; in the middle of a pass its frame ends without (on time), the
     /// pass runs on uninterrupted.
     pub fn frame_end(&mut self) {
+        self.frame_end_from(None);
+    }
+
+    /// [`LevelCtx::frame_end`], the next frame's writes starting at Paula write `from` (one
+    /// already made) when given.
+    fn frame_end_from(&mut self, from: Option<usize>) {
         let f = self.frames.as_mut().expect("the main program's frames");
         let next = f.at.map_or(0, |a| a + 1);
         if let Some((true, None)) = f.current()
@@ -567,11 +579,11 @@ impl LevelCtx<'_> {
             f.in_vbl = true;
             self.stamp();
             let f = self.frames.as_mut().expect("frames");
-            f.from = self.paula.len();
+            f.from = from.unwrap_or(self.paula.len());
             self.clock = self.clock.next_frame();
             self.bus.at = self.clock.nominal();
             if own {
-                f.out_from = self.paula.len();
+                f.out_from = f.from;
                 self.bus.log = Some(crate::mem::WriteLog::default());
             }
             self.hw = spec.hw;
@@ -588,7 +600,7 @@ impl LevelCtx<'_> {
         self.stamp();
         let f = self.frames.as_mut().expect("frames");
         f.done = true;
-        f.out_to = Some(self.paula.len());
+        f.out_to = Some(from.unwrap_or(self.paula.len()));
         f.log = self.bus.log.take();
         if let Some((on, _, _)) = self.held.take() {
             // Past the step's end: the next step runs the pass again.
@@ -608,6 +620,25 @@ impl LevelCtx<'_> {
                 });
             }
         }
+    }
+
+    /// The copper interrupt has returned, having run past the frame's end: the next frame's
+    /// vertical blank, pending since, is taken at once, before the main program runs on, and the
+    /// interrupt's writes from the first made past the end are that frame's (T197:
+    /// `complete-w4-3` 4542–4543, the original's DMACON `$0400` and INTREQ `$10` on line 7 of
+    /// 4543, its vertical blank straight after). Not when that would end the step's own frame
+    /// outside a pass: no pass runs again in the next step to make the interrupt's rest.
+    fn irq_frame_end(&mut self, from: usize) {
+        let Some(f) = self.frames.as_ref() else {
+            return;
+        };
+        let Some((own, _)) = f.current() else {
+            return;
+        };
+        if f.done || f.past_end || (own && !f.in_pass) {
+            return;
+        }
+        self.frame_end_from(Some(from));
     }
 
     /// A frame ended in `sfx_play`'s raster wait (h0+$12b28), interrupts off since INTENA `$4000`
@@ -794,6 +825,9 @@ impl LevelCtx<'_> {
     pub fn custom(&mut self, reg: u16, value: u16) {
         self.stamp();
         self.interrupt_due_at(true);
+        if self.in_coper && self.over_end.is_none() && self.clock.line >= beam::FRAME_LINES {
+            self.over_end = Some(self.paula.len());
+        }
         self.tick(beam::Tick::Write(self.paula.len() as u32));
         self.scheduled(self.paula.len());
         self.paula.push(PaulaWrite {

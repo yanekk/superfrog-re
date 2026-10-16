@@ -241,11 +241,41 @@ fn enemies_w4_4_activation() {
 /// start area, a marker-22 floater and an upward crusher hurting the frog, the 99 coins, the exit
 /// at 8485 and fire taking the points; green, and on the frames after, the tally back in
 /// `top_loop` (W4-4's load, T183), the level completed with the points taken.
+///
+/// Frame 4542 ends while the copper interrupt still blits: its DMACON `$0400` and INTREQ `$10`
+/// are 4543's first writes, and 4543's vertical blank is taken straight after, before the main
+/// program's next blit sets BLTPRI (DMACON `$8400`, line 252 of 4543 on the original). With the
+/// interrupt's tail in 4542 and that `$8400` before the blank, 4543's 40th write was `sfx_play`'s
+/// and channel 0's effect stepped a ramp step on (red at 4546, T197). Both lag frames, which the
+/// comparison leaves out: their DMACON and INTREQ writes are pinned here.
 #[test]
-#[ignore = "T197: red at 4546 since T194, a DMACON $8400 write the engine lacks at 4543"]
 fn complete_w4_3() {
-    green("complete-w4-3");
-    goes_on("complete-w4-3");
+    let name = "complete-w4-3";
+    let case = sf_conform::Case::load(&sf_conform::cases_dir().join(format!("{name}.toml")))
+        .unwrap_or_else(|e| panic!("{e}"));
+    let dma = |w: &[sf_paula::PaulaWrite]| -> Vec<(u16, u16)> {
+        w.iter().filter(|w| matches!(w.reg, 0x96 | 0x9c)).map(|w| (w.reg, w.value)).collect()
+    };
+    let mut seen = Vec::new();
+    if let Err(d) = sf_conform::run_observing_lag(&case, |f, ours, theirs| {
+        if matches!(f, 4542 | 4543) {
+            seen.push((f, ours.len(), dma(ours), theirs.len(), dma(theirs)));
+        }
+    }) {
+        panic!("{name}: {d}");
+    }
+    let [(4542, n2, ours2, t2, theirs2), (4543, n3, ours3, t3, theirs3)] = &seen[..] else {
+        panic!("{name}: frames seen {seen:?}");
+    };
+    assert_eq!((n2, ours2), (t2, theirs2));
+    assert_eq!((n3, ours3), (t3, theirs3));
+    assert_eq!((*t2, *t3), (20, 40));
+    assert_eq!(theirs2.last(), Some(&(0x96, 0x8400)));
+    assert_eq!(theirs3[..2], [(0x96, 0x0400), (0x9c, 0x0010)]);
+    // After the copper interrupt's acknowledge, the main program's BLTPRI and its end.
+    let ack = theirs3.iter().rposition(|w| *w == (0x9c, 0x0010)).expect("the acknowledge");
+    assert_eq!(theirs3[ack + 1..], [(0x96, 0x8400), (0x96, 0x0400), (0x96, 0x8400)]);
+    goes_on(name);
 }
 
 /// `name` run two frames past its end (the hook runs before each step, so it sees its last

@@ -106,10 +106,15 @@ pub fn vbl(c: &mut LevelCtx) {
 pub fn copper_irq(c: &mut LevelCtx) {
     // An interrupt: nothing in it is the main program's.
     let outer = c.frames.as_mut().map(|f| std::mem::replace(&mut f.in_vbl, true));
+    let coper = std::mem::replace(&mut c.in_coper, true);
     scroll::copper_irq_blits(c);
     c.custom(0x9c, 0x0010);
+    c.in_coper = coper;
     if let (Some(f), Some(was)) = (c.frames.as_mut(), outer) {
         f.in_vbl = was;
+    }
+    if !coper && let Some(from) = c.over_end.take() {
+        c.irq_frame_end(from);
     }
 }
 
