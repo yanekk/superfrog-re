@@ -416,3 +416,42 @@ fn the_anim_player_draws_every_frame_as_the_decoder_does() {
         );
     }
 }
+
+/// The high-score name entry (T200, the cases `hiscore-entry` and `hiscore-ending`), frame for
+/// frame and alone: after game over and after the end sequence, the name typed goes into
+/// `hiscore_table` at the top with the score, the old top moves down one, the score is cleared,
+/// and the title waits in its idle.
+fn hiscore_case(name: &str, score: u32, typed: &[u8; 8]) {
+    use sf_core::layout::h0;
+    let case = sf_conform::Case::load(&sf_conform::cases_dir().join(format!("{name}.toml")))
+        .unwrap_or_else(|e| panic!("{e}"));
+    let mut last = None;
+    if let Err(d) = sf_conform::run_with(&case, |_, g| {
+        last = Some((
+            g.state().l(h0(0x2f90)),
+            g.state().l(h0(0x2f98)),
+            g.peek(h0(0x2fe0), 8),
+            g.state().l(h0(0x834)),
+            g.title_waits(),
+            g.unported().to_vec(),
+        ));
+    }) {
+        panic!("{name}: {d}");
+    }
+    let (top, second, top_name, now, idle, unported) = last.expect("frames");
+    assert_eq!((top, second), (score, 50_000), "{name}: the table's top two scores");
+    assert_eq!(&top_name[..], &typed[..], "{name}: the top name");
+    assert_eq!(now, 0, "{name}: the score cleared");
+    assert!(idle, "{name}: the title's idle");
+    assert!(unported.is_empty(), "{name}: {unported:?}");
+}
+
+#[test]
+fn the_hiscore_name_entry_after_game_over_matches_the_original() {
+    hiscore_case("hiscore-entry", 60_350, b"FROG 1ZC");
+}
+
+#[test]
+fn the_hiscore_name_entry_after_the_end_sequence_matches_the_original() {
+    hiscore_case("hiscore-ending", 60_000, b"JAN     ");
+}

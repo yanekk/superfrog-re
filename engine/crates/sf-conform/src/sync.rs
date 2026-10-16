@@ -30,6 +30,10 @@ pub enum SyncPoint {
     /// disk 1 is in (it goes in when the intro asks for it). The engine starts with the seed the
     /// game takes after the intro.
     PowerOnDisk3,
+    /// [`SyncPoint::PowerOn`] with an empty df1 connected (T201): W6-2..4's level codes then load
+    /// their first map set, as the engine plays them (docs/10). The boot reaches the title
+    /// [`DF1_LEAD`] frames sooner.
+    PowerOnDf1,
     /// Run the named script from power-on for `frame` frames.
     AtFrame { script: String, frame: u32 },
     /// The first frame of a level, reached the way a player would: W1-1 by START GAME from the
@@ -44,6 +48,9 @@ pub enum SyncPoint {
     /// disk it asks for inserted, to the end of the first frame on which its main program is in
     /// `end_seq_load` (top_loop's call, return address h0+$7b6).
     EndSequence,
+    /// [`SyncPoint::EndSequence`] with `score` (h0+$834) then set to `score` (T200: the game's end
+    /// with a new high score).
+    EndSequenceScore { score: u32 },
     /// The slot machine's start (T71): W1-1 reached as `AtLevel` reaches it, by the `start` script
     /// (`start-w1-1` when `None`), `script` played in W1-1 to its last line's frame, then the
     /// level's exit forced (`level_state` = 1, as for the final level); in `level_tally`'s choice up
@@ -67,7 +74,8 @@ pub enum SyncPoint {
     /// frog's death has ended the level's loop and the original's main program is in
     /// `game_over_seq` (h0+$7600 on its stack). The sync point is the end of the frame before:
     /// the level is transplanted, and the case's first frame is the one game over begins in.
-    GameOver { script: String },
+    /// With `score`, `score` (h0+$834) is set to it with the lives (T200: a new high score).
+    GameOver { script: String, score: Option<u32> },
     /// A level's first frame as [`SyncPoint::AtLevel`] reaches it, `frog_lives` (h0+$82e) then
     /// set to `lives` (T79: the bonus level played to its end through the deaths on the way).
     Lives { level: LevelId, lives: u16 },
@@ -99,6 +107,8 @@ const LEVEL_STATE: u32 = h0(0xa06);
 const LEVEL_CLOCK: u32 = h0(0x876);
 /// `frog_lives` (h0+$82e).
 const FROG_LIVES: u32 = h0(0x82e);
+/// `score` (h0+$834).
+const SCORE: u32 = h0(0x834);
 /// `level_exit_fade`'s return address from `game_over_seq`.
 const IN_GAME_OVER: u32 = h0(0x7600);
 /// Frames of W1-1 the game-over sync point's script has to lose the last life in.
@@ -486,10 +496,11 @@ pub fn reach_frozen(
 ) -> Result<Synced, String> {
     let tag = frozen.tag();
     match sync {
-        SyncPoint::PowerOn | SyncPoint::PowerOnDisk3 => {
+        SyncPoint::PowerOn | SyncPoint::PowerOnDisk3 | SyncPoint::PowerOnDf1 => {
             let boot = boot_disk(sync);
-            let seed = power_on_seed(boot, script, frames)?;
-            let amiga = power_on(boot, frames)?;
+            let drives = if *sync == SyncPoint::PowerOnDf1 { 2 } else { 1 };
+            let seed = power_on_seed(boot, drives, script, frames)?;
+            let amiga = power_on(boot, drives, frames)?;
             let _ = frozen;
             let memory = core_memory(amiga.memory());
             Ok(Synced {
@@ -512,6 +523,12 @@ pub fn reach_frozen(
             by_password(*id, frames, frozen)
         }
         SyncPoint::EndSequence => end_sequence(frames),
+        SyncPoint::EndSequenceScore { score } => {
+            let mut synced = end_sequence(frames)?;
+            synced.amiga.write_memory(SCORE, &score.to_be_bytes());
+            synced.memory = core_memory(synced.amiga.memory());
+            Ok(synced)
+        }
         SyncPoint::Slot { script, start } => slot(script, start.as_deref(), frames),
         SyncPoint::Clock { level, seconds } => {
             let mut synced = reach_frozen(&SyncPoint::AtLevel(*level), script, frames, frozen)?;
@@ -527,7 +544,7 @@ pub fn reach_frozen(
             synced.memory = core_memory(synced.amiga.memory());
             Ok(synced)
         }
-        SyncPoint::GameOver { script } => {
+        SyncPoint::GameOver { script, score } => {
             let w1_1 = LevelId {
                 world: World::W1,
                 level: 1,
@@ -542,6 +559,9 @@ pub fn reach_frozen(
                     frozen,
                 )?;
                 synced.amiga.write_memory(FROG_LIVES, &[0, 0]);
+                if let Some(score) = score {
+                    synced.amiga.write_memory(SCORE, &score.to_be_bytes());
+                }
                 Ok(synced)
             };
             // The frame game over begins in, then the original again to the frame before it.
@@ -885,10 +905,11 @@ fn boot_disk(sync: &SyncPoint) -> DiskSlot {
     }
 }
 
-fn power_on(boot: DiskSlot, frames: u32) -> Result<Amiga, String> {
+fn power_on(boot: DiskSlot, drives: u8, frames: u32) -> Result<Amiga, String> {
     let cfg = OracleConfig::locate(frames)
         .map_err(|e| e.to_string())?
-        .with_boot(boot);
+        .with_boot(boot)
+        .with_drives(drives);
     Amiga::power_on(&cfg).map_err(|e| e.to_string())
 }
 
@@ -1021,8 +1042,13 @@ pub fn step_inserting(a: &mut Amiga, input: FrameInput) -> Result<sf_oracle::Fra
 
 /// The RNG state on the frame the original first seeds it (docs/08 "RNG"): the first frame, once
 /// the game owns the vertical blank, on which `rng_state` changes.
-fn power_on_seed(boot: DiskSlot, script: &InputScript, frames: u32) -> Result<Option<Rng>, String> {
-    let mut a = power_on(boot, frames)?;
+fn power_on_seed(
+    boot: DiskSlot,
+    drives: u8,
+    script: &InputScript,
+    frames: u32,
+) -> Result<Option<Rng>, String> {
+    let mut a = power_on(boot, drives, frames)?;
     let mut prev = None;
     for f in 0..frames {
         step_inserting(&mut a, script.input_at(f))?;

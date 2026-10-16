@@ -202,6 +202,7 @@ impl Case {
         let sync = match t.get("sync") {
             Some(toml::Value::String(s)) if s == "power-on" => SyncPoint::PowerOn,
             Some(toml::Value::String(s)) if s == "power-on-disk3" => SyncPoint::PowerOnDisk3,
+            Some(toml::Value::String(s)) if s == "power-on-df1" => SyncPoint::PowerOnDf1,
             Some(toml::Value::String(s)) if s == "end-sequence" => SyncPoint::EndSequence,
             Some(toml::Value::Table(s)) if s.contains_key("slot") => {
                 let name = |k: &str| match s.get(k) {
@@ -221,15 +222,41 @@ impl Case {
                     start: name("start")?,
                 }
             }
+            Some(toml::Value::Table(s)) if s.contains_key("end-sequence") => {
+                if let Some(k) = s
+                    .keys()
+                    .find(|k| !["end-sequence", "score"].contains(&k.as_str()))
+                {
+                    return Err(format!("sync: unknown key `{k}` beside `end-sequence` (score)"));
+                }
+                if s["end-sequence"].as_bool() != Some(true) {
+                    return Err("sync.end-sequence is true".into());
+                }
+                SyncPoint::EndSequenceScore {
+                    score: s
+                        .get("score")
+                        .and_then(|v| v.as_integer())
+                        .and_then(|v| u32::try_from(v).ok())
+                        .ok_or("sync.score beside `end-sequence` is a score, 0 or more")?,
+                }
+            }
             Some(toml::Value::Table(s)) if s.contains_key("game-over") => {
-                if let Some(k) = s.keys().find(|k| k.as_str() != "game-over") {
-                    return Err(format!("sync: unknown key `{k}` beside `game-over`"));
+                if let Some(k) = s.keys().find(|k| !["game-over", "score"].contains(&k.as_str())) {
+                    return Err(format!("sync: unknown key `{k}` beside `game-over` (score)"));
                 }
                 SyncPoint::GameOver {
                     script: s["game-over"]
                         .as_str()
                         .ok_or("sync.game-over is a script name")?
                         .to_string(),
+                    score: match s.get("score") {
+                        None => None,
+                        Some(v) => Some(
+                            v.as_integer()
+                                .and_then(|v| u32::try_from(v).ok())
+                                .ok_or("sync.score is a score, 0 or more")?,
+                        ),
+                    },
                 }
             }
             Some(toml::Value::Table(s)) if s.contains_key("level") => {
@@ -303,7 +330,7 @@ impl Case {
             },
             _ => {
                 return Err(
-                    "sync is \"power-on\", \"power-on-disk3\", \"end-sequence\", { script = \"…\", frame = N }, { level = \"W1-1\" }, { slot = \"…\", start = \"…\" } or { game-over = \"…\" }"
+                    "sync is \"power-on\", \"power-on-disk3\", \"power-on-df1\", \"end-sequence\", { script = \"…\", frame = N }, { level = \"W1-1\" }, { slot = \"…\", start = \"…\" }, { game-over = \"…\" } or { end-sequence = true, score = N }"
                         .into(),
                 );
             }

@@ -1,0 +1,11 @@
+# Game over and continue (T201). Superfrog has no continue screen: `game_over_check` (h0+$749c)
+# returns to `top_loop`, and a player continues by the world's level code. W2-2 with its clock set
+# to 0:13: items-fruit-w2-2's fruit (42 700 points by 530), the time up at 729 (`frog_die` takes
+# every life), game over and its wait; the title loaded again from disk 1, its
+# `hiscore_and_credits` with the name entry from 1856 (a new second place), hiscore-entry's name
+# typed, fire; the table, the title back; OPTIONS, W2-1's code typed into LEVEL CODE, START GAME;
+# W2's loads, its loading picture and the progress map, W2-1 from the original's frame 4595 (the
+# case's ~3250: loads are skipped) and its first frames, nothing held.
+sync = { level = "W2-2", clock = "0:13" }
+script = "continue-w2"
+frames = 3400

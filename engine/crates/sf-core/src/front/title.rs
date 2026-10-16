@@ -125,6 +125,8 @@ pub(crate) fn overlay_show(cx: &mut Cx) {
 /// (`MPIC`, six planes) in display buffer 0 and copied to buffer 1, and the eyes' graphics (packed
 /// at h0+$34e92) after it in buffer 1.
 fn load_title(cx: &mut Cx) {
+    // h0+$1dd2's files, HPIC and MPIC (disk 1).
+    cx.read_entries(0x1dd2, 0x1e20);
     if let Some(d) = cx.data.sound.as_ref()
         && !cx.s.audio.music_on()
     {
@@ -215,9 +217,12 @@ impl Title {
                     return Yield::Call(Box::new(Routine::Overlay(OverlayEnd::default())));
                 }
                 2 => {
-                    if cx.s.l(ATTRACT_MODE) == 0 && hiscore_check(cx) {
-                        cx.unported("hiscore_and_credits with a new high score");
+                    self.pc = 12;
+                    if cx.s.l(ATTRACT_MODE) == 0 {
+                        return call(Routine::HiscoreCredits(Default::default()));
                     }
+                }
+                12 => {
                     eyes_init(cx);
                     title_copper(cx);
                     self.pc = 3;
@@ -343,17 +348,6 @@ impl TitleExit {
             }
         }
     }
-}
-
-/// `hiscore_and_credits` (h0+$20e0) as the title calls it with attract mode off: is the last
-/// game's score in the table?
-fn hiscore_check(cx: &mut Cx) -> bool {
-    cx.s.set_w(ATTRACT_ABORT, 0);
-    if cx.s.w(at(0x24)) != 0 {
-        return false;
-    }
-    let score = cx.s.l(at(0x834));
-    (0..10).any(|k| (score.wrapping_sub(cx.s.l(at(0x2f90) + 8 * k)) as i32) >= 0)
 }
 
 /// `$136c`: the blink timers and the four eye sprites at their places.

@@ -210,13 +210,16 @@ fn run_inner(
     let mut amiga = synced.amiga;
     let mut prev = synced.memory.clone();
     let start = match &case.sync {
-        SyncPoint::PowerOn => Start::PowerOn {
+        SyncPoint::PowerOn | SyncPoint::PowerOnDf1 => Start::PowerOn {
             seed: synced.seed.unwrap_or_default(),
         },
         SyncPoint::PowerOnDisk3 => Start::Disk3 {
             seed: synced.seed.unwrap_or_default(),
         },
-        SyncPoint::AtFrame { .. } | SyncPoint::EndSequence | SyncPoint::Slot { .. } => {
+        SyncPoint::AtFrame { .. }
+        | SyncPoint::EndSequence
+        | SyncPoint::EndSequenceScore { .. }
+        | SyncPoint::Slot { .. } => {
             Start::Resume {
                 memory: synced.memory,
                 cpu: sync::core_cpu(&amiga.cpu()),

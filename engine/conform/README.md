@@ -128,8 +128,10 @@ assertions of their own beside their subject (`frog_cases.rs`, `enemies_*.rs`, `
 `story.rs`, ...), the rest one line each in `cases.rs`. The slow ones are ignored and run with
 `cargo test -p sf-conform -- --ignored`: `attract-demo-3` (`cases.rs`, about 4 min) and the
 intro's `story-scene1-out`, `story-scene4-init`, `story-scene4-sound` and `story-intro-full`
-(`story.rs`, 80 s to 5 min), and the final level's `final-win`, `final-lose` and `final-idle` (`bosses.rs`,
-which runs the win to the level's end in the block). A case red today has no test that runs it whole (a test may keep
+(`story.rs`, 80 s to 5 min), the final level's `final-win`, `final-lose` and `final-idle` (`bosses.rs`,
+which runs the win to the level's end in the block), and the level codes from power-on, `code-w1-1`
+to `code-w6-4` and `code-wb-1` but `code-w6-1` (`chain.rs`, about 90 s each; T201; `code-w6-1` runs
+in the block in `flow.rs`, W3-1's is `chain-level-code`). A case red today has no test that runs it whole (a test may keep
 checks 1–3 with `Alone::Off`); its FINDINGS row names the first failing check, frame and cause and
 the task that owns it: `complete-w4-2`, `enemies-w1-1`, `enemies-w3-1`, `enemies-w3-activation`,
 `enemies-w5-2-complete`, `enemies-w6-1-complete`, `front-attract` (T184), `enemies-w6-4` (T185).
@@ -177,6 +179,9 @@ Sync points:
   The engine starts where the game program does and loads at once (owner, 2026-10-12): its first
   frame is compared with the original's first frame after the title's loads, and every later load
   skips the original's frames until its load is over (docs/13 "Where the engine starts").
+- `sync = "power-on-df1"`: `power-on` with an empty df1 connected (T201), so W6-2..4's level codes
+  load the first map set, which the engine plays (docs/10); the boot reaches the title 219 frames
+  sooner, so a script's presses from the menu on come that much earlier (`code-w6-2`..`4`).
 - A front-end routine's memory that the original's CPU is still writing at a frame's end (an
   unpacking, a long blit) is compared once the original is out of it (`FrameOut::jobs`).
 - `sync = { script = "<name>", frame = N }`: the original runs the script from power-on for N frames;
@@ -185,7 +190,10 @@ Sync points:
 - `sync = { game-over = "<script>" }`: game over after the last life (T34): W1-1 reached as
   `{ level = "W1-1" }` reaches it, `frog_lives` set to 0 on its first frame, the script played
   until the frog's death ends the level's loop into `game_over_seq`. The level is transplanted at
-  the end of the frame before, so the case's first frame is the one game over begins in.
+  the end of the frame before, so the case's first frame is the one game over begins in. With
+  `score = N` beside it, `score` is set to N with the lives (T200: a new high score).
+- `sync = { end-sequence = true, score = N }`: `"end-sequence"` with `score` then set to N (T200:
+  the game's end with a new high score).
 - `sync = { level = "W1-1" }`: the first in-level frame (in the final level, `WW-1`, every disk the
   original asks for goes in, so it plays on into the end sequence), reached the way a player would: W1-1 by
   START GAME (`scripts/start-w1-1.txt`), any other level of W1–W6 and the bonus level (`"WB-1"`) by

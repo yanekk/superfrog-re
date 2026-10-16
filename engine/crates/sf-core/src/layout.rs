@@ -359,6 +359,10 @@ layout! {
     /// `password_shown` (h0+$24cc): the password the slot machine's prize shows
     /// (`password_for_level`).
     PasswordShown = "password_shown", h0(0x24cc), Width::Bytes(0xc);
+    /// h0+$2d8a..$2d8e: `hiscore_name_entry`'s cursor flash counter and its on/off toggle.
+    HiscoreFlash = "hiscore_flash", h0(0x2d8a), Width::Bytes(4);
+    /// h0+$2dfc..$2e04: the name typed in `hiscore_name_entry` (dots where none is typed).
+    HiscoreName = "hiscore_name", h0(0x2dfc), Width::Bytes(8);
     /// h0+$2f90..$3028: `hiscore_table`: ten scores (a long and a long) and ten names.
     HiscoreTable = "hiscore_table", h0(0x2f90), Width::Bytes(0x98);
     /// h0+$3258: where the text writer (h0+$30fc) stopped.
@@ -450,6 +454,9 @@ layout! {
     /// h0+$aa40..$aac0: the end sequence's two palettes, white (the last picture's flash) and the
     /// pictures' own, which the fades read.
     EndPalettes = "end_palettes", h0(0xaa40), Width::Bytes(0x80);
+    /// h0+$af54: the disk ID `disk_request` last asked for (`2222`..`5555`, disks 1–4), which the
+    /// player put in (T21): the disk in the drive, as far as the game knows.
+    WantedDisk = "wanted_disk", h0(0xaf54), Width::L;
     /// h0+$b806..$b80e: the Accessing-disk overlay's palettes while it is up.
     OverlayUp = "overlay_up", h0(0xb806), Width::Bytes(8);
     /// `hitboxes` (h0+$d350): the objects' hitboxes, 12 bytes each, rebuilt each pass.

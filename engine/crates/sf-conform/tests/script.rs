@@ -157,6 +157,9 @@ fn case_files_parse_and_refuse_what_they_do_not_know() {
         (c.sync, c.frames, c.compare),
         (SyncPoint::PowerOn, 3, Compare::ALL)
     );
+    // T201: power-on with an empty df1 connected.
+    let c = Case::parse("x", "sync = \"power-on-df1\"\nframes = 3\n").unwrap();
+    assert_eq!(c.sync, SyncPoint::PowerOnDf1);
     let c = Case::parse(
         "x",
         "sync = { level = \"W1-1\" }\nframes = 1\ncompare = [\"paula\"]",

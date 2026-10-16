@@ -14,7 +14,7 @@ the account is the commit message. Whoever writes a cell also fixes the over-bud
 **Status:** about 100 tasks ✅; T18, T21 and Phase 3 open; amended to faithful.
 **Last updated:** 2026-10-16
 **Amended 2026-10-15 (owner):** faithful replaces frame-exact (DESIGN §2.1, PLAN.md amendment); T180–T183 added, 14 tasks dropped (PLAN.md).
-**Next `pir-work` will:** T21's split-offs T198, T200–T203, then T23, T29.
+**Next `pir-work` will:** T202 whole-game-script and T204, then T203; then T23, T29.
 
 ## Tasks
 
@@ -163,12 +163,13 @@ done · ⛔ blocked, needs a human. A task dropped by a plan amendment leaves th
 | T195 | w3-3-slot-order | T115; blocks T21 | ✅ | |
 | T196 | pass-over-two-blanks | T184, T150; blocks T21 | ✅ | |
 | T197 | w4-3-dmacon-regression | T194; blocks T21 | ✅ | |
-| T198 | disk-prompts | T21; blocks T23, T29 | ⬜ | |
+| T198 | disk-prompts | T21; blocks T23, T29 | ✅ | |
 | T199 | live-restart | T21; blocks T23, T29 | ✅ | Review clean, no fix commit: frog_cases 34 green, both cases no exclusion; `level_entry` red identically to base. Mutations caught: restart using `BLANK_COSTS`, chain always-restart, frog-step Job dropped. `START_FROG_LINES` 0 survives every case (FINDINGS). Owner-approved `bob_records` presentation pieces; drawer-only reads `read-only` (engine code). |
-| T200 | hiscore-entry | T21; blocks T23, T29 | ⬜ | |
-| T201 | continue-and-codes | T21, T200; blocks T23, T29 | ⬜ | |
+| T200 | hiscore-entry | T21; blocks T23, T29 | ✅ | |
+| T201 | continue-and-codes | T21, T200; blocks T23, T29 | ✅ | |
 | T202 | whole-game-script | T21, T198, T199; blocks T23, T29 | ⬜ | |
 | T203 | whole-game-green | T21, T202; blocks T23, T29 | ⬜ | |
+| T204 | w3-4-template-86 | T201; blocks T203 | ⬜ | |
 
 A Notes cell holds what was built or what the review found, the test count, and one line per
 deviation from the task doc. A ✅ task's cell may be cut to one line once the next task has been reviewed.

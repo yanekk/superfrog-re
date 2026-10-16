@@ -108,15 +108,36 @@ enum Target {
 
 /// `world_load_wN` for worlds 1–6.
 const WORLD_LOADS: [u32; 6] = [0x94a0, 0x9722, 0x9976, 0x9bca, 0x9e1e, 0xa072];
-/// `level_load_wN_lM`.
-const LEVEL_LOADS: [[u32; 4]; 6] = [
-    [0x9552, 0x95c6, 0x963a, 0x96ae],
-    [0x97c6, 0x9832, 0x989e, 0x990a],
-    [0x9a1a, 0x9a86, 0x9af2, 0x9b5e],
-    [0x9c6e, 0x9cda, 0x9d46, 0x9db2],
-    [0x9ec2, 0x9f2e, 0x9f9a, 0xa006],
-    [0xa116, 0xa1b8, 0xa25a, 0xa2fc],
-];
+/// `level_resume_jump` (h0+$bb2), `level_tally` (h0+$4466).
+const RESUME_JUMP: u32 = 0xbb2;
+const TALLY: u32 = 0x4466;
+
+/// `level_load_wN_lM`'s world and level for the routine at h0+`off`, read from `top_loop` as the
+/// original has it: a world's first level's load is the call after its `world_load_wN`'s
+/// `level_resume_jump`, each next one the call after a `level_tally`.
+fn level_load_of(data: &super::FrontData, off: u32) -> Option<(u32, u8)> {
+    let (mut world, mut level, mut next) = (0, 0u8, false);
+    let mut pc = GAME_PATH;
+    while pc < 0x7d4 {
+        if data.h0_w(pc) != 0x4eb9 {
+            pc += 2;
+            continue;
+        }
+        let to = data.h0_l(pc + 2).wrapping_sub(H0);
+        if next && (1..=6).contains(&world) && level < 4 {
+            level += 1;
+            if to == off {
+                return Some((world, level));
+            }
+        }
+        if let Some(w) = WORLD_LOADS.iter().position(|&a| a == to) {
+            (world, level) = (w as u32 + 1, 0);
+        }
+        next = to == RESUME_JUMP || to == TALLY;
+        pc += 6;
+    }
+    None
+}
 /// `level_init_wN`.
 const LEVEL_INITS: [u32; 6] = [0x8cd8, 0x8d2e, 0x8d84, 0x8dda, 0x8e30, 0x8e86];
 /// `level_init_lw`: the final level's init.
@@ -135,14 +156,12 @@ const END_PICS: [(u32, u32); 6] = [
     (0x4326, 6),
 ];
 
-fn target(off: u32) -> Target {
+fn target(data: &super::FrontData, off: u32) -> Target {
     if let Some(w) = WORLD_LOADS.iter().position(|&a| a == off) {
         return Target::WorldLoad(w as u32 + 1);
     }
-    for (w, loads) in LEVEL_LOADS.iter().enumerate() {
-        if let Some(l) = loads.iter().position(|&a| a == off) {
-            return Target::LevelLoad(w as u32 + 1, l as u8 + 1);
-        }
+    if let Some((w, l)) = level_load_of(data, off) {
+        return Target::LevelLoad(w, l);
     }
     if let Some(w) = LEVEL_INITS.iter().position(|&a| a == off) {
         return Target::LevelInit(w as u32 + 1);
@@ -187,6 +206,14 @@ fn level_id(world: u32, level: u8) -> LevelId {
         _ => World::W6,
     };
     LevelId { world, level, alt: false }
+}
+
+/// Where the routine at h0+`from` ends: its first `rts`.
+fn code_end(data: &super::FrontData, from: u32) -> u32 {
+    (from..from + 0x400)
+        .step_by(2)
+        .find(|&pc| data.h0_w(pc) == 0x4e75)
+        .unwrap_or(from)
 }
 
 /// `jsr` to `to` somewhere in `top_loop`'s game path.
@@ -349,12 +376,12 @@ impl Chain {
     fn dispatch(&mut self, cx: &mut Cx, to: u32, restart: bool) -> Option<Yield> {
         let ret = at(self.pc);
         let frog_only = self.frog_only;
-        Some(match target(to) {
+        Some(match target(cx.data, to) {
             Target::AccessOverlay => {
                 access_overlay_show(cx);
                 return None;
             }
-            Target::WorldLoad(w) => call(Routine::WorldLoad(WorldLoad::new(w))),
+            Target::WorldLoad(w) => call(Routine::WorldLoad(WorldLoad::new(w, to))),
             Target::ResumeJump => {
                 if cx.s.l(START_WORLD) != 0
                     && cx.s.l(START_LEVEL) != 0
@@ -364,7 +391,9 @@ impl Chain {
                 }
                 return None;
             }
-            Target::LevelLoad(w, l) => call(Routine::LevelLoad(LevelLoad::new(level_id(w, l), ret))),
+            Target::LevelLoad(w, l) => {
+                call(Routine::LevelLoad(LevelLoad::new(level_id(w, l), ret, to)))
+            }
             Target::OverlaysEnd => call(Routine::Overlay(Default::default())),
             Target::LevelInit(w) => {
                 let level = cx.s.l(LEVEL) as u8;
@@ -376,8 +405,8 @@ impl Chain {
                 };
                 exit::init_on_beam_costs(cx, frog_only, id, exit::init_inside(id), costs)
             }
-            Target::WorldLoadLb => call(Routine::WorldLoad(WorldLoad::new(exit::BONUS_WORLD))),
-            Target::LevelLoadLb => call(Routine::LevelLoad(LevelLoad::new(level_id(exit::BONUS_WORLD, 1), ret))),
+            Target::WorldLoadLb => call(Routine::WorldLoad(WorldLoad::new(exit::BONUS_WORLD, to))),
+            Target::LevelLoadLb => call(Routine::LevelLoad(LevelLoad::new(level_id(exit::BONUS_WORLD, 1), ret, to))),
             Target::LevelInitLb => {
                 let id = level_id(exit::BONUS_WORLD, 1);
                 exit::init_on_beam(cx, frog_only, id, exit::init_inside(id))
@@ -397,7 +426,7 @@ impl Chain {
                     level: 1,
                     alt: false,
                 };
-                call(Routine::LevelLoad(LevelLoad::new(id, ret)))
+                call(Routine::LevelLoad(LevelLoad::new(id, ret, to)))
             }
             Target::FinalInit => {
                 let id = LevelId {
@@ -420,7 +449,7 @@ impl Chain {
                 }
             }
             Target::Tally => call(Routine::Tally(Default::default())),
-            Target::EndPic(w) => call(Routine::EndPic(EndPic::new(w, to == 0x42be))),
+            Target::EndPic(w) => call(Routine::EndPic(EndPic::new(w, to))),
             Target::MusicFadeWait => call(Routine::MusicFadeWait(MusicFadeWait::default())),
             Target::Nothing => return None,
             Target::ShooterOff => {
@@ -488,18 +517,25 @@ pub(crate) struct WorldLoad {
     pc: u8,
     /// `world_load_lw`, returning to `ret`.
     final_level: Option<u32>,
+    /// Its code (h0 offset).
+    at: u32,
 }
+
+/// h0+$172d6's bytes, and what each takes: `clr.b (a0)+`, `subq.l #1`, `bne` (12 + 8 + 10).
+const MAP_CLEAR_BYTES: u32 = 0x102e0;
+const CLEAR_BYTE_CYCLES: u32 = 30;
 
 /// `frog_spud_flying` (h0+$848), `final_level_flag` (h0+$1e).
 const SPUD_FLYING: u32 = at(0x848);
 const FINAL_LEVEL_FLAG: u32 = at(0x1e);
 
 impl WorldLoad {
-    fn new(world: u32) -> WorldLoad {
+    fn new(world: u32, at: u32) -> WorldLoad {
         WorldLoad {
             world,
             pc: 0,
             final_level: None,
+            at,
         }
     }
 
@@ -508,27 +544,73 @@ impl WorldLoad {
             world: 6,
             pc: 0,
             final_level: Some(ret),
+            at: 0xa49a,
         }
+    }
+
+    /// h0+$172d6: the map area (h1+$20d00, $102e0 bytes) cleared a byte at a time, which takes
+    /// the CPU about 20 frames under the picture (T21: W6's disk 4 asked for only after it); the
+    /// memory is cleared at once and compared once the original is out of the call.
+    fn clear_map_area(&self, cx: &mut Cx) -> Yield {
+        exit::with_level(cx, false, |c| crate::level::load::clear_map_area(&mut c.bus));
+        let end = code_end(cx.data, self.at);
+        let ret = (self.at..end)
+            .step_by(2)
+            .find(|&pc| cx.data.h0_w(pc) == 0x4eb9 && cx.data.h0_l(pc + 2).wrapping_sub(H0) == 0x172d6)
+            .map_or(at(0x172e8), |pc| at(pc + 6));
+        super::ending::work(
+            MAP_CLEAR_BYTES * CLEAR_BYTE_CYCLES,
+            &[ret, at(0x172e2), at(0x172e4), at(0x172e6)],
+            vec![(crate::layout::h1(0x20d00), MAP_CLEAR_BYTES)],
+        )
+    }
+
+    /// Its files' `file_table` entries: those before its `bsr world_intro_show` (the effects, the
+    /// music, the loading picture last) and those after (the tiles, bobs and masks).
+    fn files(&self, cx: &Cx) -> (Vec<u32>, Vec<u32>) {
+        let end = code_end(cx.data, self.at);
+        let bsr = (self.at..end).step_by(2).find(|&pc| {
+            cx.data.h0_w(pc) == 0x6100
+                && (pc + 2).wrapping_add(cx.data.h0_w(pc + 2) as i16 as i32 as u32) == 0x4116
+        });
+        let split = bsr.unwrap_or(self.at);
+        (
+            super::table_entries(cx.data, self.at, split),
+            super::table_entries(cx.data, split, end),
+        )
     }
 
     pub(super) fn run(&mut self, cx: &mut Cx) -> Yield {
         self.pc += 1;
         if let Some(ret) = self.final_level {
-            if self.pc == 1 {
-                cx.s.set_w(SPUD_FLYING, 1);
-                cx.s.set_w(FINAL_LEVEL_FLAG, 1);
-                cx.s.set_l(WORLD, 6);
-                let display = cx.display;
-                exit::with_level(cx, false, |c| {
-                    crate::level::load::clear_map_area(&mut c.bus);
-                    c.bus.st.poke(crate::layout::H3, display.bob_sheet(World::Final));
-                });
-                cx.loaded(LoadEnd::Left(ret));
+            match self.pc {
+                1 => {
+                    cx.s.set_w(SPUD_FLYING, 1);
+                    cx.s.set_w(FINAL_LEVEL_FLAG, 1);
+                    cx.s.set_l(WORLD, 6);
+                    return self.clear_map_area(cx);
+                }
+                2 => {
+                    for e in self.files(cx).1 {
+                        cx.read_entry(e);
+                    }
+                    let display = cx.display;
+                    exit::with_level(cx, false, |c| {
+                        c.bus.st.poke(crate::layout::H3, display.bob_sheet(World::Final));
+                    });
+                    cx.loaded(LoadEnd::Left(ret));
+                }
+                _ => {}
             }
             return Yield::Return;
         }
         match self.pc {
             1 => {
+                let (before, _) = self.files(cx);
+                let (sound, picture) = before.split_at(before.len().saturating_sub(1));
+                for &e in sound {
+                    cx.read_entry(e);
+                }
                 cx.s.set_l(WORLD, self.world);
                 world_sound(cx, self.world);
                 if cx.s.l(END_PIC_SHOWN) != 0 {
@@ -536,13 +618,16 @@ impl WorldLoad {
                     // h0+$43e0's wait, called from `world_intro_show`.
                     cx.loaded(LoadEnd::Reached(at(0x411c)));
                 }
-                call(Routine::WorldIntro(WorldIntro::new(self.world)))
+                call(Routine::WorldIntro(WorldIntro::new(self.world, picture.first().copied())))
             }
-            2 => {
+            2 => self.clear_map_area(cx),
+            3 => {
+                for e in self.files(cx).1 {
+                    cx.read_entry(e);
+                }
                 let display = cx.display;
                 let world = level_id(self.world, 1).world;
                 exit::with_level(cx, false, |c| {
-                    crate::level::load::clear_map_area(&mut c.bus);
                     c.bus.st.poke(crate::layout::H3, display.bob_sheet(world));
                 });
                 // The original waits for the tiles in `world_intro_end`, called from
@@ -569,10 +654,10 @@ fn world_file(world: u32, kind: &str) -> String {
     }
 }
 
-/// How long the bonus level's loading picture stays up after it is shown: its tiles' and bobs'
-/// loads on the original (measured on the oracle, one drive: shown on frame 1160 of
-/// `chain-w5-4-to-bonus`, faded out from 1629).
-const BONUS_PICTURE_FRAMES: u16 = 468;
+/// How long the bonus level's loading picture stays up once its map area is cleared (h0+$172d6's
+/// 17 frames): its tiles' and bobs' loads on the original (measured on the oracle, one drive: the
+/// picture shown on frame 1160 of `chain-w5-4-to-bonus`, faded out from 1629).
+const BONUS_PICTURE_FRAMES: u16 = 451;
 
 /// `world_intro_show` (h0+$4116) with `LnLP` loaded: the Accessing-disk overlay taken down, the
 /// picture's planes (an upper and a lower part), the frog and the clouds set up for their walk
@@ -581,11 +666,13 @@ const BONUS_PICTURE_FRAMES: u16 = 468;
 pub(crate) struct WorldIntro {
     world: u32,
     pc: u8,
+    /// Its picture's `file_table` entry, which its caller sets.
+    entry: Option<u32>,
 }
 
 impl WorldIntro {
-    fn new(world: u32) -> WorldIntro {
-        WorldIntro { world, pc: 0 }
+    fn new(world: u32, entry: Option<u32>) -> WorldIntro {
+        WorldIntro { world, pc: 0, entry }
     }
 
     pub(super) fn run(&mut self, cx: &mut Cx) -> Yield {
@@ -600,6 +687,9 @@ impl WorldIntro {
                 2 => {
                     if cx.s.w(GAME_FULL_MODE) == 0 {
                         return Yield::Return;
+                    }
+                    if let Some(e) = self.entry {
+                        cx.read_entry(e);
                     }
                     let pic = cx.data.file(&world_file(self.world, "LP")).to_vec();
                     cx.s.write(BUFFER_0, &pic);
@@ -1008,11 +1098,13 @@ pub(crate) struct LevelLoad {
     id: LevelId,
     ret: u32,
     pc: u8,
+    /// Its code (h0 offset).
+    at: u32,
 }
 
 impl LevelLoad {
-    fn new(id: LevelId, ret: u32) -> LevelLoad {
-        LevelLoad { id, ret, pc: 0 }
+    fn new(id: LevelId, ret: u32, at: u32) -> LevelLoad {
+        LevelLoad { id, ret, pc: 0, at }
     }
 
     pub(super) fn run(&mut self, cx: &mut Cx) -> Yield {
@@ -1031,6 +1123,11 @@ impl LevelLoad {
                 call(Routine::MapShow(Default::default()))
             }
             2 => {
+                // The map's file; W6's first set (the engine plays it as a game with a second
+                // drive does; both sets are on disk 4).
+                if let Some(&e) = super::table_entries(cx.data, self.at, code_end(cx.data, self.at)).first() {
+                    cx.read_entry(e);
+                }
                 let (display, id) = (cx.display, self.id);
                 exit::with_level(cx, false, |c| crate::level::load::level_load(c, display, id));
                 match id.world {
@@ -1222,11 +1319,18 @@ pub(crate) struct EndPic {
     world: u32,
     wait: bool,
     pc: u8,
+    /// Its code (h0 offset).
+    at: u32,
 }
 
 impl EndPic {
-    fn new(world: u32, wait: bool) -> EndPic {
-        EndPic { world, wait, pc: 0 }
+    fn new(world: u32, at: u32) -> EndPic {
+        EndPic {
+            world,
+            wait: at == 0x42be,
+            pc: 0,
+            at,
+        }
     }
 
     pub(super) fn run(&mut self, cx: &mut Cx) -> Yield {
@@ -1238,6 +1342,9 @@ impl EndPic {
                     return Yield::Return;
                 }
                 cx.s.set_l(END_PIC_SHOWN, 1);
+                for e in super::table_entries(cx.data, self.at, self.at + 0x14) {
+                    cx.read_entry(e);
+                }
                 let pic = cx.data.file(&format!("L{}ET", self.world)).to_vec();
                 cx.s.write(BUFFER_1, &pic);
                 cx.loaded(LoadEnd::Left(at(0x436a)));

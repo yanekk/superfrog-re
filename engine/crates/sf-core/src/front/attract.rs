@@ -4,7 +4,7 @@
 //! (T160–T163); a game's start goes to `top_loop`'s game path ([`super::chain`], T183).
 
 use super::blit::Blit;
-use super::common::{FadeKind, call, fade, frames};
+use super::common::{FadeKind, MusicStart, call, fade, frames};
 use super::title::{ATTRACT_ABORT, ATTRACT_MODE, BLANK_COPPER, BUFFER_0, Title};
 use super::{Cx, Routine, Yield, at, h2, vbl};
 use crate::audio::{DMACON, INTENA};
@@ -127,6 +127,8 @@ impl Demo {
                 {
                     super::title::overlay_show(cx);
                 }
+                // `demo_world_load`, `demo_level_load`'s files (h0+$a580..$a65c, disk 1).
+                cx.read_entries(0xa580, 0xa65c);
                 let display = cx.display;
                 crate::level::exit::with_level(cx, false, |c| {
                     crate::level::load::demo_load(c, display)
@@ -189,6 +191,8 @@ impl AwardPages {
                 // A page: load it, fade it in, show it.
                 1 => {
                     let (name, ret) = [("AWA1", 0x1f06), ("AWA2", 0x1fc8)][self.page as usize];
+                    let lea = [0x1ee6, 0x1fa8][self.page as usize];
+                    cx.read_entries(lea, lea + 14);
                     let pic = cx.data.file(name).to_vec();
                     cx.s.write(BUFFER_0, &pic);
                     cx.loaded(LoadEnd::Left(at(ret)));
@@ -275,9 +279,11 @@ impl AwardPages {
     }
 }
 
-/// `hiscore_and_credits` (h0+$20e0) in attract mode: the hall of talent's picture (`HPIC`, kept
+/// `hiscore_and_credits` (h0+$20e0): in attract mode the hall of talent's picture (`HPIC`, kept
 /// packed since the title loaded it), the table, then the credits scrolling up until they end or
-/// fire, the mouse button or Escape cut them short (`attract_abort`).
+/// fire, the mouse button or Escape cut them short (`attract_abort`). Out of attract mode only
+/// after a game with a new high score: the title music, the picture, the name entry
+/// ([`super::hiscore::NameEntry`]) and the table, no credits.
 #[derive(Debug, Clone, Default, PartialEq, Eq, Hash)]
 pub(crate) struct HiscoreCredits {
     pc: u8,
@@ -302,9 +308,14 @@ impl HiscoreCredits {
                         if !new_hiscore(cx) {
                             return Yield::Return;
                         }
-                        cx.unported("hiscore_and_credits after a game with a new high score");
-                        return Yield::Return;
+                        // $2116: a new high score: the title music.
+                        self.pc = 30;
+                        return call(Routine::MusicStart(MusicStart::returning_to(at(0x212a))));
                     }
+                    self.pc = 1;
+                    return Yield::Raster;
+                }
+                30 => {
                     self.pc = 1;
                     return Yield::Raster;
                 }
@@ -351,8 +362,14 @@ impl HiscoreCredits {
                     self.pc = 5;
                     return Yield::Fade(super::fade::RECORDS[0]);
                 }
+                // hiscore_name_entry returns at once in attract mode.
                 5 => {
-                    // hiscore_name_entry returns at once in attract mode.
+                    self.pc = 31;
+                    if cx.s.l(ATTRACT_MODE) == 0 {
+                        return call(Routine::NameEntry(Default::default()));
+                    }
+                }
+                31 => {
                     cx.s.set_l(TEXT, at(0x340d));
                     self.pc = 6;
                     return call(Routine::HallOfTalent(HallOfTalent::default()));
@@ -555,21 +572,31 @@ fn scroll_races(times: &[(u16, u16)]) -> Vec<(u16, u16)> {
     out
 }
 
-/// `$3190`: the next line of text (from `h0+$3258`, a zero byte ends it) written into the text
-/// plane's bottom (`+$dc50`) in the twelve-line font (h0+$376ea). False when the text ends (a
-/// negative byte: the credits are over).
+/// `$3190`: the next line of text (from `h0+$3258`) written into the text plane's bottom
+/// (`+$dc50`). False when the text ends (a negative byte: the credits are over).
 fn text_line(cx: &mut Cx, inside: u32) -> bool {
+    let from = cx.s.l(TEXT);
+    text12(cx, from, BUFFER_0 + 0xdc50, inside)
+}
+
+/// `$319c`: the text at `from` (a zero byte, or a character the font lacks, ends it) written at
+/// `to` in the twelve-line font (h0+$376ea), a byte a character, a space skipped; where it
+/// stopped kept in `h0+$3258`. False at a negative byte (the original leaves its caller for the
+/// credits' end, `$224e`), `h0+$3258` then left as it was. Its memory is compared once the
+/// original is out of the call returning to `inside`.
+pub(super) fn text12(cx: &mut Cx, from: u32, mut to: u32, inside: u32) -> bool {
     cx.jobs.push(crate::game::Job {
         inside: vec![inside],
-        writes: vec![(BUFFER_0 + 0xdc50, 12 * 0x28), (TEXT, 4)],
+        writes: vec![(to, 12 * 0x28), (TEXT, 4)],
     });
-    let mut a = cx.s.l(TEXT);
-    let mut to = BUFFER_0 + 0xdc50;
-    let mut cycles = 60u32;
+    let mut a = from;
+    // Its 68000 cycles: the call and its end, 44 a byte read, a space's step, the charset
+    // searched at 46 a byte, a glyph's twelve moves.
+    let mut cycles = 76u32;
     let ok = loop {
         let c = cx.b(a);
         a += 1;
-        cycles += 30;
+        cycles += 44;
         if c == 0 {
             break true;
         }
@@ -577,6 +604,7 @@ fn text_line(cx: &mut Cx, inside: u32) -> bool {
             break false;
         }
         if c == 0x20 {
+            cycles += 26;
             to += 1;
             continue;
         }
@@ -591,7 +619,7 @@ fn text_line(cx: &mut Cx, inside: u32) -> bool {
                 break true;
             }
         };
-        cycles += k * 26;
+        cycles += 24 + k * 46;
         if !found {
             break true;
         }
@@ -600,7 +628,7 @@ fn text_line(cx: &mut Cx, inside: u32) -> bool {
             let v = cx.b(glyph + 0x28 * r);
             cx.s.set_b(to + 0x28 * r, v);
         }
-        cycles += 12 * 28;
+        cycles += 50 + 12 * 20;
         to += 1;
     };
     if ok {
@@ -613,6 +641,14 @@ fn text_line(cx: &mut Cx, inside: u32) -> bool {
 /// `$2ec8`: the hall of talent's ten lines (h0+$32b4, `$1f` apart): each name, and each score
 /// right-aligned in eight places.
 fn build_table(cx: &mut Cx) {
+    // It can run past the frame's end (after a name entry ended late in the frame).
+    cx.jobs.push(crate::game::Job {
+        inside: vec![at(0x2e5a)],
+        writes: vec![(at(0x32b4), 0x136), (at(0x161aa), 0x14)],
+    });
+    // Its 68000 cycles: the names copied, then per score the registers saved and restored twice,
+    // `$160dc`, the spaces and the digits copied.
+    let mut cycles = 10 * 130u32;
     for k in 0..10u32 {
         for i in 0..8 {
             let v = cx.b(at(0x2fe0) + 8 * k + i);
@@ -622,6 +658,7 @@ fn build_table(cx: &mut Cx) {
     for k in 0..10u32 {
         let score = cx.s.l(at(0x2f90) + 8 * k);
         number_text(cx, score);
+        cycles += 900 + number_text_cycles(score);
         let mut to = at(0x32b4) + 0x1f * k;
         for i in 0..8 {
             cx.s.set_b(to + i, 0x20);
@@ -647,6 +684,22 @@ fn build_table(cx: &mut Cx) {
             }
         }
     }
+    cx.busy(cycles);
+}
+
+/// About how many 68000 cycles `$160dc` takes on `n`: each of the nine places subtracted once
+/// more than its digit (96 cycles a time), and the place's own steps.
+fn number_text_cycles(n: u32) -> u32 {
+    if n > 999_999_999 {
+        return 150;
+    }
+    let mut cycles = 120;
+    let mut p = 100_000_000u32;
+    while p > 0 {
+        cycles += 110 + 96 * ((n / p) % 10 + 1);
+        p /= 10;
+    }
+    cycles
 }
 
 /// `$160dc`: `n` as decimal digits at h0+$161b2 without leading zeros (nine 9s above 999 999 999),
