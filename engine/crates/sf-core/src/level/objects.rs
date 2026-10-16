@@ -263,6 +263,8 @@ pub fn obj_free(c: &mut LevelCtx, slot: u32, _d7: u16) {
 
 /// h0+$1b9ee: every slot freed (a level's set-up).
 pub fn obj_free_all(c: &mut LevelCtx) {
+    let in_use = (0..SLOTS).filter(|k| c.bus.l(OBJ_SLOTS + k * SLOT_SIZE + 0x40) != 0).count();
+    c.spend_n(crate::level::beam::Cost::InitFreed, in_use as u32);
     for k in 0..SLOTS {
         obj_free(c, OBJ_SLOTS + k * SLOT_SIZE, 0);
     }

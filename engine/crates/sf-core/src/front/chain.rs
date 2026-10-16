@@ -238,6 +238,9 @@ pub(crate) struct Chain {
     n: bool,
     z: bool,
     frog_only: bool,
+    /// The last instruction was a branch taken back (the `bmi` after a death): a `level_init_wN`
+    /// next is the restart, its set-up timed as the restart's (T199).
+    back: bool,
 }
 
 impl Chain {
@@ -247,6 +250,7 @@ impl Chain {
             n: false,
             z: false,
             frog_only,
+            back: false,
         }
     }
 
@@ -279,12 +283,13 @@ impl Chain {
         for _ in 0..64 {
             let pc = self.pc;
             let op = cx.data.h0_w(pc);
+            let back = std::mem::take(&mut self.back);
             match op {
                 // jsr abs.l
                 0x4eb9 => {
                     let to = cx.data.h0_l(pc + 2).wrapping_sub(H0);
                     self.pc = pc + 6;
-                    if let Some(y) = self.dispatch(cx, to) {
+                    if let Some(y) = self.dispatch(cx, to, back) {
                         return y;
                     }
                 }
@@ -326,6 +331,7 @@ impl Chain {
                         }
                     };
                     self.pc = if taken { to } else { next };
+                    self.back = taken && to < pc;
                     if self.pc == TOP_LOOP {
                         return Yield::Jump(Box::new(Routine::TopLoop(Default::default())));
                     }
@@ -340,7 +346,7 @@ impl Chain {
         Yield::Poll
     }
 
-    fn dispatch(&mut self, cx: &mut Cx, to: u32) -> Option<Yield> {
+    fn dispatch(&mut self, cx: &mut Cx, to: u32, restart: bool) -> Option<Yield> {
         let ret = at(self.pc);
         let frog_only = self.frog_only;
         Some(match target(to) {
@@ -363,7 +369,12 @@ impl Chain {
             Target::LevelInit(w) => {
                 let level = cx.s.l(LEVEL) as u8;
                 let id = level_id(w, level);
-                exit::init_on_beam(cx, frog_only, id, exit::init_inside(id))
+                let costs = if restart {
+                    &crate::level::beam::RESTART_COSTS
+                } else {
+                    &crate::level::beam::BLANK_COSTS
+                };
+                exit::init_on_beam_costs(cx, frog_only, id, exit::init_inside(id), costs)
             }
             Target::WorldLoadLb => call(Routine::WorldLoad(WorldLoad::new(exit::BONUS_WORLD))),
             Target::LevelLoadLb => call(Routine::LevelLoad(LevelLoad::new(level_id(exit::BONUS_WORLD, 1), ret))),
