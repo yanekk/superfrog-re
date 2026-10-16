@@ -146,7 +146,7 @@ done · ⛔ blocked, needs a human. A task dropped by a plan amendment leaves th
 | T163 | attract-demo-return | T162 | ✅ | |
 | T164 | attract-demo-cycles | T163; blocks T21 | ✅ | |
 | T154 | w1-4-completion | T106, T127, T180, T182; blocks T21 | ✅ | |
-| T166 | w2-2-completion | T122, T180, T182; blocks T21 | 🔍 | `w2-2-complete` (4925 frames): planned by `plan_exit` in three legs, original reaches the exit 4738, tally, `level` 3 at 4925. No new tests. Red for T155 (FINDINGS): checks 1–3 at 1229, alone at 4570. Deviation: route skips the 16,9-75 column (95 coins without it). |
+| T166 | w2-2-completion | T122, T180, T182; blocks T21 | ✅ | Review: one fix (case comment's last-coin frame 4272→4283). Re-ran on the original: exit 4738, `level` 3 at 4925, none without the 4810 fire, 96 coins, no life lost; red 1229 and alone 4570 reproduced; `script_seen` matches. Engine completion is T155's. |
 | T167 | w2-3-completion | T122, T180, T182; blocks T21 | ⬜ | |
 | T168 | w2-4-completion | T122, T180, T182; blocks T21 | ⬜ | |
 | T180 | faithful-compare | T120; blocks T181, T182 and every open conformance task | ✅ | |
@@ -164,7 +164,7 @@ done · ⛔ blocked, needs a human. A task dropped by a plan amendment leaves th
 A Notes cell holds what was built or what the review found, the test count, and one line per
 deviation from the task doc. A ✅ task's cell may be cut to one line once the next task has been reviewed.
 
-**Review queue:** T166
+**Review queue:** *(empty)*
 
 ## Blocked on the user
 
