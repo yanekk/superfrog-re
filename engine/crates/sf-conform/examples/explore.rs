@@ -393,7 +393,11 @@ fn main() {
             continue;
         }
         history.push((snap, before));
-        fails = 0;
+        // Only a way kept whole made its progress; a part kept and then no way on, again and
+        // again, looped for ever (T205: W1-4's top left, W2-4 at 227,14).
+        if keep == way.inputs.len() {
+            fails = 0;
+        }
         if let Some(o) = &out {
             std::fs::write(o, script(&inputs)).unwrap();
         }

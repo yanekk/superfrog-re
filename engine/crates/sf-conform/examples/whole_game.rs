@@ -8,7 +8,8 @@
 //! frame the main program is in `end_seq_load`, and fails, naming the leg, on game over or a leg
 //! that never begins.
 //!
-//! `whole_game [--out <script.txt>] [--slot <leg>] [--scratch <dir>] [--from <leg>]`
+//! `whole_game [--out <script.txt>] [--slot <leg>] [--scratch <dir>] [--from <leg>] [--until <leg>]`
+//! (`--until`: stop at the end of the frame before `<leg>`'s first)
 //!
 //! A snapshot of the original at each leg's start goes to `--scratch` (default
 //! `$TMPDIR/sf-whole-game`), with the script so far; `--from <leg>` resumes there, so a leg's
@@ -216,6 +217,7 @@ struct Args {
     check: Option<PathBuf>,
     diff: Option<String>,
     ablate: bool,
+    until: Option<String>,
 }
 
 fn args() -> Args {
@@ -227,6 +229,7 @@ fn args() -> Args {
         check: None,
         diff: None,
         ablate: false,
+        until: None,
     };
     let mut it = std::env::args().skip(1);
     while let Some(k) = it.next() {
@@ -242,6 +245,7 @@ fn args() -> Args {
             "--from" => a.from = Some(v),
             "--check" => a.check = Some(v.into()),
             "--diff" => a.diff = Some(v),
+            "--until" => a.until = Some(v),
             _ => panic!("unknown argument {k}"),
         }
     }
@@ -566,6 +570,16 @@ fn main() {
             let leg = &LEGS[next];
             let start = f + 1;
             let (s, end) = leg_script(leg);
+            if args.until.as_deref() == Some(leg.name) {
+                let note = format!(
+                    "{} begins at frame {start} ({}); the script stops here (--until)",
+                    leg.name,
+                    status(&m)
+                );
+                println!("{note}  [{:.0?}]", t0.elapsed());
+                rec.notes.push((start, note));
+                break;
+            }
             let note = leg_note(leg, start, end, &m);
             println!("{note}  [{:.0?}]", t0.elapsed());
             rec.notes.push((start, note));
