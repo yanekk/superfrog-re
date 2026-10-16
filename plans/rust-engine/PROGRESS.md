@@ -14,7 +14,7 @@ the account is the commit message. Whoever writes a cell also fixes the over-bud
 **Status:** about 100 tasks ✅; T18, T21 and Phase 3 open; amended to faithful.
 **Last updated:** 2026-10-15
 **Amended 2026-10-15 (owner):** faithful replaces frame-exact (DESIGN §2.1, PLAN.md amendment); T180–T183 added, 14 tasks dropped (PLAN.md).
-**Next `pir-work` will:** T180 faithful-compare, then T182; T126 and T132 finish against the faithful bar.
+**Next `pir-work` will:** review T204.
 
 ## Tasks
 
@@ -169,12 +169,12 @@ done · ⛔ blocked, needs a human. A task dropped by a plan amendment leaves th
 | T201 | continue-and-codes | T21, T200; blocks T23, T29 | ✅ | |
 | T202 | whole-game-script | T21, T198, T199; blocks T23, T29 | ⬜ | |
 | T203 | whole-game-green | T21, T202; blocks T23, T29 | ⬜ | |
-| T204 | w3-4-template-86 | T201; blocks T203 | ⬜ | |
+| T204 | w3-4-template-86 | T201; blocks T203 | 🔍 | Bubble (template 86, `items/bubble.rs`) spawned by `frog_air_anim`; a level's unported paths reach `Game::unported`; sweep `tools/template_sweep.py`: nothing spawnable missing. 3 new tests (case, no-kind, bubble update), the pushing-surface frog test extended, 3 Python; `code-w3-4` to 2700. Deviations: sweep is a Python tool; freeze no longer patches the bubble; `enemies-w3-4-complete` pin 16318 dropped; tile-pickup assert reports too. |
 
 A Notes cell holds what was built or what the review found, the test count, and one line per
 deviation from the task doc. A ✅ task's cell may be cut to one line once the next task has been reviewed.
 
-**Review queue:** *(empty)*
+**Review queue:** T204
 
 ## Blocked on the user
 

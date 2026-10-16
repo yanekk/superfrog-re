@@ -97,3 +97,4 @@ Both tests read the disks from `SUPERFROG_DISKS`, else from the main checkout ro
 | `tools/find_secrets.py` | find fake-wall secret passages, overlay + `SECRETS.md` |
 | `tools/export_annotated.py` | per-level PNG with a coordinate grid + level id (tile addressing) |
 | `tools/check_no_disk_data.py` | fail if any repo file carries a 128-byte run of disk data |
+| `tools/template_sweep.py` | every object template a level's map can spawn, against those the engine ports |
