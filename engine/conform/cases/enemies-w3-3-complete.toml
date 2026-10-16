@@ -1,6 +1,6 @@
 # W3-3 completed (T115): from its first frame (the frog held to 150) through the coins the exit
-# needs to the exit (7529), every object live, the exit fade and the tally, fire in its wait
-# taking the points. Planned by `examples/explore`, each step checked on the original.
+# needs to the exit (the level completed on frame 7530), every object live, the exit fade and the tally,
+# fire in its wait taking the points. Planned by `examples/explore`, each step checked on the original.
 sync = { level = "W3-3" }
 script = "enemies-w3-3-complete"
 frames = 7714
