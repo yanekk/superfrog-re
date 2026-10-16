@@ -18,6 +18,9 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-16 | 🔄 | Owner, T150: added T196 pass-over-two-blanks (T184, T150; blocks T21) for `enemies-w6-4-complete`: coins a pass early at 154 after late frames 150–153; alone, objects a frame ahead from 5231 (pass held over 5228–5229). Also owns W2-2's and W6-2's (T194). |
+| 2026-10-16 | 📌 | T150: W6-4's marker 55 cells are pickups (by `tile_pickup`'s table): 85 tile coins, wings at 212,37 233,34 228,77 234,77, speed-ups 231–237,78. The 24 spikes at row 10 are crossed only with wings (fire flaps). |
+| 2026-10-16 | 📌 | T150: `plan_exit_w6` stalls where its field misleads (W6-4: spikes 118–124,18; the pad 239–240,72 under a 2-wide funnel; no wings). A breadth-first search on the engine over held inputs, keyed by 8-px position, found each leg. |
 | 2026-10-16 | 🐞 | T166, for T155: `w2-2-complete` red under checks 1–3 at 1229 (`hitboxes` order; 1227 `blanks: 1`, 1228 cut at phase 1); alone at 4570 (tile coin 101,49, engine's 99,47 at 4700). `scan`: only these two frames. |
 | 2026-10-16 | 📌 | T166: W2-2's top is reachable from the start (springs; `--jump 4` floods say not); its five coin springs pay five coins each. The 151-154 shaft climbs to 154,22-39 from below. Top room 15-23,5-8 not needed. |
 | 2026-10-16 | 📌 | T154: a tile coin (marker 55) counts in `frog+$7e`, never toward W1's exit; W1-4 has six wings (`items_map`); with them, a pad throw plus flaps crosses gaps. `cases.rs`'s green-only `complete_w1_4` replaced by `frog_cases::complete_w1_4`. |
