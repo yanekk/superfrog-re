@@ -12,9 +12,9 @@ the account is the commit message. Whoever writes a cell also fixes the over-bud
 **Plan reviewed:** 2026-10-10 — 7 fixed, 7 decided with the user
 
 **Status:** about 100 tasks ✅; T18, T21 and Phase 3 open; amended to faithful.
-**Last updated:** 2026-10-15
+**Last updated:** 2026-10-16
 **Amended 2026-10-15 (owner):** faithful replaces frame-exact (DESIGN §2.1, PLAN.md amendment); T180–T183 added, 14 tasks dropped (PLAN.md).
-**Next `pir-work` will:** review T115 (W3 completions; the milestones judge change, owner-approved).
+**Next `pir-work` will:** T195 (w3-3-slot-order), then T21 once its dependencies are ✅.
 
 ## Tasks
 
@@ -120,7 +120,7 @@ done · ⛔ blocked, needs a human. A task dropped by a plan amendment leaves th
 | T112 | enemies-w3-3-case | T44; blocks T18 | ✅ | |
 | T113 | enemies-w3-4-case | T44, T102, T180; blocks T115, T21 | ✅ | |
 | T114 | enemies-w3-activation | T44; blocks T18 | ✅ | |
-| T115 | w3-completions | T44, T101, T102, T111, T112, T113, T180, T182; blocks T21 | 🔍 | Four `enemies-w3-N-complete` cases, tests in `enemies_w3.rs`, green alone. New `examples/explore` (W3's pipes, gates, water). Deviation: judge fix, owner's yes: item clears settle two passes on (`milestones.rs`); 12 milestones dropped, all verified transient. Old W3-3 route kept red for T195. |
+| T115 | w3-completions | T44, T101, T102, T111, T112, T113, T180, T182; blocks T21 | ✅ | Review: two fixes, a test locking the mid-pass gate (its mutation survived) and case comments' exit frames set to the tests' exit_at. Ran the nine enemies_w3 tests and complete-w4-4 green, ITEM_SETTLE=0 red, W3-3's 4179 pin after a Late frame (record). T195 shape valid. The 157/160 all-cases claim read-only. |
 | T121 | bob-draw-cut | T101; blocks T21 | ✅ | |
 | T122 | w2-completions | T43, T101, T121; blocks T18 | ✅ | |
 | T120 | conform-no-silent-pass | T05, T36; blocks T21 | ✅ | |
