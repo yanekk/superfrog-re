@@ -1,6 +1,6 @@
 # W6-4 completed (T150): from its first frame through the 99 coins `coins_left_for_exit` counts and
 # the three switches whose gates exist, then the wings (212,37) over the 24 cells of spikes at row
-# 10 and down the shaft to the exit (`level_state` 1 on frame 7308; no life lost), every object live,
+# 10 and down the shaft to the exit (`level_state` 1 on frame 7307; no life lost), every object live,
 # nothing left out. Planned with `examples/plan_exit_w6`, its stalls (the hop over the spikes at
 # 118-124,18, the pad under the funnel at 239-240,72, the flight) found by search on the engine and
 # each leg checked on the original. Outside the test block, T196's: after the late frames 150-153

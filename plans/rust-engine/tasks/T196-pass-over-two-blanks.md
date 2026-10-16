@@ -52,7 +52,7 @@ None new.
 - The engine's pacing or pass-cutting code the fault is in (`sf-core`, `Game::step_paced` and
   `level::beam`), and a test that fails without the fix.
 - `engine/crates/sf-conform/tests/enemies_w6_cases.rs`: `enemies-w6-4-complete` added, pinning its exit
-  (`level_state` 1 at frame 7308) so a script cut short cannot stay green.
+  (`level_state` 1 at frame 7307, 0 at 7308) so a script cut short cannot stay green.
 - `engine/conform/cases/enemies-w6-4-complete.toml`: its comment updated.
 - The W2-2 and W6-2 cases and their tests, if this fixes them.
 
