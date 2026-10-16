@@ -140,7 +140,7 @@ done · ⛔ blocked, needs a human. A task dropped by a plan amendment leaves th
 | T148 | w6-2-alt-completion | T104, T147, T180, T182; blocks T21 | ⬜ | |
 | T149 | w6-3-completion | T104, T180, T182; blocks T21 | ✅ | |
 | T150 | w6-4-completion | T104, T180, T182; blocks T21 | ✅ | |
-| T151 | w6-4-alt-completion | T104, T150, T180, T182; blocks T21 | 🔍 | `enemies-w6-4-alt-complete`, exit milestone 7089, green faithful (one re-sync, 5688) and alone (230 milestones); in the test block, one test. T150's first 4900 frames, rest replanned; flight legs searched on the engine (scratch `zz_reach`, not committed). Deviation: `resync = true`, as the amendment allows. |
+| T151 | w6-4-alt-completion | T104, T150, T180, T182; blocks T21 | ✅ | Review clean, no fix commit. Ran case and CLI: exit 7089 on the original (its milestones), 230 met alone, one re-sync (hitboxes, lag frame 5688); 4900-frame prefix equals T150 script (cmp). Mutation: drop `7082: R` turns test red. `resync = true` held by amendment. |
 | T160 | attract-demo-entry | T33, T180 | ✅ | |
 | T162 | attract-demo-level-start | T160, T180 | ✅ | |
 | T163 | attract-demo-return | T162 | ✅ | |
