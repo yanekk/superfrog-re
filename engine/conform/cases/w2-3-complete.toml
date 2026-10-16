@@ -1,0 +1,19 @@
+# W2-3 played from its start to its exit with every object live, no exclusions (T167): the lower
+# floor and the left launcher room's coins, the pocket at 89-101,63-70 and the passage S7 into the
+# room 94-123,47-61, the launcher shaft 61-78,42-59 up to its ledge 78-87,41, the corridor east to
+# the switch at 119,29 (gate 157,27), the switch at 202,36 (gate 260,25) and the coins at
+# 189-198,13-18 (the 66 the exit needs taken by frame 4087), the switch at 181,12 (gate 216,29),
+# down the far-right shaft to the switch at 295,62 (gate 196,5), back up through the gates, the
+# long room west to the pad at 205,26, up and left through the gate along the top, down the
+# shaft 132-139 to the slope under the exit room, the crumbling ledges up the tall room, the
+# corridor, the passages S6 and S8, the exit at frame 8503 (`level_state` 0), the exit fade and
+# the tally, fire in its wait taking the points; ends on frame 8689, frame 8690 being the next
+# level's (`level` 4). Planned by `examples/plan_exit` (`--no-tile-coins`, `--ground 36`), checked
+# on the original chunk by chunk. No heart lost; meets the bouncer (285), the dart (878), the
+# hopper (1372), the spikes (2584), the mace (3682), the flyer (3747), the walker (3891); no
+# crumbling ledge breaks (`script_seen`). Red for T155: checks 1–3 at 2166 (`bob_records`, after
+# a lag) and 6729 (`clock_shown`); alone green.
+sync = { level = "W2-3" }
+script = "w2-3-complete"
+frames = 8690
+resync = false

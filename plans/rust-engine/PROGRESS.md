@@ -120,7 +120,7 @@ done · ⛔ blocked, needs a human. A task dropped by a plan amendment leaves th
 | T112 | enemies-w3-3-case | T44; blocks T18 | ✅ | |
 | T113 | enemies-w3-4-case | T44, T102, T180; blocks T115, T21 | ✅ | |
 | T114 | enemies-w3-activation | T44; blocks T18 | ✅ | |
-| T115 | w3-completions | T44, T101, T102, T111, T112, T113, T180, T182; blocks T21 | ⬜ | |
+| T115 | w3-completions | T44, T101, T102, T111, T112, T113, T180, T182; blocks T21 | ✅ | |
 | T121 | bob-draw-cut | T101; blocks T21 | ✅ | |
 | T122 | w2-completions | T43, T101, T121; blocks T18 | ✅ | |
 | T120 | conform-no-silent-pass | T05, T36; blocks T21 | ✅ | |
@@ -139,15 +139,15 @@ done · ⛔ blocked, needs a human. A task dropped by a plan amendment leaves th
 | T147 | w6-2-completion | T104, T180, T182; blocks T21 | ✅ | |
 | T148 | w6-2-alt-completion | T104, T147, T180, T182; blocks T21 | ✅ | Review: clean, no fix commit. Test green (163s); mutation frames 7300 turns the exit pin red; probe with `resync = false` green, nothing re-synced (deviation held); `plan_exit_w6` builds, `PLAN_HEART` unset leaves it unchanged (read-only); both switches implied by the walled exit, not milestoned (read-only). |
 | T149 | w6-3-completion | T104, T180, T182; blocks T21 | ✅ | |
-| T150 | w6-4-completion | T104, T180, T182; blocks T21 | ⬜ | |
+| T150 | w6-4-completion | T104, T180, T182; blocks T21 | ✅ | |
 | T151 | w6-4-alt-completion | T104, T150, T180, T182; blocks T21 | ⬜ | |
 | T160 | attract-demo-entry | T33, T180 | ✅ | |
 | T162 | attract-demo-level-start | T160, T180 | ✅ | |
 | T163 | attract-demo-return | T162 | ✅ | |
 | T164 | attract-demo-cycles | T163; blocks T21 | ✅ | |
-| T154 | w1-4-completion | T106, T127, T180, T182; blocks T21 | ⬜ | |
-| T166 | w2-2-completion | T122, T180, T182; blocks T21 | ⬜ | |
-| T167 | w2-3-completion | T122, T180, T182; blocks T21 | ⬜ | |
+| T154 | w1-4-completion | T106, T127, T180, T182; blocks T21 | ✅ | |
+| T166 | w2-2-completion | T122, T180, T182; blocks T21 | ✅ | |
+| T167 | w2-3-completion | T122, T180, T182; blocks T21 | ✅ | |
 | T168 | w2-4-completion | T122, T180, T182; blocks T21 | ⬜ | |
 | T180 | faithful-compare | T120; blocks T181, T182 and every open conformance task | ✅ | |
 | T181 | faithful-rebaseline | T180, T182; blocks T21 | ✅ | |
@@ -160,6 +160,8 @@ done · ⛔ blocked, needs a human. A task dropped by a plan amendment leaves th
 | T192 | chain-level-code | T183, T190; blocks T21 | ⬜ | |
 | T193 | chain-e2e | T183; blocks T21 | ✅ | |
 | T194 | w6-2-sfx-double-blank | T147; blocks T21 | ⬜ | |
+| T195 | w3-3-slot-order | T115; blocks T21 | ⬜ | |
+| T196 | pass-over-two-blanks | T184, T150; blocks T21 | ⬜ | |
 
 A Notes cell holds what was built or what the review found, the test count, and one line per
 deviation from the task doc. A ✅ task's cell may be cut to one line once the next task has been reviewed.
