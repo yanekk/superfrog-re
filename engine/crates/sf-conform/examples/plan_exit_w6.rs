@@ -555,6 +555,11 @@ fn main() {
             return;
         }
         let hearts = start.state().w(HEARTS);
+        // A heart's worth in the score: 400 (25 cells of distance), so the frog trades hearts for
+        // headway. `PLAN_HEART=N` makes it N and refuses, like a life lost, a path that costs a
+        // heart on the original (T148: W6-2alt's enemies wore the frog down to its last heart).
+        let heart: i64 = std::env::var("PLAN_HEART").map_or(400, |v| v.parse().unwrap());
+        let keep_hearts = std::env::var("PLAN_HEART").is_ok();
         let score = |st: &sf_core::State| -> i64 {
             let (x, y) = frog(st);
             match target {
@@ -565,7 +570,7 @@ fn main() {
                     // Onto the object from above: the frog's centre over its top middle.
                     nearest(|a| st.l(a), |a| st.w(a), u).map_or(100_000, |(ox, oy)| {
                         ((x - ox - 16).abs() + 2 * (y - (oy - 32)).abs()) as i64
-                    }) - 400 * st.w(HEARTS) as i64
+                    }) - heart * st.w(HEARTS) as i64
                 }
                 Some(Via::Hurt(u)) => {
                     if st.w(HEARTS) < hearts {
@@ -588,7 +593,7 @@ fn main() {
                     } else {
                         0
                     };
-                    d * 16 + (16 - (x % 16 - 8).abs()) as i64 / 4 - 400 * st.w(HEARTS) as i64
+                    d * 16 + (16 - (x % 16 - 8).abs()) as i64 / 4 - heart * st.w(HEARTS) as i64
                         - 8000 * taken
                         + been
                 }
@@ -651,7 +656,10 @@ fn main() {
             let mut ok = true;
             for (k, &x) in p.iter().enumerate() {
                 sync::step_inserting(amiga, x).unwrap();
-                if peek_w(amiga, FROG + f::LIVES) != lives || peek_w(amiga, FROG + f::DYING) != 0 {
+                if peek_w(amiga, FROG + f::LIVES) != lives
+                    || peek_w(amiga, FROG + f::DYING) != 0
+                    || (keep_hearts && peek_w(amiga, HEARTS) < hearts)
+                {
                     eprintln!(
                         "  a path dies {k} frames in on the original, frog at {},{}",
                         peek_w(amiga, FROG + f::X),
@@ -692,7 +700,10 @@ fn main() {
                 let mut ok = true;
                 for &x in &p {
                     sync::step_inserting(amiga, x).unwrap();
-                    if peek_w(amiga, FROG + f::LIVES) != lives || peek_w(amiga, FROG + f::DYING) != 0 {
+                    if peek_w(amiga, FROG + f::LIVES) != lives
+                        || peek_w(amiga, FROG + f::DYING) != 0
+                        || (keep_hearts && peek_w(amiga, HEARTS) < hearts)
+                    {
                         ok = false;
                         break;
                     }

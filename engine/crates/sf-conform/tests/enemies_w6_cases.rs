@@ -117,3 +117,25 @@ fn enemies_w6_3_complete() {
     assert_eq!(exits, [7891]);
     assert!(met.iter().any(|(_, m)| *m == sf_conform::Milestone::CoinTaken { left: 0 }));
 }
+
+/// W6-2's second map completed (T148): all 97 coins and both switches (50 on the ledge, then 48,
+/// whose gate is the way round to the exit room) to the exit, green faithful and alone with no
+/// re-sync. T147's W6-2 script is hit at 1461 here (the map's other enemies fill the object slots
+/// otherwise), so from 1420 it was planned again, keeping every heart.
+#[test]
+fn enemies_w6_2_alt_complete() {
+    let name = "enemies-w6-2-alt-complete";
+    let case = sf_conform::Case::load(&sf_conform::cases_dir().join(format!("{name}.toml")))
+        .unwrap_or_else(|e| panic!("{e}"));
+    let o = sf_conform::run(&case).unwrap_or_else(|d| panic!("{name}: {d}"));
+    assert!(o.resynced.is_empty(), "{:?}", o.resynced);
+    // The run reaches the exit, every coin taken: a script cut short stays green otherwise.
+    let met = o.milestones.expect("check 4 ran");
+    let exits: Vec<u64> = met
+        .iter()
+        .filter(|(_, m)| *m == sf_conform::Milestone::LevelExit { world: 6, level: 2 })
+        .map(|(f, _)| *f)
+        .collect();
+    assert_eq!(exits, [7336]);
+    assert!(met.iter().any(|(_, m)| *m == sf_conform::Milestone::CoinTaken { left: 0 }));
+}
