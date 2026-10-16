@@ -356,7 +356,10 @@ fn main() {
             let st = sf_core::State::transplant(&sync::core_memory(amiga.memory()));
             let (c, r) = cell(&st);
             let (ec, er) = way.cells[k];
-            if (peek_w(amiga, FROG + f::LIVES) as i16) < lives as i16 || peek_w(amiga, FROG + f::DYING) != 0 {
+            if (peek_w(amiga, FROG + f::LIVES) as i16) < lives as i16
+                || peek_w(amiga, FROG + f::DYING) != 0
+                || sync::in_wall_loop(amiga)
+            {
                 break;
             }
             if (c - ec).abs() > 1 || (r - er).abs() > 1 {

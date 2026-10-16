@@ -18,6 +18,7 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-16 | 🐞 | T205: in the chain the planners' ways hung the original in `frog_tiles`' wall loop (DESIGN §2.11) at x 1414: W2-2 88,70 (frame 4056), W2-3 88,63 (2664), the frog flying with W1's wings. plan_exit and explore now reject it (`sync::in_wall_loop`). |
 | 2026-10-16 | 📌 | T205: W1-2 parts in the chain only by `w1_hover_phase` (a code word never reset; each W1 hover and W4 swooper spawned steps it) and the slots it seeded. Spud, wings, `rng_state`, score: no effect (`whole_game --diff <leg> --ablate`). |
 | 2026-10-16 | 📌 | T205: W2-1 parts by `rng_state` and `obj_slots` (`frog_flight`, `kbd_toggle` shift where). The RNG carries all play before, so a chain route holds only while every earlier leg is unchanged: plan legs in order; re-planning one re-plans all after. |
 | 2026-10-16 | 🔄 | Owner, T202: added T205 chain-routes-w1-w2, T206 chain-routes-w3-w4 (T205), T207 chain-routes-w5-w6-final (T206), each blocking T203: re-plan the routes in the chain; T205 first records why standalone routes break. T207 carries T202's `end_seq_load` test. |

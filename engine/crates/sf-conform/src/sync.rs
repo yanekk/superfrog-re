@@ -435,6 +435,23 @@ fn hitbox_end(m: &AmigaMemory) -> u32 {
     at
 }
 
+/// `frog_tiles`'s wall test (h0+$e3fe..$e412), which loops for ever with both wall flags set
+/// (DESIGN §2.11).
+pub const FROG_TILES_WALL_LOOP: std::ops::RangeInclusive<u32> = h0(0xe3fe)..=h0(0xe412);
+
+/// Whether the original's main program ended the frame inside [`FROG_TILES_WALL_LOOP`]: hung, the
+/// frog lifted into a pillar between two `$3d` edges (T205: the planners' ways met it on W2-2 and
+/// W2-3 at x 1414). Reads only the interrupted PC, not the whole memory.
+pub fn in_wall_loop(a: &Amiga) -> bool {
+    let cpu = a.cpu();
+    let l = |addr: u32| {
+        let b = a.peek(addr, 4);
+        u32::from_be_bytes([b[0], b[1], b[2], b[3]])
+    };
+    let pc = if cpu.pc == l(0x6c) { l(cpu.ssp + 2) } else { cpu.pc };
+    FROG_TILES_WALL_LOOP.contains(&pc)
+}
+
 /// Where the main program was at the end of a frame: its PC, then each long on its stack that is
 /// a return address into the game's code (a long just after a `jsr`/`bsr`), innermost first. For
 /// tracing which loop of a scene a frame belongs to.

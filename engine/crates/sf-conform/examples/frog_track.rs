@@ -24,12 +24,14 @@ fn main() {
     for k in 0..n {
         sync::step_inserting(&mut amiga, p.input_at(k)).unwrap();
         if (k + 1) % step == 0 {
-            let st = sf_core::State::transplant(&sync::core_memory(amiga.memory()));
+            let mem = sync::core_memory(amiga.memory());
+            let pc = sync::main_chain(&amiga.cpu(), &mem)[0];
+            let st = sf_core::State::transplant(&mem);
             let w = |o| st.w(FROG + o) as i16 as i32;
             // The frog's middle a row up, as `plan_exit` places it.
             let (x, y) = (w(f::X) + 0x17, w(f::Y) - 0x10);
             println!(
-                "frame {}: cell {},{} x {x} coins needed {} hearts {} lives {} wings {} spud {} level {}",
+                "frame {}: cell {},{} x {x} coins needed {} hearts {} lives {} wings {} spud {} level {} main pc h0+${:x}",
                 k + 1,
                 x / 16,
                 y / 16,
@@ -38,7 +40,8 @@ fn main() {
                 st.w(FROG + f::LIVES),
                 st.w(FROG + f::FLIGHT),
                 st.w(FROG + f::SPUD_ON),
-                st.l(h0(0x40de))
+                st.l(h0(0x40de)),
+                pc - h0(0)
             );
         }
     }
