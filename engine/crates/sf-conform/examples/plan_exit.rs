@@ -24,6 +24,9 @@
 //! T154: `--fly`: fire is among the inputs, so with the wings (`frog+$90`) the frog flaps up (eight
 //! flaps an airtime); give `--jump` the rows a flight climbs, so the field leads up into the sky.
 //!
+//! T205: `--snap <file>`: start from a snapshot `whole_game` saved at the leg's start in the whole
+//! game (`$TMPDIR/sf-whole-game/leg-NN.snap`) instead of the level's `AtLevel` sync point.
+//!
 //! T122: `--no-tile-coins`: only markers 8 and 9 are coins (a tile coin counts in `frog+$7e`, not
 //! toward the exit: W2's); `--jump N`: the field climbs N rows from ground, not 6 (a jump reaches
 //! 3 rows, so 4 is the frog's); `--launch N`: a launcher (marker 7) lifts the field N rows.
@@ -283,6 +286,7 @@ fn main() {
     let mut skip_boxes: Vec<(usize, usize, usize, usize)> = Vec::new();
     let mut avoid: Vec<(usize, usize, usize, usize)> = Vec::new();
     let mut fly = false;
+    let mut snap: Option<String> = None;
     let mut i = 1;
     while i < args.len() {
         match args[i].as_str() {
@@ -321,6 +325,7 @@ fn main() {
                 i -= 1;
             }
             "--out" => out = Some(args[i + 1].clone()),
+            "--snap" => snap = Some(args[i + 1].clone()),
             "--frames" => budget = args[i + 1].parse().unwrap(),
             "--prefix" => {
                 let p = InputScript::load(std::path::Path::new(&args[i + 1])).unwrap();
@@ -348,9 +353,15 @@ fn main() {
     let mut goals: Vec<Vec<u32>> = vec![Vec::new(); via.len() + 1];
     let mut goal = 0;
 
-    let mut synced = sync::reach(&SyncPoint::AtLevel(id), &InputScript::idle(), budget as u32 + 100)
-        .unwrap_or_else(|e| panic!("{e}"));
-    let amiga = &mut synced.amiga;
+    // From the leg's start in the whole game (`--snap`, a snapshot `whole_game` saved), else the
+    // level's own sync point.
+    let mut amiga = match &snap {
+        Some(p) => sync::at_snapshot_file(std::path::Path::new(p), budget as u32 + 100),
+        None => sync::reach(&SyncPoint::AtLevel(id), &InputScript::idle(), budget as u32 + 100)
+            .map(|s| s.amiga),
+    }
+    .unwrap_or_else(|e| panic!("{e}"));
+    let amiga = &mut amiga;
     let display = sf_conform::display_data();
     // The world's coin tiles: its pickup table's (h0+$f382) tiles whose handler is the coin's
     // (h0+$ede0).

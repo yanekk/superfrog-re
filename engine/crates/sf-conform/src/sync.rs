@@ -905,6 +905,38 @@ fn boot_disk(sync: &SyncPoint) -> DiskSlot {
     }
 }
 
+/// A snapshot of the original written to a file (`examples/whole_game` saves one at each leg's
+/// start in the chain, T202): its frame, its input's joystick, the core's bytes.
+pub fn save_snapshot_file(path: &std::path::Path, s: &Snapshot) -> std::io::Result<()> {
+    let mut b = s.frame.to_le_bytes().to_vec();
+    b.push(s.input.joy.bits());
+    b.extend_from_slice(&s.bytes);
+    fs::write(path, b)
+}
+
+/// [`save_snapshot_file`]'s file, read back.
+pub fn load_snapshot_file(path: &std::path::Path) -> Result<Snapshot, String> {
+    let b = fs::read(path).map_err(|e| format!("{}: {e}", path.display()))?;
+    if b.len() < 5 {
+        return Err(format!("{}: not a snapshot", path.display()));
+    }
+    Ok(Snapshot {
+        frame: u32::from_le_bytes(b[0..4].try_into().unwrap()),
+        input: FrameInput::joy(Joy(b[4])),
+        bytes: b[5..].to_vec(),
+    })
+}
+
+/// The original powered on as the whole game runs it (`power-on-df1`: disk 1 booting, an empty
+/// df1) and returned to the snapshot in `path`, with room for `frames` more frames (T205: the
+/// planners start a leg from its state in the chain).
+pub fn at_snapshot_file(path: &std::path::Path, frames: u32) -> Result<Amiga, String> {
+    let s = load_snapshot_file(path)?;
+    let mut a = power_on(DiskSlot::D1, 2, s.frame + frames)?;
+    a.restore(&s);
+    Ok(a)
+}
+
 fn power_on(boot: DiskSlot, drives: u8, frames: u32) -> Result<Amiga, String> {
     let cfg = OracleConfig::locate(frames)
         .map_err(|e| e.to_string())?

@@ -306,19 +306,11 @@ impl Record {
 }
 
 fn save_snapshot(path: &std::path::Path, s: &Snapshot) {
-    let mut b = s.frame.to_le_bytes().to_vec();
-    b.push(s.input.joy.bits());
-    b.extend_from_slice(&s.bytes);
-    std::fs::write(path, b).unwrap();
+    sf_conform::sync::save_snapshot_file(path, s).unwrap();
 }
 
 fn load_snapshot(path: &std::path::Path) -> Snapshot {
-    let b = std::fs::read(path).unwrap_or_else(|e| panic!("{}: {e}", path.display()));
-    Snapshot {
-        frame: u32::from_le_bytes(b[0..4].try_into().unwrap()),
-        input: FrameInput::joy(Joy(b[4])),
-        bytes: b[5..].to_vec(),
-    }
+    sf_conform::sync::load_snapshot_file(path).unwrap_or_else(|e| panic!("{e}"))
 }
 
 fn status(m: &AmigaMemory) -> String {
