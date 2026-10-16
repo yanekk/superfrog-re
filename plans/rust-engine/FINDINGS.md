@@ -18,6 +18,8 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-16 | 🐞 | `sf-conform` lib test `the_frog_walks_step_counts_the_hitbox_entries_looked_at` fails on `pir/rust-engine` (step at h0+$d132: 1, wants 2), before T200. Left alone (T200 scope); `pass_step` is T184/T185's. |
+| 2026-10-16 | 📌 | T200: the name entry is typed on the keyboard (`key_down`); fire, Return or Escape end it. `$319c` searches its charset at 46 cycles a byte: a `.` or `:` costs ~2 200, which decides the frame the entry's loop goes on in. |
 | 2026-10-16 | 📌 | T21 split at pir's context warning into T198 disk-prompts (its uncommitted work in `T198-wip.patch`), T199 live-restart, T200 hiscore-entry, T201 continue-and-codes, T202 whole-game-script, T203 whole-game-green; all block T23, T29. |
 | 2026-10-16 | 🔄 | Owner, T21: the bonus level's loading picture (no walk; up on the original as long as its loads) is held by the engine for the loads' measured time, its frames counted as play, not shown 0.6 s. |
 | 2026-10-16 | 🐞 | T21: game over in the bonus level (`player_died`, its last life) is a frame early in the engine, as the T18 row below: `chain-w5-4-to-bonus` stops at 1900, before it (1905). |

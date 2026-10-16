@@ -222,7 +222,10 @@ impl Case {
                 }
             }
             Some(toml::Value::Table(s)) if s.contains_key("end-sequence") => {
-                if let Some(k) = s.keys().find(|k| !["end-sequence", "score"].contains(&k.as_str())) {
+                if let Some(k) = s
+                    .keys()
+                    .find(|k| !["end-sequence", "score"].contains(&k.as_str()))
+                {
                     return Err(format!("sync: unknown key `{k}` beside `end-sequence` (score)"));
                 }
                 if s["end-sequence"].as_bool() != Some(true) {
