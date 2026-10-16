@@ -18,6 +18,8 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-16 | 📌 | T205: W1-2 parts in the chain only by `w1_hover_phase` (a code word never reset; each W1 hover and W4 swooper spawned steps it) and the slots it seeded. Spud, wings, `rng_state`, score: no effect (`whole_game --diff <leg> --ablate`). |
+| 2026-10-16 | 📌 | T205: so a chain route holds only while every earlier leg spawns as many hovers/swoopers (mod 4) as when it was planned: re-plan legs in order; re-planning one re-checks all after it. Other never-reset code words: `w1_spout_turn`, `chain_link_count`, W6's, bonus toggles. |
 | 2026-10-16 | 🔄 | Owner, T202: added T205 chain-routes-w1-w2, T206 chain-routes-w3-w4 (T205), T207 chain-routes-w5-w6-final (T206), each blocking T203: re-plan the routes in the chain; T205 first records why standalone routes break. T207 carries T202's `end_seq_load` test. |
 | 2026-10-16 | 🐞 | T202: in the chain W1-2's route parts at its frame 792 (frog hurt): the frog enters with W1-1's spud and wings (`frog_spud_on`, `frog_flight` 1), another `rng_state` and `w1_hover_phase`; the original loses every life (script frame 27251). |
 | 2026-10-16 | 📌 | T202: `game-whole` (power-on-df1, W1-1, its tally's slot machine, W1-2 to game over, hall of talent) green faithful and alone, 27 000 frames: `run` 421 s, `--alone` 297 s. `examples/whole_game --from`/`--diff` resume or compare a leg. |

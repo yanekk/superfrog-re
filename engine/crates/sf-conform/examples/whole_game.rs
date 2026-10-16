@@ -215,6 +215,7 @@ struct Args {
     from: Option<String>,
     check: Option<PathBuf>,
     diff: Option<String>,
+    ablate: bool,
 }
 
 fn args() -> Args {
@@ -225,9 +226,14 @@ fn args() -> Args {
         from: None,
         check: None,
         diff: None,
+        ablate: false,
     };
     let mut it = std::env::args().skip(1);
     while let Some(k) = it.next() {
+        if k == "--ablate" {
+            a.ablate = true;
+            continue;
+        }
         let v = it.next().unwrap_or_else(|| panic!("{k} takes a value"));
         match k.as_str() {
             "--out" => a.out = v.into(),
@@ -386,16 +392,91 @@ fn diff(args: &Args, name: &str) {
         let m = core_memory(a.memory());
         (word(&m, FROG + f::X), word(&m, FROG + f::Y))
     };
+    let (chain0, fresh0) = (chain.snapshot(), fresh.snapshot());
+    // The fresh frog's path, and the frame each run's path parts from it (`end` if never).
+    let mut path = Vec::new();
     for k in 0..end {
-        step_inserting(&mut chain, s.input_at(k)).unwrap();
         step_inserting(&mut fresh, s.input_at(k)).unwrap();
-        if pos(&chain) != pos(&fresh) {
-            println!("frame {k}: frog {:?} in the chain, {:?} fresh", pos(&chain), pos(&fresh));
-            println!("  differ: {:?}", differ(&chain, &fresh));
-            return;
+        path.push(pos(&fresh));
+    }
+    let parts = |a: &mut Amiga| -> u32 {
+        for k in 0..end {
+            step_inserting(a, s.input_at(k)).unwrap();
+            if pos(a) != path[k as usize] {
+                return k;
+            }
+        }
+        end
+    };
+    let k = parts(&mut chain);
+    if k == end {
+        println!("the frog's path is the same to {end}");
+        return;
+    }
+    fresh.restore(&fresh0);
+    for j in 0..=k {
+        step_inserting(&mut fresh, s.input_at(j)).unwrap();
+    }
+    println!("frame {k}: frog {:?} in the chain, {:?} fresh", pos(&chain), path[k as usize]);
+    println!("  differ: {:?}", differ(&chain, &fresh));
+    if !args.ablate {
+        return;
+    }
+    // `--ablate`: which differences decide it. Each variable differing at the start (any width)
+    // set to the fresh value alone in the chain's snapshot, then every one but it, and the frame
+    // the path parts then.
+    fresh.restore(&fresh0);
+    let fm = core_memory(fresh.memory());
+    let cm = core_memory({
+        chain.restore(&chain0);
+        chain.memory()
+    });
+    let vars: Vec<_> = sf_core::layout::LAYOUT
+        .iter()
+        .filter(|v| (0..v.width.len()).any(|k| fm.byte(v.addr + k) != cm.byte(v.addr + k)))
+        .collect();
+    let value = |v: &sf_core::layout::VarDef| -> Vec<u8> {
+        (0..v.width.len()).map(|k| fm.byte(v.addr + k)).collect()
+    };
+    let run = |set: &[&&sf_core::layout::VarDef]| -> u32 {
+        let mut a = power_on();
+        a.restore(&chain0);
+        for v in set {
+            a.poke(v.addr, &value(v));
+        }
+        parts(&mut a)
+    };
+    let all: Vec<_> = vars.iter().collect();
+    println!("all {} set fresh: parts at {}", all.len(), run(&all));
+    let threads = std::thread::available_parallelism().map_or(4, |n| n.get());
+    let next = std::sync::atomic::AtomicUsize::new(0);
+    let mut res: Vec<(usize, u32, u32)> = std::thread::scope(|sc| {
+        let hs: Vec<_> = (0..threads)
+            .map(|_| {
+                sc.spawn(|| {
+                    let mut out = Vec::new();
+                    loop {
+                        let i = next.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+                        let Some(v) = vars.get(i) else { return out };
+                        let but: Vec<_> =
+                            vars.iter().enumerate().filter(|(j, _)| *j != i).map(|(_, v)| v).collect();
+                        out.push((i, run(&[v]), run(&but)));
+                    }
+                })
+            })
+            .collect();
+        hs.into_iter().flat_map(|h| h.join().unwrap()).collect()
+    });
+    res.sort();
+    let mut deciding = Vec::new();
+    for &(i, alone, but) in &res {
+        println!("  {:<20} alone: {alone:>5}   all but it: {but:>5}", vars[i].name);
+        if but < end || alone > k {
+            deciding.push(&vars[i]);
         }
     }
-    println!("the frog's path is the same to {end}");
+    let names: Vec<_> = deciding.iter().map(|v| v.name).collect();
+    println!("{names:?} alone: parts at {}", run(&deciding));
 }
 
 fn main() {
