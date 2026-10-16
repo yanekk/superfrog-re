@@ -118,7 +118,14 @@ Per-marker templates, with their init, update and touch routines, can be regener
 **Bosses:** there is no per-world boss scene or routine. Each world ends with its `LnET` picture
 (`end_world_pic_w1` …). The one boss-like type is W6/final-level marker 1: template `$221f6`, init
 `$259ae`, update `$25a16`, touch `touch_boss_hit`, 128 hit points. It spawns 8 rows above its marker
-cell, flashes the palette on defeat and sets `level_state = $64` (inferred: the final witch).
+cell, flashes the palette on defeat and sets `level_state = $64`: the final level's witch, its only
+object besides the frog's start (T18, `sf_core::bosses::witch`). She waits `$32` passes `$160`
+below the camera's top, rises (`final_boss_update`), then bobs on the spot (`witch_bob`, 100–199
+passes) and loops round the arena (`witch_loop`) in turn, both paths read from the code relative
+to the camera. She shoots nothing: her touch hurts. Each pass the spud overlaps her takes one hit
+point (`touch_boss_hit` ignores `d7`), so firing steadily beats her in about 1 100 frames. At 0 the
+palette is set white and steps back (fade record 0, mode 1, `h0+$151b2`), and the level ends 100
+passes later into `top_loop`'s `end_seq_load` and the end sequence.
 
 **For T16–T18** (owner, 2026-10-11: re-split at plan review): about 47 new types in W1–3 and 45 in
 W4–6. That is several sessions each, while T18 has only the witch. The proposed split is one task per

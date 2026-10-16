@@ -273,14 +273,15 @@ fn goes_on(name: &str) {
 
 /// `name` run to its end with re-syncs at exactly `pins`, then on (T106): the level completed with
 /// the points taken and no slot machine, and `top_loop` going on to the next level ([`goes_on`],
-/// T183).
-fn completes(name: &str, pins: &[u32]) {
+/// T183). Returns the run's outcome.
+fn completes(name: &str, pins: &[u32]) -> sf_conform::Outcome {
     let case = sf_conform::Case::load(&sf_conform::cases_dir().join(format!("{name}.toml")))
         .unwrap_or_else(|e| panic!("{e}"));
     let o = sf_conform::run(&case).unwrap_or_else(|d| panic!("{name}: {d}"));
     let resynced: Vec<u32> = o.resynced.iter().map(|r| r.0).collect();
     assert_eq!(resynced, pins, "{name}: {:?}", o.resynced);
     goes_on(name);
+    o
 }
 
 /// W1-2 played from its start to its exit and through the tally (T106): the 68 coins, the exit at
@@ -297,6 +298,21 @@ fn complete_w1_2() {
 #[test]
 fn complete_w1_3() {
     completes("complete-w1-3", &[5079]);
+}
+
+/// W1-4 played from its start to its exit and through the tally (T154): T106's route to 1800, the
+/// lower left's coins, the hill's pad at 28,30 with the wings' flaps across to the block at
+/// 100,19, its coins and the cave's, down the shaft at 6-12,54 and the right half's coins; the exit
+/// at 7377 with the 96 coins taken, fire taking the points. No re-sync.
+#[test]
+fn complete_w1_4() {
+    let met = completes("complete-w1-4", &[]).milestones.expect("check 4 ran");
+    let exits: Vec<u64> = met
+        .iter()
+        .filter(|(_, m)| *m == sf_conform::Milestone::LevelExit { world: 1, level: 4 })
+        .map(|(f, _)| *f)
+        .collect();
+    assert_eq!(exits, [7377]);
 }
 
 /// W4-4 played from its start to its exit and through the tally (T132, T145): the pacer's hurt at

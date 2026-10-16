@@ -128,7 +128,8 @@ assertions of their own beside their subject (`frog_cases.rs`, `enemies_*.rs`, `
 `story.rs`, ...), the rest one line each in `cases.rs`. The slow ones are ignored and run with
 `cargo test -p sf-conform -- --ignored`: `attract-demo-3` (`cases.rs`, about 4 min) and the
 intro's `story-scene1-out`, `story-scene4-init`, `story-scene4-sound` and `story-intro-full`
-(`story.rs`, 80 s to 5 min). A case red today has no test that runs it whole (a test may keep
+(`story.rs`, 80 s to 5 min), and the final level's `final-win`, `final-lose` and `final-idle` (`bosses.rs`,
+which runs the win to the level's end in the block). A case red today has no test that runs it whole (a test may keep
 checks 1–3 with `Alone::Off`); its FINDINGS row names the first failing check, frame and cause and
 the task that owns it: `complete-w4-2`, `enemies-w1-1`, `enemies-w3-1`, `enemies-w3-activation`,
 `enemies-w5-2-complete`, `enemies-w6-1-complete`, `front-attract` (T184), `enemies-w6-4` (T185).
@@ -185,7 +186,8 @@ Sync points:
   `{ level = "W1-1" }` reaches it, `frog_lives` set to 0 on its first frame, the script played
   until the frog's death ends the level's loop into `game_over_seq`. The level is transplanted at
   the end of the frame before, so the case's first frame is the one game over begins in.
-- `sync = { level = "W1-1" }`: the first in-level frame, reached the way a player would: W1-1 by
+- `sync = { level = "W1-1" }`: the first in-level frame (in the final level, `WW-1`, every disk the
+  original asks for goes in, so it plays on into the end sequence), reached the way a player would: W1-1 by
   START GAME (`scripts/start-w1-1.txt`), any other level of W1–W6 and the bonus level (`"WB-1"`) by
   typing its level code on the options screen, the disks swapped as the game asks (docs/12
   "Reaching every level"). About 30 s the first time; cached after.
