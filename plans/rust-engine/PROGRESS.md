@@ -163,7 +163,7 @@ done · ⛔ blocked, needs a human. A task dropped by a plan amendment leaves th
 | T195 | w3-3-slot-order | T115; blocks T21 | ✅ | |
 | T196 | pass-over-two-blanks | T184, T150; blocks T21 | ✅ | |
 | T197 | w4-3-dmacon-regression | T194; blocks T21 | ✅ | |
-| T198 | disk-prompts | T21; blocks T23, T29 | 🔍 | Applied T21's `T198-wip.patch` unchanged, then deleted it. New tests: `flow` disk-prompts, `chain` `DiskAsked`. Whole listed regression green except `enemies_w6_2_complete`, red on the base too (stale 1380 re-sync; FINDINGS). No deviations. |
+| T198 | disk-prompts | T21; blocks T23, T29 | ✅ | Review clean, no fix commit: code is T21's patch byte for byte; flow, chain, front, purity green. Probed `level_load_of` against the old 24-entry table (same, no extras); mutations (always prompt; map clear 0 cycles) red. `end_seq_load`'s disk-3 prompt lost to disk 1 same frame (FINDINGS). w6-2 red on base too. |
 | T199 | live-restart | T21; blocks T23, T29 | ⬜ | |
 | T200 | hiscore-entry | T21; blocks T23, T29 | ⬜ | |
 | T201 | continue-and-codes | T21, T200; blocks T23, T29 | ⬜ | |
