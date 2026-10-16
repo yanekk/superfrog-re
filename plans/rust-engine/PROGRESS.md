@@ -14,7 +14,7 @@ the account is the commit message. Whoever writes a cell also fixes the over-bud
 **Status:** about 100 tasks ✅; T18, T21 and Phase 3 open; amended to faithful.
 **Last updated:** 2026-10-16
 **Amended 2026-10-15 (owner):** faithful replaces frame-exact (DESIGN §2.1, PLAN.md amendment); T180–T183 added, 14 tasks dropped (PLAN.md).
-**Next `pir-work` will:** review T200; then T198, T199, T201–T203.
+**Next `pir-work` will:** T198, T199, T201–T203.
 
 ## Tasks
 
@@ -165,7 +165,7 @@ done · ⛔ blocked, needs a human. A task dropped by a plan amendment leaves th
 | T197 | w4-3-dmacon-regression | T194; blocks T21 | ✅ | |
 | T198 | disk-prompts | T21; blocks T23, T29 | ⬜ | |
 | T199 | live-restart | T21; blocks T23, T29 | ⬜ | |
-| T200 | hiscore-entry | T21; blocks T23, T29 | 🔍 | `hiscore_name_entry` ported (`front/hiscore.rs`), title's and top_loop's call. Cases hiscore-entry, hiscore-ending green alone; 2 tests in front.rs. Deviations: typed on the keyboard, not joystick (the original's); sync `score` keys added; `$319c` and build_table cycles recounted (attract cycle green). |
+| T200 | hiscore-entry | T21; blocks T23, T29 | ✅ | Review: clean, no fix commit. Checked vs listing $2bba–$2d88; probes faithful (Escape, Space on last place, Backspace at first, overflow, mid-table and tied score); mutation (names not moved down) red; attract, ending, game-over green. Keyboard not joystick held by listing. |
 | T201 | continue-and-codes | T21, T200; blocks T23, T29 | ⬜ | |
 | T202 | whole-game-script | T21, T198, T199; blocks T23, T29 | ⬜ | |
 | T203 | whole-game-green | T21, T202; blocks T23, T29 | ⬜ | |
@@ -173,7 +173,7 @@ done · ⛔ blocked, needs a human. A task dropped by a plan amendment leaves th
 A Notes cell holds what was built or what the review found, the test count, and one line per
 deviation from the task doc. A ✅ task's cell may be cut to one line once the next task has been reviewed.
 
-**Review queue:** T200
+**Review queue:** *(empty)*
 
 ## Blocked on the user
 
