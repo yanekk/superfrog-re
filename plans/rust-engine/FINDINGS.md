@@ -18,6 +18,7 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-16 | 🔄 | Owner, T201: added T204 w3-4-template-86 (T201; blocks T203): port W3-4's template 86, report any template without a kind as unported, and sweep every spawnable template against the ported ones. |
 | 2026-10-16 | 🐞 | T201: W3-4 left idle, at frame 212 the original spawns template 86 (init h0+$24216: rising, immune, passive) from cell 285,63; the engine has no such object and reports nothing unported. `code-w3-4` ends before it. |
 | 2026-10-16 | 📌 | T201: a case's `frames` counts the engine's frames (loads skipped); its script counts the original's. W6-2..4's codes need `power-on-df1` (first map set). A script's fixed presses also leave `title_blink`, `title_menu` (flow.rs `TITLE_TIME`). |
 | 2026-10-16 | 📌 | T200 review: the T200 worktree's `cargo test` first ran a stale `sf-core` build (an `unported` string already removed from source, both hiscore tests red); `touch` of `sf-core/src/lib.rs` rebuilt it, green. Cause not found. |
