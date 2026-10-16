@@ -18,6 +18,7 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-16 | 📌 | T192: a script with a `C` token needs the disks to parse (`the_committed_scripts_parse` too). `chain-level-code`'s W3-1 play lags every other frame: all 1009 frames left out frame-wise, judged by pass state and check 4 only. |
 | 2026-10-16 | 🐞 | T167, for T155: `w2-3-complete` red under checks 1–3 at 2166 (`bob_records`, after a lag) and 6729 (`clock_shown`); `scan`: only these two. Alone green (344 milestones). No crumbling ledge breaks on its route. |
 | 2026-10-16 | 📌 | T167: W2-3's exit needs gate 196,5 (switch 295,62): pad 205,26 → top → shaft 132-139 → slope → tall-room ledges. Launchers reach row 33, never the ledges; S14, S9 are one-way down. Jumps held reach ~7 rows. |
 | 2026-10-16 | 📌 | T150 review: T196 claims T194's W6-2 fault but does not block T194; both may be dispatched and fix it twice. Sweep: other cases' exit-frame comments read-only, pinned ones (W1-2, W1-4, W6-3) agree. |
