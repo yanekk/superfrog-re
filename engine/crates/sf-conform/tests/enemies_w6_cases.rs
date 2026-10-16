@@ -139,3 +139,26 @@ fn enemies_w6_2_alt_complete() {
     assert_eq!(exits, [7336]);
     assert!(met.iter().any(|(_, m)| *m == sf_conform::Milestone::CoinTaken { left: 0 }));
 }
+
+/// W6-4's second map completed (T151): `enemies-w6-4-complete`'s first 4900 frames, the last 15
+/// coins and switch 50 replanned, then the wings, the flight over the 24 spikes at row 10 and the
+/// shaft to the exit; green faithful and alone (230 milestones), re-synced after the lag at 5688,
+/// as DESIGN §2.1 lets checks 1–3 do.
+#[test]
+fn enemies_w6_4_alt_complete() {
+    let name = "enemies-w6-4-alt-complete";
+    let case = sf_conform::Case::load(&sf_conform::cases_dir().join(format!("{name}.toml")))
+        .unwrap_or_else(|e| panic!("{e}"));
+    let o = sf_conform::run(&case).unwrap_or_else(|d| panic!("{name}: {d}"));
+    let resynced: Vec<u32> = o.resynced.iter().map(|r| r.0).collect();
+    assert_eq!(resynced, [5688], "{:?}", o.resynced);
+    // The run reaches the exit, the coins it needs all taken.
+    let met = o.milestones.expect("check 4 ran");
+    let exits: Vec<u64> = met
+        .iter()
+        .filter(|(_, m)| *m == sf_conform::Milestone::LevelExit { world: 6, level: 4 })
+        .map(|(f, _)| *f)
+        .collect();
+    assert_eq!(exits, [7089]);
+    assert!(met.iter().any(|(_, m)| *m == sf_conform::Milestone::CoinTaken { left: 0 }));
+}
