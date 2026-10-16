@@ -1219,6 +1219,21 @@ fn decode(b: &[u8], key: &str) -> Option<Snapshot> {
 mod tests {
     use super::*;
 
+    #[test]
+    fn a_snapshot_file_reads_back_as_written() {
+        let s = Snapshot {
+            frame: 14_798,
+            input: FrameInput::joy(Joy(Joy::UP.0 | Joy::FIRE.0)),
+            bytes: vec![1, 2, 3, 0xff],
+        };
+        let p = std::env::temp_dir().join(format!("sf-snap-test-{}", std::process::id()));
+        save_snapshot_file(&p, &s).unwrap();
+        let back = load_snapshot_file(&p).unwrap();
+        std::fs::remove_file(&p).unwrap();
+        assert_eq!((back.frame, back.input, back.bytes), (s.frame, s.input, s.bytes));
+        assert!(load_snapshot_file(&p).is_err());
+    }
+
     fn irq(next: bool, vpos: u16, hpos: u16) -> sf_oracle::Irq {
         sf_oracle::Irq {
             level: 3,

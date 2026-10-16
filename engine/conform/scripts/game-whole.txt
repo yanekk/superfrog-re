@@ -1,7 +1,8 @@
 # The whole game (T202), assembled by `examples/whole_game` on the original from power-on with an
-# empty df1 connected (`power-on-df1`): each level's completion script spliced at the frame its
-# first frame plays; between levels nothing held but a press in each tally's wait (fire; at the
-# slot leg's tally up, then up and fire, and in the slot machine one frame of fire in every 80).
+# empty df1 connected (`power-on-df1`): each level's route spliced at the frame its first frame
+# plays (a `chain-*` route was planned from the original's state there, T205); between levels
+# nothing held but a press in each tally's wait (fire; at the slot leg's tally up, then up and
+# fire, and in the slot machine one frame of fire in every 80).
 # START GAME from the title (start-w1-1, with df1 connected every press from the title on 219 frames sooner)
 0: -
 1000: M
