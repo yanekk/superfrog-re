@@ -937,6 +937,16 @@ impl Front {
         self.keyboard.new
     }
 
+    /// The title waits in its idle, or its menu for a choice: fire in the next frame opens the
+    /// menu, or takes its item lit (START GAME unless moved).
+    pub(crate) fn title_waits(&self) -> bool {
+        match self.stack.last().map(|f| &f.routine) {
+            Some(Routine::Title(t)) => t.idle(),
+            Some(Routine::Menu(m)) => m.ready(),
+            _ => false,
+        }
+    }
+
     /// The level's loop has been entered again (a restart, T37): the level scene goes on.
     pub(crate) fn in_level_loop(&self) -> bool {
         matches!(self.stack.last().map(|f| &f.routine), Some(Routine::LevelLoop))
