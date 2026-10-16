@@ -169,7 +169,7 @@ done · ⛔ blocked, needs a human. A task dropped by a plan amendment leaves th
 | T201 | continue-and-codes | T21, T200; blocks T23, T29 | ✅ | |
 | T202 | whole-game-script | T21, T198, T199; blocks T23, T29 | ⬜ | |
 | T203 | whole-game-green | T21, T202; blocks T23, T29 | ⬜ | |
-| T204 | w3-4-template-86 | T201; blocks T203 | ⬜ | |
+| T204 | w3-4-template-86 | T201; blocks T203 | ✅ | |
 
 A Notes cell holds what was built or what the review found, the test count, and one line per
 deviation from the task doc. A ✅ task's cell may be cut to one line once the next task has been reviewed.
