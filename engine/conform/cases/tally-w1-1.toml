@@ -8,8 +8,3 @@
 sync = { level = "W1-1", exit = true }
 script = "tally-points"
 frames = 185
-
-[[exclude]]
-what = "enemies"
-note = "the bubble (T17's, now T39–T41's) returns at once from power-on; world 1's enemies are live (T42)"
-task = "T39–T41"

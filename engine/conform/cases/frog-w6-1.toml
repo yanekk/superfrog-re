@@ -2,8 +2,3 @@
 sync = { level = "W6-1" }
 script = "frog-explore"
 frames = 1000
-
-[[exclude]]
-what = "objects"
-note = "the original's object spawns, bump blocks and tile pickups return at once from power-on; the engine runs frog-only"
-task = "T36 (items in frame cases), T16–T18 (enemies)"
