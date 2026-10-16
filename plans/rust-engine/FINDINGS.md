@@ -18,6 +18,7 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-16 | 📌 | T148: W6-2alt's other enemies hit T147's script at 1461 and wear the planner's frog down; `PLAN_HEART=12000` keeps every heart. Stuck at 140-166,41-44: `--via 91,39`. T147's switch-50 climb works from 114,10 at frame 5456. |
 | 2026-10-16 | 🐞 | Open, seen in T147: `purity::the_real_pure_crates_pass` red on `pir/rust-engine`: `sf-core/src/front/chain.rs:96` (T190) has a 24-element integer array literal. Not T147's; not fixed. |
 | 2026-10-16 | 🐞 | T147: added T194 w6-2-sfx-double-blank (owner's yes): `enemies-w6-2-complete` plays alone green but checks 1–3 fail at 6661, channel 3 period 152 vs 128, a `Pacing::Late { blanks: 2 }` frame (one of 54; T147 review). T146 (its old owner) is dropped. |
 | 2026-10-16 | 📌 | T147: W6-2 needs both switches: 50 (ledge 96-101,6), then 48 (126,7-8), whose gate 210,4 leads round to the exit room's open right side. `PLAN_EXIT_ONLY` strands the frog. Climb to 50 from 114,10: `UR12 R12 -4 R12 L16 UL36 L16 -8 UL24 L10`. |
