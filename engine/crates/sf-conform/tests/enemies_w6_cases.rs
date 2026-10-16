@@ -140,6 +140,48 @@ fn enemies_w6_2_alt_complete() {
     assert!(met.iter().any(|(_, m)| *m == sf_conform::Milestone::CoinTaken { left: 0 }));
 }
 
+/// W6-2 completed (T147, T194): all 97 coins and both switches to the exit, green faithful and
+/// alone (334 milestones), re-synced after the lags at 1380, 1977, 6620 and 6665, as DESIGN §2.1
+/// lets checks 1–3 do. Frame 6657 ends in `sfx_play`'s raster wait on channel 3; the vertical
+/// blank it holds off is taken after the wait's next instruction zeroes the old effect's step
+/// indices, so its `sfx_tick` moves the period index to 1 and the new effect starts there: its
+/// period goes `$be` to `$80` at 6661, never `$98` (T194).
+#[test]
+fn enemies_w6_2_complete() {
+    let name = "enemies-w6-2-complete";
+    let mut case = sf_conform::Case::load(&sf_conform::cases_dir().join(format!("{name}.toml")))
+        .unwrap_or_else(|e| panic!("{e}"));
+    // One frame on, so the hook (run before each step) sees what the case's last frame did.
+    case.frames += 1;
+    let (mut exit, mut per_step) = (Vec::new(), None);
+    let o = sf_conform::run_with(&case, |f, g| {
+        // `level_state` as the frame before left it, while not playing (not negative).
+        let state = u32::from_be_bytes(g.peek(sf_core::layout::h0(0xa06), 4).try_into().unwrap());
+        if (state as i32) >= 0 && f > 8000 {
+            exit.push((f - 1, state));
+        }
+        // Before frame 6659: channel 3's period step index (`sfx_chan3+$20`) as 6658 left it.
+        if f == 6659 {
+            per_step = Some(g.peek(sf_core::layout::h0(0x12ff0 + 0x20), 2));
+        }
+    })
+    .unwrap_or_else(|d| panic!("{name}: {d}"));
+    let resynced: Vec<u32> = o.resynced.iter().map(|r| r.0).collect();
+    assert_eq!(resynced, [1380, 1977, 6620, 6665], "{:?}", o.resynced);
+    assert_eq!(per_step, Some(vec![0, 1]));
+    // The run reaches the exit (`level_state` 1 on frame 8429, seen before 8430's step), every
+    // coin taken: a script cut short stays green otherwise.
+    assert_eq!(exit, [(8429, 1)]);
+    let met = o.milestones.expect("check 4 ran");
+    let exits: Vec<u64> = met
+        .iter()
+        .filter(|(_, m)| *m == sf_conform::Milestone::LevelExit { world: 6, level: 2 })
+        .map(|(f, _)| *f)
+        .collect();
+    assert_eq!(exits, [8429]);
+    assert!(met.iter().any(|(_, m)| *m == sf_conform::Milestone::CoinTaken { left: 0 }));
+}
+
 /// W6-4's second map completed (T151): `enemies-w6-4-complete`'s first 4900 frames, the last 15
 /// coins and switch 50 replanned, then the wings, the flight over the 24 spikes at row 10 and the
 /// shaft to the exit; green faithful and alone (230 milestones), re-synced after the lag at 5688,

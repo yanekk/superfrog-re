@@ -18,6 +18,7 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-16 | 📌 | T194: the 68000 runs the instruction after INTENA `$c000` before taking a held interrupt; `sfx_play`'s held blank lands after `clr.l $20(a2)`. W6-2 fixed apart from T196: its item 4 is done; T196 need not re-run it. |
 | 2026-10-16 | 📌 | T151: on W6-4alt the original takes three coins on frame 154, on time; on W6-4 it takes them at 155, after late frames 150–153 (T196's divergence). Same script; the pacing at 153 differs (step 0 vs 1). |
 | 2026-10-16 | 🐞 | T192 review sweep: `w1_4_goes_on_to_w2_1` (`tests/chain.rs`) checks only faithfulness; a forced exit that failed on both sides stays green. Not fixed. |
 | 2026-10-16 | 🐞 | T192 review sweep: `w1_1_goes_on_to_w1_2` (`tests/chain.rs`) checks only faithfulness, not that W1-2 is reached. Not fixed. |

@@ -486,6 +486,18 @@ impl AudioDriver {
         self.sfx_play_setup(data, rest);
     }
 
+    /// [`AudioDriver::play_sfx_setup`]'s first instruction alone, which the 68000 runs after the
+    /// raster wait before it takes a vertical blank the wait held off; the rest is then
+    /// [`AudioDriver::play_sfx_record`].
+    pub fn play_sfx_wait_over(&mut self, rest: SfxRest) {
+        self.sfx_play_wait_over(rest);
+    }
+
+    /// [`AudioDriver::play_sfx_setup`] after [`AudioDriver::play_sfx_wait_over`].
+    pub fn play_sfx_record(&mut self, data: &SoundData, rest: SfxRest) {
+        self.sfx_play_record(data, rest);
+    }
+
     /// The end of [`AudioDriver::play_sfx`]: the duration set and the effect started.
     pub fn play_sfx_start(&mut self, data: &SoundData, rest: SfxRest, out: &mut Vec<PaulaWrite>) {
         self.sfx_play_start(data, rest, out);
