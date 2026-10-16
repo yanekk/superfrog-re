@@ -163,7 +163,7 @@ done · ⛔ blocked, needs a human. A task dropped by a plan amendment leaves th
 | T195 | w3-3-slot-order | T115; blocks T21 | ✅ | |
 | T196 | pass-over-two-blanks | T184, T150; blocks T21 | ✅ | |
 | T197 | w4-3-dmacon-regression | T194; blocks T21 | ✅ | |
-| T198 | disk-prompts | T21; blocks T23, T29 | ⬜ | |
+| T198 | disk-prompts | T21; blocks T23, T29 | ✅ | |
 | T199 | live-restart | T21; blocks T23, T29 | ⬜ | |
 | T200 | hiscore-entry | T21; blocks T23, T29 | ✅ | |
 | T201 | continue-and-codes | T21, T200; blocks T23, T29 | ⬜ | |
