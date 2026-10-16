@@ -256,6 +256,9 @@ fn level_ctx(
         if let Some(t) = c.trace.take() {
             trace = t;
         }
+        for u in std::mem::take(&mut c.unported) {
+            cx.unported(u);
+        }
     }
     (trace, writes)
 }

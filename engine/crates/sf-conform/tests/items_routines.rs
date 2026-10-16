@@ -348,6 +348,51 @@ fn object_updates_match_the_original() {
     }
 }
 
+/// The bubble's update (template 86, T204): its wobble's step, its climb, and the cells round it
+/// marked with each marker its tests name (`$18`, `$e`, `$f`, solid) or none of them.
+#[test]
+fn bubble_update_matches_the_original() {
+    let mut rig = rig();
+    let mut g = Gen::new(105);
+    let (mut freed, mut kept) = (0, 0);
+    for case in 0..N {
+        let mut s = Setup::default();
+        let (col, row) = any_cell(&mut g);
+        let dy = g.below(16) as u16;
+        let slot = with_slot(&rig, &mut g, &mut s, template(86), (col, row), dy);
+        if slot == 0 {
+            continue;
+        }
+        camera_near(&mut g, &mut s, col * 16, row * 16);
+        s.poke_w(slot + 0x60, g.pick(&[0, 1, 2, 3, 0xffff]));
+        s.poke_w(slot + 0x5c, (col * 16) as u16 + g.below(16) as u16);
+        s.poke_w(slot + 0xe, g.pick(&[0xfffe, 0xfffe, 0, 2, 0xfff0]));
+        let none = g.one_in(3);
+        for r in row.saturating_sub(2)..(row + 3).min(84) {
+            for c in col - 1..=col + 1 {
+                let m = if none || g.one_in(3) {
+                    g.pick(&[0, 0x39, 9])
+                } else {
+                    g.pick(&[0x18, 0xe, 0xf, 0x3a, 0x3d, 0x39])
+                };
+                s.poke_w(cell(c, r), (g.below(840) as u16) << 6 | m);
+            }
+        }
+        s.a[0] = slot;
+        let port = sf_core::level::standard_dispatch()
+            .routine(h0(0x24236))
+            .expect("ported");
+        let mut gone = false;
+        if rig.check("update h0+$24236", case, 0x24236, &s, |c| {
+            port(c, slot, 0);
+            gone = c.bus.l(slot + 0x40) == 0;
+        }) {
+            if gone { freed += 1 } else { kept += 1 }
+        }
+    }
+    assert!(freed > 300 && kept > 300, "{freed} freed, {kept} kept");
+}
+
 /// The frog's fields an object's routine reads.
 fn any_frog_fields(g: &mut Gen, s: &mut Setup) {
     s.poke_w(FROG + f::X, 48 + g.below(4600) as u16);

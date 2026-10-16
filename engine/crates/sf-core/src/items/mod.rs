@@ -4,6 +4,7 @@
 //! switches). Each kind is the original's template with its routines
 //! (docs/09 "Types per world": shared by worlds 1–6), registered into the level's dispatch.
 
+pub mod bubble;
 pub mod fixtures;
 pub mod pickups;
 pub mod powerups;
@@ -90,6 +91,7 @@ pub fn register_all(d: &mut Dispatch) {
     }
     pickups::register(d);
     fixtures::register_all(d);
+    bubble::register_all(d);
 }
 
 /// Markers 8 and 9 (h0+$17fee): a coin, 13 pixels down its cell.

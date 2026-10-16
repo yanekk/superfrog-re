@@ -123,6 +123,61 @@ fn tally_slot_w1_1() {
     green("tally-slot-w1-1");
 }
 
+/// W3-4 from its start, nothing held, 600 frames (T204): every 64 frames a bubble (template 86)
+/// rises from the frog standing on the pushing surface, the first at 212 into slot 6 from cell
+/// 285,63; the engine's as the original's, and nothing unported.
+#[test]
+fn items_bubble_w3_4() {
+    use sf_core::layout::{h0, h1};
+    use sf_core::level::objects::OBJ_SLOTS;
+    let case = sf_conform::Case::load(&sf_conform::cases_dir().join("items-bubble-w3-4.toml"))
+        .unwrap_or_else(|e| panic!("{e}"));
+    let slot6 = OBJ_SLOTS + 6 * 0x7c;
+    let long = |g: &sf_core::Game, a: u32| u32::from_be_bytes(g.peek(a, 4).try_into().unwrap());
+    let (mut first, mut unported) = (None, Vec::new());
+    sf_conform::run_with(&case, |fr, g| {
+        // The hook runs before each step: frame `fr`'s state is the one `fr - 1` left.
+        if first.is_none() && long(g, slot6 + 0x40) != 0 {
+            first = Some((fr - 1, long(g, slot6), long(g, slot6 + 0x40)));
+        }
+        unported = g.unported().to_vec();
+    })
+    .unwrap_or_else(|d| panic!("items-bubble-w3-4: {d}"));
+    let (frame, init, cell) = first.expect("a bubble in slot 6");
+    assert_eq!(frame, 212);
+    assert_eq!(init, h0(0x24216), "init {init:x}");
+    // `level_map` + $97da: cell 285,63.
+    assert_eq!(cell, h1(0x218e0) + 63 * 0x260 + 285 * 2, "cell {cell:x}");
+    assert_eq!(unported, Vec::<&str>::new());
+}
+
+/// An object template the engine has no kind for is reported, never skipped silently (T204):
+/// W3-4's bubble with its init pointed at a routine nothing ports lands in `Game::unported` as
+/// the frog lets it rise at 212, and the spawn still takes its slot.
+#[test]
+fn a_template_with_no_kind_is_reported_unported() {
+    use sf_core::input::FrameInput;
+    use sf_core::items::template;
+    use sf_core::layout::h0;
+    use sf_core::{Game, Start};
+    let mut g = Game::with_display(
+        sf_conform::display_data(),
+        Start::Level("W3-4".parse().unwrap()),
+    );
+    g.poke(template(86), &h0(0x3fff0).to_be_bytes());
+    for _ in 0..212 {
+        g.step(FrameInput::default());
+    }
+    assert_eq!(g.unported(), &[] as &[&str]);
+    g.step(FrameInput::default());
+    assert_eq!(
+        g.unported().first(),
+        Some(&"object template 86 (init h0+$3fff0): no kind"),
+        "{:?}",
+        g.unported()
+    );
+}
+
 /// W1-2 with its items live, 650 frames: the wings and their flight, the spud taken and thrown,
 /// with no re-sync (T83).
 #[test]
