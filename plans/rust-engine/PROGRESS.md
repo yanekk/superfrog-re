@@ -14,7 +14,7 @@ the account is the commit message. Whoever writes a cell also fixes the over-bud
 **Status:** about 100 tasks ✅; T18, T21 and Phase 3 open; amended to faithful.
 **Last updated:** 2026-10-16
 **Amended 2026-10-15 (owner):** faithful replaces frame-exact (DESIGN §2.1, PLAN.md amendment); T180–T183 added, 14 tasks dropped (PLAN.md).
-**Next `pir-work` will:** review T150, then T196 makes `enemies-w6-4-complete` green (and re-runs W2-2, W6-2).
+**Next `pir-work` will:** T196 makes `enemies-w6-4-complete` green (and re-runs W2-2, W6-2).
 
 ## Tasks
 
@@ -139,7 +139,7 @@ done · ⛔ blocked, needs a human. A task dropped by a plan amendment leaves th
 | T147 | w6-2-completion | T104, T180, T182; blocks T21 | ✅ | |
 | T148 | w6-2-alt-completion | T104, T147, T180, T182; blocks T21 | ⬜ | |
 | T149 | w6-3-completion | T104, T180, T182; blocks T21 | ✅ | |
-| T150 | w6-4-completion | T104, T180, T182; blocks T21 | 🔍 | Case enemies-w6-4-complete: exit on the original at 7308, 99 counted coins, three switches, wings over the row-10 spikes. No test: not green, named for T196 (154 coins early; alone, 5231 objects a frame ahead). Deviations: not all 189 coins (exit needs 99; T149 precedent); resync = true (§2.1 allows); route needs the wings, not a run jump. |
+| T150 | w6-4-completion | T104, T180, T182; blocks T21 | ✅ | Review: one fix, exit frame 7307 not 7308 (case comment, T196 doc). Probed on the original: exit at 7307, 99 coins to 0, one heart lost, no life; divergences 154/158 and alone 5517 reproduced; late pacing 150–153, 5228–5229 matches T196. No mutation: data only, case red. Deviations held (189→99, resync, wings read-only). |
 | T151 | w6-4-alt-completion | T104, T150, T180, T182; blocks T21 | ⬜ | |
 | T160 | attract-demo-entry | T33, T180 | ✅ | |
 | T162 | attract-demo-level-start | T160, T180 | ✅ | |
@@ -165,7 +165,7 @@ done · ⛔ blocked, needs a human. A task dropped by a plan amendment leaves th
 A Notes cell holds what was built or what the review found, the test count, and one line per
 deviation from the task doc. A ✅ task's cell may be cut to one line once the next task has been reviewed.
 
-**Review queue:** T150
+**Review queue:** *(empty)*
 
 ## Blocked on the user
 
