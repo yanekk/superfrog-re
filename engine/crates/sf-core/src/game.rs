@@ -76,6 +76,12 @@ pub enum Pacing {
     Unpaced,
     /// The main loop was waiting when this frame's vertical blank came.
     OnTime,
+    /// As [`Pacing::OnTime`], with the main loop's next pass already due as the frame ended
+    /// (`vbl_count` 2 or more in `level_frame_loop`'s wait): the pass before it returned too
+    /// late in the frame to begin it, so it begins after the next vertical blank, not in this
+    /// frame (T196: W6-4 5230, a pass held over the late frames 5228-5229 returning near the
+    /// frame's end). The engine run alone, with no Paula writes to place it, begins none here.
+    PassDue,
     /// The original's frame ended with its main loop in the middle of a pass, so the next
     /// vertical blank comes there: after the frame's `writes`th Paula write, the last at beam
     /// line `line`, slot `hpos`, in the pass's `phase`th call (`level_frame_loop`'s, in order from

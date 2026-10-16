@@ -124,7 +124,7 @@ pub fn main_program(c: &mut LevelCtx, pending: Option<beam::Pending>, pacing: cr
     let own = beam::FrameSpec {
         hw: c.hw,
         cut: match pacing {
-            crate::Pacing::Unpaced | crate::Pacing::OnTime => None,
+            crate::Pacing::Unpaced | crate::Pacing::OnTime | crate::Pacing::PassDue => None,
             crate::Pacing::Late {
                 writes,
                 line,
@@ -199,12 +199,14 @@ pub fn main_program(c: &mut LevelCtx, pending: Option<beam::Pending>, pacing: cr
 /// A pass due straight after another (the last ran past two vertical blanks) waits for the next
 /// frame: the step's own frame is on time, so the original ended it in `level_frame_loop`'s wait,
 /// and has made every write of its frame already, so it never began the pass (it ended the frame
-/// on the wait's last check, h0+$aae).
+/// on the wait's last check, h0+$aae). [`crate::Pacing::PassDue`] says so outright, with no
+/// writes to count (the engine run alone).
 fn waits_out(c: &LevelCtx, pacing: crate::Pacing) -> bool {
-    pacing == crate::Pacing::OnTime
-        && c.frames.as_ref().is_some_and(|f| matches!(f.current(), Some((true, None))))
-        && !c.schedule.is_empty()
-        && c.frame_writes_now() as usize >= c.schedule.len()
+    let own = c.frames.as_ref().is_some_and(|f| matches!(f.current(), Some((true, None))));
+    own && (pacing == crate::Pacing::PassDue
+        || pacing == crate::Pacing::OnTime
+            && !c.schedule.is_empty()
+            && c.frame_writes_now() as usize >= c.schedule.len())
 }
 
 /// After a pass: when `level_frame_loop` has returned, the rest of the frame is `top_loop`'s
