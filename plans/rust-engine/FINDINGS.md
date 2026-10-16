@@ -18,6 +18,8 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-16 | 🐞 | T166, for T155: `w2-2-complete` red under checks 1–3 at 1229 (`hitboxes` order; 1227 `blanks: 1`, 1228 cut at phase 1); alone at 4570 (tile coin 101,49, engine's 99,47 at 4700). `scan`: only these two frames. |
+| 2026-10-16 | 📌 | T166: W2-2's top is reachable from the start (springs; `--jump 4` floods say not); its five coin springs pay five coins each. The 151-154 shaft climbs to 154,22-39 from below. Top room 15-23,5-8 not needed. |
 | 2026-10-16 | 📌 | T154: a tile coin (marker 55) counts in `frog+$7e`, never toward W1's exit; W1-4 has six wings (`items_map`); with them, a pad throw plus flaps crosses gaps. `cases.rs`'s green-only `complete_w1_4` replaced by `frog_cases::complete_w1_4`. |
 | 2026-10-16 | 🐞 | Open, seen in T147: `purity::the_real_pure_crates_pass` red on `pir/rust-engine`: `sf-core/src/front/chain.rs:96` (T190) has a 24-element integer array literal. Not T147's; not fixed. |
 | 2026-10-16 | 🐞 | T147: added T194 w6-2-sfx-double-blank (owner's yes): `enemies-w6-2-complete` plays alone green but checks 1–3 fail at 6661, channel 3 period 152 vs 128, a `Pacing::Late { blanks: 2 }` frame (one of 54; T147 review). T146 (its old owner) is dropped. |
