@@ -14,7 +14,7 @@ the account is the commit message. Whoever writes a cell also fixes the over-bud
 **Status:** about 100 tasks ✅; T18, T21 and Phase 3 open; amended to faithful.
 **Last updated:** 2026-10-16
 **Amended 2026-10-15 (owner):** faithful replaces frame-exact (DESIGN §2.1, PLAN.md amendment); T180–T183 added, 14 tasks dropped (PLAN.md).
-**Next `pir-work` will:** review T196, then T197 w4-3-dmacon-regression.
+**Next `pir-work` will:** T197 w4-3-dmacon-regression.
 
 ## Tasks
 
@@ -161,13 +161,13 @@ done · ⛔ blocked, needs a human. A task dropped by a plan amendment leaves th
 | T193 | chain-e2e | T183; blocks T21 | ✅ | |
 | T194 | w6-2-sfx-double-blank | T147; blocks T21 | ✅ | |
 | T195 | w3-3-slot-order | T115; blocks T21 | ✅ | |
-| T196 | pass-over-two-blanks | T184, T150; blocks T21 | 🔍 | W6-4 green, in the test block: frog box counted taken from h0+$d100; `Pacing::PassDue`. 3 tests. Deviations: W6-2 was T194's, its fix kept, mine dropped. W2-2 alone green, 1229 a different fault (FINDINGS). `sfx_play` frame-end check fixes T194's items-pad-w1-1 (owner). T197 added for complete-w4-3, its test ignored. |
+| T196 | pass-over-two-blanks | T184, T150; blocks T21 | ✅ | Review clean, no fix commit. `record` confirms the pinned values (coins 153–155, `vbl_count` 5229–5231); mutating the box step, the `PassDue` return, the `sfx_play` cut and its phase guard each goes red. W2-2 alone green, red at 1229; complete-w4-3 red without T196 too (T197). `sf-conform all` not run. |
 | T197 | w4-3-dmacon-regression | T194; blocks T21 | ⬜ | |
 
 A Notes cell holds what was built or what the review found, the test count, and one line per
 deviation from the task doc. A ✅ task's cell may be cut to one line once the next task has been reviewed.
 
-**Review queue:** T196
+**Review queue:** *(empty)*
 
 ## Blocked on the user
 
