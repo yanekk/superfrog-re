@@ -274,8 +274,9 @@ pub struct LevelCtx<'a> {
     coper_masked: bool,
     coper_pending: bool,
     /// `sfx_play`'s INTENA `$c000` after its raster wait with interrupts off, held while a
-    /// frame's end in the wait is looked for, and the line its INTENA `$4000` was made on.
-    held: Option<(PaulaWrite, u16)>,
+    /// frame's end in the wait is looked for, the line its INTENA `$4000` was made on, and the
+    /// effect whose rest follows the wait.
+    held: Option<(PaulaWrite, u16, crate::audio::SfxRest)>,
 }
 
 impl<'a> LevelCtx<'a> {
@@ -574,8 +575,10 @@ impl LevelCtx<'_> {
                 self.bus.log = Some(crate::mem::WriteLog::default());
             }
             self.hw = spec.hw;
-            if let Some((on, off)) = self.held.take() {
+            if let Some((on, off, rest)) = self.held.take() {
                 self.interrupts_back(on, off);
+                // The instruction after INTENA `$c000` runs before the interrupt is taken.
+                self.bus.st.audio.play_sfx_wait_over(rest);
             }
             frame::vbl(self);
             let f = self.frames.as_mut().expect("frames");
@@ -587,7 +590,7 @@ impl LevelCtx<'_> {
         f.done = true;
         f.out_to = Some(self.paula.len());
         f.log = self.bus.log.take();
-        if let Some((on, _)) = self.held.take() {
+        if let Some((on, _, _)) = self.held.take() {
             // Past the step's end: the next step runs the pass again.
             self.paula.push(on);
             self.stamped = self.paula.len();
@@ -746,14 +749,15 @@ impl LevelCtx<'_> {
             let on = self.paula.pop().expect("sfx_play's INTENA $c000");
             self.audio_spent(at, beam::Cost::AudioStop, beam::Cost::AudioWrite);
             let off = self.paula.last().expect("sfx_play's INTENA $4000").vpos;
-            self.held = Some((on, off));
+            self.held = Some((on, off, rest));
             self.interrupt_due_at(true);
-            if let Some((on, _)) = self.held.take() {
+            if let Some((on, _, rest)) = self.held.take() {
                 let at = self.paula.len();
                 self.paula.push(on);
                 self.audio_spent(at, beam::Cost::AudioStop, beam::Cost::AudioWrite);
+                self.bus.st.audio.play_sfx_wait_over(rest);
             }
-            self.bus.st.audio.play_sfx_setup(self.sound, rest);
+            self.bus.st.audio.play_sfx_record(self.sound, rest);
             // A frame whose end falls after the wait, before the effect's first write, runs its
             // vertical blank there: `sfx_tick` sees the new effect without its duration and ends
             // it, and music takes the channel back (T181: enemies-w6-1-complete 507–509).
