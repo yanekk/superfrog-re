@@ -175,3 +175,36 @@ code_cases! {
     code_w6_4: "code-w6-4" => (6, 4),
     code_wb_1: "code-wb-1" => (7, 1),
 }
+
+/// The whole game as far as its script replays (T202; T205–T207 extend it): power-on with df1,
+/// START GAME, W1-1 completed, its tally's slot machine, W1-2 played until the frog has lost the
+/// lives it had: faithful and alone. The original must have played it, not sat on a screen: a
+/// script that never left the title would be just as faithful.
+#[test]
+#[ignore = "slow: about 7 min"]
+fn the_whole_game_plays_as_the_original_does() {
+    use sf_conform::milestones::{Milestone, SceneKind};
+    let case = sf_conform::Case::load(&sf_conform::cases_dir().join("game-whole.toml"))
+        .unwrap_or_else(|e| panic!("{e}"));
+    let o = sf_conform::run(&case).unwrap_or_else(|d| panic!("game-whole: {d}"));
+    let met: Vec<_> = o
+        .milestones
+        .expect("check 4 ran")
+        .into_iter()
+        .filter(|(_, m)| !matches!(m, Milestone::CoinTaken { .. } | Milestone::ItemTaken { .. }))
+        .collect();
+    let has = |want: Milestone| met.iter().any(|(_, m)| *m == want);
+    let exits: Vec<_> = met
+        .iter()
+        .filter(|(_, m)| matches!(m, Milestone::LevelExit { .. }))
+        .map(|x| x.1)
+        .collect();
+    assert_eq!(exits, [Milestone::LevelExit { world: 1, level: 1 }]);
+    assert!(has(Milestone::Tally { score: 17800 }), "{met:?}");
+    assert!(has(Milestone::Scene(SceneKind::SlotMachine)), "{met:?}");
+    assert!(
+        has(Milestone::Scene(SceneKind::Level { world: 1, level: 2 })),
+        "{met:?}"
+    );
+    assert!(has(Milestone::Scene(SceneKind::GameOver)), "{met:?}");
+}
