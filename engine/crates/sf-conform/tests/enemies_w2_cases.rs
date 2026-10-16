@@ -132,6 +132,27 @@ fn enemies_w2_2() {
     );
 }
 
+/// W2-4: the hopper at 41,68 stomped while it sits (T168): stunned, stomped again a reward (first
+/// seen before frames 380 and 404: after 379 and 403, as `script_seen` gives them on the
+/// original); the walker, the dart and the crumbling ledge on the way.
+#[test]
+fn enemies_w2_4() {
+    let seen = run("enemies-w2-4", &[]);
+    met(
+        &seen,
+        &[
+            (0x25d30, "hopper"),
+            (0x23bee, "stomped"),
+            (0x23e6c, "reward arc"),
+            (0x256ea, "walker"),
+            (0x25fa8, "dart"),
+            (0x2740c, "crumbling ledge"),
+        ],
+    );
+    let first = |u: u32| seen.frames.iter().find(|f| f.1.contains(&u)).map(|f| f.0);
+    assert_eq!((first(0x23bee), first(0x23e6c)), (Some(380), Some(404)));
+}
+
 /// W2-1 played from its start to its exit and through the tally (T122, T181; T155's goal 3):
 /// green faithful and alone, then one frame more, the next level's (T21's), with the level
 /// completed. On the way it meets what the original meets there (`examples/script_seen`): a spud
@@ -140,7 +161,52 @@ fn enemies_w2_2() {
 /// at 2061 (the mace) and 2365. Frames are the engine's after that frame, as `script_seen`'s.
 #[test]
 fn w2_1_complete() {
-    let name = "w2-1-complete";
+    completes(
+        "w2-1-complete",
+        &[
+            (0x23bee, "spud stunned", 795),
+            (0x2740c, "crumbling ledge", 1646),
+            (0x26786, "bouncer", 1678),
+            (0x2619c, "mace", 2029),
+            (0x26692, "spikes", 2305),
+        ],
+        &[2061, 2365],
+        Next::Same,
+    );
+}
+
+/// W2-4 played from its start to its exit and through the tally (T168): green faithful and
+/// alone, the level completed (the next frame, world 2's end picture, diverges: [`Next`]). It meets the swooper (template 37, update h0+$257e4) at the
+/// chimney's top at 367, and loses a heart at 6459, as the original does (`script_seen`).
+#[test]
+fn w2_4_complete() {
+    completes(
+        "w2-4-complete",
+        &[
+            (0x256ea, "walker", 149),
+            (0x257e4, "swooper", 367),
+            (0x2619c, "mace", 4635),
+            (0x26692, "spikes", 5567),
+        ],
+        &[6459],
+        Next::Diverges,
+    );
+}
+
+/// What follows a completion case's last frame.
+enum Next {
+    /// The next level's frame, green too.
+    Same,
+    /// The next frame diverges, and the engine's level outcome is read from it: W2-4's, where the
+    /// engine fades in world 2's end picture (`display_timer` 600) while the original still loads
+    /// it from disk (T168, FINDINGS).
+    Diverges,
+}
+
+/// Runs a completion case green with no re-sync, checking the first frame a live slot runs each
+/// of `met`'s update routines and the frames a heart is lost (the engine's frame after the step,
+/// as `script_seen`'s), then on: the level completed.
+fn completes(name: &str, met: &[(u32, &str, u32)], lost_at: &[u32], next: Next) {
     let mut case = sf_conform::Case::load(&sf_conform::cases_dir().join(format!("{name}.toml")))
         .unwrap_or_else(|e| panic!("{e}"));
     let mut seen = Seen::default();
@@ -158,40 +224,39 @@ fn w2_1_complete() {
         hearts.push((after, st.w(h0(0x830))));
     })
     .unwrap_or_else(|d| panic!("{name}: {d}"));
-    assert!(o.resynced.is_empty(), "{:?}", o.resynced);
+    assert!(o.resynced.is_empty(), "{name}: {:?}", o.resynced);
     let first = |u: u32| {
         seen.frames
             .iter()
             .find(|f| f.1.contains(&u))
             .map(|f| f.0)
     };
-    for (u, what, at) in [
-        (0x23bee, "spud stunned", 795),
-        (0x2740c, "crumbling ledge", 1646),
-        (0x26786, "bouncer", 1678),
-        (0x2619c, "mace", 2029),
-        (0x26692, "spikes", 2305),
-    ] {
-        assert_eq!(first(u), Some(at), "{what} (h0+${u:x})");
+    for &(u, what, at) in met {
+        assert_eq!(first(u), Some(at), "{name}: {what} (h0+${u:x})");
     }
     let lost: Vec<u32> = hearts
         .windows(2)
         .filter(|w| w[1].1 < w[0].1)
         .map(|w| w[1].0)
         .collect();
-    assert_eq!(lost, [2061, 2365]);
-    // Two frames on (the hook runs before each step): `top_loop` goes on to the next level (T183).
+    assert_eq!(lost, lost_at, "{name}");
+    // Two frames on (the hook runs before each step): `top_loop` goes on to what follows (T183).
+    // Or one, the next frame read from its divergence ([`Next::Diverges`]).
+    let end = case.frames;
     case.frames += 2;
     let (mut outcome, mut unported) = (None, Vec::new());
     if let Err(d) = sf_conform::run_with(&case, |_, g| {
         outcome = g.level_outcome();
         unported = g.unported().to_vec();
     }) {
-        panic!("{d}");
+        match next {
+            Next::Diverges if d.frame == end => (outcome, unported) = (d.level_outcome, d.unported),
+            _ => panic!("{name}: {d}"),
+        }
     }
-    assert_eq!(unported, Vec::<&str>::new());
+    assert_eq!(unported, Vec::<&str>::new(), "{name}");
     assert!(
         matches!(outcome, Some(sf_core::level::LevelOutcome::Completed { .. })),
-        "{outcome:?}"
+        "{name}: {outcome:?}"
     );
 }

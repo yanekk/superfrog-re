@@ -1,5 +1,8 @@
 //! Plays a script on the original and prints, every `step` frames, the frog's map cell and the
-//! coins still needed (`frog+$5c`): where a completion's route goes (T154).
+//! coins still needed (`frog+$5c`), and (T168) the hearts, the lives, the wings (`frog+$90`), the spud
+//! (`+$7c`) and
+//! `level` (h0+$40de, the frame a tally ends):
+//! where a completion's route goes (T154).
 //!
 //! `cargo run --release --example frog_track -- <level> <script.txt> <frames> [step]`
 use sf_conform::{InputScript, SyncPoint, sync};
@@ -20,7 +23,18 @@ fn main() {
             let w = |o| st.w(FROG + o) as i16 as i32;
             // The frog's middle a row up, as `plan_exit` places it.
             let (x, y) = (w(f::X) + 0x17, w(f::Y) - 0x10);
-            println!("frame {}: cell {},{} coins needed {}", k + 1, x / 16, y / 16, st.w(h0(0x832)));
+            println!(
+                "frame {}: cell {},{} coins needed {} hearts {} lives {} wings {} spud {} level {}",
+                k + 1,
+                x / 16,
+                y / 16,
+                st.w(h0(0x832)),
+                st.w(h0(0x830)),
+                st.w(FROG + f::LIVES),
+                st.w(FROG + f::FLIGHT),
+                st.w(FROG + f::SPUD_ON),
+                st.l(h0(0x40de))
+            );
         }
     }
 }
