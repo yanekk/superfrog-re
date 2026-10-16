@@ -148,7 +148,7 @@ done · ⛔ blocked, needs a human. A task dropped by a plan amendment leaves th
 | T154 | w1-4-completion | T106, T127, T180, T182; blocks T21 | ✅ | |
 | T166 | w2-2-completion | T122, T180, T182; blocks T21 | ✅ | |
 | T167 | w2-3-completion | T122, T180, T182; blocks T21 | ⬜ | |
-| T168 | w2-4-completion | T122, T180, T182; blocks T21 | 🔍 | `w2-4-complete` (7964 frames, exit 7779) and `enemies-w2-4` (hopper stomp→reward), both green faithful and alone; 2 tests. Gate hang: loops when placed, never reached in play; §2.11. Deviations: in the test block (T155 dropped); stomp→reward a case of its own; outcome read from the next frame's divergence (FINDINGS). |
+| T168 | w2-4-completion | T122, T180, T182; blocks T21 | ✅ | Review clean, no fix commit. Ran enemies_w2_cases (7 green); cutting the route at 7700 turns w2_4_complete red; wall_place rerun: original loops at the gate (facing forced left), engine falls. Stomp-stun stands in for spud-stun (same h0+$23bee). T122's in-play hang unreproduced, its script lost. |
 | T180 | faithful-compare | T120; blocks T181, T182 and every open conformance task | ✅ | |
 | T181 | faithful-rebaseline | T180, T182; blocks T21 | ✅ | |
 | T182 | plays-alone | T180; blocks T181, T183 and every completion task | ✅ | |
@@ -165,7 +165,7 @@ done · ⛔ blocked, needs a human. A task dropped by a plan amendment leaves th
 A Notes cell holds what was built or what the review found, the test count, and one line per
 deviation from the task doc. A ✅ task's cell may be cut to one line once the next task has been reviewed.
 
-**Review queue:** T168
+**Review queue:** *(empty)*
 
 ## Blocked on the user
 
