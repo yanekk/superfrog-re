@@ -10,7 +10,7 @@
 use sf_assets::{LevelId, World};
 
 use crate::front::common::{FadeKind, call, fade};
-use crate::front::{Cx, Routine, Yield};
+use crate::front::{BEAM_CYCLES_PER_LINE, Cx, Routine, Yield};
 use crate::layout::h0;
 use crate::level::timeline::Timeline;
 use crate::level::{Hw, LevelCtx, LevelOutcome};
@@ -206,6 +206,26 @@ pub(crate) fn with_level(cx: &mut Cx, frog_only: bool, f: impl FnOnce(&mut Level
     }
 }
 
+/// [`with_level`], giving back the modelled memory it wrote, `(address, length)`.
+fn with_level_written(
+    cx: &mut Cx,
+    frog_only: bool,
+    f: impl FnOnce(&mut LevelCtx),
+) -> Vec<(u32, u32)> {
+    let mut written = Vec::new();
+    with_level(cx, frog_only, |c| {
+        c.bus.written = Some(vec![false; crate::layout::LAYOUT.len()]);
+        f(c);
+        written = c.bus.written.take().unwrap_or_default();
+    });
+    crate::layout::LAYOUT
+        .iter()
+        .zip(written)
+        .filter(|(_, w)| *w)
+        .map(|(d, _)| (d.addr, d.width.len()))
+        .collect()
+}
+
 /// A level routine run over the front end's state: what it cost (its trace, when `traced`) and
 /// its Paula writes.
 fn level_ctx(
@@ -262,7 +282,13 @@ impl Restart {
                     cx.unported("a restart in a level with no world and level numbers");
                     return Yield::Poll;
                 };
-                init_on_beam(cx, self.frog_only, id, init_inside(id))
+                init_on_beam_costs(
+                    cx,
+                    self.frog_only,
+                    id,
+                    init_inside(id),
+                    &crate::level::beam::RESTART_COSTS,
+                )
             }
             1 => {
                 self.pc = 2;
@@ -279,6 +305,17 @@ impl Restart {
 /// `level_init_wN` for `id` done at once, then replayed on the beam: what it cost and its Paula
 /// writes, its memory compared once the original is out of the calls `inside` (T37).
 pub(crate) fn init_on_beam(cx: &mut Cx, frog_only: bool, id: LevelId, inside: Vec<u32>) -> Yield {
+    init_on_beam_costs(cx, frog_only, id, inside, &crate::level::beam::BLANK_COSTS)
+}
+
+/// [`init_on_beam`] with its costs: the restart's are its own ([`crate::level::beam::RESTART_COSTS`]).
+pub(crate) fn init_on_beam_costs(
+    cx: &mut Cx,
+    frog_only: bool,
+    id: LevelId,
+    inside: Vec<u32>,
+    costs: &[u32],
+) -> Yield {
     let mut written = Vec::new();
     let (trace, ws) = level_ctx(cx, frog_only, true, |c| {
         c.bus.written = Some(vec![false; crate::layout::LAYOUT.len()]);
@@ -293,7 +330,7 @@ pub(crate) fn init_on_beam(cx: &mut Cx, frog_only: bool, id: LevelId, inside: Ve
         .collect();
     let ws: Vec<(u16, u16)> = ws.iter().map(|w| (w.reg, w.value)).collect();
     let job = crate::game::Job { inside, writes };
-    let t = Timeline::of(&trace, &crate::level::beam::BLANK_COSTS, &ws, job);
+    let t = Timeline::of(&trace, costs, &ws, job);
     call(Routine::Timeline(t))
 }
 
@@ -301,6 +338,14 @@ pub(crate) fn init_on_beam(cx: &mut Cx, frog_only: bool, id: LevelId, inside: Ve
 const AFTER_FADE_IN_SETUP: u32 = h0(0x69f8);
 /// The level's fade target (h0+$9fe).
 const FADE_TARGET: u32 = h0(0x9fe);
+/// `level_start`'s calls' return addresses up to its `wait_frame_raster` (h0+$6952 …), where
+/// the original is while it takes the frog's first step.
+const START_FROG_INSIDE: [u32; 10] =
+    [0x6960, 0x697a, 0x6980, 0x6986, 0x6992, 0x6998, 0x699e, 0x69a4, 0x69aa, 0x69c0];
+/// The lines from the set-up's last write (its copper interrupt on) to `level_start`'s
+/// `wait_frame_raster`: measured on the oracle in `frog-pit-w1-1`'s first restart, its objects
+/// frozen (lines 142 to 173; T199).
+const START_FROG_LINES: u32 = 31;
 /// What a step of the panel's slide takes: 70 one-line blits, each set up and waited for.
 const SLIDE_STEP_CYCLES: u32 = 70 * 200;
 
@@ -343,7 +388,16 @@ impl LevelStart {
         loop {
             match self.pc {
                 0 => {
-                    with_level(cx, self.frog_only, crate::level::load::start_frog);
+                    // The frog's first step, done at once and its memory compared once the
+                    // original is out of it; its time spent before the raster wait, which falls a
+                    // frame later when the set-up ended late (T199: with the objects live).
+                    let writes =
+                        with_level_written(cx, self.frog_only, crate::level::load::start_frog);
+                    cx.jobs.push(crate::game::Job {
+                        inside: START_FROG_INSIDE.iter().map(|&a| h0(a)).collect(),
+                        writes,
+                    });
+                    cx.busy(START_FROG_LINES * BEAM_CYCLES_PER_LINE);
                     self.pc = 1;
                     return Yield::Raster;
                 }

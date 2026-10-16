@@ -2,13 +2,10 @@
 # and animation; at frame 277 the level's loop ends (`player_died`) and `level_exit_fade` fades the
 # palette out and closes the window; `level_init_w1` runs again over frames 293–307, `level_start`
 # fades the level in and slides the panel in a step a frame, and the level's loop runs again from
-# frame 332 (T37). Run on through the second death (612) and restart to 900 frames (T100).
+# frame 332 (T37). Run on through the second death (612) and restart to 900 frames (T100). Every
+# object live since T199: the restart's set-up takes longer with them (13 freed, 14 bob records,
+# 8 spawned), ends on line 295 and `level_start`'s raster wait falls a frame later.
 sync = { level = "W1-1" }
 script = "frog-pit"
 frames = 900
-
-[[exclude]]
-what = "objects"
-note = "the original's object spawns, bump blocks and tile pickups return at once from power-on; the engine runs frog-only"
-task = "T36 (items in frame cases), T16–T18 (enemies)"
 

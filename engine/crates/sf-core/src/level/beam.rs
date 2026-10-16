@@ -139,8 +139,10 @@ pub enum Cost {
     /// The rest: the pause, the passage, the extra life, the time.
     PassTail,
     // --- Between levels: `level_init_wN` (T37, the restart after a death) ---
-    /// `obj_free_all` (h0+$1b9ee), the frog's reset and the start of h0+$1995a.
+    /// `obj_free_all` (h0+$1b9ee), the frog's reset and the start of h0+$1995a; and a slot in
+    /// use that `obj_free_all` frees (only [`RESTART_COSTS`] has it).
     InitStart,
+    InitFreed,
     /// h0+$1995a's parts: a frame record set (h0+$18e8a), a frame record's blit parameters
     /// (h0+$18f6c), a bob record's sub-records (h0+$18ef8), a byte of the mask cleared by the CPU,
     /// ten words of the mask's clear blit and of a plane's OR into it (the blitter's priority on),
@@ -158,10 +160,13 @@ pub enum Cost {
     PanelClearByte,
     StartPoint,
     ScreenScanCell,
+    /// A marker's spawner `map_spawn_scan_screen` runs, over what its spawn costs (only
+    /// [`RESTART_COSTS`] has it).
+    ScreenSpawner,
 }
 
 impl Cost {
-    pub const COUNT: usize = Cost::ScreenScanCell as usize + 1;
+    pub const COUNT: usize = Cost::ScreenSpawner as usize + 1;
     pub const ALL: [Cost; Cost::COUNT] = [
         Cost::VblEntry,
         Cost::FrogEntry,
@@ -226,6 +231,7 @@ impl Cost {
         Cost::PanelBlit,
         Cost::PassTail,
         Cost::InitStart,
+        Cost::InitFreed,
         Cost::FrameRecord,
         Cost::BlitParams,
         Cost::SubRecords,
@@ -236,6 +242,7 @@ impl Cost {
         Cost::PanelClearByte,
         Cost::StartPoint,
         Cost::ScreenScanCell,
+        Cost::ScreenSpawner,
     ];
 }
 
@@ -306,6 +313,7 @@ impl Cost {
             Cost::PanelBlit => 647,
             Cost::PassTail => 1144,
             Cost::InitStart => 15620,
+            Cost::InitFreed => 0,
             Cost::FrameRecord => 337,
             Cost::BlitParams => 418,
             Cost::SubRecords => 1000,
@@ -316,6 +324,7 @@ impl Cost {
             Cost::PanelClearByte => 29,
             Cost::StartPoint => 2000,
             Cost::ScreenScanCell => 386,
+            Cost::ScreenSpawner => 0,
         }
     }
 }
@@ -345,6 +354,28 @@ pub const BLANK_COSTS: [u32; Cost::COUNT] = {
     a[Cost::IrqPlane as usize] = 270;
     a[Cost::MaskOr10 as usize] = 63;
     a[Cost::ScreenScanCell as usize] = 400;
+    a
+};
+
+/// [`BLANK_COSTS`] for the restart after a death (T199). Its set-up runs with the level's five
+/// planes still fetched on most lines, a level's entry after a load with none, and the parts slow
+/// unevenly (the frame records a fifth, the mask's byte clear not at all), so the restart has its
+/// own fit; [`BLANK_COSTS`] stays the level entries'. Measured on the oracle (`restart_probe`)
+/// across `frog-pit-w1-1`'s two restarts, its objects live and frozen (13 slots in use, 14 bob
+/// records against none and 1), each of the set-up's writes against the original's: every one
+/// within 3 lines. `obj_free_all` is 5 lines longer live, h0+$18ef8 86 (3003 a record; T37's
+/// 1000 was fitted to one, its 2003 more come off `InitStart`), the 8 spawns of the screen scan
+/// 10 lines more than the engine's spawns; the masks' blits began 6 lines early, their clear was 4
+/// long, the scan 9 long and the redraw after it 8 short.
+pub const RESTART_COSTS: [u32; Cost::COUNT] = {
+    let mut a = BLANK_COSTS;
+    a[Cost::InitStart as usize] = 15620 - 2003 + 2724;
+    a[Cost::InitFreed as usize] = 175;
+    a[Cost::SubRecords as usize] = 3003;
+    a[Cost::MaskClear10 as usize] = 38;
+    a[Cost::ScreenScanCell as usize] = 390;
+    a[Cost::ScreenSpawner as usize] = 560;
+    a[Cost::ScrollTile as usize] = 1322;
     a
 };
 

@@ -16,7 +16,8 @@ fn frog_idle_w1_1() {
     green("frog-idle-w1-1");
 }
 
-/// Into W1-1's first pit, the death, the level's exit fade and its restart (T37).
+/// Into W1-1's first pit, the death, the level's exit fade and its restart (T37), every object live
+/// (T199).
 #[test]
 fn frog_pit_w1_1() {
     green("frog-pit-w1-1");
