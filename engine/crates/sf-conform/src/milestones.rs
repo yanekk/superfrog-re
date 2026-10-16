@@ -139,6 +139,12 @@ pub struct FrameState {
     pub score: u32,
     pub obj_slots: Vec<u8>,
     pub level_map: Vec<u8>,
+    /// The frame ended in the middle of a main-loop pass (the side's own mid-pass test). A cleared
+    /// marker is an item taken only if it is still clear at a frame that ends a pass, two passes
+    /// on ([`ITEM_SETTLE`]; T115): a crumbling platform's spawn clears the marker under it and the
+    /// next pass can write it back (W3-3 4953–4954 on the original, which the engine run alone
+    /// does within one pass).
+    pub mid_pass: bool,
 }
 
 /// The copper lists that name a screen (docs/12, docs/13).
@@ -188,6 +194,7 @@ impl FrameState {
             score: long(VarId::Score),
             obj_slots: bytes(VarId::ObjSlots),
             level_map: bytes(VarId::LevelMap),
+            mid_pass: false,
         }
     }
 
@@ -242,15 +249,51 @@ pub struct Milestones {
     prev: Option<FrameState>,
     scene: Option<SceneKind>,
     pub list: Vec<(u64, Milestone)>,
+    /// Items whose marker went, with the frame: kept, at it, if the marker is still clear at the
+    /// first frame ending a pass [`ITEM_SETTLE`] frames on ([`FrameState::mid_pass`]).
+    pending: Vec<(u64, Milestone)>,
 }
+
+/// Frames (two 25 Hz passes) a cleared marker must stay clear, to a frame ending a pass, to be an
+/// item taken.
+pub const ITEM_SETTLE: u64 = 4;
 
 impl Milestones {
     /// Frame `frame` of play ended in `s`.
     pub fn frame(&mut self, frame: u64, s: FrameState) {
         let mut out = Vec::new();
         self.derive(&s, &mut out);
-        self.list.extend(out.into_iter().map(|m| (frame, m)));
+        for m in out {
+            if matches!(m, Milestone::ItemTaken { .. }) {
+                self.pending.push((frame, m));
+            } else {
+                self.list.push((frame, m));
+            }
+        }
+        if !s.mid_pass {
+            self.settle(&s, |f| f + ITEM_SETTLE <= frame);
+        }
         self.prev = Some(s);
+    }
+
+    /// The pending items `due` (by the frame each went) as `s` (a frame ending a pass, or the
+    /// run's last) shows their cells: each still clear is taken, in its frame's place in the list;
+    /// one back is dropped.
+    fn settle(&mut self, s: &FrameState, due: impl Fn(u64) -> bool) {
+        let (now, later): (Vec<_>, Vec<_>) = std::mem::take(&mut self.pending)
+            .into_iter()
+            .partition(|&(f, _)| due(f));
+        self.pending = later;
+        for (f, m) in now {
+            let Milestone::ItemTaken { cell, .. } = m else {
+                continue;
+            };
+            let i = 2 * (cell.1 as usize * MAP_ROW_CELLS as usize + cell.0 as usize);
+            if s.level_map.get(i + 1).is_some_and(|&b| b & 0x3f == 0) {
+                let at = self.list.partition_point(|&(g, _)| g <= f);
+                self.list.insert(at, (f, m));
+            }
+        }
     }
 
     fn derive(&mut self, s: &FrameState, out: &mut Vec<Milestone>) {
@@ -329,6 +372,10 @@ impl Milestones {
 
     /// The run is over: its last frame's [`Milestone::End`].
     pub fn end(&mut self, frame: u64) -> &[(u64, Milestone)] {
+        if let Some(s) = self.prev.take() {
+            self.settle(&s, |_| true);
+            self.prev = Some(s);
+        }
         if let Some(s) = &self.prev {
             self.list.push((
                 frame,
@@ -554,6 +601,92 @@ mod tests {
             level_map: vec![0; LEVEL_MAP_BYTES as usize],
             ..FrameState::default()
         }
+    }
+
+    /// A crumbling platform's spawn (T115, W3-3 4953 on the original): the marker under it (62)
+    /// cleared in a frame ending mid-pass, still clear at the next pass's end, and written back
+    /// the frame after, is no item. An item cleared and still clear at a pass's end two passes on
+    /// is one, at the frame it went, and so is one still clear at the run's end.
+    #[test]
+    fn a_cleared_marker_is_an_item_only_if_still_clear_two_passes_on() {
+        let at = |c: u32, r: u32| (2 * (r * MAP_ROW_CELLS + c)) as usize;
+        let put = |s: &mut FrameState, i: usize, v: u16| {
+            s.level_map[i..i + 2].copy_from_slice(&v.to_be_bytes())
+        };
+        let (platform, item, last) = (at(127, 47), at(30, 5), at(40, 6));
+        let mut s = level_frame();
+        put(&mut s, platform, 0xae80 | 62);
+        put(&mut s, item, 0x3e00 | 55);
+        put(&mut s, last, 0x3e00 | 55);
+        let mut f = vec![s.clone()];
+        // Frame 1 ends mid-pass, the platform's marker clear; frame 2 ends the pass, still clear,
+        // and the item goes; frame 3 the platform's marker is back.
+        s.mid_pass = true;
+        put(&mut s, platform, 0xae80);
+        f.push(s.clone());
+        s.mid_pass = false;
+        put(&mut s, item, 0x3e00);
+        f.push(s.clone());
+        put(&mut s, platform, 0xae80 | 62);
+        f.push(s.clone());
+        // Frames 4 to 7 end passes, the item's marker still clear; the last item goes in frame 7,
+        // the run's last.
+        for k in 4..=7 {
+            if k == 7 {
+                put(&mut s, last, 0x3e00);
+            }
+            f.push(s.clone());
+        }
+        let items: Vec<(u64, Milestone)> = milestones(&f)
+            .into_iter()
+            .filter(|(_, m)| matches!(m, Milestone::ItemTaken { .. }))
+            .collect();
+        assert_eq!(
+            items,
+            vec![
+                (
+                    2,
+                    Milestone::ItemTaken {
+                        kind: 55,
+                        cell: (30, 5)
+                    }
+                ),
+                (
+                    7,
+                    Milestone::ItemTaken {
+                        kind: 55,
+                        cell: (40, 6)
+                    }
+                ),
+            ]
+        );
+    }
+
+    /// A frame ending mid-pass settles nothing (T115 review): a marker cleared in frame 1, still
+    /// clear in frame 5 (due, but mid-pass) and written back in frame 6 (the pass's end), is no
+    /// item.
+    #[test]
+    fn a_frame_ending_mid_pass_settles_no_item() {
+        let i = (2 * (47 * MAP_ROW_CELLS + 127)) as usize;
+        let put =
+            |s: &mut FrameState, v: u16| s.level_map[i..i + 2].copy_from_slice(&v.to_be_bytes());
+        let mut s = level_frame();
+        put(&mut s, 0xae80 | 62);
+        let mut f = vec![s.clone()];
+        put(&mut s, 0xae80);
+        for k in 1..=5 {
+            s.mid_pass = k == 5;
+            f.push(s.clone());
+        }
+        s.mid_pass = false;
+        put(&mut s, 0xae80 | 62);
+        f.push(s.clone());
+        f.push(s.clone());
+        assert!(
+            !milestones(&f)
+                .iter()
+                .any(|(_, m)| matches!(m, Milestone::ItemTaken { .. }))
+        );
     }
 
     #[test]

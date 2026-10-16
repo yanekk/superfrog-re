@@ -1,0 +1,10 @@
+# W3-1 completed (T115): from its first frame (the frog held to 150) through the coins the exit
+# needs to the exit (the level completed on frame 5493), every object live, the exit fade and the tally,
+# fire in its wait taking the points. Planned by `examples/plan_exit` to 4038, then `examples/explore`.
+sync = { level = "W3-1" }
+script = "enemies-w3-1-complete"
+frames = 5677
+resync = true
+# Two re-syncs, pinned in enemies_w3.rs: `bob_draw_vars` at 1018 and the panel at 1629, each the
+# frame after a lag. Alone (check 4) it meets all 250 milestones.
+lag-limit = { frames = 105, note = "W3-1 lags nearly every frame: from 1658 its passes run past 105 frames' ends in a row; check 4 covers them (T115)" }
