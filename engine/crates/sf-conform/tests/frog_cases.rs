@@ -278,6 +278,30 @@ fn complete_w4_3() {
     goes_on(name);
 }
 
+/// The copper interrupt running past the end of the step's own frame outside a pass
+/// (`enemies-w3-3` 1724, a lag frame): the original's DMACON `$0400` and INTREQ `$10` are 1725's
+/// lines 5–6. The engine keeps them in 1724 (on its line 317), where the comparison tolerates
+/// them; ending the frame there instead, as when the original is mid-pass, would lose both, as no
+/// pass runs again in the next step to make them (T197 review).
+#[test]
+fn coper_tail_outside_a_pass_kept() {
+    let case = sf_conform::Case::load(&sf_conform::cases_dir().join("enemies-w3-3.toml"))
+        .unwrap_or_else(|e| panic!("{e}"));
+    let tail = |w: &[sf_paula::PaulaWrite]| {
+        w.iter().filter(|w| matches!((w.reg, w.value), (0x96, 0x0400) | (0x9c, 0x0010))).count()
+    };
+    let (mut ours, mut theirs) = (0, 0);
+    if let Err(d) = sf_conform::run_observing_lag(&case, |f, o, t| {
+        if matches!(f, 1724 | 1725) {
+            ours += tail(o);
+            theirs += tail(t);
+        }
+    }) {
+        panic!("enemies-w3-3: {d}");
+    }
+    assert_eq!((ours, theirs), (5, 5));
+}
+
 /// `name` run two frames past its end (the hook runs before each step, so it sees its last
 /// frame's end): green, nothing unported, the level completed with the points taken and no slot
 /// machine, `top_loop` going on to what follows (T183).
