@@ -18,6 +18,10 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-16 | 🔄 | Owner, T115: keep the judge fix though no W3 completion needs it now, and add T195 (w3-3-slot-order; T115, blocks T21) for the old W3-3 route's alone divergence rather than only a row here. |
+| 2026-10-16 | 🐞 | T115, owned by T195: `enemies-w3-3-slot-order` (W3-3's old route) is red alone at 6335, a coin fewer: the engine alone's object slots part from the original's at 4053 (all 20 full). The frog's path is identical. |
+| 2026-10-16 | 📌 | T115 (owner's yes): check 4 counts an item only if its marker stays clear two passes; platform spawns clear marker 62 across a pass end. `sf-conform all` 157/160 both ways; complete-w4-4 lost 8, enemies-w3-4 4, all verified transient. |
+| 2026-10-16 | 📌 | T115: W3 tile coins (marker 55) count in `frog+$7e`, not toward the exit, as W2's: plan W3 with `--no-tile-coins`. `plan_exit`'s field cannot route W3's pipes (39–43), far-switch gates or water; `examples/explore` can. |
 | 2026-10-15 | 🐞 | Open, seen at T190's re-merge: `tests/alone.rs` `a_late_cut_the_engine_cannot_reach_ends_the_frame_as_normal_play_does` panics in debug at `level/frame.rs:71` (`LOGIC_RUNNING` debug_assert), identically on `pir/rust-engine` without T190. Not fixed. |
 | 2026-10-15 | 📌 | T190 review: dropping `WorldLoad`'s end-picture `Reached(h0+$411c)` (fix 1) leaves `chain-w1-4-to-w2-1` green: the engine's end picture is then compared against the original's 324 load frames instead of skipping them. Kept per the task doc; no test defends it. |
 | 2026-10-15 | 📌 | T184 merge: T185 changed the same `pass_step` ranges, ending where the entry is decided (T184's ended at its write or `jsr`). Each green on the other's cases (complete-w4-2, enemies-w6-4); T185's kept, as the engine decides and applies an entry at once. |

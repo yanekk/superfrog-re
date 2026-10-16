@@ -236,6 +236,7 @@ original's milestones and passes the faithful checks (DESIGN §2.1), headless.
 | [T191](tasks/T191-chain-pause.md) | chain-pause | T183; blocks T21 |
 | [T192](tasks/T192-chain-level-code.md) | chain-level-code | T183, T190; blocks T21 |
 | [T193](tasks/T193-chain-e2e.md) | chain-e2e | T183; blocks T21 |
+| [T195](tasks/T195-w3-3-slot-order.md) | w3-3-slot-order | T115; blocks T21 |
 
 T22 is the rig task: it comes before every surface task and they depend on it. T29 is the phase's
 drill. At the end: the real app plays a scripted whole game that meets the original's milestones (T30);
