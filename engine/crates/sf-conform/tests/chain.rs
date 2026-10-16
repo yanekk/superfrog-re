@@ -18,6 +18,26 @@ fn start_game_reaches_w1_1_as_the_original_does() {
     assert_eq!(run("chain-start-w1-1"), Vec::<&str>::new());
 }
 
+/// Power-on, OPTIONS, W3-1's level code typed into LEVEL CODE (its digits read from the disks),
+/// the options left, START GAME: `game_start_at` takes the code and `top_loop` jumps to world 3's
+/// entry, W3's loads from disk 2 (each disk the original asks for put in), W3's loading picture,
+/// the progress map, W3-1 played: faithful and alone, nothing unported on the way.
+#[test]
+fn a_level_code_starts_the_game_at_w3_1_as_the_original_does() {
+    let case = sf_conform::Case::load(&sf_conform::cases_dir().join("chain-level-code.toml"))
+        .unwrap_or_else(|e| panic!("{e}"));
+    let (mut unported, mut world) = (Vec::new(), 0);
+    if let Err(d) = sf_conform::run_with(&case, |_, g| {
+        unported = g.unported().to_vec();
+        world = g.state().world();
+    }) {
+        panic!("chain-level-code: {d}");
+    }
+    assert_eq!(unported, Vec::<&str>::new());
+    // A code typed wrong starts at W1-1 on both sides, faithful too: the code must have been taken.
+    assert_eq!(world, 3, "the run did not end in world 3");
+}
+
 /// W1-1's exit (forced, as `tally-w1-1`), the tally, then W1-2 through its progress map and
 /// 500 frames of play, faithful and alone.
 #[test]

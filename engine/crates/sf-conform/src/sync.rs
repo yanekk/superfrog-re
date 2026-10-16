@@ -73,23 +73,6 @@ pub enum SyncPoint {
     Lives { level: LevelId, lives: u16 },
 }
 
-impl SyncPoint {
-    /// Whether every disk the original asks for goes in as a player would put it in: from the
-    /// end sequence's start, and in the final level, which goes on into the end sequence's loads
-    /// (T18). Other cases keep the drive as their sync point left it: inserting a disk changes the
-    /// timing of what follows (power-on's RNG seed among it).
-    pub fn serves_disks(&self) -> bool {
-        match self {
-            SyncPoint::EndSequence => true,
-            SyncPoint::AtLevel(id)
-            | SyncPoint::Clock { level: id, .. }
-            | SyncPoint::Exit(id)
-            | SyncPoint::Lives { level: id, .. } => id.world == World::Final,
-            _ => false,
-        }
-    }
-}
-
 /// The oracle at a sync point.
 pub struct Synced {
     pub amiga: Amiga,
@@ -813,7 +796,9 @@ fn end_sequence(frames: u32) -> Result<Synced, String> {
 }
 
 /// The player at the drive: whenever the game asks for a disk (`disk_request`'s wanted ID, h0+$af54)
-/// that is not in df0, that disk goes in.
+/// that is not in df0, that disk goes in. Every case runs with one (T192: a level code from
+/// power-on loads its world from disk 2); it acts only when the wanted disk changes, so a case
+/// whose original never asks for another disk runs as it did without.
 pub struct Disks {
     wanted: u32,
 }
@@ -830,9 +815,14 @@ impl Disks {
         }
     }
 
-    /// After a frame of the original's.
+    /// After a frame of the original's. Only the game's own wanted disk counts: before the game
+    /// owns the vertical blank (the boot, disk 3's story intro) h0+$af54 is not its yet.
     pub fn serve(&mut self, a: &mut Amiga) {
-        let want = long(&core_memory(a.memory()), WANTED_DISK);
+        let m = core_memory(a.memory());
+        if long(&m, 0x6c) != VBL_HANDLER {
+            return;
+        }
+        let want = long(&m, WANTED_DISK);
         if want == self.wanted || want == 0 {
             return;
         }

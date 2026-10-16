@@ -140,7 +140,7 @@ done · ⛔ blocked, needs a human. A task dropped by a plan amendment leaves th
 | T148 | w6-2-alt-completion | T104, T147, T180, T182; blocks T21 | ✅ | |
 | T149 | w6-3-completion | T104, T180, T182; blocks T21 | ✅ | |
 | T150 | w6-4-completion | T104, T180, T182; blocks T21 | ✅ | |
-| T151 | w6-4-alt-completion | T104, T150, T180, T182; blocks T21 | ⬜ | |
+| T151 | w6-4-alt-completion | T104, T150, T180, T182; blocks T21 | ✅ | |
 | T160 | attract-demo-entry | T33, T180 | ✅ | |
 | T162 | attract-demo-level-start | T160, T180 | ✅ | |
 | T163 | attract-demo-return | T162 | ✅ | |
@@ -157,7 +157,7 @@ done · ⛔ blocked, needs a human. A task dropped by a plan amendment leaves th
 | T185 | w6-4-lag-frog-fall | T182; blocks T21 | ✅ | |
 | T190 | chain-world-change | T183; blocks T21 | ✅ | |
 | T191 | chain-pause | T183; blocks T21 | ✅ | |
-| T192 | chain-level-code | T183, T190; blocks T21 | ⬜ | |
+| T192 | chain-level-code | T183, T190; blocks T21 | ✅ | |
 | T193 | chain-e2e | T183; blocks T21 | ✅ | |
 | T194 | w6-2-sfx-double-blank | T147; blocks T21 | ✅ | Review clean, no fix commit: the held blank's tick after `clr.l $20(a2)` (h0+$12b40, listing-checked) is the fix; case green, in the test block. Mutations caught: the clear dropped from frame_end's held path (case red), the clear back after the tick (driver red), frames cut to 8420 (exit pin red). W6-1-complete still parts at 2136, its baseline. |
 | T195 | w3-3-slot-order | T115; blocks T21 | ⬜ | |

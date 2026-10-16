@@ -13,12 +13,18 @@
 //! A line sets everything held from its frame until the next line; before the first line nothing is
 //! held. Frames count from the case's sync point and must strictly increase. Tokens: `U D L R F`
 //! for the port-2 joystick (up is jump), `M` for the port-1 mouse button (the crack intro waits for
-//! it), `K<hex>` for a raw key code 00..7F, `-` (or nothing) for nothing.
+//! it), `K<hex>` for a raw key code 00..7F, `C<entry>.<k>` for the raw key of digit `k` (0..5) of
+//! `password_table` entry `entry` (0..27, h0+$24dc), `-` (or nothing) for nothing. A level code's
+//! digits are the player's disks' (DESIGN §2.3): `C` reads them from the disks when the script is
+//! parsed, so a script types a code without holding it.
 
 use std::fmt;
 use std::path::Path;
 
 use sf_core::input::{FrameInput, Joy};
+
+/// `password_table` (h0+$24dc): 28 entries of six ASCII digits and a handler.
+const PASSWORD_TABLE: u32 = 0x24dc;
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct InputScript {
@@ -48,6 +54,19 @@ impl InputScript {
     }
 
     pub fn parse(text: &str) -> Result<InputScript, ScriptError> {
+        InputScript::parse_with(text, &|entry, k| {
+            crate::display_data()
+                .front
+                .h0_b(PASSWORD_TABLE + 10 * entry + k)
+        })
+    }
+
+    /// [`InputScript::parse`], `digit(entry, k)` giving the ASCII digit `k` of a `password_table`
+    /// entry (read only for a `C` token).
+    pub fn parse_with(
+        text: &str,
+        digit: &dyn Fn(u32, u32) -> u8,
+    ) -> Result<InputScript, ScriptError> {
         let mut lines: Vec<(u32, FrameInput)> = Vec::new();
         for (i, raw) in text.lines().enumerate() {
             let line = i + 1;
@@ -94,9 +113,30 @@ impl InputScript {
                             })?;
                         input.keys = input.keys.with(code);
                     }
+                    c if c.starts_with('C') => {
+                        let bad = || {
+                            err(format!(
+                                "`{c}`: a code digit is C<entry 0..27>.<digit 0..5>"
+                            ))
+                        };
+                        let (e, k) = c[1..].split_once('.').ok_or_else(bad)?;
+                        let e: u32 = e.parse().ok().filter(|&e| e < 28).ok_or_else(bad)?;
+                        let k: u32 = k.parse().ok().filter(|&k| k < 6).ok_or_else(bad)?;
+                        // The number keys' raw codes: 1..9 are 01..09, 0 is 0A.
+                        let code = match digit(e, k) {
+                            b'0' => 0x0a,
+                            d @ b'1'..=b'9' => d - b'0',
+                            _ => {
+                                return Err(err(format!(
+                                    "`{c}`: password_table entry {e} is not digits"
+                                )));
+                            }
+                        };
+                        input.keys = input.keys.with(code);
+                    }
                     other => {
                         return Err(err(format!(
-                            "`{other}` is not an input (U D L R F M K<hex> -)"
+                            "`{other}` is not an input (U D L R F M K<hex> C<entry>.<k> -)"
                         )));
                     }
                 }

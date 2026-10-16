@@ -1,0 +1,36 @@
+# Power-on to W3-1 by its level code (T192): menu, OPTIONS, down three times to LEVEL CODE (the
+# entry starts as the cursor arrives), W3-1's code typed with the number keys (password_table
+# entry 8, read from the disks), fire leaves the options (cursor back on LIVES), fire for the
+# menu, START GAME. The timings are `sync.rs`'s `drive_to`.
+1000: M
+1005: -
+4600: F
+4605: -
+4650: D
+4655: -
+4700: F
+4705: -
+4800: D
+4810: -
+4840: D
+4850: -
+4880: D
+4890: -
+4980: C8.0
+4986: -
+4996: C8.1
+5002: -
+5012: C8.2
+5018: -
+5028: C8.3
+5034: -
+5044: C8.4
+5050: -
+5060: C8.5
+5066: -
+5116: F
+5121: -
+5216: F
+5221: -
+5276: F
+5281: -
