@@ -139,7 +139,7 @@ done · ⛔ blocked, needs a human. A task dropped by a plan amendment leaves th
 | T147 | w6-2-completion | T104, T180, T182; blocks T21 | ✅ | |
 | T148 | w6-2-alt-completion | T104, T147, T180, T182; blocks T21 | ⬜ | |
 | T149 | w6-3-completion | T104, T180, T182; blocks T21 | ✅ | |
-| T150 | w6-4-completion | T104, T180, T182; blocks T21 | ⬜ | |
+| T150 | w6-4-completion | T104, T180, T182; blocks T21 | ✅ | |
 | T151 | w6-4-alt-completion | T104, T150, T180, T182; blocks T21 | ⬜ | |
 | T160 | attract-demo-entry | T33, T180 | ✅ | |
 | T162 | attract-demo-level-start | T160, T180 | ✅ | |
