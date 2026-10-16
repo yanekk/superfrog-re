@@ -662,6 +662,33 @@ mod tests {
         );
     }
 
+    /// A frame ending mid-pass settles nothing (T115 review): a marker cleared in frame 1, still
+    /// clear in frame 5 (due, but mid-pass) and written back in frame 6 (the pass's end), is no
+    /// item.
+    #[test]
+    fn a_frame_ending_mid_pass_settles_no_item() {
+        let i = (2 * (47 * MAP_ROW_CELLS + 127)) as usize;
+        let put =
+            |s: &mut FrameState, v: u16| s.level_map[i..i + 2].copy_from_slice(&v.to_be_bytes());
+        let mut s = level_frame();
+        put(&mut s, 0xae80 | 62);
+        let mut f = vec![s.clone()];
+        put(&mut s, 0xae80);
+        for k in 1..=5 {
+            s.mid_pass = k == 5;
+            f.push(s.clone());
+        }
+        s.mid_pass = false;
+        put(&mut s, 0xae80 | 62);
+        f.push(s.clone());
+        f.push(s.clone());
+        assert!(
+            !milestones(&f)
+                .iter()
+                .any(|(_, m)| matches!(m, Milestone::ItemTaken { .. }))
+        );
+    }
+
     #[test]
     fn the_derivation_reads_coins_kills_items_deaths_and_the_exit() {
         let mut f = vec![level_frame()];
