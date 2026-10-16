@@ -737,6 +737,17 @@ impl LevelCtx<'_> {
     pub fn sfx(&mut self, effect: u8, channel: u8) {
         if self.bus.l(ATTRACT_MODE) == 0 {
             self.spend(beam::Cost::SfxPlay);
+            // Its first writes go out together: a frame whose original ended before them, in
+            // this call with all its writes made, ends here, not in the raster wait past them
+            // (T196: items-pad-w1-1 776, the original in the coin's touch handler). Not in an
+            // earlier call: there the writes alone say nothing (enemies-w5-1-activation 511).
+            let phase = self.phase;
+            if let Some(f) = self.frames.as_ref()
+                && let Some((_, Some(cut))) = f.current()
+                && cut.phase == phase
+            {
+                self.interrupt_due_at(true);
+            }
             let at = self.paula.len();
             let rest = self.bus.st.audio
                 .play_sfx_begin(self.sound, effect, channel, self.paula);
