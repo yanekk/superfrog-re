@@ -12,9 +12,9 @@ the account is the commit message. Whoever writes a cell also fixes the over-bud
 **Plan reviewed:** 2026-10-10 — 7 fixed, 7 decided with the user
 
 **Status:** about 100 tasks ✅; T18, T21 and Phase 3 open; amended to faithful.
-**Last updated:** 2026-10-15
+**Last updated:** 2026-10-16
 **Amended 2026-10-15 (owner):** faithful replaces frame-exact (DESIGN §2.1, PLAN.md amendment); T180–T183 added, 14 tasks dropped (PLAN.md).
-**Next `pir-work` will:** T180 faithful-compare, then T182; T126 and T132 finish against the faithful bar.
+**Next `pir-work` will:** review T202; then T205–T207 re-plan the routes in the chain, then T203.
 
 ## Tasks
 
@@ -167,14 +167,17 @@ done · ⛔ blocked, needs a human. A task dropped by a plan amendment leaves th
 | T199 | live-restart | T21; blocks T23, T29 | ✅ | |
 | T200 | hiscore-entry | T21; blocks T23, T29 | ✅ | |
 | T201 | continue-and-codes | T21, T200; blocks T23, T29 | ✅ | |
-| T202 | whole-game-script | T21, T198, T199; blocks T23, T29 | ⬜ | |
+| T202 | whole-game-script | T21, T198, T199; blocks T23, T29 | 🔍 | `examples/whole_game` assembles `game-whole` on the original (snapshot per leg; `--from`, `--diff`, `--check`). Case green faithful and alone, 27 000 frames, power-on to W1-2's game over (`run` 421 s, `--alone` 297 s). Deviations: df1 power-on was T201's, reused; routes break in the chain (W1-2 frame 792), so the `end_seq_load` test moved to T207 (owner); T205–T207 added. |
 | T203 | whole-game-green | T21, T202; blocks T23, T29 | ⬜ | |
 | T204 | w3-4-template-86 | T201; blocks T203 | ⬜ | |
+| T205 | chain-routes-w1-w2 | T202; blocks T203 | ⬜ | |
+| T206 | chain-routes-w3-w4 | T205; blocks T203 | ⬜ | |
+| T207 | chain-routes-w5-w6-final | T206; blocks T203 | ⬜ | |
 
 A Notes cell holds what was built or what the review found, the test count, and one line per
 deviation from the task doc. A ✅ task's cell may be cut to one line once the next task has been reviewed.
 
-**Review queue:** *(empty)*
+**Review queue:** T202
 
 ## Blocked on the user
 

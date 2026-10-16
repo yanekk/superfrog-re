@@ -18,6 +18,9 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-16 | 🔄 | Owner, T202: added T205 chain-routes-w1-w2, T206 chain-routes-w3-w4 (T205), T207 chain-routes-w5-w6-final (T206), each blocking T203: re-plan the routes in the chain; T205 first records why standalone routes break. T207 carries T202's `end_seq_load` test. |
+| 2026-10-16 | 🐞 | T202: in the chain W1-2's route parts at its frame 792 (frog hurt): the frog enters with W1-1's spud and wings (`frog_spud_on`, `frog_flight` 1), another `rng_state` and `w1_hover_phase`; the original loses every life (script frame 27251). |
+| 2026-10-16 | 📌 | T202: `game-whole` (power-on-df1, W1-1, its tally's slot machine, W1-2 to game over, hall of talent) green faithful and alone, 27 000 frames: `run` 421 s, `--alone` 297 s. `examples/whole_game --from`/`--diff` resume or compare a leg. |
 | 2026-10-16 | 🐞 | T199 review, open: `level_start`'s `START_FROG_LINES` (31 measured lines) is defended by no test: 0 keeps frog_cases, chain, restart_routines, game_over green. It matters only for a set-up ending lines 224–254; frog-pit's restart waits a frame later by ending at 295. |
 | 2026-10-16 | 🔄 | Owner, T199: `items-shield-w3-1`'s 295 (after the lag, bob seam-part blit sizes) is not pinned: `bob_records`' drawing sub-records, but their destination pointers, are presentation per piece (`layout::presentation_piece`), the picture judging them. |
 | 2026-10-16 | 📌 | T199: the restart's set-up runs with the level's five planes still fetched, a level entry after a load with none; parts slow unevenly, so the restart has `RESTART_COSTS`. `examples/restart_probe` prints the original's PC per line, writes, DMA owners. |
