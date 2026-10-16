@@ -18,6 +18,8 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-16 | 🐞 | T167, for T155: `w2-3-complete` red under checks 1–3 at 2166 (`bob_records`, after a lag) and 6729 (`clock_shown`); `scan`: only these two. Alone green (344 milestones). No crumbling ledge breaks on its route. |
+| 2026-10-16 | 📌 | T167: W2-3's exit needs gate 196,5 (switch 295,62): pad 205,26 → top → shaft 132-139 → slope → tall-room ledges. Launchers reach row 33, never the ledges; S14, S9 are one-way down. Jumps held reach ~7 rows. |
 | 2026-10-16 | 📌 | T150 review: T196 claims T194's W6-2 fault but does not block T194; both may be dispatched and fix it twice. Sweep: other cases' exit-frame comments read-only, pinned ones (W1-2, W1-4, W6-3) agree. |
 | 2026-10-16 | 🔄 | Owner, T150: added T196 pass-over-two-blanks (T184, T150; blocks T21) for `enemies-w6-4-complete`: coins a pass early at 154 after late frames 150–153; alone, objects a frame ahead from 5231 (pass held over 5228–5229). Also owns W2-2's and W6-2's (T194). |
 | 2026-10-16 | 📌 | T150: W6-4's marker 55 cells are pickups (by `tile_pickup`'s table): 85 tile coins, wings at 212,37 233,34 228,77 234,77, speed-ups 231–237,78. The 24 spikes at row 10 are crossed only with wings (fire flaps). |
