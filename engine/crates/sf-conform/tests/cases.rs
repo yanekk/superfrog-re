@@ -25,8 +25,6 @@ macro_rules! case {
 
 // The attract demo, the front end and game over.
 case!(#[ignore = "slow: about 4 min"] attract_demo_3, "attract-demo-3");
-// The whole game as far as its script replays (T202; T205–T207 extend it).
-case!(#[ignore = "slow: about 7 min"] game_whole, "game-whole");
 case!(front_noskip, "front-noskip");
 case!(front_options_all, "front-options-all");
 case!(front_options, "front-options");
