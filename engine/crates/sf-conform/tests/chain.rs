@@ -18,6 +18,15 @@ fn start_game_reaches_w1_1_as_the_original_does() {
     assert_eq!(run("chain-start-w1-1"), Vec::<&str>::new());
 }
 
+/// Power-on, OPTIONS, W3-1's level code typed into LEVEL CODE (its digits read from the disks),
+/// the options left, START GAME: `game_start_at` takes the code and `top_loop` jumps to world 3's
+/// entry, W3's loads from disk 2 (each disk the original asks for put in), W3's loading picture,
+/// the progress map, W3-1 played: faithful and alone, nothing unported on the way.
+#[test]
+fn a_level_code_starts_the_game_at_w3_1_as_the_original_does() {
+    assert_eq!(run("chain-level-code"), Vec::<&str>::new());
+}
+
 /// W1-1's exit (forced, as `tally-w1-1`), the tally, then W1-2 through its progress map and
 /// 500 frames of play, faithful and alone.
 #[test]
