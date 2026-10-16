@@ -277,6 +277,15 @@ fn access_overlay_show(cx: &mut Cx) {
 /// the music faded out and stopped, the sound's chip RAM kept over the level's map, the slot's
 /// effects (`LFFX`) at the bank's place and its music (`LFMU`) at the level's module address.
 fn load(cx: &mut Cx) {
+    // `read_disk_id` (h0+$4a96, $4bd4): with disk 1 in the drive its own copies of the files are
+    // read, else disk 2's.
+    if cx.s.l(crate::layout::h0(0xaf54)) == 0x3232_3232 {
+        cx.read_entries(0x4af6, 0x4b3e);
+        cx.read_entries(0x4c22, 0x4c58);
+    } else {
+        cx.read_entries(0x4aa4, 0x4af6);
+        cx.read_entries(0x4be2, 0x4c22);
+    }
     for (name, to) in [
         ("FRUT", BUFFER_0),
         ("FRUC", BUFFER_1),

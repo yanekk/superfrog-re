@@ -353,6 +353,8 @@ pub(crate) struct Cx<'a> {
     /// A load this frame was given the original's state at its end (conformance only): the
     /// original's load is over, however long the engine models it as taking.
     pub load_given: bool,
+    /// A disk the game asked for this frame that was not in the drive (T21).
+    pub disk_prompt: Option<crate::game::DiskPrompt>,
 }
 
 impl Cx<'_> {
@@ -505,10 +507,48 @@ impl Cx<'_> {
             (self.line as u32 + cycles.div_ceil(BEAM_CYCLES_PER_LINE)).min(u16::MAX as u32) as u16;
     }
 
+    /// The file of `file_table`'s entry at h0+`entry` is read (`track_read`, h0+$b098): its disk
+    /// (the entry's third word, an index into `disk_id_table`, h0+$b11e) is looked for in the
+    /// drive, and when the game last asked for another, `disk_request` (h0+$ade4) asks for it
+    /// ([`Cx::disk_prompt`]), the player puts it in and the load goes on (T21). The engine's loads
+    /// are instant, so the answer is too.
+    pub fn read_entry(&mut self, entry: u32) {
+        let disk = self.data.h0_w(entry + 4) & 3;
+        let id = self.data.h0_l(DISK_ID_TABLE + 4 * disk as u32);
+        if self.s.l(at(0xaf54)) != id {
+            self.s.set_l(at(0xaf54), id);
+            self.disk_prompt = Some(crate::game::DiskPrompt::Insert(sf_disk::DiskSlot::ALL[disk as usize]));
+        }
+    }
+
+    /// [`Cx::read_entry`] for every `file_table` entry the original's code between h0+`from` and
+    /// h0+`to` names (`lea file_table+n,a2`), in order.
+    pub fn read_entries(&mut self, from: u32, to: u32) {
+        for e in table_entries(self.data, from, to) {
+            self.read_entry(e);
+        }
+    }
+
     /// A path of the original's code the engine does not follow yet: recorded, so a test fails.
     pub fn unported(&mut self, what: &'static str) {
         self.unported.push(what);
     }
+}
+
+/// `file_table` (h0+$cbfe): six bytes a file, its first sector, its sectors and its disk.
+pub(crate) const FILE_TABLE: std::ops::Range<u32> = 0xcbfe..0xce58;
+/// `disk_id_table` (h0+$b11e, an h0 offset): the four disks' IDs, `2222` to `5555`.
+const DISK_ID_TABLE: u32 = 0xb11e;
+
+/// The `file_table` entries (h0 offsets) the code between h0+`from` and h0+`to` loads, in order:
+/// each `lea file_table+n,a2` (`$45f9`), which `load_file`'s callers set before the call.
+pub(crate) fn table_entries(data: &FrontData, from: u32, to: u32) -> Vec<u32> {
+    (from..to)
+        .step_by(2)
+        .filter(|&pc| data.h0_w(pc) == 0x45f9)
+        .map(|pc| data.h0_l(pc + 2).wrapping_sub(crate::layout::H0))
+        .filter(|e| FILE_TABLE.contains(e))
+        .collect()
 }
 
 /// A routine on the call stack and what it waits for.
@@ -622,6 +662,8 @@ pub struct FrontOut {
     pub jobs: Vec<crate::game::Job>,
     /// [`crate::game::FrameOut::beam_races`].
     pub beam_races: Vec<(u16, u16)>,
+    /// [`crate::game::FrameOut::disk_prompt`].
+    pub disk_prompt: Option<crate::game::DiskPrompt>,
 }
 
 impl Front {
@@ -865,6 +907,7 @@ impl Front {
             outcome: None,
             load_runs: Vec::new(),
             load_given: false,
+            disk_prompt: None,
         };
         self.run_main(&mut cx, u16::MAX);
         self.stalled = cx.stall;
@@ -988,6 +1031,7 @@ impl Front {
                 outcome: None,
                 load_runs: Vec::new(),
                 load_given: false,
+                disk_prompt: None,
             };
             title::boot(&mut cx);
             self.cop1lc = cx.cop1lc;
@@ -1049,6 +1093,7 @@ impl Front {
             outcome: None,
             load_runs: Vec::new(),
             load_given: false,
+            disk_prompt: None,
         };
         // Work the main program carried over from the last frame with interrupts off.
         let masked = match self.stack.last() {
@@ -1354,6 +1399,7 @@ impl Front {
         }
         self.stalled = cx.stall;
         let load = cx.load;
+        let disk_prompt = cx.disk_prompt.take();
         let resync = std::mem::take(&mut cx.resync);
         let jobs = std::mem::take(&mut cx.jobs);
         let beam_races = std::mem::take(&mut cx.races);
@@ -1400,6 +1446,7 @@ impl Front {
             resync,
             jobs,
             beam_races,
+            disk_prompt,
         }
     }
 

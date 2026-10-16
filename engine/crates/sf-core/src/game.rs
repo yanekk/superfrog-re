@@ -119,6 +119,17 @@ pub struct FrameOut {
     /// [`RACE_LINES`] of them (owner, 2026-10-13): the original's picture there depends on which
     /// side of the beam its write fell, so conformance excuses a pixel differing only on them.
     pub beam_races: Vec<(u16, u16)>,
+    /// The game asked for a disk that was not in the drive (T21): the original's insert-disk
+    /// prompt. The engine has every disk (the app's cache), so it goes on at once: the app may
+    /// show the swap, never wait for it.
+    pub disk_prompt: Option<DiskPrompt>,
+}
+
+/// What the original asks the player to do with the drive (T21).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum DiskPrompt {
+    /// Put this disk in (`disk_request`, h0+$ade4, found it in no drive).
+    Insert(sf_disk::DiskSlot),
 }
 
 /// How near the beam, in lines, a drawing step's write must be to race it.
@@ -423,6 +434,7 @@ impl Game {
                     resync: out.resync,
                     jobs: out.jobs,
                     beam_races: Vec::new(),
+                    disk_prompt: None,
                 };
             }
             // The intro has handed over: the game starts as a disk-1 power-on does, and its first
@@ -469,6 +481,7 @@ impl Game {
                 resync: out.resync,
                 jobs: out.jobs,
                 beam_races: out.beam_races,
+                disk_prompt: out.disk_prompt,
             };
         }
         let mut hw = Hw::of(input);
@@ -524,6 +537,7 @@ impl Game {
             resync: Vec::new(),
             jobs,
             beam_races: Vec::new(),
+            disk_prompt: None,
         }
     }
 

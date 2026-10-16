@@ -87,6 +87,10 @@ pub enum Milestone {
     Tally {
         score: u32,
     },
+    /// The game asked for a disk not in the drive (`wanted_disk` changed, T21): its number, 1–4.
+    DiskAsked {
+        disk: u8,
+    },
     /// The run's last frame.
     End {
         score: u32,
@@ -107,6 +111,7 @@ impl fmt::Display for Milestone {
             Milestone::LifeLost { lives } => write!(f, "life lost ({} left)", *lives as i16),
             Milestone::LevelExit { world, level } => write!(f, "level exit (W{world}-{level})"),
             Milestone::Tally { score } => write!(f, "tally (score {score})"),
+            Milestone::DiskAsked { disk } => write!(f, "disk {disk} asked for"),
             Milestone::End {
                 score,
                 lives,
@@ -139,6 +144,8 @@ pub struct FrameState {
     pub score: u32,
     pub obj_slots: Vec<u8>,
     pub level_map: Vec<u8>,
+    /// The disk ID the game last asked for (`2222`..`5555`).
+    pub wanted_disk: u32,
     /// The frame ended in the middle of a main-loop pass (the side's own mid-pass test). A cleared
     /// marker is an item taken only if it is still clear at a frame that ends a pass, two passes
     /// on ([`ITEM_SETTLE`]; T115): a crumbling platform's spawn clears the marker under it and the
@@ -194,6 +201,7 @@ impl FrameState {
             score: long(VarId::Score),
             obj_slots: bytes(VarId::ObjSlots),
             level_map: bytes(VarId::LevelMap),
+            wanted_disk: long(VarId::WantedDisk),
             mid_pass: false,
         }
     }
@@ -310,6 +318,14 @@ impl Milestones {
         let Some(p) = &self.prev else {
             return;
         };
+        if !p.story && !s.story && p.wanted_disk != s.wanted_disk {
+            if let Some(k) = (0x3232_3232..=0x3535_3535u32)
+                .step_by(0x0101_0101)
+                .position(|id| id == s.wanted_disk)
+            {
+                push(Milestone::DiskAsked { disk: k as u8 + 1 });
+            }
+        }
         if !p.story && !s.story && p.world == s.world && p.level == s.level {
             if (s.lives as i16) < (p.lives as i16) {
                 push(Milestone::LifeLost { lives: s.lives });

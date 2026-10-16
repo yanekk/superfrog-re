@@ -125,6 +125,8 @@ pub(crate) fn overlay_show(cx: &mut Cx) {
 /// (`MPIC`, six planes) in display buffer 0 and copied to buffer 1, and the eyes' graphics (packed
 /// at h0+$34e92) after it in buffer 1.
 fn load_title(cx: &mut Cx) {
+    // h0+$1dd2's files, HPIC and MPIC (disk 1).
+    cx.read_entries(0x1dd2, 0x1e20);
     if let Some(d) = cx.data.sound.as_ref()
         && !cx.s.audio.music_on()
     {

@@ -127,6 +127,8 @@ impl Demo {
                 {
                     super::title::overlay_show(cx);
                 }
+                // `demo_world_load`, `demo_level_load`'s files (h0+$a580..$a65c, disk 1).
+                cx.read_entries(0xa580, 0xa65c);
                 let display = cx.display;
                 crate::level::exit::with_level(cx, false, |c| {
                     crate::level::load::demo_load(c, display)
@@ -189,6 +191,8 @@ impl AwardPages {
                 // A page: load it, fade it in, show it.
                 1 => {
                     let (name, ret) = [("AWA1", 0x1f06), ("AWA2", 0x1fc8)][self.page as usize];
+                    let lea = [0x1ee6, 0x1fa8][self.page as usize];
+                    cx.read_entries(lea, lea + 14);
                     let pic = cx.data.file(name).to_vec();
                     cx.s.write(BUFFER_0, &pic);
                     cx.loaded(LoadEnd::Left(at(ret)));
