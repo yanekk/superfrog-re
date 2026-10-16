@@ -18,6 +18,8 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-16 | 🐞 | T201: W3-4 left idle, at frame 212 the original spawns template 86 (init h0+$24216: rising, immune, passive) from cell 285,63; the engine has no such object and reports nothing unported. `code-w3-4` ends before it. |
+| 2026-10-16 | 📌 | T201: a case's `frames` counts the engine's frames (loads skipped); its script counts the original's. W6-2..4's codes need `power-on-df1` (first map set). A script's fixed presses also leave `title_blink`, `title_menu` (flow.rs `TITLE_TIME`). |
 | 2026-10-16 | 📌 | T200 review: the T200 worktree's `cargo test` first ran a stale `sf-core` build (an `unported` string already removed from source, both hiscore tests red); `touch` of `sf-core/src/lib.rs` rebuilt it, green. Cause not found. |
 | 2026-10-16 | 🐞 | `sf-conform` lib test `the_frog_walks_step_counts_the_hitbox_entries_looked_at` fails on `pir/rust-engine` (step at h0+$d132: 1, wants 2), before T200. Left alone (T200 scope); `pass_step` is T184/T185's. |
 | 2026-10-16 | 📌 | T200: the name entry is typed on the keyboard (`key_down`); fire, Return or Escape end it. `$319c` searches its charset at 46 cycles a byte: a `.` or `:` costs ~2 200, which decides the frame the entry's loop goes on in. |
