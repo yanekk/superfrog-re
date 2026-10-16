@@ -633,7 +633,7 @@ fn main() {
                                             );
                                             return None;
                                         }
-                                        if n.state().w(FROG + f::LIVES) != lives
+                                        if (n.state().w(FROG + f::LIVES) as i16) < lives as i16
                                             || n.state().w(FROG + f::DYING) != 0
                                         {
                                             return None;
@@ -708,7 +708,7 @@ fn main() {
                 sync::step_inserting(amiga, x).unwrap();
                 let b = amiga.peek(LEVEL_STATE, 4);
                 let ended = (u32::from_be_bytes([b[0], b[1], b[2], b[3]]) as i32) >= 0;
-                if peek_w(amiga, FROG + f::LIVES) != lives || peek_w(amiga, FROG + f::DYING) != 0 || (early_exit && ended) {
+                if (peek_w(amiga, FROG + f::LIVES) as i16) < lives as i16 || peek_w(amiga, FROG + f::DYING) != 0 || (early_exit && ended) {
                     eprintln!(
                         "  a path dies {k} frames in on the original, frog at {},{}",
                         peek_w(amiga, FROG + f::X),

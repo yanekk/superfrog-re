@@ -118,13 +118,13 @@ fn safe(g: &Game, lives: u16) -> bool {
         if st.l(LEVEL_STATE) != 0xffff_fffe {
             return true;
         }
-        if st.w(FROG + f::LIVES) != lives || st.w(FROG + f::DYING) != 0 {
+        if (st.w(FROG + f::LIVES) as i16) < lives as i16 || st.w(FROG + f::DYING) != 0 {
             return false;
         }
         g.step_unseen(FrameInput::default());
     }
     let st = g.state();
-    st.w(FROG + f::LIVES) == lives && st.w(FROG + f::DYING) == 0
+    st.w(FROG + f::LIVES) as i16 >= lives as i16 && st.w(FROG + f::DYING) == 0
 }
 
 /// Explores from `start` until a way makes progress, or `iters` bursts are spent.
@@ -193,7 +193,7 @@ fn explore(
                 inputs.push(x);
                 let st = g.state();
                 cells.push(cell(st));
-                if st.w(FROG + f::LIVES) != lives
+                if (st.w(FROG + f::LIVES) as i16) < lives as i16
                     || st.w(FROG + f::DYING) != 0
                     || st.w(HEARTS) < min_hearts
                 {
@@ -356,7 +356,7 @@ fn main() {
             let st = sf_core::State::transplant(&sync::core_memory(amiga.memory()));
             let (c, r) = cell(&st);
             let (ec, er) = way.cells[k];
-            if peek_w(amiga, FROG + f::LIVES) != lives || peek_w(amiga, FROG + f::DYING) != 0 {
+            if (peek_w(amiga, FROG + f::LIVES) as i16) < lives as i16 || peek_w(amiga, FROG + f::DYING) != 0 {
                 break;
             }
             if (c - ec).abs() > 1 || (r - er).abs() > 1 {
