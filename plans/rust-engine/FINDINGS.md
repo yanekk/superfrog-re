@@ -18,6 +18,9 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-16 | 📌 | T21 split at pir's context warning into T198 disk-prompts (its uncommitted work in `T198-wip.patch`), T199 live-restart, T200 hiscore-entry, T201 continue-and-codes, T202 whole-game-script, T203 whole-game-green; all block T23, T29. |
+| 2026-10-16 | 🔄 | Owner, T21: the bonus level's loading picture (no walk; up on the original as long as its loads) is held by the engine for the loads' measured time, its frames counted as play, not shown 0.6 s. |
+| 2026-10-16 | 🐞 | T21: game over in the bonus level (`player_died`, its last life) is a frame early in the engine, as the T18 row below: `chain-w5-4-to-bonus` stops at 1900, before it (1905). |
 | 2026-10-16 | 🐞 | T197 review: outside a pass (enemies-w3-3 1724, w3-3-slot-order 4026/5280, attract-demo-3) the copper interrupt's tail past the frame's end stays in the engine's frame, not the next as on the original. Tolerated (lag frames); pinned by `coper_tail_outside_a_pass_kept`. No owner. |
 | 2026-10-16 | 📌 | T197: when the copper interrupt runs past the frame's end, the original's next blank comes as it returns; its tail writes are the next frame's. All 178 cases after: red only complete-w4-2, enemies-w6-1-complete 2136, w2-2-complete 1229, w2-3-complete 2166, each red before (rows below). |
 | 2026-10-16 | 🔄 | Owner, T196: added T197 w4-3-dmacon-regression (T194; blocks T21): `complete-w4-3` red at 4546 since T194; at 4543 the engine lacks the original's DMACON `$8400` (line 252), so its frame ends in `sfx_play`'s wait. |
