@@ -84,3 +84,20 @@ fn w5_4_goes_on_to_the_bonus_level() {
     assert_eq!(unported, Vec::<&str>::new());
     assert_eq!(world, 7, "the run did not end in the bonus level");
 }
+
+/// The bonus level played to its end, its end picture, W6's loading picture and the frog's walk,
+/// the progress map, W6-1 played: faithful and alone, and W6-1 reached.
+#[test]
+fn the_bonus_level_goes_on_to_w6_1() {
+    let case = sf_conform::Case::load(&sf_conform::cases_dir().join("chain-bonus-to-w6-1.toml"))
+        .unwrap_or_else(|e| panic!("{e}"));
+    let (mut unported, mut at) = (Vec::new(), (0, 0));
+    if let Err(d) = sf_conform::run_with(&case, |_, g| {
+        unported = g.unported().to_vec();
+        at = (g.state().world(), g.state().l(sf_core::layout::h0(0x40de)));
+    }) {
+        panic!("chain-bonus-to-w6-1: {d}");
+    }
+    assert_eq!(unported, Vec::<&str>::new());
+    assert_eq!(at, (6, 1), "the run did not end in W6-1");
+}
