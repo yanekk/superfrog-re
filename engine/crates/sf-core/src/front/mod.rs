@@ -26,6 +26,7 @@ pub(crate) mod ending;
 pub mod fade;
 mod gameover;
 mod hero;
+mod hiscore;
 mod menu;
 pub mod password;
 pub mod sprite;
@@ -123,6 +124,8 @@ pub(crate) enum Routine {
     AwardPages(attract::AwardPages),
     HiscoreCredits(attract::HiscoreCredits),
     HallOfTalent(attract::HallOfTalent),
+    /// `hiscore_name_entry` after a game with a new high score (T200).
+    NameEntry(hiscore::NameEntry),
     /// The attract demo's load and set-up (T33).
     Demo(attract::Demo),
     EndSeqLoad(ending::EndSeqLoad),
@@ -195,6 +198,7 @@ impl Routine {
             Routine::AwardPages(r) => r.run(cx),
             Routine::HiscoreCredits(r) => r.run(cx),
             Routine::HallOfTalent(r) => r.run(cx),
+            Routine::NameEntry(r) => r.run(cx),
             Routine::Demo(r) => r.run(cx),
             Routine::EndSeqLoad(r) => r.run(cx),
             Routine::EndSequence(r) => r.run(cx),
