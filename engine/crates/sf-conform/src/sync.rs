@@ -435,6 +435,23 @@ fn hitbox_end(m: &AmigaMemory) -> u32 {
     at
 }
 
+/// `frog_tiles`'s wall test (h0+$e3fe..$e412), which loops for ever with both wall flags set
+/// (DESIGN §2.11).
+pub const FROG_TILES_WALL_LOOP: std::ops::RangeInclusive<u32> = h0(0xe3fe)..=h0(0xe412);
+
+/// Whether the original's main program ended the frame inside [`FROG_TILES_WALL_LOOP`]: hung, the
+/// frog lifted into a pillar between two `$3d` edges (T205: the planners' ways met it on W2-2 and
+/// W2-3 at x 1414). Reads only the interrupted PC, not the whole memory.
+pub fn in_wall_loop(a: &Amiga) -> bool {
+    let cpu = a.cpu();
+    let l = |addr: u32| {
+        let b = a.peek(addr, 4);
+        u32::from_be_bytes([b[0], b[1], b[2], b[3]])
+    };
+    let pc = if cpu.pc == l(0x6c) { l(cpu.ssp + 2) } else { cpu.pc };
+    FROG_TILES_WALL_LOOP.contains(&pc)
+}
+
 /// Where the main program was at the end of a frame: its PC, then each long on its stack that is
 /// a return address into the game's code (a long just after a `jsr`/`bsr`), innermost first. For
 /// tracing which loop of a scene a frame belongs to.
@@ -905,6 +922,38 @@ fn boot_disk(sync: &SyncPoint) -> DiskSlot {
     }
 }
 
+/// A snapshot of the original written to a file (`examples/whole_game` saves one at each leg's
+/// start in the chain, T202): its frame, its input's joystick, the core's bytes.
+pub fn save_snapshot_file(path: &std::path::Path, s: &Snapshot) -> std::io::Result<()> {
+    let mut b = s.frame.to_le_bytes().to_vec();
+    b.push(s.input.joy.bits());
+    b.extend_from_slice(&s.bytes);
+    fs::write(path, b)
+}
+
+/// [`save_snapshot_file`]'s file, read back.
+pub fn load_snapshot_file(path: &std::path::Path) -> Result<Snapshot, String> {
+    let b = fs::read(path).map_err(|e| format!("{}: {e}", path.display()))?;
+    if b.len() < 5 {
+        return Err(format!("{}: not a snapshot", path.display()));
+    }
+    Ok(Snapshot {
+        frame: u32::from_le_bytes(b[0..4].try_into().unwrap()),
+        input: FrameInput::joy(Joy(b[4])),
+        bytes: b[5..].to_vec(),
+    })
+}
+
+/// The original powered on as the whole game runs it (`power-on-df1`: disk 1 booting, an empty
+/// df1) and returned to the snapshot in `path`, with room for `frames` more frames (T205: the
+/// planners start a leg from its state in the chain).
+pub fn at_snapshot_file(path: &std::path::Path, frames: u32) -> Result<Amiga, String> {
+    let s = load_snapshot_file(path)?;
+    let mut a = power_on(DiskSlot::D1, 2, s.frame + frames)?;
+    a.restore(&s);
+    Ok(a)
+}
+
 fn power_on(boot: DiskSlot, drives: u8, frames: u32) -> Result<Amiga, String> {
     let cfg = OracleConfig::locate(frames)
         .map_err(|e| e.to_string())?
@@ -1169,6 +1218,21 @@ fn decode(b: &[u8], key: &str) -> Option<Snapshot> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn a_snapshot_file_reads_back_as_written() {
+        let s = Snapshot {
+            frame: 14_798,
+            input: FrameInput::joy(Joy(Joy::UP.0 | Joy::FIRE.0)),
+            bytes: vec![1, 2, 3, 0xff],
+        };
+        let p = std::env::temp_dir().join(format!("sf-snap-test-{}", std::process::id()));
+        save_snapshot_file(&p, &s).unwrap();
+        let back = load_snapshot_file(&p).unwrap();
+        std::fs::remove_file(&p).unwrap();
+        assert_eq!((back.frame, back.input, back.bytes), (s.frame, s.input, s.bytes));
+        assert!(load_snapshot_file(&p).is_err());
+    }
 
     fn irq(next: bool, vpos: u16, hpos: u16) -> sf_oracle::Irq {
         sf_oracle::Irq {

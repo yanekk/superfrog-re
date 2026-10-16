@@ -8,7 +8,8 @@
 //! frame the main program is in `end_seq_load`, and fails, naming the leg, on game over or a leg
 //! that never begins.
 //!
-//! `whole_game [--out <script.txt>] [--slot <leg>] [--scratch <dir>] [--from <leg>]`
+//! `whole_game [--out <script.txt>] [--slot <leg>] [--scratch <dir>] [--from <leg>] [--until <leg>]`
+//! (`--until`: stop at the end of the frame before `<leg>`'s first)
 //!
 //! A snapshot of the original at each leg's start goes to `--scratch` (default
 //! `$TMPDIR/sf-whole-game`), with the script so far; `--from <leg>` resumes there, so a leg's
@@ -69,13 +70,13 @@ const fn leg(name: &'static str, w: u32, l: u32, script: &'static str, tally: bo
 
 const LEGS: [Leg; 26] = [
     leg("W1-1", 1, 1, "complete-w1-1", true),
-    leg("W1-2", 1, 2, "complete-w1-2", true),
-    leg("W1-3", 1, 3, "complete-w1-3", true),
-    leg("W1-4", 1, 4, "complete-w1-4", true),
-    leg("W2-1", 2, 1, "w2-1-complete", true),
-    leg("W2-2", 2, 2, "w2-2-complete", true),
-    leg("W2-3", 2, 3, "w2-3-complete", true),
-    leg("W2-4", 2, 4, "w2-4-complete", true),
+    leg("W1-2", 1, 2, "chain-w1-2", false),
+    leg("W1-3", 1, 3, "chain-w1-3", false),
+    leg("W1-4", 1, 4, "chain-w1-4", false),
+    leg("W2-1", 2, 1, "chain-w2-1", false),
+    leg("W2-2", 2, 2, "chain-w2-2", false),
+    leg("W2-3", 2, 3, "chain-w2-3", false),
+    leg("W2-4", 2, 4, "chain-w2-4", false),
     leg("W3-1", 3, 1, "enemies-w3-1-complete", true),
     leg("W3-2", 3, 2, "enemies-w3-2-complete", true),
     leg("W3-3", 3, 3, "enemies-w3-3-complete", true),
@@ -215,6 +216,8 @@ struct Args {
     from: Option<String>,
     check: Option<PathBuf>,
     diff: Option<String>,
+    ablate: bool,
+    until: Option<String>,
 }
 
 fn args() -> Args {
@@ -225,9 +228,15 @@ fn args() -> Args {
         from: None,
         check: None,
         diff: None,
+        ablate: false,
+        until: None,
     };
     let mut it = std::env::args().skip(1);
     while let Some(k) = it.next() {
+        if k == "--ablate" {
+            a.ablate = true;
+            continue;
+        }
         let v = it.next().unwrap_or_else(|| panic!("{k} takes a value"));
         match k.as_str() {
             "--out" => a.out = v.into(),
@@ -236,6 +245,7 @@ fn args() -> Args {
             "--from" => a.from = Some(v),
             "--check" => a.check = Some(v.into()),
             "--diff" => a.diff = Some(v),
+            "--until" => a.until = Some(v),
             _ => panic!("unknown argument {k}"),
         }
     }
@@ -300,19 +310,11 @@ impl Record {
 }
 
 fn save_snapshot(path: &std::path::Path, s: &Snapshot) {
-    let mut b = s.frame.to_le_bytes().to_vec();
-    b.push(s.input.joy.bits());
-    b.extend_from_slice(&s.bytes);
-    std::fs::write(path, b).unwrap();
+    sf_conform::sync::save_snapshot_file(path, s).unwrap();
 }
 
 fn load_snapshot(path: &std::path::Path) -> Snapshot {
-    let b = std::fs::read(path).unwrap_or_else(|e| panic!("{}: {e}", path.display()));
-    Snapshot {
-        frame: u32::from_le_bytes(b[0..4].try_into().unwrap()),
-        input: FrameInput::joy(Joy(b[4])),
-        bytes: b[5..].to_vec(),
-    }
+    sf_conform::sync::load_snapshot_file(path).unwrap_or_else(|e| panic!("{e}"))
 }
 
 fn status(m: &AmigaMemory) -> String {
@@ -386,16 +388,91 @@ fn diff(args: &Args, name: &str) {
         let m = core_memory(a.memory());
         (word(&m, FROG + f::X), word(&m, FROG + f::Y))
     };
+    let (chain0, fresh0) = (chain.snapshot(), fresh.snapshot());
+    // The fresh frog's path, and the frame each run's path parts from it (`end` if never).
+    let mut path = Vec::new();
     for k in 0..end {
-        step_inserting(&mut chain, s.input_at(k)).unwrap();
         step_inserting(&mut fresh, s.input_at(k)).unwrap();
-        if pos(&chain) != pos(&fresh) {
-            println!("frame {k}: frog {:?} in the chain, {:?} fresh", pos(&chain), pos(&fresh));
-            println!("  differ: {:?}", differ(&chain, &fresh));
-            return;
+        path.push(pos(&fresh));
+    }
+    let parts = |a: &mut Amiga| -> u32 {
+        for k in 0..end {
+            step_inserting(a, s.input_at(k)).unwrap();
+            if pos(a) != path[k as usize] {
+                return k;
+            }
+        }
+        end
+    };
+    let k = parts(&mut chain);
+    if k == end {
+        println!("the frog's path is the same to {end}");
+        return;
+    }
+    fresh.restore(&fresh0);
+    for j in 0..=k {
+        step_inserting(&mut fresh, s.input_at(j)).unwrap();
+    }
+    println!("frame {k}: frog {:?} in the chain, {:?} fresh", pos(&chain), path[k as usize]);
+    println!("  differ: {:?}", differ(&chain, &fresh));
+    if !args.ablate {
+        return;
+    }
+    // `--ablate`: which differences decide it. Each variable differing at the start (any width)
+    // set to the fresh value alone in the chain's snapshot, then every one but it, and the frame
+    // the path parts then.
+    fresh.restore(&fresh0);
+    let fm = core_memory(fresh.memory());
+    let cm = core_memory({
+        chain.restore(&chain0);
+        chain.memory()
+    });
+    let vars: Vec<_> = sf_core::layout::LAYOUT
+        .iter()
+        .filter(|v| (0..v.width.len()).any(|k| fm.byte(v.addr + k) != cm.byte(v.addr + k)))
+        .collect();
+    let value = |v: &sf_core::layout::VarDef| -> Vec<u8> {
+        (0..v.width.len()).map(|k| fm.byte(v.addr + k)).collect()
+    };
+    let run = |set: &[&&sf_core::layout::VarDef]| -> u32 {
+        let mut a = power_on();
+        a.restore(&chain0);
+        for v in set {
+            a.poke(v.addr, &value(v));
+        }
+        parts(&mut a)
+    };
+    let all: Vec<_> = vars.iter().collect();
+    println!("all {} set fresh: parts at {}", all.len(), run(&all));
+    let threads = std::thread::available_parallelism().map_or(4, |n| n.get());
+    let next = std::sync::atomic::AtomicUsize::new(0);
+    let mut res: Vec<(usize, u32, u32)> = std::thread::scope(|sc| {
+        let hs: Vec<_> = (0..threads)
+            .map(|_| {
+                sc.spawn(|| {
+                    let mut out = Vec::new();
+                    loop {
+                        let i = next.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+                        let Some(v) = vars.get(i) else { return out };
+                        let but: Vec<_> =
+                            vars.iter().enumerate().filter(|(j, _)| *j != i).map(|(_, v)| v).collect();
+                        out.push((i, run(&[v]), run(&but)));
+                    }
+                })
+            })
+            .collect();
+        hs.into_iter().flat_map(|h| h.join().unwrap()).collect()
+    });
+    res.sort();
+    let mut deciding = Vec::new();
+    for &(i, alone, but) in &res {
+        println!("  {:<20} alone: {alone:>5}   all but it: {but:>5}", vars[i].name);
+        if but < end || alone > k {
+            deciding.push(&vars[i]);
         }
     }
-    println!("the frog's path is the same to {end}");
+    let names: Vec<_> = deciding.iter().map(|v| v.name).collect();
+    println!("{names:?} alone: parts at {}", run(&deciding));
 }
 
 fn main() {
@@ -442,6 +519,23 @@ fn main() {
         slot_frames: 0,
     };
     let mut was_in_level = false;
+    if args.from.is_some() {
+        // The snapshot is the end of the frame the leg was seen to begin on: its script plays
+        // from the next frame on, with no frame stepped first (which put it a frame late).
+        let leg = &LEGS[first];
+        let start = rec.inputs.len() as u32;
+        let (s, end) = leg_script(leg);
+        if rec.notes.last().is_some_and(|n| n.0 == start) {
+            rec.notes.pop();
+        }
+        let m = core_memory(a.memory());
+        rec.notes.push((start, leg_note(leg, start, end, &m)));
+        println!("{}", rec.notes.last().unwrap().1);
+        playing = Some((first, start, s, end));
+        next = first + 1;
+        due = start + end + BETWEEN;
+        was_in_level = true;
+    }
     loop {
         let f = rec.inputs.len() as u32;
         if f >= CAP {
@@ -476,13 +570,17 @@ fn main() {
             let leg = &LEGS[next];
             let start = f + 1;
             let (s, end) = leg_script(leg);
-            let note = format!(
-                "{} from frame {start}: {} (its frames 0..{end}{}), {}",
-                leg.name,
-                leg.script,
-                if leg.tally_press { ", its own tally press left out" } else { "" },
-                status(&m)
-            );
+            if args.until.as_deref() == Some(leg.name) {
+                let note = format!(
+                    "{} begins at frame {start} ({}); the script stops here (--until)",
+                    leg.name,
+                    status(&m)
+                );
+                println!("{note}  [{:.0?}]", t0.elapsed());
+                rec.notes.push((start, note));
+                break;
+            }
+            let note = leg_note(leg, start, end, &m);
             println!("{note}  [{:.0?}]", t0.elapsed());
             rec.notes.push((start, note));
             let p = args.scratch.join(format!("leg-{next:02}"));
@@ -519,12 +617,23 @@ fn main() {
     write(&args.out, &rec);
 }
 
+fn leg_note(leg: &Leg, start: u32, end: u32, m: &AmigaMemory) -> String {
+    format!(
+        "{} from frame {start}: {} (its frames 0..{end}{}), {}",
+        leg.name,
+        leg.script,
+        if leg.tally_press { ", its own tally press left out" } else { "" },
+        status(m)
+    )
+}
+
 /// The script as far as it was assembled.
 fn write(out: &std::path::Path, rec: &Record) {
     let head = "# The whole game (T202), assembled by `examples/whole_game` on the original from power-on with an\n\
-                # empty df1 connected (`power-on-df1`): each level's completion script spliced at the frame its\n\
-                # first frame plays; between levels nothing held but a press in each tally's wait (fire; at the\n\
-                # slot leg's tally up, then up and fire, and in the slot machine one frame of fire in every 80).\n";
+                # empty df1 connected (`power-on-df1`): each level's route spliced at the frame its first frame\n\
+                # plays (a `chain-*` route was planned from the original's state there, T205); between levels\n\
+                # nothing held but a press in each tally's wait (fire; at the slot leg's tally up, then up and\n\
+                # fire, and in the slot machine one frame of fire in every 80).\n";
     std::fs::write(out, format!("{head}{}", rec.text())).unwrap();
     println!("wrote {}", out.display());
 }

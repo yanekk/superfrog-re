@@ -1,10 +1,11 @@
-# The whole game (T202): power-on with an empty df1 connected (W6-2..4's first map set, as the
-# engine plays them; docs/10), START GAME, then each level's completion script spliced at the frame
-# its first frame plays, as `examples/whole_game` assembled it on the original; W1-1's tally takes
-# the slot machine. So far the script replays only to W1-2: the frog arrives with W1-1's spud and
-# wings and another RNG state, and W1-2's route (planned from a fresh level) parts at its frame 792;
-# the original then loses every life, game over at its frame 27251 (FINDINGS, T202).
+# The whole game (T202, T205): power-on with an empty df1 connected (W6-2..4's first map set, as
+# the engine plays them; docs/10), START GAME, then each level's route spliced at the frame its
+# first frame plays, as `examples/whole_game` assembled it on the original; W1-1's tally takes the
+# slot machine. W1-1 plays its standalone route, W1-2..W2-4 their `chain-*` routes (planned from
+# the original's state at the level's start in the chain, T205), every level completed with no life
+# lost; the script stops at W3-1's first frame (the original's 84090), which `frames` (the engine's,
+# loads skipped) reaches. Divergences: FINDINGS, T205.
 sync = "power-on-df1"
 script = "game-whole"
-frames = 27000
+frames = 74590
 lag-limit = { frames = 261, note = "the longest run of frames ending mid-pass met on the way: complete-w4-3's 261 (T181), W4-3's passes running longer than a frame from its 3300; check 4 covers them" }

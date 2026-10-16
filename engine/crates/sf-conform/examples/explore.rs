@@ -18,6 +18,8 @@
 //! `--coins N`: stop taking coins at N still needed (default 0). `--reward` (T168): the goal is
 //! instead an enemy stomped (h0+$23bee) and touched again into a reward (h0+$23e6c), the archive
 //! keeping apart the cells reached with a stomped enemy out.
+//! `--snap <file>` (T205): start from a snapshot `whole_game` saved at the leg's start in the whole
+//! game instead of the level's `AtLevel` sync point.
 use sf_conform::{InputScript, SyncPoint, sync};
 use sf_core::frog::{FROG, f};
 use sf_core::input::{FrameInput, Joy};
@@ -116,13 +118,13 @@ fn safe(g: &Game, lives: u16) -> bool {
         if st.l(LEVEL_STATE) != 0xffff_fffe {
             return true;
         }
-        if st.w(FROG + f::LIVES) != lives || st.w(FROG + f::DYING) != 0 {
+        if (st.w(FROG + f::LIVES) as i16) < lives as i16 || st.w(FROG + f::DYING) != 0 {
             return false;
         }
         g.step_unseen(FrameInput::default());
     }
     let st = g.state();
-    st.w(FROG + f::LIVES) == lives && st.w(FROG + f::DYING) == 0
+    st.w(FROG + f::LIVES) as i16 >= lives as i16 && st.w(FROG + f::DYING) == 0
 }
 
 /// Explores from `start` until a way makes progress, or `iters` bursts are spent.
@@ -191,7 +193,7 @@ fn explore(
                 inputs.push(x);
                 let st = g.state();
                 cells.push(cell(st));
-                if st.w(FROG + f::LIVES) != lives
+                if (st.w(FROG + f::LIVES) as i16) < lives as i16
                     || st.w(FROG + f::DYING) != 0
                     || st.w(HEARTS) < min_hearts
                 {
@@ -245,6 +247,7 @@ fn main() {
     let (mut prefix, mut out, mut budget) = (Vec::new(), None, 20_000usize);
     let (mut goals, mut iters, mut min_hearts, mut coins_to) = (Vec::new(), 4000usize, 1u16, 0u16);
     let mut reward = false;
+    let mut snap: Option<String> = None;
     let mut i = 1;
     while i < args.len() {
         match args[i].as_str() {
@@ -259,6 +262,7 @@ fn main() {
                 prefix = (0..n as u32).map(|k| p.input_at(k)).collect();
             }
             "--out" => out = Some(args[i + 1].clone()),
+            "--snap" => snap = Some(args[i + 1].clone()),
             "--frames" => budget = args[i + 1].parse().unwrap(),
             "--iters" => iters = args[i + 1].parse().unwrap(),
             "--hearts" => min_hearts = args[i + 1].parse().unwrap(),
@@ -276,13 +280,15 @@ fn main() {
         i += 2;
     }
     goals.push(if reward { Goal::Reward } else { Goal::Coins(coins_to) });
-    let mut synced = sync::reach(
-        &SyncPoint::AtLevel(id),
-        &InputScript::idle(),
-        budget as u32 + 100,
-    )
+    // From the leg's start in the whole game (`--snap`, a snapshot `whole_game` saved), else the
+    // level's own sync point.
+    let mut amiga = match &snap {
+        Some(p) => sync::at_snapshot_file(std::path::Path::new(p), budget as u32 + 100),
+        None => sync::reach(&SyncPoint::AtLevel(id), &InputScript::idle(), budget as u32 + 100)
+            .map(|s| s.amiga),
+    }
     .unwrap_or_else(|e| panic!("{e}"));
-    let amiga = &mut synced.amiga;
+    let amiga = &mut amiga;
     let display = sf_conform::display_data();
     let mut inputs: Vec<FrameInput> = Vec::new();
     for &x in &prefix {
@@ -350,7 +356,10 @@ fn main() {
             let st = sf_core::State::transplant(&sync::core_memory(amiga.memory()));
             let (c, r) = cell(&st);
             let (ec, er) = way.cells[k];
-            if peek_w(amiga, FROG + f::LIVES) != lives || peek_w(amiga, FROG + f::DYING) != 0 {
+            if (peek_w(amiga, FROG + f::LIVES) as i16) < lives as i16
+                || peek_w(amiga, FROG + f::DYING) != 0
+                || sync::in_wall_loop(amiga)
+            {
                 break;
             }
             if (c - ec).abs() > 1 || (r - er).abs() > 1 {
@@ -384,7 +393,11 @@ fn main() {
             continue;
         }
         history.push((snap, before));
-        fails = 0;
+        // Only a way kept whole made its progress; a part kept and then no way on, again and
+        // again, looped for ever (T205: W1-4's top left, W2-4 at 227,14).
+        if keep == way.inputs.len() {
+            fails = 0;
+        }
         if let Some(o) = &out {
             std::fs::write(o, script(&inputs)).unwrap();
         }
