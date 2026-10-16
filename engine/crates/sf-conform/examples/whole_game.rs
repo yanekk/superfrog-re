@@ -69,7 +69,7 @@ const fn leg(name: &'static str, w: u32, l: u32, script: &'static str, tally: bo
 
 const LEGS: [Leg; 26] = [
     leg("W1-1", 1, 1, "complete-w1-1", true),
-    leg("W1-2", 1, 2, "complete-w1-2", true),
+    leg("W1-2", 1, 2, "chain-w1-2", false),
     leg("W1-3", 1, 3, "complete-w1-3", true),
     leg("W1-4", 1, 4, "complete-w1-4", true),
     leg("W2-1", 2, 1, "w2-1-complete", true),
@@ -515,6 +515,23 @@ fn main() {
         slot_frames: 0,
     };
     let mut was_in_level = false;
+    if args.from.is_some() {
+        // The snapshot is the end of the frame the leg was seen to begin on: its script plays
+        // from the next frame on, with no frame stepped first (which put it a frame late).
+        let leg = &LEGS[first];
+        let start = rec.inputs.len() as u32;
+        let (s, end) = leg_script(leg);
+        if rec.notes.last().is_some_and(|n| n.0 == start) {
+            rec.notes.pop();
+        }
+        let m = core_memory(a.memory());
+        rec.notes.push((start, leg_note(leg, start, end, &m)));
+        println!("{}", rec.notes.last().unwrap().1);
+        playing = Some((first, start, s, end));
+        next = first + 1;
+        due = start + end + BETWEEN;
+        was_in_level = true;
+    }
     loop {
         let f = rec.inputs.len() as u32;
         if f >= CAP {
@@ -549,13 +566,7 @@ fn main() {
             let leg = &LEGS[next];
             let start = f + 1;
             let (s, end) = leg_script(leg);
-            let note = format!(
-                "{} from frame {start}: {} (its frames 0..{end}{}), {}",
-                leg.name,
-                leg.script,
-                if leg.tally_press { ", its own tally press left out" } else { "" },
-                status(&m)
-            );
+            let note = leg_note(leg, start, end, &m);
             println!("{note}  [{:.0?}]", t0.elapsed());
             rec.notes.push((start, note));
             let p = args.scratch.join(format!("leg-{next:02}"));
@@ -590,6 +601,16 @@ fn main() {
         }
     }
     write(&args.out, &rec);
+}
+
+fn leg_note(leg: &Leg, start: u32, end: u32, m: &AmigaMemory) -> String {
+    format!(
+        "{} from frame {start}: {} (its frames 0..{end}{}), {}",
+        leg.name,
+        leg.script,
+        if leg.tally_press { ", its own tally press left out" } else { "" },
+        status(m)
+    )
 }
 
 /// The script as far as it was assembled.
