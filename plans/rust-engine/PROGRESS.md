@@ -157,7 +157,7 @@ done · ⛔ blocked, needs a human. A task dropped by a plan amendment leaves th
 | T185 | w6-4-lag-frog-fall | T182; blocks T21 | ✅ | |
 | T190 | chain-world-change | T183; blocks T21 | ✅ | |
 | T191 | chain-pause | T183; blocks T21 | ✅ | |
-| T192 | chain-level-code | T183, T190; blocks T21 | ⬜ | |
+| T192 | chain-level-code | T183, T190; blocks T21 | ✅ | |
 | T193 | chain-e2e | T183; blocks T21 | ✅ | |
 | T194 | w6-2-sfx-double-blank | T147; blocks T21 | ⬜ | |
 | T195 | w3-3-slot-order | T115; blocks T21 | ⬜ | |
