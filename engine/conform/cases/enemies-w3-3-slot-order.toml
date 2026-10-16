@@ -1,0 +1,7 @@
+# W3-3 played to its exit (16610) and the tally on T115's first route, every object live: red
+# alone (check 4) at 6335, a coin the original takes and the engine run alone does not, the
+# object slots in another order from 4053. No test runs it: T195 (w3-3-slot-order) owns it.
+sync = { level = "W3-3" }
+script = "enemies-w3-3-slot-order"
+frames = 16795
+resync = true

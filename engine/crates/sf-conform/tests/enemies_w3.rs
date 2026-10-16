@@ -185,3 +185,76 @@ fn activation() {
     assert!(s.updates.contains(&HOPPER) && s.updates.contains(&SPIKER));
     assert!(s.live[300..].iter().all(|l| l.len() < 20), "a slot could have been evicted");
 }
+
+/// `name` run green to its end with re-syncs at exactly `pins` (as [`run`]), the level's outcome
+/// first set on `exit_at`, the exit (`level_state` 1, back to 0 in the same pass), then two frames
+/// more: `top_loop` going on (T183), the level completed with the points taken, no slot machine
+/// (T115, as `enemies_w5_cases::completes`).
+fn completes(name: &str, pins: &[u32], exit_at: u32) {
+    use sf_core::Game;
+    use sf_core::level::LevelOutcome;
+    let mut case = sf_conform::Case::load(&sf_conform::cases_dir().join(format!("{name}.toml")))
+        .unwrap_or_else(|e| panic!("{e}"));
+    let mut exit = None;
+    let o = sf_conform::run_with(&case, |fr, g: &mut Game| {
+        if exit.is_none() && g.level_outcome().is_some() {
+            exit = Some((fr, g.level_outcome()));
+        }
+    })
+    .unwrap_or_else(|d| panic!("{name}: {d}"));
+    let resynced: Vec<u32> = o.resynced.iter().map(|r| r.0).collect();
+    assert_eq!(resynced, pins, "{name}: {:?}", o.resynced);
+    assert!(
+        matches!(exit, Some((f, Some(LevelOutcome::Completed { .. }))) if f == exit_at),
+        "{name}: {exit:?}"
+    );
+    // Two frames on (the hook runs before each step): `top_loop` goes on to what follows (T183).
+    case.frames += 2;
+    let (mut outcome, mut unported) = (None, Vec::new());
+    if let Err(d) = sf_conform::run_with(&case, |_, g: &mut Game| {
+        outcome = g.level_outcome();
+        unported = g.unported().to_vec();
+    }) {
+        panic!("{name}: {d}");
+    }
+    assert_eq!(unported, Vec::<&str>::new(), "{name}");
+    assert!(
+        matches!(outcome, Some(LevelOutcome::Completed { tally }) if !tally.slot_machine),
+        "{name}: {outcome:?}"
+    );
+}
+
+/// W3-1 played from its start to its exit and through the tally (T115): the exit at 5493, fire
+/// taking the points. Two re-syncs pinned, each the frame after a lag: `bob_draw_vars` at 1018 and
+/// the panel at 1629. Its passes run past 105 frames' ends in a row from 1658 (the case's
+/// `lag-limit`); alone it meets every milestone.
+#[test]
+fn enemies_w3_1_complete() {
+    completes("enemies-w3-1-complete", &[1018, 1629], 5493);
+}
+
+/// W3-2 played from its start to its exit and through the tally (T115): the three switches, the
+/// bottom corridor and the right half, the exit at 6994, fire taking the points. Two re-syncs
+/// pinned, each the frame after a lag: the play field buffer at 2758 and `bob_draw_vars` at 6445.
+/// Alone it meets every milestone.
+#[test]
+fn enemies_w3_2_complete() {
+    completes("enemies-w3-2-complete", &[2758, 6445], 6994);
+}
+
+/// W3-3 played from its start to its exit and through the tally (T115): the coins round the
+/// level, the switch at 57,64 and along the bottom to the exit at 7530, fire taking the points.
+/// One re-sync pinned, the frame after a lag: the panel at 4179. Alone it meets every milestone.
+#[test]
+fn enemies_w3_3_complete() {
+    completes("enemies-w3-3-complete", &[4179], 7530);
+}
+
+/// W3-4 played from its start to its exit and through the tally (T115): round the level as
+/// `enemies-w3-4` goes, back up for the coins and down again to the exit at 17774, fire taking the
+/// points. Two re-syncs pinned, each the frame after a lag: the panel at 8779 and `obj_slots` at
+/// 16318. Alone it meets every milestone.
+#[test]
+fn enemies_w3_4_complete() {
+    completes("enemies-w3-4-complete", &[8779, 16318], 17774);
+}
