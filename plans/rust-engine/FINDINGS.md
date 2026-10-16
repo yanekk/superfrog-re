@@ -18,6 +18,7 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-16 | 📌 | T197: when the copper interrupt runs past the frame's end, the original's next blank comes as it returns; its tail writes are the next frame's. All 178 cases after: red only complete-w4-2, enemies-w6-1-complete 2136, w2-2-complete 1229, w2-3-complete 2166, each red before (rows below). |
 | 2026-10-16 | 🔄 | Owner, T196: added T197 w4-3-dmacon-regression (T194; blocks T21): `complete-w4-3` red at 4546 since T194; at 4543 the engine lacks the original's DMACON `$8400` (line 252), so its frame ends in `sfx_play`'s wait. |
 | 2026-10-16 | 🐞 | T196: `w2-2-complete` now plays alone green; checks 1–3 still red at 1229, a different fault: frame 1228 ends inside `obj_despawn_if_offscreen` (h0+$1b9ce), its last `camera_y` check after the blank; the engine runs that update whole. No owner. |
 | 2026-10-16 | 📌 | T196: `Pacing::PassDue` (the original waiting, its pass due) holds the alone engine's pass to the next blank; the frog walk's box counts taken from h0+$d100. `items-pad-w1-1`, red since T194, fixed by a frame-end check before `sfx_play`. |

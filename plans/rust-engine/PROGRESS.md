@@ -162,12 +162,12 @@ done · ⛔ blocked, needs a human. A task dropped by a plan amendment leaves th
 | T194 | w6-2-sfx-double-blank | T147; blocks T21 | ✅ | |
 | T195 | w3-3-slot-order | T115; blocks T21 | ✅ | |
 | T196 | pass-over-two-blanks | T184, T150; blocks T21 | ✅ | |
-| T197 | w4-3-dmacon-regression | T194; blocks T21 | ⬜ | |
+| T197 | w4-3-dmacon-regression | T194; blocks T21 | 🔍 | A frame ending inside the copper interrupt: the interrupt's writes past the end are the next frame's, whose blank runs as it returns (`irq_frame_end`). `complete_w4_3` un-ignored, pins 4542–4543's DMACON/INTREQ (fails without). New `run_observing_lag`. Fix is in `level/mod.rs`, not `scroll.rs`. |
 
 A Notes cell holds what was built or what the review found, the test count, and one line per
 deviation from the task doc. A ✅ task's cell may be cut to one line once the next task has been reviewed.
 
-**Review queue:** *(empty)*
+**Review queue:** T197
 
 ## Blocked on the user
 
