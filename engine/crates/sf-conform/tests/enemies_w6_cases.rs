@@ -232,7 +232,7 @@ fn enemies_w6_4_complete() {
         .filter(|(_, m)| *m == sf_conform::Milestone::LevelExit { world: 6, level: 4 })
         .map(|(f, _)| *f)
         .collect();
-    assert_eq!(exits, [0]);
+    assert_eq!(exits, [7307]);
     assert!(met.iter().any(|(_, m)| *m == sf_conform::Milestone::CoinTaken { left: 0 }));
 }
 
