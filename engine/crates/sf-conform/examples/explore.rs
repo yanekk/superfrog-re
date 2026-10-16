@@ -15,7 +15,9 @@
 //! follows the engine's (within a cell) and stays alive, and the next step starts there. The
 //! original lags in a busy level and the engine free-running does not, so only the original's
 //! outcome counts. `--hearts N`: ways that leave fewer hearts than N are not kept (default 1).
-//! `--coins N`: stop taking coins at N still needed (default 0).
+//! `--coins N`: stop taking coins at N still needed (default 0). `--reward` (T168): the goal is
+//! instead an enemy stomped (h0+$23bee) and touched again into a reward (h0+$23e6c), the archive
+//! keeping apart the cells reached with a stomped enemy out.
 use sf_conform::{InputScript, SyncPoint, sync};
 use sf_core::frog::{FROG, f};
 use sf_core::input::{FrameInput, Joy};
@@ -60,6 +62,15 @@ impl Rng {
 enum Goal {
     Cell(i32, i32),
     Coins(u16),
+    Reward,
+}
+
+/// Whether a live slot runs update `u` (an h0 offset).
+fn runs(st: &sf_core::State, u: u32) -> bool {
+    (0..20).any(|k| {
+        let s = h0(0x1ba6c + k * 0x7c);
+        st.l(s + 0x40) != 0 && st.l(s + 4) == h0(u)
+    })
 }
 
 /// What a way found: its inputs, and the engine's frog cell after each.
@@ -86,6 +97,7 @@ fn done(st: &sf_core::State, goal: Goal, coins: u16) -> bool {
             let (x, y) = cell(st);
             (x - c).abs() <= 1 && (y - r).abs() <= 1
         }
+        Goal::Reward => runs(st, 0x23e6c),
         Goal::Coins(n) if coins > n => st.w(COINS_LEFT) < coins,
         // No coins left to take: the exit.
         Goal::Coins(_) => st.l(LEVEL_STATE) != 0xffff_fffe,
@@ -138,11 +150,16 @@ fn explore(
     let lives = s0.w(FROG + f::LIVES);
     let coins = s0.w(COINS_LEFT);
     let mut rng = Rng(seed | 1);
-    // Key: cell, coins needed, switches left, frames still there ([`Way::still`]). Value: (the
-    // game there, its way, times picked).
+    // Key: cell, coins needed, switches left (with `--reward`, twice that and one more while a
+    // stomped enemy is out), frames still there ([`Way::still`]). Value: (the game there, its
+    // way, times picked).
     type Key = ((i32, i32), u16, usize, usize);
     let mut archive: HashMap<Key, (Game, Way, u32)> = HashMap::new();
-    let key = |st: &sf_core::State, w: &Way| (cell(st), st.w(COINS_LEFT), switches_left(st), w.still());
+    let reward = goal == Goal::Reward;
+    let key = |st: &sf_core::State, w: &Way| {
+        let sw = if reward { 2 * switches_left(st) + runs(st, 0x23bee) as usize } else { switches_left(st) };
+        (cell(st), st.w(COINS_LEFT), sw, w.still())
+    };
     let none = Way {
         inputs: vec![],
         cells: vec![],
@@ -227,6 +244,7 @@ fn main() {
     let id: sf_core::LevelId = args[0].parse().unwrap();
     let (mut prefix, mut out, mut budget) = (Vec::new(), None, 20_000usize);
     let (mut goals, mut iters, mut min_hearts, mut coins_to) = (Vec::new(), 4000usize, 1u16, 0u16);
+    let mut reward = false;
     let mut i = 1;
     while i < args.len() {
         match args[i].as_str() {
@@ -245,6 +263,10 @@ fn main() {
             "--iters" => iters = args[i + 1].parse().unwrap(),
             "--hearts" => min_hearts = args[i + 1].parse().unwrap(),
             "--coins" => coins_to = args[i + 1].parse().unwrap(),
+            "--reward" => {
+                reward = true;
+                i -= 1;
+            }
             "--to" => {
                 let (c, r) = args[i + 1].split_once(',').unwrap();
                 goals.push(Goal::Cell(c.parse().unwrap(), r.parse().unwrap()));
@@ -253,7 +275,7 @@ fn main() {
         }
         i += 2;
     }
-    goals.push(Goal::Coins(coins_to));
+    goals.push(if reward { Goal::Reward } else { Goal::Coins(coins_to) });
     let mut synced = sync::reach(
         &SyncPoint::AtLevel(id),
         &InputScript::idle(),
@@ -385,6 +407,10 @@ fn main() {
             Goal::Cell(gc, gr) if (c - gc).abs() <= 1 && (r - gr).abs() <= 1 => {
                 eprintln!("at {gc},{gr}");
                 goal += 1;
+            }
+            Goal::Reward if runs(&st, 0x23e6c) => {
+                eprintln!("reward at frame {}", inputs.len());
+                break;
             }
             _ => {}
         }
