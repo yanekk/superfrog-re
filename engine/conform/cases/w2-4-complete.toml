@@ -8,7 +8,7 @@
 # count elsewhere); the exit at frame 7779 (`level_state` 0), the exit fade and the tally, fire in
 # its wait taking the points; ends on frame 7963, frame 7964 being world 2's end picture's (the
 # engine fades it in while the original still loads it: FINDINGS). Planned by `examples/plan_exit`
-# (`--no-tile-coins --jump 4`, `--fly`) to 2112 and `examples/explore` from 2700, checked on the
+# (`--no-tile-coins --jump 4`, `--fly` from 2112) to 2700 and `examples/explore` on, checked on the
 # original chunk by chunk. Green faithful and alone; `enemies_w2_cases.rs` checks what it meets.
 sync = { level = "W2-4" }
 script = "w2-4-complete"

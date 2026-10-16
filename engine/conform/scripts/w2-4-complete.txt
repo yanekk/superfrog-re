@@ -1,4 +1,4 @@
-# W2-4 played to its exit (T168): planned by examples/plan_exit (to 2112) and examples/explore
+# W2-4 played to its exit (T168): planned by examples/plan_exit (to 2700) and examples/explore
 # (from 2700), checked on the original chunk by chunk; then fire in the tally's wait takes the points.
 0: -
 144: U R

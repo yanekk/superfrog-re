@@ -18,6 +18,9 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-16 | 🐞 | T168, no owning task: one frame past `w2-4-complete` (7964, world 2's end picture) diverges: the engine fades L2ET in at once (`display_timer` 600), the original still loads it from disk. No chain case covers W2→W3. |
+| 2026-10-16 | 📌 | T168, T122's W2-4 hang: the frog put at x 303, y 912 facing left, against the closed gate 19-20,55-63, loops on the original; the engine falls on (`wall_place`). Gate closed, no search reached there (`wall_search`, explore). |
+| 2026-10-16 | 📌 | T168: past W2-4's pit `plan_exit`'s field fails (a pad throws ~25 rows, wings only hover); `examples/explore` took 2700 to the exit (~50 min). Hopper: two stomps make a reward; the walker needs the thrown spud first. |
 | 2026-10-16 | 🔄 | Owner, T115: keep the judge fix though no W3 completion needs it now, and add T195 (w3-3-slot-order; T115, blocks T21) for the old W3-3 route's alone divergence rather than only a row here. |
 | 2026-10-16 | 🐞 | T115, owned by T195: `enemies-w3-3-slot-order` (W3-3's old route) is red alone at 6335, a coin fewer: the engine alone's object slots part from the original's at 4053 (all 20 full). The frog's path is identical. |
 | 2026-10-16 | 📌 | T115 (owner's yes): check 4 counts an item only if its marker stays clear two passes; platform spawns clear marker 62 across a pass end. `sf-conform all` 157/160 both ways; complete-w4-4 lost 8, enemies-w3-4 4, all verified transient. |
