@@ -225,6 +225,15 @@ pub fn pacing(cpu: &CpuRegs, m: &AmigaMemory, writes: &[sf_paula::PaulaWrite]) -
             Pacing::OnTime
         };
     }
+    if in_level(m)
+        && word(m, VBL_COUNT) >= 2
+        && copper_irq_main_pc(cpu, m).is_some_and(|pc| LEVEL_WAIT.contains(&pc))
+    {
+        // The pass was due but never began: the copper interrupt's blits held the CPU through
+        // the frame's end, the main loop still in its wait (T195: W3-3 4026, 5280). The engine
+        // ends the frame as its pass begins, before `vbl_count` is cleared.
+        return late(0, 0);
+    }
     // Waiting with the pass already due: it begins after the next blank (T196).
     if in_level(m)
         && in_level_wait(cpu, m)
@@ -243,6 +252,23 @@ pub fn pacing(cpu: &CpuRegs, m: &AmigaMemory, writes: &[sf_paula::PaulaWrite]) -
     } else {
         Pacing::OnTime
     }
+}
+
+/// `vbl_handler`'s call of `copper_irq_blits` returns here (h0+$11d1a).
+const COPPER_IRQ_RETURN: u32 = h0(0x11d1e);
+
+/// When the frame ended inside the copper interrupt's blits (`copper_irq_blits`, its vertical
+/// blank held back behind it at the same level), where the main program was: the PC in the
+/// interrupt's frame, above the 15 registers `vbl_handler` saved and the status register.
+fn copper_irq_main_pc(cpu: &CpuRegs, m: &AmigaMemory) -> Option<u32> {
+    if cpu.pc == VBL_HANDLER || long(m, 0x6c) != VBL_HANDLER {
+        return None;
+    }
+    let sp = cpu.a[7];
+    (sp..sp + 0x100)
+        .step_by(2)
+        .find(|&a| long(m, a) == COPPER_IRQ_RETURN)
+        .map(|a| long(m, a + 4 + 15 * 4 + 2))
 }
 
 /// The return addresses of `level_frame_loop`'s calls in its pass, in order (h0+$abe..$b00).

@@ -258,3 +258,71 @@ fn enemies_w3_3_complete() {
 fn enemies_w3_4_complete() {
     completes("enemies-w3-4-complete", &[8779, 16318], 17774);
 }
+
+/// W3-3 to its exit on T115's first route (T195): green under checks 1–4, every object live.
+/// Twice (4026, 5280) the original's copper interrupt holds the CPU through the frame's end with
+/// the pass due and not begun; read as a pass run to its end, the engine alone ran a pass the
+/// original had not and stayed one ahead, its slots in another order from 4053, and missed the
+/// coin that leaves 17 at 6335. Six re-syncs pinned, each the frame after a lag.
+#[test]
+fn enemies_w3_3_slot_order() {
+    use sf_conform::Milestone;
+    let path = sf_conform::cases_dir().join("enemies-w3-3-slot-order.toml");
+    let case = sf_conform::Case::load(&path).unwrap_or_else(|e| panic!("{e}"));
+    let o = sf_conform::run(&case).unwrap_or_else(|d| panic!("{d}"));
+    let resynced: Vec<u32> = o.resynced.iter().map(|r| r.0).collect();
+    assert_eq!(resynced, [3634, 4028, 6979, 7429, 12237, 16477], "{:?}", o.resynced);
+    let met = o.milestones.expect("check 4 ran");
+    let coin = |&(f, m): &(u64, Milestone)| m == Milestone::CoinTaken { left: 17 } && f == 6335;
+    assert!(met.iter().any(coin), "the coin leaving 17 at 6335");
+    assert!(met.iter().any(|(_, m)| *m == Milestone::LevelExit { world: 3, level: 3 }));
+}
+
+/// The case's object slots, the engine run alone on the original's pacing (check 4's run), in
+/// the original's order at the first frames from 4053 and 4900 that end a pass on both sides:
+/// every slot's update routine, map cell and position (T195). And the frame the copper interrupt
+/// held over is read as the pass not begun (`Pacing::Late` at its first call before a step, two
+/// blanks met).
+#[test]
+fn enemies_w3_3_slots_alone_in_the_originals_order() {
+    use sf_conform::sync;
+    use sf_core::layout::Ram;
+    use sf_core::{Game, Pacing, Start};
+    let path = sf_conform::cases_dir().join("enemies-w3-3-slot-order.toml");
+    let case = sf_conform::Case::load(&path).unwrap_or_else(|e| panic!("{e}"));
+    let synced = sync::reach(&case.sync, &case.script, 2 * case.frames + 1000).unwrap();
+    let mut amiga = synced.amiga;
+    let mut g = Game::with_display(sf_conform::display_data(), Start::Transplant(synced.memory));
+    // Each slot's update (`+4`), map cell (`+$40`), x and y (`+8`, `+$a`).
+    let slots = |r: &dyn Fn(u32) -> u32| -> Vec<[u32; 4]> {
+        (0..20)
+            .map(|k| OBJ_SLOTS + k * 0x7c)
+            .map(|s| [r(s + 4), r(s + 0x40), r(s + 8) >> 16, r(s + 0xa) >> 16])
+            .collect()
+    };
+    let mut held = Vec::new();
+    let mut seen = Vec::new();
+    for f in 0..4950 {
+        let input = case.script.input_at(f);
+        let cap = sync::step_inserting(&mut amiga, input).unwrap();
+        let mem = sync::core_memory(amiga.memory());
+        let pacing = sync::pacing(&amiga.cpu(), &mem, &cap.paula);
+        if let Pacing::Late { phase: 0, step: 0, blanks, .. } = pacing {
+            held.push((f, blanks));
+        }
+        for _ in 0..amiga.frames_run() {
+            g.step_paced(input, pacing);
+        }
+        let due = |from| f >= from && !seen.iter().any(|&(at, _, _)| at >= from);
+        if (due(4053) || due(4900)) && !g.mid_pass() && !sync::mid_pass(&amiga.cpu(), &mem) {
+            let long = |a: u32| u32::from_be_bytes([0, 1, 2, 3].map(|i| mem.byte(a + i)));
+            seen.push((f, slots(&long), slots(&|a| g.state().l(a))));
+        }
+    }
+    assert_eq!(held, [(4026, 2)]);
+    let at: Vec<u32> = seen.iter().map(|s| s.0).collect();
+    assert_eq!(at, [4054, 4901]);
+    for (f, theirs, ours) in &seen {
+        assert_eq!(ours, theirs, "frame {f}");
+    }
+}
