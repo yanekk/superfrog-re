@@ -18,6 +18,7 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-16 | 🐞 | T199 review, open: `level_start`'s `START_FROG_LINES` (31 measured lines) is defended by no test: 0 keeps frog_cases, chain, restart_routines, game_over green. It matters only for a set-up ending lines 224–254; frog-pit's restart waits a frame later by ending at 295. |
 | 2026-10-16 | 🔄 | Owner, T199: `items-shield-w3-1`'s 295 (after the lag, bob seam-part blit sizes) is not pinned: `bob_records`' drawing sub-records, but their destination pointers, are presentation per piece (`layout::presentation_piece`), the picture judging them. |
 | 2026-10-16 | 📌 | T199: the restart's set-up runs with the level's five planes still fetched, a level entry after a load with none; parts slow unevenly, so the restart has `RESTART_COSTS`. `examples/restart_probe` prints the original's PC per line, writes, DMA owners. |
 | 2026-10-16 | 🐞 | Seen in T199, not its: `sync::tests::the_frog_walks_step_counts_the_hitbox_entries_looked_at` red on the base (`step(0xd0d0)` 2, expected 1), stale since T196's `pass_step` change. Not fixed. |
