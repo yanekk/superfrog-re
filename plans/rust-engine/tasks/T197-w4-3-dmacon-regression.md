@@ -33,6 +33,8 @@ None new.
 
 - The engine's copper interrupt or blitter-priority code that drops the DMACON `$8400` write
   (`sf-core`, `level/scroll.rs` `copper_irq_blits` likely), and a test that fails without the fix.
+- `engine/crates/sf-conform/tests/frog_cases.rs`: `complete_w4_3`'s `#[ignore]` naming T197
+  (T196 set it to keep the test block green) removed.
 - `engine/conform/cases/complete-w4-3.toml`: its comment, if what it says changes.
 
 ## Tests
