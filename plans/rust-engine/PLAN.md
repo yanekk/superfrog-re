@@ -239,6 +239,7 @@ original's milestones and passes the faithful checks (DESIGN §2.1), headless.
 | [T194](tasks/T194-w6-2-sfx-double-blank.md) | w6-2-sfx-double-blank | T147; blocks T21 |
 | [T195](tasks/T195-w3-3-slot-order.md) | w3-3-slot-order | T115; blocks T21 |
 | [T196](tasks/T196-pass-over-two-blanks.md) | pass-over-two-blanks | T184, T150; blocks T21 |
+| [T197](tasks/T197-w4-3-dmacon-regression.md) | w4-3-dmacon-regression | T194; blocks T21 |
 
 T22 is the rig task: it comes before every surface task and they depend on it. T29 is the phase's
 drill. At the end: the real app plays a scripted whole game that meets the original's milestones (T30);

@@ -234,6 +234,13 @@ pub fn pacing(cpu: &CpuRegs, m: &AmigaMemory, writes: &[sf_paula::PaulaWrite]) -
         // ends the frame as its pass begins, before `vbl_count` is cleared.
         return late(0, 0);
     }
+    // Waiting with the pass already due: it begins after the next blank (T196).
+    if in_level(m)
+        && in_level_wait(cpu, m)
+        && sf_core::level::n_clear((word(m, VBL_COUNT) as u16).wrapping_sub(2))
+    {
+        return Pacing::PassDue;
+    }
     if mid_pass(cpu, m) {
         let phase = pass_phase(cpu, m);
         let step = if phase == FLIP_PHASE {
@@ -363,7 +370,11 @@ pub fn pass_step(cpu: &CpuRegs, m: &AmigaMemory) -> u16 {
         0x19b8e..=0x19b95 => 40,
         0x19b96..=0x19bc0 => 40 + slot(d(0)).saturating_sub(1),
         0xd0cc => 0,
-        0xd0d0 | 0xd0e0..=0xd125 => 1,
+        0xd0d0 | 0xd0e0..=0xd0ff => 1,
+        // The frog's box is taken once its x and y are read (h0+$d0f8, $d0fc): from there the
+        // walk tests the frog as it was before the vertical blank (T196: W6-4's coins at 153,
+        // the frame ending at h0+$d120).
+        0xd100..=0xd125 => 2,
         // The entry just taken (a6 past it) is not looked at until its stomp, touch or hurt is
         // decided: those read the frog as the vertical blank leaves it (T185: W6-4's stomp at
         // 1090, the frame ending at h0+$d14a).

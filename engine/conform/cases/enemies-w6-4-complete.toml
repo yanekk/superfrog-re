@@ -3,11 +3,10 @@
 # 10 and down the shaft to the exit (`level_state` 1 on frame 7307; no life lost), every object live,
 # nothing left out. Planned with `examples/plan_exit_w6`, its stalls (the hop over the spikes at
 # 118-124,18, the pad under the funnel at 239-240,72, the flight) found by search on the engine and
-# each leg checked on the original. Outside the test block, T196's: after the late frames 150-153
-# the engine takes three coins a pass early (checks 1-3: state at 154, re-synced; a channel-3 stop
-# at 155 the original lacks, 158); alone, the pass the original holds over the late frames
-# 5228-5229 (`blanks` 1, phase 5) leaves the engine's objects a frame ahead from 5231, its frog
-# hurt at 5469, and the milestones part at 5517.
+# each leg checked on the original. Green faithful and alone (T196), re-synced after the lag at
+# 5741 (`bob_records`): frame 153 ends after the frog walk read the frog's box (h0+$d120), so the
+# three coins are taken at 155, not 154; frame 5230 ends in the wait with the pass due
+# (`Pacing::PassDue`), the next pass beginning at 5231.
 sync = { level = "W6-4" }
 script = "enemies-w6-4-complete"
 frames = 7309
