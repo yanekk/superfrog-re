@@ -160,13 +160,13 @@ done · ⛔ blocked, needs a human. A task dropped by a plan amendment leaves th
 | T192 | chain-level-code | T183, T190; blocks T21 | ✅ | |
 | T193 | chain-e2e | T183; blocks T21 | ✅ | |
 | T194 | w6-2-sfx-double-blank | T147; blocks T21 | ⬜ | |
-| T195 | w3-3-slot-order | T115; blocks T21 | ⬜ | |
+| T195 | w3-3-slot-order | T115; blocks T21 | 🔍 | `sync::pacing`: a frame ending inside the copper interrupt, main loop in its wait with `vbl_count` ≥ 2, is `Late` phase 0 step 0 (pass not begun), not phase 13. Case green 1–4, six re-syncs pinned; 2 tests in `enemies_w3.rs`. Deviations: fixed in the runner's pacing, not the engine; slots compared at 4054, 4901 (4053, 4900 end mid-pass). |
 | T196 | pass-over-two-blanks | T184, T150; blocks T21 | ⬜ | |
 
 A Notes cell holds what was built or what the review found, the test count, and one line per
 deviation from the task doc. A ✅ task's cell may be cut to one line once the next task has been reviewed.
 
-**Review queue:** *(empty)*
+**Review queue:** T195
 
 ## Blocked on the user
 

@@ -18,6 +18,9 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-16 | 📌 | T195, for T196: W6-4's 5230 (on time, `vbl_count` 2) may be the same hold ending at the vertical blank handler's entry; T195's `sync::pacing` change reads only frames ending inside the copper interrupt. |
+| 2026-10-16 | 🐞 | T195, open: `enemies-w3-3-slot-order` still re-syncs at 4028 (`level_copper` original `$e00001`, engine `$e00002`), the frame after the held one; 5282's went. Check 4 unaffected. No owning task. |
+| 2026-10-16 | 📌 | T195: `copper_irq_blits` can hold the CPU past a frame's end with the pass due (`vbl_count` 2, main loop in its wait): W3-3 4026, 5280. Of all 175 cases only `enemies-w3-3-slot-order` has such a frame (oracle scan). |
 | 2026-10-16 | 🐞 | T192 review sweep: `w1_4_goes_on_to_w2_1` (`tests/chain.rs`) checks only faithfulness; a forced exit that failed on both sides stays green. Not fixed. |
 | 2026-10-16 | 🐞 | T192 review sweep: `w1_1_goes_on_to_w1_2` (`tests/chain.rs`) checks only faithfulness, not that W1-2 is reached. Not fixed. |
 | 2026-10-16 | 📌 | T192: a script with a `C` token needs the disks to parse (`the_committed_scripts_parse` too). `chain-level-code`'s W3-1 play lags every other frame: all 1009 frames left out frame-wise, judged by pass state and check 4 only. |
