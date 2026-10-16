@@ -121,6 +121,9 @@ pub struct Dispatch {
     /// The spring of a launcher (marker 7) that threw the frog: the cell, and whether it threw it
     /// left (h0+$e94a). `None`: none spawns.
     pub launcher: Option<fn(&mut LevelCtx, u32, bool)>,
+    /// The bubble a frog on a pushing surface under a marker-`$39` cell lets rise, at a level
+    /// pixel (h0+$11304). `None`: none spawns.
+    pub bubble: Option<fn(&mut LevelCtx, u16, u16)>,
 }
 
 impl std::fmt::Debug for Dispatch {
@@ -204,13 +207,30 @@ impl Dispatch {
 }
 
 /// Run the original's slot routine at `addr` on `slot`: the ported one, or, for a routine nothing
-/// ports yet, nothing (a debug build stops: every object a game meets has its kind registered).
+/// ports yet, nothing, the routine reported unported ([`LevelCtx::unported`]).
 pub fn call(c: &mut LevelCtx, addr: u32, slot: u32, d7: u16) {
     c.spend(beam::routine_cost(addr));
     match c.dispatch.routine(addr) {
         Some(f) => f(c, slot, d7),
-        None => debug_assert!(false, "slot routine ${:x} is not ported", addr.wrapping_sub(h0(0))),
+        None => {
+            let text = format!("slot routine h0+${:x}", addr.wrapping_sub(h0(0)));
+            c.unported(unported_text(text));
+        }
     }
+}
+
+/// An unported path's text as `'static`, made once per text (an object's update would otherwise
+/// make it every pass).
+pub(crate) fn unported_text(text: String) -> &'static str {
+    use std::sync::Mutex;
+    static TEXTS: Mutex<Vec<&'static str>> = Mutex::new(Vec::new());
+    let mut texts = TEXTS.lock().unwrap_or_else(|e| e.into_inner());
+    if let Some(t) = texts.iter().find(|t| **t == text) {
+        return t;
+    }
+    let t: &'static str = Box::leak(text.into_boxed_str());
+    texts.push(t);
+    t
 }
 
 /// How a level's loop ended (`level_frame_loop`, then `level_exit_fade` and `game_over_check`),
@@ -281,6 +301,9 @@ pub struct LevelCtx<'a> {
     /// end ([`LevelCtx::irq_frame_end`]).
     pub(crate) in_coper: bool,
     over_end: Option<usize>,
+    /// Paths of the original the engine met and does not follow (an object with no kind among
+    /// them), each once: what [`crate::Game::unported`] reports.
+    pub unported: Vec<&'static str>,
 }
 
 impl<'a> LevelCtx<'a> {
@@ -316,11 +339,19 @@ impl<'a> LevelCtx<'a> {
             held: None,
             in_coper: false,
             over_end: None,
+            unported: Vec::new(),
         }
     }
 }
 
 impl LevelCtx<'_> {
+    /// A path of the original the engine does not follow: recorded once, so a test fails.
+    pub fn unported(&mut self, what: &'static str) {
+        if !self.unported.contains(&what) {
+            self.unported.push(what);
+        }
+    }
+
     /// The Paula writes made since the beam last moved happened where it is.
     fn stamp(&mut self) {
         let fresh = self.stamped < self.paula.len();

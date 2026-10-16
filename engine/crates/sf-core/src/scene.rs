@@ -25,6 +25,8 @@ pub struct Machine<'a> {
     /// In conformance: where the original made the frame's Paula writes ([`LevelCtx::schedule`]).
     pub schedule: Vec<(u16, u16)>,
     pub blits: Vec<(u16, u16, u16)>,
+    /// What the level met and does not follow ([`LevelCtx::unported`]), added to.
+    pub unported: &'a mut Vec<&'static str>,
 }
 
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash)]
@@ -132,6 +134,11 @@ impl Scene {
                     c.trace = Some(Vec::new());
                 }
                 crate::level::frame::main_program(&mut c, pending.take(), pacing);
+                for u in c.unported.drain(..) {
+                    if !m.unported.contains(&u) {
+                        m.unported.push(u);
+                    }
+                }
                 if let (Some(t), Some(out)) = (c.trace.take(), m.trace.as_mut()) {
                     **out = t;
                 }

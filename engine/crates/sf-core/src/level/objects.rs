@@ -43,6 +43,8 @@ pub fn obj_run_all(c: &mut LevelCtx) {
 pub const OBJ_COUNT: u32 = h0(0x1ba6a);
 /// `obj_templates` (h0+$1c6e2): 160 templates of `$ae` bytes.
 pub const OBJ_TEMPLATES: u32 = h0(0x1c6e2);
+pub const TEMPLATES: u32 = 160;
+pub const TEMPLATE_SIZE: u32 = 0xae;
 /// The slot's first `$34` bytes come from its template.
 const TEMPLATE_HEAD: u32 = 0x34;
 /// `map_rows` (h0+$17334): a pointer to each map row, from one row above the first.
@@ -132,6 +134,21 @@ fn fill_slot(c: &mut LevelCtx, slot: u32, template: u32, cell: u32) {
     }
     let init = b.l(template);
     c.spend(Cost::Spawn);
+    if c.dispatch.routine(init).is_none() {
+        // An object the engine has no kind for: reported, never left silent (T204).
+        let off = template.wrapping_sub(OBJ_TEMPLATES);
+        let init = init.wrapping_sub(h0(0));
+        let text = if off < TEMPLATES * TEMPLATE_SIZE && off % TEMPLATE_SIZE == 0 {
+            format!("object template {} (init h0+${init:x}): no kind", off / TEMPLATE_SIZE)
+        } else {
+            let at = template.wrapping_sub(h0(0));
+            format!("an object at h0+${at:x} (init h0+${init:x}): no kind")
+        };
+        c.unported(crate::level::unported_text(text));
+        let b = &mut c.bus;
+        b.set_w(OBJ_COUNT, b.w(OBJ_COUNT).wrapping_add(1));
+        return;
+    }
     crate::level::call(c, init, slot, 0);
     let b = &mut c.bus;
     b.set_w(OBJ_COUNT, b.w(OBJ_COUNT).wrapping_add(1));

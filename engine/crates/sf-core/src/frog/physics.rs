@@ -470,8 +470,8 @@ pub fn frog_air_anim(c: &mut LevelCtx) {
             frog_set_anim(c, a1);
         }
     }
-    // h0+$112b6: on a pushing surface under a marker-`$39` cell, now and then a bubble rises
-    // (an object, T15–T18); a frog at rest on it is locked in its sitting animation.
+    // h0+$112b6: on a pushing surface under a marker-`$39` cell, every 64 frames a bubble rises
+    // (`crate::items::bubble`); a frog at rest on it is locked in its sitting animation.
     let b = &mut c.bus;
     if b.w(FROG + f::PUSHED) == 0 {
         return;
@@ -483,9 +483,19 @@ pub fn frog_air_anim(c: &mut LevelCtx) {
     let t = b.w(IDLE_TIMER).wrapping_add(1);
     b.set_w(IDLE_TIMER, t);
     if n_clear(t.wrapping_sub(0x40)) {
-        // The original spawns template +$3a74 above the frog here (obj_spawn_at_xy).
+        // h0+$112e4: a bubble (template 86) 16 pixels right of the frog and `$28` down, 12 more
+        // right facing left.
         b.set_w(IDLE_TIMER, 0);
+        let mut x = b.w(FROG + f::X).wrapping_add(0x10);
+        let y = b.w(FROG + f::Y).wrapping_add(0x28);
+        if b.w(FROG + f::FACING) == 0 {
+            x = x.wrapping_add(0xc);
+        }
+        if let Some(spawn) = c.dispatch.bubble {
+            spawn(c, x, y);
+        }
     }
+    let b = &mut c.bus;
     if b.w(FROG + f::VX) != 0 || b.w(FROG + f::VY) != 9 || c.hw.joy1dat & 0x303 != 0 {
         return;
     }

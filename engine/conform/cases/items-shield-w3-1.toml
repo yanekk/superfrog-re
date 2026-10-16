@@ -10,5 +10,5 @@ resync = false
 
 [[exclude]]
 what = "enemies"
-note = "the bubble (T17's, now T39–T41's) returns at once from power-on; world 3's enemies are live (T44)"
-task = "T39–T41"
+note = "since T204 it freezes nothing W3-1 spawns (its stubs left are `rts`); kept as the original's timing from power-on, which this resync = false case was steered on (unfrozen: bob_records after a lag at 295)"
+task = "none (timing)"

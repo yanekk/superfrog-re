@@ -218,6 +218,10 @@ pub struct Game {
     /// For conformance: what runs on by itself while the original loads the game after the story
     /// intro ([`crate::front::RUNS_DURING_LOAD`]), put in place when the intro hands over.
     handover_runs: Vec<(u32, Vec<u8>)>,
+    /// What the levels met and do not follow, since the start ([`LevelCtx::unported`]), and that
+    /// with the front end's, as [`Game::unported`] gives it.
+    level_unported: Vec<&'static str>,
+    unported: Vec<&'static str>,
 }
 
 /// [`Game::type_code`] gives up waiting for the title after this many frames.
@@ -289,6 +293,7 @@ impl Game {
             Start::Level(id) => Some(id),
             _ => None,
         };
+        let mut level_unported = Vec::new();
         let (state, scene, seed, front) = match start {
             Start::PowerOn { seed } => (
                 State::default(),
@@ -316,7 +321,7 @@ impl Game {
             }
             Start::Level(id) => {
                 let mut state = State::default();
-                crate::level::load::enter(&mut state, &display, id);
+                level_unported = crate::level::load::enter(&mut state, &display, id);
                 (state, Scene::of_level(id), None, None)
             }
             Start::Disk3 { seed } => {
@@ -353,6 +358,8 @@ impl Game {
             pass_clock: PassClock::default(),
             progress: Progress { world: 0, level: 0 },
             handover_runs: Vec::new(),
+            unported: level_unported.clone(),
+            level_unported,
         }
     }
 
@@ -387,7 +394,21 @@ impl Game {
         if let Some(p) = self.playing() {
             self.progress = p;
         }
+        self.gather_unported();
         out
+    }
+
+    /// [`Game::unported`]'s list: the front end's, then the levels'.
+    fn gather_unported(&mut self) {
+        self.unported.clear();
+        if let Some(f) = self.front.as_ref() {
+            self.unported.extend_from_slice(&f.unported);
+        }
+        for u in &self.level_unported {
+            if !self.unported.contains(u) {
+                self.unported.push(u);
+            }
+        }
     }
 
     /// The level a game (not the attract demo) is playing this frame, as a [`Progress`]: the final
@@ -512,6 +533,7 @@ impl Game {
                 trace: self.trace.as_mut(),
                 schedule: std::mem::take(&mut self.schedule),
                 blits: std::mem::take(&mut self.blits),
+                unported: &mut self.level_unported,
             };
             self.scene
                 .step(&mut m, &mut self.pending, pacing, View::default(), &mut after)
@@ -616,10 +638,11 @@ impl Game {
         }
     }
 
-    /// Front-end paths the engine has run into that are not ported yet (empty in every
-    /// conformance case; a test fails on any).
+    /// Paths of the original the engine has run into that are not ported yet: the front end's,
+    /// and any a level met (an object template with no kind among them, T204). Empty in every
+    /// conformance case; a test fails on any.
     pub fn unported(&self) -> &[&'static str] {
-        self.front.as_ref().map_or(&[], |f| &f.unported[..])
+        &self.unported
     }
 
     /// Every modelled variable's value, as the original would hold it at its [`crate::LAYOUT`]
@@ -816,12 +839,13 @@ impl Game {
         // A level entered and not yet played is entered again without its objects.
         if let (Some(id), 0) = (self.entered, self.frame) {
             self.state = State::default();
-            crate::level::load::enter_with(
+            self.level_unported = crate::level::load::enter_with(
                 &mut self.state,
                 &self.display,
                 id,
                 crate::level::frog_only_dispatch(),
             );
+            self.gather_unported();
         }
     }
 

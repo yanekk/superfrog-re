@@ -57,12 +57,18 @@ const ROW: u32 = 0x260;
 
 /// Leave `st` as the original's memory is on the frame `level_frame_loop` starts for `id`, from
 /// a game started at that level's code.
-pub fn enter(st: &mut State, display: &DisplayData, id: LevelId) {
-    enter_with(st, display, id, standard_dispatch());
+pub fn enter(st: &mut State, display: &DisplayData, id: LevelId) -> Vec<&'static str> {
+    enter_with(st, display, id, standard_dispatch())
 }
 
-/// [`enter`], spawning only the object kinds `dispatch` has (none, for a frog-only game).
-pub fn enter_with(st: &mut State, display: &DisplayData, id: LevelId, dispatch: &Dispatch) {
+/// [`enter`], spawning only the object kinds `dispatch` has (none, for a frog-only game). Returns
+/// what it met and does not follow ([`LevelCtx::unported`]).
+pub fn enter_with(
+    st: &mut State,
+    display: &DisplayData,
+    id: LevelId,
+    dispatch: &Dispatch,
+) -> Vec<&'static str> {
     boot_image(st, display);
     world_sound(st, display, id);
     let mut paula = Vec::new();
@@ -80,6 +86,7 @@ pub fn enter_with(st: &mut State, display: &DisplayData, id: LevelId, dispatch: 
     level_load(&mut c, display, id);
     level_init(&mut c, id);
     level_start(&mut c);
+    c.unported
 }
 
 /// Every modelled variable as the game's loader leaves memory: hunk 0 as loaded (with the boot's
