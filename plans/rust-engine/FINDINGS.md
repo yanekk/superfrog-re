@@ -18,6 +18,9 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-16 | 🔄 | Owner, T199: `items-shield-w3-1`'s 295 (after the lag, bob seam-part blit sizes) is not pinned: `bob_records`' drawing sub-records, but their destination pointers, are presentation per piece (`layout::presentation_piece`), the picture judging them. |
+| 2026-10-16 | 📌 | T199: the restart's set-up runs with the level's five planes still fetched, a level entry after a load with none; parts slow unevenly, so the restart has `RESTART_COSTS`. `examples/restart_probe` prints the original's PC per line, writes, DMA owners. |
+| 2026-10-16 | 🐞 | Seen in T199, not its: `sync::tests::the_frog_walks_step_counts_the_hitbox_entries_looked_at` red on the base (`step(0xd0d0)` 2, expected 1), stale since T196's `pass_step` change. Not fixed. |
 | 2026-10-16 | 📌 | T21 split at pir's context warning into T198 disk-prompts (its uncommitted work in `T198-wip.patch`), T199 live-restart, T200 hiscore-entry, T201 continue-and-codes, T202 whole-game-script, T203 whole-game-green; all block T23, T29. |
 | 2026-10-16 | 🔄 | Owner, T21: the bonus level's loading picture (no walk; up on the original as long as its loads) is held by the engine for the loads' measured time, its frames counted as play, not shown 0.6 s. |
 | 2026-10-16 | 🐞 | T21: game over in the bonus level (`player_died`, its last life) is a frame early in the engine, as the T18 row below: `chain-w5-4-to-bonus` stops at 1900, before it (1905). |

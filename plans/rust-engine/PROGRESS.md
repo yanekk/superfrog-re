@@ -12,7 +12,7 @@ the account is the commit message. Whoever writes a cell also fixes the over-bud
 **Plan reviewed:** 2026-10-10 — 7 fixed, 7 decided with the user
 
 **Status:** about 100 tasks ✅; T18, T21 and Phase 3 open; amended to faithful.
-**Last updated:** 2026-10-15
+**Last updated:** 2026-10-16
 **Amended 2026-10-15 (owner):** faithful replaces frame-exact (DESIGN §2.1, PLAN.md amendment); T180–T183 added, 14 tasks dropped (PLAN.md).
 **Next `pir-work` will:** T180 faithful-compare, then T182; T126 and T132 finish against the faithful bar.
 
@@ -164,7 +164,7 @@ done · ⛔ blocked, needs a human. A task dropped by a plan amendment leaves th
 | T196 | pass-over-two-blanks | T184, T150; blocks T21 | ✅ | |
 | T197 | w4-3-dmacon-regression | T194; blocks T21 | ✅ | |
 | T198 | disk-prompts | T21; blocks T23, T29 | ⬜ | |
-| T199 | live-restart | T21; blocks T23, T29 | ⬜ | |
+| T199 | live-restart | T21; blocks T23, T29 | 🔍 | Both cases green, no exclusion. Restart's own costs (`RESTART_COSTS`; its planes still fetched, measured with `examples/restart_probe`); `top_loop`'s chain flags it; `level_start`'s frog step a Job plus 31 lines. 1 new test. Deviations: owner tagged `bob_records`' drawing sub-records presentation per piece (`layout.rs`, `compare.rs`); `chain.rs` beyond the doc's files. |
 | T200 | hiscore-entry | T21; blocks T23, T29 | ⬜ | |
 | T201 | continue-and-codes | T21, T200; blocks T23, T29 | ⬜ | |
 | T202 | whole-game-script | T21, T198, T199; blocks T23, T29 | ⬜ | |
@@ -173,7 +173,7 @@ done · ⛔ blocked, needs a human. A task dropped by a plan amendment leaves th
 A Notes cell holds what was built or what the review found, the test count, and one line per
 deviation from the task doc. A ✅ task's cell may be cut to one line once the next task has been reviewed.
 
-**Review queue:** *(empty)*
+**Review queue:** T199
 
 ## Blocked on the user
 
