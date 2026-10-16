@@ -140,7 +140,7 @@ done · ⛔ blocked, needs a human. A task dropped by a plan amendment leaves th
 | T148 | w6-2-alt-completion | T104, T147, T180, T182; blocks T21 | ✅ | |
 | T149 | w6-3-completion | T104, T180, T182; blocks T21 | ✅ | |
 | T150 | w6-4-completion | T104, T180, T182; blocks T21 | ✅ | |
-| T151 | w6-4-alt-completion | T104, T150, T180, T182; blocks T21 | ⬜ | |
+| T151 | w6-4-alt-completion | T104, T150, T180, T182; blocks T21 | ✅ | |
 | T160 | attract-demo-entry | T33, T180 | ✅ | |
 | T162 | attract-demo-level-start | T160, T180 | ✅ | |
 | T163 | attract-demo-return | T162 | ✅ | |
@@ -159,7 +159,7 @@ done · ⛔ blocked, needs a human. A task dropped by a plan amendment leaves th
 | T191 | chain-pause | T183; blocks T21 | ✅ | |
 | T192 | chain-level-code | T183, T190; blocks T21 | ✅ | |
 | T193 | chain-e2e | T183; blocks T21 | ✅ | |
-| T194 | w6-2-sfx-double-blank | T147; blocks T21 | ⬜ | |
+| T194 | w6-2-sfx-double-blank | T147; blocks T21 | ✅ | |
 | T195 | w3-3-slot-order | T115; blocks T21 | ✅ | Review clean, no fix commit. `sync::pacing` reads a frame held in `copper_irq_blits` (main in its wait, `vbl_count` 2) as Late 0/0. Return `$11d1e` and frame layout checked in the listing; probe found holds at 4026, 5280 only; `>= 3` mutation reds both tests. "Only case of 175" read-only. |
 | T196 | pass-over-two-blanks | T184, T150; blocks T21 | ⬜ | |
 

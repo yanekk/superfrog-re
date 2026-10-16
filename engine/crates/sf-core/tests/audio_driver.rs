@@ -129,6 +129,66 @@ fn an_effect_plays_its_step_then_hands_the_channel_back() {
     assert!(ticks[3].is_empty());
 }
 
+/// [`bank`] with effect 0 three steps long, its period held for two ticks at each (400, 300,
+/// then 200) and the next step's period after each, volume 30 throughout, for 50 ticks.
+fn stepping_bank() -> Vec<u8> {
+    let mut b = bank();
+    b[..4].copy_from_slice(&be32(4 + 3 * 18));
+    b.truncate(0x400 + 8 + 10 + 4 + 4);
+    for (flags, period) in [(0x04u8, 400u16), (0x04, 300), (0, 200)] {
+        b.extend([flags, 1]);
+        for w in [50u16, period, period, 2, 30, 30, 1, 0] {
+            b.extend(w.to_be_bytes());
+        }
+    }
+    b
+}
+
+/// The period channel 2 is set to by each of `n` ticks.
+fn periods(a: &mut AudioDriver, d: &SoundData, n: usize) -> Vec<u16> {
+    let mut out = Vec::new();
+    for _ in 0..n {
+        a.sfx_tick(d, &mut out);
+    }
+    out.iter().filter(|w| w.reg == 0xc6).map(|w| w.value).collect()
+}
+
+/// T194: a vertical blank `sfx_play`'s raster wait held off is taken one instruction after it,
+/// once `clr.l $20(a2)` has zeroed the ramps' step indices. Its `sfx_tick` then steps the effect
+/// playing from index 0, and the index it moves on to is the new effect's: the new one holds its
+/// first period, then skips its second (the original's `enemies-w6-2-complete` 6658–6661,
+/// channel 3: `$be` to `$80`, never `$98`).
+#[test]
+fn a_blank_held_by_sfx_plays_wait_steps_the_new_effects_period_on() {
+    let d = SoundData::from_parts(
+        h0(),
+        vec![(TuneId::Title, b"P41A".to_vec())],
+        vec![(BankId::Worlds12, stepping_bank())],
+        Vec::new(),
+    );
+    let mut a = AudioDriver::new(&d);
+    a.file_loaded(&d, BANK_ADDR, File::Bank(BankId::Worlds12));
+    a.sfx_bank_init(&d);
+    let mut out = Vec::new();
+    a.play_sfx(&d, 0, 2, &mut out);
+    assert_eq!(periods(&mut a, &d, 3), [400, 400, 300]);
+    let mut no_blank = a.clone();
+    // Played again, the blank coming after the wait.
+    let mut out = Vec::new();
+    let rest = a.play_sfx_begin(&d, 0, 2, &mut out).expect("the effect plays");
+    a.play_sfx_wait_over(rest);
+    assert_eq!(periods(&mut a, &d, 1), [300]);
+    a.play_sfx_record(&d, rest);
+    let mut out = Vec::new();
+    a.play_sfx_start(&d, rest, &mut out);
+    assert!(out.iter().any(|w| w.reg == 0xc6 && w.value == 400));
+    assert_eq!(periods(&mut a, &d, 3), [400, 400, 200]);
+    // With no blank there, the new effect steps through its periods in order.
+    let mut out = Vec::new();
+    no_blank.play_sfx(&d, 0, 2, &mut out);
+    assert_eq!(periods(&mut no_blank, &d, 3), [400, 400, 300]);
+}
+
 #[test]
 fn a_streamed_sample_plays_160_bytes_a_frame_then_stops() {
     let d = data_with(b"P41A".to_vec());
