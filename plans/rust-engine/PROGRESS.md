@@ -147,7 +147,7 @@ done · ⛔ blocked, needs a human. A task dropped by a plan amendment leaves th
 | T164 | attract-demo-cycles | T163; blocks T21 | ✅ | |
 | T154 | w1-4-completion | T106, T127, T180, T182; blocks T21 | ✅ | |
 | T166 | w2-2-completion | T122, T180, T182; blocks T21 | ✅ | |
-| T167 | w2-3-completion | T122, T180, T182; blocks T21 | ⬜ | |
+| T167 | w2-3-completion | T122, T180, T182; blocks T21 | 🔍 | `w2-3-complete` (8690 frames): exit 8503, tally fire 8575; alone green; checks 1–3 red at 2166, 6729 (T155, FINDINGS). No test added (data only). Deviation: "every coin" read as the 66 the exit needs (71 of 96 taken), owner's answer. |
 | T168 | w2-4-completion | T122, T180, T182; blocks T21 | ⬜ | |
 | T180 | faithful-compare | T120; blocks T181, T182 and every open conformance task | ✅ | |
 | T181 | faithful-rebaseline | T180, T182; blocks T21 | ✅ | |
@@ -164,7 +164,7 @@ done · ⛔ blocked, needs a human. A task dropped by a plan amendment leaves th
 A Notes cell holds what was built or what the review found, the test count, and one line per
 deviation from the task doc. A ✅ task's cell may be cut to one line once the next task has been reviewed.
 
-**Review queue:** *(empty)*
+**Review queue:** T167
 
 ## Blocked on the user
 
