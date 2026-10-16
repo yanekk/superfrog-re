@@ -16,6 +16,8 @@ const PLANE: usize = 0x3c00;
 
 /// The whole of `load_hero` once its load is over, at once.
 pub(super) fn load_hero(cx: &mut Cx) {
+    // `load_hero`'s HERO (h0+$9178, disk 1).
+    cx.read_entries(0x9178, 0x9186);
     // $172d6: h1+$20d00..$30fe0 cleared, the level's map with it.
     cx.s.var_mut(VarId::LevelMap).fill(0);
     let hero = cx.data.file("HERO").to_vec();

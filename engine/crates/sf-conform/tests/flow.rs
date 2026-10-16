@@ -1,5 +1,5 @@
 //! The game's flow as the app uses it (T21, DESIGN §2.9): `Game::start_at` from a progress, and
-//! `Game::progress`. Engine only but for the last test, which ties `start_at` to the original; the
+//! `Game::progress`. Engine only but for `start_at_equals_the_code_typed_on_the_original`; the
 //! flow's faithfulness to the original is `tests/chain.rs`'s and the whole-game case's.
 
 use sf_core::input::FrameInput;
@@ -147,4 +147,27 @@ fn start_at_equals_the_code_typed_on_the_original() {
     to_level(&mut a);
     assert_eq!(a.progress(), at);
     assert_eq!(differ(&a, &typed), Vec::<&str>::new());
+}
+
+/// The disks a game asks for on the way into a world (T21): W4's files are on disk 2, W6's music
+/// and loading picture too, its tiles and maps on disk 4. Each prompt is raised once, as the
+/// original's `disk_request` asks; nothing answers it, and the game goes on at once (the app has
+/// every disk), as fast as with no prompt (W1, whose files are all on disk 1, the measure).
+#[test]
+fn disk_prompts_are_raised_as_the_game_asks_and_need_no_answer() {
+    use sf_core::DiskPrompt::Insert;
+    use sf_disk::DiskSlot::{D2, D4};
+    let prompts = |world: u8| {
+        let mut g = Game::start_at_with(display(), &Progress { world, level: 1 }, Rng::default());
+        let mut seen = Vec::new();
+        while !matches!(g.scene(), Scene::Level | Scene::Bonus(_)) {
+            if let Some(p) = g.step(FrameInput::NONE).disk_prompt {
+                seen.push(p);
+            }
+        }
+        seen
+    };
+    assert_eq!(prompts(1), []);
+    assert_eq!(prompts(4), [Insert(D2)]);
+    assert_eq!(prompts(6), [Insert(D2), Insert(D4)]);
 }

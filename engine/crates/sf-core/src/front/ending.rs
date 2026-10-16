@@ -125,6 +125,9 @@ impl EndSeqLoad {
                 {
                     super::title::overlay_show(cx);
                 }
+                // END1, END2 (disk 3), then $1d6c's title music, MUSC (disk 1).
+                cx.read_entries(0xa65c, 0xa6e4);
+                cx.read_entries(0x1d6c, 0x1d90);
                 // The files are kept packed in hunk 1, which the engine does not model; `END2`'s
                 // tail over the level's map is taken from the original.
                 let sectors = cx.data.h0_w(0xcbfe + 6 + 2) as u32;

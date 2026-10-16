@@ -21,18 +21,26 @@ fn start_game_reaches_w1_1_as_the_original_does() {
 /// Power-on, OPTIONS, W3-1's level code typed into LEVEL CODE (its digits read from the disks),
 /// the options left, START GAME: `game_start_at` takes the code and `top_loop` jumps to world 3's
 /// entry, W3's loads from disk 2 (each disk the original asks for put in), W3's loading picture,
-/// the progress map, W3-1 played: faithful and alone, nothing unported on the way.
+/// the progress map, W3-1 played: faithful and alone, nothing unported on the way. Disk 2 is
+/// asked for once, on the same frame of play as the original asks (T21: a milestone).
 #[test]
 fn a_level_code_starts_the_game_at_w3_1_as_the_original_does() {
+    use sf_conform::milestones::Milestone;
     let case = sf_conform::Case::load(&sf_conform::cases_dir().join("chain-level-code.toml"))
         .unwrap_or_else(|e| panic!("{e}"));
     let (mut unported, mut world) = (Vec::new(), 0);
-    if let Err(d) = sf_conform::run_with(&case, |_, g| {
+    let o = sf_conform::run_with(&case, |_, g| {
         unported = g.unported().to_vec();
         world = g.state().world();
-    }) {
-        panic!("chain-level-code: {d}");
-    }
+    })
+    .unwrap_or_else(|d| panic!("chain-level-code: {d}"));
+    let asked: Vec<_> = o
+        .milestones
+        .unwrap_or_default()
+        .into_iter()
+        .filter(|(_, m)| matches!(m, Milestone::DiskAsked { .. }))
+        .collect();
+    assert_eq!(asked, [(1494, Milestone::DiskAsked { disk: 2 })]);
     assert_eq!(unported, Vec::<&str>::new());
     // A code typed wrong starts at W1-1 on both sides, faithful too: the code must have been taken.
     assert_eq!(world, 3, "the run did not end in world 3");

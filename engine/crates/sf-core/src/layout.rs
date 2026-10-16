@@ -454,6 +454,9 @@ layout! {
     /// h0+$aa40..$aac0: the end sequence's two palettes, white (the last picture's flash) and the
     /// pictures' own, which the fades read.
     EndPalettes = "end_palettes", h0(0xaa40), Width::Bytes(0x80);
+    /// h0+$af54: the disk ID `disk_request` last asked for (`2222`..`5555`, disks 1–4), which the
+    /// player put in (T21): the disk in the drive, as far as the game knows.
+    WantedDisk = "wanted_disk", h0(0xaf54), Width::L;
     /// h0+$b806..$b80e: the Accessing-disk overlay's palettes while it is up.
     OverlayUp = "overlay_up", h0(0xb806), Width::Bytes(8);
     /// `hitboxes` (h0+$d350): the objects' hitboxes, 12 bytes each, rebuilt each pass.
