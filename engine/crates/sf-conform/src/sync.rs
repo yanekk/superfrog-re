@@ -479,6 +479,12 @@ pub fn in_wall_loop(a: &Amiga) -> bool {
 /// a return address into the game's code (a long just after a `jsr`/`bsr`), innermost first. For
 /// tracing which loop of a scene a frame belongs to.
 pub fn main_chain(cpu: &CpuRegs, m: &AmigaMemory) -> Vec<u32> {
+    main_chain_deep(cpu, m, 8)
+}
+
+/// [`main_chain`] up to `depth` entries: a load's call can sit deeper than eight (T203: W2's
+/// end picture's load a call deeper in the trackloader, h0+$436a ninth at the original's 81215).
+pub fn main_chain_deep(cpu: &CpuRegs, m: &AmigaMemory, depth: usize) -> Vec<u32> {
     // A step ends at the level-3 handler's entry (the game's, the story intro's or Kickstart's
     // while the disk-3 boot runs); the interrupted PC is on the supervisor stack.
     let vector = long(m, 0x6c);
@@ -499,7 +505,7 @@ pub fn main_chain(cpu: &CpuRegs, m: &AmigaMemory) -> Vec<u32> {
     };
     let mut chain = vec![pc];
     let top = (sp & !0xFFFF) + 0x1_0000;
-    while sp + 4 <= top.min(sp + 0x400) && chain.len() < 8 {
+    while sp + 4 <= top.min(sp + 0x400) && chain.len() < depth {
         let a = long(m, sp);
         // A return address follows a jsr abs.l (6 bytes, $4eb9) or a bsr.w (4 bytes, $6100).
         let call = code.iter().any(|c| c.contains(&a))
