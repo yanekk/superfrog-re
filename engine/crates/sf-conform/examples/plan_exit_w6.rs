@@ -25,6 +25,14 @@
 //! original's frog alive; else the next-best path is tried. The original lags in a busy level and the engine
 //! free-running does not, so only the original's outcome counts, and each chunk starts from its
 //! memory again.
+//!
+//! T207: `--snap <file>`: start from a snapshot `whole_game` saved at the leg's start in the whole
+//! game instead of the level's `AtLevel` sync point; a 1-up is no life lost, and a way that hangs
+//! the original in `frog_tiles`' wall loop (`sync::in_wall_loop`) fails as a death does (T205's).
+//! `--follow <script>`: the level's old route (its standalone completion), as a trail of the
+//! original's frog: where the frog is back on it (within 4 pixels, no more coins needed), the old
+//! route is replayed from there while the frog keeps within a cell of it; off it, the plan steers
+//! for the trail's next 240 frames (the owner's route repair, 2026-10-17).
 use sf_conform::{InputScript, SyncPoint, sync};
 use sf_core::frog::{FROG, f};
 use sf_core::input::{FrameInput, Joy};
@@ -350,6 +358,8 @@ fn main() {
     let mut prefix: Vec<FrameInput> = Vec::new();
     let mut no_exit = false;
     let mut out: Option<String> = None;
+    let mut snap: Option<String> = None;
+    let mut follow: Option<InputScript> = None;
     let mut i = 1;
     while i < args.len() {
         match args[i].as_str() {
@@ -365,6 +375,8 @@ fn main() {
                 i -= 1;
             }
             "--out" => out = Some(args[i + 1].clone()),
+            "--snap" => snap = Some(args[i + 1].clone()),
+            "--follow" => follow = Some(InputScript::load(std::path::Path::new(&args[i + 1])).unwrap()),
             "--frames" => budget = args[i + 1].parse().unwrap(),
             "--gap" => GAP.store(args[i + 1].parse().unwrap(), std::sync::atomic::Ordering::Relaxed),
             "--prefix" => {
@@ -403,9 +415,15 @@ fn main() {
     let mut visits: std::collections::HashMap<(i32, i32), i64> = Default::default();
     let (mut stall, mut best_d) = (0u32, i64::MAX);
 
-    let mut synced = sync::reach(&SyncPoint::AtLevel(id), &InputScript::idle(), budget as u32 + 100)
-        .unwrap_or_else(|e| panic!("{e}"));
-    let amiga = &mut synced.amiga;
+    // From the leg's start in the whole game (`--snap`, a snapshot `whole_game` saved), else the
+    // level's own sync point.
+    let mut amiga = match &snap {
+        Some(p) => sync::at_snapshot_file(std::path::Path::new(p), budget as u32 + 100),
+        None => sync::reach(&SyncPoint::AtLevel(id), &InputScript::idle(), budget as u32 + 100)
+            .map(|s| s.amiga),
+    }
+    .unwrap_or_else(|e| panic!("{e}"));
+    let amiga = &mut amiga;
     let display = sf_conform::display_data();
     let acts = [
         Joy::NONE,
@@ -421,10 +439,35 @@ fn main() {
         sync::step_inserting(amiga, x).unwrap();
         inputs.push(x);
     }
+    let peek_l = |a: &sf_oracle::Amiga, addr: u32| {
+        let b = a.peek(addr, 4);
+        u32::from_be_bytes([b[0], b[1], b[2], b[3]])
+    };
     let peek_w = |a: &sf_oracle::Amiga, addr: u32| {
         let b = a.peek(addr, 2);
         u16::from_be_bytes([b[0], b[1]])
     };
+    // `--follow` (T207): the old route's trail, the original's frog (x, y, coins needed) at the
+    // end of each of its frames, played from the level's own sync point; and how far along it the
+    // plan has replayed it.
+    let trail: Vec<(i32, i32, u16)> = match &follow {
+        None => Vec::new(),
+        Some(s) => {
+            let n = s.lines.last().map_or(0, |l| l.0);
+            let mut a = sync::reach(&SyncPoint::AtLevel(id), &InputScript::idle(), n + 100)
+                .unwrap_or_else(|e| panic!("{e}"))
+                .amiga;
+            (0..n)
+                .map(|k| {
+                    sync::step_inserting(&mut a, s.input_at(k)).unwrap();
+                    let w = |o| peek_w(&a, FROG + o) as i16 as i32;
+                    (w(f::X), w(f::Y), peek_w(&a, FROG + f::COINS_LEFT))
+                })
+                .collect()
+        }
+    };
+    // A prefix is the old route's first frames (its first `N` kept, then planned).
+    let mut progress = prefix.len().min(trail.len());
     // Each chunk kept: the original before it, the inputs and goal then, and which candidate it
     // took; a chunk with no candidate left takes the one before back and tries its next.
     let mut history: Vec<(sf_oracle::Snapshot, usize, usize, usize)> = Vec::new();
@@ -446,6 +489,66 @@ fn main() {
             goal += 1;
         }
         let target = via.get(goal).copied();
+        // `--follow`: the original's frog within 4 pixels of the trail ahead (with no more coins
+        // needed than the trail's there): the old route replayed from that frame, kept while the
+        // frog stays within a cell of the trail, alive, and the level running; at least `COMMIT`
+        // frames, or to the level's end.
+        if let Some(fs) = &follow {
+            let (x, y) = (peek_w(amiga, FROG + f::X) as i16 as i32, peek_w(amiga, FROG + f::Y) as i16 as i32);
+            let near: Vec<usize> = (progress..trail.len().saturating_sub(1))
+                .filter(|&j| {
+                    let (tx, ty, tc) = trail[j];
+                    (tx - x).abs() <= 4 && (ty - y).abs() <= 4 && tc >= needed
+                })
+                .take(6)
+                .collect();
+            let snap = amiga.snapshot();
+            let mut replayed = None;
+            for j in near {
+                let mut n = 0;
+                let mut ended = false;
+                for k in j + 1..trail.len() {
+                    sync::step_inserting(amiga, fs.input_at(k as u32)).unwrap();
+                    let w = |o| peek_w(amiga, FROG + o) as i16 as i32;
+                    if (w(f::LIVES) as i16) < lives as i16 || w(f::DYING) != 0 || sync::in_wall_loop(amiga) {
+                        break;
+                    }
+                    if peek_l(amiga, LEVEL_STATE) != 0xffff_fffe {
+                        n += 1;
+                        ended = true;
+                        break;
+                    }
+                    if (w(f::X) - trail[k].0).abs() > 16 || (w(f::Y) - trail[k].1).abs() > 16 {
+                        break;
+                    }
+                    n += 1;
+                }
+                amiga.restore(&snap);
+                if n >= COMMIT || ended {
+                    replayed = Some((j, n));
+                    break;
+                }
+            }
+            if let Some((j, n)) = replayed {
+                let p: Vec<FrameInput> = (j + 1..j + 1 + n).map(|k| fs.input_at(k as u32)).collect();
+                for &x in &p {
+                    sync::step_inserting(amiga, x).unwrap();
+                }
+                history.push((snap, inputs.len(), goal, skip));
+                skip = 0;
+                eprintln!("frame {}: the old route replayed from its {} for {n} frames", inputs.len(), j + 1);
+                inputs.extend(p);
+                progress = j + 1 + n;
+                if let Some(o) = &out {
+                    std::fs::write(o, script(&inputs)).unwrap();
+                }
+                if peek_l(amiga, LEVEL_STATE) != 0xffff_fffe {
+                    eprintln!("exit at frame {}", inputs.len());
+                    break;
+                }
+                continue;
+            }
+        }
         let live = live_body(start.state());
         let sw = switches(start.state());
         match target {
@@ -476,6 +579,22 @@ fn main() {
                 }
             }
             _ => {}
+        }
+        // `--follow`, off the trail: toward its next stretch (the 240 frames from where the plan
+        // last left it, with no more coins needed than the trail's), while one is in reach.
+        if !trail.is_empty() && !matches!(target, Some(Via::Cell(..) | Via::Stomp(_) | Via::Hurt(_))) {
+            let ahead: Vec<(usize, usize)> = trail[progress.min(trail.len() - 1)..(progress + 240).min(trail.len())]
+                .iter()
+                .filter(|t| t.2 >= needed)
+                .map(|&(tx, ty, _)| (((tx + 0x17).max(0) / 16) as usize, ((ty - 0x10).max(0) / 16) as usize))
+                .collect();
+            if !ahead.is_empty() {
+                let to = climb(&live, w, h, &ahead);
+                let (fx, fy) = frog(start.state());
+                if dist(&to, (fx.max(0) / 16) as usize, (fy.max(0) / 16) as usize) < 400 {
+                    goals[goal] = to;
+                }
+            }
         }
         let field = &goals[goal];
         if std::env::var("PLAN_TRACE").is_ok() {
@@ -612,7 +731,7 @@ fn main() {
                         let x = FrameInput::joy(a);
                         n.step_unseen(x);
                         p.push(x);
-                        if n.state().w(FROG + f::LIVES) != lives || n.state().w(FROG + f::DYING) != 0 {
+                        if (n.state().w(FROG + f::LIVES) as i16) < lives as i16 || n.state().w(FROG + f::DYING) != 0 {
                             dead = true;
                             break;
                         }
@@ -656,9 +775,10 @@ fn main() {
             let mut ok = true;
             for (k, &x) in p.iter().enumerate() {
                 sync::step_inserting(amiga, x).unwrap();
-                if peek_w(amiga, FROG + f::LIVES) != lives
+                if (peek_w(amiga, FROG + f::LIVES) as i16) < lives as i16
                     || peek_w(amiga, FROG + f::DYING) != 0
                     || (keep_hearts && peek_w(amiga, HEARTS) < hearts)
+                    || sync::in_wall_loop(amiga)
                 {
                     eprintln!(
                         "  a path dies {k} frames in on the original, frog at {},{}",
@@ -671,15 +791,22 @@ fn main() {
             }
             amiga.restore(&snap);
             if ok {
-                for &x in &p[..n] {
-                    sync::step_inserting(amiga, x).unwrap();
+                let mut k = 0;
+                while k < n {
+                    sync::step_inserting(amiga, p[k]).unwrap();
+                    k += 1;
                     let (fx, fy) = (
                         peek_w(amiga, FROG + f::X) as i16 as i32 + 0x17,
                         peek_w(amiga, FROG + f::Y) as i16 as i32 - 0x10,
                     );
                     been_in.push((fx / 16, fy / 16));
+                    // Up to the frame the level ends on (T207, as plan_exit's T103): the exit's
+                    // 1 can come and go within a frame, so any change from the running -2.
+                    if inputs.len() + k > 10 && peek_l(amiga, LEVEL_STATE) != 0xffff_fffe {
+                        break;
+                    }
                 }
-                taken = Some(p[..n].to_vec());
+                taken = Some(p[..k].to_vec());
                 break;
             }
         }
@@ -700,9 +827,10 @@ fn main() {
                 let mut ok = true;
                 for &x in &p {
                     sync::step_inserting(amiga, x).unwrap();
-                    if peek_w(amiga, FROG + f::LIVES) != lives
+                    if (peek_w(amiga, FROG + f::LIVES) as i16) < lives as i16
                         || peek_w(amiga, FROG + f::DYING) != 0
                         || (keep_hearts && peek_w(amiga, HEARTS) < hearts)
+                        || sync::in_wall_loop(amiga)
                     {
                         ok = false;
                         break;
@@ -720,15 +848,22 @@ fn main() {
             if let Some((sc, p)) = best {
                 eprintln!("  the original's own search: a path scoring {sc}");
                 let n = p.len().min(COMMIT);
-                for &x in &p[..n] {
-                    sync::step_inserting(amiga, x).unwrap();
+                let mut k = 0;
+                while k < n {
+                    sync::step_inserting(amiga, p[k]).unwrap();
+                    k += 1;
                     let (fx, fy) = (
                         peek_w(amiga, FROG + f::X) as i16 as i32 + 0x17,
                         peek_w(amiga, FROG + f::Y) as i16 as i32 - 0x10,
                     );
                     been_in.push((fx / 16, fy / 16));
+                    // Up to the frame the level ends on (T207, as plan_exit's T103): the exit's
+                    // 1 can come and go within a frame, so any change from the running -2.
+                    if inputs.len() + k > 10 && peek_l(amiga, LEVEL_STATE) != 0xffff_fffe {
+                        break;
+                    }
                 }
-                taken = Some(p[..n].to_vec());
+                taken = Some(p[..k].to_vec());
             }
         }
         for c in been_in {
@@ -821,7 +956,7 @@ fn main() {
                 break;
             }
         }
-        if st.l(LEVEL_STATE) == 1 {
+        if inputs.len() > 10 && st.l(LEVEL_STATE) != 0xffff_fffe {
             eprintln!("exit at frame {}", inputs.len());
             break;
         }

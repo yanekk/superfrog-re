@@ -177,9 +177,10 @@ code_cases! {
 }
 
 /// The whole game as far as its script replays (T202; T205–T207 extend it): power-on with df1,
-/// START GAME, W1-1 completed, its tally's slot machine, W1-2 to W4-4 completed on their chain
-/// routes (T205, T206), into W5-1: faithful and alone. The original must have played it, not sat on a
-/// screen: a script that never left the title would be just as faithful.
+/// START GAME, W1-1 completed, its tally's slot machine, W1-2 to W6-4, the bonus level and the
+/// final level completed on their chain routes (T205–T207), to `end_seq_load`: faithful and
+/// alone. The original must have played it, not sat on a screen: a script that never left the
+/// title would be just as faithful.
 #[test]
 #[ignore = "slow: about 25 min"]
 fn the_whole_game_plays_as_the_original_does() {
@@ -199,15 +200,15 @@ fn the_whole_game_plays_as_the_original_does() {
         .filter(|(_, m)| matches!(m, Milestone::LevelExit { .. }))
         .map(|x| x.1)
         .collect();
-    let every: Vec<_> = (1..=4)
-        .flat_map(|world| (1..=4).map(move |level| Milestone::LevelExit { world, level }))
-        .collect();
-    assert_eq!(exits, every);
+    // W1-1 to W5-4, the bonus level (world 7), W6-1 to W6-4, then the witch's end.
+    let level = |world, level| Milestone::LevelExit { world, level };
+    let mut every: Vec<_> =
+        (1..=5).flat_map(|w| (1..=4).map(move |l| level(w, l))).collect();
+    every.push(level(7, 1));
+    every.extend((1..=4).map(|l| level(6, l)));
+    assert_eq!(exits.len(), 26, "{exits:?}");
+    assert_eq!(exits[..25], every[..]);
     assert!(has(Milestone::Tally { score: 17800 }), "{met:?}");
     assert!(has(Milestone::Scene(SceneKind::SlotMachine)), "{met:?}");
-    assert!(
-        has(Milestone::Scene(SceneKind::Level { world: 5, level: 1 })),
-        "{met:?}"
-    );
     assert!(!has(Milestone::Scene(SceneKind::GameOver)), "{met:?}");
 }
