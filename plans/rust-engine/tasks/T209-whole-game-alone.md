@@ -1,5 +1,7 @@
 # T209 — whole-game-alone
 
+**Split from:** T203 (its done-when "Green in `sf-conform all`; run time in PROGRESS notes" and its test `game_whole` green faithful and alone)
+
 **Phase:** 2 · **Depends on:** T203, T208; blocks T23, T29 · **Weight:** medium
 
 Added by T203 with the owner's yes (2026-10-17). Carries T203's done-when: `game-whole` green.

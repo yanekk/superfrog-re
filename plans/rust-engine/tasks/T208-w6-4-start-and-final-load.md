@@ -1,5 +1,7 @@
 # T208 — w6-4-start-and-final-load
 
+**Split from:** T203 (its goal: the divergences `game-whole` meets fixed, here W6-4's start and the final level's load)
+
 **Phase:** 2 · **Depends on:** T203; blocks T23, T29 · **Weight:** medium
 
 Added by T203 with the owner's yes (2026-10-17). T203 left `game-whole` green on checks 1–3 up
