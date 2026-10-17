@@ -93,11 +93,11 @@ const LEGS: [Leg; 26] = [
     leg("W6-1", 6, 1, "chain-w6-1", false),
     leg("W6-2", 6, 2, "chain-w6-2", false),
     leg("W6-3", 6, 3, "chain-w6-3", false),
-    leg("W6-4", 6, 4, "enemies-w6-4-complete", false),
+    leg("W6-4", 6, 4, "chain-w6-4", false),
     Leg {
         name: "WW-1",
         at: None,
-        script: "final-win",
+        script: "chain-ww-1",
         tally_press: false,
     },
 ];
