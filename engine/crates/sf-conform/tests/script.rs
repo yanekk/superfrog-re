@@ -248,3 +248,42 @@ fn a_slot_case_names_its_script_and_maybe_a_start() {
     );
     assert!(Case::parse("s", "sync = { slot = \"x\", frame = 3 }\nframes = 3\n").is_err());
 }
+
+/// `game-whole.txt` holds each leg's route as committed (T206 review): a route re-planned after
+/// the whole game was assembled leaves the whole game playing the old one until it is regenerated.
+#[test]
+fn the_whole_game_splices_each_route_as_committed() {
+    let dir = sf_conform::scripts_dir();
+    let text = std::fs::read_to_string(dir.join("game-whole.txt")).unwrap();
+    let whole = InputScript::parse(&text).unwrap();
+    let mut legs = 0;
+    for line in text.lines() {
+        // `# W3-1 from frame 84090: chain-w3-1 (its frames 0..5175...`
+        let Some((start, rest)) = line
+            .strip_prefix("# ")
+            .and_then(|l| l.split_once(" from frame "))
+            .and_then(|(_, r)| r.split_once(": "))
+        else {
+            continue;
+        };
+        let start: u32 = start.parse().unwrap();
+        let (name, rest) = rest.split_once(" (its frames 0..").unwrap();
+        let end: u32 = rest
+            .split(|c: char| !c.is_ascii_digit())
+            .next()
+            .unwrap()
+            .parse()
+            .unwrap();
+        let leg = InputScript::load(&dir.join(format!("{name}.txt"))).unwrap();
+        for t in 0..end {
+            assert_eq!(
+                whole.input_at(start + t),
+                leg.input_at(t),
+                "{name}'s frame {t} (game-whole's {})",
+                start + t
+            );
+        }
+        legs += 1;
+    }
+    assert_eq!(legs, 16, "W1-1 to W4-4");
+}

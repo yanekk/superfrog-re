@@ -20,6 +20,8 @@
 //! keeping apart the cells reached with a stomped enemy out.
 //! `--snap <file>` (T205): start from a snapshot `whole_game` saved at the leg's start in the whole
 //! game instead of the level's `AtLevel` sync point.
+//! `--avoid c0,r0,c1,r1` (T206): no way enters that box (W3-2's pit at 240,63: a dead end in the
+//! chain, its coins taken last leaving no way out).
 use sf_conform::{InputScript, SyncPoint, sync};
 use sf_core::frog::{FROG, f};
 use sf_core::input::{FrameInput, Joy};
@@ -32,6 +34,14 @@ const HEARTS: u32 = h0(0x830);
 /// `frog+$5c` (h0+$832): coins still needed before the exit lock goes.
 const COINS_LEFT: u32 = h0(0x832);
 const HOLD: usize = 4;
+/// `--avoid` boxes (c0, r0, c1, r1).
+static AVOID: std::sync::OnceLock<Vec<(i32, i32, i32, i32)>> = std::sync::OnceLock::new();
+
+fn avoided((c, r): (i32, i32)) -> bool {
+    AVOID.get().is_some_and(|v| {
+        v.iter().any(|&(c0, r0, c1, r1)| (c0..=c1).contains(&c) && (r0..=r1).contains(&r))
+    })
+}
 
 /// The frog's cell, as `plan_exit` measures it (its middle, a row up).
 fn cell(st: &sf_core::State) -> (i32, i32) {
@@ -45,6 +55,15 @@ fn switches_left(st: &sf_core::State) -> usize {
     (0..84u32 * 300)
         .filter(|&k| (48..=51).contains(&(st.w(row0 + (k / 300) * 0x260 + 2 * (k % 300)) & 0x3f)))
         .count()
+}
+
+/// The cells of the coins (markers 8, 9) still in the map (T206: where a chain route left some).
+fn coins_left(st: &sf_core::State) -> Vec<(u32, u32)> {
+    let row0 = sf_core::layout::h1(0x218e0 + 0x4c0);
+    (0..84u32 * 300)
+        .filter(|&k| (8..=9).contains(&(st.w(row0 + (k / 300) * 0x260 + 2 * (k % 300)) & 0x3f)))
+        .map(|k| (k % 300, k / 300))
+        .collect()
 }
 
 struct Rng(u64);
@@ -196,6 +215,7 @@ fn explore(
                 if (st.w(FROG + f::LIVES) as i16) < lives as i16
                     || st.w(FROG + f::DYING) != 0
                     || st.w(HEARTS) < min_hearts
+                    || avoided(cell(st))
                 {
                     break 'burst;
                 }
@@ -248,6 +268,7 @@ fn main() {
     let (mut goals, mut iters, mut min_hearts, mut coins_to) = (Vec::new(), 4000usize, 1u16, 0u16);
     let mut reward = false;
     let mut snap: Option<String> = None;
+    let mut avoid = Vec::new();
     let mut i = 1;
     while i < args.len() {
         match args[i].as_str() {
@@ -271,6 +292,10 @@ fn main() {
                 reward = true;
                 i -= 1;
             }
+            "--avoid" => {
+                let v: Vec<i32> = args[i + 1].split(',').map(|x| x.parse().unwrap()).collect();
+                avoid.push((v[0], v[1], v[2], v[3]));
+            }
             "--to" => {
                 let (c, r) = args[i + 1].split_once(',').unwrap();
                 goals.push(Goal::Cell(c.parse().unwrap(), r.parse().unwrap()));
@@ -279,6 +304,7 @@ fn main() {
         }
         i += 2;
     }
+    AVOID.set(avoid).unwrap();
     goals.push(if reward { Goal::Reward } else { Goal::Coins(coins_to) });
     // From the leg's start in the whole game (`--snap`, a snapshot `whole_game` saved), else the
     // level's own sync point.
@@ -336,6 +362,7 @@ fn main() {
             // Back to the step before: the last one kept may have left the frog nowhere to go,
             // and no way may end there again.
             let st = sf_core::State::transplant(&sync::core_memory(amiga.memory()));
+            eprintln!("  coins (markers 8, 9) still in the map: {:?}", coins_left(&st));
             dead.push((cell(&st), st.w(COINS_LEFT)));
             if let Some((s, len)) = history.pop() {
                 amiga.restore(&s);

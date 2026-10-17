@@ -18,6 +18,8 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-17 | 📌 | T206: `game-whole` now 157050 frames to W5-1 (the original's 170002): `run` 192 s, red at 13886; `run --alone` 886 s, red at 15053 (as T205); `scan` 990 s: from 74590 to 157050 only W4-3's 390-frame mid-pass run (lag-limit now 390). |
+| 2026-10-17 | 📌 | T206: standalone W3–W4 routes part in the chain at 1681, 200, 178, 1203, 972, 7900, 4443, 14068. W4's re-plan by `plan_exit`; W3's needed `explore` with the standalone's cells as `--to`. W3-2's pit at 240,63 traps: `explore --avoid`. |
 | 2026-10-16 | 🐞 | T205 review sweep: `examples/plan_exit_w6.rs` 615, 659, 703 still treat a 1-up as a life lost (`LIVES != lives`) and lack `sync::in_wall_loop` and `--snap`; T207 plans W6 with it. Not fixed. |
 | 2026-10-16 | 🐞 | T205 review sweep: `examples/plan.rs` 150, 282, `route.rs` 159, `complete.rs` 113 still reject a 1-up as a life lost (`LIVES != lives`). Not fixed. |
 | 2026-10-16 | 📌 | T205: `game-whole` now 74 590 frames to W3-1's first, run three at once: `run` 227 s (to its divergence), `run --alone` 556 s, `scan` 555 s (692 frames differ). `whole_game --until W3-1` assembles it in 144 s. |
