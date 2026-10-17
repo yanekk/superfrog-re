@@ -223,6 +223,50 @@ fn case_files_parse_and_refuse_what_they_do_not_know() {
     }
 }
 
+/// T208: a stretch of a long script, its sync point that script's frame N with df1 connected and
+/// the case playing the script on from there.
+#[test]
+fn a_case_plays_a_script_on_from_its_sync_frame() {
+    use sf_conform::{Case, SyncPoint};
+    let s = InputScript::parse("10: R\n20: F\n30: -\n").unwrap();
+    let on = s.from_frame(25);
+    assert_eq!(on.input_at(0).joy, Joy::FIRE);
+    assert_eq!(on.input_at(4).joy, Joy::FIRE);
+    assert_eq!(on.input_at(5), FrameInput::NONE);
+    assert_eq!(on.lines.len(), 2);
+    assert_eq!(s.from_frame(20).input_at(0).joy, Joy::FIRE);
+    assert_eq!(s.from_frame(0).input_at(10).joy, Joy::RIGHT);
+    let c = Case::parse(
+        "x",
+        "sync = { script = \"start-w1-1\", frame = 7000, df1 = true }\n\
+         script = \"start-w1-1\"\nscript-from = 7000\nframes = 3\n",
+    )
+    .unwrap();
+    assert_eq!(
+        c.sync,
+        SyncPoint::AtFrame {
+            script: "start-w1-1".into(),
+            frame: 7000,
+            df1: true
+        }
+    );
+    let whole = InputScript::load(&sf_conform::scripts_dir().join("start-w1-1.txt")).unwrap();
+    assert_eq!(c.script, whole.from_frame(7000));
+    let c = Case::parse(
+        "x",
+        "sync = { script = \"start-w1-1\", frame = 3 }\nframes = 3\n",
+    )
+    .unwrap();
+    assert!(matches!(c.sync, SyncPoint::AtFrame { df1: false, .. }));
+    for bad in [
+        "sync = { script = \"start-w1-1\", frame = 3, df1 = 1 }\nframes = 3",
+        "sync = \"power-on\"\nscript = \"start-w1-1\"\nscript-from = \"3\"\nframes = 3",
+        "sync = \"power-on\"\nscript = \"start-w1-1\"\nscript-from = -1\nframes = 3",
+    ] {
+        assert!(Case::parse("x", bad).is_err(), "{bad}");
+    }
+}
+
 #[test]
 fn a_slot_case_names_its_script_and_maybe_a_start() {
     use sf_conform::{Case, SyncPoint};

@@ -126,7 +126,8 @@ with `case.alone = Alone::Off` and names the owner (T184: `enemies-w1-1`, `enemi
 Every case green under the faithful checks has a test in `crates/sf-conform/tests/`: those with
 assertions of their own beside their subject (`frog_cases.rs`, `enemies_*.rs`, `front.rs`,
 `story.rs`, ...), the rest one line each in `cases.rs`. The slow ones are ignored and run with
-`cargo test -p sf-conform -- --ignored`: `attract-demo-3` (`cases.rs`, about 4 min), `game-whole`
+`cargo test -p sf-conform -- --ignored`: `attract-demo-3` (`cases.rs`, about 4 min), `whole-w6-4-start`
+and `whole-final-load` (`cases.rs`, about 9 min each uncached, seconds from the cache; T208), `game-whole`
 (`chain.rs`, about 8 min; T202) and the
 intro's `story-scene1-out`, `story-scene4-init`, `story-scene4-sound` and `story-intro-full`
 (`story.rs`, 80 s to 5 min), the final level's `final-win`, `final-lose` and `final-idle` (`bosses.rs`,
@@ -188,6 +189,11 @@ Sync points:
 - `sync = { script = "<name>", frame = N }`: the original runs the script from power-on for N frames;
   the engine starts from its memory there (every `LAYOUT` variable transplanted) and its CPU, so a
   front-end routine the engine knows goes on from the same place (`Start::Resume`).
+  With `df1 = true` an empty df1 is connected and each disk the original asks for goes in, as
+  `power-on-df1` runs (T208). With the case's `script-from = N` the case plays its script from the
+  script's frame N on, so a stretch of a long script (`game-whole`) is a case of its own: e.g.
+  `sync = { script = "game-whole", frame = 230200, df1 = true }`, `script = "game-whole"`,
+  `script-from = 230200` reaches W6-3's exit in ~9 minutes once, then from the snapshot cache.
 - `sync = { game-over = "<script>" }`: game over after the last life (T34): W1-1 reached as
   `{ level = "W1-1" }` reaches it, `frog_lives` set to 0 on its first frame, the script played
   until the frog's death ends the level's loop into `game_over_seq`. The level is transplanted at

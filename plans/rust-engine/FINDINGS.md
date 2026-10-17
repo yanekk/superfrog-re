@@ -18,6 +18,10 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-17 | 📌 | T208: `game-whole` scan after T208, 1360 s: checks 1–3 clean on all 224082 frames to `end_seq_load`; one line, check 4 at play frame 43542 (the coin with 92 left, T203's 43522), for T209. |
+| 2026-10-17 | 📌 | T208: a stretch of `game-whole` is a case: `sync = { script, frame, df1 = true }` with `script-from = frame` (conform/README). `whole-w6-4-start`, `whole-final-load` guard T208's fixes in ~17 s once cached (~9 min first). |
+| 2026-10-17 | 🐞 | T208, `game-whole` 222665: before the final level `top_loop`'s `access_overlay_show` (nothing up) took 20 frames on the original: unpack 11, fade-in 9; the engine did it at once. Now `title::OverlayShow`; also at a level-code start (chain.rs pin 1514). |
+| 2026-10-17 | 🐞 | T208, `game-whole` 212074: `BLANK_COSTS` fit a fresh entry by cancelling errors (frame records 337, measured 213; a bob record's sub-records 1000, measured 3044; freed slot 0, T199's 175). W6-3's 18 records ended W6-4's set-up 44 lines early. |
 | 2026-10-17 | 📌 | T203 review: its four fixes are guarded only by `game-whole`, in no test until T209's `game_whole`. `EXIT_FADE_CYCLES` at 29500 stays green on complete-w4-1, chain-w1-1-to-w1-2, complete-w1-2, chain-w5-4-to-bonus. |
 | 2026-10-17 | 🔄 | Owner, T203: added T208 w6-4-start-and-final-load (T203) and T209 whole-game-alone (T203, T208; carries T203's green), both blocking T23, T29: the three divergences T203 left, by check. |
 | 2026-10-17 | 🐞 | T203, `game-whole` check 4 (`run --alone`): red at play frame 43522, the original's coin (92 left) taken 59 frames later by the engine alone (43581). Matters to play. Was 15053 before T203. |

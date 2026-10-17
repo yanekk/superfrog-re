@@ -140,7 +140,7 @@ pub enum Cost {
     PassTail,
     // --- Between levels: `level_init_wN` (T37, the restart after a death) ---
     /// `obj_free_all` (h0+$1b9ee), the frog's reset and the start of h0+$1995a; and a slot in
-    /// use that `obj_free_all` frees (only [`RESTART_COSTS`] has it).
+    /// use that `obj_free_all` frees ([`RESTART_COSTS`] and [`BLANK_COSTS`]).
     InitStart,
     InitFreed,
     /// h0+$1995a's parts: a frame record set (h0+$18e8a), a frame record's blit parameters
@@ -346,7 +346,13 @@ pub const COSTS: [u32; Cost::COUNT] = {
 /// its own length (T37's were fitted to a handler always ending on line 20, about a line and a
 /// half long): the sheet's masks (the restart's long blit ends on line 270, the original's 271)
 /// and the screen scan (the blit chain after it starts on line 82 as the original's, 75 for 73
-/// on the second restart).
+/// on the second restart). T208 measured the bob set-up's parts on the oracle (`restart_probe`)
+/// in W6-4's entry by its code (`code-w6-4`: no slot in use, 1 bob record in the draw list) and
+/// after W6-3 in `game-whole` (17 slots, 18 records): the frame records 90 lines for 192 either
+/// way (213 a record, where T37's 337 was fitted with them carrying h0+$18ef8's), h0+$18ef8 25
+/// lines and 139 (3044 a record; T37's 1000 was fitted to one, its 2044 more come off
+/// `InitStart`, as T199 found on the restart), and a slot freed T199's 175. Each entry's mask
+/// clear to its last blit took the same 3275 lines on both.
 pub const BLANK_COSTS: [u32; Cost::COUNT] = {
     let mut a = COSTS;
     a[Cost::ScrollTile as usize] = 1313;
@@ -354,6 +360,10 @@ pub const BLANK_COSTS: [u32; Cost::COUNT] = {
     a[Cost::IrqPlane as usize] = 270;
     a[Cost::MaskOr10 as usize] = 63;
     a[Cost::ScreenScanCell as usize] = 400;
+    a[Cost::InitStart as usize] = 15620 - 2044;
+    a[Cost::InitFreed as usize] = 175;
+    a[Cost::FrameRecord as usize] = 213;
+    a[Cost::SubRecords as usize] = 3044;
     a
 };
 
@@ -369,6 +379,8 @@ pub const BLANK_COSTS: [u32; Cost::COUNT] = {
 /// long, the scan 9 long and the redraw after it 8 short.
 pub const RESTART_COSTS: [u32; Cost::COUNT] = {
     let mut a = BLANK_COSTS;
+    // T199's fit, made on T37's frame records (T208 left the restart's as T199 measured it).
+    a[Cost::FrameRecord as usize] = 337;
     a[Cost::InitStart as usize] = 15620 - 2003 + 2724;
     a[Cost::InitFreed as usize] = 175;
     a[Cost::SubRecords as usize] = 3003;

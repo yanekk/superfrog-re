@@ -185,6 +185,7 @@ impl Case {
             if ![
                 "sync",
                 "script",
+                "script-from",
                 "frames",
                 "compare",
                 "exclude",
@@ -195,7 +196,7 @@ impl Case {
             .contains(&k.as_str())
             {
                 return Err(format!(
-                    "unknown key `{k}` (sync, script, frames, compare, exclude, vars, resync, lag-limit)"
+                    "unknown key `{k}` (sync, script, script-from, frames, compare, exclude, vars, resync, lag-limit)"
                 ));
             }
         }
@@ -327,6 +328,10 @@ impl Case {
                     .and_then(|v| v.as_integer())
                     .and_then(|v| u32::try_from(v).ok())
                     .ok_or("sync needs `script` and `frame` (a frame number)")?,
+                df1: match s.get("df1") {
+                    None => false,
+                    Some(v) => v.as_bool().ok_or("sync.df1 is true or false")?,
+                },
             },
             _ => {
                 return Err(
@@ -340,6 +345,16 @@ impl Case {
             Some(v) => {
                 InputScript::load(&script_path(v.as_str().ok_or("script is a script name")?))?
             }
+        };
+        // `script-from`: the case's first frame plays the script's frame N (T208: a stretch of a
+        // long script, its sync point that script's frame N).
+        let script = match t.get("script-from") {
+            None => script,
+            Some(v) => script.from_frame(
+                v.as_integer()
+                    .and_then(|v| u32::try_from(v).ok())
+                    .ok_or("script-from is a frame number")?,
+            ),
         };
         let frames = t
             .get("frames")
