@@ -18,6 +18,14 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-17 | 🐞 | T203, `game-whole` check 4 (`run --alone`): red at play frame 43522, the original's coin (92 left) taken 59 frames later by the engine alone (43581). Matters to play. Was 15053 before T203. |
+| 2026-10-17 | 🐞 | T203, `game-whole` 222665–222679: `final_level_flag` set 15 frames early, check 1 only; the final level's load re-aligns both. The engine reaches `world_load_lw` sooner, cause not found. No effect on play seen. |
+| 2026-10-17 | 🐞 | T203, `game-whole` 212074–212098: W6-4's `level_start` a frame early. Check 1 (fades, then `frog_anim`), check 2 (fade-in, 13–20 frames past one step). The original's blits run to line 258, missing `wait_frame_raster`'s $ff. |
+| 2026-10-17 | 📌 | T203, `game-whole` `scan` after T203's fixes: 41 of 224082 frames differ, all in the two rows below; checks 1–3 green to W6-4. |
+| 2026-10-17 | 📌 | T203, `game-whole` W6-3 vs W4-1 exits: the pass's last write at 146.114 vs 146.202 decides whether `level_exit_fade`'s $d0 wait is met. The loop's end now reaches the front end to the cycle (`Cx::into`); entry and set-up measured (`level::exit`). |
+| 2026-10-17 | 🐞 | T203, `game-whole` bonus level (engine 181283): the bonus level has no `LBMS`, so its load leaves W5's tile heights; a shot enemy's reward lands on them. `tile_heights` (h1+$31e20) is now a `LAYOUT` variable. |
+| 2026-10-17 | 🐞 | T203, `game-whole` after W2-4 (engine 72258): the end picture's load went a call deeper, h0+$436a fell off `main_chain`'s eight entries, the runner took the load as over. `LoadEnd::Left` walks the whole stack (`main_chain_deep`). |
+| 2026-10-17 | 🐞 | T203, `game-whole` W1-2 (engine 13883–13893): the scroller redraws the screen through five frames in `vbl_handler`, its blits five more, the main loop waiting. New `Pacing::Late` phase `beam::IRQ_PHASE`: the engine ends frames in the interrupt, the next blank held. |
 | 2026-10-17 | 📌 | T207: `game-whole` now to `end_seq_load` (original 244365, engine 224081; lead 20284). `run` 198 s, red at 13886; `run --alone` 1399 s, red at 15053 (both T205's); `scan` 1419 s: W5, W6-1..2, final level clean past 157050. |
 | 2026-10-17 | 🐞 | T207, `game-whole` scan: bonus level from engine 181283 (original 197955, chain-wb-1's ~860): bonus enemies' `hitboxes` and the picture differ to its end, `obj_slots` into W6-1's first 150 frames. For T203. |
 | 2026-10-17 | 🐞 | T207, `game-whole` scan: after W6-3's exit (engine 211778–212333) `p41_channels`, sound stops, the end picture differ; passes 2 apart at W6-4's first frame; engine sets `final_level_flag` early (222900, before WW-1). For T203. |
