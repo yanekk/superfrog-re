@@ -721,6 +721,9 @@ struct AloneRun {
     /// Frames of play beyond the runner's: the original's load frames under a screen it times
     /// itself, which count as play (owner, 2026-10-15; [`timed_screen`]).
     extra: u32,
+    /// `SF_CONFORM_ALONE_TRACE=<file>`: at each frame both sides end a pass, the gameplay
+    /// variables the engine alone has unlike the original's, written whenever their names change.
+    trace: Option<(std::io::BufWriter<std::fs::File>, String)>,
 }
 
 /// The copper lists of the screens whose own timers run on while the original loads under them
@@ -746,6 +749,9 @@ impl AloneRun {
             first_var: None,
             disk3,
             extra: 0,
+            trace: std::env::var_os("SF_CONFORM_ALONE_TRACE").map(|p| {
+                (std::io::BufWriter::new(std::fs::File::create(p).unwrap()), String::new())
+            }),
         }
     }
 
@@ -831,6 +837,26 @@ impl AloneRun {
                 f,
                 format!("{} at ${:06x}: original ${t:x}, engine ${o:x}", v.name, v.addr),
             ));
+        }
+        if let Some(t) = self.trace.as_mut()
+            && !ours.story
+            && !theirs.story
+            && !g.mid_pass()
+            && !sync::mid_pass(&amiga.cpu(), mem)
+        {
+            use std::io::Write;
+            let diffs = compare::gameplay_diffs(case, g.layout(), &g.probe(), mem);
+            let names: Vec<&str> = diffs.iter().map(|d| d.0.name).collect();
+            let key = names.join(" ");
+            if key != t.1 {
+                let detail: Vec<String> = diffs
+                    .iter()
+                    .take(12)
+                    .map(|(v, a, b)| format!("{}@{:x}={:x}/{:x}", v.name, v.addr, a, b))
+                    .collect();
+                let _ = writeln!(t.0, "{f} cop {:x?}: {}", cop1lc, detail.join(" "));
+                t.1 = key;
+            }
         }
         let at = (f + self.extra) as u64;
         if skipped.is_empty() {

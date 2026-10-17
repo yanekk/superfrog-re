@@ -1015,6 +1015,18 @@ impl Front {
         matches!(self.stack.last().map(|f| &f.routine), Some(Routine::LevelLoop))
     }
 
+    /// The line `level_start` entered the level's loop on, in the frame just run (T209).
+    pub(crate) fn loop_entered_on(&self) -> Option<u16> {
+        match self.stack.last() {
+            Some(Frame {
+                routine: Routine::LevelLoop,
+                wait: Some((Yield::Poll, line)),
+                ..
+            }) => Some(*line),
+            _ => None,
+        }
+    }
+
     /// The boot's work, which is all load: done at once, before the first frame.
     pub fn boot(&mut self, s: &mut State, display: &DisplayData) {
         if std::mem::take(&mut self.booting) {

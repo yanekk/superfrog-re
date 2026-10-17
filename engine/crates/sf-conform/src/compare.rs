@@ -524,6 +524,26 @@ pub fn gameplay_vars(
     })
 }
 
+/// Every gameplay variable piece that differs, as [`gameplay_vars`] judges the first.
+pub fn gameplay_diffs(
+    case: &Case,
+    layout: &[VarDef],
+    probe: &[(VarId, u32)],
+    theirs: &AmigaMemory,
+) -> Vec<(VarDef, u32, u32)> {
+    let pieces: Vec<VarDef> = layout.iter().flat_map(|d| d.pieces()).collect();
+    pieces
+        .into_iter()
+        .zip(probe)
+        .map(|(p, &(_, ours))| (p, p.read(theirs), ours))
+        .filter(|(p, theirs, ours)| {
+            theirs != ours
+                && sf_core::layout::presentation_piece(p).is_none()
+                && !case_skips(case, p)
+        })
+        .collect()
+}
+
 /// Whether `case` leaves variable `d` out of its comparison (the panel, a `vars` list).
 pub fn case_skips(case: &Case, d: &VarDef) -> bool {
     (case.excludes(crate::case::Excluded::Panel) && d.id == VarId::PanelBitmap)
