@@ -285,5 +285,5 @@ fn the_whole_game_splices_each_route_as_committed() {
         }
         legs += 1;
     }
-    assert_eq!(legs, 16, "W1-1 to W4-4");
+    assert_eq!(legs, 26, "W1-1 to the final level");
 }

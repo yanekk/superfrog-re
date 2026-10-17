@@ -18,9 +18,14 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-17 | 📌 | T207: `game-whole` now to `end_seq_load` (original 244365, engine 224081; lead 20284). `run` 198 s, red at 13886; `run --alone` 1399 s, red at 15053 (both T205's); `scan` 1419 s: W5, W6-1..2, final level clean past 157050. |
+| 2026-10-17 | 🐞 | T207, `game-whole` scan: bonus level from engine 181283 (original 197955, chain-wb-1's ~860): bonus enemies' `hitboxes` and the picture differ to its end, `obj_slots` into W6-1's first 150 frames. For T203. |
+| 2026-10-17 | 🐞 | T207, `game-whole` scan: after W6-3's exit (engine 211778–212333) `p41_channels`, sound stops, the end picture differ; passes 2 apart at W6-4's first frame; engine sets `final_level_flag` early (222900, before WW-1). For T203. |
+| 2026-10-17 | 📌 | T207: standalone routes part in the chain at 2056, 3226, 4940, 312, 412, 4076, 289, 416 (W5-2 holds). W6 needed `plan_exit --fly` (the chain carries W1's wings) with the standalone's cells as vias; the bonus level new `plan_bonus`. |
+| 2026-10-17 | 📌 | T207, owner's route repair: `plan_exit_w6 --follow` on W6-3 replayed 91 old-route frames once, reaching 7453 needing 74 coins in 15 min, against plain's 6926 needing 2 in 43 min. The chain's coins differ: no gain. Explore archive reuse not tried. |
 | 2026-10-17 | 📌 | T206: `game-whole` now 157050 frames to W5-1 (the original's 170002): `run` 192 s, red at 13886; `run --alone` 886 s, red at 15053 (as T205); `scan` 990 s: from 74590 to 157050 only W4-3's 390-frame mid-pass run (lag-limit now 390). |
 | 2026-10-17 | 📌 | T206: standalone W3–W4 routes part in the chain at 1681, 200, 178, 1203, 972, 7900, 4443, 14068. W4's re-plan by `plan_exit`; W3's needed `explore` with the standalone's cells as `--to`. W3-2's pit at 240,63 traps: `explore --avoid`. |
-| 2026-10-16 | 🐞 | T205 review sweep: `examples/plan_exit_w6.rs` 615, 659, 703 still treat a 1-up as a life lost (`LIVES != lives`) and lack `sync::in_wall_loop` and `--snap`; T207 plans W6 with it. Not fixed. |
+| 2026-10-16 | 🐞 | T205 review sweep: `examples/plan_exit_w6.rs` 615, 659, 703 still treat a 1-up as a life lost (`LIVES != lives`) and lack `sync::in_wall_loop` and `--snap`. Fixed in T207. |
 | 2026-10-16 | 🐞 | T205 review sweep: `examples/plan.rs` 150, 282, `route.rs` 159, `complete.rs` 113 still reject a 1-up as a life lost (`LIVES != lives`). Not fixed. |
 | 2026-10-16 | 📌 | T205: `game-whole` now 74 590 frames to W3-1's first, run three at once: `run` 227 s (to its divergence), `run --alone` 556 s, `scan` 555 s (692 frames differ). `whole_game --until W3-1` assembles it in 144 s. |
 | 2026-10-16 | 🐞 | T205, `game-whole` check 4: frame 15053 (W1-2, chain-w1-2 ~6200) the engine alone takes a tile coin (marker 55 at 85,53) the original does not within 10 frames. Likely follows the 13886 divergence. For T203. |
