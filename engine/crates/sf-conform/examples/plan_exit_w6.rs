@@ -25,6 +25,10 @@
 //! original's frog alive; else the next-best path is tried. The original lags in a busy level and the engine
 //! free-running does not, so only the original's outcome counts, and each chunk starts from its
 //! memory again.
+//!
+//! T207: `--snap <file>`: start from a snapshot `whole_game` saved at the leg's start in the whole
+//! game instead of the level's `AtLevel` sync point; a 1-up is no life lost, and a way that hangs
+//! the original in `frog_tiles`' wall loop (`sync::in_wall_loop`) fails as a death does (T205's).
 use sf_conform::{InputScript, SyncPoint, sync};
 use sf_core::frog::{FROG, f};
 use sf_core::input::{FrameInput, Joy};
@@ -350,6 +354,7 @@ fn main() {
     let mut prefix: Vec<FrameInput> = Vec::new();
     let mut no_exit = false;
     let mut out: Option<String> = None;
+    let mut snap: Option<String> = None;
     let mut i = 1;
     while i < args.len() {
         match args[i].as_str() {
@@ -365,6 +370,7 @@ fn main() {
                 i -= 1;
             }
             "--out" => out = Some(args[i + 1].clone()),
+            "--snap" => snap = Some(args[i + 1].clone()),
             "--frames" => budget = args[i + 1].parse().unwrap(),
             "--gap" => GAP.store(args[i + 1].parse().unwrap(), std::sync::atomic::Ordering::Relaxed),
             "--prefix" => {
@@ -403,9 +409,15 @@ fn main() {
     let mut visits: std::collections::HashMap<(i32, i32), i64> = Default::default();
     let (mut stall, mut best_d) = (0u32, i64::MAX);
 
-    let mut synced = sync::reach(&SyncPoint::AtLevel(id), &InputScript::idle(), budget as u32 + 100)
-        .unwrap_or_else(|e| panic!("{e}"));
-    let amiga = &mut synced.amiga;
+    // From the leg's start in the whole game (`--snap`, a snapshot `whole_game` saved), else the
+    // level's own sync point.
+    let mut amiga = match &snap {
+        Some(p) => sync::at_snapshot_file(std::path::Path::new(p), budget as u32 + 100),
+        None => sync::reach(&SyncPoint::AtLevel(id), &InputScript::idle(), budget as u32 + 100)
+            .map(|s| s.amiga),
+    }
+    .unwrap_or_else(|e| panic!("{e}"));
+    let amiga = &mut amiga;
     let display = sf_conform::display_data();
     let acts = [
         Joy::NONE,
@@ -612,7 +624,7 @@ fn main() {
                         let x = FrameInput::joy(a);
                         n.step_unseen(x);
                         p.push(x);
-                        if n.state().w(FROG + f::LIVES) != lives || n.state().w(FROG + f::DYING) != 0 {
+                        if (n.state().w(FROG + f::LIVES) as i16) < lives as i16 || n.state().w(FROG + f::DYING) != 0 {
                             dead = true;
                             break;
                         }
@@ -656,9 +668,10 @@ fn main() {
             let mut ok = true;
             for (k, &x) in p.iter().enumerate() {
                 sync::step_inserting(amiga, x).unwrap();
-                if peek_w(amiga, FROG + f::LIVES) != lives
+                if (peek_w(amiga, FROG + f::LIVES) as i16) < lives as i16
                     || peek_w(amiga, FROG + f::DYING) != 0
                     || (keep_hearts && peek_w(amiga, HEARTS) < hearts)
+                    || sync::in_wall_loop(amiga)
                 {
                     eprintln!(
                         "  a path dies {k} frames in on the original, frog at {},{}",
@@ -700,9 +713,10 @@ fn main() {
                 let mut ok = true;
                 for &x in &p {
                     sync::step_inserting(amiga, x).unwrap();
-                    if peek_w(amiga, FROG + f::LIVES) != lives
+                    if (peek_w(amiga, FROG + f::LIVES) as i16) < lives as i16
                         || peek_w(amiga, FROG + f::DYING) != 0
                         || (keep_hearts && peek_w(amiga, HEARTS) < hearts)
+                        || sync::in_wall_loop(amiga)
                     {
                         ok = false;
                         break;
