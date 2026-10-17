@@ -433,6 +433,10 @@ fn main() {
         sync::step_inserting(amiga, x).unwrap();
         inputs.push(x);
     }
+    let peek_l = |a: &sf_oracle::Amiga, addr: u32| {
+        let b = a.peek(addr, 4);
+        u32::from_be_bytes([b[0], b[1], b[2], b[3]])
+    };
     let peek_w = |a: &sf_oracle::Amiga, addr: u32| {
         let b = a.peek(addr, 2);
         u16::from_be_bytes([b[0], b[1]])
@@ -684,15 +688,22 @@ fn main() {
             }
             amiga.restore(&snap);
             if ok {
-                for &x in &p[..n] {
-                    sync::step_inserting(amiga, x).unwrap();
+                let mut k = 0;
+                while k < n {
+                    sync::step_inserting(amiga, p[k]).unwrap();
+                    k += 1;
                     let (fx, fy) = (
                         peek_w(amiga, FROG + f::X) as i16 as i32 + 0x17,
                         peek_w(amiga, FROG + f::Y) as i16 as i32 - 0x10,
                     );
                     been_in.push((fx / 16, fy / 16));
+                    // Up to the frame the level ends on (T207, as plan_exit's T103): the exit's
+                    // 1 can come and go within a frame, so any change from the running -2.
+                    if inputs.len() + k > 10 && peek_l(amiga, LEVEL_STATE) != 0xffff_fffe {
+                        break;
+                    }
                 }
-                taken = Some(p[..n].to_vec());
+                taken = Some(p[..k].to_vec());
                 break;
             }
         }
@@ -734,15 +745,22 @@ fn main() {
             if let Some((sc, p)) = best {
                 eprintln!("  the original's own search: a path scoring {sc}");
                 let n = p.len().min(COMMIT);
-                for &x in &p[..n] {
-                    sync::step_inserting(amiga, x).unwrap();
+                let mut k = 0;
+                while k < n {
+                    sync::step_inserting(amiga, p[k]).unwrap();
+                    k += 1;
                     let (fx, fy) = (
                         peek_w(amiga, FROG + f::X) as i16 as i32 + 0x17,
                         peek_w(amiga, FROG + f::Y) as i16 as i32 - 0x10,
                     );
                     been_in.push((fx / 16, fy / 16));
+                    // Up to the frame the level ends on (T207, as plan_exit's T103): the exit's
+                    // 1 can come and go within a frame, so any change from the running -2.
+                    if inputs.len() + k > 10 && peek_l(amiga, LEVEL_STATE) != 0xffff_fffe {
+                        break;
+                    }
                 }
-                taken = Some(p[..n].to_vec());
+                taken = Some(p[..k].to_vec());
             }
         }
         for c in been_in {
@@ -835,7 +853,7 @@ fn main() {
                 break;
             }
         }
-        if st.l(LEVEL_STATE) == 1 {
+        if inputs.len() > 10 && st.l(LEVEL_STATE) != 0xffff_fffe {
             eprintln!("exit at frame {}", inputs.len());
             break;
         }
