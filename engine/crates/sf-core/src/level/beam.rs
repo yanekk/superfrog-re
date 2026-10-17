@@ -630,8 +630,9 @@ pub struct Frames {
     pub pending: Option<Pending>,
     /// What the step's own frame wrote to the display's memory.
     pub log: Option<crate::mem::WriteLog>,
-    /// `level_frame_loop` returned in the step's own frame, the beam on this line (T37).
-    pub ended: Option<u16>,
+    /// `level_frame_loop` returned in the step's own frame, the beam on this line (T37) and
+    /// this many CPU cycles into it (T203).
+    pub ended: Option<(u16, u32)>,
     /// Before a vertical blank whose handler a frame may end in ([`IRQ_PHASE`]): the state, beam
     /// and hardware then, and the frame it is the blank of.
     pub vbl_start: Option<(Box<crate::state::State>, Clock, super::Hw, usize)>,

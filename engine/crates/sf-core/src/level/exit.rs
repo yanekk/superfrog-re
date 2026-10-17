@@ -9,7 +9,7 @@
 
 use sf_assets::{LevelId, World};
 
-use crate::front::common::{FadeKind, call, fade};
+use crate::front::common::{FadeKind, call, fade, fade_timed};
 use crate::front::{BEAM_CYCLES_PER_LINE, Cx, Routine, Yield};
 use crate::layout::h0;
 use crate::level::timeline::Timeline;
@@ -39,6 +39,13 @@ pub(crate) const BONUS_WORLD: u32 = 7;
 const SHOOTER_MODE: u32 = h0(0x9dc);
 /// Where `level_exit_fade` is when its fade set-up returns (h0+$762a).
 const AFTER_FADE_SETUP: u32 = h0(0x762a);
+/// With the loop's end on the beam to the cycle ([`crate::front::Cx::into`]), measured on
+/// `game-whole`'s W4-1 and W6-3 exits (the original's 124884 and 230399, T203) from the loop's
+/// last pass's last Paula write: 576 and 586 cycles to the set-up's INTENA `$4000` (the pass's
+/// end, `level_exit_fade`'s entry), then 27682 and 27626 to its `$c000` on the level's 32
+/// colours. W6-3's ends on line $d0, which its wait takes at once; W4-1's on $d1, a frame later.
+const EXIT_ENTRY_CYCLES: u32 = 581;
+const EXIT_FADE_CYCLES: u32 = 27654;
 /// Lines the window closes by (`moveq #$e`).
 const CLOSE_LINES: u16 = 0xe;
 
@@ -111,6 +118,17 @@ impl LevelOver {
             }
             10 => {
                 self.pc = 1;
+                if cx.into.is_some() {
+                    cx.busy(EXIT_ENTRY_CYCLES);
+                    return fade_timed(
+                        FadeKind::Out,
+                        0,
+                        PALETTE,
+                        0x20,
+                        AFTER_FADE_SETUP,
+                        EXIT_FADE_CYCLES,
+                    );
+                }
                 fade(FadeKind::Out, 0, PALETTE, 0x20, AFTER_FADE_SETUP)
             }
             1 => {

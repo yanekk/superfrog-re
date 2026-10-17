@@ -795,11 +795,11 @@ impl LevelCtx<'_> {
             return;
         }
         self.stamp();
-        let line = self.clock.line;
+        let (line, into) = (self.clock.line, self.clock.into);
         let f = self.frames.as_mut().expect("the main program's frames");
         debug_assert!(matches!(f.current(), Some((true, _))), "the loop ends in the step's own frame");
         f.done = true;
-        f.ended = Some(line);
+        f.ended = Some((line, into));
         f.out_to = Some(self.paula.len());
         f.log = self.bus.log.take();
     }
