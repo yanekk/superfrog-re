@@ -34,6 +34,8 @@ pub(crate) struct FadeSetup {
     /// The return address of the caller's `jsr` to the set-up.
     pub inside: u32,
     pub pc: u8,
+    /// The set-up's CPU cycles where they were measured for its caller ([`fade_timed`]).
+    pub cycles: Option<u32>,
 }
 
 impl FadeSetup {
@@ -45,6 +47,7 @@ impl FadeSetup {
             colours,
             inside,
             pc: 0,
+            cycles: None,
         }
     }
 
@@ -54,12 +57,12 @@ impl FadeSetup {
             cx.s.set_w(rec.at + fade::SPEED, 1);
             self.pc = 1;
             let n = self.colours as u32;
-            let cycles = match self.kind {
+            let cycles = self.cycles.unwrap_or(match self.kind {
                 // Three compares and a byte store for each channel, then the copy.
                 FadeKind::Step { .. } => 300 + n * 265,
                 FadeKind::In { target } => fade::fade_in_cycles(cx.s, target, self.colours),
                 FadeKind::Out => 1200 + n * 3 * 280,
-            };
+            });
             if let Some(y) = cx.masked_job(cycles, self.inside, vec![(rec.at, 0x1f2), (TOGGLE, 2)])
             {
                 return y;
@@ -255,6 +258,20 @@ pub(crate) fn fade(kind: FadeKind, rec: usize, list: u32, colours: u16, inside: 
     call(Routine::FadeSetup(FadeSetup::new(
         kind, rec, list, colours, inside,
     )))
+}
+
+/// [`fade`], its set-up taking `cycles` (measured for the caller).
+pub(crate) fn fade_timed(
+    kind: FadeKind,
+    rec: usize,
+    list: u32,
+    colours: u16,
+    inside: u32,
+    cycles: u32,
+) -> Yield {
+    let mut f = FadeSetup::new(kind, rec, list, colours, inside);
+    f.cycles = Some(cycles);
+    call(Routine::FadeSetup(f))
 }
 
 pub(crate) fn palette_wait(rec: usize) -> Yield {

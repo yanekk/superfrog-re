@@ -148,6 +148,19 @@ pub fn main_program(c: &mut LevelCtx, pending: Option<beam::Pending>, pacing: cr
         },
     };
     let mut f = beam::Frames::default();
+    // A vertical blank's handler the last frame ended in (T203) runs again from before it.
+    let vbl = pending.as_ref().is_some_and(|p| p.vbl);
+    let pending = match pending {
+        Some(p) if p.vbl => {
+            f.specs = p.frames;
+            *c.bus.st = *p.start;
+            c.clock = p.clock;
+            c.bus.at = c.clock.nominal();
+            c.hw = p.hw;
+            None
+        }
+        p => p,
+    };
     let resume = pending.map(|p| {
         f.specs = p.frames.clone();
         *c.bus.st = (*p.start).clone();
@@ -170,10 +183,12 @@ pub fn main_program(c: &mut LevelCtx, pending: Option<beam::Pending>, pacing: cr
             after_pass(c);
         }
         None => {
-            c.clock = beam::Clock {
-                line: beam::FRAME_LINES,
-                into: 0,
-            };
+            if !vbl {
+                c.clock = beam::Clock {
+                    line: beam::FRAME_LINES,
+                    into: 0,
+                };
+            }
             c.frame_end();
         }
     }

@@ -512,11 +512,11 @@ impl Game {
         let display = Arc::clone(&self.display);
         let frog_only = self.frog_only;
         let sdr = self.sdr;
-        let mut after = |s: &mut State, line: u16| {
+        let mut after = |s: &mut State, line: u16, into: u32| {
             // `level_frame_loop` returned: what follows runs on the front end's program, from
             // where the loop's last pass ended (T37, `crate::level::exit`).
             let mut front = crate::front::Front::level_over(s, &display.front, sdr, frog_only);
-            let (more, jobs) = front.finish_frame(s, &display, input, line);
+            let (more, jobs) = front.finish_frame(s, &display, input, line, into);
             ended = Some((front, more, jobs));
         };
         let (mut paula, shown) = {

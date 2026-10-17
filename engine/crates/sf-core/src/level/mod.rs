@@ -301,6 +301,9 @@ pub struct LevelCtx<'a> {
     /// end ([`LevelCtx::irq_frame_end`]).
     pub(crate) in_coper: bool,
     over_end: Option<usize>,
+    /// A vertical blank came while the level's interrupt held the CPU, after its VBL work had
+    /// cleared the request (INTREQ `$0020`): taken as the handler returns (T203).
+    vbl_held: bool,
     /// Paths of the original the engine met and does not follow (an object with no kind among
     /// them), each once: what [`crate::Game::unported`] reports.
     pub unported: Vec<&'static str>,
@@ -339,6 +342,7 @@ impl<'a> LevelCtx<'a> {
             held: None,
             in_coper: false,
             over_end: None,
+            vbl_held: false,
             unported: Vec::new(),
         }
     }
@@ -516,6 +520,10 @@ impl LevelCtx<'_> {
             return;
         };
         let f = self.frames.as_ref().expect("frames");
+        if f.in_vbl && !f.in_pass {
+            self.irq_due(writing);
+            return;
+        }
         if !f.in_pass || f.in_vbl || f.done || f.past_end {
             return;
         }
@@ -549,6 +557,72 @@ impl LevelCtx<'_> {
 
     fn interrupt_due(&mut self) {
         self.interrupt_due_at(false);
+    }
+
+    /// In the level's interrupt, the main loop in its wait (T203): a frame whose original ended
+    /// in it ([`beam::IRQ_PHASE`]) ends once it has made the cut's writes and its clock is past
+    /// the frame's end, or, `writing`, before it makes one more. The next frame's vertical blank
+    /// is not taken: its request waits for the handler's end ([`LevelCtx::vbl_held`]), and is
+    /// lost if the VBL work clears it first, as the original's `vbl_handler` (h0+$11bf8) does
+    /// with INTREQ `$0020` at its end. The step's own frame ending so keeps the state, and the
+    /// vertical blank it is in runs again from its start in the next step ([`beam::Pending::vbl`]).
+    fn irq_due(&mut self, writing: bool) {
+        loop {
+            let Some(n) = self.frame_writes() else {
+                return;
+            };
+            let f = self.frames.as_ref().expect("frames");
+            if f.done || f.in_pass {
+                return;
+            }
+            let Some((own, Some(cut))) = f.current() else {
+                return;
+            };
+            let past = self.clock.line >= beam::FRAME_LINES;
+            if cut.phase != beam::IRQ_PHASE || n < cut.writes || !(writing || past) {
+                return;
+            }
+            self.stamp();
+            if self.clock.line < beam::FRAME_LINES {
+                self.clock = beam::Clock {
+                    line: beam::FRAME_LINES,
+                    into: 0,
+                };
+            }
+            let f = self.frames.as_mut().expect("frames");
+            if own {
+                f.done = true;
+                f.out_to = Some(self.paula.len());
+                f.log = self.bus.log.take();
+                f.mid = Some(Box::new(self.bus.st.clone()));
+                debug_assert!(f.vbl_start.is_some(), "a frame ending in the interrupt kept its blank's start");
+                if let Some((start, clock, hw, k)) = f.vbl_start.clone() {
+                    f.pending = Some(beam::Pending {
+                        start,
+                        clock,
+                        hw,
+                        pre: 0,
+                        frames: f.specs[k..].to_vec(),
+                        vbl: true,
+                    });
+                }
+                return;
+            }
+            let next = f.at.expect("a frame") + 1;
+            let spec = f.specs[next];
+            f.at = Some(next);
+            f.pre = 0;
+            f.anchored = false;
+            f.from = self.paula.len();
+            if next + 1 == f.specs.len() {
+                f.out_from = f.from;
+                self.bus.log = Some(crate::mem::WriteLog::default());
+            }
+            self.clock = self.clock.next_frame();
+            self.bus.at = self.clock.nominal();
+            self.hw = spec.hw;
+            self.vbl_held = true;
+        }
     }
 
     /// The pass has run to its end: a frame whose original was still in this pass (it had met
@@ -599,6 +673,11 @@ impl LevelCtx<'_> {
         }
         if next < f.specs.len() {
             let f = self.frames.as_mut().expect("frames");
+            if !f.in_pass
+                && f.specs[next..].iter().any(|s| s.cut.is_some_and(|c| c.phase == beam::IRQ_PHASE))
+            {
+                f.vbl_start = Some((Box::new(self.bus.st.clone()), self.clock, self.hw, next));
+            }
             let spec = f.specs[next];
             let own = next + 1 == f.specs.len();
             if f.in_pass {
@@ -624,6 +703,11 @@ impl LevelCtx<'_> {
                 self.bus.st.audio.play_sfx_wait_over(rest);
             }
             frame::vbl(self);
+            // A vertical blank held behind the handler ([`LevelCtx::irq_due`]) is taken as it
+            // returns.
+            while std::mem::take(&mut self.vbl_held) && !self.frames.as_ref().is_some_and(|f| f.done) {
+                frame::vbl(self);
+            }
             let f = self.frames.as_mut().expect("frames");
             f.in_vbl = false;
             return;
@@ -648,6 +732,7 @@ impl LevelCtx<'_> {
                     hw,
                     pre,
                     frames: f.pass_frames.clone(),
+                    vbl: false,
                 });
             }
         }
@@ -667,6 +752,12 @@ impl LevelCtx<'_> {
             return;
         };
         if f.done || f.past_end || (own && !f.in_pass) {
+            return;
+        }
+        // Frames ending in the interrupt with the main loop waiting end where their cuts say
+        // ([`LevelCtx::irq_due`]).
+        let irq = |k: usize| f.specs[k].cut.is_some_and(|c| c.phase == beam::IRQ_PHASE);
+        if f.at.is_some_and(|a| irq(a) || a > 0 && irq(a - 1)) {
             return;
         }
         self.frame_end_from(Some(from));
@@ -704,11 +795,11 @@ impl LevelCtx<'_> {
             return;
         }
         self.stamp();
-        let line = self.clock.line;
+        let (line, into) = (self.clock.line, self.clock.into);
         let f = self.frames.as_mut().expect("the main program's frames");
         debug_assert!(matches!(f.current(), Some((true, _))), "the loop ends in the step's own frame");
         f.done = true;
-        f.ended = Some(line);
+        f.ended = Some((line, into));
         f.out_to = Some(self.paula.len());
         f.log = self.bus.log.take();
     }
@@ -858,6 +949,9 @@ impl LevelCtx<'_> {
         self.interrupt_due_at(true);
         if self.in_coper && self.over_end.is_none() && self.clock.line >= beam::FRAME_LINES {
             self.over_end = Some(self.paula.len());
+        }
+        if reg == 0x9c && value == 0x0020 && !self.in_coper {
+            self.vbl_held = false;
         }
         self.tick(beam::Tick::Write(self.paula.len() as u32));
         self.scheduled(self.paula.len());

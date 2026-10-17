@@ -46,6 +46,9 @@ pub struct Rom {
     /// Per `world` value (index 0 for world 1 … 6, then the bonus level, then the final level):
     /// the regions that world's files fill.
     pub worlds: Vec<Vec<(u32, Vec<u8>)>>,
+    /// Per world as `worlds`: the [`TILE_HEIGHTS`] table its load builds, `None` for the bonus
+    /// level, which has no masks and leaves the table as it was.
+    pub heights: Vec<Option<Vec<u8>>>,
 }
 
 /// `tile_ptrs` (h1+$30fe0): the boot's table of 896 pointers to the tiles, `$a0` bytes apart from
@@ -136,6 +139,8 @@ pub fn boot_tables(h0: &mut [u8]) -> Vec<(u32, Vec<u8>)> {
 /// column; a tile with no pixel at all is 15 everywhere). Built by h0+$d950 when a world loads,
 /// from `LnMS`, which the game reads as a 320-pixel-wide picture of 42 rows of 20 tiles.
 pub const TILE_HEIGHTS: u32 = H1 + 0x31e20;
+/// 840 tiles' 16 columns.
+pub const TILE_HEIGHTS_BYTES: u32 = 840 * 16;
 
 /// h0+$d950 over a world's masks.
 pub fn tile_heights(m: &sf_assets::TileMasks) -> Vec<u8> {
@@ -203,27 +208,28 @@ impl Rom {
             sf_assets::World::Bonus,
             sf_assets::World::Final,
         ];
+        let gfx = |w| data.worlds.iter().find(|g| g.world == w);
         let worlds = order
             .iter()
-            .map(|&w| {
-                data.worlds
-                    .iter()
-                    .find(|g| g.world == w)
-                    .map(|g| {
-                        let mut r = vec![(H1, g.tiles.encode())];
-                        if let Some(m) = &g.masks {
-                            r.push((TILE_HEIGHTS, tile_heights(m)));
-                        }
-                        r
-                    })
-                    .unwrap_or_default()
-            })
+            .map(|&w| gfx(w).map(|g| vec![(H1, g.tiles.encode())]).unwrap_or_default())
+            .collect();
+        let heights = order
+            .iter()
+            .map(|&w| gfx(w).and_then(|g| g.masks.as_ref()).map(tile_heights))
             .collect();
         Rom {
             h0,
             regions,
             worlds,
+            heights,
         }
+    }
+
+    /// The [`TILE_HEIGHTS`] table `world`'s load builds (W1..W6, the bonus level, the final
+    /// level), if it builds one.
+    pub fn tile_heights(&self, world: sf_assets::World) -> Option<&[u8]> {
+        let i = sf_assets::World::ALL.iter().position(|&x| x == world)?;
+        self.heights.get(i)?.as_deref()
     }
 
     /// The byte at `addr` with `world` loaded, if this image holds it.

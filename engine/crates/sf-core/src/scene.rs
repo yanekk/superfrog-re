@@ -113,7 +113,7 @@ impl Scene {
         pending: &mut Option<crate::level::beam::Pending>,
         pacing: Pacing,
         view: View,
-        after: &mut dyn FnMut(&mut State, u16),
+        after: &mut dyn FnMut(&mut State, u16, u32),
     ) -> (Vec<PaulaWrite>, Option<Picture>) {
         let mut out = Vec::new();
         let mut picture = None;
@@ -149,13 +149,13 @@ impl Scene {
                 *pending = f.pending;
                 let mut log = f.log.unwrap_or_default();
                 let mut window = None;
-                if let Some(line) = f.ended {
+                if let Some((line, into)) = f.ended {
                     // The program after the loop moves the window's top down (`level_exit_fade`):
                     // the beam fetched this field from where the copper had it, the picture is
                     // cut to where it is as the next field starts.
                     let diw = render::LEVEL_COPPER + 6;
                     let old = c.bus.st.byte(diw).unwrap_or(0);
-                    after(c.bus.st, line);
+                    after(c.bus.st, line, into);
                     let new = c.bus.st.byte(diw).unwrap_or(0);
                     if new != old {
                         let at = crate::level::beam::Clock { line, into: 0 }.nominal();

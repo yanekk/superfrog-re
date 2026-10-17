@@ -359,6 +359,9 @@ pub(crate) struct Cx<'a> {
     pub load_given: bool,
     /// A disk the game asked for this frame that was not in the drive (T21).
     pub disk_prompt: Option<crate::game::DiskPrompt>,
+    /// The CPU cycles into [`Cx::line`] the beam is, where that is known to the cycle (T203: a
+    /// level's loop ending on the beam, [`Front::finish_frame`]); `None` counts whole lines.
+    pub into: Option<u32>,
 }
 
 impl Cx<'_> {
@@ -507,8 +510,15 @@ impl Cx<'_> {
         if self.busy_from.is_none() {
             self.busy_from = Some(self.line);
         }
-        self.line =
-            (self.line as u32 + cycles.div_ceil(BEAM_CYCLES_PER_LINE)).min(u16::MAX as u32) as u16;
+        let lines = match self.into.as_mut() {
+            Some(into) => {
+                let t = *into + cycles;
+                *into = t % BEAM_CYCLES_PER_LINE;
+                t / BEAM_CYCLES_PER_LINE
+            }
+            None => cycles.div_ceil(BEAM_CYCLES_PER_LINE),
+        };
+        self.line = (self.line as u32 + lines).min(u16::MAX as u32) as u16;
     }
 
     /// The file of `file_table`'s entry at h0+`entry` is read (`track_read`, h0+$b098): its disk
@@ -875,6 +885,7 @@ impl Front {
         display: &DisplayData,
         input: FrameInput,
         line: u16,
+        into: u32,
     ) -> (Vec<PaulaWrite>, Vec<crate::game::Job>) {
         // The level's own poll has handled this frame's keyboard byte.
         self.keyboard.held = input.keys;
@@ -912,7 +923,9 @@ impl Front {
             load_runs: Vec::new(),
             load_given: false,
             disk_prompt: None,
+            into: None,
         };
+        cx.into = Some(into);
         self.run_main(&mut cx, u16::MAX);
         self.stalled = cx.stall;
         self.ret = cx.ret;
@@ -1036,6 +1049,7 @@ impl Front {
                 load_runs: Vec::new(),
                 load_given: false,
                 disk_prompt: None,
+            into: None,
             };
             title::boot(&mut cx);
             self.cop1lc = cx.cop1lc;
@@ -1098,6 +1112,7 @@ impl Front {
             load_runs: Vec::new(),
             load_given: false,
             disk_prompt: None,
+            into: None,
         };
         // Work the main program carried over from the last frame with interrupts off.
         let masked = match self.stack.last() {
@@ -1484,7 +1499,13 @@ impl Front {
                                 None
                             }
                         }
-                        Yield::Line(n) => (*since < *n && cx.line <= *n).then_some(*n),
+                        // The original's `cmpi.b #n,VPOS; bne` passes at once anywhere on line
+                        // n: a wait begun there is over where the beam is known to the cycle
+                        // (T203: `level_exit_fade`'s wait for $d0 after W6-3's loop, begun on
+                        // 208); with whole lines, `n` may stand for the line before.
+                        Yield::Line(n) => ((*since < *n || *since == *n && cx.into.is_some())
+                            && cx.line <= *n)
+                            .then_some(*n),
                         Yield::Fade(rec) => fade::done(cx.s, *rec).then_some(cx.line),
                         Yield::Poll => (*since == 0).then_some(cx.line),
                         Yield::Masked(_) => None,
@@ -1498,6 +1519,9 @@ impl Front {
                                 && l > VBL_END_LINE
                             {
                                 b.push((l, cx.s.clone()));
+                            }
+                            if l > cx.line {
+                                cx.into = cx.into.map(|_| 0);
                             }
                             cx.line = cx.line.max(l);
                             top.wait = None;

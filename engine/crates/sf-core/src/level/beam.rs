@@ -569,6 +569,12 @@ pub struct Cut {
 /// A [`Cut`] whose call has no loop steps counted: the clock decides within it.
 pub const NO_STEP: u16 = 0xffff;
 
+/// A [`Cut`]'s `phase` when the original's frame ended in the level's interrupt (`vbl_handler`'s
+/// VBL work or its copper half) with the main loop in its wait, not in a pass (T203): the engine
+/// ends the frame there, and the next vertical blank is held until the handler returns
+/// ([`super::LevelCtx::irq_due`]).
+pub const IRQ_PHASE: u8 = 14;
+
 /// A frame the main program runs through: its vertical blank's hardware, and, when it ends in
 /// the middle of a pass, where.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -588,6 +594,9 @@ pub struct Pending {
     pub hw: super::Hw,
     pub pre: u16,
     pub frames: Vec<FrameSpec>,
+    /// Not a pass but a vertical blank's handler the frame ended in ([`IRQ_PHASE`]): `start` is
+    /// the state before the first of `frames`' vertical blank, which runs again from there.
+    pub vbl: bool,
 }
 
 /// The level's main program on the beam for one step ([`super::frame::main_program`]): the
@@ -621,8 +630,12 @@ pub struct Frames {
     pub pending: Option<Pending>,
     /// What the step's own frame wrote to the display's memory.
     pub log: Option<crate::mem::WriteLog>,
-    /// `level_frame_loop` returned in the step's own frame, the beam on this line (T37).
-    pub ended: Option<u16>,
+    /// `level_frame_loop` returned in the step's own frame, the beam on this line (T37) and
+    /// this many CPU cycles into it (T203).
+    pub ended: Option<(u16, u32)>,
+    /// Before a vertical blank whose handler a frame may end in ([`IRQ_PHASE`]): the state, beam
+    /// and hardware then, and the frame it is the blank of.
+    pub vbl_start: Option<(Box<crate::state::State>, Clock, super::Hw, usize)>,
 }
 
 impl Frames {

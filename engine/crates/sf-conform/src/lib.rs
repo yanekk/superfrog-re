@@ -326,7 +326,7 @@ fn run_inner(
                 let mut seen = false;
                 let mut prev_mem = mem.clone();
                 loop {
-                    let chain = sync::main_chain(&amiga.cpu(), &mem);
+                    let chain = sync::main_chain_deep(&amiga.cpu(), &mem, usize::MAX);
                     let over = match end {
                         LoadEnd::Reached(a) => chain.iter().take(4).any(|&x| x == a),
                         LoadEnd::Left(a) => {

@@ -635,6 +635,11 @@ layout! {
     /// `level_palette` (h1+$31de0): the level's 32 colours, from its map's `PALA` (h0+$1622a);
     /// the fades fade to it.
     LevelPalette = "level_palette", h1(0x31de0), Width::Bytes(0x40);
+    /// `tile_heights` (h1+$31e20): each of 840 tiles' height in each of its 16 pixel columns,
+    /// built by h0+$d950 from the world's `LnMS` as `world_load_wN` loads it
+    /// ([`crate::mem::tile_heights`]). The bonus level has no masks: its load leaves the last
+    /// world's (T203: a shot bonus enemy's reward lands on W5's heights in the whole game).
+    TileHeights = "tile_heights", h1(0x31e20), Width::Bytes(crate::mem::TILE_HEIGHTS_BYTES);
     // Ids with no entry here (not in `VarId::ALL`): a program with its own memory map keeps its
     // own table of them.
     @outside {

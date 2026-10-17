@@ -597,6 +597,9 @@ impl WorldLoad {
                     let display = cx.display;
                     exit::with_level(cx, false, |c| {
                         c.bus.st.poke(crate::layout::H3, display.bob_sheet(World::Final));
+                        if let Some(h) = display.rom().tile_heights(World::Final) {
+                            c.bus.st.poke(crate::mem::TILE_HEIGHTS, h);
+                        }
                     });
                     cx.loaded(LoadEnd::Left(ret));
                 }
@@ -629,6 +632,11 @@ impl WorldLoad {
                 let world = level_id(self.world, 1).world;
                 exit::with_level(cx, false, |c| {
                     c.bus.st.poke(crate::layout::H3, display.bob_sheet(world));
+                    // The masks' heights (h0+$d950); the bonus level has no masks and leaves
+                    // the last world's.
+                    if let Some(h) = display.rom().tile_heights(world) {
+                        c.bus.st.poke(crate::mem::TILE_HEIGHTS, h);
+                    }
                 });
                 // The original waits for the tiles in `world_intro_end`, called from
                 // `progress_map_show`'s `overlays_end` (under the trackloader the runner's stack
