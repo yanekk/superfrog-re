@@ -159,6 +159,18 @@ impl InputScript {
         }
     }
 
+    /// The script as played from its frame `from` on: its frame 0 holds what `from` held.
+    pub fn from_frame(&self, from: u32) -> InputScript {
+        let mut lines = vec![(0, self.input_at(from))];
+        lines.extend(
+            self.lines
+                .iter()
+                .filter(|l| l.0 > from)
+                .map(|&(f, i)| (f - from, i)),
+        );
+        InputScript { lines }
+    }
+
     /// The same script for the oracle's trace cache.
     pub fn to_oracle(&self) -> sf_oracle::InputScript {
         sf_oracle::InputScript::new(self.lines.clone())

@@ -14,9 +14,12 @@ fn main() {
     let s = sync::reach_frozen(&case.sync, &case.script, to + 20000, frozen).unwrap();
     let mut am = s.amiga;
     let display = sf_conform::display_data();
+    // Each disk the original asks for goes in, as the runner does.
+    let mut disks = sync::Disks::at(&s.memory);
     for f in 0..from {
         frozen.apply(&mut am, &display);
         sync::step_inserting(&mut am, case.script.input_at(f)).unwrap();
+        disks.serve(&mut am);
     }
     am.set_profile(true);
     let dma = std::env::var_os("DMA").is_some();
@@ -33,6 +36,7 @@ fn main() {
     for f in from..to {
         frozen.apply(&mut am, &display);
         sync::step_inserting(&mut am, case.script.input_at(f)).unwrap();
+        disks.serve(&mut am);
         for s in am.line_samples() {
             let rets: Vec<String> = s
                 .stack

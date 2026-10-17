@@ -34,8 +34,9 @@ pub enum SyncPoint {
     /// their first map set, as the engine plays them (docs/10). The boot reaches the title
     /// [`DF1_LEAD`] frames sooner.
     PowerOnDf1,
-    /// Run the named script from power-on for `frame` frames.
-    AtFrame { script: String, frame: u32 },
+    /// Run the named script from power-on for `frame` frames; with `df1`, an empty df1 connected
+    /// as [`SyncPoint::PowerOnDf1`] (T208: a stretch of the whole game).
+    AtFrame { script: String, frame: u32, df1: bool },
     /// The first frame of a level, reached the way a player would: W1-1 by START GAME from the
     /// title menu (`scripts/start-w1-1.txt`), every other level of W1–W6 and the bonus level by
     /// typing its level code on the options screen, inserting each disk the game asks for. W6-2..4
@@ -555,12 +556,21 @@ pub fn reach_frozen(
                 seed,
             })
         }
-        SyncPoint::AtFrame { script, frame } => {
+        SyncPoint::AtFrame { script, frame, df1 } => {
             let s = InputScript::load(&script_path(script))?;
             let key = format!("{tag}frame {frame} script\n{}", s.to_oracle().canonical());
-            at_snapshot(&key, 1, frames, *frame, |a| {
+            at_snapshot(&key, 1 + *df1 as u8, frames, *frame, |a| {
+                // With df1, as a power-on case runs: each disk the original asks for goes in.
+                let mut disks = df1.then(|| Disks::at(&core_memory(a.memory())));
                 for f in 0..*frame {
-                    step(a, s.input_at(f), frozen)?;
+                    match disks.as_mut() {
+                        None => step(a, s.input_at(f), frozen)?,
+                        Some(d) => {
+                            frozen.apply(a, &crate::display_data());
+                            step_inserting(a, s.input_at(f))?;
+                            d.serve(a);
+                        }
+                    }
                 }
                 Ok(())
             })
