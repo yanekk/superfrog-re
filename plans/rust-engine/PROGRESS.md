@@ -14,7 +14,7 @@ the account is the commit message. Whoever writes a cell also fixes the over-bud
 **Status:** about 100 tasks ✅; T18, T21 and Phase 3 open; amended to faithful.
 **Last updated:** 2026-10-15
 **Amended 2026-10-15 (owner):** faithful replaces frame-exact (DESIGN §2.1, PLAN.md amendment); T180–T183 added, 14 tasks dropped (PLAN.md).
-**Next `pir-work` will:** T180 faithful-compare, then T182; T126 and T132 finish against the faithful bar.
+**Next `pir-work` will:** review T208; then T209 whole-game-alone.
 
 ## Tasks
 
@@ -173,7 +173,7 @@ done · ⛔ blocked, needs a human. A task dropped by a plan amendment leaves th
 | T205 | chain-routes-w1-w2 | T202; blocks T203 | ✅ | |
 | T206 | chain-routes-w3-w4 | T205; blocks T203 | ✅ | |
 | T207 | chain-routes-w5-w6-final | T206; blocks T203 | ✅ | |
-| T208 | w6-4-start-and-final-load | T203; blocks T23, T29 | ⬜ | |
+| T208 | w6-4-start-and-final-load | T203; blocks T23, T29 | 🔍 | Both fixed, measured: `BLANK_COSTS` bob set-up (frame record 213, sub-record 3044, slot 175); `title::OverlayShow` before the final level. `game-whole` scan: checks 1–3 clean to `end_seq_load`; only check 4 at 43542 (T209). Green: every code-, chain-, attract-, front-, slot-, bonus-, tally-, game-over-, final- case; new `whole-w6-4-start`, `whole-final-load`. Deviations: case keys `df1`, `script-from`; chain.rs pin 1494→1514. |
 | T209 | whole-game-alone | T203, T208; blocks T23, T29 | ⬜ | |
 
 A Notes cell holds what was built or what the review found, the test count, and one line per

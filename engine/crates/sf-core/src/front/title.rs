@@ -146,11 +146,12 @@ const OVERLAY_SETUP_CYCLES: u32 = 24 * BEAM_CYCLES_PER_LINE;
 const OVERLAY_STEP_CYCLES: u32 = 37 * BEAM_CYCLES_PER_LINE / 2;
 const OVERLAY_LAST_STEP_CYCLES: u32 = 10 * BEAM_CYCLES_PER_LINE;
 
-/// `access_overlay_show` (h0+$b6f8) on the beam, as `top_loop` calls it before the final level
-/// (T208), where no load follows at once to cover its time as at every other call: the overlay
-/// unpacked and relocated across eleven frames, then its program (h0+$0): a wait for line `$ff`,
-/// its set-up, and its fade in, a frame an iteration (a wait for line `$ff`, then for `$100`, then
-/// two steps) until a step finds nothing to change.
+/// `access_overlay_show` (h0+$b6f8) on the beam, as `top_loop` calls it (T208): with nothing up
+/// only before the final level, where no load covers its time, and at a world's entry by a level
+/// code (`chain-level-code`'s W3), before the world's loads. The overlay unpacked and relocated
+/// across eleven frames, then its program (h0+$0): a wait for line `$ff`, its set-up, and its fade
+/// in, a frame an iteration (a wait for line `$ff`, then for `$100`, then two steps) until a step
+/// finds nothing to change. The other callers show it at once, under their loads.
 #[derive(Debug, Clone, Default, PartialEq, Eq, Hash)]
 pub(crate) struct OverlayShow {
     pc: u8,

@@ -22,7 +22,9 @@ fn start_game_reaches_w1_1_as_the_original_does() {
 /// the options left, START GAME: `game_start_at` takes the code and `top_loop` jumps to world 3's
 /// entry, W3's loads from disk 2 (each disk the original asks for put in), W3's loading picture,
 /// the progress map, W3-1 played: faithful and alone, nothing unported on the way. Disk 2 is
-/// asked for once, on the same frame of play as the original asks (T21: a milestone).
+/// asked for once, on the same frame of play as the original asks (T21: a milestone). Its frame
+/// counts the overlay's unpack and fade before W3's loads as play since T208 (1494 when the engine
+/// showed it at once and the runner skipped its 20 frames with the load's).
 #[test]
 fn a_level_code_starts_the_game_at_w3_1_as_the_original_does() {
     use sf_conform::milestones::Milestone;
@@ -40,7 +42,7 @@ fn a_level_code_starts_the_game_at_w3_1_as_the_original_does() {
         .into_iter()
         .filter(|(_, m)| matches!(m, Milestone::DiskAsked { .. }))
         .collect();
-    assert_eq!(asked, [(1494, Milestone::DiskAsked { disk: 2 })]);
+    assert_eq!(asked, [(1514, Milestone::DiskAsked { disk: 2 })]);
     assert_eq!(unported, Vec::<&str>::new());
     // A code typed wrong starts at W1-1 on both sides, faithful too: the code must have been taken.
     assert_eq!(world, 3, "the run did not end in world 3");

@@ -1,8 +1,8 @@
 # W6-4's end to the final level in the whole game (T208): `game-whole` from the original's frame
 # 241300 (W6-4 at chain-w6-4's ~10344, its level transplanted), the exit, then `top_loop`'s
-# `access_overlay_show` with nothing up, the only one no load covers: the overlay unpacked over
-# eleven frames and faded in over nine before `world_load_lw` sets `final_level_flag`; the final
-# level's load and its first frames. The first run reaches the sync point in ~9 minutes.
+# `access_overlay_show` with nothing up, which no load covers: the overlay unpacked over eleven
+# frames and faded in over nine before `world_load_lw` sets `final_level_flag`; the final level's
+# load and its first frames. The first run reaches the sync point in ~9 minutes.
 sync = { script = "game-whole", frame = 241300, df1 = true }
 script = "game-whole"
 script-from = 241300
