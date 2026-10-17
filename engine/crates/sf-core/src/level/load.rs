@@ -217,6 +217,10 @@ pub(crate) fn level_load(c: &mut LevelCtx, display: &DisplayData, id: LevelId) {
     // The world's bobs (`LnBO`), loaded into hunk 3 by `world_load_wN` (the final level's by
     // `world_load_lw`).
     b.st.poke(crate::layout::H3, display.bob_sheet(id.world));
+    // Its masks' heights (h0+$d950), but for the bonus level's, which has none.
+    if let Some(h) = display.rom().tile_heights(id.world) {
+        b.st.poke(crate::mem::TILE_HEIGHTS, h);
+    }
     // The map file, as load_file leaves it.
     let file = display.levels.get(&id).cloned().unwrap_or_default();
     for (k, &v) in file.iter().enumerate() {
