@@ -237,7 +237,7 @@ pub fn pacing(cpu: &CpuRegs, m: &AmigaMemory, writes: &[sf_paula::PaulaWrite]) -
     }
     if in_level(m)
         && word(m, VBL_COUNT) >= 2
-        && copper_irq_main_pc(cpu, m).is_some_and(|pc| LEVEL_WAIT.contains(&pc))
+        && irq_frame(cpu, m).is_some_and(|(ret, pc)| ret == COPPER_IRQ_RETURN && LEVEL_WAIT.contains(&pc))
     {
         // The pass was due but never began: the copper interrupt's blits held the CPU through
         // the frame's end, the main loop still in its wait (T195: W3-3 4026, 5280). The engine
@@ -250,6 +250,12 @@ pub fn pacing(cpu: &CpuRegs, m: &AmigaMemory, writes: &[sf_paula::PaulaWrite]) -
         && sf_core::level::n_clear((word(m, VBL_COUNT) as u16).wrapping_sub(2))
     {
         return Pacing::PassDue;
+    }
+    // In the level's interrupt with the main loop in its wait (T203: W1-2 in the whole game, the
+    // scroller redrawing the screen through five frames, its copper blits five more): the engine
+    // ends the frame there and holds the next vertical blank as the original does.
+    if in_level(m) && irq_frame(cpu, m).is_some_and(|(_, pc)| LEVEL_WAIT.contains(&pc)) {
+        return late(sf_core::level::beam::IRQ_PHASE, sf_core::level::beam::NO_STEP);
     }
     if mid_pass(cpu, m) {
         let phase = pass_phase(cpu, m);
@@ -267,18 +273,35 @@ pub fn pacing(cpu: &CpuRegs, m: &AmigaMemory, writes: &[sf_paula::PaulaWrite]) -
 /// `vbl_handler`'s call of `copper_irq_blits` returns here (h0+$11d1a).
 const COPPER_IRQ_RETURN: u32 = h0(0x11d1e);
 
-/// When the frame ended inside the copper interrupt's blits (`copper_irq_blits`, its vertical
-/// blank held back behind it at the same level), where the main program was: the PC in the
-/// interrupt's frame, above the 15 registers `vbl_handler` saved and the status register.
-fn copper_irq_main_pc(cpu: &CpuRegs, m: &AmigaMemory) -> Option<u32> {
+/// `vbl_handler`'s body (h0+$11bf8..$11d2c): its calls return into it, its `rte`s are at
+/// h0+$11d18 and h0+$11d2a.
+const VBL_BODY: Range<u32> = h0(0x11bf8)..h0(0x11d2c);
+const VBL_RTES: [u32; 2] = [h0(0x11d18), h0(0x11d2a)];
+
+/// When the frame ended inside the level's interrupt (`vbl_handler`'s VBL work or its copper
+/// half, `copper_irq_blits`, the next vertical blank held back behind it at the same level): the
+/// handler's call it was in (its return address, or the handler's own PC outside a call) and
+/// where the main program was, the PC in the interrupt's frame above the 15 registers
+/// `vbl_handler` saved and the status register. Not in the paused path's nested save
+/// (`logic_running` clear there, so never in a level).
+fn irq_frame(cpu: &CpuRegs, m: &AmigaMemory) -> Option<(u32, u32)> {
     if cpu.pc == VBL_HANDLER || long(m, 0x6c) != VBL_HANDLER {
         return None;
     }
     let sp = cpu.a[7];
+    if VBL_RTES.contains(&cpu.pc) {
+        return Some((cpu.pc, long(m, sp + 2)));
+    }
+    if VBL_BODY.contains(&cpu.pc) {
+        return Some((cpu.pc, long(m, sp + 15 * 4 + 2)));
+    }
     (sp..sp + 0x100)
         .step_by(2)
-        .find(|&a| long(m, a) == COPPER_IRQ_RETURN)
-        .map(|a| long(m, a + 4 + 15 * 4 + 2))
+        .find(|&a| {
+            let r = long(m, a);
+            VBL_BODY.contains(&r) && (word(m, r - 4) == 0x6100 || word(m, r - 6) == 0x4eb9)
+        })
+        .map(|a| (long(m, a), long(m, a + 4 + 15 * 4 + 2)))
 }
 
 /// The return addresses of `level_frame_loop`'s calls in its pass, in order (h0+$abe..$b00).
