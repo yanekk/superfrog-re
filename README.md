@@ -29,6 +29,8 @@ supply your own copies in the repo root before running the tools.
 | Collision flags decoded; **secret passages (fake walls) found** — 144 across the game | ✅ |
 | Map editor (view + edit + repack `ATN!` + rebuild `.adf`) | ⬜ next |
 
+What comes after the Rust engine (milestone 2 and later ideas) is in [`ROADMAP.md`](ROADMAP.md).
+
 **29 levels** found (all `300 × 84` blocks), stored as `ATN!`-packed `T7MP` files.
 
 ## Quickstart
