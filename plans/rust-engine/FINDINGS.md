@@ -18,6 +18,7 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-17 | 📌 | T203 review: its four fixes are guarded only by `game-whole`, in no test until T209's `game_whole`. `EXIT_FADE_CYCLES` at 29500 stays green on complete-w4-1, chain-w1-1-to-w1-2, complete-w1-2, chain-w5-4-to-bonus. |
 | 2026-10-17 | 🔄 | Owner, T203: added T208 w6-4-start-and-final-load (T203) and T209 whole-game-alone (T203, T208; carries T203's green), both blocking T23, T29: the three divergences T203 left, by check. |
 | 2026-10-17 | 🐞 | T203, `game-whole` check 4 (`run --alone`): red at play frame 43522, the original's coin (92 left) taken 59 frames later by the engine alone (43581). Matters to play. Was 15053 before T203. |
 | 2026-10-17 | 🐞 | T203, `game-whole` 222665–222679: `final_level_flag` set 15 frames early, check 1 only; the final level's load re-aligns both. The engine reaches `world_load_lw` sooner, cause not found. No effect on play seen. |
