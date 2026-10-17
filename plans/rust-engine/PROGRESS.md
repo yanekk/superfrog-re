@@ -168,16 +168,18 @@ done · ⛔ blocked, needs a human. A task dropped by a plan amendment leaves th
 | T200 | hiscore-entry | T21; blocks T23, T29 | ✅ | |
 | T201 | continue-and-codes | T21, T200; blocks T23, T29 | ✅ | |
 | T202 | whole-game-script | T21, T198, T199; blocks T23, T29 | ✅ | |
-| T203 | whole-game-green | T21, T202; blocks T23, T29 | ⬜ | |
+| T203 | whole-game-green | T21, T202; blocks T23, T29 | 🔍 | Four fixes: frames ending in the level interrupt (`IRQ_PHASE`); load end through the whole stack; `tile_heights` a `LAYOUT` variable; exit fade timed to the cycle (`Cx::into`). Checks 1–3 green to W6-4. No new tests (the case is the test). Deviation: green, run time and `chain.rs` test moved to T209, W6-4 to T208 (owner, 2026-10-17). |
 | T204 | w3-4-template-86 | T201; blocks T203 | ✅ | |
 | T205 | chain-routes-w1-w2 | T202; blocks T203 | ✅ | |
 | T206 | chain-routes-w3-w4 | T205; blocks T203 | ✅ | |
 | T207 | chain-routes-w5-w6-final | T206; blocks T203 | ✅ | |
+| T208 | w6-4-start-and-final-load | T203; blocks T23, T29 | ⬜ | |
+| T209 | whole-game-alone | T203, T208; blocks T23, T29 | ⬜ | |
 
 A Notes cell holds what was built or what the review found, the test count, and one line per
 deviation from the task doc. A ✅ task's cell may be cut to one line once the next task has been reviewed.
 
-**Review queue:** *(empty)*
+**Review queue:** T203
 
 ## Blocked on the user
 

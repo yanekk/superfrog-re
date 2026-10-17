@@ -18,6 +18,7 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-17 | 🔄 | Owner, T203: added T208 w6-4-start-and-final-load (T203) and T209 whole-game-alone (T203, T208; carries T203's green), both blocking T23, T29: the three divergences T203 left, by check. |
 | 2026-10-17 | 🐞 | T203, `game-whole` check 4 (`run --alone`): red at play frame 43522, the original's coin (92 left) taken 59 frames later by the engine alone (43581). Matters to play. Was 15053 before T203. |
 | 2026-10-17 | 🐞 | T203, `game-whole` 222665–222679: `final_level_flag` set 15 frames early, check 1 only; the final level's load re-aligns both. The engine reaches `world_load_lw` sooner, cause not found. No effect on play seen. |
 | 2026-10-17 | 🐞 | T203, `game-whole` 212074–212098: W6-4's `level_start` a frame early. Check 1 (fades, then `frog_anim`), check 2 (fade-in, 13–20 frames past one step). The original's blits run to line 258, missing `wait_frame_raster`'s $ff. |
