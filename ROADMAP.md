@@ -80,6 +80,38 @@ switches pressed and items held; that granularity is the main thing to tune.
 A trained game-playing model is not proposed: with exact state, instant save states and a
 deterministic engine, search does better and costs far less.
 
+### A movement-aware map for the planners
+
+What slowed the whole-game routes (T205–T207, 2026-10-16/17): `plan_exit` simulates every candidate
+move on the engine, so a route can never break the game's mechanics, but it steers by a distance
+field flooded through the map's open cells. That field is geometry only: it treats any open cell as
+reachable, as if the frog could float. It does not know that a jump rises about 7 rows, a running
+jump clears about 17 cells, a pad lifts about 24 rows, falling is free and climbing back may be
+impossible (all measured, in the rust-engine plan's `FINDINGS.md`). The stalls followed: W1-4's
+planner jumped for hours under coins the field called near; W6-2's field called a room reachable
+only by riding darts out of reach; W6-3's last coins sat "above open air the field can't climb".
+Workers patch around it with `--ground`, `--fly` and hand-placed `--via` waypoints.
+
+The fix: a reachability graph. For each cell the frog can stand on, the cells it can reach by a
+walk, a jump, a running jump, a fall, a pad or spring launch, or flight while it has the wings,
+measured by trying those moves on the engine from that cell (exact, no formula). Distances on that
+graph count moves, not cells; the planner's field and the explorer's cell choice both steer by it,
+and the coin-subset choice below can be made on it before moving.
+
+Smaller changes suggested to T207 on 2026-10-17, to keep or finish:
+
+- Route repair (`--follow`, built in T207): replay a leg's standalone route and search only where the
+  chain's carried state (power-ups, `rng_state`, `obj_slots`) pulls the frog off its trail. On W6-3
+  it got past the point where the plain planner gave up after 43 minutes, and showed the switch the
+  plain plan had walked past.
+- Keep the explorer's archive between coins instead of rebuilding it after each one (W2-4: 31 failed
+  searches of 4 000 bursts over the same rooms).
+- Choose which coins to take before moving: the exit needs a count, not every coin, and
+  nearest-first led the planners to the hardest ones.
+
+Not needed while T203 (the whole game green) goes smoothly; the chained routes are already found.
+If T203 or a later plan has to re-route levels at scale, this comes first.
+
 ### Simplify the timing simulation
 
 The frame-exact bar left code that models where in a frame things happen: the beam cost model
