@@ -171,13 +171,13 @@ done · ⛔ blocked, needs a human. A task dropped by a plan amendment leaves th
 | T203 | whole-game-green | T21, T202; blocks T23, T29 | ⬜ | |
 | T204 | w3-4-template-86 | T201; blocks T203 | ✅ | |
 | T205 | chain-routes-w1-w2 | T202; blocks T203 | ✅ | |
-| T206 | chain-routes-w3-w4 | T205; blocks T203 | ⬜ | |
+| T206 | chain-routes-w3-w4 | T205; blocks T203 | 🔍 | chain-w3-1..w4-4 (explore for W3, plan_exit for W4); `game-whole.txt` to W5-1, no life lost; case frames 157050. Deviations: lag-limit 261→390 (W4-3's run in the chain, as the doc allows); `explore` gains `--avoid`, prints coins left (doc lists no explore change). No new tests; `game-whole` test asserts W1–W4 exits, W5-1. |
 | T207 | chain-routes-w5-w6-final | T206; blocks T203 | ⬜ | |
 
 A Notes cell holds what was built or what the review found, the test count, and one line per
 deviation from the task doc. A ✅ task's cell may be cut to one line once the next task has been reviewed.
 
-**Review queue:** *(empty)*
+**Review queue:** T206
 
 ## Blocked on the user
 
