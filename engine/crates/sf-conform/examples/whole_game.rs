@@ -83,7 +83,7 @@ const LEGS: [Leg; 26] = [
     leg("W3-4", 3, 4, "chain-w3-4", false),
     leg("W4-1", 4, 1, "chain-w4-1", false),
     leg("W4-2", 4, 2, "chain-w4-2", false),
-    leg("W4-3", 4, 3, "complete-w4-3", true),
+    leg("W4-3", 4, 3, "chain-w4-3", false),
     leg("W4-4", 4, 4, "complete-w4-4", true),
     leg("W5-1", 5, 1, "enemies-w5-1-complete", true),
     leg("W5-2", 5, 2, "enemies-w5-2-complete", true),
