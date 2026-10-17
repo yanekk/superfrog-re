@@ -108,6 +108,8 @@ pub(crate) enum Yield {
 pub(crate) enum Routine {
     Title(title::Title),
     Overlay(title::OverlayEnd),
+    /// `access_overlay_show` on the beam, before the final level (T208).
+    OverlayShow(title::OverlayShow),
     IntroAnim(title::IntroAnim),
     FadeIn(title::TitleFadeIn),
     Password(password::Entry),
@@ -182,6 +184,7 @@ impl Routine {
         match self {
             Routine::Title(r) => r.run(cx),
             Routine::Overlay(r) => r.run(cx),
+            Routine::OverlayShow(r) => r.run(cx),
             Routine::IntroAnim(r) => r.run(cx),
             Routine::FadeIn(r) => r.run(cx),
             Routine::Password(r) => r.run(cx),

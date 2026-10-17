@@ -8,7 +8,7 @@ use super::blit::Blit;
 use super::common::{FadeKind, MusicFadeWait, MusicStart, call, fade, palette_wait};
 use super::data::OVERLAY_AT;
 use super::fade::{self, RECORDS, Rec};
-use super::{Cx, Routine, Yield, at, h2, sprite};
+use super::{BEAM_CYCLES_PER_LINE, Cx, Routine, Yield, at, h2, sprite};
 use crate::audio::{DMACON, File, INTENA};
 use crate::layout::h3;
 
@@ -100,6 +100,17 @@ pub(super) fn level_tables(cx: &mut Cx) {
 /// `access_overlay_show` (h0+$b6f8) when no overlay is up: the Accessing-disk program is unpacked
 /// at [`OVERLAY_AT`] and run: it points its copper list at its picture and fades it in.
 pub(crate) fn overlay_show(cx: &mut Cx) {
+    let rec = overlay_place(cx);
+    while !fade::done(cx.s, rec) {
+        fade::step_in_rec(cx.s, rec);
+        fade::step_in_rec(cx.s, rec);
+    }
+    overlay_up(cx);
+}
+
+/// The overlay's start once unpacked and relocated: its program at [`OVERLAY_AT`], its picture's
+/// planes, its copper list, and its fade in (+$8e) set up, with its own copy of the fade code.
+fn overlay_place(cx: &mut Cx) -> Rec {
     let o = &cx.data.overlay;
     cx.s.write(OVERLAY_AT, &o.clone());
     let ov = |off: u32| OVERLAY_AT + off;
@@ -110,15 +121,93 @@ pub(crate) fn overlay_show(cx: &mut Cx) {
         cx.s.set_w(ov(0x4ac2) + 8 * k + 2, (p >> 16) as u16);
     }
     cx.cop1lc = ov(0x4a5e);
-    // Its fade in (+$8e), with its own copy of the fade code: two steps a frame until done.
     let rec = Rec::overlay(ov(0x62a));
     fade::fade_in(cx.s, rec, ov(0x4a82), ov(0x4b6e), 0x10);
-    while !fade::done(cx.s, rec) {
-        fade::step_in_rec(cx.s, rec);
-        fade::step_in_rec(cx.s, rec);
-    }
+    rec
+}
+
+/// The overlay's program returned: `access_overlay_show` keeps its palette and target (h0+$b766).
+fn overlay_up(cx: &mut Cx) {
+    let ov = |off: u32| OVERLAY_AT + off;
     cx.s.set_l(OVERLAY_PALETTE, ov(0x4a82));
     cx.s.set_l(OVERLAY_TARGET, ov(0x4b6e));
+}
+
+/// `access_overlay_show`'s unpack and relocation of the overlay (`atn_decompress`,
+/// `hunk_relocate`), measured on the oracle before the final level (`game-whole`, T208): 3302
+/// lines of the main program from line 37, the screen blank.
+const OVERLAY_UNPACK_CYCLES: u32 = 3302 * BEAM_CYCLES_PER_LINE;
+/// Where the original is meanwhile: `access_overlay_show`'s calls' return addresses.
+const OVERLAY_UNPACK_INSIDE: [u32; 2] = [at(0xb74c), at(0xb75e)];
+/// The overlay's set-up after its wait for line `$ff` (planes, copper list, the fade's set-up at
+/// +$278): lines 256 to 280. Two fade steps that change colours: lines 257 to 294; the step that
+/// finds none left to change, with the loop's test: 257 to 267 (measured as above).
+const OVERLAY_SETUP_CYCLES: u32 = 24 * BEAM_CYCLES_PER_LINE;
+const OVERLAY_STEP_CYCLES: u32 = 37 * BEAM_CYCLES_PER_LINE / 2;
+const OVERLAY_LAST_STEP_CYCLES: u32 = 10 * BEAM_CYCLES_PER_LINE;
+
+/// `access_overlay_show` (h0+$b6f8) on the beam, as `top_loop` calls it before the final level
+/// (T208), where no load follows at once to cover its time as at every other call: the overlay
+/// unpacked and relocated across eleven frames, then its program (h0+$0): a wait for line `$ff`,
+/// its set-up, and its fade in, a frame an iteration (a wait for line `$ff`, then for `$100`, then
+/// two steps) until a step finds nothing to change.
+#[derive(Debug, Clone, Default, PartialEq, Eq, Hash)]
+pub(crate) struct OverlayShow {
+    pc: u8,
+    rec: Option<Rec>,
+}
+
+impl OverlayShow {
+    pub(super) fn run(&mut self, cx: &mut Cx) -> Yield {
+        loop {
+            match self.pc {
+                0 => {
+                    self.pc = 1;
+                    return super::ending::work(
+                        OVERLAY_UNPACK_CYCLES,
+                        &OVERLAY_UNPACK_INSIDE,
+                        Vec::new(),
+                    );
+                }
+                1 => {
+                    self.pc = 2;
+                    return Yield::Line(0xff);
+                }
+                2 => {
+                    self.rec = Some(overlay_place(cx));
+                    cx.busy(OVERLAY_SETUP_CYCLES);
+                    self.pc = 3;
+                }
+                3 => {
+                    self.pc = 4;
+                    return Yield::Line(0xff);
+                }
+                4 => {
+                    self.pc = 5;
+                    return Yield::Line(0x100);
+                }
+                _ => {
+                    let rec = self.rec.expect("placed");
+                    for _ in 0..2 {
+                        if fade::done(cx.s, rec) {
+                            break;
+                        }
+                        fade::step_in_rec(cx.s, rec);
+                        cx.busy(if fade::done(cx.s, rec) {
+                            OVERLAY_LAST_STEP_CYCLES
+                        } else {
+                            OVERLAY_STEP_CYCLES
+                        });
+                    }
+                    if fade::done(cx.s, rec) {
+                        overlay_up(cx);
+                        return Yield::Return;
+                    }
+                    self.pc = 3;
+                }
+            }
+        }
+    }
 }
 
 /// `$1d6c`, `$1dd2`: the title's files. The title music (`MUSC`) at h3+$64c70; the title picture

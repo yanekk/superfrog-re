@@ -378,8 +378,10 @@ impl Chain {
         let frog_only = self.frog_only;
         Some(match target(cx.data, to) {
             Target::AccessOverlay => {
-                access_overlay_show(cx);
-                return None;
+                if !overlay_shows(cx) {
+                    return None;
+                }
+                call(Routine::OverlayShow(Default::default()))
             }
             Target::WorldLoad(w) => call(Routine::WorldLoad(WorldLoad::new(w, to))),
             Target::ResumeJump => {
@@ -480,12 +482,10 @@ pub(crate) fn game_start_at(cx: &mut Cx) -> u32 {
     cx.l(at(row)).wrapping_sub(H0)
 }
 
-/// `access_overlay_show` (h0+$b6f8): the Accessing-disk overlay, unless one is up or no
-/// trackloader runs.
-pub(crate) fn access_overlay_show(cx: &mut Cx) {
-    if cx.s.l(END_PIC_SHOWN) == 0 && cx.s.l(OVERLAY_PALETTE) == 0 && cx.s.w(at(0x8)) != 0 {
-        super::title::overlay_show(cx);
-    }
+/// Whether `access_overlay_show` (h0+$b6f8) shows the Accessing-disk overlay: no end picture and
+/// no overlay up, and the trackloader running (`loader_mode`, h0+$8).
+fn overlay_shows(cx: &Cx) -> bool {
+    cx.s.l(END_PIC_SHOWN) == 0 && cx.s.l(OVERLAY_PALETTE) == 0 && cx.s.w(at(0x8)) != 0
 }
 
 /// The world's files: its effects bank and music, then its graphics.
