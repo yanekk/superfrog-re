@@ -172,12 +172,12 @@ done · ⛔ blocked, needs a human. A task dropped by a plan amendment leaves th
 | T204 | w3-4-template-86 | T201; blocks T203 | ✅ | |
 | T205 | chain-routes-w1-w2 | T202; blocks T203 | ✅ | |
 | T206 | chain-routes-w3-w4 | T205; blocks T203 | ✅ | |
-| T207 | chain-routes-w5-w6-final | T206; blocks T203 | 🔍 | chain-w5-1/3/4, wb-1, w6-1..4, ww-1; `game-whole.txt` to `end_seq_load`, no life lost (`--check` green); case frames 224082. Deviations: new `plan_bonus`, `snap_try`; `plan_exit_w6` gains `--snap`, `--follow`, level-end fix; W6 planned partly by `plan_exit --fly`; splice and game-whole tests extended to 26 legs. |
+| T207 | chain-routes-w5-w6-final | T206; blocks T203 | ✅ | Review clean, no fix commit: `whole_game --check` reran, end_seq_load at the original's 244365, lives 11; `run` reran red at 13886; splice test caught a shifted chain-ww-1 press. `run --alone`, `scan` and the ignored game-whole test not rerun (read-only, unchanged prefix to 170002). Chain routes W5–W6, bonus, final level; 26 legs. |
 
 A Notes cell holds what was built or what the review found, the test count, and one line per
 deviation from the task doc. A ✅ task's cell may be cut to one line once the next task has been reviewed.
 
-**Review queue:** T207
+**Review queue:** *(empty)*
 
 ## Blocked on the user
 
