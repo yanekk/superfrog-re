@@ -88,7 +88,12 @@ Every case that steps the engine (all but `render`-only ones) also runs a second
 same start, given only what check 4 allows: each frame's input as the original consumed it (its
 load and disk-wait frames skipped), the original's `Pacing`, and the RNG seeds the original read
 from its clock (at power-on in the start; `rng_seed_from_cia` at the end sequence's end, handed
-over when the engine reaches it). It gets none of the rest the comparison's engine is fed: no
+over when the engine reaches it), and each load's length: the vertical blanks the game's handler ran
+while the original loaded and no timed screen was up, whose sound and keyboard poll the engine runs
+on the frame the original's load ends (`Game::load_blanks`; owner, T209: after an even-length load
+the keyboard's poll toggle was otherwise a frame out, and a level's last pass with it). A timed
+screen's frames count as play only while it times: World 2's end picture, its time over, stays up
+through the next world's load, which is load time. It gets none of the rest the comparison's engine is fed: no
 re-sync, no transplant after a load, no beam anchors, handler timings, load lines or the memory
 that runs on during a load. Where a load leaves something, it has what its own instant load gives,
 as in normal play. A `Pacing::Late` whose cut it never reaches (it made fewer writes than the
@@ -115,7 +120,9 @@ The engine's milestones must equal the original's, in order (milestones within 1
 other in either order), each within ±10 frames of play (`MILESTONE_FRAMES`, the owner's bar).
 A failure names the first milestone that parts, and the first frame at which the engine alone
 ended a pass with a gameplay variable unlike the original's: where to look for the cause.
-`SF_CONFORM_MILESTONES=1` prints a green run's milestones.
+`SF_CONFORM_MILESTONES=1` prints a green run's milestones. `SF_CONFORM_ALONE_TRACE=<file>` writes,
+at each frame both sides end a pass, the gameplay variables the engine alone has unlike the
+original's whenever their names change (T209): the report's "first differs" is often a transient.
 
 Cases red alone are listed in FINDINGS with their owner; a test that runs one keeps checks 1–3
 with `case.alone = Alone::Off` and names the owner (T184: `enemies-w1-1`, `enemies-w3-1`,

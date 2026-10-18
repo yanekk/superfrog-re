@@ -954,6 +954,54 @@ impl Front {
         (paula, jobs)
     }
 
+    /// `frames` vertical blanks with the main program away in the trackloader: the handler's
+    /// sound and keyboard poll ([`vbl::load_blank`]), as the original runs them on each frame a
+    /// load takes. The engine loads at once; how long the original's load took is the
+    /// disk's, which the engine cannot know, given to it as an input (T209).
+    pub(crate) fn load_blanks(&mut self, s: &mut State, display: &DisplayData, frames: u32) {
+        for _ in 0..frames {
+            let mut paula = Vec::new();
+            let mut cx = Cx {
+                s: &mut *s,
+                data: &display.front,
+                display,
+                input: FrameInput::NONE,
+                paula: &mut paula,
+                keyboard: self.keyboard,
+                line: 0,
+                cop1lc: self.cop1lc,
+                load: None,
+                load_line: None,
+                load_point: None,
+                resync: Vec::new(),
+                jobs: Vec::new(),
+                ret: self.ret,
+                busy_from: None,
+                reveal: None,
+                reveal_state: None,
+                fetch: self.fetch.unwrap_or_default(),
+                stall: None,
+                unpack: None,
+                frame: self.frame,
+                seed: None,
+                unported: Vec::new(),
+                races: Vec::new(),
+                slot_outcome: None,
+                audio: None,
+                schedule: &[],
+                early: Vec::new(),
+                outcome: None,
+                load_runs: Vec::new(),
+                load_given: false,
+                disk_prompt: None,
+                into: None,
+            };
+            vbl::load_blank(&mut cx);
+            vbl::end(&mut cx);
+            self.keyboard = cx.keyboard;
+        }
+    }
+
     /// A copper interrupt requested, or acknowledged, by these writes in order.
     fn note_coper(&mut self, writes: &[PaulaWrite]) {
         for w in writes.iter().filter(|w| w.reg == 0x9c && w.value & 0x10 != 0) {

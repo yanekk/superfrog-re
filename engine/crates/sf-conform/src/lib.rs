@@ -244,6 +244,9 @@ fn run_inner(
     });
     // The original's frames loading under a timed screen since the engine's load ([`timed_screen`]).
     let mut under_screen: Vec<(FrameInput, milestones::FrameState)> = Vec::new();
+    // The vertical blanks the game's handler ran in the original's load this frame, not under a
+    // timed screen: check 4's engine is told them (owner, T209).
+    let mut load_blanks = 0u32;
     // COP1LC as the original's CPU last wrote it (from the start's as the engine has it).
     let mut cop = game.cop1lc();
     let mut outcome = Outcome {
@@ -322,6 +325,7 @@ fn run_inner(
             if let Some(end) = ours.load {
                 // The engine loaded at once; the original is compared once its load is over.
                 under_screen.clear();
+                load_blanks = 0;
                 let mut n = 0;
                 let mut seen = false;
                 let mut prev_mem = mem.clone();
@@ -361,8 +365,13 @@ fn run_inner(
                     of += 1;
                     prev_mem = std::mem::replace(&mut mem, sync::core_memory(amiga.memory()));
                     // A frame the original loads under a screen it times itself counts as play
-                    // for check 4 (owner, 2026-10-15).
-                    if alone.is_some() && cop.is_some_and(timed_screen) {
+                    // for check 4 (owner, 2026-10-15); the others are the load's length, the
+                    // vertical blanks the game's handler ran in it (owner, T209).
+                    let screen = alone.is_some() && cop.is_some_and(timed_screen) && !end_pic_over(cop, &mem);
+                    if !screen && sync::game_owns_vbl(&mem) {
+                        load_blanks += 1;
+                    }
+                    if screen {
                         under_screen.push((
                             case.script.input_at(of - 1),
                             milestones::FrameState::read(
@@ -461,7 +470,8 @@ fn run_inner(
         if let Some(a) = alone.as_mut() {
             let twice = amiga.frames_run() == 2;
             let skipped = std::mem::take(&mut under_screen);
-            a.frame(case, f, input, pacing, twice, (&amiga, &mem), cop, &ours.resync, skipped);
+            let blanks = ours.load.is_some().then_some(std::mem::take(&mut load_blanks));
+            a.frame(case, f, input, pacing, twice, (&amiga, &mem), cop, &ours.resync, skipped, blanks);
         }
         let theirs_mid = stepped && sync::mid_pass(&amiga.cpu(), &mem);
         let mut step = compare::PassStep::default();
@@ -737,6 +747,17 @@ pub fn timed_screen(cop1lc: u32) -> bool {
     [h2(0x6750), h2(0x69f0), h2(0x6494)].contains(&cop1lc)
 }
 
+/// The end-of-world picture (h2+$6494) up with its time over: a world's end picture that waits
+/// for it (World 2's) stays up while the original loads the next world, which is load time, not
+/// play (T209: `game-whole` after W2-4, 390 frames).
+fn end_pic_over(cop1lc: Option<u32>, mem: &AmigaMemory) -> bool {
+    let t = (mem.byte(DISPLAY_TIMER) as u16) << 8 | mem.byte(DISPLAY_TIMER + 1) as u16;
+    cop1lc == Some(sf_core::layout::h2(0x6494)) && (t as i16) < 1
+}
+
+/// `display_timer` (h0+$123d4).
+const DISPLAY_TIMER: u32 = h0(0x123d4);
+
 impl AloneRun {
     fn new(game: Game, disk3: bool) -> AloneRun {
         AloneRun {
@@ -771,6 +792,7 @@ impl AloneRun {
         cop1lc: Option<u32>,
         resync: &[(u32, u32)],
         skipped: Vec<(FrameInput, FrameState)>,
+        load_blanks: Option<u32>,
     ) {
         let rng = def(VarId::RngState);
         let len = rng.width.len();
@@ -779,6 +801,11 @@ impl AloneRun {
                 .push_back((rng.addr..rng.addr + len).map(|a| mem.byte(a)).collect());
         }
         if self.panicked.is_none() {
+            // The original's load ended this frame: its vertical blanks first
+            // (`Game::load_blanks`), wherever the engine's own load fell.
+            if let Some(n) = load_blanks {
+                self.game.load_blanks(n);
+            }
             let g = &mut self.game;
             let stepped = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
                 if twice {

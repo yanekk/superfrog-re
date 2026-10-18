@@ -89,7 +89,10 @@ checks hold. `sf-conform`'s default mode (`run`, `all`, `scan`) is these checks 
    original's pacing (which frames the original's pass was late), so a lag on the original does not
    shift the inputs relative to the passes. The RNG seeds the original reads from its clock (at
    power-on, and `rng_seed_from_cia` at the end sequence's end) count as inputs, since the engine keeps
-   no clock. Its milestones must equal the original's, in the same order (milestones within 10 frames of each other may come in either order), each within ±10 frames of
+   no clock. So does each load's length, which is the disk's timing: the vertical blanks the game's
+   handler ran while the original loaded (not under a screen the engine shows meanwhile), which the
+   engine runs as the original's load ends (`Game::load_blanks`: the sound and the keyboard's poll;
+   owner, T209). Its milestones must equal the original's, in the same order (milestones within 10 frames of each other may come in either order), each within ±10 frames of
    play (the original's load frames, its waits for a disk swap among them, are not counted): every scene
    change (title, menu, level start, tally, slot machine, bonus level, game over, end sequence),
    every coin and item taken, every enemy killed, every life lost, every level exit, the score at

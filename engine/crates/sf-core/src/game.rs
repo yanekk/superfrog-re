@@ -598,6 +598,17 @@ impl Game {
         }
     }
 
+    /// Frames the original's last load took beyond the one the engine's instant load stands
+    /// for, which the engine cannot know (the disk's timing): the vertical blank's sound and
+    /// keyboard poll on each, as the original runs them while the trackloader has the main
+    /// program. Conformance's engine run alone is given
+    /// them as inputs, as the clock's seeds are (DESIGN §2.1 check 4; owner, T209).
+    pub fn load_blanks(&mut self, frames: u32) {
+        if let Some(front) = self.front.as_mut() {
+            front.load_blanks(&mut self.state, &self.display, frames);
+        }
+    }
+
     /// The frame the original shows for this state (DESIGN §3.3), widened by `view`.
     pub fn render(&self, view: View) -> Picture {
         match (self.scene, &self.shown) {

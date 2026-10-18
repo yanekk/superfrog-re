@@ -22,6 +22,19 @@ pub const TITLE_TOGGLE: u32 = h0(0x3ca0);
 pub const PALETTE_LINE: u16 = 0x7c;
 const INTREQ: u16 = 0x9c;
 
+/// The handler's work on a frame the original spends loading that no screen times (T209): the
+/// sound and the keyboard's poll, which run on whatever the main program is doing. A timed
+/// screen's own work is run frame by frame as play; the rest waits for the load's end.
+pub(super) fn load_blank(cx: &mut Cx) {
+    if let Some(d) = cx.data.sound.as_ref() {
+        cx.s.audio.stream_tick(d, cx.paula);
+        cx.s.audio.music_tick(d, cx.paula);
+        cx.s.audio.music_dma_tick(d, cx.paula);
+        cx.s.audio.sfx_tick(d, cx.paula);
+    }
+    kbd_poll(cx);
+}
+
 /// The handler's work up to the fades. Returns whether the title's palette copy is due this frame
 /// (it waits for line [`PALETTE_LINE`]; [`palette_copy`]).
 pub(super) fn run(cx: &mut Cx) -> bool {
