@@ -90,6 +90,11 @@ pub fn feed(case: &Case) -> Result<FeedFiles, String> {
     if !matches!(case.sync, SyncPoint::PowerOn | SyncPoint::PowerOnDf1) {
         return Err(format!("{}: a pacing feed starts at power-on, not {:?}", case.name, case.sync));
     }
+    // A frozen case's objects are held still on both sides, which the app never does (and the
+    // feed's key does not say so, so it would find the unfrozen case's feed).
+    if case.freeze() != crate::freeze::Freeze::None {
+        return Err(format!("{}: a frozen case ({:?}) has no pacing feed", case.name, case.freeze()));
+    }
     let (feed_path, hashes_path) = paths(case)?;
     if let (Ok(text), true) = (std::fs::read_to_string(&feed_path), hashes_path.is_file())
         && let Ok(f) = Feed::parse(&text)
@@ -144,4 +149,22 @@ fn write(path: &Path, bytes: &[u8]) -> Result<(), String> {
     let tmp = path.with_extension(format!("tmp{}", std::process::id()));
     std::fs::write(&tmp, bytes).map_err(err)?;
     std::fs::rename(&tmp, path).map_err(err)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::case::{Excluded, Exclusion};
+
+    /// A frozen case's original and engine run with their objects held still (`freeze.rs`,
+    /// `Game::frog_only`), which the app never does: its feed would replay another game.
+    #[test]
+    fn a_frozen_case_has_no_feed() {
+        let mut case = Case::load(&crate::cases_dir().join("game-whole.toml")).unwrap();
+        for what in [Excluded::Objects, Excluded::Enemies] {
+            case.exclude = vec![Exclusion { what, note: String::new(), task: String::new() }];
+            let e = feed(&case).unwrap_err();
+            assert!(e.contains("frozen"), "{e}");
+        }
+    }
 }
