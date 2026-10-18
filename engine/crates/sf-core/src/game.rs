@@ -187,6 +187,10 @@ pub struct Game {
     story: Option<Box<crate::front::Story>>,
     /// The front end's last picture: drawn as the beam saw the frame, mid-step.
     shown: Option<Picture>,
+    /// How [`Game::step`]'s picture is drawn: presentation only, nothing the game reads (DESIGN
+    /// §2.7). Not in a save state: the app sets it from its own setting.
+    #[serde(skip)]
+    view: View,
     /// The seed a power-on start is waiting to put in place.
     seed: Option<Rng>,
     frame: u32,
@@ -366,6 +370,7 @@ impl Game {
             front,
             story,
             shown: None,
+            view: View::default(),
             seed,
             frame: 0,
             keys: KeySet::NONE,
@@ -476,7 +481,7 @@ impl Game {
                 self.handover_runs.clear();
                 self.shown = Some(out.picture.clone());
                 return FrameOut {
-                    picture: out.picture,
+                    picture: out.picture.widened(self.view),
                     paula: out.paula,
                     load: out.load,
                     resync: out.resync,
@@ -547,7 +552,7 @@ impl Game {
                 }
             }
             return FrameOut {
-                picture: out.picture,
+                picture: out.picture.widened(self.view),
                 paula,
                 load: out.load,
                 resync: out.resync,
@@ -598,7 +603,7 @@ impl Game {
                 unported: &mut self.level_unported,
             };
             self.scene
-                .step(&mut m, &mut self.pending, pacing, View::default(), &mut after)
+                .step(&mut m, &mut self.pending, pacing, self.view, &mut after)
         };
         let mut jobs = Vec::new();
         if let Some((front, more, begun)) = ended {
@@ -608,12 +613,13 @@ impl Game {
             self.front = Some(front);
             self.scene = Scene::Front;
             self.pending = None;
-            self.shown = shown.clone();
+            // Kept 4:3, as the front end's are: `render` widens it.
+            self.shown = shown.as_ref().map(|p| p.narrowed(self.view));
         }
         FrameOut {
             picture: match shown {
                 Some(p) => p,
-                None if draw => self.render(View::default()),
+                None if draw => self.render(self.view),
                 None => Picture::default(),
             },
             paula,
@@ -634,6 +640,17 @@ impl Game {
         if let Some(front) = self.front.as_mut() {
             front.load_blanks(&mut self.state, &self.display, frames);
         }
+    }
+
+    /// Draw [`Game::step`]'s pictures for `view` from the next step on (widescreen, DESIGN §2.7).
+    /// The game itself is untouched: every mode steps the same state.
+    pub fn set_view(&mut self, view: View) {
+        self.view = view;
+    }
+
+    /// The view [`Game::step`] draws for.
+    pub fn view(&self) -> View {
+        self.view
     }
 
     /// The frame the original shows for this state (DESIGN §3.3), widened by `view`.

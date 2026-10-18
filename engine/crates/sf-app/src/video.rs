@@ -1,6 +1,6 @@
 //! The picture to the window (DESIGN §2.7): the game's frame as a texture, drawn at a whole-number
 //! scale with nearest-neighbour sampling, centred, black around it (`window.rs` decides the scale
-//! and place). T27 adds the CRT pass here.
+//! and place). View → CRT Filter draws it through `crt.wgsl` instead, after the scaling.
 
 use std::path::Path;
 use std::sync::Arc;
@@ -21,6 +21,9 @@ pub fn picture_rgba(pic: &Picture) -> Vec<u8> {
         })
         .collect()
 }
+
+/// The CRT filter's fragment stage, appended to [`SHADER`].
+const CRT: &str = include_str!("crt.wgsl");
 
 const SHADER: &str = r#"
 @group(0) @binding(0) var frame: texture_2d<f32>;
@@ -51,6 +54,11 @@ pub struct Video {
     queue: wgpu::Queue,
     config: wgpu::SurfaceConfiguration,
     pipeline: wgpu::RenderPipeline,
+    /// The same pass through the CRT filter.
+    crt_pipeline: wgpu::RenderPipeline,
+    /// `crt.wgsl`'s `Crt`: the picture's origin and scale, and the value last written to it.
+    crt_uniform: wgpu::Buffer,
+    crt_written: std::cell::Cell<[f32; 4]>,
     layout: wgpu::BindGroupLayout,
     sampler: wgpu::Sampler,
     /// The frame texture, its size and the bind group reading it.
@@ -58,6 +66,8 @@ pub struct Video {
     pub scale: Scale,
     /// Fullscreen draws at the largest whole scale, whatever the setting (DESIGN §2.7).
     pub fullscreen: bool,
+    /// View → CRT Filter.
+    pub crt: bool,
 }
 
 /// Where [`Video::present`] puts the picture, for a `shot`: the surface's size in pixels, its
@@ -97,7 +107,7 @@ impl Video {
 
         let module = device.create_shader_module(wgpu::ShaderModuleDescriptor {
             label: Some("present"),
-            source: wgpu::ShaderSource::Wgsl(SHADER.into()),
+            source: wgpu::ShaderSource::Wgsl(format!("{SHADER}{CRT}").into()),
         });
         let layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
             label: Some("frame"),
@@ -118,6 +128,16 @@ impl Video {
                     ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
                     count: None,
                 },
+                wgpu::BindGroupLayoutEntry {
+                    binding: 2,
+                    visibility: wgpu::ShaderStages::FRAGMENT,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Uniform,
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                },
             ],
         });
         let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
@@ -125,26 +145,36 @@ impl Video {
             bind_group_layouts: &[Some(&layout)],
             ..Default::default()
         });
-        let pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-            label: Some("present"),
-            layout: Some(&pipeline_layout),
-            vertex: wgpu::VertexState {
-                module: &module,
-                entry_point: Some("vs"),
-                compilation_options: Default::default(),
-                buffers: &[],
-            },
-            primitive: Default::default(),
-            depth_stencil: None,
-            multisample: Default::default(),
-            fragment: Some(wgpu::FragmentState {
-                module: &module,
-                entry_point: Some("fs"),
-                compilation_options: Default::default(),
-                targets: &[Some(config.format.into())],
-            }),
-            multiview_mask: None,
-            cache: None,
+        let pipeline_for = |fragment: &str| {
+            device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+                label: Some(fragment),
+                layout: Some(&pipeline_layout),
+                vertex: wgpu::VertexState {
+                    module: &module,
+                    entry_point: Some("vs"),
+                    compilation_options: Default::default(),
+                    buffers: &[],
+                },
+                primitive: Default::default(),
+                depth_stencil: None,
+                multisample: Default::default(),
+                fragment: Some(wgpu::FragmentState {
+                    module: &module,
+                    entry_point: Some(fragment),
+                    compilation_options: Default::default(),
+                    targets: &[Some(config.format.into())],
+                }),
+                multiview_mask: None,
+                cache: None,
+            })
+        };
+        let pipeline = pipeline_for("fs");
+        let crt_pipeline = pipeline_for("fs_crt");
+        let crt_uniform = device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("crt"),
+            size: 16,
+            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+            mapped_at_creation: false,
         });
         // Nearest: every game pixel is a solid square of `scale` × `scale` screen pixels.
         let sampler = device.create_sampler(&wgpu::SamplerDescriptor {
@@ -159,11 +189,15 @@ impl Video {
             queue,
             config,
             pipeline,
+            crt_pipeline,
+            crt_uniform,
+            crt_written: std::cell::Cell::new([0.0; 4]),
             layout,
             sampler,
             frame: None,
             scale,
             fullscreen: false,
+            crt: false,
         })
     }
 
@@ -203,6 +237,10 @@ impl Video {
                         binding: 1,
                         resource: wgpu::BindingResource::Sampler(&self.sampler),
                     },
+                    wgpu::BindGroupEntry {
+                        binding: 2,
+                        resource: self.crt_uniform.as_entire_binding(),
+                    },
                 ],
             });
             self.frame = Some((texture, size, group));
@@ -241,6 +279,14 @@ impl Video {
         }
     }
 
+    /// Points a game pixel the picture is drawn at now (1 before any frame).
+    pub fn points_scale(&self) -> u32 {
+        let Some((_, size, _)) = &self.frame else { return 1 };
+        let shown = self.layout(*size);
+        let pixels = shown.viewport.2 / size.0.max(1);
+        (pixels / shown.scale_factor.round().max(1.0) as u32).max(1)
+    }
+
     /// Record the uploaded frame drawn onto `target`, a surface-sized texture: black, and the
     /// picture at its place.
     fn draw(&self, enc: &mut wgpu::CommandEncoder, target: &wgpu::TextureView, shown: &Shown) {
@@ -259,11 +305,19 @@ impl Video {
             ..Default::default()
         });
         let (x, y, w, h) = shown.viewport;
+        if self.crt {
+            let s = w / self.frame.as_ref().map_or(1, |f| f.1.0.max(1));
+            let value = [x as f32, y as f32, s as f32, 0.0];
+            if self.crt_written.replace(value) != value {
+                let bytes: Vec<u8> = value.iter().flat_map(|v| v.to_le_bytes()).collect();
+                self.queue.write_buffer(&self.crt_uniform, 0, &bytes);
+            }
+        }
         // A picture larger than the surface (only while a resize has not reached the surface
         // yet: the window is never below 1×) waits for the next refresh.
         if x + w <= shown.surface.0 && y + h <= shown.surface.1 {
             pass.set_viewport(x as f32, y as f32, w as f32, h as f32, 0.0, 1.0);
-            pass.set_pipeline(&self.pipeline);
+            pass.set_pipeline(if self.crt { &self.crt_pipeline } else { &self.pipeline });
             pass.set_bind_group(0, group, &[]);
             pass.draw(0..3, 0..1);
         }

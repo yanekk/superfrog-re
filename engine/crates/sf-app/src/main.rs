@@ -36,7 +36,7 @@ use std::sync::Arc;
 use std::time::{Duration, Instant, SystemTime};
 
 use sf_assets::LevelData;
-use sf_core::{DisplayData, Game, LevelId, Progress, Rng, Start, View};
+use sf_core::{DisplayData, Game, LevelId, Progress, Rng, Start};
 use sf_paula::Paula;
 use winit::application::ApplicationHandler;
 use winit::event::{ElementState, MouseButton, WindowEvent};
@@ -217,6 +217,10 @@ struct Run {
     shown: Presenter<(u64, (u32, u32), Vec<u8>)>,
     /// The number of the frame last uploaded to the GPU.
     uploaded: u64,
+    /// The number of the frame last presented, and how many stepped frames were never presented
+    /// (frame pacing, DESIGN §2.5): written to the capture's `pacing.txt`.
+    presented: u64,
+    dropped: u64,
     steps: u64,
     samples: Vec<[i16; 2]>,
     /// A `shot` asked for at this step, taken at the next present.
@@ -249,8 +253,8 @@ impl App {
         } else {
             let attrs = Window::default_attributes()
                 .with_title("Superfrog")
-                .with_inner_size(window::initial_size(scale))
-                .with_min_inner_size(window::min_size())
+                .with_inner_size(window::initial_size(scale, settings.widescreen))
+                .with_min_inner_size(window::min_size(settings.widescreen))
                 .with_active(self.script.is_none());
             match event_loop.create_window(attrs) {
                 Ok(w) => Some(Arc::new(w)),
@@ -306,6 +310,7 @@ impl App {
             Ok(v) => v,
             Err(e) => return self.fail(event_loop, &e),
         };
+        video.crt = settings.crt;
         if settings.fullscreen {
             if self.args.fullscreen_allowed() {
                 window::set_fullscreen(&window, true);
@@ -329,7 +334,8 @@ impl App {
         let display = Arc::new(DisplayData::new(&data));
         let cache_hash = sf_assets::cache_hash(&data);
         let levels = data.levels;
-        let game = Game::with_display(display.clone(), Start::PowerOn { seed: Rng::seeded(seed.0, seed.1) });
+        let mut game = Game::with_display(display.clone(), Start::PowerOn { seed: Rng::seeded(seed.0, seed.1) });
+        game.set_view(window::view(settings.widescreen));
         let mut run = Run {
             _lock: lock,
             input: Input::new(settings.keys.clone(), settings.pad.clone()),
@@ -358,11 +364,13 @@ impl App {
             shown: Presenter::default(),
             steps: 0,
             uploaded: 0,
+            presented: 0,
+            dropped: 0,
             samples: Vec::new(),
             shot: None,
         };
         // Frame 0: the start, before any step.
-        let pic = run.game.render(View::default());
+        let pic = run.game.render(run.game.view());
         let size = (pic.width as u32, pic.height as u32);
         let rgba = picture_rgba(&pic);
         if let Some(c) = &mut run.capture
@@ -486,7 +494,34 @@ impl App {
         if let Scale::N(_) = s
             && !run.settings.fullscreen
         {
-            let _ = run.window.request_inner_size(window::initial_size(s));
+            let _ = run.window.request_inner_size(window::initial_size(s, run.settings.widescreen));
+        }
+        self.save_settings();
+    }
+
+    /// View → CRT Filter: the scaled picture through `crt.wgsl`, remembered.
+    fn toggle_crt(&mut self) {
+        let run = self.run.as_mut().expect("running");
+        run.settings.crt = !run.settings.crt;
+        run.video.crt = run.settings.crt;
+        run.window.request_redraw();
+        self.save_settings();
+    }
+
+    /// View → Widescreen: the game draws 16:9 from the next step on, remembered. A window keeps
+    /// its scale and grows or shrinks to the new picture; fullscreen refits it.
+    fn toggle_widescreen(&mut self) {
+        let run = self.run.as_mut().expect("running");
+        let wide = !run.settings.widescreen;
+        run.settings.widescreen = wide;
+        run.game.set_view(window::view(wide));
+        run.window.set_min_inner_size(Some(window::min_size(wide)));
+        if !run.settings.fullscreen {
+            let n = match run.video.scale {
+                Scale::N(n) => n,
+                Scale::Auto => run.video.points_scale(),
+            };
+            let _ = run.window.request_inner_size(window::initial_size(Scale::N(n), wide));
         }
         self.save_settings();
     }
@@ -499,8 +534,9 @@ impl App {
     }
 
     fn finish(&mut self, event_loop: &ActiveEventLoop) {
-        if let Some(c) = self.run.as_ref().and_then(|r| r.capture.as_ref())
-            && let Err(e) = c.finish()
+        if let Some(r) = self.run.as_ref()
+            && let Some(c) = r.capture.as_ref()
+            && let Err(e) = c.finish().and_then(|()| c.pacing(r.steps, r.presented, r.dropped))
         {
             return self.fail(event_loop, &format!("capture: {e}"));
         }
@@ -577,6 +613,12 @@ impl ApplicationHandler for App {
             if event_loop.exiting() {
                 return;
             }
+            // A shot is of its own step's frame, even when later steps in this catch-up end the
+            // run (a throttled window catches up many at once).
+            if self.run.as_ref().is_some_and(|r| r.shot.is_some()) {
+                self.show_newest();
+                self.take_shot(event_loop);
+            }
         }
         if due > 0 {
             self.show_menu();
@@ -611,7 +653,7 @@ impl ApplicationHandler for App {
                     // macOS keeps a person's drag above the minimum size, but not a resize asked
                     // for by code: the app holds the line itself.
                     let at: winit::dpi::LogicalSize<f64> = size.to_logical(run.window.scale_factor());
-                    let min = window::min_size();
+                    let min = window::min_size(run.settings.widescreen);
                     if at.width < min.width as f64 || at.height < min.height as f64 {
                         let _ = run.window.request_inner_size(winit::dpi::LogicalSize::new(
                             at.width.max(min.width as f64),
@@ -625,6 +667,10 @@ impl ApplicationHandler for App {
             WindowEvent::RedrawRequested => {
                 if let Some(run) = &mut self.run {
                     run.video.present();
+                    if run.uploaded > run.presented {
+                        run.dropped += run.uploaded - run.presented - 1;
+                        run.presented = run.uploaded;
+                    }
                 }
             }
             WindowEvent::KeyboardInput { event, .. } if !event.repeat => {

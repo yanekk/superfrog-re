@@ -18,6 +18,13 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-18 | 🐞 | T27 review: `view.rs` `shot_run` dropped its `App`, whose `Drop` deletes the home, so two shot tests failed every run without `SF_E2E_KEEP=1`. Fixed; this explains T27's "shots went missing" row below, not load. |
+| 2026-10-18 | 📌 | T27 review, measured: release `crt_drops` dropped 0–11 frames at load ~5 with CRT on and 1–4 off; 0 for both in three quieter pairs. Drops follow load, not the filter. |
+| 2026-10-18 | 🐞 | T27 drill: levels and the map are 334×261, the window 320×256 (T23), so `Scale::N(n)` shows a level at n−1 (2× window, level at 1×), 4:3 and widescreen. T210 window-fits-the-game added, owner's yes; blocks T29. |
+| 2026-10-18 | 🔄 | Owner, T27: widescreen on screens that are not a level (title, intro, slot, map) shows each line's colour 0 at the sides, the Amiga border; DESIGN §2.7 fixed only levels. |
+| 2026-10-18 | 📌 | T27, measured: release, 3 000 frames, CRT on, 3×, widescreen: 0 dropped (CRT off: 0), `view.rs` `crt_drops` (ignored, `--release`). Debug drops 3–150 with or without CRT, by load. Capture's `pacing.txt` counts them. |
+| 2026-10-18 | 📌 | T27, under load ~40 (other workers, ffmpeg): scripted app runs crawled, a 2 000-frame run hit 150 s, shots went missing even after taking them inside the catch-up loop. Unexplained; all green at load ~7. |
+| 2026-10-18 | 📌 | T27 drill, worker-driven: shots of CRT at 1× and 3× (title), widescreen at 2× (loading picture, W3-1 mid-level, CRT on and off) judged: legible, sides show the map, nothing wraps or tears. |
 | 2026-10-18 | 🐞 | T26 review, fixed: a state saved while playing a `.sflevel` loaded with the disk map (T28 row below). The state now carries the override maps; `a_loaded_level_file_game_keeps_its_level_file` locks it. |
 | 2026-10-18 | 🐞 | T26 review, left alone (T28): `menus.rs` OS-layer test still expects File = [Import Disks…] only; T28 added Export Level and Play Level File…, so `SF_E2E_OS=1 … --test menus os_layer_the_menu_bar` fails there. Open. |
 | 2026-10-18 | 📌 | T26, worker-driven: sf-e2e `states.rs` drove Save State mid-W2-1, play on, Load (saved frame shown, then the headless continuation), ⇧⌘N/⌘N, and another build's state refused; OS layer clicked Game ▸ Save State ▸ 1, pressed ⌘1, ⇧⌘2: green. |

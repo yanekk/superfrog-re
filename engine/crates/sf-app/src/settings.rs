@@ -40,9 +40,9 @@ pub enum Scale {
 pub struct Settings {
     pub scale: Scale,
     pub fullscreen: bool,
-    /// The CRT filter (T27).
+    /// View → CRT Filter: the scaled picture through `crt.wgsl` (DESIGN §2.7).
     pub crt: bool,
-    /// Widescreen (T27).
+    /// View → Widescreen: 16:9, the level's extra columns each side (DESIGN §2.7).
     pub widescreen: bool,
     pub keys: KeyMap,
     pub pad: PadMap,
