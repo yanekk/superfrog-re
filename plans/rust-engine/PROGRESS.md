@@ -175,12 +175,12 @@ done · ⛔ blocked, needs a human. A task dropped by a plan amendment leaves th
 | T207 | chain-routes-w5-w6-final | T206; blocks T203 | ✅ | |
 | T208 | w6-4-start-and-final-load | T203; blocks T23, T29 | ✅ | |
 | T209 | whole-game-alone | T203, T208; blocks T23, T29 | ✅ | |
-| T210 | window-fits-the-game | T27; blocks T29 | 🔍 | Window, 1× minimum sized for 334×261 (levels, map, tally; DIWSTRT $2779), measured headless by `sf-conform` `examples/windows` over 23 cases; others ≤320×256. Widescreen columns 67 → 65 (window 464×261). 1 new e2e (title + W3-1 at 1×, 2×, 3×, 2× wide), 1 unit test; sizes updated in window, view, persist, menus. Deviation: none. |
+| T210 | window-fits-the-game | T27; blocks T29 | ✅ | Window, 1× minimum sized for 334×261; widescreen 67 → 65 (464×261). Review clean, no fix commit. Re-measured windows over 20 cases incl. bonus, slot, ending, story, hiscore, final: largest 334×261 (levels, map, bonus, tally); GAME→320×256 mutation red in new e2e; new test 5× green. OS-layer and fullscreen size edits (menus, persist, window) unrun, read-only, for T29. |
 
 A Notes cell holds what was built or what the review found, the test count, and one line per
 deviation from the task doc. A ✅ task's cell may be cut to one line once the next task has been reviewed.
 
-**Review queue:** T210
+**Review queue:** *(empty)*
 
 ## Blocked on the user
 
