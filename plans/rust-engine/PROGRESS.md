@@ -51,7 +51,7 @@ done · ⛔ blocked, needs a human. A task dropped by a plan amendment leaves th
 | T25 | controls-and-gamepad | T24 | ✅ | |
 | T26 | save-states | T24 | ⬜ | |
 | T27 | crt-and-widescreen | T24 | ⬜ | |
-| T28 | level-override | T14, T24 | ⬜ | |
+| T28 | level-override | T14, T24 | ✅ | |
 | T29 | app-drill | T21, T25, T26, T27, T28 | ⬜ | |
 | T30 | acceptance | T29 | ⬜ | |
 | T31 | render-remaining-levels | T13 | ✅ | |
