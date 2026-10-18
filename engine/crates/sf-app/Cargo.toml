@@ -33,8 +33,12 @@ muda = "0.21"
 # settings.toml, progress.toml and disks.toml (DESIGN §2.9, §3.5).
 serde = { version = "1", features = ["derive"] }
 toml = "0.9"
+# Gamepads, hot-plugged, fed onto the same original inputs as the keys (DESIGN §2.6, §3.2; T25).
+gilrs = "0.11"
 
 [target.'cfg(target_os = "macos")'.dependencies]
 # One AppKit default: keep AppKit from adding its own "Enter Full Screen" to the View menu (menu.rs).
 objc2 = "0.6"
-objc2-foundation = { version = "0.3", default-features = false, features = ["std", "NSUserDefaults", "NSString", "NSDictionary", "NSValue"] }
+# The Controls window's native labels and buttons (T25), on a window winit opens.
+objc2-app-kit = { version = "0.3", default-features = false, features = ["std", "NSResponder", "NSView", "NSControl", "NSButton", "NSTextField", "NSText", "NSColor", "NSFont", "NSAccessibilityProtocols", "NSAccessibilityConstants", "objc2-core-foundation"] }
+objc2-foundation = { version = "0.3", default-features = false, features = ["std", "NSUserDefaults", "NSString", "NSDictionary", "NSValue", "NSGeometry", "NSObject"] }
