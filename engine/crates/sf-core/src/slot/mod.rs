@@ -135,13 +135,13 @@ pub(crate) fn interrupt_lines(h: Handler) -> u16 {
 }
 
 /// What the slot machine gave: the points its rounds added to the score and the lives (T73).
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 pub struct SlotOutcome {
     pub award: Award,
 }
 
 /// A prize in points and lives.
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 pub struct Award {
     pub points: u32,
     pub lives: u16,
@@ -151,7 +151,7 @@ pub struct Award {
 const ROUNDS_OVER: u8 = 100;
 
 /// `slot_machine`, from just after its first raster wait (h0+$49e2).
-#[derive(Debug, Clone, Default, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 pub(crate) struct Routine {
     pc: u8,
     /// The score and the frog's lives as the slot machine began.
@@ -250,7 +250,7 @@ fn set_up(cx: &mut Cx) -> Yield {
 }
 
 /// The bottom of the slot machine's stack: `level_tally` after its call (T38).
-#[derive(Debug, Clone, Default, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 pub(crate) struct SlotOver {
     done: bool,
 }

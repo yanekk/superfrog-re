@@ -11,7 +11,7 @@ use crate::audio::INTENA;
 const TOGGLE: u32 = at(0x3ca0);
 
 /// What a fade set-up sets up.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 pub(crate) enum FadeKind {
     /// `$151b2`: the list gets `from`'s colours, then steps to `target` one at a time.
     Step { from: u32, target: u32 },
@@ -24,7 +24,7 @@ pub(crate) enum FadeKind {
 /// A fade record's set-up as the game calls it: its speed set, then the set-up between INTENA off
 /// and on. It is long (divisions for each colour), so it can run into the next frame, which then
 /// takes its interrupt only when the set-up is over.
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 pub(crate) struct FadeSetup {
     pub kind: FadeKind,
     pub rec: usize,
@@ -83,7 +83,7 @@ impl FadeSetup {
 
 /// `$3ca2`: until record `rec`'s fade is over, copy three of the title's lower palette's colours
 /// to its menu line; then both fade palettes into the title's copper list (`$3b5e`).
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 pub(crate) struct PaletteWait {
     pub rec: usize,
 }
@@ -103,7 +103,7 @@ impl PaletteWait {
 }
 
 /// A busy wait for the fire button to be let go (`btst #7,$bfe001; beq`).
-#[derive(Debug, Clone, Default, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 pub(crate) struct FireUp;
 
 impl FireUp {
@@ -117,7 +117,7 @@ impl FireUp {
 }
 
 /// `n` calls of `wait_frame_raster`.
-#[derive(Debug, Clone, Default, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 pub(crate) struct Frames(pub u16);
 
 impl Frames {
@@ -131,7 +131,7 @@ impl Frames {
 }
 
 /// `music_fade_wait` (h0+$1327a): fade the music out, wait up to 100 frames for it to stop, stop.
-#[derive(Debug, Clone, Default, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 pub(crate) struct MusicFadeWait {
     pc: u8,
     count: u16,
@@ -178,7 +178,7 @@ const MUSIC_STOP_LINES: u16 = 15;
 /// `music_start` (h0+$13126) with the title's module: interrupts off, `p41_init`, interrupts on.
 /// `p41_init` takes 20 lines on the title's module (measured: INTENA off on line 309, on again on
 /// line 16 of the next frame), so started late in a frame it delays the next frame's interrupt.
-#[derive(Debug, Clone, Default, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 pub(crate) struct MusicStart {
     pc: u8,
     /// The caller's return address (where the original is once `music_start` is over).

@@ -29,7 +29,7 @@ pub struct Machine<'a> {
     pub unported: &'a mut Vec<&'static str>,
 }
 
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 pub enum Scene {
     /// Nothing ported yet: changes no state, writes nothing to Paula and renders black. Until the
     /// mechanic tasks land, every start is here.

@@ -88,7 +88,7 @@ pub const HEADER_LEN: u32 = 0x200;
 pub const LOW_CHIP: usize = 12;
 
 /// A run of the original's memory: big-endian reads and writes at its own offsets.
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 pub(crate) struct Block(pub(crate) Vec<u8>);
 
 impl Block {
@@ -113,7 +113,7 @@ impl Block {
 }
 
 /// A file the game put in chip RAM.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 pub enum File {
     Tune(TuneId),
     Bank(BankId),
@@ -121,7 +121,7 @@ pub enum File {
 
 /// Chip RAM as the driver sees it: the files loaded into it (the latest wins where they overlap),
 /// the bytes the driver wrote, and the first [`LOW_CHIP`] bytes.
-#[derive(Debug, Clone, PartialEq, Eq, Default, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Default, Hash, serde::Serialize, serde::Deserialize)]
 pub struct Mem {
     files: Vec<(u32, File)>,
     written: BTreeMap<u32, u8>,
@@ -211,7 +211,7 @@ pub(crate) const DMACON: u16 = 0x96;
 pub(crate) const INTENA: u16 = 0x9a;
 
 /// The sound driver: the original's driver variables and the chip RAM it reads.
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 pub struct AudioDriver {
     pub(crate) sfx: Block,
     pub(crate) music_on: Block,

@@ -4,6 +4,7 @@
 use std::sync::Arc;
 
 use sf_assets::{GameData, LevelData, LevelId};
+use serde::{Deserialize, Serialize};
 use sf_paula::PaulaWrite;
 
 use crate::audio::AudioDriver;
@@ -53,7 +54,7 @@ pub struct Cpu {
 
 /// For conformance, the story intro: where the original's vertical-blank handler ended, which
 /// decides where a draw after it starts (owner, T46; T54).
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 pub struct HandlerEnd {
     /// The beam (line, DMA cycle) of its acknowledge's write (`INTREQ = $20`).
     pub ack: (u16, u16),
@@ -68,7 +69,7 @@ pub struct HandlerEnd {
 /// 50 Hz work (frog, camera, clock) runs in the vertical-blank interrupt. In busy stretches the
 /// pass overruns, so a vertical blank arrives while it is still running (a late pass; docs/08
 /// "Lag"). Normal play never lags; conformance runs feed the original's schedule from the oracle.
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 pub enum Pacing {
     /// No schedule given: the engine keeps its own time (normal play, always). In a level this is
     /// [`Pacing::OnTime`]; in the story intro the engine's own timing model decides when its long
@@ -164,7 +165,7 @@ pub enum LoadEnd {
 }
 
 /// A CPU job of the original's that can run past the end of a frame.
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 pub struct Job {
     /// Return addresses on the original's stack while the job runs (any one of them).
     pub inside: Vec<u32>,
@@ -172,10 +173,12 @@ pub struct Job {
     pub writes: Vec<(u32, u32)>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Game {
     state: State,
-    /// What the display reads from the disks (shared: it never changes once built).
+    /// What the display reads from the disks (shared: it never changes once built). Not in a save
+    /// state: [`Game::load`] builds it again from the `GameData` it is given.
+    #[serde(skip)]
     display: Arc<DisplayData>,
     scene: Scene,
     /// The front end's program, while [`Scene::Front`] runs.
@@ -195,6 +198,7 @@ pub struct Game {
     frog_only: bool,
     /// What a level's work costs on the beam ([`crate::level::beam`]), and the last frame's clock
     /// steps when kept ([`Game::keep_trace`]).
+    #[serde(with = "crate::savestate::big_array")]
     costs: [u32; crate::level::beam::Cost::COUNT],
     trace: Option<Vec<crate::level::beam::Tick>>,
     /// A level's pass the last frame ended in the middle of ([`crate::level::beam::Pending`]).
@@ -220,8 +224,13 @@ pub struct Game {
     handover_runs: Vec<(u32, Vec<u8>)>,
     /// What the levels met and do not follow, since the start ([`LevelCtx::unported`]), and that
     /// with the front end's, as [`Game::unported`] gives it.
+    #[serde(with = "crate::savestate::static_str::vec")]
     level_unported: Vec<&'static str>,
+    #[serde(with = "crate::savestate::static_str::vec")]
     unported: Vec<&'static str>,
+    /// The `.sflevel` maps put in `display` in place of the disks' ([`Game::with_override`]),
+    /// encoded: a save state carries them, as it does not carry `display`.
+    overrides: Vec<(LevelId, Vec<u8>)>,
 }
 
 /// [`Game::type_code`] gives up waiting for the title after this many frames.
@@ -293,9 +302,12 @@ impl Game {
 
     /// [`Game::new_with_override`] with the disks' display content already built.
     pub fn with_override(display: Arc<DisplayData>, ov: LevelData) -> Game {
+        let map = sf_assets::t7mp_encode(&ov.t7mp);
         let mut d = (*display).clone();
-        d.levels.insert(ov.id, sf_assets::t7mp_encode(&ov.t7mp));
-        Game::with_display(Arc::new(d), Start::Level(ov.id))
+        d.levels.insert(ov.id, map.clone());
+        let mut game = Game::with_display(Arc::new(d), Start::Level(ov.id));
+        game.overrides.push((ov.id, map));
+        game
     }
 
     /// [`Game::new`] with the disks' display content already built, as a caller making many
@@ -374,6 +386,7 @@ impl Game {
             handover_runs: Vec::new(),
             unported: level_unported.clone(),
             level_unported,
+            overrides: Vec::new(),
         }
     }
 
@@ -976,6 +989,20 @@ impl Game {
         self.slot_outcome
     }
 
+    /// After a save state is read: the disks' display content, which is not in it, with the
+    /// state's own `.sflevel` maps put back in place of the disks'.
+    pub(crate) fn restore_display(&mut self, display: Arc<DisplayData>) {
+        self.display = if self.overrides.is_empty() {
+            display
+        } else {
+            let mut d = (*display).clone();
+            for (id, map) in &self.overrides {
+                d.levels.insert(*id, map.clone());
+            }
+            Arc::new(d)
+        };
+    }
+
     /// Frames stepped since the start.
     pub fn frame(&self) -> u32 {
         self.frame
@@ -1009,7 +1036,7 @@ const VBL_COUNT: u32 = h0(0x9d8);
 /// and the next blank has not come), and ends in the first frame that does not end in the middle
 /// of it: the same frame, or, for a late pass, a later one (in which the next pass may begin and
 /// still be running at the frame's end, its predecessor's end then never seen).
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 pub struct PassClock {
     /// A pass has begun and not been seen to end.
     running: bool,

@@ -4,7 +4,7 @@
 //! ```text
 //! Superfrog   About Superfrog · Services · Hide, Hide Others, Show All · Quit Superfrog ⌘Q
 //! File        Import Disks… · Export Level ▸ W1-1… … WW-1… · Play Level File…
-//! Game        Continue from World N · Pause · Reset · Controls…
+//! Game        Continue from World N · Pause · Reset · Controls… · Save State ▸ 1–5 ⇧⌘1–5 · Load State ▸ 1–5 ⌘1–5
 //! View        Scale ▸ 1× 2× 3× Auto · Fullscreen ⌃⌘F
 //! ```
 //!
@@ -22,6 +22,7 @@ use winit::event_loop::ActiveEventLoop;
 
 use crate::App;
 use crate::settings::Scale;
+use crate::states::SLOTS;
 
 /// What the player asked the app to do, from the menu bar or its shortcuts.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -45,6 +46,10 @@ pub enum Command {
     Reset,
     /// Game → Controls…: the window that rebinds keys and pad (`controls_window.rs`).
     Controls,
+    /// Game → Save State ▸ N, ⇧⌘N: the whole game into slot N (`states.rs`).
+    SaveState(u8),
+    /// Game → Load State ▸ N, ⌘N: the game in slot N, or a message why not.
+    LoadState(u8),
     /// Superfrog → Quit Superfrog, ⌘Q, or the window closed.
     Quit,
 }
@@ -75,6 +80,8 @@ impl Command {
             Command::Pause => "pause".into(),
             Command::Reset => "reset".into(),
             Command::Controls => "controls".into(),
+            Command::SaveState(n) => format!("save-state-{n}"),
+            Command::LoadState(n) => format!("load-state-{n}"),
             Command::Quit => "quit".into(),
         }
     }
@@ -93,6 +100,16 @@ impl Command {
             "play-level-file" => Command::PlayLevelFile,
             _ if id.starts_with("export-") => Command::ExportLevel(sf_assets::level_id_named(&id[7..])?),
             _ => {
+                let slot = |prefix: &str| -> Option<u8> {
+                    let n: u8 = id.strip_prefix(prefix)?.parse().ok()?;
+                    (1..=SLOTS).contains(&n).then_some(n)
+                };
+                if let Some(n) = slot("save-state-") {
+                    return Some(Command::SaveState(n));
+                }
+                if let Some(n) = slot("load-state-") {
+                    return Some(Command::LoadState(n));
+                }
                 let n: u32 = id.strip_prefix("scale-")?.parse().ok()?;
                 (1..=16).contains(&n).then_some(Command::Scale(Scale::N(n)))?
             }
@@ -122,6 +139,13 @@ pub struct MenuState {
     pub paused: bool,
     pub scale: Scale,
     pub fullscreen: bool,
+    /// Which save-state slots hold a state: Load State ▸ N can be chosen only then.
+    pub states: [bool; SLOTS as usize],
+}
+
+/// The number key for slot `n` (1–5), its shortcut's key.
+pub fn slot_key(n: u8) -> Code {
+    [Code::Digit1, Code::Digit2, Code::Digit3, Code::Digit4, Code::Digit5][n as usize - 1]
 }
 
 /// The menu bar, and the items whose title, check or enabled state follows the app's.
@@ -131,7 +155,12 @@ pub struct MenuBar {
     pause: CheckMenuItem,
     scales: Vec<(Scale, CheckMenuItem)>,
     fullscreen: CheckMenuItem,
+    loads: Vec<MenuItem>,
     shown: Option<MenuState>,
+}
+
+fn as_items(v: &[MenuItem]) -> Vec<&dyn muda::IsMenuItem> {
+    v.iter().map(|i| i as &dyn muda::IsMenuItem).collect()
 }
 
 fn item(c: Command, title: &str, accelerator: Option<Accelerator>) -> MenuItem {
@@ -187,6 +216,20 @@ pub fn build_menu() -> MenuBar {
             &quit,
         ],
     );
+    let saves: Vec<MenuItem> = (1..=SLOTS)
+        .map(|n| {
+            let key = Accelerator::new(Modifiers::META | Modifiers::SHIFT, slot_key(n));
+            item(Command::SaveState(n), &n.to_string(), Some(key))
+        })
+        .collect();
+    let loads: Vec<MenuItem> = (1..=SLOTS)
+        .map(|n| {
+            let key = Accelerator::new(Modifiers::META, slot_key(n));
+            MenuItem::with_id(Command::LoadState(n).id(), n.to_string(), false, Some(key))
+        })
+        .collect();
+    let save_menu = Submenu::with_items("Save State", true, &as_items(&saves)).expect("a menu");
+    let load_menu = Submenu::with_items("Load State", true, &as_items(&loads)).expect("a menu");
     let exports: Vec<MenuItem> = export_levels()
         .into_iter()
         .map(|id| item(Command::ExportLevel(id), &format!("{id}…"), None))
@@ -213,6 +256,9 @@ pub fn build_menu() -> MenuBar {
             &item(Command::Reset, "Reset", None),
             &PredefinedMenuItem::separator(),
             &item(Command::Controls, "Controls…", None),
+            &PredefinedMenuItem::separator(),
+            &save_menu,
+            &load_menu,
         ],
     );
     let scale_items: Vec<&dyn muda::IsMenuItem> = scales.iter().map(|(_, i)| i as &dyn muda::IsMenuItem).collect();
@@ -229,6 +275,7 @@ pub fn build_menu() -> MenuBar {
         pause,
         scales,
         fullscreen,
+        loads,
         shown: None,
     }
 }
@@ -258,6 +305,9 @@ impl MenuBar {
             i.set_checked(*scale == s.scale);
         }
         self.fullscreen.set_checked(s.fullscreen);
+        for (i, filled) in self.loads.iter().zip(s.states) {
+            i.set_enabled(filled);
+        }
         self.shown = Some(s);
     }
 }
@@ -308,6 +358,8 @@ impl App {
             }
             Command::Reset => self.power_on(),
             Command::Controls => self.open_controls(event_loop),
+            Command::SaveState(n) => self.save_state(n),
+            Command::LoadState(n) => self.load_state(n),
             Command::Quit => {
                 self.save_settings();
                 self.finish(event_loop);
@@ -324,6 +376,7 @@ impl App {
             paused: run.paused,
             scale: run.video.scale,
             fullscreen: run.settings.fullscreen,
+            states: run.states,
         });
     }
 
@@ -334,6 +387,47 @@ impl App {
         run.game = Game::with_display(run.display.clone(), Start::PowerOn { seed });
         run.paula = Paula::new(run.rate);
         run.paused = false;
+    }
+
+    /// Game → Save State ▸ `n`: the game as it is after the last step, into slot `n`.
+    fn save_state(&mut self, n: u8) {
+        let run = self.run.as_mut().expect("running");
+        match crate::states::save(&self.home, n, &run.game, crate::home::build(), &run.cache_hash) {
+            Ok(()) => {
+                run.states[n as usize - 1] = true;
+                eprintln!("superfrog: saved state {n} at game frame {}", run.game.frame());
+            }
+            Err(e) => {
+                eprintln!("superfrog: {e}");
+                self.ui.notice(&e);
+            }
+        }
+    }
+
+    /// Game → Load State ▸ `n`: the game in slot `n`, its picture shown at once (paused, it
+    /// stays); refused with a message, the game carries on untouched.
+    fn load_state(&mut self, n: u8) {
+        let run = self.run.as_mut().expect("running");
+        match crate::states::load(&self.home, n, run.display.clone(), crate::home::build(), &run.cache_hash) {
+            Ok(game) => {
+                eprintln!("superfrog: loaded state {n} at game frame {}", game.frame());
+                run.game = game;
+                run.paula = Paula::new(run.rate);
+                let pic = run.game.render(sf_core::View::default());
+                let size = (pic.width as u32, pic.height as u32);
+                run.shown.completed((run.steps, size, crate::video::picture_rgba(&pic)));
+            }
+            Err(e) => {
+                eprintln!("superfrog: {e}");
+                self.ui.notice(&e);
+                // The panel held the main thread: the game carries on from now rather than
+                // catching up.
+                let run = self.run.as_mut().expect("running");
+                let now = run.clock.samples() + run.lead;
+                run.pacer.skip_to(now);
+            }
+        }
+        self.show_newest();
     }
 
     /// Start the remembered world as its level code would (DESIGN §2.9); refused, as the menu item
@@ -366,6 +460,7 @@ impl App {
         if let Some(data) = data {
             let run = self.run.as_mut().expect("running");
             run.display = std::sync::Arc::new(sf_core::DisplayData::new(&data));
+            run.cache_hash = sf_assets::cache_hash(&data);
             run.levels = data.levels;
             self.power_on();
         }
@@ -397,13 +492,17 @@ mod tests {
             Command::Pause,
             Command::Reset,
             Command::Controls,
+            Command::SaveState(1),
+            Command::SaveState(5),
+            Command::LoadState(1),
+            Command::LoadState(5),
             Command::Quit,
         ];
         all.extend(export_levels().into_iter().map(Command::ExportLevel));
         for c in all {
             assert_eq!(Command::from_id(&c.id()), Some(c), "{}", c.id());
         }
-        for bad in ["", "scale-0", "scale-17", "scale-x", "about", "Quit", "export-", "export-W7-1"] {
+        for bad in ["", "scale-0", "scale-17", "scale-x", "about", "Quit", "save-state-0", "save-state-6", "load-state-", "load-state-x", "export-", "export-W7-1"] {
             assert_eq!(Command::from_id(bad), None, "{bad}");
         }
     }

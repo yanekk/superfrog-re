@@ -19,7 +19,7 @@
 //! 80: continue          # Game → Continue from World N (`menu continue`)
 //! 90: menu pause        # a menu command, by its item's id (menu.rs `Command::id`, `-` as a space):
 //!                       # import, continue, scale 1|2|3|auto, fullscreen, pause, reset, controls, quit,
-//!                       # export W1-1 (any level id), play-level-file
+//!                       # export W1-1 (any level id), play-level-file, save state 1..5, load state 1..5
 //! 95: controls fire keys  # a click in the Controls window: an input's `keys` or `pad`, `defaults`,
 //!                       # or `close` (its close button). While it is open, keys go to it.
 //! 100: pad connect 1    # gamepad 1 plugged in (pad.rs; a script's run reads no real pad)

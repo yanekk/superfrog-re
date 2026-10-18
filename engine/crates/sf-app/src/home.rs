@@ -29,9 +29,9 @@ pub fn cache_path(home: &Path) -> PathBuf {
     home.join(format!("cache/assets-v{CACHE_FORMAT}.bin"))
 }
 
-/// The engine build that writes a cache.
+/// The engine build: what a cache records and a save state is tagged with (`build.rs`).
 pub fn build() -> &'static str {
-    concat!("superfrog ", env!("CARGO_PKG_VERSION"))
+    env!("SF_ENGINE_BUILD")
 }
 
 /// Decode the four disk images in `dir`: every `.zip` and `.adf` there is offered, read-only.

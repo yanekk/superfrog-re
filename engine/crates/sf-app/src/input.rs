@@ -354,6 +354,8 @@ pub struct Input {
     keys: KeyState,
     pads: PadState,
     mouse: bool,
+    /// A Shift key is down, pressed before ⌘ or after it: ⇧⌘1–5 save a state.
+    shift: bool,
     /// Pressed since the last frame, so a press released within one frame is still seen once.
     tapped: FrameInput,
 }
@@ -385,6 +387,9 @@ impl Input {
     /// Take one host event. A key pressed with ⌘ held goes to the app, not the game: `Some` when
     /// it is one of the menu bar's shortcuts.
     pub fn event(&mut self, e: HostInput) -> Option<Command> {
+        if let HostInput::Key { code: KeyCode::ShiftLeft | KeyCode::ShiftRight, pressed } = e {
+            self.shift = pressed;
+        }
         match e {
             HostInput::Key { code, pressed: true } => {
                 if is_command(code) {
@@ -393,9 +398,20 @@ impl Input {
                 }
                 if self.holding(is_command) {
                     let ctrl = self.holding(|c| matches!(c, KeyCode::ControlLeft | KeyCode::ControlRight));
-                    return match (ctrl, code) {
-                        (true, KeyCode::KeyF) => Some(Command::ToggleFullscreen),
-                        (false, KeyCode::KeyQ) => Some(Command::Quit),
+                    let shift = self.shift;
+                    let slot = match code {
+                        KeyCode::Digit1 => Some(1),
+                        KeyCode::Digit2 => Some(2),
+                        KeyCode::Digit3 => Some(3),
+                        KeyCode::Digit4 => Some(4),
+                        KeyCode::Digit5 => Some(5),
+                        _ => None,
+                    };
+                    return match (ctrl, shift, code, slot) {
+                        (true, _, KeyCode::KeyF, _) => Some(Command::ToggleFullscreen),
+                        (false, false, KeyCode::KeyQ, _) => Some(Command::Quit),
+                        (false, true, _, Some(n)) => Some(Command::SaveState(n)),
+                        (false, false, _, Some(n)) => Some(Command::LoadState(n)),
                         _ => None,
                     };
                 }
@@ -418,6 +434,7 @@ impl Input {
             HostInput::FocusLost => {
                 self.keys.0.clear();
                 self.mouse = false;
+                self.shift = false;
             }
             HostInput::Pad(e) => {
                 for p in self.pads.apply(e) {
@@ -561,6 +578,26 @@ mod tests {
         i.event(key(KeyCode::ControlLeft, false));
         assert_eq!(i.event(key(KeyCode::KeyF, true)), None, "F alone is the game's");
         assert_eq!(i.frame().keys, KeySet::key(0x23));
+    }
+
+    #[test]
+    fn cmd_digit_loads_a_state_and_shift_cmd_digit_saves_one_whichever_goes_down_first() {
+        let mut i = input();
+        i.event(key(KeyCode::SuperLeft, true));
+        assert_eq!(i.event(key(KeyCode::Digit3, true)), Some(Command::LoadState(3)));
+        assert_eq!(i.event(key(KeyCode::Digit6, true)), None, "five slots");
+        assert_eq!(i.event(key(KeyCode::ShiftLeft, true)), None);
+        assert_eq!(i.event(key(KeyCode::Digit1, true)), Some(Command::SaveState(1)));
+        i.event(key(KeyCode::ShiftLeft, false));
+        i.event(key(KeyCode::SuperLeft, false));
+        i.event(key(KeyCode::ShiftRight, true));
+        i.event(key(KeyCode::SuperRight, true));
+        assert_eq!(i.event(key(KeyCode::Digit5, true)), Some(Command::SaveState(5)));
+        i.event(key(KeyCode::SuperRight, false));
+        i.event(key(KeyCode::ShiftRight, false));
+        i.frame();
+        assert_eq!(i.event(key(KeyCode::Digit2, true)), None, "2 alone is the game's");
+        assert_eq!(i.frame().keys, KeySet::key(0x02));
     }
 
     #[test]

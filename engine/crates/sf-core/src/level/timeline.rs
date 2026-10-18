@@ -14,7 +14,7 @@ use crate::level::beam::Tick;
 
 /// Work done at once, replayed on the beam: the cycles before each write and the write, then the
 /// cycles after the last. Its memory is compared once the original is out of it (`job`).
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 pub struct Timeline {
     /// `(cycles before it, register, value)`.
     steps: Vec<(u32, u16, u16)>,

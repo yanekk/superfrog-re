@@ -461,11 +461,15 @@ impl<'a> Sim<'a> {
     }
 }
 
+/// A run of [`Step::Ops`]'s letters. Named so serde does not borrow it from the input as it does
+/// a written-out `&str`: a save state's is read back interned (T26).
+pub type Letters = &'static str;
+
 /// One step of a [`Prog`].
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 pub enum Step {
     /// Accesses and idle cycles ([`cpu`]'s letters `p`, `r`, `w`, `n`).
-    Ops(&'static str),
+    Ops(#[serde(with = "crate::savestate::static_str")] Letters),
     /// `n` idle DMA cycles.
     Idle(u32),
     /// A custom-register write (a `w` that reaches [`Sim::write_reg`]).
@@ -479,7 +483,7 @@ pub enum Step {
 
 /// A run of the CPU's instructions, branch for branch, as their bus accesses: built by the code
 /// it stands for (`bobs::draw`) beside its memory work, then run on a [`Sim`].
-#[derive(Debug, Clone, Default, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 pub struct Prog {
     pub steps: Vec<Step>,
 }

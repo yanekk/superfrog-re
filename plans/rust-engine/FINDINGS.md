@@ -18,6 +18,11 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-18 | 🐞 | T26 review, fixed: a state saved while playing a `.sflevel` loaded with the disk map (T28 row below). The state now carries the override maps; `a_loaded_level_file_game_keeps_its_level_file` locks it. |
+| 2026-10-18 | 🐞 | T26 review, left alone (T28): `menus.rs` OS-layer test still expects File = [Import Disks…] only; T28 added Export Level and Play Level File…, so `SF_E2E_OS=1 … --test menus os_layer_the_menu_bar` fails there. Open. |
+| 2026-10-18 | 📌 | T26, worker-driven: sf-e2e `states.rs` drove Save State mid-W2-1, play on, Load (saved frame shown, then the headless continuation), ⇧⌘N/⌘N, and another build's state refused; OS layer clicked Game ▸ Save State ▸ 1, pressed ⌘1, ⇧⌘2: green. |
+| 2026-10-18 | 📌 | T26: engine build = version + FNV hash of the pure crates' sources and Cargo.lock (`sf-app/build.rs`). Any engine edit, committed or not, refuses older states; the cache records the same string. |
+| 2026-10-18 | 📌 | T26, left alone: loading a state starts a fresh Paula mixer (its channels are not in `Game`). Inaudible while the app is silent (T22 row); a brief cut of held notes once it sounds. |
 | 2026-10-18 | 📌 | T25 review: fake unverified against real — script `pad …` events and `FakePads` stand in for gilrs; `from_gilrs` checked only against gilrs 0.11.2 source (Y up positive on macOS). No real pad event recorded. |
 | 2026-10-18 | 📌 | T25: the 8BitDo Ultimate 2 on real hardware is unverified (optional, owner 2026-10-15); pads are tested only through script `pad …` events. Try: `cd engine && cargo run --release -p sf-app -- --max-frames 15000`. |
 | 2026-10-18 | 📌 | T25, worker-driven drill: Controls window captured open, after a conflicting bind, waiting for the pad; nothing clipped at 540×330. Space pressed while waiting binds, never clicks: buttons refuse first responder so winit's view keeps the keys. |

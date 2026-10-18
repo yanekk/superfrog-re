@@ -30,7 +30,7 @@ const STREAM_TABLE: usize = 0x1491e;
 pub const STREAM_SAMPLES: usize = 8;
 
 /// A music module, by the file the game loads it from.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, serde::Serialize, serde::Deserialize)]
 pub enum TuneId {
     /// `MUSC`: the title, menus, tables and credits.
     Title,
@@ -73,7 +73,7 @@ impl TuneId {
 }
 
 /// A sound-effect bank (`LnFX`), by the file the game loads it from.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, serde::Serialize, serde::Deserialize)]
 pub enum BankId {
     /// `L1FX` from disk 1: worlds 1 and 2.
     Worlds12,

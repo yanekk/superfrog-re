@@ -24,7 +24,8 @@ mod tables;
 mod tiles;
 
 pub use anim::{Anim, AnimFrame, AnimId, decode_anim};
-pub use cache::{CACHE_FORMAT, CacheError, cache_decode, cache_encode};
+pub use blake3::blake3;
+pub use cache::{CACHE_FORMAT, CacheError, cache_decode, cache_encode, cache_hash};
 pub use error::{AssetError, Why};
 pub use exe::{ExeId, ExeImage, Hunk, HunkKind, Reloc, parse_exe};
 pub use font::{Font, FontId};
