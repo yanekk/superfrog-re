@@ -6,6 +6,11 @@
 //! - `audio.wav`: everything the mixer produced, 16-bit stereo PCM at the run's host rate.
 //! - `inputs.txt`: `N joy keys` for each step N whose input was not empty (joy bits in hex, keys
 //!   as the held Amiga raw codes in hex), so a test can see what reached the game.
+//! - `seed.txt`: the power-on RNG seed, `A B`, so a run seeded from the clock can be replayed.
+//! - `window-NNNNN.png` for each script `shot` at step N: the whole surface as presented, in its
+//!   own pixels; `windows.txt` a line for each, `N frame width height scale_factor x y w h` (the
+//!   frame it showed, the surface, its pixels a point, and the picture's place on it).
+//! - `prompts.txt`: every question the launch asked a scripted run (`import.rs`).
 
 use std::io::Write;
 use std::path::{Path, PathBuf};
@@ -20,8 +25,9 @@ pub struct Capture {
 }
 
 impl Capture {
-    pub fn new(dir: &Path, rate: u32) -> std::io::Result<Capture> {
+    pub fn new(dir: &Path, rate: u32, seed: (u32, u32)) -> std::io::Result<Capture> {
         std::fs::create_dir_all(dir)?;
+        std::fs::write(dir.join("seed.txt"), format!("{} {}\n", seed.0, seed.1))?;
         Ok(Capture {
             dir: dir.to_path_buf(),
             rate,
@@ -33,6 +39,24 @@ impl Capture {
     pub fn frame(&mut self, n: u64, width: u32, height: u32, rgba: &[u8]) -> std::io::Result<()> {
         let path = self.dir.join(format!("frame-{n:05}.png"));
         std::fs::write(path, png(width, height, rgba))
+    }
+
+    pub fn window_path(&self, n: u64) -> PathBuf {
+        self.dir.join(format!("window-{n:05}.png"))
+    }
+
+    /// Note what the shot asked for at step `n` showed: frame `frame`.
+    pub fn window_shown(&mut self, n: u64, frame: u64, s: &crate::video::Shown) -> std::io::Result<()> {
+        let (x, y, w, h) = s.viewport;
+        let line = format!(
+            "{n} {frame} {} {} {} {x} {y} {w} {h}\n",
+            s.surface.0, s.surface.1, s.scale_factor
+        );
+        std::fs::OpenOptions::new()
+            .create(true)
+            .append(true)
+            .open(self.dir.join("windows.txt"))
+            .and_then(|mut f| f.write_all(line.as_bytes()))
     }
 
     pub fn audio(&mut self, samples: &[[i16; 2]]) {
@@ -120,7 +144,7 @@ mod tests {
     #[test]
     fn inputs_list_only_frames_with_input() {
         let dir = std::env::temp_dir().join(format!("sf-app-capture-{}", std::process::id()));
-        let mut c = Capture::new(&dir, 48_000).unwrap();
+        let mut c = Capture::new(&dir, 48_000, (1, 2)).unwrap();
         c.input(1, FrameInput::NONE);
         c.input(2, FrameInput {
             joy: Joy::LEFT | Joy::FIRE,
@@ -129,6 +153,7 @@ mod tests {
         c.finish().unwrap();
         let text = std::fs::read_to_string(dir.join("inputs.txt")).unwrap();
         assert_eq!(text, "2 14 19,45\n");
+        assert_eq!(std::fs::read_to_string(dir.join("seed.txt")).unwrap(), "1 2\n");
         std::fs::remove_dir_all(&dir).unwrap();
     }
 }

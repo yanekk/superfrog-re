@@ -13,7 +13,8 @@ use crate::Image;
 pub struct LaunchOpts {
     pub max_frames: u64,
     pub timeout_s: u64,
-    pub scale: u32,
+    /// `--scale`; `None` leaves the app to its remembered setting.
+    pub scale: Option<u32>,
     /// Start the app at launch, unscripted, for the OS layer to drive.
     pub os: bool,
     /// Further arguments, after the ones the harness always passes.
@@ -25,7 +26,7 @@ impl Default for LaunchOpts {
         LaunchOpts {
             max_frames: 100,
             timeout_s: 60,
-            scale: 1,
+            scale: Some(1),
             os: false,
             extra_args: Vec::new(),
         }
@@ -43,6 +44,8 @@ pub struct Captured {
     /// `N joy keys` for each step N whose input was not empty (sf-app `capture.rs`).
     pub inputs: String,
     pub stderr: String,
+    /// Every question the launch asked (sf-app `import.rs`), one a line.
+    pub prompts: String,
     /// The capture folder.
     pub dir: PathBuf,
 }
@@ -53,6 +56,37 @@ impl Captured {
         Image::read_png(&self.dir.join(format!("frame-{n:05}.png")))
             .unwrap_or_else(|e| panic!("{e}"))
     }
+
+    /// The window as presented at the script's `shot` at step `n`, and what `windows.txt` says
+    /// of it.
+    pub fn read_shot(&self, n: u64) -> (Image, Shot) {
+        let img = Image::read_png(&self.dir.join(format!("window-{n:05}.png")))
+            .unwrap_or_else(|e| panic!("{e}"));
+        let text = std::fs::read_to_string(self.dir.join("windows.txt")).unwrap_or_default();
+        let line = text
+            .lines()
+            .find(|l| l.split(' ').next() == Some(&n.to_string()))
+            .unwrap_or_else(|| panic!("no shot at step {n} in windows.txt: {text:?}"));
+        let v: Vec<f64> = line.split(' ').skip(1).map(|v| v.parse().unwrap()).collect();
+        let shot = Shot {
+            frame: v[0] as u64,
+            surface: (v[1] as u32, v[2] as u32),
+            scale_factor: v[3],
+            viewport: (v[4] as u32, v[5] as u32, v[6] as u32, v[7] as u32),
+        };
+        (img, shot)
+    }
+}
+
+/// What the app said it presented at a `shot`.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct Shot {
+    /// The frame the window showed (the newest stepped when it was drawn).
+    pub frame: u64,
+    /// The surface's size in its pixels.
+    pub surface: (u32, u32),
+    pub scale_factor: f64,
+    pub viewport: (u32, u32, u32, u32),
 }
 
 /// The app under test, in its own temporary home. The home is removed when this is dropped,
@@ -68,14 +102,69 @@ pub struct App {
 impl App {
     /// A temporary home with the real disks imported into it.
     pub fn launch(opts: LaunchOpts) -> App {
-        static N: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(0);
-        let n = N.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
-        let home = std::env::temp_dir().join(format!("sf-e2e-{}-{n}", std::process::id()));
-        let _ = std::fs::remove_dir_all(&home);
+        let home = temp_home();
         std::fs::create_dir_all(home.join("cache")).expect("temp home");
         let seed = seed_cache();
         std::fs::copy(seed, home.join("cache").join(seed.file_name().unwrap()))
             .unwrap_or_else(|e| panic!("copying the imported cache into {}: {e}", home.display()));
+        App::in_home(opts, home)
+    }
+
+    /// An empty temporary home: a first launch. Its runs go through the import. (The harness's
+    /// own files, the scripts, captures and stderr, are `capture-*` in it.)
+    pub fn launch_empty(opts: LaunchOpts) -> App {
+        let home = temp_home();
+        std::fs::create_dir_all(&home).expect("temp home");
+        App::in_home(opts, home)
+    }
+
+    /// Copies of the owner's four disk images in `<home>/<folder>`, by path in disk order, for
+    /// a script's `pick` (the copies are under the home, so a test may move or damage them).
+    pub fn disks_in_home(&self, folder: &str) -> Vec<PathBuf> {
+        let src = sf_conform::disks::disk_dir().unwrap_or_else(|e| panic!("{e}"));
+        let dir = self.home.join(folder);
+        std::fs::create_dir_all(&dir).expect("disk folder");
+        let mut names: Vec<_> = std::fs::read_dir(&src)
+            .expect("the disk folder")
+            .flatten()
+            .map(|e| e.file_name())
+            .filter(|n| n.to_string_lossy().starts_with("Superfrog") && n.to_string_lossy().ends_with(".zip"))
+            .collect();
+        names.sort();
+        assert_eq!(names.len(), 4, "four Superfrog zips in {}", src.display());
+        names
+            .iter()
+            .map(|n| {
+                std::fs::copy(src.join(n), dir.join(n)).expect("copying a disk");
+                dir.join(n)
+            })
+            .collect()
+    }
+
+    /// Start the app on this home for the OS layer to drive, as [`LaunchOpts::os`] does at launch.
+    pub fn start_os(&mut self) {
+        assert!(self.child.is_none(), "the app is already running");
+        let dir = self.capture_dir();
+        self.child = Some(self.spawn(None, &dir));
+    }
+
+    /// Run `script` in the background, for a test that acts while it runs; [`App::finish`] waits.
+    pub fn start_script(&mut self, script: &str) {
+        assert!(self.child.is_none(), "the app is already running");
+        let dir = self.capture_dir();
+        let path = dir.with_extension("script");
+        std::fs::write(&path, script).expect("writing the script");
+        self.child = Some(self.spawn(Some(&path), &dir));
+    }
+
+    /// Kill the running app's whole process group, as `kill -9` would, and wait for it.
+    pub fn kill(&mut self) {
+        let mut c = self.child.take().expect("no app is running");
+        kill_group(c.id());
+        let _ = c.wait();
+    }
+
+    fn in_home(opts: LaunchOpts, home: PathBuf) -> App {
         let mut app = App {
             opts,
             home,
@@ -116,6 +205,13 @@ impl App {
         self.wait(child, &dir, true)
     }
 
+    /// [`App::finish`] without reading the frames (see [`App::run_script_unread`]).
+    pub fn finish_unread(&mut self) -> Captured {
+        let child = self.child.take().expect("no app is running");
+        let dir = self.capture_dir_of(self.runs - 1);
+        self.wait(child, &dir, false)
+    }
+
     pub fn pid(&self) -> Option<u32> {
         self.child.as_ref().map(Child::id)
     }
@@ -138,9 +234,10 @@ impl App {
             .arg("--max-frames")
             .arg(self.opts.max_frames.to_string())
             .arg("--timeout")
-            .arg(self.opts.timeout_s.to_string())
-            .arg("--scale")
-            .arg(self.opts.scale.to_string());
+            .arg(self.opts.timeout_s.to_string());
+        if let Some(s) = self.opts.scale {
+            cmd.arg("--scale").arg(s.to_string());
+        }
         if let Some(s) = script {
             cmd.arg("--script").arg(s);
         }
@@ -180,6 +277,7 @@ impl App {
             audio_wav: dir.join("audio.wav"),
             exit,
             inputs: std::fs::read_to_string(dir.join("inputs.txt")).unwrap_or_default(),
+            prompts: std::fs::read_to_string(dir.join("prompts.txt")).unwrap_or_default(),
             stderr,
             dir: dir.to_path_buf(),
         }
@@ -196,6 +294,15 @@ impl Drop for App {
             let _ = std::fs::remove_dir_all(&self.home);
         }
     }
+}
+
+/// A fresh temporary home's path, removed if it was left from before.
+fn temp_home() -> PathBuf {
+    static N: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(0);
+    let n = N.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+    let home = std::env::temp_dir().join(format!("sf-e2e-{}-{n}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&home);
+    home
 }
 
 /// Wait for `child` at most `limit`; past it, kill its process group and panic.

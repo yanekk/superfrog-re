@@ -15,7 +15,7 @@
 mod app;
 mod os;
 
-pub use app::{App, Captured, LaunchOpts, binary, group_alive, read_wav};
+pub use app::{App, Captured, LaunchOpts, Shot, binary, group_alive, read_wav};
 pub use os::{Key, os_permissions};
 
 use std::path::Path;

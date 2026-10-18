@@ -38,12 +38,18 @@ pub struct Audio {
 }
 
 impl Audio {
-    /// The default output device, or `Err` saying why there is none.
-    pub fn open() -> Result<Audio, String> {
+    /// The output device called `name`, else the default one; `Err` says why there is none. A
+    /// name no device has is how a test makes the audio output unavailable (`--audio-device`).
+    pub fn open(name: Option<&str>) -> Result<Audio, String> {
         let host = cpal::default_host();
-        let device = host
-            .default_output_device()
-            .ok_or("no audio output device")?;
+        let device = match name {
+            None => host.default_output_device().ok_or("no audio output device")?,
+            Some(name) => host
+                .output_devices()
+                .map_err(|e| format!("audio devices: {e}"))?
+                .find(|d| d.name().is_ok_and(|n| n == name))
+                .ok_or_else(|| format!("no audio output device is called {name:?}"))?,
+        };
         let supported = device
             .default_output_config()
             .map_err(|e| format!("audio device: {e}"))?;

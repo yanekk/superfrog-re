@@ -1,0 +1,306 @@
+//! The first-run disk import and the launch decision (DESIGN §2.2, §2.11, §3.4): use the cache,
+//! import again from the disks remembered last time, or ask for the disks with the native picker.
+//! The decision is T09's [`sf_assets::decide`]; this gathers its facts and acts on its answer.
+//!
+//! Every question to the player goes through [`Ui`]: the native panels in normal play,
+//! [`ScriptedUi`] under `--script`, whose answers the script gives (`script.rs`: `pick`, `answer`)
+//! and which logs every prompt, so a scripted run never opens a panel that would wait for a person.
+
+use std::collections::VecDeque;
+use std::path::{Path, PathBuf};
+
+use serde::{Deserialize, Serialize};
+use sf_assets::{GameData, LaunchAction, LaunchFacts, cache_decode, cache_encode, decide};
+use sf_disk::Offered;
+
+use crate::atomic_write::atomic_write;
+use crate::home::{build, cache_path};
+
+/// The two buttons of the missing-disks message (owner, 2026-10-10).
+pub const CHOOSE: &str = "Choose Disks…";
+pub const QUIT: &str = "Quit";
+
+/// The questions the app asks the player.
+pub trait Ui {
+    /// The disk picker, showing `message`: the files chosen, `None` when it was cancelled.
+    fn pick_disks(&mut self, message: &str) -> Option<Vec<PathBuf>>;
+    /// `message` with "Choose Disks…" and "Quit": `true` for Choose Disks.
+    fn disks_missing(&mut self, message: &str) -> bool;
+    /// `message` with an OK button.
+    fn notice(&mut self, message: &str);
+}
+
+/// The macOS panels, through rfd.
+pub struct NativeUi;
+
+impl Ui for NativeUi {
+    fn pick_disks(&mut self, message: &str) -> Option<Vec<PathBuf>> {
+        rfd::FileDialog::new()
+            .set_title(message)
+            .add_filter("Amiga disk images", &["zip", "adf", "ZIP", "ADF"])
+            .pick_files()
+    }
+
+    fn disks_missing(&mut self, message: &str) -> bool {
+        let r = rfd::MessageDialog::new()
+            .set_level(rfd::MessageLevel::Warning)
+            .set_title("Superfrog")
+            .set_description(message)
+            .set_buttons(rfd::MessageButtons::OkCancelCustom(CHOOSE.into(), QUIT.into()))
+            .show();
+        matches!(r, rfd::MessageDialogResult::Custom(ref b) if b == CHOOSE)
+            || r == rfd::MessageDialogResult::Ok
+    }
+
+    fn notice(&mut self, message: &str) {
+        rfd::MessageDialog::new()
+            .set_level(rfd::MessageLevel::Info)
+            .set_title("Superfrog")
+            .set_description(message)
+            .set_buttons(rfd::MessageButtons::Ok)
+            .show();
+    }
+}
+
+/// What the script answers the picker with.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Pick {
+    Files(Vec<PathBuf>),
+    Cancel,
+}
+
+/// The script's answers, in order, and a log of every prompt. With no answer left, the picker is
+/// cancelled and the missing-disks message answered Quit, so a run always ends.
+#[derive(Debug, Default)]
+pub struct ScriptedUi {
+    pub picks: VecDeque<Pick>,
+    /// `true` for "Choose Disks…".
+    pub answers: VecDeque<bool>,
+    /// Every prompt, one line each: `picker: …`, `missing: … -> choose|quit`, `notice: …`.
+    pub log: Vec<String>,
+    /// Where each line is appended as it is shown (the capture folder's `prompts.txt`).
+    pub log_file: Option<PathBuf>,
+}
+
+impl ScriptedUi {
+    fn record(&mut self, line: String) {
+        let line = line.replace('\n', " ");
+        eprintln!("superfrog: {line}");
+        if let Some(f) = &self.log_file {
+            use std::io::Write;
+            let _ = std::fs::OpenOptions::new()
+                .create(true)
+                .append(true)
+                .open(f)
+                .and_then(|mut f| writeln!(f, "{line}"));
+        }
+        self.log.push(line);
+    }
+}
+
+impl Ui for ScriptedUi {
+    fn pick_disks(&mut self, message: &str) -> Option<Vec<PathBuf>> {
+        self.record(format!("picker: {message}"));
+        match self.picks.pop_front() {
+            Some(Pick::Files(f)) => Some(f),
+            Some(Pick::Cancel) | None => None,
+        }
+    }
+
+    fn disks_missing(&mut self, message: &str) -> bool {
+        let choose = self.answers.pop_front().unwrap_or(false);
+        self.record(format!("missing: {message} -> {}", if choose { "choose" } else { "quit" }));
+        choose
+    }
+
+    fn notice(&mut self, message: &str) {
+        self.record(format!("notice: {message}"));
+    }
+}
+
+/// `disks.toml`: the disk images the cache was last imported from (DESIGN §3.5).
+pub fn disks_path(home: &Path) -> PathBuf {
+    home.join("disks.toml")
+}
+
+#[derive(Serialize, Deserialize)]
+struct Disks {
+    disks: Vec<PathBuf>,
+}
+
+/// The remembered disk paths; `None` when none are, or the file cannot be read.
+fn remembered(home: &Path) -> Option<Vec<PathBuf>> {
+    let text = std::fs::read_to_string(disks_path(home)).ok()?;
+    toml::from_str::<Disks>(&text).ok().map(|d| d.disks)
+}
+
+/// The files at `paths` that can be read, offered under their file names; with the reasons the
+/// others could not be read.
+fn read_offered(paths: &[PathBuf]) -> (Vec<Offered>, Vec<String>) {
+    let mut offered = Vec::new();
+    let mut unread = Vec::new();
+    for p in paths {
+        let name = p.file_name().unwrap_or(p.as_os_str()).to_string_lossy().into_owned();
+        match std::fs::read(p) {
+            Ok(bytes) => offered.push(Offered { name, bytes }),
+            Err(e) => unread.push(format!("“{name}” could not be read: {e}.")),
+        }
+    }
+    (offered, unread)
+}
+
+/// Decode identified disk images into the game data.
+fn decode(offered: &[Offered]) -> Result<GameData, Vec<String>> {
+    let set = sf_disk::identify(offered)
+        .map_err(|errors| errors.iter().map(ToString::to_string).collect::<Vec<_>>())?;
+    let chunks = sf_assets::unpack(&set).map_err(|e| vec![e.to_string()])?;
+    sf_assets::decode(&chunks).map_err(|e| vec![e.to_string()])
+}
+
+fn write_cache(home: &Path, data: &GameData) -> Result<(), String> {
+    let path = cache_path(home);
+    atomic_write(&path, &cache_encode(data, build()))
+        .map_err(|e| format!("The game data could not be written to {}: {e}", path.display()))
+}
+
+/// The game data for this launch: the cache when it is good; else imported again from the disks
+/// remembered last time, silently; else from the disks the player chooses. `Ok(None)` when the
+/// player chose Quit (nothing is written then). `cache_from_disks` names a folder whose disk
+/// images are imported without asking (the tests' seed import). `Err` is fatal, for the player.
+pub fn launch(
+    home: &Path,
+    cache_from_disks: Option<&Path>,
+    ui: &mut dyn Ui,
+) -> Result<Option<GameData>, String> {
+    let cache = match std::fs::read(cache_path(home)) {
+        Ok(bytes) => match cache_decode(&bytes) {
+            Ok(data) => return Ok(Some(data)),
+            Err(e) => Some(Err(e)),
+        },
+        Err(_) => None,
+    };
+    if let Some(dir) = cache_from_disks {
+        let data = crate::home::import(dir)?;
+        write_cache(home, &data)?;
+        return Ok(Some(data));
+    }
+    let remembered_paths = remembered(home);
+    let remembered_disks = remembered_paths.as_deref().map(|p| read_offered(p).0);
+    let facts = LaunchFacts {
+        cache,
+        remembered_disks,
+    };
+    let reason = match decide(&facts) {
+        LaunchAction::UseCache => unreachable!("the cache was not usable"),
+        LaunchAction::Reimport { reason } => {
+            let offered = facts.remembered_disks.as_deref().unwrap_or_default();
+            match decode(offered) {
+                Ok(data) => {
+                    eprintln!("superfrog: {reason}");
+                    write_cache(home, &data)?;
+                    return Ok(Some(data));
+                }
+                Err(why) => format!("{reason} {}", why.join(" ")),
+            }
+        }
+        LaunchAction::AskForDisks { reason } => reason,
+    };
+    ask(home, ui, reason)
+}
+
+/// The picker, until the player chooses four good disks or Quit.
+fn ask(home: &Path, ui: &mut dyn Ui, first: String) -> Result<Option<GameData>, String> {
+    let mut message = first;
+    loop {
+        let problems = match ui.pick_disks(&message) {
+            None => {
+                let missing = decode(&[]).err().unwrap_or_default();
+                format!("No disk images were chosen.\n{}", missing.join("\n"))
+            }
+            Some(paths) => {
+                let (offered, unread) = read_offered(&paths);
+                match decode(&offered) {
+                    Ok(data) if unread.is_empty() => {
+                        write_cache(home, &data)?;
+                        let paths = paths.iter().map(|p| std::path::absolute(p).unwrap_or(p.clone()));
+                        let text = toml::to_string(&Disks {
+                            disks: paths.collect(),
+                        })
+                        .expect("disk paths serialise");
+                        // Losing the remembered paths only costs a question next time.
+                        if let Err(e) = atomic_write(&disks_path(home), text.as_bytes()) {
+                            eprintln!("superfrog: could not remember the disks: {e}");
+                        }
+                        return Ok(Some(data));
+                    }
+                    Ok(_) => format!("These disk images cannot be used:\n{}", unread.join("\n")),
+                    Err(why) => {
+                        let all: Vec<String> = unread.into_iter().chain(why).collect();
+                        format!("These disk images cannot be used:\n{}", all.join("\n"))
+                    }
+                }
+            }
+        };
+        if !ui.disks_missing(&problems) {
+            return Ok(None);
+        }
+        message = "Choose your four Superfrog disk images, zipped or as .adf files.".to_string();
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn home(name: &str) -> PathBuf {
+        let d = std::env::temp_dir().join(format!("sf-app-import-{name}-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&d);
+        d
+    }
+
+    #[test]
+    fn a_cancelled_picker_names_all_four_disks_and_quit_writes_nothing() {
+        let h = home("cancel");
+        let mut ui = ScriptedUi::default();
+        assert_eq!(launch(&h, None, &mut ui), Ok(None));
+        assert_eq!(ui.log.len(), 2, "{:?}", ui.log);
+        assert!(ui.log[0].starts_with("picker: The game data has not been imported yet"), "{:?}", ui.log);
+        for n in 1..=4 {
+            assert!(ui.log[1].contains(&format!("Disk {n} of 4 is missing")), "{}", ui.log[1]);
+        }
+        assert!(ui.log[1].ends_with("-> quit"));
+        assert!(!h.exists(), "Quit wrote into the home");
+    }
+
+    #[test]
+    fn choose_disks_reopens_the_picker() {
+        let h = home("again");
+        let mut ui = ScriptedUi {
+            answers: [true, false].into(),
+            ..Default::default()
+        };
+        assert_eq!(launch(&h, None, &mut ui), Ok(None));
+        let kinds: Vec<&str> = ui.log.iter().map(|l| l.split(':').next().unwrap()).collect();
+        assert_eq!(kinds, ["picker", "missing", "picker", "missing"]);
+        assert!(ui.log[2].contains("Choose your four Superfrog disk images"));
+    }
+
+    #[test]
+    fn a_file_that_is_no_disk_and_one_that_is_gone_are_both_named() {
+        let h = home("junk");
+        std::fs::create_dir_all(&h).unwrap();
+        let junk = h.join("junk.zip");
+        std::fs::write(&junk, b"not a zip").unwrap();
+        let mut ui = ScriptedUi {
+            picks: [Pick::Files(vec![junk, h.join("gone.adf")])].into(),
+            ..Default::default()
+        };
+        assert_eq!(launch(&h, None, &mut ui), Ok(None));
+        let m = &ui.log[1];
+        assert!(m.contains("“gone.adf” could not be read"), "{m}");
+        assert!(m.contains("“junk.zip” could not be read as a disk image"), "{m}");
+        assert!(m.contains("Disk 1 of 4 is missing"), "{m}");
+        assert!(!cache_path(&h).exists());
+        std::fs::remove_dir_all(&h).unwrap();
+    }
+}
