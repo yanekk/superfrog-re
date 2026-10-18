@@ -14,7 +14,7 @@ the account is the commit message. Whoever writes a cell also fixes the over-bud
 **Status:** about 100 tasks ✅; T18, T21 and Phase 3 open; amended to faithful.
 **Last updated:** 2026-10-15
 **Amended 2026-10-15 (owner):** faithful replaces frame-exact (DESIGN §2.1, PLAN.md amendment); T180–T183 added, 14 tasks dropped (PLAN.md).
-**Next `pir-work` will:** review T29; T211 and T212, then T30.
+**Next `pir-work` will:** T211 and T212, then T30.
 
 ## Tasks
 
@@ -52,7 +52,7 @@ done · ⛔ blocked, needs a human. A task dropped by a plan amendment leaves th
 | T26 | save-states | T24 | ✅ | |
 | T27 | crt-and-widescreen | T24 | ✅ | |
 | T28 | level-override | T14, T24 | ✅ | |
-| T29 | app-drill | T21, T25, T26, T27, T28 | 🔍 | Drill at every size; fixed widescreen fade-in, silent app, occluded-window GPU leak; `drill.rs` 3 tests. `sf-conform all` 208/212, 6 034 s. Deviations: whole-game-through-app moved to T211; the four known reds to T212 (owner's yes, both). |
+| T29 | app-drill | T21, T25, T26, T27, T28 | ✅ | Fixed widescreen fade-in, silent app, occluded-window GPU leak. Review: each fix's test red under its mutation; fade-in seam probed; w2-2-complete re-run red at 1229 as before; `drill.rs` 5× green; T211/T212 docs completed. `sf-conform all` 208/212 not re-run (read-only). Whole game, reds moved to T211/T212 (owner's yes). |
 | T30 | acceptance | T29 | ⬜ | |
 | T31 | render-remaining-levels | T13 | ✅ | |
 | T32 | story-intro | T20; blocks T21 | ✅ | |
@@ -182,7 +182,7 @@ done · ⛔ blocked, needs a human. A task dropped by a plan amendment leaves th
 A Notes cell holds what was built or what the review found, the test count, and one line per
 deviation from the task doc. A ✅ task's cell may be cut to one line once the next task has been reviewed.
 
-**Review queue:** T29
+**Review queue:** *(empty)*
 
 ## Blocked on the user
 
