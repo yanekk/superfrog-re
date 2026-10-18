@@ -7,7 +7,7 @@
 //! integer scale (`window.rs`) and the mixer's output is played. `--script` feeds events in place
 //! of the keyboard's and answers the launch's questions, `--capture` writes what was shown and
 //! played; the seatbelts are in `args.rs` (DESIGN §5.2). Every setting and feature is reached
-//! through the menu bar, as a `menu::Command` (DESIGN §2.7, §7).
+//! through the menu bar, as a `menu::Command` (DESIGN §2.7, §7); save states are `states.rs`.
 
 mod args;
 mod atomic_write;
@@ -22,6 +22,7 @@ mod pacing;
 mod progress;
 mod script;
 mod settings;
+mod states;
 mod video;
 mod window;
 
@@ -174,6 +175,10 @@ struct Run {
     /// The furthest progress remembered (DESIGN §2.9).
     furthest: Option<Progress>,
     display: Arc<DisplayData>,
+    /// [`sf_assets::cache_hash`] of the game data: what a save state is tagged with.
+    cache_hash: [u8; 32],
+    /// Which save-state slots hold a state (`states.rs`).
+    states: [bool; states::SLOTS as usize],
     seed: (u32, u32),
     game: Game,
     paula: Paula,
@@ -292,6 +297,7 @@ impl App {
             }
         }
         let display = Arc::new(DisplayData::new(&data));
+        let cache_hash = sf_assets::cache_hash(&data);
         drop(data);
         let game = Game::with_display(display.clone(), Start::PowerOn { seed: Rng::seeded(seed.0, seed.1) });
         let mut run = Run {
@@ -300,6 +306,8 @@ impl App {
             settings,
             furthest,
             display,
+            cache_hash,
+            states: states::filled(&self.home),
             seed,
             game,
             paula: Paula::new(rate),

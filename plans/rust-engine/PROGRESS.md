@@ -49,7 +49,7 @@ done · ⛔ blocked, needs a human. A task dropped by a plan amendment leaves th
 | T23 | app-shell | T21, T22 | ✅ | |
 | T24 | macos-menus | T23 | ✅ | |
 | T25 | controls-and-gamepad | T24 | ⬜ | |
-| T26 | save-states | T24 | ⬜ | |
+| T26 | save-states | T24 | 🔍 | Game::save/load (serde+bincode, BLAKE3 body), Game ▸ Save/Load State 1–5 (⇧⌘N/⌘N), `states.rs`; 8 core, 6 app, 3 e2e + 1 OS-layer tests. Deviations: save/load take build and cache hash (pure crate cannot know them); engine build is version + source hash (`sf-app/build.rs`), not version alone; empty Load slots disabled. |
 | T27 | crt-and-widescreen | T24 | ⬜ | |
 | T28 | level-override | T14, T24 | ⬜ | |
 | T29 | app-drill | T21, T25, T26, T27, T28 | ⬜ | |

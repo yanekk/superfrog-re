@@ -18,6 +18,9 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-18 | 📌 | T26, worker-driven: sf-e2e `states.rs` drove Save State mid-W2-1, play on, Load (saved frame shown, then the headless continuation), ⇧⌘N/⌘N, and another build's state refused; OS layer clicked Game ▸ Save State ▸ 1, pressed ⌘1, ⇧⌘2: green. |
+| 2026-10-18 | 📌 | T26: engine build = version + FNV hash of the pure crates' sources and Cargo.lock (`sf-app/build.rs`). Any engine edit, committed or not, refuses older states; the cache records the same string. |
+| 2026-10-18 | 📌 | T26, left alone: loading a state starts a fresh Paula mixer (its channels are not in `Game`). Inaudible while the app is silent (T22 row); a brief cut of held notes once it sounds. |
 | 2026-10-18 | 📌 | T24 review: fake unverified against real — `menus.rs` OS fullscreen test failed twice with the screen locked (first toggle, then second ⌃⌘F). Owner chose close unverified. Rerun unlocked: `SF_E2E_OS=1 cargo test -p sf-e2e --test menus os_layer_scale -- --ignored`. |
 | 2026-10-18 | 📌 | T24 review, read-only, left alone: a paused step pushes no samples, so the device drains its 1/25 s lead; after resume the queue sits near empty and may underrun until it refills. Silent app today (T22). |
 | 2026-10-18 | 📌 | T24, macOS: with the screen locked the OS layer still clicks menus and posts keys, but AX lists no app windows, captures come back blank and fullscreen never happens (T23's picker and fullscreen OS tests too). Check `CGSSessionScreenIsLocked` first. |

@@ -97,15 +97,18 @@ unsafe extern "C" {
 pub struct Mods {
     pub command: bool,
     pub control: bool,
+    pub shift: bool,
 }
 
 impl Mods {
-    pub const COMMAND: Mods = Mods { command: true, control: false };
-    pub const CONTROL_COMMAND: Mods = Mods { command: true, control: true };
+    pub const COMMAND: Mods = Mods { command: true, control: false, shift: false };
+    pub const CONTROL_COMMAND: Mods = Mods { command: true, control: true, shift: false };
+    pub const SHIFT_COMMAND: Mods = Mods { command: true, control: false, shift: true };
 
-    /// `CGEventFlags`: `kCGEventFlagMaskCommand`, `kCGEventFlagMaskControl`.
+    /// `CGEventFlags`: `kCGEventFlagMaskCommand`, `kCGEventFlagMaskControl`,
+    /// `kCGEventFlagMaskShift`.
     fn flags(self) -> u64 {
-        (self.command as u64 * 0x10_0000) | (self.control as u64 * 0x4_0000)
+        (self.command as u64 * 0x10_0000) | (self.control as u64 * 0x4_0000) | (self.shift as u64 * 0x2_0000)
     }
 }
 

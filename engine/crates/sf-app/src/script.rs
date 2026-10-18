@@ -18,7 +18,8 @@
 //! 70: shot              # write the window as presented to the capture folder (window-NNNNN.png)
 //! 80: continue          # Game → Continue from World N (`menu continue`)
 //! 90: menu pause        # a menu command, by its item's id (menu.rs `Command::id`, `-` as a space):
-//!                       # import, continue, scale 1|2|3|auto, fullscreen, pause, reset, quit
+//!                       # import, continue, scale 1|2|3|auto, fullscreen, pause, reset, quit,
+//!                       # save state 1..5, load state 1..5
 //! ```
 //!
 //! Before the game, the launch's questions (`import.rs`) take the script's answers in order:

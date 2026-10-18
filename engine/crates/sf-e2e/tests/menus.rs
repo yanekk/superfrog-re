@@ -289,7 +289,13 @@ fn os_layer_the_menu_bar_holds_every_item_and_continue_follows_the_progress() {
     assert_eq!(app.os_menu_items(&["File"]), [item("Import Disks…", true, false)]);
     assert_eq!(
         app.os_menu_items(&["Game"]),
-        [item("Continue", false, false), item("Pause", true, false), item("Reset", true, false)],
+        [
+            item("Continue", false, false),
+            item("Pause", true, false),
+            item("Reset", true, false),
+            item("Save State", true, false),
+            item("Load State", true, false),
+        ],
         "no progress: Continue is disabled"
     );
     assert_eq!(app.os_menu_items(&["View"]), [item("Scale", true, false), item("Fullscreen", true, false)]);
