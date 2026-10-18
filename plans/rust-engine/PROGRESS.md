@@ -51,7 +51,7 @@ done · ⛔ blocked, needs a human. A task dropped by a plan amendment leaves th
 | T25 | controls-and-gamepad | T24 | ⬜ | |
 | T26 | save-states | T24 | ⬜ | |
 | T27 | crt-and-widescreen | T24 | ⬜ | |
-| T28 | level-override | T14, T24 | 🔍 | sflevel codec (hand JSON/base64, pure), `Game::new_with_override`, File → Export Level ▸ 30 levels / Play Level File…; 24 tests incl. 3 e2e at 2×. Deviations: Export is a per-level submenu; optional `chunk` field for round-trip; `W6-1alt` id accepted; 300×84 enforced; no-disk-data check decodes .sflevel. |
+| T28 | level-override | T14, T24 | ✅ | Review: code clean; docs/14 fixed (version range, repeated keys), probed. Mutation dropping the override failed the wall test. Probed decoder edges: 2³², 1.0, BOM, CRLF, repeated key, W6-1alt. rfd's OkCancelCustom result mapping read-only, from its source; native save/open panels not driven, script layer only. |
 | T29 | app-drill | T21, T25, T26, T27, T28 | ⬜ | |
 | T30 | acceptance | T29 | ⬜ | |
 | T31 | render-remaining-levels | T13 | ✅ | |
