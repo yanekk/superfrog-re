@@ -27,6 +27,16 @@ that justifies it (T120: no silent pass).
 
 DESIGN §2.1.
 
+## Files
+
+- `engine/conform/cases/{complete-w4-2,enemies-w6-1-complete,w2-2-complete,w2-3-complete}.toml`;
+  the engine module each divergence leads to (`engine/crates/sf-core/src/`); a shorter case beside
+  them for each fix.
+
+## Interface
+
+None new: a case may gain a `lag-limit` with its note, as `game-whole` has.
+
 ## Done when
 
 - [ ] `sf-conform all` green, its run time in PROGRESS notes.

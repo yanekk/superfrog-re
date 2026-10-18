@@ -41,6 +41,13 @@ DESIGN §2.1 check 4, §2.5 (normal play never lags: the feed exists only under 
 - `engine/crates/sf-conform/src/lib.rs` (write the feed), `engine/crates/sf-app/src/{args,main,capture}.rs`
   (read it, hash capture), `engine/crates/sf-e2e/tests/` (new `whole_game.rs`), READMEs.
 
+## Interface
+
+- The feed file: one record per frame of play, versioned, written by `sf-conform` into the trace
+  cache (item 1).
+- The app's test-only option that reads it (item 2), accepted only with `--script`.
+- The capture's hash mode (item 3): one hash per frame, picture and state, in place of PNGs.
+
 ## Done when
 
 - [ ] The app's whole-game run, fed the recorded pacing, gives the same per-frame hashes as the
