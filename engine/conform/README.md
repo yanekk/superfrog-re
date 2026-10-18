@@ -21,7 +21,15 @@ cargo run -q --release -p sf-conform -- all                                # eve
 cargo run -q --release -p sf-conform -- --strict run conform/cases/title-rng.toml  # frame-exact
 cargo run -q --release -p sf-conform -- run --alone conform/cases/complete-w1-2.toml  # check 4 only
 cargo run -q --release -p sf-conform -- record conform/cases/title-rng.toml --watch blink=h0+1368:W
+cargo run -q --release -p sf-conform -- feed conform/cases/game-whole.toml --frames 1500  # pacing feed
 ```
+
+`feed` (T211) runs a case from power-on by check 4 only and writes what its engine run alone was
+fed, one record a frame of play, and the hashes of each frame it played, into the trace cache
+(`~/.cache/superfrog-re/traces/<key>.feed`, `.hashes`; keyed by the oracle, the case and the engine
+build), or finds them there; `--frames N` cuts the case short. The formats are documented in
+`sf-core/src/feed.rs`; the app reads a feed under `--script --pacing FILE` (`sf-e2e`'s
+`whole_game.rs`).
 
 `run`, `all` and `scan` judge faithfully; with `--strict` frame-exact (and without check 4).
 `run --alone` judges by check 4 only: checks 1–3 end a run at their first failure, so a case red

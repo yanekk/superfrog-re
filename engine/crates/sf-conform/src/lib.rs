@@ -13,6 +13,7 @@
 pub mod case;
 pub mod compare;
 pub mod disks;
+pub mod feed;
 pub mod freeze;
 pub mod milestones;
 pub mod reference;
@@ -36,6 +37,7 @@ use std::sync::{Arc, OnceLock};
 use sf_assets::GameData;
 use sf_core::input::FrameInput;
 use sf_core::layout::{AmigaMemory, LAYOUT, Ram, VarDef, VarId, def, h0};
+use sf_core::feed::{FeedFrame, FeedLoad};
 use sf_core::{DisplayData, FrameOut, Game, LoadEnd, Pacing, Picture, Start, View};
 
 /// The owner's disks decoded, once per process.
@@ -143,7 +145,7 @@ pub fn run_with(
     case: &Case,
     before_step: impl FnMut(u32, &mut Game),
 ) -> Result<Outcome, Divergence> {
-    run_inner(case, before_step, &mut |_, _, _| {}, None, false)
+    run_inner(case, before_step, &mut |_, _, _| {}, None, false, None)
 }
 
 /// [`run`], calling `after_step(frame, ours, theirs)` with both sides' Paula writes of each frame
@@ -152,7 +154,7 @@ pub fn run_observing(
     case: &Case,
     mut after_step: impl FnMut(u32, &[sf_paula::PaulaWrite], &[sf_paula::PaulaWrite]),
 ) -> Result<Outcome, Divergence> {
-    run_inner(case, |_, _| {}, &mut after_step, None, false)
+    run_inner(case, |_, _| {}, &mut after_step, None, false, None)
 }
 
 /// [`run`] with both hooks: `before_step(frame, game)` and `after_step(frame, ours, theirs)`.
@@ -161,7 +163,7 @@ pub fn run_hooked(
     before_step: impl FnMut(u32, &mut Game),
     mut after_step: impl FnMut(u32, &[sf_paula::PaulaWrite], &[sf_paula::PaulaWrite]),
 ) -> Result<Outcome, Divergence> {
-    run_inner(case, before_step, &mut after_step, None, false)
+    run_inner(case, before_step, &mut after_step, None, false, None)
 }
 
 /// [`run_observing`], `after_step` also called on each frame the original ended in the middle of
@@ -170,7 +172,7 @@ pub fn run_observing_lag(
     case: &Case,
     mut after_step: impl FnMut(u32, &[sf_paula::PaulaWrite], &[sf_paula::PaulaWrite]),
 ) -> Result<Outcome, Divergence> {
-    run_inner(case, |_, _| {}, &mut after_step, None, true)
+    run_inner(case, |_, _| {}, &mut after_step, None, true, None)
 }
 
 /// [`run`], going on past each divergence: every frame that differs, in order (for finding what
@@ -182,7 +184,7 @@ pub fn scan(case: &Case) -> Vec<Divergence> {
 /// [`scan`], with what the run compared.
 pub fn scan_counting(case: &Case) -> (Vec<Divergence>, Outcome) {
     let mut found = Vec::new();
-    let o = run_inner(case, |_, _| {}, &mut |_, _, _| {}, Some(&mut found), false)
+    let o = run_inner(case, |_, _| {}, &mut |_, _, _| {}, Some(&mut found), false, None)
         .expect("a scan collects its divergences");
     (found, o)
 }
@@ -193,6 +195,7 @@ fn run_inner(
     after_step: &mut dyn FnMut(u32, &[sf_paula::PaulaWrite], &[sf_paula::PaulaWrite]),
     found: Option<&mut Vec<Divergence>>,
     observe_lag: bool,
+    mut record: Option<&mut feed::Recorded>,
 ) -> Result<Outcome, Divergence> {
     // `run --alone`: checks 1–3 run on, their failures set aside, and check 4 ends the run.
     let mut set_aside = Vec::new();
@@ -240,7 +243,11 @@ fn run_inner(
         if frog_only {
             g.frog_only();
         }
-        AloneRun::new(g, case.sync == SyncPoint::PowerOnDisk3)
+        let mut a = AloneRun::new(g, case.sync == SyncPoint::PowerOnDisk3);
+        if record.is_some() {
+            a.record = Some(feed::Recorded::start(&a.game, synced.seed.unwrap_or_default()));
+        }
+        a
     });
     // The original's frames loading under a timed screen since the engine's load ([`timed_screen`]).
     let mut under_screen: Vec<(FrameInput, milestones::FrameState)> = Vec::new();
@@ -695,7 +702,10 @@ fn run_inner(
     outcome.sound_cut_off = sound.cut_off();
     outcome.sound_trailing = sound.trailing;
     outcome.pass_skews = passes.skews;
-    if let Some(a) = alone {
+    if let Some(mut a) = alone {
+        if let (Some(r), Some(rec)) = (record.as_deref_mut(), a.record.take()) {
+            *r = rec;
+        }
         let alone_first_var = a.first_var.clone();
         let last = case.frames.saturating_sub(1) + a.extra;
         match a.judge(last) {
@@ -741,6 +751,8 @@ struct AloneRun {
     /// `SF_CONFORM_ALONE_TRACE=<file>`: at each frame both sides end a pass, the gameplay
     /// variables the engine alone has unlike the original's, written whenever their names change.
     trace: Option<(std::io::BufWriter<std::fs::File>, String)>,
+    /// What it was fed and each frame's hashes, for the app to be fed the same (T211).
+    record: Option<feed::Recorded>,
 }
 
 /// The copper lists of the screens whose own timers run on while the original loads under them
@@ -780,6 +792,7 @@ impl AloneRun {
             trace: std::env::var_os("SF_CONFORM_ALONE_TRACE").map(|p| {
                 (std::io::BufWriter::new(std::fs::File::create(p).unwrap()), String::new())
             }),
+            record: None,
         }
     }
 
@@ -807,28 +820,32 @@ impl AloneRun {
             self.seeds
                 .push_back((rng.addr..rng.addr + len).map(|a| mem.byte(a)).collect());
         }
-        if self.panicked.is_none() {
+        // What the engine is fed this frame (`sf_core::feed`, which the app is fed from, T211).
+        let mut fed = FeedFrame {
+            input,
+            pacing,
+            twice,
             // The original's load ended this frame: its timing, which is the disk's, is an input
             // (owner, T209): its vertical blanks first (`Game::load_blanks`), wherever the
             // engine's own load fell; the frames it held a loading picture for; its end's line.
-            if let Some((n, line)) = load_blanks {
-                self.game.load_blanks(n);
-                self.game
-                    .set_screen_frames((!skipped.is_empty()).then_some(skipped.len() as u16));
-                self.game.set_load_line(line);
-            }
+            load: load_blanks.map(|(blanks, line)| FeedLoad {
+                blanks,
+                screen_frames: (!skipped.is_empty()).then_some(skipped.len() as u16),
+                line,
+            }),
+            ..FeedFrame::default()
+        };
+        let mut picture = None;
+        if self.panicked.is_none() {
             let g = &mut self.game;
-            let stepped = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-                if twice {
-                    g.step_paced(input, pacing);
-                }
-                g.step_paced(input, pacing)
-            }));
+            let stepped = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| fed.step(g)));
             match stepped {
-                Ok(out) => {
+                Ok(mut outs) => {
+                    let out = outs.pop().expect("a frame steps");
                     if out.resync.iter().any(|&(a, _)| a == rng.addr) {
                         self.wanted += 1;
                     }
+                    picture = self.record.is_some().then_some(out.picture);
                 }
                 Err(e) => {
                     let why = e
@@ -842,7 +859,8 @@ impl AloneRun {
             while self.wanted > 0
                 && let Some(seed) = self.seeds.pop_front()
             {
-                self.game.poke(rng.addr, &seed);
+                sf_core::feed::poke_seed(&mut self.game, &seed);
+                fed.seeds.push(seed);
                 self.wanted -= 1;
             }
         }
@@ -900,6 +918,7 @@ impl AloneRun {
         if skipped.is_empty() {
             self.ours.frame(at, ours);
             self.theirs.frame(at, theirs);
+            self.recorded(fed, picture);
             return;
         }
         // The engine's load frame stands for the first the original loaded under its screen;
@@ -912,18 +931,23 @@ impl AloneRun {
         }
         self.theirs.frame(at + k, theirs);
         for (i, inp) in inputs.into_iter().enumerate() {
+            fed.then.push(inp);
             if self.panicked.is_none() {
                 let g = &mut self.game;
                 let stepped = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-                    g.step_paced(inp, Pacing::OnTime);
+                    sf_core::feed::step_after(g, inp)
                 }));
-                if let Err(e) = stepped {
-                    let why = e
-                        .downcast_ref::<String>()
-                        .cloned()
-                        .or_else(|| e.downcast_ref::<&str>().map(|s| s.to_string()))
-                        .unwrap_or_default();
-                    self.panicked = Some((f, why));
+                match stepped {
+                    Ok(out) if self.record.is_some() => picture = Some(out.picture),
+                    Ok(_) => {}
+                    Err(e) => {
+                        let why = e
+                            .downcast_ref::<String>()
+                            .cloned()
+                            .or_else(|| e.downcast_ref::<&str>().map(|s| s.to_string()))
+                            .unwrap_or_default();
+                        self.panicked = Some((f, why));
+                    }
                 }
             }
             let g = &self.game;
@@ -931,6 +955,17 @@ impl AloneRun {
             self.ours.frame(at + 1 + i as u64, st);
         }
         self.extra += k as u32;
+        self.recorded(fed, picture);
+    }
+
+    /// When recording, the frame as fed and its hashes; a panicked engine's record is no feed.
+    fn recorded(&mut self, fed: FeedFrame, picture: Option<Picture>) {
+        if let Some(r) = self.record.as_mut() {
+            match (picture, &self.panicked) {
+                (Some(p), None) => r.frame(fed, &self.game, &p),
+                _ => r.panicked = true,
+            }
+        }
     }
 
     /// Check 4 at the run's last frame of play: the milestones met, or where they part.
