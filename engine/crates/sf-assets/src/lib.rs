@@ -16,6 +16,7 @@ mod gamedata;
 mod launch;
 mod palette;
 mod picture;
+mod sflevel;
 pub mod sound;
 mod sprites;
 mod t7mp;
@@ -34,6 +35,10 @@ pub use gamedata::{
 pub use launch::{LaunchAction, LaunchFacts, decide};
 pub use palette::Palette;
 pub use picture::{Bitmap, Picture, PictureId};
+pub use sflevel::{
+    SFLEVEL_FORMAT, SFLEVEL_VERSION, SflevelError, level_id_named, sflevel_decode, sflevel_encode,
+    sflevel_replaces,
+};
 pub use sprites::{SpriteBank, SpriteId};
 pub use t7mp::{T7mp, Tag, t7mp_decode, t7mp_encode};
 pub use tables::{
