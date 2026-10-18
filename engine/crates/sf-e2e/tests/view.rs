@@ -193,9 +193,10 @@ fn widescreen_on_the_title_story_intro_and_slot_machine_shows_the_border_at_the_
     assert!(not_black(&c.frames[150]));
 }
 
-/// A run with `settings` in its home, a shot at 150: the capture. (Fifty frames after it: a run
-/// whose last step lands in the same catch-up as the shot's ends before the shot is taken.)
-fn shot_run(settings: &str, scale: Option<u32>) -> Captured {
+/// A run with `settings` in its home, a shot at 150: the app, whose home holds the shot until it is
+/// dropped, and the capture. (Fifty frames after it: a run whose last step lands in the same
+/// catch-up as the shot's ends before the shot is taken.)
+fn shot_run(settings: &str, scale: Option<u32>) -> (App, Captured) {
     let mut app = App::launch(LaunchOpts {
         max_frames: 200,
         scale,
@@ -204,13 +205,13 @@ fn shot_run(settings: &str, scale: Option<u32>) -> Captured {
     std::fs::write(app.home.join("settings.toml"), settings).unwrap();
     let c = app.run_script("150: shot\n");
     assert!(c.exit.success(), "{}", c.stderr);
-    c
+    (app, c)
 }
 
 #[test]
 fn widescreen_at_1x_2x_and_3x_is_a_16_9_window_at_a_whole_scale() {
     for n in 1..=3u32 {
-        let c = shot_run("widescreen = true\n", Some(n));
+        let (_app, c) = shot_run("widescreen = true\n", Some(n));
         let (img, info) = c.read_shot(150);
         let sf = info.scale_factor as u32;
         assert_eq!(info.surface, (454 * n * sf, 256 * n * sf), "{n}× widescreen: {info:?}");
@@ -241,8 +242,8 @@ fn difference(img: &Image, info: &Shot, frame: &Image, s: u32) -> (f64, u8) {
 #[test]
 fn crt_changes_only_the_scaled_picture_and_stays_legible_at_1x() {
     for n in 1..=3u32 {
-        let plain = shot_run("", Some(n));
-        let crt = shot_run("crt = true\n", Some(n));
+        let (_plain_app, plain) = shot_run("", Some(n));
+        let (_crt_app, crt) = shot_run("crt = true\n", Some(n));
         assert!(crt.frames == plain.frames, "{n}×: the CRT filter changed a game frame");
         let (pi, pinfo) = plain.read_shot(150);
         let (ci, cinfo) = crt.read_shot(150);
