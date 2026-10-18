@@ -136,7 +136,7 @@ with `case.alone = Alone::Off` and names the owner (T184: `enemies-w1-1`, `enemi
 Every case green under the faithful checks has a test in `crates/sf-conform/tests/`: those with
 assertions of their own beside their subject (`frog_cases.rs`, `enemies_*.rs`, `front.rs`,
 `story.rs`, ...), the rest one line each in `cases.rs`. The slow ones are ignored and run with
-`cargo test -p sf-conform -- --ignored`: `attract-demo-3` (`cases.rs`, about 4 min), `whole-w6-4-start`
+`cargo test -p sf-conform -- --ignored`: `attract-demo-3` (`cases.rs`, about 4 min), `whole-w2-2-start` (`cases.rs`, about 2 min uncached; T209), `whole-w6-4-start`
 and `whole-final-load` (`cases.rs`, about 9 min each uncached, seconds from the cache; T208), `game-whole`
 (`chain.rs`'s `the_whole_game_plays_as_the_original_does`, faithful and alone to `end_seq_load`,
 about 25 min: 1447 s; T209) and the
