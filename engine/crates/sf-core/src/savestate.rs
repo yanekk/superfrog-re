@@ -95,6 +95,13 @@ impl Game {
         out
     }
 
+    /// The save state's body: the whole game, field by field (what [`crate::feed::frame_hashes`]
+    /// hashes as the state).
+    pub(crate) fn encoded(&self) -> Vec<u8> {
+        use bincode::Options;
+        opts().serialize(self).expect("a game always encodes")
+    }
+
     /// A save state's header, if `bytes` begin with one.
     pub fn state_header(bytes: &[u8]) -> Result<StateHeader, StateError> {
         use bincode::Options;

@@ -6,7 +6,8 @@
 //! paced by the audio device's clock, the newest frame is presented at each display refresh at an
 //! integer scale (`window.rs`) and the mixer's output is played. `--script` feeds events in place
 //! of the keyboard's and answers the launch's questions, `--capture` writes what was shown and
-//! played; the seatbelts are in `args.rs` (DESIGN §5.2). Every setting and feature is reached
+//! played; the seatbelts are in `args.rs` (DESIGN §5.2). `--pacing`, a test's, steps the game
+//! from a pacing feed as `sf-conform`'s engine run alone is stepped (`sf_core::feed`, T211). Every setting and feature is reached
 //! through the menu bar, as a `menu::Command` (DESIGN §2.7, §7); save states are `states.rs`. Gamepads
 //! come through gilrs (`pad.rs`), except under `--script`, whose `pad …` lines stand in for them.
 
@@ -36,7 +37,8 @@ use std::sync::Arc;
 use std::time::{Duration, Instant, SystemTime};
 
 use sf_assets::LevelData;
-use sf_core::{DisplayData, Game, LevelId, Progress, Rng, Start};
+use sf_core::feed::{Feed, FeedFrame};
+use sf_core::{DisplayData, Game, LevelId, Picture, Progress, Rng, Start};
 use sf_paula::Paula;
 use winit::application::ApplicationHandler;
 use winit::event::{ElementState, MouseButton, WindowEvent};
@@ -89,6 +91,24 @@ fn main() {
                 std::process::exit(2);
             })
     });
+    let feed = args.pacing.as_ref().map(|path| {
+        std::fs::read_to_string(path)
+            .map_err(|e| e.to_string())
+            .and_then(|t| Feed::parse(&t))
+            .and_then(|f| match f.engine == home::build() {
+                true => Ok(f),
+                false => Err(format!(
+                    "written for engine build {:?}, and this is {:?}: record it again \
+                     (`sf-conform feed`)",
+                    f.engine,
+                    home::build()
+                )),
+            })
+            .unwrap_or_else(|e| {
+                eprintln!("superfrog: {}: {e}", path.display());
+                std::process::exit(2);
+            })
+    });
     if let Some(dir) = &args.capture
         && let Err(e) = std::fs::create_dir_all(dir)
     {
@@ -127,6 +147,7 @@ fn main() {
         args,
         home,
         script,
+        feed,
         ui,
         menu: None,
         controls: None,
@@ -170,6 +191,8 @@ struct App {
     args: Args,
     home: PathBuf,
     script: Option<Script>,
+    /// `--pacing`: the feed, until the game starts and takes it.
+    feed: Option<Feed>,
     /// Every question to the player: the native panels, or the script's answers.
     ui: Box<dyn Ui>,
     menu: Option<MenuBar>,
@@ -197,6 +220,10 @@ struct Run {
     levels: BTreeMap<LevelId, LevelData>,
     seed: (u32, u32),
     game: Game,
+    /// `--pacing`: what each step is fed in place of the input, in order (`sf_core::feed`).
+    feed: Option<Vec<FeedFrame>>,
+    /// The newest frame's picture, for the capture's hashes.
+    picture: Picture,
     paula: Paula,
     /// The mixer's output rate.
     rate: u32,
@@ -300,7 +327,8 @@ impl App {
                 .ok()
         };
         let rate = audio.as_ref().map_or(SILENT_RATE, |a| a.rate);
-        let capture = match self.args.capture.as_ref().map(|dir| Capture::new(dir, rate, seed)) {
+        let hashes = self.args.capture_hashes;
+        let capture = match self.args.capture.as_ref().map(|dir| Capture::new(dir, rate, seed, hashes)) {
             None => None,
             Some(Ok(c)) => Some(c),
             Some(Err(e)) => return self.fail(event_loop, &format!("capture: {e}")),
@@ -334,7 +362,10 @@ impl App {
         let display = Arc::new(DisplayData::new(&data));
         let cache_hash = sf_assets::cache_hash(&data);
         let levels = data.levels;
-        let mut game = Game::with_display(display.clone(), Start::PowerOn { seed: Rng::seeded(seed.0, seed.1) });
+        // A pacing feed starts where its run alone did: the RNG as the original seeded it.
+        let feed = self.feed.take();
+        let start_rng = feed.as_ref().map_or_else(|| Rng::seeded(seed.0, seed.1), |f| f.seed);
+        let mut game = Game::with_display(display.clone(), Start::PowerOn { seed: start_rng });
         game.set_view(window::view(settings.widescreen));
         let mut run = Run {
             _lock: lock,
@@ -348,6 +379,8 @@ impl App {
             levels,
             seed,
             game,
+            feed: feed.map(|f| f.frames),
+            picture: Picture::default(),
             paula: Paula::booted(rate),
             rate,
             paused: false,
@@ -374,11 +407,12 @@ impl App {
         let size = (pic.width as u32, pic.height as u32);
         let rgba = picture_rgba(&pic);
         if let Some(c) = &mut run.capture
-            && let Err(e) = c.frame(0, size.0, size.1, &rgba)
+            && let Err(e) = c.frame(0, (size.0, size.1, &rgba), &run.game, &pic)
         {
             return self.fail(event_loop, &format!("capture: {e}"));
         }
         run.shown.completed((0, size, rgba));
+        run.picture = pic;
         for e in present {
             run.input.event(HostInput::Pad(e));
         }
@@ -429,7 +463,7 @@ impl App {
             // not reach the game when it resumes. The frame still counts towards --max-frames.
             let _ = run.input.frame();
             if let (Some(c), Some((_, size, rgba))) = (&mut run.capture, run.shown.at_refresh())
-                && let Err(e) = c.frame(n, size.0, size.1, rgba)
+                && let Err(e) = c.frame(n, (size.0, size.1, rgba), &run.game, &run.picture)
             {
                 return self.fail(event_loop, &format!("capture: {e}"));
             }
@@ -439,7 +473,21 @@ impl App {
             return;
         }
         let input = run.input.frame();
-        let out = run.game.step(input);
+        // Under `--pacing` the step is the feed's, in place of the input: one frame of play as
+        // the engine run alone played it (the original's step twice, frames under a loading
+        // screen after it), so one or more steps of the game.
+        let stepped = match &run.feed {
+            None => Ok((input, vec![run.game.step(input)])),
+            Some(feed) => match feed.get(n as usize - 1) {
+                Some(f) => Ok((f.input, f.play(&mut run.game))),
+                None => Err(feed.len()),
+            },
+        };
+        let (input, outs) = match stepped {
+            Ok(s) => s,
+            Err(len) => return self.fail(event_loop, &format!("the pacing feed ends at frame {len}")),
+        };
+        let run = self.run.as_mut().expect("running");
         let p = run.game.progress();
         if progress::further(p, run.furthest) {
             run.furthest = Some(p);
@@ -448,20 +496,24 @@ impl App {
             }
         }
         run.samples.clear();
-        run.paula.frame(&out.paula, &run.game, &mut run.samples);
+        for out in &outs {
+            run.paula.frame(&out.paula, &run.game, &mut run.samples);
+        }
         if let Some(a) = &run.audio {
             a.push(&run.samples);
         }
-        let size = (out.picture.width as u32, out.picture.height as u32);
-        let rgba = picture_rgba(&out.picture);
+        let picture = outs.into_iter().last().expect("a frame steps").picture;
+        let size = (picture.width as u32, picture.height as u32);
+        let rgba = picture_rgba(&picture);
         if let Some(c) = &mut run.capture {
             c.audio(&run.samples);
             c.input(n, input);
-            if let Err(e) = c.frame(n, size.0, size.1, &rgba) {
+            if let Err(e) = c.frame(n, (size.0, size.1, &rgba), &run.game, &picture) {
                 return self.fail(event_loop, &format!("capture: {e}"));
             }
         }
         run.shown.completed((n, size, rgba));
+        run.picture = picture;
         if self.args.max_frames == Some(n) {
             self.finish(event_loop);
         }
@@ -535,8 +587,8 @@ impl App {
     }
 
     fn finish(&mut self, event_loop: &ActiveEventLoop) {
-        if let Some(r) = self.run.as_ref()
-            && let Some(c) = r.capture.as_ref()
+        if let Some(r) = self.run.as_mut()
+            && let Some(c) = r.capture.as_mut()
             && let Err(e) = c
                 .finish()
                 .and_then(|()| c.pacing(r.steps, r.presented, r.dropped))

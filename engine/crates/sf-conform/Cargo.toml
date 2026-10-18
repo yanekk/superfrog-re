@@ -3,6 +3,9 @@ name = "sf-conform"
 version.workspace = true
 edition.workspace = true
 publish.workspace = true
+# The engine build (`SF_ENGINE_BUILD`) a pacing feed is tagged with, as the app's save states are:
+# the same script, so the two cannot disagree on it (T211).
+build = "../sf-app/build.rs"
 
 [dependencies]
 # The engine under test and the types it shares with the oracle.

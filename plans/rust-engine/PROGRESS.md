@@ -176,7 +176,7 @@ done · ⛔ blocked, needs a human. A task dropped by a plan amendment leaves th
 | T208 | w6-4-start-and-final-load | T203; blocks T23, T29 | ✅ | |
 | T209 | whole-game-alone | T203, T208; blocks T23, T29 | ✅ | |
 | T210 | window-fits-the-game | T27; blocks T29 | ✅ | |
-| T211 | app-whole-game-paced | T21, T25, T26, T27, T28; blocks T30 | ⬜ | |
+| T211 | app-whole-game-paced | T21, T25, T26, T27, T28; blocks T30 | ✅ | |
 | T212 | conform-known-reds | T29; blocks T30 | ✅ | Review: one fix, test `a_frame_ends_in_bob_draw…` (draw-loop stepping survived its mutation; complete-w4-2 green unstepped). `sf-conform all` rerun 212/212, 5 747 s. Panel, latch, point, lag-limit 205 mutants red; 15 unpinned tests green; lib red identical on base. W3-3 coin 6338 as the original's: read-only. |
 
 A Notes cell holds what was built or what the review found, the test count, and one line per

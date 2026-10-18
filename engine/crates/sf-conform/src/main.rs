@@ -7,6 +7,10 @@
 //! run alone (check 4: every case that steps the engine); `--strict` judges frame-exact instead,
 //! for diagnosis, without check 4. `run --alone` judges by check 4 only: checks 1–3 end a run at
 //! their first failure, so a case red there never reaches it.
+//! `sf-conform feed <case.toml> [--frames N]` — the pacing feed of a case from power-on (T211):
+//! what check 4's engine run alone is fed, and its frame hashes, written into the trace cache for
+//! the app to be fed the same (`sf_conform::feed`); prints the two files. `--frames N` cuts the
+//! case to its first N frames.
 //! `sf-conform record <case.toml> [--watch NAME=ADDR:W]... [--every] [--only] [--all-vars] [--max-mb N] [--trace] [--paula] [--png DIR]`
 //! — the original's state per frame of a case, for writing scripts and porting: every `LAYOUT`
 //! variable up to 1 KB long (every one with `--all-vars`, none with `--only`) and each watched
@@ -21,7 +25,7 @@ use std::process::ExitCode;
 use sf_conform::{Alone, Case, InputScript, Mode, cases_dir, sync};
 use sf_core::layout::{LAYOUT, Ram, VarDef, VarId, Width, h0};
 
-const USAGE: &str = "usage: sf-conform [--strict | --alone] run <case.toml>... | [--strict] all | [--strict] scan <case.toml> | record <case.toml> [--watch NAME=ADDR:W]... [--every] [--only] [--all-vars] [--max-mb N] [--trace] [--paula] [--png DIR]";
+const USAGE: &str = "usage: sf-conform [--strict | --alone] run <case.toml>... | [--strict] all | [--strict] scan <case.toml> | feed <case.toml> [--frames N] | record <case.toml> [--watch NAME=ADDR:W]... [--every] [--only] [--all-vars] [--max-mb N] [--trace] [--paula] [--png DIR]";
 
 fn main() -> ExitCode {
     let mut args: Vec<String> = std::env::args().skip(1).collect();
@@ -40,6 +44,9 @@ fn main() -> ExitCode {
         ),
         Some("all") if args.len() == 1 => all(mode),
         Some("scan") if args.len() == 2 => scan(Path::new(&args[1]), mode),
+        Some("feed") if args.len() == 2 || args.len() == 4 && args[2] == "--frames" => {
+            feed(Path::new(&args[1]), args.get(3))
+        }
         Some("record") if args.len() >= 2 => record(Path::new(&args[1]), &args[2..]),
         _ => Err(USAGE.to_string()),
     };
@@ -51,6 +58,21 @@ fn main() -> ExitCode {
             ExitCode::from(2)
         }
     }
+}
+
+fn feed(path: &Path, frames: Option<&String>) -> Result<bool, String> {
+    let mut case = Case::load(path)?;
+    if let Some(n) = frames {
+        case.frames = n.parse().map_err(|_| format!("--frames {n:?}: not a whole number"))?;
+    }
+    let f = sf_conform::feed::feed(&case)?;
+    println!("feed {}", f.feed.display());
+    println!("hashes {}", f.hashes.display());
+    println!("{} frames, {}", f.frames, if f.cached { "from the cache" } else { "run now" });
+    if let Err(d) = &f.alone {
+        println!("the engine run alone did not meet the original's milestones: {d}");
+    }
+    Ok(true)
 }
 
 fn scan(path: &Path, mode: Mode) -> Result<bool, String> {

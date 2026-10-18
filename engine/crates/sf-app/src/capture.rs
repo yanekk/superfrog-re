@@ -3,6 +3,9 @@
 //!
 //! - `frame-NNNNN.png`: frame N exactly as it went to the GPU at 1× (frame 0 is the start, before
 //!   any step; frame N the picture after step N), RGB, 8 bits a channel (12-bit colour × 17).
+//! - `hashes.txt` in their place under `--capture-hashes` (T211): each frame's picture and state
+//!   hashes, `sf_core::feed`'s format, as `sf-conform` writes them for its engine run alone; a long
+//!   run's PNGs would be gigabytes.
 //! - `audio.wav`: everything the mixer produced, 16-bit stereo PCM at the run's host rate.
 //! - `inputs.txt`: `N joy keys` for each step N whose input was not empty (joy bits in hex, keys
 //!   as the held Amiga raw codes in hex), so a test can see what reached the game.
@@ -26,24 +29,52 @@ pub struct Capture {
     rate: u32,
     audio: Vec<[i16; 2]>,
     inputs: String,
+    /// `--capture-hashes`: `hashes.txt`, written as the run goes, in place of the PNGs.
+    hashes: Option<std::io::BufWriter<std::fs::File>>,
 }
 
 impl Capture {
-    pub fn new(dir: &Path, rate: u32, seed: (u32, u32)) -> std::io::Result<Capture> {
+    pub fn new(dir: &Path, rate: u32, seed: (u32, u32), hashes: bool) -> std::io::Result<Capture> {
         std::fs::create_dir_all(dir)?;
         std::fs::write(dir.join("seed.txt"), format!("{} {}\n", seed.0, seed.1))?;
+        let hashes = match hashes {
+            false => None,
+            true => {
+                let mut w = std::io::BufWriter::new(std::fs::File::create(dir.join("hashes.txt"))?);
+                writeln!(w, "{}", sf_core::feed::HASHES_HEADER)?;
+                Some(w)
+            }
+        };
         Ok(Capture {
             dir: dir.to_path_buf(),
             rate,
             audio: Vec::new(),
             inputs: String::new(),
+            hashes,
         })
     }
 
-    pub fn frame(&mut self, n: u64, width: u32, height: u32, rgba: &[u8]) -> std::io::Result<()> {
+    /// Frame `n`: its PNG, or under `--capture-hashes` its hashes, of `game` and the picture it
+    /// showed.
+    pub fn frame(
+        &mut self,
+        n: u64,
+        (width, height, rgba): (u32, u32, &[u8]),
+        game: &sf_core::Game,
+        picture: &sf_core::Picture,
+    ) -> std::io::Result<()> {
+        if let Some(w) = self.hashes.as_mut() {
+            w.write_all(sf_core::feed::hash_line(n, sf_core::feed::frame_hashes(game, picture)).as_bytes())?;
+            // Flushed now and then, so a run stopped short still says how far it matched.
+            if n.is_multiple_of(500) {
+                w.flush()?;
+            }
+            return Ok(());
+        }
         let path = self.dir.join(format!("frame-{n:05}.png"));
         std::fs::write(path, png(width, height, rgba))
     }
+
 
     pub fn window_path(&self, n: u64) -> PathBuf {
         self.dir.join(format!("window-{n:05}.png"))
@@ -105,7 +136,10 @@ impl Capture {
     }
 
     /// Write the audio and the inputs. The frames are already on disk.
-    pub fn finish(&self) -> std::io::Result<()> {
+    pub fn finish(&mut self) -> std::io::Result<()> {
+        if let Some(w) = self.hashes.as_mut() {
+            w.flush()?;
+        }
         std::fs::write(self.dir.join("audio.wav"), wav(self.rate, &self.audio))?;
         std::fs::write(self.dir.join("inputs.txt"), &self.inputs)
     }
@@ -177,7 +211,7 @@ mod tests {
     #[test]
     fn inputs_list_only_frames_with_input() {
         let dir = std::env::temp_dir().join(format!("sf-app-capture-{}", std::process::id()));
-        let mut c = Capture::new(&dir, 48_000, (1, 2)).unwrap();
+        let mut c = Capture::new(&dir, 48_000, (1, 2), false).unwrap();
         c.input(1, FrameInput::NONE);
         c.input(2, FrameInput {
             joy: Joy::LEFT | Joy::FIRE,

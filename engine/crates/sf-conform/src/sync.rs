@@ -1272,17 +1272,21 @@ fn at_snapshot(
 }
 
 fn cache_dir() -> PathBuf {
+    cache_root().join("sync")
+}
+
+/// `~/.cache/superfrog-re`, or `SUPERFROG_CACHE` (DESIGN §3.5).
+pub(crate) fn cache_root() -> PathBuf {
     std::env::var_os("SUPERFROG_CACHE")
         .filter(|v| !v.is_empty())
         .map(PathBuf::from)
         .unwrap_or_else(|| {
             PathBuf::from(std::env::var_os("HOME").unwrap_or_default()).join(".cache/superfrog-re")
         })
-        .join("sync")
 }
 
 /// SHA-1 over the format, the vAmiga build, the Kickstart and disk files and the way there.
-fn cache_key(cfg: &OracleConfig, what: &str) -> Result<String, String> {
+pub(crate) fn cache_key(cfg: &OracleConfig, what: &str) -> Result<String, String> {
     let file = |p: &PathBuf| {
         fs::read(p)
             .map(|b| sha1_hex(&b))

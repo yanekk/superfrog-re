@@ -18,6 +18,8 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-18 | 📌 | T211 review: the feed's cache key covers the engine build, not `sf-conform`'s recorder, so a recorder change reuses the old feed and `the_feed_replays…` passes on a warm cache. Bump `FEED_FORMAT` with any recorder change. |
+| 2026-10-18 | 📌 | T211: the app paced by `game-whole`'s feed equals the headless run alone on all 224 082 frames (picture and state hashes); app 4 495 s, feed 1 930 s. Any sf-core change re-keys the feed (engine build). |
 | 2026-10-18 | 📌 | T212 review: `sf-conform all` rerun 212/212 green, 5 747 s. complete-w4-2 stays green with `bob_draw`'s draw loop unstepped; the stepping is guarded by `items_routines::a_frame_ends_in_bob_draw…` instead. |
 | 2026-10-18 | 📌 | T212: `sf-conform all` 212/212 green in 6 250 s. complete-w4-2's longest mid-pass run is 206 (from 8499): `lag-limit` 206. Lib `the_frog_walks_step…` still red, as on base. |
 | 2026-10-18 | 🐞 | T212, fixed: frame ending in `panel_update`'s score digit (W2-3 6728, W6-1 2128); the engine drew the clock digit before the blank's tick. `panel_update` now three steps (`sync::panel_step`); with the fixes below, 21 re-sync pins in tests gone. |
