@@ -1,10 +1,15 @@
 //! The picture to the window (DESIGN §2.7): the game's frame as a texture, drawn at a whole-number
-//! scale with nearest-neighbour sampling, centred, black around it. T27 adds the CRT pass here.
+//! scale with nearest-neighbour sampling, centred, black around it (`window.rs` decides the scale
+//! and place). T27 adds the CRT pass here.
 
+use std::path::Path;
 use std::sync::Arc;
 
 use sf_core::{Picture, to_rgb12};
 use winit::window::Window;
+
+use crate::settings::Scale;
+use crate::window::{effective, picture_scale, viewport};
 
 /// `pic` as 8-bit RGBA, row-major: each 4-bit channel times 17, so 0xF is 255.
 pub fn picture_rgba(pic: &Picture) -> Vec<u8> {
@@ -15,14 +20,6 @@ pub fn picture_rgba(pic: &Picture) -> Vec<u8> {
             [ch(8), ch(4), ch(0), 255]
         })
         .collect()
-}
-
-/// The largest viewport of `scale` × the frame that fits the surface, centred: `(x, y, w, h)`.
-pub fn viewport(surface: (u32, u32), frame: (u32, u32), scale: u32) -> (u32, u32, u32, u32) {
-    let fit = (surface.0 / frame.0.max(1)).min(surface.1 / frame.1.max(1)).max(1);
-    let s = scale.min(fit);
-    let (w, h) = (frame.0 * s, frame.1 * s);
-    (surface.0.saturating_sub(w) / 2, surface.1.saturating_sub(h) / 2, w, h)
 }
 
 const SHADER: &str = r#"
@@ -58,11 +55,22 @@ pub struct Video {
     sampler: wgpu::Sampler,
     /// The frame texture, its size and the bind group reading it.
     frame: Option<(wgpu::Texture, (u32, u32), wgpu::BindGroup)>,
-    scale: u32,
+    pub scale: Scale,
+    /// Fullscreen draws at the largest whole scale, whatever the setting (DESIGN §2.7).
+    pub fullscreen: bool,
+}
+
+/// Where [`Video::present`] puts the picture, for a `shot`: the surface's size in pixels, its
+/// pixels a point, and the picture's place `(x, y, w, h)` on it.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct Shown {
+    pub surface: (u32, u32),
+    pub scale_factor: f64,
+    pub viewport: (u32, u32, u32, u32),
 }
 
 impl Video {
-    pub fn new(window: Arc<Window>, scale: u32) -> Result<Video, String> {
+    pub fn new(window: Arc<Window>, scale: Scale) -> Result<Video, String> {
         let instance = wgpu::Instance::new(wgpu::InstanceDescriptor::new_without_display_handle());
         let surface = instance
             .create_surface(window.clone())
@@ -155,6 +163,7 @@ impl Video {
             sampler,
             frame: None,
             scale,
+            fullscreen: false,
         })
     }
 
@@ -220,11 +229,50 @@ impl Video {
         );
     }
 
+    /// The picture's place on the surface now: its size, pixels a point, and `(x, y, w, h)`.
+    fn layout(&self, frame: (u32, u32)) -> Shown {
+        let surface = (self.config.width, self.config.height);
+        let scale_factor = self.window.scale_factor();
+        let s = picture_scale(surface, frame, effective(self.scale, self.fullscreen), scale_factor);
+        Shown {
+            surface,
+            scale_factor,
+            viewport: viewport(surface, frame, s),
+        }
+    }
+
+    /// Record the uploaded frame drawn onto `target`, a surface-sized texture: black, and the
+    /// picture at its place.
+    fn draw(&self, enc: &mut wgpu::CommandEncoder, target: &wgpu::TextureView, shown: &Shown) {
+        let Some((_, _, group)) = &self.frame else { return };
+        let mut pass = enc.begin_render_pass(&wgpu::RenderPassDescriptor {
+            label: Some("present"),
+            color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                view: target,
+                depth_slice: None,
+                resolve_target: None,
+                ops: wgpu::Operations {
+                    load: wgpu::LoadOp::Clear(wgpu::Color::BLACK),
+                    store: wgpu::StoreOp::Store,
+                },
+            })],
+            ..Default::default()
+        });
+        let (x, y, w, h) = shown.viewport;
+        // A picture larger than the surface (only while a resize has not reached the surface
+        // yet: the window is never below 1×) waits for the next refresh.
+        if x + w <= shown.surface.0 && y + h <= shown.surface.1 {
+            pass.set_viewport(x as f32, y as f32, w as f32, h as f32, 0.0, 1.0);
+            pass.set_pipeline(&self.pipeline);
+            pass.set_bind_group(0, group, &[]);
+            pass.draw(0..3, 0..1);
+        }
+    }
+
     /// Draw the uploaded frame to the window.
     pub fn present(&mut self) {
-        let Some((_, size, group)) = &self.frame else {
-            return;
-        };
+        let Some((_, size, _)) = &self.frame else { return };
+        let shown = self.layout(*size);
         let target = match self.surface.get_current_texture() {
             wgpu::CurrentSurfaceTexture::Success(t) | wgpu::CurrentSurfaceTexture::Suboptimal(t) => t,
             wgpu::CurrentSurfaceTexture::Outdated | wgpu::CurrentSurfaceTexture::Lost => {
@@ -234,34 +282,93 @@ impl Video {
             _ => return,
         };
         let view = target.texture.create_view(&Default::default());
-        let (x, y, w, h) = viewport(
-            (self.config.width, self.config.height),
-            *size,
-            self.scale * self.window.scale_factor().round().max(1.0) as u32,
-        );
         let mut enc = self.device.create_command_encoder(&Default::default());
-        {
-            let mut pass = enc.begin_render_pass(&wgpu::RenderPassDescriptor {
-                label: Some("present"),
-                color_attachments: &[Some(wgpu::RenderPassColorAttachment {
-                    view: &view,
-                    depth_slice: None,
-                    resolve_target: None,
-                    ops: wgpu::Operations {
-                        load: wgpu::LoadOp::Clear(wgpu::Color::BLACK),
-                        store: wgpu::StoreOp::Store,
-                    },
-                })],
-                ..Default::default()
-            });
-            pass.set_viewport(x as f32, y as f32, w as f32, h as f32, 0.0, 1.0);
-            pass.set_pipeline(&self.pipeline);
-            pass.set_bind_group(0, group, &[]);
-            pass.draw(0..3, 0..1);
-        }
+        self.draw(&mut enc, &view, &shown);
         self.queue.submit([enc.finish()]);
         self.window.pre_present_notify();
         self.queue.present(target);
+    }
+
+    /// Write what [`Video::present`] draws for the uploaded frame to `path`, as an RGB PNG of the
+    /// whole surface: the same pass, onto a texture of the surface's size and format, read back.
+    /// (Not the swapchain's own image: macOS withholds it from a window another one covers.)
+    pub fn shot(&self, path: &Path) -> Result<Shown, String> {
+        let Some((_, size, _)) = &self.frame else {
+            return Err("no frame has been shown yet".into());
+        };
+        let shown = self.layout(*size);
+        let (w, h) = shown.surface;
+        let texture = self.device.create_texture(&wgpu::TextureDescriptor {
+            label: Some("shot"),
+            size: wgpu::Extent3d {
+                width: w,
+                height: h,
+                depth_or_array_layers: 1,
+            },
+            mip_level_count: 1,
+            sample_count: 1,
+            dimension: wgpu::TextureDimension::D2,
+            format: self.config.format,
+            usage: wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::COPY_SRC,
+            view_formats: &[],
+        });
+        let row = (w * 4).div_ceil(wgpu::COPY_BYTES_PER_ROW_ALIGNMENT) * wgpu::COPY_BYTES_PER_ROW_ALIGNMENT;
+        let buffer = self.device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("shot"),
+            size: (row * h) as u64,
+            usage: wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::MAP_READ,
+            mapped_at_creation: false,
+        });
+        let mut enc = self.device.create_command_encoder(&Default::default());
+        self.draw(&mut enc, &texture.create_view(&Default::default()), &shown);
+        enc.copy_texture_to_buffer(
+            wgpu::TexelCopyTextureInfo {
+                texture: &texture,
+                mip_level: 0,
+                origin: wgpu::Origin3d::ZERO,
+                aspect: wgpu::TextureAspect::All,
+            },
+            wgpu::TexelCopyBufferInfo {
+                buffer: &buffer,
+                layout: wgpu::TexelCopyBufferLayout {
+                    offset: 0,
+                    bytes_per_row: Some(row),
+                    rows_per_image: Some(h),
+                },
+            },
+            wgpu::Extent3d {
+                width: w,
+                height: h,
+                depth_or_array_layers: 1,
+            },
+        );
+        self.queue.submit([enc.finish()]);
+        let slice = buffer.slice(..);
+        slice.map_async(wgpu::MapMode::Read, |_| {});
+        self.device
+            .poll(wgpu::PollType::wait_indefinitely())
+            .map_err(|e| format!("reading the picture back: {e}"))?;
+        let data = slice
+            .get_mapped_range()
+            .map_err(|e| format!("reading the picture back: {e:?}"))?;
+        let bgra = matches!(
+            self.config.format,
+            wgpu::TextureFormat::Bgra8Unorm | wgpu::TextureFormat::Bgra8UnormSrgb
+        );
+        let mut rgba = Vec::with_capacity((w * h * 4) as usize);
+        for y in 0..h {
+            let line = &data[(y * row) as usize..(y * row + w * 4) as usize];
+            for p in line.chunks_exact(4) {
+                if bgra {
+                    rgba.extend_from_slice(&[p[2], p[1], p[0], 255]);
+                } else {
+                    rgba.extend_from_slice(&[p[0], p[1], p[2], 255]);
+                }
+            }
+        }
+        std::fs::write(path, crate::capture::png(w, h, &rgba))
+            .map_err(|e| format!("{}: {e}", path.display()))?;
+        Ok(shown)
     }
 }
 
@@ -278,13 +385,5 @@ mod tests {
         let rgba = picture_rgba(&p);
         assert_eq!(rgba.len(), 320 * 256 * 4);
         assert_eq!(&rgba[..8], &[0, 0, 0, 255, 255, 136, 0, 255]);
-    }
-
-    #[test]
-    fn the_viewport_is_a_whole_multiple_centred_and_shrinks_to_fit() {
-        assert_eq!(viewport((320, 256), (320, 256), 1), (0, 0, 320, 256));
-        assert_eq!(viewport((1000, 600), (320, 256), 2), (180, 44, 640, 512));
-        assert_eq!(viewport((700, 600), (320, 256), 3), (30, 44, 640, 512));
-        assert_eq!(viewport((100, 100), (320, 256), 2), (0, 0, 320, 256));
     }
 }

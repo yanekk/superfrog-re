@@ -2,7 +2,7 @@
 //!
 //! ```text
 //! superfrog [--home DIR] [--cache-from-disks DIR] [--script FILE] [--capture DIR] [--max-frames N]
-//!           [--timeout S] [--scale N] [--allow-fullscreen]
+//!           [--timeout S] [--scale N] [--allow-fullscreen] [--audio-device NAME]
 //! ```
 
 use std::ffi::OsString;
@@ -15,7 +15,8 @@ pub const SCRIPT_TIMEOUT_S: u64 = 120;
 pub const FULLSCREEN_MAX_FRAMES: u64 = 300;
 
 pub const USAGE: &str = "usage: superfrog [--home DIR] [--cache-from-disks DIR] [--script FILE] \
-[--capture DIR] [--max-frames N] [--timeout S] [--scale N] [--allow-fullscreen]";
+[--capture DIR] [--max-frames N] [--timeout S] [--scale N] [--allow-fullscreen] \
+[--audio-device NAME]";
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Args {
@@ -31,10 +32,15 @@ pub struct Args {
     pub max_frames: Option<u64>,
     /// Stop the app and its whole process group after this many seconds of wall clock.
     pub timeout_s: Option<u64>,
-    /// The window shows the game at this integer scale.
-    pub scale: u32,
-    /// Lets a scripted run go fullscreen (no fullscreen exists yet; the flag is checked).
+    /// The window shows the game at this integer scale for this run, in place of the remembered
+    /// setting (which it does not change).
+    pub scale: Option<u32>,
+    /// Lets a scripted run go fullscreen.
     pub allow_fullscreen: bool,
+    /// Play through the output device of this name; one no device has leaves the audio output
+    /// unavailable, the test hook for a Mac with none (DESIGN §2.11). A scripted run without it
+    /// plays nothing.
+    pub audio_device: Option<String>,
 }
 
 impl Default for Args {
@@ -46,16 +52,15 @@ impl Default for Args {
             capture: None,
             max_frames: None,
             timeout_s: None,
-            scale: 1,
+            scale: None,
             allow_fullscreen: false,
+            audio_device: None,
         }
     }
 }
 
 impl Args {
-    /// May this run go fullscreen? Never under `--script` without `--allow-fullscreen`. Nothing
-    /// goes fullscreen yet; the fullscreen task asks this.
-    #[allow(dead_code)]
+    /// May this run go fullscreen? Never under `--script` without `--allow-fullscreen`.
     pub fn fullscreen_allowed(&self) -> bool {
         self.script.is_none() || self.allow_fullscreen
     }
@@ -84,7 +89,10 @@ pub fn parse(args: impl IntoIterator<Item = OsString>) -> Result<Args, String> {
                 if !(1..=16).contains(&s) {
                     return Err(format!("--scale {s}: the scale is a whole number from 1 to 16"));
                 }
-                a.scale = s as u32;
+                a.scale = Some(s as u32);
+            }
+            "--audio-device" => {
+                a.audio_device = Some(value("a device name")?.to_string_lossy().into_owned())
             }
             "--allow-fullscreen" => a.allow_fullscreen = true,
             "-h" | "--help" => return Err(USAGE.to_string()),
@@ -128,13 +136,14 @@ mod tests {
     #[test]
     fn every_flag_parses() {
         let a = p("--home h --cache-from-disks d --script s --capture c --max-frames 9 --timeout 3 \
-                   --scale 2")
+                   --scale 2 --audio-device none")
         .unwrap();
         assert_eq!(a.home, Some("h".into()));
         assert_eq!(a.cache_from_disks, Some("d".into()));
         assert_eq!(a.script, Some("s".into()));
         assert_eq!(a.capture, Some("c".into()));
-        assert_eq!((a.max_frames, a.timeout_s, a.scale), (Some(9), Some(3), 2));
+        assert_eq!((a.max_frames, a.timeout_s, a.scale), (Some(9), Some(3), Some(2)));
+        assert_eq!(a.audio_device.as_deref(), Some("none"));
         assert_eq!(p("").unwrap(), Args::default());
     }
 

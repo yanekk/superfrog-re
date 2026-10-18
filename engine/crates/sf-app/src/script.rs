@@ -6,23 +6,43 @@
 //!
 //! ```text
 //! seed 1 2              # the power-on RNG seed (default 0 0 under a script)
-//! 10: down ArrowLeft    # a key goes down (names: input.rs KEYS)
+//! 10: down ArrowLeft    # a key goes down (names: input.rs HOST_KEYS)
 //! 20: up ArrowLeft
 //! 30: press Space       # down, and up again before the next frame
 //! 40: mouse down        # the left mouse button
 //! 41: mouse up
 //! 45: blur              # the window loses focus
 //! 50: hang              # the main thread stops dead: proves --timeout
+//! 60: resize 700 600    # the window's inner size, in points, as a person dragging it
+//! 61: scale 3           # the scale setting: a whole number or `auto` (T24's View menu)
+//! 70: shot              # write the window as presented to the capture folder (window-NNNNN.png)
+//! 80: continue          # start the remembered progress (T24's Game → Continue from World N)
 //! ```
+//!
+//! Before the game, the launch's questions (`import.rs`) take the script's answers in order:
+//!
+//! ```text
+//! pick /d/one.zip; /d/two.zip   # what the disk picker returns (`;` between files)
+//! pick cancel                   # the picker cancelled
+//! answer choose                 # the missing-disks message: "Choose Disks…" (or `quit`)
+//! ```
+
+use std::path::PathBuf;
 
 use winit::keyboard::KeyCode;
 
+use crate::import::Pick;
 use crate::input::{HostInput, key_named};
+use crate::settings::Scale;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Event {
     Input(HostInput),
     Hang,
+    Resize(u32, u32),
+    Scale(Scale),
+    Shot,
+    Continue,
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
@@ -30,6 +50,10 @@ pub struct Script {
     pub seed: Option<(u32, u32)>,
     /// `(frame, event)`, in file order; a frame's events are applied in that order.
     pub events: Vec<(u64, Event)>,
+    /// The disk picker's answers, in order.
+    pub picks: Vec<Pick>,
+    /// The missing-disks message's answers, in order: `true` for "Choose Disks…".
+    pub answers: Vec<bool>,
 }
 
 impl Script {
@@ -47,6 +71,28 @@ impl Script {
                 match (num(1), num(2), words.len()) {
                     (Some(a), Some(b), 3) => s.seed = Some((a, b)),
                     _ => return Err(err("`seed` takes two whole numbers")),
+                }
+                continue;
+            }
+            if words[0] == "pick" {
+                let rest = line["pick".len()..].trim();
+                s.picks.push(match rest {
+                    "cancel" => Pick::Cancel,
+                    _ => Pick::Files(
+                        rest.split(';')
+                            .map(str::trim)
+                            .filter(|p| !p.is_empty())
+                            .map(PathBuf::from)
+                            .collect(),
+                    ),
+                });
+                continue;
+            }
+            if words[0] == "answer" {
+                match (words.get(1).copied(), words.len()) {
+                    (Some("choose"), 2) => s.answers.push(true),
+                    (Some("quit"), 2) => s.answers.push(false),
+                    _ => return Err(err("`answer` takes `choose` or `quit`")),
                 }
                 continue;
             }
@@ -74,6 +120,22 @@ impl Script {
                 }
                 (Some("blur"), 2) => vec![Event::Input(HostInput::FocusLost)],
                 (Some("hang"), 2) => vec![Event::Hang],
+                (Some("resize"), 4) => {
+                    let num = |i: usize| words[i].parse::<u32>().ok().filter(|&n| n > 0);
+                    match (num(2), num(3)) {
+                        (Some(w), Some(h)) => vec![Event::Resize(w, h)],
+                        _ => return Err(err("`resize` takes a width and a height in points")),
+                    }
+                }
+                (Some("scale"), 3) => vec![Event::Scale(match words[2] {
+                    "auto" => Scale::Auto,
+                    n => match n.parse::<u32>() {
+                        Ok(n) if (1..=16).contains(&n) => Scale::N(n),
+                        _ => return Err(err("`scale` takes `auto` or a whole number 1 to 16")),
+                    },
+                })],
+                (Some("shot"), 2) => vec![Event::Shot],
+                (Some("continue"), 2) => vec![Event::Continue],
                 _ => return Err(err("unknown event")),
             };
             s.events.extend(events.into_iter().map(|e| (frame, e)));
@@ -123,8 +185,45 @@ mod tests {
     }
 
     #[test]
+    fn window_events_and_the_launch_s_answers_parse() {
+        let s = Script::parse(
+            "pick /d/Disk 1.zip; /d/two.adf\npick cancel\npick\nanswer choose\nanswer quit\n\
+             5: resize 700 600\n6: scale auto\n6: scale 3\n7: shot\n8: continue\n",
+        )
+        .unwrap();
+        assert_eq!(
+            s.picks,
+            vec![
+                Pick::Files(vec!["/d/Disk 1.zip".into(), "/d/two.adf".into()]),
+                Pick::Cancel,
+                Pick::Files(vec![]),
+            ]
+        );
+        assert_eq!(s.answers, vec![true, false]);
+        assert_eq!(s.at(5).collect::<Vec<_>>(), vec![Event::Resize(700, 600)]);
+        assert_eq!(
+            s.at(6).collect::<Vec<_>>(),
+            vec![Event::Scale(Scale::Auto), Event::Scale(Scale::N(3))]
+        );
+        assert_eq!(s.at(7).collect::<Vec<_>>(), vec![Event::Shot]);
+        assert_eq!(s.at(8).collect::<Vec<_>>(), vec![Event::Continue]);
+    }
+
+    #[test]
     fn a_bad_line_is_refused_with_its_number() {
-        for bad in ["10: down Nope", "x: hang", "0: hang", "5: jump", "seed 1", "5: down"] {
+        for bad in [
+            "10: down Nope",
+            "x: hang",
+            "0: hang",
+            "5: jump",
+            "seed 1",
+            "5: down",
+            "5: resize 0 10",
+            "5: resize 10",
+            "5: scale 17",
+            "5: scale big",
+            "answer maybe",
+        ] {
             let e = Script::parse(&format!("\n{bad}")).unwrap_err();
             assert!(e.contains("line 2"), "{bad}: {e}");
         }

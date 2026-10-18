@@ -202,16 +202,29 @@ impl App {
 
     /// Press and release `key`, posted to the app as the keyboard would.
     pub fn os_key(&mut self, key: Key) {
-        let pid = self.os_pid() as i32;
         for down in [true, false] {
-            // SAFETY: a keyboard event made, posted and released here.
-            unsafe {
-                let e = CGEventCreateKeyboardEvent(std::ptr::null(), key.code(), down);
-                assert!(!e.is_null(), "CGEventCreateKeyboardEvent failed");
-                CGEventPostToPid(pid, e);
-                CFRelease(e);
-            }
+            self.os_key_event(key, down);
             std::thread::sleep(Duration::from_millis(60));
+        }
+    }
+
+    /// Hold `key` down, as the keyboard would, until [`App::os_key_up`].
+    pub fn os_key_down(&mut self, key: Key) {
+        self.os_key_event(key, true);
+    }
+
+    pub fn os_key_up(&mut self, key: Key) {
+        self.os_key_event(key, false);
+    }
+
+    fn os_key_event(&mut self, key: Key, down: bool) {
+        let pid = self.os_pid() as i32;
+        // SAFETY: a keyboard event made, posted and released here.
+        unsafe {
+            let e = CGEventCreateKeyboardEvent(std::ptr::null(), key.code(), down);
+            assert!(!e.is_null(), "CGEventCreateKeyboardEvent failed");
+            CGEventPostToPid(pid, e);
+            CFRelease(e);
         }
     }
 
@@ -237,6 +250,48 @@ impl App {
             // A menu bar item or a submenu item holds one menu, which holds the items.
             let menu = ax::children(item).into_iter().next().unwrap_or_else(|| panic!("{walked:?} has no menu"));
             items = ax::children(&menu);
+        }
+    }
+
+    /// The titles of the buttons in the app's windows, panels and alerts included, through the
+    /// Accessibility API.
+    pub fn os_buttons(&self) -> Vec<String> {
+        let mut out = Vec::new();
+        for w in ax::windows(&ax::app(self.os_pid())) {
+            ax::walk(&w, 12, &mut |e| {
+                if ax::text(e, "AXRole") == "AXButton" {
+                    out.push(ax::title(e));
+                }
+            });
+        }
+        out
+    }
+
+    /// Press the button titled `title` in one of the app's windows (a panel or an alert too), as a
+    /// click on it would, waiting up to 20 s for it to appear.
+    pub fn os_press_button(&mut self, title: &str) {
+        let start = Instant::now();
+        loop {
+            let mut pressed = None;
+            for w in ax::windows(&ax::app(self.os_pid())) {
+                ax::walk(&w, 12, &mut |e| {
+                    if pressed.is_none()
+                        && ax::text(e, "AXRole") == "AXButton"
+                        && ax::title(e) == title
+                    {
+                        pressed = Some(ax::press(e));
+                    }
+                });
+            }
+            match pressed {
+                Some(r) => return r.unwrap_or_else(|e| panic!("pressing {title:?}: {e}")),
+                None => assert!(
+                    start.elapsed() < Duration::from_secs(20),
+                    "no button {title:?} within 20 s; the buttons are {:?}",
+                    self.os_buttons()
+                ),
+            }
+            std::thread::sleep(Duration::from_millis(100));
         }
     }
 
@@ -347,6 +402,11 @@ mod ax {
 
     pub fn children(e: &Cf) -> Vec<Cf> {
         let Ok(a) = attr(e, "AXChildren") else { return Vec::new() };
+        array(a)
+    }
+
+    /// The elements of a CFArray.
+    fn array(a: Cf) -> Vec<Cf> {
         // SAFETY: type-checked before use; each element is retained into its own `Cf`.
         unsafe {
             if CFGetTypeID(a.0) != CFArrayGetTypeID() {
@@ -358,8 +418,29 @@ mod ax {
         }
     }
 
+    /// The app's windows, panels and alerts included.
+    pub fn windows(app: &Cf) -> Vec<Cf> {
+        let Ok(a) = attr(app, "AXWindows") else { return Vec::new() };
+        array(a)
+    }
+
+    /// `f` on `e` and everything under it, `depth` levels down.
+    pub fn walk(e: &Cf, depth: u32, f: &mut dyn FnMut(&Cf)) {
+        f(e);
+        if depth > 0 {
+            for c in children(e) {
+                walk(&c, depth - 1, f);
+            }
+        }
+    }
+
     pub fn title(e: &Cf) -> String {
-        let Ok(t) = attr(e, "AXTitle") else { return String::new() };
+        text(e, "AXTitle")
+    }
+
+    /// A string attribute, empty when there is none.
+    pub fn text(e: &Cf, name: &str) -> String {
+        let Ok(t) = attr(e, name) else { return String::new() };
         let mut buf = [0 as c_char; 512];
         // SAFETY: type-checked; the buffer's length is passed.
         unsafe {
