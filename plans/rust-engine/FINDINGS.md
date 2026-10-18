@@ -18,6 +18,9 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-18 | 📌 | T210, left alone: `Auto` and fullscreen fit each screen's own window (`picture_scale`), so in a window between sizes the title (320×256) can show one scale larger than a level (334×261). `Scale::N` is constant. |
+| 2026-10-18 | 📌 | T210, left alone: DESIGN §5's e2e sizes still read "320×256, 640×512, 960×768 game area"; the window is now 334×261 × n (widescreen 464×261). |
+| 2026-10-18 | 📌 | T210, measured (`sf-conform` `examples/windows`, 23 cases): levels, map, tally, game-over fade 334×261 at (121, 39), the largest; title, story, slot, options, end sequence ≤320×256. Window sized for 334×261. |
 | 2026-10-18 | 🐞 | T27 review: `view.rs` `shot_run` dropped its `App`, whose `Drop` deletes the home, so two shot tests failed every run without `SF_E2E_KEEP=1`. Fixed; this explains T27's "shots went missing" row below, not load. |
 | 2026-10-18 | 📌 | T27 review, measured: release `crt_drops` dropped 0–11 frames at load ~5 with CRT on and 1–4 off; 0 for both in three quieter pairs. Drops follow load, not the filter. |
 | 2026-10-18 | 🐞 | T27 drill: levels and the map are 334×261, the window 320×256 (T23), so `Scale::N(n)` shows a level at n−1 (2× window, level at 1×), 4:3 and widescreen. T210 window-fits-the-game added, owner's yes; blocks T29. |
