@@ -18,6 +18,7 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-18 | 📌 | T209 review: `whole-w2-2-start` (game-whole from 47800, 1300 frames) guards the first pass begun in `level_start`'s frame; `load_blanks` only by `game-whole` (red at 43542 without it). Lib `the_frog_walks_step…` and `level_entry` still red, identical on base. |
 | 2026-10-18 | 📌 | T209: `game-whole` run alone green, 7007 milestones, 1418 s. `SF_CONFORM_ALONE_TRACE=<file>` lists the alone engine's differing variables; the report's "first differs" is usually frame 0's noise. Probe a stretch from the original's memory only in a level: front-end resumes stall. |
 | 2026-10-18 | 🐞 | T209, W6-3 (play 220237): a frame ending mid-pass between `coins_collected` and `coins_left_for_exit` read a coin's count one high. Check 4 now reads coins at frames ending a pass (`milestones.rs`), as items settle. |
 | 2026-10-18 | 🔄 | Owner, T209: each load's timing is check 4's input, like the clock's seeds: its vertical blanks (`Game::load_blanks`: sound, keyboard poll), its end line, the bonus loading picture's hold. DESIGN §2.1. |

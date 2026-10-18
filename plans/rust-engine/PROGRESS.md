@@ -174,12 +174,12 @@ done · ⛔ blocked, needs a human. A task dropped by a plan amendment leaves th
 | T206 | chain-routes-w3-w4 | T205; blocks T203 | ✅ | |
 | T207 | chain-routes-w5-w6-final | T206; blocks T203 | ✅ | |
 | T208 | w6-4-start-and-final-load | T203; blocks T23, T29 | ✅ | |
-| T209 | whole-game-alone | T203, T208; blocks T23, T29 | 🔍 | game-whole green faithful and alone (7007 milestones): chain.rs test 1447 s. Fixes: first pass in level_start's frame; check 4 takes load timing (owner: blanks, end line, bonus picture hold); coins read at pass ends. Deviation: test keeps its name; asserts 25 exits and the end score (the final level has no exit). `sf-conform all` not run (pir's). |
+| T209 | whole-game-alone | T203, T208; blocks T23, T29 | ✅ | Review: game-whole green faithful and alone, chain.rs test rerun 1399 s. Fix: added whole-w2-2-start (#[ignore], ~2 min uncached), guarding the first-pass fix. Mutations caught: first pass off (whole-w2-2-start red), load_blanks off (game-whole red at 43542), coin mid-pass read (unit test). Deviations held. `sf-conform all` not run (pir's). |
 
 A Notes cell holds what was built or what the review found, the test count, and one line per
 deviation from the task doc. A ✅ task's cell may be cut to one line once the next task has been reviewed.
 
-**Review queue:** T209
+**Review queue:** empty
 
 ## Blocked on the user
 
