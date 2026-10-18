@@ -34,7 +34,7 @@ UTF-8 JSON, one object:
 | Field | Required | Meaning |
 |---|---|---|
 | `format` | yes | the string `"sflevel"` |
-| `version` | yes | the integer `1`. Any other integer is refused with its number; a later version is a new document section here |
+| `version` | yes | the integer `1`. Any other integer from 0 to 4294967295 is refused with its number; a later version is a new document section here |
 | `replaces` | yes | the level played in place of: a level id as `docs/LEVEL-INDEX.md` writes it. `W1-1`…`W6-4`, `W6-1alt`…`W6-4alt` (W6's second set of maps, what a one-drive A500 loads), `WB-1` (bonus level), `WW-1` (final level) |
 | `chunk` | no | where the level came from: `disk` 1–4, `index` its 1-based chunk number on that disk (`d1_c21`), `sector` the sector it starts at. Informational: the engine does not read it. Missing, it reads as `disk 1, index 0, sector 0` |
 | `sections` | yes, with `t7mp` | the level's files in their original formats, each standard base64 (RFC 4648, with `=` padding, no line breaks), by name |
@@ -50,7 +50,8 @@ Sections:
   None exist today.
 
 Key order and whitespace are free on reading; the engine writes the keys in the order above, two
-spaces of indent, a newline at the end. Unknown top-level keys are ignored.
+spaces of indent, a newline at the end. Unknown top-level keys are ignored. Write each key once:
+a repeated key is read from its first occurrence.
 
 ## Refusals
 
@@ -61,8 +62,8 @@ When the file can be read as far as a `replaces` naming a level on the disks, th
 | `SflevelError` | When | The message says |
 |---|---|---|
 | `NotJson` | not JSON (or not UTF-8) | it is not a level file (not JSON) |
-| `WrongFormat` | not an object; `format` not `"sflevel"`; `version` missing or not a non-negative integer; `replaces` missing or not a string; `chunk` or `sections` of the wrong shape; a section not a string; a section other than `t7mp` not base64 | it is not a Superfrog level file |
-| `Version(n)` | `version` is an integer other than 1 | it is a version n level file; this Superfrog reads version 1 |
+| `WrongFormat` | not an object; `format` not `"sflevel"`; `version` missing or not an integer from 0 to 4294967295 (`1.0` included); `replaces` missing or not a string; `chunk` or `sections` of the wrong shape; a section not a string; a section other than `t7mp` not base64 | it is not a Superfrog level file |
+| `Version(n)` | `version` is an integer from 0 to 4294967295 other than 1 | it is a version n level file; this Superfrog reads version 1 |
 | `UnknownLevel(id)` | `replaces` is no level id, or one the disks do not hold | it replaces "id", which is not a level |
 | `MissingSection("t7mp")` | no `t7mp` section | its "t7mp" section is missing |
 | `BadT7mp(why)` | `t7mp` not base64, not a well-formed T7MP (docs/04), or not 300 × 84 | its map is damaged: why |
