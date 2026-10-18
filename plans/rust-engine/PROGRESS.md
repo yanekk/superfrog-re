@@ -48,7 +48,7 @@ done · ⛔ blocked, needs a human. A task dropped by a plan amendment leaves th
 | T22 | app-rig | T09, T10, T12, T13 | ✅ | |
 | T23 | app-shell | T21, T22 | ✅ | |
 | T24 | macos-menus | T23 | ✅ | |
-| T25 | controls-and-gamepad | T24 | ⬜ | |
+| T25 | controls-and-gamepad | T24 | 🔍 | gilrs pads (`pad.rs`), pure `map_input`, Game → Controls… (AppKit buttons on a winit window), `[pad]` in settings.toml. 22 new unit, 5 script e2e, 1 OS e2e green. Deviations: window rebinds joystick only, a press replaces the binding, a reused key moves (window says); scripts read no real pad. 8BitDo unverified. |
 | T26 | save-states | T24 | ⬜ | |
 | T27 | crt-and-widescreen | T24 | ⬜ | |
 | T28 | level-override | T14, T24 | ⬜ | |
@@ -179,7 +179,7 @@ done · ⛔ blocked, needs a human. A task dropped by a plan amendment leaves th
 A Notes cell holds what was built or what the review found, the test count, and one line per
 deviation from the task doc. A ✅ task's cell may be cut to one line once the next task has been reviewed.
 
-**Review queue:** *(empty)*
+**Review queue:** T25
 
 ## Blocked on the user
 
