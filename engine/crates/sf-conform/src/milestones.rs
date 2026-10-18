@@ -260,6 +260,21 @@ pub struct Milestones {
     /// Items whose marker went, with the frame: kept, at it, if the marker is still clear at the
     /// first frame ending a pass [`ITEM_SETTLE`] frames on ([`FrameState::mid_pass`]).
     pending: Vec<(u64, Milestone)>,
+    /// The coins as the last frame ending a pass left them, with its world and level and whether
+    /// it was playing: a pass takes a coin in `coins_collected` before `coins_left_for_exit`, so a
+    /// frame ending between the two shows half of it (T209: W6-3 in `game-whole`, the original's
+    /// coin with 55 left read so, the engine run alone's pass ended past both).
+    coins: Option<CoinCount>,
+}
+
+/// [`Milestones::coins`].
+#[derive(Debug, Clone, Copy)]
+struct CoinCount {
+    collected: u32,
+    left: u16,
+    world: u16,
+    level: u16,
+    playing: bool,
 }
 
 /// Frames (two 25 Hz passes) a cleared marker must stay clear, to a frame ending a pass, to be an
@@ -280,6 +295,13 @@ impl Milestones {
         }
         if !s.mid_pass {
             self.settle(&s, |f| f + ITEM_SETTLE <= frame);
+            self.coins = Some(CoinCount {
+                collected: s.coins_collected,
+                left: s.coins_left,
+                world: s.world,
+                level: s.level,
+                playing: !s.story && s.playing(),
+            });
         }
         self.prev = Some(s);
     }
@@ -339,13 +361,23 @@ impl Milestones {
                 });
             }
         }
-        if p.playing() && s.playing() && p.world == s.world && p.level == s.level {
+        // Coins at frames ending a pass only, from the last such frame's count.
+        if let Some(c) = self.coins
+            && !s.mid_pass
+            && c.playing
+            && !s.story
+            && s.playing()
+            && c.world == s.world
+            && c.level == s.level
+        {
             // Each coin with its own count, as taking it left it: two taken in one frame on one
             // side and a frame apart on the other are the same milestones.
-            for k in 1..=s.coins_collected.saturating_sub(p.coins_collected).min(99) {
-                let left = p.coins_left.saturating_sub(k as u16).max(s.coins_left);
+            for k in 1..=s.coins_collected.saturating_sub(c.collected).min(99) {
+                let left = c.left.saturating_sub(k as u16).max(s.coins_left);
                 push(Milestone::CoinTaken { left });
             }
+        }
+        if p.playing() && s.playing() && p.world == s.world && p.level == s.level {
             // Kills: a slot that was an enemy (hit points 0 or more, not immune) and still holds
             // the same object, its hit points now below none.
             let mut killed_cells = Vec::new();
@@ -703,6 +735,26 @@ mod tests {
                 .iter()
                 .any(|(_, m)| matches!(m, Milestone::ItemTaken { .. }))
         );
+    }
+
+    /// A frame ending between a pass's `coins_collected` and its `coins_left_for_exit` (T209:
+    /// W6-3 in `game-whole`) takes the coin at the pass's end, with the count it left.
+    #[test]
+    fn a_coin_is_read_at_the_end_of_its_pass() {
+        let mut s = level_frame();
+        s.coins_left = 56;
+        let mut f = vec![s.clone()];
+        s.mid_pass = true;
+        s.coins_collected = 1;
+        f.push(s.clone());
+        s.mid_pass = false;
+        s.coins_left = 55;
+        f.push(s.clone());
+        let coins: Vec<_> = milestones(&f)
+            .into_iter()
+            .filter(|(_, m)| matches!(m, Milestone::CoinTaken { .. }))
+            .collect();
+        assert_eq!(coins, vec![(2, Milestone::CoinTaken { left: 55 })]);
     }
 
     #[test]
