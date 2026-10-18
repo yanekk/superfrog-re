@@ -629,6 +629,14 @@ impl Game {
         }
     }
 
+    /// For conformance's engine run alone: how many frames the original held the bonus level's
+    /// loading picture up while it loaded, the load's length (DESIGN §2.1 check 4; owner, T209).
+    pub fn set_screen_frames(&mut self, frames: Option<u16>) {
+        if let Some(f) = self.front.as_mut() {
+            f.screen_frames = frames;
+        }
+    }
+
     /// For conformance, the story intro: where the original's CPU took the next frame's
     /// vertical-blank interrupt (line, DMA cycle), which decides when its handler's writes to the
     /// copper list land (owner, 2026-10-13). Normal play times it itself.

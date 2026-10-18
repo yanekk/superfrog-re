@@ -312,6 +312,10 @@ pub(crate) struct Cx<'a> {
     pub load: Option<crate::game::LoadEnd>,
     /// The line the runner says the original's load ended on (conformance only).
     pub load_line: Option<u16>,
+    /// For conformance's engine run alone: the frames the original showed the bonus level's
+    /// loading picture while it loaded (T209), which the picture is held for instead of
+    /// `BONUS_PICTURE_FRAMES`.
+    pub screen_frames: Option<u16>,
     /// At a load: the copper list then, and the line the load ends on with the list's bytes.
     pub load_point: Option<(u32, (u16, Snapshot))>,
     /// Memory a load this frame wrote that the engine does not model (a file kept packed),
@@ -587,6 +591,8 @@ pub struct Front {
     fetch: Option<render::copper::Fetch>,
     /// For conformance: the line the next load ends on in the original ([`Cx::load_line`]).
     pub(crate) load_line: Option<u16>,
+    /// For conformance: how long the original held the next timed loading screen ([`Cx::screen_frames`]).
+    pub(crate) screen_frames: Option<u16>,
     /// Frames stepped.
     frame: u32,
     /// Paula writes the CPU made after the frame's end, which belong to the next frame.
@@ -690,6 +696,7 @@ impl Front {
             frame: 0,
             fetch: None,
             load_line: None,
+            screen_frames: None,
             carry: Vec::new(),
             stalled: None,
             unpack: None,
@@ -757,6 +764,7 @@ impl Front {
             frame: 0,
             fetch: None,
             load_line: None,
+            screen_frames: None,
             carry: Vec::new(),
             stalled: None,
             unpack: None,
@@ -811,6 +819,7 @@ impl Front {
             frame: 0,
             fetch: None,
             load_line: None,
+            screen_frames: None,
             carry: Vec::new(),
             stalled: None,
             unpack: None,
@@ -904,6 +913,7 @@ impl Front {
             cop1lc: self.cop1lc,
             load: None,
             load_line: None,
+            screen_frames: None,
             load_point: None,
             resync: Vec::new(),
             jobs: Vec::new(),
@@ -972,6 +982,7 @@ impl Front {
                 cop1lc: self.cop1lc,
                 load: None,
                 load_line: None,
+                screen_frames: None,
                 load_point: None,
                 resync: Vec::new(),
                 jobs: Vec::new(),
@@ -1090,6 +1101,7 @@ impl Front {
                 cop1lc: self.cop1lc,
                 load: None,
                 load_line: None,
+                screen_frames: None,
                 load_point: None,
                 resync: Vec::new(),
                 jobs: Vec::new(),
@@ -1153,6 +1165,7 @@ impl Front {
             cop1lc: self.cop1lc,
             load: None,
             load_line: self.load_line.take(),
+            screen_frames: self.screen_frames.take(),
             load_point: None,
             resync: Vec::new(),
             jobs: Vec::new(),

@@ -93,9 +93,12 @@ while the original loaded and no timed screen was up, whose sound and keyboard p
 on the frame the original's load ends (`Game::load_blanks`; owner, T209: after an even-length load
 the keyboard's poll toggle was otherwise a frame out, and a level's last pass with it). A timed
 screen's frames count as play only while it times: World 2's end picture, its time over, stays up
-through the next world's load, which is load time. It gets none of the rest the comparison's engine is fed: no
-re-sync, no transplant after a load, no beam anchors, handler timings, load lines or the memory
-that runs on during a load. Where a load leaves something, it has what its own instant load gives,
+through the next world's load, which is load time. The rest of a load's timing goes with it (owner,
+T209): the line the load ended on, as the comparison's engine found it (`Game::set_load_line`), and
+how long the original held the bonus level's loading picture for its loads
+(`Game::set_screen_frames`, instead of `BONUS_PICTURE_FRAMES`). It gets none of the rest the
+comparison's engine is fed: no re-sync, no transplant after a load, no beam anchors, handler
+timings or the memory that runs on during a load. Where a load leaves something, it has what its own instant load gives,
 as in normal play. A `Pacing::Late` whose cut it never reaches (it made fewer writes than the
 original) ends the frame on its own clock, as normal play does; a panic is reported, not raised.
 

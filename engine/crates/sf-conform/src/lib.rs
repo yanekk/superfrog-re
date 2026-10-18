@@ -247,6 +247,8 @@ fn run_inner(
     // The vertical blanks the game's handler ran in the original's load this frame, not under a
     // timed screen: check 4's engine is told them (owner, T209).
     let mut load_blanks = 0u32;
+    // The line the original's load ended on, as the runner's engine fitted it (T209).
+    let mut load_line: Option<u16> = None;
     // COP1LC as the original's CPU last wrote it (from the start's as the engine has it).
     let mut cop = game.cop1lc();
     let mut outcome = Outcome {
@@ -326,6 +328,7 @@ fn run_inner(
                 // The engine loaded at once; the original is compared once its load is over.
                 under_screen.clear();
                 load_blanks = 0;
+                load_line = None;
                 let mut n = 0;
                 let mut seen = false;
                 let mut prev_mem = mem.clone();
@@ -457,6 +460,7 @@ fn run_inner(
                             let (g, out) = redo(Some(line));
                             if fits(&g, &out) {
                                 (game, ours) = (g, out);
+                                load_line = Some(line);
                                 break;
                             }
                         }
@@ -470,7 +474,10 @@ fn run_inner(
         if let Some(a) = alone.as_mut() {
             let twice = amiga.frames_run() == 2;
             let skipped = std::mem::take(&mut under_screen);
-            let blanks = ours.load.is_some().then_some(std::mem::take(&mut load_blanks));
+            let blanks = ours
+                .load
+                .is_some()
+                .then(|| (std::mem::take(&mut load_blanks), load_line.take()));
             a.frame(case, f, input, pacing, twice, (&amiga, &mem), cop, &ours.resync, skipped, blanks);
         }
         let theirs_mid = stepped && sync::mid_pass(&amiga.cpu(), &mem);
@@ -792,7 +799,7 @@ impl AloneRun {
         cop1lc: Option<u32>,
         resync: &[(u32, u32)],
         skipped: Vec<(FrameInput, FrameState)>,
-        load_blanks: Option<u32>,
+        load_blanks: Option<(u32, Option<u16>)>,
     ) {
         let rng = def(VarId::RngState);
         let len = rng.width.len();
@@ -801,10 +808,14 @@ impl AloneRun {
                 .push_back((rng.addr..rng.addr + len).map(|a| mem.byte(a)).collect());
         }
         if self.panicked.is_none() {
-            // The original's load ended this frame: its vertical blanks first
-            // (`Game::load_blanks`), wherever the engine's own load fell.
-            if let Some(n) = load_blanks {
+            // The original's load ended this frame: its timing, which is the disk's, is an input
+            // (owner, T209): its vertical blanks first (`Game::load_blanks`), wherever the
+            // engine's own load fell; the frames it held a loading picture for; its end's line.
+            if let Some((n, line)) = load_blanks {
                 self.game.load_blanks(n);
+                self.game
+                    .set_screen_frames((!skipped.is_empty()).then_some(skipped.len() as u16));
+                self.game.set_load_line(line);
             }
             let g = &mut self.game;
             let stepped = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
