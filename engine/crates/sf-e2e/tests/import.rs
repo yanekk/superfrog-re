@@ -161,3 +161,37 @@ fn a_damaged_cache_is_imported_again_silently_until_the_disks_are_moved() {
     assert!(first.contains("Superfrog Disk 1 of 4 is missing"), "{first}");
     assert_eq!(std::fs::read(cache_file(&app.home)).unwrap(), bad, "Quit left the cache alone");
 }
+
+#[test]
+#[ignore = "OS layer: SF_E2E_OS=1 cargo test -p sf-e2e --test import -- --ignored"]
+fn os_layer_the_native_picker_and_message_cancel_then_quit() {
+    assert!(
+        std::env::var_os("SF_E2E_OS").is_some_and(|v| v == "1"),
+        "OS-layer tests bring up real panels; run them with SF_E2E_OS=1"
+    );
+    sf_e2e::os_permissions().unwrap_or_else(|e| panic!("{e}"));
+    let mut app = App::launch_empty(LaunchOpts {
+        max_frames: 50,
+        timeout_s: 60,
+        extra_args: vec!["--audio-device".into(), "sf-e2e-none".into()],
+        ..Default::default()
+    });
+    app.start_os();
+    // The picker, cancelled; then the message naming the four disks, with its two buttons.
+    app.os_press_button("Cancel");
+    let t = std::time::Instant::now();
+    while !app.os_buttons().iter().any(|b| b == "Choose Disks…") {
+        assert!(t.elapsed().as_secs() < 20, "no message after the cancel: {:?}", app.os_buttons());
+        std::thread::sleep(std::time::Duration::from_millis(100));
+    }
+    let buttons = app.os_buttons();
+    assert!(buttons.contains(&"Quit".to_string()), "{buttons:?}");
+    // "Choose Disks…" opens the picker again; cancel it, then Quit.
+    app.os_press_button("Choose Disks…");
+    app.os_press_button("Cancel");
+    app.os_press_button("Quit");
+    let c = app.finish();
+    assert_eq!(c.exit.code(), Some(0), "{}", c.stderr);
+    assert!(c.frames.is_empty(), "no game ran");
+    assert_eq!(app_files(&app.home), Vec::<String>::new(), "Quit wrote nothing");
+}

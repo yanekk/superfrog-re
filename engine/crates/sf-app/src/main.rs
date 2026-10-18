@@ -176,16 +176,22 @@ struct Run {
 }
 
 impl App {
-    /// The launch: lock, settings, progress, game data, then the window and the game.
+    /// The launch: lock, settings, progress, the window, the game data, then the game. The window
+    /// opens first (black), so the picker and the messages are sheets on it rather than panels of
+    /// their own; an import-only run (`--max-frames 0`) opens none.
     fn start(&mut self, event_loop: &ActiveEventLoop) {
-        let mut ui: Box<dyn Ui> = match &self.script {
-            Some(s) => Box::new(ScriptedUi {
+        let scripted = |s: &Script, log: Option<PathBuf>| -> Box<dyn Ui> {
+            Box::new(ScriptedUi {
                 picks: s.picks.iter().cloned().collect(),
                 answers: s.answers.iter().copied().collect(),
                 log: Vec::new(),
-                log_file: self.args.capture.as_ref().map(|d| d.join("prompts.txt")),
-            }),
-            None => Box::new(NativeUi),
+                log_file: log,
+            })
+        };
+        let log = self.args.capture.as_ref().map(|d| d.join("prompts.txt"));
+        let mut ui = match &self.script {
+            Some(s) => scripted(s, log.clone()),
+            None => Box::new(NativeUi { parent: None }),
         };
         let lock = match Lock::acquire(&self.home) {
             Ok(l) => l,
@@ -196,13 +202,29 @@ impl App {
                 return event_loop.exit();
             }
         };
-        let (settings, damaged) = settings::load(&self.home);
-        if let Some(m) = damaged {
-            eprintln!("superfrog: {m}");
-            ui.notice(&m);
+        let (settings, settings_damaged) = settings::load(&self.home);
+        let (furthest, progress_damaged) = progress::load(&self.home);
+
+        let scale = self.args.scale.map_or(settings.scale, Scale::N);
+        let window = if self.args.max_frames == Some(0) {
+            None
+        } else {
+            let attrs = Window::default_attributes()
+                .with_title("Superfrog")
+                .with_inner_size(window::initial_size(scale))
+                .with_min_inner_size(window::min_size())
+                .with_active(self.script.is_none());
+            match event_loop.create_window(attrs) {
+                Ok(w) => Some(Arc::new(w)),
+                Err(e) => return self.fail(event_loop, &format!("no window: {e}")),
+            }
+        };
+        if self.script.is_none() {
+            ui = Box::new(NativeUi {
+                parent: window.clone(),
+            });
         }
-        let (furthest, damaged) = progress::load(&self.home);
-        if let Some(m) = damaged {
+        for m in [settings_damaged, progress_damaged].into_iter().flatten() {
             eprintln!("superfrog: {m}");
             ui.notice(&m);
         }
@@ -219,9 +241,9 @@ impl App {
                 return event_loop.exit();
             }
         };
-        if self.args.max_frames == Some(0) {
-            return event_loop.exit(); // The cache is in place; nothing to show.
-        }
+        let Some(window) = window else {
+            return event_loop.exit(); // --max-frames 0: the cache is in place; nothing to show.
+        };
 
         let seed = match &self.script {
             Some(s) => s.seed.unwrap_or((0, 0)),
@@ -242,16 +264,6 @@ impl App {
             Some(Err(e)) => return self.fail(event_loop, &format!("capture: {e}")),
         };
 
-        let scale = self.args.scale.map_or(settings.scale, Scale::N);
-        let attrs = Window::default_attributes()
-            .with_title("Superfrog")
-            .with_inner_size(window::initial_size(scale))
-            .with_min_inner_size(window::min_size())
-            .with_active(self.script.is_none());
-        let window = match event_loop.create_window(attrs) {
-            Ok(w) => Arc::new(w),
-            Err(e) => return self.fail(event_loop, &format!("no window: {e}")),
-        };
         let mut video = match Video::new(window.clone(), scale) {
             Ok(v) => v,
             Err(e) => return self.fail(event_loop, &e),

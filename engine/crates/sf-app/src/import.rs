@@ -8,10 +8,12 @@
 
 use std::collections::VecDeque;
 use std::path::{Path, PathBuf};
+use std::sync::Arc;
 
 use serde::{Deserialize, Serialize};
 use sf_assets::{GameData, LaunchAction, LaunchFacts, cache_decode, cache_encode, decide};
 use sf_disk::Offered;
+use winit::window::Window;
 
 use crate::atomic_write::atomic_write;
 use crate::home::{build, cache_path};
@@ -30,35 +32,51 @@ pub trait Ui {
     fn notice(&mut self, message: &str);
 }
 
-/// The macOS panels, through rfd.
-pub struct NativeUi;
+/// The macOS panels, through rfd: sheets on `parent` when there is a window (with none, rfd shows
+/// a system alert from another process, and the picker stays on screen behind it).
+pub struct NativeUi {
+    pub parent: Option<Arc<Window>>,
+}
+
+impl NativeUi {
+    fn message(&self, level: rfd::MessageLevel, text: &str, buttons: rfd::MessageButtons) -> rfd::MessageDialogResult {
+        let d = rfd::MessageDialog::new()
+            .set_level(level)
+            .set_title("Superfrog")
+            .set_description(text)
+            .set_buttons(buttons);
+        match &self.parent {
+            Some(w) => d.set_parent(&**w),
+            None => d,
+        }
+        .show()
+    }
+}
 
 impl Ui for NativeUi {
     fn pick_disks(&mut self, message: &str) -> Option<Vec<PathBuf>> {
-        rfd::FileDialog::new()
+        let d = rfd::FileDialog::new()
             .set_title(message)
-            .add_filter("Amiga disk images", &["zip", "adf", "ZIP", "ADF"])
-            .pick_files()
+            .add_filter("Amiga disk images", &["zip", "adf", "ZIP", "ADF"]);
+        match &self.parent {
+            Some(w) => d.set_parent(&**w),
+            None => d,
+        }
+        .pick_files()
     }
 
     fn disks_missing(&mut self, message: &str) -> bool {
-        let r = rfd::MessageDialog::new()
-            .set_level(rfd::MessageLevel::Warning)
-            .set_title("Superfrog")
-            .set_description(message)
-            .set_buttons(rfd::MessageButtons::OkCancelCustom(CHOOSE.into(), QUIT.into()))
-            .show();
+        let r = self.message(
+            rfd::MessageLevel::Warning,
+            message,
+            rfd::MessageButtons::OkCancelCustom(CHOOSE.into(), QUIT.into()),
+        );
         matches!(r, rfd::MessageDialogResult::Custom(ref b) if b == CHOOSE)
             || r == rfd::MessageDialogResult::Ok
     }
 
     fn notice(&mut self, message: &str) {
-        rfd::MessageDialog::new()
-            .set_level(rfd::MessageLevel::Info)
-            .set_title("Superfrog")
-            .set_description(message)
-            .set_buttons(rfd::MessageButtons::Ok)
-            .show();
+        self.message(rfd::MessageLevel::Info, message, rfd::MessageButtons::Ok);
     }
 }
 
