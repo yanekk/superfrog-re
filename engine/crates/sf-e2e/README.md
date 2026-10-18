@@ -45,6 +45,24 @@ the app logs each command it takes as `superfrog: menu <id> after step N`, which
 click up with the captured frames. A paused step still counts towards `--max-frames` and captures
 the held picture again.
 
+T211's `whole_game.rs` plays `game-whole` (power-on to the end sequence) through the app paced
+exactly as `sf-conform`'s engine run alone is: `--pacing FILE` (accepted only with `--script`)
+steps the game from that run's pacing feed (`sf_core::feed`: per frame of play the input, the
+original's pacing, a load's timing, the clock's seeds and the frames under a loading screen), and
+`--capture-hashes` writes each frame's picture and state hashes to `hashes.txt` in place of the
+PNGs. The test compares them with the hashes `sf-conform` wrote for its run alone and names the
+first frame that differs. The feed and hashes come from the trace cache, or are made there first
+(`sf-conform feed conform/cases/game-whole.toml [--frames N]`, which needs the oracle); a feed is
+keyed by the engine build too, so any change to the game makes it again. The test block runs the
+first 1 500 frames of play (the boot's loads and loading screens; ~30 s, ~25 s more uncached); the
+whole game is ignored:
+
+```
+cd engine && cargo test -q -p sf-e2e --test whole_game -- --ignored --nocapture
+```
+
+about 75 min of the app at the PAL rate, plus about 25 min when the feed is not cached.
+
 Fullscreen takes over the display, so the two fullscreen tests (`window.rs`, `persist.rs`) are
 `#[ignore]`d like the OS layer and run under `SF_E2E_OS=1`.
 
