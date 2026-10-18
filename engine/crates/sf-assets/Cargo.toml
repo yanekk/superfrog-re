@@ -14,3 +14,5 @@ sf-disk = { path = "../sf-disk" }
 sf-conform = { path = "../sf-conform" }
 # Checks the hand-written BLAKE3 in src/blake3.rs (tests only; the crate itself builds with `cc`).
 blake3 = "1"
+# Plays `.sflevel` files against the disk levels (tests only; sf-core depends on this crate).
+sf-core = { path = "../sf-core" }

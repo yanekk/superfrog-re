@@ -17,9 +17,12 @@ hit is extended byte by byte against each place and reported if the longest shar
 bytes or longer. Blocks with fewer than 4 distinct byte values (zero fill, solid colour) are not
 indexed: they are not data anyone could recover.
 
+A `.sflevel` (an exported level, DESIGN §2.10: JSON with the level's files in base64) is also
+scanned with its sections decoded, since base64 hides every run from the byte scan.
+
 A flagged table must be read from the disks instead; this check is never relaxed for it.
 """
-import argparse, glob, io, os, subprocess, sys, zipfile
+import argparse, base64, binascii, glob, io, json, os, subprocess, sys, zipfile
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from atn import carve_chunks, ATNDecompressor  # noqa: E402
@@ -129,6 +132,23 @@ def scan(data, index, sources):
     return hits
 
 
+def sflevel_sections(data):
+    """[(name, bytes)]: the decoded sections of a `.sflevel`; [] for any other file."""
+    try:
+        doc = json.loads(data)
+    except (ValueError, UnicodeDecodeError):
+        return []
+    if not isinstance(doc, dict) or doc.get('format') != 'sflevel' or not isinstance(doc.get('sections'), dict):
+        return []
+    out = []
+    for name, text in doc['sections'].items():
+        try:
+            out.append((name, base64.b64decode(text, validate=True)))
+        except (TypeError, ValueError, binascii.Error):
+            pass
+    return out
+
+
 def repo_files(root):
     out = subprocess.run(['git', 'ls-files', '-z', '--cached', '--others', '--exclude-standard'],
                          cwd=root, capture_output=True, check=True).stdout
@@ -156,6 +176,10 @@ def main(argv=None):
         for off, run, label, soff in scan(data, index, sources):
             print(f'{rel}:{off} ({run} bytes, same as {label}+{soff})')
             found += 1
+        for name, section in sflevel_sections(data):
+            for off, run, label, soff in scan(section, index, sources):
+                print(f'{rel}:section {name}:{off} ({run} bytes, same as {label}+{soff})')
+                found += 1
     if found:
         print(f'\n{found} run(s) of disk data found. Read that data from the disks instead; '
               'do not relax this check (DESIGN §2.3).', file=sys.stderr)

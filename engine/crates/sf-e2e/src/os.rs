@@ -426,6 +426,42 @@ impl App {
         }
     }
 
+    /// The element whose accessibility identifier is `id`, in one of the app's windows, waiting up
+    /// to 20 s for it to appear, handed to `f`.
+    fn os_with_id<T>(&self, id: &str, mut f: impl FnMut(&ax::Cf) -> T) -> T {
+        let start = Instant::now();
+        loop {
+            let mut found = None;
+            for w in ax::windows(&ax::app(self.os_pid())) {
+                ax::walk(&w, 12, &mut |e| {
+                    if found.is_none() && ax::text(e, "AXIdentifier") == id {
+                        found = Some(f(e));
+                    }
+                });
+            }
+            if let Some(r) = found {
+                return r;
+            }
+            assert!(start.elapsed() < Duration::from_secs(20), "no element {id:?} within 20 s");
+            std::thread::sleep(Duration::from_millis(100));
+        }
+    }
+
+    /// Press the button whose accessibility identifier is `id` (the Controls window's
+    /// `fire-keys`, `defaults`…), as a click on it would.
+    pub fn os_press_id(&mut self, id: &str) {
+        self.os_with_id(id, ax::press).unwrap_or_else(|e| panic!("pressing {id:?}: {e}"));
+    }
+
+    /// The text the element with accessibility identifier `id` shows: a button's title, a
+    /// label's value.
+    pub fn os_text_id(&self, id: &str) -> String {
+        self.os_with_id(id, |e| {
+            let v = ax::text(e, "AXValue");
+            if v.is_empty() { ax::title(e) } else { v }
+        })
+    }
+
     /// The window as the screen shows it, title bar included, at the display's pixel density.
     pub fn os_capture(&self) -> Image {
         self.os_capture_window(self.os_window().0)

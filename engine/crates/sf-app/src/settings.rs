@@ -1,5 +1,5 @@
 //! `settings.toml` in the app-data folder (DESIGN §2.9, §3.5): scale, fullscreen, CRT, widescreen
-//! and the key bindings. A damaged file is replaced by the defaults with a one-line message, never
+//! and the key and pad bindings. A damaged file is replaced by the defaults with a one-line message, never
 //! a refusal to start (DESIGN §2.9).
 //!
 //! ```toml
@@ -12,6 +12,10 @@
 //! up = ["ArrowUp"]
 //! fire = ["Space", "ControlLeft", "ControlRight"]
 //! "key P" = ["KeyP"]
+//!
+//! [pad]                 # the same, for the pad's inputs (pad.rs PAD_INPUTS)
+//! fire = ["South", "East"]
+//! left = ["DPadLeft", "StickLeft"]
 //! ```
 
 use std::collections::BTreeMap;
@@ -21,6 +25,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::atomic_write::atomic_write;
 use crate::input::{KeyMap, OriginalInput, key_name, key_named};
+use crate::pad::{PadInput, PadMap};
 
 /// How large the game is drawn (DESIGN §2.7).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -40,6 +45,7 @@ pub struct Settings {
     /// Widescreen (T27).
     pub widescreen: bool,
     pub keys: KeyMap,
+    pub pad: PadMap,
 }
 
 impl Default for Settings {
@@ -50,6 +56,7 @@ impl Default for Settings {
             crt: false,
             widescreen: false,
             keys: KeyMap::default(),
+            pad: PadMap::default(),
         }
     }
 }
@@ -71,6 +78,8 @@ struct File {
     widescreen: Option<bool>,
     #[serde(skip_serializing_if = "Option::is_none")]
     keys: Option<BTreeMap<String, Vec<String>>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pad: Option<BTreeMap<String, Vec<String>>>,
 }
 
 impl Settings {
@@ -84,6 +93,12 @@ impl Settings {
                 (o.name(), names)
             })
             .collect();
+        let pad = self
+            .pad
+            .0
+            .iter()
+            .map(|(o, ps)| (o.name(), ps.iter().map(|p| p.name().to_string()).collect()))
+            .collect();
         let file = File {
             scale: Some(match self.scale {
                 Scale::Auto => toml::Value::String("auto".into()),
@@ -93,6 +108,7 @@ impl Settings {
             crt: Some(self.crt),
             widescreen: Some(self.widescreen),
             keys: Some(keys),
+            pad: Some(pad),
         };
         toml::to_string(&file).expect("settings serialise")
     }
@@ -121,6 +137,17 @@ impl Settings {
                     .map(|n| key_named(n).ok_or_else(|| format!("[keys] has no key called {n:?}")))
                     .collect::<Result<Vec<_>, _>>()?;
                 s.keys.0.insert(o, codes);
+            }
+        }
+        if let Some(pad) = file.pad {
+            for (input, names) in pad {
+                let o = OriginalInput::named(&input)
+                    .ok_or_else(|| format!("[pad] has no input called {input:?}"))?;
+                let ps = names
+                    .iter()
+                    .map(|n| PadInput::named(n).ok_or_else(|| format!("[pad] has no pad input called {n:?}")))
+                    .collect::<Result<Vec<_>, _>>()?;
+                s.pad.0.insert(o, ps);
             }
         }
         Ok(s)
@@ -181,9 +208,15 @@ mod tests {
             crt: true,
             widescreen: false,
             keys: KeyMap::default(),
+            pad: PadMap::default(),
         };
         s.keys.0.insert(OriginalInput::Fire, vec![KeyCode::KeyX, KeyCode::Space]);
+        s.pad.0.insert(OriginalInput::Fire, vec![PadInput::North]);
+        s.pad.0.insert(OriginalInput::Up, vec![]);
         let text = s.to_toml();
+        assert!(text.split("[pad]").nth(1).unwrap().contains("\nup = []\n"), "{text}");
+        assert!(text.contains("fire = [\"North\"]"), "{text}");
+        assert!(text.contains("left = [\"DPadLeft\", \"StickLeft\"]"), "{text}");
         assert!(text.contains("scale = 3"), "{text}");
         assert!(text.contains("fire = [\"KeyX\", \"Space\"]"), "{text}");
         assert!(text.contains("\"key P\" = [\"KeyP\"]"), "{text}");
@@ -198,6 +231,11 @@ mod tests {
         assert!(!s.fullscreen);
         assert_eq!(s.keys.0[&OriginalInput::Fire], vec![KeyCode::KeyZ]);
         assert_eq!(s.keys.0[&OriginalInput::Up], vec![KeyCode::ArrowUp]);
+        assert_eq!(s.pad, PadMap::default(), "no [pad]: the pad's defaults");
+        let s = Settings::from_toml("[pad]\nfire = [\"West\"]\n").unwrap();
+        assert_eq!(s.pad.0[&OriginalInput::Fire], vec![PadInput::West]);
+        assert_eq!(s.pad.0[&OriginalInput::Left], vec![PadInput::DPadLeft, PadInput::StickLeft]);
+        assert_eq!(s.keys, KeyMap::default());
     }
 
     #[test]
@@ -209,6 +247,9 @@ mod tests {
             "this is not toml",
             "[keys]\nfire = [\"NoSuchKey\"]\n",
             "[keys]\njump = [\"Space\"]\n",
+            "[pad]\nfire = [\"Space\"]\n",
+            "[pad]\njump = [\"South\"]\n",
+            "pad = 1\n",
         ] {
             let h = home("bad");
             std::fs::create_dir_all(&h).unwrap();
@@ -230,7 +271,7 @@ mod tests {
 
     #[test]
     fn a_field_from_a_later_build_is_ignored() {
-        assert_eq!(Settings::from_toml("pad = 1\n").unwrap(), Settings::default());
+        assert_eq!(Settings::from_toml("mouse = 1\n").unwrap(), Settings::default());
     }
 
     #[test]

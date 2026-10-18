@@ -7,18 +7,22 @@
 //! integer scale (`window.rs`) and the mixer's output is played. `--script` feeds events in place
 //! of the keyboard's and answers the launch's questions, `--capture` writes what was shown and
 //! played; the seatbelts are in `args.rs` (DESIGN §5.2). Every setting and feature is reached
-//! through the menu bar, as a `menu::Command` (DESIGN §2.7, §7); save states are `states.rs`.
+//! through the menu bar, as a `menu::Command` (DESIGN §2.7, §7); save states are `states.rs`. Gamepads
+//! come through gilrs (`pad.rs`), except under `--script`, whose `pad …` lines stand in for them.
 
 mod args;
 mod atomic_write;
 mod audio;
 mod capture;
+mod controls_window;
 mod home;
 mod import;
 mod input;
+mod levelfile;
 mod lock;
 mod menu;
 mod pacing;
+mod pad;
 mod progress;
 mod script;
 mod settings;
@@ -26,11 +30,13 @@ mod states;
 mod video;
 mod window;
 
+use std::collections::BTreeMap;
 use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::{Duration, Instant, SystemTime};
 
-use sf_core::{DisplayData, Game, Progress, Rng, Start, View};
+use sf_assets::LevelData;
+use sf_core::{DisplayData, Game, LevelId, Progress, Rng, Start, View};
 use sf_paula::Paula;
 use winit::application::ApplicationHandler;
 use winit::event::{ElementState, MouseButton, WindowEvent};
@@ -41,11 +47,13 @@ use winit::window::{Window, WindowId};
 use crate::args::Args;
 use crate::audio::{Audio, Clock, NoChip};
 use crate::capture::Capture;
+use crate::controls_window::{ControlsWindow, OpenControls};
 use crate::import::{NativeUi, ScriptedUi, Ui};
 use crate::input::{HostInput, Input};
 use crate::lock::Lock;
 use crate::menu::{Command, MenuBar};
 use crate::pacing::{Pacer, Presenter};
+use crate::pad::PadSource;
 use crate::script::{Event, Script};
 use crate::settings::{Scale, Settings};
 use crate::video::{Video, picture_rgba};
@@ -107,6 +115,9 @@ fn main() {
         Some(s) => Box::new(ScriptedUi {
             picks: s.picks.iter().cloned().collect(),
             answers: s.answers.iter().copied().collect(),
+            saves: s.saves.iter().cloned().collect(),
+            opens: s.opens.iter().cloned().collect(),
+            level_answers: s.level_answers.iter().copied().collect(),
             log: Vec::new(),
             log_file: log,
         }),
@@ -118,6 +129,7 @@ fn main() {
         script,
         ui,
         menu: None,
+        controls: None,
         run: None,
         started: false,
         status: 0,
@@ -161,6 +173,8 @@ struct App {
     /// Every question to the player: the native panels, or the script's answers.
     ui: Box<dyn Ui>,
     menu: Option<MenuBar>,
+    /// Game → Controls…, while it is open.
+    controls: Option<OpenControls>,
     /// The game, once the launch is through.
     run: Option<Run>,
     started: bool,
@@ -179,6 +193,8 @@ struct Run {
     cache_hash: [u8; 32],
     /// Which save-state slots hold a state (`states.rs`).
     states: [bool; states::SLOTS as usize],
+    /// The disk levels, for File → Export Level (`levelfile.rs`).
+    levels: BTreeMap<LevelId, LevelData>,
     seed: (u32, u32),
     game: Game,
     paula: Paula,
@@ -187,6 +203,8 @@ struct Run {
     /// Game → Pause: the game is not stepped (`menu.rs`).
     paused: bool,
     input: Input,
+    /// The real pads; none under a script.
+    pads: Option<Box<dyn PadSource>>,
     pacer: Pacer,
     clock: Clock,
     /// Host samples stepped ahead of the device, so its queue never runs dry.
@@ -296,18 +314,32 @@ impl App {
                 eprintln!("superfrog: staying windowed: a scripted run goes fullscreen only with --allow-fullscreen");
             }
         }
+        // A scripted run reads no real pad: its `pad …` lines are its pads.
+        let (pads, present) = if self.script.is_some() {
+            (None, Vec::new())
+        } else {
+            match pad::Gilrs::open() {
+                Ok((g, present)) => (Some(Box::new(g) as Box<dyn PadSource>), present),
+                Err(e) => {
+                    eprintln!("superfrog: {e}; carrying on with the keyboard");
+                    (None, Vec::new())
+                }
+            }
+        };
         let display = Arc::new(DisplayData::new(&data));
         let cache_hash = sf_assets::cache_hash(&data);
-        drop(data);
+        let levels = data.levels;
         let game = Game::with_display(display.clone(), Start::PowerOn { seed: Rng::seeded(seed.0, seed.1) });
         let mut run = Run {
             _lock: lock,
-            input: Input::new(settings.keys.clone()),
+            input: Input::new(settings.keys.clone(), settings.pad.clone()),
+            pads,
             settings,
             furthest,
             display,
             cache_hash,
             states: states::filled(&self.home),
+            levels,
             seed,
             game,
             paula: Paula::new(rate),
@@ -339,6 +371,9 @@ impl App {
             return self.fail(event_loop, &format!("capture: {e}"));
         }
         run.shown.completed((0, size, rgba));
+        for e in present {
+            run.input.event(HostInput::Pad(e));
+        }
         self.run = Some(run);
         self.show_menu();
         self.show_newest();
@@ -352,6 +387,13 @@ impl App {
         let events: Vec<Event> = self.script.as_ref().map_or(Vec::new(), |s| s.at(n).collect());
         for e in events {
             match e {
+                // While the Controls window is open it has the keyboard, as it would for a person.
+                Event::Input(HostInput::Key { code, pressed }) if self.controls.is_some() => {
+                    if pressed {
+                        self.controls_key(code);
+                    }
+                }
+                Event::Input(HostInput::Pad(e)) => self.pad_event(e),
                 Event::Input(h) => self.host(event_loop, h),
                 Event::Hang => {
                     eprintln!("superfrog: the script hangs at frame {n}");
@@ -365,6 +407,7 @@ impl App {
                 }
                 Event::Shot => self.run.as_mut().expect("running").shot = Some(n),
                 Event::Command(c) => self.on_command(event_loop, c),
+                Event::Controls(a) => self.controls_action(a),
             }
             if event_loop.exiting() {
                 return;
@@ -511,6 +554,12 @@ impl ApplicationHandler for App {
                 return;
             }
         }
+        while let Some(a) = ControlsWindow::next_click() {
+            self.controls_action(a);
+        }
+        while let Some(e) = self.run.as_mut().and_then(|r| r.pads.as_mut()).and_then(|p| p.next()) {
+            self.pad_event(e);
+        }
         let Some(run) = &mut self.run else { return };
         if run.audio.as_ref().is_some_and(Audio::failed) {
             // The device is gone: carry on silently on the wall clock, from where it got to.
@@ -539,7 +588,21 @@ impl ApplicationHandler for App {
         ));
     }
 
-    fn window_event(&mut self, event_loop: &ActiveEventLoop, _: WindowId, event: WindowEvent) {
+    fn window_event(&mut self, event_loop: &ActiveEventLoop, id: WindowId, event: WindowEvent) {
+        if self.controls.as_ref().is_some_and(|c| c.window.id() == id) {
+            match event {
+                WindowEvent::CloseRequested => self.close_controls(),
+                WindowEvent::KeyboardInput { event, .. }
+                    if !event.repeat && event.state == ElementState::Pressed =>
+                {
+                    if let PhysicalKey::Code(code) = event.physical_key {
+                        self.controls_key(code);
+                    }
+                }
+                _ => {}
+            }
+            return;
+        }
         match event {
             WindowEvent::CloseRequested if self.run.is_some() => self.on_command(event_loop, Command::Quit),
             WindowEvent::CloseRequested => self.finish(event_loop),
