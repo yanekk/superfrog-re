@@ -63,6 +63,18 @@ cd engine && cargo test -q -p sf-e2e --test whole_game -- --ignored --nocapture
 
 about 75 min of the app at the PAL rate, plus about 25 min when the feed is not cached.
 
+T30 adds to it what the acceptance asks of the app's sound and clocks. The capture's
+`audio-frames.txt` gives each step's samples per game frame, so the test lines `audio.wav` up with
+the frames of play and requires the app heard within ±2 frames wherever the original is (the feed's
+`.audio`: the original's own mix, its loudest sample each frame of play). `pacing.txt`'s `clock`
+and the samples per game frame show the steps keep with the pacing clock and the sound with the
+frames (`Drift`). The test block's stretch checks both; the soak, ignored, plays 50 000 frames of
+the feed (about 17 min) and also requires a clean exit and an empty `unported.txt`:
+
+```
+cd engine && cargo test -q --release -p sf-e2e --test whole_game -- --ignored --nocapture
+```
+
 Fullscreen takes over the display, so the two fullscreen tests (`window.rs`, `persist.rs`) are
 `#[ignore]`d like the OS layer and run under `SF_E2E_OS=1`.
 

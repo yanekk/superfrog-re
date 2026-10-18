@@ -29,6 +29,14 @@ derived by the tools.
   sits at offset `0x11300` in each world's sprite bank. See `docs/06`.
 - **Collision:** a cell is solid iff `flag & 0b11000 == 0b11000`; **flag 38 = fake
   wall = secret passage** (`tools/find_secrets.py`, 144 found). See `docs/07`.
+- **The Rust engine plays the whole game** (`engine/`, plan `plans/rust-engine/`, done
+  2026-10-18): `sf-core` is the game, `sf-app` the macOS app (`cd engine && cargo run
+  --release -p sf-app`; "Play it" in the README). It is **faithful, judged by machine**
+  (DESIGN §2.1): `sf-conform` runs the original on the vAmiga oracle and compares state,
+  picture, sound and milestones; `sf-e2e` drives the real app, the whole game included.
+  Read `plans/rust-engine/FINDINGS.md` before touching a mechanic.
+- **Levels from files:** the app plays a `.sflevel` (JSON of the level's original files,
+  DESIGN §2.10) in place of a disk level, and exports any disk level to one.
 
 ## Tile addressing (how the user points at spots)
 `tools/export_annotated.py` makes per-level images with a col/row grid + level id.
@@ -38,10 +46,12 @@ Address a tile as **`<level-id>:<col>,<row>`** (0-indexed, top-left origin), e.g
 passage at `<id>`", resolve id → level chunk, then inspect that tile's index+flag.
 
 ## Next up
-Map editor: view + **edit** `BODY` + **repack**. Repacking needs an `ATN!`
-*compressor* — only the decompressor exists so far (see `docs/03`). Also still open:
-the rarer collision flags (hazards / one-way / water) and flag-0-through-terrain
-passages (deliberately excluded from the secret count as ambiguous).
+Map editor, a new plan: view + **edit** `BODY`, saved as a `.sflevel` the engine plays
+(File ▸ Play Level File…), so an edit is tried in the faithful engine with no repack.
+Writing back to an `.adf` still needs an `ATN!` *compressor* — only the decompressor
+exists (see `docs/03`). Also still open: the rarer collision flags (hazards / one-way /
+water) and flag-0-through-terrain passages (deliberately excluded from the secret count
+as ambiguous).
 
 ## Conventions
 Do RE work on a feature branch and open a PR to `main`. Never commit the

@@ -27,7 +27,8 @@ cargo run -q --release -p sf-conform -- feed conform/cases/game-whole.toml --fra
 `feed` (T211) runs a case from power-on by check 4 only and writes what its engine run alone was
 fed, one record a frame of play, and the hashes of each frame it played, into the trace cache
 (`~/.cache/superfrog-re/traces/<key>.feed`, `.hashes`; keyed by the oracle, the case and the engine
-build), or finds them there; `--frames N` cuts the case short. The formats are documented in
+build), or finds them there; `--frames N` cuts the case short. Beside them `<key>.audio` holds the
+original's loudness each frame of play (T30), which `whole_game.rs` holds the app's sound to. The formats are documented in
 `sf-core/src/feed.rs`; the app reads a feed under `--script --pacing FILE` (`sf-e2e`'s
 `whole_game.rs`).
 
