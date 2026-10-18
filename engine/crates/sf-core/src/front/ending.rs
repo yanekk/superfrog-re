@@ -54,7 +54,7 @@ const SHOW_CYCLES: u32 = 600;
 /// beam moves on by its cycles, which the main program gets from the end of each vertical blank,
 /// fewer on lines the display fetches more than four planes. Its memory is compared once the
 /// original is out of it (`job`).
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 pub(crate) struct CpuWork {
     pub cycles: u32,
     job: Option<Job>,
@@ -107,7 +107,7 @@ pub(crate) fn work(cycles: u32, inside: &[u32], writes: Vec<(u32, u32)>) -> Yiel
 /// `end_seq_load` (h0+$a65c): the display off, the Accessing-disk overlay up, `END1` and `END2`
 /// loaded packed to hunk 1, the title's music loaded and started, the overlay faded out. The loads
 /// are instant (owner, 2026-10-12); the original's frames until its `overlays_end` are skipped.
-#[derive(Debug, Clone, Default, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 pub(crate) struct EndSeqLoad {
     pc: u8,
 }
@@ -194,7 +194,7 @@ const END2: Play = Play {
 };
 
 /// `end_sequence` (h0+$a6e4).
-#[derive(Debug, Clone, Default, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 pub(crate) struct EndSequence {
     pc: u16,
     /// `d7`: passes left; and rasters left in a wait between pictures.

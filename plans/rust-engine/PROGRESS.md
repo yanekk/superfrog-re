@@ -48,10 +48,10 @@ done · ⛔ blocked, needs a human. A task dropped by a plan amendment leaves th
 | T22 | app-rig | T09, T10, T12, T13 | ✅ | |
 | T23 | app-shell | T21, T22 | ✅ | |
 | T24 | macos-menus | T23 | ✅ | |
-| T25 | controls-and-gamepad | T24 | ⬜ | |
-| T26 | save-states | T24 | ⬜ | |
-| T27 | crt-and-widescreen | T24 | ✅ | Review: one defect, `shot_run` dropped its App so two shot tests always failed (reproduced, fixed). Mutated the CRT pipeline choice and the level view: caught. Release pacing 0 dropped when quiet, CRT on and off alike. Drilled 2× widescreen CRT mid-level, 1× CRT title. T210 addition valid. 6 e2e + 2 ignored. |
-| T28 | level-override | T14, T24 | ⬜ | |
+| T25 | controls-and-gamepad | T24 | ✅ | |
+| T26 | save-states | T24 | ✅ | |
+| T27 | crt-and-widescreen | T24 | ✅ | Review: `shot_run` dropped its App so two shot tests always failed (reproduced, fixed). At integration: loaded states and level files now take the widescreen setting (`view` not saved), e2e locks it. Mutations of CRT pipeline, level view, load caught. Pacing 0 dropped when quiet, CRT on or off. T210 valid. |
+| T28 | level-override | T14, T24 | ✅ | |
 | T29 | app-drill | T21, T25, T26, T27, T28 | ⬜ | |
 | T30 | acceptance | T29 | ⬜ | |
 | T31 | render-remaining-levels | T13 | ✅ | |

@@ -9,7 +9,7 @@
 /// `2^17 + 3`: `rng_next` adds the value, twice the value, and twice the value shifted up 16.
 const MUL: u64 = (1 << 17) + 3;
 
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 pub struct Rng {
     /// The long at `rng_state`.
     pub lo: u32,

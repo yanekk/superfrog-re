@@ -41,7 +41,7 @@ pub struct Write {
 
 /// What decides which DMA cycles the bitplanes take: BPLCON0, the vertical window and the fetch
 /// window.
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 pub struct Fetch {
     pub bplcon0: u16,
     pub diwstrt: u16,

@@ -30,7 +30,7 @@ const FETCH_TO: u32 = 0xe0;
 
 /// What the level's work costs, in CPU cycles, fitted to the original's beam positions on the
 /// oracle (the `items-*` and `frog-*` cases' frames): [`COSTS`] by [`Cost`].
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 pub enum Cost {
     // --- The vertical blank (h0+$11bf8) ---
     /// The interrupt taken, registers saved, and `scroll_latch` (h0+$1700a).
@@ -411,7 +411,7 @@ pub fn routine_cost(addr: u32) -> Cost {
 }
 
 /// One step of the clock, recorded for fitting the costs ([`super::LevelCtx::trace`]).
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 pub enum Tick {
     Cpu(Cost, u32),
     Blit(u32),
@@ -421,7 +421,7 @@ pub enum Tick {
 }
 
 /// The beam's position as the CPU sees it.
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 pub struct Clock {
     /// The line, counted from the frame's vertical blank; past [`FRAME_LINES`] when work runs on
     /// past the frame's end.
@@ -566,7 +566,7 @@ impl Clock {
 
 /// Where a frame ended in the middle of a pass ([`crate::Pacing::Late`]): after its `writes`th
 /// Paula write, the last at `line`, slot `hpos`, in the pass's `phase`th call.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 pub struct Cut {
     pub writes: u16,
     pub line: u16,
@@ -589,7 +589,7 @@ pub const IRQ_PHASE: u8 = 14;
 
 /// A frame the main program runs through: its vertical blank's hardware, and, when it ends in
 /// the middle of a pass, where.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 pub struct FrameSpec {
     pub hw: super::Hw,
     pub cut: Option<Cut>,
@@ -599,7 +599,7 @@ pub struct FrameSpec {
 /// began, where the beam was, the hardware then and the Paula writes its frame had made by then,
 /// and each frame it has run through (the one it began in first). The next frame runs it again
 /// from its start, each of those frames ending where it did, then runs its own ([`Frames`]).
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 pub struct Pending {
     pub start: Box<crate::state::State>,
     pub clock: Clock,

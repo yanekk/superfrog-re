@@ -62,7 +62,7 @@ fn game_over_update(c: &mut LevelCtx, slot: u32, _d7: u16) {
 }
 
 /// `game_over_seq` (h0+$74d0).
-#[derive(Debug, Clone, Default, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 pub(crate) struct GameOverSeq {
     pc: u8,
     /// The pass being run (0, 1).
@@ -192,7 +192,7 @@ impl GameOverSeq {
 /// `game_over_check` (h0+$749c) when it ends the game (ESC, or no lives): the music faded out, and
 /// `top_loop` again from its start, the title (in a game started from the disk; the one run from
 /// a loader goes back to it, h0+$7c6, not ported).
-#[derive(Debug, Clone, Default, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 pub(crate) struct GameOverCheck {
     pc: u8,
 }

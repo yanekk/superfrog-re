@@ -22,7 +22,7 @@ const OPT_FLASH: u32 = at(0x1b16);
 pub const CURSOR: u32 = at(0x1b17c);
 
 /// `$1406`: the menu over the title. Returns its choice in `cx.ret`: 0 START GAME, 1 OPTIONS.
-#[derive(Debug, Clone, Default, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 pub(crate) struct Menu {
     pc: u8,
     item: u16,
@@ -137,7 +137,7 @@ impl Menu {
 }
 
 /// `$16be`: the options screen, then back to the title's intro (h0+$1122).
-#[derive(Debug, Clone, Default, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 pub(crate) struct Options {
     pc: u8,
     /// After a move: the direction held (`$100` up, `$1` down, `$300` left, `$3` right) and where

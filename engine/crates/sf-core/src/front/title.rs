@@ -152,7 +152,7 @@ const OVERLAY_LAST_STEP_CYCLES: u32 = 10 * BEAM_CYCLES_PER_LINE;
 /// across eleven frames, then its program (h0+$0): a wait for line `$ff`, its set-up, and its fade
 /// in, a frame an iteration (a wait for line `$ff`, then for `$100`, then two steps) until a step
 /// finds nothing to change. The other callers show it at once, under their loads.
-#[derive(Debug, Clone, Default, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 pub(crate) struct OverlayShow {
     pc: u8,
     rec: Option<Rec>,
@@ -237,7 +237,7 @@ fn load_title(cx: &mut Cx) {
 }
 
 /// `title_screen` (h0+$109e).
-#[derive(Debug, Clone, Default, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 pub(crate) struct Title {
     pc: u8,
     /// Booting: the first title, whose start is part of the boot's load.
@@ -378,7 +378,7 @@ impl Title {
 
 /// `$1180`: the title's end, for attract mode or a game: the title fades out, the music too unless
 /// attract mode goes on, and the game's start values are set.
-#[derive(Debug, Clone, Default, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 pub(crate) struct TitleExit {
     pc: u8,
 }
@@ -496,7 +496,7 @@ fn blink(cx: &mut Cx) {
 }
 
 /// `overlays_end` (h0+$b774) with the Accessing-disk overlay up: fade it out, then the blank list.
-#[derive(Debug, Clone, Default, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 pub(crate) struct OverlayEnd {
     pc: u8,
 }
@@ -643,7 +643,7 @@ fn blit_eyes(cx: &mut Cx, x: u16, y: u16) {
 
 /// `title_intro_anim` (h0+$3902): the eyes bounce in from the right in the dark, blink, and the
 /// music starts; fire skips to the end.
-#[derive(Debug, Clone, Default, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 pub(crate) struct IntroAnim {
     pc: u8,
     x: u16,
@@ -849,7 +849,7 @@ impl IntroAnim {
 
 /// `$1c0e`: both halves of the title fade in together, then the menu's line is moved below the
 /// picture.
-#[derive(Debug, Clone, Default, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 pub(crate) struct TitleFadeIn {
     pc: u8,
 }

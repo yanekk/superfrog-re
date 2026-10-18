@@ -7,7 +7,7 @@ use crate::layout::{Ram, SLOW_BASE};
 /// 512 KB of each.
 pub const RAM_BYTES: usize = 512 * 1024;
 
-#[derive(Clone, PartialEq, Eq, Hash)]
+#[derive(Clone, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 pub struct StoryMem {
     pub chip: Vec<u8>,
     pub slow: Vec<u8>,

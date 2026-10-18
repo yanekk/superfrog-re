@@ -19,6 +19,7 @@ pub mod level;
 pub mod mem;
 pub mod render;
 pub mod rng;
+pub mod savestate;
 pub mod scene;
 pub mod slot;
 pub mod state;
@@ -28,6 +29,7 @@ pub use game::{CODE_TIMES, CodeTimes, Cpu, DiskPrompt, FrameOut, Game, HandlerEn
 pub use layout::{AmigaMemory, LAYOUT, Ram, VarDef, VarId, Width};
 pub use render::{DisplayData, Picture, Split, View, to_rgb12};
 pub use rng::Rng;
+pub use savestate::{StateError, StateHeader};
 pub use scene::Scene;
 pub use slot::{Award, SlotOutcome};
 pub use sf_assets::{GameData, LevelId};

@@ -16,6 +16,7 @@ mod gamedata;
 mod launch;
 mod palette;
 mod picture;
+mod sflevel;
 pub mod sound;
 mod sprites;
 mod t7mp;
@@ -23,7 +24,8 @@ mod tables;
 mod tiles;
 
 pub use anim::{Anim, AnimFrame, AnimId, decode_anim};
-pub use cache::{CACHE_FORMAT, CacheError, cache_decode, cache_encode};
+pub use blake3::blake3;
+pub use cache::{CACHE_FORMAT, CacheError, cache_decode, cache_encode, cache_hash};
 pub use error::{AssetError, Why};
 pub use exe::{ExeId, ExeImage, Hunk, HunkKind, Reloc, parse_exe};
 pub use font::{Font, FontId};
@@ -34,6 +36,10 @@ pub use gamedata::{
 pub use launch::{LaunchAction, LaunchFacts, decide};
 pub use palette::Palette;
 pub use picture::{Bitmap, Picture, PictureId};
+pub use sflevel::{
+    SFLEVEL_FORMAT, SFLEVEL_VERSION, SflevelError, level_id_named, sflevel_decode, sflevel_encode,
+    sflevel_replaces,
+};
 pub use sprites::{SpriteBank, SpriteId};
 pub use t7mp::{T7mp, Tag, t7mp_decode, t7mp_encode};
 pub use tables::{

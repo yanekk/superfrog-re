@@ -190,7 +190,7 @@ pub fn reel_stop(s: &mut State, reel: u32, d0: u16, sfx: &mut dyn FnMut(&mut Sta
 }
 
 /// The round loop (h0+$4d4a) and `slot_machine`'s end (h0+$4d82..$4e26).
-#[derive(Debug, Clone, Default, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 pub(crate) struct Rounds {
     pc: u8,
     /// The prize the payout named (`d7`).
@@ -337,7 +337,7 @@ fn sound_back(cx: &mut Cx) {
 }
 
 /// `slot_hold_menu` (h0+$5de2): the lamps off, the holds cleared and maybe allowed, then the menu.
-#[derive(Debug, Clone, Default, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 pub(crate) struct HoldMenu {
     pc: u8,
 }
@@ -386,7 +386,7 @@ fn hold_lists(s: &mut State) {
 
 /// `slot_run_menu` (h0+$5eb4): the flashing lamps flash every 6th frame and the lit ones stay lit
 /// while the pointer moves between its stops, until fire or the mouse's button picks the stop.
-#[derive(Debug, Clone, Default, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 pub(crate) struct Menu {
     pc: u8,
     /// The caller's cycles before the menu's first draw.
@@ -538,7 +538,7 @@ impl Menu {
 }
 
 /// `slot_spin_reels` (h0+$5a06).
-#[derive(Debug, Clone, Default, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 pub(crate) struct Spin {
     pc: u8,
 }
@@ -683,7 +683,7 @@ impl Spin {
 }
 
 /// What a flash lights on its second half each pass.
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 enum Lights {
     /// The payout's line (h0+$504e): its lamp, if any, then every lamp; 4 frames each, 10 times.
     #[default]
@@ -706,7 +706,7 @@ enum Lights {
 
 /// A flash: each pass the lamps off and drawn after some frames, then what [`Lights`] lights,
 /// drawn after as many.
-#[derive(Debug, Clone, Default, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 pub(crate) struct Flash {
     pc: u8,
     left: u16,
@@ -829,7 +829,7 @@ fn ladder(cx: &Cx) -> Vec<u32> {
 /// (0) or a line's (1..=8) lit, then the menu offering the gamble: not taken, the rung is
 /// collected; taken, half the time the rung above is awarded again, else the rung three below
 /// is flashed and collected, or the bust when that is past the ladder.
-#[derive(Debug, Clone, Default, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 pub(crate) struct Award {
     pc: u8,
     /// The rung (`d7`).
@@ -1127,7 +1127,7 @@ pub fn collect(s: &mut State, d7: u16, sfx: &mut dyn FnMut(&mut State, u8, u8)) 
 
 /// `slot_hilo_spin` (h0+$598e): the hi-lo number turns 50 to 100 frames (1..=10, skipping where it
 /// began), drawn each frame.
-#[derive(Debug, Clone, Default, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 pub(crate) struct HiloSpin {
     pc: u8,
     left: u16,
@@ -1179,7 +1179,7 @@ impl HiloSpin {
 
 /// `slot_jackpot` (h0+$5628): each coin left won as 5 000 and counted, then 150 000 won, the next
 /// level's code printed under the machine and its lamp flashed until fire or the mouse's button.
-#[derive(Debug, Clone, Default, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 pub(crate) struct Jackpot {
     pc: u8,
 }
@@ -1263,7 +1263,7 @@ fn password_for_level(cx: &mut Cx) -> bool {
 /// `slot_count_win` (h0+$50b6): the lamps off and drawn, the win counted into the score shown,
 /// 1 000 a frame (all at once from 160 000), printed each frame. At the slot machine's start the
 /// screen is blank and the lamps' drawing is not on the beam (`on_beam` false).
-#[derive(Debug, Clone, Default, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 pub(crate) struct Count {
     pc: u8,
     on_beam: bool,

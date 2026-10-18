@@ -310,6 +310,22 @@ fn crt_and_widescreen_from_the_menu_are_remembered_by_the_next_launch() {
 }
 
 #[test]
+fn a_loaded_state_is_drawn_for_the_widescreen_setting_not_the_one_it_was_saved_in() {
+    let mut app = App::launch(LaunchOpts {
+        max_frames: 200,
+        ..Default::default()
+    });
+    // Saved in widescreen, loaded in widescreen: still 16:9.
+    let c = app.run_script("5: menu widescreen\n100: menu save-state-1\n150: menu load-state-1\n");
+    assert!(c.exit.success(), "{}", c.stderr);
+    assert!(c.frames[5..].iter().all(|f| f.width == 454), "widescreen after the load");
+    // Loaded with widescreen off (the setting saved by the run above): 4:3.
+    let c = app.run_script("1: menu widescreen\n50: menu load-state-1\n");
+    assert!(c.exit.success(), "{}", c.stderr);
+    assert!(c.frames[1..].iter().all(|f| f.width == 320), "4:3 after loading a widescreen state");
+}
+
+#[test]
 #[ignore = "takes over the display: SF_E2E_OS=1 cargo test -p sf-e2e --test view -- --ignored"]
 fn fullscreen_widescreen_is_the_largest_whole_scale_of_the_16_9_picture() {
     assert!(

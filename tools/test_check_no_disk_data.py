@@ -79,6 +79,19 @@ class CheckNoDiskData(unittest.TestCase):
             r = run(path)
         self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
 
+    def test_flags_disk_data_in_a_level_file_s_base64_section(self):
+        # An exported level (.sflevel) holds its map in base64, which the byte scan cannot see.
+        import base64, json
+        _label, piece = self.chunk_bytes(200)
+        with tempfile.TemporaryDirectory() as d:
+            path = os.path.join(d, 'W1-1.sflevel')
+            with open(path, 'w') as f:
+                json.dump({'format': 'sflevel', 'version': 1, 'replaces': 'W1-1',
+                           'sections': {'t7mp': base64.b64encode(piece).decode()}}, f)
+            r = run(path)
+        self.assertEqual(r.returncode, 1, r.stdout + r.stderr)
+        self.assertIn(f'{path}:section t7mp:0 (200 bytes, same as ', r.stdout)
+
     def test_the_real_tree_passes(self):
         r = run()
         self.assertEqual(r.returncode, 0, r.stdout + r.stderr)

@@ -30,7 +30,7 @@ const SCORE: u32 = at(0x834);
 const RANKS: u32 = at(0x2a0e);
 
 /// `hiscore_name_entry` with attract mode off.
-#[derive(Debug, Clone, Default, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 pub(crate) struct NameEntry {
     pc: u8,
     /// Where the next character goes (the original's `a0`).

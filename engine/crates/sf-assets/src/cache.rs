@@ -83,6 +83,14 @@ pub fn cache_encode(data: &GameData, engine_build: &str) -> Vec<u8> {
     out
 }
 
+/// The hash a cache file of `data` carries: BLAKE3 of its body. Save states are tagged with it
+/// (DESIGN §2.8), so a state is refused when the game data under it differs.
+pub fn cache_hash(data: &GameData) -> [u8; 32] {
+    let mut body = Vec::new();
+    data.put(&mut body);
+    blake3(&body)
+}
+
 /// The `GameData` a cache file holds, if the file is whole, of this format and undamaged.
 pub fn cache_decode(bytes: &[u8]) -> Result<GameData, CacheError> {
     if bytes.len() < MAGIC.len() {

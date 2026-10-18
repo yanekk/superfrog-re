@@ -201,3 +201,12 @@ fn reasons_say_what_happened() {
     });
     println!("{}", reason(&a));
 }
+
+#[test]
+fn cache_hash_is_the_hash_a_cache_file_carries() {
+    let data = sf_assets::GameData::default();
+    let file = sf_assets::cache_encode(&data, "b");
+    // magic 8, format 4, build (u32 length + 1 byte), body length 8: then the body's hash.
+    let at = 8 + 4 + 4 + 1 + 8;
+    assert_eq!(file[at..at + 32], sf_assets::cache_hash(&data));
+}

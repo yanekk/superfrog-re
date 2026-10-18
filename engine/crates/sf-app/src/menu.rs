@@ -3,8 +3,8 @@
 //!
 //! ```text
 //! Superfrog   About Superfrog · Services · Hide, Hide Others, Show All · Quit Superfrog ⌘Q
-//! File        Import Disks…
-//! Game        Continue from World N · Pause · Reset
+//! File        Import Disks… · Export Level ▸ W1-1… … WW-1… · Play Level File…
+//! Game        Continue from World N · Pause · Reset · Controls… · Save State ▸ 1–5 ⇧⌘1–5 · Load State ▸ 1–5 ⌘1–5
 //! View        Scale ▸ 1× 2× 3× Auto · Fullscreen ⌃⌘F · CRT Filter · Widescreen
 //! ```
 //!
@@ -16,18 +16,24 @@ use muda::accelerator::{Accelerator, Code, Modifiers};
 use muda::{
     AboutMetadata, CheckMenuItem, Menu, MenuEvent, MenuItem, PredefinedMenuItem, Submenu,
 };
-use sf_core::{Game, Progress, Rng, Start};
+use sf_core::{Game, LevelId, Progress, Rng, Start};
 use sf_paula::Paula;
 use winit::event_loop::ActiveEventLoop;
 
 use crate::App;
 use crate::settings::Scale;
+use crate::states::SLOTS;
 
 /// What the player asked the app to do, from the menu bar or its shortcuts.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Command {
     /// File → Import Disks…: the picker; the game starts again on the disks chosen.
     ImportDisks,
+    /// File → Export Level ▸ this level: the save panel; the disk level written there as a
+    /// `.sflevel` (DESIGN §2.10, `levelfile.rs`).
+    ExportLevel(LevelId),
+    /// File → Play Level File…: the open panel; the level file played in place of its disk level.
+    PlayLevelFile,
     /// Game → Continue from World N: the furthest world reached, as its level code starts it.
     ContinueFromProgress,
     /// View → Scale.
@@ -42,8 +48,23 @@ pub enum Command {
     Pause,
     /// Game → Reset: power-on.
     Reset,
+    /// Game → Controls…: the window that rebinds keys and pad (`controls_window.rs`).
+    Controls,
+    /// Game → Save State ▸ N, ⇧⌘N: the whole game into slot N (`states.rs`).
+    SaveState(u8),
+    /// Game → Load State ▸ N, ⌘N: the game in slot N, or a message why not.
+    LoadState(u8),
     /// Superfrog → Quit Superfrog, ⌘Q, or the window closed.
     Quit,
+}
+
+/// The levels File → Export Level offers, in the game's order: worlds 1–6, W6's second set of
+/// maps, the bonus level, the final level (docs/LEVEL-INDEX.md).
+pub fn export_levels() -> Vec<LevelId> {
+    let mut ids: Vec<String> = (1..=6).flat_map(|w| (1..=4).map(move |l| format!("W{w}-{l}"))).collect();
+    ids.extend((1..=4).map(|l| format!("W6-{l}alt")));
+    ids.extend(["WB-1".to_string(), "WW-1".to_string()]);
+    ids.iter().map(|s| sf_assets::level_id_named(s).expect("a level id")).collect()
 }
 
 /// The scales the View menu offers.
@@ -54,6 +75,8 @@ impl Command {
     pub fn id(self) -> String {
         match self {
             Command::ImportDisks => "import".into(),
+            Command::ExportLevel(id) => format!("export-{id}"),
+            Command::PlayLevelFile => "play-level-file".into(),
             Command::ContinueFromProgress => "continue".into(),
             Command::Scale(Scale::Auto) => "scale-auto".into(),
             Command::Scale(Scale::N(n)) => format!("scale-{n}"),
@@ -62,6 +85,9 @@ impl Command {
             Command::ToggleWidescreen => "widescreen".into(),
             Command::Pause => "pause".into(),
             Command::Reset => "reset".into(),
+            Command::Controls => "controls".into(),
+            Command::SaveState(n) => format!("save-state-{n}"),
+            Command::LoadState(n) => format!("load-state-{n}"),
             Command::Quit => "quit".into(),
         }
     }
@@ -77,8 +103,21 @@ impl Command {
             "widescreen" => Command::ToggleWidescreen,
             "pause" => Command::Pause,
             "reset" => Command::Reset,
+            "controls" => Command::Controls,
             "quit" => Command::Quit,
+            "play-level-file" => Command::PlayLevelFile,
+            _ if id.starts_with("export-") => Command::ExportLevel(sf_assets::level_id_named(&id[7..])?),
             _ => {
+                let slot = |prefix: &str| -> Option<u8> {
+                    let n: u8 = id.strip_prefix(prefix)?.parse().ok()?;
+                    (1..=SLOTS).contains(&n).then_some(n)
+                };
+                if let Some(n) = slot("save-state-") {
+                    return Some(Command::SaveState(n));
+                }
+                if let Some(n) = slot("load-state-") {
+                    return Some(Command::LoadState(n));
+                }
                 let n: u32 = id.strip_prefix("scale-")?.parse().ok()?;
                 (1..=16).contains(&n).then_some(Command::Scale(Scale::N(n)))?
             }
@@ -110,6 +149,13 @@ pub struct MenuState {
     pub fullscreen: bool,
     pub crt: bool,
     pub widescreen: bool,
+    /// Which save-state slots hold a state: Load State ▸ N can be chosen only then.
+    pub states: [bool; SLOTS as usize],
+}
+
+/// The number key for slot `n` (1–5), its shortcut's key.
+pub fn slot_key(n: u8) -> Code {
+    [Code::Digit1, Code::Digit2, Code::Digit3, Code::Digit4, Code::Digit5][n as usize - 1]
 }
 
 /// The menu bar, and the items whose title, check or enabled state follows the app's.
@@ -121,7 +167,12 @@ pub struct MenuBar {
     fullscreen: CheckMenuItem,
     crt: CheckMenuItem,
     widescreen: CheckMenuItem,
+    loads: Vec<MenuItem>,
     shown: Option<MenuState>,
+}
+
+fn as_items(v: &[MenuItem]) -> Vec<&dyn muda::IsMenuItem> {
+    v.iter().map(|i| i as &dyn muda::IsMenuItem).collect()
 }
 
 fn item(c: Command, title: &str, accelerator: Option<Accelerator>) -> MenuItem {
@@ -179,11 +230,50 @@ pub fn build_menu() -> MenuBar {
             &quit,
         ],
     );
-    let file = Submenu::with_items("File", true, &[&item(Command::ImportDisks, "Import Disks…", None)]);
+    let saves: Vec<MenuItem> = (1..=SLOTS)
+        .map(|n| {
+            let key = Accelerator::new(Modifiers::META | Modifiers::SHIFT, slot_key(n));
+            item(Command::SaveState(n), &n.to_string(), Some(key))
+        })
+        .collect();
+    let loads: Vec<MenuItem> = (1..=SLOTS)
+        .map(|n| {
+            let key = Accelerator::new(Modifiers::META, slot_key(n));
+            MenuItem::with_id(Command::LoadState(n).id(), n.to_string(), false, Some(key))
+        })
+        .collect();
+    let save_menu = Submenu::with_items("Save State", true, &as_items(&saves)).expect("a menu");
+    let load_menu = Submenu::with_items("Load State", true, &as_items(&loads)).expect("a menu");
+    let exports: Vec<MenuItem> = export_levels()
+        .into_iter()
+        .map(|id| item(Command::ExportLevel(id), &format!("{id}…"), None))
+        .collect();
+    let export_items: Vec<&dyn muda::IsMenuItem> = exports.iter().map(|i| i as &dyn muda::IsMenuItem).collect();
+    let export = Submenu::with_items("Export Level", true, &export_items).expect("a menu");
+    let file = Submenu::with_items(
+        "File",
+        true,
+        &[
+            &item(Command::ImportDisks, "Import Disks…", None),
+            &PredefinedMenuItem::separator(),
+            &export,
+            &item(Command::PlayLevelFile, "Play Level File…", None),
+        ],
+    );
     let game = Submenu::with_items(
         "Game",
         true,
-        &[&continue_item, &PredefinedMenuItem::separator(), &pause, &item(Command::Reset, "Reset", None)],
+        &[
+            &continue_item,
+            &PredefinedMenuItem::separator(),
+            &pause,
+            &item(Command::Reset, "Reset", None),
+            &PredefinedMenuItem::separator(),
+            &item(Command::Controls, "Controls…", None),
+            &PredefinedMenuItem::separator(),
+            &save_menu,
+            &load_menu,
+        ],
     );
     let scale_items: Vec<&dyn muda::IsMenuItem> = scales.iter().map(|(_, i)| i as &dyn muda::IsMenuItem).collect();
     let scale = Submenu::with_items("Scale", true, &scale_items).expect("a menu");
@@ -212,6 +302,7 @@ pub fn build_menu() -> MenuBar {
         fullscreen,
         crt,
         widescreen,
+        loads,
         shown: None,
     }
 }
@@ -243,6 +334,9 @@ impl MenuBar {
         self.fullscreen.set_checked(s.fullscreen);
         self.crt.set_checked(s.crt);
         self.widescreen.set_checked(s.widescreen);
+        for (i, filled) in self.loads.iter().zip(s.states) {
+            i.set_enabled(filled);
+        }
         self.shown = Some(s);
     }
 }
@@ -282,6 +376,8 @@ impl App {
         eprintln!("superfrog: menu {} after step {}", c.id(), run.steps);
         match c {
             Command::ImportDisks => self.import_disks(),
+            Command::ExportLevel(id) => self.export_level(id),
+            Command::PlayLevelFile => self.play_level_file(),
             Command::ContinueFromProgress => self.continue_game(),
             Command::Scale(s) => self.set_scale(s),
             Command::ToggleFullscreen => self.toggle_fullscreen(),
@@ -292,6 +388,9 @@ impl App {
                 run.paused = !run.paused;
             }
             Command::Reset => self.power_on(),
+            Command::Controls => self.open_controls(event_loop),
+            Command::SaveState(n) => self.save_state(n),
+            Command::LoadState(n) => self.load_state(n),
             Command::Quit => {
                 self.save_settings();
                 self.finish(event_loop);
@@ -310,6 +409,7 @@ impl App {
             fullscreen: run.settings.fullscreen,
             crt: run.settings.crt,
             widescreen: run.settings.widescreen,
+            states: run.states,
         });
     }
 
@@ -321,6 +421,48 @@ impl App {
         run.game.set_view(crate::window::view(run.settings.widescreen));
         run.paula = Paula::new(run.rate);
         run.paused = false;
+    }
+
+    /// Game → Save State ▸ `n`: the game as it is after the last step, into slot `n`.
+    fn save_state(&mut self, n: u8) {
+        let run = self.run.as_mut().expect("running");
+        match crate::states::save(&self.home, n, &run.game, crate::home::build(), &run.cache_hash) {
+            Ok(()) => {
+                run.states[n as usize - 1] = true;
+                eprintln!("superfrog: saved state {n} at game frame {}", run.game.frame());
+            }
+            Err(e) => {
+                eprintln!("superfrog: {e}");
+                self.ui.notice(&e);
+            }
+        }
+    }
+
+    /// Game → Load State ▸ `n`: the game in slot `n`, its picture shown at once (paused, it
+    /// stays); refused with a message, the game carries on untouched.
+    fn load_state(&mut self, n: u8) {
+        let run = self.run.as_mut().expect("running");
+        match crate::states::load(&self.home, n, run.display.clone(), crate::home::build(), &run.cache_hash) {
+            Ok(game) => {
+                eprintln!("superfrog: loaded state {n} at game frame {}", game.frame());
+                run.game = game;
+                run.game.set_view(crate::window::view(run.settings.widescreen));
+                run.paula = Paula::new(run.rate);
+                let pic = run.game.render(run.game.view());
+                let size = (pic.width as u32, pic.height as u32);
+                run.shown.completed((run.steps, size, crate::video::picture_rgba(&pic)));
+            }
+            Err(e) => {
+                eprintln!("superfrog: {e}");
+                self.ui.notice(&e);
+                // The panel held the main thread: the game carries on from now rather than
+                // catching up.
+                let run = self.run.as_mut().expect("running");
+                let now = run.clock.samples() + run.lead;
+                run.pacer.skip_to(now);
+            }
+        }
+        self.show_newest();
     }
 
     /// Start the remembered world as its level code would (DESIGN §2.9); refused, as the menu item
@@ -350,15 +492,22 @@ impl App {
                 None
             }
         };
-        let run = self.run.as_mut().expect("running");
-        // The panels held the main thread: the game carries on from now rather than catching up.
-        let now = run.clock.samples() + run.lead;
-        run.pacer.skip_to(now);
+        self.after_panel();
         if let Some(data) = data {
+            let run = self.run.as_mut().expect("running");
             run.display = std::sync::Arc::new(sf_core::DisplayData::new(&data));
-            drop(data);
+            run.cache_hash = sf_assets::cache_hash(&data);
+            run.levels = data.levels;
             self.power_on();
         }
+    }
+
+    /// After a panel: it held the main thread, so the game carries on from now rather than
+    /// catching up.
+    pub(crate) fn after_panel(&mut self) {
+        let run = self.run.as_mut().expect("running");
+        let now = run.clock.samples() + run.lead;
+        run.pacer.skip_to(now);
     }
 }
 
@@ -368,8 +517,9 @@ mod tests {
 
     #[test]
     fn every_command_s_id_names_it() {
-        let all = [
+        let mut all = vec![
             Command::ImportDisks,
+            Command::PlayLevelFile,
             Command::ContinueFromProgress,
             Command::Scale(Scale::N(1)),
             Command::Scale(Scale::N(3)),
@@ -379,14 +529,33 @@ mod tests {
             Command::ToggleWidescreen,
             Command::Pause,
             Command::Reset,
+            Command::Controls,
+            Command::SaveState(1),
+            Command::SaveState(5),
+            Command::LoadState(1),
+            Command::LoadState(5),
             Command::Quit,
         ];
+        all.extend(export_levels().into_iter().map(Command::ExportLevel));
         for c in all {
             assert_eq!(Command::from_id(&c.id()), Some(c), "{}", c.id());
         }
-        for bad in ["", "scale-0", "scale-17", "scale-x", "about", "Quit"] {
+        for bad in ["", "scale-0", "scale-17", "scale-x", "about", "Quit", "save-state-0", "save-state-6", "load-state-", "load-state-x", "export-", "export-W7-1"] {
             assert_eq!(Command::from_id(bad), None, "{bad}");
         }
+    }
+
+    #[test]
+    fn export_offers_every_level_on_the_disks_once() {
+        let ids = export_levels();
+        assert_eq!(ids.len(), 30, "the 30 maps on the disks");
+        let names: Vec<String> = ids.iter().map(|i| i.to_string()).collect();
+        assert_eq!(&names[..2], ["W1-1", "W1-2"]);
+        assert_eq!(&names[24..], ["W6-1alt", "W6-2alt", "W6-3alt", "W6-4alt", "WB-1", "WW-1"]);
+        let mut unique = ids.clone();
+        unique.sort();
+        unique.dedup();
+        assert_eq!(unique.len(), 30);
     }
 
     #[test]

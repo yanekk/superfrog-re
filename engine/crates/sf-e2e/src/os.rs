@@ -97,15 +97,18 @@ unsafe extern "C" {
 pub struct Mods {
     pub command: bool,
     pub control: bool,
+    pub shift: bool,
 }
 
 impl Mods {
-    pub const COMMAND: Mods = Mods { command: true, control: false };
-    pub const CONTROL_COMMAND: Mods = Mods { command: true, control: true };
+    pub const COMMAND: Mods = Mods { command: true, control: false, shift: false };
+    pub const CONTROL_COMMAND: Mods = Mods { command: true, control: true, shift: false };
+    pub const SHIFT_COMMAND: Mods = Mods { command: true, control: false, shift: true };
 
-    /// `CGEventFlags`: `kCGEventFlagMaskCommand`, `kCGEventFlagMaskControl`.
+    /// `CGEventFlags`: `kCGEventFlagMaskCommand`, `kCGEventFlagMaskControl`,
+    /// `kCGEventFlagMaskShift`.
     fn flags(self) -> u64 {
-        (self.command as u64 * 0x10_0000) | (self.control as u64 * 0x4_0000)
+        (self.command as u64 * 0x10_0000) | (self.control as u64 * 0x4_0000) | (self.shift as u64 * 0x2_0000)
     }
 }
 
@@ -421,6 +424,42 @@ impl App {
             }
             std::thread::sleep(Duration::from_millis(100));
         }
+    }
+
+    /// The element whose accessibility identifier is `id`, in one of the app's windows, waiting up
+    /// to 20 s for it to appear, handed to `f`.
+    fn os_with_id<T>(&self, id: &str, mut f: impl FnMut(&ax::Cf) -> T) -> T {
+        let start = Instant::now();
+        loop {
+            let mut found = None;
+            for w in ax::windows(&ax::app(self.os_pid())) {
+                ax::walk(&w, 12, &mut |e| {
+                    if found.is_none() && ax::text(e, "AXIdentifier") == id {
+                        found = Some(f(e));
+                    }
+                });
+            }
+            if let Some(r) = found {
+                return r;
+            }
+            assert!(start.elapsed() < Duration::from_secs(20), "no element {id:?} within 20 s");
+            std::thread::sleep(Duration::from_millis(100));
+        }
+    }
+
+    /// Press the button whose accessibility identifier is `id` (the Controls window's
+    /// `fire-keys`, `defaults`…), as a click on it would.
+    pub fn os_press_id(&mut self, id: &str) {
+        self.os_with_id(id, ax::press).unwrap_or_else(|e| panic!("pressing {id:?}: {e}"));
+    }
+
+    /// The text the element with accessibility identifier `id` shows: a button's title, a
+    /// label's value.
+    pub fn os_text_id(&self, id: &str) -> String {
+        self.os_with_id(id, |e| {
+            let v = ax::text(e, "AXValue");
+            if v.is_empty() { ax::title(e) } else { v }
+        })
     }
 
     /// The window as the screen shows it, title bar included, at the display's pixel density.

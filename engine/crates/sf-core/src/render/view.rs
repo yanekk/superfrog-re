@@ -12,7 +12,7 @@ pub struct View {
 /// 32-colour palette as the copper leaves it at the window's left edge. `left` and `top` are the
 /// window's position in DIWSTRT's units (lores pixel, raster line), as the oracle reports them;
 /// a widescreen window can start left of the hardware's position 0, so `left` is signed.
-#[derive(Debug, Clone, Default, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 pub struct Picture {
     pub left: i32,
     pub top: u16,
@@ -28,7 +28,7 @@ pub struct Picture {
 }
 
 /// A colour register written while its line is being drawn.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, serde::Serialize, serde::Deserialize)]
 pub struct Split {
     pub y: u16,
     pub x: u16,

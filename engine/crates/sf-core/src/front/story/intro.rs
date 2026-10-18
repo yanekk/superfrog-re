@@ -210,7 +210,7 @@ const BUSY_RETURNS: [u32; 13] = [
 const RET_TEXT_1_UNPACK: u32 = h0(0x4ec);
 
 /// What the main program waits for.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 enum Wait {
     /// Nothing: it runs.
     Run,
@@ -233,7 +233,7 @@ enum Wait {
 }
 
 /// What runs at the end of a busy stretch.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 enum Then {
     Nothing,
     /// A draw is over: `shown_buffer` from `draw_buffer`, the blitter's priority off.
@@ -244,8 +244,9 @@ enum Then {
 
 /// A routine in progress: its script, its next step, and that step's phase (0 before it
 /// starts) and counter.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 struct Frame {
+    #[serde(with = "script")]
     script: &'static [Op],
     pc: usize,
     phase: u8,
@@ -279,7 +280,7 @@ struct Timed {
 /// CPU's program run on the bus ([`sim`]) with the handlers of the blanks it passes, timed again
 /// at each frame from its start with the handlers met so far: their ends as conformance gives
 /// them (the original's acknowledge), or the engine's length for each.
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 struct SimJob {
     prog: std::sync::Arc<sim::Prog>,
     /// Its first frame (since the intro's start), its first cycle in it, and the copper list that
@@ -310,7 +311,7 @@ struct JobTimed {
 type Checkpoint = Box<(Intro, StoryMem, Option<u32>, usize)>;
 
 /// The intro's main program.
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 pub struct Intro {
     stack: Vec<Frame>,
     wait: Wait,
@@ -416,6 +417,41 @@ fn sound_data(data: &data::StoryData) -> &sf_assets::sound::SoundData {
 static DRAW_1: &[Op] = &[Op::Draw(1)];
 /// `draw_next`.
 static DRAW_ONCE: &[Op] = &[Op::DrawOnce];
+
+/// Every script the intro runs: those it starts from and every one they call, in a fixed order.
+fn scripts() -> Vec<&'static [Op]> {
+    let mut all: Vec<&'static [Op]> = Vec::new();
+    let mut todo = vec![scenes::MAIN, scenes::END, DRAW_1, DRAW_ONCE];
+    while let Some(s) = todo.pop() {
+        if all.iter().any(|a| std::ptr::eq(*a, s)) {
+            continue;
+        }
+        all.push(s);
+        for op in s.iter().rev() {
+            if let Op::Call(sub) = op {
+                todo.push(sub);
+            }
+        }
+    }
+    all
+}
+
+/// A [`Frame`]'s script in a save state (T26): its place in [`scripts`].
+mod script {
+    use super::{Op, scripts};
+    use serde::{Deserialize, Deserializer, Serializer, de::Error};
+
+    pub fn serialize<S: Serializer>(s: &&'static [Op], ser: S) -> Result<S::Ok, S::Error> {
+        let at = scripts().iter().position(|a| std::ptr::eq(*a, *s));
+        let at = at.ok_or_else(|| serde::ser::Error::custom("a script not reached from the intro's"))?;
+        ser.serialize_u32(at as u32)
+    }
+
+    pub fn deserialize<'de, D: Deserializer<'de>>(de: D) -> Result<&'static [Op], D::Error> {
+        let at = u32::deserialize(de)? as usize;
+        scripts().get(at).copied().ok_or_else(|| D::Error::custom("no such script"))
+    }
+}
 
 /// What runs on by itself while the original loads (DESIGN §2.1): the vertical blank's counters,
 /// the fades and the colours they work on, `intro_skip`.

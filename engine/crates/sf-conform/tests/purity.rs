@@ -25,6 +25,18 @@ const ALLOWED: &[&str] = &[
     "miniz_oxide",
     // miniz_oxide's Adler-32 checksum: integer arithmetic over a byte slice.
     "adler2",
+    // Save states (T26): serde's traits and derive. The derive runs at compile time and emits plain
+    // field-by-field code; the traits read and write values handed to them, no I/O or clock.
+    "serde",
+    "serde_core",
+    "serde_derive",
+    // serde_derive's compile-time parser and code generator: they run in the compiler, never in the game.
+    "proc-macro2",
+    "quote",
+    "syn",
+    "unicode-ident",
+    // The save state's byte layout (T26): fixed-width integers in field order into a Vec<u8>.
+    "bincode",
 ];
 
 /// Shell crates that must never be in the shipped app's dependency tree (DESIGN §3.2).

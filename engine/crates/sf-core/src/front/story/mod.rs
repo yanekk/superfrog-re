@@ -172,7 +172,7 @@ impl Cx<'_> {
 }
 
 /// Which program runs.
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 enum Stage {
     Boot(boot::Boot),
     /// The boot program is done; the intro takes over from the next frame (a load).
@@ -195,7 +195,7 @@ pub struct StoryOut {
 }
 
 /// The story's program and the hardware state the engine tracks outside memory.
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 pub struct Story {
     pub mem: StoryMem,
     stage: Stage,

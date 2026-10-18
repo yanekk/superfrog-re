@@ -11,3 +11,12 @@ sf-assets = { path = "../sf-assets" }
 sf-disk = { path = "../sf-disk" }
 # PaulaWrite, the sound chip's event that FrameOut carries (pure, already on the allowlist).
 sf-paula = { path = "../sf-paula" }
+# Save states (DESIGN §2.8; T26): the whole game as bytes and back. serde derives the encoding at
+# compile time; bincode lays it out as fixed-width integers in field order, with no I/O or clock.
+serde = { version = "1", features = ["derive", "rc"] }
+bincode = "1.3.3"
+
+[dev-dependencies]
+# The owner's disks, decoded once per process, for the save-state tests (a test-only cycle, as
+# sf-assets has).
+sf-conform = { path = "../sf-conform" }

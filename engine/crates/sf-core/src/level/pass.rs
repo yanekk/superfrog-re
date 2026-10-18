@@ -235,7 +235,7 @@ const KEY_P: u8 = 0x19;
 /// Where `pause` (h0+$7442) is: it keeps the main program in the middle of the pass, frame after
 /// frame, `logic_running` clear (so the vertical blank does only its sound, pointer, keyboard,
 /// timer and fades). Each holds the VPOS low byte it read past line `$38`.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 pub enum Pause {
     /// Waiting for the beam past line `$38` (VPOS's low byte, unsigned).
     Line,

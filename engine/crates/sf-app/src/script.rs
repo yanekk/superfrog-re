@@ -18,7 +18,14 @@
 //! 70: shot              # write the window as presented to the capture folder (window-NNNNN.png)
 //! 80: continue          # Game → Continue from World N (`menu continue`)
 //! 90: menu pause        # a menu command, by its item's id (menu.rs `Command::id`, `-` as a space):
-//!                       # import, continue, scale 1|2|3|auto, fullscreen, pause, reset, quit
+//!                       # import, continue, scale 1|2|3|auto, fullscreen, pause, reset, controls, quit,
+//!                       # export W1-1 (any level id), play-level-file, save state 1..5, load state 1..5
+//! 95: controls fire keys  # a click in the Controls window: an input's `keys` or `pad`, `defaults`,
+//!                       # or `close` (its close button). While it is open, keys go to it.
+//! 100: pad connect 1    # gamepad 1 plugged in (pad.rs; a script's run reads no real pad)
+//! 101: pad down 1 South # a pad button (names: pad.rs PAD_INPUTS); also `up`, `press`
+//! 102: pad stick 1 0.8 -0.3  # the left stick's x and y, −1 to 1, up positive
+//! 103: pad disconnect 1
 //! ```
 //!
 //! Before the game, the launch's questions (`import.rs`) take the script's answers in order:
@@ -28,14 +35,25 @@
 //! pick cancel                   # the picker cancelled
 //! answer choose                 # the missing-disks message: "Choose Disks…" (or `quit`)
 //! ```
+//!
+//! and so do the panels of File → Export Level and Play Level File… (`levelfile.rs`), each its own
+//! queue:
+//!
+//! ```text
+//! save /tmp/out/W1-1.sflevel    # the export's save panel (or `save cancel`)
+//! open /tmp/out/W1-1.sflevel    # Play Level File…'s open panel (or `open cancel`)
+//! answer disk-level             # a refused level file: play its disk level (or `answer cancel`)
+//! ```
 
 use std::path::PathBuf;
 
 use winit::keyboard::KeyCode;
 
+use crate::controls_window::ControlsAction;
 use crate::import::Pick;
 use crate::input::{HostInput, key_named};
 use crate::menu::Command;
+use crate::pad::{PadEvent, PadInput, StickAxis};
 use crate::settings::Scale;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -46,6 +64,8 @@ pub enum Event {
     Shot,
     /// What a menu item does (`menu.rs`), as though it were chosen.
     Command(Command),
+    /// A click in the Controls window, as though it were made.
+    Controls(ControlsAction),
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
@@ -57,6 +77,12 @@ pub struct Script {
     pub picks: Vec<Pick>,
     /// The missing-disks message's answers, in order: `true` for "Choose Disks…".
     pub answers: Vec<bool>,
+    /// The export's save panel's answers, in order: `None` for cancelled.
+    pub saves: Vec<Option<PathBuf>>,
+    /// Play Level File…'s open panel's answers, in order.
+    pub opens: Vec<Option<PathBuf>>,
+    /// A refused level file's answers, in order: `true` for playing the disk level.
+    pub level_answers: Vec<bool>,
 }
 
 impl Script {
@@ -95,7 +121,23 @@ impl Script {
                 match (words.get(1).copied(), words.len()) {
                     (Some("choose"), 2) => s.answers.push(true),
                     (Some("quit"), 2) => s.answers.push(false),
-                    _ => return Err(err("`answer` takes `choose` or `quit`")),
+                    (Some("disk-level"), 2) => s.level_answers.push(true),
+                    (Some("cancel"), 2) => s.level_answers.push(false),
+                    _ => return Err(err("`answer` takes `choose`, `quit`, `disk-level` or `cancel`")),
+                }
+                continue;
+            }
+            if words[0] == "save" || words[0] == "open" {
+                let rest = line[words[0].len()..].trim();
+                let answer = match rest {
+                    "" => return Err(err("a path or `cancel` is missing")),
+                    "cancel" => None,
+                    p => Some(PathBuf::from(p)),
+                };
+                if words[0] == "save" {
+                    s.saves.push(answer);
+                } else {
+                    s.opens.push(answer);
                 }
                 continue;
             }
@@ -139,6 +181,11 @@ impl Script {
                 }))],
                 (Some("shot"), 2) => vec![Event::Shot],
                 (Some("continue"), 2) => vec![Event::Command(Command::ContinueFromProgress)],
+                (Some("controls"), 3..) => match ControlsAction::named(&words[2..]) {
+                    Some(a) => vec![Event::Controls(a)],
+                    None => return Err(err("`controls` takes an input and `keys` or `pad`, `defaults` or `close`")),
+                },
+                (Some("pad"), 4..) => pad_events(&words[2..]).ok_or_else(|| err("bad `pad` event"))?,
                 (Some("menu"), 3..) => match Command::from_id(&words[2..].join("-")) {
                     Some(c) => vec![Event::Command(c)],
                     None => return Err(err("no menu command is named so")),
@@ -157,6 +204,32 @@ impl Script {
             .filter(move |(f, _)| *f == frame)
             .map(|(_, e)| *e)
     }
+}
+
+/// A `pad …` line's events: `connect N`, `disconnect N`, `down|up|press N BUTTON`, `stick N X Y`.
+fn pad_events(words: &[&str]) -> Option<Vec<Event>> {
+    let pad: usize = words.get(1)?.parse().ok()?;
+    let ev = |e| Event::Input(HostInput::Pad(e));
+    let button = |pressed| {
+        let button = PadInput::named(words.get(2)?).filter(|b| b.is_button())?;
+        Some(ev(PadEvent::Button { pad, button, pressed }))
+    };
+    let axis = |i: usize| -> Option<i16> {
+        let v: f32 = words.get(i)?.parse().ok()?;
+        (-1.0..=1.0).contains(&v).then(|| (v * 1000.0).round() as i16)
+    };
+    Some(match (words[0], words.len()) {
+        ("connect", 2) => vec![ev(PadEvent::Connected(pad))],
+        ("disconnect", 2) => vec![ev(PadEvent::Disconnected(pad))],
+        ("down", 3) => vec![button(true)?],
+        ("up", 3) => vec![button(false)?],
+        ("press", 3) => vec![button(true)?, button(false)?],
+        ("stick", 4) => vec![
+            ev(PadEvent::Stick { pad, axis: StickAxis::X, value: axis(2)? }),
+            ev(PadEvent::Stick { pad, axis: StickAxis::Y, value: axis(3)? }),
+        ],
+        _ => return None,
+    })
 }
 
 fn key_event(code: KeyCode, pressed: bool) -> Event {
@@ -234,6 +307,61 @@ mod tests {
     }
 
     #[test]
+    fn the_level_file_panels_and_their_menu_commands_parse() {
+        let s = Script::parse(
+            "save /t/My Levels/W1-1.sflevel\nsave cancel\nopen /t/a.sflevel\nopen cancel\n\
+             answer disk-level\nanswer cancel\nanswer choose\n1: menu export W6-2alt\n2: menu play-level-file\n",
+        )
+        .unwrap();
+        assert_eq!(s.saves, vec![Some("/t/My Levels/W1-1.sflevel".into()), None]);
+        assert_eq!(s.opens, vec![Some("/t/a.sflevel".into()), None]);
+        assert_eq!(s.level_answers, vec![true, false]);
+        assert_eq!(s.answers, vec![true]);
+        assert_eq!(
+            s.at(1).collect::<Vec<_>>(),
+            vec![Event::Command(Command::ExportLevel("W6-2alt".parse().unwrap()))]
+        );
+        assert_eq!(s.at(2).collect::<Vec<_>>(), vec![Event::Command(Command::PlayLevelFile)]);
+    }
+
+    #[test]
+    fn controls_and_pad_lines_parse() {
+        use crate::controls_window::Device;
+        use crate::input::OriginalInput;
+        let s = Script::parse(
+            "1: menu controls\n2: controls fire keys\n3: controls up pad\n4: controls defaults\n\
+             5: controls close\n6: pad connect 2\n7: pad press 2 South\n8: pad stick 2 -0.8 0.25\n\
+             9: pad down 0 DPadLeft\n10: pad up 0 DPadLeft\n11: pad disconnect 2\n",
+        )
+        .unwrap();
+        let at = |n| s.at(n).collect::<Vec<_>>();
+        let pad = |e| Event::Input(HostInput::Pad(e));
+        assert_eq!(at(1), vec![Event::Command(Command::Controls)]);
+        assert_eq!(at(2), vec![Event::Controls(ControlsAction::Rebind(OriginalInput::Fire, Device::Keys))]);
+        assert_eq!(at(3), vec![Event::Controls(ControlsAction::Rebind(OriginalInput::Up, Device::Pad))]);
+        assert_eq!(at(4), vec![Event::Controls(ControlsAction::Defaults)]);
+        assert_eq!(at(5), vec![Event::Controls(ControlsAction::Close)]);
+        assert_eq!(at(6), vec![pad(PadEvent::Connected(2))]);
+        assert_eq!(
+            at(7),
+            vec![
+                pad(PadEvent::Button { pad: 2, button: PadInput::South, pressed: true }),
+                pad(PadEvent::Button { pad: 2, button: PadInput::South, pressed: false }),
+            ]
+        );
+        assert_eq!(
+            at(8),
+            vec![
+                pad(PadEvent::Stick { pad: 2, axis: StickAxis::X, value: -800 }),
+                pad(PadEvent::Stick { pad: 2, axis: StickAxis::Y, value: 250 }),
+            ]
+        );
+        assert_eq!(at(9), vec![pad(PadEvent::Button { pad: 0, button: PadInput::DPadLeft, pressed: true })]);
+        assert_eq!(at(10), vec![pad(PadEvent::Button { pad: 0, button: PadInput::DPadLeft, pressed: false })]);
+        assert_eq!(at(11), vec![pad(PadEvent::Disconnected(2))]);
+    }
+
+    #[test]
     fn a_bad_line_is_refused_with_its_number() {
         for bad in [
             "10: down Nope",
@@ -250,6 +378,20 @@ mod tests {
             "5: menu",
             "5: menu jump",
             "5: menu scale 0",
+            "5: menu export W7-1",
+            "save",
+            "open",
+            "answer play",
+            "5: controls",
+            "5: controls jump keys",
+            "5: controls fire mouse",
+            "5: pad connect",
+            "5: pad connect x",
+            "5: pad press 1 Nope",
+            "5: pad press 1 StickUp",
+            "5: pad stick 1 2 0",
+            "5: pad stick 1 0.5",
+            "5: pad wiggle 1",
         ] {
             let e = Script::parse(&format!("\n{bad}")).unwrap_err();
             assert!(e.contains("line 2"), "{bad}: {e}");

@@ -62,7 +62,7 @@ const CPU_LOST: u32 = 14;
 const BLITTER_LOST: u32 = 19;
 
 /// What a [`Draw`] draws.
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 pub(crate) enum Part {
     /// The attract frame (h0+$4d2a): the reels at 0, 9, $18, the pattern's row and the lamps.
     #[default]
@@ -75,7 +75,7 @@ pub(crate) enum Part {
 
 /// The attract frame's drawing: 18 reel blits (steps 0–17, a reel's six planes each), then the
 /// pattern's row and the 26 lamps (steps 18–43); or the lamps or the reels alone ([`Part`]).
-#[derive(Debug, Clone, Default, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 pub(crate) struct Draw {
     part: Part,
     step: u8,
@@ -401,7 +401,7 @@ fn write_at(cx: &mut Cx, t: u32, reg: u16, value: u16) {
 
 /// The CPU's own work on the beam (T73: `slot_digits`' byte copies), `left` cycles of it, from
 /// where the CPU is: through the frame's end and the interrupt when it runs past it.
-#[derive(Debug, Clone, Default, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 pub(crate) struct Work {
     pub(crate) left: u32,
 }

@@ -258,7 +258,7 @@ pub(crate) fn level_call(s: &crate::state::State, data: &super::FrontData) -> Op
 }
 
 /// `top_loop` from `pc` (a hunk 0 offset), run as the original's code reads.
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 pub(crate) struct Chain {
     pc: u32,
     /// The condition codes the last `tst` left: negative, zero.
@@ -511,7 +511,7 @@ fn world_sound(cx: &mut Cx, world: u32) {
 /// walks meanwhile in the vertical blank. The final level's `world_load_lw` (h0+$a49a) loads no
 /// sound and shows no picture: the spud flying and `final_level_flag` set, `world` 6, the map
 /// area cleared, the LW tiles, bobs and masks.
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 pub(crate) struct WorldLoad {
     world: u32,
     pc: u8,
@@ -671,7 +671,7 @@ const BONUS_PICTURE_FRAMES: u16 = 451;
 /// `world_intro_show` (h0+$4116) with `LnLP` loaded: the Accessing-disk overlay taken down, the
 /// picture's planes (an upper and a lower part), the frog and the clouds set up for their walk
 /// (h0+$12408), the picture faded in, its copper list, the world's music, the walk started.
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 pub(crate) struct WorldIntro {
     world: u32,
     pc: u8,
@@ -1102,7 +1102,7 @@ pub(crate) fn progress_map_vbl(cx: &mut Cx) {
 
 /// `level_load_wN_lM` (h0+$9552 …): `level` and the clock set, the progress map shown, then the
 /// map loaded and read (instant).
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 pub(crate) struct LevelLoad {
     id: LevelId,
     ret: u32,
@@ -1160,7 +1160,7 @@ const MAP_UNPACK_CYCLES: u32 = (30 * 313 + 150) * super::BEAM_CYCLES_PER_LINE;
 /// `progress_map_show` (h0+$3de8): the screen before taken down (`overlays_end`), the map's
 /// picture (packed in hunk 0) unpacked, its marker on the level's place, faded in, shown for 300
 /// frames (`display_timer`).
-#[derive(Debug, Clone, Default, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 pub(crate) struct MapShow {
     pc: u8,
 }
@@ -1235,7 +1235,7 @@ fn screen_over(cx: &Cx) -> bool {
 }
 
 /// `progress_map_end` (h0+$3eaa), from `overlays_end`: the map's time out (or fire), faded out.
-#[derive(Debug, Clone, Default, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 pub(crate) struct MapEnd {
     pc: u8,
 }
@@ -1273,7 +1273,7 @@ impl MapEnd {
 
 /// `world_intro_end` (h0+$4220), from `overlays_end` once the loading picture has been shown: the
 /// picture's time out (or fire), the walk stopped, faded out, the sprites off.
-#[derive(Debug, Clone, Default, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 pub(crate) struct IntroEnd {
     pc: u8,
 }
@@ -1323,7 +1323,7 @@ impl IntroEnd {
 /// `end_world_pic_wN` (h0+$42aa …): `LnET` loaded and faded in, shown for 600 frames
 /// (`display_timer`); taken down by h0+$43e0 ([`EndPicEnd`]) at the next `overlays_end` or the
 /// next world's loading picture. World 2's waits for it here.
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 pub(crate) struct EndPic {
     world: u32,
     wait: bool,
@@ -1389,7 +1389,7 @@ impl EndPic {
 
 /// h0+$43e0, from `overlays_end` or the next world's `world_intro_show`: the end-of-world
 /// picture's time out (or fire), faded out.
-#[derive(Debug, Clone, Default, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 pub(crate) struct EndPicEnd {
     pc: u8,
 }
