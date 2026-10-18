@@ -7,6 +7,9 @@
 //!   hashes, `sf_core::feed`'s format, as `sf-conform` writes them for its engine run alone; a long
 //!   run's PNGs would be gigabytes.
 //! - `audio.wav`: everything the mixer produced, 16-bit stereo PCM at the run's host rate.
+//! - `audio-frames.txt`: `N c…` for each step N, the samples in `audio.wav` of each game frame it
+//!   ran (one, or more under `--pacing`), in order, so a test can line the sound up with the
+//!   frames (T30).
 //! - `inputs.txt`: `N joy keys` for each step N whose input was not empty (joy bits in hex, keys
 //!   as the held Amiga raw codes in hex), so a test can see what reached the game.
 //! - `seed.txt`: the power-on RNG seed, `A B`, so a run seeded from the clock can be replayed.
@@ -28,6 +31,7 @@ pub struct Capture {
     dir: PathBuf,
     rate: u32,
     audio: Vec<[i16; 2]>,
+    audio_frames: String,
     inputs: String,
     /// `--capture-hashes`: `hashes.txt`, written as the run goes, in place of the PNGs.
     hashes: Option<std::io::BufWriter<std::fs::File>>,
@@ -49,6 +53,7 @@ impl Capture {
             dir: dir.to_path_buf(),
             rate,
             audio: Vec::new(),
+            audio_frames: String::new(),
             inputs: String::new(),
             hashes,
         })
@@ -94,8 +99,16 @@ impl Capture {
             .and_then(|mut f| f.write_all(line.as_bytes()))
     }
 
-    pub fn audio(&mut self, samples: &[[i16; 2]]) {
+    /// Step `n`'s sound: `samples`, the game frames it ran ending at each of `ends` in them.
+    pub fn audio(&mut self, n: u64, samples: &[[i16; 2]], ends: &[usize]) {
         self.audio.extend_from_slice(samples);
+        self.audio_frames.push_str(&n.to_string());
+        let mut from = 0;
+        for &e in ends {
+            self.audio_frames.push_str(&format!(" {}", e - from));
+            from = e;
+        }
+        self.audio_frames.push('\n');
     }
 
     pub fn input(&mut self, n: u64, f: FrameInput) {
@@ -141,6 +154,7 @@ impl Capture {
             w.flush()?;
         }
         std::fs::write(self.dir.join("audio.wav"), wav(self.rate, &self.audio))?;
+        std::fs::write(self.dir.join("audio-frames.txt"), &self.audio_frames)?;
         std::fs::write(self.dir.join("inputs.txt"), &self.inputs)
     }
 }

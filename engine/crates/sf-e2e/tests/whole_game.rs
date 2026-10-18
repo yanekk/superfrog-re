@@ -2,7 +2,9 @@
 //! pacing exactly as `sf-conform`'s engine run alone is fed it (its pacing feed, `sf_core::feed`),
 //! and its frames are that run's, frame for frame: each frame's picture and state hashes, the
 //! app's `--capture-hashes` against the ones `sf-conform` wrote as it ran alone. Since that run
-//! meets the original's milestones (DESIGN §2.1 check 4, T209), so does the app's.
+//! meets the original's milestones (DESIGN §2.1 check 4, T209), so does the app's. And its sound
+//! is heard where the original's is: the app's captured audio against the original's own mix,
+//! frame of play by frame of play (T30, [`heard_where_the_original_is`]).
 //!
 //! The feed comes from the trace cache, or is made there first by running the case on the oracle
 //! (`sf_conform::feed::feed`, as `sf-conform feed <case.toml>` does): about 25 s for the short
@@ -15,7 +17,7 @@ use sf_conform::Case;
 use sf_conform::feed::FeedFiles;
 use sf_core::feed::{Feed, parse_hashes};
 use sf_core::{Game, Start, View};
-use sf_e2e::{App, LaunchOpts, binary};
+use sf_e2e::{App, LaunchOpts, binary, read_wav};
 
 /// `game-whole`'s first `frames` frames of play (all of them for `None`), and its feed.
 fn case_and_feed(frames: Option<u32>) -> (Case, FeedFiles) {
@@ -81,12 +83,122 @@ fn paced_app_is_the_run_alone(frames: Option<u32>, timeout_s: u64) {
     if let Some(d) = first_difference(&ours, &theirs) {
         panic!("{}: the app, paced as the engine run alone, parts from it at {d}", case.name);
     }
+    let feed = Feed::parse(&read(&f.feed)).unwrap_or_else(|e| panic!("{e}"));
+    let original = sf_conform::feed::parse_audio(&read(&f.audio)).unwrap_or_else(|e| panic!("{e}"));
+    let app = app_peaks(&c.audio_wav, &read(&c.dir.join("audio-frames.txt")), &feed);
+    let heard = heard_where_the_original_is(&original, &app, &feed);
+    eprintln!("{}: {heard}", case.name);
+    assert!(heard.unheard.is_empty(), "{}: the app is silent where the original is heard: {heard}", case.name);
     eprintln!(
         "{}: {} frames of play, the app's equal the headless run's; the app ran {:.0} s",
         case.name,
         f.frames,
         started.elapsed().as_secs_f64()
     );
+}
+
+/// A frame's sound is heard at this loudest sample (16-bit magnitude), on either side: about
+/// -42 dB below full scale, a quiet sample at a low volume.
+const HEARD: u16 = 256;
+/// Silent: no sample above this (about -66 dB). Between the two a frame counts neither way, so a
+/// difference of mixing level between the original's mix and the app's cannot flip a verdict.
+const SILENT: u16 = 16;
+/// How far apart the two may hear a sound start or end, in frames (DESIGN §2.1 check 3's ±2).
+const NEAR: usize = 2;
+
+/// The app's loudest sample each frame of play: the samples of the game frames the original's
+/// step stood for (one, two when it ran two video frames), not those under a loading screen
+/// after it (`audio-frames.txt` says which samples each game frame made).
+fn app_peaks(wav: &std::path::Path, frames: &str, feed: &Feed) -> Vec<u16> {
+    let (_, samples) = read_wav(wav);
+    let mut at = 0;
+    let mut peaks = Vec::with_capacity(feed.frames.len());
+    for (line, fr) in frames.lines().zip(&feed.frames) {
+        let counts: Vec<usize> = line.split(' ').skip(1).map(|c| c.parse().expect(line)).collect();
+        assert_eq!(counts.len(), 1 + fr.twice as usize + fr.then.len(), "step {line}: its game frames");
+        let main: usize = counts[..1 + fr.twice as usize].iter().sum();
+        let peak = samples[at..at + main]
+            .iter()
+            .flatten()
+            .map(|s| s.unsigned_abs().min(32767))
+            .max()
+            .unwrap_or(0);
+        peaks.push(peak);
+        at += counts.iter().sum::<usize>();
+    }
+    assert_eq!(peaks.len(), feed.frames.len(), "audio-frames.txt has a line for each step");
+    assert_eq!(at, samples.len(), "audio-frames.txt accounts for every sample of audio.wav");
+    peaks
+}
+
+/// What [`heard_where_the_original_is`] found.
+#[derive(Debug, Default)]
+struct Heard {
+    /// Frames of play compared, and those the original was heard in.
+    compared: usize,
+    original: usize,
+    /// Of those, the ones the app was heard in too, within [`NEAR`] frames.
+    app: usize,
+    /// Frames of play (from 1) the original was heard in and the app silent throughout the
+    /// [`NEAR`] frames around.
+    unheard: Vec<usize>,
+}
+
+impl std::fmt::Display for Heard {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(
+            f,
+            "{} frames of play compared, the original heard in {}, the app with it in {}",
+            self.compared, self.original, self.app
+        )?;
+        if let Some(&first) = self.unheard.first() {
+            let shown: Vec<String> = self.unheard.iter().take(20).map(|n| n.to_string()).collect();
+            write!(f, "; silent in {} (from frame {first}: {})", self.unheard.len(), shown.join(" "))?;
+        }
+        Ok(())
+    }
+}
+
+/// Every frame of play the original is heard in ([`HEARD`]), the app is heard in too within
+/// [`NEAR`] frames: it is never silent ([`SILENT`]) throughout. A frame a load ended in is not
+/// compared: what the original plays while it loads is not the game's (DESIGN §2.1 check 3).
+fn heard_where_the_original_is(original: &[u16], app: &[u16], feed: &Feed) -> Heard {
+    assert_eq!(original.len(), app.len(), "the original's frames of play and the app's");
+    let mut h = Heard::default();
+    for (n, fr) in feed.frames.iter().enumerate() {
+        if fr.load.is_some() {
+            continue;
+        }
+        h.compared += 1;
+        if original[n] < HEARD {
+            continue;
+        }
+        h.original += 1;
+        let near = &app[n.saturating_sub(NEAR)..(n + NEAR + 1).min(app.len())];
+        if near.iter().any(|&p| p > SILENT) {
+            h.app += 1;
+        } else {
+            h.unheard.push(n + 1);
+        }
+    }
+    h
+}
+
+#[test]
+fn heard_is_judged_within_two_frames_and_not_over_a_load() {
+    use sf_core::feed::{FeedFrame, FeedLoad};
+    let mut feed = Feed::default();
+    feed.frames = vec![FeedFrame::default(); 8];
+    feed.frames[6].load = Some(FeedLoad::default());
+    let original = [0, 300, 300, 300, 0, 0, 300, 300];
+    // The app starts two frames late and ends early: heard; frame 7's load is not compared.
+    let app = [0, 0, 0, 200, 17, 0, 0, 0];
+    let h = heard_where_the_original_is(&original, &app, &feed);
+    assert_eq!((h.compared, h.original, h.app), (7, 4, 3), "{h}");
+    assert_eq!(h.unheard, vec![8], "{h}");
+    // A sample between SILENT and HEARD is not silence.
+    let h = heard_where_the_original_is(&[300; 8], &[SILENT + 1; 8], &feed);
+    assert!(h.unheard.is_empty(), "{h}");
 }
 
 /// The feed alone replays the run: the engine headless, stepped by `sf_core::feed` from the feed

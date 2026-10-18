@@ -496,8 +496,10 @@ impl App {
             }
         }
         run.samples.clear();
+        let mut ends = Vec::with_capacity(outs.len());
         for out in &outs {
             run.paula.frame(&out.paula, &run.game, &mut run.samples);
+            ends.push(run.samples.len());
         }
         if let Some(a) = &run.audio {
             a.push(&run.samples);
@@ -506,7 +508,7 @@ impl App {
         let size = (picture.width as u32, picture.height as u32);
         let rgba = picture_rgba(&picture);
         if let Some(c) = &mut run.capture {
-            c.audio(&run.samples);
+            c.audio(n, &run.samples, &ends);
             c.input(n, input);
             if let Err(e) = c.frame(n, (size.0, size.1, &rgba), &run.game, &picture) {
                 return self.fail(event_loop, &format!("capture: {e}"));

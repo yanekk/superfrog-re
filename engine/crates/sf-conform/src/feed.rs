@@ -1,7 +1,8 @@
 //! The pacing feed (T211): what check 4's engine, run alone, is fed, and the hash of each frame it
 //! played, written into the trace cache (DESIGN §3.5) so the app can be fed the same and its frames
 //! compared with the headless run's (`sf-e2e`'s `whole_game.rs`). The formats are
-//! `sf_core::feed`'s.
+//! `sf_core::feed`'s. Beside them, `<key>.audio` holds how loud the original was each frame of
+//! play ([`AUDIO_HEADER`]), so the app's sound can be held to the original's (T30).
 //!
 //! `~/.cache/superfrog-re/traces/<key>.feed` and `<key>.hashes` (`SUPERFROG_CACHE` replacing the
 //! root), the key a SHA-1, as a trace's, over the feed format, the vAmiga build, the Kickstart and
@@ -16,7 +17,7 @@ use sf_core::{Game, Picture, Rng, View};
 use crate::{Alone, Case, SyncPoint};
 
 /// Bump when what a feed or its hashes hold changes.
-const FEED_FORMAT: u32 = 2;
+const FEED_FORMAT: u32 = 3;
 
 /// The engine build this crate's engine is (sf-app `build.rs`, shared): what a feed is tagged with.
 pub const ENGINE_BUILD: &str = env!("SF_ENGINE_BUILD");
@@ -28,8 +29,33 @@ pub struct Recorded {
     pub frames: Vec<FeedFrame>,
     /// `sf_core::feed`'s hash file, frame 0 (the start) on.
     pub hashes: String,
+    /// [`AUDIO_HEADER`]'s file: the original's loudness each frame of play.
+    pub audio: String,
     /// The engine run alone panicked: what it was fed after is no feed.
     pub panicked: bool,
+}
+
+/// The first line of an audio file: then one line a frame of play, from frame 1, the loudest
+/// sample of the original's own mix (vAmiga's, `Amiga::mixed_audio`) in the frame its step ended
+/// in, as a 16-bit magnitude (0 to 32767).
+pub const AUDIO_HEADER: &str = "superfrog original audio peaks 1";
+
+/// The loudest sample of a frame of the original's mix, as a 16-bit magnitude.
+pub fn peak(mix: &[[f32; 2]]) -> u16 {
+    let m = mix.iter().flatten().fold(0f32, |m, s| m.max(s.abs()));
+    (m.min(1.0) * 32767.0).round() as u16
+}
+
+/// An audio file's peaks, frame of play 1 first.
+pub fn parse_audio(text: &str) -> Result<Vec<u16>, String> {
+    let mut lines = text.lines();
+    if lines.next() != Some(AUDIO_HEADER) {
+        return Err(format!("not an audio-peak file (no `{AUDIO_HEADER}` line)"));
+    }
+    lines
+        .enumerate()
+        .map(|(n, l)| l.parse().map_err(|_| format!("line {}: {l:?}", n + 2)))
+        .collect()
 }
 
 impl Recorded {
@@ -40,15 +66,18 @@ impl Recorded {
             seed,
             frames: Vec::new(),
             hashes: format!("{HASHES_HEADER}\n{}", hash_line(0, frame_hashes(game, &pic))),
+            audio: format!("{AUDIO_HEADER}\n"),
             panicked: false,
         }
     }
 
-    /// A frame of play: what was fed, and the game and its last picture after it.
-    pub(crate) fn frame(&mut self, fed: FeedFrame, game: &Game, picture: &Picture) {
+    /// A frame of play: what was fed, the game and its last picture after it, and the
+    /// original's [`peak`] that frame.
+    pub(crate) fn frame(&mut self, fed: FeedFrame, game: &Game, picture: &Picture, peak: u16) {
         self.frames.push(fed);
         self.hashes
             .push_str(&hash_line(self.frames.len() as u64, frame_hashes(game, picture)));
+        self.audio.push_str(&format!("{peak}\n"));
     }
 }
 
@@ -57,6 +86,8 @@ impl Recorded {
 pub struct FeedFiles {
     pub feed: PathBuf,
     pub hashes: PathBuf,
+    /// The original's loudness each frame of play ([`AUDIO_HEADER`]).
+    pub audio: PathBuf,
     /// Frames of play: records in the feed.
     pub frames: usize,
     /// Whether the files were already in the cache.
@@ -66,8 +97,8 @@ pub struct FeedFiles {
     pub alone: Result<(), String>,
 }
 
-/// Where `case`'s feed and hashes go: `<traces>/<key>.feed`, `.hashes`.
-pub fn paths(case: &Case) -> Result<(PathBuf, PathBuf), String> {
+/// Where `case`'s feed, hashes and audio go: `<traces>/<key>.feed`, `.hashes`, `.audio`.
+pub fn paths(case: &Case) -> Result<(PathBuf, PathBuf, PathBuf), String> {
     let cfg = sf_oracle::OracleConfig::locate(1).map_err(|e| e.to_string())?;
     let script: String = case
         .script
@@ -81,7 +112,11 @@ pub fn paths(case: &Case) -> Result<(PathBuf, PathBuf), String> {
     );
     let key = crate::sync::cache_key(&cfg, &what)?;
     let dir = crate::sync::cache_root().join("traces");
-    Ok((dir.join(format!("{key}.feed")), dir.join(format!("{key}.hashes"))))
+    Ok((
+        dir.join(format!("{key}.feed")),
+        dir.join(format!("{key}.hashes")),
+        dir.join(format!("{key}.audio")),
+    ))
 }
 
 /// `case`'s feed and hashes: from the cache, or made by running it (check 4 only, as
@@ -95,14 +130,16 @@ pub fn feed(case: &Case) -> Result<FeedFiles, String> {
     if case.freeze() != crate::freeze::Freeze::None {
         return Err(format!("{}: a frozen case ({:?}) has no pacing feed", case.name, case.freeze()));
     }
-    let (feed_path, hashes_path) = paths(case)?;
-    if let (Ok(text), true) = (std::fs::read_to_string(&feed_path), hashes_path.is_file())
+    let (feed_path, hashes_path, audio_path) = paths(case)?;
+    if let (Ok(text), true, true) =
+        (std::fs::read_to_string(&feed_path), hashes_path.is_file(), audio_path.is_file())
         && let Ok(f) = Feed::parse(&text)
         && f.engine == ENGINE_BUILD
     {
         return Ok(FeedFiles {
             feed: feed_path,
             hashes: hashes_path,
+            audio: audio_path,
             frames: f.frames.len(),
             cached: true,
             alone: Ok(()),
@@ -130,10 +167,12 @@ pub fn feed(case: &Case) -> Result<FeedFiles, String> {
         frames: rec.frames,
     };
     write(&hashes_path, rec.hashes.as_bytes())?;
+    write(&audio_path, rec.audio.as_bytes())?;
     write(&feed_path, feed.to_text().as_bytes())?;
     Ok(FeedFiles {
         feed: feed_path,
         hashes: hashes_path,
+        audio: audio_path,
         frames: feed.frames.len(),
         cached: false,
         alone: verdict.map(|_| ()).map_err(|d| d.to_string()),
@@ -154,6 +193,17 @@ fn write(path: &Path, bytes: &[u8]) -> Result<(), String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn audio_peaks_round_trip_and_clip() {
+        assert_eq!(peak(&[[0.0, -0.5], [0.25, 0.0]]), 16384);
+        assert_eq!(peak(&[[1.5, 0.0]]), 32767);
+        assert_eq!(peak(&[]), 0);
+        let text = format!("{AUDIO_HEADER}\n0\n12\n32767\n");
+        assert_eq!(parse_audio(&text).unwrap(), vec![0, 12, 32767]);
+        assert!(parse_audio("0\n").is_err());
+        assert!(parse_audio(&format!("{AUDIO_HEADER}\n-1\n")).is_err());
+    }
     use crate::case::{Excluded, Exclusion};
 
     /// A frozen case's original and engine run with their objects held still (`freeze.rs`,
