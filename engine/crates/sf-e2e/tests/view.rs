@@ -128,6 +128,30 @@ fn widescreen_mid_level_keeps_the_centre_and_the_game_of_the_4_3_run() {
     assert!(scrolled, "camera at x {}: the camera never left the level's left edge: not a mid-level check", g_wide.state().camera().x);
 }
 
+/// T29 drill: `level_start`'s fade-in runs in the front end on the level's own copper list, and
+/// was drawn 4:3 with colour 0 at the sides until the level's loop began, then snapped to 16:9
+/// (24 frames on W3-2). The level is on screen, so its sides are the level's from its first frame.
+#[test]
+fn widescreen_draws_the_level_s_sides_through_its_fade_in_too() {
+    let (app, wide) = level_run(true);
+    let data = cache_data(&app.home);
+    let mut g = w3_1(&data, WIDE);
+    let mut fading = 0;
+    for n in 10..=LEVEL_FRAMES {
+        g.step(level_input(n));
+        if g.scene() == Scene::Level || g.cop1lc() != Some(sf_core::render::LEVEL_COPPER) {
+            continue;
+        }
+        let w = wide.read_frame(n);
+        let lit = |x0: u32, x1: u32| (40..w.height).any(|y| (x0..x1).any(|x| w.rgb(x, y) != [0, 0, 0]));
+        if lit(N, w.width - N) {
+            fading += 1;
+            assert!(lit(w.width - N, w.width), "frame {n}: the level shows, its right side is empty");
+        }
+    }
+    assert!(fading > 0, "no frame of W3-1's fade-in was seen");
+}
+
 #[test]
 fn widescreen_at_a_level_s_left_edge_shows_colour_0_off_the_map_and_nothing_wraps() {
     let data = cache_data(&App::launch(LaunchOpts::default()).home);

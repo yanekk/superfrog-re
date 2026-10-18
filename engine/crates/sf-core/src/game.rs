@@ -509,6 +509,7 @@ impl Game {
             self.seed = None;
             front.anchor_writes(std::mem::take(&mut self.schedule));
             let out = front.step(&mut self.state, &self.display, input);
+            let level_list = front.cop1lc() == crate::render::LEVEL_COPPER;
             self.scene = front.scene(&self.state, self.scene);
             self.shown = Some(out.picture.clone());
             if let Some(o) = front.outcome() {
@@ -551,8 +552,13 @@ impl Game {
                     paula.extend(self.level_frame(input, pacing, key_in, false).paula);
                 }
             }
+            let picture = if level_list {
+                crate::render::level_widened(&out.picture, &self.state, &self.display, self.view)
+            } else {
+                out.picture.widened(self.view)
+            };
             return FrameOut {
-                picture: out.picture.widened(self.view),
+                picture,
                 paula,
                 load: out.load,
                 resync: out.resync,
@@ -656,6 +662,9 @@ impl Game {
     /// The frame the original shows for this state (DESIGN §3.3), widened by `view`.
     pub fn render(&self, view: View) -> Picture {
         match (self.scene, &self.shown) {
+            (Scene::Front, Some(p)) if self.cop1lc() == Some(crate::render::LEVEL_COPPER) => {
+                crate::render::level_widened(p, &self.state, &self.display, view)
+            }
             (Scene::Front | Scene::Slot { .. } | Scene::Story, Some(p)) => p.widened(view),
             _ => self.scene.render(&self.state, &self.display, view),
         }
