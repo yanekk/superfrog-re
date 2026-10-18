@@ -18,6 +18,11 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-18 | 📌 | T209: `game-whole` run alone green, 7007 milestones, 1418 s. `SF_CONFORM_ALONE_TRACE=<file>` lists the alone engine's differing variables; the report's "first differs" is usually frame 0's noise. Probe a stretch from the original's memory only in a level: front-end resumes stall. |
+| 2026-10-18 | 🐞 | T209, W6-3 (play 220237): a frame ending mid-pass between `coins_collected` and `coins_left_for_exit` read a coin's count one high. Check 4 now reads coins at frames ending a pass (`milestones.rs`), as items settle. |
+| 2026-10-18 | 🔄 | Owner, T209: each load's timing is check 4's input, like the clock's seeds: its vertical blanks (`Game::load_blanks`: sound, keyboard poll), its end line, the bonus loading picture's hold. DESIGN §2.1. |
+| 2026-10-18 | 🐞 | T209: `kbd_toggle` flips each blank, loads included; the engine's instant load flipped it once, so after an even-length load the alone engine polled the keyboard on the other blanks. W2-1's last pass then ran one blank short. |
+| 2026-10-18 | 🐞 | T209, W2-2 (original 48526): W2-1's last pass left `vbl_count` 2, so the loop's first pass began in `level_start`'s own frame. The engine began it a frame later; checks 1–3 hid it with a re-sync. Fixed in `Game::step`. |
 | 2026-10-17 | 📌 | T208: `game-whole` scan after T208, 1360 s: checks 1–3 clean on all 224082 frames to `end_seq_load`; one line, check 4 at play frame 43542 (the coin with 92 left, T203's 43522), for T209. |
 | 2026-10-17 | 📌 | T208: a stretch of `game-whole` is a case: `sync = { script, frame, df1 = true }` with `script-from = frame` (conform/README). `whole-w6-4-start`, `whole-final-load` guard T208's fixes in ~17 s once cached (~9 min first). |
 | 2026-10-17 | 🐞 | T208, `game-whole` 222665: before the final level `top_loop`'s `access_overlay_show` (nothing up) took 20 frames on the original: unpack 11, fade-in 9; the engine did it at once. Now `title::OverlayShow`; also at a level-code start (chain.rs pin 1514). |

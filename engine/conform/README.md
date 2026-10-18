@@ -138,7 +138,8 @@ assertions of their own beside their subject (`frog_cases.rs`, `enemies_*.rs`, `
 `story.rs`, ...), the rest one line each in `cases.rs`. The slow ones are ignored and run with
 `cargo test -p sf-conform -- --ignored`: `attract-demo-3` (`cases.rs`, about 4 min), `whole-w6-4-start`
 and `whole-final-load` (`cases.rs`, about 9 min each uncached, seconds from the cache; T208), `game-whole`
-(`chain.rs`, about 8 min; T202) and the
+(`chain.rs`'s `the_whole_game_plays_as_the_original_does`, faithful and alone to `end_seq_load`,
+about 25 min: 1447 s; T209) and the
 intro's `story-scene1-out`, `story-scene4-init`, `story-scene4-sound` and `story-intro-full`
 (`story.rs`, 80 s to 5 min), the final level's `final-win`, `final-lose` and `final-idle` (`bosses.rs`,
 which runs the win to the level's end in the block), and the level codes from power-on, `code-w1-1`

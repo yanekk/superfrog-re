@@ -184,7 +184,7 @@ code_cases! {
 /// alone. The original must have played it, not sat on a screen: a script that never left the
 /// title would be just as faithful.
 #[test]
-#[ignore = "slow: about 25 min"]
+#[ignore = "slow: about 25 min (1447 s, T209)"]
 fn the_whole_game_plays_as_the_original_does() {
     use sf_conform::milestones::{Milestone, SceneKind};
     let case = sf_conform::Case::load(&sf_conform::cases_dir().join("game-whole.toml"))
@@ -202,14 +202,36 @@ fn the_whole_game_plays_as_the_original_does() {
         .filter(|(_, m)| matches!(m, Milestone::LevelExit { .. }))
         .map(|x| x.1)
         .collect();
-    // W1-1 to W5-4, the bonus level (world 7), W6-1 to W6-4, then the witch's end.
+    // W1-1 to W5-4, the bonus level (world 7), W6-1 to W6-4; the final level has no exit: the
+    // witch beaten, the case ends in `end_seq_load` (T209).
     let level = |world, level| Milestone::LevelExit { world, level };
     let mut every: Vec<_> =
         (1..=5).flat_map(|w| (1..=4).map(move |l| level(w, l))).collect();
     every.push(level(7, 1));
     every.extend((1..=4).map(|l| level(6, l)));
-    assert_eq!(exits.len(), 26, "{exits:?}");
-    assert_eq!(exits[..25], every[..]);
+    assert_eq!(exits, every);
+    // After W6-4's exit, the final level (its world and level read 6 and 1), played to the end
+    // with the witch's points: the score and lives the script's header has at `end_seq_load`.
+    let after = met
+        .iter()
+        .skip_while(|(_, m)| *m != level(6, 4))
+        .map(|x| x.1)
+        .collect::<Vec<_>>();
+    assert!(
+        after.contains(&Milestone::Scene(SceneKind::Level { world: 6, level: 1 })),
+        "{after:?}"
+    );
+    assert!(
+        matches!(
+            after.last(),
+            Some(Milestone::End {
+                score: 1_876_450,
+                lives: 11,
+                ..
+            })
+        ),
+        "{after:?}"
+    );
     assert!(has(Milestone::Tally { score: 17800 }), "{met:?}");
     assert!(has(Milestone::Scene(SceneKind::SlotMachine)), "{met:?}");
     assert!(!has(Milestone::Scene(SceneKind::GameOver)), "{met:?}");

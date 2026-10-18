@@ -12,7 +12,7 @@ the account is the commit message. Whoever writes a cell also fixes the over-bud
 **Plan reviewed:** 2026-10-10 — 7 fixed, 7 decided with the user
 
 **Status:** about 100 tasks ✅; T18, T21 and Phase 3 open; amended to faithful.
-**Last updated:** 2026-10-15
+**Last updated:** 2026-10-18
 **Amended 2026-10-15 (owner):** faithful replaces frame-exact (DESIGN §2.1, PLAN.md amendment); T180–T183 added, 14 tasks dropped (PLAN.md).
 **Next `pir-work` will:** T180 faithful-compare, then T182; T126 and T132 finish against the faithful bar.
 
@@ -174,12 +174,12 @@ done · ⛔ blocked, needs a human. A task dropped by a plan amendment leaves th
 | T206 | chain-routes-w3-w4 | T205; blocks T203 | ✅ | |
 | T207 | chain-routes-w5-w6-final | T206; blocks T203 | ✅ | |
 | T208 | w6-4-start-and-final-load | T203; blocks T23, T29 | ✅ | |
-| T209 | whole-game-alone | T203, T208; blocks T23, T29 | ⬜ | |
+| T209 | whole-game-alone | T203, T208; blocks T23, T29 | 🔍 | game-whole green faithful and alone (7007 milestones): chain.rs test 1447 s. Fixes: first pass in level_start's frame; check 4 takes load timing (owner: blanks, end line, bonus picture hold); coins read at pass ends. Deviation: test keeps its name; asserts 25 exits and the end score (the final level has no exit). `sf-conform all` not run (pir's). |
 
 A Notes cell holds what was built or what the review found, the test count, and one line per
 deviation from the task doc. A ✅ task's cell may be cut to one line once the next task has been reviewed.
 
-**Review queue:** *(empty)*
+**Review queue:** T209
 
 ## Blocked on the user
 
