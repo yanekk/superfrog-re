@@ -14,7 +14,7 @@ the account is the commit message. Whoever writes a cell also fixes the over-bud
 **Status:** about 100 tasks ✅; T18, T21 and Phase 3 open; amended to faithful.
 **Last updated:** 2026-10-18
 **Amended 2026-10-15 (owner):** faithful replaces frame-exact (DESIGN §2.1, PLAN.md amendment); T180–T183 added, 14 tasks dropped (PLAN.md).
-**Next `pir-work` will:** review T23 app-shell, then T24 macos-menus.
+**Next `pir-work` will:** T24 macos-menus.
 
 ## Tasks
 
@@ -46,7 +46,7 @@ done · ⛔ blocked, needs a human. A task dropped by a plan amendment leaves th
 | T20 | front-end | T08, T11, T12, T13 | ✅ | |
 | T21 | game-flow | T18, T19, T20, T181, T183 | ✅ | |
 | T22 | app-rig | T09, T10, T12, T13 | ✅ | |
-| T23 | app-shell | T21, T22 | 🔍 | lock, settings, progress, import, window modules; KeyMap (Ctrl fire, ⌃⌘F); 52 unit, 19 e2e tests (4 SF_E2E_OS-gated), all green. Deviations: no PadMap (T25); fullscreen tests gated, run on main display only (no built-in attached); script `continue` stands in for T24's menu; `--scale` not persisted; Quit leaves `lock`; `disk_prompt` still unshown. |
+| T23 | app-shell | T21, T22 | ✅ | Review: one fix, the shared e2e seed import failed on the new lock when another process held it (reproduced with flock, fixed, re-probed green). Mutations caught: disks.toml unwritten, min-size hold removed. Probed: nothing outside --home, settings.toml remap, --scale unpersisted, Quit leaves lock. OS layer and built-in-display fullscreen read-only, unverified. |
 | T24 | macos-menus | T23 | ⬜ | |
 | T25 | controls-and-gamepad | T24 | ⬜ | |
 | T26 | save-states | T24 | ⬜ | |
