@@ -18,6 +18,7 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-18 | 📌 | T212 review: `sf-conform all` rerun 212/212 green, 5 747 s. complete-w4-2 stays green with `bob_draw`'s draw loop unstepped; the stepping is guarded by `items_routines::a_frame_ends_in_bob_draw…` instead. |
 | 2026-10-18 | 📌 | T212: `sf-conform all` 212/212 green in 6 250 s. complete-w4-2's longest mid-pass run is 206 (from 8499): `lag-limit` 206. Lib `the_frog_walks_step…` still red, as on base. |
 | 2026-10-18 | 🐞 | T212, fixed: frame ending in `panel_update`'s score digit (W2-3 6728, W6-1 2128); the engine drew the clock digit before the blank's tick. `panel_update` now three steps (`sync::panel_step`); with the fixes below, 21 re-sync pins in tests gone. |
 | 2026-10-18 | 🐞 | T212, fixed: frame ending at `bob_draw`'s call, entry or between its camera latches (W6-1 4386, 4402, 5268); the engine latched the old camera. Steps 0, 1 (`LevelCtx::step_at`: never the clock). Guarded by `enemies-w6-1-complete`. |
