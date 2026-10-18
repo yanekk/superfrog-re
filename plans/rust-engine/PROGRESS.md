@@ -14,7 +14,7 @@ the account is the commit message. Whoever writes a cell also fixes the over-bud
 **Status:** about 100 tasks ✅; T18, T21 and Phase 3 open; amended to faithful.
 **Last updated:** 2026-10-15
 **Amended 2026-10-15 (owner):** faithful replaces frame-exact (DESIGN §2.1, PLAN.md amendment); T180–T183 added, 14 tasks dropped (PLAN.md).
-**Next `pir-work` will:** review T27; T210 (added by T27) before T29.
+**Next `pir-work` will:** T210 (added by T27) before T29.
 
 ## Tasks
 
@@ -50,7 +50,7 @@ done · ⛔ blocked, needs a human. A task dropped by a plan amendment leaves th
 | T24 | macos-menus | T23 | ✅ | |
 | T25 | controls-and-gamepad | T24 | ⬜ | |
 | T26 | save-states | T24 | ⬜ | |
-| T27 | crt-and-widescreen | T24 | 🔍 | View → CRT Filter (`crt.wgsl`, after scaling), Widescreen (67 columns, `Game::set_view`), both persisted; `view.rs` 6 e2e + 2 ignored. Deviations: sf-core touched (view field, `Picture::narrowed`); columns fixed from 256 lines; slot and intro checked headless; mid-level run 2 000 frames; shot taken inside the catch-up; `pacing.txt` added. |
+| T27 | crt-and-widescreen | T24 | ✅ | Review: one defect, `shot_run` dropped its App so two shot tests always failed (reproduced, fixed). Mutated the CRT pipeline choice and the level view: caught. Release pacing 0 dropped when quiet, CRT on and off alike. Drilled 2× widescreen CRT mid-level, 1× CRT title. T210 addition valid. 6 e2e + 2 ignored. |
 | T28 | level-override | T14, T24 | ⬜ | |
 | T29 | app-drill | T21, T25, T26, T27, T28 | ⬜ | |
 | T30 | acceptance | T29 | ⬜ | |
@@ -180,7 +180,7 @@ done · ⛔ blocked, needs a human. A task dropped by a plan amendment leaves th
 A Notes cell holds what was built or what the review found, the test count, and one line per
 deviation from the task doc. A ✅ task's cell may be cut to one line once the next task has been reviewed.
 
-**Review queue:** T27
+**Review queue:** *(empty)*
 
 ## Blocked on the user
 
