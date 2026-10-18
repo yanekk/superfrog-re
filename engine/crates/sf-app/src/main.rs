@@ -435,21 +435,16 @@ impl App {
         run.window.request_redraw();
     }
 
-    fn present(&mut self, event_loop: &ActiveEventLoop) {
+    /// A `shot` the script asked for: what the window shows for the newest frame, uploaded.
+    fn take_shot(&mut self, event_loop: &ActiveEventLoop) {
         let Some(run) = &mut self.run else { return };
-        let shot = run.shot.take();
-        let path = shot.zip(run.capture.as_ref()).map(|(n, c)| c.window_path(n));
-        match run.video.present(path.as_deref()) {
-            Ok(Some(shown)) => {
-                if let (Some(n), Some(c)) = (shot, &mut run.capture)
-                    && let Err(e) = c.window_shown(n, run.uploaded, &shown)
-                {
-                    self.fail(event_loop, &format!("capture: {e}"));
-                }
-            }
-            // Not drawn (the surface was being reconfigured): take the shot at the next one.
-            Ok(None) => run.shot = run.shot.or(shot),
-            Err(e) => self.fail(event_loop, &format!("shot: {e}")),
+        let (Some(n), Some(c)) = (run.shot.take(), &mut run.capture) else { return };
+        let written = run
+            .video
+            .shot(&c.window_path(n))
+            .and_then(|shown| c.window_shown(n, run.uploaded, &shown).map_err(|e| e.to_string()));
+        if let Err(e) = written {
+            self.fail(event_loop, &format!("shot: {e}"));
         }
     }
 }
@@ -486,6 +481,7 @@ impl ApplicationHandler for App {
         }
         if due > 0 {
             self.show_newest();
+            self.take_shot(event_loop);
         }
         event_loop.set_control_flow(ControlFlow::WaitUntil(
             Instant::now() + Duration::from_millis(2),
@@ -497,11 +493,25 @@ impl ApplicationHandler for App {
             WindowEvent::CloseRequested => self.finish(event_loop),
             WindowEvent::Resized(size) => {
                 if let Some(run) = &mut self.run {
+                    // macOS keeps a person's drag above the minimum size, but not a resize asked
+                    // for by code: the app holds the line itself.
+                    let at: winit::dpi::LogicalSize<f64> = size.to_logical(run.window.scale_factor());
+                    let min = window::min_size();
+                    if at.width < min.width as f64 || at.height < min.height as f64 {
+                        let _ = run.window.request_inner_size(winit::dpi::LogicalSize::new(
+                            at.width.max(min.width as f64),
+                            at.height.max(min.height as f64),
+                        ));
+                    }
                     run.video.resized(size.width, size.height);
                     run.window.request_redraw();
                 }
             }
-            WindowEvent::RedrawRequested => self.present(event_loop),
+            WindowEvent::RedrawRequested => {
+                if let Some(run) = &mut self.run {
+                    run.video.present();
+                }
+            }
             WindowEvent::KeyboardInput { event, .. } if !event.repeat => {
                 if let PhysicalKey::Code(code) = event.physical_key {
                     self.host(HostInput::Key {

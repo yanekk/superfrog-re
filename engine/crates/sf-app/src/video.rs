@@ -58,8 +58,8 @@ pub struct Video {
     pub scale: Scale,
 }
 
-/// What a [`Video::present`] showed, for a `shot`: the surface's size in pixels, its pixels a
-/// point, and the picture's place `(x, y, w, h)` on it.
+/// Where [`Video::present`] puts the picture, for a `shot`: the surface's size in pixels, its
+/// pixels a point, and the picture's place `(x, y, w, h)` on it.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Shown {
     pub surface: (u32, u32),
@@ -91,10 +91,6 @@ impl Video {
             config.format = *f;
         }
         config.present_mode = wgpu::PresentMode::AutoVsync;
-        // A `shot` reads the presented picture back.
-        if caps.usages.contains(wgpu::TextureUsages::COPY_SRC) {
-            config.usage |= wgpu::TextureUsages::COPY_SRC;
-        }
         surface.configure(&device, &config);
 
         let module = device.create_shader_module(wgpu::ShaderModuleDescriptor {
@@ -230,75 +226,89 @@ impl Video {
         );
     }
 
-    /// Draw the uploaded frame to the window. With `shot`, the picture presented is also written
-    /// there as an RGB PNG of the whole surface. `Err` only when the shot could not be written.
-    pub fn present(&mut self, shot: Option<&Path>) -> Result<Option<Shown>, String> {
-        let Some((_, size, group)) = &self.frame else {
-            return Ok(None);
-        };
+    /// The picture's place on the surface now: its size, pixels a point, and `(x, y, w, h)`.
+    fn layout(&self, frame: (u32, u32)) -> Shown {
+        let surface = (self.config.width, self.config.height);
+        let scale_factor = self.window.scale_factor();
+        let s = picture_scale(surface, frame, self.scale, scale_factor);
+        Shown {
+            surface,
+            scale_factor,
+            viewport: viewport(surface, frame, s),
+        }
+    }
+
+    /// Record the uploaded frame drawn onto `target`, a surface-sized texture: black, and the
+    /// picture at its place.
+    fn draw(&self, enc: &mut wgpu::CommandEncoder, target: &wgpu::TextureView, shown: &Shown) {
+        let Some((_, _, group)) = &self.frame else { return };
+        let mut pass = enc.begin_render_pass(&wgpu::RenderPassDescriptor {
+            label: Some("present"),
+            color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                view: target,
+                depth_slice: None,
+                resolve_target: None,
+                ops: wgpu::Operations {
+                    load: wgpu::LoadOp::Clear(wgpu::Color::BLACK),
+                    store: wgpu::StoreOp::Store,
+                },
+            })],
+            ..Default::default()
+        });
+        let (x, y, w, h) = shown.viewport;
+        // A picture larger than the surface (only while a resize has not reached the surface
+        // yet: the window is never below 1×) waits for the next refresh.
+        if x + w <= shown.surface.0 && y + h <= shown.surface.1 {
+            pass.set_viewport(x as f32, y as f32, w as f32, h as f32, 0.0, 1.0);
+            pass.set_pipeline(&self.pipeline);
+            pass.set_bind_group(0, group, &[]);
+            pass.draw(0..3, 0..1);
+        }
+    }
+
+    /// Draw the uploaded frame to the window.
+    pub fn present(&mut self) {
+        let Some((_, size, _)) = &self.frame else { return };
+        let shown = self.layout(*size);
         let target = match self.surface.get_current_texture() {
             wgpu::CurrentSurfaceTexture::Success(t) | wgpu::CurrentSurfaceTexture::Suboptimal(t) => t,
             wgpu::CurrentSurfaceTexture::Outdated | wgpu::CurrentSurfaceTexture::Lost => {
                 self.surface.configure(&self.device, &self.config);
-                return Ok(None);
+                return;
             }
-            _ => return Ok(None),
+            _ => return,
         };
         let view = target.texture.create_view(&Default::default());
-        let surface = (self.config.width, self.config.height);
-        let scale_factor = self.window.scale_factor();
-        let s = picture_scale(surface, *size, self.scale, scale_factor);
-        let (x, y, w, h) = viewport(surface, *size, s);
         let mut enc = self.device.create_command_encoder(&Default::default());
-        {
-            let mut pass = enc.begin_render_pass(&wgpu::RenderPassDescriptor {
-                label: Some("present"),
-                color_attachments: &[Some(wgpu::RenderPassColorAttachment {
-                    view: &view,
-                    depth_slice: None,
-                    resolve_target: None,
-                    ops: wgpu::Operations {
-                        load: wgpu::LoadOp::Clear(wgpu::Color::BLACK),
-                        store: wgpu::StoreOp::Store,
-                    },
-                })],
-                ..Default::default()
-            });
-            // A picture larger than the surface (only while a resize has not reached the
-            // surface yet: the window is never below 1×) waits for the next refresh.
-            if x + w <= surface.0 && y + h <= surface.1 {
-                pass.set_viewport(x as f32, y as f32, w as f32, h as f32, 0.0, 1.0);
-                pass.set_pipeline(&self.pipeline);
-                pass.set_bind_group(0, group, &[]);
-                pass.draw(0..3, 0..1);
-            }
-        }
-        let readback = shot.map(|_| self.copy_out(&mut enc, &target.texture, surface));
+        self.draw(&mut enc, &view, &shown);
         self.queue.submit([enc.finish()]);
-        let shown = Shown {
-            surface,
-            scale_factor,
-            viewport: (x, y, w, h),
-        };
-        let written = match (shot, readback) {
-            (Some(path), Some(r)) => self.write_shot(path, r, surface),
-            _ => Ok(()),
-        };
         self.window.pre_present_notify();
         self.queue.present(target);
-        written.map(|()| Some(shown))
     }
 
-    /// Copy the surface into a buffer a shot can read: the buffer and its padded row length.
-    fn copy_out(
-        &self,
-        enc: &mut wgpu::CommandEncoder,
-        texture: &wgpu::Texture,
-        (w, h): (u32, u32),
-    ) -> Option<(wgpu::Buffer, u32)> {
-        if !self.config.usage.contains(wgpu::TextureUsages::COPY_SRC) {
-            return None;
-        }
+    /// Write what [`Video::present`] draws for the uploaded frame to `path`, as an RGB PNG of the
+    /// whole surface: the same pass, onto a texture of the surface's size and format, read back.
+    /// (Not the swapchain's own image: macOS withholds it from a window another one covers.)
+    pub fn shot(&self, path: &Path) -> Result<Shown, String> {
+        let Some((_, size, _)) = &self.frame else {
+            return Err("no frame has been shown yet".into());
+        };
+        let shown = self.layout(*size);
+        let (w, h) = shown.surface;
+        let texture = self.device.create_texture(&wgpu::TextureDescriptor {
+            label: Some("shot"),
+            size: wgpu::Extent3d {
+                width: w,
+                height: h,
+                depth_or_array_layers: 1,
+            },
+            mip_level_count: 1,
+            sample_count: 1,
+            dimension: wgpu::TextureDimension::D2,
+            format: self.config.format,
+            usage: wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::COPY_SRC,
+            view_formats: &[],
+        });
         let row = (w * 4).div_ceil(wgpu::COPY_BYTES_PER_ROW_ALIGNMENT) * wgpu::COPY_BYTES_PER_ROW_ALIGNMENT;
         let buffer = self.device.create_buffer(&wgpu::BufferDescriptor {
             label: Some("shot"),
@@ -306,9 +316,11 @@ impl Video {
             usage: wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::MAP_READ,
             mapped_at_creation: false,
         });
+        let mut enc = self.device.create_command_encoder(&Default::default());
+        self.draw(&mut enc, &texture.create_view(&Default::default()), &shown);
         enc.copy_texture_to_buffer(
             wgpu::TexelCopyTextureInfo {
-                texture,
+                texture: &texture,
                 mip_level: 0,
                 origin: wgpu::Origin3d::ZERO,
                 aspect: wgpu::TextureAspect::All,
@@ -327,24 +339,15 @@ impl Video {
                 depth_or_array_layers: 1,
             },
         );
-        Some((buffer, row))
-    }
-
-    fn write_shot(
-        &self,
-        path: &Path,
-        readback: Option<(wgpu::Buffer, u32)>,
-        (w, h): (u32, u32),
-    ) -> Result<(), String> {
-        let (buffer, row) = readback.ok_or("this GPU cannot read the window's picture back")?;
+        self.queue.submit([enc.finish()]);
         let slice = buffer.slice(..);
         slice.map_async(wgpu::MapMode::Read, |_| {});
         self.device
             .poll(wgpu::PollType::wait_indefinitely())
-            .map_err(|e| format!("reading the window back: {e}"))?;
+            .map_err(|e| format!("reading the picture back: {e}"))?;
         let data = slice
             .get_mapped_range()
-            .map_err(|e| format!("reading the window back: {e:?}"))?;
+            .map_err(|e| format!("reading the picture back: {e:?}"))?;
         let bgra = matches!(
             self.config.format,
             wgpu::TextureFormat::Bgra8Unorm | wgpu::TextureFormat::Bgra8UnormSrgb
@@ -361,7 +364,8 @@ impl Video {
             }
         }
         std::fs::write(path, crate::capture::png(w, h, &rgba))
-            .map_err(|e| format!("{}: {e}", path.display()))
+            .map_err(|e| format!("{}: {e}", path.display()))?;
+        Ok(shown)
     }
 }
 
