@@ -86,12 +86,12 @@ fn met(seen: &Seen, types: &[(u32, &str)]) {
 
 /// W5-1 from its start to the second pacer (T39): over the first pacer and the spike pits, under
 /// the watchers, the mace and the fallers (each shakes and falls as the frog comes near), past the
-/// drips, the crushers, the flows and the dart; every W5-1 type but the shot. One re-sync pinned,
-/// seen with enemies frozen too: the panel at 979 (the play field's at 551 was the bob drawer's
-/// wait for the vertical blank's flag, T102).
+/// drips, the crushers, the flows and the dart; every W5-1 type but the shot. No re-sync: the
+/// panel's at 979 went with T212's steps in `panel_update` (the play field's at 551 was the bob
+/// drawer's wait for the vertical blank's flag, T102).
 #[test]
 fn enemies_w5_1() {
-    let seen = run("enemies-w5-1", &[979]);
+    let seen = run("enemies-w5-1", &[]);
     met(
         &seen,
         &[
@@ -193,13 +193,13 @@ fn enemies_w5_2() {
 /// W5-3 (T124) from its start west along the top past the first shooters and dart 54 (marker 19
 /// at 96,16), down the shaft at col 133 to the watchers (22), east past the mace and the darts
 /// (53) and down the chute into the bottom corridor, west to the switch at 149,58 and back east
-/// to the pacer between markers 2 and 3 (80/79), which hurts the frog (frame 2571). One re-sync
-/// pinned, seen with enemies frozen too: the panel at 1129 after a lag. The faller (28, marker 10
+/// to the pacer between markers 2 and 3 (80/79), which hurts the frog (frame 2571). No re-sync
+/// (the panel's at 1129 went with T212). The faller (28, marker 10
 /// at 92,39) and the shooter's shot (85) are enemies-w5-1's and enemies-w5-2's (FINDINGS
 /// 2026-10-15, T124).
 #[test]
 fn enemies_w5_3() {
-    let seen = run("enemies-w5-3", &[1129]);
+    let seen = run("enemies-w5-3", &[]);
     assert!(
         seen.frames.windows(2).any(|w| w[0].0 >= 2500 && w[1].2 && !w[0].2),
         "hurt by the 2/3 pacer"
@@ -335,13 +335,13 @@ fn completes(name: &str, pins: &[u32], exit_at: u32) {
 }
 
 /// W5-1 played from its start to its exit and through the tally (T126): the exit at 2254, fire
-/// taking the points. One re-sync pinned: the panel at 2182 after a lag (as `enemies-w5-1`'s at
-/// 979); the play field buffer's at 1497 was T184's (the engine's pass a frame off). Frame 744's
+/// taking the points. No re-sync: the panel's at 2182 went with T212, the play field buffer's at
+/// 1497 with T184 (the engine's pass a frame off). Frame 744's
 /// picture (the frog's sprites, `enemies-w5-1` 595's class) is within the faithful picture
 /// tolerance (T181).
 #[test]
 fn enemies_w5_1_complete() {
-    completes("enemies-w5-1-complete", &[2182], 2254);
+    completes("enemies-w5-1-complete", &[], 2254);
 }
 
 /// W5-2 played from its start to its exit and through the tally (T126): the exit at 6095, fire
@@ -362,12 +362,12 @@ fn enemies_w5_3_complete() {
 }
 
 /// W5-4 played from its start to its exit and through the tally (T126): the exit at 8193, fire
-/// taking the points. One re-sync pinned: the panel at 7980 after a lag. The frog on the spring
+/// taking the points. No re-sync (the panel's at 7980 went with T212). The frog on the spring
 /// pad (657) and the exit fade's palette step (8193) are within the faithful picture tolerance.
 /// Green faithful since T181: the vertical blank at 3378 falls inside `sfx_play`'s rest, so
 /// `sfx_tick` ends the new effect and music takes channel 3 back, as in the original (the
 /// play field buffer's re-sync at 3384 went with it).
 #[test]
 fn enemies_w5_4_complete() {
-    completes("enemies-w5-4-complete", &[7980], 8193);
+    completes("enemies-w5-4-complete", &[], 8193);
 }

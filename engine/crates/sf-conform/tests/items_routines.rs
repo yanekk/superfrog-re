@@ -664,6 +664,57 @@ fn the_frog_walk_ends_its_frame_at_the_entry_the_original_had_got_to() {
     }
 }
 
+/// A frame the original ended inside `obj_despawn_if_offscreen` under a slot's update (its step
+/// counted done) ends at the point it had got to (`sf_conform::sync::pass_point`; T212: W2-2 1228 at
+/// h0+$1b9ce, its last `camera_y` test made after the vertical blank), before the slot's step is
+/// done; a cut with no point does not end it there.
+#[test]
+fn a_frame_ends_inside_the_despawn_test_at_the_point_the_original_had_got_to() {
+    use sf_core::level::beam::{Cut, FrameSpec, Frames};
+    let rig = rig();
+    let display = sf_conform::display_data();
+    for point in [0, 1, 3, 5] {
+        let mut st = rig.state().clone();
+        let mut paula = Vec::new();
+        let mut c = LevelCtx::new(
+            Bus::new(&mut st, display.rom()),
+            sf_core::level::standard_dispatch(),
+            Hw::default(),
+            sound(),
+            &mut paula,
+        );
+        let slot = OBJ_SLOTS + SLOT * 4;
+        let b = &mut c.bus;
+        b.set_l(slot + 0x40, 1);
+        b.set_l(slot + 0x50, objects::SPUD_BOB);
+        b.set_b(SCROLL_DIRS, 0);
+        b.set_w(h0(0x9dc), 0);
+        c.enter_phase(1);
+        c.pass_step = 4;
+        let cut = Cut {
+            writes: 0,
+            line: 0,
+            hpos: 0,
+            phase: 1,
+            step: 5,
+            point,
+            blanks: 0,
+        };
+        c.frames = Some(Box::new(Frames {
+            specs: vec![FrameSpec {
+                hw: Hw::default(),
+                cut: Some(cut),
+            }],
+            at: Some(0),
+            in_pass: true,
+            ..Frames::default()
+        }));
+        objects::obj_despawn_if_offscreen(&mut c, slot, 0);
+        let fr = c.frames.take().expect("frames");
+        assert_eq!(fr.mid.is_some(), point != 0, "point {point}");
+    }
+}
+
 #[test]
 fn spud_update_matches_the_original() {
     let mut rig = rig();

@@ -401,12 +401,11 @@ fn complete_w1_2() {
 }
 
 /// W1-3 played from its start to its exit and through the tally (T106): the 75 coins, the spring
-/// at 105,75 out of the basin, the exit at 7728 and fire taking the points. One re-sync, at 5079:
-/// a lag cut inside `panel_update` leaves the panel's digits differing (as W5-1's at 979, pinned
-/// in `enemies_w5_cases`).
+/// at 105,75 out of the basin, the exit at 7728 and fire taking the points. No re-sync: the one at
+/// 5079, a lag cut inside `panel_update`, went with T212's steps there.
 #[test]
 fn complete_w1_3() {
-    completes("complete-w1-3", &[5079]);
+    completes("complete-w1-3", &[]);
 }
 
 /// W1-4 played from its start to its exit and through the tally (T154): T106's route to 1800, the
@@ -426,13 +425,13 @@ fn complete_w1_4() {
 
 /// W4-4 played from its start to its exit and through the tally (T132, T145): the pacer's hurt at
 /// 2515, marker 20's dart's at 4717, a crusher's at 22458, marker 21's dart's at 23577, the exit
-/// at 24200 and fire taking the points. Three re-syncs, each after a lag: the panel at 8030 and
-/// 23129 (as W1-3's 5079) and the hitboxes at 15914; the play field buffer's at 9003 was T184's.
+/// at 24200 and fire taking the points. No re-sync: the panel's at 8030 and 23129 and the
+/// hitboxes' at 15914 went with T212, the play field buffer's at 9003 with T184.
 /// Frame 5252's picture (the frog thrown by a pad) and 24201's (the exit fade's palette step) are
 /// within the faithful picture tolerance (T181).
 #[test]
 fn complete_w4_4() {
-    completes("complete-w4-4", &[8030, 15914, 23129]);
+    completes("complete-w4-4", &[]);
 }
 
 /// W1-1 played to its exit (T106): green through the exit at 4473, which `level_state` 1 reaches

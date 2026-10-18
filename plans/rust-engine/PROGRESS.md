@@ -177,12 +177,12 @@ done · ⛔ blocked, needs a human. A task dropped by a plan amendment leaves th
 | T209 | whole-game-alone | T203, T208; blocks T23, T29 | ✅ | |
 | T210 | window-fits-the-game | T27; blocks T29 | ✅ | |
 | T211 | app-whole-game-paced | T21, T25, T26, T27, T28; blocks T30 | ⬜ | |
-| T212 | conform-known-reds | T29; blocks T30 | ⬜ | |
+| T212 | conform-known-reds | T29; blocks T30 | 🔍 | `sf-conform all` 212/212 green, 6 250 s. Steps in `panel_update` and `bob_draw` (latches, bobs drawn), `Cut::point` in `obj_despawn_if_offscreen`; four cases in `cases.rs`, a point test; 21 re-sync pins in tests dropped, W3-3 coin pin 6335→6338 (the original's). Deviation: complete-w4-2 also `lag-limit` 206, measured. |
 
 A Notes cell holds what was built or what the review found, the test count, and one line per
 deviation from the task doc. A ✅ task's cell may be cut to one line once the next task has been reviewed.
 
-**Review queue:** *(empty)*
+**Review queue:** T212
 
 ## Blocked on the user
 

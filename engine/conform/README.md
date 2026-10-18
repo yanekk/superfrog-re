@@ -146,8 +146,8 @@ which runs the win to the level's end in the block), and the level codes from po
 to `code-w6-4` and `code-wb-1` but `code-w6-1` (`chain.rs`, about 90 s each; T201; `code-w6-1` runs
 in the block in `flow.rs`, W3-1's is `chain-level-code`). A case red today has no test that runs it whole (a test may keep
 checks 1–3 with `Alone::Off`); its FINDINGS row names the first failing check, frame and cause and
-the task that owns it: `complete-w4-2`, `enemies-w1-1`, `enemies-w3-1`, `enemies-w3-activation`,
-`enemies-w5-2-complete`, `enemies-w6-1-complete`, `front-attract` (T184), `enemies-w6-4` (T185).
+the task that owns it: `enemies-w1-1`, `enemies-w3-1`, `enemies-w3-activation`,
+`enemies-w5-2-complete`, `front-attract` (T184), `enemies-w6-4` (T185).
 
 ## Writing a script — `scripts/<name>.txt`
 
@@ -276,16 +276,22 @@ whole memory and so erases any divergence that lands on a lag frame (T14 review,
 An original that never finishes its pass would leave every frame out and the case green comparing
 nothing (T120). So a case fails once more than `LAG_LIMIT` (100) frames in a row end mid-pass;
 the frame after each lag ends the run, as its variables are compared. 100 is fitted to the cases
-(2026-10-15): all but two have runs of 97 or under. Those two, `complete-w4-3` (261) and
-`enemies-w6-1` (133), are pinned at their run with `lag-limit`, each with its reason (the
-original's slowdown, which the run alone still covers). `run`, `all` and `scan` print each case's
+(2026-10-15): all but a few have runs of 97 or under. Those, `complete-w4-3` (261),
+`enemies-w6-1` (133), `complete-w4-2` (206, T212) and `game-whole` (390), are pinned at their run
+with `lag-limit`, each with its reason (the original's slowdown, which the run alone still
+covers). `run`, `all` and `scan` print each case's
 frames compared, its longest mid-pass run, its longest run left out (the frames after each lag
 among them, not limited) and the frames the original was late (`Outcome::late`: the slowdown
 normal play does not reproduce, DESIGN §2.1; per level in docs/08 "Lag").
 
-`Pacing::Late { writes, line, hpos, phase, step }` says where the original's frame ended: after its
-`writes`th Paula write (the last at beam `line`, slot `hpos`), in the pass's `phase`th call, `step`
-slots into its loop; the engine ends its frame at the same point. Each frame the runner also anchors
+`Pacing::Late { writes, line, hpos, phase, step, point, blanks }` says where the original's frame
+ended: after its `writes`th Paula write (the last at beam `line`, slot `hpos`), in the pass's
+`phase`th call, `step` steps into its loop (`sync::pass_step`: slots, hitbox entries, the bob
+list's entries, `bob_draw`'s latches and the bobs it has drawn, `panel_update`'s three calls), and
+`point` places it inside the step running (`sync::pass_point`: `obj_despawn_if_offscreen`'s reads
+of the camera, T212); the engine ends its frame at the same point. A vertical blank met inside a
+step the engine ran whole would let the step read what the blank had not yet changed (the camera,
+the clock, a spawn): each such place found is a step or a point. Each frame the runner also anchors
 the engine's beam clock at the original's own positions (owner, 2026-10-13):
 `Game::anchor_writes` with where each of the frame's Paula writes was made, `Game::anchor_blits`
 with where each blit started (`Amiga::blit_starts`). The engine's fitted costs (`level::beam`)
