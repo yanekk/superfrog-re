@@ -372,22 +372,37 @@ fn seed_cache() -> &'static Path {
         let disks = sf_conform::disks::disk_dir().unwrap_or_else(|e| panic!("{e}"));
         let home = PathBuf::from(std::env::var_os("HOME").expect("HOME"))
             .join(".cache/superfrog-re/e2e");
-        let mut child = Command::new(binary())
-            .arg("--home")
-            .arg(&home)
-            .arg("--cache-from-disks")
-            .arg(&disks)
-            .args(["--max-frames", "0", "--timeout", "120"])
-            .stderr(Stdio::piped())
-            .process_group(0)
-            .spawn()
-            .expect("launching the import");
-        let status = wait_bounded(&mut child, Duration::from_secs(150));
-        let mut err = String::new();
-        if let Some(mut e) = child.stderr.take() {
-            use std::io::Read;
-            let _ = e.read_to_string(&mut err);
-        }
+        // Scripted, so the app opens no native panel that would wait for a person; and another
+        // test process (another worktree's) may hold the seed home's lock: wait it out.
+        std::fs::create_dir_all(&home).expect("the seed home");
+        let script = home.join("seed.script");
+        std::fs::write(&script, "").expect("the seed script");
+        let start = Instant::now();
+        let (status, err) = loop {
+            let mut child = Command::new(binary())
+                .arg("--home")
+                .arg(&home)
+                .arg("--cache-from-disks")
+                .arg(&disks)
+                .arg("--script")
+                .arg(&script)
+                .args(["--max-frames", "0", "--timeout", "120"])
+                .stderr(Stdio::piped())
+                .process_group(0)
+                .spawn()
+                .expect("launching the import");
+            let status = wait_bounded(&mut child, Duration::from_secs(150));
+            let mut err = String::new();
+            if let Some(mut e) = child.stderr.take() {
+                use std::io::Read;
+                let _ = e.read_to_string(&mut err);
+            }
+            let held = err.contains("already running");
+            if status.success() || !held || start.elapsed() > Duration::from_secs(300) {
+                break (status, err);
+            }
+            std::thread::sleep(Duration::from_millis(500));
+        };
         assert!(status.success(), "importing the disks failed ({status}): {err}");
         // The file this build reads, by name: an older format's file may sit beside it, and
         // `assets-v9.bin` sorts after `assets-v10.bin`.
