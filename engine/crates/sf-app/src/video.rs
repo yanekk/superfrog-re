@@ -68,6 +68,8 @@ pub struct Video {
     pub fullscreen: bool,
     /// View → CRT Filter.
     pub crt: bool,
+    /// A script's `occlude on`: present as macOS does for a window it will not draw.
+    pub occluded: bool,
 }
 
 /// Where [`Video::present`] puts the picture, for a `shot`: the surface's size in pixels, its
@@ -198,6 +200,7 @@ impl Video {
             scale,
             fullscreen: false,
             crt: false,
+            occluded: false,
         })
     }
 
@@ -327,13 +330,25 @@ impl Video {
     pub fn present(&mut self) {
         let Some((_, size, _)) = &self.frame else { return };
         let shown = self.layout(*size);
+        // With nothing to draw on, the frame's upload is still submitted: `write_texture` stages
+        // each frame until a submit, so a window macOS will not draw (covered, minimised, the
+        // screen locked) gathered one staging buffer a frame, 14 GB over 50 000 frames (T29).
+        let flush = |v: &Video| v.queue.submit([]);
+        if self.occluded {
+            flush(self);
+            return;
+        }
         let target = match self.surface.get_current_texture() {
             wgpu::CurrentSurfaceTexture::Success(t) | wgpu::CurrentSurfaceTexture::Suboptimal(t) => t,
             wgpu::CurrentSurfaceTexture::Outdated | wgpu::CurrentSurfaceTexture::Lost => {
                 self.surface.configure(&self.device, &self.config);
+                flush(self);
                 return;
             }
-            _ => return,
+            _ => {
+                flush(self);
+                return;
+            }
         };
         let view = target.texture.create_view(&Default::default());
         let mut enc = self.device.create_command_encoder(&Default::default());

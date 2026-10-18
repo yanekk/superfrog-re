@@ -13,6 +13,8 @@
 //! - `prompts.txt`: every question the launch asked a scripted run (`import.rs`).
 //! - `pacing.txt`: `stepped N`, `presented N` (the last frame presented) and `dropped N` (frames
 //!   stepped after the first presented that never reached the window), one a line.
+//! - `memory.txt`: `footprint N` and `peak N`, the process's physical footprint in bytes at the
+//!   end and at its largest (GPU memory included).
 
 use std::io::Write;
 use std::path::{Path, PathBuf};
@@ -78,6 +80,27 @@ impl Capture {
         std::fs::write(
             self.dir.join("pacing.txt"),
             format!("stepped {stepped}\npresented {presented}\ndropped {dropped}\n"),
+        )
+    }
+
+    /// Write `memory.txt`: `footprint N` and `peak N`, the process's physical footprint now and
+    /// at its largest, in bytes (the GPU's memory counts; T29's long-run drill).
+    pub fn memory(&self) -> std::io::Result<()> {
+        // SAFETY: proc_pid_rusage fills the struct it is given for the flavour named.
+        let mut ri: libc::rusage_info_v4 = unsafe { std::mem::zeroed() };
+        let got = unsafe {
+            libc::proc_pid_rusage(
+                std::process::id() as i32,
+                libc::RUSAGE_INFO_V4,
+                (&mut ri as *mut libc::rusage_info_v4).cast(),
+            )
+        };
+        if got != 0 {
+            return Err(std::io::Error::last_os_error());
+        }
+        std::fs::write(
+            self.dir.join("memory.txt"),
+            format!("footprint {}\npeak {}\n", ri.ri_phys_footprint, ri.ri_lifetime_max_phys_footprint),
         )
     }
 
