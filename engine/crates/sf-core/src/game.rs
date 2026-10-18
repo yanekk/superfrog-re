@@ -814,6 +814,19 @@ impl Game {
         }
     }
 
+    /// The word of chip RAM at `addr` as the audio channels' DMA reads it: the tunes and effect
+    /// banks loaded, and what the sound driver wrote there; in the story intro, its own memory
+    /// (T29: the app's mixer).
+    pub fn chip_word(&self, addr: u32) -> u16 {
+        match &self.story {
+            Some(s) => {
+                let b = s.mem.read(addr, 2);
+                u16::from_be_bytes([b[0], b[1]])
+            }
+            None => self.state.audio.mem.w(self.display.sound(), addr),
+        }
+    }
+
     /// The story intro's program, while it runs (for tooling).
     pub fn story(&self) -> Option<&crate::front::Story> {
         self.story.as_deref()
@@ -1086,6 +1099,13 @@ impl PassClock {
             self.running = false;
         }
         ended
+    }
+}
+
+/// Chip RAM as the audio channels' DMA reads it ([`Game::chip_word`]).
+impl sf_paula::ChipMemory for Game {
+    fn chip_word(&self, addr: u32) -> u16 {
+        Game::chip_word(self, addr)
     }
 }
 

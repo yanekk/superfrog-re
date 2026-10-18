@@ -45,7 +45,7 @@ use winit::keyboard::PhysicalKey;
 use winit::window::{Window, WindowId};
 
 use crate::args::Args;
-use crate::audio::{Audio, Clock, NoChip};
+use crate::audio::{Audio, Clock};
 use crate::capture::Capture;
 use crate::controls_window::{ControlsWindow, OpenControls};
 use crate::import::{NativeUi, ScriptedUi, Ui};
@@ -348,7 +348,7 @@ impl App {
             levels,
             seed,
             game,
-            paula: Paula::new(rate),
+            paula: Paula::booted(rate),
             rate,
             paused: false,
             pacer: Pacer::new(rate),
@@ -447,7 +447,7 @@ impl App {
             }
         }
         run.samples.clear();
-        run.paula.frame(&out.paula, &NoChip, &mut run.samples);
+        run.paula.frame(&out.paula, &run.game, &mut run.samples);
         if let Some(a) = &run.audio {
             a.push(&run.samples);
         }

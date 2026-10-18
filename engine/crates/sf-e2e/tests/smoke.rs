@@ -69,28 +69,25 @@ fn the_first_frame_is_power_on_and_frame_400_is_the_engine_s() {
     assert_eq!(c.frames[400], Image::of_picture(&pic.unwrap()));
 }
 
-/// Chip RAM with nothing in it, as the app's mixer reads it until `Game` runs the sound driver.
-struct NoChip;
-impl sf_paula::ChipMemory for NoChip {
-    fn chip_word(&self, _: u32) -> u16 {
-        0
-    }
-}
-
+/// The app's sound is sf-paula's mix, from its boot (DMA's master switch on), of the engine's
+/// Paula writes over the engine's chip RAM, and it is not silence: the app was silent until T29,
+/// its mixer reading zeroed chip RAM with DMA off.
 #[test]
 fn the_captured_audio_is_the_mixer_s_output_for_the_same_writes() {
     let (_, data, (rate, samples)) = shared_run();
     let rate = *rate;
     let mut game = headless(data);
-    let mut paula = Paula::new(rate);
+    let mut paula = Paula::booted(rate);
     let mut want = Vec::new();
     for n in 1..=FRAMES {
         let out = game.step(script_input(n));
-        paula.frame(&out.paula, &NoChip, &mut want);
+        paula.frame(&out.paula, &game, &mut want);
     }
     assert!(want.len() > (FRAMES as usize) * (rate as usize) / 51, "{} samples", want.len());
     assert_eq!(samples.len(), want.len());
     assert!(*samples == want, "the captured audio differs from sf-paula's");
+    let loud = samples.iter().filter(|s| s[0].unsigned_abs().max(s[1].unsigned_abs()) > 1000).count();
+    assert!(loud > samples.len() / 10, "the app is all but silent: {loud} of {} samples", samples.len());
 }
 
 #[test]

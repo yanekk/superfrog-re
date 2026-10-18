@@ -101,6 +101,15 @@ impl Paula {
         }
     }
 
+    /// As the game's boot leaves Paula: DMA's master switch on, every channel idle and silent
+    /// ([`AudioDma::booted`]). The game's own writes then turn the channels on with their bits
+    /// alone, so a mixer that starts here, not at power-on, hears them (T29: the app's).
+    pub fn booted(host_rate: u32) -> Paula {
+        let mut p = Paula::new(host_rate);
+        p.chip.set_dmacon(0x8200);
+        p
+    }
+
     /// The length of the frames from now on: [`LINES_PER_FRAME`] (a long frame, the default) or one
     /// fewer (short). Agnus's LOF bit decides it: it alternates while BPLCON0's LACE bit is set and
     /// keeps the last value when LACE is cleared, so Superfrog runs whole stretches of short frames.
