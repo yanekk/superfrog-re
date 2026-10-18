@@ -49,7 +49,7 @@ done · ⛔ blocked, needs a human. A task dropped by a plan amendment leaves th
 | T23 | app-shell | T21, T22 | ✅ | |
 | T24 | macos-menus | T23 | ✅ | |
 | T25 | controls-and-gamepad | T24 | ✅ | |
-| T26 | save-states | T24 | ✅ | Reviewed: one fix, a damaged header length panicked or allocated gigabytes (bincode io reader); now read from the slice, a test locks it. Probed 640 save/load round-trips across story, front end and level; build-check mutation went red in core and app tests; e2e five runs and OS layer green; build hash follows pure-crate edits only. Three deviations held. |
+| T26 | save-states | T24 | ✅ | Reviewed: two fixes. A damaged header length panicked or allocated gigabytes (now read from the slice); after merging T28, a .sflevel game reloaded with the disk map (state now carries it); tests lock both. Probed 640 round-trips across story, front end, level; build-check mutation red; e2e five runs, OS layer green. Three deviations held. |
 | T27 | crt-and-widescreen | T24 | ⬜ | |
 | T28 | level-override | T14, T24 | ✅ | |
 | T29 | app-drill | T21, T25, T26, T27, T28 | ⬜ | |
