@@ -32,7 +32,8 @@ use crate::pad::{PadInput, PadMap};
 pub enum Scale {
     /// The largest whole multiple that fits the window.
     Auto,
-    /// This multiple of the game's 320×256, or the largest that fits when the window is smaller.
+    /// This multiple of the game's largest display window (334×261), or the largest that fits
+    /// when the window is smaller.
     N(u32),
 }
 

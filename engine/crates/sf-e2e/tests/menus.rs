@@ -172,7 +172,7 @@ fn scale_from_a_script_sizes_the_window_and_is_remembered_and_fullscreen_is_refu
     assert!(c.exit.success(), "{}", c.stderr);
     let (img, info) = c.read_shot(150);
     let sf = info.scale_factor as u32;
-    assert_eq!(info.surface, (640 * sf, 512 * sf), "2×: {info:?}");
+    assert_eq!(info.surface, (668 * sf, 522 * sf), "2×: {info:?}");
     assert_eq!(common::assert_integer_scaled(&img, &info, &c.read_frame(info.frame)), 2 * sf);
     let settings = std::fs::read_to_string(app.home.join("settings.toml")).unwrap();
     assert!(settings.contains("scale = \"auto\""), "{settings}");
@@ -425,10 +425,10 @@ fn os_layer_scale_and_fullscreen_through_the_menu_bar_and_its_shortcut() {
     });
     app.start_os();
     // Auto opens the window at 2×: what a game pixel measures in the window server's units.
-    let units = app.os_window().1[2] as f64 / 640.0;
+    let units = app.os_window().1[2] as f64 / 668.0;
     for (title, n) in [("3×", 3), ("1×", 1), ("2×", 2)] {
         app.os_menu(&["View", "Scale", title]);
-        until(&format!("the window at {title}"), || window_is(&app, units, 320 * n));
+        until(&format!("the window at {title}"), || window_is(&app, units, 334 * n));
         let items = app.os_menu_items(&["View", "Scale"]);
         assert!(items.iter().all(|i| i.checked == (i.title == title)), "{items:?}");
     }
