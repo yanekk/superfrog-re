@@ -11,3 +11,6 @@ renders/    # derived game-art PNGs — reproducible from build/ via the tools
 # Copyrighted Superfrog disk images — supply your own; never committed/distributed
 *.zip
 *.adf
+
+# Levels exported from the disks (.sflevel, DESIGN §2.10): disk data, never committed
+*.sflevel

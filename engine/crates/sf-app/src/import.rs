@@ -21,6 +21,8 @@ use crate::home::{build, cache_path};
 /// The two buttons of the missing-disks message (owner, 2026-10-10).
 pub const CHOOSE: &str = "Choose Disks…";
 pub const QUIT: &str = "Quit";
+/// The refused level file's other button.
+pub const CANCEL: &str = "Cancel";
 
 /// The questions the app asks the player.
 pub trait Ui {
@@ -30,6 +32,14 @@ pub trait Ui {
     fn disks_missing(&mut self, message: &str) -> bool;
     /// `message` with an OK button.
     fn notice(&mut self, message: &str);
+    /// The save panel for an exported level, `name` filled in: where to write it, `None` when it
+    /// was cancelled (`levelfile.rs`).
+    fn save_level(&mut self, name: &str) -> Option<PathBuf>;
+    /// The open panel for a level file: the file chosen, `None` when it was cancelled.
+    fn open_level(&mut self) -> Option<PathBuf>;
+    /// A level file refused, `message` saying why. With `offer` (the disk level's button, `Play
+    /// W1-1 from the Disks`), `true` when the player chose it; without, a notice.
+    fn level_refused(&mut self, message: &str, offer: Option<&str>) -> bool;
 }
 
 /// The macOS panels, through rfd: sheets on `parent` when there is a window (with none, rfd shows
@@ -78,6 +88,43 @@ impl Ui for NativeUi {
     fn notice(&mut self, message: &str) {
         self.message(rfd::MessageLevel::Info, message, rfd::MessageButtons::Ok);
     }
+
+    fn save_level(&mut self, name: &str) -> Option<PathBuf> {
+        let d = rfd::FileDialog::new()
+            .set_title("Export Level")
+            .set_file_name(name)
+            .add_filter("Superfrog level", &["sflevel"]);
+        match &self.parent {
+            Some(w) => d.set_parent(&**w),
+            None => d,
+        }
+        .save_file()
+    }
+
+    fn open_level(&mut self) -> Option<PathBuf> {
+        let d = rfd::FileDialog::new()
+            .set_title("Play Level File")
+            .add_filter("Superfrog level", &["sflevel"]);
+        match &self.parent {
+            Some(w) => d.set_parent(&**w),
+            None => d,
+        }
+        .pick_file()
+    }
+
+    fn level_refused(&mut self, message: &str, offer: Option<&str>) -> bool {
+        let Some(offer) = offer else {
+            self.message(rfd::MessageLevel::Warning, message, rfd::MessageButtons::Ok);
+            return false;
+        };
+        let r = self.message(
+            rfd::MessageLevel::Warning,
+            message,
+            rfd::MessageButtons::OkCancelCustom(offer.into(), CANCEL.into()),
+        );
+        matches!(r, rfd::MessageDialogResult::Custom(ref b) if b == offer)
+            || r == rfd::MessageDialogResult::Ok
+    }
 }
 
 /// What the script answers the picker with.
@@ -87,14 +134,22 @@ pub enum Pick {
     Cancel,
 }
 
-/// The script's answers, in order, and a log of every prompt. With no answer left, the picker is
-/// cancelled and the missing-disks message answered Quit, so a run always ends.
+/// The script's answers, in order, and a log of every prompt. With no answer left, every panel
+/// is cancelled and the missing-disks message answered Quit, so a run always ends.
 #[derive(Debug, Default)]
 pub struct ScriptedUi {
     pub picks: VecDeque<Pick>,
     /// `true` for "Choose Disks…".
     pub answers: VecDeque<bool>,
-    /// Every prompt, one line each: `picker: …`, `missing: … -> choose|quit`, `notice: …`.
+    /// The save panel's answers: a path, or `None` for cancelled.
+    pub saves: VecDeque<Option<PathBuf>>,
+    /// The level-file open panel's answers.
+    pub opens: VecDeque<Option<PathBuf>>,
+    /// The refused level file's answers: `true` for playing the disk level.
+    pub level_answers: VecDeque<bool>,
+    /// Every prompt, one line each: `picker: …`, `missing: … -> choose|quit`, `notice: …`,
+    /// `save: <name> -> <path>|cancel`, `open: -> <path>|cancel`, `refused: … -> disk-level|cancel`
+    /// (`refused: …` alone when nothing was offered).
     pub log: Vec<String>,
     /// Where each line is appended as it is shown (the capture folder's `prompts.txt`).
     pub log_file: Option<PathBuf>,
@@ -134,6 +189,32 @@ impl Ui for ScriptedUi {
     fn notice(&mut self, message: &str) {
         self.record(format!("notice: {message}"));
     }
+
+    fn save_level(&mut self, name: &str) -> Option<PathBuf> {
+        let p = self.saves.pop_front().flatten();
+        self.record(format!("save: {name} -> {}", shown(&p)));
+        p
+    }
+
+    fn open_level(&mut self) -> Option<PathBuf> {
+        let p = self.opens.pop_front().flatten();
+        self.record(format!("open: -> {}", shown(&p)));
+        p
+    }
+
+    fn level_refused(&mut self, message: &str, offer: Option<&str>) -> bool {
+        if offer.is_none() {
+            self.record(format!("refused: {message}"));
+            return false;
+        }
+        let play = self.level_answers.pop_front().unwrap_or(false);
+        self.record(format!("refused: {message} -> {}", if play { "disk-level" } else { "cancel" }));
+        play
+    }
+}
+
+fn shown(p: &Option<PathBuf>) -> String {
+    p.as_ref().map_or("cancel".into(), |p| p.display().to_string())
 }
 
 /// `disks.toml`: the disk images the cache was last imported from (DESIGN §3.5).

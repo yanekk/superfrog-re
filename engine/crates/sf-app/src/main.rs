@@ -18,6 +18,7 @@ mod controls_window;
 mod home;
 mod import;
 mod input;
+mod levelfile;
 mod lock;
 mod menu;
 mod pacing;
@@ -28,11 +29,13 @@ mod settings;
 mod video;
 mod window;
 
+use std::collections::BTreeMap;
 use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::{Duration, Instant, SystemTime};
 
-use sf_core::{DisplayData, Game, Progress, Rng, Start, View};
+use sf_assets::LevelData;
+use sf_core::{DisplayData, Game, LevelId, Progress, Rng, Start, View};
 use sf_paula::Paula;
 use winit::application::ApplicationHandler;
 use winit::event::{ElementState, MouseButton, WindowEvent};
@@ -111,6 +114,9 @@ fn main() {
         Some(s) => Box::new(ScriptedUi {
             picks: s.picks.iter().cloned().collect(),
             answers: s.answers.iter().copied().collect(),
+            saves: s.saves.iter().cloned().collect(),
+            opens: s.opens.iter().cloned().collect(),
+            level_answers: s.level_answers.iter().copied().collect(),
             log: Vec::new(),
             log_file: log,
         }),
@@ -182,6 +188,8 @@ struct Run {
     /// The furthest progress remembered (DESIGN §2.9).
     furthest: Option<Progress>,
     display: Arc<DisplayData>,
+    /// The disk levels, for File → Export Level (`levelfile.rs`).
+    levels: BTreeMap<LevelId, LevelData>,
     seed: (u32, u32),
     game: Game,
     paula: Paula,
@@ -314,7 +322,7 @@ impl App {
             }
         };
         let display = Arc::new(DisplayData::new(&data));
-        drop(data);
+        let levels = data.levels;
         let game = Game::with_display(display.clone(), Start::PowerOn { seed: Rng::seeded(seed.0, seed.1) });
         let mut run = Run {
             _lock: lock,
@@ -323,6 +331,7 @@ impl App {
             settings,
             furthest,
             display,
+            levels,
             seed,
             game,
             paula: Paula::new(rate),

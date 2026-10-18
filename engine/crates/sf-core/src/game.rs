@@ -3,7 +3,7 @@
 
 use std::sync::Arc;
 
-use sf_assets::{GameData, LevelId};
+use sf_assets::{GameData, LevelData, LevelId};
 use sf_paula::PaulaWrite;
 
 use crate::audio::AudioDriver;
@@ -282,6 +282,20 @@ fn level_io(display: &DisplayData, mem: &AmigaMemory) -> (AudioDriver, u8) {
 impl Game {
     pub fn new(data: &GameData, start: Start) -> Game {
         Game::with_display(Arc::new(DisplayData::new(data)), start)
+    }
+
+    /// Play `ov` (a `.sflevel`, DESIGN §2.10) in place of the disk level it names: entered as
+    /// [`Start::Level`] enters it, through the same loader, so an unchanged export plays as the
+    /// disk level does. Every other level stays the disks'.
+    pub fn new_with_override(data: &GameData, ov: LevelData) -> Game {
+        Game::with_override(Arc::new(DisplayData::new(data)), ov)
+    }
+
+    /// [`Game::new_with_override`] with the disks' display content already built.
+    pub fn with_override(display: Arc<DisplayData>, ov: LevelData) -> Game {
+        let mut d = (*display).clone();
+        d.levels.insert(ov.id, sf_assets::t7mp_encode(&ov.t7mp));
+        Game::with_display(Arc::new(d), Start::Level(ov.id))
     }
 
     /// [`Game::new`] with the disks' display content already built, as a caller making many
