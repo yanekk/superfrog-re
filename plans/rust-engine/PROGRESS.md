@@ -49,7 +49,7 @@ done · ⛔ blocked, needs a human. A task dropped by a plan amendment leaves th
 | T23 | app-shell | T21, T22 | ✅ | |
 | T24 | macos-menus | T23 | ✅ | |
 | T25 | controls-and-gamepad | T24 | ⬜ | |
-| T26 | save-states | T24 | 🔍 | Game::save/load (serde+bincode, BLAKE3 body), Game ▸ Save/Load State 1–5 (⇧⌘N/⌘N), `states.rs`; 8 core, 6 app, 3 e2e + 1 OS-layer tests. Deviations: save/load take build and cache hash (pure crate cannot know them); engine build is version + source hash (`sf-app/build.rs`), not version alone; empty Load slots disabled. |
+| T26 | save-states | T24 | ✅ | Reviewed: one fix, a damaged header length panicked or allocated gigabytes (bincode io reader); now read from the slice, a test locks it. Probed 640 save/load round-trips across story, front end and level; build-check mutation went red in core and app tests; e2e five runs and OS layer green; build hash follows pure-crate edits only. Three deviations held. |
 | T27 | crt-and-widescreen | T24 | ⬜ | |
 | T28 | level-override | T14, T24 | ⬜ | |
 | T29 | app-drill | T21, T25, T26, T27, T28 | ⬜ | |
