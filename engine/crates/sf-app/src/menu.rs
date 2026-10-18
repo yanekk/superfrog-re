@@ -4,7 +4,7 @@
 //! ```text
 //! Superfrog   About Superfrog · Services · Hide, Hide Others, Show All · Quit Superfrog ⌘Q
 //! File        Import Disks… · Export Level ▸ W1-1… … WW-1… · Play Level File…
-//! Game        Continue from World N · Pause · Reset
+//! Game        Continue from World N · Pause · Reset · Controls…
 //! View        Scale ▸ 1× 2× 3× Auto · Fullscreen ⌃⌘F
 //! ```
 //!
@@ -43,6 +43,8 @@ pub enum Command {
     Pause,
     /// Game → Reset: power-on.
     Reset,
+    /// Game → Controls…: the window that rebinds keys and pad (`controls_window.rs`).
+    Controls,
     /// Superfrog → Quit Superfrog, ⌘Q, or the window closed.
     Quit,
 }
@@ -72,6 +74,7 @@ impl Command {
             Command::ToggleFullscreen => "fullscreen".into(),
             Command::Pause => "pause".into(),
             Command::Reset => "reset".into(),
+            Command::Controls => "controls".into(),
             Command::Quit => "quit".into(),
         }
     }
@@ -85,6 +88,7 @@ impl Command {
             "fullscreen" => Command::ToggleFullscreen,
             "pause" => Command::Pause,
             "reset" => Command::Reset,
+            "controls" => Command::Controls,
             "quit" => Command::Quit,
             "play-level-file" => Command::PlayLevelFile,
             _ if id.starts_with("export-") => Command::ExportLevel(sf_assets::level_id_named(&id[7..])?),
@@ -202,7 +206,14 @@ pub fn build_menu() -> MenuBar {
     let game = Submenu::with_items(
         "Game",
         true,
-        &[&continue_item, &PredefinedMenuItem::separator(), &pause, &item(Command::Reset, "Reset", None)],
+        &[
+            &continue_item,
+            &PredefinedMenuItem::separator(),
+            &pause,
+            &item(Command::Reset, "Reset", None),
+            &PredefinedMenuItem::separator(),
+            &item(Command::Controls, "Controls…", None),
+        ],
     );
     let scale_items: Vec<&dyn muda::IsMenuItem> = scales.iter().map(|(_, i)| i as &dyn muda::IsMenuItem).collect();
     let scale = Submenu::with_items("Scale", true, &scale_items).expect("a menu");
@@ -296,6 +307,7 @@ impl App {
                 run.paused = !run.paused;
             }
             Command::Reset => self.power_on(),
+            Command::Controls => self.open_controls(event_loop),
             Command::Quit => {
                 self.save_settings();
                 self.finish(event_loop);
@@ -384,6 +396,7 @@ mod tests {
             Command::ToggleFullscreen,
             Command::Pause,
             Command::Reset,
+            Command::Controls,
             Command::Quit,
         ];
         all.extend(export_levels().into_iter().map(Command::ExportLevel));

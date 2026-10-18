@@ -48,7 +48,7 @@ done · ⛔ blocked, needs a human. A task dropped by a plan amendment leaves th
 | T22 | app-rig | T09, T10, T12, T13 | ✅ | |
 | T23 | app-shell | T21, T22 | ✅ | |
 | T24 | macos-menus | T23 | ✅ | |
-| T25 | controls-and-gamepad | T24 | ⬜ | |
+| T25 | controls-and-gamepad | T24 | ✅ | |
 | T26 | save-states | T24 | ⬜ | |
 | T27 | crt-and-widescreen | T24 | ⬜ | |
 | T28 | level-override | T14, T24 | ✅ | Review: code clean; docs/14 fixed (version range, repeated keys), probed. Mutation dropping the override failed the wall test. Probed decoder edges: 2³², 1.0, BOM, CRLF, repeated key, W6-1alt. rfd's OkCancelCustom result mapping read-only, from its source; native save/open panels not driven, script layer only. |
