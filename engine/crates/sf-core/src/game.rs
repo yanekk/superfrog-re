@@ -485,19 +485,43 @@ impl Game {
             if let Some(o) = front.slot_outcome() {
                 self.slot_outcome = Some(o);
             }
+            let mut paula = out.paula;
             if front.in_level_loop() {
                 // `level_start` is over and `level_frame_loop` entered (T37): the level scene
                 // from the next frame, its poll reading the keyboard's register as it is.
+                let entered = front.loop_entered_on();
                 self.sdr = front.keyboard_sdr();
                 self.state.kbd_flag = front.keyboard_new();
                 self.state.kbd_acked = false;
                 self.front = None;
                 self.scene = Scene::level(self.state.l(h0(0x40da)), self.state.l(h0(0x40de)));
                 self.pending = None;
+                // With `vbl_count` left at 2 or more by the last level's last pass, the loop's
+                // first pass is due at once and begins in this frame, where `level_start` left
+                // the beam (T209: W2-2 in `game-whole`, the original's pass ending this frame
+                // in its middle).
+                if let Some(line) = entered
+                    && line < crate::level::beam::FRAME_LINES
+                    && crate::level::n_clear(self.state.w(VBL_COUNT).wrapping_sub(2))
+                {
+                    self.pending = Some(crate::level::beam::Pending {
+                        start: Box::new(self.state.clone()),
+                        clock: crate::level::beam::Clock { line, into: 0 },
+                        hw: Hw {
+                            sdr: self.sdr,
+                            key_in,
+                            ..Hw::of(input)
+                        },
+                        pre: paula.len() as u16,
+                        frames: Vec::new(),
+                        vbl: false,
+                    });
+                    paula.extend(self.level_frame(input, pacing, key_in, false).paula);
+                }
             }
             return FrameOut {
                 picture: out.picture,
-                paula: out.paula,
+                paula,
                 load: out.load,
                 resync: out.resync,
                 jobs: out.jobs,
@@ -505,6 +529,17 @@ impl Game {
                 disk_prompt: out.disk_prompt,
             };
         }
+        self.level_frame(input, pacing, key_in, draw)
+    }
+
+    /// A frame of the level's main program (or the rest of one, a pass begun in it pending).
+    fn level_frame(
+        &mut self,
+        input: FrameInput,
+        pacing: Pacing,
+        key_in: bool,
+        draw: bool,
+    ) -> FrameOut {
         let mut hw = Hw::of(input);
         hw.sdr = self.sdr;
         hw.key_in = key_in;
@@ -563,6 +598,17 @@ impl Game {
         }
     }
 
+    /// Frames the original's last load took beyond the one the engine's instant load stands
+    /// for, which the engine cannot know (the disk's timing): the vertical blank's sound and
+    /// keyboard poll on each, as the original runs them while the trackloader has the main
+    /// program. Conformance's engine run alone is given
+    /// them as inputs, as the clock's seeds are (DESIGN §2.1 check 4; owner, T209).
+    pub fn load_blanks(&mut self, frames: u32) {
+        if let Some(front) = self.front.as_mut() {
+            front.load_blanks(&mut self.state, &self.display, frames);
+        }
+    }
+
     /// The frame the original shows for this state (DESIGN §3.3), widened by `view`.
     pub fn render(&self, view: View) -> Picture {
         match (self.scene, &self.shown) {
@@ -580,6 +626,14 @@ impl Game {
         }
         if let Some(s) = self.story.as_mut() {
             s.load_line = line;
+        }
+    }
+
+    /// For conformance's engine run alone: how many frames the original held the bonus level's
+    /// loading picture up while it loaded, the load's length (DESIGN §2.1 check 4; owner, T209).
+    pub fn set_screen_frames(&mut self, frames: Option<u16>) {
+        if let Some(f) = self.front.as_mut() {
+            f.screen_frames = frames;
         }
     }
 

@@ -645,7 +645,8 @@ impl WorldLoad {
                 if self.world == exit::BONUS_WORLD && !cx.load_given {
                     // No walk times the bonus level's picture: it is up as long as these loads
                     // (owner, T21).
-                    return call(Routine::Frames(super::common::Frames(BONUS_PICTURE_FRAMES)));
+                    let held = cx.screen_frames.unwrap_or(BONUS_PICTURE_FRAMES);
+                    return call(Routine::Frames(super::common::Frames(held)));
                 }
                 Yield::Return
             }

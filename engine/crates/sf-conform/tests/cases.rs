@@ -93,5 +93,7 @@ case!(render_wb_1, "render-wb-1");
 
 // Stretches of `game-whole` (T208): W6-4's start after W6-3, and the overlay before the final
 // level's load. About 9 min each to the sync point the first time, then seconds from the cache.
+// W2-2's start after W2-1 (T209), about 2 min the first time.
+case!(#[ignore = "slow: about 2 min uncached"] whole_w2_2_start, "whole-w2-2-start");
 case!(#[ignore = "slow: about 9 min uncached"] whole_w6_4_start, "whole-w6-4-start");
 case!(#[ignore = "slow: about 9 min uncached"] whole_final_load, "whole-final-load");

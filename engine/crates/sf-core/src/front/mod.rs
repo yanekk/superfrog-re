@@ -312,6 +312,10 @@ pub(crate) struct Cx<'a> {
     pub load: Option<crate::game::LoadEnd>,
     /// The line the runner says the original's load ended on (conformance only).
     pub load_line: Option<u16>,
+    /// For conformance's engine run alone: the frames the original showed the bonus level's
+    /// loading picture while it loaded (T209), which the picture is held for instead of
+    /// `BONUS_PICTURE_FRAMES`.
+    pub screen_frames: Option<u16>,
     /// At a load: the copper list then, and the line the load ends on with the list's bytes.
     pub load_point: Option<(u32, (u16, Snapshot))>,
     /// Memory a load this frame wrote that the engine does not model (a file kept packed),
@@ -587,6 +591,8 @@ pub struct Front {
     fetch: Option<render::copper::Fetch>,
     /// For conformance: the line the next load ends on in the original ([`Cx::load_line`]).
     pub(crate) load_line: Option<u16>,
+    /// For conformance: how long the original held the next timed loading screen ([`Cx::screen_frames`]).
+    pub(crate) screen_frames: Option<u16>,
     /// Frames stepped.
     frame: u32,
     /// Paula writes the CPU made after the frame's end, which belong to the next frame.
@@ -690,6 +696,7 @@ impl Front {
             frame: 0,
             fetch: None,
             load_line: None,
+            screen_frames: None,
             carry: Vec::new(),
             stalled: None,
             unpack: None,
@@ -757,6 +764,7 @@ impl Front {
             frame: 0,
             fetch: None,
             load_line: None,
+            screen_frames: None,
             carry: Vec::new(),
             stalled: None,
             unpack: None,
@@ -811,6 +819,7 @@ impl Front {
             frame: 0,
             fetch: None,
             load_line: None,
+            screen_frames: None,
             carry: Vec::new(),
             stalled: None,
             unpack: None,
@@ -904,6 +913,7 @@ impl Front {
             cop1lc: self.cop1lc,
             load: None,
             load_line: None,
+            screen_frames: None,
             load_point: None,
             resync: Vec::new(),
             jobs: Vec::new(),
@@ -952,6 +962,55 @@ impl Front {
         }
         self.frame += 1;
         (paula, jobs)
+    }
+
+    /// `frames` vertical blanks with the main program away in the trackloader: the handler's
+    /// sound and keyboard poll ([`vbl::load_blank`]), as the original runs them on each frame a
+    /// load takes. The engine loads at once; how long the original's load took is the
+    /// disk's, which the engine cannot know, given to it as an input (T209).
+    pub(crate) fn load_blanks(&mut self, s: &mut State, display: &DisplayData, frames: u32) {
+        for _ in 0..frames {
+            let mut paula = Vec::new();
+            let mut cx = Cx {
+                s: &mut *s,
+                data: &display.front,
+                display,
+                input: FrameInput::NONE,
+                paula: &mut paula,
+                keyboard: self.keyboard,
+                line: 0,
+                cop1lc: self.cop1lc,
+                load: None,
+                load_line: None,
+                screen_frames: None,
+                load_point: None,
+                resync: Vec::new(),
+                jobs: Vec::new(),
+                ret: self.ret,
+                busy_from: None,
+                reveal: None,
+                reveal_state: None,
+                fetch: self.fetch.unwrap_or_default(),
+                stall: None,
+                unpack: None,
+                frame: self.frame,
+                seed: None,
+                unported: Vec::new(),
+                races: Vec::new(),
+                slot_outcome: None,
+                audio: None,
+                schedule: &[],
+                early: Vec::new(),
+                outcome: None,
+                load_runs: Vec::new(),
+                load_given: false,
+                disk_prompt: None,
+                into: None,
+            };
+            vbl::load_blank(&mut cx);
+            vbl::end(&mut cx);
+            self.keyboard = cx.keyboard;
+        }
     }
 
     /// A copper interrupt requested, or acknowledged, by these writes in order.
@@ -1015,6 +1074,18 @@ impl Front {
         matches!(self.stack.last().map(|f| &f.routine), Some(Routine::LevelLoop))
     }
 
+    /// The line `level_start` entered the level's loop on, in the frame just run (T209).
+    pub(crate) fn loop_entered_on(&self) -> Option<u16> {
+        match self.stack.last() {
+            Some(Frame {
+                routine: Routine::LevelLoop,
+                wait: Some((Yield::Poll, line)),
+                ..
+            }) => Some(*line),
+            _ => None,
+        }
+    }
+
     /// The boot's work, which is all load: done at once, before the first frame.
     pub fn boot(&mut self, s: &mut State, display: &DisplayData) {
         if std::mem::take(&mut self.booting) {
@@ -1030,6 +1101,7 @@ impl Front {
                 cop1lc: self.cop1lc,
                 load: None,
                 load_line: None,
+                screen_frames: None,
                 load_point: None,
                 resync: Vec::new(),
                 jobs: Vec::new(),
@@ -1093,6 +1165,7 @@ impl Front {
             cop1lc: self.cop1lc,
             load: None,
             load_line: self.load_line.take(),
+            screen_frames: self.screen_frames.take(),
             load_point: None,
             resync: Vec::new(),
             jobs: Vec::new(),

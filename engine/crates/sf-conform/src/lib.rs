@@ -244,6 +244,11 @@ fn run_inner(
     });
     // The original's frames loading under a timed screen since the engine's load ([`timed_screen`]).
     let mut under_screen: Vec<(FrameInput, milestones::FrameState)> = Vec::new();
+    // The vertical blanks the game's handler ran in the original's load this frame, not under a
+    // timed screen: check 4's engine is told them (owner, T209).
+    let mut load_blanks = 0u32;
+    // The line the original's load ended on, as the runner's engine fitted it (T209).
+    let mut load_line: Option<u16> = None;
     // COP1LC as the original's CPU last wrote it (from the start's as the engine has it).
     let mut cop = game.cop1lc();
     let mut outcome = Outcome {
@@ -322,6 +327,8 @@ fn run_inner(
             if let Some(end) = ours.load {
                 // The engine loaded at once; the original is compared once its load is over.
                 under_screen.clear();
+                load_blanks = 0;
+                load_line = None;
                 let mut n = 0;
                 let mut seen = false;
                 let mut prev_mem = mem.clone();
@@ -361,8 +368,13 @@ fn run_inner(
                     of += 1;
                     prev_mem = std::mem::replace(&mut mem, sync::core_memory(amiga.memory()));
                     // A frame the original loads under a screen it times itself counts as play
-                    // for check 4 (owner, 2026-10-15).
-                    if alone.is_some() && cop.is_some_and(timed_screen) {
+                    // for check 4 (owner, 2026-10-15); the others are the load's length, the
+                    // vertical blanks the game's handler ran in it (owner, T209).
+                    let screen = alone.is_some() && cop.is_some_and(timed_screen) && !end_pic_over(cop, &mem);
+                    if !screen && sync::game_owns_vbl(&mem) {
+                        load_blanks += 1;
+                    }
+                    if screen {
                         under_screen.push((
                             case.script.input_at(of - 1),
                             milestones::FrameState::read(
@@ -448,6 +460,7 @@ fn run_inner(
                             let (g, out) = redo(Some(line));
                             if fits(&g, &out) {
                                 (game, ours) = (g, out);
+                                load_line = Some(line);
                                 break;
                             }
                         }
@@ -461,7 +474,11 @@ fn run_inner(
         if let Some(a) = alone.as_mut() {
             let twice = amiga.frames_run() == 2;
             let skipped = std::mem::take(&mut under_screen);
-            a.frame(case, f, input, pacing, twice, (&amiga, &mem), cop, &ours.resync, skipped);
+            let blanks = ours
+                .load
+                .is_some()
+                .then(|| (std::mem::take(&mut load_blanks), load_line.take()));
+            a.frame(case, f, input, pacing, twice, (&amiga, &mem), cop, &ours.resync, skipped, blanks);
         }
         let theirs_mid = stepped && sync::mid_pass(&amiga.cpu(), &mem);
         let mut step = compare::PassStep::default();
@@ -721,6 +738,9 @@ struct AloneRun {
     /// Frames of play beyond the runner's: the original's load frames under a screen it times
     /// itself, which count as play (owner, 2026-10-15; [`timed_screen`]).
     extra: u32,
+    /// `SF_CONFORM_ALONE_TRACE=<file>`: at each frame both sides end a pass, the gameplay
+    /// variables the engine alone has unlike the original's, written whenever their names change.
+    trace: Option<(std::io::BufWriter<std::fs::File>, String)>,
 }
 
 /// The copper lists of the screens whose own timers run on while the original loads under them
@@ -734,6 +754,17 @@ pub fn timed_screen(cop1lc: u32) -> bool {
     [h2(0x6750), h2(0x69f0), h2(0x6494)].contains(&cop1lc)
 }
 
+/// The end-of-world picture (h2+$6494) up with its time over: a world's end picture that waits
+/// for it (World 2's) stays up while the original loads the next world, which is load time, not
+/// play (T209: `game-whole` after W2-4, 390 frames).
+fn end_pic_over(cop1lc: Option<u32>, mem: &AmigaMemory) -> bool {
+    let t = (mem.byte(DISPLAY_TIMER) as u16) << 8 | mem.byte(DISPLAY_TIMER + 1) as u16;
+    cop1lc == Some(sf_core::layout::h2(0x6494)) && (t as i16) < 1
+}
+
+/// `display_timer` (h0+$123d4).
+const DISPLAY_TIMER: u32 = h0(0x123d4);
+
 impl AloneRun {
     fn new(game: Game, disk3: bool) -> AloneRun {
         AloneRun {
@@ -746,6 +777,9 @@ impl AloneRun {
             first_var: None,
             disk3,
             extra: 0,
+            trace: std::env::var_os("SF_CONFORM_ALONE_TRACE").map(|p| {
+                (std::io::BufWriter::new(std::fs::File::create(p).unwrap()), String::new())
+            }),
         }
     }
 
@@ -765,6 +799,7 @@ impl AloneRun {
         cop1lc: Option<u32>,
         resync: &[(u32, u32)],
         skipped: Vec<(FrameInput, FrameState)>,
+        load_blanks: Option<(u32, Option<u16>)>,
     ) {
         let rng = def(VarId::RngState);
         let len = rng.width.len();
@@ -773,6 +808,15 @@ impl AloneRun {
                 .push_back((rng.addr..rng.addr + len).map(|a| mem.byte(a)).collect());
         }
         if self.panicked.is_none() {
+            // The original's load ended this frame: its timing, which is the disk's, is an input
+            // (owner, T209): its vertical blanks first (`Game::load_blanks`), wherever the
+            // engine's own load fell; the frames it held a loading picture for; its end's line.
+            if let Some((n, line)) = load_blanks {
+                self.game.load_blanks(n);
+                self.game
+                    .set_screen_frames((!skipped.is_empty()).then_some(skipped.len() as u16));
+                self.game.set_load_line(line);
+            }
             let g = &mut self.game;
             let stepped = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
                 if twice {
@@ -831,6 +875,26 @@ impl AloneRun {
                 f,
                 format!("{} at ${:06x}: original ${t:x}, engine ${o:x}", v.name, v.addr),
             ));
+        }
+        if let Some(t) = self.trace.as_mut()
+            && !ours.story
+            && !theirs.story
+            && !g.mid_pass()
+            && !sync::mid_pass(&amiga.cpu(), mem)
+        {
+            use std::io::Write;
+            let diffs = compare::gameplay_diffs(case, g.layout(), &g.probe(), mem);
+            let names: Vec<&str> = diffs.iter().map(|d| d.0.name).collect();
+            let key = names.join(" ");
+            if key != t.1 {
+                let detail: Vec<String> = diffs
+                    .iter()
+                    .take(12)
+                    .map(|(v, a, b)| format!("{}@{:x}={:x}/{:x}", v.name, v.addr, a, b))
+                    .collect();
+                let _ = writeln!(t.0, "{f} cop {:x?}: {}", cop1lc, detail.join(" "));
+                t.1 = key;
+            }
         }
         let at = (f + self.extra) as u64;
         if skipped.is_empty() {
