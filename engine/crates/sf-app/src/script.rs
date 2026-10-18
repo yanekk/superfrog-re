@@ -18,7 +18,8 @@
 //! 70: shot              # write the window as presented to the capture folder (window-NNNNN.png)
 //! 80: continue          # Game → Continue from World N (`menu continue`)
 //! 90: menu pause        # a menu command, by its item's id (menu.rs `Command::id`, `-` as a space):
-//!                       # import, continue, scale 1|2|3|auto, fullscreen, pause, reset, quit
+//!                       # import, continue, scale 1|2|3|auto, fullscreen, pause, reset, quit,
+//!                       # export W1-1 (any level id), play-level-file
 //! ```
 //!
 //! Before the game, the launch's questions (`import.rs`) take the script's answers in order:
@@ -27,6 +28,15 @@
 //! pick /d/one.zip; /d/two.zip   # what the disk picker returns (`;` between files)
 //! pick cancel                   # the picker cancelled
 //! answer choose                 # the missing-disks message: "Choose Disks…" (or `quit`)
+//! ```
+//!
+//! and so do the panels of File → Export Level and Play Level File… (`levelfile.rs`), each its own
+//! queue:
+//!
+//! ```text
+//! save /tmp/out/W1-1.sflevel    # the export's save panel (or `save cancel`)
+//! open /tmp/out/W1-1.sflevel    # Play Level File…'s open panel (or `open cancel`)
+//! answer disk-level             # a refused level file: play its disk level (or `answer cancel`)
 //! ```
 
 use std::path::PathBuf;
@@ -57,6 +67,12 @@ pub struct Script {
     pub picks: Vec<Pick>,
     /// The missing-disks message's answers, in order: `true` for "Choose Disks…".
     pub answers: Vec<bool>,
+    /// The export's save panel's answers, in order: `None` for cancelled.
+    pub saves: Vec<Option<PathBuf>>,
+    /// Play Level File…'s open panel's answers, in order.
+    pub opens: Vec<Option<PathBuf>>,
+    /// A refused level file's answers, in order: `true` for playing the disk level.
+    pub level_answers: Vec<bool>,
 }
 
 impl Script {
@@ -95,7 +111,23 @@ impl Script {
                 match (words.get(1).copied(), words.len()) {
                     (Some("choose"), 2) => s.answers.push(true),
                     (Some("quit"), 2) => s.answers.push(false),
-                    _ => return Err(err("`answer` takes `choose` or `quit`")),
+                    (Some("disk-level"), 2) => s.level_answers.push(true),
+                    (Some("cancel"), 2) => s.level_answers.push(false),
+                    _ => return Err(err("`answer` takes `choose`, `quit`, `disk-level` or `cancel`")),
+                }
+                continue;
+            }
+            if words[0] == "save" || words[0] == "open" {
+                let rest = line[words[0].len()..].trim();
+                let answer = match rest {
+                    "" => return Err(err("a path or `cancel` is missing")),
+                    "cancel" => None,
+                    p => Some(PathBuf::from(p)),
+                };
+                if words[0] == "save" {
+                    s.saves.push(answer);
+                } else {
+                    s.opens.push(answer);
                 }
                 continue;
             }
@@ -234,6 +266,24 @@ mod tests {
     }
 
     #[test]
+    fn the_level_file_panels_and_their_menu_commands_parse() {
+        let s = Script::parse(
+            "save /t/My Levels/W1-1.sflevel\nsave cancel\nopen /t/a.sflevel\nopen cancel\n\
+             answer disk-level\nanswer cancel\nanswer choose\n1: menu export W6-2alt\n2: menu play-level-file\n",
+        )
+        .unwrap();
+        assert_eq!(s.saves, vec![Some("/t/My Levels/W1-1.sflevel".into()), None]);
+        assert_eq!(s.opens, vec![Some("/t/a.sflevel".into()), None]);
+        assert_eq!(s.level_answers, vec![true, false]);
+        assert_eq!(s.answers, vec![true]);
+        assert_eq!(
+            s.at(1).collect::<Vec<_>>(),
+            vec![Event::Command(Command::ExportLevel("W6-2alt".parse().unwrap()))]
+        );
+        assert_eq!(s.at(2).collect::<Vec<_>>(), vec![Event::Command(Command::PlayLevelFile)]);
+    }
+
+    #[test]
     fn a_bad_line_is_refused_with_its_number() {
         for bad in [
             "10: down Nope",
@@ -250,6 +300,10 @@ mod tests {
             "5: menu",
             "5: menu jump",
             "5: menu scale 0",
+            "5: menu export W7-1",
+            "save",
+            "open",
+            "answer play",
         ] {
             let e = Script::parse(&format!("\n{bad}")).unwrap_err();
             assert!(e.contains("line 2"), "{bad}: {e}");

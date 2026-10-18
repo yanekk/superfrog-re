@@ -3,7 +3,7 @@
 //!
 //! ```text
 //! Superfrog   About Superfrog · Services · Hide, Hide Others, Show All · Quit Superfrog ⌘Q
-//! File        Import Disks…
+//! File        Import Disks… · Export Level ▸ W1-1… … WW-1… · Play Level File…
 //! Game        Continue from World N · Pause · Reset
 //! View        Scale ▸ 1× 2× 3× Auto · Fullscreen ⌃⌘F
 //! ```
@@ -16,7 +16,7 @@ use muda::accelerator::{Accelerator, Code, Modifiers};
 use muda::{
     AboutMetadata, CheckMenuItem, Menu, MenuEvent, MenuItem, PredefinedMenuItem, Submenu,
 };
-use sf_core::{Game, Progress, Rng, Start};
+use sf_core::{Game, LevelId, Progress, Rng, Start};
 use sf_paula::Paula;
 use winit::event_loop::ActiveEventLoop;
 
@@ -28,6 +28,11 @@ use crate::settings::Scale;
 pub enum Command {
     /// File → Import Disks…: the picker; the game starts again on the disks chosen.
     ImportDisks,
+    /// File → Export Level ▸ this level: the save panel; the disk level written there as a
+    /// `.sflevel` (DESIGN §2.10, `levelfile.rs`).
+    ExportLevel(LevelId),
+    /// File → Play Level File…: the open panel; the level file played in place of its disk level.
+    PlayLevelFile,
     /// Game → Continue from World N: the furthest world reached, as its level code starts it.
     ContinueFromProgress,
     /// View → Scale.
@@ -42,6 +47,15 @@ pub enum Command {
     Quit,
 }
 
+/// The levels File → Export Level offers, in the game's order: worlds 1–6, W6's second set of
+/// maps, the bonus level, the final level (docs/LEVEL-INDEX.md).
+pub fn export_levels() -> Vec<LevelId> {
+    let mut ids: Vec<String> = (1..=6).flat_map(|w| (1..=4).map(move |l| format!("W{w}-{l}"))).collect();
+    ids.extend((1..=4).map(|l| format!("W6-{l}alt")));
+    ids.extend(["WB-1".to_string(), "WW-1".to_string()]);
+    ids.iter().map(|s| sf_assets::level_id_named(s).expect("a level id")).collect()
+}
+
 /// The scales the View menu offers.
 pub const SCALES: [Scale; 4] = [Scale::N(1), Scale::N(2), Scale::N(3), Scale::Auto];
 
@@ -50,6 +64,8 @@ impl Command {
     pub fn id(self) -> String {
         match self {
             Command::ImportDisks => "import".into(),
+            Command::ExportLevel(id) => format!("export-{id}"),
+            Command::PlayLevelFile => "play-level-file".into(),
             Command::ContinueFromProgress => "continue".into(),
             Command::Scale(Scale::Auto) => "scale-auto".into(),
             Command::Scale(Scale::N(n)) => format!("scale-{n}"),
@@ -70,6 +86,8 @@ impl Command {
             "pause" => Command::Pause,
             "reset" => Command::Reset,
             "quit" => Command::Quit,
+            "play-level-file" => Command::PlayLevelFile,
+            _ if id.starts_with("export-") => Command::ExportLevel(sf_assets::level_id_named(&id[7..])?),
             _ => {
                 let n: u32 = id.strip_prefix("scale-")?.parse().ok()?;
                 (1..=16).contains(&n).then_some(Command::Scale(Scale::N(n)))?
@@ -165,7 +183,22 @@ pub fn build_menu() -> MenuBar {
             &quit,
         ],
     );
-    let file = Submenu::with_items("File", true, &[&item(Command::ImportDisks, "Import Disks…", None)]);
+    let exports: Vec<MenuItem> = export_levels()
+        .into_iter()
+        .map(|id| item(Command::ExportLevel(id), &format!("{id}…"), None))
+        .collect();
+    let export_items: Vec<&dyn muda::IsMenuItem> = exports.iter().map(|i| i as &dyn muda::IsMenuItem).collect();
+    let export = Submenu::with_items("Export Level", true, &export_items).expect("a menu");
+    let file = Submenu::with_items(
+        "File",
+        true,
+        &[
+            &item(Command::ImportDisks, "Import Disks…", None),
+            &PredefinedMenuItem::separator(),
+            &export,
+            &item(Command::PlayLevelFile, "Play Level File…", None),
+        ],
+    );
     let game = Submenu::with_items(
         "Game",
         true,
@@ -253,6 +286,8 @@ impl App {
         eprintln!("superfrog: menu {} after step {}", c.id(), run.steps);
         match c {
             Command::ImportDisks => self.import_disks(),
+            Command::ExportLevel(id) => self.export_level(id),
+            Command::PlayLevelFile => self.play_level_file(),
             Command::ContinueFromProgress => self.continue_game(),
             Command::Scale(s) => self.set_scale(s),
             Command::ToggleFullscreen => self.toggle_fullscreen(),
@@ -315,15 +350,21 @@ impl App {
                 None
             }
         };
-        let run = self.run.as_mut().expect("running");
-        // The panels held the main thread: the game carries on from now rather than catching up.
-        let now = run.clock.samples() + run.lead;
-        run.pacer.skip_to(now);
+        self.after_panel();
         if let Some(data) = data {
+            let run = self.run.as_mut().expect("running");
             run.display = std::sync::Arc::new(sf_core::DisplayData::new(&data));
-            drop(data);
+            run.levels = data.levels;
             self.power_on();
         }
+    }
+
+    /// After a panel: it held the main thread, so the game carries on from now rather than
+    /// catching up.
+    pub(crate) fn after_panel(&mut self) {
+        let run = self.run.as_mut().expect("running");
+        let now = run.clock.samples() + run.lead;
+        run.pacer.skip_to(now);
     }
 }
 
@@ -333,8 +374,9 @@ mod tests {
 
     #[test]
     fn every_command_s_id_names_it() {
-        let all = [
+        let mut all = vec![
             Command::ImportDisks,
+            Command::PlayLevelFile,
             Command::ContinueFromProgress,
             Command::Scale(Scale::N(1)),
             Command::Scale(Scale::N(3)),
@@ -344,12 +386,26 @@ mod tests {
             Command::Reset,
             Command::Quit,
         ];
+        all.extend(export_levels().into_iter().map(Command::ExportLevel));
         for c in all {
             assert_eq!(Command::from_id(&c.id()), Some(c), "{}", c.id());
         }
-        for bad in ["", "scale-0", "scale-17", "scale-x", "about", "Quit"] {
+        for bad in ["", "scale-0", "scale-17", "scale-x", "about", "Quit", "export-", "export-W7-1"] {
             assert_eq!(Command::from_id(bad), None, "{bad}");
         }
+    }
+
+    #[test]
+    fn export_offers_every_level_on_the_disks_once() {
+        let ids = export_levels();
+        assert_eq!(ids.len(), 30, "the 30 maps on the disks");
+        let names: Vec<String> = ids.iter().map(|i| i.to_string()).collect();
+        assert_eq!(&names[..2], ["W1-1", "W1-2"]);
+        assert_eq!(&names[24..], ["W6-1alt", "W6-2alt", "W6-3alt", "W6-4alt", "WB-1", "WW-1"]);
+        let mut unique = ids.clone();
+        unique.sort();
+        unique.dedup();
+        assert_eq!(unique.len(), 30);
     }
 
     #[test]
