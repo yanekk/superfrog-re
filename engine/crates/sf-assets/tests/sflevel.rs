@@ -141,7 +141,7 @@ fn each_refusal_from_a_crafted_file() {
         (with("\"version\":1.5,\"replaces\":\"W1-1\""), SflevelError::WrongFormat),
         (with("\"version\":1"), SflevelError::WrongFormat),
         (good.replace("\"chunk\": {\"disk\": 1", "\"chunk\": {\"disk\": 9"), SflevelError::WrongFormat),
-        (with(&format!("\"version\":1,\"replaces\":\"W1-1\",\"sections\":{{\"t7mp\":5}}")), SflevelError::WrongFormat),
+        (with("\"version\":1,\"replaces\":\"W1-1\",\"sections\":{\"t7mp\":5}"), SflevelError::WrongFormat),
         (good.replace("\"version\": 1", "\"version\": 2"), SflevelError::Version(2)),
         (good.replace("\"version\": 1", "\"version\": 0"), SflevelError::Version(0)),
         (good.replace("\"W1-1\"", "\"W7-1\""), SflevelError::UnknownLevel("W7-1".into())),

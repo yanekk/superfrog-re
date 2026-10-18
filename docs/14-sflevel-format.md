@@ -29,6 +29,8 @@ UTF-8 JSON, one object:
 }
 ```
 
+(The `sector` and the cut-off base64 are an example's.)
+
 | Field | Required | Meaning |
 |---|---|---|
 | `format` | yes | the string `"sflevel"` |

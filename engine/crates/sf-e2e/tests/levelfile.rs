@@ -65,7 +65,7 @@ fn w1_1_exported_from_the_menu_and_played_from_the_menu_has_the_disk_level_s_fra
     let w1_1 = &data.levels[&"W1-1".parse().unwrap()];
     assert_eq!(written, sf_assets::sflevel_encode(w1_1), "the export is the disk level");
     // Where the player chose and nowhere else: one level file in the home, none in the repo.
-    assert_eq!(level_files(&app.home), [file.clone()]);
+    assert_eq!(level_files(&app.home), std::slice::from_ref(&file));
     let repo = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../..");
     assert_eq!(level_files(&repo), Vec::<std::path::PathBuf>::new(), "an export landed in the repo");
     // Before the file: the game from power-on; from it, the disk level's frames.

@@ -18,6 +18,8 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-18 | 📌 | T28: `W6-1alt` is in `GameData.levels` (30 maps) but `LevelId::from_str` refuses it; `sf_assets::level_id_named` takes it. Left alone: save states (T26) of an override game would reload the disk level unless they carry the file. |
+| 2026-10-18 | 📌 | T28: W1-1:92,49 is the pillar cell `frog-wall` stops at (x 1440); cleared, the frog passes. An edited cell also changes the playfield buffers once on screen, not only `level_map`. |
 | 2026-10-18 | 📌 | T24 review: fake unverified against real — `menus.rs` OS fullscreen test failed twice with the screen locked (first toggle, then second ⌃⌘F). Owner chose close unverified. Rerun unlocked: `SF_E2E_OS=1 cargo test -p sf-e2e --test menus os_layer_scale -- --ignored`. |
 | 2026-10-18 | 📌 | T24 review, read-only, left alone: a paused step pushes no samples, so the device drains its 1/25 s lead; after resume the queue sits near empty and may underrun until it refills. Silent app today (T22). |
 | 2026-10-18 | 📌 | T24, macOS: with the screen locked the OS layer still clicks menus and posts keys, but AX lists no app windows, captures come back blank and fullscreen never happens (T23's picker and fullscreen OS tests too). Check `CGSSessionScreenIsLocked` first. |
