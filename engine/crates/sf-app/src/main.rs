@@ -16,6 +16,7 @@ mod home;
 mod import;
 mod input;
 mod lock;
+mod menu;
 mod pacing;
 mod progress;
 mod script;
@@ -39,8 +40,9 @@ use crate::args::Args;
 use crate::audio::{Audio, Clock, NoChip};
 use crate::capture::Capture;
 use crate::import::{NativeUi, ScriptedUi, Ui};
-use crate::input::{HostInput, Input, Shortcut};
+use crate::input::{HostInput, Input};
 use crate::lock::Lock;
+use crate::menu::{Command, MenuBar};
 use crate::pacing::{Pacer, Presenter};
 use crate::script::{Event, Script};
 use crate::settings::{Scale, Settings};
@@ -84,21 +86,36 @@ fn main() {
         std::process::exit(1);
     }
 
+    menu::before_launch();
     let mut builder = EventLoop::builder();
     #[cfg(target_os = "macos")]
     {
         use winit::platform::macos::EventLoopBuilderExtMacOS;
         // A scripted run must not take the keyboard from whatever the person is using.
         builder.with_activate_ignoring_other_apps(script.is_none());
+        // The app's own menu bar replaces winit's (`menu.rs`).
+        builder.with_default_menu(false);
     }
     let event_loop = builder.build().unwrap_or_else(|e| {
         eprintln!("superfrog: no event loop: {e}");
         std::process::exit(1);
     });
+    let log = args.capture.as_ref().map(|d| d.join("prompts.txt"));
+    let ui: Box<dyn Ui> = match &script {
+        Some(s) => Box::new(ScriptedUi {
+            picks: s.picks.iter().cloned().collect(),
+            answers: s.answers.iter().copied().collect(),
+            log: Vec::new(),
+            log_file: log,
+        }),
+        None => Box::new(NativeUi { parent: None }),
+    };
     let mut app = App {
         args,
         home,
         script,
+        ui,
+        menu: None,
         run: None,
         started: false,
         status: 0,
@@ -139,6 +156,9 @@ struct App {
     args: Args,
     home: PathBuf,
     script: Option<Script>,
+    /// Every question to the player: the native panels, or the script's answers.
+    ui: Box<dyn Ui>,
+    menu: Option<MenuBar>,
     /// The game, once the launch is through.
     run: Option<Run>,
     started: bool,
@@ -156,6 +176,10 @@ struct Run {
     seed: (u32, u32),
     game: Game,
     paula: Paula,
+    /// The mixer's output rate.
+    rate: u32,
+    /// Game → Pause: the game is not stepped (`menu.rs`).
+    paused: bool,
     input: Input,
     pacer: Pacer,
     clock: Clock,
@@ -180,24 +204,14 @@ impl App {
     /// opens first (black), so the picker and the messages are sheets on it rather than panels of
     /// their own; an import-only run (`--max-frames 0`) opens none.
     fn start(&mut self, event_loop: &ActiveEventLoop) {
-        let scripted = |s: &Script, log: Option<PathBuf>| -> Box<dyn Ui> {
-            Box::new(ScriptedUi {
-                picks: s.picks.iter().cloned().collect(),
-                answers: s.answers.iter().copied().collect(),
-                log: Vec::new(),
-                log_file: log,
-            })
-        };
-        let log = self.args.capture.as_ref().map(|d| d.join("prompts.txt"));
-        let mut ui = match &self.script {
-            Some(s) => scripted(s, log.clone()),
-            None => Box::new(NativeUi { parent: None }),
-        };
+        let menu = menu::build_menu();
+        menu.install(event_loop);
+        self.menu = Some(menu);
         let lock = match Lock::acquire(&self.home) {
             Ok(l) => l,
             Err(e) => {
                 eprintln!("superfrog: {e}");
-                ui.notice(&e.to_string());
+                self.ui.notice(&e.to_string());
                 self.status = 1;
                 return event_loop.exit();
             }
@@ -220,22 +234,22 @@ impl App {
             }
         };
         if self.script.is_none() {
-            ui = Box::new(NativeUi {
+            self.ui = Box::new(NativeUi {
                 parent: window.clone(),
             });
         }
         for m in [settings_damaged, progress_damaged].into_iter().flatten() {
             eprintln!("superfrog: {m}");
-            ui.notice(&m);
+            self.ui.notice(&m);
         }
-        let data = match import::launch(&self.home, self.args.cache_from_disks.as_deref(), &mut *ui)
+        let data = match import::launch(&self.home, self.args.cache_from_disks.as_deref(), &mut *self.ui)
         {
             Ok(Some(d)) => d,
             Ok(None) => return event_loop.exit(), // The player chose Quit.
             Err(e) => {
                 eprintln!("superfrog: {e}");
                 if self.script.is_none() {
-                    ui.notice(&e);
+                    self.ui.notice(&e);
                 }
                 self.status = 1;
                 return event_loop.exit();
@@ -288,6 +302,8 @@ impl App {
             seed,
             game,
             paula: Paula::new(rate),
+            rate,
+            paused: false,
             pacer: Pacer::new(rate),
             clock: match &audio {
                 Some(a) => a.clock(),
@@ -315,6 +331,7 @@ impl App {
         }
         run.shown.completed((0, size, rgba));
         self.run = Some(run);
+        self.show_menu();
         self.show_newest();
     }
 
@@ -326,7 +343,7 @@ impl App {
         let events: Vec<Event> = self.script.as_ref().map_or(Vec::new(), |s| s.at(n).collect());
         for e in events {
             match e {
-                Event::Input(h) => self.host(h),
+                Event::Input(h) => self.host(event_loop, h),
                 Event::Hang => {
                     eprintln!("superfrog: the script hangs at frame {n}");
                     loop {
@@ -337,12 +354,28 @@ impl App {
                     let run = self.run.as_mut().expect("running");
                     let _ = run.window.request_inner_size(winit::dpi::LogicalSize::new(w, h));
                 }
-                Event::Scale(s) => self.set_scale(s),
                 Event::Shot => self.run.as_mut().expect("running").shot = Some(n),
-                Event::Continue => self.continue_game(),
+                Event::Command(c) => self.on_command(event_loop, c),
+            }
+            if event_loop.exiting() {
+                return;
             }
         }
         let run = self.run.as_mut().expect("running");
+        if run.paused {
+            // Paused: the game is not stepped and the picture stays; a press made meanwhile does
+            // not reach the game when it resumes. The frame still counts towards --max-frames.
+            let _ = run.input.frame();
+            if let (Some(c), Some((_, size, rgba))) = (&mut run.capture, run.shown.at_refresh())
+                && let Err(e) = c.frame(n, size.0, size.1, rgba)
+            {
+                return self.fail(event_loop, &format!("capture: {e}"));
+            }
+            if self.args.max_frames == Some(n) {
+                self.finish(event_loop);
+            }
+            return;
+        }
         let input = run.input.frame();
         let out = run.game.step(input);
         let p = run.game.progress();
@@ -373,11 +406,10 @@ impl App {
     }
 
     /// A host event: the app's shortcut, or the game's input.
-    fn host(&mut self, e: HostInput) {
+    fn host(&mut self, event_loop: &ActiveEventLoop, e: HostInput) {
         let Some(run) = &mut self.run else { return };
-        match run.input.event(e) {
-            Some(Shortcut::ToggleFullscreen) => self.toggle_fullscreen(),
-            None => {}
+        if let Some(c) = run.input.event(e) {
+            self.on_command(event_loop, c);
         }
     }
 
@@ -393,7 +425,7 @@ impl App {
         self.save_settings();
     }
 
-    /// The scale setting (T24's View menu): remembered, and the window resized to it.
+    /// The scale setting (View → Scale): remembered, and the window resized to it.
     fn set_scale(&mut self, s: Scale) {
         let run = self.run.as_mut().expect("running");
         run.settings.scale = s;
@@ -411,18 +443,6 @@ impl App {
         if let Err(e) = settings::save(&self.home, &run.settings) {
             eprintln!("superfrog: could not save the settings: {e}");
         }
-    }
-
-    /// Start the remembered progress as its level code would (DESIGN §2.9, T24's "Continue from
-    /// World N"); nothing when there is none.
-    fn continue_game(&mut self) {
-        let run = self.run.as_mut().expect("running");
-        let Some(p) = run.furthest else {
-            eprintln!("superfrog: no progress to continue from");
-            return;
-        };
-        let seed = Rng::seeded(run.seed.0, run.seed.1);
-        run.game = Game::start_at_with(run.display.clone(), &p, seed);
     }
 
     fn finish(&mut self, event_loop: &ActiveEventLoop) {
@@ -475,6 +495,12 @@ impl ApplicationHandler for App {
         if event_loop.exiting() {
             return;
         }
+        while let Some(c) = menu::next_command() {
+            self.on_command(event_loop, c);
+            if event_loop.exiting() {
+                return;
+            }
+        }
         let Some(run) = &mut self.run else { return };
         if run.audio.as_ref().is_some_and(Audio::failed) {
             // The device is gone: carry on silently on the wall clock, from where it got to.
@@ -494,6 +520,7 @@ impl ApplicationHandler for App {
             }
         }
         if due > 0 {
+            self.show_menu();
             self.show_newest();
             self.take_shot(event_loop);
         }
@@ -504,6 +531,7 @@ impl ApplicationHandler for App {
 
     fn window_event(&mut self, event_loop: &ActiveEventLoop, _: WindowId, event: WindowEvent) {
         match event {
+            WindowEvent::CloseRequested if self.run.is_some() => self.on_command(event_loop, Command::Quit),
             WindowEvent::CloseRequested => self.finish(event_loop),
             WindowEvent::Resized(size) => {
                 if let Some(run) = &mut self.run {
@@ -528,18 +556,18 @@ impl ApplicationHandler for App {
             }
             WindowEvent::KeyboardInput { event, .. } if !event.repeat => {
                 if let PhysicalKey::Code(code) = event.physical_key {
-                    self.host(HostInput::Key {
+                    self.host(event_loop, HostInput::Key {
                         code,
                         pressed: event.state == ElementState::Pressed,
                     });
                 }
             }
-            WindowEvent::Focused(false) => self.host(HostInput::FocusLost),
+            WindowEvent::Focused(false) => self.host(event_loop, HostInput::FocusLost),
             WindowEvent::MouseInput {
                 state,
                 button: MouseButton::Left,
                 ..
-            } => self.host(HostInput::MouseLeft {
+            } => self.host(event_loop, HostInput::MouseLeft {
                 pressed: state == ElementState::Pressed,
             }),
             _ => {}

@@ -88,6 +88,33 @@ unsafe extern "C" {
     fn CGPreflightScreenCaptureAccess() -> bool;
     fn CGEventCreateKeyboardEvent(source: *const c_void, key: u16, down: bool) -> *mut c_void;
     fn CGEventPostToPid(pid: i32, event: *mut c_void);
+    fn CGEventSetFlags(event: *mut c_void, flags: u64);
+}
+
+/// Modifier keys held with a key, as [`App::os_key_with`] posts them.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub struct Mods {
+    pub command: bool,
+    pub control: bool,
+}
+
+impl Mods {
+    pub const COMMAND: Mods = Mods { command: true, control: false };
+    pub const CONTROL_COMMAND: Mods = Mods { command: true, control: true };
+
+    /// `CGEventFlags`: `kCGEventFlagMaskCommand`, `kCGEventFlagMaskControl`.
+    fn flags(self) -> u64 {
+        (self.command as u64 * 0x10_0000) | (self.control as u64 * 0x4_0000)
+    }
+}
+
+/// A menu item as the menu bar shows it.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct MenuItemState {
+    pub title: String,
+    pub enabled: bool,
+    /// It shows a check mark.
+    pub checked: bool,
 }
 
 #[link(name = "CoreFoundation", kind = "framework")]
@@ -218,17 +245,75 @@ impl App {
     }
 
     fn os_key_event(&mut self, key: Key, down: bool) {
+        self.os_key_event_with(Mods::default(), key, down);
+    }
+
+    /// Press and release `key` with `mods` held, as the keyboard posts a shortcut: the modifiers
+    /// travel as the key events' flags.
+    pub fn os_key_with(&mut self, mods: Mods, key: Key) {
+        for down in [true, false] {
+            self.os_key_event_with(mods, key, down);
+            std::thread::sleep(Duration::from_millis(60));
+        }
+    }
+
+    fn os_key_event_with(&mut self, mods: Mods, key: Key, down: bool) {
         let pid = self.os_pid() as i32;
         // SAFETY: a keyboard event made, posted and released here.
         unsafe {
             let e = CGEventCreateKeyboardEvent(std::ptr::null(), key.code(), down);
             assert!(!e.is_null(), "CGEventCreateKeyboardEvent failed");
+            if mods != Mods::default() {
+                CGEventSetFlags(e, mods.flags());
+            }
             CGEventPostToPid(pid, e);
             CFRelease(e);
         }
     }
 
-    /// Click the menu item at `path`, from the menu bar down: `["superfrog", "Quit superfrog"]`.
+    /// The titles of the menu bar's menus, left to right.
+    pub fn os_menu_bar(&self) -> Vec<String> {
+        let app = ax::app(self.os_pid());
+        let bar = ax::attr(&app, "AXMenuBar").unwrap_or_else(|e| panic!("the app's menu bar: {e}"));
+        ax::children(&bar).iter().map(ax::title).collect()
+    }
+
+    /// The items of the menu at `path` (`["View", "Scale"]`), separators left out.
+    pub fn os_menu_items(&self, path: &[&str]) -> Vec<MenuItemState> {
+        let app = ax::app(self.os_pid());
+        let bar = ax::attr(&app, "AXMenuBar").unwrap_or_else(|e| panic!("the app's menu bar: {e}"));
+        let mut items = ax::children(&bar);
+        for name in path {
+            let titles: Vec<String> = items.iter().map(ax::title).collect();
+            let at = titles
+                .iter()
+                .position(|t| t == name)
+                .unwrap_or_else(|| panic!("no menu {name:?} in {path:?}; there are {titles:?}"));
+            let menu = ax::children(&items[at]).into_iter().next().unwrap_or_else(|| panic!("{name:?} has no menu"));
+            items = ax::children(&menu);
+        }
+        items
+            .iter()
+            .map(|e| MenuItemState {
+                title: ax::title(e),
+                enabled: ax::flag(e, "AXEnabled"),
+                checked: !ax::text(e, "AXMenuItemMarkChar").is_empty(),
+            })
+            .filter(|i| !i.title.is_empty())
+            .collect()
+    }
+
+    /// The item titled `title` in the menu at `path`.
+    pub fn os_menu_item(&self, path: &[&str], title: &str) -> MenuItemState {
+        let items = self.os_menu_items(path);
+        items
+            .iter()
+            .find(|i| i.title == title)
+            .cloned()
+            .unwrap_or_else(|| panic!("no item {title:?} in {path:?}: {items:?}"))
+    }
+
+    /// Click the menu item at `path`, from the menu bar down: `["superfrog", "Quit Superfrog"]` (the app menu is titled with the process name).
     pub fn os_menu(&mut self, path: &[&str]) {
         assert!(path.len() >= 2, "a menu path names a menu and an item");
         let app = ax::app(self.os_pid());
@@ -432,6 +517,13 @@ mod ax {
                 walk(&c, depth - 1, f);
             }
         }
+    }
+
+    /// A boolean attribute, `false` when there is none.
+    pub fn flag(e: &Cf, name: &str) -> bool {
+        let Ok(v) = attr(e, name) else { return false };
+        // SAFETY: CFBoolean is a static singleton; comparing the pointer reads nothing.
+        unsafe { v.0 == kCFBooleanTrue }
     }
 
     pub fn title(e: &Cf) -> String {

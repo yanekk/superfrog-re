@@ -14,9 +14,11 @@
 //! 45: blur              # the window loses focus
 //! 50: hang              # the main thread stops dead: proves --timeout
 //! 60: resize 700 600    # the window's inner size, in points, as a person dragging it
-//! 61: scale 3           # the scale setting: a whole number or `auto` (T24's View menu)
+//! 61: scale 3           # the scale setting: a whole number or `auto` (`menu scale 3`)
 //! 70: shot              # write the window as presented to the capture folder (window-NNNNN.png)
-//! 80: continue          # start the remembered progress (T24's Game → Continue from World N)
+//! 80: continue          # Game → Continue from World N (`menu continue`)
+//! 90: menu pause        # a menu command, by its item's id (menu.rs `Command::id`, `-` as a space):
+//!                       # import, continue, scale 1|2|3|auto, fullscreen, pause, reset, quit
 //! ```
 //!
 //! Before the game, the launch's questions (`import.rs`) take the script's answers in order:
@@ -33,6 +35,7 @@ use winit::keyboard::KeyCode;
 
 use crate::import::Pick;
 use crate::input::{HostInput, key_named};
+use crate::menu::Command;
 use crate::settings::Scale;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -40,9 +43,9 @@ pub enum Event {
     Input(HostInput),
     Hang,
     Resize(u32, u32),
-    Scale(Scale),
     Shot,
-    Continue,
+    /// What a menu item does (`menu.rs`), as though it were chosen.
+    Command(Command),
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
@@ -127,15 +130,19 @@ impl Script {
                         _ => return Err(err("`resize` takes a width and a height in points")),
                     }
                 }
-                (Some("scale"), 3) => vec![Event::Scale(match words[2] {
+                (Some("scale"), 3) => vec![Event::Command(Command::Scale(match words[2] {
                     "auto" => Scale::Auto,
                     n => match n.parse::<u32>() {
                         Ok(n) if (1..=16).contains(&n) => Scale::N(n),
                         _ => return Err(err("`scale` takes `auto` or a whole number 1 to 16")),
                     },
-                })],
+                }))],
                 (Some("shot"), 2) => vec![Event::Shot],
-                (Some("continue"), 2) => vec![Event::Continue],
+                (Some("continue"), 2) => vec![Event::Command(Command::ContinueFromProgress)],
+                (Some("menu"), 3..) => match Command::from_id(&words[2..].join("-")) {
+                    Some(c) => vec![Event::Command(c)],
+                    None => return Err(err("no menu command is named so")),
+                },
                 _ => return Err(err("unknown event")),
             };
             s.events.extend(events.into_iter().map(|e| (frame, e)));
@@ -203,10 +210,27 @@ mod tests {
         assert_eq!(s.at(5).collect::<Vec<_>>(), vec![Event::Resize(700, 600)]);
         assert_eq!(
             s.at(6).collect::<Vec<_>>(),
-            vec![Event::Scale(Scale::Auto), Event::Scale(Scale::N(3))]
+            vec![Event::Command(Command::Scale(Scale::Auto)), Event::Command(Command::Scale(Scale::N(3)))]
         );
         assert_eq!(s.at(7).collect::<Vec<_>>(), vec![Event::Shot]);
-        assert_eq!(s.at(8).collect::<Vec<_>>(), vec![Event::Continue]);
+        assert_eq!(s.at(8).collect::<Vec<_>>(), vec![Event::Command(Command::ContinueFromProgress)]);
+    }
+
+    #[test]
+    fn a_menu_event_names_its_command() {
+        let s = Script::parse("1: menu pause
+2: menu scale 2
+3: menu scale auto
+4: menu quit
+5: menu import
+")
+            .unwrap();
+        let at = |n| s.at(n).collect::<Vec<_>>();
+        assert_eq!(at(1), vec![Event::Command(Command::Pause)]);
+        assert_eq!(at(2), vec![Event::Command(Command::Scale(Scale::N(2)))]);
+        assert_eq!(at(3), vec![Event::Command(Command::Scale(Scale::Auto))]);
+        assert_eq!(at(4), vec![Event::Command(Command::Quit)]);
+        assert_eq!(at(5), vec![Event::Command(Command::ImportDisks)]);
     }
 
     #[test]
@@ -223,6 +247,9 @@ mod tests {
             "5: scale 17",
             "5: scale big",
             "answer maybe",
+            "5: menu",
+            "5: menu jump",
+            "5: menu scale 0",
         ] {
             let e = Script::parse(&format!("\n{bad}")).unwrap_err();
             assert!(e.contains("line 2"), "{bad}: {e}");

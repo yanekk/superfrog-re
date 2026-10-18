@@ -311,45 +311,67 @@ fn ask(home: &Path, ui: &mut dyn Ui, first: String) -> Result<Option<GameData>, 
                 "No disk images were chosen. {}",
                 missing_sentence(&DiskSlot::ALL).expect("four are missing")
             ),
-            Some(paths) => {
-                let (offered, unread) = read_offered(&paths);
-                match decode(&offered) {
-                    Ok(data) if unread.is_empty() => {
-                        write_cache(home, &data)?;
-                        let paths = paths.iter().map(|p| std::path::absolute(p).unwrap_or(p.clone()));
-                        let text = toml::to_string(&Disks {
-                            disks: paths.collect(),
-                        })
-                        .expect("disk paths serialise");
-                        // Losing the remembered paths only costs a question next time.
-                        if let Err(e) = atomic_write(&disks_path(home), text.as_bytes()) {
-                            eprintln!("superfrog: could not remember the disks: {e}");
-                        }
-                        return Ok(Some(data));
-                    }
-                    Ok(_) => format!("These disk images cannot be used:\n{}", unread.join("\n")),
-                    Err(Unusable::Decode(why)) => {
-                        format!("These disk images cannot be used: {why}")
-                    }
-                    // Only disks missing: say which; anything else wrong comes first.
-                    Err(Unusable::Disks(errors))
-                        if unread.is_empty()
-                            && errors.iter().all(|e| matches!(e, ImportError::Missing(_))) =>
-                    {
-                        explain(&errors, false).join("\n")
-                    }
-                    Err(Unusable::Disks(errors)) => {
-                        let all: Vec<String> = unread.into_iter().chain(explain(&errors, false)).collect();
-                        format!("These disk images cannot be used:\n{}", all.join("\n"))
-                    }
-                }
-            }
+            Some(paths) => match take(home, &paths)? {
+                Ok(data) => return Ok(Some(data)),
+                Err(problems) => problems,
+            },
         };
         if !ui.disks_missing(&problems) {
             return Ok(None);
         }
-        message = "Choose your four Superfrog disk images, zipped or as .adf files.".to_string();
+        message = CHOOSE_FOUR.to_string();
     }
+}
+
+const CHOOSE_FOUR: &str = "Choose your four Superfrog disk images, zipped or as .adf files.";
+
+/// File → Import Disks… (`menu.rs`): the picker once. Four good disks replace the cache and are
+/// remembered; `Ok(None)` when it was cancelled, or when the disks cannot be used, which a message
+/// then says (the game carries on: nothing is replaced).
+pub fn choose(home: &Path, ui: &mut dyn Ui) -> Result<Option<GameData>, String> {
+    let Some(paths) = ui.pick_disks(CHOOSE_FOUR) else { return Ok(None) };
+    match take(home, &paths)? {
+        Ok(data) => Ok(Some(data)),
+        Err(problems) => {
+            ui.notice(&problems);
+            Ok(None)
+        }
+    }
+}
+
+/// The disk images at `paths`: their game data, written to the cache and the paths remembered;
+/// `Ok(Err(..))` says what is wrong with them, for the player; `Err` is fatal.
+fn take(home: &Path, paths: &[PathBuf]) -> Result<Result<GameData, String>, String> {
+    let (offered, unread) = read_offered(paths);
+    Ok(Err(match decode(&offered) {
+        Ok(data) if unread.is_empty() => {
+            write_cache(home, &data)?;
+            let paths = paths.iter().map(|p| std::path::absolute(p).unwrap_or(p.clone()));
+            let text = toml::to_string(&Disks {
+                disks: paths.collect(),
+            })
+            .expect("disk paths serialise");
+            // Losing the remembered paths only costs a question next time.
+            if let Err(e) = atomic_write(&disks_path(home), text.as_bytes()) {
+                eprintln!("superfrog: could not remember the disks: {e}");
+            }
+            return Ok(Ok(data));
+        }
+        Ok(_) => format!("These disk images cannot be used:\n{}", unread.join("\n")),
+        Err(Unusable::Decode(why)) => {
+            format!("These disk images cannot be used: {why}")
+        }
+        // Only disks missing: say which; anything else wrong comes first.
+        Err(Unusable::Disks(errors))
+            if unread.is_empty() && errors.iter().all(|e| matches!(e, ImportError::Missing(_))) =>
+        {
+            explain(&errors, false).join("\n")
+        }
+        Err(Unusable::Disks(errors)) => {
+            let all: Vec<String> = unread.into_iter().chain(explain(&errors, false)).collect();
+            format!("These disk images cannot be used:\n{}", all.join("\n"))
+        }
+    }))
 }
 
 #[cfg(test)]
@@ -415,6 +437,23 @@ mod tests {
         let kinds: Vec<&str> = ui.log.iter().map(|l| l.split(':').next().unwrap()).collect();
         assert_eq!(kinds, ["picker", "missing", "picker", "missing"]);
         assert!(ui.log[2].contains("Choose your four Superfrog disk images"));
+    }
+
+    #[test]
+    fn import_disks_cancelled_or_with_unusable_disks_replaces_nothing() {
+        let h = home("choose");
+        std::fs::create_dir_all(&h).unwrap();
+        let mut ui = ScriptedUi {
+            picks: [Pick::Cancel, Pick::Files(vec![h.join("gone.adf")])].into(),
+            ..Default::default()
+        };
+        assert_eq!(choose(&h, &mut ui), Ok(None));
+        assert_eq!(ui.log, [format!("picker: {CHOOSE_FOUR}")]);
+        assert_eq!(choose(&h, &mut ui), Ok(None));
+        assert_eq!(ui.log.len(), 3, "{:?}", ui.log);
+        assert!(ui.log[2].starts_with("notice: These disk images cannot be used"), "{:?}", ui.log);
+        assert!(!cache_path(&h).exists() && !disks_path(&h).exists());
+        std::fs::remove_dir_all(&h).unwrap();
     }
 
     #[test]
