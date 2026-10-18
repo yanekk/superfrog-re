@@ -18,6 +18,15 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-18 | 📌 | T29 drill, worker-driven: first run, password W3-2, play, ⇧⌘/⌘ states, pause, Controls, export/play file, reset, ⌘Q at 1×/2×/3×/2× wide; fullscreen and wide 5× (unlocked); resize mid-scroll; witch-fight load; slot-spin pause; 50 000 frames (1022 s). Three 🐞 fixed, below. Teardown confirmed. |
+| 2026-10-18 | 🐞 | T29 drill, fixed: widescreen showed `level_start`'s fade-in 4:3 with black sides (front end, level copper), snapping 16:9 when the loop began. `render::level_widened`; `view.rs` test. |
+| 2026-10-18 | 🐞 | T29 drill, fixed: the app was silent since T22 (mixer on `NoChip`, DMA off). Now `Game::chip_word`, `Paula::booted`. Not yet compared with the original's audio; T24's paused-underrun and T26's fresh-mixer rows now audible. |
+| 2026-10-18 | 🐞 | T29 drill, fixed: a window macOS will not draw (screen locked, covered) skipped `present`'s submit, staging every upload: 14 GB footprint over 50 000 frames. Now flushed; `occlude` script event, capture `memory.txt`, `drill.rs` test. |
+| 2026-10-18 | 📌 | T29, left alone: a level-code digit tapped shorter than one frame (down and up between steps) is not typed; two frames is. No person taps that fast. Resize requests land within ~10 frames; a shot sooner shows the old size. |
+| 2026-10-18 | 📌 | T29, left alone: killing the app mid-import (SIGKILL 140–230 ms) leaves `cache/.assets-vN.bin.tmp-PID` (22 MB), never cleaned; relaunch is fine (asks again or uses the whole cache). |
+| 2026-10-18 | 📌 | T29, not driven: audio output lost mid-run. The `failed` → wall-clock path has no test (no device here to unplug); a device that stops pulling without an error would stall the clock, as nothing watches it. |
+| 2026-10-18 | 📌 | T29 added T212 conform-known-reds (owner's yes): `sf-conform all` 208/212 in 6 034 s; red complete-w4-2 7967, enemies-w6-1-complete 2136, w2-2-complete 1229, w2-3-complete 6729 (was 2166), unowned since T197. Blocks T30. |
+| 2026-10-18 | 📌 | T29 added T211 (owner's yes): the paced whole game through the app needs a recorded alone-run feed, a hash capture and a 75-minute run, a task's worth beside the drill. Blocks T30. |
 | 2026-10-18 | 📌 | T210, left alone: `Auto` and fullscreen fit each screen's own window (`picture_scale`), so in a window between sizes the title (320×256) can show one scale larger than a level (334×261). `Scale::N` is constant. |
 | 2026-10-18 | 📌 | T210, left alone: DESIGN §5's e2e sizes still read "320×256, 640×512, 960×768 game area"; the window is now 334×261 × n (widescreen 464×261). |
 | 2026-10-18 | 📌 | T210, measured (`sf-conform` `examples/windows`, 23 cases): levels, map, tally, game-over fade 334×261 at (121, 39), the largest; title, story, slot, options, end sequence ≤320×256. Window sized for 334×261. |

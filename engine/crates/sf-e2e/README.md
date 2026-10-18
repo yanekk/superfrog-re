@@ -35,6 +35,10 @@ keys moving the frog). Their scripts also use:
   `window-NNNNN.png` with a line in `windows.txt`.
 - `--audio-device NAME`: a name no device has is the "no audio output" hook.
 
+T29's `drill.rs` adds `N: occlude on|off` (the window cannot be drawn, as macOS does for a covered
+window or a locked screen) and reads the capture's `memory.txt` (the app's physical footprint, GPU
+memory included, at the end and at its peak).
+
 T24's `menus.rs` drives the menu bar (`sf-app/src/menu.rs`). A script names a menu command with
 `N: menu <id>` (`import`, `continue`, `scale 1|2|3|auto`, `fullscreen`, `pause`, `reset`, `quit`);
 the app logs each command it takes as `superfrog: menu <id> after step N`, which lines an OS-layer

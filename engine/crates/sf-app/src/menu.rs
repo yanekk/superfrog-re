@@ -419,7 +419,7 @@ impl App {
         let seed = Rng::seeded(run.seed.0, run.seed.1);
         run.game = Game::with_display(run.display.clone(), Start::PowerOn { seed });
         run.game.set_view(crate::window::view(run.settings.widescreen));
-        run.paula = Paula::new(run.rate);
+        run.paula = Paula::booted(run.rate);
         run.paused = false;
     }
 
@@ -447,7 +447,7 @@ impl App {
                 eprintln!("superfrog: loaded state {n} at game frame {}", game.frame());
                 run.game = game;
                 run.game.set_view(crate::window::view(run.settings.widescreen));
-                run.paula = Paula::new(run.rate);
+                run.paula = Paula::booted(run.rate);
                 let pic = run.game.render(run.game.view());
                 let size = (pic.width as u32, pic.height as u32);
                 run.shown.completed((run.steps, size, crate::video::picture_rgba(&pic)));
@@ -476,7 +476,7 @@ impl App {
         let seed = Rng::seeded(run.seed.0, run.seed.1);
         run.game = Game::start_at_with(run.display.clone(), &p, seed);
         run.game.set_view(crate::window::view(run.settings.widescreen));
-        run.paula = Paula::new(run.rate);
+        run.paula = Paula::booted(run.rate);
         run.paused = false;
     }
 

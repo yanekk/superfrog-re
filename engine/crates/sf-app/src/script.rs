@@ -16,6 +16,8 @@
 //! 60: resize 700 600    # the window's inner size, in points, as a person dragging it
 //! 61: scale 3           # the scale setting: a whole number or `auto` (`menu scale 3`)
 //! 70: shot              # write the window as presented to the capture folder (window-NNNNN.png)
+//! 75: occlude on         # the window cannot be drawn (covered, minimised, the screen locked) until
+//!                       # `occlude off`: what macOS's withheld drawables do, on demand
 //! 80: continue          # Game → Continue from World N (`menu continue`)
 //! 90: menu pause        # a menu command, by its item's id (menu.rs `Command::id`, `-` as a space):
 //!                       # import, continue, scale 1|2|3|auto, fullscreen, pause, reset, controls, quit,
@@ -60,6 +62,8 @@ use crate::settings::Scale;
 pub enum Event {
     Input(HostInput),
     Hang,
+    /// The window cannot be drawn until `false` (a covered window, a locked screen).
+    Occlude(bool),
     Resize(u32, u32),
     Shot,
     /// What a menu item does (`menu.rs`), as though it were chosen.
@@ -165,6 +169,11 @@ impl Script {
                 }
                 (Some("blur"), 2) => vec![Event::Input(HostInput::FocusLost)],
                 (Some("hang"), 2) => vec![Event::Hang],
+                (Some("occlude"), 3) => match words[2] {
+                    "on" => vec![Event::Occlude(true)],
+                    "off" => vec![Event::Occlude(false)],
+                    _ => return Err(err("`occlude` takes `on` or `off`")),
+                },
                 (Some("resize"), 4) => {
                     let num = |i: usize| words[i].parse::<u32>().ok().filter(|&n| n > 0);
                     match (num(2), num(3)) {
@@ -244,7 +253,7 @@ mod tests {
     fn a_script_parses_into_events_by_frame() {
         let s = Script::parse(
             "# a comment\nseed 1 2\n10: down ArrowLeft  # held\n20: up ArrowLeft\n30: press Space\n\
-             40: mouse down\n50: hang\n",
+             40: mouse down\n50: hang\n60: occlude on\n61: occlude off\n",
         )
         .unwrap();
         assert_eq!(s.seed, Some((1, 2)));
@@ -261,6 +270,9 @@ mod tests {
             vec![Event::Input(HostInput::MouseLeft { pressed: true })]
         );
         assert_eq!(s.at(50).collect::<Vec<_>>(), vec![Event::Hang]);
+        assert_eq!(s.at(60).collect::<Vec<_>>(), vec![Event::Occlude(true)]);
+        assert_eq!(s.at(61).collect::<Vec<_>>(), vec![Event::Occlude(false)]);
+        assert!(Script::parse("1: occlude maybe\n").is_err());
         assert_eq!(s.at(11).count(), 0);
     }
 

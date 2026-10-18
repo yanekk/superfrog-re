@@ -116,17 +116,6 @@ impl Audio {
     }
 }
 
-/// Chip RAM as the mixer's DMA reads it. `Game` does not run the sound driver yet (the first
-/// mechanic to step it is T14), so there is no sample data to read and no write that starts DMA;
-/// this reads zeros until `Game` exposes its chip view.
-pub struct NoChip;
-
-impl sf_paula::ChipMemory for NoChip {
-    fn chip_word(&self, _addr: u32) -> u16 {
-        0
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;

@@ -45,7 +45,7 @@ use winit::keyboard::PhysicalKey;
 use winit::window::{Window, WindowId};
 
 use crate::args::Args;
-use crate::audio::{Audio, Clock, NoChip};
+use crate::audio::{Audio, Clock};
 use crate::capture::Capture;
 use crate::controls_window::{ControlsWindow, OpenControls};
 use crate::import::{NativeUi, ScriptedUi, Ui};
@@ -348,7 +348,7 @@ impl App {
             levels,
             seed,
             game,
-            paula: Paula::new(rate),
+            paula: Paula::booted(rate),
             rate,
             paused: false,
             pacer: Pacer::new(rate),
@@ -414,6 +414,7 @@ impl App {
                     let _ = run.window.request_inner_size(winit::dpi::LogicalSize::new(w, h));
                 }
                 Event::Shot => self.run.as_mut().expect("running").shot = Some(n),
+                Event::Occlude(on) => self.run.as_mut().expect("running").video.occluded = on,
                 Event::Command(c) => self.on_command(event_loop, c),
                 Event::Controls(a) => self.controls_action(a),
             }
@@ -447,7 +448,7 @@ impl App {
             }
         }
         run.samples.clear();
-        run.paula.frame(&out.paula, &NoChip, &mut run.samples);
+        run.paula.frame(&out.paula, &run.game, &mut run.samples);
         if let Some(a) = &run.audio {
             a.push(&run.samples);
         }
@@ -536,7 +537,10 @@ impl App {
     fn finish(&mut self, event_loop: &ActiveEventLoop) {
         if let Some(r) = self.run.as_ref()
             && let Some(c) = r.capture.as_ref()
-            && let Err(e) = c.finish().and_then(|()| c.pacing(r.steps, r.presented, r.dropped))
+            && let Err(e) = c
+                .finish()
+                .and_then(|()| c.pacing(r.steps, r.presented, r.dropped))
+                .and_then(|()| c.memory())
         {
             return self.fail(event_loop, &format!("capture: {e}"));
         }

@@ -112,7 +112,7 @@ impl App {
     fn restarted(&mut self) {
         let run = self.run.as_mut().expect("running");
         run.game.set_view(crate::window::view(run.settings.widescreen));
-        run.paula = Paula::new(run.rate);
+        run.paula = Paula::booted(run.rate);
         run.paused = false;
     }
 }

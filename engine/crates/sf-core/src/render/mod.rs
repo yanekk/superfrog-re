@@ -414,6 +414,26 @@ pub(crate) fn level(state: &State, data: &DisplayData, view: View) -> Picture {
     level_as_drawn(state, data, view, &crate::mem::WriteLog::default())
 }
 
+/// A front-end picture on the level's own list (`level_start`'s fade-in, `level_exit_fade`'s
+/// slide; T29) widened by `view`: the centre is `narrow`, the sides the level's play-field as
+/// `state` holds it, in each line's colours, so a level shows 16:9 from its first frame to its
+/// last.
+pub(crate) fn level_widened(narrow: &Picture, state: &State, data: &DisplayData, view: View) -> Picture {
+    let mut p = narrow.widened(view);
+    let n = view.extra_columns_each_side as usize;
+    if n == 0 {
+        return p;
+    }
+    let wide = level(state, data, view).rewindow(p.left, p.top, p.width, p.height);
+    let (w, nw) = (p.width as usize, narrow.width as usize);
+    for y in 0..p.height as usize {
+        let row = y * w;
+        p.pixels[row..row + n].copy_from_slice(&wide.pixels[row..row + n]);
+        p.pixels[row + n + nw..row + w].copy_from_slice(&wide.pixels[row + n + nw..row + w]);
+    }
+    p
+}
+
 /// The level's picture as the beam drew it: `state` at the frame's end, less what `log` says
 /// was written after the beam had passed.
 pub(crate) fn level_as_drawn(
