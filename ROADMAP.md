@@ -17,6 +17,22 @@ deaths, kills, exits, screens). Everything is proven by agents; the owner is nev
 The items below assume that build exists. Paths such as `sf-core` and `sf-conform` refer to its
 crates under `engine/`.
 
+## Next plan: the difficulty modes against the original
+
+Owner, 2026-10-18: a plan of its own once `rust-engine` is finished; not added to that run. Its
+order relative to milestone 2 is still to be settled.
+
+The game mode (`opt_game_mode`, h0+$9e6: 0 easy, 1 normal, 2 hard) is ported wherever the original
+reads it: the blink after a hit and the shield last twice as long in easy, the level clock's minutes
+are doubled, fixtures and some objects differ, one touch kills in hard. Only the level-restart
+routines are compared with the original across the modes (`restart_routines.rs`); every frame case,
+completion route and the whole-game case play on normal.
+
+The plan: re-run existing cases with the mode set to easy and to hard at the sync point (a level
+per world, the hit, shield and clock cases, the completions where useful), judged by the faithful
+checks. No route has to work in the new mode: both sides get the same inputs, so a frog that dies in
+hard mode must die the same way on both. No planning or exploring is needed.
+
 ## Milestone 2: report a bug, have it reproduced, fixed and proven
 
 **Goal.** The owner plays, sees something wrong, presses one key, and hands the result to an agent.
@@ -111,6 +127,14 @@ Smaller changes suggested to T207 on 2026-10-17, to keep or finish:
 
 Not needed while T203 (the whole game green) goes smoothly; the chained routes are already found.
 If T203 or a later plan has to re-route levels at scale, this comes first.
+
+**Its proving ground (owner, 2026-10-18): completing the levels in easy and hard mode.** Hard mode
+(one touch kills) breaks most of today's routes, which take a hit and carry on, so every level needs
+a route that is never touched; easy mode opens routes normal mode does not. That is route-finding
+at scale, measured against a known baseline: T205–T207 took 25–40 minutes per ordinary level with
+today's tools and hours on W1-4, W2-4, W6-2 and W6-3. The smart planner is built, then proven by
+planning the easy and hard completions level by level against that baseline, which also yields
+whole-game cases for both modes.
 
 ### Simplify the timing simulation
 
