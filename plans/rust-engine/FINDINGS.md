@@ -18,6 +18,7 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-18 | 📌 | T29 added T211 (owner's yes): the paced whole game through the app needs a recorded alone-run feed, a hash capture and a 75-minute run, a task's worth beside the drill. Blocks T30. |
 | 2026-10-18 | 📌 | T210, left alone: `Auto` and fullscreen fit each screen's own window (`picture_scale`), so in a window between sizes the title (320×256) can show one scale larger than a level (334×261). `Scale::N` is constant. |
 | 2026-10-18 | 📌 | T210, left alone: DESIGN §5's e2e sizes still read "320×256, 640×512, 960×768 game area"; the window is now 334×261 × n (widescreen 464×261). |
 | 2026-10-18 | 📌 | T210, measured (`sf-conform` `examples/windows`, 23 cases): levels, map, tally, game-over fade 334×261 at (121, 39), the largest; title, story, slot, options, end sequence ≤320×256. Window sized for 334×261. |

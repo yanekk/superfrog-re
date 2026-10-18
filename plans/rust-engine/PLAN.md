@@ -253,6 +253,7 @@ original's milestones and passes the faithful checks (DESIGN §2.1), headless.
 | [T208](tasks/T208-w6-4-start-and-final-load.md) | w6-4-start-and-final-load | T203; blocks T23, T29 |
 | [T209](tasks/T209-whole-game-alone.md) | whole-game-alone | T203, T208; blocks T23, T29 |
 | [T210](tasks/T210-window-fits-the-game.md) | window-fits-the-game | T27; blocks T29 |
+| [T211](tasks/T211-app-whole-game-paced.md) | app-whole-game-paced | T21, T25, T26, T27, T28; blocks T30 |
 
 T22 is the rig task: it comes before every surface task and they depend on it. T29 is the phase's
 drill. At the end: the real app plays a scripted whole game that meets the original's milestones (T30);
