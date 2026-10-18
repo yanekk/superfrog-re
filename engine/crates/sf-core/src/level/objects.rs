@@ -307,20 +307,36 @@ pub fn obj_free_if_left_behind(c: &mut LevelCtx, slot: u32, _d7: u16) {
 /// camera last moved away from (`scroll_dirs`; every side in the bonus level): `$170` right of
 /// the camera, `$30` past the left edge by its width, `$150` below, `$30` above by its height.
 pub fn obj_despawn_if_offscreen(c: &mut LevelCtx, slot: u32, _d7: u16) {
-    let b = &c.bus;
-    if b.l(slot + 0x40) == 0 {
+    if c.bus.l(slot + 0x40) == 0 {
         return;
     }
+    // Each read of `scroll_dirs` and the camera is a point the original's frame may end before,
+    // the vertical blank moving the camera the later tests read (T212: W2-2 1228).
+    c.point(1);
+    let b = &c.bus;
     let dirs = if b.w(SHOOTER_MODE) != 0 { 0xff } else { b.b(SCROLL_DIRS) };
     let frame = shown_frame(b, slot);
     let (x, y) = (b.w(slot + 8), b.w(slot + 0xa));
-    let (cx, cy) = (b.w(CAMERA_X + 2), b.w(CAMERA_Y + 2));
-    let gone = (dirs & 4 != 0 && n_clear(x.wrapping_sub(0x170).wrapping_sub(cx)))
-        || (dirs & 2 != 0
-            && !n_clear(x.wrapping_add(b.w(frame + 4)).wrapping_add(0x30).wrapping_sub(cx)))
-        || (dirs & 0x10 != 0 && n_clear(y.wrapping_sub(0x150).wrapping_sub(cy)))
-        || (dirs & 8 != 0
-            && !n_clear(y.wrapping_add(b.w(frame + 6)).wrapping_add(0x30).wrapping_sub(cy)));
+    c.point(2);
+    let gone = (dirs & 4 != 0 && n_clear(x.wrapping_sub(0x170).wrapping_sub(c.bus.w(CAMERA_X + 2))))
+        || {
+            c.point(3);
+            dirs & 2 != 0
+                && !n_clear(
+                    x.wrapping_add(c.bus.w(frame + 4)).wrapping_add(0x30).wrapping_sub(c.bus.w(CAMERA_X + 2)),
+                )
+        }
+        || {
+            c.point(4);
+            dirs & 0x10 != 0 && n_clear(y.wrapping_sub(0x150).wrapping_sub(c.bus.w(CAMERA_Y + 2)))
+        }
+        || {
+            c.point(5);
+            dirs & 8 != 0
+                && !n_clear(
+                    y.wrapping_add(c.bus.w(frame + 6)).wrapping_add(0x30).wrapping_sub(c.bus.w(CAMERA_Y + 2)),
+                )
+        };
     if gone {
         obj_free(c, slot, 0);
     }
@@ -694,9 +710,12 @@ pub(crate) fn blit(b: &mut Bus, x: Blit) {
 /// their mask over the background), in two parts split at the display ring's seam; then the
 /// buffers swap (`bob_buffer`).
 pub fn bob_draw(c: &mut LevelCtx) {
-    let b = &mut c.bus;
-    b.set_l(BD_CAMERA_X, b.l(h0(0x16664)));
-    b.set_l(BD_CAMERA_Y, b.l(h0(0x16660)));
+    // The original's frame may end before the drawer begins, or between its two latches of the
+    // camera (T212: W6-1 4386, 5268).
+    c.step_at(0);
+    c.bus.set_l(BD_CAMERA_X, c.bus.l(h0(0x16664)));
+    c.step_at(1);
+    c.bus.set_l(BD_CAMERA_Y, c.bus.l(h0(0x16660)));
     // (The camera is latched first: an interrupt in the drawer's set-up comes after it.)
     let mut bobs = 0;
     while c.bus.l(BOB_DRAW_LIST + 4 * bobs) != 0 {
@@ -814,14 +833,26 @@ fn draw_part(c: &mut LevelCtx, back: u32, sub: u32) {
             }
         }
     }
-    // h0+$1940e: draw, going back up the list.
+    // h0+$1940e: draw, going back up the list. Outside the seam's part each bob is a step, from 2
+    // (`bob_draw`'s latches are 0 and 1): a bob's animation starts as it is drawn, so one a
+    // vertical blank's spawn reuses starts its new one in this pass only if it is still to be
+    // drawn (T212: W4-2 9090, a swing's links freed a pass later).
+    let stepped = c.bus.w(BD_SEAM) == 0;
+    let mut drawn = 0;
     loop {
+        if stepped {
+            c.step_at(2 + drawn);
+        }
         at -= 4;
         let bob = c.bus.l(at);
         draw_bob(c, bob, back, sub);
+        drawn += 1;
         if c.bus.l(at - 4) == 0 {
             break;
         }
+    }
+    if stepped {
+        c.step_at(2 + drawn);
     }
     c.custom(0x96, 0x0400);
 }

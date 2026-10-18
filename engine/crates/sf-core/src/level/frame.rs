@@ -136,6 +136,7 @@ pub fn main_program(c: &mut LevelCtx, pending: Option<beam::Pending>, pacing: cr
                 hpos,
                 phase,
                 step,
+                point,
                 blanks,
             } => Some(beam::Cut {
                 writes,
@@ -143,6 +144,7 @@ pub fn main_program(c: &mut LevelCtx, pending: Option<beam::Pending>, pacing: cr
                 hpos,
                 phase,
                 step,
+                point,
                 blanks,
             }),
         },

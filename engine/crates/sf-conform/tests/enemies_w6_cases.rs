@@ -83,8 +83,8 @@ fn enemies_w6_4_alt() {
 }
 
 /// W6-3's second map completed (T104, T181): all 91 coins and its switches to the exit, green
-/// faithful and alone (193 milestones), re-synced after the lags at 6129 and 12379 (the panel's
-/// clock mid-update), as DESIGN §2.1 lets checks 1–3 do.
+/// faithful and alone (193 milestones), with no re-sync: the panel's clock at 6129 and 12379 went
+/// with T212's steps in `panel_update`.
 #[test]
 fn enemies_w6_3_alt_complete() {
     let name = "enemies-w6-3-alt-complete";
@@ -92,7 +92,7 @@ fn enemies_w6_3_alt_complete() {
         .unwrap_or_else(|e| panic!("{e}"));
     let o = sf_conform::run(&case).unwrap_or_else(|d| panic!("{name}: {d}"));
     let resynced: Vec<u32> = o.resynced.iter().map(|r| r.0).collect();
-    assert_eq!(resynced, [6129, 12379], "{:?}", o.resynced);
+    assert_eq!(resynced, [0u32; 0], "{:?}", o.resynced);
 }
 
 /// W6-3's first map completed (T149): the 98 coins the exit needs and switch 49 to the exit
@@ -141,8 +141,8 @@ fn enemies_w6_2_alt_complete() {
 }
 
 /// W6-2 completed (T147, T194): all 97 coins and both switches to the exit, green faithful and
-/// alone (334 milestones), re-synced after the lags at 1380, 1977, 6620 and 6665, as DESIGN §2.1
-/// lets checks 1–3 do. Frame 6657 ends in `sfx_play`'s raster wait on channel 3; the vertical
+/// alone (334 milestones), re-synced after the lags at 6620 and 6665, as DESIGN §2.1 lets checks
+/// 1–3 do (1380 and 1977 went with T212). Frame 6657 ends in `sfx_play`'s raster wait on channel 3; the vertical
 /// blank it holds off is taken after the wait's next instruction zeroes the old effect's step
 /// indices, so its `sfx_tick` moves the period index to 1 and the new effect starts there: its
 /// period goes `$be` to `$80` at 6661, never `$98` (T194).
@@ -167,7 +167,7 @@ fn enemies_w6_2_complete() {
     })
     .unwrap_or_else(|d| panic!("{name}: {d}"));
     let resynced: Vec<u32> = o.resynced.iter().map(|r| r.0).collect();
-    assert_eq!(resynced, [1380, 1977, 6620, 6665], "{:?}", o.resynced);
+    assert_eq!(resynced, [6620, 6665], "{:?}", o.resynced);
     assert_eq!(per_step, Some(vec![0, 1]));
     // The run reaches the exit (`level_state` 1 on frame 8429, seen before 8430's step), every
     // coin taken: a script cut short stays green otherwise.

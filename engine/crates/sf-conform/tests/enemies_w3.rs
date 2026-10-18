@@ -110,7 +110,7 @@ const REWARD: u32 = 0x23e6c;
 /// hurt by a dart and the swing's ball.
 #[test]
 fn w3_1() {
-    let s = run("enemies-w3-1", &[863]);
+    let s = run("enemies-w3-1", &[]);
     for u in [
         PAD, DART_WAIT, DART_FLY, SHUFFLER, SPIKER, HOPPER, FLOW, SWING, SWING_LINK, JUMPER,
         STOMPABLE, STOMPED, REWARD,
@@ -225,45 +225,46 @@ fn completes(name: &str, pins: &[u32], exit_at: u32) {
 }
 
 /// W3-1 played from its start to its exit and through the tally (T115): the exit at 5493, fire
-/// taking the points. Two re-syncs pinned, each the frame after a lag: `bob_draw_vars` at 1018 and
-/// the panel at 1629. Its passes run past 105 frames' ends in a row from 1658 (the case's
+/// taking the points. No re-sync (`bob_draw_vars`' at 1018 and the panel's at 1629 went with
+/// T212's steps in `bob_draw` and `panel_update`). Its passes run past 105 frames' ends in a row from 1658 (the case's
 /// `lag-limit`); alone it meets every milestone.
 #[test]
 fn enemies_w3_1_complete() {
-    completes("enemies-w3-1-complete", &[1018, 1629], 5493);
+    completes("enemies-w3-1-complete", &[], 5493);
 }
 
 /// W3-2 played from its start to its exit and through the tally (T115): the three switches, the
-/// bottom corridor and the right half, the exit at 6994, fire taking the points. Two re-syncs
-/// pinned, each the frame after a lag: the play field buffer at 2758 and `bob_draw_vars` at 6445.
-/// Alone it meets every milestone.
+/// bottom corridor and the right half, the exit at 6994, fire taking the points. One re-sync
+/// pinned, the frame after a lag: the play field buffer at 2758 (`bob_draw_vars`' at 6445 went
+/// with T212). Alone it meets every milestone.
 #[test]
 fn enemies_w3_2_complete() {
-    completes("enemies-w3-2-complete", &[2758, 6445], 6994);
+    completes("enemies-w3-2-complete", &[2758], 6994);
 }
 
 /// W3-3 played from its start to its exit and through the tally (T115): the coins round the
 /// level, the switch at 57,64 and along the bottom to the exit at 7530, fire taking the points.
-/// One re-sync pinned, the frame after a lag: the panel at 4179. Alone it meets every milestone.
+/// No re-sync (the panel's at 4179 went with T212). Alone it meets every milestone.
 #[test]
 fn enemies_w3_3_complete() {
-    completes("enemies-w3-3-complete", &[4179], 7530);
+    completes("enemies-w3-3-complete", &[], 7530);
 }
 
 /// W3-4 played from its start to its exit and through the tally (T115): round the level as
 /// `enemies-w3-4` goes, back up for the coins and down again to the exit at 17774, fire taking the
-/// points. One re-sync pinned, the frame after a lag: the panel at 8779 (`obj_slots` at 16318 was
+/// points. No re-sync (the panel's at 8779 went with T212; `obj_slots` at 16318 was
 /// the bubble the frog let rise at 16317, ported by T204). Alone it meets every milestone.
 #[test]
 fn enemies_w3_4_complete() {
-    completes("enemies-w3-4-complete", &[8779], 17774);
+    completes("enemies-w3-4-complete", &[], 17774);
 }
 
 /// W3-3 to its exit on T115's first route (T195): green under checks 1–4, every object live.
 /// Twice (4026, 5280) the original's copper interrupt holds the CPU through the frame's end with
 /// the pass due and not begun; read as a pass run to its end, the engine alone ran a pass the
 /// original had not and stayed one ahead, its slots in another order from 4053, and missed the
-/// coin that leaves 17 at 6335. Six re-syncs pinned, each the frame after a lag.
+/// coin that leaves 17 at 6338 (taken at 6335 before T212, the original's 6338 since). Three
+/// re-syncs pinned, each the frame after a lag (6979, 7429 and 16477 went with T212).
 #[test]
 fn enemies_w3_3_slot_order() {
     use sf_conform::Milestone;
@@ -271,10 +272,10 @@ fn enemies_w3_3_slot_order() {
     let case = sf_conform::Case::load(&path).unwrap_or_else(|e| panic!("{e}"));
     let o = sf_conform::run(&case).unwrap_or_else(|d| panic!("{d}"));
     let resynced: Vec<u32> = o.resynced.iter().map(|r| r.0).collect();
-    assert_eq!(resynced, [3634, 4028, 6979, 7429, 12237, 16477], "{:?}", o.resynced);
+    assert_eq!(resynced, [3634, 4028, 12237], "{:?}", o.resynced);
     let met = o.milestones.expect("check 4 ran");
-    let coin = |&(f, m): &(u64, Milestone)| m == Milestone::CoinTaken { left: 17 } && f == 6335;
-    assert!(met.iter().any(coin), "the coin leaving 17 at 6335");
+    let coin = |&(f, m): &(u64, Milestone)| m == Milestone::CoinTaken { left: 17 } && f == 6338;
+    assert!(met.iter().any(coin), "the coin leaving 17 at 6338");
     assert!(met.iter().any(|(_, m)| *m == Milestone::LevelExit { world: 3, level: 3 }));
 }
 

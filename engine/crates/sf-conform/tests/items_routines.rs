@@ -644,6 +644,7 @@ fn the_frog_walk_ends_its_frame_at_the_entry_the_original_had_got_to() {
             hpos: 0,
             phase: 5,
             step,
+            point: 0,
             blanks: 0,
         };
         c.frames = Some(Box::new(Frames {
@@ -660,6 +661,149 @@ fn the_frog_walk_ends_its_frame_at_the_entry_the_original_had_got_to() {
         let mid = fr.mid.expect("the frame ended in the walk");
         assert_eq!(mid.w(FROG + f::VY) != 0, bounced, "cut at step {step}");
         assert_ne!(c.bus.w(FROG + f::VY), 0, "the walk runs on past the cut");
+    }
+}
+
+/// A frame the original ended inside `obj_despawn_if_offscreen` under a slot's update (its step
+/// counted done) ends at the point it had got to (`sf_conform::sync::pass_point`; T212: W2-2 1228 at
+/// h0+$1b9ce, its last `camera_y` test made after the vertical blank), before the slot's step is
+/// done; a cut with no point does not end it there.
+#[test]
+fn a_frame_ends_inside_the_despawn_test_at_the_point_the_original_had_got_to() {
+    use sf_core::level::beam::{Cut, FrameSpec, Frames};
+    let rig = rig();
+    let display = sf_conform::display_data();
+    for point in [0, 1, 3, 5] {
+        let mut st = rig.state().clone();
+        let mut paula = Vec::new();
+        let mut c = LevelCtx::new(
+            Bus::new(&mut st, display.rom()),
+            sf_core::level::standard_dispatch(),
+            Hw::default(),
+            sound(),
+            &mut paula,
+        );
+        let slot = OBJ_SLOTS + SLOT * 4;
+        let b = &mut c.bus;
+        b.set_l(slot + 0x40, 1);
+        b.set_l(slot + 0x50, objects::SPUD_BOB);
+        b.set_b(SCROLL_DIRS, 0);
+        b.set_w(h0(0x9dc), 0);
+        c.enter_phase(1);
+        c.pass_step = 4;
+        let cut = Cut {
+            writes: 0,
+            line: 0,
+            hpos: 0,
+            phase: 1,
+            step: 5,
+            point,
+            blanks: 0,
+        };
+        c.frames = Some(Box::new(Frames {
+            specs: vec![FrameSpec {
+                hw: Hw::default(),
+                cut: Some(cut),
+            }],
+            at: Some(0),
+            in_pass: true,
+            ..Frames::default()
+        }));
+        objects::obj_despawn_if_offscreen(&mut c, slot, 0);
+        let fr = c.frames.take().expect("frames");
+        assert_eq!(fr.mid.is_some(), point != 0, "point {point}");
+    }
+}
+
+/// A frame the original ended in `bob_draw`'s draw loop with `k` bobs drawn (step `2 + k`,
+/// `sf_conform::sync::bob_draw_step`) ends with the same `k` drawn, going back up the list: the
+/// ones after it in the frame's state, the ones before it not yet (T212 review: W4-2 9090 needs
+/// only that the frame not end before the swing ball's bob, so its case stays green with the loop
+/// unstepped).
+#[test]
+fn a_frame_ends_in_bob_draw_after_the_bobs_the_original_had_drawn() {
+    use sf_core::level::beam::{Cut, FrameSpec, Frames};
+    let rig = rig();
+    let display = sf_conform::display_data();
+    // A bob's animation fields, which only the first part's draw moves.
+    let anim = |s: &sf_core::state::State, bob: u32| (s.w(bob + 0x1a), s.l(bob + 0x16), s.l(bob + 0x5c));
+    // The list and each bob's fields before the draw and after a whole one.
+    let mut st = rig.state().clone();
+    let mut paula = Vec::new();
+    let (bobs, before, after, writes) = {
+        let mut c = LevelCtx::new(
+            Bus::new(&mut st, display.rom()),
+            sf_core::level::standard_dispatch(),
+            Hw::default(),
+            sound(),
+            &mut paula,
+        );
+        c.enter_phase(4);
+        objects::build_bob_draw_list(&mut c);
+        c.bus.set_w(h0(0x9da), 1);
+        let mut bobs = Vec::new();
+        while c.bus.l(objects::BOB_DRAW_LIST + 4 * bobs.len() as u32) != 0 {
+            bobs.push(c.bus.l(objects::BOB_DRAW_LIST + 4 * bobs.len() as u32));
+        }
+        let before: Vec<_> = bobs.iter().map(|&b| anim(&c.bus.st, b)).collect();
+        let mut whole = c.bus.st.clone();
+        let mut p2 = Vec::new();
+        let mut w = LevelCtx::new(
+            Bus::new(&mut whole, display.rom()),
+            sf_core::level::standard_dispatch(),
+            Hw::default(),
+            sound(),
+            &mut p2,
+        );
+        w.enter_phase(5);
+        objects::bob_draw(&mut w);
+        let after: Vec<_> = bobs.iter().map(|&b| anim(&w.bus.st, b)).collect();
+        drop(w);
+        // The draw loop writes no register: the original's frame ending in it had made every
+        // write before the first part's closing DMACON.
+        let writes = p2.iter().position(|p| (p.reg, p.value) == (0x96, 0x0400)).expect("the first part ends") as u16;
+        (bobs, before, after, writes)
+    };
+    let n = bobs.len();
+    assert!(n >= 3, "bobs listed: {n}");
+    let moved: Vec<usize> = (0..n).filter(|&i| before[i] != after[i]).collect();
+    assert!(moved.iter().any(|&i| i + 1 < n), "a bob the draw moves before the last: {moved:?}");
+    for k in [0, 1, n / 2, n - 1] {
+        let mut s = st.clone();
+        let mut paula = Vec::new();
+        let mut c = LevelCtx::new(
+            Bus::new(&mut s, display.rom()),
+            sf_core::level::standard_dispatch(),
+            Hw::default(),
+            sound(),
+            &mut paula,
+        );
+        c.enter_phase(5);
+        c.frames = Some(Box::new(Frames {
+            specs: vec![FrameSpec {
+                hw: Hw::default(),
+                cut: Some(Cut {
+                    writes,
+                    line: 0,
+                    hpos: 0,
+                    phase: 5,
+                    step: 2 + k as u16,
+                    point: 0,
+                    blanks: 0,
+                }),
+            }],
+            at: Some(0),
+            in_pass: true,
+            ..Frames::default()
+        }));
+        objects::bob_draw(&mut c);
+        let fr = c.frames.take().expect("frames");
+        let mid = fr.mid.expect("the frame ended in the draw");
+        for i in 0..n {
+            let drawn = i >= n - k;
+            let want = if drawn { after[i] } else { before[i] };
+            assert_eq!(anim(&mid, bobs[i]), want, "cut at {k} drawn: bob {i} of {n}");
+        }
     }
 }
 

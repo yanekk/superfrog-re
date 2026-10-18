@@ -1,8 +1,9 @@
 # W6-1 completed (T104): from its first frame through all 97 coins and both switches to the exit
 # (`level_state` 1 on frame 6751), every object live, nothing left out. Planned with
-# `examples/plan_exit_w6`, each chunk checked on the original. Plays alone green (T184). Outside the
-# test block: checks 1–3 part at 2136 after a lag, `clock_shown` (the panel's clock, the class
-# `enemies-w6-3-alt-complete` re-syncs at 6129); its 511 (channel 3) was T181's, 1518 T184's.
+# `examples/plan_exit_w6`, each chunk checked on the original. Plays alone green (T184); faithful
+# green since T212: the frame ending in the panel's score digit (2128), at `bob_draw`'s call or
+# entry (4386, 4402) or between its latches of the camera (5268), the engine's frame ends there
+# too. Before: red at 2136 (`clock_shown`), 511 (T181's), 1518 (T184's).
 sync = { level = "W6-1" }
 script = "enemies-w6-1-complete"
 frames = 6752

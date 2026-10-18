@@ -7,9 +7,9 @@
 # tally, fire in its wait taking the points; ends on frame 4924, frame 4925 being the next level's
 # (`level` 3). Planned by `examples/plan_exit` (`--no-tile-coins --jump 4`), checked on the
 # original chunk by chunk. No heart lost; meets the bouncer (627), the dart (1041) and the mace
-# (2157) (`script_seen`). Plays alone green (T196, 370 milestones). Red under checks 1–3 at 1229
-# (`hitboxes` order): frame 1228 ends inside `obj_despawn_if_offscreen` (h0+$1b9ce), its last
-# `camera_y` check after the blank; the engine runs the running slot's update whole before it.
+# (2157) (`script_seen`). Plays alone green (T196, 370 milestones); faithful green since T212:
+# frame 1228 ends inside `obj_despawn_if_offscreen` (h0+$1b9ce), its last `camera_y` test made
+# after the blank, and the engine's frame ends at that point too (`Cut::point`; red at 1229 before).
 sync = { level = "W2-2" }
 script = "w2-2-complete"
 frames = 4925

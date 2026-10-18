@@ -227,6 +227,7 @@ pub fn pacing(cpu: &CpuRegs, m: &AmigaMemory, writes: &[sf_paula::PaulaWrite]) -
         hpos: last.hpos,
         phase,
         step,
+        point: if step == sf_core::level::beam::NO_STEP { 0 } else { pass_point(cpu, m) },
         blanks: word(m, VBL_COUNT) as u16,
     };
     if long(m, 0x6c) == INTRO_VBL {
@@ -262,6 +263,8 @@ pub fn pacing(cpu: &CpuRegs, m: &AmigaMemory, writes: &[sf_paula::PaulaWrite]) -
         let phase = pass_phase(cpu, m);
         let step = if phase == FLIP_PHASE {
             flip_step(cpu, m)
+        } else if phase == PANEL_PHASE {
+            panel_step(cpu, m)
         } else {
             pass_step(cpu, m)
         };
@@ -351,6 +354,27 @@ pub fn flip_step(cpu: &CpuRegs, m: &AmigaMemory) -> u16 {
     }
 }
 
+/// The pass's call to `panel_update` (h0+$8620, from h0+$aec).
+const PANEL_PHASE: u8 = 8;
+
+/// How far `panel_update` had got at the frame's end, as the engine counts its steps
+/// (`sf_core::level::panel::panel_update`): its calls of the lives icon, the score digit and the
+/// clock digit, the one running counted done (T212: W6-1 2128 and W2-3 6728 end in the score
+/// digit; the clock digit after it reads the clock as the vertical blank leaves it).
+pub fn panel_step(cpu: &CpuRegs, m: &AmigaMemory) -> u16 {
+    let chain = main_chain(cpu, m);
+    let Some(k) = chain.iter().position(|&a| a == h0(0xaf0)) else {
+        return 0;
+    };
+    // The PC in `panel_update` itself, or the return address of the call it is in.
+    match k.checked_sub(1).map(|j| chain[j].wrapping_sub(h0(0))) {
+        Some(0x8624..=0x8627) => 1,
+        Some(0x8628..=0x862b) => 2,
+        Some(0x862c..=0x862f) => 3,
+        _ => 0,
+    }
+}
+
 /// Whether the original's frame ended with its main loop in the middle of a level's pass (not
 /// parked in `level_frame_loop`'s wait): its memory is then part way through what the engine does
 /// in one go, a lag the runner reports and re-syncs (DESIGN §2.1; owner, 2026-10-11).
@@ -403,6 +427,12 @@ pub fn pass_step(cpu: &CpuRegs, m: &AmigaMemory) -> u16 {
         0x19b84..=0x19b8d => 21 + slot(d(0)),
         0x19b8e..=0x19b95 => 40,
         0x19b96..=0x19bc0 => 40 + slot(d(0)).saturating_sub(1),
+        // `bob_draw` not begun (at its call or its first instruction), or with only the camera's
+        // x latched: the camera it latches then is the one the vertical blank leaves (T212: W6-1
+        // 4386, 4402, 5268).
+        0xada | 0x19120 => 0,
+        0x1912a => 1,
+        0x19410..=0x19958 => bob_draw_step(at, cpu, m),
         0xd0cc => 0,
         0xd0d0 | 0xd0e0..=0xd0ff => 1,
         // The frog's box is taken once its x and y are read (h0+$d0f8, $d0fc): from there the
@@ -437,6 +467,62 @@ pub fn pass_step(cpu: &CpuRegs, m: &AmigaMemory) -> u16 {
             }
             NO_STEP
         }
+    }
+}
+
+/// `bob_draw_vars+$16` (h0+$18bde): set while the drawer draws the seam's part.
+const BD_SEAM: u32 = h0(0x18bde);
+/// `bob_draw_list` (h0+$2970e): the bobs to draw, ended by a 0.
+const BOB_DRAW_LIST: u32 = h0(0x2970e);
+
+/// The step of `bob_draw`'s draw loop (h0+$19410..$19958, at `pc` from h0) outside the seam's part, as the engine
+/// counts it (`sf_core::level::objects::draw_part`): 2, then one more for each bob drawn going
+/// back up the list (`a0` at the bob taken), the one being drawn counted done once its animation
+/// is started (past h0+$1943c). [`NO_STEP`] in the seam's part.
+fn bob_draw_step(pc: u32, cpu: &CpuRegs, m: &AmigaMemory) -> u16 {
+    use sf_core::level::beam::NO_STEP;
+    if word(m, BD_SEAM) != 0 {
+        return NO_STEP;
+    }
+    let mut end = BOB_DRAW_LIST;
+    while long(m, end) != 0 {
+        end += 4;
+    }
+    let left = |a0: u32| (end.wrapping_sub(a0) / 4) as u16;
+    let drawn = match pc {
+        // Out of the loop: every bob drawn.
+        0x196fe..=0x19706 | 0x19950..=0x19958 => left(BOB_DRAW_LIST),
+        // `a0` not yet moved to the next bob.
+        0x19410..=0x19413 => left(cpu.a[0]),
+        // The bob taken, its animation not yet started.
+        0x19414..=0x1943c => left(cpu.a[0]).saturating_sub(1),
+        _ => left(cpu.a[0]),
+    };
+    2 + drawn
+}
+
+/// Where in the running step the main program was at the frame's end, as the engine marks it
+/// (`sf_core::level::LevelCtx::point`), 0 elsewhere: in `obj_despawn_if_offscreen` (h0+$1b95e)
+/// under a slot's update, how many of its reads of `scroll_dirs` and the camera it had made (1:
+/// none, 5: all but the last; T212: W2-2 1228 ends at h0+$1b9ce, its last test of `camera_y` made
+/// after the vertical blank).
+pub fn pass_point(cpu: &CpuRegs, m: &AmigaMemory) -> u8 {
+    let (pc, sp) = if cpu.pc == VBL_HANDLER {
+        (long(m, cpu.ssp + 2), cpu.ssp + 6)
+    } else {
+        (cpu.pc, cpu.a[7])
+    };
+    let in_update = (0..0x100).step_by(2).any(|k| long(m, sp + k) == h0(0x1b33e));
+    if !in_update {
+        return 0;
+    }
+    match pc.wrapping_sub(h0(0)) {
+        0x1b95e..=0x1b966 => 1,
+        0x1b96c..=0x1b990 => 2,
+        0x1b996..=0x1b9ac => 3,
+        0x1b9b2..=0x1b9c4 => 4,
+        0x1b9ca..=0x1b9e2 => 5,
+        _ => 0,
     }
 }
 

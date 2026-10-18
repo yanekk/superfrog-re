@@ -42,6 +42,7 @@ fn a_late_cut_the_engine_cannot_reach_ends_the_frame_as_normal_play_does() {
             hpos: 0,
             phase: 3,
             step: NO_STEP,
+            point: 0,
             blanks: 1,
         },
         Pacing::Late {
@@ -50,6 +51,7 @@ fn a_late_cut_the_engine_cannot_reach_ends_the_frame_as_normal_play_does() {
             hpos: 100,
             phase: 1,
             step: 4,
+            point: 0,
             blanks: 1,
         },
     ];
@@ -73,6 +75,7 @@ fn a_late_cut_the_engine_cannot_reach_ends_the_frame_as_normal_play_does() {
         hpos: 100,
         phase: 1,
         step: 4,
+        point: 0,
         blanks: 0,
     };
     let mut paced = Game::with_display(display.clone(), Start::Transplant(common::level().clone()));

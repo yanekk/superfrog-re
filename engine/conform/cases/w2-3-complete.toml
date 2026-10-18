@@ -11,8 +11,9 @@
 # level's (`level` 4). Planned by `examples/plan_exit` (`--no-tile-coins`, `--ground 36`), checked
 # on the original chunk by chunk. No heart lost; meets the bouncer (285), the dart (878), the
 # hopper (1372), the spikes (2584), the mace (3682), the flyer (3747), the walker (3891); no
-# crumbling ledge breaks (`script_seen`). Red for T155: checks 1–3 at 2166 (`bob_records`, after
-# a lag) and 6729 (`clock_shown`); alone green.
+# crumbling ledge breaks (`script_seen`). Green faithful and alone since T212: frame 6728 ends in
+# the panel's score digit, its clock digit drawn after the blank (red at 6729 before; 2166 went
+# with T197).
 sync = { level = "W2-3" }
 script = "w2-3-complete"
 frames = 8690

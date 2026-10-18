@@ -47,6 +47,15 @@ case!(frog_w4_1, "frog-w4-1");
 case!(frog_w5_1, "frog-w5-1");
 case!(frog_w6_1, "frog-w6-1");
 
+// Levels completed, green since T212, each guarding where the original's frame ended inside a
+// step: W2-3 and W6-1 the panel's steps (the clock digit after a blank in the score digit), W6-1
+// `bob_draw`'s camera latches, W2-2 `obj_despawn_if_offscreen`'s points, W4-2 the drawer's steps
+// by bob (a swing's links freed a pass after a blank's spawn). 10 s to a minute each.
+case!(complete_w4_2, "complete-w4-2");
+case!(enemies_w6_1_complete, "enemies-w6-1-complete");
+case!(w2_2_complete, "w2-2-complete");
+case!(w2_3_complete, "w2-3-complete");
+
 // The slot machine's other prizes and the hi-lo game.
 case!(slot_gamble, "slot-gamble");
 case!(slot_hilo_1, "slot-hilo-1");

@@ -13,11 +13,11 @@
 //! seed 1a2b3c4d 00000021            the start's RNG state, lo and hi (Start::PowerOn's)
 //! frames 224082                     how many records follow
 //! 00.0 o                            one a frame of play: the input, the pacing, then options
-//! 08.0 l3,120,64,1,7,2 2 load:12,40,118 rng:00ff00ff00ff00ff then:08.0*2,0.0
+//! 08.0 l3,120,64,1,7,3,2 2 load:12,40,118 rng:00ff00ff00ff00ff then:08.0*2,0.0
 //! ```
 //!
 //! A record is the input (`joy.keys`, both hex: [`FrameInput`]'s bits and key set), the
-//! [`Pacing`] (`-` unpaced, `o` on time, `d` pass due, `l<writes>,<line>,<hpos>,<phase>,<step>,<blanks>`
+//! [`Pacing`] (`-` unpaced, `o` on time, `d` pass due, `l<writes>,<line>,<hpos>,<phase>,<step>,<point>,<blanks>`
 //! late), then, each only when it applies: `2` the original's step ran two video frames, so the
 //! engine steps twice; `load:<blanks>,<screen frames>,<line>` the original's load ended this frame
 //! ([`Game::load_blanks`], [`Game::set_screen_frames`], [`Game::set_load_line`]; `-` for none);
@@ -209,8 +209,8 @@ fn pacing_text(p: Pacing) -> String {
         Pacing::Unpaced => "-".into(),
         Pacing::OnTime => "o".into(),
         Pacing::PassDue => "d".into(),
-        Pacing::Late { writes, line, hpos, phase, step, blanks } => {
-            format!("l{writes},{line},{hpos},{phase},{step},{blanks}")
+        Pacing::Late { writes, line, hpos, phase, step, point, blanks } => {
+            format!("l{writes},{line},{hpos},{phase},{step},{point},{blanks}")
         }
     }
 }
@@ -222,13 +222,14 @@ fn parse_pacing(s: &str) -> Option<Pacing> {
         "d" => Pacing::PassDue,
         _ => {
             let v: Vec<&str> = s.strip_prefix('l')?.split(',').collect();
-            let [w, l, h, p, st, b] = v[..] else { return None };
+            let [w, l, h, p, st, pt, b] = v[..] else { return None };
             Pacing::Late {
                 writes: w.parse().ok()?,
                 line: l.parse().ok()?,
                 hpos: h.parse().ok()?,
                 phase: p.parse().ok()?,
                 step: st.parse().ok()?,
+                point: pt.parse().ok()?,
                 blanks: b.parse().ok()?,
             }
         }
@@ -391,7 +392,7 @@ mod tests {
                 FeedFrame::default(),
                 FeedFrame {
                     input: FrameInput { joy: Joy::RIGHT | Joy::FIRE, keys: KeySet::key(0x45) },
-                    pacing: Pacing::Late { writes: 3, line: 120, hpos: 64, phase: 1, step: 7, blanks: 2 },
+                    pacing: Pacing::Late { writes: 3, line: 120, hpos: 64, phase: 1, step: 7, point: 3, blanks: 2 },
                     twice: true,
                     load: Some(FeedLoad { blanks: 12, screen_frames: None, line: Some(118) }),
                     seeds: vec![vec![0, 0xff, 1, 2, 3, 4, 5, 6], vec![9; 8]],
