@@ -18,6 +18,11 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-18 | 🐞 | T27 drill: levels and the map are 334×261, the window 320×256 (T23), so `Scale::N(n)` shows a level at n−1 (2× window, level at 1×), 4:3 and widescreen. T210 window-fits-the-game added, owner's yes; blocks T29. |
+| 2026-10-18 | 🔄 | Owner, T27: widescreen on screens that are not a level (title, intro, slot, map) shows each line's colour 0 at the sides, the Amiga border; DESIGN §2.7 fixed only levels. |
+| 2026-10-18 | 📌 | T27, measured: release, 3 000 frames, CRT on, 3×, widescreen: 0 dropped (CRT off: 0), `view.rs` `crt_drops` (ignored, `--release`). Debug drops 3–150 with or without CRT, by load. Capture's `pacing.txt` counts them. |
+| 2026-10-18 | 📌 | T27, under load ~40 (other workers, ffmpeg): scripted app runs crawled, a 2 000-frame run hit 150 s, shots went missing even after taking them inside the catch-up loop. Unexplained; all green at load ~7. |
+| 2026-10-18 | 📌 | T27 drill, worker-driven: shots of CRT at 1× and 3× (title), widescreen at 2× (loading picture, W3-1 mid-level, CRT on and off) judged: legible, sides show the map, nothing wraps or tears. |
 | 2026-10-18 | 📌 | T24 review: fake unverified against real — `menus.rs` OS fullscreen test failed twice with the screen locked (first toggle, then second ⌃⌘F). Owner chose close unverified. Rerun unlocked: `SF_E2E_OS=1 cargo test -p sf-e2e --test menus os_layer_scale -- --ignored`. |
 | 2026-10-18 | 📌 | T24 review, read-only, left alone: a paused step pushes no samples, so the device drains its 1/25 s lead; after resume the queue sits near empty and may underrun until it refills. Silent app today (T22). |
 | 2026-10-18 | 📌 | T24, macOS: with the screen locked the OS layer still clicks menus and posts keys, but AX lists no app windows, captures come back blank and fullscreen never happens (T23's picker and fullscreen OS tests too). Check `CGSSessionScreenIsLocked` first. |
