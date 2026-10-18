@@ -105,6 +105,17 @@ fn a_loaded_slot_machine_runs_on_as_the_saved_one() {
 }
 
 #[test]
+fn a_loaded_level_file_game_keeps_its_level_file() {
+    // A `.sflevel` game (T28): the state carries the edited map, so loading it on the disks' data
+    // gives the edited level back, not the disk one (W1-1:92,49, the pillar cell; T26 review).
+    let id: LevelId = "W1-1".parse().unwrap();
+    let mut ov = data().levels[&id].clone();
+    let cell = 49 * ov.t7mp.width as usize + 92;
+    ov.t7mp.body[cell] = 0;
+    check("level file", Game::new_with_override(data(), ov), 50, 200);
+}
+
+#[test]
 fn a_state_from_another_build_or_cache_is_refused() {
     let mut g = Game::new(data(), level("W1-1"));
     run(&mut g, 0, 20);
