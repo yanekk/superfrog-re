@@ -68,11 +68,12 @@ fn a_cancelled_picker_names_every_disk_and_quit_writes_nothing() {
     assert_eq!(c.exit.code(), Some(0), "Quit is a clean exit: {}", c.stderr);
     let m = missing(&c.prompts);
     assert_eq!(m.len(), 1, "{}", c.prompts);
-    assert!(m[0].starts_with("missing: No disk images were chosen."), "{}", m[0]);
-    for n in 1..=4 {
-        assert!(m[0].contains(&format!("Superfrog Disk {n} of 4 is missing")), "{}", m[0]);
-    }
-    assert!(m[0].ends_with("-> quit"));
+    assert_eq!(
+        m[0],
+        "missing: No disk images were chosen. Superfrog needs all four: Disk 1, Disk 2, Disk 3 and \
+         Disk 4 of 4, zipped or as .adf files. -> quit",
+        "every disk named, in one sentence (owner, 2026-10-18)"
+    );
     assert!(c.frames.is_empty(), "no game ran");
     assert_eq!(app_files(&app.home), Vec::<String>::new(), "Quit wrote nothing");
 }
@@ -91,9 +92,11 @@ fn two_disks_name_the_other_two_and_choose_disks_reopens_the_picker() {
     let kinds: Vec<&str> = c.prompts.lines().map(|l| l.split(':').next().unwrap()).collect();
     assert_eq!(kinds, ["picker", "missing", "picker"], "{}", c.prompts);
     let m = missing(&c.prompts)[0];
-    assert!(m.contains("Disk 3 of 4 is missing") && m.contains("Disk 4 of 4 is missing"), "{m}");
-    assert!(!m.contains("Disk 1 of 4") && !m.contains("Disk 2 of 4"), "{m}");
-    assert!(m.ends_with("-> choose"), "{m}");
+    assert_eq!(
+        m,
+        "missing: Superfrog Disk 3 of 4 and Disk 4 of 4 are missing. Choose them too, zipped or as \
+         .adf files. -> choose"
+    );
     assert!(cache_file(&app.home).is_file(), "the second pick imported");
     assert_eq!(c.frames.len(), 6, "and the game ran");
 }
@@ -122,8 +125,11 @@ fn a_wrong_disk_or_a_missing_one_is_named_by_slot_and_nothing_reaches_the_cache(
     assert!(m[0].contains("Superfrog Disk 3 of 4 is missing"), "{}", m[0]);
     assert!(m[1].contains("“blank.adf” is not one of the four Superfrog disks"), "{}", m[1]);
     assert!(m[1].contains("Superfrog Disk 3 of 4 is missing"), "{}", m[1]);
-    assert!(m[2].contains("Superfrog Disk 3 of 4 is missing"), "{}", m[2]);
-    assert!(!m[2].contains("Disk 1 of 4") && !m[2].contains("Disk 4 of 4"), "{}", m[2]);
+    assert_eq!(
+        m[2],
+        "missing: Superfrog Disk 3 of 4 is missing. Choose its disk image too, zipped or as an .adf \
+         file. -> quit"
+    );
     assert!(!app.home.join("cache").exists(), "nothing was written to the cache");
     assert!(!app.home.join("disks.toml").exists());
 }
@@ -157,8 +163,13 @@ fn a_damaged_cache_is_imported_again_silently_until_the_disks_are_moved() {
     assert!(c.exit.success(), "{}", c.stderr);
     let first = c.prompts.lines().next().unwrap_or("");
     assert!(first.starts_with("picker: "), "{}", c.prompts);
-    assert!(first.contains("the disk images used last time are gone or have changed"), "{first}");
-    assert!(first.contains("Superfrog Disk 1 of 4 is missing"), "{first}");
+    assert!(
+        first.ends_with(
+            "the disk images used last time are gone or have changed. Choose your four Superfrog \
+             disk images again."
+        ),
+        "{first}"
+    );
     assert_eq!(std::fs::read(cache_file(&app.home)).unwrap(), bad, "Quit left the cache alone");
 }
 

@@ -18,6 +18,7 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-18 | 🔄 | Owner, T23: the missing-disks message names every missing disk in one sentence ("Superfrog Disk 3 of 4 and Disk 4 of 4 are missing…"), not T03's sentence per disk. The picker and messages are sheets on the game window (OS-layer tested). |
 | 2026-10-18 | 📌 | T23, worker-driven: OS layer green (a real held → moved the frog in W1-1, frames equal the headless replay); ⌃⌘F fullscreen on/off on the 2560×1440 main display at 5×, frames equal windowed. No built-in display attached: unverified there. |
 | 2026-10-18 | 📌 | T23, macOS: the window's minimum size binds only a person's drag, not `request_inner_size`, so the app re-requests its minimum on a smaller resize. A covered window gets no redraws, so `shot` renders offscreen. |
 | 2026-10-18 | 📌 | T23, left alone: the app still ignores `FrameOut::disk_prompt` (T198's `end_seq_load` row); `--cache-from-disks` writes no `disks.toml`; FINDINGS is far over its 60-row budget, not compacted here. |

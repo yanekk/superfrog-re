@@ -12,7 +12,7 @@ use std::sync::Arc;
 
 use serde::{Deserialize, Serialize};
 use sf_assets::{GameData, LaunchAction, LaunchFacts, cache_decode, cache_encode, decide};
-use sf_disk::Offered;
+use sf_disk::{DiskSlot, ImportError, Offered};
 use winit::window::Window;
 
 use crate::atomic_write::atomic_write;
@@ -167,12 +167,72 @@ fn read_offered(paths: &[PathBuf]) -> (Vec<Offered>, Vec<String>) {
     (offered, unread)
 }
 
+/// Why offered disk images give no game data.
+#[derive(Debug)]
+enum Unusable {
+    /// They are not the four disks.
+    Disks(Vec<ImportError>),
+    /// They are, and decoding them failed.
+    Decode(String),
+}
+
 /// Decode identified disk images into the game data.
-fn decode(offered: &[Offered]) -> Result<GameData, Vec<String>> {
-    let set = sf_disk::identify(offered)
-        .map_err(|errors| errors.iter().map(ToString::to_string).collect::<Vec<_>>())?;
-    let chunks = sf_assets::unpack(&set).map_err(|e| vec![e.to_string()])?;
-    sf_assets::decode(&chunks).map_err(|e| vec![e.to_string()])
+fn decode(offered: &[Offered]) -> Result<GameData, Unusable> {
+    let set = sf_disk::identify(offered).map_err(Unusable::Disks)?;
+    let chunks = sf_assets::unpack(&set).map_err(|e| Unusable::Decode(e.to_string()))?;
+    sf_assets::decode(&chunks).map_err(|e| Unusable::Decode(e.to_string()))
+}
+
+/// `a`, `a and b`, `a, b and c`.
+fn and_list(items: &[String]) -> String {
+    match items {
+        [] => String::new(),
+        [one] => one.clone(),
+        [init @ .., last] => format!("{} and {last}", init.join(", ")),
+    }
+}
+
+/// One sentence naming every missing disk (owner, 2026-10-18: not one sentence each); `None`
+/// when none is.
+fn missing_sentence(slots: &[DiskSlot]) -> Option<String> {
+    match slots.len() {
+        0 => None,
+        1 => Some(ImportError::Missing(slots[0]).to_string()),
+        4 => Some(
+            "Superfrog needs all four: Disk 1, Disk 2, Disk 3 and Disk 4 of 4, zipped or as .adf \
+             files."
+                .to_string(),
+        ),
+        _ => {
+            let names: Vec<String> = slots.iter().map(|s| format!("Disk {} of 4", s.number())).collect();
+            Some(format!(
+                "Superfrog {} are missing. Choose them too, zipped or as .adf files.",
+                and_list(&names)
+            ))
+        }
+    }
+}
+
+/// What is wrong with the disks offered, for the player: each other problem in its own words,
+/// then the missing disks in one sentence (left out when all four are and `four_asked` says the
+/// message already asks for four).
+fn explain(errors: &[ImportError], four_asked: bool) -> Vec<String> {
+    let mut lines: Vec<String> = errors
+        .iter()
+        .filter(|e| !matches!(e, ImportError::Missing(_)))
+        .map(ToString::to_string)
+        .collect();
+    let missing: Vec<DiskSlot> = errors
+        .iter()
+        .filter_map(|e| match e {
+            ImportError::Missing(s) => Some(*s),
+            _ => None,
+        })
+        .collect();
+    if !(four_asked && missing.len() == 4) {
+        lines.extend(missing_sentence(&missing));
+    }
+    lines
 }
 
 fn write_cache(home: &Path, data: &GameData) -> Result<(), String> {
@@ -218,10 +278,26 @@ pub fn launch(
                     write_cache(home, &data)?;
                     return Ok(Some(data));
                 }
-                Err(why) => format!("{reason} {}", why.join(" ")),
+                Err(Unusable::Decode(why)) => format!("{reason} {why}"),
+                Err(Unusable::Disks(errors)) => format!("{reason} {}", explain(&errors, false).join(" ")),
             }
         }
-        LaunchAction::AskForDisks { reason } => reason,
+        // The disks remembered are gone or changed: T09's reason lists each problem after asking
+        // for the four again; the app words the list as its message does.
+        LaunchAction::AskForDisks { reason } => match (
+            reason.split_once(" again. "),
+            facts.remembered_disks.as_deref().map(sf_disk::identify),
+        ) {
+            (Some((head, _)), Some(Err(errors))) => {
+                let mut text = format!("{head} again.");
+                for line in explain(&errors, true) {
+                    text.push(' ');
+                    text.push_str(&line);
+                }
+                text
+            }
+            _ => reason,
+        },
     };
     ask(home, ui, reason)
 }
@@ -231,10 +307,10 @@ fn ask(home: &Path, ui: &mut dyn Ui, first: String) -> Result<Option<GameData>, 
     let mut message = first;
     loop {
         let problems = match ui.pick_disks(&message) {
-            None => {
-                let missing = decode(&[]).err().unwrap_or_default();
-                format!("No disk images were chosen.\n{}", missing.join("\n"))
-            }
+            None => format!(
+                "No disk images were chosen. {}",
+                missing_sentence(&DiskSlot::ALL).expect("four are missing")
+            ),
             Some(paths) => {
                 let (offered, unread) = read_offered(&paths);
                 match decode(&offered) {
@@ -252,8 +328,18 @@ fn ask(home: &Path, ui: &mut dyn Ui, first: String) -> Result<Option<GameData>, 
                         return Ok(Some(data));
                     }
                     Ok(_) => format!("These disk images cannot be used:\n{}", unread.join("\n")),
-                    Err(why) => {
-                        let all: Vec<String> = unread.into_iter().chain(why).collect();
+                    Err(Unusable::Decode(why)) => {
+                        format!("These disk images cannot be used: {why}")
+                    }
+                    // Only disks missing: say which; anything else wrong comes first.
+                    Err(Unusable::Disks(errors))
+                        if unread.is_empty()
+                            && errors.iter().all(|e| matches!(e, ImportError::Missing(_))) =>
+                    {
+                        explain(&errors, false).join("\n")
+                    }
+                    Err(Unusable::Disks(errors)) => {
+                        let all: Vec<String> = unread.into_iter().chain(explain(&errors, false)).collect();
                         format!("These disk images cannot be used:\n{}", all.join("\n"))
                     }
                 }
@@ -270,6 +356,33 @@ fn ask(home: &Path, ui: &mut dyn Ui, first: String) -> Result<Option<GameData>, 
 mod tests {
     use super::*;
 
+    #[test]
+    fn the_missing_disks_are_named_in_one_sentence() {
+        use DiskSlot::*;
+        assert_eq!(missing_sentence(&[]), None);
+        assert_eq!(
+            missing_sentence(&[D3]).unwrap(),
+            "Superfrog Disk 3 of 4 is missing. Choose its disk image too, zipped or as an .adf file."
+        );
+        assert_eq!(
+            missing_sentence(&[D3, D4]).unwrap(),
+            "Superfrog Disk 3 of 4 and Disk 4 of 4 are missing. Choose them too, zipped or as .adf \
+             files."
+        );
+        assert_eq!(
+            missing_sentence(&[D1, D2, D4]).unwrap(),
+            "Superfrog Disk 1 of 4, Disk 2 of 4 and Disk 4 of 4 are missing. Choose them too, zipped \
+             or as .adf files."
+        );
+        assert!(missing_sentence(&DiskSlot::ALL).unwrap().starts_with("Superfrog needs all four"));
+        // Other problems keep their own words, before the missing disks.
+        let lines = explain(&[ImportError::Missing(D2), ImportError::Duplicate(D1)], false);
+        assert_eq!(lines.len(), 2);
+        assert!(lines[0].contains("Disk 1 of 4 was chosen more than once"), "{lines:?}");
+        assert!(lines[1].contains("Disk 2 of 4 is missing"), "{lines:?}");
+        assert!(explain(&DiskSlot::ALL.map(ImportError::Missing), true).is_empty());
+    }
+
     fn home(name: &str) -> PathBuf {
         let d = std::env::temp_dir().join(format!("sf-app-import-{name}-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&d);
@@ -283,10 +396,11 @@ mod tests {
         assert_eq!(launch(&h, None, &mut ui), Ok(None));
         assert_eq!(ui.log.len(), 2, "{:?}", ui.log);
         assert!(ui.log[0].starts_with("picker: The game data has not been imported yet"), "{:?}", ui.log);
-        for n in 1..=4 {
-            assert!(ui.log[1].contains(&format!("Disk {n} of 4 is missing")), "{}", ui.log[1]);
-        }
-        assert!(ui.log[1].ends_with("-> quit"));
+        assert_eq!(
+            ui.log[1],
+            "missing: No disk images were chosen. Superfrog needs all four: Disk 1, Disk 2, Disk 3 \
+             and Disk 4 of 4, zipped or as .adf files. -> quit"
+        );
         assert!(!h.exists(), "Quit wrote into the home");
     }
 
@@ -317,7 +431,7 @@ mod tests {
         let m = &ui.log[1];
         assert!(m.contains("“gone.adf” could not be read"), "{m}");
         assert!(m.contains("“junk.zip” could not be read as a disk image"), "{m}");
-        assert!(m.contains("Disk 1 of 4 is missing"), "{m}");
+        assert!(m.contains("Superfrog needs all four"), "{m}");
         assert!(!cache_path(&h).exists());
         std::fs::remove_dir_all(&h).unwrap();
     }
