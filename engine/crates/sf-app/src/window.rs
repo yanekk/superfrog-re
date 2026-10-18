@@ -39,6 +39,11 @@ pub fn picture_scale(surface: (u32, u32), frame: (u32, u32), scale: Scale, scale
     }
 }
 
+/// The scale the picture is drawn at: the setting in a window, the largest that fits fullscreen.
+pub fn effective(scale: Scale, fullscreen: bool) -> Scale {
+    if fullscreen { Scale::Auto } else { scale }
+}
+
 /// The picture's place on the surface at `s` pixels a game pixel, centred: `(x, y, w, h)`.
 pub fn viewport(surface: (u32, u32), frame: (u32, u32), s: u32) -> (u32, u32, u32, u32) {
     let (w, h) = (frame.0 * s, frame.1 * s);
@@ -81,6 +86,13 @@ mod tests {
         assert_eq!(picture_scale((1280, 1024), GAME, Scale::N(2), 2.0), 4);
         assert_eq!(picture_scale((1280, 1024), GAME, Scale::N(3), 2.0), 4, "shrunk to fit");
         assert_eq!(picture_scale((960, 768), GAME, Scale::Auto, 2.0), 3, "odd pixels, still whole");
+    }
+
+    #[test]
+    fn fullscreen_is_always_the_largest_whole_scale() {
+        assert_eq!(effective(Scale::N(1), true), Scale::Auto);
+        assert_eq!(effective(Scale::N(2), false), Scale::N(2));
+        assert_eq!(effective(Scale::Auto, false), Scale::Auto);
     }
 
     #[test]

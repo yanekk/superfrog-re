@@ -9,7 +9,7 @@ use sf_core::{Picture, to_rgb12};
 use winit::window::Window;
 
 use crate::settings::Scale;
-use crate::window::{picture_scale, viewport};
+use crate::window::{effective, picture_scale, viewport};
 
 /// `pic` as 8-bit RGBA, row-major: each 4-bit channel times 17, so 0xF is 255.
 pub fn picture_rgba(pic: &Picture) -> Vec<u8> {
@@ -56,6 +56,8 @@ pub struct Video {
     /// The frame texture, its size and the bind group reading it.
     frame: Option<(wgpu::Texture, (u32, u32), wgpu::BindGroup)>,
     pub scale: Scale,
+    /// Fullscreen draws at the largest whole scale, whatever the setting (DESIGN §2.7).
+    pub fullscreen: bool,
 }
 
 /// Where [`Video::present`] puts the picture, for a `shot`: the surface's size in pixels, its
@@ -161,6 +163,7 @@ impl Video {
             sampler,
             frame: None,
             scale,
+            fullscreen: false,
         })
     }
 
@@ -230,7 +233,7 @@ impl Video {
     fn layout(&self, frame: (u32, u32)) -> Shown {
         let surface = (self.config.width, self.config.height);
         let scale_factor = self.window.scale_factor();
-        let s = picture_scale(surface, frame, self.scale, scale_factor);
+        let s = picture_scale(surface, frame, effective(self.scale, self.fullscreen), scale_factor);
         Shown {
             surface,
             scale_factor,

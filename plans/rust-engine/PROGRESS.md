@@ -12,9 +12,9 @@ the account is the commit message. Whoever writes a cell also fixes the over-bud
 **Plan reviewed:** 2026-10-10 — 7 fixed, 7 decided with the user
 
 **Status:** about 100 tasks ✅; T18, T21 and Phase 3 open; amended to faithful.
-**Last updated:** 2026-10-15
+**Last updated:** 2026-10-18
 **Amended 2026-10-15 (owner):** faithful replaces frame-exact (DESIGN §2.1, PLAN.md amendment); T180–T183 added, 14 tasks dropped (PLAN.md).
-**Next `pir-work` will:** T180 faithful-compare, then T182; T126 and T132 finish against the faithful bar.
+**Next `pir-work` will:** review T23 app-shell, then T24 macos-menus.
 
 ## Tasks
 
@@ -46,7 +46,7 @@ done · ⛔ blocked, needs a human. A task dropped by a plan amendment leaves th
 | T20 | front-end | T08, T11, T12, T13 | ✅ | |
 | T21 | game-flow | T18, T19, T20, T181, T183 | ✅ | |
 | T22 | app-rig | T09, T10, T12, T13 | ✅ | |
-| T23 | app-shell | T21, T22 | ⬜ | |
+| T23 | app-shell | T21, T22 | 🔍 | lock, settings, progress, import, window modules; KeyMap (Ctrl fire, ⌃⌘F); 51 unit, 18 e2e tests (3 SF_E2E_OS-gated), all green. Deviations: no PadMap (T25); fullscreen tests gated, run on main display only (no built-in attached); script `continue` stands in for T24's menu; `--scale` not persisted; Quit leaves `lock`; `disk_prompt` still unshown. |
 | T24 | macos-menus | T23 | ⬜ | |
 | T25 | controls-and-gamepad | T24 | ⬜ | |
 | T26 | save-states | T24 | ⬜ | |

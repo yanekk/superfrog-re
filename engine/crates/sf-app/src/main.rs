@@ -252,13 +252,14 @@ impl App {
             Ok(w) => Arc::new(w),
             Err(e) => return self.fail(event_loop, &format!("no window: {e}")),
         };
-        let video = match Video::new(window.clone(), scale) {
+        let mut video = match Video::new(window.clone(), scale) {
             Ok(v) => v,
             Err(e) => return self.fail(event_loop, &e),
         };
         if settings.fullscreen {
             if self.args.fullscreen_allowed() {
                 window::set_fullscreen(&window, true);
+                video.fullscreen = true;
             } else {
                 eprintln!("superfrog: staying windowed: a scripted run goes fullscreen only with --allow-fullscreen");
             }
@@ -376,6 +377,7 @@ impl App {
         let run = self.run.as_mut().expect("running");
         run.settings.fullscreen = !run.settings.fullscreen;
         window::set_fullscreen(&run.window, run.settings.fullscreen);
+        run.video.fullscreen = run.settings.fullscreen;
         self.save_settings();
     }
 

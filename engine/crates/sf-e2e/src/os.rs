@@ -202,16 +202,29 @@ impl App {
 
     /// Press and release `key`, posted to the app as the keyboard would.
     pub fn os_key(&mut self, key: Key) {
-        let pid = self.os_pid() as i32;
         for down in [true, false] {
-            // SAFETY: a keyboard event made, posted and released here.
-            unsafe {
-                let e = CGEventCreateKeyboardEvent(std::ptr::null(), key.code(), down);
-                assert!(!e.is_null(), "CGEventCreateKeyboardEvent failed");
-                CGEventPostToPid(pid, e);
-                CFRelease(e);
-            }
+            self.os_key_event(key, down);
             std::thread::sleep(Duration::from_millis(60));
+        }
+    }
+
+    /// Hold `key` down, as the keyboard would, until [`App::os_key_up`].
+    pub fn os_key_down(&mut self, key: Key) {
+        self.os_key_event(key, true);
+    }
+
+    pub fn os_key_up(&mut self, key: Key) {
+        self.os_key_event(key, false);
+    }
+
+    fn os_key_event(&mut self, key: Key, down: bool) {
+        let pid = self.os_pid() as i32;
+        // SAFETY: a keyboard event made, posted and released here.
+        unsafe {
+            let e = CGEventCreateKeyboardEvent(std::ptr::null(), key.code(), down);
+            assert!(!e.is_null(), "CGEventCreateKeyboardEvent failed");
+            CGEventPostToPid(pid, e);
+            CFRelease(e);
         }
     }
 

@@ -66,9 +66,13 @@ fn fullscreen_is_remembered_across_a_relaunch() {
     assert!(settings.contains("fullscreen = true"), "{settings}");
     let c = app.run_script("100: shot\n");
     assert!(c.exit.success(), "{}", c.stderr);
-    let (_, info) = c.read_shot(100);
+    let (img, info) = c.read_shot(100);
     let sf = info.scale_factor as u32;
     assert!(info.surface.0 > 640 * sf && info.surface.1 > 512 * sf, "relaunched fullscreen: {info:?}");
+    let frame = c.read_frame(info.frame);
+    let s = common::assert_integer_scaled(&img, &info, &frame);
+    let fit = (info.surface.0 / frame.width).min(info.surface.1 / frame.height);
+    assert_eq!(s, fit, "fullscreen is the largest whole scale: {info:?}");
 }
 
 #[test]
@@ -243,4 +247,72 @@ fn with_no_audio_output_the_game_runs_silently_at_the_same_pace() {
     let want = common::headless_frames(&data, 100, |_| FrameInput::NONE);
     assert_eq!(c.frames.len(), 101);
     assert!(c.frames[1..] == want[..], "the frames are the engine's");
+}
+
+/// What the capture's `inputs.txt` says each step saw.
+fn captured_inputs(text: &str) -> std::collections::BTreeMap<u64, FrameInput> {
+    text.lines()
+        .map(|l| {
+            let mut w = l.split(' ');
+            let n = w.next().unwrap().parse().unwrap();
+            let joy = Joy(u8::from_str_radix(w.next().unwrap(), 16).unwrap());
+            let mut keys = sf_core::input::KeySet::NONE;
+            for k in w.next().unwrap_or("").split(',').filter(|k| !k.is_empty()) {
+                keys = keys.with(u8::from_str_radix(k, 16).unwrap());
+            }
+            (n, FrameInput { joy, keys })
+        })
+        .collect()
+}
+
+#[test]
+#[ignore = "OS layer: SF_E2E_OS=1 cargo test -p sf-e2e --test persist -- --ignored"]
+fn os_layer_a_real_key_press_moves_the_frog() {
+    assert!(
+        std::env::var_os("SF_E2E_OS").is_some_and(|v| v == "1"),
+        "OS-layer tests post real events to the screen; run them with SF_E2E_OS=1"
+    );
+    sf_e2e::os_permissions().unwrap_or_else(|e| panic!("{e}"));
+    // The script takes the game to W1-1 (it is the same chain as above); the right arrow is a real
+    // key, posted once the frog takes the stick.
+    const FRAMES: u64 = 2300;
+    let mut app = App::launch(LaunchOpts {
+        max_frames: FRAMES,
+        timeout_s: 150,
+        ..Default::default()
+    });
+    let data = cache_data(&app.home);
+    app.start_script("100: press Space\n200: press Space\n250: press Space\n");
+    let ready = app.home.join("capture-0/frame-02050.png");
+    let t = Instant::now();
+    while !ready.exists() {
+        assert!(t.elapsed() < Duration::from_secs(100), "the run never reached frame 2050");
+        std::thread::sleep(Duration::from_millis(20));
+    }
+    app.os_window();
+    app.os_activate();
+    std::thread::sleep(Duration::from_millis(200));
+    app.os_key_down(sf_e2e::Key::Right);
+    std::thread::sleep(Duration::from_millis(500));
+    app.os_key_up(sf_e2e::Key::Right);
+    let c = app.finish_unread();
+    assert!(c.exit.success(), "{}", c.stderr);
+
+    // Steps that saw the stick to the right: the real key, about 25 of them, after frame 2050.
+    let inputs = captured_inputs(&c.inputs);
+    let right: Vec<u64> = inputs.iter().filter(|(_, i)| i.joy == Joy::RIGHT).map(|(n, _)| *n).collect();
+    assert!(right.len() >= 10, "the key reached {} steps: {:?}", right.len(), c.inputs);
+    assert!(right[0] > 2050, "{right:?}");
+    // The engine with the same inputs: the app's frames, and the frog moved right while it was held.
+    let mut game = headless(&data);
+    let mut x = std::collections::BTreeMap::new();
+    for n in 1..=FRAMES {
+        let pic = game.step(inputs.get(&n).copied().unwrap_or(FrameInput::NONE)).picture;
+        x.insert(n, var(&game, VarId::FrogX));
+        if n % 50 == 0 {
+            assert_eq!(c.read_frame(n), Image::of_picture(&pic), "frame {n}");
+        }
+    }
+    let (first, last) = (right[0], *right.last().unwrap());
+    assert!(x[&last] > x[&(first - 1)] + 20, "the frog moved {} → {}", x[&(first - 1)], x[&last]);
 }

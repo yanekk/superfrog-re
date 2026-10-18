@@ -23,10 +23,25 @@ mixer's output, 16-bit stereo) and `inputs.txt` (the input each step saw). A scr
 an inactive window, plays nothing through the speakers and runs at the PAL rate, so 500 frames
 take 10 s. Set `SF_E2E_KEEP=1` to keep the temporary homes and their captures.
 
+T23's files: `import.rs` (the first-run import and the launch decision), `window.rs` (integer
+scaling, resize, fullscreen) and `persist.rs` (settings, progress, the lock, no audio output, the
+keys moving the frog). Their scripts also use:
+
+- `pick …` / `answer …`: the disk picker's and the missing-disks message's answers. A scripted
+  run never opens a native panel; every question it was asked is in the capture's `prompts.txt`
+  (`App::launch_empty` starts from an empty home, `App::disks_in_home` copies the disks in).
+- `N: resize W H`, `N: scale N|auto`, `N: shot`: a shot is the window's picture as presented,
+  drawn offscreen by the same pass (macOS withholds redraws from a covered window), written to
+  `window-NNNNN.png` with a line in `windows.txt`.
+- `--audio-device NAME`: a name no device has is the "no audio output" hook.
+
+Fullscreen takes over the display, so the two fullscreen tests (`window.rs`, `persist.rs`) are
+`#[ignore]`d like the OS layer and run under `SF_E2E_OS=1`.
+
 ## The OS layer (only when asked)
 
 ```
-cd engine && SF_E2E_OS=1 cargo test -q -p sf-e2e --test smoke -- --ignored --test-threads 1
+cd engine && SF_E2E_OS=1 cargo test -q -p sf-e2e -- --ignored --test-threads 1
 ```
 
 These tests post real key events to the app with CGEvent, click its menu items through the

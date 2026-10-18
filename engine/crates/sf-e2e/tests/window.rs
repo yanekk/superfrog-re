@@ -128,7 +128,9 @@ fn fullscreen_on_and_off_by_its_shortcut_shows_the_same_frames() {
         "fullscreen fills the display: {full:?}"
     );
     let s = shot(&c, SHOT);
-    assert_eq!(s, (full.surface.0 / 320).min(full.surface.1 / 256), "the largest whole scale");
+    let frame = c.read_frame(full.frame);
+    let fit = (full.surface.0 / frame.width).min(full.surface.1 / frame.height);
+    assert_eq!(s, fit, "the largest whole scale: {full:?}");
     let (_, back) = c.read_shot(290);
     assert_eq!(back.surface, (320 * sf, 256 * sf), "back to the 1× window");
     shot(&c, 290);
