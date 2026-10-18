@@ -6,12 +6,15 @@
 //! `settings.toml` (DESIGN §2.9). By default the arrows are the joystick's directions, Space and
 //! either Ctrl its fire button, and letters, digits, Return, Escape, Backspace, Tab, Delete and
 //! F1–F10 the Amiga's own keys. The left mouse button is port 1's button (the crack intro waits for
-//! it) and is not remapped. With ⌘ held a key is the app's, never the game's: ⌃⌘F is fullscreen.
+//! it) and is not remapped. With ⌘ held a key is the app's, never the game's: ⌃⌘F is fullscreen and
+//! ⌘Q quits, the menu bar's shortcuts (`menu.rs`) as a script's keys arrive at them.
 
 use std::collections::BTreeMap;
 
 use sf_core::input::{FrameInput, Joy, KeySet};
 use winit::keyboard::KeyCode;
+
+use crate::menu::Command;
 
 /// One of the original's inputs: a joystick direction, its fire button, or an Amiga key (raw code).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -266,13 +269,6 @@ pub enum HostInput {
     FocusLost,
 }
 
-/// A key combination that is the app's, not the game's.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum Shortcut {
-    /// ⌃⌘F.
-    ToggleFullscreen,
-}
-
 /// What is held, and what was pressed since the last frame.
 #[derive(Debug, Default)]
 pub struct Input {
@@ -301,8 +297,8 @@ impl Input {
     }
 
     /// Take one host event. A key pressed with ⌘ held goes to the app, not the game: `Some` when
-    /// it is one of the app's shortcuts.
-    pub fn event(&mut self, e: HostInput) -> Option<Shortcut> {
+    /// it is one of the menu bar's shortcuts.
+    pub fn event(&mut self, e: HostInput) -> Option<Command> {
         match e {
             HostInput::Key { code, pressed: true } => {
                 if is_command(code) {
@@ -311,7 +307,11 @@ impl Input {
                 }
                 if self.holding(is_command) {
                     let ctrl = self.holding(|c| matches!(c, KeyCode::ControlLeft | KeyCode::ControlRight));
-                    return (ctrl && code == KeyCode::KeyF).then_some(Shortcut::ToggleFullscreen);
+                    return match (ctrl, code) {
+                        (true, KeyCode::KeyF) => Some(Command::ToggleFullscreen),
+                        (false, KeyCode::KeyQ) => Some(Command::Quit),
+                        _ => None,
+                    };
                 }
                 self.held.push(code);
                 for t in self.map.targets(code) {
@@ -443,12 +443,16 @@ mod tests {
     }
 
     #[test]
-    fn ctrl_cmd_f_is_fullscreen_and_keys_with_cmd_never_reach_the_game() {
+    fn ctrl_cmd_f_is_fullscreen_cmd_q_quits_and_keys_with_cmd_never_reach_the_game() {
         let mut i = input();
+        assert_eq!(i.event(key(KeyCode::SuperLeft, true)), None);
+        assert_eq!(i.event(key(KeyCode::KeyQ, true)), Some(Command::Quit));
+        assert_eq!(i.event(key(KeyCode::KeyF, true)), None, "⌘F alone is nothing");
+        i.event(key(KeyCode::SuperLeft, false));
         assert_eq!(i.event(key(KeyCode::ControlLeft, true)), None);
         assert_eq!(i.event(key(KeyCode::SuperLeft, true)), None);
-        assert_eq!(i.event(key(KeyCode::KeyF, true)), Some(Shortcut::ToggleFullscreen));
-        assert_eq!(i.event(key(KeyCode::KeyQ, true)), None);
+        assert_eq!(i.event(key(KeyCode::KeyF, true)), Some(Command::ToggleFullscreen));
+        assert_eq!(i.event(key(KeyCode::KeyQ, true)), None, "⌃⌘Q is not Quit");
         // Ctrl is fire; F and Q, pressed with ⌘, are not Amiga keys here.
         assert_eq!(i.frame(), FrameInput::joy(Joy::FIRE));
         i.event(key(KeyCode::SuperLeft, false));

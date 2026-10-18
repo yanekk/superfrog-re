@@ -72,6 +72,7 @@ impl Key {
                 'k' => 0x28,
                 'n' => 0x2D,
                 'm' => 0x2E,
+                '.' => 0x2F,
                 _ => panic!("no key for {c:?}"),
             },
         }
@@ -88,6 +89,33 @@ unsafe extern "C" {
     fn CGPreflightScreenCaptureAccess() -> bool;
     fn CGEventCreateKeyboardEvent(source: *const c_void, key: u16, down: bool) -> *mut c_void;
     fn CGEventPostToPid(pid: i32, event: *mut c_void);
+    fn CGEventSetFlags(event: *mut c_void, flags: u64);
+}
+
+/// Modifier keys held with a key, as [`App::os_key_with`] posts them.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub struct Mods {
+    pub command: bool,
+    pub control: bool,
+}
+
+impl Mods {
+    pub const COMMAND: Mods = Mods { command: true, control: false };
+    pub const CONTROL_COMMAND: Mods = Mods { command: true, control: true };
+
+    /// `CGEventFlags`: `kCGEventFlagMaskCommand`, `kCGEventFlagMaskControl`.
+    fn flags(self) -> u64 {
+        (self.command as u64 * 0x10_0000) | (self.control as u64 * 0x4_0000)
+    }
+}
+
+/// A menu item as the menu bar shows it.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct MenuItemState {
+    pub title: String,
+    pub enabled: bool,
+    /// It shows a check mark.
+    pub checked: bool,
 }
 
 #[link(name = "CoreFoundation", kind = "framework")]
@@ -218,17 +246,117 @@ impl App {
     }
 
     fn os_key_event(&mut self, key: Key, down: bool) {
+        self.os_key_event_with(Mods::default(), key, down);
+    }
+
+    /// Press and release `key` with `mods` held, as the keyboard posts a shortcut: the modifiers
+    /// travel as the key events' flags.
+    pub fn os_key_with(&mut self, mods: Mods, key: Key) {
+        for down in [true, false] {
+            self.os_key_event_with(mods, key, down);
+            std::thread::sleep(Duration::from_millis(60));
+        }
+    }
+
+    fn os_key_event_with(&mut self, mods: Mods, key: Key, down: bool) {
         let pid = self.os_pid() as i32;
         // SAFETY: a keyboard event made, posted and released here.
         unsafe {
             let e = CGEventCreateKeyboardEvent(std::ptr::null(), key.code(), down);
             assert!(!e.is_null(), "CGEventCreateKeyboardEvent failed");
+            if mods != Mods::default() {
+                CGEventSetFlags(e, mods.flags());
+            }
             CGEventPostToPid(pid, e);
             CFRelease(e);
         }
     }
 
-    /// Click the menu item at `path`, from the menu bar down: `["superfrog", "Quit superfrog"]`.
+    /// The titles of the menu bar's menus, left to right.
+    pub fn os_menu_bar(&self) -> Vec<String> {
+        let app = ax::app(self.os_pid());
+        let bar = ax::attr(&app, "AXMenuBar").unwrap_or_else(|e| panic!("the app's menu bar: {e}"));
+        ax::children(&bar).iter().map(ax::title).collect()
+    }
+
+    /// The items of the menu at `path` (`["View", "Scale"]`), separators left out.
+    pub fn os_menu_items(&self, path: &[&str]) -> Vec<MenuItemState> {
+        let app = ax::app(self.os_pid());
+        let bar = ax::attr(&app, "AXMenuBar").unwrap_or_else(|e| panic!("the app's menu bar: {e}"));
+        let mut items = ax::children(&bar);
+        for name in path {
+            let titles: Vec<String> = items.iter().map(ax::title).collect();
+            let at = titles
+                .iter()
+                .position(|t| t == name)
+                .unwrap_or_else(|| panic!("no menu {name:?} in {path:?}; there are {titles:?}"));
+            let menu = ax::children(&items[at]).into_iter().next().unwrap_or_else(|| panic!("{name:?} has no menu"));
+            items = ax::children(&menu);
+        }
+        items
+            .iter()
+            .map(|e| MenuItemState {
+                title: ax::title(e),
+                enabled: ax::flag(e, "AXEnabled"),
+                checked: !ax::text(e, "AXMenuItemMarkChar").is_empty(),
+            })
+            .filter(|i| !i.title.is_empty())
+            .collect()
+    }
+
+    /// How many windows the app has on screen, panels included.
+    pub fn os_window_count(&self) -> usize {
+        self.os_windows().len()
+    }
+
+    /// The app's windows on screen, panels included, front to back: their numbers and bounds in
+    /// points (the window server's list).
+    pub fn os_windows(&self) -> Vec<(u32, [i32; 4])> {
+        let pid = self.os_pid();
+        let script = format!(
+            "ObjC.import('CoreGraphics'); \
+             const l = ObjC.deepUnwrap(ObjC.castRefToObject(\
+               $.CGWindowListCopyWindowInfo($.kCGWindowListOptionOnScreenOnly, 0))); \
+             l.filter(w => w.kCGWindowOwnerPID == {pid} && w.kCGWindowLayer == 0) \
+              .map(w => [w.kCGWindowNumber, w.kCGWindowBounds.X, w.kCGWindowBounds.Y, \
+                         w.kCGWindowBounds.Width, w.kCGWindowBounds.Height].join(' ')).join(';')"
+        );
+        let out = Command::new("osascript")
+            .args(["-l", "JavaScript", "-e", &script])
+            .output()
+            .expect("running osascript");
+        String::from_utf8_lossy(&out.stdout)
+            .trim()
+            .split(';')
+            .filter(|w| !w.is_empty())
+            .map(|w| {
+                let n: Vec<i64> = w.split(' ').map(|v| v.parse::<f64>().unwrap() as i64).collect();
+                (n[0] as u32, [n[1] as i32, n[2] as i32, n[3] as i32, n[4] as i32])
+            })
+            .collect()
+    }
+
+    /// Is the app hidden (Hide)?
+    pub fn os_hidden(&self) -> bool {
+        ax::flag(&ax::app(self.os_pid()), "AXHidden")
+    }
+
+    /// Show the app again after Hide, as clicking it in the Dock would.
+    pub fn os_unhide(&mut self) {
+        ax::set_bool(&ax::app(self.os_pid()), "AXHidden", false).unwrap_or_else(|e| panic!("unhiding: {e}"));
+    }
+
+    /// The item titled `title` in the menu at `path`.
+    pub fn os_menu_item(&self, path: &[&str], title: &str) -> MenuItemState {
+        let items = self.os_menu_items(path);
+        items
+            .iter()
+            .find(|i| i.title == title)
+            .cloned()
+            .unwrap_or_else(|| panic!("no item {title:?} in {path:?}: {items:?}"))
+    }
+
+    /// Click the menu item at `path`, from the menu bar down: `["superfrog", "Quit Superfrog"]` (the app menu is titled with the process name).
     pub fn os_menu(&mut self, path: &[&str]) {
         assert!(path.len() >= 2, "a menu path names a menu and an item");
         let app = ax::app(self.os_pid());
@@ -297,7 +425,11 @@ impl App {
 
     /// The window as the screen shows it, title bar included, at the display's pixel density.
     pub fn os_capture(&self) -> Image {
-        let (id, _) = self.os_window();
+        self.os_capture_window(self.os_window().0)
+    }
+
+    /// The app's window numbered `id` (from [`App::os_windows`]) as the screen shows it.
+    pub fn os_capture_window(&self, id: u32) -> Image {
         let path = self.home.join(format!("window-{id}.png"));
         // `CGWindowListCreateImage` through JXA: on macOS 26 the `screencapture` tool is refused
         // ("could not create image from window") where the terminal's own grant is enough for this.
@@ -344,6 +476,7 @@ mod ax {
     #[link(name = "CoreFoundation", kind = "framework")]
     unsafe extern "C" {
         static kCFBooleanTrue: CFRef;
+        static kCFBooleanFalse: CFRef;
         fn CFStringCreateWithCString(alloc: CFRef, s: *const c_char, enc: u32) -> CFRef;
         fn CFStringGetCString(s: CFRef, buf: *mut c_char, len: isize, enc: u32) -> bool;
         fn CFGetTypeID(r: CFRef) -> usize;
@@ -389,8 +522,13 @@ mod ax {
     }
 
     pub fn set_true(e: &Cf, name: &str) -> Result<(), String> {
+        set_bool(e, name, true)
+    }
+
+    pub fn set_bool(e: &Cf, name: &str, value: bool) -> Result<(), String> {
         // SAFETY: a static CF boolean, an owned attribute name.
-        let err = unsafe { AXUIElementSetAttributeValue(e.0, string(name).0, kCFBooleanTrue) };
+        let v = unsafe { if value { kCFBooleanTrue } else { kCFBooleanFalse } };
+        let err = unsafe { AXUIElementSetAttributeValue(e.0, string(name).0, v) };
         if err != 0 { Err(format!("{name}: AXError {err}")) } else { Ok(()) }
     }
 
@@ -434,6 +572,13 @@ mod ax {
         }
     }
 
+    /// A boolean attribute, `false` when there is none.
+    pub fn flag(e: &Cf, name: &str) -> bool {
+        let Ok(v) = attr(e, name) else { return false };
+        // SAFETY: CFBoolean is a static singleton; comparing the pointer reads nothing.
+        unsafe { v.0 == kCFBooleanTrue }
+    }
+
     pub fn title(e: &Cf) -> String {
         text(e, "AXTitle")
     }
@@ -467,3 +612,4 @@ mod tests {
         );
     }
 }
+

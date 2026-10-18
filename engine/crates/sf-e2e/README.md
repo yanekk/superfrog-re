@@ -35,6 +35,12 @@ keys moving the frog). Their scripts also use:
   `window-NNNNN.png` with a line in `windows.txt`.
 - `--audio-device NAME`: a name no device has is the "no audio output" hook.
 
+T24's `menus.rs` drives the menu bar (`sf-app/src/menu.rs`). A script names a menu command with
+`N: menu <id>` (`import`, `continue`, `scale 1|2|3|auto`, `fullscreen`, `pause`, `reset`, `quit`);
+the app logs each command it takes as `superfrog: menu <id> after step N`, which lines an OS-layer
+click up with the captured frames. A paused step still counts towards `--max-frames` and captures
+the held picture again.
+
 Fullscreen takes over the display, so the two fullscreen tests (`window.rs`, `persist.rs`) are
 `#[ignore]`d like the OS layer and run under `SF_E2E_OS=1`.
 
@@ -60,6 +66,11 @@ WezTerm) under both:
 A missing grant fails the test with the setting to change. A capture that comes back blank
 (every pixel transparent) also means Screen Recording is missing, even when macOS's own preflight
 check says it is granted.
+
+**The screen must be unlocked.** With it locked the menu bar still answers, but the
+Accessibility API lists none of the app's windows (so no panel's buttons), window captures come
+back blank and fullscreen never happens. `menus.rs` therefore counts windows and reads their
+bounds from the window server, and cancels the picker with ⌘. rather than its Cancel button.
 
 Two macOS 26 behaviours the layer works around:
 

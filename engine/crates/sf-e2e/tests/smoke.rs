@@ -330,7 +330,7 @@ fn os_layer_a_menu_click_reaches_the_app() {
     });
     app.os_window();
     let t = Instant::now();
-    app.os_menu(&["superfrog", "Quit superfrog"]);
+    app.os_menu(&["superfrog", "Quit Superfrog"]);
     let c = app.finish();
     assert!(
         t.elapsed() < Duration::from_secs(10),

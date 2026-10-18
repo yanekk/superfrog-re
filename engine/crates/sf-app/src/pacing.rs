@@ -43,6 +43,12 @@ impl Pacer {
         }
         n
     }
+
+    /// Count every frame wholly elapsed by `samples` as stepped, without stepping them: after the
+    /// main thread was held (a modal panel), the game carries on from now rather than catching up.
+    pub fn skip_to(&mut self, samples: u64) {
+        self.due(samples);
+    }
 }
 
 /// What the window shows: the newest completed frame, whole (DESIGN §2.5). A refresh between two
