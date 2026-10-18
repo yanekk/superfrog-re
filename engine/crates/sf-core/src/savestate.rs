@@ -109,10 +109,9 @@ impl Game {
         if bytes[..MAGIC.len()] != MAGIC {
             return Err(StateError::NotAState);
         }
-        let mut r = bytes;
-        bincode::Options::allow_trailing_bytes(opts())
-            .deserialize_from(&mut r)
-            .map_err(|_| StateError::Corrupt)
+        // Read from the slice, not through `io::Read`: the slice reader checks a length against the
+        // bytes left, where the reader would allocate whatever a damaged length says first.
+        bincode::Options::allow_trailing_bytes(opts()).deserialize(bytes).map_err(|_| StateError::Corrupt)
     }
 
     /// The game a save state holds, on `data`, if it was written by `engine_build` on game data

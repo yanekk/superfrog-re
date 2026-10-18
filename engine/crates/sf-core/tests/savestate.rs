@@ -152,6 +152,17 @@ fn a_damaged_or_foreign_file_is_refused() {
 }
 
 #[test]
+fn a_damaged_length_in_the_header_is_refused_without_reading_past_the_file() {
+    // The build name's length, after the magic, is garbage: refused, not allocated (T26 review).
+    for len in [u64::MAX, 1 << 36, 1 << 20] {
+        let mut b = b"SFST".to_vec();
+        b.extend_from_slice(&len.to_le_bytes());
+        b.extend_from_slice(&[0; 64]);
+        assert_eq!(Game::state_header(&b), Err(StateError::Corrupt), "length {len}");
+    }
+}
+
+#[test]
 fn the_encoding_is_deterministic() {
     let mut g = Game::new(data(), level("W2-1"));
     run(&mut g, 0, 100);
