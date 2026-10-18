@@ -17,7 +17,7 @@ use sf_core::{Game, Picture, Rng, View};
 use crate::{Alone, Case, SyncPoint};
 
 /// Bump when what a feed or its hashes hold changes.
-const FEED_FORMAT: u32 = 3;
+const FEED_FORMAT: u32 = 4;
 
 /// The engine build this crate's engine is (sf-app `build.rs`, shared): what a feed is tagged with.
 pub const ENGINE_BUILD: &str = env!("SF_ENGINE_BUILD");
@@ -35,18 +35,25 @@ pub struct Recorded {
     pub panicked: bool,
 }
 
-/// The first line of an audio file: then one line a frame of play, from frame 1, the loudest
-/// sample of the original's own mix (vAmiga's, `Amiga::mixed_audio`) in the frame its step ended
-/// in, as a 16-bit magnitude (0 to 32767).
-pub const AUDIO_HEADER: &str = "superfrog original audio peaks 1";
+/// The first line of an audio file: then one line a frame of play, from frame 1, the [`swing`]
+/// of the original's own mix (vAmiga's, `Amiga::mixed_audio`) in the frame its step ended in.
+pub const AUDIO_HEADER: &str = "superfrog original audio swing 1";
 
-/// The loudest sample of a frame of the original's mix, as a 16-bit magnitude.
-pub fn peak(mix: &[[f32; 2]]) -> u16 {
-    let m = mix.iter().flatten().fold(0f32, |m, s| m.max(s.abs()));
-    (m.min(1.0) * 32767.0).round() as u16
+/// How far a frame of the original's mix swings: half the range its samples span on the wider
+/// side, in 16-bit units (0 to 32767). A level held still is no sound however far from zero: a
+/// stopped channel leaves its last sample on the DAC, which vAmiga's mix keeps (T30: W2-1's
+/// stops sat at 367 and 786 for frames).
+pub fn swing(mix: &[[f32; 2]]) -> u16 {
+    let side = |c: usize| {
+        let (lo, hi) = mix
+            .iter()
+            .fold((f32::MAX, f32::MIN), |(lo, hi), s| (lo.min(s[c]), hi.max(s[c])));
+        if mix.is_empty() { 0.0 } else { (hi - lo) / 2.0 }
+    };
+    (side(0).max(side(1)).min(1.0) * 32767.0).round() as u16
 }
 
-/// An audio file's peaks, frame of play 1 first.
+/// An audio file's swings, frame of play 1 first.
 pub fn parse_audio(text: &str) -> Result<Vec<u16>, String> {
     let mut lines = text.lines();
     if lines.next() != Some(AUDIO_HEADER) {
@@ -72,12 +79,12 @@ impl Recorded {
     }
 
     /// A frame of play: what was fed, the game and its last picture after it, and the
-    /// original's [`peak`] that frame.
-    pub(crate) fn frame(&mut self, fed: FeedFrame, game: &Game, picture: &Picture, peak: u16) {
+    /// original's [`swing`] that frame.
+    pub(crate) fn frame(&mut self, fed: FeedFrame, game: &Game, picture: &Picture, swing: u16) {
         self.frames.push(fed);
         self.hashes
             .push_str(&hash_line(self.frames.len() as u64, frame_hashes(game, picture)));
-        self.audio.push_str(&format!("{peak}\n"));
+        self.audio.push_str(&format!("{swing}\n"));
     }
 }
 
@@ -195,10 +202,13 @@ mod tests {
     use super::*;
 
     #[test]
-    fn audio_peaks_round_trip_and_clip() {
-        assert_eq!(peak(&[[0.0, -0.5], [0.25, 0.0]]), 16384);
-        assert_eq!(peak(&[[1.5, 0.0]]), 32767);
-        assert_eq!(peak(&[]), 0);
+    fn audio_swings_round_trip_and_a_held_level_is_none() {
+        assert_eq!(swing(&[[0.0, -0.5], [0.25, 0.0]]), 8192);
+        assert_eq!(swing(&[[0.0, -0.5], [0.0, 0.5]]), 16384);
+        // A stopped channel's last sample, held: no sound.
+        assert_eq!(swing(&[[0.02, 0.0]; 960]), 0);
+        assert_eq!(swing(&[[-1.5, 0.0], [1.5, 0.0]]), 32767);
+        assert_eq!(swing(&[]), 0);
         let text = format!("{AUDIO_HEADER}\n0\n12\n32767\n");
         assert_eq!(parse_audio(&text).unwrap(), vec![0, 12, 32767]);
         assert!(parse_audio("0\n").is_err());

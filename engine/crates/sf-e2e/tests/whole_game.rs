@@ -100,16 +100,17 @@ fn paced_app_is_the_run_alone(frames: Option<u32>, timeout_s: u64) {
     );
 }
 
-/// A frame's sound is heard at this loudest sample (16-bit magnitude), on either side: about
-/// -42 dB below full scale, a quiet sample at a low volume.
+/// A frame's sound is heard at this swing (half its samples' range, 16-bit units; a level held
+/// still is silence, `sf_conform::feed::swing`), on either side: about -42 dB below full scale,
+/// a quiet sample at a low volume.
 const HEARD: u16 = 256;
-/// Silent: no sample above this (about -66 dB). Between the two a frame counts neither way, so a
+/// Silent: a swing no more than this (about -66 dB). Between the two a frame counts neither way, so a
 /// difference of mixing level between the original's mix and the app's cannot flip a verdict.
 const SILENT: u16 = 16;
 /// How far apart the two may hear a sound start or end, in frames (DESIGN §2.1 check 3's ±2).
 const NEAR: usize = 2;
 
-/// The app's loudest sample each frame of play: the samples of the game frames the original's
+/// The app's swing each frame of play, as the original's is measured: the samples of the game frames the original's
 /// step stood for (one, two when it ran two video frames), not those under a loading screen
 /// after it (`audio-frames.txt` says which samples each game frame made).
 fn app_peaks(wav: &std::path::Path, frames: &str, feed: &Feed) -> Vec<u16> {
@@ -120,13 +121,12 @@ fn app_peaks(wav: &std::path::Path, frames: &str, feed: &Feed) -> Vec<u16> {
         let counts: Vec<usize> = line.split(' ').skip(1).map(|c| c.parse().expect(line)).collect();
         assert_eq!(counts.len(), 1 + fr.twice as usize + fr.then.len(), "step {line}: its game frames");
         let main: usize = counts[..1 + fr.twice as usize].iter().sum();
-        let peak = samples[at..at + main]
-            .iter()
-            .flatten()
-            .map(|s| s.unsigned_abs().min(32767))
-            .max()
-            .unwrap_or(0);
-        peaks.push(peak);
+        let frame = &samples[at..at + main];
+        let side = |c: usize| match (frame.iter().map(|s| s[c]).min(), frame.iter().map(|s| s[c]).max()) {
+            (Some(lo), Some(hi)) => ((hi as i32 - lo as i32) / 2) as u16,
+            _ => 0,
+        };
+        peaks.push(side(0).max(side(1)));
         at += counts.iter().sum::<usize>();
     }
     assert_eq!(peaks.len(), feed.frames.len(), "audio-frames.txt has a line for each step");

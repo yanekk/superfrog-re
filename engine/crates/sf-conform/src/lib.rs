@@ -963,7 +963,7 @@ impl AloneRun {
     fn recorded(&mut self, fed: FeedFrame, picture: Option<Picture>, amiga: &sf_oracle::Amiga) {
         if let Some(r) = self.record.as_mut() {
             match (picture, &self.panicked) {
-                (Some(p), None) => r.frame(fed, &self.game, &p, feed::peak(&amiga.mixed_audio())),
+                (Some(p), None) => r.frame(fed, &self.game, &p, feed::swing(&amiga.mixed_audio())),
                 _ => r.panicked = true,
             }
         }
