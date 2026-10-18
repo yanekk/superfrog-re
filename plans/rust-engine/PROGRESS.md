@@ -46,7 +46,7 @@ done · ⛔ blocked, needs a human. A task dropped by a plan amendment leaves th
 | T20 | front-end | T08, T11, T12, T13 | ✅ | |
 | T21 | game-flow | T18, T19, T20, T181, T183 | ✅ | |
 | T22 | app-rig | T09, T10, T12, T13 | ✅ | |
-| T23 | app-shell | T21, T22 | 🔍 | lock, settings, progress, import, window modules; KeyMap (Ctrl fire, ⌃⌘F); 51 unit, 19 e2e tests (4 SF_E2E_OS-gated), all green. Deviations: no PadMap (T25); fullscreen tests gated, run on main display only (no built-in attached); script `continue` stands in for T24's menu; `--scale` not persisted; Quit leaves `lock`; `disk_prompt` still unshown. |
+| T23 | app-shell | T21, T22 | 🔍 | lock, settings, progress, import, window modules; KeyMap (Ctrl fire, ⌃⌘F); 52 unit, 19 e2e tests (4 SF_E2E_OS-gated), all green. Deviations: no PadMap (T25); fullscreen tests gated, run on main display only (no built-in attached); script `continue` stands in for T24's menu; `--scale` not persisted; Quit leaves `lock`; `disk_prompt` still unshown. |
 | T24 | macos-menus | T23 | ⬜ | |
 | T25 | controls-and-gamepad | T24 | ⬜ | |
 | T26 | save-states | T24 | ⬜ | |
