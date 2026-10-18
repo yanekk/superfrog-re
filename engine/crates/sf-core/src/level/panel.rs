@@ -72,11 +72,16 @@ fn copy_digit(b: &mut Bus, mut src: u32, mut dst: u32) {
     }
 }
 
-/// `panel_update` (h0+$8620): the lives icon (if it changed), a score digit and a clock digit.
+/// `panel_update` (h0+$8620): the lives icon (if it changed), a score digit and a clock digit,
+/// each a step the original's frame may end after (T212: the clock digit read after a vertical
+/// blank that came in the score digit).
 pub fn panel_update(c: &mut LevelCtx) {
     lives_icon(c);
+    c.step_at(1);
     score_digit(c);
+    c.step_at(2);
     clock_digit(c);
+    c.step_at(3);
 }
 
 /// h0+$8716: the icon for the frog's `+$5a`, when it is not the one shown.

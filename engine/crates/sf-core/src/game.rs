@@ -97,8 +97,9 @@ pub enum Pacing {
     /// `blanks` is how many vertical blanks the pass had met by then, counted from its start
     /// (its `vbl_count`, which the pass zeroes as it begins): which of the engine's passes is the
     /// original's, so one the engine gets to the end of is cut there, not run on into the next
-    /// (T184). The intro reads none of the fields.
-    Late { writes: u16, line: u16, hpos: u16, phase: u8, step: u16, blanks: u16 },
+    /// (T184). `point` is where in the step running the frame ended
+    /// ([`crate::level::beam::Cut::point`]; 0: none). The intro reads none of the fields.
+    Late { writes: u16, line: u16, hpos: u16, phase: u8, step: u16, point: u8, blanks: u16 },
 }
 
 /// What one frame produced.

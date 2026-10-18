@@ -574,6 +574,9 @@ pub struct Cut {
     pub phase: u8,
     /// The steps of that call's loop done, or [`NO_STEP`].
     pub step: u16,
+    /// Where in the step running (counted in `step` as done) the frame ended, as the engine
+    /// marks it ([`super::LevelCtx::point`]); 0: no point, the step ends first.
+    pub point: u8,
     /// The vertical blanks the pass had met ([`crate::Pacing::Late`]'s `blanks`).
     pub blanks: u16,
 }

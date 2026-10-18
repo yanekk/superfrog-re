@@ -289,6 +289,11 @@ pub struct LevelCtx<'a> {
     /// and the steps of its loop done (slots looked at; [`LevelCtx::step_done`]).
     pub phase: u8,
     pub pass_step: u16,
+    /// The point inside the running step the engine is at ([`LevelCtx::point`]), 0 elsewhere.
+    at_point: u8,
+    /// At a [`LevelCtx::point`] or a [`LevelCtx::step_at`]: only a cut there ends the frame, not
+    /// the clock.
+    steps_only: bool,
     /// The copper interrupt is masked (INTENA `$0010`: the pass's blits mask it), and one has been
     /// requested meanwhile: it is taken once the pass unmasks it.
     coper_masked: bool,
@@ -337,6 +342,8 @@ impl<'a> LevelCtx<'a> {
             blitted: false,
             phase: 0,
             pass_step: 0,
+            at_point: 0,
+            steps_only: false,
             coper_masked: false,
             coper_pending: false,
             held: None,
@@ -397,6 +404,28 @@ impl LevelCtx<'_> {
     pub fn walk_step(&mut self, step: u16) {
         self.pass_step = step;
         self.interrupt_due();
+    }
+
+    /// The running step of the pass's loop (`pass_step` done, the next being made) has got to
+    /// point `n` of the routine it is in: the original's frame may end here, before the step is
+    /// done ([`beam::Cut::point`]; T212: a vertical blank in `obj_despawn_if_offscreen` moves the
+    /// camera its later tests read).
+    pub fn point(&mut self, n: u8) {
+        self.at_point = n;
+        self.steps_only = true;
+        self.interrupt_due();
+        self.steps_only = false;
+        self.at_point = 0;
+    }
+
+    /// As [`LevelCtx::walk_step`], but only a cut at the step ends the frame here, not the clock:
+    /// a place the original's frame is found at only by its step ([`beam::Cut::step`]; T212:
+    /// `bob_draw` before its latches of the camera).
+    pub fn step_at(&mut self, step: u16) {
+        self.pass_step = step;
+        self.steps_only = true;
+        self.interrupt_due();
+        self.steps_only = false;
     }
 
     /// The CPU does work of kind `k` here (see [`beam`]).
@@ -521,13 +550,15 @@ impl LevelCtx<'_> {
         };
         let f = self.frames.as_ref().expect("frames");
         if f.in_vbl && !f.in_pass {
-            self.irq_due(writing);
+            if !self.steps_only {
+                self.irq_due(writing);
+            }
             return;
         }
         if !f.in_pass || f.in_vbl || f.done || f.past_end {
             return;
         }
-        let past = self.clock.line >= beam::FRAME_LINES;
+        let past = self.clock.line >= beam::FRAME_LINES && !self.steps_only;
         let due = match f.current() {
             // In the call the original was in, once the clock says; past it, at once; before
             // it, not yet (unless a write it had not made comes first).
@@ -540,6 +571,10 @@ impl LevelCtx<'_> {
                     && (writing
                         || self.phase > cut.phase
                         || (here && cut.step != beam::NO_STEP && self.pass_step >= cut.step)
+                        || (here
+                            && cut.point != 0
+                            && cut.point == self.at_point
+                            && self.pass_step.wrapping_add(1) == cut.step)
                         || (here && cut.step == beam::NO_STEP && past))
             }
             _ => past,
