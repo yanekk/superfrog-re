@@ -5,7 +5,7 @@
 //! Superfrog   About Superfrog · Services · Hide, Hide Others, Show All · Quit Superfrog ⌘Q
 //! File        Import Disks…
 //! Game        Continue from World N · Pause · Reset
-//! View        Scale ▸ 1× 2× 3× Auto · Fullscreen ⌃⌘F
+//! View        Scale ▸ 1× 2× 3× Auto · Fullscreen ⌃⌘F · CRT Filter · Widescreen
 //! ```
 //!
 //! A [`Command`] is the only path from the menu to the app's state: a menu click, its shortcut, a
@@ -34,6 +34,10 @@ pub enum Command {
     Scale(Scale),
     /// View → Fullscreen, ⌃⌘F.
     ToggleFullscreen,
+    /// View → CRT Filter.
+    ToggleCrt,
+    /// View → Widescreen.
+    ToggleWidescreen,
     /// Game → Pause: the game stops stepping until it is chosen again.
     Pause,
     /// Game → Reset: power-on.
@@ -54,6 +58,8 @@ impl Command {
             Command::Scale(Scale::Auto) => "scale-auto".into(),
             Command::Scale(Scale::N(n)) => format!("scale-{n}"),
             Command::ToggleFullscreen => "fullscreen".into(),
+            Command::ToggleCrt => "crt".into(),
+            Command::ToggleWidescreen => "widescreen".into(),
             Command::Pause => "pause".into(),
             Command::Reset => "reset".into(),
             Command::Quit => "quit".into(),
@@ -67,6 +73,8 @@ impl Command {
             "continue" => Command::ContinueFromProgress,
             "scale-auto" => Command::Scale(Scale::Auto),
             "fullscreen" => Command::ToggleFullscreen,
+            "crt" => Command::ToggleCrt,
+            "widescreen" => Command::ToggleWidescreen,
             "pause" => Command::Pause,
             "reset" => Command::Reset,
             "quit" => Command::Quit,
@@ -100,6 +108,8 @@ pub struct MenuState {
     pub paused: bool,
     pub scale: Scale,
     pub fullscreen: bool,
+    pub crt: bool,
+    pub widescreen: bool,
 }
 
 /// The menu bar, and the items whose title, check or enabled state follows the app's.
@@ -109,6 +119,8 @@ pub struct MenuBar {
     pause: CheckMenuItem,
     scales: Vec<(Scale, CheckMenuItem)>,
     fullscreen: CheckMenuItem,
+    crt: CheckMenuItem,
+    widescreen: CheckMenuItem,
     shown: Option<MenuState>,
 }
 
@@ -149,6 +161,8 @@ pub fn build_menu() -> MenuBar {
         "Fullscreen",
         Some(Accelerator::new(Modifiers::CONTROL | Modifiers::META, Code::KeyF)),
     );
+    let crt = check(Command::ToggleCrt, "CRT Filter", None);
+    let widescreen = check(Command::ToggleWidescreen, "Widescreen", None);
 
     let app = Submenu::with_items(
         "Superfrog",
@@ -173,7 +187,18 @@ pub fn build_menu() -> MenuBar {
     );
     let scale_items: Vec<&dyn muda::IsMenuItem> = scales.iter().map(|(_, i)| i as &dyn muda::IsMenuItem).collect();
     let scale = Submenu::with_items("Scale", true, &scale_items).expect("a menu");
-    let view = Submenu::with_items("View", true, &[&scale, &PredefinedMenuItem::separator(), &fullscreen]);
+    let view = Submenu::with_items(
+        "View",
+        true,
+        &[
+            &scale,
+            &PredefinedMenuItem::separator(),
+            &fullscreen,
+            &PredefinedMenuItem::separator(),
+            &crt,
+            &widescreen,
+        ],
+    );
 
     let menu = Menu::new();
     for m in [app, file, game, view] {
@@ -185,6 +210,8 @@ pub fn build_menu() -> MenuBar {
         pause,
         scales,
         fullscreen,
+        crt,
+        widescreen,
         shown: None,
     }
 }
@@ -214,6 +241,8 @@ impl MenuBar {
             i.set_checked(*scale == s.scale);
         }
         self.fullscreen.set_checked(s.fullscreen);
+        self.crt.set_checked(s.crt);
+        self.widescreen.set_checked(s.widescreen);
         self.shown = Some(s);
     }
 }
@@ -256,6 +285,8 @@ impl App {
             Command::ContinueFromProgress => self.continue_game(),
             Command::Scale(s) => self.set_scale(s),
             Command::ToggleFullscreen => self.toggle_fullscreen(),
+            Command::ToggleCrt => self.toggle_crt(),
+            Command::ToggleWidescreen => self.toggle_widescreen(),
             Command::Pause => {
                 let run = self.run.as_mut().expect("running");
                 run.paused = !run.paused;
@@ -277,6 +308,8 @@ impl App {
             paused: run.paused,
             scale: run.video.scale,
             fullscreen: run.settings.fullscreen,
+            crt: run.settings.crt,
+            widescreen: run.settings.widescreen,
         });
     }
 
@@ -285,6 +318,7 @@ impl App {
         let run = self.run.as_mut().expect("running");
         let seed = Rng::seeded(run.seed.0, run.seed.1);
         run.game = Game::with_display(run.display.clone(), Start::PowerOn { seed });
+        run.game.set_view(crate::window::view(run.settings.widescreen));
         run.paula = Paula::new(run.rate);
         run.paused = false;
     }
@@ -299,6 +333,7 @@ impl App {
         };
         let seed = Rng::seeded(run.seed.0, run.seed.1);
         run.game = Game::start_at_with(run.display.clone(), &p, seed);
+        run.game.set_view(crate::window::view(run.settings.widescreen));
         run.paula = Paula::new(run.rate);
         run.paused = false;
     }
@@ -340,6 +375,8 @@ mod tests {
             Command::Scale(Scale::N(3)),
             Command::Scale(Scale::Auto),
             Command::ToggleFullscreen,
+            Command::ToggleCrt,
+            Command::ToggleWidescreen,
             Command::Pause,
             Command::Reset,
             Command::Quit,

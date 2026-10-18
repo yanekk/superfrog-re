@@ -92,6 +92,15 @@ impl Picture {
         }
     }
 
+    /// The 4:3 picture this one was widened from by `view`: its centre.
+    pub fn narrowed(&self, view: View) -> Picture {
+        let n = view.extra_columns_each_side;
+        if n == 0 {
+            return self.clone();
+        }
+        self.rewindow(self.left + n as i32, self.top, self.width - 2 * n, self.height)
+    }
+
     /// This picture seen through another display window: what lies outside this one shows each
     /// line's colour 0 (the border), and lines outside it show the first or last line's palette.
     pub fn rewindow(&self, left: i32, top: u16, width: u16, height: u16) -> Picture {
@@ -187,6 +196,23 @@ mod tests {
             extra_columns_each_side: 150,
         });
         assert_eq!((p.left, p.width), (0x81 - 150, 620));
+    }
+
+    #[test]
+    fn narrowed_undoes_widened() {
+        let mut p = Picture::blank(0x81, 0x2c, 4, 2);
+        p.palettes = vec![[0x123; 32], [0x456; 32]];
+        p.pixels = vec![1, 2, 3, 4, 5, 6, 7, 8];
+        p.splits = vec![Split {
+            y: 1,
+            x: 2,
+            index: 0,
+            colour: 0xF00,
+        }];
+        let view = View {
+            extra_columns_each_side: 3,
+        };
+        assert_eq!(p.widened(view).narrowed(view), p);
     }
 
     #[test]

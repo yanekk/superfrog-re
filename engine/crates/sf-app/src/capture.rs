@@ -11,6 +11,8 @@
 //!   own pixels; `windows.txt` a line for each, `N frame width height scale_factor x y w h` (the
 //!   frame it showed, the surface, its pixels a point, and the picture's place on it).
 //! - `prompts.txt`: every question the launch asked a scripted run (`import.rs`).
+//! - `pacing.txt`: `stepped N`, `presented N` (the last frame presented) and `dropped N` (frames
+//!   stepped after the first presented that never reached the window), one a line.
 
 use std::io::Write;
 use std::path::{Path, PathBuf};
@@ -69,6 +71,14 @@ impl Capture {
             self.inputs
                 .push_str(&format!("{n} {:02x} {}\n", f.joy.bits(), keys.join(",")));
         }
+    }
+
+    /// Write `pacing.txt`.
+    pub fn pacing(&self, stepped: u64, presented: u64, dropped: u64) -> std::io::Result<()> {
+        std::fs::write(
+            self.dir.join("pacing.txt"),
+            format!("stepped {stepped}\npresented {presented}\ndropped {dropped}\n"),
+        )
     }
 
     /// Write the audio and the inputs. The frames are already on disk.

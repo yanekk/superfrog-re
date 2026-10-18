@@ -6,6 +6,7 @@
 //! is `2n` pixels a game pixel there, and `Auto` may land on an odd number of pixels: still a whole
 //! number, so every game pixel is the same solid square and nothing is smeared.
 
+use sf_core::View;
 use winit::dpi::LogicalSize;
 use winit::window::{Fullscreen, Window};
 
@@ -14,18 +15,38 @@ use crate::settings::Scale;
 /// The game's picture, in its own pixels (4:3).
 pub const GAME: (u32, u32) = (320, 256);
 
-/// The window's inner size when it opens: `n` × the game for `Scale::N(n)`, 2× for `Auto`.
-pub fn initial_size(scale: Scale) -> LogicalSize<u32> {
+/// Widescreen's extra columns on each side of a display window `height` lines high: as many as
+/// fill 16:9, `(16/9 × height − 320) / 2` rounded down (67 for 256 lines). DESIGN §2.7.
+pub fn extra_columns(height: u32) -> u16 {
+    ((16 * height).saturating_sub(9 * GAME.0) / 18) as u16
+}
+
+/// What the game draws for the widescreen setting: 4:3, or 16:9's extra columns.
+pub fn view(widescreen: bool) -> View {
+    View {
+        extra_columns_each_side: if widescreen { extra_columns(GAME.1) } else { 0 },
+    }
+}
+
+/// The game's picture for the widescreen setting, in its own pixels.
+pub fn frame(widescreen: bool) -> (u32, u32) {
+    (GAME.0 + 2 * view(widescreen).extra_columns_each_side as u32, GAME.1)
+}
+
+/// The window's inner size at `n` × the game: `Scale::N(n)`, 2× for `Auto`.
+pub fn initial_size(scale: Scale, widescreen: bool) -> LogicalSize<u32> {
     let n = match scale {
         Scale::Auto => 2,
         Scale::N(n) => n,
     };
-    LogicalSize::new(GAME.0 * n, GAME.1 * n)
+    let (w, h) = frame(widescreen);
+    LogicalSize::new(w * n, h * n)
 }
 
 /// The smallest the window may be made: 1×.
-pub fn min_size() -> LogicalSize<u32> {
-    LogicalSize::new(GAME.0, GAME.1)
+pub fn min_size(widescreen: bool) -> LogicalSize<u32> {
+    let (w, h) = frame(widescreen);
+    LogicalSize::new(w, h)
 }
 
 /// Surface pixels a game pixel, for a `frame` drawn on a `surface` of that many pixels at
@@ -97,8 +118,22 @@ mod tests {
 
     #[test]
     fn the_window_opens_at_its_scale_and_never_goes_below_1x() {
-        assert_eq!(initial_size(Scale::N(3)), LogicalSize::new(960, 768));
-        assert_eq!(initial_size(Scale::Auto), LogicalSize::new(640, 512));
-        assert_eq!(min_size(), LogicalSize::new(320, 256));
+        assert_eq!(initial_size(Scale::N(3), false), LogicalSize::new(960, 768));
+        assert_eq!(initial_size(Scale::Auto, false), LogicalSize::new(640, 512));
+        assert_eq!(min_size(false), LogicalSize::new(320, 256));
+    }
+
+    #[test]
+    fn widescreen_adds_the_columns_that_fill_16_9() {
+        assert_eq!(extra_columns(256), 67, "(455.1 - 320) / 2");
+        assert_eq!(extra_columns(180), 0, "a window already wider than 16:9 adds none");
+        assert_eq!(view(false), View::default());
+        assert_eq!(view(true).extra_columns_each_side, 67);
+        assert_eq!(frame(true), (454, 256));
+        assert_eq!(initial_size(Scale::N(2), true), LogicalSize::new(908, 512));
+        assert_eq!(min_size(true), LogicalSize::new(454, 256));
+        // 16:9 to within a column at every whole scale.
+        let (w, h) = frame(true);
+        assert!((w as f64 / h as f64 - 16.0 / 9.0).abs() < 1.0 / h as f64 * 2.0);
     }
 }
