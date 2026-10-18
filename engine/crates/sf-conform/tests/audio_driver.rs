@@ -490,6 +490,67 @@ fn overlapping_effects_and_streams_match_the_original() {
     }
 }
 
+/// Where a tick's writes left channel 3 when they started it (DMACON `$8008`): its sample's
+/// address and length in words, as `AUD3LC` and `AUD3LEN` last held them.
+fn channel_3_start(writes: &[(u16, u16)], at: &mut (u32, u16)) -> Option<(u32, u16)> {
+    let mut started = false;
+    for &(reg, v) in writes {
+        match reg {
+            0xd0 => at.0 = (v as u32) << 16 | (at.0 & 0xffff),
+            0xd2 => at.0 = (at.0 & 0xffff_0000) | v as u32,
+            0xd4 => at.1 = v,
+            0x96 if v & 0x8008 == 0x8008 => started = true,
+            _ => {}
+        }
+    }
+    started.then_some(*at)
+}
+
+/// Each streamed sample, start to end: every frame channel 3 starts, the bytes it plays (its
+/// address and length as latched) are the original's, in the original's chip RAM and in the
+/// driver's (T30: the driver wrote the registers but never the buffer, so the app's mixer played
+/// the stream as silence; check 3 compares the registers, not the bytes they point at).
+#[test]
+fn streamed_samples_play_the_originals_bytes() {
+    let mut p = Pair::new(
+        &title().memory,
+        vec![(BANK_ADDR, File::Tune(TuneId::Title))],
+    );
+    p.music_stop();
+    p.load_bank(BankId::Worlds12);
+    let (mut theirs_at, mut ours_at) = ((0, 0), (0, 0));
+    let mut frames = 0;
+    for k in 0..8 {
+        p.play_sample(k);
+        let mut played = 0;
+        for _ in 0..400 {
+            let theirs = p.orig.tick();
+            let mut ours = Vec::new();
+            p.ours.tick(data(), &mut ours);
+            let ours_rv = rv(&ours);
+            let start = (
+                channel_3_start(&theirs, &mut theirs_at),
+                channel_3_start(&ours_rv, &mut ours_at),
+            );
+            p.check("tick", theirs, ours);
+            let (Some((at, len)), Some(ours)) = start else {
+                assert_eq!(start.0, start.1, "sample {k}: channel 3 started on one side only");
+                continue;
+            };
+            assert_eq!((at, len), ours, "sample {k}: channel 3's sample");
+            let bytes = at..at + 2 * len as u32;
+            let theirs: Vec<u8> = bytes.clone().map(|a| p.orig.byte(a)).collect();
+            let ours: Vec<u8> = bytes.map(|a| p.ours.chip_byte(data(), a)).collect();
+            assert_eq!(ours, theirs, "sample {k}, frame {played}: the bytes at ${at:06x} channel 3 plays");
+            assert!(theirs.iter().any(|&b| b != 0), "sample {k}, frame {played}: a silent stretch proves nothing");
+            played += 1;
+        }
+        assert!(played > 1, "sample {k} streamed {played} frame(s)");
+        frames += played;
+    }
+    eprintln!("{frames} frames of streamed samples, channel 3's bytes the original's");
+}
+
 /// Effects on every channel over a world's music.
 #[test]
 fn effects_during_music_match_the_original() {

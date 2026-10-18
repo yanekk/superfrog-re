@@ -7,8 +7,11 @@
 //! the replayer's "free" bytes, so music leaves it alone until the effect ends.
 
 use super::{
-    AudioDriver, BANK_ADDR, DMACON, INTENA, PaulaWrite, STREAM_BUFFER, SoundData, clr, wr,
+    AudioDriver, BANK_ADDR, DMACON, H0, INTENA, PaulaWrite, STREAM_BUFFER, SoundData, clr, wr,
 };
+
+/// Bytes `sample_stream` copies to [`STREAM_BUFFER`] each frame.
+const STREAM_COPY: usize = 0xc0;
 
 /// Where channel `n`'s record starts in the effect block (`$12f62`): channel 0's is 38 bytes,
 /// the others 52.
@@ -394,13 +397,20 @@ impl AudioDriver {
 
     /// `sample_stream` (`$147e4`): the next 160 bytes go to [`STREAM_BUFFER`] and play once on
     /// channel 3; when the sample runs out the channel goes back to music.
-    pub fn stream_tick(&mut self, _data: &SoundData, out: &mut Vec<PaulaWrite>) {
+    pub fn stream_tick(&mut self, data: &SoundData, out: &mut Vec<PaulaWrite>) {
         if self.stream.w(4) == 0xffff {
             return;
         }
         wr(out, 0xd6, 1);
         wr(out, DMACON, 8);
-        self.stream.set_l(0, self.stream.l(0).wrapping_add(0xa0));
+        // Four `movem.l` of twelve registers: 192 bytes from the source, though 160 play (T30:
+        // the copy was missing, so the mixer played the buffer as silence). The source is in
+        // hunk 0, which nothing writes.
+        let from = self.stream.l(0);
+        for (i, b) in data.h0_bytes(from.wrapping_sub(H0), STREAM_COPY).into_iter().enumerate() {
+            self.mem.set_b(STREAM_BUFFER + i as u32, b);
+        }
+        self.stream.set_l(0, from.wrapping_add(0xa0));
         let left = self.stream.w(4).wrapping_sub(0x50);
         self.stream.set_w(4, left);
         if (left as i16) < 0 {
