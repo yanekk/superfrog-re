@@ -12,7 +12,7 @@ the account is the commit message. Whoever writes a cell also fixes the over-bud
 **Plan reviewed:** 2026-10-10 — 7 fixed, 7 decided with the user
 
 **Status:** about 100 tasks ✅; T18, T21 and Phase 3 open; amended to faithful.
-**Last updated:** 2026-10-15
+**Last updated:** 2026-10-18
 **Amended 2026-10-15 (owner):** faithful replaces frame-exact (DESIGN §2.1, PLAN.md amendment); T180–T183 added, 14 tasks dropped (PLAN.md).
 **Next `pir-work` will:** T180 faithful-compare, then T182; T126 and T132 finish against the faithful bar.
 
@@ -47,7 +47,7 @@ done · ⛔ blocked, needs a human. A task dropped by a plan amendment leaves th
 | T21 | game-flow | T18, T19, T20, T181, T183 | ✅ | |
 | T22 | app-rig | T09, T10, T12, T13 | ✅ | |
 | T23 | app-shell | T21, T22 | ✅ | |
-| T24 | macos-menus | T23 | ⬜ | |
+| T24 | macos-menus | T23 | 🔍 | muda menu bar, `Command` the only path (menu, shortcuts, script `menu …`); Pause, Reset, Import, Continue, Scale, Quit. 6 script-layer tests, 3 OS-layer, 4 unit. Deviations: `on_command(&mut App, event_loop, c)`; disabled Continue reads "Continue"; Fullscreen's OS check unverified, screen locked (owner, 2026-10-18). |
 | T25 | controls-and-gamepad | T24 | ⬜ | |
 | T26 | save-states | T24 | ⬜ | |
 | T27 | crt-and-widescreen | T24 | ⬜ | |
@@ -179,7 +179,7 @@ done · ⛔ blocked, needs a human. A task dropped by a plan amendment leaves th
 A Notes cell holds what was built or what the review found, the test count, and one line per
 deviation from the task doc. A ✅ task's cell may be cut to one line once the next task has been reviewed.
 
-**Review queue:** *(empty)*
+**Review queue:** T24
 
 ## Blocked on the user
 
