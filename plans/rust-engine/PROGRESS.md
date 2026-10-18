@@ -14,7 +14,7 @@ the account is the commit message. Whoever writes a cell also fixes the over-bud
 **Status:** about 100 tasks ✅; T18, T21 and Phase 3 open; amended to faithful.
 **Last updated:** 2026-10-15
 **Amended 2026-10-15 (owner):** faithful replaces frame-exact (DESIGN §2.1, PLAN.md amendment); T180–T183 added, 14 tasks dropped (PLAN.md).
-**Next `pir-work` will:** T180 faithful-compare, then T182; T126 and T132 finish against the faithful bar.
+**Next `pir-work` will:** review T29; T211 and T212, then T30.
 
 ## Tasks
 
@@ -52,7 +52,7 @@ done · ⛔ blocked, needs a human. A task dropped by a plan amendment leaves th
 | T26 | save-states | T24 | ✅ | |
 | T27 | crt-and-widescreen | T24 | ✅ | |
 | T28 | level-override | T14, T24 | ✅ | |
-| T29 | app-drill | T21, T25, T26, T27, T28 | ⬜ | |
+| T29 | app-drill | T21, T25, T26, T27, T28 | 🔍 | Drill at every size; fixed widescreen fade-in, silent app, occluded-window GPU leak; `drill.rs` 3 tests. `sf-conform all` 208/212, 6 034 s. Deviations: whole-game-through-app moved to T211; the four known reds to T212 (owner's yes, both). |
 | T30 | acceptance | T29 | ⬜ | |
 | T31 | render-remaining-levels | T13 | ✅ | |
 | T32 | story-intro | T20; blocks T21 | ✅ | |
@@ -177,11 +177,12 @@ done · ⛔ blocked, needs a human. A task dropped by a plan amendment leaves th
 | T209 | whole-game-alone | T203, T208; blocks T23, T29 | ✅ | |
 | T210 | window-fits-the-game | T27; blocks T29 | ✅ | |
 | T211 | app-whole-game-paced | T21, T25, T26, T27, T28; blocks T30 | ⬜ | |
+| T212 | conform-known-reds | T29; blocks T30 | ⬜ | |
 
 A Notes cell holds what was built or what the review found, the test count, and one line per
 deviation from the task doc. A ✅ task's cell may be cut to one line once the next task has been reviewed.
 
-**Review queue:** *(empty)*
+**Review queue:** T29
 
 ## Blocked on the user
 
