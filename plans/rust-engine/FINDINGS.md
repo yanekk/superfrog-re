@@ -18,6 +18,7 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-18 | 📌 | T211 review: the feed's cache key covers the engine build, not `sf-conform`'s recorder, so a recorder change reuses the old feed and `the_feed_replays…` passes on a warm cache. Bump `FEED_FORMAT` with any recorder change. |
 | 2026-10-18 | 📌 | T211: the app paced by `game-whole`'s feed equals the headless run alone on all 224 082 frames (picture and state hashes); app 4 495 s, feed 1 930 s. Any sf-core change re-keys the feed (engine build). |
 | 2026-10-18 | 📌 | T29 drill, worker-driven: first run, password W3-2, play, ⇧⌘/⌘ states, pause, Controls, export/play file, reset, ⌘Q at 1×/2×/3×/2× wide; fullscreen and wide 5× (unlocked); resize mid-scroll; witch-fight load; slot-spin pause; 50 000 frames (1022 s). Three 🐞 fixed, below. Teardown confirmed. |
 | 2026-10-18 | 🐞 | T29 drill, fixed: widescreen showed `level_start`'s fade-in 4:3 with black sides (front end, level copper), snapping 16:9 when the loop began. `render::level_widened`; `view.rs` test. |

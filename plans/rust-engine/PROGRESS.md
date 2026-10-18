@@ -176,13 +176,13 @@ done · ⛔ blocked, needs a human. A task dropped by a plan amendment leaves th
 | T208 | w6-4-start-and-final-load | T203; blocks T23, T29 | ✅ | |
 | T209 | whole-game-alone | T203, T208; blocks T23, T29 | ✅ | |
 | T210 | window-fits-the-game | T27; blocks T29 | ✅ | |
-| T211 | app-whole-game-paced | T21, T25, T26, T27, T28; blocks T30 | 🔍 | `sf_core::feed` shared step; `sf-conform feed`; app `--pacing` (script only), `--capture-hashes`. Whole game run once: 224 082 frames equal, app 4 495 s, feed 1 930 s. 11 tests. Deviation: the feed carries each step's input (frames under a screen need several per app frame). Block stretch: 1 500 frames, not W1-2 (~4 min). |
+| T211 | app-whole-game-paced | T21, T25, T26, T27, T28; blocks T30 | ✅ | Review: one fix, a frozen case got the unfrozen case's cached feed (key omits the freeze); `feed()` refuses it, test. Probed: app on the whole-game feed, 20 000 frames (8 780 with input) equal headless; mutations (app or recorder dropping `then`) red at 973. 224 082-frame equality builder-run, read-only. 12 tests. |
 | T212 | conform-known-reds | T29; blocks T30 | ⬜ | |
 
 A Notes cell holds what was built or what the review found, the test count, and one line per
 deviation from the task doc. A ✅ task's cell may be cut to one line once the next task has been reviewed.
 
-**Review queue:** T211
+**Review queue:** *(empty)*
 
 ## Blocked on the user
 
