@@ -44,7 +44,7 @@ pub fn n_clear(result: u16) -> bool {
 
 /// What the custom chips and CIAs answer this frame: the original reads the joystick and the fire
 /// button itself, wherever it needs them (docs/08 "Input"); within a frame they hold still.
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 pub struct Hw {
     /// `JOY1DAT` (`$DFF00C`): the joystick in port 2, as Denise encodes it.
     pub joy1dat: u16,
@@ -235,7 +235,7 @@ pub(crate) fn unported_text(text: String) -> &'static str {
 
 /// How a level's loop ended (`level_frame_loop`, then `level_exit_fade` and `game_over_check`),
 /// as the game flow is told ([`crate::Game::level_outcome`]).
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 pub enum LevelOutcome {
     /// The exit was reached; the tally's result (T38).
     Completed { tally: Tally },
@@ -248,7 +248,7 @@ pub enum LevelOutcome {
 }
 
 /// What the level-complete tally gave (`level_tally`, h0+$4466; T38).
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 pub struct Tally {
     /// Pages of 5 000 points earned (h0+$4796).
     pub pages: u16,

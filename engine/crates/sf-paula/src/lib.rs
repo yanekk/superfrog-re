@@ -33,7 +33,7 @@ pub trait ChipMemory {
 /// The same state machine as [`Paula`]'s, run on zeroed chip memory: the slots do not depend on the
 /// samples, except with ADKCON's attach modes (a channel's words then set the next one's period or
 /// volume), which the timing this serves does not meet.
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 pub struct AudioDma {
     chip: channel::Chip,
     taps: [Vec<i16>; 4],

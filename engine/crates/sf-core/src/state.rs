@@ -26,7 +26,7 @@ use crate::rng::Rng;
 /// What the original keeps in memory, as far as the engine models it. A power-on state is all
 /// zero, as the oracle's RAM is (FINDINGS 2026-10-11: RAM zeroed), but for `ExecBase` at address
 /// 4, which Kickstart sets before the game starts.
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 pub struct State {
     /// Each [`LAYOUT`] entry's bytes, in table order (empty for the sound driver's, in `audio`).
     vars: Vec<Vec<u8>>,

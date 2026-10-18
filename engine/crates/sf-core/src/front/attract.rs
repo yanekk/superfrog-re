@@ -23,7 +23,7 @@ const HALL_PALETTE: u32 = h2(0x7098);
 
 /// `top_loop` (h0+$5c) from the title on: the title, then (attract mode or a finished game) the
 /// award pages and the hall of talent, then the attract demo or the game.
-#[derive(Debug, Clone, Default, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 pub(crate) struct TopLoop {
     pc: u8,
 }
@@ -111,7 +111,7 @@ impl TopLoop {
 /// (`demo_play`). The loop's end goes through `level_exit_fade` back to the title
 /// ([`crate::level::exit::LevelOver`]). Every `demo_index` plays the same W1-1 recording: the title
 /// gives each the start W1-1 (h0+$1218).
-#[derive(Debug, Clone, Default, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 pub(crate) struct Demo {
     pc: u8,
 }
@@ -165,7 +165,7 @@ pub(super) fn new_hiscore(cx: &Cx) -> bool {
 /// `award_pages` (h0+$1e98): the two award tables (`AWA1`, `AWA2`), each faded in, shown 300
 /// frames (fire or the mouse button cut it short, back to the title) and faded out. Outside
 /// attract mode only after a game with a new high score. Hands back 1 when cut short.
-#[derive(Debug, Clone, Default, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 pub(crate) struct AwardPages {
     pc: u8,
     page: u8,
@@ -284,7 +284,7 @@ impl AwardPages {
 /// fire, the mouse button or Escape cut them short (`attract_abort`). Out of attract mode only
 /// after a game with a new high score: the title music, the picture, the name entry
 /// ([`super::hiscore::NameEntry`]) and the table, no credits.
-#[derive(Debug, Clone, Default, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 pub(crate) struct HiscoreCredits {
     pc: u8,
     d6: u16,
@@ -442,7 +442,7 @@ impl HiscoreCredits {
 
 /// `hall_of_talent` (h0+$2e56): the table's text, its twenty lines scrolled up into view, held
 /// 350 frames (fire, the mouse button or Escape go on at once), then scrolled out.
-#[derive(Debug, Clone, Default, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 pub(crate) struct HallOfTalent {
     pc: u8,
     d5: u16,

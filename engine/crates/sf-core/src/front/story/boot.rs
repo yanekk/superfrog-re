@@ -55,7 +55,7 @@ pub const RET_UNPACK: u32 = at(0x2b45e);
 pub const RET_FADE_OUT_STEP: u32 = at(0x2b47e);
 
 /// Where the boot program is.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 pub enum Boot {
     /// Set up, in its first `wait_raster`.
     Started,

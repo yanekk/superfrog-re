@@ -48,7 +48,7 @@ impl fmt::Display for ChunkId {
 }
 
 /// A world's files are named `Ln…` with `n` = 1..6, `B` (the bonus level) or `W` (the final level).
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, serde::Serialize, serde::Deserialize)]
 pub enum World {
     W1,
     W2,
@@ -95,7 +95,7 @@ impl World {
 /// second set of maps (d4_c14–c17, file-table entries 6–9), which `level_load` (h0+$a144) takes
 /// instead of d4_c02–c05 when no drive past df0 is connected and df0 does not hold disk 1: what a
 /// one-drive A500 plays. They differ in a few cells.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, serde::Serialize, serde::Deserialize)]
 pub struct LevelId {
     pub world: World,
     pub level: u8,

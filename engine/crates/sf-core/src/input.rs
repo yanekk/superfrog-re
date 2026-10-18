@@ -36,7 +36,7 @@ impl core::ops::BitOr for Joy {
 }
 
 /// The keys held, by the original's raw key code (0x00 to 0x7F, e.g. 0x19 = P, 0x40 = space).
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash, PartialOrd, Ord)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash, PartialOrd, Ord, serde::Serialize, serde::Deserialize)]
 pub struct KeySet(pub u128);
 
 impl KeySet {

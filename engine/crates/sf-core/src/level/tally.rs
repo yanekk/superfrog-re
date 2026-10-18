@@ -79,7 +79,7 @@ const CHARSET: u32 = at(0x701c);
 const FONT: u32 = at(0x3414c);
 
 /// `level_tally` (h0+$4466), from where `level_exit_fade` returns into `top_loop`.
-#[derive(Debug, Clone, Default, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 pub struct LevelTally {
     pc: u8,
 }

@@ -15,7 +15,7 @@ use crate::state::State;
 
 /// A fade record: its address and where its steps and accumulators are (the Accessing-disk
 /// overlay carries its own copy of the code, with them two bytes further on).
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 pub struct Rec {
     pub at: u32,
     steps: u32,

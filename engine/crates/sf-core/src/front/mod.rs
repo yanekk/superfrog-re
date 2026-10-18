@@ -76,7 +76,7 @@ pub(crate) const BEAM_CYCLES_PER_LINE: u32 = 454;
 const RASTER_LINE: u16 = 0x12b;
 
 /// What a routine waits for when it gives the CPU back.
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 pub(crate) enum Yield {
     /// `wait_frame_raster` (h0+$73d0): line `$ff`, then line `$12b`.
     Raster,
@@ -104,7 +104,7 @@ pub(crate) enum Yield {
 }
 
 /// The front end's routines, each a state machine over the original's code.
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 pub(crate) enum Routine {
     Title(title::Title),
     Overlay(title::OverlayEnd),
@@ -248,7 +248,7 @@ impl Routine {
 /// The keyboard as the original's `kbd_poll` sees it: CIA-A's serial data register, which holds
 /// the last byte the keyboard sent (`!(code << 1 | released)`), and whether that byte is new
 /// (the serial-port flag). Once `kbd_poll` has handled a new byte it writes `$ff` there.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 pub(crate) struct Keyboard {
     pub sdr: u8,
     pub new: bool,
@@ -573,7 +573,7 @@ pub(crate) fn table_entries(data: &FrontData, from: u32, to: u32) -> Vec<u32> {
 }
 
 /// A routine on the call stack and what it waits for.
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 struct Frame {
     routine: Routine,
     /// What it waits for, and the line it started waiting on.
@@ -585,7 +585,7 @@ struct Frame {
 
 /// The front end's program: the main program's call stack and the hardware state the engine
 /// tracks outside memory.
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 pub struct Front {
     /// The display registers (window, fetch, bitplanes on) as the last frame's copper left them.
     fetch: Option<render::copper::Fetch>,
@@ -620,6 +620,7 @@ pub struct Front {
     /// [`render::SpriteDma`]).
     spren: bool,
     /// Paths not ported that this front end has run into (empty in every conformance case).
+    #[serde(with = "crate::savestate::static_str::vec")]
     pub unported: Vec<&'static str>,
     /// What the slot machine gave when it returned (T73).
     slot_outcome: Option<crate::slot::SlotOutcome>,
@@ -638,7 +639,7 @@ pub struct Front {
 
 /// An unpacking in progress, for the picture: where, what was there, and when it began and ends
 /// (in lines since the front end started).
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 pub(crate) struct Unpack {
     at: u32,
     old: Vec<u8>,

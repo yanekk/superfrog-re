@@ -71,7 +71,7 @@ pub fn outcome_of_loop(s: &State) -> LevelOutcome {
 }
 
 /// `level_exit_fade` and `game_over_check`, then what comes next.
-#[derive(Debug, Clone, Default, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 pub struct LevelOver {
     pc: u8,
     /// Run from `top_loop`'s own code ([`crate::front::chain`], T183): over once the screen is
@@ -284,7 +284,7 @@ fn level_ctx(
 /// After a death with lives left (`top_loop`'s `bmi` back to `level_init_wN`): the level set up
 /// again, which takes the CPU frames (the engine does it at once; its memory is compared once the
 /// original is out of it), then `level_start`, then the level's loop.
-#[derive(Debug, Clone, Default, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 pub struct Restart {
     pc: u8,
     frog_only: bool,
@@ -386,7 +386,7 @@ pub fn start_after_slide(c: &mut LevelCtx) {
 /// `level_start` (h0+$6952) on the beam: the frog's first step, `wait_frame_raster`, the level's
 /// copper list and its colours fading in, the sprites on, the panel sliding in a step a frame (on
 /// line `$40`), its contents, the drop-in; then the level's loop.
-#[derive(Debug, Clone, Default, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 pub struct LevelStart {
     pc: u8,
     step: u32,

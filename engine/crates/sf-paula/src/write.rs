@@ -5,7 +5,7 @@
 //! position the original made the write at, recorded for diagnosis only: the engine is not
 //! cycle-timed and cannot know them (DESIGN §2.1).
 
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash, PartialOrd, Ord)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash, PartialOrd, Ord, serde::Serialize, serde::Deserialize)]
 pub struct PaulaWrite {
     /// Offset from 0xDFF000: DMACON 0x96, INTENA 0x9A, INTREQ 0x9C, ADKCON 0x9E, AUDx 0xA0..=0xDE.
     pub reg: u16,
