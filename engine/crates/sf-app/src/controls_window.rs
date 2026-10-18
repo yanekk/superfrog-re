@@ -263,13 +263,16 @@ impl App {
         }
         match ControlsWindow::open(event_loop, self.script.is_none()) {
             Ok(window) => {
+                // What the pads already hold is not a new press: the window starts from it.
+                let mut pads = PadState::default();
                 if let Some(run) = &mut self.run {
                     run.input.release_keys();
+                    pads = run.input.pads().clone();
                 }
                 self.controls = Some(OpenControls {
                     model: Controls::new(),
                     window,
-                    pads: PadState::default(),
+                    pads,
                 });
                 self.show_controls();
             }

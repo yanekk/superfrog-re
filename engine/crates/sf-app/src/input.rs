@@ -428,6 +428,11 @@ impl Input {
         None
     }
 
+    /// What the pads hold.
+    pub fn pads(&self) -> &PadState {
+        &self.pads
+    }
+
     /// Let go of every key held, as the window losing focus does, without a frame's worth of
     /// taps being lost: the Controls window taking the keyboard.
     pub fn release_keys(&mut self) {

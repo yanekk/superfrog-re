@@ -282,3 +282,14 @@ fn os_layer_rebind_fire_to_x_in_the_controls_window_and_it_persists_across_relau
     let s = settings(&app);
     assert!(s.contains("fire = [\"Space\", \"ControlLeft\", \"ControlRight\"]"), "{s}");
 }
+
+#[test]
+fn a_stick_held_when_the_controls_window_opens_is_not_a_new_press() {
+    let mut app = launch(30);
+    let c = app.run_script(
+        "5: pad stick 1 -0.9 0\n6: menu controls\n7: controls up pad\n8: pad stick 1 -0.95 0\n\
+         9: pad press 1 North\n10: controls close\n",
+    );
+    assert!(c.exit.success(), "{}", c.stderr);
+    assert_eq!(said(&c).last().unwrap(), "Up is now Y.", "{:?}", said(&c));
+}
