@@ -47,7 +47,7 @@ done · ⛔ blocked, needs a human. A task dropped by a plan amendment leaves th
 | T21 | game-flow | T18, T19, T20, T181, T183 | ✅ | |
 | T22 | app-rig | T09, T10, T12, T13 | ✅ | |
 | T23 | app-shell | T21, T22 | ✅ | |
-| T24 | macos-menus | T23 | 🔍 | muda menu bar, `Command` the only path (menu, shortcuts, script `menu …`); Pause, Reset, Import, Continue, Scale, Quit. 6 script-layer tests, 3 OS-layer, 4 unit. Deviations: `on_command(&mut App, event_loop, c)`; disabled Continue reads "Continue"; Fullscreen's OS check unverified, screen locked (owner, 2026-10-18). |
+| T24 | macos-menus | T23 | ✅ | Review clean, no fix commit. Deviations held. Mutations (Pause no-op, Continue from World 1) go red; probed reset/continue/⌘Q while paused. OS layer: menu-bar and pause/reset/import tests green; fullscreen via the real menu bar and ⌃⌘F unverified, screen locked (owner chose to close; FINDINGS). |
 | T25 | controls-and-gamepad | T24 | ⬜ | |
 | T26 | save-states | T24 | ⬜ | |
 | T27 | crt-and-widescreen | T24 | ⬜ | |
@@ -179,7 +179,7 @@ done · ⛔ blocked, needs a human. A task dropped by a plan amendment leaves th
 A Notes cell holds what was built or what the review found, the test count, and one line per
 deviation from the task doc. A ✅ task's cell may be cut to one line once the next task has been reviewed.
 
-**Review queue:** T24
+**Review queue:** *(empty)*
 
 ## Blocked on the user
 
