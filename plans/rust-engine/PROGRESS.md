@@ -47,7 +47,7 @@ done · ⛔ blocked, needs a human. A task dropped by a plan amendment leaves th
 | T21 | game-flow | T18, T19, T20, T181, T183 | ✅ | |
 | T22 | app-rig | T09, T10, T12, T13 | ✅ | |
 | T23 | app-shell | T21, T22 | ✅ | |
-| T24 | macos-menus | T23 | ⬜ | |
+| T24 | macos-menus | T23 | ✅ | |
 | T25 | controls-and-gamepad | T24 | ⬜ | |
 | T26 | save-states | T24 | ⬜ | |
 | T27 | crt-and-widescreen | T24 | ⬜ | |
