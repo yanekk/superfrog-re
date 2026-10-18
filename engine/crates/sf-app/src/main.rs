@@ -6,7 +6,8 @@
 //! paced by the audio device's clock, the newest frame is presented at each display refresh at an
 //! integer scale (`window.rs`) and the mixer's output is played. `--script` feeds events in place
 //! of the keyboard's and answers the launch's questions, `--capture` writes what was shown and
-//! played; the seatbelts are in `args.rs` (DESIGN §5.2).
+//! played; the seatbelts are in `args.rs` (DESIGN §5.2). Every setting and feature is reached
+//! through the menu bar, as a `menu::Command` (DESIGN §2.7, §7).
 
 mod args;
 mod atomic_write;
@@ -337,9 +338,9 @@ impl App {
 
     /// One PAL frame: the script's events for it, the input, the step, the sound, the picture.
     fn step(&mut self, event_loop: &ActiveEventLoop) {
-        let Some(run) = &mut self.run else { return };
-        run.steps += 1;
-        let n = run.steps;
+        let Some(run) = &self.run else { return };
+        // Step n's events land before it: `steps` counts it once they are through.
+        let n = run.steps + 1;
         let events: Vec<Event> = self.script.as_ref().map_or(Vec::new(), |s| s.at(n).collect());
         for e in events {
             match e {
@@ -362,6 +363,7 @@ impl App {
             }
         }
         let run = self.run.as_mut().expect("running");
+        run.steps = n;
         if run.paused {
             // Paused: the game is not stepped and the picture stays; a press made meanwhile does
             // not reach the game when it resumes. The frame still counts towards --max-frames.

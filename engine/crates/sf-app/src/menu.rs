@@ -248,10 +248,9 @@ pub fn next_command() -> Option<Command> {
 impl App {
     /// Act on `c`: the one place a menu item, its shortcut or a script's `menu …` changes the app.
     pub(crate) fn on_command(&mut self, event_loop: &ActiveEventLoop, c: Command) {
-        if self.run.is_none() {
-            return;
-        }
-        eprintln!("superfrog: menu {}", c.id());
+        let Some(run) = &self.run else { return };
+        // The step it came after, so a test can line the frames up with it.
+        eprintln!("superfrog: menu {} after step {}", c.id(), run.steps);
         match c {
             Command::ImportDisks => self.import_disks(),
             Command::ContinueFromProgress => self.continue_game(),
@@ -309,21 +308,22 @@ impl App {
     /// message), the game carries on.
     fn import_disks(&mut self) {
         let data = match crate::import::choose(&self.home, &mut *self.ui) {
-            Ok(Some(d)) => d,
-            Ok(None) => return,
+            Ok(d) => d,
             Err(e) => {
                 eprintln!("superfrog: {e}");
-                return self.ui.notice(&e);
+                self.ui.notice(&e);
+                None
             }
         };
         let run = self.run.as_mut().expect("running");
-        run.display = std::sync::Arc::new(sf_core::DisplayData::new(&data));
-        drop(data);
-        self.power_on();
-        // The picker held the main thread: start the frames from now, not from before it opened.
-        let run = self.run.as_mut().expect("running");
+        // The panels held the main thread: the game carries on from now rather than catching up.
         let now = run.clock.samples() + run.lead;
         run.pacer.skip_to(now);
+        if let Some(data) = data {
+            run.display = std::sync::Arc::new(sf_core::DisplayData::new(&data));
+            drop(data);
+            self.power_on();
+        }
     }
 }
 

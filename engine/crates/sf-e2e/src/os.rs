@@ -72,6 +72,7 @@ impl Key {
                 'k' => 0x28,
                 'n' => 0x2D,
                 'm' => 0x2E,
+                '.' => 0x2F,
                 _ => panic!("no key for {c:?}"),
             },
         }
@@ -303,6 +304,48 @@ impl App {
             .collect()
     }
 
+    /// How many windows the app has on screen, panels included.
+    pub fn os_window_count(&self) -> usize {
+        self.os_windows().len()
+    }
+
+    /// The app's windows on screen, panels included, front to back: their numbers and bounds in
+    /// points (the window server's list).
+    pub fn os_windows(&self) -> Vec<(u32, [i32; 4])> {
+        let pid = self.os_pid();
+        let script = format!(
+            "ObjC.import('CoreGraphics'); \
+             const l = ObjC.deepUnwrap(ObjC.castRefToObject(\
+               $.CGWindowListCopyWindowInfo($.kCGWindowListOptionOnScreenOnly, 0))); \
+             l.filter(w => w.kCGWindowOwnerPID == {pid} && w.kCGWindowLayer == 0) \
+              .map(w => [w.kCGWindowNumber, w.kCGWindowBounds.X, w.kCGWindowBounds.Y, \
+                         w.kCGWindowBounds.Width, w.kCGWindowBounds.Height].join(' ')).join(';')"
+        );
+        let out = Command::new("osascript")
+            .args(["-l", "JavaScript", "-e", &script])
+            .output()
+            .expect("running osascript");
+        String::from_utf8_lossy(&out.stdout)
+            .trim()
+            .split(';')
+            .filter(|w| !w.is_empty())
+            .map(|w| {
+                let n: Vec<i64> = w.split(' ').map(|v| v.parse::<f64>().unwrap() as i64).collect();
+                (n[0] as u32, [n[1] as i32, n[2] as i32, n[3] as i32, n[4] as i32])
+            })
+            .collect()
+    }
+
+    /// Is the app hidden (Hide)?
+    pub fn os_hidden(&self) -> bool {
+        ax::flag(&ax::app(self.os_pid()), "AXHidden")
+    }
+
+    /// Show the app again after Hide, as clicking it in the Dock would.
+    pub fn os_unhide(&mut self) {
+        ax::set_bool(&ax::app(self.os_pid()), "AXHidden", false).unwrap_or_else(|e| panic!("unhiding: {e}"));
+    }
+
     /// The item titled `title` in the menu at `path`.
     pub fn os_menu_item(&self, path: &[&str], title: &str) -> MenuItemState {
         let items = self.os_menu_items(path);
@@ -382,7 +425,11 @@ impl App {
 
     /// The window as the screen shows it, title bar included, at the display's pixel density.
     pub fn os_capture(&self) -> Image {
-        let (id, _) = self.os_window();
+        self.os_capture_window(self.os_window().0)
+    }
+
+    /// The app's window numbered `id` (from [`App::os_windows`]) as the screen shows it.
+    pub fn os_capture_window(&self, id: u32) -> Image {
         let path = self.home.join(format!("window-{id}.png"));
         // `CGWindowListCreateImage` through JXA: on macOS 26 the `screencapture` tool is refused
         // ("could not create image from window") where the terminal's own grant is enough for this.
@@ -429,6 +476,7 @@ mod ax {
     #[link(name = "CoreFoundation", kind = "framework")]
     unsafe extern "C" {
         static kCFBooleanTrue: CFRef;
+        static kCFBooleanFalse: CFRef;
         fn CFStringCreateWithCString(alloc: CFRef, s: *const c_char, enc: u32) -> CFRef;
         fn CFStringGetCString(s: CFRef, buf: *mut c_char, len: isize, enc: u32) -> bool;
         fn CFGetTypeID(r: CFRef) -> usize;
@@ -474,8 +522,13 @@ mod ax {
     }
 
     pub fn set_true(e: &Cf, name: &str) -> Result<(), String> {
+        set_bool(e, name, true)
+    }
+
+    pub fn set_bool(e: &Cf, name: &str, value: bool) -> Result<(), String> {
         // SAFETY: a static CF boolean, an owned attribute name.
-        let err = unsafe { AXUIElementSetAttributeValue(e.0, string(name).0, kCFBooleanTrue) };
+        let v = unsafe { if value { kCFBooleanTrue } else { kCFBooleanFalse } };
+        let err = unsafe { AXUIElementSetAttributeValue(e.0, string(name).0, v) };
         if err != 0 { Err(format!("{name}: AXError {err}")) } else { Ok(()) }
     }
 
@@ -559,3 +612,4 @@ mod tests {
         );
     }
 }
+
