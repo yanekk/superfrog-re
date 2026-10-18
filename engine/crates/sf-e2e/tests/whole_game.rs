@@ -89,6 +89,9 @@ fn paced_app_is_the_run_alone(frames: Option<u32>, timeout_s: u64) {
     let heard = heard_where_the_original_is(&original, &app, &feed);
     eprintln!("{}: {heard}", case.name);
     assert!(heard.unheard.is_empty(), "{}: the app is silent where the original is heard: {heard}", case.name);
+    let drift = Drift::of(&c);
+    eprintln!("{}: {drift}", case.name);
+    drift.keeps_time(f.frames as u64);
     eprintln!(
         "{}: {} frames of play, the app's equal the headless run's; the app ran {:.0} s",
         case.name,
@@ -239,6 +242,104 @@ fn the_app_paced_through_the_whole_game_is_the_run_alone() {
     paced_app_is_the_run_alone(None, 5 * 3600);
 }
 
+/// The soak (T30): 50 000 frames of the whole game's play through the app (W1-1 to World 2, the
+/// slot machine and the world's loads among them; about 17 min at the PAL rate), paced as the run
+/// alone was. It ends cleanly, meets nothing unported, its frames are still the run alone's, and
+/// its picture and sound keep time: the steps keep with the pacing clock, and every game frame
+/// the mixer makes exactly a PAL frame of sound.
+#[test]
+#[ignore = "slow: about 17 min (the app at the PAL rate), plus 25 min for an uncached feed"]
+fn the_app_soaks_50_000_frames_without_a_fault_or_drift() {
+    const SOAK: u64 = 50_000;
+    let (case, f) = case_and_feed(None);
+    let theirs = parse_hashes(&read(&f.hashes)).unwrap_or_else(|e| panic!("{e}"));
+    let mut app = App::launch(LaunchOpts {
+        max_frames: SOAK,
+        timeout_s: 3600,
+        scale: Some(1),
+        extra_args: vec![
+            "--pacing".into(),
+            f.feed.to_string_lossy().into_owned(),
+            "--capture-hashes".into(),
+        ],
+        ..Default::default()
+    });
+    let c = app.run_script_unread("# Every step is the pacing feed's (--pacing).\n");
+    assert!(c.exit.success(), "{}: the app exited {:?}: {}", case.name, c.exit, c.stderr);
+    assert!(!c.stderr.contains("panicked"), "{}", c.stderr);
+    let unported = read(&c.dir.join("unported.txt"));
+    assert_eq!(unported, "", "the game met what it does not follow");
+    let ours = parse_hashes(&read(&c.dir.join("hashes.txt"))).unwrap_or_else(|e| panic!("{e}"));
+    assert_eq!(first_difference(&ours, &theirs[..=SOAK as usize]), None);
+    let drift = Drift::of(&c);
+    eprintln!("{}: {SOAK} frames: {drift}", case.name);
+    drift.keeps_time(SOAK);
+}
+
+/// A run's picture and sound clocks, from its capture's `pacing.txt`, `audio-frames.txt` and
+/// `audio.wav`.
+#[derive(Debug, Clone, Copy)]
+struct Drift {
+    stepped: u64,
+    presented: u64,
+    dropped: u64,
+    /// Game frames the steps ran (more than the steps under `--pacing`'s loading screens).
+    game_frames: u64,
+    /// How far the pacing clock (host samples) was ahead of the steps at the end, in PAL frames:
+    /// from 0 to under 2 when the steps kept with it (a step is due once its frame has elapsed).
+    clock_ahead: f64,
+    /// The samples the mixer made against a PAL frame's worth for every game frame, in samples:
+    /// within one or two when the sound keeps time (its resampler delays what it plays, not how
+    /// much).
+    sound_off: f64,
+}
+
+impl Drift {
+    /// `steps` stepped, the last presented, and the picture and sound in time.
+    fn keeps_time(&self, steps: u64) {
+        assert_eq!(self.stepped, steps, "{self}");
+        assert!(self.presented + 2 >= steps, "the window fell behind: {self}");
+        assert!((0.0..2.0).contains(&self.clock_ahead), "the steps left the clock: {self}");
+        assert!(self.sound_off.abs() <= 2.0, "the sound left the frames: {self}");
+    }
+
+    fn of(c: &sf_e2e::Captured) -> Drift {
+        let pacing = read(&c.dir.join("pacing.txt"));
+        let field = |name: &str| -> u64 {
+            pacing
+                .lines()
+                .find_map(|l| l.strip_prefix(name)?.strip_prefix(' ')?.parse().ok())
+                .unwrap_or_else(|| panic!("pacing.txt has no `{name}`: {pacing}"))
+        };
+        let (rate, samples) = read_wav(&c.audio_wav);
+        let game_frames: u64 = read(&c.dir.join("audio-frames.txt"))
+            .lines()
+            .map(|l| l.split(' ').count() as u64 - 1)
+            .sum();
+        let frame = sf_paula::CLOCKS_PER_FRAME as f64 * rate as f64 / sf_paula::PAULA_CLOCK_PAL as f64;
+        let stepped = field("stepped");
+        Drift {
+            stepped,
+            presented: field("presented"),
+            dropped: field("dropped"),
+            game_frames,
+            clock_ahead: field("clock") as f64 / frame - stepped as f64,
+            sound_off: samples.len() as f64 - game_frames as f64 * frame,
+        }
+    }
+}
+
+impl std::fmt::Display for Drift {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(
+            f,
+            "stepped {}, presented {}, dropped {}; {} game frames; the clock {:.2} frames ahead of \
+             the steps, the sound {:+.1} samples off the game frames",
+            self.stepped, self.presented, self.dropped, self.game_frames, self.clock_ahead, self.sound_off
+        )
+    }
+}
+
 /// Normal play never reads a feed: without `--script` the app refuses `--pacing` before it opens
 /// anything (DESIGN §2.5).
 #[test]
@@ -256,4 +357,22 @@ fn without_a_script_the_app_reads_no_feed() {
     assert!(stderr.contains("--pacing") && stderr.contains("--script"), "{stderr}");
     assert!(!stderr.contains("/nonexistent/feed"), "the feed was looked for: {stderr}");
     assert!(!home.exists(), "the app made its home: {}", home.display());
+}
+
+#[test]
+fn drift_is_judged_on_both_clocks() {
+    let kept = Drift {
+        stepped: 10,
+        presented: 10,
+        dropped: 0,
+        game_frames: 12,
+        clock_ahead: 1.5,
+        sound_off: -1.0,
+    };
+    kept.keeps_time(10);
+    let late = |d: Drift| std::panic::catch_unwind(|| d.keeps_time(10)).is_err();
+    assert!(late(Drift { clock_ahead: 2.5, ..kept }), "steps behind the clock");
+    assert!(late(Drift { clock_ahead: -0.5, ..kept }), "steps ahead of the clock");
+    assert!(late(Drift { sound_off: 3.0, ..kept }), "sound ahead of the frames");
+    assert!(late(Drift { presented: 7, ..kept }), "the window behind");
 }

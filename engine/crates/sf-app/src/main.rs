@@ -593,7 +593,8 @@ impl App {
             && let Some(c) = r.capture.as_mut()
             && let Err(e) = c
                 .finish()
-                .and_then(|()| c.pacing(r.steps, r.presented, r.dropped))
+                .and_then(|()| c.pacing(r.steps, r.presented, r.dropped, r.clock.samples()))
+                .and_then(|()| c.unported(r.game.unported()))
                 .and_then(|()| c.memory())
         {
             return self.fail(event_loop, &format!("capture: {e}"));

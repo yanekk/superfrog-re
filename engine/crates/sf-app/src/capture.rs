@@ -17,8 +17,11 @@
 //!   own pixels; `windows.txt` a line for each, `N frame width height scale_factor x y w h` (the
 //!   frame it showed, the surface, its pixels a point, and the picture's place on it).
 //! - `prompts.txt`: every question the launch asked a scripted run (`import.rs`).
-//! - `pacing.txt`: `stepped N`, `presented N` (the last frame presented) and `dropped N` (frames
-//!   stepped after the first presented that never reached the window), one a line.
+//! - `pacing.txt`: `stepped N`, `presented N` (the last frame presented), `dropped N` (frames
+//!   stepped after the first presented that never reached the window) and `clock N` (the host
+//!   samples the pacing clock had counted when the run ended, T30), one a line.
+//! - `unported.txt`: what the game met and does not follow (`Game::unported`), one a line; empty
+//!   when nothing.
 //! - `memory.txt`: `footprint N` and `peak N`, the process's physical footprint in bytes at the
 //!   end and at its largest (GPU memory included).
 
@@ -120,11 +123,17 @@ impl Capture {
     }
 
     /// Write `pacing.txt`.
-    pub fn pacing(&self, stepped: u64, presented: u64, dropped: u64) -> std::io::Result<()> {
+    pub fn pacing(&self, stepped: u64, presented: u64, dropped: u64, clock: u64) -> std::io::Result<()> {
         std::fs::write(
             self.dir.join("pacing.txt"),
-            format!("stepped {stepped}\npresented {presented}\ndropped {dropped}\n"),
+            format!("stepped {stepped}\npresented {presented}\ndropped {dropped}\nclock {clock}\n"),
         )
+    }
+
+    /// Write `unported.txt`.
+    pub fn unported(&self, unported: &[&str]) -> std::io::Result<()> {
+        let lines: String = unported.iter().map(|u| format!("{u}\n")).collect();
+        std::fs::write(self.dir.join("unported.txt"), lines)
     }
 
     /// Write `memory.txt`: `footprint N` and `peak N`, the process's physical footprint now and
