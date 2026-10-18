@@ -18,6 +18,10 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-18 | 📌 | T25 review: fake unverified against real — script `pad …` events and `FakePads` stand in for gilrs; `from_gilrs` checked only against gilrs 0.11.2 source (Y up positive on macOS). No real pad event recorded. |
+| 2026-10-18 | 📌 | T25: the 8BitDo Ultimate 2 on real hardware is unverified (optional, owner 2026-10-15); pads are tested only through script `pad …` events. Try: `cd engine && cargo run --release -p sf-app -- --max-frames 15000`. |
+| 2026-10-18 | 📌 | T25, worker-driven drill: Controls window captured open, after a conflicting bind, waiting for the pad; nothing clipped at 540×330. Space pressed while waiting binds, never clicks: buttons refuse first responder so winit's view keeps the keys. |
+| 2026-10-18 | 📌 | T25: a scripted run never opens gilrs (no real pad can change a capture). The Controls window rebinds only the joystick's five inputs; Amiga keys stay in `settings.toml`. A key bound twice moves, and the window says so. |
 | 2026-10-18 | 📌 | T24 review: fake unverified against real — `menus.rs` OS fullscreen test failed twice with the screen locked (first toggle, then second ⌃⌘F). Owner chose close unverified. Rerun unlocked: `SF_E2E_OS=1 cargo test -p sf-e2e --test menus os_layer_scale -- --ignored`. |
 | 2026-10-18 | 📌 | T24 review, read-only, left alone: a paused step pushes no samples, so the device drains its 1/25 s lead; after resume the queue sits near empty and may underrun until it refills. Silent app today (T22). |
 | 2026-10-18 | 📌 | T24, macOS: with the screen locked the OS layer still clicks menus and posts keys, but AX lists no app windows, captures come back blank and fullscreen never happens (T23's picker and fullscreen OS tests too). Check `CGSSessionScreenIsLocked` first. |
