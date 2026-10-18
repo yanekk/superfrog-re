@@ -285,9 +285,15 @@ struct Drift {
     dropped: u64,
     /// Game frames the steps ran (more than the steps under `--pacing`'s loading screens).
     game_frames: u64,
-    /// How far the pacing clock (host samples) was ahead of the steps at the end, in PAL frames:
-    /// from 0 to under 2 when the steps kept with it (a step is due once its frame has elapsed).
+    /// How far the pacing clock was ahead of each step as it ran, in PAL frames (`clock.txt`):
+    /// the median over the whole run, and over its first and last tenths. Under 2 when the steps
+    /// keep with it (a step is due once its frame has elapsed); a load on the machine makes
+    /// passing spikes (T27), a drift makes the last tenth's grow.
     clock_ahead: f64,
+    ahead_first: f64,
+    ahead_last: f64,
+    /// The most it was ahead, and at which step (reported, not judged: it follows the load).
+    ahead_max: (f64, u64),
     /// The samples the mixer made against a PAL frame's worth for every game frame, in samples:
     /// within one or two when the sound keeps time (its resampler delays what it plays, not how
     /// much).
@@ -300,6 +306,7 @@ impl Drift {
         assert_eq!(self.stepped, steps, "{self}");
         assert!(self.presented + 2 >= steps, "the window fell behind: {self}");
         assert!((0.0..2.0).contains(&self.clock_ahead), "the steps left the clock: {self}");
+        assert!(self.ahead_last - self.ahead_first < 1.0, "the steps drift from the clock: {self}");
         assert!(self.sound_off.abs() <= 2.0, "the sound left the frames: {self}");
     }
 
@@ -318,12 +325,30 @@ impl Drift {
             .sum();
         let frame = sf_paula::CLOCKS_PER_FRAME as f64 * rate as f64 / sf_paula::PAULA_CLOCK_PAL as f64;
         let stepped = field("stepped");
+        let ahead: Vec<(u64, f64)> = read(&c.dir.join("clock.txt"))
+            .lines()
+            .map(|l| {
+                let (n, s) = l.split_once(' ').expect(l);
+                let n: u64 = n.parse().expect(l);
+                (n, s.parse::<u64>().expect(l) as f64 / frame - (n - 1) as f64)
+            })
+            .collect();
+        let median = |part: &[(u64, f64)]| {
+            let mut v: Vec<f64> = part.iter().map(|a| a.1).collect();
+            v.sort_by(f64::total_cmp);
+            v.get(v.len() / 2).copied().unwrap_or(0.0)
+        };
+        let tenth = ahead.len() / 10;
+        let ahead_max = ahead.iter().fold((f64::MIN, 0), |m, &(n, a)| if a > m.0 { (a, n) } else { m });
         Drift {
             stepped,
             presented: field("presented"),
             dropped: field("dropped"),
             game_frames,
-            clock_ahead: field("clock") as f64 / frame - stepped as f64,
+            clock_ahead: median(&ahead),
+            ahead_first: median(&ahead[..tenth]),
+            ahead_last: median(&ahead[ahead.len() - tenth..]),
+            ahead_max,
             sound_off: samples.len() as f64 - game_frames as f64 * frame,
         }
     }
@@ -333,9 +358,19 @@ impl std::fmt::Display for Drift {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(
             f,
-            "stepped {}, presented {}, dropped {}; {} game frames; the clock {:.2} frames ahead of \
-             the steps, the sound {:+.1} samples off the game frames",
-            self.stepped, self.presented, self.dropped, self.game_frames, self.clock_ahead, self.sound_off
+            "stepped {}, presented {}, dropped {}; {} game frames; the clock ahead of the steps by \
+             {:.2} frames (median; first tenth {:.2}, last {:.2}, most {:.1} at step {}), the sound \
+             {:+.1} samples off the game frames",
+            self.stepped,
+            self.presented,
+            self.dropped,
+            self.game_frames,
+            self.clock_ahead,
+            self.ahead_first,
+            self.ahead_last,
+            self.ahead_max.0,
+            self.ahead_max.1,
+            self.sound_off
         )
     }
 }
@@ -367,6 +402,9 @@ fn drift_is_judged_on_both_clocks() {
         dropped: 0,
         game_frames: 12,
         clock_ahead: 1.5,
+        ahead_first: 1.0,
+        ahead_last: 1.5,
+        ahead_max: (12.0, 7),
         sound_off: -1.0,
     };
     kept.keeps_time(10);
@@ -374,5 +412,6 @@ fn drift_is_judged_on_both_clocks() {
     assert!(late(Drift { clock_ahead: 2.5, ..kept }), "steps behind the clock");
     assert!(late(Drift { clock_ahead: -0.5, ..kept }), "steps ahead of the clock");
     assert!(late(Drift { sound_off: 3.0, ..kept }), "sound ahead of the frames");
+    assert!(late(Drift { ahead_last: 2.0, ..kept }), "the steps drifting behind");
     assert!(late(Drift { presented: 7, ..kept }), "the window behind");
 }

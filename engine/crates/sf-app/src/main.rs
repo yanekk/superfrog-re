@@ -507,8 +507,10 @@ impl App {
         let picture = outs.into_iter().last().expect("a frame steps").picture;
         let size = (picture.width as u32, picture.height as u32);
         let rgba = picture_rgba(&picture);
+        let clock = run.clock.samples();
         if let Some(c) = &mut run.capture {
             c.audio(n, &run.samples, &ends);
+            c.clock(n, clock);
             c.input(n, input);
             if let Err(e) = c.frame(n, (size.0, size.1, &rgba), &run.game, &picture) {
                 return self.fail(event_loop, &format!("capture: {e}"));

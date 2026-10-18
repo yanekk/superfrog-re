@@ -20,6 +20,8 @@
 //! - `pacing.txt`: `stepped N`, `presented N` (the last frame presented), `dropped N` (frames
 //!   stepped after the first presented that never reached the window) and `clock N` (the host
 //!   samples the pacing clock had counted when the run ended, T30), one a line.
+//! - `clock.txt`: `N samples` for each step N, the host samples the pacing clock had counted
+//!   when it ran, so a test can see whether the steps drift from the clock (T30).
 //! - `unported.txt`: what the game met and does not follow (`Game::unported`), one a line; empty
 //!   when nothing.
 //! - `memory.txt`: `footprint N` and `peak N`, the process's physical footprint in bytes at the
@@ -35,6 +37,7 @@ pub struct Capture {
     rate: u32,
     audio: Vec<[i16; 2]>,
     audio_frames: String,
+    clock: String,
     inputs: String,
     /// `--capture-hashes`: `hashes.txt`, written as the run goes, in place of the PNGs.
     hashes: Option<std::io::BufWriter<std::fs::File>>,
@@ -57,6 +60,7 @@ impl Capture {
             rate,
             audio: Vec::new(),
             audio_frames: String::new(),
+            clock: String::new(),
             inputs: String::new(),
             hashes,
         })
@@ -114,6 +118,11 @@ impl Capture {
         self.audio_frames.push('\n');
     }
 
+    /// Step `n` ran with the pacing clock at `samples`.
+    pub fn clock(&mut self, n: u64, samples: u64) {
+        self.clock.push_str(&format!("{n} {samples}\n"));
+    }
+
     pub fn input(&mut self, n: u64, f: FrameInput) {
         if f != FrameInput::NONE {
             let keys: Vec<String> = f.keys.codes().map(|c| format!("{c:02x}")).collect();
@@ -164,6 +173,7 @@ impl Capture {
         }
         std::fs::write(self.dir.join("audio.wav"), wav(self.rate, &self.audio))?;
         std::fs::write(self.dir.join("audio-frames.txt"), &self.audio_frames)?;
+        std::fs::write(self.dir.join("clock.txt"), &self.clock)?;
         std::fs::write(self.dir.join("inputs.txt"), &self.inputs)
     }
 }
