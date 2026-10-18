@@ -2,10 +2,11 @@
 //! layer (`N: menu crt`, `N: menu widescreen`, the settings file) and checked against the engine
 //! run headless.
 //!
-//! Widescreen draws 67 extra columns each side (16:9 of 256 lines). On a level they are the
-//! level's; on every other screen (title, story intro, slot machine) each line's colour 0, the
-//! border an Amiga monitor shows outside the display window (owner, 2026-10-18). The game is the
-//! same in every mode: its state and the centre 320 columns of every frame are the 4:3 run's.
+//! Widescreen draws 65 extra columns each side (16:9 of a level's 334×261, T210). On a level
+//! they are the level's; on every other screen (title, story intro, slot machine) each line's
+//! colour 0, the border an Amiga monitor shows outside the display window (owner, 2026-10-18).
+//! The game is the same in every mode: its state and the centre 320 columns of every frame are
+//! the 4:3 run's.
 //!
 //! The CRT filter runs after the integer scaling: the frames the game hands over are the same with
 //! it on, only the window differs.
@@ -18,9 +19,13 @@ use sf_core::{DisplayData, Game, Picture, Progress, Rng, Scene, Start, View};
 use sf_e2e::{App, Captured, Image, LaunchOpts, Shot};
 
 const WIDE: View = View {
-    extra_columns_each_side: 67,
+    extra_columns_each_side: 65,
 };
-const N: u32 = 67;
+const N: u32 = 65;
+/// The widescreen window at 1×: a level's 334×261 widened (T210).
+const WINDOW: (u32, u32) = (334 + 2 * N, 261);
+/// A widescreen frame of the title's 320×256.
+const TITLE: (u32, u32) = (320 + 2 * N, 256);
 
 /// Image columns `x0..x0 + w`.
 fn columns(img: &Image, x0: u32, w: u32) -> Image {
@@ -86,7 +91,7 @@ fn widescreen_mid_level_keeps_the_centre_and_the_game_of_the_4_3_run() {
     let data = cache_data(&app.home);
     assert_eq!(wide.inputs, narrow.inputs);
 
-    // Every frame from the switch on is 454 wide, its centre the 4:3 run's: the title's frames
+    // Every frame from the switch on is 130 wider, its centre the 4:3 run's: the title's frames
     // before Continue, W3-1's loading picture and map, and W3-1. From Continue on, the app's
     // frames are the engine's widescreen pictures headless, and the game, state and probe alike,
     // is the 4:3 game's.
@@ -214,9 +219,9 @@ fn widescreen_at_1x_2x_and_3x_is_a_16_9_window_at_a_whole_scale() {
         let (_app, c) = shot_run("widescreen = true\n", Some(n));
         let (img, info) = c.read_shot(150);
         let sf = info.scale_factor as u32;
-        assert_eq!(info.surface, (454 * n * sf, 256 * n * sf), "{n}× widescreen: {info:?}");
+        assert_eq!(info.surface, (WINDOW.0 * n * sf, WINDOW.1 * n * sf), "{n}× widescreen: {info:?}");
         let frame = c.read_frame(info.frame);
-        assert_eq!((frame.width, frame.height), (454, 256));
+        assert_eq!((frame.width, frame.height), TITLE);
         assert_eq!(assert_integer_scaled(&img, &info, &frame), n * sf);
     }
 }
@@ -282,21 +287,21 @@ fn crt_and_widescreen_from_the_menu_are_remembered_by_the_next_launch() {
     });
     let c = app.run_script("10: menu crt\n20: menu widescreen\n");
     assert!(c.exit.success(), "{}", c.stderr);
-    assert_eq!((c.frames[19].width, c.frames[20].width), (320, 454), "widescreen from step 20");
+    assert_eq!((c.frames[19].width, c.frames[20].width), (320, TITLE.0), "widescreen from step 20");
     let settings = std::fs::read_to_string(app.home.join("settings.toml")).unwrap();
     assert!(settings.contains("crt = true") && settings.contains("widescreen = true"), "{settings}");
 
     // The next launch opens with both on: a 16:9 window from frame 0, through the filter.
     let c = app.run_script("150: shot\n");
     assert!(c.exit.success(), "{}", c.stderr);
-    assert!(c.frames.iter().all(|f| f.width == 454), "widescreen from the start");
+    assert!(c.frames.iter().all(|f| f.width == TITLE.0), "widescreen from the start");
     let (img, info) = c.read_shot(150);
     let sf = info.scale_factor as u32;
-    assert_eq!(info.surface, (454 * sf, 256 * sf));
+    assert_eq!(info.surface, (WINDOW.0 * sf, WINDOW.1 * sf));
     let frame = c.read_frame(info.frame);
     let (x, y, _, _) = info.viewport;
     assert!(not_black(&frame));
-    let plain = (0..frame.height).flat_map(|gy| (0..454).map(move |gx| (gx, gy))).all(|(gx, gy)| {
+    let plain = (0..frame.height).flat_map(|gy| (0..frame.width).map(move |gx| (gx, gy))).all(|(gx, gy)| {
         img.rgb(x + gx * sf, y + gy * sf) == frame.rgb(gx, gy)
     });
     assert!(!plain, "the CRT filter is on");
@@ -318,7 +323,7 @@ fn a_loaded_state_is_drawn_for_the_widescreen_setting_not_the_one_it_was_saved_i
     // Saved in widescreen, loaded in widescreen: still 16:9.
     let c = app.run_script("5: menu widescreen\n100: menu save-state-1\n150: menu load-state-1\n");
     assert!(c.exit.success(), "{}", c.stderr);
-    assert!(c.frames[5..].iter().all(|f| f.width == 454), "widescreen after the load");
+    assert!(c.frames[5..].iter().all(|f| f.width == TITLE.0), "widescreen after the load");
     // Loaded with widescreen off (the setting saved by the run above): 4:3.
     let c = app.run_script("1: menu widescreen\n50: menu load-state-1\n");
     assert!(c.exit.success(), "{}", c.stderr);
@@ -342,9 +347,9 @@ fn fullscreen_widescreen_is_the_largest_whole_scale_of_the_16_9_picture() {
     assert!(c.exit.success(), "{}", c.stderr);
     let (img, info) = c.read_shot(150);
     let frame = c.read_frame(info.frame);
-    assert_eq!((frame.width, frame.height), (454, 256));
+    assert_eq!((frame.width, frame.height), TITLE);
     let s = assert_integer_scaled(&img, &info, &frame);
-    let fit = (info.surface.0 / 454).min(info.surface.1 / 256);
+    let fit = (info.surface.0 / frame.width).min(info.surface.1 / frame.height);
     assert_eq!(s, fit, "the largest whole scale: {info:?}");
 }
 

@@ -27,7 +27,7 @@ fn the_scale_set_in_one_run_is_the_window_of_the_next() {
     assert!(c.exit.success(), "{}", c.stderr);
     let (img, info) = c.read_shot(150);
     let sf = info.scale_factor as u32;
-    assert_eq!(info.surface, (960 * sf, 768 * sf), "relaunched at 3×: {info:?}");
+    assert_eq!(info.surface, (1002 * sf, 783 * sf), "relaunched at 3×: {info:?}");
     common::assert_integer_scaled(&img, &info, &c.read_frame(info.frame));
 }
 
@@ -43,7 +43,7 @@ fn a_remembered_fullscreen_stays_windowed_under_a_script_without_allow_fullscree
     assert!(c.stderr.contains("staying windowed"), "{}", c.stderr);
     let (_, info) = c.read_shot(20);
     let sf = info.scale_factor as u32;
-    assert_eq!(info.surface, (320 * sf, 256 * sf));
+    assert_eq!(info.surface, (334 * sf, 261 * sf));
     let settings = std::fs::read_to_string(app.home.join("settings.toml")).unwrap();
     assert_eq!(settings, "fullscreen = true\n", "the setting is kept for a normal launch");
 }
@@ -68,7 +68,7 @@ fn fullscreen_is_remembered_across_a_relaunch() {
     assert!(c.exit.success(), "{}", c.stderr);
     let (img, info) = c.read_shot(100);
     let sf = info.scale_factor as u32;
-    assert!(info.surface.0 > 640 * sf && info.surface.1 > 512 * sf, "relaunched fullscreen: {info:?}");
+    assert!(info.surface.0 > 668 * sf && info.surface.1 > 522 * sf, "relaunched fullscreen: {info:?}");
     let frame = c.read_frame(info.frame);
     let s = common::assert_integer_scaled(&img, &info, &frame);
     let fit = (info.surface.0 / frame.width).min(info.surface.1 / frame.height);
