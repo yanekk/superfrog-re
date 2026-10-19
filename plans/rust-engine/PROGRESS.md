@@ -12,9 +12,9 @@ the account is the commit message. Whoever writes a cell also fixes the over-bud
 **Plan reviewed:** 2026-10-10 — 7 fixed, 7 decided with the user
 
 **Status:** about 100 tasks ✅; T18, T21 and Phase 3 open; amended to faithful.
-**Last updated:** 2026-10-15
+**Last updated:** 2026-10-19
 **Amended 2026-10-15 (owner):** faithful replaces frame-exact (DESIGN §2.1, PLAN.md amendment); T180–T183 added, 14 tasks dropped (PLAN.md).
-**Next `pir-work` will:** T180 faithful-compare, then T182; T126 and T132 finish against the faithful bar.
+**Next `pir-work` will:** review T214.
 
 ## Tasks
 
@@ -179,7 +179,7 @@ done · ⛔ blocked, needs a human. A task dropped by a plan amendment leaves th
 | T211 | app-whole-game-paced | T21, T25, T26, T27, T28; blocks T30 | ✅ | |
 | T212 | conform-known-reds | T29; blocks T30 | ✅ | |
 | T213 | paula-write-timing | T30 | ✅ | |
-| T214 | story-load-blanks | T213 | ⬜ | |
+| T214 | story-load-blanks | T213 | 🔍 | Story load blanks counted (`sync::in_story`) and run at the intro's load: the mixer gets the writes before it, then the blanks, the last in the step. scene4-sound, scene1-out exact. 1 test (ignored, 75 s). Dev: run at the load, not before the step (music starts just before); FEED_FORMAT 6; hand-over's game blanks still dropped. |
 | T215 | channel-check-neighbours | T213; blocks T214 | ✅ | |
 | T216 | bonus-channel3-alone | T213; blocks T214 | ✅ | |
 | T217 | t213-acceptance-runs | T213, T215; blocks T214 | ✅ | |
@@ -187,7 +187,7 @@ done · ⛔ blocked, needs a human. A task dropped by a plan amendment leaves th
 A Notes cell holds what was built or what the review found, the test count, and one line per
 deviation from the task doc. A ✅ task's cell may be cut to one line once the next task has been reviewed.
 
-**Review queue:** *(empty)*
+**Review queue:** T214
 
 ## Blocked on the user
 
