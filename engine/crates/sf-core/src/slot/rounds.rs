@@ -74,17 +74,44 @@ const PAYOUT_CYCLES: u32 = 6_000;
 /// The bank's copy back over the level's (h0+$15fb0: $3e80 longs at about 39 cycles).
 const SOUND_COPY_CYCLES: u32 = 0x3e80 * 39;
 
-/// `sfx_play`, unless the game has no sound.
+/// `sfx_play`, unless the game has no sound. Where its writes fall on the line the main program
+/// is on is kept in their `hpos`, past the frame's order by line (T213): [`SFX_GAP`] after the
+/// last write already there, those from the INTENA `$c000` that ends its raster wait on
+/// [`SFX_WAIT`] later. Made at one instant, the channel it turns off and on again never went idle
+/// and the effect was lost.
 fn sfx(cx: &mut Cx, id: u8, chan: u8) {
     let Some(d) = cx.data.sound.as_ref() else {
         return;
     };
+    let line = cx.line.max(1);
+    let begin = cx
+        .paula
+        .iter()
+        .filter(|w| w.vpos == line && w.hpos < crate::front::HANDLER)
+        .map(|w| w.hpos + SFX_GAP)
+        .max()
+        .unwrap_or(0);
     let mut out = Vec::new();
-    cx.s.audio.play_sfx(d, id, chan, &mut out);
-    for w in out {
+    let waited = match cx.s.audio.play_sfx_begin(d, id, chan, &mut out) {
+        Some(rest) => {
+            let at = out.len() - 1;
+            cx.s.audio.sfx_play_rest(d, rest, &mut out);
+            at
+        }
+        None => out.len(),
+    };
+    for (k, w) in out.into_iter().enumerate() {
         cx.wr(w.reg, w.value);
+        cx.paula.last_mut().expect("just written").hpos =
+            begin + if k >= waited { SFX_WAIT } else { 0 };
     }
 }
+
+/// `sfx_play`'s raster wait, from its channel's period set to 1 to the INTENA `$c000` after it,
+/// and from one `sfx_play`'s last write to the next one's first (the oracle's `slot-gamble` frame
+/// 565: 307:119 to 311:144; 305:181 to 307:101).
+const SFX_WAIT: u16 = 4 * 227;
+const SFX_GAP: u16 = 374;
 
 /// `rng_range` (h0+$160c0): a number in `0..=n`.
 fn rng(s: &mut State, n: u16) -> u16 {

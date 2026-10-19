@@ -17,7 +17,7 @@ use sf_core::{Game, Picture, Rng, View};
 use crate::{Alone, Case, SyncPoint};
 
 /// Bump when what a feed or its hashes hold changes.
-const FEED_FORMAT: u32 = 4;
+const FEED_FORMAT: u32 = 5;
 
 /// The engine build this crate's engine is (sf-app `build.rs`, shared): what a feed is tagged with.
 pub const ENGINE_BUILD: &str = env!("SF_ENGINE_BUILD");
@@ -31,8 +31,14 @@ pub struct Recorded {
     pub hashes: String,
     /// [`AUDIO_HEADER`]'s file: the original's loudness each frame of play.
     pub audio: String,
+    /// [`crate::channels::CHANNELS_HEADER`]'s file: each of the original's channels' level each
+    /// frame of play (T213).
+    pub channels: String,
     /// The engine run alone panicked: what it was fed after is no feed.
     pub panicked: bool,
+    /// The start the engine run alone stepped from (T213: the channel check replays a case from
+    /// any sync point in-process).
+    pub start: Option<sf_core::Start>,
 }
 
 /// The first line of an audio file: then one line a frame of play, from frame 1, the [`swing`]
@@ -74,17 +80,27 @@ impl Recorded {
             frames: Vec::new(),
             hashes: format!("{HASHES_HEADER}\n{}", hash_line(0, frame_hashes(game, &pic))),
             audio: format!("{AUDIO_HEADER}\n"),
+            channels: format!("{}\n", crate::channels::CHANNELS_HEADER),
             panicked: false,
+            start: None,
         }
     }
 
     /// A frame of play: what was fed, the game and its last picture after it, and the
-    /// original's [`swing`] that frame.
-    pub(crate) fn frame(&mut self, fed: FeedFrame, game: &Game, picture: &Picture, swing: u16) {
+    /// original's [`swing`] and channel levels that frame.
+    pub(crate) fn frame(
+        &mut self,
+        fed: FeedFrame,
+        game: &Game,
+        picture: &Picture,
+        swing: u16,
+        channels: Option<crate::channels::Levels>,
+    ) {
         self.frames.push(fed);
         self.hashes
             .push_str(&hash_line(self.frames.len() as u64, frame_hashes(game, picture)));
         self.audio.push_str(&format!("{swing}\n"));
+        self.channels.push_str(&crate::channels::line(channels));
     }
 }
 
@@ -95,6 +111,8 @@ pub struct FeedFiles {
     pub hashes: PathBuf,
     /// The original's loudness each frame of play ([`AUDIO_HEADER`]).
     pub audio: PathBuf,
+    /// The original's channel levels each frame of play ([`crate::channels::CHANNELS_HEADER`]).
+    pub channels: PathBuf,
     /// Frames of play: records in the feed.
     pub frames: usize,
     /// Whether the files were already in the cache.
@@ -104,8 +122,9 @@ pub struct FeedFiles {
     pub alone: Result<(), String>,
 }
 
-/// Where `case`'s feed, hashes and audio go: `<traces>/<key>.feed`, `.hashes`, `.audio`.
-pub fn paths(case: &Case) -> Result<(PathBuf, PathBuf, PathBuf), String> {
+/// Where `case`'s feed, hashes, audio and channels go: `<traces>/<key>.feed`, `.hashes`,
+/// `.audio`, `.channels`.
+pub fn paths(case: &Case) -> Result<(PathBuf, PathBuf, PathBuf, PathBuf), String> {
     let cfg = sf_oracle::OracleConfig::locate(1).map_err(|e| e.to_string())?;
     let script: String = case
         .script
@@ -123,6 +142,7 @@ pub fn paths(case: &Case) -> Result<(PathBuf, PathBuf, PathBuf), String> {
         dir.join(format!("{key}.feed")),
         dir.join(format!("{key}.hashes")),
         dir.join(format!("{key}.audio")),
+        dir.join(format!("{key}.channels")),
     ))
 }
 
@@ -137,9 +157,13 @@ pub fn feed(case: &Case) -> Result<FeedFiles, String> {
     if case.freeze() != crate::freeze::Freeze::None {
         return Err(format!("{}: a frozen case ({:?}) has no pacing feed", case.name, case.freeze()));
     }
-    let (feed_path, hashes_path, audio_path) = paths(case)?;
-    if let (Ok(text), true, true) =
-        (std::fs::read_to_string(&feed_path), hashes_path.is_file(), audio_path.is_file())
+    let (feed_path, hashes_path, audio_path, channels_path) = paths(case)?;
+    if let (Ok(text), true, true, true) = (
+        std::fs::read_to_string(&feed_path),
+        hashes_path.is_file(),
+        audio_path.is_file(),
+        channels_path.is_file(),
+    )
         && let Ok(f) = Feed::parse(&text)
         && f.engine == ENGINE_BUILD
     {
@@ -147,6 +171,7 @@ pub fn feed(case: &Case) -> Result<FeedFiles, String> {
             feed: feed_path,
             hashes: hashes_path,
             audio: audio_path,
+            channels: channels_path,
             frames: f.frames.len(),
             cached: true,
             alone: Ok(()),
@@ -175,11 +200,13 @@ pub fn feed(case: &Case) -> Result<FeedFiles, String> {
     };
     write(&hashes_path, rec.hashes.as_bytes())?;
     write(&audio_path, rec.audio.as_bytes())?;
+    write(&channels_path, rec.channels.as_bytes())?;
     write(&feed_path, feed.to_text().as_bytes())?;
     Ok(FeedFiles {
         feed: feed_path,
         hashes: hashes_path,
         audio: audio_path,
+        channels: channels_path,
         frames: feed.frames.len(),
         cached: false,
         alone: verdict.map(|_| ()).map_err(|d| d.to_string()),

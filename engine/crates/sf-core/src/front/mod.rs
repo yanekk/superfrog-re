@@ -366,6 +366,8 @@ pub(crate) struct Cx<'a> {
     pub load_given: bool,
     /// A disk the game asked for this frame that was not in the drive (T21).
     pub disk_prompt: Option<crate::game::DiskPrompt>,
+    /// Writes the original made inside a load the engine does at once ([`FrontOut::unheard`]).
+    pub unheard: Vec<PaulaWrite>,
     /// The CPU cycles into [`Cx::line`] the beam is, where that is known to the cycle (T203: a
     /// level's loop ending on the beam, [`Front::finish_frame`]); `None` counts whole lines.
     pub into: Option<u32>,
@@ -660,6 +662,23 @@ impl Unpack {
     }
 }
 
+/// The `hpos` that marks the vertical blank's writes in a frame's list until [`vbl::place`]'s
+/// positions are theirs (no beam position has it).
+pub(crate) const HANDLER: u16 = u16::MAX;
+
+/// Writes in the order they are compared, each placed no earlier than the one before it: the
+/// mixer takes a write whose position goes back for the next frame's (`sf_paula::Paula::frame`).
+/// An `hpos` past the line's end (a wait's offset from the line, `slot::rounds`) is carried into
+/// the lines after.
+pub(crate) fn in_beam_order(writes: &mut [PaulaWrite]) {
+    let line = sf_paula::CLOCKS_PER_LINE;
+    let mut last = 0;
+    for w in writes {
+        last = (w.vpos as u32 * line + w.hpos as u32).max(last);
+        (w.vpos, w.hpos) = ((last / line) as u16, (last % line) as u16);
+    }
+}
+
 /// A frame's Paula writes, in the order they are compared, where they were made: the original's
 /// positions given by conformance ([`Front::anchor_writes`]) when they are as many, else the
 /// engine's own lines, at their start (T129).
@@ -688,6 +707,8 @@ pub struct FrontOut {
     pub beam_races: Vec<(u16, u16)>,
     /// [`crate::game::FrameOut::disk_prompt`].
     pub disk_prompt: Option<crate::game::DiskPrompt>,
+    /// [`crate::game::FrameOut::unheard`].
+    pub unheard: Vec<PaulaWrite>,
 }
 
 impl Front {
@@ -937,6 +958,7 @@ impl Front {
             load_runs: Vec::new(),
             load_given: false,
             disk_prompt: None,
+            unheard: Vec::new(),
             into: None,
         };
         cx.into = Some(into);
@@ -1012,11 +1034,19 @@ impl Front {
                 load_runs: Vec::new(),
                 load_given: false,
                 disk_prompt: None,
+                unheard: Vec::new(),
                 into: None,
             };
-            vbl::load_blank(&mut cx);
+            let sound = vbl::load_blank(&mut cx);
             vbl::end(&mut cx);
             self.keyboard = cx.keyboard;
+            // Where the original's handler, taken on time, makes them (T213).
+            if let Some(m) = sound {
+                let at = vbl::place(0, paula.len(), m, 1);
+                for (w, (vpos, hpos)) in paula.iter_mut().zip(at) {
+                    (w.vpos, w.hpos) = (vpos, hpos);
+                }
+            }
             writes.push(paula);
         }
     }
@@ -1132,6 +1162,7 @@ impl Front {
                 load_runs: Vec::new(),
                 load_given: false,
                 disk_prompt: None,
+                unheard: Vec::new(),
             into: None,
             };
             title::boot(&mut cx);
@@ -1196,6 +1227,7 @@ impl Front {
             load_runs: Vec::new(),
             load_given: false,
             disk_prompt: None,
+            unheard: Vec::new(),
             into: None,
         };
         // Work the main program carried over from the last frame with interrupts off.
@@ -1267,10 +1299,10 @@ impl Front {
             effects: cx.s.audio.sfx_active(),
             ..Default::default()
         };
-        let palette_due = if level_vbl {
+        let (palette_due, sound) = if level_vbl {
             // The level's own handler (game over runs the level's logic, T34).
             cx.line = gameover::level_vbl(&mut cx, self.frog_only, vbl_line);
-            false
+            (false, None)
         } else {
             vbl::run(&mut cx)
         };
@@ -1341,9 +1373,17 @@ impl Front {
             history.push((vbl::PALETTE_LINE, window(cx.s, cop1lc)));
         }
         // The interrupt's writes, on the lines it runs: all near the top but its acknowledge,
-        // after the palette copy when that ran.
-        for w in cx.paula[from.max(from_carry)..].iter_mut() {
+        // after the palette copy when that ran. They are ordered among the frame's others by that
+        // line; where each falls on it ([`vbl::place`]) is theirs once the order is made, the
+        // writes marked [`HANDLER`] until then.
+        let handler_from = from.max(from_carry);
+        let handler_at =
+            sound.map_or_else(Vec::new, |m| vbl::place(handler_from, cx.paula.len(), m, vbl_line));
+        for w in cx.paula[handler_from..].iter_mut() {
             w.vpos = vbl_line;
+            if !handler_at.is_empty() {
+                w.hpos = HANDLER;
+            }
         }
         // (The level's handler made its acknowledge itself.)
         if !level_vbl {
@@ -1503,6 +1543,7 @@ impl Front {
         self.stalled = cx.stall;
         let load = cx.load;
         let disk_prompt = cx.disk_prompt.take();
+        let unheard = std::mem::take(&mut cx.unheard);
         let resync = std::mem::take(&mut cx.resync);
         let jobs = std::mem::take(&mut cx.jobs);
         let beam_races = std::mem::take(&mut cx.races);
@@ -1516,7 +1557,7 @@ impl Front {
         self.outcome = cx.outcome.take().or(self.outcome);
         // In beam order: the copper's writes among the CPU's (lines are approximate for the CPU's:
         // the interrupt's at the top, the main program's where it woke). Positions are not
-        // compared (the engine is not cycle-timed), so they are cleared.
+        // compared (the engine is not cycle-timed); the mixer plays the writes at them (T213).
         // A frame that loads stands for the original's frame its load ended on: what the CPU
         // wrote before this frame's interrupt (the end of work carried over from the last frame)
         // was written in the frame the load began, which conformance skips.
@@ -1532,16 +1573,19 @@ impl Front {
         self.carry = all.split_off(split);
         for w in &mut self.carry {
             w.vpos -= FRAME_LINES;
+            if w.hpos == HANDLER {
+                w.hpos = 0;
+            }
         }
+        let cpu = all.len();
         all.extend(next_copper);
         self.audio
             .frame(&anchored(&all, &schedule), crate::slot::FRAME_LINES as u32);
-        // The slot screen's drawing is timed on the beam (T93, T94): its lines are kept.
-        if cop1lc != crate::slot::SLOT_COPPER {
-            for w in &mut all {
-                w.vpos = 0;
-            }
+        let mut at = handler_at.into_iter();
+        for w in all.iter_mut().filter(|w| w.hpos == HANDLER) {
+            (w.vpos, w.hpos) = at.next().unwrap_or((w.vpos, 0));
         }
+        in_beam_order(&mut all[..cpu]);
         FrontOut {
             picture,
             paula: all,
@@ -1550,6 +1594,7 @@ impl Front {
             jobs,
             beam_races,
             disk_prompt,
+            unheard,
         }
     }
 
@@ -1907,5 +1952,17 @@ mod tests {
         .run(&mut s);
         assert_eq!(s.read(dst, 4), [0x01, 0x23, 0x45, 0x67]);
         assert!(s.scratch.is_empty(), "a display buffer is modelled memory");
+    }
+
+    /// T213 review: a write placed before the one ahead of it is moved up to it (the mixer would
+    /// take it and all after for the next frame's), and an `hpos` past the line's end goes on into
+    /// the lines after; the order is never changed.
+    #[test]
+    fn writes_in_beam_order_never_go_back() {
+        let w = |vpos, hpos, value| PaulaWrite { reg: 0x96, value, vpos, hpos };
+        let mut writes = vec![w(5, 100, 0), w(3, 0, 1), w(5, 2 * 227 + 10, 2), w(4, 0, 3)];
+        in_beam_order(&mut writes);
+        let at: Vec<(u16, u16, u16)> = writes.iter().map(|w| (w.vpos, w.hpos, w.value)).collect();
+        assert_eq!(at, vec![(5, 100, 0), (5, 100, 1), (7, 10, 2), (7, 10, 3)]);
     }
 }

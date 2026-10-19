@@ -81,7 +81,7 @@ fn the_captured_audio_is_the_mixer_s_output_for_the_same_writes() {
     let mut want = Vec::new();
     for n in 1..=FRAMES {
         let out = game.step(script_input(n));
-        paula.frame(&out.paula, &game, &mut want);
+        paula.frame(&out.mixed(), &game, &mut want);
     }
     assert!(want.len() > (FRAMES as usize) * (rate as usize) / 51, "{} samples", want.len());
     assert_eq!(samples.len(), want.len());

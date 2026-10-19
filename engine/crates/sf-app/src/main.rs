@@ -504,7 +504,7 @@ impl App {
         run.samples.clear();
         let mut ends = Vec::with_capacity(outs.len());
         for out in &outs {
-            run.paula.frame(&out.paula, &run.game, &mut run.samples);
+            run.paula.frame(&out.mixed(), &run.game, &mut run.samples);
             ends.push(run.samples.len());
         }
         if let Some(a) = &run.audio {

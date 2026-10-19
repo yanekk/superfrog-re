@@ -299,8 +299,8 @@ fn load(cx: &mut Cx) {
     };
     // music_fade_wait: faded and stopped while the original loads.
     cx.s.audio.fade_out();
-    let mut quiet = Vec::new();
-    cx.s.audio.stop_music(d, &mut quiet);
+    // Its writes are made inside the original's load: the mixer's alone (T213).
+    cx.s.audio.stop_music(d, &mut cx.unheard);
     // h0+$4b44: the effect bank and the level's module as the driver sees chip RAM, over the
     // level's map.
     let kept: Vec<u8> = (0..SOUND_KEPT_LEN)

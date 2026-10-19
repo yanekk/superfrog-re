@@ -18,6 +18,18 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-19 | 🐞 | T213 review sweep, not fixed: the story's `sfx_play` (`story/sound.rs`, intro `Op::Sfx`) makes all its writes at one instant through `play_sfx`, its raster wait included, so a story effect retriggering a channel mid-sample may be lost. Unmeasured. |
+| 2026-10-19 | 📌 | T213 review, read-only: copper Paula writes appended at 0:0 after a front frame's CPU writes reach the mixer as the next frame's, and writes clamped past a frame's end play at its last clock together. Neither measured audible. |
+| 2026-10-19 | 📌 | T213 split at pir's context warning into T215 (neighbour-range judging, game-whole green), T216 (WB-1 channel 3 alone, play 180887–180943), T217 (whole_game e2e and `sf-conform all` on the final build). |
+| 2026-10-19 | 🔄 | T213, owner: the channel check judges a frame against the original's range over it and its neighbours (slow sounds a few lines off); WB-1's channel-3 stretch a follow-up (T216). Probe: game-whole 74 runs fall to 4. |
+| 2026-10-19 | 🐞 | T213, fixed: slot `sfx_play` off/on at one instant (effects lost); load-time `music_stop` writes dropped (channels played 15 frames past the slot's load); level frames' writes going back (W6-2 sfx a frame late). |
+| 2026-10-19 | 📌 | T213: resumed probes (`sync = { script = "game-whole", frame = N }`) show mixer artefacts: channels started before the sync play nothing; a sync before a load leaves the engine silent. Judge frames after the next note. |
+| 2026-10-19 | 📌 | T213 added T214 story-load-blanks (owner's yes): the story's loads run no handler blanks (runner counts `game_owns_vbl` only), so after `story-scene4-sound`'s loads at 2286 and 5221 the music is behind, channel 1's first note lost; `channels` red there. |
+| 2026-10-19 | 🔄 | T213, owner: the channel check's tolerance is a frame differing past 256 and 25 % of the louder, runs up to 2 frames let through, the engine's sound shifted up to 10 frames over 25 either side (`channels::OWNER`). |
+| 2026-10-19 | 📌 | T213: `sf-conform channels` compares each channel's level (DAC swing about its mean) per frame of play, vAmiga's taps against the feed replayed through the app's mixer; `.channels` beside `.audio`. Level cases from power-on: no frame differs. |
+| 2026-10-19 | 🐞 | T213, fixed: the front end's and load blanks' Paula writes on one line, the story's DMA stage at its entry: a retriggered channel never went idle, the note lost (title frame 516, 11 frames). `front::vbl::place`; story at its wait's end. |
+| 2026-10-19 | 📌 | T213: the front's and story's `AudioDma` (bus timing) still run on the coarse positions they were fitted on, so state is unchanged; their slots do not see a retriggered channel restart. |
+| 2026-10-19 | 🐞 | Not T213's, not fixed: sf-conform lib test `sync::tests::the_frog_walks_step_counts_the_hitbox_entries_looked_at` fails on the branch head too (`pass_step` at h0+$d0d0 gives 2, wants 1). |
 | 2026-10-19 | 🐞 | T30 review sweep, not fixed: `level::load::enter_with` drops its Paula writes (new_game to level_start), and the app's Play Level File starts there (`Start::Level`). Unmeasured whether any is audible. |
 | 2026-10-19 | 📌 | T30 acceptance, worker-driven, final build: `sf-conform all` 212/212 (5 642 s; game-whole alone 7 007 milestones); app paced through the whole game, frames = run alone on 224 082, heard 220 901/220 901; soak 50 000 green; no disk data. |
 | 2026-10-19 | 📌 | T30 added T213 paula-write-timing (owner's yes): engine Paula writes carry no beam position, so a DMA off and on at one instant leaves a channel mid-sample playing on: wrong notes in normal play. Must finish before the run ends. |

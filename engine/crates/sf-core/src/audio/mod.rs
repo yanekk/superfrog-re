@@ -11,8 +11,9 @@
 //! point at through [`Mem`]: the files the game loaded into chip RAM (a module, an effect bank),
 //! with the bytes the driver itself changed there (the module header it relocates) laid over them.
 //!
-//! Every Paula write is appended to the caller's `out`, in the original's order. The positions are
-//! left 0: the engine is not cycle-timed (DESIGN §2.1).
+//! Every Paula write is appended to the caller's `out`, in the original's order, its position left
+//! 0: the caller places it where the original's handler makes it (the level's beam, the front end's
+//! `front::vbl::place`, the story's handler), so that the mixer restarts a retriggered note (T213).
 
 mod music;
 pub use music::TickWork;

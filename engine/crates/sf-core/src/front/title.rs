@@ -274,8 +274,8 @@ impl Title {
                             // part of the load.
                             if let Some(d) = cx.data.sound.as_ref() {
                                 cx.s.audio.fade_out();
-                                let mut quiet = Vec::new();
-                                cx.s.audio.stop_music(d, &mut quiet);
+                                // Its writes are made inside the original's load: the mixer's alone (T213).
+                                cx.s.audio.stop_music(d, &mut cx.unheard);
                             }
                         } else {
                             return call(Routine::MusicFadeWait(MusicFadeWait::default()));

@@ -120,7 +120,7 @@ fn sound_differs_from_headless(wav: &std::path::Path, feed: &Feed) -> Option<Str
         }
         ours.clear();
         for out in &outs {
-            paula.frame(&out.paula, &g, &mut ours);
+            paula.frame(&out.mixed(), &g, &mut ours);
         }
         let theirs = app.get(at..at + ours.len());
         if theirs != Some(&ours[..]) {
