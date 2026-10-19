@@ -19,7 +19,7 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 | Date | | Finding |
 |---|---|---|
 | 2026-10-19 | 📌 | T30 added T213 paula-write-timing (owner's yes): engine Paula writes carry no beam position, so a DMA off and on at one instant leaves a channel mid-sample playing on: wrong notes in normal play. Must finish before the run ends. |
-| 2026-10-19 | 🐞 | T30, left to T213: after W5's 148-blank load the note at 108762 is lost (silent 108763–108767, the original heard). Writes spaced a line apart in a probe match the original (`examples/retrigger_lost`, `feed_audio`). |
+| 2026-10-19 | 🐞 | T30, left to T213: after W5's 148-blank load the note at 108762 is lost (headless mix silent 108764–108767, the original heard; within the check's ±2 frames). Writes a line apart in a probe match the original (`examples/retrigger_lost`, `feed_audio`). |
 | 2026-10-19 | 🐞 | T30, fixed: `load_blanks` dropped its blanks' Paula writes, so the paced app missed notes the music started during the original's load (108757–108759 silent). `Game::take_load_paula`; the app mixes them unheard. Normal play runs no blanks. |
 | 2026-10-19 | 🐞 | T30, fixed: streamed samples were silent in the app since T22: `stream_tick` never copied `sample_stream`'s 192 bytes to h3+$64b70. `audio_driver.rs` `streamed_samples_play_the_originals_bytes` compares channel 3's bytes with the original's. |
 | 2026-10-19 | 📌 | T30 (owner): check 3 compares sound events (start address, length, period, volume), never the sample bytes at that address nor a channel's output, so an unwritten sample or a lost restart passes it. T213 adds an output check. |

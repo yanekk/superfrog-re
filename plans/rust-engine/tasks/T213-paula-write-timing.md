@@ -12,15 +12,17 @@ music retriggers a channel that is still partway through a sample, its `DMACON` 
 one instant, so the channel never notices DMA went off, never restarts, and plays the old sample on:
 the new note is lost. On the original the driver's writes are spread over the frame (W5, after the
 148-blank load: the off at line 4, the on at line 16), long enough for the channel to go idle and
-restart. Found by T30: in the paced whole game the note at frame 108762 is lost (silent 108763–108767
-where the original is heard); spacing the writes a line apart in a probe
+restart. Found by T30: in the paced whole game the note at frame 108762 is lost (the app's mix
+silent 108764–108767 in a headless replay, where the original is heard); spacing the writes a
+line apart in a probe
 (`sf-conform/examples/feed_audio.rs`, `retrigger_lost.rs`) made those frames match the original.
 Measured crudely, 95 353 of 224 082 frames of play sound different by where the writes land.
 
 The check that should have caught it could not: DESIGN §2.1 check 3 compares sound events (a
 sample's start address and length, its period and volume), not the channels' output, and a lost
 restart leaves a wrong note playing, not silence, so T30's whole-game "heard where the original
-is" check sees it only where the old sample has run out.
+is" check sees it only where the old sample has run out, and even then lets a gap of up to four
+frames through (it allows ±2): it is green on the whole game with this note lost.
 
 So this task must:
 
@@ -34,7 +36,7 @@ So this task must:
    engine's writes and chip RAM, `Paula::channel_taps`), within a tolerance the owner sets, since
    check 3's events cannot see this. Run it over `game-whole`, or `sf-conform all`.
 
-Then T30's whole-game sound check (`sf-e2e` `whole_game.rs`, ignored) must be green:
+T30's whole-game sound check (`sf-e2e` `whole_game.rs`, ignored) must stay green:
 `cd engine && cargo test -q --release -p sf-e2e --test whole_game -- --ignored --nocapture`.
 
 ## Design sections this implements
@@ -59,5 +61,5 @@ check as an `sf-conform` subcommand or test, documented in `engine/conform/READM
 - [ ] The per-channel output check runs over whole cases against the original, with the owner's
       tolerance, and is green on `game-whole`.
 - [ ] A test that a channel retriggered mid-sample restarts as on the original (fails today).
-- [ ] T30's ignored whole-game test green, its output summary in PROGRESS notes.
+- [ ] T30's ignored whole-game test still green, its output summary in PROGRESS notes.
 - [ ] `sf-conform all` still green (the engine's writes' order and events unchanged).
