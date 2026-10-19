@@ -180,14 +180,14 @@ done · ⛔ blocked, needs a human. A task dropped by a plan amendment leaves th
 | T212 | conform-known-reds | T29; blocks T30 | ✅ | |
 | T213 | paula-write-timing | T30 | ✅ | |
 | T214 | story-load-blanks | T213 | ⬜ | |
-| T215 | channel-check-neighbours | T213; blocks T214 | ⬜ | |
+| T215 | channel-check-neighbours | T213; blocks T214 | 🔍 | `judge` vs the original's range over n-1..=n+1; `[[exclude]] what = "channels"` known stretches (`Verdict::known`). game-whole green: 4 known runs, T216's. 3 unit tests, ignored whole-game test (434 s cached). Deviations: slot-gamble test tightened to `OWNER`; tune test's "40 late" bound 150→75 (range loosens it). |
 | T216 | bonus-channel3-alone | T213; blocks T214 | ⬜ | |
 | T217 | t213-acceptance-runs | T213, T215; blocks T214 | ⬜ | |
 
 A Notes cell holds what was built or what the review found, the test count, and one line per
 deviation from the task doc. A ✅ task's cell may be cut to one line once the next task has been reviewed.
 
-**Review queue:** *(empty)*
+**Review queue:** T215
 
 ## Blocked on the user
 

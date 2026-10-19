@@ -169,7 +169,7 @@ cut off, as check 3's events are. A case fails where a channel differs longer th
 in a row; each such run is printed. A case may list a stretch known to differ, with the task that
 owns it (`[[exclude]] what = "channels"`, `frames = [from, to]` in frames of play, `note`, `task`): a
 run wholly inside it is printed as known, not failed (`game-whole`'s 180 880–180 950, WB-1's channel
-3, T216). `tests/channels.rs` runs `game-whole` (ignored, about 30 min uncached).
+3, T216). `tests/channels.rs` runs `game-whole` (ignored: 7 min from the trace cache, 40 uncached).
 `examples/channel_runs` lists every run past any length, `examples/channel_window` both sides'
 levels over a stretch.
 

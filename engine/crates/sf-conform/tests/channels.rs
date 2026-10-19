@@ -57,7 +57,7 @@ fn the_slot_machines_effects_restart_as_on_the_original() {
 /// The whole game (T215), power-on to `end_seq_load`, judged with the owner's tolerance: each frame
 /// against the original's range over it and its neighbours, so a slow sound a few lines off passes.
 /// Only the stretch `game-whole.toml` lists as known (WB-1's channel 3, T216) may differ past it.
-/// The feed from the trace cache; about 30 min uncached.
+/// The feed from the trace cache: 7 min (434 s), 40 uncached.
 #[test]
 #[ignore]
 fn the_whole_games_channels_sound_as_the_original_does() {
