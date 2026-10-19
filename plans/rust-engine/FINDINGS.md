@@ -18,6 +18,7 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-19 | 📌 | T30 acceptance, worker-driven, final build: `sf-conform all` 212/212 (5 642 s; game-whole alone 7 007 milestones); app paced through the whole game, frames = run alone on 224 082, heard 220 901/220 901; soak 50 000 green; no disk data. |
 | 2026-10-19 | 📌 | T30 added T213 paula-write-timing (owner's yes): engine Paula writes carry no beam position, so a DMA off and on at one instant leaves a channel mid-sample playing on: wrong notes in normal play. Must finish before the run ends. |
 | 2026-10-19 | 🐞 | T30, left to T213: after W5's 148-blank load the note at 108762 is lost (headless mix silent 108764–108767, the original heard; within the check's ±2 frames). Writes a line apart in a probe match the original (`examples/retrigger_lost`, `feed_audio`). |
 | 2026-10-19 | 🐞 | T30, fixed: `load_blanks` dropped its blanks' Paula writes, so the paced app missed notes the music started during the original's load (108757–108759 silent). `Game::take_load_paula`; the app mixes them unheard. Normal play runs no blanks. |

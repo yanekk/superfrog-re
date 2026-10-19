@@ -11,10 +11,10 @@ the account is the commit message. Whoever writes a cell also fixes the over-bud
 
 **Plan reviewed:** 2026-10-10 — 7 fixed, 7 decided with the user
 
-**Status:** about 100 tasks ✅; T18, T21 and Phase 3 open; amended to faithful.
-**Last updated:** 2026-10-15
+**Status:** every task ✅ but T30 (🔍) and T213 (⬜, the app's note timing).
+**Last updated:** 2026-10-19
 **Amended 2026-10-15 (owner):** faithful replaces frame-exact (DESIGN §2.1, PLAN.md amendment); T180–T183 added, 14 tasks dropped (PLAN.md).
-**Next `pir-work` will:** T180 faithful-compare, then T182; T126 and T132 finish against the faithful bar.
+**Next `pir-work` will:** review T30, then T213 paula-write-timing.
 
 ## Tasks
 
@@ -53,7 +53,7 @@ done · ⛔ blocked, needs a human. A task dropped by a plan amendment leaves th
 | T27 | crt-and-widescreen | T24 | ✅ | |
 | T28 | level-override | T14, T24 | ✅ | |
 | T29 | app-drill | T21, T25, T26, T27, T28 | ✅ | |
-| T30 | acceptance | T29 | ⬜ | |
+| T30 | acceptance | T29 | 🔍 | sf-conform all 212/212 (5 642 s, final build); no disk data in repo or binary; sf-app tree clean. App whole game: frames = run alone (224 082), heard 220 901/220 901; soak 50 000 green. Fixed stream bytes, load-blank writes; added T213. Deviations: test block left to pir's end run; sf-core touched (owner's yes). |
 | T31 | render-remaining-levels | T13 | ✅ | |
 | T32 | story-intro | T20; blocks T21 | ✅ | |
 | T33 | attract-demo | T16, T20 | ✅ | |
@@ -183,7 +183,7 @@ done · ⛔ blocked, needs a human. A task dropped by a plan amendment leaves th
 A Notes cell holds what was built or what the review found, the test count, and one line per
 deviation from the task doc. A ✅ task's cell may be cut to one line once the next task has been reviewed.
 
-**Review queue:** *(empty)*
+**Review queue:** T30
 
 ## Blocked on the user
 
