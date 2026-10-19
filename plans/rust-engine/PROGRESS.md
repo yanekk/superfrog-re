@@ -178,7 +178,7 @@ done · ⛔ blocked, needs a human. A task dropped by a plan amendment leaves th
 | T210 | window-fits-the-game | T27; blocks T29 | ✅ | |
 | T211 | app-whole-game-paced | T21, T25, T26, T27, T28; blocks T30 | ✅ | |
 | T212 | conform-known-reds | T29; blocks T30 | ✅ | |
-| T213 | paula-write-timing | T30 | ⬜ | |
+| T213 | paula-write-timing | T30 | ✅ | |
 | T214 | story-load-blanks | T213 | ⬜ | |
 | T215 | channel-check-neighbours | T213; blocks T214 | ⬜ | |
 | T216 | bonus-channel3-alone | T213; blocks T214 | ⬜ | |
