@@ -366,6 +366,8 @@ pub(crate) struct Cx<'a> {
     pub load_given: bool,
     /// A disk the game asked for this frame that was not in the drive (T21).
     pub disk_prompt: Option<crate::game::DiskPrompt>,
+    /// Writes the original made inside a load the engine does at once ([`FrontOut::unheard`]).
+    pub unheard: Vec<PaulaWrite>,
     /// The CPU cycles into [`Cx::line`] the beam is, where that is known to the cycle (T203: a
     /// level's loop ending on the beam, [`Front::finish_frame`]); `None` counts whole lines.
     pub into: Option<u32>,
@@ -662,15 +664,18 @@ impl Unpack {
 
 /// The `hpos` that marks the vertical blank's writes in a frame's list until [`vbl::place`]'s
 /// positions are theirs (no beam position has it).
-const HANDLER: u16 = u16::MAX;
+pub(crate) const HANDLER: u16 = u16::MAX;
 
 /// Writes in the order they are compared, each placed no earlier than the one before it: the
 /// mixer takes a write whose position goes back for the next frame's (`sf_paula::Paula::frame`).
+/// An `hpos` past the line's end (a wait's offset from the line, `slot::rounds`) is carried into
+/// the lines after.
 pub(crate) fn in_beam_order(writes: &mut [PaulaWrite]) {
-    let mut last = (0, 0);
+    let line = sf_paula::CLOCKS_PER_LINE;
+    let mut last = 0;
     for w in writes {
-        last = last.max((w.vpos, w.hpos));
-        (w.vpos, w.hpos) = last;
+        last = (w.vpos as u32 * line + w.hpos as u32).max(last);
+        (w.vpos, w.hpos) = ((last / line) as u16, (last % line) as u16);
     }
 }
 
@@ -702,6 +707,8 @@ pub struct FrontOut {
     pub beam_races: Vec<(u16, u16)>,
     /// [`crate::game::FrameOut::disk_prompt`].
     pub disk_prompt: Option<crate::game::DiskPrompt>,
+    /// [`crate::game::FrameOut::unheard`].
+    pub unheard: Vec<PaulaWrite>,
 }
 
 impl Front {
@@ -951,6 +958,7 @@ impl Front {
             load_runs: Vec::new(),
             load_given: false,
             disk_prompt: None,
+            unheard: Vec::new(),
             into: None,
         };
         cx.into = Some(into);
@@ -1026,6 +1034,7 @@ impl Front {
                 load_runs: Vec::new(),
                 load_given: false,
                 disk_prompt: None,
+                unheard: Vec::new(),
                 into: None,
             };
             let sound = vbl::load_blank(&mut cx);
@@ -1153,6 +1162,7 @@ impl Front {
                 load_runs: Vec::new(),
                 load_given: false,
                 disk_prompt: None,
+                unheard: Vec::new(),
             into: None,
             };
             title::boot(&mut cx);
@@ -1217,6 +1227,7 @@ impl Front {
             load_runs: Vec::new(),
             load_given: false,
             disk_prompt: None,
+            unheard: Vec::new(),
             into: None,
         };
         // Work the main program carried over from the last frame with interrupts off.
@@ -1532,6 +1543,7 @@ impl Front {
         self.stalled = cx.stall;
         let load = cx.load;
         let disk_prompt = cx.disk_prompt.take();
+        let unheard = std::mem::take(&mut cx.unheard);
         let resync = std::mem::take(&mut cx.resync);
         let jobs = std::mem::take(&mut cx.jobs);
         let beam_races = std::mem::take(&mut cx.races);
@@ -1582,6 +1594,7 @@ impl Front {
             jobs,
             beam_races,
             disk_prompt,
+            unheard,
         }
     }
 

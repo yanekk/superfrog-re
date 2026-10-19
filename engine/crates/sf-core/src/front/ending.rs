@@ -135,8 +135,8 @@ impl EndSeqLoad {
                 // music_fade_wait: the music is off already (top_loop faded it out).
                 if let Some(d) = cx.data.sound.as_ref() {
                     cx.s.audio.fade_out();
-                    let mut quiet = Vec::new();
-                    cx.s.audio.stop_music(d, &mut quiet);
+                    // Its writes are made inside the original's load: the mixer's alone (T213).
+                    cx.s.audio.stop_music(d, &mut cx.unheard);
                     // $1d6c: the title's music to h3+$64c70.
                     cx.s.audio.file_loaded(
                         d,

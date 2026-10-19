@@ -36,6 +36,9 @@ pub struct Recorded {
     pub channels: String,
     /// The engine run alone panicked: what it was fed after is no feed.
     pub panicked: bool,
+    /// The start the engine run alone stepped from (T213: the channel check replays a case from
+    /// any sync point in-process).
+    pub start: Option<sf_core::Start>,
 }
 
 /// The first line of an audio file: then one line a frame of play, from frame 1, the [`swing`]
@@ -79,6 +82,7 @@ impl Recorded {
             audio: format!("{AUDIO_HEADER}\n"),
             channels: format!("{}\n", crate::channels::CHANNELS_HEADER),
             panicked: false,
+            start: None,
         }
     }
 

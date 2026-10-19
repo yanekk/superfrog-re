@@ -240,13 +240,15 @@ fn run_inner(
     // Check 4: the engine from the same start, given only the inputs, the original's pacing and
     // the seeds it read from its clock.
     let mut alone = (case.mode == Mode::Faithful && case.alone != Alone::Off).then(|| {
-        let mut g = Game::with_display(display.clone(), start);
+        let mut g = Game::with_display(display.clone(), start.clone());
         if frog_only {
             g.frog_only();
         }
         let mut a = AloneRun::new(g, case.sync == SyncPoint::PowerOnDisk3);
         if record.is_some() {
-            a.record = Some(feed::Recorded::start(&a.game, synced.seed.unwrap_or_default()));
+            let mut r = feed::Recorded::start(&a.game, synced.seed.unwrap_or_default());
+            r.start = Some(start);
+            a.record = Some(r);
         }
         a
     });

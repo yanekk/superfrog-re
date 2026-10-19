@@ -132,7 +132,8 @@ pub fn parse(text: &str) -> Result<Vec<Option<Levels>>, String> {
 
 /// The engine's levels each frame of play: `feed` replayed headless from `start` (a power-on
 /// seeded with the feed's seed) through the app's mixer (`Paula::booted`, a load's blanks a frame
-/// each before the step after them, as `sf-app` mixes them), the last video frame of each.
+/// each before the step after them, each frame's [`sf_core::FrameOut::mixed`], as `sf-app` mixes
+/// them), the last video frame of each.
 pub fn engine_levels(feed: &Feed, start: Start) -> Vec<Levels> {
     let mut g = Game::with_display(crate::display_data(), start);
     let mut paula = Paula::booted(48_000);
@@ -144,7 +145,7 @@ pub fn engine_levels(feed: &Feed, start: Start) -> Vec<Levels> {
             paula.frame(&blank, &g, &mut sink);
         }
         for o in &outs {
-            paula.frame(&o.paula, &g, &mut sink);
+            paula.frame(&o.mixed(), &g, &mut sink);
         }
         sink.clear();
         out.push(mixer_levels(&paula));
@@ -331,23 +332,19 @@ pub fn check(case: &Case, tol: Tolerance) -> Result<Verdict, String> {
 
 /// `case`'s levels each frame of play, the original's and the engine's: the original's as
 /// recorded with its pacing feed (from the trace cache, or by running it), the engine's from
-/// replaying the feed. A disk-3 power-on (the story) has no cached feed, which the app starts from
-/// disk 1: it is run and replayed here. With the feed.
+/// replaying the feed. A case from any other start (the story's disk 3, a sync point in the whole
+/// game) has no cached feed, which is a disk-1 power-on's: it is run and replayed here, from the
+/// start its engine run alone stepped from. With the feed.
 pub fn levels(case: &Case) -> Result<(Feed, Vec<Option<Levels>>, Vec<Levels>), String> {
-    let (feed, theirs, start) = match case.sync {
-        SyncPoint::PowerOnDisk3 => {
-            let mut c = case.clone();
-            c.alone = Alone::Only;
-            let mut rec = feed::Recorded::default();
-            let _ = crate::run_inner(&c, |_, _| {}, &mut |_, _, _| {}, None, false, Some(&mut rec));
-            if rec.panicked {
-                return Err(format!("{}: the engine run alone panicked", case.name));
-            }
-            let theirs = parse(&rec.channels)?;
-            let seed = rec.seed;
-            (Feed { engine: String::new(), seed, frames: rec.frames }, theirs, Start::Disk3 { seed })
-        }
-        _ => {
+    let (feed, theirs, start) = recorded(case)?;
+    let ours = engine_levels(&feed, start);
+    Ok((feed, theirs, ours))
+}
+
+/// What [`levels`] replays: `case`'s feed, the original's levels and the engine's start.
+pub fn recorded(case: &Case) -> Result<(Feed, Vec<Option<Levels>>, Start), String> {
+    Ok(match case.sync {
+        SyncPoint::PowerOn | SyncPoint::PowerOnDf1 => {
             let f = feed::feed(case)?;
             let read = |p: &std::path::Path| {
                 std::fs::read_to_string(p).map_err(|e| format!("{}: {e}", p.display()))
@@ -357,9 +354,19 @@ pub fn levels(case: &Case) -> Result<(Feed, Vec<Option<Levels>>, Vec<Levels>), S
             let seed = feed.seed;
             (feed, theirs, Start::PowerOn { seed })
         }
-    };
-    let ours = engine_levels(&feed, start);
-    Ok((feed, theirs, ours))
+        _ => {
+            let mut c = case.clone();
+            c.alone = Alone::Only;
+            let mut rec = feed::Recorded::default();
+            let _ = crate::run_inner(&c, |_, _| {}, &mut |_, _, _| {}, None, false, Some(&mut rec));
+            if rec.panicked {
+                return Err(format!("{}: the engine run alone panicked", case.name));
+            }
+            let theirs = parse(&rec.channels)?;
+            let start = rec.start.ok_or_else(|| format!("{}: no engine run alone", case.name))?;
+            (Feed { engine: String::new(), seed: rec.seed, frames: rec.frames }, theirs, start)
+        }
+    })
 }
 
 #[cfg(test)]

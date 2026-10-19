@@ -125,6 +125,18 @@ pub struct FrameOut {
     /// prompt. The engine has every disk (the app's cache), so it goes on at once: the app may
     /// show the swap, never wait for it.
     pub disk_prompt: Option<DiskPrompt>,
+    /// Paula writes the original made in frames conformance skips, inside a load the engine does
+    /// at once (T213: `music_fade_wait`'s `music_stop` before the slot machine's, the end
+    /// sequence's and the title's loads). Never compared; a mixer plays them before `paula`
+    /// ([`FrameOut::mixed`]), or the channels the original turned off play on after the load.
+    pub unheard: Vec<PaulaWrite>,
+}
+
+impl FrameOut {
+    /// What a mixer plays for this frame: [`FrameOut::unheard`], then [`FrameOut::paula`].
+    pub fn mixed(&self) -> Vec<PaulaWrite> {
+        self.unheard.iter().chain(&self.paula).copied().collect()
+    }
 }
 
 /// What the original asks the player to do with the drive (T21).
@@ -494,6 +506,7 @@ impl Game {
                     jobs: out.jobs,
                     beam_races: Vec::new(),
                     disk_prompt: None,
+                    unheard: Vec::new(),
                 };
             }
             // The intro has handed over: the game starts as a disk-1 power-on does, and its first
@@ -571,6 +584,7 @@ impl Game {
                 jobs: out.jobs,
                 beam_races: out.beam_races,
                 disk_prompt: out.disk_prompt,
+                unheard: out.unheard,
             };
         }
         self.level_frame(input, pacing, key_in, draw)
@@ -617,6 +631,10 @@ impl Game {
             self.scene
                 .step(&mut m, &mut self.pending, pacing, self.view, &mut after)
         };
+        // Each frame's writes are its own: one placed before the one ahead of it (the engine's
+        // clock past where the pacing puts the original's) is no later frame's, though the mixer
+        // would take it for one (T213: W6-2's `sfx_play`, its DMACON on a frame late).
+        crate::front::in_beam_order(&mut paula);
         let mut jobs = Vec::new();
         if let Some((front, more, begun)) = ended {
             self.outcome = Some(crate::level::exit::outcome_of_loop(&self.state));
@@ -640,6 +658,7 @@ impl Game {
             jobs,
             beam_races: Vec::new(),
             disk_prompt: None,
+            unheard: Vec::new(),
         }
     }
 
