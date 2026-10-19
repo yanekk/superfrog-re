@@ -660,6 +660,20 @@ impl Unpack {
     }
 }
 
+/// The `hpos` that marks the vertical blank's writes in a frame's list until [`vbl::place`]'s
+/// positions are theirs (no beam position has it).
+const HANDLER: u16 = u16::MAX;
+
+/// Writes in the order they are compared, each placed no earlier than the one before it: the
+/// mixer takes a write whose position goes back for the next frame's (`sf_paula::Paula::frame`).
+pub(crate) fn in_beam_order(writes: &mut [PaulaWrite]) {
+    let mut last = (0, 0);
+    for w in writes {
+        last = last.max((w.vpos, w.hpos));
+        (w.vpos, w.hpos) = last;
+    }
+}
+
 /// A frame's Paula writes, in the order they are compared, where they were made: the original's
 /// positions given by conformance ([`Front::anchor_writes`]) when they are as many, else the
 /// engine's own lines, at their start (T129).
@@ -1014,9 +1028,16 @@ impl Front {
                 disk_prompt: None,
                 into: None,
             };
-            vbl::load_blank(&mut cx);
+            let sound = vbl::load_blank(&mut cx);
             vbl::end(&mut cx);
             self.keyboard = cx.keyboard;
+            // Where the original's handler, taken on time, makes them (T213).
+            if let Some(m) = sound {
+                let at = vbl::place(0, paula.len(), m, 1);
+                for (w, (vpos, hpos)) in paula.iter_mut().zip(at) {
+                    (w.vpos, w.hpos) = (vpos, hpos);
+                }
+            }
             writes.push(paula);
         }
     }
@@ -1267,10 +1288,10 @@ impl Front {
             effects: cx.s.audio.sfx_active(),
             ..Default::default()
         };
-        let palette_due = if level_vbl {
+        let (palette_due, sound) = if level_vbl {
             // The level's own handler (game over runs the level's logic, T34).
             cx.line = gameover::level_vbl(&mut cx, self.frog_only, vbl_line);
-            false
+            (false, None)
         } else {
             vbl::run(&mut cx)
         };
@@ -1341,9 +1362,17 @@ impl Front {
             history.push((vbl::PALETTE_LINE, window(cx.s, cop1lc)));
         }
         // The interrupt's writes, on the lines it runs: all near the top but its acknowledge,
-        // after the palette copy when that ran.
-        for w in cx.paula[from.max(from_carry)..].iter_mut() {
+        // after the palette copy when that ran. They are ordered among the frame's others by that
+        // line; where each falls on it ([`vbl::place`]) is theirs once the order is made, the
+        // writes marked [`HANDLER`] until then.
+        let handler_from = from.max(from_carry);
+        let handler_at =
+            sound.map_or_else(Vec::new, |m| vbl::place(handler_from, cx.paula.len(), m, vbl_line));
+        for w in cx.paula[handler_from..].iter_mut() {
             w.vpos = vbl_line;
+            if !handler_at.is_empty() {
+                w.hpos = HANDLER;
+            }
         }
         // (The level's handler made its acknowledge itself.)
         if !level_vbl {
@@ -1516,7 +1545,7 @@ impl Front {
         self.outcome = cx.outcome.take().or(self.outcome);
         // In beam order: the copper's writes among the CPU's (lines are approximate for the CPU's:
         // the interrupt's at the top, the main program's where it woke). Positions are not
-        // compared (the engine is not cycle-timed), so they are cleared.
+        // compared (the engine is not cycle-timed); the mixer plays the writes at them (T213).
         // A frame that loads stands for the original's frame its load ended on: what the CPU
         // wrote before this frame's interrupt (the end of work carried over from the last frame)
         // was written in the frame the load began, which conformance skips.
@@ -1532,16 +1561,19 @@ impl Front {
         self.carry = all.split_off(split);
         for w in &mut self.carry {
             w.vpos -= FRAME_LINES;
+            if w.hpos == HANDLER {
+                w.hpos = 0;
+            }
         }
+        let cpu = all.len();
         all.extend(next_copper);
         self.audio
             .frame(&anchored(&all, &schedule), crate::slot::FRAME_LINES as u32);
-        // The slot screen's drawing is timed on the beam (T93, T94): its lines are kept.
-        if cop1lc != crate::slot::SLOT_COPPER {
-            for w in &mut all {
-                w.vpos = 0;
-            }
+        let mut at = handler_at.into_iter();
+        for w in all.iter_mut().filter(|w| w.hpos == HANDLER) {
+            (w.vpos, w.hpos) = at.next().unwrap_or((w.vpos, 0));
         }
+        in_beam_order(&mut all[..cpu]);
         FrontOut {
             picture,
             paula: all,

@@ -2,8 +2,10 @@
 //! (`sf-core`), the mixer (`sf-paula`) and the oracle (`sf-oracle`).
 //!
 //! Conformance compares the ordered `(reg, value)` list of a frame. `vpos`/`hpos` are the beam
-//! position the original made the write at, recorded for diagnosis only: the engine is not
-//! cycle-timed and cannot know them (DESIGN §2.1).
+//! position the write was made at: the original's (the oracle's), or where the engine's model of
+//! the original's timing puts it, which is not cycle-exact (DESIGN §2.1). The mixer plays each
+//! write at its position: a channel turned off and on again restarts its note only if Paula had
+//! the time between to let it go idle (T213).
 
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash, PartialOrd, Ord, serde::Serialize, serde::Deserialize)]
 pub struct PaulaWrite {

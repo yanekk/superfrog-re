@@ -575,6 +575,8 @@ impl Intro {
         }
         self.merged.retain(|&t| t >= top);
         let handler = handler_lines(m);
+        // This frame's handler's DMA stage in `out.paula`, and the line its wait ends on.
+        let mut dma_stage: Option<(std::ops::Range<usize>, u16)> = None;
         if let Some((wait_end, handler_end)) = self.tail.take() {
             // The rest of the last frame's handler, from its wait's end.
             let mut writes = Vec::new();
@@ -602,6 +604,7 @@ impl Intro {
             } else {
                 at + handler
             };
+            let tick = writes.len();
             if split {
                 // Its acknowledge clears the next blank's request too: that blank has no handler.
                 self.tail = Some((wait_end, handler_end));
@@ -615,6 +618,10 @@ impl Intro {
             }
             out.handler = ((at - top) as u16, (handler_end - top) as u16);
             out.copper = m.read(list, 0x400);
+            let from = out.paula.len();
+            if !split {
+                dma_stage = Some((from + tick..from + writes.len(), (wait_end - top) as u16));
+            }
             out.paula.extend(writes);
             // A CPU job the blank fell into goes on after the handler.
             if let Wait::Busy {
@@ -690,7 +697,10 @@ impl Intro {
             .partition(|(at, _)| *at < end);
         self.writes = later;
         out.paula.extend(due.into_iter().map(|(_, w)| w));
-        out.paula.sort_by_key(|w| (w.vpos, w.hpos));
+        // Sorted, remembering where the handler's DMA stage went.
+        let mut order: Vec<usize> = (0..out.paula.len()).collect();
+        order.sort_by_key(|&i| (out.paula[i].vpos, out.paula[i].hpos));
+        out.paula = order.iter().map(|&i| out.paula[i]).collect();
         if let Some(j) = &mut self.job {
             let k = (frame - j.frame) as usize;
             if j.writes.len() <= k {
@@ -704,6 +714,18 @@ impl Intro {
             .iter()
             .map(|s| s.0)
             .collect();
+        // For the mixer (T213), the DMA stage where its wait ends: there, eight lines after the
+        // replayer turned a retriggered channel off, Paula has let it go idle and restarts it, as
+        // on the original. At the handler's entry with the tick's writes the note was lost. The
+        // audio DMA above, which times the bus, keeps the positions it was fitted on.
+        if let Some((stage, line)) = dma_stage {
+            for (w, &i) in out.paula.iter_mut().zip(&order) {
+                if stage.contains(&i) {
+                    (w.vpos, w.hpos) = (line, 0);
+                }
+            }
+            crate::front::in_beam_order(&mut out.paula);
+        }
         out
     }
 
@@ -1733,15 +1755,17 @@ mod tests {
     #[test]
     fn a_handler_whose_wait_runs_past_the_frames_end_ends_in_the_next_which_has_none_of_its_own() {
         // Idle, the wait is read a line after the entry: on 306 from 305, so it ends on line 58
-        // of frame 1; frame 1's blank, cleared by that acknowledge, gets no handler.
+        // of frame 1; frame 1's blank, cleared by that acknowledge, gets no handler. Frame 2's,
+        // taken on line 0, acknowledges where its wait ends, on line 9 (T213: the mixer is given
+        // the handler's writes after the wait there, not at its entry).
         assert_eq!(
             handlers_from(305),
-            vec![(1, vec![]), (1, vec![58]), (2, vec![0])]
+            vec![(1, vec![]), (1, vec![58]), (2, vec![9])]
         );
-        // Read on 304: an ordinary handler, all in its frame.
+        // Read on 304: an ordinary handler, all in its frame, its wait ending on its last line.
         assert_eq!(
             handlers_from(303),
-            vec![(1, vec![0]), (2, vec![0]), (3, vec![0])]
+            vec![(1, vec![312]), (2, vec![9]), (3, vec![9])]
         );
     }
 }

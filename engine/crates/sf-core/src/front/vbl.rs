@@ -25,20 +25,85 @@ const INTREQ: u16 = 0x9c;
 /// The handler's work on a frame the original spends loading that no screen times (T209): the
 /// sound and the keyboard's poll, which run on whatever the main program is doing. A timed
 /// screen's own work is run frame by frame as play; the rest waits for the load's end.
-pub(super) fn load_blank(cx: &mut Cx) {
+/// Returns where its sound writes fall ([`place`]).
+pub(super) fn load_blank(cx: &mut Cx) -> Option<SoundMarks> {
+    let mut marks = None;
     if let Some(d) = cx.data.sound.as_ref() {
+        let (work, streaming) = (cx.s.audio.tick_work(d), cx.s.audio.streaming());
         cx.s.audio.stream_tick(d, cx.paula);
+        let music = cx.paula.len();
         cx.s.audio.music_tick(d, cx.paula);
+        let dma = cx.paula.len();
         cx.s.audio.music_dma_tick(d, cx.paula);
         cx.s.audio.sfx_tick(d, cx.paula);
+        marks = Some(SoundMarks { music, dma, work, streaming });
     }
     kbd_poll(cx);
+    marks
+}
+
+/// Where the handler's sound writes fall among its writes (T213): `music_tick`'s first and the DMA
+/// stage's first (indices into the frame's writes), and what the tick does, read before it.
+#[derive(Debug, Clone, Copy, Default)]
+pub(super) struct SoundMarks {
+    pub music: usize,
+    pub dma: usize,
+    pub work: TickWork,
+    pub streaming: bool,
+}
+
+/// The beam positions (`vpos`, `hpos`) of the handler's writes `from..to` (to its last before
+/// the acknowledge), the handler entered on line `entry` (1 on time), by the cost model of
+/// [`fade_start`] (T100): the writes before `music_tick`'s at its entry, `music_tick`'s spread
+/// over it with the shadow copy's burst at its end, the DMA stage's and all after once the wait at
+/// `h0+$12a14` is over, eight lines after `music_tick`'s.
+///
+/// A channel the replayer turns off and the DMA stage on again is idle by then, so Paula restarts
+/// its note as on the original. The engine made them all at one instant before T213, and the
+/// note was lost: the channel played its old sample on.
+pub(super) fn place(from: usize, to: usize, m: SoundMarks, entry: u16) -> Vec<(u16, u16)> {
+    let top = entry.max(1) as u32 - 1;
+    let top = top * BEAM_CYCLES_PER_LINE;
+    let m0 = top + cost::BASE + if m.streaming { cost::STREAM } else { 0 };
+    let m1 = (top + music_cycles(&m.work, m.streaming)).max(m0);
+    let wait = ((m1 + cost::TO_WAIT) / BEAM_CYCLES_PER_LINE + 8) * BEAM_CYCLES_PER_LINE;
+    let (music, dma) = (m.music.clamp(from, to), m.dma.clamp(from, to));
+    let mut at = Vec::with_capacity(to - from);
+    for i in from..music {
+        at.push((top + cost::ENTRY + (i - from) as u32 * cost::WRITE).min(m0));
+    }
+    let n = (dma - music) as u32;
+    let burst = n.min(5 * m.work.shadowed);
+    let (rest, copy) = (n - burst, m1 - burst * cost::COPY_WRITE);
+    for k in 0..n {
+        at.push(if k < rest {
+            m0 + (copy.saturating_sub(m0)) * k / rest
+        } else {
+            copy + (k - rest) * cost::COPY_WRITE
+        });
+    }
+    for i in dma..to {
+        at.push(wait + cost::DMA_STAGE + (i - dma) as u32 * cost::WRITE);
+    }
+    let mut last = 0;
+    at.into_iter()
+        .map(|t| {
+            last = t.max(last);
+            ((last / BEAM_CYCLES_PER_LINE) as u16, (last % BEAM_CYCLES_PER_LINE / 2) as u16)
+        })
+        .collect()
 }
 
 /// The handler's work up to the fades. Returns whether the title's palette copy is due this frame
-/// (it waits for line [`PALETTE_LINE`]; [`palette_copy`]).
-pub(super) fn run(cx: &mut Cx) -> bool {
+/// (it waits for line [`PALETTE_LINE`]; [`palette_copy`]), and where its sound writes fall
+/// ([`place`]).
+pub(super) fn run(cx: &mut Cx) -> (bool, Option<SoundMarks>) {
     let data = cx.data.sound.as_ref();
+    let mut marks = data.map(|d| SoundMarks {
+        work: cx.s.audio.tick_work(d),
+        streaming: cx.s.audio.streaming(),
+        ..SoundMarks::default()
+    });
     if let Some(d) = data {
         cx.s.audio.stream_tick(d, cx.paula);
     }
@@ -49,8 +114,10 @@ pub(super) fn run(cx: &mut Cx) -> bool {
         super::chain::exit_walk_vbl(cx);
     }
     mouse(cx);
-    if let Some(d) = data {
+    if let (Some(d), Some(m)) = (data, marks.as_mut()) {
+        m.music = cx.paula.len();
         cx.s.audio.music_tick(d, cx.paula);
+        m.dma = cx.paula.len();
         cx.s.audio.music_dma_tick(d, cx.paula);
         cx.s.audio.sfx_tick(d, cx.paula);
     }
@@ -69,14 +136,15 @@ pub(super) fn run(cx: &mut Cx) -> bool {
     }
     // $3b22: on the title, every other frame while a fade runs.
     if cx.s.w(TITLE_FADING) == 0 {
-        return false;
+        return (false, marks);
     }
     let t = !cx.s.w(TITLE_TOGGLE);
     cx.s.set_w(TITLE_TOGGLE, t);
     if t == 0 {
-        return false;
+        return (false, marks);
     }
-    !(fade::done(cx.s, fade::RECORDS[0]) && fade::done(cx.s, fade::RECORDS[1]))
+    let due = !(fade::done(cx.s, fade::RECORDS[0]) && fade::done(cx.s, fade::RECORDS[1]));
+    (due, marks)
 }
 
 /// `$3b5e`: the title's two fade palettes (kept as copper MOVEs at h0+$3ba0 and $3c20) into the
@@ -180,6 +248,15 @@ mod cost {
     pub const AFTER_WAIT: u32 = 170;
     pub const KEYBOARD: u32 = 454;
     pub const ROW_DMA: u32 = 775;
+    /// T213, the title's frames 200-230 and 514-518 on the oracle: the handler's first write, the
+    /// copper interrupt's acknowledge or `sample_stream`'s; any write but the shadow copy's (a
+    /// level's `Cost::AudioWrite`); the shadow copy's, a burst at `music_tick`'s end (20 writes
+    /// in 188 clocks); and from the line `$12a14` waits for to the DMA stage's DMACON (147 clocks
+    /// on).
+    pub const ENTRY: u32 = 100;
+    pub const WRITE: u32 = 88;
+    pub const COPY_WRITE: u32 = 19;
+    pub const DMA_STAGE: u32 = 294;
 }
 
 /// The cycles from the handler's entry to the end of `music_tick` ([`TickWork`]).
@@ -275,5 +352,71 @@ mod tests {
         let start = fade_start(1, &row, false, false);
         assert_eq!(start, 14 * LINE + cost::AFTER_WAIT + cost::ROW_DMA);
         assert_eq!(fade_start(31, &w, false, false), base + 30 * LINE);
+    }
+
+    /// A row's writes for channel 0, as the handler makes them: `row_note`'s DMACON off and the
+    /// shadow copy's new sample (`music_tick`), then the DMA stage's DMACON on.
+    fn retrigger() -> (Vec<sf_paula::PaulaWrite>, super::SoundMarks) {
+        let w = |reg, value| sf_paula::PaulaWrite { reg, value, hpos: 0, vpos: 0 };
+        let writes = vec![
+            w(0x96, 0x0001),
+            w(0xa0, 0),
+            w(0xa2, 0x1000),
+            w(0xa4, 0x400),
+            w(0xa6, 400),
+            w(0xa8, 64),
+            w(0x96, 0x8001),
+            w(0x9a, 0x4000),
+        ];
+        let work = TickWork { on: true, row: true, row_live: 1, row_notes: 1, shadowed: 1, ..TickWork::default() };
+        (writes, super::SoundMarks { music: 0, dma: 6, work, streaming: false })
+    }
+
+    /// The handler's writes, placed: the DMA stage on the eighth line after the one
+    /// `music_tick`'s last write is on, in order, none going back.
+    #[test]
+    fn the_dma_stage_is_placed_after_the_wait() {
+        let (writes, m) = retrigger();
+        let at = super::place(0, writes.len(), m, 1);
+        let clock = |(v, h): (u16, u16)| v as u32 * 227 + h as u32;
+        assert!(at.windows(2).all(|p| clock(p[0]) <= clock(p[1])), "{at:?}");
+        assert_eq!(at[6].0, at[5].0 + 8, "{at:?}");
+        // Entered late, all of it later.
+        let late = super::place(0, writes.len(), m, 31);
+        assert_eq!(late[6].0, at[6].0 + 30);
+    }
+
+    /// T213: a note retriggered on a channel still partway through a long sample restarts at the
+    /// placed positions, as on the original; its off and on at one instant (the engine's before
+    /// T213) leave the channel playing the old sample on.
+    #[test]
+    fn a_note_retriggered_mid_sample_restarts() {
+        struct Chip;
+        impl sf_paula::ChipMemory for Chip {
+            fn chip_word(&self, addr: u32) -> u16 {
+                // The old sample (16s) below $1000, the new one (-32s) from there.
+                if addr < 0x1000 { 0x1010 } else { 0xe0e0 }
+            }
+        }
+        let w = |reg, value| sf_paula::PaulaWrite { reg, value, hpos: 0, vpos: 0 };
+        // 2 048 bytes at period 400: about 11 frames of the old sample.
+        let first = [w(0xa0, 0), w(0xa2, 0), w(0xa4, 0x400), w(0xa6, 400), w(0xa8, 64), w(0x96, 0x8001)];
+        let (writes, m) = retrigger();
+        let placed: Vec<_> = writes
+            .iter()
+            .zip(super::place(0, writes.len(), m, 1))
+            .map(|(w, (vpos, hpos))| sf_paula::PaulaWrite { vpos, hpos, ..*w })
+            .collect();
+        let third_frame = |retrigger: &[sf_paula::PaulaWrite]| {
+            let mut p = sf_paula::Paula::booted(48_000);
+            let mut out = Vec::new();
+            for f in [&first[..], retrigger, &[]] {
+                p.frame(f, &Chip, &mut out);
+            }
+            p.channel_taps()[0].to_vec()
+        };
+        let (new, old) = (-32 * 64, 16 * 64);
+        assert!(third_frame(&placed).iter().all(|&v| v == new));
+        assert!(third_frame(&writes).iter().all(|&v| v == old));
     }
 }
