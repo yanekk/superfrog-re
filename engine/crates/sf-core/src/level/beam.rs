@@ -163,10 +163,17 @@ pub enum Cost {
     /// A marker's spawner `map_spawn_scan_screen` runs, over what its spawn costs (only
     /// [`RESTART_COSTS`] has it).
     ScreenSpawner,
+    /// `sfx_play`'s channel record set up after its raster wait (h0+$12b40..$12c12: the ramps
+    /// loaded), from INTENA `$c000` to the effect's first write: the original's 391 colour clocks
+    /// on WB-1's effects, channels 2 and 3 (T216), less the write's own [`Cost::SfxWrite`].
+    SfxRecord,
+    /// After each of `sfx_play`'s own Paula writes (`move` to a custom register, h0+$12a72 on):
+    /// the original's 2 to 28 colour clocks apart on WB-1's effects (T216).
+    SfxWrite,
 }
 
 impl Cost {
-    pub const COUNT: usize = Cost::ScreenSpawner as usize + 1;
+    pub const COUNT: usize = Cost::SfxWrite as usize + 1;
     pub const ALL: [Cost; Cost::COUNT] = [
         Cost::VblEntry,
         Cost::FrogEntry,
@@ -243,6 +250,8 @@ impl Cost {
         Cost::StartPoint,
         Cost::ScreenScanCell,
         Cost::ScreenSpawner,
+        Cost::SfxRecord,
+        Cost::SfxWrite,
     ];
 }
 
@@ -325,6 +334,8 @@ impl Cost {
             Cost::StartPoint => 2000,
             Cost::ScreenScanCell => 386,
             Cost::ScreenSpawner => 0,
+            Cost::SfxRecord => 690,
+            Cost::SfxWrite => 24,
         }
     }
 }
