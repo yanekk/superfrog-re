@@ -18,6 +18,9 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-19 | 📌 | T215 review, owner: neighbour ranges let a sound started but unheard for under 5 frames on a silent channel pass (measured: 4 passes, 5 fails). Accepted; check 3 catches never-started sounds. DESIGN §2.1, for the owner to confirm. |
+| 2026-10-19 | 📌 | T215 review, game-whole within tolerance: 12 runs of 2 frames outside T216: channel 2 at 6707–8384 (engine quieter), channel 3 at 223265–223961 (engine ~950, original silent). Not investigated. |
+| 2026-10-19 | 📌 | T215: `channels` on game-whole with neighbour ranges: green, 4 runs left, all channel 3 in WB-1 (180888–180941), listed known for T216. Uncached feed 40 min; the ignored test 7 min cached. |
 | 2026-10-19 | 🐞 | T213 review sweep, not fixed: the story's `sfx_play` (`story/sound.rs`, intro `Op::Sfx`) makes all its writes at one instant through `play_sfx`, its raster wait included, so a story effect retriggering a channel mid-sample may be lost. Unmeasured. |
 | 2026-10-19 | 📌 | T213 review, read-only: copper Paula writes appended at 0:0 after a front frame's CPU writes reach the mixer as the next frame's, and writes clamped past a frame's end play at its last clock together. Neither measured audible. |
 | 2026-10-19 | 📌 | T213 split at pir's context warning into T215 (neighbour-range judging, game-whole green), T216 (WB-1 channel 3 alone, play 180887–180943), T217 (whole_game e2e and `sf-conform all` on the final build). |

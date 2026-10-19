@@ -12,3 +12,9 @@ sync = "power-on-df1"
 script = "game-whole"
 frames = 224082
 lag-limit = { frames = 390, note = "the longest run of frames ending mid-pass met on the way: 390 from frame 125461, W4-3 at chain-w4-3's ~3300 (the original's 138423), the stretch where complete-w4-3 met 261 (T181): W4-3's passes run longer than a frame from its 3300; check 4 covers them (T206)" }
+
+[[exclude]]
+what = "channels"
+frames = [180880, 180950]
+note = "WB-1's channel 3 alone differs from the original past the tolerance, frames of play 180887-180943 (T213's probe)"
+task = "T216"

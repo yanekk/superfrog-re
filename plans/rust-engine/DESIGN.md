@@ -109,6 +109,15 @@ The thresholds above (one colour step, 64 pixels, 2 frames, 1%, ±2 frames, ±10
 owner's bar. A task that finds one wrong raises it with the owner or the coordinator agent; it is
 never changed in code to make a case green.
 
+Each channel's output, for the owner to confirm (T213, T215; `sf-conform channels`,
+`engine/conform/README.md`). Check 3 sees events, not what Paula then plays, so a sound started but
+never heard passes it. `channels` compares each channel's level frame by frame with the original's
+range over that frame and the frames either side (a sub-frame timing allowance): it differs past
+256 and past 25 % of the louder, the engine's sound may be shifted up to 10 frames over 25 either
+side, and a run of up to 2 differing frames passes. The gap this leaves: on a silent channel a
+sound started but not heard for under 5 frames passes. Check 3 still fails any sound whose start the
+engine never issues, so only that kind (the restart failure T213 fixed) can be missed.
+
 The frame-exact comparison stays in `sf-conform` as `--strict`, for diagnosis: when a faithful check
 fails, the strict run shows the first frame and variable that differ. No task's "Done when" requires
 `--strict` green.

@@ -102,6 +102,9 @@ fn channels(paths: &[String]) -> Result<bool, String> {
         for r in &v.runs {
             println!("  past the tolerance ({tol:?}): {r}");
         }
+        for (r, task) in &v.known {
+            println!("  known, in a stretch the case lists ({task}): {r}");
+        }
     }
     Ok(green)
 }

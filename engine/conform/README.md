@@ -157,15 +157,26 @@ output itself, over whole cases from power-on (and the story's from disk 3), fra
   value: a stopped channel keeps its last sample on the DAC), so a write a line or two off moves it
   little and a lost or wrong note far.
 
-A channel's frame differs when its level is further from the original's than the floor and than a
-share of the louder (`channels::OWNER`). The engine run alone may be some frames from the original
+A channel's frame differs when its level is further than the floor and than a share of the louder
+(`channels::OWNER`) from the original's range over that frame and the frames either side (T215, the
+owner's sub-frame timing allowance: a slow sound holds a few dozen sample bytes a frame, so a write a
+few lines off gives a frame its neighbour's level; a note never played still differs). The gap it
+leaves (T215 review, owner): on a silent channel a sound started but not heard for under 5 frames
+passes, its first and last frames inside a neighbour's range and the 2 between within `frames`.
+Check 3 still fails any sound whose start the engine never issues, so what this check can miss is
+only a sound started and not heard for under 5 frames, the restart failure T213 fixed (DESIGN §2.1,
+for the owner to confirm). The engine run alone may be some frames from the original
 (check 4 allows ±10), so each frame is judged at the shift of the engine's whole sound, at most
 `shift` frames, that makes the most of the `window` frames either side match on all four channels:
 a sound late as a whole (music started after a load the engine did at once) lines up, a note never
 played differs at every shift. Frames whose shifted match falls before the case or past its end are
 cut off, as check 3's events are. A case fails where a channel differs longer than `frames` frames
-in a row; each such run is printed. `examples/channel_runs` lists every run past any length,
-`examples/channel_window` both sides' levels over a stretch.
+in a row; each such run is printed. A case may list a stretch known to differ, with the task that
+owns it (`[[exclude]] what = "channels"`, `frames = [from, to]` in frames of play, `note`, `task`): a
+run wholly inside it is printed as known, not failed (`game-whole`'s 180 880–180 950, WB-1's channel
+3, T216). `tests/channels.rs` runs `game-whole` (ignored: 7 min from the trace cache, 40 uncached).
+`examples/channel_runs` lists every run past any length, `examples/channel_window` both sides'
+levels over a stretch.
 
 ## Which cases the test block runs (T181)
 

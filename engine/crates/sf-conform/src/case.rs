@@ -53,6 +53,9 @@ pub enum Excluded {
     /// The picture is not compared on frames `from..=to` (`frames = [from, to]`): what the beam
     /// shows there depends on timing the engine does not model yet.
     Picture { from: u32, to: u32 },
+    /// The channels' output (`sf-conform channels`) is known to differ on frames of play
+    /// `from..=to` (`frames = [from, to]`): a run inside it is reported, not failed (T215).
+    Channels { from: u32, to: u32 },
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -132,6 +135,15 @@ impl Case {
         self.exclude.iter().any(|e| match e.what {
             Excluded::Picture { from, to } => (from..=to).contains(&frame),
             _ => false,
+        })
+    }
+
+    /// The task owning a known stretch of the channels' output holding frames of play
+    /// `first..=last` ([`Excluded::Channels`]), if one does.
+    pub fn channels_known(&self, first: u32, last: u32) -> Option<&str> {
+        self.exclude.iter().find_map(|e| match e.what {
+            Excluded::Channels { from, to } if from <= first && last <= to => Some(e.task.as_str()),
+            _ => None,
         })
     }
 
@@ -405,21 +417,23 @@ impl Case {
                     "enemies" => Excluded::Enemies,
                     "panel" => Excluded::Panel,
                     "unreached" => Excluded::Unreached,
-                    "picture" => {
+                    w @ ("picture" | "channels") => {
                         let r = e
                             .get("frames")
                             .and_then(|v| v.as_array())
                             .map(|a| a.iter().filter_map(|v| v.as_integer()).collect::<Vec<_>>())
                             .filter(|a| a.len() == 2 && 0 <= a[0] && a[0] <= a[1])
-                            .ok_or("exclude: a picture's needs `frames = [from, to]`")?;
-                        Excluded::Picture {
-                            from: r[0] as u32,
-                            to: r[1] as u32,
+                            .ok_or(format!("exclude: a {w} one needs `frames = [from, to]`"))?;
+                        let (from, to) = (r[0] as u32, r[1] as u32);
+                        if w == "picture" {
+                            Excluded::Picture { from, to }
+                        } else {
+                            Excluded::Channels { from, to }
                         }
                     }
                     w => {
                         return Err(format!(
-                            "exclude: `{w}` is not objects, enemies, panel, unreached or picture"
+                            "exclude: `{w}` is not objects, enemies, panel, unreached, picture or channels"
                         ));
                     }
                 };
