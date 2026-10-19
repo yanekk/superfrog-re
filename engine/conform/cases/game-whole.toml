@@ -16,5 +16,5 @@ lag-limit = { frames = 390, note = "the longest run of frames ending mid-pass me
 [[exclude]]
 what = "channels"
 frames = [180880, 180950]
-note = "WB-1's channel 3 alone differs from the original past the tolerance, frames of play 180887-180943 (T213's probe)"
-task = "T216"
+note = "WB-1's channel 3 from 180887: sfx_play turns the channel's DMA off and on ~1000 colour clocks apart, and Paula restarts the new effect only if the old one's period (2954 clocks) runs out between; simulated from both sides' writes, the original's runs out 863 clocks after the off, the engine's 996 (its on at 995), so the old sample plays on and the new effect starts when it ends, at 180932. A sub-frame restart race on where the writes fall, not gameplay: no state differs (T216). Accepted difference awaiting the owner's confirmation, 2026-10-19"
+task = "none (accepted, awaiting the owner's confirmation)"

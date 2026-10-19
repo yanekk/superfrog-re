@@ -948,7 +948,11 @@ impl LevelCtx<'_> {
             let on = self.paula.pop().expect("sfx_play's INTENA $c000");
             // Its DMACON off waits for nothing (the period's 1 is written straight after it).
             self.audio_spent(at, beam::Cost::SfxWrite, beam::Cost::SfxWrite);
-            let off = self.paula.last().expect("sfx_play's INTENA $4000").vpos;
+            // The wait reads VPOS just after INTENA `$4000` (a write on): at a line's end, the
+            // next line's.
+            let masked = *self.paula.last().expect("sfx_play's INTENA $4000");
+            let read = masked.hpos as u32 + self.costs[beam::Cost::SfxWrite as usize] / 2;
+            let off = masked.vpos + (read >= beam::LINE_SLOTS) as u16;
             // The wait itself: to the line three on (T216). Paula sees a channel's DMA go off
             // only when its period runs out, so with the channel's old period long the time from
             // the off to the on decides whether the new effect restarts it or is lost.
