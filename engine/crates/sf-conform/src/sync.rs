@@ -1442,7 +1442,9 @@ mod tests {
         };
         assert_eq!(step(0xd0cc, 0, sp), 0);
         assert_eq!(step(0xd0d0, 0, sp), 1);
-        assert_eq!(step(0xd110, 0, sp), 1);
+        assert_eq!(step(0xd0f0, 0, sp), 1);
+        // The frog's x and y read: its box taken (T196).
+        assert_eq!(step(0xd110, 0, sp), 2);
         assert_eq!(step(0xd126, HITBOXES, sp), 2);
         assert_eq!(step(0xd12c, HITBOXES + 12, sp), 3);
         // The first entry taken, the frog not yet tested against it: W6-4's frame 1090 (T185).
