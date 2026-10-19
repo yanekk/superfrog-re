@@ -254,8 +254,8 @@ fn run_inner(
     });
     // The original's frames loading under a timed screen since the engine's load ([`timed_screen`]).
     let mut under_screen: Vec<(FrameInput, milestones::FrameState)> = Vec::new();
-    // The vertical blanks the game's handler ran in the original's load this frame, not under a
-    // timed screen: check 4's engine is told them (owner, T209).
+    // The vertical blanks the game's handler (in the story, the intro's) ran in the original's
+    // load this frame, not under a timed screen: check 4's engine is told them (owner, T209; T214).
     let mut load_blanks = 0u32;
     // The line the original's load ended on, as the runner's engine fitted it (T209).
     let mut load_line: Option<u16> = None;
@@ -390,9 +390,15 @@ fn run_inner(
                     prev_mem = std::mem::replace(&mut mem, sync::core_memory(amiga.memory()));
                     // A frame the original loads under a screen it times itself counts as play
                     // for check 4 (owner, 2026-10-15); the others are the load's length, the
-                    // vertical blanks the game's handler ran in it (owner, T209).
+                    // vertical blanks the game's handler ran in it (owner, T209), or in the
+                    // engine's story, the intro's handler (T214).
                     let screen = alone.is_some() && cop.is_some_and(timed_screen) && !end_pic_over(cop, &mem);
-                    if !screen && sync::game_owns_vbl(&mem) {
+                    let owns = if before.story().is_some() {
+                        sync::in_story(&mem)
+                    } else {
+                        sync::game_owns_vbl(&mem)
+                    };
+                    if !screen && owns {
                         load_blanks += 1;
                     }
                     if screen {

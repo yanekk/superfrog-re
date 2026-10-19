@@ -54,6 +54,22 @@ fn the_slot_machines_effects_restart_as_on_the_original() {
     assert!(v.runs.is_empty(), "{:?}", v.runs);
 }
 
+/// The story's loads (T214): the intro starts a scene's music just before it loads the scene, and
+/// the original's handler goes on playing it on every blank of the load. The engine run alone is
+/// fed those blanks and runs their sound at its instant load, the frame's writes before it being
+/// the frame the load began in. Before T214 none ran (the runner counted the game's handler's
+/// only): the music came out of each load behind the original's, a note lost (`story-scene4-sound`
+/// after 2286 and 5221). Here every channel's every frame is the original's, unshifted. About 75 s.
+#[test]
+#[ignore = "slow: about 75 s"]
+fn the_storys_music_plays_on_through_its_loads_as_the_original_does() {
+    let case = Case::load(&cases_dir().join("story-scene1-out.toml")).unwrap();
+    let v = channels::check(&case, channels::OWNER).unwrap_or_else(|e| panic!("{e}"));
+    assert!(v.runs.is_empty(), "{:?}", v.runs);
+    assert_eq!(v.differing, [0; 4], "{v:?}");
+    assert_eq!(v.shifted, 0, "{v:?}");
+}
+
 /// The whole game (T215), power-on to `end_seq_load`, judged with the owner's tolerance: each frame
 /// against the original's range over it and its neighbours, so a slow sound a few lines off passes.
 /// Only the stretch `game-whole.toml` lists as known (WB-1's channel 3, T216) may differ past it.

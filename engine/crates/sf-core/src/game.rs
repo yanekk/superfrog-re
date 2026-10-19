@@ -494,7 +494,8 @@ impl Game {
         self.keys = input.keys;
         self.frame += 1;
         if let (Scene::Story, Some(story)) = (self.scene, self.story.as_mut()) {
-            let out = story.step(&self.state, &self.display, input, pacing);
+            let mut out = story.step(&self.state, &self.display, input, pacing);
+            self.load_paula.append(&mut out.load_paula);
             if !out.over {
                 self.handover_runs.clear();
                 self.shown = Some(out.picture.clone());
@@ -667,10 +668,14 @@ impl Game {
     /// keyboard poll on each, as the original runs them while the trackloader has the main
     /// program. Conformance's engine run alone is given
     /// them as inputs, as the clock's seeds are (DESIGN §2.1 check 4; owner, T209). Their Paula
-    /// writes, a frame's for each blank, are kept for [`Game::take_load_paula`].
+    /// writes, a frame's for each blank, are kept for [`Game::take_load_paula`]. In the story
+    /// intro they run at its load in the next step, after the music it starts just before (T214).
     pub fn load_blanks(&mut self, frames: u32) {
         self.load_paula.clear();
-        if let Some(front) = self.front.as_mut() {
+        if let Some(story) = self.story.as_mut() {
+            // The intro's handler's, run at the load in the next step (T214).
+            story.blanks = frames;
+        } else if let Some(front) = self.front.as_mut() {
             front.load_blanks(&mut self.state, &self.display, frames, &mut self.load_paula);
         }
     }
@@ -678,7 +683,8 @@ impl Game {
     /// The Paula writes of each vertical blank the last [`Game::load_blanks`] ran: the notes the
     /// music started while the original loaded. A mixer runs them a frame each before the step
     /// after them, or its channels come out of the load where they went in (T30: the paced app's
-    /// stayed on their silent loops).
+    /// stayed on their silent loops). In the story intro the step's writes before its load come
+    /// first, the frame the original's load began in, and the last blank is in the step's own.
     pub fn take_load_paula(&mut self) -> Vec<Vec<PaulaWrite>> {
         std::mem::take(&mut self.load_paula)
     }

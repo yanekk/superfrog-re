@@ -17,7 +17,7 @@ use sf_core::{Game, Picture, Rng, View};
 use crate::{Alone, Case, SyncPoint};
 
 /// Bump when what a feed or its hashes hold changes.
-const FEED_FORMAT: u32 = 5;
+const FEED_FORMAT: u32 = 6;
 
 /// The engine build this crate's engine is (sf-app `build.rs`, shared): what a feed is tagged with.
 pub const ENGINE_BUILD: &str = env!("SF_ENGINE_BUILD");
