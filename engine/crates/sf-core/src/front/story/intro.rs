@@ -333,6 +333,14 @@ pub struct Intro {
     checkpoint: Option<Checkpoint>,
     /// For conformance: what runs on during this frame's load, put in place at the load.
     load_state: Vec<(u32, Vec<u8>)>,
+    /// For conformance's engine run alone: the vertical blanks the original's handler ran in the
+    /// next load, run at it ([`Intro::after_load`], T214); kept until a load takes them.
+    #[serde(skip)]
+    pub(super) blanks: u32,
+    /// This frame's handler's DMA stage in [`IntroFrame::paula`] and the line its wait ends on,
+    /// placed there at the frame's end (T213). Only within a frame.
+    #[serde(skip)]
+    dma_stage: Option<(std::ops::Range<usize>, u16)>,
     /// Where the handlers of coming frames start, when a draw's blit holds them off (line since
     /// the intro's start).
     handler_at: Vec<u64>,
@@ -384,6 +392,10 @@ pub struct IntroFrame {
     /// A load this frame: the COP1LC then (the frame stands for the original's frame the load
     /// ended on, whose list is the one set before it).
     pub list_at_load: Option<u32>,
+    /// For a mixer, the original's frames in the load before the one this frame stands for, when
+    /// conformance gave its blanks (T214): the frame it began in (the writes before it), then a
+    /// blank's each. `paula` is then the last blank's and what came after the load.
+    pub load_paula: Vec<Vec<PaulaWrite>>,
 }
 
 /// The bitplane fetch under copper list `list` at a frame's start: a scene's five lores planes, a
@@ -468,6 +480,28 @@ pub const RUNS_DURING_LOAD: &[(u32, u32)] = &[
     (super::h2(0xdbe6), 0x80),
 ];
 
+/// One vertical blank the original's handler ran while the intro loaded (T214): its sound only
+/// (the stream, the music, the effects and the timeline of sound events, h0+$3a65a, $3929a, $39b3a,
+/// $38bfa, $b18c), on the driver's state, as the front end's load blanks run theirs
+/// ([`crate::front::vbl`]'s `load_blank`); the counters, planes and fades are left as they are.
+/// Its writes are placed as a frame's handler's taken on time: the tick's at its entry, the DMA
+/// stage's where its 8-line wait ends (T213).
+pub fn load_blank(m: &mut StoryMem, data: &data::StoryData) -> Vec<PaulaWrite> {
+    let sd = sound_data(data);
+    let handler = handler_lines(m);
+    let mut paula = Vec::new();
+    super::sound::stream_tick(m, &mut paula);
+    super::sound::music_tick(m, sd, &mut paula);
+    let tick = paula.len();
+    super::vbl::after_wait(m, sd, &mut paula);
+    let read = handler - WAIT_LINES - AFTER_WAIT;
+    let wait_end = (read + wait_lines(read)) as u16;
+    for (i, w) in paula.iter_mut().enumerate() {
+        (w.vpos, w.hpos) = if i < tick { (0, IRQ_ENTRY as u16) } else { (wait_end, 0) };
+    }
+    paula
+}
+
 impl Intro {
     /// The intro as `d3_c02` starts it: its program and chip hunk in memory, the fade records
     /// done (`intro_main`'s first steps, run during the load).
@@ -496,6 +530,8 @@ impl Intro {
             merged: Vec::new(),
             checkpoint: None,
             load_state: Vec::new(),
+            blanks: 0,
+            dma_stage: None,
             writes: Vec::new(),
             fresh: false,
             handler_end: None,
@@ -519,11 +555,13 @@ impl Intro {
         list: u32,
         pacing: Pacing,
         load_state: Vec<(u32, Vec<u8>)>,
+        blanks: u32,
         entry: Option<(u16, u16)>,
         handler_end: Option<HandlerEnd>,
         merged: Option<bool>,
     ) -> IntroFrame {
         self.pacing = pacing;
+        self.blanks = blanks;
         self.handler_end = handler_end;
         // The main program a split handler let go of goes on once its rest has run, below.
         self.fresh &= self.tail.is_some();
@@ -542,6 +580,7 @@ impl Intro {
             entry: 0,
             audio: Vec::new(),
             list_at_load: None,
+            load_paula: Vec::new(),
         };
         // The handler: at the top, once a masked set-up lets it in, or once the blit in progress
         // is over.
@@ -575,8 +614,7 @@ impl Intro {
         }
         self.merged.retain(|&t| t >= top);
         let handler = handler_lines(m);
-        // This frame's handler's DMA stage in `out.paula`, and the line its wait ends on.
-        let mut dma_stage: Option<(std::ops::Range<usize>, u16)> = None;
+        self.dma_stage = None;
         if let Some((wait_end, handler_end)) = self.tail.take() {
             // The rest of the last frame's handler, from its wait's end.
             let mut writes = Vec::new();
@@ -620,7 +658,7 @@ impl Intro {
             out.copper = m.read(list, 0x400);
             let from = out.paula.len();
             if !split {
-                dma_stage = Some((from + tick..from + writes.len(), (wait_end - top) as u16));
+                self.dma_stage = Some((from + tick..from + writes.len(), (wait_end - top) as u16));
             }
             out.paula.extend(writes);
             // A CPU job the blank fell into goes on after the handler.
@@ -718,7 +756,7 @@ impl Intro {
         // replayer turned a retriggered channel off, Paula has let it go idle and restarts it, as
         // on the original. At the handler's entry with the tick's writes the note was lost. The
         // audio DMA above, which times the bus, keeps the positions it was fitted on.
-        if let Some((stage, line)) = dma_stage {
+        if let Some((stage, line)) = self.dma_stage.take() {
             for (w, &i) in out.paula.iter_mut().zip(&order) {
                 if stage.contains(&i) {
                     (w.vpos, w.hpos) = (line, 0);
@@ -750,7 +788,11 @@ impl Intro {
         out: &mut IntroFrame,
     ) {
         let state = std::mem::take(&mut self.load_state);
+        let blanks = std::mem::take(&mut self.blanks);
         if state.is_empty() {
+            if blanks > 0 {
+                self.load_blanks(m, data, blanks, out);
+            }
             return;
         }
         for (at, b) in state {
@@ -764,6 +806,38 @@ impl Intro {
         out.walk = Some(super::vbl::run(m, sound_data(data), input, &mut writes));
         out.handler.0 = 0;
         out.paula.extend(writes);
+    }
+
+    /// The engine run alone's instant load is over, with the vertical blanks the original's handler
+    /// ran in it given (T214): the frame now stands for the original's frame the load ended on, as
+    /// under the runner's [`Intro::after_load`], but the handler is run, not given. The writes so
+    /// far are the frame the load began in, for the mixer; each blank's sound runs on the driver
+    /// ([`load_blank`]), the music `music_start` began just before the load included; the last
+    /// blank is the handler of this frame, the main program's writes after the load following it.
+    fn load_blanks(
+        &mut self,
+        m: &mut StoryMem,
+        data: &data::StoryData,
+        n: u32,
+        out: &mut IntroFrame,
+    ) {
+        let mut began = std::mem::take(&mut out.paula);
+        if let Some((stage, line)) = self.dma_stage.take() {
+            for w in &mut began[stage] {
+                (w.vpos, w.hpos) = (line, 0);
+            }
+        }
+        let now = self.t;
+        let (made, later): (Vec<_>, Vec<_>) =
+            std::mem::take(&mut self.writes).into_iter().partition(|(at, _)| *at <= now);
+        self.writes = later;
+        began.extend(made.into_iter().map(|(_, w)| w));
+        began.sort_by_key(|w| (w.vpos, w.hpos));
+        out.load_paula.push(began);
+        for _ in 1..n {
+            out.load_paula.push(load_blank(m, data));
+        }
+        out.paula = load_blank(m, data);
     }
 
     /// The end of a busy stretch at `at`: its deferred part.
@@ -1737,6 +1811,7 @@ mod tests {
                     scenes::BLACK_LIST,
                     Pacing::Unpaced,
                     Vec::new(),
+                    0,
                     (f == 0).then_some((entry, 0)),
                     None,
                     None,

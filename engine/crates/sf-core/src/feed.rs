@@ -72,7 +72,8 @@ pub struct FeedFrame {
 /// A load's timing, which is the disk's, as an input (owner, T209).
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub struct FeedLoad {
-    /// The vertical blanks the game's handler ran in it, not under a timed screen.
+    /// The vertical blanks the game's handler (in the story, the intro's: T214) ran in it, not
+    /// under a timed screen.
     pub blanks: u32,
     /// The frames it held a loading picture for.
     pub screen_frames: Option<u16>,

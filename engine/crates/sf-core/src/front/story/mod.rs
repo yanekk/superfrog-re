@@ -187,6 +187,9 @@ enum Stage {
 pub struct StoryOut {
     pub picture: Picture,
     pub paula: Vec<PaulaWrite>,
+    /// For a mixer, before `paula`: the original's frames in a load the engine run alone was
+    /// given the blanks of ([`intro::IntroFrame::load_paula`], T214).
+    pub load_paula: Vec<Vec<PaulaWrite>>,
     pub load: Option<LoadEnd>,
     pub resync: Vec<(u32, u32)>,
     pub jobs: Vec<Job>,
@@ -212,6 +215,11 @@ pub struct Story {
     pub(crate) load_line: Option<u16>,
     /// For conformance: what runs on by itself during the next load, to put in place at it.
     pub(crate) load_state: Vec<(u32, Vec<u8>)>,
+    /// For conformance's engine run alone: the vertical blanks the original's handler ran in the
+    /// next load, run at it (T214), kept until the intro loads (the second of two steps, or the
+    /// intro's start after the boot program's load, whose own blanks run none).
+    #[serde(skip)]
+    pub(crate) blanks: u32,
     /// For conformance: where the original took the next frame's interrupt (line, DMA cycle).
     pub(crate) handler_entry: Option<(u16, u16)>,
     /// For conformance: where the original's handler of the next frame ended (T54).
@@ -357,6 +365,7 @@ impl Story {
             pending: Vec::new(),
             load_line: None,
             load_state: Vec::new(),
+            blanks: 0,
             handler_entry: None,
             handler_end: None,
             blank_merged: None,
@@ -442,6 +451,7 @@ impl Story {
         }
         // Conformance's feed is for this frame only, whatever stage it is in.
         let merged = self.blank_merged.take();
+        let blanks = std::mem::take(&mut self.blanks);
         let mut resync = Vec::new();
         let mut after_handler: Option<(u16, Vec<u8>)> = None;
         let wait = match &mut self.stage {
@@ -461,11 +471,13 @@ impl Story {
                     list,
                     pacing,
                     load_state,
+                    blanks,
                     entry,
                     end,
                     merged,
                 );
                 *n += 1;
+                self.blanks = std::mem::take(&mut i.blanks);
                 // A load's frame shows the list set before the load, as the load left memory.
                 let (list, copper, at_handler) = match f.list_at_load {
                     Some(l) => (l, self.mem.read(l, 0x400), None),
@@ -488,7 +500,7 @@ impl Story {
                     (None, Some(w)) => Some((f.entry, w, f.audio)),
                     _ => None,
                 };
-                return self.finish(
+                let mut out = self.finish(
                     empty,
                     display,
                     list,
@@ -502,6 +514,8 @@ impl Story {
                     paula,
                     w,
                 );
+                out.load_paula = f.load_paula;
+                return out;
             }
             Stage::BootDone | Stage::Over => Wait::Over,
         };
@@ -665,6 +679,7 @@ impl Story {
         StoryOut {
             picture,
             paula,
+            load_paula: Vec::new(),
             load,
             resync,
             jobs,
