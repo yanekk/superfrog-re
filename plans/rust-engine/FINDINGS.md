@@ -18,6 +18,14 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-19 | 📌 | T30 added T213 paula-write-timing (owner's yes): engine Paula writes carry no beam position, so a DMA off and on at one instant leaves a channel mid-sample playing on: wrong notes in normal play. Must finish before the run ends. |
+| 2026-10-19 | 🐞 | T30, left to T213: after W5's 148-blank load the note at 108762 is lost (silent 108763–108767, the original heard). Writes spaced a line apart in a probe match the original (`examples/retrigger_lost`, `feed_audio`). |
+| 2026-10-19 | 🐞 | T30, fixed: `load_blanks` dropped its blanks' Paula writes, so the paced app missed notes the music started during the original's load (108757–108759 silent). `Game::take_load_paula`; the app mixes them unheard. Normal play runs no blanks. |
+| 2026-10-19 | 🐞 | T30, fixed: streamed samples were silent in the app since T22: `stream_tick` never copied `sample_stream`'s 192 bytes to h3+$64b70. `audio_driver.rs` `streamed_samples_play_the_originals_bytes` compares channel 3's bytes with the original's. |
+| 2026-10-19 | 📌 | T30 (owner): check 3 compares sound events (start address, length, period, volume), never the sample bytes at that address nor a channel's output, so an unwritten sample or a lost restart passes it. T213 adds an output check. |
+| 2026-10-19 | 📌 | T30, other sample sources searched: `examples/silent_starts` over the whole game, 90 553 starts; the only all-zero samples left are 1–2-word silence loops, zero on the original too (`chip_probe`). Unseen still: run-time edits of module samples. |
+| 2026-10-19 | 📌 | T30, measured: vAmiga's mix holds a stopped channel's last DAC level (367, 786 for frames); the app's mixer returns to zero. `whole_game.rs` judges loudness as swing (half the range), not peak. |
+| 2026-10-19 | 📌 | T30 soak: lateness under load is not drift. Two apps at once, one ended 10.86 frames behind the clock, median gap 1.35; `Drift` judges the gap's median and its trend over the capture's `clock.txt`. |
 | 2026-10-18 | 📌 | T211 review: the feed's cache key covers the engine build, not `sf-conform`'s recorder, so a recorder change reuses the old feed and `the_feed_replays…` passes on a warm cache. Bump `FEED_FORMAT` with any recorder change. |
 | 2026-10-18 | 📌 | T211: the app paced by `game-whole`'s feed equals the headless run alone on all 224 082 frames (picture and state hashes); app 4 495 s, feed 1 930 s. Any sf-core change re-keys the feed (engine build). |
 | 2026-10-18 | 📌 | T212 review: `sf-conform all` rerun 212/212 green, 5 747 s. complete-w4-2 stays green with `bob_draw`'s draw loop unstepped; the stepping is guarded by `items_routines::a_frame_ends_in_bob_draw…` instead. |
