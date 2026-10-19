@@ -236,6 +236,10 @@ pub struct Game {
     /// The `.sflevel` maps put in `display` in place of the disks' ([`Game::with_override`]),
     /// encoded: a save state carries them, as it does not carry `display`.
     overrides: Vec<(LevelId, Vec<u8>)>,
+    /// The Paula writes of each vertical blank the last [`Game::load_blanks`] ran, until
+    /// [`Game::take_load_paula`] takes them (T30). Not in a save state.
+    #[serde(skip)]
+    load_paula: Vec<Vec<PaulaWrite>>,
 }
 
 /// [`Game::type_code`] gives up waiting for the title after this many frames.
@@ -393,6 +397,7 @@ impl Game {
             unported: level_unported.clone(),
             level_unported,
             overrides: Vec::new(),
+            load_paula: Vec::new(),
         }
     }
 
@@ -642,11 +647,21 @@ impl Game {
     /// for, which the engine cannot know (the disk's timing): the vertical blank's sound and
     /// keyboard poll on each, as the original runs them while the trackloader has the main
     /// program. Conformance's engine run alone is given
-    /// them as inputs, as the clock's seeds are (DESIGN §2.1 check 4; owner, T209).
+    /// them as inputs, as the clock's seeds are (DESIGN §2.1 check 4; owner, T209). Their Paula
+    /// writes, a frame's for each blank, are kept for [`Game::take_load_paula`].
     pub fn load_blanks(&mut self, frames: u32) {
+        self.load_paula.clear();
         if let Some(front) = self.front.as_mut() {
-            front.load_blanks(&mut self.state, &self.display, frames);
+            front.load_blanks(&mut self.state, &self.display, frames, &mut self.load_paula);
         }
+    }
+
+    /// The Paula writes of each vertical blank the last [`Game::load_blanks`] ran: the notes the
+    /// music started while the original loaded. A mixer runs them a frame each before the step
+    /// after them, or its channels come out of the load where they went in (T30: the paced app's
+    /// stayed on their silent loops).
+    pub fn take_load_paula(&mut self) -> Vec<Vec<PaulaWrite>> {
+        std::mem::take(&mut self.load_paula)
     }
 
     /// Draw [`Game::step`]'s pictures for `view` from the next step on (widescreen, DESIGN §2.7).

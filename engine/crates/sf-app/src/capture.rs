@@ -7,6 +7,9 @@
 //!   hashes, `sf_core::feed`'s format, as `sf-conform` writes them for its engine run alone; a long
 //!   run's PNGs would be gigabytes.
 //! - `audio.wav`: everything the mixer produced, 16-bit stereo PCM at the run's host rate.
+//! - `audio-frames.txt`: `N c…` for each step N, the samples in `audio.wav` of each game frame it
+//!   ran (one, or more under `--pacing`), in order, so a test can line the sound up with the
+//!   frames (T30).
 //! - `inputs.txt`: `N joy keys` for each step N whose input was not empty (joy bits in hex, keys
 //!   as the held Amiga raw codes in hex), so a test can see what reached the game.
 //! - `seed.txt`: the power-on RNG seed, `A B`, so a run seeded from the clock can be replayed.
@@ -14,8 +17,13 @@
 //!   own pixels; `windows.txt` a line for each, `N frame width height scale_factor x y w h` (the
 //!   frame it showed, the surface, its pixels a point, and the picture's place on it).
 //! - `prompts.txt`: every question the launch asked a scripted run (`import.rs`).
-//! - `pacing.txt`: `stepped N`, `presented N` (the last frame presented) and `dropped N` (frames
-//!   stepped after the first presented that never reached the window), one a line.
+//! - `pacing.txt`: `stepped N`, `presented N` (the last frame presented), `dropped N` (frames
+//!   stepped after the first presented that never reached the window) and `clock N` (the host
+//!   samples the pacing clock had counted when the run ended, T30), one a line.
+//! - `clock.txt`: `N samples` for each step N, the host samples the pacing clock had counted
+//!   when it ran, so a test can see whether the steps drift from the clock (T30).
+//! - `unported.txt`: what the game met and does not follow (`Game::unported`), one a line; empty
+//!   when nothing.
 //! - `memory.txt`: `footprint N` and `peak N`, the process's physical footprint in bytes at the
 //!   end and at its largest (GPU memory included).
 
@@ -28,6 +36,8 @@ pub struct Capture {
     dir: PathBuf,
     rate: u32,
     audio: Vec<[i16; 2]>,
+    audio_frames: String,
+    clock: String,
     inputs: String,
     /// `--capture-hashes`: `hashes.txt`, written as the run goes, in place of the PNGs.
     hashes: Option<std::io::BufWriter<std::fs::File>>,
@@ -49,6 +59,8 @@ impl Capture {
             dir: dir.to_path_buf(),
             rate,
             audio: Vec::new(),
+            audio_frames: String::new(),
+            clock: String::new(),
             inputs: String::new(),
             hashes,
         })
@@ -94,8 +106,21 @@ impl Capture {
             .and_then(|mut f| f.write_all(line.as_bytes()))
     }
 
-    pub fn audio(&mut self, samples: &[[i16; 2]]) {
+    /// Step `n`'s sound: `samples`, the game frames it ran ending at each of `ends` in them.
+    pub fn audio(&mut self, n: u64, samples: &[[i16; 2]], ends: &[usize]) {
         self.audio.extend_from_slice(samples);
+        self.audio_frames.push_str(&n.to_string());
+        let mut from = 0;
+        for &e in ends {
+            self.audio_frames.push_str(&format!(" {}", e - from));
+            from = e;
+        }
+        self.audio_frames.push('\n');
+    }
+
+    /// Step `n` ran with the pacing clock at `samples`.
+    pub fn clock(&mut self, n: u64, samples: u64) {
+        self.clock.push_str(&format!("{n} {samples}\n"));
     }
 
     pub fn input(&mut self, n: u64, f: FrameInput) {
@@ -107,11 +132,17 @@ impl Capture {
     }
 
     /// Write `pacing.txt`.
-    pub fn pacing(&self, stepped: u64, presented: u64, dropped: u64) -> std::io::Result<()> {
+    pub fn pacing(&self, stepped: u64, presented: u64, dropped: u64, clock: u64) -> std::io::Result<()> {
         std::fs::write(
             self.dir.join("pacing.txt"),
-            format!("stepped {stepped}\npresented {presented}\ndropped {dropped}\n"),
+            format!("stepped {stepped}\npresented {presented}\ndropped {dropped}\nclock {clock}\n"),
         )
+    }
+
+    /// Write `unported.txt`.
+    pub fn unported(&self, unported: &[&str]) -> std::io::Result<()> {
+        let lines: String = unported.iter().map(|u| format!("{u}\n")).collect();
+        std::fs::write(self.dir.join("unported.txt"), lines)
     }
 
     /// Write `memory.txt`: `footprint N` and `peak N`, the process's physical footprint now and
@@ -141,6 +172,8 @@ impl Capture {
             w.flush()?;
         }
         std::fs::write(self.dir.join("audio.wav"), wav(self.rate, &self.audio))?;
+        std::fs::write(self.dir.join("audio-frames.txt"), &self.audio_frames)?;
+        std::fs::write(self.dir.join("clock.txt"), &self.clock)?;
         std::fs::write(self.dir.join("inputs.txt"), &self.inputs)
     }
 }

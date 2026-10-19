@@ -28,6 +28,10 @@ supply your own copies in the repo root before running the tools.
 | Tileset graphics decoded (840× `16×16` 5bpp tiles per world) + palettes | ✅ |
 | **All 29 levels rendered to PNG** (`build/levels/`, + montage) | ✅ |
 | Collision flags decoded; **secret passages (fake walls) found** — 144 across the game | ✅ |
+| **Rust engine plays the whole game** natively on macOS, no emulator: intro, title, every level, bosses, slot machine, bonus levels, end sequence, music | ✅ |
+| Engine faithful to the original, judged headless on the oracle: every conformance case (`sf-conform all`), and the whole game from power-on to the end sequence through the app (state, picture, milestones) | ✅ |
+| The app's sound note for note: a note restarting a channel mid-sample is lost, as the engine's Paula writes have no beam position ([T213](plans/rust-engine/tasks/T213-paula-write-timing.md)) | ⬜ next |
+| App: menus, keyboard and gamepad controls, save states, CRT and widescreen, playing a level from a `.sflevel` file | ✅ |
 | Map editor (view + edit + repack `ATN!` + rebuild `.adf`) | ⬜ next |
 
 **29 levels** found (all `300 × 84` blocks), stored as `ATN!`-packed `T7MP` files.
@@ -72,10 +76,34 @@ Full analysis in [`docs/`](docs/) (read in order):
 - [`07-secret-passages.md`](docs/07-secret-passages.md) — collision flags, fake-wall (flag 38) secret passages
 - [`LEVEL-INDEX.md`](docs/LEVEL-INDEX.md) — level ids + tile addressing (`<level-id>:<col>,<row>`)
 
+## Play it
+
+The Rust engine in [`engine/`](engine/) plays Superfrog on a Mac from your own four disk images.
+
+```bash
+tools/setup/install-rust.sh               # once: rustup via Homebrew + the pinned toolchain
+cd engine && cargo run --release -p sf-app
+```
+
+- **First run:** the app asks for the four disks. Choose the four `Superfrog (1993)(Team 17)(Disk N
+  of 4)...zip` files (or their `.adf`s); they are read once, checked, and decoded into a cache. The
+  disks are opened read-only. If one is missing or not the expected dump, the message says which.
+  Later launches start straight from the cache.
+- **Controls:** arrow keys move, Space (or either Ctrl) fires; Game ▸ Controls… rebinds them and a
+  gamepad. Game ▸ Continue from World N starts at the furthest world reached; Save State and Load
+  State are under Game; View has the scale, fullscreen, CRT filter and widescreen.
+- **Where data lives:** `~/Library/Application Support/Superfrog-RE/` holds the decoded cache,
+  `settings.toml`, `progress.toml`, save states and the remembered disk paths. Delete the folder to
+  start over; the next launch asks for the disks again. `--home DIR` (or `SUPERFROG_HOME`) uses
+  another folder. Nothing from the disks is ever written into this repository.
+- **Levels from files:** File ▸ Export Level writes a disk level as a `.sflevel` file, and File ▸
+  Play Level File… plays one in place of the level it replaces: the map editor's target.
+
 ## Rust engine
 
-A frame-exact Rust reimplementation of the game lives in [`engine/`](engine/); the plan, design and
-progress are in [`plans/rust-engine/`](plans/rust-engine/). Setup and tests:
+A faithful Rust reimplementation of the game lives in [`engine/`](engine/): every mechanic rewritten
+from the original's 68000 code and judged against the original running on an emulator oracle. The
+plan, design and progress are in [`plans/rust-engine/`](plans/rust-engine/). Setup and tests:
 
 ```bash
 tools/setup/install-rust.sh                 # rustup via Homebrew + the pinned toolchain (idempotent)
@@ -84,6 +112,12 @@ venv/bin/python tools/check_no_disk_data.py # no disk bytes in the repo (DESIGN 
 ```
 
 Both tests read the disks from `SUPERFROG_DISKS`, else from the main checkout root.
+
+The oracle (`tools/setup/oracle.sh`, vAmiga built outside the repo, plus a Kickstart 1.3 ROM) runs
+the original for the conformance checks: `cd engine && cargo run -q --release -p sf-conform -- all`
+judges every case in [`engine/conform/`](engine/conform/README.md) (about 1¾ h), and
+[`engine/crates/sf-e2e`](engine/crates/sf-e2e/README.md) drives the real app end to end, the whole
+game included.
 
 ## Tools
 

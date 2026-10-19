@@ -918,7 +918,7 @@ impl AloneRun {
         if skipped.is_empty() {
             self.ours.frame(at, ours);
             self.theirs.frame(at, theirs);
-            self.recorded(fed, picture);
+            self.recorded(fed, picture, amiga);
             return;
         }
         // The engine's load frame stands for the first the original loaded under its screen;
@@ -955,14 +955,15 @@ impl AloneRun {
             self.ours.frame(at + 1 + i as u64, st);
         }
         self.extra += k as u32;
-        self.recorded(fed, picture);
+        self.recorded(fed, picture, amiga);
     }
 
-    /// When recording, the frame as fed and its hashes; a panicked engine's record is no feed.
-    fn recorded(&mut self, fed: FeedFrame, picture: Option<Picture>) {
+    /// When recording, the frame as fed, its hashes and the original's loudness; a panicked
+    /// engine's record is no feed.
+    fn recorded(&mut self, fed: FeedFrame, picture: Option<Picture>, amiga: &sf_oracle::Amiga) {
         if let Some(r) = self.record.as_mut() {
             match (picture, &self.panicked) {
-                (Some(p), None) => r.frame(fed, &self.game, &p),
+                (Some(p), None) => r.frame(fed, &self.game, &p, feed::swing(&amiga.mixed_audio())),
                 _ => r.panicked = true,
             }
         }

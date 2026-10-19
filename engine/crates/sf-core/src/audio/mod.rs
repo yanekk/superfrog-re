@@ -436,6 +436,12 @@ impl AudioDriver {
         self.music_on.w(0) != 0
     }
 
+    /// The byte of chip RAM at `addr` as the driver sees it ([`Mem`]): what the audio channels'
+    /// DMA reads.
+    pub fn chip_byte(&self, data: &SoundData, addr: u32) -> u8 {
+        self.mem.b(data, addr)
+    }
+
     /// The streamer's source address, while a sample streams: the 160 bytes from there are what
     /// the frame copies to [`STREAM_BUFFER`] (for the mixer's view of chip RAM).
     pub fn stream_source(&self) -> Option<u32> {

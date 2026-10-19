@@ -495,9 +495,17 @@ impl App {
                 eprintln!("superfrog: could not save progress: {e}");
             }
         }
+        // A load's vertical blanks (under `--pacing`): the mixer plays them, unheard, as the
+        // original's Paula did while it loaded, so its channels leave the load as the original's.
+        for blank in run.game.take_load_paula() {
+            run.samples.clear();
+            run.paula.frame(&blank, &run.game, &mut run.samples);
+        }
         run.samples.clear();
+        let mut ends = Vec::with_capacity(outs.len());
         for out in &outs {
             run.paula.frame(&out.paula, &run.game, &mut run.samples);
+            ends.push(run.samples.len());
         }
         if let Some(a) = &run.audio {
             a.push(&run.samples);
@@ -505,8 +513,10 @@ impl App {
         let picture = outs.into_iter().last().expect("a frame steps").picture;
         let size = (picture.width as u32, picture.height as u32);
         let rgba = picture_rgba(&picture);
+        let clock = run.clock.samples();
         if let Some(c) = &mut run.capture {
-            c.audio(&run.samples);
+            c.audio(n, &run.samples, &ends);
+            c.clock(n, clock);
             c.input(n, input);
             if let Err(e) = c.frame(n, (size.0, size.1, &rgba), &run.game, &picture) {
                 return self.fail(event_loop, &format!("capture: {e}"));
@@ -591,7 +601,8 @@ impl App {
             && let Some(c) = r.capture.as_mut()
             && let Err(e) = c
                 .finish()
-                .and_then(|()| c.pacing(r.steps, r.presented, r.dropped))
+                .and_then(|()| c.pacing(r.steps, r.presented, r.dropped, r.clock.samples()))
+                .and_then(|()| c.unported(r.game.unported()))
                 .and_then(|()| c.memory())
         {
             return self.fail(event_loop, &format!("capture: {e}"));
