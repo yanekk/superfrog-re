@@ -171,7 +171,9 @@ pub struct Tolerance {
     pub window: u32,
 }
 
-/// PROVISIONAL (T213, before the owner's word).
+/// The owner's (2026-10-19, T213): a channel's frame differs past 256 (about 3 % of full scale)
+/// and past 25 % of the louder side; a run of up to 2 frames is let through (a note started a few
+/// lines off); the engine's sound may be up to 10 frames off over 25 frames either side.
 pub const OWNER: Tolerance = Tolerance {
     floor: 256,
     percent: 25,

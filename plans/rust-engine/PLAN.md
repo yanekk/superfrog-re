@@ -256,6 +256,7 @@ original's milestones and passes the faithful checks (DESIGN §2.1), headless.
 | [T211](tasks/T211-app-whole-game-paced.md) | app-whole-game-paced | T21, T25, T26, T27, T28; blocks T30 |
 | [T212](tasks/T212-conform-known-reds.md) | conform-known-reds | T29; blocks T30 |
 | [T213](tasks/T213-paula-write-timing.md) | paula-write-timing | T30 |
+| [T214](tasks/T214-story-load-blanks.md) | story-load-blanks | T213 |
 
 T22 is the rig task: it comes before every surface task and they depend on it. T29 is the phase's
 drill. At the end: the real app plays a scripted whole game that meets the original's milestones (T30);
