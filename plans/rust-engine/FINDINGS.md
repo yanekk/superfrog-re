@@ -18,6 +18,7 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-19 | 📌 | T217, worker-driven, build with T213 and T215: `sf-conform all` 212/212 (7 050 s); whole_game app paced 224 082 frames = run alone, heard 220 901/220 901; soak 50 000 green (4 872 s together). |
 | 2026-10-19 | 📌 | T215 review, owner: neighbour ranges let a sound started but unheard for under 5 frames on a silent channel pass (measured: 4 passes, 5 fails). Accepted; check 3 catches never-started sounds. DESIGN §2.1, for the owner to confirm. |
 | 2026-10-19 | 📌 | T215 review, game-whole within tolerance: 12 runs of 2 frames outside T216: channel 2 at 6707–8384 (engine quieter), channel 3 at 223265–223961 (engine ~950, original silent). Not investigated. |
 | 2026-10-19 | 📌 | T215: `channels` on game-whole with neighbour ranges: green, 4 runs left, all channel 3 in WB-1 (180888–180941), listed known for T216. Uncached feed 40 min; the ignored test 7 min cached. |

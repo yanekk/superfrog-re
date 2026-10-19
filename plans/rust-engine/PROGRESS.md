@@ -12,9 +12,9 @@ the account is the commit message. Whoever writes a cell also fixes the over-bud
 **Plan reviewed:** 2026-10-10 — 7 fixed, 7 decided with the user
 
 **Status:** about 100 tasks ✅; T18, T21 and Phase 3 open; amended to faithful.
-**Last updated:** 2026-10-15
+**Last updated:** 2026-10-19
 **Amended 2026-10-15 (owner):** faithful replaces frame-exact (DESIGN §2.1, PLAN.md amendment); T180–T183 added, 14 tasks dropped (PLAN.md).
-**Next `pir-work` will:** T180 faithful-compare, then T182; T126 and T132 finish against the faithful bar.
+**Next `pir-work` will:** review T217; then T216 and T214.
 
 ## Tasks
 
@@ -182,12 +182,12 @@ done · ⛔ blocked, needs a human. A task dropped by a plan amendment leaves th
 | T214 | story-load-blanks | T213 | ⬜ | |
 | T215 | channel-check-neighbours | T213; blocks T214 | ✅ | |
 | T216 | bonus-channel3-alone | T213; blocks T214 | ⬜ | |
-| T217 | t213-acceptance-runs | T213, T215; blocks T214 | ⬜ | |
+| T217 | t213-acceptance-runs | T213, T215; blocks T214 | 🔍 | Both runs green on the build with T213 and T215, no code changed. whole_game: 224 082 frames equal the run alone, heard 220 901/220 901, soak 50 000 green, 4 872 s. `sf-conform all` 212/212 in 7 050 s; game-whole 7 007 milestones. No deviations. |
 
 A Notes cell holds what was built or what the review found, the test count, and one line per
 deviation from the task doc. A ✅ task's cell may be cut to one line once the next task has been reviewed.
 
-**Review queue:** *(empty)*
+**Review queue:** T217
 
 ## Blocked on the user
 
