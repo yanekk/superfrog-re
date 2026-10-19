@@ -22,6 +22,7 @@ cargo run -q --release -p sf-conform -- --strict run conform/cases/title-rng.tom
 cargo run -q --release -p sf-conform -- run --alone conform/cases/complete-w1-2.toml  # check 4 only
 cargo run -q --release -p sf-conform -- record conform/cases/title-rng.toml --watch blink=h0+1368:W
 cargo run -q --release -p sf-conform -- feed conform/cases/game-whole.toml --frames 1500  # pacing feed
+cargo run -q --release -p sf-conform -- channels conform/cases/game-whole.toml  # each channel's output
 ```
 
 `feed` (T211) runs a case from power-on by check 4 only and writes what its engine run alone was
@@ -139,6 +140,32 @@ original's whenever their names change (T209): the report's "first differs" is o
 Cases red alone are listed in FINDINGS with their owner; a test that runs one keeps checks 1–3
 with `case.alone = Alone::Off` and names the owner (T184: `enemies-w1-1`, `enemies-w3-1`,
 `enemies-w3-activation`, `enemies-w5-2-complete`, `front-attract`).
+
+## Each channel's output (T213)
+
+Check 3 compares sound events (where a sample starts, its length, period and volume), never what a
+channel then plays: a note Paula never restarted (its channel turned off and on again before it went
+idle) leaves the old sample playing with every event right. `channels <case.toml>...` compares the
+output itself, over whole cases from power-on (and the story's from disk 3), frame of play by frame:
+
+- **the original's**: vAmiga's DAC taps per channel (`FrameCapture::taps`, the DAC rebuilt clock by
+  clock), recorded as `feed` runs (`<key>.channels` beside `.audio`; the story's are run each time,
+  a pacing feed being a disk-1 power-on's);
+- **the engine's**: the feed replayed headless through the app's mixer (`Paula::booted`, a load's
+  blanks a frame each before the step after them), `Paula::channel_taps`;
+- each channel's frame reduced to its **level**, how far its DAC swings about its mean (0 for a held
+  value: a stopped channel keeps its last sample on the DAC), so a write a line or two off moves it
+  little and a lost or wrong note far.
+
+A channel's frame differs when its level is further from the original's than the floor and than a
+share of the louder (`channels::OWNER`). The engine run alone may be some frames from the original
+(check 4 allows ±10), so each frame is judged at the shift of the engine's whole sound, at most
+`shift` frames, that makes the most of the `window` frames either side match on all four channels:
+a sound late as a whole (music started after a load the engine did at once) lines up, a note never
+played differs at every shift. Frames whose shifted match falls before the case or past its end are
+cut off, as check 3's events are. A case fails where a channel differs longer than `frames` frames
+in a row; each such run is printed. `examples/channel_runs` lists every run past any length,
+`examples/channel_window` both sides' levels over a stretch.
 
 ## Which cases the test block runs (T181)
 

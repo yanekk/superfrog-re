@@ -11,6 +11,7 @@
 //! is in `main.rs`; how to write scripts and cases is in `engine/conform/README.md`.
 
 pub mod case;
+pub mod channels;
 pub mod compare;
 pub mod disks;
 pub mod feed;
@@ -286,12 +287,20 @@ fn run_inner(
     let mut passes = compare::PassMatch::default();
     let mut theirs_clock = sf_core::PassClock::default();
     let mut held: Option<Held> = None;
+    let mut theirs_channels = alone
+        .as_ref()
+        .is_some_and(|a| a.record.is_some())
+        .then(channels::Original::default);
     for f in 0..case.frames {
         let input = case.script.input_at(of);
         frozen.apply(&mut amiga, &display);
         let resumes = sync::intro_resumes(&amiga);
         let mut theirs = sync::step_inserting(&mut amiga, input)
             .unwrap_or_else(|e| panic!("{}: oracle, frame {of}: {e}", case.name));
+        // The original's channels, every step, for the recording (T213).
+        let mut channels = theirs_channels
+            .as_mut()
+            .map(|c| c.step(&theirs, amiga.frames_run(), amiga.frame_lines()));
         cop = sync::cop1lc(cop, &amiga.cpu_writes());
         let mut entry = sync::handler_entry(&irqs, &amiga.irqs());
         let mut handler_end = sync::handler_end(&theirs.paula, resumes);
@@ -365,6 +374,9 @@ fn run_inner(
                     paula_theirs.frame(&theirs.paula);
                     theirs = sync::step_inserting(&mut amiga, case.script.input_at(of))
                         .unwrap_or_else(|e| panic!("{}: oracle, frame {of}: {e}", case.name));
+                    channels = theirs_channels
+                        .as_mut()
+                        .map(|c| c.step(&theirs, amiga.frames_run(), amiga.frame_lines()));
                     cop = sync::cop1lc(cop, &amiga.cpu_writes());
                     entry = sync::handler_entry(&irqs, &amiga.irqs());
                     handler_end = sync::handler_end(&theirs.paula, resumes);
@@ -485,6 +497,7 @@ fn run_inner(
                 .load
                 .is_some()
                 .then(|| (std::mem::take(&mut load_blanks), load_line.take()));
+            a.channels = channels.take().filter(|_| !twice);
             a.frame(case, f, input, pacing, twice, (&amiga, &mem), cop, &ours.resync, skipped, blanks);
         }
         let theirs_mid = stepped && sync::mid_pass(&amiga.cpu(), &mem);
@@ -753,6 +766,9 @@ struct AloneRun {
     trace: Option<(std::io::BufWriter<std::fs::File>, String)>,
     /// What it was fed and each frame's hashes, for the app to be fed the same (T211).
     record: Option<feed::Recorded>,
+    /// When recording, the original's channel levels this frame of play (`None` for a step of
+    /// two video frames), for [`feed::Recorded::frame`] (T213).
+    channels: Option<channels::Levels>,
 }
 
 /// The copper lists of the screens whose own timers run on while the original loads under them
@@ -793,6 +809,7 @@ impl AloneRun {
                 (std::io::BufWriter::new(std::fs::File::create(p).unwrap()), String::new())
             }),
             record: None,
+            channels: None,
         }
     }
 
@@ -963,7 +980,13 @@ impl AloneRun {
     fn recorded(&mut self, fed: FeedFrame, picture: Option<Picture>, amiga: &sf_oracle::Amiga) {
         if let Some(r) = self.record.as_mut() {
             match (picture, &self.panicked) {
-                (Some(p), None) => r.frame(fed, &self.game, &p, feed::swing(&amiga.mixed_audio())),
+                (Some(p), None) => r.frame(
+                    fed,
+                    &self.game,
+                    &p,
+                    feed::swing(&amiga.mixed_audio()),
+                    self.channels.take(),
+                ),
                 _ => r.panicked = true,
             }
         }
