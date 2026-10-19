@@ -65,6 +65,60 @@ const NOT_MODELLED: &[(&[&str], &str, &str)] = &[
          outside the picture, the music's place (it plays from the world's intro screen on)",
         "T21",
     ),
+    // The world's loading picture and the progress map (T183), one by one: none is read by a
+    // level in play. `wanted_disk` and `slot_copper` are, and are not excused (FINDINGS).
+    (
+        &["intro_copper"],
+        "the loading picture's copper list: its plane pointers, which `world_intro_show` sets \
+         before it shows the list",
+        "T183",
+    ),
+    (
+        &["map_copper"],
+        "the rest of the loading picture's list and the progress map's: their plane pointers and \
+         waits, set by each screen before it shows its list",
+        "T183",
+    ),
+    (
+        &["intro_shown"],
+        "the loading picture has been shown: read only by the screens (the exit walk's vertical \
+         blank, the way back to the title), never by a level",
+        "T183",
+    ),
+    (
+        &["cloud_bob"],
+        "the loading picture's clouds' bob: set up by the walk's set-up (h0+$12408), read only by \
+         the picture",
+        "T183",
+    ),
+    (
+        &["cloud_sprites"],
+        "the loading picture's six cloud sprite records: attached by the walk's set-up, read only \
+         by the picture",
+        "T183",
+    ),
+    (
+        &["exit_walk_count"],
+        "`frog_exit_walk`'s wait, speed and step on the loading picture: run only while \
+         `frog_exit_sprites` is set, which the picture clears before the level",
+        "T183",
+    ),
+    (
+        &["map_blink"],
+        "`progress_map_vbl`'s frame count (the marker's blink): counted and read only by the map",
+        "T183",
+    ),
+    (
+        &["map_markers"],
+        "the progress map's two marker sprite records: set and read only by the map",
+        "T183",
+    ),
+    (
+        &["resume_target"],
+        "the `top_loop` call a level code's game starts at: read only by `level_resume_jump` \
+         before the level has started",
+        "T183",
+    ),
 ];
 
 /// Objects a level's set-up places itself, not from its map's markers, by level: (level, names,

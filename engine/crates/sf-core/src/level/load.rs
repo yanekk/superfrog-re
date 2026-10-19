@@ -90,7 +90,8 @@ pub fn enter_with(
 }
 
 /// Every modelled variable as the game's loader leaves memory: hunk 0 as loaded (with the boot's
-/// tables), hunk 2's data; hunks 1 and 3 are cleared. Then what the boot sets (`init_and_script`):
+/// tables), hunk 2's data; hunks 1 and 3 are cleared; `ExecBase` and the level 1 autovector as
+/// Kickstart leaves them. Then what the boot sets (`init_and_script`):
 /// the frog's sprite frames among it (`load_hero`).
 fn boot_image(st: &mut State, display: &DisplayData) {
     let hero = display.hero();
@@ -103,6 +104,7 @@ fn boot_image(st: &mut State, display: &DisplayData) {
                     hero[(a - HERO_SPRITES) as usize]
                 }
                 4..8 => crate::state::EXEC_BASE.to_be_bytes()[a as usize - 4],
+                0x64..0x68 => crate::state::KICKSTART_LEVEL1.to_be_bytes()[a as usize - 0x64],
                 _ => 0,
             })
             .collect();
