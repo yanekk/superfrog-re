@@ -66,7 +66,7 @@ const NOT_MODELLED: &[(&[&str], &str, &str)] = &[
         "T21",
     ),
     // The world's loading picture and the progress map (T183), one by one: none is read by a
-    // level in play. `wanted_disk` and `slot_copper` are, and are not excused (FINDINGS).
+    // level in play.
     (
         &["intro_copper"],
         "the loading picture's copper list: its plane pointers, which `world_intro_show` sets \
@@ -118,6 +118,13 @@ const NOT_MODELLED: &[(&[&str], &str, &str)] = &[
         "the `top_loop` call a level code's game starts at: read only by `level_resume_jump` \
          before the level has started",
         "T183",
+    ),
+    (
+        &["slot_copper"],
+        "a copper list, tagged `presentation` (DESIGN §2.1): sprite 0's position and control \
+         moves (h2+$6744, $6748) the way there leaves; the slot cases' pictures match with the \
+         engine's zeros",
+        "T71",
     ),
 ];
 

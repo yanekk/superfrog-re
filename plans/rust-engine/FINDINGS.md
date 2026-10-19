@@ -18,8 +18,8 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
-| 2026-10-19 | 🐞 | tests-fix, open: `Start::Level` gap, so `level_entry` stays red. `wanted_disk` stays `2222` (disk 1) but the original's is the disk the level loaded from (21 of 29 levels differ). The slot load (`slot/mod.rs`) and the next level's disk prompt read it. A `.sflevel` game inherits it. |
-| 2026-10-19 | 🐞 | tests-fix, open: `Start::Level` gap, `slot_copper`'s first move is `$01400000`, the original's `$0140f440` (SPR0POS) on every level. The slot machine's copper runs it during play; no engine path writes it. Writer unknown. `level1_vector` fixed (`boot_image`). |
+| 2026-10-19 | 🐞 | tests-fix, fixed: `Start::Level` left `wanted_disk` at disk 1 (`2222`); the original's is the map file's disk (21 of 29 levels differed), which the slot's load and the next disk prompt read. Now `front::chain::level_disk`. `level1_vector` fixed too (`boot_image`). |
+| 2026-10-19 | 📌 | tests-fix, measured: `slot_copper`'s sprite 0 moves (h2+$6744, $6748) are `$f440`/`$0502` after the way there, 0 in `Start::Level`. All 12 slot cases' pictures match with the zeros (a COLOR00 there goes red): presentation, excused in `level_entry`. Writer unknown. |
 | 2026-10-19 | 📌 | T214 review, measured: the hand-over load (story-intro-full f9352) is fed 39 intro-handler blanks, dropped with the story; each writes only INTREQ `$20`, no audio register, so no sound is lost. |
 | 2026-10-19 | 📌 | T214, measured: the intro starts a scene's music just before loading it (LOAD_3, LOAD_10); the original's handler plays it every blank of the load, so story blanks run at the load. Hand-over load's game-handler blanks still dropped, unmeasured. |
 | 2026-10-19 | 📌 | T217, worker-driven, build with T213 and T215: `sf-conform all` 212/212 (7 050 s); whole_game app paced 224 082 frames = run alone, heard 220 901/220 901; soak 50 000 green (4 872 s together). |

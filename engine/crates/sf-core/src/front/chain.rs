@@ -138,6 +138,24 @@ fn level_load_of(data: &super::FrontData, off: u32) -> Option<(u32, u8)> {
     }
     None
 }
+/// The disk ID the read of `id`'s map file (the first file of `level_load_wN_lM`, `_lb` or `_lw`)
+/// leaves in `wanted_disk`: the disk a level code's way to the level leaves in the drive.
+pub(crate) fn level_disk(data: &super::FrontData, id: LevelId) -> Option<u32> {
+    let at = match id.world {
+        World::Bonus => 0xa426,
+        World::Final => 0xa508,
+        _ => (GAME_PATH..0x7d4)
+            .step_by(2)
+            .filter(|&pc| data.h0_w(pc) == 0x4eb9)
+            .map(|pc| data.h0_l(pc + 2).wrapping_sub(H0))
+            .find(|&to| {
+                level_load_of(data, to).map(|(w, l)| level_id(w, l))
+                    == Some(LevelId { alt: false, ..id })
+            })?,
+    };
+    let entry = *super::table_entries(data, at, code_end(data, at)).first()?;
+    Some(super::entry_disk_id(data, entry))
+}
 /// `level_init_wN`.
 const LEVEL_INITS: [u32; 6] = [0x8cd8, 0x8d2e, 0x8d84, 0x8dda, 0x8e30, 0x8e86];
 /// `level_init_lw`: the final level's init.

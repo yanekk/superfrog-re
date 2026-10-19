@@ -537,7 +537,7 @@ impl Cx<'_> {
     /// are instant, so the answer is too.
     pub fn read_entry(&mut self, entry: u32) {
         let disk = self.data.h0_w(entry + 4) & 3;
-        let id = self.data.h0_l(DISK_ID_TABLE + 4 * disk as u32);
+        let id = entry_disk_id(self.data, entry);
         if self.s.l(at(0xaf54)) != id {
             self.s.set_l(at(0xaf54), id);
             self.disk_prompt = Some(crate::game::DiskPrompt::Insert(sf_disk::DiskSlot::ALL[disk as usize]));
@@ -565,6 +565,11 @@ const DISK_ID_TABLE: u32 = 0xb11e;
 
 /// The `file_table` entries (h0 offsets) the code between h0+`from` and h0+`to` loads, in order:
 /// each `lea file_table+n,a2` (`$45f9`), which `load_file`'s callers set before the call.
+/// The disk ID (`disk_id_table`, h0+$b11e) of `file_table`'s entry at h0+`entry`: its third word.
+pub(crate) fn entry_disk_id(data: &FrontData, entry: u32) -> u32 {
+    data.h0_l(DISK_ID_TABLE + 4 * (data.h0_w(entry + 4) & 3) as u32)
+}
+
 pub(crate) fn table_entries(data: &FrontData, from: u32, to: u32) -> Vec<u32> {
     (from..to)
         .step_by(2)

@@ -83,6 +83,10 @@ pub fn enter_with(
         &mut paula,
     );
     new_game(&mut c, id);
+    // The disk the map file was read from, which the next load's disk check reads (T21).
+    if let Some(disk) = crate::front::chain::level_disk(&display.front, id) {
+        c.bus.set_l(crate::layout::def(crate::layout::VarId::WantedDisk).addr, disk);
+    }
     level_load(&mut c, display, id);
     level_init(&mut c, id);
     level_start(&mut c);
