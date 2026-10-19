@@ -14,7 +14,7 @@ the account is the commit message. Whoever writes a cell also fixes the over-bud
 **Status:** about 100 tasks ✅; T18, T21 and Phase 3 open; amended to faithful.
 **Last updated:** 2026-10-15
 **Amended 2026-10-15 (owner):** faithful replaces frame-exact (DESIGN §2.1, PLAN.md amendment); T180–T183 added, 14 tasks dropped (PLAN.md).
-**Next `pir-work` will:** review T216; T214 and T217 remain.
+**Next `pir-work` will:** T217, then T214.
 
 ## Tasks
 
@@ -181,13 +181,13 @@ done · ⛔ blocked, needs a human. A task dropped by a plan amendment leaves th
 | T213 | paula-write-timing | T30 | ✅ | |
 | T214 | story-load-blanks | T213 | ⬜ | |
 | T215 | channel-check-neighbours | T213; blocks T214 | ✅ | |
-| T216 | bonus-channel3-alone | T213; blocks T214 | 🔍 | `sfx_play`'s raster wait and record set-up on the beam (`Cost::SfxRecord`, `SfxWrite`); `beam.rs` test. Deviation: no state differs, so the stretch stays, now an accepted difference awaiting the owner (person, 2026-10-19): a Paula restart race. game-whole: check 4 alone green, `channels` green. |
+| T216 | bonus-channel3-alone | T213; blocks T214 | ✅ | Review clean, no fix commit: both mutations (wait one line, `SfxRecord` 0) red in `beam.rs`; WB-1 cases `run --alone` green; game-whole `channels` green with the stretch; whole-game oracle scan of `sfx_play` waits near frame end. Stretch kept, the person's accepted deviation ("no state differs" read-only). |
 | T217 | t213-acceptance-runs | T213, T215; blocks T214 | ⬜ | |
 
 A Notes cell holds what was built or what the review found, the test count, and one line per
 deviation from the task doc. A ✅ task's cell may be cut to one line once the next task has been reviewed.
 
-**Review queue:** T216
+**Review queue:** *(empty)*
 
 ## Blocked on the user
 
