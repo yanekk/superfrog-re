@@ -156,7 +156,8 @@ pub fn engine_levels(feed: &Feed, start: Start) -> Vec<Levels> {
 /// How far the engine's channels may be from the original's (DESIGN §2.1: a sound no player
 /// could tell apart). A channel's frame differs when its level is further from the original's range
 /// over that frame and the frames either side than `floor` and than `percent` of the louder of the
-/// two: a sub-frame timing allowance, under which a note never played still differs.
+/// two: a sub-frame timing allowance, under which a note never played still differs (bar one started
+/// and not heard for under 5 frames on a silent channel: DESIGN §2.1, for the owner to confirm).
 ///
 /// The engine run alone may be some frames from the original (check 4 allows its milestones
 /// [`crate::milestones::MILESTONE_FRAMES`]; a load the engine does at once starts the music after it

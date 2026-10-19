@@ -160,7 +160,12 @@ output itself, over whole cases from power-on (and the story's from disk 3), fra
 A channel's frame differs when its level is further than the floor and than a share of the louder
 (`channels::OWNER`) from the original's range over that frame and the frames either side (T215, the
 owner's sub-frame timing allowance: a slow sound holds a few dozen sample bytes a frame, so a write a
-few lines off gives a frame its neighbour's level; a note never played still differs). The engine run alone may be some frames from the original
+few lines off gives a frame its neighbour's level; a note never played still differs). The gap it
+leaves (T215 review, owner): on a silent channel a sound started but not heard for under 5 frames
+passes, its first and last frames inside a neighbour's range and the 2 between within `frames`.
+Check 3 still fails any sound whose start the engine never issues, so what this check can miss is
+only a sound started and not heard for under 5 frames, the restart failure T213 fixed (DESIGN §2.1,
+for the owner to confirm). The engine run alone may be some frames from the original
 (check 4 allows ±10), so each frame is judged at the shift of the engine's whole sound, at most
 `shift` frames, that makes the most of the `window` frames either side match on all four channels:
 a sound late as a whole (music started after a load the engine did at once) lines up, a note never
