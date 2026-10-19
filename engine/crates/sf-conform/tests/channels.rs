@@ -30,3 +30,26 @@ fn the_titles_retriggered_notes_restart_as_on_the_original() {
     assert!(v.runs.is_empty(), "{:?}", v.runs);
     assert_eq!(v.shifted, 0, "the title's sound is the original's, not late");
 }
+
+/// The slot machine's loads (T213 review): `music_fade_wait`'s `music_stop`, made inside the load
+/// the engine does at once, reaches the mixer (`FrameOut::unheard`). Thrown away, channels 0 and 2
+/// played the level's music on for 15 frames after the load where the original is silent.
+#[test]
+fn the_music_stopped_inside_the_slot_machines_load_is_silent_after_it() {
+    let case = Case::load(&cases_dir().join("slot-load.toml")).unwrap();
+    let v = channels::check(&case, channels::OWNER).unwrap_or_else(|e| panic!("{e}"));
+    assert!(v.runs.is_empty(), "{:?}", v.runs);
+    assert_eq!(v.differing, [0; 4], "{v:?}");
+}
+
+/// The slot machine's effects (T213 review): `sfx_play`'s writes from its raster wait's end are
+/// four lines after its channel's DMACON off, so Paula lets the channel go idle and restarts the
+/// effect. Made at one instant, the reels' effects were lost on channel 2: runs of 6 and 7 frames.
+/// The runs of 3 left (a slow effect a few lines off) are T215's; up to 4 are let through here.
+#[test]
+fn the_slot_machines_effects_restart_as_on_the_original() {
+    let case = Case::load(&cases_dir().join("slot-gamble.toml")).unwrap();
+    let v = channels::check(&case, channels::Tolerance { frames: 4, ..channels::OWNER })
+        .unwrap_or_else(|e| panic!("{e}"));
+    assert!(v.runs.is_empty(), "{:?}", v.runs);
+}

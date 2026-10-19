@@ -1953,4 +1953,16 @@ mod tests {
         assert_eq!(s.read(dst, 4), [0x01, 0x23, 0x45, 0x67]);
         assert!(s.scratch.is_empty(), "a display buffer is modelled memory");
     }
+
+    /// T213 review: a write placed before the one ahead of it is moved up to it (the mixer would
+    /// take it and all after for the next frame's), and an `hpos` past the line's end goes on into
+    /// the lines after; the order is never changed.
+    #[test]
+    fn writes_in_beam_order_never_go_back() {
+        let w = |vpos, hpos, value| PaulaWrite { reg: 0x96, value, vpos, hpos };
+        let mut writes = vec![w(5, 100, 0), w(3, 0, 1), w(5, 2 * 227 + 10, 2), w(4, 0, 3)];
+        in_beam_order(&mut writes);
+        let at: Vec<(u16, u16, u16)> = writes.iter().map(|w| (w.vpos, w.hpos, w.value)).collect();
+        assert_eq!(at, vec![(5, 100, 0), (5, 100, 1), (7, 10, 2), (7, 10, 3)]);
+    }
 }
