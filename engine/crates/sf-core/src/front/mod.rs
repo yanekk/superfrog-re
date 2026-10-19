@@ -969,7 +969,13 @@ impl Front {
     /// sound and keyboard poll ([`vbl::load_blank`]), as the original runs them on each frame a
     /// load takes. The engine loads at once; how long the original's load took is the
     /// disk's, which the engine cannot know, given to it as an input (T209).
-    pub(crate) fn load_blanks(&mut self, s: &mut State, display: &DisplayData, frames: u32) {
+    pub(crate) fn load_blanks(
+        &mut self,
+        s: &mut State,
+        display: &DisplayData,
+        frames: u32,
+        writes: &mut Vec<Vec<PaulaWrite>>,
+    ) {
         for _ in 0..frames {
             let mut paula = Vec::new();
             let mut cx = Cx {
@@ -1011,6 +1017,7 @@ impl Front {
             vbl::load_blank(&mut cx);
             vbl::end(&mut cx);
             self.keyboard = cx.keyboard;
+            writes.push(paula);
         }
     }
 

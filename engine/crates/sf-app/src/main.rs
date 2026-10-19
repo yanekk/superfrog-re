@@ -495,6 +495,12 @@ impl App {
                 eprintln!("superfrog: could not save progress: {e}");
             }
         }
+        // A load's vertical blanks (under `--pacing`): the mixer plays them, unheard, as the
+        // original's Paula did while it loaded, so its channels leave the load as the original's.
+        for blank in run.game.take_load_paula() {
+            run.samples.clear();
+            run.paula.frame(&blank, &run.game, &mut run.samples);
+        }
         run.samples.clear();
         let mut ends = Vec::with_capacity(outs.len());
         for out in &outs {

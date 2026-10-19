@@ -214,10 +214,17 @@ fn the_feed_replays_the_run_alone_headless() {
     let theirs = parse_hashes(&read(&f.hashes)).unwrap_or_else(|e| panic!("{e}"));
     let mut g = Game::with_display(sf_conform::display_data(), Start::PowerOn { seed: feed.seed });
     let mut ours = vec![sf_core::feed::frame_hashes(&g, &g.render(View::default()))];
+    let mut blank_writes = 0;
     for fr in &feed.frames {
         let pic = fr.play(&mut g).pop().expect("a frame steps").picture;
         ours.push(sf_core::feed::frame_hashes(&g, &pic));
+        // A load's vertical blanks hand the mixer a frame of writes each (T30), once.
+        let blanks = g.take_load_paula();
+        assert_eq!(blanks.len() as u32, fr.load.map_or(0, |l| l.blanks), "a load's blanks");
+        blank_writes += blanks.iter().map(Vec::len).sum::<usize>();
+        assert!(g.take_load_paula().is_empty());
     }
+    assert!(blank_writes > 0, "the boot's loads ran the sound driver");
     assert_eq!(first_difference(&ours, &theirs), None);
     // The stretch has what a feed carries: loads, and frames under a loading screen.
     assert!(feed.frames.iter().filter(|f| f.load.is_some()).count() >= 3);

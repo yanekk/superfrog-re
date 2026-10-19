@@ -16,6 +16,10 @@ fn main() {
     for (i, fr) in feed.frames.iter().enumerate().take(to) {
         let n = i + 1;
         let outs = fr.play(&mut g);
+        for blank in g.take_load_paula() {
+            paula.frame(&blank, &g, &mut Vec::new());
+            events.frame(&blank);
+        }
         for (k, out) in outs.iter().enumerate() {
             let mut s = Vec::new();
             paula.frame(&out.paula, &g, &mut s);
