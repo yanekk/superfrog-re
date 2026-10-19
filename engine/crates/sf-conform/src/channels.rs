@@ -154,8 +154,10 @@ pub fn engine_levels(feed: &Feed, start: Start) -> Vec<Levels> {
 }
 
 /// How far the engine's channels may be from the original's (DESIGN §2.1: a sound no player
-/// could tell apart). A channel's frame differs when its level is further from the original's than
-/// `floor` and than `percent` of the louder of the two.
+/// could tell apart). A channel's frame differs when its level is further from the original's range
+/// over that frame and the frames either side than `floor` and than `percent` of the louder of the
+/// two: a sub-frame timing allowance, under which a note never played still differs (bar one started
+/// and not heard for under 5 frames on a silent channel: DESIGN §2.1, for the owner to confirm).
 ///
 /// The engine run alone may be some frames from the original (check 4 allows its milestones
 /// [`crate::milestones::MILESTONE_FRAMES`]; a load the engine does at once starts the music after it
@@ -230,6 +232,9 @@ pub struct Verdict {
     pub longest: Run,
     /// Every run longer than the tolerance's `frames`, by where it starts: the case fails.
     pub runs: Vec<Run>,
+    /// Those runs inside a stretch the case lists as known (`[[exclude]] what = "channels"`), with
+    /// the task that owns it: reported, not failed ([`check`]).
+    pub known: Vec<(Run, String)>,
 }
 
 impl Verdict {
@@ -240,21 +245,37 @@ impl Verdict {
 }
 
 /// Each channel's levels, the original's (`None`: not compared) against the engine's, frame of
-/// play 1 first.
+/// play 1 first. An engine frame differs on a channel when its level is further than the tolerance
+/// from the original's range over the frame it is judged against and the frames either side.
 pub fn judge(theirs: &[Option<Levels>], ours: &[Levels], tol: Tolerance) -> Verdict {
     let len = theirs.len().min(ours.len());
     let k = tol.shift as i64;
+    // The original's range on each channel over each compared frame and those either side: a slow
+    // sound (a few dozen sample bytes a frame) moves a frame's level by where its bytes fall, so a
+    // write a few lines from the original's may give the engine's frame its neighbour's level
+    // (owner, 2026-10-19, T215).
+    let ranges: Vec<Option<(Levels, Levels)>> = (0..len)
+        .map(|n| {
+            theirs[n]?;
+            let near = theirs[n.saturating_sub(1)..(n + 2).min(len)].iter().flatten();
+            Some(near.fold(([u16::MAX; 4], [0; 4]), |(lo, hi), t| {
+                (std::array::from_fn(|c| lo[c].min(t[c])), std::array::from_fn(|c| hi[c].max(t[c])))
+            }))
+        })
+        .collect();
     // For each shift, the channels that differ on each frame (four past the engine's frames), and
     // how many differ up to each frame.
     let differ = |n: usize, s: i64| -> u8 {
-        let Some(t) = theirs[n] else { return 0 };
+        let Some((lo, hi)) = ranges[n] else { return 0 };
         let m = n as i64 + s;
         if m < 0 || m >= len as i64 {
             // Counted against the shift when choosing it, never judged.
             return 0xf;
         }
         let o = ours[m as usize];
-        (0..4).filter(|&c| tol.differs(t[c], o[c])).fold(0, |b, c| b | 1 << c)
+        (0..4)
+            .filter(|&c| tol.differs(o[c].clamp(lo[c], hi[c]), o[c]))
+            .fold(0, |b, c| b | 1 << c)
     };
     let masks: Vec<Vec<u8>> = (-k..=k).map(|s| (0..len).map(|n| differ(n, s)).collect()).collect();
     let sums: Vec<Vec<u32>> = masks
@@ -324,10 +345,22 @@ pub fn judge(theirs: &[Option<Levels>], ours: &[Levels], tol: Tolerance) -> Verd
     v
 }
 
-/// `case` judged by [`levels`].
+/// `case` judged by [`levels`], its runs inside a known stretch moved to [`Verdict::known`].
 pub fn check(case: &Case, tol: Tolerance) -> Result<Verdict, String> {
     let (_, theirs, ours) = levels(case)?;
-    Ok(judge(&theirs, &ours, tol))
+    Ok(excuse(judge(&theirs, &ours, tol), case))
+}
+
+/// `v` with its runs lying wholly inside a stretch `case` lists as known
+/// ([`Case::channels_known`]) moved to [`Verdict::known`].
+pub fn excuse(mut v: Verdict, case: &Case) -> Verdict {
+    for r in std::mem::take(&mut v.runs) {
+        match case.channels_known(r.first, r.first + r.frames - 1) {
+            Some(task) => v.known.push((r, task.to_string())),
+            None => v.runs.push(r),
+        }
+    }
+    v
 }
 
 /// `case`'s levels each frame of play, the original's and the engine's: the original's as
@@ -430,8 +463,74 @@ mod tests {
         // Late by more than the shift allows: every channel differs nearly throughout.
         let later: Vec<Levels> = std::iter::repeat_n([0; 4], 40).chain(t.iter().copied()).take(300).collect();
         let v = judge(&theirs, &later, TOL);
-        assert!(v.differing.iter().all(|&d| d > 150), "{v:?}");
+        // Fewer than frame by frame (a random tune's three frames span much of its levels).
+        assert!(v.differing.iter().all(|&d| d > 75), "{v:?}");
         assert!(v.longest.frames > 2, "{v:?}");
+    }
+
+    /// A slow sound (T215): a frame holds a few dozen of its sample bytes, so the engine's writes a
+    /// few lines from the original's give a frame the level of the frame before or after it. Judged
+    /// against the original's range over the frame and those either side, it passes.
+    #[test]
+    fn a_slow_sound_a_few_lines_off_passes() {
+        let t = tune(300);
+        let theirs: Vec<Option<Levels>> = t.iter().copied().map(Some).collect();
+        let mut ours = t.clone();
+        for n in 100..140 {
+            ours[n][3] = t[if n % 2 == 0 { n - 1 } else { n + 1 }][3];
+        }
+        let off = (100..140).filter(|&n| TOL.differs(t[n][3], ours[n][3])).count();
+        assert!(off > 20, "frame by frame most differ: {off}");
+        let v = judge(&theirs, &ours, TOL);
+        assert!(v.runs.is_empty(), "{v:?}");
+        assert_eq!((v.differing, v.shifted), ([0; 4], 0), "{v:?}");
+        // Past the range by more than the tolerance, it differs.
+        for n in 100..104 {
+            let near = t[n - 1..=n + 1].iter().map(|l| l[3]);
+            let (lo, hi) = (near.clone().min().unwrap(), near.max().unwrap());
+            ours[n][3] = if lo > 600 { lo / 2 } else { hi * 2 };
+        }
+        let v = judge(&theirs, &ours, TOL);
+        assert_eq!(v.failed().map(|r| (r.channel, r.first, r.frames)), Some((3, 101, 4)), "{v:?}");
+    }
+
+    /// A frame not compared (`None`, a step of two video frames) is left out of its neighbours'
+    /// ranges.
+    #[test]
+    fn a_frame_not_compared_is_left_out_of_the_range() {
+        let mut theirs: Vec<Option<Levels>> = vec![Some([1000; 4]); 60];
+        theirs[30] = None;
+        theirs[31] = Some([5000; 4]);
+        let mut ours: Vec<Levels> = theirs.iter().map(|t| t.unwrap_or([1000; 4])).collect();
+        // Silent on frame 29: its range is frame 28's and its own, 1 000, so it differs (judged
+        // unshifted: a shift of one would find the 5 000 in a neighbour's range).
+        ours[29][0] = 0;
+        let v = judge(&theirs, &ours, Tolerance { shift: 0, ..TOL });
+        assert_eq!((v.differing, v.shifted, v.compared), ([1, 0, 0, 0], 0, 59), "{v:?}");
+    }
+
+    /// A case's `[[exclude]] what = "channels"` stretch: a run wholly inside it is known, not
+    /// failed; one reaching past it still fails.
+    #[test]
+    fn a_run_inside_a_known_stretch_is_reported_not_failed() {
+        let base = "sync = \"power-on\"\nframes = 300\n[[exclude]]\nwhat = \"channels\"\n";
+        let case = Case::parse("x", &format!("{base}frames = [140, 160]\nnote = \"n\"\ntask = \"T216\"\n"))
+            .unwrap();
+        let t = tune(300);
+        let theirs: Vec<Option<Levels>> = t.iter().copied().map(Some).collect();
+        let mut ours = t.clone();
+        for l in &mut ours[145..150] {
+            l[3] = 0;
+        }
+        for l in &mut ours[158..164] {
+            l[1] = 0;
+        }
+        let v = excuse(judge(&theirs, &ours, TOL), &case);
+        let known: Vec<_> = v.known.iter().map(|(r, t)| (r.channel, r.first, t.as_str())).collect();
+        assert_eq!(known, [(3, 146, "T216")], "{v:?}");
+        assert_eq!(v.runs.iter().map(|r| (r.channel, r.first)).collect::<Vec<_>>(), [(1, 159)]);
+        // A stretch needs its frames.
+        assert!(Case::parse("x", &format!("{base}note = \"n\"\ntask = \"T\"\n")).is_err());
     }
 
     #[test]

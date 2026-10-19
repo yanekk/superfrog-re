@@ -45,11 +45,25 @@ fn the_music_stopped_inside_the_slot_machines_load_is_silent_after_it() {
 /// The slot machine's effects (T213 review): `sfx_play`'s writes from its raster wait's end are
 /// four lines after its channel's DMACON off, so Paula lets the channel go idle and restarts the
 /// effect. Made at one instant, the reels' effects were lost on channel 2: runs of 6 and 7 frames.
-/// The runs of 3 left (a slow effect a few lines off) are T215's; up to 4 are let through here.
+/// The runs of 3 left then (a slow effect a few lines off) pass since T215 judges each frame against
+/// the original's range over it and its neighbours.
 #[test]
 fn the_slot_machines_effects_restart_as_on_the_original() {
     let case = Case::load(&cases_dir().join("slot-gamble.toml")).unwrap();
-    let v = channels::check(&case, channels::Tolerance { frames: 4, ..channels::OWNER })
-        .unwrap_or_else(|e| panic!("{e}"));
+    let v = channels::check(&case, channels::OWNER).unwrap_or_else(|e| panic!("{e}"));
     assert!(v.runs.is_empty(), "{:?}", v.runs);
+}
+
+/// The whole game (T215), power-on to `end_seq_load`, judged with the owner's tolerance: each frame
+/// against the original's range over it and its neighbours, so a slow sound a few lines off passes.
+/// Only the stretch `game-whole.toml` lists as known (WB-1's channel 3, T216) may differ past it.
+/// The feed from the trace cache: 7 min (434 s), 40 uncached.
+#[test]
+#[ignore]
+fn the_whole_games_channels_sound_as_the_original_does() {
+    let case = Case::load(&cases_dir().join("game-whole.toml")).unwrap();
+    let v = channels::check(&case, channels::OWNER).unwrap_or_else(|e| panic!("{e}"));
+    println!("{v:?}");
+    assert!(v.runs.is_empty(), "{:?}", v.runs);
+    assert!(v.known.iter().all(|(_, task)| task == "T216"), "{:?}", v.known);
 }
