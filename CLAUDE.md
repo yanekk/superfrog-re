@@ -29,8 +29,8 @@ derived by the tools.
   sits at offset `0x11300` in each world's sprite bank. See `docs/06`.
 - **Collision:** a cell is solid iff `flag & 0b11000 == 0b11000`; **flag 38 = fake
   wall = secret passage** (`tools/find_secrets.py`, 144 found). See `docs/07`.
-- **The Rust engine plays the whole game** (`engine/`, plan `plans/rust-engine/`, done
-  2026-10-18): `sf-core` is the game, `sf-app` the macOS app (`cd engine && cargo run
+- **The Rust engine plays the whole game** (`engine/`, plan `plans/rust-engine/`;
+  T213, the app's note timing, still open): `sf-core` is the game, `sf-app` the macOS app (`cd engine && cargo run
   --release -p sf-app`; "Play it" in the README). It is **faithful, judged by machine**
   (DESIGN §2.1): `sf-conform` runs the original on the vAmiga oracle and compares state,
   picture, sound and milestones; `sf-e2e` drives the real app, the whole game included.

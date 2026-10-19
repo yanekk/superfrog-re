@@ -29,7 +29,8 @@ supply your own copies in the repo root before running the tools.
 | **All 29 levels rendered to PNG** (`build/levels/`, + montage) | ✅ |
 | Collision flags decoded; **secret passages (fake walls) found** — 144 across the game | ✅ |
 | **Rust engine plays the whole game** natively on macOS, no emulator: intro, title, every level, bosses, slot machine, bonus levels, end sequence, music | ✅ |
-| Engine faithful to the original, judged headless on the oracle: every conformance case (`sf-conform all`), and the whole game from power-on to the end sequence through the app | ✅ |
+| Engine faithful to the original, judged headless on the oracle: every conformance case (`sf-conform all`), and the whole game from power-on to the end sequence through the app (state, picture, milestones) | ✅ |
+| The app's sound note for note: a note restarting a channel mid-sample is lost, as the engine's Paula writes have no beam position ([T213](plans/rust-engine/tasks/T213-paula-write-timing.md)) | ⬜ next |
 | App: menus, keyboard and gamepad controls, save states, CRT and widescreen, playing a level from a `.sflevel` file | ✅ |
 | Map editor (view + edit + repack `ATN!` + rebuild `.adf`) | ⬜ next |
 
