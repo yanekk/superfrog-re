@@ -84,6 +84,9 @@ fn paced_app_is_the_run_alone(frames: Option<u32>, timeout_s: u64) {
         panic!("{}: the app, paced as the engine run alone, parts from it at {d}", case.name);
     }
     let feed = Feed::parse(&read(&f.feed)).unwrap_or_else(|e| panic!("{e}"));
+    if let Some(d) = sound_differs_from_headless(&c.audio_wav, &feed) {
+        panic!("{}: the app's sound parts from the feed mixed headless at {d}", case.name);
+    }
     let original = sf_conform::feed::parse_audio(&read(&f.audio)).unwrap_or_else(|e| panic!("{e}"));
     let app = app_peaks(&c.audio_wav, &read(&c.dir.join("audio-frames.txt")), &feed);
     let heard = heard_where_the_original_is(&original, &app, &feed);
@@ -98,6 +101,35 @@ fn paced_app_is_the_run_alone(frames: Option<u32>, timeout_s: u64) {
         f.frames,
         started.elapsed().as_secs_f64()
     );
+}
+
+/// Where the app's `audio.wav` first parts from the feed played headless through a fresh mixer at
+/// its rate, each load's blanks mixed before the step they end in (`Game::take_load_paula`) and
+/// then every game frame the step ran: the app mixes what the run alone played, blanks included
+/// (T30 review: the app dropping the blanks passed every other check in the test block).
+fn sound_differs_from_headless(wav: &std::path::Path, feed: &Feed) -> Option<String> {
+    let (rate, app) = read_wav(wav);
+    let mut g = Game::with_display(sf_conform::display_data(), Start::PowerOn { seed: feed.seed });
+    let mut paula = sf_paula::Paula::booted(rate);
+    let (mut at, mut ours, mut unheard) = (0, Vec::new(), Vec::new());
+    for (n, fr) in feed.frames.iter().enumerate() {
+        let outs = fr.play(&mut g);
+        for blank in g.take_load_paula() {
+            unheard.clear();
+            paula.frame(&blank, &g, &mut unheard);
+        }
+        ours.clear();
+        for out in &outs {
+            paula.frame(&out.paula, &g, &mut ours);
+        }
+        let theirs = app.get(at..at + ours.len());
+        if theirs != Some(&ours[..]) {
+            let i = theirs.map_or(0, |t| t.iter().zip(&ours).position(|(a, b)| a != b).unwrap_or(0));
+            return Some(format!("frame of play {} (sample {})", n + 1, at + i));
+        }
+        at += ours.len();
+    }
+    (at != app.len()).then(|| format!("the end: the app has {} samples, headless {at}", app.len()))
 }
 
 /// A frame's sound is heard at this swing (half its samples' range, 16-bit units; a level held
