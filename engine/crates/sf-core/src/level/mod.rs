@@ -946,24 +946,36 @@ impl LevelCtx<'_> {
             // The raster wait runs with interrupts off: a frame's end in it holds the vertical
             // blank until INTENA `$c000` ([`LevelCtx::interrupts_back`]).
             let on = self.paula.pop().expect("sfx_play's INTENA $c000");
-            self.audio_spent(at, beam::Cost::AudioStop, beam::Cost::AudioWrite);
+            // Its DMACON off waits for nothing (the period's 1 is written straight after it).
+            self.audio_spent(at, beam::Cost::SfxWrite, beam::Cost::SfxWrite);
             let off = self.paula.last().expect("sfx_play's INTENA $4000").vpos;
+            // The wait itself: to the line three on (T216). Paula sees a channel's DMA go off
+            // only when its period runs out, so with the channel's old period long the time from
+            // the off to the on decides whether the new effect restarts it or is lost.
+            let end = off + 3;
+            if self.clock.line < end {
+                self.wait_lines(end - self.clock.line);
+            }
             self.held = Some((on, off, rest));
             self.interrupt_due_at(true);
             if let Some((on, _, rest)) = self.held.take() {
                 let at = self.paula.len();
                 self.paula.push(on);
-                self.audio_spent(at, beam::Cost::AudioStop, beam::Cost::AudioWrite);
+                self.audio_spent(at, beam::Cost::SfxWrite, beam::Cost::SfxWrite);
                 self.bus.st.audio.play_sfx_wait_over(rest);
             }
             self.bus.st.audio.play_sfx_record(self.sound, rest);
+            self.stamp();
+            self.tick(beam::Tick::Cpu(beam::Cost::SfxRecord, 1));
+            self.clock.cpu(self.costs[beam::Cost::SfxRecord as usize]);
+            self.bus.at = self.clock.nominal();
             // A frame whose end falls after the wait, before the effect's first write, runs its
             // vertical blank there: `sfx_tick` sees the new effect without its duration and ends
             // it, and music takes the channel back (T181: enemies-w6-1-complete 507–509).
             self.interrupt_due_at(true);
             let at = self.paula.len();
             self.bus.st.audio.play_sfx_start(self.sound, rest, self.paula);
-            self.audio_spent(at, beam::Cost::AudioStop, beam::Cost::AudioWrite);
+            self.audio_spent(at, beam::Cost::SfxWrite, beam::Cost::SfxWrite);
         }
     }
 
