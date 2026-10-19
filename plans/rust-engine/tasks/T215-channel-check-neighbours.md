@@ -28,6 +28,21 @@ channel 3 in WB-1, frames of play 180 887–180 943, owned by T216.
 3. An ignored test running `channels` over `game-whole` (feed from the trace cache; about 30 min
    uncached), and `engine/conform/README.md`'s section updated.
 
+## Files
+
+- `engine/crates/sf-conform/src/channels.rs` (`judge`, its unit tests), `sf-conform/src/case.rs`
+  (`Excluded` for `channels`), `engine/conform/cases/game-whole.toml`.
+- `engine/crates/sf-conform/tests/channels.rs`, `engine/conform/README.md`.
+
+## Interface
+
+`channels::judge` unchanged in signature; a case's `[[exclude]] what = "channels"` stretch.
+
+## Tests
+
+- Unit: a slow sound a few lines off passes; a lost note still fails.
+- Ignored: `channels` over `game-whole`; `tests/channels.rs`'s title and slot tests still green.
+
 ## Done when
 
 - [ ] `sf-conform channels conform/cases/game-whole.toml` green, the T216 stretch listed as known.

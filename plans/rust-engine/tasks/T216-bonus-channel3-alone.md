@@ -19,6 +19,20 @@ it, the sound does not.
 Find the state that differs (`SF_CONFORM_ALONE_TRACE`, `examples/irq_writes`, `all_writes`), fix
 it in the engine, and drop `game-whole.toml`'s known `channels` stretch (T215).
 
+## Files
+
+- `engine/crates/sf-core/` where the differing state is found (WB-1's objects or their sound).
+- `engine/conform/cases/game-whole.toml` (its `channels` stretch dropped).
+
+## Interface
+
+None new.
+
+## Tests
+
+- `sf-conform channels conform/cases/game-whole.toml` green with no known stretch (T215's ignored
+  test); a case or unit test at the state found, red before the fix.
+
 ## Done when
 
 - [ ] `sf-conform channels conform/cases/game-whole.toml` green with no known stretch.

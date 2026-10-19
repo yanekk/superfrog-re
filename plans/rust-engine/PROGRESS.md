@@ -178,7 +178,7 @@ done · ⛔ blocked, needs a human. A task dropped by a plan amendment leaves th
 | T210 | window-fits-the-game | T27; blocks T29 | ✅ | |
 | T211 | app-whole-game-paced | T21, T25, T26, T27, T28; blocks T30 | ✅ | |
 | T212 | conform-known-reds | T29; blocks T30 | ✅ | |
-| T213 | paula-write-timing | T30 | 🔍 | Writes placed as the original's handler makes them (front `vbl::place`, load blanks, story DMA stage, slot `sfx_play` wait, level frames in beam order); `FrameOut::unheard` for load-time music stops; `sf-conform channels` with owner's tolerance; 6 tests. Split at pir's context warn: T215 (game-whole green), T216, T217 (whole_game, `all` runs). Deviation: sf-app, sf-e2e mixers use `mixed()`. |
+| T213 | paula-write-timing | T30 | ✅ | Review: slot `sfx_play` wait and slot-load `unheard` stop survived the suite; reproduced by `channels`, tests added (`tests/channels.rs`), plus an `in_beam_order` unit test. Mutated `finish_frame` placement: title test red. Split docs given Files/Interface/Tests. Done-when 1, 3, 4 carried (T215, T217). Deviation `mixed()` held by smoke.rs. |
 | T214 | story-load-blanks | T213 | ⬜ | |
 | T215 | channel-check-neighbours | T213; blocks T214 | ⬜ | |
 | T216 | bonus-channel3-alone | T213; blocks T214 | ⬜ | |
@@ -187,7 +187,7 @@ done · ⛔ blocked, needs a human. A task dropped by a plan amendment leaves th
 A Notes cell holds what was built or what the review found, the test count, and one line per
 deviation from the task doc. A ✅ task's cell may be cut to one line once the next task has been reviewed.
 
-**Review queue:** T213
+**Review queue:** *(empty)*
 
 ## Blocked on the user
 

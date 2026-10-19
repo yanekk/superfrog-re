@@ -18,6 +18,8 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-19 | 🐞 | T213 review sweep, not fixed: the story's `sfx_play` (`story/sound.rs`, intro `Op::Sfx`) makes all its writes at one instant through `play_sfx`, its raster wait included, so a story effect retriggering a channel mid-sample may be lost. Unmeasured. |
+| 2026-10-19 | 📌 | T213 review, read-only: copper Paula writes appended at 0:0 after a front frame's CPU writes reach the mixer as the next frame's, and writes clamped past a frame's end play at its last clock together. Neither measured audible. |
 | 2026-10-19 | 📌 | T213 split at pir's context warning into T215 (neighbour-range judging, game-whole green), T216 (WB-1 channel 3 alone, play 180887–180943), T217 (whole_game e2e and `sf-conform all` on the final build). |
 | 2026-10-19 | 🔄 | T213, owner: the channel check judges a frame against the original's range over it and its neighbours (slow sounds a few lines off); WB-1's channel-3 stretch a follow-up (T216). Probe: game-whole 74 runs fall to 4. |
 | 2026-10-19 | 🐞 | T213, fixed: slot `sfx_play` off/on at one instant (effects lost); load-time `music_stop` writes dropped (channels played 15 frames past the slot's load); level frames' writes going back (W6-2 sfx a frame late). |

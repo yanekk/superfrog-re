@@ -19,6 +19,19 @@ acceptance runs were not made on the final build:
 
 Run each in the background with a time limit; fix what breaks or add the task that does.
 
+## Files
+
+- None expected; `plans/rust-engine/PROGRESS.md` and `FINDINGS.md` for the summaries, and what
+  a red run points at.
+
+## Interface
+
+None.
+
+## Tests
+
+- `engine/crates/sf-e2e/tests/whole_game.rs` (ignored) and `sf-conform all`, as above.
+
 ## Done when
 
 - [ ] Both green on the build that has T213 and T215, summaries in PROGRESS and FINDINGS.
