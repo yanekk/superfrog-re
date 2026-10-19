@@ -18,6 +18,10 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-19 | 📌 | T213 split at pir's context warning into T215 (neighbour-range judging, game-whole green), T216 (WB-1 channel 3 alone, play 180887–180943), T217 (whole_game e2e and `sf-conform all` on the final build). |
+| 2026-10-19 | 🔄 | T213, owner: the channel check judges a frame against the original's range over it and its neighbours (slow sounds a few lines off); WB-1's channel-3 stretch a follow-up (T216). Probe: game-whole 74 runs fall to 4. |
+| 2026-10-19 | 🐞 | T213, fixed: slot `sfx_play` off/on at one instant (effects lost); load-time `music_stop` writes dropped (channels played 15 frames past the slot's load); level frames' writes going back (W6-2 sfx a frame late). |
+| 2026-10-19 | 📌 | T213: resumed probes (`sync = { script = "game-whole", frame = N }`) show mixer artefacts: channels started before the sync play nothing; a sync before a load leaves the engine silent. Judge frames after the next note. |
 | 2026-10-19 | 📌 | T213 added T214 story-load-blanks (owner's yes): the story's loads run no handler blanks (runner counts `game_owns_vbl` only), so after `story-scene4-sound`'s loads at 2286 and 5221 the music is behind, channel 1's first note lost; `channels` red there. |
 | 2026-10-19 | 🔄 | T213, owner: the channel check's tolerance is a frame differing past 256 and 25 % of the louder, runs up to 2 frames let through, the engine's sound shifted up to 10 frames over 25 either side (`channels::OWNER`). |
 | 2026-10-19 | 📌 | T213: `sf-conform channels` compares each channel's level (DAC swing about its mean) per frame of play, vAmiga's taps against the feed replayed through the app's mixer; `.channels` beside `.audio`. Level cases from power-on: no frame differs. |
