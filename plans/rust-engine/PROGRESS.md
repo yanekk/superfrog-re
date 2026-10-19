@@ -182,7 +182,7 @@ done · ⛔ blocked, needs a human. A task dropped by a plan amendment leaves th
 | T214 | story-load-blanks | T213 | ⬜ | |
 | T215 | channel-check-neighbours | T213; blocks T214 | ✅ | |
 | T216 | bonus-channel3-alone | T213; blocks T214 | ✅ | |
-| T217 | t213-acceptance-runs | T213, T215; blocks T214 | ⬜ | |
+| T217 | t213-acceptance-runs | T213, T215; blocks T214 | ✅ | |
 
 A Notes cell holds what was built or what the review found, the test count, and one line per
 deviation from the task doc. A ✅ task's cell may be cut to one line once the next task has been reviewed.
