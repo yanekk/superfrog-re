@@ -19,6 +19,9 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 | Date | | Finding |
 |---|---|---|
 | 2026-10-19 | 📌 | T217, worker-driven, build with T213 and T215: `sf-conform all` 212/212 (7 050 s); whole_game app paced 224 082 frames = run alone, heard 220 901/220 901; soak 50 000 green (4 872 s together). |
+| 2026-10-19 | 📌 | T216 review, measured: the original's `sfx_play` wait from INTENA `$4000` on lines 309–311 ends on the next frame's 56–58 (game-whole f26957, f31759, f79205). The engine wraps only when its frame ends in the wait (`sfx_wait_end`); line 309 alone unchecked. |
+| 2026-10-19 | 🔄 | T216, person: WB-1's channel-3 stretch (play 180887–180943) accepted pending the owner's confirmation, as the intro's fade colour: no state differs; Paula restarts `sfx_play`'s effect only if the old 2954-clock period ends in the ~1000-clock off/on gap. |
+| 2026-10-19 | 🐞 | T216, fixed: the engine's `sfx_play` skipped its raster wait (to VPOS's low byte + 3) and record set-up: off-to-on ~780 clocks, the original's 969–1208. A restart then hinges on clocks: an exact match needs writes within ~100 clocks. |
 | 2026-10-19 | 📌 | T215 review, owner: neighbour ranges let a sound started but unheard for under 5 frames on a silent channel pass (measured: 4 passes, 5 fails). Accepted; check 3 catches never-started sounds. DESIGN §2.1, for the owner to confirm. |
 | 2026-10-19 | 📌 | T215 review, game-whole within tolerance: 12 runs of 2 frames outside T216: channel 2 at 6707–8384 (engine quieter), channel 3 at 223265–223961 (engine ~950, original silent). Not investigated. |
 | 2026-10-19 | 📌 | T215: `channels` on game-whole with neighbour ranges: green, 4 runs left, all channel 3 in WB-1 (180888–180941), listed known for T216. Uncached feed 40 min; the ignored test 7 min cached. |

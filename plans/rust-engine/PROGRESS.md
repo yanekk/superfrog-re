@@ -14,7 +14,7 @@ the account is the commit message. Whoever writes a cell also fixes the over-bud
 **Status:** about 100 tasks ✅; T18, T21 and Phase 3 open; amended to faithful.
 **Last updated:** 2026-10-19
 **Amended 2026-10-15 (owner):** faithful replaces frame-exact (DESIGN §2.1, PLAN.md amendment); T180–T183 added, 14 tasks dropped (PLAN.md).
-**Next `pir-work` will:** T216, then T214.
+**Next `pir-work` will:** T214.
 
 ## Tasks
 
@@ -181,7 +181,7 @@ done · ⛔ blocked, needs a human. A task dropped by a plan amendment leaves th
 | T213 | paula-write-timing | T30 | ✅ | |
 | T214 | story-load-blanks | T213 | ⬜ | |
 | T215 | channel-check-neighbours | T213; blocks T214 | ✅ | |
-| T216 | bonus-channel3-alone | T213; blocks T214 | ⬜ | |
+| T216 | bonus-channel3-alone | T213; blocks T214 | ✅ | |
 | T217 | t213-acceptance-runs | T213, T215; blocks T214 | ✅ | Both runs green on the build with T213 and T215, no code changed. Review clean, no fix commit: checked /tmp/t217 logs. 212 ok lines match 212 tracked cases, sound 0 shifts throughout, game-whole 7 007 milestones; whole_game 2/2 ignored tests passed, 4 872 s; the frame counts match. No mutation, since no code changed. |
 
 A Notes cell holds what was built or what the review found, the test count, and one line per
