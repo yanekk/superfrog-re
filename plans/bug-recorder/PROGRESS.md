@@ -27,7 +27,7 @@ done · ⛔ blocked, needs a human.
 | T02 | level-start | T01 | ✅ | |
 | T03 | original-start | T02 | ✅ | |
 | T04 | replay-tool | T01, T02 | ✅ | |
-| T05 | compare-tool | T03, T04 | ⬜ | |
+| T05 | compare-tool | T03, T04 | 🔍 | `bug compare`/`bug case`, 7 tests (3 slow ignored). Acceptance stretch, chain, short run same; W4-3 leaves recording at 399, 352 legs same. Deviations: `compare` returns `Compared`, not `Result<Outcome, Divergence>`; chain/slot tests force W1-1's exit by pokes (`compare_with`); planted `score` at 400, not `frog_x` (step restores it; lag re-sync). |
 | T06 | app-recorder | T02 | ⬜ | |
 | T07 | app-replay | T06 | ⬜ | |
 | T08 | start-level-dialog | T06 | ⬜ | |
@@ -37,7 +37,7 @@ done · ⛔ blocked, needs a human.
 | T12 | fix-procedure | T05, T11 | ⬜ | |
 | T13 | black-screen | T12 | ⬜ | |
 
-**Review queue:** *(empty)*
+**Review queue:** T05
 
 ## Blocked on the user
 
