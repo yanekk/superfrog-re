@@ -11,9 +11,9 @@ writes a cell also fixes the over-budget cell they walk past.
 
 **Plan reviewed:** 2026-10-20 — 4 fixed, 4 decided with the user
 
-**Status:** T00 implemented, awaiting review.
+**Status:** T00 ✅.
 **Last updated:** 2026-10-20
-**Next `pir-work` will:** review T00, then T01.
+**Next `pir-work` will:** build T01.
 
 ## Tasks
 
@@ -22,7 +22,7 @@ done · ⛔ blocked, needs a human.
 
 | # | Task | Depends on | State | Notes |
 |---|---|---|---|---|
-| T00 | prove-the-ground | — | 🔍 | Start (b) chosen, equal and faithful; retime frame for frame with load holds and level/slot anchors; lag drifts, legs of 8 passes. Formula held. Deviations: hard measured by write (options screen lacks it), owner dropped Hard, Lives default 3 (D12); WB-1 run on `bonus-fly`; pokes on both sides only on W1-2. Spikes deleted. |
+| T00 | prove-the-ground | — | ✅ | Start (b), frame-for-frame retiming with load holds and anchors, legs of 8 under lag (D12: no Hard, Lives 3). Review: fixed T06/T08 still offering Hard. Confirmed cap and power-on values in the original's 68k code; reran spikes: cell 1120/1176, W1-2 (b) green (a) diverges, W4-3 paced faithful green. No code, no mutation. |
 | T01 | recording-format | T00 | ⬜ | |
 | T02 | level-start | T01 | ⬜ | |
 | T03 | original-start | T02 | ⬜ | |
@@ -37,7 +37,7 @@ done · ⛔ blocked, needs a human.
 | T12 | fix-procedure | T05, T11 | ⬜ | |
 | T13 | black-screen | T12 | ⬜ | |
 
-**Review queue:** T00
+**Review queue:** empty
 
 ## Blocked on the user
 
