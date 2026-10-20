@@ -280,6 +280,20 @@ Sync points:
   START GAME (`scripts/start-w1-1.txt`), any other level of W1–W6 and the bonus level (`"WB-1"`) by
   typing its level code on the options screen, the disks swapped as the game asks (docs/12
   "Reaching every level"). About 30 s the first time; cached after.
+- `sync = { level = "W1-1", lives = N }`: the first in-level frame as `{ level = "W1-1" }`, then
+  `frog_lives` (the spare lives, 0 to 99) set to N (T79).
+- `sync = { level = "W1-1", lives = 3, points = 0, energy = 4, difficulty = "normal", spud = false,
+  wings = false, seed = "1a2b3c4d 5e6f7a8b" }`: a level started with the Start Level dialog's values
+  (bug-recorder T03), as a bug recording's header names them. Here `lives` is the dialog's 3, 5 or 7,
+  not `frog_lives`: any of `points`, `energy`, `difficulty`, `spud`, `wings`, `seed` beside `level`
+  makes it this form, and then all eight keys are needed. The original is switched on (an empty df1
+  for W6-2..4), the options screen's LIVES and GAME MODE set and the level's code typed, every disk
+  it asks for put in (the final level by W6-4's code, its exit forced); at the level's first frame
+  the points, energy, spud and wings are written in, and from the engine's `Game::start_level` with
+  the same values and seed the random state and what the title's time and the loads' length leave
+  (`sync::SETUP_FROM_ENGINE`). The engine is that `start_level` itself, not a transplant, so the case
+  tests the app's own start. Every `LAYOUT` variable is then equal but `playfield_clean`
+  (`tests/recorder_setup_start.rs`). About 30 s the first time; cached after.
 - `sync = { slot = "<name>", start = "<name>" }`: the slot machine's first frame. W1-1 is reached
   by the `start` script (`start-w1-1` when left out; `start-w1-1-blink1` and `start-w1-1-late`
   START GAME later, so the RNG has moved 1 and 3 steps: it never moves in W1-1), the `slot`

@@ -13,8 +13,9 @@ use std::sync::atomic::{AtomicU64, Ordering};
 
 use sf_assets::{LevelId, World};
 use sf_core::input::{FrameInput, Joy, KeySet};
-use sf_core::layout::{AmigaMemory, Ram, h0};
-use sf_core::{HandlerEnd, Pacing, Rng};
+use sf_core::layout::{AmigaMemory, LAYOUT, Ram, h0};
+use sf_core::recording::LevelSetup;
+use sf_core::{Game, HandlerEnd, Pacing, Rng};
 use sf_disk::{DiskSlot, sha1_hex};
 use sf_oracle::{Amiga, CpuRegs, OracleConfig, Snapshot};
 
@@ -80,7 +81,40 @@ pub enum SyncPoint {
     /// A level's first frame as [`SyncPoint::AtLevel`] reaches it, `frog_lives` (h0+$82e) then
     /// set to `lives` (T79: the bonus level played to its end through the deaths on the way).
     Lives { level: LevelId, lives: u16 },
+    /// A level started with the Start Level dialog's values (bug-recorder T03, its DESIGN §2.8, D2
+    /// as T00 measured it): the original switched on (an empty df1 connected for W6-2..4, whose
+    /// codes then load the first map set the engine plays), every disk it asks for put in; the
+    /// title menu's OPTIONS, LIVES and GAME MODE moved to the setup's, the level's code typed,
+    /// the options left and START GAME (the final level by W6-4's code, its exit forced, as
+    /// [`SyncPoint::AtLevel`]). At the level's first frame the setup's points, energy, spud and
+    /// wings are written in, and [`SETUP_FROM_ENGINE`] is copied from the engine's
+    /// `Game::start_level` with the same setup and `seed`: the random state and what the title's
+    /// time and the loads' length leave. The engine side is that `start_level` itself, not a
+    /// transplant ([`setup_start`]).
+    Setup { setup: LevelSetup, seed: Rng },
 }
+
+/// What the original takes from the engine's `Game::start_level` at a [`SyncPoint::Setup`]'s
+/// frame 0 (T00): the random state (the engine's seed, as the app's start has it); what the
+/// title's time decides, which the engine's own menu timing differs in (`flow.rs` `TITLE_TIME`);
+/// and what the loads' length leaves, the engine loading at once (the music's place, the progress
+/// map's frog sprites, read on WB-1; the music's fade and the map's blink count, which differ only
+/// on the final level, reached through W6-4's tally and load).
+pub const SETUP_FROM_ENGINE: [&str; 13] = [
+    "rng_state",
+    "opt_flash",
+    "password_buf",
+    "sfx_chan0",
+    "kbd_toggle",
+    "title_blink",
+    "title_menu",
+    "p41_channels",
+    "exit_sprite_left",
+    "exit_sprite_right",
+    "exit_sprite_copper",
+    "music_fade",
+    "map_blink",
+];
 
 /// The oracle at a sync point.
 pub struct Synced {
@@ -730,6 +764,10 @@ pub fn reach_frozen(
             synced.memory = core_memory(synced.amiga.memory());
             Ok(synced)
         }
+        SyncPoint::Setup { setup, seed } => {
+            let _ = frozen;
+            setup_start(setup, *seed, frames).map(|(synced, _)| synced)
+        }
         SyncPoint::AtLevel(_) => {
             let s = InputScript::load(&script_path(DEFAULT_START))?;
             at_snapshot(&w1_1_key(&tag, &s), 1, frames, LEVEL_SEARCH, |a| {
@@ -964,6 +1002,119 @@ fn drive_to(a: &mut Amiga, id: LevelId, r: &Route, frozen: Freeze) -> Result<(),
         }
     }
     Err(format!("{id} not reached in {search} frames"))
+}
+
+/// `score`, `frog_next_life`, `frog_hearts`, `frog_spud_on`, `frog_flight`: where
+/// `Game::start_level` writes the setup's values.
+const FROG_NEXT_LIFE: u32 = h0(0x880);
+const FROG_HEARTS: u32 = h0(0x830);
+const FROG_SPUD_ON: u32 = h0(0x852);
+const FROG_FLIGHT: u32 = h0(0x866);
+
+/// The options screen's LIVES and GAME MODE at power-on (`opt_lives` 0, `opt_game_mode` 1), where
+/// a [`SyncPoint::Setup`]'s presses start from.
+const OPTIONS_AT_POWER_ON: (u8, u8) = (0, 1);
+
+/// [`SyncPoint::Setup`]'s menu script: [`MENU`] to the options screen, then from frame 4 800 a
+/// press every 40 frames (held 10): right or left on LIVES to the setup's, down, the same on GAME
+/// MODE, down twice to LEVEL CODE; the code's digits 100 frames after the last down, one every 16;
+/// then [`drive_to`]'s leave and START GAME. The presses from the menu on come [`DF1_LEAD`] sooner
+/// with df1 connected. As T00 measured it (6 912 to 7 589 frames to a level's first frame).
+fn setup_script(setup: &LevelSetup, r: &Route) -> Result<String, String> {
+    let lead = if r.drives == 1 { 0 } else { DF1_LEAD };
+    let at = |t: u32| if t >= 4600 { t - lead } else { t };
+    let mut text: String = MENU[..8]
+        .iter()
+        .map(|(t, k)| format!("{}: {k}\n", at(*t)))
+        .collect();
+    fn press(text: &mut String, t: &mut u32, at: &dyn Fn(u32) -> u32, k: &str) {
+        *text += &format!("{}: {k}\n{}: -\n", at(*t), at(*t + 10));
+        *t += 40;
+    }
+    fn change(text: &mut String, t: &mut u32, at: &dyn Fn(u32) -> u32, from: u8, to: u8) {
+        for _ in 0..from.abs_diff(to) {
+            press(text, t, at, if to > from { "R" } else { "L" });
+        }
+    }
+    let mut t = 4800;
+    let (lives, mode) = OPTIONS_AT_POWER_ON;
+    change(&mut text, &mut t, &at, lives, setup.lives.opt_lives());
+    press(&mut text, &mut t, &at, "D");
+    change(&mut text, &mut t, &at, mode, setup.difficulty.opt_game_mode());
+    press(&mut text, &mut t, &at, "D");
+    press(&mut text, &mut t, &at, "D");
+    t += 60;
+    // The level code's digits, from the original's own `password_table` as the disks hold it.
+    let front = &crate::display_data().front;
+    for k in 0..6 {
+        let digit = front.h0_b(PASSWORD_TABLE - h0(0) + 10 * r.entry + k);
+        let code = match digit {
+            b'0' => 0x0a,
+            b'1'..=b'9' => digit - b'0',
+            _ => return Err(format!("password_table entry {} is not digits", r.entry)),
+        };
+        text += &format!("{}: K{code:02X}\n{}: -\n", at(t), at(t + 6));
+        t += 16;
+    }
+    for d in [40, 140, 200] {
+        text += &format!("{}: F\n{}: -\n", at(t + d), at(t + d + 5));
+    }
+    Ok(text)
+}
+
+/// [`SyncPoint::Setup`]: the original at the setup's level's first frame, the setup's values and
+/// [`SETUP_FROM_ENGINE`] written in, and the engine's `Game::start_level` with the same setup and
+/// `seed`, which is the case's engine. The original's run there is cached by its menu script and
+/// drives; the writes are made after, so one snapshot serves every seed, points, energy, spud and
+/// wings.
+pub fn setup_start(setup: &LevelSetup, seed: Rng, frames: u32) -> Result<(Synced, Game), String> {
+    setup.validate()?;
+    let id = setup.level;
+    let r = route(id).ok_or_else(|| format!("Setup({id}): no such level"))?;
+    let script = setup_script(setup, &r)?;
+    let mut key = format!("setup start v1\nlevel {id}\n{script}");
+    if r.finish_w6_4 {
+        key += "W6-4, then level_state = 1\n";
+    }
+    let search = search(&r);
+    let menu = InputScript::parse(&script).map_err(|e| e.to_string())?;
+    let mut synced = at_snapshot(&key, r.drives, frames, search, |a| {
+        let mut disks = Disks::at(&core_memory(a.memory()));
+        let mut forced = false;
+        for f in 0..search {
+            a.step(menu.input_at(f)).map_err(|e| e.to_string())?;
+            disks.serve(a);
+            let m = core_memory(a.memory());
+            let at_level = in_level(&m) && long(&m, WORLD) == r.world && long(&m, LEVEL) == r.level;
+            if r.finish_w6_4 {
+                if at_level && !forced && word(&m, FINAL_LEVEL_FLAG) == 0 {
+                    a.write_memory(LEVEL_STATE, &1u32.to_be_bytes());
+                    forced = true;
+                } else if forced && in_level(&m) && word(&m, FINAL_LEVEL_FLAG) != 0 {
+                    return Ok(());
+                }
+            } else if at_level {
+                return Ok(());
+            }
+        }
+        Err(format!("Setup({id}): the level not reached in {search} frames"))
+    })?;
+    let game = Game::start_level(crate::display_data(), setup, seed);
+    let a = &mut synced.amiga;
+    a.write_memory(SCORE, &setup.points.to_be_bytes());
+    a.write_memory(FROG_NEXT_LIFE, &setup.next_life().to_be_bytes());
+    a.write_memory(FROG_HEARTS, &(setup.energy as u16).to_be_bytes());
+    a.write_memory(FROG_SPUD_ON, &(setup.spud as u16).to_be_bytes());
+    a.write_memory(FROG_FLIGHT, &(setup.wings as u16).to_be_bytes());
+    for name in SETUP_FROM_ENGINE {
+        let d = LAYOUT
+            .iter()
+            .find(|d| d.name == name)
+            .ok_or_else(|| format!("{name} is not a LAYOUT variable"))?;
+        a.write_memory(d.addr, &game.peek(d.addr, d.width.len()));
+    }
+    synced.memory = core_memory(a.memory());
+    Ok((synced, game))
 }
 
 /// [`SyncPoint::EndSequence`].

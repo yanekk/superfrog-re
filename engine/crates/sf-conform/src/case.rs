@@ -180,6 +180,76 @@ pub fn script_path(name: &str) -> PathBuf {
     }
 }
 
+/// The keys only [`SyncPoint::Setup`]'s form has: any of them beside `level` makes `lives` the
+/// Start Level dialog's 3/5/7, not `frog_lives` ([`SyncPoint::Lives`]).
+const SETUP_KEYS: [&str; 6] = ["points", "energy", "difficulty", "spud", "wings", "seed"];
+
+/// `sync = { level = "W1-1", lives = 3, points = 0, energy = 4, difficulty = "normal",
+/// spud = false, wings = false, seed = "lo hi" }`: every key given, the values in the dialog's
+/// ranges (`LevelSetup::validate`), the seed two hex longs as a recording's `seed` line has them.
+fn setup_sync(s: &toml::Table) -> Result<SyncPoint, String> {
+    use sf_core::recording::{Difficulty, LevelSetup, Lives};
+    const KEYS: [&str; 8] = [
+        "level", "lives", "points", "energy", "difficulty", "spud", "wings", "seed",
+    ];
+    if let Some(k) = s.keys().find(|k| !KEYS.contains(&k.as_str())) {
+        return Err(format!(
+            "sync: unknown key `{k}` in a level setup ({})",
+            KEYS.join(", ")
+        ));
+    }
+    if let Some(k) = KEYS.iter().find(|k| !s.contains_key(**k)) {
+        return Err(format!(
+            "sync: a level setup needs `{k}` ({})",
+            KEYS.join(", ")
+        ));
+    }
+    let int = |k: &str| s[k].as_integer();
+    let flag = |k: &str| s[k].as_bool().ok_or(format!("sync.{k} is true or false"));
+    let hex = |h: &str| {
+        ((1..=8).contains(&h.len()) && h.bytes().all(|b| b.is_ascii_hexdigit()))
+            .then(|| u32::from_str_radix(h, 16).ok())
+            .flatten()
+    };
+    let setup = LevelSetup {
+        level: s["level"]
+            .as_str()
+            .ok_or("sync.level is a string like \"W1-1\"")?
+            .parse()?,
+        lives: match int("lives") {
+            Some(3) => Lives::Three,
+            Some(5) => Lives::Five,
+            Some(7) => Lives::Seven,
+            _ => return Err("sync.lives in a level setup is 3, 5 or 7".into()),
+        },
+        points: int("points")
+            .and_then(|v| u32::try_from(v).ok())
+            .ok_or("sync.points is a score, 0 or more")?,
+        energy: int("energy")
+            .and_then(|v| u8::try_from(v).ok())
+            .ok_or("sync.energy is 1 to 4 hearts")?,
+        difficulty: match s["difficulty"].as_str() {
+            Some("easy") => Difficulty::Easy,
+            Some("normal") => Difficulty::Normal,
+            _ => return Err("sync.difficulty is \"easy\" or \"normal\"".into()),
+        },
+        spud: flag("spud")?,
+        wings: flag("wings")?,
+    };
+    setup.validate().map_err(|e| format!("sync: {e}"))?;
+    let seed = s["seed"]
+        .as_str()
+        .and_then(|v| v.split_once(' '))
+        .and_then(|(lo, hi)| {
+            Some(sf_core::Rng {
+                lo: hex(lo)?,
+                hi: hex(hi)?,
+            })
+        })
+        .ok_or("sync.seed is two hex longs, \"lo hi\"")?;
+    Ok(SyncPoint::Setup { setup, seed })
+}
+
 impl Case {
     pub fn load(path: &Path) -> Result<Case, String> {
         let text = std::fs::read_to_string(path).map_err(|e| format!("{}: {e}", path.display()))?;
@@ -272,6 +342,11 @@ impl Case {
                     },
                 }
             }
+            Some(toml::Value::Table(s))
+                if s.contains_key("level") && SETUP_KEYS.iter().any(|k| s.contains_key(*k)) =>
+            {
+                setup_sync(s)?
+            }
             Some(toml::Value::Table(s)) if s.contains_key("level") => {
                 if let Some(k) = s
                     .keys()
@@ -347,7 +422,7 @@ impl Case {
             },
             _ => {
                 return Err(
-                    "sync is \"power-on\", \"power-on-disk3\", \"power-on-df1\", \"end-sequence\", { script = \"…\", frame = N }, { level = \"W1-1\" }, { slot = \"…\", start = \"…\" }, { game-over = \"…\" } or { end-sequence = true, score = N }"
+                    "sync is \"power-on\", \"power-on-disk3\", \"power-on-df1\", \"end-sequence\", { script = \"…\", frame = N }, { level = \"W1-1\" }, { level = \"W1-1\", lives = 3, points = 0, energy = 4, difficulty = \"normal\", spud = false, wings = false, seed = \"lo hi\" }, { slot = \"…\", start = \"…\" }, { game-over = \"…\" } or { end-sequence = true, score = N }"
                         .into(),
                 );
             }
