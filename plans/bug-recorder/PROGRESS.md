@@ -28,7 +28,7 @@ done · ⛔ blocked, needs a human.
 | T03 | original-start | T02 | ✅ | |
 | T04 | replay-tool | T01, T02 | ✅ | |
 | T05 | compare-tool | T03, T04 | ⬜ | |
-| T06 | app-recorder | T02 | ✅ | Review, one fix: a state saved in a Start Level game, loaded after Reset, unlocked Continue; reproduced by e2e, fixed by a slot mark beside the state. Added a no-`--bugs-dir` test. Probed the real worktree's `commondir` layout; mutated `recorder.step`, red. Native stubs and NSPasteboard copy read-only until T10. Saved-notice wording kept (person, 2026-10-20). |
+| T06 | app-recorder | T02 | ✅ | Review, two fixes, each reproduced by e2e: a state saved in a Start Level game unlocked Continue once loaded (slot mark beside the state); a widescreen screenshot never matched the 4:3 replay (4:3 drawn again). Added a no-`--bugs-dir` test. Probed the real worktree's `commondir` layout; mutated `recorder.step`, red. Native stubs, NSPasteboard read-only. Notice wording kept (person). |
 | T07 | app-replay | T06 | ⬜ | |
 | T08 | start-level-dialog | T06 | ⬜ | |
 | T09 | recording-bar | T06 | ⬜ | |

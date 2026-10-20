@@ -504,7 +504,7 @@ impl App {
         self.save_recording();
     }
 
-    /// The save window for the recording, which ends here (DESIGN §2.4): its screenshot the
+    /// The save window for the recording, which ends here (DESIGN §2.4): its screenshot the 4:3
     /// picture of the last frame recorded at 1×, where play is, the zip's name. Saved, the path is
     /// on the clipboard and in a notice; a write that fails says so and asks again, so the note
     /// is not lost and the recording is kept until it is saved or discarded (§2.11).
@@ -514,8 +514,15 @@ impl App {
         let Some(mut rec) = std::mem::take(&mut run.recorder).finish(at, String::new()) else {
             return;
         };
-        let pic = &run.picture;
-        let shot = crate::capture::png(pic.width as u32, pic.height as u32, &crate::video::picture_rgba(pic));
+        // The 4:3 picture whatever the window shows: a headless replay draws that view, and the
+        // screenshot is what it compares with (DESIGN §2.5). In widescreen the step's picture is
+        // no use narrowed (a level's status rows are laid out for the width), so the 4:3 view is
+        // drawn again; that misses only a picture a pass ended mid-frame on.
+        let pic = match run.game.view() == sf_core::View::default() {
+            true => run.picture.clone(),
+            false => run.game.render(sf_core::View::default()),
+        };
+        let shot = crate::capture::png(pic.width as u32, pic.height as u32, &crate::video::picture_rgba(&pic));
         let path = crate::recorder::zip_name(
             &self.bugs_dir,
             crate::recorder::named_level(&at, &rec),

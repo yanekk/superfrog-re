@@ -417,3 +417,21 @@ fn a_scripted_run_without_bugs_dir_saves_into_its_home_never_the_repo() {
     assert_eq!(found.len(), 1, "{}", c.prompts);
     assert_eq!(read_zip(&found[0]).0.inputs.len(), 30);
 }
+
+#[test]
+fn a_recording_in_widescreen_saves_the_4_3_picture_a_headless_replay_draws() {
+    // The replay (`sf-conform bug replay`) draws the 4:3 view, so the screenshot is the core's
+    // 4:3 picture whatever the window shows (DESIGN §2.5; T04's finding).
+    let (mut app, bugs) = launch(140, 120);
+    let data = cache_data(&app.home);
+    let c = app.run_script(
+        "note w\n1: start-level W1-1 record\n10: menu widescreen\n20: down ArrowRight\n121: menu stop-recording\n",
+    );
+    assert!(c.exit.success(), "{}", c.stderr);
+    let found = zips(&bugs);
+    assert_eq!(found.len(), 1, "{}", c.prompts);
+    let (rec, png) = read_zip(&found[0]);
+    assert_eq!(rec.inputs.len(), 120, "widescreen leaves it running");
+    let (_, last) = replay(&data, &rec, None);
+    assert_eq!(png_image(&png, &c.dir), last, "the screenshot is the 4:3 picture");
+}
