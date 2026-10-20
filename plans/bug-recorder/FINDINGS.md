@@ -8,6 +8,7 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-20 | 📌 | T09 review: OS layer (`SF_E2E_OS=1`) finds no AX window while the console is locked (`IOConsoleLocked` true): "no element … within 20 s", base `controls.rs` too. Owner skipped the rerun; T11's drill re-checks the bar. |
 | 2026-10-20 | 📌 | T09 drill, worker-driven: bar captured at 1×, 2×, 3×, 2× widescreen and fullscreen 1920×1080; STOP, ⌘., scale, widescreen and resize while recording driven. Nothing clipped or overlapping; picture unchanged. |
 | 2026-10-20 | 📌 | T09: winit's `set_min_inner_size` resizes at once: it grows a window below the new minimum, and puts a window entering fullscreen back to its windowed size. Set the minimum only when the bar comes or goes. |
 | 2026-10-20 | 🐞 | No task: `menus.rs` `os_layer_scale_and_fullscreen…` and `window.rs` `fullscreen_on_and_off…` fail on the base branch too (3/3 runs, 1920×1080 display): the window never goes fullscreen within their waits. |

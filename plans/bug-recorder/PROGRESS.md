@@ -31,13 +31,13 @@ done · ⛔ blocked, needs a human.
 | T06 | app-recorder | T02 | ✅ | |
 | T07 | app-replay | T06 | ⬜ | |
 | T08 | start-level-dialog | T06 | ⬜ | |
-| T09 | recording-bar | T06 | 🔍 | NSBox strip, `BAR_HEIGHT` 34 (prototype), `window::picture_area`; 6 unit, 3 script, 3 OS tests, OS layer green 2026-10-20. Time is recorded play time (owner). Deviations: STOP click goes through `Command::StopRecording`; ⌘. hint label added from the prototype; `sf-e2e` gained `os_frame_id`, `os_shows_id`. |
+| T09 | recording-bar | T06 | ✅ | Review clean, no fix commit. Script layer and unit tests green; mutations of `picture_area` and the shrink on STOP both caught. OS layer unverified by review: screen locked, every AX test fails including base `controls.rs`; owner chose to skip, rests on the builder's green run 2026-10-20. |
 | T10 | save-window | T06 | ⬜ | |
 | T11 | recorder-drill | T04, T07, T08, T09, T10 | ⬜ | |
 | T12 | fix-procedure | T05, T11 | ⬜ | |
 | T13 | black-screen | T12 | ⬜ | |
 
-**Review queue:** T09
+**Review queue:** *(empty)*
 
 ## Blocked on the user
 
