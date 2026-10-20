@@ -32,7 +32,7 @@ done · ⛔ blocked, needs a human.
 | T07 | app-replay | T06 | ✅ | |
 | T08 | start-level-dialog | T06 | ✅ | |
 | T09 | recording-bar | T06 | ⬜ | |
-| T10 | save-window | T06 | ⬜ | |
+| T10 | save-window | T06 | ✅ | |
 | T11 | recorder-drill | T04, T07, T08, T09, T10 | ⬜ | |
 | T12 | fix-procedure | T05, T11 | ⬜ | |
 | T13 | black-screen | T12 | ⬜ | |
