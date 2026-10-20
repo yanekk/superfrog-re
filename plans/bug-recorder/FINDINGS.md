@@ -8,6 +8,8 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-20 | 📌 | T07 review: `--replay` in a home with widescreen on captures 464×261 frames, so its last frame never equals the 4:3 `screenshot.png`; the e2e runs a fresh 4:3 home. Left as is. |
+| 2026-10-20 | 📌 | T07 review: fake unverified against real: `ScriptedUi::notice` for a bad `--replay` zip; the native notice is modal and waits for OK, and unscripted without `--capture` there is no timeout. |
 | 2026-10-20 | 📌 | T07: sf-app's `recorder::read_zip` duplicates `sf_conform::bug::read_zip` (no PNG check); a shared one could live in `sf_core::recording`. `--replay` keeps the single-instance lock, so an agent replaying beside the owner's app needs `--home`. |
 | 2026-10-20 | 📌 | T06 review: fake unverified against real: `ScriptedUi::copy` logs `clipboard:`; the native NSPasteboard `copy` is unreachable until T10's save window, so T10's OS test must read the clipboard back. |
 | 2026-10-20 | 📌 | T06: no played route reaches W1-1's exit from `Game::start_level` unpaced: `complete-w1-1` (the original's pace) ends in game over at step 3201 for any seed and offsets −4..+4. T05 and T11 need one; T06's test forces the exit (`N: exit`). |

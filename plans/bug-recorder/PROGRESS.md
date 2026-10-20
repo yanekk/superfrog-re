@@ -11,9 +11,9 @@ writes a cell also fixes the over-budget cell they walk past.
 
 **Plan reviewed:** 2026-10-20 — 4 fixed, 4 decided with the user
 
-**Status:** Plan written 2026-10-20; nothing built.
+**Status:** T00–T04, T06, T07 done.
 **Last updated:** 2026-10-20
-**Next `pir-work` will:** T00, the spike every other task waits on.
+**Next `pir-work` will:** T05, T08, T09, T10.
 
 ## Tasks
 
@@ -29,7 +29,7 @@ done · ⛔ blocked, needs a human.
 | T04 | replay-tool | T01, T02 | ✅ | |
 | T05 | compare-tool | T03, T04 | ⬜ | |
 | T06 | app-recorder | T02 | ✅ | |
-| T07 | app-replay | T06 | 🔍 | `--replay` via `recorder::Replay`/`read_zip`; 3 e2e (`recorder_replay.rs`), 5 unit. Deviation: a held replay captures no further frames. Deviation: `--replay` is unattended like `--script` (no focus, silent, no pads, windowed). Deviation: `read_zip` copies sf-conform's, minus its PNG check. Native menu disabling not OS-tested. |
+| T07 | app-replay | T06 | ✅ | Review clean, no fix commit. Probed the real binary unscripted (held at frame 150, last frame equals screenshot, timeout ends it), a widescreen home (logged), mutated the hold (two e2e red), e2e 5× green. Native menu disabling and the native bad-zip notice read-only. |
 | T08 | start-level-dialog | T06 | ⬜ | |
 | T09 | recording-bar | T06 | ⬜ | |
 | T10 | save-window | T06 | ⬜ | |
@@ -37,7 +37,7 @@ done · ⛔ blocked, needs a human.
 | T12 | fix-procedure | T05, T11 | ⬜ | |
 | T13 | black-screen | T12 | ⬜ | |
 
-**Review queue:** T07
+**Review queue:** *(empty)*
 
 ## Blocked on the user
 
