@@ -3,7 +3,7 @@
 //! ```text
 //! superfrog [--home DIR] [--cache-from-disks DIR] [--script FILE [--pacing FILE]]
 //!           [--capture DIR [--capture-hashes]] [--max-frames N] [--timeout S] [--scale N]
-//!           [--allow-fullscreen] [--audio-device NAME]
+//!           [--allow-fullscreen] [--audio-device NAME] [--bugs-dir DIR]
 //! ```
 
 use std::ffi::OsString;
@@ -17,7 +17,7 @@ pub const FULLSCREEN_MAX_FRAMES: u64 = 300;
 
 pub const USAGE: &str = "usage: superfrog [--home DIR] [--cache-from-disks DIR] [--script FILE \
 [--pacing FILE]] [--capture DIR [--capture-hashes]] [--max-frames N] [--timeout S] [--scale N] [--allow-fullscreen] \
-[--audio-device NAME]";
+[--audio-device NAME] [--bugs-dir DIR]";
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Args {
@@ -47,6 +47,9 @@ pub struct Args {
     /// unavailable, the test hook for a Mac with none (DESIGN §2.11). A scripted run without it
     /// plays nothing.
     pub audio_device: Option<String>,
+    /// Where a bug recording is saved, in place of the repo's `bugs/` (bug-recorder DESIGN §2.4,
+    /// §5.2). A scripted run without it saves into `<home>/bugs`, never the repo.
+    pub bugs_dir: Option<PathBuf>,
 }
 
 impl Default for Args {
@@ -63,6 +66,7 @@ impl Default for Args {
             scale: None,
             allow_fullscreen: false,
             audio_device: None,
+            bugs_dir: None,
         }
     }
 }
@@ -105,6 +109,7 @@ pub fn parse(args: impl IntoIterator<Item = OsString>) -> Result<Args, String> {
                 a.audio_device = Some(value("a device name")?.to_string_lossy().into_owned())
             }
             "--allow-fullscreen" => a.allow_fullscreen = true,
+            "--bugs-dir" => a.bugs_dir = Some(value("a folder")?.into()),
             "-h" | "--help" => return Err(USAGE.to_string()),
             _ => return Err(format!("unknown argument {name:?}\n{USAGE}")),
         }
@@ -153,8 +158,9 @@ mod tests {
     #[test]
     fn every_flag_parses() {
         let a = p("--home h --cache-from-disks d --script s --capture c --max-frames 9 --timeout 3 \
-                   --scale 2 --audio-device none --pacing f --capture-hashes")
+                   --scale 2 --audio-device none --pacing f --capture-hashes --bugs-dir b")
         .unwrap();
+        assert_eq!(a.bugs_dir, Some("b".into()));
         assert_eq!(a.pacing, Some("f".into()));
         assert!(a.capture_hashes);
         assert_eq!(a.home, Some("h".into()));
@@ -209,6 +215,7 @@ mod tests {
         assert!(p("--scale 0").unwrap_err().contains("--scale"));
         assert!(p("--max-frames x").unwrap_err().contains("--max-frames"));
         assert!(p("--home").unwrap_err().contains("--home"));
+        assert!(p("--bugs-dir").unwrap_err().contains("--bugs-dir"));
         assert!(p("--timeout 0").is_err());
         assert!(p("--bogus").unwrap_err().contains("unknown"));
     }
