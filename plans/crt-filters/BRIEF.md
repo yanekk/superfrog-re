@@ -47,3 +47,5 @@ Scale, fullscreen, widescreen, the integer scaling and the game frame itself: ev
 Drive the real app through its script layer (`N: menu filter-…`, `shot`) on the existing `sf-e2e` rig, no new tooling: each filter at 1×, 2×, 3× and widescreen at 2×, title screen and a mid-level frame (W1-1). Save shots to a scratch folder and judge them against the RetroArch look (scanlines, mask, curvature where the port has it): nothing clipped outside the viewport, picture legible at 1×.
 
 ## Changed during the build
+
+- 2026-10-20: pir's tests failed on the starting point too (system `python3` lacks `amitools`, `machine68k`). `.pir/settings.json` setup now makes `venv` and installs `requirements.txt` into it, and the test runs `venv/bin/python`; the person's call.
