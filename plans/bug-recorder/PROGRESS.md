@@ -32,12 +32,12 @@ done · ⛔ blocked, needs a human.
 | T07 | app-replay | T06 | ✅ | |
 | T08 | start-level-dialog | T06 | ⬜ | |
 | T09 | recording-bar | T06 | ⬜ | |
-| T10 | save-window | T06 | 🔍 | Modal NSWindow sheet (`save_window.rs`), rfd alert for the question; script `native-ui`. Deviation: `Ui::save_recording` takes the write as a closure so a failed write keeps the window open. OS layer UNVERIFIED (screen locked): `SF_E2E_OS=1 cargo test -p sf-e2e --test recorder_save_window -- --ignored --test-threads 1` (8 tests). 2 unit tests. |
+| T10 | save-window | T06 | ✅ | Review: one fix, the OS test expected "bug x" but ↑ moves the caret to the start (reproduced headless in AppKit). sf-app, recorder_app, menus green; failed-write retry mutation caught. OS layer UNVERIFIED, screen locked, owner chose to close: `SF_E2E_OS=1 cargo test -p sf-e2e --test recorder_save_window -- --ignored --test-threads 1`; T11 reruns. |
 | T11 | recorder-drill | T04, T07, T08, T09, T10 | ⬜ | |
 | T12 | fix-procedure | T05, T11 | ⬜ | |
 | T13 | black-screen | T12 | ⬜ | |
 
-**Review queue:** T10
+**Review queue:** *(empty)*
 
 ## Blocked on the user
 

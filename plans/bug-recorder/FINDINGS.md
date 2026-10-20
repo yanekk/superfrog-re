@@ -8,6 +8,7 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-20 | 📌 | T10 review: owner chose to close T10 with the 8 `recorder_save_window` OS tests unrun (screen locked); T11 must run them. Native close-button Quit, sheet keys and rfd Save…/Discard mapping are read-only. |
 | 2026-10-20 | 📌 | T10: screen locked (`CGSSessionScreenIsLocked` true) hides every app window from the accessibility API; `recorder_save_window` OS tests (and `controls`) find no buttons. Not run; T11 reruns them on an unlocked screen. |
 | 2026-10-20 | 📌 | T07 review: `--replay` in a home with widescreen on captures 464×261 frames, so its last frame never equals the 4:3 `screenshot.png`; the e2e runs a fresh 4:3 home. Left as is. |
 | 2026-10-20 | 📌 | T07 review: fake unverified against real: `ScriptedUi::notice` for a bad `--replay` zip; the native notice is modal and waits for OK, and unscripted without `--capture` there is no timeout. |
