@@ -60,8 +60,8 @@ fn a_short_run_compares_same() {
 /// The runner's engine perturbed mid-run (100 points added to `score` at the first frame from
 /// 400 not in the middle of a pass, in a stretch the original does not lag: after a lag the
 /// runner re-syncs the engine, RE §2.1; a poked `frog_x` is put back by the frog's own step):
-/// differs, at the pass end after it, naming `score`; the leg after is re-synced from the original and same
-/// again.
+/// differs, at the pass end after it, naming `score`; that leg ends at the next pass end, and the leg
+/// after is re-synced from the original and same again.
 #[test]
 fn a_perturbed_engine_differs_at_that_frame_and_variable() {
     let rec = recording(w1_1(), "frog-run-right", 500);
@@ -95,6 +95,8 @@ fn a_perturbed_engine_differs_at_that_frame_and_variable() {
     );
     let bad: Vec<_> = c.legs.iter().filter(|l| l.first.is_some()).collect();
     assert_eq!(bad.len(), 1, "{r}");
+    // The leg that differs ends at the next pass end (a pass is 2 frames here), not after its 8.
+    assert!(bad[0].to <= g + 2, "the leg differing at {g} ran to {}: {r}", bad[0].to);
     assert!(c.legs.last().unwrap().first.is_none(), "{r}");
 }
 
