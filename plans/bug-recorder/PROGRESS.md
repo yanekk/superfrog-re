@@ -13,7 +13,7 @@ writes a cell also fixes the over-budget cell they walk past.
 
 **Status:** Plan written 2026-10-20; nothing built.
 **Last updated:** 2026-10-20
-**Next `pir-work` will:** T00, the spike every other task waits on.
+**Next `pir-work` will:** review T12, then T14 (blocks T13).
 
 ## Tasks
 
@@ -34,11 +34,11 @@ done · ⛔ blocked, needs a human.
 | T09 | recording-bar | T06 | ✅ | |
 | T10 | save-window | T06 | ✅ | |
 | T11 | recorder-drill | T04, T07, T08, T09, T10 | ✅ | |
-| T12 | fix-procedure | T05, T11 | ⬜ | |
+| T12 | fix-procedure | T05, T11 | 🔍 | `docs/BUG-FIX.md` written; CLAUDE.md, README, conform README point at it. No code, no tests. Deviation: both dry runs fail at step 2 (original leaves a played W1-1 at 1815: false `same`, a panic); T14 carries them, owner's yes. Step 2 sends such a `same` to step 7; `--strict`'s `playfield_clean` frame-0 line is ignored. |
 | T13 | black-screen | T12 | ⬜ | |
 | T14 | original-follows-recording | T05, T12; blocks T13 | ⬜ | Added by T12 with the owner's yes: the original leaves a played W1-1 recording, so `bug compare` misjudges. |
 
-**Review queue:** *(empty)*
+**Review queue:** T12
 
 ## Blocked on the user
 
