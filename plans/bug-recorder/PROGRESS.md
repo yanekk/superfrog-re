@@ -13,7 +13,7 @@ writes a cell also fixes the over-budget cell they walk past.
 
 **Status:** Plan written 2026-10-20; nothing built.
 **Last updated:** 2026-10-20
-**Next `pir-work` will:** review T11.
+**Next `pir-work` will:** T12, fix-procedure.
 
 ## Tasks
 
@@ -33,11 +33,11 @@ done · ⛔ blocked, needs a human.
 | T08 | start-level-dialog | T06 | ✅ | |
 | T09 | recording-bar | T06 | ✅ | |
 | T10 | save-window | T06 | ✅ | |
-| T11 | recorder-drill | T04, T07, T08, T09, T10 | 🔍 | Drill driven (FINDINGS). `recorder_drill.rs`: chain test (slow-ignored, 3.5–6 min) plus 5 OS tests. Harness: menu-bar retry, modal close. `plan_exit --engine`. Deviations: chain via `slot-fire` spins, not `slot-gamble` (8 coins after real play); chain test outside the block (too slow). 20-minute run by hand, not a test. |
+| T11 | recorder-drill | T04, T07, T08, T09, T10 | ✅ | Review clean, no fix commit. Chain test rerun green (365 s, exit 4478, W1-2 7187); a recorder mutation dropping inputs past frame 4500 turned it red. Script-layer recorder, window and menus green. OS-layer drill tests read-only: console locked, not rerun. 20-minute run read-only (FINDINGS). CRLF double-space paste left logged. |
 | T12 | fix-procedure | T05, T11 | ⬜ | |
 | T13 | black-screen | T12 | ⬜ | |
 
-**Review queue:** T11
+**Review queue:** *(empty)*
 
 ## Blocked on the user
 

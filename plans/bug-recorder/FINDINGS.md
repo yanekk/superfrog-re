@@ -8,6 +8,7 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-20 | 📌 | T11 review: the five `recorder_drill` OS-layer tests were not rerun (`IOConsoleLocked` true); their pass rests on the builder's run. Chain test, script-layer recorder tests and a recorder mutation were run. |
 | 2026-10-20 | 📌 | T11 drill, worker-driven: Start Level, W1-1 played to its exit, tally, slot machine, W1-2, STOP with a note; `--replay` and `bug replay` equal. Every ending action, ⌘Q, ⌘2, close, each answer. Nothing clipped at 1×, 3×, widescreen. |
 | 2026-10-20 | 📌 | T11: a 20-minute recording (60 000 frames) saved as a 116 KB zip; `sf-conform bug replay` took 40 s, screenshot equal; `--replay` in the app runs in real time (20 min) to "replay finished at frame 60000". |
 | 2026-10-20 | 🔄 | Owner (T11): STOP while the player had paused leaves the game paused after Save or Discard (DESIGN §2.4's "resumes" undoes STOP's own pause). Pinned by `recorder_drill` OS test. |
