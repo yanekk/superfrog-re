@@ -29,7 +29,7 @@ done · ⛔ blocked, needs a human.
 | T04 | replay-tool | T01, T02 | ✅ | |
 | T05 | compare-tool | T03, T04 | ✅ | Review: one fix, a test that a differing leg ends at the next pass end (mutation of `Legs::due` survived). Ran all 3 slow tests green, mutated retime's input index (caught), CLI `bug case` then `run` green; `--strict bug compare` differs at frame 0 on `playfield_clean` (FINDINGS). |
 | T06 | app-recorder | T02 | ✅ | |
-| T07 | app-replay | T06 | ⬜ | |
+| T07 | app-replay | T06 | ✅ | |
 | T08 | start-level-dialog | T06 | ⬜ | |
 | T09 | recording-bar | T06 | ⬜ | |
 | T10 | save-window | T06 | ⬜ | |
