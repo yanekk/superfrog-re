@@ -41,6 +41,7 @@ gilrs = "0.11"
 objc2 = "0.6"
 # The Controls window's native labels and buttons (T25), on a window winit opens; NSPasteboard puts a
 # saved bug zip's path on the clipboard (bug-recorder T06); the Start Level window is an NSWindow of
-# its own run modally, with NSPopUpButton dropdowns, taking ⌘A/⌘C/⌘V itself (bug-recorder T08).
-objc2-app-kit = { version = "0.3", default-features = false, features = ["std", "NSResponder", "NSView", "NSControl", "NSButton", "NSTextField", "NSText", "NSColor", "NSFont", "NSAccessibilityProtocols", "NSAccessibilityConstants", "NSPasteboard", "NSWindow", "NSApplication", "NSPopUpButton", "NSMenu", "NSMenuItem", "NSCell", "NSGraphics", "NSEvent", "objc2-core-foundation"] }
-objc2-foundation = { version = "0.3", default-features = false, features = ["std", "NSUserDefaults", "NSString", "NSDictionary", "NSValue", "NSGeometry", "NSObject"] }
+# its own run modally, with NSPopUpButton dropdowns, taking ⌘A/⌘C/⌘V itself (bug-recorder T08); the
+# save window is an NSWindow sheet with an NSImageView and an NSAlert for a write that fails (T10).
+objc2-app-kit = { version = "0.3", default-features = false, features = ["std", "NSResponder", "NSView", "NSControl", "NSButton", "NSTextField", "NSText", "NSColor", "NSFont", "NSAccessibilityProtocols", "NSAccessibilityConstants", "NSPasteboard", "NSWindow", "NSApplication", "NSPopUpButton", "NSMenu", "NSMenuItem", "NSCell", "NSGraphics", "NSEvent", "NSImage", "NSImageView", "NSImageCell", "NSTextFieldCell", "NSAlert", "objc2-core-foundation"] }
+objc2-foundation = { version = "0.3", default-features = false, features = ["std", "NSUserDefaults", "NSString", "NSDictionary", "NSValue", "NSGeometry", "NSObject", "NSData"] }

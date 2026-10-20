@@ -8,6 +8,8 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-20 | 📌 | T10 review: owner chose to close T10 with the 8 `recorder_save_window` OS tests unrun (screen locked); T11 must run them. Native close-button Quit, sheet keys and rfd Save…/Discard mapping are read-only. |
+| 2026-10-20 | 📌 | T10: screen locked (`CGSSessionScreenIsLocked` true) hides every app window from the accessibility API; `recorder_save_window` OS tests (and `controls`) find no buttons. Not run; T11 reruns them on an unlocked screen. |
 | 2026-10-20 | 📌 | T08: OS-layer `recorder_start_level` passed 4/4, then quit-discards and busy-app retry changed. Review rerun failed 4/4 on a locked screen (`IOConsoleLocked`); owner deferred the rerun to T11's drill. |
 | 2026-10-20 | 📌 | T08 OS layer: the modal Start Level window sits at window layer 8, so `os_windows` misses it (tests look for its buttons); `AXError -25204` while a started level runs unseen; a locked screen or another worker's OS tests fail every run. |
 | 2026-10-20 | 🐞 | T05 review: `--strict bug compare` (and `--strict run` of any `Setup` case) differs at frame 0 on `playfield_clean`, T03's known start residue, so strict names no engine bug. Open; T12's procedure relies on `--strict`. |

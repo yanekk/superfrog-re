@@ -432,6 +432,18 @@ impl App {
         }
     }
 
+    /// Click the close button of the app's window titled `title`, as a person would.
+    pub fn os_close_window(&mut self, title: &str) {
+        let windows = ax::windows(&ax::app(self.os_pid()));
+        let titles: Vec<String> = windows.iter().map(ax::title).collect();
+        let w = windows
+            .iter()
+            .find(|w| ax::title(w) == title)
+            .unwrap_or_else(|| panic!("no window {title:?}; there are {titles:?}"));
+        let close = ax::attr(w, "AXCloseButton").unwrap_or_else(|e| panic!("{title:?} has no close button: {e}"));
+        ax::press(&close).unwrap_or_else(|e| panic!("closing {title:?}: {e}"));
+    }
+
     /// The element whose accessibility identifier is `id`, in one of the app's windows, waiting up
     /// to 20 s for it to appear, handed to `f`.
     fn os_with_id<T>(&self, id: &str, mut f: impl FnMut(&ax::Cf) -> T) -> T {

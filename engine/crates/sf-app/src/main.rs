@@ -30,6 +30,7 @@ mod pacing;
 mod pad;
 mod progress;
 mod recorder;
+mod save_window;
 mod script;
 mod settings;
 mod start_level_window;
@@ -150,6 +151,7 @@ fn main() {
             notes: s.notes.iter().cloned().collect(),
             log: Vec::new(),
             log_file: log,
+            native: s.native_ui.then_some(NativeUi { parent: None }),
         }),
         None => Box::new(NativeUi { parent: None }),
     };
@@ -335,6 +337,8 @@ impl App {
             self.ui = Box::new(NativeUi {
                 parent: window.clone(),
             });
+        } else if let Some(w) = &window {
+            self.ui.attach(w.clone());
         }
         for m in [settings_damaged, progress_damaged].into_iter().flatten() {
             eprintln!("superfrog: {m}");
