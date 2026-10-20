@@ -27,7 +27,7 @@ done · ⛔ blocked, needs a human.
 | T02 | level-start | T01 | ✅ | |
 | T03 | original-start | T02 | ✅ | |
 | T04 | replay-tool | T01, T02 | ✅ | |
-| T05 | compare-tool | T03, T04 | ⬜ | |
+| T05 | compare-tool | T03, T04 | ✅ | |
 | T06 | app-recorder | T02 | ✅ | |
 | T07 | app-replay | T06 | ✅ | |
 | T08 | start-level-dialog | T06 | ⬜ | |
