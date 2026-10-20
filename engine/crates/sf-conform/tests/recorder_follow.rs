@@ -226,7 +226,7 @@ fn w1_1_played_through_the_slot_machine_is_judged_on_the_recording_to_w1_2() {
 /// T12's dry run 2 on today's engine: W1-1 to its exit, the tally's points, W1-2. Put back where
 /// the original leaves, same; and `bug case` writes a case (with its `put-back`) that runs green.
 #[test]
-#[ignore = "slow: about 6 min (release; 5 300 steps compared, then the case run)"]
+#[ignore = "slow: about 2 min (release; 5 352 steps compared, then the case run)"]
 fn w1_1_played_through_the_points_compares_same_and_its_case_runs_green() {
     let t0 = std::time::Instant::now();
     let rec = through_the_points();
@@ -285,5 +285,41 @@ fn zips() {
         ]);
         std::fs::write(dir.join(name), zip).unwrap();
         eprintln!("{} ({} steps)", dir.join(name).display(), rec.inputs.len());
+    }
+}
+
+/// A case file's `put-back`: read with its steps script; refused beside any sync but a level
+/// setup's, with frames out of order, or with a key it does not know.
+#[test]
+fn a_case_files_put_back_parses_and_refuses_what_it_does_not_know() {
+    let setup = "sync = { level = \"W1-1\", lives = 3, points = 0, energy = 4, difficulty = \"normal\", spud = false, wings = false, seed = \"0 0\" }\nframes = 10\n";
+    let c = sf_conform::Case::parse(
+        "p",
+        &format!("{setup}put-back = {{ steps = \"frog-run-right\", at = [[5, 4], [9, 7]] }}\n"),
+    )
+    .unwrap();
+    let p = c.put_back.unwrap();
+    assert_eq!(p.at, [(5, 4), (9, 7)]);
+    assert_eq!(p.steps, InputScript::load(&script_path("frog-run-right")).unwrap());
+    for (text, why) in [
+        (
+            "sync = \"power-on\"\nframes = 10\nput-back = { steps = \"frog-run-right\", at = [] }\n".to_string(),
+            "level-setup sync",
+        ),
+        (
+            format!("{setup}put-back = {{ steps = \"frog-run-right\", at = [[9, 7], [5, 4]] }}\n"),
+            "increasing order",
+        ),
+        (
+            format!("{setup}put-back = {{ steps = \"frog-run-right\", at = [[5]] }}\n"),
+            "put-back is",
+        ),
+        (
+            format!("{setup}put-back = {{ steps = \"frog-run-right\", at = [], frames = 2 }}\n"),
+            "unknown key `frames`",
+        ),
+    ] {
+        let e = sf_conform::Case::parse("p", &text).unwrap_err();
+        assert!(e.contains(why), "{text}: {e}");
     }
 }

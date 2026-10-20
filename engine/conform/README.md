@@ -212,20 +212,43 @@ once the original is held with nothing pressed until its load is over, its frame
 times itself counted as the recording's steps; at each level's first frame and the slot machine's
 entry the early side waits. It is judged by the faithful checks (frame-exact with `--strict`) in
 legs of 8 of the original's passes: at each leg's start, at a pass end in a level, the engine is
-re-synced from the original, and a leg that differs ends at the next pass end. The first line is
-`same` or `differs at frame F (engine step S): <what differs>` (F the original's frame, S the
-recording's step fed there); then where the original left the recording, if it did (the frog,
-score, lives, hearts or level unlike the recording's at a pass end: under lag the original does
-not play what the owner played, so a bug after that frame may not occur on it), the legs, the lag
-and re-syncs, and the first divergence in full. It writes `original-stop.png` and
-`engine-stop.png`, both sides at STOP, to `--out`, by default the zip's folder (the git-ignored
-`bugs/`). Exit 0 same, 1 differs, 2 refused.
+re-synced from the original, and a leg that differs ends at the next pass end.
+
+Under lag the original stops playing what the owner played (its frog, score, lives, hearts or
+level unlike the recording's at a pass end). There it is **put back on the recording** (T14): the
+recording's engine at that step, every `LAYOUT` variable, is written into the original's memory,
+a new leg begins, and check 4's engine goes on from the same state; so each leg judges whether the
+original, from the owner's state, does what the engine did. The CPU's place, its stack and the
+custom chips are not written; at a pass end both sides are in `level_frame_loop`'s wait, and on
+W1-1 played to W1-2 the original stays on the recording after one put-back (T14). Where it cannot
+be put back (it never reaches the recording's next level or slot machine, the engine loads and the
+original's load is never over, or the recording's engine stays mid-pass), the original **left the
+recording** for good: from there nothing is judged on the owner's game, and a load it never ends
+ends the run there instead of a panic.
+
+The first line is one of:
+
+- `same`: every leg same, the original on the recording to the end (put back where it left it);
+- `differs at frame F (engine step S): <what differs>` (F the original's frame, S the recording's
+  step fed there);
+- `same up to frame F (engine step S), not judged after it`: no leg differs, but the original
+  left the recording at F and could not be put back.
+
+Then how many times the original was put back and the first (`the original left the recording N
+times and was put back on it … first at frame F (engine step S): <what>`), whether it was on the
+recording to its end or where it left it for good and why, the legs, the lag and re-syncs, and the
+first divergence in full. It writes `original-stop.png` and `engine-stop.png`, both sides at STOP,
+to `--out`, by default the zip's folder (the git-ignored `bugs/`). Exit 0 same, 1 differs or not
+judged to the end, 2 refused.
 
 `case` writes `cases/<name>.toml` (`sync` in the level-setup form, `script = "<name>"`, the runner's
 `frames`, the owner's note and `stopped-at` on its first line) and `scripts/<name>.txt` (the
-retimed inputs, in the original's frames); it refuses a name either folder has. The case is run
-whole, not in legs: on a lagging level it may need a `lag-limit`, or a recording cut before the
-original leaves it.
+retimed inputs, in the original's frames); where the original was put back, also
+`scripts/<name>-steps.txt` (the recording's inputs by engine step) and `put-back = { steps =
+"<name>-steps", at = [[N, S], …] }`: once the original has run N frames, the engine started by
+`Game::start_level` from the setup and stepped through the steps script to step S is written into
+it, and the runner's engine re-synced from it. It refuses a name any of the three files has. The
+case is run whole, not in legs: on a lagging level it may need a `lag-limit`.
 
 ## Which cases the test block runs (T181)
 
@@ -273,6 +296,7 @@ frames = 50                                         # frames compared, from the 
 compare = ["vars"]                                  # any of "vars", "picture", "paula" (sound), "render"; default all but render
 resync = false                                      # a re-sync after a lag fails the case (default true; see Pacing)
 lag-limit = { frames = 133, note = "why; the task" } # optional: this case's limit on frames in a row mid-pass (see Pacing)
+put-back = { steps = "bug-x-steps", at = [[1816, 1815]] } # a bug zip's case only (level-setup sync): see Comparing a bug zip
 ```
 
 `render` compares, each frame, the picture the renderer draws from the original's memory transplanted

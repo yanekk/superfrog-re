@@ -42,21 +42,25 @@ cargo run -q --release -p sf-conform -- bug compare "$ZIP"
 ```
 
 The original is started at the same level with the same values and fed the same inputs, retimed
-onto its own frames, and judged by the faithful checks in legs of 8 passes. The first line is
-`same` or `differs at frame F (engine step S): <what differs>`. It writes `original-stop.png` and
-`engine-stop.png` beside the zip. Exit 0 same, 1 differs. About 2½ minutes for a 7 500-frame
-recording.
+onto its own frames, and judged by the faithful checks in legs of 8 passes. Where its lag takes it
+off what the owner played, it is put back: the engine's state at that moment is written into it,
+and the comparison goes on from the owner's game. The first line is `same`, `differs at frame F
+(engine step S): <what differs>`, or `same up to frame F (engine step S), not judged after it`. It
+writes `original-stop.png` and `engine-stop.png` beside the zip. Exit 0 same, 1 differs or not
+judged to the end. About 1 minute for a 5 000-frame recording, 3½ minutes for one through the slot
+machine.
 
 Read the rest of the report before trusting the first line:
 
-- **`the original left the recording at frame L`**: the original lagged and stopped playing what the
-  owner played (its frog, score, lives, hearts or level no longer the recording's). After L the
-  legs judge the engine along the original's own path, not the owner's. If L comes before the
-  frames where the problem shows, the comparison has not looked at the problem: look at
-  `original-stop.png` beside `engine-stop.png`. If they do not show the same place, `same` says
-  nothing about this bug; go to step 7. (On a played W1-1 the original leaves at about frame 1815
-  today; plan `bug-recorder` T14 is the work that keeps it on the recording.)
-- **`re-synced from it after a lag N times`**: after each lag the engine is put back on the
+- **`the original left the recording N times and was put back on it`**: normal on a lagging
+  level (a played W1-1 is put back once, at about frame 1815). Each stretch after a put-back is
+  judged from the owner's state, so the comparison still looks at what the owner played.
+- **`same up to frame F …, not judged after it`** (with `the original left the recording at frame
+  L … and could not be put back`): the original went somewhere the recording did not (another
+  level, a load it never finishes). If the problem shows after L, the comparison has not looked
+  at it: go to step 7. A difference reported after L is real, but on the original's path, not
+  the owner's.
+- **`re-synced from it after a lag N times`**: after each lag the engine is re-synced from the
   original's state, so a difference made inside or just before a lag is not seen. If the problem
   falls in such a stretch, a `same` there is weak; say so in the report.
 - **Easy difficulty** (`difficulty easy` in the header) has no conformance cases yet: a difference
@@ -79,8 +83,8 @@ The pictures at the moment you pressed STOP, the original's and ours:
 <Any caveat from step 2: lag re-syncs over the stretch, easy difficulty.>
 ```
 
-Only say "the original does this too" when step 2's checks hold: the original was on the
-recording over the problem, and both pictures show the same place.
+Only say "the original does this too" when the first line is `same` (not `same up to …`) and both
+pictures show the same place.
 
 ## 4. Different: find the first difference, then fix the engine
 
@@ -110,9 +114,10 @@ cargo run -q --release -p sf-conform -- run conform/cases/bug-<short-name>.toml
 `bug case` writes `conform/cases/bug-<short-name>.toml` and `conform/scripts/bug-<short-name>.txt`
 (the inputs in the original's frames; the owner's note on the case's first line). Make it before
 the fix and run it: it must fail at the difference step 4 found. Run it again after the fix: it
-must pass. Keep both outputs for the commit message. The case is run whole, not in legs: on a
-lagging level it may need a `lag-limit`, or the script cut before the original leaves the
-recording (`engine/conform/README.md` § Comparing a bug zip).
+must pass. Keep both outputs for the commit message. Where the original was put back, `bug case`
+also writes `conform/scripts/bug-<short-name>-steps.txt` (the recording's inputs, which the case
+puts the original back to); commit it with the case. The case is run whole, not in legs: on a
+lagging level it may need a `lag-limit` (`engine/conform/README.md` § Comparing a bug zip).
 
 Add it to `engine/crates/sf-conform/tests/cases.rs`:
 
@@ -141,8 +146,8 @@ Escape: rust-engine T{nn}
 
 ## 7. A difference the case cannot show
 
-If the replay shows the problem but the comparison cannot (the original left the recording before
-it, it falls inside a re-synced lag, or the case runs green while the replay still shows it), do not
+If the replay shows the problem but the comparison cannot (`same up to` a frame before it, it
+falls inside a re-synced lag, or the case runs green while the replay still shows it), do not
 force it into a case or call it a quirk. Report to the owner what the replay shows (frame, picture
 path, one sentence), what the comparison could and could not see, and why. Commit nothing unless
 the owner says how to go on.
