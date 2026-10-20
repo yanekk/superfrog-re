@@ -119,7 +119,9 @@ fn stop_save_note(scale: u32, fullscreen: bool) {
     app.os_activate();
     std::thread::sleep(Duration::from_millis(300));
     type_keys(&mut app, &[Key::Char('b'), Key::Char('u'), Key::Char('g'), Key::Space, Key::Left, Key::Right, Key::Up, Key::Char('x')]);
-    until("the note typed", || app.os_text_id("note") == "bug x");
+    // ↑ in a one-line field moves the caret to the start (an AppKit field editor, measured in T10
+    // review), so the x lands first.
+    until("the note typed", || app.os_text_id("note") == "xbug ");
     app.os_key(Key::Return);
     until("the saved notice", || app.os_buttons().iter().any(|b| b == "OK"));
     app.os_press_button("OK");
@@ -133,7 +135,7 @@ fn stop_save_note(scale: u32, fullscreen: bool) {
     assert!(c.prompts.contains(&format!("clipboard: {path}\n")), "{}", c.prompts);
     assert!(c.prompts.contains(&format!("notice: The bug recording is saved as {path}.")), "{}", c.prompts);
     let (rec, png) = read_zip(&found[0]);
-    assert_eq!(rec.note, "bug x");
+    assert_eq!(rec.note, "xbug ");
     let stop = after_step(&c.stderr, "stop-recording", 0);
     assert_eq!(rec.inputs.len() as u64, stop, "the recording ends at STOP's frame");
     assert_eq!(location, format!("Location: {}", rec.stopped_at.unwrap()));
