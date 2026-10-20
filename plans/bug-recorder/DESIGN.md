@@ -58,10 +58,10 @@ RE §2.7, "nothing new drawn in-game").
 | Field | Control | Values | Default | Sets |
 |---|---|---|---|---|
 | Level | dropdown | the 29 levels a game plays (`level_entry.rs`'s `ids()`; W6-1's unused copy is left out) | W1-1 | which level |
-| Lives | dropdown | 3, 5, 7 | 5 | `opt_lives` 0/1/2 as the options screen sets it; `frog_new_game` stores 2/4/6 spare lives |
+| Lives | dropdown | 3, 5, 7 | 3 | `opt_lives` 0/1/2 as the options screen sets it; `frog_new_game` stores 2/4/6 spare lives |
 | Points | number field | 0–999 999 | 0 | `score` (h0+$834) |
 | Energy | dropdown | 1–4 hearts | 4 | `frog_hearts` (h0+$830) |
-| Difficulty | dropdown | Easy, Normal, Hard | Normal | `opt_game_mode` 0/1/2 (h0+$9e6) |
+| Difficulty | dropdown | Easy, Normal | Normal | `opt_game_mode` 0/1 (h0+$9e6) |
 | Spud | checkbox | | off | `frog_spud_on` |
 | Wings | checkbox | | off | `frog_flight` |
 | Enable recorder? | checkbox | | on | whether a recording starts |
@@ -365,6 +365,9 @@ Nothing here can lock anyone out. A bad zip is deleted by hand; `bugs/` can be e
 - D8: `--replay` is for agents and tests, watch-only (owner, 2026-10-20).
 - D9: the recording parser lives in sf-core because sf-app may not depend on sf-conform (it pulls in
   the oracle, RE §3.2); the script token format moves there instead of being written twice.
+- D12 (owner, 2026-10-20, from T00's oracle runs): no Hard, because the original's options screen
+  cannot select it (`opt_game_mode` stops at 1); Lives defaults to 3, the game's own new-game
+  value (`opt_lives` 0 at power-on), which is what "new-game values" meant. D2 settled as (b).
 - D11 (owner, 2026-10-20): the test block runs only the parts this plan changes, because the whole
   workspace costs about 50 minutes warm per review; the whole suite runs once, in T13.
 - D10: extend, not rebuild: `Start::Level`/`start_at_with` for the start, `SyncPoint` for the

@@ -1,5 +1,18 @@
 # T03 — original-start
 
+> **Amendment (T00, 2026-10-20).** The engine side of a `Setup` case is the engine's own
+> `start_level` (equal at frame 0), never a transplant. The original: power-on, one drive, every
+> disk asked for put in (`Disks::serve`); `sync::drive_to`'s `MENU` to OPTIONS, then the same
+> options presses as T02 from frame 4800 every 40 frames, the code's digits 60 frames after the
+> last down, `drive_to`'s leave and START GAME; frame 0 is the first frame `in_level` with the
+> level's `world`/`level` (6 912–7 589 frames measured). At frame 0, write into the original the
+> four values and, from the engine's `start_level` with the same setup and seed: `rng_state`, what
+> the title's time decides (`opt_flash`, `password_buf`, `sfx_chan0`, `kbd_toggle`, `title_blink`,
+> `title_menu`, flow.rs `TITLE_TIME`) and what the load's length leaves (`p41_channels`,
+> `exit_sprite_left`, `exit_sprite_right`, `exit_sprite_copper`; needed on WB-1). Then only
+> `playfield_clean` (presentation) differs. Tests: easy, not hard (owner dropped it). An `AtFrame`
+> snapshot key cannot hold the writes; the variant needs its own key (the spike planted one).
+
 **Phase:** 1 · **Depends on:** T02 · **Weight:** medium
 
 ## Goal

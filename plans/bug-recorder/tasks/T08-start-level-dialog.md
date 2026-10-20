@@ -1,5 +1,9 @@
 # T08 — start-level-dialog
 
+> **Amendment (T00 review, 2026-10-20, from D12).** The Difficulty dropdown offers Easy and Normal
+> only, and Lives defaults to 3 (DESIGN §2.1). The end-to-end list reads `Easy/Normal` for the
+> difficulty values and `easy` for the W1-2 start. `prototype/` still shows Hard; it is non-binding.
+
 **Phase:** 2 · **Depends on:** T06 · **Weight:** medium
 
 ## Goal
@@ -38,9 +42,9 @@ accessibility identifier for the OS layer. Return selects Start, Esc Cancel.
 
 - suite: `sf-e2e` script layer (block) and OS layer (`SF_E2E_OS=1`) · sizes: scale 1×, 2×, 3×, fullscreen
 - [ ] OS: Game ▸ Start Level… opens the window with the defaults
-- [ ] OS: each dropdown offers exactly its values (29 levels, 3/5/7, 1–4, Easy/Normal/Hard)
+- [ ] OS: each dropdown offers exactly its values (29 levels, 3/5/7, 1–4, Easy/Normal)
 - [ ] OS: typing 1000000 into Points disables Start; 450000 enables it
-- [ ] OS: Start with W1-2, 7 lives, hard, wings, recorder on → W1-2 starts, `frog_lives` 6, recording on (stderr line)
+- [ ] OS: Start with W1-2, 7 lives, easy, wings, recorder on → W1-2 starts, `frog_lives` 6, recording on (stderr line)
 - [ ] OS: Esc closes it and the game resumes unchanged
 - [ ] script: `form …` events drive the model as `controls …` does; unit tests cover every `FormAction` and refusal
 
