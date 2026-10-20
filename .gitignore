@@ -10,3 +10,10 @@ renders/    # derived game-art PNGs — reproducible from build/ via the tools
 # Copyrighted Superfrog disk images — supply your own; never committed/distributed
 *.zip
 *.adf
+
+# macOS
+.DS_Store
+
+# pir: per-session worktrees and run-control state (regenerated, large)
+.claude/worktrees/
+plans/*/.parallel/

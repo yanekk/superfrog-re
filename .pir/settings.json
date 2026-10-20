@@ -1,0 +1,5 @@
+{
+  "baseBranch": "main",
+  "setup": [],
+  "test": ["NO_COLOR=1 python3 -m unittest discover -q -s . -p 'test_*.py' || [ $? -eq 5 ]"]
+}
