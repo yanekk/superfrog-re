@@ -8,6 +8,9 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-20 | 🔄 | Owner (T02): Start Level offers 26 levels (`sf_core::recording::levels()`), not 29: W6-2alt..W6-4alt are never loaded when a level is started by its code. T08's dropdown takes `levels()`; `LevelSetup::validate` refuses the alt maps. |
+| 2026-10-20 | 🔄 | Owner (T02): screen name `world end` added (end-of-world picture); awards, hall of talent and attract demo read `title`; a fade's blank frame reads as the place before it (`Game::location` keeps the last). |
+| 2026-10-20 | 📌 | T02: `Game::start_level` runs about 2 700 frames from power-on, 4 s a start in the dev build (opt-level 2); WW-1 adds W6-4's forced exit and tally. T06/T08 may want it off the main thread. |
 | 2026-10-20 | 🐞 | T01 review: `Recording::parse` preallocated the header's `frames`, so `frames 4000000000` asked for 128 GB. Fixed: `MAX_FRAMES` (a day, 4 320 000) refused by `parse` and `Recording::validate`; T06's recorder must stop or refuse past it. |
 | 2026-10-20 | 📌 | T00 review: W4-3 `complete-w4-3` retimed frame for frame, faithful runner with the engine paced: GREEN, 388 late, 1 resynced. Paced legs are expected to hold where unpaced legs fail; T05's test is the per-leg measurement. |
 | 2026-10-20 | 🔄 | Owner (T00): the dialog drops Hard (the original's options screen offers only easy/normal; `options_input` caps `opt_game_mode` at 1) and Lives defaults to 3, the game's own new-game value (`opt_lives` 0 at power-on), not 5. |
