@@ -8,6 +8,8 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-20 | 📌 | T08: the four OS-layer `recorder_start_level` tests passed 4/4 (1×, 2×, 3×, fullscreen), then quit-while-recording-discards and the busy-app retry changed; they need one rerun on an unlocked screen, in T11's drill. |
+| 2026-10-20 | 📌 | T08 OS layer: the modal Start Level window sits at window layer 8, so `os_windows` misses it (tests look for its buttons); `AXError -25204` while a started level runs unseen; a locked screen or another worker's OS tests fail every run. |
 | 2026-10-20 | 📌 | T06 review: fake unverified against real: `ScriptedUi::copy` logs `clipboard:`; the native NSPasteboard `copy` is unreachable until T10's save window, so T10's OS test must read the clipboard back. |
 | 2026-10-20 | 📌 | T06: no played route reaches W1-1's exit from `Game::start_level` unpaced: `complete-w1-1` (the original's pace) ends in game over at step 3201 for any seed and offsets −4..+4. T05 and T11 need one; T06's test forces the exit (`N: exit`). |
 | 2026-10-20 | 📌 | T06: a dialog-started game keeps `from_dialog` through a new game begun from the title after its game over, so it saves no progress until Reset, Continue, Import Disks or Play Level File. Load State now takes the slot's own mark (T06 review). |
