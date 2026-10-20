@@ -46,6 +46,14 @@ impl Recorder {
         }
     }
 
+    /// How many frames the recording holds; `None` when none runs.
+    pub fn frames(&self) -> Option<usize> {
+        match self {
+            Recorder::Off => None,
+            Recorder::Recording { rec } => Some(rec.inputs.len()),
+        }
+    }
+
     pub fn is_recording(&self) -> bool {
         matches!(self, Recorder::Recording { .. })
     }
@@ -203,6 +211,11 @@ mod tests {
         assert!(!r.is_recording());
         r.step(FrameInput::NONE);
         assert_eq!(r.clone().finish(Location::Screen("title"), String::new()), None);
+        assert_eq!(r.frames(), None);
+        let mut on = Recorder::start(LevelSetup::default(), Rng::seeded(1, 2), "b");
+        assert_eq!(on.frames(), Some(0));
+        on.step(FrameInput::NONE);
+        assert_eq!(on.frames(), Some(1));
         let rec = recording(5);
         assert_eq!(rec.inputs.len(), 5);
         assert_eq!(rec.inputs[0].joy, Joy::RIGHT);
