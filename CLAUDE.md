@@ -37,6 +37,9 @@ derived by the tools.
   Read `plans/rust-engine/FINDINGS.md` before touching a mechanic.
 - **Levels from files:** the app plays a `.sflevel` (JSON of the level's original files,
   DESIGN §2.10) in place of a disk level, and exports any disk level to one.
+- **Handed a bug zip** (`bugs/bug-<level>-<date>.zip`, "fix the bug in …"): follow
+  [`docs/BUG-FIX.md`](docs/BUG-FIX.md) step by step: replay it, compare it with the original, then
+  a quirk report or a fix with a new conformance case (plan `plans/bug-recorder/`).
 
 ## Tile addressing (how the user points at spots)
 `tools/export_annotated.py` makes per-level images with a col/row grid + level id.

@@ -180,6 +180,9 @@ levels over a stretch.
 
 ## Replaying a bug zip (bug-recorder T04)
 
+The procedure an agent follows with an owner's bug zip, these three commands in order, is
+[`docs/BUG-FIX.md`](../../docs/BUG-FIX.md).
+
 ```sh
 cargo run -q --release -p sf-conform -- bug replay ../bugs/bug-W1-2-2026-10-20-1412.zip
 cargo run -q --release -p sf-conform -- bug replay <zip> --out /tmp/bug --frames 1200..1500 --every 5
