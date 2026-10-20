@@ -9,7 +9,7 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 | Date | | Finding |
 |---|---|---|
 | 2026-10-20 | 📌 | T06: no played route reaches W1-1's exit from `Game::start_level` unpaced: `complete-w1-1` (the original's pace) ends in game over at step 3201 for any seed and offsets −4..+4. T05 and T11 need one; T06's test forces the exit (`N: exit`). |
-| 2026-10-20 | 📌 | T06: a dialog-started game keeps `from_dialog` through Load State and through a new game begun from the title after its game over, so neither saves progress until Reset, Continue, Import Disks or Play Level File. |
+| 2026-10-20 | 📌 | T06: a dialog-started game keeps `from_dialog` through a new game begun from the title after its game over, so it saves no progress until Reset, Continue, Import Disks or Play Level File. Load State now takes the slot's own mark (T06 review). |
 | 2026-10-20 | 📌 | T06: `menus.rs`'s OS-layer test lists stale File and View items (Export Level, Play Level File, CRT Filter, Widescreen missing); T06 updated only the Game menu's. |
 | 2026-10-20 | 🔄 | Owner (T02): Start Level offers 26 levels (`sf_core::recording::levels()`), not 29: W6-2alt..W6-4alt are never loaded when a level is started by its code. T08's dropdown takes `levels()`; `LevelSetup::validate` refuses the alt maps. |
 | 2026-10-20 | 🔄 | Owner (T02): screen name `world end` added (end-of-world picture); awards, hall of talent and attract demo read `title`; a fade's blank frame reads as the place before it (`Game::location` keeps the last). |

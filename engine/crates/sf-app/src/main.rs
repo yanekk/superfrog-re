@@ -230,7 +230,7 @@ struct Run {
     furthest: Option<Progress>,
     /// The game was started from Game → Start Level…: it never moves the saved progress
     /// (bug-recorder DESIGN §2.1), until a game replaces it (Reset, Continue, Import Disks, Play
-    /// Level File).
+    /// Level File); a loaded state brings its own (`states::from_dialog`).
     from_dialog: bool,
     /// The bug recording, while one runs.
     recorder: Recorder,

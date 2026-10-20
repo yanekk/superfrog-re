@@ -596,7 +596,7 @@ impl App {
     /// Game → Save State ▸ `n`: the game as it is after the last step, into slot `n`.
     fn save_state(&mut self, n: u8) {
         let run = self.run.as_mut().expect("running");
-        match crate::states::save(&self.home, n, &run.game, crate::home::build(), &run.cache_hash) {
+        match crate::states::save(&self.home, n, &run.game, run.from_dialog, crate::home::build(), &run.cache_hash) {
             Ok(()) => {
                 run.states[n as usize - 1] = true;
                 eprintln!("superfrog: saved state {n} at game frame {}", run.game.frame());
@@ -616,6 +616,8 @@ impl App {
             Ok(game) => {
                 eprintln!("superfrog: loaded state {n} at game frame {}", game.frame());
                 run.game = game;
+                // The loaded game is the one saved, dialog-started or not (bug-recorder DESIGN §2.1).
+                run.from_dialog = crate::states::from_dialog(&self.home, n);
                 run.game.set_view(crate::window::view(run.settings.widescreen));
                 run.paula = Paula::booted(run.rate);
                 let pic = run.game.render(run.game.view());

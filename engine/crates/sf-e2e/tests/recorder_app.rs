@@ -397,3 +397,23 @@ fn a_game_started_from_the_dialog_never_moves_the_saved_progress() {
     assert_eq!(std::fs::read_to_string(app.home.join("progress.toml")).unwrap(), "world = 2\nlevel = 1\n");
     assert!(c.stderr.contains("superfrog: continuing from World 2"), "{}", c.stderr);
 }
+
+#[test]
+fn a_state_saved_in_a_dialog_game_never_moves_the_saved_progress_when_loaded() {
+    // Saved in W5-1 from the dialog, loaded after Reset: still the dialog's game (DESIGN §2.1).
+    let (mut app, _) = launch(120, 120);
+    let c = app.run_script("1: start-level W5-1\n20: menu save-state-1\n30: menu reset\n40: menu load-state-1\n");
+    assert!(c.exit.success(), "{}", c.stderr);
+    assert!(c.stderr.contains("superfrog: loaded state 1"), "{}", c.stderr);
+    assert!(!app.home.join("progress.toml").exists(), "a loaded W5-1 state saved progress");
+}
+
+#[test]
+fn a_scripted_run_without_bugs_dir_saves_into_its_home_never_the_repo() {
+    let mut app = App::launch(LaunchOpts { max_frames: 40, timeout_s: 90, scale: Some(1), ..Default::default() });
+    let c = app.run_script("note h\n1: start-level W1-1 record\n31: menu stop-recording\n");
+    assert!(c.exit.success(), "{}", c.stderr);
+    let found = zips(&app.home.join("bugs"));
+    assert_eq!(found.len(), 1, "{}", c.prompts);
+    assert_eq!(read_zip(&found[0]).0.inputs.len(), 30);
+}
