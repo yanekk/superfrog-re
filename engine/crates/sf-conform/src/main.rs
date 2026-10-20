@@ -22,6 +22,11 @@
 //! the frame's end (its PC and the return addresses on its stack, as `h0+$x`), `--png` writes the
 //! original's picture of every printed frame to `DIR/frame<N>.png`, `--paula` its Paula writes
 //! (register=value@line). It stops with an error once it has written 200 MB (`--max-mb N`).
+//! `sf-conform bug replay <zip> [--out DIR] [--frames A..B] [--every N]` — a bug zip replayed
+//! headlessly (bug-recorder DESIGN §2.7, `sf_conform::bug`): the frames asked (A up to B, B left
+//! out; default the last 250) written as `frame-NNNNNN.png` to DIR (default
+//! `~/.cache/superfrog-re/bugs/<zip stem>/`), then `frames N`, `stopped-at`, `replay-at` and
+//! whether the last picture equals the zip's screenshot. Exit 0 whatever the comparison says.
 
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
@@ -29,7 +34,7 @@ use std::process::ExitCode;
 use sf_conform::{Alone, Case, InputScript, Mode, cases_dir, sync};
 use sf_core::layout::{LAYOUT, Ram, VarDef, VarId, Width, h0};
 
-const USAGE: &str = "usage: sf-conform [--strict | --alone] run <case.toml>... | [--strict] all | [--strict] scan <case.toml> | feed <case.toml> [--frames N] | channels <case.toml>... | record <case.toml> [--watch NAME=ADDR:W]... [--every] [--only] [--all-vars] [--max-mb N] [--trace] [--paula] [--png DIR]";
+const USAGE: &str = "usage: sf-conform [--strict | --alone] run <case.toml>... | [--strict] all | [--strict] scan <case.toml> | feed <case.toml> [--frames N] | channels <case.toml>... | record <case.toml> [--watch NAME=ADDR:W]... [--every] [--only] [--all-vars] [--max-mb N] [--trace] [--paula] [--png DIR] | bug replay <zip> [--out DIR] [--frames A..B] [--every N]";
 
 fn main() -> ExitCode {
     let mut args: Vec<String> = std::env::args().skip(1).collect();
@@ -53,6 +58,9 @@ fn main() -> ExitCode {
         }
         Some("channels") if args.len() >= 2 => channels(&args[1..]),
         Some("record") if args.len() >= 2 => record(Path::new(&args[1]), &args[2..]),
+        Some("bug") if args.len() >= 3 && args[1] == "replay" => {
+            bug_replay(Path::new(&args[2]), &args[3..])
+        }
         _ => Err(USAGE.to_string()),
     };
     match result {
@@ -63,6 +71,52 @@ fn main() -> ExitCode {
             ExitCode::from(2)
         }
     }
+}
+
+fn bug_replay(zip: &Path, rest: &[String]) -> Result<bool, String> {
+    use sf_conform::bug;
+    let (mut out, mut range, mut every) = (None, None, None);
+    let mut it = rest.iter();
+    while let Some(a) = it.next() {
+        let slot = match a.as_str() {
+            "--out" => &mut out,
+            "--frames" => &mut range,
+            "--every" => &mut every,
+            _ => return Err(USAGE.to_string()),
+        };
+        *slot = Some(it.next().ok_or(USAGE)?.as_str());
+    }
+    let bytes = std::fs::read(zip).map_err(|e| format!("{}: {e}", zip.display()))?;
+    let (rec, screenshot) = bug::read_zip(&bytes).map_err(|e| format!("{}: {e}", zip.display()))?;
+    let pick = bug::FramePick::parse(range, every, rec.inputs.len() as u32)?;
+    let dir = match out {
+        Some(d) => PathBuf::from(d),
+        None => bug::default_out(zip)?,
+    };
+    std::fs::create_dir_all(&dir).map_err(|e| format!("{}: {e}", dir.display()))?;
+    let mut failed = None;
+    let r = bug::replay(&rec, |f, _, pic| {
+        if failed.is_none() && pick.wants(f) {
+            let path = dir.join(format!("frame-{f:06}.png"));
+            if let Err(e) = std::fs::write(&path, bug::picture_png(pic)) {
+                failed = Some(format!("{}: {e}", path.display()));
+            }
+        }
+    });
+    if let Some(e) = failed {
+        return Err(e);
+    }
+    println!("frames {}", rec.inputs.len());
+    match rec.stopped_at {
+        Some(at) => println!("stopped-at {at}"),
+        None => println!("stopped-at -"),
+    }
+    println!("replay-at {}", r.location);
+    match bug::screenshot_differs(&screenshot, &r.last)? {
+        0 => println!("screenshot equal"),
+        n => println!("screenshot differs ({n} pixels)"),
+    }
+    Ok(true)
 }
 
 fn feed(path: &Path, frames: Option<&String>) -> Result<bool, String> {
