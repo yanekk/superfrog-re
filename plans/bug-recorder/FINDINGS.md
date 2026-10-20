@@ -8,6 +8,7 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-20 | 📌 | T12 review: `.pir/settings.json` `test` runs only the Python unittests, so a `@repo/single` bug-fix run's own test gate runs no cargo test; `docs/BUG-FIX.md` step 5 names the cargo tests to run. Left alone. |
 | 2026-10-20 | 🔄 | Owner (T12): T14 `original-follows-recording` added, blocking T13: keep the original on a played recording, never `same` or a panic where it left. Meanwhile `docs/BUG-FIX.md` step 2 sends such a `same` to step 7. |
 | 2026-10-20 | 🐞 | T12 dry run 2: tally points planted ×2 (scratch branch, deleted), `tally-points` recording, 5 352 frames. `bug compare` panics `the original's load (Left(c010d6)) was not over within 20000 frames` at step 4695, clean engine too. Step 4 never reached. |
 | 2026-10-20 | 🐞 | T12 dry run 1: app-made W1-1 → slot machine → W1-2 zip, 7 487 frames; replay equal. `bug compare` says `same`, but the original left the recording at 1815 (score) and shows a score-0 W1-1 start (seemingly the attract demo) at STOP. |
