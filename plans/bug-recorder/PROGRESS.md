@@ -13,7 +13,7 @@ writes a cell also fixes the over-budget cell they walk past.
 
 **Status:** Plan written 2026-10-20; nothing built.
 **Last updated:** 2026-10-20
-**Next `pir-work` will:** review T03.
+**Next `pir-work` will:** T04, T05 once T04 is reviewed, T06.
 
 ## Tasks
 
@@ -25,7 +25,7 @@ done · ⛔ blocked, needs a human.
 | T00 | prove-the-ground | — | ✅ | |
 | T01 | recording-format | T00 | ✅ | |
 | T02 | level-start | T01 | ✅ | |
-| T03 | original-start | T02 | 🔍 | `SyncPoint::Setup`, TOML form, engine side `start_level`; 12 tests (6 ignored slow, run once: all 26 levels normal, W1-1/W4-3 easy, green). Deviations: 26 levels not 29 (owner, T02); Hard tests dropped (D12); `music_fade`, `map_blink` also copied from the engine (differ only on WW-1, load leftovers); setup form needs all eight keys. |
+| T03 | original-start | T02 | ✅ | Review clean, no fix commit. Ran all 12 tests (6 slow) green; mutations caught (no `rng_state` copy; lives presses inverted); `music_fade`/`map_blink` dropped fails only WW-1; 400-frame faithful Setup cases on WW-1, WB-1, W4-3 green. Channel-check start open (FINDINGS). |
 | T04 | replay-tool | T01, T02 | ⬜ | |
 | T05 | compare-tool | T03, T04 | ⬜ | |
 | T06 | app-recorder | T02 | ⬜ | |
@@ -37,7 +37,7 @@ done · ⛔ blocked, needs a human.
 | T12 | fix-procedure | T05, T11 | ⬜ | |
 | T13 | black-screen | T12 | ⬜ | |
 
-**Review queue:** T03
+**Review queue:** *(empty)*
 
 ## Blocked on the user
 

@@ -8,6 +8,7 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-20 | 📌 | T03 review: a `Setup` case records `Start::Transplant` as `Recorded.start` (lib.rs), so `channels.rs`'s channel check replays it from the original's memory, not `start_level`. Open; no `Start` variant carries a setup. T05 should know. |
 | 2026-10-20 | 📌 | T03: `SyncPoint::Setup` equals `start_level` at frame 0 on all 26 levels and easy W1-1/W4-3 but `playfield_clean`. WW-1 also needed `music_fade` and `map_blink` from the engine (W6-4's tally and load). First run ~30 s a level; cached ~7 s. |
 | 2026-10-20 | 🔄 | Owner (T02): Start Level offers 26 levels (`sf_core::recording::levels()`), not 29: W6-2alt..W6-4alt are never loaded when a level is started by its code. T08's dropdown takes `levels()`; `LevelSetup::validate` refuses the alt maps. |
 | 2026-10-20 | 🔄 | Owner (T02): screen name `world end` added (end-of-world picture); awards, hall of talent and attract demo read `title`; a fade's blank frame reads as the place before it (`Game::location` keeps the last). |
