@@ -209,8 +209,19 @@ fn run_inner(
     // The oracle's frame cap: the case's frames, what its loads take (the whole disk-3 intro's
     // spend more than one search's worth, T56) and one load search more.
     let cap = 2 * case.frames + LOAD_SEARCH;
-    let synced = sync::reach_frozen(&case.sync, &case.script, cap, frozen)
-        .unwrap_or_else(|e| panic!("{}: {e}", case.name));
+    // A `Setup` case's engine is the app's own start, `Game::start_level` (bug-recorder T03).
+    let (synced, setup_game) = match &case.sync {
+        SyncPoint::Setup { setup, seed } => {
+            let (s, g) = sync::setup_start(setup, *seed, cap)
+                .unwrap_or_else(|e| panic!("{}: {e}", case.name));
+            (s, Some(g))
+        }
+        sync => (
+            sync::reach_frozen(sync, &case.script, cap, frozen)
+                .unwrap_or_else(|e| panic!("{}: {e}", case.name)),
+            None,
+        ),
+    };
     let mut amiga = synced.amiga;
     let mut prev = synced.memory.clone();
     let start = match &case.sync {
@@ -233,21 +244,25 @@ fn run_inner(
     };
     let display = display_data();
     let frog_only = frozen == freeze::Freeze::Objects;
-    let mut game = Game::with_display(display.clone(), start.clone());
+    let new_game = || match &setup_game {
+        Some(g) => g.clone(),
+        None => Game::with_display(display.clone(), start.clone()),
+    };
+    let mut game = new_game();
     if frog_only {
         game.frog_only();
     }
     // Check 4: the engine from the same start, given only the inputs, the original's pacing and
     // the seeds it read from its clock.
     let mut alone = (case.mode == Mode::Faithful && case.alone != Alone::Off).then(|| {
-        let mut g = Game::with_display(display.clone(), start.clone());
+        let mut g = new_game();
         if frog_only {
             g.frog_only();
         }
         let mut a = AloneRun::new(g, case.sync == SyncPoint::PowerOnDisk3);
         if record.is_some() {
             let mut r = feed::Recorded::start(&a.game, synced.seed.unwrap_or_default());
-            r.start = Some(start);
+            r.start = Some(start.clone());
             a.record = Some(r);
         }
         a
