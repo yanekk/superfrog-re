@@ -8,6 +8,10 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-20 | 📌 | T09 drill, worker-driven: bar captured at 1×, 2×, 3×, 2× widescreen and fullscreen 1920×1080; STOP, ⌘., scale, widescreen and resize while recording driven. Nothing clipped or overlapping; picture unchanged. |
+| 2026-10-20 | 📌 | T09: winit's `set_min_inner_size` resizes at once: it grows a window below the new minimum, and puts a window entering fullscreen back to its windowed size. Set the minimum only when the bar comes or goes. |
+| 2026-10-20 | 🐞 | No task: `menus.rs` `os_layer_scale_and_fullscreen…` and `window.rs` `fullscreen_on_and_off…` fail on the base branch too (3/3 runs, 1920×1080 display): the window never goes fullscreen within their waits. |
+| 2026-10-20 | 🔄 | Owner (T09): the bar's time is the recording's length (frames at the PAL rate), so it stands still while paused or a question is open. |
 | 2026-10-20 | 📌 | T06 review: fake unverified against real: `ScriptedUi::copy` logs `clipboard:`; the native NSPasteboard `copy` is unreachable until T10's save window, so T10's OS test must read the clipboard back. |
 | 2026-10-20 | 📌 | T06: no played route reaches W1-1's exit from `Game::start_level` unpaced: `complete-w1-1` (the original's pace) ends in game over at step 3201 for any seed and offsets −4..+4. T05 and T11 need one; T06's test forces the exit (`N: exit`). |
 | 2026-10-20 | 📌 | T06: a dialog-started game keeps `from_dialog` through a new game begun from the title after its game over, so it saves no progress until Reset, Continue, Import Disks or Play Level File. Load State now takes the slot's own mark (T06 review). |

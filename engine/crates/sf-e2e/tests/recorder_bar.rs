@@ -364,3 +364,36 @@ fn os_layer_in_fullscreen_the_picture_s_scale_leaves_the_bar_on_screen() {
     assert_eq!(back.surface, (W * sf, H * sf), "{back:?}");
     assert_integer_scaled(&img, &back, &c.read_frame(back.frame));
 }
+
+/// What a person also does while recording: View ▸ Scale, Widescreen and a dragged window. The bar
+/// stays under the picture each time, and STOP takes its height off whatever size the window had.
+#[test]
+fn scale_widescreen_and_a_resize_while_recording_keep_the_bar_under_the_picture() {
+    let mut app = App::launch(LaunchOpts {
+        max_frames: 300,
+        timeout_s: 120,
+        scale: Some(1),
+        ..Default::default()
+    });
+    let bugs = app.home.join("test-bugs");
+    app.opts.extra_args = vec!["--bugs-dir".into(), bugs.display().to_string()];
+    let c = app.run_script(
+        "note x\n30: start-level W1-1 record\n60: menu scale-3\n100: shot\n110: menu widescreen\n\
+         150: shot\n160: resize 1500 900\n200: shot\n211: menu stop-recording\n260: shot\n",
+    );
+    assert!(c.exit.success(), "{}", c.stderr);
+    let check = |n: u64, size: (u32, u32), scale: u32| {
+        let (img, info) = c.read_shot(n);
+        let sf = info.scale_factor as u32;
+        assert_eq!(info.surface, (size.0 * sf, size.1 * sf), "step {n}: {info:?}");
+        assert_eq!(assert_above_bar(&img, &info, &c.read_frame(info.frame), BAR * sf), scale * sf, "step {n}");
+    };
+    check(100, (W * 3, H * 3 + BAR), 3);
+    check(150, ((W + 130) * 3, H * 3 + BAR), 3);
+    check(200, (1500, 900), 3);
+    // Stopped: the dragged window loses only the bar's height.
+    let (img, info) = c.read_shot(260);
+    let sf = info.scale_factor as u32;
+    assert_eq!(info.surface, (1500 * sf, (900 - BAR) * sf), "{info:?}");
+    assert_eq!(assert_integer_scaled(&img, &info, &c.read_frame(info.frame)), 3 * sf);
+}
