@@ -13,7 +13,7 @@ writes a cell also fixes the over-budget cell they walk past.
 
 **Status:** Plan written 2026-10-20; nothing built.
 **Last updated:** 2026-10-20
-**Next `pir-work` will:** T00, the spike every other task waits on.
+**Next `pir-work` will:** review T11.
 
 ## Tasks
 
@@ -33,11 +33,11 @@ done · ⛔ blocked, needs a human.
 | T08 | start-level-dialog | T06 | ✅ | |
 | T09 | recording-bar | T06 | ✅ | |
 | T10 | save-window | T06 | ✅ | |
-| T11 | recorder-drill | T04, T07, T08, T09, T10 | ⬜ | |
+| T11 | recorder-drill | T04, T07, T08, T09, T10 | 🔍 | Drill driven (FINDINGS). `recorder_drill.rs`: chain test (slow-ignored, 3.5–6 min) plus 5 OS tests. Harness: menu-bar retry, modal close. `plan_exit --engine`. Deviations: chain via `slot-fire` spins, not `slot-gamble` (8 coins after real play); chain test outside the block (too slow). 20-minute run by hand, not a test. |
 | T12 | fix-procedure | T05, T11 | ⬜ | |
 | T13 | black-screen | T12 | ⬜ | |
 
-**Review queue:** *(empty)*
+**Review queue:** T11
 
 ## Blocked on the user
 

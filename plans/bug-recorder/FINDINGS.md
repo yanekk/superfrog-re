@@ -8,6 +8,13 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-20 | 📌 | T11 drill, worker-driven: Start Level, W1-1 played to its exit, tally, slot machine, W1-2, STOP with a note; `--replay` and `bug replay` equal. Every ending action, ⌘Q, ⌘2, close, each answer. Nothing clipped at 1×, 3×, widescreen. |
+| 2026-10-20 | 📌 | T11: a 20-minute recording (60 000 frames) saved as a 116 KB zip; `sf-conform bug replay` took 40 s, screenshot equal; `--replay` in the app runs in real time (20 min) to "replay finished at frame 60000". |
+| 2026-10-20 | 🔄 | Owner (T11): STOP while the player had paused leaves the game paused after Save or Discard (DESIGN §2.4's "resumes" undoes STOP's own pause). Pinned by `recorder_drill` OS test. |
+| 2026-10-20 | 🐞 | T11, fixed in the OS harness: the menu bar read while a Start Level start blocks the main thread (`AXError -25204`) panicked; a close-button press that opens the question reports -25204 though delivered. `ax::menu_bar` retries; `os_close_window` accepts it. |
+| 2026-10-20 | 📌 | T11: `recorder_start_level` OS tests lose a typed key or Return about 1 run in 4 in a batch, 6/6 alone; other sessions' app windows on screen (another worktree's e2e) take focus. Not fixed. |
+| 2026-10-20 | 📌 | T11: `plan_exit --engine` plans on the engine from Start Level's start; W1-1's floating-ledge coins trap the beam (`--skip 0,0,150,83` from 2784). In the slot machine fire every 80 frames spends the coins; held up+fire enters it. |
+| 2026-10-20 | 📌 | T11: a note pasted with CRLF line ends gets two spaces per break (the field converts each character before `SaveForm` sees it). Left as is. |
 | 2026-10-20 | 📌 | T09 review: OS layer (`SF_E2E_OS=1`) finds no AX window while the console is locked (`IOConsoleLocked` true): "no element … within 20 s", base `controls.rs` too. Owner skipped the rerun; T11's drill re-checks the bar. |
 | 2026-10-20 | 📌 | T09 drill, worker-driven: bar captured at 1×, 2×, 3×, 2× widescreen and fullscreen 1920×1080; STOP, ⌘., scale, widescreen and resize while recording driven. Nothing clipped or overlapping; picture unchanged. |
 | 2026-10-20 | 📌 | T09: winit's `set_min_inner_size` resizes at once: it grows a window below the new minimum, and puts a window entering fullscreen back to its windowed size. Set the minimum only when the bar comes or goes. |
