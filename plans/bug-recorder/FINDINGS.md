@@ -8,6 +8,9 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-20 | 📌 | T13 prep: no black screen till fire reproduced. `bug compare` same for lost (seed 0 0) and 10 000 win (seed 5). The original, forced exit, two spins lost, shows same 103 black frames, map 314, W1-2 unprompted (`record --png`). |
+| 2026-10-20 | 📌 | T13 prep, worker-made recordings, not the owner's: W1-1 to its exit, tally, slot machine, W1-2, seeds 0–8: all spins lost, wins 10 000–80 000, gamble, jackpot. Engine and app (recorder on, frame-equal) show 103 black frames, then the map unprompted. |
+| 2026-10-20 | 🐞 | T13 prep, open, no task: seed-1 jackpot recording, `bug compare` differs at step 5038 on `slot_state` h0+$49d6 (score shown), original $604a, engine $73d2; both reach W1-2, same score. On the engine one-frame fires never end the jackpot flash. |
 | 2026-10-20 | 📌 | T14 dry run 2 re-run: tally points ×2 planted (scratch branch, deleted), `tally-points` zip, 5 352 frames. `bug compare` differs at 4548 naming `score`; `bug case` (two put-backs) fails planted at 4548, passes clean (5 154 frames). Step 5 reached. |
 | 2026-10-20 | 📌 | T14 dry run 1 re-run: app-made zip (`recorder_drill w1_1_played`), 7 487 frames: original put back once at 1815 (`score`), `same`, both STOP pictures W1-2 with equal score; spinning coins at another turn. Step 3 reached; 3½ min. |
 | 2026-10-20 | 📌 | T14: every `LAYOUT` variable of the recording's engine written into the original at a pass end keeps it running on the recording (W1-1 at 1815: 19 differ, buffers, map, objects, score). CPU, stack, chips untouched. W4-3 9 200 steps: 4 put-backs, same. |
