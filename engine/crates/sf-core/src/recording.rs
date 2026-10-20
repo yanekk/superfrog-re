@@ -49,6 +49,10 @@ pub const MAX_POINTS: u32 = 999_999;
 /// An extra life comes at every multiple of this score (`frog_next_life`, h0+$880).
 const LIFE_EVERY: u32 = 200_000;
 
+/// The longest recording: a day of play at one PAL frame a step (138 MB held expanded). The parser
+/// holds `frames` inputs, so without a bound a header of a few bytes asks for 128 GB.
+pub const MAX_FRAMES: u32 = 50 * 60 * 60 * 24;
+
 /// The screens [`Location::Screen`] names (DESIGN §2.6; `Game::location`, T02).
 pub const SCREENS: [&str; 8] = [
     "title",
@@ -261,10 +265,16 @@ impl fmt::Display for RecordingError {
 }
 
 impl Recording {
-    /// Whether the recording can be written and read back: the setup in range, and the build and
-    /// note each one line.
+    /// Whether the recording can be written and read back: the setup in range, at most
+    /// [`MAX_FRAMES`] inputs, and the build and note each one line.
     pub fn validate(&self) -> Result<(), String> {
         self.setup.validate()?;
+        if self.inputs.len() > MAX_FRAMES as usize {
+            return Err(format!(
+                "{} frames is past the longest recording, {MAX_FRAMES} (a day)",
+                self.inputs.len()
+            ));
+        }
         for (what, text) in [("build", &self.build), ("note", &self.note)] {
             if text.contains(['\n', '\r']) {
                 return Err(format!("the {what} must be one line"));
@@ -379,6 +389,12 @@ impl Recording {
         let (n, frames) = next("frames")?;
         let frames: u32 = number(frames)
             .ok_or_else(|| err(n, format!("frames `{frames}` is not a frame count")))?;
+        if frames > MAX_FRAMES {
+            return Err(err(
+                n,
+                format!("frames {frames} is past the longest recording, {MAX_FRAMES} (a day)"),
+            ));
+        }
         let (n, stopped) = next("stopped-at")?;
         let stopped_at = match stopped {
             "-" => None,
@@ -609,6 +625,16 @@ mod tests {
                 "two hex longs",
             ),
             (swap("frames 100000", "frames -1"), 11, "not a frame count"),
+            (
+                swap("frames 100000", "frames 4320001"),
+                11,
+                "longest recording",
+            ),
+            (
+                swap("frames 100000", "frames 4294967295"),
+                11,
+                "longest recording",
+            ),
             (swap("level W4-3", "level W9-1"), 3, "not a level id"),
             (
                 swap("stopped-at W1-2:94,51", "stopped-at W9-2:94,51"),
@@ -684,6 +710,11 @@ mod tests {
         r.note.clear();
         r.build = "b\n".into();
         assert!(r.validate().unwrap_err().contains("build"));
+        r.build.clear();
+        r.inputs = vec![FrameInput::NONE; MAX_FRAMES as usize + 1];
+        assert!(r.validate().unwrap_err().contains("longest recording"));
+        r.inputs.pop();
+        assert_eq!(r.validate(), Ok(()));
     }
 
     #[test]
