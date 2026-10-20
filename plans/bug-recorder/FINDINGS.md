@@ -8,10 +8,14 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-20 | 📌 | T14 dry run 2 re-run: tally points ×2 planted (scratch branch, deleted), `tally-points` zip, 5 352 frames. `bug compare` differs at 4548 naming `score`; `bug case` (two put-backs) fails planted at 4548, passes clean (5 154 frames). Step 5 reached. |
+| 2026-10-20 | 📌 | T14 dry run 1 re-run: app-made zip (`recorder_drill w1_1_played`), 7 487 frames: original put back once at 1815 (`score`), `same`, both STOP pictures W1-2 with equal score; spinning coins at another turn. Step 3 reached; 3½ min. |
+| 2026-10-20 | 📌 | T14: every `LAYOUT` variable of the recording's engine written into the original at a pass end keeps it running on the recording (W1-1 at 1815: 19 differ, buffers, map, objects, score). CPU, stack, chips untouched. W4-3 9 200 steps: 4 put-backs, same. |
+| 2026-10-20 | 📌 | T14: at a put-back check 4's engine must restart from the written original too; left running it failed W1-1's coin milestone at 2244 (engine 2256). |
 | 2026-10-20 | 📌 | T12 review: `.pir/settings.json` `test` runs only the Python unittests, so a `@repo/single` bug-fix run's own test gate runs no cargo test; `docs/BUG-FIX.md` step 5 names the cargo tests to run. Left alone. |
 | 2026-10-20 | 🔄 | Owner (T12): T14 `original-follows-recording` added, blocking T13: keep the original on a played recording, never `same` or a panic where it left. Meanwhile `docs/BUG-FIX.md` step 2 sends such a `same` to step 7. |
-| 2026-10-20 | 🐞 | T12 dry run 2: tally points planted ×2 (scratch branch, deleted), `tally-points` recording, 5 352 frames. `bug compare` panics `the original's load (Left(c010d6)) was not over within 20000 frames` at step 4695, clean engine too. Step 4 never reached. |
-| 2026-10-20 | 🐞 | T12 dry run 1: app-made W1-1 → slot machine → W1-2 zip, 7 487 frames; replay equal. `bug compare` says `same`, but the original left the recording at 1815 (score) and shows a score-0 W1-1 start (seemingly the attract demo) at STOP. |
+| 2026-10-20 | 🐞 | T12 dry run 2: `bug compare` panicked `the original's load (Left(c010d6)) was not over within 20000 frames` at step 4695, clean engine too. Fixed by T14 (put back; a load never ended now ends the run, reported). |
+| 2026-10-20 | 🐞 | T12 dry run 1: `bug compare` said `same` though the original left the recording at 1815 (score) and showed a score-0 W1-1 start at STOP. Fixed by T14: put back there; `same up to` where it cannot be. |
 | 2026-10-20 | 📌 | T11 review: the five `recorder_drill` OS-layer tests were not rerun (`IOConsoleLocked` true); their pass rests on the builder's run. Chain test, script-layer recorder tests and a recorder mutation were run. |
 | 2026-10-20 | 📌 | T11 drill, worker-driven: Start Level, W1-1 played to its exit, tally, slot machine, W1-2, STOP with a note; `--replay` and `bug replay` equal. Every ending action, ⌘Q, ⌘2, close, each answer. Nothing clipped at 1×, 3×, widescreen. |
 | 2026-10-20 | 📌 | T11: a 20-minute recording (60 000 frames) saved as a 116 KB zip; `sf-conform bug replay` took 40 s, screenshot equal; `--replay` in the app runs in real time (20 min) to "replay finished at frame 60000". |

@@ -92,6 +92,25 @@ pub struct Case {
     /// 2026-10-15), off for a `render`-only case; not a case file's key, as the bar is not a
     /// case's to choose. `run --alone` judges by it only.
     pub alone: Alone,
+    /// A bug zip's case (bug-recorder T14): where the original is put back on the recording it
+    /// left (`put-back = { steps = "…", at = [[F, S], …] }`, a `Setup` case's only).
+    pub put_back: Option<PutBacks>,
+}
+
+/// Where a bug zip's case puts the original back on the owner's recording (bug-recorder T14):
+/// under lag the original stops playing what the owner played, so at the pass end it is seen to
+/// have left, the recording's engine there is written into its memory (`bug::Follow`) and the run
+/// goes on from the owner's state.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PutBacks {
+    /// The recording's inputs, one per engine step from the setup's start (`scripts/<steps>.txt`).
+    pub steps: InputScript,
+    /// (the original's frames run, the recording's step): once the original has run that many
+    /// frames, the recording's engine after that step is written into it. In order.
+    pub at: Vec<(u32, u32)>,
+    /// What a test writes into the recording's engine at its start (`bug::Pokes`); never in a
+    /// case file.
+    pub pokes: Vec<(u32, Vec<u8>)>,
 }
 
 /// Whether a run judges check 4, plays alone ([`crate::milestones`]).
@@ -274,11 +293,12 @@ impl Case {
                 "vars",
                 "resync",
                 "lag-limit",
+                "put-back",
             ]
             .contains(&k.as_str())
             {
                 return Err(format!(
-                    "unknown key `{k}` (sync, script, script-from, frames, compare, exclude, vars, resync, lag-limit)"
+                    "unknown key `{k}` (sync, script, script-from, frames, compare, exclude, vars, resync, lag-limit, put-back)"
                 ));
             }
         }
@@ -563,6 +583,40 @@ impl Case {
                 })
             }
         };
+        let put_back = match t.get("put-back") {
+            None => None,
+            Some(v) => {
+                let bad = "put-back is { steps = \"script\", at = [[frame, step], …] }";
+                if !matches!(sync, SyncPoint::Setup { .. }) {
+                    return Err("put-back needs a level-setup sync (a bug zip's case)".into());
+                }
+                let p = v.as_table().ok_or(bad)?;
+                if let Some(k) = p.keys().find(|k| !["steps", "at"].contains(&k.as_str())) {
+                    return Err(format!("put-back: unknown key `{k}` (steps, at)"));
+                }
+                let steps = p.get("steps").and_then(|v| v.as_str()).ok_or(bad)?;
+                let mut at = Vec::new();
+                for pair in p.get("at").and_then(|v| v.as_array()).ok_or(bad)? {
+                    let n: Vec<u32> = pair
+                        .as_array()
+                        .ok_or(bad)?
+                        .iter()
+                        .map(|v| v.as_integer().and_then(|v| u32::try_from(v).ok()))
+                        .collect::<Option<_>>()
+                        .ok_or(bad)?;
+                    let [frame, step] = n[..] else { return Err(bad.into()) };
+                    if at.last().is_some_and(|&(f, _)| f >= frame) {
+                        return Err("put-back: the frames in `at` are in increasing order".into());
+                    }
+                    at.push((frame, step));
+                }
+                Some(PutBacks {
+                    steps: InputScript::load(&script_path(steps))?,
+                    at,
+                    pokes: Vec::new(),
+                })
+            }
+        };
         Ok(Case {
             name: name.to_string(),
             sync,
@@ -575,6 +629,7 @@ impl Case {
             lag_limit,
             mode: crate::compare::Mode::Faithful,
             alone: Alone::of(compare),
+            put_back,
         })
     }
 }

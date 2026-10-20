@@ -111,8 +111,10 @@ fn a_case_from_a_recording_runs_green_and_its_name_is_taken_once() {
     let (cases, scripts) = (dir.join("cases"), dir.join("scripts"));
     std::fs::create_dir_all(&cases).unwrap();
     std::fs::create_dir_all(&scripts).unwrap();
-    let (case, script) = bug::write_case(&rec, "bug-run", "run.zip", &cases, &scripts).unwrap();
-    let toml = std::fs::read_to_string(&case).unwrap();
+    let written = bug::write_case(&rec, "bug-run", "run.zip", &cases, &scripts).unwrap();
+    // A lag-free run: the original is never put back, so no steps script.
+    let [case, script] = &written[..] else { panic!("{written:?}") };
+    let toml = std::fs::read_to_string(case).unwrap();
     assert!(
         toml.starts_with("# the frog runs (stopped at -)\n"),
         "{toml}"
@@ -222,10 +224,11 @@ fn w1_1_through_the_slot_machine_to_w1_2_compares_same() {
 }
 
 /// The long-lag level T00 used: `complete-w4-3` played unpaced as a recording. The original's lag
-/// takes it off the recording (T00: by frame 400), which the report names; every leg is same.
+/// takes it off the recording (T00: by frame 400); it is put back on it each time (T14), which the
+/// report names, and stays on it to the end; every leg is same.
 #[test]
 #[ignore = "slow: about 2 min (release; 9 200 steps of W4-3)"]
-fn w4_3_under_lag_leaves_the_recording_and_every_leg_is_same() {
+fn w4_3_under_lag_is_put_back_on_the_recording_and_every_leg_is_same() {
     let t0 = std::time::Instant::now();
     let setup = LevelSetup {
         level: "W4-3".parse().unwrap(),
@@ -236,15 +239,16 @@ fn w4_3_under_lag_leaves_the_recording_and_every_leg_is_same() {
     let c = bug::compare(&rec, Mode::Faithful).unwrap();
     let r = c.report();
     eprintln!("{r}\n{:.0?}", t0.elapsed());
-    let left = c
+    let p = c
         .retimed
-        .left
-        .as_ref()
-        .expect("the original leaves the recording");
+        .put_back
+        .first()
+        .expect("the original leaves the recording and is put back");
     assert!(
-        r.contains(&format!("left the recording at frame {}", left.frame)),
+        r.contains(&format!("first at frame {} (engine step {})", p.frame, p.step)),
         "{r}"
     );
+    assert_eq!(c.retimed.left, None, "{r}");
     same(&c);
     assert!(c.legs.len() as u64 > 9200 / LEG_PASSES / 4, "{r}");
 }
