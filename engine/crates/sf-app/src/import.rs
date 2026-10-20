@@ -19,6 +19,7 @@ use winit::window::Window;
 use crate::atomic_write::atomic_write;
 use crate::home::{build, cache_path};
 use crate::recorder::EndChoice;
+use crate::start_level_window::{FormAction, StartLevelForm};
 
 /// The two buttons of the missing-disks message (owner, 2026-10-10).
 pub const CHOOSE: &str = "Choose Disks…";
@@ -138,15 +139,14 @@ impl Ui for NativeUi {
             || r == rfd::MessageDialogResult::Ok
     }
 
-    // The dialog is T08's and the save window and the question T10's. Until then no recording
-    // starts outside a script, so the other two are never reached.
     fn start_level(&mut self) -> Option<(LevelSetup, bool)> {
-        eprintln!("superfrog: the Start Level dialog is not built yet");
-        None
+        crate::start_level_window::run_modal(self.parent.as_deref())
     }
 
+    // The save window and the question are T10's. Until then both discard, so a recording
+    // started from the real window never stops Quit (Cancel would leave ⌘Q doing nothing).
     fn recording_in_progress(&mut self, _action: &str) -> EndChoice {
-        EndChoice::Cancel
+        EndChoice::Discard
     }
 
     fn save_recording(&mut self, _shot: &[u8], _at: &Location, _name: &str) -> Option<String> {
@@ -191,8 +191,9 @@ pub struct ScriptedUi {
     pub opens: VecDeque<Option<PathBuf>>,
     /// The refused level file's answers: `true` for playing the disk level.
     pub level_answers: VecDeque<bool>,
-    /// Start Level's answers: the values and whether to record, or `None` for cancelled.
-    pub starts: VecDeque<Option<(LevelSetup, bool)>>,
+    /// Start Level's answers: for each showing of the window, what is done in it, applied to its
+    /// model (`start_level_window.rs`) until Start or Cancel. None left, or used up first: Cancel.
+    pub starts: VecDeque<Vec<FormAction>>,
     /// "Recording in progress"'s answers.
     pub endings: VecDeque<EndChoice>,
     /// The save window's answers: the note, or `None` for Discard.
@@ -265,7 +266,20 @@ impl Ui for ScriptedUi {
     }
 
     fn start_level(&mut self) -> Option<(LevelSetup, bool)> {
-        let a = self.starts.pop_front().flatten();
+        let mut form = StartLevelForm::new();
+        let mut a = None;
+        for action in self.starts.pop_front().unwrap_or_default() {
+            eprintln!("superfrog: start-level form: {}", action.words());
+            let start = action == FormAction::Start;
+            match form.apply(action) {
+                Some(done) => {
+                    a = done;
+                    break;
+                }
+                None if start => eprintln!("superfrog: start-level: Start is disabled"),
+                None => {}
+            }
+        }
         let shown = match &a {
             None => "cancel".to_string(),
             Some((s, record)) => format!("{}{}", setup_words(s), if *record { " record" } else { "" }),

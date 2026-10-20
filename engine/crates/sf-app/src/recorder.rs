@@ -3,6 +3,9 @@
 //! or a menu action that would change the game ends it; then written as one zip into the bugs
 //! folder. The rules for what ends it are `menu.rs`'s ([`crate::App::on_command`]); the questions
 //! go through [`crate::import::Ui`].
+//!
+//! The other way round, [`Replay`] is `--replay`'s source (§2.7): a bug zip's inputs fed one a
+//! step in place of the player's, then nothing, so the app holds on the last frame.
 
 use std::io;
 use std::path::{Path, PathBuf};
@@ -74,6 +77,59 @@ impl Recorder {
             }
         }
     }
+}
+
+/// `--replay`: a recording's inputs, fed to the game one a step in order.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Replay {
+    inputs: Vec<FrameInput>,
+    played: usize,
+    /// [`Replay::just_finished`] has said so.
+    told: bool,
+}
+
+impl Replay {
+    pub fn new(rec: &Recording) -> Replay {
+        Replay { inputs: rec.inputs.clone(), played: 0, told: false }
+    }
+
+    /// The input for the next step, `None` once every recorded one has been played.
+    pub fn next(&mut self) -> Option<FrameInput> {
+        let input = self.inputs.get(self.played).copied()?;
+        self.played += 1;
+        Some(input)
+    }
+
+    /// Has every recorded input been played?
+    pub fn finished(&self) -> bool {
+        self.played == self.inputs.len()
+    }
+
+    /// The frame the replay holds on, the first time it is asked once every input is played;
+    /// `None` before and after.
+    pub fn just_finished(&mut self) -> Option<usize> {
+        (self.finished() && !std::mem::replace(&mut self.told, true)).then_some(self.played)
+    }
+}
+
+/// The largest entry read out of a bug zip: `recording.txt` at [`MAX_FRAMES`] with the input
+/// changing every frame is ~60 MB.
+const MAX_ENTRY: usize = 256 << 20;
+
+/// The recording in a bug zip's bytes, or why there is none: not a zip, no `recording.txt` or
+/// `screenshot.png`, or a recording the parser or [`Recording::validate`] refuses (as
+/// `sf-conform`'s `bug::read_zip`, which sf-app may not depend on, minus its PNG check: the app
+/// replays without the screenshot).
+pub fn read_zip(bytes: &[u8]) -> Result<Recording, String> {
+    let entries = sf_disk::zip::read_entries(bytes, |n| n == ZIP_RECORDING || n == ZIP_SCREENSHOT, MAX_ENTRY)
+        .map_err(|e| format!("not a bug zip: {e}"))?;
+    let has = |name: &str| entries.iter().find(|e| e.name == name).ok_or_else(|| format!("not a bug zip: it has no {name}"));
+    let text = has(ZIP_RECORDING)?;
+    has(ZIP_SCREENSHOT)?;
+    let text = std::str::from_utf8(&text.bytes).map_err(|_| format!("{ZIP_RECORDING}: it is not UTF-8 text"))?;
+    let rec = Recording::parse(text).map_err(|e| format!("{ZIP_RECORDING}: {e}"))?;
+    rec.validate().map_err(|e| format!("{ZIP_RECORDING}: {e}"))?;
+    Ok(rec)
 }
 
 /// What the player answered "Recording in progress" with, before an action that would end it.
@@ -330,6 +386,40 @@ mod tests {
         rec.note = "two\nlines".into();
         assert!(write_zip(&d.join("x.zip"), &rec, b"").is_err());
         assert!(!d.join("x.zip").exists());
+        std::fs::remove_dir_all(&d).unwrap();
+    }
+
+    #[test]
+    fn a_replay_feeds_the_inputs_in_order_then_nothing() {
+        let rec = recording(4);
+        let mut r = Replay::new(&rec);
+        assert!(!r.finished());
+        assert_eq!(r.just_finished(), None);
+        let fed: Vec<FrameInput> = std::iter::from_fn(|| r.next()).collect();
+        assert_eq!(fed, rec.inputs);
+        assert!(r.finished());
+        assert_eq!(r.next(), None);
+        assert_eq!(r.just_finished(), Some(4));
+        assert_eq!(r.just_finished(), None, "said once");
+        let mut empty = Replay::new(&recording(0));
+        assert!(empty.finished());
+        assert_eq!(empty.just_finished(), Some(0));
+    }
+
+    #[test]
+    fn a_zip_written_reads_back_and_a_bad_one_says_why() {
+        let d = temp("read");
+        let rec = recording(7);
+        write_zip(&d.join("z.zip"), &rec, b"png").unwrap();
+        assert_eq!(read_zip(&std::fs::read(d.join("z.zip")).unwrap()), Ok(rec.clone()));
+        assert!(read_zip(b"hello").unwrap_err().starts_with("not a bug zip"));
+        let only_shot = sf_disk::zip::write_stored(&[(ZIP_SCREENSHOT, b"png".as_slice())]);
+        assert!(read_zip(&only_shot).unwrap_err().contains("no recording.txt"));
+        let text = rec.to_text();
+        let only_rec = sf_disk::zip::write_stored(&[(ZIP_RECORDING, text.as_bytes())]);
+        assert!(read_zip(&only_rec).unwrap_err().contains("no screenshot.png"));
+        let bad = sf_disk::zip::write_stored(&[(ZIP_RECORDING, b"not a recording".as_slice()), (ZIP_SCREENSHOT, b"png")]);
+        assert!(read_zip(&bad).unwrap_err().starts_with("recording.txt: "), "{:?}", read_zip(&bad));
         std::fs::remove_dir_all(&d).unwrap();
     }
 
