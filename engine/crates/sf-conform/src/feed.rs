@@ -180,7 +180,7 @@ pub fn feed(case: &Case) -> Result<FeedFiles, String> {
     let mut c = case.clone();
     c.alone = Alone::Only;
     let mut rec = Recorded::default();
-    let verdict = crate::run_inner(&c, |_, _| {}, &mut |_, _, _| {}, None, false, Some(&mut rec));
+    let verdict = crate::run_inner(&c, |_, _| {}, &mut |_, _, _| {}, None, false, Some(&mut rec), None);
     if rec.panicked {
         let why = verdict.err().map(|d| d.to_string()).unwrap_or_default();
         return Err(format!("{}: the engine run alone panicked, so there is no feed: {why}", case.name));

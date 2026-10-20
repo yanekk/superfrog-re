@@ -64,6 +64,22 @@
 //!                               # keys (bug-recorder T10); the log still says what was answered
 //! ```
 //!
+//! The Start Level window driven as clicks drive it (bug-recorder T08): `form` lines, in order,
+//! answer the next Game ▸ Start Level… (`menu start-level`) through the window's model, each a
+//! change or a button, until a Start it takes or a Cancel. Start while Points is out of range is
+//! refused (`superfrog: start-level: Start is disabled`) and the window stays open:
+//!
+//! ```text
+//! form level W1-2               # also lives 3|5|7, energy 1..4, difficulty easy|normal
+//! form points 1000000           # what the Points field holds (`form points` alone: empty)
+//! form start                    # refused: out of range
+//! form points 450000
+//! form wings on                 # spud, wings, record: on|off (the recorder starts on)
+//! form start                    # or `form cancel`
+//! ```
+//!
+//! A `start-level` line is the same window filled in with its values and Start pressed.
+//!
 //! Test-only: `N: exit` sets the level's exit as reaching it does (`level_state` 1, as conformance
 //! cases force it), so a test passes a level's end without a route that plays it.
 
@@ -78,6 +94,7 @@ use crate::import::Pick;
 use crate::input::{HostInput, key_named};
 use crate::menu::Command;
 use crate::recorder::EndChoice;
+use crate::start_level_window::{FormAction, StartLevelForm};
 use crate::pad::{PadEvent, PadInput, StickAxis};
 use crate::settings::Scale;
 
@@ -112,8 +129,9 @@ pub struct Script {
     pub opens: Vec<Option<PathBuf>>,
     /// A refused level file's answers, in order: `true` for playing the disk level.
     pub level_answers: Vec<bool>,
-    /// Start Level's answers, in order: the values and whether to record, `None` for cancelled.
-    pub starts: Vec<Option<(LevelSetup, bool)>>,
+    /// Start Level's answers, in order: what is done in the window each time it shows, ending
+    /// in Start or Cancel (`start_level_window.rs`).
+    pub starts: Vec<Vec<FormAction>>,
     /// "Recording in progress"'s answers, in order.
     pub endings: Vec<EndChoice>,
     /// The save window's answers, in order: the note, `None` for Discard.
@@ -125,6 +143,9 @@ pub struct Script {
 impl Script {
     pub fn parse(text: &str) -> Result<Script, String> {
         let mut s = Script::default();
+        // The `form` lines of the Start Level window not yet closed by a Start it takes or a
+        // Cancel, run through its model to find where they end.
+        let mut form: Option<(StartLevelForm, Vec<FormAction>)> = None;
         for (n, raw) in text.lines().enumerate() {
             let line = raw.split('#').next().unwrap_or("").trim();
             if line.is_empty() {
@@ -175,6 +196,18 @@ impl Script {
                     (Some("cancel"), 2) => EndChoice::Cancel,
                     _ => return Err(err("`answer-recording` takes `save`, `discard` or `cancel`")),
                 });
+                continue;
+            }
+            if words[0] == "form" {
+                let a = FormAction::named(&words[1..]).ok_or_else(|| {
+                    err("`form` takes level ID, lives 3|5|7, points N, energy 1..4, difficulty easy|normal, \
+                         spud|wings|record on|off, start or cancel")
+                })?;
+                let (model, actions) = form.get_or_insert_with(|| (StartLevelForm::new(), Vec::new()));
+                actions.push(a.clone());
+                if model.apply(a).is_some() {
+                    s.starts.push(form.take().expect("open").1);
+                }
                 continue;
             }
             if words[0] == "note" {
@@ -245,7 +278,13 @@ impl Script {
                 (Some("continue"), 2) => vec![Event::Command(Command::ContinueFromProgress)],
                 (Some("exit"), 2) => vec![Event::Exit],
                 (Some("start-level"), 3..) => {
-                    s.starts.push(level_start(&words[2..]).map_err(|why| err(&why))?);
+                    if form.is_some() {
+                        return Err(err("the `form` lines above are not closed by `form start` or `form cancel`"));
+                    }
+                    s.starts.push(match level_start(&words[2..]).map_err(|why| err(&why))? {
+                        Some((setup, record)) => FormAction::filling(&setup, record),
+                        None => vec![FormAction::Cancel],
+                    });
                     vec![Event::Command(Command::StartLevel)]
                 }
                 (Some("controls"), 3..) => match ControlsAction::named(&words[2..]) {
@@ -260,6 +299,9 @@ impl Script {
                 _ => return Err(err("unknown event")),
             };
             s.events.extend(events.into_iter().map(|e| (frame, e)));
+        }
+        if form.is_some() {
+            return Err("script: the last `form` lines are not closed by `form start` or `form cancel`".into());
         }
         Ok(s)
     }
@@ -494,12 +536,50 @@ mod tests {
             wings: true,
         };
         let wb_1 = LevelSetup { level: "WB-1".parse().unwrap(), ..LevelSetup::default() };
-        assert_eq!(s.starts, vec![Some((w1_2, true)), None, Some((wb_1, false))]);
+        assert_eq!(
+            s.starts,
+            vec![FormAction::filling(&w1_2, true), vec![FormAction::Cancel], FormAction::filling(&wb_1, false)]
+        );
         assert_eq!(s.endings, vec![EndChoice::Save, EndChoice::Discard, EndChoice::Cancel]);
         assert_eq!(s.notes, vec![Some("black screen".into()), Some(String::new()), None]);
         assert!(!s.native_ui);
         assert!(Script::parse("native-ui\n").unwrap().native_ui);
         assert!(Script::parse("native-ui now\n").is_err());
+    }
+
+    #[test]
+    fn form_lines_answer_the_window_through_its_model_until_a_start_it_takes_or_a_cancel() {
+        let s = Script::parse(
+            "5: menu start-level\nform level W1-2\nform points 1000000\nform start\nform points 450000\n\
+             form wings on\nform start\n9: menu start-level\nform record off\nform cancel\n\
+             12: start-level W1-3\nform start\n",
+        )
+        .unwrap();
+        let level = |id: &str| FormAction::Level(id.parse().unwrap());
+        let points = |p: &str| FormAction::Points(p.into());
+        assert_eq!(
+            s.starts,
+            vec![
+                vec![level("W1-2"), points("1000000"), FormAction::Start, points("450000"), FormAction::Wings(true), FormAction::Start],
+                vec![FormAction::Record(false), FormAction::Cancel],
+                FormAction::filling(&LevelSetup { level: "W1-3".parse().unwrap(), ..LevelSetup::default() }, false),
+                vec![FormAction::Start],
+            ]
+        );
+        for bad in [
+            "form",
+            "form level W6-2alt",
+            "form lives 4",
+            "form energy 5",
+            "form difficulty hard",
+            "form wings yes",
+            "form jump",
+            "form points 1000000\nform start",
+            "form level W1-2\n5: start-level W1-1",
+        ] {
+            let e = Script::parse(&format!("\n{bad}")).unwrap_err();
+            assert!(e.contains("line 2") || e.contains("not closed"), "{bad}: {e}");
+        }
     }
 
     #[test]

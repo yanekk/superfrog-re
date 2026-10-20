@@ -20,6 +20,7 @@ use crate::atomic_write::atomic_write;
 use crate::home::{build, cache_path};
 use crate::recorder::EndChoice;
 use crate::save_window::{Outcome, SaveAction, SaveForm};
+use crate::start_level_window::{FormAction, StartLevelForm};
 
 /// The two buttons of the missing-disks message (owner, 2026-10-10).
 pub const CHOOSE: &str = "Choose Disks…";
@@ -159,10 +160,8 @@ impl Ui for NativeUi {
             || r == rfd::MessageDialogResult::Ok
     }
 
-    // The dialog is T08's. Until then no recording starts outside a script.
     fn start_level(&mut self) -> Option<(LevelSetup, bool)> {
-        eprintln!("superfrog: the Start Level dialog is not built yet");
-        None
+        crate::start_level_window::run_modal(self.parent.as_deref())
     }
 
     /// An alert with Save…, Discard and Cancel (Esc), as a sheet on the game window.
@@ -238,8 +237,9 @@ pub struct ScriptedUi {
     pub opens: VecDeque<Option<PathBuf>>,
     /// The refused level file's answers: `true` for playing the disk level.
     pub level_answers: VecDeque<bool>,
-    /// Start Level's answers: the values and whether to record, or `None` for cancelled.
-    pub starts: VecDeque<Option<(LevelSetup, bool)>>,
+    /// Start Level's answers: for each showing of the window, what is done in it, applied to its
+    /// model (`start_level_window.rs`) until Start or Cancel. None left, or used up first: Cancel.
+    pub starts: VecDeque<Vec<FormAction>>,
     /// "Recording in progress"'s answers.
     pub endings: VecDeque<EndChoice>,
     /// The save window's answers: the note, or `None` for Discard.
@@ -319,7 +319,20 @@ impl Ui for ScriptedUi {
     }
 
     fn start_level(&mut self) -> Option<(LevelSetup, bool)> {
-        let a = self.starts.pop_front().flatten();
+        let mut form = StartLevelForm::new();
+        let mut a = None;
+        for action in self.starts.pop_front().unwrap_or_default() {
+            eprintln!("superfrog: start-level form: {}", action.words());
+            let start = action == FormAction::Start;
+            match form.apply(action) {
+                Some(done) => {
+                    a = done;
+                    break;
+                }
+                None if start => eprintln!("superfrog: start-level: Start is disabled"),
+                None => {}
+            }
+        }
         let shown = match &a {
             None => "cancel".to_string(),
             Some((s, record)) => format!("{}{}", setup_words(s), if *record { " record" } else { "" }),

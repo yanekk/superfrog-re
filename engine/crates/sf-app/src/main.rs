@@ -33,6 +33,7 @@ mod recorder;
 mod save_window;
 mod script;
 mod settings;
+mod start_level_window;
 mod states;
 mod video;
 mod window;
@@ -145,7 +146,7 @@ fn main() {
             saves: s.saves.iter().cloned().collect(),
             opens: s.opens.iter().cloned().collect(),
             level_answers: s.level_answers.iter().copied().collect(),
-            starts: s.starts.iter().copied().collect(),
+            starts: s.starts.iter().cloned().collect(),
             endings: s.endings.iter().copied().collect(),
             notes: s.notes.iter().cloned().collect(),
             log: Vec::new(),

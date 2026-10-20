@@ -27,10 +27,10 @@ done · ⛔ blocked, needs a human.
 | T02 | level-start | T01 | ✅ | |
 | T03 | original-start | T02 | ✅ | |
 | T04 | replay-tool | T01, T02 | ✅ | |
-| T05 | compare-tool | T03, T04 | ⬜ | |
+| T05 | compare-tool | T03, T04 | ✅ | |
 | T06 | app-recorder | T02 | ✅ | |
 | T07 | app-replay | T06 | ✅ | |
-| T08 | start-level-dialog | T06 | ⬜ | |
+| T08 | start-level-dialog | T06 | ✅ | |
 | T09 | recording-bar | T06 | ⬜ | |
 | T10 | save-window | T06 | ✅ | Review: one fix, the OS test expected "bug x" but ↑ moves the caret to the start (reproduced headless in AppKit). sf-app, recorder_app, menus green; failed-write retry mutation caught. OS layer UNVERIFIED, screen locked, owner chose to close: `SF_E2E_OS=1 cargo test -p sf-e2e --test recorder_save_window -- --ignored --test-threads 1`; T11 reruns. |
 | T11 | recorder-drill | T04, T07, T08, T09, T10 | ⬜ | |

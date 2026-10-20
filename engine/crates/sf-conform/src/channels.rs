@@ -391,7 +391,7 @@ pub fn recorded(case: &Case) -> Result<(Feed, Vec<Option<Levels>>, Start), Strin
             let mut c = case.clone();
             c.alone = Alone::Only;
             let mut rec = feed::Recorded::default();
-            let _ = crate::run_inner(&c, |_, _| {}, &mut |_, _, _| {}, None, false, Some(&mut rec));
+            let _ = crate::run_inner(&c, |_, _| {}, &mut |_, _, _| {}, None, false, Some(&mut rec), None);
             if rec.panicked {
                 return Err(format!("{}: the engine run alone panicked", case.name));
             }
