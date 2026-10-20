@@ -9,7 +9,7 @@ use sf_core::{Picture, to_rgb12};
 use winit::window::Window;
 
 use crate::settings::Scale;
-use crate::window::{effective, picture_scale, viewport};
+use crate::window::{effective, picture_area, picture_scale, viewport};
 
 /// `pic` as 8-bit RGBA, row-major: each 4-bit channel times 17, so 0xF is 255.
 pub fn picture_rgba(pic: &Picture) -> Vec<u8> {
@@ -68,6 +68,9 @@ pub struct Video {
     pub fullscreen: bool,
     /// View → CRT Filter.
     pub crt: bool,
+    /// The recording bar shows under the picture: the picture is placed above it
+    /// (`window::picture_area`, bug-recorder DESIGN §2.3).
+    pub bar: bool,
     /// A script's `occlude on`: present as macOS does for a window it will not draw.
     pub occluded: bool,
 }
@@ -200,6 +203,7 @@ impl Video {
             scale,
             fullscreen: false,
             crt: false,
+            bar: false,
             occluded: false,
         })
     }
@@ -274,11 +278,12 @@ impl Video {
     fn layout(&self, frame: (u32, u32)) -> Shown {
         let surface = (self.config.width, self.config.height);
         let scale_factor = self.window.scale_factor();
-        let s = picture_scale(surface, frame, effective(self.scale, self.fullscreen), scale_factor);
+        let area = picture_area(surface, scale_factor, self.bar);
+        let s = picture_scale(area, frame, effective(self.scale, self.fullscreen), scale_factor);
         Shown {
             surface,
             scale_factor,
-            viewport: viewport(surface, frame, s),
+            viewport: viewport(area, frame, s),
         }
     }
 

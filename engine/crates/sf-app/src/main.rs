@@ -11,7 +11,8 @@
 //! through the menu bar, as a `menu::Command` (DESIGN §2.7, §7); save states are `states.rs`. Gamepads
 //! come through gilrs (`pad.rs`), except under `--script`, whose `pad …` lines stand in for them.
 //! Game → Start Level… starts a level with chosen values, and with the recorder on every stepped
-//! frame's input is recorded until Stop Recording saves it as a bug zip (`recorder.rs`).
+//! frame's input is recorded until Stop Recording saves it as a bug zip (`recorder.rs`); while it
+//! runs the recording bar sits under the picture (`recording_bar.rs`).
 //! `--replay` plays such a zip back in the window, watch-only, holding on its last frame
 //! (bug-recorder DESIGN §2.7).
 
@@ -30,6 +31,7 @@ mod pacing;
 mod pad;
 mod progress;
 mod recorder;
+mod recording_bar;
 mod save_window;
 mod script;
 mod settings;
@@ -64,6 +66,7 @@ use crate::menu::{Command, MenuBar};
 use crate::pacing::{Pacer, Presenter};
 use crate::pad::PadSource;
 use crate::recorder::{Recorder, Replay};
+use crate::recording_bar::RecordingBar;
 use crate::script::{Event, Script};
 use crate::settings::{Scale, Settings};
 use crate::video::{Video, picture_rgba};
@@ -239,6 +242,12 @@ struct Run {
     from_dialog: bool,
     /// The bug recording, while one runs.
     recorder: Recorder,
+    /// The recording bar, once a recording has first shown it (`recording_bar.rs`); whether it
+    /// shows is `video.bar`.
+    bar: Option<RecordingBar>,
+    /// The window's size has the bar's height in it: it may not, for a while, after the bar came
+    /// or went in fullscreen.
+    window_bar: bool,
     /// `--replay`: the recording fed in place of the player's input; `None` in normal play.
     replay: Option<Replay>,
     display: Arc<DisplayData>,
@@ -325,8 +334,8 @@ impl App {
         } else {
             let attrs = Window::default_attributes()
                 .with_title("Superfrog")
-                .with_inner_size(window::initial_size(scale, settings.widescreen))
-                .with_min_inner_size(window::min_size(settings.widescreen))
+                .with_inner_size(window::initial_size(scale, settings.widescreen, false))
+                .with_min_inner_size(window::min_size(settings.widescreen, false))
                 .with_active(!self.args.unattended());
             match event_loop.create_window(attrs) {
                 Ok(w) => Some(Arc::new(w)),
@@ -428,6 +437,8 @@ impl App {
             // A replay is a dialog-started game: it never moves the saved progress.
             from_dialog: replayed.is_some(),
             recorder: Recorder::Off,
+            bar: None,
+            window_bar: false,
             replay: replayed.as_ref().map(Replay::new),
             display,
             cache_hash,
@@ -629,6 +640,8 @@ impl App {
         run.settings.fullscreen = !run.settings.fullscreen;
         window::set_fullscreen(&run.window, run.settings.fullscreen);
         run.video.fullscreen = run.settings.fullscreen;
+        // Back in the window: it gains or loses the bar if that came or went in fullscreen.
+        self.fit_window_to_bar(None);
         self.save_settings();
     }
 
@@ -640,7 +653,8 @@ impl App {
         if let Scale::N(_) = s
             && !run.settings.fullscreen
         {
-            let _ = run.window.request_inner_size(window::initial_size(s, run.settings.widescreen));
+            let _ = run.window.request_inner_size(window::initial_size(s, run.settings.widescreen, run.video.bar));
+            run.window_bar = run.video.bar;
         }
         self.save_settings();
     }
@@ -661,13 +675,14 @@ impl App {
         let wide = !run.settings.widescreen;
         run.settings.widescreen = wide;
         run.game.set_view(window::view(wide));
-        run.window.set_min_inner_size(Some(window::min_size(wide)));
+        run.window.set_min_inner_size(Some(window::min_size(wide, run.video.bar)));
         if !run.settings.fullscreen {
             let n = match run.video.scale {
                 Scale::N(n) => n,
                 Scale::Auto => run.video.points_scale(),
             };
-            let _ = run.window.request_inner_size(window::initial_size(Scale::N(n), wide));
+            let _ = run.window.request_inner_size(window::initial_size(Scale::N(n), wide, run.video.bar));
+            run.window_bar = run.video.bar;
         }
         self.save_settings();
     }
@@ -751,6 +766,13 @@ impl ApplicationHandler for App {
         while let Some(a) = ControlsWindow::next_click() {
             self.controls_action(a);
         }
+        while RecordingBar::next_click() {
+            eprintln!("superfrog: STOP clicked");
+            self.on_command(event_loop, Command::StopRecording);
+            if event_loop.exiting() {
+                return;
+            }
+        }
         while let Some(e) = self.run.as_mut().and_then(|r| r.pads.as_mut()).and_then(|p| p.next()) {
             self.pad_event(e);
         }
@@ -811,7 +833,7 @@ impl ApplicationHandler for App {
                     // macOS keeps a person's drag above the minimum size, but not a resize asked
                     // for by code: the app holds the line itself.
                     let at: winit::dpi::LogicalSize<f64> = size.to_logical(run.window.scale_factor());
-                    let min = window::min_size(run.settings.widescreen);
+                    let min = window::min_size(run.settings.widescreen, run.video.bar);
                     if at.width < min.width as f64 || at.height < min.height as f64 {
                         let _ = run.window.request_inner_size(winit::dpi::LogicalSize::new(
                             at.width.max(min.width as f64),
@@ -821,6 +843,7 @@ impl ApplicationHandler for App {
                     run.video.resized(size.width, size.height);
                     run.window.request_redraw();
                 }
+                self.layout_bar();
             }
             WindowEvent::RedrawRequested => {
                 if let Some(run) = &mut self.run {

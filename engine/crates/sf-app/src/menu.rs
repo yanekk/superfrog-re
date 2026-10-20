@@ -492,6 +492,8 @@ impl App {
             recording: run.recorder.is_recording(),
             replay: run.replay.is_some(),
         });
+        // The bar follows the recorder as the Stop Recording item does.
+        self.show_bar();
     }
 
     /// What "Recording in progress" calls `c`, when taking it would end the recording running:
