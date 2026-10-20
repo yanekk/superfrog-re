@@ -1,5 +1,9 @@
 # T06 — app-recorder
 
+> **Amendment (T00 review, 2026-10-20, from D12).** No hard: the `start-level` event takes
+> `difficulty=easy|normal` and refuses `hard` like any unknown value; the example below reads
+> `difficulty=easy`. An omitted `lives=` means 3 (`LevelSetup::default()`).
+
 **Phase:** 2 · **Depends on:** T02 · **Weight:** medium
 
 ## Goal
@@ -45,7 +49,7 @@ trait Ui {
 ```
 
 Script events (format in `script.rs`'s doc): `start-level W1-2 lives=7 points=1000 energy=3
-difficulty=hard spud wings record`, `answer-recording save|discard|cancel`, `note <text>|discard`,
+difficulty=easy spud wings record`, `answer-recording save|discard|cancel`, `note <text>|discard`,
 and `menu stop-recording`. The native `Ui` methods are stubs until T08 and T10; they are never reached
 without a script before then because the menu items call through the same `Ui`.
 
