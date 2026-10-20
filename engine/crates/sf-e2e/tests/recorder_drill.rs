@@ -404,3 +404,64 @@ fn os_layer_a_half_filled_start_level_window_reopens_on_the_defaults_and_a_new_s
     assert!(started[0].starts_with("superfrog: started W1-1 ") && started[1].starts_with("superfrog: started W1-2 "), "{started:?}");
     assert!(zips(&bugs).is_empty());
 }
+
+/// Every ending action through the real menu bar asks first and Cancel keeps recording; its
+/// shortcut too (⌘2, Load State 2): Discard there loads; Reset's Save… opens the save window, and
+/// after Save the game resets.
+#[test]
+#[ignore = "OS layer: SF_E2E_OS=1 cargo test -p sf-e2e --test recorder_drill -- --ignored --test-threads 1"]
+fn os_layer_every_ending_action_and_its_shortcut_asks_with_each_answer() {
+    os_layer();
+    let (mut app, bugs) = os_launch(20_000, "1: start-level W1-1 record\n20: menu save-state 2\nform start\n");
+    until("recording", || recording(&app));
+    until("slot 2 filled", || app.os_menu_item(&["Game", "Load State"], "2").enabled);
+    let game = app.os_menu_items(&["Game"]);
+    let cont = game.iter().find(|i| i.title.starts_with("Continue")).expect("Continue").clone();
+    let mut paths: Vec<Vec<String>> = vec![
+        vec!["Game".into(), "Start Level…".into()],
+        vec!["Game".into(), "Reset".into()],
+        vec!["Game".into(), "Load State".into(), "2".into()],
+        vec!["File".into(), "Import Disks…".into()],
+        vec!["File".into(), "Play Level File…".into()],
+        vec!["superfrog".into(), "Quit Superfrog".into()],
+    ];
+    if cont.enabled {
+        paths.push(vec!["Game".into(), cont.title.clone()]);
+    }
+    for path in &paths {
+        let p: Vec<&str> = path.iter().map(String::as_str).collect();
+        app.os_menu(&p);
+        until(&format!("{p:?}: the question"), || app.os_buttons().iter().any(|b| b == "Save…"));
+        app.os_press_button("Cancel");
+        until(&format!("{p:?}: the question gone"), || !app.os_buttons().iter().any(|b| b == "Save…"));
+        assert!(recording(&app), "{p:?}: Cancel keeps recording");
+    }
+    app.os_activate();
+    std::thread::sleep(Duration::from_millis(300));
+    app.os_key_with(Mods::COMMAND, Key::Char('2'));
+    until("⌘2: the question", || app.os_buttons().iter().any(|b| b == "Save…"));
+    app.os_press_button("Discard");
+    until("⌘2 Discard: not recording", || !recording(&app));
+    // Recording again, then Reset → Save… → Save.
+    app.os_menu(&["Game", "Start Level…"]);
+    std::thread::sleep(Duration::from_millis(1500));
+    until("recording again", || recording(&app));
+    app.os_menu(&["Game", "Reset"]);
+    until("Reset: the question", || app.os_buttons().iter().any(|b| b == "Save…"));
+    app.os_press_button("Save…");
+    until("the save window", || app.os_buttons().iter().any(|b| b == "Save"));
+    app.os_press_id("save");
+    until("the saved notice", || app.os_buttons().iter().any(|b| b == "OK"));
+    app.os_press_button("OK");
+    until("not recording", || !recording(&app));
+    app.os_activate();
+    app.os_key_with(Mods::COMMAND, Key::Char('q'));
+    let c = app.finish_unread();
+    assert!(c.exit.success(), "{}", c.stderr);
+    let cancels = c.prompts.lines().filter(|l| l.starts_with("recording: ") && l.ends_with("-> cancel")).count();
+    assert_eq!(cancels, paths.len(), "{}", c.prompts);
+    assert!(c.prompts.contains("recording: Load State 2 -> discard\n"), "{}", c.prompts);
+    assert!(c.prompts.contains("recording: Reset -> save\n"), "{}", c.prompts);
+    assert_eq!(c.stderr.matches("superfrog: loaded state 2").count(), 1, "{}", c.stderr);
+    assert_eq!(zips(&bugs).len(), 1);
+}

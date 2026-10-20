@@ -194,6 +194,11 @@ fn os_layer_the_window_opens_on_the_defaults_and_each_dropdown_offers_exactly_it
     until("Start disabled", || !app.os_enabled_id("start"));
     assert_eq!(app.os_text_id("points-range"), "0–999 999");
     type_points(&mut app, "450000");
+    let t = std::time::Instant::now();
+    while app.os_text_id("points") != "450000" && t.elapsed() < Duration::from_secs(5) {
+        std::thread::sleep(Duration::from_millis(50));
+    }
+    assert_eq!(app.os_text_id("points"), "450000", "every key typed reached the field");
     until("Start enabled", || app.os_enabled_id("start"));
     assert_eq!(app.os_text_id("points"), "450000");
     assert_eq!(app.os_text_id("points-range"), "");
@@ -211,6 +216,11 @@ fn os_layer_the_window_opens_on_the_defaults_and_each_dropdown_offers_exactly_it
     assert!(pasted, "⌘V pasted: {:?}", app.os_text_id("points"));
     until("Start disabled by the paste", || !app.os_enabled_id("start"));
     type_points(&mut app, "0");
+    let t = std::time::Instant::now();
+    while app.os_text_id("points") != "0" && t.elapsed() < Duration::from_secs(5) {
+        std::thread::sleep(Duration::from_millis(50));
+    }
+    assert_eq!(app.os_text_id("points"), "0", "the field holds what was typed");
     until("Start enabled", || app.os_enabled_id("start"));
     // Esc closes it: nothing starts and the game carries on.
     app.os_key(Key::Escape);
