@@ -171,6 +171,61 @@ pub struct Left {
     pub what: String,
 }
 
+/// Where the original was put back on the recording (bug-recorder T14): it had left it (`what`)
+/// by the pass end its frame `frame` ended, and the recording's engine after step `step` was
+/// written into it after that frame.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PutBack {
+    /// The original's frame, counted from the start.
+    pub frame: u32,
+    pub step: u32,
+    pub what: String,
+}
+
+/// The recording's engine, stepped as far as asked (bug-recorder T14): what the original is put
+/// back to. Its modelled state is the owner's game at that step.
+pub(crate) struct Follow {
+    game: Game,
+    /// Steps done.
+    done: u32,
+}
+
+impl Follow {
+    pub fn new(setup: &sf_core::recording::LevelSetup, seed: sf_core::Rng, pokes: &Pokes) -> Follow {
+        let mut game = Game::start_level(crate::display_data(), setup, seed);
+        for (addr, bytes) in pokes {
+            game.poke(*addr, bytes);
+        }
+        Follow { game, done: 0 }
+    }
+
+    /// The engine after step `step`, `input(k)` step k's input (steps are only ever asked for in
+    /// order).
+    pub fn after(&mut self, step: u32, input: impl Fn(u32) -> FrameInput) -> &Game {
+        while self.done <= step {
+            self.game.step(input(self.done));
+            self.done += 1;
+        }
+        &self.game
+    }
+
+    /// What the original is put back with: every modelled variable as the engine holds it. The
+    /// CPU's place, its stack and the custom chips are not among them; at a pass end in a level
+    /// the original's CPU is in `level_frame_loop`'s wait, as the engine's would be, and that
+    /// holds (T14: W1-1 played to W1-2 stays on the recording after it).
+    pub fn writes(&self) -> Vec<(u32, Vec<u8>)> {
+        self.game
+            .layout()
+            .iter()
+            .map(|d| (d.addr, self.game.peek(d.addr, d.width.len())))
+            .collect()
+    }
+}
+
+/// How many of the original's pass ends a put-back waits for the recording's engine to be at a
+/// pass end too, before the original is taken to have left for good.
+const PUT_BACK_WAIT: u32 = 8;
+
 /// A recording's inputs placed on the original's frames ([`retime`]), and what the original did
 /// with them.
 #[derive(Debug, Clone)]
@@ -184,9 +239,15 @@ pub struct Retimed {
     pub frames: u32,
     /// The recording's step each of the original's frames was fed (or held at).
     pub step_of: Vec<u32>,
+    /// Where the original was put back on the recording, in order.
+    pub put_back: Vec<PutBack>,
+    /// Where the original left the recording and could not be put back: nothing after it is
+    /// judged on the owner's game. A load the original never ends ends the retiming there.
     pub left: Option<Left>,
     /// The original's picture on its last frame: at STOP.
     pub stop: Option<Rgb12Frame>,
+    /// The original's watched state (the frog, score, lives, hearts, level) on its last frame.
+    pub stop_watched: Vec<(VarId, u32)>,
 }
 
 /// The recording's inputs placed at the frames the original reads them (DESIGN §2.9 as T00
@@ -195,15 +256,16 @@ pub struct Retimed {
 /// original's next frame; at a step the engine loaded at once, the original held with nothing
 /// pressed until its load is over, the frames it spends under a screen it times itself counted
 /// as the recording's steps played; at each level's first frame and the slot machine's entry,
-/// the side that is early held for the other.
+/// the side that is early held for the other. At a pass end in a level where the original's
+/// watched state is not the recording's, it is put back on the recording (bug-recorder T14).
 pub fn retime(rec: &Recording, original: &mut Synced) -> InputScript {
     let played = play(rec, &[]);
-    let r = retime_played(rec, &played, &mut original.amiga);
+    let r = retime_played(rec, &played, &[], &mut original.amiga);
     original.memory = sync::core_memory(original.amiga.memory());
     r.script
 }
 
-fn retime_played(rec: &Recording, played: &Played, a: &mut Amiga) -> Retimed {
+fn retime_played(rec: &Recording, played: &Played, pokes: &Pokes, a: &mut Amiga) -> Retimed {
     let steps = rec.inputs.len() as u32;
     // The recording's anchors: the step after which a level's first frame has been (kind 0) or
     // the slot machine has been entered (kind 1).
@@ -223,9 +285,15 @@ fn retime_played(rec: &Recording, played: &Played, a: &mut Amiga) -> Retimed {
         original_frames: 0,
         frames: 0,
         step_of: Vec::new(),
+        put_back: Vec::new(),
         left: None,
         stop: None,
+        stop_watched: Vec::new(),
     };
+    let mut follow = Follow::new(&rec.setup, rec.seed, pokes);
+    // The original's pass ends since it was seen off the recording with the recording's engine
+    // mid-pass.
+    let mut waited = 0u32;
     let mut frames: Vec<FrameInput> = Vec::new();
     let mut held_in_loads = 0u32;
     let mut cop = played.start.cop1lc();
@@ -246,7 +314,7 @@ fn retime_played(rec: &Recording, played: &Played, a: &mut Amiga) -> Retimed {
         r.step_of.push(of);
         r.stop = Some(cap.picture);
     };
-    while n < steps {
+    'run: while n < steps {
         // The recording's engine is past its next anchor and the original has not met it.
         let pending = anchors.get(next).is_some_and(|&(s, _)| s < n);
         let of = if pending { n - 1 } else { n };
@@ -261,16 +329,29 @@ fn retime_played(rec: &Recording, played: &Played, a: &mut Amiga) -> Retimed {
         if !pending && let Some(end) = played.load[of as usize] {
             let mut seen = false;
             let mut k = 0;
+            let (before, stop) = (frames.len(), r.stop.clone());
             while !load_over(a, end, &mut seen) {
                 step(a, FrameInput::NONE, of, &mut frames, &mut r, &mut cop);
                 if cop.is_some_and(crate::timed_screen) {
                     under += 1;
                 }
                 k += 1;
-                assert!(
-                    k < LOAD_SEARCH,
-                    "the original's load ({end:x?}) was not over within {LOAD_SEARCH} frames of the engine's (step {of})"
-                );
+                if k >= LOAD_SEARCH {
+                    // The original is not where the recording is (it never begins or ends the
+                    // load the engine did): the retiming ends before this step, judged no
+                    // further (T14; T12's dry run 2 panicked here).
+                    frames.truncate(before - 1);
+                    r.step_of.truncate(before - 1);
+                    r.stop = stop;
+                    r.left.get_or_insert(Left {
+                        frame: before as u32 - 1,
+                        step: of,
+                        what: format!(
+                            "the engine loads here ({end:x?}) and the original's load was not over within {LOAD_SEARCH} frames"
+                        ),
+                    });
+                    break 'run;
+                }
             }
             held_in_loads += k;
         }
@@ -321,20 +402,45 @@ fn retime_played(rec: &Recording, played: &Played, a: &mut Amiga) -> Retimed {
             && !sync::mid_pass(&cpu, &m)
         {
             let (theirs, ours) = (watched_original(&m), played.watched[of as usize]);
-            if let Some(k) = (0..WATCHED.len()).find(|&k| theirs[k] != ours[k]) {
-                r.left = Some(Left {
-                    frame: at,
-                    step: of,
-                    what: format!(
+            match (0..WATCHED.len()).find(|&k| theirs[k] != ours[k]) {
+                None => waited = 0,
+                Some(k) => {
+                    let what = format!(
                         "{} original {:x}, recording {:x}",
                         def(WATCHED[k]).name,
                         theirs[k],
                         ours[k]
-                    ),
-                });
+                    );
+                    // Put back where both sides are at a pass end: the engine's state is then
+                    // one the original's loop can go on from.
+                    let eng = follow.after(of, |k| rec.inputs[k as usize]);
+                    if !eng.mid_pass() {
+                        for (addr, bytes) in follow.writes() {
+                            a.write_memory(addr, &bytes);
+                        }
+                        r.put_back.push(PutBack {
+                            frame: at,
+                            step: of,
+                            what,
+                        });
+                        waited = 0;
+                    } else if waited >= PUT_BACK_WAIT {
+                        r.left = Some(Left {
+                            frame: at,
+                            step: of,
+                            what: format!(
+                                "{what}, and the recording's engine was in the middle of a pass at each of the original's {PUT_BACK_WAIT} pass ends since, so it could not be put back"
+                            ),
+                        });
+                    } else {
+                        waited += 1;
+                    }
+                }
             }
         }
     }
+    let m = sync::core_memory(a.memory());
+    r.stop_watched = WATCHED.into_iter().zip(watched_original(&m)).collect();
     r.original_frames = frames.len() as u32;
     r.frames = r.original_frames - held_in_loads;
     for (f, i) in frames.into_iter().enumerate() {
@@ -377,8 +483,10 @@ pub struct Compared {
 }
 
 impl Compared {
+    /// No leg differs and the original was on the recording to its end (put back where it left
+    /// it): never true over frames that were not judged on the owner's game (T14).
     pub fn same(&self) -> bool {
-        self.legs.iter().all(|l| l.first.is_none())
+        self.first().is_none() && self.retimed.left.is_none()
     }
 
     /// The first divergence, in the first leg that differs.
@@ -397,24 +505,43 @@ impl Compared {
         (f, s.copied().unwrap_or(0))
     }
 
-    /// What `bug compare` prints: `same` or `differs at frame F (engine step S): …` first, then
-    /// where the original left the recording, the legs, and the first divergence in full.
+    /// What `bug compare` prints: `same`, `differs at frame F (engine step S): …`, or `same up
+    /// to frame F (engine step S), not judged after it` first; then where the original was put
+    /// back on the recording and where it left it for good, the legs, and the first divergence
+    /// in full.
     pub fn report(&self) -> String {
         let mut out = String::new();
-        match self.first() {
-            None => out += "same\n",
-            Some(d) => {
+        match (self.first(), &self.retimed.left) {
+            (None, None) => out += "same\n",
+            (None, Some(l)) => {
+                out += &format!(
+                    "same up to frame {} (engine step {}), not judged after it\n",
+                    l.frame, l.step
+                )
+            }
+            (Some(d), _) => {
                 let (f, s) = self.at(d);
                 let text = d.to_string();
                 let what = text.lines().nth(1).map_or("", str::trim);
                 out += &format!("differs at frame {f} (engine step {s}): {what}\n");
             }
         }
+        let put = &self.retimed.put_back;
+        if let Some(p) = put.first() {
+            out += &format!(
+                "the original left the recording {} time{} and was put back on it, the recording's engine written into it at the pass end it was seen: first at frame {} (engine step {}): {}; judged from the owner's state after each\n",
+                put.len(),
+                if put.len() == 1 { "" } else { "s" },
+                p.frame,
+                p.step,
+                p.what
+            );
+        }
         match &self.retimed.left {
-            None => out += "the original stayed on the recording to its end\n",
+            None => out += "the original was on the recording to its end\n",
             Some(l) => {
                 out += &format!(
-                    "the original left the recording at frame {} (engine step {}): {}; a bug after it may not occur on the original\n",
+                    "the original left the recording at frame {} (engine step {}) and could not be put back: {}; nothing after it was judged on the recording\n",
                     l.frame, l.step, l.what
                 );
             }
@@ -465,7 +592,23 @@ pub fn compare_with(
     pokes: &Pokes,
     before_step: impl FnMut(u32, &mut Game),
 ) -> Result<Compared, String> {
-    let played = play(rec, pokes);
+    compare_inner(rec, mode, pokes, pokes, before_step)
+}
+
+/// [`compare`], `pokes` written into the recording's engine alone: a test's recording the
+/// original cannot follow, which the app could not make.
+pub fn compare_played(rec: &Recording, mode: Mode, pokes: &Pokes) -> Result<Compared, String> {
+    compare_inner(rec, mode, pokes, &[], |_, _| {})
+}
+
+fn compare_inner(
+    rec: &Recording,
+    mode: Mode,
+    played_pokes: &Pokes,
+    pokes: &Pokes,
+    before_step: impl FnMut(u32, &mut Game),
+) -> Result<Compared, String> {
+    let played = play(rec, played_pokes);
     let start = || -> Result<Synced, String> {
         let cap = 2 * rec.inputs.len() as u32 + LOAD_SEARCH;
         let (mut s, _) = sync::setup_start(&rec.setup, rec.seed, cap)?;
@@ -476,13 +619,21 @@ pub fn compare_with(
         Ok(s)
     };
     let mut original = start()?;
-    let retimed = retime_played(rec, &played, &mut original.amiga);
-    let mut case = case_of(rec, "bug compare", retimed.script.clone(), retimed.frames);
+    let retimed = retime_played(rec, &played, played_pokes, &mut original.amiga);
+    let mut case = case_of(rec, "bug compare", &retimed);
+    if let Some(p) = case.put_back.as_mut() {
+        p.pokes = played_pokes.to_vec();
+    }
     case.mode = mode;
     if mode == Mode::Strict {
         case.alone = crate::Alone::Off;
     }
-    let mut legs = crate::Legs::new(LEG_PASSES, Some((start()?, played.start.clone())));
+    // The runner's engine: the recording's start, poked as every side is.
+    let mut engine = Game::start_level(crate::display_data(), &rec.setup, rec.seed);
+    for (addr, bytes) in pokes {
+        engine.poke(*addr, bytes);
+    }
+    let mut legs = crate::Legs::new(LEG_PASSES, Some((start()?, engine)));
     let mut found = Vec::new();
     let outcome = crate::run_inner(
         &case,
@@ -494,6 +645,17 @@ pub fn compare_with(
         Some(&mut legs),
     )
     .expect("a run in legs collects its divergences");
+    let mut retimed = retimed;
+    if let Some((frame, why)) = legs.cut.take()
+        && retimed.left.is_none()
+    {
+        let step = retimed.step_of.get(frame as usize).copied().unwrap_or(0);
+        retimed.left = Some(Left {
+            frame,
+            step,
+            what: format!("the judging run's engine loaded and {why}"),
+        });
+    }
     let mut from = vec![0];
     from.extend(legs.starts.iter().copied());
     let mut legs: Vec<Leg> = from
@@ -524,8 +686,15 @@ pub fn compare_with(
 
 /// `bug case`'s files for `rec` retimed as `r`, named `name`, from the zip `zip`: the case
 /// (`SyncPoint::Setup`'s form, the script by name, the runner's frames; its first line the owner's
-/// note and where they pressed STOP) and the script, in the original's frames.
-pub fn case_files(rec: &Recording, name: &str, zip: &str, r: &Retimed) -> (String, String) {
+/// note and where they pressed STOP) and the script, in the original's frames; and where the
+/// original was put back on the recording (T14), the recording's inputs by engine step, the
+/// script `<name>-steps` the case's `put-back` names.
+pub fn case_files(
+    rec: &Recording,
+    name: &str,
+    zip: &str,
+    r: &Retimed,
+) -> (String, String, Option<String>) {
     let one_line = |t: &str| t.split_whitespace().collect::<Vec<_>>().join(" ");
     let stopped = rec.stopped_at.map_or("-".to_string(), |l| l.to_string());
     let note = match one_line(&rec.note) {
@@ -537,16 +706,28 @@ pub fn case_files(rec: &Recording, name: &str, zip: &str, r: &Retimed) -> (Strin
         sf_core::recording::Difficulty::Easy => "easy",
         sf_core::recording::Difficulty::Normal => "normal",
     };
-    let toml = format!(
+    let mut toml = format!(
         "# {note} (stopped at {stopped})\n\
          # From the bug zip {zip} (`sf-conform bug case`, bug-recorder DESIGN §2.10): the level started\n\
          # with the Start Level dialog's values, the recording's {} inputs retimed onto the original's\n\
-         # frames ({} of them, the original's loads included; DESIGN §2.9).\n\
-         sync = {{ level = \"{}\", lives = {}, points = {}, energy = {}, difficulty = \"{difficulty}\", spud = {}, wings = {}, seed = \"{:08x} {:08x}\" }}\n\
-         script = \"{name}\"\n\
-         frames = {}\n",
+         # frames ({} of them, the original's loads included; DESIGN §2.9).\n",
         rec.inputs.len(),
         r.original_frames,
+    );
+    if !r.put_back.is_empty() {
+        toml += "# Where the original's lag took it off the recording it is put back on it (T14): after\n\
+                 # `at`'s frames the recording's engine after its step is written into the original.\n";
+    }
+    if let Some(l) = &r.left {
+        toml += &format!(
+            "# The original left the recording at frame {} (engine step {}) for good: {}.\n",
+            l.frame, l.step, l.what
+        );
+    }
+    toml += &format!(
+        "sync = {{ level = \"{}\", lives = {}, points = {}, energy = {}, difficulty = \"{difficulty}\", spud = {}, wings = {}, seed = \"{:08x} {:08x}\" }}\n\
+         script = \"{name}\"\n\
+         frames = {}\n",
         s.level,
         s.lives.count(),
         s.points,
@@ -557,17 +738,38 @@ pub fn case_files(rec: &Recording, name: &str, zip: &str, r: &Retimed) -> (Strin
         rec.seed.hi,
         r.frames,
     );
+    let mut steps = None;
+    if !r.put_back.is_empty() {
+        let at: Vec<String> = r
+            .put_back
+            .iter()
+            .map(|p| format!("[{}, {}]", p.frame + 1, p.step))
+            .collect();
+        toml += &format!(
+            "put-back = {{ steps = \"{name}-steps\", at = [{}] }}\n",
+            at.join(", ")
+        );
+        let mut text = format!(
+            "# {note}: the bug zip {zip}'s inputs by engine step (`sf-conform bug case`), what the\n\
+             # case {name} puts the original back to.\n"
+        );
+        for &(f, input) in &steps_script(rec).lines {
+            text += &format!("{f}: {}\n", InputScript::format_input(input));
+        }
+        steps = Some(text);
+    }
     let mut script = format!(
         "# {note}: the bug zip {zip}'s inputs on the original's frames (`sf-conform bug case`).\n"
     );
     for &(f, input) in &r.script.lines {
         script += &format!("{f}: {}\n", InputScript::format_input(input));
     }
-    (toml, script)
+    (toml, script, steps)
 }
 
-/// `bug case`: `rec` retimed on the original and written as `cases/<name>.toml` and
-/// `scripts/<name>.txt`. Refuses a name that is not lower-case letters, digits and `-`, or one
+/// `bug case`: `rec` retimed on the original and written as `cases/<name>.toml`,
+/// `scripts/<name>.txt` and, if the original is put back on the recording, `scripts/<name>-steps.txt`;
+/// the paths written. Refuses a name that is not lower-case letters, digits and `-`, or one
 /// either folder already has.
 pub fn write_case(
     rec: &Recording,
@@ -575,7 +777,7 @@ pub fn write_case(
     zip: &str,
     cases: &std::path::Path,
     scripts: &std::path::Path,
-) -> Result<(std::path::PathBuf, std::path::PathBuf), String> {
+) -> Result<Vec<std::path::PathBuf>, String> {
     if name.is_empty()
         || !name
             .bytes()
@@ -587,7 +789,8 @@ pub fn write_case(
     }
     let case = cases.join(format!("{name}.toml"));
     let script = scripts.join(format!("{name}.txt"));
-    for p in [&case, &script] {
+    let steps = scripts.join(format!("{name}-steps.txt"));
+    for p in [&case, &script, &steps] {
         if p.exists() {
             return Err(format!(
                 "{}: already there; choose another name",
@@ -598,16 +801,33 @@ pub fn write_case(
     let played = play(rec, &[]);
     let cap = 2 * rec.inputs.len() as u32 + LOAD_SEARCH;
     let (mut original, _) = sync::setup_start(&rec.setup, rec.seed, cap)?;
-    let r = retime_played(rec, &played, &mut original.amiga);
-    let (toml, text) = case_files(rec, name, zip, &r);
-    for (p, t) in [(&script, &text), (&case, &toml)] {
+    let r = retime_played(rec, &played, &[], &mut original.amiga);
+    let (toml, text, steps_text) = case_files(rec, name, zip, &r);
+    let mut files = vec![(script, text)];
+    files.extend(steps_text.map(|t| (steps, t)));
+    files.push((case, toml));
+    for (p, t) in &files {
         std::fs::write(p, t).map_err(|e| format!("{}: {e}", p.display()))?;
     }
-    Ok((case, script))
+    let mut paths: Vec<_> = files.into_iter().map(|(p, _)| p).collect();
+    paths.rotate_right(1);
+    Ok(paths)
 }
 
-/// The case a recording is compared as: the setup's start, `script` in the original's frames.
-fn case_of(rec: &Recording, name: &str, script: InputScript, frames: u32) -> Case {
+/// The recording's inputs as a script of engine steps.
+fn steps_script(rec: &Recording) -> InputScript {
+    let mut s = InputScript::default();
+    for (k, &i) in rec.inputs.iter().enumerate() {
+        if s.lines.last().map(|l| l.1) != Some(i) {
+            s.lines.push((k as u32, i));
+        }
+    }
+    s
+}
+
+/// The case a recording retimed as `r` is compared as: the setup's start, the script in the
+/// original's frames, the original put back where `r` put it back.
+fn case_of(rec: &Recording, name: &str, r: &Retimed) -> Case {
     let compare = crate::Compare::ALL;
     Case {
         name: name.to_string(),
@@ -615,8 +835,8 @@ fn case_of(rec: &Recording, name: &str, script: InputScript, frames: u32) -> Cas
             setup: rec.setup,
             seed: rec.seed,
         },
-        script,
-        frames,
+        script: r.script.clone(),
+        frames: r.frames,
         compare,
         exclude: Vec::new(),
         only_vars: None,
@@ -624,6 +844,11 @@ fn case_of(rec: &Recording, name: &str, script: InputScript, frames: u32) -> Cas
         lag_limit: None,
         mode: Mode::Faithful,
         alone: crate::Alone::of(compare),
+        put_back: (!r.put_back.is_empty()).then(|| crate::PutBacks {
+            steps: steps_script(rec),
+            at: r.put_back.iter().map(|p| (p.frame + 1, p.step)).collect(),
+            pokes: Vec::new(),
+        }),
     }
 }
 

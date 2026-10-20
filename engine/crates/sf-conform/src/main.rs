@@ -175,9 +175,9 @@ fn bug_case(zip: &Path, name: &str) -> Result<bool, String> {
     let file = zip
         .file_name()
         .map_or("-".to_string(), |n| n.to_string_lossy().into_owned());
-    let (case, script) = bug::write_case(&rec, name, &file, &cases_dir(), &scripts_dir())?;
-    println!("{}", case.display());
-    println!("{}", script.display());
+    for p in bug::write_case(&rec, name, &file, &cases_dir(), &scripts_dir())? {
+        println!("{}", p.display());
+    }
     Ok(true)
 }
 

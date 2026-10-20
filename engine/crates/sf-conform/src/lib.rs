@@ -25,7 +25,7 @@ pub mod script;
 pub mod sound_events;
 pub mod sync;
 
-pub use case::{Alone, Case, Compare, Excluded, Exclusion, LagLimit, cases_dir, scripts_dir};
+pub use case::{Alone, Case, Compare, Excluded, Exclusion, LagLimit, PutBacks, cases_dir, scripts_dir};
 pub use compare::{Mode, Tolerance};
 pub use milestones::{FrameState, Milestone, MilestoneDiff, Milestones};
 pub use report::{Divergence, PictureDiff};
@@ -312,7 +312,47 @@ fn run_inner(
         .as_ref()
         .is_some_and(|a| a.record.is_some())
         .then(channels::Original::default);
-    for f in 0..case.frames {
+    // A bug zip's case (bug-recorder T14): the recording's engine, what the original is put back to.
+    let mut follow = case.put_back.as_ref().map(|p| {
+        let SyncPoint::Setup { setup, seed } = &case.sync else {
+            panic!("{}: put-back needs a level-setup sync", case.name)
+        };
+        (p, bug::Follow::new(setup, *seed, &p.pokes), 0usize)
+    });
+    'frames: for f in 0..case.frames {
+        // The original put back on the recording once it has run the frames it left it in
+        // (bug-recorder T14): the recording's engine there written into it, and the runner's
+        // engine, and check 4's, go on from it (a new leg, in legs).
+        if let Some((p, eng, next)) = follow.as_mut()
+            && p.at.get(*next).is_some_and(|&(frames, _)| frames <= of)
+        {
+            let (frames, step) = p.at[*next];
+            debug_assert_eq!(frames, of, "{}: a put-back inside a load", case.name);
+            *next += 1;
+            eng.after(step, |k| p.steps.input_at(k));
+            for (addr, bytes) in eng.writes() {
+                amiga.write_memory(addr, &bytes);
+            }
+            prev = sync::core_memory(amiga.memory());
+            match legs.as_deref_mut() {
+                Some(l) => l.force = true,
+                None => {
+                    game = Game::with_display(display.clone(), Start::Transplant(prev.clone()));
+                    if frog_only {
+                        game.frog_only();
+                    }
+                    passes.level();
+                    held = None;
+                    paula_ours = paula_theirs.clone();
+                }
+            }
+            if let Some(a) = alone.as_mut() {
+                a.game = Game::with_display(display.clone(), Start::Transplant(prev.clone()));
+                if frog_only {
+                    a.game.frog_only();
+                }
+            }
+        }
         // Legs (bug-recorder T05): the engine re-synced from the original at a pass end once the
         // leg has run its passes, or once it has differed, and a new leg begun.
         if let Some(l) = legs.as_deref_mut()
@@ -397,11 +437,16 @@ fn run_inner(
                         break;
                     }
                     n += 1;
-                    assert!(
-                        n < LOAD_SEARCH,
-                        "{}: the original's load ({end:x?}) was not over within {LOAD_SEARCH} frames of the engine's (frame {f})",
-                        case.name
+                    let why = || format!(
+                        "the original's load ({end:x?}) was not over within {LOAD_SEARCH} frames of the engine's (frame {f})"
                     );
+                    // In legs (a bug zip's comparison) the original is somewhere the recording is
+                    // not: the run ends, its frames from here not judged (bug-recorder T14).
+                    if n >= LOAD_SEARCH && let Some(l) = legs.as_deref_mut() {
+                        l.cut = Some((of - n, why()));
+                        break 'frames;
+                    }
+                    assert!(n < LOAD_SEARCH, "{}: {}", case.name, why());
                     frozen.apply(&mut amiga, &display);
                     let resumes = sync::intro_resumes(&amiga);
                     // A load is not modelled frame by frame: what it plays is not compared, but
@@ -799,6 +844,12 @@ pub(crate) struct Legs {
     passes: u64,
     /// Divergences found by the leg's start.
     found: usize,
+    /// A leg begins at the next frame, whatever has run (the original was put back on the
+    /// recording, bug-recorder T14).
+    force: bool,
+    /// The original's frame the run ended on before its end, and why: the original never ended
+    /// a load the engine did (T14).
+    pub cut: Option<(u32, String)>,
 }
 
 impl Legs {
@@ -810,6 +861,8 @@ impl Legs {
             clock: sf_core::PassClock::default(),
             passes: 0,
             found: 0,
+            force: false,
+            cut: None,
         }
     }
 
@@ -824,9 +877,11 @@ impl Legs {
     /// divergences found so far.
     fn due(&mut self, cpu: &sf_oracle::CpuRegs, m: &AmigaMemory, found: usize) -> bool {
         let ready = self.passes >= self.every || found > self.found;
-        if !(ready && sync::in_level(m) && sync::in_level_wait(cpu, m) && !sync::mid_pass(cpu, m)) {
+        let at_end = sync::in_level(m) && sync::in_level_wait(cpu, m) && !sync::mid_pass(cpu, m);
+        if !(self.force || ready && at_end) {
             return false;
         }
+        self.force = false;
         self.passes = 0;
         self.found = found;
         true

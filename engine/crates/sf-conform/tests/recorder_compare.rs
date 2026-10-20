@@ -111,8 +111,10 @@ fn a_case_from_a_recording_runs_green_and_its_name_is_taken_once() {
     let (cases, scripts) = (dir.join("cases"), dir.join("scripts"));
     std::fs::create_dir_all(&cases).unwrap();
     std::fs::create_dir_all(&scripts).unwrap();
-    let (case, script) = bug::write_case(&rec, "bug-run", "run.zip", &cases, &scripts).unwrap();
-    let toml = std::fs::read_to_string(&case).unwrap();
+    let written = bug::write_case(&rec, "bug-run", "run.zip", &cases, &scripts).unwrap();
+    // A lag-free run: the original is never put back, so no steps script.
+    let [case, script] = &written[..] else { panic!("{written:?}") };
+    let toml = std::fs::read_to_string(case).unwrap();
     assert!(
         toml.starts_with("# the frog runs (stopped at -)\n"),
         "{toml}"
