@@ -627,6 +627,17 @@ impl App {
         run.picture = pic;
         let recording = if record { ", recording" } else { "" };
         eprintln!("superfrog: started {} after step {}{recording}", setup.level, run.steps);
+        // What the game holds at the level's first frame, so a test that started it through the
+        // real window can see the values arrived (bug-recorder T08).
+        let held: Vec<String> = ["frog_lives", "score", "frog_hearts", "opt_game_mode", "frog_spud_on", "frog_flight"]
+            .iter()
+            .filter_map(|&name| sf_core::layout::LAYOUT.iter().find(|d| d.name == name))
+            .map(|d| {
+                let bytes = run.game.peek(d.addr, d.width.len());
+                format!("{} {}", d.name, bytes.iter().fold(0u32, |v, &b| v << 8 | b as u32))
+            })
+            .collect();
+        eprintln!("superfrog: start-level holds {}", held.join(", "));
         // Starting ran the game unseen for seconds: carry on from now rather than catching up.
         self.after_panel();
         self.show_newest();

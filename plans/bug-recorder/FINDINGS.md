@@ -8,6 +8,8 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-20 | 📌 | T08: OS-layer `recorder_start_level` passed 4/4, then quit-discards and busy-app retry changed. Review rerun failed 4/4 on a locked screen (`IOConsoleLocked`); owner deferred the rerun to T11's drill. |
+| 2026-10-20 | 📌 | T08 OS layer: the modal Start Level window sits at window layer 8, so `os_windows` misses it (tests look for its buttons); `AXError -25204` while a started level runs unseen; a locked screen or another worker's OS tests fail every run. |
 | 2026-10-20 | 🐞 | T05 review: `--strict bug compare` (and `--strict run` of any `Setup` case) differs at frame 0 on `playfield_clean`, T03's known start residue, so strict names no engine bug. Open; T12's procedure relies on `--strict`. |
 | 2026-10-20 | 📌 | T05: on today's engine W1-1 exit (forced) → tally → slot `slot-gamble` → W1-2 + 500 compares same, 33 legs; chain same. W4-3 `complete-w4-3` leaves the recording at frame 399 (`frog_hearts`), all 352 legs same. |
 | 2026-10-20 | 📌 | T05: the runner re-syncs the engine after every lag (`resync = true`, RE §2.1), so a difference made inside or just before a lag goes unseen (W1-1 lags 155–275, 297–369). `bug compare` prints the re-sync count; T12's procedure should mention it. |
