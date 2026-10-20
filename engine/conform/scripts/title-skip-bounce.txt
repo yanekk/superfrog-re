@@ -1,0 +1,6 @@
+# Power-on to the title (T20 review): fire while the eyes bounce in from the right, before the
+# music starts: the intro skips to its end (music, the picture back under the eyes).
+1000: M
+1005: -
+3950: F
+3955: -

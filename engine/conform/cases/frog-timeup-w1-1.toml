@@ -1,0 +1,6 @@
+# W1-1 with its items live, the clock set to 0:03 on the level's first frame and the frog standing:
+# the clock runs out at frame 231 (`time_up_check`, `frog_die` takes every life), the death plays,
+# and at frame 269 the level's loop ends into `level_exit_fade`, which starts with `game_over_seq`
+# (T34). Ends on frame 268; `game-over-timeup-w1-1` goes on to the title.
+sync = { level = "W1-1", clock = "0:03" }
+frames = 269

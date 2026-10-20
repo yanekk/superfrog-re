@@ -1,0 +1,50 @@
+# The Superfrog engine workspace. Pure crates (sf-disk, sf-assets, sf-core, sf-paula) hold the game;
+# shell crates hold the app and the test tooling. The boundary is DESIGN §3.1, enforced by
+# crates/sf-conform/tests/purity.rs.
+[workspace]
+resolver = "3"
+members = ["crates/*"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+publish = false
+
+# The oracle's tests step the emulator thousands of frames and hash 1 MB of RAM per frame; its Rust
+# side is optimised even in test builds so the test block stays within its time budget (T05).
+[profile.dev.package.sf-oracle]
+opt-level = 2
+
+# The mixer runs four channels at 3.5 MHz; the oracle comparison runs it for thousands of frames.
+[profile.dev.package.sf-paula]
+opt-level = 2
+
+# Decoding all of GameData (two IFF ANIMs, eight bob sheets) runs dozens of times in its tests.
+[profile.dev.package.sf-assets]
+opt-level = 2
+
+# Its oracle tests compare the mixer's output with the reference at every Paula clock.
+[profile.dev.package.sf-conform]
+opt-level = 2
+
+# The renderer draws thousands of transplanted frames in the conformance tests (T13).
+[profile.dev.package.sf-core]
+opt-level = 2
+
+# The app encodes a PNG of every captured frame and converts every picture to RGBA: unoptimised,
+# with the PNG crates, a frame costs more than a PAL frame's 20 ms, and a long scripted run
+# (sf-e2e's power-on to W1-1, T193) falls behind the pacer and reaches its --timeout.
+[profile.dev.package.sf-app]
+opt-level = 2
+
+[profile.dev.package.png]
+opt-level = 2
+
+[profile.dev.package.fdeflate]
+opt-level = 2
+
+[profile.dev.package.crc32fast]
+opt-level = 2
+
+[profile.dev.package.miniz_oxide]
+opt-level = 2

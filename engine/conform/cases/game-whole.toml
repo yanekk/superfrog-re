@@ -1,0 +1,20 @@
+# The whole game (T202, T205-T207): power-on with an empty df1 connected (W6-2..4's first map set,
+# as the engine plays them; docs/10), START GAME, then each level's route spliced at the frame its
+# first frame plays, as `examples/whole_game` assembled it on the original; W1-1's tally takes the
+# slot machine. W1-1 and W5-2 play their standalone routes, every other level its `chain-*` route
+# (planned from the original's state at the level's start in the chain, T205-T207), every level
+# completed with no life lost, the witch beaten at chain-ww-1's 1685; the script ends at the end
+# of the original's frame 244365, the first in `end_seq_load`. `frames` is the engine's (loads
+# skipped): the original runs 18622 frames ahead through W6-4 and 20284 from the final level's
+# load, so 224082 ends with the engine's frame 224081, the original's 244365.
+# Divergences: FINDINGS, T205-T207.
+sync = "power-on-df1"
+script = "game-whole"
+frames = 224082
+lag-limit = { frames = 390, note = "the longest run of frames ending mid-pass met on the way: 390 from frame 125461, W4-3 at chain-w4-3's ~3300 (the original's 138423), the stretch where complete-w4-3 met 261 (T181): W4-3's passes run longer than a frame from its 3300; check 4 covers them (T206)" }
+
+[[exclude]]
+what = "channels"
+frames = [180880, 180950]
+note = "WB-1's channel 3 from 180887: sfx_play turns the channel's DMA off and on ~1000 colour clocks apart, and Paula restarts the new effect only if the old one's period (2954 clocks) runs out between; simulated from both sides' writes, the original's runs out 863 clocks after the off, the engine's 996 (its on at 995), so the old sample plays on and the new effect starts when it ends, at 180932. A sub-frame restart race on where the writes fall, not gameplay: no state differs (T216). Accepted difference awaiting the owner's confirmation, 2026-10-19"
+task = "none (accepted, awaiting the owner's confirmation)"

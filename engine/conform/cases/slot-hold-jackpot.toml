@@ -1,0 +1,7 @@
+# The slot machine (T74) from `start-w1-1-blink1`: the first spin pays nothing, the second allows
+# holds; reel 2 held, it stops on $18 $18 $18: the jackpot by line, every lamp flashed, no coin
+# left, 150 000 and the next level's code, flashed until fire. To the frame before
+# `slot_machine` returns.
+sync = { slot = "slot-none", start = "start-w1-1-blink1" }
+script = "slot-hold-jackpot"
+frames = 1074

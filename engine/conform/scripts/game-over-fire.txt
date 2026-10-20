@@ -1,0 +1,6 @@
+# Fire through game over (T34): held as it begins (the passes, then the wait for fire to be let
+# go), let go at frame 20, pressed again at 120, which ends the 350-frame wait.
+0: F
+20: -
+120: F
+124: -

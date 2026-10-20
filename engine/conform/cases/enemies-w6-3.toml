@@ -1,0 +1,8 @@
+# W6-3 with every object live on both sides and nothing left out (T40): the right darts, the mace,
+# the thrower throwing and hitting the frog, the cannon, the walker, the flier and its shots, the
+# charger stomped, stunned and taken as a reward. The left darts are T104's (the owner,
+# 2026-10-14). Planned with `examples/plan_exit`.
+sync = { level = "W6-3" }
+script = "enemies-w6-3"
+frames = 1150
+resync = false

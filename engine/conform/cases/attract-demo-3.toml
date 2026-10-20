@@ -1,0 +1,8 @@
+# Three attract cycles from power-on (T164): each title, award pages, hall of talent, credits and
+# the W1-1 demo with its return to the title, the demos' `level_start` at case frames 3314, 8270
+# and 13008 (`demo_index` 1, 2 and 0: the title moves it on before each). Slow (about 4 minutes):
+# an ignored test (`tests/cases.rs`), run by `sf-conform -- all`. Each demo plays to the title's music, which a
+# lag's re-sync must keep (`audio::files_for`, case frame 13278).
+sync = "power-on"
+script = "boot-to-title"
+frames = 15500

@@ -1,0 +1,13 @@
+diff --git a/Core/Infrastructure/Emulator.h b/Core/Infrastructure/Emulator.h
+index 7721c70df..bde2171c4 100644
+--- a/Core/Infrastructure/Emulator.h
++++ b/Core/Infrastructure/Emulator.h
+@@ -22,6 +22,8 @@ class Emulator : public Thread, public Synchronizable {
+ 
+     friend class API;
+     friend class VAmiga;
++    // superfrog-re (sf-oracle): steps the emulator synchronously on the caller's thread.
++    friend struct SfShimAccess;
+ 
+ public:
+ 

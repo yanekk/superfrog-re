@@ -1,0 +1,456 @@
+//! T211: the real app plays the whole game (`conform/cases/game-whole.toml`) fed the original's
+//! pacing exactly as `sf-conform`'s engine run alone is fed it (its pacing feed, `sf_core::feed`),
+//! and its frames are that run's, frame for frame: each frame's picture and state hashes, the
+//! app's `--capture-hashes` against the ones `sf-conform` wrote as it ran alone. Since that run
+//! meets the original's milestones (DESIGN §2.1 check 4, T209), so does the app's. And its sound
+//! is heard where the original's is: the app's captured audio against the original's own mix,
+//! frame of play by frame of play (T30, [`heard_where_the_original_is`]).
+//!
+//! The feed comes from the trace cache, or is made there first by running the case on the oracle
+//! (`sf_conform::feed::feed`, as `sf-conform feed <case.toml>` does): about 25 s for the short
+//! stretch, about 25 min for the whole game. The app then runs at the PAL rate: 30 s for the
+//! stretch, about 75 min for the whole game, which is ignored unless asked (engine/crates/sf-e2e/README.md).
+
+use std::process::{Command, Stdio};
+
+use sf_conform::Case;
+use sf_conform::feed::FeedFiles;
+use sf_core::feed::{Feed, parse_hashes};
+use sf_core::{Game, Start, View};
+use sf_e2e::{App, LaunchOpts, binary, read_wav};
+
+/// `game-whole`'s first `frames` frames of play (all of them for `None`), and its feed.
+fn case_and_feed(frames: Option<u32>) -> (Case, FeedFiles) {
+    let mut case = Case::load(&sf_conform::cases_dir().join("game-whole.toml"))
+        .unwrap_or_else(|e| panic!("{e}"));
+    if let Some(n) = frames {
+        case.frames = n;
+    }
+    let f = sf_conform::feed::feed(&case).unwrap_or_else(|e| panic!("{e}"));
+    if let Err(d) = &f.alone {
+        // The feed is what the engine was fed all the same; the milestones are T209's to keep.
+        eprintln!("note: {}'s engine run alone did not meet the original's milestones: {d}", case.name);
+    }
+    (case, f)
+}
+
+fn read(path: &std::path::Path) -> String {
+    std::fs::read_to_string(path).unwrap_or_else(|e| panic!("{}: {e}", path.display()))
+}
+
+/// The first frame whose hashes differ between `ours` and `theirs`, and which differ.
+fn first_difference(ours: &[(u64, u64)], theirs: &[(u64, u64)]) -> Option<String> {
+    let at = ours.iter().zip(theirs).position(|(a, b)| a != b);
+    match at {
+        Some(n) => {
+            let what = match (ours[n].0 == theirs[n].0, ours[n].1 == theirs[n].1) {
+                (false, false) => "picture and state",
+                (false, true) => "picture",
+                _ => "state",
+            };
+            Some(format!("frame {n}: the {what} differ"))
+        }
+        None if ours.len() != theirs.len() => Some(format!(
+            "the app has {} frames' hashes, the headless run {}",
+            ours.len(),
+            theirs.len()
+        )),
+        None => None,
+    }
+}
+
+/// The app, paced by `game-whole`'s feed for `frames` frames of play, gives the headless run's
+/// hashes on every frame.
+fn paced_app_is_the_run_alone(frames: Option<u32>, timeout_s: u64) {
+    let (case, f) = case_and_feed(frames);
+    let theirs = parse_hashes(&read(&f.hashes)).unwrap_or_else(|e| panic!("{e}"));
+    assert_eq!(theirs.len(), f.frames + 1, "frame 0 and one a frame of play");
+    let started = std::time::Instant::now();
+    let mut app = App::launch(LaunchOpts {
+        max_frames: f.frames as u64,
+        timeout_s,
+        scale: Some(1),
+        extra_args: vec![
+            "--pacing".into(),
+            f.feed.to_string_lossy().into_owned(),
+            "--capture-hashes".into(),
+        ],
+        ..Default::default()
+    });
+    let c = app.run_script_unread("# Every step is the pacing feed's (--pacing).\n");
+    assert!(c.exit.success(), "{}: the app exited {:?}: {}", case.name, c.exit, c.stderr);
+    let ours = parse_hashes(&read(&c.dir.join("hashes.txt"))).unwrap_or_else(|e| panic!("{e}"));
+    if let Some(d) = first_difference(&ours, &theirs) {
+        panic!("{}: the app, paced as the engine run alone, parts from it at {d}", case.name);
+    }
+    let feed = Feed::parse(&read(&f.feed)).unwrap_or_else(|e| panic!("{e}"));
+    if let Some(d) = sound_differs_from_headless(&c.audio_wav, &feed) {
+        panic!("{}: the app's sound parts from the feed mixed headless at {d}", case.name);
+    }
+    let original = sf_conform::feed::parse_audio(&read(&f.audio)).unwrap_or_else(|e| panic!("{e}"));
+    let app = app_peaks(&c.audio_wav, &read(&c.dir.join("audio-frames.txt")), &feed);
+    let heard = heard_where_the_original_is(&original, &app, &feed);
+    eprintln!("{}: {heard}", case.name);
+    assert!(heard.unheard.is_empty(), "{}: the app is silent where the original is heard: {heard}", case.name);
+    let drift = Drift::of(&c);
+    eprintln!("{}: {drift}", case.name);
+    drift.keeps_time(f.frames as u64);
+    eprintln!(
+        "{}: {} frames of play, the app's equal the headless run's; the app ran {:.0} s",
+        case.name,
+        f.frames,
+        started.elapsed().as_secs_f64()
+    );
+}
+
+/// Where the app's `audio.wav` first parts from the feed played headless through a fresh mixer at
+/// its rate, each load's blanks mixed before the step they end in (`Game::take_load_paula`) and
+/// then every game frame the step ran: the app mixes what the run alone played, blanks included
+/// (T30 review: the app dropping the blanks passed every other check in the test block).
+fn sound_differs_from_headless(wav: &std::path::Path, feed: &Feed) -> Option<String> {
+    let (rate, app) = read_wav(wav);
+    let mut g = Game::with_display(sf_conform::display_data(), Start::PowerOn { seed: feed.seed });
+    let mut paula = sf_paula::Paula::booted(rate);
+    let (mut at, mut ours, mut unheard) = (0, Vec::new(), Vec::new());
+    for (n, fr) in feed.frames.iter().enumerate() {
+        let outs = fr.play(&mut g);
+        for blank in g.take_load_paula() {
+            unheard.clear();
+            paula.frame(&blank, &g, &mut unheard);
+        }
+        ours.clear();
+        for out in &outs {
+            paula.frame(&out.mixed(), &g, &mut ours);
+        }
+        let theirs = app.get(at..at + ours.len());
+        if theirs != Some(&ours[..]) {
+            let i = theirs.map_or(0, |t| t.iter().zip(&ours).position(|(a, b)| a != b).unwrap_or(0));
+            return Some(format!("frame of play {} (sample {})", n + 1, at + i));
+        }
+        at += ours.len();
+    }
+    (at != app.len()).then(|| format!("the end: the app has {} samples, headless {at}", app.len()))
+}
+
+/// A frame's sound is heard at this swing (half its samples' range, 16-bit units; a level held
+/// still is silence, `sf_conform::feed::swing`), on either side: about -42 dB below full scale,
+/// a quiet sample at a low volume.
+const HEARD: u16 = 256;
+/// Silent: a swing no more than this (about -66 dB). Between the two a frame counts neither way, so a
+/// difference of mixing level between the original's mix and the app's cannot flip a verdict.
+const SILENT: u16 = 16;
+/// How far apart the two may hear a sound start or end, in frames (DESIGN §2.1 check 3's ±2).
+const NEAR: usize = 2;
+
+/// The app's swing each frame of play, as the original's is measured: the samples of the game frames the original's
+/// step stood for (one, two when it ran two video frames), not those under a loading screen
+/// after it (`audio-frames.txt` says which samples each game frame made).
+fn app_peaks(wav: &std::path::Path, frames: &str, feed: &Feed) -> Vec<u16> {
+    let (_, samples) = read_wav(wav);
+    let mut at = 0;
+    let mut peaks = Vec::with_capacity(feed.frames.len());
+    for (line, fr) in frames.lines().zip(&feed.frames) {
+        let counts: Vec<usize> = line.split(' ').skip(1).map(|c| c.parse().expect(line)).collect();
+        assert_eq!(counts.len(), 1 + fr.twice as usize + fr.then.len(), "step {line}: its game frames");
+        let main: usize = counts[..1 + fr.twice as usize].iter().sum();
+        let frame = &samples[at..at + main];
+        let side = |c: usize| match (frame.iter().map(|s| s[c]).min(), frame.iter().map(|s| s[c]).max()) {
+            (Some(lo), Some(hi)) => ((hi as i32 - lo as i32) / 2) as u16,
+            _ => 0,
+        };
+        peaks.push(side(0).max(side(1)));
+        at += counts.iter().sum::<usize>();
+    }
+    assert_eq!(peaks.len(), feed.frames.len(), "audio-frames.txt has a line for each step");
+    assert_eq!(at, samples.len(), "audio-frames.txt accounts for every sample of audio.wav");
+    peaks
+}
+
+/// What [`heard_where_the_original_is`] found.
+#[derive(Debug, Default)]
+struct Heard {
+    /// Frames of play compared, and those the original was heard in.
+    compared: usize,
+    original: usize,
+    /// Of those, the ones the app was heard in too, within [`NEAR`] frames.
+    app: usize,
+    /// Frames of play (from 1) the original was heard in and the app silent throughout the
+    /// [`NEAR`] frames around.
+    unheard: Vec<usize>,
+}
+
+impl std::fmt::Display for Heard {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(
+            f,
+            "{} frames of play compared, the original heard in {}, the app with it in {}",
+            self.compared, self.original, self.app
+        )?;
+        if let Some(&first) = self.unheard.first() {
+            let shown: Vec<String> = self.unheard.iter().take(20).map(|n| n.to_string()).collect();
+            write!(f, "; silent in {} (from frame {first}: {})", self.unheard.len(), shown.join(" "))?;
+        }
+        Ok(())
+    }
+}
+
+/// Every frame of play the original is heard in ([`HEARD`]), the app is heard in too within
+/// [`NEAR`] frames: it is never silent ([`SILENT`]) throughout. A frame a load ended in is not
+/// compared: what the original plays while it loads is not the game's (DESIGN §2.1 check 3).
+fn heard_where_the_original_is(original: &[u16], app: &[u16], feed: &Feed) -> Heard {
+    assert_eq!(original.len(), app.len(), "the original's frames of play and the app's");
+    let mut h = Heard::default();
+    for (n, fr) in feed.frames.iter().enumerate() {
+        if fr.load.is_some() {
+            continue;
+        }
+        h.compared += 1;
+        if original[n] < HEARD {
+            continue;
+        }
+        h.original += 1;
+        let near = &app[n.saturating_sub(NEAR)..(n + NEAR + 1).min(app.len())];
+        if near.iter().any(|&p| p > SILENT) {
+            h.app += 1;
+        } else {
+            h.unheard.push(n + 1);
+        }
+    }
+    h
+}
+
+#[test]
+fn heard_is_judged_within_two_frames_and_not_over_a_load() {
+    use sf_core::feed::{FeedFrame, FeedLoad};
+    let mut feed = Feed::default();
+    feed.frames = vec![FeedFrame::default(); 8];
+    feed.frames[6].load = Some(FeedLoad::default());
+    let original = [0, 300, 300, 300, 0, 0, 300, 300];
+    // The app starts two frames late and ends early: heard; frame 7's load is not compared.
+    let app = [0, 0, 0, 200, 17, 0, 0, 0];
+    let h = heard_where_the_original_is(&original, &app, &feed);
+    assert_eq!((h.compared, h.original, h.app), (7, 4, 3), "{h}");
+    assert_eq!(h.unheard, vec![8], "{h}");
+    // A sample between SILENT and HEARD is not silence.
+    let h = heard_where_the_original_is(&[300; 8], &[SILENT + 1; 8], &feed);
+    assert!(h.unheard.is_empty(), "{h}");
+}
+
+/// The feed alone replays the run: the engine headless, stepped by `sf_core::feed` from the feed
+/// and nothing else, gives the hashes `sf-conform` wrote as it ran alone. So what the app is fed
+/// is all the run alone was fed.
+#[test]
+fn the_feed_replays_the_run_alone_headless() {
+    let (_, f) = case_and_feed(Some(STRETCH));
+    let feed = Feed::parse(&read(&f.feed)).unwrap_or_else(|e| panic!("{e}"));
+    let theirs = parse_hashes(&read(&f.hashes)).unwrap_or_else(|e| panic!("{e}"));
+    let mut g = Game::with_display(sf_conform::display_data(), Start::PowerOn { seed: feed.seed });
+    let mut ours = vec![sf_core::feed::frame_hashes(&g, &g.render(View::default()))];
+    let mut blank_writes = 0;
+    for fr in &feed.frames {
+        let pic = fr.play(&mut g).pop().expect("a frame steps").picture;
+        ours.push(sf_core::feed::frame_hashes(&g, &pic));
+        // A load's vertical blanks hand the mixer a frame of writes each (T30), once.
+        let blanks = g.take_load_paula();
+        assert_eq!(blanks.len() as u32, fr.load.map_or(0, |l| l.blanks), "a load's blanks");
+        blank_writes += blanks.iter().map(Vec::len).sum::<usize>();
+        assert!(g.take_load_paula().is_empty());
+    }
+    assert!(blank_writes > 0, "the boot's loads ran the sound driver");
+    assert_eq!(first_difference(&ours, &theirs), None);
+    // The stretch has what a feed carries: loads, and frames under a loading screen.
+    assert!(feed.frames.iter().filter(|f| f.load.is_some()).count() >= 3);
+    assert!(feed.frames.iter().any(|f| f.then.len() > 100));
+}
+
+/// Frames of play in the test block's stretch: power-on, the boot's loads and the loading
+/// screens the original times itself (757 and 193 frames under them), into the title: ~30 s of
+/// the app at the PAL rate.
+const STRETCH: u32 = 1500;
+
+#[test]
+fn the_app_paced_from_power_on_through_the_boot_loads_is_the_run_alone() {
+    paced_app_is_the_run_alone(Some(STRETCH), 120);
+}
+
+/// The whole game, 224 082 frames of play: about 75 min at the PAL rate (plus about 25 min for
+/// the feed when it is not in the cache).
+#[test]
+#[ignore = "slow: about 75 min (the app at the PAL rate), plus 25 min for an uncached feed"]
+fn the_app_paced_through_the_whole_game_is_the_run_alone() {
+    paced_app_is_the_run_alone(None, 5 * 3600);
+}
+
+/// The soak (T30): 50 000 frames of the whole game's play through the app (W1-1 to World 2, the
+/// slot machine and the world's loads among them; about 17 min at the PAL rate), paced as the run
+/// alone was. It ends cleanly, meets nothing unported, its frames are still the run alone's, and
+/// its picture and sound keep time: the steps keep with the pacing clock, and every game frame
+/// the mixer makes exactly a PAL frame of sound.
+#[test]
+#[ignore = "slow: about 17 min (the app at the PAL rate), plus 25 min for an uncached feed"]
+fn the_app_soaks_50_000_frames_without_a_fault_or_drift() {
+    const SOAK: u64 = 50_000;
+    let (case, f) = case_and_feed(None);
+    let theirs = parse_hashes(&read(&f.hashes)).unwrap_or_else(|e| panic!("{e}"));
+    let mut app = App::launch(LaunchOpts {
+        max_frames: SOAK,
+        timeout_s: 3600,
+        scale: Some(1),
+        extra_args: vec![
+            "--pacing".into(),
+            f.feed.to_string_lossy().into_owned(),
+            "--capture-hashes".into(),
+        ],
+        ..Default::default()
+    });
+    let c = app.run_script_unread("# Every step is the pacing feed's (--pacing).\n");
+    assert!(c.exit.success(), "{}: the app exited {:?}: {}", case.name, c.exit, c.stderr);
+    assert!(!c.stderr.contains("panicked"), "{}", c.stderr);
+    let unported = read(&c.dir.join("unported.txt"));
+    assert_eq!(unported, "", "the game met what it does not follow");
+    let ours = parse_hashes(&read(&c.dir.join("hashes.txt"))).unwrap_or_else(|e| panic!("{e}"));
+    assert_eq!(first_difference(&ours, &theirs[..=SOAK as usize]), None);
+    let drift = Drift::of(&c);
+    eprintln!("{}: {SOAK} frames: {drift}", case.name);
+    drift.keeps_time(SOAK);
+}
+
+/// A run's picture and sound clocks, from its capture's `pacing.txt`, `audio-frames.txt` and
+/// `audio.wav`.
+#[derive(Debug, Clone, Copy)]
+struct Drift {
+    stepped: u64,
+    presented: u64,
+    dropped: u64,
+    /// Game frames the steps ran (more than the steps under `--pacing`'s loading screens).
+    game_frames: u64,
+    /// How far the pacing clock was ahead of each step as it ran, in PAL frames (`clock.txt`):
+    /// the median over the whole run, and over its first and last tenths. Under 2 when the steps
+    /// keep with it (a step is due once its frame has elapsed); a load on the machine makes
+    /// passing spikes (T27), a drift makes the last tenth's grow.
+    clock_ahead: f64,
+    ahead_first: f64,
+    ahead_last: f64,
+    /// The most it was ahead, and at which step (reported, not judged: it follows the load).
+    ahead_max: (f64, u64),
+    /// The samples the mixer made against a PAL frame's worth for every game frame, in samples:
+    /// within one or two when the sound keeps time (its resampler delays what it plays, not how
+    /// much).
+    sound_off: f64,
+}
+
+impl Drift {
+    /// `steps` stepped, the last presented, and the picture and sound in time.
+    fn keeps_time(&self, steps: u64) {
+        assert_eq!(self.stepped, steps, "{self}");
+        assert!(self.presented + 2 >= steps, "the window fell behind: {self}");
+        assert!((0.0..2.0).contains(&self.clock_ahead), "the steps left the clock: {self}");
+        assert!(self.ahead_last - self.ahead_first < 1.0, "the steps drift from the clock: {self}");
+        assert!(self.sound_off.abs() <= 2.0, "the sound left the frames: {self}");
+    }
+
+    fn of(c: &sf_e2e::Captured) -> Drift {
+        let pacing = read(&c.dir.join("pacing.txt"));
+        let field = |name: &str| -> u64 {
+            pacing
+                .lines()
+                .find_map(|l| l.strip_prefix(name)?.strip_prefix(' ')?.parse().ok())
+                .unwrap_or_else(|| panic!("pacing.txt has no `{name}`: {pacing}"))
+        };
+        let (rate, samples) = read_wav(&c.audio_wav);
+        let game_frames: u64 = read(&c.dir.join("audio-frames.txt"))
+            .lines()
+            .map(|l| l.split(' ').count() as u64 - 1)
+            .sum();
+        let frame = sf_paula::CLOCKS_PER_FRAME as f64 * rate as f64 / sf_paula::PAULA_CLOCK_PAL as f64;
+        let stepped = field("stepped");
+        let ahead: Vec<(u64, f64)> = read(&c.dir.join("clock.txt"))
+            .lines()
+            .map(|l| {
+                let (n, s) = l.split_once(' ').expect(l);
+                let n: u64 = n.parse().expect(l);
+                (n, s.parse::<u64>().expect(l) as f64 / frame - (n - 1) as f64)
+            })
+            .collect();
+        let median = |part: &[(u64, f64)]| {
+            let mut v: Vec<f64> = part.iter().map(|a| a.1).collect();
+            v.sort_by(f64::total_cmp);
+            v.get(v.len() / 2).copied().unwrap_or(0.0)
+        };
+        let tenth = ahead.len() / 10;
+        let ahead_max = ahead.iter().fold((f64::MIN, 0), |m, &(n, a)| if a > m.0 { (a, n) } else { m });
+        Drift {
+            stepped,
+            presented: field("presented"),
+            dropped: field("dropped"),
+            game_frames,
+            clock_ahead: median(&ahead),
+            ahead_first: median(&ahead[..tenth]),
+            ahead_last: median(&ahead[ahead.len() - tenth..]),
+            ahead_max,
+            sound_off: samples.len() as f64 - game_frames as f64 * frame,
+        }
+    }
+}
+
+impl std::fmt::Display for Drift {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(
+            f,
+            "stepped {}, presented {}, dropped {}; {} game frames; the clock ahead of the steps by \
+             {:.2} frames (median; first tenth {:.2}, last {:.2}, most {:.1} at step {}), the sound \
+             {:+.1} samples off the game frames",
+            self.stepped,
+            self.presented,
+            self.dropped,
+            self.game_frames,
+            self.clock_ahead,
+            self.ahead_first,
+            self.ahead_last,
+            self.ahead_max.0,
+            self.ahead_max.1,
+            self.sound_off
+        )
+    }
+}
+
+/// Normal play never reads a feed: without `--script` the app refuses `--pacing` before it opens
+/// anything (DESIGN §2.5).
+#[test]
+fn without_a_script_the_app_reads_no_feed() {
+    let home = std::env::temp_dir().join(format!("sf-e2e-nofeed-{}", std::process::id()));
+    let out = Command::new(binary())
+        .args(["--home"])
+        .arg(&home)
+        .args(["--pacing", "/nonexistent/feed", "--max-frames", "1", "--timeout", "10"])
+        .stdin(Stdio::null())
+        .output()
+        .expect("launching the app");
+    let stderr = String::from_utf8_lossy(&out.stderr);
+    assert_eq!(out.status.code(), Some(2), "{stderr}");
+    assert!(stderr.contains("--pacing") && stderr.contains("--script"), "{stderr}");
+    assert!(!stderr.contains("/nonexistent/feed"), "the feed was looked for: {stderr}");
+    assert!(!home.exists(), "the app made its home: {}", home.display());
+}
+
+#[test]
+fn drift_is_judged_on_both_clocks() {
+    let kept = Drift {
+        stepped: 10,
+        presented: 10,
+        dropped: 0,
+        game_frames: 12,
+        clock_ahead: 1.5,
+        ahead_first: 1.0,
+        ahead_last: 1.5,
+        ahead_max: (12.0, 7),
+        sound_off: -1.0,
+    };
+    kept.keeps_time(10);
+    let late = |d: Drift| std::panic::catch_unwind(|| d.keeps_time(10)).is_err();
+    assert!(late(Drift { clock_ahead: 2.5, ..kept }), "steps behind the clock");
+    assert!(late(Drift { clock_ahead: -0.5, ..kept }), "steps ahead of the clock");
+    assert!(late(Drift { sound_off: 3.0, ..kept }), "sound ahead of the frames");
+    assert!(late(Drift { ahead_last: 2.0, ..kept }), "the steps drifting behind");
+    assert!(late(Drift { presented: 7, ..kept }), "the window behind");
+}

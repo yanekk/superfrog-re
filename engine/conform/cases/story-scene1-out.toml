@@ -1,0 +1,5 @@
+# Power-on with disk 3 through scene 1, its fade out (1242-1257, the set-up runs with interrupts off
+# across frame 1242's end: T49), text page 2 and into scene 2's set-up. Slow (about 90 s): not in
+# the test block; run it with `sf-conform run`.
+sync = "power-on-disk3"
+frames = 3185

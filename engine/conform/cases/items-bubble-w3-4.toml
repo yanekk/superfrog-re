@@ -1,0 +1,6 @@
+# W3-4 from its start, nothing held, 600 frames (T204): the frog stands on the pushing surface
+# under the marker-`$39` cells it starts by, and every 64 frames of it a bubble (template 86)
+# rises from it, the first at 212 into slot 6 from cell 285,63, wobbling up until the cells
+# round it end it.
+sync = { level = "W3-4" }
+frames = 600

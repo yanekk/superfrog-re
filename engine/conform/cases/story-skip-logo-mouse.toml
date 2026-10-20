@@ -1,0 +1,4 @@
+# Power-on with disk 3, the mouse button on the Team 17 logo (not read): as story-skip-logo-fire (T48).
+sync = "power-on-disk3"
+script = "story-skip-logo-mouse"
+frames = 1850

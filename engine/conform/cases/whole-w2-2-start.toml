@@ -1,0 +1,10 @@
+# W2-1's end to W2-2's start in the whole game (T209 review): `game-whole` from the original's
+# frame 47800 (W2-1 near its exit, its level transplanted), the exit, the tally, W2-2's load and
+# its first ~600 frames. W2-1's last pass runs over two blanks and leaves `vbl_count` at 2, so
+# `level_frame_loop`'s first pass begins in `level_start`'s own frame; begun a frame later, the
+# engine alone takes W2-2's coin with 92 left 59 frames late (check 4). The first run reaches the
+# sync point in ~2 minutes.
+sync = { script = "game-whole", frame = 47800, df1 = true }
+script = "game-whole"
+script-from = 47800
+frames = 1300

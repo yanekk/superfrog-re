@@ -1,0 +1,10 @@
+# W1-1's exit forced on its first frame (level_state = 1, as the slot cases force it; T38): the
+# loop ends at frame 1 into `level_exit_fade` (the window closing to frame 16), then `level_tally`:
+# its picture unpacked over frames 17–34, the level's number, two pages for the 4 minutes left,
+# the icons past them cleared, the texts; the fade in (36–51) and the wait for the choice; fire at
+# frame 70 with up never held takes the points (10 000), the extra-life check, a hundred frames,
+# the fade out (169–184). Ends on frame 184; `frog_cases::tally_w1_1` checks frame 185 is the next
+# level's (T21) with the tally's outcome.
+sync = { level = "W1-1", exit = true }
+script = "tally-points"
+frames = 185

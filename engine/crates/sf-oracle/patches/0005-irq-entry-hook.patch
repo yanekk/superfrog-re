@@ -1,0 +1,64 @@
+diff --git a/Core/Components/Agnus/Blitter/Blitter.cpp b/Core/Components/Agnus/Blitter/Blitter.cpp
+--- a/Core/Components/Agnus/Blitter/Blitter.cpp
++++ b/Core/Components/Agnus/Blitter/Blitter.cpp
+@@ -14,6 +14,10 @@
+ 
+ namespace vamiga {
+ 
++// superfrog-re (sf-oracle): called as a blit begins (0), as its busy flag clears (1) and as it ends
++// (2), with the beam position. Null unless a client installs it.
++void (*vamiga_blit_hook)(int event, isize vpos, isize hpos) = nullptr;
++
+ Blitter::Blitter(Amiga& ref) : SubComponent(ref)
+ {
+     info.bind([this] { return cacheInfo(); } );
+@@ -498,6 +502,7 @@ Blitter::prepareBlit()
+ void
+ Blitter::beginBlit()
+ {
++    if (vamiga_blit_hook) vamiga_blit_hook(0, agnus.pos.v, agnus.pos.h);
+     auto level = config.accuracy;
+ 
+     if (bltconLINE()) {
+@@ -591,6 +596,7 @@ Blitter::beginCopyBlit(isize level)
+ void
+ Blitter::clearBusyFlag()
+ {
++    if (vamiga_blit_hook) vamiga_blit_hook(1, agnus.pos.v, agnus.pos.h);
+     logmsg(LOG_BLTTIM, "(%td,%td) Blitter bbusy\n", agnus.pos.v, agnus.pos.h);
+ 
+     // Clear the Blitter busy flag
+@@ -600,6 +606,7 @@ Blitter::clearBusyFlag()
+ void
+ Blitter::endBlit()
+ {
++    if (vamiga_blit_hook) vamiga_blit_hook(2, agnus.pos.v, agnus.pos.h);
+     logmsg(LOG_BLTTIM, "(%td,%td) Blitter terminates\n", agnus.pos.v, agnus.pos.h);
+     
+     running = false;
+diff --git a/Core/Components/CPU/CPU.cpp b/Core/Components/CPU/CPU.cpp
+--- a/Core/Components/CPU/CPU.cpp
++++ b/Core/Components/CPU/CPU.cpp
+@@ -19,6 +19,14 @@
+ #include "utl/io.h"
+ 
+ 
++namespace vamiga {
++
++// superfrog-re (sf-oracle): called as the CPU starts an interrupt's exception, with its level and
++// the beam position. Null unless a client installs it.
++void (*vamiga_irq_hook)(int level, isize vpos, isize hpos) = nullptr;
++
++}
++
+ //
+ // Moira
+ //
+@@ -255,6 +263,7 @@
+ void
+ Moira::willInterrupt(u8 level)
+ {
++    if (vamiga_irq_hook) vamiga_irq_hook(int(level), agnus.pos.v, agnus.pos.h);
+     logmsg(LOG_INT, "Executing level %d IRQ\n", level);
+ }
+ 

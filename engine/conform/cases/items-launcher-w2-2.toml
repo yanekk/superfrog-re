@@ -1,0 +1,6 @@
+# W2-2 with its items live: the launchers at 176,6-7 and 182,8-9 throwing the frog three times
+# (right, left, right) and its landing at 202,16; score, the panel and the picture every frame.
+sync = { level = "W2-2" }
+script = "items-launcher-w2-2"
+frames = 720
+resync = false

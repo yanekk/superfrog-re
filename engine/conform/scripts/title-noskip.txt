@@ -1,0 +1,8 @@
+# Power-on to the title (T20 review): a mouse click and a key (raw $40, Space) while the eyes
+# bounce in: the intro reads only the joystick's fire, so neither skips it.
+1000: M
+1005: -
+3950: M
+3955: -
+3970: K40
+3975: -

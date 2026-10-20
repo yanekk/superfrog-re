@@ -1,0 +1,8 @@
+# W3-3 played to its exit (16610) and the tally on T115's first route, every object live. Was red
+# alone (check 4) at 6335: at 4026 and 5280 the original's copper interrupt holds the CPU through
+# the frame's end with the pass due and not begun, which the runner read as a pass run to its end
+# (T195). `enemies_w3::enemies_w3_3_slot_order` runs it.
+sync = { level = "W3-3" }
+script = "enemies-w3-3-slot-order"
+frames = 16795
+resync = true

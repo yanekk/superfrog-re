@@ -1,0 +1,6 @@
+# The attract demo ended by fire (T164): power-on, the attract cycle to the demo (case frame 3314),
+# fire held from frame 9000 of the original's (case frame about 3960) for 5 frames; the demo's
+# loop stops, `level_exit_fade`, and the title's load and screen after it.
+sync = "power-on"
+script = "attract-abort"
+frames = 4900

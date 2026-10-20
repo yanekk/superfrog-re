@@ -1,0 +1,22 @@
+diff --git a/Core/Components/Memory/Memory.cpp b/Core/Components/Memory/Memory.cpp
+index 1b7087b15..b247bc157 100644
+--- a/Core/Components/Memory/Memory.cpp
++++ b/Core/Components/Memory/Memory.cpp
+@@ -2642,9 +2642,17 @@ Memory::spypeekCustom16(u32 addr) const
+     }
+ }
+ 
++// superfrog-re (sf-oracle): called on every custom-register write, CPU and Copper alike, with the
++// beam position, before the write takes effect. Null unless a client installs it.
++void (*vamiga_custom_write_hook)(u32 addr, u16 value, int accessor, isize vpos, isize hpos) = nullptr;
++
+ template <Accessor s> void
+ Memory::pokeCustom16(u32 addr, u16 value)
+ {
++    if (vamiga_custom_write_hook) {
++        vamiga_custom_write_hook(addr & 0x1FE, value, s == Accessor::CPU ? 0 : 1, agnus.pos.v, agnus.pos.h);
++    }
++
+     if ((addr & 0xFFF) == 0x30) {
+         logmsg(LOG_OCSREG, "pokeCustom16(SERDAT, '%c')\n", (char)value);
+     } else {

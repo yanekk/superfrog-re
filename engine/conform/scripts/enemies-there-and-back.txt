@@ -1,0 +1,11 @@
+# Right for 200 frames (jumping now and then), then back left for 200: the objects ahead spawn as
+# the camera reaches them and those behind are freed, then the other way round.
+0: R
+40: R U
+48: R
+120: R U
+128: R
+200: L
+280: L U
+288: L
+400: -

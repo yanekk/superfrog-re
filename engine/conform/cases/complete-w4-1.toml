@@ -1,0 +1,10 @@
+# W4-1 played from its start to its exit with every object live, no exclusions (T103): the 41
+# coins the exit needs, the lock gone, the exit reached at frame 2145 (`level_state` 1), the exit
+# fade and the tally, fire in its wait taking the points; ends on frame 2329, the next level
+# being T21's. Planned by `examples/plan_exit`, checked on the original chunk by chunk. Frame
+# 2149, four frames into the exit fade, has its palette step a frame early in the engine, within
+# the faithful picture tolerance (T181).
+sync = { level = "W4-1" }
+script = "complete-w4-1"
+frames = 2330
+resync = false

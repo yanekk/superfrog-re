@@ -1,0 +1,16 @@
+# W1-1, the frog alone (objects frozen out): after the level's drop-in (the frog moves from frame
+# ~148) run right, jump the first gap and land on the ledge between the two pits, jump the second,
+# run up and over the big hill, jump from its far slope onto the next hill past the hazard at
+# column 84, jump the hazard at column 97, land on the ledge beyond, turn back left, drop into the
+# shaft and walk onto the fake wall at W1-1:94,51 (frame ~560): the passage opens and the frog falls
+# into the hidden cave, then runs left through it.
+0: R
+172: R U
+186: R
+229: R U
+244: R
+349: R U
+365: R
+426: R U
+442: R
+488: L

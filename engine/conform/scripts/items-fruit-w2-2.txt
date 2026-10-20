@@ -1,0 +1,28 @@
+# W2-2, enemies frozen: from the start into the room left of it: five fruits (2 500, 3 500, 2 000,
+# 10 000, 15 000 points), the spud, then the spud thrown twice. Planned on the engine (T36).
+0: -
+144: U
+148: L
+168: U
+172: L
+176: -
+208: U
+212: -
+220: L
+228: -
+252: U L
+256: U
+268: L
+276: U
+292: -
+293: U
+297: -
+304: U
+308: -
+340: F
+346: -
+420: F
+426: -
+500: R F
+506: R
+530: -

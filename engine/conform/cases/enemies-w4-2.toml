@@ -1,0 +1,8 @@
+# W4-2 with every object live, no exclusions: west from the start along the bottom corridor, past
+# both sceneries (markers 10, 11), the swoopers, the crusher (which hurts the frog), the spikes, a
+# dart (18) and the crumbling ledges (T41). Green faithful (T181): frame 275's `level_copper`, a
+# frame out after a lag, is presentation, judged by the picture.
+sync = { level = "W4-2" }
+script = "enemies-w4-2"
+frames = 650
+resync = false

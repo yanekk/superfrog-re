@@ -1,0 +1,14 @@
+diff --git a/Core/Peripherals/Keyboard/Keyboard.h b/Core/Peripherals/Keyboard/Keyboard.h
+index 40915968c..d2d23e921 100644
+--- a/Core/Peripherals/Keyboard/Keyboard.h
++++ b/Core/Peripherals/Keyboard/Keyboard.h
+@@ -20,6 +20,9 @@ namespace vamiga {
+ 
+ class Keyboard final : public SubComponent {
+ 
++    // superfrog-re (sf-oracle): snapshots do not carry keyDown; the shim re-seats it after a restore.
++    friend struct SfShimAccess;
++
+     Descriptions descriptions = {{
+ 
+         .type           = Class::Keyboard,

@@ -1,0 +1,9 @@
+# W2-1 with its items and world 2's enemies live: items-switch-w2-1's route to 640, the switch at
+# 116,39 bumped from below (its gate at 144-145,37-40 opens on 666), then right along
+# w2-1-complete's way to the exit with coins still left, so the exit lets the frog through, and on
+# to the 20 000-point fruit at 260,25 (h0+$f008) on 1161 (T133). Planned by
+# `examples/route_oracle`. The fruit 48,22 is in a room play never reaches (docs/07).
+sync = { level = "W2-1" }
+script = "items-fruit-w2-1"
+frames = 1175
+resync = false

@@ -1,0 +1,6 @@
+# W2-1 with its items live: the lift into the pillar's column 63 onto the extra life at 63,35;
+# score, lives, the panel and the picture every frame, world 2's enemies live (T105).
+sync = { level = "W2-1" }
+script = "items-life-w2-1"
+frames = 940
+resync = false

@@ -1,0 +1,9 @@
+[package]
+name = "sf-paula"
+version.workspace = true
+edition.workspace = true
+publish.workspace = true
+
+[dependencies]
+# Save states (T26): the types a game holds derive serde, so sf-core can write the game out.
+serde = { version = "1", features = ["derive"] }

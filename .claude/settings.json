@@ -12,7 +12,11 @@
       "Bash(git merge-base:*)",
       "Bash(git merge:*)",
       "Bash(git add:*)",
-      "Bash(git commit:*)"
+      "Bash(git commit:*)",
+      "Bash(tools/setup/install-rust.sh)",
+      "Bash(tools/setup/install-brew-deps.sh)",
+      "Bash(tools/setup/install-ghidra.sh)",
+      "Bash(tools/setup/oracle.sh)"
     ]
   }
 }

@@ -1,0 +1,6 @@
+# The slot machine (T74) from `start-w1-1-blink1`: the first spin pays nothing, the second allows
+# holds; reel 1 held, it stops on 8 8 $18: 20 000, collected. To the frame before `slot_machine`
+# returns.
+sync = { slot = "slot-none", start = "start-w1-1-blink1" }
+script = "slot-hold-20000"
+frames = 860

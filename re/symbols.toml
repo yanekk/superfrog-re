@@ -1,0 +1,6267 @@
+# Our names for places in Superfrog's code. Committed; the listings they label are not.
+# Read by tools/re_listing.py; see docs/RE-WORKBENCH.md.
+#
+# exe    chunk id (dN_cNN, 1-based as in docs/05) or a raw region (d1_boot, d1_stage15)
+# hunk   hunk index (0 for a raw region)
+# offset byte offset within that hunk
+# name   identifier, unique within one exe
+# kind   func | data | table | var
+# size   bytes; required for data, table and var, which may not overlap
+# note   one line
+
+# --- disk 1 bootblock (docs/02) ---
+[[sym]]
+exe = "d1_boot"
+hunk = 0
+offset = 0xc
+name = "boot_entry"
+kind = "func"
+note = "standard bootblock entry: bsr $300, AllocMem 0x1000, read disk 0x400, jump to it"
+
+[[sym]]
+exe = "d1_boot"
+hunk = 0
+offset = 0x300
+name = "boot_load_stage2"
+kind = "func"
+note = "reads 0x5000 bytes from disk 0xD5400 to 0x40000 and calls it"
+
+# --- disk 1 stage-1.5 loader, disk 0x400..0x1600 (docs/02, docs/03) ---
+[[sym]]
+exe = "d1_stage15"
+hunk = 0
+offset = 0x0
+name = "stage15_entry"
+kind = "func"
+note = "start of the buffer the bootblock reads from disk 0x400 and jumps to"
+
+[[sym]]
+exe = "d1_stage15"
+hunk = 0
+offset = 0x2da
+name = "atn_decompress"
+kind = "func"
+note = "ATN! chunk decompressor: a0 = chunk, a1 = dest; d0 = -1 on success (docs/03)"
+
+[[sym]]
+exe = "d1_stage15"
+hunk = 0
+offset = 0x42a
+name = "atn_lenbase_tab"
+kind = "table"
+size = 4
+note = "ATN! decoder: per-code base added to the length (docs/03 +0x42A)"
+
+[[sym]]
+exe = "d1_stage15"
+hunk = 0
+offset = 0x42e
+name = "atn_lenbits_tab"
+kind = "table"
+size = 12
+note = "ATN! decoder: bits to read per length code (docs/03 +0x42E)"
+
+[[sym]]
+exe = "d1_stage15"
+hunk = 0
+offset = 0x43a
+name = "hunk_load"
+kind = "func"
+note = "loads a 0x3F3 hunk exe at a0 to a1, hunks back to back, applies HUNK_RELOC32"
+
+[[sym]]
+exe = "d1_stage15"
+hunk = 0
+offset = 0x534
+name = "disk_track_helper"
+kind = "func"
+note = "disk/track helper (docs/02)"
+
+# --- d1_c01 ---
+[[sym]]
+exe = "d1_c01"
+hunk = 0
+offset = 0x0
+name = "start"
+kind = "func"
+note = "first instruction of hunk 0, where the loader enters the executable"
+
+[[sym]]
+exe = "d1_c01"
+hunk = 0
+offset = 0x33a4
+name = "atn_decompress"
+kind = "func"
+note = "ATN! chunk decompressor: a0 = chunk, a1 = dest; d0 = -1 on success (docs/03)"
+
+[[sym]]
+exe = "d1_c01"
+hunk = 0
+offset = 0x34f4
+name = "atn_lenbase_tab"
+kind = "table"
+size = 4
+note = "ATN! decoder: per-code base added to the length (docs/03 +0x42A)"
+
+[[sym]]
+exe = "d1_c01"
+hunk = 0
+offset = 0x34f8
+name = "atn_lenbits_tab"
+kind = "table"
+size = 12
+note = "ATN! decoder: bits to read per length code (docs/03 +0x42E)"
+
+# --- d3_c01 ---
+[[sym]]
+exe = "d3_c01"
+hunk = 0
+offset = 0x0
+name = "start"
+kind = "func"
+note = "first instruction of hunk 0, where the loader enters the executable"
+
+[[sym]]
+exe = "d3_c01"
+hunk = 0
+offset = 0x33a4
+name = "atn_decompress"
+kind = "func"
+note = "ATN! chunk decompressor: a0 = chunk, a1 = dest; d0 = -1 on success (docs/03)"
+
+[[sym]]
+exe = "d3_c01"
+hunk = 0
+offset = 0x34f4
+name = "atn_lenbase_tab"
+kind = "table"
+size = 4
+note = "ATN! decoder: per-code base added to the length (docs/03 +0x42A)"
+
+[[sym]]
+exe = "d3_c01"
+hunk = 0
+offset = 0x34f8
+name = "atn_lenbits_tab"
+kind = "table"
+size = 12
+note = "ATN! decoder: bits to read per length code (docs/03 +0x42E)"
+
+# --- d3_c02 ---
+[[sym]]
+exe = "d3_c02"
+hunk = 0
+offset = 0x0
+name = "start"
+kind = "func"
+note = "first instruction of hunk 0, where the loader enters the executable"
+
+[[sym]]
+exe = "d3_c02"
+hunk = 0
+offset = 0x2c2f4
+name = "atn_decompress"
+kind = "func"
+note = "ATN! chunk decompressor: a0 = chunk, a1 = dest; d0 = -1 on success (docs/03)"
+
+[[sym]]
+exe = "d3_c02"
+hunk = 0
+offset = 0x2c444
+name = "atn_lenbase_tab"
+kind = "table"
+size = 4
+note = "ATN! decoder: per-code base added to the length (docs/03 +0x42A)"
+
+[[sym]]
+exe = "d3_c02"
+hunk = 0
+offset = 0x2c448
+name = "atn_lenbits_tab"
+kind = "table"
+size = 12
+note = "ATN! decoder: bits to read per length code (docs/03 +0x42E)"
+
+# --- d1_c03 ---
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x0
+name = "start"
+kind = "func"
+note = "first instruction of hunk 0, where the loader enters the executable"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0xce58
+name = "atn_decompress"
+kind = "func"
+note = "ATN! chunk decompressor: a0 = chunk, a1 = dest; d0 = -1 on success (docs/03)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0xcfaa
+name = "atn_lenbase_tab"
+kind = "table"
+size = 4
+note = "ATN! decoder: per-code base added to the length (docs/03 +0x42A)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0xcfae
+name = "atn_lenbits_tab"
+kind = "table"
+size = 12
+note = "ATN! decoder: bits to read per length code (docs/03 +0x42E)"
+
+# --- d3_c04 ---
+[[sym]]
+exe = "d3_c04"
+hunk = 0
+offset = 0x0
+name = "start"
+kind = "func"
+note = "first instruction of hunk 0, where the loader enters the executable"
+
+[[sym]]
+exe = "d3_c04"
+hunk = 0
+offset = 0xcf5c
+name = "atn_decompress"
+kind = "func"
+note = "ATN! chunk decompressor: a0 = chunk, a1 = dest; d0 = -1 on success (docs/03)"
+
+[[sym]]
+exe = "d3_c04"
+hunk = 0
+offset = 0xd0ae
+name = "atn_lenbase_tab"
+kind = "table"
+size = 4
+note = "ATN! decoder: per-code base added to the length (docs/03 +0x42A)"
+
+[[sym]]
+exe = "d3_c04"
+hunk = 0
+offset = 0xd0b2
+name = "atn_lenbits_tab"
+kind = "table"
+size = 12
+note = "ATN! decoder: bits to read per length code (docs/03 +0x42E)"
+
+[[sym]]
+exe = "d3_c04"
+hunk = 0
+offset = 0x3d0
+name = "hunk_load"
+kind = "func"
+note = "same code as d1_stage15 hunk_load"
+
+# --- d1_c01 (T07, docs/08 and docs/09) ---
+
+[[sym]]
+exe = "d1_c01"
+hunk = 0
+offset = 0x3306
+name = "boot_main"
+kind = "func"
+note = "loads d1_c03 and d1_c02 with its trackloader, decompresses, relocates d1_c03 and jumps (a0 = d1_c02)"
+
+[[sym]]
+exe = "d1_c01"
+hunk = 0
+offset = 0x3398
+name = "boot_file_game"
+kind = "data"
+size = 6
+note = "trackloader entry for d1_c03: start sector $38, $162 sectors"
+
+[[sym]]
+exe = "d1_c01"
+hunk = 0
+offset = 0x339e
+name = "boot_file_picture"
+kind = "data"
+size = 6
+note = "trackloader entry for d1_c02 (Accessing disk picture): sector $18, $20 sectors"
+
+[[sym]]
+exe = "d1_c01"
+hunk = 0
+offset = 0x351a
+name = "boot_hunk_relocate"
+kind = "func"
+note = "relocates a hunk executable in place (a0 exe, a1 dest)"
+
+[[sym]]
+exe = "d1_c01"
+hunk = 0
+offset = 0x3658
+name = "boot_trackload"
+kind = "func"
+note = "trackloader (11 sectors/track): a0 = file entry, a1 = dest"
+
+
+# --- d3_c01 (T07, docs/08 and docs/09) ---
+
+[[sym]]
+exe = "d3_c01"
+hunk = 0
+offset = 0x3306
+name = "boot_main"
+kind = "func"
+note = "same bootstrap as d1_c01 (sector $38/$18); never loaded: unused leftover (docs/08)"
+
+[[sym]]
+exe = "d3_c01"
+hunk = 0
+offset = 0x3680
+name = "trackload12"
+kind = "func"
+note = "trackloader assuming 12 sectors/track; unused"
+
+
+# --- d1_c03 (T07, docs/08 and docs/09) ---
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x6
+name = "game_full_mode"
+kind = "var"
+size = 2
+note = "1 = booted game; 0 = return to the OS (dev)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x8
+name = "loader_mode"
+kind = "var"
+size = 2
+note = "2 = trackloader; 0/1 = DOS / DF0: paths (dev, never written)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0xa
+name = "start_world"
+kind = "var"
+size = 4
+note = "1..7, from the password"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0xe
+name = "start_level"
+kind = "var"
+size = 4
+note = "1..4, from the password"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x18
+name = "attract_mode"
+kind = "var"
+size = 4
+note = "-1 while the attract demo runs"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x1e
+name = "final_level_flag"
+kind = "var"
+size = 2
+note = "set for the final level (LW) (inferred)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x26
+name = "init_and_script"
+kind = "func"
+note = "init calls, then the top-level game script"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x5c
+name = "top_loop"
+kind = "func"
+note = "title / attract / game"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x7d6
+name = "frog"
+kind = "var"
+size = 2
+note = "the frog's record ($200 bytes, docs/09), from its x (LAYOUT frog_x); each field below is named"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x82c
+name = "player_died"
+kind = "var"
+size = 2
+note = "makes level_frame_loop return (inferred)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x832
+name = "coins_left_for_exit"
+kind = "var"
+size = 2
+note = "the exit lock spawns while coins remain"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x834
+name = "score"
+kind = "var"
+size = 4
+note = "player score"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x876
+name = "level_clock"
+kind = "var"
+size = 4
+note = "level clock digits (4:00 set by each level loader)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x9d6
+name = "logic_running"
+kind = "var"
+size = 2
+note = "set by level_frame_loop: the VBL handler runs level work and counts"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x9d8
+name = "vbl_count"
+kind = "var"
+size = 2
+note = "VBLs since the last 25 Hz pass; the pass runs when it reaches 2"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x9dc
+name = "shooter_mode"
+kind = "var"
+size = 2
+note = "bonus-level mode flag"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x9de
+name = "abort_flag"
+kind = "var"
+size = 2
+note = "ESC / demo fire"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x9e4
+name = "opt_lives"
+kind = "var"
+size = 2
+note = "options: 0..2 = 3/5/7 lives"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x9e6
+name = "opt_game_mode"
+kind = "var"
+size = 2
+note = "options: 0 easy, 1 normal"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x9f0
+name = "level_started"
+kind = "var"
+size = 2
+note = "set by level_start"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x9f6
+name = "demo_index"
+kind = "var"
+size = 2
+note = "attract demo 0..2"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x9fa
+name = "obj_world_offset"
+kind = "var"
+size = 4
+note = "world selector into obj_flag_jumptab: $100 per world"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x9fe
+name = "level_palette_ptr"
+kind = "var"
+size = 4
+note = "pointer to the level's palette; touch_boss_hit's flash steps back to it (T18)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0xa06
+name = "level_state"
+kind = "var"
+size = 4
+note = "negative while playing; 1 exit, 2 bonus end, $64 boss done, $190 death"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0xa12
+name = "ram_cache_base"
+kind = "var"
+size = 4
+note = "disk-1 RAM cache from the bootstrap (0 on 512K+512K)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0xaa6
+name = "level_frame_loop"
+kind = "func"
+note = "in-level loop: wait vbl_count>=2, clear, run the 25 Hz pass"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0xb66
+name = "game_start_at"
+kind = "func"
+note = "password check, then jump to the start world/level"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0xbb2
+name = "level_resume_jump"
+kind = "func"
+note = "jumps to resume_target"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0xbda
+name = "resume_target"
+kind = "var"
+size = 4
+note = "level entry game_start_at jumps to"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0xbde
+name = "start_resume_table"
+kind = "table"
+size = 0x8c
+note = "7 x $14: world entry + L1..L4 resume addresses"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0xde0
+name = "frog_die"
+kind = "func"
+note = "frog death"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x109e
+name = "title_screen"
+kind = "func"
+note = "title, menu and options"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x1958
+name = "opt_cursor"
+kind = "var"
+size = 2
+note = "options menu row 0..3"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x195c
+name = "options_input"
+kind = "func"
+note = "options menu input"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x1a00
+name = "options_draw"
+kind = "func"
+note = "options menu drawing"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x1e98
+name = "award_pages"
+kind = "func"
+note = "features and bonus tables (AWA1/AWA2)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x20e0
+name = "hiscore_and_credits"
+kind = "func"
+note = "name entry, hall of talent, credits"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x22b8
+name = "attract_abort"
+kind = "var"
+size = 2
+note = "fire during attract screens"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x22ba
+name = "password_entry"
+kind = "func"
+note = "level code entry"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x242a
+name = "password_buf"
+kind = "data"
+size = 6
+note = "typed password"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x2432
+name = "password_check"
+kind = "func"
+note = "matches password_buf against password_table"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x2464
+name = "password_for_level"
+kind = "func"
+note = "password of the current world/level, for display"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x24dc
+name = "password_table"
+kind = "table"
+size = 0x118
+note = "28 x 10: 6 digits + handler; W1L1..W6L4 then 4 bonus codes"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x2bba
+name = "hiscore_name_entry"
+kind = "func"
+note = "CONGRATULATIONS name entry"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x2e56
+name = "hall_of_talent"
+kind = "func"
+note = "high-score table screen"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x2f90
+name = "hiscore_table"
+kind = "table"
+size = 0x50
+note = "10 x 8 (inferred)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x3030
+name = "credits_scroll"
+kind = "func"
+note = "credits"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x3902
+name = "title_intro_anim"
+kind = "func"
+note = "title animation"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x3de8
+name = "progress_map_show"
+kind = "func"
+note = "Superfrog's Progress map before each level"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x3eaa
+name = "progress_map_end"
+kind = "func"
+note = "tears the progress map down"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x3f22
+name = "progress_map_vbl"
+kind = "func"
+note = "animates the progress map from the VBL handler"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x40da
+name = "world"
+kind = "var"
+size = 4
+note = "current world 1..6; 7 = bonus level"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x40de
+name = "level"
+kind = "var"
+size = 4
+note = "current level 1..4"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x4116
+name = "world_intro_show"
+kind = "func"
+note = "world loading picture LnLP with LOADING ... PLEASE WAIT"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x4220
+name = "world_intro_end"
+kind = "func"
+note = "tears the world intro down"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x42aa
+name = "end_world_pic_w1"
+kind = "func"
+note = "end-of-world picture L1ET (also $42be..$4326 for W2-W6)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x433c
+name = "end_world_pic_show"
+kind = "func"
+note = "shows an LnET picture"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x4466
+name = "level_tally"
+kind = "func"
+note = "after each level: bonus counts, points or slot machine"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x49dc
+name = "slot_machine"
+kind = "func"
+note = "slot machine (FRUT/FRUC/FRUM)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x6952
+name = "level_start"
+kind = "func"
+note = "starts a level"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x6a64
+name = "bonus_frame"
+kind = "func"
+note = "bonus level, after a death with lives left: the frog's step, panel, frog back on screen; the loop again (T79)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x6c94
+name = "info_screen_inft"
+kind = "func"
+note = "hidden info screen (INFT, disk 4)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x73ba
+name = "wait_line_0"
+kind = "func"
+note = "waits for VPOS $ff then $00"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x73d0
+name = "wait_frame_raster"
+kind = "func"
+note = "waits for VPOS $ff then $2b: the 50 Hz pace of every non-level screen"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x7442
+name = "pause"
+kind = "func"
+note = "pause until fire or P"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x7494
+name = "shooter_off"
+kind = "func"
+note = "after the bonus level's exit fade: shooter_mode cleared (T79)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x749c
+name = "game_over_check"
+kind = "func"
+note = "after a level: game over or continue"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x74d0
+name = "game_over_seq"
+kind = "func"
+note = "GAME OVER"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x75f2
+name = "level_exit_fade"
+kind = "func"
+note = "level exit fade"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x766e
+name = "init_save_boot_args"
+kind = "func"
+note = "keeps the bootstrap's a0/a1/a2"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x7722
+name = "rng_seed_from_cia"
+kind = "func"
+note = "seeds the RNG from CIA-B TOD ($bfd802)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x80f0
+name = "spud_update"
+kind = "func"
+note = "the frog's thrown spud"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x8c3a
+name = "level_init_lb"
+kind = "func"
+note = "level init, bonus level; start row by bonus_visit (T79)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x8cd6
+name = "bonus_visit"
+kind = "var"
+size = 2
+note = "level_init_lb: 2 or 3 starts the bonus level lower, cleared from 3 on; nothing sets it (T79)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x8cd8
+name = "level_init_w1"
+kind = "func"
+note = "level init, world 1 (W2-W6 at $8d2e $8d84 $8dda $8e30 $8e86)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x8edc
+name = "level_init_lw"
+kind = "func"
+note = "level init, final level"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x8f3a
+name = "demo_init"
+kind = "func"
+note = "attract demo init"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x902e
+name = "frog_reset"
+kind = "func"
+note = "frog reset at level (re)start"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x9172
+name = "load_hero"
+kind = "func"
+note = "loads HERO (d1_c04)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x922e
+name = "ram_cache_fill"
+kind = "func"
+note = "preloads disk-1 files into the RAM cache when there is one"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x94a0
+name = "world_load_w1"
+kind = "func"
+note = "world 1: FX, MU, intro, BM, BO, MS (W2-W6 at $9722 $9976 $9bca $9e1e $a072)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x9552
+name = "level_load_w1_l1"
+kind = "func"
+note = "W1 level 1: clock, progress map, L1MA1 (L2-L4 at $95c6 $963a $96ae)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0xa39e
+name = "world_load_lb"
+kind = "func"
+note = "bonus level files (world 7)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0xa426
+name = "level_load_lb"
+kind = "func"
+note = "bonus level map"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0xa49a
+name = "world_load_lw"
+kind = "func"
+note = "final level files"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0xa508
+name = "level_load_lw"
+kind = "func"
+note = "final level map, 10:00 clock"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0xa580
+name = "demo_world_load"
+kind = "func"
+note = "attract demo: W1 files"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0xa5ec
+name = "demo_level_load"
+kind = "func"
+note = "attract demo: W1-1 map"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0xa65c
+name = "end_seq_load"
+kind = "func"
+note = "loads END1/END2 (disk 3)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0xa6e4
+name = "end_sequence"
+kind = "func"
+note = "plays the end animations"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0xa890
+name = "end_play_end1"
+kind = "func"
+note = "END1: open, show, fade in, hold 200, 54 passes of two frames, 2 rasters each (T35)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0xa95e
+name = "end_play_end2"
+kind = "func"
+note = "END2: open, show, fade in, hold 100, 11 passes of two frames, 3 rasters each"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0xaa40
+name = "end_palettes"
+kind = "table"
+size = 0x80
+note = "white, then the end pictures' 32 colours"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0xaac0
+name = "end_show_a"
+kind = "func"
+note = "end copper list (h2+$5efc) shows the ANIM's buffer A; $aaca buffer B"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0xab02
+name = "anim_open"
+kind = "func"
+note = "IFF ANIM open: a0/a1 buffers, a2 file, a3 record, d0 bytes a row, d1 rows (docs/10)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0xab82
+name = "anim_next"
+kind = "func"
+note = "next ANIM frame's DLTA (op 5) into the buffer not shown; d0 != 0 at the end"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0xac96
+name = "anim_ilbm_body"
+kind = "func"
+note = "first frame: BMHD into the record, ByteRun1 BODY into a1"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0xad2a
+name = "anim_byterun1_row"
+kind = "func"
+note = "one row of ByteRun1 (d4 bytes) from a0 to a1"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0xad5c
+name = "read_disk_id"
+kind = "func"
+note = "reads the 4-byte disk ID at disk offset $dbffc"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0xade4
+name = "disk_request"
+kind = "func"
+note = "finds the wanted disk in any drive, else runs the insert-disk prompt"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0xaf64
+name = "drive_disk_cache"
+kind = "table"
+size = 0x10
+note = "disk ID last seen in DF0..DF3"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0xaf84
+name = "load_file"
+kind = "func"
+note = "loads and decompresses a file: a0 name, a2 file-table entry, a1 dest"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0xaf98
+name = "load_file_raw"
+kind = "func"
+note = "loads a file without decompressing"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0xb098
+name = "track_read"
+kind = "func"
+note = "reads sectors through the trackloader"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0xb11e
+name = "disk_id_table"
+kind = "table"
+size = 0x10
+note = "required disk ID per file-table disk index"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0xb666
+name = "probe_drives"
+kind = "func"
+note = "finds the connected drives"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0xb6f8
+name = "access_overlay_show"
+kind = "func"
+note = "shows the Accessing-disk overlay"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0xb774
+name = "overlays_end"
+kind = "func"
+note = "removes the overlays"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0xc2d6
+name = "file_names"
+kind = "table"
+size = 0x54e
+note = "97 x 14: load_file's names for the trackloader (SDDISK1:HERO ...); entry = (a0 - $c2d6) / 14 (T14)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0xc824
+name = "dos_file_names"
+kind = "table"
+size = 0x3ca
+note = "97 x 10: the same files as DF0:..DF3: paths, for loader_mode 0/1 (dev, h0+$afe4) (T14)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0xcbfe
+name = "file_table"
+kind = "table"
+size = 0x23a
+note = "95 x 6: start sector, sector count, disk index 0..3 (docs/08)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0xcfba
+name = "hunk_relocate"
+kind = "func"
+note = "relocates an embedded hunk executable"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0xd0cc
+name = "collide_all"
+kind = "func"
+note = "spud vs objects, frog vs objects"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0xd2f6
+name = "obj_build_hitboxes"
+kind = "func"
+note = "rebuilds the hitbox list from the slots"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0xe2e2
+name = "frog_tiles"
+kind = "func"
+note = "frog vs map-cell markers (VBL)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0xfe34
+name = "frog_input_anim"
+kind = "func"
+note = "reads JOY1DAT for the frog (VBL)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x11b6a
+name = "hw_takeover"
+kind = "func"
+note = "installs the level-3 handler, INTENA = VERTB|COPER"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x11bf8
+name = "vbl_handler"
+kind = "func"
+note = "level-3 interrupt: VBL work, and the copper interrupt's queued blits"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x11d2c
+name = "level_clock_tick"
+kind = "func"
+note = "level clock: one second per 50 VBLs"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x123d4
+name = "display_timer"
+kind = "var"
+size = 2
+note = "decremented every VBL: times intro/map/end pictures"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x1298c
+name = "sprite_anim_a"
+kind = "table"
+size = 0x44
+note = "frame list for a hardware-sprite record: 8-byte entries, ends $ffffffff (inferred)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x129d0
+name = "sprite_anim_b"
+kind = "table"
+size = 0x44
+note = "frame list for a hardware-sprite record: 8-byte entries, ends $ffffffff (inferred)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x12a72
+name = "sfx_play"
+kind = "func"
+note = "plays sound effect d0 on channel d1"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x1327a
+name = "music_fade_wait"
+kind = "func"
+note = "fades the music out and stops it"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x147e4
+name = "sample_stream"
+kind = "func"
+note = "streams a sample on channel 3 (VBL)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x148b8
+name = "sample_play"
+kind = "func"
+note = "starts a streamed sample"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x15ff2
+name = "kbd_poll"
+kind = "func"
+note = "reads CIA-A SDR every second VBL into key_down/key_up"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x16076
+name = "kbd_toggle"
+kind = "var"
+size = 1
+note = "keyboard is polled every second VBL"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x16078
+name = "key_down"
+kind = "var"
+size = 1
+note = "last raw key code pressed ($19 P pause, $45 ESC)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x16079
+name = "key_up"
+kind = "var"
+size = 1
+note = "last raw key code released"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x1607a
+name = "rng_seed"
+kind = "func"
+note = "rng_state = (d0, d1 + d0), then runs on into rng_next (no rts)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x16084
+name = "rng_next"
+kind = "func"
+note = "next 64-bit RNG state; d0 = new high long"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x160c0
+name = "rng_range"
+kind = "func"
+note = "random 0..d0"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x160d4
+name = "rng_state"
+kind = "var"
+size = 8
+note = "64-bit RNG state (d0:d1)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x1693e
+name = "copper_irq_blits"
+kind = "func"
+note = "copper interrupt: runs the queued blits"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x17334
+name = "map_rows"
+kind = "var"
+size = 4
+note = "pointer one row above the in-RAM map; rows $260 bytes, cell = tile<<6|flags"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x1777c
+name = "map_spawn_scan_screen"
+kind = "func"
+note = "spawns the objects of the whole screen at level start"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x17810
+name = "map_spawn_scan_edges"
+kind = "func"
+note = "spawns objects at the scrolling edge (VBL)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x178ec
+name = "obj_flag_jumptab"
+kind = "table"
+size = 0x700
+note = "7 x 64 bra.w per world, by map-cell marker (docs/09)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x19b42
+name = "build_bob_draw_list"
+kind = "func"
+note = "spud first, then the objects"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x1b324
+name = "obj_run_all"
+kind = "func"
+note = "runs each live slot's update routine (25 Hz pass)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x1b350
+name = "find_marker_right"
+kind = "func"
+note = "d0 = 0 when a cell marked d0 lies within $98 cells right of a3 and no live slot came from it, else -1 (T42)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x1b396
+name = "find_marker_left"
+kind = "func"
+note = "find_marker_right, looking left of a3 (T42; W4's pair stubs too, T41)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x1b3d8
+name = "obj_spawn_cell"
+kind = "func"
+note = "spawns a template at a map cell"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x1b4e6
+name = "obj_spawn_cell_alt"
+kind = "func"
+note = "variant of obj_spawn_cell"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x1b5d0
+name = "obj_spawn_coin_forced"
+kind = "func"
+note = "coin spawner that may evict a visible slot"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x1b706
+name = "obj_spawn_at_xy"
+kind = "func"
+note = "spawns at a pixel position, de-duplicated"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x1b822
+name = "obj_spawn_at_xy_nodedup"
+kind = "func"
+note = "spawns at a pixel position"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x1b90e
+name = "obj_free"
+kind = "func"
+note = "frees a slot and its bob"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x1b95e
+name = "obj_despawn_if_offscreen"
+kind = "func"
+note = "frees an off-screen evictable slot"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x1ba16
+name = "bob_free_list"
+kind = "table"
+size = 0x54
+note = "pointers to free bob records"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x1ba6a
+name = "obj_count"
+kind = "var"
+size = 2
+note = "live object slots"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x1ba6c
+name = "obj_slots"
+kind = "table"
+size = 0x9b0
+note = "20 x $7c object slots (docs/09)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x1c5bc
+name = "frog_hurt"
+kind = "func"
+note = "frog takes a hit"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x1c6e2
+name = "obj_templates"
+kind = "table"
+size = 0x6cc0
+note = "160 x $ae object templates"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x23582
+name = "touch_kill_1hit"
+kind = "func"
+note = "touch handler: dies in one hit or stomp"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x2360e
+name = "touch_spud_damage"
+kind = "func"
+note = "touch handler: a stomp takes $20 hit points; the spud passes over a slot with it (collide_all; T42)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x23662
+name = "touch_stomped"
+kind = "func"
+note = "a stomped enemy, touched once its count is over: sfx 6, maybe sample 2, become_reward (T42)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x236ac
+name = "touch_hurt"
+kind = "func"
+note = "touch handler: always hurts the frog"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x236b4
+name = "touch_boss_hit"
+kind = "func"
+note = "witch's touch: -1 hp; at 0 white flash (fade 0 mode 1), witch_beaten, level_state $64 (T18)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x23734
+name = "witch_flash"
+kind = "table"
+size = 0x40
+note = "32 colours, all white: the palette touch_boss_hit steps back from (T18)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x238e2
+name = "touch_bonus_enemy"
+kind = "func"
+note = "touch handler: bonus-level enemies"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x23956
+name = "death_fall"
+kind = "func"
+note = "a shot bonus enemy falls away; at bob +$1a >= $7530 it becomes a reward, d0 = 8 (T78)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x23c14
+name = "become_reward"
+kind = "func"
+note = "a killed enemy (touch_bonus_enemy, touch_spud_damage) snaps to the ground and becomes a reward; d0 = dx (T78)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x23de4
+name = "reward_life_count"
+kind = "var"
+size = 0x2
+note = "shooter-mode rewards since the last life: every $28th is a life (T78)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x23de6
+name = "reward_wave"
+kind = "table"
+size = 0x3a
+note = "shooter-mode reward: y offsets of its wave, ended by $80 (T78)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x23e20
+name = "reward_power_count"
+kind = "var"
+size = 0x2
+note = "shooter-mode rewards since the last power-up: every 10th is one; 9 in the exe (T78)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x23e22
+name = "reward_float"
+kind = "func"
+note = "reward update in shooter mode: one left a pass along the wave, freed after $20 (T78)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x23e6c
+name = "reward_arc"
+kind = "func"
+note = "reward update outside shooter mode: rises on its arc until $7d00 (T78)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x23e90
+name = "reward_arc_table"
+kind = "table"
+size = 0x1c
+note = "reward: y offsets of its arc, ended by $7d00 (T78)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x23eac
+name = "touch_reward"
+kind = "func"
+note = "touch handler: reward taken once its arc is over; life / shot power, 200 points (T78)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x239f6
+name = "touch_coin"
+kind = "func"
+note = "touch handler: coin"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x23b34
+name = "kill_fall"
+kind = "func"
+note = "a touch_kill_1hit-killed enemy falls; it splats on a solid cell and pays 200 when the splat ends (T42)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x23bee
+name = "stomped"
+kind = "func"
+note = "a touch_spud_damage-stomped enemy counts down +$5c (T42)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x23f60
+name = "coin_init"
+kind = "func"
+note = "coin init"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x23f86
+name = "coin_update"
+kind = "func"
+note = "coin update"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x2435a
+name = "w1_hover_init"
+kind = "func"
+note = "W1 template 8 (marker 1): centre and start at its spawn, path phase from w1_hover_phase (T42)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x243b4
+name = "w1_hover_phase"
+kind = "var"
+size = 0x2
+note = "the path phase the next W1 hover starts on, 0..3 (T42); W4's swooper steps it too (T41)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x243b6
+name = "w1_hover_update"
+kind = "func"
+note = "loops round its centre, the centre drifting after the frog within 42 pixels (T42)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x24454
+name = "w1_hover_path"
+kind = "table"
+size = 0x334
+note = "four phases of 51 (x, y) offsets, then a -1 long (T42)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x24788
+name = "w1_crawler_init"
+kind = "func"
+note = "W1 template 22 (marker 12) (T42)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x247b8
+name = "w1_crawler_update"
+kind = "func"
+note = "walks, turning at $25 cells; stompable while h0+$2d128 >= 2 (T42)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x24828
+name = "w1_runner_left_init"
+kind = "func"
+note = "W1 template 20 (marker 13) (T42)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x2483e
+name = "w1_runner_right_init"
+kind = "func"
+note = "W1 template 19 (marker 14) (T42)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x24854
+name = "w1_runner_update"
+kind = "func"
+note = "runs until the cell ahead is solid or x < 0, then is freed (T42)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x248b2
+name = "w1_spiker_init"
+kind = "func"
+note = "W1 template 21 (marker 15) (T42)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x248e2
+name = "w1_spiker_update"
+kind = "func"
+note = "walks, turning at $25 cells (T42)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x2493a
+name = "w1_walker_init"
+kind = "func"
+note = "W1 templates 12 (marker 2) and 13 (marker 3) (T42)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x2496a
+name = "w1_walker_update"
+kind = "func"
+note = "walks, turning at $25 cells (T42)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x249c2
+name = "w1_sitter_update"
+kind = "func"
+note = "stands still (T42)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x24a58
+name = "w1_shot_left_init"
+kind = "func"
+note = "W1 template 14: a spout's shot up-left (T42)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x24a74
+name = "w1_shot_up_init"
+kind = "func"
+note = "W1 template 15: a spout's shot up (T42)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x24a90
+name = "w1_shot_right_init"
+kind = "func"
+note = "W1 template 16: a spout's shot up-right (T42)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x24aac
+name = "w1_shot_update"
+kind = "func"
+note = "flies in an arc; freed on a solid cell (T42)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x24b0a
+name = "w1_drop_init"
+kind = "func"
+note = "W1 template 17: a dropper's drop (T42)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x24b20
+name = "w1_drop_update"
+kind = "func"
+note = "falls; splats on a solid cell (T42)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x24ba2
+name = "w1_drop_splatted"
+kind = "func"
+note = "freed once the splat's step timer reaches $4e20 (T42)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x24d3c
+name = "w1_dropper_init"
+kind = "func"
+note = "W1 template 23 (marker 11) (T42)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x24d74
+name = "w1_dropper_path"
+kind = "table"
+size = 0x56
+note = "y offsets, ending at $80 (T42)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x24dca
+name = "w1_dropper_update"
+kind = "func"
+note = "flies left bobbing, a drop every $1e passes, climbs after $4b (T42)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x24e48
+name = "w1_dropper_climb"
+kind = "func"
+note = "climbs away (T42)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x2533a
+name = "w1_spout_init"
+kind = "func"
+note = "W1 template 33 (marker 10), drawn into the background (T42)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x25356
+name = "w1_spout_turn"
+kind = "var"
+size = 0x2
+note = "which shot the next W1 spout throws, 0..2 (T42)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x25358
+name = "w1_spout_update"
+kind = "func"
+note = "every $32 passes throws templates 14, 15, 16 in turn (T42)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x259ae
+name = "final_boss_init"
+kind = "func"
+note = "witch (template 134) init: $160 below the camera, rising; $32 passes' wait (T18)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x259ec
+name = "witch_beaten"
+kind = "func"
+note = "the beaten witch: bob follows, despawn if off screen (T18)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x259fc
+name = "witch_rise_wait"
+kind = "func"
+note = "counts +$6c below 0, then final_boss_update (T18)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x25a16
+name = "final_boss_update"
+kind = "func"
+note = "witch rising, slowing to 2 a pass; at camera+$70 starts witch_bob (T18)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x25a7c
+name = "witch_bob"
+kind = "func"
+note = "witch bobs on witch_bob_path; at its end with +$68 run out, witch_loop (T18)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x25ade
+name = "witch_bob_path"
+kind = "table"
+size = 0x62
+note = "every 4th byte a word: y from camera top+$20; ends $ffff (T18)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x25b40
+name = "witch_loop"
+kind = "func"
+note = "witch flies witch_loop_path; at its end witch_bob again, same pass (T18)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x25bba
+name = "witch_loop_path"
+kind = "table"
+size = 0xd0
+note = "x, y word pairs from camera top-left (+$20 down); ends $ffffffff (T18)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x268ee
+name = "w1_watcher_init"
+kind = "func"
+note = "W1 template 76 (marker 18), drawn into the background (T42)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x26904
+name = "w1_watcher_update"
+kind = "func"
+note = "looks at the frog: w1_watcher_looks by direction_16 (T42)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x2697e
+name = "w1_watcher_looks"
+kind = "table"
+size = 0x40
+note = "16 animations by direction (T42)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x269be
+name = "w1_patroller_77_init"
+kind = "func"
+note = "W1 template 77 (marker 17): from the right end (T42)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x269f8
+name = "w1_patroller_78_init"
+kind = "func"
+note = "W1 template 78 (marker 16): from the left end (T42)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x26a2c
+name = "w1_patroller_update"
+kind = "func"
+note = "paces between cells marked 16 and 17 (T42)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x28ad8
+name = "bonus_toggle_114"
+kind = "var"
+size = 2
+note = "bonus type 114's init flips it to pick one of two animations (T76)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x28b4a
+name = "bonus_toggle_113"
+kind = "var"
+size = 2
+note = "bonus type 113's init flips it to pick one of two animations (T76)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x293ce
+name = "bonus_fly_off"
+kind = "var"
+size = 2
+note = "bonus marker 11 sets it; 127/128's inits clear it; while set they fly off left (T77)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x298d2
+name = "bob_records"
+kind = "table"
+size = 0x1630
+note = "20 x $11c bob records"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x35fee
+name = "ovl_insert_disk"
+kind = "data"
+size = 4
+note = "start of an embedded ATN! hunk exe: the insert-disk prompt"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x36a04
+name = "ovl_accessing_disk"
+kind = "data"
+size = 4
+note = "start of an embedded ATN! hunk exe: the Accessing-disk overlay"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x37a0a
+name = "pic_progress_map"
+kind = "data"
+size = 4
+note = "start of an embedded ATN! picture: Superfrog's Progress map"
+
+
+# --- d3_c02 (T07, docs/08 and docs/09) ---
+
+[[sym]]
+exe = "d3_c02"
+hunk = 0
+offset = 0x2b326
+name = "d3boot_main"
+kind = "func"
+note = "disk-3 boot: shows its picture, loads d3_c04 + d3_c03, relocates d3_c04, jumps"
+
+[[sym]]
+exe = "d3_c02"
+hunk = 0
+offset = 0x2b4c4
+name = "d3boot_trackload"
+kind = "func"
+note = "disk-3 trackloader"
+
+
+# --- d3_c04 (T07, docs/08 and docs/09) ---
+
+[[sym]]
+exe = "d3_c04"
+hunk = 0
+offset = 0x16
+name = "intro_skip"
+kind = "var"
+size = 2
+note = "set to skip the remaining intro scenes"
+
+[[sym]]
+exe = "d3_c04"
+hunk = 0
+offset = 0x20
+name = "intro_main"
+kind = "func"
+note = "story intro (Eric Schwartz): ~16 scenes, then asks for disk 1 and boots d1_c01"
+
+[[sym]]
+exe = "d3_c04"
+hunk = 0
+offset = 0xc38e
+name = "intro_wait_disk1"
+kind = "func"
+note = "waits for fire and disk ID \"2222\" (disk 1)"
+
+[[sym]]
+exe = "d3_c04"
+hunk = 0
+offset = 0xc876
+name = "intro_trackload"
+kind = "func"
+note = "the intro's own trackloader"
+
+[[sym]]
+exe = "d3_c04"
+hunk = 0
+offset = 0xcf26
+name = "intro_file_table"
+kind = "table"
+size = 0x18
+note = "4 x 6 bytes: start sector, sector count, spare word: d3_c05..c08 (bob banks; c07/c08 hold several packed back to back)"
+
+# T13: the level display (docs/12).
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x16660
+name = "camera_y"
+kind = "var"
+size = 4
+note = "camera's level y; the vertical blank scrolls to it + $17 (docs/12)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x16664
+name = "camera_x"
+kind = "var"
+size = 4
+note = "camera's level x; the vertical blank scrolls to it + 7 (docs/12)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x1700a
+name = "scroll_latch"
+kind = "func"
+note = "VBL: camera -> BPLCON1, bitplane pointers, ring-seam wait and scroll_column in the level copper list"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x12a26
+name = "sfx_bank_init"
+kind = "func"
+note = "builds the sfx sample and effect pointer tables from LnFX"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x172b0
+name = "scroll_column"
+kind = "var"
+size = 4
+note = "address of the shown column's first word in the shown display buffer"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0xfa7c
+name = "tile_anim_draw"
+kind = "func"
+note = "queued map cells: tile + 1, drawn into the clean buffer and blitted into both display buffers"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x19120
+name = "bob_draw"
+kind = "func"
+note = "erases each bob from the clean buffer and cookie-cuts it into the back buffer (docs/12)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x19ce0
+name = "hero_sprite_frames"
+kind = "func"
+note = "HERO and its mirror -> attached sprite frames at h3+$4c0b0 (docs/12)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x19ddc
+name = "hero_table"
+kind = "table"
+size = 0x900
+note = "96 pairs of 12-byte records (frames, offset, rows): the frog's, then its mirror image's (T35)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x3b18c
+name = "anim_record"
+kind = "var"
+size = 0x22
+note = "the ANIM player's record (sf_core::front::anim::RECORD)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x1a6f4
+name = "hero_rects"
+kind = "table"
+size = 0x900
+note = "12-byte frame rectangles of HERO: x, y, w, h, two offsets"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 1
+offset = 0x218e0
+name = "level_map"
+kind = "data"
+size = 0xc780
+note = "84 rows of 304 cells, tile << 6 | marker (map_rows + $260)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 2
+offset = 0x6bd0
+name = "level_copper"
+kind = "data"
+size = 0x400
+note = "the level's copper list (docs/12)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 3
+offset = 0x10600
+name = "playfield_buffer_0"
+kind = "data"
+size = 0x12930
+note = "display buffer: 5 planes of $3b70, a ring of 19 tile rows (docs/12)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 3
+offset = 0x22f30
+name = "playfield_buffer_1"
+kind = "data"
+size = 0x12930
+note = "display buffer 1"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 3
+offset = 0x35860
+name = "playfield_clean"
+kind = "data"
+size = 0x12930
+note = "clean background buffer: tiles only; bobs are erased from it"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 3
+offset = 0x4b390
+name = "panel_bitmap"
+kind = "data"
+size = 0xd20
+note = "status panel: 5 planes of 14 lines, $2a0 apart"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x12c50
+name = "sfx_chan_ptrs"
+kind = "table"
+size = 0x10
+note = "four pointers to the sfx channel records"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x12c60
+name = "sfx_tick"
+kind = "func"
+note = "per-VBL sound-effect envelope player, channels 3..0"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x12f62
+name = "sfx_chan0"
+kind = "var"
+size = 0x26
+note = "sfx channel record 0"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x12f88
+name = "sfx_chan1"
+kind = "var"
+size = 0x34
+note = "sfx channel record 1"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x12fbc
+name = "sfx_chan2"
+kind = "var"
+size = 0x34
+note = "sfx channel record 2"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x12ff0
+name = "sfx_chan3"
+kind = "var"
+size = 0x34
+note = "sfx channel record 3"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x13024
+name = "sfx_steal"
+kind = "var"
+size = 2
+note = "byte: set while sfx_play restarts a busy channel (the next byte is padding)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x13126
+name = "music_start"
+kind = "func"
+note = "starts the loaded P41A module (h0+$9ec) with interrupts off"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x13144
+name = "p41_init"
+kind = "func"
+note = "The Player 4.1A init: relocates the module, resets channel state"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x132a0
+name = "music_stop"
+kind = "func"
+note = "stops music and every effect, silences Paula"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x1339e
+name = "p41_saved_regs"
+kind = "var"
+size = 0x40
+note = "registers saved around the replayer"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x133de
+name = "p41_regs"
+kind = "var"
+size = 0x40
+note = "the replayer's own register set, kept between ticks"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x1341e
+name = "p41_rts"
+kind = "func"
+note = "rts"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x13420
+name = "music_on"
+kind = "var"
+size = 2
+note = "nonzero while a module is playing"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x13424
+name = "music_tick"
+kind = "func"
+note = "per-VBL music entry: p41_play then p41_fade"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x1343c
+name = "p41_play"
+kind = "func"
+note = "The Player 4.1A per-tick routine"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x13492
+name = "p41_fx_tab"
+kind = "table"
+size = 0x20
+note = "effect jump table: 16 word offsets from itself"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x134b2
+name = "p41_fx_e"
+kind = "func"
+note = "effect E: extended commands (9 retrig, C note cut, D note delay)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x13548
+name = "p41_arp_tab"
+kind = "table"
+size = 0x20
+note = "tick -> 0,1,2 arpeggio step (mod-3 table)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x13568
+name = "p41_fx_8"
+kind = "func"
+note = "effect 8: arpeggio (this replayer numbers it 8; 0 is no effect)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x135a2
+name = "p41_periods"
+kind = "table"
+size = 0x4a0
+note = "16 finetunes x 37 Amiga periods (entry 0 repeats entry 1)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x9ec
+name = "module_addr"
+kind = "var"
+size = 4
+note = "where the music module is loaded; sfx_bank_init sets it past the bank's effects"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x13b34
+name = "p41_fetch"
+kind = "func"
+note = "reads every channel's next row from its pattern stream, one tick before it plays"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x13bdc
+name = "p41_row"
+kind = "func"
+note = "tick 0: plays the fetched rows (notes, row-time effects, DMACON)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x13cc4
+name = "music_dma"
+kind = "func"
+note = "VBL after music_tick: DMA on for new notes, next position, loop pointers to the shadow"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x13ec0
+name = "p41_fx_e_tab"
+kind = "table"
+size = 0x20
+note = "row-time E commands: 16 word offsets from itself"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x13f5e
+name = "p41_finetunes"
+kind = "table"
+size = 0x20
+note = "E5: finetune -> byte offset into p41_periods (74 per step)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x140bc
+name = "p41_vibrato_tab"
+kind = "table"
+size = 0x400
+note = "16 depths x 32 words of half sine, for vibrato and tremolo"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x144bc
+name = "p41_row_fx_tab"
+kind = "table"
+size = 0x20
+note = "row-time effects: 16 word offsets from itself"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x144dc
+name = "p41_channels"
+kind = "var"
+size = 0xb0
+note = "four replayer channel records of $2c bytes (docs/11)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x1458c
+name = "p41_globals"
+kind = "var"
+size = 0x26
+note = "replayer globals: tick, DMA mask, rows left, speed, positions (docs/11)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x145b2
+name = "music_free"
+kind = "var"
+size = 4
+note = "$ff while music may use the channel, else the effect on it; channel 3 first"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x145b6
+name = "p41_shadow_out"
+kind = "func"
+note = "music fade, then the shadow registers to Paula for channels music holds"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x146ae
+name = "music_fade_start"
+kind = "func"
+note = "d0 -> fade word; hands every channel back to music"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x146d6
+name = "music_fade_busy"
+kind = "func"
+note = "waits for the fade word to clear"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x146e0
+name = "music_fade"
+kind = "var"
+size = 4
+note = "fade: ceiling byte, frames per step, counter"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x146e4
+name = "p41_shadow"
+kind = "var"
+size = 0x40
+note = "shadow Paula registers, 16 bytes a channel: pointer, length, period, volume"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x148b0
+name = "stream_ptr"
+kind = "var"
+size = 4
+note = "the streamed sample's next 160 bytes"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x148b4
+name = "stream_left"
+kind = "var"
+size = 2
+note = "words left to stream, $ffff idle"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x148b6
+name = "stream_volume"
+kind = "var"
+size = 2
+note = "the streamed sample's volume"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x1491e
+name = "stream_table"
+kind = "table"
+size = 0x80
+note = "sample_play's 8 entries: pointer, byte length, volume"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x1499e
+name = "sfx_samples"
+kind = "table"
+size = 0x400
+note = "sfx_bank_init: 256 sample pointers"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x14d9e
+name = "sfx_effects"
+kind = "table"
+size = 0x400
+note = "sfx_bank_init: 256 effect pointers"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x4814c
+name = "music_header_backup"
+kind = "var"
+size = 0x200
+note = "the module's first 512 bytes before music_start relocated them"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x11350
+name = "frog_idle_timer"
+kind = "var"
+size = 2
+note = "frames the frog has stood idle, wraps at $40 (T14)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x11352
+name = "frog_jump_float"
+kind = "func"
+note = "while up is held 12..31 frames into a jump, every other frame takes 1 more off vy (T14)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0xdb58
+name = "frog_move"
+kind = "func"
+note = "frog moves by its velocity; a negative coordinate stops at 0 (T14)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0xdb92
+name = "camera_follow"
+kind = "func"
+note = "camera follows the frog with a lag, keeps inside the level, places the frog sprites (T14)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0xde2a
+name = "frog_slope_anim"
+kind = "func"
+note = "the ground tile slope picks the walking animation (T14)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0xdfb0
+name = "frog_ground_probe"
+kind = "func"
+note = "lands the frog on the ground under it (T14)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0xe4fc
+name = "frog_head_probe"
+kind = "func"
+note = "a rising frog stops under a ceiling (T14)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0xeb2a
+name = "marker_conveyor_left"
+kind = "func"
+note = "frog on marker 46: pushed left (T14)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x10222
+name = "frog_anim_tick"
+kind = "func"
+note = "steps the frog animation, writes its sprite pointers into the copper list (T14)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x102e6
+name = "frog_set_anim"
+kind = "func"
+note = "starts animation a1 unless frozen ($86a) (T14)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x1030e
+name = "frog_set_anim_free"
+kind = "func"
+note = "starts animation a1 unless frozen, hurt or carried (T14)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x1034c
+name = "frog_set_anim_at"
+kind = "func"
+note = "starts animation a1 at step a2 (T14)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x11056
+name = "frog_air_anim"
+kind = "func"
+note = "animation and sound of a frog in the air, the shield, launchers, idle sounds (VBL, T14)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x113be
+name = "frog_walk_input"
+kind = "func"
+note = "left/right walking and running (VBL, T14)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x11626
+name = "frog_bounce"
+kind = "func"
+note = "bounce pad: up at the bounce speed (T14)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x11990
+name = "demo_play"
+kind = "func"
+note = "attract demo: feeds the recorded joystick (T14)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x11a32
+name = "demo_record"
+kind = "func"
+note = "dev: records the joystick while h0+$1c is set (T14)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x19bbe
+name = "place_frog_sprites"
+kind = "func"
+note = "frog sprites follow the frame offset, hidden off screen (T14)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x1b23e
+name = "sprite_to_copper"
+kind = "func"
+note = "a sprite record into its copper words (T14)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x1c482
+name = "frog_kill"
+kind = "func"
+note = "a hazard costs a life (T14)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x9148
+name = "frog_life_reset"
+kind = "func"
+note = "what losing a life resets (T14)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x6bd4
+name = "frog_level_entry"
+kind = "func"
+note = "VBL: the frog drops in at a level start while sprites_hidden (T14)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x11e62
+name = "frog_exit_walk"
+kind = "func"
+note = "VBL: scripted frog movement at the level end (T14)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x7770
+name = "passage_toggle"
+kind = "var"
+size = 2
+note = "toggles each pass while the frog goes down a secret passage (T14)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x7e3e
+name = "spawn_shots"
+kind = "func"
+note = "bonus level: the frog's five shots, x camera x+$160, y that x+$130 (T75)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x7f0a
+name = "shot_spawn_x"
+kind = "var"
+size = 0x4
+note = "where spawn_shots put the shots: x (T75)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x7f0e
+name = "shot_spawn_y"
+kind = "var"
+size = 0x4
+note = "where spawn_shots put the shots: y, x+$130 by the original's slip (T75)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x7f12
+name = "shot_power"
+kind = "var"
+size = 0x2
+note = "bonus level: non-zero once the two extra shots fire; halved, extra damage (T75)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x7f14
+name = "shooter_spud"
+kind = "func"
+note = "spud_update in shooter mode: fire sends the shots (T75)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x8008
+name = "shots_faster"
+kind = "func"
+note = "every shot's +$c speed up by one, but one at $1e (T75)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x8070
+name = "shot_update"
+kind = "func"
+note = "a shot's update: moves while x <= camera x+$200; off screen up or down, parked there (T75)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x80c6
+name = "shot_delay"
+kind = "var"
+size = 0x2
+note = "passes until fire sends the next shot (T75)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x80c8
+name = "shot_cycle"
+kind = "var"
+size = 0x4
+note = "the entry of shot_cycle_table the next shot comes from (T75)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x80cc
+name = "shot_cycle_table"
+kind = "table"
+size = 0x10
+note = "pointers to the first three of shots, then 0 (T75)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x80dc
+name = "shots"
+kind = "var"
+size = 0x14
+note = "the five shots' slots; the last two are the extra shots (T75)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x7772
+name = "passage_step"
+kind = "func"
+note = "pass: the frog goes through a secret passage (marker 38), the camera with it (T14)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0xdd6
+name = "time_up_check"
+kind = "func"
+note = "pass: the level clock at 0:00 (T15)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0xdd4
+name = "extra_life_shown"
+kind = "var"
+size = 2
+note = "set while the extra-life check has drawn the lives (T14)"
+
+# --- T14: the frog's record and the level's variables, as sf_core::layout::LAYOUT names them ---
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x14
+name = "no_death"
+kind = "var"
+size = 0x2
+note = "`no_death` (h0+$14): non-zero, hazards do nothing (inferred: a cheat)."
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x1c
+name = "demo_record_on"
+kind = "var"
+size = 0x2
+note = "h0+$1c: `demo_record` (h0+$11a32) records the joystick while it is set (a developer's switch)."
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x7d8
+name = "frog_y"
+kind = "var"
+size = 0x2
+note = "T14 LAYOUT variable"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x7da
+name = "frog_vx"
+kind = "var"
+size = 0x2
+note = "T14 LAYOUT variable"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x7dc
+name = "frog_vy"
+kind = "var"
+size = 0x2
+note = "T14 LAYOUT variable"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x7de
+name = "frog_speed"
+kind = "var"
+size = 0x2
+note = "T14 LAYOUT variable"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x7e0
+name = "frog_air"
+kind = "var"
+size = 0x2
+note = "T14 LAYOUT variable"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x7e2
+name = "frog_gravity_tick"
+kind = "var"
+size = 0x2
+note = "T14 LAYOUT variable"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x7e4
+name = "frog_wall_right"
+kind = "var"
+size = 0x2
+note = "T14 LAYOUT variable"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x7e6
+name = "frog_wall_left"
+kind = "var"
+size = 0x2
+note = "T14 LAYOUT variable"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x7e8
+name = "frog_facing"
+kind = "var"
+size = 0x2
+note = "T14 LAYOUT variable"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x7ea
+name = "frog_climb"
+kind = "var"
+size = 0x2
+note = "T14 LAYOUT variable"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x7ec
+name = "frog_16"
+kind = "var"
+size = 0x2
+note = "T14 LAYOUT variable"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x7ee
+name = "frog_prev_x"
+kind = "var"
+size = 0x2
+note = "T14 LAYOUT variable"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x7f0
+name = "frog_prev_y"
+kind = "var"
+size = 0x2
+note = "T14 LAYOUT variable"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x7f2
+name = "frog_air_step"
+kind = "var"
+size = 0x2
+note = "T14 LAYOUT variable"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x7f4
+name = "frog_head_bump"
+kind = "var"
+size = 0x2
+note = "T14 LAYOUT variable"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x7f6
+name = "frog_20"
+kind = "var"
+size = 0x2
+note = "T14 LAYOUT variable"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x7f8
+name = "frog_speed_tick"
+kind = "var"
+size = 0x2
+note = "T14 LAYOUT variable"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x7fa
+name = "frog_on_ground"
+kind = "var"
+size = 0x2
+note = "T14 LAYOUT variable"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x7fc
+name = "frog_26"
+kind = "var"
+size = 0x2
+note = "T14 LAYOUT variable"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x7fe
+name = "frog_slope_side"
+kind = "var"
+size = 0x2
+note = "T14 LAYOUT variable"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x800
+name = "frog_launched"
+kind = "var"
+size = 0x2
+note = "T14 LAYOUT variable"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x802
+name = "frog_anim"
+kind = "var"
+size = 0x4
+note = "T14 LAYOUT variable"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x806
+name = "frog_anim_step"
+kind = "var"
+size = 0x4
+note = "T14 LAYOUT variable"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x80a
+name = "frog_anim_time"
+kind = "var"
+size = 0x2
+note = "T14 LAYOUT variable"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x80c
+name = "frog_sprite_dx"
+kind = "var"
+size = 0x2
+note = "T14 LAYOUT variable"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x80e
+name = "frog_sprite_dy"
+kind = "var"
+size = 0x2
+note = "T14 LAYOUT variable"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x810
+name = "frog_hurt_lock"
+kind = "var"
+size = 0x2
+note = "T14 LAYOUT variable"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x812
+name = "frog_landed"
+kind = "var"
+size = 0x2
+note = "T14 LAYOUT variable"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x814
+name = "frog_dying"
+kind = "var"
+size = 0x2
+note = "T14 LAYOUT variable"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x816
+name = "frog_friction_toggle"
+kind = "var"
+size = 0x2
+note = "T14 LAYOUT variable"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x818
+name = "frog_right_toggle"
+kind = "var"
+size = 0x2
+note = "T14 LAYOUT variable"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x81a
+name = "frog_left_toggle"
+kind = "var"
+size = 0x2
+note = "T14 LAYOUT variable"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x81c
+name = "frog_hurt_friction"
+kind = "var"
+size = 0x2
+note = "T14 LAYOUT variable"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x81e
+name = "frog_camera_held"
+kind = "var"
+size = 0x2
+note = "T14 LAYOUT variable"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x820
+name = "frog_slope"
+kind = "var"
+size = 0x2
+note = "T14 LAYOUT variable"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x822
+name = "frog_slope_walk_anim"
+kind = "var"
+size = 0x4
+note = "T14 LAYOUT variable"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x826
+name = "frog_ground_cell"
+kind = "var"
+size = 0x4
+note = "T14 LAYOUT variable"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x82a
+name = "frog_on_platform"
+kind = "var"
+size = 0x2
+note = "T14 LAYOUT variable"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x82e
+name = "frog_lives"
+kind = "var"
+size = 0x2
+note = "T14 LAYOUT variable"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x830
+name = "frog_hearts"
+kind = "var"
+size = 0x2
+note = "hearts left: the panel's icon (`frog_hurt` takes one, a bottle fills them to 4) (T15)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x838
+name = "frog_62"
+kind = "var"
+size = 0x2
+note = "T14 LAYOUT variable"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x83a
+name = "frog_fire_held"
+kind = "var"
+size = 0x2
+note = "T14 LAYOUT variable"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x83c
+name = "frog_crouch"
+kind = "var"
+size = 0x2
+note = "T14 LAYOUT variable"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x83e
+name = "frog_68"
+kind = "var"
+size = 0x2
+note = "T14 LAYOUT variable"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x840
+name = "frog_sliding"
+kind = "var"
+size = 0x2
+note = "T14 LAYOUT variable"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x842
+name = "frog_slide_tick"
+kind = "var"
+size = 0x2
+note = "T14 LAYOUT variable"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x844
+name = "frog_pushed"
+kind = "var"
+size = 0x2
+note = "T14 LAYOUT variable"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x846
+name = "frog_crouch_time"
+kind = "var"
+size = 0x2
+note = "T14 LAYOUT variable"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x848
+name = "frog_spud_flying"
+kind = "var"
+size = 0x2
+note = "the spud is in flight (T15)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x84a
+name = "frog_spud_x"
+kind = "var"
+size = 0x2
+note = "the spud's level x ($639c parked) (T15)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x84c
+name = "frog_spud_y"
+kind = "var"
+size = 0x2
+note = "the spud's level y (T15)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x84e
+name = "frog_spud_vx"
+kind = "var"
+size = 0x2
+note = "the spud's x speed (T15)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x850
+name = "frog_spud_vy"
+kind = "var"
+size = 0x2
+note = "the spud's y speed (T15)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x852
+name = "frog_spud_on"
+kind = "var"
+size = 0x2
+note = "T14 LAYOUT variable"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x854
+name = "frog_tile_coins"
+kind = "var"
+size = 0x2
+note = "coins taken from the map's tiles (h0+$ede0) (T15)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x856
+name = "frog_special_anim"
+kind = "var"
+size = 0x2
+note = "T14 LAYOUT variable"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x858
+name = "frog_max_speed"
+kind = "var"
+size = 0x2
+note = "T14 LAYOUT variable"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x85a
+name = "frog_spring"
+kind = "var"
+size = 0x2
+note = "T14 LAYOUT variable"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x85c
+name = "frog_sit_time"
+kind = "var"
+size = 0x2
+note = "T14 LAYOUT variable"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x85e
+name = "frog_frozen"
+kind = "var"
+size = 0x2
+note = "T14 LAYOUT variable"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x860
+name = "frog_in_passage"
+kind = "var"
+size = 0x2
+note = "T14 LAYOUT variable"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x862
+name = "frog_blink"
+kind = "var"
+size = 0x2
+note = "T14 LAYOUT variable"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x864
+name = "frog_launch_hold"
+kind = "var"
+size = 0x2
+note = "T14 LAYOUT variable"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x866
+name = "frog_flight"
+kind = "var"
+size = 0x2
+note = "T14 LAYOUT variable"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x868
+name = "frog_shield"
+kind = "var"
+size = 0x2
+note = "T14 LAYOUT variable"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x86a
+name = "frog_anim_lock"
+kind = "var"
+size = 0x2
+note = "T14 LAYOUT variable"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x86c
+name = "frog_idle_sound"
+kind = "var"
+size = 0x2
+note = "T14 LAYOUT variable"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x86e
+name = "frog_bounce_vy"
+kind = "var"
+size = 0x2
+note = "T14 LAYOUT variable"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x870
+name = "frog_gravity_delay"
+kind = "var"
+size = 0x2
+note = "T14 LAYOUT variable"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x872
+name = "frog_air_step_delay"
+kind = "var"
+size = 0x2
+note = "T14 LAYOUT variable"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x874
+name = "frog_air_speed"
+kind = "var"
+size = 0x2
+note = "T14 LAYOUT variable"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x87a
+name = "frog_float_toggle"
+kind = "var"
+size = 0x2
+note = "T14 LAYOUT variable"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x87c
+name = "frog_jump_presses"
+kind = "var"
+size = 0x2
+note = "T14 LAYOUT variable"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x87e
+name = "frog_speed_up"
+kind = "var"
+size = 0x2
+note = "T14 LAYOUT variable"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x880
+name = "frog_next_life"
+kind = "var"
+size = 0x4
+note = "the score at which the next extra life comes, every 200 000 (T15)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x884
+name = "frog_spud_wait"
+kind = "var"
+size = 0x2
+note = "passes after a throw before the spud tests walls (T15)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x886
+name = "frog_base_speed"
+kind = "var"
+size = 0x2
+note = "T14 LAYOUT variable"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x888
+name = "frog_b2"
+kind = "var"
+size = 0x2
+note = "T14 LAYOUT variable"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x88a
+name = "frog_rest"
+kind = "var"
+size = 0x14c
+note = "The rest of the frog's `$200`-byte record, to h0+$9d6, which `frog_new_game` clears."
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x9da
+name = "vbl_pass_flag"
+kind = "var"
+size = 0x2
+note = "`vbl_pass_flag` (h0+$9da): set by the vertical blank, cleared by the buffer flip."
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x9e0
+name = "screen_fades_off"
+kind = "var"
+size = 0x2
+note = "`screen_fades_off` (h0+$9e0): outside a level, fades step every second frame."
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x9e2
+name = "sprites_hidden"
+kind = "var"
+size = 0x2
+note = "`sprites_hidden` (h0+$9e2): the frog's sprites stay where they are."
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x9f8
+name = "frog_exit_sprites"
+kind = "var"
+size = 0x2
+note = "`frog_exit_sprites` (h0+$9f8): the frog shows in the second pair of sprite records."
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0xa1a
+name = "level_start_x"
+kind = "var"
+size = 0x4
+note = "`level_start_x`, `level_start_y` (h0+$a1a, $a1e): the camera's start, from the map's start marker (`$35`, …"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0xa1e
+name = "level_start_y"
+kind = "var"
+size = 0x4
+note = "T14 LAYOUT variable"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0xa22
+name = "level_width"
+kind = "var"
+size = 0x2
+note = "`level_width`, `level_height` (h0+$a22, h0+$a24): the level's size in pixels."
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0xa24
+name = "level_height"
+kind = "var"
+size = 0x2
+note = "T14 LAYOUT variable"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x3ca0
+name = "screen_fade_toggle"
+kind = "var"
+size = 0x2
+note = "`screen_fade_toggle` (h0+$3ca0)."
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x445e
+name = "coins_collected"
+kind = "var"
+size = 0x4
+note = "`coins_collected` (h0+$445e): coins taken since the last tally (`touch_coin` counts them)."
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x6c92
+name = "entry_fall"
+kind = "var"
+size = 0x2
+note = "`entry_fall` (h0+$6c92): how fast the frog drops in at a level's start."
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x776c
+name = "passage_cell"
+kind = "var"
+size = 0x4
+note = "`passage_cell` (h0+$776c): the fake-wall cell the frog entered (marker 38)."
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x87c0
+name = "lives_icon_shown"
+kind = "var"
+size = 0x2
+note = "The panel's drawing (`level::panel`): `lives_icon_shown` (h0+$87c0), `score_digit` (h0+$8a74), …"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x8a74
+name = "score_digit"
+kind = "var"
+size = 0x2
+note = "T14 LAYOUT variable"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x8ab4
+name = "score_text"
+kind = "var"
+size = 0xc
+note = "T14 LAYOUT variable"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x8be0
+name = "clock_digit"
+kind = "var"
+size = 0x2
+note = "T14 LAYOUT variable"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x8be2
+name = "clock_shown"
+kind = "var"
+size = 0x4
+note = "T14 LAYOUT variable"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0xd350
+name = "hitboxes"
+kind = "var"
+size = 0x600
+note = "`hitboxes` (h0+$d350): the objects' hitboxes, 12 bytes each, rebuilt each pass."
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0xda62
+name = "direction_16"
+kind = "func"
+note = "the direction from (d0,d1) to (d2,d3), screen coordinates clamped to it, as 0..15 in d1: 0 right, 4 up, 8 left (T42)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0xde28
+name = "shooter_half_step"
+kind = "var"
+size = 0x2
+note = "`shooter_half_step` (h0+$de28): the bonus level's camera creeps on every second frame."
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0xeb28
+name = "ice_tick"
+kind = "var"
+size = 0x2
+note = "`ice_tick`, `push_tick` (h0+$eb28, h0+$ebf0): frames on an icy or a pushing surface."
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0xebf0
+name = "push_tick"
+kind = "var"
+size = 0x2
+note = "T14 LAYOUT variable"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0xfa68
+name = "tile_anim_queue"
+kind = "var"
+size = 0x10
+note = "`tile_anim_queue` (h0+$fa68): cells waiting to show their next tile."
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x10182
+name = "fall_history"
+kind = "var"
+size = 0x10
+note = "`fall_history` (h0+$10182): a hurt frog's y on each of the last eight frames."
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x1050e
+name = "slope_frame_right"
+kind = "var"
+size = 0x4
+note = "`slope_frame_right`, `slope_frame_left` (h0+$1050e, h0+$10ce6): the frame of one step in each walking …"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x10ce6
+name = "slope_frame_left"
+kind = "var"
+size = 0x4
+note = "T14 LAYOUT variable"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x1194e
+name = "shooter_decay"
+kind = "var"
+size = 0x2
+note = "`shooter_decay` (h0+$1194e): toggles every frame in the bonus level."
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x11a24
+name = "demo_running"
+kind = "var"
+size = 0x4
+note = "`demo_running`, `demo_fire`, `demo_left`, `demo_at` (h0+$11a24..$11a2e): the attract demo's playback …"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x11a28
+name = "demo_fire"
+kind = "var"
+size = 0x2
+note = "T14 LAYOUT variable"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x11a2a
+name = "demo_joy"
+kind = "var"
+size = 0x2
+note = "`demo_joy` (h0+$11a2a): the attract demo's joystick, read instead of JOY1DAT."
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x11a2c
+name = "demo_left"
+kind = "var"
+size = 0x2
+note = "T14 LAYOUT variable"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x11a2e
+name = "demo_at"
+kind = "var"
+size = 0x4
+note = "T14 LAYOUT variable"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x11aa2
+name = "demo_record_at"
+kind = "var"
+size = 0x4
+note = "`demo_record_at` (h0+$11aa2): where `demo_record` writes; `level_start` points it at the world's demo …"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x11dfc
+name = "clock_ticks"
+kind = "var"
+size = 0x2
+note = "`clock_ticks` (h0+$11dfc): vertical blanks into the level clock's current second."
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x157d8
+name = "fades"
+kind = "var"
+size = 0x7c8
+note = "`fades` (h0+$157d8): the four palette fade records, `$1f2` bytes each (`level::fade`)."
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x161aa
+name = "number_started"
+kind = "var"
+size = 0x4
+note = "T14 LAYOUT variable"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x161b2
+name = "number_text"
+kind = "var"
+size = 0xc
+note = "T14 LAYOUT variable"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x162e4
+name = "marker_cells"
+kind = "var"
+size = 0x10
+note = "`marker_cells` (h0+$162e4): the cells of the map's first marker `$30`..`$33` each (h0+$1625e), one long a …"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x163d0
+name = "coins_total"
+kind = "var"
+size = 0x2
+note = "`coins_total` (h0+$163d0), `items_total` (h0+$163d2): the map's coins (marker 8), and its coins and …"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x163d2
+name = "items_total"
+kind = "var"
+size = 0x2
+note = "T14 LAYOUT variable"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x16604
+name = "rows_drawn"
+kind = "var"
+size = 0x28
+note = "The scroller (h0+$16604..$1668c): rows and columns drawn by the last pass (with a word either side, which …"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x1662c
+name = "cols_drawn"
+kind = "var"
+size = 0x30
+note = "T14 LAYOUT variable"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x1665e
+name = "shown_buffer"
+kind = "var"
+size = 0x2
+note = "`shown_buffer` (h0+$1665e): 1 while buffer 0 is shown, 2 while buffer 1 is."
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x16668
+name = "scroller_row_shift"
+kind = "var"
+size = 0x4
+note = "T14 LAYOUT variable"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x1666c
+name = "scroller_col_shift_x"
+kind = "var"
+size = 0x4
+note = "T14 LAYOUT variable"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x16674
+name = "scroller_toggle"
+kind = "var"
+size = 0x2
+note = "T14 LAYOUT variable"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x16676
+name = "scroller_tiles_per_line"
+kind = "var"
+size = 0x4
+note = "T14 LAYOUT variable"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x1667a
+name = "scroller_row_shift_x"
+kind = "var"
+size = 0x4
+note = "T14 LAYOUT variable"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x1667e
+name = "scroller_col_shift_y"
+kind = "var"
+size = 0x4
+note = "T14 LAYOUT variable"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x16682
+name = "scroll_dirs"
+kind = "var"
+size = 0x2
+note = "`scroll_dirs` (h0+$16682): which way the camera last moved (bits 1 right, 2 left, 3 down, 4 up)."
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x16688
+name = "blits_pending"
+kind = "var"
+size = 0x2
+note = "T14 LAYOUT variable"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x1668a
+name = "scroller_drawn"
+kind = "var"
+size = 0x2
+note = "T14 LAYOUT variable"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x16752
+name = "shooter_column"
+kind = "var"
+size = 0x4
+note = "`shooter_column` (h0+$16752), `blit_next` (h0+$16756), `blit_queue` (h0+$1675a, 23 × 16 bytes; its end …"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x16756
+name = "blit_next"
+kind = "var"
+size = 0x4
+note = "T14 LAYOUT variable"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x1675a
+name = "blit_queue"
+kind = "var"
+size = 0x170
+note = "T14 LAYOUT variable"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x18bc8
+name = "bob_draw_vars"
+kind = "var"
+size = 0x20
+note = "`bob_draw_vars` (h0+$18bc8..$18be8): the bob drawer's camera, seam lines, column, seam pass flag and …"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x18be8
+name = "line_offsets"
+kind = "var"
+size = 0x27c
+note = "`line_offsets` (h0+$18be8): each play-field line's byte offset (`$30` a line), built by the level's set-up."
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x1aff4
+name = "frog_sprite_left"
+kind = "var"
+size = 0x1c
+note = "`frog_sprite_left`, `_right` (h0+$1aff4, h0+$1b010): the frog's two hardware-sprite records (`$1c` bytes: …"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x1b010
+name = "frog_sprite_right"
+kind = "var"
+size = 0x1c
+note = "T14 LAYOUT variable"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x1b02c
+name = "exit_sprite_left"
+kind = "var"
+size = 0x1c
+note = "`exit_sprite_left`, `_right` (h0+$1b02c, h0+$1b048): the second pair of frog sprites."
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x1b048
+name = "exit_sprite_right"
+kind = "var"
+size = 0x1c
+note = "T14 LAYOUT variable"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x2970a
+name = "bob_draw_list"
+kind = "var"
+size = 0xa8
+note = "`bob_draw_list` (h0+$2970a..): a 0, the bobs to draw, a 0."
+
+[[sym]]
+exe = "d1_c03"
+hunk = 1
+offset = 0x31de0
+name = "level_palette"
+kind = "var"
+size = 0x40
+note = "`level_palette` (h1+$31de0): the level's 32 colours, from its map's `PALA` (h0+$1622a); the fades fade to it."
+
+[[sym]]
+exe = "d1_c03"
+hunk = 2
+offset = 0x68a8
+name = "exit_sprite_copper"
+kind = "var"
+size = 0x40
+note = "`exit_sprite_copper` (h2+$68a8): the sprite moves the second pair of frog sprite records writes …"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x8f90
+name = "frog_new_game"
+kind = "func"
+note = "the frog's record for a new game: cleared, lives, score, tuning, then frog_reset (T14)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x8bf6
+name = "panel_clear"
+kind = "func"
+note = "the panel's planes into the level copper list, and cleared (T14)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x6ad2
+name = "frog_drop_in_start"
+kind = "func"
+note = "the frog's drop-in (or its shooter-mode place), sprites hidden, logic running (T14)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x8510
+name = "panel_slide_in"
+kind = "func"
+note = "the panel slides in from the middle over $18 frames (T14)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x862e
+name = "panel_sprite_digits"
+kind = "func"
+note = "frog+$5c as two sprite digits (T14)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x11dfe
+name = "clock_at_start"
+kind = "func"
+note = "the easy game's doubled minutes, the clock's colours and digits (T14)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x1622a
+name = "map_palette"
+kind = "func"
+note = "the 32 colours after the map's PALA tag into level_palette (T14)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x16202
+name = "map_body_to_front"
+kind = "func"
+note = "moves a map file's BODY to the file's start (T14)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x1625e
+name = "map_find_marker_cells"
+kind = "func"
+note = "each marker $30..$33's first cell into marker_cells (T14)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x162f4
+name = "map_find_start"
+kind = "func"
+note = "the camera's start from the start marker $35 (T14)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x16374
+name = "map_count_coins"
+kind = "func"
+note = "coins (marker 8) and items counted; coins_left_for_exit (T14)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x1647a
+name = "map_unpack"
+kind = "func"
+note = "the map's BODY into level_map, cells turned tile<<6|marker (T14)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x164c2
+name = "scroller_reset"
+kind = "func"
+note = "the scroller's state and blit queue cleared (T14)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x164fa
+name = "level_start_point"
+kind = "func"
+note = "frog and camera from level_start_x/y, kept inside; scroller reset; first scroll (T14)"
+
+# --- the slot machine (T71; docs/13) ---
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x4e28
+name = "slot_free_spin"
+kind = "func"
+note = "after a win with coins left, 6 in 100 sets h0+$49d0: the next round skips hold, spin and coin and pays the same line again"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x4eae
+name = "slot_payout"
+kind = "func"
+note = "the reels' line scored; the prize out in d7"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x50b6
+name = "slot_count_win"
+kind = "func"
+note = "counts slot_win into the score (slot_count is the variable)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x51c4
+name = "slot_award"
+kind = "func"
+note = "awards the prize d7 names, lighting the ladder"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x5528
+name = "slot_collect"
+kind = "func"
+note = "collects the ladder's rung"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x5628
+name = "slot_jackpot"
+kind = "func"
+note = "the jackpot prize"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x5712
+name = "slot_bust"
+kind = "func"
+note = "the bust: effect 9, the win cleared, the bust lamp flashed 20 times (T74)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x5772
+name = "slot_ladder_top"
+kind = "func"
+note = "the jackpot's rung lit: every lamp flashed 20 times, then slot_jackpot (T74)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x5526
+name = "slot_gamble_rung"
+kind = "var"
+size = 2
+note = "the rung a lost gamble fell to, flashed 10 times then collected (T74)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x5988
+name = "slot_hilo_guessed"
+kind = "var"
+size = 2
+note = "the hi-lo number when higher or lower was picked (T74)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x598a
+name = "slot_hilo_pick"
+kind = "var"
+size = 2
+note = "the hi-lo menu's pick: 1 higher, 2 lower (T74)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x598c
+name = "slot_spin_picked"
+kind = "var"
+size = 2
+note = "the menu's spin button picked: in the hi-lo game, take (T74)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x5a04
+name = "slot_hilo_from"
+kind = "var"
+size = 2
+note = "the hi-lo number as its spin began; the spin never stops on it (T74)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x5ea4
+name = "slot_wait_frames"
+kind = "func"
+note = "d7 x wait_frame_raster (T74)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x57e2
+name = "slot_hilo_game"
+kind = "func"
+note = "the hi-lo gamble (slot_hilo is the variable)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x598e
+name = "slot_hilo_spin"
+kind = "func"
+note = "turns the hi-lo number, skipping its start"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x5a06
+name = "slot_spin_reels"
+kind = "func"
+note = "spins the three reels (slot_spin is the variable)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x5d48
+name = "slot_reel_stop"
+kind = "func"
+note = "stops a reel"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x5de2
+name = "slot_hold_menu"
+kind = "func"
+note = "the hold menu before a spin"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x5eb4
+name = "slot_run_menu"
+kind = "func"
+note = "pointer menu; fire picks the stop (slot_menu is the variable)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x6238
+name = "slot_lamps_off"
+kind = "func"
+note = "clears 26 lamp records"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x6258
+name = "slot_lamps_on"
+kind = "func"
+note = "lights the lamp records"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x6276
+name = "slot_attract_frame"
+kind = "func"
+note = "one attract frame: reels 0,9,$18, a pattern row into the lamps"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x62f4
+name = "slot_digits"
+kind = "func"
+note = "draws the slot's digits"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x645e
+name = "slot_draw_lamps"
+kind = "func"
+note = "blits each lamp on the sixth plane"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x6558
+name = "slot_draw_reels"
+kind = "func"
+note = "draws the reels from FRUC"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x661e
+name = "slot_init"
+kind = "func"
+note = "reels 0,$b,$16, lamps pointed at their rects"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x6f3a
+name = "print_text"
+kind = "func"
+note = "prints text; also the tally's and the info screen's; sets text_plane"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x57b6
+name = "slot_ladder"
+kind = "table"
+size = 0x2c
+note = "prize ladder: ten slot_lamps record pointers, the jackpot's rung (0) first, the bust's (9) last, 0-ended"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x606a
+name = "slot_pointer_stops"
+kind = "table"
+size = 0xc
+note = "hold menu pointer's x at each stop, left to right, $ffff-ended"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x668a
+name = "slot_reel_frames"
+kind = "table"
+size = 0x80
+note = "reel symbols: 32 x (x, y) in FRUC, by reel position"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x670a
+name = "slot_lamp_rects"
+kind = "table"
+size = 0x138
+note = "lamps' rectangles: 26 x (x, y, w, h + 2 words), in slot_lamps order"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x249d2
+name = "w3_scenery_17_init"
+kind = "func"
+note = "W3 template 34 (marker 17): scenery, animation h0+$321ac (T44)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x249e8
+name = "w3_scenery_17_update"
+kind = "func"
+note = "bob follows; obj_despawn_if_offscreen (T44)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x25c8a
+name = "w3_bouncer_init"
+kind = "func"
+note = "W3 template 88 (marker 16): rising at 16 (T44)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x25caa
+name = "w3_bouncer_update"
+kind = "func"
+note = "falls, bouncing off solid ground three cells under (x+16, y); never despawned (T44)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x25e62
+name = "w3_dart_left_init"
+kind = "func"
+note = "W3 template 55 (marker 18): waits $20 passes (T44)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x25e7e
+name = "w3_dart_right_init"
+kind = "func"
+note = "W3 template 56 (marker 19) (T44)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x25f42
+name = "dart_fly"
+kind = "func"
+note = "a dart flies by +$0c until the cell 2*vx ahead is solid, then waits (W2-W6; T44)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x25fa8
+name = "dart_wait"
+kind = "func"
+note = "a dart waits hidden (bob y $2ee0), passive, then flies from its spawn point (W2-W6; T44)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x2607c
+name = "w3_swing_init"
+kind = "func"
+note = "W3 template 65 (marker 27): path round its spawn, the chain's ends in +$6c/+$70 (T44)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x2619c
+name = "swing_update"
+kind = "func"
+note = "a swing's ball follows swing_path; freed when fewer than 5 slots' bobs show a link (W2-W6; T44)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x26260
+name = "w3_swing_link_init"
+kind = "func"
+note = "W3 template 66: a swing's link, index from swing_link_index (T44)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x262be
+name = "swing_link_update"
+kind = "func"
+note = "a link sits index/6 of the way from the chain's top to the ball; freed with its ball (T44)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x26398
+name = "swing_path"
+kind = "table"
+size = 0x194
+note = "x, y word offsets of a swing there and back, -1 long after (T44)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x27466
+name = "w3_crumble_init"
+kind = "func"
+note = "W3 template 150 (marker 36) (T44)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x2747c
+name = "w3_crumble_update"
+kind = "func"
+note = "the two cells below solid ($3e) until the bob's step is h0+$2e8ac (T44)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x27852
+name = "w3_scenery_15_init"
+kind = "func"
+note = "W3 template 90 (marker 15): scenery in the cell below (T44)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x27868
+name = "w3_scenery_14_init"
+kind = "func"
+note = "W3 template 89 (marker 14): scenery in the cell below (T44)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x2787e
+name = "w3_pad_init"
+kind = "func"
+note = "W3 template 87 (marker 5): a bounce pad's picture, up and left of the pad's right cell (T44)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x27894
+name = "w3_scenery_update"
+kind = "func"
+note = "bob follows; obj_despawn_if_offscreen (T44)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x278a4
+name = "w3_shuffler_init"
+kind = "func"
+note = "W3 template 92 (marker 20) (T44)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x278d8
+name = "w3_shuffler_update"
+kind = "func"
+note = "walks only on animation steps whose word +6 is 0; turns at $25 (T44)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x27a18
+name = "w3_jumper_init"
+kind = "func"
+note = "W3 template 95 (marker 28): leaps after $19 passes (T44)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x27a5e
+name = "w3_jumper_update"
+kind = "func"
+note = "walks, then leaps: one-hit kill, vy -(9..12) (T44)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x27b2a
+name = "w3_jumper_leap"
+kind = "func"
+note = "rises until a ceiling or it stops, then circles w1_hover_path (T44)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x27bb4
+name = "w3_jumper_circle"
+kind = "func"
+note = "circles round +$68 for +$60 passes (T44)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x27be0
+name = "w3_jumper_drop"
+kind = "func"
+note = "falls to the ground and walks again, stompable (T44)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x27c90
+name = "w3_stompable_init"
+kind = "func"
+note = "W3 template 91 (marker 26) (T44)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x27cc0
+name = "w3_stompable_update"
+kind = "func"
+note = "walks, turning at $25 from x+3 (T44)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x27d1c
+name = "w3_spiker_init"
+kind = "func"
+note = "W3 templates 96, 97 (markers 25, 13) (T44)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x27d4c
+name = "w3_spiker_update"
+kind = "func"
+note = "walks, turning at $25 from x+3 (T44)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x27da8
+name = "w3_spiker_staying_update"
+kind = "func"
+note = "w3_spiker_update, never despawned (T44)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x285a2
+name = "w3_hopper_init"
+kind = "func"
+note = "W3 template 94 (marker 21) (T44)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x285f0
+name = "w3_hopper_path"
+kind = "table"
+size = 0x2e
+note = "y offsets, $80 after (T44)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x2861e
+name = "w3_hopper_update"
+kind = "func"
+note = "walks bobbing on w3_hopper_path; going right, at the 8th pass leaps unless rng_range(3) is 0 (T44)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x286ee
+name = "w3_hopper_leap"
+kind = "func"
+note = "up from -8, falling a pixel faster every third pass; walks again once falling at 8 (T44)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x2872e
+name = "w3_flow_init"
+kind = "func"
+note = "W3 template 98 (marker 24): starts on the step of a neighbour two cells left or right (T44)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x287a8
+name = "w3_flow_update"
+kind = "func"
+note = "bob follows; obj_despawn_if_offscreen (T44)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x287b8
+name = "w3_drip_init"
+kind = "func"
+note = "W3 template 99 (marker 23): hidden at $6d60 (T44)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x287e0
+name = "w3_drip_update"
+kind = "func"
+note = "waits, falls from its spawn point to a cell marked $3d+, waits 8..12 (T44)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x3b1ae
+name = "slot_attract_later"
+kind = "table"
+size = 0x13a
+note = "lamp attract pattern from the 10th to the 30th time: 6 rows of 26 words, then $ff80"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x3b2e8
+name = "slot_attract_first"
+kind = "table"
+size = 0x1a2
+note = "lamp attract pattern for the first nine times: 8 rows of 26 words, then $ff80"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x1c462
+name = "obj_path_y"
+kind = "func"
+note = "y = the next word of the path at +$54 (from +$58 at $ffff) plus d0 (T41)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x23774
+name = "touch_ledge"
+kind = "func"
+note = "W4 template 148's touch: once its bob's counter is $200, a landing frog plays a sample, loses a fall of 8+, standing resets the counter (T41; also W3 template 150, the crumble, T44)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x24eca
+name = "w4_scenery_32_init"
+kind = "func"
+note = "template 32 (W4 marker 10, W5 marker 15): look (T41)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x24ee0
+name = "w4_scenery_27_init"
+kind = "func"
+note = "template 27 (W4 marker 11): look (T41)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x24ef6
+name = "scenery_stand"
+kind = "func"
+note = "templates 27 and 32: bob follows, despawns off screen (T41)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x25936
+name = "swooper_init"
+kind = "func"
+note = "W4 template 135 (marker 1): look, origin, loop quarter from w1_hover_phase (T41)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x25990
+name = "swooper_update"
+kind = "func"
+note = "W4 template 135: next loop position from its origin (T41)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x25ed2
+name = "w4_dart_59_init"
+kind = "func"
+note = "W4 template 59 (marker 18): look, $20 passes hidden (T41)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x25eee
+name = "w4_dart_60_init"
+kind = "func"
+note = "W4 template 60 (marker 19) (T41)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x25f0a
+name = "w4_dart_61_init"
+kind = "func"
+note = "W4 template 61 (marker 20) (T41)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x25f26
+name = "w4_dart_62_init"
+kind = "func"
+note = "W4 template 62 (marker 21) (T41)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x2610c
+name = "w4_mace_init"
+kind = "func"
+note = "W4 template 69 (marker 17): mace_init with its own look (T41)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x2629c
+name = "w4_mace_link_init"
+kind = "func"
+note = "W4 template 70: a chain link's look and number (T41)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x26730
+name = "pacer_wave"
+kind = "table"
+size = 0x56
+note = "W4 templates 136/137's bob: 42 y words, then $ffff (T41)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x26d7e
+name = "pacer_right_init"
+kind = "func"
+note = "W4 template 136 (marker 3): look, wave, row base, $20 left (T41)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x26dc8
+name = "pacer_left_init"
+kind = "func"
+note = "W4 template 137 (marker 2): look, wave, row base (T41)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x26e0c
+name = "pacer_update"
+kind = "func"
+note = "W4 templates 136/137: wave y, move, turn at markers 2/3 (T41)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x26e8c
+name = "crawler_right_init"
+kind = "func"
+note = "W4 template 138 (marker 14): look, row base, $20 left (T41)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x26ec0
+name = "crawler_left_init"
+kind = "func"
+note = "W4 template 139 (marker 13): look, row base (T41)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x26eee
+name = "crawler_update"
+kind = "func"
+note = "W4 templates 138/139: move, turn at markers 13/14 (T41)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x26f64
+name = "crusher_init"
+kind = "func"
+note = "W4 templates 141/142 (markers 15/16): look, $14 passes' wait (T41)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x26f80
+name = "crusher_down_wait"
+kind = "func"
+note = "W4 template 141: harmless wait (T41)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x26faa
+name = "crusher_down_strike"
+kind = "func"
+note = "W4 template 141: $10 down a pass for 3 (T41)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x26fd8
+name = "crusher_down_back"
+kind = "func"
+note = "W4 template 141: 2 up a pass for $18 (T41)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x27006
+name = "crusher_up_wait"
+kind = "func"
+note = "W4 template 142: harmless wait (T41)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x27030
+name = "crusher_up_strike"
+kind = "func"
+note = "W4 template 142: $10 up a pass for 3 (T41)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x2705e
+name = "crusher_up_back"
+kind = "func"
+note = "W4 template 142: 2 down a pass for $18 (T41)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x2712e
+name = "spikes_init"
+kind = "func"
+note = "W4 template 145 (marker 25): look (T41)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x27144
+name = "spikes_update"
+kind = "func"
+note = "W4 template 145: harmless while its bob's counter is 1 or more (T41)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x27166
+name = "gate_a_init"
+kind = "func"
+note = "W4 template 146 (marker 32): look (T41)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x2717c
+name = "gate_a_update"
+kind = "func"
+note = "W4 template 146: the frame's markers from gate_a_table into the 3 cells below (T41)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x271e6
+name = "gate_a_table"
+kind = "table"
+size = 0x90
+note = "8 entries of frame, 3 marker longs, then -1 (T41)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x27276
+name = "gate_b_init"
+kind = "func"
+note = "W4 template 147 (marker 33): look (T41)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x2728c
+name = "gate_b_update"
+kind = "func"
+note = "W4 template 147: gate_a_update with gate_b_table, cells right to left (T41)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x272f6
+name = "gate_b_table"
+kind = "table"
+size = 0x90
+note = "8 entries of frame, 3 marker longs, then -1 (T41)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x27386
+name = "ledge_init"
+kind = "func"
+note = "W4 template 148 (marker 27): look (T41)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x2739c
+name = "ledge_update"
+kind = "func"
+note = "W4 template 148: 2 cells below solid ($3e) unless frame h0+$2dfdc shows (T41)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x274d6
+name = "fountain_init"
+kind = "func"
+note = "W4 template 151 (marker 26): look (T41)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x274f0
+name = "fountain_update"
+kind = "func"
+note = "W4 template 151: at frame h0+$2e36c throws 4 drops (152..159), straight and slanting by turns (T41)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x275fa
+name = "fountain_drop_152_init"
+kind = "func"
+note = "W4 template 152: look (T41)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x27610
+name = "fountain_drop_153_init"
+kind = "func"
+note = "W4 template 153: look (T41)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x27626
+name = "fountain_drop_154_init"
+kind = "func"
+note = "W4 template 154: look (T41)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x2763c
+name = "fountain_drop_155_init"
+kind = "func"
+note = "W4 template 155: look (T41)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x27652
+name = "fountain_drop_156_init"
+kind = "func"
+note = "W4 template 156: look (T41)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x27668
+name = "fountain_drop_157_init"
+kind = "func"
+note = "W4 template 157: look (T41)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x2767e
+name = "fountain_drop_158_init"
+kind = "func"
+note = "W4 template 158: look (T41)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x27694
+name = "fountain_drop_159_init"
+kind = "func"
+note = "W4 template 159: look (T41)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x276aa
+name = "fountain_drop_update"
+kind = "func"
+note = "W4 templates 152-159: move, freed at solid ground (T41)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x27704
+name = "floater_init"
+kind = "func"
+note = "W4 templates 143/144 (markers 22/24): look (T41)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x27720
+name = "floater_update"
+kind = "func"
+note = "W4 templates 143/144: drift and sink, stop at marker $17 (T41)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x27792
+name = "floater_stopped"
+kind = "func"
+note = "W4 templates 143/144: drift dies away (T41)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x2795e
+name = "w4_walker_init"
+kind = "func"
+note = "W4 template 93 (marker 12): look, row base (T41)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x27992
+name = "w4_walker_update"
+kind = "func"
+note = "W4 template 93: steps, turns at marker $25 (T41)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x262ba
+name = "chain_link_count"
+kind = "var"
+size = 0x4
+note = "the mace stubs (W4 marker 17, W6 marker 17) count the links they spawn here; each link's init keeps its number (T41; T40 names it too; W3's swing, T44)"
+
+# --- world 2's enemies (T43; docs/09) ---
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x237c0
+name = "touch_spikes"
+kind = "func"
+note = "touch handler of W2 spikes (71, 72): hurts on the eight up frames (T43)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x24e88
+name = "scenery_13_init"
+kind = "func"
+note = "W2 marker 13 scenery (template 24) init (T43)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x24e9e
+name = "scenery_14_init"
+kind = "func"
+note = "W2 marker 14 scenery (template 25) init (T43)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x24eb4
+name = "scenery_15_init"
+kind = "func"
+note = "W2 marker 15 scenery (template 26) init (T43)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x256b6
+name = "walker_init"
+kind = "func"
+note = "W2 walker (template 39, marker 12) init (T43)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x256ea
+name = "walker_update"
+kind = "func"
+note = "W2 walker: steps on one walk frame, turns at marker $25 above (T43)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x25786
+name = "w2_swooper_init"
+kind = "func"
+note = "W2 swooper (template 37, marker 21) init (T43)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x257c4
+name = "swooper_wave"
+kind = "table"
+size = 0x20
+note = "W2 swooper: y offsets, ended by $80 (T43)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x257e4
+name = "swooper_fly"
+kind = "func"
+note = "W2 swooper update: wave, turns every $40 passes, pauses (T43)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x25874
+name = "swooper_pause"
+kind = "func"
+note = "W2 swooper paused: flies on when its pause animation is back at its start (T43)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x258dc
+name = "flyer_init"
+kind = "func"
+note = "W2 flyer (template 38, marker 1) init: takes the next of four loops (T43)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x25d10
+name = "hopper_init"
+kind = "func"
+note = "W2 hopper (template 40, marker 11) init (T43)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x25d30
+name = "hopper_sit"
+kind = "func"
+note = "W2 hopper sitting: may jump on its ready frame (T43)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x25d9a
+name = "hopper_jump"
+kind = "func"
+note = "W2 hopper in the air until it lands on a solid cell (T43)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x25e2a
+name = "dart_18_init"
+kind = "func"
+note = "W2 dart (template 53, marker 18) init (T43)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x25e46
+name = "dart_19_init"
+kind = "func"
+note = "W2 dart (template 54, marker 19) init (T43)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x25fe8
+name = "backdrop_init"
+kind = "func"
+note = "W2 backdrop (template 52, marker 10) init (T43)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x25ffe
+name = "backdrop_update"
+kind = "func"
+note = "bob follows; freed off screen (T43)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x26154
+name = "mace_init"
+kind = "func"
+note = "W2/W5 mace ball (template 63, marker 17) init (T43)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x26242
+name = "mace_link_init"
+kind = "func"
+note = "mace chain link (template 64) init: its fraction from mace_link_count (T43)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x2652c
+name = "spikes_16_init"
+kind = "func"
+note = "W2 spikes (template 71, marker 16) init: in step with a neighbour (T43)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x265e0
+name = "spikes_20_init"
+kind = "func"
+note = "W2 spikes (template 72, marker 20) init (T43)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x26692
+name = "w2_spikes_update"
+kind = "func"
+note = "bob follows; freed off screen (T43)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x266a2
+name = "bouncer_74_init"
+kind = "func"
+note = "W2 bouncer (template 74, marker 3) init: 32 px left of its marker (T43)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x266ec
+name = "bouncer_75_init"
+kind = "func"
+note = "W2 bouncer (template 75, marker 2) init (T43)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x26786
+name = "bouncer_update"
+kind = "func"
+note = "W2 bouncer: hops along, turning at map markers 2 and 3 (T43)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x273f6
+name = "crumbling_ledge_init"
+kind = "func"
+note = "W2 crumbling ledge (template 149, marker 36) init (T43)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x2740c
+name = "crumbling_ledge_update"
+kind = "func"
+note = "W2 crumbling ledge: marker $3e under it until it shows broken (T43)"
+
+# --- world 5's enemies (T39; docs/09) ---
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x26806
+name = "w5_pacer_79_init"
+kind = "func"
+note = "W5 template 79 (marker 3): from the right end, $20 left (T39)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x26840
+name = "w5_pacer_80_init"
+kind = "func"
+note = "W5 template 80 (marker 2): from the left end (T39)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x26874
+name = "w5_pacer_a_update"
+kind = "func"
+note = "W5 templates 79/80: pace between markers 2 and 3 (T39)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x26aa6
+name = "w5_pacer_81_init"
+kind = "func"
+note = "W5 template 81 (marker 14): from the right end, $20 left (T39)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x26ae0
+name = "w5_pacer_82_init"
+kind = "func"
+note = "W5 template 82 (marker 13): from the left end (T39)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x26b14
+name = "w5_pacer_b_update"
+kind = "func"
+note = "W5 templates 81/82: pace between markers 13 and 14 (T39)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x26b8e
+name = "w5_shooter_83_init"
+kind = "func"
+note = "W5 template 83 (marker 21): from the right end, $20 left (T39)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x26bce
+name = "w5_shooter_84_init"
+kind = "func"
+note = "W5 template 84 (marker 20): from the left end, fires in $a (T39)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x26c08
+name = "w5_shooter_walk"
+kind = "func"
+note = "W5 templates 83/84: pace between markers 20 and 21; +$60 out: stop to fire (T39)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x26cb6
+name = "w5_shooter_fire"
+kind = "func"
+note = "W5 templates 83/84: stand 9 passes, then shoot template 85 (T39)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x26cfa
+name = "w5_shot_init"
+kind = "func"
+note = "W5 template 85, the shooter's shot (T39)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x26d14
+name = "w5_shot_update"
+kind = "func"
+note = "W5 shot: flies left, falls, freed in a solid cell (T39)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x24f06
+name = "w5_faller_init"
+kind = "func"
+note = "W5 template 28 (marker 10) init (T39)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x24f1c
+name = "w5_faller_wait"
+kind = "func"
+note = "W5 faller 28: hangs until the frog is within $40 across (T39)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x24f58
+name = "w5_faller_shake"
+kind = "func"
+note = "W5 faller 28: shakes 3 passes (T39)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x24f88
+name = "w5_faller_fall"
+kind = "func"
+note = "W5 faller 28: falls until the cell below is solid (T39)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x24ff8
+name = "w5_faller_down"
+kind = "func"
+note = "W5 faller 28: lies harmless (T39)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x2500e
+name = "w5_watcher_init"
+kind = "func"
+note = "W5 template 29 (marker 22) init (T39)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x2502a
+name = "w5_watcher_look"
+kind = "func"
+note = "W5 watcher: looks at the frog by direction_16; blinks when +$5c runs out (T39)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x250d0
+name = "w5_watcher_blink"
+kind = "func"
+note = "W5 watcher: blinks, next blink in 50-70 passes (T39)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x25106
+name = "w5_watcher_looks"
+kind = "table"
+size = 0x40
+note = "16 animations by direction (T39)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x25146
+name = "w5_faller_b_init"
+kind = "func"
+note = "W5 template 30 (marker 12) init (T39)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x2515c
+name = "w5_faller_b_wait"
+kind = "func"
+note = "W5 faller 30: hangs until in view below camera top + $20 or the frog is near (T39)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x251a8
+name = "w5_faller_b_shake"
+kind = "func"
+note = "W5 faller 30: shakes 3 passes (T39)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x251d8
+name = "w5_faller_b_fall"
+kind = "func"
+note = "W5 faller 30: falls until the cell below is solid (T39)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x25248
+name = "w5_faller_b_down"
+kind = "func"
+note = "W5 faller 30: lies harmless (T39)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x2525e
+name = "w5_drip_init"
+kind = "func"
+note = "W5 template 31 (marker 11) init (T39)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x25274
+name = "w5_drip_fall"
+kind = "func"
+note = "W5 drip: falls once its bob has shown 4 steps (T39)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x25306
+name = "w5_drip_splash"
+kind = "func"
+note = "W5 drip: splashes 8 passes, back to its spawn height (T39)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x2708c
+name = "w5_crusher_init"
+kind = "func"
+note = "W5 template 140 (marker 16) init (T39)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x270a8
+name = "w5_crusher_wait"
+kind = "func"
+note = "W5 crusher: waits $15 passes, harmless (T39)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x270d2
+name = "w5_crusher_strike"
+kind = "func"
+note = "W5 crusher: strikes $40 down in four passes (T39)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x27100
+name = "w5_crusher_back"
+kind = "func"
+note = "W5 crusher: back 2 a pass for $20 passes (T39)"
+
+# --- world 6 enemies (T40) ---
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x25e9a
+name = "dart_left_init"
+kind = "func"
+note = "W6 template 57 (marker 18): look, $20 passes hidden (T40)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x25eb6
+name = "dart_right_init"
+kind = "func"
+note = "W6 template 58 (marker 19): look, $20 passes hidden (T40)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x260c4
+name = "w6_mace_init"
+kind = "func"
+note = "W6 template 67 (marker 17): swing origin, path, chain ends +$6c/+$70 (T40)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x2627e
+name = "w6_mace_link_init"
+kind = "func"
+note = "W6 template 68: link look, its number from chain_link_count (T40)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x27e00
+name = "shot_init"
+kind = "func"
+note = "W6 templates 107/108: look (T40)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x27e1a
+name = "cannon_shot_init"
+kind = "func"
+note = "W6 template 109: look (T40)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x27e34
+name = "w6_shot_update"
+kind = "func"
+note = "W6 shots 107/109: gone on solid ground, else move +$0c/+$0e (T40)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x27e8e
+name = "falling_shot_update"
+kind = "func"
+note = "W6 template 108: every other pass falls faster (to 8), then as shot_update (T40)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x27efa
+name = "strider_init"
+kind = "func"
+note = "W6 template 106 (marker 20) (T40)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x27f2e
+name = "strider_update"
+kind = "func"
+note = "W6 template 106: steps on frames whose +6 is 1, turns at marker $25 (T40)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x27fa0
+name = "w6_walker_init"
+kind = "func"
+note = "W6 template 104 (marker 15) (T40)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x27fd4
+name = "w6_walker_update"
+kind = "func"
+note = "W6 template 104: steps on frames whose +6 is 0, turns at marker $25 (T40)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x2804c
+name = "thrower_init"
+kind = "func"
+note = "W6 template 105 (marker 16) (T40)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x28086
+name = "thrower_walk"
+kind = "func"
+note = "W6 template 105: walks as 104; throws when +$60 runs out (T40)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x2813e
+name = "thrower_throw"
+kind = "func"
+note = "W6 template 105: a falling shot (108) on its animation's 16th pass (T40)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x281d6
+name = "thrower_vx"
+kind = "var"
+size = 0x2
+note = "the thrower's +$0c as it throws (T40)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x281d8
+name = "flier_init"
+kind = "func"
+note = "W6 template 103 (marker 14) (T40)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x2820a
+name = "flier_path"
+kind = "table"
+size = 0x64
+note = "the flier's loop: (x, y) words, ends with a -1 long (T40)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x2826e
+name = "flier_update"
+kind = "func"
+note = "W6 template 103: path, faces the frog, a shot (107) every $40 passes (T40)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x28322
+name = "flier_facing_right"
+kind = "var"
+size = 0x2
+note = "1 while the frog is right of the flier being updated (T40)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x28324
+name = "cannon_init"
+kind = "func"
+note = "W6 template 101 (marker 12) (T40)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x28340
+name = "cannon_update"
+kind = "func"
+note = "W6 template 101: five aims by the frog's x; a shot (109) every $30..$50 passes (T40)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x28454
+name = "cannon_aim"
+kind = "var"
+size = 0x4
+note = "the cannon's next shot's vx, vy words (T40)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x28458
+name = "charger_init"
+kind = "func"
+note = "W6 template 102 (marker 13) (T40)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x28488
+name = "charger_pace"
+kind = "func"
+note = "W6 template 102: paces, may attack after 8 passes left (T40)"
+
+[[sym]]
+exe = "d1_c03"
+hunk = 0
+offset = 0x28532
+name = "charger_attack"
+kind = "func"
+note = "W6 template 102: hurts a frog on the ground up to $80 left of it (T40)"

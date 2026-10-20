@@ -1,0 +1,4 @@
+# The frog alone in W6-1 for 1 000 frames: running and jumping right, then left.
+sync = { level = "W6-1" }
+script = "frog-explore"
+frames = 1000

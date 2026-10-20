@@ -1,0 +1,7 @@
+# W1-2 with world 1's enemies live (T107): a walker stomped; a hover, the crawler and a spiker
+# hurting the frog. The sitter at 51,25 stands far left (T106's completion meets it). No re-sync;
+# checked in `enemies_w1::w1_2`.
+sync = { level = "W1-2" }
+script = "enemies-w1-2"
+frames = 1196
+resync = true

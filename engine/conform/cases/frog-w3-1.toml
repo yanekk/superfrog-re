@@ -1,0 +1,5 @@
+# The frog in W3-1 for 1 000 frames, its objects live (T21): running and jumping right, then left.
+sync = { level = "W3-1" }
+script = "frog-explore"
+frames = 1000
+lag-limit = { frames = 105, note = "W3-1 lags nearly every frame: from 508 its passes run past 105 frames' ends in a row; check 4 covers them (T21)" }

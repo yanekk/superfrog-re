@@ -1,0 +1,8 @@
+# Game over with the time up in W1-1 (T34): frog-timeup-w1-1's clock runs out at frame 231
+# (`frog_die` takes every life), the level's loop ends at 269 into `game_over_seq` (the GAME OVER
+# sign, the passes, the wait for fire), then the exit fade, the music faded, `top_loop` and the
+# title, idle from frame 1 153. With world 1's enemies live (T42) the hover makes game over's
+# first pass span a frame end, and frame 271 has the copper and `scroll_column` a flip apart:
+# both presentation, the picture within tolerance, so green faithful (T181).
+sync = { level = "W1-1", clock = "0:03" }
+frames = 1220

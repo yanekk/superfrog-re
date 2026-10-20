@@ -21,7 +21,8 @@ Tilesets appear once per world, in world order:
 | L4 | d2_c19 | d2_c22–25 |
 | L5 | d2_c29 | d2_c32–35 |
 | L6 | d4_c07 | d4_c02–05, c14, c15, c17 |
-| LW (world map) | d4_c10 | d4_c13 |
+| LB (bonus level, 640 tiles) | d2_c40 | d2_c42 |
+| LW (final level) | d4_c10 | d4_c13 |
 
 A level is matched to its tileset by the world id in its `IFFP` string
 (`SDIFF:L<n>BM-IFF`), **not** by disk position — on disk 4 the L6 levels precede
@@ -30,22 +31,25 @@ their tileset.
 ## Palettes
 
 Each world's 32-colour OCS palette (12-bit `0x0RGB`, expanded `nibble×17`,
-colour 0 = black) lives in that world's **sprite bank** — the ~71–72 KB object
-chunk that sits just before the world's tileset — at a fixed offset `0x11300`
-(for world 6, whose bank is `d4_c01`, at `0xC7FE`). The `P41A` chunks are
-*unrelated* graphics (title/menu/bonus pictures) and are **not** the level
+colour 0 = black) is the one after the world's **loading picture** `LnLP`, at
+offset `0x11300` (docs/10, checked against the game's copper list). The ~71–72 KB
+chunk before each tileset is that picture, not a sprite bank; for world 6 it is
+`d2_c45` (`L6LP`). `render_levels.py` takes W6's from `d4_c01` at `0xC7FE`, which is
+the `L2ET` picture read two bytes out of line: its W6 renders are in the wrong
+colours. The `P41A` chunks are music modules (docs/08) and are **not** the level
 palettes — using them was the earlier bug that made worlds come out the wrong
 colours.
 
 The base palette is identified by the game's signature **grey shading ramp**
 `0x111, 0x222, 0x444, 0x0AAA` sitting consecutively near the top of the 32
 entries; `base_palette()` scans a chunk from the end for the black-0 window
-carrying that ramp (the sprite bank also holds colour-cycle variants earlier in
+carrying that ramp (the picture's bitplanes can hold palette-like runs earlier in
 the file). Verified against a real in-game screenshot: **World 2 renders as the
 grey stone "Spooky Castle"**, World 1 as a blue-sky grassland, etc.
 
-Palette confirmed accurate for worlds 1–6; the bonus (`LB`) and world-map (`LW`)
-special levels reuse a world tileset as a best-effort fallback.
+Palette confirmed accurate for worlds 1–5. The bonus (`LB`) and final (`LW`)
+levels have their own tilesets (`d2_c40`, 640 tiles, and `d4_c10`); the script
+draws them with W6's as a fallback. docs/10 has the right ones.
 
 ## Other decoded chunk types
 

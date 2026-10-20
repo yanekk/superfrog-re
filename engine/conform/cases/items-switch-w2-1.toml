@@ -1,0 +1,8 @@
+# W2-1 with its items live: both hidden coin springs knocked empty from below and their falling
+# coins caught, the spud and the speed-up, two checkpoints, the switch at 116,39 opening its gate,
+# and the wings; score, lives, the panel and the picture every frame (T85), world 2's enemies live
+# (T43 review).
+sync = { level = "W2-1" }
+script = "items-switch-w2-1"
+frames = 760
+resync = false
