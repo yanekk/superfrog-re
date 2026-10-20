@@ -8,6 +8,7 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-20 | 📌 | T03: `SyncPoint::Setup` equals `start_level` at frame 0 on all 26 levels and easy W1-1/W4-3 but `playfield_clean`. WW-1 also needed `music_fade` and `map_blink` from the engine (W6-4's tally and load). First run ~30 s a level; cached ~7 s. |
 | 2026-10-20 | 🔄 | Owner (T02): Start Level offers 26 levels (`sf_core::recording::levels()`), not 29: W6-2alt..W6-4alt are never loaded when a level is started by its code. T08's dropdown takes `levels()`; `LevelSetup::validate` refuses the alt maps. |
 | 2026-10-20 | 🔄 | Owner (T02): screen name `world end` added (end-of-world picture); awards, hall of talent and attract demo read `title`; a fade's blank frame reads as the place before it (`Game::location` keeps the last). |
 | 2026-10-20 | 📌 | T02: `Game::start_level` runs about 2 700 frames from power-on, 4 s a start in the dev build (opt-level 2); WW-1 adds W6-4's forced exit and tally. T06/T08 may want it off the main thread. |
