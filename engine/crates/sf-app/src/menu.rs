@@ -552,8 +552,8 @@ impl App {
 
     /// The save window for the recording, which ends here (DESIGN §2.4): its screenshot the 4:3
     /// picture of the last frame recorded at 1×, where play is, the zip's name. Saved, the path is
-    /// on the clipboard and in a notice; a write that fails says so and asks again, so the note
-    /// is not lost and the recording is kept until it is saved or discarded (§2.11).
+    /// on the clipboard and in a notice; a write that fails says so and the window stays open, so
+    /// the note is not lost and the recording is kept until it is saved or discarded (§2.11).
     pub(crate) fn save_recording(&mut self) {
         let run = self.run.as_mut().expect("running");
         let at: Location = run.game.location();
@@ -575,26 +575,21 @@ impl App {
             crate::recorder::local_now(),
         );
         let name = path.file_name().unwrap_or_default().to_string_lossy().into_owned();
-        loop {
-            let Some(note) = self.ui.save_recording(&shot, &at, &name) else {
-                eprintln!("superfrog: recording discarded");
-                break;
-            };
+        let mut save = |note: &str| {
             rec.note = note.replace(['\n', '\r'], " ");
-            match crate::recorder::write_zip(&path, &rec, &shot) {
-                Ok(()) => {
-                    let shown = path.display().to_string();
-                    eprintln!("superfrog: recording saved to {shown} ({} frames)", rec.inputs.len());
-                    self.ui.copy(&shown);
-                    self.ui.notice(&format!("The bug recording is saved as {shown}. Its path is on the clipboard."));
-                    break;
-                }
-                Err(e) => {
-                    let m = format!("The bug recording could not be saved as “{}”: {e}.", path.display());
-                    eprintln!("superfrog: {m}");
-                    self.ui.notice(&m);
-                }
-            }
+            crate::recorder::write_zip(&path, &rec, &shot).map_err(|e| {
+                let m = format!("The bug recording could not be saved as “{}”: {e}.", path.display());
+                eprintln!("superfrog: {m}");
+                m
+            })
+        };
+        if self.ui.save_recording(&shot, &at, &name, &mut save) {
+            let shown = path.display().to_string();
+            eprintln!("superfrog: recording saved to {shown} ({} frames)", rec.inputs.len());
+            self.ui.copy(&shown);
+            self.ui.notice(&format!("The bug recording is saved as {shown}. Its path is on the clipboard."));
+        } else {
+            eprintln!("superfrog: recording discarded");
         }
         self.after_panel();
     }

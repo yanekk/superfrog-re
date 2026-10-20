@@ -59,6 +59,9 @@
 //! note black screen here        # the save window's note, and Save (`note` alone: an empty note;
 //!                               # `note discard`: Discard)
 //! 9: menu stop-recording        # Game ▸ Stop Recording, ⌘.
+//! native-ui                     # the OS layer's: those two questions, the notices and the
+//!                               # clipboard are the real windows, answered by real clicks and
+//!                               # keys (bug-recorder T10); the log still says what was answered
 //! ```
 //!
 //! The Start Level window driven as clicks drive it (bug-recorder T08): `form` lines, in order,
@@ -133,6 +136,8 @@ pub struct Script {
     pub endings: Vec<EndChoice>,
     /// The save window's answers, in order: the note, `None` for Discard.
     pub notes: Vec<Option<String>>,
+    /// `native-ui`: the recorder's windows, the notices and the clipboard are the real ones.
+    pub native_ui: bool,
 }
 
 impl Script {
@@ -178,6 +183,10 @@ impl Script {
                     (Some("cancel"), 2) => s.level_answers.push(false),
                     _ => return Err(err("`answer` takes `choose`, `quit`, `disk-level` or `cancel`")),
                 }
+                continue;
+            }
+            if line == "native-ui" {
+                s.native_ui = true;
                 continue;
             }
             if words[0] == "answer-recording" {
@@ -533,6 +542,9 @@ mod tests {
         );
         assert_eq!(s.endings, vec![EndChoice::Save, EndChoice::Discard, EndChoice::Cancel]);
         assert_eq!(s.notes, vec![Some("black screen".into()), Some(String::new()), None]);
+        assert!(!s.native_ui);
+        assert!(Script::parse("native-ui\n").unwrap().native_ui);
+        assert!(Script::parse("native-ui now\n").is_err());
     }
 
     #[test]

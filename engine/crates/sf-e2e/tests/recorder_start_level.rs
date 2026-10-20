@@ -254,8 +254,13 @@ fn start_w1_2(scale: Option<u32>) {
     app.os_key(Key::Return);
     until("the window closed", || !is_open(&app));
     std::thread::sleep(Duration::from_millis(1500));
-    // Until T10's question, Quit while recording discards the recording rather than ask.
-    let c = quit(&mut app);
+    // Quit while recording asks first (T10's "Recording in progress"); Discard quits.
+    app.os_activate();
+    std::thread::sleep(Duration::from_millis(300));
+    app.os_key_with(Mods::COMMAND, Key::Char('q'));
+    app.os_press_button("Discard");
+    let c = app.finish_unread();
+    assert_eq!(c.exit.code(), Some(0), "{}", c.stderr);
     assert!(c.stderr.contains("superfrog: recording discarded"), "{}", c.stderr);
     assert!(c.stderr.contains("superfrog: started W1-2 after step"), "{}", c.stderr);
     assert!(c.stderr.contains(", recording\n"), "{}", c.stderr);
