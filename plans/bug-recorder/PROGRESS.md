@@ -13,7 +13,7 @@ writes a cell also fixes the over-budget cell they walk past.
 
 **Status:** Plan written 2026-10-20; nothing built.
 **Last updated:** 2026-10-20
-**Next `pir-work` will:** review T01.
+**Next `pir-work` will:** T02, level-start.
 
 ## Tasks
 
@@ -23,7 +23,7 @@ done · ⛔ blocked, needs a human.
 | # | Task | Depends on | State | Notes |
 |---|---|---|---|---|
 | T00 | prove-the-ground | — | ✅ | |
-| T01 | recording-format | T00 | 🔍 | `sf_core::recording`, tokens in `sf_core::input`, `zip::write_stored`; 11 new tests. Deviations: added `parse_token` (unknown→`None`, keeps sf-conform's `C` tokens and messages); `Recording::validate` (note/build one line); `stopped-at -` when unset; `SCREENS` and `Location: FromStr`; inputs allow `#` comments; test zip helper patches deflated headers over `write_stored`. |
+| T01 | recording-format | T00 | ✅ | Review: one fix, `parse` preallocated the header's `frames` (128 GB on a corrupt file), now capped by `MAX_FRAMES`. Six deviations held by their tests. Probed: zip read back by `unzip -t` and Python `zipfile`, 100M-frame memory probe; four mutations caught (frame order, held fill, next_life, script key merge). |
 | T02 | level-start | T01 | ⬜ | |
 | T03 | original-start | T02 | ⬜ | |
 | T04 | replay-tool | T01, T02 | ⬜ | |
@@ -37,7 +37,7 @@ done · ⛔ blocked, needs a human.
 | T12 | fix-procedure | T05, T11 | ⬜ | |
 | T13 | black-screen | T12 | ⬜ | |
 
-**Review queue:** T01
+**Review queue:** *(empty)*
 
 ## Blocked on the user
 
