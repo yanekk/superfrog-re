@@ -1,5 +1,23 @@
 # T05 — compare-tool
 
+> **Amendment (T00, 2026-10-20): §2.9's rule replaced, the fallback taken.** Retime frame for
+> frame, not by pass: the frog reads the joystick in every vertical blank, so feeding a pass's
+> inputs over the original's longer pass moves the frog further (on W4-3 the original then never
+> reached the recording's restart). Replay the recording on the engine to learn each step's load
+> and scene; feed the original step n's input on its next frame; at a step whose `FrameOut::load`
+> is set, hold the original with nothing pressed until its load ends (the runner's `LoadEnd`
+> test), counting frames under `timed_screen(cop1lc)` as recorded steps played (the next step is
+> n + 1 + those); at each level frame 0 and slot entry (`IN_SLOT_MACHINE`) re-anchor, holding the
+> side that is early. That keeps lag-free stretches on the recording every frame (chain and the
+> acceptance stretch, faithful green). Under lag the original leaves the recording (W1-1
+> `frog-run-right` at 615, W4-3 at 350/400, FINDINGS): `compare` reports the first frame the
+> original's watched state (frog, score, lives, hearts, level) left the recording's, and judges
+> the rest in legs of 8 passes, the engine re-synced from the original at each leg's start and
+> paced by it within the leg, verdict per leg. Unpaced legs fail on a single late pass at any N.
+> The long-lag test becomes: W4-3 `complete-w4-3` as a recording reports the frame it leaves the
+> recording and every leg same. A bug past that frame on a lagging level may not occur on the
+> original; the report says so.
+
 **Phase:** 1 · **Depends on:** T03, T04 · **Weight:** heavy
 
 ## Goal

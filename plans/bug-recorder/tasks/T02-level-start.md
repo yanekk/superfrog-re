@@ -1,5 +1,18 @@
 # T02 — level-start
 
+> **Amendment (T00, 2026-10-20): the start is (b), measured on the oracle.** `start_level` boots
+> `Start::PowerOn { seed }`, waits for the title (`title_waits`), fire, the menu, down + fire for
+> OPTIONS, then on the options screen (cursor on LIVES, presses from 100 frames after OPTIONS is
+> taken, each held 10 frames, 40 apart): right/left from `opt_lives` 0 to the setup's lives, down,
+> left from `opt_game_mode` 1 for easy, down twice to LEVEL CODE, the code's digits 60 frames on as
+> `type_code` types them, fire to leave, then the menu's START GAME; it steps unseen until
+> `scene()` is `Level` or `Bonus`, which is frame 0. Then it writes `score`, `frog_next_life`,
+> `frog_hearts`, `frog_spud_on` and `frog_flight` (1 measured for wings). The spike drove this from
+> outside with `Game::step`; generalising `type_code` to take the two options is fine. Measured:
+> equal to the original in every gameplay variable at frame 0 on W1-1, W1-2, W4-3, WB-1 in easy and
+> normal with lives 3/5/7, and faithful for 2 000 frames, through W1-1's end and W1-2's load too.
+> No hard (owner). The cell formula held (T00 Q3; FINDINGS).
+
 **Phase:** 1 · **Depends on:** T01 · **Weight:** medium
 
 ## Goal

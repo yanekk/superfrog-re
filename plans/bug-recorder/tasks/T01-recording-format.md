@@ -1,5 +1,12 @@
 # T01 — recording-format
 
+> **Amendment (T00, 2026-10-20).** `Difficulty` is `{ Easy, Normal }` (opt_game_mode 0/1): the
+> original's options screen cannot select hard, and the owner dropped it. `LevelSetup::default()`
+> has `Lives::Three` (the game's own new-game value, `opt_lives` 0 at power-on; owner). `seed` is
+> the `Start::PowerOn { seed }` the start (b) boots with (T02); the recording's frame 0 is the first
+> step after which `Game::scene()` is `Level` or `Bonus`. A recording stores no load or pass data:
+> T05's retiming reads both from a replay. Refuse `difficulty hard` like any unknown value.
+
 **Phase:** 1 · **Depends on:** T00 · **Weight:** light
 
 ## Goal
