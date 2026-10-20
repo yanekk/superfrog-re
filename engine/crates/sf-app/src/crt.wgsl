@@ -1,4 +1,4 @@
-// View → CRT Filter (DESIGN §2.7): the scaled picture as a monitor shows it. Appended to
+// View → Filter ▸ Basic (DESIGN §2.7): the scaled picture as a monitor shows it. Appended to
 // `video.rs`'s present shader, whose vertex stage, frame texture and sampler it reads. It runs
 // after integer scaling and changes presentation only: the game's frame comes in untouched.
 //

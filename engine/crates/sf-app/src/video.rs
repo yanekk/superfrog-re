@@ -1,6 +1,8 @@
 //! The picture to the window (DESIGN §2.7): the game's frame as a texture, drawn at a whole-number
 //! scale with nearest-neighbour sampling, centred, black around it (`window.rs` decides the scale
-//! and place). View → CRT Filter draws it through `crt.wgsl` instead, after the scaling.
+//! and place). View → Filter draws it through one of the filters instead, after the scaling:
+//! Basic (`crt.wgsl`) or a libretro port (`crt_lottes.wgsl`, `crt_geom.wgsl`, `crt_easymode.wgsl`,
+//! on `port.wgsl`).
 
 use std::path::Path;
 use std::sync::Arc;
@@ -8,7 +10,7 @@ use std::sync::Arc;
 use sf_core::{Picture, to_rgb12};
 use winit::window::Window;
 
-use crate::settings::Scale;
+use crate::settings::{Filter, Scale};
 use crate::window::{effective, picture_scale, viewport};
 
 /// `pic` as 8-bit RGBA, row-major: each 4-bit channel times 17, so 0xF is 255.
@@ -22,8 +24,26 @@ pub fn picture_rgba(pic: &Picture) -> Vec<u8> {
         .collect()
 }
 
-/// The CRT filter's fragment stage, appended to [`SHADER`].
-const CRT: &str = include_str!("crt.wgsl");
+/// The filters' fragment stages, appended to [`SHADER`] in this order (the ports use `crt.wgsl`'s
+/// uniform and `port.wgsl`'s helpers).
+const FILTERS: [&str; 5] = [
+    include_str!("crt.wgsl"),
+    include_str!("port.wgsl"),
+    include_str!("crt_lottes.wgsl"),
+    include_str!("crt_geom.wgsl"),
+    include_str!("crt_easymode.wgsl"),
+];
+
+/// Each filter's fragment entry point; None draws through `fs`.
+fn entry_point(f: Filter) -> &'static str {
+    match f {
+        Filter::None => "fs",
+        Filter::Basic => "fs_crt",
+        Filter::Lottes => "fs_lottes",
+        Filter::Geom => "fs_geom",
+        Filter::Easymode => "fs_easymode",
+    }
+}
 
 const SHADER: &str = r#"
 @group(0) @binding(0) var frame: texture_2d<f32>;
@@ -53,10 +73,10 @@ pub struct Video {
     device: wgpu::Device,
     queue: wgpu::Queue,
     config: wgpu::SurfaceConfiguration,
-    pipeline: wgpu::RenderPipeline,
-    /// The same pass through the CRT filter.
-    crt_pipeline: wgpu::RenderPipeline,
-    /// `crt.wgsl`'s `Crt`: the picture's origin and scale, and the value last written to it.
+    /// The pass, one pipeline a filter, in [`Filter::ALL`]'s order.
+    pipelines: Vec<wgpu::RenderPipeline>,
+    /// `crt.wgsl`'s `Crt`, which every filter reads: the picture's origin and scale, and the value
+    /// last written to it.
     crt_uniform: wgpu::Buffer,
     crt_written: std::cell::Cell<[f32; 4]>,
     layout: wgpu::BindGroupLayout,
@@ -66,8 +86,8 @@ pub struct Video {
     pub scale: Scale,
     /// Fullscreen draws at the largest whole scale, whatever the setting (DESIGN §2.7).
     pub fullscreen: bool,
-    /// View → CRT Filter.
-    pub crt: bool,
+    /// View → Filter.
+    pub filter: Filter,
     /// A script's `occlude on`: present as macOS does for a window it will not draw.
     pub occluded: bool,
 }
@@ -109,7 +129,7 @@ impl Video {
 
         let module = device.create_shader_module(wgpu::ShaderModuleDescriptor {
             label: Some("present"),
-            source: wgpu::ShaderSource::Wgsl(format!("{SHADER}{CRT}").into()),
+            source: wgpu::ShaderSource::Wgsl(format!("{SHADER}{}", FILTERS.concat()).into()),
         });
         let layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
             label: Some("frame"),
@@ -170,8 +190,7 @@ impl Video {
                 cache: None,
             })
         };
-        let pipeline = pipeline_for("fs");
-        let crt_pipeline = pipeline_for("fs_crt");
+        let pipelines = Filter::ALL.map(|f| pipeline_for(entry_point(f))).into();
         let crt_uniform = device.create_buffer(&wgpu::BufferDescriptor {
             label: Some("crt"),
             size: 16,
@@ -190,8 +209,7 @@ impl Video {
             device,
             queue,
             config,
-            pipeline,
-            crt_pipeline,
+            pipelines,
             crt_uniform,
             crt_written: std::cell::Cell::new([0.0; 4]),
             layout,
@@ -199,7 +217,7 @@ impl Video {
             frame: None,
             scale,
             fullscreen: false,
-            crt: false,
+            filter: Filter::None,
             occluded: false,
         })
     }
@@ -308,7 +326,7 @@ impl Video {
             ..Default::default()
         });
         let (x, y, w, h) = shown.viewport;
-        if self.crt {
+        if self.filter != Filter::None {
             let s = w / self.frame.as_ref().map_or(1, |f| f.1.0.max(1));
             let value = [x as f32, y as f32, s as f32, 0.0];
             if self.crt_written.replace(value) != value {
@@ -320,7 +338,8 @@ impl Video {
         // yet: the window is never below 1×) waits for the next refresh.
         if x + w <= shown.surface.0 && y + h <= shown.surface.1 {
             pass.set_viewport(x as f32, y as f32, w as f32, h as f32, 0.0, 1.0);
-            pass.set_pipeline(if self.crt { &self.crt_pipeline } else { &self.pipeline });
+            let at = Filter::ALL.iter().position(|&f| f == self.filter).expect("a filter");
+            pass.set_pipeline(&self.pipelines[at]);
             pass.set_bind_group(0, group, &[]);
             pass.draw(0..3, 0..1);
         }
@@ -445,6 +464,21 @@ impl Video {
 mod tests {
     use super::*;
     use sf_core::View;
+
+    /// The present shader and every filter parse and validate, so a mistake in a port fails here,
+    /// not at launch.
+    #[test]
+    fn the_present_shader_and_every_filter_compile() {
+        use wgpu::naga;
+        let source = format!("{SHADER}{}", FILTERS.concat());
+        let module = naga::front::wgsl::parse_str(&source).unwrap_or_else(|e| panic!("{}", e.emit_to_string(&source)));
+        naga::valid::Validator::new(naga::valid::ValidationFlags::all(), naga::valid::Capabilities::empty())
+            .validate(&module)
+            .unwrap_or_else(|e| panic!("{}", e.emit_to_string(&source)));
+        for f in Filter::ALL {
+            assert!(module.entry_points.iter().any(|e| e.name == entry_point(f)), "{f:?}");
+        }
+    }
 
     #[test]
     fn twelve_bit_colour_widens_to_eight_bits_a_channel() {

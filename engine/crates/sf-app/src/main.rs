@@ -338,7 +338,7 @@ impl App {
             Ok(v) => v,
             Err(e) => return self.fail(event_loop, &e),
         };
-        video.crt = settings.crt;
+        video.filter = settings.filter;
         if settings.fullscreen {
             if self.args.fullscreen_allowed() {
                 window::set_fullscreen(&window, true);
@@ -562,11 +562,11 @@ impl App {
         self.save_settings();
     }
 
-    /// View → CRT Filter: the scaled picture through `crt.wgsl`, remembered.
-    fn toggle_crt(&mut self) {
+    /// View → Filter ▸ `f`: the scaled picture through it from the next present, remembered.
+    fn set_filter(&mut self, f: crate::settings::Filter) {
         let run = self.run.as_mut().expect("running");
-        run.settings.crt = !run.settings.crt;
-        run.video.crt = run.settings.crt;
+        run.settings.filter = f;
+        run.video.filter = f;
         run.window.request_redraw();
         self.save_settings();
     }

@@ -1,11 +1,11 @@
-//! `settings.toml` in the app-data folder (DESIGN §2.9, §3.5): scale, fullscreen, CRT, widescreen
+//! `settings.toml` in the app-data folder (DESIGN §2.9, §3.5): scale, fullscreen, filter, widescreen
 //! and the key and pad bindings. A damaged file is replaced by the defaults with a one-line message, never
 //! a refusal to start (DESIGN §2.9).
 //!
 //! ```toml
 //! scale = "auto"        # or a whole number, 1 to 16
 //! fullscreen = false
-//! crt = false
+//! filter = "none"      # or "basic", "lottes", "geom", "easymode"; an older `crt = true` is "basic"
 //! widescreen = false
 //!
 //! [keys]                # each of the original's inputs, and the host keys that feed it
@@ -37,12 +37,58 @@ pub enum Scale {
     N(u32),
 }
 
+/// View → Filter: how the scaled picture is drawn (DESIGN §2.7). Presentation only, after the
+/// scaling; the game's frame is the same under every one.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Filter {
+    None,
+    /// T27's own filter, `crt.wgsl`.
+    Basic,
+    /// libretro `crt-lottes.slang`, `crt_lottes.wgsl`.
+    Lottes,
+    /// libretro `crt-geom.slang`, `crt_geom.wgsl`.
+    Geom,
+    /// libretro `crt-easymode.slang`, `crt_easymode.wgsl`.
+    Easymode,
+}
+
+impl Filter {
+    /// The filters the View menu offers, in its order.
+    pub const ALL: [Filter; 5] = [Filter::None, Filter::Basic, Filter::Lottes, Filter::Geom, Filter::Easymode];
+
+    /// Its name in `settings.toml` and in its menu item's id.
+    pub fn name(self) -> &'static str {
+        match self {
+            Filter::None => "none",
+            Filter::Basic => "basic",
+            Filter::Lottes => "lottes",
+            Filter::Geom => "geom",
+            Filter::Easymode => "easymode",
+        }
+    }
+
+    pub fn named(name: &str) -> Option<Filter> {
+        Filter::ALL.into_iter().find(|f| f.name() == name)
+    }
+
+    /// Its title in View → Filter.
+    pub fn title(self) -> &'static str {
+        match self {
+            Filter::None => "None",
+            Filter::Basic => "Basic",
+            Filter::Lottes => "Lottes",
+            Filter::Geom => "Geom",
+            Filter::Easymode => "Easymode",
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Settings {
     pub scale: Scale,
     pub fullscreen: bool,
-    /// View → CRT Filter: the scaled picture through `crt.wgsl` (DESIGN §2.7).
-    pub crt: bool,
+    /// View → Filter (DESIGN §2.7).
+    pub filter: Filter,
     /// View → Widescreen: 16:9, the level's extra columns each side (DESIGN §2.7).
     pub widescreen: bool,
     pub keys: KeyMap,
@@ -54,7 +100,7 @@ impl Default for Settings {
         Settings {
             scale: Scale::Auto,
             fullscreen: false,
-            crt: false,
+            filter: Filter::None,
             widescreen: false,
             keys: KeyMap::default(),
             pad: PadMap::default(),
@@ -73,6 +119,9 @@ struct File {
     scale: Option<toml::Value>,
     #[serde(skip_serializing_if = "Option::is_none")]
     fullscreen: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    filter: Option<String>,
+    /// Before View → Filter: `true` is Basic, `false` None. Read, never written.
     #[serde(skip_serializing_if = "Option::is_none")]
     crt: Option<bool>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -106,7 +155,8 @@ impl Settings {
                 Scale::N(n) => toml::Value::Integer(n as i64),
             }),
             fullscreen: Some(self.fullscreen),
-            crt: Some(self.crt),
+            filter: Some(self.filter.name().into()),
+            crt: None,
             widescreen: Some(self.widescreen),
             keys: Some(keys),
             pad: Some(pad),
@@ -126,7 +176,14 @@ impl Settings {
             Some(v) => return Err(format!("scale {v} is not \"auto\" or a whole number 1 to 16")),
         }
         s.fullscreen = file.fullscreen.unwrap_or(s.fullscreen);
-        s.crt = file.crt.unwrap_or(s.crt);
+        s.filter = match (file.filter, file.crt) {
+            (Some(name), _) => Filter::named(&name).ok_or_else(|| {
+                let names: Vec<String> = Filter::ALL.iter().map(|f| format!("{:?}", f.name())).collect();
+                format!("filter {name:?} is not one of {}", names.join(", "))
+            })?,
+            (None, Some(true)) => Filter::Basic,
+            (None, Some(false)) | (None, None) => Filter::None,
+        };
         s.widescreen = file.widescreen.unwrap_or(s.widescreen);
         if let Some(keys) = file.keys {
             // The bindings named replace the defaults for those inputs; the others keep theirs.
@@ -206,7 +263,7 @@ mod tests {
         let mut s = Settings {
             scale: Scale::N(3),
             fullscreen: true,
-            crt: true,
+            filter: Filter::Lottes,
             widescreen: false,
             keys: KeyMap::default(),
             pad: PadMap::default(),
@@ -251,6 +308,8 @@ mod tests {
             "[pad]\nfire = [\"Space\"]\n",
             "[pad]\njump = [\"South\"]\n",
             "pad = 1\n",
+            "filter = \"crt\"\n",
+            "filter = true\n",
         ] {
             let h = home("bad");
             std::fs::create_dir_all(&h).unwrap();
@@ -267,6 +326,55 @@ mod tests {
         std::fs::create_dir_all(&h).unwrap();
         std::fs::write(path(&h), [0xff, 0xfe, 0]).unwrap();
         assert!(load(&h).1.is_some());
+        std::fs::remove_dir_all(&h).unwrap();
+    }
+
+    #[test]
+    fn every_filter_round_trips_through_the_file() {
+        for f in Filter::ALL {
+            let s = Settings {
+                filter: f,
+                ..Settings::default()
+            };
+            let text = s.to_toml();
+            assert!(text.contains(&format!("filter = \"{}\"\n", f.name())), "{text}");
+            assert!(!text.contains("crt"), "{text}");
+            assert_eq!(Settings::from_toml(&text).unwrap(), s);
+            assert_eq!(Filter::named(f.name()), Some(f));
+        }
+        assert_eq!(Settings::from_toml("").unwrap().filter, Filter::None, "neither field: none");
+    }
+
+    #[test]
+    fn an_older_crt_line_reads_as_basic_or_none_and_filter_beats_it() {
+        let filter = |text: &str| Settings::from_toml(text).unwrap().filter;
+        assert_eq!(filter("crt = true\n"), Filter::Basic);
+        assert_eq!(filter("crt = false\n"), Filter::None);
+        assert_eq!(filter("crt = true\nfilter = \"geom\"\n"), Filter::Geom);
+        assert_eq!(filter("crt = false\nfilter = \"easymode\"\n"), Filter::Easymode);
+        assert_eq!(filter("filter = \"none\"\ncrt = true\n"), Filter::None);
+    }
+
+    #[test]
+    fn an_unknown_filter_names_the_allowed_ones() {
+        let e = Settings::from_toml("filter = \"royale\"\n").unwrap_err();
+        assert!(e.contains("royale"), "{e}");
+        for f in Filter::ALL {
+            assert!(e.contains(&format!("\"{}\"", f.name())), "{e}");
+        }
+    }
+
+    #[test]
+    fn a_migrated_crt_file_is_written_back_with_a_filter_line() {
+        let h = home("migrate");
+        std::fs::create_dir_all(&h).unwrap();
+        std::fs::write(path(&h), "scale = 2\ncrt = true\n").unwrap();
+        let (s, msg) = load(&h);
+        assert_eq!((s.filter, msg), (Filter::Basic, None));
+        save(&h, &s).unwrap();
+        let text = std::fs::read_to_string(path(&h)).unwrap();
+        assert!(text.contains("filter = \"basic\"\n") && !text.contains("crt"), "{text}");
+        assert_eq!(load(&h).0, s);
         std::fs::remove_dir_all(&h).unwrap();
     }
 
