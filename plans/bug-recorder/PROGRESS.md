@@ -35,7 +35,7 @@ done · ⛔ blocked, needs a human.
 | T10 | save-window | T06 | ✅ | |
 | T11 | recorder-drill | T04, T07, T08, T09, T10 | ✅ | |
 | T12 | fix-procedure | T05, T11 | ✅ | |
-| T13 | black-screen | T12 | 🟡 | Release app built, `bugs/` empty. Worker-made recordings (lost, wins, gamble, jackpot) do not show the black screen; replay and compare steps run on them (FINDINGS). Waiting on the owner's recording. |
+| T13 | black-screen | T12 | 🟡 | Release app built, `bugs/` empty. Worker-made recordings (lost, wins, gamble, jackpot) do not show the black screen, on today's engine or rust-engine's last (57426a2); replay and compare run (FINDINGS). Waiting on the owner's recording. |
 | T14 | original-follows-recording | T05, T12; blocks T13 | ✅ | |
 
 **Review queue:** *(empty)*
