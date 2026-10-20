@@ -462,6 +462,22 @@ impl App {
         })
     }
 
+    /// Where the element with accessibility identifier `id` is on screen, in points, top-left
+    /// origin, as the window server's bounds are: `[x, y, w, h]`.
+    pub fn os_frame_id(&self, id: &str) -> [f64; 4] {
+        self.os_with_id(id, ax::frame).unwrap_or_else(|e| panic!("the frame of {id:?}: {e}"))
+    }
+
+    /// Does the element with accessibility identifier `id` show? `false` once it is gone or
+    /// hidden (a hidden view leaves the accessibility tree), checked once, without waiting.
+    pub fn os_shows_id(&self, id: &str) -> bool {
+        let mut found = false;
+        for w in ax::windows(&ax::app(self.os_pid())) {
+            ax::walk(&w, 12, &mut |e| found |= ax::text(e, "AXIdentifier") == id);
+        }
+        found
+    }
+
     /// The window as the screen shows it, title bar included, at the display's pixel density.
     pub fn os_capture(&self) -> Image {
         self.os_capture_window(self.os_window().0)
@@ -510,6 +526,7 @@ mod ax {
         fn AXUIElementCopyAttributeValue(e: CFRef, attr: CFRef, out: *mut CFRef) -> i32;
         fn AXUIElementSetAttributeValue(e: CFRef, attr: CFRef, value: CFRef) -> i32;
         fn AXUIElementPerformAction(e: CFRef, action: CFRef) -> i32;
+        fn AXValueGetValue(value: CFRef, kind: u32, out: *mut c_void) -> bool;
     }
 
     #[link(name = "CoreFoundation", kind = "framework")]
@@ -609,6 +626,23 @@ mod ax {
                 walk(&c, depth - 1, f);
             }
         }
+    }
+
+    /// `AXPosition` and `AXSize`: `[x, y, w, h]` in points, top-left origin.
+    pub fn frame(e: &Cf) -> Result<[f64; 4], String> {
+        // `kAXValueCGPointType`, `kAXValueCGSizeType`: two doubles each.
+        let pair = |name: &str, kind: u32| -> Result<[f64; 2], String> {
+            let v = attr(e, name)?;
+            let mut out = [0f64; 2];
+            // SAFETY: an AXValue of `kind`, which holds two CGFloats, read into two f64s.
+            match unsafe { AXValueGetValue(v.0, kind, out.as_mut_ptr().cast()) } {
+                true => Ok(out),
+                false => Err(format!("{name} is not a point or a size")),
+            }
+        };
+        let [x, y] = pair("AXPosition", 1)?;
+        let [w, h] = pair("AXSize", 2)?;
+        Ok([x, y, w, h])
     }
 
     /// A boolean attribute, `false` when there is none.

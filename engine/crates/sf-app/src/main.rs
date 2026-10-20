@@ -593,7 +593,7 @@ impl App {
         window::set_fullscreen(&run.window, run.settings.fullscreen);
         run.video.fullscreen = run.settings.fullscreen;
         // Back in the window: it gains or loses the bar if that came or went in fullscreen.
-        self.fit_window_to_bar();
+        self.fit_window_to_bar(None);
         self.save_settings();
     }
 

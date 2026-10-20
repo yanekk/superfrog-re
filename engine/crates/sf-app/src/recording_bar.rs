@@ -63,8 +63,6 @@ impl App {
         let on = run.recorder.is_recording();
         if on != run.video.bar {
             run.video.bar = on;
-            run.window
-                .set_min_inner_size(Some(window::min_size(run.settings.widescreen, on)));
             if on && run.bar.is_none() {
                 match RecordingBar::new(&run.window) {
                     Ok(b) => run.bar = Some(b),
@@ -79,7 +77,12 @@ impl App {
                 if on { "shown" } else { "hidden" },
                 run.steps
             );
-            self.fit_window_to_bar();
+            // The size before the minimum changes: winit grows a window below a new minimum at
+            // once, and the bar's height is added to the size it had, not to that.
+            let at = run.window.inner_size().to_logical(run.window.scale_factor());
+            run.window
+                .set_min_inner_size(Some(window::min_size(run.settings.widescreen, on)));
+            self.fit_window_to_bar(Some(at));
         }
         let run = self.run.as_mut().expect("running");
         if on && let (Some(b), Some(frames)) = (&mut run.bar, run.recorder.frames()) {
@@ -90,12 +93,15 @@ impl App {
     /// A window (not fullscreen) is the bar's height taller while the bar shows: grown or shrunk
     /// by it when that changed, now or while fullscreen. The width and the rest of the height are
     /// left as they are, so the picture keeps its scale, a resized window's included.
-    pub(crate) fn fit_window_to_bar(&mut self) {
+    /// `at`: the window's size to grow or shrink, when not the size it has now. (Never set the
+    /// minimum size here: on a window going fullscreen winit applies it as a resize, and the
+    /// window falls back to its windowed size.)
+    pub(crate) fn fit_window_to_bar(&mut self, at: Option<LogicalSize<f64>>) {
         let run = self.run.as_mut().expect("running");
         if run.settings.fullscreen || run.window_bar == run.video.bar {
             return;
         }
-        let at: LogicalSize<f64> = run.window.inner_size().to_logical(run.window.scale_factor());
+        let at = at.unwrap_or_else(|| run.window.inner_size().to_logical(run.window.scale_factor()));
         let by = if run.video.bar { BAR_HEIGHT as f64 } else { -(BAR_HEIGHT as f64) };
         let _ = run.window.request_inner_size(LogicalSize::new(at.width, at.height + by));
         run.window_bar = run.video.bar;
