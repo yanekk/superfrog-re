@@ -29,7 +29,7 @@ done · ⛔ blocked, needs a human.
 | T04 | replay-tool | T01, T02 | ✅ | |
 | T05 | compare-tool | T03, T04 | ⬜ | |
 | T06 | app-recorder | T02 | ✅ | |
-| T07 | app-replay | T06 | ⬜ | |
+| T07 | app-replay | T06 | 🔍 | `--replay` via `recorder::Replay`/`read_zip`; 3 e2e (`recorder_replay.rs`), 5 unit. Deviation: a held replay captures no further frames. Deviation: `--replay` is unattended like `--script` (no focus, silent, no pads, windowed). Deviation: `read_zip` copies sf-conform's, minus its PNG check. Native menu disabling not OS-tested. |
 | T08 | start-level-dialog | T06 | ⬜ | |
 | T09 | recording-bar | T06 | ⬜ | |
 | T10 | save-window | T06 | ⬜ | |
@@ -37,7 +37,7 @@ done · ⛔ blocked, needs a human.
 | T12 | fix-procedure | T05, T11 | ⬜ | |
 | T13 | black-screen | T12 | ⬜ | |
 
-**Review queue:** *(empty)*
+**Review queue:** T07
 
 ## Blocked on the user
 
