@@ -13,7 +13,7 @@ writes a cell also fixes the over-budget cell they walk past.
 
 **Status:** Plan written 2026-10-20; nothing built.
 **Last updated:** 2026-10-20
-**Next `pir-work` will:** review T14, then T13.
+**Next `pir-work` will:** T13.
 
 ## Tasks
 
@@ -36,9 +36,9 @@ done · ⛔ blocked, needs a human.
 | T11 | recorder-drill | T04, T07, T08, T09, T10 | ✅ | |
 | T12 | fix-procedure | T05, T11 | ✅ | |
 | T13 | black-screen | T12 | ⬜ | |
-| T14 | original-follows-recording | T05, T12; blocks T13 | 🔍 | `bug compare` puts the original back on the recording (engine `LAYOUT` written in) where it leaves; `same up to F` where it cannot; load timeout no longer panics. 5 tests and a zip tool in `recorder_follow.rs`, W4-3 test updated. Deviations: case key `put-back` plus `<name>-steps.txt`, needed for dry run 2's case; not-judged exits 1; `compare_played` test hook. |
+| T14 | original-follows-recording | T05, T12; blocks T13 | ✅ | Review: judging-run put-back had no test (mutation survived, `same` printed), test added; `left` named a frame 8 passes late, fixed, no test locks it. Reran W4-3, dry run 1 and dry run 2's points and case green; planted tally ×2 differs at 4548 `score`. |
 
-**Review queue:** T14
+**Review queue:** *(empty)*
 
 ## Blocked on the user
 
