@@ -40,6 +40,7 @@ gilrs = "0.11"
 # One AppKit default: keep AppKit from adding its own "Enter Full Screen" to the View menu (menu.rs).
 objc2 = "0.6"
 # The Controls window's native labels and buttons (T25), on a window winit opens; NSPasteboard puts a
-# saved bug zip's path on the clipboard (bug-recorder T06).
-objc2-app-kit = { version = "0.3", default-features = false, features = ["std", "NSResponder", "NSView", "NSControl", "NSButton", "NSTextField", "NSText", "NSColor", "NSFont", "NSAccessibilityProtocols", "NSAccessibilityConstants", "NSPasteboard", "objc2-core-foundation"] }
-objc2-foundation = { version = "0.3", default-features = false, features = ["std", "NSUserDefaults", "NSString", "NSDictionary", "NSValue", "NSGeometry", "NSObject"] }
+# saved bug zip's path on the clipboard (bug-recorder T06); the save window is an NSWindow sheet
+# with an NSImageView and an NSAlert for a write that fails (T10).
+objc2-app-kit = { version = "0.3", default-features = false, features = ["std", "NSResponder", "NSView", "NSControl", "NSButton", "NSTextField", "NSText", "NSColor", "NSFont", "NSAccessibilityProtocols", "NSAccessibilityConstants", "NSPasteboard", "NSWindow", "NSGraphics", "NSApplication", "NSImage", "NSImageView", "NSImageCell", "NSCell", "NSTextFieldCell", "NSEvent", "NSAlert", "objc2-core-foundation"] }
+objc2-foundation = { version = "0.3", default-features = false, features = ["std", "NSUserDefaults", "NSString", "NSDictionary", "NSValue", "NSGeometry", "NSObject", "NSData"] }
