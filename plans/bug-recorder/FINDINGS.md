@@ -8,6 +8,9 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-20 | 🐞 | T05 review: `--strict bug compare` (and `--strict run` of any `Setup` case) differs at frame 0 on `playfield_clean`, T03's known start residue, so strict names no engine bug. Open; T12's procedure relies on `--strict`. |
+| 2026-10-20 | 📌 | T05: on today's engine W1-1 exit (forced) → tally → slot `slot-gamble` → W1-2 + 500 compares same, 33 legs; chain same. W4-3 `complete-w4-3` leaves the recording at frame 399 (`frog_hearts`), all 352 legs same. |
+| 2026-10-20 | 📌 | T05: the runner re-syncs the engine after every lag (`resync = true`, RE §2.1), so a difference made inside or just before a lag goes unseen (W1-1 lags 155–275, 297–369). `bug compare` prints the re-sync count; T12's procedure should mention it. |
 | 2026-10-20 | 📌 | T07 review: `--replay` in a home with widescreen on captures 464×261 frames, so its last frame never equals the 4:3 `screenshot.png`; the e2e runs a fresh 4:3 home. Left as is. |
 | 2026-10-20 | 📌 | T07 review: fake unverified against real: `ScriptedUi::notice` for a bad `--replay` zip; the native notice is modal and waits for OK, and unscripted without `--capture` there is no timeout. |
 | 2026-10-20 | 📌 | T07: sf-app's `recorder::read_zip` duplicates `sf_conform::bug::read_zip` (no PNG check); a shared one could live in `sf_core::recording`. `--replay` keeps the single-instance lock, so an agent replaying beside the owner's app needs `--home`. |
