@@ -9,7 +9,7 @@ the task you pick up, and append yours there.
 **Sixty words to a Notes cell, counted.** Flat prose. The account is the commit message. Whoever
 writes a cell also fixes the over-budget cell they walk past.
 
-**Plan reviewed:** not yet
+**Plan reviewed:** 2026-10-20 — 4 fixed, 4 decided with the user
 
 **Status:** Plan written 2026-10-20; nothing built.
 **Last updated:** 2026-10-20
@@ -33,7 +33,7 @@ done · ⛔ blocked, needs a human.
 | T08 | start-level-dialog | T06 | ⬜ | |
 | T09 | recording-bar | T06 | ⬜ | |
 | T10 | save-window | T06 | ⬜ | |
-| T11 | recorder-drill | T07, T08, T09, T10 | ⬜ | |
+| T11 | recorder-drill | T04, T07, T08, T09, T10 | ⬜ | |
 | T12 | fix-procedure | T05, T11 | ⬜ | |
 | T13 | black-screen | T12 | ⬜ | |
 

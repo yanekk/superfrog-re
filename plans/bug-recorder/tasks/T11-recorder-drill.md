@@ -1,6 +1,6 @@
 # T11 — recorder-drill
 
-**Phase:** 2 · **Depends on:** T07, T08, T09, T10 · **Weight:** medium
+**Phase:** 2 · **Depends on:** T04, T07, T08, T09, T10 · **Weight:** medium
 
 ## Goal
 

@@ -22,8 +22,9 @@ DESIGN §2.3, D4.
 
 ```rust
 pub const BAR_HEIGHT: u32 = /* points, chosen in the task */;
-pub fn window_size(scale: u32, widescreen: bool, bar: bool) -> (u32, u32);
-pub fn viewport(window: (u32,u32), scale: Scale, bar: bool) -> (u32,u32,u32,u32);
+// window.rs today: initial_size(scale, widescreen), min_size(widescreen),
+// picture_scale(surface, frame, scale, scale_factor), viewport(surface, frame, s).
+// Each gains the bar (a `bar: bool` or the surface less BAR_HEIGHT); no second sizing path.
 ```
 
 The existing window-size tests keep asserting `GAME × n` with no bar and gain the bar case.

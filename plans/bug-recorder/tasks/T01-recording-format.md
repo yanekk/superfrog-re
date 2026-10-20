@@ -16,9 +16,11 @@ DESIGN §2.1 (values, ranges, defaults), §2.5, §2.6, §2.11 (parser refusals),
 ## Files
 
 - `engine/crates/sf-core/src/recording.rs` (new), `sf-core/src/lib.rs` (export)
-- `engine/crates/sf-core/src/input.rs`: token format moved in from sf-conform
+- `engine/crates/sf-core/src/input.rs`: token format moved in from sf-conform (`script.rs` `format_input` and the token parser)
 - `engine/crates/sf-conform/src/script.rs`: uses the moved tokens, behaviour unchanged
-- `engine/crates/sf-disk/src/zip.rs`: `write_stored`
+- `engine/crates/sf-disk/src/zip.rs`: `write_stored`, promoted from the test-only writer in
+  `sf-disk/tests/common/zipwrite.rs` (`write_zip`, stored path) using zip.rs's public `crc32`; the
+  tests' helper keeps only its deflated path, built on it (owner, plan review 2026-10-20: one writer)
 
 ## Interface
 

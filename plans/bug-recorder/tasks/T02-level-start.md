@@ -16,6 +16,8 @@ DESIGN §2.1, §2.6 (`seed`, `stopped-at`), §7 D2 (as T00 settled it).
 
 - `engine/crates/sf-core/src/game.rs`: `start_level`, `location`
 - `engine/crates/sf-core/tests/start_level.rs` (new)
+- `engine/crates/sf-core/src/` (a module chosen in the task): `SceneKind` and its classifier, moved from `sf-conform/src/milestones.rs`
+- `engine/crates/sf-conform/src/milestones.rs`: uses the moved classifier
 
 ## Interface
 
@@ -29,8 +31,11 @@ impl Game {
 ```
 
 Screen names: `title`, `intro` (the world's loading picture and text), `world map`, `tally`,
-`slot machine`, `game over`, `story`, `end sequence`; T00's notes or `scene.rs`/`front/chain.rs`
-say how each is told apart. The cell is `((frog_x + 0x17)/16, (frog_y - 0x10)/16)`, as T00 checked.
+`slot machine`, `game over`, `story`, `end sequence`. The screen is told apart by the classifier
+that exists in `sf-conform/src/milestones.rs` (`SceneKind`, `FrameState::scene`, by COP1LC), moved
+into sf-core so the app and sf-conform share one copy; milestones.rs then calls it with no
+behaviour change (owner, plan review 2026-10-20). Names it lacks (`intro`, `world map`) are added
+there, not in a second classifier. The cell is `((frog_x + 0x17)/16, (frog_y - 0x10)/16)`, as T00 checked.
 
 ## Tests
 
@@ -39,6 +44,7 @@ say how each is told apart. The cell is `((frog_x + 0x17)/16, (frog_y - 0x10)/16
 - [ ] the same setup and seed twice give byte-equal states after 1 000 steps of the same inputs; a different seed differs in `rng_state`
 - [ ] `location` at W1-1's start is the cell T00 checked; after a scripted level end it is `tally`, then `slot machine` when the slot is entered, `world map`/`intro` as the chain goes
 - [ ] an invalid setup panics in debug with the reason (callers validate first)
+- [ ] sf-conform's milestone tests pass unchanged after the classifier move
 
 ## Done when
 

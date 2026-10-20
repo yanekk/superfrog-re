@@ -59,7 +59,7 @@ headlessly, play it on the original and turn it into a case.
 | [T08](tasks/T08-start-level-dialog.md) | start-level-dialog | T06 |
 | [T09](tasks/T09-recording-bar.md) | recording-bar | T06 |
 | [T10](tasks/T10-save-window.md) | save-window | T06 |
-| [T11](tasks/T11-recorder-drill.md) | recorder-drill | T07, T08, T09, T10 |
+| [T11](tasks/T11-recorder-drill.md) | recorder-drill | T04, T07, T08, T09, T10 |
 
 At the end: the owner can start a level from the dialog, record, STOP, save a zip, and anyone can
 `--replay` it. The `sf-e2e` script layer and OS layer cover it; the drill has used it whole.

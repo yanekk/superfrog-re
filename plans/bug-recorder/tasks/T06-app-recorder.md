@@ -11,13 +11,13 @@ this.
 
 ## Design sections this implements
 
-DESIGN §2.2, §2.4, §2.5, §2.11, §5.2 (`--bugs-dir`).
+DESIGN §2.1 (no saved progress), §2.2, §2.4, §2.5, §2.11, §5.2 (`--bugs-dir`).
 
 ## Files
 
 - `engine/crates/sf-app/src/recorder.rs` (new): state machine, bugs dir, zip writing
 - `engine/crates/sf-app/src/menu.rs`: `Command::StartLevel`, `Command::StopRecording` (items, ⌘.), the ending rule in `on_command`
-- `engine/crates/sf-app/src/main.rs`: `Run` holds the recorder; `step` appends the input
+- `engine/crates/sf-app/src/main.rs`: `Run` holds the recorder; `step` appends the input; a dialog-started run skips `progress::save`
 - `engine/crates/sf-app/src/import.rs`: `Ui` gains `start_level`, `recording_in_progress`, `save_recording`, with scripted answers
 - `engine/crates/sf-app/src/script.rs`, `args.rs`: events and `--bugs-dir`
 - `.gitignore`: `bugs/`; `tools/test_no_bug_zips.py` (new)
@@ -60,6 +60,7 @@ as power-on already does. The screenshot is the core's last `Picture` at 1×, en
 - [ ] e2e: a recording through a game over (lives 3, a script that dies) keeps going past the GAME OVER screen
 - [ ] e2e: each ending action (load-state, start-level, reset, continue, import, play-level-file, quit) with `answer-recording cancel` keeps recording; with `discard` the action happens and no zip; with `save` a zip then the action
 - [ ] e2e: pause frames are not recorded; save-state, scale, crt do not end the recording
+- [ ] e2e: `start-level W5-1` (recorder on or off) and play there leave the saved progress as it was; `menu continue` still refuses World 5 (DESIGN §2.1)
 - [ ] unit: `zip_name` with clashes; `bugs_dir` for a checkout, a worktree build (common dir's parent) and no checkout
 - [ ] unit: write failure (read-only dir) returns the error; the recording is still held
 - [ ] `tools/test_no_bug_zips.py`: fails when a tracked file is under `bugs/` or ends in `.zip`

@@ -71,6 +71,10 @@ menu offers them (2026-10-20). Points are a field because a dropdown of a millio
 the score shows six digits, hence the limit. `frog_next_life` (h0+$880) is set to the next multiple of
 200 000 above the points, as a real game would have it, so an extra life comes when it would have.
 The dialog always opens on these defaults (owner chose new-game values, 2026-10-20).
+A game started from the dialog never moves the saved furthest progress (`progress::save`, which
+"Continue from World N" reads): the dialog is a testing tool, and jumping to W5-1 must not unlock
+Continue from World 5 (owner, plan review 2026-10-20). Today `main.rs` saves progress whenever play
+goes further, so the run remembers how it was started.
 
 Start begins the level fresh with exactly these values; the game is otherwise normal. Lives and
 difficulty are options-screen values that `frog_new_game` reads before the level loads, so they are
@@ -152,7 +156,7 @@ spud off
 wings off
 seed <lo-hex> <hi-hex>
 frames 18342
-stopped-at W1-2:94,51          # or a screen name: tally, slot machine, world map, intro, title, game over
+stopped-at W1-2:94,51          # or a screen name: title, intro, world map, tally, slot machine, game over, story, end sequence
 note black screen after the slot machine
 inputs
 0: -
@@ -246,7 +250,7 @@ fails, move the code; never relax the test.
 
 - `sf_core::recording` (new): `LevelSetup`, `Difficulty`, `Recording`, `Location`; text format.
 - `sf_core::input`: gains the token format moved from sf-conform.
-- `sf_core::game`: `Game::start_level(display, &LevelSetup, Rng)`, `Game::location()`.
+- `sf_core::game`: `Game::start_level(display, &LevelSetup, Rng)`, `Game::location()`, which names screens with the `SceneKind` classifier moved here from `sf_conform::milestones` (one copy for app and tools; owner, plan review 2026-10-20).
 - `sf_disk::zip`: gains `write_stored(entries) -> Vec<u8>`.
 - `sf_conform::sync`: `SyncPoint::Setup { level, setup, seed }`; case TOML gains its form.
 - `sf_conform::bug` (new) and `main.rs` subcommands `bug replay|compare|case`.
@@ -302,7 +306,7 @@ setup lines come first.
 
 **Dependencies.** RE's policy holds: anything is allowed, named with one line of why in the task that
 adds it. Expected: more `objc2-app-kit` features (NSPopUpButton, NSWindow, NSAlert, NSPasteboard) for
-the native views. No zip crate: the reader exists and a stored-entry writer is small.
+the native views. No zip crate: the reader exists, and a stored-entry writer already exists test-only (`sf-disk/tests/common/zipwrite.rs`); T01 promotes it rather than write a second (owner, plan review 2026-10-20).
 
 **End to end.** `sf-e2e` exists and carries this (no rig task): the script layer (in the block)
 gains script events for the new commands and windows, as `controls …` events drive the Controls
@@ -327,7 +331,7 @@ RE §5.2 holds (`--max-frames`, `--timeout`, `--home`, windowed under `--script`
 | `--replay` under tests | `--timeout 120` applies as under `--script` | a replay that never ends is killed |
 | `bug compare` frame cap | the recording's own length plus the oracle's 20 000 load search | the oracle never runs unbounded |
 
-Nothing in this plan touches anything outside this Mac and repo, so there is no §5.3.
+Nothing in this plan touches anything outside this Mac and repo, so there is no §5.3 (owner confirmed at plan review, 2026-10-20).
 
 ---
 
