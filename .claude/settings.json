@@ -4,7 +4,19 @@
       "Bash(tools/setup/install-rust.sh)",
       "Bash(tools/setup/install-brew-deps.sh)",
       "Bash(tools/setup/install-ghidra.sh)",
-      "Bash(tools/setup/oracle.sh)"
+      "Bash(tools/setup/oracle.sh)",
+      "Bash(npm test:*)",
+      "Bash(node --test:*)",
+      "Bash(git status:*)",
+      "Bash(git log:*)",
+      "Bash(git show:*)",
+      "Bash(git diff:*)",
+      "Bash(git branch:*)",
+      "Bash(git rev-parse:*)",
+      "Bash(git merge-base:*)",
+      "Bash(git merge:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)"
     ]
   }
 }

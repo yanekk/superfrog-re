@@ -14,3 +14,10 @@ renders/    # derived game-art PNGs — reproducible from build/ via the tools
 
 # Levels exported from the disks (.sflevel, DESIGN §2.10): disk data, never committed
 *.sflevel
+
+# macOS
+.DS_Store
+
+# pir: per-session worktrees and run-control state (regenerated, large)
+.claude/worktrees/
+plans/*/.parallel/
