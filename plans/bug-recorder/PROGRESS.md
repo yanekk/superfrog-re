@@ -13,7 +13,7 @@ writes a cell also fixes the over-budget cell they walk past.
 
 **Status:** Plan written 2026-10-20; nothing built.
 **Last updated:** 2026-10-20
-**Next `pir-work` will:** T00, the spike every other task waits on.
+**Next `pir-work` will:** T03 and T06; T05 waits on T03.
 
 ## Tasks
 
@@ -26,7 +26,7 @@ done · ⛔ blocked, needs a human.
 | T01 | recording-format | T00 | ✅ | |
 | T02 | level-start | T01 | ✅ | |
 | T03 | original-start | T02 | ⬜ | |
-| T04 | replay-tool | T01, T02 | 🔍 | `sf_conform::bug` (read_zip, replay, screenshot compare, frame pick), `bug replay` CLI, README section; 5 integration + 3 unit tests. Deviations: `replay`'s callback also gets the step's `Picture` (a level frame's differs from `render`); `read_zip` also refuses a missing screenshot and an invalid setup; `--frames A..B` excludes B; refusals exit 2. |
+| T04 | replay-tool | T01, T02 | ✅ | Review fixed two: the equal test built its screenshot through `bug::replay` itself (a double-step mutation survived), now plays `Game::step` directly; a non-PNG screenshot is refused before replaying, not after. Probed the CLI on hand-made zips (deflated, frames past the end, bad args). Deviations held; picture-vs-render difference read-only. |
 | T05 | compare-tool | T03, T04 | ⬜ | |
 | T06 | app-recorder | T02 | ⬜ | |
 | T07 | app-replay | T06 | ⬜ | |
@@ -37,7 +37,7 @@ done · ⛔ blocked, needs a human.
 | T12 | fix-procedure | T05, T11 | ⬜ | |
 | T13 | black-screen | T12 | ⬜ | |
 
-**Review queue:** T04
+**Review queue:** *(empty)*
 
 ## Blocked on the user
 
