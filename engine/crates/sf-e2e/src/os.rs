@@ -284,14 +284,14 @@ impl App {
     /// The titles of the menu bar's menus, left to right.
     pub fn os_menu_bar(&self) -> Vec<String> {
         let app = ax::app(self.os_pid());
-        let bar = ax::attr(&app, "AXMenuBar").unwrap_or_else(|e| panic!("the app's menu bar: {e}"));
+        let bar = ax::menu_bar(&app);
         ax::children(&bar).iter().map(ax::title).collect()
     }
 
     /// The items of the menu at `path` (`["View", "Scale"]`), separators left out.
     pub fn os_menu_items(&self, path: &[&str]) -> Vec<MenuItemState> {
         let app = ax::app(self.os_pid());
-        let bar = ax::attr(&app, "AXMenuBar").unwrap_or_else(|e| panic!("the app's menu bar: {e}"));
+        let bar = ax::menu_bar(&app);
         let mut items = ax::children(&bar);
         for name in path {
             let titles: Vec<String> = items.iter().map(ax::title).collect();
@@ -369,7 +369,7 @@ impl App {
     pub fn os_menu(&mut self, path: &[&str]) {
         assert!(path.len() >= 2, "a menu path names a menu and an item");
         let app = ax::app(self.os_pid());
-        let bar = ax::attr(&app, "AXMenuBar").unwrap_or_else(|e| panic!("the app's menu bar: {e}"));
+        let bar = ax::menu_bar(&app);
         let mut items = ax::children(&bar);
         let mut walked = Vec::new();
         for (i, name) in path.iter().enumerate() {
@@ -441,7 +441,13 @@ impl App {
             .find(|w| ax::title(w) == title)
             .unwrap_or_else(|| panic!("no window {title:?}; there are {titles:?}"));
         let close = ax::attr(w, "AXCloseButton").unwrap_or_else(|e| panic!("{title:?} has no close button: {e}"));
-        ax::press(&close).unwrap_or_else(|e| panic!("closing {title:?}: {e}"));
+        // A close that asks first ("Recording in progress") runs its alert inside the press, so
+        // the press outlives the Accessibility API's wait and says it could not complete
+        // (`AXError -25204`) though it was delivered; the caller waits for what it opens.
+        match ax::press(&close) {
+            Err(e) if !e.ends_with("AXError -25204") => panic!("closing {title:?}: {e}"),
+            _ => {}
+        }
     }
 
     /// The element whose accessibility identifier is `id`, in one of the app's windows, waiting up
@@ -598,6 +604,7 @@ impl App {
 /// needs only the Accessibility grant (System Events needs an Automation grant as well).
 mod ax {
     use std::ffi::{CString, c_char, c_void};
+    use std::time::{Duration, Instant};
 
     type CFRef = *const c_void;
 
@@ -658,6 +665,23 @@ mod ax {
             return Err(format!("{name}: AXError {err}"));
         }
         Ok(Cf(out))
+    }
+
+    /// The app's menu bar. An app whose main thread is busy (a level started from Start Level
+    /// runs seconds unseen) cannot answer (`AXError -25204`); it is asked again for up to 20 s,
+    /// as [`App::os_activate`] does (bug-recorder T11: three save-window tests read the menu
+    /// while the level started).
+    pub fn menu_bar(app: &Cf) -> Cf {
+        let start = Instant::now();
+        loop {
+            match attr(app, "AXMenuBar") {
+                Ok(bar) => return bar,
+                Err(e) if e.ends_with("AXError -25204") && start.elapsed() < Duration::from_secs(20) => {
+                    std::thread::sleep(Duration::from_millis(200));
+                }
+                Err(e) => panic!("the app's menu bar: {e}"),
+            }
+        }
     }
 
     pub fn set_true(e: &Cf, name: &str) -> Result<(), String> {

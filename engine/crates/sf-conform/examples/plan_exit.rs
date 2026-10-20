@@ -24,6 +24,11 @@
 //! T154: `--fly`: fire is among the inputs, so with the wings (`frog+$90`) the frog flaps up (eight
 //! flaps an airtime); give `--jump` the rows a flight climbs, so the field leads up into the sky.
 //!
+//! bug-recorder T11: `--engine`: plan and play on the engine alone, from `Game::start_level` with
+//! the Start Level dialog's defaults and seed 0 0 (a scripted app run's start), so the script
+//! plays the level to its exit in the app's recorder. The checks "on the original" below are then
+//! the engine's.
+//!
 //! T205: `--snap <file>`: start from a snapshot `whole_game` saved at the leg's start in the whole
 //! game (`$TMPDIR/sf-whole-game/leg-NN.snap`) instead of the level's `AtLevel` sync point.
 //!
@@ -287,6 +292,7 @@ fn main() {
     let mut avoid: Vec<(usize, usize, usize, usize)> = Vec::new();
     let mut fly = false;
     let mut snap: Option<String> = None;
+    let mut engine = false;
     let mut i = 1;
     while i < args.len() {
         match args[i].as_str() {
@@ -326,6 +332,10 @@ fn main() {
             }
             "--out" => out = Some(args[i + 1].clone()),
             "--snap" => snap = Some(args[i + 1].clone()),
+            "--engine" => {
+                engine = true;
+                i -= 1;
+            }
             "--frames" => budget = args[i + 1].parse().unwrap(),
             "--prefix" => {
                 let p = InputScript::load(std::path::Path::new(&args[i + 1])).unwrap();
@@ -355,14 +365,26 @@ fn main() {
 
     // From the leg's start in the whole game (`--snap`, a snapshot `whole_game` saved), else the
     // level's own sync point.
-    let mut amiga = match &snap {
-        Some(p) => sync::at_snapshot_file(std::path::Path::new(p), budget as u32 + 100),
-        None => sync::reach(&SyncPoint::AtLevel(id), &InputScript::idle(), budget as u32 + 100)
-            .map(|s| s.amiga),
-    }
-    .unwrap_or_else(|e| panic!("{e}"));
-    let amiga = &mut amiga;
     let display = sf_conform::display_data();
+    // `--engine`: the engine from the start Game ▸ Start Level… makes (the dialog's defaults,
+    // a script's seed 0 0), played on the engine alone (bug-recorder T11's drill route).
+    let mut side = if engine {
+        Side::Engine(Box::new(Game::start_level(
+            display.clone(),
+            &sf_core::recording::LevelSetup { level: id, ..Default::default() },
+            sf_core::Rng::seeded(0, 0),
+        )))
+    } else {
+        Side::Original(Box::new(
+            match &snap {
+                Some(p) => sync::at_snapshot_file(std::path::Path::new(p), budget as u32 + 100),
+                None => sync::reach(&SyncPoint::AtLevel(id), &InputScript::idle(), budget as u32 + 100)
+                    .map(|s| s.amiga),
+            }
+            .unwrap_or_else(|e| panic!("{e}")),
+        ))
+    };
+    let amiga = &mut side;
     // The world's coin tiles: its pickup table's (h0+$f382) tiles whose handler is the coin's
     // (h0+$ede0).
     let coin_tiles: Vec<u32> = if no_tile_coins { Vec::new() } else {
@@ -396,17 +418,17 @@ fn main() {
     }
     let mut inputs: Vec<FrameInput> = Vec::new();
     for &x in &prefix {
-        sync::step_inserting(amiga, x).unwrap();
+        amiga.step(x);
         inputs.push(x);
     }
-    let peek_w = |a: &sf_oracle::Amiga, addr: u32| {
+    let peek_w = |a: &Side, addr: u32| {
         let b = a.peek(addr, 2);
         u16::from_be_bytes([b[0], b[1]])
     };
     // Each chunk kept: the original before it, the inputs and goal then, and which candidate it
     // took; a chunk with no candidate left takes the one before back and tries its next.
     let threads = std::thread::available_parallelism().map_or(4, |n| n.get());
-    let mut history: Vec<(sf_oracle::Snapshot, usize, usize, usize)> = Vec::new();
+    let mut history: Vec<(Snap, usize, usize, usize)> = Vec::new();
     let mut skip = 0usize;
     let mut backtracks = 0;
     // Progress (coins needed, switches left, distance) and chunks since it last improved.
@@ -429,8 +451,7 @@ fn main() {
     };
     let mut fails_at: std::collections::BTreeMap<usize, u32> = Default::default();
     while inputs.len() < budget {
-        let mem = sync::core_memory(amiga.memory());
-        let start = Game::with_display(display.clone(), Start::Transplant(mem));
+        let start = amiga.game(&display);
         let lives = start.state().w(FROG + f::LIVES);
         let target = via.get(goal).copied();
         let body = map_now(start.state(), &t.body, &ground);
@@ -705,13 +726,13 @@ fn main() {
             let n = p.len().min(COMMIT);
             let mut ok = true;
             for (k, &x) in p.iter().enumerate() {
-                sync::step_inserting(amiga, x).unwrap();
+                amiga.step(x);
                 let b = amiga.peek(LEVEL_STATE, 4);
                 let ended = (u32::from_be_bytes([b[0], b[1], b[2], b[3]]) as i32) >= 0;
                 if (peek_w(amiga, FROG + f::LIVES) as i16) < lives as i16
                     || peek_w(amiga, FROG + f::DYING) != 0
                     || (early_exit && ended)
-                    || sync::in_wall_loop(amiga)
+                    || amiga.hung()
                 {
                     eprintln!(
                         "  a path dies (or hangs) {k} frames in on the original, frog at {},{}",
@@ -728,7 +749,7 @@ fn main() {
                 // and the tally that follows is no place to plan).
                 let mut k = 0;
                 while k < n {
-                    sync::step_inserting(amiga, p[k]).unwrap();
+                    amiga.step(p[k]);
                     k += 1;
                     // Any change from the level's running −2: the exit's 1 can come and go
                     // within a frame (W4-4's exit at 15544 shows 0 next).
@@ -776,8 +797,7 @@ fn main() {
         if let Some(o) = &out {
             std::fs::write(o, script(&inputs)).unwrap();
         }
-        let o = sync::core_memory(amiga.memory());
-        let st = sf_core::State::transplant(&o);
+        let st = amiga.game(&display).state().clone();
         let (x, y) = frog(&st);
         let d = match via.get(goal) {
             Some(Via::Stomp(_)) => {
@@ -847,6 +867,67 @@ fn main() {
         }
     }
     print!("{}", script(&inputs));
+}
+
+/// What the plan is played on: the original, or (`--engine`) the engine alone.
+enum Side {
+    Original(Box<sf_oracle::Amiga>),
+    Engine(Box<Game>),
+}
+
+enum Snap {
+    Original(sf_oracle::Snapshot),
+    Engine(Box<Game>),
+}
+
+impl Side {
+    fn step(&mut self, x: FrameInput) {
+        match self {
+            Side::Original(a) => {
+                sync::step_inserting(a, x).unwrap();
+            }
+            Side::Engine(g) => {
+                g.step(x);
+            }
+        }
+    }
+
+    fn peek(&self, addr: u32, len: u32) -> Vec<u8> {
+        match self {
+            Side::Original(a) => a.peek(addr, len as usize),
+            Side::Engine(g) => g.peek(addr, len),
+        }
+    }
+
+    /// The game as it is now, for the beam to plan from.
+    fn game(&self, display: &std::sync::Arc<sf_core::DisplayData>) -> Game {
+        match self {
+            Side::Original(a) => Game::with_display(display.clone(), Start::Transplant(sync::core_memory(a.memory()))),
+            Side::Engine(g) => (**g).clone(),
+        }
+    }
+
+    fn hung(&self) -> bool {
+        match self {
+            Side::Original(a) => sync::in_wall_loop(a),
+            Side::Engine(_) => false,
+        }
+    }
+
+    fn snapshot(&self) -> Snap {
+        match self {
+            Side::Original(a) => Snap::Original(a.snapshot()),
+            Side::Engine(g) => Snap::Engine(g.clone()),
+        }
+    }
+
+    fn restore(&mut self, s: &Snap) {
+        match (self, s) {
+            (Side::Original(a), Snap::Original(s)) => a.restore(s),
+            (Side::Engine(g), Snap::Engine(s)) => **g = (**s).clone(),
+            _ => unreachable!("a snapshot of the other side"),
+        }
+    }
 }
 
 /// `inputs` as a script: a line at each change, and a closing `-` line.
