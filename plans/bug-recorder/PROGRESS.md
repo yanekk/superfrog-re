@@ -13,7 +13,7 @@ writes a cell also fixes the over-budget cell they walk past.
 
 **Status:** Plan written 2026-10-20; nothing built.
 **Last updated:** 2026-10-20
-**Next `pir-work` will:** T00, the spike every other task waits on.
+**Next `pir-work` will:** T03, T04, T07–T10.
 
 ## Tasks
 
@@ -28,7 +28,7 @@ done · ⛔ blocked, needs a human.
 | T03 | original-start | T02 | ⬜ | |
 | T04 | replay-tool | T01, T02 | ⬜ | |
 | T05 | compare-tool | T03, T04 | ⬜ | |
-| T06 | app-recorder | T02 | 🔍 | `recorder.rs`, Start Level, Stop Recording ⌘., the ending rule, the bug zip, `--bugs-dir`; 9 e2e, 10 unit, 3 Python tests. Deviations: the level-end test forces the exit (`N: exit`), no unpaced route exists; `Ui::copy` added so a script logs the clipboard; a script without `--bugs-dir` saves to `<home>/bugs`; a day-long recording stops as STOP. |
+| T06 | app-recorder | T02 | ✅ | Review, one fix: a state saved in a Start Level game, loaded after Reset, unlocked Continue; reproduced by e2e, fixed by a slot mark beside the state. Added a no-`--bugs-dir` test. Probed the real worktree's `commondir` layout; mutated `recorder.step`, red. Native stubs and NSPasteboard copy read-only until T10. Saved-notice wording kept (person, 2026-10-20). |
 | T07 | app-replay | T06 | ⬜ | |
 | T08 | start-level-dialog | T06 | ⬜ | |
 | T09 | recording-bar | T06 | ⬜ | |
@@ -37,7 +37,7 @@ done · ⛔ blocked, needs a human.
 | T12 | fix-procedure | T05, T11 | ⬜ | |
 | T13 | black-screen | T12 | ⬜ | |
 
-**Review queue:** T06
+**Review queue:** empty
 
 ## Blocked on the user
 
