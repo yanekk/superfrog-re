@@ -23,7 +23,7 @@ done · ⛔ blocked, needs a human.
 | # | Task | Depends on | State | Notes |
 |---|---|---|---|---|
 | T00 | prove-the-ground | — | ✅ | |
-| T01 | recording-format | T00 | ⬜ | |
+| T01 | recording-format | T00 | ✅ | |
 | T02 | level-start | T01 | ⬜ | |
 | T03 | original-start | T02 | ⬜ | |
 | T04 | replay-tool | T01, T02 | ⬜ | |
