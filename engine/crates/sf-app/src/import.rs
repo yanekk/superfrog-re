@@ -12,11 +12,13 @@ use std::sync::Arc;
 
 use serde::{Deserialize, Serialize};
 use sf_assets::{GameData, LaunchAction, LaunchFacts, cache_decode, cache_encode, decide};
+use sf_core::recording::{LevelSetup, Location};
 use sf_disk::{DiskSlot, ImportError, Offered};
 use winit::window::Window;
 
 use crate::atomic_write::atomic_write;
 use crate::home::{build, cache_path};
+use crate::recorder::EndChoice;
 
 /// The two buttons of the missing-disks message (owner, 2026-10-10).
 pub const CHOOSE: &str = "Choose Disks…";
@@ -40,6 +42,16 @@ pub trait Ui {
     /// A level file refused, `message` saying why. With `offer` (the disk level's button, `Play
     /// W1-1 from the Disks`), `true` when the player chose it; without, a notice.
     fn level_refused(&mut self, message: &str, offer: Option<&str>) -> bool;
+    /// Game ▸ Start Level…'s dialog (bug-recorder DESIGN §2.1): the values and whether to record,
+    /// `None` when it was cancelled.
+    fn start_level(&mut self) -> Option<(LevelSetup, bool)>;
+    /// "Recording in progress" before `action`, a menu action that would end the recording (§2.2).
+    fn recording_in_progress(&mut self, action: &str) -> EndChoice;
+    /// The save window (§2.4) with the screenshot `shot` (a PNG), where play is and the zip's file
+    /// name: the note for Save, `None` for Discard.
+    fn save_recording(&mut self, shot: &[u8], at: &Location, name: &str) -> Option<String>;
+    /// Put `text` on the clipboard.
+    fn copy(&mut self, text: &str);
 }
 
 /// The macOS panels, through rfd: sheets on `parent` when there is a window (with none, rfd shows
@@ -125,6 +137,38 @@ impl Ui for NativeUi {
         matches!(r, rfd::MessageDialogResult::Custom(ref b) if b == offer)
             || r == rfd::MessageDialogResult::Ok
     }
+
+    // The dialog is T08's and the save window and the question T10's. Until then no recording
+    // starts outside a script, so the other two are never reached.
+    fn start_level(&mut self) -> Option<(LevelSetup, bool)> {
+        eprintln!("superfrog: the Start Level dialog is not built yet");
+        None
+    }
+
+    fn recording_in_progress(&mut self, _action: &str) -> EndChoice {
+        EndChoice::Cancel
+    }
+
+    fn save_recording(&mut self, _shot: &[u8], _at: &Location, _name: &str) -> Option<String> {
+        None
+    }
+
+    fn copy(&mut self, text: &str) {
+        #[cfg(target_os = "macos")]
+        {
+            use objc2_app_kit::{NSPasteboard, NSPasteboardTypeString};
+            use objc2_foundation::NSString;
+            let board = NSPasteboard::generalPasteboard();
+            board.clearContents();
+            // SAFETY: an AppKit constant, read on the main thread the app runs on.
+            let kind = unsafe { NSPasteboardTypeString };
+            if !board.setString_forType(&NSString::from_str(text), kind) {
+                eprintln!("superfrog: the clipboard did not take the path");
+            }
+        }
+        #[cfg(not(target_os = "macos"))]
+        let _ = text;
+    }
 }
 
 /// What the script answers the picker with.
@@ -147,9 +191,17 @@ pub struct ScriptedUi {
     pub opens: VecDeque<Option<PathBuf>>,
     /// The refused level file's answers: `true` for playing the disk level.
     pub level_answers: VecDeque<bool>,
+    /// Start Level's answers: the values and whether to record, or `None` for cancelled.
+    pub starts: VecDeque<Option<(LevelSetup, bool)>>,
+    /// "Recording in progress"'s answers.
+    pub endings: VecDeque<EndChoice>,
+    /// The save window's answers: the note, or `None` for Discard.
+    pub notes: VecDeque<Option<String>>,
     /// Every prompt, one line each: `picker: …`, `missing: … -> choose|quit`, `notice: …`,
     /// `save: <name> -> <path>|cancel`, `open: -> <path>|cancel`, `refused: … -> disk-level|cancel`
-    /// (`refused: …` alone when nothing was offered).
+    /// (`refused: …` alone when nothing was offered), `start-level: -> <values> [record]|cancel`,
+    /// `recording: <action> -> save|discard|cancel`, `save-recording: <name> at <place> ->
+    /// note <text>|discard`, `clipboard: <text>`.
     pub log: Vec<String>,
     /// Where each line is appended as it is shown (the capture folder's `prompts.txt`).
     pub log_file: Option<PathBuf>,
@@ -211,6 +263,57 @@ impl Ui for ScriptedUi {
         self.record(format!("refused: {message} -> {}", if play { "disk-level" } else { "cancel" }));
         play
     }
+
+    fn start_level(&mut self) -> Option<(LevelSetup, bool)> {
+        let a = self.starts.pop_front().flatten();
+        let shown = match &a {
+            None => "cancel".to_string(),
+            Some((s, record)) => format!("{}{}", setup_words(s), if *record { " record" } else { "" }),
+        };
+        self.record(format!("start-level: -> {shown}"));
+        a
+    }
+
+    /// With no answer left, Cancel: the recording is kept and the run goes on to its frame cap.
+    fn recording_in_progress(&mut self, action: &str) -> EndChoice {
+        let c = self.endings.pop_front().unwrap_or(EndChoice::Cancel);
+        self.record(format!("recording: {action} -> {}", c.word()));
+        c
+    }
+
+    fn save_recording(&mut self, _shot: &[u8], at: &Location, name: &str) -> Option<String> {
+        let n = self.notes.pop_front().flatten();
+        let shown = n.as_ref().map_or("discard".to_string(), |n| format!("note {n}"));
+        self.record(format!("save-recording: {name} at {at} -> {shown}"));
+        n
+    }
+
+    fn copy(&mut self, text: &str) {
+        self.record(format!("clipboard: {text}"));
+    }
+}
+
+/// A setup as a script's `start-level` line writes it (`script.rs`).
+pub fn setup_words(s: &LevelSetup) -> String {
+    use sf_core::recording::Difficulty;
+    let mut w = format!(
+        "{} lives={} points={} energy={} difficulty={}",
+        s.level,
+        s.lives.count(),
+        s.points,
+        s.energy,
+        match s.difficulty {
+            Difficulty::Easy => "easy",
+            Difficulty::Normal => "normal",
+        }
+    );
+    if s.spud {
+        w.push_str(" spud");
+    }
+    if s.wings {
+        w.push_str(" wings");
+    }
+    w
 }
 
 fn shown(p: &Option<PathBuf>) -> String {

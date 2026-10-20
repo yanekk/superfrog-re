@@ -10,6 +10,8 @@
 //! from a pacing feed as `sf-conform`'s engine run alone is stepped (`sf_core::feed`, T211). Every setting and feature is reached
 //! through the menu bar, as a `menu::Command` (DESIGN §2.7, §7); save states are `states.rs`. Gamepads
 //! come through gilrs (`pad.rs`), except under `--script`, whose `pad …` lines stand in for them.
+//! Game → Start Level… starts a level with chosen values, and with the recorder on every stepped
+//! frame's input is recorded until Stop Recording saves it as a bug zip (`recorder.rs`).
 
 mod args;
 mod atomic_write;
@@ -25,6 +27,7 @@ mod menu;
 mod pacing;
 mod pad;
 mod progress;
+mod recorder;
 mod script;
 mod settings;
 mod states;
@@ -56,6 +59,7 @@ use crate::lock::Lock;
 use crate::menu::{Command, MenuBar};
 use crate::pacing::{Pacer, Presenter};
 use crate::pad::PadSource;
+use crate::recorder::Recorder;
 use crate::script::{Event, Script};
 use crate::settings::{Scale, Settings};
 use crate::video::{Video, picture_rgba};
@@ -138,13 +142,24 @@ fn main() {
             saves: s.saves.iter().cloned().collect(),
             opens: s.opens.iter().cloned().collect(),
             level_answers: s.level_answers.iter().copied().collect(),
+            starts: s.starts.iter().copied().collect(),
+            endings: s.endings.iter().copied().collect(),
+            notes: s.notes.iter().cloned().collect(),
             log: Vec::new(),
             log_file: log,
         }),
         None => Box::new(NativeUi { parent: None }),
     };
+    // A scripted run never saves into the repo: its bugs go into its own home unless it names
+    // a folder (DESIGN §5.2).
+    let bugs_dir = match (&args.bugs_dir, &script) {
+        (Some(d), _) => d.clone(),
+        (None, Some(_)) => home.join("bugs"),
+        (None, None) => recorder::bugs_dir(None),
+    };
     let mut app = App {
         args,
+        bugs_dir,
         home,
         script,
         feed,
@@ -190,6 +205,8 @@ fn host_seed() -> (u32, u32) {
 struct App {
     args: Args,
     home: PathBuf,
+    /// Where a bug recording is saved (`recorder::bugs_dir`).
+    bugs_dir: PathBuf,
     script: Option<Script>,
     /// `--pacing`: the feed, until the game starts and takes it.
     feed: Option<Feed>,
@@ -211,6 +228,12 @@ struct Run {
     settings: Settings,
     /// The furthest progress remembered (DESIGN §2.9).
     furthest: Option<Progress>,
+    /// The game was started from Game → Start Level…: it never moves the saved progress
+    /// (bug-recorder DESIGN §2.1), until a game replaces it (Reset, Continue, Import Disks, Play
+    /// Level File); a loaded state brings its own (`states::from_dialog`).
+    from_dialog: bool,
+    /// The bug recording, while one runs.
+    recorder: Recorder,
     display: Arc<DisplayData>,
     /// [`sf_assets::cache_hash`] of the game data: what a save state is tagged with.
     cache_hash: [u8; 32],
@@ -373,6 +396,8 @@ impl App {
             pads,
             settings,
             furthest,
+            from_dialog: false,
+            recorder: Recorder::Off,
             display,
             cache_hash,
             states: states::filled(&self.home),
@@ -451,6 +476,11 @@ impl App {
                 Event::Occlude(on) => self.run.as_mut().expect("running").video.occluded = on,
                 Event::Command(c) => self.on_command(event_loop, c),
                 Event::Controls(a) => self.controls_action(a),
+                Event::Exit => {
+                    let run = self.run.as_mut().expect("running");
+                    run.game.poke(sf_core::layout::h0(0xa06), &1u32.to_be_bytes());
+                    eprintln!("superfrog: the level's exit set before step {n}");
+                }
             }
             if event_loop.exiting() {
                 return;
@@ -488,8 +518,9 @@ impl App {
             Err(len) => return self.fail(event_loop, &format!("the pacing feed ends at frame {len}")),
         };
         let run = self.run.as_mut().expect("running");
+        run.recorder.step(input);
         let p = run.game.progress();
-        if progress::further(p, run.furthest) {
+        if !run.from_dialog && progress::further(p, run.furthest) {
             run.furthest = Some(p);
             if let Err(e) = progress::save(&self.home, p) {
                 eprintln!("superfrog: could not save progress: {e}");
@@ -524,6 +555,10 @@ impl App {
         }
         run.shown.completed((n, size, rgba));
         run.picture = picture;
+        if run.recorder.full() {
+            eprintln!("superfrog: the recording is a day long, the longest one may be: stopped");
+            self.save_recording();
+        }
         if self.args.max_frames == Some(n) {
             self.finish(event_loop);
         }

@@ -23,11 +23,39 @@ pub fn filled(home: &Path) -> [bool; SLOTS as usize] {
     std::array::from_fn(|i| path(home, i as u8 + 1).is_file())
 }
 
-/// Write `game` to slot `slot`, tagged with this build and `cache_hash`.
-pub fn save(home: &Path, slot: u8, game: &Game, build: &str, cache_hash: &[u8; 32]) -> Result<(), String> {
+/// Slot `slot`'s mark that its game was started from Game → Start Level… (bug-recorder DESIGN
+/// §2.1): beside the state, not in it, so the state format stays the core's.
+pub fn dialog_mark(home: &Path, slot: u8) -> PathBuf {
+    home.join(format!("states/slot-{slot}.from-dialog"))
+}
+
+/// Write `game` to slot `slot`, tagged with this build and `cache_hash`; `from_dialog` when the
+/// game was started from the dialog, so loading it never moves the saved progress either.
+pub fn save(
+    home: &Path,
+    slot: u8,
+    game: &Game,
+    from_dialog: bool,
+    build: &str,
+    cache_hash: &[u8; 32],
+) -> Result<(), String> {
     let p = path(home, slot);
     atomic_write(&p, &game.save(build, cache_hash))
-        .map_err(|e| format!("Save state {slot} could not be written ({}): {e}", p.display()))
+        .map_err(|e| format!("Save state {slot} could not be written ({}): {e}", p.display()))?;
+    let m = dialog_mark(home, slot);
+    let marked = match from_dialog {
+        true => atomic_write(&m, b""),
+        false => match std::fs::remove_file(&m) {
+            Err(e) if e.kind() != std::io::ErrorKind::NotFound => Err(e),
+            _ => Ok(()),
+        },
+    };
+    marked.map_err(|e| format!("Save state {slot}'s Start Level mark could not be written ({}): {e}", m.display()))
+}
+
+/// Was slot `slot`'s game started from the dialog?
+pub fn from_dialog(home: &Path, slot: u8) -> bool {
+    dialog_mark(home, slot).is_file()
 }
 
 /// The game slot `slot` holds, or the message saying why it cannot be loaded.
@@ -84,8 +112,12 @@ mod tests {
         assert_eq!(path(&home, 2), home.join("states/slot-2.sfstate"));
         assert_eq!(filled(&home), [false; 5]);
         let game = Game::new(&sf_core::GameData::default(), sf_core::Start::PowerOn { seed: sf_core::Rng::default() });
-        save(&home, 2, &game, "b", &[1; 32]).unwrap();
+        save(&home, 2, &game, true, "b", &[1; 32]).unwrap();
         assert_eq!(filled(&home), [false, true, false, false, false]);
+        assert!(from_dialog(&home, 2), "saved from a dialog game");
+        save(&home, 2, &game, false, "b", &[1; 32]).unwrap();
+        assert!(!from_dialog(&home, 2), "the next save into the slot clears the mark");
+        assert!(!from_dialog(&home, 1));
         let display = Arc::new(DisplayData::default());
         assert!(load(&home, 2, display.clone(), "b", &[1; 32]).unwrap() == game);
         assert_eq!(load(&home, 1, display.clone(), "b", &[1; 32]).err().unwrap(), "Save state 1 is empty.");

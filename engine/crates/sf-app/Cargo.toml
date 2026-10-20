@@ -39,6 +39,7 @@ gilrs = "0.11"
 [target.'cfg(target_os = "macos")'.dependencies]
 # One AppKit default: keep AppKit from adding its own "Enter Full Screen" to the View menu (menu.rs).
 objc2 = "0.6"
-# The Controls window's native labels and buttons (T25), on a window winit opens.
-objc2-app-kit = { version = "0.3", default-features = false, features = ["std", "NSResponder", "NSView", "NSControl", "NSButton", "NSTextField", "NSText", "NSColor", "NSFont", "NSAccessibilityProtocols", "NSAccessibilityConstants", "objc2-core-foundation"] }
+# The Controls window's native labels and buttons (T25), on a window winit opens; NSPasteboard puts a
+# saved bug zip's path on the clipboard (bug-recorder T06).
+objc2-app-kit = { version = "0.3", default-features = false, features = ["std", "NSResponder", "NSView", "NSControl", "NSButton", "NSTextField", "NSText", "NSColor", "NSFont", "NSAccessibilityProtocols", "NSAccessibilityConstants", "NSPasteboard", "objc2-core-foundation"] }
 objc2-foundation = { version = "0.3", default-features = false, features = ["std", "NSUserDefaults", "NSString", "NSDictionary", "NSValue", "NSGeometry", "NSObject"] }
