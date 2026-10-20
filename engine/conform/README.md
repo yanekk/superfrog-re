@@ -178,6 +178,22 @@ run wholly inside it is printed as known, not failed (`game-whole`'s 180 880–1
 `examples/channel_runs` lists every run past any length, `examples/channel_window` both sides'
 levels over a stretch.
 
+## Replaying a bug zip (bug-recorder T04)
+
+```sh
+cargo run -q --release -p sf-conform -- bug replay ../bugs/bug-W1-2-2026-10-20-1412.zip
+cargo run -q --release -p sf-conform -- bug replay <zip> --out /tmp/bug --frames 1200..1500 --every 5
+```
+
+A bug zip from the app (bug-recorder DESIGN §2.5) replayed headlessly: the level started as its
+`recording.txt` says (`Game::start_level`), one engine step per recorded input, unpaced, as the app
+played it. It writes `frame-NNNNNN.png` for the frames asked (`A..B`, B left out, every Nth from A;
+default the last 250) into `--out`, by default `~/.cache/superfrog-re/bugs/<zip stem>/`, never the
+repo (the pictures are disk-derived). Then one line each: `frames N`, `stopped-at <recorded>`,
+`replay-at <location>`, `screenshot equal|differs (P pixels)`. Exit 0 whatever the comparison says
+(a fixed engine is meant to differ); a zip it cannot read is refused with the reason, exit 2. The
+replay draws the 4:3 view. `sf_conform::bug` holds `read_zip` and `replay` for tests.
+
 ## Which cases the test block runs (T181)
 
 Every case green under the faithful checks has a test in `crates/sf-conform/tests/`: those with

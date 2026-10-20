@@ -13,7 +13,7 @@ writes a cell also fixes the over-budget cell they walk past.
 
 **Status:** Plan written 2026-10-20; nothing built.
 **Last updated:** 2026-10-20
-**Next `pir-work` will:** T04, T05 once T04 is reviewed, T06.
+**Next `pir-work` will:** T05 (T03, T04 done), T06.
 
 ## Tasks
 
@@ -26,7 +26,7 @@ done · ⛔ blocked, needs a human.
 | T01 | recording-format | T00 | ✅ | |
 | T02 | level-start | T01 | ✅ | |
 | T03 | original-start | T02 | ✅ | Review clean, no fix commit. Ran all 12 tests (6 slow) green; mutations caught (no `rng_state` copy; lives presses inverted); `music_fade`/`map_blink` dropped fails only WW-1; 400-frame faithful Setup cases on WW-1, WB-1, W4-3 green. Channel-check start open (FINDINGS). |
-| T04 | replay-tool | T01, T02 | ⬜ | |
+| T04 | replay-tool | T01, T02 | ✅ | |
 | T05 | compare-tool | T03, T04 | ⬜ | |
 | T06 | app-recorder | T02 | ⬜ | |
 | T07 | app-replay | T06 | ⬜ | |
