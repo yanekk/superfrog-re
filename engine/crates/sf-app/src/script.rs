@@ -46,15 +46,35 @@
 //! open /tmp/out/W1-1.sflevel    # Play Level File…'s open panel (or `open cancel`)
 //! answer disk-level             # a refused level file: play its disk level (or `answer cancel`)
 //! ```
+//!
+//! The bug recorder's (bug-recorder T06). `start-level` is Game ▸ Start Level… chosen at its frame
+//! with its dialog answered so (`menu start-level` alone takes the next answer, none being cancel);
+//! the other two answer their questions in order, whenever they are asked:
+//!
+//! ```text
+//! 5: start-level W1-2 lives=7 points=1000 energy=3 difficulty=easy spud wings record
+//!                               # any value left out is the dialog's default (W1-1's new game);
+//!                               # `record` turns the recorder on; `5: start-level cancel`
+//! answer-recording save         # "Recording in progress": `save`, `discard` or `cancel`
+//! note black screen here        # the save window's note, and Save (`note` alone: an empty note;
+//!                               # `note discard`: Discard)
+//! 9: menu stop-recording        # Game ▸ Stop Recording, ⌘.
+//! ```
+//!
+//! Test-only: `N: exit` sets the level's exit as reaching it does (`level_state` 1, as conformance
+//! cases force it), so a test passes a level's end without a route that plays it.
 
 use std::path::PathBuf;
 
 use winit::keyboard::KeyCode;
 
+use sf_core::recording::{Difficulty, LevelSetup, Lives};
+
 use crate::controls_window::ControlsAction;
 use crate::import::Pick;
 use crate::input::{HostInput, key_named};
 use crate::menu::Command;
+use crate::recorder::EndChoice;
 use crate::pad::{PadEvent, PadInput, StickAxis};
 use crate::settings::Scale;
 
@@ -70,6 +90,8 @@ pub enum Event {
     Command(Command),
     /// A click in the Controls window, as though it were made.
     Controls(ControlsAction),
+    /// Test-only: the level's exit set, as reaching it sets it.
+    Exit,
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
@@ -87,6 +109,12 @@ pub struct Script {
     pub opens: Vec<Option<PathBuf>>,
     /// A refused level file's answers, in order: `true` for playing the disk level.
     pub level_answers: Vec<bool>,
+    /// Start Level's answers, in order: the values and whether to record, `None` for cancelled.
+    pub starts: Vec<Option<(LevelSetup, bool)>>,
+    /// "Recording in progress"'s answers, in order.
+    pub endings: Vec<EndChoice>,
+    /// The save window's answers, in order: the note, `None` for Discard.
+    pub notes: Vec<Option<String>>,
 }
 
 impl Script {
@@ -129,6 +157,22 @@ impl Script {
                     (Some("cancel"), 2) => s.level_answers.push(false),
                     _ => return Err(err("`answer` takes `choose`, `quit`, `disk-level` or `cancel`")),
                 }
+                continue;
+            }
+            if words[0] == "answer-recording" {
+                s.endings.push(match (words.get(1).copied(), words.len()) {
+                    (Some("save"), 2) => EndChoice::Save,
+                    (Some("discard"), 2) => EndChoice::Discard,
+                    (Some("cancel"), 2) => EndChoice::Cancel,
+                    _ => return Err(err("`answer-recording` takes `save`, `discard` or `cancel`")),
+                });
+                continue;
+            }
+            if words[0] == "note" {
+                s.notes.push(match line["note".len()..].trim() {
+                    "discard" => None,
+                    note => Some(note.to_string()),
+                });
                 continue;
             }
             if words[0] == "save" || words[0] == "open" {
@@ -190,6 +234,11 @@ impl Script {
                 }))],
                 (Some("shot"), 2) => vec![Event::Shot],
                 (Some("continue"), 2) => vec![Event::Command(Command::ContinueFromProgress)],
+                (Some("exit"), 2) => vec![Event::Exit],
+                (Some("start-level"), 3..) => {
+                    s.starts.push(level_start(&words[2..]).map_err(|why| err(&why))?);
+                    vec![Event::Command(Command::StartLevel)]
+                }
                 (Some("controls"), 3..) => match ControlsAction::named(&words[2..]) {
                     Some(a) => vec![Event::Controls(a)],
                     None => return Err(err("`controls` takes an input and `keys` or `pad`, `defaults` or `close`")),
@@ -213,6 +262,45 @@ impl Script {
             .filter(move |(f, _)| *f == frame)
             .map(|(_, e)| *e)
     }
+}
+
+/// A `start-level` line's answer: `cancel`, or a level id then any of `lives=3|5|7`,
+/// `points=N`, `energy=1..4`, `difficulty=easy|normal`, `spud`, `wings`, `record`.
+fn level_start(words: &[&str]) -> Result<Option<(LevelSetup, bool)>, String> {
+    if words == ["cancel"] {
+        return Ok(None);
+    }
+    let mut setup = LevelSetup {
+        level: words[0].parse()?,
+        ..LevelSetup::default()
+    };
+    let mut record = false;
+    for w in &words[1..] {
+        let bad = || format!("`{w}`: start-level takes lives=3|5|7, points=N, energy=1..4, difficulty=easy|normal, spud, wings, record");
+        match w.split_once('=') {
+            None => match *w {
+                "spud" => setup.spud = true,
+                "wings" => setup.wings = true,
+                "record" => record = true,
+                _ => return Err(bad()),
+            },
+            Some(("lives", n)) => {
+                setup.lives = match n {
+                    "3" => Lives::Three,
+                    "5" => Lives::Five,
+                    "7" => Lives::Seven,
+                    _ => return Err(bad()),
+                }
+            }
+            Some(("points", n)) => setup.points = n.parse().map_err(|_| bad())?,
+            Some(("energy", n)) => setup.energy = n.parse().map_err(|_| bad())?,
+            Some(("difficulty", "easy")) => setup.difficulty = Difficulty::Easy,
+            Some(("difficulty", "normal")) => setup.difficulty = Difficulty::Normal,
+            _ => return Err(bad()),
+        }
+    }
+    setup.validate()?;
+    Ok(Some((setup, record)))
 }
 
 /// A `pad …` line's events: `connect N`, `disconnect N`, `down|up|press N BUTTON`, `stick N X Y`.
@@ -371,6 +459,58 @@ mod tests {
         assert_eq!(at(9), vec![pad(PadEvent::Button { pad: 0, button: PadInput::DPadLeft, pressed: true })]);
         assert_eq!(at(10), vec![pad(PadEvent::Button { pad: 0, button: PadInput::DPadLeft, pressed: false })]);
         assert_eq!(at(11), vec![pad(PadEvent::Disconnected(2))]);
+    }
+
+    #[test]
+    fn the_recorder_s_events_and_answers_parse() {
+        let s = Script::parse(
+            "5: start-level W1-2 lives=7 points=1000 energy=3 difficulty=easy spud wings record\n\
+             6: start-level cancel\n7: start-level WB-1\n8: menu stop-recording\n9: menu start-level\n\
+             answer-recording save\nanswer-recording discard\nanswer-recording cancel\n\
+             note black screen # after the slot\nnote\nnote discard\n10: exit\n",
+        )
+        .unwrap();
+        let at = |n| s.at(n).collect::<Vec<_>>();
+        assert_eq!(at(5), vec![Event::Command(Command::StartLevel)]);
+        assert_eq!(at(8), vec![Event::Command(Command::StopRecording)]);
+        assert_eq!(at(9), vec![Event::Command(Command::StartLevel)]);
+        assert_eq!(at(10), vec![Event::Exit]);
+        let w1_2 = LevelSetup {
+            level: "W1-2".parse().unwrap(),
+            lives: Lives::Seven,
+            points: 1000,
+            energy: 3,
+            difficulty: Difficulty::Easy,
+            spud: true,
+            wings: true,
+        };
+        let wb_1 = LevelSetup { level: "WB-1".parse().unwrap(), ..LevelSetup::default() };
+        assert_eq!(s.starts, vec![Some((w1_2, true)), None, Some((wb_1, false))]);
+        assert_eq!(s.endings, vec![EndChoice::Save, EndChoice::Discard, EndChoice::Cancel]);
+        assert_eq!(s.notes, vec![Some("black screen".into()), Some(String::new()), None]);
+    }
+
+    #[test]
+    fn a_start_level_out_of_the_dialog_s_range_is_refused() {
+        for bad in [
+            "5: start-level",
+            "5: start-level W7-1",
+            "5: start-level W6-2alt",
+            "5: start-level W1-1 lives=4",
+            "5: start-level W1-1 energy=0",
+            "5: start-level W1-1 energy=5",
+            "5: start-level W1-1 points=1000000",
+            "5: start-level W1-1 points=-1",
+            "5: start-level W1-1 difficulty=hard",
+            "5: start-level W1-1 recorder",
+            "5: start-level W1-1 lives",
+            "answer-recording",
+            "answer-recording keep",
+            "5: exit now",
+        ] {
+            let e = Script::parse(&format!("\n{bad}")).unwrap_err();
+            assert!(e.contains("line 2"), "{bad}: {e}");
+        }
     }
 
     #[test]

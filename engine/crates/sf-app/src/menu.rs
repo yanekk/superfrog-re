@@ -4,23 +4,30 @@
 //! ```text
 //! Superfrog   About Superfrog · Services · Hide, Hide Others, Show All · Quit Superfrog ⌘Q
 //! File        Import Disks… · Export Level ▸ W1-1… … WW-1… · Play Level File…
-//! Game        Continue from World N · Pause · Reset · Controls… · Save State ▸ 1–5 ⇧⌘1–5 · Load State ▸ 1–5 ⌘1–5
+//! Game        Continue from World N · Start Level… · Stop Recording ⌘. · Pause · Reset · Controls… ·
+//!             Save State ▸ 1–5 ⇧⌘1–5 · Load State ▸ 1–5 ⌘1–5
 //! View        Scale ▸ 1× 2× 3× Auto · Fullscreen ⌃⌘F · CRT Filter · Widescreen
 //! ```
 //!
 //! A [`Command`] is the only path from the menu to the app's state: a menu click, its shortcut, a
 //! script's `menu …` event and a key combination `input.rs` reserves for the app all become one,
 //! and [`App::on_command`] acts on it. T25–T28 add their items as further variants.
+//!
+//! While a bug recording runs (`recorder.rs`), the commands that would change the game end it, and
+//! first ask "Recording in progress" (bug-recorder DESIGN §2.2): Load State, Start Level, Reset,
+//! Continue, Import Disks, Play Level File and Quit. The rest leave it running.
 
 use muda::accelerator::{Accelerator, Code, Modifiers};
 use muda::{
     AboutMetadata, CheckMenuItem, Menu, MenuEvent, MenuItem, PredefinedMenuItem, Submenu,
 };
 use sf_core::{Game, LevelId, Progress, Rng, Start};
+use sf_core::recording::Location;
 use sf_paula::Paula;
 use winit::event_loop::ActiveEventLoop;
 
 use crate::App;
+use crate::recorder::{EndChoice, Recorder};
 use crate::settings::Scale;
 use crate::states::SLOTS;
 
@@ -36,6 +43,11 @@ pub enum Command {
     PlayLevelFile,
     /// Game → Continue from World N: the furthest world reached, as its level code starts it.
     ContinueFromProgress,
+    /// Game → Start Level…: the dialog; the level started with its values, recording or not
+    /// (bug-recorder DESIGN §2.1).
+    StartLevel,
+    /// Game → Stop Recording, ⌘.: the save window for the recording running (§2.3, §2.4).
+    StopRecording,
     /// View → Scale.
     Scale(Scale),
     /// View → Fullscreen, ⌃⌘F.
@@ -78,6 +90,8 @@ impl Command {
             Command::ExportLevel(id) => format!("export-{id}"),
             Command::PlayLevelFile => "play-level-file".into(),
             Command::ContinueFromProgress => "continue".into(),
+            Command::StartLevel => "start-level".into(),
+            Command::StopRecording => "stop-recording".into(),
             Command::Scale(Scale::Auto) => "scale-auto".into(),
             Command::Scale(Scale::N(n)) => format!("scale-{n}"),
             Command::ToggleFullscreen => "fullscreen".into(),
@@ -97,6 +111,8 @@ impl Command {
         Some(match id {
             "import" => Command::ImportDisks,
             "continue" => Command::ContinueFromProgress,
+            "start-level" => Command::StartLevel,
+            "stop-recording" => Command::StopRecording,
             "scale-auto" => Command::Scale(Scale::Auto),
             "fullscreen" => Command::ToggleFullscreen,
             "crt" => Command::ToggleCrt,
@@ -151,6 +167,8 @@ pub struct MenuState {
     pub widescreen: bool,
     /// Which save-state slots hold a state: Load State ▸ N can be chosen only then.
     pub states: [bool; SLOTS as usize],
+    /// A bug recording is running: Stop Recording can be chosen only then.
+    pub recording: bool,
 }
 
 /// The number key for slot `n` (1–5), its shortcut's key.
@@ -162,6 +180,7 @@ pub fn slot_key(n: u8) -> Code {
 pub struct MenuBar {
     menu: Menu,
     continue_item: MenuItem,
+    stop_recording: MenuItem,
     pause: CheckMenuItem,
     scales: Vec<(Scale, CheckMenuItem)>,
     fullscreen: CheckMenuItem,
@@ -196,6 +215,12 @@ pub fn build_menu() -> MenuBar {
         Some(Accelerator::new(Modifiers::META, Code::KeyQ)),
     );
     let continue_item = MenuItem::with_id(Command::ContinueFromProgress.id(), continue_title(None), false, None);
+    let stop_recording = MenuItem::with_id(
+        Command::StopRecording.id(),
+        "Stop Recording",
+        false,
+        Some(Accelerator::new(Modifiers::META, Code::Period)),
+    );
     let pause = check(Command::Pause, "Pause", None);
     let scales: Vec<(Scale, CheckMenuItem)> = SCALES
         .iter()
@@ -265,6 +290,8 @@ pub fn build_menu() -> MenuBar {
         true,
         &[
             &continue_item,
+            &item(Command::StartLevel, "Start Level…", None),
+            &stop_recording,
             &PredefinedMenuItem::separator(),
             &pause,
             &item(Command::Reset, "Reset", None),
@@ -297,6 +324,7 @@ pub fn build_menu() -> MenuBar {
     MenuBar {
         menu,
         continue_item,
+        stop_recording,
         pause,
         scales,
         fullscreen,
@@ -327,6 +355,7 @@ impl MenuBar {
         }
         self.continue_item.set_text(continue_title(s.furthest));
         self.continue_item.set_enabled(continue_world(s.furthest).is_some());
+        self.stop_recording.set_enabled(s.recording);
         self.pause.set_checked(s.paused);
         for (scale, i) in &self.scales {
             i.set_checked(*scale == s.scale);
@@ -374,11 +403,18 @@ impl App {
         let Some(run) = &self.run else { return };
         // The step it came after, so a test can line the frames up with it.
         eprintln!("superfrog: menu {} after step {}", c.id(), run.steps);
+        if let Some(action) = self.ends_recording(c)
+            && !self.end_recording(&action)
+        {
+            return self.show_menu();
+        }
         match c {
             Command::ImportDisks => self.import_disks(),
             Command::ExportLevel(id) => self.export_level(id),
             Command::PlayLevelFile => self.play_level_file(),
             Command::ContinueFromProgress => self.continue_game(),
+            Command::StartLevel => self.start_level(),
+            Command::StopRecording => self.stop_recording(),
             Command::Scale(s) => self.set_scale(s),
             Command::ToggleFullscreen => self.toggle_fullscreen(),
             Command::ToggleCrt => self.toggle_crt(),
@@ -410,12 +446,146 @@ impl App {
             crt: run.settings.crt,
             widescreen: run.settings.widescreen,
             states: run.states,
+            recording: run.recorder.is_recording(),
         });
+    }
+
+    /// What "Recording in progress" calls `c`, when taking it would end the recording running:
+    /// a command that replaces the game or ends the app. A disabled one (Continue before World 2,
+    /// an empty slot's Load State) changes nothing and asks nothing.
+    fn ends_recording(&self, c: Command) -> Option<String> {
+        let run = self.run.as_ref()?;
+        if !run.recorder.is_recording() {
+            return None;
+        }
+        Some(match c {
+            Command::LoadState(n) if run.states[n as usize - 1] => format!("Load State {n}"),
+            Command::StartLevel => "Start Level".into(),
+            Command::Reset => "Reset".into(),
+            Command::ContinueFromProgress if continue_world(run.furthest).is_some() => {
+                continue_title(run.furthest)
+            }
+            Command::ImportDisks => "Import Disks".into(),
+            Command::PlayLevelFile => "Play Level File".into(),
+            Command::Quit => "Quit".into(),
+            _ => return None,
+        })
+    }
+
+    /// Ask "Recording in progress" before `action`: `false` for Cancel (still recording, the
+    /// action not taken); else the recording saved or dropped as answered, and the action goes on.
+    fn end_recording(&mut self, action: &str) -> bool {
+        let choice = self.ui.recording_in_progress(action);
+        self.after_panel();
+        match choice {
+            EndChoice::Cancel => {
+                eprintln!("superfrog: {action} cancelled; still recording");
+                false
+            }
+            EndChoice::Discard => {
+                self.run.as_mut().expect("running").recorder = Recorder::Off;
+                eprintln!("superfrog: recording discarded");
+                true
+            }
+            EndChoice::Save => {
+                self.save_recording();
+                true
+            }
+        }
+    }
+
+    /// Game → Stop Recording, ⌘.: the save window; refused when no recording runs (the item is
+    /// disabled then).
+    pub(crate) fn stop_recording(&mut self) {
+        if !self.run.as_ref().is_some_and(|r| r.recorder.is_recording()) {
+            eprintln!("superfrog: not recording");
+            return;
+        }
+        self.save_recording();
+    }
+
+    /// The save window for the recording, which ends here (DESIGN §2.4): its screenshot the
+    /// picture of the last frame recorded at 1×, where play is, the zip's name. Saved, the path is
+    /// on the clipboard and in a notice; a write that fails says so and asks again, so the note
+    /// is not lost and the recording is kept until it is saved or discarded (§2.11).
+    pub(crate) fn save_recording(&mut self) {
+        let run = self.run.as_mut().expect("running");
+        let at: Location = run.game.location();
+        let Some(mut rec) = std::mem::take(&mut run.recorder).finish(at, String::new()) else {
+            return;
+        };
+        let pic = &run.picture;
+        let shot = crate::capture::png(pic.width as u32, pic.height as u32, &crate::video::picture_rgba(pic));
+        let path = crate::recorder::zip_name(
+            &self.bugs_dir,
+            crate::recorder::named_level(&at, &rec),
+            crate::recorder::local_now(),
+        );
+        let name = path.file_name().unwrap_or_default().to_string_lossy().into_owned();
+        loop {
+            let Some(note) = self.ui.save_recording(&shot, &at, &name) else {
+                eprintln!("superfrog: recording discarded");
+                break;
+            };
+            rec.note = note.replace(['\n', '\r'], " ");
+            match crate::recorder::write_zip(&path, &rec, &shot) {
+                Ok(()) => {
+                    let shown = path.display().to_string();
+                    eprintln!("superfrog: recording saved to {shown} ({} frames)", rec.inputs.len());
+                    self.ui.copy(&shown);
+                    self.ui.notice(&format!("The bug recording is saved as {shown}. Its path is on the clipboard."));
+                    break;
+                }
+                Err(e) => {
+                    let m = format!("The bug recording could not be saved as “{}”: {e}.", path.display());
+                    eprintln!("superfrog: {m}");
+                    self.ui.notice(&m);
+                }
+            }
+        }
+        self.after_panel();
+    }
+
+    /// Game → Start Level…: the dialog, then the level started fresh with its values (DESIGN
+    /// §2.1), recording from its first frame when the recorder was on. The game it replaces never
+    /// moves the saved progress from here on. Cancelled, the game carries on.
+    fn start_level(&mut self) {
+        let answer = self.ui.start_level();
+        self.after_panel();
+        let Some((setup, record)) = answer else { return };
+        if let Err(why) = setup.validate() {
+            let m = format!("That level cannot be started: {why}.");
+            eprintln!("superfrog: {m}");
+            return self.ui.notice(&m);
+        }
+        let run = self.run.as_mut().expect("running");
+        let seed = Rng::seeded(run.seed.0, run.seed.1);
+        run.game = Game::start_level(run.display.clone(), &setup, seed);
+        run.game.set_view(crate::window::view(run.settings.widescreen));
+        run.paula = Paula::booted(run.rate);
+        run.paused = false;
+        run.from_dialog = true;
+        run.recorder = match record {
+            true => Recorder::start(setup, seed, crate::home::build()),
+            false => Recorder::Off,
+        };
+        // Frame 0 at once: the picture a STOP before any step would save.
+        let pic = run.game.render(run.game.view());
+        let size = (pic.width as u32, pic.height as u32);
+        run.shown.completed((run.steps, size, crate::video::picture_rgba(&pic)));
+        run.picture = pic;
+        let recording = if record { ", recording" } else { "" };
+        eprintln!("superfrog: started {} after step {}{recording}", setup.level, run.steps);
+        // Starting ran the game unseen for seconds: carry on from now rather than catching up.
+        self.after_panel();
+        self.show_newest();
     }
 
     /// Power-on, as a fresh launch makes it: the same seed, a new sound chip, not paused.
     fn power_on(&mut self) {
+        eprintln!("superfrog: power-on");
         let run = self.run.as_mut().expect("running");
+        run.from_dialog = false;
         let seed = Rng::seeded(run.seed.0, run.seed.1);
         run.game = Game::with_display(run.display.clone(), Start::PowerOn { seed });
         run.game.set_view(crate::window::view(run.settings.widescreen));
@@ -473,6 +643,8 @@ impl App {
             eprintln!("superfrog: no progress to continue from: Continue opens at World 2");
             return;
         };
+        eprintln!("superfrog: continuing from World {}", p.world);
+        run.from_dialog = false;
         let seed = Rng::seeded(run.seed.0, run.seed.1);
         run.game = Game::start_at_with(run.display.clone(), &p, seed);
         run.game.set_view(crate::window::view(run.settings.widescreen));
@@ -521,6 +693,8 @@ mod tests {
             Command::ImportDisks,
             Command::PlayLevelFile,
             Command::ContinueFromProgress,
+            Command::StartLevel,
+            Command::StopRecording,
             Command::Scale(Scale::N(1)),
             Command::Scale(Scale::N(3)),
             Command::Scale(Scale::Auto),
