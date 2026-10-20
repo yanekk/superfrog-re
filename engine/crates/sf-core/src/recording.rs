@@ -53,11 +53,13 @@ const LIFE_EVERY: u32 = 200_000;
 /// holds `frames` inputs, so without a bound a header of a few bytes asks for 128 GB.
 pub const MAX_FRAMES: u32 = 50 * 60 * 60 * 24;
 
-/// The screens [`Location::Screen`] names (DESIGN §2.6; `Game::location`, T02).
-pub const SCREENS: [&str; 8] = [
+/// The screens [`Location::Screen`] names (DESIGN §2.6; `Game::location`, T02). `world end` is the
+/// end-of-world picture after a world's fourth level (owner, T02, 2026-10-20).
+pub const SCREENS: [&str; 9] = [
     "title",
     "intro",
     "world map",
+    "world end",
     "tally",
     "slot machine",
     "game over",
@@ -163,9 +165,30 @@ impl Default for LevelSetup {
     }
 }
 
+/// The levels a setup starts: the 26 a game plays, W1-1..W6-4, the bonus level and the final level.
+/// W6's second map set (`W6-2alt`..) is left out: a game started as a player starts one
+/// (`Game::start_level`) never loads it (owner, T02, 2026-10-20).
+pub fn levels() -> Vec<LevelId> {
+    use sf_assets::World;
+    let mut v: Vec<LevelId> = World::ALL[..6]
+        .iter()
+        .flat_map(|&world| (1..=4).map(move |level| LevelId { world, level, alt: false }))
+        .collect();
+    for world in [World::Bonus, World::Final] {
+        v.push(LevelId { world, level: 1, alt: false });
+    }
+    v
+}
+
 impl LevelSetup {
     /// Whether the values are in the dialog's ranges.
     pub fn validate(&self) -> Result<(), String> {
+        if !levels().contains(&self.level) {
+            return Err(format!(
+                "level {} is not one a game plays from its start (W1-1..W6-4, WB-1, WW-1)",
+                self.level
+            ));
+        }
         if self.points > MAX_POINTS {
             return Err(format!(
                 "points {} is more than the score's six digits hold ({MAX_POINTS})",
@@ -199,6 +222,20 @@ impl fmt::Display for Location {
             Location::Level { id, col, row } => write!(f, "{id}:{col},{row}"),
             Location::Screen(name) => f.write_str(name),
         }
+    }
+}
+
+/// As its text: a save state carries the last place a game showed (`Game::location`).
+impl serde::Serialize for Location {
+    fn serialize<S: serde::Serializer>(&self, ser: S) -> Result<S::Ok, S::Error> {
+        ser.collect_str(self)
+    }
+}
+
+impl<'de> serde::Deserialize<'de> for Location {
+    fn deserialize<D: serde::Deserializer<'de>>(de: D) -> Result<Location, D::Error> {
+        let s = <String as serde::Deserialize>::deserialize(de)?;
+        s.parse().map_err(serde::de::Error::custom)
     }
 }
 
@@ -817,5 +854,32 @@ mod tests {
         ] {
             assert!(bad.parse::<Location>().is_err(), "{bad}");
         }
+    }
+
+    #[test]
+    fn a_setup_starts_the_26_levels_a_game_plays_and_no_second_map() {
+        let all = levels();
+        assert_eq!(all.len(), 26);
+        assert_eq!((all[0], all[23], all[24], all[25]), (id("W1-1"), id("W6-4"), id("WB-1"), id("WW-1")));
+        for level in all {
+            assert_eq!(LevelSetup { level, ..LevelSetup::default() }.validate(), Ok(()));
+        }
+        for alt in ["W6-2alt", "W6-3alt", "W6-4alt"] {
+            let s = LevelSetup { level: id(alt), ..LevelSetup::default() };
+            assert!(s.validate().unwrap_err().contains(alt), "{alt}");
+        }
+    }
+
+    #[test]
+    fn a_location_is_carried_as_its_text() {
+        for l in [
+            Location::Screen("world end"),
+            Location::Level { id: id("W6-4"), col: 299, row: 83 },
+        ] {
+            let bytes = bincode::serialize(&l).unwrap();
+            assert_eq!(bincode::deserialize::<Location>(&bytes).unwrap(), l);
+        }
+        let bad = bincode::serialize("nowhere").unwrap();
+        assert!(bincode::deserialize::<Location>(&bad).is_err());
     }
 }

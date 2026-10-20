@@ -13,8 +13,9 @@ use crate::input::{FrameInput, KeySet};
 use crate::layout::{AmigaMemory, Ram, VarId, h0};
 use crate::level::Hw;
 use crate::render::{DisplayData, Picture, View};
+use crate::recording::{LevelSetup, Location};
 use crate::rng::Rng;
-use crate::scene::{Machine, Scene};
+use crate::scene::{Machine, Scene, SceneKind};
 use crate::state::State;
 
 /// Where a game starts.
@@ -248,6 +249,8 @@ pub struct Game {
     /// The `.sflevel` maps put in `display` in place of the disks' ([`Game::with_override`]),
     /// encoded: a save state carries them, as it does not carry `display`.
     overrides: Vec<(LevelId, Vec<u8>)>,
+    /// The last place [`Game::location`] named, for a frame that names none (a fade's blank list).
+    place: Option<Location>,
     /// The Paula writes of each vertical blank the last [`Game::load_blanks`] ran, until
     /// [`Game::take_load_paula`] takes them (T30). Not in a save state.
     #[serde(skip)]
@@ -256,6 +259,16 @@ pub struct Game {
 
 /// [`Game::type_code`] gives up waiting for the title after this many frames.
 const START_AT_FRAMES: u32 = 4000;
+
+/// `opt_lives` and `opt_game_mode` as power-on leaves them: 3 lives, normal.
+const POWER_ON_OPTIONS: (u8, u8) = (0, 1);
+
+/// [`Game::start_level`] gives up on reaching the level after this many frames from START GAME
+/// (the original's loads, held instant here, and the final level's way through W6-4's tally).
+const START_LEVEL_FRAMES: u32 = 20_000;
+
+/// `level_state` (h0+$a06): 1 ends the level as its exit does.
+const LEVEL_STATE: u32 = h0(0xa06);
 
 /// When [`Game::type_code`] presses what on the options screen, in frames: OPTIONS taken after
 /// the menu's down, the first down to LEVEL CODE after that, each next down after the last, the
@@ -409,6 +422,7 @@ impl Game {
             unported: level_unported.clone(),
             level_unported,
             overrides: Vec::new(),
+            place: None,
             load_paula: Vec::new(),
         }
     }
@@ -441,6 +455,9 @@ impl Game {
             self.state.w(VBL_COUNT),
         );
         self.passes += self.passes_ended as u64;
+        if let Some(p) = self.place_now() {
+            self.place = Some(p);
+        }
         if let Some(p) = self.playing() {
             self.progress = p;
         }
@@ -927,6 +944,15 @@ impl Game {
     /// the options screen, which shows nothing the engine reads back, by `times`, frames from
     /// OPTIONS taken. Returns on the frame after START GAME is taken.
     pub fn type_code(&mut self, code: Option<[u8; 6]>, times: &CodeTimes) {
+        self.type_code_with(code, (POWER_ON_OPTIONS, POWER_ON_OPTIONS), times);
+    }
+
+    /// [`Game::type_code`], the options screen's LIVES and GAME MODE moved on the way to LEVEL CODE
+    /// from what the options screen shows now (`from`, power-on's 0 and 1 for a game just switched
+    /// on) to `to` (`opt_lives`, `opt_game_mode`): from the cursor on LIVES, right or left once per
+    /// step, down, the same for the mode, down twice. Each press is held 10 frames, the next 40
+    /// after it, as the first down was; bug-recorder T00 measured this on the original.
+    pub fn type_code_with(&mut self, code: Option<[u8; 6]>, (from, to): ((u8, u8), (u8, u8)), times: &CodeTimes) {
         use crate::input::Joy;
         let joy = |joy: Joy| FrameInput { joy, ..FrameInput::NONE };
         let wait = |g: &mut Game| {
@@ -947,12 +973,22 @@ impl Game {
                 (times.options, joy(Joy::FIRE)),
                 (times.options + 5, FrameInput::NONE),
             ];
+            // The presses from LIVES to LEVEL CODE, `times.down` apart.
+            let mut presses = Vec::new();
+            let change = |presses: &mut Vec<Joy>, from: u8, to: u8| {
+                let dir = if to > from { Joy::RIGHT } else { Joy::LEFT };
+                presses.extend((0..from.abs_diff(to)).map(|_| dir));
+            };
+            change(&mut presses, from.0, to.0);
+            presses.push(Joy::DOWN);
+            change(&mut presses, from.1, to.1);
+            presses.extend([Joy::DOWN, Joy::DOWN]);
             let mut t = times.options + times.first_down;
-            for k in 0..3 {
+            for (k, j) in presses.into_iter().enumerate() {
                 if k > 0 {
                     t += times.down;
                 }
-                script.push((t, joy(Joy::DOWN)));
+                script.push((t, joy(j)));
                 script.push((t + 10, FrameInput::NONE));
             }
             t += times.first_digit;
@@ -979,6 +1015,100 @@ impl Game {
         self.step(joy(Joy::FIRE));
         wait(self);
         self.step(joy(Joy::FIRE));
+    }
+
+    /// The level `setup.level` at its first frame with the setup's values (bug-recorder DESIGN
+    /// §2.1, D2 as T00 measured it): switched on with `seed`, the options screen's LIVES and GAME
+    /// MODE set and the level's code typed as a player does it ([`Game::type_code_with`]), the game
+    /// run unseen until the level's first frame (the final level: W6-4's code, its exit forced on
+    /// its first frame as `sf-conform`'s sync does, the tally and the final level's load run
+    /// through), then `score`, `frog_next_life`, `frog_hearts`, `frog_spud_on` and `frog_flight`
+    /// written. At frame 0 every gameplay variable equals the original's started the same way
+    /// (T00). Callers validate the setup first; an invalid one panics in debug builds.
+    pub fn start_level(display: Arc<DisplayData>, setup: &LevelSetup, seed: Rng) -> Game {
+        use crate::front::password::{password_for, table};
+        use sf_assets::World;
+        if cfg!(debug_assertions)
+            && let Err(why) = setup.validate()
+        {
+            panic!("start_level: {why}");
+        }
+        let id = setup.level;
+        let progress = match id.world {
+            World::Bonus => Progress { world: 7, level: 1 },
+            World::Final => Progress { world: 6, level: 4 },
+            w => Progress {
+                world: World::ALL.iter().position(|&x| x == w).expect("a world") as u8 + 1,
+                level: id.level,
+            },
+        };
+        let code = password_for(&table(&display.front), &progress)
+            .unwrap_or_else(|| panic!("start_level: the disks have no level code for {id}"));
+        let mut g = Game::with_display(display, Start::PowerOn { seed });
+        let options = (setup.lives.opt_lives(), setup.difficulty.opt_game_mode());
+        g.type_code_with(Some(code.0), (POWER_ON_OPTIONS, options), &CODE_TIMES);
+        let mut forced = false;
+        for _ in 0..START_LEVEL_FRAMES {
+            if g.scene.is_level() {
+                let current = crate::level::load::current_of(&g.state);
+                if current == Some(id) {
+                    break;
+                }
+                // W6-4, on the way to the final level: its exit, as the exit sets it.
+                if id.world == World::Final && !forced {
+                    g.poke(LEVEL_STATE, &1u32.to_be_bytes());
+                    forced = true;
+                }
+            }
+            g.step_unseen(FrameInput::NONE);
+        }
+        assert!(
+            g.scene.is_level() && crate::level::load::current_of(&g.state) == Some(id),
+            "start_level: {id} not reached in {START_LEVEL_FRAMES} frames"
+        );
+        g.poke(h0(0x834), &setup.points.to_be_bytes());
+        g.poke(h0(0x880), &setup.next_life().to_be_bytes());
+        g.poke(h0(0x830), &(setup.energy as u16).to_be_bytes());
+        g.poke(h0(0x852), &(setup.spud as u16).to_be_bytes());
+        g.poke(h0(0x866), &(setup.wings as u16).to_be_bytes());
+        g.place = g.place_now();
+        g
+    }
+
+    /// Where play is (bug-recorder DESIGN §2.6): in a level, its id and the frog's cell as the
+    /// owner addresses tiles (`((frog_x + 0x17) / 16, (frog_y - 0x10) / 16)`, the frog's lower
+    /// half, T00 Q3); otherwise the screen's name ([`SceneKind::screen_name`]). A frame on no named
+    /// screen (a fade's blank list, a list no name covers) is where the last named one was; a game
+    /// that has shown none yet is at the title.
+    pub fn location(&self) -> Location {
+        self.place_now()
+            .or(self.place)
+            .unwrap_or(Location::Screen("title"))
+    }
+
+    /// [`Game::location`] as this frame alone says it.
+    fn place_now(&self) -> Option<Location> {
+        let s = &self.state;
+        let kind = SceneKind::classify(
+            self.scene == Scene::Story,
+            self.cop1lc(),
+            s.l(h0(0x18)) != 0,
+            s.w(h0(0x82e)),
+            s.l(h0(0x40da)) as u16,
+            s.l(h0(0x40de)) as u16,
+        )?;
+        match kind {
+            SceneKind::Level { .. } | SceneKind::BonusLevel { .. } => {
+                let id = crate::level::load::current_of(s)?;
+                let (x, y) = (s.w(h0(0x7d6)), s.w(h0(0x7d8)));
+                Some(Location::Level {
+                    id,
+                    col: x.wrapping_add(0x17) / 16,
+                    row: y.saturating_sub(0x10) / 16,
+                })
+            }
+            k => k.screen_name().map(Location::Screen),
+        }
     }
 
     /// The title waits in its idle, or its menu for a choice: fire in the next frame opens the
