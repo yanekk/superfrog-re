@@ -10,6 +10,7 @@
 //! The CLI (`cargo run -q --release -p sf-conform -- [--strict] run <case.toml> | all | record <case.toml>`)
 //! is in `main.rs`; how to write scripts and cases is in `engine/conform/README.md`.
 
+pub mod bug;
 pub mod case;
 pub mod channels;
 pub mod compare;

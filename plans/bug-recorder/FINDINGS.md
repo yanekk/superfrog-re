@@ -8,6 +8,7 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-20 | 📌 | T04: `bug replay` draws the 4:3 view, so a screenshot taken in widescreen reads `differs` in every pixel. T06 should save the 4:3 picture (`Picture::narrowed`) or the recording must carry the view. |
 | 2026-10-20 | 🔄 | Owner (T02): Start Level offers 26 levels (`sf_core::recording::levels()`), not 29: W6-2alt..W6-4alt are never loaded when a level is started by its code. T08's dropdown takes `levels()`; `LevelSetup::validate` refuses the alt maps. |
 | 2026-10-20 | 🔄 | Owner (T02): screen name `world end` added (end-of-world picture); awards, hall of talent and attract demo read `title`; a fade's blank frame reads as the place before it (`Game::location` keeps the last). |
 | 2026-10-20 | 📌 | T02: `Game::start_level` runs about 2 700 frames from power-on, 4 s a start in the dev build (opt-level 2); WW-1 adds W6-4's forced exit and tally. T06/T08 may want it off the main thread. |
