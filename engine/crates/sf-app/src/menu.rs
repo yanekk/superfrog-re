@@ -16,6 +16,9 @@
 //! While a bug recording runs (`recorder.rs`), the commands that would change the game end it, and
 //! first ask "Recording in progress" (bug-recorder DESIGN §2.2): Load State, Start Level, Reset,
 //! Continue, Import Disks, Play Level File and Quit. The rest leave it running.
+//!
+//! Under `--replay` the replay is watch-only (DESIGN §2.7): only Pause, Quit and the View items
+//! can be chosen ([`Command::during_replay`]); the others are disabled and refused.
 
 use muda::accelerator::{Accelerator, Code, Modifiers};
 use muda::{
@@ -68,6 +71,22 @@ pub enum Command {
     LoadState(u8),
     /// Superfrog → Quit Superfrog, ⌘Q, or the window closed.
     Quit,
+}
+
+impl Command {
+    /// Can it be chosen while `--replay` plays? Only what leaves the game as it is: Pause, Quit
+    /// and the View items (bug-recorder T07).
+    pub fn during_replay(self) -> bool {
+        matches!(
+            self,
+            Command::Pause
+                | Command::Quit
+                | Command::Scale(_)
+                | Command::ToggleFullscreen
+                | Command::ToggleCrt
+                | Command::ToggleWidescreen
+        )
+    }
 }
 
 /// The levels File → Export Level offers, in the game's order: worlds 1–6, W6's second set of
@@ -169,6 +188,8 @@ pub struct MenuState {
     pub states: [bool; SLOTS as usize],
     /// A bug recording is running: Stop Recording can be chosen only then.
     pub recording: bool,
+    /// `--replay` plays: everything but Pause, Quit and View is disabled.
+    pub replay: bool,
 }
 
 /// The number key for slot `n` (1–5), its shortcut's key.
@@ -181,6 +202,10 @@ pub struct MenuBar {
     menu: Menu,
     continue_item: MenuItem,
     stop_recording: MenuItem,
+    /// The File menu, and the Game menu's items but Pause: disabled under `--replay`.
+    file: Submenu,
+    changes_game: Vec<MenuItem>,
+    states_menus: [Submenu; 2],
     pause: CheckMenuItem,
     scales: Vec<(Scale, CheckMenuItem)>,
     fullscreen: CheckMenuItem,
@@ -284,19 +309,23 @@ pub fn build_menu() -> MenuBar {
             &export,
             &item(Command::PlayLevelFile, "Play Level File…", None),
         ],
-    );
+    )
+    .expect("a menu");
+    let start_level = item(Command::StartLevel, "Start Level…", None);
+    let reset = item(Command::Reset, "Reset", None);
+    let controls = item(Command::Controls, "Controls…", None);
     let game = Submenu::with_items(
         "Game",
         true,
         &[
             &continue_item,
-            &item(Command::StartLevel, "Start Level…", None),
+            &start_level,
             &stop_recording,
             &PredefinedMenuItem::separator(),
             &pause,
-            &item(Command::Reset, "Reset", None),
+            &reset,
             &PredefinedMenuItem::separator(),
-            &item(Command::Controls, "Controls…", None),
+            &controls,
             &PredefinedMenuItem::separator(),
             &save_menu,
             &load_menu,
@@ -318,13 +347,16 @@ pub fn build_menu() -> MenuBar {
     );
 
     let menu = Menu::new();
-    for m in [app, file, game, view] {
+    for m in [app, Ok(file.clone()), game, view] {
         menu.append(&m.expect("a menu")).expect("a menu in the menu bar");
     }
     MenuBar {
         menu,
         continue_item,
         stop_recording,
+        file,
+        changes_game: vec![start_level, reset, controls],
+        states_menus: [save_menu, load_menu],
         pause,
         scales,
         fullscreen,
@@ -354,8 +386,15 @@ impl MenuBar {
             return;
         }
         self.continue_item.set_text(continue_title(s.furthest));
-        self.continue_item.set_enabled(continue_world(s.furthest).is_some());
-        self.stop_recording.set_enabled(s.recording);
+        self.continue_item.set_enabled(!s.replay && continue_world(s.furthest).is_some());
+        self.stop_recording.set_enabled(!s.replay && s.recording);
+        self.file.set_enabled(!s.replay);
+        for i in &self.changes_game {
+            i.set_enabled(!s.replay);
+        }
+        for m in &self.states_menus {
+            m.set_enabled(!s.replay);
+        }
         self.pause.set_checked(s.paused);
         for (scale, i) in &self.scales {
             i.set_checked(*scale == s.scale);
@@ -403,6 +442,10 @@ impl App {
         let Some(run) = &self.run else { return };
         // The step it came after, so a test can line the frames up with it.
         eprintln!("superfrog: menu {} after step {}", c.id(), run.steps);
+        if run.replay.is_some() && !c.during_replay() {
+            eprintln!("superfrog: {} is disabled during a replay", c.id());
+            return;
+        }
         if let Some(action) = self.ends_recording(c)
             && !self.end_recording(&action)
         {
@@ -447,6 +490,7 @@ impl App {
             widescreen: run.settings.widescreen,
             states: run.states,
             recording: run.recorder.is_recording(),
+            replay: run.replay.is_some(),
         });
     }
 
@@ -736,6 +780,20 @@ mod tests {
         }
         for bad in ["", "scale-0", "scale-17", "scale-x", "about", "Quit", "save-state-0", "save-state-6", "load-state-", "load-state-x", "export-", "export-W7-1"] {
             assert_eq!(Command::from_id(bad), None, "{bad}");
+        }
+    }
+
+    #[test]
+    fn a_replay_takes_only_pause_quit_and_the_view_items() {
+        let allowed: Vec<String> = [Command::Pause, Command::Quit, Command::Scale(Scale::N(2)), Command::Scale(Scale::Auto), Command::ToggleFullscreen, Command::ToggleCrt, Command::ToggleWidescreen]
+            .iter()
+            .map(|c| c.id())
+            .collect();
+        for c in [Command::ImportDisks, Command::ExportLevel(export_levels()[0]), Command::PlayLevelFile, Command::ContinueFromProgress, Command::StartLevel, Command::StopRecording, Command::Reset, Command::Controls, Command::SaveState(1), Command::LoadState(1)] {
+            assert!(!c.during_replay(), "{}", c.id());
+        }
+        for id in allowed {
+            assert!(Command::from_id(&id).unwrap().during_replay(), "{id}");
         }
     }
 

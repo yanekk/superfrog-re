@@ -194,6 +194,36 @@ repo (the pictures are disk-derived). Then one line each: `frames N`, `stopped-a
 (a fixed engine is meant to differ); a zip it cannot read is refused with the reason, exit 2. The
 replay draws the 4:3 view. `sf_conform::bug` holds `read_zip` and `replay` for tests.
 
+## Comparing a bug zip with the original, and keeping it as a case (bug-recorder T05)
+
+```sh
+cargo run -q --release -p sf-conform -- bug compare ../bugs/<zip> [--out DIR]
+cargo run -q --release -p sf-conform -- --strict bug compare ../bugs/<zip>
+cargo run -q --release -p sf-conform -- bug case ../bugs/<zip> <name>
+```
+
+`compare` starts the original at the recording's level with its values (`SyncPoint::Setup`) and
+plays the recording's inputs on it, retimed onto the original's frames (bug-recorder DESIGN §2.9 as
+T00 amended it): step n's input on the original's next frame; through a load the engine did at
+once the original is held with nothing pressed until its load is over, its frames under a screen it
+times itself counted as the recording's steps; at each level's first frame and the slot machine's
+entry the early side waits. It is judged by the faithful checks (frame-exact with `--strict`) in
+legs of 8 of the original's passes: at each leg's start, at a pass end in a level, the engine is
+re-synced from the original, and a leg that differs ends at the next pass end. The first line is
+`same` or `differs at frame F (engine step S): <what differs>` (F the original's frame, S the
+recording's step fed there); then where the original left the recording, if it did (the frog,
+score, lives, hearts or level unlike the recording's at a pass end: under lag the original does
+not play what the owner played, so a bug after that frame may not occur on it), the legs, the lag
+and re-syncs, and the first divergence in full. It writes `original-stop.png` and
+`engine-stop.png`, both sides at STOP, to `--out`, by default the zip's folder (the git-ignored
+`bugs/`). Exit 0 same, 1 differs, 2 refused.
+
+`case` writes `cases/<name>.toml` (`sync` in the level-setup form, `script = "<name>"`, the runner's
+`frames`, the owner's note and `stopped-at` on its first line) and `scripts/<name>.txt` (the
+retimed inputs, in the original's frames); it refuses a name either folder has. The case is run
+whole, not in legs: on a lagging level it may need a `lag-limit`, or a recording cut before the
+original leaves it.
+
 ## Which cases the test block runs (T181)
 
 Every case green under the faithful checks has a test in `crates/sf-conform/tests/`: those with

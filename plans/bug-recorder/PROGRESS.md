@@ -27,9 +27,9 @@ done · ⛔ blocked, needs a human.
 | T02 | level-start | T01 | ✅ | |
 | T03 | original-start | T02 | ✅ | |
 | T04 | replay-tool | T01, T02 | ✅ | |
-| T05 | compare-tool | T03, T04 | ⬜ | |
+| T05 | compare-tool | T03, T04 | ✅ | |
 | T06 | app-recorder | T02 | ✅ | |
-| T07 | app-replay | T06 | ⬜ | |
+| T07 | app-replay | T06 | ✅ | |
 | T08 | start-level-dialog | T06 | ✅ | Review clean, no fix commit. Unit, script e2e and recorder_app green; removing the points ceiling went red in unit and e2e. OS half unverified: reran 4/4 red on a locked screen, owner deferred to T11 (`SF_E2E_OS=1 cargo test -p sf-e2e --test recorder_start_level -- --ignored --test-threads 1`). |
 | T09 | recording-bar | T06 | ⬜ | |
 | T10 | save-window | T06 | ⬜ | |

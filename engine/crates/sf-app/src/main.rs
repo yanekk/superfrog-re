@@ -12,6 +12,8 @@
 //! come through gilrs (`pad.rs`), except under `--script`, whose `pad …` lines stand in for them.
 //! Game → Start Level… starts a level with chosen values, and with the recorder on every stepped
 //! frame's input is recorded until Stop Recording saves it as a bug zip (`recorder.rs`).
+//! `--replay` plays such a zip back in the window, watch-only, holding on its last frame
+//! (bug-recorder DESIGN §2.7).
 
 mod args;
 mod atomic_write;
@@ -60,7 +62,7 @@ use crate::lock::Lock;
 use crate::menu::{Command, MenuBar};
 use crate::pacing::{Pacer, Presenter};
 use crate::pad::PadSource;
-use crate::recorder::Recorder;
+use crate::recorder::{Recorder, Replay};
 use crate::script::{Event, Script};
 use crate::settings::{Scale, Settings};
 use crate::video::{Video, picture_rgba};
@@ -127,7 +129,7 @@ fn main() {
     {
         use winit::platform::macos::EventLoopBuilderExtMacOS;
         // A scripted run must not take the keyboard from whatever the person is using.
-        builder.with_activate_ignoring_other_apps(script.is_none());
+        builder.with_activate_ignoring_other_apps(!args.unattended());
         // The app's own menu bar replaces winit's (`menu.rs`).
         builder.with_default_menu(false);
     }
@@ -235,6 +237,8 @@ struct Run {
     from_dialog: bool,
     /// The bug recording, while one runs.
     recorder: Recorder,
+    /// `--replay`: the recording fed in place of the player's input; `None` in normal play.
+    replay: Option<Replay>,
     display: Arc<DisplayData>,
     /// [`sf_assets::cache_hash`] of the game data: what a save state is tagged with.
     cache_hash: [u8; 32],
@@ -295,6 +299,21 @@ impl App {
                 return event_loop.exit();
             }
         };
+        // A replay's zip is read before any window opens: one that cannot be played says why
+        // and ends the run.
+        let replayed = match &self.args.replay {
+            None => None,
+            Some(path) => match std::fs::read(path).map_err(|e| e.to_string()).and_then(|b| recorder::read_zip(&b)) {
+                Ok(rec) => Some(rec),
+                Err(e) => {
+                    let m = format!("{} cannot be replayed: {e}", path.display());
+                    eprintln!("superfrog: {m}");
+                    self.ui.notice(&m);
+                    self.status = 1;
+                    return event_loop.exit();
+                }
+            },
+        };
         let (settings, settings_damaged) = settings::load(&self.home);
         let (furthest, progress_damaged) = progress::load(&self.home);
 
@@ -306,7 +325,7 @@ impl App {
                 .with_title("Superfrog")
                 .with_inner_size(window::initial_size(scale, settings.widescreen))
                 .with_min_inner_size(window::min_size(settings.widescreen))
-                .with_active(self.script.is_none());
+                .with_active(!self.args.unattended());
             match event_loop.create_window(attrs) {
                 Ok(w) => Some(Arc::new(w)),
                 Err(e) => return self.fail(event_loop, &format!("no window: {e}")),
@@ -342,8 +361,8 @@ impl App {
             Some(s) => s.seed.unwrap_or((0, 0)),
             None => host_seed(),
         };
-        // A scripted run plays nothing through the speakers unless it names a device.
-        let audio = if self.script.is_some() && self.args.audio_device.is_none() {
+        // A scripted run or a replay plays nothing through the speakers unless it names a device.
+        let audio = if self.args.unattended() && self.args.audio_device.is_none() {
             None
         } else {
             Audio::open(self.args.audio_device.as_deref())
@@ -371,8 +390,9 @@ impl App {
                 eprintln!("superfrog: staying windowed: a scripted run goes fullscreen only with --allow-fullscreen");
             }
         }
-        // A scripted run reads no real pad: its `pad …` lines are its pads.
-        let (pads, present) = if self.script.is_some() {
+        // A scripted run reads no real pad: its `pad …` lines are its pads. A replay's pads
+        // would change nothing.
+        let (pads, present) = if self.args.unattended() {
             (None, Vec::new())
         } else {
             match pad::Gilrs::open() {
@@ -389,7 +409,11 @@ impl App {
         // A pacing feed starts where its run alone did: the RNG as the original seeded it.
         let feed = self.feed.take();
         let start_rng = feed.as_ref().map_or_else(|| Rng::seeded(seed.0, seed.1), |f| f.seed);
-        let mut game = Game::with_display(display.clone(), Start::PowerOn { seed: start_rng });
+        // A replay starts where its recording did: the level from the dialog's values and seed.
+        let mut game = match &replayed {
+            Some(rec) => Game::start_level(display.clone(), &rec.setup, rec.seed),
+            None => Game::with_display(display.clone(), Start::PowerOn { seed: start_rng }),
+        };
         game.set_view(window::view(settings.widescreen));
         let mut run = Run {
             _lock: lock,
@@ -397,8 +421,10 @@ impl App {
             pads,
             settings,
             furthest,
-            from_dialog: false,
+            // A replay is a dialog-started game: it never moves the saved progress.
+            from_dialog: replayed.is_some(),
             recorder: Recorder::Off,
+            replay: replayed.as_ref().map(Replay::new),
             display,
             cache_hash,
             states: states::filled(&self.home),
@@ -443,6 +469,7 @@ impl App {
             run.input.event(HostInput::Pad(e));
         }
         self.run = Some(run);
+        self.replay_finished();
         self.show_menu();
         self.show_newest();
     }
@@ -504,6 +531,20 @@ impl App {
             return;
         }
         let input = run.input.frame();
+        // A replay feeds its recording's input in place of the player's, and holds once that has
+        // run out: no further steps, the last frame shown (and captured) as it is.
+        let input = match &mut run.replay {
+            None => input,
+            Some(r) => match r.next() {
+                Some(recorded) => recorded,
+                None => {
+                    if self.args.max_frames == Some(n) {
+                        self.finish(event_loop);
+                    }
+                    return;
+                }
+            },
+        };
         // Under `--pacing` the step is the feed's, in place of the input: one frame of play as
         // the engine run alone played it (the original's step twice, frames under a loading
         // screen after it), so one or more steps of the game.
@@ -556,6 +597,8 @@ impl App {
         }
         run.shown.completed((n, size, rgba));
         run.picture = picture;
+        self.replay_finished();
+        let run = self.run.as_mut().expect("running");
         if run.recorder.full() {
             eprintln!("superfrog: the recording is a day long, the longest one may be: stopped");
             self.save_recording();
@@ -644,6 +687,14 @@ impl App {
             return self.fail(event_loop, &format!("capture: {e}"));
         }
         event_loop.exit();
+    }
+
+    /// Say once, as the replay's last input is played (at once for a recording of no frames),
+    /// the frame it holds on.
+    fn replay_finished(&mut self) {
+        if let Some(n) = self.run.as_mut().and_then(|r| r.replay.as_mut()).and_then(Replay::just_finished) {
+            eprintln!("superfrog: replay finished at frame {n}");
+        }
     }
 
     fn fail(&mut self, event_loop: &ActiveEventLoop, why: &str) {
