@@ -24,7 +24,7 @@ done · ⛔ blocked, needs a human.
 |---|---|---|---|---|
 | T00 | prove-the-ground | — | ✅ | |
 | T01 | recording-format | T00 | ✅ | |
-| T02 | level-start | T01 | ⬜ | |
+| T02 | level-start | T01 | ✅ | |
 | T03 | original-start | T02 | ⬜ | |
 | T04 | replay-tool | T01, T02 | ⬜ | |
 | T05 | compare-tool | T03, T04 | ⬜ | |
