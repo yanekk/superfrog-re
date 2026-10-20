@@ -70,6 +70,7 @@ At the end: the owner can start a level from the dialog, record, STOP, save a zi
 |---|---|---|
 | [T12](tasks/T12-fix-procedure.md) | fix-procedure | T05, T11 |
 | [T13](tasks/T13-black-screen.md) | black-screen | T12 |
+| [T14](tasks/T14-original-follows-recording.md) | original-follows-recording | T05, T12; blocks T13 |
 
 At the end: the acceptance bug has been recorded by the owner and taken through `docs/BUG-FIX.md`.
 

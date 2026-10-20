@@ -36,6 +36,7 @@ done · ⛔ blocked, needs a human.
 | T11 | recorder-drill | T04, T07, T08, T09, T10 | ✅ | |
 | T12 | fix-procedure | T05, T11 | ⬜ | |
 | T13 | black-screen | T12 | ⬜ | |
+| T14 | original-follows-recording | T05, T12; blocks T13 | ⬜ | Added by T12 with the owner's yes: the original leaves a played W1-1 recording, so `bug compare` misjudges. |
 
 **Review queue:** *(empty)*
 
