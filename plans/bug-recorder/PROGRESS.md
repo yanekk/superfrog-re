@@ -29,7 +29,7 @@ done · ⛔ blocked, needs a human.
 | T04 | replay-tool | T01, T02 | ✅ | |
 | T05 | compare-tool | T03, T04 | ⬜ | |
 | T06 | app-recorder | T02 | ✅ | |
-| T07 | app-replay | T06 | ⬜ | |
+| T07 | app-replay | T06 | ✅ | |
 | T08 | start-level-dialog | T06 | ⬜ | |
 | T09 | recording-bar | T06 | ⬜ | |
 | T10 | save-window | T06 | ⬜ | |
