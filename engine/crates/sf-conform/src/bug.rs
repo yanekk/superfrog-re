@@ -292,8 +292,9 @@ fn retime_played(rec: &Recording, played: &Played, pokes: &Pokes, a: &mut Amiga)
     };
     let mut follow = Follow::new(&rec.setup, rec.seed, pokes);
     // The original's pass ends since it was seen off the recording with the recording's engine
-    // mid-pass.
+    // mid-pass, and where it was first seen off: what is reported if it is never put back.
     let mut waited = 0u32;
+    let mut off: Option<(u32, u32, String)> = None;
     let mut frames: Vec<FrameInput> = Vec::new();
     let mut held_in_loads = 0u32;
     let mut cop = played.start.cop1lc();
@@ -403,7 +404,7 @@ fn retime_played(rec: &Recording, played: &Played, pokes: &Pokes, a: &mut Amiga)
         {
             let (theirs, ours) = (watched_original(&m), played.watched[of as usize]);
             match (0..WATCHED.len()).find(|&k| theirs[k] != ours[k]) {
-                None => waited = 0,
+                None => (waited, off) = (0, None),
                 Some(k) => {
                     let what = format!(
                         "{} original {:x}, recording {:x}",
@@ -414,6 +415,7 @@ fn retime_played(rec: &Recording, played: &Played, pokes: &Pokes, a: &mut Amiga)
                     // Put back where both sides are at a pass end: the engine's state is then
                     // one the original's loop can go on from.
                     let eng = follow.after(of, |k| rec.inputs[k as usize]);
+                    let first = off.get_or_insert((at, of, what.clone()));
                     if !eng.mid_pass() {
                         for (addr, bytes) in follow.writes() {
                             a.write_memory(addr, &bytes);
@@ -423,11 +425,13 @@ fn retime_played(rec: &Recording, played: &Played, pokes: &Pokes, a: &mut Amiga)
                             step: of,
                             what,
                         });
-                        waited = 0;
+                        (waited, off) = (0, None);
                     } else if waited >= PUT_BACK_WAIT {
+                        // Not judged on the recording from where it was first seen off it.
+                        let (frame, step, what) = first.clone();
                         r.left = Some(Left {
-                            frame: at,
-                            step: of,
+                            frame,
+                            step,
                             what: format!(
                                 "{what}, and the recording's engine was in the middle of a pass at each of the original's {PUT_BACK_WAIT} pass ends since, so it could not be put back"
                             ),

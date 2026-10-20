@@ -128,11 +128,37 @@ fn a_recording_the_original_leaves_is_put_back_on_it() {
         note: "complete-w4-3, 700 steps".into(),
         inputs,
     };
-    let c = bug::compare(&rec, Mode::Faithful).unwrap();
+    // The judging run's engine on each frame, before it steps: after a put-back it starts from
+    // the original written with the recording's engine, so it holds the owner's game there.
+    let watched = [VarId::FrogX, VarId::FrogY, VarId::Score, VarId::FrogLives, VarId::FrogHearts];
+    let peek = |g: &Game| -> Vec<u32> {
+        watched
+            .iter()
+            .map(|&id| {
+                let d = def(id);
+                g.peek(d.addr, d.width.len()).iter().fold(0, |v, &b| v << 8 | b as u32)
+            })
+            .collect()
+    };
+    let mut judged = Vec::new();
+    let c = bug::compare_with(&rec, Mode::Faithful, &[], |_, g| judged.push(peek(g))).unwrap();
     let r = c.report();
     eprintln!("{r}\n{:.0?}", t0.elapsed());
     let p = c.retimed.put_back.first().expect("the original is put back");
     assert!(p.frame < 700, "{r}");
+    // No loads in these 700 steps: the judging run's frame after the put-back is the original's.
+    let mut owner = None;
+    bug::replay(&rec, |k, g, _| {
+        if k == p.step {
+            owner = Some(peek(g));
+        }
+    });
+    assert_eq!(
+        judged[p.frame as usize + 1],
+        owner.unwrap(),
+        "the judging run is put back on the owner's game at frame {}: {r}",
+        p.frame + 1
+    );
     assert_eq!(c.retimed.left, None, "{r}");
     assert!(r.contains("was put back on it"), "{r}");
     assert!(r.contains("the original was on the recording to its end"), "{r}");
