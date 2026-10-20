@@ -8,6 +8,7 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-20 | 🐞 | T01 review: `Recording::parse` preallocated the header's `frames`, so `frames 4000000000` asked for 128 GB. Fixed: `MAX_FRAMES` (a day, 4 320 000) refused by `parse` and `Recording::validate`; T06's recorder must stop or refuse past it. |
 | 2026-10-20 | 📌 | T00 review: W4-3 `complete-w4-3` retimed frame for frame, faithful runner with the engine paced: GREEN, 388 late, 1 resynced. Paced legs are expected to hold where unpaced legs fail; T05's test is the per-leg measurement. |
 | 2026-10-20 | 🔄 | Owner (T00): the dialog drops Hard (the original's options screen offers only easy/normal; `options_input` caps `opt_game_mode` at 1) and Lives defaults to 3, the game's own new-game value (`opt_lives` 0 at power-on), not 5. |
 | 2026-10-20 | 📌 | T00 Q1: start (b) chosen. Power-on, options screen, code typed, unseen; at frame 0 only title/load leftovers differ, which T03 writes into the original. 2 000 faithful frames green on W1-1, W1-2, W4-3, WB-1 (`bonus-fly`), easy and normal. |

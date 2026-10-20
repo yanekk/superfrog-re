@@ -21,7 +21,7 @@
 use std::fmt;
 use std::path::Path;
 
-use sf_core::input::{FrameInput, Joy};
+use sf_core::input::{FrameInput, KeySet, format_tokens, parse_token};
 
 /// `password_table` (h0+$24dc): 28 entries of six ASCII digits and a handler.
 const PASSWORD_TABLE: u32 = 0x24dc;
@@ -94,52 +94,38 @@ impl InputScript {
             }
             let mut input = FrameInput::NONE;
             for t in tokens.split_whitespace() {
-                match t {
-                    "-" => {}
-                    "U" => input.joy = input.joy | Joy::UP,
-                    "D" => input.joy = input.joy | Joy::DOWN,
-                    "L" => input.joy = input.joy | Joy::LEFT,
-                    "R" => input.joy = input.joy | Joy::RIGHT,
-                    "F" => input.joy = input.joy | Joy::FIRE,
-                    "M" => input.joy = input.joy | Joy::PORT1_BUTTON,
-                    k if k.starts_with('K') => {
-                        let hex = &k[1..];
-                        let code = (hex.len() == 2 && hex.bytes().all(|b| b.is_ascii_hexdigit()))
-                            .then(|| u8::from_str_radix(hex, 16).ok())
-                            .flatten()
-                            .filter(|&c| c < 0x80)
-                            .ok_or_else(|| {
-                                err(format!("`{k}`: a key is K and two hex digits, 00..7F"))
-                            })?;
-                        input.keys = input.keys.with(code);
-                    }
-                    c if c.starts_with('C') => {
-                        let bad = || {
+                let one = if let Some(c) = t.strip_prefix('C') {
+                    let bad = || {
+                        err(format!(
+                            "`{t}`: a code digit is C<entry 0..27>.<digit 0..5>"
+                        ))
+                    };
+                    let (e, k) = c.split_once('.').ok_or_else(bad)?;
+                    let e: u32 = e.parse().ok().filter(|&e| e < 28).ok_or_else(bad)?;
+                    let k: u32 = k.parse().ok().filter(|&k| k < 6).ok_or_else(bad)?;
+                    // The number keys' raw codes: 1..9 are 01..09, 0 is 0A.
+                    let code = match digit(e, k) {
+                        b'0' => 0x0a,
+                        d @ b'1'..=b'9' => d - b'0',
+                        _ => {
+                            return Err(err(format!(
+                                "`{t}`: password_table entry {e} is not digits"
+                            )));
+                        }
+                    };
+                    FrameInput::key(code)
+                } else {
+                    // The shared tokens (`sf_core::input`, also a bug recording's).
+                    parse_token(t)
+                        .ok_or_else(|| {
                             err(format!(
-                                "`{c}`: a code digit is C<entry 0..27>.<digit 0..5>"
+                                "`{t}` is not an input (U D L R F M K<hex> C<entry>.<k> -)"
                             ))
-                        };
-                        let (e, k) = c[1..].split_once('.').ok_or_else(bad)?;
-                        let e: u32 = e.parse().ok().filter(|&e| e < 28).ok_or_else(bad)?;
-                        let k: u32 = k.parse().ok().filter(|&k| k < 6).ok_or_else(bad)?;
-                        // The number keys' raw codes: 1..9 are 01..09, 0 is 0A.
-                        let code = match digit(e, k) {
-                            b'0' => 0x0a,
-                            d @ b'1'..=b'9' => d - b'0',
-                            _ => {
-                                return Err(err(format!(
-                                    "`{c}`: password_table entry {e} is not digits"
-                                )));
-                            }
-                        };
-                        input.keys = input.keys.with(code);
-                    }
-                    other => {
-                        return Err(err(format!(
-                            "`{other}` is not an input (U D L R F M K<hex> C<entry>.<k> -)"
-                        )));
-                    }
-                }
+                        })?
+                        .map_err(err)?
+                };
+                input.joy = input.joy | one.joy;
+                input.keys = KeySet(input.keys.0 | one.keys.0);
             }
             lines.push((frame, input));
         }
@@ -176,26 +162,8 @@ impl InputScript {
         sf_oracle::InputScript::new(self.lines.clone())
     }
 
-    /// One input as a script writes it: `R F`, `K19`, `-`.
+    /// One input as a script writes it: `R F`, `K19`, `-` ([`sf_core::input::format_tokens`]).
     pub fn format_input(input: FrameInput) -> String {
-        let names = [
-            (Joy::UP, "U"),
-            (Joy::DOWN, "D"),
-            (Joy::LEFT, "L"),
-            (Joy::RIGHT, "R"),
-            (Joy::FIRE, "F"),
-            (Joy::PORT1_BUTTON, "M"),
-        ];
-        let mut out: Vec<String> = names
-            .iter()
-            .filter(|(j, _)| input.joy.contains(*j))
-            .map(|(_, n)| n.to_string())
-            .collect();
-        out.extend(input.keys.codes().map(|c| format!("K{c:02X}")));
-        if out.is_empty() {
-            "-".to_string()
-        } else {
-            out.join(" ")
-        }
+        format_tokens(input)
     }
 }
