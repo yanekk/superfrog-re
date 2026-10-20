@@ -13,8 +13,10 @@ use sf_core::{Game, Picture, View};
 const MAX_ENTRY: usize = 256 << 20;
 
 /// The recording and the screenshot's PNG bytes of a bug zip. Refuses, naming why, anything that
-/// is not a zip, lacks either entry, or holds a recording the parser or [`Recording::validate`]
-/// refuses (a level no game starts at included, which `Game::start_level` could not reach).
+/// is not a zip, lacks either entry, holds a screenshot that is not a PNG (refused here, not
+/// after a replay that may run minutes), or holds a recording the parser or
+/// [`Recording::validate`] refuses (a level no game starts at included, which `Game::start_level`
+/// could not reach).
 pub fn read_zip(bytes: &[u8]) -> Result<(Recording, Vec<u8>), String> {
     let entries = sf_disk::zip::read_entries(
         bytes,
@@ -36,6 +38,7 @@ pub fn read_zip(bytes: &[u8]) -> Result<(Recording, Vec<u8>), String> {
     let rec = Recording::parse(&text).map_err(|e| format!("{ZIP_RECORDING}: {e}"))?;
     rec.validate()
         .map_err(|e| format!("{ZIP_RECORDING}: {e}"))?;
+    decode_png(&png).map_err(|e| format!("{ZIP_SCREENSHOT}: it is not a PNG: {e}"))?;
     Ok((rec, png))
 }
 

@@ -7,10 +7,10 @@ use std::path::{Path, PathBuf};
 use std::process::{Command, Output};
 use std::sync::OnceLock;
 
-use sf_conform::{InputScript, bug, scripts_dir};
-use sf_core::Rng;
+use sf_conform::{InputScript, bug, display_data, scripts_dir};
 use sf_core::input::{FrameInput, Joy};
 use sf_core::recording::{LevelSetup, Recording, ZIP_RECORDING, ZIP_SCREENSHOT};
+use sf_core::{Game, Rng};
 
 /// Past the frog's drop-in and the first two jumps: long enough that a change at frame 0 shows.
 const FRAMES: u32 = 400;
@@ -32,7 +32,9 @@ fn recording(first: FrameInput) -> Recording {
     }
 }
 
-/// The recording played once, its end written in as the app writes it at STOP, and zipped.
+/// The recording played once as the app plays it (`Game::start_level`, one `Game::step` an input,
+/// its picture shown), not through `bug::replay`, so the replay is held to an end it did not make;
+/// its end written in as the app writes it at STOP, and zipped.
 fn faithful_zip() -> &'static [u8] {
     static ZIP: OnceLock<Vec<u8>> = OnceLock::new();
     ZIP.get_or_init(|| {
@@ -40,9 +42,13 @@ fn faithful_zip() -> &'static [u8] {
             joy: Joy::RIGHT,
             ..FrameInput::NONE
         });
-        let end = bug::replay(&rec, |_, _, _| {});
-        rec.stopped_at = Some(end.location);
-        zip(&rec, &bug::picture_png(&end.last))
+        let mut game = Game::start_level(display_data(), &rec.setup, rec.seed);
+        let mut last = None;
+        for &input in &rec.inputs {
+            last = Some(game.step(input).picture);
+        }
+        rec.stopped_at = Some(game.location());
+        zip(&rec, &bug::picture_png(&last.expect("inputs")))
     })
 }
 
@@ -169,6 +175,21 @@ fn what_is_not_a_bug_zip_is_refused_with_the_reason() {
                 (ZIP_SCREENSHOT, b"png"),
             ]),
             "recording.txt: line 6: energy `9` is not 1 to 4 hearts",
+        ),
+        (
+            "bad-screenshot.zip",
+            sf_disk::zip::write_stored(&[
+                (
+                    ZIP_RECORDING,
+                    bug::read_zip(faithful_zip())
+                        .unwrap()
+                        .0
+                        .to_text()
+                        .as_bytes(),
+                ),
+                (ZIP_SCREENSHOT, b"png"),
+            ]),
+            "screenshot.png: it is not a PNG",
         ),
     ] {
         let zip = write(&dir, name, &bytes);
