@@ -26,7 +26,7 @@ done · ⛔ blocked, needs a human.
 | T01 | recording-format | T00 | ✅ | |
 | T02 | level-start | T01 | ✅ | |
 | T03 | original-start | T02 | ⬜ | |
-| T04 | replay-tool | T01, T02 | ⬜ | |
+| T04 | replay-tool | T01, T02 | 🔍 | `sf_conform::bug` (read_zip, replay, screenshot compare, frame pick), `bug replay` CLI, README section; 5 integration + 3 unit tests. Deviations: `replay`'s callback also gets the step's `Picture` (a level frame's differs from `render`); `read_zip` also refuses a missing screenshot and an invalid setup; `--frames A..B` excludes B; refusals exit 2. |
 | T05 | compare-tool | T03, T04 | ⬜ | |
 | T06 | app-recorder | T02 | ⬜ | |
 | T07 | app-replay | T06 | ⬜ | |
@@ -37,7 +37,7 @@ done · ⛔ blocked, needs a human.
 | T12 | fix-procedure | T05, T11 | ⬜ | |
 | T13 | black-screen | T12 | ⬜ | |
 
-**Review queue:** *(empty)*
+**Review queue:** T04
 
 ## Blocked on the user
 
