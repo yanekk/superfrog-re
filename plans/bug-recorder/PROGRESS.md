@@ -30,14 +30,14 @@ done · ⛔ blocked, needs a human.
 | T05 | compare-tool | T03, T04 | ⬜ | |
 | T06 | app-recorder | T02 | ✅ | |
 | T07 | app-replay | T06 | ⬜ | |
-| T08 | start-level-dialog | T06 | 🔍 | Modal NSWindow over `StartLevelForm`; `form …` script lines; 8 unit, 4 script e2e. OS half unverified since quit-while-recording discards (until T10) and busy-app retry: `os_layer_the_window_opens_…`, `os_layer_start_with_w1_2_…_at_1x`, `_at_3x`, `_in_fullscreen`; `SF_E2E_OS=1 cargo test -p sf-e2e --test recorder_start_level -- --ignored --test-threads 1`. Deviations: `apply` returns `Option<Option<…>>`; 26 levels; `form` lines unframed; window takes ⌘A/⌘V. |
+| T08 | start-level-dialog | T06 | ✅ | Review clean, no fix commit. Unit, script e2e and recorder_app green; removing the points ceiling went red in unit and e2e. OS half unverified: reran 4/4 red on a locked screen, owner deferred to T11 (`SF_E2E_OS=1 cargo test -p sf-e2e --test recorder_start_level -- --ignored --test-threads 1`). |
 | T09 | recording-bar | T06 | ⬜ | |
 | T10 | save-window | T06 | ⬜ | |
 | T11 | recorder-drill | T04, T07, T08, T09, T10 | ⬜ | |
 | T12 | fix-procedure | T05, T11 | ⬜ | |
 | T13 | black-screen | T12 | ⬜ | |
 
-**Review queue:** T08
+**Review queue:** empty
 
 ## Blocked on the user
 
