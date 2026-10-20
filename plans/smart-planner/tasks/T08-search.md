@@ -10,7 +10,7 @@ whole level, avoid hits, and return the same route for the same seed. Phase 2 ad
 
 ## Design sections this implements
 
-DESIGN §2.1 (goal, boss), §2.10 (via/avoid in the search), §2.4, §2.5 (use), §2.3 (re-choice), §2.9 (budget, unreachable count), §3.1
+DESIGN §2.1 (goal), §2.10 (via/avoid in the search), §2.4, §2.5 (use), §2.3 (re-choice), §2.9 (budget, unreachable count), §3.1
 (threads as partitions).
 
 ## Files

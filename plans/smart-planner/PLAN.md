@@ -79,13 +79,13 @@ At the end of Phase 2: `sf-plan` is the one command, in original and app modes, 
 |---|---|---|
 | [T13](tasks/T13-map-soundness.md) | map-soundness | T01, T08 |
 | [T14](tasks/T14-tuning-run.md) | tuning-run | T11 |
-| [T15](tasks/T15-set-c-run.md) | set-c-run | T12, T14 |
+| [T15](tasks/T15-set-c-run.md) | set-c-run | T12, T13, T14 |
 | [T16](tasks/T16-baseline-counted.md) | baseline-counted | T15 |
 | [T17](tasks/T17-new-counted.md) | new-counted | T13, T16 |
 | [T18](tasks/T18-results-and-retire.md) | results-and-retire | T17 |
 
-T16 depends on T15 only so that it runs on a quiet machine after every other task (DESIGN D2, D4);
-T17 follows T16 for the same reason.
+T15 depends on T13 and T16 on T15 only so that they run on a quiet machine after every other task
+(DESIGN D2, D4): T13's explorer fills every core for hours. T17 follows T16 for the same reason.
 
 ---
 
@@ -112,7 +112,7 @@ T17 follows T16 for the same reason.
 T00 → T03 → T04 → T08 → T09 → T10 → T11 → T14 → T15 → T16 → T17 → T18
 ```
 
-Off it: T01, T02 (finish long before T10), T05, T06, T07, T12 (before T15), T13 (before T17).
+Off it: T01, T02 (finish long before T10), T05, T06, T07, T12 and T13 (before T15).
 
 Leaves: T18 only.
 
@@ -138,4 +138,5 @@ are wall-clock bound and run as resumable background slices of at most 2 h each.
 - Map seeding and enemy freezing: T00 settles them; nothing after T03 starts before.
 - Stretch confirmation: T02 settles it before T10.
 - Whether `pir/bug-recorder` is merged by the time T12 is ready: T12 checks; if not, T12 and T15
-  wait and the owner is asked.
+  wait and the owner is asked. T16, T17 and T18 wait with them, being chained after T15 for a quiet
+  machine (owner, 2026-10-20: keep the order; reorder then if the merge is late).

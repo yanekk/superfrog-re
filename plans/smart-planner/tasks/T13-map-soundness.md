@@ -15,7 +15,11 @@ DESIGN §1 M7, §4.2 (engine only, parallel), §2.2.
 ## Files
 
 - `engine/crates/sf-plan/src/core/explore.rs` (goal-free mode over T08's archive: novelty only)
-- `engine/crates/sf-bench/src/soundness.rs`, `sf-bench --soundness [--levels] [--minutes 60] [--jobs N]`
+- `engine/crates/sf-plan/src/bin/sf-explore.rs` (`sf-explore <level> --minutes N --seed N`: builds the
+  map, runs the explorer, prints reached cells and holes; a binary of its own so it does not wait for
+  or collide with T11's `main.rs`)
+- `engine/crates/sf-bench/src/soundness.rs`, `sf-bench --soundness [--levels] [--minutes 60] [--jobs N]`,
+  which runs `sf-explore` as a child process, never linking `sf-plan` (DESIGN §3.2)
 - `plans/smart-planner/bench/soundness.md` (per level: cells reached, cells in map, holes listed by cell)
 
 ## Tests

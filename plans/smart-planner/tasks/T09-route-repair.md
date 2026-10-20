@@ -20,7 +20,7 @@ DESIGN §2.7.
 
 ```rust
 pub struct Trail { pub cells: Vec<Cell> /*frog cell per input frame of the old route, from its own run*/, pub inputs: Vec<FrameInput> }
-pub fn trail(start: &Game, old: &InputScript) -> Trail;
+pub fn trail(start: &Game, old: &[FrameInput]) -> Trail;   // the shell parses the script (core takes no sf_conform type, DESIGN §3.1)
 /// Replays `trail.inputs` from `start` while the frog stays within one cell of `trail.cells[i]`; returns
 /// the index where it parted (or None if it played through).
 pub fn follow(start: &Game, trail: &Trail) -> (Game, usize, Option<usize>);

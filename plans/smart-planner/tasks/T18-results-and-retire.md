@@ -15,7 +15,8 @@ DESIGN §1 (all targets), D5, D1 (`plan_bonus` stays).
 ## Files
 
 - `plans/smart-planner/bench/RESULTS.md` (verdict section: each M and C target, met or missed, why)
-- Deleted after the owner's go or M1 holding: `engine/crates/sf-conform/examples/{plan_exit,plan_exit_w6,explore}.rs`
+- Deleted after the owner's go or M1 holding: `engine/crates/sf-conform/examples/{plan_exit,plan_exit_w6,explore,complete}.rs`
+  (`complete` has no adapter and no baseline, D12)
 - `engine/crates/sf-bench/src/adapters.rs` (old adapters removed with them; their recorded results stay)
 - `README.md`, `CLAUDE.md` § What's known (one line: routes are planned with `sf-plan`)
 - `plans/smart-planner/FINDINGS.md`

@@ -76,10 +76,12 @@ Output is an `InputScript` in today's text format (`frame: inputs`, one line per
 `complete-*` scripts carry, so it drops into a case file unchanged. Why: every consumer of routes
 (cases, `whole_game`, the bug recorder) already reads that format.
 
-The goal is the exit with the level's coin count met (`COINS_LEFT` = 0 as the exit reads it). Bosses
-on x-4 levels are part of the route where the level requires one beaten before its exit opens; the
-search treats a required kill as a goal the way today's `--stomp/--hurt` did, found from level facts
-(§3.2 `facts`), not given per level.
+The goal is the exit with the level's coin count met (`COINS_LEFT` = 0 as the exit reads it). No normal
+level has a boss (the witch on WW-1 is the game's only one, `sf-core/src/bosses/mod.rs`; out of scope,
+D1), so the planner has no kill goal. Old routes sometimes used an enemy on purpose (W2-4's hopper:
+two stomps make a reward, rust-engine FINDINGS T168). T04 checks on every level that the map reaches
+the exit with the count met and no enemy's help; a level where it does not goes to the owner before
+T08 (D13).
 
 ### 2.2 The movement map
 
@@ -154,6 +156,15 @@ final route is accepted only by the faithful check (§4).
 
 App mode (set C) confirms on the engine from the same `start_level` state; there is no original.
 
+Two timings, never crossed (owner, 2026-10-20). The original lags in busy passes and the engine
+never does in normal play (docs/08 "Lag"), so a route belongs to the timing it was planned in. Every
+route file's first line is `# timing: original` or `# timing: app`. An original route is never
+replayed in the app or from `start_level`, and an app route never on the oracle: bug-recorder found
+`complete-w1-1` ends in game over from `start_level` for every seed and offset (its FINDINGS, T06),
+and its recordings left the original under lag (T00 Q2). A route that diverges is first checked for a
+mixed timing; it is never patched by padding or shifting frames. The fix is re-planning in the right
+timing, or route repair (§2.7) from where it parts.
+
 ### 2.7 Route repair
 
 `--follow <script>` replays an old route while the frog's cell stays within one cell of the old
@@ -226,7 +237,7 @@ Threads: the core exposes work as partitions (`expand(part) -> Vec<Child>`); the
 
 - `core::facts`: level facts from a `Game` state and `sf_conform::game_data()`'s T7MP: standable
   cells, coin cells (objects and tile coins), switches and gates, exit cells, coins needed, frog cell
-  (`((X+0x17)/16, (Y−0x10)/16)`), required boss. Replaces the copies in the four old planners.
+  (`((X+0x17)/16, (Y−0x10)/16)`). Replaces the copies in the four old planners.
 - `core::map`: `MoveMap` (cells, edges, preconditions), built by stepping the engine.
 - `core::coins`: coin choice over a `MoveMap`.
 - `core::danger`: occupancy sampling and the cost lookup.
@@ -237,6 +248,8 @@ Threads: the core exposes work as partitions (`expand(part) -> Vec<Child>`); the
 - `main` (bin `sf-plan`): the one command.
 - crate `sf-bench` (bin `sf-bench`): §4.2. A separate crate that runs every planner, old and new, as a
   child process, so measuring never links the thing measured.
+- bin `sf-explore` (in `sf-plan`): M7's goal-free explorer (T13), run by `sf-bench --soundness` as a
+  child for the same reason.
 
 ### 3.3 Data flow
 
@@ -255,8 +268,9 @@ is generated from it, never hand-edited. A crash loses at most the level in flig
 
 **Unit and engine tests (test block).** `facts` against known level counts; `coins` on synthetic
 graphs; every edge of the W1-1 map replays on the engine to its end cell (a sample of edges on other
-levels); M8: plan W1-1 in app mode twice with one seed, byte-equal (engine only, a minute at most);
-the purity test.
+levels); M8: plan W1-1 twice with one seed, byte-equal, engine only, in the core (T08) and through the
+command (`--engine-only` T11, `--app` T12); the purity test. The M8 tests stay in the block even over
+§5's ~30 s rule, at most ~2 min each, because they are the target's only guard.
 
 **The benchmark (not in the test block).** Too slow: a counted set-A run is up to 12 h. It is run as
 its own command (§4.2) and its output table is committed.
@@ -267,14 +281,18 @@ Set A: a case `{ sync = { level = id }, script, frames, resync = true }` passes 
 faithful check as `complete-*` cases pass it) and its milestones include the level's exit. Set B: the
 same with `sync = { script = "game-whole", frame = <leg start>, df1 = true }`, the leg's start frame
 taken from the leg snapshot's frame number (`sync::load_snapshot_file`). Set C: the script replays on the engine from the same
-`start_level` state to `level_state` ≠ −2 with no life lost.
+`start_level` state to `level_state` ≠ −2 with no life lost, and also in the real app: `sf-e2e`'s
+script layer starts the level by the `start-level` event and plays the route, and the app reaches the
+level's exit with no life lost (owner, 2026-10-20). Why: the engine check alone cannot see a
+difference in how the app starts or feeds a script (a frame offset, the seed), which is how
+bug-recorder's routes failed.
 
 ### 4.2 The benchmark
 
-`cargo run --release -p sf-bench -- --set A|B|C --planner new|plan_exit|plan_exit_w6|explore [--levels W1-4,..] [--jobs N]`.
+`cargo run --release -p sf-bench -- --set A|B|C --planner new|plan_exit|plan_exit_w6|explore|best-old [--levels W1-4,..] [--jobs N]`.
 Rules (unaided): level, start, goal; seed 1; no level-specific options; budget 30 min wall-clock per
 level including confirmation; maps built fresh. For the old tools "unaided" means each run with
-`--coins 0` style defaults and no `--via/--avoid/--ground/--jump/--launch/--fly/--skip/--to`; the
+`--coins 0` style defaults and no `--via/--avoid/--ground/--jump/--launch/--fly/--skip/--to/--stomp/--hurt`; the
 baseline records the best of the three old tools per level, each given the full budget in turn,
 because an agent today would try them all. Records per level: completed, wall-clock, engine frames,
 oracle frames, confirmation share, route frames, hearts lost, failure reason.
@@ -340,6 +358,15 @@ Nothing here needs a person: every measure is machine-decided.
 Every oracle and planner process the benchmark starts is a child it kills on exit, so a killed
 benchmark leaves no emulator running.
 
+### 5.3 Outside actions
+
+None (owner, 2026-10-20). Everything runs on this machine and in this repo: builds, the engine and
+oracle, background benchmark slices (up to ~25 h of machine time per counted run), the map cache under
+`~/.cache/superfrog-re/maps/`, commits to the plan's branch, and T18's deletion of the old tools
+(gated by D5, undone by git). Nothing is deployed, published, sent, paid for or logged into. Why the
+table is empty rather than absent: any action reaching beyond the machine that turns up later has no
+row, so it is `ask`.
+
 ---
 
 ## 6. Recovery
@@ -360,7 +387,9 @@ The old tools stay in the tree until T18, so any level can still be planned the 
   timings.
 - D3 (owner): set C stays in this plan and waits for `pir/bug-recorder` (which adds
   `Game::start_level` and `LevelSetup`) to be merged into main. T12 checks for it and stops to ask if
-  absent. Copying the API here was refused: two copies collide at merge.
+  absent. Copying the API here was refused: two copies collide at merge. T15–T18 wait with it, being
+  chained after T15 for a quiet machine; the owner keeps that order (2026-10-20) and may reorder if
+  the merge is late.
 - D4 (owner): an early baseline sample (T02) guides the design; the counted baseline (T16) runs at the
   end, just before the counted new run, while the old tools still exist.
 - D5 (owner): a missed target at the end is brought to the owner with its cause; clear-cut planner bugs
@@ -373,6 +402,14 @@ The old tools stay in the tree until T18, so any level can still be planned the 
   agents but never in the benchmark, and every `--via`/`--avoid` use is logged to
   `engine/conform/plan-hints.log` as a planner gap. Alternatives refused: no hints (leaves an agent
   stuck with no way through), hints only through `--follow` (clumsy for "go via this tile").
+- D12 (owner, 2026-10-20): `examples/complete` (T42's engine-only, nearest-coin level planner) is
+  retired at T18 with the other three but left out of the baseline. Why: it is a fifth level-routing
+  tool (M9), its engine-only routes drift on the original (rust-engine T84), and a fourth baseline
+  tool would cost about a day of quiet-machine time.
+- D13 (owner, 2026-10-20): the boss goal is dropped (no normal level has one). Whether a level needs
+  an enemy (a stomp reward, a knock) is checked early, by T04's per-level reachability test, and
+  brought to the owner before T08. Refused: assuming none and finding out at T14 (late), building
+  enemy use into the search now (maybe unneeded).
 - D8: the planner is a new crate `sf-plan`, not more examples in sf-conform, because examples cannot be
   unit-tested or shared, which is how four copies of the level facts came to exist.
 - D9: the benchmark verifies with `sf_conform::run` on a generated case, the check the completion

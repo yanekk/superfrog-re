@@ -14,6 +14,8 @@ DESIGN §3.1, §3.2 (`core::facts`), §2.3 (coin sources), §2.2 (standable cell
 
 ## Files
 
+- `engine/crates/sf-plan/Cargo.toml` (new crate, library only; deps sf-core, sf-assets, serde; the
+  workspace's `crates/*` glob picks it up)
 - `engine/crates/sf-plan/src/lib.rs`, `engine/crates/sf-plan/src/core/{mod,facts,graph}.rs`
 - `engine/crates/sf-plan/tests/purity.rs`, `engine/crates/sf-plan/tests/facts.rs`
 
@@ -28,7 +30,6 @@ pub struct Facts {
     pub switches: Vec<Switch>,                                // Switch { cells: [Cell; 2], gate: Cell, marker: u8 }
     pub exits: Vec<Cell>,
     pub coins_needed: u16,
-    pub boss: Option<BossFact>,                               // required kill before the exit opens, if any
 }
 pub fn facts(game: &Game, t7mp: &T7mp) -> Facts;             // from the live map in memory + static T7MP
 pub fn frog_cell(st: &State) -> Cell;                        // ((X+0x17)/16, (Y-0x10)/16)
@@ -45,8 +46,8 @@ Seeding and world-holding fields follow T00's recommendation as recorded in DESI
 ## Tests
 
 - [ ] Purity test: `src/core/` uses none of `std::time`, `std::fs`, `std::env`, `std::process`,
-      `std::net`, `Instant`, `sf_oracle`, `sf_conform::sync`; the test names the rule and says to move
-      code, never relax the test.
+      `std::net`, `Instant`, `sf_oracle`, `sf_conform` (DESIGN §3.1: the T7MP arrives as an argument); the
+      test names the rule and says to move code, never relax the test.
 - [ ] `facts` on W1-1 from its start: coins_needed and coin count match the level (90 coins, T106).
 - [ ] Every level W1-1…W6-4: at least one exit, `standable` non-empty, every switch has a gate.
 - [ ] `frog_cell` matches the old planners' formula on a fixture state.

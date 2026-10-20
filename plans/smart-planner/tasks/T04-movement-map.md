@@ -39,6 +39,9 @@ with that switch pressed (written into the state the way the switch handler clea
 - [ ] A random 200-edge sample per level on W2-4, W4-2, W6-2 replays the same way (test block if under
       30 s total, else `#[ignore]` with its time noted).
 - [ ] W4-2's exit is reachable only with the switch at 222,4 pressed (FINDINGS T103).
+- [ ] Every level W1-1…W6-4: in the map (no enemy help), the exit is reachable from the start through
+      at least `coins_needed` reachable coins (DESIGN §2.1, D13). Any level that fails is listed in a
+      FINDINGS row with where the map stops.
 - [ ] W1-4 and W6-3 stall spots from T00 are judged as T00 found.
 - [ ] `build` equals `assemble(parts(...).map(build_part))` for 1 and 8 parts (determinism).
 
@@ -46,3 +49,5 @@ with that switch pressed (written into the state the way the switch handler clea
 
 - [ ] Tests green; build time per level for all 24 levels recorded in one FINDINGS row (10 threads).
 - [ ] No level's map takes over 5 min to build, or the owner has been asked.
+- [ ] Any level failing the reachability test has been brought to the owner (it may need an enemy, a
+      stomp reward or a knock; D13), and the answer is recorded, before T08 starts.

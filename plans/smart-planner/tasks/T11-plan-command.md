@@ -30,6 +30,7 @@ sf-plan <level> [--snap leg.snap] [--follow old.txt] [--seed N] [--out route.txt
 exit 0: route written, reaches the exit
 exit 1: budget or frames exhausted; best partial route written; one-line reason on stderr
 exit 2: unplannable (count cannot be met, start invalid)
+first line of the route file: # timing: original | app   (DESIGN §2.6, two timings)
 stderr last line: PLAN_STATS engine_frames=… oracle_frames=… confirm_share=… route_frames=… hearts_lost=… hints=N
 ```
 

@@ -9,7 +9,7 @@ task you pick up, and append yours there.
 **Sixty words to a Notes cell, counted.** Flat prose. The cell is an index; the account is the commit
 message. Whoever writes a cell also fixes the over-budget cell they walk past.
 
-**Plan reviewed:** not yet — the plan reviewer marks it before the build starts
+**Plan reviewed:** 2026-10-20 — 9 fixed, 5 decided with the user
 
 **Status:** plan written; nothing built.
 **Last updated:** 2026-10-20
@@ -37,7 +37,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T12 | app-timing | T11 | ⬜ | |
 | T13 | map-soundness | T01, T08 | ⬜ | |
 | T14 | tuning-run | T11 | ⬜ | |
-| T15 | set-c-run | T12, T14 | ⬜ | |
+| T15 | set-c-run | T12, T13, T14 | ⬜ | |
 | T16 | baseline-counted | T15 | ⬜ | |
 | T17 | new-counted | T13, T16 | ⬜ | |
 | T18 | results-and-retire | T17 | ⬜ | |
