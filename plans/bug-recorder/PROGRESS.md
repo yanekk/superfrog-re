@@ -11,9 +11,9 @@ writes a cell also fixes the over-budget cell they walk past.
 
 **Plan reviewed:** 2026-10-20 — 4 fixed, 4 decided with the user
 
-**Status:** Building; T00, T01 done, T02 implemented.
+**Status:** Building; T00, T01, T02 done.
 **Last updated:** 2026-10-20
-**Next `pir-work` will:** review T02.
+**Next `pir-work` will:** build T03, T04, T06.
 
 ## Tasks
 
@@ -24,7 +24,7 @@ done · ⛔ blocked, needs a human.
 |---|---|---|---|---|
 | T00 | prove-the-ground | — | ✅ | |
 | T01 | recording-format | T00 | ✅ | |
-| T02 | level-start | T01 | 🔍 | `Game::start_level` (power-on, options, code typed, five pokes; WW-1 through W6-4's forced exit), `Game::location`, `Game::type_code_with`; `SceneKind` moved to `sf_core::scene`. 19 tests. Deviations, owner's: 26 levels not 29 (`recording::levels()`); `world end` screen; attract screens read `title`; blank frames keep the last place (`Game.place`). |
+| T02 | level-start | T01 | ✅ | Review clean, no fix commit. `start_level`, `location`, `type_code_with`; `SceneKind` in `sf_core::scene`. Owner deviations held: 26 levels, `world end`, attract reads `title`, blank keeps last place. Mutated press direction, cell offset, blank fallback: each red. Probed power-on attract: location stays `title`. |
 | T03 | original-start | T02 | ⬜ | |
 | T04 | replay-tool | T01, T02 | ⬜ | |
 | T05 | compare-tool | T03, T04 | ⬜ | |
@@ -37,7 +37,7 @@ done · ⛔ blocked, needs a human.
 | T12 | fix-procedure | T05, T11 | ⬜ | |
 | T13 | black-screen | T12 | ⬜ | |
 
-**Review queue:** T02
+**Review queue:** empty
 
 ## Blocked on the user
 
