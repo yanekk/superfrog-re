@@ -243,7 +243,10 @@ pub fn in_level_wait(cpu: &CpuRegs, m: &AmigaMemory) -> bool {
     LEVEL_WAIT.contains(&main_pc)
 }
 
-fn in_level(m: &AmigaMemory) -> bool {
+/// A level is being played: its logic running (`logic_running`, h0+$9d6) and `level_state`
+/// (h0+$a06) negative, as it is from the level's first frame until its exit or the frog's death
+/// ends it.
+pub fn in_level(m: &AmigaMemory) -> bool {
     word(m, LOGIC_RUNNING) != 0 && (long(m, LEVEL_STATE) as i32) < 0
 }
 

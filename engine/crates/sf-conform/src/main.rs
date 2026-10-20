@@ -27,6 +27,15 @@
 //! out; default the last 250) written as `frame-NNNNNN.png` to DIR (default
 //! `~/.cache/superfrog-re/bugs/<zip stem>/`), then `frames N`, `stopped-at`, `replay-at` and
 //! whether the last picture equals the zip's screenshot. Exit 0 whatever the comparison says.
+//! `sf-conform [--strict] bug compare <zip> [--out DIR]` — the zip's start and inputs played on
+//! the original (bug-recorder DESIGN §2.8, §2.9): the inputs retimed onto the original's frames,
+//! judged faithfully (frame-exact with `--strict`) in legs of 8 passes; prints `same` or `differs
+//! at frame F (engine step S): …`, where the original left the recording if it did, and the
+//! legs; writes `original-stop.png` and `engine-stop.png` to DIR (default the zip's folder).
+//! Exit 0 for same, 1 for differs.
+//! `sf-conform bug case <zip> <name>` — the zip as a permanent case:
+//! `engine/conform/cases/<name>.toml` and `engine/conform/scripts/<name>.txt`, its inputs in the
+//! original's frames; refuses a name either folder has.
 
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
@@ -34,7 +43,7 @@ use std::process::ExitCode;
 use sf_conform::{Alone, Case, InputScript, Mode, cases_dir, sync};
 use sf_core::layout::{LAYOUT, Ram, VarDef, VarId, Width, h0};
 
-const USAGE: &str = "usage: sf-conform [--strict | --alone] run <case.toml>... | [--strict] all | [--strict] scan <case.toml> | feed <case.toml> [--frames N] | channels <case.toml>... | record <case.toml> [--watch NAME=ADDR:W]... [--every] [--only] [--all-vars] [--max-mb N] [--trace] [--paula] [--png DIR] | bug replay <zip> [--out DIR] [--frames A..B] [--every N]";
+const USAGE: &str = "usage: sf-conform [--strict | --alone] run <case.toml>... | [--strict] all | [--strict] scan <case.toml> | feed <case.toml> [--frames N] | channels <case.toml>... | record <case.toml> [--watch NAME=ADDR:W]... [--every] [--only] [--all-vars] [--max-mb N] [--trace] [--paula] [--png DIR] | bug replay <zip> [--out DIR] [--frames A..B] [--every N] | [--strict] bug compare <zip> [--out DIR] | bug case <zip> <name>";
 
 fn main() -> ExitCode {
     let mut args: Vec<String> = std::env::args().skip(1).collect();
@@ -60,6 +69,12 @@ fn main() -> ExitCode {
         Some("record") if args.len() >= 2 => record(Path::new(&args[1]), &args[2..]),
         Some("bug") if args.len() >= 3 && args[1] == "replay" => {
             bug_replay(Path::new(&args[2]), &args[3..])
+        }
+        Some("bug") if args.len() >= 3 && args[1] == "compare" => {
+            bug_compare(Path::new(&args[2]), &args[3..], mode)
+        }
+        Some("bug") if args.len() == 4 && args[1] == "case" => {
+            bug_case(Path::new(&args[2]), &args[3])
         }
         _ => Err(USAGE.to_string()),
     };
@@ -116,6 +131,53 @@ fn bug_replay(zip: &Path, rest: &[String]) -> Result<bool, String> {
         0 => println!("screenshot equal"),
         n => println!("screenshot differs ({n} pixels)"),
     }
+    Ok(true)
+}
+
+fn bug_compare(zip: &Path, rest: &[String], mode: Mode) -> Result<bool, String> {
+    use sf_conform::bug;
+    let out = match rest {
+        [] => None,
+        [flag, dir] if flag == "--out" => Some(PathBuf::from(dir)),
+        _ => return Err(USAGE.to_string()),
+    };
+    let bytes = std::fs::read(zip).map_err(|e| format!("{}: {e}", zip.display()))?;
+    let (rec, _) = bug::read_zip(&bytes).map_err(|e| format!("{}: {e}", zip.display()))?;
+    // Beside the zip: the pictures are disk-derived, and the zip's folder, `bugs/`, is
+    // git-ignored (RE §2.3; bug-recorder DESIGN §2.10 step 3).
+    let dir = match out {
+        Some(d) => d,
+        None => match zip.parent() {
+            Some(p) if !p.as_os_str().is_empty() => p.to_path_buf(),
+            _ => PathBuf::from("."),
+        },
+    };
+    let c = bug::compare(&rec, mode)?;
+    print!("{}", c.report());
+    std::fs::create_dir_all(&dir).map_err(|e| format!("{}: {e}", dir.display()))?;
+    let write = |name: &str, png: Vec<u8>| {
+        let p = dir.join(name);
+        std::fs::write(&p, png).map_err(|e| format!("{}: {e}", p.display()))?;
+        println!("{}", p.display());
+        Ok::<(), String>(())
+    };
+    if let Some(stop) = &c.retimed.stop {
+        write("original-stop.png", bug::frame_png(stop))?;
+    }
+    write("engine-stop.png", bug::picture_png(&c.engine_stop))?;
+    Ok(c.same())
+}
+
+fn bug_case(zip: &Path, name: &str) -> Result<bool, String> {
+    use sf_conform::{bug, scripts_dir};
+    let bytes = std::fs::read(zip).map_err(|e| format!("{}: {e}", zip.display()))?;
+    let (rec, _) = bug::read_zip(&bytes).map_err(|e| format!("{}: {e}", zip.display()))?;
+    let file = zip
+        .file_name()
+        .map_or("-".to_string(), |n| n.to_string_lossy().into_owned());
+    let (case, script) = bug::write_case(&rec, name, &file, &cases_dir(), &scripts_dir())?;
+    println!("{}", case.display());
+    println!("{}", script.display());
     Ok(true)
 }
 
