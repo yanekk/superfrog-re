@@ -30,6 +30,8 @@
 //! T122: `--no-tile-coins`: only markers 8 and 9 are coins (a tile coin counts in `frog+$7e`, not
 //! toward the exit: W2's); `--jump N`: the field climbs N rows from ground, not 6 (a jump reaches
 //! 3 rows, so 4 is the frog's); `--launch N`: a launcher (marker 7) lifts the field N rows.
+#[path = "common/plan_stats.rs"]
+mod plan_stats;
 use sf_conform::{InputScript, SyncPoint, sync};
 use sf_core::frog::{FROG, f};
 use sf_core::input::{FrameInput, Joy};
@@ -271,6 +273,7 @@ fn dist(field: &[u32], cx: usize, cy: usize) -> i64 {
 }
 
 fn main() {
+    plan_stats::start();
     let args: Vec<String> = std::env::args().skip(1).collect();
     let id: sf_core::LevelId = args[0].parse().unwrap();
     let mut via: Vec<Via> = Vec::new();
@@ -396,7 +399,7 @@ fn main() {
     }
     let mut inputs: Vec<FrameInput> = Vec::new();
     for &x in &prefix {
-        sync::step_inserting(amiga, x).unwrap();
+        plan_stats::oracle_step(amiga, x).unwrap();
         inputs.push(x);
     }
     let peek_w = |a: &sf_oracle::Amiga, addr: u32| {
@@ -624,7 +627,7 @@ fn main() {
                                         // A path the engine panics on is dropped, its inputs
                                         // kept for a look (T103: a bob blit past the buffers).
                                         let stepped = std::panic::catch_unwind(
-                                            std::panic::AssertUnwindSafe(|| n.step(x)),
+                                            std::panic::AssertUnwindSafe(|| { plan_stats::engine(); n.step(x) }),
                                         );
                                         if stepped.is_err() {
                                             let _ = std::fs::write(
@@ -705,7 +708,7 @@ fn main() {
             let n = p.len().min(COMMIT);
             let mut ok = true;
             for (k, &x) in p.iter().enumerate() {
-                sync::step_inserting(amiga, x).unwrap();
+                plan_stats::oracle_step(amiga, x).unwrap();
                 let b = amiga.peek(LEVEL_STATE, 4);
                 let ended = (u32::from_be_bytes([b[0], b[1], b[2], b[3]]) as i32) >= 0;
                 if (peek_w(amiga, FROG + f::LIVES) as i16) < lives as i16
@@ -728,7 +731,7 @@ fn main() {
                 // and the tally that follows is no place to plan).
                 let mut k = 0;
                 while k < n {
-                    sync::step_inserting(amiga, p[k]).unwrap();
+                    plan_stats::oracle_step(amiga, p[k]).unwrap();
                     k += 1;
                     // Any change from the level's running −2: the exit's 1 can come and go
                     // within a frame (W4-4's exit at 15544 shows 0 next).
@@ -847,6 +850,7 @@ fn main() {
         }
     }
     print!("{}", script(&inputs));
+    plan_stats::print();
 }
 
 /// `inputs` as a script: a line at each change, and a closing `-` line.

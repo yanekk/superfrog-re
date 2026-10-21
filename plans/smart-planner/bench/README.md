@@ -1,0 +1,1 @@
+Benchmark results (DESIGN §3.4, §4.2). `results.jsonl` is appended by `sf-bench`; `RESULTS.md` is generated from it, never edited: regenerate with `cd engine && cargo run --release -p sf-bench -- --table-only`.

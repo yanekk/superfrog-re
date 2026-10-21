@@ -22,6 +22,8 @@
 //! game instead of the level's `AtLevel` sync point.
 //! `--avoid c0,r0,c1,r1` (T206): no way enters that box (W3-2's pit at 240,63: a dead end in the
 //! chain, its coins taken last leaving no way out).
+#[path = "common/plan_stats.rs"]
+mod plan_stats;
 use sf_conform::{InputScript, SyncPoint, sync};
 use sf_core::frog::{FROG, f};
 use sf_core::input::{FrameInput, Joy};
@@ -140,6 +142,7 @@ fn safe(g: &Game, lives: u16) -> bool {
         if (st.w(FROG + f::LIVES) as i16) < lives as i16 || st.w(FROG + f::DYING) != 0 {
             return false;
         }
+        plan_stats::engine();
         g.step_unseen(FrameInput::default());
     }
     let st = g.state();
@@ -208,6 +211,7 @@ fn explore(
                     joy: a,
                     ..FrameInput::default()
                 };
+                plan_stats::engine();
                 g.step_unseen(x);
                 inputs.push(x);
                 let st = g.state();
@@ -262,6 +266,7 @@ fn explore(
 }
 
 fn main() {
+    plan_stats::start();
     let args: Vec<String> = std::env::args().skip(1).collect();
     let id: sf_core::LevelId = args[0].parse().unwrap();
     let (mut prefix, mut out, mut budget) = (Vec::new(), None, 20_000usize);
@@ -318,7 +323,7 @@ fn main() {
     let display = sf_conform::display_data();
     let mut inputs: Vec<FrameInput> = Vec::new();
     for &x in &prefix {
-        sync::step_inserting(amiga, x).unwrap();
+        plan_stats::oracle_step(amiga, x).unwrap();
         inputs.push(x);
     }
     let peek_w = |a: &sf_oracle::Amiga, addr: u32| {
@@ -379,7 +384,7 @@ fn main() {
         let before = inputs.len();
         let mut kept = 0;
         for (k, &x) in way.inputs.iter().enumerate() {
-            sync::step_inserting(amiga, x).unwrap();
+            plan_stats::oracle_step(amiga, x).unwrap();
             let st = sf_core::State::transplant(&sync::core_memory(amiga.memory()));
             let (c, r) = cell(&st);
             let (ec, er) = way.cells[k];
@@ -405,7 +410,7 @@ fn main() {
         };
         amiga.restore(&snap);
         for &x in &way.inputs[..keep] {
-            sync::step_inserting(amiga, x).unwrap();
+            plan_stats::oracle_step(amiga, x).unwrap();
         }
         inputs.extend_from_slice(&way.inputs[..keep]);
         if keep == 0 {
@@ -456,6 +461,7 @@ fn main() {
         }
     }
     print!("{}", script(&inputs));
+    plan_stats::print();
 }
 
 /// `inputs` as a script: a line at each change, and a closing `-` line.

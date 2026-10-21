@@ -33,6 +33,8 @@
 //! original's frog: where the frog is back on it (within 4 pixels, no more coins needed), the old
 //! route is replayed from there while the frog keeps within a cell of it; off it, the plan steers
 //! for the trail's next 240 frames (the owner's route repair, 2026-10-17).
+#[path = "common/plan_stats.rs"]
+mod plan_stats;
 use sf_conform::{InputScript, SyncPoint, sync};
 use sf_core::frog::{FROG, f};
 use sf_core::input::{FrameInput, Joy};
@@ -351,6 +353,7 @@ fn dist(field: &[u32], cx: usize, cy: usize) -> i64 {
 }
 
 fn main() {
+    plan_stats::start();
     let args: Vec<String> = std::env::args().skip(1).collect();
     let id: sf_core::LevelId = args[0].parse().unwrap();
     let mut via: Vec<Via> = Vec::new();
@@ -436,7 +439,7 @@ fn main() {
     ];
     let mut inputs: Vec<FrameInput> = Vec::new();
     for &x in &prefix {
-        sync::step_inserting(amiga, x).unwrap();
+        plan_stats::oracle_step(amiga, x).unwrap();
         inputs.push(x);
     }
     let peek_l = |a: &sf_oracle::Amiga, addr: u32| {
@@ -459,7 +462,7 @@ fn main() {
                 .amiga;
             (0..n)
                 .map(|k| {
-                    sync::step_inserting(&mut a, s.input_at(k)).unwrap();
+                    plan_stats::oracle_step(&mut a, s.input_at(k)).unwrap();
                     let w = |o| peek_w(&a, FROG + o) as i16 as i32;
                     (w(f::X), w(f::Y), peek_w(&a, FROG + f::COINS_LEFT))
                 })
@@ -508,7 +511,7 @@ fn main() {
                 let mut n = 0;
                 let mut ended = false;
                 for k in j + 1..trail.len() {
-                    sync::step_inserting(amiga, fs.input_at(k as u32)).unwrap();
+                    plan_stats::oracle_step(amiga, fs.input_at(k as u32)).unwrap();
                     let w = |o| peek_w(amiga, FROG + o) as i16 as i32;
                     if (w(f::LIVES) as i16) < lives as i16 || w(f::DYING) != 0 || sync::in_wall_loop(amiga) {
                         break;
@@ -532,7 +535,7 @@ fn main() {
             if let Some((j, n)) = replayed {
                 let p: Vec<FrameInput> = (j + 1..j + 1 + n).map(|k| fs.input_at(k as u32)).collect();
                 for &x in &p {
-                    sync::step_inserting(amiga, x).unwrap();
+                    plan_stats::oracle_step(amiga, x).unwrap();
                 }
                 history.push((snap, inputs.len(), goal, skip));
                 skip = 0;
@@ -729,6 +732,7 @@ fn main() {
                     let mut dead = false;
                     for _ in 0..HOLD {
                         let x = FrameInput::joy(a);
+                        plan_stats::engine();
                         n.step_unseen(x);
                         p.push(x);
                         if (n.state().w(FROG + f::LIVES) as i16) < lives as i16 || n.state().w(FROG + f::DYING) != 0 {
@@ -774,7 +778,7 @@ fn main() {
             let n = p.len().min(COMMIT);
             let mut ok = true;
             for (k, &x) in p.iter().enumerate() {
-                sync::step_inserting(amiga, x).unwrap();
+                plan_stats::oracle_step(amiga, x).unwrap();
                 if (peek_w(amiga, FROG + f::LIVES) as i16) < lives as i16
                     || peek_w(amiga, FROG + f::DYING) != 0
                     || (keep_hearts && peek_w(amiga, HEARTS) < hearts)
@@ -793,7 +797,7 @@ fn main() {
             if ok {
                 let mut k = 0;
                 while k < n {
-                    sync::step_inserting(amiga, p[k]).unwrap();
+                    plan_stats::oracle_step(amiga, p[k]).unwrap();
                     k += 1;
                     let (fx, fy) = (
                         peek_w(amiga, FROG + f::X) as i16 as i32 + 0x17,
@@ -826,7 +830,7 @@ fn main() {
                 }
                 let mut ok = true;
                 for &x in &p {
-                    sync::step_inserting(amiga, x).unwrap();
+                    plan_stats::oracle_step(amiga, x).unwrap();
                     if (peek_w(amiga, FROG + f::LIVES) as i16) < lives as i16
                         || peek_w(amiga, FROG + f::DYING) != 0
                         || (keep_hearts && peek_w(amiga, HEARTS) < hearts)
@@ -850,7 +854,7 @@ fn main() {
                 let n = p.len().min(COMMIT);
                 let mut k = 0;
                 while k < n {
-                    sync::step_inserting(amiga, p[k]).unwrap();
+                    plan_stats::oracle_step(amiga, p[k]).unwrap();
                     k += 1;
                     let (fx, fy) = (
                         peek_w(amiga, FROG + f::X) as i16 as i32 + 0x17,
@@ -962,6 +966,7 @@ fn main() {
         }
     }
     print!("{}", script(&inputs));
+    plan_stats::print();
 }
 
 /// `inputs` as a script: a line at each change, and a closing `-` line.
