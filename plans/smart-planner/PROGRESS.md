@@ -16,7 +16,7 @@ unreliable edges); T07 now light, T00 answers three more questions.
 
 **Status:** plan written; nothing built.
 **Last updated:** 2026-10-21
-**Next `pir-work` will:** T03 level-facts and T02 baseline-sample; T04 waits on T03.
+**Next `pir-work` will:** T04 movement-map (T03 and T19 done), T02 baseline-sample, T06 and T07.
 
 ## Tasks
 
@@ -28,7 +28,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T00 | movement-map-spike | — | ✅ | |
 | T01 | bench-harness | — | ✅ | |
 | T02 | baseline-sample | T01 | ⬜ | |
-| T03 | level-facts | T00 | ⬜ | |
+| T03 | level-facts | T00 | ✅ | |
 | T04 | movement-map | T03 | ⬜ | |
 | T05 | map-cache | T04 | ⬜ | |
 | T06 | coin-choice | T03 | ⬜ | |

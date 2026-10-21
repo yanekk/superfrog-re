@@ -11,6 +11,7 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-21 | 🐞 | T03: tile coins (marker 55, `coin` h0+$ede0) add to `frog+$7e` only, never `coins_left_for_exit`; DESIGN §2.3 counts them toward the exit. `Facts` keeps them as `CoinKind::Tile`; T06 must meet `coins_needed` with `Object` coins. |
 | 2026-10-21 | 📌 | T19, one thread, release, `Start::Level`, 2000 script frames, load 7–8: W1-4 1823 f/s drawn (`step`, the old `step_unseen` cost) to 11159 `step_unseen`; W6-3 1686 to 4736. The loop-ending frame is still drawn (`Game::shown`). |
 | 2026-10-21 | 🔄 | Owner, T00: map moves landing within one cell of their target count as success, the search going on from where the frog is; D17's 3-failure ×4 rule stands. T04's move set adds mid-air steering and must reach W6-3's exit. |
 | 2026-10-21 | 🔄 | Owner, T00: added T19 step-unseen-no-picture (T00; blocks T04): `step_unseen` stops drawing `level_as_drawn`, about 3× faster map builds, state unchanged. Chosen over a coarser move set or a lazily built map. |
