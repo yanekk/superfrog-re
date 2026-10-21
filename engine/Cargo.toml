@@ -37,6 +37,11 @@ opt-level = 2
 [profile.dev.package.sf-app]
 opt-level = 2
 
+# The planner's coin choice, map and search are step-bounded loops over hundreds of targets and
+# thousands of nodes; unoptimised, a W6 coin choice alone nears its 1 s test budget (smart-planner T06).
+[profile.dev.package.sf-plan]
+opt-level = 2
+
 [profile.dev.package.png]
 opt-level = 2
 

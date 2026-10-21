@@ -27,12 +27,12 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 |---|---|---|---|---|
 | T00 | movement-map-spike | — | ✅ | |
 | T01 | bench-harness | — | ✅ | |
-| T02 | baseline-sample | T01 | ⬜ | |
+| T02 | baseline-sample | T01 | ✅ | |
 | T03 | level-facts | T00 | ✅ | |
 | T04 | movement-map | T03 | ✅ | Review: layer API, coin-keyed dedup, waits, gate re-walks held; count fixed (11 fail, T20), T21 doc completed. Probed: map equal at 1/8/200 parts on W2-1, W2-3, W2-4; ignored W6-4, stall-spot, sample-replay tests run green; hold-input mutation caught. Two-switch worlds never walked: T20. |
 | T05 | map-cache | T04 | ⬜ | |
-| T06 | coin-choice | T03 | ⬜ | |
-| T07 | danger-map | T03 | ⬜ | |
+| T06 | coin-choice | T03 | ✅ | |
+| T07 | danger-map | T03 | ✅ | |
 | T08 | search | T04, T06, T07 | ⬜ | |
 | T09 | route-repair | T08 | ⬜ | |
 | T10 | oracle-check | T02, T08, T09 | ⬜ | |
