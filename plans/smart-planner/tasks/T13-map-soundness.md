@@ -14,7 +14,9 @@ DESIGN §1 M7, §4.2 (engine only, parallel), §2.2.
 
 ## Files
 
-- `engine/crates/sf-plan/src/core/explore.rs` (goal-free mode over T08's archive: novelty only)
+- `engine/crates/sf-plan/src/core/explore.rs` (T08 created it for exploring when stuck; this task adds
+  the goal-free entry point that runs the explore step alone, novelty only, with learning off so holes
+  are reported, not patched)
 - `engine/crates/sf-plan/src/bin/sf-explore.rs` (`sf-explore <level> --minutes N --seed N`: builds the
   map, runs the explorer, prints reached cells and holes; a binary of its own so it does not wait for
   or collide with T11's `main.rs`)

@@ -41,6 +41,9 @@ Phase 3  ▸  T13 … T18          soundness, tuning, counted runs, verdict, ret
 by real moves), how enemies and moving platforms are held while measuring, and whether map build time
 fits the budget. If the map cannot be built in under ~5 minutes per level on 10 threads, or misjudges
 the recorded stall spots, the plan goes back to the owner before T03. It is throwaway and deleted.
+Since the 2026-10-21 amendment it also settles whether map nodes carry speed (D15), confirms that
+enemies spawn only as the screen reaches them (D14), and measures how often map moves fail in live
+play (D17).
 
 **T02 decides** whether T10 uses long-stretch confirmation with repair (DESIGN §2.6).
 
@@ -98,7 +101,7 @@ T15 depends on T13 and T16 on T15 only so that they run on a quiet machine after
 | Start from `start_level` (`--app`) | T12 | T12 `main.rs` |
 | Level facts | T03 | T04/T08 call it; T11 `main.rs` constructs |
 | Movement map | T04 | T11 `main.rs` via `cache::load_or_build` (T05) |
-| Danger map | T07 | T08 `search::Planner::new` |
+| Live danger check | T07 | T08 `search` (every edge through `danger::play_safe`) |
 | Coin choice | T06 | T08 `search::Planner::new` and re-choice |
 | Search | T08 | T10 (original mode), T11 `main.rs` (app/engine) |
 | Route repair `--follow` | T09 | T11 `main.rs` flag; T10 for stretch confirmation |
@@ -126,16 +129,17 @@ tail T14–T18 is serial on purpose: counted runs need a quiet machine.
 | Weight | Tasks |
 |---|---|
 | **Heavy** | T00, T04, T08, T14, T16, T17 (the last two in machine hours, up to ~25 h each) |
-| **Medium** | T01, T02, T07, T09, T10, T11, T13, T15, T18 |
-| **Light** | T03, T05, T06, T12 |
+| **Medium** | T01, T02, T09, T10, T11, T13, T15, T18 |
+| **Light** | T03, T05, T06, T07, T12 |
 
-Overrun risks: T04 if moving platforms and pads need many move variants; T14 is open-ended by nature
+Overrun risks: T04 if moving platforms and pads need many move variants, or speed bands (D15) multiply
+the move count; T08, which grew by exploring when stuck, learned and unreliable edges (D16, D17); T14 is open-ended by nature
 (tuning until the stall levels pass), bounded by D5: what is not clear-cut goes to the owner; T16/T17
 are wall-clock bound and run as resumable background slices of at most 2 h each.
 
 ## Decisions still open
 
-- Map seeding and enemy freezing: T00 settles them; nothing after T03 starts before.
+- Map seeding, enemy freezing and speed bands (D15): T00 settles them; nothing after T03 starts before.
 - Stretch confirmation: T02 settles it before T10.
 - Whether `pir/bug-recorder` is merged by the time T12 is ready: T12 checks; if not, T12 and T15
   wait and the owner is asked. T16, T17 and T18 wait with them, being chained after T15 for a quiet

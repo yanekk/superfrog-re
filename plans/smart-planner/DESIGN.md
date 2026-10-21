@@ -85,14 +85,30 @@ T08 (D13).
 
 ### 2.2 The movement map
 
-For each standable cell (open cell whose cell below is ground or a platform top, by the markers in
-`level/collision.rs`), the map holds edges: a macro move (an input sequence of held joystick states),
-its frame count, the cell it ends standing in, and its preconditions (a switch set that must be
-pressed, wings held). Move families: walk left/right, jump, running jump of several run-up lengths,
-drop off an edge, pad and spring launch (a move that starts on the pad), and with wings, flight
-segments. Edges are found by stepping the engine (`Game::step_unseen`) from a real game state, never
-computed from a jump formula, because the rust-engine run found the formula versions wrong in each
-level family (FINDINGS T103, T115, T150).
+A map node is a standable cell (open cell whose cell below is ground or a platform top, by the markers
+in `level/collision.rs`) plus, if T00 adopts it (D15), a speed band (stopped, half, full) and facing.
+For each node the map holds edges: a macro move (an input sequence of held joystick states), its frame
+count, the node it ends in (landed, carrying whatever speed it has; a move never pads frames to stop),
+the coins it touches on the way (D17), and its preconditions (a switch set that must be pressed, wings
+held). Move families: walk left/right, jump, running jump of several run-up lengths, drop off an edge,
+pad and spring launch (a move that starts on the pad), and with wings, flight segments. Edges are
+found by stepping the engine (`Game::step_unseen`) from a real game state, never computed from a jump
+formula, because the rust-engine run found the formula versions wrong in each level family (FINDINGS
+T103, T115, T150). Why speed: the frog carries momentum (a full-speed run jump crosses ~17 cells,
+rust-engine FINDINGS T104), so a stopped-only map misses ledges reached at speed and its stop-and-go
+routes run long against M4.
+
+If T00 rejects speed bands (build over ~5 min), the node is the cell alone, edges start stopped, and
+the frame-level search (§2.4) carries momentum; the map is then a guide and §2.3/§2.4 never treat its
+gaps as proof.
+
+Fixed hazards (marker 6 spikes and other deadly tiles, which never move) are marked on the map: an edge
+whose path touches one is not recorded. Moving danger is judged live (§2.5).
+
+The map is a guide, not the truth: the world it was measured in (object slots, platform spawns, RNG)
+differs from the one the frog plays in. During a run an edge that fails live replay 3 times is marked
+unreliable for that run and its cost is multiplied by 4 (D17); an edge learned in play (§2.4) is added
+for that run.
 
 Distance is the sum of edge frames, so the cost of a detour is measured in time, which is what the
 budget and M4 count.
@@ -105,14 +121,16 @@ static map cannot represent.
 How the map is seeded (frog placed by writing its position into a state, or only cells reached from
 the start by real moves) and how enemies and moving platforms are held while measuring are decided by
 T00 and recorded in §7 by that task's review. Until then the rule is: an edge is valid only if
-replaying its inputs on the engine from its start state ends in its end cell, standing, alive (the
+replaying its inputs on the engine from its start state ends in its end node, landed, alive (the
 test in §4).
 
 ### 2.3 Coin choice
 
 Before moving, the planner picks a set of coins whose count meets the exit's requirement and an order
-for them, minimising total map distance from start through the coins to the exit. Unreachable coins
-(no path in the map) are never chosen. Coins include tile coins from the world's pickup table
+for them, minimising total map distance from start through the coins to the exit. A coin with no map
+path gets a fixed high cost (the far-coin cost, larger than any map path on the level) rather than
+being ruled out, so it is chosen only when the reachable coins cannot meet the count (D16). A coin an
+edge touches on the way counts as taken by that edge (D17). Coins include tile coins from the world's pickup table
 (h0+$f382 entries whose handler is h0+$ede0) and coin objects. Why: the exit needs a count, and
 nearest-first walked into the hardest coins (W1-4, set-C W1-1 column 92). The choice is re-run when
 the route parts from plan (a coin taken by accident, one found unreachable in play), from the state
@@ -128,6 +146,14 @@ archive for the whole level, keyed by (cell, coins left in bands, switches press
 starts from the archive's best state for it rather than from scratch. Why: W2-4 rebuilt `explore`'s
 archive 31 times, once per coin (FINDINGS T168, ROADMAP).
 
+Exploring when stuck (D16): when the current target has made no progress for a set number of search
+steps, one step in five goes to exploration instead: pick an archived state, preferring cells least
+visited, and play from it toward no target, scoring novelty only (the Go-Explore pattern, the same code
+as T13's explorer). The share and the stall threshold are counted in search steps, never in time, so
+M8 holds. A cell reached this way that the map lacks becomes a learned edge for the rest of the run
+(the archive's inputs from the nearest map node), and the run lists every learned edge in its stats
+so the move set can be fixed (M7). Why: a map gap must cost search time, never a false "impossible".
+
 A path dies on a life lost (a 1-up gained is not a loss, FINDINGS T205 row on `plan.rs`), `DYING`,
 an engine panic (caught), or the original hanging in `frog_tiles`'s wall loop (`sync::in_wall_loop`,
 original mode).
@@ -137,12 +163,16 @@ partitions and their results are merged in partition order, then stable-sorted. 
 only decides when to give up; it never chooses between routes. Why: M8, and so a benchmark run can be
 reproduced on another machine to the byte, given it finishes.
 
-### 2.5 Danger map
+### 2.5 Danger, judged live (D14)
 
-Enemy hitboxes are sampled over a window of frames with the frog parked out of reach, giving per cell
-the frames an enemy occupies it. The search adds a cost for a move whose frames overlap occupied
-cells and prefers waiting at a safe cell for a gap. A heart lost costs more than any detour the budget
-allows. Why: M6, and hard mode later, where one touch kills.
+There is no pre-sampled enemy timetable. Enemies exist only once their row or column scrolls into view
+(`map_spawn_scan_edges`, docs/09), their phase depends on when the frog arrived, and some react to the
+frog, so a timetable sampled with the frog parked sees almost none of them and times the rest wrong.
+Instead every move the search plays runs on a copy of the live state, enemies included, and a move
+that loses a heart is scored at the heart cost, which exceeds any detour the budget allows. Before a
+move that lost a heart is given up, the search tries it again after waiting 12, 25 and 50 frames on
+its start cell, and keeps the earliest variant that loses nothing; that is how it waits for a gap.
+Fixed hazards are on the map (§2.2). Why: M6, and hard mode later, where one touch kills.
 
 ### 2.6 Checking on the original
 
@@ -185,9 +215,10 @@ built once and reused would hide its cost from M3.
 - Budget exhausted: the planner exits non-zero, writes the best partial route to `--out` and a
   one-line reason (coins needed, last cell, stalled target) to stderr. Why: a partial route is what the
   next agent resumes or diagnoses from.
-- A coin or switch the map calls unreachable: dropped from the choice with a stderr line; if the exit's
-  count cannot then be met, the planner says so and exits non-zero at once rather than searching the
-  whole budget.
+- A coin or switch the map calls unreachable: kept at the far-coin cost with a stderr line (§2.3); the
+  planner never exits early on map evidence alone, because a map gap is not proof (D16). If the budget
+  ends with the count unmet, the reason line says how many coins the map and the exploration together
+  ever reached, so "impossible" and "not found in time" read differently.
 - The oracle hangs or panics: the oracle runs under its frame cap (rust-engine DESIGN §5.2); the chunk
   is rejected as a dead path.
 - A corrupt or stale map cache file: rebuilt, never trusted. The key includes the engine build.
@@ -240,8 +271,9 @@ Threads: the core exposes work as partitions (`expand(part) -> Vec<Child>`); the
   (`((X+0x17)/16, (Y−0x10)/16)`). Replaces the copies in the four old planners.
 - `core::map`: `MoveMap` (cells, edges, preconditions), built by stepping the engine.
 - `core::coins`: coin choice over a `MoveMap`.
-- `core::danger`: occupancy sampling and the cost lookup.
-- `core::search`: macro following, beam fallback, archive, scoring.
+- `core::danger`: the live heart check with wait variants (§2.5); fixed hazards are in `core::facts`.
+- `core::search`: macro following, beam fallback, archive, scoring, exploring when stuck, learned and
+  unreliable edges.
 - `core::repair`: `--follow` policy.
 - `oracle`: chunked or stretch confirmation on `sf_oracle::Amiga` through `sf_conform::sync`.
 - `cache`: map files (bincode, `serde` derives already in the workspace).
@@ -253,8 +285,8 @@ Threads: the core exposes work as partitions (`expand(part) -> Vec<Child>`); the
 
 ### 3.3 Data flow
 
-start state → `facts` → `map` (cache or build) → `danger` → `coins` → `search` (engine; in original
-mode chunked through `oracle`) → `InputScript` → `--out`.
+start state → `facts` (with fixed hazards) → `map` (cache or build) → `coins` → `search` (engine, every move
+played through `danger`; in original mode chunked through `oracle`) → `InputScript` → `--out`.
 
 ### 3.4 Storage
 
@@ -396,7 +428,7 @@ The old tools stay in the tree until T18, so any level can still be planned the 
   are fixed and those levels re-run within the task. The old tools are deleted once M1 holds or the
   owner accepts the miss.
 - D6 (owner): techniques in: planning in map moves, check-less-repair-diffs (conditional on T02),
-  danger map, map cache. Out: learning from committed routes (it is a hint), a trained model.
+  danger map (made live by D14), map cache. Out: learning from committed routes (it is a hint), a trained model.
 - D7 (owner): a throwaway spike (T00) proves the map on W1-4 and W6-3 before anything is built on it.
 - D11 (owner, 2026-10-20): hints (`--via`, `--avoid`, `--follow` as starting input) are allowed for
   agents but never in the benchmark, and every `--via`/`--avoid` use is logged to
@@ -410,6 +442,19 @@ The old tools stay in the tree until T18, so any level can still be planned the 
   an enemy (a stomp reward, a knock) is checked early, by T04's per-level reachability test, and
   brought to the owner before T08. Refused: assuming none and finding out at T14 (late), building
   enemy use into the search now (maybe unneeded).
+- D14 (owner, 2026-10-21): no pre-sampled danger map; danger is judged live on the search's own copy of
+  the state, with wait-then-retry variants (§2.5), and only fixed hazards go on the map. Why: enemies
+  spawn as their edge scrolls into view (docs/09), so a parked-frog sample misses them and their phase.
+  T00 confirms the spawn behaviour on the engine before T07 is built.
+- D15 (owner, 2026-10-21): map nodes carry a speed band and facing if T00 measures the build at ~5 min
+  or less per level with them; otherwise cells only, with momentum left to the frame-level search.
+  Edges end landed, never padded to a stop. Why: momentum (§2.2) and M4.
+- D16 (owner, 2026-10-21): "unreachable on the map" is a cost, never a stop: far-coin cost in the
+  choice, exploring when stuck in the search (step-counted, so M8 holds), learned edges for the run,
+  and no early exit on map evidence. Why: a map gap must not become a false "impossible".
+- D17 (owner, 2026-10-21): edges record the coins they touch on the way, and an edge that fails live
+  replay 3 times in a run is marked unreliable (cost ×4) for that run. T00 measures the live-failure
+  rate. Why: coins taken mid-jump, and a world (object slots, spawns, RNG) that differs by route.
 - D8: the planner is a new crate `sf-plan`, not more examples in sf-conform, because examples cannot be
   unit-tested or shared, which is how four copies of the level facts came to exist.
 - D9: the benchmark verifies with `sf_conform::run` on a generated case, the check the completion

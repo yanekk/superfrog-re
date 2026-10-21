@@ -10,9 +10,11 @@ task you pick up, and append yours there.
 message. Whoever writes a cell also fixes the over-budget cell they walk past.
 
 **Plan reviewed:** 2026-10-20 — 9 fixed, 5 decided with the user
+**Plan amended:** 2026-10-21 — D14–D17 (live danger, speed bands, explore instead of early give-up,
+unreliable edges); T07 now light, T00 answers three more questions.
 
 **Status:** plan written; nothing built.
-**Last updated:** 2026-10-20
+**Last updated:** 2026-10-21
 **Next `pir-work` will:** T00 movement-map-spike, the gate for everything on the map; T01 can run beside it.
 
 ## Tasks
