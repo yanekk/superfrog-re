@@ -14,9 +14,9 @@ message. Whoever writes a cell also fixes the over-budget cell they walk past.
 unreliable edges); T07 now light, T00 answers three more questions.
 **Amendment reviewed:** 2026-10-21 — 6 fixes, 1 decision (a retry after a wait is a standing-start move)
 
-**Status:** plan written; nothing built.
+**Status:** T00 implemented, awaiting review.
 **Last updated:** 2026-10-21
-**Next `pir-work` will:** T00 movement-map-spike, the gate for everything on the map; T01 can run beside it.
+**Next `pir-work` will:** review T00; then T03 and T19 (T19 blocks T04).
 
 ## Tasks
 
@@ -25,7 +25,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 
 | # | Task | Depends on | State | Notes |
 |---|---|---|---|---|
-| T00 | movement-map-spike | — | ⬜ | |
+| T00 | movement-map-spike | — | 🔍 | Spike on W1-4, W6-3; raw counts in `spike/`, answers in FINDINGS Q1–Q7, recommendations in the last T00 commit. Deviation: engine start `Start::Level`, not the oracle's AtLevel (no oracle needed). Deviation: builds timed with a local uncommitted picture-skip patch; owner added T19 for it. |
 | T01 | bench-harness | — | ⬜ | |
 | T02 | baseline-sample | T01 | ⬜ | |
 | T03 | level-facts | T00 | ⬜ | |
@@ -44,8 +44,9 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T16 | baseline-counted | T15 | ⬜ | |
 | T17 | new-counted | T13, T16 | ⬜ | |
 | T18 | results-and-retire | T17 | ⬜ | |
+| T19 | step-unseen-no-picture | T00; blocks T04 | ⬜ | |
 
-**Review queue:** *(empty)*
+**Review queue:** T00
 
 ## Blocked on the user
 

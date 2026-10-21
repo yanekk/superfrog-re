@@ -11,6 +11,8 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-21 | 🔄 | Owner, T00: map moves landing within one cell of their target count as success, the search going on from where the frog is; D17's 3-failure ×4 rule stands. T04's move set adds mid-air steering and must reach W6-3's exit. |
+| 2026-10-21 | 🔄 | Owner, T00: added T19 step-unseen-no-picture (T00; blocks T04): `step_unseen` stops drawing `level_as_drawn`, about 3× faster map builds, state unchanged. Chosen over a coarser move set or a lazily built map. |
 | 2026-10-21 | 📌 | T00 Q7: 500 map edges played from real states, enemies live, 46.2% fail on W1-4 (41% land elsewhere, 5% lose a heart), 55.0% on W6-3. 57% of misses (W6-3 44%) are one cell off. 17% of W1-4 edges take coins. |
 | 2026-10-21 | 📌 | T00 Q6, speed bands: W1-4 12262 nodes, 279388 edges, 1699 s against cells-only 2414, 49519, 227 s; W6-3 237 s against 28 s, reaching 397 cells against 196. 56% (W6-3 53%) of moving-start edges land elsewhere than stopped. |
 | 2026-10-21 | 📌 | T00 Q5: frog parked 2000 frames, 1 of W1-4's 60 enemy marker cells ever fills a slot (W6-3: 2 of 46); walking the map fills 60 (W6-3: 17). Enemies spawn as the screen reaches them; D14 holds. |
