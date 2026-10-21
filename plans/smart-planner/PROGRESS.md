@@ -28,7 +28,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T00 | movement-map-spike | — | ✅ | |
 | T01 | bench-harness | — | ✅ | |
 | T02 | baseline-sample | T01 | ⬜ | |
-| T03 | level-facts | T00 | 🔍 | `sf-plan` crate: `core::facts`, `core::graph` (`MoveMap`, `shortest`), purity test; 7 tests. Deviations: `facts(game, &LevelData, &Rom)` (pickup table is in hunk 0, not State); `Node {cell, wings}`, no `Speed`/`speed_band` (D18); `CoinKind::Object(marker)`, not slot; gate-less switches dropped. |
+| T03 | level-facts | T00 | ✅ | Review: fixed purity scan missing grouped `use std::{fs,…}` imports; added a tile-coin assertion (a `>>7` shift mutation survived). Probed all 26 levels: every gate cell holds its switch marker, only W6-4's 51 dropped. Mutations of wings check, deadly exclusion and tile shift go red. Four deviations held. |
 | T04 | movement-map | T03 | ⬜ | |
 | T05 | map-cache | T04 | ⬜ | |
 | T06 | coin-choice | T03 | ⬜ | |
@@ -46,7 +46,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T18 | results-and-retire | T17 | ⬜ | |
 | T19 | step-unseen-no-picture | T00; blocks T04 | ⬜ | |
 
-**Review queue:** T03
+**Review queue:** empty
 
 ## Blocked on the user
 
