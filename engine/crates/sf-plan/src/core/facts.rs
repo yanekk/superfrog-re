@@ -155,7 +155,11 @@ pub fn facts(game: &Game, level: &LevelData, rom: &Rom) -> Facts {
                 return None;
             }
             let gate = cell_of(st.l(MARKER_CELLS + 4 * (m as u32 - 48)))?;
-            Some(Switch { cells: [(c, r), (c, r + 1)], gate, marker: m as u8 })
+            Some(Switch {
+                cells: [(c, r), (c, r + 1)],
+                gate,
+                marker: m as u8,
+            })
         })
         .collect();
     Facts {

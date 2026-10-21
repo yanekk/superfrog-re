@@ -35,13 +35,25 @@ fn w1_1_needs_its_ninety_coins() {
     assert_eq!(fa.level, id("W1-1"));
     // rust-engine T106: W1-1's exit needs 90; at load the count is the marker-8 cells (T104).
     assert_eq!(fa.coins_needed, 90);
-    let marker8 = fa.coins.iter().filter(|c| c.kind == CoinKind::Object(8)).count();
+    let marker8 = fa
+        .coins
+        .iter()
+        .filter(|c| c.kind == CoinKind::Object(8))
+        .count();
     assert_eq!(marker8, 90);
-    let objects = fa.coins.iter().filter(|c| matches!(c.kind, CoinKind::Object(_))).count();
+    let objects = fa
+        .coins
+        .iter()
+        .filter(|c| matches!(c.kind, CoinKind::Object(_)))
+        .count();
     assert!(objects >= fa.coins_needed as usize);
     // The frog starts standing on the map.
     assert!(landed(game.state()));
-    assert!(fa.standable.contains(&frog_cell(game.state())), "{:?}", frog_cell(game.state()));
+    assert!(
+        fa.standable.contains(&frog_cell(game.state())),
+        "{:?}",
+        frog_cell(game.state())
+    );
 }
 
 #[test]
@@ -50,7 +62,15 @@ fn every_level_has_an_exit_ground_and_gated_switches() {
         let (_, fa) = at_start(id);
         assert!(!fa.exits.is_empty(), "{id}: no exit");
         assert!(!fa.standable.is_empty(), "{id}: nothing standable");
-        assert!(fa.coins.len() >= fa.coins_needed as usize, "{id}: fewer coins than needed");
+        assert!(
+            fa.coins.len() >= fa.coins_needed as usize,
+            "{id}: fewer coins than needed"
+        );
+        // Every normal level has tile coins (25 on W1-3 up to 983 on W2-4 at review).
+        assert!(
+            fa.coins.iter().any(|c| c.kind == CoinKind::Tile),
+            "{id}: no tile coins"
+        );
         for s in &fa.switches {
             // The gate is a single cell of the switch's marker, apart from the pair.
             assert!(!s.cells.contains(&s.gate), "{id}: {s:?}");
@@ -58,7 +78,10 @@ fn every_level_has_an_exit_ground_and_gated_switches() {
             assert!((48..=51).contains(&s.marker), "{id}: {s:?}");
         }
         let hazards: std::collections::BTreeSet<Cell> = fa.hazards.iter().copied().collect();
-        assert!(fa.standable.iter().all(|c| !hazards.contains(c)), "{id}: a hazard is standable");
+        assert!(
+            fa.standable.iter().all(|c| !hazards.contains(c)),
+            "{id}: a hazard is standable"
+        );
     }
 }
 
@@ -70,13 +93,22 @@ fn w6_4_spikes_at_row_10_are_hazards() {
     assert_eq!(row10.len(), 24, "{row10:?}");
     assert!(fa.standable.iter().all(|c| !fa.hazards.contains(c)));
     // Its marker 51 opens nothing (`marker_cells` 0) and is no switch.
-    assert!(fa.switches.iter().all(|s| s.marker != 51), "{:?}", fa.switches);
+    assert!(
+        fa.switches.iter().all(|s| s.marker != 51),
+        "{:?}",
+        fa.switches
+    );
 }
 
 #[test]
 fn frog_cell_is_the_old_planners_formula() {
     let (mut game, _) = at_start(id("W1-1"));
-    for (x, y) in [(0x00a0u16, 0x02a0u16), (0x1234, 0x0345), (0x0009, 0x0010), (0x12a7, 0x053f)] {
+    for (x, y) in [
+        (0x00a0u16, 0x02a0u16),
+        (0x1234, 0x0345),
+        (0x0009, 0x0010),
+        (0x12a7, 0x053f),
+    ] {
         game.poke(FROG + f::X, &x.to_be_bytes());
         game.poke(FROG + f::Y, &y.to_be_bytes());
         // plan_exit's `frog()`, then `/ 16`.
@@ -87,12 +119,25 @@ fn frog_cell_is_the_old_planners_formula() {
 }
 
 fn edge(from: u32, to: u32, frames: u32, needs_switches: u32, needs_wings: bool) -> Edge {
-    Edge { from, to, inputs: vec![(0, frames as u16)], frames, coins: Vec::new(), needs_switches, needs_wings }
+    Edge {
+        from,
+        to,
+        inputs: vec![(0, frames as u16)],
+        frames,
+        coins: Vec::new(),
+        needs_switches,
+        needs_wings,
+    }
 }
 
 #[test]
 fn shortest_honours_switches_and_wings() {
-    let nodes = (0..5u16).map(|k| Node { cell: (k, 0), wings: false }).collect();
+    let nodes = (0..5u16)
+        .map(|k| Node {
+            cell: (k, 0),
+            wings: false,
+        })
+        .collect();
     // 0→1 10 frames; 1→4 behind switch bit 1 (5 frames); 0→4 the long way round, 100 frames;
     // 0→2 with wings, 3 frames; 2→3 1 frame; 3 has no other way in.
     let map = MoveMap::new(

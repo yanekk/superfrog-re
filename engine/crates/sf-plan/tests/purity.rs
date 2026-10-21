@@ -56,6 +56,50 @@ fn violations(src: &str) -> Vec<(usize, &'static str)> {
             }
         }
     }
+    v.extend(grouped(src));
+    v
+}
+
+/// The `std` modules named inside a `std::{...}` group (`use std::{fs, collections::HashMap}`), which
+/// never spell `std::fs` out, with the line the group opens on. Groups may span lines and nest.
+fn grouped(src: &str) -> Vec<(usize, &'static str)> {
+    let code = code(src);
+    let mut v = Vec::new();
+    for (at, _) in code.match_indices("std::{") {
+        if code[..at]
+            .chars()
+            .next_back()
+            .is_some_and(|c| c.is_alphanumeric() || c == '_')
+        {
+            continue;
+        }
+        let line = code[..at].matches('\n').count() + 1;
+        let (mut depth, mut item) = (1, String::new());
+        let mut heads = Vec::new();
+        for c in code[at + "std::{".len()..].chars() {
+            match c {
+                '{' => depth += 1,
+                '}' | ',' if depth == 1 => {
+                    heads.push(std::mem::take(&mut item));
+                    if c == '}' {
+                        break;
+                    }
+                }
+                '}' => depth -= 1,
+                _ if depth == 1 => item.push(c),
+                _ => {}
+            }
+        }
+        for h in heads {
+            let head = h.trim().split("::").next().unwrap_or("").trim();
+            if let Some(f) = FORBIDDEN
+                .iter()
+                .find(|f| f.strip_prefix("std::") == Some(head))
+            {
+                v.push((line, *f));
+            }
+        }
+    }
     v
 }
 
@@ -83,9 +127,28 @@ fn core_is_pure() {
 
 #[test]
 fn the_scan_sees_what_it_forbids() {
-    assert_eq!(violations("use std::time::Instant;"), vec![(1, "std::time"), (1, "Instant")]);
-    assert_eq!(violations("let t = std::fs::read(p);"), vec![(1, "std::fs")]);
-    assert_eq!(violations("sf_conform::game_data()"), vec![(1, "sf_conform")]);
+    assert_eq!(
+        violations("use std::time::Instant;"),
+        vec![(1, "std::time"), (1, "Instant")]
+    );
+    assert_eq!(
+        violations("let t = std::fs::read(p);"),
+        vec![(1, "std::fs")]
+    );
+    assert_eq!(
+        violations("sf_conform::game_data()"),
+        vec![(1, "sf_conform")]
+    );
     assert!(violations("// std::env is named here to say why").is_empty());
     assert!(violations("let instant_ish = InstantX;").is_empty());
+    // A grouped import never spells `std::fs` out.
+    assert_eq!(
+        violations("use std::{fs, collections::HashMap};"),
+        vec![(1, "std::fs")]
+    );
+    assert_eq!(
+        violations("use std::{\n    collections::{BTreeMap, HashMap},\n    env::var,\n};"),
+        vec![(1, "std::env")]
+    );
+    assert!(violations("use std::{cmp::Reverse, collections::BinaryHeap};").is_empty());
 }
