@@ -32,7 +32,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T04 | movement-map | T03 | ⬜ | |
 | T05 | map-cache | T04 | ⬜ | |
 | T06 | coin-choice | T03 | ⬜ | |
-| T07 | danger-map | T03 | ⬜ | |
+| T07 | danger-map | T03 | 🔍 | `core::danger`: `play`, `play_safe`, `heart_cost`; 6 tests on enemies-w1-1 and items-life-w2-1 replayed from `Start::Level`. Deviations: `play` stops at the death frame; hearts counted per-frame drops; a death without a heart drop (pit) is unsafe too; added `Outcome::safe`. No-retry test asserts `Some(0)`, not a counter. W6-3 worst case 0.21 s. |
 | T08 | search | T04, T06, T07 | ⬜ | |
 | T09 | route-repair | T08 | ⬜ | |
 | T10 | oracle-check | T02, T08, T09 | ⬜ | |
@@ -46,7 +46,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T18 | results-and-retire | T17 | ⬜ | |
 | T19 | step-unseen-no-picture | T00; blocks T04 | ⬜ | |
 
-**Review queue:** *(empty)*
+**Review queue:** T07
 
 ## Blocked on the user
 
