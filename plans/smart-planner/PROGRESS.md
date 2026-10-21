@@ -27,7 +27,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 |---|---|---|---|---|
 | T00 | movement-map-spike | — | ✅ | |
 | T01 | bench-harness | — | ✅ | |
-| T02 | baseline-sample | T01 | ⬜ | |
+| T02 | baseline-sample | T01 | ✅ | |
 | T03 | level-facts | T00 | ✅ | |
 | T04 | movement-map | T03 | ⬜ | |
 | T05 | map-cache | T04 | ⬜ | |
