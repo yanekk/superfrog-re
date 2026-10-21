@@ -16,7 +16,7 @@ unreliable edges); T07 now light, T00 answers three more questions.
 
 **Status:** plan written; nothing built.
 **Last updated:** 2026-10-21
-**Next `pir-work` will:** T00 movement-map-spike, the gate for everything on the map; T01 can run beside it.
+**Next `pir-work` will:** review T06 coin-choice.
 
 ## Tasks
 
@@ -31,7 +31,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T03 | level-facts | T00 | ✅ | |
 | T04 | movement-map | T03 | ⬜ | |
 | T05 | map-cache | T04 | ⬜ | |
-| T06 | coin-choice | T03 | ⬜ | |
+| T06 | coin-choice | T03 | 🔍 | `core::coins::choose`, 8 tests. Deviations: takes `&[Coin]` not `n_coins` (only Object coins count, T03 finding); insertion multi-started from several first coins (cluster test); swap also moves a target; `far` is counting coins unreachable from the start; `sf-plan` opt-level 2 in workspace Cargo.toml (W6 test ~0.1 s). |
 | T07 | danger-map | T03 | ⬜ | |
 | T08 | search | T04, T06, T07 | ⬜ | |
 | T09 | route-repair | T08 | ⬜ | |
@@ -46,7 +46,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T18 | results-and-retire | T17 | ⬜ | |
 | T19 | step-unseen-no-picture | T00; blocks T04 | ⬜ | |
 
-**Review queue:** *(empty)*
+**Review queue:** T06
 
 ## Blocked on the user
 
