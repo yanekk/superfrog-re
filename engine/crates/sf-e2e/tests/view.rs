@@ -1,6 +1,6 @@
-//! T27: View → CRT Filter and View → Widescreen (DESIGN §2.7), driven through the app's script
-//! layer (`N: menu crt`, `N: menu widescreen`, the settings file) and checked against the engine
-//! run headless.
+//! T27: View → Filter and View → Widescreen (DESIGN §2.7), driven through the app's script
+//! layer (`N: menu filter-…`, `N: menu widescreen`, the settings file) and checked against the
+//! engine run headless.
 //!
 //! Widescreen draws 65 extra columns each side (16:9 of a level's 334×261, T210). On a level
 //! they are the level's; on every other screen (title, story intro, slot machine) each line's
@@ -8,8 +8,8 @@
 //! The game is the same in every mode: its state and the centre 320 columns of every frame are
 //! the 4:3 run's.
 //!
-//! The CRT filter runs after the integer scaling: the frames the game hands over are the same with
-//! it on, only the window differs.
+//! Every filter runs after the integer scaling: the frames the game hands over are the same with
+//! any of them on, only the window differs.
 
 mod common;
 
@@ -268,52 +268,94 @@ fn difference(img: &Image, info: &Shot, frame: &Image, s: u32) -> (f64, u8) {
     (sum as f64 / count as f64, max)
 }
 
+/// The filters other than None, by their `settings.toml` names.
+const FILTERS: [&str; 4] = ["basic", "lottes", "geom", "easymode"];
+
+/// Every surface pixel outside the picture's viewport is black.
+fn black_outside(img: &Image, info: &Shot) -> bool {
+    let (x, y, w, h) = info.viewport;
+    (0..img.height).all(|py| {
+        (0..img.width).all(|px| (x..x + w).contains(&px) && (y..y + h).contains(&py) || img.rgb(px, py) == [0, 0, 0])
+    })
+}
+
+/// The shot's light summed by row phase within a game line (surface row `0..s` of each), over
+/// the central half of the picture: the libretro ports warp the rows near the edges.
+fn phases(img: &Image, info: &Shot, s: u32) -> Vec<u64> {
+    let (x, y, w, h) = info.viewport;
+    let lines = h / s;
+    let mut sum = vec![0u64; s as usize];
+    for gy in lines / 4..lines * 3 / 4 {
+        for (row, total) in sum.iter_mut().enumerate() {
+            for px in x + w / 4..x + w * 3 / 4 {
+                *total += img.rgb(px, y + gy * s + row as u32).iter().map(|&c| c as u64).sum::<u64>();
+            }
+        }
+    }
+    sum
+}
+
 #[test]
-fn crt_changes_only_the_scaled_picture_and_stays_legible_at_1x() {
+fn every_filter_changes_only_the_scaled_picture_and_basic_stays_legible_at_1x() {
     for n in 1..=3u32 {
         let (_plain_app, plain) = shot_run("", Some(n));
-        let (_crt_app, crt) = shot_run("crt = true\n", Some(n));
-        assert!(crt.frames == plain.frames, "{n}×: the CRT filter changed a game frame");
         let (pi, pinfo) = plain.read_shot(150);
-        let (ci, cinfo) = crt.read_shot(150);
-        assert_eq!(pinfo, cinfo, "{n}×: the same place and scale");
-        assert_ne!(pi, ci, "{n}×: the CRT filter changed nothing on screen");
-        let frame = crt.read_frame(cinfo.frame);
-        let s = cinfo.viewport.2 / frame.width;
-        let (mean, max) = difference(&ci, &cinfo, &frame, s);
-        // Black around the picture stays black.
-        assert_eq!(ci.rgb(0, 0), [0, 0, 0]);
-        if s == 1 {
-            // At 1× only the vignette: every pixel within 10% of the frame's.
-            assert!(max <= 26 && mean < 6.0, "1×: mean {mean}, max {max}: not legible");
-        } else {
-            // From 2× scanlines: a game line's middle brighter than its top edge, on average.
-            let (x, y, w, h) = cinfo.viewport;
-            let (mut mid, mut edge) = (0u64, 0u64);
-            for gy in 0..h / s {
-                for px in x..x + w {
-                    let at = |row: u32| ci.rgb(px, y + gy * s + row).iter().map(|&c| c as u64).sum::<u64>();
-                    mid += at(s / 2);
-                    edge += at(0);
+        for name in FILTERS {
+            let (_app, c) = shot_run(&format!("filter = \"{name}\"\n"), Some(n));
+            assert!(c.frames == plain.frames, "{n}× {name}: the filter changed a game frame");
+            let (ci, cinfo) = c.read_shot(150);
+            assert_eq!(pinfo, cinfo, "{n}× {name}: the same place and scale");
+            assert_ne!(pi, ci, "{n}× {name}: the filter changed nothing on screen");
+            assert!(black_outside(&ci, &cinfo), "{n}× {name}: drew outside the picture");
+            let frame = c.read_frame(cinfo.frame);
+            let s = cinfo.viewport.2 / frame.width;
+            if name == "basic" {
+                let (mean, max) = difference(&ci, &cinfo, &frame, s);
+                if s == 1 {
+                    // At 1× only the vignette: every pixel within 10% of the frame's.
+                    assert!(max <= 26 && mean < 6.0, "1×: mean {mean}, max {max}: not legible");
+                } else {
+                    // From 2× scanlines: a game line's middle brighter than its top edge, on average.
+                    let (x, y, w, h) = cinfo.viewport;
+                    let (mut mid, mut edge) = (0u64, 0u64);
+                    for gy in 0..h / s {
+                        for px in x..x + w {
+                            let at = |row: u32| ci.rgb(px, y + gy * s + row).iter().map(|&c| c as u64).sum::<u64>();
+                            mid += at(s / 2);
+                            edge += at(0);
+                        }
+                    }
+                    assert!(mid > edge, "{n}× ({s} pixels a game pixel): no scanlines ({mid} vs {edge})");
+                    assert!(mean < 40.0, "{n}×: mean difference {mean}");
                 }
+            } else if s == 1 {
+                // Legible: not darkened to nothing (a `pow` of a base rounded below 0 is black on
+                // Metal, which once blacked out Easymode at 1×).
+                let light = |img: &Image| img.rgba.chunks(4).map(|p| p[..3].iter().map(|&c| c as u64).sum::<u64>()).sum::<u64>();
+                let (lit, plain_lit) = (light(&ci), light(&pi));
+                assert!(lit * 2 >= plain_lit, "1× {name}: {lit} of the plain picture's {plain_lit}: not legible");
+            } else {
+                // Scanlines: the brightest row of a game line at least 10% above the darkest. At
+                // 2× this needs the ports' quarter-pixel nudge (port.wgsl).
+                let p = phases(&ci, &cinfo, s);
+                let (lo, hi) = (*p.iter().min().unwrap(), *p.iter().max().unwrap());
+                assert!(hi * 10 >= lo * 11 && hi > 0, "{n}× {name} ({s} pixels a game pixel): no scanlines: {p:?}");
             }
-            assert!(mid > edge, "{n}× ({s} pixels a game pixel): no scanlines ({mid} vs {edge})");
-            assert!(mean < 40.0, "{n}×: mean difference {mean}");
         }
     }
 }
 
 #[test]
-fn crt_and_widescreen_from_the_menu_are_remembered_by_the_next_launch() {
+fn a_filter_and_widescreen_from_the_menu_are_remembered_by_the_next_launch() {
     let mut app = App::launch(LaunchOpts {
         max_frames: 200,
         ..Default::default()
     });
-    let c = app.run_script("10: menu crt\n20: menu widescreen\n");
+    let c = app.run_script("10: menu filter-geom\n20: menu widescreen\n");
     assert!(c.exit.success(), "{}", c.stderr);
     assert_eq!((c.frames[19].width, c.frames[20].width), (320, TITLE.0), "widescreen from step 20");
     let settings = std::fs::read_to_string(app.home.join("settings.toml")).unwrap();
-    assert!(settings.contains("crt = true") && settings.contains("widescreen = true"), "{settings}");
+    assert!(settings.contains("filter = \"geom\"") && settings.contains("widescreen = true"), "{settings}");
 
     // The next launch opens with both on: a 16:9 window from frame 0, through the filter.
     let c = app.run_script("150: shot\n");
@@ -328,14 +370,27 @@ fn crt_and_widescreen_from_the_menu_are_remembered_by_the_next_launch() {
     let plain = (0..frame.height).flat_map(|gy| (0..frame.width).map(move |gx| (gx, gy))).all(|(gx, gy)| {
         img.rgb(x + gx * sf, y + gy * sf) == frame.rgb(gx, gy)
     });
-    assert!(!plain, "the CRT filter is on");
+    assert!(!plain, "the filter is on");
 
     // And off again, both remembered off.
-    let c = app.run_script("5: menu crt\n6: menu widescreen\n");
+    let c = app.run_script("5: menu filter-none\n6: menu widescreen\n");
     assert!(c.exit.success(), "{}", c.stderr);
     let settings = std::fs::read_to_string(app.home.join("settings.toml")).unwrap();
-    assert!(settings.contains("crt = false") && settings.contains("widescreen = false"), "{settings}");
+    assert!(settings.contains("filter = \"none\"") && settings.contains("widescreen = false"), "{settings}");
     assert_eq!(c.frames.last().unwrap().width, 320);
+}
+
+/// A settings file from before View → Filter: its `crt = true` is Basic, and the next save writes
+/// a `filter` line in its place.
+#[test]
+fn an_older_crt_setting_opens_as_basic_and_is_saved_as_a_filter() {
+    let (_basic_app, basic) = shot_run("filter = \"basic\"\n", None);
+    let (mut app, old) = shot_run("crt = true\n", None);
+    assert_eq!(old.read_shot(150), basic.read_shot(150), "crt = true draws as Basic");
+    let c = app.run_script("5: menu widescreen\n");
+    assert!(c.exit.success(), "{}", c.stderr);
+    let settings = std::fs::read_to_string(app.home.join("settings.toml")).unwrap();
+    assert!(settings.contains("filter = \"basic\"") && !settings.contains("crt"), "{settings}");
 }
 
 #[test]
@@ -377,7 +432,7 @@ fn fullscreen_widescreen_is_the_largest_whole_scale_of_the_16_9_picture() {
     assert_eq!(s, fit, "the largest whole scale: {info:?}");
 }
 
-/// DESIGN §2.5 with the filter on: over 3 000 frames (a minute) at 3×, widescreen, every frame
+/// DESIGN §2.5 with the heaviest filter (Geom) on: over 3 000 frames (a minute) at 3×, widescreen, every frame
 /// stepped is presented. The shipped build's pacing, so in release (the debug engine drops frames
 /// with or without the filter, more as the machine is busier); long, so outside the test block.
 /// T27 ran it (FINDINGS).
@@ -390,7 +445,7 @@ fn crt_drops_no_frame_over_3000_frames() {
         scale: Some(3),
         ..Default::default()
     });
-    std::fs::write(app.home.join("settings.toml"), "crt = true\nwidescreen = true\n").unwrap();
+    std::fs::write(app.home.join("settings.toml"), "filter = \"geom\"\nwidescreen = true\n").unwrap();
     let c = app.run_script_unread("");
     assert!(c.exit.success(), "{}", c.stderr);
     let pacing = std::fs::read_to_string(c.dir.join("pacing.txt")).unwrap();

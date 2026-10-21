@@ -31,7 +31,7 @@ supply your own copies in the repo root before running the tools.
 | **Rust engine plays the whole game** natively on macOS, no emulator: intro, title, every level, bosses, slot machine, bonus levels, end sequence, music | ✅ |
 | Engine faithful to the original, judged headless on the oracle: every conformance case (`sf-conform all`), and the whole game from power-on to the end sequence through the app (state, picture, milestones) | ✅ |
 | The app's sound note for note: a note restarting a channel mid-sample is lost, as the engine's Paula writes have no beam position ([T213](plans/rust-engine/tasks/T213-paula-write-timing.md)) | ⬜ next |
-| App: menus, keyboard and gamepad controls, save states, CRT and widescreen, playing a level from a `.sflevel` file | ✅ |
+| App: menus, keyboard and gamepad controls, save states, CRT filters and widescreen, playing a level from a `.sflevel` file | ✅ |
 | Bug recorder: start any level with chosen values, record play, save a bug zip an agent replays and compares with the original ([`docs/BUG-FIX.md`](docs/BUG-FIX.md)) | ✅ |
 | Map editor (view + edit + repack `ATN!` + rebuild `.adf`) | ⬜ next |
 
@@ -92,7 +92,9 @@ cd engine && cargo run --release -p sf-app
   Later launches start straight from the cache.
 - **Controls:** arrow keys move, Space (or either Ctrl) fires; Game ▸ Controls… rebinds them and a
   gamepad. Game ▸ Continue from World N starts at the furthest world reached; Save State and Load
-  State are under Game; View has the scale, fullscreen, CRT filter and widescreen.
+  State are under Game; View has the scale, fullscreen, widescreen and View ▸ Filter: None,
+  Basic (the app's own light scanlines), or the RetroArch CRT shaders Lottes, Geom (both with a
+  curved tube) and Easymode, at their stock settings, to compare while playing.
 - **Where data lives:** `~/Library/Application Support/Superfrog-RE/` holds the decoded cache,
   `settings.toml`, `progress.toml`, save states and the remembered disk paths. Delete the folder to
   start over; the next launch asks for the disks again. `--home DIR` (or `SUPERFROG_HOME`) uses

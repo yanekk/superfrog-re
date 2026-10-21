@@ -6,7 +6,7 @@
 //! File        Import Disks… · Export Level ▸ W1-1… … WW-1… · Play Level File…
 //! Game        Continue from World N · Start Level… · Stop Recording ⌘. · Pause · Reset · Controls… ·
 //!             Save State ▸ 1–5 ⇧⌘1–5 · Load State ▸ 1–5 ⌘1–5
-//! View        Scale ▸ 1× 2× 3× Auto · Fullscreen ⌃⌘F · CRT Filter · Widescreen
+//! View        Scale ▸ 1× 2× 3× Auto · Fullscreen ⌃⌘F · Filter ▸ None Basic Lottes Geom Easymode · Widescreen
 //! ```
 //!
 //! A [`Command`] is the only path from the menu to the app's state: a menu click, its shortcut, a
@@ -31,7 +31,7 @@ use winit::event_loop::ActiveEventLoop;
 
 use crate::App;
 use crate::recorder::{EndChoice, Recorder};
-use crate::settings::Scale;
+use crate::settings::{Filter, Scale};
 use crate::states::SLOTS;
 
 /// What the player asked the app to do, from the menu bar or its shortcuts.
@@ -55,8 +55,8 @@ pub enum Command {
     Scale(Scale),
     /// View → Fullscreen, ⌃⌘F.
     ToggleFullscreen,
-    /// View → CRT Filter.
-    ToggleCrt,
+    /// View → Filter ▸ this filter.
+    Filter(Filter),
     /// View → Widescreen.
     ToggleWidescreen,
     /// Game → Pause: the game stops stepping until it is chosen again.
@@ -83,7 +83,7 @@ impl Command {
                 | Command::Quit
                 | Command::Scale(_)
                 | Command::ToggleFullscreen
-                | Command::ToggleCrt
+                | Command::Filter(_)
                 | Command::ToggleWidescreen
         )
     }
@@ -114,7 +114,7 @@ impl Command {
             Command::Scale(Scale::Auto) => "scale-auto".into(),
             Command::Scale(Scale::N(n)) => format!("scale-{n}"),
             Command::ToggleFullscreen => "fullscreen".into(),
-            Command::ToggleCrt => "crt".into(),
+            Command::Filter(f) => format!("filter-{}", f.name()),
             Command::ToggleWidescreen => "widescreen".into(),
             Command::Pause => "pause".into(),
             Command::Reset => "reset".into(),
@@ -134,13 +134,13 @@ impl Command {
             "stop-recording" => Command::StopRecording,
             "scale-auto" => Command::Scale(Scale::Auto),
             "fullscreen" => Command::ToggleFullscreen,
-            "crt" => Command::ToggleCrt,
             "widescreen" => Command::ToggleWidescreen,
             "pause" => Command::Pause,
             "reset" => Command::Reset,
             "controls" => Command::Controls,
             "quit" => Command::Quit,
             "play-level-file" => Command::PlayLevelFile,
+            _ if id.starts_with("filter-") => Command::Filter(Filter::named(&id[7..])?),
             _ if id.starts_with("export-") => Command::ExportLevel(sf_assets::level_id_named(&id[7..])?),
             _ => {
                 let slot = |prefix: &str| -> Option<u8> {
@@ -182,7 +182,7 @@ pub struct MenuState {
     pub paused: bool,
     pub scale: Scale,
     pub fullscreen: bool,
-    pub crt: bool,
+    pub filter: Filter,
     pub widescreen: bool,
     /// Which save-state slots hold a state: Load State ▸ N can be chosen only then.
     pub states: [bool; SLOTS as usize],
@@ -209,7 +209,7 @@ pub struct MenuBar {
     pause: CheckMenuItem,
     scales: Vec<(Scale, CheckMenuItem)>,
     fullscreen: CheckMenuItem,
-    crt: CheckMenuItem,
+    filters: Vec<(Filter, CheckMenuItem)>,
     widescreen: CheckMenuItem,
     loads: Vec<MenuItem>,
     shown: Option<MenuState>,
@@ -262,7 +262,8 @@ pub fn build_menu() -> MenuBar {
         "Fullscreen",
         Some(Accelerator::new(Modifiers::CONTROL | Modifiers::META, Code::KeyF)),
     );
-    let crt = check(Command::ToggleCrt, "CRT Filter", None);
+    let filters: Vec<(Filter, CheckMenuItem)> =
+        Filter::ALL.iter().map(|&f| (f, check(Command::Filter(f), f.title(), None))).collect();
     let widescreen = check(Command::ToggleWidescreen, "Widescreen", None);
 
     let app = Submenu::with_items(
@@ -333,6 +334,8 @@ pub fn build_menu() -> MenuBar {
     );
     let scale_items: Vec<&dyn muda::IsMenuItem> = scales.iter().map(|(_, i)| i as &dyn muda::IsMenuItem).collect();
     let scale = Submenu::with_items("Scale", true, &scale_items).expect("a menu");
+    let filter_items: Vec<&dyn muda::IsMenuItem> = filters.iter().map(|(_, i)| i as &dyn muda::IsMenuItem).collect();
+    let filter = Submenu::with_items("Filter", true, &filter_items).expect("a menu");
     let view = Submenu::with_items(
         "View",
         true,
@@ -341,7 +344,7 @@ pub fn build_menu() -> MenuBar {
             &PredefinedMenuItem::separator(),
             &fullscreen,
             &PredefinedMenuItem::separator(),
-            &crt,
+            &filter,
             &widescreen,
         ],
     );
@@ -360,7 +363,7 @@ pub fn build_menu() -> MenuBar {
         pause,
         scales,
         fullscreen,
-        crt,
+        filters,
         widescreen,
         loads,
         shown: None,
@@ -400,7 +403,9 @@ impl MenuBar {
             i.set_checked(*scale == s.scale);
         }
         self.fullscreen.set_checked(s.fullscreen);
-        self.crt.set_checked(s.crt);
+        for (filter, i) in &self.filters {
+            i.set_checked(*filter == s.filter);
+        }
         self.widescreen.set_checked(s.widescreen);
         for (i, filled) in self.loads.iter().zip(s.states) {
             i.set_enabled(filled);
@@ -460,7 +465,7 @@ impl App {
             Command::StopRecording => self.stop_recording(),
             Command::Scale(s) => self.set_scale(s),
             Command::ToggleFullscreen => self.toggle_fullscreen(),
-            Command::ToggleCrt => self.toggle_crt(),
+            Command::Filter(f) => self.set_filter(f),
             Command::ToggleWidescreen => self.toggle_widescreen(),
             Command::Pause => {
                 let run = self.run.as_mut().expect("running");
@@ -486,7 +491,7 @@ impl App {
             paused: run.paused,
             scale: run.video.scale,
             fullscreen: run.settings.fullscreen,
-            crt: run.settings.crt,
+            filter: run.settings.filter,
             widescreen: run.settings.widescreen,
             states: run.states,
             recording: run.recorder.is_recording(),
@@ -760,7 +765,6 @@ mod tests {
             Command::Scale(Scale::N(3)),
             Command::Scale(Scale::Auto),
             Command::ToggleFullscreen,
-            Command::ToggleCrt,
             Command::ToggleWidescreen,
             Command::Pause,
             Command::Reset,
@@ -772,17 +776,20 @@ mod tests {
             Command::Quit,
         ];
         all.extend(export_levels().into_iter().map(Command::ExportLevel));
+        all.extend(Filter::ALL.map(Command::Filter));
         for c in all {
             assert_eq!(Command::from_id(&c.id()), Some(c), "{}", c.id());
         }
-        for bad in ["", "scale-0", "scale-17", "scale-x", "about", "Quit", "save-state-0", "save-state-6", "load-state-", "load-state-x", "export-", "export-W7-1"] {
+        let filters: Vec<String> = Filter::ALL.iter().map(|&f| Command::Filter(f).id()).collect();
+        assert_eq!(filters, ["filter-none", "filter-basic", "filter-lottes", "filter-geom", "filter-easymode"]);
+        for bad in ["", "crt", "filter-", "filter-crt", "filter-Basic", "scale-0", "scale-17", "scale-x", "about", "Quit", "save-state-0", "save-state-6", "load-state-", "load-state-x", "export-", "export-W7-1"] {
             assert_eq!(Command::from_id(bad), None, "{bad}");
         }
     }
 
     #[test]
     fn a_replay_takes_only_pause_quit_and_the_view_items() {
-        let allowed: Vec<String> = [Command::Pause, Command::Quit, Command::Scale(Scale::N(2)), Command::Scale(Scale::Auto), Command::ToggleFullscreen, Command::ToggleCrt, Command::ToggleWidescreen]
+        let allowed: Vec<String> = [Command::Pause, Command::Quit, Command::Scale(Scale::N(2)), Command::Scale(Scale::Auto), Command::ToggleFullscreen, Command::Filter(Filter::Geom), Command::ToggleWidescreen]
             .iter()
             .map(|c| c.id())
             .collect();

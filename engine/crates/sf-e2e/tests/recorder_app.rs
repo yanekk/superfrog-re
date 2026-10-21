@@ -359,7 +359,7 @@ fn pause_is_not_recorded_and_save_state_scale_and_crt_leave_it_running() {
     let data = cache_data(&app.home);
     let c = app.run_script(
         "note p\n1: start-level W1-1 record\n20: down ArrowRight\n50: menu pause\n100: menu pause\n\
-         110: menu save-state-2\n120: menu scale 2\n130: menu crt\n140: menu scale 1\n\
+         110: menu save-state-2\n120: menu scale 2\n130: menu filter-basic\n140: menu scale 1\n\
          170: up ArrowRight\n201: menu stop-recording\n",
     );
     assert!(c.exit.success(), "{}", c.stderr);
