@@ -28,7 +28,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T00 | movement-map-spike | — | ✅ | |
 | T01 | bench-harness | — | ✅ | |
 | T02 | baseline-sample | T01 | ⬜ | |
-| T03 | level-facts | T00 | ⬜ | |
+| T03 | level-facts | T00 | 🔍 | `sf-plan` crate: `core::facts`, `core::graph` (`MoveMap`, `shortest`), purity test; 7 tests. Deviations: `facts(game, &LevelData, &Rom)` (pickup table is in hunk 0, not State); `Node {cell, wings}`, no `Speed`/`speed_band` (D18); `CoinKind::Object(marker)`, not slot; gate-less switches dropped. |
 | T04 | movement-map | T03 | ⬜ | |
 | T05 | map-cache | T04 | ⬜ | |
 | T06 | coin-choice | T03 | ⬜ | |
@@ -46,7 +46,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T18 | results-and-retire | T17 | ⬜ | |
 | T19 | step-unseen-no-picture | T00; blocks T04 | ⬜ | |
 
-**Review queue:** *(empty)*
+**Review queue:** T03
 
 ## Blocked on the user
 
