@@ -412,9 +412,9 @@ pub struct Builder {
 }
 
 /// Seeds walked per slot: a node (cell and wings) with the switches pressed whose gates are near
-/// it. More than one seed is a second arrival, at another time, among other enemy positions: a
-/// move one seed loses a heart on, another makes (W2-1's pad shaft, T04).
-pub const SEEDS_PER_SLOT: u8 = 2;
+/// it. Two (a second arrival, at another time, among other enemy positions) doubled W1-1's build
+/// and did not bring back W2-1's pad shaft, which it was tried for (T04).
+pub const SEEDS_PER_SLOT: u8 = 1;
 
 /// How far from a gate (in cells, either way) a pressed switch is taken to change what moves do:
 /// a node this near a gate is walked per switch set of its near gates, any other once per slot
