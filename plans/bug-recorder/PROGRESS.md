@@ -11,9 +11,9 @@ writes a cell also fixes the over-budget cell they walk past.
 
 **Plan reviewed:** 2026-10-20 — 4 fixed, 4 decided with the user
 
-**Status:** Plan written 2026-10-20; nothing built.
-**Last updated:** 2026-10-20
-**Next `pir-work` will:** T00, the spike every other task waits on.
+**Status:** Every task reviewed ✅ (T13 2026-10-21).
+**Last updated:** 2026-10-21
+**Next `pir-work` will:** nothing; the plan's tasks are done. The black screen stays unreproduced.
 
 ## Tasks
 
@@ -35,10 +35,10 @@ done · ⛔ blocked, needs a human.
 | T10 | save-window | T06 | ✅ | |
 | T11 | recorder-drill | T04, T07, T08, T09, T10 | ✅ | |
 | T12 | fix-procedure | T05, T11 | ✅ | |
-| T13 | black-screen | T12 | 🔍 | Owner's zip `bug-W1-2-2026-10-21-0731.zip`: black screen absent. Step 1 screenshot equal; step 2 `same` (6 put-backs, 1 re-sync); no step 3–7 work, nothing committed but tracking. Deviation: no fix or quirk report, owner's note said confirm only; full workspace suite left to pir's end run (parallel rule). Worker recordings also clean. |
+| T13 | black-screen | T12 | ✅ | Owner's zip `bug-W1-2-2026-10-21-0731.zip`: black screen absent, owner's note asked confirm only, so no fix or quirk report. Review reran replay (equal, 103 black frames 5393–5495) and compare (`same`); ran the full workspace suite (owner's yes): green but an open `smoke.rs` flake, fails on base too. No code, no mutation. |
 | T14 | original-follows-recording | T05, T12; blocks T13 | ✅ | |
 
-**Review queue:** T13
+**Review queue:** *(empty)*
 
 ## Blocked on the user
 

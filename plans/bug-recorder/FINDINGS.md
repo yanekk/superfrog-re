@@ -8,6 +8,8 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-21 | 🐞 | T13 review, open, no task: `smoke.rs` `timeout_kills_a_stuck_run_and_everything_in_its_process_group` fails 2/5 alone here, 1/8 on b92f63f (pre-plan), same way: stderr lacks "hangs at frame 5", only "--timeout 2 s reached". |
+| 2026-10-21 | 📌 | T13 review: full workspace suite (D11) run once, 50 min warm: all green but that `smoke.rs` flake; cargo stopped there, so the skipped binaries (sf-e2e states/view/whole_game/window, sf-oracle, sf-paula, sf-assets, doc tests) were run after, green. |
 | 2026-10-21 | ✅ | T13, owner's recording `bug-W1-2-2026-10-21-0731.zip` (6 023 frames, slot lost): black screen did not appear. `bug replay` screenshot equal; `bug compare` same, 6 put-backs, 1 re-sync at 2086; 103 black frames after the slot, as the original. |
 | 2026-10-20 | 📌 | T13 prep, worker-made recordings (slot lost, won, gamble, jackpot): today's engine, the app and rust-engine's last (57426a2) all show 103 black frames after the slot, then the map unprompted; the original likewise. Old app not driven. |
 | 2026-10-20 | 🐞 | T13 prep, open, no task: seed-1 jackpot recording, `bug compare` differs at step 5038 on `slot_state` h0+$49d6 (score shown), original $604a, engine $73d2; both reach W1-2, same score. On the engine one-frame fires never end the jackpot flash. |
@@ -17,8 +19,7 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 | 2026-10-20 | 📌 | T14: at a put-back check 4's engine must restart from the written original too; left running it failed W1-1's coin milestone at 2244 (engine 2256). |
 | 2026-10-20 | 📌 | T12 review: `.pir/settings.json` `test` runs only the Python unittests, so a `@repo/single` bug-fix run's own test gate runs no cargo test; `docs/BUG-FIX.md` step 5 names the cargo tests to run. Left alone. |
 | 2026-10-20 | 🔄 | Owner (T12): T14 `original-follows-recording` added, blocking T13: keep the original on a played recording, never `same` or a panic where it left. Meanwhile `docs/BUG-FIX.md` step 2 sends such a `same` to step 7. |
-| 2026-10-20 | 🐞 | T12 dry run 2: `bug compare` panicked `the original's load (Left(c010d6)) was not over within 20000 frames` at step 4695, clean engine too. Fixed by T14 (put back; a load never ended now ends the run, reported). |
-| 2026-10-20 | 🐞 | T12 dry run 1: `bug compare` said `same` though the original left the recording at 1815 (score) and showed a score-0 W1-1 start at STOP. Fixed by T14: put back there; `same up to` where it cannot be. |
+| 2026-10-20 | 🐞 | T12 dry runs, fixed by T14: `bug compare` said `same` though the original left the recording at 1815 (score); another panicked `the original's load (Left(c010d6)) was not over within 20000 frames` at step 4695. |
 | 2026-10-20 | 📌 | T11 review: the five `recorder_drill` OS-layer tests were not rerun (`IOConsoleLocked` true); their pass rests on the builder's run. Chain test, script-layer recorder tests and a recorder mutation were run. |
 | 2026-10-20 | 📌 | T11 drill, worker-driven: Start Level, W1-1 played to its exit, tally, slot machine, W1-2, STOP with a note; `--replay` and `bug replay` equal. Every ending action, ⌘Q, ⌘2, close, each answer. Nothing clipped at 1×, 3×, widescreen. |
 | 2026-10-20 | 📌 | T11: a 20-minute recording (60 000 frames) saved as a 116 KB zip; `sf-conform bug replay` took 40 s, screenshot equal; `--replay` in the app runs in real time (20 min) to "replay finished at frame 60000". |
@@ -66,5 +67,4 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 | 2026-10-20 | 🐞 | T00, no task: engine candidates seen in passing. Easy W1-1 `frog-run-right` frame 519: engine sound on channel 2, original none. WB-1 `frog-run-right` frame 687 `frog_x` differs from `AtLevel(WB-1)` too. |
 | 2026-10-20 | 📌 | `Start::Level` has no seed: `rng_state` comes from the boot image, and `level_entry.rs` `NOT_MODELLED` lists it with the front end's fades and music place. Why D2 is measured by T00. |
 | 2026-10-20 | 📌 | `opt_game_mode` and `opt_lives` are read by `frog_new_game` before the level loads; poking them after `Start::Level` is too late (`frog/mod.rs`). |
-| 2026-10-20 | 📌 | Full workspace suite: 6 247 s cold in a fresh worktree; `whole_game.rs` "the window fell behind" failed on a loaded machine. Block scoped to this plan's parts (D11). `.pir/settings.json` runs Python only. |
 | 2026-10-20 | 🔄 | Owner: Lives is a 3/5/7 dropdown like the options screen, replacing 0–99; Energy a 1–4 dropdown. |
