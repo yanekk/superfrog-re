@@ -11,6 +11,7 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-22 | 📌 | T05 review, for T20/T21: a new core module `map.rs`, `facts.rs`, `graph.rs` or `moves.rs` uses must join `cache::CORE_FILES`, or cached maps go stale; `tests/cache.rs` fails naming it. `cargo fmt -p sf-plan` rewrites seven files already unformatted. |
 | 2026-10-22 | 🐞 | T04 review, for T20: W2-3, W4-4 maps walk no seed with two switches pressed (`per_switch_set` {0,1,2,4} and {0,8}); far-from-gate slots ignore pressed switches, so a second lever is pressed only from world 0; each exit needs all four. |
 | 2026-10-21 | 🔄 | Owner, T04: 11 maps over 5 min (quiet, W5-4 566 s) get T21 engine-memory-lookup (T04; blocks T20), speed only; builds still over 5 min after it are recorded and accepted, the move set never shrunk. |
 | 2026-10-21 | 📌 | T04 profile, one-thread map build: `layout::index_of` (a binary search per `State` byte access) is ~35% of busy samples, `State::byte`/`Bus::set_b` most of the rest; the map code is negligible. 1 thread 6.2 k frames/s, 10 threads 25 k. |

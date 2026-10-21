@@ -14,9 +14,9 @@ message. Whoever writes a cell also fixes the over-budget cell they walk past.
 unreliable edges); T07 now light, T00 answers three more questions.
 **Amendment reviewed:** 2026-10-21 — 6 fixes, 1 decision (a retry after a wait is a standing-start move)
 
-**Status:** plan written; nothing built.
-**Last updated:** 2026-10-21
-**Next `pir-work` will:** T00 movement-map-spike, the gate for everything on the map; T01 can run beside it.
+**Status:** phase 1 building; T00–T07 and T19 done.
+**Last updated:** 2026-10-22
+**Next `pir-work` will:** T21 engine-memory-lookup, then T20 map-gaps, then T08 search.
 
 ## Tasks
 
@@ -30,7 +30,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T02 | baseline-sample | T01 | ✅ | |
 | T03 | level-facts | T00 | ✅ | |
 | T04 | movement-map | T03 | ✅ | |
-| T05 | map-cache | T04 | 🔍 | `src/cache.rs`, 9 tests in `tests/cache.rs` on made-up maps under a temp `SF_MAP_CACHE`. Deviations: `StartKey` was undefined, now `AtLevel`/`Snap(hash)`/`App{seed}`; the key also hashes `src/core/` (`CORE_FILES`, test-checked) so a map-builder change invalidates maps; file carries key and checksum. |
+| T05 | map-cache | T04 | ✅ | Review fixed one: the key's source hash listed all of `src/core/` and its test failed on any new core file (T08, T09 add some); now the map builder's files, test checks their core uses. Probed two processes sharing one cache dir; mutations of checksum, temp rename and key check each caught. |
 | T06 | coin-choice | T03 | ✅ | |
 | T07 | danger-map | T03 | ✅ | |
 | T08 | search | T04, T06, T07 | ⬜ | |
@@ -48,7 +48,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T20 | map-gaps | T04; blocks T08 | ⬜ | |
 | T21 | engine-memory-lookup | T04; blocks T20 | ⬜ | |
 
-**Review queue:** T05
+**Review queue:** empty
 
 ## Blocked on the user
 
