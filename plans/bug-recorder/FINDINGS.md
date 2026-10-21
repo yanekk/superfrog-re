@@ -8,8 +8,8 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
-| 2026-10-20 | 📌 | T13 prep: rust-engine's last engine (57426a2 = 338bd83; main had none before) shows no black screen either: forced exit, slot lost, won, jackpot, about 2 s black, then map unprompted; timelines identical to today's. sf-core unchanged since. Old app not driven. |
-| 2026-10-20 | 📌 | T13 prep, worker-made recordings (W1-1 exit, tally, slot lost, won 10 000–80 000, gamble, jackpot, W1-2): engine and app frame-equal, 103 black frames then the map unprompted; `bug compare` same on lost and won. The original likewise (`record --png`). |
+| 2026-10-21 | ✅ | T13, owner's recording `bug-W1-2-2026-10-21-0731.zip` (6 023 frames, slot lost): black screen did not appear. `bug replay` screenshot equal; `bug compare` same, 6 put-backs, 1 re-sync at 2086; 103 black frames after the slot, as the original. |
+| 2026-10-20 | 📌 | T13 prep, worker-made recordings (slot lost, won, gamble, jackpot): today's engine, the app and rust-engine's last (57426a2) all show 103 black frames after the slot, then the map unprompted; the original likewise. Old app not driven. |
 | 2026-10-20 | 🐞 | T13 prep, open, no task: seed-1 jackpot recording, `bug compare` differs at step 5038 on `slot_state` h0+$49d6 (score shown), original $604a, engine $73d2; both reach W1-2, same score. On the engine one-frame fires never end the jackpot flash. |
 | 2026-10-20 | 📌 | T14 dry run 2 re-run: tally points ×2 planted (scratch branch, deleted), `tally-points` zip, 5 352 frames. `bug compare` differs at 4548 naming `score`; `bug case` (two put-backs) fails planted at 4548, passes clean (5 154 frames). Step 5 reached. |
 | 2026-10-20 | 📌 | T14 dry run 1 re-run: app-made zip (`recorder_drill w1_1_played`), 7 487 frames: original put back once at 1815 (`score`), `same`, both STOP pictures W1-2 with equal score; spinning coins at another turn. Step 3 reached; 3½ min. |

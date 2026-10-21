@@ -35,11 +35,11 @@ done · ⛔ blocked, needs a human.
 | T10 | save-window | T06 | ✅ | |
 | T11 | recorder-drill | T04, T07, T08, T09, T10 | ✅ | |
 | T12 | fix-procedure | T05, T11 | ✅ | |
-| T13 | black-screen | T12 | 🟡 | Release app built, `bugs/` empty. Worker-made recordings (lost, wins, gamble, jackpot) do not show the black screen, on today's engine or rust-engine's last (57426a2); replay and compare run (FINDINGS). Waiting on the owner's recording. |
+| T13 | black-screen | T12 | 🔍 | Owner's zip `bug-W1-2-2026-10-21-0731.zip`: black screen absent. Step 1 screenshot equal; step 2 `same` (6 put-backs, 1 re-sync); no step 3–7 work, nothing committed but tracking. Deviation: no fix or quirk report, owner's note said confirm only; full workspace suite left to pir's end run (parallel rule). Worker recordings also clean. |
 | T14 | original-follows-recording | T05, T12; blocks T13 | ✅ | |
 
-**Review queue:** *(empty)*
+**Review queue:** T13
 
 ## Blocked on the user
 
-Nothing yet. T13 will need the owner to record the black-screen bug in the app.
+Nothing. The owner recorded T13's zip on 2026-10-21; the black screen did not appear.
