@@ -15,8 +15,8 @@ unreliable edges); T07 now light, T00 answers three more questions.
 **Amendment reviewed:** 2026-10-21 — 6 fixes, 1 decision (a retry after a wait is a standing-start move)
 
 **Status:** plan written; nothing built.
-**Last updated:** 2026-10-21
-**Next `pir-work` will:** review T04; then T21 engine-memory-lookup, then T20 map-gaps (blocks T08).
+**Last updated:** 2026-10-22
+**Next `pir-work` will:** T21 engine-memory-lookup, then T20 map-gaps (blocks T08).
 
 ## Tasks
 
@@ -29,7 +29,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T01 | bench-harness | — | ✅ | |
 | T02 | baseline-sample | T01 | ⬜ | |
 | T03 | level-facts | T00 | ✅ | |
-| T04 | movement-map | T03 | 🔍 | Real-move layered walk, 37+12 moves, 9 tests (6 `#[ignore]`d whole-map). Deviations: layer API (`Builder::parts/build_part/absorb/finish`) for seed-cell parts; dedup keeps coins; jumps 32, floats, 300-frame cap; waits 12/25/50; gate cells re-walked with presses written in; block test two layers (§5). 11 levels fail: T20. Builds over 5 min: T21. |
+| T04 | movement-map | T03 | ✅ | Review: layer API, coin-keyed dedup, waits, gate re-walks held; count fixed (11 fail, T20), T21 doc completed. Probed: map equal at 1/8/200 parts on W2-1, W2-3, W2-4; ignored W6-4, stall-spot, sample-replay tests run green; hold-input mutation caught. Two-switch worlds never walked: T20. |
 | T05 | map-cache | T04 | ⬜ | |
 | T06 | coin-choice | T03 | ⬜ | |
 | T07 | danger-map | T03 | ⬜ | |
@@ -48,7 +48,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T20 | map-gaps | T04; blocks T08 | ⬜ | |
 | T21 | engine-memory-lookup | T04; blocks T20 | ⬜ | |
 
-**Review queue:** T04
+**Review queue:** empty
 
 ## Blocked on the user
 
