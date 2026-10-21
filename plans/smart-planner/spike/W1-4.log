@@ -1,0 +1,89 @@
+  bfs layer 10: 1185 nodes, 22580 edges, frontier 75, 242s
+  bfs layer 20: 1758 nodes, 35514 edges, frontier 43, 339s
+  bfs layer 30: 2410 nodes, 49009 edges, frontier 16, 452s
+== /tmp/t00spike/W1-4-maps.txt
+W1-4: start cell (12, 28) frame 151, coins needed 96, coin cells 122, standable cells (static rule) 886, threads 10, load { 15.93 20.02 18.08 }
+live (enemies live, seeded by real moves): nodes 2414 (with wings 1362), cells 1447, edges 49519 (taking a coin 8367), build 452.9s, frames simulated 4822483, moves dropped: lost heart 11583, died 4353, never landed 1372
+  coin cells touched by an edge: 122 (without wings 77) of 122; exit cell within one cell of a node: true
+== /tmp/t00spike/W1-4-q5-enemies.txt
+spawning markers (cells in the map): {1: 37, 2: 9, 3: 6, 8: 96, 9: 26, 10: 3, 11: 2, 12: 4, 15: 2, 18: 2, 29: 1, 45: 1}
+  marker  0: 7 slots seen; passive 0 stompable 0 hp 7d00 touch h0+$7d4 update h0+$24b20
+  marker  1: 37 slots seen; passive 0 stompable 1 hp 1f touch h0+$23582 update h0+$243b6
+  marker  2: 9 slots seen; passive 0 stompable 1 hp 1f touch h0+$2360e update h0+$249c2
+  marker  3: 6 slots seen; passive 0 stompable 1 hp 1f touch h0+$2360e update h0+$2496a
+  marker  4: 1 slots seen; passive 1 stompable 0 hp 7d00 touch h0+$7d4 update h0+$241b2
+  marker  5: 2 slots seen; passive 1 stompable 0 hp 7d00 touch h0+$7d4 update h0+$241b2
+  marker  8: 95 slots seen; passive 1 stompable 0 hp 7d00 touch h0+$239f6 update h0+$23f86
+  marker  9: 26 slots seen; passive 1 stompable 0 hp 7d00 touch h0+$239f6 update h0+$23f86
+  marker 10: 3 slots seen; passive 1 stompable 0 hp 7d00 touch h0+$7d4 update h0+$25358
+  marker 11: 2 slots seen; passive 0 stompable 0 hp 7d00 touch h0+$7d4 update h0+$24dca
+  marker 12: 4 slots seen; passive 0 stompable 1 hp 1f touch h0+$2360e update h0+$247b8
+  marker 15: 2 slots seen; passive 0 stompable 0 hp 7d00 touch h0+$2360e update h0+$248e2
+  marker 18: 2 slots seen; passive 1 stompable 0 hp 7d00 touch h0+$7d4 update h0+$26904
+  marker 29: 1 slots seen; passive 1 stompable 0 hp 7d00 touch h0+$7d4 update h0+$2404c
+  marker 45: 1 slots seen; passive 1 stompable 0 hp 7d00 touch h0+$23970 update h0+$2408a
+enemy markers (a slot with contact that hurts): [1, 2, 3, 11, 12, 15]
+Q5: enemy marker cells in the map 60; ever in a slot with the frog parked 2000 frames: 1 (all objects 2, at frame 0 2); ever in a slot over the live map's moves (the level walked): 60 (all objects 198)
+  bfs layer 10: 1282 nodes, 29706 edges, frontier 78, 139s
+  bfs layer 20: 1925 nodes, 45581 edges, frontier 95, 179s
+  bfs layer 30: 2533 nodes, 62466 edges, frontier 0, 225s
+== /tmp/t00spike/W1-4-q2-freeze.txt
+live: nodes 2414 (with wings 1362), cells 1447, edges 49519 (taking a coin 8367), build 452.9s, frames simulated 4822483, moves dropped: lost heart 11583, died 4353, never landed 1372
+frozen: nodes 2533 (with wings 1402), cells 1498, edges 62466 (taking a coin 10444), build 225.0s, frames simulated 4920645, moves dropped: lost heart 437, died 4912, never landed 1826
+Q2: edges (from, move) in both 44206; landing differs 15904 (36.0%); live-only edges 5313; frozen-only edges 18260; cells live-only 133, frozen-only 184
+  misses by distance: adjacent cell 11408, 2-3 cells 1535, further 2929, same cell other fields 32
+marker 44 (lift) cells: 0; marker 44 and 62 are tile markers (not in the spawn list [1, 2, 3, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 29, 45]), never objects
+== /tmp/t00spike/W1-4-q7-live-failure.txt
+live walk on the live map:   played 500: ok 262, landed elsewhere 203, lost a heart 25, died 2, never landed 1; failure 46.2%; restarts 15; distinct start nodes 164; edges taking a coin 18; misses by distance: adjacent cell 115, 2-3 cells 18, further 70, same cell other fields 0
+live walk on the frozen map: played 500: ok 199, landed elsewhere 242, lost a heart 45, died 1, never landed 6; failure 58.8%; restarts 23; distinct start nodes 124; edges taking a coin 23; misses by distance: adjacent cell 106, 2-3 cells 23, further 113, same cell other fields 0
+== /tmp/t00spike/W1-4-q1-seeding.txt
+poke (frog placed by writing X/Y): nodes 873 (with wings 6), cells 873, edges 15837 (taking a coin 528), build 89.0s, frames simulated 1137380, moves dropped: lost heart 0, died 0, never landed 0
+Q1: standable cells 886, placed 873; cells covered poke 1247 vs live 1447 (live only 310, poke only 110); poke edges checkable from a real state 13522: false 7057 (52.2%)
+  of the false: died, hurt or never landed 2494; misses by distance: adjacent cell 3441, 2-3 cells 389, further 707, same cell other fields 26
+== /tmp/t00spike/W1-4-q4-stall.txt
+Q4 stall coins: 44
+  153,1 sky: reachable by 28 moves, 2868 frames, last jumpR20 from 149,9 wings 1; replays and takes it: true
+  154,1 sky: reachable by 28 moves, 2868 frames, last jumpR20 from 149,9 wings 1; replays and takes it: true
+  156,1 sky: reachable by 28 moves, 2868 frames, last jumpR20 from 149,9 wings 1; replays and takes it: true
+  157,1 sky: reachable by 28 moves, 2873 frames, last jumpR4 from 149,9 wings 1; replays and takes it: true
+  159,1 sky: reachable by 28 moves, 2972 frames, last flyR8 from 148,9 wings 1; replays and takes it: true
+  160,1 sky: reachable by 28 moves, 2972 frames, last flyR8 from 149,9 wings 1; replays and takes it: true
+  153,2 sky: reachable by 28 moves, 2868 frames, last jumpR20 from 149,9 wings 1; replays and takes it: true
+  154,2 sky: reachable by 28 moves, 2868 frames, last jumpR20 from 149,9 wings 1; replays and takes it: true
+  156,2 sky: reachable by 28 moves, 2868 frames, last jumpR20 from 149,9 wings 1; replays and takes it: true
+  157,2 sky: reachable by 28 moves, 2873 frames, last jumpR4 from 149,9 wings 1; replays and takes it: true
+  159,2 sky: reachable by 28 moves, 2972 frames, last flyR8 from 149,9 wings 1; replays and takes it: true
+  160,2 sky: reachable by 28 moves, 2972 frames, last flyR8 from 149,9 wings 1; replays and takes it: true
+  20,6 sky: reachable by 2 moves, 242 frames, last runL16 from 31,23 wings 0; replays and takes it: true
+  12,9 sky: reachable by 2 moves, 242 frames, last runL16 from 31,23 wings 0; replays and takes it: true
+  24,9 sky: reachable by 2 moves, 242 frames, last runL16 from 31,23 wings 0; replays and takes it: true
+  9,11 sky: reachable by 2 moves, 242 frames, last runL16 from 31,23 wings 0; replays and takes it: true
+  59,12 sky: reachable by 5 moves, 594 frames, last flyR16 from 28,25 wings 1; replays and takes it: true
+  61,12 sky: reachable by 6 moves, 664 frames, last flyR16 from 29,14 wings 1; replays and takes it: true
+  60,13 sky: reachable by 5 moves, 594 frames, last flyR16 from 28,25 wings 1; replays and takes it: true
+  62,13 sky: reachable by 6 moves, 651 frames, last jumpL20 from 71,21 wings 1; replays and takes it: true
+  136,13 sky: reachable by 8 moves, 843 frames, last flyR16 from 105,17 wings 1; replays and takes it: true
+  138,13 sky: reachable by 9 moves, 978 frames, last runL8 from 142,19 wings 1; replays and takes it: true
+  6,14 sky: reachable by 2 moves, 242 frames, last runL16 from 31,23 wings 0; replays and takes it: true
+  59,14 sky: reachable by 5 moves, 594 frames, last flyR16 from 28,25 wings 1; replays and takes it: true
+  61,14 sky: reachable by 6 moves, 612 frames, last flyL4 from 71,21 wings 1; replays and takes it: true
+  60,15 sky: reachable by 5 moves, 594 frames, last flyR16 from 28,25 wings 1; replays and takes it: true
+  62,15 sky: reachable by 6 moves, 651 frames, last flyUR4 from 59,21 wings 1; replays and takes it: true
+  136,15 sky: reachable by 8 moves, 848 frames, last flyR16 from 107,21 wings 1; replays and takes it: true
+  138,15 sky: reachable by 8 moves, 848 frames, last flyR16 from 107,21 wings 1; replays and takes it: true
+  29,16 sky: reachable by 2 moves, 228 frames, last runR16 from 19,27 wings 0; replays and takes it: true
+  59,16 sky: reachable by 5 moves, 594 frames, last flyR16 from 28,25 wings 1; replays and takes it: true
+  61,16 sky: reachable by 6 moves, 651 frames, last flyUR4 from 59,21 wings 1; replays and takes it: true
+  60,17 sky: reachable by 5 moves, 594 frames, last flyR16 from 28,25 wings 1; replays and takes it: true
+  62,17 sky: reachable by 5 moves, 653 frames, last flyR16 from 32,23 wings 1; replays and takes it: true
+  136,17 sky: reachable by 8 moves, 830 frames, last runR8 from 122,24 wings 1; replays and takes it: true
+  138,17 sky: reachable by 8 moves, 832 frames, last flyR8 from 122,24 wings 1; replays and takes it: true
+  136,19 sky: reachable by 8 moves, 823 frames, last jumpR20 from 122,24 wings 1; replays and takes it: true
+  138,19 sky: reachable by 8 moves, 830 frames, last runR8 from 122,24 wings 1; replays and takes it: true
+  124,33 cave: reachable by 8 moves, 792 frames, last walkR6 from 122,34 wings 1; replays and takes it: true
+  125,33 cave: reachable by 8 moves, 804 frames, last walkR12 from 122,34 wings 1; replays and takes it: true
+  127,33 cave: reachable by 8 moves, 804 frames, last walkR12 from 122,34 wings 1; replays and takes it: true
+  128,33 cave: reachable by 8 moves, 808 frames, last hopR from 122,34 wings 1; replays and takes it: true
+  130,33 cave: reachable by 8 moves, 810 frames, last jumpR4 from 122,34 wings 1; replays and takes it: true
+  131,33 cave: reachable by 8 moves, 812 frames, last walkR24 from 122,34 wings 1; replays and takes it: true
+Q4: 44/44 reachable (6 without wings), 44 replayed from the start taking the coin
