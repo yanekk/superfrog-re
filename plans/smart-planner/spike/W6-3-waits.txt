@@ -1,0 +1,1 @@
+cells only: nodes 218 (with wings 0), cells 218, edges 5184 (taking a coin 190), build 89.1s, frames simulated 1041521, moves dropped: lost heart 3649, died 1015, never landed 0

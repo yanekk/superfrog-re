@@ -2932,6 +2932,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "sf-plan"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "sf-assets",
+ "sf-conform",
+ "sf-core",
+]
+
+[[package]]
 name = "shlex"
 version = "2.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"

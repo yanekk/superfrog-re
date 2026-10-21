@@ -86,19 +86,21 @@ T08 (D13).
 ### 2.2 The movement map
 
 A map node is a standable cell (open cell whose cell below is ground or a platform top, by the markers
-in `level/collision.rs`) plus, if T00 adopts it (D15), a speed band (stopped, half, full) and facing.
+in `level/collision.rs`) plus wings held. T00 rejected speed bands (D15, D18): the node is the cell.
 For each node the map holds edges: a macro move (an input sequence of held joystick states), its frame
 count, the node it ends in (landed, carrying whatever speed it has; a move never pads frames to stop),
 the coins it touches on the way (D17), and its preconditions (a switch set that must be pressed, wings
 held). Move families: walk left/right, jump, running jump of several run-up lengths, drop off an edge,
-pad and spring launch (a move that starts on the pad), and with wings, flight segments. Edges are
+pad and spring launch (a move that starts on the pad), mid-air steering (a jump whose direction changes
+in flight: T00 found W6-3's map stuck at 196–218 cells without it, D18), and with wings, flight
+segments. Edges are
 found by stepping the engine (`Game::step_unseen`) from a real game state, never computed from a jump
 formula, because the rust-engine run found the formula versions wrong in each level family (FINDINGS
 T103, T115, T150). Why speed: the frog carries momentum (a full-speed run jump crosses ~17 cells,
 rust-engine FINDINGS T104), so a stopped-only map misses ledges reached at speed and its stop-and-go
 routes run long against M4.
 
-If T00 rejects speed bands (build over ~5 min), the node is the cell alone, edges start stopped, and
+T00 rejected speed bands (build over ~5 min, D18), so the node is the cell alone, edges start stopped, and
 the frame-level search (§2.4) carries momentum; the map is then a guide and §2.3/§2.4 never treat its
 gaps as proof.
 
@@ -118,11 +120,11 @@ Switches and gates: a gate cell is solid until its switch pair is pressed (items
 the switch as a precondition. Why: W6-2's stall was a room behind two switches in order, which a
 static map cannot represent.
 
-How the map is seeded (frog placed by writing its position into a state, or only cells reached from
-the start by real moves) and how enemies and moving platforms are held while measuring are decided by
-T00 and recorded in §7 by that task's review. Until then the rule is: an edge is valid only if
-replaying its inputs on the engine from its start state ends in its end node, landed, alive (the
-test in §4).
+The map is seeded by real moves only: a breadth-first walk from the level's start state, each node's
+state the one a real move reached it in; the frog is never placed by writing its position (D18). It is
+measured with enemies and all other objects live, nothing frozen; markers 44 and 62 are tiles, not
+objects, and platforms are passive objects that stay live (D18). An edge is valid only if replaying
+its inputs on the engine from its start state ends in its end node, landed, alive (the test in §4).
 
 ### 2.3 Coin choice
 
@@ -360,7 +362,8 @@ summary lines. A person debugging runs `cargo test -p sf-plan -- --nocapture`.
 frames/s on W1-4 and 1 251 on W6-3, one thread; `Game::clone` 30–40 µs; the oracle 565–571 frames/s
 from a sync point. A busy machine (a cargo build beside it) halved the engine and cut the oracle to a
 third. A map of ~3 000 standable cells × ~10 moves × ~40 frames is ~1.2 M frames, ~90 s on 10 threads;
-T00 measures it properly.
+T00 measured it (busy machine, 10 threads): W1-4's walked map is 1 447 cells, 49 519 edges, 4.8 M frames,
+453–738 s; W6-3's 196 cells, 38 s, both mostly spent drawing a picture nothing reads (T19, D18).
 
 **The full test block takes ~50 min** on this machine (Python 28 s; `cargo test --workspace
 --no-fail-fast` 3 172 s on 2026-10-20). New `sf-plan`/`sf-bench` tests in the block must be cheap:
@@ -460,6 +463,16 @@ The old tools stay in the tree until T18, so any level can still be planned the 
 - D17 (owner, 2026-10-21): edges record the coins they touch on the way, and an edge that fails live
   replay 3 times in a run is marked unreliable (cost ×4) for that run. T00 measures the live-failure
   rate. Why: coins taken mid-jump, and a world (object slots, spawns, RNG) that differs by route.
+- D18 (T00 spike, owner 2026-10-21; recorded by T00's review): seed the map by real moves, never by
+  writing the frog's X/Y (placed: 52% of W1-4's and 54% of W6-3's edges land elsewhere from a real
+  state); build with enemies live (frozen-world edges fail live 58.8% against 46.2% on W1-4, 67.6
+  against 55.0 on W6-3); no speed bands (W1-4 1 699 s against 227 s cells only, over D15's ~5 min).
+  Today's engine builds W1-4 in 453–738 s, over ~5 min: the owner added T19 (`step_unseen` skips
+  `level_as_drawn`, ~3.2× fewer CPU-seconds), refusing a coarser move set or a lazily built map. W1-4's
+  44 stall coins are all reachable; W6-3's map is wrong without mid-air steering, so T04 adds it and
+  must reach W6-3's exit. Live replay fails 46–55%, about half one cell off: a move landing within one
+  cell of its target counts as success, the search going on from where the frog is, and D17's
+  3-failure ×4 rule stands. D14 holds: parked 2 000 frames, 1 of W1-4's 60 enemy cells spawns.
 - D8: the planner is a new crate `sf-plan`, not more examples in sf-conform, because examples cannot be
   unit-tested or shared, which is how four copies of the level facts came to exist.
 - D9: the benchmark verifies with `sf_conform::run` on a generated case, the check the completion

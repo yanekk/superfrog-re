@@ -1,0 +1,18 @@
+[package]
+name = "sf-plan"
+version.workspace = true
+edition.workspace = true
+publish.workspace = true
+
+# The smart planner (plans/smart-planner DESIGN §3). `src/core/` is pure: it takes game states and
+# level facts as arguments and may step sf-core; everything with a clock, a file or the oracle is
+# shell (tests/purity.rs).
+
+[dependencies]
+sf-core = { path = "../sf-core" }
+sf-assets = { path = "../sf-assets" }
+serde = { version = "1", features = ["derive"] }
+
+[dev-dependencies]
+# The disks' GameData, for the tests' level starts.
+sf-conform = { path = "../sf-conform" }

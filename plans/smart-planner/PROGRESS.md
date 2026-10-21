@@ -16,7 +16,7 @@ unreliable edges); T07 now light, T00 answers three more questions.
 
 **Status:** plan written; nothing built.
 **Last updated:** 2026-10-21
-**Next `pir-work` will:** T00 movement-map-spike, the gate for everything on the map.
+**Next `pir-work` will:** T04 movement-map (its deps T03, T19 are done).
 
 ## Tasks
 
@@ -25,14 +25,14 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 
 | # | Task | Depends on | State | Notes |
 |---|---|---|---|---|
-| T00 | movement-map-spike | — | ⬜ | |
+| T00 | movement-map-spike | — | ✅ | |
 | T01 | bench-harness | — | ✅ | |
 | T02 | baseline-sample | T01 | ✅ | best-old 0/6, confirmation median 6.8 %: T10 chunked. Review clean, no fix commit: table regenerated identical via `--table-only`, medians recomputed, explore frame-0 give-up and 144-frame prefix reproduced; per-level slices held. plan_exit stall details read-only (logs uncommitted). Absolute paths in RESULTS.md logged. |
-| T03 | level-facts | T00 | ⬜ | |
+| T03 | level-facts | T00 | ✅ | |
 | T04 | movement-map | T03 | ⬜ | |
 | T05 | map-cache | T04 | ⬜ | |
-| T06 | coin-choice | T03 | ⬜ | |
-| T07 | danger-map | T03 | ⬜ | |
+| T06 | coin-choice | T03 | ✅ | |
+| T07 | danger-map | T03 | ✅ | |
 | T08 | search | T04, T06, T07 | ⬜ | |
 | T09 | route-repair | T08 | ⬜ | |
 | T10 | oracle-check | T02, T08, T09 | ⬜ | |
@@ -44,6 +44,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T16 | baseline-counted | T15 | ⬜ | |
 | T17 | new-counted | T13, T16 | ⬜ | |
 | T18 | results-and-retire | T17 | ⬜ | |
+| T19 | step-unseen-no-picture | T00; blocks T04 | ✅ | |
 
 **Review queue:** *(empty)*
 
