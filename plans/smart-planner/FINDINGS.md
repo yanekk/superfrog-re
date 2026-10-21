@@ -11,6 +11,17 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-21 | 🔄 | Owner, T00: map moves landing within one cell of their target count as success, the search going on from where the frog is; D17's 3-failure ×4 rule stands. T04's move set adds mid-air steering and must reach W6-3's exit. |
+| 2026-10-21 | 🔄 | Owner, T00: added T19 step-unseen-no-picture (T00; blocks T04): `step_unseen` stops drawing `level_as_drawn`, about 3× faster map builds, state unchanged. Chosen over a coarser move set or a lazily built map. |
+| 2026-10-21 | 📌 | T00 Q7: 500 map edges played from real states, enemies live, 46.2% fail on W1-4 (41% land elsewhere, 5% lose a heart), 55.0% on W6-3. 57% of misses (W6-3 44%) are one cell off. 17% of W1-4 edges take coins. |
+| 2026-10-21 | 📌 | T00 Q6, speed bands: W1-4 12262 nodes, 279388 edges, 1699 s against cells-only 2414, 49519, 227 s; W6-3 237 s against 28 s, reaching 397 cells against 196. 56% (W6-3 53%) of moving-start edges land elsewhere than stopped. |
+| 2026-10-21 | 📌 | T00 Q5: frog parked 2000 frames, 1 of W1-4's 60 enemy marker cells ever fills a slot (W6-3: 2 of 46); walking the map fills 60 (W6-3: 17). Enemies spawn as the screen reaches them; D14 holds. |
+| 2026-10-21 | 🐞 | T00 Q4: W6-3 walked, placed, or with 12–200-frame waits stays at 196–218 cells. Random bursts from its nodes find 47 more, route cells 119,5 and 160,7 among them, by steering mid-jump (RU, U, L). The move set lacks air steering. |
+| 2026-10-21 | 📌 | T00 Q4: all 44 W1-4 stall coins (sky, cave) are on the map, 38 needing wings (jump, then repeated fire), each replayed. W6-3: 71 of 79 above-air coins and the exit unreachable; the map is wrong there. |
+| 2026-10-21 | 📌 | T00 Q3, 10 threads, busy machine (load 10–34): W1-4 cells-only map 738 s with the picture, 227–453 s without; W6-3 38 s and 12 s. Over ~5 min on today's engine. Placed-frog map: 89 s. |
+| 2026-10-21 | 🐞 | T00 Q3: `Scene::step` draws `render::level_as_drawn` every level frame whatever `step_unseen`'s flag: 72% of its time (`panel::fetch` 45%). A local patch skipping it left the state identical, 3.2× fewer CPU-seconds a map. `spike/q3-profile.txt`. |
+| 2026-10-21 | 📌 | T00 Q2: enemy markers cleared at entry give W1-4 51 more cells, 26% more edges, half the build time, but fail live more (58.8% against 46.2%; W6-3 67.6 against 55.0). Markers 44, 62 are tiles; platforms are passive objects, kept. |
+| 2026-10-21 | 📌 | T00 Q1: the frog placed by writing X/Y covers 873 W1-4 cells in 89 s, but 52% of its edges (W6-3 54%) land elsewhere replayed from a real state. The walked map covers 1447. Seed by real moves. `spike/*-q1-seeding.txt`. |
 | 2026-10-21 | 📌 | T01's check run: `plan_exit --coins 0` on set A W1-1, unaided, stalled backtracking near frame 18 000 with 103 coins in reach; killed at 35 min, `timeout`. The harness recorded it and the table. |
 | 2026-10-21 | 📌 | `whole_game --until W6-4` saves no W6-4 leg snapshot (a leg's snap is saved as it starts); `sf-bench` uses `--until WW-1`, into `~/.cache/superfrog-re/bench-legs/`, its `--out` there, never over `game-whole.txt`. |
 | 2026-10-21 | 🔄 | Amendment review, owner: a wait-then-retry is a different, standing-start move from the stopped node, never the original edge (DESIGN §2.5). Hazards are marker 6 only (`frog_kill`). |

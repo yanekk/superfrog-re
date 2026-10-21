@@ -44,6 +44,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T16 | baseline-counted | T15 | ⬜ | |
 | T17 | new-counted | T13, T16 | ⬜ | |
 | T18 | results-and-retire | T17 | ⬜ | |
+| T19 | step-unseen-no-picture | T00; blocks T04 | ⬜ | |
 
 **Review queue:** *(empty)*
 
