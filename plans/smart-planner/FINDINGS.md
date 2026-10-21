@@ -11,6 +11,7 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-21 | 🐞 | `sf-bench` copies a failed run's reason verbatim, so `bench/sample/RESULTS.md` and `results.jsonl` carry this machine's absolute worktree path (`no route (/Users/…/routes/explore-A-W1-1.txt…)`). Found in T02 review; T01 code, left. |
 | 2026-10-21 | 📌 | T02 sample, set A, six levels, all old tools: median confirmation share 6.8 % over the 12 runs that reached the oracle (`plan_exit` 12.3 %, `plan_exit_w6` 2.4 %). Under 40 %: T10 keeps chunked 48-frame confirmation. Machine busy (T00 spike, ~8 cores). |
 | 2026-10-21 | 🐞 | T02: old `explore` unaided gives up at frame 0 on all six sample levels in 12–43 s: its 4–48-frame bursts never outlast the ~144-frame level-start freeze, so the archive stays one cell. A 144-frame idle `--prefix` makes it move. |
 | 2026-10-21 | 📌 | T02: old `plan_exit --coins 0` timed out on all six. W1-1, W1-4, W2-4, W3-1 run the level clock to 0 near frame 18 000–24 000, then backtrack forever: "every path loses a life on the original". W3-1 sees 0 coins in reach. |

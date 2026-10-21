@@ -16,7 +16,7 @@ unreliable edges); T07 now light, T00 answers three more questions.
 
 **Status:** plan written; nothing built.
 **Last updated:** 2026-10-21
-**Next `pir-work` will:** review T02; T00 movement-map-spike is the gate for everything on the map.
+**Next `pir-work` will:** T00 movement-map-spike, the gate for everything on the map.
 
 ## Tasks
 
@@ -27,7 +27,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 |---|---|---|---|---|
 | T00 | movement-map-spike | — | ⬜ | |
 | T01 | bench-harness | — | ✅ | |
-| T02 | baseline-sample | T01 | 🔍 | Sample run, `best-old` set A W1-1, W1-4, W2-4, W3-1, W6-2, W6-3: 0/6, every tool failed. Confirmation median 6.8 %: T10 chunked. Five FINDINGS rows on failure modes. Deviation: one level per 2 h slice, not one run resumed, so no slice is cut mid-tool. Route logs not committed. |
+| T02 | baseline-sample | T01 | ✅ | best-old 0/6, confirmation median 6.8 %: T10 chunked. Review clean, no fix commit: table regenerated identical via `--table-only`, medians recomputed, explore frame-0 give-up and 144-frame prefix reproduced; per-level slices held. plan_exit stall details read-only (logs uncommitted). Absolute paths in RESULTS.md logged. |
 | T03 | level-facts | T00 | ⬜ | |
 | T04 | movement-map | T03 | ⬜ | |
 | T05 | map-cache | T04 | ⬜ | |
@@ -45,7 +45,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T17 | new-counted | T13, T16 | ⬜ | |
 | T18 | results-and-retire | T17 | ⬜ | |
 
-**Review queue:** T02
+**Review queue:** *(empty)*
 
 ## Blocked on the user
 
