@@ -425,7 +425,9 @@ impl Game {
 
     /// [`Game::step`] without drawing a level frame's picture, which nothing in the state reads:
     /// the game is left exactly as `step` leaves it, and the [`FrameOut`]'s picture is empty when
-    /// a level frame would have been drawn. For planners only, which step the engine thousands of
+    /// a level frame would have been drawn. The picture is skipped in [`Scene::step`] too (its
+    /// `level_as_drawn`, most of a frame's time; smart-planner T19), save on the frame a level
+    /// ends, whose picture the game keeps for the front end. For planners only, which step the engine thousands of
     /// times a frame of plan and never look (T104, `examples/plan_exit_w6`); conformance runs and the
     /// app keep [`Game::step`]. Locked by `sf-conform`'s `tests/step_unseen.rs`.
     pub fn step_unseen(&mut self, input: FrameInput) -> FrameOut {
@@ -630,7 +632,7 @@ impl Game {
                 unported: &mut self.level_unported,
             };
             self.scene
-                .step(&mut m, &mut self.pending, pacing, self.view, &mut after)
+                .step(&mut m, &mut self.pending, pacing, self.view, draw, &mut after)
         };
         // Each frame's writes are its own: one placed before the one ahead of it (the engine's
         // clock past where the pacing puts the original's) is no later frame's, though the mixer

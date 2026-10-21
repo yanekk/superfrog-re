@@ -107,12 +107,18 @@ impl Scene {
     /// (docs/12 "Late redraws"); a pass the original's frame ends in the middle of (`pacing`) is
     /// `pending` into the next frame. When `level_frame_loop` returns in the frame (T37), `after`
     /// runs the frame's rest from the line the beam is on, before the picture is drawn.
+    ///
+    /// With `draw` false ([`crate::Game::step_unseen`]) a level frame's picture is not drawn and
+    /// `None` is returned for it: nothing in the state reads it, and drawing it was 72% of a
+    /// planner's frame (smart-planner T00). The frame the loop ends in is drawn all the same: the
+    /// game keeps that picture as the front end's first (`Game::shown`).
     pub fn step(
         &mut self,
         m: &mut Machine,
         pending: &mut Option<crate::level::beam::Pending>,
         pacing: Pacing,
         view: View,
+        draw: bool,
         after: &mut dyn FnMut(&mut State, u16, u32),
     ) -> (Vec<PaulaWrite>, Option<Picture>) {
         let mut out = Vec::new();
@@ -149,6 +155,7 @@ impl Scene {
                 *pending = f.pending;
                 let mut log = f.log.unwrap_or_default();
                 let mut window = None;
+                let draw = draw || f.ended.is_some();
                 if let Some((line, into)) = f.ended {
                     // The program after the loop moves the window's top down (`level_exit_fade`):
                     // the beam fetched this field from where the copper had it, the picture is
@@ -163,11 +170,13 @@ impl Scene {
                         window = Some(new.wrapping_sub(old) as u16);
                     }
                 }
-                let mut p = render::level_as_drawn(c.bus.st, m.display, view, &log);
-                if let Some(down) = window {
-                    p = p.rewindow(p.left, p.top + down, p.width, p.height.saturating_sub(down));
+                if draw {
+                    let mut p = render::level_as_drawn(c.bus.st, m.display, view, &log);
+                    if let Some(down) = window {
+                        p = p.rewindow(p.left, p.top + down, p.width, p.height.saturating_sub(down));
+                    }
+                    picture = Some(p);
                 }
-                picture = Some(p);
                 drop(c);
                 out.truncate(f.out_to.unwrap_or(out.len()));
                 out.drain(..f.out_from);
