@@ -28,8 +28,9 @@ pub struct Choice {
     /// Map frames from the start through `order` to the exit, each leg with no map path costing
     /// `far_cost`.
     pub cost: u64,
-    /// Counting coins with no map path from the start, chosen or not, ascending: the search must
-    /// explore for any of these that `order` holds (D16).
+    /// Counting coins with no map path from the start, or none from them on to the exit (when the
+    /// start has one), chosen or not, ascending: the search must explore for any of these that
+    /// `order` holds (D16).
     pub far: Vec<usize>,
 }
 
@@ -59,11 +60,18 @@ const IMPROVE_WORK: u64 = 20_000_000;
 /// fewer counting coins than `needed`, it takes them all.
 pub fn choose(coins: &[Coin], needed: u16, from: u32, dist: Dist, on_the_way: OnTheWay) -> Choice {
     let p = Problem::new(coins, needed, from, dist, on_the_way);
+    // A route through a coin is on the map iff the start reaches it and it reaches the exit (map
+    // paths compose). When the start cannot reach the exit at all, no coin is to blame for that.
+    let exit = p.exit();
+    let to_exit = p.finite[p.at(0, exit)];
     let far = p
         .ids
         .iter()
         .enumerate()
-        .filter(|&(i, _)| !p.finite[p.at(0, i as u32 + 1)])
+        .filter(|&(i, _)| {
+            let c = i as u32 + 1;
+            !p.finite[p.at(0, c)] || (to_exit && !p.finite[p.at(c, exit)])
+        })
         .map(|(_, &c)| c)
         .collect();
     let mut best = p.construct();

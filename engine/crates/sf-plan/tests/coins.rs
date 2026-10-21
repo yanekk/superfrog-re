@@ -163,6 +163,33 @@ fn far_coins_only_when_the_reachable_ones_cannot_meet_the_count() {
 }
 
 #[test]
+fn a_coin_with_no_map_path_onward_is_far() {
+    // Coin 2 is in a pit: the map reaches it but has no path out, so a route through it has a
+    // far leg and the search must explore from it (D16).
+    let w = World::new((0, 0), (100, 0), vec![(30, 0), (60, 0), (50, 40)]);
+    let dist = |a: Target, b: Target| match a {
+        Target::Coin(2) => None,
+        _ => w.dist(a, b),
+    };
+    let ch = choose(&w.coins, 3, 0, &dist, &|_, _| Vec::new());
+    assert!(ch.order.contains(&2), "{ch:?}");
+    assert_eq!(ch.far, vec![2]);
+    let ch = choose(&w.coins, 2, 0, &dist, &|_, _| Vec::new());
+    assert_eq!(sorted(&ch.order), vec![0, 1], "{ch:?}");
+    assert_eq!(ch.far, vec![2]);
+    // With no map path to the exit at all, no coin is to blame for it.
+    let dist = |a: Target, b: Target| match b {
+        Target::Exit => None,
+        _ => w.dist(a, b),
+    };
+    assert!(
+        choose(&w.coins, 2, 0, &dist, &|_, _| Vec::new())
+            .far
+            .is_empty()
+    );
+}
+
+#[test]
 fn far_cost_outweighs_any_route_of_map_paths() {
     assert!(far_cost(1000) > 1000 * (u16::MAX as u64 + 1));
     assert!(far_cost(0) > 0);
