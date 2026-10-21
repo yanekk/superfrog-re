@@ -14,9 +14,9 @@ message. Whoever writes a cell also fixes the over-budget cell they walk past.
 unreliable edges); T07 now light, T00 answers three more questions.
 **Amendment reviewed:** 2026-10-21 — 6 fixes, 1 decision (a retry after a wait is a standing-start move)
 
-**Status:** T00 reviewed ✅.
+**Status:** T00, T01 ✅.
 **Last updated:** 2026-10-21
-**Next `pir-work` will:** T01, T03 and T19 (T19 blocks T04).
+**Next `pir-work` will:** T02, T03 and T19 (T19 blocks T04).
 
 ## Tasks
 
@@ -26,7 +26,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | # | Task | Depends on | State | Notes |
 |---|---|---|---|---|
 | T00 | movement-map-spike | — | ✅ | Review clean, no fix commit; D18 and §2.2 recorded in DESIGN. Rebuilt the W6-3 map from the spike's history: counts identical (196 cells, 2399 edges, 38 s). Read Scene::step: level_as_drawn runs whatever the draw flag. T19 addition valid. Docs and data only, no mutation possible. W1-4 numbers read-only. |
-| T01 | bench-harness | — | ⬜ | |
+| T01 | bench-harness | — | ✅ | |
 | T02 | baseline-sample | T01 | ⬜ | |
 | T03 | level-facts | T00 | ⬜ | |
 | T04 | movement-map | T03 | ⬜ | |

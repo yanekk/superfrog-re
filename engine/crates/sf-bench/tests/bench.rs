@@ -1,0 +1,269 @@
+//! sf-bench (smart-planner T01): sets, verification, the results file, the judge, the children and
+//! the table.
+
+use std::process::Command;
+use std::time::{Duration, Instant};
+
+use sf_bench::child::{self, ChildRun};
+use sf_bench::results::{self, LevelResult};
+use sf_bench::run::{best_of, judge};
+use sf_bench::sets::{self, LEVELS, Set, StartKind};
+use sf_bench::verify::{self, Verdict};
+
+fn scratch(name: &str) -> std::path::PathBuf {
+    let d = std::env::temp_dir().join(format!("sf-bench-test-{name}-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&d);
+    std::fs::create_dir_all(&d).unwrap();
+    d
+}
+
+#[test]
+fn sets_a_and_c_list_the_24_normal_levels_in_order() {
+    for (set, kind) in [(Set::A, StartKind::AtLevel), (Set::C, StartKind::App)] {
+        let s = sets::starts(set);
+        let names: Vec<String> = s.iter().map(|s| s.level.to_string()).collect();
+        assert_eq!(names, LEVELS.to_vec());
+        assert!(s.iter().all(|s| s.kind == kind));
+    }
+}
+
+/// Set B's starts are the 24 normal legs' snapshots (`leg-NN.snap`, the bonus level's 20 and the
+/// witch's 25 left out), each at the frame its snapshot was taken.
+#[test]
+fn set_b_lists_the_24_normal_legs_from_their_snapshots() {
+    let dir = scratch("legs");
+    for i in 0..26u32 {
+        let mut b = (1000 + i).to_le_bytes().to_vec();
+        b.push(0);
+        std::fs::write(dir.join(format!("leg-{i:02}.snap")), b).unwrap();
+    }
+    let s = sets::starts_in(Set::B, &dir);
+    let names: Vec<String> = s.iter().map(|s| s.level.to_string()).collect();
+    assert_eq!(names, LEVELS.to_vec());
+    let frames: Vec<u32> = s
+        .iter()
+        .map(|s| match &s.kind {
+            StartKind::Snap(_, f) => *f,
+            k => panic!("{k:?}"),
+        })
+        .collect();
+    let want: Vec<u32> = (0..20).chain(21..25).map(|i| 1000 + i).collect();
+    assert_eq!(frames, want);
+    assert!(!names.iter().any(|n| n == "WB-1" || n == "WW-1"));
+    // A missing leg is an error, not a silent gap.
+    std::fs::remove_file(dir.join("leg-24.snap")).unwrap();
+    assert!(!sets::legs_present(&dir));
+    assert!(sets::starts_from(Set::B, &dir).is_err());
+    std::fs::remove_dir_all(&dir).unwrap();
+}
+
+#[test]
+fn committed_routes_are_the_completion_scripts_and_chain_legs() {
+    let l = |s: &str| s.parse().unwrap();
+    assert_eq!(verify::committed_script(Set::A, &l("W1-1")), "complete-w1-1");
+    assert_eq!(verify::committed_script(Set::A, &l("W2-4")), "w2-4-complete");
+    assert_eq!(verify::committed_script(Set::A, &l("W3-1")), "enemies-w3-1-complete");
+    assert_eq!(verify::committed_script(Set::C, &l("W4-4")), "complete-w4-4");
+    assert_eq!(verify::committed_script(Set::B, &l("W6-3")), "chain-w6-3");
+    assert_eq!(verify::committed_script(Set::B, &l("W5-2")), "enemies-w5-2-complete");
+    for set in [Set::A, Set::B] {
+        for level in sets::levels() {
+            let p = sf_conform::case::script_path(&verify::committed_script(set, &level));
+            assert!(p.is_file(), "{}", p.display());
+        }
+    }
+}
+
+/// Slow: ~2 min on a quiet machine (two faithful runs of ~4 500 frames and their replays).
+#[test]
+#[ignore]
+fn verify_accepts_complete_w1_1_and_rejects_it_cut_before_the_exit() {
+    let t0 = Instant::now();
+    let s = &sets::starts(Set::A)[0];
+    let script =
+        sf_conform::InputScript::load(&sf_conform::case::script_path("complete-w1-1")).unwrap();
+    let v = verify::verify(Set::A, s, &script);
+    assert!(v.completed, "{v:?}");
+    // The case's comment: the exit at frame 4473.
+    assert!(v.route_frames.is_some_and(|f| (4470..=4476).contains(&f)), "{v:?}");
+    let cut = 4473 - 200;
+    let mut short = script.clone();
+    short.lines.retain(|l| l.0 < cut);
+    short.lines.push((cut, sf_core::input::FrameInput::NONE));
+    let v = verify::verify(Set::A, s, &short);
+    assert!(!v.completed, "{v:?}");
+    assert_eq!(v.route_frames, None);
+    eprintln!("verify test took {:.0?}", t0.elapsed());
+}
+
+fn fixture(planner: &str, set: &str, level: &str, completed: bool, wall_s: f64) -> LevelResult {
+    LevelResult {
+        planner: planner.into(),
+        set: set.into(),
+        level: level.into(),
+        commit: "abc123".into(),
+        completed,
+        wall_s,
+        engine_frames: 1_000_000,
+        oracle_frames: 20_000,
+        confirm_share: 0.5,
+        route_frames: completed.then_some(4000),
+        ref_frames: Some(3500),
+        hearts_lost: 0,
+        reason: if completed { String::new() } else { "no exit \"quoted\"".into() },
+        tool: None,
+    }
+}
+
+#[test]
+fn results_append_reload_and_skip_a_level_recorded_for_the_same_commit() {
+    let dir = scratch("results");
+    let p = dir.join("results.jsonl");
+    assert!(results::load(&p).is_empty());
+    let a = fixture("plan_exit", "A", "W1-1", true, 61.5);
+    let mut b = fixture("best-old", "A", "W1-4", false, 1800.0);
+    b.tool = Some("explore".into());
+    b.route_frames = None;
+    results::append(&p, &a).unwrap();
+    results::append(&p, &b).unwrap();
+    let back = results::load(&p);
+    assert_eq!(back, vec![a.clone(), b.clone()]);
+    assert!(results::recorded(&back, "plan_exit", "A", "W1-1", "abc123").is_some());
+    assert!(results::recorded(&back, "plan_exit", "A", "W1-1", "def456").is_none());
+    assert!(results::recorded(&back, "plan_exit", "B", "W1-1", "abc123").is_none());
+    assert!(results::recorded(&back, "explore", "A", "W1-1", "abc123").is_none());
+    // A run killed mid-line: the cut line is ignored, not fatal, and the next append starts a
+    // line of its own.
+    let mut f = std::fs::read_to_string(&p).unwrap();
+    f += "{\"planner\":\"new\",\"set\":\"A\",\"lev";
+    std::fs::write(&p, f).unwrap();
+    assert_eq!(results::load(&p).len(), 2);
+    let c = fixture("new", "A", "W2-1", true, 10.0);
+    results::append(&p, &c).unwrap();
+    assert_eq!(results::load(&p), vec![a, b, c]);
+    std::fs::remove_dir_all(&dir).unwrap();
+}
+
+fn ran(wall: Duration) -> ChildRun {
+    ChildRun {
+        status: Command::new("true").status().ok(),
+        timed_out: false,
+        wall,
+    }
+}
+
+#[test]
+fn plan_stats_is_read_off_the_last_stats_line() {
+    let e = "noise\nPLAN_STATS engine_frames=1 hints=0\nmore\nPLAN_STATS engine_frames=12 oracle_frames=34 confirm_share=0.25 hints=2\n";
+    let s = results::plan_stats(e).unwrap();
+    assert_eq!(s["engine_frames"], "12");
+    assert_eq!(s["oracle_frames"], "34");
+    assert_eq!(s["confirm_share"], "0.25");
+    assert_eq!(s["hints"], "2");
+    assert!(results::plan_stats("no stats\n").is_none());
+}
+
+/// DESIGN §2.10: the benchmark passes no hints, so a result whose stats say it used one does not
+/// count, however good its route.
+#[test]
+fn a_result_whose_stats_used_hints_is_not_completed() {
+    let budget = Duration::from_secs(1800);
+    let good = || Verdict {
+        completed: true,
+        route_frames: Some(4000),
+        hearts_lost: 0,
+        reason: String::new(),
+    };
+    let stats = results::plan_stats("PLAN_STATS engine_frames=1 oracle_frames=1 confirm_share=0.1 hints=1").unwrap();
+    let v = judge(&ran(Duration::from_secs(60)), Some(&stats), budget, good);
+    assert!(!v.completed);
+    assert_eq!(v.reason, "hinted");
+    let stats = results::plan_stats("PLAN_STATS hints=0").unwrap();
+    assert!(judge(&ran(Duration::from_secs(60)), Some(&stats), budget, good).completed);
+    // An old tool, which takes no budget, past it: not within budget.
+    let v = judge(&ran(budget + Duration::from_secs(1)), Some(&stats), budget, good);
+    assert_eq!((v.completed, v.reason.as_str()), (false, "over-budget"));
+}
+
+/// DESIGN §5.2: a child past its timeout (budget + 5 min in a run; a second here) is killed, its
+/// whole process group with it, and recorded as `timeout`.
+#[test]
+fn a_child_past_its_timeout_is_killed_and_recorded_as_timeout() {
+    let t0 = Instant::now();
+    let mut cmd = Command::new("/bin/sh");
+    // A grandchild too: the group goes, not only the child.
+    cmd.args(["-c", "sleep 61.25 & sleep 61.5; wait"]);
+    let run = child::run(cmd, Duration::from_secs(1), None).unwrap();
+    assert!(run.timed_out);
+    assert!(t0.elapsed() < Duration::from_secs(10), "{:?}", t0.elapsed());
+    let v = judge(&run, None, Duration::from_secs(1800), || panic!("not verified"));
+    assert_eq!((v.completed, v.reason.as_str()), (false, "timeout"));
+    std::thread::sleep(Duration::from_millis(300));
+    assert!(!pgrep("sleep 61.25") && !pgrep("sleep 61.5"), "a child outlived its kill");
+}
+
+fn pgrep(pattern: &str) -> bool {
+    Command::new("pgrep").args(["-f", pattern]).output().is_ok_and(|o| o.status.success())
+}
+
+/// A benchmark killed outright (SIGKILL, which it cannot catch) leaves no planner running: each
+/// child's guard sees the benchmark gone and kills the child's group.
+#[test]
+fn a_child_dies_with_the_process_it_runs_for() {
+    let mut stand_in = Command::new("sleep").arg("62.75").spawn().unwrap();
+    let watch = stand_in.id();
+    let killer = std::thread::spawn(move || {
+        std::thread::sleep(Duration::from_millis(1500));
+        stand_in.kill().unwrap();
+        stand_in.wait().unwrap();
+    });
+    let t0 = Instant::now();
+    let mut cmd = Command::new("/bin/sh");
+    cmd.args(["-c", "sleep 62.25 & sleep 62.5; wait"]);
+    let run = child::run(cmd, Duration::from_secs(60), Some(watch)).unwrap();
+    killer.join().unwrap();
+    assert!(!run.timed_out);
+    assert!(t0.elapsed() < Duration::from_secs(10), "{:?}", t0.elapsed());
+    std::thread::sleep(Duration::from_millis(300));
+    assert!(!pgrep("sleep 62.25") && !pgrep("sleep 62.5"), "a child outlived the benchmark");
+}
+
+#[test]
+fn best_old_keeps_a_completed_route_then_the_shortest() {
+    let mut a = fixture("plan_exit", "A", "W1-1", false, 100.0);
+    let mut b = fixture("plan_exit_w6", "A", "W1-1", true, 900.0);
+    let mut c = fixture("explore", "A", "W1-1", true, 300.0);
+    b.route_frames = Some(4000);
+    c.route_frames = Some(4500);
+    a.route_frames = Some(10);
+    let best = best_of(&[a, b, c]);
+    assert_eq!(best.planner, "best-old");
+    assert_eq!(best.tool.as_deref(), Some("plan_exit_w6"));
+    assert!(best.completed);
+}
+
+#[test]
+fn the_table_shows_baseline_and_new_side_by_side() {
+    let mut rs = Vec::new();
+    for (i, l) in LEVELS.iter().enumerate() {
+        rs.push(fixture("best-old", "A", l, i < 20, 600.0 + i as f64));
+        let mut n = fixture("new", "A", l, true, 300.0);
+        n.route_frames = Some(if i == 3 { 5000 } else { 3600 });
+        rs.push(n);
+    }
+    rs.push(fixture("new", "B", "W1-1", true, 120.0));
+    let t = sf_bench::table::render(&rs);
+    for id in ["M1", "M2", "M3", "M4", "M5", "M6", "M7", "M8", "M9", "C1", "C3", "C4"] {
+        assert!(t.contains(&format!("| {id} |")), "no {id} row:\n{t}");
+    }
+    let row = |id: &str| t.lines().find(|l| l.starts_with(&format!("| {id} |"))).unwrap().to_string();
+    assert!(row("M1").contains("| 20 / 24 | 24 / 24 | 24 / 24 |"), "{}", row("M1"));
+    // W1-4 is baseline-completed (index 3 < 20); W2-4 (7) too; W6-2, W6-3 (21, 22) not.
+    assert!(row("M2").contains("| 2 / 4 | 4 / 4 |"), "{}", row("M2"));
+    assert!(row("M3").contains("median 5.0 min, slowest 5.0 min"), "{}", row("M3"));
+    // W1-4's new route is 5000 frames against 3500: one over +25%.
+    assert!(row("M4").contains("1 over +25% (worst +43%"), "{}", row("M4"));
+    assert!(row("M5").contains("| — | 1 / 24 (1 run) |"), "{}", row("M5"));
+    assert!(t.contains("## Set A") && t.contains("## Set B"));
+    assert!(t.contains("failed (no exit \"quoted\")"));
+}
