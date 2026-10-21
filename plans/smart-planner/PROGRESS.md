@@ -16,7 +16,7 @@ unreliable edges); T07 now light, T00 answers three more questions.
 
 **Status:** plan written; nothing built.
 **Last updated:** 2026-10-21
-**Next `pir-work` will:** review T06 coin-choice.
+**Next `pir-work` will:** build T04 movement-map once T19 is done, or T07 danger-map.
 
 ## Tasks
 
@@ -31,7 +31,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T03 | level-facts | T00 | ✅ | |
 | T04 | movement-map | T03 | ⬜ | |
 | T05 | map-cache | T04 | ⬜ | |
-| T06 | coin-choice | T03 | 🔍 | `core::coins::choose`, 8 tests. Deviations: takes `&[Coin]` not `n_coins` (only Object coins count, T03 finding); insertion multi-started from several first coins (cluster test); swap also moves a target; `far` is counting coins unreachable from the start; `sf-plan` opt-level 2 in workspace Cargo.toml (W6 test ~0.1 s). |
+| T06 | coin-choice | T03 | ✅ | Review: one fix, `far` missed coins the map reaches but cannot leave toward the exit; reproduced by a pit-coin dist, fixed, test locks it. Deviations held: Object-only coins (sf-core `pickups::coin`), multi-start (mutation red), opt-level 2 (unoptimised W6 test 2.45 s, red). Otw-credit mutation red. |
 | T07 | danger-map | T03 | ⬜ | |
 | T08 | search | T04, T06, T07 | ⬜ | |
 | T09 | route-repair | T08 | ⬜ | |
@@ -46,7 +46,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T18 | results-and-retire | T17 | ⬜ | |
 | T19 | step-unseen-no-picture | T00; blocks T04 | ⬜ | |
 
-**Review queue:** T06
+**Review queue:** —
 
 ## Blocked on the user
 
