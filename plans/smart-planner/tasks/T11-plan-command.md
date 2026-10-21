@@ -29,9 +29,11 @@ sf-plan <level> [--snap leg.snap] [--follow old.txt] [--seed N] [--out route.txt
         [--via c,r]... [--avoid c0,r0,c1,r1]...          # hints, DESIGN §2.10; logged
 exit 0: route written, reaches the exit
 exit 1: budget or frames exhausted; best partial route written; one-line reason on stderr
-exit 2: unplannable (count cannot be met, start invalid)
+exit 2: bad arguments or invalid start (never on map evidence: an unmet count is exit 1, DESIGN §2.9, D16)
 first line of the route file: # timing: original | app   (DESIGN §2.6, two timings)
 stderr last line: PLAN_STATS engine_frames=… oracle_frames=… confirm_share=… route_frames=… hearts_lost=… hints=N
+                 learned_edges=N unreliable_edges=N explore_steps=N coins_reached=N   (DESIGN §2.4, §2.9)
+stderr, after PLAN_STATS: one PLAN_LEARNED line per learned edge (from node, to node, inputs), for M7
 ```
 
 `--engine-only` plans from the `AtLevel` state transplanted, with no confirmation (for tuning and M7);
@@ -42,7 +44,8 @@ stderr last line: PLAN_STATS engine_frames=… oracle_frames=… confirm_share=�
 - [ ] `sf-plan W1-1 --engine-only --seed 1` twice → identical files (M8, test block).
 - [ ] A run with `--via` appends one line to the hint log (test points the log at a temp file via
       `SF_PLAN_HINTS_LOG`) and prints `hints=1`; a run without hints writes nothing to it.
-- [ ] Bad level id → exit 2 with a usage line; `--frames 100` → exit 1 with a partial route.
+- [ ] Bad level id → exit 2 with a usage line; `--frames 100` → exit 1 with a partial route and a
+      reason line giving coins needed and coins ever reached.
 - [ ] `sf-bench --planner new --set A --levels W1-1` records a completed result (may be `#[ignore]`).
 
 ## Done when

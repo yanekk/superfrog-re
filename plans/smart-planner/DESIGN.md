@@ -102,8 +102,8 @@ If T00 rejects speed bands (build over ~5 min), the node is the cell alone, edge
 the frame-level search (§2.4) carries momentum; the map is then a guide and §2.3/§2.4 never treat its
 gaps as proof.
 
-Fixed hazards (marker 6 spikes and other deadly tiles, which never move) are marked on the map: an edge
-whose path touches one is not recorded. Moving danger is judged live (§2.5).
+Fixed hazards (marker 6, spikes: the only tile `frog_kill` acts on, `level/collision.rs`; they never
+move) are marked on the map: an edge whose path touches one is not recorded. Moving danger is judged live (§2.5).
 
 The map is a guide, not the truth: the world it was measured in (object slots, platform spawns, RNG)
 differs from the one the frog plays in. During a run an edge that fails live replay 3 times is marked
@@ -141,7 +141,7 @@ the frog is in.
 The search follows the coin order along map paths by playing each edge's inputs on a live engine
 state (enemies live). When an edge's result differs from the map (an enemy, a moving platform, carried
 velocity), a frame-level beam search over held joystick states, scored by map distance to the next
-target plus the danger cost (§2.5), finds a way back onto the map. Every state it reaches goes into one
+target plus the heart cost (§2.5), finds a way back onto the map. Every state it reaches goes into one
 archive for the whole level, keyed by (cell, coins left in bands, switches pressed); a later target
 starts from the archive's best state for it rather than from scratch. Why: W2-4 rebuilt `explore`'s
 archive 31 times, once per coin (FINDINGS T168, ROADMAP).
@@ -172,6 +172,10 @@ Instead every move the search plays runs on a copy of the live state, enemies in
 that loses a heart is scored at the heart cost, which exceeds any detour the budget allows. Before a
 move that lost a heart is given up, the search tries it again after waiting 12, 25 and 50 frames on
 its start cell, and keeps the earliest variant that loses nothing; that is how it waits for a gap.
+A variant with a wait is a different move: the frog stops while it waits, so the variant starts from
+the stopped node of that cell and lands wherever it lands; the search continues from that landing
+node and records the variant as an edge from the stopped node (a learned edge if the map lacks it),
+never as the original edge (owner, 2026-10-21).
 Fixed hazards are on the map (§2.2). Why: M6, and hard mode later, where one touch kills.
 
 ### 2.6 Checking on the original
@@ -299,7 +303,7 @@ is generated from it, never hand-edited. A crash loses at most the level in flig
 ## 4. Testing
 
 **Unit and engine tests (test block).** `facts` against known level counts; `coins` on synthetic
-graphs; every edge of the W1-1 map replays on the engine to its end cell (a sample of edges on other
+graphs; every edge of the W1-1 map replays on the engine to its end node, landed (a sample of edges on other
 levels); M8: plan W1-1 twice with one seed, byte-equal, engine only, in the core (T08) and through the
 command (`--engine-only` T11, `--app` T12); the purity test. The M8 tests stay in the block even over
 §5's ~30 s rule, at most ~2 min each, because they are the target's only guard.
@@ -445,7 +449,8 @@ The old tools stay in the tree until T18, so any level can still be planned the 
 - D14 (owner, 2026-10-21): no pre-sampled danger map; danger is judged live on the search's own copy of
   the state, with wait-then-retry variants (§2.5), and only fixed hazards go on the map. Why: enemies
   spawn as their edge scrolls into view (docs/09), so a parked-frog sample misses them and their phase.
-  T00 confirms the spawn behaviour on the engine before T07 is built.
+  T00 confirms the spawn behaviour on the engine before T07 is built. A retry after a wait is a
+  different, standing-start move (owner, 2026-10-21 amendment review): waiting bleeds speed (D15).
 - D15 (owner, 2026-10-21): map nodes carry a speed band and facing if T00 measures the build at ~5 min
   or less per level with them; otherwise cells only, with momentum left to the frame-level search.
   Edges end landed, never padded to a stop. Why: momentum (§2.2) and M4.

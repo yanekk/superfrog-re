@@ -27,7 +27,7 @@ pub type Cell = (u16, u16);                                  // (col, row), 300�
 pub struct Facts {
     pub level: LevelId,
     pub standable: Vec<Cell>,
-    pub hazards: Vec<Cell>,                                   // fixed deadly cells (marker 6 and kin); DESIGN §2.2, D14
+    pub hazards: Vec<Cell>,                                   // marker 6 cells, the only tile frog_kill acts on; DESIGN §2.2, D14
     pub coins: Vec<Coin>,                                     // Coin { cell, kind: Object(slot) | Tile }
     pub switches: Vec<Switch>,                                // Switch { cells: [Cell; 2], gate: Cell, marker: u8 }
     pub exits: Vec<Cell>,

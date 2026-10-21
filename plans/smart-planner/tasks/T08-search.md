@@ -39,6 +39,8 @@ impl Planner {
     pub fn step_parts(&mut self, n: usize) -> Vec<Part>;
     pub fn run_part(&self, part: &Part) -> PartResult;       // pure; called from any thread
     pub fn merge(&mut self, results: Vec<PartResult>) -> Progress; // in part order; Progress::{Working, Done(Route), Stuck(Reason)}
+    // Reason carries coins_needed, coins_ever_reached (map and exploration together, DESIGN §2.9),
+    // last cell and stalled target
     pub fn best_partial(&self) -> Route;
 }
 pub struct Route { pub inputs: Vec<FrameInput>, pub engine_frames: u64, pub hearts_lost: u8,
@@ -48,7 +50,9 @@ pub fn plan_engine(start: Game, facts: Facts, map: MoveMap, opt: Options,
 ```
 
 Every edge is played through `danger::play_safe` (T07); a heart lost after all retries is scored at
-`heart_cost`. An edge that fails live replay (wrong landing node, or a heart lost after retries) 3
+`heart_cost`. A safe variant found after a wait is a different, standing-start move (DESIGN §2.5):
+the search continues from its actual landing node and records it as an edge from the stopped node
+(learned if the map lacks it); the original edge is not credited. An edge that fails live replay (wrong landing node, or a heart lost after retries) 3
 times in a run is marked unreliable and its cost ×4 for the rest of the run (D17). A node reached in
 play that the map lacks, or reached by a cheaper input run than the map knows, is added as a learned
 edge from the nearest map node (D16). The stall counter and the explore share count search steps, never

@@ -22,12 +22,15 @@ DESIGN §2.5, D14.
 
 ```rust
 pub const WAITS: [u16; 3] = [12, 25, 50];                    // frames idled on the start node before a retry (§2.5)
-pub struct Outcome { pub end: Game, pub hearts_lost: u8, pub died: bool }
+pub struct Outcome { pub end: Game, pub hearts_lost: u8, pub died: bool,
+                     pub wait: u16 }                      // idle frames played before the inputs; 0 = the move as given
 /// Plays `inputs` on a clone of `start`; hearts read as the old planners read them (a 1-up is not a loss).
 pub fn play(start: &Game, inputs: &[(u8, u16)]) -> Outcome;
 /// `play`, and if a heart is lost, the same inputs after each of `WAITS` idle frames in order; returns
 /// the first variant that loses nothing with its wait (`Some(0)` when the move itself is safe), else
-/// the original outcome and `None`.
+/// the original outcome and `None`. A variant with a wait starts stopped (the frog bleeds its speed
+/// while idle), so it is a different move from the stopped node; its landing is read from `end`,
+/// never assumed to be the original edge's (DESIGN §2.5).
 pub fn play_safe(start: &Game, inputs: &[(u8, u16)]) -> (Outcome, Option<u16>);
 /// Cost the search adds for a lost heart: larger than any detour `max_frames` allows.
 pub fn heart_cost(max_frames: u32) -> u64;
@@ -42,8 +45,10 @@ Fixed hazards are `Facts::hazards` (T03) and kept off the map by T04; this task 
 - [ ] A move with no enemy near loses nothing, and no retry is played.
 - [ ] A 1-up gained is not counted as a heart lost.
 - [ ] Deterministic for the same start state.
+- [ ] A wait variant of a move started at speed reports `wait > 0` and an `end` whose landing differs
+      from the move played at speed when the run-up mattered (fixture: a full-speed run jump).
 
 ## Done when
 
 - [ ] Tests green; `play_safe` on a 40-frame move with all three retries recorded on W6-3 (expected
-      ~0.12 s at ~1 300 frames/s; retries run only after a heart is lost).
+      ~0.19 s: 247 frames at ~1 300 frames/s; retries run only after a heart is lost).
