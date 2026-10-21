@@ -11,6 +11,13 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-21 | 🐞 | `sf-bench` copies a failed run's reason verbatim, so `bench/sample/RESULTS.md` and `results.jsonl` carry this machine's absolute worktree path (`no route (/Users/…/routes/explore-A-W1-1.txt…)`). Found in T02 review; T01 code, left. |
+| 2026-10-21 | 📌 | T02 sample, set A, six levels, all old tools: median confirmation share 6.8 % over the 12 runs that reached the oracle (`plan_exit` 12.3 %, `plan_exit_w6` 2.4 %). Under 40 %: T10 keeps chunked 48-frame confirmation. Machine busy (T00 spike, ~8 cores). |
+| 2026-10-21 | 🐞 | T02: old `explore` unaided gives up at frame 0 on all six sample levels in 12–43 s: its 4–48-frame bursts never outlast the ~144-frame level-start freeze, so the archive stays one cell. A 144-frame idle `--prefix` makes it move. |
+| 2026-10-21 | 📌 | T02: old `plan_exit --coins 0` timed out on all six. W1-1, W1-4, W2-4, W3-1 run the level clock to 0 near frame 18 000–24 000, then backtrack forever: "every path loses a life on the original". W3-1 sees 0 coins in reach. |
+| 2026-10-21 | 📌 | T02: old `plan_exit` on W6-2 oscillates over cells 223–228, 57–62 from frame ~22 500, coins needed stuck at 69. On W6-3 it took every coin, then stalled short of the exit at 61,66 (frame 25 536). |
+| 2026-10-21 | 📌 | T02: old `plan_exit_w6` timed out on all six with only 3 744–5 760 route frames planned in 35 min (1.4–2.2 M engine frames), still collecting coins. Slow, no stall, hang or crash. |
+| 2026-10-21 | 🐞 | `sf-bench` `best-old` with all three failed keeps the quickest failure (`explore`), so RESULTS.md's baseline shows M3 0.5 min and confirmation 0 %. Its `routes/` folder is not git-ignored; T02 left 1.4 MB of logs uncommitted. |
 | 2026-10-21 | 📌 | T07: `play_safe` with all three retries, 40-frame move on W6-3: 0.21 s at load ~20 (expected 0.19). W1-1 pit deaths drop a life with `frog_hearts` unchanged, so `died` must be checked beside hearts. |
 | 2026-10-21 | 🐞 | T03: tile coins (marker 55, `coin` h0+$ede0) add to `frog+$7e` only, never `coins_left_for_exit`; DESIGN §2.3 counts them toward the exit. `Facts` keeps them as `CoinKind::Tile`; T06 must meet `coins_needed` with `Object` coins. |
 | 2026-10-21 | 📌 | T19, one thread, release, `Start::Level`, 2000 script frames, load 7–8: W1-4 1823 f/s drawn (`step`, the old `step_unseen` cost) to 11159 `step_unseen`; W6-3 1686 to 4736. The loop-ending frame is still drawn (`Game::shown`). |
