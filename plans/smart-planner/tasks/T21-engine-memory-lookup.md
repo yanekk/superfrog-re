@@ -27,8 +27,17 @@ DESIGN §5 (the measured speeds); the 5-min build line of T04's "Done when".
 
 - `engine/crates/sf-core/src/layout.rs`, `engine/crates/sf-core/src/state.rs` (and `mem.rs` if the
   bus path needs it)
-- a test beside the code: the new lookup agrees with `index_of`'s answer for every address the
-  layout covers and for addresses just outside each entry
+- a test beside the code (below)
+
+## Interface
+
+None changes: `State`'s and the bus's accessors keep their signatures; only how a byte's layout
+entry is found changes.
+
+## Tests
+
+- [ ] Beside the code: the new lookup agrees with `index_of`'s answer for every address the layout
+      covers and for addresses just outside each entry.
 
 ## Done when
 

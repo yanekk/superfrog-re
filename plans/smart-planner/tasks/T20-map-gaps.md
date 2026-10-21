@@ -3,7 +3,7 @@
 **Phase:** 1 · **Depends on:** T04; blocks T08 · **Weight:** heavy
 
 Added by T04 (owner, 2026-10-21): T04's D13 check found the measured map, with no enemy help,
-reaching the exit with `coins_needed` object coins on only 12 of the 24 normal levels. The owner
+reaching the exit with `coins_needed` object coins on only 13 of the 24 normal levels. The owner
 chose to close the gaps before the search (T08) is built, not to leave them to its exploring.
 
 ## Goal
