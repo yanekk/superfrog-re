@@ -63,5 +63,12 @@ fn main() {
             r0.coins.len(),
         );
         println!("  keys per switch set {:?}", stats.per_switch_set);
+        // Which switches the exit needs: the exit unreached with that one left out.
+        let needed: Vec<_> = (0..fa.switches.len())
+            .filter(|&k| !reach(&map, &fa, start, all & !(1 << k), true).exit)
+            .map(|k| fa.switches[k].gate)
+            .collect();
+        let nw = reach(&map, &fa, start, all, false);
+        println!("  exit needs switches with gates {needed:?}; without wings: exit {} nodes {}", nw.exit, nw.nodes);
     }
 }

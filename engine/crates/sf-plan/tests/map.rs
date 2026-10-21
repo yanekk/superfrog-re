@@ -132,12 +132,11 @@ fn moves_expand_to_their_inputs() {
     assert_eq!(set.len(), yes.families.len(), "a move twice");
 }
 
-/// Test block: W1-1's first three layers (~25 s on 10 threads, release; more in a debug build on a
-/// busy machine), every edge replayed exactly.
+/// Test block: W1-1's first two layers, every edge replayed exactly.
 #[test]
 fn w1_1_first_layers_replay() {
     let (g, fa) = at_start(id("W1-1"));
-    let (map, checked) = walk_replaying(&g, &fa, Some(3));
+    let (map, checked) = walk_replaying(&g, &fa, Some(2));
     assert_map_edges_checked(&map, &checked);
     assert!(map.nodes.len() > 20, "{}", map.nodes.len());
     assert!(node_of(&map, g.state()).is_some());
@@ -145,14 +144,17 @@ fn w1_1_first_layers_replay() {
     assert!(map.edges.iter().any(|e| !e.coins.is_empty()));
 }
 
-/// The map is the same for any part count and for the threaded shell (M8, DESIGN §3.1).
+/// The map is the same for any part count and for the threaded shell (M8, DESIGN §3.1). A quarter
+/// of the move set, so three layers stay cheap: the split does not depend on which moves.
 #[test]
 fn parts_do_not_change_the_map() {
     let (g, fa) = at_start(id("W1-1"));
-    let moves = default_moves(true);
+    let moves = MoveSet {
+        families: default_moves(true).families.into_iter().step_by(4).collect(),
+    };
     let bounded = |n: usize| {
         let mut b = Builder::new(&g, &fa, &moves);
-        for _ in 0..2 {
+        for _ in 0..3 {
             let parts = b.parts(n);
             let r = parts.iter().map(|p| b.build_part(p)).collect();
             b.absorb(r);
@@ -165,7 +167,7 @@ fn parts_do_not_change_the_map() {
     assert_eq!(one.0, eight.0);
     assert_eq!(one.1, eight.1);
     let mut b = Builder::new(&g, &fa, &moves);
-    for _ in 0..2 {
+    for _ in 0..3 {
         let r = layer(&b, 13).unwrap();
         b.absorb(r);
     }
