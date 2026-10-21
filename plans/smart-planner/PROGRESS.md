@@ -16,7 +16,7 @@ unreliable edges); T07 now light, T00 answers three more questions.
 
 **Status:** plan written; nothing built.
 **Last updated:** 2026-10-21
-**Next `pir-work` will:** T00 movement-map-spike, the gate for everything on the map; T01 can run beside it.
+**Next `pir-work` will:** T03 level-facts and T02 baseline-sample; T04 waits on T03.
 
 ## Tasks
 
@@ -44,9 +44,9 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T16 | baseline-counted | T15 | ⬜ | |
 | T17 | new-counted | T13, T16 | ⬜ | |
 | T18 | results-and-retire | T17 | ⬜ | |
-| T19 | step-unseen-no-picture | T00; blocks T04 | 🔍 | `Scene::step` takes `draw`; unseen skips `level_as_drawn`. 4 equality tests (W6-1, W1-4, W6-3, a lost-life route), 14 s. Deviation: the frame a level's loop ends is still drawn, because `Game::shown` keeps it; skipping differed at frame 1545. Speeds in FINDINGS. |
+| T19 | step-unseen-no-picture | T00; blocks T04 | ✅ | Review clean, no fix commit. Unseen skips `level_as_drawn` except the frame a level's loop ends (`Game::shown`); mutating that out fails the lost-life test. Probed: own timing at load 13, W1-4 2.7×, W6-3 6.1× faster, unseen pictures empty; sf-core, render_vs_oracle, level_entry green. Tests take 38 s at load 12–17. |
 
-**Review queue:** T19
+**Review queue:** empty
 
 ## Blocked on the user
 
