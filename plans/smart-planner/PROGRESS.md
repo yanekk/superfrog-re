@@ -26,7 +26,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | # | Task | Depends on | State | Notes |
 |---|---|---|---|---|
 | T00 | movement-map-spike | — | ⬜ | |
-| T01 | bench-harness | — | ⬜ | |
+| T01 | bench-harness | — | ✅ | |
 | T02 | baseline-sample | T01 | ⬜ | |
 | T03 | level-facts | T00 | ⬜ | |
 | T04 | movement-map | T03 | ⬜ | |
