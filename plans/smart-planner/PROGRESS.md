@@ -14,7 +14,7 @@ message. Whoever writes a cell also fixes the over-budget cell they walk past.
 unreliable edges); T07 now light, T00 answers three more questions.
 **Amendment reviewed:** 2026-10-21 — 6 fixes, 1 decision (a retry after a wait is a standing-start move)
 
-**Status:** plan written; nothing built.
+**Status:** Phase 0 building; T01 implemented.
 **Last updated:** 2026-10-21
 **Next `pir-work` will:** T00 movement-map-spike, the gate for everything on the map; T01 can run beside it.
 
@@ -26,7 +26,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | # | Task | Depends on | State | Notes |
 |---|---|---|---|---|
 | T00 | movement-map-spike | — | ⬜ | |
-| T01 | bench-harness | — | ⬜ | |
+| T01 | bench-harness | — | 🔍 | `sf-bench` crate, 11 tests (verify one `#[ignore]`, 125 s); old tools print `PLAN_STATS` every 30 s and at exit via shared `examples/common/plan_stats.rs`. Deviations: legs by `whole_game --until WW-1`; old tools `--frames 30000`, `over-budget` past budget; case tail 25 frames, committed case's lag-limit; set-C verify left to T12; `best-old` writes per-tool lines plus its own. |
 | T02 | baseline-sample | T01 | ⬜ | |
 | T03 | level-facts | T00 | ⬜ | |
 | T04 | movement-map | T03 | ⬜ | |
@@ -45,7 +45,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T17 | new-counted | T13, T16 | ⬜ | |
 | T18 | results-and-retire | T17 | ⬜ | |
 
-**Review queue:** *(empty)*
+**Review queue:** T01
 
 ## Blocked on the user
 

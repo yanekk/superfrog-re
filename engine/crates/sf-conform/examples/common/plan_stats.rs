@@ -3,7 +3,8 @@
 //! benchmark records the same numbers for the old planners as for `sf-plan`.
 //!
 //! `PLAN_STATS engine_frames=N oracle_frames=N confirm_share=F hints=0` (the old planners take no
-//! hint the benchmark passes, so `hints` is always 0 here).
+//! hint the benchmark passes, so `hints` is always 0 here). The line is also printed every
+//! `EVERY`, so a planner killed for its timeout still leaves its counts; the last line counts.
 
 use std::sync::OnceLock;
 use std::sync::atomic::{AtomicU64, Ordering::Relaxed};
@@ -14,9 +15,17 @@ static ENGINE_FRAMES: AtomicU64 = AtomicU64::new(0);
 static ORACLE_FRAMES: AtomicU64 = AtomicU64::new(0);
 static ORACLE_NS: AtomicU64 = AtomicU64::new(0);
 
+const EVERY: std::time::Duration = std::time::Duration::from_secs(30);
+
 /// The run's clock starts here (the share's denominator).
 pub fn start() {
     START.get_or_init(Instant::now);
+    std::thread::spawn(|| {
+        loop {
+            std::thread::sleep(EVERY);
+            print();
+        }
+    });
 }
 
 /// One engine frame stepped.
