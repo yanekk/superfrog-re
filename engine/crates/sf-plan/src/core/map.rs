@@ -366,7 +366,7 @@ pub struct MapPart {
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct BuildStats {
     pub layers: u32,
-    /// Walked keys (node and switch set).
+    /// Seeds walked.
     pub keys: u32,
     pub moves_played: u64,
     pub frames: u64,
@@ -397,17 +397,30 @@ pub struct Builder {
     frontier: Vec<(Key, Game)>,
     /// (frontier index, move index).
     jobs: Vec<(u32, u16)>,
-    seen: HashSet<Key>,
+    /// Seeds walked per slot (`Builder::slot`).
+    walked: HashMap<(Node, u32), u8>,
     nodes: BTreeSet<Node>,
     edges: Vec<RawEdge>,
     stats: BuildStats,
-    /// The level's start state: each switch set reached is walked again from it (`press`).
-    start: Game,
     /// Per switch, the map words its handler wrote at the first real press found.
     presses: BTreeMap<usize, Vec<(u32, u16)>>,
-    /// Switch sets whose walk from the start has begun.
+    /// Switch sets a real move has reached.
     worlds: BTreeSet<u32>,
+    /// Walked seeds within `GATE_REACH` of a gate, kept to be walked again in each world where
+    /// their gate is open.
+    gate_seeds: Vec<(Key, Game)>,
 }
+
+/// Seeds walked per slot: a node (cell and wings) with the switches pressed whose gates are near
+/// it. More than one seed is a second arrival, at another time, among other enemy positions: a
+/// move one seed loses a heart on, another makes (W2-1's pad shaft, T04).
+pub const SEEDS_PER_SLOT: u8 = 2;
+
+/// How far from a gate (in cells, either way) a pressed switch is taken to change what moves do:
+/// a node this near a gate is walked per switch set of its near gates, any other once per slot
+/// whatever is pressed (walking every switch set fully took W2-2 36.8 M frames and W2-3, four
+/// switches, over an hour unfinished, T04).
+pub const GATE_REACH: u16 = 10;
 
 /// Whether `cell` is in the block a gate at `gate` opens, with a cell's margin: `switch` rewrites
 /// five rows from the row above the gate, the two columns right of it (W2-1's 143,37 opens
@@ -447,18 +460,19 @@ impl Builder {
             hazards: facts.hazards.iter().copied().collect(),
             moves: moves.families.iter().map(|&m| (m, m.expand())).collect(),
             layer: 0,
-            frontier: vec![(key, start.clone())],
+            frontier: Vec::new(),
             jobs: Vec::new(),
-            seen: HashSet::from([key]),
-            nodes: BTreeSet::from([key.node]),
+            walked: HashMap::new(),
+            nodes: BTreeSet::new(),
             edges: Vec::new(),
             stats: BuildStats::default(),
-            start: start.clone(),
             presses: BTreeMap::new(),
             worlds: BTreeSet::from([key.pressed]),
+            gate_seeds: Vec::new(),
         };
-        b.stats.keys = 1;
-        b.stats.per_switch_set.insert(key.pressed, 1);
+        let mut first = Vec::new();
+        b.admit(key, start.clone(), &mut first);
+        b.frontier = first;
         b.plan_jobs();
         b
     }
@@ -497,7 +511,7 @@ impl Builder {
     /// switch whose writes are not yet known (`absorb` reads them off it).
     pub fn build_part(&self, part: &MapPart) -> Vec<Probe> {
         assert_eq!(part.layer, self.layer, "a part of another layer");
-        let mut kept = HashSet::new();
+        let mut kept: HashMap<(Node, u32), u8> = HashMap::new();
         self.jobs[part.jobs.start as usize..part.jobs.end as usize]
             .iter()
             .map(|&(i, m)| {
@@ -505,10 +519,17 @@ impl Builder {
                 let mut p = play(seed, *from, &self.moves[m as usize].1, &self.facts, &self.hazards);
                 if let Ok(found) = &mut p.result
                     && let Some((key, _)) = &found.seed
-                    && !self.first_press(from.pressed, key.pressed)
-                    && (self.seen.contains(key) || !kept.insert(*key))
                 {
-                    found.seed = None;
+                    let slot = self.slot(key);
+                    let had = self.walked.get(&slot).copied().unwrap_or(0);
+                    let k = kept.entry(slot).or_default();
+                    // Near a gate every seed is kept: `absorb` may write a press into it.
+                    if self.first_press(from.pressed, key.pressed) || self.near_gates(u32::MAX, key.node.cell) {
+                    } else if had + *k >= SEEDS_PER_SLOT {
+                        found.seed = None;
+                    } else {
+                        *k += 1;
+                    }
                 }
                 p
             })
@@ -541,33 +562,22 @@ impl Builder {
             if let Some((key, _)) = &found.seed
                 && self.worlds.insert(key.pressed)
             {
-                // A switch set reached by a real move: walk its world from the level start too, so
-                // a cell behind the gate is not missed for want of the one seed that pressed it.
-                let mut g = self.start.clone();
-                for (k, writes) in &self.presses {
-                    if key.pressed & 1 << k != 0 {
-                        for &(addr, w) in writes {
-                            g.poke(addr, &w.to_be_bytes());
-                        }
-                    }
-                }
-                let st = g.state();
-                let k = Key {
-                    node: node(st),
-                    pressed: pressed(&self.facts, st),
-                };
-                if k.pressed == key.pressed && self.seen.insert(k) {
-                    self.nodes.insert(k.node);
-                    *self.stats.per_switch_set.entry(k.pressed).or_default() += 1;
-                    next.push((k, g));
+                // A switch set reached by a real move: every seed walked near one of its newly open
+                // gates is walked again with the presses written in, so a cell behind the gate is
+                // not missed for want of the one seed that pressed it (W6-3's 161,7, T04).
+                let world = key.pressed;
+                let born: Vec<(Key, Game)> = self
+                    .gate_seeds
+                    .iter()
+                    .filter(|(k, _)| self.opens_near(k, world))
+                    .filter_map(|(k, g)| self.variant(g, k.pressed, world))
+                    .collect();
+                for (k, g) in born {
+                    self.admit(k, g, &mut next);
                 }
             }
-            if let Some((key, g)) = found.seed
-                && self.seen.insert(key)
-            {
-                self.nodes.insert(key.node);
-                *self.stats.per_switch_set.entry(key.pressed).or_default() += 1;
-                next.push((key, g));
+            if let Some((key, g)) = found.seed {
+                self.admit(key, g, &mut next);
             }
             let needs_wings = self.moves[m as usize].1.needs_wings;
             if let Some(s) = found.stopped
@@ -598,11 +608,82 @@ impl Builder {
                 needs_wings,
             });
         }
-        self.stats.keys += next.len() as u32;
+
         self.stats.layers += 1;
         self.layer += 1;
         self.frontier = next;
         self.plan_jobs();
+    }
+
+    /// Bits of the switches whose gates are within `GATE_REACH` of `cell`, of those in `bits`.
+    fn gates_near(&self, bits: u32, cell: Cell) -> u32 {
+        self.facts
+            .switches
+            .iter()
+            .enumerate()
+            .filter(|(k, s)| {
+                bits & 1 << k != 0
+                    && s.gate.0.abs_diff(cell.0) <= GATE_REACH
+                    && s.gate.1.abs_diff(cell.1) <= GATE_REACH
+            })
+            .fold(0, |m, (k, _)| m | 1 << k)
+    }
+
+    fn near_gates(&self, bits: u32, cell: Cell) -> bool {
+        self.gates_near(bits, cell) != 0
+    }
+
+    /// Where a seed counts: its node and the pressed switches whose gates are near it.
+    fn slot(&self, key: &Key) -> (Node, u32) {
+        (key.node, key.pressed & self.gates_near(key.pressed, key.node.cell))
+    }
+
+    /// World `world` presses more than `k`'s switches, one of the extra ones with its gate near.
+    fn opens_near(&self, k: &Key, world: u32) -> bool {
+        k.pressed & !world == 0 && k.pressed != world && self.near_gates(world & !k.pressed, k.node.cell)
+    }
+
+    /// `g` (walked with switches `from`) with the presses of `to`'s other switches written in, as
+    /// their handlers wrote them; `None` if a press is not known or does not read as pressed.
+    fn variant(&self, g: &Game, from: u32, to: u32) -> Option<(Key, Game)> {
+        let mut g = g.clone();
+        for k in 0..self.facts.switches.len() {
+            if (to & !from) & 1 << k != 0 {
+                for &(addr, w) in self.presses.get(&k)? {
+                    g.poke(addr, &w.to_be_bytes());
+                }
+            }
+        }
+        let st = g.state();
+        let key = Key {
+            node: node(st),
+            pressed: pressed(&self.facts, st),
+        };
+        (key.pressed == to).then_some((key, g))
+    }
+
+    /// A seed into the next layer, unless its slot has its `SEEDS_PER_SLOT` already. A seed near a
+    /// gate is kept, and walked again with the presses written in for every bigger world reached.
+    fn admit(&mut self, key: Key, g: Game, next: &mut Vec<(Key, Game)>) {
+        let slot = self.slot(&key);
+        let n = self.walked.entry(slot).or_default();
+        if *n >= SEEDS_PER_SLOT {
+            return;
+        }
+        *n += 1;
+        self.stats.keys += 1;
+        self.nodes.insert(key.node);
+        *self.stats.per_switch_set.entry(key.pressed).or_default() += 1;
+        if self.near_gates(u32::MAX, key.node.cell) {
+            self.gate_seeds.push((key, g.clone()));
+            let bigger: Vec<u32> = self.worlds.iter().copied().filter(|&w| self.opens_near(&key, w)).collect();
+            for w in bigger {
+                if let Some((k, v)) = self.variant(&g, key.pressed, w) {
+                    self.admit(k, v, next);
+                }
+            }
+        }
+        next.push((key, g));
     }
 
     /// A move from switch set `from` to `to` presses a switch whose writes are not yet recorded.
