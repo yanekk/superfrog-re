@@ -44,9 +44,9 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T16 | baseline-counted | T15 | ⬜ | |
 | T17 | new-counted | T13, T16 | ⬜ | |
 | T18 | results-and-retire | T17 | ⬜ | |
-| T19 | step-unseen-no-picture | T00; blocks T04 | ⬜ | |
+| T19 | step-unseen-no-picture | T00; blocks T04 | 🔍 | `Scene::step` takes `draw`; unseen skips `level_as_drawn`. 4 equality tests (W6-1, W1-4, W6-3, a lost-life route), 14 s. Deviation: the frame a level's loop ends is still drawn, because `Game::shown` keeps it; skipping differed at frame 1545. Speeds in FINDINGS. |
 
-**Review queue:** *(empty)*
+**Review queue:** T19
 
 ## Blocked on the user
 
