@@ -135,3 +135,22 @@ fn a_lost_heart_costs_more_than_any_detour() {
         assert!(heart_cost(max) > max as u64);
     }
 }
+
+/// W1-1 along `frog-pit`: running right from the start into the first pit (columns 27–30) kills
+/// the frog with `frog_hearts` unchanged, so a death is unsafe without a heart lost. No wait helps:
+/// the run still ends in the pit, and the original outcome comes back with `None`.
+#[test]
+fn a_pit_death_without_a_heart_lost_is_unsafe() {
+    let (g, _) = after("W1-1", "frog-pit", 0);
+    let run = [(8u8, 260u16)];
+    let o = play(&g, &run);
+    assert!(o.died);
+    assert_eq!(o.hearts_lost, 0);
+    assert!(!o.safe());
+    // `play` stops at the death frame: a longer run ends in the same state.
+    assert_eq!(play(&g, &[(8, 400)]).end.state(), o.end.state());
+    let (back, wait) = play_safe(&g, &run);
+    assert_eq!(wait, None);
+    assert_eq!((back.died, back.wait), (true, 0));
+    assert_eq!(back.end.state(), o.end.state());
+}
