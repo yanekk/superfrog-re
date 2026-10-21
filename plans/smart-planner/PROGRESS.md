@@ -16,7 +16,7 @@ unreliable edges); T07 now light, T00 answers three more questions.
 
 **Status:** plan written; nothing built.
 **Last updated:** 2026-10-21
-**Next `pir-work` will:** T00 movement-map-spike, the gate for everything on the map; T01 can run beside it.
+**Next `pir-work` will:** review T02; T00 movement-map-spike is the gate for everything on the map.
 
 ## Tasks
 
@@ -27,7 +27,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 |---|---|---|---|---|
 | T00 | movement-map-spike | — | ⬜ | |
 | T01 | bench-harness | — | ✅ | |
-| T02 | baseline-sample | T01 | ⬜ | |
+| T02 | baseline-sample | T01 | 🔍 | Sample run, `best-old` set A W1-1, W1-4, W2-4, W3-1, W6-2, W6-3: 0/6, every tool failed. Confirmation median 6.8 %: T10 chunked. Five FINDINGS rows on failure modes. Deviation: one level per 2 h slice, not one run resumed, so no slice is cut mid-tool. Route logs not committed. |
 | T03 | level-facts | T00 | ⬜ | |
 | T04 | movement-map | T03 | ⬜ | |
 | T05 | map-cache | T04 | ⬜ | |
@@ -45,7 +45,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T17 | new-counted | T13, T16 | ⬜ | |
 | T18 | results-and-retire | T17 | ⬜ | |
 
-**Review queue:** *(empty)*
+**Review queue:** T02
 
 ## Blocked on the user
 
