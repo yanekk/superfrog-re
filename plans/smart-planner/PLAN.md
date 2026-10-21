@@ -62,6 +62,8 @@ early numbers on the stall levels.
 | [T08](tasks/T08-search.md) | search | T04, T06, T07 |
 | [T09](tasks/T09-route-repair.md) | route-repair | T08 |
 | [T19](tasks/T19-step-unseen-no-picture.md) | step-unseen-no-picture | T00; blocks T04 |
+| [T20](tasks/T20-map-gaps.md) | map-gaps | T04; blocks T08 |
+| [T21](tasks/T21-engine-memory-lookup.md) | engine-memory-lookup | T04; blocks T20 |
 
 At the end of Phase 1: the core plans a level on the engine from any start state, deterministically.
 

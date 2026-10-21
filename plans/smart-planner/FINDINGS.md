@@ -11,6 +11,14 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-22 | 🐞 | T04 review, for T20: W2-3, W4-4 maps walk no seed with two switches pressed (`per_switch_set` {0,1,2,4} and {0,8}); far-from-gate slots ignore pressed switches, so a second lever is pressed only from world 0; each exit needs all four. |
+| 2026-10-21 | 🔄 | Owner, T04: 11 maps over 5 min (quiet, W5-4 566 s) get T21 engine-memory-lookup (T04; blocks T20), speed only; builds still over 5 min after it are recorded and accepted, the move set never shrunk. |
+| 2026-10-21 | 📌 | T04 profile, one-thread map build: `layout::index_of` (a binary search per `State` byte access) is ~35% of busy samples, `State::byte`/`Bus::set_b` most of the rest; the map code is negligible. 1 thread 6.2 k frames/s, 10 threads 25 k. |
+| 2026-10-21 | 🔄 | Owner, T04: the 11 levels the map cannot finish go to a new task, T20 map-gaps (T04; blocks T08), fixed before the search is built rather than left for it. |
+| 2026-10-21 | 🐞 | T04, D13 check (`map_stats`): 11 of 24 maps miss the exit or the coins, no enemy help. Exit unreached: W2-3, W2-4, W3-2, W3-4, W4-2, W4-4, W5-2, W6-1, W6-2, W6-4. W2-1 reaches 24 of 35 coins. Owner asked before T08. |
+| 2026-10-21 | 📌 | T04 build s, 10 threads, load ~25: W1 301 355 299 441; W2 111 375 268 11; W3 151 75 346 210; W4 223 110 331 215; W5 158 371 363 568; W6 127 438 374 394. 0.3–12.8 M frames. |
+| 2026-10-21 | 📌 | T04 map gaps found: W2-1's pad lands ~200 frames after its throw (cap now 300); W6 up held floats; W6-3's gate ledge needed a 32-frame jump; seeds beside patrolling enemies lose every move (W4-2 63-66,74). |
+| 2026-10-21 | 📌 | T04 switch sets: walking each set fully cost W2-2 36.8 M frames and W2-3 (four switches) over an hour; now only nodes within 10 cells of a gate are walked per set, the press written in from a real one. |
 | 2026-10-21 | 🐞 | `sf-bench` copies a failed run's reason verbatim, so `bench/sample/RESULTS.md` and `results.jsonl` carry this machine's absolute worktree path (`no route (/Users/…/routes/explore-A-W1-1.txt…)`). Found in T02 review; T01 code, left. |
 | 2026-10-21 | 📌 | T02 sample, set A, six levels, all old tools: median confirmation share 6.8 % over the 12 runs that reached the oracle (`plan_exit` 12.3 %, `plan_exit_w6` 2.4 %). Under 40 %: T10 keeps chunked 48-frame confirmation. Machine busy (T00 spike, ~8 cores). |
 | 2026-10-21 | 🐞 | T02: old `explore` unaided gives up at frame 0 on all six sample levels in 12–43 s: its 4–48-frame bursts never outlast the ~144-frame level-start freeze, so the archive stays one cell. A 144-frame idle `--prefix` makes it move. |

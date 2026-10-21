@@ -5,3 +5,4 @@
 //! cache files, threads) lives beside it.
 
 pub mod core;
+pub mod threads;

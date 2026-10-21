@@ -83,9 +83,19 @@ pub struct Facts {
     pub coins_needed: u16,
 }
 
+/// Where `cell`'s word lives in the game's memory.
+pub(crate) fn cell_addr((c, r): Cell) -> u32 {
+    ROW0 + r as u32 * ROW_BYTES + 2 * c as u32
+}
+
+/// The live map word at `cell`: tile index above, marker in the low six bits.
+pub(crate) fn cell_word(st: &State, cell: Cell) -> u16 {
+    st.w(cell_addr(cell))
+}
+
 /// The live marker at `(c, r)`.
-fn live(st: &State, c: u16, r: u16) -> u16 {
-    st.w(ROW0 + r as u32 * ROW_BYTES + 2 * c as u32) & 0x3f
+pub(crate) fn live(st: &State, c: u16, r: u16) -> u16 {
+    cell_word(st, (c, r)) & 0x3f
 }
 
 /// The cell a map address names, if it is on the map.
