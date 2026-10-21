@@ -20,16 +20,14 @@ const MAGIC: &[u8; 8] = b"SFPLMAP\0";
 /// Bumped when the file layout changes.
 const FORMAT: u32 = 1;
 
-/// The planner's core sources. The engine build covers the game, not the map builder: a map built
-/// by an older `core::map` is stale too (§2.9), so the key carries a hash of these as well.
-/// `tests/cache.rs` checks the list is every file under `src/core/`.
-pub const CORE_FILES: [(&str, &[u8]); 7] = [
-    ("coins.rs", include_bytes!("core/coins.rs")),
-    ("danger.rs", include_bytes!("core/danger.rs")),
+/// The map builder's sources. The engine build covers the game, not the map builder: a map built
+/// by an older `core::map` is stale too (§2.9), so the key carries a hash of these as well. Only the
+/// files a map is built from, so a change to the search or the coin choice keeps the maps:
+/// `tests/cache.rs` checks every core module these files use is listed too.
+pub const CORE_FILES: [(&str, &[u8]); 4] = [
     ("facts.rs", include_bytes!("core/facts.rs")),
     ("graph.rs", include_bytes!("core/graph.rs")),
     ("map.rs", include_bytes!("core/map.rs")),
-    ("mod.rs", include_bytes!("core/mod.rs")),
     ("moves.rs", include_bytes!("core/moves.rs")),
 ];
 
@@ -76,7 +74,7 @@ pub fn cache_dir() -> PathBuf {
 }
 
 /// The cache key, also the file's name: the level, the start, the wings, and a hash of the engine
-/// build (`SF_ENGINE_BUILD`), the planner's core and the file format.
+/// build (`SF_ENGINE_BUILD`), the map builder's sources and the file format.
 pub fn key(level: LevelId, start: StartKey, wings: bool) -> String {
     let start = match start {
         StartKey::AtLevel => "at".to_string(),
@@ -87,7 +85,7 @@ pub fn key(level: LevelId, start: StartKey, wings: bool) -> String {
     format!("{level}.{start}.{wings}.{:016x}", build_hash())
 }
 
-/// The hash of everything that makes a map: the engine build, the core's sources, the format.
+/// The hash of everything that makes a map: the engine build, the map builder's sources, the format.
 fn build_hash() -> u64 {
     let mut h = FNV_START;
     fnv(&mut h, env!("SF_ENGINE_BUILD").as_bytes());

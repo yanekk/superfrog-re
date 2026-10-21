@@ -256,29 +256,55 @@ fn two_writers_leave_one_whole_file() {
     assert_eq!(tmp, 0, "temp files left behind");
 }
 
+/// The core modules `src` uses: `super::m` and `crate::core::m`, grouped (`super::{a, b}`) or not.
+fn core_uses(src: &str) -> Vec<String> {
+    let ident = |s: &str| {
+        s.chars()
+            .take_while(|c| c.is_ascii_alphanumeric() || *c == '_')
+            .collect::<String>()
+    };
+    let mut uses = Vec::new();
+    for pat in ["super::", "crate::core::"] {
+        for (at, _) in src.match_indices(pat) {
+            let rest = &src[at + pat.len()..];
+            if let Some(group) = rest.strip_prefix('{') {
+                let group = &group[..group.find('}').unwrap_or(group.len())];
+                uses.extend(group.split(',').map(|g| ident(g.trim())));
+            } else {
+                uses.push(ident(rest));
+            }
+        }
+    }
+    uses.retain(|m| !m.is_empty() && m.chars().next().unwrap().is_ascii_lowercase());
+    uses
+}
+
 #[test]
-fn the_key_hashes_every_core_file() {
+fn the_key_hashes_every_core_file_a_map_is_built_from() {
     let core = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("src/core");
-    let mut on_disk = std::fs::read_dir(&core)
-        .unwrap()
-        .flatten()
-        .map(|e| e.file_name().to_string_lossy().into_owned())
-        .filter(|n| n.ends_with(".rs"))
-        .collect::<Vec<_>>();
-    on_disk.sort();
     let listed = cache::CORE_FILES
         .iter()
-        .map(|(n, _)| n.to_string())
+        .map(|(n, _)| n.strip_suffix(".rs").unwrap().to_string())
         .collect::<Vec<_>>();
+    assert!(listed.contains(&"map".to_string()));
+    for (name, bytes) in cache::CORE_FILES {
+        // The hashed bytes are the file as it is now (`include_bytes!` rebuilds on a change).
+        assert_eq!(std::fs::read(core.join(name)).unwrap(), bytes, "{name}");
+        for m in core_uses(std::str::from_utf8(bytes).unwrap()) {
+            assert!(
+                listed.contains(&m),
+                "{name} uses core::{m}: add {m}.rs to cache::CORE_FILES"
+            );
+        }
+    }
+}
+
+#[test]
+fn core_uses_reads_every_form() {
+    let src = "use super::facts::{Cell, live};\nuse super::{graph, moves::Macro};\n\
+               let d = super::graph::shortest(m);\nuse crate::core::lookup::Word;\nsuper::Builder";
     assert_eq!(
-        listed, on_disk,
-        "add the new core file to cache::CORE_FILES"
-    );
-    assert!(
-        std::fs::read_dir(&core)
-            .unwrap()
-            .flatten()
-            .all(|e| e.path().is_file()),
-        "a core subfolder: list its files too"
+        core_uses(src),
+        ["facts", "graph", "moves", "graph", "lookup"]
     );
 }
