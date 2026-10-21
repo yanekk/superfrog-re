@@ -31,7 +31,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T03 | level-facts | T00 | ✅ | |
 | T04 | movement-map | T03 | ⬜ | |
 | T05 | map-cache | T04 | ⬜ | |
-| T06 | coin-choice | T03 | ⬜ | |
+| T06 | coin-choice | T03 | ✅ | |
 | T07 | danger-map | T03 | ⬜ | |
 | T08 | search | T04, T06, T07 | ⬜ | |
 | T09 | route-repair | T08 | ⬜ | |
