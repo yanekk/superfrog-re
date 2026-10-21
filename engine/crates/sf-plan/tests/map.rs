@@ -82,6 +82,17 @@ fn walk_replaying(start: &Game, fa: &Facts, layers: Option<u32>) -> (MoveMap, BT
                             if !ok {
                                 bad.push(format!("{key:?} {:?}: {t:?}", found.inputs));
                             }
+                            if let Some(st) = &found.stopped {
+                                let t = replay(seed, fa, &st.inputs);
+                                let ok = t.reject.is_none()
+                                    && t.end == st.to
+                                    && t.landed
+                                    && t.coins == st.coins
+                                    && t.frames == st.frames;
+                                if !ok {
+                                    bad.push(format!("stopped {key:?} {:?}: {t:?}", st.inputs));
+                                }
+                            }
                         }
                         bad
                     })
@@ -94,6 +105,9 @@ fn walk_replaying(start: &Game, fa: &Facts, layers: Option<u32>) -> (MoveMap, BT
             if let Ok(found) = &p.result {
                 let from = b.frontier()[jobs[j].0 as usize].0.node;
                 checked.insert((from, found.to, found.inputs.clone()));
+                if let Some(st) = &found.stopped {
+                    checked.insert((from, st.to, st.inputs.clone()));
+                }
             }
         }
         b.absorb(results);
@@ -122,7 +136,8 @@ fn moves_expand_to_their_inputs() {
     assert_eq!(f.holds.len(), 1 + 2 * 2);
     assert_eq!(f.holds[1], (Joy::FIRE, 4));
     let fl = MoveFamily::Float { dir: Dir::None, then: Dir::Right }.expand();
-    assert_eq!(fl.tail, Joy::RIGHT | Joy::UP);
+    assert_eq!(fl.holds[1], (Joy::RIGHT | Joy::UP, 24));
+    assert_eq!(fl.tail, Joy::RIGHT);
     // Flight only with wings; steering (a jump whose tail differs from its direction) always.
     let (no, yes) = (default_moves(false), default_moves(true));
     assert!(no.families.iter().all(|m| !m.needs_wings()));

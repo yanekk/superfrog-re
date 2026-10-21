@@ -34,8 +34,9 @@ pub enum MoveFamily {
     /// Hold up and the direction for `hold` frames (a longer hold jumps higher), then `then` until
     /// landed. `then == dir` is a plain jump; `then != dir` steers in the air (D18, W6-3).
     Jump { dir: Dir, hold: u16, then: Dir },
-    /// Jump holding up and `dir` for 16 frames, then keep up held with `then` until landed: up
-    /// held in the air floats the frog in W6's low gravity (W6-3's route onto 161,6, T04).
+    /// Jump holding up and `dir` for 16 frames, then up and `then` for 24 (up held in the air floats
+    /// the frog in W6's low gravity, W6-3's route onto 161,6, T04), then `then` until landed. Up
+    /// held to the landing would jump again on touching down and never land.
     Float { dir: Dir, then: Dir },
     /// Run `run_up` frames, then jump holding the direction for 20, and keep it until landed.
     RunJump { dir: Dir, run_up: u16 },
@@ -49,9 +50,11 @@ pub enum MoveFamily {
     Fly { dir: Dir, flaps: u8, hover: bool },
 }
 
-/// Frames a move may stay in the air after its holds before it is given up as never landing.
-pub const LAND_CAP: u16 = 150;
-/// The same for launches: a spring's throw can cross most of a screen.
+/// Frames a move may stay in the air after its holds before it is given up as never landing:
+/// W2-1's bounce pad at 91,35 throws the frog up its coin shaft and it lands ~200 frames later
+/// (T04; T00's spike had 150).
+pub const LAND_CAP: u16 = 300;
+/// The same for launches.
 pub const LAUNCH_CAP: u16 = 300;
 
 /// A family as concrete inputs: `holds` played in order, then `tail` held until landed, at most
@@ -74,7 +77,9 @@ impl MoveFamily {
         let (holds, tail, land_cap) = match self {
             MoveFamily::Walk { dir, frames } => (vec![(dir.joy(), frames)], Joy::NONE, LAND_CAP),
             MoveFamily::Jump { dir, hold, then } => (vec![(up(dir), hold)], then.joy(), LAND_CAP),
-            MoveFamily::Float { dir, then } => (vec![(up(dir), 16)], up(then), LAND_CAP),
+            MoveFamily::Float { dir, then } => {
+                (vec![(up(dir), 16), (up(then), 24)], then.joy(), LAND_CAP)
+            }
             MoveFamily::RunJump { dir, run_up } => {
                 (vec![(dir.joy(), run_up), (up(dir), 20)], dir.joy(), LAND_CAP)
             }

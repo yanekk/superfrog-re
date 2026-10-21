@@ -38,14 +38,21 @@ fn main() {
                 'E'
             } else if fa.hazards.contains(&(c, r)) {
                 '^'
+            } else if fa.coins.iter().any(|k| k.cell == (c, r) && matches!(k.kind, sf_plan::core::CoinKind::Object(_))) {
+                '$'
             } else if fa.coins.iter().any(|k| k.cell == (c, r)) {
-                'o'
+                '*'
             } else if m >= 0x3a {
                 '#'
             } else if m == 0 {
                 '.'
             } else {
-                (b'a' + (m % 26) as u8) as char
+                // Markers 1..57: A..Z for 1..26, a..z for 27..52, digits past that.
+                match m {
+                    1..=26 => (b'A' + (m - 1) as u8) as char,
+                    27..=52 => (b'a' + (m - 27) as u8) as char,
+                    _ => (b'0' + (m - 53) as u8) as char,
+                }
             };
             print!("{ch}");
         }

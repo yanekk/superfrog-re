@@ -81,7 +81,7 @@ pub struct Trace {
     pub reject: Option<Reject>,
     /// `Facts::coins` indices whose cell changed on the way (taken).
     pub coins: Vec<u16>,
-    /// `Facts::switches` bits whose gate the frog's cell came within one cell of.
+    /// `Facts::switches` bits whose gate block (`in_gate_block`) the frog's cell entered.
     pub near_gates: u32,
     pub frames: u32,
 }
@@ -135,7 +135,7 @@ impl<'a> Watch<'a> {
             return false;
         }
         for (k, s) in self.facts.switches.iter().enumerate() {
-            if cell.0.abs_diff(s.gate.0) <= 1 && cell.1.abs_diff(s.gate.1) <= 1 {
+            if in_gate_block(s.gate, cell) {
                 self.near_gates |= 1 << k;
             }
         }
@@ -205,6 +205,17 @@ pub struct Found {
     pub exited: bool,
     /// The landed state, stopped, keyed: a seed for a node not yet walked.
     pub seed: Option<(Key, Game)>,
+    /// When the frog slid on into another cell before it stopped: the move with the stop, as an
+    /// edge to that cell, so the node the stopped state seeds has a way in.
+    pub stopped: Option<Stopped>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Stopped {
+    pub inputs: Vec<(u8, u16)>,
+    pub frames: u32,
+    pub to: Node,
+    pub coins: Vec<u16>,
 }
 
 /// A walked node: the map node plus the switches pressed in its seed state.
@@ -222,14 +233,45 @@ fn push(v: &mut Vec<(u8, u16)>, joy: Joy, n: u16) {
     }
 }
 
-/// Plays a move from a seed: its holds, then its tail until landed; then, for the seed, nothing
-/// until the frog stops (not part of the edge: an edge ends landed at whatever speed, D15).
+/// Frames a move that lost a heart is retried after, standing on its seed: an enemy's gap
+/// (DESIGN §2.5's waits). A variant is its own standing-start move from the seed's node, its wait
+/// recorded in its inputs (W4-2's updraft at 63-66,74 has an enemy beside its only seed, T04).
+const WAITS: [u16; 3] = [12, 25, 50];
+
+/// Plays a move from a seed, and if it loses a heart, again after each of `WAITS` until one
+/// does not.
 fn play(seed: &Game, from: Key, mac: &Macro, facts: &Facts, hazards: &HashSet<Cell>) -> Probe {
+    let mut p = play_after(seed, from, mac, facts, hazards, 0);
+    for wait in WAITS {
+        if !matches!(p.result, Err(Reject::HeartLost)) {
+            break;
+        }
+        let spent = p.frames;
+        p = play_after(seed, from, mac, facts, hazards, wait);
+        p.frames += spent;
+    }
+    p
+}
+
+/// Plays a move from a seed after `wait` frames standing: its holds, then its tail until landed;
+/// then, for the seed, nothing until the frog stops (not part of the edge: an edge ends landed at
+/// whatever speed, D15).
+fn play_after(seed: &Game, from: Key, mac: &Macro, facts: &Facts, hazards: &HashSet<Cell>, wait: u16) -> Probe {
     let mut g = seed.clone();
     let mut w = Watch::new(&g, facts, hazards);
     let mut inputs = Vec::new();
     let mut going = true;
+    for _ in 0..wait {
+        push(&mut inputs, Joy::NONE, 1);
+        if !w.step(&mut g, Joy::NONE) {
+            going = false;
+            break;
+        }
+    }
     'holds: for &(joy, n) in &mac.holds {
+        if !going {
+            break;
+        }
         for _ in 0..n {
             push(&mut inputs, joy, 1);
             if !w.step(&mut g, joy) {
@@ -258,6 +300,7 @@ fn play(seed: &Game, from: Key, mac: &Macro, facts: &Facts, hazards: &HashSet<Ce
     }
     let needs_switches = from.pressed & tr.near_gates;
     let mut seed = None;
+    let mut stopped = None;
     if !tr.exited {
         // Left to stop: the node's state is the frog standing (edges start stopped, D15/D18). A
         // frog that cannot stop there (a spring throws it on, W6-3's 118,14 and 150,12) seeds the
@@ -275,6 +318,20 @@ fn play(seed: &Game, from: Key, mac: &Macro, facts: &Facts, hazards: &HashSet<Ce
         }
         frames += sw.frames;
         let settled = ok && landed(g.state()) && g.state().w(FROG + f::VX) == 0;
+        let stop = sw.finish(&g);
+        if settled && stop.end != tr.end {
+            let mut inputs = inputs.clone();
+            push(&mut inputs, Joy::NONE, stop.frames as u16);
+            let mut coins: Vec<u16> = tr.coins.iter().chain(&stop.coins).copied().collect();
+            coins.sort_unstable();
+            coins.dedup();
+            stopped = Some(Stopped {
+                inputs,
+                frames: tr.frames + stop.frames,
+                to: stop.end,
+                coins,
+            });
+        }
         let g = if settled { g } else { at_land };
         let st = g.state();
         let key = Key {
@@ -292,6 +349,7 @@ fn play(seed: &Game, from: Key, mac: &Macro, facts: &Facts, hazards: &HashSet<Ce
             needs_switches,
             exited: tr.exited,
             seed,
+            stopped,
         }),
         frames,
     }
@@ -351,6 +409,14 @@ pub struct Builder {
     worlds: BTreeSet<u32>,
 }
 
+/// Whether `cell` is in the block a gate at `gate` opens, with a cell's margin: `switch` rewrites
+/// five rows from the row above the gate, the two columns right of it (W2-1's 143,37 opens
+/// 144-145,36-40).
+fn in_gate_block(gate: Cell, cell: Cell) -> bool {
+    (gate.0.saturating_sub(1)..=gate.0 + 3).contains(&cell.0)
+        && (gate.1.saturating_sub(2)..=gate.1 + 4).contains(&cell.1)
+}
+
 /// Cells a switch's handler may write: its gate's block (`switch` rewrites the five rows from the
 /// row above the gate, the two columns right of it, world by world) and the lever's cells, with a
 /// cell's margin.
@@ -362,6 +428,7 @@ fn press_region(facts: &Facts, k: usize) -> Vec<Cell> {
     let (g, top, bottom) = (s.gate, s.cells[0], s.cells[1]);
     let sub = |a: u16, b: u16| a.saturating_sub(b);
     block(sub(g.0, 1), g.0 + 3, sub(g.1, 2), g.1 + 4)
+        .filter(move |&c| in_gate_block(g, c))
         .chain(block(sub(top.0, 1), top.0 + 1, sub(top.1, 1), bottom.1 + 1))
         .filter(|&(c, r)| c < super::facts::COLS && r < super::facts::ROWS)
         .filter(|cell| !facts.coins.iter().any(|k| k.cell == *cell))
@@ -502,6 +569,21 @@ impl Builder {
                 *self.stats.per_switch_set.entry(key.pressed).or_default() += 1;
                 next.push((key, g));
             }
+            let needs_wings = self.moves[m as usize].1.needs_wings;
+            if let Some(s) = found.stopped
+                && s.to != from.node
+            {
+                self.nodes.insert(s.to);
+                self.edges.push(RawEdge {
+                    from: from.node,
+                    to: s.to,
+                    inputs: s.inputs,
+                    frames: s.frames,
+                    coins: s.coins,
+                    needs_switches: found.needs_switches,
+                    needs_wings,
+                });
+            }
             if found.to == from.node {
                 continue;
             }
@@ -513,7 +595,7 @@ impl Builder {
                 frames: found.frames,
                 coins: found.coins,
                 needs_switches: found.needs_switches,
-                needs_wings: self.moves[m as usize].1.needs_wings,
+                needs_wings,
             });
         }
         self.stats.keys += next.len() as u32;
