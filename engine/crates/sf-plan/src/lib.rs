@@ -4,5 +4,6 @@
 //! of it is testable in milliseconds and reproducible to the byte. The shell (CLI, oracle checks,
 //! cache files, threads) lives beside it.
 
+pub mod cache;
 pub mod core;
 pub mod threads;
