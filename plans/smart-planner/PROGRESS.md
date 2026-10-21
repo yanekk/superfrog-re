@@ -29,7 +29,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T01 | bench-harness | — | ✅ | |
 | T02 | baseline-sample | T01 | ✅ | |
 | T03 | level-facts | T00 | ✅ | |
-| T04 | movement-map | T03 | ⬜ | |
+| T04 | movement-map | T03 | ✅ | |
 | T05 | map-cache | T04 | ⬜ | |
 | T06 | coin-choice | T03 | ✅ | |
 | T07 | danger-map | T03 | ✅ | |
