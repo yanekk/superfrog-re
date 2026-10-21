@@ -46,6 +46,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T18 | results-and-retire | T17 | ⬜ | |
 | T19 | step-unseen-no-picture | T00; blocks T04 | ✅ | |
 | T20 | map-gaps | T04; blocks T08 | ⬜ | |
+| T21 | engine-memory-lookup | T04; blocks T20 | ⬜ | |
 
 **Review queue:** *(empty)*
 
