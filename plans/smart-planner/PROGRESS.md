@@ -14,9 +14,9 @@ message. Whoever writes a cell also fixes the over-budget cell they walk past.
 unreliable edges); T07 now light, T00 answers three more questions.
 **Amendment reviewed:** 2026-10-21 — 6 fixes, 1 decision (a retry after a wait is a standing-start move)
 
-**Status:** T00 implemented, awaiting review.
+**Status:** T00 reviewed ✅.
 **Last updated:** 2026-10-21
-**Next `pir-work` will:** review T00; then T03 and T19 (T19 blocks T04).
+**Next `pir-work` will:** T01, T03 and T19 (T19 blocks T04).
 
 ## Tasks
 
@@ -25,7 +25,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 
 | # | Task | Depends on | State | Notes |
 |---|---|---|---|---|
-| T00 | movement-map-spike | — | 🔍 | Spike on W1-4, W6-3; raw counts in `spike/`, answers in FINDINGS Q1–Q7, recommendations in the last T00 commit. Deviation: engine start `Start::Level`, not the oracle's AtLevel (no oracle needed). Deviation: builds timed with a local uncommitted picture-skip patch; owner added T19 for it. |
+| T00 | movement-map-spike | — | ✅ | Review clean, no fix commit; D18 and §2.2 recorded in DESIGN. Rebuilt the W6-3 map from the spike's history: counts identical (196 cells, 2399 edges, 38 s). Read Scene::step: level_as_drawn runs whatever the draw flag. T19 addition valid. Docs and data only, no mutation possible. W1-4 numbers read-only. |
 | T01 | bench-harness | — | ⬜ | |
 | T02 | baseline-sample | T01 | ⬜ | |
 | T03 | level-facts | T00 | ⬜ | |
@@ -46,7 +46,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T18 | results-and-retire | T17 | ⬜ | |
 | T19 | step-unseen-no-picture | T00; blocks T04 | ⬜ | |
 
-**Review queue:** T00
+**Review queue:** *(empty)*
 
 ## Blocked on the user
 
