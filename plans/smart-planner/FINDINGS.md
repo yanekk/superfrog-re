@@ -11,6 +11,7 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-21 | 🔄 | Owner, T04: the 12 levels the map cannot finish go to a new task, T20 map-gaps (T04; blocks T08), fixed before the search is built rather than left for it. |
 | 2026-10-21 | 🐞 | T04, D13 check (`map_stats`): 12 of 24 maps miss the exit or the coins, no enemy help. Exit unreached: W2-3, W2-4, W3-2, W3-4, W4-2, W4-4, W5-2, W6-1, W6-2, W6-4. W2-1 reaches 24 of 35 coins. Owner asked before T08. |
 | 2026-10-21 | 📌 | T04 build s, 10 threads, load ~25: W1 301 355 299 441; W2 111 375 268 11; W3 151 75 346 210; W4 223 110 331 215; W5 158 371 363 568; W6 127 438 374 394. 0.3–12.8 M frames. |
 | 2026-10-21 | 📌 | T04 map gaps found: W2-1's pad lands ~200 frames after its throw (cap now 300); W6 up held floats; W6-3's gate ledge needed a 32-frame jump; seeds beside patrolling enemies lose every move (W4-2 63-66,74). |
