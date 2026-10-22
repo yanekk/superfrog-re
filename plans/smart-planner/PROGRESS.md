@@ -19,7 +19,7 @@ allowed everywhere, map a compass; T13 and T20 dropped, T22 route-shorten added.
 
 **Status:** T00–T07, T19, T21 done; core rewritten by the amendment, not started.
 **Last updated:** 2026-10-22
-**Next `pir-work` will:** review T23.
+**Next `pir-work` will:** T11 plan-command.
 
 ## Tasks
 
@@ -49,9 +49,9 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T19 | step-unseen-no-picture | T00; blocks T04 | ✅ | |
 | T21 | engine-memory-lookup | T04 | ✅ | |
 | T22 | route-shorten | T08 | ✅ | |
-| T23 | w1-4-ending | T09, T10; blocks T14 | 🔍 | Cause: guide regions matched coins band exactly; W1-4 took coins out of route order, so guidance froze at p712 of 921. Fix in `guide.rs`: a point matches its band and every lower one. 1 new test, 1 changed. Deviation from DESIGN §2.11, owner approved. Seed 3 engine-only still no exit in 10 min. |
+| T23 | w1-4-ending | T09, T10; blocks T14 | ✅ | Guide points match their coins band and every lower one. Review: W1-4 original-mode guided rerun passed in 388 s, same 10 062-frame route; band-match mutation caught; cumulative-max mutation survived, test added; module doc fixed. W5-2 unaffected, read-only (no guide index built unguided). |
 
-**Review queue:** T23
+**Review queue:** *(empty)*
 
 ## Blocked on the user
 
