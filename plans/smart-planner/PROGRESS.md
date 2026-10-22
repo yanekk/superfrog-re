@@ -16,7 +16,7 @@ unreliable edges); T07 now light, T00 answers three more questions.
 
 **Status:** plan written; nothing built.
 **Last updated:** 2026-10-22
-**Next `pir-work` will:** T20 map-gaps (T21 done), then T05 and T08.
+**Next `pir-work` will:** T20 map-gaps (T21 done), then T08.
 
 ## Tasks
 
@@ -30,7 +30,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T02 | baseline-sample | T01 | ✅ | |
 | T03 | level-facts | T00 | ✅ | |
 | T04 | movement-map | T03 | ✅ | |
-| T05 | map-cache | T04 | ⬜ | |
+| T05 | map-cache | T04 | ✅ | |
 | T06 | coin-choice | T03 | ✅ | |
 | T07 | danger-map | T03 | ✅ | |
 | T08 | search | T04, T06, T07 | ⬜ | |
