@@ -10,7 +10,7 @@ use std::time::{Duration, Instant};
 
 use sf_core::input::{FrameInput, Joy};
 use sf_core::{Game, LevelId, Start};
-use sf_plan::core::shorten::{Shortcut, budget, replay_exit};
+use sf_plan::core::shorten::{self, Shortcut, budget, replay_exit};
 use sf_plan::core::*;
 use sf_plan::run::{RunOptions, plan_engine, shortcut_pass};
 
@@ -137,6 +137,57 @@ fn a_stretch_is_kept_only_if_the_route_still_exits() {
         sc.offer(Some(vec![FrameInput::NONE; within_frames as usize + 1]));
         assert_eq!(sc.route(), before.as_slice());
     }
+}
+
+/// The detoured route with frames `CUT..CUT + 8` dropped still exits, a heart down (found by a
+/// review probe over cuts of 8–64 frames every 80 frames; the only one that exits losing a heart).
+const CUT: usize = 4816;
+
+/// A stretch that still reaches the exit but loses a heart the route did not is refused: the pair
+/// spanning `CUT` is offered the route's own stretch less those 8 frames.
+#[test]
+fn a_stretch_losing_a_heart_is_refused() {
+    let (g, fa) = at_start("W1-1".parse().unwrap());
+    let route = detoured();
+    let mut cut = route[..CUT].to_vec();
+    cut.extend_from_slice(&route[CUT + 8..]);
+    let mut f = 0;
+    assert_eq!(replay_exit(&g, &cut, &mut f).map(|(_, lost)| lost), Some(1));
+    let mut sc = Shortcut::new(&g, &fa, route.clone(), u64::MAX);
+    assert_eq!(sc.hearts_lost(), 0);
+    let mut offered = false;
+    while let Some((s, goal)) = sc.next() {
+        let Goal::Key { within_frames, .. } = goal else {
+            panic!("a key goal")
+        };
+        let i = (s.frame() - g.frame()) as usize;
+        let j = i + within_frames as usize + 1;
+        if i <= CUT && CUT + 8 <= j {
+            sc.offer(Some(cut[i..j - 8].to_vec()));
+            offered = true;
+            break;
+        }
+        sc.offer(None);
+    }
+    assert!(offered, "no pair spans the cut");
+    assert_eq!(sc.route(), route.as_slice());
+    assert_eq!(sc.hearts_lost(), 0);
+}
+
+/// The shortening search keeps a later exit only if it is shorter and loses no more hearts.
+#[test]
+fn a_shorter_exit_losing_more_hearts_is_not_better() {
+    let r = |len, hearts_lost| Route {
+        inputs: vec![FrameInput::NONE; len],
+        engine_frames: 0,
+        hearts_lost,
+        rounds: 0,
+        cells: 0,
+    };
+    assert!(shorten::better(&r(9, 0), &r(10, 0)));
+    assert!(shorten::better(&r(9, 1), &r(10, 1)));
+    assert!(!shorten::better(&r(10, 0), &r(10, 0)), "not shorter");
+    assert!(!shorten::better(&r(9, 1), &r(10, 0)), "a heart down");
 }
 
 /// A route that does not reach the exit gives no pairs.
