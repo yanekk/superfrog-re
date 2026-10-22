@@ -131,10 +131,19 @@ fn set_b_w2_1_followed() {
     let trace = trace_original(&mut amiga, &script, frames).unwrap();
     let leg = sync::at_snapshot_file(&snap, 100).unwrap();
     let display = sf_conform::display_data();
-    let g = Game::with_display(display.clone(), Start::Transplant(sync::core_memory(leg.memory())));
+    let mut g = Game::with_display(display.clone(), Start::Transplant(sync::core_memory(leg.memory())));
+    // The leg's first frame is the level's first, before its play begins: played on with the
+    // route's own inputs until the frog stands past the level-start freeze, as `at_start`.
+    let mut inputs = script_inputs(&script);
+    let mut k = 0;
+    while !(landed(g.state()) && k > 150) && k < 400 {
+        g.step_unseen(inputs[k]);
+        k += 1;
+    }
+    inputs.drain(..k);
     let data = sf_conform::game_data();
     let fa = facts(&g, &data.levels[&id("W2-1")], display.rom());
-    let opt = follow_options(Options::default(), script_inputs(&script), &trace);
+    let opt = follow_options(Options::default(), inputs, &trace);
     let seeded = Explorer::new(g.clone(), fa.clone(), opt.clone());
     eprintln!(
         "W2-1 leg: the standalone route seeds {} cells, exits at once: {}",
