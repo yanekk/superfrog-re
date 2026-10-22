@@ -321,6 +321,10 @@ fn original_mode(level: &str, guide: Option<&str>, minutes: u64) -> (Stats, u32)
     );
     assert!(stats.oracle_frames > 0 && (0.0..=1.0).contains(&stats.confirm_share));
     assert_eq!(stats.confirmed_frames as usize, route.inputs.len());
+    assert_eq!(
+        route.hearts_lost as u32, lost,
+        "the planner counts hearts as verify does"
+    );
     (stats, lost)
 }
 

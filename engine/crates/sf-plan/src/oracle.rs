@@ -208,8 +208,8 @@ pub struct Lockstep {
     pub parting: Option<(Parting, Cell)>,
     /// The inputs played past the plan's end, the last held, before the exit.
     pub tail: Vec<FrameInput>,
-    /// The original's hearts where it stopped.
-    pub hearts: u16,
+    /// Hearts the original lost over the frames agreed to (a heart gained is not netted).
+    pub hearts_lost: u16,
 }
 
 /// Plays `plan` on the original and on `eng` (the original's state transplanted) side by side
@@ -226,7 +226,7 @@ pub fn lockstep(
         exited: false,
         parting: None,
         tail: Vec::new(),
-        hearts: before.hearts,
+        hearts_lost: 0,
     };
     let last = plan.last().copied().unwrap_or(FrameInput::NONE);
     for k in 0..plan.len() + LAG_TAIL {
@@ -238,7 +238,6 @@ pub fn lockstep(
         }
         *frames += 1;
         let o = look(amiga);
-        out.hearts = o.hearts;
         // Past the plan's end the engine has left the level: only the original is judged.
         let e = if past {
             o
@@ -253,6 +252,7 @@ pub fn lockstep(
         if past {
             out.tail.push(x);
         }
+        out.hearts_lost += before.hearts.saturating_sub(o.hearts);
         out.agreed = k + 1;
         // Only an end of play counts: a start's first frames (`level_state` not yet −2) are not
         // an exit.
@@ -289,7 +289,12 @@ pub fn plan_original(
         oracle_frames,
         ..Stats::default()
     };
-    let hearts0 = look(&amiga).hearts;
+    // Hearts lost on the original over the frames kept, counted as `verify` counts them.
+    let mut lost = 0u16;
+    let hearts = |a: &Amiga| {
+        let b = a.peek(HEARTS, 2);
+        u16::from_be_bytes([b[0], b[1]])
+    };
     let mut repeats = Repeats::default();
     let mut rest: Option<Vec<FrameInput>> = None;
     let mut rounds = 0u64;
@@ -346,7 +351,9 @@ pub fn plan_original(
                 let r = Route {
                     inputs: route,
                     engine_frames: stats.engine_frames,
-                    hearts_lost: partial.hearts_lost,
+                    hearts_lost: lost
+                        .saturating_add(partial.hearts_lost as u16)
+                        .min(u8::MAX as u16) as u8,
                     rounds,
                     cells: partial.cells,
                 };
@@ -366,13 +373,24 @@ pub fn plan_original(
             let r = Route {
                 inputs: route,
                 engine_frames: stats.engine_frames,
-                hearts_lost: hearts0.saturating_sub(ls.hearts).min(u8::MAX as u16) as u8,
+                hearts_lost: lost.saturating_add(ls.hearts_lost).min(u8::MAX as u16) as u8,
                 rounds,
                 cells: plan.cells,
             };
             return Ok((r, stats));
         }
         let (why, cell) = ls.parting.expect("a lockstep ends in an exit or a parting");
+        if std::env::var_os("SF_PLAN_LOG").is_some() {
+            eprintln!(
+                "  {:6.1}s stretch {}: plan {} frames ({} rounds), agreed {}, {why:?} at {cell:?}, route {}",
+                t0.elapsed().as_secs_f64(),
+                stats.repairs,
+                plan.inputs.len(),
+                plan.rounds,
+                ls.agreed,
+                route.len()
+            );
+        }
         let agreed = ls.agreed.min(plan.inputs.len());
         // Accepted: the original's frame of the parting is kept too, and planning goes on from
         // the state it insists on. Repaired: back off before the parting.
@@ -382,10 +400,14 @@ pub fn plan_original(
             agreed.saturating_sub(BACK_OFF)
         };
         amiga.restore(&snap);
+        let mut h = hearts(&amiga);
         for &x in &plan.inputs[..keep] {
             // These frames were just played from the same snapshot: they replay the same.
             sync::step_inserting(&mut amiga, x).expect("the kept frames replay");
             stats.oracle_frames += 1;
+            let now = hearts(&amiga);
+            lost += h.saturating_sub(now);
+            h = now;
         }
         confirm += c0.elapsed();
         route.extend_from_slice(&plan.inputs[..keep]);
