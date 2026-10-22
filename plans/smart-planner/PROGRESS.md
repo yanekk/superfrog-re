@@ -17,9 +17,9 @@ unreliable edges); T07 now light, T00 answers three more questions.
 allowed everywhere, map a compass; T13 and T20 dropped, T22 route-shorten added.
 **Amendment reviewed:** 2026-10-22 — 18 fixes, 1 decision (owner: T10's W1-4 check runs guided)
 
-**Status:** T00–T09, T19, T21 done; T10 awaiting review; T23 added (owner, W1-4 stall).
+**Status:** T00–T10, T19, T21 done; T23 added (owner, W1-4 stall).
 **Last updated:** 2026-10-22
-**Next `pir-work` will:** review T10; then T22, T23, T11.
+**Next `pir-work` will:** T22, T23, T11.
 
 ## Tasks
 
@@ -38,7 +38,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T07 | danger-map | T03 | ✅ | |
 | T08 | search | T04, T06, T07 | ✅ | |
 | T09 | route-repair | T08 | ✅ | |
-| T10 | oracle-check | T02, T08, T09 | 🔍 | `oracle.rs` stretch and repair, 9 tests (3 ignored). W2-1, W5-2 pass §4.1. Deviations: W1-4 guided unmet, moved to T23 (owner); `lockstep`, `parts`, `Repeats`, `facts_at` public for tests; 50-frame lag tail past a plan; `SF_PLAN_LOG` stretch lines; verify replicated in the test. |
+| T10 | oracle-check | T02, T08, T09 | ✅ | Review: no code defect; T23's doc lacked an Interface section, added. Reran W2-1 (55 s, 4 repairs) and W5-2 (301 s, 5 repairs), both pass §4.1, heart counts match. Mutation (wall-loop input dropped) caught; LAG_TAIL 0 leaves W2-1 unchanged. W1-4 guided carried by T23 (owner). |
 | T11 | plan-command | T05, T10, T22 | ⬜ | |
 | T12 | app-timing | T11 | ⬜ | |
 | T14 | tuning-run | T11 | ⬜ | |
@@ -51,7 +51,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T22 | route-shorten | T08 | ⬜ | |
 | T23 | w1-4-ending | T09, T10; blocks T14 | ⬜ | |
 
-**Review queue:** T10
+**Review queue:** *(empty)*
 
 ## Blocked on the user
 
