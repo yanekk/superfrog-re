@@ -17,9 +17,9 @@ unreliable edges); T07 now light, T00 answers three more questions.
 allowed everywhere, map a compass; T13 and T20 dropped, T22 route-shorten added.
 **Amendment reviewed:** 2026-10-22 — 18 fixes, 1 decision (owner: T10's W1-4 check runs guided)
 
-**Status:** T00–T10, T19, T21 done; T23 added (owner, W1-4 stall).
+**Status:** T00–T10, T19, T21, T22 done; T23 added (owner, W1-4 stall).
 **Last updated:** 2026-10-22
-**Next `pir-work` will:** T22, T23, T11.
+**Next `pir-work` will:** T23, T11.
 
 ## Tasks
 
@@ -48,7 +48,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T18 | results-and-retire | T17 | ⬜ | |
 | T19 | step-unseen-no-picture | T00; blocks T04 | ✅ | |
 | T21 | engine-memory-lookup | T04 | ✅ | |
-| T22 | route-shorten | T08 | ⬜ | |
+| T22 | route-shorten | T08 | ✅ | |
 | T23 | w1-4-ending | T09, T10; blocks T14 | ⬜ | |
 
 **Review queue:** *(empty)*

@@ -4,7 +4,9 @@
 //! route from there in script format.
 //!
 //! `cargo run --release -p sf-plan --example explore -- [--threads N] [--minutes M] [--seed S]
-//!  [--mem-gb G] [--out route.txt] W3-2 ...`
+//!  [--mem-gb G] [--shorten] [--out route.txt] W3-2 ...`
+//!
+//! `--shorten` turns route shortening on with `sf-plan`'s defaults (DESIGN §2.12, T22).
 
 use std::time::{Duration, Instant};
 
@@ -27,6 +29,13 @@ fn main() {
     let seed: u64 = opt("--seed").map_or(1, |v| v.parse().unwrap());
     let mem_gb: f64 = opt("--mem-gb").map_or(4.0, |v| v.parse().unwrap());
     let out = opt("--out");
+    let shorten = match args.iter().position(|a| a == "--shorten") {
+        Some(k) => {
+            args.remove(k);
+            true
+        }
+        None => false,
+    };
     let data = sf_conform::game_data();
     let display = sf_conform::display_data();
     for a in &args {
@@ -44,7 +53,11 @@ fn main() {
         let run = RunOptions {
             threads,
             budget: Duration::from_secs_f64(minutes * 60.0),
-            ..RunOptions::default()
+            ..if shorten {
+                RunOptions::shortening()
+            } else {
+                RunOptions::default()
+            }
         };
         if std::env::var_os("SF_STATE_SIZE").is_some() {
             eprintln!("state size {}", sf_plan::core::archive::state_size(&g));
