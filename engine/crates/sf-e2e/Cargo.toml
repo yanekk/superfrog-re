@@ -17,3 +17,8 @@ sf-conform = { path = "../sf-conform" }
 png = "0.18"
 # Launches the app in its own process group and checks the group is gone afterwards.
 libc = "0.2"
+
+[dev-dependencies]
+# Set C's route checks (smart-planner T12, `tests/plan_routes.rs`): the app script a route becomes
+# and the engine replay it is compared with, shared with the benchmark's verification.
+sf-bench = { path = "../sf-bench" }

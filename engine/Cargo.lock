@@ -2908,6 +2908,7 @@ dependencies = [
  "libc",
  "png",
  "sf-assets",
+ "sf-bench",
  "sf-conform",
  "sf-core",
  "sf-disk",

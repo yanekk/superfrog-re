@@ -3,7 +3,7 @@
 //! ```text
 //! sf-plan <level> [--snap leg.snap] [--guide route-or-waypoints.txt] [--follow old.txt] [--seed N]
 //!         [--out route.txt] [--budget-min 30] [--frames 30000] [--max-mem-gb 4] [--threads N]
-//!         [--compass straight|map] [--shorten-share 0.2] [--no-cache] [--engine-only]
+//!         [--compass straight|map] [--shorten-share 0.2] [--no-cache] [--engine-only | --app]
 //!         [--via c,r]... [--avoid c0,r0,c1,r1]...
 //! ```
 //!
@@ -15,7 +15,9 @@
 //! The route's frame 0 is the start's first frame: the level's `AtLevel` sync point, or the leg
 //! snapshot's frame. Original mode (the default) plans on the engine and confirms on the original
 //! by stretch and repair (§2.6); `--engine-only` plans from the original's state transplanted at
-//! the same start and confirms nothing (for tuning).
+//! the same start and confirms nothing (for tuning). `--app` (set C, T12) starts the level as
+//! Game ▸ Start Level… does under a script with power-on seed `N N` (`--seed N`), and plans and
+//! confirms on the engine from there: the route is written `# timing: app` (DESIGN §2.6).
 
 use std::fmt::Write as _;
 use std::path::{Path, PathBuf};
@@ -28,6 +30,7 @@ use sf_core::input::FrameInput;
 use sf_assets::World;
 use sf_core::{Game, LevelId, Start};
 use sf_oracle::Amiga;
+use sf_plan::app;
 use sf_plan::cache::{self, StartKey};
 use sf_plan::core::repair::{TracePoint, follow_options, points_from_trace};
 use sf_plan::core::{Cell, Compass, Explorer, Facts, GuidePoint, Options, Reason, Route, default_moves};
@@ -39,7 +42,7 @@ use sf_plan::trace::{script_inputs, timing, trace_original};
 
 const USAGE: &str = "usage: sf-plan <level> [--snap leg.snap] [--guide route-or-waypoints.txt] \
 [--follow old.txt] [--seed N] [--out route.txt] [--budget-min 30] [--frames 30000] [--max-mem-gb 4] \
-[--threads N] [--compass straight|map] [--shorten-share 0.2] [--no-cache] [--engine-only] \
+[--threads N] [--compass straight|map] [--shorten-share 0.2] [--no-cache] [--engine-only | --app] \
 [--via c,r]... [--avoid c0,r0,c1,r1]...";
 
 /// Oracle frames beyond `--frames` a start is given room for: the settle and the lag tail.
@@ -71,6 +74,8 @@ struct Args {
     shorten_share: f32,
     no_cache: bool,
     engine_only: bool,
+    /// Set C: the app's Start Level start, planned and confirmed on the engine (T12).
+    app: bool,
     via: Vec<Cell>,
     avoid: Vec<(Cell, Cell)>,
 }
@@ -111,6 +116,7 @@ fn parse_args(argv: &[String]) -> Result<Args, String> {
         shorten_share: sf_plan::run::SHORTEN_SHARE,
         no_cache: false,
         engine_only: false,
+        app: false,
         via: Vec::new(),
         avoid: Vec::new(),
     };
@@ -167,7 +173,7 @@ fn parse_args(argv: &[String]) -> Result<Args, String> {
                 let v = cells(&val()?, 4, "--avoid")?;
                 a.avoid.push(((v[0], v[1]), (v[2], v[3])));
             }
-            "--app" => return Err("--app (set C, app timing) is not built yet: T12".into()),
+            "--app" => a.app = true,
             s if s.starts_with("--") => return Err(format!("unknown option {s}")),
             s if level.is_none() => {
                 let id: LevelId = s.parse()?;
@@ -182,6 +188,17 @@ fn parse_args(argv: &[String]) -> Result<Args, String> {
         }
     }
     a.level = level.ok_or("no level given")?;
+    if a.app {
+        if a.snap.is_some() {
+            return Err("--app starts the level as Start Level does: no --snap".into());
+        }
+        if a.engine_only {
+            return Err("--app already plans and confirms on the engine: no --engine-only".into());
+        }
+        if a.seed > u32::MAX as u64 {
+            return Err("--seed: the app's power-on seed is a 32-bit number".into());
+        }
+    }
     Ok(a)
 }
 
@@ -193,28 +210,33 @@ enum Fail {
 
 /// A guide or follow file read before anything is started: a script, or (guide only) waypoints.
 enum GuideFile {
-    Script(InputScript),
+    Script(GuideScript),
     Waypoints(Vec<GuidePoint>),
+}
+
+/// A route script and the timing it is played in at its own start (DESIGN §2.6, §2.11).
+struct GuideScript {
+    script: InputScript,
+    /// `# timing: app`: played on the engine from the app start with this seed (its `# seed:`
+    /// line, else the run's); `None`: on the original.
+    app_seed: Option<u32>,
 }
 
 /// A file whose first line is a timing line, or which parses as a script, is a script; otherwise
 /// it is a waypoint file. A file that is neither names the bad line of the form it looks most like
 /// (a `:` on a line is a script's).
-fn read_guide(path: &Path, waypoints_ok: bool) -> Result<GuideFile, String> {
+fn read_guide(path: &Path, waypoints_ok: bool, run_seed: u32) -> Result<GuideFile, String> {
     let text = std::fs::read_to_string(path).map_err(|e| format!("{}: {e}", path.display()))?;
     let looks_script = timing(&text).is_some()
         || text.lines().any(|l| l.split('#').next().unwrap_or("").contains(':'));
-    if let Some(t) = timing(&text)
-        && t != "original"
-    {
-        return Err(format!(
-            "{}: timing `{t}`: only original-timed guide scripts are played (app timing is T12)",
-            path.display()
-        ));
-    }
+    let app_seed = match timing(&text) {
+        None | Some("original") => None,
+        Some("app") => Some(app::route_seed(&text).unwrap_or(run_seed)),
+        Some(t) => return Err(format!("{}: timing `{t}`: original or app", path.display())),
+    };
     if looks_script || !waypoints_ok {
         return InputScript::parse(&text)
-            .map(GuideFile::Script)
+            .map(|script| GuideFile::Script(GuideScript { script, app_seed }))
             .map_err(|e| format!("{}: {e}", path.display()));
     }
     parse_waypoints(&text)
@@ -230,12 +252,19 @@ fn oracle_at(a: &Args, cap: u32) -> Result<Amiga, String> {
     }
 }
 
-/// A script played on the original from the run's start, sampled for guide points (§2.11). One
+/// A script played at its own start in its own timing, sampled for guide points (§2.11): on the
+/// original from the run's start, or for an app-timed one on the engine from its app start. One
 /// that never leaves its first cell is refused (§2.9).
-fn trace_script(a: &Args, facts: &Facts, path: &Path, script: &InputScript) -> Result<Vec<TracePoint>, String> {
+fn trace_script(a: &Args, facts: &Facts, path: &Path, g: &GuideScript) -> Result<Vec<TracePoint>, String> {
+    let script = &g.script;
     let n = script.lines.last().map_or(0, |l| l.0);
-    let mut amiga = oracle_at(a, n + 100)?;
-    let t = trace_original(&mut amiga, facts, script, n)?;
+    let t = match g.app_seed {
+        Some(seed) => app::trace_app(a.level, seed, facts, script),
+        None => {
+            let mut amiga = oracle_at(a, n + 100)?;
+            trace_original(&mut amiga, facts, script, n)?
+        }
+    };
     match t.first() {
         Some(p0) if t.iter().any(|p| p.0 != p0.0) => Ok(t),
         _ => Err(format!("{}: played from the start, it never leaves its start cell", path.display())),
@@ -245,8 +274,15 @@ fn trace_script(a: &Args, facts: &Facts, path: &Path, script: &InputScript) -> R
 /// The route as a script (DESIGN §2.1): timing line, a comment, one line per change, and for a
 /// route that reaches the exit the committed routes' tally tail (idle, then fire).
 fn script_text(a: &Args, inputs: &[FrameInput], exit: bool) -> String {
-    let mut s = String::from("# timing: original\n");
-    let how = if a.engine_only {
+    let mut s = if a.app {
+        // The seed is read back by `app::route_seed`: an app route replays only from its own start.
+        format!("# timing: app\n# seed: {}\n", a.seed)
+    } else {
+        String::from("# timing: original\n")
+    };
+    let how = if a.app {
+        "planned and confirmed on the engine (--app)"
+    } else if a.engine_only {
         "planned on the engine only (--engine-only), not confirmed on the original"
     } else {
         "planned on the engine, confirmed on the original"
@@ -255,6 +291,10 @@ fn script_text(a: &Args, inputs: &[FrameInput], exit: bool) -> String {
         Some(p) => format!(
             "the leg snapshot {}",
             p.file_name().map_or(String::new(), |n| n.to_string_lossy().into_owned())
+        ),
+        None if a.app => format!(
+            "{}'s first frame from Game ▸ Start Level… (the dialog's defaults, power-on seed {} {})",
+            a.level, a.seed, a.seed
         ),
         None => format!("{}'s AtLevel sync point", a.level),
     };
@@ -316,6 +356,7 @@ fn log_hints(a: &Args, completed: bool) {
     }
     let start = match &a.snap {
         Some(p) => format!("snap:{}", p.file_name().map_or(String::new(), |n| n.to_string_lossy().into_owned())),
+        None if a.app => format!("app:{}", a.seed),
         None => "at-level".into(),
     };
     let mut hints = Vec::new();
@@ -367,14 +408,175 @@ fn reason_line(r: &Reason, why: &str, confirmed: Option<u32>) -> String {
     s
 }
 
-fn run(a: &Args, t0: Instant) -> Result<Outcome, Fail> {
-    // Files first: a bad guide costs no oracle time.
-    let guide = a.guide.as_deref().map(|p| read_guide(p, true)).transpose().map_err(Fail::Usage)?;
-    let follow = match a.follow.as_deref().map(|p| read_guide(p, false)).transpose().map_err(Fail::Usage)? {
+/// The guide and follow files read before anything is started (§2.11, §2.7).
+struct Files {
+    guide: Option<GuideFile>,
+    follow: Option<GuideScript>,
+}
+
+fn read_files(a: &Args) -> Result<Files, Fail> {
+    let seed = a.seed as u32;
+    let guide = a.guide.as_deref().map(|p| read_guide(p, true, seed)).transpose().map_err(Fail::Usage)?;
+    let follow = match a.follow.as_deref().map(|p| read_guide(p, false, seed)).transpose().map_err(Fail::Usage)? {
         Some(GuideFile::Script(s)) => Some(s),
         Some(GuideFile::Waypoints(_)) => unreachable!("a follow file is read as a script"),
         None => None,
     };
+    Ok(Files { guide, follow })
+}
+
+/// What the guide and follow scripts cost: wall-clock on the original and frames played.
+#[derive(Default)]
+struct GuideCost {
+    oracle_time: Duration,
+    oracle_frames: u64,
+}
+
+/// `opt` with the guide and the follow seed applied (§2.7, §2.11), each script played at its own
+/// start in its own timing. `prefix` is the frames the run's start settled for: the explorer starts
+/// past them, so a follow script's seed inputs do too.
+fn apply_guides(a: &Args, files: &Files, facts: &Facts, prefix: usize, mut opt: Options) -> Result<(Options, GuideCost), Fail> {
+    let mut cost = GuideCost::default();
+    let mut trace = |p: &Path, g: &GuideScript| -> Result<Vec<TracePoint>, Fail> {
+        let t = Instant::now();
+        let tr = trace_script(a, facts, p, g).map_err(Fail::Usage)?;
+        if g.app_seed.is_none() {
+            cost.oracle_time += t.elapsed();
+            cost.oracle_frames += g.script.lines.last().map_or(0, |l| l.0) as u64;
+        }
+        Ok(tr)
+    };
+    let guide_points = match (&files.guide, a.guide.as_deref()) {
+        (Some(GuideFile::Script(s)), Some(p)) => Some(points_from_trace(&trace(p, s)?)),
+        (Some(GuideFile::Waypoints(w)), _) => Some(w.clone()),
+        _ => None,
+    };
+    if let (Some(s), Some(p)) = (&files.follow, a.follow.as_deref()) {
+        let tr = trace(p, s)?;
+        // The script's frame 0 is the start's; the explorer starts past the settle, so its seed
+        // inputs start there too.
+        let mut inputs = script_inputs(&s.script);
+        inputs.drain(..prefix.min(inputs.len()));
+        opt = follow_options(opt, inputs, &tr);
+    }
+    if let Some(g) = guide_points {
+        // With both, the guide steers and `--follow` only seeds (§2.7).
+        opt.guide = g;
+    }
+    Ok((opt, cost))
+}
+
+/// The map compass (§2.2), from the cache under the start's key.
+fn map_compass(a: &Args, game: &Game, facts: &Facts, opt: &mut Options) -> Result<(), Fail> {
+    if a.compass != CompassArg::Map {
+        return Ok(());
+    }
+    let wings = game.state().w(FROG + f::FLIGHT) != 0;
+    let sk = match &a.snap {
+        Some(p) => StartKey::snap(&std::fs::read(p).map_err(|e| Fail::Usage(format!("--snap: {e}")))?),
+        None if a.app => StartKey::App { seed: a.seed as u32 },
+        None => StartKey::AtLevel,
+    };
+    let key = cache::key(a.level, sk, wings);
+    let map = cache::load_or_build(&key, a.no_cache, || {
+        build_threaded(game, facts, &default_moves(wings), a.threads).0
+    });
+    opt.compass = Compass::Map(map);
+    Ok(())
+}
+
+fn base_options(a: &Args) -> Options {
+    Options {
+        seed: a.seed,
+        max_mem_bytes: (a.max_mem_gb * (1u64 << 30) as f64) as u64,
+        via: a.via.clone(),
+        avoid: a.avoid.clone(),
+        ..Options::default()
+    }
+}
+
+fn run_options(a: &Args, t0: Instant) -> RunOptions {
+    RunOptions {
+        threads: a.threads,
+        budget: a.budget.saturating_sub(t0.elapsed()),
+        shorten_share: a.shorten_share,
+        shorten_min_rounds: if a.shorten_share > 0.0 { SHORTEN_MIN_ROUNDS } else { 0 },
+    }
+}
+
+/// The run's share of wall-clock on the original (DESIGN §2.6).
+fn share(t0: Instant, on_oracle: Duration) -> f32 {
+    (on_oracle.as_secs_f64() / t0.elapsed().as_secs_f64().max(1e-9)).clamp(0.0, 1.0) as f32
+}
+
+/// `--app` (set C, DESIGN §2.6): the level from the app's Start Level start, settled on the
+/// engine, planned there, and accepted only when the whole route, settle included, replays from
+/// that start to the exit with no life lost. Only an original-timed guide touches the original,
+/// and it gives cells, not inputs, so no frame of it is written under the app's timing.
+fn run_app(a: &Args, t0: Instant, files: &Files) -> Result<Outcome, Fail> {
+    let seed = a.seed as u32;
+    let mut game = app::app_start(a.level, seed);
+    let mut inputs = app::settle(&mut game);
+    let prefix = inputs.len();
+    let data = sf_conform::game_data();
+    let display = sf_conform::display_data();
+    let facts = sf_plan::core::facts(&game, &data.levels[&a.level], display.rom());
+    let (mut opt, cost) = apply_guides(a, files, &facts, prefix, base_options(a))?;
+    map_compass(a, &game, &facts, &mut opt)?;
+    let mut stats = Stats {
+        oracle_frames: cost.oracle_frames,
+        ..Stats::default()
+    };
+    if prefix >= a.frames as usize {
+        let ex = Explorer::new(game, facts, Options { max_frames: 0, ..opt });
+        let (mut route, why) = ex.best_partial();
+        route.inputs = inputs[..a.frames as usize].to_vec();
+        stats.confirm_share = share(t0, cost.oracle_time);
+        return Ok(Outcome {
+            inputs: route.inputs.clone(),
+            exit: false,
+            reason: Some(reason_line(&why, "frames exhausted (--frames)", None)),
+            route,
+            stats,
+        });
+    }
+    opt.max_frames = a.frames - prefix as u32;
+    let (route, mut reason) = match plan_engine(game, facts, opt, &run_options(a, t0)) {
+        Ok(route) => (route, None),
+        Err((route, why)) => {
+            let w = if t0.elapsed() >= a.budget { "budget spent" } else { "frames or budget exhausted" };
+            (route, Some(reason_line(&why, w, None)))
+        }
+    };
+    inputs.extend_from_slice(&route.inputs);
+    if reason.is_none() {
+        let r = app::replay(a.level, seed, &inputs);
+        if !r.completed() || r.exit != Some(inputs.len() as u32) {
+            reason = Some(format!(
+                "sf-plan: no route: the plan did not replay from the app start (exit at {:?} of {} frames, lives lost {})",
+                r.exit,
+                inputs.len(),
+                r.lives_lost
+            ));
+        }
+    }
+    stats.engine_frames = route.engine_frames;
+    stats.confirm_share = share(t0, cost.oracle_time);
+    Ok(Outcome {
+        exit: reason.is_none(),
+        inputs,
+        reason,
+        route,
+        stats,
+    })
+}
+
+fn run(a: &Args, t0: Instant) -> Result<Outcome, Fail> {
+    // Files first: a bad guide costs no oracle time.
+    let files = read_files(a)?;
+    if a.app {
+        return run_app(a, t0, &files);
+    }
     if let Some(p) = &a.snap {
         sync::load_snapshot_file(p).map_err(|e| Fail::Usage(format!("--snap: {e}")))?;
     }
@@ -386,66 +588,17 @@ fn run(a: &Args, t0: Instant) -> Result<Outcome, Fail> {
     let facts = oracle::facts_at(&run, a.level);
     let prefix = run.inputs.len();
 
-    let mut opt = Options {
-        seed: a.seed,
-        max_mem_bytes: (a.max_mem_gb * (1u64 << 30) as f64) as u64,
-        via: a.via.clone(),
-        avoid: a.avoid.clone(),
-        ..Options::default()
-    };
-    // Guide scripts are played on the original from the run's own start (DESIGN §4.2).
-    let mut oracle_extra = Duration::ZERO;
-    let mut guide_frames = 0u64;
-    let guide_points = match (&guide, a.guide.as_deref()) {
-        (Some(GuideFile::Script(s)), Some(p)) => {
-            let t = Instant::now();
-            let tr = trace_script(a, &facts, p, s).map_err(Fail::Usage)?;
-            oracle_extra += t.elapsed();
-            guide_frames += s.lines.last().map_or(0, |l| l.0) as u64;
-            Some(points_from_trace(&tr))
-        }
-        (Some(GuideFile::Waypoints(w)), _) => Some(w.clone()),
-        _ => None,
-    };
-    if let (Some(s), Some(p)) = (&follow, a.follow.as_deref()) {
-        let t = Instant::now();
-        let tr = trace_script(a, &facts, p, s).map_err(Fail::Usage)?;
-        oracle_extra += t.elapsed();
-        guide_frames += s.lines.last().map_or(0, |l| l.0) as u64;
-        // The script's frame 0 is the start's; the explorer starts past the settle, so its seed
-        // inputs start there too.
-        let mut inputs = script_inputs(s);
-        inputs.drain(..prefix.min(inputs.len()));
-        opt = follow_options(opt, inputs, &tr);
-    }
-    if let Some(g) = guide_points {
-        // With both, the guide steers and `--follow` only seeds (§2.7).
-        opt.guide = g;
-    }
+    // Guide scripts are played from the run's own start (DESIGN §4.2).
+    let (mut opt, cost) = apply_guides(a, &files, &facts, prefix, base_options(a))?;
+    let (oracle_extra, guide_frames) = (cost.oracle_time, cost.oracle_frames);
 
     let game = Game::with_display(
         sf_conform::display_data(),
         Start::Transplant(sync::core_memory(run.amiga.memory())),
     );
-    if a.compass == CompassArg::Map {
-        let wings = game.state().w(FROG + f::FLIGHT) != 0;
-        let sk = match &a.snap {
-            Some(p) => StartKey::snap(&std::fs::read(p).map_err(|e| Fail::Usage(format!("--snap: {e}")))?),
-            None => StartKey::AtLevel,
-        };
-        let key = cache::key(a.level, sk, wings);
-        let map = cache::load_or_build(&key, a.no_cache, || {
-            build_threaded(&game, &facts, &default_moves(wings), a.threads).0
-        });
-        opt.compass = Compass::Map(map);
-    }
+    map_compass(a, &game, &facts, &mut opt)?;
 
-    let ro = RunOptions {
-        threads: a.threads,
-        budget: a.budget.saturating_sub(t0.elapsed()),
-        shorten_share: a.shorten_share,
-        shorten_min_rounds: if a.shorten_share > 0.0 { SHORTEN_MIN_ROUNDS } else { 0 },
-    };
+    let ro = run_options(a, t0);
     let mut stats = Stats {
         oracle_frames: run.oracle_frames + guide_frames,
         confirmed_frames: if a.engine_only { 0 } else { prefix as u32 },
@@ -454,9 +607,7 @@ fn run(a: &Args, t0: Instant) -> Result<Outcome, Fail> {
     // The share of wall-clock on the original (DESIGN §2.6): the start, the guide's replays and
     // the confirmation, over the whole run.
     let start_time = run.confirm_time;
-    let share = |on_oracle: Duration| -> f32 {
-        (on_oracle.as_secs_f64() / t0.elapsed().as_secs_f64().max(1e-9)).clamp(0.0, 1.0) as f32
-    };
+    let share = |on_oracle: Duration| share(t0, on_oracle);
 
     if prefix >= a.frames as usize {
         // No frame left to explore: the start alone is the partial route.
