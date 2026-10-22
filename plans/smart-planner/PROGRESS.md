@@ -19,7 +19,7 @@ allowed everywhere, map a compass; T13 and T20 dropped, T22 route-shorten added.
 
 **Status:** T00–T07, T19, T21 done; core rewritten by the amendment, not started.
 **Last updated:** 2026-10-22
-**Next `pir-work` will:** T11 plan-command.
+**Next `pir-work` will:** T14 tuning-run (T12 waits on `pir/bug-recorder`).
 
 ## Tasks
 
@@ -39,7 +39,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T08 | search | T04, T06, T07 | ✅ | |
 | T09 | route-repair | T08 | ✅ | |
 | T10 | oracle-check | T02, T08, T09 | ✅ | |
-| T11 | plan-command | T05, T10, T22 | ⬜ | |
+| T11 | plan-command | T05, T10, T22 | ✅ | |
 | T12 | app-timing | T11 | ⬜ | |
 | T14 | tuning-run | T11 | ⬜ | |
 | T15 | set-c-run | T12, T14 | ⬜ | |

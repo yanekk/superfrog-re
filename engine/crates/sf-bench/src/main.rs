@@ -2,13 +2,15 @@
 //!
 //! ```text
 //! sf-bench --set A|B|C --planner new|plan_exit|plan_exit_w6|explore|best-old
-//!          [--levels W1-1,W1-4] [--jobs N] [--budget-min 30] [--seed 1] [--follow-standalone]
+//!          [--levels W1-1,W1-4] [--jobs N] [--budget-min 30] [--seed 1] [--follow-standalone] [--unguided]
 //!          [--results plans/smart-planner/bench/results.jsonl] [--table plans/smart-planner/bench/RESULTS.md]
 //! sf-bench --table-only [--results …] [--table …]     # re-render RESULTS.md from results.jsonl
 //! ```
 //!
 //! Run from `engine/`: `cargo run --release -p sf-bench -- …`. Each level's line is appended as it
-//! ends; a rerun skips the levels recorded for the same planner, set and commit. Routes and each
+//! ends; a rerun skips the levels recorded for the same planner, set and commit, guided or not.
+//! The new planner is guided by each level's committed route (DESIGN §4.2, D21); `--unguided`
+//! runs it with no guide, recorded beside the guided result. Routes and each
 //! planner's stderr go to `routes/` beside the results file.
 
 use std::path::PathBuf;
@@ -19,7 +21,7 @@ use sf_bench::run::{Options, bench};
 fn usage() -> ! {
     eprintln!(
         "sf-bench --set A|B|C --planner new|plan_exit|plan_exit_w6|explore|best-old [--levels W1-1,W1-4] \
-         [--jobs N] [--budget-min 30] [--seed 1] [--follow-standalone] [--results FILE] [--table FILE]\n\
+         [--jobs N] [--budget-min 30] [--seed 1] [--follow-standalone] [--unguided] [--results FILE] [--table FILE]\n\
          sf-bench --table-only [--results FILE] [--table FILE]"
     );
     std::process::exit(2)
@@ -37,6 +39,7 @@ fn main() {
         budget: Duration::from_secs(30 * sf_bench::MINUTE),
         seed: 1,
         follow_standalone: false,
+        unguided: false,
         results: bench_dir.join("results.jsonl"),
         table: bench_dir.join("RESULTS.md"),
     };
@@ -54,6 +57,7 @@ fn main() {
             }
             "--seed" => o.seed = val().parse().unwrap_or_else(|_| usage()),
             "--follow-standalone" => o.follow_standalone = true,
+            "--unguided" => o.unguided = true,
             "--results" => o.results = PathBuf::from(val()),
             "--table" => o.table = PathBuf::from(val()),
             "--table-only" => table_only = true,

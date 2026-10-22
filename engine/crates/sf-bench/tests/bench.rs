@@ -112,6 +112,8 @@ fn fixture(planner: &str, set: &str, level: &str, completed: bool, wall_s: f64) 
         hearts_lost: 0,
         reason: if completed { String::new() } else { "no exit \"quoted\"".into() },
         tool: None,
+        // The benchmark guides only the new planner (DESIGN §4.2).
+        guided: planner == "new",
     }
 }
 
@@ -128,10 +130,10 @@ fn results_append_reload_and_skip_a_level_recorded_for_the_same_commit() {
     results::append(&p, &b).unwrap();
     let back = results::load(&p);
     assert_eq!(back, vec![a.clone(), b.clone()]);
-    assert!(results::recorded(&back, "plan_exit", "A", "W1-1", "abc123").is_some());
-    assert!(results::recorded(&back, "plan_exit", "A", "W1-1", "def456").is_none());
-    assert!(results::recorded(&back, "plan_exit", "B", "W1-1", "abc123").is_none());
-    assert!(results::recorded(&back, "explore", "A", "W1-1", "abc123").is_none());
+    assert!(results::recorded(&back, "plan_exit", false, "A", "W1-1", "abc123").is_some());
+    assert!(results::recorded(&back, "plan_exit", false, "A", "W1-1", "def456").is_none());
+    assert!(results::recorded(&back, "plan_exit", false, "B", "W1-1", "abc123").is_none());
+    assert!(results::recorded(&back, "explore", false, "A", "W1-1", "abc123").is_none());
     // A run killed mid-line: the cut line is ignored, not fatal, and the next append starts a
     // line of its own.
     let mut f = std::fs::read_to_string(&p).unwrap();
@@ -228,6 +230,41 @@ fn a_child_dies_with_the_process_it_runs_for() {
     assert!(!pgrep("sleep 62.25") && !pgrep("sleep 62.5"), "a child outlived the benchmark");
 }
 
+/// A line written before `guided` existed (T01–T02's sample) reads as unguided.
+#[test]
+fn an_old_line_with_no_guided_field_reads_as_unguided() {
+    let line = r#"{"planner":"new","set":"A","level":"W1-1","commit":"abc123","completed":true,"wall_s":61.5,"engine_frames":1,"oracle_frames":2,"confirm_share":0.1000,"route_frames":4000,"ref_frames":4474,"hearts_lost":0,"reason":""}"#;
+    let r = LevelResult::from_json(line).expect("an old line parses");
+    assert!(!r.guided);
+    let mut g = r.clone();
+    g.guided = true;
+    assert!(g.to_json().contains("\"guided\":true"));
+    assert_eq!(LevelResult::from_json(&g.to_json()), Some(g.clone()));
+    assert_ne!(r.key(), g.key());
+    assert!(LevelResult::from_json(&line.replace(r#""reason":"""#, r#""guided":"yes","reason":"""#)).is_none());
+}
+
+/// T14's unguided pass into the file of the guided one: neither skips the other's level.
+#[test]
+fn guided_and_unguided_results_of_one_level_are_both_recorded() {
+    let g = fixture("new", "A", "W1-1", true, 60.0);
+    let mut u = g.clone();
+    u.guided = false;
+    u.completed = false;
+    u.reason = "timeout".into();
+    let only_g = vec![g.clone()];
+    assert!(results::recorded(&only_g, "new", true, "A", "W1-1", "abc123").is_some());
+    assert!(results::recorded(&only_g, "new", false, "A", "W1-1", "abc123").is_none());
+    let both = vec![g.clone(), u.clone()];
+    assert_eq!(results::recorded(&both, "new", false, "A", "W1-1", "abc123"), Some(u.clone()));
+    assert_eq!(results::recorded(&both, "new", true, "A", "W1-1", "abc123"), Some(g));
+    let t = sf_bench::table::render(&both);
+    assert!(t.contains("| Level | `new` guided | `new` unguided |"), "{t}");
+    // The measures read the guided result, not the later unguided one.
+    let m1 = t.lines().find(|l| l.starts_with("| M1 |")).unwrap();
+    assert!(m1.contains("| — | 1 / 24 (1 run) |"), "{m1}");
+}
+
 #[test]
 fn best_old_keeps_a_completed_route_then_the_shortest() {
     let mut a = fixture("plan_exit", "A", "W1-1", false, 100.0);
@@ -265,5 +302,42 @@ fn the_table_shows_baseline_and_new_side_by_side() {
     assert!(row("M4").contains("1 over +25% (worst +43%"), "{}", row("M4"));
     assert!(row("M5").contains("| — | 1 / 24 (1 run) |"), "{}", row("M5"));
     assert!(t.contains("## Set A") && t.contains("## Set B"));
+    assert!(t.contains("| Level | `best-old` unguided | `new` guided |"), "{t}");
     assert!(t.contains("failed (no exit \"quoted\")"));
+}
+
+/// T11: the new planner benched on W1-1, guided by `complete-w1-1`, is recorded completed and
+/// guided; an `--unguided` run into the same file is recorded beside it, not skipped as already
+/// recorded, and the table shows both columns. Slow: the guided run is minutes on the oracle
+/// (sf-plan in original mode, then `verify`), the unguided one up to its 10-minute budget. Run with
+/// `cargo test --release -p sf-bench --test bench -- --ignored new_planner --nocapture`.
+#[test]
+#[ignore]
+fn new_planner_guided_then_unguided_on_w1_1() {
+    let dir = scratch("new-w1-1");
+    let (res, table) = (dir.join("results.jsonl"), dir.join("RESULTS.md"));
+    let bench = |extra: &[&str]| {
+        let st = Command::new(env!("CARGO_BIN_EXE_sf-bench"))
+            .args(["--set", "A", "--planner", "new", "--levels", "W1-1"])
+            .arg("--results")
+            .arg(&res)
+            .arg("--table")
+            .arg(&table)
+            .args(extra)
+            .status()
+            .unwrap();
+        assert!(st.success());
+    };
+    bench(&[]);
+    let rs = results::load(&res);
+    assert_eq!(rs.len(), 1, "{rs:?}");
+    assert!(rs[0].guided && rs[0].completed, "{:?}", rs[0]);
+    bench(&["--unguided", "--budget-min", "10"]);
+    let rs = results::load(&res);
+    assert_eq!(rs.len(), 2, "the unguided run is not skipped: {rs:?}");
+    assert!(!rs[1].guided && rs[1].planner == "new", "{:?}", rs[1]);
+    let t = std::fs::read_to_string(&table).unwrap();
+    assert!(t.contains("| Level | `new` guided | `new` unguided |"), "{t}");
+    eprintln!("{}", std::fs::read_to_string(&res).unwrap());
+    std::fs::remove_dir_all(&dir).unwrap();
 }
