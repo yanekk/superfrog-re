@@ -61,6 +61,7 @@ A test over ~30 s is `#[ignore]` with its time noted (DESIGN §5).
 
 ## Done when
 
-- [ ] Tests green; W5-2 and W1-4 in original mode, unguided, planned within 30 min each and passed by
-      DESIGN §4.1's check (owner question open at the amendment review: W1-4 guided instead); time, repairs, confirm share and hearts lost in a FINDINGS row (the experiment: W5-2
+- [ ] Tests green; in original mode, W5-2 unguided and W1-4 guided by its committed route (owner,
+      2026-10-22: as the counted runs, D21; unaided W1-4 is T14's), each planned within 30 min and
+      passed by DESIGN §4.1's check; time, repairs, confirm share and hearts lost in a FINDINGS row (the experiment: W5-2
       in 482 s, 8 repairs, 3 hearts lost before the heart check existed).

@@ -15,7 +15,7 @@ unreliable edges); T07 now light, T00 answers three more questions.
 **Amendment reviewed:** 2026-10-21 — 6 fixes, 1 decision (a retry after a wait is a standing-start move)
 **Plan amended:** 2026-10-22 — D19–D24: whole-level explorer core (T08–T10 rewritten), guide paths
 allowed everywhere, map a compass; T13 and T20 dropped, T22 route-shorten added.
-**Amendment reviewed:** 2026-10-22 — 18 fixes, 1 decision (open for the owner: T10 shows W1-4 guided or unguided)
+**Amendment reviewed:** 2026-10-22 — 18 fixes, 1 decision (owner: T10's W1-4 check runs guided)
 
 **Status:** T00–T07, T19, T21 done; core rewritten by the amendment, not started.
 **Last updated:** 2026-10-22
