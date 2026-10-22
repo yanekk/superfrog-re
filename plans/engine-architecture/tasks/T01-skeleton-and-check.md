@@ -85,7 +85,9 @@ them, and says which a light chapter may drop.
       `path.rs`; a path with `*` is skipped; a Rust path `sf_core::level` is not treated as a
       repo path
 - [ ] self-test: a Markdown file with no front matter (template, glossary, README) is not a chapter
-- [ ] `python tools/architecture.py totals` prints one row per chapter and exits 0
+- [ ] self-test: `line_counts` counts `.rs`, `.cpp`, `.h`, `.wgsl` lines and leaves `.txt`, `.toml`,
+      `.patch`, `.md` out, reporting them as the separate uncounted total (DESIGN §2.2)
+- [ ] `python tools/architecture.py totals` prints one row per chapter plus the uncounted row, and exits 0
 
 ## Done when
 

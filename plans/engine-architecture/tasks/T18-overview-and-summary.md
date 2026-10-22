@@ -30,8 +30,9 @@ DESIGN §2.4 (`ALLOW_TBD`), §2.6, §2.7.
   mechanism and where the verification tooling attaches (probe, transplant, `FrameOut`).
 - One table: every chapter with tier, kind, mix, reuse and lines, as `tools/architecture.py
   totals` prints it, and the date it was computed.
-- Totals: lines per kind across the codebase, and lines per reuse rating, compared in one sentence
-  with the 2026-10-15 "about 20%" estimate.
+- Totals: lines of code (DESIGN §2.2) per kind across the codebase, and per reuse rating,
+  compared in one sentence with the 2026-10-15 "about 20%" estimate (DESIGN §1); the uncounted
+  non-code lines stated once beside them.
 - The recommended native rewrite order: which mechanism to replace first and why, taken from the
   mechanism chapters' "what depends on it" and "must preserve" sections. The memory-address
   coupling (DESIGN §2.5) is named as the first decision, with its options linked, not chosen.

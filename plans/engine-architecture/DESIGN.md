@@ -20,7 +20,12 @@ can rewrite the Amiga-shaped parts as plain native code while the game still pas
 conformance check.
 
 The same documentation rates every subsystem for reuse in another Amiga game, replacing the
-rough 2026-10-15 estimate (about 20% reusable) with a per-subsystem account.
+rough 2026-10-15 estimate (about 20% reusable) with a per-subsystem account. That estimate is
+recorded nowhere else in the repo: of about 75k lines of Rust on `pir/rust-engine`, about 13k
+carry to any Amiga game (`sf-oracle` ~3.7k, `sf-paula` ~1.1k, `sf-conform/src` ~5.5k, the
+`sf-app` shell ~1.7k, `sf-e2e` ~1.1k, generic parts of `sf-disk`/`sf-assets` and `render/` ~2k);
+the rest (`sf-core` game logic ~38k, asset formats ~3.5k, conform cases, scripts and route
+planners ~19.5k, `LAYOUT`) is per game.
 
 The owner reads the overview; the chapters are written for the session that will plan the
 native rewrite. No engine code changes in this plan.
@@ -78,6 +83,12 @@ it unchecked.
 
 Each chapter states the rating, what would change, and the size in lines (from
 `tools/architecture.py totals`, §3.2).
+
+A line is a line of code: owned files ending `.rs`, `.cpp`, `.h` or `.wgsl`, tests included.
+Recorded input scripts (`engine/conform/scripts/*.txt`, ~95k lines), case and config `.toml`,
+patches and Markdown are not counted; `totals` lists them as one separate uncounted row. Owner,
+2026-10-22 at plan review: counting every file let the input scripts make verification half the
+codebase, and code-only is the basis of the 2026-10-15 estimate the totals replace.
 
 ### 2.3 Chapters
 
@@ -219,7 +230,7 @@ parse_front_matter(text: str) -> dict | None      # None when the file has no ++
 load_chapters(root: str) -> dict[str, dict]       # id -> front matter, + "path"
 tracked_files(root: str) -> list[str]             # git ls-files under the domain
 assign(files, chapters) -> (dict[file, id], list[problem])
-line_counts(root, assignment) -> dict[id, int]
+line_counts(root, assignment) -> dict[id, int]  # code lines only, §2.2; plus the uncounted rest
 totals(chapters, lines) -> table rows             # per chapter, per kind, per rating
 main: `python tools/architecture.py totals`       # prints the overview's table
 ```
@@ -258,6 +269,11 @@ Rust code; a chapter that cites a test by name checks it exists by reading, not 
 | Cannot be tested automatically | Why it needs a person |
 |---|---|
 | Whether the prose is right | Reviewed by a fresh session sampling claims against the code, not by the owner |
+
+### 5.3 Outside the code — who acts
+
+None. No task deploys, calls a paid service, uses a login or reaches another person; the only
+install is the setup block's `pip install` into `venv/`. An action with no row is `ask`.
 
 ---
 

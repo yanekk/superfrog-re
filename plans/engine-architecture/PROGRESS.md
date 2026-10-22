@@ -9,7 +9,7 @@ the task you pick up, and append yours there.
 **Sixty words to a Notes cell, counted.** Flat prose. The account is the commit message. Whoever
 writes a cell also fixes the over-budget cell they walk past.
 
-**Plan reviewed:** not yet — the plan reviewer marks it before the build starts
+**Plan reviewed:** 2026-10-22 — 2 fixed, 1 decided with the user
 
 **Status:** Plan written 2026-10-22; nothing built.
 **Last updated:** 2026-10-22
