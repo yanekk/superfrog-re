@@ -17,9 +17,9 @@ unreliable edges); T07 now light, T00 answers three more questions.
 allowed everywhere, map a compass; T13 and T20 dropped, T22 route-shorten added.
 **Amendment reviewed:** 2026-10-22 — 18 fixes, 1 decision (owner: T10's W1-4 check runs guided)
 
-**Status:** T00–T08, T19, T21 done; T22 implemented.
+**Status:** T00–T08, T19, T21, T22 done.
 **Last updated:** 2026-10-22
-**Next `pir-work` will:** review T22; T09 route-repair.
+**Next `pir-work` will:** T09 route-repair.
 
 ## Tasks
 
@@ -48,9 +48,9 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T18 | results-and-retire | T17 | ⬜ | |
 | T19 | step-unseen-no-picture | T00; blocks T04 | ✅ | |
 | T21 | engine-memory-lookup | T04 | ✅ | |
-| T22 | route-shorten | T08 | 🔍 | Shortening budget, shortcut pass, `run::shortcut_pass`; 6 tests. Deviations: the pass spends its own budget after the search's; hinted runs skip the pass; pairs coin-free first, one per i and per j, span ≤ 640; `Shortcut` adds `spend`, `pair_rounds`; `explore --shorten` (unlisted example). `SHORTEN_MIN_ROUNDS` 180. W3-2 barely shortens (FINDINGS). |
+| T22 | route-shorten | T08 | ✅ | Review: one fix, two tests for the no-more-hearts-lost rule (dropping it in `offer` and `better` stayed green; probe found an 8-frame W1-1 cut exiting a heart down). Mutated the exit replay: red. Deviations held; hinted-runs skip and `SHORTEN_MIN_ROUNDS` 180 read-only. W3-2 stays 63% over M4. |
 
-**Review queue:** T22
+**Review queue:** empty
 
 ## Blocked on the user
 
