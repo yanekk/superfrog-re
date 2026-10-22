@@ -46,7 +46,7 @@ pub fn follow_options(
     Options {
         seed_inputs: Some(old_inputs),
         guide: points_from_trace(old_trace),
-        guide_pace: Some(TRACE_EVERY),
+        guide_pace: true,
         ..opt
     }
 }

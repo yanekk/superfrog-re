@@ -68,43 +68,30 @@ fn key_sw(cell: Cell, band: u16, switches: u32) -> CellKey {
     }
 }
 
-/// The pace (T14): a cell behind the route's time to its point weighs less, by e per `PACE_TAU`
-/// frames late, counted from the start's point; ahead or off the path, 1.
+/// The pace (T14): a cell slower than the fastest archived cell as far along the guide or
+/// further weighs less, by e per `PACE_TAU` frames; the fastest, or a cell past every other, 1.
+/// Being slower than the guide route itself costs nothing (W1-4 cannot keep its pace).
 #[test]
-fn pace_weighs_late_cells_down() {
-    // Point k at column 2k, row 40, sampled every 8 frames.
-    let pts: Vec<GuidePoint> = (0..30u16)
-        .map(|k| GuidePoint {
-            cell: (4 * k, 40),
-            coins_left: None,
-            switches: None,
-        })
-        .collect();
-    let g = GuideIndex::new(&pts);
-    let at = key((40, 40), 0);
-    let p = g.index(&at).unwrap();
-    let due = p * 8;
-    assert_eq!(g.pace(&at, due, 0, 8), 1.0, "on time");
-    assert_eq!(g.pace(&at, due / 2, 0, 8), 1.0, "ahead");
-    let late = g.pace(&at, due + PACE_TAU as u32, 0, 8);
-    assert!((late - (-1.0f64).exp()).abs() < 1e-9, "{late}");
-    // From a start at point 5 the route's time to `p` is 8·(p − 5) frames.
-    assert_eq!(g.pace(&at, due - 40, 5, 8), 1.0);
-    assert!(g.pace(&at, due, 5, 8) < 1.0);
-    assert_eq!(
-        g.pace(&key((40, 70), 0), 100_000, 0, 8),
-        1.0,
-        "off the path"
-    );
+fn pace_weighs_slow_cells_down() {
+    // (guide index, frames): index 10 reached in 300 and 500, index 20 in 400.
+    let pc = Pace::new([(10, 500), (10, 300), (20, 400)]);
+    assert_eq!(pc.weight(10, 300), 1.0, "the fastest at 10");
+    assert_eq!(pc.weight(20, 400), 1.0, "the fastest at 20");
+    assert_eq!(pc.weight(30, 9_000), 1.0, "past every other cell");
+    let slow = pc.weight(10, 300 + PACE_TAU as u32);
+    assert!((slow - (-1.0f64).exp()).abs() < 1e-9, "{slow}");
+    // At 15 the fewest frames at 15 or further are index 20's 400.
+    assert_eq!(pc.weight(15, 400), 1.0);
+    assert!(pc.weight(15, 640) < 0.4);
+    assert_eq!(Pace::default().weight(3, 100), 1.0);
 }
 
 /// A `--follow` guide is a played route's trace: it carries the pace (T14).
 #[test]
 fn follow_guides_carry_their_pace() {
-    let o =
-        sf_plan::core::repair::follow_options(Options::default(), Vec::new(), &[((1, 1), 0, 0)]);
-    assert_eq!(o.guide_pace, Some(sf_plan::core::repair::TRACE_EVERY));
-    assert_eq!(Options::default().guide_pace, None);
+    let o = sf_plan::core::repair::follow_options(Options::default(), Vec::new(), &[((1, 1), 0, 0)]);
+    assert!(o.guide_pace);
+    assert!(!Options::default().guide_pace);
 }
 
 #[test]

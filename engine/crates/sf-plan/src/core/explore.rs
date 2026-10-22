@@ -20,7 +20,7 @@ use sf_core::{Game, State};
 use super::archive::{Archive, COINS_LEFT, CellKey, HEARTS, Offer, cell_key, coin_dist};
 use super::facts::{Cell, Facts, frog_cell};
 use super::graph::{MoveMap, shortest};
-use super::guide::{GuideIndex, GuidePoint};
+use super::guide::{GuideIndex, GuidePoint, Pace};
 
 /// `level_state` (h0+$a06): −2 while the level is played.
 const LEVEL_STATE: u32 = h0(0xa06);
@@ -91,9 +91,9 @@ pub struct Options {
     pub compass: Compass,
     /// The guide path (§2.11); empty: unguided.
     pub guide: Vec<GuidePoint>,
-    /// Frames between the guide's points when it was sampled from a played route (`TRACE_EVERY`),
-    /// `None` for waypoints: then a cell behind the route's pace weighs less (`GuideIndex::pace`).
-    pub guide_pace: Option<u32>,
+    /// The guide was sampled from a played route (false for waypoints): a cell slower than the
+    /// fastest as far along it then weighs less (`guide::Pace`, T14).
+    pub guide_pace: bool,
     /// `--follow`'s inputs (§2.7): replayed from the start, every 8th state archived until death.
     /// Joystick only: keys held in them are not replayed.
     pub seed_inputs: Option<Vec<FrameInput>>,
@@ -113,7 +113,7 @@ impl Default for Options {
             bursts_per_round: 80,
             compass: Compass::Straight,
             guide: Vec::new(),
-            guide_pace: None,
+            guide_pace: false,
             seed_inputs: None,
             goal: Goal::Exit,
             via: Vec::new(),
@@ -392,8 +392,6 @@ pub struct Explorer {
     rng: Rng,
     compass: Option<MapCompass>,
     guide: Option<GuideIndex>,
-    /// The start's guide index: the pace is counted from it (a repair stretch starts mid-route).
-    guide_p0: u32,
     start_hearts: u16,
     rounds: u64,
     frames: u64,
@@ -408,7 +406,6 @@ impl Explorer {
         };
         let guide = (!opt.guide.is_empty()).then(|| GuideIndex::new(&opt.guide));
         let key = cell_key(&facts, start.state(), 0);
-        let guide_p0 = guide.as_ref().and_then(|g| g.index(&key)).unwrap_or(0);
         let archive = Archive::new(&start, key, opt.max_mem_bytes / 4 * 3);
         let seed = opt.seed;
         let mut ex = Explorer {
@@ -419,7 +416,6 @@ impl Explorer {
             rng: Rng::new(seed),
             compass,
             guide,
-            guide_p0,
             rounds: 0,
             frames: 0,
             found: None,
@@ -559,11 +555,17 @@ impl Explorer {
             .map(|e| e.key.band)
             .min()
             .unwrap_or(0);
-        let p_max = self.guide.as_ref().map_or(0, |g| {
-            es.iter().filter_map(|e| g.index(&e.key)).max().unwrap_or(0)
+        let index: Vec<Option<u32>> = es
+            .iter()
+            .map(|e| self.guide.as_ref().and_then(|g| g.index(&e.key)))
+            .collect();
+        let p_max = index.iter().flatten().copied().max().unwrap_or(0);
+        let pace = self.opt.guide_pace.then(|| {
+            Pace::new(es.iter().zip(&index).filter_map(|(e, p)| p.map(|p| (p, e.frames))))
         });
         es.iter()
-            .map(|e| {
+            .zip(&index)
+            .map(|(e, &p)| {
                 let k = &e.key;
                 let novelty =
                     1.0 / (1.0 + e.chosen as f64).sqrt() + 0.5 / (1.0 + e.reached as f64).sqrt();
@@ -584,10 +586,10 @@ impl Explorer {
                     _ => 1.0,
                 };
                 let guide = self.guide.as_ref().map_or(1.0, |g| {
-                    let pace = self
-                        .opt
-                        .guide_pace
-                        .map_or(1.0, |every| g.pace(k, e.frames, self.guide_p0, every));
+                    let pace = match (&pace, p) {
+                        (Some(pc), Some(p)) => pc.weight(p, e.frames),
+                        _ => 1.0,
+                    };
                     g.weight(k, p_max) * pace
                 });
                 let hearts = 0.25f64.powi(self.start_hearts.saturating_sub(e.hearts) as i32);

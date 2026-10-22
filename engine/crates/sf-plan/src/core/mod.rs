@@ -19,6 +19,6 @@ pub use danger::{Outcome, WAITS, heart_cost, play, play_safe};
 pub use explore::{Compass, Explorer, Goal, Options, Part, PartResult, Progress, Reason, Route};
 pub use facts::{Cell, Coin, CoinKind, Facts, Switch, facts, frog_cell, landed, standing};
 pub use graph::{Edge, MoveMap, Node, shortest};
-pub use guide::{GuideIndex, GuidePoint, PACE_TAU};
+pub use guide::{GuideIndex, GuidePoint, PACE_TAU, Pace};
 pub use map::{Builder, MapPart, build, build_in};
 pub use moves::{Dir, MoveFamily, MoveSet, default_moves};

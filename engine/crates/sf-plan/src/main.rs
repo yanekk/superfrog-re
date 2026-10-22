@@ -3,7 +3,7 @@
 //! ```text
 //! sf-plan <level> [--snap leg.snap] [--guide route-or-waypoints.txt] [--follow old.txt] [--seed N]
 //!         [--out route.txt] [--budget-min 30] [--frames 30000] [--max-mem-gb 4] [--threads N]
-//!         [--compass straight|map] [--shorten-share 0.2] [--no-cache] [--engine-only]
+//!         [--compass straight|map] [--shorten-share 0.2] [--no-cache] [--engine-only] [--no-pace]
 //!         [--via c,r]... [--avoid c0,r0,c1,r1]...
 //! ```
 //!
@@ -29,7 +29,7 @@ use sf_assets::World;
 use sf_core::{Game, LevelId, Start};
 use sf_oracle::Amiga;
 use sf_plan::cache::{self, StartKey};
-use sf_plan::core::repair::{TRACE_EVERY, TracePoint, follow_options, points_from_trace};
+use sf_plan::core::repair::{TracePoint, follow_options, points_from_trace};
 use sf_plan::core::{Cell, Compass, Explorer, Facts, GuidePoint, Options, Reason, Route, default_moves};
 use sf_plan::guide_file::parse_waypoints;
 use sf_plan::oracle::{self, Stats};
@@ -39,7 +39,7 @@ use sf_plan::trace::{script_inputs, timing, trace_original};
 
 const USAGE: &str = "usage: sf-plan <level> [--snap leg.snap] [--guide route-or-waypoints.txt] \
 [--follow old.txt] [--seed N] [--out route.txt] [--budget-min 30] [--frames 30000] [--max-mem-gb 4] \
-[--threads N] [--compass straight|map] [--shorten-share 0.2] [--no-cache] [--engine-only] \
+[--threads N] [--compass straight|map] [--shorten-share 0.2] [--no-cache] [--engine-only] [--no-pace] \
 [--via c,r]... [--avoid c0,r0,c1,r1]...";
 
 /// Oracle frames beyond `--frames` a start is given room for: the settle and the lag tail.
@@ -71,6 +71,8 @@ struct Args {
     shorten_share: f32,
     no_cache: bool,
     engine_only: bool,
+    /// `--no-pace`: a played-route guide without its pace (for comparisons, T14).
+    no_pace: bool,
     via: Vec<Cell>,
     avoid: Vec<(Cell, Cell)>,
 }
@@ -111,6 +113,7 @@ fn parse_args(argv: &[String]) -> Result<Args, String> {
         shorten_share: sf_plan::run::SHORTEN_SHARE,
         no_cache: false,
         engine_only: false,
+        no_pace: false,
         via: Vec::new(),
         avoid: Vec::new(),
     };
@@ -158,6 +161,7 @@ fn parse_args(argv: &[String]) -> Result<Args, String> {
                 a.shorten_share = s as f32;
             }
             "--no-cache" => a.no_cache = true,
+            "--no-pace" => a.no_pace = true,
             "--engine-only" => a.engine_only = true,
             "--via" => {
                 let v = cells(&val()?, 2, "--via")?;
@@ -402,9 +406,9 @@ fn run(a: &Args, t0: Instant) -> Result<Outcome, Fail> {
             let tr = trace_script(a, &facts, p, s).map_err(Fail::Usage)?;
             oracle_extra += t.elapsed();
             guide_frames += s.lines.last().map_or(0, |l| l.0) as u64;
-            Some((points_from_trace(&tr), Some(TRACE_EVERY)))
+            Some((points_from_trace(&tr), !a.no_pace))
         }
-        (Some(GuideFile::Waypoints(w)), _) => Some((w.clone(), None)),
+        (Some(GuideFile::Waypoints(w)), _) => Some((w.clone(), false)),
         _ => None,
     };
     if let (Some(s), Some(p)) = (&follow, a.follow.as_deref()) {
