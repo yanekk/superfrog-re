@@ -297,6 +297,8 @@ pub fn plan_original(
     };
     let mut repeats = Repeats::default();
     let mut rest: Option<Vec<FrameInput>> = None;
+    // The hearts the plan `rest` comes from lost on the engine.
+    let mut last_hearts = 0u8;
     let mut rounds = 0u64;
     let finish = |stats: &mut Stats, confirm: Duration, route: &[FrameInput]| {
         let all = start_time + t0.elapsed();
@@ -315,7 +317,7 @@ pub fn plan_original(
             max_frames: opt.max_frames.saturating_sub(route.len() as u32),
             ..opt.clone()
         };
-        let rest_len = rest.as_ref().map(Vec::len);
+        let rest_len = rest.as_ref().map(|r| (r.len(), last_hearts));
         if let Some(rest) = rest.take().filter(|_| !left.is_zero()) {
             // The rest of the old plan, traced on the engine from the original's state here, guides
             // and seeds; an explicit guide still steers (§2.7).
@@ -411,6 +413,7 @@ pub fn plan_original(
         confirm += c0.elapsed();
         route.extend_from_slice(&plan.inputs[..keep]);
         rest = Some(plan.inputs[keep..].to_vec());
+        last_hearts = plan.hearts_lost;
         stats.repairs += 1;
         stats.confirmed_frames = route.len() as u32;
     }

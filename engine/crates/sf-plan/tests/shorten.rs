@@ -280,10 +280,10 @@ fn the_shortening_minimum_applies_only_over_the_bound() {
         };
         plan_engine(g, fa, opt, &run).unwrap()
     };
-    let within = plan(Some(n));
+    let within = plan(Some((n, 0)));
     assert_eq!(within.rounds, 0, "an exit within the bound gets no minimum");
     assert_eq!(within.inputs.len(), n);
-    let over = plan(Some(n - 1));
+    let over = plan(Some((n - 1, 0)));
     assert!(over.rounds >= 6, "{} rounds", over.rounds);
     assert!(over.inputs.len() < n, "{} frames", over.inputs.len());
 }
