@@ -80,6 +80,7 @@ At the end of Phase 1: the core plans a level on the engine from any start state
 | [T10](tasks/T10-oracle-check.md) | oracle-check | T02, T08, T09 |
 | [T11](tasks/T11-plan-command.md) | plan-command | T05, T10, T22 |
 | [T12](tasks/T12-app-timing.md) | app-timing | T11 |
+| [T23](tasks/T23-w1-4-ending.md) | w1-4-ending | T09, T10; blocks T14 |
 
 T12 also needs `pir/bug-recorder` merged into main (DESIGN D3); it checks and stops to ask if not.
 

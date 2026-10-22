@@ -49,6 +49,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T19 | step-unseen-no-picture | T00; blocks T04 | ✅ | |
 | T21 | engine-memory-lookup | T04 | ✅ | |
 | T22 | route-shorten | T08 | ✅ | |
+| T23 | w1-4-ending | T09, T10; blocks T14 | ⬜ | |
 
 **Review queue:** *(empty)*
 
