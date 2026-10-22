@@ -39,7 +39,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T08 | search | T04, T06, T07 | ✅ | |
 | T09 | route-repair | T08 | ✅ | |
 | T10 | oracle-check | T02, T08, T09 | ✅ | |
-| T11 | plan-command | T05, T10, T22 | ⬜ | |
+| T11 | plan-command | T05, T10, T22 | ✅ | |
 | T12 | app-timing | T11 | ⬜ | |
 | T14 | tuning-run | T11 | ⬜ | |
 | T15 | set-c-run | T12, T14 | ⬜ | |
