@@ -8,6 +8,7 @@
 pub mod cache;
 pub mod core;
 pub mod guide_file;
+pub mod oracle;
 pub mod run;
 pub mod threads;
 pub mod trace;
