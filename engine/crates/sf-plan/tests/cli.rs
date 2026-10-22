@@ -169,6 +169,31 @@ fn engine_only_twice_gives_the_same_file() {
     let (fire, end) = (s.lines[n - 2].0, s.lines[n - 1].0);
     assert_eq!(end - fire, 4);
     assert_eq!(s.lines[n - 3], (fire - 69, sf_core::input::FrameInput::NONE));
+    // The file plays from its frame 0, the level-start freeze included: the engine started where
+    // the route says it starts leaves the level on the frame its comment names (T11 review: a
+    // route missing the freeze's frames passed every check above).
+    let exit = fire - 69;
+    assert!(text.contains(&format!("# The level ends at frame {exit},")), "{text}");
+    let at = sf_conform::sync::reach(
+        &sf_conform::SyncPoint::AtLevel("W1-1".parse().unwrap()),
+        &sf_conform::InputScript::idle(),
+        200,
+    )
+    .unwrap();
+    let mut g = sf_core::Game::with_display(
+        sf_conform::display_data(),
+        sf_core::Start::Transplant(sf_conform::sync::core_memory(at.amiga.memory())),
+    );
+    let mut ended = None;
+    for k in 0..exit + 100 {
+        let was = sf_plan::oracle::Look::of(g.state()).playing;
+        g.step_unseen(s.input_at(k));
+        if was && !sf_plan::oracle::Look::of(g.state()).playing {
+            ended = Some(k + 1);
+            break;
+        }
+    }
+    assert_eq!(ended, Some(exit), "the route replayed on the engine from its frame 0");
     assert!(!log.exists());
 }
 
