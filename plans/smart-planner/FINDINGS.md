@@ -11,6 +11,11 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-22 | 📌 | T08 Done-when, load 9–12, 10 threads, 10-min cap, seed 1, unguided: W6-1 54 s, W5-2 37 s, W3-2 132 s, W3-4 245 s; cells 11.6k, 9.0k, 15.5k, 26.1k; peak RSS 3.1, 3.4, 3.1, 3.3 GB. W1-1 15 s. |
+| 2026-10-22 | 🔄 | Owner, T08: kept DESIGN §2.5 heart rule; adopted `experiment/t08-coin-bands` 465d60d: last 8 coins one band each, pull toward nearest object coin left (deviation from §2.4). Before it W6-1 exited 0 of 5 ten-minute runs, stalling 2–4 coins short. |
+| 2026-10-22 | 📌 | T08 checkpoint policy (D22): an entry over 64 frames past its checkpoint takes one; states dropped least-recently-used, non-anchor (1024-frame) and unreferenced first. A state counts 9/8 serialized (~620 KB); the archive keeps ¾ of `max_mem_bytes`. |
+| 2026-10-22 | 📌 | T08: W1-1 with a 1 GB cap gave the same route as 4 GB, at 2.3× the engine frames (rebuilds), 105 s against 37 s. Counting the archive to the full 4 GiB reached 4.9 GB RSS on W5-2. |
+| 2026-10-22 | 📌 | T08: `goexp` seeds each burst with the master generator's own stream (`Rng(sd\|1)`); with that and its end-on-heart-lost rule this explorer reproduced its W6-1 run frame for frame (7 248 frames, 12 743 cells). |
 | 2026-10-22 | 🔄 | Owner amended the plan (D19–D24): whole-level explorer core; guide paths allowed everywhere, the counted benchmark included (baseline stays unaided); map and coin choice compasses only; M7, T13, T20 dropped; T22 route-shorten added. |
 | 2026-10-22 | 📌 | Experiment `spike-explore/goexp.rs`, engine only, 10 threads, 10-min cap, no map, no hints: exits on W2-1 30 s, W2-4 180, W3-2 340, W3-4 577, W4-2 503, W4-4 589, W5-2 62, W6-1 211. W2-3, W6-2, W6-4 stalled 6–17 cells short. |
 | 2026-10-22 | 📌 | Experiment: the band-0 exit pull turned W3-4, W4-4, W5-2, W6-1 from timeouts into exits; a committed route's path as guide made W6-2 exit in 80 s. Raw `--follow` inputs seed only 4–47 cells: original-timed routes die early on the engine. |

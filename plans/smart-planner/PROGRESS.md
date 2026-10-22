@@ -17,9 +17,9 @@ unreliable edges); T07 now light, T00 answers three more questions.
 allowed everywhere, map a compass; T13 and T20 dropped, T22 route-shorten added.
 **Amendment reviewed:** 2026-10-22 — 18 fixes, 1 decision (owner: T10's W1-4 check runs guided)
 
-**Status:** T00–T07, T19, T21 done; core rewritten by the amendment, not started.
+**Status:** T00–T07, T19, T21 done; T08 (the explorer) implemented, awaiting review.
 **Last updated:** 2026-10-22
-**Next `pir-work` will:** T08 search (the explorer), from `spike-explore/`.
+**Next `pir-work` will:** review T08; then T09 and T22 in parallel.
 
 ## Tasks
 
@@ -36,7 +36,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T05 | map-cache | T04 | ✅ | |
 | T06 | coin-choice | T03 | ✅ | |
 | T07 | danger-map | T03 | ✅ | |
-| T08 | search | T04, T06, T07 | ⬜ | |
+| T08 | search | T04, T06, T07 | 🔍 | Explorer (archive, explore, guide stub, run, stubs), `examples/explore`, 14 tests (2 ignored), fixture `w1-1-engine.txt`. Deviations: band rule and last-coins pull (owner, FINDINGS); `max_mem_bytes` is the RSS ceiling, archive ¾; `CellKey.via`; map compass 8 frames a cell; routes end at the level-end frame, no idle tail; seeds joystick only. |
 | T09 | route-repair | T08 | ⬜ | |
 | T10 | oracle-check | T02, T08, T09 | ⬜ | |
 | T11 | plan-command | T05, T10, T22 | ⬜ | |
@@ -50,7 +50,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T21 | engine-memory-lookup | T04 | ✅ | |
 | T22 | route-shorten | T08 | ⬜ | |
 
-**Review queue:** *(empty)*
+**Review queue:** T08
 
 ## Blocked on the user
 
