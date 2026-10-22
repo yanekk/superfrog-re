@@ -20,7 +20,7 @@ use std::borrow::Cow;
 use std::collections::BTreeMap;
 
 use crate::audio::AudioDriver;
-use crate::layout::{LAYOUT, MAP_ROW_CELLS, MAP_ROWS, Ram, VarId, def, h0, index_of};
+use crate::layout::{LAYOUT, MAP_ROW_CELLS, MAP_ROWS, Ram, VarId, def, index_of};
 use crate::rng::Rng;
 
 /// What the original keeps in memory, as far as the engine models it. A power-on state is all
@@ -153,33 +153,30 @@ impl State {
         self.vars[i].get_mut(at..at + len as usize)
     }
 
-    /// The sound driver's block covering `addr`: (its index, the offset in it).
-    fn audio_at(addr: u32) -> Option<(usize, usize)> {
-        crate::audio::vars::ALL
-            .iter()
-            .enumerate()
-            .find_map(|(k, &(off, len))| {
-                let o = addr.checked_sub(h0(off))? as usize;
-                (o < len).then_some((k, o))
-            })
-    }
-
     /// The byte at `addr`, when a variable covers it.
     pub fn byte(&self, addr: u32) -> Option<u8> {
         let addr = addr & 0xFF_FFFF;
-        self.raw(addr, 1).map(|b| b[0]).or_else(|| {
-            let (k, o) = State::audio_at(addr)?;
-            Some(self.audio.var_block(k)[o])
-        })
+        // One lookup per byte, the sound driver's blocks included (each is a LAYOUT entry of the
+        // same extent, as a test checks): this and `put` are most of what the engine does (T21).
+        let i = index_of(addr)?;
+        let at = (addr - LAYOUT[i].addr) as usize;
+        match self.vars[i].get(at) {
+            Some(&b) => Some(b),
+            None => Some(self.audio.var_block(audio_var(LAYOUT[i].id)?)[at]),
+        }
     }
 
     /// Write the byte at `addr` into the variable covering it; false when none does.
     fn put(&mut self, addr: u32, v: u8) -> bool {
-        if let Some(b) = self.raw_mut(addr, 1) {
-            b[0] = v;
-        } else if let Some((k, o)) = State::audio_at(addr) {
+        let Some(i) = index_of(addr) else {
+            return false;
+        };
+        let at = (addr - LAYOUT[i].addr) as usize;
+        if let Some(b) = self.vars[i].get_mut(at) {
+            *b = v;
+        } else if let Some(k) = audio_var(LAYOUT[i].id) {
             let mut block = self.audio.var_block(k);
-            block[o] = v;
+            block[at] = v;
             self.audio.set_var_block(k, &block);
         } else {
             return false;
@@ -354,7 +351,20 @@ impl State {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::layout::{AmigaMemory, SLOW_BASE};
+    use crate::layout::{AmigaMemory, SLOW_BASE, h0};
+
+    #[test]
+    fn each_sound_driver_block_is_the_layout_entry_byte_and_put_find_it_by() {
+        for (k, &(off, len)) in crate::audio::vars::ALL.iter().enumerate() {
+            let d = LAYOUT.iter().find(|d| audio_var(d.id) == Some(k)).unwrap();
+            assert_eq!((d.addr, d.width.len()), (h0(off), len as u32), "{}", d.name);
+        }
+        let mut s = State::default();
+        let d = def(VarId::AudioShadow);
+        s.write_byte(d.addr + 5, 0x5a);
+        assert_eq!(s.byte(d.addr + 5), Some(0x5a));
+        assert_eq!(s.audio.var_block(3)[5], 0x5a);
+    }
 
     fn memory_with_rng(bytes: [u8; 8]) -> AmigaMemory {
         let mut m = AmigaMemory {
