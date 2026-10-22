@@ -178,6 +178,78 @@ run wholly inside it is printed as known, not failed (`game-whole`'s 180 880–1
 `examples/channel_runs` lists every run past any length, `examples/channel_window` both sides'
 levels over a stretch.
 
+## Replaying a bug zip (bug-recorder T04)
+
+The procedure an agent follows with an owner's bug zip, these three commands in order, is
+[`docs/BUG-FIX.md`](../../docs/BUG-FIX.md).
+
+```sh
+cargo run -q --release -p sf-conform -- bug replay ../bugs/bug-W1-2-2026-10-20-1412.zip
+cargo run -q --release -p sf-conform -- bug replay <zip> --out /tmp/bug --frames 1200..1500 --every 5
+```
+
+A bug zip from the app (bug-recorder DESIGN §2.5) replayed headlessly: the level started as its
+`recording.txt` says (`Game::start_level`), one engine step per recorded input, unpaced, as the app
+played it. It writes `frame-NNNNNN.png` for the frames asked (`A..B`, B left out, every Nth from A;
+default the last 250) into `--out`, by default `~/.cache/superfrog-re/bugs/<zip stem>/`, never the
+repo (the pictures are disk-derived). Then one line each: `frames N`, `stopped-at <recorded>`,
+`replay-at <location>`, `screenshot equal|differs (P pixels)`. Exit 0 whatever the comparison says
+(a fixed engine is meant to differ); a zip it cannot read is refused with the reason, exit 2. The
+replay draws the 4:3 view. `sf_conform::bug` holds `read_zip` and `replay` for tests.
+
+## Comparing a bug zip with the original, and keeping it as a case (bug-recorder T05)
+
+```sh
+cargo run -q --release -p sf-conform -- bug compare ../bugs/<zip> [--out DIR]
+cargo run -q --release -p sf-conform -- --strict bug compare ../bugs/<zip>
+cargo run -q --release -p sf-conform -- bug case ../bugs/<zip> <name>
+```
+
+`compare` starts the original at the recording's level with its values (`SyncPoint::Setup`) and
+plays the recording's inputs on it, retimed onto the original's frames (bug-recorder DESIGN §2.9 as
+T00 amended it): step n's input on the original's next frame; through a load the engine did at
+once the original is held with nothing pressed until its load is over, its frames under a screen it
+times itself counted as the recording's steps; at each level's first frame and the slot machine's
+entry the early side waits. It is judged by the faithful checks (frame-exact with `--strict`) in
+legs of 8 of the original's passes: at each leg's start, at a pass end in a level, the engine is
+re-synced from the original, and a leg that differs ends at the next pass end.
+
+Under lag the original stops playing what the owner played (its frog, score, lives, hearts or
+level unlike the recording's at a pass end). There it is **put back on the recording** (T14): the
+recording's engine at that step, every `LAYOUT` variable, is written into the original's memory,
+a new leg begins, and check 4's engine goes on from the same state; so each leg judges whether the
+original, from the owner's state, does what the engine did. The CPU's place, its stack and the
+custom chips are not written; at a pass end both sides are in `level_frame_loop`'s wait, and on
+W1-1 played to W1-2 the original stays on the recording after one put-back (T14). Where it cannot
+be put back (it never reaches the recording's next level or slot machine, the engine loads and the
+original's load is never over, or the recording's engine stays mid-pass), the original **left the
+recording** for good: from there nothing is judged on the owner's game, and a load it never ends
+ends the run there instead of a panic.
+
+The first line is one of:
+
+- `same`: every leg same, the original on the recording to the end (put back where it left it);
+- `differs at frame F (engine step S): <what differs>` (F the original's frame, S the recording's
+  step fed there);
+- `same up to frame F (engine step S), not judged after it`: no leg differs, but the original
+  left the recording at F and could not be put back.
+
+Then how many times the original was put back and the first (`the original left the recording N
+times and was put back on it … first at frame F (engine step S): <what>`), whether it was on the
+recording to its end or where it left it for good and why, the legs, the lag and re-syncs, and the
+first divergence in full. It writes `original-stop.png` and `engine-stop.png`, both sides at STOP,
+to `--out`, by default the zip's folder (the git-ignored `bugs/`). Exit 0 same, 1 differs or not
+judged to the end, 2 refused.
+
+`case` writes `cases/<name>.toml` (`sync` in the level-setup form, `script = "<name>"`, the runner's
+`frames`, the owner's note and `stopped-at` on its first line) and `scripts/<name>.txt` (the
+retimed inputs, in the original's frames); where the original was put back, also
+`scripts/<name>-steps.txt` (the recording's inputs by engine step) and `put-back = { steps =
+"<name>-steps", at = [[N, S], …] }`: once the original has run N frames, the engine started by
+`Game::start_level` from the setup and stepped through the steps script to step S is written into
+it, and the runner's engine re-synced from it. It refuses a name any of the three files has. The
+case is run whole, not in legs: on a lagging level it may need a `lag-limit`.
+
 ## Which cases the test block runs (T181)
 
 Every case green under the faithful checks has a test in `crates/sf-conform/tests/`: those with
@@ -224,6 +296,7 @@ frames = 50                                         # frames compared, from the 
 compare = ["vars"]                                  # any of "vars", "picture", "paula" (sound), "render"; default all but render
 resync = false                                      # a re-sync after a lag fails the case (default true; see Pacing)
 lag-limit = { frames = 133, note = "why; the task" } # optional: this case's limit on frames in a row mid-pass (see Pacing)
+put-back = { steps = "bug-x-steps", at = [[1816, 1815]] } # a bug zip's case only (level-setup sync): see Comparing a bug zip
 ```
 
 `render` compares, each frame, the picture the renderer draws from the original's memory transplanted
@@ -264,6 +337,20 @@ Sync points:
   START GAME (`scripts/start-w1-1.txt`), any other level of W1–W6 and the bonus level (`"WB-1"`) by
   typing its level code on the options screen, the disks swapped as the game asks (docs/12
   "Reaching every level"). About 30 s the first time; cached after.
+- `sync = { level = "W1-1", lives = N }`: the first in-level frame as `{ level = "W1-1" }`, then
+  `frog_lives` (the spare lives, 0 to 99) set to N (T79).
+- `sync = { level = "W1-1", lives = 3, points = 0, energy = 4, difficulty = "normal", spud = false,
+  wings = false, seed = "1a2b3c4d 5e6f7a8b" }`: a level started with the Start Level dialog's values
+  (bug-recorder T03), as a bug recording's header names them. Here `lives` is the dialog's 3, 5 or 7,
+  not `frog_lives`: any of `points`, `energy`, `difficulty`, `spud`, `wings`, `seed` beside `level`
+  makes it this form, and then all eight keys are needed. The original is switched on (an empty df1
+  for W6-2..4), the options screen's LIVES and GAME MODE set and the level's code typed, every disk
+  it asks for put in (the final level by W6-4's code, its exit forced); at the level's first frame
+  the points, energy, spud and wings are written in, and from the engine's `Game::start_level` with
+  the same values and seed the random state and what the title's time and the loads' length leave
+  (`sync::SETUP_FROM_ENGINE`). The engine is that `start_level` itself, not a transplant, so the case
+  tests the app's own start. Every `LAYOUT` variable is then equal but `playfield_clean`
+  (`tests/recorder_setup_start.rs`). About 30 s the first time; cached after.
 - `sync = { slot = "<name>", start = "<name>" }`: the slot machine's first frame. W1-1 is reached
   by the `start` script (`start-w1-1` when left out; `start-w1-1-blink1` and `start-w1-1-late`
   START GAME later, so the RNG has moved 1 and 3 steps: it never moves in W1-1), the `slot`

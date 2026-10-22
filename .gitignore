@@ -12,6 +12,9 @@ renders/    # derived game-art PNGs — reproducible from build/ via the tools
 *.zip
 *.adf
 
+# Bug recordings the app saves (bug-recorder DESIGN §2.4, §2.5): their screenshot is disk-derived
+bugs/
+
 # Levels exported from the disks (.sflevel, DESIGN §2.10): disk data, never committed
 *.sflevel
 

@@ -18,6 +18,7 @@ pub mod items;
 pub mod layout;
 pub mod level;
 pub mod mem;
+pub mod recording;
 pub mod render;
 pub mod rng;
 pub mod savestate;

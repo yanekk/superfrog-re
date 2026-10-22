@@ -225,10 +225,16 @@ impl App {
         }
     }
 
-    /// Bring the app to the front, as a click on its window would.
+    /// Bring the app to the front, as a click on its window would. An app whose main thread is
+    /// busy (a level started from Start Level runs seconds unseen) cannot answer (`AXError
+    /// -25204`); it is asked again for up to 20 s.
     pub fn os_activate(&self) {
         let app = ax::app(self.os_pid());
-        ax::set_true(&app, "AXFrontmost").unwrap_or_else(|e| panic!("activating the app: {e}"));
+        let start = Instant::now();
+        while let Err(e) = ax::set_true(&app, "AXFrontmost") {
+            assert!(start.elapsed() < Duration::from_secs(20), "activating the app: {e}");
+            std::thread::sleep(Duration::from_millis(200));
+        }
     }
 
     /// Press and release `key`, posted to the app as the keyboard would.
@@ -278,14 +284,14 @@ impl App {
     /// The titles of the menu bar's menus, left to right.
     pub fn os_menu_bar(&self) -> Vec<String> {
         let app = ax::app(self.os_pid());
-        let bar = ax::attr(&app, "AXMenuBar").unwrap_or_else(|e| panic!("the app's menu bar: {e}"));
+        let bar = ax::menu_bar(&app);
         ax::children(&bar).iter().map(ax::title).collect()
     }
 
     /// The items of the menu at `path` (`["View", "Scale"]`), separators left out.
     pub fn os_menu_items(&self, path: &[&str]) -> Vec<MenuItemState> {
         let app = ax::app(self.os_pid());
-        let bar = ax::attr(&app, "AXMenuBar").unwrap_or_else(|e| panic!("the app's menu bar: {e}"));
+        let bar = ax::menu_bar(&app);
         let mut items = ax::children(&bar);
         for name in path {
             let titles: Vec<String> = items.iter().map(ax::title).collect();
@@ -363,7 +369,7 @@ impl App {
     pub fn os_menu(&mut self, path: &[&str]) {
         assert!(path.len() >= 2, "a menu path names a menu and an item");
         let app = ax::app(self.os_pid());
-        let bar = ax::attr(&app, "AXMenuBar").unwrap_or_else(|e| panic!("the app's menu bar: {e}"));
+        let bar = ax::menu_bar(&app);
         let mut items = ax::children(&bar);
         let mut walked = Vec::new();
         for (i, name) in path.iter().enumerate() {
@@ -426,6 +432,24 @@ impl App {
         }
     }
 
+    /// Click the close button of the app's window titled `title`, as a person would.
+    pub fn os_close_window(&mut self, title: &str) {
+        let windows = ax::windows(&ax::app(self.os_pid()));
+        let titles: Vec<String> = windows.iter().map(ax::title).collect();
+        let w = windows
+            .iter()
+            .find(|w| ax::title(w) == title)
+            .unwrap_or_else(|| panic!("no window {title:?}; there are {titles:?}"));
+        let close = ax::attr(w, "AXCloseButton").unwrap_or_else(|e| panic!("{title:?} has no close button: {e}"));
+        // A close that asks first ("Recording in progress") runs its alert inside the press, so
+        // the press outlives the Accessibility API's wait and says it could not complete
+        // (`AXError -25204`) though it was delivered; the caller waits for what it opens.
+        match ax::press(&close) {
+            Err(e) if !e.ends_with("AXError -25204") => panic!("closing {title:?}: {e}"),
+            _ => {}
+        }
+    }
+
     /// The element whose accessibility identifier is `id`, in one of the app's windows, waiting up
     /// to 20 s for it to appear, handed to `f`.
     fn os_with_id<T>(&self, id: &str, mut f: impl FnMut(&ax::Cf) -> T) -> T {
@@ -460,6 +484,85 @@ impl App {
             let v = ax::text(e, "AXValue");
             if v.is_empty() { ax::title(e) } else { v }
         })
+    }
+
+    /// Where the element with accessibility identifier `id` is on screen, in points, top-left
+    /// origin, as the window server's bounds are: `[x, y, w, h]`.
+    pub fn os_frame_id(&self, id: &str) -> [f64; 4] {
+        self.os_with_id(id, ax::frame).unwrap_or_else(|e| panic!("the frame of {id:?}: {e}"))
+    }
+
+    /// Does the element with accessibility identifier `id` show? `false` once it is gone or
+    /// hidden (a hidden view leaves the accessibility tree), checked once, without waiting.
+    pub fn os_shows_id(&self, id: &str) -> bool {
+        let mut found = false;
+        for w in ax::windows(&ax::app(self.os_pid())) {
+            ax::walk(&w, 12, &mut |e| found |= ax::text(e, "AXIdentifier") == id);
+        }
+        found
+    }
+
+    /// Whether the control with accessibility identifier `id` is enabled.
+    pub fn os_enabled_id(&self, id: &str) -> bool {
+        self.os_with_id(id, |e| ax::flag(e, "AXEnabled"))
+    }
+
+    /// Whether the checkbox with accessibility identifier `id` is ticked.
+    pub fn os_checked_id(&self, id: &str) -> bool {
+        self.os_with_id(id, |e| ax::number(e, "AXValue")) == Some(1)
+    }
+
+    /// Give the keyboard to the element with accessibility identifier `id` (a text field), as a
+    /// click into it would.
+    pub fn os_focus_id(&mut self, id: &str) {
+        self.os_with_id(id, |e| ax::set_true(e, "AXFocused")).unwrap_or_else(|e| panic!("focusing {id:?}: {e}"));
+    }
+
+    /// The items of the dropdown with accessibility identifier `id`, top to bottom. Its menu is
+    /// opened to read them, as a person would, and closed again with Esc.
+    pub fn os_popup_titles(&mut self, id: &str) -> Vec<String> {
+        let titles = self.os_with_open_popup(id, |items| items.iter().map(ax::title).collect());
+        self.os_key(Key::Escape);
+        std::thread::sleep(Duration::from_millis(200));
+        titles
+    }
+
+    /// Choose `title` in the dropdown with accessibility identifier `id`: its menu opened, the
+    /// item clicked.
+    pub fn os_choose_id(&mut self, id: &str, title: &str) {
+        let r = self.os_with_open_popup(id, |items| {
+            let item = items.iter().find(|i| ax::title(i) == title).map(ax::press);
+            item.unwrap_or_else(|| Err(format!("no item {title:?}")))
+        });
+        r.unwrap_or_else(|e| panic!("choosing {title:?} in {id:?}: {e}"));
+        std::thread::sleep(Duration::from_millis(200));
+    }
+
+    /// The dropdown's menu items, its menu open, handed to `f`. A press made just as another
+    /// menu closes can open nothing, so the dropdown is pressed again each second until it opens.
+    fn os_with_open_popup<T>(&mut self, id: &str, mut f: impl FnMut(&[ax::Cf]) -> T) -> T {
+        let start = Instant::now();
+        let mut pressed: Option<Instant> = None;
+        loop {
+            if pressed.is_none_or(|t| t.elapsed() > Duration::from_secs(1)) {
+                self.os_with_id(id, ax::press).unwrap_or_else(|e| panic!("opening {id:?}: {e}"));
+                pressed = Some(Instant::now());
+            }
+            std::thread::sleep(Duration::from_millis(100));
+            let found = self.os_with_id(id, |e| {
+                let mut items = Vec::new();
+                ax::walk_owned(e, 3, &mut |c| {
+                    if ax::text(&c, "AXRole") == "AXMenuItem" {
+                        items.push(c);
+                    }
+                });
+                (!items.is_empty()).then(|| f(&items))
+            });
+            if let Some(r) = found {
+                return r;
+            }
+            assert!(start.elapsed() < Duration::from_secs(20), "{id:?}'s menu did not open within 20 s");
+        }
     }
 
     /// The window as the screen shows it, title bar included, at the display's pixel density.
@@ -501,6 +604,7 @@ impl App {
 /// needs only the Accessibility grant (System Events needs an Automation grant as well).
 mod ax {
     use std::ffi::{CString, c_char, c_void};
+    use std::time::{Duration, Instant};
 
     type CFRef = *const c_void;
 
@@ -510,6 +614,7 @@ mod ax {
         fn AXUIElementCopyAttributeValue(e: CFRef, attr: CFRef, out: *mut CFRef) -> i32;
         fn AXUIElementSetAttributeValue(e: CFRef, attr: CFRef, value: CFRef) -> i32;
         fn AXUIElementPerformAction(e: CFRef, action: CFRef) -> i32;
+        fn AXValueGetValue(value: CFRef, kind: u32, out: *mut c_void) -> bool;
     }
 
     #[link(name = "CoreFoundation", kind = "framework")]
@@ -521,6 +626,8 @@ mod ax {
         fn CFGetTypeID(r: CFRef) -> usize;
         fn CFStringGetTypeID() -> usize;
         fn CFArrayGetTypeID() -> usize;
+        fn CFNumberGetTypeID() -> usize;
+        fn CFNumberGetValue(n: CFRef, kind: isize, out: *mut c_void) -> bool;
         fn CFArrayGetCount(a: CFRef) -> isize;
         fn CFArrayGetValueAtIndex(a: CFRef, i: isize) -> CFRef;
         fn CFRetain(r: CFRef) -> CFRef;
@@ -558,6 +665,23 @@ mod ax {
             return Err(format!("{name}: AXError {err}"));
         }
         Ok(Cf(out))
+    }
+
+    /// The app's menu bar. An app whose main thread is busy (a level started from Start Level
+    /// runs seconds unseen) cannot answer (`AXError -25204`); it is asked again for up to 20 s,
+    /// as [`App::os_activate`] does (bug-recorder T11: three save-window tests read the menu
+    /// while the level started).
+    pub fn menu_bar(app: &Cf) -> Cf {
+        let start = Instant::now();
+        loop {
+            match attr(app, "AXMenuBar") {
+                Ok(bar) => return bar,
+                Err(e) if e.ends_with("AXError -25204") && start.elapsed() < Duration::from_secs(20) => {
+                    std::thread::sleep(Duration::from_millis(200));
+                }
+                Err(e) => panic!("the app's menu bar: {e}"),
+            }
+        }
     }
 
     pub fn set_true(e: &Cf, name: &str) -> Result<(), String> {
@@ -611,6 +735,44 @@ mod ax {
         }
     }
 
+    /// `AXPosition` and `AXSize`: `[x, y, w, h]` in points, top-left origin.
+    pub fn frame(e: &Cf) -> Result<[f64; 4], String> {
+        // `kAXValueCGPointType`, `kAXValueCGSizeType`: two doubles each.
+        let pair = |name: &str, kind: u32| -> Result<[f64; 2], String> {
+            let v = attr(e, name)?;
+            let mut out = [0f64; 2];
+            // SAFETY: an AXValue of `kind`, which holds two CGFloats, read into two f64s.
+            match unsafe { AXValueGetValue(v.0, kind, out.as_mut_ptr().cast()) } {
+                true => Ok(out),
+                false => Err(format!("{name} is not a point or a size")),
+            }
+        };
+        let [x, y] = pair("AXPosition", 1)?;
+        let [w, h] = pair("AXSize", 2)?;
+        Ok([x, y, w, h])
+    }
+
+    /// `f` on everything under `e`, `depth` levels down, each handed over owned.
+    pub fn walk_owned(e: &Cf, depth: u32, f: &mut dyn FnMut(Cf)) {
+        if depth > 0 {
+            for c in children(e) {
+                walk_owned(&c, depth - 1, f);
+                f(c);
+            }
+        }
+    }
+
+    /// A number attribute (a checkbox's value), `None` when there is none.
+    pub fn number(e: &Cf, name: &str) -> Option<i64> {
+        let v = attr(e, name).ok()?;
+        let mut n: i64 = 0;
+        // SAFETY: type-checked; `kCFNumberSInt64Type` (4) into an i64.
+        unsafe {
+            (CFGetTypeID(v.0) == CFNumberGetTypeID() && CFNumberGetValue(v.0, 4, (&mut n as *mut i64).cast()))
+                .then_some(n)
+        }
+    }
+
     /// A boolean attribute, `false` when there is none.
     pub fn flag(e: &Cf, name: &str) -> bool {
         let Ok(v) = attr(e, name) else { return false };
@@ -651,4 +813,3 @@ mod tests {
         );
     }
 }
-

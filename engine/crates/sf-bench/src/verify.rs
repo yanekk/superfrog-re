@@ -1,11 +1,20 @@
 //! What counts as a completed route (DESIGN §4.1, D9): a case built from the route passes
 //! `sf_conform::run`, the faithful check the completion cases pass, and the original's milestones
 //! include the level's exit. Its length and the hearts it lost are read off the original replaying
-//! it.
+//! it. Set C has no original (T12): the route replays on the engine from the app's Start Level
+//! start to the exit with no life lost, and the real app, started the same way by its script layer
+//! and fed the route as key presses, keeps the engine's state on every frame to the exit.
+
+use std::path::{Path, PathBuf};
+use std::process::{Command, Stdio};
+use std::time::Duration;
 
 use sf_conform::{Case, InputScript, Milestone, SyncPoint, sync};
-use sf_core::LevelId;
+use sf_core::frog::{FROG, f};
+use sf_core::input::Joy;
 use sf_core::layout::h0;
+use sf_core::recording::LevelSetup;
+use sf_core::{Game, LevelId, Rng};
 
 use crate::sets::{Set, Start, StartKind};
 
@@ -94,14 +103,13 @@ pub fn case(set: Set, s: &Start, script: &InputScript) -> Result<Case, String> {
     Ok(case)
 }
 
-/// Whether `script` from `s` completes the level (§4.1).
-pub fn verify(set: Set, s: &Start, script: &InputScript) -> Verdict {
-    if set == Set::C {
-        // Set C is checked on the engine from `start_level` and in the real app (§4.1), which
-        // needs `Game::start_level` (D3): T12.
-        return Verdict::failed("set C verification is not built yet (T12)");
-    }
-    let run = std::panic::catch_unwind(|| verify_inner(set, s, script));
+/// Whether `script` from `s` completes the level (§4.1). `seed` is the run's: set C's start is the
+/// app's under power-on seed `seed seed`, as `sf-plan --app --seed` planned it.
+pub fn verify(set: Set, s: &Start, script: &InputScript, seed: u32) -> Verdict {
+    let run = std::panic::catch_unwind(|| match set {
+        Set::C => verify_app(s.level, seed, script, AppCheck::RealApp),
+        _ => verify_inner(set, s, script),
+    });
     run.unwrap_or_else(|p| {
         let why = p
             .downcast_ref::<String>()
@@ -188,4 +196,191 @@ pub fn ref_frames(set: Set, s: &Start) -> Option<u32> {
         .ok()?
         .ok()?
         .0
+}
+
+/// Set C's start (DESIGN §2.1 `--app`): the level's first frame as the app's `start-level <level>`
+/// script line makes it, the Start Level dialog's defaults under power-on seed `seed seed` (sf-app
+/// `menu.rs`). Built here and not taken from `sf-plan`, so the benchmark never links what it
+/// measures.
+pub fn app_start(level: LevelId, seed: u32) -> Game {
+    let setup = LevelSetup {
+        level,
+        ..Default::default()
+    };
+    Game::start_level(sf_conform::display_data(), &setup, Rng::seeded(seed, seed))
+}
+
+/// A route played on the engine from [`app_start`].
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct AppReplay {
+    /// Frames to the end of the one `level_state` first left −2 on; `None` if it never did.
+    pub exit: Option<u32>,
+    pub lives_lost: u32,
+    pub hearts_lost: u32,
+    /// The state hash after each step to the exit (`sf_core::feed::frame_hashes`' second), what
+    /// the app's `--capture-hashes` writes for its frames 1 on.
+    pub states: Vec<u64>,
+}
+
+/// `script` from `level`'s app start, `frames` frames at most, stepped as the app steps it.
+pub fn engine_app(level: LevelId, seed: u32, script: &InputScript, frames: u32) -> AppReplay {
+    let mut g = app_start(level, seed);
+    let word = |g: &Game, at: u32| g.state().w(at);
+    let (mut lives, mut hearts) = (word(&g, FROG + f::LIVES), word(&g, HEARTS));
+    let mut r = AppReplay {
+        exit: None,
+        lives_lost: 0,
+        hearts_lost: 0,
+        states: Vec::new(),
+    };
+    for k in 0..frames {
+        g.step(script.input_at(k));
+        r.states.push(sf_core::feed::frame_hashes(&g, &g.render(g.view())).1);
+        let (l, h) = (word(&g, FROG + f::LIVES), word(&g, HEARTS));
+        r.lives_lost += lives.saturating_sub(l) as u32;
+        r.hearts_lost += hearts.saturating_sub(h) as u32;
+        (lives, hearts) = (l, h);
+        if k >= SETTLE && g.state().l(LEVEL_STATE) != 0xffff_fffe {
+            r.exit = Some(k + 1);
+            break;
+        }
+    }
+    r
+}
+
+/// The host keys that hold each joystick bit (sf-app `input.rs`'s defaults).
+const KEYS: [(Joy, &str); 5] = [
+    (Joy::UP, "ArrowUp"),
+    (Joy::DOWN, "ArrowDown"),
+    (Joy::LEFT, "ArrowLeft"),
+    (Joy::RIGHT, "ArrowRight"),
+    (Joy::FIRE, "Space"),
+];
+
+/// The app's script (sf-app `script.rs`) that plays `frames` frames of `script` as a person
+/// would: power-on seed `seed seed`, Game ▸ Start Level… with the dialog's defaults at step 1, and
+/// each joystick change a key going down or up. The route's frame `i` is the app's step `i + 1`
+/// (a line at `N:` lands before step N), so the app's frame `i + 1` is the engine's after `i + 1`
+/// steps (bug-recorder T11's `key_lines`).
+pub fn app_script(level: LevelId, seed: u32, script: &InputScript, frames: u32) -> String {
+    let mut s = format!("seed {seed} {seed}\n1: start-level {level}\n");
+    let mut held = Joy::NONE;
+    for i in 0..frames {
+        let joy = script.input_at(i).joy;
+        for (bit, key) in KEYS {
+            let (was, now) = (held.0 & bit.0 != 0, joy.0 & bit.0 != 0);
+            if was != now {
+                s += &format!("{}: {} {key}\n", i + 1, if now { "down" } else { "up" });
+            }
+        }
+        held = joy;
+    }
+    s
+}
+
+/// Whether the real app's frames 1..=`states.len()` have the engine's state hashes: `None`, or the
+/// first frame they part at and why.
+pub fn app_parts(hashes_txt: &str, states: &[u64]) -> Option<String> {
+    let app = match sf_core::feed::parse_hashes(hashes_txt) {
+        Ok(h) => h,
+        Err(e) => return Some(format!("the app's hashes: {e}")),
+    };
+    for (k, want) in states.iter().enumerate() {
+        match app.get(k + 1) {
+            None => return Some(format!("the app stopped at frame {} of {}", app.len().saturating_sub(1), states.len())),
+            Some((_, got)) if got != want => return Some(format!("the app parts from the engine at frame {}", k + 1)),
+            _ => {}
+        }
+    }
+    None
+}
+
+/// How far set C's check goes.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum AppCheck {
+    /// The engine replay alone (the test block's half; no window).
+    Engine,
+    /// The engine replay, then the real app (§4.1).
+    RealApp,
+}
+
+/// Set C (§4.1): the engine from the app start to the exit with no life lost, then (with
+/// `RealApp`) the real app played the route by its script layer, its state the engine's on every
+/// frame to the exit.
+pub fn verify_app(level: LevelId, seed: u32, script: &InputScript, check: AppCheck) -> Verdict {
+    let frames = script.lines.last().map_or(0, |l| l.0) + TAIL;
+    let r = engine_app(level, seed, script, frames);
+    let mut v = Verdict {
+        completed: false,
+        route_frames: r.exit,
+        hearts_lost: r.hearts_lost,
+        reason: String::new(),
+    };
+    if r.exit.is_none() {
+        v.reason = "no exit on the engine from the app start".into();
+    } else if r.lives_lost > 0 {
+        v.reason = format!("{} lives lost on the engine from the app start", r.lives_lost);
+    } else if check == AppCheck::RealApp
+        && let Err(why) = real_app(level, seed, script, &r.states)
+    {
+        v.reason = why;
+    } else {
+        v.completed = true;
+    }
+    v
+}
+
+/// The real app (`superfrog`, release) played `script` in a fresh home for as many frames as the
+/// engine's `states`, its frame hashes compared with them: `Err` with why it parts.
+fn real_app(level: LevelId, seed: u32, script: &InputScript, states: &[u64]) -> Result<(), String> {
+    let frames = states.len() as u32;
+    let bin = crate::adapters::build(&[("sf-app", "bin", "superfrog")])?;
+    let home = scratch_home();
+    let out = run_app(&bin[0], &home, &app_script(level, seed, script, frames), frames as u64 + 1);
+    let parted = out.and_then(|hashes| app_parts(&hashes, states).map_or(Ok(()), Err));
+    let _ = std::fs::remove_dir_all(&home);
+    parted
+}
+
+/// A fresh home for one app run, under the temp folder.
+fn scratch_home() -> PathBuf {
+    static N: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(0);
+    let n = N.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+    let home = std::env::temp_dir().join(format!("sf-bench-app-{}-{n}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&home);
+    home
+}
+
+/// `superfrog` in `home` importing the owner's disks, then running `script` for `frames` frames
+/// at 1× with each frame's hashes captured: `hashes.txt`. In its own process group, bounded by
+/// its `--timeout` and the benchmark's guard (DESIGN §5.2).
+fn run_app(bin: &Path, home: &Path, script: &str, frames: u64) -> Result<String, String> {
+    let disks = sf_conform::disks::disk_dir()?;
+    std::fs::create_dir_all(home).map_err(|e| format!("{}: {e}", home.display()))?;
+    let (script_path, capture) = (home.join("route.script"), home.join("capture"));
+    std::fs::write(&script_path, script).map_err(|e| format!("{}: {e}", script_path.display()))?;
+    // The app runs at the PAL rate (50 frames a second), after an import of a few seconds.
+    let timeout = 120 + frames / 25;
+    let mut cmd = Command::new(bin);
+    cmd.arg("--home")
+        .arg(home)
+        .arg("--cache-from-disks")
+        .arg(&disks)
+        .arg("--script")
+        .arg(&script_path)
+        .arg("--capture")
+        .arg(&capture)
+        .arg("--capture-hashes")
+        .args(["--max-frames", &frames.to_string(), "--timeout", &timeout.to_string(), "--scale", "1"])
+        .env_remove("SUPERFROG_HOME")
+        .stdin(Stdio::null())
+        .stdout(Stdio::null())
+        .stderr(std::fs::File::create(home.join("app.stderr")).map_err(|e| e.to_string())?);
+    let run = crate::child::run(cmd, Duration::from_secs(timeout + 30), None)?;
+    let stderr = std::fs::read_to_string(home.join("app.stderr")).unwrap_or_default();
+    if run.timed_out || !run.status.is_some_and(|s| s.success()) {
+        let last = stderr.lines().last().unwrap_or("");
+        return Err(format!("the app did not finish ({:?}): {last}", run.status));
+    }
+    std::fs::read_to_string(capture.join("hashes.txt")).map_err(|e| format!("the app's hashes: {e}"))
 }

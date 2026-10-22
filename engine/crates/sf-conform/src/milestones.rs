@@ -13,45 +13,14 @@
 
 use std::fmt;
 
-use sf_core::layout::{MAP_ROW_CELLS, VarId, def, h2};
+use sf_core::layout::{MAP_ROW_CELLS, VarId, def};
 
 /// How far apart, in frames of play, two sides' milestones may be (the owner's bar, DESIGN §2.1:
 /// never changed in code to make a case green).
 pub const MILESTONE_FRAMES: u64 = 10;
 
-/// A screen of the game, as its copper list (and, in a level, what plays there) says.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum SceneKind {
-    /// The story intro on disk 3 (its own program and memory map).
-    Story,
-    /// The title and its menus (`TITLE_COPPER`, h2+$7158).
-    Title,
-    /// The attract screens' award pages (h2+$6110) and hall of talent (h2+$6ff0).
-    Awards,
-    HallOfTalent,
-    /// The attract demo: a level played by its recording (`attract_mode` set).
-    AttractDemo,
-    /// A level started, by the original's `world` and `level` numbers (the bonus level is world
-    /// 7, [`SceneKind::BonusLevel`]).
-    Level {
-        world: u16,
-        level: u16,
-    },
-    BonusLevel {
-        level: u16,
-    },
-    /// The last life lost: `game_over_seq` runs in the level it was lost in.
-    GameOver,
-    /// The level-complete tally (h2+$6268).
-    Tally,
-    /// The slot machine (h2+$65e4).
-    SlotMachine,
-    /// The end sequence (h2+$5efc).
-    EndSequence,
-    /// A screen with a copper list not named above (a world's pictures, the progress map, until
-    /// the engine shows them): its address.
-    Other(u32),
-}
+/// A screen of the game: the classifier is sf-core's, shared with the app's bug recorder.
+pub use sf_core::scene::SceneKind;
 
 /// One moment of play (DESIGN §2.1 check 4).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -154,16 +123,6 @@ pub struct FrameState {
     pub mid_pass: bool,
 }
 
-/// The copper lists that name a screen (docs/12, docs/13).
-const TITLE_COPPER: u32 = h2(0x7158);
-const AWARD_COPPER: u32 = h2(0x6110);
-const HALL_COPPER: u32 = h2(0x6ff0);
-const TALLY_COPPER: u32 = h2(0x6268);
-const SLOT_COPPER: u32 = h2(0x65e4);
-const END_COPPER: u32 = h2(0x5efc);
-/// The black list screens fade through.
-const BLANK_COPPER: u32 = h2(0x6fd8);
-
 /// `obj_slots`: 20 slots of `$7c` bytes (docs/09).
 const SLOTS: usize = 20;
 const SLOT_SIZE: usize = 0x7c;
@@ -208,28 +167,14 @@ impl FrameState {
 
     /// The screen this frame is on; `None` when it does not say (the blank list, no list).
     pub fn scene(&self) -> Option<SceneKind> {
-        if self.story {
-            return Some(SceneKind::Story);
-        }
-        Some(match self.cop1lc? {
-            sf_core::render::LEVEL_COPPER if self.attract => SceneKind::AttractDemo,
-            sf_core::render::LEVEL_COPPER if (self.lives as i16) < 0 => SceneKind::GameOver,
-            sf_core::render::LEVEL_COPPER if self.world == 7 => {
-                SceneKind::BonusLevel { level: self.level }
-            }
-            sf_core::render::LEVEL_COPPER => SceneKind::Level {
-                world: self.world,
-                level: self.level,
-            },
-            TITLE_COPPER => SceneKind::Title,
-            AWARD_COPPER => SceneKind::Awards,
-            HALL_COPPER => SceneKind::HallOfTalent,
-            TALLY_COPPER => SceneKind::Tally,
-            SLOT_COPPER => SceneKind::SlotMachine,
-            END_COPPER => SceneKind::EndSequence,
-            BLANK_COPPER => return None,
-            other => SceneKind::Other(other),
-        })
+        SceneKind::classify(
+            self.story,
+            self.cop1lc,
+            self.attract,
+            self.lives,
+            self.world,
+            self.level,
+        )
     }
 
     /// In a level's play, with its map and objects live (`logic_running`, not the demo).
@@ -552,7 +497,8 @@ pub fn judge(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use sf_core::layout::LEVEL_MAP_BYTES;
+    use sf_core::layout::{LEVEL_MAP_BYTES, h2};
+    use sf_core::scene::{BLANK_COPPER, TALLY_COPPER};
 
     fn coins(n: u16) -> (u64, Milestone) {
         (0, Milestone::CoinTaken { left: n })

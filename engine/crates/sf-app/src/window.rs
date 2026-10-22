@@ -5,6 +5,10 @@
 //! Sizes are in the surface's pixels. On a Retina display a point is two of them, so `Scale::N(n)`
 //! is `2n` pixels a game pixel there, and `Auto` may land on an odd number of pixels: still a whole
 //! number, so every game pixel is the same solid square and nothing is smeared.
+//!
+//! While a bug recording runs, the recording bar (`recording_bar.rs`) sits under the picture
+//! (bug-recorder DESIGN §2.3): the window is [`BAR_HEIGHT`] points taller and the picture is placed
+//! in the surface above the bar, [`picture_area`], so its size and scale stay as they were.
 
 use sf_core::View;
 use winit::dpi::LogicalSize;
@@ -37,23 +41,41 @@ pub fn frame(widescreen: bool) -> (u32, u32) {
     (GAME.0 + 2 * view(widescreen).extra_columns_each_side as u32, GAME.1)
 }
 
-/// The window's inner size at `n` × the game: `Scale::N(n)`, 2× for `Auto`.
-pub fn initial_size(scale: Scale, widescreen: bool) -> LogicalSize<u32> {
+/// The recording bar's height in points: the prototype's 34, room for a regular push button and
+/// 13-point labels.
+pub const BAR_HEIGHT: u32 = 34;
+
+/// Points under the picture: the bar's height while it shows.
+fn bar_points(bar: bool) -> u32 {
+    if bar { BAR_HEIGHT } else { 0 }
+}
+
+/// The window's inner size at `n` × the game: `Scale::N(n)`, 2× for `Auto`; the bar's height
+/// more when it shows.
+pub fn initial_size(scale: Scale, widescreen: bool, bar: bool) -> LogicalSize<u32> {
     let n = match scale {
         Scale::Auto => 2,
         Scale::N(n) => n,
     };
     let (w, h) = frame(widescreen);
-    LogicalSize::new(w * n, h * n)
+    LogicalSize::new(w * n, h * n + bar_points(bar))
 }
 
-/// The smallest the window may be made: 1×.
-pub fn min_size(widescreen: bool) -> LogicalSize<u32> {
+/// The smallest the window may be made: 1×, and the bar when it shows.
+pub fn min_size(widescreen: bool, bar: bool) -> LogicalSize<u32> {
     let (w, h) = frame(widescreen);
-    LogicalSize::new(w, h)
+    LogicalSize::new(w, h + bar_points(bar))
 }
 
-/// Surface pixels a game pixel, for a `frame` drawn on a `surface` of that many pixels at
+/// The part of a `surface` (pixels, at `scale_factor` pixels a point) the picture is placed in:
+/// all of it, or the part above the bar when it shows. The bar is at the bottom, so the area's
+/// origin is the surface's.
+pub fn picture_area(surface: (u32, u32), scale_factor: f64, bar: bool) -> (u32, u32) {
+    let bar = (bar_points(bar) as f64 * scale_factor).round() as u32;
+    (surface.0, surface.1.saturating_sub(bar))
+}
+
+/// Surface pixels a game pixel, for a `frame` drawn on a `surface` (a [`picture_area`]) of that many pixels at
 /// `scale_factor` pixels a point: the setting's multiple, or the largest that fits when the
 /// surface is smaller; never below 1.
 pub fn picture_scale(surface: (u32, u32), frame: (u32, u32), scale: Scale, scale_factor: f64) -> u32 {
@@ -69,7 +91,8 @@ pub fn effective(scale: Scale, fullscreen: bool) -> Scale {
     if fullscreen { Scale::Auto } else { scale }
 }
 
-/// The picture's place on the surface at `s` pixels a game pixel, centred: `(x, y, w, h)`.
+/// The picture's place on the surface at `s` pixels a game pixel, centred in its `surface` (a
+/// [`picture_area`]): `(x, y, w, h)`.
 pub fn viewport(surface: (u32, u32), frame: (u32, u32), s: u32) -> (u32, u32, u32, u32) {
     let (w, h) = (frame.0 * s, frame.1 * s);
     (surface.0.saturating_sub(w) / 2, surface.1.saturating_sub(h) / 2, w, h)
@@ -125,9 +148,9 @@ mod tests {
 
     #[test]
     fn the_window_opens_at_its_scale_and_never_goes_below_1x() {
-        assert_eq!(initial_size(Scale::N(3), false), LogicalSize::new(1002, 783));
-        assert_eq!(initial_size(Scale::Auto, false), LogicalSize::new(668, 522));
-        assert_eq!(min_size(false), LogicalSize::new(334, 261));
+        assert_eq!(initial_size(Scale::N(3), false, false), LogicalSize::new(1002, 783));
+        assert_eq!(initial_size(Scale::Auto, false, false), LogicalSize::new(668, 522));
+        assert_eq!(min_size(false, false), LogicalSize::new(334, 261));
     }
 
     /// T210: a window sized for the title showed a level at `n − 1`.
@@ -137,7 +160,7 @@ mod tests {
             let n_cols = view(wide).extra_columns_each_side as u32;
             for n in 1..=4 {
                 for sf in [1.0, 2.0] {
-                    let size = initial_size(Scale::N(n), wide);
+                    let size = initial_size(Scale::N(n), wide, false);
                     let surface = ((size.width as f64 * sf) as u32, (size.height as f64 * sf) as u32);
                     for (w, h) in [GAME, TITLE, (320, 106), (320, 200)] {
                         let frame = (w + 2 * n_cols, h);
@@ -156,10 +179,49 @@ mod tests {
         assert_eq!(view(false), View::default());
         assert_eq!(view(true).extra_columns_each_side, 65);
         assert_eq!(frame(true), (464, 261));
-        assert_eq!(initial_size(Scale::N(2), true), LogicalSize::new(928, 522));
-        assert_eq!(min_size(true), LogicalSize::new(464, 261));
+        assert_eq!(initial_size(Scale::N(2), true, false), LogicalSize::new(928, 522));
+        assert_eq!(min_size(true, false), LogicalSize::new(464, 261));
         // 16:9 to within a column at every whole scale.
         let (w, h) = frame(true);
         assert!((w as f64 / h as f64 - 16.0 / 9.0).abs() < 1.0 / h as f64 * 2.0);
+    }
+
+    /// bug-recorder T09: the bar adds its height under the picture, and the picture keeps the
+    /// scale and size it had without it, at every scale, widescreen or not, 1 or 2 pixels a point.
+    #[test]
+    fn the_bar_adds_its_height_and_the_picture_keeps_its_scale_and_place() {
+        assert_eq!(initial_size(Scale::N(2), false, true), LogicalSize::new(668, 522 + BAR_HEIGHT));
+        assert_eq!(min_size(false, true), LogicalSize::new(334, 261 + BAR_HEIGHT));
+        assert_eq!(min_size(true, true), LogicalSize::new(464, 261 + BAR_HEIGHT));
+        assert_eq!(picture_area((668, 600), 1.0, false), (668, 600));
+        assert_eq!(picture_area((668, 600), 1.0, true), (668, 600 - BAR_HEIGHT));
+        assert_eq!(picture_area((1336, 1200), 2.0, true), (1336, 1200 - 2 * BAR_HEIGHT));
+        assert_eq!(picture_area((10, 10), 1.0, true), (10, 0), "never below nothing");
+        for wide in [false, true] {
+            for n in 1..=4 {
+                for sf in [1.0, 2.0] {
+                    let px = |l: LogicalSize<u32>| ((l.width as f64 * sf) as u32, (l.height as f64 * sf) as u32);
+                    let plain = px(initial_size(Scale::N(n), wide, false));
+                    let barred = px(initial_size(Scale::N(n), wide, true));
+                    let f = frame(wide);
+                    for scale in [Scale::N(n), Scale::Auto] {
+                        let s0 = picture_scale(plain, f, scale, sf);
+                        let area = picture_area(barred, sf, true);
+                        let s1 = picture_scale(area, f, scale, sf);
+                        assert_eq!(s1, s0, "{n}× {scale:?} (wide {wide}, {sf} px/pt)");
+                        assert_eq!(viewport(area, f, s1), viewport(plain, f, s0), "the same place");
+                        let (_, y, _, h) = viewport(area, f, s1);
+                        assert!(y + h <= area.1, "nothing under the bar");
+                    }
+                }
+            }
+        }
+        // Fullscreen on a 16-inch Retina display: the largest whole scale above the bar.
+        let area = picture_area((3456, 2234), 2.0, true);
+        assert_eq!(picture_scale(area, GAME, Scale::Auto, 2.0), 8, "2166 / 261 is still 8");
+        // A 1680×1050 display: 1050 lines fit 4×, the 1016 above the bar only 3×.
+        let area = picture_area((1680, 1050), 1.0, true);
+        assert_eq!(picture_scale((1680, 1050), GAME, Scale::Auto, 1.0), 4);
+        assert_eq!(picture_scale(area, GAME, Scale::Auto, 1.0), 3, "the bar costs this display a scale");
     }
 }
