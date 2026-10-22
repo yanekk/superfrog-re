@@ -17,7 +17,7 @@ use sf_core::input::{FrameInput, Joy};
 use sf_core::layout::h0;
 use sf_core::{Game, State};
 
-use super::archive::{Archive, COINS_LEFT, CellKey, HEARTS, Offer, cell_key};
+use super::archive::{Archive, COINS_LEFT, CellKey, HEARTS, Offer, cell_key, coin_dist};
 use super::facts::{Cell, Facts, frog_cell};
 use super::graph::{MoveMap, shortest};
 use super::guide::{GuideIndex, GuidePoint};
@@ -169,6 +169,7 @@ struct Held {
     key: CellKey,
     hearts: u16,
     coins_left: u16,
+    coin_dist: f64,
     game: Option<Game>,
 }
 
@@ -416,7 +417,9 @@ impl Explorer {
             found: None,
         };
         let d = ex.dist(&key);
-        ex.archive.entries_mut()[0].dist = d;
+        let c = coin_dist(&ex.facts, start.state());
+        let e = &mut ex.archive.entries_mut()[0];
+        (e.dist, e.coin_dist) = (d, c);
         if let Some(seed) = ex.opt.seed_inputs.take() {
             ex.seed_from(&start, &seed);
         }
@@ -454,6 +457,7 @@ impl Explorer {
                 key,
                 hearts,
                 coins_left: st.w(COINS_LEFT),
+                coin_dist: coin_dist(&self.facts, st),
                 base,
                 inputs: &since[from..],
                 game: want.then(|| g.clone()),
@@ -565,6 +569,9 @@ impl Explorer {
                 let toward = match self.opt.goal {
                     _ if !done => pull(e.dist),
                     Goal::Exit if k.band == 0 => pull(e.dist),
+                    // On the last 8 coins (each its own band), toward the nearest coin left: a
+                    // deviation from DESIGN §2.4 (owner, 2026-10-22), see `archive::band`.
+                    Goal::Exit if k.band <= 8 => pull(e.coin_dist),
                     Goal::Key { key, .. } if k.band == key.band => pull(e.dist),
                     _ => 1.0,
                 };
@@ -690,6 +697,7 @@ impl Explorer {
                     key,
                     hearts,
                     coins_left: st.w(COINS_LEFT),
+                    coin_dist: coin_dist(&self.facts, st),
                     game,
                 });
             }
@@ -722,6 +730,7 @@ impl Explorer {
                     key: h.key,
                     hearts: h.hearts,
                     coins_left: h.coins_left,
+                    coin_dist: h.coin_dist,
                     base: b.base,
                     inputs: &from,
                     game: h.game,

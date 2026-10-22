@@ -20,7 +20,7 @@ use sf_core::input::{FrameInput, Joy};
 use sf_core::layout::h0;
 use sf_core::{Game, State};
 
-use super::facts::{Facts, frog_cell};
+use super::facts::{CoinKind, Facts, frog_cell, live};
 use super::map::pressed;
 
 /// `coins_left_for_exit` (h0+$832).
@@ -52,12 +52,29 @@ pub struct CellKey {
     pub via: u8,
 }
 
-/// The coins band (DESIGN §2.4): 0 with no coins left, then 1 + (left − 1) / 4.
+/// The coins band: 0 with no coins left, each of the last 8 coins its own band, then 4 coins a
+/// band (9 + (left − 9) / 4). Deviates from DESIGN §2.4's 1 + (left − 1) / 4 (owner, 2026-10-22):
+/// with 4 coins a band, taking one of the last coins changed no key and nothing pulled toward the
+/// rest, and W6-1 stalled 2–4 coins short (0 of 5 runs exited).
 pub fn band(coins_left: u16) -> u16 {
     match coins_left {
         0 => 0,
-        n => 1 + (n - 1) / 4,
+        n @ 1..=8 => n,
+        n => 9 + (n - 9) / 4,
     }
+}
+
+/// Straight distance in cells from the frog to the nearest object coin still in the map (its
+/// live marker 8 or 9): the pull on the last 8 coins.
+pub fn coin_dist(facts: &Facts, st: &State) -> f64 {
+    let (c, r) = frog_cell(st);
+    facts
+        .coins
+        .iter()
+        .filter(|k| matches!(k.kind, CoinKind::Object(_)))
+        .filter(|k| matches!(live(st, k.cell.0, k.cell.1), 8 | 9))
+        .map(|k| (k.cell.0.abs_diff(c) + k.cell.1.abs_diff(r)) as f64)
+        .fold(f64::MAX, f64::min)
 }
 
 /// `st`'s key, `via` hints passed.
@@ -87,6 +104,8 @@ pub struct Entry {
     pub reached: u32,
     /// The compass distance to the goal, in cells (filled by the explorer).
     pub dist: f64,
+    /// `coin_dist` of its state.
+    pub coin_dist: f64,
 }
 
 #[derive(Debug, Clone)]
@@ -108,6 +127,7 @@ pub struct Offer<'a> {
     pub key: CellKey,
     pub hearts: u16,
     pub coins_left: u16,
+    pub coin_dist: f64,
     pub base: u32,
     pub inputs: &'a [u8],
     /// The state, when the archive may need it (`Archive::wants_state`).
@@ -161,6 +181,7 @@ impl Archive {
             chosen: 0,
             reached: 1,
             dist: 0.0,
+            coin_dist: 0.0,
         });
         a.input_bytes += ENTRY_OVERHEAD;
         a
@@ -239,6 +260,7 @@ impl Archive {
             chosen: 0,
             reached: 1,
             dist: 0.0,
+            coin_dist: o.coin_dist,
         };
         self.input_bytes += fresh.suffix.len() as u64;
         let i = match self.index.get(&o.key) {

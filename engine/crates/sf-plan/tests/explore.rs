@@ -178,6 +178,7 @@ fn more_hearts_win_a_cell() {
         key: other,
         hearts,
         coins_left: 5,
+        coin_dist: 3.0,
         base: 0,
         inputs: &inputs[..n],
         game: None,
@@ -215,16 +216,18 @@ fn a_heart_lost_is_archived() {
     );
 }
 
+/// The band key (DESIGN §2.4 as amended by the owner, 2026-10-22): each of the last 8 coins its
+/// own band, then 4 coins a band.
 #[test]
 fn coins_band() {
     assert_eq!(band(0), 0);
-    for n in 1..=4 {
-        assert_eq!(band(n), 1);
+    for n in 1..=8 {
+        assert_eq!(band(n), n);
     }
-    for n in 5..=8 {
-        assert_eq!(band(n), 2);
+    for n in 9..=12 {
+        assert_eq!(band(n), 9);
     }
-    assert_eq!(band(9), 3);
+    assert_eq!(band(13), 10);
 }
 
 /// The frog's cells along `inputs` from `g`.
@@ -448,6 +451,13 @@ fn seed_inputs_exit_in_round_zero() {
     assert!(
         ex.archive().entries().len() > 50,
         "the seed's states are archived"
+    );
+    // The seed's entries carry the pull toward the last coins as the bursts' do.
+    let es = ex.archive().entries();
+    assert!(
+        es.iter()
+            .filter(|e| e.coins_left > 0)
+            .all(|e| e.coin_dist < 1e9)
     );
     let r = plan_engine(g, fa, opt, &RunOptions::default()).unwrap();
     assert_eq!((r.rounds, r.inputs), (0, route));
