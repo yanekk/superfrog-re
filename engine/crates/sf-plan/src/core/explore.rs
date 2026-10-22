@@ -91,6 +91,9 @@ pub struct Options {
     pub compass: Compass,
     /// The guide path (§2.11); empty: unguided.
     pub guide: Vec<GuidePoint>,
+    /// Frames between the guide's points when it was sampled from a played route (`TRACE_EVERY`),
+    /// `None` for waypoints: then a cell behind the route's pace weighs less (`GuideIndex::pace`).
+    pub guide_pace: Option<u32>,
     /// `--follow`'s inputs (§2.7): replayed from the start, every 8th state archived until death.
     /// Joystick only: keys held in them are not replayed.
     pub seed_inputs: Option<Vec<FrameInput>>,
@@ -110,6 +113,7 @@ impl Default for Options {
             bursts_per_round: 80,
             compass: Compass::Straight,
             guide: Vec::new(),
+            guide_pace: None,
             seed_inputs: None,
             goal: Goal::Exit,
             via: Vec::new(),
@@ -388,6 +392,8 @@ pub struct Explorer {
     rng: Rng,
     compass: Option<MapCompass>,
     guide: Option<GuideIndex>,
+    /// The start's guide index: the pace is counted from it (a repair stretch starts mid-route).
+    guide_p0: u32,
     start_hearts: u16,
     rounds: u64,
     frames: u64,
@@ -402,6 +408,7 @@ impl Explorer {
         };
         let guide = (!opt.guide.is_empty()).then(|| GuideIndex::new(&opt.guide));
         let key = cell_key(&facts, start.state(), 0);
+        let guide_p0 = guide.as_ref().and_then(|g| g.index(&key)).unwrap_or(0);
         let archive = Archive::new(&start, key, opt.max_mem_bytes / 4 * 3);
         let seed = opt.seed;
         let mut ex = Explorer {
@@ -412,6 +419,7 @@ impl Explorer {
             rng: Rng::new(seed),
             compass,
             guide,
+            guide_p0,
             rounds: 0,
             frames: 0,
             found: None,
@@ -575,7 +583,13 @@ impl Explorer {
                     Goal::Key { key, .. } if k.band == key.band => pull(e.dist),
                     _ => 1.0,
                 };
-                let guide = self.guide.as_ref().map_or(1.0, |g| g.weight(k, p_max));
+                let guide = self.guide.as_ref().map_or(1.0, |g| {
+                    let pace = self
+                        .opt
+                        .guide_pace
+                        .map_or(1.0, |every| g.pace(k, e.frames, self.guide_p0, every));
+                    g.weight(k, p_max) * pace
+                });
                 let hearts = 0.25f64.powi(self.start_hearts.saturating_sub(e.hearts) as i32);
                 novelty * (-0.8 * behind).exp() * toward * guide * hearts
             })
@@ -743,7 +757,10 @@ impl Explorer {
                 let mut all = self.archive.checkpoint_inputs(b.base);
                 all.extend_from_slice(&b.prefix);
                 all.extend_from_slice(&b.inputs[..len]);
-                if best.as_ref().is_none_or(|(x, _)| all.len() < x.len()) {
+                // More hearts first, then shorter, as `shorten::better` keeps exits.
+                if best.as_ref().is_none_or(|(x, h)| {
+                    (std::cmp::Reverse(hearts), all.len()) < (std::cmp::Reverse(*h), x.len())
+                }) {
                     best = Some((all, hearts));
                 }
             }

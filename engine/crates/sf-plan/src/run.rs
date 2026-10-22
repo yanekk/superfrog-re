@@ -25,6 +25,11 @@ pub struct RunOptions {
     /// Shortening after the first exit (DESIGN §2.12, T22); the default keeps it off.
     pub shorten_share: f32,
     pub shorten_min_rounds: u64,
+    /// When set, `shorten_min_rounds` applies only to a first exit longer than this many frames or
+    /// losing a heart; otherwise the share alone. A repair stretch passes the frames its old plan
+    /// still had: its route is mostly that plan's, already shortened, unless its search went
+    /// another way (W1-2's repair took a 7 200-frame, 3-heart exit for a 4 718-frame plan, T14).
+    pub shorten_min_over: Option<usize>,
 }
 
 impl Default for RunOptions {
@@ -34,6 +39,7 @@ impl Default for RunOptions {
             budget: Duration::from_secs(30 * 60),
             shorten_share: 0.0,
             shorten_min_rounds: 0,
+            shorten_min_over: None,
         }
     }
 }
@@ -110,7 +116,11 @@ pub fn plan_engine(
     let Some((start, facts, opt)) = keep else {
         return Ok(best);
     };
-    let extra = shorten::budget(ex.rounds(), run.shorten_share, run.shorten_min_rounds);
+    let min = match run.shorten_min_over {
+        Some(n) if best.inputs.len() <= n && best.hearts_lost == 0 => 0,
+        _ => run.shorten_min_rounds,
+    };
+    let extra = shorten::budget(ex.rounds(), run.shorten_share, min);
     let until = ex.rounds() + extra;
     while ex.rounds() < until && t0.elapsed() < run.budget {
         if let Progress::Exit(r) = run_round(&mut ex, run.threads)

@@ -29,7 +29,7 @@ use sf_assets::World;
 use sf_core::{Game, LevelId, Start};
 use sf_oracle::Amiga;
 use sf_plan::cache::{self, StartKey};
-use sf_plan::core::repair::{TracePoint, follow_options, points_from_trace};
+use sf_plan::core::repair::{TRACE_EVERY, TracePoint, follow_options, points_from_trace};
 use sf_plan::core::{Cell, Compass, Explorer, Facts, GuidePoint, Options, Reason, Route, default_moves};
 use sf_plan::guide_file::parse_waypoints;
 use sf_plan::oracle::{self, Stats};
@@ -402,9 +402,9 @@ fn run(a: &Args, t0: Instant) -> Result<Outcome, Fail> {
             let tr = trace_script(a, &facts, p, s).map_err(Fail::Usage)?;
             oracle_extra += t.elapsed();
             guide_frames += s.lines.last().map_or(0, |l| l.0) as u64;
-            Some(points_from_trace(&tr))
+            Some((points_from_trace(&tr), Some(TRACE_EVERY)))
         }
-        (Some(GuideFile::Waypoints(w)), _) => Some(w.clone()),
+        (Some(GuideFile::Waypoints(w)), _) => Some((w.clone(), None)),
         _ => None,
     };
     if let (Some(s), Some(p)) = (&follow, a.follow.as_deref()) {
@@ -418,9 +418,11 @@ fn run(a: &Args, t0: Instant) -> Result<Outcome, Fail> {
         inputs.drain(..prefix.min(inputs.len()));
         opt = follow_options(opt, inputs, &tr);
     }
-    if let Some(g) = guide_points {
-        // With both, the guide steers and `--follow` only seeds (§2.7).
+    if let Some((g, pace)) = guide_points {
+        // With both, the guide steers and `--follow` only seeds (§2.7). A played route's points
+        // carry its pace; waypoints none (T14).
         opt.guide = g;
+        opt.guide_pace = pace;
     }
 
     let game = Game::with_display(
@@ -445,6 +447,7 @@ fn run(a: &Args, t0: Instant) -> Result<Outcome, Fail> {
         budget: a.budget.saturating_sub(t0.elapsed()),
         shorten_share: a.shorten_share,
         shorten_min_rounds: if a.shorten_share > 0.0 { SHORTEN_MIN_ROUNDS } else { 0 },
+        shorten_min_over: None,
     };
     let mut stats = Stats {
         oracle_frames: run.oracle_frames + guide_frames,

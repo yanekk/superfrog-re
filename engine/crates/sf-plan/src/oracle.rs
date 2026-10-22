@@ -315,6 +315,7 @@ pub fn plan_original(
             max_frames: opt.max_frames.saturating_sub(route.len() as u32),
             ..opt.clone()
         };
+        let rest_len = rest.as_ref().map(Vec::len);
         if let Some(rest) = rest.take().filter(|_| !left.is_zero()) {
             // The rest of the old plan, traced on the engine from the original's state here, guides
             // and seeds; an explicit guide still steers (§2.7).
@@ -322,17 +323,15 @@ pub fn plan_original(
             o = follow_options(o, rest, &trace);
             if !opt.guide.is_empty() {
                 o.guide = opt.guide.clone();
+                o.guide_pace = opt.guide_pace;
             }
         }
-        // A repair stretch plans to the exit too, but gets no shortening minimum: its route is
-        // mostly the last plan's, already shortened (FINDINGS, T10).
+        // A repair stretch plans to the exit too, but gets the shortening minimum only if its
+        // exit is longer than the old plan's rest or loses a heart: otherwise its route is mostly
+        // the last plan's, already shortened (FINDINGS, T10, T14).
         let stretch_ro = RunOptions {
             budget: left,
-            shorten_min_rounds: if stats.repairs == 0 {
-                ro.shorten_min_rounds
-            } else {
-                0
-            },
+            shorten_min_over: rest_len,
             ..ro.clone()
         };
         let plan = plan_engine(start.clone(), facts.clone(), o, &stretch_ro);

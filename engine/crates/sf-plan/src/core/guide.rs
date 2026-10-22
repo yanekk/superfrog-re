@@ -19,6 +19,8 @@ const ON_PATH: f64 = 3.0;
 const FALLOFF: f64 = 20.0;
 /// Off the path: a guide from another start or mode may be wrong in places (§2.11).
 const OFF_PATH: f64 = 0.15;
+/// Frames behind a played route's pace at which a cell's weight falls by e (`pace`, T14).
+pub const PACE_TAU: f64 = 240.0;
 
 /// One point of a guide path: a frog cell, and the coins left and the switches pressed there
 /// (`CellKey::switches` bits) when known; a point without them matches any band, any switch set.
@@ -74,6 +76,18 @@ impl GuideIndex {
             Some(p) => ON_PATH * (-(p_max.saturating_sub(p) as f64) / FALLOFF).exp(),
             None => OFF_PATH,
         }
+    }
+
+    /// The pace factor (owner, 2026-10-22, T14; an addition to DESIGN §2.11's weight) for a cell
+    /// reached `frames` frames after the explorer's start, for a guide sampled from a played route
+    /// every `every` frames, the start at point `p0`: e^(−late / PACE_TAU), `late` the frames it is
+    /// behind the route's own time to its point, 1 when ahead or off the path. Engine-only trial,
+    /// W1-2, W2-1, W1-3, three seeds: routes 18% shorter in all, fewer rounds (FINDINGS).
+    pub fn pace(&self, key: &CellKey, frames: u32, p0: u32, every: u32) -> f64 {
+        self.index(key).map_or(1.0, |p| {
+            let due = p.saturating_sub(p0) as f64 * every as f64;
+            (-(frames as f64 - due).max(0.0) / PACE_TAU).exp()
+        })
     }
 
     /// The furthest guide point whose region `key` falls in: a point with its coins known matches
