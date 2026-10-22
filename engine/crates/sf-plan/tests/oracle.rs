@@ -132,10 +132,11 @@ fn w1_1_first_stretch_keeps_frames_the_original_agrees_to() {
     let ls = lockstep(&mut run.amiga, start.clone(), &plan.inputs, &mut frames);
     assert!(frames as usize >= ls.agreed && ls.agreed > 0, "{ls:?}");
     let keep = if ls.exited {
-        ls.agreed.min(plan.inputs.len())
+        ls.agreed
     } else {
         ls.agreed.saturating_sub(BACK_OFF)
     };
+    assert!(ls.used_at(keep) <= keep, "a held frame uses no plan frame");
     eprintln!(
         "W1-1 plan {} frames, agreed {}, exited {}, parting {:?}",
         plan.inputs.len(),
@@ -144,11 +145,12 @@ fn w1_1_first_stretch_keeps_frames_the_original_agrees_to() {
         ls.parting
     );
     run.amiga.restore(&snap);
-    let script = script_of(&plan.inputs[..keep]);
+    let script = script_of(&ls.fed[..keep]);
     let orig = trace_original(&mut run.amiga, &fa, &script, keep as u32).unwrap();
-    let eng = trace_engine(&start, &fa, &plan.inputs[..keep]);
+    let eng = trace_engine(&start, &fa, &plan.inputs[..ls.used_at(keep)]);
     assert!(!orig.is_empty());
-    assert_eq!(orig.len(), eng.len());
+    // Held frames make the original's trace the longer; it is compared where the two have points.
+    assert!(orig.len() >= eng.len());
     for (k, (o, e)) in orig.iter().zip(&eng).enumerate() {
         assert!(
             o.0.0.abs_diff(e.0.0) <= 1 && o.0.1.abs_diff(e.0.1) <= 1,
@@ -158,6 +160,32 @@ fn w1_1_first_stretch_keeps_frames_the_original_agrees_to() {
             e.0
         );
     }
+}
+
+/// W1-2's scroller freezes the original's frog nine frames at x 1625 (frame 3 954 of this sf-plan
+/// route, T14): played in lockstep from frame 3 900, the engine is held there and the two do not
+/// part; stepped every frame, they parted at 3 955 on every repair. ~15 s.
+#[test]
+fn a_frozen_original_holds_the_engine() {
+    let p = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/w1-2-scroller-lag.txt");
+    let s = InputScript::load(&p).unwrap();
+    let from = 3_900;
+    let mut amiga = sync::reach(&SyncPoint::AtLevel(id("W1-2")), &InputScript::idle(), CAP)
+        .unwrap()
+        .amiga;
+    for k in 0..from {
+        sync::step_inserting(&mut amiga, s.input_at(k)).unwrap();
+    }
+    let eng = Game::with_display(
+        sf_conform::display_data(),
+        Start::Transplant(sync::core_memory(amiga.memory())),
+    );
+    let plan: Vec<FrameInput> = (from..from + 120).map(|k| s.input_at(k)).collect();
+    let mut frames = 0;
+    let ls = lockstep(&mut amiga, eng, &plan, &mut frames);
+    assert!(ls.parting.as_ref().is_none_or(|_| ls.agreed > 100), "{:?} at {}", ls.parting, ls.agreed);
+    let held = ls.agreed - ls.used_at(ls.agreed);
+    assert!((8..=10).contains(&held), "{held} frames held");
 }
 
 /// The frog placed against W2-4's closed gate at x 303, y 912, facing left: the original loops in
