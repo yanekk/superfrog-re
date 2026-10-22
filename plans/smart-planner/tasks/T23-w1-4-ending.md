@@ -34,6 +34,11 @@ Whatever the cause needs in `engine/crates/sf-plan/src/core/` (`explore.rs`, `gu
 and its tests; a constant changed is a general change, recorded in FINDINGS with its effect on a
 level that already worked (W1-1, W2-1, W5-2 or W6-1).
 
+## Interface
+
+None new: `run::plan_engine`, `oracle::plan_original` and `core::Options` keep their signatures; the
+fix lives inside the explorer.
+
 ## Tests
 
 - [ ] A regression test or a recorded run showing the cause (the stall reproduced, then gone).
