@@ -1,6 +1,6 @@
 # T21 — engine-memory-lookup
 
-**Phase:** 1 · **Depends on:** T04; blocks T20 · **Weight:** light
+**Phase:** 1 · **Depends on:** T04 (it blocked T20, dropped 2026-10-22) · **Weight:** light
 
 Added by T04 (owner, 2026-10-21): on a quiet machine 11 of the 24 maps take over 5 min to build
 on 10 threads (W5-4 566 s, W1-4 440 s), and the profile puts the time in the engine, not the map.

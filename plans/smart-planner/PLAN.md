@@ -1,6 +1,7 @@
 # Implementation plan
 
-19 tasks in 4 phases. Each has a file in [tasks/](tasks/) with its goal, the files it touches, the
+21 tasks in 4 phases (amended 2026-10-22: T13 and T20 dropped, T19, T21, T22 added since the plan was
+written). Each has a file in [tasks/](tasks/) with its goal, the files it touches, the
 interfaces it defines, and what "done" means.
 
 Track state in [PROGRESS.md](PROGRESS.md). Read [DESIGN.md](DESIGN.md) first.
@@ -19,12 +20,16 @@ Track state in [PROGRESS.md](PROGRESS.md). Read [DESIGN.md](DESIGN.md) first.
   `sf-core` alone, tested in milliseconds; Phase 2 adds the oracle and the one command.
 - The counted runs come last and run serially on a quiet machine (DESIGN D2), so their timings are
   comparable. That tail is serial by nature, not by accident.
+- Amendment 2026-10-22 (DESIGN D19–D24): the map approach was proven partly wrong by its own build
+  (T04: 13 of 24 levels reach the exit). The core is now a whole-level explorer (T08), steered by
+  guide paths (T09), confirmed on the original by stretch and repair (T10), its routes shortened
+  (T22). T04/T05/T06/T07 stay as built; the map and coin choice are compasses T14 may adopt.
 
 ```
 Phase 0  ▸  T00 T01 T02        prove the ground, build the instrument, sample the baseline
-Phase 1  ▸  T03 … T09          planner core, engine only
+Phase 1  ▸  T03 … T09, T19, T21, T22   planner core, engine only
 Phase 2  ▸  T10 T11 T12        original mode, the one command, app mode
-Phase 3  ▸  T13 … T18          soundness, tuning, counted runs, verdict, retire old tools
+Phase 3  ▸  T14 … T18          tuning, counted runs, verdict, retire old tools
 ```
 
 ---
@@ -62,8 +67,8 @@ early numbers on the stall levels.
 | [T08](tasks/T08-search.md) | search | T04, T06, T07 |
 | [T09](tasks/T09-route-repair.md) | route-repair | T08 |
 | [T19](tasks/T19-step-unseen-no-picture.md) | step-unseen-no-picture | T00; blocks T04 |
-| [T20](tasks/T20-map-gaps.md) | map-gaps | T04; blocks T08 |
-| [T21](tasks/T21-engine-memory-lookup.md) | engine-memory-lookup | T04; blocks T20 |
+| [T21](tasks/T21-engine-memory-lookup.md) | engine-memory-lookup | T04 |
+| [T22](tasks/T22-route-shorten.md) | route-shorten | T08 |
 
 At the end of Phase 1: the core plans a level on the engine from any start state, deterministically.
 
@@ -72,7 +77,7 @@ At the end of Phase 1: the core plans a level on the engine from any start state
 | # | Task | Depends on |
 |---|---|---|
 | [T10](tasks/T10-oracle-check.md) | oracle-check | T02, T08, T09 |
-| [T11](tasks/T11-plan-command.md) | plan-command | T05, T10 |
+| [T11](tasks/T11-plan-command.md) | plan-command | T05, T10, T22 |
 | [T12](tasks/T12-app-timing.md) | app-timing | T11 |
 
 T12 also needs `pir/bug-recorder` merged into main (DESIGN D3); it checks and stops to ask if not.
@@ -83,15 +88,14 @@ At the end of Phase 2: `sf-plan` is the one command, in original and app modes, 
 
 | # | Task | Depends on |
 |---|---|---|
-| [T13](tasks/T13-map-soundness.md) | map-soundness | T01, T08 |
 | [T14](tasks/T14-tuning-run.md) | tuning-run | T11 |
-| [T15](tasks/T15-set-c-run.md) | set-c-run | T12, T13, T14 |
+| [T15](tasks/T15-set-c-run.md) | set-c-run | T12, T14 |
 | [T16](tasks/T16-baseline-counted.md) | baseline-counted | T15 |
-| [T17](tasks/T17-new-counted.md) | new-counted | T13, T16 |
+| [T17](tasks/T17-new-counted.md) | new-counted | T16 |
 | [T18](tasks/T18-results-and-retire.md) | results-and-retire | T17 |
 
-T15 depends on T13 and T16 on T15 only so that they run on a quiet machine after every other task
-(DESIGN D2, D4): T13's explorer fills every core for hours. T17 follows T16 for the same reason.
+T16 depends on T15 only so that it runs on a quiet machine after every other task (DESIGN D2, D4);
+T17 follows T16 for the same reason. (T13, M7's map-soundness run, was dropped 2026-10-22, D20.)
 
 ---
 
@@ -103,11 +107,12 @@ T15 depends on T13 and T16 on T15 only so that they run on a quiet machine after
 | Start from AtLevel / `--snap` | T11 | T11 `main.rs` |
 | Start from `start_level` (`--app`) | T12 | T12 `main.rs` |
 | Level facts | T03 | T04/T08 call it; T11 `main.rs` constructs |
-| Movement map | T04 | T11 `main.rs` via `cache::load_or_build` (T05) |
-| Live danger check | T07 | T08 `search` (every edge through `danger::play_safe`) |
-| Coin choice | T06 | T08 `search::Planner::new` and re-choice |
-| Search | T08 | T10 (original mode), T11 `main.rs` (app/engine) |
-| Route repair `--follow` | T09 | T11 `main.rs` flag; T10 for stretch confirmation |
+| Movement map (compass, optional) | T04, `Compass::Map` T08 | T11 `--compass map` via `cache::load_or_build` (T05); adopted or not by T14 |
+| Coin choice (compass, optional) | T06 | T14, only if its trial keeps it |
+| Live danger check | T07 | not wired (DESIGN §2.5) |
+| Explorer | T08 | T10 (original mode), T11 `main.rs` (app/engine) |
+| Guide paths `--guide`, repair `--follow` | T09 | T11 `main.rs` flags; T10 for each repair; T11's `sf-bench` adapter for guided runs |
+| Shortening | T22 | T08's `run.rs` after the first exit; T11 options |
 | Oracle confirmation | T10 | T11 `main.rs` |
 | Benchmark runs the new planner | T01 (harness) | T11 (adapter `new`) |
 | Old tools retired | T18 | T18 |
@@ -115,35 +120,34 @@ T15 depends on T13 and T16 on T15 only so that they run on a quiet machine after
 ## Critical path
 
 ```
-T00 → T03 → T04 → T08 → T09 → T10 → T11 → T14 → T15 → T16 → T17 → T18
+T08 → T09 → T10 → T11 → T14 → T15 → T16 → T17 → T18
 ```
 
-Off it: T01, T02 (finish long before T10), T05, T06, T07, T12 and T13 (before T15).
+(T00–T07, T19, T21 are done.) Off it: T22 (beside T09 and T10, before T11) and T12 (before T15).
 
 Leaves: T18 only.
 
 ## Parallel width
 
-19 tasks · longest dependency chain 12 · up to 4 could run at once (e.g. T02, T04, T06, T07). The
-tail T14–T18 is serial on purpose: counted runs need a quiet machine.
+21 tasks, 11 left · longest remaining chain 9 · up to 2 could run at once now (T09 and T22 after
+T08). The tail T14–T18 is serial on purpose: counted runs need a quiet machine.
 
 ## Rough sizing
 
 | Weight | Tasks |
 |---|---|
 | **Heavy** | T00, T04, T08, T14, T16, T17 (the last two in machine hours, up to ~25 h each) |
-| **Medium** | T01, T02, T09, T10, T11, T13, T15, T18 |
+| **Medium** | T01, T02, T09, T10, T11, T15, T18, T22 |
 | **Light** | T03, T05, T06, T07, T12 |
 
-Overrun risks: T04 if moving platforms and pads need many move variants, or speed bands (D15) multiply
-the move count; T08, which grew by exploring when stuck, learned and unreliable edges (D16, D17); T14 is open-ended by nature
+Overrun risks: T08's memory policy (D22: checkpoints and replay must stay deterministic and fast);
+W2-3 and W6-4, which the experiment never finished, land in T14; T14 is open-ended by nature
 (tuning until the stall levels pass), bounded by D5: what is not clear-cut goes to the owner; T16/T17
 are wall-clock bound and run as resumable background slices of at most 2 h each.
 
 ## Decisions still open
 
-- Map seeding, enemy freezing and speed bands (D15): T00 settles them; nothing after T03 starts before.
-- Stretch confirmation: T02 settles it before T10.
+- The compass (straight, the map, coin choice): T14's trial settles it (D20).
 - Whether `pir/bug-recorder` is merged by the time T12 is ready: T12 checks; if not, T12 and T15
   wait and the owner is asked. T16, T17 and T18 wait with them, being chained after T15 for a quiet
   machine (owner, 2026-10-20: keep the order; reorder then if the merge is late).

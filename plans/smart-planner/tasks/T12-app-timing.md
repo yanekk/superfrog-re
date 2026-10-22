@@ -33,6 +33,10 @@ sf-plan <level> --app [--seed N] [--out route.txt] ...
 pub fn app_start(level: LevelId, seed: u32) -> Game;   // Game::start_level(display, &LevelSetup{level, ..Default::default()}, Rng::seeded(seed, seed))
 ```
 
+Guided app runs (set C's counted run, DESIGN §4.2) take the committed route's trace on the original
+(T09 `trace.rs`): a guide is cells, not inputs, so it does not cross timings (DESIGN §2.6). Only a
+`# timing: app` guide script is traced on the engine from `app_start`; T09 left that branch for here.
+
 The seed pair matches what the recorder's script `start-level` event uses; read it from bug-recorder's
 code rather than assuming `(0, 0)` (`plan_exit --engine` used `Rng::seeded(0,0)`).
 
@@ -53,4 +57,4 @@ code rather than assuming `(0, 0)` (`plan_exit --engine` used `Rng::seeded(0,0)`
 
 ## Done when
 
-- [ ] Tests green; `sf-bench --set C --planner new --levels W1-1` records a completed result.
+- [ ] Tests green; `sf-bench --set C --planner new --levels W1-1` records a completed, guided result.

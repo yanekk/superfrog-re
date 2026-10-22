@@ -13,10 +13,13 @@ message. Whoever writes a cell also fixes the over-budget cell they walk past.
 **Plan amended:** 2026-10-21 — D14–D17 (live danger, speed bands, explore instead of early give-up,
 unreliable edges); T07 now light, T00 answers three more questions.
 **Amendment reviewed:** 2026-10-21 — 6 fixes, 1 decision (a retry after a wait is a standing-start move)
+**Plan amended:** 2026-10-22 — D19–D24: whole-level explorer core (T08–T10 rewritten), guide paths
+allowed everywhere, map a compass; T13 and T20 dropped, T22 route-shorten added.
+**Amendment reviewed:** not yet.
 
-**Status:** plan written; nothing built.
-**Last updated:** 2026-10-21
-**Next `pir-work` will:** T00 movement-map-spike, the gate for everything on the map; T01 can run beside it.
+**Status:** T00–T07, T19, T21 done; core rewritten by the amendment, not started.
+**Last updated:** 2026-10-22
+**Next `pir-work` will:** T08 search (the explorer), from `spike-explore/`.
 
 ## Tasks
 
@@ -36,17 +39,16 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T08 | search | T04, T06, T07 | ⬜ | |
 | T09 | route-repair | T08 | ⬜ | |
 | T10 | oracle-check | T02, T08, T09 | ⬜ | |
-| T11 | plan-command | T05, T10 | ⬜ | |
+| T11 | plan-command | T05, T10, T22 | ⬜ | |
 | T12 | app-timing | T11 | ⬜ | |
-| T13 | map-soundness | T01, T08 | ⬜ | |
 | T14 | tuning-run | T11 | ⬜ | |
-| T15 | set-c-run | T12, T13, T14 | ⬜ | |
+| T15 | set-c-run | T12, T14 | ⬜ | |
 | T16 | baseline-counted | T15 | ⬜ | |
-| T17 | new-counted | T13, T16 | ⬜ | |
+| T17 | new-counted | T16 | ⬜ | |
 | T18 | results-and-retire | T17 | ⬜ | |
 | T19 | step-unseen-no-picture | T00; blocks T04 | ✅ | |
-| T20 | map-gaps | T04; blocks T08 | ⬜ | |
-| T21 | engine-memory-lookup | T04; blocks T20 | ✅ | |
+| T21 | engine-memory-lookup | T04 | ✅ | |
+| T22 | route-shorten | T08 | ⬜ | |
 
 **Review queue:** *(empty)*
 

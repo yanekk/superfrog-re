@@ -5,7 +5,8 @@
 ## Goal
 
 The counted baseline: today's tools, unaided, on sets A and B, one level at a time on a quiet machine,
-so the new planner's numbers have a fair comparison. Runs at the end, while the old tools still exist
+so the new planner's numbers have a comparison. The baseline stays unaided while the new planner's
+counted run is guided (owner, 2026-10-22, D21); the table says so. Runs at the end, while the old tools still exist
 (D4).
 
 ## Design sections this implements

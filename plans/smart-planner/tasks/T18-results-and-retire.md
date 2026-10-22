@@ -28,7 +28,9 @@ a task to fix it (D5). The worker asks with the table and each miss's cause in f
 
 ## Done when
 
-- [ ] RESULTS.md verdict section lists M1–M9 and C1, C3, C4 with the measured value and met/missed.
+- [ ] RESULTS.md verdict section lists M1–M6, M8, M9 and C1, C3, C4 with the measured value and
+      met/missed, says the counted new-planner results were guided and the baseline unaided (D21),
+      and shows T14's unaided set-A results beside them as recorded, not gated.
 - [ ] Every miss has the owner's recorded decision (dated FINDINGS row).
 - [ ] Old tools deleted only if M1 holds or the owner accepted; the test block is green after deletion
       (no test or doc still names them except history).

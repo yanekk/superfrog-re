@@ -2,82 +2,90 @@
 
 **Phase:** 1 · **Depends on:** T04, T06, T07 · **Weight:** heavy
 
+Rewritten by the 2026-10-22 amendment (D19): the search is a whole-level explorer, not map following.
+The experiment it is built from is in `plans/smart-planner/spike-explore/` (`goexp.rs`, a reference
+only, and its README with every number). Read both first.
+
 ## Goal
 
-The planner proper, on the engine alone: follow the chosen coins along the map by playing whole moves,
-fall back to frame-level search where the live game differs from the map, keep one archive for the
-whole level, avoid hits by playing moves live with wait-and-retry (T07), explore when stuck instead of
-declaring a level impossible, learn edges the map lacks and distrust edges that keep failing, and return
-the same route for the same seed. Phase 2 adds the original.
+The planner proper, on the engine alone: one archive for the whole level, explored in rounds of
+random bursts chosen by novelty, progress in coins, an exit pull and (T09) a guide, until the frog
+leaves the level alive; deterministic for a seed; memory bounded. Phase 2 adds the original.
 
 ## Design sections this implements
 
-DESIGN §2.1 (goal), §2.10 (via/avoid in the search), §2.2 (learned and unreliable edges), §2.4
-(including exploring when stuck), §2.5 (use), §2.3 (re-choice), §2.9 (budget, no early exit), §3.1
-(threads as partitions), D14, D16, D17.
+DESIGN §2.1 (goal), §2.4, §2.5, §2.9 (budget, memory, reason line), §2.10 (`via`/`avoid` in the
+search), §2.2 (the `Compass` hook, straight distance by default), §3.1 (threads as parts), D19, D22.
 
 ## Files
 
-- `engine/crates/sf-plan/src/core/search.rs`, `engine/crates/sf-plan/src/core/archive.rs`
-- `engine/crates/sf-plan/src/core/explore.rs` (the explore step: pick a least-visited archived state,
-  play toward novelty; T13 adds its goal-free entry point to this file)
-- `engine/crates/sf-plan/src/run.rs` (shell: runs partitions on `std::thread::scope`, enforces the
-  wall-clock budget by asking the core to stop between steps)
-- `engine/crates/sf-plan/tests/search.rs`
+- `engine/crates/sf-plan/src/core/archive.rs` (cells, entries, counters, checkpointed states)
+- `engine/crates/sf-plan/src/core/explore.rs` (rounds, choice, bursts, exits, `Compass`)
+- `engine/crates/sf-plan/src/core/mod.rs`
+- `engine/crates/sf-plan/src/run.rs` (shell: runs parts on `std::thread::scope`, enforces the
+  wall-clock budget by asking the core to stop between rounds)
+- `engine/crates/sf-plan/tests/explore.rs`
+- `engine/crates/sf-plan/src/cache.rs` only if a new core module joins `cache::CORE_FILES` (T05 review
+  FINDINGS row: a module `map.rs`, `facts.rs`, `graph.rs` or `moves.rs` uses). The explorer's modules
+  are not map inputs and do not join it.
 
 ## Interface
 
 ```rust
-pub struct Options { pub seed: u64, pub max_frames: u32, pub beam: usize, pub hold: u8,
-                     pub stall_steps: u32,      // steps without progress before exploring (§2.4)
-                     pub explore_every: u32,    // 1 step in N explores while stalled; default 5
-                     pub via: Vec<Cell>, pub avoid: Vec<(Cell, Cell)> }   // hints, DESIGN §2.10; empty when unaided
-pub struct Planner { /* facts, map, choice, archive, learned/unreliable edges, rng(seed) */ }
-impl Planner {
-    pub fn new(start: Game, facts: Facts, map: MoveMap, opt: Options) -> Planner;   // never refuses on map evidence (D16)
-    /// One unit of search work, split into `parts` for the shell's threads.
-    pub fn step_parts(&mut self, n: usize) -> Vec<Part>;
-    pub fn run_part(&self, part: &Part) -> PartResult;       // pure; called from any thread
-    pub fn merge(&mut self, results: Vec<PartResult>) -> Progress; // in part order; Progress::{Working, Done(Route), Stuck(Reason)}
-    // Reason carries coins_needed, coins_ever_reached (map and exploration together, DESIGN §2.9),
-    // last cell and stalled target
-    pub fn best_partial(&self) -> Route;
+pub struct Options {
+    pub seed: u64, pub max_frames: u32, pub max_mem_bytes: u64,
+    pub bursts_per_round: u32,                   // fixed by options, never by the machine (M8); default 80
+    pub compass: Compass,                        // Compass::Straight default; Compass::Map(MoveMap) optional
+    pub guide: Vec<GuidePoint>,                  // T09 fills it; empty = unguided
+    pub seed_inputs: Option<Vec<FrameInput>>,    // T09's --follow seed; None here
+    pub via: Vec<Cell>, pub avoid: Vec<(Cell, Cell)>,   // hints, DESIGN §2.10; empty when unaided
 }
-pub struct Route { pub inputs: Vec<FrameInput>, pub engine_frames: u64, pub hearts_lost: u8,
-                   pub learned_edges: Vec<Edge>, pub unreliable_edges: Vec<u32>, pub explore_steps: u64 }
-pub fn plan_engine(start: Game, facts: Facts, map: MoveMap, opt: Options,
-                   threads: usize, budget: Duration) -> Result<Route, (Route, Reason)>; // shell, run.rs
+pub struct Explorer { /* facts, archive, rng(seed), counters */ }
+impl Explorer {
+    pub fn new(start: Game, facts: Facts, opt: Options) -> Explorer;
+    /// One round's bursts, split into `n` parts for the shell's threads.
+    pub fn round_parts(&mut self, n: usize) -> Vec<Part>;
+    pub fn run_part(&self, part: &Part) -> PartResult;          // pure; called from any thread
+    pub fn merge(&mut self, results: Vec<PartResult>) -> Progress;  // in part order
+    // Progress::{Working, Exit(Route)}; the shell decides when to stop on time
+    pub fn best_partial(&self) -> (Route, Reason);
+}
+pub struct Route { pub inputs: Vec<FrameInput>, pub engine_frames: u64, pub hearts_lost: u8, pub rounds: u64, pub cells: u32 }
+pub struct Reason { pub coins_left: u16, pub exit_distance_with_coins_met: Option<u16>, pub cells: u32 }
+pub fn plan_engine(start: Game, facts: Facts, opt: Options, threads: usize, budget: Duration)
+    -> Result<Route, (Route, Reason)>;          // shell, run.rs
 ```
 
-Every edge is played through `danger::play_safe` (T07); a heart lost after all retries is scored at
-`heart_cost`. A safe variant found after a wait is a different, standing-start move (DESIGN §2.5):
-the search continues from its actual landing node and records it as an edge from the stopped node
-(learned if the map lacks it); the original edge is not credited. An edge that fails live replay (wrong landing node, or a heart lost after retries) 3
-times in a run is marked unreliable and its cost ×4 for the rest of the run (D17). A node reached in
-play that the map lacks, or reached by a cheaper input run than the map knows, is added as a learned
-edge from the nearest map node (D16). The stall counter and the explore share count search steps, never
-time (M8).
+`GuidePoint` is declared here (`core::guide`, one struct: `cell: Cell, coins_left: Option<u16>`) so
+T09 only fills it; the weight that reads it is T09's.
 
-A path dies on life lost (1-up gained is not a loss), `DYING`, or a caught engine panic. Done means
-`level_state` left −2 by the exit and the frog survives a 40-frame idle tail.
+The key, choice weights, burst shape and exit test are DESIGN §2.4's, constants as there. A heart lost
+is not a burst's end (§2.5): the state is archived and loses to its cell's more-hearted entries.
+
+Memory (D22): states are stored for checkpoint entries only; any other entry's state is rebuilt by
+replaying its inputs from its nearest checkpoint ancestor. Pick the checkpoint policy, measure it on
+W3-4 (the experiment's biggest archive, 39 000 cells in 10 min), and record it and its RSS in
+FINDINGS.
 
 ## Tests
 
-- [ ] W1-1 from its `AtLevel` state transplanted (engine only): `plan_engine` reaches the exit within
-      the test's 2-minute cap.
+- [ ] W1-1 from its start (engine only): `plan_engine` reaches the exit within the test's 2-minute cap.
 - [ ] Same seed twice → byte-identical `inputs`, with 1 and with 8 threads (M8 at core level).
-- [ ] A synthetic case where the map path is blocked by a live enemy: the beam fallback finds a way and
-      the result loses no heart.
-- [ ] The archive: after taking a coin, the next target starts from an archived state (counter of
-      archive hits > 0 on W1-1).
-- [ ] A fixture map with one edge removed (the only way to a needed coin): the search explores, learns
-      the edge, reaches the exit, and lists the edge in `learned_edges`. No early give-up.
-- [ ] An edge made to fail live 3 times (fixture with a blocking object) is in `unreliable_edges` and
-      the route avoids it when another path exists.
-- [ ] A synthetic enemy crossing the path: the route waits (one of `danger::WAITS`) and loses no heart.
-- [ ] `via` cells are passed in order before the remaining coin targets; a path entering an `avoid` box dies.
+- [ ] An entry's rebuilt state equals the state it was stored from (`Game` state bytes equal) after
+      checkpoints are dropped.
+- [ ] A synthetic archive where a cell is reached with fewer and with more hearts keeps the more-hearted
+      state; a burst that loses a heart still archives its state.
+- [ ] The band key: `COINS_LEFT` 0 is band 0, 1–4 band 1, 5–8 band 2.
+- [ ] `via` cells are passed in order before the search's own progress resumes; a burst entering an
+      `avoid` box ends there.
+- [ ] `Compass::Map` (distance in edge frames to the nearest exit node, `graph::shortest` over T04's
+      map, straight distance where the map has no path) gives the explorer a finite pull on W1-1 and
+      planning still exits; `Compass::Straight` needs no map.
+- [ ] With the memory cap set low (fixture), resident archive bytes stay under it and planning W1-1
+      still reaches the exit.
 
 ## Done when
 
-- [ ] Tests green; W1-4 and W6-3 planned engine-only from their starts within 30 min each, times in a
-      FINDINGS row (not gated here; the gate is T14).
+- [ ] Tests green; engine-only, unguided, 10 threads, 10-minute cap, quiet machine: W3-2, W5-2 and W6-1
+      reach the exit (the experiment did, in 340, 62 and 211 s), times, cells and peak RSS in one
+      FINDINGS row. Peak RSS stays under `--max-mem-gb`'s default on all three.

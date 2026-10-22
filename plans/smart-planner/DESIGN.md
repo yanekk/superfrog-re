@@ -12,15 +12,20 @@ test:
 ## 1. Purpose
 
 An agent hands the planner a level, a starting state and the goal (the level's exit) and gets back an
-input script that plays the level to its exit on the original, with no hints: no waypoints, no
-per-level options, no choice between tools. Today four tools (`plan_exit`, `plan_exit_w6`, `explore`,
+input script that plays the level to its exit on the original, with no hints: no hand-placed
+waypoints, no per-level options, no choice between tools (a guide path, §2.11, is allowed). Today four tools (`plan_exit`, `plan_exit_w6`, `explore`,
 `plan_bonus` in `engine/crates/sf-conform/examples/`) each steer by hand-patched heuristics, and the
 rust-engine run spent hours on W1-4, W2-4, W6-2 and W6-3 (plans/rust-engine/FINDINGS.md T149, T150,
 T168, T207 rows). The root cause is that their distance field knows geometry and not movement: open
-air under a coin reads as near. This plan replaces them with one planner steered by a measured
-movement map, and proves it against a baseline of today's tools under identical rules. It is the tool
-that later plans easy and hard completions (the difficulty-modes plan), so it is proven here by
-numbers.
+air under a coin reads as near. This plan replaces them with one planner, and proves it against a
+baseline of today's tools. It is the tool that later plans easy and hard completions (the
+difficulty-modes plan), so it is proven here by numbers.
+
+**Amended 2026-10-22 (D19–D23).** The plan first steered by a measured movement map (T04). That map
+reached the exit on 13 of 24 levels; an experiment off T04 (`spike-explore/`) finished 9 of the 11
+others with a whole-level explorer and no map. The planner is now that explorer (§2.4); the map is an
+optional compass (§2.2); a guide path, such as a level's committed route, may steer it everywhere,
+the counted benchmark included (§2.11).
 
 ### Success criteria
 
@@ -28,31 +33,36 @@ The benchmark (§4) committed in `plans/smart-planner/bench/` shows, side by sid
 
 | # | Measure | Target |
 |---|---|---|
-| M1 | Set A levels completed unaided within budget, faithful on the original | 24 / 24 |
-| M2 | W1-4, W2-4, W6-2, W6-3 completed unaided | 4 / 4, each under 30 min |
+| M1 | Set A levels completed within budget, faithful on the original | 24 / 24 |
+| M2 | W1-4, W2-4, W6-2, W6-3 completed | 4 / 4, each under 30 min |
 | M3 | Planning time per level, set A | median ≤ 10 min, slowest ≤ 30 min |
 | M4 | Route length (frames to exit) vs the committed route, per level | none more than 25% longer |
-| M5 | Set B legs completed unaided | 24 / 24, same budget |
+| M5 | Set B legs completed | 24 / 24, same budget |
 | M6 | Set A routes losing no heart | ≥ 20 / 24; each short one explained (unavoidable hit or planner gap) |
-| M7 | Standable cells a one-hour free explorer reaches that the map calls unreachable | 0 on every level |
 | M8 | Same seed, same level, same start → byte-identical route | always (a test) |
 | M9 | Tools an agent chooses between for level routing | 1 (`plan_bonus` stays for WB-1) |
 | C1 | Set C levels completed on the engine with app timing | 24 / 24 |
 | C3 | Set C planning time | median ≤ 2 min, slowest ≤ 30 min |
 | C4 | Set C route length vs the committed route | none more than 25% longer |
 
+M1–M6 and C1–C4 are measured guided: each level's committed route is the guide path (§2.11, D21).
+M7 (the map missing no reachable cell) was dropped on 2026-10-22: the map is a compass and need not
+be complete (D20).
+
 Recorded, not gated: engine frames simulated per level (machine-independent, so later changes compare
-fairly), oracle frames, the share of wall-clock spent checking on the original, and route repair on
-set B (given the leg's standalone route).
+fairly), oracle frames, the share of wall-clock spent checking on the original, route repair on set B
+(given the leg's standalone route), and, from the tuning run only, each set-A level planned unaided
+(no guide), so what the planner does on a level with no route is known.
 
 ### Stance
 
-- Unaided is the measure. The planner plans from level, start and goal; anything level-specific it
-  knows it measured itself. Hints exist as an escape hatch (§2.10), but every use is logged as a
-  planner gap, and the benchmark never uses them, because a hint is a step an agent takes by hand on
-  every one of the next 24 levels of easy and hard mode.
-- The engine decides what a move does, never a formula. Movement is measured by stepping `sf-core`,
-  so the map cannot disagree with the game about what a jump reaches.
+- No per-level knowledge but a guide path. The planner plans from level, start, goal and, if given,
+  a guide path (§2.11): cells to pass near in order, taken from a committed route, or written by hand
+  or by an agent. A guide is not a hint (owner, 2026-10-22, D21): easy and hard mode have a committed
+  normal-mode route for every level. Hints (`--via`, `--avoid`) remain an escape hatch (§2.10), every
+  use logged as a planner gap, never used by the benchmark.
+- The engine decides what a move does, never a formula. Every move the planner keeps was played on
+  `sf-core` (or the original), so nothing disagrees with the game about what a jump reaches.
 - The original has the last word. A route in original mode counts only if the faithful check of
   rust-engine DESIGN §2.1 passes on it, as the completion cases do.
 - The planner only reads the engine. No game mechanic, no faithful-bar tolerance changes here.
@@ -64,7 +74,8 @@ set B (given the leg's standalone route).
 ### 2.1 Inputs and output
 
 The planner takes a level id, a start and options that are not level-specific: seed, mode
-(original / app), budget, `--follow <script>`, `--out`, `--no-cache`, and the hints of §2.10. Starts:
+(original / app), budget, `--guide <file>` (§2.11), `--follow <script>`, `--out`, `--no-cache`, and
+the hints of §2.10. Starts:
 
 - `AtLevel(id)`: the level's sync point (set A).
 - `--snap <leg.snap>`: a `whole_game` leg snapshot, carrying earlier legs' state (set B).
@@ -83,112 +94,98 @@ two stomps make a reward, rust-engine FINDINGS T168). T04 checks on every level 
 the exit with the count met and no enemy's help; a level where it does not goes to the owner before
 T08 (D13).
 
-### 2.2 The movement map
+### 2.2 The movement map, a compass (amended 2026-10-22, D20)
 
-A map node is a standable cell (open cell whose cell below is ground or a platform top, by the markers
-in `level/collision.rs`) plus wings held. T00 rejected speed bands (D15, D18): the node is the cell.
-For each node the map holds edges: a macro move (an input sequence of held joystick states), its frame
-count, the node it ends in (landed, carrying whatever speed it has; a move never pads frames to stop),
-the coins it touches on the way (D17), and its preconditions (a switch set that must be pressed, wings
-held). Move families: walk left/right, jump, running jump of several run-up lengths, drop off an edge,
-pad and spring launch (a move that starts on the pad), mid-air steering (a jump whose direction changes
-in flight: T00 found W6-3's map stuck at 196–218 cells without it, D18), and with wings, flight
-segments. Edges are
-found by stepping the engine (`Game::step_unseen`) from a real game state, never computed from a jump
-formula, because the rust-engine run found the formula versions wrong in each level family (FINDINGS
-T103, T115, T150). Why speed: the frog carries momentum (a full-speed run jump crosses ~17 cells,
-rust-engine FINDINGS T104), so a stopped-only map misses ledges reached at speed and its stop-and-go
-routes run long against M4.
+The map T04 built (`core::map`: standable cells reached by real moves from the level start, one seed
+state each, ~50 macro moves per seed, edges that replay to their landing, switch worlds near gates;
+cached by T05) stays as an optional compass: a distance in edge frames from a cell to the exit, for
+the explorer's choice weight (§2.4). It is never a gate. A cell with no map path is not unreachable,
+and nothing waits on the map being complete. Why: the map reached the exit on 13 of 24 levels (T04
+FINDINGS rows), 46–55% of its edges land elsewhere live (T00 Q7), and each gap closed so far cost a
+hand-found move family; the explorer needs none of it (spike-explore/README.md).
 
-T00 rejected speed bands (build over ~5 min, D18), so the node is the cell alone, edges start stopped, and
-the frame-level search (§2.4) carries momentum; the map is then a guide and §2.3/§2.4 never treat its
-gaps as proof.
+The default compass is the straight distance in cells (|Δcol| + |Δrow|), no map. T14 tries the map
+compass on the stall levels and keeps it only if it completes more levels or plans them measurably
+faster (owner, 2026-10-22); otherwise the map code stays as built and unused.
 
-Fixed hazards (marker 6, spikes: the only tile `frog_kill` acts on, `level/collision.rs`; they never
-move) are marked on the map: an edge whose path touches one is not recorded. Moving danger is judged live (§2.5).
-
-The map is a guide, not the truth: the world it was measured in (object slots, platform spawns, RNG)
-differs from the one the frog plays in. During a run an edge that fails live replay 3 times is marked
-unreliable for that run and its cost is multiplied by 4 (D17); an edge learned in play (§2.4) is added
-for that run.
-
-Distance is the sum of edge frames, so the cost of a detour is measured in time, which is what the
-budget and M4 count.
-
-Switches and gates: a gate cell is solid until its switch pair is pressed (items/fixtures.rs
-`switch()`). The map is built per switch set reachable from the start; an edge through a gate carries
-the switch as a precondition. Why: W6-2's stall was a room behind two switches in order, which a
-static map cannot represent.
-
-The map is seeded by real moves only: a breadth-first walk from the level's start state, each node's
-state the one a real move reached it in; the frog is never placed by writing its position (D18). It is
-measured with enemies and all other objects live, nothing frozen; markers 44 and 62 are tiles, not
-objects, and platforms are passive objects that stay live (D18). An edge is valid only if replaying
-its inputs on the engine from its start state ends in its end node, landed, alive (the test in §4).
+The map's own rules from before the amendment (speed bands D15, learned and unreliable edges D16 and
+D17, M7) bind nothing now: the explorer has no edges to learn or distrust.
 
 ### 2.3 Coin choice
 
-Before moving, the planner picks a set of coins whose count meets the exit's requirement and an order
-for them, minimising total map distance from start through the coins to the exit. A coin with no map
-path gets a fixed high cost (the far-coin cost, larger than any map path on the level) rather than
-being ruled out, so it is chosen only when the reachable coins cannot meet the count (D16). A coin an
-edge touches on the way counts as taken by that edge (D17). Coins include tile coins from the world's pickup table
-(h0+$f382 entries whose handler is h0+$ede0) and coin objects. Why: the exit needs a count, and
-nearest-first walked into the hardest coins (W1-4, set-C W1-1 column 92). The choice is re-run when
-the route parts from plan (a coin taken by accident, one found unreachable in play), from the state
-the frog is in.
+T06's coin choice (a set and an order of object coins meeting the count, by map distance) is not on
+the explorer's path: the explorer takes coins as it finds them, and its progress is the count left
+(§2.4). Like the map it is a compass T14 may try (a pull toward the next chosen coin), kept only if
+it measurably helps. The exit counts object coins only (T03: tile coins never lower
+`coins_left_for_exit`).
 
-### 2.4 The search
+### 2.4 The search: a whole-level explorer (D19)
 
-The search follows the coin order along map paths by playing each edge's inputs on a live engine
-state (enemies live). When an edge's result differs from the map (an enemy, a moving platform, carried
-velocity), a frame-level beam search over held joystick states, scored by map distance to the next
-target plus the heart cost (§2.5), finds a way back onto the map. Every state it reaches goes into one
-archive for the whole level, keyed by (cell, coins left in bands, switches pressed); a later target
-starts from the archive's best state for it rather than from scratch. Why: W2-4 rebuilt `explore`'s
-archive 31 times, once per coin (FINDINGS T168, ROADMAP).
+One archive for the whole level, in the Go-Explore pattern. Its key, a cell, is (frog column / 2, frog
+row / 2, coins band, switches pressed, wings held); the coins band is 0 when `COINS_LEFT` (h0+$832) is
+0 and 1 + (left − 1) / 4 otherwise. Each entry holds the best state reaching its key (more hearts
+first, then fewer frames), the inputs from the start to it, and two counters: times chosen, times
+reached.
 
-Exploring when stuck (D16): when the current target has made no progress for a set number of search
-steps, one step in five goes to exploration instead: pick an archived state, preferring cells least
-visited, and play from it toward no target, scoring novelty only (the Go-Explore pattern, the same code
-as T13's explorer). The share and the stall threshold are counted in search steps, never in time, so
-M8 holds. A cell reached this way that the map lacks becomes a learned edge for the rest of the run
-(the archive's inputs from the nearest map node), and the run lists every learned edge in its stats
-so the move set can be fixed (M7). Why: a map gap must cost search time, never a false "impossible".
+Each round chooses cells and plays a burst from each:
 
-A path dies on a life lost (a 1-up gained is not a loss, FINDINGS T205 row on `plan.rs`), `DYING`,
-an engine panic (caught), or the original hanging in `frog_tiles`'s wall loop (`sync::in_wall_loop`,
-original mode).
+- The choice is weighted: novelty (1/√(1 + chosen) + ½/√(1 + reached)) × progress (e^(−0.8 × bands
+  behind the furthest band reached)) × in band 0 an exit pull (4·e^(−d/12) + 0.2, d the compass
+  distance to the nearest exit cell) × the guide weight (§2.11) × 0.25 per heart below the start's.
+- A burst is 1–16 holds of one of ten joystick states (none, the four directions, up with left or
+  right, fire, fire with left or right) for 4, 8, 16 or 32 frames each, keeping the last hold's state
+  with probability 0.6. After each hold the state is offered to the archive.
+- A burst ends on a life lost (a 1-up gained is not a loss, FINDINGS T205 row on `plan.rs`),
+  `DYING`, a caught engine panic, the route reaching `--frames`, or the level ending. The level ending
+  with the frog alive, surviving a 40-frame idle tail, is an exit.
 
-Determinism: the search is a function of (level, start state, seed, options). Threads expand fixed
-partitions and their results are merged in partition order, then stable-sorted. The wall-clock budget
-only decides when to give up; it never chooses between routes. Why: M8, and so a benchmark run can be
-reproduced on another machine to the byte, given it finishes.
+The constants are the experiment's (spike-explore/README.md); T14 tunes them, in general, never per
+level. The search stops at the first exit, or later for shortening (§2.12). A budget spent with no exit
+writes a reason line (§2.9): the furthest band, the least distance to an exit reached with the coins
+met, and the cells archived.
 
-### 2.5 Danger, judged live (D14)
+Determinism (M8): the round's choices and each burst's seed come from one generator seeded by
+`--seed`; bursts run in parts on threads and their results are merged in choice order, the part count
+fixed by options, not by the machine. Rounds are counted, never timed; the wall-clock budget only
+decides when to stop.
 
-There is no pre-sampled enemy timetable. Enemies exist only once their row or column scrolls into view
-(`map_spawn_scan_edges`, docs/09), their phase depends on when the frog arrived, and some react to the
-frog, so a timetable sampled with the frog parked sees almost none of them and times the rest wrong.
-Instead every move the search plays runs on a copy of the live state, enemies included, and a move
-that loses a heart is scored at the heart cost, which exceeds any detour the budget allows. Before a
-move that lost a heart is given up, the search tries it again after waiting 12, 25 and 50 frames on
-its start cell, and keeps the earliest variant that loses nothing; that is how it waits for a gap.
-A variant with a wait is a different move: the frog stops while it waits, so the variant starts from
-the stopped node of that cell and lands wherever it lands; the search continues from that landing
-node and records the variant as an edge from the stopped node (a learned edge if the map lacks it),
-never as the original edge (owner, 2026-10-21).
-Fixed hazards are on the map (§2.2). Why: M6, and hard mode later, where one touch kills.
+Memory (D22): a stored `Game` is ~0.8 MB. The experiment's archives of 15 000–40 000 cells took
+5–8 GB, and the OS killed a 25-minute run for low memory. The archive therefore keeps a full state for
+a bounded set of entries (checkpoints) and rebuilds any other entry's state by replaying its inputs
+from its nearest checkpoint ancestor. Resident memory stays under `--max-mem-gb` (default 4, §5.2).
+Which entries keep states is T08's choice, recorded in FINDINGS.
 
-### 2.6 Checking on the original
+### 2.5 Danger
 
-Original mode plans on the engine unpaced and confirms on the oracle, because the original lags in
-busy passes and the engine does not (rust-engine FINDINGS T42, T84): the two drift apart. Each chunk
-starts from the original's memory transplanted into the engine (`Start::Transplant`, as `plan_exit`
-does). T02 measures what share of planning time confirmation costs. If it is large (T02 records the
-threshold it used and why), T10 checks long stretches once and re-plans only from where the original
-parts from the engine, by route repair (§2.7); otherwise it keeps 48-frame commits. Either way the
-final route is accepted only by the faithful check (§4).
+There is no danger map and no wait-and-retry step: enemies and hazards act on the bursts as in play,
+and standing still is one of the burst's holds. A state that lost a heart is archived but loses to any
+state of its cell with more hearts, and its choice weight drops (§2.4), so a route avoiding the hit
+wins where one exists (M6). T07's `danger::play_safe` is not on the explorer's path and is left as
+built (D14's live judgement holds; its wait variants are no longer needed).
+
+### 2.6 Checking on the original (amended 2026-10-22)
+
+Original mode plans on the engine and confirms on the original by stretch and repair, the
+experiment's loop (spike-explore, `--original`):
+
+1. Transplant the original's memory into a `Game` (`Start::Transplant`) and plan on the engine to the
+   exit.
+2. Play that plan on the oracle (`sync::step_inserting`) in lockstep with the engine. It parts where
+   the frog cells differ by more than one, a life is lost, `DYING` is set, `sync::in_wall_loop`
+   holds, or the original loses a heart the engine did not.
+3. Keep the plan to 16 frames before the parting, and plan again from the original's state there,
+   the rest of the old plan as the guide and the archive seed (§2.7).
+4. Done when the original exits. A parting at the same cell three repairs running accepts what the
+   original insists on there (a heart lost), so an unavoidable hit cannot loop for ever.
+
+Why stretches, not T02's 48-frame chunks: the explorer makes a whole plan to the exit, the original
+agreed with it for 1 700–2 100 frames at a time, and W2-1 and W5-2 then passed `verify` (1 and 8
+repairs, 85 s and 482 s). Why the heart check: W5-2's experiment route lost 3 hearts on the original.
+
+An engine route is never accepted on the engine's word: W3-2's engine-only route parted from the
+original at frame 3 737 and died at 5 753, yet `sf_conform::run` passed it (with resync the engine
+follows the original into the death); only `verify`'s exit milestone caught it. The final route is
+accepted only by `verify` (§4.1).
 
 App mode (set C) confirms on the engine from the same `start_level` state; there is no original.
 
@@ -199,34 +196,41 @@ replayed in the app or from `start_level`, and an app route never on the oracle:
 `complete-w1-1` ends in game over from `start_level` for every seed and offset (its FINDINGS, T06),
 and its recordings left the original under lag (T00 Q2). A route that diverges is first checked for a
 mixed timing; it is never patched by padding or shifting frames. The fix is re-planning in the right
-timing, or route repair (§2.7) from where it parts.
+timing, or route repair (§2.7) from where it parts. A guide path (§2.11) is cells, not inputs, so a
+guide from an original route steers an app-mode plan without crossing timings.
 
 ### 2.7 Route repair
 
-`--follow <script>` replays an old route while the frog's cell stays within one cell of the old
-route's cell at the same input index; where it parts, the search re-plans to the nearest later cell of
-the old route (by map distance) and follows on. Why: T207's chain legs differ from their standalone
-routes only in carried state (RNG, wings, hover phase), and re-planning the whole leg discarded a
-route that was mostly right.
+`--follow <script>` turns an old route into both a guide and an archive seed: its frog cells, from
+playing it at its own start in its own timing, become the guide path (§2.11), and its inputs are
+replayed from the new start, every 8th state seeding the archive until the frog dies. The search then
+runs as usual. Why both: replayed inputs reach far at once where the carried state differs little
+(T207's chain legs: RNG, wings, hover phase), and the cells keep steering after they part. Original
+mode's repair (§2.6) is this, with the rest of the plan as the old route. Replayed inputs are only a
+seed: a route is accepted in a timing only after it is played there (§2.6).
 
 ### 2.8 The map cache
 
 Maps are saved under `~/.cache/superfrog-re/maps/` (beside the oracle build, shared by all
 worktrees), keyed by level id and the engine build (`SF_ENGINE_BUILD`), so an engine change
 invalidates them. `--no-cache` builds fresh. The benchmark always passes `--no-cache`, because a map
-built once and reused would hide its cost from M3.
+built once and reused would hide its cost from M3. A run without the map compass (§2.2) builds and
+reads no map.
 
 ### 2.9 The unhappy paths
 
-- Budget exhausted: the planner exits non-zero, writes the best partial route to `--out` and a
-  one-line reason (coins needed, last cell, stalled target) to stderr. Why: a partial route is what the
-  next agent resumes or diagnoses from.
-- A coin or switch the map calls unreachable: kept at the far-coin cost with a stderr line (§2.3); the
-  planner never exits early on map evidence alone, because a map gap is not proof (D16). If the budget
-  ends with the count unmet, the reason line says how many coins the map and the exploration together
-  ever reached, so "impossible" and "not found in time" read differently.
-- The oracle hangs or panics: the oracle runs under its frame cap (rust-engine DESIGN §5.2); the chunk
-  is rejected as a dead path.
+- Budget exhausted: the planner exits non-zero, writes the best partial route to `--out` (the
+  archived state furthest on: lowest band, then nearest an exit) and a one-line reason (coins needed
+  still, least exit distance with the coins met, cells archived, last confirmed frame on the original)
+  to stderr. Why: a partial route is what the next agent resumes or diagnoses from. The planner never
+  exits early on evidence that a level is impossible (D16 holds).
+- Memory: the archive stays under `--max-mem-gb` (§2.4, §5.2). It never grows until the OS kills it:
+  the experiment's 25-minute run was killed so.
+- The oracle hangs or panics: the oracle runs under its frame cap (rust-engine DESIGN §5.2); the plan
+  parts there, as at a death (§2.6).
+- A guide file that does not parse, or a guide script whose own replay never leaves the start cell:
+  exit 2 with the reason. A guide that is merely wrong (another timing, a changed level) is not an
+  error: off-path cells keep a weight (§2.11).
 - A corrupt or stale map cache file: rebuilt, never trusted. The key includes the engine build.
 - Two planners at once (the benchmark, a worker): cache writes go to a temp file then rename, so a
   reader sees a whole map or none.
@@ -235,7 +239,7 @@ built once and reused would hide its cost from M3.
 
 ### 2.10 Hints (owner, 2026-10-20)
 
-`--via c,r` (repeatable; cells to pass through, in order, before the coin choice's own targets resume),
+`--via c,r` (repeatable; cells to pass through, in order, before the search's own progress resumes),
 `--avoid c0,r0,c1,r1` (repeatable; cells the search treats as deadly) and `--follow <script>` (§2.7,
 also usable with a partial route as a starting input). Why: an agent stuck on a level that matters
 today needs a way through, and the planner's own fix may take a task.
@@ -244,7 +248,39 @@ Every run that uses `--via` or `--avoid` appends one line to `engine/conform/pla
 in git): date, level, start, the hints, and whether the run completed. `--follow` alone is not logged,
 because route repair is a planned use. Why: the log lands in the diff of whoever used a hint, so each
 workaround is visible and becomes a planner gap to fix rather than a habit. `PLAN_STATS` carries
-`hints=N`; `sf-bench` passes no hint options and rejects a result whose `hints` is not 0.
+`hints=N`; `sf-bench` passes no hint options and rejects a result whose `hints` is not 0. A guide
+(§2.11) is not a hint and is not logged.
+
+### 2.11 Guide paths (owner, 2026-10-22, D21)
+
+`--guide <file>` gives a path of cells to pass near, in order. Two forms, one shape to the core
+(`Vec<GuidePoint { cell, coins_left: Option<u16> }>`):
+
+- A route script (its first line `# timing: …`, or any `InputScript` file): played once at its own
+  start in its own timing (on the original for `original` or no timing line, on the engine from the
+  `start_level` state for `app`), sampled every 8 frames for the frog's cell and the coins left. The
+  shell plays it; the core takes the points.
+- A waypoint file: one `col,row` or `col,row,coins_left` per line, `#` comments. Written by hand or,
+  later, by an agent from the annotated level image (`tools/export_annotated.py`); writing one by
+  agent is out of scope (§8, owner 2026-10-22).
+
+The core gives each archived cell the furthest point index p whose region it falls in (the point's
+coarse cell ±1, and its band when the coins are known, any band when not). The choice weight is
+3·e^(−(p_max − p)/20) on the path (p_max the furthest index any archived cell has), 0.15 off it.
+Off-path cells keep a weight because a guide from another start or mode may be wrong in places. Why:
+W6-2 went from stalled 6 cells short to an exit in 80 s guided by its committed route's path.
+
+A guide is not a hint (§2.10, D21): it is not logged, and `PLAN_STATS` carries `guided=0|1`. The
+counted benchmark guides each level by its committed route (§4.2).
+
+### 2.12 Route length (D23)
+
+The experiment's routes ran 19–53% longer than the committed ones (M4: at most 25%). After the first
+exit the search goes on for a shortening budget (default 20% of the time used so far, at least 60 s)
+and keeps the shortest exit. Then a shortcut pass: for states i < j on the route, a short explorer run
+from i targets j's key within (j − i) − 1 frames, and a shorter stretch found replaces the old one,
+until a pass finds nothing or the budget ends. In original mode the shortened plan is the one
+confirmed (§2.6). T22 builds it; T14 tunes its defaults.
 
 ---
 
@@ -253,7 +289,8 @@ workaround is visible and becomes a planner gap to fix rather than a habit. `PLA
 ### 3.1 The boundary
 
 ```
-engine/crates/sf-plan/src/core/   — map graph, coin choice, danger cost, search policy, repair policy.
+engine/crates/sf-plan/src/core/   — archive, explorer, guide weights, shortening, compasses (map graph,
+                                    coin choice), repair policy.
                                     Takes Game states and level facts as arguments; may step sf-core.
                                     No clock, file, environment, oracle, network or random seeding
                                     other than the seed passed in.
@@ -275,24 +312,27 @@ Threads: the core exposes work as partitions (`expand(part) -> Vec<Child>`); the
 - `core::facts`: level facts from a `Game` state and `sf_conform::game_data()`'s T7MP: standable
   cells, coin cells (objects and tile coins), switches and gates, exit cells, coins needed, frog cell
   (`((X+0x17)/16, (Y−0x10)/16)`). Replaces the copies in the four old planners.
-- `core::map`: `MoveMap` (cells, edges, preconditions), built by stepping the engine.
-- `core::coins`: coin choice over a `MoveMap`.
-- `core::danger`: the live heart check with wait variants (§2.5); fixed hazards are in `core::facts`.
-- `core::search`: macro following, beam fallback, archive, scoring, exploring when stuck, learned and
-  unreliable edges.
-- `core::repair`: `--follow` policy.
-- `oracle`: chunked or stretch confirmation on `sf_oracle::Amiga` through `sf_conform::sync`.
+- `core::archive`: the explorer's cells, entries, counters and checkpointed states (§2.4, D22).
+- `core::explore`: rounds, choice weights, bursts, exits; `Compass` (straight by default, `MoveMap`
+  optional).
+- `core::guide`: guide points and their weights (§2.11).
+- `core::shorten`: the shortening budget and shortcut pass (§2.12).
+- `core::map`, `core::graph`: `MoveMap`, built by stepping the engine (T04); a compass only (§2.2).
+- `core::coins`: coin choice over a `MoveMap` (T06); a compass only (§2.3).
+- `core::danger`: the live heart check with wait variants (T07); not on the explorer's path (§2.5).
+- `core::repair`: `--follow` policy (old route → guide and seed, §2.7).
+- `oracle`: stretch-and-repair confirmation on `sf_oracle::Amiga` through `sf_conform::sync`
+  (§2.6); also plays a guide script at its own start (§2.11).
 - `cache`: map files (bincode, `serde` derives already in the workspace).
 - `main` (bin `sf-plan`): the one command.
 - crate `sf-bench` (bin `sf-bench`): §4.2. A separate crate that runs every planner, old and new, as a
   child process, so measuring never links the thing measured.
-- bin `sf-explore` (in `sf-plan`): M7's goal-free explorer (T13), run by `sf-bench --soundness` as a
-  child for the same reason.
 
 ### 3.3 Data flow
 
-start state → `facts` (with fixed hazards) → `map` (cache or build) → `coins` → `search` (engine, every move
-played through `danger`; in original mode chunked through `oracle`) → `InputScript` → `--out`.
+start state → `facts` → (guide file → `oracle`/engine replay → guide points) → `explore` (archive,
+compass, guide; engine) → `shorten` → in original mode `oracle` stretch and repair, back to `explore`
+from each parting → `InputScript` → `--out`.
 
 ### 3.4 Storage
 
@@ -306,8 +346,9 @@ is generated from it, never hand-edited. A crash loses at most the level in flig
 
 **Unit and engine tests (test block).** `facts` against known level counts; `coins` on synthetic
 graphs; every edge of the W1-1 map replays on the engine to its end node, landed (a sample of edges on other
-levels); M8: plan W1-1 twice with one seed, byte-equal, engine only, in the core (T08) and through the
-command (`--engine-only` T11, `--app` T12); the purity test. The M8 tests stay in the block even over
+levels); the archive's rebuilt states equal the stored ones byte for byte (D22); M8: plan W1-1 twice
+with one seed, byte-equal, engine only, in the core (T08) and through the command (`--engine-only`
+T11, `--app` T12); the purity test. The M8 tests stay in the block even over
 §5's ~30 s rule, at most ~2 min each, because they are the target's only guard.
 
 **The benchmark (not in the test block).** Too slow: a counted set-A run is up to 12 h. It is run as
@@ -328,8 +369,13 @@ bug-recorder's routes failed.
 ### 4.2 The benchmark
 
 `cargo run --release -p sf-bench -- --set A|B|C --planner new|plan_exit|plan_exit_w6|explore|best-old [--levels W1-4,..] [--jobs N]`.
-Rules (unaided): level, start, goal; seed 1; no level-specific options; budget 30 min wall-clock per
-level including confirmation; maps built fresh. For the old tools "unaided" means each run with
+Rules: level, start, goal and, for the new planner, the level's committed route as its guide
+(`--guide`, the script `verify::committed_script(set, level)` names, played at the same start the
+planner is given: the `AtLevel` sync point for sets A and C, the leg snapshot for set B; owner
+2026-10-22, D21); seed 1; no other level-specific options; budget 30 min wall-clock per level
+including confirmation, the guide's own replay included; maps built fresh where the compass uses
+them. The results line and the table carry `guided`, so a guided new result is never read as an
+unaided one. The tuning run (T14) also plans set A unaided, recorded and not gated. For the old tools "unaided" means each run with
 `--coins 0` style defaults and no `--via/--avoid/--ground/--jump/--launch/--fly/--skip/--to/--stomp/--hurt`; the
 baseline records the best of the three old tools per level, each given the full budget in turn,
 because an agent today would try them all. Records per level: completed, wall-clock, engine frames,
@@ -337,8 +383,8 @@ oracle frames, confirmation share, route frames, hearts lost, failure reason.
 
 Counted runs (T15–T17) run one level at a time with no other build or test on the machine
 (`--jobs 1`), because four oracles at once each run at ~95 frames/s against ~314 alone
-(rust-engine FINDINGS 2026-10-11). Set C may use `--jobs` up to the core count. M7 (T13) is engine
-only and runs levels in parallel.
+(rust-engine FINDINGS 2026-10-11). Set C may use `--jobs` up to the core count, memory allowing:
+each planner may hold `--max-mem-gb` (§5.2), so jobs × that stays under the machine's 16 GB.
 
 ---
 
@@ -391,6 +437,7 @@ Nothing here needs a person: every measure is machine-decided.
 |---|---|---|
 | `sf-plan --budget-min N` | 30 | Planner gives up at N minutes wall-clock |
 | `sf-plan --frames N` | 30 000 | No route longer than N frames; the oracle's own frame cap applies to every confirmation |
+| `sf-plan --max-mem-gb N` | 4 | The archive keeps checkpointed states under N GB resident (§2.4, D22); the experiment's unbounded archive reached 8 GB and was killed by the OS |
 | `sf-bench` per-level timeout | budget + 5 min | Kills a planner child that ignores its budget |
 | Oracle frame cap | rust-engine DESIGN §5.2 | Every oracle run is bounded |
 
@@ -436,6 +483,8 @@ The old tools stay in the tree until T18, so any level can still be planned the 
   owner accepts the miss.
 - D6 (owner): techniques in: planning in map moves, check-less-repair-diffs (conditional on T02),
   danger map (made live by D14), map cache. Out: learning from committed routes (it is a hint), a trained model.
+  Amended 2026-10-22 (D19, D21): the explorer replaces planning in map moves; following a committed
+  route's path is allowed everywhere. A trained model stays out.
 - D7 (owner): a throwaway spike (T00) proves the map on W1-4 and W6-3 before anything is built on it.
 - D11 (owner, 2026-10-20): hints (`--via`, `--avoid`, `--follow` as starting input) are allowed for
   agents but never in the benchmark, and every `--via`/`--avoid` use is logged to
@@ -454,16 +503,16 @@ The old tools stay in the tree until T18, so any level can still be planned the 
   spawn as their edge scrolls into view (docs/09), so a parked-frog sample misses them and their phase.
   T00 confirms the spawn behaviour on the engine before T07 is built. A retry after a wait is a
   different, standing-start move (owner, 2026-10-21 amendment review): waiting bleeds speed (D15).
-- D15 (owner, 2026-10-21): map nodes carry a speed band and facing if T00 measures the build at ~5 min
+- D15 (owner, 2026-10-21; binds the map only since D20): map nodes carry a speed band and facing if T00 measures the build at ~5 min
   or less per level with them; otherwise cells only, with momentum left to the frame-level search.
   Edges end landed, never padded to a stop. Why: momentum (§2.2) and M4.
-- D16 (owner, 2026-10-21): "unreachable on the map" is a cost, never a stop: far-coin cost in the
+- D16 (owner, 2026-10-21; since D19 only its rule stands that no evidence of a level being impossible ends a run early): "unreachable on the map" is a cost, never a stop: far-coin cost in the
   choice, exploring when stuck in the search (step-counted, so M8 holds), learned edges for the run,
   and no early exit on map evidence. Why: a map gap must not become a false "impossible".
-- D17 (owner, 2026-10-21): edges record the coins they touch on the way, and an edge that fails live
+- D17 (owner, 2026-10-21; map only since D20, the explorer has no edges): edges record the coins they touch on the way, and an edge that fails live
   replay 3 times in a run is marked unreliable (cost ×4) for that run. T00 measures the live-failure
   rate. Why: coins taken mid-jump, and a world (object slots, spawns, RNG) that differs by route.
-- D18 (T00 spike, owner 2026-10-21; recorded by T00's review): seed the map by real moves, never by
+- D18 (T00 spike, owner 2026-10-21; recorded by T00's review; binds the map only since D20): seed the map by real moves, never by
   writing the frog's X/Y (placed: 52% of W1-4's and 54% of W6-3's edges land elsewhere from a real
   state); build with enemies live (frozen-world edges fail live 58.8% against 46.2% on W1-4, 67.6
   against 55.0 on W6-3); no speed bands (W1-4 1 699 s against 227 s cells only, over D15's ~5 min).
@@ -473,6 +522,29 @@ The old tools stay in the tree until T18, so any level can still be planned the 
   must reach W6-3's exit. Live replay fails 46–55%, about half one cell off: a move landing within one
   cell of its target counts as success, the search going on from where the frog is, and D17's
   3-failure ×4 rule stands. D14 holds: parked 2 000 frames, 1 of W1-4's 60 enemy cells spawns.
+- D19 (owner, 2026-10-22): the planner is a whole-level explorer (§2.4), not map following. Why: T04's
+  map reached the exit on 13 of 24 levels and T20 was to patch the other 11 by hand; an experiment off
+  T04 (`spike-explore/`, ~470 lines, engine only, 10 threads, 10 min, no map, no hints) finished 8 of
+  those 11, and a 9th (W6-2) with a guide; in original mode W2-1 and W5-2 passed `verify`. Open in it:
+  W2-3 and W6-4 stalled 17 and 13 cells short of the exit, memory, hearts on the original, route length.
+  T08–T10 are rewritten for it, T13 (M7) and T20 dropped, T22 added.
+- D20 (owner, 2026-10-22): the movement map is kept as an optional compass (§2.2), tried in T14 and kept
+  only if it measurably helps; M7 and T13 are dropped. Refused: dropping the map outright (loses a
+  possible sense of direction already built), keeping M7 (brings back T20's hand patching).
+- D21 (owner, 2026-10-22): a guide path (§2.11) is allowed everywhere, the counted benchmark included,
+  which guides each level by its committed route; unaided set-A results come from the tuning run,
+  recorded, not counted. Refused: guides as a separate counted mode, two counted runs (~25 h more), and
+  unaided counted runs. Cost accepted: the counted numbers prove nothing about a level with no route;
+  the old tools' baseline stays unaided, and the table says which results were guided. The planner
+  reads hand or agent waypoint files; an agent writing them is not built here (§8).
+- D22: the archive bounds its memory by checkpointing states and rebuilding the rest by replay, under
+  `--max-mem-gb` (§2.4). Why: 0.8 MB a state, 5–8 GB in the experiment, and the OS killed a 25-minute
+  run.
+- D23 (owner, 2026-10-22): a route-shortening task (T22, §2.12) is added, because the experiment's
+  routes ran 19–53% over the committed ones against M4's 25%. Refused: leaving length to T14.
+- D24 (owner, 2026-10-22): original mode confirms by stretch and repair (§2.6), not T02's 48-frame chunks. T02 chose chunks
+  for the old tools on a small confirmation share; the explorer plans whole stretches, and its repair
+  loop is what passed `verify` on W2-1 and W5-2.
 - D8: the planner is a new crate `sf-plan`, not more examples in sf-conform, because examples cannot be
   unit-tested or shared, which is how four copies of the level facts came to exist.
 - D9: the benchmark verifies with `sf_conform::run` on a generated case, the check the completion
@@ -487,7 +559,9 @@ The old tools stay in the tree until T18, so any level can still be planned the 
 
 - Easy and hard completions: need the difficulty-modes plan's conformance first (owner's order).
 - Re-planning committed routes: they pass today; this plan only shows equivalent ones can be produced.
-- A goal-free explorer for finding bugs: the M7 explorer may be reused later; no bug-finding here.
+- A goal-free explorer for finding bugs: the planner's explorer may be reused later; no bug-finding here.
+- An agent writing guide paths from a level's picture (map-editor levels): the planner reads a
+  waypoint file (§2.11), but writing one by agent belongs to the map-editor plan (owner, 2026-10-22).
 - Learning from committed routes or a trained model.
 - Any change to a game mechanic or the faithful bar.
 - The bonus level, the witch and the slot machine (D1).

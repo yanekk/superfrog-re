@@ -11,6 +11,11 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-22 | 🔄 | Owner amended the plan (D19–D24): whole-level explorer core; guide paths allowed everywhere, the counted benchmark included (baseline stays unaided); map and coin choice compasses only; M7, T13, T20 dropped; T22 route-shorten added. |
+| 2026-10-22 | 📌 | Experiment `spike-explore/goexp.rs`, engine only, 10 threads, 10-min cap, no map, no hints: exits on W2-1 30 s, W2-4 180, W3-2 340, W3-4 577, W4-2 503, W4-4 589, W5-2 62, W6-1 211. W2-3, W6-2, W6-4 stalled 6–17 cells short. |
+| 2026-10-22 | 📌 | Experiment: the band-0 exit pull turned W3-4, W4-4, W5-2, W6-1 from timeouts into exits; a committed route's path as guide made W6-2 exit in 80 s. Raw `--follow` inputs seed only 4–47 cells: original-timed routes die early on the engine. |
+| 2026-10-22 | 🐞 | Experiment: W3-2's engine-only route parted from the original at frame 3 737 and died at 5 753, yet `sf_conform::run` said ok (resync follows the death); only `verify`'s exit milestone caught it. Stretch repair passed `verify` on W2-1, W5-2. |
+| 2026-10-22 | 🐞 | Experiment: a stored `Game` is ~0.8 MB; 15–40 k-cell archives reached 5–8 GB RSS and the OS killed a 25-minute run. W5-2's original-mode route lost 3 hearts, its lockstep having no heart check. Hence D22 and §2.6's heart rule. |
 | 2026-10-22 | 📌 | T21 map s, 10 threads, load 2–15: W1 147 185 156 229; W2 58 193 139 6; W3 79 39 180 109; W4 116 57 174 111; W5 83 192 189 294; W6 67 228 175 205. None over 300. |
 | 2026-10-22 | 📌 | T21 map frames (k), same build: W1 6420 9135 8321 10652; W2 2501 9883 6613 262; W3 3004 1572 7472 5393; W4 5824 2060 6871 4780; W5 3254 7814 8379 12781; W6 2187 9269 7690 9185. |
 | 2026-10-22 | 📌 | T05 review, for T20/T21: a new core module `map.rs`, `facts.rs`, `graph.rs` or `moves.rs` uses must join `cache::CORE_FILES`, or cached maps go stale; `tests/cache.rs` fails naming it. `cargo fmt -p sf-plan` rewrites seven files already unformatted. |

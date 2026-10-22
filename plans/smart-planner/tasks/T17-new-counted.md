@@ -1,6 +1,6 @@
 # T17 — new-counted
 
-**Phase:** 3 · **Depends on:** T13, T16 · **Weight:** heavy (machine time, up to ~25 h)
+**Phase:** 3 · **Depends on:** T16 · **Weight:** heavy (machine time, up to ~25 h)
 
 ## Goal
 
@@ -18,7 +18,8 @@ DESIGN §1 (M1–M6), §4.2, D2.
 
 ## Run
 
-`sf-bench --set A --planner new --jobs 1`, then `--set B`, with T16's quiet-machine check per slice.
+`sf-bench --set A --planner new --jobs 1`, then `--set B`, guided by each level's committed route
+(DESIGN §4.2, D21), with T16's quiet-machine check per slice.
 Set B also records route repair as an extra, ungated column: `--planner new --follow-standalone`.
 
 ## Done when
