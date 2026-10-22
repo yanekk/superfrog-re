@@ -17,9 +17,9 @@ unreliable edges); T07 now light, T00 answers three more questions.
 allowed everywhere, map a compass; T13 and T20 dropped, T22 route-shorten added.
 **Amendment reviewed:** 2026-10-22 — 18 fixes, 1 decision (owner: T10's W1-4 check runs guided)
 
-**Status:** T00–T11, T19, T21, T22 done; T12 awaiting review.
+**Status:** T00–T12, T19, T21, T22 done.
 **Last updated:** 2026-10-22
-**Next `pir-work` will:** review T12 app-timing.
+**Next `pir-work` will:** T14 tuning-run after T23 w1-4-ending.
 
 ## Tasks
 
@@ -40,7 +40,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T09 | route-repair | T08 | ✅ | |
 | T10 | oracle-check | T02, T08, T09 | ✅ | |
 | T11 | plan-command | T05, T10, T22 | ✅ | |
-| T12 | app-timing | T11 | 🔍 | `sf-plan --app` (`app.rs`): engine start, settle, plan, replay check; routes `# timing: app` + `# seed: N`. `sf-bench` set C: engine replay, then real app's state hashes. 5 + 1 + 1 tests. Deviations: main merged in (owner yes); `--follow` test and the sf-e2e app test `#[ignore]`d (70 s, 3 min). |
+| T12 | app-timing | T11 | ✅ | Review ✅, one fix: the planner's `app_start` was held to nothing (seed `N 0` passed every sf-plan test); a test now compares each frame's state with sf-bench's start. Mutation caught; ran the ignored real-app and `--follow` tests and `sf-bench --set C` W1-1 green. `--follow` repair-path detail read-only. |
 | T14 | tuning-run | T11 | ⬜ | |
 | T15 | set-c-run | T12, T14 | ⬜ | |
 | T16 | baseline-counted | T15 | ⬜ | |
@@ -51,7 +51,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T22 | route-shorten | T08 | ✅ | |
 | T23 | w1-4-ending | T09, T10; blocks T14 | ⬜ | |
 
-**Review queue:** T12
+**Review queue:** empty
 
 ## Blocked on the user
 

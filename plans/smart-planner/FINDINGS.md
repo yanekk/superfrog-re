@@ -11,8 +11,7 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
-| 2026-10-22 | 📌 | T12, worker-driven: the real app (`1: start-level`, `seed N N`, key i at step i+1) keeps the engine's state hashes from `start_level` every frame to W1-1's exit; a wrong seed or a start one step late parts at frame 1. |
-| 2026-10-22 | 📌 | T12, load 5–15, 10 threads: W1-1 `--app --seed 1`, shortening off, unguided 25 s through column 92, guided 22 s; `--follow complete-w1-1` 70 s. `sf-bench --set C` W1-1 guided: completed, 3.7 min, 2 936 frames. bug-recorder came in by merging main (owner). |
+| 2026-10-22 | 📌 | T12, worker-driven: the real app (`1: start-level`, `seed N N`, key i at step i+1) keeps the engine's state hashes to W1-1's exit; a wrong seed parts at frame 1. `sf-bench --set C` W1-1 guided: completed, 2 936 frames (3.7 min; review, load 25: 9.0 min). |
 | 2026-10-22 | 🐞 | T11: `sf-bench` `judge` marks any wall-clock past the budget `over-budget`, the new planner included; `plan_original` runs its last lockstep past the deadline (W1-1 at 1 min overran 33 s). T14/T15 should check 30-min runs for this. |
 | 2026-10-22 | 📌 | T11 Done-when, load 27, 10 threads: `sf-bench --planner new --levels W1-1` guided, original mode: completed, 594 s, 4 082 frames (ref 4 474), 2 repairs, 0 hearts. Engine-only defaults unguided: 6.5 min; guided, shortening off: 57 s. |
 | 2026-10-22 | 🔄 | Owner, T10: added T23 w1-4-ending (T09, T10; blocks T14). W1-4 guided by `complete-w1-4` stalls at 158,45, coins met, 15 cells from the exit, original mode and engine only, seeds 1–3. T10's W1-4 Done-when moves there. |
@@ -25,6 +24,7 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 | 2026-10-22 | 🐞 | T09: a leg snapshot's first frame, like `AtLevel`'s, has `level_state` ≠ −2, so an explorer started there reports an exit at frame 1. T11's `--snap` and `AtLevel` starts must play on until the frog lands past frame 150. |
 | 2026-10-22 | 📌 | T09 Done-when: set-B W2-1 leg (`whole_game --until W2-2`, `leg-04.snap`), engine only, `follow_options` of `w2-1-complete`: exit in 40 rounds, 22 s at load ~20, route 2 235 frames, 1 heart lost. |
 | 2026-10-22 | 📌 | T09, 10 threads, load ~12, seed 1: W6-2 guided by `enemies-w6-2-complete` exits in 138 s, 476 rounds, route 9 182 frames. W1-1 fixture with frame 2000 dropped, followed: 290 k engine frames, 28 rounds; unguided 849 k, 85. |
+| 2026-10-22 | 📌 | T08 review: DESIGN §2.4 still states the band as 1 + (left − 1) / 4; the owner's T08 rule (last 8 coins one band each, `archive::band`) is what the code and T09's guide regions use. |
 | 2026-10-22 | 📌 | T08 Done-when, load 9–12, 10 threads, 10-min cap, seed 1, unguided: W6-1 54 s, W5-2 37 s, W3-2 132 s, W3-4 245 s; cells 11.6k, 9.0k, 15.5k, 26.1k; peak RSS 3.1, 3.4, 3.1, 3.3 GB. W1-1 15 s. |
 | 2026-10-22 | 🔄 | Owner, T08: kept DESIGN §2.5 heart rule; adopted `experiment/t08-coin-bands` 465d60d: last 8 coins one band each, pull toward nearest object coin left (deviation from §2.4). Before it W6-1 exited 0 of 5 ten-minute runs, stalling 2–4 coins short. |
 | 2026-10-22 | 📌 | T08 checkpoint policy (D22): an entry over 64 frames past its checkpoint takes one; states dropped least-recently-used, non-anchor (1024-frame) and unreferenced first. A state counts 9/8 serialized (~620 KB); the archive keeps ¾ of `max_mem_bytes`. |
