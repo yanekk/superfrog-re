@@ -1,6 +1,6 @@
 # T09 — side-frog
 
-**Phase:** 2 · **Depends on:** T04 · **Weight:** light
+**Phase:** 2 · **Depends on:** T04, T08 · **Weight:** light
 
 ## Goal
 
@@ -30,6 +30,7 @@ sprites from the engine's frog screen x in widescreen. Record the measurement in
   centre (same animation frame), shifted.
 - [ ] at the left end, likewise in the left strip.
 - [ ] 4:3 sprites unchanged (existing render tests).
+- [ ] a hidden or blinking frog (parked by T04) shows nothing in either strip.
 
 ## End to end (the worker drives this)
 

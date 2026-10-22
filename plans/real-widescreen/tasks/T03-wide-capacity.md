@@ -1,6 +1,6 @@
 # T03 — wide-capacity
 
-**Phase:** 1 · **Depends on:** T00, T01 · **Weight:** heavy
+**Phase:** 1 · **Depends on:** T00, T01, T02 · **Weight:** heavy
 
 ## Goal
 
@@ -9,7 +9,7 @@ evicts or refuses what 4:3 would keep, while the 4:3 game never touches the new 
 
 ## Design sections this implements
 
-DESIGN §2.4, D4.
+DESIGN §2.4, D4, D11.
 
 ## Files
 
@@ -33,7 +33,8 @@ pub const WIDE_SLOTS: u32 = /* from T00 */;
 pub fn slot_addrs(b: &Bus, screen: Screen) -> impl Iterator<Item = u32>;
 ```
 
-The extra range sits at an address the original never maps (DESIGN §2.4), in LAYOUT address order;
+Work on an extra slot (its update, hitbox, bob draw, `find_free`'s look at it) charges no beam time
+(`c.spend` skipped for it; DESIGN §2.4, D11). The extra range sits at an address the original never maps (DESIGN §2.4), in LAYOUT address order;
 its bytes are zero and unread in 4:3. Each extra slot's +$4c/+$50 point into the extra free list and
 extra bob records, so every pointer the code follows stays a plain address. The bob free list stays
 terminated by 0 after the extras. Every loop goes through `slot_addrs` (or an equivalent for bobs and
@@ -50,6 +51,8 @@ hitboxes): a reviewer greps `0x7c` and `0..20` and finds none left outside it.
 - [ ] `find_free` in widescreen evicts only when every slot, extras included, is full.
 - [ ] T00's heaviest scene (named in its README) stays below `WIDE_SLOTS` (an engine-only replay test).
 - [ ] `PASS_WRITES` covers the extras in widescreen and not in 4:3.
+- [ ] a widescreen pass with extra slots live spends the same beam time as the same pass with only the
+  original 20 live (D11).
 
 ## Done when
 

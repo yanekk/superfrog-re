@@ -14,9 +14,11 @@ DESIGN §1 success criteria, §5 (smart planner), D5.
 
 ## Precondition
 
-`sf-plan` is on the base branch: `git merge-base --is-ancestor pir/smart-planner main` succeeds, or
-`engine/crates/sf-plan` exists on main. If not, ask the owner and wait (DESIGN D5); do nothing else
-first. Merge the base branch into the feature branch only through pir's own procedure.
+`engine/crates/sf-plan` exists on this task's branch. pir brings the base branch into the feature
+branch only after every task is done, so it arrives only by the owner's hand-merge (DESIGN §5, D5):
+smart-planner merged into main, the run stopped, main merged into `pir/real-widescreen`, the run
+restarted. If `sf-plan` is missing, ask the owner and wait; do nothing else first, and never merge or
+rebase yourself.
 
 ## Files
 

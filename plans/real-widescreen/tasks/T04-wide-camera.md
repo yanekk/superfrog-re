@@ -22,8 +22,9 @@ DESIGN §2.5, D3.
 ## Interface
 
 Widescreen clamps: `cx ≥ $10 + 65`, `cx ≤ level_width − $168 − 65` (both copies); bonus frog
-`cx − 8 − 65 .. cx + $12a + 65`; frog sprite hidden at screen x ≥ $150 + 65 or x + $20 < −65. Vertical
-clamps unchanged.
+`cx − 8 − 65 .. cx + $12a + 65`; frog sprite hidden at screen x ≥ $150 + 65 or x + $20 < −65, and
+parked at $150 + 65 (`OFF_SCREEN` is both the test and the parking spot; parked at $150 it would show in
+the right strip). Vertical clamps unchanged.
 
 ## Tests
 
@@ -34,6 +35,7 @@ clamps unchanged.
 - [ ] 4:3 clamps unchanged (both copies).
 - [ ] bonus level: the frog can be steered to `cx − 73` and `cx + $12a + 65` in widescreen, not in 4:3.
 - [ ] the frog's sprites stay shown at screen x $150..$150+64 in widescreen.
+- [ ] a hidden frog (blinking, below the play field) is parked at $150 + 65 in widescreen, $150 in 4:3.
 - [ ] final level: record in FINDINGS whether the widescreen clamp moves its camera from the original's
   start point and by how much; the witch fight still starts (engine-only run of 1 000 steps, no panic).
 

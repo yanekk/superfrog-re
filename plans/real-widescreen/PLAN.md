@@ -46,7 +46,7 @@ FINDINGS.
 |---|---|---|
 | [T01](tasks/T01-wide-mode.md) | wide-mode | — |
 | [T02](tasks/T02-wide-spawn.md) | wide-spawn | T01 |
-| [T03](tasks/T03-wide-capacity.md) | wide-capacity | T00, T01 |
+| [T03](tasks/T03-wide-capacity.md) | wide-capacity | T00, T01, T02 |
 | [T04](tasks/T04-wide-camera.md) | wide-camera | T01 |
 | [T05](tasks/T05-wide-special-cases.md) | wide-special-cases | T01 |
 | [T06](tasks/T06-wide-switch.md) | wide-switch | T02, T03 |
@@ -60,7 +60,7 @@ mid-level, and records and replays; 4:3 is unchanged.
 | # | Task | Depends on |
 |---|---|---|
 | [T08](tasks/T08-side-objects.md) | side-objects | T02, T03 |
-| [T09](tasks/T09-side-frog.md) | side-frog | T04 |
+| [T09](tasks/T09-side-frog.md) | side-frog | T04, T08 |
 | [T10](tasks/T10-app-wiring.md) | app-wiring | T05, T06, T07, T08, T09 |
 | [T11](tasks/T11-widescreen-drill.md) | widescreen-drill | T10 |
 
@@ -73,18 +73,22 @@ docs/12 say so, and a worker has driven it.
 |---|---|---|
 | [T12](tasks/T12-wide-every-level.md) | wide-every-level | T11 |
 
-T12 also needs `sf-plan` on the base branch (smart-planner merged); its worker checks and waits.
+T12 also needs `sf-plan` on its branch. pir brings main in only after every task is done, so once
+smart-planner is merged into main the owner stops the run, main is merged into `pir/real-widescreen` by
+hand, and the run restarts (DESIGN §5, D5); until then T12's worker asks and waits.
 
 ---
 
 ## Critical path
 
 ```
-T00 → T03 → T08 → T10 → T11 → T12
-T01 → T03 → T06 → T10 → T11 → T12
+T01 → T02 → T03 → T08 → T09 → T10 → T11 → T12
+T00 → T03
 ```
 
-T04 → T09, T05 and T07 are off it and can run beside T02/T03.
+T03 waits for T02 because its replay and eviction tests need the widened spawn and despawn. T09 waits
+for T08 because the frog in the strip needs T08's composition of sprites over the strips. T04, T05, T06
+and T07 are off the path.
 
 Leaves: T12 only.
 
@@ -99,7 +103,7 @@ app's recorder (T10) in T07's format and read by `sf-conform bug` (T07).
 
 ## Parallel width
 
-13 tasks · longest dependency chain 6 · up to 5 could run at once (T00, T02, T04, T05, T07 after T01).
+13 tasks · longest dependency chain 8 · up to 5 could run at once (T00, T02, T04, T05, T07 after T01).
 
 ## Rough sizing
 
@@ -118,4 +122,4 @@ W6-3), now with more enemies alive.
 - `WIDE_SLOTS`: settled by T00's numbers. Does not block anything before T03.
 - Whether the final level's widescreen clamp moves its camera off the start point (DESIGN §2.5): T04
   measures and records it; no decision needed unless it breaks the witch fight, which goes to the owner.
-- Whether smart-planner merges before T12 comes up: if not, T12 waits (D5).
+- Whether smart-planner merges before T12 comes up: if not, T12 waits for the owner's hand-merge (D5).

@@ -10,7 +10,7 @@ auto-scroll. This is the core of "the strips are real game".
 
 ## Design sections this implements
 
-DESIGN §2.2, §2.3.
+DESIGN §2.2, §2.3, §2.4 (the scans' cost, D11), §2.6 (bonus markers, D12).
 
 ## Files
 
@@ -39,6 +39,10 @@ width. Vertical margins untouched. Beam points (`c.point(n)`) stay where they ar
 - [ ] `find_free` treats an object in the strip as on screen in widescreen (not evicted), off screen in
   4:3.
 - [ ] at the level's left edge the widened origin clamps at 0 and does not wrap.
+- [ ] bonus: markers 11 (fly off) and 55 (level end) act when the widened right column reaches them,
+  5 cells earlier than in 4:3 (DESIGN §2.6, D12).
+- [ ] the scan cells widescreen adds charge no beam time (DESIGN §2.4, D11): a widescreen scan of the
+  original's cells spends exactly what the 4:3 scan spends.
 - [ ] grep test or review note: no literal $170/$30 horizontal test left outside `screen.rs` in these files.
 
 ## Done when

@@ -39,4 +39,5 @@ differ; that is fine, the run still visits the level.
 - [ ] `spike/README.md` has the table for every level and the bonus and final levels, and the
   recommended `WIDE_SLOTS` (peak + margin, with the margin's reason).
 - [ ] Panics or softlocks found in the hack are listed with level and frame, each as a FINDINGS row.
-- [ ] No engine code committed; `git diff main -- engine/` is empty.
+- [ ] No engine code committed: no commit of this task touches `engine/` (`git log --stat` of the
+  task's own commits; other tasks' merged code may be on the branch).

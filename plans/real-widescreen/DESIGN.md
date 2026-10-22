@@ -82,7 +82,7 @@ taste, and nothing is retuned (Stance).
 ### 2.3 Spawn and despawn
 
 Sites (survey, 2026-10-22): `scan_origin`, `scan_edges` (column and row), `scan_screen`,
-`scan_right_column` (bonus), `obj_despawn_if_offscreen` (88 call sites, one function),
+`scan_right_column` (bonus), `obj_despawn_if_offscreen` (about 60 call sites, one function),
 `obj_free_if_left_behind` (bonus, 7 sites), `find_free`'s off-screen eviction and the coin's
 force-out of a visible slot (`level/objects.rs` 63–81, 197–224). Each takes the mode and applies
 §2.2. The spawn column and the despawn threshold must move together: a column at cx+401 under a
@@ -106,8 +106,12 @@ Rationale: without more room the wider view would evict or refuse objects, and t
 eviction can take a visible object in the centre, which would make widescreen worse than 4:3 where it
 matters most.
 
-More slots cost more per-pass beam time, so widescreen lags differently from 4:3. That is accepted:
-the widescreen game has no original's lag to match.
+Widescreen's extra work costs no beam time (owner, plan review 2026-10-22, D11): every `spend` for an
+extra slot (its update, hitbox, bob draw) and for a scan cell widescreen adds beyond the original's
+counts is skipped, so the extras never push a pass past its frame. The original 20 slots and the
+original's scan cells cost what they cost; they may hold different objects in widescreen, so a busy
+scene can still lag differently from 4:3, but not because of the extras. Rationale: the owner wants
+widescreen no slower than 4:3, over keeping the original's cost rules.
 
 ### 2.5 Camera and the level's ends
 
@@ -119,8 +123,9 @@ view can at its limits: the original's camera stops at `cx ≥ $10` (view from l
 strip. Keeping the original's outer limits, not the map's edge, is deliberate: the original never
 shows level x 0–15 or the last 26 pixels, and what those cells hold has never been seen.
 
-The frog's sprites are hidden past screen x $150 (or left of −$20) in the original; in widescreen the
-bounds move by 65 (§2.2). In the bonus level the frog's clamp (`cx − 8 .. cx + $12a`) widens by 65
+The frog's sprites are hidden past screen x $150 (or left of −$20) in the original, by parking them
+at x $150 (`frog/anim.rs` `OFF_SCREEN`); in widescreen the bounds and the parking spot move by 65
+(§2.2), since a sprite parked at $150 would show in the right strip. In the bonus level the frog's clamp (`cx − 8 .. cx + $12a`) widens by 65
 each side, so the frog flies into the strips. The final level's camera does not follow (it stays at
 its start point); in widescreen it is only clamped as above. If that moves it off the original's start
 point, the witch's path (relative to the camera) moves with it, which is the §2.2 rule applied.
@@ -132,7 +137,11 @@ From the survey: Spud's parking (`spud_update`, x outside `[cx, cx+$150)`), the 
 (`common::direction`, screen x 0..$154), the witch's loop (path from cx), the bonus chain's path
 (offset from its spawn x, which comes from the right column), and `set_cell_tile`'s redraw window.
 Each follows §2.2. Consequences the owner was told (2026-10-22): a thrown Spud and the bonus shots
-fly on to the wide edge before they are free again, and the bonus frog may enter the strips.
+fly on to the wide edge before they are free again, and the bonus frog may enter the strips. The
+bonus level's map markers 11 (the chains fly off) and 55 (the level is over) act when the right-hand
+scan column reaches them, which in widescreen is 5 cells further on: the bonus level ends about 3 s
+sooner (the camera creeps 25 px/s) and the chains fly off sooner. Accepted as §2.2 applied (owner,
+plan review 2026-10-22, D12).
 `set_cell_tile`'s window only decides which cells are redrawn into the display buffers; widescreen's
 strips draw from the map, so it may stay as is, and its task says which.
 
@@ -151,12 +160,17 @@ comparison from that point is meaningless and the recording says so (§2.8).
 ### 2.8 Recordings and bug fixing
 
 A recording (BR §2.6, `sf-core/src/recording.rs`) carries the mode: format version 2 adds a header
-field `widescreen on|off` (the mode at the level's start) and an input token that toggles the mode
-from its frame on. Version 1 files still parse, as widescreen off. The app records each switch made
+field `widescreen on|off` (the mode at the level's start) and an input token `W` that toggles the mode
+once, at the first frame of the line carrying it; unlike the held tokens it is not repeated while the
+line holds, and the writer starts a new line at every toggle frame. Version 1 files still parse, as
+widescreen off. The app records each switch made
 while recording; today a switch leaves the recording running and saves the 4:3 picture
 (`recorder_app.rs` `a_recording_in_widescreen_saves…`), which this replaces: the replay plays the
-mode as recorded and draws for it. `sf-conform bug compare` on a recording with any widescreen in it
-exits with a one-line message saying a widescreen game has no original to compare with, and
+mode as recorded and draws for it: `sf-conform bug replay` renders the wide picture while the mode is
+on, and the app's `--replay` sets the game's mode and the view from the recording at its start and at
+each toggle, leaving the saved setting alone. `sf-conform bug compare` and `bug case` on a recording
+with any widescreen in it exit with a one-line message saying a widescreen game has no original to
+compare with (a case is an oracle comparison), and
 `docs/BUG-FIX.md` says: a bug that only happens in widescreen is ours to fix, with a widescreen test
 in place of a conformance case.
 
@@ -221,7 +235,7 @@ every widescreen rule is testable headless in milliseconds.
 - `game.rs`: `set_widescreen`, `widescreen()`; `set_view` stays the picture's.
 - `recording.rs`: format v2 (§2.8).
 - `sf-app`: the menu toggle sets both the game mode and the view; the recorder records switches.
-- `sf-conform`: `bug replay` applies the mode; `bug compare` refuses widescreen.
+- `sf-conform`: `bug replay` applies the mode; `bug compare` and `bug case` refuse widescreen.
 
 ### 3.3 Data flow
 
@@ -260,7 +274,9 @@ root (sf-conform and sf-e2e find them there from a worktree).
 
 **The test command.** The block above. Measured 2026-10-22 in a fresh worktree from main: setup 8 s and
 clean; Python 37 s; `sf-core sf-disk sf-app` 148 s; the sf-conform line 226 s; the sf-e2e line 714 s;
-all green. New test files are named `widescreen_*.rs` so the guarded glob lines pick them up; the
+all green. Re-measured at plan review (2026-10-22, fresh worktree, machine load 13–18): all green;
+`recorder_app`'s `every_ending_action_discarded…` once hit its 150 s `--timeout` under that load and
+passed alone (85 s) and on a re-run of the line. New test files are named `widescreen_*.rs` so the guarded glob lines pick them up; the
 guards skip a line until such a file exists, because cargo fails on a `--test` pattern matching
 nothing. `.pir/settings.json` carries only the Python line. Quiet: `cargo test -q` prints dots and one
 result line per binary; for detail add `-- --nocapture`. Colour is off inside the commands
@@ -276,9 +292,12 @@ cache in a temp home and drives it by script events (`menu widescreen` exists), 
 the asset cache; nothing here reaches a network.
 
 **The smart planner (T12 only).** `sf-plan` (crate `engine/crates/sf-plan`) lands with the
-`smart-planner` plan, on branch `pir/smart-planner`, not yet merged on 2026-10-22. T12 starts only once
-`git merge-base --is-ancestor pir/smart-planner main` holds or `engine/crates/sf-plan` exists on the
-base branch; otherwise its worker asks the owner and waits.
+`smart-planner` plan, on branch `pir/smart-planner`, not yet merged on 2026-10-22. pir merges the base
+branch into a build's feature branch only after every task is done, so T12's branch never receives
+`sf-plan` by itself. Once smart-planner is merged into main, the owner stops this run, a session the
+owner asks merges main into `pir/real-widescreen` and brings the live task branches up to it, and the
+owner restarts the run (D5). T12's worker starts only when `engine/crates/sf-plan` exists on its own
+branch; otherwise it asks the owner and waits.
 
 ### 5.1 What the test command cannot reach
 
@@ -290,6 +309,10 @@ base branch; otherwise its worker asks the owner and waits.
 
 RE §5.2 holds: every app run in tests is bounded by frames (`--frames`, script length) in a temp home.
 T12's planner runs carry `sf-plan`'s own `--budget-min` and `--max-mem-gb`.
+
+Nothing in this plan touches anything outside this Mac and repo, so there is no §5.3 (owner confirmed
+at plan review, 2026-10-22). The setup's `tools/setup/oracle.sh` fetch is RE §5.3's `worker` row,
+unchanged. The hand-merge of main before T12 (D5) is the owner's, not a live action.
 
 ---
 
@@ -315,7 +338,9 @@ extra slots drain as §2.7 says). A broken `settings.toml` falls back to default
   §2.4. The extras live in a new LAYOUT range rather than a non-memory field, because the code refers to
   slots and bobs by absolute address everywhere; a separate table keeps every pointer a pointer.
 - **D5 Every level finished in widescreen is in this plan, after smart-planner merges** (owner,
-  2026-10-22): T12 waits for `sf-plan` on the base branch.
+  2026-10-22): T12 waits for `sf-plan`. At plan review (2026-10-22) the owner kept T12 here over moving
+  it to a follow-up, knowing the run stays open until smart-planner merges and main is then merged into
+  the feature branch by hand (§5).
 - **D6 Strip bobs are drawn by the renderer from a per-buffer draw list** (planner). Alternatives: wider
   display buffers (every blit, scroll and erase routine re-strided, risking the 4:3 game), or drawing from
   each slot's current position (out of step with the centre, which shows a pass-old buffer). The list
@@ -326,6 +351,10 @@ extra slots drain as §2.7 says). A broken `settings.toml` falls back to default
 - **D9 A widescreen-only bug is ours** (owner, 2026-10-22). §2.8.
 - **D10 Edge-tied rules all use the wide screen, including Spud's and the bonus shots' flight and the
   bonus frog's reach** (owner's requirement 2, consequences told at the task checkpoint, 2026-10-22).
+- **D11 Widescreen's extra work costs no beam time** (owner, plan review 2026-10-22), over charging it
+  as the original's rules would (more lag in busy widescreen scenes). §2.4.
+- **D12 The bonus level ends about 3 s sooner in widescreen** (owner, plan review 2026-10-22), over
+  keeping markers 11 and 55 at the original's distance as an exception to §2.2. §2.6.
 
 ---
 

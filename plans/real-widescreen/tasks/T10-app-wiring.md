@@ -17,6 +17,8 @@ DESIGN §2.1, §2.7, §2.8, §2.9.
 - `engine/crates/sf-app/src/main.rs` (`toggle_widescreen`, start-up), `menu.rs`, `levelfile.rs` (every
   `set_view(window::view(..))` site also calls `set_widescreen`)
 - `engine/crates/sf-app/src/` recorder (header field and `W` tokens on switches while recording)
+- `engine/crates/sf-app/src/main.rs` `--replay` (DESIGN §2.8): the game's mode and the view from the
+  recording at its start and at each toggle, the saved setting untouched
 - `engine/crates/sf-e2e/tests/view.rs` (rewrite the widescreen tests: the centre-equals-4:3 test holds only
   for widescreen off; widescreen on is app == headless engine with the mode, sides non-colour-0 at both
   level ends)
@@ -39,6 +41,8 @@ No new public API. Script event `menu widescreen` keeps its name.
 - [ ] at W1-1's left end and a level's right end in widescreen: no colour-0 column from off the map in the
   play-field lines.
 - [ ] recorder: a recording with two switches replays (sf-conform `bug replay`) to `screenshot equal`.
+- [ ] app `--replay` of that recording, launched with widescreen off in settings, plays and draws as
+  recorded (frames equal `bug replay`'s) and leaves `settings.toml`'s widescreen as it was.
 - [ ] widescreen setting persists (existing test keeps passing).
 
 ## End to end (the worker drives this)
