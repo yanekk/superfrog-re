@@ -46,9 +46,9 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T18 | results-and-retire | T17 | ⬜ | |
 | T19 | step-unseen-no-picture | T00; blocks T04 | ✅ | |
 | T20 | map-gaps | T04; blocks T08 | ⬜ | |
-| T21 | engine-memory-lookup | T04; blocks T20 | ⬜ | |
+| T21 | engine-memory-lookup | T04; blocks T20 | 🔍 | `index_of` is a two-level page table (exhaustive agreement test); `State::byte`/`put` one lookup each. `sf-conform all` faithful and strict: output byte-identical before/after (212 ok; strict 128). All 24 maps under 5 min (W5-4 294 s). Deviation: `audio_at` scan dropped, the sound blocks found through the same lookup (extent test). |
 
-**Review queue:** *(empty)*
+**Review queue:** T21
 
 ## Blocked on the user
 
