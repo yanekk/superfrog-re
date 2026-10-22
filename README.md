@@ -32,6 +32,7 @@ supply your own copies in the repo root before running the tools.
 | Engine faithful to the original, judged headless on the oracle: every conformance case (`sf-conform all`), and the whole game from power-on to the end sequence through the app (state, picture, milestones) | ✅ |
 | The app's sound note for note: a note restarting a channel mid-sample is lost, as the engine's Paula writes have no beam position ([T213](plans/rust-engine/tasks/T213-paula-write-timing.md)) | ⬜ next |
 | App: menus, keyboard and gamepad controls, save states, CRT filters and widescreen, playing a level from a `.sflevel` file | ✅ |
+| Bug recorder: start any level with chosen values, record play, save a bug zip an agent replays and compares with the original ([`docs/BUG-FIX.md`](docs/BUG-FIX.md)) | ✅ |
 | Map editor (view + edit + repack `ATN!` + rebuild `.adf`) | ⬜ next |
 
 **29 levels** found (all `300 × 84` blocks), stored as `ATN!`-packed `T7MP` files.
@@ -100,6 +101,33 @@ cd engine && cargo run --release -p sf-app
   another folder. Nothing from the disks is ever written into this repository.
 - **Levels from files:** File ▸ Export Level writes a disk level as a `.sflevel` file, and File ▸
   Play Level File… plays one in place of the level it replaces: the map editor's target.
+
+## Report a bug
+
+Seen something the original would not do? Record it and hand the recording to an agent; you do not
+describe it further or re-test the fix.
+
+- **Start Level:** Game ▸ Start Level… starts any of the 26 levels with the lives (3, 5, 7), points,
+  energy, difficulty (easy, normal), spud and wings you pick, the recorder on by default. A game
+  started this way never changes "Continue from World N".
+- **Record:** while recording, a bar under the picture shows the time and a STOP button. The
+  recording runs on through level ends, the tally, the slot machine and game over. STOP (or ⌘., or
+  Game ▸ Stop Recording) pauses the game and opens the save window: the screenshot, where you
+  stopped, and a one-line note. Load State, Reset, Quit and the other actions that would change the
+  game ask first: Save…, Discard or Cancel.
+- **The bug zip:** Save writes `bugs/bug-<level>-<date>.zip` in the main checkout (git-ignored, never
+  committed) and copies its path. It holds `recording.txt` (the start, every frame's input, your note)
+  and `screenshot.png`.
+- **Hand it to an agent:** in `pir`, `@superfrog-re/single fix the bug in bugs/<zip>`. The agent follows
+  [`docs/BUG-FIX.md`](docs/BUG-FIX.md): it replays the recording headless, plays the same start and
+  inputs on the original, and either fixes the engine with a new conformance case that fails before
+  the fix and passes after, or tells you in plain words that the original does the same, with both
+  pictures. Limit today: on a level where the original slows down (W1-1 among them) it stops
+  following your recording part-way, so a bug late in a long recording may not be comparable yet;
+  the agent says so rather than guess.
+- **Watch it back:** `superfrog --replay <zip>` (`cargo run --release -p sf-app -- --replay <zip>`)
+  plays a recording in the window, watch-only, for agents and tests; `sf-conform bug replay`,
+  `bug compare` and `bug case` are the headless tools ([`engine/conform/README.md`](engine/conform/README.md)).
 
 ## Rust engine
 

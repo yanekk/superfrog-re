@@ -9,6 +9,8 @@ publish.workspace = true
 sf-core = { path = "../sf-core" }
 sf-assets = { path = "../sf-assets" }
 sf-paula = { path = "../sf-paula" }
+# Reads back the bug zips the app saves (bug-recorder T06).
+sf-disk = { path = "../sf-disk" }
 # Finds the owner's disks (DESIGN §5, "Disk images").
 sf-conform = { path = "../sf-conform" }
 # Reads the app's captured frames and the OS layer's window captures.

@@ -291,6 +291,8 @@ fn os_layer_the_menu_bar_holds_every_item_and_continue_follows_the_progress() {
         app.os_menu_items(&["Game"]),
         [
             item("Continue", false, false),
+            item("Start Level…", true, false),
+            item("Stop Recording", false, false),
             item("Pause", true, false),
             item("Reset", true, false),
             item("Controls…", true, false),

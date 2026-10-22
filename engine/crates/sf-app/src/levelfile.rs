@@ -114,6 +114,7 @@ impl App {
         run.game.set_view(crate::window::view(run.settings.widescreen));
         run.paula = Paula::booted(run.rate);
         run.paused = false;
+        run.from_dialog = false;
     }
 }
 

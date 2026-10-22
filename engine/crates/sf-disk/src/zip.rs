@@ -1,6 +1,7 @@
 //! Just enough of the zip format to take disk images out of an archive: stored and deflated
 //! entries, read through the central directory, each checked against its CRC-32. Every malformed
-//! input is an `Err` naming what is wrong, never a panic.
+//! input is an `Err` naming what is wrong, never a panic. And just enough to write one: stored
+//! entries only, for the bug recorder's zip (bug-recorder DESIGN §2.5).
 
 /// One file taken out of a zip.
 #[derive(Clone, PartialEq, Eq)]
@@ -118,6 +119,57 @@ fn le32(b: &[u8], at: usize) -> Option<u32> {
     ))
 }
 
+/// A zip holding `entries` (name, contents) in order, stored (no compression), with a central
+/// directory: what [`read_entries`] reads back. Times are zero (1980-01-01), so the same entries
+/// always make the same bytes. Panics past the plain zip format's limits (65 535 entries, 4 GiB),
+/// which no caller comes near.
+pub fn write_stored(entries: &[(&str, &[u8])]) -> Vec<u8> {
+    let count = u16::try_from(entries.len()).expect("a zip holds at most 65 534 entries");
+    assert!(count < 0xFFFF, "a zip holds at most 65 534 entries");
+    let mut out = Vec::new();
+    let mut dir = Vec::new();
+    for &(name, data) in entries {
+        let size = u32::try_from(data.len()).ok().filter(|&s| s < 0xFFFF_FFFF);
+        let size = size.expect("a zip entry is under 4 GiB");
+        let name_len = u16::try_from(name.len()).expect("a zip entry's name is under 64 KiB");
+        let local = u32::try_from(out.len()).expect("a zip is under 4 GiB");
+        let crc = crc32(data);
+        // The fields a local header and its directory entry share, from "version needed" on.
+        let common = |v: &mut Vec<u8>| {
+            v.extend_from_slice(&20u16.to_le_bytes()); // version needed
+            v.extend_from_slice(&0u16.to_le_bytes()); // flags
+            v.extend_from_slice(&0u16.to_le_bytes()); // method: stored
+            v.extend_from_slice(&0u32.to_le_bytes()); // time, date
+            v.extend_from_slice(&crc.to_le_bytes());
+            v.extend_from_slice(&size.to_le_bytes()); // packed
+            v.extend_from_slice(&size.to_le_bytes()); // size
+            v.extend_from_slice(&name_len.to_le_bytes());
+            v.extend_from_slice(&0u16.to_le_bytes()); // extra
+        };
+        out.extend_from_slice(&LOCAL.to_le_bytes());
+        common(&mut out);
+        out.extend_from_slice(name.as_bytes());
+        out.extend_from_slice(data);
+
+        dir.extend_from_slice(&CENTRAL.to_le_bytes());
+        dir.extend_from_slice(&20u16.to_le_bytes()); // version made by
+        common(&mut dir);
+        dir.extend_from_slice(&[0u8; 10]); // comment len, disk, internal and external attrs
+        dir.extend_from_slice(&local.to_le_bytes());
+        dir.extend_from_slice(name.as_bytes());
+    }
+    let dir_at = u32::try_from(out.len()).expect("a zip is under 4 GiB");
+    out.extend_from_slice(&dir);
+    out.extend_from_slice(&END.to_le_bytes());
+    out.extend_from_slice(&[0u8; 4]); // this disk, directory disk
+    out.extend_from_slice(&count.to_le_bytes());
+    out.extend_from_slice(&count.to_le_bytes());
+    out.extend_from_slice(&(dir.len() as u32).to_le_bytes());
+    out.extend_from_slice(&dir_at.to_le_bytes());
+    out.extend_from_slice(&0u16.to_le_bytes()); // comment
+    out
+}
+
 /// The zip (IEEE 802.3) CRC-32 of `data`.
 pub fn crc32(data: &[u8]) -> u32 {
     const TABLE: [u32; 256] = {
@@ -190,6 +242,39 @@ mod tests {
         assert_eq!((e[1].name.as_str(), &e[1].bytes), ("dir/b.bin", &big));
         let only_bin = read_entries(&z, |n| n.ends_with(".bin"), 10_000).unwrap();
         assert_eq!(only_bin.len(), 1);
+    }
+
+    #[test]
+    fn written_entries_read_back_whole() {
+        let big: Vec<u8> = (0..2_000_000u32).map(|i| (i * 13 % 251) as u8).collect();
+        let z = write_stored(&[
+            ("recording.txt", b"a recording\n".as_slice()),
+            ("empty", b"".as_slice()),
+            ("screenshot.png", &big),
+        ]);
+        assert!(is_zip(&z));
+        let e = read_entries(&z, all, 4_000_000).unwrap();
+        let got: Vec<(&str, &[u8])> = e
+            .iter()
+            .map(|e| (e.name.as_str(), e.bytes.as_slice()))
+            .collect();
+        assert_eq!(
+            got,
+            [
+                ("recording.txt", b"a recording\n".as_slice()),
+                ("empty", b"".as_slice()),
+                ("screenshot.png", big.as_slice()),
+            ]
+        );
+        // The CRCs in the directory are each entry's own (read_entries also checks them).
+        let mut at = find_end(&z).and_then(|end| le32(&z, end + 16)).unwrap() as usize;
+        for (_, data) in &got {
+            assert_eq!(le32(&z, at), Some(CENTRAL));
+            assert_eq!(le32(&z, at + 16), Some(crc32(data)));
+            at += 46 + le16(&z, at + 28).unwrap() as usize;
+        }
+        assert_eq!(write_stored(&[]), write_zip(&[]));
+        assert_eq!(read_entries(&write_stored(&[]), all, 10).unwrap().len(), 0);
     }
 
     #[test]

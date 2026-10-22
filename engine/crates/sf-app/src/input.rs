@@ -410,6 +410,7 @@ impl Input {
                     return match (ctrl, shift, code, slot) {
                         (true, _, KeyCode::KeyF, _) => Some(Command::ToggleFullscreen),
                         (false, false, KeyCode::KeyQ, _) => Some(Command::Quit),
+                        (false, false, KeyCode::Period, _) => Some(Command::StopRecording),
                         (false, true, _, Some(n)) => Some(Command::SaveState(n)),
                         (false, false, _, Some(n)) => Some(Command::LoadState(n)),
                         _ => None,
@@ -566,6 +567,7 @@ mod tests {
         let mut i = input();
         assert_eq!(i.event(key(KeyCode::SuperLeft, true)), None);
         assert_eq!(i.event(key(KeyCode::KeyQ, true)), Some(Command::Quit));
+        assert_eq!(i.event(key(KeyCode::Period, true)), Some(Command::StopRecording), "⌘. is STOP");
         assert_eq!(i.event(key(KeyCode::KeyF, true)), None, "⌘F alone is nothing");
         i.event(key(KeyCode::SuperLeft, false));
         assert_eq!(i.event(key(KeyCode::ControlLeft, true)), None);

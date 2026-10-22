@@ -167,8 +167,17 @@ fn new_game(c: &mut LevelCtx, id: LevelId) {
 /// `final_level_flag`); `None` for numbers no level has. The map set does not matter to a level's
 /// set-up.
 pub fn current(b: &Bus) -> Option<LevelId> {
-    let world = match b.l(WORLD) {
-        _ if b.w(camera::FINAL_LEVEL_FLAG) != 0 => World::Final,
+    level_of(b.l(WORLD), b.l(LEVEL), b.w(camera::FINAL_LEVEL_FLAG))
+}
+
+/// [`current`], read off a state (`Game::start_level`, `Game::location`).
+pub fn current_of(s: &crate::state::State) -> Option<LevelId> {
+    level_of(s.l(WORLD), s.l(LEVEL), s.w(camera::FINAL_LEVEL_FLAG))
+}
+
+fn level_of(world: u32, level: u32, final_flag: u16) -> Option<LevelId> {
+    let world = match world {
+        _ if final_flag != 0 => World::Final,
         1 => World::W1,
         2 => World::W2,
         3 => World::W3,
@@ -178,7 +187,7 @@ pub fn current(b: &Bus) -> Option<LevelId> {
         7 => World::Bonus,
         _ => return None,
     };
-    let level = if world == World::Final { 1 } else { b.l(LEVEL) as u8 };
+    let level = if world == World::Final { 1 } else { level as u8 };
     Some(LevelId { world, level, alt: false })
 }
 
