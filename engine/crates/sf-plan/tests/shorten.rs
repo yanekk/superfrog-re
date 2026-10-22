@@ -161,9 +161,8 @@ fn the_pass_is_the_same_on_any_threads() {
 
 /// M8 with shortening on, through `plan_engine`: same seed and rounds, the same inputs with 1
 /// thread and with 8. The search starts from the detoured route (an exit in round 0), so the
-/// budget is the minimum. ~75 s (release, 10 cores, one thread the most of it).
+/// budget is the minimum. ~15 s (release, 10 cores).
 #[test]
-#[ignore]
 fn shortening_is_the_same_on_any_threads() {
     let plan = |threads| {
         let (g, fa) = at_start("W1-1".parse().unwrap());
