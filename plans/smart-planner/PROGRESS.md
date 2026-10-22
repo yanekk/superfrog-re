@@ -48,7 +48,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T18 | results-and-retire | T17 | ⬜ | |
 | T19 | step-unseen-no-picture | T00; blocks T04 | ✅ | |
 | T21 | engine-memory-lookup | T04 | ✅ | |
-| T22 | route-shorten | T08 | ⬜ | |
+| T22 | route-shorten | T08 | ✅ | |
 
 **Review queue:** *(empty)*
 
