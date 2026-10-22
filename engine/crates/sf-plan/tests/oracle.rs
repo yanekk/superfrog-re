@@ -188,6 +188,29 @@ fn a_frozen_original_holds_the_engine() {
     assert!((8..=10).contains(&held), "{held} frames held");
 }
 
+/// An accepted parting plays the same plan on; a repaired one, or an accepted one with nothing
+/// left, plans again from the plan's rest (T14).
+#[test]
+fn an_accepted_parting_resumes_the_plan() {
+    let x = |j: u8| FrameInput::joy(sf_core::input::Joy(j));
+    let plan = Route {
+        inputs: vec![x(1), x(2), x(4), x(8)],
+        engine_frames: 500,
+        hearts_lost: 1,
+        rounds: 7,
+        cells: 9,
+    };
+    match next_stretch(true, &plan, 1) {
+        Next::Resume(r) => {
+            assert_eq!(r.inputs, vec![x(2), x(4), x(8)]);
+            assert_eq!((r.engine_frames, r.rounds, r.hearts_lost), (0, 0, 1));
+        }
+        n => panic!("{n:?}"),
+    }
+    assert_eq!(next_stretch(false, &plan, 1), Next::Repair(vec![x(2), x(4), x(8)]));
+    assert_eq!(next_stretch(true, &plan, 4), Next::Repair(vec![]));
+}
+
 /// The frog placed against W2-4's closed gate at x 303, y 912, facing left: the original loops in
 /// `frog_tiles`' wall loop and the engine falls on (rust-engine FINDINGS T168, `wall_place`).
 /// Played in lockstep, idle, it parts at once, never later.

@@ -307,6 +307,32 @@ pub fn lockstep(
     out
 }
 
+/// What follows a parting (§2.6 steps 3, 4).
+#[derive(Debug, Clone, PartialEq)]
+pub enum Next {
+    /// Accepted: the plan's frames from `used` on, played on from the original's state (no
+    /// planning; the route carries no engine frames or rounds of its own).
+    Resume(Route),
+    /// Repaired: the plan's rest from `used`, the next stretch's guide and seed.
+    Repair(Vec<FrameInput>),
+}
+
+/// After a parting with `used` of `plan`'s frames kept: an accepted parting plays the same plan
+/// on, unless nothing of it is left.
+pub fn next_stretch(accepted: bool, plan: &Route, used: usize) -> Next {
+    let rest = plan.inputs[used.min(plan.inputs.len())..].to_vec();
+    if accepted && !rest.is_empty() {
+        Next::Resume(Route {
+            inputs: rest,
+            engine_frames: 0,
+            rounds: 0,
+            ..plan.clone()
+        })
+    } else {
+        Next::Repair(rest)
+    }
+}
+
 /// Plans `run`'s level against the original (§2.6): the route from the run's start (its `inputs`
 /// first) to the frame the original leaves the level, or the best partial route and why, its
 /// confirmed part `Stats::confirmed_frames` long. `ro.budget` covers the whole run.
@@ -337,6 +363,8 @@ pub fn plan_original(
     };
     let mut repeats = Repeats::default();
     let mut rest: Option<Vec<FrameInput>> = None;
+    // After an accepted parting, the plan's rest, played on from the original's state as it is.
+    let mut resume: Option<Route> = None;
     // The hearts the plan `rest` comes from lost on the engine.
     let mut last_hearts = 0u8;
     let mut rounds = 0u64;
@@ -376,7 +404,10 @@ pub fn plan_original(
             shorten_min_over: rest_len,
             ..ro.clone()
         };
-        let plan = plan_engine(start.clone(), facts.clone(), o, &stretch_ro);
+        let plan = match resume.take() {
+            Some(r) => Ok(r),
+            None => plan_engine(start.clone(), facts.clone(), o, &stretch_ro),
+        };
         let plan = match plan {
             Ok(r) => {
                 stats.engine_frames += r.engine_frames;
@@ -437,9 +468,13 @@ pub fn plan_original(
             .rev()
             .find(|&k| ls.used_at(k) <= plan.inputs.len())
             .unwrap_or(0);
-        // Accepted: the original's frame of the parting is kept too, and planning goes on from
-        // the state it insists on. Repaired: back off before the parting.
-        let keep = if repeats.accept(cell, &why) {
+        // Accepted: the original's frame of the parting is kept too, and the same plan plays on
+        // from the state the original insists on, the engine copy taken from it again. Repaired:
+        // back off before the parting and plan again. Planning again after an acceptance moved
+        // set-B W2-2 one frame past a heart the original loses there, then parted again at once,
+        // ten repairs at one cell (T14).
+        let accepted = repeats.accept(cell, &why);
+        let keep = if accepted {
             (agreed + 1).min(ls.fed.len())
         } else {
             agreed.saturating_sub(BACK_OFF)
@@ -457,7 +492,10 @@ pub fn plan_original(
         }
         confirm += c0.elapsed();
         route.extend_from_slice(&ls.fed[..keep]);
-        rest = Some(plan.inputs[used..].to_vec());
+        match next_stretch(accepted, &plan, used) {
+            Next::Resume(r) => resume = Some(r),
+            Next::Repair(r) => rest = Some(r),
+        }
         last_hearts = plan.hearts_lost;
         stats.repairs += 1;
         stats.confirmed_frames = route.len() as u32;
