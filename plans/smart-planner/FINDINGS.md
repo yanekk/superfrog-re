@@ -11,6 +11,9 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-22 | 📌 | T23, load ~24: W1-4 original mode guided by `complete-w1-4` passed §4.1 in 629 s, 2 repairs, share 0.126, 1 heart, 10 062 frames. Engine only, guided: seeds 1, 2 exit in 237, 413 s; seed 3 none in 10 min. |
+| 2026-10-22 | 📌 | T23 regressions after the guide change: W6-2 guided engine only 123 s, 8 982 frames (T09: 109–141 s); W5-2 unguided original mode 284 s, 7 repairs, 1 heart (unguided runs build no `GuideIndex`). |
+| 2026-10-22 | 🔄 | Owner, T23: a guide point with coins known matches its band and every lower one (§2.11 said its band). W1-4 took coins out of route order; its guide index froze at p712 of 921 and the exit pull found 158,45. |
 | 2026-10-22 | 🔄 | Owner, T10: added T23 w1-4-ending (T09, T10; blocks T14). W1-4 guided by `complete-w1-4` stalls at 158,45, coins met, 15 cells from the exit, original mode and engine only, seeds 1–3. T10's W1-4 Done-when moves there. |
 | 2026-10-22 | 📌 | T10 Done-when, 10 threads, §4.1 passed: W2-1 38 s, 4 repairs, share 0.41, 1 heart; W5-2 unguided 242 s, 5 repairs, share 0.13, 2 hearts. Review: 55 s, 301 s; W2-1 shortened 216 s, 1 repair, 3 651 → 3 583 frames. |
 | 2026-10-22 | 📌 | T10 choices: repair stretches keep the shortening share, not its minimum. Heart and cells-apart partings are accepted (third at one cell) with the parting frame. A plan ending before the original's exit runs 50 more frames, last input held. |
