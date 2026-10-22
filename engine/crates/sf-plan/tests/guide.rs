@@ -157,6 +157,16 @@ fn a_frog_ahead_on_coins_keeps_its_place_on_the_path() {
         GuideIndex::new(&with_any).index(&key(pts[20].cell, band(30))),
         Some(50)
     );
+    // With its switches known it shares the banded points' entries, and outranks them in any band.
+    let mut with_switches = pts.clone();
+    with_switches.push(GuidePoint {
+        cell: pts[20].cell,
+        coins_left: None,
+        switches: Some(0),
+    });
+    let g = GuideIndex::new(&with_switches);
+    assert_eq!(g.index(&key(pts[20].cell, band(25))), Some(50));
+    assert_eq!(g.index(&key(pts[20].cell, 0)), Some(50));
 }
 
 /// Points with and without coins or switches (a waypoint among a trace's points) on one cell: the
