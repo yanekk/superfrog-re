@@ -21,9 +21,9 @@ air under a coin reads as near. This plan replaces them with one planner, and pr
 baseline of today's tools. It is the tool that later plans easy and hard completions (the
 difficulty-modes plan), so it is proven here by numbers.
 
-**Amended 2026-10-22 (D19–D23).** The plan first steered by a measured movement map (T04). That map
-reached the exit on 13 of 24 levels; an experiment off T04 (`spike-explore/`) finished 9 of the 11
-others with a whole-level explorer and no map. The planner is now that explorer (§2.4); the map is an
+**Amended 2026-10-22 (D19–D24).** The plan first steered by a measured movement map (T04). That map
+reached the exit on 13 of 24 levels; an experiment off T04 (`spike-explore/`) finished 8 of the 11
+others with a whole-level explorer and no map, and a 9th (W6-2) guided by its committed route. The planner is now that explorer (§2.4); the map is an
 optional compass (§2.2); a guide path, such as a level's committed route, may steer it everywhere,
 the counted benchmark included (§2.11).
 
@@ -145,15 +145,21 @@ writes a reason line (§2.9): the furthest band, the least distance to an exit r
 met, and the cells archived.
 
 Determinism (M8): the round's choices and each burst's seed come from one generator seeded by
-`--seed`; bursts run in parts on threads and their results are merged in choice order, the part count
-fixed by options, not by the machine. Rounds are counted, never timed; the wall-clock budget only
-decides when to stop.
+`--seed`; every burst of a round starts from the archive as it stood at the round's start, bursts run
+in parts on threads and their results are merged in choice order. The bursts per round are fixed by
+options, never by the machine, so the route is the same for any thread or part count. Rounds are
+counted, never timed; the wall-clock budget only decides when to stop, and a run it stops is not
+held to M8.
 
 Memory (D22): a stored `Game` is ~0.8 MB. The experiment's archives of 15 000–40 000 cells took
 5–8 GB, and the OS killed a 25-minute run for low memory. The archive therefore keeps a full state for
 a bounded set of entries (checkpoints) and rebuilds any other entry's state by replaying its inputs
-from its nearest checkpoint ancestor. Resident memory stays under `--max-mem-gb` (default 4, §5.2).
-Which entries keep states is T08's choice, recorded in FINDINGS.
+from its nearest checkpoint. Checkpoints are immutable once taken, so an entry replaced by a better
+state never invalidates the entries reached through it. The cap is kept by the core's own count of
+the bytes it stores (states and inputs), never by a reading of the OS, so which entries keep states
+is a function of seed and options and a rebuilt state equals the stored one: the route does not
+depend on the cap (M8). The shell reports peak resident memory (`peak_mem_mb`), which stays under
+`--max-mem-gb` (default 4, §5.2). Which entries keep states is T08's choice, recorded in FINDINGS.
 
 ### 2.5 Danger
 
@@ -201,7 +207,8 @@ guide from an original route steers an app-mode plan without crossing timings.
 
 ### 2.7 Route repair
 
-`--follow <script>` turns an old route into both a guide and an archive seed: its frog cells, from
+`--follow <script>` turns an old route into both a guide and an archive seed (given with `--guide`,
+the `--guide` path steers and `--follow` only seeds): its frog cells, from
 playing it at its own start in its own timing, become the guide path (§2.11), and its inputs are
 replayed from the new start, every 8th state seeding the archive until the frog dies. The search then
 runs as usual. Why both: replayed inputs reach far at once where the carried state differs little
@@ -275,11 +282,14 @@ counted benchmark guides each level by its committed route (§4.2).
 
 ### 2.12 Route length (D23)
 
-The experiment's routes ran 19–53% longer than the committed ones (M4: at most 25%). After the first
-exit the search goes on for a shortening budget (default 20% of the time used so far, at least 60 s)
-and keeps the shortest exit. Then a shortcut pass: for states i < j on the route, a short explorer run
+The experiment's routes ran up to 57% longer than the committed ones (W3-2 engine-only, 10 962
+against 6 994 frames; 19–23% in original mode; M4: at most 25%). After the first exit the search goes
+on for a shortening budget and keeps the shortest exit. The budget is counted in rounds, so M8 holds:
+default 20% of the rounds used to the first exit, at least a fixed minimum (about 60 s of rounds on
+this machine, T22 sets the number); the wall-clock budget still caps it. Then a shortcut pass: for states i < j on the route, a short explorer run
 from i targets j's key within (j − i) − 1 frames, and a shorter stretch found replaces the old one,
-until a pass finds nothing or the budget ends. In original mode the shortened plan is the one
+until a pass finds nothing or the budget ends. A shortened route is kept only if it replays from the
+start to the exit with no more hearts lost. In original mode the shortened plan is the one
 confirmed (§2.6). T22 builds it; T14 tunes its defaults.
 
 ---
@@ -320,9 +330,12 @@ Threads: the core exposes work as partitions (`expand(part) -> Vec<Child>`); the
 - `core::map`, `core::graph`: `MoveMap`, built by stepping the engine (T04); a compass only (§2.2).
 - `core::coins`: coin choice over a `MoveMap` (T06); a compass only (§2.3).
 - `core::danger`: the live heart check with wait variants (T07); not on the explorer's path (§2.5).
-- `core::repair`: `--follow` policy (old route → guide and seed, §2.7).
+- `core::repair`: `--follow` policy (old route → guide and seed, §2.7); the engine trace of a route.
+- `run`: the explorer's rounds on threads, the wall-clock budget, shortening's call (T08, T22).
+- `trace`, `guide_file`: a guide script played at its own start on the original, a waypoint file
+  parsed (§2.11, T09).
 - `oracle`: stretch-and-repair confirmation on `sf_oracle::Amiga` through `sf_conform::sync`
-  (§2.6); also plays a guide script at its own start (§2.11).
+  (§2.6, T10).
 - `cache`: map files (bincode, `serde` derives already in the workspace).
 - `main` (bin `sf-plan`): the one command.
 - crate `sf-bench` (bin `sf-bench`): §4.2. A separate crate that runs every planner, old and new, as a
@@ -541,7 +554,7 @@ The old tools stay in the tree until T18, so any level can still be planned the 
   `--max-mem-gb` (§2.4). Why: 0.8 MB a state, 5–8 GB in the experiment, and the OS killed a 25-minute
   run.
 - D23 (owner, 2026-10-22): a route-shortening task (T22, §2.12) is added, because the experiment's
-  routes ran 19–53% over the committed ones against M4's 25%. Refused: leaving length to T14.
+  routes ran up to 57% over the committed ones (19–23% in original mode) against M4's 25%. Refused: leaving length to T14.
 - D24 (owner, 2026-10-22): original mode confirms by stretch and repair (§2.6), not T02's 48-frame chunks. T02 chose chunks
   for the old tools on a small confirmation share; the explorer plans whole stretches, and its repair
   loop is what passed `verify` on W2-1 and W5-2.

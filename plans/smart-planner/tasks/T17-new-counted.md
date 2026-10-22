@@ -20,7 +20,9 @@ DESIGN §1 (M1–M6), §4.2, D2.
 
 `sf-bench --set A --planner new --jobs 1`, then `--set B`, guided by each level's committed route
 (DESIGN §4.2, D21), with T16's quiet-machine check per slice.
-Set B also records route repair as an extra, ungated column: `--planner new --follow-standalone`.
+Set B also records route repair as an extra, ungated column: `--planner new --unguided
+--follow-standalone`, so the leg's standalone route is the only guide and the column measures repair
+alone (DESIGN §1 recorded measures, §2.7); `guided` in the results key keeps it apart from the counted line.
 
 ## Done when
 

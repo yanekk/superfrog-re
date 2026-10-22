@@ -50,7 +50,8 @@ Since the 2026-10-21 amendment it also settles whether map nodes carry speed (D1
 enemies spawn only as the screen reaches them (D14), and measures how often map moves fail in live
 play (D17).
 
-**T02 decides** whether T10 uses long-stretch confirmation with repair (DESIGN §2.6).
+**T02 decided** T10's confirmation for the old map design (48-frame chunks); since D24 T10 confirms by
+stretch and repair regardless (DESIGN §2.6).
 
 At the end of Phase 0: the map approach is proven or refuted, `sf-bench` exists, and today's tools have
 early numbers on the stall levels.
@@ -124,6 +125,10 @@ T08 → T09 → T10 → T11 → T14 → T15 → T16 → T17 → T18
 ```
 
 (T00–T07, T19, T21 are done.) Off it: T22 (beside T09 and T10, before T11) and T12 (before T15).
+T08 declares every module and the `plan_engine`/`RunOptions` signature T09, T10 and T22 build on, so
+those three never edit the same file: T09 owns `core/guide.rs`, `core/repair.rs`, `trace.rs`,
+`guide_file.rs`, `Cargo.toml`; T22 `core/shorten.rs` and the shortening call in `run.rs`; T10
+`oracle.rs` and its `lib.rs` line.
 
 Leaves: T18 only.
 

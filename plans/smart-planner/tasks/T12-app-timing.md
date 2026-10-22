@@ -21,10 +21,10 @@ in the question that T15–T18 (the counted runs and the verdict) wait with it (
 ## Files
 
 - `engine/crates/sf-plan/src/main.rs` (`--app`), `engine/crates/sf-plan/src/app.rs`
-- `engine/crates/sf-bench/src/{sets,verify}.rs` (set C start and verification)
+- `engine/crates/sf-bench/src/{sets,verify}.rs` (set C start and verification; the set C verdict also
+  requires the real-app replay)
 - `engine/crates/sf-plan/tests/app.rs`
 - `engine/crates/sf-e2e/tests/plan_routes.rs` (a route played in the real app, DESIGN §4.1 set C)
-- `engine/crates/sf-bench/src/verify.rs` (set C verdict also requires the real-app replay)
 
 ## Interface
 
@@ -35,7 +35,8 @@ pub fn app_start(level: LevelId, seed: u32) -> Game;   // Game::start_level(disp
 
 Guided app runs (set C's counted run, DESIGN §4.2) take the committed route's trace on the original
 (T09 `trace.rs`): a guide is cells, not inputs, so it does not cross timings (DESIGN §2.6). Only a
-`# timing: app` guide script is traced on the engine from `app_start`; T09 left that branch for here.
+`# timing: app` guide script is traced on the engine from `app_start` (T09's `core::repair::trace_engine`);
+T09 left that branch of `trace.rs` for here.
 
 The seed pair matches what the recorder's script `start-level` event uses; read it from bug-recorder's
 code rather than assuming `(0, 0)` (`plan_exit --engine` used `Rng::seeded(0,0)`).
