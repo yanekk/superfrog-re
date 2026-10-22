@@ -2942,6 +2942,7 @@ dependencies = [
  "libc",
  "serde",
  "sf-assets",
+ "sf-bench",
  "sf-conform",
  "sf-core",
  "sf-oracle",

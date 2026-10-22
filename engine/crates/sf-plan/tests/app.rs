@@ -195,3 +195,25 @@ fn follow_repairs_an_original_route_into_app_timing() {
     assert_eq!(stat(&o, "guided"), "0", "--follow is not --guide");
     assert_app_route(&std::fs::read_to_string(&out).unwrap(), 1);
 }
+
+/// The planner's start is the app's: sf-e2e's `plan_routes.rs` played this route in the real app
+/// from `start-level W1-1` under `seed 1 1`, its state the engine's every frame to the exit. Every
+/// other test here plans and replays from the same `app_start`, so a start that drifted from the
+/// app's (a seed half, a frame) would pass them all.
+#[test]
+fn the_route_the_real_app_played_replays_from_the_planners_app_start() {
+    let path = Path::new(env!("CARGO_MANIFEST_DIR")).join("../sf-e2e/tests/data/w1-1-app-seed1.txt");
+    let text = std::fs::read_to_string(path).unwrap();
+    assert_app_route(&text, 1);
+    // Finishing is not enough (W1-1 also finishes from seed 1 0): the state on every frame is the
+    // one sf-bench's set C replay compares the real app with.
+    let s = InputScript::parse(&text).unwrap();
+    let exit = exit_frame(&text);
+    let bench = sf_bench::verify::engine_app(w1_1(), 1, &s, exit);
+    let mut g = app::app_start(w1_1(), 1);
+    for (k, want) in bench.states.iter().enumerate() {
+        g.step(s.input_at(k as u32));
+        let got = sf_core::feed::frame_hashes(&g, &g.render(g.view())).1;
+        assert_eq!(got, *want, "the planner's app start parts from the app's at frame {}", k + 1);
+    }
+}
