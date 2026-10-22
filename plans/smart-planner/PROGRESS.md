@@ -17,9 +17,9 @@ unreliable edges); T07 now light, T00 answers three more questions.
 allowed everywhere, map a compass; T13 and T20 dropped, T22 route-shorten added.
 **Amendment reviewed:** 2026-10-22 — 18 fixes, 1 decision (owner: T10's W1-4 check runs guided)
 
-**Status:** T00–T08, T19, T21 done; T09 awaiting review.
+**Status:** T00–T09, T19, T21 done.
 **Last updated:** 2026-10-22
-**Next `pir-work` will:** review T09 route-repair; T22 route-shorten is free to build.
+**Next `pir-work` will:** build T10 oracle-check or T22 route-shorten, both free.
 
 ## Tasks
 
@@ -37,7 +37,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T06 | coin-choice | T03 | ✅ | |
 | T07 | danger-map | T03 | ✅ | |
 | T08 | search | T04, T06, T07 | ✅ | |
-| T09 | route-repair | T08 | 🔍 | Guide index, `follow_options`, `trace_engine`, `trace_original`, waypoint files; 13 tests (3 ignored). Deviation (owner): guide points and traces carry switches pressed, so trace functions take `&Facts`. Guided determinism test: 2 against 8 threads, engine-trace guide (oracle trace made it 30 s+). Added `Sampler`, `TracePoint`; `timing`, `script_inputs` for T11. |
+| T09 | route-repair | T08 | ✅ | Review: two surviving mutations (index min across point kinds, trace never ending) and a leg test passing on a frame-1 exit; tests added. Switches deviation (owner) held. Reran W2-1 leg from a fresh snapshot (40 rounds, 2 235 frames) and W1-1 dropped-frame (290 k vs 849 k), W6-2 guided (476 rounds, 9 182 frames), all matching FINDINGS. |
 | T10 | oracle-check | T02, T08, T09 | ⬜ | |
 | T11 | plan-command | T05, T10, T22 | ⬜ | |
 | T12 | app-timing | T11 | ⬜ | |
@@ -50,7 +50,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T21 | engine-memory-lookup | T04 | ✅ | |
 | T22 | route-shorten | T08 | ⬜ | |
 
-**Review queue:** T09
+**Review queue:** —
 
 ## Blocked on the user
 
