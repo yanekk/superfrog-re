@@ -17,9 +17,9 @@ unreliable edges); T07 now light, T00 answers three more questions.
 allowed everywhere, map a compass; T13 and T20 dropped, T22 route-shorten added.
 **Amendment reviewed:** 2026-10-22 — 18 fixes, 1 decision (owner: T10's W1-4 check runs guided)
 
-**Status:** T00–T08, T19, T21, T22 done.
+**Status:** T00–T09, T19, T21, T22 done.
 **Last updated:** 2026-10-22
-**Next `pir-work` will:** T09 route-repair.
+**Next `pir-work` will:** T10 oracle-check.
 
 ## Tasks
 
@@ -37,7 +37,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T06 | coin-choice | T03 | ✅ | |
 | T07 | danger-map | T03 | ✅ | |
 | T08 | search | T04, T06, T07 | ✅ | |
-| T09 | route-repair | T08 | ⬜ | |
+| T09 | route-repair | T08 | ✅ | |
 | T10 | oracle-check | T02, T08, T09 | ⬜ | |
 | T11 | plan-command | T05, T10, T22 | ⬜ | |
 | T12 | app-timing | T11 | ⬜ | |

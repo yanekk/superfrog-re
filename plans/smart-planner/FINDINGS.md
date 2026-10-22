@@ -13,6 +13,10 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 |---|---|---|
 | 2026-10-22 | 📌 | T22, seed 1, 10 threads, load ~11, unguided, before → after shortening: W2-1 3 374 → 3 051, W5-2 5 701 → 5 405, W3-2 11 580 → 11 394 frames (committed 2 524, 6 994, 6 094). W3-2 stays 63% over M4. |
 | 2026-10-22 | 📌 | T22: 2.4–3.3 rounds/s at load 11, 10 threads; `SHORTEN_MIN_ROUNDS` 180 is 60–75 s. Most shortcut hits fail to splice: the coarse key leaves the frog off where the route's rest expects it. |
+| 2026-10-22 | 🔄 | Owner, T09: guide regions also match switches pressed when known; trace points are `(Cell, coins, switches)`, `trace_engine`/`trace_original` take `&Facts`. Without them W6-2 guided stalled at a closed gate, seeds 1–3, 5 min each; with them 109–141 s. |
+| 2026-10-22 | 🐞 | T09: a leg snapshot's first frame, like `AtLevel`'s, has `level_state` ≠ −2, so an explorer started there reports an exit at frame 1. T11's `--snap` and `AtLevel` starts must play on until the frog lands past frame 150. |
+| 2026-10-22 | 📌 | T09 Done-when: set-B W2-1 leg (`whole_game --until W2-2`, `leg-04.snap`), engine only, `follow_options` of `w2-1-complete`: exit in 40 rounds, 22 s at load ~20, route 2 235 frames, 1 heart lost. |
+| 2026-10-22 | 📌 | T09, 10 threads, load ~12, seed 1: W6-2 guided by `enemies-w6-2-complete` exits in 138 s, 476 rounds, route 9 182 frames. W1-1 fixture with frame 2000 dropped, followed: 290 k engine frames, 28 rounds; unguided 849 k, 85. |
 | 2026-10-22 | 📌 | T08 review: DESIGN §2.4 still states the band as 1 + (left − 1) / 4; the owner's T08 rule (last 8 coins one band each, `archive::band`) is what the code and T09's guide regions use. |
 | 2026-10-22 | 📌 | T08 Done-when, load 9–12, 10 threads, 10-min cap, seed 1, unguided: W6-1 54 s, W5-2 37 s, W3-2 132 s, W3-4 245 s; cells 11.6k, 9.0k, 15.5k, 26.1k; peak RSS 3.1, 3.4, 3.1, 3.3 GB. W1-1 15 s. |
 | 2026-10-22 | 🔄 | Owner, T08: kept DESIGN §2.5 heart rule; adopted `experiment/t08-coin-bands` 465d60d: last 8 coins one band each, pull toward nearest object coin left (deviation from §2.4). Before it W6-1 exited 0 of 5 ten-minute runs, stalling 2–4 coins short. |

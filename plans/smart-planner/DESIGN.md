@@ -265,14 +265,17 @@ workaround is visible and becomes a planner gap to fix rather than a habit. `PLA
 
 - A route script (its first line `# timing: …`, or any `InputScript` file): played once at its own
   start in its own timing (on the original for `original` or no timing line, on the engine from the
-  `start_level` state for `app`), sampled every 8 frames for the frog's cell and the coins left. The
-  shell plays it; the core takes the points.
+  `start_level` state for `app`), sampled every 8 frames for the frog's cell, the coins left and
+  the switches pressed. The shell plays it; the core takes the points.
 - A waypoint file: one `col,row` or `col,row,coins_left` per line, `#` comments. Written by hand or,
   later, by an agent from the annotated level image (`tools/export_annotated.py`); writing one by
   agent is out of scope (§8, owner 2026-10-22).
 
 The core gives each archived cell the furthest point index p whose region it falls in (the point's
-coarse cell ±1, and its band when the coins are known, any band when not). The choice weight is
+coarse cell ±1, its band when the coins are known, any band when not, and its switches pressed when
+known, any when not: a waypoint names none). Switches (owner, 2026-10-22, T09): W6-2's route goes
+back over its own ground after each switch; without them the guide credited that ground to a frog
+that never pressed the switch, and every seed tried stalled at a closed gate. The choice weight is
 3·e^(−(p_max − p)/20) on the path (p_max the furthest index any archived cell has), 0.15 off it.
 Off-path cells keep a weight because a guide from another start or mode may be wrong in places. Why:
 W6-2 went from stalled 6 cells short to an exit in 80 s guided by its committed route's path.
