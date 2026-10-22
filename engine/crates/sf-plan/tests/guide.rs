@@ -97,9 +97,13 @@ fn guide_weights() {
     assert_eq!(
         g.index(&key(pts[29].cell, band(12))),
         None,
-        "a point with coins: its band only"
+        "a point with coins: no frog with more coins left"
     );
-    assert_eq!(g.index(&key(pts[0].cell, 0)), None);
+    assert_eq!(
+        g.index(&key(pts[0].cell, 0)),
+        Some(1),
+        "a frog with fewer coins left than the route had there is on it"
+    );
     // The region is the coarse cell ±1.
     assert_eq!(g.index(&key((pts[0].cell.0, 40 + 2), band(12))), Some(1));
     assert_eq!(g.index(&key((pts[0].cell.0, 40 + 4), band(12))), None);
@@ -114,6 +118,45 @@ fn guide_weights() {
             assert_eq!(any.index(&key_sw((50, 50), b, sw)), Some(0));
         }
     }
+}
+
+/// W1-4 guided by `complete-w1-4` (T23): the explorer took the coins in another order than the
+/// route, so its frog held fewer coins left than the route had at the points it stood on. Matched by
+/// band only, its guide index stopped at the last point with its own band (p712 of 921), every
+/// coins-met cell was off the path, and the straight exit pull drew it to the dead end at 158,45.
+/// A point matches its band and every lower one: a frog ahead on coins is on the path.
+#[test]
+fn a_frog_ahead_on_coins_keeps_its_place_on_the_path() {
+    let pt = |c, coins| GuidePoint {
+        cell: (c, 40),
+        coins_left: Some(coins),
+        switches: Some(0),
+    };
+    // Right along row 40 taking a coin every 4 points, 30 left to 21; then the coins met.
+    let mut pts: Vec<GuidePoint> = (0..40u16).map(|k| pt(10 + 2 * k, 30 - k / 4)).collect();
+    pts.extend((40..50u16).map(|k| pt(10 + 2 * k, 0)));
+    let g = GuideIndex::new(&pts);
+    let at = |k: usize, coins| g.index(&key(pts[k].cell, band(coins)));
+    // As the route: the furthest point of the region in its band.
+    assert_eq!(at(20, 25), Some(21));
+    // Behind on coins: only the points with as many left (the first, 30 left).
+    assert_eq!(at(0, 30), Some(1));
+    assert_eq!(at(20, 30), None);
+    // Ahead on coins, as a whole: the region's furthest point at its band or above.
+    assert_eq!(at(20, 0), Some(21));
+    assert_eq!(at(45, 0), Some(46));
+    assert_eq!(at(45, 22), None, "the coins-met stretch wants them met");
+    // A point without coins still matches any band.
+    let mut with_any = pts.clone();
+    with_any.push(GuidePoint {
+        cell: pts[20].cell,
+        coins_left: None,
+        switches: None,
+    });
+    assert_eq!(
+        GuideIndex::new(&with_any).index(&key(pts[20].cell, band(30))),
+        Some(50)
+    );
 }
 
 /// Points with and without coins or switches (a waypoint among a trace's points) on one cell: the
