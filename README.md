@@ -121,6 +121,33 @@ judges every case in [`engine/conform/`](engine/conform/README.md) (about 1¾ h)
 [`engine/crates/sf-e2e`](engine/crates/sf-e2e/README.md) drives the real app end to end, the whole
 game included.
 
+## Planning a route
+
+`sf-plan` finds an input script that plays a level to its exit, for a test case, a whole-game
+chain leg or a level you changed. It explores the level on the Rust engine, then plays what it
+found on the original (the emulator oracle) and repairs any stretch where the two part, so a route
+it writes is one the original agrees with. One command, no per-level options:
+
+```bash
+cd engine && cargo run --release -p sf-plan -- W2-1 --out route.txt
+```
+
+- **A guide path** may steer it: `--guide` takes a committed route (it is played once and the frog's
+  path is followed) or a waypoint file, one `col,row` per line in the tile addressing above
+  (`W1-1:94,51` is `94,51`). A guide is not a hint: it is allowed everywhere, the benchmark guides
+  each level by its committed route.
+- **It writes what it got** in the route's own timing (`# timing: original` first line). Exit 0: the
+  route reaches the exit; 1: the time (`--budget-min`, 30) or the frames ran out, and the best
+  partial route is written with a one-line reason (coins still needed, how close it got); 2: bad
+  arguments or a guide it cannot read. `--follow old.txt` repairs an old route that no longer plays;
+  `--snap` starts from a whole-game leg; `--engine-only` skips the original (for tuning).
+- **Hints are a last resort:** `--via c,r` and `--avoid c0,r0,c1,r1` push it through a spot it
+  cannot find on its own, and every run using them is logged to
+  [`engine/conform/plan-hints.log`](engine/conform/plan-hints.log) as a planner gap to fix.
+
+How it works, and the benchmark against the older tools (`sf-bench`), is in
+[`plans/smart-planner/`](plans/smart-planner/DESIGN.md).
+
 ## Tools
 
 | File | Purpose |

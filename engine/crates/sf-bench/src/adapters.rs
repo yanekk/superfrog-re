@@ -20,6 +20,10 @@ pub trait Adapter: Send + Sync {
     /// The planner's command for `s`, writing its route to `out`. `seed` and `budget` reach only a
     /// planner that takes them.
     fn command(&self, s: &Start, seed: u32, out: &Path, budget: Duration) -> Command;
+    /// Whether the planner is given the level's committed route as its guide (DESIGN §4.2).
+    fn guided(&self) -> bool {
+        false
+    }
 }
 
 /// The built binary of a cargo target.
@@ -100,11 +104,14 @@ impl Adapter for OldTool {
     }
 }
 
-/// The new planner, `sf-plan` (T11 builds it; its options are DESIGN §2.1).
+/// The new planner, `sf-plan` (its options are DESIGN §2.1).
 pub struct NewPlanner {
     /// `--follow-standalone`: on set B, the leg's standalone committed route as `--follow`
     /// (route repair, DESIGN §2.7).
     pub follow_standalone: bool,
+    /// The level's committed route (`verify::committed_script`) as `--guide`, played by the planner
+    /// at the start it is given (DESIGN §4.2, D21); off with `sf-bench --unguided`.
+    pub guided: bool,
 }
 
 impl Adapter for NewPlanner {
@@ -116,9 +123,21 @@ impl Adapter for NewPlanner {
         ("sf-plan", "bin", "sf-plan")
     }
 
+    fn guided(&self) -> bool {
+        self.guided
+    }
+
     fn command(&self, s: &Start, seed: u32, out: &Path, budget: Duration) -> Command {
         let mut c = Command::new(binary(self.target()));
         c.arg(s.level.to_string());
+        if self.guided {
+            let set = match s.kind {
+                StartKind::Snap(..) => Set::B,
+                _ => Set::A,
+            };
+            let script = crate::verify::committed_script(set, &s.level);
+            c.arg("--guide").arg(sf_conform::case::script_path(&script));
+        }
         match &s.kind {
             StartKind::AtLevel => {}
             StartKind::Snap(p, _) => {

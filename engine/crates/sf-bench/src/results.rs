@@ -1,6 +1,6 @@
 //! `results.jsonl` (DESIGN §3.4): one flat JSON object per level run, appended and flushed as
 //! each level ends, so a killed run loses at most the level in flight and a rerun skips what is
-//! recorded for the same (planner, set, level, commit) (§2.9). `serde_json` is not in the
+//! recorded for the same (planner, guided, set, level, commit) (§2.9). `serde_json` is not in the
 //! workspace (§5), so lines are written and read here: numbers, booleans, `null` and short
 //! strings only.
 
@@ -28,11 +28,15 @@ pub struct LevelResult {
     pub reason: String,
     /// For a `best-old` line, the old tool whose result it is.
     pub tool: Option<String>,
+    /// The planner was given the level's committed route as its guide (DESIGN §4.2, D21). Lines
+    /// written before the field existed read as `false`: the old tools' and every early run's.
+    pub guided: bool,
 }
 
 impl LevelResult {
-    pub fn key(&self) -> (String, String, String, String) {
-        (self.planner.clone(), self.set.clone(), self.level.clone(), self.commit.clone())
+    /// A guided and an unguided run of one planner on one level are two results, both kept.
+    pub fn key(&self) -> (String, bool, String, String, String) {
+        (self.planner.clone(), self.guided, self.set.clone(), self.level.clone(), self.commit.clone())
     }
 
     pub fn to_json(&self) -> String {
@@ -61,6 +65,7 @@ impl LevelResult {
         if let Some(t) = &self.tool {
             str_field(&mut s, "tool", t);
         }
+        let _ = write!(s, "\"guided\":{},", self.guided);
         let _ = write!(s, "\"reason\":\"{}\"}}", escape(&self.reason));
         s
     }
@@ -100,6 +105,11 @@ impl LevelResult {
             hearts_lost: n("hearts_lost")? as u32,
             reason: s("reason")?,
             tool: s("tool"),
+            guided: match f.get("guided") {
+                None => false,
+                Some(Value::Bool(b)) => *b,
+                Some(_) => return None,
+            },
         })
     }
 }
@@ -131,12 +141,19 @@ pub fn append(path: &Path, r: &LevelResult) -> std::io::Result<()> {
     f.sync_data()
 }
 
-/// Whether `results` already holds a line for this (planner, set, level, commit).
-pub fn recorded(results: &[LevelResult], planner: &str, set: &str, level: &str, commit: &str) -> Option<LevelResult> {
+/// Whether `results` already holds a line for this (planner, guided, set, level, commit).
+pub fn recorded(
+    results: &[LevelResult],
+    planner: &str,
+    guided: bool,
+    set: &str,
+    level: &str,
+    commit: &str,
+) -> Option<LevelResult> {
     results
         .iter()
         .rev()
-        .find(|r| r.planner == planner && r.set == set && r.level == level && r.commit == commit)
+        .find(|r| r.planner == planner && r.guided == guided && r.set == set && r.level == level && r.commit == commit)
         .cloned()
 }
 

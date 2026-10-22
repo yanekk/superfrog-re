@@ -1,0 +1,3 @@
+# sf-plan hint log (plans/smart-planner DESIGN §2.10): one line per run that used --via or --avoid,
+# appended by sf-plan itself: date (UTC), level, start, the hints, whether the run completed. Each
+# line is a planner gap to fix, not a habit; a guide (--guide) is not a hint and is not logged.

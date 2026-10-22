@@ -11,6 +11,8 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-22 | 🐞 | T11: `sf-bench` `judge` marks any wall-clock past the budget `over-budget`, the new planner included; `plan_original` runs its last lockstep past the deadline (W1-1 at 1 min overran 33 s). T14/T15 should check 30-min runs for this. |
+| 2026-10-22 | 📌 | T11 Done-when, load 27, 10 threads: `sf-bench --planner new --levels W1-1` guided, original mode: completed, 594 s, 4 082 frames (ref 4 474), 2 repairs, 0 hearts. Engine-only defaults unguided: 6.5 min; guided, shortening off: 57 s. |
 | 2026-10-22 | 🔄 | Owner, T10: added T23 w1-4-ending (T09, T10; blocks T14). W1-4 guided by `complete-w1-4` stalls at 158,45, coins met, 15 cells from the exit, original mode and engine only, seeds 1–3. T10's W1-4 Done-when moves there. |
 | 2026-10-22 | 📌 | T10 Done-when, 10 threads, §4.1 passed: W2-1 38 s, 4 repairs, share 0.41, 1 heart; W5-2 unguided 242 s, 5 repairs, share 0.13, 2 hearts. Review: 55 s, 301 s; W2-1 shortened 216 s, 1 repair, 3 651 → 3 583 frames. |
 | 2026-10-22 | 📌 | T10 choices: repair stretches keep the shortening share, not its minimum. Heart and cells-apart partings are accepted (third at one cell) with the parting frame. A plan ending before the original's exit runs 50 more frames, last input held. |
@@ -34,7 +36,6 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 | 2026-10-22 | 🐞 | Experiment: a stored `Game` is ~0.8 MB; 15–40 k-cell archives reached 5–8 GB RSS and the OS killed a 25-minute run. W5-2's original-mode route lost 3 hearts, its lockstep having no heart check. Hence D22 and §2.6's heart rule. |
 | 2026-10-22 | 📌 | T21 map s, 10 threads, load 2–15: W1 147 185 156 229; W2 58 193 139 6; W3 79 39 180 109; W4 116 57 174 111; W5 83 192 189 294; W6 67 228 175 205. None over 300. |
 | 2026-10-22 | 📌 | T21 map frames (k), same build: W1 6420 9135 8321 10652; W2 2501 9883 6613 262; W3 3004 1572 7472 5393; W4 5824 2060 6871 4780; W5 3254 7814 8379 12781; W6 2187 9269 7690 9185. |
-| 2026-10-22 | 📌 | T05 review, for T20/T21: a new core module `map.rs`, `facts.rs`, `graph.rs` or `moves.rs` uses must join `cache::CORE_FILES`, or cached maps go stale; `tests/cache.rs` fails naming it. `cargo fmt -p sf-plan` rewrites seven files already unformatted. |
 | 2026-10-22 | 🐞 | T04 review, for T20: W2-3, W4-4 maps walk no seed with two switches pressed (`per_switch_set` {0,1,2,4} and {0,8}); far-from-gate slots ignore pressed switches, so a second lever is pressed only from world 0; each exit needs all four. |
 | 2026-10-21 | 🔄 | Owner, T04: 11 maps over 5 min (quiet, W5-4 566 s) get T21 engine-memory-lookup (T04; blocks T20), speed only; builds still over 5 min after it are recorded and accepted, the move set never shrunk. |
 | 2026-10-21 | 📌 | T04 profile, one-thread map build: `layout::index_of` (a binary search per `State` byte access) is ~35% of busy samples, `State::byte`/`Bus::set_b` most of the rest; the map code is negligible. 1 thread 6.2 k frames/s, 10 threads 25 k. |
