@@ -17,9 +17,9 @@ unreliable edges); T07 now light, T00 answers three more questions.
 allowed everywhere, map a compass; T13 and T20 dropped, T22 route-shorten added.
 **Amendment reviewed:** 2026-10-22 — 18 fixes, 1 decision (owner: T10's W1-4 check runs guided)
 
-**Status:** T00–T07, T19, T21 done; core rewritten by the amendment, not started.
+**Status:** T00–T11, T19, T21, T22 done; T12 awaiting review.
 **Last updated:** 2026-10-22
-**Next `pir-work` will:** T08 search (the explorer), from `spike-explore/`.
+**Next `pir-work` will:** review T12 app-timing.
 
 ## Tasks
 
@@ -40,7 +40,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T09 | route-repair | T08 | ✅ | |
 | T10 | oracle-check | T02, T08, T09 | ✅ | |
 | T11 | plan-command | T05, T10, T22 | ✅ | |
-| T12 | app-timing | T11 | ⬜ | |
+| T12 | app-timing | T11 | 🔍 | `sf-plan --app` (`app.rs`): engine start, settle, plan, replay check; routes `# timing: app` + `# seed: N`. `sf-bench` set C: engine replay, then real app's state hashes. 5 + 1 + 1 tests. Deviations: main merged in (owner yes); `--follow` test and the sf-e2e app test `#[ignore]`d (70 s, 3 min). |
 | T14 | tuning-run | T11 | ⬜ | |
 | T15 | set-c-run | T12, T14 | ⬜ | |
 | T16 | baseline-counted | T15 | ⬜ | |
@@ -51,8 +51,8 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T22 | route-shorten | T08 | ✅ | |
 | T23 | w1-4-ending | T09, T10; blocks T14 | ⬜ | |
 
-**Review queue:** *(empty)*
+**Review queue:** T12
 
 ## Blocked on the user
 
-Nothing yet. T12 needs `pir/bug-recorder` merged into main (DESIGN D3).
+Nothing yet.

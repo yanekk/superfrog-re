@@ -5,7 +5,7 @@
 //! life lost. The engine alone cannot see a difference in how the app starts or feeds a script (a
 //! frame offset, the seed), which is how bug-recorder's routes failed.
 //!
-//! The app runs at the PAL rate, so W1-1's ~2 900 frames take about a minute: ignored in the test
+//! The app runs at the PAL rate, so W1-1's ~2 900 frames take about 3 min with the debug build: ignored in the test
 //! block (`sf-plan`'s `tests/app.rs` replays the engine's half there).
 //! `cargo test -q -p sf-e2e --test plan_routes -- --ignored`.
 
@@ -18,7 +18,7 @@ use sf_e2e::{App, LaunchOpts};
 const ROUTE: &str = "tests/data/w1-1-app-seed1.txt";
 
 #[test]
-#[ignore = "slow: about 1 min (the app at the PAL rate); cargo test -q -p sf-e2e --test plan_routes -- --ignored"]
+#[ignore = "slow: about 3 min (the app at the PAL rate, debug build); cargo test -q -p sf-e2e --test plan_routes -- --ignored"]
 fn an_app_route_reaches_w1_1s_exit_in_the_real_app_with_no_life_lost() {
     let text = std::fs::read_to_string(Path::new(env!("CARGO_MANIFEST_DIR")).join(ROUTE)).unwrap();
     assert!(text.starts_with("# timing: app\n"), "an app-timed route");
