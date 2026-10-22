@@ -82,7 +82,9 @@ pub struct Options {
     pub seed: u64,
     /// No route longer than this (DESIGN §5.2).
     pub max_frames: u32,
-    /// The archive's own count of stored bytes stays under this (D22).
+    /// The resident memory the run may use (`--max-mem-gb`, D22). The archive's own count of
+    /// stored bytes stays under three quarters of it; the rest is the program, a round's states in
+    /// flight and the allocator's slack (W5-2 reached 4.9 GB with the archive counting to 4 GiB).
     pub max_mem_bytes: u64,
     /// Fixed by options, never by the machine (M8).
     pub bursts_per_round: u32,
@@ -399,7 +401,7 @@ impl Explorer {
         };
         let guide = (!opt.guide.is_empty()).then(|| GuideIndex::new(&opt.guide));
         let key = cell_key(&facts, start.state(), 0);
-        let archive = Archive::new(&start, key, opt.max_mem_bytes);
+        let archive = Archive::new(&start, key, opt.max_mem_bytes / 4 * 3);
         let seed = opt.seed;
         let mut ex = Explorer {
             start_hearts: start.state().w(HEARTS),

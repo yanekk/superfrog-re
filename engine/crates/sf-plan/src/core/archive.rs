@@ -124,9 +124,10 @@ pub struct Archive {
     input_bytes: u64,
 }
 
-/// A state's bytes as the archive counts them: its serialized size.
+/// A state's bytes as the archive counts them: its serialized size and an eighth, which is what a
+/// clone holds on the heap (W5-2, measured 2026-10-22: 620 KB a clone, 565 KB serialized).
 pub fn state_size(g: &Game) -> u64 {
-    bincode::serialized_size(g).unwrap_or(1 << 20)
+    bincode::serialized_size(g).unwrap_or(1 << 20) * 9 / 8
 }
 
 impl Archive {
