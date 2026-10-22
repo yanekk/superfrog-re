@@ -13,7 +13,7 @@ use common::{at_start, fixture, id, threads};
 use sf_conform::{InputScript, SyncPoint, sync};
 use sf_core::input::FrameInput;
 use sf_core::{Game, Start};
-use sf_plan::core::repair::{follow_options, points_from_trace, trace_engine};
+use sf_plan::core::repair::{Sampler, follow_options, points_from_trace, trace_engine};
 use sf_plan::core::*;
 use sf_plan::run::{RunOptions, plan_engine};
 use sf_plan::trace::{script_inputs, trace_original};
@@ -46,6 +46,28 @@ fn trace_engine_of_the_fixture_ends_at_an_exit() {
     let mut longer = route.clone();
     longer.extend([FrameInput::NONE; 200]);
     assert_eq!(trace_engine(&g, &fa, &longer), t);
+}
+
+/// A trace ends at the first sample after the level's play: a later play (the level restarted
+/// after a death, or the next level) is not part of it; samples before play are skipped.
+#[test]
+fn sampler_skips_before_play_and_stops_at_the_end() {
+    let (g, fa) = at_start(id("W1-1"));
+    let state = |ls: u32| {
+        let mut st = g.state().clone();
+        st.set_l(sf_core::layout::h0(0xa06), ls);
+        st
+    };
+    let mut s = Sampler::new(&fa);
+    let mut fed = 0;
+    for ls in [0xffff_ffff, 0xffff_fffe, 0xffff_fffe, 0x190, 0xffff_fffe] {
+        fed += 1;
+        if !s.sample(&state(ls)) {
+            break;
+        }
+    }
+    assert_eq!(fed, 4, "stops at the first sample past the play");
+    assert_eq!(s.points.len(), 2);
 }
 
 #[test]
@@ -183,6 +205,12 @@ fn set_b_w2_1_followed() {
     };
     let r = plan_engine(g, fa, opt, &run)
         .unwrap_or_else(|(_, why)| panic!("the W2-1 leg exits within 10 minutes: {why:?}"));
+    // A start before the level's play reports an exit at frame 1 (FINDINGS, T09).
+    assert!(
+        r.inputs.len() > 1000,
+        "a route to W2-1's exit: {} frames",
+        r.inputs.len()
+    );
     eprintln!(
         "W2-1 leg followed: {:.0} s, {} rounds, {} cells, route {} frames, {} engine frames, {} hearts lost",
         t0.elapsed().as_secs_f64(),

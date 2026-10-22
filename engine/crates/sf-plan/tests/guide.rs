@@ -116,6 +116,29 @@ fn guide_weights() {
     }
 }
 
+/// Points with and without coins or switches (a waypoint among a trace's points) on one cell: the
+/// cell takes the furthest index of all of them, whichever kind it is.
+#[test]
+fn guide_index_is_furthest_across_point_kinds() {
+    let known = |k| GuidePoint {
+        cell: (20, 20),
+        coins_left: Some(k),
+        switches: Some(0),
+    };
+    let any = GuidePoint {
+        cell: (20, 20),
+        coins_left: None,
+        switches: None,
+    };
+    let at = key_sw((20, 20), band(5), 0);
+    assert_eq!(GuideIndex::new(&[known(5), any]).index(&at), Some(1));
+    assert_eq!(GuideIndex::new(&[any, known(5)]).index(&at), Some(1));
+    assert_eq!(
+        GuideIndex::new(&[any, known(6), known(5)]).index(&at),
+        Some(2)
+    );
+}
+
 /// A route back over its own ground once a switch is pressed (W6-2): the ground after the press
 /// is credited only to a frog that pressed it (owner, 2026-10-22).
 #[test]
