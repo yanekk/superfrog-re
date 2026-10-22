@@ -1,7 +1,10 @@
 //! Guide paths (DESIGN §2.11, D21): cells to pass near in order, and the choice weight they give an
 //! archived cell. Each point marks a region, its coarse cell (the archive key's col/2, row/2) ±1,
-//! in its coins band when its coins are known and in any band when not; a cell takes the furthest
-//! point index whose region it falls in. The constants are the experiment's
+//! in its coins band and with its switches pressed when it knows them, in any band or switch set
+//! when not; a cell takes the furthest point index whose region it falls in. Switches (owner,
+//! 2026-10-22, T09): a route that goes back over its own ground once a switch opens a gate (W6-2)
+//! otherwise credits the ground after the switch to a frog that never pressed it, which then stalls
+//! at the closed gate with the switch far behind on the path. The constants are the experiment's
 //! (`spike-explore/goexp.rs`, `guide_from`); T14 tunes them.
 
 use std::collections::HashMap;
@@ -15,18 +18,20 @@ const FALLOFF: f64 = 20.0;
 /// Off the path: a guide from another start or mode may be wrong in places (§2.11).
 const OFF_PATH: f64 = 0.15;
 
-/// One point of a guide path: a frog cell, and the coins left there when known (a point without
-/// them matches any band).
+/// One point of a guide path: a frog cell, and the coins left and the switches pressed there
+/// (`CellKey::switches` bits) when known; a point without them matches any band, any switch set.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct GuidePoint {
     pub cell: Cell,
     pub coins_left: Option<u16>,
+    pub switches: Option<u32>,
 }
 
-/// The guide's lookup: (coarse col, coarse row, band | any) → the furthest point index there.
+/// The guide's lookup: (coarse col, coarse row, band | any, switches | any) → the furthest point
+/// index there.
 #[derive(Debug, Clone, Default)]
 pub struct GuideIndex {
-    regions: HashMap<(u16, u16, Option<u16>), u32>,
+    regions: HashMap<(u16, u16, Option<u16>, Option<u32>), u32>,
 }
 
 impl GuideIndex {
@@ -37,7 +42,7 @@ impl GuideIndex {
             let b = p.coins_left.map(band);
             for c in cc.saturating_sub(1)..=cc + 1 {
                 for r in rr.saturating_sub(1)..=rr + 1 {
-                    let e = regions.entry((c, r, b)).or_insert(i as u32);
+                    let e = regions.entry((c, r, b, p.switches)).or_insert(i as u32);
                     *e = (*e).max(i as u32);
                 }
             }
@@ -55,8 +60,11 @@ impl GuideIndex {
 
     /// The furthest guide point whose region `key` falls in.
     pub fn index(&self, key: &CellKey) -> Option<u32> {
-        let banded = self.regions.get(&(key.col, key.row, Some(key.band)));
-        let any = self.regions.get(&(key.col, key.row, None));
-        banded.max(any).copied()
+        [Some(key.band), None]
+            .into_iter()
+            .flat_map(|b| [(b, Some(key.switches)), (b, None)])
+            .filter_map(|(b, s)| self.regions.get(&(key.col, key.row, b, s)))
+            .max()
+            .copied()
     }
 }

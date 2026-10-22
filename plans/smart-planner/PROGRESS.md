@@ -17,9 +17,9 @@ unreliable edges); T07 now light, T00 answers three more questions.
 allowed everywhere, map a compass; T13 and T20 dropped, T22 route-shorten added.
 **Amendment reviewed:** 2026-10-22 — 18 fixes, 1 decision (owner: T10's W1-4 check runs guided)
 
-**Status:** T00–T07, T19, T21 done; core rewritten by the amendment, not started.
+**Status:** T00–T08, T19, T21 done; T09 awaiting review.
 **Last updated:** 2026-10-22
-**Next `pir-work` will:** T08 search (the explorer), from `spike-explore/`.
+**Next `pir-work` will:** review T09 route-repair; T22 route-shorten is free to build.
 
 ## Tasks
 
@@ -37,7 +37,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T06 | coin-choice | T03 | ✅ | |
 | T07 | danger-map | T03 | ✅ | |
 | T08 | search | T04, T06, T07 | ✅ | |
-| T09 | route-repair | T08 | ⬜ | |
+| T09 | route-repair | T08 | 🔍 | Guide index, `follow_options`, `trace_engine`, `trace_original`, waypoint files; 13 tests (3 ignored). Deviation (owner): guide points and traces carry switches pressed, so trace functions take `&Facts`. Guided determinism test: 2 against 8 threads, engine-trace guide (oracle trace made it 30 s+). Added `Sampler`, `TracePoint`; `timing`, `script_inputs` for T11. |
 | T10 | oracle-check | T02, T08, T09 | ⬜ | |
 | T11 | plan-command | T05, T10, T22 | ⬜ | |
 | T12 | app-timing | T11 | ⬜ | |
@@ -50,7 +50,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T21 | engine-memory-lookup | T04 | ✅ | |
 | T22 | route-shorten | T08 | ⬜ | |
 
-**Review queue:** *(empty)*
+**Review queue:** T09
 
 ## Blocked on the user
 

@@ -1,5 +1,6 @@
 //! Shell: a waypoint guide file parsed (DESIGN §2.11). One `col,row` or `col,row,coins_left` per
-//! line, `#` comments, blank lines ignored; a point without coins matches any band.
+//! line, `#` comments, blank lines ignored; a point without coins matches any band. A waypoint
+//! names no switches, so it matches any switch set.
 
 use crate::core::GuidePoint;
 
@@ -20,6 +21,7 @@ pub fn parse_waypoints(text: &str) -> Result<Vec<GuidePoint>, String> {
         points.push(GuidePoint {
             cell: (num(fields[0])?, num(fields[1])?),
             coins_left: fields.get(2).map(|s| num(s)).transpose()?,
+            switches: None,
         });
     }
     Ok(points)

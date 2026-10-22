@@ -7,20 +7,22 @@ use sf_core::State;
 use sf_core::input::FrameInput;
 use sf_oracle::Amiga;
 
-use crate::core::Cell;
-use crate::core::repair::Sampler;
+use crate::core::Facts;
+use crate::core::repair::{Sampler, TracePoint};
 
 /// The caller starts the oracle: `sync::reach(AtLevel)` for sets A and C, `sync::at_snapshot_file`
 /// for a set-B leg (replaying `game-whole` to the leg would cost minutes). Shell, trace.rs.
 ///
-/// Plays `frames` frames of `script` (its frame 0 the oracle's next) and samples the frog's cell
-/// and the coins left before every 8th frame, frame 0 first, until the level ends.
+/// Plays `frames` frames of `script` (its frame 0 the oracle's next) and samples the frog's cell,
+/// the coins left and the switches pressed (`facts`, the level's, places them) before every 8th
+/// frame, frame 0 first, until the level ends.
 pub fn trace_original(
     amiga: &mut Amiga,
+    facts: &Facts,
     script: &InputScript,
     frames: u32,
-) -> Result<Vec<(Cell, u16)>, String> {
-    let mut s = Sampler::new();
+) -> Result<Vec<TracePoint>, String> {
+    let mut s = Sampler::new(facts);
     for k in 0..=frames {
         // The original's memory is copied out only on a sampled frame: it is ~1 MB.
         if Sampler::due(k) && !s.sample(&State::transplant(&sync::core_memory(amiga.memory()))) {
