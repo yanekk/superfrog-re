@@ -15,8 +15,8 @@ unreliable edges); T07 now light, T00 answers three more questions.
 **Amendment reviewed:** 2026-10-21 — 6 fixes, 1 decision (a retry after a wait is a standing-start move)
 
 **Status:** plan written; nothing built.
-**Last updated:** 2026-10-21
-**Next `pir-work` will:** T00 movement-map-spike, the gate for everything on the map; T01 can run beside it.
+**Last updated:** 2026-10-22
+**Next `pir-work` will:** T20 map-gaps (T21 done), then T05 and T08.
 
 ## Tasks
 
@@ -46,9 +46,9 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T18 | results-and-retire | T17 | ⬜ | |
 | T19 | step-unseen-no-picture | T00; blocks T04 | ✅ | |
 | T20 | map-gaps | T04; blocks T08 | ⬜ | |
-| T21 | engine-memory-lookup | T04; blocks T20 | 🔍 | `index_of` is a two-level page table (exhaustive agreement test); `State::byte`/`put` one lookup each. `sf-conform all` faithful and strict: output byte-identical before/after (212 ok; strict 128). All 24 maps under 5 min (W5-4 294 s). Deviation: `audio_at` scan dropped, the sound blocks found through the same lookup (extent test). |
+| T21 | engine-memory-lookup | T04; blocks T20 | ✅ | Clean, no fix commit. `index_of` two-level page table, `State::byte`/`put` one lookup. Review re-ran 6 sf-conform cases faithful and strict before/after: byte-identical; W2-4 map 10.9 s to 4.9 s, same map. Two mutations (sub-table index, sound path) caught. Full 212-case run and 24-level timings are builder-measured, not re-run. |
 
-**Review queue:** T21
+**Review queue:** *(empty)*
 
 ## Blocked on the user
 
