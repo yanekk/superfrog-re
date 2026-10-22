@@ -1,5 +1,5 @@
-//! A benchmark run (DESIGN §4.2): each level of the set planned by a child under the unaided
-//! rules, verified, and its line appended before the next level's result is waited on.
+//! A benchmark run (DESIGN §4.2): each level of the set planned by a child under the benchmark's
+//! rules (the new planner guided by the committed route unless `--unguided`), verified, and its line appended before the next level's result is waited on.
 
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
@@ -28,6 +28,8 @@ pub struct Options {
     pub budget: Duration,
     pub seed: u32,
     pub follow_standalone: bool,
+    /// The new planner without its guide (DESIGN §4.2: the tuning run's unaided pass).
+    pub unguided: bool,
     pub results: PathBuf,
     pub table: PathBuf,
 }
@@ -95,7 +97,13 @@ pub fn run_one(
     cmd.stdin(Stdio::null())
         .stdout(Stdio::null())
         .stderr(std::fs::File::create(&log).unwrap());
-    eprintln!("sf-bench: {} on {} {} …", adapter.name(), o.set, s.level);
+    eprintln!(
+        "sf-bench: {}{} on {} {} …",
+        adapter.name(),
+        if adapter.guided() { " (guided)" } else { "" },
+        o.set,
+        s.level
+    );
     let run = child::run(cmd, o.budget + GRACE, None).unwrap_or_else(|e| panic!("{e}"));
     let stderr = std::fs::read_to_string(&log).unwrap_or_default();
     let stats = results::plan_stats(&stderr);
@@ -120,6 +128,7 @@ pub fn run_one(
         hearts_lost: v.hearts_lost,
         reason: v.reason,
         tool: None,
+        guided: adapter.guided(),
     };
     eprintln!(
         "sf-bench: {} on {} {}: {} in {:.1} min",
@@ -159,8 +168,12 @@ pub fn bench(o: &Options) -> Result<(), String> {
     if o.follow_standalone && (o.planner != "new" || o.set != Set::B) {
         return Err("--follow-standalone is for --set B --planner new".into());
     }
+    if o.unguided && o.planner != "new" {
+        return Err("--unguided is for --planner new (the old tools are never guided)".into());
+    }
     let new = NewPlanner {
         follow_standalone: o.follow_standalone,
+        guided: !o.unguided,
     };
     let adapters: Vec<&dyn Adapter> = match o.planner.as_str() {
         "new" => vec![&new],
@@ -199,15 +212,16 @@ pub fn bench(o: &Options) -> Result<(), String> {
                     let Some(s) = starts.get(i) else { return };
                     let level = s.level.to_string();
                     let set = o.set.to_string();
-                    let done = |p: &str| results::recorded(&all.lock().unwrap(), p, &set, &level, &commit);
-                    if done(&o.planner).is_some() {
+                    let done = |p: &str, g: bool| results::recorded(&all.lock().unwrap(), p, g, &set, &level, &commit);
+                    let guided = o.planner == "new" && !o.unguided;
+                    if done(&o.planner, guided).is_some() {
                         eprintln!("sf-bench: {} on {set} {level} recorded for {commit}; skipped", o.planner);
                         continue;
                     }
                     let ref_frames = verify::ref_frames(o.set, s);
                     let mut got = Vec::new();
                     for a in &adapters {
-                        let r = done(a.name()).unwrap_or_else(|| {
+                        let r = done(a.name(), a.guided()).unwrap_or_else(|| {
                             let r = run_one(o, *a, s, &commit, ref_frames);
                             record(&r);
                             r

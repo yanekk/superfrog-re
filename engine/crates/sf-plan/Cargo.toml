@@ -23,3 +23,7 @@ libc = "0.2"
 # routes there. `tests/purity.rs` bars both from `src/core/`.
 sf-conform = { path = "../sf-conform" }
 sf-oracle = { path = "../sf-oracle" }
+
+[[bin]]
+name = "sf-plan"
+path = "src/main.rs"

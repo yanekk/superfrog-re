@@ -150,7 +150,7 @@ fn look(amiga: &Amiga) -> Look {
 /// From the first frame a start's level is played on (a sync point's or a leg snapshot's first
 /// frame has `level_state` ≠ −2, FINDINGS T09), idle until the frog has landed past frame 150, as
 /// the engine-side starts do.
-fn settle(mut amiga: Amiga, t0: Instant) -> Result<OracleRun, String> {
+pub fn settle(mut amiga: Amiga, t0: Instant) -> Result<OracleRun, String> {
     let mut inputs = Vec::new();
     loop {
         let st = State::transplant(&sync::core_memory(amiga.memory()));
