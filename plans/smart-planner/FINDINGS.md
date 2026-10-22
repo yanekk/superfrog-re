@@ -11,6 +11,8 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-22 | 📌 | T22, seed 1, 10 threads, load ~11, unguided, before → after shortening: W2-1 3 374 → 3 051, W5-2 5 701 → 5 405, W3-2 11 580 → 11 394 frames (committed 2 524, 6 994, 6 094). W3-2 stays 63% over M4. |
+| 2026-10-22 | 📌 | T22: 2.4–3.3 rounds/s at load 11, 10 threads; `SHORTEN_MIN_ROUNDS` 180 is 60–75 s. Most shortcut hits fail to splice: the coarse key leaves the frog off where the route's rest expects it. |
 | 2026-10-22 | 🔄 | Owner, T09: guide regions also match switches pressed when known; trace points are `(Cell, coins, switches)`, `trace_engine`/`trace_original` take `&Facts`. Without them W6-2 guided stalled at a closed gate, seeds 1–3, 5 min each; with them 109–141 s. |
 | 2026-10-22 | 🐞 | T09: a leg snapshot's first frame, like `AtLevel`'s, has `level_state` ≠ −2, so an explorer started there reports an exit at frame 1. T11's `--snap` and `AtLevel` starts must play on until the frog lands past frame 150. |
 | 2026-10-22 | 📌 | T09 Done-when: set-B W2-1 leg (`whole_game --until W2-2`, `leg-04.snap`), engine only, `follow_options` of `w2-1-complete`: exit in 40 rounds, 22 s at load ~20, route 2 235 frames, 1 heart lost. |
