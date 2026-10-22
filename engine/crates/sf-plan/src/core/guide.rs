@@ -1,7 +1,9 @@
 //! Guide paths (DESIGN §2.11, D21): cells to pass near in order, and the choice weight they give an
 //! archived cell. Each point marks a region, its coarse cell (the archive key's col/2, row/2) ±1,
-//! in its coins band and with its switches pressed when it knows them, in any band or switch set
-//! when not; a cell takes the furthest point index whose region it falls in. Switches (owner,
+//! in its coins band or a lower one and with its switches pressed when it knows them, in any band
+//! or switch set when not; a cell takes the furthest point index whose region it falls in. Lower
+//! bands deviate from DESIGN §2.11's "its band" (owner, 2026-10-22, T23): W1-4 took its coins out of
+//! the route's order, and a frog ahead on coins fell off the path. Switches (owner,
 //! 2026-10-22, T09): a route that goes back over its own ground once a switch opens a gate (W6-2)
 //! otherwise credits the ground after the switch to a frog that never pressed it, which then stalls
 //! at the closed gate with the switch far behind on the path. The constants are the experiment's
