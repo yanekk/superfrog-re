@@ -12,8 +12,8 @@ writes a cell also fixes the over-budget cell they walk past.
 **Plan reviewed:** 2026-10-22 — 2 fixed, 1 decided with the user
 
 **Status:** Plan written 2026-10-22; nothing built.
-**Last updated:** 2026-10-22
-**Next `pir-work` will:** T01, the skeleton every chapter task edits.
+**Last updated:** 2026-10-23
+**Next `pir-work` will:** T13, T14, T16, then T18 once every chapter is ✅.
 
 ## Tasks
 
@@ -38,10 +38,10 @@ done · ⛔ blocked, needs a human.
 | T14 | slot-and-bonus | T01 | ⬜ | |
 | T15 | disks-and-assets | T01 | ✅ | |
 | T16 | app | T01 | ⬜ | |
-| T17 | verification | T01 | 🔍 | Chapter written: checks and their engine doors, the native options per door, the five vAmiga patches, a must-preserve table, reuse split by lines. No deviations. Mix judged by file: planners and milestones count as `shell` (test tooling), not `game`. Drift test 30 pass. |
+| T17 | verification | T01 | ✅ | Reviewed: one fix, the beam-race row wrongly said no test plants a non-raced difference (`compare.rs` unit test does; false finding dropped). Probed every line count against `tools/architecture.py`, all 22 cited tests exist, patch hooks, 13 `FrameState` variables; mutated `raced_only` (red) and a cited path (red). Mix 4% amiga estimated, not counted. |
 | T18 | overview-and-summary | T02, T03, T04, T05, T06, T07, T08, T09, T10, T11, T12, T13, T14, T15, T16, T17 | ⬜ | |
 
-**Review queue:** T17
+**Review queue:** *(empty)*
 
 ## Blocked on the user
 
