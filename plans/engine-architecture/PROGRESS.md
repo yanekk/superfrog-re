@@ -13,7 +13,7 @@ writes a cell also fixes the over-budget cell they walk past.
 
 **Status:** Plan written 2026-10-22; nothing built.
 **Last updated:** 2026-10-22
-**Next `pir-work` will:** the remaining chapter tasks (T03, T06, T07, T09–T17), then T18.
+**Next `pir-work` will:** the remaining chapter tasks (T09–T17), then T18.
 
 ## Tasks
 
@@ -24,11 +24,11 @@ done · ⛔ blocked, needs a human.
 |---|---|---|---|---|
 | T01 | skeleton-and-check | — | ✅ | |
 | T02 | memory-model | T01 | ✅ | |
-| T03 | copied-in-data | T01 | ⬜ | |
+| T03 | copied-in-data | T01 | ✅ | |
 | T04 | cpu-time-and-beam | T01 | ✅ | |
 | T05 | frame-interrupts-input | T01 | ✅ | |
-| T06 | display-hardware | T01 | ⬜ | |
-| T07 | sound | T01 | ⬜ | |
+| T06 | display-hardware | T01 | ✅ | |
+| T07 | sound | T01 | ✅ | |
 | T08 | game-flow | T01 | ✅ | Review: one fix, the RNG must-preserve row named the low-byte mask wrong (bits 6, 7 also cleared). Probed every §5 test name, the twelve setters, addresses, disk-prompt readers, savestate refusals against code; drift check mutated (bad path, red). CODE_TIMES moved out of cpu-time-and-beam, unrecorded, held by `game.rs`. |
 | T09 | front-end | T01 | ⬜ | |
 | T10 | story-and-ending | T01 | ⬜ | |
