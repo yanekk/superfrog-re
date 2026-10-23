@@ -13,7 +13,7 @@ writes a cell also fixes the over-budget cell they walk past.
 
 **Status:** Plan written 2026-10-22; nothing built.
 **Last updated:** 2026-10-22
-**Next `pir-work` will:** the remaining chapter tasks T09–T11, T13–T17, then T18.
+**Next `pir-work` will:** the remaining chapter tasks T10, T11, T13–T17, then T18.
 
 ## Tasks
 
@@ -30,7 +30,7 @@ done · ⛔ blocked, needs a human.
 | T06 | display-hardware | T01 | ✅ | |
 | T07 | sound | T01 | ✅ | |
 | T08 | game-flow | T01 | ✅ | |
-| T09 | front-end | T01 | ⬜ | |
+| T09 | front-end | T01 | ✅ | |
 | T10 | story-and-ending | T01 | ⬜ | |
 | T11 | level | T01 | ⬜ | |
 | T12 | frog-and-items | T01 | ✅ | Reviewed: fixed held-jump direction (frog rises faster, `vy` minus 1). Probed all 40 cited checks and cases exist, routine addresses, counter periods, `n_clear`, 2411-line total, 31 `ANIMS`; drift check caught an injected bad path. No-fixed-point deviation held (no shifts or sub-pixel fields in `frog/`). Docs only, no mutation. |
