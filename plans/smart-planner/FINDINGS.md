@@ -11,6 +11,7 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-23 | 🔄 | Owner, T14 review: no guide pace in app mode (DESIGN §2.11). W1-1 `--app`, shorten 0, seeds 1–3, frames/hearts: pace 4452/1, 4158/0, 3404/0; none 2847/0, 3117/0, 2959/1. Pace failed T12's M8 test. |
 | 2026-10-23 | 🐞 | T14 review: original mode's parting bookkeeping (accept-resume, held frames) was reached only by `#[ignore]`d whole-level runs; now `oracle::kept`, unit-tested. W2-1 original mode passed §4.1 in 49 s, 2 repairs, load ~3. |
 | 2026-10-23 | 📌 | T14 review: `shorten::better` keeps fewer hearts before shorter (§2.5, M6); DESIGN §2.12 still reads "keeps the shortest exit". Wording left for the owner. |
 | 2026-10-23 | 📌 | T14 split at pir's context limit: kept the planner fixes (commits 4d558bf–21ca306); T24–T28 carry the runs and the open items. T14's uncommitted `bench/tuning/results.jsonl` was discarded; its numbers are in these rows. |

@@ -478,6 +478,11 @@ fn apply_guides(a: &Args, files: &Files, facts: &Facts, prefix: usize, mut opt: 
         opt.guide = g;
         opt.guide_pace = pace;
     }
+    if a.app {
+        // No pace in app mode (owner, 2026-10-23): on W1-1 it made app routes 15–56% longer on
+        // three seeds, hearts lost the same, and cost T12's M8 test its no-heart route.
+        opt.guide_pace = false;
+    }
     Ok((opt, cost))
 }
 

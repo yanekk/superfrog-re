@@ -292,7 +292,8 @@ Amended in T14 (owner, 2026-10-22: pace on by default; a deviation): a guide sam
 route also weighs a cell e^(−(frames − best)/240), `best` the fewest frames of any archived cell at
 its guide index or further (`guide::Pace`); waypoint guides have none, `--no-pace` turns it off.
 Engine-only, W1-2, W2-1, W1-3, seeds 1–3: 8% shorter routes in all. Against the route's own time
-instead, W1-4 (slower than its route's pace) found no exit in 30 minutes.
+instead, W1-4 (slower than its route's pace) found no exit in 30 minutes. App mode (`--app`) has no pace
+(owner, 2026-10-23): W1-1 app routes ran 15–56% longer with it on three seeds, hearts lost the same.
 
 A guide is not a hint (§2.10, D21): it is not logged, and `PLAN_STATS` carries `guided=0|1`. The
 counted benchmark guides each level by its committed route (§4.2).
