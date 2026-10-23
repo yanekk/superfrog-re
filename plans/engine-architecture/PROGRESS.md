@@ -23,7 +23,7 @@ done · ⛔ blocked, needs a human.
 | # | Task | Depends on | State | Notes |
 |---|---|---|---|---|
 | T01 | skeleton-and-check | — | ✅ | |
-| T02 | memory-model | T01 | ⬜ | |
+| T02 | memory-model | T01 | ✅ | |
 | T03 | copied-in-data | T01 | ⬜ | |
 | T04 | cpu-time-and-beam | T01 | ⬜ | |
 | T05 | frame-interrupts-input | T01 | ✅ | |
