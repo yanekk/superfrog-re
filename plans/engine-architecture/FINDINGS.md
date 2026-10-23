@@ -15,6 +15,9 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-23 | 📌 | T13: the darts' wait/fly and the swing's updates are ported twice (`w3::dart`, `w4::dart`; `w3::swing`, `w4::mace`). The dispatch keeps the last registration, W6's (W3's code), so W4's copies never run. Left alone. |
+| 2026-10-23 | 📌 | T13: `standard_dispatch` (`level/mod.rs`) calls `enemies::register_all` twice, around `bonus::register_all`, uncommented; harmless while registrations replace. W1's `other_end_free` repeats `common::partner_right_free`; `witch.rs` repeats `follow_and_despawn`. |
+| 2026-10-23 | 📌 | T13: unchecked: the swing's `$64` write with all 20 slots full, and that `w1_spout_turn` stays a `LAYOUT` variable (`w1_hover_phase` is asserted as W4's `SWOOPER_PHASE`). Enemy cycle costs are flat `Cost::Routine` but for the hover and watcher. |
 | 2026-10-23 | 📌 | T15: `sf-assets/src/sound.rs` parses hunk 0 a second time (`game_hunk0`, `first_hunk`) beside `parse_exe`, and carries original addresses (`H0`, `H3`, `BANK_ADDR`). No check compares `SoundData::from_game` (the app's path) with `from_disks` (the tests'). |
 | 2026-10-23 | 📌 | T15: `sf-assets/src/lib.rs`'s module comment says sound is carried undecoded until T11; `sound.rs` decodes it. Code comment, left alone. |
 | 2026-10-23 | 🐞 | T11 review: docs/04 "Palettes" says a level's `PALA..PALD` are empty; `d1_c21_level_53588.bin`'s `PALA` holds colours at tag+$48, which `palette_from_map` reads (docs/08 agrees). docs/04 is stale; left alone. |
