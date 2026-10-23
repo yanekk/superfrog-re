@@ -17,9 +17,9 @@ unreliable edges); T07 now light, T00 answers three more questions.
 allowed everywhere, map a compass; T13 and T20 dropped, T22 route-shorten added.
 **Amendment reviewed:** 2026-10-22 — 18 fixes, 1 decision (owner: T10's W1-4 check runs guided)
 
-**Status:** T00–T14, T19, T21–T24 done; T25 in review; T26–T29 open before T15.
+**Status:** T00–T14, T19, T21–T25 done; T26–T30 open before T15.
 **Last updated:** 2026-10-23
-**Next `pir-work` will:** review T25.
+**Next `pir-work` will:** T26 tuning-set-b, T29 engine-sound-ramp, T30 lag-repair.
 
 ## Tasks
 
@@ -51,13 +51,14 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T22 | route-shorten | T08 | ✅ | |
 | T23 | w1-4-ending | T09, T10; blocks T14 | ✅ | |
 | T24 | repair-cost | T14; blocks T15 | ✅ | |
-| T25 | tuning-set-a | T14, T24; blocks T15 | 🔍 | Set A guided, alone: 18/24 done, results in `bench/tuning/`. Fixed `oracle::kept` lag back-off (W5-2), one test. Misses: W2-4, W6-2 sound (T29 added, owner); W2-3, W3-4, W6-1, W6-4 budget, recorded (owner). M4: W3-2, W4-1 over, causes in FINDINGS; T22 defaults kept. Results span 2a731dd and ad0dd6f (W5-2, W5-4, W6 on the fix). |
+| T25 | tuning-set-a | T14, T24; blocks T15 | ✅ | Review: the lag back-off fix finished W5-2 but failed W1-4 (rerun on its commit); reverted by the owner, W5-2 rerun a miss, set A 17/24, T30 added. Probed: W1-4 and W5-2 reruns of three rules, two mutations of `kept`, hint log, level-id grep. Budget and sound misses as built. |
 | T26 | tuning-set-b | T14, T25; blocks T15 | ⬜ | |
 | T27 | tuning-unaided | T14, T26; blocks T15 | ⬜ | |
 | T28 | compass-trial | T14, T27; blocks T15 | ⬜ | |
 | T29 | engine-sound-ramp | T25; blocks T15 | ⬜ | |
+| T30 | lag-repair | T25; blocks T15 | ⬜ | |
 
-**Review queue:** T25
+**Review queue:** *(empty)*
 
 ## Blocked on the user
 
