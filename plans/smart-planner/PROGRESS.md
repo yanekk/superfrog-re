@@ -56,9 +56,9 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T27 | tuning-unaided | T14, T26; blocks T15 | ⬜ | |
 | T28 | compass-trial | T14, T27; blocks T15 | ⬜ | |
 | T29 | engine-sound-ramp | T25; blocks T15 | ⬜ | |
-| T30 | lag-repair | T25; blocks T15 | 🔍 | `kept(.., before_run)`: lag repairs in a row alternate `BACK_OFF`, then before the run, rewinding the route via `Marks`/`run_start` when it began in an earlier stretch. 3 unit tests. d10dca3 bench: W1-4 18.7 min, W5-2 10.3 min, done. No deviation; other set-A levels had no lag parting, unchanged. |
+| T30 | lag-repair | T25; blocks T15 | ✅ | Review clean, no fix commit. W5-2 rerun on 943d7e0 took the rewind (954 → 870): same route, oracle and engine frames, done 15.0 min at load ~25. W1-4's d10dca3 line matches T25's frames exactly. Mutated resume point, alternation, `Marks` pruning: each caught. Rewind glue tested by bench only; other-level lag claim read-only (T25 logs gone). |
 
-**Review queue:** T30
+**Review queue:** *(empty)*
 
 ## Blocked on the user
 
