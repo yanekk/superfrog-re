@@ -13,7 +13,7 @@ writes a cell also fixes the over-budget cell they walk past.
 
 **Status:** Plan written 2026-10-22; nothing built.
 **Last updated:** 2026-10-23
-**Next `pir-work` will:** T11–T13, T15–T17; T18 once every chapter is ✅.
+**Next `pir-work` will:** T13, T16, T17; T18 once every chapter is ✅.
 
 ## Tasks
 
