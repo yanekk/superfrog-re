@@ -40,7 +40,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T09 | route-repair | T08 | ✅ | |
 | T10 | oracle-check | T02, T08, T09 | ✅ | |
 | T11 | plan-command | T05, T10, T22 | ✅ | |
-| T12 | app-timing | T11 | ⬜ | |
+| T12 | app-timing | T11 | ✅ | |
 | T14 | tuning-run | T11 | ✅ | Split; kept fixes reviewed. One gap: plan_original's parting bookkeeping was tested only by ignored runs; now `oracle::kept`, unit-tested. Fixed plan_stats' misplaced doc. Probed W2-1 original mode (passed §4.1) and the lag-case lookup for all 24 levels; mutations of hold, lag bar and kept caught. Runs carried by T24–T28. |
 | T15 | set-c-run | T12, T14 | ⬜ | |
 | T16 | baseline-counted | T15 | ⬜ | |

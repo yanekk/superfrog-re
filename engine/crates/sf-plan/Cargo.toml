@@ -24,6 +24,11 @@ libc = "0.2"
 sf-conform = { path = "../sf-conform" }
 sf-oracle = { path = "../sf-oracle" }
 
+[dev-dependencies]
+# T12 review: the planner's `app::app_start` held to set C's verification start, the one sf-e2e's
+# `plan_routes.rs` checks against the real app (sf-bench never links sf-plan, so no cycle).
+sf-bench = { path = "../sf-bench" }
+
 [[bin]]
 name = "sf-plan"
 path = "src/main.rs"

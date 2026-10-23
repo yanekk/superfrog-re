@@ -12,17 +12,25 @@ use std::sync::Arc;
 
 use serde::{Deserialize, Serialize};
 use sf_assets::{GameData, LaunchAction, LaunchFacts, cache_decode, cache_encode, decide};
+use sf_core::recording::{LevelSetup, Location};
 use sf_disk::{DiskSlot, ImportError, Offered};
 use winit::window::Window;
 
 use crate::atomic_write::atomic_write;
 use crate::home::{build, cache_path};
+use crate::recorder::EndChoice;
+use crate::save_window::{Outcome, SaveAction, SaveForm};
+use crate::start_level_window::{FormAction, StartLevelForm};
 
 /// The two buttons of the missing-disks message (owner, 2026-10-10).
 pub const CHOOSE: &str = "Choose Disks…";
 pub const QUIT: &str = "Quit";
-/// The refused level file's other button.
+/// The refused level file's other button, and "Recording in progress"'s last.
 pub const CANCEL: &str = "Cancel";
+/// "Recording in progress" (bug-recorder DESIGN §2.2) and its other two buttons.
+pub const IN_PROGRESS: &str = "Recording in progress";
+pub const SAVE_FIRST: &str = "Save…";
+pub const DISCARD: &str = "Discard";
 
 /// The questions the app asks the player.
 pub trait Ui {
@@ -40,12 +48,38 @@ pub trait Ui {
     /// A level file refused, `message` saying why. With `offer` (the disk level's button, `Play
     /// W1-1 from the Disks`), `true` when the player chose it; without, a notice.
     fn level_refused(&mut self, message: &str, offer: Option<&str>) -> bool;
+    /// Game ▸ Start Level…'s dialog (bug-recorder DESIGN §2.1): the values and whether to record,
+    /// `None` when it was cancelled.
+    fn start_level(&mut self) -> Option<(LevelSetup, bool)>;
+    /// "Recording in progress" before `action`, a menu action that would end the recording (§2.2).
+    fn recording_in_progress(&mut self, action: &str) -> EndChoice;
+    /// The save window (§2.4) with the screenshot `shot` (a PNG), where play is and the zip's file
+    /// name, until Save writes the zip (`save`, with the note) or Discard: `true` when saved. A
+    /// `save` that fails (`Err` saying why) is shown and the window stays open with the note
+    /// (§2.11).
+    fn save_recording(
+        &mut self,
+        shot: &[u8],
+        at: &Location,
+        name: &str,
+        save: &mut dyn FnMut(&str) -> Result<(), String>,
+    ) -> bool;
+    /// Put `text` on the clipboard.
+    fn copy(&mut self, text: &str);
+    /// The game window, once it is open: what the panels are sheets on.
+    fn attach(&mut self, _window: Arc<Window>) {}
 }
 
 /// The macOS panels, through rfd: sheets on `parent` when there is a window (with none, rfd shows
 /// a system alert from another process, and the picker stays on screen behind it).
 pub struct NativeUi {
     pub parent: Option<Arc<Window>>,
+}
+
+impl std::fmt::Debug for NativeUi {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("NativeUi").field("parent", &self.parent.as_ref().map(|w| w.id())).finish()
+    }
 }
 
 impl NativeUi {
@@ -125,6 +159,62 @@ impl Ui for NativeUi {
         matches!(r, rfd::MessageDialogResult::Custom(ref b) if b == offer)
             || r == rfd::MessageDialogResult::Ok
     }
+
+    fn start_level(&mut self) -> Option<(LevelSetup, bool)> {
+        crate::start_level_window::run_modal(self.parent.as_deref())
+    }
+
+    /// An alert with Save…, Discard and Cancel (Esc), as a sheet on the game window.
+    fn recording_in_progress(&mut self, action: &str) -> EndChoice {
+        let d = rfd::MessageDialog::new()
+            .set_level(rfd::MessageLevel::Warning)
+            .set_title(IN_PROGRESS)
+            .set_description(format!("{action} will end the recording. Save it first?"))
+            .set_buttons(rfd::MessageButtons::YesNoCancelCustom(
+                SAVE_FIRST.into(),
+                DISCARD.into(),
+                CANCEL.into(),
+            ));
+        let r = match &self.parent {
+            Some(w) => d.set_parent(&**w),
+            None => d,
+        }
+        .show();
+        match r {
+            rfd::MessageDialogResult::Custom(b) if b == SAVE_FIRST => EndChoice::Save,
+            rfd::MessageDialogResult::Custom(b) if b == DISCARD => EndChoice::Discard,
+            rfd::MessageDialogResult::Yes => EndChoice::Save,
+            rfd::MessageDialogResult::No => EndChoice::Discard,
+            _ => EndChoice::Cancel,
+        }
+    }
+
+    fn save_recording(
+        &mut self,
+        shot: &[u8],
+        at: &Location,
+        name: &str,
+        save: &mut dyn FnMut(&str) -> Result<(), String>,
+    ) -> bool {
+        crate::save_window::run(self.parent.as_deref(), shot, SaveForm::new(name, *at), save)
+    }
+
+    fn copy(&mut self, text: &str) {
+        #[cfg(target_os = "macos")]
+        {
+            use objc2_app_kit::{NSPasteboard, NSPasteboardTypeString};
+            use objc2_foundation::NSString;
+            let board = NSPasteboard::generalPasteboard();
+            board.clearContents();
+            // SAFETY: an AppKit constant, read on the main thread the app runs on.
+            let kind = unsafe { NSPasteboardTypeString };
+            if !board.setString_forType(&NSString::from_str(text), kind) {
+                eprintln!("superfrog: the clipboard did not take the path");
+            }
+        }
+        #[cfg(not(target_os = "macos"))]
+        let _ = text;
+    }
 }
 
 /// What the script answers the picker with.
@@ -147,12 +237,25 @@ pub struct ScriptedUi {
     pub opens: VecDeque<Option<PathBuf>>,
     /// The refused level file's answers: `true` for playing the disk level.
     pub level_answers: VecDeque<bool>,
+    /// Start Level's answers: for each showing of the window, what is done in it, applied to its
+    /// model (`start_level_window.rs`) until Start or Cancel. None left, or used up first: Cancel.
+    pub starts: VecDeque<Vec<FormAction>>,
+    /// "Recording in progress"'s answers.
+    pub endings: VecDeque<EndChoice>,
+    /// The save window's answers: the note, or `None` for Discard.
+    pub notes: VecDeque<Option<String>>,
     /// Every prompt, one line each: `picker: …`, `missing: … -> choose|quit`, `notice: …`,
     /// `save: <name> -> <path>|cancel`, `open: -> <path>|cancel`, `refused: … -> disk-level|cancel`
-    /// (`refused: …` alone when nothing was offered).
+    /// (`refused: …` alone when nothing was offered), `start-level: -> <values> [record]|cancel`,
+    /// `recording: <action> -> save|discard|cancel`, `save-recording: <name> at <place> ->
+    /// note <text>|discard`, `clipboard: <text>`.
     pub log: Vec<String>,
     /// Where each line is appended as it is shown (the capture folder's `prompts.txt`).
     pub log_file: Option<PathBuf>,
+    /// The script's `native-ui`: the recorder's two windows, the notices and the clipboard are the
+    /// real ones, for the OS layer to drive (bug-recorder T10); their answers are logged as the
+    /// script's are.
+    pub native: Option<NativeUi>,
 }
 
 impl ScriptedUi {
@@ -188,6 +291,9 @@ impl Ui for ScriptedUi {
 
     fn notice(&mut self, message: &str) {
         self.record(format!("notice: {message}"));
+        if let Some(n) = &mut self.native {
+            n.notice(message);
+        }
     }
 
     fn save_level(&mut self, name: &str) -> Option<PathBuf> {
@@ -211,6 +317,119 @@ impl Ui for ScriptedUi {
         self.record(format!("refused: {message} -> {}", if play { "disk-level" } else { "cancel" }));
         play
     }
+
+    fn start_level(&mut self) -> Option<(LevelSetup, bool)> {
+        let mut form = StartLevelForm::new();
+        let mut a = None;
+        for action in self.starts.pop_front().unwrap_or_default() {
+            eprintln!("superfrog: start-level form: {}", action.words());
+            let start = action == FormAction::Start;
+            match form.apply(action) {
+                Some(done) => {
+                    a = done;
+                    break;
+                }
+                None if start => eprintln!("superfrog: start-level: Start is disabled"),
+                None => {}
+            }
+        }
+        let shown = match &a {
+            None => "cancel".to_string(),
+            Some((s, record)) => format!("{}{}", setup_words(s), if *record { " record" } else { "" }),
+        };
+        self.record(format!("start-level: -> {shown}"));
+        a
+    }
+
+    /// With no answer left, Cancel: the recording is kept and the run goes on to its frame cap.
+    fn recording_in_progress(&mut self, action: &str) -> EndChoice {
+        let c = match &mut self.native {
+            Some(n) => n.recording_in_progress(action),
+            None => self.endings.pop_front().unwrap_or(EndChoice::Cancel),
+        };
+        self.record(format!("recording: {action} -> {}", c.word()));
+        c
+    }
+
+    /// The script's notes in order, each saved; one whose write fails is followed by the next, as
+    /// a person types again in the window that stayed open. With none left, Discard.
+    fn save_recording(
+        &mut self,
+        shot: &[u8],
+        at: &Location,
+        name: &str,
+        save: &mut dyn FnMut(&str) -> Result<(), String>,
+    ) -> bool {
+        if let Some(n) = &mut self.native {
+            let mut tried = Vec::new();
+            let mut logged = |note: &str| {
+                let r = save(note);
+                tried.push((note.to_string(), r.clone().err()));
+                r
+            };
+            let saved = n.save_recording(shot, at, name, &mut logged);
+            for (note, failed) in tried {
+                self.record(format!("save-recording: {name} at {at} -> note {note}"));
+                if let Some(why) = failed {
+                    self.record(format!("notice: {why}"));
+                }
+            }
+            if !saved {
+                self.record(format!("save-recording: {name} at {at} -> discard"));
+            }
+            return saved;
+        }
+        let mut form = SaveForm::new(name, *at);
+        loop {
+            let Some(note) = self.notes.pop_front().flatten() else {
+                self.record(format!("save-recording: {name} at {at} -> discard"));
+                return false;
+            };
+            form.action(SaveAction::Note(note));
+            let Outcome::Save(note) = form.action(SaveAction::Save) else { unreachable!("Save saves") };
+            self.record(format!("save-recording: {name} at {at} -> note {note}"));
+            match save(&note) {
+                Ok(()) => return true,
+                Err(why) => self.record(format!("notice: {why}")),
+            }
+        }
+    }
+
+    fn copy(&mut self, text: &str) {
+        self.record(format!("clipboard: {text}"));
+        if let Some(n) = &mut self.native {
+            n.copy(text);
+        }
+    }
+
+    fn attach(&mut self, window: Arc<Window>) {
+        if let Some(n) = &mut self.native {
+            n.parent = Some(window);
+        }
+    }
+}
+
+/// A setup as a script's `start-level` line writes it (`script.rs`).
+pub fn setup_words(s: &LevelSetup) -> String {
+    use sf_core::recording::Difficulty;
+    let mut w = format!(
+        "{} lives={} points={} energy={} difficulty={}",
+        s.level,
+        s.lives.count(),
+        s.points,
+        s.energy,
+        match s.difficulty {
+            Difficulty::Easy => "easy",
+            Difficulty::Normal => "normal",
+        }
+    );
+    if s.spud {
+        w.push_str(" spud");
+    }
+    if s.wings {
+        w.push_str(" wings");
+    }
+    w
 }
 
 fn shown(p: &Option<PathBuf>) -> String {

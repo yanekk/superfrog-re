@@ -1,0 +1,73 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Superfrog bug recorder — throwaway mock</title>
+<style>
+body{font:13px -apple-system,system-ui,sans-serif;background:#ddd;margin:0;padding:20px}
+h2{font-size:13px;color:#666;font-weight:normal;margin:0 0 8px}
+.row{display:flex;gap:28px;align-items:flex-start;flex-wrap:wrap}
+.win{background:#ececec;border-radius:10px;box-shadow:0 8px 30px #0005;overflow:hidden}
+.title{height:28px;background:#e3e3e3;border-bottom:1px solid #ccc;display:flex;align-items:center;justify-content:center;position:relative;color:#444}
+.title i{position:absolute;left:10px;top:9px;width:11px;height:11px;border-radius:6px;background:#ff5f57;box-shadow:17px 0 #febc2e,34px 0 #28c840}
+.game{width:668px;height:522px;background:linear-gradient(#3a6fd0,#7fb2ff 60%,#2c8a3a 60%);position:relative;color:#fff;font:bold 16px monospace}
+.game span{position:absolute;left:20px;bottom:14px;text-shadow:1px 1px #000}
+.bar{height:34px;display:flex;align-items:center;gap:10px;padding:0 12px;background:#2b2b2b;color:#eee}
+.dot{width:11px;height:11px;border-radius:6px;background:#e33;animation:b 1s infinite}
+@keyframes b{50%{opacity:.25}}
+.bar .sp{flex:1}
+.bar small{color:#aaa}
+button{font:13px -apple-system;padding:3px 14px;border-radius:5px;border:1px solid #aaa;background:#fff}
+button.def{background:#2f7cf6;color:#fff;border-color:#2f7cf6}
+.form{padding:16px 20px;display:grid;grid-template-columns:auto auto;gap:9px 12px;align-items:center}
+.form label{text-align:right}
+.form input[type=number]{width:80px}
+.btns{display:flex;justify-content:flex-end;gap:8px;padding:0 20px 16px}
+.menu{background:#f6f6f6;border:1px solid #bbb;border-radius:6px;padding:4px 0;width:250px;box-shadow:0 4px 14px #0003}
+.menu div{padding:3px 16px;display:flex;justify-content:space-between}.menu hr{border:0;border-top:1px solid #ccc;margin:4px 0}
+.menu .hi{background:#2f7cf6;color:#fff}.menu .off{color:#aaa}
+</style></head><body>
+<p><b>Throwaway mock.</b> Grey boxes stand in for native macOS windows. Nothing here is wired to anything.</p>
+<div class="row">
+ <div><h2>1 · Game menu</h2>
+  <div class="menu">
+   <div>Continue from World 2</div><hr>
+   <div class="hi">Start Level…</div>
+   <div class="off">Stop Recording <span>⌘.</span></div><hr>
+   <div>Pause</div><div>Reset</div><hr><div>Controls…</div><hr>
+   <div>Save State ▸</div><div>Load State ▸</div>
+  </div></div>
+ <div><h2>2 · Start Level dialog</h2>
+  <div class="win" style="width:330px"><div class="title"><i></i>Start Level</div>
+   <div class="form">
+    <label>Level</label><select><option>W1-1</option><option>W1-2</option><option>…</option><option>WW-1</option></select>
+    <label>Lives</label><select><option>3</option><option selected>5</option><option>7</option></select>
+    <label>Points</label><input type="number" value="0" min="0" max="999999" style="width:100px">
+    <label>Energy (hearts)</label><select><option>1</option><option>2</option><option>3</option><option selected>4</option></select>
+    <label>Difficulty</label><select><option>Easy</option><option selected>Normal</option><option>Hard</option></select>
+    <label></label><label style="text-align:left"><input type="checkbox"> Spud</label>
+    <label></label><label style="text-align:left"><input type="checkbox"> Wings</label>
+    <label></label><label style="text-align:left"><input type="checkbox" checked> Enable recorder?</label>
+   </div>
+   <div class="btns"><button>Cancel</button><button class="def">Start</button></div>
+  </div></div>
+</div>
+<div class="row" style="margin-top:28px">
+ <div><h2>3 · Playing, recorder on — the bar sits under the picture, never over it</h2>
+  <div class="win"><div class="title"><i></i>Superfrog</div>
+   <div class="game"><span>W1-2 · game picture (unchanged size)</span></div>
+   <div class="bar"><div class="dot"></div>Recording<small>W1-1 → … · 03:12</small><div class="sp"></div><small>⌘.</small><button>STOP</button></div>
+  </div></div>
+ <div><h2>4 · After STOP</h2>
+  <div class="win" style="width:380px"><div class="title"><i></i>Save Bug Recording</div>
+   <div style="padding:16px 20px">
+    <div style="display:flex;gap:12px"><div style="width:110px;height:86px;background:#000;color:#666;font:10px monospace;display:flex;align-items:center;justify-content:center">screenshot</div>
+    <div>Location: <b>W1-2</b> — intro screen<br><span style="color:#777">Will save as bugs/bug-W1-2-2026-10-20-1432.zip</span></div></div>
+    <p>Note</p><input style="width:100%" value="black screen after the slot machine, fire moves on">
+   </div>
+   <div class="btns"><button>Discard</button><button class="def">Save</button></div>
+  </div>
+  <h2 style="margin-top:22px">5 · A menu action while recording</h2>
+  <div class="win" style="width:380px"><div class="title"><i></i></div>
+   <div style="padding:14px 20px"><b>Recording in progress</b><br>Load State 2 will end the recording. Save it first?</div>
+   <div class="btns"><button>Cancel</button><button>Discard</button><button class="def">Save…</button></div>
+  </div></div>
+</div>
+</body></html>

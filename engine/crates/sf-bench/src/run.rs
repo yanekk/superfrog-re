@@ -108,7 +108,7 @@ pub fn run_one(
     let stderr = std::fs::read_to_string(&log).unwrap_or_default();
     let stats = results::plan_stats(&stderr);
     let v = judge(&run, stats.as_ref(), o.budget, || match InputScript::load(&out) {
-        Ok(script) if !script.lines.is_empty() => verify::verify(o.set, s, &script),
+        Ok(script) if !script.lines.is_empty() => verify::verify(o.set, s, &script, o.seed),
         Ok(_) => Verdict::failed("no route"),
         Err(e) => Verdict::failed(format!("no route ({e})")),
     });

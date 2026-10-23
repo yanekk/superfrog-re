@@ -82,7 +82,7 @@ fn verify_accepts_complete_w1_1_and_rejects_it_cut_before_the_exit() {
     let s = &sets::starts(Set::A)[0];
     let script =
         sf_conform::InputScript::load(&sf_conform::case::script_path("complete-w1-1")).unwrap();
-    let v = verify::verify(Set::A, s, &script);
+    let v = verify::verify(Set::A, s, &script, 1);
     assert!(v.completed, "{v:?}");
     // The case's comment: the exit at frame 4473.
     assert!(v.route_frames.is_some_and(|f| (4470..=4476).contains(&f)), "{v:?}");
@@ -90,7 +90,7 @@ fn verify_accepts_complete_w1_1_and_rejects_it_cut_before_the_exit() {
     let mut short = script.clone();
     short.lines.retain(|l| l.0 < cut);
     short.lines.push((cut, sf_core::input::FrameInput::NONE));
-    let v = verify::verify(Set::A, s, &short);
+    let v = verify::verify(Set::A, s, &short, 1);
     assert!(!v.completed, "{v:?}");
     assert_eq!(v.route_frames, None);
     eprintln!("verify test took {:.0?}", t0.elapsed());
@@ -352,4 +352,44 @@ fn new_planner_guided_then_unguided_on_w1_1() {
     assert!(t.contains("| Level | `new` guided | `new` unguided |"), "{t}");
     eprintln!("{}", std::fs::read_to_string(&res).unwrap());
     std::fs::remove_dir_all(&dir).unwrap();
+}
+
+/// Set C (T12): a route's joystick becomes the app's key lines, its frame `i` the app's step
+/// `i + 1` after Start Level at step 1 under the route's power-on seed; the engine's replay of
+/// the committed W1-1 app route from the app start reaches the exit with no life lost, and its
+/// state hashes are what the app's `hashes.txt` is compared with.
+#[test]
+fn set_c_turns_a_route_into_the_apps_script_and_replays_it_on_the_engine() {
+    let route = sf_conform::InputScript::parse("# timing: app\n0: -\n3: R\n5: R F\n6: -\n8: -\n").unwrap();
+    let level = "W1-2".parse().unwrap();
+    assert_eq!(
+        verify::app_script(level, 7, &route, 8),
+        "seed 7 7\n1: start-level W1-2\n4: down ArrowRight\n6: down Space\n7: up ArrowRight\n7: up Space\n"
+    );
+
+    let text = std::fs::read_to_string(
+        std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../sf-e2e/tests/data/w1-1-app-seed1.txt"),
+    )
+    .unwrap();
+    let route = sf_conform::InputScript::parse(&text).unwrap();
+    let w1_1 = "W1-1".parse().unwrap();
+    let v = verify::verify_app(w1_1, 1, &route, verify::AppCheck::Engine);
+    assert!(v.completed, "{v:?}");
+    let r = verify::engine_app(w1_1, 1, &route, 200);
+    assert_eq!(r.states.len(), 200);
+    // The app's frame 0 (before Start Level) is not compared; frames 1.. are.
+    let line = |n: usize, s: u64| format!("{n} {:016x} {s:016x}\n", 0);
+    let mut hashes = format!("{}\n{}", sf_core::feed::HASHES_HEADER, line(0, 0));
+    for (k, s) in r.states.iter().enumerate() {
+        hashes += &line(k + 1, *s);
+    }
+    assert_eq!(verify::app_parts(&hashes, &r.states), None);
+    let cut: String = hashes.lines().take(101).map(|l| format!("{l}\n")).collect();
+    assert_eq!(verify::app_parts(&cut, &r.states).as_deref(), Some("the app stopped at frame 99 of 200"));
+    let other = verify::engine_app(w1_1, 2, &route, 200);
+    let mut wrong = format!("{}\n{}", sf_core::feed::HASHES_HEADER, line(0, 0));
+    for (k, s) in other.states.iter().enumerate() {
+        wrong += &line(k + 1, *s);
+    }
+    assert_eq!(verify::app_parts(&wrong, &r.states).as_deref(), Some("the app parts from the engine at frame 1"));
 }

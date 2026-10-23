@@ -3,7 +3,7 @@
 //! ```text
 //! superfrog [--home DIR] [--cache-from-disks DIR] [--script FILE [--pacing FILE]]
 //!           [--capture DIR [--capture-hashes]] [--max-frames N] [--timeout S] [--scale N]
-//!           [--allow-fullscreen] [--audio-device NAME]
+//!           [--allow-fullscreen] [--audio-device NAME] [--bugs-dir DIR] [--replay ZIP]
 //! ```
 
 use std::ffi::OsString;
@@ -17,7 +17,7 @@ pub const FULLSCREEN_MAX_FRAMES: u64 = 300;
 
 pub const USAGE: &str = "usage: superfrog [--home DIR] [--cache-from-disks DIR] [--script FILE \
 [--pacing FILE]] [--capture DIR [--capture-hashes]] [--max-frames N] [--timeout S] [--scale N] [--allow-fullscreen] \
-[--audio-device NAME]";
+[--audio-device NAME] [--bugs-dir DIR] [--replay ZIP]";
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Args {
@@ -47,6 +47,12 @@ pub struct Args {
     /// unavailable, the test hook for a Mac with none (DESIGN §2.11). A scripted run without it
     /// plays nothing.
     pub audio_device: Option<String>,
+    /// Where a bug recording is saved, in place of the repo's `bugs/` (bug-recorder DESIGN §2.4,
+    /// §5.2). A scripted run without it saves into `<home>/bugs`, never the repo.
+    pub bugs_dir: Option<PathBuf>,
+    /// Play this bug zip in the window, watch-only, holding on its last frame (bug-recorder
+    /// DESIGN §2.7). For agents and tests.
+    pub replay: Option<PathBuf>,
 }
 
 impl Default for Args {
@@ -63,14 +69,23 @@ impl Default for Args {
             scale: None,
             allow_fullscreen: false,
             audio_device: None,
+            bugs_dir: None,
+            replay: None,
         }
     }
 }
 
 impl Args {
-    /// May this run go fullscreen? Never under `--script` without `--allow-fullscreen`.
+    /// May this run go fullscreen? Never under `--script` or `--replay` without
+    /// `--allow-fullscreen`.
     pub fn fullscreen_allowed(&self) -> bool {
-        self.script.is_none() || self.allow_fullscreen
+        !self.unattended() || self.allow_fullscreen
+    }
+
+    /// Is this run for an agent or a test (`--script`, `--replay`)? Then it takes neither the
+    /// keyboard from the person nor the speakers unless it names a device, and stays windowed.
+    pub fn unattended(&self) -> bool {
+        self.script.is_some() || self.replay.is_some()
     }
 }
 
@@ -105,6 +120,8 @@ pub fn parse(args: impl IntoIterator<Item = OsString>) -> Result<Args, String> {
                 a.audio_device = Some(value("a device name")?.to_string_lossy().into_owned())
             }
             "--allow-fullscreen" => a.allow_fullscreen = true,
+            "--bugs-dir" => a.bugs_dir = Some(value("a folder")?.into()),
+            "--replay" => a.replay = Some(value("a bug zip")?.into()),
             "-h" | "--help" => return Err(USAGE.to_string()),
             _ => return Err(format!("unknown argument {name:?}\n{USAGE}")),
         }
@@ -116,6 +133,13 @@ pub fn parse(args: impl IntoIterator<Item = OsString>) -> Result<Args, String> {
                 .to_string());
         }
         a.timeout_s.get_or_insert(SCRIPT_TIMEOUT_S);
+    }
+    // A replay that is captured never ends by itself: it holds on its last frame (DESIGN §5.2).
+    if a.replay.is_some() && a.capture.is_some() {
+        a.timeout_s.get_or_insert(SCRIPT_TIMEOUT_S);
+    }
+    if a.replay.is_some() && a.pacing.is_some() {
+        return Err("--replay plays the recording's own steps: it takes no --pacing".to_string());
     }
     if a.pacing.is_some() && a.script.is_none() {
         return Err("--pacing is for a scripted test run only: it needs --script (DESIGN §2.5)"
@@ -153,8 +177,10 @@ mod tests {
     #[test]
     fn every_flag_parses() {
         let a = p("--home h --cache-from-disks d --script s --capture c --max-frames 9 --timeout 3 \
-                   --scale 2 --audio-device none --pacing f --capture-hashes")
+                   --scale 2 --audio-device none --pacing f --capture-hashes --bugs-dir b")
         .unwrap();
+        assert_eq!(a.bugs_dir, Some("b".into()));
+        assert_eq!(p("--replay z").unwrap().replay, Some("z".into()));
         assert_eq!(a.pacing, Some("f".into()));
         assert!(a.capture_hashes);
         assert_eq!(a.home, Some("h".into()));
@@ -190,6 +216,18 @@ mod tests {
     }
 
     #[test]
+    fn a_captured_replay_gets_a_120_second_timeout_and_stays_windowed() {
+        assert_eq!(p("--replay z --capture c").unwrap().timeout_s, Some(120));
+        assert_eq!(p("--replay z --capture c --timeout 9").unwrap().timeout_s, Some(9));
+        assert_eq!(p("--replay z").unwrap().timeout_s, None);
+        assert!(!p("--replay z").unwrap().fullscreen_allowed());
+        assert!(p("--replay z").unwrap().unattended());
+        assert!(!p("").unwrap().unattended());
+        assert!(p("--replay").unwrap_err().contains("--replay"));
+        assert!(p("--replay z --script s --max-frames 5 --pacing f").unwrap_err().contains("--pacing"));
+    }
+
+    #[test]
     fn a_pacing_feed_is_read_only_by_a_scripted_run() {
         let e = p("--pacing f").unwrap_err();
         assert!(e.contains("--script"), "{e}");
@@ -209,6 +247,7 @@ mod tests {
         assert!(p("--scale 0").unwrap_err().contains("--scale"));
         assert!(p("--max-frames x").unwrap_err().contains("--max-frames"));
         assert!(p("--home").unwrap_err().contains("--home"));
+        assert!(p("--bugs-dir").unwrap_err().contains("--bugs-dir"));
         assert!(p("--timeout 0").is_err());
         assert!(p("--bogus").unwrap_err().contains("unknown"));
     }

@@ -2872,6 +2872,7 @@ name = "sf-conform"
 version = "0.1.0"
 dependencies = [
  "miniz_oxide 0.9.1",
+ "png",
  "sf-assets",
  "sf-core",
  "sf-disk",
@@ -2907,8 +2908,10 @@ dependencies = [
  "libc",
  "png",
  "sf-assets",
+ "sf-bench",
  "sf-conform",
  "sf-core",
+ "sf-disk",
  "sf-paula",
 ]
 
@@ -2939,6 +2942,7 @@ dependencies = [
  "libc",
  "serde",
  "sf-assets",
+ "sf-bench",
  "sf-conform",
  "sf-core",
  "sf-oracle",

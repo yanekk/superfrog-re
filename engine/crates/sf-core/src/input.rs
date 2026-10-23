@@ -98,6 +98,65 @@ impl FrameInput {
     }
 }
 
+/// The joystick tokens a script writes, in the order it writes them.
+const JOY_TOKENS: [(Joy, &str); 6] = [
+    (Joy::UP, "U"),
+    (Joy::DOWN, "D"),
+    (Joy::LEFT, "L"),
+    (Joy::RIGHT, "R"),
+    (Joy::FIRE, "F"),
+    (Joy::PORT1_BUTTON, "M"),
+];
+
+/// One input as a script and a recording write it (bug-recorder DESIGN §2.6): `R F`, `K19`, `-`.
+/// Joystick tokens `U D L R F M` in that order, then `K<hex>` per held key, lowest first; `-` for
+/// nothing held.
+pub fn format_tokens(input: FrameInput) -> String {
+    let mut out: Vec<String> = JOY_TOKENS
+        .iter()
+        .filter(|(j, _)| input.joy.contains(*j))
+        .map(|(_, n)| n.to_string())
+        .collect();
+    out.extend(input.keys.codes().map(|c| format!("K{c:02X}")));
+    if out.is_empty() {
+        "-".to_string()
+    } else {
+        out.join(" ")
+    }
+}
+
+/// One token: `Some(Ok(what it holds))`, `Some(Err(why))` for a malformed key, `None` for a token
+/// this format does not know (sf-conform's scripts add `C<entry>.<k>`, which needs the disks).
+pub fn parse_token(t: &str) -> Option<Result<FrameInput, String>> {
+    if t == "-" {
+        return Some(Ok(FrameInput::NONE));
+    }
+    if let Some(&(joy, _)) = JOY_TOKENS.iter().find(|(_, n)| *n == t) {
+        return Some(Ok(FrameInput::joy(joy)));
+    }
+    let hex = t.strip_prefix('K')?;
+    Some(
+        (hex.len() == 2 && hex.bytes().all(|b| b.is_ascii_hexdigit()))
+            .then(|| u8::from_str_radix(hex, 16).ok())
+            .flatten()
+            .filter(|&c| c < 0x80)
+            .map(FrameInput::key)
+            .ok_or_else(|| format!("`{t}`: a key is K and two hex digits, 00..7F")),
+    )
+}
+
+/// The whitespace-separated tokens of [`format_tokens`] (nothing at all is nothing held).
+pub fn parse_tokens(s: &str) -> Result<FrameInput, String> {
+    let mut input = FrameInput::NONE;
+    for t in s.split_whitespace() {
+        let one = parse_token(t)
+            .ok_or_else(|| format!("`{t}` is not an input (U D L R F M K<hex> -)"))??;
+        input.joy = input.joy | one.joy;
+        input.keys = KeySet(input.keys.0 | one.keys.0);
+    }
+    Ok(input)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -122,5 +181,39 @@ mod tests {
         let b = KeySet::key(9).to_bytes();
         assert_eq!((b[1], b[0]), (2, 0));
         assert_eq!(FrameInput::key(0x19).keys, KeySet::key(0x19));
+    }
+
+    #[test]
+    fn tokens_round_trip_and_refuse_what_they_do_not_know() {
+        let i = FrameInput {
+            joy: Joy::UP | Joy::DOWN | Joy::LEFT | Joy::PORT1_BUTTON,
+            keys: KeySet::key(0x19).with(0x45),
+        };
+        assert_eq!(format_tokens(i), "U D L M K19 K45");
+        assert_eq!(parse_tokens("U D L M K19 K45"), Ok(i));
+        assert_eq!(format_tokens(FrameInput::NONE), "-");
+        assert_eq!(parse_tokens("-"), Ok(FrameInput::NONE));
+        assert_eq!(parse_tokens(""), Ok(FrameInput::NONE));
+        for joy in 0..64 {
+            for keys in [KeySet::NONE, KeySet::key(0), KeySet::key(0x7F).with(0x0a)] {
+                let i = FrameInput {
+                    joy: Joy(joy),
+                    keys,
+                };
+                assert_eq!(parse_tokens(&format_tokens(i)), Ok(i));
+            }
+        }
+        for (bad, says) in [
+            ("Q", "not an input"),
+            ("C8.0", "not an input"),
+            ("K80", "00..7F"),
+            ("K1", "two hex digits"),
+            ("K+1", "two hex digits"),
+            ("R K", "two hex digits"),
+        ] {
+            let e = parse_tokens(bad).unwrap_err();
+            assert!(e.contains(says), "{bad}: {e}");
+        }
+        assert!(parse_token("C8.0").is_none());
     }
 }

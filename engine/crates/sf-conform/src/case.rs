@@ -92,6 +92,25 @@ pub struct Case {
     /// 2026-10-15), off for a `render`-only case; not a case file's key, as the bar is not a
     /// case's to choose. `run --alone` judges by it only.
     pub alone: Alone,
+    /// A bug zip's case (bug-recorder T14): where the original is put back on the recording it
+    /// left (`put-back = { steps = "…", at = [[F, S], …] }`, a `Setup` case's only).
+    pub put_back: Option<PutBacks>,
+}
+
+/// Where a bug zip's case puts the original back on the owner's recording (bug-recorder T14):
+/// under lag the original stops playing what the owner played, so at the pass end it is seen to
+/// have left, the recording's engine there is written into its memory (`bug::Follow`) and the run
+/// goes on from the owner's state.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PutBacks {
+    /// The recording's inputs, one per engine step from the setup's start (`scripts/<steps>.txt`).
+    pub steps: InputScript,
+    /// (the original's frames run, the recording's step): once the original has run that many
+    /// frames, the recording's engine after that step is written into it. In order.
+    pub at: Vec<(u32, u32)>,
+    /// What a test writes into the recording's engine at its start (`bug::Pokes`); never in a
+    /// case file.
+    pub pokes: Vec<(u32, Vec<u8>)>,
 }
 
 /// Whether a run judges check 4, plays alone ([`crate::milestones`]).
@@ -180,6 +199,76 @@ pub fn script_path(name: &str) -> PathBuf {
     }
 }
 
+/// The keys only [`SyncPoint::Setup`]'s form has: any of them beside `level` makes `lives` the
+/// Start Level dialog's 3/5/7, not `frog_lives` ([`SyncPoint::Lives`]).
+const SETUP_KEYS: [&str; 6] = ["points", "energy", "difficulty", "spud", "wings", "seed"];
+
+/// `sync = { level = "W1-1", lives = 3, points = 0, energy = 4, difficulty = "normal",
+/// spud = false, wings = false, seed = "lo hi" }`: every key given, the values in the dialog's
+/// ranges (`LevelSetup::validate`), the seed two hex longs as a recording's `seed` line has them.
+fn setup_sync(s: &toml::Table) -> Result<SyncPoint, String> {
+    use sf_core::recording::{Difficulty, LevelSetup, Lives};
+    const KEYS: [&str; 8] = [
+        "level", "lives", "points", "energy", "difficulty", "spud", "wings", "seed",
+    ];
+    if let Some(k) = s.keys().find(|k| !KEYS.contains(&k.as_str())) {
+        return Err(format!(
+            "sync: unknown key `{k}` in a level setup ({})",
+            KEYS.join(", ")
+        ));
+    }
+    if let Some(k) = KEYS.iter().find(|k| !s.contains_key(**k)) {
+        return Err(format!(
+            "sync: a level setup needs `{k}` ({})",
+            KEYS.join(", ")
+        ));
+    }
+    let int = |k: &str| s[k].as_integer();
+    let flag = |k: &str| s[k].as_bool().ok_or(format!("sync.{k} is true or false"));
+    let hex = |h: &str| {
+        ((1..=8).contains(&h.len()) && h.bytes().all(|b| b.is_ascii_hexdigit()))
+            .then(|| u32::from_str_radix(h, 16).ok())
+            .flatten()
+    };
+    let setup = LevelSetup {
+        level: s["level"]
+            .as_str()
+            .ok_or("sync.level is a string like \"W1-1\"")?
+            .parse()?,
+        lives: match int("lives") {
+            Some(3) => Lives::Three,
+            Some(5) => Lives::Five,
+            Some(7) => Lives::Seven,
+            _ => return Err("sync.lives in a level setup is 3, 5 or 7".into()),
+        },
+        points: int("points")
+            .and_then(|v| u32::try_from(v).ok())
+            .ok_or("sync.points is a score, 0 or more")?,
+        energy: int("energy")
+            .and_then(|v| u8::try_from(v).ok())
+            .ok_or("sync.energy is 1 to 4 hearts")?,
+        difficulty: match s["difficulty"].as_str() {
+            Some("easy") => Difficulty::Easy,
+            Some("normal") => Difficulty::Normal,
+            _ => return Err("sync.difficulty is \"easy\" or \"normal\"".into()),
+        },
+        spud: flag("spud")?,
+        wings: flag("wings")?,
+    };
+    setup.validate().map_err(|e| format!("sync: {e}"))?;
+    let seed = s["seed"]
+        .as_str()
+        .and_then(|v| v.split_once(' '))
+        .and_then(|(lo, hi)| {
+            Some(sf_core::Rng {
+                lo: hex(lo)?,
+                hi: hex(hi)?,
+            })
+        })
+        .ok_or("sync.seed is two hex longs, \"lo hi\"")?;
+    Ok(SyncPoint::Setup { setup, seed })
+}
+
 impl Case {
     pub fn load(path: &Path) -> Result<Case, String> {
         let text = std::fs::read_to_string(path).map_err(|e| format!("{}: {e}", path.display()))?;
@@ -204,11 +293,12 @@ impl Case {
                 "vars",
                 "resync",
                 "lag-limit",
+                "put-back",
             ]
             .contains(&k.as_str())
             {
                 return Err(format!(
-                    "unknown key `{k}` (sync, script, script-from, frames, compare, exclude, vars, resync, lag-limit)"
+                    "unknown key `{k}` (sync, script, script-from, frames, compare, exclude, vars, resync, lag-limit, put-back)"
                 ));
             }
         }
@@ -271,6 +361,11 @@ impl Case {
                         ),
                     },
                 }
+            }
+            Some(toml::Value::Table(s))
+                if s.contains_key("level") && SETUP_KEYS.iter().any(|k| s.contains_key(*k)) =>
+            {
+                setup_sync(s)?
             }
             Some(toml::Value::Table(s)) if s.contains_key("level") => {
                 if let Some(k) = s
@@ -347,7 +442,7 @@ impl Case {
             },
             _ => {
                 return Err(
-                    "sync is \"power-on\", \"power-on-disk3\", \"power-on-df1\", \"end-sequence\", { script = \"…\", frame = N }, { level = \"W1-1\" }, { slot = \"…\", start = \"…\" }, { game-over = \"…\" } or { end-sequence = true, score = N }"
+                    "sync is \"power-on\", \"power-on-disk3\", \"power-on-df1\", \"end-sequence\", { script = \"…\", frame = N }, { level = \"W1-1\" }, { level = \"W1-1\", lives = 3, points = 0, energy = 4, difficulty = \"normal\", spud = false, wings = false, seed = \"lo hi\" }, { slot = \"…\", start = \"…\" }, { game-over = \"…\" } or { end-sequence = true, score = N }"
                         .into(),
                 );
             }
@@ -488,6 +583,40 @@ impl Case {
                 })
             }
         };
+        let put_back = match t.get("put-back") {
+            None => None,
+            Some(v) => {
+                let bad = "put-back is { steps = \"script\", at = [[frame, step], …] }";
+                if !matches!(sync, SyncPoint::Setup { .. }) {
+                    return Err("put-back needs a level-setup sync (a bug zip's case)".into());
+                }
+                let p = v.as_table().ok_or(bad)?;
+                if let Some(k) = p.keys().find(|k| !["steps", "at"].contains(&k.as_str())) {
+                    return Err(format!("put-back: unknown key `{k}` (steps, at)"));
+                }
+                let steps = p.get("steps").and_then(|v| v.as_str()).ok_or(bad)?;
+                let mut at = Vec::new();
+                for pair in p.get("at").and_then(|v| v.as_array()).ok_or(bad)? {
+                    let n: Vec<u32> = pair
+                        .as_array()
+                        .ok_or(bad)?
+                        .iter()
+                        .map(|v| v.as_integer().and_then(|v| u32::try_from(v).ok()))
+                        .collect::<Option<_>>()
+                        .ok_or(bad)?;
+                    let [frame, step] = n[..] else { return Err(bad.into()) };
+                    if at.last().is_some_and(|&(f, _)| f >= frame) {
+                        return Err("put-back: the frames in `at` are in increasing order".into());
+                    }
+                    at.push((frame, step));
+                }
+                Some(PutBacks {
+                    steps: InputScript::load(&script_path(steps))?,
+                    at,
+                    pokes: Vec::new(),
+                })
+            }
+        };
         Ok(Case {
             name: name.to_string(),
             sync,
@@ -500,6 +629,7 @@ impl Case {
             lag_limit,
             mode: crate::compare::Mode::Faithful,
             alone: Alone::of(compare),
+            put_back,
         })
     }
 }
