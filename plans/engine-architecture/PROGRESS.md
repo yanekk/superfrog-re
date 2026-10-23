@@ -26,7 +26,7 @@ done · ⛔ blocked, needs a human.
 | T02 | memory-model | T01 | ⬜ | |
 | T03 | copied-in-data | T01 | ⬜ | |
 | T04 | cpu-time-and-beam | T01 | ⬜ | |
-| T05 | frame-interrupts-input | T01 | ⬜ | |
+| T05 | frame-interrupts-input | T01 | ✅ | |
 | T06 | display-hardware | T01 | ⬜ | |
 | T07 | sound | T01 | ⬜ | |
 | T08 | game-flow | T01 | ⬜ | |
