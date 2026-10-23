@@ -157,8 +157,6 @@ pub fn recorded(
         .cloned()
 }
 
-/// The `PLAN_STATS` line a planner prints to stderr at its exit: `key=value` words after the tag.
-/// The last such line counts.
 /// A failed run's reason with the planner's own (DESIGN §2.9: `sf-plan: no route: …`, its last
 /// such stderr line) after it, so a run cut off at its budget still says how far it got (T14:
 /// the tuning table read only `over-budget`).
@@ -173,6 +171,8 @@ pub fn with_planner_reason(reason: &str, stderr: &str) -> String {
     }
 }
 
+/// The `PLAN_STATS` line a planner prints to stderr at its exit: `key=value` words after the tag.
+/// The last such line counts.
 pub fn plan_stats(stderr: &str) -> Option<BTreeMap<String, String>> {
     let line = stderr.lines().rev().find(|l| l.starts_with("PLAN_STATS"))?;
     Some(

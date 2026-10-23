@@ -368,6 +368,23 @@ pub enum Next {
     Repair(Vec<FrameInput>),
 }
 
+/// What a parting in `ls` keeps of a `plan_len`-frame plan (§2.6 steps 3, 4): the original frames
+/// of `ls.fed` kept, the plan frames they used, and the mid-pass run at their end (`start` before
+/// the stretch). Accepted, the parting frame is kept too; repaired, `BACK_OFF` frames before it,
+/// counted within the plan (not its lag tail). Held frames use no plan frame (T14).
+pub fn kept(ls: &Lockstep, plan_len: usize, accepted: bool, start: u32) -> (usize, usize, u32) {
+    let agreed = (0..=ls.agreed)
+        .rev()
+        .find(|&k| ls.used_at(k) <= plan_len)
+        .unwrap_or(0);
+    let keep = if accepted {
+        (agreed + 1).min(ls.fed.len())
+    } else {
+        agreed.saturating_sub(BACK_OFF)
+    };
+    (keep, ls.used_at(keep).min(plan_len), ls.mid_run_at(keep, start))
+}
+
 /// After a parting with `used` of `plan`'s frames kept: an accepted parting plays the same plan
 /// on, unless nothing of it is left.
 pub fn next_stretch(accepted: bool, plan: &Route, used: usize) -> Next {
@@ -520,23 +537,12 @@ pub fn plan_original(
                 route.len()
             );
         }
-        // Original frames agreed to within the plan (not its lag tail).
-        let agreed = (0..=ls.agreed)
-            .rev()
-            .find(|&k| ls.used_at(k) <= plan.inputs.len())
-            .unwrap_or(0);
-        // Accepted: the original's frame of the parting is kept too, and the same plan plays on
-        // from the state the original insists on, the engine copy taken from it again. Repaired:
-        // back off before the parting and plan again. Planning again after an acceptance moved
-        // set-B W2-2 one frame past a heart the original loses there, then parted again at once,
-        // ten repairs at one cell (T14).
+        // Accepted: the same plan plays on from the state the original insists on, the engine
+        // copy taken from it again. Repaired: plan again. Planning again after an acceptance
+        // moved set-B W2-2 one frame past a heart the original loses there, then parted again at
+        // once, ten repairs at one cell (T14).
         let accepted = repeats.accept(cell, &why);
-        let keep = if accepted {
-            (agreed + 1).min(ls.fed.len())
-        } else {
-            agreed.saturating_sub(BACK_OFF)
-        };
-        let used = ls.used_at(keep).min(plan.inputs.len());
+        let (keep, used, run_then) = kept(&ls, plan.inputs.len(), accepted, mid_run);
         amiga.restore(&snap);
         let mut h = hearts(&amiga);
         for &x in &ls.fed[..keep] {
@@ -549,7 +555,7 @@ pub fn plan_original(
         }
         confirm += c0.elapsed();
         route.extend_from_slice(&ls.fed[..keep]);
-        mid_run = ls.mid_run_at(keep, mid_run);
+        mid_run = run_then;
         match next_stretch(accepted, &plan, used) {
             Next::Resume(r) => resume = Some(r),
             Next::Repair(r) => rest = Some(r),

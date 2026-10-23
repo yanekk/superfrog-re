@@ -216,6 +216,37 @@ fn an_accepted_parting_resumes_the_plan() {
     assert_eq!(next_stretch(true, &plan, 4), Next::Repair(vec![]));
 }
 
+/// What a parting keeps (T14 review): counted in original frames, the held ones included, while
+/// the plan resumes or is repaired from the plan frames those used; lag-tail frames are not the
+/// plan's. A 40-frame plan, the original frozen three frames from its 10th (held), parting at
+/// the 21st original frame or, past the plan's end, at the 45th.
+#[test]
+fn a_parting_keeps_original_frames_and_resumes_at_plan_frames() {
+    let used_after = |j: usize| match j {
+        0..10 => j + 1,
+        10..13 => 10,
+        _ => j - 2,
+    };
+    let ls = |n: usize| Lockstep {
+        agreed: n - 1,
+        exited: false,
+        parting: Some((Parting::Apart, (1, 1))),
+        fed: vec![FrameInput::NONE; n],
+        used: (0..n).map(used_after).collect(),
+        mid_run: (0..n as u32).collect(),
+        hearts_lost: 0,
+    };
+    // Accepted mid-plan: the parting frame kept, the plan resumed at the frame it would use next.
+    assert_eq!(kept(&ls(21), 40, true, 5), (21, 18, 20));
+    // Repaired: BACK_OFF original frames before the parting.
+    assert_eq!(kept(&ls(21), 40, false, 5), (20 - BACK_OFF, 4, 3));
+    // Past the plan's end: agreed is counted to the plan's last frame (original frame 43).
+    assert_eq!(kept(&ls(45), 40, false, 5), (43 - BACK_OFF, 24, 26));
+    assert_eq!(kept(&ls(45), 40, true, 5), (44, 40, 43));
+    // Nothing kept: the run carried in stands.
+    assert_eq!(kept(&ls(10), 40, false, 5), (0, 0, 5));
+}
+
 /// The faithful check's lag bar (T14): this sf-plan W5-3 route keeps the original mid-pass 101
 /// frames in a row from frame 5 310, one past `LAG_LIMIT`. Played in lockstep from 5 390, the run
 /// so far carried in, it parts for lag at the 101st under the level's bar, and not under a looser
