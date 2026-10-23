@@ -36,12 +36,12 @@ done · ⛔ blocked, needs a human.
 | T12 | frog-and-items | T01 | ✅ | |
 | T13 | enemies-and-bosses | T01 | ⬜ | |
 | T14 | slot-and-bonus | T01 | ⬜ | |
-| T15 | disks-and-assets | T01 | 🔍 | Light chapter: mix amiga 15/data 40/shell 45, kind shell, reuse big-changes (both crates). Module table splits generic, Team 17, Superfrog. Eleven must-preserve rows, each naming a check. Deviation: none. |
+| T15 | disks-and-assets | T01 | ✅ | Review clean, no fix commit. All 23 cited tests exist where named; line counts, mix arithmetic, `unpack_chunk` retry, `loaded_hunk0`/`HUNK_BASES`, `BANK_ADDR`, `disk_with_id`, the `from_game` gap checked against code. Drift check caught a mutated cited path. |
 | T16 | app | T01 | ⬜ | |
 | T17 | verification | T01 | ⬜ | |
 | T18 | overview-and-summary | T02, T03, T04, T05, T06, T07, T08, T09, T10, T11, T12, T13, T14, T15, T16, T17 | ⬜ | |
 
-**Review queue:** T15
+**Review queue:** *(empty)*
 
 ## Blocked on the user
 
