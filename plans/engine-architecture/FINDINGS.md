@@ -15,6 +15,9 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-23 | 📌 | T08 review: `rng.rs`'s module comment says `rng_next` forces bits 0, 4 and 5 of the low byte; the code (`& 0x0E \| 0x20`) also clears bits 6 and 7. Chapter corrected, comment left. |
+| 2026-10-23 | 📌 | T08: `FrameOut::disk_prompt` has one reader, `disk_prompts_are_raised_as_the_game_asks_and_need_no_answer` in `sf-conform/tests/flow.rs`; `sf-app` ignores it. Conformance compares `wanted_disk` (`Milestone::DiskAsked`) instead. The disk check itself is `Cx::read_entry` in `front/mod.rs`, owned by front-end. |
+| 2026-10-23 | 📌 | T08: game-flow's dominant kind is `shell` (45): `recording.rs`, `savestate.rs`, `start_level`/`type_code` and tests. `chain.rs`'s frog walk (`walk_step`) is game logic a frog chapter might own; left in game-flow for T18. |
 | 2026-10-23 | 📌 | T07: the app's mixer and `channels::engine_levels` never call `Paula::set_frame_lines` (`Pacer::set_frame_lines` only in its test), so every frame mixes as 313 lines though the game keeps stretches of short frames. Unmeasured whether audible. |
 | 2026-10-23 | 📌 | T07: `sf-paula`'s ADKCON attach modes and audio interrupts are unchecked against vAmiga; Superfrog's driver writes no ADKCON. Left alone. |
 | 2026-10-23 | 📌 | T06: the blitter is modelled three times (`Blit::run` in `front/blit.rs`, ascending-only `blit` in `level/objects.rs`, `blit` in `level/scroll.rs`), and `sprite_attach` in `level/bobs.rs` repeats `front/sprite.rs` `attach` (h0+$1b208). A rewrite can merge each. |
