@@ -4,6 +4,7 @@
 //! sf-plan <level> [--snap leg.snap] [--guide route-or-waypoints.txt] [--follow old.txt] [--seed N]
 //!         [--out route.txt] [--budget-min 30] [--frames 30000] [--max-mem-gb 4] [--threads N]
 //!         [--compass straight|map] [--shorten-share 0.2] [--no-cache] [--engine-only | --app]
+//!         [--no-pace] [--lag-limit N]
 //!         [--via c,r]... [--avoid c0,r0,c1,r1]...
 //! ```
 //!
@@ -43,6 +44,7 @@ use sf_plan::trace::{script_inputs, timing, trace_original};
 const USAGE: &str = "usage: sf-plan <level> [--snap leg.snap] [--guide route-or-waypoints.txt] \
 [--follow old.txt] [--seed N] [--out route.txt] [--budget-min 30] [--frames 30000] [--max-mem-gb 4] \
 [--threads N] [--compass straight|map] [--shorten-share 0.2] [--no-cache] [--engine-only | --app] \
+[--no-pace] [--lag-limit N] \
 [--via c,r]... [--avoid c0,r0,c1,r1]...";
 
 /// Oracle frames beyond `--frames` a start is given room for: the settle and the lag tail.
@@ -76,6 +78,11 @@ struct Args {
     engine_only: bool,
     /// Set C: the app's Start Level start, planned and confirmed on the engine (T12).
     app: bool,
+    /// `--no-pace`: a played-route guide without its pace (for comparisons, T14).
+    no_pace: bool,
+    /// `--lag-limit N`: overrides the faithful check's lag bar looked up for the level (T14;
+    /// sf-bench never sets it).
+    lag_limit: Option<u32>,
     via: Vec<Cell>,
     avoid: Vec<(Cell, Cell)>,
 }
@@ -117,6 +124,8 @@ fn parse_args(argv: &[String]) -> Result<Args, String> {
         no_cache: false,
         engine_only: false,
         app: false,
+        no_pace: false,
+        lag_limit: None,
         via: Vec::new(),
         avoid: Vec::new(),
     };
@@ -164,6 +173,10 @@ fn parse_args(argv: &[String]) -> Result<Args, String> {
                 a.shorten_share = s as f32;
             }
             "--no-cache" => a.no_cache = true,
+            "--no-pace" => a.no_pace = true,
+            "--lag-limit" => {
+                a.lag_limit = Some(val()?.parse().map_err(|_| format!("{k}: not a number"))?)
+            }
             "--engine-only" => a.engine_only = true,
             "--via" => {
                 let v = cells(&val()?, 2, "--via")?;
@@ -447,8 +460,8 @@ fn apply_guides(a: &Args, files: &Files, facts: &Facts, prefix: usize, mut opt: 
         Ok(tr)
     };
     let guide_points = match (&files.guide, a.guide.as_deref()) {
-        (Some(GuideFile::Script(s)), Some(p)) => Some(points_from_trace(&trace(p, s)?)),
-        (Some(GuideFile::Waypoints(w)), _) => Some(w.clone()),
+        (Some(GuideFile::Script(s)), Some(p)) => Some((points_from_trace(&trace(p, s)?), !a.no_pace)),
+        (Some(GuideFile::Waypoints(w)), _) => Some((w.clone(), false)),
         _ => None,
     };
     if let (Some(s), Some(p)) = (&files.follow, a.follow.as_deref()) {
@@ -459,9 +472,16 @@ fn apply_guides(a: &Args, files: &Files, facts: &Facts, prefix: usize, mut opt: 
         inputs.drain(..prefix.min(inputs.len()));
         opt = follow_options(opt, inputs, &tr);
     }
-    if let Some(g) = guide_points {
-        // With both, the guide steers and `--follow` only seeds (§2.7).
+    if let Some((g, pace)) = guide_points {
+        // With both, the guide steers and `--follow` only seeds (§2.7). A played route's points
+        // carry its pace; waypoints none (T14).
         opt.guide = g;
+        opt.guide_pace = pace;
+    }
+    if a.app {
+        // No pace in app mode (owner, 2026-10-23): on W1-1 it made app routes 15–56% longer on
+        // three seeds, hearts lost the same, and cost T12's M8 test its no-heart route.
+        opt.guide_pace = false;
     }
     Ok((opt, cost))
 }
@@ -501,6 +521,10 @@ fn run_options(a: &Args, t0: Instant) -> RunOptions {
         budget: a.budget.saturating_sub(t0.elapsed()),
         shorten_share: a.shorten_share,
         shorten_min_rounds: if a.shorten_share > 0.0 { SHORTEN_MIN_ROUNDS } else { 0 },
+        shorten_min_over: None,
+        lag_limit: a
+            .lag_limit
+            .unwrap_or_else(|| sf_plan::oracle::lag_limit_for(a.level, a.snap.is_some())),
     }
 }
 

@@ -68,6 +68,32 @@ fn key_sw(cell: Cell, band: u16, switches: u32) -> CellKey {
     }
 }
 
+/// The pace (T14): a cell slower than the fastest archived cell as far along the guide or
+/// further weighs less, by e per `PACE_TAU` frames; the fastest, or a cell past every other, 1.
+/// Being slower than the guide route itself costs nothing (W1-4 cannot keep its pace).
+#[test]
+fn pace_weighs_slow_cells_down() {
+    // (guide index, frames): index 10 reached in 300 and 500, index 20 in 400.
+    let pc = Pace::new([(10, 500), (10, 300), (20, 400)]);
+    assert_eq!(pc.weight(10, 300), 1.0, "the fastest at 10");
+    assert_eq!(pc.weight(20, 400), 1.0, "the fastest at 20");
+    assert_eq!(pc.weight(30, 9_000), 1.0, "past every other cell");
+    let slow = pc.weight(10, 300 + PACE_TAU as u32);
+    assert!((slow - (-1.0f64).exp()).abs() < 1e-9, "{slow}");
+    // At 15 the fewest frames at 15 or further are index 20's 400.
+    assert_eq!(pc.weight(15, 400), 1.0);
+    assert!(pc.weight(15, 640) < 0.4);
+    assert_eq!(Pace::default().weight(3, 100), 1.0);
+}
+
+/// A `--follow` guide is a played route's trace: it carries the pace (T14).
+#[test]
+fn follow_guides_carry_their_pace() {
+    let o = sf_plan::core::repair::follow_options(Options::default(), Vec::new(), &[((1, 1), 0, 0)]);
+    assert!(o.guide_pace);
+    assert!(!Options::default().guide_pace);
+}
+
 #[test]
 fn guide_weights() {
     // A path along row 40, coins known; the last points share a band (0 coins left).

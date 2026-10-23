@@ -187,6 +187,18 @@ fn a_result_whose_stats_used_hints_is_not_completed() {
     assert_eq!((v.completed, v.reason.as_str()), (false, "over-budget"));
 }
 
+/// A failed run carries the planner's own reason line after the bench's (T14).
+#[test]
+fn a_failure_keeps_the_planners_reason() {
+    let err = "sf-plan: guide traced\nsf-plan: no route: budget spent; coins still needed 0, least exit \
+               distance with the coins met 15 cells, cells archived 9\nPLAN_STATS hints=0\n";
+    assert_eq!(
+        results::with_planner_reason("over-budget", err),
+        "over-budget; budget spent; coins still needed 0, least exit distance with the coins met 15 cells, cells archived 9"
+    );
+    assert_eq!(results::with_planner_reason("timeout", "PLAN_STATS hints=0\n"), "timeout");
+}
+
 /// DESIGN §5.2: a child past its timeout (budget + 5 min in a run; a second here) is killed, its
 /// whole process group with it, and recorded as `timeout`.
 #[test]

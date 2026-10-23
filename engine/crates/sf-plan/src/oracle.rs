@@ -90,6 +90,10 @@ pub enum Parting {
     Heart,
     /// The oracle refused the frame (its cap, an emulator error; §2.9).
     Oracle(String),
+    /// The original ended more frames in a row mid-pass than the faithful check allows (the
+    /// level's completion case's `lag-limit`, `LAG_LIMIT` without one): the check would compare
+    /// nothing there and fail the route (T14: W5-3, 101 from frame 5 310).
+    Lag,
 }
 
 impl Parting {
@@ -140,6 +144,13 @@ impl Repeats {
         }
         yes
     }
+}
+
+/// The frog's block of state, as the lockstep's hold compares it.
+const FROG_BLOCK: u32 = 0x100;
+
+fn frog_block(st: &State) -> Vec<u8> {
+    (0..FROG_BLOCK).map(|k| st.byte(FROG + k).unwrap_or(0)).collect()
 }
 
 /// The original's frog looked at now (a ~1 MB copy of its memory).
@@ -197,63 +208,122 @@ pub fn facts_at(run: &OracleRun, id: LevelId) -> Facts {
     facts(&g, &data.levels[&id], display.rom())
 }
 
+/// The faithful check's lag bar over a lockstep: its limit, and the frames the original has ended
+/// mid-pass in a row so far (`sf_conform`'s `LagRun`, check 1).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Lag {
+    pub limit: u32,
+    pub run: u32,
+}
+
 /// What one stretch's lockstep found.
 #[derive(Debug, Clone, PartialEq)]
 pub struct Lockstep {
-    /// Plan frames (and lag-tail frames past them) the original agreed to.
+    /// Original frames the original agreed to (the plan's frames, the frames held through its lag
+    /// and the lag-tail frames past the plan's end).
     pub agreed: usize,
     /// The original left the level alive after `agreed` frames.
     pub exited: bool,
     /// Why it stopped short, and the original's cell there.
     pub parting: Option<(Parting, Cell)>,
-    /// The inputs played past the plan's end, the last held, before the exit.
-    pub tail: Vec<FrameInput>,
+    /// The input played on each original frame, the parting frame included: the plan's, its next
+    /// frame held while the original lags, its last held past its end.
+    pub fed: Vec<FrameInput>,
+    /// The plan frames used after each original frame of `fed`.
+    pub used: Vec<usize>,
+    /// The original's frames ended mid-pass in a row after each frame of `fed`.
+    pub mid_run: Vec<u32>,
     /// Hearts the original lost over the frames agreed to (a heart gained is not netted).
     pub hearts_lost: u16,
 }
 
+impl Lockstep {
+    /// The plan frames used once the first `k` original frames are played.
+    pub fn used_at(&self, k: usize) -> usize {
+        k.checked_sub(1).map_or(0, |j| self.used[j])
+    }
+
+    /// The mid-pass run once the first `k` original frames are played, `start` before any.
+    pub fn mid_run_at(&self, k: usize, start: u32) -> u32 {
+        k.checked_sub(1).map_or(start, |j| self.mid_run[j])
+    }
+}
+
 /// Plays `plan` on the original and on `eng` (the original's state transplanted) side by side
 /// until they part or the original exits, counting the original's frames into `frames`.
+///
+/// The original lags in busy passes and the engine never does (docs/08 "Lag"). Most late passes
+/// still move the frog, but some freeze it: W1-2's scroller held the original's frog block
+/// unchanged through nine frames at x 1625 while the engine ran on, and without a hold the two
+/// parted there on every repair, 18 repairs in 25 minutes (T14). A frame on which the original's
+/// frog block (`FROG`, 256 bytes) does not change while the engine's would is held: the engine is
+/// not stepped and the plan's next frame is played again. Holding on every mid-pass frame instead
+/// parted engine-planned W1-2, W2-1 and W1-3 routes within 10 frames of their start.
 pub fn lockstep(
     amiga: &mut Amiga,
     mut eng: Game,
     plan: &[FrameInput],
     frames: &mut u64,
+    lag: Lag,
 ) -> Lockstep {
     let mut before = look(amiga);
     let mut out = Lockstep {
         agreed: 0,
         exited: false,
         parting: None,
-        tail: Vec::new(),
+        fed: Vec::new(),
+        used: Vec::new(),
+        mid_run: Vec::new(),
         hearts_lost: 0,
     };
+    let mut run = lag.run;
     let last = plan.last().copied().unwrap_or(FrameInput::NONE);
-    for k in 0..plan.len() + LAG_TAIL {
-        let x = plan.get(k).copied().unwrap_or(last);
-        let past = k >= plan.len();
-        if let Err(e) = sync::step_inserting(amiga, x) {
-            out.parting = Some((Parting::Oracle(e), before.cell));
+    let mut e = before;
+    let mut i = 0usize;
+    // A lag bounded by the oracle's own frame cap; this bounds a pass that never ends.
+    let most = 2 * (plan.len() + LAG_TAIL);
+    while i < plan.len() + LAG_TAIL && out.fed.len() < most {
+        let x = plan.get(i).copied().unwrap_or(last);
+        let past = i >= plan.len();
+        out.fed.push(x);
+        let frog_before = amiga.peek(FROG, FROG_BLOCK as usize);
+        if let Err(err) = sync::step_inserting(amiga, x) {
+            out.used.push(i);
+            out.mid_run.push(run);
+            out.parting = Some((Parting::Oracle(err), before.cell));
             return out;
         }
         *frames += 1;
-        let o = look(amiga);
-        // Past the plan's end the engine has left the level: only the original is judged.
-        let e = if past {
-            o
+        let mem = sync::core_memory(amiga.memory());
+        run = if sync::mid_pass(&amiga.cpu(), &mem) { run + 1 } else { 0 };
+        out.mid_run.push(run);
+        let o = Look::of(&State::transplant(&mem));
+        if past {
+            // Past the plan's end the engine has left the level: only the original is judged.
+            e = o;
+            i += 1;
         } else {
-            eng.step_unseen(x);
-            Look::of(eng.state())
-        };
+            let mut next = eng.clone();
+            next.step_unseen(x);
+            let frozen = amiga.peek(FROG, FROG_BLOCK as usize) == frog_before
+                && frog_block(next.state()) != frog_block(eng.state());
+            if !frozen {
+                eng = next;
+                e = Look::of(eng.state());
+                i += 1;
+            }
+        }
+        out.used.push(i);
+        if run > lag.limit {
+            out.parting = Some((Parting::Lag, o.cell));
+            return out;
+        }
         if let Some(why) = parts(&before, &o, &e, sync::in_wall_loop(amiga)) {
             out.parting = Some((why, o.cell));
             return out;
         }
-        if past {
-            out.tail.push(x);
-        }
         out.hearts_lost += before.hearts.saturating_sub(o.hearts);
-        out.agreed = k + 1;
+        out.agreed = out.fed.len();
         // Only an end of play counts: a start's first frames (`level_state` not yet −2) are not
         // an exit.
         if before.playing && !o.playing {
@@ -265,6 +335,70 @@ pub fn lockstep(
     // The original played the whole plan and the lag tail with no exit: it parts at the end.
     out.parting = Some((Parting::Apart, before.cell));
     out
+}
+
+/// The faithful check's lag bar for a route from `level`'s start (T14, owner 2026-10-23; a deviation
+/// from DESIGN §2.6): the `lag-limit` of the case `sf-bench`'s §4.1 check takes it from, the
+/// level's completion case (or `game-whole`'s for a leg snapshot), else `sf_conform::LAG_LIMIT`.
+/// The names follow `sf-bench`'s `verify::committed_script`.
+pub fn lag_limit_for(level: LevelId, snap: bool) -> u32 {
+    let l = level.to_string().to_lowercase();
+    let name = if snap {
+        "game-whole".to_string()
+    } else {
+        match l.as_bytes()[1] {
+            b'1' | b'4' => format!("complete-{l}"),
+            b'2' => format!("{l}-complete"),
+            _ => format!("enemies-{l}-complete"),
+        }
+    };
+    sf_conform::Case::load(&sf_conform::cases_dir().join(format!("{name}.toml")))
+        .ok()
+        .and_then(|c| c.lag_limit)
+        .map_or(sf_conform::LAG_LIMIT, |l| l.frames)
+}
+
+/// What follows a parting (§2.6 steps 3, 4).
+#[derive(Debug, Clone, PartialEq)]
+pub enum Next {
+    /// Accepted: the plan's frames from `used` on, played on from the original's state (no
+    /// planning; the route carries no engine frames or rounds of its own).
+    Resume(Route),
+    /// Repaired: the plan's rest from `used`, the next stretch's guide and seed.
+    Repair(Vec<FrameInput>),
+}
+
+/// What a parting in `ls` keeps of a `plan_len`-frame plan (§2.6 steps 3, 4): the original frames
+/// of `ls.fed` kept, the plan frames they used, and the mid-pass run at their end (`start` before
+/// the stretch). Accepted, the parting frame is kept too; repaired, `BACK_OFF` frames before it,
+/// counted within the plan (not its lag tail). Held frames use no plan frame (T14).
+pub fn kept(ls: &Lockstep, plan_len: usize, accepted: bool, start: u32) -> (usize, usize, u32) {
+    let agreed = (0..=ls.agreed)
+        .rev()
+        .find(|&k| ls.used_at(k) <= plan_len)
+        .unwrap_or(0);
+    let keep = if accepted {
+        (agreed + 1).min(ls.fed.len())
+    } else {
+        agreed.saturating_sub(BACK_OFF)
+    };
+    (keep, ls.used_at(keep).min(plan_len), ls.mid_run_at(keep, start))
+}
+
+/// After a parting with `used` of `plan`'s frames kept: an accepted parting plays the same plan
+/// on, unless nothing of it is left.
+pub fn next_stretch(accepted: bool, plan: &Route, used: usize) -> Next {
+    let rest = plan.inputs[used.min(plan.inputs.len())..].to_vec();
+    if accepted && !rest.is_empty() {
+        Next::Resume(Route {
+            inputs: rest,
+            engine_frames: 0,
+            rounds: 0,
+            ..plan.clone()
+        })
+    } else {
+        Next::Repair(rest)
+    }
 }
 
 /// Plans `run`'s level against the original (§2.6): the route from the run's start (its `inputs`
@@ -297,6 +431,12 @@ pub fn plan_original(
     };
     let mut repeats = Repeats::default();
     let mut rest: Option<Vec<FrameInput>> = None;
+    // After an accepted parting, the plan's rest, played on from the original's state as it is.
+    let mut resume: Option<Route> = None;
+    // Frames the original has ended mid-pass in a row at the kept route's end (`Lag`).
+    let mut mid_run = 0u32;
+    // The hearts the plan `rest` comes from lost on the engine.
+    let mut last_hearts = 0u8;
     let mut rounds = 0u64;
     let finish = |stats: &mut Stats, confirm: Duration, route: &[FrameInput]| {
         let all = start_time + t0.elapsed();
@@ -315,6 +455,7 @@ pub fn plan_original(
             max_frames: opt.max_frames.saturating_sub(route.len() as u32),
             ..opt.clone()
         };
+        let rest_len = rest.as_ref().map(|r| (r.len(), last_hearts));
         if let Some(rest) = rest.take().filter(|_| !left.is_zero()) {
             // The rest of the old plan, traced on the engine from the original's state here, guides
             // and seeds; an explicit guide still steers (§2.7).
@@ -322,20 +463,21 @@ pub fn plan_original(
             o = follow_options(o, rest, &trace);
             if !opt.guide.is_empty() {
                 o.guide = opt.guide.clone();
+                o.guide_pace = opt.guide_pace;
             }
         }
-        // A repair stretch plans to the exit too, but gets no shortening minimum: its route is
-        // mostly the last plan's, already shortened (FINDINGS, T10).
+        // A repair stretch plans to the exit too, but gets the shortening minimum only if its
+        // exit is longer than the old plan's rest or loses a heart: otherwise its route is mostly
+        // the last plan's, already shortened (FINDINGS, T10, T14).
         let stretch_ro = RunOptions {
             budget: left,
-            shorten_min_rounds: if stats.repairs == 0 {
-                ro.shorten_min_rounds
-            } else {
-                0
-            },
+            shorten_min_over: rest_len,
             ..ro.clone()
         };
-        let plan = plan_engine(start.clone(), facts.clone(), o, &stretch_ro);
+        let plan = match resume.take() {
+            Some(r) => Ok(r),
+            None => plan_engine(start.clone(), facts.clone(), o, &stretch_ro),
+        };
         let plan = match plan {
             Ok(r) => {
                 stats.engine_frames += r.engine_frames;
@@ -364,10 +506,13 @@ pub fn plan_original(
 
         let c0 = Instant::now();
         let snap = amiga.snapshot();
-        let ls = lockstep(&mut amiga, start, &plan.inputs, &mut stats.oracle_frames);
+        let lag = Lag {
+            limit: ro.lag_limit,
+            run: mid_run,
+        };
+        let ls = lockstep(&mut amiga, start, &plan.inputs, &mut stats.oracle_frames, lag);
         if ls.exited {
-            route.extend_from_slice(&plan.inputs[..ls.agreed.min(plan.inputs.len())]);
-            route.extend_from_slice(&ls.tail);
+            route.extend_from_slice(&ls.fed[..ls.agreed]);
             confirm += c0.elapsed();
             finish(&mut stats, confirm, &route);
             let r = Route {
@@ -379,29 +524,28 @@ pub fn plan_original(
             };
             return Ok((r, stats));
         }
-        let (why, cell) = ls.parting.expect("a lockstep ends in an exit or a parting");
+        let (why, cell) = ls.parting.clone().expect("a lockstep ends in an exit or a parting");
         if std::env::var_os("SF_PLAN_LOG").is_some() {
             eprintln!(
-                "  {:6.1}s stretch {}: plan {} frames ({} rounds), agreed {}, {why:?} at {cell:?}, route {}",
+                "  {:6.1}s stretch {}: plan {} frames ({} rounds), agreed {} ({} held), {why:?} at {cell:?}, route {}",
                 t0.elapsed().as_secs_f64(),
                 stats.repairs,
                 plan.inputs.len(),
                 plan.rounds,
                 ls.agreed,
+                ls.agreed - ls.used_at(ls.agreed).min(ls.agreed),
                 route.len()
             );
         }
-        let agreed = ls.agreed.min(plan.inputs.len());
-        // Accepted: the original's frame of the parting is kept too, and planning goes on from
-        // the state it insists on. Repaired: back off before the parting.
-        let keep = if repeats.accept(cell, &why) {
-            (agreed + 1).min(plan.inputs.len())
-        } else {
-            agreed.saturating_sub(BACK_OFF)
-        };
+        // Accepted: the same plan plays on from the state the original insists on, the engine
+        // copy taken from it again. Repaired: plan again. Planning again after an acceptance
+        // moved set-B W2-2 one frame past a heart the original loses there, then parted again at
+        // once, ten repairs at one cell (T14).
+        let accepted = repeats.accept(cell, &why);
+        let (keep, used, run_then) = kept(&ls, plan.inputs.len(), accepted, mid_run);
         amiga.restore(&snap);
         let mut h = hearts(&amiga);
-        for &x in &plan.inputs[..keep] {
+        for &x in &ls.fed[..keep] {
             // These frames were just played from the same snapshot: they replay the same.
             sync::step_inserting(&mut amiga, x).expect("the kept frames replay");
             stats.oracle_frames += 1;
@@ -410,8 +554,13 @@ pub fn plan_original(
             h = now;
         }
         confirm += c0.elapsed();
-        route.extend_from_slice(&plan.inputs[..keep]);
-        rest = Some(plan.inputs[keep..].to_vec());
+        route.extend_from_slice(&ls.fed[..keep]);
+        mid_run = run_then;
+        match next_stretch(accepted, &plan, used) {
+            Next::Resume(r) => resume = Some(r),
+            Next::Repair(r) => rest = Some(r),
+        }
+        last_hearts = plan.hearts_lost;
         stats.repairs += 1;
         stats.confirmed_frames = route.len() as u32;
     }

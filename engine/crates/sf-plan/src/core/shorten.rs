@@ -43,9 +43,11 @@ pub fn budget(rounds_to_exit: u64, share: f32, min: u64) -> u64 {
     ((rounds_to_exit as f64 * share as f64).round() as u64).max(min)
 }
 
-/// Whether exit `new` replaces `best`: shorter, and no more hearts lost.
+/// Whether exit `new` replaces `best`: fewer hearts lost, or as many and shorter. A route avoiding a
+/// hit wins where one exists (DESIGN §2.5, M6), even a longer one: W1-2's repair kept a 3-heart
+/// exit while its search went on (T14).
 pub fn better(new: &Route, best: &Route) -> bool {
-    new.hearts_lost <= best.hearts_lost && new.inputs.len() < best.inputs.len()
+    (new.hearts_lost, new.inputs.len()) < (best.hearts_lost, best.inputs.len())
 }
 
 /// Replays `inputs` from `start` to the exit, as the explorer judges one: no life lost and not

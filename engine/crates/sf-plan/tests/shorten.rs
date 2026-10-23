@@ -12,7 +12,7 @@ use sf_core::input::{FrameInput, Joy};
 use sf_core::{Game, LevelId, Start};
 use sf_plan::core::shorten::{self, Shortcut, budget, replay_exit};
 use sf_plan::core::*;
-use sf_plan::run::{RunOptions, plan_engine, shortcut_pass};
+use sf_plan::run::{RunOptions, over_slack, plan_engine, shortcut_pass};
 
 /// The detour's frames, each way.
 const DETOUR: usize = 32;
@@ -226,6 +226,8 @@ fn shortening_is_the_same_on_any_threads() {
             budget: Duration::from_secs(3600),
             shorten_share: 0.2,
             shorten_min_rounds: 6,
+            shorten_min_over: None,
+            lag_limit: sf_conform::LAG_LIMIT,
         };
         plan_engine(g, fa, opt, &run).unwrap()
     };
@@ -238,4 +240,53 @@ fn shortening_is_the_same_on_any_threads() {
         "{} frames",
         a.inputs.len()
     );
+}
+
+/// A later exit losing fewer hearts replaces a shorter one (DESIGN §2.5, M6; T14).
+#[test]
+fn a_longer_exit_losing_fewer_hearts_is_better() {
+    let r = |len, hearts_lost| Route {
+        inputs: vec![FrameInput::NONE; len],
+        engine_frames: 0,
+        hearts_lost,
+        rounds: 0,
+        cells: 0,
+    };
+    assert!(shorten::better(&r(14, 0), &r(10, 1)));
+    assert!(shorten::better(&r(14, 1), &r(10, 3)));
+    assert!(
+        !shorten::better(&r(14, 1), &r(10, 1)),
+        "as many hearts, longer"
+    );
+}
+
+/// `shorten_min_over` (T14): the minimum applies to a first exit longer than the bound and its
+/// slack (`over_slack`), never to one within them that loses no heart. The detoured route exits in round 0, so the shortening
+/// search's rounds are the minimum or none.
+#[test]
+fn the_shortening_minimum_applies_only_over_the_bound() {
+    assert_eq!(over_slack(1000), 1164);
+    let n = detoured().len();
+    let plan = |over| {
+        let (g, fa) = at_start("W1-1".parse().unwrap());
+        let opt = Options {
+            seed_inputs: Some(detoured()),
+            ..Options::default()
+        };
+        let run = RunOptions {
+            threads: std::thread::available_parallelism().map_or(4, |n| n.get()),
+            budget: Duration::from_secs(3600),
+            shorten_share: 0.2,
+            shorten_min_rounds: 6,
+            shorten_min_over: over,
+            lag_limit: sf_conform::LAG_LIMIT,
+        };
+        plan_engine(g, fa, opt, &run).unwrap()
+    };
+    let within = plan(Some((n - 64, 0)));
+    assert_eq!(within.rounds, 0, "an exit within the bound gets no minimum");
+    assert_eq!(within.inputs.len(), n);
+    let over = plan(Some((n / 2, 0)));
+    assert!(over.rounds >= 6, "{} rounds", over.rounds);
+    assert!(over.inputs.len() < n, "{} frames", over.inputs.len());
 }

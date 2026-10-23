@@ -36,8 +36,8 @@ pub fn points_from_trace(trace: &[TracePoint]) -> Vec<GuidePoint> {
         .collect()
 }
 
-/// `--follow`: the old route's inputs as T08's `seed_inputs`, its trace as the guide (replacing
-/// `opt.guide`; `sf-plan` re-applies an explicit `--guide` after it, DESIGN §2.7).
+/// `--follow`: the old route's inputs as T08's `seed_inputs`, its trace as the guide with its pace
+/// (replacing `opt.guide`; `sf-plan` re-applies an explicit `--guide` after it, DESIGN §2.7).
 pub fn follow_options(
     opt: Options,
     old_inputs: Vec<FrameInput>,
@@ -46,6 +46,7 @@ pub fn follow_options(
     Options {
         seed_inputs: Some(old_inputs),
         guide: points_from_trace(old_trace),
+        guide_pace: true,
         ..opt
     }
 }

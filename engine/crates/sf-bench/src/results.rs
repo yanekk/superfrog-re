@@ -157,6 +157,20 @@ pub fn recorded(
         .cloned()
 }
 
+/// A failed run's reason with the planner's own (DESIGN §2.9: `sf-plan: no route: …`, its last
+/// such stderr line) after it, so a run cut off at its budget still says how far it got (T14:
+/// the tuning table read only `over-budget`).
+pub fn with_planner_reason(reason: &str, stderr: &str) -> String {
+    match stderr
+        .lines()
+        .rev()
+        .find_map(|l| l.strip_prefix("sf-plan: no route: "))
+    {
+        Some(why) if !reason.contains(why) => format!("{reason}; {why}"),
+        _ => reason.to_string(),
+    }
+}
+
 /// The `PLAN_STATS` line a planner prints to stderr at its exit: `key=value` words after the tag.
 /// The last such line counts.
 pub fn plan_stats(stderr: &str) -> Option<BTreeMap<String, String>> {

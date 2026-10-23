@@ -112,6 +112,10 @@ pub fn run_one(
         Ok(_) => Verdict::failed("no route"),
         Err(e) => Verdict::failed(format!("no route ({e})")),
     });
+    let mut v = v;
+    if !v.completed {
+        v.reason = results::with_planner_reason(&v.reason, &stderr);
+    }
     let num = |k: &str| stats.as_ref().and_then(|m| m.get(k)).and_then(|v| v.parse::<f64>().ok());
     let r = LevelResult {
         planner: adapter.name().to_string(),
