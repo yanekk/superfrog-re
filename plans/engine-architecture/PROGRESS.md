@@ -28,7 +28,7 @@ done · ⛔ blocked, needs a human.
 | T04 | cpu-time-and-beam | T01 | ⬜ | |
 | T05 | frame-interrupts-input | T01 | ✅ | |
 | T06 | display-hardware | T01 | ⬜ | |
-| T07 | sound | T01 | 🔍 | Wrote `sound-chip` (amiga 87, shell 13 for the resampler, `as-is`) and `sound-driver` (amiga 30, game 65, data 5, `big-changes`). Drift check green. No deviations. T213 is ✅ upstream, so §4 describes its fix and the open rows rather than a gap. |
+| T07 | sound | T01 | ✅ | Review clean, no fix commit. Probed all 30 cited tests exist, line totals 1142/2174 and mix shares, `set_frame_lines` callers, hunk-0 addresses, constants; mutated a cited path, drift check red. Replayer-core and plumbing line splits read-only. `tbd` passes until T18 by design. |
 | T08 | game-flow | T01 | ⬜ | |
 | T09 | front-end | T01 | ⬜ | |
 | T10 | story-and-ending | T01 | ⬜ | |
@@ -41,7 +41,7 @@ done · ⛔ blocked, needs a human.
 | T17 | verification | T01 | ⬜ | |
 | T18 | overview-and-summary | T02, T03, T04, T05, T06, T07, T08, T09, T10, T11, T12, T13, T14, T15, T16, T17 | ⬜ | |
 
-**Review queue:** T07
+**Review queue:** *(empty)*
 
 ## Blocked on the user
 
