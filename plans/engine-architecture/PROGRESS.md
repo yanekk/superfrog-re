@@ -23,10 +23,10 @@ done · ⛔ blocked, needs a human.
 | # | Task | Depends on | State | Notes |
 |---|---|---|---|---|
 | T01 | skeleton-and-check | — | ✅ | |
-| T02 | memory-model | T01 | ⬜ | |
+| T02 | memory-model | T01 | ✅ | |
 | T03 | copied-in-data | T01 | ✅ | Review: two fixes. The frog sprites' must-preserve check was misattributed to `sheets_tiles_and_the_font_are_the_copies_in_ram`; it is the `hero_frames` variable every level case compares. A wrong §6 cross-reference became §8. All 17 cited tests and 8 cases exist; boot-table, jump-table, threshold and unread-`Tables` claims checked in code; drift check mutated red. |
-| T04 | cpu-time-and-beam | T01 | ⬜ | |
-| T05 | frame-interrupts-input | T01 | ⬜ | |
+| T04 | cpu-time-and-beam | T01 | ✅ | |
+| T05 | frame-interrupts-input | T01 | ✅ | |
 | T06 | display-hardware | T01 | ⬜ | |
 | T07 | sound | T01 | ⬜ | |
 | T08 | game-flow | T01 | ⬜ | |
