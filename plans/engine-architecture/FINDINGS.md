@@ -15,6 +15,9 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-23 | 📌 | T12 review: `frog_jump_float`'s doc comment (`frog/anim.rs`) says the held jump "takes one more off the frog's rising speed"; it subtracts 1 from negative `vy`, speeding the rise. Chapter corrected, comment left. |
+| 2026-10-23 | 📌 | T12: the frog's physics has no fixed point (task doc said so): whole pixels, sub-pixel motion by frame counters, 68000 `n_clear` sign tests. Gravity, `bounce` and the probes are `frog_tiles` in `level/collision.rs` (level); T18 may weigh moving them. |
+| 2026-10-23 | 📌 | T12: `frog/physics.rs`'s module comment says it holds the camera that follows the frog; that is `camera_follow` in `level/camera.rs`. Code comment, left alone. |
 | 2026-10-23 | 📌 | T10: `front/story/sim.rs` and `cpu.rs` serve more than the story: `slot/draw.rs` runs its draws on `sim::Sim`, and `front/fade.rs` times level fades with `vbl::fade_calls` and `cpu::Cpu`. T18 may move them to `cpu-time-and-beam` or `display-hardware`. |
 | 2026-10-23 | 📌 | T10: `CpuWork` lives in `front/ending.rs` (owned by story-and-ending) but paces `front/title.rs`, `front/chain.rs` and `slot/rounds.rs` too; it is the front end's cycle charging. T18 may move it. |
 | 2026-10-23 | 📌 | T10: the app never starts the story: `sf-app` only uses `Start::PowerOn` and `Start::Level`. `Start::Disk3` is reached from `sf-conform` (`power-on-disk3`) and one `sf-e2e` view test. The chapter states it; whether it is intended is not recorded. |
