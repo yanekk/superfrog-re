@@ -7,9 +7,9 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 import architecture as arch  # noqa: E402
 
-# While the chapters are being written their kind, mix and reuse may be "tbd". T18 sets this to
-# False once every chapter is complete; from then on a "tbd" fails the check.
-ALLOW_TBD = True
+# While the chapters were being written their kind, mix and reuse could be "tbd". T18 set this to
+# False once every chapter was complete: from then on a "tbd" fails the check (DESIGN §2.4).
+ALLOW_TBD = False
 
 ROOT = arch.repo_root()
 
