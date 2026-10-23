@@ -27,7 +27,7 @@ done · ⛔ blocked, needs a human.
 | T03 | copied-in-data | T01 | ⬜ | |
 | T04 | cpu-time-and-beam | T01 | ⬜ | |
 | T05 | frame-interrupts-input | T01 | ✅ | |
-| T06 | display-hardware | T01 | ⬜ | |
+| T06 | display-hardware | T01 | 🔍 | Chapter written to the template: amiga 76/game 5/data 9/shell 10, `small-changes`, 2 421 lines; generic-OCS vs Superfrog table, picture-check section, 17 must-preserve rows. No deviations. Rows with no dedicated test say so (panel's hero-frame read, sprite records). Drift check green (30 tests). |
 | T07 | sound | T01 | ⬜ | |
 | T08 | game-flow | T01 | ⬜ | |
 | T09 | front-end | T01 | ⬜ | |
@@ -41,7 +41,7 @@ done · ⛔ blocked, needs a human.
 | T17 | verification | T01 | ⬜ | |
 | T18 | overview-and-summary | T02, T03, T04, T05, T06, T07, T08, T09, T10, T11, T12, T13, T14, T15, T16, T17 | ⬜ | |
 
-**Review queue:** *(empty)*
+**Review queue:** T06
 
 ## Blocked on the user
 
