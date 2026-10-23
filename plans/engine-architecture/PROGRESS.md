@@ -11,9 +11,9 @@ writes a cell also fixes the over-budget cell they walk past.
 
 **Plan reviewed:** 2026-10-22 — 2 fixed, 1 decided with the user
 
-**Status:** Plan written 2026-10-22; nothing built.
-**Last updated:** 2026-10-22
-**Next `pir-work` will:** T01, the skeleton every chapter task edits.
+**Status:** T01 implemented 2026-10-23, awaiting review.
+**Last updated:** 2026-10-23
+**Next `pir-work` will:** review T01; T02–T17 are unblocked once it merges.
 
 ## Tasks
 
@@ -22,7 +22,7 @@ done · ⛔ blocked, needs a human.
 
 | # | Task | Depends on | State | Notes |
 |---|---|---|---|---|
-| T01 | skeleton-and-check | — | ⬜ | |
+| T01 | skeleton-and-check | — | 🔍 | 17 stubs, glossary, template, README stub, `tools/architecture.py`, drift check (29 tests). Deviations: path check also resolves relative link targets and scans glossary/template; code spans with spaces and fenced blocks skipped; `depth` and id-matches-filename validated; `line_counts` returns (counts, uncounted). |
 | T02 | memory-model | T01 | ⬜ | |
 | T03 | copied-in-data | T01 | ⬜ | |
 | T04 | cpu-time-and-beam | T01 | ⬜ | |
@@ -41,7 +41,7 @@ done · ⛔ blocked, needs a human.
 | T17 | verification | T01 | ⬜ | |
 | T18 | overview-and-summary | T02, T03, T04, T05, T06, T07, T08, T09, T10, T11, T12, T13, T14, T15, T16, T17 | ⬜ | |
 
-**Review queue:** *(empty)*
+**Review queue:** T01
 
 ## Blocked on the user
 
