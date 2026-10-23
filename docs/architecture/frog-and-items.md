@@ -84,7 +84,8 @@ init, update and touch routines, registered into the level's `Dispatch` by `item
 velocities whole pixels a frame, held in 16-bit words. Sub-pixel motion is made by counters
 instead: gravity adds 1 to `vy` every third frame on the ground or every `GRAVITY_DELAY + 1`th in
 the air, friction acts every second frame (every sixth while hurt), the walking speed limit steps
-every fourth frame, a held jump takes 1 off the rising speed every second frame. The port keeps the
+every fourth frame, a held jump takes 1 more off `vy` every second frame, so the frog rises faster
+and higher (`frog_jump_float`, only while `vy` is negative). The port keeps the
 68000's arithmetic exactly: every sum is `wrapping_add`/`wrapping_sub` on `u16`, and every
 comparison is `n_clear` (`engine/crates/sf-core/src/level/mod.rs`), which tests the sign bit of the
 16-bit result as `bpl` does after a `cmp` or `tst`, not a signed comparison. The two differ on
