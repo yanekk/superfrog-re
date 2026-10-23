@@ -722,8 +722,8 @@ pub fn plan_original(
                     plan.inputs.len(),
                     plan.rounds,
                     plan.hearts_lost,
-                    ls.hearts_lost,
                     ls.agreed,
+                    ls.hearts_lost,
                     route.len()
                 );
             }
