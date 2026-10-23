@@ -15,6 +15,9 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-23 | 🐞 | T09 review sweep: `copied-in-data.md` row "World files at h1 and h3" says `hero_frames` is compared by every level case; it is a `presentation` variable, left out of the faithful state check. Left for T18. |
+| 2026-10-23 | 📌 | T09: `Routine`, `Cx` and `Front::step` in `front/mod.rs` (owned by front-end) also run game-flow's `chain.rs`, the slot machine and the level's exit and tally. For T18: the executor may deserve its own chapter or a mention in game-flow. |
+| 2026-10-23 | 📌 | T09: the attract demo is proven only with the original's lag frames fed (`Pacing::Late`, check 4 included); unpaced, as in normal play, no check runs it. Aborting the credits reaches an unported title path; no case aborts them. |
 | 2026-10-23 | 📌 | T08 review: `rng.rs`'s module comment says `rng_next` forces bits 0, 4 and 5 of the low byte; the code (`& 0x0E \| 0x20`) also clears bits 6 and 7. Chapter corrected, comment left. |
 | 2026-10-23 | 📌 | T08: `FrameOut::disk_prompt` has one reader, `disk_prompts_are_raised_as_the_game_asks_and_need_no_answer` in `sf-conform/tests/flow.rs`; `sf-app` ignores it. Conformance compares `wanted_disk` (`Milestone::DiskAsked`) instead. The disk check itself is `Cx::read_entry` in `front/mod.rs`, owned by front-end. |
 | 2026-10-23 | 📌 | T08: game-flow's dominant kind is `shell` (45): `recording.rs`, `savestate.rs`, `start_level`/`type_code` and tests. `chain.rs`'s frog walk (`walk_step`) is game logic a frog chapter might own; left in game-flow for T18. |
