@@ -11,9 +11,9 @@ writes a cell also fixes the over-budget cell they walk past.
 
 **Plan reviewed:** 2026-10-22 — 2 fixed, 1 decided with the user
 
-**Status:** Every chapter ✅; T18 (overview) implemented, awaiting review.
+**Status:** Every task ✅; the architecture documentation is complete.
 **Last updated:** 2026-10-23
-**Next `pir-work` will:** review T18.
+**Next `pir-work` will:** nothing; the plan is done.
 
 ## Tasks
 
@@ -39,9 +39,9 @@ done · ⛔ blocked, needs a human.
 | T15 | disks-and-assets | T01 | ✅ | |
 | T16 | app | T01 | ✅ | |
 | T17 | verification | T01 | ✅ | |
-| T18 | overview-and-summary | T02, T03, T04, T05, T06, T07, T08, T09, T10, T11, T12, T13, T14, T15, T16, T17 | 🔍 | Overview: diagram, subsystem-by-mechanism table, totals with verification's split, rewrite order, open questions. `ALLOW_TBD = False`; README linked; no `owns` moved (FINDINGS). No test added. Deviations: overview table checked once against `totals`, not tested (line counts churn; light check §2.4). Subsystem links are a table, not diagram edges. |
+| T18 | overview-and-summary | T02, T03, T04, T05, T06, T07, T08, T09, T10, T11, T12, T13, T14, T15, T16, T17 | ✅ | Review clean, no fix commit. Overview table diffed identical to `totals`; kind, rating and verification-split sums recomputed; links and §-refs resolved; Mermaid rendered; subsystem matrix checked against chapters. Mutation: a chapter `reuse = "tbd"` fails the drift test. No `owns` moved, findings answered. |
 
-**Review queue:** T18
+**Review queue:** *(empty)*
 
 ## Blocked on the user
 
