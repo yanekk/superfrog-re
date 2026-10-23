@@ -15,6 +15,9 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-23 | 📌 | T14: `bonus/death.rs` `become_reward` also serves worlds 1–6 (spud kills, via `enemies/common.rs`), and shooter mode lives mostly outside `bonus/` (`level/camera.rs`, `level/scroll.rs`, `frog/physics.rs`, `items/powerups.rs`). T18 may weigh moving `become_reward` to enemies-and-bosses. |
+| 2026-10-23 | 📌 | T14: no check reaches the slot's free spin, a gamble lost above the bust, a 160 000+ win at the start, the jackpot after a level 5, or the level's sound after the slot returns; normal-play lamp cuts are unchecked. |
+| 2026-10-23 | 📌 | T14: the slot repeats code: `rounds::rng` is `LevelCtx::rng_range` on `State`, and `slot::draw_lamps` (screen blank) is a second lamp drawer beside `draw::Draw`'s `Part::Lamps`. A rewrite can merge each. |
 | 2026-10-23 | 📌 | T10: `front/story/sim.rs` and `cpu.rs` serve more than the story: `slot/draw.rs` runs its draws on `sim::Sim`, and `front/fade.rs` times level fades with `vbl::fade_calls` and `cpu::Cpu`. T18 may move them to `cpu-time-and-beam` or `display-hardware`. |
 | 2026-10-23 | 📌 | T10: `CpuWork` lives in `front/ending.rs` (owned by story-and-ending) but paces `front/title.rs`, `front/chain.rs` and `slot/rounds.rs` too; it is the front end's cycle charging. T18 may move it. |
 | 2026-10-23 | 📌 | T10: the app never starts the story: `sf-app` only uses `Start::PowerOn` and `Start::Level`. `Start::Disk3` is reached from `sf-conform` (`power-on-disk3`) and one `sf-e2e` view test. The chapter states it; whether it is intended is not recorded. |
