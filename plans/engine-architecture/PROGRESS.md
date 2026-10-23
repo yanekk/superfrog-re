@@ -11,9 +11,9 @@ writes a cell also fixes the over-budget cell they walk past.
 
 **Plan reviewed:** 2026-10-22 — 2 fixed, 1 decided with the user
 
-**Status:** Plan written 2026-10-22; nothing built.
+**Status:** Chapters in progress (parallel build).
 **Last updated:** 2026-10-23
-**Next `pir-work` will:** T01, the skeleton every chapter task edits.
+**Next `pir-work` will:** the remaining chapter tasks T02–T17, then T18.
 
 ## Tasks
 
@@ -25,7 +25,7 @@ done · ⛔ blocked, needs a human.
 | T01 | skeleton-and-check | — | ✅ | |
 | T02 | memory-model | T01 | ⬜ | |
 | T03 | copied-in-data | T01 | ⬜ | |
-| T04 | cpu-time-and-beam | T01 | 🔍 | Chapter written: amiga 65/shell 35, big-changes, 12 must-preserve rows each naming a check. Drift check green (30). Deviations: T213 stated as ✅ (rust-engine PROGRESS), not open as the doc says; the display-write row says plainly no check isolates it, with how to measure. |
+| T04 | cpu-time-and-beam | T01 | ✅ | Review fixed wrong spend-call counts (objects 22, bobs 7, scroll 5) and added the missing `Job`/`LoadEnd`/`HandlerEnd`/`step_paced` coverage with a must-preserve row. All 18 cited test names exist; table rows, cost constants, line counts sampled true. Strict front-matter validation clean; cited-path mutation red. Both deviations held. |
 | T05 | frame-interrupts-input | T01 | ⬜ | |
 | T06 | display-hardware | T01 | ⬜ | |
 | T07 | sound | T01 | ⬜ | |
@@ -41,7 +41,7 @@ done · ⛔ blocked, needs a human.
 | T17 | verification | T01 | ⬜ | |
 | T18 | overview-and-summary | T02, T03, T04, T05, T06, T07, T08, T09, T10, T11, T12, T13, T14, T15, T16, T17 | ⬜ | |
 
-**Review queue:** T04
+**Review queue:** *(empty)*
 
 ## Blocked on the user
 
