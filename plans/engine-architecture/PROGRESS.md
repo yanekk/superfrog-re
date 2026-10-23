@@ -27,9 +27,9 @@ done · ⛔ blocked, needs a human.
 | T03 | copied-in-data | T01 | ✅ | |
 | T04 | cpu-time-and-beam | T01 | ✅ | |
 | T05 | frame-interrupts-input | T01 | ✅ | |
-| T06 | display-hardware | T01 | ⬜ | |
-| T07 | sound | T01 | ⬜ | |
-| T08 | game-flow | T01 | ⬜ | |
+| T06 | display-hardware | T01 | ✅ | |
+| T07 | sound | T01 | ✅ | |
+| T08 | game-flow | T01 | ✅ | |
 | T09 | front-end | T01 | ✅ | Review: one fix, the hero_frames row claimed a state check (it is a presentation variable, picture only); boot row tightened. Probed every cited test name, 12 constants against code, the unpaced deviation (held by alone.rs); mutated a cited path, drift check red. |
 | T10 | story-and-ending | T01 | ⬜ | |
 | T11 | level | T01 | ⬜ | |
