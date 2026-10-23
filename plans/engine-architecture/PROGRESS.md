@@ -13,7 +13,7 @@ writes a cell also fixes the over-budget cell they walk past.
 
 **Status:** Plan written 2026-10-22; nothing built.
 **Last updated:** 2026-10-23
-**Next `pir-work` will:** T13, T16, T17; T18 once every chapter is ✅.
+**Next `pir-work` will:** T16, T17; T18 once every chapter is ✅.
 
 ## Tasks
 
@@ -34,7 +34,7 @@ done · ⛔ blocked, needs a human.
 | T10 | story-and-ending | T01 | ✅ | |
 | T11 | level | T01 | ✅ | |
 | T12 | frog-and-items | T01 | ✅ | |
-| T13 | enemies-and-bosses | T01 | ⬜ | |
+| T13 | enemies-and-bosses | T01 | ✅ | |
 | T14 | slot-and-bonus | T01 | ✅ | Reviewed: one fix, the Amiga-row count under the must-preserve table (eight to nine). Every cited test, case and line count checked against the code; RNG draws, markers, reward counters, unported paths probed; strict validate clean; a broken cited path turned the drift check red. |
 | T15 | disks-and-assets | T01 | ✅ | |
 | T16 | app | T01 | ⬜ | |
