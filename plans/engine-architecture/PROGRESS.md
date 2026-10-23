@@ -32,11 +32,11 @@ done · ⛔ blocked, needs a human.
 | T08 | game-flow | T01 | ✅ | |
 | T09 | front-end | T01 | ✅ | |
 | T10 | story-and-ending | T01 | ✅ | |
-| T11 | level | T01 | ⬜ | |
-| T12 | frog-and-items | T01 | ⬜ | |
+| T11 | level | T01 | ✅ | |
+| T12 | frog-and-items | T01 | ✅ | |
 | T13 | enemies-and-bosses | T01 | ⬜ | |
 | T14 | slot-and-bonus | T01 | ✅ | Reviewed: one fix, the Amiga-row count under the must-preserve table (eight to nine). Every cited test, case and line count checked against the code; RNG draws, markers, reward counters, unported paths probed; strict validate clean; a broken cited path turned the drift check red. |
-| T15 | disks-and-assets | T01 | ⬜ | |
+| T15 | disks-and-assets | T01 | ✅ | |
 | T16 | app | T01 | ⬜ | |
 | T17 | verification | T01 | ⬜ | |
 | T18 | overview-and-summary | T02, T03, T04, T05, T06, T07, T08, T09, T10, T11, T12, T13, T14, T15, T16, T17 | ⬜ | |
