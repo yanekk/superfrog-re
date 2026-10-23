@@ -85,8 +85,9 @@ rough: the pattern also matches a few unrelated calls.
 | `front/story/` ([story-and-ending](story-and-ending.md)) | ~290 | ~230 |
 | `game.rs`, `scene.rs` ([game-flow](game-flow.md)) | ~25 | — |
 
-Named `VarId` access (`State::var`, `def(VarId::…)`) is rare inside `sf-core` (about 25 uses,
-mostly the front end and the story); the ported code names an address with a local constant
+Named `VarId` access (`State::var`, `def(VarId::…)`) is rare inside `sf-core`: about ten uses outside `state.rs`, `layout.rs` and the story's
+layout tables (`feed.rs`, `game.rs`, `mem.rs`, `level/load.rs`, `render/playfield.rs`,
+`front/ending.rs`, `front/hero.rs`); the ported code names an address with a local constant
 (`frog/anim.rs`'s `EXIT_SPRITES = h0(0x9f8)`) or as a base plus an offset (`FROG + f::SPUD_ON` in
 `frog/mod.rs`). The renderer reads the display's memory as whole runs (`State::raw`, in
 `render/mod.rs`).
@@ -124,8 +125,8 @@ code:
 - **Null-pointer reads and writes.** A bob never drawn has no animation step yet, so
   `obj_despawn_if_offscreen` reads its frame record from address 0 and its size from address 4
   (`LowVectors` in `LAYOUT`, which is why `State::default` sets `EXEC_BASE` at 4); a swing's
-  spawner with no slot for a link writes through a null slot pointer into the level 1 autovector at
-  `$64` (`Level1Vector`, `KICKSTART_LEVEL1`).
+  or a mace's spawner (`enemies::w3::swing`, `enemies::w2::mace`) with no slot for a link
+  writes through a null slot pointer into the level 1 autovector at `$64` (`Level1Vector`, `KICKSTART_LEVEL1`).
 - **Runs the code walks.** `level_map` is the original's rows of 304 cells (300 used, 4 of padding),
   and the boot-built row pointers, `$260` apart, point into it (`boot_tables`); `bob_records` is `$1730` bytes of
   records the drawer indexes by stride.
@@ -214,7 +215,7 @@ object, a `Vec` of enemies) breaks all four. Its routes:
 
 | Route | What it is | Cost |
 |---|---|---|
-| Keep a mapping layer | Native code keeps the byte store as now, behind typed accessors per variable (`frog.x()` reading `h0+$7d8`) | Least change to `sf-conform` and the checks; the engine is still byte-shaped underneath, so overlays and pointers stay to be handled by the accessors; only the call sites get nicer. The 292-entry table stays |
+| Keep a mapping layer | Native code keeps the byte store as now, behind typed accessors per variable (`frog.x()` reading `h0+$7d6`) | Least change to `sf-conform` and the checks; the engine is still byte-shaped underneath, so overlays and pointers stay to be handled by the accessors; only the call sites get nicer. The 292-entry table stays |
 | A probe adapter | Native state, plus a projection from it to original addresses for `probe`, and the inverse for transplant | The checks stay as they are and keep their power. Each native field needs a writer and a reader to the original's bytes, including pointers (a native enemy reference has to become the original's slot address) and overlaid fields; transplant needs the inverse, which for pointers means mapping the original's addresses back to native objects. A mistake in the adapter shows up as a divergence, so the checks also test the adapter |
 | Change the checks | Compare in native terms: milestones and picture and sound only, or a hand-written per-subsystem equivalence | No adapter. Check 1 (state pass by pass) and routine conformance lose their address-level precision, so a divergence is found later and named less exactly; starting mid-game from the original's memory needs a different route (from the oracle by input only, or a native-state importer, which is the adapter's inverse again) |
 
@@ -228,7 +229,7 @@ the byte store. This chapter presents them; choosing is the rewrite plan's.
 | Values at original addresses | Every compared variable equals the original's at the end of each pass | Every `sf-conform` case's state check (`compare::gameplay_vars`), e.g. `engine/conform/cases/complete-w1-1.toml`; `runner.rs`'s `transplant_then_probe_returns_the_originals_values` |
 | Overlaid widths | A read of part of a variable sees the bytes the last write of any width left | `state.rs`'s `every_variable_round_trips_through_memory`; `mem.rs`'s `variables_shadow_the_executable`; routine conformance per ported routine (`sf-conform/src/routine.rs`, `Rig::check`) |
 | Pointers into the image | Pointers hold the original's absolute addresses and reach the same tables | `mem.rs`'s `hunk0_is_relocated_to_each_target_s_base`; every case compares the pointer variables (`frog_anim`, `obj_slots`) |
-| Null-pointer reads at 0 and 4, write to `$64` | Same values read and written as on Kickstart 1.3 | No check is known to cover these by name. `enemies-w3-3` plays the swing (`enemies_w3.rs`); whether it reaches the no-slot write is unknown: find out by logging writes to `level1_vector` in that case's run |
+| Null-pointer reads at 0 and 4, write to `$64` | Same values read and written as on Kickstart 1.3 | No check is known to cover these by name. `enemies-w3-3` plays the swing (`enemies_w3.rs`) and the `enemies-w2-*` cases the mace (`enemies_w2_cases.rs`); whether either reaches the no-slot write is unknown: find out by logging writes to `level1_vector` in those runs |
 | Every written byte is mapped | The engine keeps every byte the original writes in what it models | `routine.rs`'s "the original writes …, which the engine does not keep"; `state.rs`'s `a_write_outside_the_table_is_refused` |
 | Variables over the image | A variable shadows the executable's bytes at its address; the final level reads its own files | `mem.rs`'s `variables_shadow_the_executable`; no test covers the `final_level_flag` choice (`FINAL_LEVEL_FLAG` in `Bus::b`) by name; the final level's cases (`engine/conform/cases/final-win.toml`) play on its files |
 | Presentation split | No variable a gameplay rule reads is left out of the state check | `layout.rs`'s `no_gameplay_variable_is_presentation`, `only_a_bobs_drawing_records_are_presentation`; `faithful.rs`'s `a_presentation_variable_differing_is_not_a_state_difference` |
