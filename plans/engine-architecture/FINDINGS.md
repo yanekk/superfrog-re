@@ -15,7 +15,7 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
-| 2026-10-23 | 📌 | T08 review: `rng.rs`'s module comment says `rng_next` forces bits 0, 4 and 5 of the low byte; the code (`& 0x0E \| 0x20`) also clears bits 6 and 7. Chapter corrected; code comment left alone. |
+| 2026-10-23 | 📌 | T08 review: `rng.rs`'s module comment says `rng_next` forces bits 0, 4 and 5 of the low byte; the code (`& 0x0E \| 0x20`) also clears bits 6 and 7. Chapter corrected, comment left. |
 | 2026-10-23 | 📌 | T08: `FrameOut::disk_prompt` has one reader, `disk_prompts_are_raised_as_the_game_asks_and_need_no_answer` in `sf-conform/tests/flow.rs`; `sf-app` ignores it. Conformance compares `wanted_disk` (`Milestone::DiskAsked`) instead. The disk check itself is `Cx::read_entry` in `front/mod.rs`, owned by front-end. |
 | 2026-10-23 | 📌 | T08: game-flow's dominant kind is `shell` (45): `recording.rs`, `savestate.rs`, `start_level`/`type_code` and tests. `chain.rs`'s frog walk (`walk_step`) is game logic a frog chapter might own; left in game-flow for T18. |
 | 2026-10-23 | 📌 | T04: `Pacing` and `PassClock` (`engine/crates/sf-core/src/game.rs`, owned by game-flow) are the beam mechanism's interface; `cpu-time-and-beam` describes them without owning them. Four separate beam models exist: level `Clock`, front `Cx`, `slot/draw.rs`, story `sim.rs`. For T18. |

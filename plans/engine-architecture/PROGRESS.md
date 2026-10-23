@@ -13,7 +13,7 @@ writes a cell also fixes the over-budget cell they walk past.
 
 **Status:** Plan written 2026-10-22; nothing built.
 **Last updated:** 2026-10-22
-**Next `pir-work` will:** T01, the skeleton every chapter task edits.
+**Next `pir-work` will:** the remaining chapter tasks (T03, T06, T07, T09–T17), then T18.
 
 ## Tasks
 
@@ -29,7 +29,7 @@ done · ⛔ blocked, needs a human.
 | T05 | frame-interrupts-input | T01 | ✅ | |
 | T06 | display-hardware | T01 | ⬜ | |
 | T07 | sound | T01 | ⬜ | |
-| T08 | game-flow | T01 | 🔍 | Chapter written: Game, scenes, SceneKind, chain, RNG, save states, recordings; mix amiga 30 game 20 data 5 shell 45, `superfrog-only`, 4845 lines. Drift check green (30 tests). No deviation from the task doc. |
+| T08 | game-flow | T01 | ✅ | Review: one fix, the RNG must-preserve row named the low-byte mask wrong (bits 6, 7 also cleared). Probed every §5 test name, the twelve setters, addresses, disk-prompt readers, savestate refusals against code; drift check mutated (bad path, red). CODE_TIMES moved out of cpu-time-and-beam, unrecorded, held by `game.rs`. |
 | T09 | front-end | T01 | ⬜ | |
 | T10 | story-and-ending | T01 | ⬜ | |
 | T11 | level | T01 | ⬜ | |
@@ -41,7 +41,7 @@ done · ⛔ blocked, needs a human.
 | T17 | verification | T01 | ⬜ | |
 | T18 | overview-and-summary | T02, T03, T04, T05, T06, T07, T08, T09, T10, T11, T12, T13, T14, T15, T16, T17 | ⬜ | |
 
-**Review queue:** T08
+**Review queue:** *(empty)*
 
 ## Blocked on the user
 
