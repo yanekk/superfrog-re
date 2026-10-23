@@ -31,7 +31,7 @@ done · ⛔ blocked, needs a human.
 | T07 | sound | T01 | ⬜ | |
 | T08 | game-flow | T01 | ⬜ | |
 | T09 | front-end | T01 | ⬜ | |
-| T10 | story-and-ending | T01 | ⬜ | |
+| T10 | story-and-ending | T01 | 🔍 | Chapter written: mix amiga 53/game 36/data 11, `superfrog-only`, bus simulator rated `small-changes` separately; 19 must-preserve rows, three with no check. No deviation from the task doc. Found the simulator and `CpuWork` used outside this chapter, and the app never plays the story (FINDINGS). |
 | T11 | level | T01 | ⬜ | |
 | T12 | frog-and-items | T01 | ⬜ | |
 | T13 | enemies-and-bosses | T01 | ⬜ | |
@@ -41,7 +41,7 @@ done · ⛔ blocked, needs a human.
 | T17 | verification | T01 | ⬜ | |
 | T18 | overview-and-summary | T02, T03, T04, T05, T06, T07, T08, T09, T10, T11, T12, T13, T14, T15, T16, T17 | ⬜ | |
 
-**Review queue:** *(empty)*
+**Review queue:** T10
 
 ## Blocked on the user
 

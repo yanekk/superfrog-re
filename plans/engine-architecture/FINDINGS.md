@@ -15,6 +15,9 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-23 | 📌 | T10: `front/story/sim.rs` and `cpu.rs` serve more than the story: `slot/draw.rs` runs its draws on `sim::Sim`, and `front/fade.rs` times level fades with `vbl::fade_calls` and `cpu::Cpu`. T18 may move them to `cpu-time-and-beam` or `display-hardware`. |
+| 2026-10-23 | 📌 | T10: `CpuWork` lives in `front/ending.rs` (owned by story-and-ending) but paces `front/title.rs`, `front/chain.rs` and `slot/rounds.rs` too; it is the front end's cycle charging. T18 may move it. |
+| 2026-10-23 | 📌 | T10: the app never starts the story: `sf-app` only uses `Start::PowerOn` and `Start::Level`. `Start::Disk3` is reached from `sf-conform` (`power-on-disk3`) and one `sf-e2e` view test. The chapter states it; whether it is intended is not recorded. |
 | 2026-10-23 | 📌 | T06: the blitter is modelled three times (`Blit::run` in `front/blit.rs`, ascending-only `blit` in `level/objects.rs`, `blit` in `level/scroll.rs`), and `sprite_attach` in `level/bobs.rs` repeats `front/sprite.rs` `attach` (h0+$1b208). A rewrite can merge each. |
 | 2026-10-23 | 📌 | T06: `DisplayData::new` (`render/mod.rs`) builds every subsystem's disk data (`rom`, `sound`, `front`, `story`, `levels`), so those lines count as display-hardware; T18 may weigh a move. `render/panel.rs` fetches every bitplane line, not only the panel's. |
 | 2026-10-23 | 📌 | T04: `Pacing` and `PassClock` (`engine/crates/sf-core/src/game.rs`, owned by game-flow) are the beam mechanism's interface; `cpu-time-and-beam` describes them without owning them. Four separate beam models exist: level `Clock`, front `Cx`, `slot/draw.rs`, story `sim.rs`. For T18. |
