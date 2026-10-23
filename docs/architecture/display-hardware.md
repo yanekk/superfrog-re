@@ -199,8 +199,9 @@ The generic column is about two thirds of the 2 421 lines.
 ### What the imitation leaves out
 
 This is what OCS can do that the engine does not model, because Superfrog does not use it. Another
-game might. Dual-playfield priority (only single-playfield PF2P is followed), HAM, interlace,
-sprite and playfield collision registers, the blitter's line and fill modes, ECS and AGA
+game might. Dual-playfield priority (only single-playfield PF2P is followed), HAM, interlace (the logo's
+is two copper lists alternating by field, `engine/crates/sf-core/src/front/story/boot.rs`, which
+the copper run plays as ordinary lists; BPLCON0's LACE bit is not modelled), sprite and playfield collision registers, the blitter's line and fill modes, ECS and AGA
 registers, and the copper's danger bit. The level's blitter model in
 `engine/crates/sf-core/src/level/objects.rs` also lacks descending mode. The front end's has it.
 
@@ -275,6 +276,7 @@ engine to it today.
 | Blits racing the beam land on the original's cycles (the story's masks and draws; the credits' `word_times`). | `scene_1s_masks_and_the_first_draw_begin_free_and_end_on_the_originals_cycles` (`engine/crates/sf-conform/tests/story_blits.rs`); `draws_write_their_blits_on_the_originals_cycles` (`engine/crates/sf-conform/tests/story_draws.rs`); `the_attract_cycle_matches_the_original` for the credits. |
 | The front end's sprite records: SPRxPOS/CTL encoding (x + `$80`, y + `$2c`, bit 8 of start and stop), attached pairs' second sprite, animation stepping. | The menu, level code and high-score cases (cursor, eye, pointer) under check 2: `the_level_code_entry_matches_the_original`, `the_hiscore_name_entry_after_game_over_matches_the_original` (`engine/crates/sf-conform/tests/front.rs`). No unit test. |
 | The picture as the beam drew it: writes after the beam passed a line not shown on it (a late redraw); lines drawn before part of the main program ran show the older memory. | Check 2 on every stepped level case (frog, enemies, completion cases), which a transplant-only renderer would fail on about 4% of level frames ([docs/12 "Late redraws"](../12-display.md#late-redraws)); `a_frame_ends_in_bob_draw_after_the_bobs_the_original_had_drawn` (`engine/crates/sf-conform/tests/items_routines.rs`). |
+| Hires fetch, used only by the Team 17 logo (four hires planes): hires fetch units of four cycles in plane order 4, 2, 3, 1, `HIRES_PIPELINE`, and a lores pixel showing the first of its two hires pixels. | Case `engine/conform/cases/story-boot.toml` (`story_boot` in `engine/crates/sf-conform/tests/cases.rs`) under check 2, and the opening frames of `story-intro`. No unit test. |
 | Extra-half-brite: indices 32–63 show half the colour. | `extra_half_brite_halves_the_colour` (`engine/crates/sf-core/src/render/view.rs`). Whether any Superfrog screen uses it is not established here; it costs nothing to keep. |
 | Widescreen (the app's, not the Amiga's): the centre equals the 4:3 picture; off the map is colour 0; outside a level the sides are the border. | `widescreen_keeps_the_centre_and_shows_colour_0_off_the_map` (`engine/crates/sf-conform/tests/render_vs_oracle.rs`); `widescreen_mid_level_keeps_the_centre_and_the_game_of_the_4_3_run`, `widescreen_at_a_level_s_left_edge_shows_colour_0_off_the_map_and_nothing_wraps`, `widescreen_on_the_title_story_intro_and_slot_machine_shows_the_border_at_the_sides` (`engine/crates/sf-e2e/tests/view.rs`); `a_buffer_line_maps_to_its_level_row_through_the_ring`, `past_the_map_s_edges_the_level_is_colour_0` (`engine/crates/sf-core/src/render/playfield.rs`). |
 
