@@ -270,9 +270,10 @@ engine to it today. Tests named without a file are in `engine/crates/sf-conform/
 | The bonus level played whole: marker 55 ends it, the exit fade, the end picture, on to W6-1. | `bonus_enter_wb_1`, `bonus_end_wb_1` (`frog_cases.rs`); `w5_4_goes_on_to_the_bonus_level`, `the_bonus_level_goes_on_to_w6_1` (`engine/crates/sf-conform/tests/chain.rs`). |
 | The shots' `sfx_play` wait of three lines on channel 2. | `sfx_play_waits_three_lines_and_turns_the_dma_on_when_the_original_does` (`engine/crates/sf-conform/tests/beam.rs`, over `bonus-enter-wb-1`). |
 
-Only the slot machine has Amiga-shaped parts of its own (the first eight rows); the bonus level's
-are the level's, and the [level](level.md) chapter lists them. The rows after are game rules, kept
-because conformance compares every byte they write.
+Only the slot machine has Amiga-shaped parts of its own (the first nine rows, and the end's sound
+copied back as CPU work); the bonus level's are the level's, and the [level](level.md) chapter
+lists them. The other rows are game rules, kept because conformance compares every byte they
+write.
 
 ## 6. Native sketch (non-binding)
 
