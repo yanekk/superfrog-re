@@ -71,13 +71,13 @@ files, `feed.rs` counted as `shell` whole although what it carries is the origin
 ## 3. Where else the mechanism is used
 
 **Charging cycles in a level.** `spend`/`spend_n` are called from
-`engine/crates/sf-core/src/level/frame.rs` (21 calls: the vertical blank's parts in the
-original's order, then the pass's), `engine/crates/sf-core/src/level/objects.rs` (18: slots,
-hitboxes, collisions, the draw list, bobs), `engine/crates/sf-core/src/level/spawn.rs` (5),
-`engine/crates/sf-core/src/level/scroll.rs`, `engine/crates/sf-core/src/level/load.rs`,
-`engine/crates/sf-core/src/level/collision.rs`, `engine/crates/sf-core/src/level/pass.rs`,
-`engine/crates/sf-core/src/level/panel.rs` and `engine/crates/sf-core/src/level/bobs.rs` (one to
-three each), and `call` in `engine/crates/sf-core/src/level/mod.rs` charges every slot routine by
+`engine/crates/sf-core/src/level/objects.rs` (22 calls: slots, hitboxes, collisions, the draw
+list, bobs), `engine/crates/sf-core/src/level/frame.rs` (21: the vertical blank's parts in the
+original's order, then the pass's), `engine/crates/sf-core/src/level/bobs.rs` (7: bob records and
+masks), `engine/crates/sf-core/src/level/spawn.rs` and `engine/crates/sf-core/src/level/scroll.rs`
+(5 each), `engine/crates/sf-core/src/level/load.rs` (3),
+`engine/crates/sf-core/src/level/collision.rs` and `engine/crates/sf-core/src/level/pass.rs` (2
+each) and `engine/crates/sf-core/src/level/panel.rs` (1), and `call` in `engine/crates/sf-core/src/level/mod.rs` charges every slot routine by
 its address (`routine_cost`). `blit_words` is called from `objects.rs`, `scroll.rs`, `panel.rs`
 and `pass.rs`. The sound driver charges after each Paula write (`LevelCtx::audio_spent`,
 `LevelCtx::sfx`: `Cost::AudioStop`, `AudioMasked`, `AudioWrite`, `SfxRecord`, `SfxWrite`), and
@@ -102,6 +102,20 @@ wrote within `RACE_LINES` of the beam (`engine/crates/sf-core/src/game.rs`).
 `Game::anchor_blits` starts each blit where the original started one of its size
 (`LevelCtx::scheduled`, `LevelCtx::scheduled_blit`, `LevelCtx::anchor_to`, which stretches the
 display writes between two anchors to fit). Normal play and check 4 have the cost model alone.
+
+**Work done at once that the original spread over frames.** Besides `Pacing`, `Game::step_paced`
+(the stepping call every conformance run and the feed use; `Game::step` is it unpaced) takes the
+original's schedule, and `FrameOut` hands back what the engine did at once: `load`, a `LoadEnd`
+(the return address the original's main program reaches or leaves once its disk load is over, so
+conformance skips the frames it spent loading), and `jobs`, each a `Job` (return addresses the
+original's CPU is inside while it runs, and the memory it writes) that the original may still be
+running at the frame's end, so conformance compares that memory only once it is done. `Timeline`
+carries one (`Timeline::of`'s `job`); the level's exit and tally (`engine/crates/sf-core/src/level/exit.rs`, `engine/crates/sf-core/src/level/tally.rs`),
+the slot machine (`engine/crates/sf-core/src/slot/rounds.rs`) and the ending (`engine/crates/sf-core/src/front/ending.rs`) push others. For the story
+intro, `Game::set_handler_end` takes a `HandlerEnd` (where the original's interrupt handler
+acknowledged and which instruction it returned to), which decides where a draw after it starts;
+`Cpu` is the original's main-program registers at a frame's end, carried by `Start::Resume`. All of
+these live in `engine/crates/sf-core/src/game.rs` ([game-flow](game-flow.md)).
 
 **Other beam models.** The cost model is the level's. Three other parts of the engine keep their
 own, coarser or finer:
@@ -166,6 +180,7 @@ positions and routine landmarks by least squares and prints the match arms to pa
 | Pacing fed to a run alone | Milestones equal the original's with only inputs, pacing, load lengths and seeds | check 4 on every stepping case (`sf-conform all`); `complete_w1_2_plays_alone`, `engine/crates/sf-conform/tests/alone.rs` |
 | The feed shared by `sf-conform` and the app | The app paced from the feed is frame for frame the run alone (picture and state hashes) | `the_feed_replays_the_run_alone_headless`, `the_app_paced_through_the_whole_game_is_the_run_alone` (ignored), `engine/crates/sf-e2e/tests/whole_game.rs`; the format's unit tests in `engine/crates/sf-core/src/feed.rs` |
 | Restart and entry timeline (`BLANK_COSTS`, `RESTART_COSTS`, `Timeline`) | The restart's fade, set-up and panel slide on the original's frames, with its sound and picture (T199 measured each set-up write within 3 lines of the original's with `restart_probe`; no test asserts the lines) | `frog_pit_w1_1`, `engine/crates/sf-conform/tests/frog_cases.rs` (frames 277–332, two restarts); a level's entry after a load in the `code-*` and `chain-*` cases |
+| Loads and jobs done at once (`LoadEnd`, `Job`) | The engine's state equals the original's once the original's load or job has ended, its frames spent loading skipped | check 1 in every case crossing a load, a level's exit, the tally, the slot machine or the ending (`sf-conform all`). No test isolates it |
 | `Clock` line and blitter model | A fetching line gives the CPU less; a blit takes longer under the display | `the_cpu_gets_less_of_a_fetching_line`, `a_blit_takes_longer_under_the_display` in `engine/crates/sf-core/src/level/beam.rs` |
 | Display writes at their beam position | A redraw or a bob in the shown buffer appears above or below the beam as on the original | check 2 in the level cases above. No check isolates it: the conformance runs anchor the clock at the original's writes and blits, so a drift in the cost model between anchors shows only as tolerated frames. Unmeasured how many frames depend on it; to find out, run `sf-conform all` with `Game::set_costs` zeroed |
 
@@ -212,7 +227,7 @@ the costs are per routine and refitted against the oracle for each game.
   depend on the game's display set-up.
 - `Cost`, `COSTS`, `BLANK_COSTS`, `RESTART_COSTS` and `routine_cost` are Superfrog's; another
   game writes its own and fits them with a tool like `fit.rs`.
-- `Cut`, `Pending`, `Frames` are shaped by `level_frame_loop`'s 13 pass calls; the idea (end the
+- `Cut`, `Pending`, `Frames` are shaped by the pass's 14 phases (`LevelCtx::enter_phase` 0–13 in `engine/crates/sf-core/src/level/frame.rs`); the idea (end the
   frame where the original's did, run the pass again) carries, the fields do not.
 - `Timeline` carries almost as it is, given a trace and a beam.
 - `feed.rs` carries with small changes: the fields `load` and `seeds` are Superfrog's needs; the
