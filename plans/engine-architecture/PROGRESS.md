@@ -13,7 +13,7 @@ writes a cell also fixes the over-budget cell they walk past.
 
 **Status:** Plan written 2026-10-22; nothing built.
 **Last updated:** 2026-10-23
-**Next `pir-work` will:** T01, the skeleton every chapter task edits.
+**Next `pir-work` will:** the remaining ⬜ chapter tasks, then T18.
 
 ## Tasks
 
@@ -24,10 +24,10 @@ done · ⛔ blocked, needs a human.
 |---|---|---|---|---|
 | T01 | skeleton-and-check | — | ✅ | |
 | T02 | memory-model | T01 | ✅ | |
-| T03 | copied-in-data | T01 | ⬜ | |
-| T04 | cpu-time-and-beam | T01 | ⬜ | |
+| T03 | copied-in-data | T01 | ✅ | |
+| T04 | cpu-time-and-beam | T01 | ✅ | |
 | T05 | frame-interrupts-input | T01 | ✅ | |
-| T06 | display-hardware | T01 | ⬜ | |
+| T06 | display-hardware | T01 | ✅ | |
 | T07 | sound | T01 | ✅ | Review clean, no fix commit. Probed all 30 cited tests exist, line totals 1142/2174 and mix shares, `set_frame_lines` callers, hunk-0 addresses, constants; mutated a cited path, drift check red. Replayer-core and plumbing line splits read-only. `tbd` passes until T18 by design. |
 | T08 | game-flow | T01 | ⬜ | |
 | T09 | front-end | T01 | ⬜ | |
