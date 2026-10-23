@@ -15,6 +15,9 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-23 | 📌 | T13: the darts' wait/fly and the swing's updates are ported twice (`w3::dart`, `w4::dart`; `w3::swing`, `w4::mace`). The dispatch keeps the last registration, W6's (W3's code), so W4's copies never run. Left alone. |
+| 2026-10-23 | 📌 | T13: `standard_dispatch` (`level/mod.rs`) calls `enemies::register_all` twice, around `bonus::register_all`, uncommented; harmless while registrations replace. W1's `other_end_free` repeats `common::partner_right_free`; `witch.rs` repeats `follow_and_despawn`. |
+| 2026-10-23 | 📌 | T13: unchecked: the swing's `$64` write with all 20 slots full, and that W1's `w1_hover_phase`/`w1_spout_turn` stay `LAYOUT` variables. Enemy cycle costs are flat `Cost::Routine` but for the hover and watcher. |
 | 2026-10-23 | 🐞 | T09 review sweep: `copied-in-data.md` row "World files at h1 and h3" says `hero_frames` is compared by every level case; it is a `presentation` variable, left out of the faithful state check. Left for T18. |
 | 2026-10-23 | 📌 | T09: `Routine`, `Cx` and `Front::step` in `front/mod.rs` (owned by front-end) also run game-flow's `chain.rs`, the slot machine and the level's exit and tally. For T18: the executor may deserve its own chapter or a mention in game-flow. |
 | 2026-10-23 | 📌 | T09: the attract demo is proven only with the original's lag frames fed (`Pacing::Late`, check 4 included); unpaced, as in normal play, no check runs it. Aborting the credits reaches an unported title path; no case aborts them. |
