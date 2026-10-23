@@ -18,8 +18,8 @@ allowed everywhere, map a compass; T13 and T20 dropped, T22 route-shorten added.
 **Amendment reviewed:** 2026-10-22 — 18 fixes, 1 decision (owner: T10's W1-4 check runs guided)
 
 **Status:** T00–T07, T19, T21 done; core rewritten by the amendment, not started.
-**Last updated:** 2026-10-22
-**Next `pir-work` will:** T08 search (the explorer), from `spike-explore/`.
+**Last updated:** 2026-10-23
+**Next `pir-work` will:** review T14 (split); then T24 repair-cost, T25–T28 the tuning runs.
 
 ## Tasks
 
@@ -41,7 +41,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T10 | oracle-check | T02, T08, T09 | ✅ | |
 | T11 | plan-command | T05, T10, T22 | ✅ | |
 | T12 | app-timing | T11 | ⬜ | |
-| T14 | tuning-run | T11 | ⬜ | |
+| T14 | tuning-run | T11 | 🔍 | Split at pir's context limit: kept fixes only (repair hearts and shortening, guide pace, lockstep freeze hold, accept-resume, lag bar, bench reasons), tests in shorten/guide/oracle/bench. Runs and open items carried by T24–T28. Deviations: pace and lag bar (owner, DESIGN §2.6, §2.11); results file discarded, numbers in FINDINGS. |
 | T15 | set-c-run | T12, T14 | ⬜ | |
 | T16 | baseline-counted | T15 | ⬜ | |
 | T17 | new-counted | T16 | ⬜ | |
@@ -50,8 +50,13 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T21 | engine-memory-lookup | T04 | ✅ | |
 | T22 | route-shorten | T08 | ✅ | |
 | T23 | w1-4-ending | T09, T10; blocks T14 | ✅ | |
+| T24 | repair-cost | T14; blocks T15 | ⬜ | |
+| T25 | tuning-set-a | T14, T24; blocks T15 | ⬜ | |
+| T26 | tuning-set-b | T14, T25; blocks T15 | ⬜ | |
+| T27 | tuning-unaided | T14, T26; blocks T15 | ⬜ | |
+| T28 | compass-trial | T14, T27; blocks T15 | ⬜ | |
 
-**Review queue:** *(empty)*
+**Review queue:** T14
 
 ## Blocked on the user
 
