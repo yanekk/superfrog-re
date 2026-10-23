@@ -15,6 +15,7 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-23 | 📌 | T12 review: `frog_jump_float`'s doc comment (`frog/anim.rs`) says the held jump "takes one more off the frog's rising speed"; it subtracts 1 from negative `vy`, speeding the rise. Chapter corrected, comment left. |
 | 2026-10-23 | 📌 | T12: the frog's physics has no fixed point (task doc said so): whole pixels, sub-pixel motion by frame counters, 68000 `n_clear` sign tests. Gravity, `bounce` and the probes are `frog_tiles` in `level/collision.rs` (level); T18 may weigh moving them. |
 | 2026-10-23 | 📌 | T12: `frog/physics.rs`'s module comment says it holds the camera that follows the frog; that is `camera_follow` in `level/camera.rs`. Code comment, left alone. |
 | 2026-10-23 | 📌 | T08 review: `rng.rs`'s module comment says `rng_next` forces bits 0, 4 and 5 of the low byte; the code (`& 0x0E \| 0x20`) also clears bits 6 and 7. Chapter corrected, comment left. |

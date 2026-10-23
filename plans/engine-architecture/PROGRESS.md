@@ -13,7 +13,7 @@ writes a cell also fixes the over-budget cell they walk past.
 
 **Status:** Plan written 2026-10-22; nothing built.
 **Last updated:** 2026-10-22
-**Next `pir-work` will:** T01, the skeleton every chapter task edits.
+**Next `pir-work` will:** the remaining chapter tasks T09–T11, T13–T17, then T18.
 
 ## Tasks
 
@@ -33,7 +33,7 @@ done · ⛔ blocked, needs a human.
 | T09 | front-end | T01 | ⬜ | |
 | T10 | story-and-ending | T01 | ⬜ | |
 | T11 | level | T01 | ⬜ | |
-| T12 | frog-and-items | T01 | 🔍 | Chapter written: game 70, amiga 20, data 10; superfrog-only, 2411 lines. Deviation: the doc asked for fixed-point physics; there is none (whole pixels and frame counters), and the chapter says so. Drift test green. |
+| T12 | frog-and-items | T01 | ✅ | Reviewed: fixed held-jump direction (frog rises faster, `vy` minus 1). Probed all 40 cited checks and cases exist, routine addresses, counter periods, `n_clear`, 2411-line total, 31 `ANIMS`; drift check caught an injected bad path. No-fixed-point deviation held (no shifts or sub-pixel fields in `frog/`). Docs only, no mutation. |
 | T13 | enemies-and-bosses | T01 | ⬜ | |
 | T14 | slot-and-bonus | T01 | ⬜ | |
 | T15 | disks-and-assets | T01 | ⬜ | |
@@ -41,7 +41,7 @@ done · ⛔ blocked, needs a human.
 | T17 | verification | T01 | ⬜ | |
 | T18 | overview-and-summary | T02, T03, T04, T05, T06, T07, T08, T09, T10, T11, T12, T13, T14, T15, T16, T17 | ⬜ | |
 
-**Review queue:** T12
+**Review queue:** *(empty)*
 
 ## Blocked on the user
 
