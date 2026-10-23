@@ -15,6 +15,11 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-23 | 📌 | T18: no `owns` moved. `become_reward`, `LevelCtx`'s beam code, `frog_tiles`, `CpuWork`, `Routine`/`Cx`, `walk_step`, `DisplayData::new` and `Pacing`/`PassClock` are parts of files; `owns` assigns whole files, and each chapter already cross-links them. |
+| 2026-10-23 | 📌 | T18: whole-file candidates also stay: `front/story/sim.rs` and `cpu.rs` (story-and-ending documents them in depth; cpu-time-and-beam links them) and `mem.rs` (memory-model counts its data half as `data` 15). A move would re-estimate both chapters' mix. |
+| 2026-10-23 | 📌 | T18: the overview prints `totals`' combined ratings and, beside them, verification's split (T17 row): 21% of code carries as-is or with small changes, 16% as an approach, 63% superfrog-only. |
+| 2026-10-23 | 📌 | T18: the T09 sweep's `hero_frames` slip in `copied-in-data.md` §8 stays, since T18 changes no chapter body but for ownership moves; the overview names it beside the open questions. |
+| 2026-10-23 | 📌 | T18: the overview's Mermaid diagram rendered with `npx @mermaid-js/mermaid-cli` (worker-driven). An edge per subsystem and mechanism was unreadable, so that detail is a table under a simpler diagram. |
 | 2026-10-23 | 📌 | T17: verification's combined `big-changes` covers 47 779 lines, but by its split 9 521 carry as-is or with small changes, 4 556 need big changes, 33 702 are superfrog-only. T18's totals may want the split, not the combined rating. |
 | 2026-10-23 | 📌 | T17: check 4 is not address-free. `FrameState::read` reads 13 `LAYOUT` variables by original address and `SceneKind::classify` (`sf-core/src/scene.rs`) names screens by copper list address, so plays-alone also needs an adapter in a native rewrite. |
 | 2026-10-23 | 📌 | T16: `sf-app` reaches past `Game` by original address twice: a script's `exit` pokes `level_state` (h0+$a06) and Start Level logs six `LAYOUT` variables via `Game::peek`. A native core needs named replacements; `memory-model` does not list them. |
