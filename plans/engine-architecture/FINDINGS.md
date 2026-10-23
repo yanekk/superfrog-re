@@ -15,6 +15,9 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-23 | 📌 | T10: `front/story/sim.rs` and `cpu.rs` serve more than the story: `slot/draw.rs` runs its draws on `sim::Sim`, and `front/fade.rs` times level fades with `vbl::fade_calls` and `cpu::Cpu`. T18 may move them to `cpu-time-and-beam` or `display-hardware`. |
+| 2026-10-23 | 📌 | T10: `CpuWork` lives in `front/ending.rs` (owned by story-and-ending) but paces `front/title.rs`, `front/chain.rs` and `slot/rounds.rs` too; it is the front end's cycle charging. T18 may move it. |
+| 2026-10-23 | 📌 | T10: the app never starts the story: `sf-app` only uses `Start::PowerOn` and `Start::Level`. `Start::Disk3` is reached from `sf-conform` (`power-on-disk3`) and one `sf-e2e` view test. The chapter states it; whether it is intended is not recorded. |
 | 2026-10-23 | 🐞 | T09 review sweep: `copied-in-data.md` row "World files at h1 and h3" says `hero_frames` is compared by every level case; it is a `presentation` variable, left out of the faithful state check. Left for T18. |
 | 2026-10-23 | 📌 | T09: `Routine`, `Cx` and `Front::step` in `front/mod.rs` (owned by front-end) also run game-flow's `chain.rs`, the slot machine and the level's exit and tally. For T18: the executor may deserve its own chapter or a mention in game-flow. |
 | 2026-10-23 | 📌 | T09: the attract demo is proven only with the original's lag frames fed (`Pacing::Late`, check 4 included); unpaced, as in normal play, no check runs it. Aborting the credits reaches an unported title path; no case aborts them. |
