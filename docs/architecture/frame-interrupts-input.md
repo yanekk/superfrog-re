@@ -73,8 +73,9 @@ level's kind. A rewrite that unifies the handlers must keep this one's timing se
    `frog_anim_tick`, `frog_walk_input`, `frog_input_anim`, `place_frog_sprites`,
    `level_clock_tick`, `frog_move`, `camera_follow`.
 4. `music_tick`, `scroller`, and `scan_edges` (the edge spawner).
-5. Whether running or paused: `frog_exit_walk`. When paused (`logic_running` clear, T191), the
-   mouse pointer, the music, and a wait of eight lines run.
+5. When paused (`logic_running` clear, T191), steps 1–4 are skipped and only the sample stream
+   ticks. Whether running or paused: `frog_exit_walk`. When paused, the mouse pointer, the music,
+   and a wait of eight lines then run.
 6. `music_dma_tick`, `sfx_tick`, then `kbd_poll`, then `display_timer` counted down, then the
    fades (`fades_tick`, every frame unless the title's every-other-frame toggle holds them).
 7. The handler acknowledges (INTREQ `$0020`) and requests the copper interrupt (`request_copper`).
@@ -222,7 +223,7 @@ engine to it today.
 | P pauses at the pass's pause check, and P or fire resumes it where it stopped, with the handler's paused path running meanwhile. | `p_pauses_and_p_resumes_as_the_original_does`, `fire_ends_the_pause_as_the_original_does` (`engine/crates/sf-conform/tests/chain.rs`). |
 | ESC, the exit, death, and fire in the attract demo end the loop at the pass's end. | `frog_esc_w1_1`; `fire_ends_the_attract_demo_as_the_original_does` (`engine/crates/sf-conform/tests/front.rs`); the completion and game-over cases. |
 | The level clock: a second off every 50 blanks while the frog's work runs, not in the bonus level, red for the first half of each of its last ten seconds. | `level_clock_tick_matches_the_original` (`engine/crates/sf-conform/tests/level_routines.rs`); `frog-timeup-w1-1` (`engine/conform/cases/frog-timeup-w1-1.toml`). |
-| Joystick directions as Denise encodes `JOY1DAT`; fire as CIA-A PRA bit 7 low. | `joy1dat_encodes_directions_as_denise_does` (`engine/crates/sf-core/src/level/mod.rs`); for fire, no dedicated test, only every case that holds fire. |
+| Joystick directions as Denise encodes `JOY1DAT`; fire as CIA-A PRA bit 7 low. | `joy1dat_encodes_directions_as_denise_does` (`engine/crates/sf-core/src/level/mod.rs`), which also asserts fire's `Hw::ciaa_pra` reads `$7f`; every case that holds fire. |
 | Outside a level, the fades start eight lines after the line `music_tick` ends on, and the handler's Paula writes fall where the original's do. | `the_fades_start_eight_lines_after_the_music`, `the_keyboard_and_a_row_come_after_the_wait`, `the_dma_stage_is_placed_after_the_wait`, `a_note_retriggered_mid_sample_restarts` (`engine/crates/sf-core/src/front/vbl.rs`); case `frog-pit-w1-1`, whose exit fades T100 measured. |
 | `display_timer` counts down in the handler on every frame, loads included, timing the progress map and the world pictures. | No dedicated test. The faithful state check of the cases through those screens (`game-whole`, `engine/conform/cases/game-whole.toml`) compares it. |
 | The mouse pointer: `JOY0DAT` read and the pointer clamped to its box. | No check moves the mouse: `JOY0DAT` never changes on the oracle because no script moves it, so only the clamps are covered (state check on `mouse`). Mouse movement is unverified. |
