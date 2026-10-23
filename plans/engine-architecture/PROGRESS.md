@@ -11,9 +11,9 @@ writes a cell also fixes the over-budget cell they walk past.
 
 **Plan reviewed:** 2026-10-22 — 2 fixed, 1 decided with the user
 
-**Status:** Plan written 2026-10-22; nothing built.
-**Last updated:** 2026-10-22
-**Next `pir-work` will:** T01, the skeleton every chapter task edits.
+**Status:** Parallel build under way; T01 and T05 done.
+**Last updated:** 2026-10-23
+**Next `pir-work` will:** the remaining chapter tasks T02–T17, then T18.
 
 ## Tasks
 
@@ -26,7 +26,7 @@ done · ⛔ blocked, needs a human.
 | T02 | memory-model | T01 | ⬜ | |
 | T03 | copied-in-data | T01 | ⬜ | |
 | T04 | cpu-time-and-beam | T01 | ⬜ | |
-| T05 | frame-interrupts-input | T01 | 🔍 | Chapter written to the template: frame order, 50/25 Hz disagreements, input path, 14 must-preserve rows with checks. Mix amiga 70 game 16 shell 14, `big-changes`. No deviations. Mouse movement and fire have no dedicated check, said in the chapter. |
+| T05 | frame-interrupts-input | T01 | ✅ | Reviewed: two fixes, the fire check named (joy1dat test asserts ciaa_pra) and the paused frame's stream tick. Checked all 23 named tests exist, the vbl order, kbd_poll decoding, 13 pass calls, clock rules, anchors and 1 098 lines against code; a planted bad path failed the drift check. Mouse movement unverified, no check. |
 | T06 | display-hardware | T01 | ⬜ | |
 | T07 | sound | T01 | ⬜ | |
 | T08 | game-flow | T01 | ⬜ | |
@@ -41,7 +41,7 @@ done · ⛔ blocked, needs a human.
 | T17 | verification | T01 | ⬜ | |
 | T18 | overview-and-summary | T02, T03, T04, T05, T06, T07, T08, T09, T10, T11, T12, T13, T14, T15, T16, T17 | ⬜ | |
 
-**Review queue:** T05
+**Review queue:** *(empty)*
 
 ## Blocked on the user
 
