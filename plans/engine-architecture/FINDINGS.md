@@ -15,6 +15,8 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-23 | 📌 | T17: verification's combined `big-changes` covers 47 779 lines, but by its split 9 521 carry as-is or with small changes, 4 556 need big changes, 33 702 are superfrog-only. T18's totals may want the split, not the combined rating. |
+| 2026-10-23 | 📌 | T17: check 4 is not address-free. `FrameState::read` reads 13 `LAYOUT` variables by original address and `SceneKind::classify` (`sf-core/src/scene.rs`) names screens by copper list address, so plays-alone also needs an adapter in a native rewrite. |
 | 2026-10-23 | 📌 | T16: `sf-app` reaches past `Game` by original address twice: a script's `exit` pokes `level_state` (h0+$a06) and Start Level logs six `LAYOUT` variables via `Game::peek`. A native core needs named replacements; `memory-model` does not list them. |
 | 2026-10-23 | 📌 | T14 review: the doc comment of `engine/crates/sf-core/src/bonus/mod.rs` says the enemies of markers 1–6; `enemies.rs` registers markers 1–15 and 55. Stale comment, left alone (no code changes in this plan). |
 | 2026-10-23 | 📌 | T14: `bonus/death.rs` `become_reward` also serves worlds 1–6 (spud kills, via `enemies/common.rs`), and shooter mode lives mostly outside `bonus/` (`level/camera.rs`, `level/scroll.rs`, `frog/physics.rs`, `items/powerups.rs`). T18 may weigh moving `become_reward` to enemies-and-bosses. |
