@@ -15,6 +15,7 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-23 | 🐞 | T09 review sweep: `copied-in-data.md` row "World files at h1 and h3" says `hero_frames` is compared by every level case; it is a `presentation` variable, left out of the faithful state check. Left for T18. |
 | 2026-10-23 | 📌 | T09: `Routine`, `Cx` and `Front::step` in `front/mod.rs` (owned by front-end) also run game-flow's `chain.rs`, the slot machine and the level's exit and tally. For T18: the executor may deserve its own chapter or a mention in game-flow. |
 | 2026-10-23 | 📌 | T09: the attract demo is proven only with the original's lag frames fed (`Pacing::Late`, check 4 included); unpaced, as in normal play, no check runs it. Aborting the credits reaches an unported title path; no case aborts them. |
 | 2026-10-23 | 📌 | T04: `Pacing` and `PassClock` (`engine/crates/sf-core/src/game.rs`, owned by game-flow) are the beam mechanism's interface; `cpu-time-and-beam` describes them without owning them. Four separate beam models exist: level `Clock`, front `Cx`, `slot/draw.rs`, story `sim.rs`. For T18. |
