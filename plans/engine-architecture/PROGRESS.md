@@ -30,7 +30,7 @@ done · ⛔ blocked, needs a human.
 | T06 | display-hardware | T01 | ⬜ | |
 | T07 | sound | T01 | ⬜ | |
 | T08 | game-flow | T01 | ⬜ | |
-| T09 | front-end | T01 | ⬜ | |
+| T09 | front-end | T01 | 🔍 | Chapter written: amiga 60 game 25 data 6 shell 9, superfrog-only, 6 247 lines; per-screen table, demo dependencies, level codes, 20 must-preserve rows. Drift check green. Deviation: the attract demo unpaced has no check; stated as unknown with how to find out (DESIGN §2.7). |
 | T10 | story-and-ending | T01 | ⬜ | |
 | T11 | level | T01 | ⬜ | |
 | T12 | frog-and-items | T01 | ⬜ | |
@@ -41,7 +41,7 @@ done · ⛔ blocked, needs a human.
 | T17 | verification | T01 | ⬜ | |
 | T18 | overview-and-summary | T02, T03, T04, T05, T06, T07, T08, T09, T10, T11, T12, T13, T14, T15, T16, T17 | ⬜ | |
 
-**Review queue:** *(empty)*
+**Review queue:** T09
 
 ## Blocked on the user
 
