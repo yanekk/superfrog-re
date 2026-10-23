@@ -35,7 +35,7 @@ done · ⛔ blocked, needs a human.
 | T11 | level | T01 | ✅ | |
 | T12 | frog-and-items | T01 | ✅ | |
 | T13 | enemies-and-bosses | T01 | ✅ | |
-| T14 | slot-and-bonus | T01 | ⬜ | |
+| T14 | slot-and-bonus | T01 | ✅ | |
 | T15 | disks-and-assets | T01 | ✅ | |
 | T16 | app | T01 | ⬜ | |
 | T17 | verification | T01 | ⬜ | |
