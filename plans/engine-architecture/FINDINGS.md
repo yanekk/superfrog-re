@@ -15,6 +15,8 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-23 | 📌 | T15: `sf-assets/src/sound.rs` parses hunk 0 a second time (`game_hunk0`, `first_hunk`) beside `parse_exe`, and carries original addresses (`H0`, `H3`, `BANK_ADDR`). No check compares `SoundData::from_game` (the app's path) with `from_disks` (the tests'). |
+| 2026-10-23 | 📌 | T15: `sf-assets/src/lib.rs`'s module comment says sound is carried undecoded until T11; `sound.rs` decodes it. Code comment, left alone. |
 | 2026-10-23 | 📌 | T12 review: `frog_jump_float`'s doc comment (`frog/anim.rs`) says the held jump "takes one more off the frog's rising speed"; it subtracts 1 from negative `vy`, speeding the rise. Chapter corrected, comment left. |
 | 2026-10-23 | 📌 | T12: the frog's physics has no fixed point (task doc said so): whole pixels, sub-pixel motion by frame counters, 68000 `n_clear` sign tests. Gravity, `bounce` and the probes are `frog_tiles` in `level/collision.rs` (level); T18 may weigh moving them. |
 | 2026-10-23 | 📌 | T12: `frog/physics.rs`'s module comment says it holds the camera that follows the frog; that is `camera_follow` in `level/camera.rs`. Code comment, left alone. |
