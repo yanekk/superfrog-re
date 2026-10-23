@@ -13,7 +13,7 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 |---|---|---|
 | 2026-10-23 | 📌 | T24 pattern 1: Heart partings come from the original's lag (W3-2: enemies drift, the frog matches). Repaired by reach stretches in 13–85 rounds, not accepted: W4-2 no route → 7 491 frames, 2 hearts, 1 182 rounds. No owner trade asked. |
 | 2026-10-23 | 📌 | T24, guided, seed 1, 5 threads, load ~30, before → after, §4.1 passed: W1-4 no route → 7 998 frames, 1 heart, 2 044 rounds; W3-2 none → 11 066, 0, 1 245; W4-4 none → 13 197, 3, 3 723 (60-min budget). |
-| 2026-10-23 | 📌 | T24 pattern 2: a repair plans to the last whole plan's point 1024 frames on (`Goal::Reach`, `oracle::HORIZON`), to the exit near its end or after `REACH_ROUNDS`. Untuned, unshortened: W3-2's route 11 066 against an 8 776-frame first plan (M4, T25). |
+| 2026-10-23 | 🔄 | Owner, T24 review: kept the deviation from DESIGN §2.6 step 3, §2.7: a repair plans to the last whole plan's point 1024 frames on (`Goal::Reach`, `oracle::HORIZON`), the exit near its end or after `REACH_ROUNDS`. Reach stretches unshortened (M4, T25). |
 | 2026-10-23 | 🔄 | Owner, T14 review: no guide pace in app mode (DESIGN §2.11). W1-1 `--app`, shorten 0, seeds 1–3, frames/hearts: pace 4452/1, 4158/0, 3404/0; none 2847/0, 3117/0, 2959/1. Pace failed T12's M8 test. |
 | 2026-10-23 | 🐞 | T14 review: original mode's parting bookkeeping (accept-resume, held frames) was reached only by `#[ignore]`d whole-level runs; now `oracle::kept`, unit-tested. W2-1 original mode passed §4.1 in 49 s, 2 repairs, load ~3. |
 | 2026-10-23 | 📌 | T14 review: `shorten::better` keeps fewer hearts before shorter (§2.5, M6); DESIGN §2.12 still reads "keeps the shortest exit". Wording left for the owner. |

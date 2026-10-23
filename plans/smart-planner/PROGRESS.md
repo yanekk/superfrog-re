@@ -19,7 +19,7 @@ allowed everywhere, map a compass; T13 and T20 dropped, T22 route-shorten added.
 
 **Status:** T00–T07, T19, T21 done; core rewritten by the amendment, not started.
 **Last updated:** 2026-10-23
-**Next `pir-work` will:** review T24, then T25 tuning-set-a.
+**Next `pir-work` will:** T25 tuning-set-a.
 
 ## Tasks
 
@@ -50,13 +50,13 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T21 | engine-memory-lookup | T04 | ✅ | |
 | T22 | route-shorten | T08 | ✅ | |
 | T23 | w1-4-ending | T09, T10; blocks T14 | ✅ | |
-| T24 | repair-cost | T14; blocks T15 | 🔍 | Repairs plan to the last whole plan's path 1024 frames on (`Goal::Reach`), exit near its end, no more hearts lost than that plan. 6 tests, `tests/reach.rs`. W1-4, W3-2, W4-2, W4-4 now pass §4.1. Deviation: §2.6 step 3, §2.7 repair to a horizon point, not the exit (commit 44d36ed). Pattern 1 fixed by it; no owner trade. |
+| T24 | repair-cost | T14; blocks T15 | ✅ | Review clean, no fix commit. Owner kept the §2.6 step 3, §2.7 deviation (repair to a point 1024 frames on). Probed W4-2 by `sf-bench` guided, seed 1: completed, §4.1 passed, 7 491 frames, 2 hearts, 7.8 min; Heart partings at three cells, each repaired by a reach stretch. Reach heart-check mutation: `tests/reach.rs` red. W1-4, W3-2, W4-4 read-only. |
 | T25 | tuning-set-a | T14, T24; blocks T15 | ⬜ | |
 | T26 | tuning-set-b | T14, T25; blocks T15 | ⬜ | |
 | T27 | tuning-unaided | T14, T26; blocks T15 | ⬜ | |
 | T28 | compass-trial | T14, T27; blocks T15 | ⬜ | |
 
-**Review queue:** T24
+**Review queue:** *(empty)*
 
 ## Blocked on the user
 
