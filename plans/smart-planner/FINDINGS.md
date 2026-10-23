@@ -11,6 +11,8 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-23 | 🐞 | T14 review: original mode's parting bookkeeping (accept-resume, held frames) was reached only by `#[ignore]`d whole-level runs; now `oracle::kept`, unit-tested. W2-1 original mode passed §4.1 in 49 s, 2 repairs, load ~3. |
+| 2026-10-23 | 📌 | T14 review: `shorten::better` keeps fewer hearts before shorter (§2.5, M6); DESIGN §2.12 still reads "keeps the shortest exit". Wording left for the owner. |
 | 2026-10-23 | 📌 | T14 split at pir's context limit: kept the planner fixes (commits 4d558bf–21ca306); T24–T28 carry the runs and the open items. T14's uncommitted `bench/tuning/results.jsonl` was discarded; its numbers are in these rows. |
 | 2026-10-23 | 🐞 | T14 set A guided failures: coins met, stalled near the exit (W1-4 15 cells, W2-3 5–7, W3-4 13); Heart partings at a new cell each repair, never accepted (W3-2; W4-2 lost 5 hearts); W4-4's early parting re-plans the whole level. |
 | 2026-10-23 | 📌 | T14 set A guided, load 8–27, bbcb4dd–2bcd9f4, frames (ref): W1-1 3527 (4474), W1-2 4659 (5183), W1-3 5745 (7729), W2-1 2269 (2524), W2-2 4922 (4739), W3-1 4558 (5492). Also done: W3-3, W4-1, W4-3, W5-1, W5-2, W5-4. Nine failed; W6-2–W6-4 not run. |
@@ -43,12 +45,9 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 | 2026-10-22 | 🐞 | Experiment: W3-2's engine-only route parted from the original at frame 3 737 and died at 5 753, yet `sf_conform::run` said ok (resync follows the death); only `verify`'s exit milestone caught it. Stretch repair passed `verify` on W2-1, W5-2. |
 | 2026-10-22 | 🐞 | Experiment: a stored `Game` is ~0.8 MB; 15–40 k-cell archives reached 5–8 GB RSS and the OS killed a 25-minute run. W5-2's original-mode route lost 3 hearts, its lockstep having no heart check. Hence D22 and §2.6's heart rule. |
 | 2026-10-22 | 📌 | T21 map s, 10 threads, load 2–15: W1 147 185 156 229; W2 58 193 139 6; W3 79 39 180 109; W4 116 57 174 111; W5 83 192 189 294; W6 67 228 175 205. None over 300. |
-| 2026-10-22 | 📌 | T21 map frames (k), same build: W1 6420 9135 8321 10652; W2 2501 9883 6613 262; W3 3004 1572 7472 5393; W4 5824 2060 6871 4780; W5 3254 7814 8379 12781; W6 2187 9269 7690 9185. |
 | 2026-10-22 | 🐞 | T04 review, for T20: W2-3, W4-4 maps walk no seed with two switches pressed (`per_switch_set` {0,1,2,4} and {0,8}); far-from-gate slots ignore pressed switches, so a second lever is pressed only from world 0; each exit needs all four. |
 | 2026-10-21 | 🔄 | Owner, T04: 11 maps over 5 min (quiet, W5-4 566 s) get T21 engine-memory-lookup (T04; blocks T20), speed only; builds still over 5 min after it are recorded and accepted, the move set never shrunk. |
-| 2026-10-21 | 📌 | T04 profile, one-thread map build: `layout::index_of` (a binary search per `State` byte access) is ~35% of busy samples, `State::byte`/`Bus::set_b` most of the rest; the map code is negligible. 1 thread 6.2 k frames/s, 10 threads 25 k. |
 | 2026-10-21 | 🐞 | T04, D13 check (`map_stats`): 11 of 24 maps miss the exit or the coins, no enemy help. Exit unreached: W2-3, W2-4, W3-2, W3-4, W4-2, W4-4, W5-2, W6-1, W6-2, W6-4. W2-1 reaches 24 of 35 coins. Owner asked before T08. |
-| 2026-10-21 | 📌 | T04 build s, 10 threads, load ~25: W1 301 355 299 441; W2 111 375 268 11; W3 151 75 346 210; W4 223 110 331 215; W5 158 371 363 568; W6 127 438 374 394. 0.3–12.8 M frames. |
 | 2026-10-21 | 📌 | T04 map gaps found: W2-1's pad lands ~200 frames after its throw (cap now 300); W6 up held floats; W6-3's gate ledge needed a 32-frame jump; seeds beside patrolling enemies lose every move (W4-2 63-66,74). |
 | 2026-10-21 | 🐞 | `sf-bench` copies a failed run's reason verbatim, so `bench/sample/RESULTS.md` and `results.jsonl` carry this machine's absolute worktree path (`no route (/Users/…/routes/explore-A-W1-1.txt…)`). Found in T02 review; T01 code, left. |
 | 2026-10-21 | 📌 | T02 sample, set A, six levels, all old tools: median confirmation share 6.8 % over the 12 runs that reached the oracle (`plan_exit` 12.3 %, `plan_exit_w6` 2.4 %). Under 40 %: T10 keeps chunked 48-frame confirmation. Machine busy (T00 spike, ~8 cores). |

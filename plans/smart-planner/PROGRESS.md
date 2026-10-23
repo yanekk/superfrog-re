@@ -19,7 +19,7 @@ allowed everywhere, map a compass; T13 and T20 dropped, T22 route-shorten added.
 
 **Status:** T00–T07, T19, T21 done; core rewritten by the amendment, not started.
 **Last updated:** 2026-10-23
-**Next `pir-work` will:** review T14 (split); then T24 repair-cost, T25–T28 the tuning runs.
+**Next `pir-work` will:** T24 repair-cost, then T25–T28 the tuning runs.
 
 ## Tasks
 
@@ -41,7 +41,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T10 | oracle-check | T02, T08, T09 | ✅ | |
 | T11 | plan-command | T05, T10, T22 | ✅ | |
 | T12 | app-timing | T11 | ⬜ | |
-| T14 | tuning-run | T11 | 🔍 | Split at pir's context limit: kept fixes only (repair hearts and shortening, guide pace, lockstep freeze hold, accept-resume, lag bar, bench reasons), tests in shorten/guide/oracle/bench. Runs and open items carried by T24–T28. Deviations: pace and lag bar (owner, DESIGN §2.6, §2.11); results file discarded, numbers in FINDINGS. |
+| T14 | tuning-run | T11 | ✅ | Split; kept fixes reviewed. One gap: plan_original's parting bookkeeping was tested only by ignored runs; now `oracle::kept`, unit-tested. Fixed plan_stats' misplaced doc. Probed W2-1 original mode (passed §4.1) and the lag-case lookup for all 24 levels; mutations of hold, lag bar and kept caught. Runs carried by T24–T28. |
 | T15 | set-c-run | T12, T14 | ⬜ | |
 | T16 | baseline-counted | T15 | ⬜ | |
 | T17 | new-counted | T16 | ⬜ | |
@@ -56,7 +56,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T27 | tuning-unaided | T14, T26; blocks T15 | ⬜ | |
 | T28 | compass-trial | T14, T27; blocks T15 | ⬜ | |
 
-**Review queue:** T14
+**Review queue:** *(empty)*
 
 ## Blocked on the user
 
