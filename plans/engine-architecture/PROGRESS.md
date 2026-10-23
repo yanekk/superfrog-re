@@ -13,7 +13,7 @@ writes a cell also fixes the over-budget cell they walk past.
 
 **Status:** Plan written 2026-10-22; nothing built.
 **Last updated:** 2026-10-23
-**Next `pir-work` will:** review T11 (level chapter).
+**Next `pir-work` will:** the next unbuilt chapter task.
 
 ## Tasks
 
@@ -32,7 +32,7 @@ done · ⛔ blocked, needs a human.
 | T08 | game-flow | T01 | ⬜ | |
 | T09 | front-end | T01 | ⬜ | |
 | T10 | story-and-ending | T01 | ⬜ | |
-| T11 | level | T01 | 🔍 | `docs/architecture/level.md` written; mix amiga 50, game 43, data 6, shell 1, `superfrog-only`, 6 144 lines. Kind is `amiga`, not the task's example `game`: `LevelCtx`'s beam machinery in `mod.rs` is counted here. No deviations otherwise. |
+| T11 | level | T01 | ✅ | Review clean, no fix commit. Every must-preserve check name found in its cited file; map_unpack, PALA offset, slot and template sizes, clock, override path, 6 144 lines probed against code and data; path mutation went red. Mix shares `read-only` estimate. |
 | T12 | frog-and-items | T01 | ⬜ | |
 | T13 | enemies-and-bosses | T01 | ⬜ | |
 | T14 | slot-and-bonus | T01 | ⬜ | |
@@ -41,7 +41,7 @@ done · ⛔ blocked, needs a human.
 | T17 | verification | T01 | ⬜ | |
 | T18 | overview-and-summary | T02, T03, T04, T05, T06, T07, T08, T09, T10, T11, T12, T13, T14, T15, T16, T17 | ⬜ | |
 
-**Review queue:** T11
+**Review queue:** *(empty)*
 
 ## Blocked on the user
 

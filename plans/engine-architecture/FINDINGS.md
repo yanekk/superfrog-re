@@ -15,6 +15,7 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-23 | 🐞 | T11 review: docs/04 "Palettes" says a level's `PALA..PALD` are empty; `d1_c21_level_53588.bin`'s `PALA` holds colours at tag+$48, which `palette_from_map` reads (docs/08 agrees). docs/04 is stale; left alone. |
 | 2026-10-23 | 📌 | T11: `LevelCtx` in `level/mod.rs` holds about 800 lines of beam machinery (frame ends mid-pass, `sfx_play`'s raster wait, copper interrupt masking), counted as level's `amiga` share. It is cpu-time-and-beam's mechanism; T18 may weigh a move. |
 | 2026-10-23 | 📌 | T11: `panel_bitmap`, the display buffers and the scroller's blit queue are presentation pieces (`layout::presentation_piece`), left out of check 1. The panel has no routine test; only the picture check holds it. |
 | 2026-10-23 | 📌 | T11: docs/07 and the project `CLAUDE.md` state collision as `flag & 0b11000 == 0b11000`; the engine's `collision.rs` uses a marker ladder instead (`$3a`+ ground, `$3e`/`$3f` landing, `$3d` step-up and walls). Docs left alone. |
