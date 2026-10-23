@@ -29,11 +29,11 @@ done · ⛔ blocked, needs a human.
 | T05 | frame-interrupts-input | T01 | ✅ | |
 | T06 | display-hardware | T01 | ✅ | |
 | T07 | sound | T01 | ✅ | |
-| T08 | game-flow | T01 | ⬜ | |
-| T09 | front-end | T01 | ⬜ | |
-| T10 | story-and-ending | T01 | ⬜ | |
+| T08 | game-flow | T01 | ✅ | |
+| T09 | front-end | T01 | ✅ | |
+| T10 | story-and-ending | T01 | ✅ | |
 | T11 | level | T01 | ✅ | Review clean, no fix commit. Every must-preserve check name found in its cited file; map_unpack, PALA offset, slot and template sizes, clock, override path, 6 144 lines probed against code and data; path mutation went red. Mix shares `read-only` estimate. |
-| T12 | frog-and-items | T01 | ⬜ | |
+| T12 | frog-and-items | T01 | ✅ | |
 | T13 | enemies-and-bosses | T01 | ⬜ | |
 | T14 | slot-and-bonus | T01 | ⬜ | |
 | T15 | disks-and-assets | T01 | ⬜ | |
