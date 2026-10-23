@@ -37,11 +37,11 @@ done · ⛔ blocked, needs a human.
 | T13 | enemies-and-bosses | T01 | ⬜ | |
 | T14 | slot-and-bonus | T01 | ⬜ | |
 | T15 | disks-and-assets | T01 | ⬜ | |
-| T16 | app | T01 | 🔍 | `docs/architecture/app.md`: shell 90 / amiga 10, `small-changes`, 10,399 lines; how the app drives `Game`; 12 must-preserve rows. Deviations: "the 4:3 port" read as the 4:3 picture versus widescreen; short frames and CRT-port fidelity stated as unchecked. |
+| T16 | app | T01 | ✅ | Review clean, no fix commit. All 27 cited checks found in their named files; line counts, set_frame_lines test-only, h0($a06) poke, six logged values, 334×261, 40 ms lead, wall-clock fallback checked against code. Drift check went red on a broken cited path. 4:3 deviation held. Coverage of shader ports versus RetroArch is read-only. |
 | T17 | verification | T01 | ⬜ | |
 | T18 | overview-and-summary | T02, T03, T04, T05, T06, T07, T08, T09, T10, T11, T12, T13, T14, T15, T16, T17 | ⬜ | |
 
-**Review queue:** T16
+**Review queue:** *(empty)*
 
 ## Blocked on the user
 
