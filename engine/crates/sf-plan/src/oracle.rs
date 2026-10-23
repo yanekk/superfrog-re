@@ -15,8 +15,13 @@ use sf_core::{Game, LevelId, Start, State};
 use sf_oracle::Amiga;
 
 use crate::core::archive::HEARTS;
-use crate::core::repair::{follow_options, trace_engine};
-use crate::core::{Cell, Facts, Options, Reason, Route, facts, frog_cell, landed};
+use crate::core::repair::{
+    Sampler, TRACE_EVERY, TracePoint, follow_options, points_from_trace,
+};
+use crate::core::{
+    Cell, CellKey, Facts, Goal, GuidePoint, Options, Reason, Route, cell_key, facts, frog_cell,
+    landed,
+};
 use crate::run::{RunOptions, plan_engine};
 
 /// `level_state` (h0+$a06): −2 while the level is played.
@@ -261,10 +266,24 @@ impl Lockstep {
 /// parted engine-planned W1-2, W2-1 and W1-3 routes within 10 frames of their start.
 pub fn lockstep(
     amiga: &mut Amiga,
+    eng: Game,
+    plan: &[FrameInput],
+    frames: &mut u64,
+    lag: Lag,
+) -> Lockstep {
+    lockstep_with(amiga, eng, plan, frames, lag, LAG_TAIL)
+}
+
+/// `lockstep` with `tail` frames past the plan's end, the last input held. With no tail (a reach
+/// stretch's plan, which ends on the old plan's path, not at the exit) a plan the original played
+/// to its end without a parting ends with `parting` `None`, every frame agreed (T24).
+pub fn lockstep_with(
+    amiga: &mut Amiga,
     mut eng: Game,
     plan: &[FrameInput],
     frames: &mut u64,
     lag: Lag,
+    tail: usize,
 ) -> Lockstep {
     let mut before = look(amiga);
     let mut out = Lockstep {
@@ -281,8 +300,8 @@ pub fn lockstep(
     let mut e = before;
     let mut i = 0usize;
     // A lag bounded by the oracle's own frame cap; this bounds a pass that never ends.
-    let most = 2 * (plan.len() + LAG_TAIL);
-    while i < plan.len() + LAG_TAIL && out.fed.len() < most {
+    let most = 2 * (plan.len() + tail);
+    while i < plan.len() + tail && out.fed.len() < most {
         let x = plan.get(i).copied().unwrap_or(last);
         let past = i >= plan.len();
         out.fed.push(x);
@@ -332,8 +351,11 @@ pub fn lockstep(
         }
         before = o;
     }
-    // The original played the whole plan and the lag tail with no exit: it parts at the end.
-    out.parting = Some((Parting::Apart, before.cell));
+    // The original played the whole plan and the lag tail with no exit: it parts at the end. A
+    // plan with no tail that was played to its end has reached its goal.
+    if tail > 0 || i < plan.len() {
+        out.parting = Some((Parting::Apart, before.cell));
+    }
     out
 }
 
@@ -401,9 +423,107 @@ pub fn next_stretch(accepted: bool, plan: &Route, used: usize) -> Next {
     }
 }
 
+/// Frames of the last whole plan a repair stretch plans ahead of the original (T24): a repair
+/// plans back onto that plan's path this far on, not to the exit. Repairs to the exit re-planned
+/// the whole level's rest each time: W4-4 parted 1 863 frames into a 10 710-frame plan and its
+/// repair found no exit in 24 minutes; W1-4's ran 2 383 rounds and stalled 15 cells short.
+pub const HORIZON: usize = 1024;
+/// The reference trace's points in `HORIZON` frames.
+pub const HORIZON_POINTS: usize = HORIZON / TRACE_EVERY as usize;
+/// Rounds a reach stretch may take before the repair plans to the exit instead.
+pub const REACH_ROUNDS: u64 = 300;
+/// A reach stretch's frames, at most, from its start to the point it reaches.
+pub const REACH_FRAMES: u32 = 3 * HORIZON as u32;
+
+/// The point of a `points`-point reference a repair stretch from point `p` reaches for, or `None`
+/// when the reference's end is near enough to plan to the exit (less than 1½ horizons left).
+pub fn reach_target(points: usize, p: usize) -> Option<usize> {
+    let t = p + HORIZON_POINTS;
+    (t + HORIZON_POINTS / 2 < points).then_some(t)
+}
+
+/// The last whole plan (a plan to the exit) that parted, which repair stretches plan back onto:
+/// its inputs and its trace on the engine from its own start, where it reached the exit (T24).
+/// The plan's rest traced from the original's state instead dies where the replay does (W1-4
+/// ~2 000 frames on), and its trace past a death steers nowhere.
+#[derive(Debug, Clone)]
+pub struct Reference {
+    pub inputs: Vec<FrameInput>,
+    pub points: Vec<GuidePoint>,
+    pub trace: Vec<TracePoint>,
+    /// The hearts the plan had lost on the engine at each trace point.
+    pub lost: Vec<u16>,
+    /// The point the original is known to have passed.
+    pub at: usize,
+    /// The hearts the plan lost on the engine.
+    pub hearts_lost: u8,
+}
+
+impl Reference {
+    pub fn new(start: &Game, facts: &Facts, plan: &Route, used: usize) -> Reference {
+        // `trace_engine`, the hearts lost read beside each sample.
+        let mut g = start.clone();
+        let h0 = g.state().w(HEARTS);
+        let mut s = Sampler::new(facts);
+        let mut lost = Vec::new();
+        for k in 0..=plan.inputs.len() {
+            if Sampler::due(k as u32) {
+                if !s.sample(g.state()) {
+                    break;
+                }
+                lost.resize(s.points.len(), h0.saturating_sub(g.state().w(HEARTS)));
+            }
+            if let Some(&x) = plan.inputs.get(k) {
+                g.step_unseen(x);
+            }
+        }
+        let trace = s.points;
+        Reference {
+            inputs: plan.inputs.clone(),
+            points: points_from_trace(&trace),
+            lost,
+            at: (used / TRACE_EVERY as usize).min(trace.len().saturating_sub(1)),
+            trace,
+            hearts_lost: plan.hearts_lost,
+        }
+    }
+
+    /// The furthest point from `at` to `upto` whose region holds `key`, else `at`.
+    pub fn locate(&self, key: &CellKey, upto: usize) -> usize {
+        let hi = upto.min(self.points.len().saturating_sub(1));
+        (self.at..=hi)
+            .rev()
+            .find(|&k| self.points[k].covers(key))
+            .unwrap_or(self.at)
+    }
+
+    /// The hearts the plan lost on the engine from point `p` to point `t`.
+    pub fn lost_between(&self, p: usize, t: usize) -> u16 {
+        let at = |k: usize| self.lost.get(k.min(self.lost.len().saturating_sub(1))).copied();
+        at(t).unwrap_or(0).saturating_sub(at(p).unwrap_or(0))
+    }
+
+    /// The plan's inputs from point `p` on.
+    pub fn inputs_from(&self, p: usize) -> Vec<FrameInput> {
+        self.inputs[(p * TRACE_EVERY as usize).min(self.inputs.len())..].to_vec()
+    }
+}
+
+/// What a stretch's plan heads for.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Kind {
+    /// The exit: a whole plan.
+    Exit,
+    /// The reference's point `t` (a reach stretch).
+    Reach(usize),
+}
+
 /// Plans `run`'s level against the original (§2.6): the route from the run's start (its `inputs`
 /// first) to the frame the original leaves the level, or the best partial route and why, its
 /// confirmed part `Stats::confirmed_frames` long. `ro.budget` covers the whole run.
+///
+/// A repair plans back onto the last whole plan's path `HORIZON` frames on (`Kind::Reach`), and to
+/// the exit once that plan's end is near or a reach stretch finds nothing in `REACH_ROUNDS` (T24).
 pub fn plan_original(
     run: OracleRun,
     facts: Facts,
@@ -412,6 +532,7 @@ pub fn plan_original(
 ) -> Result<(Route, Stats), (Route, Stats, Reason)> {
     let t0 = Instant::now();
     let display = sf_conform::display_data();
+    let log = std::env::var_os("SF_PLAN_LOG").is_some();
     let OracleRun {
         mut amiga,
         inputs: mut route,
@@ -430,14 +551,13 @@ pub fn plan_original(
         u16::from_be_bytes([b[0], b[1]])
     };
     let mut repeats = Repeats::default();
-    let mut rest: Option<Vec<FrameInput>> = None;
+    let mut reference: Option<Reference> = None;
     // After an accepted parting, the plan's rest, played on from the original's state as it is.
-    let mut resume: Option<Route> = None;
+    let mut resume: Option<(Route, Kind)> = None;
     // Frames the original has ended mid-pass in a row at the kept route's end (`Lag`).
     let mut mid_run = 0u32;
-    // The hearts the plan `rest` comes from lost on the engine.
-    let mut last_hearts = 0u8;
     let mut rounds = 0u64;
+    let mut stretch = 0u32;
     let finish = |stats: &mut Stats, confirm: Duration, route: &[FrameInput]| {
         let all = start_time + t0.elapsed();
         stats.confirm_share = ((start_time + confirm).as_secs_f64() / all.as_secs_f64().max(1e-9))
@@ -450,33 +570,87 @@ pub fn plan_original(
             Start::Transplant(sync::core_memory(amiga.memory())),
         );
         let left = ro.budget.saturating_sub(t0.elapsed());
-        let mut o = Options {
-            seed: opt.seed.wrapping_add(stats.repairs as u64),
+        let base = Options {
+            seed: opt.seed.wrapping_add(stretch as u64),
             max_frames: opt.max_frames.saturating_sub(route.len() as u32),
             ..opt.clone()
         };
-        let rest_len = rest.as_ref().map(|r| (r.len(), last_hearts));
-        if let Some(rest) = rest.take().filter(|_| !left.is_zero()) {
-            // The rest of the old plan, traced on the engine from the original's state here, guides
-            // and seeds; an explicit guide still steers (§2.7).
-            let trace = trace_engine(&start, &facts, &rest);
-            o = follow_options(o, rest, &trace);
+        // The reference from where the original is, guiding and seeding (§2.7); an explicit guide
+        // still steers.
+        let follow = |r: &Reference, p: usize| {
+            let mut o = follow_options(base.clone(), r.inputs_from(p), &r.trace[p..]);
             if !opt.guide.is_empty() {
                 o.guide = opt.guide.clone();
                 o.guide_pace = opt.guide_pace;
             }
-        }
-        // A repair stretch plans to the exit too, but gets the shortening minimum only if its
-        // exit is longer than the old plan's rest or loses a heart: otherwise its route is mostly
-        // the last plan's, already shortened (FINDINGS, T10, T14).
-        let stretch_ro = RunOptions {
-            budget: left,
-            shorten_min_over: rest_len,
-            ..ro.clone()
+            o
         };
-        let plan = match resume.take() {
-            Some(r) => Ok(r),
-            None => plan_engine(start.clone(), facts.clone(), o, &stretch_ro),
+        let mut planned = match resume.take() {
+            Some((r, kind)) => Some((Ok(r), kind)),
+            None => None,
+        };
+        let mut p = 0;
+        if planned.is_none()
+            && let Some(r) = reference.as_mut().filter(|_| !left.is_zero())
+        {
+            p = r.locate(&cell_key(&facts, start.state(), 0), r.at + HORIZON_POINTS);
+            r.at = p;
+            if let Some(t) = reach_target(r.points.len(), p) {
+                let o = Options {
+                    goal: Goal::Reach {
+                        point: r.points[t],
+                        within_frames: REACH_FRAMES,
+                        hearts: start.state().w(HEARTS).saturating_sub(r.lost_between(p, t)),
+                    },
+                    ..follow(r, p)
+                };
+                let reach_ro = RunOptions {
+                    budget: left,
+                    shorten_share: 0.0,
+                    shorten_min_rounds: 0,
+                    max_rounds: Some(REACH_ROUNDS),
+                    ..ro.clone()
+                };
+                match plan_engine(start.clone(), facts.clone(), o, &reach_ro) {
+                    Ok(r) => planned = Some((Ok(r), Kind::Reach(t))),
+                    Err((partial, _)) => {
+                        stats.engine_frames += partial.engine_frames;
+                        rounds += partial.rounds;
+                        if log {
+                            eprintln!(
+                                "  {:6.1}s stretch {stretch}: no reach from point {p} to {t} {:?} of {} in {} rounds (frog at {:?}), to the exit",
+                                t0.elapsed().as_secs_f64(),
+                                r.points[t],
+                                r.points.len(),
+                                partial.rounds,
+                                frog_cell(start.state()),
+                            );
+                        }
+                    }
+                }
+            }
+        }
+        let (plan, kind) = match planned {
+            Some(x) => x,
+            None => {
+                let left = ro.budget.saturating_sub(t0.elapsed());
+                // A repair's whole plan gets the shortening minimum only if its exit is longer
+                // than the reference's rest or loses a heart: otherwise its route is mostly the
+                // last plan's, already shortened (FINDINGS, T10, T14).
+                let (o, over) = match reference.as_ref().filter(|_| !left.is_zero()) {
+                    Some(r) => (
+                        follow(r, p),
+                        Some((r.inputs.len().saturating_sub(p * TRACE_EVERY as usize), r.hearts_lost)),
+                    ),
+                    None => (base.clone(), None),
+                };
+                let stretch_ro = RunOptions {
+                    budget: left,
+                    shorten_min_over: over,
+                    ..ro.clone()
+                };
+                (plan_engine(start.clone(), facts.clone(), o, &stretch_ro), Kind::Exit)
+            }
         };
         let plan = match plan {
             Ok(r) => {
@@ -510,7 +684,16 @@ pub fn plan_original(
             limit: ro.lag_limit,
             run: mid_run,
         };
-        let ls = lockstep(&mut amiga, start, &plan.inputs, &mut stats.oracle_frames, lag);
+        let tail = if kind == Kind::Exit { LAG_TAIL } else { 0 };
+        let ls = lockstep_with(
+            &mut amiga,
+            start.clone(),
+            &plan.inputs,
+            &mut stats.oracle_frames,
+            lag,
+            tail,
+        );
+        stretch += 1;
         if ls.exited {
             route.extend_from_slice(&ls.fed[..ls.agreed]);
             confirm += c0.elapsed();
@@ -524,12 +707,41 @@ pub fn plan_original(
             };
             return Ok((r, stats));
         }
-        let (why, cell) = ls.parting.clone().expect("a lockstep ends in an exit or a parting");
-        if std::env::var_os("SF_PLAN_LOG").is_some() {
+        let Some((why, cell)) = ls.parting.clone() else {
+            // A reach stretch the original played to its end: all of it is kept, and the next
+            // stretch starts there, on the reference's path.
+            let Kind::Reach(t) = kind else {
+                unreachable!("an exit plan with a tail ends in an exit or a parting")
+            };
+            if log {
+                eprintln!(
+                    "  {:6.1}s stretch {}: reach to point {t} of {}: plan {} frames ({} rounds, {} hearts), agreed {} ({} hearts), route {}",
+                    t0.elapsed().as_secs_f64(),
+                    stretch - 1,
+                    reference.as_ref().map_or(0, |r| r.points.len()),
+                    plan.inputs.len(),
+                    plan.rounds,
+                    plan.hearts_lost,
+                    ls.hearts_lost,
+                    ls.agreed,
+                    route.len()
+                );
+            }
+            lost += ls.hearts_lost;
+            route.extend_from_slice(&ls.fed[..ls.agreed]);
+            confirm += c0.elapsed();
+            mid_run = ls.mid_run_at(ls.agreed, mid_run);
+            if let Some(r) = reference.as_mut() {
+                r.at = t;
+            }
+            stats.confirmed_frames = route.len() as u32;
+            continue;
+        };
+        if log {
             eprintln!(
-                "  {:6.1}s stretch {}: plan {} frames ({} rounds), agreed {} ({} held), {why:?} at {cell:?}, route {}",
+                "  {:6.1}s stretch {}: {kind:?} plan {} frames ({} rounds), agreed {} ({} held), {why:?} at {cell:?}, route {}",
                 t0.elapsed().as_secs_f64(),
-                stats.repairs,
+                stretch - 1,
                 plan.inputs.len(),
                 plan.rounds,
                 ls.agreed,
@@ -557,10 +769,14 @@ pub fn plan_original(
         route.extend_from_slice(&ls.fed[..keep]);
         mid_run = run_then;
         match next_stretch(accepted, &plan, used) {
-            Next::Resume(r) => resume = Some(r),
-            Next::Repair(r) => rest = Some(r),
+            Next::Resume(r) => resume = Some((r, kind)),
+            // A whole plan that parts is the reference repairs plan back onto; a reach stretch's
+            // plan is only a way onto it.
+            Next::Repair(_) if kind == Kind::Exit => {
+                reference = Some(Reference::new(&start, &facts, &plan, used))
+            }
+            Next::Repair(_) => {}
         }
-        last_hearts = plan.hearts_lost;
         stats.repairs += 1;
         stats.confirmed_frames = route.len() as u32;
     }

@@ -36,6 +36,9 @@ pub struct RunOptions {
     /// mid-pass, as the faithful check of the level's completion case allows (`sf-plan` looks it
     /// up, `lag_limit_for`).
     pub lag_limit: u32,
+    /// When set, the search gives up at this many rounds with no goal found, as at the budget's
+    /// end (original mode's reach stretches, T24).
+    pub max_rounds: Option<u64>,
 }
 
 impl Default for RunOptions {
@@ -47,6 +50,7 @@ impl Default for RunOptions {
             shorten_min_rounds: 0,
             shorten_min_over: None,
             lag_limit: sf_conform::LAG_LIMIT,
+            max_rounds: None,
         }
     }
 }
@@ -119,7 +123,7 @@ pub fn plan_engine(
     let mut ex = Explorer::new(start, facts, opt);
     let mut best = ex.found().cloned();
     while best.is_none() {
-        if t0.elapsed() >= run.budget {
+        if t0.elapsed() >= run.budget || run.max_rounds.is_some_and(|m| ex.rounds() >= m) {
             return Err(ex.best_partial());
         }
         if let Progress::Exit(r) = run_round(&mut ex, run.threads) {
@@ -135,6 +139,16 @@ pub fn plan_engine(
         _ => run.shorten_min_rounds,
     };
     let extra = shorten::budget(ex.rounds(), run.shorten_share, min);
+    if std::env::var_os("SF_PLAN_LOG").is_some() {
+        eprintln!(
+            "  {:6.1}s first exit: {} frames, {} hearts, {} rounds; shortening {} rounds",
+            t0.elapsed().as_secs_f64(),
+            best.inputs.len(),
+            best.hearts_lost,
+            ex.rounds(),
+            extra
+        );
+    }
     let until = ex.rounds() + extra;
     while ex.rounds() < until && t0.elapsed() < run.budget {
         if let Progress::Exit(r) = run_round(&mut ex, run.threads)
