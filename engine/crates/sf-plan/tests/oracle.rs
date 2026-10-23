@@ -266,9 +266,13 @@ fn a_lag_parting_keeps_the_frames_before_its_run() {
     assert_eq!(kept(&ls(Parting::Lag, late.clone()), 60, false, 0), (24, 24, 0));
     // Any other parting backs off `BACK_OFF` frames, into the run.
     assert_eq!(kept(&ls(Parting::Apart, late), 60, false, 0), (49 - BACK_OFF, 33, 9));
-    // A run carried in from the last stretch and never ended: nothing kept, the run stands.
+    // A run carried in from the last stretch, or begun on its first frame: nothing before it is
+    // in reach, so the parting backs off `BACK_OFF` frames (T25 review: W1-4 kept nothing and
+    // re-planned the same plan 2 800 times).
     let carried: Vec<u32> = (0..50).map(|j| 60 + j + 1).collect();
-    assert_eq!(kept(&ls(Parting::Lag, carried), 60, false, 60), (0, 0, 60));
+    assert_eq!(kept(&ls(Parting::Lag, carried), 60, false, 60), (33, 33, 93));
+    let at_once: Vec<u32> = (0..50).map(|j| j + 1).collect();
+    assert_eq!(kept(&ls(Parting::Lag, at_once), 60, false, 0), (33, 33, 33));
 }
 
 /// The faithful check's lag bar (T14): this sf-plan W5-3 route keeps the original mid-pass 101
