@@ -470,11 +470,11 @@ pub fn pass_step(cpu: &CpuRegs, m: &AmigaMemory) -> u16 {
         0xada | 0x19120 => 0,
         0x1912a => 1,
         0x19410..=0x19958 => bob_draw_step(at, cpu, m),
-        // `tile_anim_draw`'s loop (T29): the slots looked at; the one just read (a6 past it) is
-        // not done until its clear (h0+$fa94). In the redraw the clock decides.
+        // `tile_anim_draw`'s loop (T29): the slots looked at, the one just read (a6 past it)
+        // running until its clear (h0+$fa94), at point 1 ([`pass_point`]). In the redraw the
+        // clock decides.
         0xfa7c => 0,
-        0xfa80 => queue_step(cpu.a[6]),
-        0xfa82..=0xfa94 => queue_step(cpu.a[6]).saturating_sub(1),
+        0xfa80..=0xfa94 => queue_step(cpu.a[6]),
         0xd0cc => 0,
         0xd0d0 | 0xd0e0..=0xd0ff => 1,
         // The frog's box is taken once its x and y are read (h0+$d0f8, $d0fc): from there the
@@ -559,6 +559,11 @@ pub fn pass_point(cpu: &CpuRegs, m: &AmigaMemory) -> u8 {
     } else {
         (cpu.pc, cpu.a[7])
     };
+    // `tile_anim_draw` has read a slot (into a1) and not yet acted on it: a cell the vertical
+    // blank queues there now waits for the next pass (T29: W2-1 2008, the slot read empty).
+    if (h0(0xfa82)..=h0(0xfa94)).contains(&pc) {
+        return 1;
+    }
     let in_update = (0..0x100).step_by(2).any(|k| long(m, sp + k) == h0(0x1b33e));
     if !in_update {
         return 0;
