@@ -15,6 +15,9 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-23 | 📌 | T17: verification's combined `big-changes` covers 47 779 lines, but by its split 9 521 carry as-is or with small changes, 4 556 need big changes, 33 702 are superfrog-only. T18's totals may want the split, not the combined rating. |
+| 2026-10-23 | 📌 | T17: check 4 is not address-free. `FrameState::read` reads 13 `LAYOUT` variables by original address and `SceneKind::classify` (`sf-core/src/scene.rs`) names screens by copper list address, so plays-alone also needs an adapter in a native rewrite. |
+| 2026-10-23 | 📌 | T17: beam-race excusal (`compare::picture_except`) is proven only positively (`the_slot_machine_attract_loop_draws_as_the_original_does`); no test plants a difference off the raced rows on a raced frame. |
 | 2026-10-23 | 📌 | T15: `sf-assets/src/sound.rs` parses hunk 0 a second time (`game_hunk0`, `first_hunk`) beside `parse_exe`, and carries original addresses (`H0`, `H3`, `BANK_ADDR`). No check compares `SoundData::from_game` (the app's path) with `from_disks` (the tests'). |
 | 2026-10-23 | 📌 | T15: `sf-assets/src/lib.rs`'s module comment says sound is carried undecoded until T11; `sound.rs` decodes it. Code comment, left alone. |
 | 2026-10-23 | 🐞 | T11 review: docs/04 "Palettes" says a level's `PALA..PALD` are empty; `d1_c21_level_53588.bin`'s `PALA` holds colours at tag+$48, which `palette_from_map` reads (docs/08 agrees). docs/04 is stale; left alone. |
