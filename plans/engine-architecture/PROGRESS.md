@@ -26,7 +26,7 @@ done · ⛔ blocked, needs a human.
 | T02 | memory-model | T01 | ⬜ | |
 | T03 | copied-in-data | T01 | ⬜ | |
 | T04 | cpu-time-and-beam | T01 | ⬜ | |
-| T05 | frame-interrupts-input | T01 | ⬜ | |
+| T05 | frame-interrupts-input | T01 | 🔍 | Chapter written to the template: frame order, 50/25 Hz disagreements, input path, 14 must-preserve rows with checks. Mix amiga 70 game 16 shell 14, `big-changes`. No deviations. Mouse movement and fire have no dedicated check, said in the chapter. |
 | T06 | display-hardware | T01 | ⬜ | |
 | T07 | sound | T01 | ⬜ | |
 | T08 | game-flow | T01 | ⬜ | |
@@ -41,7 +41,7 @@ done · ⛔ blocked, needs a human.
 | T17 | verification | T01 | ⬜ | |
 | T18 | overview-and-summary | T02, T03, T04, T05, T06, T07, T08, T09, T10, T11, T12, T13, T14, T15, T16, T17 | ⬜ | |
 
-**Review queue:** *(empty)*
+**Review queue:** T05
 
 ## Blocked on the user
 
