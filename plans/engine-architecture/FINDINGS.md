@@ -15,6 +15,9 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-23 | 📌 | T11: `LevelCtx` in `level/mod.rs` holds about 800 lines of beam machinery (frame ends mid-pass, `sfx_play`'s raster wait, copper interrupt masking), counted as level's `amiga` share. It is cpu-time-and-beam's mechanism; T18 may weigh a move. |
+| 2026-10-23 | 📌 | T11: `panel_bitmap`, the display buffers and the scroller's blit queue are presentation pieces (`layout::presentation_piece`), left out of check 1. The panel has no routine test; only the picture check holds it. |
+| 2026-10-23 | 📌 | T11: docs/07 and the project `CLAUDE.md` state collision as `flag & 0b11000 == 0b11000`; the engine's `collision.rs` uses a marker ladder instead (`$3a`+ ground, `$3e`/`$3f` landing, `$3d` step-up and walls). Docs left alone. |
 | 2026-10-23 | 📌 | T07: the app's mixer and `channels::engine_levels` never call `Paula::set_frame_lines` (`Pacer::set_frame_lines` only in its test), so every frame mixes as 313 lines though the game keeps stretches of short frames. Unmeasured whether audible. |
 | 2026-10-23 | 📌 | T07: `sf-paula`'s ADKCON attach modes and audio interrupts are unchecked against vAmiga; Superfrog's driver writes no ADKCON. Left alone. |
 | 2026-10-23 | 📌 | T06: the blitter is modelled three times (`Blit::run` in `front/blit.rs`, ascending-only `blit` in `level/objects.rs`, `blit` in `level/scroll.rs`), and `sprite_attach` in `level/bobs.rs` repeats `front/sprite.rs` `attach` (h0+$1b208). A rewrite can merge each. |
