@@ -24,7 +24,7 @@ done · ⛔ blocked, needs a human.
 |---|---|---|---|---|
 | T01 | skeleton-and-check | — | ✅ | |
 | T02 | memory-model | T01 | ⬜ | |
-| T03 | copied-in-data | T01 | ⬜ | |
+| T03 | copied-in-data | T01 | 🔍 | Chapter written: 26-row catalogue, relocated-pointer coupling, copyright limits, 16 must-preserve rows with checks. kind data, reuse big-changes. Deviation: none from the task doc; the tile-heights bonus carry-over has only `game-whole` as its check, and over-reads past sound tables are marked unknown. Drift check passes. |
 | T04 | cpu-time-and-beam | T01 | ⬜ | |
 | T05 | frame-interrupts-input | T01 | ⬜ | |
 | T06 | display-hardware | T01 | ⬜ | |
@@ -41,7 +41,7 @@ done · ⛔ blocked, needs a human.
 | T17 | verification | T01 | ⬜ | |
 | T18 | overview-and-summary | T02, T03, T04, T05, T06, T07, T08, T09, T10, T11, T12, T13, T14, T15, T16, T17 | ⬜ | |
 
-**Review queue:** *(empty)*
+**Review queue:** T03
 
 ## Blocked on the user
 
