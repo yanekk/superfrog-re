@@ -31,7 +31,7 @@ done · ⛔ blocked, needs a human.
 | T07 | sound | T01 | ✅ | |
 | T08 | game-flow | T01 | ✅ | |
 | T09 | front-end | T01 | ✅ | |
-| T10 | story-and-ending | T01 | ⬜ | |
+| T10 | story-and-ending | T01 | ✅ | |
 | T11 | level | T01 | ⬜ | |
 | T12 | frog-and-items | T01 | ⬜ | |
 | T13 | enemies-and-bosses | T01 | ⬜ | |
