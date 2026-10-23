@@ -394,17 +394,94 @@ pub enum Next {
 /// of `ls.fed` kept, the plan frames they used, and the mid-pass run at their end (`start` before
 /// the stretch). Accepted, the parting frame is kept too; repaired, `BACK_OFF` frames before it,
 /// counted within the plan (not its lag tail). Held frames use no plan frame (T14).
-pub fn kept(ls: &Lockstep, plan_len: usize, accepted: bool, start: u32) -> (usize, usize, u32) {
+///
+/// A `Lag` parting with `before_run` (every second lag repair in a row, `lag_before_run`) keeps
+/// the frames before the mid-pass run it ended instead; when the run began before the stretch,
+/// nothing is kept and the run carried in stands, and `plan_original` rewinds the route to the
+/// run's start (`run_start`). Some runs end only from inside (W1-4 at 148,9: from before it every
+/// plan entered it and parted 100 frames in, 2 800 times), some only from before (W5-2 at 111,29:
+/// from 16 frames back, inside, ~200 partings in 27 minutes), and neither resume point alone
+/// finished both (T25, T30).
+pub fn kept(
+    ls: &Lockstep,
+    plan_len: usize,
+    accepted: bool,
+    start: u32,
+    before_run: bool,
+) -> (usize, usize, u32) {
     let agreed = (0..=ls.agreed)
         .rev()
         .find(|&k| ls.used_at(k) <= plan_len)
         .unwrap_or(0);
     let keep = if accepted {
         (agreed + 1).min(ls.fed.len())
+    } else if before_run && matches!(ls.parting, Some((Parting::Lag, _))) {
+        (0..=agreed)
+            .rev()
+            .find(|&k| ls.mid_run_at(k, start) == 0)
+            .unwrap_or(0)
     } else {
         agreed.saturating_sub(BACK_OFF)
     };
-    (keep, ls.used_at(keep).min(plan_len), ls.mid_run_at(keep, start))
+    (
+        keep,
+        ls.used_at(keep).min(plan_len),
+        ls.mid_run_at(keep, start),
+    )
+}
+
+/// Whether the `row`th lag repair in a row (from 1) resumes from before the run it ended: the
+/// first backs off `BACK_OFF` frames into it, the next goes before it, and so on alternately
+/// (`kept`). Alternating reaches each resume point on every other repair, whichever the run needs.
+pub fn lag_before_run(row: u32) -> bool {
+    row.is_multiple_of(2)
+}
+
+/// The route frames to keep to end before its last mid-pass run, given the run after each route
+/// frame: up to the last frame not ended mid-pass (0 for none; the route's start is not mid-pass).
+pub fn run_start(mid: &[u32]) -> usize {
+    mid.iter().rposition(|&m| m == 0).map_or(0, |i| i + 1)
+}
+
+/// Saved states of the original at route positions, enough to rewind the route to any frame of
+/// the mid-pass run it ends in (`run_start`): each stretch's start is pushed, and every mark
+/// before the last one at or before the run's start is dropped. A run is at most the lag bar
+/// long, so a few marks are kept, not one per stretch (W1-4 ran 2 800 stretches).
+#[derive(Debug, Clone)]
+pub struct Marks<T> {
+    marks: Vec<(usize, T)>,
+}
+
+impl<T> Default for Marks<T> {
+    fn default() -> Self {
+        Marks { marks: Vec::new() }
+    }
+}
+
+impl<T> Marks<T> {
+    /// A state at route position `pos` (the route's length), the route's mid-pass run there
+    /// `carry` frames long.
+    pub fn push(&mut self, pos: usize, state: T, carry: u32) {
+        self.marks.retain(|&(p, _)| p < pos);
+        self.marks.push((pos, state));
+        let first = pos.saturating_sub(carry as usize);
+        if let Some(i) = self.marks.iter().rposition(|&(p, _)| p <= first) {
+            self.marks.drain(..i);
+        }
+    }
+
+    /// The latest mark at or before route position `pos`.
+    pub fn at(&self, pos: usize) -> Option<&(usize, T)> {
+        self.marks.iter().rev().find(|&&(p, _)| p <= pos)
+    }
+
+    pub fn len(&self) -> usize {
+        self.marks.len()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.marks.is_empty()
+    }
 }
 
 /// After a parting with `used` of `plan`'s frames kept: an accepted parting plays the same plan
@@ -556,7 +633,13 @@ pub fn plan_original(
     let mut resume: Option<(Route, Kind)> = None;
     // Frames the original has ended mid-pass in a row at the kept route's end (`Lag`).
     let mut mid_run = 0u32;
+    // The mid-pass run after each route frame, the original's states saved at stretch starts, and
+    // the lag repairs in a row: a lag repair may rewind the route to before its run (`kept`).
+    let mut route_mid = vec![0u32; route.len()];
+    let mut marks: Marks<(sf_oracle::Snapshot, u16)> = Marks::default();
+    let mut lag_row = 0u32;
     let mut rounds = 0u64;
+
     let mut stretch = 0u32;
     let finish = |stats: &mut Stats, confirm: Duration, route: &[FrameInput]| {
         let all = start_time + t0.elapsed();
@@ -680,6 +763,7 @@ pub fn plan_original(
 
         let c0 = Instant::now();
         let snap = amiga.snapshot();
+        marks.push(route.len(), (snap.clone(), lost), mid_run);
         let lag = Lag {
             limit: ro.lag_limit,
             run: mid_run,
@@ -729,8 +813,10 @@ pub fn plan_original(
             }
             lost += ls.hearts_lost;
             route.extend_from_slice(&ls.fed[..ls.agreed]);
+            route_mid.extend_from_slice(&ls.mid_run[..ls.agreed]);
             confirm += c0.elapsed();
             mid_run = ls.mid_run_at(ls.agreed, mid_run);
+            lag_row = 0;
             if let Some(r) = reference.as_mut() {
                 r.at = t;
             }
@@ -754,7 +840,9 @@ pub fn plan_original(
         // moved set-B W2-2 one frame past a heart the original loses there, then parted again at
         // once, ten repairs at one cell (T14).
         let accepted = repeats.accept(cell, &why);
-        let (keep, used, run_then) = kept(&ls, plan.inputs.len(), accepted, mid_run);
+        lag_row = if why == Parting::Lag { lag_row + 1 } else { 0 };
+        let before_run = why == Parting::Lag && lag_before_run(lag_row);
+        let (keep, used, run_then) = kept(&ls, plan.inputs.len(), accepted, mid_run, before_run);
         amiga.restore(&snap);
         let mut h = hearts(&amiga);
         for &x in &ls.fed[..keep] {
@@ -765,9 +853,37 @@ pub fn plan_original(
             lost += h.saturating_sub(now);
             h = now;
         }
-        confirm += c0.elapsed();
         route.extend_from_slice(&ls.fed[..keep]);
+        route_mid.extend_from_slice(&ls.mid_run[..keep]);
         mid_run = run_then;
+        if before_run && run_then > 0 {
+            // The run began before this stretch: the route is rewound to its start, the original
+            // replayed there from the last state saved at or before it.
+            let to = run_start(&route_mid);
+            let (at, (s, l)) = marks.at(to).expect("a mark at or before the run's start");
+            amiga.restore(s);
+            lost = *l;
+            let mut h = hearts(&amiga);
+            for &x in &route[*at..to] {
+                sync::step_inserting(&mut amiga, x).expect("the route's frames replay");
+                stats.oracle_frames += 1;
+                let now = hearts(&amiga);
+                lost += h.saturating_sub(now);
+                h = now;
+            }
+            if log {
+                eprintln!(
+                    "  {:6.1}s stretch {}: lag repair {lag_row} in a row rewinds the route {} -> {to}",
+                    t0.elapsed().as_secs_f64(),
+                    stretch - 1,
+                    route.len(),
+                );
+            }
+            route.truncate(to);
+            route_mid.truncate(to);
+            mid_run = 0;
+        }
+        confirm += c0.elapsed();
         match next_stretch(accepted, &plan, used) {
             Next::Resume(r) => resume = Some((r, kind)),
             // A whole plan that parts is the reference repairs plan back onto; a reach stretch's
