@@ -75,6 +75,14 @@ pub enum Goal {
     Exit,
     /// A state with this key within `within_frames` of the start (T22's shortcut pass).
     Key { key: CellKey, within_frames: u32 },
+    /// A state in `point`'s region (`GuidePoint::covers`) within `within_frames` of the start,
+    /// with at least `hearts` hearts: original mode's repair stretch, a way back onto the last
+    /// whole plan's path no worse for hearts than that plan (T24).
+    Reach {
+        point: GuidePoint,
+        within_frames: u32,
+        hearts: u16,
+    },
 }
 
 #[derive(Debug, Clone)]
@@ -341,12 +349,32 @@ impl<'a> Walk<'a> {
             self.via += 1;
         }
         let via_done = self.via as usize == opt.via.len();
-        if let Goal::Key { key, within_frames } = opt.goal {
-            if via_done && self.frames <= within_frames && cell_key(facts, st, self.via) == key {
-                return Step::Goal;
+        match opt.goal {
+            Goal::Exit => {}
+            Goal::Key { key, within_frames } => {
+                if via_done && self.frames <= within_frames && cell_key(facts, st, self.via) == key
+                {
+                    return Step::Goal;
+                }
+                if self.frames >= within_frames {
+                    return Step::End;
+                }
             }
-            if self.frames >= within_frames {
-                return Step::End;
+            Goal::Reach {
+                point,
+                within_frames,
+                hearts,
+            } => {
+                if via_done
+                    && self.frames <= within_frames
+                    && st.w(HEARTS) >= hearts
+                    && point.covers(&cell_key(facts, st, self.via))
+                {
+                    return Step::Goal;
+                }
+                if self.frames >= within_frames {
+                    return Step::End;
+                }
             }
         }
         if st.l(LEVEL_STATE) != PLAYING {
@@ -531,6 +559,7 @@ impl Explorer {
         }
         match self.opt.goal {
             Goal::Key { key: k, .. } => self.straight(key, &[(k.col * 2, k.row * 2)]),
+            Goal::Reach { point, .. } => self.straight(key, &[point.cell]),
             Goal::Exit => match self.compass.as_mut().and_then(|m| m.frames(key)) {
                 Some(fr) => fr as f64 / FRAMES_PER_CELL,
                 None => self.straight(key, &self.facts.exits),
@@ -583,6 +612,7 @@ impl Explorer {
                     // deviation from DESIGN §2.4 (owner, 2026-10-22), see `archive::band`.
                     Goal::Exit if k.band <= 8 => pull(e.coin_dist),
                     Goal::Key { key, .. } if k.band == key.band => pull(e.dist),
+                    Goal::Reach { .. } => pull(e.dist),
                     _ => 1.0,
                 };
                 let guide = self.guide.as_ref().map_or(1.0, |g| {

@@ -73,6 +73,18 @@ pub struct GuidePoint {
     pub switches: Option<u32>,
 }
 
+impl GuidePoint {
+    /// Whether `key` falls in this point's region, as `GuideIndex` matches one: its coarse cell ±1,
+    /// in its band or a lower one when its coins are known, with its switches when known.
+    pub fn covers(&self, key: &CellKey) -> bool {
+        let (cc, rr) = (self.cell.0 / 2, self.cell.1 / 2);
+        key.col.abs_diff(cc) <= 1
+            && key.row.abs_diff(rr) <= 1
+            && self.coins_left.is_none_or(|c| key.band <= band(c))
+            && self.switches.is_none_or(|s| key.switches == s)
+    }
+}
+
 /// The guide's lookup: (coarse col, coarse row, switches | any) → its points' bands, each with the
 /// furthest point index at that band or a higher one (`None` for points without coins, any band).
 #[derive(Debug, Clone, Default)]

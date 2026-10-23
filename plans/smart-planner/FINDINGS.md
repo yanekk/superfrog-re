@@ -11,6 +11,9 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-23 | 📌 | T24 pattern 1: Heart partings come from the original's lag (W3-2: enemies drift, the frog matches). Repaired by reach stretches in 13–85 rounds, not accepted: W4-2 no route → 7 491 frames, 2 hearts, 1 182 rounds. No owner trade asked. |
+| 2026-10-23 | 📌 | T24, guided, seed 1, 5 threads, load ~30, before → after, §4.1 passed: W1-4 no route → 7 998 frames, 1 heart, 2 044 rounds; W3-2 none → 11 066, 0, 1 245; W4-4 none → 13 197, 3, 3 723 (60-min budget). |
+| 2026-10-23 | 🔄 | Owner, T24 review: kept the deviation from DESIGN §2.6 step 3, §2.7: a repair plans to the last whole plan's point 1024 frames on (`Goal::Reach`, `oracle::HORIZON`), the exit near its end or after `REACH_ROUNDS`. Reach stretches unshortened (M4, T25). |
 | 2026-10-23 | 🔄 | Owner, T14 review: no guide pace in app mode (DESIGN §2.11). W1-1 `--app`, shorten 0, seeds 1–3, frames/hearts: pace 4452/1, 4158/0, 3404/0; none 2847/0, 3117/0, 2959/1. Pace failed T12's M8 test. |
 | 2026-10-23 | 🐞 | T14 review: original mode's parting bookkeeping (accept-resume, held frames) was reached only by `#[ignore]`d whole-level runs; now `oracle::kept`, unit-tested. W2-1 original mode passed §4.1 in 49 s, 2 repairs, load ~3. |
 | 2026-10-23 | 📌 | T14 review: `shorten::better` keeps fewer hearts before shorter (§2.5, M6); DESIGN §2.12 still reads "keeps the shortest exit". Wording left for the owner. |
@@ -33,12 +36,10 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 | 2026-10-22 | 📌 | T22, seed 1, 10 threads, load ~11, unguided, before → after shortening: W2-1 3 374 → 3 051, W5-2 5 701 → 5 405, W3-2 11 580 → 11 394 frames (committed 2 524, 6 994, 6 094). W3-2 stays 63% over M4. |
 | 2026-10-22 | 📌 | T22: 2.4–3.3 rounds/s at load 11, 10 threads; `SHORTEN_MIN_ROUNDS` 180 is 60–75 s. Most shortcut hits fail to splice: the coarse key leaves the frog off where the route's rest expects it. |
 | 2026-10-22 | 🔄 | Owner, T09: guide regions also match switches pressed when known; trace points are `(Cell, coins, switches)`, `trace_engine`/`trace_original` take `&Facts`. Without them W6-2 guided stalled at a closed gate, seeds 1–3, 5 min each; with them 109–141 s. |
-| 2026-10-22 | 🐞 | T09: a leg snapshot's first frame, like `AtLevel`'s, has `level_state` ≠ −2, so an explorer started there reports an exit at frame 1. T11's `--snap` and `AtLevel` starts must play on until the frog lands past frame 150. |
 | 2026-10-22 | 📌 | T09 Done-when: set-B W2-1 leg (`whole_game --until W2-2`, `leg-04.snap`), engine only, `follow_options` of `w2-1-complete`: exit in 40 rounds, 22 s at load ~20, route 2 235 frames, 1 heart lost. |
 | 2026-10-22 | 📌 | T09, 10 threads, load ~12, seed 1: W6-2 guided by `enemies-w6-2-complete` exits in 138 s, 476 rounds, route 9 182 frames. W1-1 fixture with frame 2000 dropped, followed: 290 k engine frames, 28 rounds; unguided 849 k, 85. |
 | 2026-10-22 | 📌 | T08 Done-when, load 9–12, 10 threads, 10-min cap, seed 1, unguided: W6-1 54 s, W5-2 37 s, W3-2 132 s, W3-4 245 s; cells 11.6k, 9.0k, 15.5k, 26.1k; peak RSS 3.1, 3.4, 3.1, 3.3 GB. W1-1 15 s. |
 | 2026-10-22 | 🔄 | Owner, T08: kept DESIGN §2.5 heart rule; adopted `experiment/t08-coin-bands` 465d60d: last 8 coins one band each, pull toward nearest object coin left (deviation from §2.4). Before it W6-1 exited 0 of 5 ten-minute runs, stalling 2–4 coins short. |
-| 2026-10-22 | 📌 | T08 checkpoint policy (D22): an entry over 64 frames past its checkpoint takes one; states dropped least-recently-used, non-anchor (1024-frame) and unreferenced first. A state counts 9/8 serialized (~620 KB); the archive keeps ¾ of `max_mem_bytes`. |
 | 2026-10-22 | 📌 | T08: W1-1 with a 1 GB cap gave the same route as 4 GB, at 2.3× the engine frames (rebuilds), 105 s against 37 s. Counting the archive to the full 4 GiB reached 4.9 GB RSS on W5-2. |
 | 2026-10-22 | 📌 | T08: `goexp` seeds each burst with the master generator's own stream (`Rng(sd\|1)`); with that and its end-on-heart-lost rule this explorer reproduced its W6-1 run frame for frame (7 248 frames, 12 743 cells). |
 | 2026-10-22 | 🔄 | Owner amended the plan (D19–D24): whole-level explorer core; guide paths allowed everywhere, the counted benchmark included (baseline stays unaided); map and coin choice compasses only; M7, T13, T20 dropped; T22 route-shorten added. |
