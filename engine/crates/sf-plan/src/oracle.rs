@@ -90,6 +90,10 @@ pub enum Parting {
     Heart,
     /// The oracle refused the frame (its cap, an emulator error; §2.9).
     Oracle(String),
+    /// The original ended more frames in a row mid-pass than the faithful check allows (the
+    /// level's completion case's `lag-limit`, `LAG_LIMIT` without one): the check would compare
+    /// nothing there and fail the route (T14: W5-3, 101 from frame 5 310).
+    Lag,
 }
 
 impl Parting {
@@ -204,6 +208,14 @@ pub fn facts_at(run: &OracleRun, id: LevelId) -> Facts {
     facts(&g, &data.levels[&id], display.rom())
 }
 
+/// The faithful check's lag bar over a lockstep: its limit, and the frames the original has ended
+/// mid-pass in a row so far (`sf_conform`'s `LagRun`, check 1).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Lag {
+    pub limit: u32,
+    pub run: u32,
+}
+
 /// What one stretch's lockstep found.
 #[derive(Debug, Clone, PartialEq)]
 pub struct Lockstep {
@@ -219,6 +231,8 @@ pub struct Lockstep {
     pub fed: Vec<FrameInput>,
     /// The plan frames used after each original frame of `fed`.
     pub used: Vec<usize>,
+    /// The original's frames ended mid-pass in a row after each frame of `fed`.
+    pub mid_run: Vec<u32>,
     /// Hearts the original lost over the frames agreed to (a heart gained is not netted).
     pub hearts_lost: u16,
 }
@@ -227,6 +241,11 @@ impl Lockstep {
     /// The plan frames used once the first `k` original frames are played.
     pub fn used_at(&self, k: usize) -> usize {
         k.checked_sub(1).map_or(0, |j| self.used[j])
+    }
+
+    /// The mid-pass run once the first `k` original frames are played, `start` before any.
+    pub fn mid_run_at(&self, k: usize, start: u32) -> u32 {
+        k.checked_sub(1).map_or(start, |j| self.mid_run[j])
     }
 }
 
@@ -245,6 +264,7 @@ pub fn lockstep(
     mut eng: Game,
     plan: &[FrameInput],
     frames: &mut u64,
+    lag: Lag,
 ) -> Lockstep {
     let mut before = look(amiga);
     let mut out = Lockstep {
@@ -253,8 +273,10 @@ pub fn lockstep(
         parting: None,
         fed: Vec::new(),
         used: Vec::new(),
+        mid_run: Vec::new(),
         hearts_lost: 0,
     };
+    let mut run = lag.run;
     let last = plan.last().copied().unwrap_or(FrameInput::NONE);
     let mut e = before;
     let mut i = 0usize;
@@ -267,11 +289,15 @@ pub fn lockstep(
         let frog_before = amiga.peek(FROG, FROG_BLOCK as usize);
         if let Err(err) = sync::step_inserting(amiga, x) {
             out.used.push(i);
+            out.mid_run.push(run);
             out.parting = Some((Parting::Oracle(err), before.cell));
             return out;
         }
         *frames += 1;
-        let o = look(amiga);
+        let mem = sync::core_memory(amiga.memory());
+        run = if sync::mid_pass(&amiga.cpu(), &mem) { run + 1 } else { 0 };
+        out.mid_run.push(run);
+        let o = Look::of(&State::transplant(&mem));
         if past {
             // Past the plan's end the engine has left the level: only the original is judged.
             e = o;
@@ -288,6 +314,10 @@ pub fn lockstep(
             }
         }
         out.used.push(i);
+        if run > lag.limit {
+            out.parting = Some((Parting::Lag, o.cell));
+            return out;
+        }
         if let Some(why) = parts(&before, &o, &e, sync::in_wall_loop(amiga)) {
             out.parting = Some((why, o.cell));
             return out;
@@ -305,6 +335,27 @@ pub fn lockstep(
     // The original played the whole plan and the lag tail with no exit: it parts at the end.
     out.parting = Some((Parting::Apart, before.cell));
     out
+}
+
+/// The faithful check's lag bar for a route from `level`'s start (T14, owner 2026-10-23; a deviation
+/// from DESIGN §2.6): the `lag-limit` of the case `sf-bench`'s §4.1 check takes it from, the
+/// level's completion case (or `game-whole`'s for a leg snapshot), else `sf_conform::LAG_LIMIT`.
+/// The names follow `sf-bench`'s `verify::committed_script`.
+pub fn lag_limit_for(level: LevelId, snap: bool) -> u32 {
+    let l = level.to_string().to_lowercase();
+    let name = if snap {
+        "game-whole".to_string()
+    } else {
+        match l.as_bytes()[1] {
+            b'1' | b'4' => format!("complete-{l}"),
+            b'2' => format!("{l}-complete"),
+            _ => format!("enemies-{l}-complete"),
+        }
+    };
+    sf_conform::Case::load(&sf_conform::cases_dir().join(format!("{name}.toml")))
+        .ok()
+        .and_then(|c| c.lag_limit)
+        .map_or(sf_conform::LAG_LIMIT, |l| l.frames)
 }
 
 /// What follows a parting (§2.6 steps 3, 4).
@@ -365,6 +416,8 @@ pub fn plan_original(
     let mut rest: Option<Vec<FrameInput>> = None;
     // After an accepted parting, the plan's rest, played on from the original's state as it is.
     let mut resume: Option<Route> = None;
+    // Frames the original has ended mid-pass in a row at the kept route's end (`Lag`).
+    let mut mid_run = 0u32;
     // The hearts the plan `rest` comes from lost on the engine.
     let mut last_hearts = 0u8;
     let mut rounds = 0u64;
@@ -436,7 +489,11 @@ pub fn plan_original(
 
         let c0 = Instant::now();
         let snap = amiga.snapshot();
-        let ls = lockstep(&mut amiga, start, &plan.inputs, &mut stats.oracle_frames);
+        let lag = Lag {
+            limit: ro.lag_limit,
+            run: mid_run,
+        };
+        let ls = lockstep(&mut amiga, start, &plan.inputs, &mut stats.oracle_frames, lag);
         if ls.exited {
             route.extend_from_slice(&ls.fed[..ls.agreed]);
             confirm += c0.elapsed();
@@ -492,6 +549,7 @@ pub fn plan_original(
         }
         confirm += c0.elapsed();
         route.extend_from_slice(&ls.fed[..keep]);
+        mid_run = ls.mid_run_at(keep, mid_run);
         match next_stretch(accepted, &plan, used) {
             Next::Resume(r) => resume = Some(r),
             Next::Repair(r) => rest = Some(r),

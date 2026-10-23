@@ -4,6 +4,7 @@
 //! sf-plan <level> [--snap leg.snap] [--guide route-or-waypoints.txt] [--follow old.txt] [--seed N]
 //!         [--out route.txt] [--budget-min 30] [--frames 30000] [--max-mem-gb 4] [--threads N]
 //!         [--compass straight|map] [--shorten-share 0.2] [--no-cache] [--engine-only] [--no-pace]
+//!         [--lag-limit N]
 //!         [--via c,r]... [--avoid c0,r0,c1,r1]...
 //! ```
 //!
@@ -40,6 +41,7 @@ use sf_plan::trace::{script_inputs, timing, trace_original};
 const USAGE: &str = "usage: sf-plan <level> [--snap leg.snap] [--guide route-or-waypoints.txt] \
 [--follow old.txt] [--seed N] [--out route.txt] [--budget-min 30] [--frames 30000] [--max-mem-gb 4] \
 [--threads N] [--compass straight|map] [--shorten-share 0.2] [--no-cache] [--engine-only] [--no-pace] \
+[--lag-limit N] \
 [--via c,r]... [--avoid c0,r0,c1,r1]...";
 
 /// Oracle frames beyond `--frames` a start is given room for: the settle and the lag tail.
@@ -73,6 +75,9 @@ struct Args {
     engine_only: bool,
     /// `--no-pace`: a played-route guide without its pace (for comparisons, T14).
     no_pace: bool,
+    /// `--lag-limit N`: overrides the faithful check's lag bar looked up for the level (T14;
+    /// sf-bench never sets it).
+    lag_limit: Option<u32>,
     via: Vec<Cell>,
     avoid: Vec<(Cell, Cell)>,
 }
@@ -114,6 +119,7 @@ fn parse_args(argv: &[String]) -> Result<Args, String> {
         no_cache: false,
         engine_only: false,
         no_pace: false,
+        lag_limit: None,
         via: Vec::new(),
         avoid: Vec::new(),
     };
@@ -162,6 +168,9 @@ fn parse_args(argv: &[String]) -> Result<Args, String> {
             }
             "--no-cache" => a.no_cache = true,
             "--no-pace" => a.no_pace = true,
+            "--lag-limit" => {
+                a.lag_limit = Some(val()?.parse().map_err(|_| format!("{k}: not a number"))?)
+            }
             "--engine-only" => a.engine_only = true,
             "--via" => {
                 let v = cells(&val()?, 2, "--via")?;
@@ -452,6 +461,9 @@ fn run(a: &Args, t0: Instant) -> Result<Outcome, Fail> {
         shorten_share: a.shorten_share,
         shorten_min_rounds: if a.shorten_share > 0.0 { SHORTEN_MIN_ROUNDS } else { 0 },
         shorten_min_over: None,
+        lag_limit: a
+            .lag_limit
+            .unwrap_or_else(|| sf_plan::oracle::lag_limit_for(a.level, a.snap.is_some())),
     };
     let mut stats = Stats {
         oracle_frames: run.oracle_frames + guide_frames,

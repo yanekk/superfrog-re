@@ -227,6 +227,7 @@ fn shortening_is_the_same_on_any_threads() {
             shorten_share: 0.2,
             shorten_min_rounds: 6,
             shorten_min_over: None,
+            lag_limit: sf_conform::LAG_LIMIT,
         };
         plan_engine(g, fa, opt, &run).unwrap()
     };
@@ -278,6 +279,7 @@ fn the_shortening_minimum_applies_only_over_the_bound() {
             shorten_share: 0.2,
             shorten_min_rounds: 6,
             shorten_min_over: over,
+            lag_limit: sf_conform::LAG_LIMIT,
         };
         plan_engine(g, fa, opt, &run).unwrap()
     };

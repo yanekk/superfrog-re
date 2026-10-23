@@ -32,6 +32,10 @@ pub struct RunOptions {
     /// that plan's, already shortened, unless its search went another way (W1-2's repair took a
     /// 7 200-frame, 3-heart exit for a 4 718-frame, no-heart plan, T14).
     pub shorten_min_over: Option<(usize, u8)>,
+    /// Original mode's lag bar (`oracle::Lag`): the most frames in a row the original may end
+    /// mid-pass, as the faithful check of the level's completion case allows (`sf-plan` looks it
+    /// up, `lag_limit_for`).
+    pub lag_limit: u32,
 }
 
 impl Default for RunOptions {
@@ -42,6 +46,7 @@ impl Default for RunOptions {
             shorten_share: 0.0,
             shorten_min_rounds: 0,
             shorten_min_over: None,
+            lag_limit: sf_conform::LAG_LIMIT,
         }
     }
 }

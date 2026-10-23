@@ -23,6 +23,11 @@ use sf_plan::run::{RunOptions, plan_engine};
 use sf_plan::trace::trace_original;
 
 const CAP: u32 = 40_000;
+/// A lag bar no test stretch reaches.
+const NO_LAG: Lag = Lag {
+    limit: u32::MAX,
+    run: 0,
+};
 
 fn look(cell: Cell, lives: u16, hearts: u16) -> Look {
     Look {
@@ -129,7 +134,7 @@ fn w1_1_first_stretch_keeps_frames_the_original_agrees_to() {
         .expect("W1-1 plans to its exit on the engine");
     let snap = run.amiga.snapshot();
     let mut frames = 0;
-    let ls = lockstep(&mut run.amiga, start.clone(), &plan.inputs, &mut frames);
+    let ls = lockstep(&mut run.amiga, start.clone(), &plan.inputs, &mut frames, NO_LAG);
     assert!(frames as usize >= ls.agreed && ls.agreed > 0, "{ls:?}");
     let keep = if ls.exited {
         ls.agreed
@@ -182,7 +187,7 @@ fn a_frozen_original_holds_the_engine() {
     );
     let plan: Vec<FrameInput> = (from..from + 120).map(|k| s.input_at(k)).collect();
     let mut frames = 0;
-    let ls = lockstep(&mut amiga, eng, &plan, &mut frames);
+    let ls = lockstep(&mut amiga, eng, &plan, &mut frames, NO_LAG);
     assert!(ls.parting.as_ref().is_none_or(|_| ls.agreed > 100), "{:?} at {}", ls.parting, ls.agreed);
     let held = ls.agreed - ls.used_at(ls.agreed);
     assert!((8..=10).contains(&held), "{held} frames held");
@@ -211,6 +216,61 @@ fn an_accepted_parting_resumes_the_plan() {
     assert_eq!(next_stretch(true, &plan, 4), Next::Repair(vec![]));
 }
 
+/// The faithful check's lag bar (T14): this sf-plan W5-3 route keeps the original mid-pass 101
+/// frames in a row from frame 5 310, one past `LAG_LIMIT`. Played in lockstep from 5 390, the run
+/// so far carried in, it parts for lag at the 101st under the level's bar, and not under a looser
+/// one. ~20 s.
+#[test]
+fn a_stretch_past_the_lag_bar_parts() {
+    let p = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/w5-3-long-lag.txt");
+    let s = InputScript::load(&p).unwrap();
+    let from = 5_390;
+    let at = || {
+        let mut amiga = sync::reach(&SyncPoint::AtLevel(id("W5-3")), &InputScript::idle(), CAP)
+            .unwrap()
+            .amiga;
+        let mut run = 0;
+        for k in 0..from {
+            sync::step_inserting(&mut amiga, s.input_at(k)).unwrap();
+            let mid = sync::mid_pass(&amiga.cpu(), &sync::core_memory(amiga.memory()));
+            run = if mid { run + 1 } else { 0 };
+        }
+        let eng = Game::with_display(
+            sf_conform::display_data(),
+            Start::Transplant(sync::core_memory(amiga.memory())),
+        );
+        (amiga, eng, run)
+    };
+    let plan: Vec<FrameInput> = (from..from + 300).map(|k| s.input_at(k)).collect();
+    let limit = lag_limit_for(id("W5-3"), false);
+    assert_eq!(limit, sf_conform::LAG_LIMIT);
+    let (mut amiga, eng, run) = at();
+    assert!(run > 50, "{run} frames mid-pass at {from}");
+    let mut frames = 0;
+    let ls = lockstep(&mut amiga, eng, &plan, &mut frames, Lag { limit, run });
+    let (why, _) = ls.parting.clone().expect("a parting");
+    assert_eq!(why, Parting::Lag, "at {}", ls.agreed);
+    assert_eq!(ls.mid_run.last(), Some(&(limit + 1)));
+    assert!(!why.acceptable());
+    let (mut amiga, eng, run) = at();
+    let ls = lockstep(&mut amiga, eng, &plan, &mut frames, Lag { limit: 400, run });
+    assert_ne!(ls.parting.map(|p| p.0), Some(Parting::Lag));
+}
+
+/// The lag bar is the level's completion case's (`lag-limit` where it pins one), the whole
+/// game's for a leg snapshot, `LAG_LIMIT` otherwise (T14).
+#[test]
+fn the_lag_bar_is_the_completion_cases() {
+    assert_eq!(lag_limit_for(id("W4-3"), false), 261);
+    assert_eq!(lag_limit_for(id("W3-1"), false), 105);
+    assert_eq!(lag_limit_for(id("W1-1"), false), sf_conform::LAG_LIMIT);
+    let whole = sf_conform::Case::load(&sf_conform::cases_dir().join("game-whole.toml")).unwrap();
+    assert_eq!(
+        lag_limit_for(id("W1-1"), true),
+        whole.lag_limit.map_or(sf_conform::LAG_LIMIT, |l| l.frames)
+    );
+}
+
 /// The frog placed against W2-4's closed gate at x 303, y 912, facing left: the original loops in
 /// `frog_tiles`' wall loop and the engine falls on (rust-engine FINDINGS T168, `wall_place`).
 /// Played in lockstep, idle, it parts at once, never later.
@@ -222,7 +282,7 @@ fn a_route_into_the_wall_loop_parts_there() {
     }
     let start = transplanted(&run);
     let mut frames = 0;
-    let ls = lockstep(&mut run.amiga, start, &[FrameInput::NONE; 200], &mut frames);
+    let ls = lockstep(&mut run.amiga, start, &[FrameInput::NONE; 200], &mut frames, NO_LAG);
     eprintln!(
         "W2-4 against the gate: agreed {}, {:?}",
         ls.agreed, ls.parting

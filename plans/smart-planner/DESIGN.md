@@ -193,6 +193,14 @@ original at frame 3 737 and died at 5 753, yet `sf_conform::run` passed it (with
 follows the original into the death); only `verify`'s exit milestone caught it. The final route is
 accepted only by `verify` (§4.1).
 
+Amended in T14 (owner, 2026-10-23; deviations): the lockstep also parts, never accepted, when the
+original ends more frames in a row mid-pass than the faithful check allows, the `lag-limit` of the
+level's completion case (`game-whole`'s for a leg snapshot), else 100. The planner looks it up
+itself; `--lag-limit` overrides it and `sf-bench` never sets it. Why: W5-3's route reached the
+exit on the original and failed `verify`, 101 such frames from 5 310. A frame on which the
+original's frog block does not change while the engine's would is held (W1-2's scroller freezes
+it nine frames). An accepted parting plays the same plan on from the original's state.
+
 App mode (set C) confirms on the engine from the same `start_level` state; there is no original.
 
 Two timings, never crossed (owner, 2026-10-20). The original lags in busy passes and the engine
@@ -279,6 +287,12 @@ that never pressed the switch, and every seed tried stalled at a closed gate. Th
 3·e^(−(p_max − p)/20) on the path (p_max the furthest index any archived cell has), 0.15 off it.
 Off-path cells keep a weight because a guide from another start or mode may be wrong in places. Why:
 W6-2 went from stalled 6 cells short to an exit in 80 s guided by its committed route's path.
+
+Amended in T14 (owner, 2026-10-22: pace on by default; a deviation): a guide sampled from a played
+route also weighs a cell e^(−(frames − best)/240), `best` the fewest frames of any archived cell at
+its guide index or further (`guide::Pace`); waypoint guides have none, `--no-pace` turns it off.
+Engine-only, W1-2, W2-1, W1-3, seeds 1–3: 8% shorter routes in all. Against the route's own time
+instead, W1-4 (slower than its route's pace) found no exit in 30 minutes.
 
 A guide is not a hint (§2.10, D21): it is not logged, and `PLAN_STATS` carries `guided=0|1`. The
 counted benchmark guides each level by its committed route (§4.2).
