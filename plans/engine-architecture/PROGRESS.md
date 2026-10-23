@@ -13,7 +13,7 @@ writes a cell also fixes the over-budget cell they walk past.
 
 **Status:** Plan written 2026-10-22; nothing built.
 **Last updated:** 2026-10-23
-**Next `pir-work` will:** the remaining chapter tasks T10–T12, T14–T17, then T18.
+**Next `pir-work` will:** the remaining chapter tasks T14, T16, T17, then T18.
 
 ## Tasks
 
@@ -31,12 +31,12 @@ done · ⛔ blocked, needs a human.
 | T07 | sound | T01 | ✅ | |
 | T08 | game-flow | T01 | ✅ | |
 | T09 | front-end | T01 | ✅ | |
-| T10 | story-and-ending | T01 | ⬜ | |
-| T11 | level | T01 | ⬜ | |
-| T12 | frog-and-items | T01 | ⬜ | |
+| T10 | story-and-ending | T01 | ✅ | |
+| T11 | level | T01 | ✅ | |
+| T12 | frog-and-items | T01 | ✅ | |
 | T13 | enemies-and-bosses | T01 | ✅ | Reviewed, two fixes: `w1_hover_phase` is asserted (W4 `SWOOPER_PHASE`, same word), only `w1_spout_turn` is not; kills happen below zero hit points, not at zero. All §5 test names, every world's marker/template table and the W4-copies-never-run claim checked, the last by a dispatch probe. |
 | T14 | slot-and-bonus | T01 | ⬜ | |
-| T15 | disks-and-assets | T01 | ⬜ | |
+| T15 | disks-and-assets | T01 | ✅ | |
 | T16 | app | T01 | ⬜ | |
 | T17 | verification | T01 | ⬜ | |
 | T18 | overview-and-summary | T02, T03, T04, T05, T06, T07, T08, T09, T10, T11, T12, T13, T14, T15, T16, T17 | ⬜ | |
