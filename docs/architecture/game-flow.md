@@ -181,8 +181,8 @@ W6-2..4 load with an empty df1). A native rewrite with no disks still has to pro
 ### The RNG
 
 The RNG is game logic, the original's own routine and not hardware. What must be bit-exact is the
-routine (the mask of bits 0, 4 and 5, the multiply by `2^17 + 3`, `rng_range`'s top-word
-remainder and its `0xFFFF` case), the state's layout at `rng_state` (h0+$160d4, `lo` then `hi`),
+routine (the low byte cut to bits 1–3 with bit 5 set, so bits 0, 4, 6 and 7 cleared, the
+multiply by `2^17 + 3`, `rng_range`'s top-word remainder and its `0xFFFF` case), the state's layout at `rng_state` (h0+$160d4, `lo` then `hi`),
 and the order of calls, since about 40 object routines and the title draw from it and one call
 moved shifts everything after it. The seed is part of the start (owner, 2026-10-11): normal play
 seeds from the host clock (`host_seed` in `engine/crates/sf-app/src/main.rs`), a power-on
