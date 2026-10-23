@@ -12,7 +12,7 @@ use sf_core::input::{FrameInput, Joy};
 use sf_core::{Game, LevelId, Start};
 use sf_plan::core::shorten::{self, Shortcut, budget, replay_exit};
 use sf_plan::core::*;
-use sf_plan::run::{RunOptions, plan_engine, shortcut_pass};
+use sf_plan::run::{RunOptions, over_slack, plan_engine, shortcut_pass};
 
 /// The detour's frames, each way.
 const DETOUR: usize = 32;
@@ -259,11 +259,12 @@ fn a_longer_exit_losing_fewer_hearts_is_better() {
     );
 }
 
-/// `shorten_min_over` (T14): the minimum applies to a first exit longer than the bound, never to
-/// one within it that loses no heart. The detoured route exits in round 0, so the shortening
+/// `shorten_min_over` (T14): the minimum applies to a first exit longer than the bound and its
+/// slack (`over_slack`), never to one within them that loses no heart. The detoured route exits in round 0, so the shortening
 /// search's rounds are the minimum or none.
 #[test]
 fn the_shortening_minimum_applies_only_over_the_bound() {
+    assert_eq!(over_slack(1000), 1164);
     let n = detoured().len();
     let plan = |over| {
         let (g, fa) = at_start("W1-1".parse().unwrap());
@@ -280,10 +281,10 @@ fn the_shortening_minimum_applies_only_over_the_bound() {
         };
         plan_engine(g, fa, opt, &run).unwrap()
     };
-    let within = plan(Some((n, 0)));
+    let within = plan(Some((n - 64, 0)));
     assert_eq!(within.rounds, 0, "an exit within the bound gets no minimum");
     assert_eq!(within.inputs.len(), n);
-    let over = plan(Some((n - 1, 0)));
+    let over = plan(Some((n / 2, 0)));
     assert!(over.rounds >= 6, "{} rounds", over.rounds);
     assert!(over.inputs.len() < n, "{} frames", over.inputs.len());
 }

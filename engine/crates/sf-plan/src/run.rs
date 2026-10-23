@@ -25,8 +25,9 @@ pub struct RunOptions {
     /// Shortening after the first exit (DESIGN §2.12, T22); the default keeps it off.
     pub shorten_share: f32,
     pub shorten_min_rounds: u64,
-    /// When set, `(frames, hearts)`: `shorten_min_rounds` applies only to a first exit longer than
-    /// `frames` or losing more than `hearts` hearts; otherwise the share alone. A repair stretch
+    /// When set, `(frames, hearts)`: `shorten_min_rounds` applies only to a first exit more than
+    /// `MIN_OVER_SLACK` longer than `frames` or losing more than `hearts` hearts; otherwise the
+    /// share alone. A repair stretch
     /// passes the frames its old plan still had and the hearts that plan lost: its route is mostly
     /// that plan's, already shortened, unless its search went another way (W1-2's repair took a
     /// 7 200-frame, 3-heart exit for a 4 718-frame, no-heart plan, T14).
@@ -88,6 +89,13 @@ pub fn run_round(ex: &mut Explorer, threads: usize) -> Progress {
     )
 }
 
+/// How much longer than `shorten_min_over`'s frames a first exit may be without the minimum: 10%
+/// and 64 frames. A repair's exit is rarely as short as the rest it replaces; at the bare bound
+/// W4-2's eight repairs each spent ~380 rounds shortening an exit found in ~20 (T14).
+pub fn over_slack(frames: usize) -> usize {
+    frames + frames / 10 + 64
+}
+
 /// The explorer from `start` to the goal, within `run`'s budget: the route, or the best partial
 /// route and why (DESIGN §2.9). With shortening on (DESIGN §2.12) the search goes on after the
 /// first exit for `shorten::budget` more rounds keeping the shortest exit, then the shortcut pass
@@ -118,7 +126,7 @@ pub fn plan_engine(
         return Ok(best);
     };
     let min = match run.shorten_min_over {
-        Some((n, h)) if best.inputs.len() <= n && best.hearts_lost <= h => 0,
+        Some((n, h)) if best.inputs.len() <= over_slack(n) && best.hearts_lost <= h => 0,
         _ => run.shorten_min_rounds,
     };
     let extra = shorten::budget(ex.rounds(), run.shorten_share, min);
