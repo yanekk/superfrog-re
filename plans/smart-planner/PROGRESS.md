@@ -50,7 +50,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T21 | engine-memory-lookup | T04 | ✅ | |
 | T22 | route-shorten | T08 | ✅ | |
 | T23 | w1-4-ending | T09, T10; blocks T14 | ✅ | |
-| T24 | repair-cost | T14; blocks T15 | ⬜ | |
+| T24 | repair-cost | T14; blocks T15 | ✅ | |
 | T25 | tuning-set-a | T14, T24; blocks T15 | ⬜ | |
 | T26 | tuning-set-b | T14, T25; blocks T15 | ⬜ | |
 | T27 | tuning-unaided | T14, T26; blocks T15 | ⬜ | |
