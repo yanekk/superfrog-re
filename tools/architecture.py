@@ -143,7 +143,8 @@ _LINK = re.compile(r'\]\(([^)\s]+)(?:\s+"[^"]*")?\)')
 
 def cited_paths(text):
     """(path, from_link) for each repo path the Markdown cites: a code span or a link target that
-    starts with one of PATH_ROOTS, or a relative link target (`../x.md`). A `:line` or `::item`
+    starts with one of PATH_ROOTS, or any other link target, read as relative (`../x.md`,
+    `glossary.md`: chapters link each other with bare names). A `:line` or `::item`
     suffix and a `#anchor` are stripped; a path with `*` or `{` is a pattern and skipped. A code
     span with a space in it is a command, not a path. Fenced blocks are skipped."""
     text = _FENCE.sub('', text)
@@ -162,7 +163,7 @@ def cited_paths(text):
             continue
         path = raw.split('::', 1)[0]
         path = re.sub(r':\d+(-\d+)?$', '', path)
-        if path.startswith(PATH_ROOTS) or (from_link and path.startswith(('./', '../'))):
+        if path.startswith(PATH_ROOTS) or (from_link and not path.startswith('/')):
             paths.append((path, from_link))
     return paths
 

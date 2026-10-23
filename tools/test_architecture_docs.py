@@ -166,6 +166,11 @@ class CitedPaths(unittest.TestCase):
         self.assertEqual(self.check('[notes](../09-nope.md) and [ok](../08-executable-map.md#lag)'),
                          ['docs/architecture/x.md: cites ../09-nope.md, which does not exist'])
 
+    def test_a_bare_sibling_link_is_checked(self):
+        # Chapters link each other as `[memory model](memory-model.md)`, with no `./`.
+        self.assertEqual(self.check('[gone](gone.md) and [here](x.md)'),
+                         ['docs/architecture/x.md: cites gone.md, which does not exist'])
+
     def test_line_and_item_suffixes_resolve_to_the_file(self):
         self.assertEqual(self.check('`engine/a/path.rs:120`, `engine/a/path.rs::item`, `engine/a/path.rs::State::probe`',
                                     ['engine/a/path.rs']), [])
