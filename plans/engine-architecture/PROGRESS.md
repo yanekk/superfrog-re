@@ -13,7 +13,7 @@ writes a cell also fixes the over-budget cell they walk past.
 
 **Status:** Plan written 2026-10-22; nothing built.
 **Last updated:** 2026-10-23
-**Next `pir-work` will:** T01, the skeleton every chapter task edits.
+**Next `pir-work` will:** the remaining chapter tasks T03–T17, then T18.
 
 ## Tasks
 
@@ -23,7 +23,7 @@ done · ⛔ blocked, needs a human.
 | # | Task | Depends on | State | Notes |
 |---|---|---|---|---|
 | T01 | skeleton-and-check | — | ✅ | |
-| T02 | memory-model | T01 | 🔍 | Chapter written: kind amiga, mix 80/5/15/0, reuse big-changes, call-site counts by search, coupling routes table, nine must-preserve rows. No deviation. One row names no check (null-pointer reads); says how to find out. |
+| T02 | memory-model | T01 | ✅ | Review fixed three facts: frog_x is h0+$7d6, VarId uses ~10 not ~25, the mace also writes $64. Checked every must-preserve test name, case path, 292 entries, panic/scratch split, call-site counts by grep; drift-check mutation went red. |
 | T03 | copied-in-data | T01 | ⬜ | |
 | T04 | cpu-time-and-beam | T01 | ⬜ | |
 | T05 | frame-interrupts-input | T01 | ⬜ | |
@@ -41,7 +41,7 @@ done · ⛔ blocked, needs a human.
 | T17 | verification | T01 | ⬜ | |
 | T18 | overview-and-summary | T02, T03, T04, T05, T06, T07, T08, T09, T10, T11, T12, T13, T14, T15, T16, T17 | ⬜ | |
 
-**Review queue:** T02
+**Review queue:** *(empty)*
 
 ## Blocked on the user
 
