@@ -470,6 +470,11 @@ pub fn pass_step(cpu: &CpuRegs, m: &AmigaMemory) -> u16 {
         0xada | 0x19120 => 0,
         0x1912a => 1,
         0x19410..=0x19958 => bob_draw_step(at, cpu, m),
+        // `tile_anim_draw`'s loop (T29): the slots looked at; the one just read (a6 past it) is
+        // not done until its clear (h0+$fa94). In the redraw the clock decides.
+        0xfa7c => 0,
+        0xfa80 => queue_step(cpu.a[6]),
+        0xfa82..=0xfa94 => queue_step(cpu.a[6]).saturating_sub(1),
         0xd0cc => 0,
         0xd0d0 | 0xd0e0..=0xd0ff => 1,
         // The frog's box is taken once its x and y are read (h0+$d0f8, $d0fc): from there the
@@ -505,6 +510,11 @@ pub fn pass_step(cpu: &CpuRegs, m: &AmigaMemory) -> u16 {
             NO_STEP
         }
     }
+}
+
+/// `tile_anim_queue` (h0+$fa68): the slots `tile_anim_draw` has read, `a6` past the last.
+fn queue_step(a6: u32) -> u16 {
+    (a6.wrapping_sub(h0(0xfa68)) / 4).min(5) as u16
 }
 
 /// `bob_draw_vars+$16` (h0+$18bde): set while the drawer draws the seam's part.
