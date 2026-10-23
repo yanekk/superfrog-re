@@ -13,7 +13,7 @@ writes a cell also fixes the over-budget cell they walk past.
 
 **Status:** Chapters in progress (parallel build).
 **Last updated:** 2026-10-23
-**Next `pir-work` will:** the remaining chapter tasks T02–T17, then T18.
+**Next `pir-work` will:** the remaining chapter tasks, then T18.
 
 ## Tasks
 
@@ -23,10 +23,10 @@ done · ⛔ blocked, needs a human.
 | # | Task | Depends on | State | Notes |
 |---|---|---|---|---|
 | T01 | skeleton-and-check | — | ✅ | |
-| T02 | memory-model | T01 | ⬜ | |
+| T02 | memory-model | T01 | ✅ | |
 | T03 | copied-in-data | T01 | ⬜ | |
 | T04 | cpu-time-and-beam | T01 | ✅ | Review fixed wrong spend-call counts (objects 22, bobs 7, scroll 5) and added the missing `Job`/`LoadEnd`/`HandlerEnd`/`step_paced` coverage with a must-preserve row. All 18 cited test names exist; table rows, cost constants, line counts sampled true. Strict front-matter validation clean; cited-path mutation red. Both deviations held. |
-| T05 | frame-interrupts-input | T01 | ⬜ | |
+| T05 | frame-interrupts-input | T01 | ✅ | |
 | T06 | display-hardware | T01 | ⬜ | |
 | T07 | sound | T01 | ⬜ | |
 | T08 | game-flow | T01 | ⬜ | |
