@@ -393,7 +393,11 @@ pub enum Next {
 /// What a parting in `ls` keeps of a `plan_len`-frame plan (§2.6 steps 3, 4): the original frames
 /// of `ls.fed` kept, the plan frames they used, and the mid-pass run at their end (`start` before
 /// the stretch). Accepted, the parting frame is kept too; repaired, `BACK_OFF` frames before it,
-/// counted within the plan (not its lag tail). Held frames use no plan frame (T14).
+/// counted within the plan (not its lag tail). Held frames use no plan frame (T14). A lag parting
+/// is repaired from before the mid-pass run it ended: from inside it every plan parts again within
+/// `BACK_OFF` frames, the run carried in near the bar. W5-2 kept 16 frames from 954, the original
+/// ~85 frames into a run, and parted there 200 times in 27 minutes (T25). The stretch's start is
+/// kept when the run began before it.
 pub fn kept(ls: &Lockstep, plan_len: usize, accepted: bool, start: u32) -> (usize, usize, u32) {
     let agreed = (0..=ls.agreed)
         .rev()
@@ -401,6 +405,9 @@ pub fn kept(ls: &Lockstep, plan_len: usize, accepted: bool, start: u32) -> (usiz
         .unwrap_or(0);
     let keep = if accepted {
         (agreed + 1).min(ls.fed.len())
+    } else if matches!(ls.parting, Some((Parting::Lag, _))) {
+        let back = agreed.saturating_sub(BACK_OFF);
+        (0..=back).rev().find(|&k| ls.mid_run_at(k, start) == 0).unwrap_or(0)
     } else {
         agreed.saturating_sub(BACK_OFF)
     };

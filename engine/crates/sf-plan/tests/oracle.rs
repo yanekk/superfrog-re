@@ -247,6 +247,30 @@ fn a_parting_keeps_original_frames_and_resumes_at_plan_frames() {
     assert_eq!(kept(&ls(10), 40, false, 5), (0, 0, 5));
 }
 
+/// A lag parting is repaired from before the mid-pass run it ended (T25: W5-2 re-planned from
+/// inside one 200 times). A 60-frame plan, the original mid-pass from its 25th frame to the 50th,
+/// where the run passes the bar; with the run begun before the stretch, its start is kept.
+#[test]
+fn a_lag_parting_keeps_the_frames_before_its_run() {
+    let ls = |parting: Parting, mid_run: Vec<u32>| Lockstep {
+        agreed: 49,
+        exited: false,
+        parting: Some((parting, (1, 1))),
+        fed: vec![FrameInput::NONE; 50],
+        used: (1..=50).collect(),
+        mid_run,
+        hearts_lost: 0,
+    };
+    let late: Vec<u32> = (0..50).map(|j| if j < 24 { 0 } else { j - 23 }).collect();
+    // The run's frames are 25–50 (`mid_run` 1–26): the 24 before it are kept.
+    assert_eq!(kept(&ls(Parting::Lag, late.clone()), 60, false, 0), (24, 24, 0));
+    // Any other parting backs off `BACK_OFF` frames, into the run.
+    assert_eq!(kept(&ls(Parting::Apart, late), 60, false, 0), (49 - BACK_OFF, 33, 9));
+    // A run carried in from the last stretch and never ended: nothing kept, the run stands.
+    let carried: Vec<u32> = (0..50).map(|j| 60 + j + 1).collect();
+    assert_eq!(kept(&ls(Parting::Lag, carried), 60, false, 60), (0, 0, 60));
+}
+
 /// The faithful check's lag bar (T14): this sf-plan W5-3 route keeps the original mid-pass 101
 /// frames in a row from frame 5 310, one past `LAG_LIMIT`. Played in lockstep from 5 390, the run
 /// so far carried in, it parts for lag at the 101st under the level's bar, and not under a looser
