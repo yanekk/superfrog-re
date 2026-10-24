@@ -149,6 +149,69 @@ def load_overrides(world):
     return json.load(open(path)) if os.path.exists(path) else {}
 
 
+def object_mask(world, t, spec):
+    """Pixels of tile t that belong to the object: everything not the corner
+    colour, or another tile's mask when the background is textured (an R coin
+    set in dirt borrows the plain R's mask)."""
+    idx = decode_tiles(chunk(WORLDS[world]['bm']))
+    src = int(spec.get('mask_from', {}).get(str(t), t))
+    return idx[src] != idx[src][0, 0]
+
+
+def background_tile(world, t, spec, used):
+    """What lies behind the object: a flat colour, or the used tile whose
+    pixels best match the object tile's background (the dirt behind the R)."""
+    idx = decode_tiles(chunk(WORLDS[world]['bm']))
+    m = object_mask(world, t, spec)
+    bgv = idx[t][~m]
+    if (bgv == bgv[0]).all():
+        return ('flat', int(bgv[0]))
+    best = min((u for u in used if u != t),
+               key=lambda u: (idx[u][~m] != bgv).mean())
+    return ('tile', int(best))
+
+
+def composite_objects(world, base, man, hd, tiles, used):
+    """Paste redrawn objects onto their tiles' backgrounds, last of all.
+    Alpha comes from the model's key-colour cut at 24x, so edges are as round
+    as the model drew them; the object is fitted to the original's footprint
+    and kept 1 px inside the tile so the border never clips it."""
+    pal = palette(world)
+    P = T * S
+    for d in load_overrides(world).get('objects', []):
+        inp = next((i for i in man['inputs'] if i['name'] == d['name']), None)
+        if inp is None or not os.path.exists(os.path.join(base, 'out', d['name'] + '.png')):
+            print('no object sheet', d['name']); continue
+        im = load_registered(base, d['name'])
+        k = inp['scale']
+        for cell in inp['cells']:
+            t = cell['tile']
+            m = object_mask(world, t, d)
+            blk = im[cell['y'] - k * 2:cell['y'] + T * k + k * 2, cell['x'] - k * 2:cell['x'] + T * k + k * 2]
+            dist = np.abs(blk - np.array(KEY, np.float32)).sum(-1)
+            a = np.clip((dist - 90) / 120, 0, 1)
+            ys, xs = np.nonzero(a > 0.5)
+            # Original footprint in HD pixels, inset 1 px from the tile border.
+            oy, ox = np.nonzero(m)
+            ty0, ty1 = max(oy.min() * S, 1), min((oy.max() + 1) * S, P - 1)
+            tx0, tx1 = max(ox.min() * S, 1), min((ox.max() + 1) * S, P - 1)
+            box = (xs.min(), ys.min(), xs.max() + 1, ys.max() + 1)
+            w, h = tx1 - tx0, ty1 - ty0
+            # Premultiplied resize so the magenta behind the edge does not bleed in.
+            pm = np.dstack([blk * a[..., None], a * 255]).astype(np.float32)
+            chans = [np.array(Image.fromarray(pm[..., c]).resize((w, h), Image.LANCZOS, box=box))
+                     for c in range(4)]
+            rgb_p, al = np.stack(chans[:3], -1), np.clip(chans[3] / 255, 0, 1)[..., None]
+            rgb = np.where(al > 1e-3, rgb_p / np.maximum(al, 1e-3), 0)
+            kind, v = background_tile(world, t, d, used)
+            bg = np.empty((P, P, 3), np.float32)
+            bg[:] = pal[v] if kind == 'flat' else hd[v]
+            region = bg[ty0:ty1, tx0:tx1]
+            bg[ty0:ty1, tx0:tx1] = rgb * al + region * (1 - al)
+            hd[t] = np.clip(bg, 0, 255).astype(np.uint8)
+    return hd
+
+
 def prepare(world):
     base = os.path.join(ROOT, 'build', 'hd', f'w{world}')
     src = os.path.join(base, 'src')
@@ -221,6 +284,25 @@ def prepare(world):
             cells.append(dict(tile=int(t), y=y, x=x))
         Image.fromarray(canvas).save(os.path.join(src, d['name'] + '.png'))
         man['inputs'].append(dict(name=d['name'], kind='detail', scale=k, cells=cells))
+    # Object sheets: single-tile pickups (letter coins, apple) cut out of their
+    # tiles and drawn alone, very large, on the key colour, then pasted onto
+    # the finished background (assemble). Anything drawn as part of a tile is
+    # cut at the tile border, which kept flattening their round edges.
+    for d in load_overrides(world).get('objects', []):
+        k = d.get('scale', 24)
+        canvas = np.zeros((OUT_H, OUT_W, 3), np.uint8)
+        canvas[:] = KEY
+        cells, n_obj = [], len(d['tiles'])
+        gap = (OUT_W - n_obj * T * k) // (n_obj + 1)
+        for j, t in enumerate(d['tiles']):
+            m = object_mask(world, t, d)
+            rgb = tiles[t].copy()
+            rgb[~m] = KEY
+            y, x = (OUT_H - T * k) // 2, gap + j * (T * k + gap)
+            canvas[y:y + T * k, x:x + T * k] = up(rgb, k)
+            cells.append(dict(tile=int(t), y=y, x=x))
+        Image.fromarray(canvas).save(os.path.join(src, d['name'] + '.png'))
+        man['inputs'].append(dict(name=d['name'], kind='objects', scale=k, cells=cells))
     man['missing_tiles'] = [int(t) for t in missing]
     json.dump(man, open(os.path.join(base, 'manifest.json'), 'w'), indent=1)
     print(f'{len(picks)} windows, {len(spots)} packed tiles in '
@@ -594,6 +676,7 @@ def assemble(world):
         hd[t] = normalise(hd[t], tiles[t], idx[t]).astype(np.uint8)
     before = seam_score(hd, lv)
     hd = seam_fix(hd, lv, tiles, idx)
+    hd = composite_objects(world, base, man, hd, tiles, used)
     after = seam_score(hd, lv)
 
     cols = 40

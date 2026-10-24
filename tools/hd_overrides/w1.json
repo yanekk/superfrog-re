@@ -1,7 +1,9 @@
 {
- "_why": "tile_source: tile index -> model image to take it from, when no automatic rule is right. detail: tiles drawn together on their own 8x sheet and always taken from it; used for the letter coins, which at 4x came back with guessed letters (R as A, n, B) and in mismatched styles (plain R next to a swirled S).",
+ "_why": "tile_source: tile index -> model image to take it from. detail: tiles drawn together on an 8x sheet and taken from it. objects: single-tile pickups cut out of their tiles, drawn alone at 24x on the key colour and pasted onto their background last; drawn as part of a tile their round edges were clipped and stepped at tile borders, and at 4x the model guessed letters (R as A, n, B) and mixed styles. mask_from: 664 is the R coin set in dirt, so it borrows the plain R's (660) outline.",
  "tile_source": {},
- "detail": [
-  {"name": "detail00", "tiles": [437, 660, 664, 680], "letters": "S, R, R, S", "scale": 8}
+ "detail": [],
+ "objects": [
+  {"name": "objects00", "tiles": [437, 660, 664, 680, 682], "letters": "S, R, R, S", "scale": 24,
+   "mask_from": {"664": 660}}
  ]
 }
