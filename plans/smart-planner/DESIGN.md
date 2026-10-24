@@ -596,9 +596,9 @@ The old tools stay in the tree until T18, so any level can still be planned the 
   straight pull points through walls. A fill over the level's open cells costs milliseconds, needs no
   moves and no cache, unlike the map (13 of 24 exits reached, T04).
 - D26 (owner, 2026-10-24; T33): a reach needs the frog to survive the idle tail, and a dead-end
-  stretch rewinds to an earlier stretch start (§2.6). W4-1 and W1-3 unaided confirmed a reach that
-  ended mid-fall over a pit; every input from there died within 6 frames, and the next plan
-  archived 2 and 5 cells for ~25 minutes. Rewinding backs up and never gives up (D16).
+  stretch rewinds to an earlier stretch start (§2.6). W4-1 unaided confirmed a reach that ended
+  mid-fall over a pit; every input from there died within 6 frames, and the next plan archived 2
+  cells for ~25 minutes (W1-3: 5 cells). Rewinding backs up and never gives up (D16).
 - D8: the planner is a new crate `sf-plan`, not more examples in sf-conform, because examples cannot be
   unit-tested or shared, which is how four copies of the level facts came to exist.
 - D9: the benchmark verifies with `sf_conform::run` on a generated case, the check the completion
