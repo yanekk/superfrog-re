@@ -6,7 +6,15 @@ from collections import Counter, defaultdict
 
 import numpy as np
 
-SKY = (3, 4)       # W1 flat background colours: tile 0 is index 4, tile 248 index 3
+
+def sky(tl, jt, min_uses=200):
+    """Flat background colours: the colour of every single-colour tile the levels use a lot.
+    W1: tile 0 (index 4) and tile 248 (index 3)."""
+    uses = Counter()
+    for (a, b, ax), n in jt.items():
+        uses[a] += n; uses[b] += n
+    return tuple(sorted({int(tl[t][0, 0]) for t, n in uses.items()
+                         if n >= min_uses and (tl[t] == tl[t][0, 0]).all()}))
 
 
 def canonical(tl):
@@ -30,14 +38,15 @@ def joints(levels, canon):
     return c
 
 
-def families(tl, jt, min_size=3):
+def families(tl, jt, min_size=3, sky_idx=None):
     """Interchangeable fill tiles: no sky pixels, and joined to each other in both orders.
 
     Two such tiles are linked when a|b and b|a both occur on the same axis; a family is a
     connected group of linked tiles. Its members may sit next to each other in any order, so
-    in HD they share one border ring (see tiles.family_ring).
+    their HD copies only join if the redraw keeps the original's texture (docs/15).
     """
-    nosky = {t for t in range(len(tl)) if not np.isin(tl[t], SKY).any()}
+    sky_idx = sky(tl, jt) if sky_idx is None else sky_idx
+    nosky = {t for t in range(len(tl)) if not np.isin(tl[t], sky_idx).any()}
     adj = defaultdict(set)
     for (a, b, ax), n in jt.items():
         if a != b and a in nosky and b in nosky and jt.get((b, a, ax), 0) > 0:

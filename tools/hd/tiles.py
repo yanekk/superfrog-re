@@ -26,15 +26,22 @@ from .register import blur
 
 S = 4
 TS = s.T * S          # 64
+MIN_MATCH = 0.2       # registration score below which a redraw is rejected
 
 
 def load_sources(world):
     d = out_dir(world)
     man = json.load(open(os.path.join(d, 'manifest.json')))
+    reg = json.load(open(os.path.join(d, 'registration.json')))
     out = []
     for src in man['sources']:
         p = os.path.join(d, 'reg', src['name'] + '.png')
         if not os.path.exists(p):
+            continue
+        # A redraw that does not match its source at all is not a redraw of it: on the bonus
+        # level's abstract background the model drew the style reference instead (score ~0;
+        # real redraws score 0.33-0.85, 2026-10-24). Its tiles fall back to other copies.
+        if reg.get(src['name'], {}).get('global_ncc', 1) < MIN_MATCH:
             continue
         img = np.asarray(Image.open(p).convert('RGB')).astype(np.float32)
         idx = np.load(os.path.join(d, 'src', src['name'] + '_idx.npy'))
@@ -245,7 +252,7 @@ def build(world, refit=True):
                 hd[t] = p.copy(); kept += 1
     sky = {t: np.zeros((TS, TS), bool) for t in used}
     for t in used:
-        for k in an.SKY:
+        for k in an.sky(tl, jt):
             if k in target:
                 m = flat_mask(np.pad(tl[t], 1, mode='edge'), k)[S:-S, S:-S]
                 hd[t][m] = target[k]

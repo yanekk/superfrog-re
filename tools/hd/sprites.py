@@ -23,7 +23,10 @@ CW, CH = 324, 192                       # canvas, original pixels
 
 
 def sheets(world):
-    return {'hero': s.hero(), f'bobs{world}': s.bobs(world)}
+    # the frog sheet is the same in every world: drawn once, with World 1
+    out = {'hero': s.hero()} if world == 1 else {}
+    out[f'bobs{world}'] = s.bobs(world)
+    return out
 
 
 def halves(idx):
@@ -81,7 +84,7 @@ def frame_rects(world, sheet):
     if sheet == 'hero':
         rs = s.exe_rects(s.HERO_RECTS, s.HERO_N)
     else:
-        rs = s.exe_rects(s.SHARED_RECTS, s.SHARED_N) + s.exe_rects(s.WORLDS[world]['bob_table'], s.WORLD_N)
+        rs = s.exe_rects(s.SHARED_RECTS, s.SHARED_N) + s.world_rects(world)
     return sorted({(r['x'], r['y'], r['w'], r['h']) for r in rs if r['w'] and r['h']})
 
 
@@ -155,7 +158,8 @@ def crisp_upscale(world, idx):
 
 
 # Sheet areas drawn from the original instead of the model: text the model misreads.
-TEXT = {1: {'bobs1': [(0, 16, 64, 27)]}}      # x, y, w, h: the 100 / 200 / 50 score popups
+# x, y, w, h: the 100 / 200 / 50 score popups, same place in every bob sheet but the bonus level's
+TEXT = {w: {f'bobs{w}': [(0, 16, 64, 27)]} for w in (1, 2, 3, 4, 5, 6, 8)}
 
 
 def despill(img, alpha, band=3):
@@ -215,7 +219,7 @@ def assemble(world):
     frames = dict(scale=S,
                   hero=s.exe_rects(s.HERO_RECTS, s.HERO_N),
                   shared=s.exe_rects(s.SHARED_RECTS, s.SHARED_N),
-                  world=s.exe_rects(s.WORLDS[world]['bob_table'], s.WORLD_N))
+                  world=s.world_rects(world))
     with open(os.path.join(fin, 'frames.json'), 'w') as fh:
         json.dump(frames, fh, indent=1)
     for table, sheet in (('hero', 'hero'), ('shared', f'bobs{world}'), ('world', f'bobs{world}')):

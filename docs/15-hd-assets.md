@@ -1,4 +1,4 @@
-# 15 — HD assets (Higgsfield, World 1)
+# 15 — HD assets (Higgsfield, all worlds)
 
 A 4x HD version of World 1's art, redrawn by image models on Higgsfield (MCP) and rebuilt into
 the game's own units: 64 x 64 tiles, the four levels composed from them, and RGBA sprite sheets
@@ -98,9 +98,21 @@ inside tiles. It counts real edges in the art too, so judge by eye; the original
 - Dirt keeps the original's two-row stone rhythm (visible from afar, as in the original).
 - Registration resamples, so HD pixels are slightly soft rather than hard-edged.
 - Colour cycling (COLOR06, docs/10) is baked in at its base colour.
-- World 1 only (`WORLDS` in `hd/source.py`); other worlds need their chunk ids and bob table.
+- Worlds in `hd/source.py` `WORLDS`: 1-6, 7 = bonus level (WB, 640 tiles), 8 = final level (WW,
+  W6's palette). W6 also has W6-5..7, its second map set (d4_c16 skipped: no readable header).
+  Done (2026-10-24): W1-W5, the final level's tiles and sprites, the bonus level's sprites.
+  Not done: W6 (16 images, ~44 credits, over the owner's cap). Bonus level only partly: on its
+  abstract background the model drew the style sample instead (4 of 6 views; rejected by
+  `tiles.MIN_MATCH`), so 127 of its 586 tiles are original pixels; redo those views with only the
+  level's own first redraw as reference.
+- The frog sheet is drawn once (World 1); other worlds reuse it. Later worlds' windows use their
+  own first redraw as a second style reference (`hd/requests.py`) so a world is drawn in one hand.
 
 ## Cost (2026-10-24)
+
+All worlds pass: 199 credits (73 images, W2-W5, bonus, final). Total 341.
+
+World 1:
 
 About 142 credits: style samples 14.25, stability test 9.5, boulder run 47 (discarded), sprites 11,
 dirt tests 4.75, texture-preserving run 49.5, refit 2, spike 2.75.
