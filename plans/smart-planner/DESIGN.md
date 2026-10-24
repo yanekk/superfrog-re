@@ -108,6 +108,12 @@ The default compass is the straight distance in cells (|Δcol| + |Δrow|), no ma
 compass on the stall levels and keeps it only if it completes more levels or plans them measurably
 faster (owner, 2026-10-22); otherwise the map code stays as built and unused.
 
+Amended 2026-10-24 (owner, D25): a third compass, walk, joins T28's trial: the steps over open
+cells (marker below `$3a`, not a hazard; a gate open once its switch is pressed) from the nearest
+exit, a breadth-first fill ignoring gravity, made once per switch set, straight where no open path
+exists. The same fill gives the last-8-coins pull its distance (§2.3). It is kept by the same rule
+as the map.
+
 The map's own rules from before the amendment (speed bands D15, learned and unreliable edges D16 and
 D17, M7) bind nothing now: the explorer has no edges to learn or distrust.
 
@@ -576,6 +582,10 @@ The old tools stay in the tree until T18, so any level can still be planned the 
 - D24 (owner, 2026-10-22): original mode confirms by stretch and repair (§2.6), not T02's 48-frame chunks. T02 chose chunks
   for the old tools on a small confirmation share; the explorer plans whole stretches, and its repair
   loop is what passed `verify` on W2-1 and W5-2.
+- D25 (owner, 2026-10-24): a walk compass (§2.2) joins T28's trial. T27's unaided first-exit failures
+  mostly had the coins met and stalled 6–88 cells from the exit with 10k–36k cells archived: the
+  straight pull points through walls. A fill over the level's open cells costs milliseconds, needs no
+  moves and no cache, unlike the map (13 of 24 exits reached, T04).
 - D8: the planner is a new crate `sf-plan`, not more examples in sf-conform, because examples cannot be
   unit-tested or shared, which is how four copies of the level facts came to exist.
 - D9: the benchmark verifies with `sf_conform::run` on a generated case, the check the completion
