@@ -1,91 +1,103 @@
-# 15 — HD assets (Higgsfield pilot, World 1)
+# 15 — HD assets (Higgsfield, World 1)
 
-A 4x HD version of the game's art, redrawn by an image model on Higgsfield (MCP) and rebuilt
-into the game's own units: 64 x 64 tiles, sprite sheets with alpha, and the game's frame table.
-The engine is not changed; nothing here is read by it yet. Tool: `tools/hd_assets.py`.
+A 4x HD version of World 1's art, redrawn by image models on Higgsfield (MCP) and rebuilt into
+the game's own units: 64 x 64 tiles, the four levels composed from them, and RGBA sprite sheets
+with the game's frame table. The engine is not changed; nothing here is read by it yet.
+
+This replaces the first pilot (faithful 4x upscale, branch history up to 3872ee0). The owner
+asked on 2026-10-24 for a clearly redrawn look, no visible seams and a simpler method.
 
 ```
-python tools/hd_assets.py prepare  --world 1   # build/hd/w1/src/*.png + manifest.json
-# run each src/*.png through the model, save the result as build/hd/w1/out/<same name>.png
-python tools/hd_assets.py assemble --world 1   # build/hd/w1/final/
+python tools/hd_assets.py prepare  --world 1   # level windows + rare-tile sheets -> build/hd2/w1/src/
+python tools/hd_assets.py sprites  --world 1   # (first run) sprite sheet halves -> src/
+# a session runs each src image through the model (Higgsfield MCP; prompts below) and saves the
+# result as build/hd2/w1/out/<same name>.png  (tools/hd/upload.py, tools/hd/fetch.py move bytes)
+python tools/hd_assets.py register --world 1   # out/ -> reg/, aligned to the original grid
+python tools/hd/refit.py prepare 1             # optional: worst-fitting tiles in context -> src/refit00*
+# model: inpaint refit00.png with refit00_mask.png -> out/refit00.png
+python tools/hd_assets.py tiles    --world 1   # reg/ (+ refit) -> final/ tiles, levels, report
+python tools/hd_assets.py sprites  --world 1   # (second run) out/ -> final/ sprite sheets, frames
 ```
 
 Outputs are derived from the disks, so they stay in `build/` (git-ignored).
 
-| File in `build/hd/w1/final/` | What |
+| File in `build/hd2/w1/final/` | What |
 |---|---|
-| `tiles_W1_hd.png` | 840 tiles, 40 per row, 64 x 64 each (index = row*40 + col) |
-| `level_W1-{1..4}_hd.png` | each level composed from HD tiles, 19 200 x 5 376 |
+| `tiles_W1_hd.png` | all 840 tiles, 40 per row, 64 x 64 each (index = row*40 + col) |
+| `level_W1-{1..4}_hd.png` | each level composed from the HD tiles, 19 200 x 5 376 |
 | `level_*_preview.png` | the same at 1/8 |
 | `hero_hd.png`, `bobs1_hd.png` | frog sheet (1280 x 1536) and W1 bob sheet (1280 x 1280), RGBA |
-| `frames.json` | frame records from the exe (`hero_rects` h0+$1a6f4, shared h0+$2c9b4, W1 h0+$2ed2c), original pixels; multiply by `scale` |
+| `frames.json` | frame records from the exe (hero h0+$1a6f4, shared h0+$2c9b4, W1 h0+$2ed2c), original pixels; multiply by `scale` |
 | `frames/{hero,shared,world}/NNN.png` | one PNG per non-empty record |
-| `report.json` | coverage, error against the original, seam score |
+| `report.json` | seam score per level, rigid joints, families, sky colours |
 
 ## Style and model
 
-Style C, "faithful upscale", chosen by the owner on 2026-10-24 from three samples (hi-res pixel
-art, painted cartoon, faithful upscale). Painted redesigned the frog (two eyes, new body) and
-moved small objects. Model `nano_banana_pro` at 2k, 16:9: 2 credits an image; outputs are
-2752 x 1536. The pilot cost 60 credits (12 for style samples, 36 for 18 inputs incl. a retry, 2 for a coin
-detail sheet since superseded, 10 for five objects sheets of which two are used).
+Style D, "hi-res pixel art, GPT look", chosen by the owner on 2026-10-24 from six samples (painted,
+hi-res pixel, vector cartoon, each on Nano Banana 2.1 and GPT Image 2.5). Model `gpt_image_2_5`,
+2k, quality high, 27:16 (2592 x 1536 = a 648 x 384 original window at 4x): 2.75 credits an image.
+Every request carries the chosen sample (job 5cdea430) as style reference.
+
+Stability test (same input, two runs each, 2026-10-24): Nano Banana stays aligned only when it
+barely redraws, and with `aspect_ratio: auto` once returned a square, recomposed image; GPT Image
+redraws fully but drifts 1.5-3 original px locally and run to run. So nothing relies on exact
+positions: every output is registered (below).
+
+**Prompt: texture-preserving.** The first run asked for a redraw keeping the layout; the model
+painted its own large boulders over the dirt. Interchangeable dirt tiles cut from that cannot join
+(a 64 px wallpaper grid). The prompt now says to keep every stone, crack and mortar line in place,
+with a dirt redraw (job c84e2e4d) as a second style reference. That is what makes the dirt join.
 
 ## How it works
 
-- **Tiles are redrawn in context.** A tileset is fragments (a tree spans dozens of tiles); alone they
-  mean nothing to the model. `prepare` picks level windows of 43 x 24 tiles (exactly 2752 x 1536 at
-  4x) by greedy set cover over all four W1 levels: 11 windows cover 718 of the 794 tiles used. The
-  rest go in packed sheets of 5 x 5-tile context patches (3 sheets).
-- **Registration.** The model keeps layout but not framing: outputs come back ~0.5-1.2% scaled and
-  up to 8 px shifted. `register` fits x/y scale and shift per image (cached in `registration.json`);
-  `take` then nudges each tile up to 6 px.
-- **Choosing a version.** A tile occurs in many windows. Cost = typicality (medoid distance) +
-  error against the original - centrality bonus. Lowest error alone picks copies the model left
-  blocky; medoid alone fails on tiny letters. `choose_jointly` then picks per tile so that
-  neighbouring tiles' touching edges agree (ICM over all adjacent pairs in the levels).
-- **Colour pinning.** The model repaints flat areas a slightly different shade per image, which
-  showed as darker boxes around coins and apples. `normalise` sets every pixel whose original 3x3
-  neighbourhood is one palette index to that exact colour (2 px feather), then corrects remaining
-  drift at low frequency (original minus the redraw shrunk to 16 px, blurred, enlarged, added).
-- **Seams.** `seam_fix` decides per border pixel, over every place the levels put two tiles side
-  by side, whether the original art continues across it (same palette index both sides). Where
-  it continues, the touching lines are evened (smoothed 4 px along, 8 px falloff). Where the
-  original has an edge on the border, nothing is averaged and the outer 4 px are pulled to a
-  bicubic enlargement of the original's edge (square-block colours made coin and apple edges stepped). Averaging everywhere erased the mushroom cap's top outline (top row of
-  its tile, plain sky above) and darkened the bottom of coin tiles toward the grass line.
-  `seam_score` counts real border edges too, so it rises (1.36 -> 1.98); judge by eye.
-- **Overrides.** `tools/hd_overrides/w<N>.json`: `tile_source` names the model image to take a tile
-  from; `detail` lists tiles drawn together on their own 8x sheet (letters named in the prompt) and
-  always taken from it. W1: the four letter coins (437, 660, 664, 680). At 4x the model guessed
-  letters (R as A, n, B) and mixed styles (plain R, swirled S). Detail tiles are fitted for size as
-  well as position (a coin fills its tile, and a 2% larger redraw sliced its edge flat), and only
-  the object is kept: the background comes from the tile's ordinary copy, because the detail sheet
-  sets each tile on a flat block (an R coin in a dirt wall came back on plain brown).
-- **Objects.** `objects` in the overrides file: single-tile pickups (marker 55; the world's table
-  at h0+$f382 names each one's handler) are cut out. W1: `objects00` letter coins 437, 660, 664,
-  680 and apple 682, redrawn alone with a faithful-upscale prompt and a level window as style
-  reference. A "flat cartoon, no texture" prompt gave perfect circles in the cartoon look the owner
-  rejected at the start. `tileobjects` (`source: tile`) banana 63, cherries 282, wings 401/605,
-  Spud 403, red ball 434: the model drawing these alone redesigned them every time (leaf on the
-  cherries, purple wings, a new face on Spud), so they are cut from their own level-window HD tile
-  with a smooth outline (blurred, sharpened mask) and pasted 1 px inset. The bottle
-  (753) stays a tile: it is two tiles tall. Mask = not the corner colour, or
-  `mask_from` another tile when the background is textured. Drawn alone at 24x on magenta and
-  pasted last (`composite_objects`) onto the tile's background: a flat colour, or the used tile
-  whose pixels best match (the dirt behind 664). Alpha is the model's key cut, resized
-  premultiplied; the object is fitted to the original footprint and kept 1 px inside the tile.
-  Drawn as part of a tile, their round edges were clipped or stepped at tile borders in every
-  variant tried (detail sheet, edge restoration), and the owner rejected each.
-- **Sprites.** Sheets go in halves at 8x on magenta. Alpha = model's key-colour cut x the original
-  silhouette (grown 2 px, blurred), so the outline the game collides against cannot change.
-  Frog pixel v is palette 16+v (attached sprites); bobs use all 32; index 0 is transparent.
+- **Windows.** Greedy set cover over the four levels picks 648 x 384 windows; windows adding fewer
+  than 8 new tiles are dropped and their tiles go on rare-tile sheets (5 x 5-tile context patches,
+  32 per sheet). W1: 16 windows + 2 sheets for 732 used tiles (after merging 74 exact duplicates).
+- **Registration** (`hd/register.py`, numpy only). One x/y scale + shift, then 40 px blocks of edge
+  features matched within +-4 original px, outliers dropped, smoothed into a displacement field,
+  warp. ~12 s a window.
+- **Harmonise.** A smooth per-painting correction pulls every flat palette area to the median
+  colour of that area over all paintings.
+- **Joints, by kind** (W1 shares of joint occurrences): sky|sky 36% (flat sky pinned to one colour
+  per palette index: exact); dirt/cave/leaf families 52% (interchangeable fill tiles,
+  `analysis.families`; join because the redraw keeps the original's stones); rigid sides (a side
+  that only ever meets one tile: trees, signs) are cut as a stamp from one place in one painting
+  (exact); the rest (~14%, 5 496 distinct pairs).
+- **Choosing copies.** A tile occurs in several windows. `choose_jointly` picks one copy per tile
+  so that touching edges agree over every joint the levels use, weighted by frequency, with a
+  penalty for copies far from the tile's typical look (ICM over 8 candidates per tile).
+- **Refit** (`hd/refit.py`). Tiles with one or two copies cannot be chosen to fit. The 45 worst
+  (edge mismatch against their neighbours) are shown in their most common 3 x 3 context of finished
+  HD tiles with their original pixels in the middle, and Nano Banana inpaints only the middle.
+- **Tried and dropped.** A shared torus-periodic border ring for families (made a visible grid);
+  least-squares levelling of border colours per pixel (fought real edges such as a mortar line on a
+  tile border, smeared them) and per tile (made the cave passage murky).
 
-## Known issues (pilot)
+## Sprites
 
-- Where a leafy outline crosses a tile border, the outer 4 px keep the original's chunkier
-  edge. Faint light squares around bones in dirt; flat background art (clouds,
-  pine silhouettes) stays slightly blocky because the model mostly leaves it as is.
-- Faint magenta-fringe hairlines at some sprite frame edges.
-- Tiny text (bonus letters) is unreliable; check letter tiles by eye and add overrides.
+Sheets go in halves at 8x on magenta (324 x 192 canvas = 27:16), registered like windows (drift
+0.5 px), reduced to 4x. Alpha is the original silhouette with a smoothed outline, so the shape the
+game collides against cannot change. Magenta inside it is filled from neighbours, large areas from
+the original (the blue panel behind the spring), and the magenta tint is removed along edges.
+Frames that are the same picture up to a one-to-one colour swap share the copy that best matches
+its original, recoloured per frame. Text the model misreads is drawn from the original with smooth
+outlines instead (`sprites.TEXT`: the 100/200/50 score popups; it wrote 201).
+
+## Seam score
+
+`tiles.seam_score`: mean colour step across tile borders / mean step between neighbouring columns
+inside tiles. It counts real edges in the art too, so judge by eye; the original at 1x scores
+1.03-1.16, and the report's `seam_original_4x` is not comparable (pixel doubling).
+
+## Known issues
+
+- Rare edge tiles beyond the 45 refitted can still show a seam where only one copy exists.
+- Dirt keeps the original's two-row stone rhythm (visible from afar, as in the original).
+- Registration resamples, so HD pixels are slightly soft rather than hard-edged.
 - Colour cycling (COLOR06, docs/10) is baked in at its base colour.
-- Only World 1 (`WORLDS` in the tool); other worlds need their chunk ids and bob table added.
+- World 1 only (`WORLDS` in `hd/source.py`); other worlds need their chunk ids and bob table.
+
+## Cost (2026-10-24)
+
+About 142 credits: style samples 14.25, stability test 9.5, boulder run 47 (discarded), sprites 11,
+dirt tests 4.75, texture-preserving run 49.5, refit 2, spike 2.75.
