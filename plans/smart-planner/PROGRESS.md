@@ -55,7 +55,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T26 | tuning-set-b | T14, T25; blocks T15 | ⬜ | |
 | T27 | tuning-unaided | T14, T26; blocks T15 | ⬜ | |
 | T28 | compass-trial | T14, T27; blocks T15 | ⬜ | |
-| T29 | engine-sound-ramp | T25; blocks T15 | ⬜ | |
+| T29 | engine-sound-ramp | T25; blocks T15 | ✅ | |
 | T30 | lag-repair | T25; blocks T15 | ✅ | |
 
 **Review queue:** *(empty)*
