@@ -11,6 +11,7 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-24 | 🔄 | Owner, T27: T33 dead-end-repair (T27, T30; blocks T17), added. W1-3, W4-1 unaided confirmed a reach stretch, then the next stretch archived 5 and 2 cells and spun ~25 min; suspected `Goal::Reach` met with no survival check.
 | 2026-10-24 | 🔄 | Owner, T27: `sf-bench` passed no `--threads`, so each `sf-plan` took every core (10); under `--jobs 2` each had ~half the compute against its wall-clock budget. Now `cores / jobs` (`--threads` overrides). Rows before it are marked in `RESULTS.md`.
 | 2026-10-24 | 🐞 | T26 review: T31 blocks T17 only; T16's set-B baseline verifies from the same W2-2, W5-1, W6-3 starts (any route fails at frame 1), so run before T31 lands it would score them misses. |
 | 2026-10-24 | 📌 | T26 set B guided, seed 1, 2ad88eb: 13 of 24 done (W1-1–W1-3, W2-1, W3-1, W3-4, W4-1–W4-3, W5-2–W5-4, W6-2; 5.5–28.5 min). Misses re-run alone, same result. W5-1 not run (T31). W6-2 passes here, unlike set A. |

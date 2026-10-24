@@ -103,6 +103,7 @@ At the end of Phase 2: `sf-plan` is the one command, in original and app modes, 
 | [T29](tasks/T29-engine-sound-ramp.md) | engine-sound-ramp | T25; blocks T15 |
 | [T30](tasks/T30-lag-repair.md) | lag-repair | T25; blocks T15 |
 | [T31](tasks/T31-leg-start-sync.md) | leg-start-sync | T26; blocks T17 |
+| [T33](tasks/T33-dead-end-repair.md) | dead-end-repair | T27, T30; blocks T17 |
 
 T16 depends on T15 only so that it runs on a quiet machine after every other task (DESIGN D2, D4);
 T17 follows T16 for the same reason. (T13, M7's map-soundness run, was dropped 2026-10-22, D20.)
