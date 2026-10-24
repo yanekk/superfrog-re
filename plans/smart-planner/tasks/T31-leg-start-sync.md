@@ -39,6 +39,12 @@ write; the other legs start clean (W1-1 and W5-2, which play standalone routes, 
 - `plans/smart-planner/bench/tuning/results.jsonl`, `RESULTS.md`: W2-2, W5-1, W6-3 set B rerun.
 - `plans/smart-planner/FINDINGS.md`.
 
+## Interface
+
+No new command or flag. `sf-bench --set B` and `sf-plan --snap` keep their arguments; what
+changes is the start a set-B leg is planned and verified from (its snapshot and `SyncPoint`), so
+the W2-2, W5-1 and W6-3 legs begin on the same pass as the original's `game-whole` run.
+
 ## Tests
 
 - A test that the committed `chain-w2-2`, `chain-w5-1` and `chain-w6-3` pass the faithful check

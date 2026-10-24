@@ -11,6 +11,7 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-24 | 🐞 | T26 review: T31 blocks T17 only; T16's set-B baseline verifies from the same W2-2, W5-1, W6-3 starts (any route fails at frame 1), so run before T31 lands it would score them misses. |
 | 2026-10-24 | 📌 | T26 set B guided, seed 1, 2ad88eb: 13 of 24 done (W1-1–W1-3, W2-1, W3-1, W3-4, W4-1–W4-3, W5-2–W5-4, W6-2; 5.5–28.5 min). Misses re-run alone, same result. W5-1 not run (T31). W6-2 passes here, unlike set A. |
 | 2026-10-24 | 🔄 | Owner, T26: set-B W1-4 recorded a miss. No first exit in 30 min, twice: coins met, best cell 156,45, T23's dead end; `chain-w1-4` reaches the exit from above (199,29 → 166,34). Set A's W1-4 completes. |
 | 2026-10-24 | 🔄 | Owner, T26: set-B W6-1 recorded a miss. No first exit in 30 min, twice: one coin still needed, never met (14 968 cells). Set A's W6-1 found an exit in a minute and failed in repairs. |
@@ -45,8 +46,7 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 | 2026-10-22 | 📌 | T10 choices: repair stretches keep the shortening share, not its minimum. Heart and cells-apart partings are accepted (third at one cell) with the parting frame. A plan ending before the original's exit runs 50 more frames, last input held. |
 | 2026-10-22 | 📌 | T22, seed 1, load ~11, unguided, shortening before → after: W2-1 3 374 → 3 051, W5-2 5 701 → 5 405, W3-2 11 580 → 11 394 frames. `SHORTEN_MIN_ROUNDS` 180 is 60–75 s. Most shortcut hits fail to splice (coarse key). |
 | 2026-10-22 | 🔄 | Owner, T09: guide regions also match switches pressed when known; trace points are `(Cell, coins, switches)`, `trace_engine`/`trace_original` take `&Facts`. Without them W6-2 guided stalled at a closed gate, seeds 1–3, 5 min each; with them 109–141 s. |
-| 2026-10-22 | 📌 | T09 Done-when: set-B W2-1 leg (`whole_game --until W2-2`, `leg-04.snap`), engine only, `follow_options` of `w2-1-complete`: exit in 40 rounds, 22 s at load ~20, route 2 235 frames, 1 heart lost. |
-| 2026-10-22 | 📌 | T09, 10 threads, load ~12, seed 1: W6-2 guided by `enemies-w6-2-complete` exits in 138 s, 476 rounds, route 9 182 frames. W1-1 fixture with frame 2000 dropped, followed: 290 k engine frames, 28 rounds; unguided 849 k, 85. |
+| 2026-10-22 | 📌 | T09, seed 1: set-B W2-1 leg (`leg-04.snap`) following `w2-1-complete` exits in 40 rounds, 22 s; W6-2 guided by `enemies-w6-2-complete` in 138 s, 476 rounds. W1-1 followed: 290 k engine frames; unguided 849 k. |
 | 2026-10-22 | 📌 | T08 Done-when, load 9–12, 10 threads, 10-min cap, seed 1, unguided: W6-1 54 s, W5-2 37 s, W3-2 132 s, W3-4 245 s; cells 11.6k, 9.0k, 15.5k, 26.1k; peak RSS 3.1, 3.4, 3.1, 3.3 GB. W1-1 15 s. |
 | 2026-10-22 | 🔄 | Owner, T08: kept DESIGN §2.5 heart rule; adopted `experiment/t08-coin-bands` 465d60d: last 8 coins one band each, pull toward nearest object coin left (deviation from §2.4). Before it W6-1 exited 0 of 5 ten-minute runs, stalling 2–4 coins short. |
 | 2026-10-22 | 📌 | Memory: a stored `Game` is ~0.8 MB; 15–40 k-cell archives reached 5–8 GB RSS (OS kill), hence D22. T08: a 1 GB cap gives W1-1's 4 GB route at 2.3× engine frames; the full 4 GiB reached 4.9 GB RSS on W5-2. |
