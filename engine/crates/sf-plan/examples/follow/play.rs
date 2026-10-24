@@ -58,7 +58,9 @@ impl Obs {
     }
     /// The level left by its exit (not a death, not a boss or bonus end).
     pub fn exited(&self) -> bool {
-        self.level_state == 1
+        // The exit sets 1 and counts down to 0; on the original both can fall in one lagging
+        // frame, so 1 is not always seen. Anything below the boss's $64 (and not a death's $190).
+        self.level_state < 0x64
     }
 }
 
@@ -163,6 +165,9 @@ pub fn play(m: &mut dyn Machine, exec: &mut dyn Exec, facts: &Facts, max: u32, d
                 break;
             }
             continue;
+        }
+        if std::env::var_os("FOLLOW_LOG").is_some() && was_playing && !o.playing() {
+            eprintln!("left play at {k}: level_state {:#x} dying {} lives {}", o.level_state, o.dying, o.lives);
         }
         if k >= SETTLE && was_playing && !o.playing() && o.exited() && !o.dying {
             out.exit = Some(k + 1);

@@ -1,0 +1,8 @@
+complete-w1-1: fixed 3504 bytes 416 lines | A 7514 bytes 413 steps (11 waits) | B 5322 bytes 560 points, 406 distinct
+complete-w1-4: fixed 6827 bytes 819 lines | A 14921 bytes 816 steps (45 waits) | B 8549 bytes 923 points, 728 distinct
+w2-1-complete: fixed 1824 bytes 214 lines | A 3837 bytes 212 steps (8 waits) | B 2888 bytes 316 points, 212 distinct
+enemies-w3-2-complete: fixed 13008 bytes 1508 lines | A 27903 bytes 1505 steps (60 waits) | B 8366 bytes 875 points, 806 distinct
+enemies-w5-2-complete: fixed 5370 bytes 652 lines | A 12051 bytes 649 steps (13 waits) | B 7392 bytes 762 points, 607 distinct
+enemies-w6-1-complete: fixed 5027 bytes 625 lines | A 11242 bytes 624 steps (4 waits) | B 7829 bytes 844 points, 587 distinct
+enemies-w6-2-complete: fixed 8164 bytes 1006 lines | A 18256 bytes 1005 steps (9 waits) | B 9731 bytes 1054 points, 953 distinct
+complete-w4-3: fixed 5860 bytes 708 lines | A 13143 bytes 705 steps (11 waits) | B 10107 bytes 1061 points, 842 distinct

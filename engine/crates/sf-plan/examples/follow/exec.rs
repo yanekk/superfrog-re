@@ -545,7 +545,7 @@ fn score(start: &Game, seq: &[(FrameInput, i64)], c: &Ctx) -> Score {
             s.survived = k as u32;
             return s;
         }
-        if ls == 1 {
+        if ls < 0x64 {
             s.exit = Some(k as u32);
             s.hearts_lost = c.hearts.saturating_sub(st.w(HEARTS));
             return s;
