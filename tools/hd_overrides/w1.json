@@ -1,9 +1,11 @@
 {
- "_why": "tile_source: tile index -> model image to take it from. detail: tiles drawn together on an 8x sheet and taken from it. objects: single-tile pickups cut out of their tiles, drawn alone at 24x on the key colour and pasted onto their background last; drawn as part of a tile their round edges were clipped and stepped at tile borders, and at 4x the model guessed letters (R as A, n, B) and mixed styles. mask_from: 664 is the R coin set in dirt, so it borrows the plain R's (660) outline.",
+ "_why": "tile_source: tile index -> model image to take it from. detail: tiles drawn together on an 8x sheet and taken from it. objects: single-tile pickups (marker 55, table h0+$f382) cut out of their tiles, drawn alone at 24x on the key colour and pasted onto their background last; drawn as part of a tile their round edges were clipped and stepped at tile borders. mask_from: a pickup set in a textured background borrows the plain twin's outline (664 R in dirt <- 660, 605 wings in dirt <- 401). The bottle (753) stays a tile: it is two tiles tall and only the lower one is the pickup.",
  "tile_source": {},
  "detail": [],
  "objects": [
   {"name": "objects00", "tiles": [437, 660, 664, 680, 682], "letters": "S, R, R, S", "scale": 24,
-   "mask_from": {"664": 660}}
+   "mask_from": {"664": 660}},
+  {"name": "objects01", "tiles": [63, 282, 401, 403, 434, 605], "scale": 24,
+   "mask_from": {"605": 401}}
  ]
 }
