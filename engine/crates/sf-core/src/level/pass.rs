@@ -91,22 +91,29 @@ pub fn redraw_cell(c: &mut LevelCtx, cell: u32, tile: u16) {
 pub const TILE_ANIM_QUEUE: u32 = h0(0xfa68);
 
 /// `tile_anim_draw` (h0+$fa7c): each queued cell steps to the next tile (its marker cleared) and
-/// is redrawn.
+/// is redrawn. A frame may end before it (step 0), after each slot (steps 1–4,
+/// [`LevelCtx::step_done`]) or with a slot read and not yet acted on (point 1): a slot is freed
+/// only once its turn comes, and the next vertical blank's pickups (`take_tile`) queue into the
+/// slots then free (T29: W2-4 7658, the original's frame ending at h0+$fa8c with the queue full,
+/// its second coin taken a frame later). One queued into the slot just read waits for the next
+/// pass (W2-1 2008).
 pub fn tile_anim_draw(c: &mut LevelCtx) {
+    c.walk_step(0);
     let mut slot = TILE_ANIM_QUEUE;
     loop {
         let cell = c.bus.l(slot);
         slot += 4;
+        c.point(1);
         if cell == 0xffff_ffff {
             return;
         }
-        if cell == 0 {
-            continue;
+        if cell != 0 {
+            c.bus.set_l(slot - 4, 0);
+            let tile = (c.bus.w(cell) >> 6).wrapping_add(1);
+            c.bus.set_w(cell, tile.wrapping_shl(6));
+            redraw_cell(c, cell, tile);
         }
-        c.bus.set_l(slot - 4, 0);
-        let tile = (c.bus.w(cell) >> 6).wrapping_add(1);
-        c.bus.set_w(cell, tile.wrapping_shl(6));
-        redraw_cell(c, cell, tile);
+        c.step_done();
     }
 }
 
