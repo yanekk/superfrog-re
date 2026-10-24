@@ -7,7 +7,8 @@ are in one FINDINGS row with the choice made and why".
 
 ## Goal
 
-T14's Run step 3 (DESIGN §2.2, §2.3): on W1-4, W2-3, W2-4, W6-2, W6-3, W6-4, unguided, run alone,
+T14's Run step 3 (DESIGN §2.2, §2.3): on W2-3, W3-4, W5-3, W6-1, W6-2, W6-4 (owner, 2026-10-24: the levels where the straight
+pull stalls, T27; replaces W1-4, W2-4, W6-3), unguided, run alone,
 three seeds each, `sf-plan --compass straight` against `--compass map` and `--compass walk` (D25,
 added by the owner 2026-10-24), and coin choice as a pull if built as a compass option here. Keep a
 compass only if it completes more of these or plans them in measurably fewer engine frames;
