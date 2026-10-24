@@ -150,6 +150,11 @@ pub fn render(results: &[LevelResult]) -> String {
           `plan_exit_w6` and `explore` per level, each given the full budget (D10), unaided. The new \
           planner's measures are its guided results, each level guided by its committed route \
           (DESIGN §4.2, D21); its unguided results are listed per set, not counted.\n\n";
+    if latest.values().any(before_thread_share) {
+        o += "Cells marked *before the thread share* are new-planner runs from before `sf-bench` gave \
+              each planner its share of the cores (owner, 2026-10-24): each took every core, so a run \
+              beside another under `--jobs 2` had about half the compute against its wall-clock budget.\n\n";
+    }
     o += "| # | Measure | Baseline | New | Target |\n|---|---|---|---|---|\n";
     let ok = |r: &LevelResult| r.completed;
     let mut row = |id: &str, what: &str, base: String, new: String, target: &str| {
@@ -242,5 +247,13 @@ fn cell(r: &LevelResult) -> String {
     if let Some(t) = &r.tool {
         let _ = write!(s, ", by `{t}`");
     }
+    if before_thread_share(r) {
+        s += ", *before the thread share*";
+    }
     s
+}
+
+/// A new-planner result with no thread count: run before sf-bench passed `--threads`.
+fn before_thread_share(r: &LevelResult) -> bool {
+    r.planner == "new" && r.threads.is_none()
 }

@@ -2,7 +2,7 @@
 //!
 //! ```text
 //! sf-bench --set A|B|C --planner new|plan_exit|plan_exit_w6|explore|best-old
-//!          [--levels W1-1,W1-4] [--jobs N] [--budget-min 30] [--seed 1] [--follow-standalone] [--unguided]
+//!          [--levels W1-1,W1-4] [--jobs N] [--threads N] [--budget-min 30] [--seed 1] [--follow-standalone] [--unguided]
 //!          [--results plans/smart-planner/bench/results.jsonl] [--table plans/smart-planner/bench/RESULTS.md]
 //! sf-bench --table-only [--results …] [--table …]     # re-render RESULTS.md from results.jsonl
 //! ```
@@ -21,7 +21,7 @@ use sf_bench::run::{Options, bench};
 fn usage() -> ! {
     eprintln!(
         "sf-bench --set A|B|C --planner new|plan_exit|plan_exit_w6|explore|best-old [--levels W1-1,W1-4] \
-         [--jobs N] [--budget-min 30] [--seed 1] [--follow-standalone] [--unguided] [--results FILE] [--table FILE]\n\
+         [--jobs N] [--threads N] [--budget-min 30] [--seed 1] [--follow-standalone] [--unguided] [--results FILE] [--table FILE]\n\
          sf-bench --table-only [--results FILE] [--table FILE]"
     );
     std::process::exit(2)
@@ -36,6 +36,7 @@ fn main() {
         planner: String::new(),
         levels: None,
         jobs: 1,
+        threads: None,
         budget: Duration::from_secs(30 * sf_bench::MINUTE),
         seed: 1,
         follow_standalone: false,
@@ -52,6 +53,9 @@ fn main() {
             "--planner" => planner = Some(val()),
             "--levels" => o.levels = Some(val().split(',').map(str::to_string).collect()),
             "--jobs" => o.jobs = val().parse().unwrap_or_else(|_| usage()),
+            "--threads" => {
+                o.threads = Some(val().parse().ok().filter(|&n: &usize| n > 0).unwrap_or_else(|| usage()))
+            }
             "--budget-min" => {
                 o.budget = Duration::from_secs(val().parse::<u64>().unwrap_or_else(|_| usage()) * sf_bench::MINUTE)
             }

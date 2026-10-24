@@ -25,6 +25,9 @@ pub struct Options {
     pub planner: String,
     pub levels: Option<Vec<String>>,
     pub jobs: usize,
+    /// `--threads`: each new-planner child's threads; `None` is its share of the cores,
+    /// `adapters::threads_per_job(cores, jobs)`.
+    pub threads: Option<usize>,
     pub budget: Duration,
     pub seed: u32,
     pub follow_standalone: bool,
@@ -133,6 +136,7 @@ pub fn run_one(
         reason: v.reason,
         tool: None,
         guided: adapter.guided(),
+        threads: adapter.threads().map(|t| t as u32),
     };
     eprintln!(
         "sf-bench: {} on {} {}: {} in {:.1} min",
@@ -178,6 +182,9 @@ pub fn bench(o: &Options) -> Result<(), String> {
     let new = NewPlanner {
         follow_standalone: o.follow_standalone,
         guided: !o.unguided,
+        threads: o
+            .threads
+            .unwrap_or_else(|| crate::adapters::threads_per_job(crate::adapters::cores(), o.jobs)),
     };
     let adapters: Vec<&dyn Adapter> = match o.planner.as_str() {
         "new" => vec![&new],

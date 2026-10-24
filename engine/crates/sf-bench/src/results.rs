@@ -31,6 +31,10 @@ pub struct LevelResult {
     /// The planner was given the level's committed route as its guide (DESIGN §4.2, D21). Lines
     /// written before the field existed read as `false`: the old tools' and every early run's.
     pub guided: bool,
+    /// The threads the planner was given (`sf-plan --threads`); `None` for a tool that takes no
+    /// thread option and for every new-planner line written before sf-bench passed it (owner,
+    /// 2026-10-24: each child then took every core, so under `--jobs 2` it had about half).
+    pub threads: Option<u32>,
 }
 
 impl LevelResult {
@@ -66,6 +70,9 @@ impl LevelResult {
             str_field(&mut s, "tool", t);
         }
         let _ = write!(s, "\"guided\":{},", self.guided);
+        if let Some(t) = self.threads {
+            let _ = write!(s, "\"threads\":{t},");
+        }
         let _ = write!(s, "\"reason\":\"{}\"}}", escape(&self.reason));
         s
     }
@@ -108,6 +115,11 @@ impl LevelResult {
             guided: match f.get("guided") {
                 None => false,
                 Some(Value::Bool(b)) => *b,
+                Some(_) => return None,
+            },
+            threads: match f.get("threads") {
+                None => None,
+                Some(Value::Num(n)) => Some(*n as u32),
                 Some(_) => return None,
             },
         })
