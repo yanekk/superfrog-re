@@ -12,6 +12,7 @@ pub mod map;
 pub mod moves;
 pub mod repair;
 pub mod shorten;
+pub mod walk;
 
 pub use archive::{Archive, CellKey, band, cell_key};
 pub use coins::{Choice, Dist, OnTheWay, Target, choose, far_cost};

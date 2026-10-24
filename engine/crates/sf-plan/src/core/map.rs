@@ -425,7 +425,7 @@ pub const GATE_REACH: u16 = 10;
 /// Whether `cell` is in the block a gate at `gate` opens, with a cell's margin: `switch` rewrites
 /// five rows from the row above the gate, the two columns right of it (W2-1's 143,37 opens
 /// 144-145,36-40).
-fn in_gate_block(gate: Cell, cell: Cell) -> bool {
+pub(crate) fn in_gate_block(gate: Cell, cell: Cell) -> bool {
     (gate.0.saturating_sub(1)..=gate.0 + 3).contains(&cell.0)
         && (gate.1.saturating_sub(2)..=gate.1 + 4).contains(&cell.1)
 }
