@@ -1,0 +1,341 @@
+W1-1,complete-w1-1,fixed,P1,1,,false,-,false,3,0,555,3202,76,97:40,true,0.138,0.4,0,0.0,0,-,83,false,380f142fab317cbf
+W1-1,complete-w1-1,fixed,P2,1,,false,-,false,3,0,555,3202,76,97:40,true,0.138,0.4,0,0.0,0,-,84,false,380f142fab317cbf
+W1-1,complete-w1-1,fixed,P3:1,1,,false,-,false,3,5,1769,2709,82,29:45,true,0.138,0.3,0,0.0,0,-,84,false,700b3b99d95e93c3
+W1-1,complete-w1-1,fixed,P3:2,1,,false,-,false,3,4,557,4370,75,97:41,true,0.143,0.5,0,0.0,0,-,84,false,1c12e58855e9fb0d
+W1-1,complete-w1-1,fixed,P3:5,1,,false,-,false,3,4,2299,3055,81,41:45,true,0.125,0.3,0,0.0,0,-,83,false,97a14e8ea75070b3
+W1-1,complete-w1-1,fixed,P3:20,1,,false,-,false,3,4,575,3071,81,41:45,true,0.138,0.3,0,0.0,0,-,84,false,7f73bde256989893
+W1-1,complete-w1-1,fixed,P4o,1,,false,-,false,3,0,540,2031,85,29:45,true,0.100,0.2,0,0.0,228,-,83,false,c0b4d41f980db84f
+W1-1,complete-w1-1,fixed,P4e:200:2,1,,false,-,false,3,0,565,1253,83,41:45,true,0.125,0.2,0,0.0,12,-,84,false,05dc3348f773d62f
+W1-1,complete-w1-1,fixed,P5:0,1,,false,-,false,3,0,554,1937,82,28:45,true,0.125,0.3,0,0.0,0,-,83,false,adc7d388a0c2a997
+W1-1,complete-w1-1,fixed,P5:2,1,,false,-,false,3,0,555,3202,76,97:40,true,0.138,0.4,0,0.0,0,-,83,false,380f142fab317cbf
+W1-1,complete-w1-1,fixed,P6e,1,,false,-,false,3,0,555,3202,76,97:40,true,0.138,0.4,0,0.0,0,-,224,false,380f142fab317cbf
+W1-1,complete-w1-1,fixed,P0,1,,true,4474,true,0,2,-,4504,0,286:18,false,1.000,10.3,0,0.0,683,pass(4474 frames, 2 hearts),474,false,f126aefd07b2ed15
+W1-1,complete-w1-1,fixed,P3o:5,1,,false,-,false,3,4,2299,3055,81,41:45,true,0.125,6.8,0,0.0,125,FAIL(no exit),601,false,97a14e8ea75070b3
+W1-1,complete-w1-1,fixed,P5o:0,1,,false,-,false,3,0,559,3202,76,97:40,true,0.138,7.2,0,0.0,437,-,223,false,380f142fab317cbf
+W1-1,complete-w1-1,fixed,P6,1,,true,4474,true,0,2,-,4504,0,286:18,false,1.000,10.3,0,0.0,683,pass(4474 frames, 2 hearts),605,false,f126aefd07b2ed15
+W1-1,complete-w1-1,A,P1,1,,false,-,false,3,0,593,1382,82,29:45,true,0.120,0.2,0,0.0,0,-,83,false,5b37b7a6d24d7ae3
+W1-1,complete-w1-1,A,P2,1,,false,-,false,3,0,593,1382,82,29:45,true,0.120,0.2,0,0.0,0,-,84,false,5b37b7a6d24d7ae3
+W1-1,complete-w1-1,A,P3:1,1,,false,-,false,3,0,677,1852,88,28:45,true,0.093,0.3,0,0.0,0,-,84,false,78b002de171f7683
+W1-1,complete-w1-1,A,P3:2,1,,false,-,false,3,0,707,1877,88,28:45,true,0.093,0.3,0,0.0,0,-,84,false,14bac8a37d9a449e
+W1-1,complete-w1-1,A,P3:5,1,,false,-,false,3,0,679,1854,88,28:45,true,0.093,0.3,0,0.0,0,-,84,false,6e01f65701db6c90
+W1-1,complete-w1-1,A,P3:20,1,,false,-,false,3,0,725,1895,88,28:45,true,0.093,0.3,0,0.0,0,-,84,false,c644bc3dbc28f736
+W1-1,complete-w1-1,A,P4o,1,,false,-,false,3,4,822,3349,77,28:45,true,0.138,0.3,0,0.0,419,-,84,false,d5569bc3f0ea293b
+W1-1,complete-w1-1,A,P4e:200:2,1,,false,-,false,3,0,595,1396,82,29:45,true,0.120,0.2,0,0.0,12,-,83,false,ad9f659bbf15d669
+W1-1,complete-w1-1,A,P5:0,1,,false,-,false,3,0,590,1270,82,28:45,true,0.120,0.2,0,0.0,0,-,83,false,c84ab6ad0dd8e297
+W1-1,complete-w1-1,A,P5:2,1,,false,-,false,3,0,593,1382,82,29:45,true,0.120,0.2,0,0.0,0,-,83,false,5b37b7a6d24d7ae3
+W1-1,complete-w1-1,A,P6e,1,,false,-,false,3,0,593,1382,82,29:45,true,0.120,0.2,0,0.0,0,-,224,false,5b37b7a6d24d7ae3
+W1-1,complete-w1-1,A,P0,1,,true,4474,true,0,2,-,4504,0,286:18,false,1.000,10.2,0,0.0,683,pass(4474 frames, 2 hearts),600,false,f126aefd07b2ed15
+W1-1,complete-w1-1,A,P3o:5,1,,false,-,false,3,0,679,1852,88,28:45,true,0.093,4.3,0,0.0,624,FAIL(no exit),603,false,8eacc6b1c781f628
+W1-1,complete-w1-1,A,P5o:0,1,,false,-,false,3,0,568,1357,82,29:45,true,0.120,3.1,0,0.0,92,-,226,false,6d4a9214c6e0165d
+W1-1,complete-w1-1,A,P6,1,,true,4474,true,0,2,-,4504,0,286:18,false,1.000,10.3,0,0.0,683,pass(4474 frames, 2 hearts),604,false,f126aefd07b2ed15
+W1-1,complete-w1-1,B1,P1,1,,false,-,false,0,2,-,2860,49,156:35,false,0.446,0.3,0,0.0,0,-,81,true,23b2021ecc3506dd
+W1-1,complete-w1-1,B1,P2,1,,false,-,false,0,2,-,2860,49,156:35,false,0.446,0.3,0,0.0,0,-,84,true,23b2021ecc3506dd
+W1-1,complete-w1-1,B1,P3:1,1,,false,-,false,0,2,-,2860,49,156:35,false,0.446,0.3,0,0.0,0,-,81,true,8319f1a5f5d5726e
+W1-1,complete-w1-1,B1,P3:2,1,,false,-,false,0,2,-,2860,49,156:35,false,0.446,0.3,0,0.0,0,-,81,true,7f31d8b41fefe3c7
+W1-1,complete-w1-1,B1,P3:5,1,,false,-,false,0,2,-,2860,49,156:35,false,0.446,0.3,0,0.0,0,-,81,true,cd87feaf1e030cba
+W1-1,complete-w1-1,B1,P3:20,1,,false,-,false,0,2,-,2860,49,156:35,false,0.446,0.3,0,0.0,0,-,81,true,71fd23f04a9082c9
+W1-1,complete-w1-1,B1,P4o,1,,false,-,false,0,3,-,3402,46,165:40,false,0.454,0.3,0,0.0,419,-,81,true,6e06249e72c34a9f
+W1-1,complete-w1-1,B1,P4e:200:2,1,,false,-,false,0,2,-,2872,49,156:35,false,0.436,0.3,0,0.0,28,-,81,true,5615920ee9efd43f
+W1-1,complete-w1-1,B1,P5:0,1,,false,-,false,0,0,-,2208,62,89:30,false,0.245,0.2,0,0.0,0,-,81,true,bff3ddd0544b2632
+W1-1,complete-w1-1,B1,P5:2,1,,false,-,false,3,0,799,1492,60,29:45,true,0.287,0.2,0,0.0,0,-,83,false,f4192224b8411316
+W1-1,complete-w1-1,B1,P6e,1,,false,-,false,0,2,-,2860,49,156:35,false,0.446,0.3,0,0.0,0,-,224,true,23b2021ecc3506dd
+W1-1,complete-w1-1,B1,P0,1,,false,-,false,0,0,-,2172,61,89:34,false,0.236,4.9,0,0.0,155,FAIL(no exit),601,true,48604043431b857f
+W1-1,complete-w1-1,B1,P3o:5,1,,false,-,false,0,0,-,2172,61,89:34,false,0.236,4.9,0,0.0,155,FAIL(no exit),601,true,b72eb21716a74798
+W1-1,complete-w1-1,B1,P5o:0,1,,false,-,false,0,0,-,2160,62,89:34,false,0.236,4.9,0,0.0,158,-,226,true,7611640bfbdda332
+W1-1,complete-w1-1,B1,P6,1,,false,-,false,0,0,-,2172,61,89:34,false,0.236,4.9,0,0.0,155,FAIL(no exit),605,true,48604043431b857f
+W1-4,complete-w1-4,fixed,P1,1,,true,7378,true,0,1,-,7408,0,173:43,false,1.000,0.7,0,0.0,0,-,84,false,23ff361e2816a987
+W1-4,complete-w1-4,fixed,P2,1,,true,7378,true,0,1,-,7408,0,173:43,false,1.000,0.7,0,0.0,0,-,84,false,23ff361e2816a987
+W1-4,complete-w1-4,fixed,P3:1,1,,false,-,false,2,12,2881,8894,93,54:67,false,0.085,0.6,0,0.0,0,-,84,true,420dd23ab1bb4b73
+W1-4,complete-w1-4,fixed,P3:2,1,,false,-,false,3,9,2599,7838,77,146:63,true,0.109,0.7,0,0.0,0,-,84,false,7d6521953fab301f
+W1-4,complete-w1-4,fixed,P3:5,1,,false,-,false,2,12,2885,8898,93,54:67,false,0.085,0.6,0,0.0,0,-,84,true,b18c4861c97e1783
+W1-4,complete-w1-4,fixed,P3:20,1,,false,-,false,2,5,1198,8913,93,90:67,false,0.087,0.6,0,0.0,0,-,84,true,2aa5d7d7493f1505
+W1-4,complete-w1-4,fixed,P4o,1,,false,-,false,3,15,4181,8498,94,108:67,true,0.078,0.6,0,0.0,858,-,84,false,5b1ee89623d7681f
+W1-4,complete-w1-4,fixed,P4e:200:2,1,,false,-,false,3,9,2371,7678,83,72:61,true,0.090,0.6,0,0.0,76,-,84,false,f9de1f14d6ebbf6f
+W1-4,complete-w1-4,fixed,P5:0,1,,false,-,false,2,8,3213,8889,82,56:67,false,0.220,0.7,0,0.0,0,-,84,true,8d775a07f30d3f45
+W1-4,complete-w1-4,fixed,P5:2,1,,false,-,false,3,0,4817,5626,46,149:62,true,0.673,0.6,0,0.0,0,-,84,false,ec407444b46f9473
+W1-4,complete-w1-4,fixed,P6e,1,,false,-,false,3,12,2653,6746,81,82:67,true,0.219,0.6,0,0.0,0,-,224,false,9c8413b96eafd2ff
+W1-4,complete-w1-4,fixed,P0,1,,true,7378,true,0,1,-,7408,0,173:43,false,1.000,16.9,0,0.0,858,pass(7378 frames, 1 hearts),603,false,23ff361e2816a987
+W1-4,complete-w1-4,fixed,P3o:5,1,,false,-,false,2,12,2885,8898,93,54:67,false,0.085,20.0,0,0.0,252,FAIL(no exit),576,true,b18c4861c97e1783
+W1-4,complete-w1-4,fixed,P5o:0,1,,false,-,false,2,8,3213,8889,82,56:67,false,0.220,20.2,0,0.0,282,-,227,true,8d775a07f30d3f45
+W1-4,complete-w1-4,fixed,P6,1,,false,-,false,3,12,2653,6746,81,82:67,true,0.219,15.3,0,0.0,245,FAIL(no exit),470,false,9c8413b96eafd2ff
+W1-4,complete-w1-4,A,P1,1,,true,7378,true,0,1,-,7408,0,173:43,false,1.000,0.8,0,0.0,0,-,85,false,23ff361e2816a987
+W1-4,complete-w1-4,A,P2,1,,true,7378,true,0,1,-,7408,0,173:43,false,1.000,0.9,0,0.0,0,-,87,false,23ff361e2816a987
+W1-4,complete-w1-4,A,P3:1,1,,true,7378,true,0,1,-,7408,0,173:43,false,1.000,0.7,0,0.0,0,-,84,false,5ce1cc5d0353146f
+W1-4,complete-w1-4,A,P3:2,1,,false,-,false,3,1,681,2532,96,57:51,true,0.079,0.4,0,0.0,0,-,85,false,73771e82206c5693
+W1-4,complete-w1-4,A,P3:5,1,,false,-,false,2,14,2365,5554,95,69:67,false,0.062,0.6,0,0.0,0,-,85,true,101e4b5a136c7ddd
+W1-4,complete-w1-4,A,P3:20,1,,false,-,false,3,1,877,2622,96,57:51,true,0.077,0.2,0,0.0,0,-,85,false,3f224bd53d1a2571
+W1-4,complete-w1-4,A,P4o,1,,false,-,false,3,6,2683,3856,86,150:62,true,0.093,0.4,0,0.0,367,-,84,false,1718e642268eaed5
+W1-4,complete-w1-4,A,P4e:200:2,1,,false,-,false,3,12,679,7652,90,63:67,true,0.072,0.7,0,0.0,76,-,85,false,5818937fb729dd94
+W1-4,complete-w1-4,A,P5:0,1,,false,-,false,2,13,4839,9277,92,40:61,false,0.080,0.7,0,0.0,0,-,84,true,2d5f42040e333c9e
+W1-4,complete-w1-4,A,P5:2,1,,false,-,false,3,0,4817,6194,46,106:55,true,0.674,0.6,0,0.0,0,-,84,false,d2575ad1a1a2f81f
+W1-4,complete-w1-4,A,P6e,1,,false,-,false,3,12,2859,7164,81,112:65,true,0.219,0.6,0,0.0,0,-,224,false,45f1b682b836dbe0
+W1-4,complete-w1-4,A,P0,1,,true,7378,true,0,1,-,7408,0,173:43,false,1.000,17.2,0,0.0,858,pass(7378 frames, 1 hearts),604,false,23ff361e2816a987
+W1-4,complete-w1-4,A,P3o:5,1,,false,-,false,3,8,3504,7781,89,80:67,true,0.062,17.7,0,0.0,454,FAIL(no exit),604,false,d34be61917d0b96d
+W1-4,complete-w1-4,A,P5o:0,1,,false,-,false,2,13,4839,9277,92,40:61,false,0.080,20.9,0,0.0,278,-,225,true,2d5f42040e333c9e
+W1-4,complete-w1-4,A,P6,1,,false,-,false,3,12,2859,7298,81,112:65,true,0.219,16.9,0,0.0,278,FAIL(no exit),472,false,4159e6f083ff560d
+W1-4,complete-w1-4,B1,P1,1,,false,-,false,0,0,-,1982,96,67:43,false,0.079,0.2,0,0.0,0,-,81,true,9b46cd33676f70ee
+W1-4,complete-w1-4,B1,P2,1,,false,-,false,0,0,-,1982,96,67:43,false,0.079,0.2,0,0.0,0,-,84,true,9b46cd33676f70ee
+W1-4,complete-w1-4,B1,P3:1,1,,false,-,false,0,0,-,1982,96,67:43,false,0.079,0.2,0,0.0,0,-,81,true,9d923475cb9455aa
+W1-4,complete-w1-4,B1,P3:2,1,,false,-,false,0,0,-,1982,96,67:43,false,0.079,0.2,0,0.0,0,-,81,true,274f6326e7c49f36
+W1-4,complete-w1-4,B1,P3:5,1,,false,-,false,0,0,-,1982,96,67:43,false,0.079,0.3,0,0.0,0,-,81,true,7bd29a92770c171a
+W1-4,complete-w1-4,B1,P3:20,1,,false,-,false,0,0,-,1982,96,67:43,false,0.079,0.2,0,0.0,0,-,81,true,42f37ac4183dc97e
+W1-4,complete-w1-4,B1,P4o,1,,false,-,false,0,0,-,2000,96,67:44,false,0.080,0.2,0,0.0,155,-,82,true,9c5ab858ecec7981
+W1-4,complete-w1-4,B1,P4e:200:2,1,,false,-,false,0,0,-,1986,96,67:44,false,0.080,0.2,0,0.0,18,-,82,true,9279b103e20349d0
+W1-4,complete-w1-4,B1,P5:0,1,,false,-,false,0,0,-,1971,96,68:43,false,0.079,0.2,0,0.0,0,-,81,true,a440b25e0dce3e12
+W1-4,complete-w1-4,B1,P5:2,1,,false,-,false,0,0,-,1982,96,67:43,false,0.079,0.2,0,0.0,0,-,82,true,9b46cd33676f70ee
+W1-4,complete-w1-4,B1,P6e,1,,false,-,false,0,4,-,2772,96,68:48,false,0.079,0.3,0,0.0,0,-,224,true,ccd7285ae5065477
+W1-4,complete-w1-4,B1,P0,1,,false,-,false,0,2,-,2242,96,67:45,false,0.079,6.0,0,0.0,986,FAIL(no exit),488,true,5ab21c3084afc134
+W1-4,complete-w1-4,B1,P3o:5,1,,false,-,false,0,2,-,2242,96,67:45,false,0.079,5.5,0,0.0,986,FAIL(no exit),481,true,e5e1ab1b180ef708
+W1-4,complete-w1-4,B1,P5o:0,1,,false,-,false,0,1,-,2169,96,68:46,false,0.079,5.1,0,0.0,952,-,226,true,b191cc8c61e5516f
+W1-4,complete-w1-4,B1,P6,1,,false,-,false,0,4,-,2790,96,68:48,false,0.079,6.6,0,0.0,1284,FAIL(no exit),525,true,4db983d8abc805be
+W2-1,w2-1-complete,fixed,P1,1,,false,-,false,2,5,1583,4113,25,112:46,false,0.383,0.4,0,0.0,0,-,84,true,02da97013f334597
+W2-1,w2-1-complete,fixed,P2,1,,false,-,false,2,4,1878,4019,25,112:46,false,0.424,0.4,0,0.0,0,-,84,true,e599f9443d60332f
+W2-1,w2-1-complete,fixed,P3:1,1,,false,-,false,1,4,2421,4144,26,111:46,false,0.275,0.3,0,0.0,0,-,83,true,dc96e3fc40cefd8d
+W2-1,w2-1-complete,fixed,P3:2,1,,false,-,false,1,4,2185,4057,29,76:47,false,0.108,0.3,0,0.0,0,-,83,true,2d441e337b5ca577
+W2-1,w2-1-complete,fixed,P3:5,1,,false,-,false,2,4,1846,4024,26,112:46,false,0.263,0.4,0,0.0,0,-,83,true,b937c5cb6303dfed
+W2-1,w2-1-complete,fixed,P3:20,1,,false,-,false,1,4,2441,4160,28,111:46,false,0.117,0.3,0,0.0,0,-,83,true,8b0cef4588d0d38d
+W2-1,w2-1-complete,fixed,P4o,1,,false,-,false,1,2,2117,3798,33,112:46,false,0.082,0.3,0,0.0,712,-,83,true,54819ceda24c9ca5
+W2-1,w2-1-complete,fixed,P4e:200:2,1,,false,-,false,2,4,2089,4242,30,111:46,false,0.108,0.4,0,0.0,42,-,83,true,bee354cdb226e6d5
+W2-1,w2-1-complete,fixed,P5:0,1,,false,-,false,1,4,1810,4053,25,97:52,false,0.383,0.4,0,0.0,0,-,83,true,43996d16eaa3de87
+W2-1,w2-1-complete,fixed,P5:2,1,,false,-,false,3,0,713,1782,25,93:44,true,0.415,0.3,0,0.0,0,-,83,false,9062e84488a9df11
+W2-1,w2-1-complete,fixed,P6e,1,,false,-,false,1,4,2421,4140,24,111:46,false,0.278,0.4,0,0.0,0,-,227,true,1ac8100799d0967d
+W2-1,w2-1-complete,fixed,P0,1,,true,2524,true,0,2,-,2554,0,257:21,false,1.000,6.0,0,0.0,712,pass(2524 frames, 2 hearts),494,false,c8ae0635fb29ba75
+W2-1,w2-1-complete,fixed,P3o:5,1,,false,-,false,2,4,2018,4024,28,111:46,false,0.117,9.3,0,0.0,286,FAIL(no exit),516,true,b937c5cb6303dfed
+W2-1,w2-1-complete,fixed,P5o:0,1,,false,-,false,2,2,1874,4011,25,112:46,false,0.424,9.3,0,0.0,245,-,226,true,031d07b4ec33d54f
+W2-1,w2-1-complete,fixed,P6,1,,false,-,false,2,4,1958,3843,31,112:46,false,0.108,8.8,0,0.0,198,FAIL(no exit),511,true,025b54ef7931c5ef
+W2-1,w2-1-complete,A,P1,1,,false,-,false,2,12,1687,4678,25,93:52,false,0.383,0.5,0,0.0,0,-,84,true,25e09e0b7eacdb57
+W2-1,w2-1-complete,A,P2,1,,false,-,false,2,12,1687,4716,25,93:52,false,0.418,0.5,0,0.0,0,-,83,true,9c514a46e586a64b
+W2-1,w2-1-complete,A,P3:1,1,,false,-,false,2,12,1687,4678,25,93:52,false,0.383,0.5,0,0.0,0,-,83,true,a4928458ab82c336
+W2-1,w2-1-complete,A,P3:2,1,,false,-,false,2,12,1687,4678,25,93:52,false,0.383,0.5,0,0.0,0,-,83,true,b397aea137524915
+W2-1,w2-1-complete,A,P3:5,1,,false,-,false,3,11,1723,4358,29,109:52,true,0.108,0.4,0,0.0,0,-,83,false,72a218e2055d0ef9
+W2-1,w2-1-complete,A,P3:20,1,,false,-,false,3,3,1198,1874,31,121:46,true,0.082,0.3,0,0.0,0,-,83,false,b7dadec4c136b43f
+W2-1,w2-1-complete,A,P4o,1,,false,-,false,3,10,1214,5542,23,68:41,true,0.168,0.5,0,0.0,712,-,85,false,fd05067edfe610ae
+W2-1,w2-1-complete,A,P4e:200:2,1,,false,-,false,3,12,1701,4720,25,91:52,true,0.383,0.5,0,0.0,46,-,83,false,5c4050a52380ec4b
+W2-1,w2-1-complete,A,P5:0,1,,false,-,false,2,12,2835,6018,25,108:52,false,0.383,0.6,0,0.0,0,-,84,true,fac8635ae3b3d2b4
+W2-1,w2-1-complete,A,P5:2,1,,false,-,false,3,0,713,1678,25,106:52,true,0.415,0.3,0,0.0,0,-,83,false,e4a099561b09e97f
+W2-1,w2-1-complete,A,P6e,1,,false,-,false,2,12,1359,4384,25,93:52,false,0.256,0.4,0,0.0,0,-,226,true,f52b1665d990f937
+W2-1,w2-1-complete,A,P0,1,,false,-,false,0,2,-,4075,0,254:28,false,0.991,9.6,0,0.0,1496,FAIL(no exit),604,true,4dfd61a1e14fdc33
+W2-1,w2-1-complete,A,P3o:5,1,,false,-,false,3,11,1723,4358,29,109:52,true,0.108,10.2,0,0.0,349,FAIL(no exit),450,false,72a218e2055d0ef9
+W2-1,w2-1-complete,A,P5o:0,1,,false,-,false,2,8,2913,6696,25,84:42,false,0.418,15.6,0,0.0,643,-,225,false,c23d987742c2aa44
+W2-1,w2-1-complete,A,P6,1,,false,-,false,4,14,1482,5237,30,124:46,true,0.092,12.1,0,0.0,488,FAIL(no exit),461,false,5e0e8d0a583d0020
+W2-1,w2-1-complete,B1,P1,1,,false,-,false,0,0,-,1668,35,63:47,false,0.082,0.1,0,0.0,0,-,81,true,c56377775b0e1021
+W2-1,w2-1-complete,B1,P2,1,,false,-,false,0,0,-,1668,35,63:47,false,0.082,0.1,0,0.0,0,-,84,true,c56377775b0e1021
+W2-1,w2-1-complete,B1,P3:1,1,,false,-,false,0,0,-,1668,35,63:47,false,0.082,0.1,0,0.0,0,-,81,true,be6b582f4bc0f29d
+W2-1,w2-1-complete,B1,P3:2,1,,false,-,false,0,0,-,1668,35,63:47,false,0.082,0.1,0,0.0,0,-,80,true,421aea31c28f8bc9
+W2-1,w2-1-complete,B1,P3:5,1,,false,-,false,0,0,-,1668,35,63:47,false,0.082,0.1,0,0.0,0,-,80,true,af8ea0370df9dc8d
+W2-1,w2-1-complete,B1,P3:20,1,,false,-,false,0,0,-,1668,35,63:47,false,0.082,0.1,0,0.0,0,-,84,true,35485c902ca9f031
+W2-1,w2-1-complete,B1,P4o,1,,false,-,false,0,0,-,1673,35,63:47,false,0.082,0.1,0,0.0,328,-,81,true,e9dc66b5674f2ef7
+W2-1,w2-1-complete,B1,P4e:200:2,1,,false,-,false,0,0,-,1668,35,63:47,false,0.082,0.1,0,0.0,16,-,81,true,3605aa2f52b7b6f1
+W2-1,w2-1-complete,B1,P5:0,1,,false,-,false,0,0,-,1668,35,63:47,false,0.082,0.1,0,0.0,0,-,81,true,c56377775b0e1021
+W2-1,w2-1-complete,B1,P5:2,1,,false,-,false,0,0,-,1668,35,63:47,false,0.082,0.1,0,0.0,0,-,81,true,c56377775b0e1021
+W2-1,w2-1-complete,B1,P6e,1,,false,-,false,0,0,-,1668,35,63:47,false,0.082,0.1,0,0.0,0,-,223,true,c56377775b0e1021
+W2-1,w2-1-complete,B1,P0,1,,false,-,false,0,0,-,1668,35,63:47,false,0.082,3.8,0,0.0,11,FAIL(no exit),498,true,c56377775b0e1021
+W2-1,w2-1-complete,B1,P3o:5,1,,false,-,false,0,0,-,1668,35,63:47,false,0.082,3.8,0,0.0,11,FAIL(no exit),474,true,af8ea0370df9dc8d
+W2-1,w2-1-complete,B1,P5o:0,1,,false,-,false,0,0,-,1668,35,63:47,false,0.082,3.8,0,0.0,11,-,226,true,c56377775b0e1021
+W2-1,w2-1-complete,B1,P6,1,,false,-,false,0,0,-,1668,35,63:47,false,0.082,3.8,0,0.0,11,FAIL(no exit),487,true,c56377775b0e1021
+W3-2,enemies-w3-2-complete,fixed,P1,1,,false,-,false,2,11,2175,8541,84,190:21,false,0.073,0.8,0,0.0,0,-,84,true,1cabcc04391e755b
+W3-2,enemies-w3-2-complete,fixed,P2,1,,false,-,false,2,10,2735,8432,86,188:41,false,0.090,0.8,0,0.0,0,-,84,true,63bba1df849128c9
+W3-2,enemies-w3-2-complete,fixed,P3:1,1,,false,-,false,2,9,1453,8403,85,183:32,false,0.103,0.8,0,0.0,0,-,84,true,91a4c65ca931ba4b
+W3-2,enemies-w3-2-complete,fixed,P3:2,1,,false,-,false,3,11,1431,6961,85,186:16,true,0.105,0.7,0,0.0,0,-,84,false,8a7be7532809200f
+W3-2,enemies-w3-2-complete,fixed,P3:5,1,,false,-,false,2,9,1457,8407,85,183:32,false,0.101,0.8,0,0.0,0,-,84,true,76788558e96832bb
+W3-2,enemies-w3-2-complete,fixed,P3:20,1,,false,-,false,2,11,2195,8561,84,190:21,false,0.073,0.8,0,0.0,0,-,84,true,2b7b06f73aa1e5cb
+W3-2,enemies-w3-2-complete,fixed,P4o,1,,false,-,false,1,8,7133,8209,84,154:40,false,0.114,0.6,0,0.0,2152,-,84,true,8d46ab828a7009cb
+W3-2,enemies-w3-2-complete,fixed,P4e:200:2,1,,false,-,false,1,10,4411,8398,88,204:31,false,0.095,0.8,0,0.0,82,-,84,true,6cc48d0621a403a1
+W3-2,enemies-w3-2-complete,fixed,P5:0,1,,false,-,false,1,10,2805,8484,83,186:33,false,0.130,0.8,0,0.0,0,-,84,true,fca53de8dc835599
+W3-2,enemies-w3-2-complete,fixed,P5:2,1,,false,-,false,3,0,331,4536,90,178:38,true,0.079,0.5,0,0.0,0,-,85,false,d07e6a1693d67271
+W3-2,enemies-w3-2-complete,fixed,P6e,1,,false,-,false,3,12,1565,8455,86,147:40,false,0.101,0.8,0,0.0,0,-,224,true,18f27a53330bf7f3
+W3-2,enemies-w3-2-complete,fixed,P0,1,,true,6994,true,0,2,-,7024,0,260:28,false,1.000,16.6,0,0.0,2152,pass(6994 frames, 2 hearts),472,false,607279d33081f829
+W3-2,enemies-w3-2-complete,fixed,P3o:5,1,,false,-,false,2,8,4416,8368,85,147:40,false,0.105,19.3,0,0.0,1050,FAIL(no exit),451,true,eea574b4033a3b61
+W3-2,enemies-w3-2-complete,fixed,P5o:0,1,,false,-,false,1,5,5247,8458,50,155:40,false,0.351,19.8,0,0.0,1716,-,226,true,59dce83f6c86ae11
+W3-2,enemies-w3-2-complete,fixed,P6,1,,false,-,false,2,8,3555,8470,85,183:32,false,0.094,19.7,0,0.0,945,FAIL(no exit),587,true,a533d713314e94c1
+W3-2,enemies-w3-2-complete,A,P1,1,,false,-,false,3,10,2351,9500,82,179:15,true,0.122,0.9,0,0.0,0,-,84,false,4fe7ab83bff85f50
+W3-2,enemies-w3-2-complete,A,P2,1,,false,-,false,3,12,1595,9068,84,173:34,true,0.117,0.8,0,0.0,0,-,84,false,9470d4cd31f2922b
+W3-2,enemies-w3-2-complete,A,P3:1,1,,false,-,false,2,9,1466,13684,85,153:34,false,0.086,1.2,0,0.0,0,-,85,true,6c5e57148bb91ab6
+W3-2,enemies-w3-2-complete,A,P3:2,1,,false,-,false,3,12,2219,8941,86,177:40,true,0.098,0.9,0,0.0,0,-,84,false,1f62879e8d46e457
+W3-2,enemies-w3-2-complete,A,P3:5,1,,false,-,false,2,9,1470,13688,85,153:34,false,0.086,1.2,0,0.0,0,-,84,true,737f128f17cc5426
+W3-2,enemies-w3-2-complete,A,P3:20,1,,false,-,false,3,10,2371,9520,82,179:15,true,0.123,0.9,0,0.0,0,-,85,false,0f221962dae92a80
+W3-2,enemies-w3-2-complete,A,P4o,1,,false,-,false,3,5,3540,4763,81,188:16,true,0.144,0.4,0,0.0,1259,-,85,false,b691cc37b52f688a
+W3-2,enemies-w3-2-complete,A,P4e:200:2,1,,false,-,false,1,8,2491,11993,86,147:40,false,0.101,1.0,0,0.0,118,-,84,true,51c8e243273caa43
+W3-2,enemies-w3-2-complete,A,P5:0,1,,false,-,false,2,11,2905,12274,83,152:34,false,0.147,1.1,0,0.0,0,-,84,true,f1875a5915d8be0a
+W3-2,enemies-w3-2-complete,A,P5:2,1,,false,-,false,3,0,331,1838,91,177:39,true,0.069,0.3,0,0.0,0,-,85,false,fe1aaa5c7be738a9
+W3-2,enemies-w3-2-complete,A,P6e,1,,false,-,false,2,11,3593,12308,83,147:40,false,0.125,1.1,0,0.0,0,-,224,true,fa31355bf3068d57
+W3-2,enemies-w3-2-complete,A,P0,1,,true,6994,true,0,2,-,7024,0,260:28,false,1.000,16.5,0,0.0,2152,pass(6994 frames, 2 hearts),499,false,607279d33081f829
+W3-2,enemies-w3-2-complete,A,P3o:5,1,,false,-,false,3,8,1470,4223,85,170:16,true,0.057,9.8,0,0.0,790,FAIL(not faithful: diverged at frame 1570),604,false,30cb42c9abcc39c2
+W3-2,enemies-w3-2-complete,A,P5o:0,1,,false,-,false,3,5,4432,5933,51,167:16,true,0.343,13.9,0,0.0,1407,-,228,false,c14e480ea34c5e50
+W3-2,enemies-w3-2-complete,A,P6,1,,false,-,false,7,11,2428,12414,86,181:41,true,0.086,29.4,0,0.0,1267,FAIL(no exit),475,false,580a2eba9f880c4d
+W3-2,enemies-w3-2-complete,B1,P1,1,,false,-,false,2,8,1547,3407,93,179:41,false,0.042,0.4,0,0.0,0,-,83,true,4184fc802bd3d080
+W3-2,enemies-w3-2-complete,B1,P2,1,,false,-,false,2,12,1855,4855,93,178:40,false,0.042,0.6,0,0.0,0,-,85,true,485b1fc08d6424eb
+W3-2,enemies-w3-2-complete,B1,P3:1,1,,false,-,false,2,8,1547,3407,93,179:41,false,0.042,0.4,0,0.0,0,-,84,true,83db6d5845c50d7d
+W3-2,enemies-w3-2-complete,B1,P3:2,1,,false,-,false,2,8,1547,3407,93,179:41,false,0.042,0.4,0,0.0,0,-,84,true,e0a83c38df5bfd06
+W3-2,enemies-w3-2-complete,B1,P3:5,1,,false,-,false,2,8,1547,3407,93,179:41,false,0.042,0.4,0,0.0,0,-,84,true,db85b097ebe2c1f1
+W3-2,enemies-w3-2-complete,B1,P3:20,1,,false,-,false,2,8,1547,3407,93,179:41,false,0.042,0.4,0,0.0,0,-,83,true,6f1b3e7b9fb37b5c
+W3-2,enemies-w3-2-complete,B1,P4o,1,,false,-,false,1,7,2054,4159,93,179:33,false,0.042,0.3,0,0.0,1123,-,83,true,9d9b4fff3229e87d
+W3-2,enemies-w3-2-complete,B1,P4e:200:2,1,,false,-,false,2,8,1561,3425,93,179:41,false,0.042,0.4,0,0.0,34,-,83,true,1f8e15012567be00
+W3-2,enemies-w3-2-complete,B1,P5:0,1,,false,-,false,2,8,1823,3685,93,166:35,false,0.042,0.5,0,0.0,0,-,83,true,045e11ed2585c6c1
+W3-2,enemies-w3-2-complete,B1,P5:2,1,,false,-,false,3,0,319,1182,93,179:40,true,0.042,0.2,0,0.0,0,-,84,false,d950b643d6189287
+W3-2,enemies-w3-2-complete,B1,P6e,1,,false,-,false,2,8,1797,3691,93,162:34,false,0.042,0.5,0,0.0,0,-,225,true,64b0725a7d3ee566
+W3-2,enemies-w3-2-complete,B1,P0,1,,false,-,false,2,11,1716,4690,94,179:36,false,0.042,10.9,0,0.0,1199,FAIL(no exit),475,true,4cf7b6b5b3e9c49c
+W3-2,enemies-w3-2-complete,B1,P3o:5,1,,false,-,false,2,11,1716,4690,94,179:36,false,0.042,11.1,0,0.0,1199,FAIL(no exit),604,true,7b5eed5db990270f
+W3-2,enemies-w3-2-complete,B1,P5o:0,1,,false,-,false,2,11,1717,4697,94,179:33,false,0.042,11.2,0,0.0,1196,-,227,true,92b3f3a78c62925f
+W3-2,enemies-w3-2-complete,B1,P6,1,,false,-,false,2,12,1438,4396,94,180:39,false,0.042,10.3,0,0.0,1057,FAIL(no exit),550,true,54c621713acfdc52
+W5-2,enemies-w5-2-complete,fixed,P1,1,,false,-,false,3,4,1841,3000,76,94:15,true,0.159,0.4,0,0.0,0,-,84,false,67c8326e717040b9
+W5-2,enemies-w5-2-complete,fixed,P2,1,,false,-,false,3,4,1841,3000,76,94:15,true,0.159,0.4,0,0.0,0,-,84,false,67c8326e717040b9
+W5-2,enemies-w5-2-complete,fixed,P3:1,1,,false,-,false,3,0,384,3345,89,79:15,true,0.056,0.3,0,0.0,0,-,84,false,f6d3c8c6b2aa154f
+W5-2,enemies-w5-2-complete,fixed,P3:2,1,,false,-,false,3,0,385,3344,89,79:15,true,0.056,0.3,0,0.0,0,-,84,false,662e3d26a2c4cb75
+W5-2,enemies-w5-2-complete,fixed,P3:5,1,,false,-,false,3,4,1591,3498,86,95:15,true,0.076,0.4,0,0.0,0,-,84,false,ab8bcd47a1fc6d55
+W5-2,enemies-w5-2-complete,fixed,P3:20,1,,false,-,false,3,0,224,3513,98,95:15,true,0.037,0.3,0,0.0,0,-,86,false,446f17025856caf7
+W5-2,enemies-w5-2-complete,fixed,P4o,1,,false,-,false,3,0,255,3761,97,93:15,true,0.037,0.3,0,0.0,1147,-,86,false,1fe263afaa57e22e
+W5-2,enemies-w5-2-complete,fixed,P4e:200:2,1,,false,-,false,3,0,386,3132,88,94:15,true,0.071,0.3,0,0.0,30,-,83,false,9ba9f03f56a7cb3d
+W5-2,enemies-w5-2-complete,fixed,P5:0,1,,false,-,false,3,4,1911,3132,74,93:15,true,0.161,0.4,0,0.0,0,-,84,false,9ba9f03f56a7cb3d
+W5-2,enemies-w5-2-complete,fixed,P5:2,1,,false,-,false,3,0,491,3342,79,79:15,true,0.104,0.3,0,0.0,0,-,84,false,5809ceb718b0952d
+W5-2,enemies-w5-2-complete,fixed,P6e,1,,false,-,false,7,4,1841,7275,76,104:15,false,0.159,1.0,0,0.0,0,-,225,true,9e05aabfb34ada13
+W5-2,enemies-w5-2-complete,fixed,P0,1,,true,6094,true,0,2,-,6124,0,188:53,false,1.000,14.3,0,0.0,1803,pass(6094 frames, 2 hearts),603,false,92c935f69273abe9
+W5-2,enemies-w5-2-complete,fixed,P3o:5,1,,false,-,false,3,4,2418,3498,81,95:15,true,0.076,8.2,0,0.0,1107,FAIL(not faithful: diverged at frame 1354),448,false,ab8bcd47a1fc6d55
+W5-2,enemies-w5-2-complete,fixed,P5o:0,1,,false,-,false,3,4,2547,3496,74,95:15,true,0.168,8.0,0,0.0,374,-,226,false,1222f8e0724641ad
+W5-2,enemies-w5-2-complete,fixed,P6,1,,true,6094,true,0,2,-,6124,0,188:53,false,0.871,14.3,0,0.0,1846,pass(6094 frames, 2 hearts),606,false,92c935f69273abe9
+W5-2,enemies-w5-2-complete,A,P1,1,,false,-,false,2,4,1845,5691,77,111:15,false,0.146,0.5,0,0.0,0,-,84,true,aa600d61d375e017
+W5-2,enemies-w5-2-complete,A,P2,1,,false,-,false,2,4,1845,5691,77,111:15,false,0.146,0.5,0,0.0,0,-,84,true,aa600d61d375e017
+W5-2,enemies-w5-2-complete,A,P3:1,1,,false,-,false,3,0,208,698,98,93:15,true,0.037,0.2,0,0.0,0,-,84,false,6f19a8df05c0e1d7
+W5-2,enemies-w5-2-complete,A,P3:2,1,,false,-,false,3,0,208,698,98,93:15,true,0.037,0.2,0,0.0,0,-,84,false,e328661cab79436b
+W5-2,enemies-w5-2-complete,A,P3:5,1,,false,-,false,2,4,1853,5699,77,111:15,false,0.146,0.6,0,0.0,0,-,84,true,243615738ef3394b
+W5-2,enemies-w5-2-complete,A,P3:20,1,,false,-,false,3,0,224,714,98,93:15,true,0.037,0.2,0,0.0,0,-,84,false,92790c7df75e4e43
+W5-2,enemies-w5-2-complete,A,P4o,1,,false,-,false,3,12,2216,5862,78,121:32,true,0.142,0.6,0,0.0,1720,-,84,false,393d5c7fc100537c
+W5-2,enemies-w5-2-complete,A,P4e:200:2,1,,false,-,false,3,12,1501,4168,79,114:32,true,0.142,0.6,0,0.0,40,-,84,false,02c8a0312b17ddb8
+W5-2,enemies-w5-2-complete,A,P5:0,1,,false,-,false,2,4,1999,5845,77,111:15,false,0.146,0.5,0,0.0,0,-,84,true,c1510b674252ef9f
+W5-2,enemies-w5-2-complete,A,P5:2,1,,false,-,false,3,0,491,1457,79,80:15,true,0.104,0.2,0,0.0,0,-,84,false,8cd7fc9792e7352b
+W5-2,enemies-w5-2-complete,A,P6e,1,,false,-,false,2,4,1845,5691,77,111:15,false,0.146,0.6,0,0.0,0,-,225,true,aa600d61d375e017
+W5-2,enemies-w5-2-complete,A,P0,1,,true,6094,true,0,2,-,6124,0,188:53,false,1.000,14.3,0,0.0,1803,pass(6094 frames, 2 hearts),603,false,92c935f69273abe9
+W5-2,enemies-w5-2-complete,A,P3o:5,1,,false,-,false,3,2,2650,3623,60,94:15,true,0.420,8.4,0,0.0,1044,FAIL(no exit),507,false,25741bbff8b51cd3
+W5-2,enemies-w5-2-complete,A,P5o:0,1,,false,-,false,3,4,2149,3111,74,94:15,true,0.168,7.2,0,0.0,358,-,226,false,e93495c8e3f24545
+W5-2,enemies-w5-2-complete,A,P6,1,,false,-,false,7,2,3351,5600,38,92:17,false,0.545,13.0,0,0.0,1212,FAIL(no exit),604,true,a64fcc73ee5ec0bf
+W5-2,enemies-w5-2-complete,B1,P1,1,,false,-,false,3,0,374,1020,87,92:16,true,0.071,0.2,0,0.0,0,-,83,false,95cda596e05e8188
+W5-2,enemies-w5-2-complete,B1,P2,1,,false,-,false,3,0,374,1020,87,92:16,true,0.071,0.2,0,0.0,0,-,84,false,95cda596e05e8188
+W5-2,enemies-w5-2-complete,B1,P3:1,1,,false,-,false,3,0,374,1020,87,92:16,true,0.071,0.2,0,0.0,0,-,83,false,f75052c064638e03
+W5-2,enemies-w5-2-complete,B1,P3:2,1,,false,-,false,3,0,374,1020,87,92:16,true,0.071,0.2,0,0.0,0,-,83,false,9e876ecba3f66efa
+W5-2,enemies-w5-2-complete,B1,P3:5,1,,false,-,false,3,0,374,1020,87,92:16,true,0.071,0.2,0,0.0,0,-,84,false,805d2ae542951c0f
+W5-2,enemies-w5-2-complete,B1,P3:20,1,,false,-,false,3,0,374,1020,87,92:16,true,0.071,0.2,0,0.0,0,-,83,false,0d89621987f96e34
+W5-2,enemies-w5-2-complete,B1,P4o,1,,false,-,false,3,0,466,1521,87,92:16,true,0.070,0.2,0,0.0,501,-,84,false,4c049b057d0c8e58
+W5-2,enemies-w5-2-complete,B1,P4e:200:2,1,,false,-,false,3,0,376,1030,87,92:16,true,0.071,0.2,0,0.0,10,-,83,false,5024d5d26b9a9f3a
+W5-2,enemies-w5-2-complete,B1,P5:0,1,,false,-,false,3,0,374,1020,87,92:16,true,0.071,0.2,0,0.0,0,-,83,false,95cda596e05e8188
+W5-2,enemies-w5-2-complete,B1,P5:2,1,,false,-,false,3,0,374,1020,87,92:16,true,0.071,0.2,0,0.0,0,-,84,false,95cda596e05e8188
+W5-2,enemies-w5-2-complete,B1,P6e,1,,false,-,false,6,0,374,2223,87,93:15,false,0.071,0.5,0,0.0,0,-,224,true,8045f2399f43d730
+W5-2,enemies-w5-2-complete,B1,P0,1,,false,-,false,3,0,373,1116,87,92:16,true,0.071,2.5,0,0.0,128,FAIL(no exit),562,false,70fd8b80da4c1bae
+W5-2,enemies-w5-2-complete,B1,P3o:5,1,,false,-,false,3,0,373,1116,87,92:16,true,0.071,2.5,0,0.0,128,FAIL(no exit),602,false,37e023391ae9bde9
+W5-2,enemies-w5-2-complete,B1,P5o:0,1,,false,-,false,3,0,373,1116,87,92:16,true,0.071,2.6,0,0.0,128,-,225,false,70fd8b80da4c1bae
+W5-2,enemies-w5-2-complete,B1,P6,1,,false,-,false,7,0,373,2622,87,93:15,false,0.071,5.9,0,0.0,257,FAIL(no exit),603,true,c1aae946fb4f84c4
+W6-1,enemies-w6-1-complete,fixed,P1,1,,false,-,false,2,10,1478,8226,73,106:36,false,0.071,0.6,0,0.0,0,-,84,true,dfa06002f628423d
+W6-1,enemies-w6-1-complete,fixed,P2,1,,false,-,false,2,10,1461,7397,64,106:36,false,0.121,0.7,0,0.0,0,-,84,true,9bc316c7183178ff
+W6-1,enemies-w6-1-complete,fixed,P3:1,1,,false,-,false,3,8,2383,5335,64,66:32,true,0.097,0.6,0,0.0,0,-,84,false,1e460b6b205c5511
+W6-1,enemies-w6-1-complete,fixed,P3:2,1,,false,-,false,3,10,1913,4723,71,66:31,true,0.167,0.5,0,0.0,0,-,84,false,d0978c04edb2634b
+W6-1,enemies-w6-1-complete,fixed,P3:5,1,,false,-,false,3,9,2391,4828,77,40:36,true,0.059,0.6,0,0.0,0,-,84,false,2c95edbfa052d735
+W6-1,enemies-w6-1-complete,fixed,P3:20,1,,false,-,false,3,14,2259,6962,70,52:46,true,0.143,0.6,0,0.0,0,-,84,false,556211652f73287d
+W6-1,enemies-w6-1-complete,fixed,P4o,1,,false,-,false,3,12,2337,7303,84,55:46,true,0.049,0.5,0,0.0,2066,-,84,false,ee185766880a3ed7
+W6-1,enemies-w6-1-complete,fixed,P4e:200:2,1,,false,-,false,2,11,3517,7373,78,63:40,false,0.059,0.7,0,0.0,72,-,84,true,aabcca390845255f
+W6-1,enemies-w6-1-complete,fixed,P5:0,1,,false,-,false,2,9,1479,7293,76,63:40,false,0.071,0.5,0,0.0,0,-,86,true,3a921d489fc48a9f
+W6-1,enemies-w6-1-complete,fixed,P5:2,1,,false,-,false,3,0,311,1276,85,39:36,true,0.049,0.2,0,0.0,0,-,83,false,f6855ecbb8cd7d21
+W6-1,enemies-w6-1-complete,fixed,P6e,1,,false,-,false,3,18,2715,8325,72,61:40,false,0.123,0.9,0,0.0,0,-,225,true,92a260a4860a427f
+W6-1,enemies-w6-1-complete,fixed,P0,1,,true,6752,true,0,2,-,6782,0,277:36,false,1.000,15.7,0,0.0,2067,pass(6752 frames, 2 hearts),604,false,454db60b85c3e76d
+W6-1,enemies-w6-1-complete,fixed,P3o:5,1,,false,-,false,3,11,2370,5218,77,87:37,true,0.051,12.4,0,0.0,1907,FAIL(not faithful: diverged at frame 4970),604,false,1f3abf6b2ba3299e
+W6-1,enemies-w6-1-complete,fixed,P5o:0,1,,false,-,false,3,1,2905,3811,49,138:36,true,0.442,8.9,0,0.0,1063,-,226,false,5d13f4e5972df463
+W6-1,enemies-w6-1-complete,fixed,P6,1,,false,-,false,5,10,2355,7314,62,61:40,false,0.104,16.9,0,0.0,1370,FAIL(no exit),608,true,8f1691974fa120fd
+W6-1,enemies-w6-1-complete,A,P1,1,,false,-,false,2,13,4027,7861,77,53:39,false,0.073,0.6,0,0.0,0,-,84,true,0b65322407497307
+W6-1,enemies-w6-1-complete,A,P2,1,,false,-,false,2,12,2740,6573,77,53:39,false,0.068,0.5,0,0.0,0,-,86,true,7107cc4deb58d967
+W6-1,enemies-w6-1-complete,A,P3:1,1,,false,-,false,2,13,4027,7861,77,53:39,false,0.073,0.6,0,0.0,0,-,84,true,b9a572addce80c5b
+W6-1,enemies-w6-1-complete,A,P3:2,1,,false,-,false,2,13,4027,7861,77,53:39,false,0.073,0.6,0,0.0,0,-,85,true,6e1597f46618bdcf
+W6-1,enemies-w6-1-complete,A,P3:5,1,,false,-,false,3,9,995,4490,79,63:40,true,0.057,0.5,0,0.0,0,-,84,false,e138c7feae4bb7d0
+W6-1,enemies-w6-1-complete,A,P3:20,1,,false,-,false,3,8,1504,3455,85,40:36,true,0.047,0.4,0,0.0,0,-,84,false,01f667cbee1a2f7e
+W6-1,enemies-w6-1-complete,A,P4o,1,,false,-,false,3,10,3774,5871,85,41:35,true,0.049,0.4,0,0.0,1876,-,85,false,4c925a2390946319
+W6-1,enemies-w6-1-complete,A,P4e:200:2,1,,false,-,false,3,12,3389,5817,79,52:46,true,0.049,0.5,0,0.0,58,-,84,false,b9bde00c5169df09
+W6-1,enemies-w6-1-complete,A,P5:0,1,,false,-,false,2,13,3844,7521,84,40:46,false,0.051,0.6,0,0.0,0,-,84,true,f13b3aa5416fd2db
+W6-1,enemies-w6-1-complete,A,P5:2,1,,false,-,false,3,0,311,1159,85,29:46,true,0.049,0.2,0,0.0,0,-,93,false,618c44852359598c
+W6-1,enemies-w6-1-complete,A,P6e,1,,false,-,false,7,17,2583,10467,70,61:35,false,0.167,1.2,0,0.0,0,-,226,true,419f18255d7f7561
+W6-1,enemies-w6-1-complete,A,P0,1,,true,6752,true,0,2,-,6782,0,277:36,false,1.000,15.7,0,0.0,2067,pass(6752 frames, 2 hearts),606,false,454db60b85c3e76d
+W6-1,enemies-w6-1-complete,A,P3o:5,1,,false,-,false,3,6,1675,3626,85,40:36,true,0.046,8.3,0,0.0,352,FAIL(no exit),603,false,0f126e25c1530101
+W6-1,enemies-w6-1-complete,A,P5o:0,1,,false,-,false,3,1,2903,4014,52,133:44,true,0.431,9.4,0,0.0,1060,-,227,false,344b201543d594a9
+W6-1,enemies-w6-1-complete,A,P6,1,,false,-,false,6,6,2636,4566,85,38:36,false,0.049,10.5,0,0.0,636,FAIL(not faithful: diverged at frame 3893),606,true,7e934f83763cd2d8
+W6-1,enemies-w6-1-complete,B1,P1,1,,false,-,false,3,4,1337,1945,78,41:36,true,0.070,0.3,0,0.0,0,-,84,false,0ff150f9c2ad5798
+W6-1,enemies-w6-1-complete,B1,P2,1,,false,-,false,1,6,1397,3748,74,88:37,false,0.072,0.5,0,0.0,0,-,85,true,aae6ef69406a0367
+W6-1,enemies-w6-1-complete,B1,P3:1,1,,false,-,false,3,4,1337,1945,78,41:36,true,0.070,0.3,0,0.0,0,-,83,false,aef2c0b6bf74c8ac
+W6-1,enemies-w6-1-complete,B1,P3:2,1,,false,-,false,3,4,1337,1945,78,41:36,true,0.070,0.3,0,0.0,0,-,84,false,29825b7163ce8d20
+W6-1,enemies-w6-1-complete,B1,P3:5,1,,false,-,false,3,4,1337,1945,78,41:36,true,0.070,0.3,0,0.0,0,-,83,false,8e88c1c0b992d87c
+W6-1,enemies-w6-1-complete,B1,P3:20,1,,false,-,false,3,4,1337,1945,78,41:36,true,0.070,0.3,0,0.0,0,-,83,false,09c9325f701a65c8
+W6-1,enemies-w6-1-complete,B1,P4o,1,,false,-,false,3,4,2213,3005,78,41:36,true,0.069,0.3,0,0.0,1060,-,84,false,6c182fe32b49fe6e
+W6-1,enemies-w6-1-complete,B1,P4e:200:2,1,,false,-,false,3,4,1349,1963,78,41:36,true,0.069,0.3,0,0.0,18,-,83,false,e78467948721ad60
+W6-1,enemies-w6-1-complete,B1,P5:0,1,,false,-,false,0,2,-,2709,74,88:37,false,0.072,0.3,0,0.0,0,-,81,true,78b124ab70dc8972
+W6-1,enemies-w6-1-complete,B1,P5:2,1,,false,-,false,3,0,251,1508,90,41:36,true,0.041,0.3,0,0.0,0,-,83,false,23c0f0e685e54258
+W6-1,enemies-w6-1-complete,B1,P6e,1,,false,-,false,1,6,1475,3834,74,88:37,false,0.072,0.5,0,0.0,0,-,225,true,62f9712ad6905222
+W6-1,enemies-w6-1-complete,B1,P0,1,,false,-,false,1,6,1395,3852,74,88:37,false,0.073,9.0,0,0.0,1817,FAIL(no exit),600,true,44b26cb2b4cc4784
+W6-1,enemies-w6-1-complete,B1,P3o:5,1,,false,-,false,1,6,1395,3852,74,88:37,false,0.073,9.1,0,0.0,1817,FAIL(no exit),603,true,9e9eea8e97476798
+W6-1,enemies-w6-1-complete,B1,P5o:0,1,,false,-,false,0,2,-,2471,75,88:37,false,0.071,5.9,0,0.0,1745,-,226,true,ba74b85da4866901
+W6-1,enemies-w6-1-complete,B1,P6,1,,false,-,false,1,6,1410,3858,74,88:37,false,0.073,9.2,0,0.0,1790,FAIL(no exit),604,true,e61284125b8c3095
+W6-2,enemies-w6-2-complete,fixed,P1,1,,false,-,false,2,6,4141,9901,58,31:67,false,0.331,0.7,0,0.0,0,-,84,true,8986f4e5803a8b73
+W6-2,enemies-w6-2-complete,fixed,P2,1,,false,-,false,2,6,4141,9901,58,31:67,false,0.332,0.7,0,0.0,0,-,84,true,8986f4e5803a8b73
+W6-2,enemies-w6-2-complete,fixed,P3:1,1,,false,-,false,3,6,1415,7717,69,94:66,true,0.144,0.6,0,0.0,0,-,84,false,53663fe98c6bbc5d
+W6-2,enemies-w6-2-complete,fixed,P3:2,1,,false,-,false,3,5,1188,7818,70,94:66,true,0.116,0.7,0,0.0,0,-,84,false,9d8211c3a8e2dab5
+W6-2,enemies-w6-2-complete,fixed,P3:5,1,,false,-,false,3,3,1191,6678,72,95:66,true,0.027,0.6,0,0.0,0,-,85,false,9660e69cde3a5f62
+W6-2,enemies-w6-2-complete,fixed,P3:20,1,,false,-,false,3,5,1206,7836,70,94:66,true,0.116,0.7,0,0.0,0,-,84,false,9c6c459188dfd0dd
+W6-2,enemies-w6-2-complete,fixed,P4o,1,,false,-,false,1,2,1186,9727,73,50:65,false,0.037,0.5,0,0.0,1993,-,85,true,e41163b23a0e21ab
+W6-2,enemies-w6-2-complete,fixed,P4e:200:2,1,,false,-,false,3,5,1186,8024,69,102:66,true,0.148,0.7,0,0.0,80,-,84,false,c9614ecec0b3617d
+W6-2,enemies-w6-2-complete,fixed,P5:0,1,,false,-,false,3,9,4661,7898,58,93:66,true,0.331,0.7,0,0.0,0,-,84,false,593b44e6ed0ddf19
+W6-2,enemies-w6-2-complete,fixed,P5:2,1,,false,-,false,3,0,2713,6699,58,78:71,true,0.331,0.6,0,0.0,0,-,84,false,35b62deb4c47e16b
+W6-2,enemies-w6-2-complete,fixed,P6e,1,,false,-,false,5,4,1836,9256,69,32:67,false,0.096,0.8,0,0.0,0,-,224,true,611129db8c5af071
+W6-2,enemies-w6-2-complete,fixed,P0,1,,true,8430,true,0,0,-,8460,0,156:28,false,1.000,19.7,0,0.0,1993,pass(8430 frames, 0 hearts),605,false,b213ac31564e9881
+W6-2,enemies-w6-2-complete,fixed,P3o:5,1,,false,-,false,3,3,1191,6678,72,95:66,true,0.027,15.2,0,0.0,434,FAIL(not faithful: diverged at frame 1263),604,false,9660e69cde3a5f62
+W6-2,enemies-w6-2-complete,fixed,P5o:0,1,,false,-,false,2,8,6335,9909,47,65:71,false,0.545,22.9,0,0.0,2305,-,228,true,8a3653988b3f5dd3
+W6-2,enemies-w6-2-complete,fixed,P6,1,,false,-,false,2,7,1836,9719,69,32:67,false,0.093,21.9,0,0.0,196,FAIL(no exit),581,true,2aa1ab81355e144b
+W6-2,enemies-w6-2-complete,A,P1,1,,false,-,false,3,10,4821,7159,54,101:67,true,0.333,0.6,0,0.0,0,-,84,false,1e5fe430bfa0ba65
+W6-2,enemies-w6-2-complete,A,P2,1,,false,-,false,3,1,3887,4959,60,209:62,true,0.333,0.5,0,0.0,0,-,85,false,4e81a9222a51c8bb
+W6-2,enemies-w6-2-complete,A,P3:1,1,,false,-,false,3,10,4821,7159,54,101:67,true,0.333,0.6,0,0.0,0,-,84,false,70e8c585335ff8fe
+W6-2,enemies-w6-2-complete,A,P3:2,1,,false,-,false,3,10,4821,7159,54,101:67,true,0.333,0.6,0,0.0,0,-,84,false,d773033dcd199b47
+W6-2,enemies-w6-2-complete,A,P3:5,1,,false,-,false,3,8,1436,6114,70,179:66,true,0.150,0.6,0,0.0,0,-,84,false,2ba678fd2f120e2f
+W6-2,enemies-w6-2-complete,A,P3:20,1,,false,-,false,3,3,2547,4536,70,180:65,true,0.153,0.5,0,0.0,0,-,84,false,0bb6190d86a899d5
+W6-2,enemies-w6-2-complete,A,P4o,1,,false,-,false,3,4,3333,5863,70,162:67,true,0.153,0.4,0,0.0,1457,-,84,false,dbb96b3b62e6ef18
+W6-2,enemies-w6-2-complete,A,P4e:200:2,1,,false,-,false,3,4,3749,5011,57,211:62,true,0.337,0.5,0,0.0,50,-,84,false,cf14ed6bde221317
+W6-2,enemies-w6-2-complete,A,P5:0,1,,false,-,false,3,8,5559,7806,54,101:67,true,0.333,0.7,0,0.0,0,-,86,false,dc5c1d8b2bedfc7f
+W6-2,enemies-w6-2-complete,A,P5:2,1,,false,-,false,3,0,2713,3583,60,76:71,true,0.331,0.4,0,0.0,0,-,84,false,46840d7e2cf22259
+W6-2,enemies-w6-2-complete,A,P6e,1,,false,-,false,5,8,4564,7041,48,65:66,false,0.399,0.8,0,0.0,0,-,224,true,78b95f68feaa84d4
+W6-2,enemies-w6-2-complete,A,P0,1,,true,8430,true,0,0,-,8460,0,156:28,false,1.000,21.5,0,0.0,1993,pass(8430 frames, 0 hearts),470,false,b213ac31564e9881
+W6-2,enemies-w6-2-complete,A,P3o:5,1,,false,-,false,3,11,1436,6633,71,180:63,true,0.139,15.2,0,0.0,773,FAIL(not faithful: diverged at frame 1977),604,false,a500696c222b0d9d
+W6-2,enemies-w6-2-complete,A,P5o:0,1,,false,-,false,3,9,6078,10277,45,93:66,true,0.557,23.5,0,0.0,1634,-,227,false,6d5297a86813b3e6
+W6-2,enemies-w6-2-complete,A,P6,1,,false,-,false,6,16,2270,7587,71,65:71,false,0.175,17.5,0,0.0,2320,FAIL(not faithful: diverged at frame 1765),605,true,0d3042c18dcdf6da
+W6-2,enemies-w6-2-complete,B1,P1,1,,false,-,false,0,0,-,2092,73,41:65,false,0.064,0.1,0,0.0,0,-,81,true,d2b07f9b52c3767c
+W6-2,enemies-w6-2-complete,B1,P2,1,,false,-,false,0,0,-,2092,73,41:65,false,0.064,0.1,0,0.0,0,-,84,true,d2b07f9b52c3767c
+W6-2,enemies-w6-2-complete,B1,P3:1,1,,false,-,false,0,0,-,2092,73,41:65,false,0.064,0.1,0,0.0,0,-,81,true,95acd9593907bba3
+W6-2,enemies-w6-2-complete,B1,P3:2,1,,false,-,false,0,0,-,2092,73,41:65,false,0.064,0.1,0,0.0,0,-,81,true,24128d1e6d4ece16
+W6-2,enemies-w6-2-complete,B1,P3:5,1,,false,-,false,0,0,-,2092,73,41:65,false,0.064,0.1,0,0.0,0,-,82,true,05dd9ce56b31ec17
+W6-2,enemies-w6-2-complete,B1,P3:20,1,,false,-,false,0,0,-,2092,73,41:65,false,0.064,0.1,0,0.0,0,-,81,true,81d5e7087e6c4558
+W6-2,enemies-w6-2-complete,B1,P4o,1,,false,-,false,0,0,-,2190,73,41:60,false,0.064,0.1,0,0.0,467,-,82,true,271e40a05f43ffcc
+W6-2,enemies-w6-2-complete,B1,P4e:200:2,1,,false,-,false,0,0,-,2096,73,41:62,false,0.064,0.1,0,0.0,20,-,81,true,a5b30221e9fc1e7e
+W6-2,enemies-w6-2-complete,B1,P5:0,1,,false,-,false,0,0,-,2092,73,41:65,false,0.064,0.1,0,0.0,0,-,81,true,d2b07f9b52c3767c
+W6-2,enemies-w6-2-complete,B1,P5:2,1,,false,-,false,0,0,-,2092,73,41:65,false,0.064,0.1,0,0.0,0,-,81,true,d2b07f9b52c3767c
+W6-2,enemies-w6-2-complete,B1,P6e,1,,false,-,false,0,0,-,2093,73,41:65,false,0.064,0.1,0,0.0,0,-,224,true,30fd6d7e6d893afb
+W6-2,enemies-w6-2-complete,B1,P0,1,,false,-,false,0,0,-,2092,73,41:65,false,0.064,4.7,0,0.0,136,FAIL(no exit),603,true,d2b07f9b52c3767c
+W6-2,enemies-w6-2-complete,B1,P3o:5,1,,false,-,false,0,0,-,2092,73,41:65,false,0.064,4.7,0,0.0,136,FAIL(no exit),604,true,05dd9ce56b31ec17
+W6-2,enemies-w6-2-complete,B1,P5o:0,1,,false,-,false,0,0,-,2092,73,41:65,false,0.064,4.7,0,0.0,136,-,227,true,d2b07f9b52c3767c
+W6-2,enemies-w6-2-complete,B1,P6,1,,false,-,false,0,0,-,2359,72,71:63,false,0.038,5.4,0,0.0,159,FAIL(no exit),604,true,519f5e6c1c61a1aa
+W4-3,complete-w4-3,fixed,P1,1,,false,-,false,3,5,586,4305,82,221:13,true,0.057,0.4,0,0.0,0,-,85,false,66ab247394ac2e4b
+W4-3,complete-w4-3,fixed,P2,1,,false,-,false,3,5,586,4305,82,221:13,true,0.057,0.4,0,0.0,0,-,85,false,66ab247394ac2e4b
+W4-3,complete-w4-3,fixed,P3:1,1,,false,-,false,3,6,1225,2948,88,225:14,true,0.049,0.3,0,0.0,0,-,84,false,5887fb92c7159c20
+W4-3,complete-w4-3,fixed,P3:2,1,,false,-,false,3,4,1286,4308,81,222:13,true,0.071,0.4,0,0.0,0,-,84,false,510c05c9ec7289c1
+W4-3,complete-w4-3,fixed,P3:5,1,,false,-,false,3,4,722,2381,81,222:13,true,0.064,0.3,0,0.0,0,-,84,false,1da67e6b408f3eab
+W4-3,complete-w4-3,fixed,P3:20,1,,false,-,false,3,2,1245,2966,85,225:13,true,0.050,0.3,0,0.0,0,-,85,false,a693654248848aa7
+W4-3,complete-w4-3,fixed,P4o,1,,false,-,false,3,3,1454,4248,87,224:13,true,0.036,0.3,0,0.0,1766,-,84,false,4e31070029cccfe1
+W4-3,complete-w4-3,fixed,P4e:200:2,1,,false,-,false,3,2,1284,4305,86,221:13,true,0.052,0.4,0,0.0,42,-,84,false,66ab247394ac2e4b
+W4-3,complete-w4-3,fixed,P5:0,1,,false,-,false,3,2,586,2544,83,225:13,true,0.059,0.3,0,0.0,0,-,85,false,0cda490ac48ba485
+W4-3,complete-w4-3,fixed,P5:2,1,,false,-,false,3,0,399,943,89,222:13,true,0.049,0.2,0,0.0,0,-,84,false,e292919a1f51382a
+W4-3,complete-w4-3,fixed,P6e,1,,false,-,false,5,8,586,10029,82,232:12,false,0.057,0.9,0,0.0,0,-,224,true,3104d6cb932bcd0f
+W4-3,complete-w4-3,fixed,P0,1,,true,8486,true,0,2,-,8516,0,181:76,false,1.000,19.9,0,0.0,2712,pass(8486 frames, 2 hearts),579,false,bd8a353ed4ef45b5
+W4-3,complete-w4-3,fixed,P3o:5,1,,false,-,false,3,3,2423,4308,85,221:13,true,0.050,10.0,0,0.0,455,FAIL(no exit),603,false,776b443732cdbdf1
+W4-3,complete-w4-3,fixed,P5o:0,1,,false,-,false,3,1,1751,2949,72,225:14,true,0.163,6.9,0,0.0,477,-,228,false,c54da55ba1da32db
+W4-3,complete-w4-3,fixed,P6,1,,false,-,false,7,4,4572,9794,38,67:64,false,0.533,22.6,0,0.0,1994,FAIL(not faithful: diverged at frame 6865),581,true,c25221abc6e7f64d
+W4-3,complete-w4-3,A,P1,1,,false,-,false,3,4,836,2348,86,222:13,true,0.052,0.3,0,0.0,0,-,84,false,f3f1ff582c00cb90
+W4-3,complete-w4-3,A,P2,1,,false,-,false,3,4,836,2348,86,222:13,true,0.052,0.3,0,0.0,0,-,86,false,f3f1ff582c00cb90
+W4-3,complete-w4-3,A,P3:1,1,,false,-,false,3,0,731,1902,83,225:13,true,0.025,0.3,0,0.0,0,-,84,false,d760f442204ef7fc
+W4-3,complete-w4-3,A,P3:2,1,,false,-,false,3,4,947,3007,83,225:13,true,0.035,0.4,0,0.0,0,-,86,false,4f5df31b324632da
+W4-3,complete-w4-3,A,P3:5,1,,false,-,false,3,2,593,1780,92,224:13,true,0.035,0.2,0,0.0,0,-,84,false,c0878a98e982f697
+W4-3,complete-w4-3,A,P3:20,1,,false,-,false,3,4,878,2875,81,176:14,true,0.063,0.3,0,0.0,0,-,84,false,48a0856d1040ee0a
+W4-3,complete-w4-3,A,P4o,1,,false,-,false,3,3,722,4692,84,221:13,true,0.046,0.3,0,0.0,1903,-,84,false,6196fc363813e620
+W4-3,complete-w4-3,A,P4e:200:2,1,,false,-,false,3,4,839,2354,86,222:13,true,0.051,0.3,0,0.0,22,-,84,false,88cf8cf82c5e9ff0
+W4-3,complete-w4-3,A,P5:0,1,,false,-,false,3,4,895,3220,85,225:13,true,0.051,0.4,0,0.0,0,-,84,false,999727eb2b544e0b
+W4-3,complete-w4-3,A,P5:2,1,,false,-,false,3,0,399,1270,86,213:14,true,0.049,0.2,0,0.0,0,-,84,false,c8a088926045473a
+W4-3,complete-w4-3,A,P6e,1,,false,-,false,8,4,836,3748,86,222:13,true,0.052,0.7,0,0.0,0,-,225,false,c12c5b3af5c0ff02
