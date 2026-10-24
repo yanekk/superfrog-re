@@ -475,6 +475,9 @@ pub fn pass_step(cpu: &CpuRegs, m: &AmigaMemory) -> u16 {
         // clock decides.
         0xfa7c => 0,
         0xfa80..=0xfa94 => queue_step(cpu.a[6]),
+        // `passage_step` (T32): the cells dug up the column, then down it, then its move
+        // ([`passage_step`]).
+        0x7772..=0x7828 | 0x782a..=0x7874 => passage_step(at, cpu, m, sp).unwrap_or(NO_STEP),
         0xd0cc => 0,
         0xd0d0 | 0xd0e0..=0xd0ff => 1,
         // The frog's box is taken once its x and y are read (h0+$d0f8, $d0fc): from there the
@@ -492,6 +495,9 @@ pub fn pass_step(cpu: &CpuRegs, m: &AmigaMemory) -> u16 {
             // d0 under the return address), the hitbox entry whose touch handler runs (the frog's
             // walk saved d0-d7/a0-a6 under the return address; `frog_hurt` a0/a5 under that), or
             // the half of `collide_all`.
+            if let Some(k) = passage_step(at, cpu, m, sp) {
+                return k;
+            }
             if let Some(a) = ret(0x1b33e) {
                 return slot(word(m, a + 6) as u16) + 1;
             }
@@ -510,6 +516,52 @@ pub fn pass_step(cpu: &CpuRegs, m: &AmigaMemory) -> u16 {
             NO_STEP
         }
     }
+}
+
+/// Where `passage_step` (h0+$7772) had got, as the engine counts its steps
+/// (`sf_core::level::pass::passage_step`): the cells dug up the column (`a1` the one looked at,
+/// the cell dug the saved `a1` of the dig at h0+$7a34, 24 bytes under its return address), then
+/// [`PASSAGE_DOWN`] plus those dug down it, then [`PASSAGE_MOVE`] and its move's parts. `None`
+/// outside it. A cell being dug is not done until its dig returns.
+fn passage_step(at: u32, cpu: &CpuRegs, m: &AmigaMemory, sp: u32) -> Option<u16> {
+    use sf_core::level::pass::{PASSAGE_DOWN, PASSAGE_MOVE};
+    let cell = long(m, h0(0x776c));
+    let up = |a1: u32| (cell.wrapping_sub(a1) / 0x260) as u16;
+    let down = |a1: u32| PASSAGE_DOWN + (a1.wrapping_sub(cell) / 0x260) as u16;
+    let a1 = cpu.a[1];
+    // The digs and the move's calls are deep (a dig's redraw is five calls down): the nearest
+    // of the routine's own return addresses on the stack, under its caller's in
+    // `level_frame_loop` (h0+$afa), which is what makes it this routine's.
+    let ret = (0..0x180).step_by(2).map(|k| sp + k).find_map(|a| {
+        let r = long(m, a).wrapping_sub(h0(0));
+        [0x784e, 0x7874, 0x77a4, 0x77ae, 0x7810, 0x781c, 0xafa].contains(&r).then_some((a, r))
+    });
+    let ret = ret.filter(|&(a, r)| {
+        r != 0xafa && (a..a + 0x180).step_by(2).any(|b| long(m, b) == h0(0xafa))
+    });
+    Some(match at {
+        0x7772..=0x77a3 => 0,
+        0x77a4..=0x77ad => PASSAGE_DOWN,
+        0x77ae..=0x77f9 | 0x7822 => PASSAGE_MOVE,
+        0x77fa..=0x780f | 0x7828 => PASSAGE_MOVE + 1,
+        0x7810..=0x781b => PASSAGE_MOVE + 2,
+        0x781c..=0x7821 => PASSAGE_MOVE + 3,
+        0x782a | 0x784e => up(a1) + 1,
+        0x7830..=0x784d => up(a1),
+        0x7850 | 0x7874 => down(a1),
+        0x7856..=0x7873 => down(a1) - 1,
+        _ => match ret? {
+            // In a dig: its own cell is in a1 until its save (h0+$7a34), then saved.
+            (a, 0x784e) => up(if at == 0x7a34 { a1 } else { long(m, a - 24) }),
+            (a, 0x7874) => down(if at == 0x7a34 { a1 } else { long(m, a - 24) }) - 1,
+            // h0+$7d4, the shared `rts` the loops leave by.
+            (_, 0x77a4) if at == 0x7d4 => PASSAGE_DOWN,
+            (_, 0x77ae) if at == 0x7d4 => PASSAGE_MOVE,
+            (_, 0x7810) => PASSAGE_MOVE + 1,
+            (_, 0x781c) => PASSAGE_MOVE + 2,
+            _ => return None,
+        },
+    })
 }
 
 /// `tile_anim_queue` (h0+$fa68): the slots `tile_anim_draw` has read, `a6` past the last.
