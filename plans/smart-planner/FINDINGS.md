@@ -11,6 +11,7 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-24 | 📌 | T33 review, worker-driven: W4-1 unaided with the reach survival check removed: three dead ends rewind 3 001→2 023→1 013, 2 549→151, then completes verified (3 527 frames). A first replan from a start repeats the reference-seeded reach in 0 rounds. |
 | 2026-10-24 | 📌 | T33 rerun, 20daffb, unaided, seed 1, load 20–25: W1-3 done 8.2 min, 7 804 frames, 0 hearts; W4-1 done 4.3 min, 3 979 frames (ref 2 146), 0 hearts. Survival check alone; no dead-end rewind fired. T27's T33 row is now D26. |
 | 2026-10-24 | 🐞 | T33 reproduced W4-1 unaided, seed 1: stretch 3's reach ends at route 3 001 mid-fall over hazards 59–60,26; every hold and 3 000 random bursts lose a life 6 frames on, original and engine. `Goal::Reach` had no survival check. |
 | 2026-10-24 | 📌 | T27 set A unaided, seed 1, 0a66ec7–fc438f9: 9 of 24 done (W1-1, W1-2, W2-1, W2-4, W3-1, W4-3, W5-1, W5-2, W5-4; 6–25 min). No first exit: W2-3, W5-3, W6-2, W6-4. |
@@ -62,8 +63,7 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 | 2026-10-21 | 🔄 | Owner, T04: 11 maps over 5 min (quiet, W5-4 566 s) get T21 engine-memory-lookup (T04; blocks T20), speed only; builds still over 5 min after it are recorded and accepted, the move set never shrunk. |
 | 2026-10-21 | 🐞 | T04, D13 check (`map_stats`): 11 of 24 maps miss the exit or the coins, no enemy help. Exit unreached: W2-3, W2-4, W3-2, W3-4, W4-2, W4-4, W5-2, W6-1, W6-2, W6-4. W2-1 reaches 24 of 35 coins. Owner asked before T08. |
 | 2026-10-21 | 🐞 | `sf-bench` copies a failed run's reason verbatim, so `bench/sample/RESULTS.md` and `results.jsonl` carry this machine's absolute worktree path (`no route (/Users/…/routes/explore-A-W1-1.txt…)`). Found in T02 review; T01 code, left. |
-| 2026-10-21 | 📌 | T02 sample, set A, six levels, all old tools: median confirmation share 6.8 % over the 12 runs that reached the oracle (`plan_exit` 12.3 %, `plan_exit_w6` 2.4 %). Under 40 %: T10 keeps chunked 48-frame confirmation. Machine busy (T00 spike, ~8 cores). |
-| 2026-10-21 | 📌 | T02 old tools timed out on all six: `plan_exit --coins 0` ran the level clock out, backtracking; `plan_exit_w6` planned 3 744–5 760 frames in 35 min; `explore` gave up at frame 0 (bursts never outlast the 144-frame start freeze; `--prefix` fixes). |
+| 2026-10-21 | 📌 | T02 sample, set A, six levels, busy machine: old tools all timed out (`plan_exit --coins 0` ran the clock out; `plan_exit_w6` 3 744–5 760 frames in 35 min; `explore` stuck at frame 0, `--prefix` fixes). Median confirmation 6.8 %: T10 keeps 48-frame chunks. |
 | 2026-10-21 | 🐞 | `sf-bench` `best-old` with all three failed keeps the quickest failure (`explore`), so RESULTS.md's baseline shows M3 0.5 min and confirmation 0 %. Its `routes/` folder is not git-ignored; T02 left 1.4 MB of logs uncommitted. |
 | 2026-10-21 | 📌 | T07: `play_safe` with all three retries, 40-frame move on W6-3: 0.21 s at load ~20 (expected 0.19). W1-1 pit deaths drop a life with `frog_hearts` unchanged, so `died` must be checked beside hearts. |
 | 2026-10-21 | 🐞 | T03: tile coins (marker 55, `coin` h0+$ede0) add to `frog+$7e` only, never `coins_left_for_exit`; DESIGN §2.3 counts them toward the exit. `Facts` keeps them as `CoinKind::Tile`; T06 must meet `coins_needed` with `Object` coins. |

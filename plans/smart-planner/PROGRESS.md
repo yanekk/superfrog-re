@@ -19,7 +19,7 @@ allowed everywhere, map a compass; T13 and T20 dropped, T22 route-shorten added.
 
 **Plan amended:** 2026-10-24 — D25: a walk compass (wall-aware fill) joins T28's trial (owner).
 **Status:** T00–T07, T19, T21 done; core rewritten by the amendment, not started.
-**Last updated:** 2026-10-22
+**Last updated:** 2026-10-24
 **Next `pir-work` will:** T08 search (the explorer), from `spike-explore/`.
 
 ## Tasks
@@ -60,9 +60,9 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T30 | lag-repair | T25; blocks T15 | ✅ | |
 | T31 | leg-start-sync | T26; blocks T17 | ✅ | |
 | T32 | alone-pass-drift | T31; blocks T17 | ✅ | |
-| T33 | dead-end-repair | T27, T30; blocks T17 | 🔍 | `Goal::Reach` needs `EXIT_TAIL` survival; `oracle::dead_end` (`DEAD_CELLS` 8, `DEAD_ROUNDS` 100) rewinds via `Starts` (4 marks, not-mid-pass starts only; T30 `Marks` untouched). 4 tests, W4-1 fixture. M8 tested on `plan_engine`, not whole `plan_original`. Reruns ran at load 20–25, not under 10. |
+| T33 | dead-end-repair | T27, T30; blocks T17 | ✅ | Review clean, no fix commit. Reach-survival mutation caught by the W4-1 doomed test. Probed: W4-1 unaided with survival removed dead-ends thrice, rewinds 3001→2023→1013, 2549→151 on the original, completes verified. Stale lag `Marks` dropped by the next push (read-only). M8 tested on `plan_engine` only. |
 
-**Review queue:** T33
+**Review queue:** *(empty)*
 
 ## Blocked on the user
 
