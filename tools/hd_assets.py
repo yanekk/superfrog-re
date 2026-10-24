@@ -144,6 +144,11 @@ def find_occurrence(lv, t):
     return best[1:] if best else None
 
 
+def load_overrides(world):
+    path = os.path.join(ROOT, 'tools', 'hd_overrides', f'w{world}.json')
+    return json.load(open(path)) if os.path.exists(path) else {}
+
+
 def prepare(world):
     base = os.path.join(ROOT, 'build', 'hd', f'w{world}')
     src = os.path.join(base, 'src')
@@ -197,6 +202,25 @@ def prepare(world):
             Image.fromarray(canvas).save(os.path.join(src, name + '.png'))
             man['inputs'].append(dict(name=name, kind='sheet', sheet=sheet, half=half,
                                       rows=h, scale=2 * S))
+    # Detail sheets: small tiles that must match each other (the letter coins),
+    # drawn together at 8x so the model can read them, each on a 3x3-tile block
+    # of its own background colour. Listed in tools/hd_overrides/w<N>.json.
+    idx = decode_tiles(chunk(WORLDS[world]['bm']))
+    for d in load_overrides(world).get('detail', []):
+        k = d.get('scale', 2 * S)
+        block = 3 * T * k
+        per_row = OUT_W // block
+        canvas = np.zeros((OUT_H, OUT_W, 3), np.uint8)
+        canvas[:] = pal[idx[d['tiles'][0]][0, 0]]
+        cells = []
+        for j, t in enumerate(d['tiles']):
+            by, bx = (j // per_row) * block, (j % per_row) * block
+            canvas[by:by + block, bx:bx + block] = pal[idx[t][0, 0]]
+            y, x = by + T * k, bx + T * k
+            canvas[y:y + T * k, x:x + T * k] = up(tiles[t], k)
+            cells.append(dict(tile=int(t), y=y, x=x))
+        Image.fromarray(canvas).save(os.path.join(src, d['name'] + '.png'))
+        man['inputs'].append(dict(name=d['name'], kind='detail', scale=k, cells=cells))
     man['missing_tiles'] = [int(t) for t in missing]
     json.dump(man, open(os.path.join(base, 'manifest.json'), 'w'), indent=1)
     print(f'{len(picks)} windows, {len(spots)} packed tiles in '
@@ -320,7 +344,14 @@ def seam_fix(hd, lv, orig, idx, iters=3, band=8, along=4.0, clamp=4):
             pairs[('v', int(a), int(b))] = pairs.get(('v', int(a), int(b)), 0) + 1
     # Original border lines (index and colour) per side: left, right, top, bottom.
     side_idx = lambda t, s: (idx[t][:, 0], idx[t][:, -1], idx[t][0], idx[t][-1])[s]
-    side_rgb = lambda t, s: (orig[t][:, 0], orig[t][:, -1], orig[t][0], orig[t][-1])[s]
+    # Edge colours come from a smooth (bicubic) enlargement of the original:
+    # square-block colours turned the round left edge of coins and apples
+    # into steps wherever the outline touches the border.
+    def smooth(t):
+        a = np.pad(orig[t].astype(np.uint8), ((2, 2), (2, 2), (0, 0)), mode='edge')
+        b = np.array(Image.fromarray(a).resize(((T + 4) * S, (T + 4) * S), Image.BICUBIC))
+        return b[2 * S:-2 * S, 2 * S:-2 * S].astype(np.float32)
+    side_smooth = lambda t, s, o: (o[:, 0], o[:, -1], o[0], o[-1])[s]
     same = np.zeros((n, 4, T), np.float32)    # neighbour occurrences continuing the art
     total = np.zeros((n, 4, T), np.float32)
     for (d, a, b), c in pairs.items():
@@ -350,8 +381,7 @@ def seam_fix(hd, lv, orig, idx, iters=3, band=8, along=4.0, clamp=4):
             w = (1 - cont[t, s])[:, None]
             if w.max() == 0:
                 continue
-            tgt = up(side_rgb(t, s)[:, None, :], S)[:, 0, :].astype(np.float32)
-            tgt = blur(tgt, 1.5, axes=(0,))
+            tgt = side_smooth(t, s, smooth(t))
             apply(t, s, w * (tgt - line(t, s)), cramp)
     # Continuous art: even the two sides toward each other.
     for _ in range(iters):
@@ -476,6 +506,23 @@ def assemble(world):
                     best = (err, patch)
         cand.setdefault(t, []).append((best[0], central, best[1], src))
 
+    def take_fitted(t, im, y, x, src):
+        """Like take, but also fits size. A letter coin fills its tile edge to
+        edge, and the model drew it ~2% larger, so a plain cut sliced its left
+        edge flat; shrinking the cut box to the fitted size keeps it round."""
+        best = None
+        cy, cx = y + P / 2, x + P / 2
+        for sc in np.arange(0.92, 1.041, 0.01):
+            half = P / sc / 2
+            for dy in range(-6, 7, 2):
+                for dx in range(-6, 7, 2):
+                    box = (cx + dx - half, cy + dy - half, cx + dx + half, cy + dy + half)
+                    patch = np.array(Image.fromarray(im).resize((P, P), Image.LANCZOS, box=box))
+                    err = float(np.abs(down(patch.astype(np.float32), S) - tiles[t]).mean())
+                    if best is None or err < best[0]:
+                        best = (err, patch)
+        cand.setdefault(t, []).append((best[0], 0, best[1], src))
+
     for inp in man['inputs']:
         path = os.path.join(outd, inp['name'] + '.png')
         if not os.path.exists(path):
@@ -490,6 +537,11 @@ def assemble(world):
         elif inp['kind'] == 'pack':
             for cell in inp['cells']:
                 take(cell['tile'], im, cell['row'] * P, cell['col'] * P, 0, inp['name'])
+        elif inp['kind'] == 'detail':
+            f = inp['scale'] // S
+            small = np.array(Image.fromarray(im).resize((OUT_W // f, OUT_H // f), Image.LANCZOS))
+            for cell in inp['cells']:
+                take_fitted(cell['tile'], small, cell['y'] // f, cell['x'] // f, inp['name'])
 
     n = len(tiles)
     hd = np.zeros((n, P, P, 3), np.uint8)
@@ -500,9 +552,15 @@ def assemble(world):
     # Hand-picked sources for tiles no automatic rule gets right: tiny bonus
     # letters, where the model guesses a different letter each time and the
     # wrong one can match the original's colours best.
-    ov_path = os.path.join(ROOT, 'tools', 'hd_overrides', f'w{world}.json')
-    overrides = json.load(open(ov_path)) if os.path.exists(ov_path) else {}
-    for t, src in overrides.get('tile_source', {}).items():
+    overrides = load_overrides(world)
+    forced = dict(overrides.get('tile_source', {}))
+    detail_names = {d['name'] for d in overrides.get('detail', [])}
+    regular = {}           # detail tiles' ordinary copies, for their background
+    for d in overrides.get('detail', []):
+        forced.update({str(t): d['name'] for t in d['tiles']})
+        for t in d['tiles']:
+            regular[t] = [c for c in cand.get(t, []) if c[3] not in detail_names]
+    for t, src in forced.items():
         only = [c for c in cand.get(int(t), []) if c[3] == src]
         if only:
             cand[int(t)] = only
@@ -519,6 +577,18 @@ def assemble(world):
             hd[t] = up(tiles[t].astype(np.uint8), S)
             if t in used:
                 fallback.append(t)
+    # A detail sheet sets each tile on a flat block of its corner colour, so the
+    # model returns a flat background even where the original had texture (an
+    # R coin set in a dirt wall came back on plain brown). Keep only the object
+    # from the detail sheet and take the background from the tile's ordinary
+    # best copy.
+    for t, reg in regular.items():
+        if t in short and reg:
+            obj = hd[t].astype(np.float32)
+            bg = obj[:3, :3].reshape(-1, 3).mean(0)
+            m = blur((np.abs(obj - bg).sum(-1) > 40).astype(np.float32), 1.5)[..., None]
+            back = shortlist(reg)[0][0].astype(np.float32)
+            hd[t] = (obj * m + back * (1 - m)).astype(np.uint8)
     idx = decode_tiles(chunk(WORLDS[world]['bm']))
     for t in short:
         hd[t] = normalise(hd[t], tiles[t], idx[t]).astype(np.uint8)

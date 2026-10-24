@@ -27,7 +27,8 @@ Outputs are derived from the disks, so they stay in `build/` (git-ignored).
 Style C, "faithful upscale", chosen by the owner on 2026-10-24 from three samples (hi-res pixel
 art, painted cartoon, faithful upscale). Painted redesigned the frog (two eyes, new body) and
 moved small objects. Model `nano_banana_pro` at 2k, 16:9: 2 credits an image; outputs are
-2752 x 1536. The pilot cost 48 credits (12 for style samples, 36 for 18 inputs incl. a retry).
+2752 x 1536. The pilot cost 50 credits (12 for style samples, 36 for 18 inputs incl. a retry, 2 for the coin
+detail sheet).
 
 ## How it works
 
@@ -49,12 +50,17 @@ moved small objects. Model `nano_banana_pro` at 2k, 16:9: 2 credits an image; ou
 - **Seams.** `seam_fix` decides per border pixel, over every place the levels put two tiles side
   by side, whether the original art continues across it (same palette index both sides). Where
   it continues, the touching lines are evened (smoothed 4 px along, 8 px falloff). Where the
-  original has an edge on the border, nothing is averaged and the outer 4 px are pulled to the
-  original's edge colours. Averaging everywhere erased the mushroom cap's top outline (top row of
+  original has an edge on the border, nothing is averaged and the outer 4 px are pulled to a
+  bicubic enlargement of the original's edge (square-block colours made coin and apple edges stepped). Averaging everywhere erased the mushroom cap's top outline (top row of
   its tile, plain sky above) and darkened the bottom of coin tiles toward the grass line.
   `seam_score` counts real border edges too, so it rises (1.36 -> 1.98); judge by eye.
-- **Overrides.** `tools/hd_overrides/w<N>.json` names the model image to take a tile from when no
-  rule is right. W1: tile 660, an R bonus coin the model drew as R, A, n, R, B.
+- **Overrides.** `tools/hd_overrides/w<N>.json`: `tile_source` names the model image to take a tile
+  from; `detail` lists tiles drawn together on their own 8x sheet (letters named in the prompt) and
+  always taken from it. W1: the four letter coins (437, 660, 664, 680). At 4x the model guessed
+  letters (R as A, n, B) and mixed styles (plain R, swirled S). Detail tiles are fitted for size as
+  well as position (a coin fills its tile, and a 2% larger redraw sliced its edge flat), and only
+  the object is kept: the background comes from the tile's ordinary copy, because the detail sheet
+  sets each tile on a flat block (an R coin in a dirt wall came back on plain brown).
 - **Sprites.** Sheets go in halves at 8x on magenta. Alpha = model's key-colour cut x the original
   silhouette (grown 2 px, blurred), so the outline the game collides against cannot change.
   Frog pixel v is palette 16+v (attached sprites); bobs use all 32; index 0 is transparent.
