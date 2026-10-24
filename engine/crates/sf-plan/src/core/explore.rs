@@ -76,8 +76,9 @@ pub enum Goal {
     /// A state with this key within `within_frames` of the start (T22's shortcut pass).
     Key { key: CellKey, within_frames: u32 },
     /// A state in `point`'s region (`GuidePoint::covers`) within `within_frames` of the start,
-    /// with at least `hearts` hearts: original mode's repair stretch, a way back onto the last
-    /// whole plan's path no worse for hearts than that plan (T24).
+    /// with at least `hearts` hearts, the frog then surviving `EXIT_TAIL` idle frames as an exit's
+    /// does: original mode's repair stretch, a way back onto the last whole plan's path no worse
+    /// for hearts than that plan (T24, T33).
     Reach {
         point: GuidePoint,
         within_frames: u32,
@@ -369,6 +370,7 @@ impl<'a> Walk<'a> {
                     && self.frames <= within_frames
                     && st.w(HEARTS) >= hearts
                     && point.covers(&cell_key(facts, st, self.via))
+                    && self.survives(g)
                 {
                     return Step::Goal;
                 }
@@ -390,7 +392,10 @@ impl<'a> Walk<'a> {
         Step::Go
     }
 
-    /// The frog lives through `EXIT_TAIL` idle frames after the level ends.
+    /// The frog lives through `EXIT_TAIL` idle frames from here: after the level ends (an exit), or
+    /// on reaching a reach stretch's point. A reach met mid-fall over a pit is a dead end for the
+    /// next stretch: W4-1's ended at route 3 001 over the hazards at 59–60,26, every input from
+    /// there lost a life within 6 frames, and the next plan archived 2 cells in 6 000 rounds (T33).
     fn survives(&mut self, g: &Game) -> bool {
         let mut t = g.clone();
         for _ in 0..EXIT_TAIL {

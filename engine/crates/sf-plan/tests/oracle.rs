@@ -324,6 +324,52 @@ fn marks_reach_back_to_the_run_carried_in() {
     assert_eq!(m.at(184), Some(&(180, 'e')));
 }
 
+/// The dead-end rule (T33, D26): at most `DEAD_CELLS` cells after `DEAD_ROUNDS` rounds.
+#[test]
+fn a_dead_end_is_few_cells_after_many_rounds() {
+    assert!(dead_end(DEAD_ROUNDS, DEAD_CELLS));
+    assert!(dead_end(6_000, 2));
+    assert!(!dead_end(DEAD_ROUNDS - 1, 1));
+    assert!(!dead_end(DEAD_ROUNDS, DEAD_CELLS + 1));
+}
+
+/// A dead end rewinds to the last stretch start before it; a second dead end that would rewind
+/// to the same start goes one start further, and so on back to the earliest kept (T33).
+#[test]
+fn a_dead_end_rewinds_to_the_last_start_then_one_further() {
+    let mut s = Starts::default();
+    // No start before the route's end: the stretch is planned again where it is.
+    s.push(0, 'a');
+    assert_eq!(s.rewind(0), None);
+    s.push(1000, 'b');
+    s.push(2023, 'c');
+    s.push(3001, 'd');
+    // W4-1: the stretch from 3 001 is a dead end; back to 2 023, where the reach began.
+    assert_eq!(s.rewind(3001), Some(&(2023, 'c')));
+    assert_eq!(s.len(), 3);
+    // Planned again from 2 023, it reaches 2 900 and dead-ends there: 2 023 again, so one further.
+    s.push(2023, 'c');
+    s.push(2900, 'e');
+    assert_eq!(s.rewind(2900), Some(&(1000, 'b')));
+    // From 1 000 a dead end at once: the start before it.
+    s.push(1000, 'b');
+    assert_eq!(s.rewind(1000), Some(&(0, 'a')));
+    // At the earliest start, it stays there.
+    s.push(0, 'a');
+    s.push(500, 'f');
+    assert_eq!(s.rewind(500), Some(&(0, 'a')));
+    s.push(0, 'a');
+    s.push(400, 'g');
+    assert_eq!(s.rewind(400), Some(&(0, 'a')));
+    // Only the last `DEAD_MARKS` are kept.
+    let mut s = Starts::default();
+    for k in 0..10 {
+        s.push(k * 100, k);
+    }
+    assert_eq!(s.len(), DEAD_MARKS);
+    assert_eq!(s.rewind(950), Some(&(900, 9)));
+}
+
 /// The faithful check's lag bar (T14): this sf-plan W5-3 route keeps the original mid-pass 101
 /// frames in a row from frame 5 310, one past `LAG_LIMIT`. Played in lockstep from 5 390, the run
 /// so far carried in, it parts for lag at the 101st under the level's bar, and not under a looser
