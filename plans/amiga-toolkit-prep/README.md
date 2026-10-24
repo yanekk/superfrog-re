@@ -8,18 +8,19 @@ take the reuse-friendly parts of that order and scope each one to what the toolk
 more. Steps 4–5 of the native order (subsystems onto native state, native renderer) are out: they
 cost reuse.
 
-Nothing here is reviewed or decided. Each draft is input for `@repo/single` (a one-run change) or
+The owner took every recommended decision on 2026-10-24 (recorded in each draft); nothing is
+reviewed by pir yet. Each draft is input for `@repo/single` (a one-run change) or
 `pir plan` (multi-task); pir writes its own `BRIEF.md`/`PLAN.md` from it and reads it back.
 
 | Draft | Size | Run as | Depends on |
 |---|---|---|---|
-| [1 — tables decoded at import](DRAFT-1-tables-at-import.md) | minimal scope 400–700 lines; full 1 200–2 000 | `pir plan` (3 tasks minimal, 9 full) | none; its `top_loop` task after 3 |
+| [1 — tables decoded at import](DRAFT-1-tables-at-import.md) | 400–700 lines (minimal scope) | `pir plan`, 3 tasks | none |
 | [2 — one clock](DRAFT-2-one-clock.md) | 300–600 lines | `pir plan`, 3 tasks | 4 first (one blit to time) |
 | [3 — one frame scheduler, one keyboard](DRAFT-3-one-scheduler.md) | 250–400 lines (A+B) | `@repo/single`; part C a later plan | A+B none; C after 2 |
 | [4 — one copy of each chip model](DRAFT-4-one-chip-model.md) | 300–450 lines | `pir plan`, 2 tasks | none |
 
 **Recommended order:** 4, then 3 (A+B), then 2, then 3C only if the north star still asks for it.
-1 can run beside any of them; it touches different files (except `front/chain.rs`, see draft 1).
+1 can run beside any of them; it touches different files.
 Reason: 4 and 3A+B are small, independent and each removes a duplicate outright; 2 is easier once 4
 leaves one blitter to time; 1 has the lowest toolkit payoff per line (most of it is Superfrog
 content).
@@ -28,10 +29,9 @@ content).
 
 ## Cross-cutting, for every draft
 
-- **pir's test line runs only the Python suite** (`.pir/settings.json`). None of the engine's
-  checks run in a pir run unless the builder runs them, as `plans/crt-filters/BRIEF.md` did. Each
-  draft names its cargo commands. Owner decision pending: add `cd engine && cargo test -q
-  --workspace` to the `test` line (recommended; slower runs, but review then sees the checks).
+- **pir's test line runs `cd engine && cargo test -q --workspace`** beside the Python suite
+  (`.pir/settings.json`, owner 2026-10-24); before, no engine check ran in a pir run. The slower
+  `sf-conform` suites (`--ignored`, `all`) are still the builder's to run; each draft names them.
 - **Faithful stays the bar** (rust-engine DESIGN §2.1). Every draft is a refactor: zero behaviour
   change, all `sf-conform` cases green, no tolerance touched (`Tolerance::OWNER` fixed). A red check
   is a bug in the refactor, never a reason to loosen.

@@ -1,6 +1,6 @@
 # Draft 2 — one clock
 
-**Status:** draft, 2026-10-23. Not reviewed. Input for `pir plan` (3 tasks).
+**Status:** draft, 2026-10-23; owner decisions recorded 2026-10-24. Not reviewed. Input for `pir plan` (3 tasks).
 Source: `docs/architecture/cpu-time-and-beam.md` §3–§7; native order step 2; rust-engine FINDINGS
 T213, T216, T217 rows.
 
@@ -29,17 +29,16 @@ constants.
 Tasks: T1 `BeamPos` and constants unified; T2 generic `Clock` crate, level pointed at it, `Timeline`
 moved; T3 `Cx` and slot draw onto `BeamPos`/`Clock` policies, then a full conformance run.
 
-## Decisions (open, for the owner)
+## Decisions
 
-1. **Minimal or with "costs into tables, events emitted"** (the 89 level charge points and 26 front
-   end ones turned into timed events, then refit). Recommended: minimal. The toolkit needs the
-   clock, not Superfrog's costs restructured; the larger version is 6–8 tasks, 1 500+ lines and a
-   refit, and is a native-rewrite step. If nothing is said: minimal.
-2. **`Cx` keeps its coarse rounding.** Moving the front end onto the finer level clock could move
-   note restarts (its `AudioDma` positions are the coarse ones, rust-engine FINDINGS), which is
-   audible and could disturb the T215/T216 channel judging. Recommended: keep `Cx`'s rounding as
-   its named policy, so nothing audible moves; any refit is a separate decision. If nothing is
-   said: keep.
+- 2026-10-24: minimal scope, the shared clock only. Costs stay inline (`Cost`, its tables, every `spend`);
+  turning the 89 level and 26 front-end charge points into timed events with a refit is a
+  native-rewrite step, not toolkit preparation.
+- 2026-10-24: `Cx` keeps its whole-line rounding as a named policy on the shared clock. Reason: its
+  `AudioDma` positions are the coarse ones (rust-engine FINDINGS); a finer clock could move note
+  restarts, which is audible and could disturb the T215/T216 channel judging. Any refit is a
+  separate decision.
+- 2026-10-24: this draft owns the blitter timing merge that draft 4 leaves out.
 
 ## Not changing
 
@@ -59,8 +58,7 @@ positions exactly.
 
 ## Tests
 
-- pir's test line runs only Python; the builder runs `cd engine && cargo test -q --workspace`,
-  then `cargo test -p sf-conform --test beam` (`the_cost_model_alone_puts_paula_writes_on_the_originals_lines`,
+- pir's test line runs `cd engine && cargo test -q --workspace` (owner, 2026-10-24); the builder also runs `cargo test -p sf-conform --test beam` (`the_cost_model_alone_puts_paula_writes_on_the_originals_lines`,
   70 %/98 % bands), `--test frog_cases`, `--test alone`, `cargo test -p sf-conform --test story --
   --ignored` (slot and story cases, 80 s–5 min each), `--test channels -- --ignored`
   (`the_whole_games_channels_sound_as_the_original_does`, ~7 min cached).

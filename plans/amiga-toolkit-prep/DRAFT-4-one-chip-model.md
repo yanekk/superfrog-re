@@ -1,6 +1,6 @@
 # Draft 4 — one copy of each chip model
 
-**Status:** draft, 2026-10-23. Not reviewed. Input for `pir plan` (2 tasks).
+**Status:** draft, 2026-10-23; owner decisions recorded 2026-10-24. Not reviewed. Input for `pir plan` (2 tasks).
 Source: `docs/architecture/display-hardware.md`, `memory-model.md`, `story-and-ending.md`,
 `slot-and-bonus.md`; the native order's list of repeated ports.
 
@@ -29,14 +29,13 @@ working, and route `objects::blit`, `scroll::blit`, `blit_panel` through `Blit::
 `amiga-chips` crate on the `sf-paula` pattern, depending on nothing of Superfrog, and adds it to
 `PURE`.
 
-## Decisions (open, for the owner)
+## Decisions
 
-1. **Blit timing stays out.** Five timing models (`Blit::cycles`, the slot's `cycles()*2/3` +
-   `BLITTER_LOST`, `word_times`, `Clock::blit_cycles`, `sim.rs`'s SlowBlitter) differ on purpose,
-   each as exact as its checks need. Recommended: leave them to draft 2, which this draft precedes
-   so draft 2 has one blit to time. If nothing is said: left out.
-2. **Crate or not.** Recommended: T2 does the crate move; it is what makes the chips liftable and
-   measurable (north-star M5). If nothing is said: crate.
+- 2026-10-24: blit timing stays out. The five timing models (`Blit::cycles`, the slot's `cycles()*2/3` +
+  `BLITTER_LOST`, `word_times`, `Clock::blit_cycles`, `sim.rs`'s SlowBlitter) differ on purpose and
+  go to draft 2, which runs after this one so it has one blit to time.
+- 2026-10-24: T2 moves the chip models into an `amiga-chips` crate. Reason: it is what makes the chips
+  liftable and measurable (north-star M4).
 
 ## Not changing
 
@@ -56,12 +55,12 @@ chip models and stay for a subsystem plan.
 
 ## Tests
 
-- pir's test line runs only Python; the builder runs `cd engine && cargo test -q --workspace`
+- pir's test line runs `cd engine && cargo test -q --workspace` (owner, 2026-10-24)
   (`minterms`, `a_blit_copies_a_shifted_word_run_with_its_masks`, `level_routines.rs`'s
   `bob_draw_matches_the_original`, `copper_irq_blits_match_the_original`,
   `tile_anim_draw_matches_the_original`, `buffer_flip_matches_the_original`, `story_blits.rs`,
-  `story_draws.rs`, `front.rs` slot-attract, `render_vs_oracle.rs`, `beam.rs`, purity), then
-  `cargo run -q --release -p sf-conform -- run conform/cases/render-*.toml
+  `story_draws.rs`, `front.rs` slot-attract, `render_vs_oracle.rs`, `beam.rs`, purity);
+  the builder also runs `cargo run -q --release -p sf-conform -- run conform/cases/render-*.toml
   conform/cases/slot-attract.toml conform/cases/front-*.toml` and
   `cargo test -p sf-conform -- --ignored story` (80 s–5 min each).
 - New first, before the merge: a unit test wrapping a pointer past `$7fffe` through a modulo, to

@@ -1,6 +1,6 @@
 # Draft 1 — copied-in tables decoded at import
 
-**Status:** draft, 2026-10-23. Not reviewed. Input for `pir plan`.
+**Status:** draft, 2026-10-23; owner decisions recorded 2026-10-24. Not reviewed. Input for `pir plan`.
 Source: `docs/architecture/copied-in-data.md` §4, §5, §8, §9; `memory-model.md` §8; native order step 1.
 
 ## The change
@@ -21,23 +21,19 @@ Change: one relocated hunk 0, and an address-keyed typed-table layer in `sf-asse
 tables at import, turns pointers inside a table into indices, and keeps an original-address → index
 map so compared pointer variables can still be resolved.
 
-## Decisions (open, for the owner)
+## Decisions
 
-1. **Scope.** (a) *Minimal* (recommended): T1 fold the four hunk-0 copies into one, merging
-   `relocate` into `mem.rs::loaded`; T2 the address-keyed table framework and its `cache.rs`
-   record; T3 one table family through it as proof: the enemy paths (h0+$24454 and the boss and
-   bonus paths), chosen because they hold pointers and one is shared by three enemies. 400–700
-   lines. (b) *Full*: also frame lists, pickup tables, level codes and `start_resume`, slot tables,
-   replayer tables, 9 tasks, 1 200–2 000 lines. Most of (b) is Superfrog content that does not
-   carry to game two; it is worth doing for Superfrog's own readability, not for the toolkit.
-   If nothing is said: minimal.
-2. **The four tables that are variables** (`obj_templates` h0+$1c6e2, `hiscore_table` h0+$2f90,
-   `slot_lamps` h0+$6842, `demo_joy` h0+$11a2a) are in `LAYOUT`, written by the engine and compared.
-   Recommended: excluded, they keep reading through `Bus` until the address-coupling decision
-   (native order step 0). If nothing is said: excluded.
-3. **`top_loop` as code** (copied-in-data §6: fact or copied content under rust-engine DESIGN
-   §2.3). Recommended: out of this work; the toolkit does not need it, and its reader is what
-   draft 3 restructures. If nothing is said: out.
+- 2026-10-24: minimal scope. T1 folds the four hunk-0 copies into one, merging `relocate` into
+  `mem.rs::loaded`; T2 the address-keyed table framework and its `cache.rs` record; T3 the enemy
+  paths (h0+$24454, boss and bonus paths) through it as proof. Reason: the full scope (frame lists,
+  pickup tables, level codes, `start_resume`, slot and replayer tables) is mostly Superfrog content
+  that does not carry to game two.
+- 2026-10-24: the four tables that are `LAYOUT` variables (`obj_templates` h0+$1c6e2, `hiscore_table`
+  h0+$2f90, `slot_lamps` h0+$6842, `demo_joy` h0+$11a2a) are excluded and keep reading through
+  `Bus`. Reason: written by the engine and compared; moving them needs the address-coupling decision
+  (native order step 0).
+- 2026-10-24: `top_loop` is not written out as code. Reason: the toolkit does not need it, its reader is
+  what draft 3 restructures, and the copyright question (copied-in-data §6) stays unopened.
 
 ## Not changing
 
@@ -57,11 +53,11 @@ table is still decoded from the disks at import; none becomes a `const` array.
 
 ## Tests
 
-- pir's test line runs only Python; the builder runs: `cd engine && cargo test -q --workspace`
+- pir's test line runs `cd engine && cargo test -q --workspace` (owner, 2026-10-24)
   (includes `hunk0_is_relocated_to_each_target_s_base`, `variables_shadow_the_executable`,
   `the_boot_s_tables_are_the_original_s`, `spawners_match_the_original`, the
   `enemies_w*_routines.rs` and `bonus_enemy_routines.rs` suites, `purity.rs`
-  `the_real_pure_crates_pass`), and `python3 tools/check_no_disk_data.py`.
+  `the_real_pure_crates_pass`); the builder also runs `python3 tools/check_no_disk_data.py`.
 - Paths in scope: `cargo run -q --release -p sf-conform -- run` on the `enemies-w1-*`,
   `enemies-w2-*`, `enemies-w4-*`, witch and bonus cases.
 - Full scope adds `cargo test -p sf-conform -- --ignored` (`attract-demo-3` ~4 min, `code-*` ~90 s

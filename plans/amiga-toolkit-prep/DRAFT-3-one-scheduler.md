@@ -1,6 +1,6 @@
 # Draft 3 — one frame scheduler, one keyboard
 
-**Status:** draft, 2026-10-23. Not reviewed. Parts A+B are input for `@repo/single`; part C is a
+**Status:** draft, 2026-10-23; owner decisions recorded 2026-10-24. Not reviewed. Parts A+B are input for `@repo/single`; part C is a
 later `pir plan`, after draft 2.
 Source: `docs/architecture/frame-interrupts-input.md` §3–§7; native order step 3.
 
@@ -30,7 +30,7 @@ sharing `kbd_toggle`/`key_down`/`key_up` at h0+$16076..79. Key-change detection 
   `Cut`'s cycle-charged fields, and `Frames`/`Pending` folded into a generic late-pass runner.
   1 000+ lines across `beam.rs`, `level/mod.rs`, `frame.rs`, `sync.rs`, `feed.rs`; 2 tasks.
 
-## Decisions (open, for the owner)
+## Decisions
 
 None for A+B: nothing a player feels changes if the checks stay green. One for later: whether C is
 done at all; the north star decides (if the scheduler is the last piece keeping the toolkit from
@@ -50,11 +50,11 @@ in each handler. Pause and ESC timing. The `Pacing::Late` feed and cut points (u
 
 ## Tests
 
-- pir's test line runs only Python; the builder runs `cd engine && cargo test -q --workspace`
+- pir's test line runs `cd engine && cargo test -q --workspace` (owner, 2026-10-24)
   (`kbd_poll_matches_the_original` in `level_routines.rs`,
   `the_keyboard_sends_a_byte_per_change_and_reads_ff_once_handled`, the four `front/vbl.rs` unit
-  tests, `the_pass_clock_counts_passes_ended`, `state_is_matched_by_pass_count`), then
-  `cargo test -p sf-conform --test frog_cases` (`frog_run_w1_1` with 320 late frames, `frog_esc_w1_1`,
+  tests, `the_pass_clock_counts_passes_ended`, `state_is_matched_by_pass_count`);
+  the builder also runs `cargo test -p sf-conform --test frog_cases` (`frog_run_w1_1` with 320 late frames, `frog_esc_w1_1`,
   `game_over_esc_w1_1`, `complete_w4_3`, `coper_tail_outside_a_pass_kept`), `--test chain`
   (`p_pauses_and_p_resumes_as_the_original_does`, `fire_ends_the_pause_as_the_original_does`),
   `--test alone`, and `the_frog_moves_every_frame_and_objects_every_other` (`exe_map_claims.rs`).
