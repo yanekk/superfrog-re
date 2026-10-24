@@ -268,6 +268,7 @@ pub struct Mpc {
     stalled: u32,
     last_cur: usize,
     last_obs: Option<Obs>,
+    pub rejoins: u32,
 }
 
 const STUCK: u32 = 6;
@@ -309,6 +310,7 @@ impl Mpc {
             stalled: 0,
             last_cur: 0,
             last_obs: None,
+            rejoins: 0,
         }
     }
 
@@ -420,6 +422,23 @@ impl Mpc {
             (self.stalled, self.last_cur) = (0, self.cur);
         } else {
             self.stalled += 1;
+        }
+        // Long stalled: off the route (a different way to the coins): rejoin it at the nearest
+        // later point with the frog's coins band and switches.
+        if self.stalled > 2 * STUCK {
+            let j = (self.cur..self.guide.len()).min_by_key(|&j| {
+                let g = &self.guide[j];
+                let bands = (band(g.2) as i32 - band(o.coins) as i32).abs();
+                bands * 100_000 + (g.3 != o.switches) as i32 * 50_000
+                    + (g.0 as i32 - o.x as i32).abs()
+                    + (g.1 as i32 - o.y as i32).abs()
+            });
+            if let Some(j) = j.filter(|&j| j > self.cur) {
+                self.cur = j;
+                self.align = self.guide_frame[j] as i64;
+                (self.stalled, self.last_cur) = (0, j);
+                self.rejoins += 1;
+            }
         }
         let base_h = self.h;
         if self.stalled > STUCK {
