@@ -1,0 +1,4 @@
+{
+ "_why": "tile_source: tile index -> model image to take it from, for tiles the automatic choice gets wrong. 660 is an R bonus coin; the model drew R, A, n, R, B in its five copies and the n matched the original's colours best.",
+ "tile_source": {"660": "win00"}
+}
