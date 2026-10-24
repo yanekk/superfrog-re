@@ -11,13 +11,13 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-24 | 📌 | T29 rerun, 1e40096, load ~20, both complete §4.1: W2-4 24.4 min, 9 554 frames, 3 hearts; W6-2 10.5 min, 4 hearts. The owner's W2-4 budget miss (beside W2-3) was the first fix (6de6c5e), superseded by the slot-read point. |
 | 2026-10-23 | 🔄 | Owner, T25: the W2-4, W6-2 sound misses get T29 engine-sound-ramp (T25; blocks T15), added; the W2-3, W3-4, W6-1, W6-4 budget misses are recorded as misses and the run carries on (W6-4 again in T28). |
 | 2026-10-23 | 📌 | T25 set A guided, seed 1, run alone (load ~15, its own threads), 2a731dd/ad0dd6f: 18 of 24 done, M3 median 6.4 min; W1-4 9.2, W6-3 6.4 min. `plan-hints.log` has no entry lines; no level-id branch in `sf-plan`. |
 | 2026-10-23 | 🔄 | Owner, T25 review: the old lag back-off (`BACK_OFF`) stays, W5-2 recorded a miss (set A 17/24); T30 lag-repair (T25; blocks T15), added, finds one rule finishing W1-4 and W5-2. |
 | 2026-10-23 | 🐞 | T25 review: `oracle::kept` repairing a `Lag` parting from before its mid-pass run finished W5-2 (4.3 min) but failed W1-4 (2 800 lag partings at 148,9). Reverted (985382b); W5-2 rerun, 30-min miss at 954. Rules tried: T30's doc. |
 | 2026-10-23 | 🐞 | T25 review sweep: any repaired parting under `BACK_OFF` frames into its stretch keeps nothing and re-plans from one state; Lag never accepts, so it can repeat (W5-2 at 954, ~200 times). Pre-T25 code, left for T30. |
-| 2026-10-23 | 🔄 | Owner, T29: W2-4 is a miss, sound mismatch gone. Faithful to 8 353 (6de6c5e), then the W2-3 shortfall: stuck on tries (no reach in 300 rounds), not time. The task taking W2-3 takes W2-4. W6-2 completes §4.1 (16.7 min). |
-| 2026-10-23 | 🐞 | T29: the T25 W2-4 (7 658), W6-2 (1 718) sound misses were `tile_anim_draw` (h0+$fa7c) freeing a queue slot before the lagging original's frame ended, so the blank's `take_tile` took a coin early. Slots now pass steps; `tile-queue-*` cases. |
+| 2026-10-23 | 🐞 | T29: the T25 W2-4 (7 658), W6-2 (1 718) sound misses were `tile_anim_draw` (h0+$fa7c) freeing a queue slot before the lagging original's frame ended, so the blank's `take_tile` took a coin early. Slots pass steps, the read a point; `tile-queue-*` cases. |
 | 2026-10-23 | 🐞 | T25 budget misses: W2-3, W3-4, W6-1 found a first exit (19, 11, 1 min), parted, failed the reach's 300 rounds, then the rest-of-level exit plan never finished. W6-4 found no exit, stalled 13 cells short. |
 | 2026-10-23 | 📌 | T25 M4: W3-2 +58% keeps the hearts the committed route loses (a 3500-frame detour); W4-1 +37% goes back left for its last coins (the last-8-coins pull). Share 1.0, not 0.2, shortened each under 2%. Defaults kept. |
 | 2026-10-23 | 📌 | T24 pattern 1: Heart partings come from the original's lag (W3-2: enemies drift, the frog matches). Repaired by reach stretches in 13–85 rounds, not accepted: W4-2 no route → 7 491 frames, 2 hearts, 1 182 rounds. No owner trade asked. |

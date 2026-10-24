@@ -55,10 +55,10 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T26 | tuning-set-b | T14, T25; blocks T15 | ⬜ | |
 | T27 | tuning-unaided | T14, T26; blocks T15 | ⬜ | |
 | T28 | compass-trial | T14, T27; blocks T15 | ⬜ | |
-| T29 | engine-sound-ramp | T25; blocks T15 | ⬜ | |
+| T29 | engine-sound-ramp | T25; blocks T15 | 🔍 | Deviation: defect not in `sfx.rs` ramps (doc's guess) but `tile_anim_draw` freeing queue slots before a lagging original's frame end; fix in `level/pass.rs` (steps, read point) and `sync::pass_step`/`pass_point`. Cases `tile-queue-w2-4`, `-w6-2`, cut, red before. Both rerun complete §4.1. `sf-conform all` green. |
 | T30 | lag-repair | T25; blocks T15 | ⬜ | |
 
-**Review queue:** *(empty)*
+**Review queue:** T29
 
 ## Blocked on the user
 
