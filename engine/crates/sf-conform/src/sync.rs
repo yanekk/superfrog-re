@@ -1631,6 +1631,40 @@ mod tests {
         assert_eq!(step(0xd0d4, 0, sp + 0x200), 5);
     }
 
+    /// `tile_anim_draw`'s loop (h0+$fa7c): the slots read (a6 past the last), the one just read
+    /// at point 1 until its clear at h0+$fa94 (T29: W2-1 2008 ends at h0+$fa8c with slot 1 read
+    /// empty); the redraw after the clear is the clock's.
+    #[test]
+    fn the_tile_queue_step_counts_the_slots_read_and_the_read_is_a_point() {
+        let m = AmigaMemory {
+            chip: vec![0; 0x1000],
+            slow: vec![0; 0x80000],
+        };
+        let at = |pc: u32, slots: u32| {
+            let mut a = [0; 8];
+            a[6] = h0(0xfa68) + 4 * slots;
+            a[7] = h0(0x30000);
+            let cpu = CpuRegs {
+                d: [0; 8],
+                a,
+                pc: h0(pc),
+                sr: 0,
+                usp: 0,
+                ssp: 0,
+            };
+            (pass_step(&cpu, &m), pass_point(&cpu, &m))
+        };
+        assert_eq!(at(0xfa7c, 0), (0, 0));
+        assert_eq!(at(0xfa80, 0), (0, 0));
+        assert_eq!(at(0xfa80, 1), (1, 0));
+        assert_eq!(at(0xfa82, 1), (1, 1));
+        assert_eq!(at(0xfa8c, 2), (2, 1));
+        assert_eq!(at(0xfa94, 2), (2, 1));
+        // The end marker read (the fifth long).
+        assert_eq!(at(0xfa88, 5), (5, 1));
+        assert_eq!(at(0xfa98, 2).0, sf_core::level::beam::NO_STEP);
+    }
+
     fn id(s: &str) -> LevelId {
         s.parse().unwrap()
     }
