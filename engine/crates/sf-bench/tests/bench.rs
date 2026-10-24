@@ -96,6 +96,59 @@ fn verify_accepts_complete_w1_1_and_rejects_it_cut_before_the_exit() {
     eprintln!("verify test took {:.0?}", t0.elapsed());
 }
 
+/// A leg whose snapshot frame ends mid-pass (T31) is synced `lead` frames on, and the route played
+/// from there: its first `lead` frames must hold what the whole game holds there.
+#[test]
+fn a_leg_with_a_lead_is_synced_and_played_from_the_frame_after() {
+    use sf_conform::{InputScript, SyncPoint};
+    use sf_core::input::{FrameInput, Joy};
+    let s = sets::Start {
+        level: "W2-2".parse().unwrap(),
+        kind: StartKind::Snap("leg-05.snap".into(), 48527),
+    };
+    let at = |frame| SyncPoint::AtFrame { script: "game-whole".into(), frame, df1: true };
+    assert_eq!(verify::sync_point(&s, 0), at(48527));
+    assert_eq!(verify::sync_point(&s, 1), at(48528));
+    let r = FrameInput::joy(Joy::RIGHT);
+    let route = InputScript { lines: vec![(0, FrameInput::NONE), (150, r), (300, FrameInput::NONE)] };
+    let whole = InputScript { lines: vec![(48000, r), (48520, FrameInput::NONE), (48700, r)] };
+    assert_eq!(verify::from_lead(&route, None, 0).unwrap(), route);
+    let played = verify::from_lead(&route, Some((&whole, 48527)), 1).unwrap();
+    assert_eq!(played.lines, vec![(0, FrameInput::NONE), (149, r), (299, FrameInput::NONE)]);
+    // A route holding something else on a frame the sync plays is refused, not silently replaced.
+    let early = InputScript { lines: vec![(0, r)] };
+    assert!(verify::from_lead(&early, Some((&whole, 48527)), 1).is_err());
+}
+
+/// The set-B legs' leads (T31): the three whose snapshot frame ends in the loop's first pass, and
+/// none for the other 21, whose starts are unchanged. Needs the oracle and the leg snapshots
+/// (`sf-bench` makes them once, ~10 min); then ~10 s.
+#[test]
+#[ignore = "needs the oracle and set B's leg snapshots"]
+fn set_b_leads_are_one_frame_at_w2_2_w5_1_w6_3_and_none_elsewhere() {
+    for s in sets::starts(Set::B) {
+        let want = u32::from(matches!(s.level.to_string().as_str(), "W2-2" | "W5-1" | "W6-3"));
+        assert_eq!(verify::lead(&s).unwrap(), want, "{}", s.level);
+    }
+}
+
+/// The committed `chain-w2-2`, `chain-w5-1` and `chain-w6-3` complete faithfully from their set-B
+/// starts as `sf-bench` builds them (T31; each parted at frame 1 when synced at the snapshot's
+/// frame). Slow: the first run reaches each sync point from power-on (up to ~9 min each), then
+/// ~1 min a route.
+#[test]
+#[ignore = "slow: the whole game's oracle to each leg, then three faithful runs"]
+fn chain_w2_2_w5_1_w6_3_complete_from_their_set_b_starts() {
+    let starts = sets::starts(Set::B);
+    for l in ["W2-2", "W5-1", "W6-3"] {
+        let s = starts.iter().find(|s| s.level.to_string() == l).unwrap();
+        let name = verify::committed_script(Set::B, &s.level);
+        let script = sf_conform::InputScript::load(&sf_conform::case::script_path(&name)).unwrap();
+        let v = verify::verify(Set::B, s, &script, 1);
+        assert!(v.completed, "{name}: {v:?}");
+    }
+}
+
 fn fixture(planner: &str, set: &str, level: &str, completed: bool, wall_s: f64) -> LevelResult {
     LevelResult {
         planner: planner.into(),

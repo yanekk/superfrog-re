@@ -11,13 +11,14 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
-| 2026-10-24 | 🐞 | T26 review: T31 blocks T17 only; T16's set-B baseline verifies from the same W2-2, W5-1, W6-3 starts (any route fails at frame 1), so run before T31 lands it would score them misses. |
+| 2026-10-24 | 🔄 | Owner, T31: set-B W2-2, W5-1 recorded misses. Exit reached on the original; check 4 fails, the alone engine a pass ahead from 530 / 917 (item 67,63 at 1091, coin at 1190). Added T32 alone-pass-drift (T31; blocks T17). |
+| 2026-10-24 | 📌 | T31 (owner, T26): W2-2, W5-1, W6-3 leg snapshots end mid-pass (T209), so `verify::lead` syncs one frame on; their committed `chain-*` complete faithfully, the other 21 legs unchanged. Rerun e8f3a3d: W6-3 completed, 12.0 min. |
+| 2026-10-24 | 🐞 | T31: `sf-plan --snap`'s settle ends mid-pass on set-B W3-1 and W4-2 (frame 151), so the planner's engine starts in a part-done pass; both completed in T26. W2-2, W5-1, W6-3 settle clean. Not fixed. |
 | 2026-10-24 | 📌 | T26 set B guided, seed 1, 2ad88eb: 13 of 24 done (W1-1–W1-3, W2-1, W3-1, W3-4, W4-1–W4-3, W5-2–W5-4, W6-2; 5.5–28.5 min). Misses re-run alone, same result. W5-1 not run (T31). W6-2 passes here, unlike set A. |
 | 2026-10-24 | 🔄 | Owner, T26: set-B W1-4 recorded a miss. No first exit in 30 min, twice: coins met, best cell 156,45, T23's dead end; `chain-w1-4` reaches the exit from above (199,29 → 166,34). Set A's W1-4 completes. |
 | 2026-10-24 | 🔄 | Owner, T26: set-B W6-1 recorded a miss. No first exit in 30 min, twice: one coin still needed, never met (14 968 cells). Set A's W6-1 found an exit in a minute and failed in repairs. |
 | 2026-10-24 | 🔄 | Owner, T26: set-B W6-4 recorded a miss. No first exit in 30 min, twice: coins met, 13 cells short, as set A (T25). W6-4 is in T28's compass trial. |
 | 2026-10-24 | 🔄 | Owner, T26: set-B W2-3, W2-4, W3-2, W3-3, W4-4 recorded misses: a repair's reach misses in `REACH_ROUNDS`, the rest-of-level exit plan then spends the budget, run alone twice. Set A's W2-3, W3-4, W6-1 pattern (2026-10-23); owner to choose one fix task for both. |
-| 2026-10-23 | 🔄 | Owner, T26: set-B W2-2, W5-1, W6-3 legs fail at frame 1 for any route, committed included (`score_digit`; first pass inside `level_start`'s frame, T209). T31 leg-start-sync (T26; blocks T17), added: fix the start's sync, never a tolerance. |
 | 2026-10-24 | 📌 | T29 rerun, 1e40096, load ~20, both complete §4.1: W2-4 24.4 min, 9 554 frames, 3 hearts; W6-2 10.5 min, 4 hearts. The owner's W2-4 budget miss (beside W2-3) was the first fix (6de6c5e), superseded by the slot-read point. |
 | 2026-10-23 | 📌 | T30, d10dca3: `oracle::kept` lag repairs in a row alternate, `BACK_OFF` then before the run (route rewound). W1-4 done 18.7 min (load ~25), one lag parting; W5-2 done 10.3 min, rewound 954 → 870. Replaces T25 lag rows. |
 | 2026-10-23 | 🔄 | Owner, T25: the W2-4, W6-2 sound misses get T29 engine-sound-ramp (T25; blocks T15), added; the W2-3, W3-4, W6-1, W6-4 budget misses are recorded as misses and the run carries on (W6-4 again in T28). |
@@ -67,6 +68,5 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 | 2026-10-21 | 📌 | T19, one thread, release, `Start::Level`, 2000 script frames, load 7–8: W1-4 1823 f/s drawn (`step`, the old `step_unseen` cost) to 11159 `step_unseen`; W6-3 1686 to 4736. The loop-ending frame is still drawn (`Game::shown`). |
 | 2026-10-21 | 🔄 | Owner, T00: map moves landing within one cell of their target count as success, the search going on from where the frog is; D17's 3-failure ×4 rule stands. T04's move set adds mid-air steering and must reach W6-3's exit. |
 | 2026-10-21 | 🔄 | Amendment review, owner: a wait-then-retry is a different, standing-start move from the stopped node, never the original edge (DESIGN §2.5). Hazards are marker 6 only (`frog_kill`). |
-| 2026-10-21 | 🔄 | Owner amended the reviewed plan (D14–D17): danger judged live with wait retries, no parked-frog timetable; speed-band map nodes if T00's build fits; map-unreachable is a cost, search explores when stuck; edges carry coins touched, repeat failures marked unreliable. |
 | 2026-10-20 | 📌 | `cases::render_w1_4` diverged at frame 86 (595 pixels) in a fresh-copy test run beside a busy machine, then passed alone and in a later full run. Treat as load-flaky; rerun before blaming a change. |
 | 2026-10-20 | 📌 | Repo `.pir/settings.json` test line runs only the Python suite; this plan's block adds `cargo test --workspace` (rust-engine's line). Owner to fix the stored setting. |

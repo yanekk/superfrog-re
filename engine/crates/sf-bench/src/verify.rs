@@ -65,26 +65,96 @@ pub fn committed_script(set: Set, level: &LevelId) -> String {
     }
 }
 
-/// The sync point a set's start is verified from (§4.1).
-pub fn sync_point(s: &Start) -> SyncPoint {
+/// The whole game's script, which set B's sync points play to the leg (§4.1).
+const WHOLE: &str = "game-whole";
+/// The most frames a leg's first pass may run on past its snapshot's frame (1 is met).
+const LEAD_MAX: u32 = 50;
+
+/// Frames from a set-B leg's snapshot to the end of the first frame the original ends parked in
+/// its level loop's wait (T31); 0 for every other start, and for 21 of the 24 legs. W2-2's, W5-1's
+/// and W6-3's snapshot frames end in the middle of the loop's first pass (the last level's last
+/// pass left `vbl_count` 2, so that pass began in `level_start`'s own frame, rust-engine FINDINGS
+/// T209). A resume there takes the memory part way through a pass for a pass's start, so the
+/// engine runs a pass behind and any route parts at frame 1 (`score_digit`). Those legs are
+/// verified from the frame after: the leg's first frame is played in the sync as the whole game
+/// plays it, and the faithful check runs unchanged from a pass boundary.
+pub fn lead(s: &Start) -> Result<u32, String> {
+    static LEADS: std::sync::Mutex<Vec<(PathBuf, u32)>> = std::sync::Mutex::new(Vec::new());
+    let StartKind::Snap(p, frame) = &s.kind else {
+        return Ok(0);
+    };
+    if let Some((_, k)) = LEADS.lock().unwrap().iter().find(|(q, _)| q == p) {
+        return Ok(*k);
+    }
+    let whole = InputScript::load(&sf_conform::case::script_path(WHOLE))?;
+    let mut a = sync::at_snapshot_file(p, LEAD_MAX + 1)?;
+    let mut k = 0;
+    while sync::mid_pass(&a.cpu(), &sync::core_memory(a.memory())) {
+        if k == LEAD_MAX {
+            return Err(format!("{}: still mid-pass {LEAD_MAX} frames past the snapshot", p.display()));
+        }
+        sync::step_inserting(&mut a, whole.input_at(frame + k))?;
+        k += 1;
+    }
+    LEADS.lock().unwrap().push((p.clone(), k));
+    Ok(k)
+}
+
+/// The sync point a set's start is verified from (§4.1), `lead` frames past a leg's snapshot.
+pub fn sync_point(s: &Start, lead: u32) -> SyncPoint {
     match &s.kind {
         StartKind::AtLevel | StartKind::App => SyncPoint::AtLevel(s.level),
         StartKind::Snap(_, frame) => SyncPoint::AtFrame {
-            script: "game-whole".into(),
-            frame: *frame,
+            script: WHOLE.into(),
+            frame: *frame + lead,
             df1: true,
         },
     }
 }
 
+/// `script`, whose frame 0 is the start's, as played from `lead` frames on (from its sync point).
+/// The first `lead` frames are the whole game's, played in the sync, so a route must hold there
+/// what the whole game holds (every route does: the level's first frames are idle).
+pub fn from_lead(script: &InputScript, whole: Option<(&InputScript, u32)>, lead: u32) -> Result<InputScript, String> {
+    if lead == 0 {
+        return Ok(script.clone());
+    }
+    let (whole, frame) = whole.ok_or("a lead with no whole-game script")?;
+    for k in 0..lead {
+        if script.input_at(k) != whole.input_at(frame + k) {
+            return Err(format!(
+                "frame {k} is played in the leg's sync as the whole game plays it ({}), the route holds {}",
+                InputScript::format_input(whole.input_at(frame + k)),
+                InputScript::format_input(script.input_at(k)),
+            ));
+        }
+    }
+    Ok(script.from_frame(lead))
+}
+
+/// A start's sync point and `script` as played from it, and the frames between the start and it.
+fn synced(s: &Start, script: &InputScript) -> Result<(SyncPoint, InputScript, u32), String> {
+    let lead = lead(s)?;
+    let whole = match &s.kind {
+        StartKind::Snap(_, frame) if lead > 0 => {
+            Some((InputScript::load(&sf_conform::case::script_path(WHOLE))?, *frame))
+        }
+        _ => None,
+    };
+    let played = from_lead(script, whole.as_ref().map(|(w, f)| (w, *f)), lead)?;
+    Ok((sync_point(s, lead), played, lead))
+}
+
 /// The case the route is judged by: the start's sync point, the route, `TAIL` frames past its
 /// last line, re-sync allowed (§4.1). The lag limit is the one the committed route's own case
 /// carries (its level's completion case for A, the whole game's for B), as the completion cases
-/// are verified with theirs.
+/// are verified with theirs. A leg with a lead ([`lead`]) syncs that many frames on and plays the
+/// route from there.
 pub fn case(set: Set, s: &Start, script: &InputScript) -> Result<Case, String> {
-    let end = script.lines.last().map_or(0, |l| l.0) + TAIL;
+    let (sync_point, played, lead) = synced(s, script)?;
+    let end = script.lines.last().map_or(0, |l| l.0) + TAIL - lead;
     // The case file §4.1 describes, but for the script, which is the route in memory.
-    let sync = match sync_point(s) {
+    let sync = match &sync_point {
         SyncPoint::AtFrame { script, frame, df1 } => {
             format!("{{ script = \"{script}\", frame = {frame}, df1 = {df1} }}")
         }
@@ -92,10 +162,10 @@ pub fn case(set: Set, s: &Start, script: &InputScript) -> Result<Case, String> {
     };
     let text = format!("sync = {sync}\nframes = {end}\nresync = true\n");
     let mut case = Case::parse(&format!("bench-{set}-{}", s.level), &text)?;
-    debug_assert_eq!(case.sync, sync_point(s));
-    case.script = script.clone();
+    debug_assert_eq!(case.sync, sync_point);
+    case.script = played;
     let committed = match set {
-        Set::B => "game-whole".to_string(),
+        Set::B => WHOLE.to_string(),
         _ => committed_script(Set::A, &s.level),
     };
     let path = sf_conform::cases_dir().join(format!("{committed}.toml"));
@@ -125,8 +195,10 @@ fn verify_inner(set: Set, s: &Start, script: &InputScript) -> Verdict {
         Ok(c) => c,
         Err(e) => return Verdict::failed(format!("case: {e}")),
     };
-    let (route_frames, hearts_lost) = match replay(&case.sync, script, case.frames) {
-        Ok(r) => r,
+    // The case plays the route from its sync point, `lead` frames past the start (memoized).
+    let lead = lead(s).unwrap_or(0);
+    let (route_frames, hearts_lost) = match replay(&case.sync, &case.script, case.frames) {
+        Ok((frames, lost)) => (frames.map(|f| f + lead), lost),
         Err(e) => return Verdict::failed(format!("replay: {e}")),
     };
     let mut v = Verdict {
@@ -192,10 +264,12 @@ pub fn ref_frames(set: Set, s: &Start) -> Option<u32> {
     let name = committed_script(set, &s.level);
     let script = InputScript::load(&sf_conform::case::script_path(&name)).ok()?;
     let end = script.lines.last().map_or(0, |l| l.0) + TAIL;
-    std::panic::catch_unwind(|| replay(&sync_point(s), &script, end))
-        .ok()?
-        .ok()?
-        .0
+    std::panic::catch_unwind(|| {
+        let (sync, played, lead) = synced(s, &script)?;
+        Ok::<_, String>(replay(&sync, &played, end - lead)?.0.map(|f| f + lead))
+    })
+    .ok()?
+    .ok()?
 }
 
 /// Set C's start (DESIGN §2.1 `--app`): the level's first frame as the app's `start-level <level>`
