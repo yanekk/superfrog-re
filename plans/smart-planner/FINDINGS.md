@@ -11,6 +11,7 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-23 | 🔄 | Owner, T26: set-B W2-2, W5-1, W6-3 legs fail at frame 1 for any route, committed included (`score_digit`; first pass inside `level_start`'s frame, T209). T31 leg-start-sync (T26; blocks T17), added: fix the start's sync, never a tolerance. |
 | 2026-10-23 | 🔄 | Owner, T25: the W2-4, W6-2 sound misses get T29 engine-sound-ramp (T25; blocks T15), added; the W2-3, W3-4, W6-1, W6-4 budget misses are recorded as misses and the run carries on (W6-4 again in T28). |
 | 2026-10-23 | 📌 | T25 set A guided, seed 1, run alone (load ~15, its own threads), 2a731dd/ad0dd6f: 18 of 24 done, M3 median 6.4 min; W1-4 9.2, W6-3 6.4 min. `plan-hints.log` has no entry lines; no level-id branch in `sf-plan`. |
 | 2026-10-23 | 🔄 | Owner, T25 review: the old lag back-off (`BACK_OFF`) stays, W5-2 recorded a miss (set A 17/24); T30 lag-repair (T25; blocks T15), added, finds one rule finishing W1-4 and W5-2. |
