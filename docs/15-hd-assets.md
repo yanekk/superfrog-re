@@ -66,6 +66,15 @@ with a dirt redraw (job c84e2e4d) as a second style reference. That is what make
 - **Choosing copies.** A tile occurs in several windows. `choose_jointly` picks one copy per tile
   so that touching edges agree over every joint the levels use, weighted by frequency, with a
   penalty for copies far from the tile's typical look (ICM over 8 candidates per tile).
+- **By numbers** (`hd/bynumbers.py`). On a fine regular texture the model keeps neither the
+  pitch nor the phase: W3's plank wall came back with planks at its own width, so copies never
+  lined up (owner, 2026-10-24). For such a family each original pixel becomes the mean 4x4 HD
+  block the model drew for the same palette index with the same four neighbours (border pixels
+  use the tile's most frequent neighbour from the levels): the original's geometry, the model's
+  rendering. Chosen per family only if inside joins improve by a quarter, joins with other tiles
+  do not get worse, and at least `MIN_DETAIL` of the fine detail survives (averaging flattens
+  irregular textures: W1's leaves came out as dark boxes). Used: W1 dirt, W3 plank wall, one
+  small W5 family.
 - **Refit** (`hd/refit.py`). Tiles with one or two copies cannot be chosen to fit. The 45 worst
   (edge mismatch against their neighbours) are shown in their most common 3 x 3 context of finished
   HD tiles with their original pixels in the middle, and Nano Banana inpaints only the middle. A refit

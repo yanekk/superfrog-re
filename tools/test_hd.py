@@ -89,6 +89,26 @@ class Tiles(unittest.TestCase):
         self.assertGreater(tz.seam_score(img), 1.5)
 
 
+class ByNumbers(unittest.TestCase):
+    def test_tiles_rendered_by_numbers_join_like_the_original(self):
+        from hd import bynumbers as bn
+        # a plank-like texture: 2 px wide stripes; the "model" drew each index as its own colour
+        # with a highlight on the left column of every block
+        idx = (np.arange(48)[None, :] // 2 % 2).repeat(48, 0).astype(np.uint8) + 3
+        pal = np.zeros((32, 3), np.uint8); pal[3] = (90, 60, 10); pal[4] = (140, 110, 30)
+        hd = np.repeat(np.repeat(pal[idx].astype(np.float32), 4, 0), 4, 1)
+        hd[:, ::4] += 20
+        tiles = [[0, x, y, 1] for y in (16,) for x in (16,)]
+        src = dict(idx=idx, img=hd, tiles=tiles)
+        tab = bn.learn([src], {0}, {0: 0})
+        tl = np.stack([idx[16:32, 16:32]])
+        jt = {(0, 0, 1): 4, (0, 0, 0): 4}
+        out = bn.render(tab, bn.context(tl, jt, 0), pal)
+        # two copies side by side continue exactly as the training painting does
+        pair = np.concatenate([out, out], 1)
+        self.assertTrue(np.allclose(pair, hd[64:128, 64:192]))
+
+
 class Sprites(unittest.TestCase):
     def test_despill_removes_magenta_only_at_the_edge(self):
         img = np.full((20, 20, 3), (200, 60, 200), np.float32)

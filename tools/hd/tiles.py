@@ -27,6 +27,7 @@ from .register import blur
 S = 4
 TS = s.T * S          # 64
 MIN_MATCH = 0.2       # registration score below which a redraw is rejected
+MIN_DETAIL = 0.55     # by-numbers must keep this share of the redraw's fine detail
 
 
 def load_sources(world):
@@ -227,6 +228,30 @@ def fit_cost(hd, jt, t, p):
     return cost / tot if tot else 0.0
 
 
+def detail(hd, tiles):
+    """Mean fine-detail energy (pixel minus its 3x3 blur) of the given tiles."""
+    v = []
+    for t in tiles:
+        p = hd[t].mean(-1)
+        v.append(np.abs(p - blur(p, 1.0)).mean())
+    return float(np.mean(v)) if v else 0.0
+
+
+def joint_cost(hd, jt, tiles, which='all'):
+    """Frequency-weighted mean edge mismatch over the joints touching `tiles`: 'inside' (both in
+    `tiles`), 'boundary' (exactly one) or 'all'."""
+    cost = tot = 0.0
+    E = {}
+    for (a, b, ax), n in jt.items():
+        ia, ib = a in tiles, b in tiles
+        keep = {'inside': ia and ib, 'boundary': ia != ib, 'all': ia or ib}[which]
+        if keep and a in hd and b in hd:
+            ea = E.setdefault(a, edges(hd[a])); eb = E.setdefault(b, edges(hd[b]))
+            sa, sb = (1, 0) if ax == 1 else (3, 2)
+            cost += n * float(np.abs(ea[sa] - eb[sb]).mean()); tot += n
+    return cost / tot if tot else 0.0
+
+
 def build(world, refit=True):
     tl = s.tiles(world); lv = s.levels(world)
     canon = an.canonical(tl)
@@ -250,6 +275,26 @@ def build(world, refit=True):
         for t, p in rf.load(world).items():
             if t in hd and fit_cost(hd, jt, t, p) < fit_cost(hd, jt, t, hd[t]):
                 hd[t] = p.copy(); kept += 1
+    # Fill-tile families: where the model's copies do not join (W3's plank wall: planks at its own
+    # pitch), render the family by numbers (bynumbers.py); keep whichever joins better over every
+    # joint that touches the family (W1's leaves and W5's dark backdrop join worse by numbers).
+    from . import bynumbers as bn
+    by_numbers = []
+    for f in an.families(tl, jt):
+        fam = [t for t in f if t in hd]
+        tab = bn.learn(sources, set(fam), canon)
+        alt = {t: bn.render(tab, bn.context(tl, jt, t), pal) for t in fam}
+        trial = dict(hd); trial.update(alt)
+        fs = set(fam)
+        # switch only for a clear gain inside the family and no loss where it meets other tiles:
+        # boundary losses are few joints but they are what shows (boxes around W5's snowflakes)
+        # and only where the averaged rendering keeps the detail: regular textures (planks, dirt)
+        # do; irregular ones (W1's leaves) average out flat and show as dark boxes
+        if (joint_cost(trial, jt, fs, 'inside') < 0.75 * joint_cost(hd, jt, fs, 'inside')
+                and joint_cost(trial, jt, fs, 'boundary') <= joint_cost(hd, jt, fs, 'boundary')
+                and detail(alt, fam) >= MIN_DETAIL * detail(hd, fam)):
+            hd.update(alt); by_numbers.append(len(fam))
+
     sky = {t: np.zeros((TS, TS), bool) for t in used}
     for t in used:
         for k in an.sky(tl, jt):
@@ -258,7 +303,7 @@ def build(world, refit=True):
                 hd[t][m] = target[k]
                 sky[t] |= m
 
-    return hd, dict(families=an.families(tl, jt), rigid=len(rigid), refit_kept=kept if refit else 0, target={k: v.tolist() for k, v in target.items()})
+    return hd, dict(families=an.families(tl, jt), rigid=len(rigid), refit_kept=kept if refit else 0, by_numbers=by_numbers, target={k: v.tolist() for k, v in target.items()})
 
 
 def compose(hd, grid, canon):
