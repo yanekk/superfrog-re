@@ -27,6 +27,29 @@ content).
 
 **After each step**, a session answers [the north star](NORTH-STAR.md) and appends a column.
 
+## Readiness plan (rough, 2026-10-24)
+
+| Stage | Work | Run as | Then |
+|---|---|---|---|
+| 0 | Merge this branch. One full `sf-conform all` (~2 h) as M1's baseline, so a later red is attributable to its step. Owner answers J1. | this session / owner | baseline column complete |
+| 1 | Draft 4 (chips) and draft 3 A+B (keyboard, pass counter) side by side; only `front/mod.rs` is shared, a small merge | `pir plan` (2 tasks) + `@repo/single` | north-star column each; owner J2 |
+| 2 | Draft 2 (one clock), after draft 4 | `pir plan` (3 tasks, last one runs `sf-conform all`) | north-star column; owner J2 |
+| 3 | Readiness call: the five north-star conditions plus the dry fit below | one session | verdict paragraph in NORTH-STAR; owner says "extract now" |
+| — | Draft 1 and draft 3 C only if a north-star row they move is the one still short | as their drafts say | |
+
+Expected: after stage 2, M2's toolkit rows reach target and M4 lists three crates (`sf-paula`,
+`amiga-chips`, the clock crate), about eight pir tasks in all. Draft 1's hunk-0 row is wanted, not
+required.
+
+**Dry fit (proposed, owner to confirm).** The counts show the pieces are separate; they do not show
+they are enough. Before the call, a throwaway test program built from the toolkit crates alone (no
+`sf-*` crate in its dependency tree) blits a pattern through the copper and display path, steps the
+clock across a frame and plays a Paula note; and, once J1 is yes, game two's boot runs on the oracle
+with the generic harness. Either failing names what the toolkit still lacks.
+
+**If not ready after stage 2**, the north star names the short row; the owner chooses between the
+draft that moves it (1 or 3 C) and extracting anyway with that piece left per game.
+
 ## Cross-cutting, for every draft
 
 - **pir's test line runs `cd engine && cargo test -q --workspace`** beside the Python suite

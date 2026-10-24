@@ -14,6 +14,7 @@ questions in plain words, and the session writes the answers down with the date.
    (draft 2).
 4. J1 is yes.
 5. J2 is "extract now".
+6. (Proposed 2026-10-24, owner to confirm.) The dry fit in `README.md`'s readiness plan passes.
 
 M3 and M5 are tracked but gate nothing.
 
