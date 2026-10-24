@@ -114,6 +114,7 @@ fn fixture(planner: &str, set: &str, level: &str, completed: bool, wall_s: f64) 
         tool: None,
         // The benchmark guides only the new planner (DESIGN §4.2).
         guided: planner == "new",
+        threads: (planner == "new").then_some(5),
     }
 }
 
@@ -316,6 +317,59 @@ fn the_table_shows_baseline_and_new_side_by_side() {
     assert!(t.contains("## Set A") && t.contains("## Set B"));
     assert!(t.contains("| Level | `best-old` unguided | `new` guided |"), "{t}");
     assert!(t.contains("failed (no exit \"quoted\")"));
+}
+
+fn args(c: &Command) -> Vec<String> {
+    c.get_args().map(|a| a.to_string_lossy().into_owned()).collect()
+}
+
+#[test]
+fn the_planner_command_carries_its_share_of_the_cores() {
+    use sf_bench::adapters::{Adapter, NewPlanner, OLD, threads_per_job};
+    assert_eq!(threads_per_job(10, 1), 10);
+    assert_eq!(threads_per_job(10, 2), 5);
+    assert_eq!(threads_per_job(10, 3), 3);
+    assert_eq!(threads_per_job(2, 4), 1);
+    assert_eq!(threads_per_job(10, 0), 10);
+    let s = &sets::starts(Set::A)[0];
+    let out = std::path::Path::new("route.txt");
+    let budget = Duration::from_secs(30 * sf_bench::MINUTE);
+    let new = NewPlanner {
+        follow_standalone: false,
+        guided: false,
+        threads: threads_per_job(10, 2),
+    };
+    let a = args(&new.command(s, 1, out, budget));
+    let i = a.iter().position(|x| x == "--threads").expect("--threads");
+    assert_eq!(a[i + 1], "5", "{a:?}");
+    assert_eq!(new.threads(), Some(5));
+    // The old tools take no thread option.
+    for t in OLD {
+        assert!(!args(&t.command(s, 1, out, budget)).contains(&"--threads".to_string()));
+        assert_eq!(t.threads(), None);
+    }
+}
+
+/// A line records the planner's threads; a new-planner line without them (written before sf-bench
+/// passed `--threads`, owner 2026-10-24) still reads, is kept in the table and is marked there.
+#[test]
+fn a_new_planner_line_without_threads_is_kept_and_marked() {
+    let with = fixture("new", "A", "W1-1", true, 60.0);
+    assert!(with.to_json().contains("\"threads\":5,"));
+    assert_eq!(LevelResult::from_json(&with.to_json()), Some(with.clone()));
+    let mut before = fixture("new", "A", "W1-2", true, 60.0);
+    before.threads = None;
+    before.commit = "old000".into();
+    assert!(!before.to_json().contains("threads"));
+    assert_eq!(LevelResult::from_json(&before.to_json()), Some(before.clone()));
+    let old_tool = fixture("plan_exit", "A", "W1-1", true, 60.0);
+    let t = sf_bench::table::render(&[with, before, old_tool]);
+    let line = |l: &str, p: &str| t.lines().find(|x| x.starts_with(&format!("| {l} |"))).map(|x| x.contains(p));
+    assert_eq!(line("W1-2", "*before the thread share*"), Some(true), "{t}");
+    assert_eq!(line("W1-1", "*before the thread share*"), Some(false), "{t}");
+    assert!(t.contains("Cells marked *before the thread share*"), "{t}");
+    let m1 = t.lines().find(|l| l.starts_with("| M1 |")).unwrap();
+    assert!(m1.contains("2 / 24"), "{m1}");
 }
 
 /// T11: the new planner benched on W1-1, guided by `complete-w1-1`, is recorded completed and

@@ -11,6 +11,7 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-24 | 🔄 | Owner, T27: `sf-bench` passed no `--threads`, so each `sf-plan` took every core (10); under `--jobs 2` each had ~half the compute against its wall-clock budget. Now `cores / jobs` (`--threads` overrides). Rows before it are marked in `RESULTS.md`.
 | 2026-10-24 | 🐞 | T26 review: T31 blocks T17 only; T16's set-B baseline verifies from the same W2-2, W5-1, W6-3 starts (any route fails at frame 1), so run before T31 lands it would score them misses. |
 | 2026-10-24 | 📌 | T26 set B guided, seed 1, 2ad88eb: 13 of 24 done (W1-1–W1-3, W2-1, W3-1, W3-4, W4-1–W4-3, W5-2–W5-4, W6-2; 5.5–28.5 min). Misses re-run alone, same result. W5-1 not run (T31). W6-2 passes here, unlike set A. |
 | 2026-10-24 | 🔄 | Owner, T26: set-B W1-4 recorded a miss. No first exit in 30 min, twice: coins met, best cell 156,45, T23's dead end; `chain-w1-4` reaches the exit from above (199,29 → 166,34). Set A's W1-4 completes. |
@@ -34,7 +35,6 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 | 2026-10-23 | 📌 | T14 review: `shorten::better` keeps fewer hearts before shorter (§2.5, M6); DESIGN §2.12 still reads "keeps the shortest exit". Wording left for the owner. |
 | 2026-10-23 | 📌 | T14 set A guided, load 8–27, bbcb4dd–2bcd9f4, frames (ref): W1-1 3527 (4474), W1-2 4659 (5183), W1-3 5745 (7729), W2-1 2269 (2524), W2-2 4922 (4739), W3-1 4558 (5492). Also done: W3-3, W4-1, W4-3, W5-1, W5-2, W5-4. Nine failed; W6-2–W6-4 not run. |
 | 2026-10-23 | 🔄 | Owner, T14: the lockstep parts past the faithful check's lag bar, looked up from the level's completion case (`lag-limit`, else 100), never passed by `sf-bench` (DESIGN §2.6). W5-3's route exited but failed `verify`: 101 mid-pass frames from 5 310. |
-| 2026-10-23 | 📌 | T14: rejoining the old plan (a bridge to its key 96–384 frames on) failed its W1-1 test: bridges in 1–2 rounds, no joined plan exits; dropped. W3-4 rounds to exit: pace 1 380, none 1 097, unguided 1 277. |
 | 2026-10-22 | 🔄 | Owner, T14: guide pace on by default (DESIGN §2.11). Engine-only W1-2, W2-1, W1-3, seeds 1–3, frames in all: none 45 850, against the archive's fastest 42 117, against the route's time 37 661 but W1-4 no exit in 30 min. |
 | 2026-10-22 | 📌 | T23, load ~24: W1-4 original mode guided by `complete-w1-4` passed §4.1 in 629 s, 2 repairs, share 0.126, 1 heart, 10 062 frames; review rerun 388 s, same route, share 0.098. Engine only, guided: seeds 1, 2 exit in 237, 413 s; seed 3 none in 10 min. |
 | 2026-10-22 | 📌 | T23 regressions after the guide change: W6-2 guided engine only 123 s, 8 982 frames (T09: 109–141 s); W5-2 unguided original mode 284 s, 7 repairs, 1 heart (unguided runs build no `GuideIndex`). |
@@ -54,7 +54,6 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 | 2026-10-22 | 🔄 | Owner amended the plan (D19–D24): whole-level explorer core; guide paths allowed everywhere, the counted benchmark included (baseline stays unaided); map and coin choice compasses only; M7, T13, T20 dropped; T22 route-shorten added. |
 | 2026-10-22 | 📌 | Experiment `spike-explore/goexp.rs`, engine only, 10-min cap, no hints: exits on W2-1, W2-4, W3-2, W3-4, W4-2, W4-4, W5-2, W6-1 (30–589 s; band-0 exit pull needed on four); a route guide made W6-2 exit in 80 s. Raw `--follow` seeds 4–47 cells. |
 | 2026-10-22 | 🐞 | Experiment: W3-2's engine-only route parted from the original at frame 3 737 and died at 5 753, yet `sf_conform::run` said ok (resync follows the death); only `verify`'s exit milestone caught it. Stretch repair passed `verify` on W2-1, W5-2. |
-| 2026-10-22 | 📌 | T21 map s, 10 threads, load 2–15: W1 147 185 156 229; W2 58 193 139 6; W3 79 39 180 109; W4 116 57 174 111; W5 83 192 189 294; W6 67 228 175 205. None over 300. |
 | 2026-10-22 | 🐞 | T04 review, for T20: W2-3, W4-4 maps walk no seed with two switches pressed (`per_switch_set` {0,1,2,4} and {0,8}); far-from-gate slots ignore pressed switches, so a second lever is pressed only from world 0; each exit needs all four. |
 | 2026-10-21 | 🔄 | Owner, T04: 11 maps over 5 min (quiet, W5-4 566 s) get T21 engine-memory-lookup (T04; blocks T20), speed only; builds still over 5 min after it are recorded and accepted, the move set never shrunk. |
 | 2026-10-21 | 🐞 | T04, D13 check (`map_stats`): 11 of 24 maps miss the exit or the coins, no enemy help. Exit unreached: W2-3, W2-4, W3-2, W3-4, W4-2, W4-4, W5-2, W6-1, W6-2, W6-4. W2-1 reaches 24 of 35 coins. Owner asked before T08. |

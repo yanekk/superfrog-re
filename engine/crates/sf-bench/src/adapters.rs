@@ -2,6 +2,9 @@
 //! `--out`, `--frames` and, where the tool needs it to take coins at all, `--coins 0`: none of
 //! the hints and per-level options (`--via/--avoid/--ground/--jump/--launch/--fly/--skip/--to/
 //! --stomp/--hurt`), because the benchmark measures them unaided.
+//!
+//! Threads: `sf-plan` is given its share of the cores (`--threads`, [`threads_per_job`]); the old
+//! tools take no thread option (each uses `available_parallelism()`), so they are left as they are.
 
 use std::path::{Path, PathBuf};
 use std::process::Command;
@@ -23,6 +26,10 @@ pub trait Adapter: Send + Sync {
     /// Whether the planner is given the level's committed route as its guide (DESIGN §4.2).
     fn guided(&self) -> bool {
         false
+    }
+    /// The threads the planner is given, for one that takes a thread option.
+    fn threads(&self) -> Option<usize> {
+        None
     }
 }
 
@@ -50,6 +57,18 @@ pub fn build(targets: &[(&str, &str, &str)]) -> Result<Vec<PathBuf>, String> {
         return Err(format!("cargo build of {targets:?} failed ({st})"));
     }
     Ok(targets.iter().map(|&t| binary(t)).collect())
+}
+
+/// Each planner child's share of the cores when `jobs` run at once: `cores / jobs`, at least 1.
+/// The budget is wall-clock, so a child left at its own default (every core) under `--jobs 2`
+/// shares them with the other and gets about half the compute it would alone (owner, 2026-10-24).
+pub fn threads_per_job(cores: usize, jobs: usize) -> usize {
+    (cores / jobs.max(1)).max(1)
+}
+
+/// The cores `threads_per_job` shares out.
+pub fn cores() -> usize {
+    std::thread::available_parallelism().map_or(1, |n| n.get())
 }
 
 /// An old tool: an example of `sf-conform`.
@@ -112,6 +131,8 @@ pub struct NewPlanner {
     /// The level's committed route (`verify::committed_script`) as `--guide`, played by the planner
     /// at the start it is given (DESIGN §4.2, D21); off with `sf-bench --unguided`.
     pub guided: bool,
+    /// `--threads`: the child's share of the cores ([`threads_per_job`]) or `sf-bench --threads`.
+    pub threads: usize,
 }
 
 impl Adapter for NewPlanner {
@@ -125,6 +146,10 @@ impl Adapter for NewPlanner {
 
     fn guided(&self) -> bool {
         self.guided
+    }
+
+    fn threads(&self) -> Option<usize> {
+        Some(self.threads.max(1))
     }
 
     fn command(&self, s: &Start, seed: u32, out: &Path, budget: Duration) -> Command {
@@ -153,6 +178,7 @@ impl Adapter for NewPlanner {
         }
         c.args(["--seed", &seed.to_string()])
             .args(["--budget-min", &(budget.as_secs() / crate::MINUTE).to_string()])
+            .args(["--threads", &self.threads().unwrap().to_string()])
             .arg("--no-cache")
             .arg("--out")
             .arg(out);
