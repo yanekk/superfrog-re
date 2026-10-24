@@ -24,29 +24,37 @@ stalls 1–3 coins short under the straight coin pull (`archive::coin_dist`).
 Build it in `core` (pure, DESIGN §3.1), beside `MapCompass`:
 
 - **Open cells.** A cell is open when `facts::live` gives a marker below `$3a` and it is not a
-  hazard (marker 6). Read from the explorer's start state. A gate cell (`Switch::gate`) is closed
-  until its switch is pressed; per `CellKey::switches` set, the gates of the pressed switches are
-  open. If a gate spans more cells than `Switch::gate` names, find out by pressing it in a test and
-  open what the press opens.
+  hazard (marker 6). Read from the explorer's start state. A gate is a block, not one cell
+  (`sf_core::items::fixtures::switch` rewrites five rows from the row above `Switch::gate`, its
+  shape world by world): per `CellKey::switches` set, the cells of each pressed switch's
+  `map::in_gate_block(s.gate, cell)` that are ground at the start are open (make the helper
+  `pub(crate)`). Test it on W2-1's switch at 143,37.
 - **Exit distance.** A breadth-first fill over open cells, 4-neighbour, from every exit cell,
-  ignoring gravity and jumps: steps in cells. Cached per switch set, as `MapCompass` caches per
-  (switches, wings). A key's distance is the least over its 2×2 cells (`key.col * 2 + dc`,
+  ignoring gravity and jumps: steps in cells. Filled lazily per switch set and cached, as
+  `MapCompass` does; `Explorer::dist` runs single-threaded (`merge`, `seed_from`, `new`), so the
+  cache needs no lock. A key's distance is the least over its 2×2 cells (`key.col * 2 + dc`,
   `key.row * 2 + dr`). A key with no open path to an exit falls back to the straight distance.
-- **Coin distance.** The last-8-coins pull (`Explorer::weights`, the `k.band <= 8` arm) uses the
-  walking distance to the nearest object coin still live, not the straight one: one fill per object
-  coin, made once at the start for each switch set it is needed in, and the least over live coins at
-  offer time. A coin with no open path counts as straight. The tile-coin rule is unchanged (tile
-  coins never lower the count).
+- **Coin distance.** With `--compass walk` only (straight and map keep `archive::coin_dist`, so the
+  trial compares like with like), the last-8-coins pull (`Explorer::weights`, the `k.band <= 8`
+  arm) uses the walking distance to the nearest object coin still live. `burst` runs on the shell's
+  threads with `&self`, so it cannot fill: it records in `Held` the frog cell and which object
+  coins are live (a bitset over `Facts::coins`), and `merge` computes the distance from one fill per
+  (object coin, switch set), filled lazily there and cached. The frog's cell (`frog_cell`, its
+  middle a row up) may sit in a wall mid-jump: take the least over it and its 4 neighbours, else
+  straight. A coin with no open path counts as straight. Tile coins still never lower the count.
+- **Memory.** A fill is 25 200 cells × u16 (~50 KB). The fills sit outside the archive's own count
+  (D22); log their total once at the end (expected a few MB; tens with many coins and switches).
 - **Units.** Distances are cells, as the straight compass, so `pull` and its constants are
   unchanged.
-- **Option.** `--compass walk` in `sf-plan` (`CompassArg`, `Compass::Walk`); no map, no cache,
-  nothing on disk. Its build time goes in `PLAN_STATS` or the log, so the trial can show it is
-  negligible.
+- **Option.** `--compass walk` in `sf-plan` (a third `CompassArg` variant, `Compass::Walk`); no map,
+  no cache, nothing on disk. Its build time is measured in the shell around `Explorer::new` (no clock
+  in `core`, `tests/purity.rs`) and goes in the log, so the trial can show it is negligible.
 - **Determinism.** M8 holds: the fills are functions of the start state and the switch set only.
 
 Tests (`sf-plan/tests/`): a fill on a hand-made grid goes around a wall where straight goes through
 it; a gate opens only in its switch's set; a sealed cell falls back to straight; on one real level
-the start's walking distance is at least its straight distance and finite; same seed, same route at
+the start key's walking distance is finite and at least the least straight distance over the same
+2×2 cells; same seed, same route at
 1 and 4 threads with `--compass walk`.
 
 ## Files
@@ -58,9 +66,10 @@ the start's walking distance is at least its straight distance and finite; same 
 ## Run
 
 `--engine-only` is enough to compare planning (engine frames are machine-independent;
-`PLAN_STATS` carries them and `rounds`); 30-min budget; maps from the cache (built once a level,
-its time recorded apart). Run each pair alone, or both of a pair side by side so they share the
-load.
+`PLAN_STATS` carries them and `rounds`); 30-min budget; the map compass's maps from the cache (built
+once a level, its time recorded apart); walk needs none. Run each triple alone, or the three of a
+triple side by side so they share the load, each with its share of the cores (`--threads`).
+Worst case 6 levels × 3 seeds × 3 compasses × 30 min = 27 h; most runs end sooner.
 
 ## Done when
 
