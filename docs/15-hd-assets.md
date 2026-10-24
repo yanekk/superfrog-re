@@ -42,8 +42,13 @@ moved small objects. Model `nano_banana_pro` at 2k, 16:9: 2 credits an image; ou
   error against the original - centrality bonus. Lowest error alone picks copies the model left
   blocky; medoid alone fails on tiny letters. `choose_jointly` then picks per tile so that
   neighbouring tiles' touching edges agree (ICM over all adjacent pairs in the levels).
+- **Colour pinning.** The model repaints flat areas a slightly different shade per image, which
+  showed as darker boxes around coins and apples. `normalise` sets every pixel whose original 3x3
+  neighbourhood is one palette index to that exact colour (2 px feather), then corrects remaining
+  drift at low frequency (original minus the redraw shrunk to 16 px, blurred, enlarged, added).
 - **Seams.** `seam_fix` evens each edge toward the mean of the touching lines over all neighbour
-  pairs, with a 20 px falloff. `seam_score` (edge step / in-tile step) goes 1.17 -> 0.41.
+  pairs, smoothed 4 px along the edge, 8 px falloff. A 20 px per-pixel version wiped the mushroom
+  cap's top outline. `seam_score` (edge step / in-tile step) 1.36 -> 0.85.
 - **Overrides.** `tools/hd_overrides/w<N>.json` names the model image to take a tile from when no
   rule is right. W1: tile 660, an R bonus coin the model drew as R, A, n, R, B.
 - **Sprites.** Sheets go in halves at 8x on magenta. Alpha = model's key-colour cut x the original
@@ -52,8 +57,8 @@ moved small objects. Model `nano_banana_pro` at 2k, 16:9: 2 credits an image; ou
 
 ## Known issues (pilot)
 
-- Green flecks at a few canopy-outline tile borders; flat background art (clouds, pine
-  silhouettes) stays slightly blocky because the model mostly leaves it as is.
+- A few faint flecks at canopy-outline and bone tile borders; flat background art (clouds,
+  pine silhouettes) stays slightly blocky because the model mostly leaves it as is.
 - Faint magenta-fringe hairlines at some sprite frame edges.
 - Tiny text (bonus letters) is unreliable; check letter tiles by eye and add overrides.
 - Colour cycling (COLOR06, docs/10) is baked in at its base colour.

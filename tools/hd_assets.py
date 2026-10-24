@@ -256,12 +256,51 @@ def down(a, k):
     return a[:h * k, :w * k].reshape(h, k, w, k, -1).mean((1, 3))
 
 
-def seam_fix(hd, lv, iters=4, band=20):
+def blur(a, sigma, axes=(0, 1)):
+    """Separable Gaussian blur with edge padding (no scipy in the venv)."""
+    r = max(1, int(3 * sigma))
+    k = np.exp(-0.5 * (np.arange(-r, r + 1) / sigma) ** 2)
+    k /= k.sum()
+    out = a.astype(np.float32)
+    for ax in axes:
+        pad = [(0, 0)] * out.ndim
+        pad[ax] = (r, r)
+        q = np.pad(out, pad, mode='edge')
+        out = sum(w * np.take(q, range(i, i + out.shape[ax]), axis=ax) for i, w in enumerate(k))
+    return out
+
+
+def normalise(patch, orig, idx):
+    """Pull a redrawn tile back onto the original's colours without undoing the redraw.
+    The model repaints flat areas a slightly different shade in each image, so
+    tiles cut from different images showed as darker or lighter boxes in the sky
+    around coins and apples. Two steps:
+    - Flat areas (an original pixel whose 3x3 neighbourhood is one palette
+      index) are set to that exact colour, feathered 2 px so redrawn edges stay.
+    - Remaining drift is corrected at low frequency: the original minus the
+      redraw shrunk to 16 px, blurred, enlarged back and added."""
+    patch = patch.astype(np.float32)
+    o4 = up(orig, S).astype(np.float32)
+    q = np.pad(idx, 1, mode='edge')
+    flat = np.ones(idx.shape, bool)
+    for dy in range(3):
+        for dx in range(3):
+            flat &= q[dy:dy + T, dx:dx + T] == idx
+    w = blur(up(flat.astype(np.float32), S), 2.0)[..., None]
+    patch = patch * (1 - w) + o4 * w
+    diff = blur(orig.astype(np.float32) - down(patch, S), 1.0)
+    diff_up = np.stack([np.array(Image.fromarray(diff[..., c]).resize((T * S, T * S), Image.BILINEAR))
+                        for c in range(3)], -1)
+    return np.clip(patch + diff_up, 0, 255)
+
+
+def seam_fix(hd, lv, iters=3, band=8, along=4.0):
     """Even out tile edges the levels put side by side. For every edge of every
     tile, the target is the mean (over all neighbour pairs, weighted by how
-    often they occur) of the two touching pixel lines; the difference is
-    applied to the tile with a linear falloff over `band` pixels, so only the
-    low-frequency step at the seam moves and detail stays."""
+    often they occur) of the two touching pixel lines. The difference is
+    smoothed along the edge (`along` px) and applied with a linear falloff over
+    `band` px, so only a gradual colour step moves. A wider band or a per-pixel
+    correction wiped outlines lying near a border (the mushroom cap's top)."""
     n, P = len(hd), T * S
     pairs = {'h': {}, 'v': {}}
     for g in lv.values():
@@ -287,14 +326,16 @@ def seam_fix(hd, lv, iters=4, band=20):
                 if not wt[t, side]:
                     continue
                 tgt = acc[t, side] / wt[t, side]
+                line = (hd[t][:, 0], hd[t][:, -1], hd[t][0], hd[t][-1])[side]
+                d = blur(tgt - line, along, axes=(0,))
                 if side == 0:
-                    hd[t] += (tgt - hd[t][:, 0])[:, None, :] * ramp[None, :, None]
+                    hd[t] += d[:, None, :] * ramp[None, :, None]
                 elif side == 1:
-                    hd[t] += (tgt - hd[t][:, -1])[:, None, :] * ramp[::-1][None, :, None]
+                    hd[t] += d[:, None, :] * ramp[::-1][None, :, None]
                 elif side == 2:
-                    hd[t] += (tgt - hd[t][0])[None, :, :] * ramp[:, None, None]
+                    hd[t] += d[None, :, :] * ramp[:, None, None]
                 else:
-                    hd[t] += (tgt - hd[t][-1])[None, :, :] * ramp[::-1][:, None, None]
+                    hd[t] += d[None, :, :] * ramp[::-1][:, None, None]
     return np.clip(hd, 0, 255).astype(np.uint8)
 
 
@@ -443,6 +484,9 @@ def assemble(world):
             hd[t] = up(tiles[t].astype(np.uint8), S)
             if t in used:
                 fallback.append(t)
+    idx = decode_tiles(chunk(WORLDS[world]['bm']))
+    for t in short:
+        hd[t] = normalise(hd[t], tiles[t], idx[t]).astype(np.uint8)
     before = seam_score(hd, lv)
     hd = seam_fix(hd, lv)
     after = seam_score(hd, lv)
