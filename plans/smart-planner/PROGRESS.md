@@ -17,9 +17,9 @@ unreliable edges); T07 now light, T00 answers three more questions.
 allowed everywhere, map a compass; T13 and T20 dropped, T22 route-shorten added.
 **Amendment reviewed:** 2026-10-22 — 18 fixes, 1 decision (owner: T10's W1-4 check runs guided)
 
-**Status:** T00–T12, T14, T19, T21–T26, T29, T30 done; T31 in review; T27, T28, T32, T15–T18 open.
+**Status:** T00–T12, T14, T19, T21–T26, T29–T31 done; T27, T28, T32, T15–T18 open.
 **Last updated:** 2026-10-24
-**Next `pir-work` will:** review T31; T32 alone-pass-drift once T31 merges.
+**Next `pir-work` will:** T32 alone-pass-drift.
 
 ## Tasks
 
@@ -57,10 +57,10 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T28 | compass-trial | T14, T27; blocks T15 | ⬜ | |
 | T29 | engine-sound-ramp | T25; blocks T15 | ✅ | |
 | T30 | lag-repair | T25; blocks T15 | ✅ | |
-| T31 | leg-start-sync | T26; blocks T17 | 🔍 | `verify::lead`: a leg whose snapshot ends mid-pass syncs one frame on (W2-2, W5-1, W6-3; others 0). 3 tests (2 ignored, oracle). Committed chains complete. Rerun: W6-3 done; W2-2, W5-1 fail check 4 mid-route, owner: misses, T32 added. Deviation: no `sf-plan` change, its start is clean on these three. |
+| T31 | leg-start-sync | T26; blocks T17 | ✅ | `verify::lead` syncs W2-2, W5-1, W6-3 one frame on, others 0. W6-3 done; W2-2, W5-1 owner misses, T32. Review clean, no fix: ran the ignored lead and chain tests (green, 10 min), mutated `lead` and `case.script` (both red), probed sf-plan's settle per leg (clean on the three; W3-1, W4-2 mid-pass confirmed). |
 | T32 | alone-pass-drift | T31; blocks T17 | ⬜ | |
 
-**Review queue:** T31
+**Review queue:** *(empty)*
 
 ## Blocked on the user
 
