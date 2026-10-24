@@ -27,8 +27,8 @@ Outputs are derived from the disks, so they stay in `build/` (git-ignored).
 Style C, "faithful upscale", chosen by the owner on 2026-10-24 from three samples (hi-res pixel
 art, painted cartoon, faithful upscale). Painted redesigned the frog (two eyes, new body) and
 moved small objects. Model `nano_banana_pro` at 2k, 16:9: 2 credits an image; outputs are
-2752 x 1536. The pilot cost 54 credits (12 for style samples, 36 for 18 inputs incl. a retry, 2 for a coin
-detail sheet since superseded, 4 for two objects sheets).
+2752 x 1536. The pilot cost 60 credits (12 for style samples, 36 for 18 inputs incl. a retry, 2 for a coin
+detail sheet since superseded, 10 for five objects sheets of which two are used).
 
 ## How it works
 
@@ -63,8 +63,12 @@ detail sheet since superseded, 4 for two objects sheets).
   sets each tile on a flat block (an R coin in a dirt wall came back on plain brown).
 - **Objects.** `objects` in the overrides file: single-tile pickups (marker 55; the world's table
   at h0+$f382 names each one's handler) are cut out. W1: `objects00` letter coins 437, 660, 664,
-  680 and apple 682; `objects01` banana 63, cherries 282, wings 401/605, Spud 403, red ball 434,
-  drawn with `objects00`'s output as a second reference image so the style matches. The bottle
+  680 and apple 682, redrawn alone with a faithful-upscale prompt and a level window as style
+  reference. A "flat cartoon, no texture" prompt gave perfect circles in the cartoon look the owner
+  rejected at the start. `tileobjects` (`source: tile`) banana 63, cherries 282, wings 401/605,
+  Spud 403, red ball 434: the model drawing these alone redesigned them every time (leaf on the
+  cherries, purple wings, a new face on Spud), so they are cut from their own level-window HD tile
+  with a smooth outline (blurred, sharpened mask) and pasted 1 px inset. The bottle
   (753) stays a tile: it is two tiles tall. Mask = not the corner colour, or
   `mask_from` another tile when the background is textured. Drawn alone at 24x on magenta and
   pasted last (`composite_objects`) onto the tile's background: a flat colour, or the used tile

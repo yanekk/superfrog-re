@@ -179,6 +179,24 @@ def composite_objects(world, base, man, hd, tiles, used):
     pal = palette(world)
     P = T * S
     for d in load_overrides(world).get('objects', []):
+        if d.get('source') == 'tile':
+            # The object as the level windows drew it (the approved faithful style),
+            # cut out with a smooth outline and pasted 1 px inset. Used where the
+            # model, drawing the object alone, kept redesigning it as a cartoon
+            # (leaves on cherries, purple wings, a new face on Spud).
+            for t in d['tiles']:
+                m = object_mask(world, t, d)
+                a = blur(up(m.astype(np.float32), S), 1.5)
+                a = np.clip((a - 0.5) * 2.5 + 0.5, 0, 1)
+                q = P - 2
+                obj_s = np.array(Image.fromarray(hd[t]).resize((q, q), Image.LANCZOS)).astype(np.float32)
+                a_s = np.array(Image.fromarray(a.astype(np.float32)).resize((q, q), Image.BILINEAR))[..., None]
+                kind, v = background_tile(world, t, d, used)
+                bg = np.empty((P, P, 3), np.float32)
+                bg[:] = pal[v] if kind == 'flat' else hd[v]
+                bg[1:1 + q, 1:1 + q] = obj_s * a_s + bg[1:1 + q, 1:1 + q] * (1 - a_s)
+                hd[t] = np.clip(bg, 0, 255).astype(np.uint8)
+            continue
         inp = next((i for i in man['inputs'] if i['name'] == d['name']), None)
         if inp is None or not os.path.exists(os.path.join(base, 'out', d['name'] + '.png')):
             print('no object sheet', d['name']); continue
@@ -289,6 +307,8 @@ def prepare(world):
     # the finished background (assemble). Anything drawn as part of a tile is
     # cut at the tile border, which kept flattening their round edges.
     for d in load_overrides(world).get('objects', []):
+        if d.get('source') == 'tile':
+            continue
         k = d.get('scale', 24)
         canvas = np.zeros((OUT_H, OUT_W, 3), np.uint8)
         canvas[:] = KEY

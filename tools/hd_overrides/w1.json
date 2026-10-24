@@ -3,9 +3,35 @@
  "tile_source": {},
  "detail": [],
  "objects": [
-  {"name": "objects00", "tiles": [437, 660, 664, 680, 682], "letters": "S, R, R, S", "scale": 24,
-   "mask_from": {"664": 660}},
-  {"name": "objects01", "tiles": [63, 282, 401, 403, 434, 605], "scale": 24,
-   "mask_from": {"605": 401}}
+  {
+   "name": "objects00",
+   "tiles": [
+    437,
+    660,
+    664,
+    680,
+    682
+   ],
+   "letters": "S, R, R, S",
+   "scale": 24,
+   "mask_from": {
+    "664": 660
+   }
+  },
+  {
+   "name": "tileobjects",
+   "source": "tile",
+   "tiles": [
+    63,
+    282,
+    401,
+    403,
+    434,
+    605
+   ],
+   "mask_from": {
+    "605": 401
+   }
+  }
  ]
 }
