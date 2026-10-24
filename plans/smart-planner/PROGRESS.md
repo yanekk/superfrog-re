@@ -53,14 +53,14 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T24 | repair-cost | T14; blocks T15 | ✅ | |
 | T25 | tuning-set-a | T14, T24; blocks T15 | ✅ | |
 | T26 | tuning-set-b | T14, T25; blocks T15 | ✅ | |
-| T27 | tuning-unaided | T14, T26; blocks T15 | 🔍 | Set A unaided, seed 1: 9/24 done; causes in FINDINGS 2026-10-24. Deviations: owner's sf-bench thread share (`--threads` cores/jobs, earlier rows marked); owner stopped reruns, so W1-3, W1-4, W2-3, W3-2 stand from alone runs before the fix, W6-4 from `--jobs 2` only; T33 added (owner). |
+| T27 | tuning-unaided | T14, T26; blocks T15 | ✅ | Set A unaided 9/24, causes in FINDINGS. Review: thread-share fix held (two mutations red, table re-renders identical, sf-plan default all cores); T33 shape valid; FINDINGS rows trimmed. Timings from mixed loads, results read-only; W1-3, W1-4, W2-3, W3-2, W6-4 predate the thread share. |
 | T28 | compass-trial | T14, T27; blocks T15 | ⬜ | |
 | T29 | engine-sound-ramp | T25; blocks T15 | ✅ | |
 | T30 | lag-repair | T25; blocks T15 | ✅ | |
 | T31 | leg-start-sync | T26; blocks T17 | ⬜ | |
 | T33 | dead-end-repair | T27, T30; blocks T17 | ⬜ | |
 
-**Review queue:** T27
+**Review queue:** *(empty)*
 
 ## Blocked on the user
 
