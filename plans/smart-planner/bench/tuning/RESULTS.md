@@ -30,32 +30,32 @@ Recorded, not gated:
 
 ## Set A
 
-| Level | `new` guided |
-|---|---|
-| W1-1 | done, 4.0 min, 3640 frames (ref 4474), 0 hearts lost |
-| W1-2 | done, 2.8 min, 4717 frames (ref 5183), 0 hearts lost |
-| W1-3 | done, 3.9 min, 5745 frames (ref 7729), 1 hearts lost |
-| W1-4 | done, 18.7 min, 7998 frames (ref 7378), 1 hearts lost |
-| W2-1 | done, 7.7 min, 2598 frames (ref 2524), 0 hearts lost |
-| W2-2 | done, 4.2 min, 5318 frames (ref 4739), 0 hearts lost |
-| W2-3 | failed (over-budget; budget spent; coins still needed 0, least exit distance with the coins met 43 cells, cells archived 7411, the original confirmed to frame 5785), 30.0 min |
-| W2-4 | done, 24.4 min, 9554 frames (ref 7779), 3 hearts lost |
-| W3-1 | done, 3.0 min, 4125 frames (ref 5492), 0 hearts lost |
-| W3-2 | done, 6.5 min, 11066 frames (ref 6994), 0 hearts lost |
-| W3-3 | done, 4.7 min, 5274 frames (ref 7529), 1 hearts lost |
-| W3-4 | failed (over-budget; budget spent; coins still needed 0, least exit distance with the coins met 13 cells, cells archived 27938, the original confirmed to frame 2528), 30.0 min |
-| W4-1 | done, 4.6 min, 2948 frames (ref 2146), 0 hearts lost |
-| W4-2 | done, 6.8 min, 7491 frames (ref 9237), 2 hearts lost |
-| W4-3 | done, 4.6 min, 5585 frames (ref 8486), 1 hearts lost |
-| W4-4 | done, 16.2 min, 13197 frames (ref 24201), 3 hearts lost |
-| W5-1 | done, 5.0 min, 2518 frames (ref 2254), 0 hearts lost |
-| W5-2 | done, 10.2 min, 5523 frames (ref 6094), 0 hearts lost |
-| W5-3 | done, 9.9 min, 7428 frames (ref 6863), 0 hearts lost |
-| W5-4 | done, 10.7 min, 7338 frames (ref 8193), 1 hearts lost |
-| W6-1 | failed (over-budget; budget spent; coins still needed 2, least exit distance with the coins met none (the coins were never met), cells archived 4532, the original confirmed to frame 1299), 30.0 min |
-| W6-2 | done, 10.5 min, 9392 frames (ref 8430), 4 hearts lost |
-| W6-3 | done, 6.4 min, 8799 frames (ref 7892), 5 hearts lost |
-| W6-4 | failed (over-budget; budget spent; coins still needed 0, least exit distance with the coins met 13 cells, cells archived 38656, the original confirmed to frame 151), 30.0 min |
+| Level | `new` guided | `new` unguided |
+|---|---|---|
+| W1-1 | done, 4.0 min, 3640 frames (ref 4474), 0 hearts lost | done, 6.0 min, 4696 frames (ref 4474), 0 hearts lost |
+| W1-2 | done, 2.8 min, 4717 frames (ref 5183), 0 hearts lost | done, 9.1 min, 5794 frames (ref 5183), 1 hearts lost |
+| W1-3 | done, 3.9 min, 5745 frames (ref 7729), 1 hearts lost | failed (over-budget; budget spent; coins still needed 33, least exit distance with the coins met none (the coins were never met), cells archived 5, the original confirmed to frame 5826), 30.0 min |
+| W1-4 | done, 18.7 min, 7998 frames (ref 7378), 1 hearts lost | failed (over-budget; budget spent; coins still needed 91, least exit distance with the coins met none (the coins were never met), cells archived 1, the original confirmed to frame 731), 30.2 min |
+| W2-1 | done, 7.7 min, 2598 frames (ref 2524), 0 hearts lost | done, 7.3 min, 2933 frames (ref 2524), 0 hearts lost |
+| W2-2 | done, 4.2 min, 5318 frames (ref 4739), 0 hearts lost | failed (not faithful: diverged at frame 1007), 5.4 min, 5054 frames (ref 4739) |
+| W2-3 | failed (over-budget; budget spent; coins still needed 0, least exit distance with the coins met 43 cells, cells archived 7411, the original confirmed to frame 5785), 30.0 min | failed (over-budget; budget spent; coins still needed 0, least exit distance with the coins met 17 cells, cells archived 30416, the original confirmed to frame 151), 30.0 min |
+| W2-4 | done, 24.4 min, 9554 frames (ref 7779), 3 hearts lost | failed (over-budget; budget spent; coins still needed 5, least exit distance with the coins met none (the coins were never met), cells archived 1, the original confirmed to frame 9096), 30.1 min |
+| W3-1 | done, 3.0 min, 4125 frames (ref 5492), 0 hearts lost | done, 23.4 min, 6507 frames (ref 5492), 0 hearts lost |
+| W3-2 | done, 6.5 min, 11066 frames (ref 6994), 0 hearts lost | failed (over-budget; budget spent; coins still needed 14, least exit distance with the coins met none (the coins were never met), cells archived 19921, the original confirmed to frame 151), 30.1 min |
+| W3-3 | done, 4.7 min, 5274 frames (ref 7529), 1 hearts lost | failed (over-budget; budget spent; coins still needed 16, least exit distance with the coins met none (the coins were never met), cells archived 18843, the original confirmed to frame 151), 30.0 min |
+| W3-4 | failed (over-budget; budget spent; coins still needed 0, least exit distance with the coins met 13 cells, cells archived 27938, the original confirmed to frame 2528), 30.0 min | failed (over-budget; budget spent; coins still needed 0, least exit distance with the coins met 33 cells, cells archived 33305, the original confirmed to frame 151), 30.0 min |
+| W4-1 | done, 4.6 min, 2948 frames (ref 2146), 0 hearts lost | failed (over-budget; budget spent; coins still needed 0, least exit distance with the coins met 233 cells, cells archived 2, the original confirmed to frame 3001), 30.1 min |
+| W4-2 | done, 6.8 min, 7491 frames (ref 9237), 2 hearts lost | failed (over-budget; budget spent; coins still needed 0, least exit distance with the coins met 15 cells, cells archived 10556, the original confirmed to frame 151), 30.3 min |
+| W4-3 | done, 4.6 min, 5585 frames (ref 8486), 1 hearts lost | done, 7.7 min, 7377 frames (ref 8486), 4 hearts lost |
+| W4-4 | done, 16.2 min, 13197 frames (ref 24201), 3 hearts lost | failed (over-budget; budget spent; coins still needed 1, least exit distance with the coins met none (the coins were never met), cells archived 25871, the original confirmed to frame 151), 30.0 min |
+| W5-1 | done, 5.0 min, 2518 frames (ref 2254), 0 hearts lost | done, 5.5 min, 3144 frames (ref 2254), 0 hearts lost |
+| W5-2 | done, 10.2 min, 5523 frames (ref 6094), 0 hearts lost | done, 15.2 min, 6320 frames (ref 6094), 1 hearts lost |
+| W5-3 | done, 9.9 min, 7428 frames (ref 6863), 0 hearts lost | failed (over-budget; budget spent; coins still needed 0, least exit distance with the coins met 42 cells, cells archived 23760, the original confirmed to frame 151), 30.1 min |
+| W5-4 | done, 10.7 min, 7338 frames (ref 8193), 1 hearts lost | done, 24.8 min, 8635 frames (ref 8193), 1 hearts lost |
+| W6-1 | failed (over-budget; budget spent; coins still needed 2, least exit distance with the coins met none (the coins were never met), cells archived 4532, the original confirmed to frame 1299), 30.0 min | failed (over-budget; budget spent; coins still needed 3, least exit distance with the coins met none (the coins were never met), cells archived 1, the original confirmed to frame 5033), 30.0 min |
+| W6-2 | done, 10.5 min, 9392 frames (ref 8430), 4 hearts lost | failed (over-budget; budget spent; coins still needed 0, least exit distance with the coins met 6 cells, cells archived 32161, the original confirmed to frame 151), 30.1 min |
+| W6-3 | done, 6.4 min, 8799 frames (ref 7892), 5 hearts lost | failed (over-budget; budget spent; coins still needed 7, least exit distance with the coins met none (the coins were never met), cells archived 1, the original confirmed to frame 5935), 30.3 min |
+| W6-4 | failed (over-budget; budget spent; coins still needed 0, least exit distance with the coins met 13 cells, cells archived 38656, the original confirmed to frame 151), 30.0 min | failed (over-budget; budget spent; coins still needed 0, least exit distance with the coins met 88 cells, cells archived 28143, the original confirmed to frame 151), 30.0 min |
 
 ## Set B
 
