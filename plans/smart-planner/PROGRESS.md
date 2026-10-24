@@ -17,9 +17,9 @@ unreliable edges); T07 now light, T00 answers three more questions.
 allowed everywhere, map a compass; T13 and T20 dropped, T22 route-shorten added.
 **Amendment reviewed:** 2026-10-22 — 18 fixes, 1 decision (owner: T10's W1-4 check runs guided)
 
-**Status:** T00–T07, T19, T21 done; core rewritten by the amendment, not started.
-**Last updated:** 2026-10-22
-**Next `pir-work` will:** T08 search (the explorer), from `spike-explore/`.
+**Status:** T00–T12, T14, T19, T21–T25, T29 done; T26–T28, T30 open before T15.
+**Last updated:** 2026-10-24
+**Next `pir-work` will:** T26 tuning-set-b or T30 lag-repair; T15 waits on T26–T30.
 
 ## Tasks
 
@@ -55,10 +55,10 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T26 | tuning-set-b | T14, T25; blocks T15 | ⬜ | |
 | T27 | tuning-unaided | T14, T26; blocks T15 | ⬜ | |
 | T28 | compass-trial | T14, T27; blocks T15 | ⬜ | |
-| T29 | engine-sound-ramp | T25; blocks T15 | 🔍 | Deviation: defect not in `sfx.rs` ramps (doc's guess) but `tile_anim_draw` freeing queue slots before a lagging original's frame end; fix in `level/pass.rs` (steps, read point) and `sync::pass_step`/`pass_point`. Cases `tile-queue-w2-4`, `-w6-2`, cut, red before. Both rerun complete §4.1. `sf-conform all` green. |
+| T29 | engine-sound-ramp | T25; blocks T15 | ✅ | Defect: `tile_anim_draw` freed queue slots before a lagging original's frame end; fixed in `level/pass.rs`, `sync`. Review: one fix commit, two tests locking the slot-read point, which a mutation showed undefended. Caught: pass.rs reverted (T25's sounds at 7658, 1721), queue_step +1. Deviation held. `sf-conform all` (214 green) and bench rerun read-only. |
 | T30 | lag-repair | T25; blocks T15 | ⬜ | |
 
-**Review queue:** T29
+**Review queue:** *(empty)*
 
 ## Blocked on the user
 
