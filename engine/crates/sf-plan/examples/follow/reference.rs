@@ -47,15 +47,17 @@ pub fn record(m: &mut dyn Machine, facts: &Facts, inputs: &[FrameInput]) -> Resu
 
 pub fn save(tag: &str, frames: &[RefFrame]) -> std::io::Result<()> {
     std::fs::create_dir_all(dir())?;
-    let mut s = String::from("# k joy keys x y landed facing coins hearts lives dying level_state switches mid\n");
+    let mut s = String::from("# k joy keys x y vx vy landed facing coins hearts lives dying level_state switches mid\n");
     for (k, r) in frames.iter().enumerate() {
         let o = &r.o;
         s += &format!(
-            "{k} {} {} {} {} {} {} {} {} {} {} {} {} {}\n",
+            "{k} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {}\n",
             r.input.joy.0,
             r.input.keys.0,
             o.x,
             o.y,
+            o.vx,
+            o.vy,
             o.landed as u8,
             o.facing,
             o.coins,
@@ -80,20 +82,22 @@ pub fn load(tag: &str) -> Result<Vec<RefFrame>, String> {
         let o = Obs {
             x,
             y,
+            vx: v[5] as i16,
+            vy: v[6] as i16,
             cell: cell_of(x, y),
-            landed: v[5] != 0,
-            facing: v[6] as u16,
-            coins: v[7] as u16,
-            hearts: v[8] as u16,
-            lives: v[9] as u16,
-            dying: v[10] != 0,
-            level_state: v[11] as u32,
-            switches: v[12] as u32,
+            landed: v[7] != 0,
+            facing: v[8] as u16,
+            coins: v[9] as u16,
+            hearts: v[10] as u16,
+            lives: v[11] as u16,
+            dying: v[12] != 0,
+            level_state: v[13] as u32,
+            switches: v[14] as u32,
         };
         out.push(RefFrame {
             input: FrameInput { joy: Joy(v[1] as u8), keys: KeySet(v[2] as u128) },
             o,
-            mid: v[13] != 0,
+            mid: v[15] != 0,
         });
     }
     Ok(out)

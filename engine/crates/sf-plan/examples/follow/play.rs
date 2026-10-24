@@ -22,6 +22,8 @@ pub const HEARTS: u32 = h0(0x830);
 pub struct Obs {
     pub x: i16,
     pub y: i16,
+    pub vx: i16,
+    pub vy: i16,
     pub cell: (u16, u16),
     pub landed: bool,
     pub facing: u16,
@@ -38,6 +40,8 @@ impl Obs {
         Obs {
             x: st.w(FROG + f::X) as i16,
             y: st.w(FROG + f::Y) as i16,
+            vx: st.w(FROG + f::VX) as i16,
+            vy: st.w(FROG + f::VY) as i16,
             cell: frog_cell(st),
             landed: landed(st),
             facing: st.w(FROG + f::FACING),
@@ -138,7 +142,8 @@ pub fn play(m: &mut dyn Machine, exec: &mut dyn Exec, facts: &Facts, max: u32, d
             break;
         }
         let n = Obs::of(m.state(), facts);
-        out.hearts_lost += o.hearts.saturating_sub(n.hearts) as u32;
+        // Hearts and lives read as signed: they go below zero as the frog dies.
+        out.hearts_lost += (o.hearts as i16).saturating_sub((n.hearts as i16).max(0)).max(0) as u32;
         if (n.lives as i16) < (o.lives as i16) {
             out.lives_lost += (o.lives as i16 - n.lives as i16) as u32;
             out.first_life_lost.get_or_insert(k);

@@ -37,13 +37,23 @@ pub struct Step {
     pub len: u32,
     /// The frog stood still through the reference's step (a wait): its end is timed, not placed.
     pub wait: bool,
+    /// Frames the frog's state had been unchanged when the reference began this step: the game
+    /// moves the frog once a pass (two frames, more while it lags), so a place is held over
+    /// several frames and the input change belongs to one of them.
+    pub run: u32,
+}
+
+fn same(a: &Obs, b: &Obs) -> bool {
+    a.x == b.x && a.y == b.y && a.vx == b.vx && a.vy == b.vy
 }
 
 pub fn cut_steps(r: &[RefFrame]) -> Vec<Step> {
     let mut steps: Vec<Step> = Vec::new();
+    let mut run = 0u32;
     for (k, rf) in r.iter().enumerate() {
+        run = if k > 0 && same(&r[k - 1].o, &rf.o) { run + 1 } else { 0 };
         if steps.last().is_none_or(|s| s.input != rf.input) {
-            steps.push(Step { input: rf.input, at: rf.o, len: 0, wait: false });
+            steps.push(Step { input: rf.input, at: rf.o, len: 0, wait: false, run });
         }
         steps.last_mut().unwrap().len += 1;
         let _ = k;
@@ -67,16 +77,16 @@ pub struct Triggers {
     /// Pure: every step's end is placed, waits included (no timed waits).
     pure: bool,
     pub fired_by_timeout: u32,
+    prev: Option<Obs>,
+    run: u32,
 }
 
-/// A trigger matches within this many pixels (|dx| + |dy|) at once.
-const TIGHT: i32 = 2;
 /// Within this, a trigger fires once the frog has passed its closest approach.
 const LOOSE: i32 = 24;
 
 impl Triggers {
     pub fn new(steps: Vec<Step>, pure: bool) -> Triggers {
-        Triggers { steps, i: 0, t_in: 0, prev_d: i32::MAX, pure, fired_by_timeout: 0 }
+        Triggers { steps, i: 0, t_in: 0, prev_d: i32::MAX, pure, fired_by_timeout: 0, prev: None, run: 0 }
     }
     fn dist(a: &Obs, b: &Obs) -> i32 {
         (a.x as i32 - b.x as i32).abs() + (a.y as i32 - b.y as i32).abs()
@@ -90,6 +100,8 @@ impl Triggers {
 
 impl Exec for Triggers {
     fn decide(&mut self, _m: &dyn Machine, o: &Obs, _t: u32) -> FrameInput {
+        self.run = if self.prev.is_some_and(|p| same(&p, o)) { self.run + 1 } else { 0 };
+        self.prev = Some(*o);
         if self.i + 1 < self.steps.len() {
             let cur = &self.steps[self.i];
             let next = &self.steps[self.i + 1];
@@ -97,9 +109,16 @@ impl Exec for Triggers {
                 self.t_in >= cur.len
             } else {
                 // Coins: the frog has at least the reference's coins there (none left to take).
-                let coins_ok = o.coins <= next.at.coins && o.switches == next.at.switches;
+                // ... and moving the same way: a jump passes a place going up and coming down.
+                let coins_ok = o.coins <= next.at.coins
+                    && o.switches == next.at.switches
+                    && o.vx.signum() == next.at.vx.signum()
+                    && o.vy.signum() == next.at.vy.signum();
                 let d = Self::dist(o, &next.at);
-                let f = coins_ok && (d <= TIGHT || (d <= LOOSE && self.prev_d <= LOOSE && d > self.prev_d));
+                // Exactly the reference's frog (place, speed, ground): in its own timing every
+                // trigger fires on its own frame. Otherwise once past the closest approach.
+                let exact = d == 0 && o.vx == next.at.vx && o.vy == next.at.vy && o.landed == next.at.landed && self.run >= next.run;
+                let f = coins_ok && (exact || (d <= LOOSE && self.prev_d <= LOOSE && d > self.prev_d));
                 self.prev_d = if coins_ok { d } else { i32::MAX };
                 f
             };
