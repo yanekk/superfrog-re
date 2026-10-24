@@ -19,7 +19,7 @@ allowed everywhere, map a compass; T13 and T20 dropped, T22 route-shorten added.
 
 **Status:** T00–T07, T19, T21 done; core rewritten by the amendment, not started.
 **Last updated:** 2026-10-24
-**Next `pir-work` will:** T27 tuning-unaided, T29, T30, T31.
+**Next `pir-work` will:** T27 tuning-unaided, T31 leg-start-sync.
 
 ## Tasks
 
@@ -55,8 +55,8 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T26 | tuning-set-b | T14, T25; blocks T15 | ✅ | Set B guided: 13 of 24, each miss a FINDINGS row with the owner's answer. Review: W5-1/W2-2 frame-1 fault reproduced (committed chain routes, 200 frames; W2-1, W5-3 clean), RESULTS.md regenerates identical, T31 given an Interface section. Logged: T31 does not block T16. Owner answers read-only. |
 | T27 | tuning-unaided | T14, T26; blocks T15 | ⬜ | |
 | T28 | compass-trial | T14, T27; blocks T15 | ⬜ | |
-| T29 | engine-sound-ramp | T25; blocks T15 | ⬜ | |
-| T30 | lag-repair | T25; blocks T15 | ⬜ | |
+| T29 | engine-sound-ramp | T25; blocks T15 | ✅ | |
+| T30 | lag-repair | T25; blocks T15 | ✅ | |
 | T31 | leg-start-sync | T26; blocks T17 | ⬜ | |
 
 **Review queue:** *(empty)*

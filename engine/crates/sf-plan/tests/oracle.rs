@@ -237,14 +237,91 @@ fn a_parting_keeps_original_frames_and_resumes_at_plan_frames() {
         hearts_lost: 0,
     };
     // Accepted mid-plan: the parting frame kept, the plan resumed at the frame it would use next.
-    assert_eq!(kept(&ls(21), 40, true, 5), (21, 18, 20));
+    assert_eq!(kept(&ls(21), 40, true, 5, false), (21, 18, 20));
     // Repaired: BACK_OFF original frames before the parting.
-    assert_eq!(kept(&ls(21), 40, false, 5), (20 - BACK_OFF, 4, 3));
+    assert_eq!(kept(&ls(21), 40, false, 5, false), (20 - BACK_OFF, 4, 3));
     // Past the plan's end: agreed is counted to the plan's last frame (original frame 43).
-    assert_eq!(kept(&ls(45), 40, false, 5), (43 - BACK_OFF, 24, 26));
-    assert_eq!(kept(&ls(45), 40, true, 5), (44, 40, 43));
+    assert_eq!(kept(&ls(45), 40, false, 5, false), (43 - BACK_OFF, 24, 26));
+    assert_eq!(kept(&ls(45), 40, true, 5, false), (44, 40, 43));
     // Nothing kept: the run carried in stands.
-    assert_eq!(kept(&ls(10), 40, false, 5), (0, 0, 5));
+    assert_eq!(kept(&ls(10), 40, false, 5, false), (0, 0, 5));
+}
+
+/// Lag repairs in a row alternate their resume point (T30): the first backs off `BACK_OFF` frames
+/// into the run (W1-4's run at 148,9 ends only from inside), the next goes before it (W5-2's at
+/// 111,29 only from before). A 60-frame plan, the original mid-pass from its 25th frame to the
+/// 50th, where the run passes the bar.
+#[test]
+fn lag_repairs_in_a_row_alternate_inside_and_before_the_run() {
+    let ls = |parting: Parting, mid_run: Vec<u32>| Lockstep {
+        agreed: 49,
+        exited: false,
+        parting: Some((parting, (1, 1))),
+        fed: vec![FrameInput::NONE; 50],
+        used: (1..=50).collect(),
+        mid_run,
+        hearts_lost: 0,
+    };
+    assert_eq!(
+        (1..=5).map(lag_before_run).collect::<Vec<_>>(),
+        [false, true, false, true, false]
+    );
+    let late: Vec<u32> = (0..50).map(|j| if j < 24 { 0 } else { j - 23 }).collect();
+    // Inside: `BACK_OFF` frames back, into the run.
+    assert_eq!(
+        kept(&ls(Parting::Lag, late.clone()), 60, false, 0, false),
+        (49 - BACK_OFF, 33, 9)
+    );
+    // Before: the run's frames are 25–50 (`mid_run` 1–26), the 24 before it are kept.
+    assert_eq!(
+        kept(&ls(Parting::Lag, late.clone()), 60, false, 0, true),
+        (24, 24, 0)
+    );
+    // Only a lag parting goes before its run.
+    assert_eq!(
+        kept(&ls(Parting::Apart, late), 60, false, 0, true),
+        (49 - BACK_OFF, 33, 9)
+    );
+    // A run carried in from the last stretch: nothing kept, the run stands, and the route is
+    // rewound to the run's start (`run_start`).
+    let carried: Vec<u32> = (0..50).map(|j| 60 + j + 1).collect();
+    assert_eq!(
+        kept(&ls(Parting::Lag, carried), 60, false, 60, true),
+        (0, 0, 60)
+    );
+}
+
+/// A rewind keeps the route to its last frame not ended mid-pass (T30).
+#[test]
+fn a_rewind_ends_the_route_before_its_last_run() {
+    assert_eq!(run_start(&[]), 0);
+    assert_eq!(run_start(&[0, 0, 0]), 3);
+    assert_eq!(run_start(&[0, 1, 0, 1, 2, 3]), 3);
+    assert_eq!(run_start(&[1, 2, 3]), 0);
+}
+
+/// Saved states are kept back to the last one at or before the run carried in (T30): the route
+/// can be rewound to any frame of that run, and stretches that keep nothing replace their mark.
+#[test]
+fn marks_reach_back_to_the_run_carried_in() {
+    let mut m = Marks::default();
+    m.push(0, 'a', 0);
+    m.push(100, 'b', 0);
+    // Nothing carried: only the newest mark is needed.
+    assert_eq!(m.len(), 1);
+    m.push(150, 'c', 30);
+    m.push(180, 'd', 60);
+    // The run began at 120: `b` (100) is the last mark at or before it.
+    assert_eq!(m.len(), 3);
+    assert_eq!(m.at(120), Some(&(100, 'b')));
+    assert_eq!(m.at(160), Some(&(150, 'c')));
+    // A stretch that kept nothing starts where the last did: its mark replaces it.
+    m.push(180, 'e', 60);
+    assert_eq!(m.len(), 3);
+    assert_eq!(m.at(200), Some(&(180, 'e')));
+    m.push(190, 'f', 5);
+    assert_eq!(m.len(), 2);
+    assert_eq!(m.at(184), Some(&(180, 'e')));
 }
 
 /// The faithful check's lag bar (T14): this sf-plan W5-3 route keeps the original mid-pass 101
