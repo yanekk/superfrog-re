@@ -11,11 +11,11 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-24 | 📌 | T33 rerun, 20daffb, unaided, seed 1, load 20–25: W1-3 done 8.2 min, 7 804 frames, 0 hearts; W4-1 done 4.3 min, 3 979 frames (ref 2 146), 0 hearts. Survival check alone; no dead-end rewind fired. T27's T33 row is now D26. |
 | 2026-10-24 | 🐞 | T33 reproduced W4-1 unaided, seed 1: stretch 3's reach ends at route 3 001 mid-fall over hazards 59–60,26; every hold and 3 000 random bursts lose a life 6 frames on, original and engine. `Goal::Reach` had no survival check. |
 | 2026-10-24 | 📌 | T27 set A unaided, seed 1, 0a66ec7–fc438f9: 9 of 24 done (W1-1, W1-2, W2-1, W2-4, W3-1, W4-3, W5-1, W5-2, W5-4; 6–25 min). No first exit: W2-3, W5-3, W6-2, W6-4. |
 | 2026-10-24 | 🐞 | T27 unaided: W1-4, W3-2, W3-3, W3-4, W4-2, W4-4 first exit at 18–28 min, then budget spent confirming; W1-3, W4-1 dead end (T33). Their "cells archived 1" is the last rest-of-level plan. |
 | 2026-10-24 | 🐞 | T27 unaided, not faithful (engine): W2-2 check 4 only, `frog_x` 3 px off from frame 334 (T32's kind); W6-1 `number_started` differs at 6 651. W6-3 route 18 s past budget, unverified. |
-| 2026-10-24 | 🔄 | Owner, T27: T33 dead-end-repair added. W1-3, W4-1 unaided confirmed a reach stretch, then the next archived 5 and 2 cells for ~25 min; suspected `Goal::Reach` met with no survival check. |
 | 2026-10-24 | 🔄 | Owner, T27: `sf-bench` passed no `--threads`, so each `sf-plan` took all 10 cores, ~half each under `--jobs 2`. Now `cores / jobs` (`--threads` overrides); earlier rows marked in `RESULTS.md`. |
 | 2026-10-24 | 🐞 | T32 (owner's T31 misses): set-B W2-2, W5-1 drifted alone in `passage_step`: the original's digs outlast a frame; the engine freed the frog a frame early, a move ahead. Digs now pass steps (`alone-pass-*`); both complete, 13.4, 14.8 min. |
 | 2026-10-24 | 📌 | T31 (owner, T26): W2-2, W5-1, W6-3 leg snapshots end mid-pass (T209), so `verify::lead` syncs one frame on; their committed `chain-*` complete faithfully, the other 21 legs unchanged. Rerun e8f3a3d: W6-3 completed, 12.0 min. |

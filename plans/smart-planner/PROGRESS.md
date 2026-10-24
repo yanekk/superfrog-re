@@ -60,9 +60,9 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T30 | lag-repair | T25; blocks T15 | ✅ | |
 | T31 | leg-start-sync | T26; blocks T17 | ✅ | |
 | T32 | alone-pass-drift | T31; blocks T17 | ✅ | |
-| T33 | dead-end-repair | T27, T30; blocks T17 | ⬜ | |
+| T33 | dead-end-repair | T27, T30; blocks T17 | 🔍 | `Goal::Reach` needs `EXIT_TAIL` survival; `oracle::dead_end` (`DEAD_CELLS` 8, `DEAD_ROUNDS` 100) rewinds via `Starts` (4 marks, not-mid-pass starts only; T30 `Marks` untouched). 4 tests, W4-1 fixture. M8 tested on `plan_engine`, not whole `plan_original`. Reruns ran at load 20–25, not under 10. |
 
-**Review queue:** *(empty)*
+**Review queue:** T33
 
 ## Blocked on the user
 
