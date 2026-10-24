@@ -58,9 +58,9 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T29 | engine-sound-ramp | T25; blocks T15 | ✅ | |
 | T30 | lag-repair | T25; blocks T15 | ✅ | |
 | T31 | leg-start-sync | T26; blocks T17 | ✅ | |
-| T32 | alone-pass-drift | T31; blocks T17 | ⬜ | |
+| T32 | alone-pass-drift | T31; blocks T17 | 🔍 | Engine fix: `passage_step` digs are pass steps (sf-core) and `sync::pass_step` reads the original's; cases `alone-pass-w2-2`, `alone-pass-w5-1` red before, green after. Set B W2-2, W5-1 rerun guided, both complete. `sf-conform all` not run: nine passage and tile-queue cases run instead (parallel build rule). |
 
-**Review queue:** *(empty)*
+**Review queue:** T32
 
 ## Blocked on the user
 

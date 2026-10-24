@@ -11,7 +11,7 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
-| 2026-10-24 | 🔄 | Owner, T31: set-B W2-2, W5-1 recorded misses. Exit reached on the original; check 4 fails, the alone engine a pass ahead from 530 / 917 (item 67,63 at 1091, coin at 1190). Added T32 alone-pass-drift (T31; blocks T17). |
+| 2026-10-24 | 🐞 | T32 (owner's T31 misses): set-B W2-2, W5-1 drifted alone in `passage_step`: the original's digs outlast a frame; the engine freed the frog a frame early, a move ahead. Digs now pass steps (`alone-pass-*`); both complete, 13.4, 14.8 min. |
 | 2026-10-24 | 📌 | T31 (owner, T26): W2-2, W5-1, W6-3 leg snapshots end mid-pass (T209), so `verify::lead` syncs one frame on; their committed `chain-*` complete faithfully, the other 21 legs unchanged. Rerun e8f3a3d: W6-3 completed, 12.0 min. |
 | 2026-10-24 | 🐞 | T31: `sf-plan --snap`'s settle ends mid-pass on set-B W3-1 and W4-2 (frame 151), so the planner's engine starts in a part-done pass; both completed in T26. W2-2, W5-1, W6-3 settle clean. Not fixed. |
 | 2026-10-24 | 📌 | T26 set B guided, seed 1, 2ad88eb: 13 of 24 done (W1-1–W1-3, W2-1, W3-1, W3-4, W4-1–W4-3, W5-2–W5-4, W6-2; 5.5–28.5 min). Misses re-run alone, same result. W5-1 not run (T31). W6-2 passes here, unlike set A. |
