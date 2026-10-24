@@ -249,7 +249,7 @@ fn run(id: LevelId, route: &str, a: &mut Args) {
     }
     let peak_mb = sf_plan::run::peak_rss_bytes() >> 20;
     let row = format!(
-        "{id},{route},{exec_name},{cond},{seed},{label},{},{},{},{},{},{},{},{},{}:{},{},{:.3},{:.1},{},{:.1},{},{},{}",
+        "{id},{route},{exec_name},{cond},{seed},{label},{},{},{},{},{},{},{},{},{}:{},{},{:.3},{:.1},{},{:.1},{},{},{},{},{:016x}",
         o.exit.is_some(),
         o.exit.map_or(String::from("-"), |e| e.to_string()),
         o.exit.is_some() && o.lives_lost == 0,
@@ -268,6 +268,8 @@ fn run(id: LevelId, route: &str, a: &mut Args) {
         o.lag_frames,
         verdict,
         peak_mb,
+        o.stalled,
+        play::rec_hash(&o.rec),
     );
     println!("{row}{}", o.err.map_or(String::new(), |e| format!("  ERR {e}")));
     if let Some(p) = csv {
@@ -276,7 +278,7 @@ fn run(id: LevelId, route: &str, a: &mut Args) {
         if new {
             writeln!(
                 f,
-                "level,route,exec,cond,seed,label,exit,exit_frame,clean,lives_lost,hearts_lost,first_life_lost,frames,coins_left,end_cell,game_over,followed,secs,engine_frames,eng_per_frame,lag_frames,verify,peak_mb"
+                "level,route,exec,cond,seed,label,exit,exit_frame,clean,lives_lost,hearts_lost,first_life_lost,frames,coins_left,end_cell,game_over,followed,secs,engine_frames,eng_per_frame,lag_frames,verify,peak_mb,stalled,rec_hash"
             )
             .unwrap();
         }

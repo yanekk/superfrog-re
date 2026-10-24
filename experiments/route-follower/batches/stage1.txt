@@ -1,0 +1,480 @@
+run W1-1 --exec fixed --cond P1 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W1-1 --exec fixed --cond P2 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W1-1 --exec fixed --cond P3:1 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W1-1 --exec fixed --cond P3:2 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W1-1 --exec fixed --cond P3:5 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W1-1 --exec fixed --cond P3:20 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W1-1 --exec fixed --cond P4o --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W1-1 --exec fixed --cond P4e:200:2 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W1-1 --exec fixed --cond P5:0 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W1-1 --exec fixed --cond P5:2 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W1-1 --exec fixed --cond P6e --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W1-1 --exec fixed --cond P0 --verify --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W1-1 --exec fixed --cond P3o:5 --verify --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W1-1 --exec fixed --cond P5o:0 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W1-1 --exec fixed --cond P6 --verify --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W1-1 --exec A --cond P1 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W1-1 --exec A --cond P2 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W1-1 --exec A --cond P3:1 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W1-1 --exec A --cond P3:2 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W1-1 --exec A --cond P3:5 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W1-1 --exec A --cond P3:20 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W1-1 --exec A --cond P4o --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W1-1 --exec A --cond P4e:200:2 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W1-1 --exec A --cond P5:0 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W1-1 --exec A --cond P5:2 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W1-1 --exec A --cond P6e --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W1-1 --exec A --cond P0 --verify --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W1-1 --exec A --cond P3o:5 --verify --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W1-1 --exec A --cond P5o:0 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W1-1 --exec A --cond P6 --verify --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W1-1 --exec B1 --cond P1 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W1-1 --exec B1 --cond P2 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W1-1 --exec B1 --cond P3:1 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W1-1 --exec B1 --cond P3:2 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W1-1 --exec B1 --cond P3:5 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W1-1 --exec B1 --cond P3:20 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W1-1 --exec B1 --cond P4o --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W1-1 --exec B1 --cond P4e:200:2 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W1-1 --exec B1 --cond P5:0 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W1-1 --exec B1 --cond P5:2 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W1-1 --exec B1 --cond P6e --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W1-1 --exec B1 --cond P0 --verify --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W1-1 --exec B1 --cond P3o:5 --verify --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W1-1 --exec B1 --cond P5o:0 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W1-1 --exec B1 --cond P6 --verify --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W1-1 --exec B2 --cond P1 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W1-1 --exec B2 --cond P2 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W1-1 --exec B2 --cond P3:1 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W1-1 --exec B2 --cond P3:2 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W1-1 --exec B2 --cond P3:5 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W1-1 --exec B2 --cond P3:20 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W1-1 --exec B2 --cond P4o --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W1-1 --exec B2 --cond P4e:200:2 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W1-1 --exec B2 --cond P5:0 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W1-1 --exec B2 --cond P5:2 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W1-1 --exec B2 --cond P6e --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W1-1 --exec B2 --cond P0 --verify --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W1-1 --exec B2 --cond P3o:5 --verify --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W1-1 --exec B2 --cond P5o:0 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W1-1 --exec B2 --cond P6 --verify --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W1-4 --exec fixed --cond P1 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W1-4 --exec fixed --cond P2 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W1-4 --exec fixed --cond P3:1 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W1-4 --exec fixed --cond P3:2 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W1-4 --exec fixed --cond P3:5 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W1-4 --exec fixed --cond P3:20 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W1-4 --exec fixed --cond P4o --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W1-4 --exec fixed --cond P4e:200:2 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W1-4 --exec fixed --cond P5:0 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W1-4 --exec fixed --cond P5:2 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W1-4 --exec fixed --cond P6e --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W1-4 --exec fixed --cond P0 --verify --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W1-4 --exec fixed --cond P3o:5 --verify --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W1-4 --exec fixed --cond P5o:0 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W1-4 --exec fixed --cond P6 --verify --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W1-4 --exec A --cond P1 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W1-4 --exec A --cond P2 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W1-4 --exec A --cond P3:1 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W1-4 --exec A --cond P3:2 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W1-4 --exec A --cond P3:5 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W1-4 --exec A --cond P3:20 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W1-4 --exec A --cond P4o --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W1-4 --exec A --cond P4e:200:2 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W1-4 --exec A --cond P5:0 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W1-4 --exec A --cond P5:2 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W1-4 --exec A --cond P6e --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W1-4 --exec A --cond P0 --verify --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W1-4 --exec A --cond P3o:5 --verify --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W1-4 --exec A --cond P5o:0 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W1-4 --exec A --cond P6 --verify --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W1-4 --exec B1 --cond P1 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W1-4 --exec B1 --cond P2 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W1-4 --exec B1 --cond P3:1 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W1-4 --exec B1 --cond P3:2 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W1-4 --exec B1 --cond P3:5 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W1-4 --exec B1 --cond P3:20 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W1-4 --exec B1 --cond P4o --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W1-4 --exec B1 --cond P4e:200:2 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W1-4 --exec B1 --cond P5:0 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W1-4 --exec B1 --cond P5:2 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W1-4 --exec B1 --cond P6e --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W1-4 --exec B1 --cond P0 --verify --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W1-4 --exec B1 --cond P3o:5 --verify --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W1-4 --exec B1 --cond P5o:0 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W1-4 --exec B1 --cond P6 --verify --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W1-4 --exec B2 --cond P1 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W1-4 --exec B2 --cond P2 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W1-4 --exec B2 --cond P3:1 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W1-4 --exec B2 --cond P3:2 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W1-4 --exec B2 --cond P3:5 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W1-4 --exec B2 --cond P3:20 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W1-4 --exec B2 --cond P4o --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W1-4 --exec B2 --cond P4e:200:2 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W1-4 --exec B2 --cond P5:0 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W1-4 --exec B2 --cond P5:2 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W1-4 --exec B2 --cond P6e --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W1-4 --exec B2 --cond P0 --verify --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W1-4 --exec B2 --cond P3o:5 --verify --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W1-4 --exec B2 --cond P5o:0 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W1-4 --exec B2 --cond P6 --verify --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W2-1 --exec fixed --cond P1 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W2-1 --exec fixed --cond P2 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W2-1 --exec fixed --cond P3:1 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W2-1 --exec fixed --cond P3:2 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W2-1 --exec fixed --cond P3:5 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W2-1 --exec fixed --cond P3:20 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W2-1 --exec fixed --cond P4o --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W2-1 --exec fixed --cond P4e:200:2 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W2-1 --exec fixed --cond P5:0 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W2-1 --exec fixed --cond P5:2 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W2-1 --exec fixed --cond P6e --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W2-1 --exec fixed --cond P0 --verify --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W2-1 --exec fixed --cond P3o:5 --verify --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W2-1 --exec fixed --cond P5o:0 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W2-1 --exec fixed --cond P6 --verify --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W2-1 --exec A --cond P1 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W2-1 --exec A --cond P2 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W2-1 --exec A --cond P3:1 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W2-1 --exec A --cond P3:2 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W2-1 --exec A --cond P3:5 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W2-1 --exec A --cond P3:20 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W2-1 --exec A --cond P4o --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W2-1 --exec A --cond P4e:200:2 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W2-1 --exec A --cond P5:0 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W2-1 --exec A --cond P5:2 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W2-1 --exec A --cond P6e --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W2-1 --exec A --cond P0 --verify --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W2-1 --exec A --cond P3o:5 --verify --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W2-1 --exec A --cond P5o:0 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W2-1 --exec A --cond P6 --verify --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W2-1 --exec B1 --cond P1 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W2-1 --exec B1 --cond P2 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W2-1 --exec B1 --cond P3:1 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W2-1 --exec B1 --cond P3:2 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W2-1 --exec B1 --cond P3:5 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W2-1 --exec B1 --cond P3:20 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W2-1 --exec B1 --cond P4o --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W2-1 --exec B1 --cond P4e:200:2 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W2-1 --exec B1 --cond P5:0 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W2-1 --exec B1 --cond P5:2 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W2-1 --exec B1 --cond P6e --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W2-1 --exec B1 --cond P0 --verify --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W2-1 --exec B1 --cond P3o:5 --verify --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W2-1 --exec B1 --cond P5o:0 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W2-1 --exec B1 --cond P6 --verify --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W2-1 --exec B2 --cond P1 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W2-1 --exec B2 --cond P2 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W2-1 --exec B2 --cond P3:1 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W2-1 --exec B2 --cond P3:2 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W2-1 --exec B2 --cond P3:5 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W2-1 --exec B2 --cond P3:20 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W2-1 --exec B2 --cond P4o --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W2-1 --exec B2 --cond P4e:200:2 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W2-1 --exec B2 --cond P5:0 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W2-1 --exec B2 --cond P5:2 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W2-1 --exec B2 --cond P6e --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W2-1 --exec B2 --cond P0 --verify --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W2-1 --exec B2 --cond P3o:5 --verify --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W2-1 --exec B2 --cond P5o:0 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W2-1 --exec B2 --cond P6 --verify --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W3-2 --exec fixed --cond P1 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W3-2 --exec fixed --cond P2 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W3-2 --exec fixed --cond P3:1 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W3-2 --exec fixed --cond P3:2 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W3-2 --exec fixed --cond P3:5 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W3-2 --exec fixed --cond P3:20 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W3-2 --exec fixed --cond P4o --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W3-2 --exec fixed --cond P4e:200:2 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W3-2 --exec fixed --cond P5:0 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W3-2 --exec fixed --cond P5:2 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W3-2 --exec fixed --cond P6e --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W3-2 --exec fixed --cond P0 --verify --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W3-2 --exec fixed --cond P3o:5 --verify --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W3-2 --exec fixed --cond P5o:0 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W3-2 --exec fixed --cond P6 --verify --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W3-2 --exec A --cond P1 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W3-2 --exec A --cond P2 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W3-2 --exec A --cond P3:1 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W3-2 --exec A --cond P3:2 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W3-2 --exec A --cond P3:5 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W3-2 --exec A --cond P3:20 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W3-2 --exec A --cond P4o --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W3-2 --exec A --cond P4e:200:2 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W3-2 --exec A --cond P5:0 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W3-2 --exec A --cond P5:2 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W3-2 --exec A --cond P6e --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W3-2 --exec A --cond P0 --verify --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W3-2 --exec A --cond P3o:5 --verify --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W3-2 --exec A --cond P5o:0 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W3-2 --exec A --cond P6 --verify --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W3-2 --exec B1 --cond P1 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W3-2 --exec B1 --cond P2 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W3-2 --exec B1 --cond P3:1 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W3-2 --exec B1 --cond P3:2 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W3-2 --exec B1 --cond P3:5 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W3-2 --exec B1 --cond P3:20 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W3-2 --exec B1 --cond P4o --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W3-2 --exec B1 --cond P4e:200:2 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W3-2 --exec B1 --cond P5:0 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W3-2 --exec B1 --cond P5:2 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W3-2 --exec B1 --cond P6e --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W3-2 --exec B1 --cond P0 --verify --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W3-2 --exec B1 --cond P3o:5 --verify --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W3-2 --exec B1 --cond P5o:0 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W3-2 --exec B1 --cond P6 --verify --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W3-2 --exec B2 --cond P1 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W3-2 --exec B2 --cond P2 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W3-2 --exec B2 --cond P3:1 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W3-2 --exec B2 --cond P3:2 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W3-2 --exec B2 --cond P3:5 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W3-2 --exec B2 --cond P3:20 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W3-2 --exec B2 --cond P4o --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W3-2 --exec B2 --cond P4e:200:2 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W3-2 --exec B2 --cond P5:0 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W3-2 --exec B2 --cond P5:2 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W3-2 --exec B2 --cond P6e --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W3-2 --exec B2 --cond P0 --verify --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W3-2 --exec B2 --cond P3o:5 --verify --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W3-2 --exec B2 --cond P5o:0 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W3-2 --exec B2 --cond P6 --verify --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W5-2 --exec fixed --cond P1 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W5-2 --exec fixed --cond P2 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W5-2 --exec fixed --cond P3:1 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W5-2 --exec fixed --cond P3:2 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W5-2 --exec fixed --cond P3:5 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W5-2 --exec fixed --cond P3:20 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W5-2 --exec fixed --cond P4o --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W5-2 --exec fixed --cond P4e:200:2 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W5-2 --exec fixed --cond P5:0 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W5-2 --exec fixed --cond P5:2 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W5-2 --exec fixed --cond P6e --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W5-2 --exec fixed --cond P0 --verify --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W5-2 --exec fixed --cond P3o:5 --verify --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W5-2 --exec fixed --cond P5o:0 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W5-2 --exec fixed --cond P6 --verify --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W5-2 --exec A --cond P1 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W5-2 --exec A --cond P2 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W5-2 --exec A --cond P3:1 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W5-2 --exec A --cond P3:2 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W5-2 --exec A --cond P3:5 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W5-2 --exec A --cond P3:20 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W5-2 --exec A --cond P4o --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W5-2 --exec A --cond P4e:200:2 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W5-2 --exec A --cond P5:0 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W5-2 --exec A --cond P5:2 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W5-2 --exec A --cond P6e --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W5-2 --exec A --cond P0 --verify --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W5-2 --exec A --cond P3o:5 --verify --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W5-2 --exec A --cond P5o:0 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W5-2 --exec A --cond P6 --verify --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W5-2 --exec B1 --cond P1 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W5-2 --exec B1 --cond P2 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W5-2 --exec B1 --cond P3:1 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W5-2 --exec B1 --cond P3:2 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W5-2 --exec B1 --cond P3:5 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W5-2 --exec B1 --cond P3:20 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W5-2 --exec B1 --cond P4o --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W5-2 --exec B1 --cond P4e:200:2 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W5-2 --exec B1 --cond P5:0 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W5-2 --exec B1 --cond P5:2 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W5-2 --exec B1 --cond P6e --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W5-2 --exec B1 --cond P0 --verify --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W5-2 --exec B1 --cond P3o:5 --verify --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W5-2 --exec B1 --cond P5o:0 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W5-2 --exec B1 --cond P6 --verify --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W5-2 --exec B2 --cond P1 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W5-2 --exec B2 --cond P2 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W5-2 --exec B2 --cond P3:1 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W5-2 --exec B2 --cond P3:2 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W5-2 --exec B2 --cond P3:5 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W5-2 --exec B2 --cond P3:20 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W5-2 --exec B2 --cond P4o --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W5-2 --exec B2 --cond P4e:200:2 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W5-2 --exec B2 --cond P5:0 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W5-2 --exec B2 --cond P5:2 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W5-2 --exec B2 --cond P6e --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W5-2 --exec B2 --cond P0 --verify --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W5-2 --exec B2 --cond P3o:5 --verify --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W5-2 --exec B2 --cond P5o:0 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W5-2 --exec B2 --cond P6 --verify --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W6-1 --exec fixed --cond P1 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W6-1 --exec fixed --cond P2 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W6-1 --exec fixed --cond P3:1 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W6-1 --exec fixed --cond P3:2 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W6-1 --exec fixed --cond P3:5 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W6-1 --exec fixed --cond P3:20 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W6-1 --exec fixed --cond P4o --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W6-1 --exec fixed --cond P4e:200:2 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W6-1 --exec fixed --cond P5:0 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W6-1 --exec fixed --cond P5:2 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W6-1 --exec fixed --cond P6e --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W6-1 --exec fixed --cond P0 --verify --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W6-1 --exec fixed --cond P3o:5 --verify --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W6-1 --exec fixed --cond P5o:0 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W6-1 --exec fixed --cond P6 --verify --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W6-1 --exec A --cond P1 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W6-1 --exec A --cond P2 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W6-1 --exec A --cond P3:1 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W6-1 --exec A --cond P3:2 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W6-1 --exec A --cond P3:5 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W6-1 --exec A --cond P3:20 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W6-1 --exec A --cond P4o --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W6-1 --exec A --cond P4e:200:2 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W6-1 --exec A --cond P5:0 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W6-1 --exec A --cond P5:2 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W6-1 --exec A --cond P6e --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W6-1 --exec A --cond P0 --verify --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W6-1 --exec A --cond P3o:5 --verify --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W6-1 --exec A --cond P5o:0 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W6-1 --exec A --cond P6 --verify --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W6-1 --exec B1 --cond P1 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W6-1 --exec B1 --cond P2 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W6-1 --exec B1 --cond P3:1 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W6-1 --exec B1 --cond P3:2 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W6-1 --exec B1 --cond P3:5 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W6-1 --exec B1 --cond P3:20 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W6-1 --exec B1 --cond P4o --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W6-1 --exec B1 --cond P4e:200:2 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W6-1 --exec B1 --cond P5:0 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W6-1 --exec B1 --cond P5:2 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W6-1 --exec B1 --cond P6e --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W6-1 --exec B1 --cond P0 --verify --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W6-1 --exec B1 --cond P3o:5 --verify --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W6-1 --exec B1 --cond P5o:0 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W6-1 --exec B1 --cond P6 --verify --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W6-1 --exec B2 --cond P1 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W6-1 --exec B2 --cond P2 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W6-1 --exec B2 --cond P3:1 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W6-1 --exec B2 --cond P3:2 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W6-1 --exec B2 --cond P3:5 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W6-1 --exec B2 --cond P3:20 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W6-1 --exec B2 --cond P4o --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W6-1 --exec B2 --cond P4e:200:2 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W6-1 --exec B2 --cond P5:0 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W6-1 --exec B2 --cond P5:2 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W6-1 --exec B2 --cond P6e --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W6-1 --exec B2 --cond P0 --verify --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W6-1 --exec B2 --cond P3o:5 --verify --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W6-1 --exec B2 --cond P5o:0 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W6-1 --exec B2 --cond P6 --verify --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W6-2 --exec fixed --cond P1 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W6-2 --exec fixed --cond P2 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W6-2 --exec fixed --cond P3:1 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W6-2 --exec fixed --cond P3:2 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W6-2 --exec fixed --cond P3:5 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W6-2 --exec fixed --cond P3:20 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W6-2 --exec fixed --cond P4o --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W6-2 --exec fixed --cond P4e:200:2 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W6-2 --exec fixed --cond P5:0 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W6-2 --exec fixed --cond P5:2 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W6-2 --exec fixed --cond P6e --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W6-2 --exec fixed --cond P0 --verify --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W6-2 --exec fixed --cond P3o:5 --verify --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W6-2 --exec fixed --cond P5o:0 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W6-2 --exec fixed --cond P6 --verify --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W6-2 --exec A --cond P1 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W6-2 --exec A --cond P2 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W6-2 --exec A --cond P3:1 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W6-2 --exec A --cond P3:2 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W6-2 --exec A --cond P3:5 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W6-2 --exec A --cond P3:20 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W6-2 --exec A --cond P4o --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W6-2 --exec A --cond P4e:200:2 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W6-2 --exec A --cond P5:0 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W6-2 --exec A --cond P5:2 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W6-2 --exec A --cond P6e --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W6-2 --exec A --cond P0 --verify --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W6-2 --exec A --cond P3o:5 --verify --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W6-2 --exec A --cond P5o:0 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W6-2 --exec A --cond P6 --verify --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W6-2 --exec B1 --cond P1 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W6-2 --exec B1 --cond P2 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W6-2 --exec B1 --cond P3:1 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W6-2 --exec B1 --cond P3:2 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W6-2 --exec B1 --cond P3:5 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W6-2 --exec B1 --cond P3:20 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W6-2 --exec B1 --cond P4o --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W6-2 --exec B1 --cond P4e:200:2 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W6-2 --exec B1 --cond P5:0 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W6-2 --exec B1 --cond P5:2 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W6-2 --exec B1 --cond P6e --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W6-2 --exec B1 --cond P0 --verify --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W6-2 --exec B1 --cond P3o:5 --verify --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W6-2 --exec B1 --cond P5o:0 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W6-2 --exec B1 --cond P6 --verify --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W6-2 --exec B2 --cond P1 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W6-2 --exec B2 --cond P2 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W6-2 --exec B2 --cond P3:1 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W6-2 --exec B2 --cond P3:2 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W6-2 --exec B2 --cond P3:5 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W6-2 --exec B2 --cond P3:20 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W6-2 --exec B2 --cond P4o --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W6-2 --exec B2 --cond P4e:200:2 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W6-2 --exec B2 --cond P5:0 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W6-2 --exec B2 --cond P5:2 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W6-2 --exec B2 --cond P6e --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W6-2 --exec B2 --cond P0 --verify --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W6-2 --exec B2 --cond P3o:5 --verify --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W6-2 --exec B2 --cond P5o:0 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W6-2 --exec B2 --cond P6 --verify --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W4-3 --exec fixed --cond P1 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W4-3 --exec fixed --cond P2 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W4-3 --exec fixed --cond P3:1 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W4-3 --exec fixed --cond P3:2 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W4-3 --exec fixed --cond P3:5 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W4-3 --exec fixed --cond P3:20 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W4-3 --exec fixed --cond P4o --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W4-3 --exec fixed --cond P4e:200:2 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W4-3 --exec fixed --cond P5:0 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W4-3 --exec fixed --cond P5:2 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W4-3 --exec fixed --cond P6e --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W4-3 --exec fixed --cond P0 --verify --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W4-3 --exec fixed --cond P3o:5 --verify --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W4-3 --exec fixed --cond P5o:0 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W4-3 --exec fixed --cond P6 --verify --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W4-3 --exec A --cond P1 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W4-3 --exec A --cond P2 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W4-3 --exec A --cond P3:1 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W4-3 --exec A --cond P3:2 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W4-3 --exec A --cond P3:5 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W4-3 --exec A --cond P3:20 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W4-3 --exec A --cond P4o --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W4-3 --exec A --cond P4e:200:2 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W4-3 --exec A --cond P5:0 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W4-3 --exec A --cond P5:2 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W4-3 --exec A --cond P6e --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W4-3 --exec A --cond P0 --verify --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W4-3 --exec A --cond P3o:5 --verify --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W4-3 --exec A --cond P5o:0 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W4-3 --exec A --cond P6 --verify --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W4-3 --exec B1 --cond P1 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W4-3 --exec B1 --cond P2 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W4-3 --exec B1 --cond P3:1 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W4-3 --exec B1 --cond P3:2 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W4-3 --exec B1 --cond P3:5 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W4-3 --exec B1 --cond P3:20 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W4-3 --exec B1 --cond P4o --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W4-3 --exec B1 --cond P4e:200:2 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W4-3 --exec B1 --cond P5:0 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W4-3 --exec B1 --cond P5:2 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W4-3 --exec B1 --cond P6e --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W4-3 --exec B1 --cond P0 --verify --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W4-3 --exec B1 --cond P3o:5 --verify --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W4-3 --exec B1 --cond P5o:0 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W4-3 --exec B1 --cond P6 --verify --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W4-3 --exec B2 --cond P1 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W4-3 --exec B2 --cond P2 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W4-3 --exec B2 --cond P3:1 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W4-3 --exec B2 --cond P3:2 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W4-3 --exec B2 --cond P3:5 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W4-3 --exec B2 --cond P3:20 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W4-3 --exec B2 --cond P4o --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W4-3 --exec B2 --cond P4e:200:2 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W4-3 --exec B2 --cond P5:0 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W4-3 --exec B2 --cond P5:2 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W4-3 --exec B2 --cond P6e --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W4-3 --exec B2 --cond P0 --verify --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W4-3 --exec B2 --cond P3o:5 --verify --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W4-3 --exec B2 --cond P5o:0 --csv ../experiments/route-follower/results/runs.csv --threads 3
+run W4-3 --exec B2 --cond P6 --verify --csv ../experiments/route-follower/results/runs.csv --threads 3

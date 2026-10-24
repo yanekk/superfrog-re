@@ -88,6 +88,23 @@ pub struct Outcome {
     pub engine_frames: u64,
     pub lag_frames: u32,
     pub err: Option<String>,
+    /// Stopped early: no coin taken and no new cell reached for `STALL` frames.
+    pub stalled: bool,
+}
+
+/// A run with no new coin and no new cell for this many frames is stopped (it would only spend
+/// its frame cap).
+pub const STALL: u32 = 1500;
+
+/// FNV-1a over a recording: two runs with the same hash pressed the same inputs.
+pub fn rec_hash(rec: &[FrameInput]) -> u64 {
+    let mut h: u64 = 0xcbf2_9ce4_8422_2325;
+    for x in rec {
+        for b in [x.joy.0].into_iter().chain(x.keys.0.to_le_bytes()) {
+            h = (h ^ b as u64).wrapping_mul(0x100_0000_01b3);
+        }
+    }
+    h
 }
 
 /// Idle frames after the exit, so a recording judged by `verify` shows the exit's milestone.
@@ -104,6 +121,8 @@ pub fn play(m: &mut dyn Machine, exec: &mut dyn Exec, facts: &Facts, max: u32, d
     let mut was_playing = o.playing();
     let mut awaiting_respawn = false;
     let mut tail: Option<u32> = None;
+    let mut seen = std::collections::HashSet::new();
+    let mut fresh = 0u32;
     for k in 0..max {
         if k % 8 == 0 && o.playing() {
             out.trace.push((o.cell, o.coins, o.switches));
@@ -120,12 +139,19 @@ pub fn play(m: &mut dyn Machine, exec: &mut dyn Exec, facts: &Facts, max: u32, d
         }
         let n = Obs::of(m.state(), facts);
         out.hearts_lost += o.hearts.saturating_sub(n.hearts) as u32;
-        if n.lives < o.lives {
-            out.lives_lost += (o.lives - n.lives) as u32;
+        if (n.lives as i16) < (o.lives as i16) {
+            out.lives_lost += (o.lives as i16 - n.lives as i16) as u32;
             out.first_life_lost.get_or_insert(k);
             awaiting_respawn = true;
         }
+        if n.coins < o.coins || seen.insert(n.cell) {
+            fresh = k;
+        }
         o = n;
+        if tail.is_none() && k > delay + 400 && k - fresh > STALL {
+            out.stalled = true;
+            break;
+        }
         if let Some(t) = tail.as_mut() {
             *t -= 1;
             if *t == 0 {
@@ -142,8 +168,10 @@ pub fn play(m: &mut dyn Machine, exec: &mut dyn Exec, facts: &Facts, max: u32, d
             exec.respawned(&o);
         }
         // Game over: the lives ran out and the level is not played again.
-        if o.lives == 0 && o.lives < start_lives && !o.playing() && k > SETTLE && o.level_state == 0x190 {
+        // Game over: the last life lost (`frog_lives` goes below zero) and the level not played again.
+        if (o.lives as i16) < 0 || (o.lives == 0 && start_lives > 0 && !o.playing() && o.level_state == 0x190) {
             out.game_over = true;
+            break;
         }
         was_playing = was_playing || o.playing();
     }

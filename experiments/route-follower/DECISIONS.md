@@ -8,3 +8,5 @@
 3. **Same route = same places, in order.** A follower must pass the route's guide points (cell + coins
    left) in order; slower ways between them are allowed. A run that reaches the exit off the guide
    path is reported separately, not counted as following.
+4. **(later, same day) Oracle runs need not wait for idle.** Owner: "ignore it and continue". Still one
+   oracle at a time, low priority (`nice`), small thread counts.

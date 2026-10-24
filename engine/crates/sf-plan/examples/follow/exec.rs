@@ -229,6 +229,7 @@ pub struct Mpc {
     /// The reference frame each guide point was sampled at.
     pub guide_frame: Vec<u32>,
     pub ref_inputs: Vec<FrameInput>,
+    ref_landed: Vec<bool>,
     pub k: u32,
     pub h: u32,
     pub bursts: u32,
@@ -244,7 +245,13 @@ pub struct Mpc {
     frames: u64,
     pub decisions: u32,
     pub replans: u32,
+    /// Decisions since `cur` last moved; past `STUCK` the look-ahead doubles.
+    stalled: u32,
+    last_cur: usize,
+    last_obs: Option<Obs>,
 }
+
+const STUCK: u32 = 6;
 
 const ACTS: [u8; 10] = [0, 8, 4, 1, 9, 5, 2, 16, 24, 20];
 const HOLDS: [u32; 3] = [4, 8, 16];
@@ -265,6 +272,7 @@ impl Mpc {
             guide,
             guide_frame,
             ref_inputs: r.iter().map(|f| f.input).collect(),
+            ref_landed: r.iter().map(|f| f.o.landed).collect(),
             k: 8,
             h: 64,
             bursts: 12,
@@ -279,6 +287,9 @@ impl Mpc {
             frames: 0,
             decisions: 0,
             replans: 0,
+            stalled: 0,
+            last_cur: 0,
+            last_obs: None,
         }
     }
 
@@ -334,6 +345,34 @@ impl Mpc {
             for d in [2i64, 4, 8, 16, -4, -8, -16] {
                 c.push(self.ref_seq(self.align + d, 0));
             }
+            // Re-anchored: the route from where the frog is on the path, not where the clock
+            // says it should be.
+            if let Some(&gf) = self.guide_frame.get(self.cur) {
+                for d in [0i64, 8, 16, 32, -8] {
+                    c.push(self.ref_seq(gf as i64 + d, 0));
+                }
+            }
+            // Re-anchored by place and coins: where the route was here with as many coins left
+            // (a coin missed: the route's own way to it).
+            if let Some(o) = self.last_obs {
+                let j = (0..self.guide.len())
+                    .min_by_key(|&j| {
+                        let g = &self.guide[j];
+                        (g.2 as i32 - o.coins as i32).abs() * 1000
+                            + (g.3 != o.switches) as i32 * 500
+                            + (g.0 as i32 - o.x as i32).abs()
+                            + (g.1 as i32 - o.y as i32).abs()
+                    })
+                    .unwrap_or(0);
+                if let Some(&gf) = self.guide_frame.get(j) {
+                    // From the last frame before it the route's frog stood on ground: a jump
+                    // replayed from its take-off, not from mid-air.
+                    let lf = (0..=gf as usize).rev().find(|&k| self.ref_landed[k]).unwrap_or(0) as i64;
+                    for a in [lf, lf - 8, lf - 16, gf as i64 - 8, gf as i64] {
+                        c.push(self.ref_seq(a, 0));
+                    }
+                }
+            }
         }
         if matches!(self.kind, Kind::Bursts | Kind::Both) {
             for _ in 0..self.bursts {
@@ -357,6 +396,21 @@ impl Mpc {
 
     fn decide_now(&mut self, m: &dyn Machine, o: &Obs) {
         self.decisions += 1;
+        self.last_obs = Some(*o);
+        if self.cur > self.last_cur {
+            (self.stalled, self.last_cur) = (0, self.cur);
+        } else {
+            self.stalled += 1;
+        }
+        let base_h = self.h;
+        if self.stalled > STUCK {
+            self.h = base_h * 2;
+        }
+        self.decide_inner(m, o);
+        self.h = base_h;
+    }
+
+    fn decide_inner(&mut self, m: &dyn Machine, o: &Obs) {
         let g = m.game();
         let cands = self.candidates();
         let ctx = Ctx { facts: &self.facts, guide: &self.guide, cur: self.cur, window: self.window(), hearts: o.hearts, lives: o.lives };
@@ -370,6 +424,11 @@ impl Mpc {
             let rest = &cands[1..];
             let scores = eval_all(&g, rest, &ctx, self.threads);
             self.frames += rest.len() as u64 * self.h as u64;
+            if std::env::var_os("FOLLOW_LOG2").is_some() {
+                for (i, s) in scores.iter().enumerate() {
+                    eprintln!("   cand {} {:?}", i + 1, s);
+                }
+            }
             let mut best = (first, 0usize);
             for (i, s) in scores.into_iter().enumerate() {
                 if s.better(&best.0) {
@@ -378,6 +437,12 @@ impl Mpc {
             }
             best.1
         };
+        if std::env::var_os("FOLLOW_LOG").is_some() {
+            eprintln!(
+                "dec {} cur {}/{} frog {},{} coins {} sw {} pick {pick} first {:?} align {}",
+                self.decisions, self.cur, self.guide.len(), o.x, o.y, o.coins, o.switches, first, self.align
+            );
+        }
         self.plan = cands[pick].clone();
         self.pos = 0;
         self.since = 0;
@@ -400,19 +465,27 @@ struct Score {
     exit: Option<u32>,
     hearts_lost: u16,
     progress: usize,
+    /// Coins left at the end (a coin missed off the route is worth going back for).
+    coins: u16,
     /// Pixels from the next point after `progress`, at the end.
     gap: i32,
 }
 
 impl Score {
-    fn key(&self) -> (i64, i64, i64, i64) {
+    fn key(&self) -> (i64, i64, i64, i64, i64) {
         if self.dead {
-            return (0, self.survived as i64, 0, 0);
+            return (0, self.survived as i64, 0, 0, 0);
         }
         if let Some(e) = self.exit {
-            return (3, -(self.hearts_lost as i64), -(e as i64), 0);
+            return (3, -(self.hearts_lost as i64), -(e as i64), 0, 0);
         }
-        (1 + (self.hearts_lost == 0) as i64, self.progress as i64, -(self.hearts_lost as i64), -(self.gap as i64))
+        (
+            1 + (self.hearts_lost == 0) as i64,
+            self.progress as i64,
+            -(self.coins as i64),
+            -(self.hearts_lost as i64),
+            -(self.gap as i64),
+        )
     }
     fn better(&self, o: &Score) -> bool {
         self.key() > o.key()
@@ -424,7 +497,7 @@ impl Score {
 
 fn score(start: &Game, seq: &[(FrameInput, i64)], c: &Ctx) -> Score {
     let mut g = start.clone();
-    let mut s = Score { dead: false, survived: 0, exit: None, hearts_lost: 0, progress: c.cur, gap: 0 };
+    let mut s = Score { dead: false, survived: 0, exit: None, hearts_lost: 0, progress: c.cur, coins: 0, gap: 0 };
     for (k, &(x, _)) in seq.iter().enumerate() {
         g.step_unseen(x);
         let st: &State = g.state();
@@ -449,6 +522,7 @@ fn score(start: &Game, seq: &[(FrameInput, i64)], c: &Ctx) -> Score {
     }
     let st = g.state();
     s.hearts_lost = c.hearts.saturating_sub(st.w(HEARTS));
+    s.coins = st.w(COINS_LEFT);
     if let Some(n) = c.guide.get(s.progress + 1) {
         s.gap = (n.0 as i32 - st.w(FROG + f::X) as i16 as i32).abs() + (n.1 as i32 - st.w(FROG + f::Y) as i16 as i32).abs();
     }

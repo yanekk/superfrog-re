@@ -1,0 +1,6 @@
+run W1-1 --exec fixed --cond P0 --verify
+run W1-1 --exec fixed --cond P4o
+run W1-1 --exec A --cond P1
+run W1-1 --exec Apure --cond P1
+run W1-1 --exec B1 --cond P1
+run W1-1 --exec B3 --cond P1
