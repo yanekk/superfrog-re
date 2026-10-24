@@ -46,9 +46,13 @@ moved small objects. Model `nano_banana_pro` at 2k, 16:9: 2 credits an image; ou
   showed as darker boxes around coins and apples. `normalise` sets every pixel whose original 3x3
   neighbourhood is one palette index to that exact colour (2 px feather), then corrects remaining
   drift at low frequency (original minus the redraw shrunk to 16 px, blurred, enlarged, added).
-- **Seams.** `seam_fix` evens each edge toward the mean of the touching lines over all neighbour
-  pairs, smoothed 4 px along the edge, 8 px falloff. A 20 px per-pixel version wiped the mushroom
-  cap's top outline. `seam_score` (edge step / in-tile step) 1.36 -> 0.85.
+- **Seams.** `seam_fix` decides per border pixel, over every place the levels put two tiles side
+  by side, whether the original art continues across it (same palette index both sides). Where
+  it continues, the touching lines are evened (smoothed 4 px along, 8 px falloff). Where the
+  original has an edge on the border, nothing is averaged and the outer 4 px are pulled to the
+  original's edge colours. Averaging everywhere erased the mushroom cap's top outline (top row of
+  its tile, plain sky above) and darkened the bottom of coin tiles toward the grass line.
+  `seam_score` counts real border edges too, so it rises (1.36 -> 1.98); judge by eye.
 - **Overrides.** `tools/hd_overrides/w<N>.json` names the model image to take a tile from when no
   rule is right. W1: tile 660, an R bonus coin the model drew as R, A, n, R, B.
 - **Sprites.** Sheets go in halves at 8x on magenta. Alpha = model's key-colour cut x the original
@@ -57,7 +61,8 @@ moved small objects. Model `nano_banana_pro` at 2k, 16:9: 2 credits an image; ou
 
 ## Known issues (pilot)
 
-- A few faint flecks at canopy-outline and bone tile borders; flat background art (clouds,
+- Where a leafy outline crosses a tile border, the outer 4 px keep the original's chunkier
+  edge. Faint light squares around bones in dirt; flat background art (clouds,
   pine silhouettes) stays slightly blocky because the model mostly leaves it as is.
 - Faint magenta-fringe hairlines at some sprite frame edges.
 - Tiny text (bonus letters) is unreliable; check letter tiles by eye and add overrides.

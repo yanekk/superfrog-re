@@ -294,48 +294,83 @@ def normalise(patch, orig, idx):
     return np.clip(patch + diff_up, 0, 255)
 
 
-def seam_fix(hd, lv, iters=3, band=8, along=4.0):
-    """Even out tile edges the levels put side by side. For every edge of every
-    tile, the target is the mean (over all neighbour pairs, weighted by how
-    often they occur) of the two touching pixel lines. The difference is
-    smoothed along the edge (`along` px) and applied with a linear falloff over
-    `band` px, so only a gradual colour step moves. A wider band or a per-pixel
-    correction wiped outlines lying near a border (the mushroom cap's top)."""
+def seam_fix(hd, lv, orig, idx, iters=3, band=8, along=4.0, clamp=4):
+    """Make tile borders behave like the original's.
+
+    For every border pixel, look at all the places the levels put two tiles
+    side by side and ask whether the ORIGINAL art continues across that pixel
+    (same palette index on both sides) or has an edge exactly there.
+
+    - Where it continues (sky into sky, dirt into dirt) the two touching lines
+      are evened toward their mean, smoothed `along` px along the border and
+      faded over `band` px, so tiles redrawn in different images join up.
+    - Where the original has an edge on the border (the mushroom cap's top
+      outline against plain sky, a coin above the grass line), nothing is
+      averaged: averaging blended outlines into the sky and the grass line
+      into the coin. Instead the outer `clamp` px are pulled to the
+      original's edge colours, so an outline the model drew half across the
+      border is not lost.
+    Both weights are the fraction of neighbour occurrences of each kind."""
     n, P = len(hd), T * S
-    pairs = {'h': {}, 'v': {}}
+    pairs = {}
     for g in lv.values():
         for a, b in zip(g[:, :-1].ravel(), g[:, 1:].ravel()):
-            pairs['h'][(a, b)] = pairs['h'].get((a, b), 0) + 1
+            pairs[('h', int(a), int(b))] = pairs.get(('h', int(a), int(b)), 0) + 1
         for a, b in zip(g[:-1, :].ravel(), g[1:, :].ravel()):
-            pairs['v'][(a, b)] = pairs['v'].get((a, b), 0) + 1
+            pairs[('v', int(a), int(b))] = pairs.get(('v', int(a), int(b)), 0) + 1
+    # Original border lines (index and colour) per side: left, right, top, bottom.
+    side_idx = lambda t, s: (idx[t][:, 0], idx[t][:, -1], idx[t][0], idx[t][-1])[s]
+    side_rgb = lambda t, s: (orig[t][:, 0], orig[t][:, -1], orig[t][0], orig[t][-1])[s]
+    same = np.zeros((n, 4, T), np.float32)    # neighbour occurrences continuing the art
+    total = np.zeros((n, 4, T), np.float32)
+    for (d, a, b), c in pairs.items():
+        sa, sb = (1, 0) if d == 'h' else (3, 2)
+        eq = (side_idx(a, sa) == side_idx(b, sb)).astype(np.float32)
+        same[a, sa] += c * eq; total[a, sa] += c
+        same[b, sb] += c * eq; total[b, sb] += c
+    cont = np.repeat(np.where(total > 0, same / np.maximum(total, 1), 1.0), S, axis=2)  # (n,4,P)
     ramp = np.clip(1 - np.arange(P) / band, 0, 1)
+    cramp = np.clip(1 - np.arange(P) / clamp, 0, 1)
+
+    def apply(t, s, d, r):
+        if s == 0:
+            hd[t] += d[:, None, :] * r[None, :, None]
+        elif s == 1:
+            hd[t] += d[:, None, :] * r[::-1][None, :, None]
+        elif s == 2:
+            hd[t] += d[None, :, :] * r[:, None, None]
+        else:
+            hd[t] += d[None, :, :] * r[::-1][:, None, None]
+
     hd = hd.astype(np.float32)
+    line = lambda t, s: (hd[t][:, 0], hd[t][:, -1], hd[t][0], hd[t][-1])[s]
+    # Edges in the original: pull the border band to the original's colours.
+    for t in range(n):
+        for s in range(4):
+            w = (1 - cont[t, s])[:, None]
+            if w.max() == 0:
+                continue
+            tgt = up(side_rgb(t, s)[:, None, :], S)[:, 0, :].astype(np.float32)
+            tgt = blur(tgt, 1.5, axes=(0,))
+            apply(t, s, w * (tgt - line(t, s)), cramp)
+    # Continuous art: even the two sides toward each other.
     for _ in range(iters):
-        acc = np.zeros((n, 4, P, 3), np.float32)   # left, right, top, bottom targets
-        wt = np.zeros((n, 4), np.float32)
-        for (a, b), c in pairs['h'].items():
-            m = (hd[a][:, -1] + hd[b][:, 0]) / 2
-            acc[a, 1] += c * m; wt[a, 1] += c
-            acc[b, 0] += c * m; wt[b, 0] += c
-        for (a, b), c in pairs['v'].items():
-            m = (hd[a][-1] + hd[b][0]) / 2
-            acc[a, 3] += c * m; wt[a, 3] += c
-            acc[b, 2] += c * m; wt[b, 2] += c
+        acc = np.zeros((n, 4, P, 3), np.float32)
+        wt = np.zeros((n, 4, P), np.float32)
+        for (d, a, b), c in pairs.items():
+            sa, sb = (1, 0) if d == 'h' else (3, 2)
+            eq = np.repeat((side_idx(a, sa) == side_idx(b, sb)).astype(np.float32), S) * c
+            m = (line(a, sa) + line(b, sb)) / 2
+            acc[a, sa] += eq[:, None] * m; wt[a, sa] += eq
+            acc[b, sb] += eq[:, None] * m; wt[b, sb] += eq
         for t in range(n):
-            for side in range(4):
-                if not wt[t, side]:
+            for s in range(4):
+                k = wt[t, s] > 0
+                if not k.any():
                     continue
-                tgt = acc[t, side] / wt[t, side]
-                line = (hd[t][:, 0], hd[t][:, -1], hd[t][0], hd[t][-1])[side]
-                d = blur(tgt - line, along, axes=(0,))
-                if side == 0:
-                    hd[t] += d[:, None, :] * ramp[None, :, None]
-                elif side == 1:
-                    hd[t] += d[:, None, :] * ramp[::-1][None, :, None]
-                elif side == 2:
-                    hd[t] += d[None, :, :] * ramp[:, None, None]
-                else:
-                    hd[t] += d[None, :, :] * ramp[::-1][:, None, None]
+                tgt = np.where(k[:, None], acc[t, s] / np.maximum(wt[t, s], 1e-6)[:, None], line(t, s))
+                d = blur((tgt - line(t, s)) * cont[t, s][:, None], along, axes=(0,))
+                apply(t, s, d, ramp)
     return np.clip(hd, 0, 255).astype(np.uint8)
 
 
@@ -488,7 +523,7 @@ def assemble(world):
     for t in short:
         hd[t] = normalise(hd[t], tiles[t], idx[t]).astype(np.uint8)
     before = seam_score(hd, lv)
-    hd = seam_fix(hd, lv)
+    hd = seam_fix(hd, lv, tiles, idx)
     after = seam_score(hd, lv)
 
     cols = 40
