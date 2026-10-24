@@ -17,6 +17,7 @@ unreliable edges); T07 now light, T00 answers three more questions.
 allowed everywhere, map a compass; T13 and T20 dropped, T22 route-shorten added.
 **Amendment reviewed:** 2026-10-22 — 18 fixes, 1 decision (owner: T10's W1-4 check runs guided)
 
+**Plan amended:** 2026-10-24 — D25: a walk compass (wall-aware fill) joins T28's trial (owner).
 **Status:** T00–T07, T19, T21 done; core rewritten by the amendment, not started.
 **Last updated:** 2026-10-22
 **Next `pir-work` will:** T08 search (the explorer), from `spike-explore/`.
@@ -57,7 +58,8 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T28 | compass-trial | T14, T27; blocks T15 | ⬜ | |
 | T29 | engine-sound-ramp | T25; blocks T15 | ✅ | |
 | T30 | lag-repair | T25; blocks T15 | ✅ | |
-| T31 | leg-start-sync | T26; blocks T17 | ⬜ | |
+| T31 | leg-start-sync | T26; blocks T17 | ✅ | |
+| T32 | alone-pass-drift | T31; blocks T17 | ✅ | |
 | T33 | dead-end-repair | T27, T30; blocks T17 | ⬜ | |
 
 **Review queue:** *(empty)*

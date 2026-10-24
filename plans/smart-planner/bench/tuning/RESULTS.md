@@ -10,7 +10,7 @@ Cells marked *before the thread share* are new-planner runs from before `sf-benc
 | M2 | W1-4, W2-4, W6-2, W6-3 completed, each under 30 min | — | 4 / 4 | 4 / 4 |
 | M3 | Planning time, set A | — | median 7.2 min, slowest 30.0 min | median ≤ 10 min, slowest ≤ 30 min |
 | M4 | Route length vs the committed route, set A | — | 2 over +25% (worst +58%, 20 compared) | none over +25% |
-| M5 | Set B legs completed | — | 13 / 24 (23 run) | 24 / 24 |
+| M5 | Set B legs completed | — | 16 / 24 | 24 / 24 |
 | M6 | Set A routes losing no heart | — | 10 / 24 | ≥ 20 / 24 |
 | M7 | Cells a free explorer reaches that the map calls unreachable | — | — (T13) | 0 on every level |
 | M8 | Same seed, level and start: byte-identical route | — | a test (T08, T11, T12) | always |
@@ -26,8 +26,8 @@ Recorded, not gated:
 | A | Engine frames simulated | — | 558 895 056 |
 | A | Oracle frames | — | 389 519 |
 | A | Confirmation share of wall-clock (median) | — | 10% |
-| B | Engine frames simulated | — | 733 222 398 |
-| B | Oracle frames | — | 416 889 |
+| B | Engine frames simulated | — | 739 997 577 |
+| B | Oracle frames | — | 422 502 |
 | B | Confirmation share of wall-clock (median) | — | 8% |
 
 ## Set A
@@ -68,7 +68,7 @@ Recorded, not gated:
 | W1-3 | done, 14.2 min, 7483 frames (ref 8737), 1 hearts lost, *before the thread share* |
 | W1-4 | failed (over-budget; budget spent; coins still needed 0, least exit distance with the coins met 15 cells, cells archived 25759, the original confirmed to frame 151), 30.0 min, *before the thread share* |
 | W2-1 | done, 12.5 min, 3413 frames (ref 3017), 1 hearts lost, *before the thread share* |
-| W2-2 | failed (not faithful: diverged at frame 1), 9.2 min, 6983 frames (ref 5980), *before the thread share* |
+| W2-2 | done, 13.4 min, 6983 frames (ref 5980), 0 hearts lost, *before the thread share* |
 | W2-3 | failed (over-budget; budget spent; coins still needed 0, least exit distance with the coins met 17 cells, cells archived 18630, the original confirmed to frame 4845), 30.0 min, *before the thread share* |
 | W2-4 | failed (over-budget; budget spent; coins still needed 20, least exit distance with the coins met none (the coins were never met), cells archived 1, the original confirmed to frame 6162), 30.0 min, *before the thread share* |
 | W3-1 | done, 13.6 min, 3200 frames (ref 5174), 0 hearts lost, *before the thread share* |
@@ -79,10 +79,11 @@ Recorded, not gated:
 | W4-2 | done, 28.5 min, 10358 frames (ref 9128), 2 hearts lost, *before the thread share* |
 | W4-3 | done, 19.6 min, 6638 frames (ref 8180), 4 hearts lost, *before the thread share* |
 | W4-4 | failed (over-budget; budget spent; coins still needed 40, least exit distance with the coins met none (the coins were never met), cells archived 5000, the original confirmed to frame 8344), 30.0 min, *before the thread share* |
+| W5-1 | done, 14.8 min, 2312 frames (ref 2185), 0 hearts lost, *before the thread share* |
 | W5-2 | done, 11.3 min, 5286 frames (ref 6094), 1 hearts lost, *before the thread share* |
 | W5-3 | done, 16.7 min, 7486 frames (ref 5710), 2 hearts lost, *before the thread share* |
 | W5-4 | done, 17.6 min, 8903 frames (ref 9422), 0 hearts lost, *before the thread share* |
 | W6-1 | failed (over-budget; budget spent; coins still needed 1, least exit distance with the coins met none (the coins were never met), cells archived 14968, the original confirmed to frame 151), 30.0 min, *before the thread share* |
 | W6-2 | done, 13.9 min, 8551 frames (ref 10786), 0 hearts lost, *before the thread share* |
-| W6-3 | failed (not faithful: diverged at frame 1), 7.3 min, 6888 frames (ref 7867), *before the thread share* |
+| W6-3 | done, 12.0 min, 6888 frames (ref 7867), 0 hearts lost, *before the thread share* |
 | W6-4 | failed (over-budget; budget spent; coins still needed 0, least exit distance with the coins met 13 cells, cells archived 30452, the original confirmed to frame 151), 30.0 min, *before the thread share* |
