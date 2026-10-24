@@ -500,3 +500,126 @@ fn goal_key_is_reached_within_its_frames() {
     replay(&mut t, &joys(&r.inputs));
     assert_eq!(cell_key(&fa, t.state(), 0), key);
 }
+
+/// W4-1 on the original at route frames 2 990 and 3 001 of the T33 fixture, transplanted, with the
+/// facts there. At 3 001 the frog is mid-fall over the hazards at 59–60,26 and every input loses a
+/// life within 6 frames; at 2 990 it can still steer clear (FINDINGS T33). ~5 s.
+fn w4_1_doomed() -> ((Game, Facts), (Game, Facts)) {
+    use sf_conform::{InputScript, SyncPoint, sync};
+    let p = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/w4-1-doomed-reach.txt");
+    let s = InputScript::load(&p).unwrap();
+    let mut amiga = sync::reach(&SyncPoint::AtLevel(id("W4-1")), &InputScript::idle(), 6_000)
+        .unwrap()
+        .amiga;
+    let data = sf_conform::game_data();
+    let display = sf_conform::display_data();
+    let mut at = |from: u32, to: u32| {
+        for k in from..to {
+            sync::step_inserting(&mut amiga, s.input_at(k)).unwrap();
+        }
+        let g = Game::with_display(
+            display.clone(),
+            Start::Transplant(sync::core_memory(amiga.memory())),
+        );
+        let fa = facts(&g, &data.levels[&id("W4-1")], display.rom());
+        (g, fa)
+    };
+    let early = at(0, 2_990);
+    let late = at(2_990, 3_001);
+    (early, late)
+}
+
+fn reach(cell: Cell) -> Goal {
+    Goal::Reach {
+        point: GuidePoint {
+            cell,
+            coins_left: None,
+            switches: None,
+        },
+        within_frames: 400,
+        hearts: 0,
+    }
+}
+
+/// A reach into a doomed state is not a goal (T33): W4-1's stretch 3 reached its point mid-fall
+/// over a pit, and the next stretch, planned from there, archived 2 cells in 6 000 rounds. The
+/// reach now needs the frog to live through the exit's idle tail. From 3 001 the frog falls into
+/// the region of 59,24 before it dies, so with no survival check the first frame was a goal.
+#[test]
+fn a_reach_into_a_doomed_state_is_not_a_goal() {
+    let ((g0, fa0), (g, fa)) = w4_1_doomed();
+    let point = (59, 24);
+    let lives = g.state().w(sf_core::frog::FROG + sf_core::frog::f::LIVES);
+    // Every hold enters the region alive and then loses a life.
+    for j in [0, Joy::LEFT.0, Joy::RIGHT.0, Joy::UP.0, Joy::FIRE.0 | Joy::LEFT.0] {
+        let mut t = g.clone();
+        let (mut entered, mut died) = (false, false);
+        for _ in 0..40 {
+            t.step_unseen(FrameInput::joy(Joy(j)));
+            let st = t.state();
+            if st.w(sf_core::frog::FROG + sf_core::frog::f::LIVES) < lives
+                || st.w(sf_core::frog::FROG + sf_core::frog::f::DYING) != 0
+            {
+                died = true;
+                break;
+            }
+            let Goal::Reach { point: p, .. } = reach(point) else { unreachable!() };
+            entered |= p.covers(&cell_key(&fa, st, 0));
+        }
+        assert!(entered && died, "hold {j:#x}: entered {entered}, died {died}");
+    }
+    let opt = Options {
+        goal: reach(point),
+        ..Options::default()
+    };
+    let mut ex = Explorer::new(g, fa, opt);
+    assert!(ex.found().is_none());
+    for _ in 0..20 {
+        assert_eq!(run_round(&mut ex, threads()), Progress::Working);
+    }
+    assert!(ex.archive().entries().len() <= 8, "{} cells", ex.archive().entries().len());
+
+    // Eleven frames earlier the frog can still land on the ledge at 56–58,24: that reach is met,
+    // and the frog then lives through the idle tail.
+    let opt = Options {
+        goal: reach((57, 24)),
+        ..Options::default()
+    };
+    let r = plan_engine(
+        g0.clone(),
+        fa0.clone(),
+        opt,
+        &RunOptions {
+            threads: threads(),
+            max_rounds: Some(200),
+            ..RunOptions::default()
+        },
+    )
+    .expect("a survivable reach from 2 990");
+    let mut t = g0;
+    replay(&mut t, &joys(&r.inputs));
+    for _ in 0..40 {
+        t.step_unseen(FrameInput::NONE);
+    }
+    assert_eq!(t.state().w(sf_core::frog::FROG + sf_core::frog::f::LIVES), lives);
+}
+
+/// The dead-end rule (T33, `oracle::dead_end`) ends a search from W4-1's doomed state at
+/// `DEAD_ROUNDS` rounds, and with the same partial route at 1 and 4 threads (M8).
+#[test]
+fn a_dead_end_ends_the_search_alike_on_any_thread_count() {
+    use sf_plan::oracle::{DEAD_CELLS, DEAD_ROUNDS};
+    let (_, (g, fa)) = w4_1_doomed();
+    let run = |threads: usize| {
+        let ro = RunOptions {
+            threads,
+            dead_end: true,
+            ..RunOptions::default()
+        };
+        plan_engine(g.clone(), fa.clone(), Options::default(), &ro).unwrap_err()
+    };
+    let (one, why) = run(1);
+    assert_eq!(one.rounds, DEAD_ROUNDS);
+    assert!(why.cells <= DEAD_CELLS, "{} cells", why.cells);
+    assert_eq!(run(4), (one, why));
+}

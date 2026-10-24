@@ -1,0 +1,101 @@
+# timing: original
+# W4-1 by sf-plan, seed 1, unaided (T33): the route the original confirmed to frame 3001, where stretch 3's reach ended mid-fall over the hazards at 59-60,26; every input from there loses a life within 6 frames.
+0: -
+151: R F
+183: L F
+207: U R
+259: L
+291: U R
+459: D
+467: -
+483: U R
+491: R
+523: U R
+663: R F
+683: L F
+691: R F
+707: R
+806: D
+842: L F
+874: -
+886: L F
+894: U R
+902: L
+934: U R
+998: U
+1013: L
+1077: U R
+1125: U L
+1133: R
+1165: U R
+1197: F
+1229: U L
+1245: L
+1249: U L
+1281: F
+1289: U R
+1293: L
+1301: U L
+1305: U
+1373: U L
+1405: L F
+1421: U
+1453: F
+1473: U L
+1485: L F
+1501: L
+1565: L F
+1581: L
+1641: R F
+1649: U L
+1693: D
+1769: R
+1777: R F
+1813: U L
+1845: L
+1949: F
+1981: L
+2001: L F
+2023: L
+2107: U
+2115: R
+2131: D
+2155: -
+2203: L
+2219: R F
+2255: -
+2287: D
+2319: U L
+2411: L F
+2443: U R
+2459: U L
+2475: L
+2499: L F
+2503: R
+2507: -
+2523: U L
+2555: L
+2571: R F
+2575: -
+2579: U R
+2611: L F
+2643: R
+2651: U L
+2655: U
+2703: L F
+2735: L
+2775: U
+2795: F
+2799: U R
+2803: R
+2807: F
+2811: L F
+2823: R
+2863: U R
+2867: L F
+2875: U R
+2951: -
+2967: U
+2975: U R
+2991: U
+3001: -

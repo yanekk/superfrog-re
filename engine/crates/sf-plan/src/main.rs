@@ -526,6 +526,7 @@ fn run_options(a: &Args, t0: Instant) -> RunOptions {
             .lag_limit
             .unwrap_or_else(|| sf_plan::oracle::lag_limit_for(a.level, a.snap.is_some())),
         max_rounds: None,
+        dead_end: false,
     }
 }
 

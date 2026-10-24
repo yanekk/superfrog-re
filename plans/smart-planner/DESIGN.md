@@ -207,6 +207,15 @@ exit on the original and failed `verify`, 101 such frames from 5 310. A frame on
 original's frog block does not change while the engine's would is held (W1-2's scroller freezes
 it nine frames). An accepted parting plays the same plan on from the original's state.
 
+Amended in T33 (2026-10-24, D26): a repair's reach stretch (T24) is met only if the frog then
+lives through the exit's 40-frame idle tail, as an exit is. A stretch whose search holds at most
+`DEAD_CELLS` (8) cells after `DEAD_ROUNDS` (100) rounds is a dead end: the route is rewound to the
+last stretch start before it that is not mid-pass (the original's state, hearts and reference saved
+there), and that stretch is planned again with the next seed; a second dead end that would rewind
+to the same start goes one start further back, up to `DEAD_MARKS` (4) starts. Counted in rounds and
+cells, never time, so M8 holds. With no dead end, reach stretches and the lag rewind (T30) behave
+as before.
+
 App mode (set C) confirms on the engine from the same `start_level` state; there is no original.
 
 Two timings, never crossed (owner, 2026-10-20). The original lags in busy passes and the engine
@@ -586,6 +595,10 @@ The old tools stay in the tree until T18, so any level can still be planned the 
   mostly had the coins met and stalled 6–88 cells from the exit with 10k–36k cells archived: the
   straight pull points through walls. A fill over the level's open cells costs milliseconds, needs no
   moves and no cache, unlike the map (13 of 24 exits reached, T04).
+- D26 (owner, 2026-10-24; T33): a reach needs the frog to survive the idle tail, and a dead-end
+  stretch rewinds to an earlier stretch start (§2.6). W4-1 unaided confirmed a reach that ended
+  mid-fall over a pit; every input from there died within 6 frames, and the next plan archived 2
+  cells for ~25 minutes (W1-3: 5 cells). Rewinding backs up and never gives up (D16).
 - D8: the planner is a new crate `sf-plan`, not more examples in sf-conform, because examples cannot be
   unit-tested or shared, which is how four copies of the level facts came to exist.
 - D9: the benchmark verifies with `sf_conform::run` on a generated case, the check the completion
