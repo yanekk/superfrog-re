@@ -28,7 +28,7 @@ failed check 4 there (frame 1819: an item taken, marker 38 at 67,63, unmatched):
 on the engine a pass behind, so W2-2 must be re-planned on the fixed start.
 
 T26 checked every set-B leg the same way (the committed `chain-*` route, 200 frames from the
-leg's `SyncPoint`): W5-1 (leg 17) and W6-3 (leg 23) diverge at frame 1 on the same `score_digit`
+leg's `SyncPoint`): W5-1 (leg 16) and W6-3 (leg 23) diverge at frame 1 on the same `score_digit`
 write; the other legs start clean (W1-1 and W5-2, which play standalone routes, completed in T26).
 
 ## Files
