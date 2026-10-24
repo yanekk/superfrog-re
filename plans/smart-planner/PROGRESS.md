@@ -57,6 +57,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T28 | compass-trial | T14, T27; blocks T15 | ⬜ | |
 | T29 | engine-sound-ramp | T25; blocks T15 | ✅ | |
 | T30 | lag-repair | T25; blocks T15 | ✅ | |
+| T31 | leg-start-sync | T26; blocks T17 | ⬜ | |
 
 **Review queue:** *(empty)*
 
