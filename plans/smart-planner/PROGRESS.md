@@ -60,7 +60,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T30 | lag-repair | T25; blocks T15 | ✅ | |
 | T31 | leg-start-sync | T26; blocks T17 | ✅ | |
 | T32 | alone-pass-drift | T31; blocks T17 | ✅ | |
-| T33 | dead-end-repair | T27, T30; blocks T17 | ⬜ | |
+| T33 | dead-end-repair | T27, T30; blocks T17 | ✅ | |
 
 **Review queue:** *(empty)*
 
