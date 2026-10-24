@@ -11,6 +11,7 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-24 | 🐞 | T33 reproduced W4-1 unaided, seed 1: stretch 3's reach ends at route 3 001 mid-fall over hazards 59–60,26; every hold and 3 000 random bursts lose a life 6 frames on, original and engine. `Goal::Reach` had no survival check. |
 | 2026-10-24 | 📌 | T27 set A unaided, seed 1, 0a66ec7–fc438f9: 9 of 24 done (W1-1, W1-2, W2-1, W2-4, W3-1, W4-3, W5-1, W5-2, W5-4; 6–25 min). No first exit: W2-3, W5-3, W6-2, W6-4. |
 | 2026-10-24 | 🐞 | T27 unaided: W1-4, W3-2, W3-3, W3-4, W4-2, W4-4 first exit at 18–28 min, then budget spent confirming; W1-3, W4-1 dead end (T33). Their "cells archived 1" is the last rest-of-level plan. |
 | 2026-10-24 | 🐞 | T27 unaided, not faithful (engine): W2-2 check 4 only, `frog_x` 3 px off from frame 334 (T32's kind); W6-1 `number_started` differs at 6 651. W6-3 route 18 s past budget, unverified. |
