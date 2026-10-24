@@ -68,7 +68,9 @@ with a dirt redraw (job c84e2e4d) as a second style reference. That is what make
   penalty for copies far from the tile's typical look (ICM over 8 candidates per tile).
 - **Refit** (`hd/refit.py`). Tiles with one or two copies cannot be chosen to fit. The 45 worst
   (edge mismatch against their neighbours) are shown in their most common 3 x 3 context of finished
-  HD tiles with their original pixels in the middle, and Nano Banana inpaints only the middle.
+  HD tiles with their original pixels in the middle, and Nano Banana inpaints only the middle. A refit
+  replaces a tile only if its edges fit the neighbours better (`tiles.fit_cost`): W1 kept 7 of 45;
+  the model left most middles near the original and returned the 16:9 sheet stretched to a square.
 - **Tried and dropped.** A shared torus-periodic border ring for families (made a visible grid);
   least-squares levelling of border colours per pixel (fought real edges such as a mortar line on a
   tile border, smeared them) and per tile (made the cave passage murky).
@@ -91,7 +93,8 @@ inside tiles. It counts real edges in the art too, so judge by eye; the original
 
 ## Known issues
 
-- Rare edge tiles beyond the 45 refitted can still show a seam where only one copy exists.
+- Rare edge tiles (one copy) can still show a square outline, e.g. W1-4's right cliffs; a faint
+  row line runs through the dark cave dirt in W1-4's tunnel.
 - Dirt keeps the original's two-row stone rhythm (visible from afar, as in the original).
 - Registration resamples, so HD pixels are slightly soft rather than hard-edged.
 - Colour cycling (COLOR06, docs/10) is baked in at its base colour.

@@ -208,6 +208,18 @@ def choose_jointly(sources, cands, chosen, jt, k=8, sweeps=6, lam=0.5):
     return {t: short[t][pick[t]] for t in short}
 
 
+def fit_cost(hd, jt, t, p):
+    """Frequency-weighted mean edge mismatch of patch p as tile t against its neighbours."""
+    e = edges(p); tot = cost = 0.0
+    for (a, b, ax), n in jt.items():
+        if a == b or (t not in (a, b)) or a not in hd or b not in hd:
+            continue
+        sa, sb = (1, 0) if ax == 1 else (3, 2)
+        mine, other, os_ = (sa, b, sb) if a == t else (sb, a, sa)
+        cost += n * float(np.abs(e[mine] - edges(hd[other])[os_]).mean()); tot += n
+    return cost / tot if tot else 0.0
+
+
 def build(world, refit=True):
     tl = s.tiles(world); lv = s.levels(world)
     canon = an.canonical(tl)
@@ -225,10 +237,12 @@ def build(world, refit=True):
 
     # --- sky: exact colour per flat palette index (own pixels only, so both sides agree)
     if refit:
+        # a refitted copy replaces the chosen one only where it fits the neighbours better
         from . import refit as rf
+        kept = 0
         for t, p in rf.load(world).items():
-            if t in hd:
-                hd[t] = p.copy()
+            if t in hd and fit_cost(hd, jt, t, p) < fit_cost(hd, jt, t, hd[t]):
+                hd[t] = p.copy(); kept += 1
     sky = {t: np.zeros((TS, TS), bool) for t in used}
     for t in used:
         for k in an.SKY:
@@ -237,7 +251,7 @@ def build(world, refit=True):
                 hd[t][m] = target[k]
                 sky[t] |= m
 
-    return hd, dict(families=an.families(tl, jt), rigid=len(rigid), target={k: v.tolist() for k, v in target.items()})
+    return hd, dict(families=an.families(tl, jt), rigid=len(rigid), refit_kept=kept if refit else 0, target={k: v.tolist() for k, v in target.items()})
 
 
 def compose(hd, grid, canon):
