@@ -22,7 +22,7 @@ allowed everywhere, map a compass; T13 and T20 dropped, T22 route-shorten added.
 baseline is T02's sample (owner).
 **Status:** T00–T07, T19, T21 done; core rewritten by the amendment, not started.
 **Last updated:** 2026-10-25
-**Next `pir-work` will:** review T15 (set-C run).
+**Next `pir-work` will:** T17 (new-counted).
 
 ## Tasks
 
@@ -45,7 +45,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T11 | plan-command | T05, T10, T22 | ✅ | |
 | T12 | app-timing | T11 | ✅ | |
 | T14 | tuning-run | T11 | ✅ | |
-| T15 | set-c-run | T12, T14 | 🔍 | Set C guided, `--jobs 3`, eb85055: 22/24, C3 median 7.3 min, C4 4 over +25%; 22 `routes/app/`. W3-4, W6-4 misses (owner). Deviations: `plan_exit --seed`, sf-bench runs it on set C; baseline stopped at 15 (owner, D27), table names the rest; `bench/.gitignore` for scratch routes. 2 new tests. |
+| T15 | set-c-run | T12, T14 | ✅ | Review clean, no fix commit: 22/24, W3-4, W6-4 misses; owner accepted C3 (7.3 min) and C4 (4 over +25%) misses. Probed: all 22 routes replayed on the engine at seed 1 (6 fail at seed 0), W5-1 and W2-1 in the real app, RESULTS.md re-rendered identical; old_for and part-run-note mutations caught. |
 | T17 | new-counted | T15 | ⬜ | |
 | T18 | results-and-retire | T17 | ⬜ | |
 | T19 | step-unseen-no-picture | T00; blocks T04 | ✅ | |
@@ -63,7 +63,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T32 | alone-pass-drift | T31; blocks T17 | ✅ | |
 | T33 | dead-end-repair | T27, T30; blocks T17 | ✅ | |
 
-**Review queue:** T15
+**Review queue:** empty
 
 ## Blocked on the user
 

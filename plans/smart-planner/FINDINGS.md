@@ -11,7 +11,7 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
-| 2026-10-25 | 📌 | T15 set C guided, eb85055, `--jobs 3`, 3 threads, quiet: 22 of 24 done, C3 median 7.3 min (target 2; ~4 M engine frames a level), C4 4 over +25% (W4-1 +51%, W1-4 +37%, W5-3, W6-1). All 22 replay in the real app. |
+| 2026-10-25 | 🔄 | Owner, T15 review: set-C C3 (median 7.3 min, target 2; ~4 M engine frames a level, 3 threads) and C4 (W4-1 +51%, W1-4 +37%, W5-3 +29%, W6-1 +27%) accepted as misses. 22 of 24 replay in the real app. |
 | 2026-10-25 | 🔄 | Owner, T15: set-C W3-4, W6-4 recorded misses: coins met, 45 and 48 cells short in 30 min, alone on 10 threads too. W6-4's near-exit stall now shows on sets A, B and C, W3-4's on A and C: one fix task across sets? |
 | 2026-10-25 | 🔄 | Owner, T15 (D27): set-C `plan_exit --engine --seed 1` baseline stopped at 15 of 24; not run: W4-4, W5-1–W5-4, W6-1–W6-4. Of the 15: 5 done, 10 timed out (35 min). |
 | 2026-10-25 | 📌 | T28 compass trial, unguided, seeds 1–3, 30 min (`bench/compass-trial.md`): each compass completed only W5-3 seeds 2–3 and W6-1; engine frames there straight 65.2, map 61.5, walk 40.2 M. Walk kept as `sf-plan` default; DESIGN §2.2 still says straight. |
@@ -24,9 +24,7 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 | 2026-10-24 | 📌 | T31 (owner, T26): W2-2, W5-1, W6-3 leg snapshots end mid-pass (T209), so `verify::lead` syncs one frame on; their committed `chain-*` complete faithfully, the other 21 legs unchanged. Rerun e8f3a3d: W6-3 completed, 12.0 min. |
 | 2026-10-24 | 🐞 | T31: `sf-plan --snap`'s settle ends mid-pass on set-B W3-1 and W4-2 (frame 151), so the planner's engine starts in a part-done pass; both completed in T26. W2-2, W5-1, W6-3 settle clean. Not fixed. |
 | 2026-10-24 | 📌 | T26 set B guided, seed 1, 2ad88eb: 13 of 24 done (W1-1–W1-3, W2-1, W3-1, W3-4, W4-1–W4-3, W5-2–W5-4, W6-2; 5.5–28.5 min). Misses re-run alone, same result. W5-1 not run (T31). W6-2 passes here, unlike set A. |
-| 2026-10-24 | 🔄 | Owner, T26: set-B W1-4 recorded a miss. No first exit in 30 min, twice: coins met, best cell 156,45, T23's dead end; `chain-w1-4` reaches the exit from above (199,29 → 166,34). Set A's W1-4 completes. |
-| 2026-10-24 | 🔄 | Owner, T26: set-B W6-1 recorded a miss. No first exit in 30 min, twice: one coin still needed, never met (14 968 cells). Set A's W6-1 found an exit in a minute and failed in repairs. |
-| 2026-10-24 | 🔄 | Owner, T26: set-B W6-4 recorded a miss. No first exit in 30 min, twice: coins met, 13 cells short, as set A (T25). W6-4 is in T28's compass trial. |
+| 2026-10-24 | 🔄 | Owner, T26: set-B W1-4, W6-1, W6-4 recorded misses, no first exit in 30 min, twice. W1-4 stalls at 156,45 (T23's dead end); W6-1 one coin never met; W6-4 coins met, 13 cells short, as set A. |
 | 2026-10-24 | 🔄 | Owner, T26: set-B W2-3, W2-4, W3-2, W3-3, W4-4 recorded misses: a repair's reach misses in `REACH_ROUNDS`, the rest-of-level exit plan then spends the budget, run alone twice. Set A's W2-3, W3-4, W6-1 pattern (2026-10-23); owner to choose one fix task for both. |
 | 2026-10-24 | 📌 | T29 rerun, 1e40096, load ~20, both complete §4.1: W2-4 24.4 min, 9 554 frames, 3 hearts; W6-2 10.5 min, 4 hearts. The owner's W2-4 budget miss (beside W2-3) was the first fix (6de6c5e), superseded by the slot-read point. |
 | 2026-10-23 | 📌 | T30, d10dca3: `oracle::kept` lag repairs in a row alternate, `BACK_OFF` then before the run (route rewound). W1-4 done 18.7 min (load ~25), one lag parting; W5-2 done 10.3 min, rewound 954 → 870. Replaces T25 lag rows. |
@@ -49,8 +47,7 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 | 2026-10-22 | 📌 | T12, worker-driven: the real app (`1: start-level`, `seed N N`, key i at step i+1) keeps the engine's state hashes to W1-1's exit; a wrong seed parts at frame 1. `sf-bench --set C` W1-1 guided: completed, 2 936 frames (3.7 min; review, load 25: 9.0 min). |
 | 2026-10-22 | 🐞 | T11: `sf-bench` `judge` marks any wall-clock past the budget `over-budget`, the new planner included; `plan_original` runs its last lockstep past the deadline (W1-1 at 1 min overran 33 s). T14/T15 should check 30-min runs for this. |
 | 2026-10-22 | 📌 | T11 Done-when, load 27, 10 threads: `sf-bench --planner new --levels W1-1` guided, original mode: completed, 594 s, 4 082 frames (ref 4 474), 2 repairs, 0 hearts. Engine-only defaults unguided: 6.5 min; guided, shortening off: 57 s. |
-| 2026-10-22 | 📌 | T10 Done-when, 10 threads, §4.1 passed: W2-1 38 s, 4 repairs, share 0.41, 1 heart; W5-2 unguided 242 s, 5 repairs, share 0.13, 2 hearts. Review: 55 s, 301 s; W2-1 shortened 216 s, 1 repair, 3 651 → 3 583 frames. |
-| 2026-10-22 | 📌 | T10 choices: repair stretches keep the shortening share, not its minimum. Heart and cells-apart partings are accepted (third at one cell) with the parting frame. A plan ending before the original's exit runs 50 more frames, last input held. |
+| 2026-10-22 | 📌 | T10, 10 threads, §4.1 passed: W2-1 38 s, 4 repairs, 1 heart; W5-2 unguided 242 s, 2 hearts. Repairs keep the shortening share; heart and cells-apart partings accepted (third at one cell); short plans run 50 frames more. |
 | 2026-10-22 | 🔄 | Owner, T09: guide regions also match switches pressed when known; trace points are `(Cell, coins, switches)`, `trace_engine`/`trace_original` take `&Facts`. Without them W6-2 guided stalled at a closed gate, seeds 1–3, 5 min each; with them 109–141 s. |
 | 2026-10-22 | 📌 | T09, seed 1: set-B W2-1 leg (`leg-04.snap`) following `w2-1-complete` exits in 40 rounds, 22 s; W6-2 guided by `enemies-w6-2-complete` in 138 s, 476 rounds. W1-1 followed: 290 k engine frames; unguided 849 k. |
 | 2026-10-22 | 📌 | T08 Done-when, load 9–12, 10 threads, 10-min cap, seed 1, unguided: W6-1 54 s, W5-2 37 s, W3-2 132 s, W3-4 245 s; cells 11.6k, 9.0k, 15.5k, 26.1k; peak RSS 3.1, 3.4, 3.1, 3.3 GB. W1-1 15 s. |
