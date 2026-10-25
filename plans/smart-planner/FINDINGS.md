@@ -11,10 +11,11 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-25 | 📌 | T15 set C guided, eb85055, `--jobs 3`, 3 threads, quiet: 22 of 24 done, C3 median 7.3 min (target 2; ~4 M engine frames a level), C4 4 over +25% (W4-1 +51%, W1-4 +37%, W5-3, W6-1). All 22 replay in the real app. |
+| 2026-10-25 | 🔄 | Owner, T15: set-C W3-4, W6-4 recorded misses: coins met, 45 and 48 cells short in 30 min, alone on 10 threads too. W6-4's near-exit stall now shows on sets A, B and C, W3-4's on A and C: one fix task across sets? |
+| 2026-10-25 | 🔄 | Owner, T15 (D27): set-C `plan_exit --engine --seed 1` baseline stopped at 15 of 24; not run: W4-4, W5-1–W5-4, W6-1–W6-4. Of the 15: 5 done, 10 timed out (35 min). |
 | 2026-10-25 | 📌 | T28 compass trial, unguided, seeds 1–3, 30 min (`bench/compass-trial.md`): each compass completed only W5-3 seeds 2–3 and W6-1; engine frames there straight 65.2, map 61.5, walk 40.2 M. Walk kept as `sf-plan` default; DESIGN §2.2 still says straight. |
-| 2026-10-24 | 📌 | T33 review, worker-driven: W4-1 unaided with the reach survival check removed: three dead ends rewind 3 001→2 023→1 013, 2 549→151, then completes verified (3 527 frames). A first replan from a start repeats the reference-seeded reach in 0 rounds. |
-| 2026-10-24 | 📌 | T33 rerun, 20daffb, unaided, seed 1, load 20–25: W1-3 done 8.2 min, 7 804 frames, 0 hearts; W4-1 done 4.3 min, 3 979 frames (ref 2 146), 0 hearts. Survival check alone; no dead-end rewind fired. T27's T33 row is now D26. |
-| 2026-10-24 | 🐞 | T33 reproduced W4-1 unaided, seed 1: stretch 3's reach ends at route 3 001 mid-fall over hazards 59–60,26; every hold and 3 000 random bursts lose a life 6 frames on, original and engine. `Goal::Reach` had no survival check. |
+| 2026-10-24 | 🐞 | T33: W4-1 unaided, seed 1, stretch 3's reach ended mid-fall over hazards 59–60,26 (`Goal::Reach` had no survival check). With it: W4-1 done 4.3 min, 3 979 frames; W1-3 8.2 min. Dead-end rewinds tested in review. |
 | 2026-10-24 | 📌 | T27 set A unaided, seed 1, 0a66ec7–fc438f9: 9 of 24 done (W1-1, W1-2, W2-1, W2-4, W3-1, W4-3, W5-1, W5-2, W5-4; 6–25 min). No first exit: W2-3, W5-3, W6-2, W6-4. |
 | 2026-10-24 | 🐞 | T27 unaided: W1-4, W3-2, W3-3, W3-4, W4-2, W4-4 first exit at 18–28 min, then budget spent confirming; W1-3, W4-1 dead end (T33). Their "cells archived 1" is the last rest-of-level plan. |
 | 2026-10-24 | 🐞 | T27 unaided, not faithful (engine): W2-2 check 4 only, `frog_x` 3 px off from frame 334 (T32's kind); W6-1 `number_started` differs at 6 651. W6-3 route 18 s past budget, unverified. |
@@ -41,7 +42,6 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 | 2026-10-23 | 🔄 | Owner, T14 review: no guide pace in app mode (DESIGN §2.11). W1-1 `--app`, shorten 0, seeds 1–3, frames/hearts: pace 4452/1, 4158/0, 3404/0; none 2847/0, 3117/0, 2959/1. Pace failed T12's M8 test. |
 | 2026-10-23 | 🐞 | T14 review: original mode's parting bookkeeping (accept-resume, held frames) was reached only by `#[ignore]`d whole-level runs; now `oracle::kept`, unit-tested. W2-1 original mode passed §4.1 in 49 s, 2 repairs, load ~3. |
 | 2026-10-23 | 📌 | T14 review: `shorten::better` keeps fewer hearts before shorter (§2.5, M6); DESIGN §2.12 still reads "keeps the shortest exit". Wording left for the owner. |
-| 2026-10-23 | 📌 | T14 set A guided, load 8–27, bbcb4dd–2bcd9f4, frames (ref): W1-1 3527 (4474), W1-2 4659 (5183), W1-3 5745 (7729), W2-1 2269 (2524), W2-2 4922 (4739), W3-1 4558 (5492). Also done: W3-3, W4-1, W4-3, W5-1, W5-2, W5-4. Nine failed; W6-2–W6-4 not run. |
 | 2026-10-23 | 🔄 | Owner, T14: the lockstep parts past the faithful check's lag bar, looked up from the level's completion case (`lag-limit`, else 100), never passed by `sf-bench` (DESIGN §2.6). W5-3's route exited but failed `verify`: 101 mid-pass frames from 5 310. |
 | 2026-10-22 | 🔄 | Owner, T14: guide pace on by default (DESIGN §2.11). Engine-only W1-2, W2-1, W1-3, seeds 1–3, frames in all: none 45 850, against the archive's fastest 42 117, against the route's time 37 661 but W1-4 no exit in 30 min. |
 | 2026-10-22 | 📌 | T23, load ~24: W1-4 original mode guided by `complete-w1-4` passed §4.1 in 629 s (review 388 s), 2 repairs, 10 062 frames; engine only seeds 1, 2 exit 237, 413 s. Regressions: W6-2 guided 123 s, W5-2 unguided 284 s. |

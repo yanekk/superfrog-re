@@ -185,6 +185,17 @@ pub fn render(results: &[LevelResult]) -> String {
     row("C1", "Set C completed on the engine with app timing", v.count(b, "C", ok), v.count(n, "C", ok), "24 / 24");
     row("C3", "Planning time, set C", v.times(b, "C"), v.times(n, "C"), "median ≤ 2 min, slowest ≤ 30 min");
     row("C4", "Route length vs the committed route, set C", v.lengths(b, "C"), v.lengths(n, "C"), "none over +25%");
+    // A baseline left part-run (set C's, stopped at 15 levels under D27) names the levels not run,
+    // so a short column is never read as the old tool failing them.
+    for set in ["A", "B", "C"] {
+        let run = v.of(b, set);
+        if run.is_empty() || run.len() == LEVELS.len() {
+            continue;
+        }
+        let missing: Vec<&str> =
+            LEVELS.iter().copied().filter(|l| !run.iter().any(|r| r.level == *l)).collect();
+        let _ = writeln!(o, "\nSet {set} baseline: {} of 24 run; not run: {}.", run.len(), missing.join(", "));
+    }
     o += "\nRecorded, not gated:\n\n| Set | Measure | Baseline | New |\n|---|---|---|---|\n";
     for set in ["A", "B", "C"] {
         if v.of(b, set).is_empty() && v.of(n, set).is_empty() {

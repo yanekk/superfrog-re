@@ -1,0 +1,97 @@
+# timing: app
+# seed: 1
+# W1-1 by sf-plan, seed 1: planned and confirmed on the engine (--app); frame 0 is W1-1's first frame from Game ▸ Start Level… (the dialog's defaults, power-on seed 1 1).
+# The level ends at frame 2844, then fire in the tally's wait takes the points.
+0: -
+151: L
+187: U R
+255: L F
+283: U R
+347: D
+363: U
+387: R F
+431: U R
+495: L F
+543: R F
+599: U
+647: -
+663: D
+679: U
+727: R F
+735: R
+775: D
+783: R F
+839: F
+843: U
+851: L F
+855: U R
+887: R
+891: U L
+895: F
+903: U R
+935: R F
+939: L
+955: U
+1055: D
+1063: R F
+1091: R
+1099: U L
+1103: U
+1147: U R
+1187: F
+1207: R F
+1211: D
+1219: U L
+1263: F
+1279: -
+1327: U L
+1347: U R
+1355: D
+1395: U L
+1523: L
+1575: R
+1579: L
+1635: U L
+1667: L
+1671: L F
+1711: R
+1751: L
+1759: U L
+1767: L F
+1775: U R
+1823: U
+1879: U R
+1887: R
+1927: -
+1939: R
+1971: U
+2043: U R
+2047: R
+2067: -
+2075: U L
+2091: U R
+2187: R
+2203: R F
+2207: U
+2303: R F
+2311: U
+2355: R F
+2371: U R
+2379: L
+2395: U R
+2463: R
+2483: -
+2491: F
+2527: D
+2535: U L
+2543: D
+2559: U L
+2567: U R
+2599: R
+2615: U R
+2647: R F
+2787: U R
+2835: L
+2844: -
+2913: F
+2917: -

@@ -517,3 +517,14 @@ fn set_c_runs_plan_exit_on_the_engine_at_the_seed() {
     assert_eq!(names(Set::A), ["plan_exit", "plan_exit_w6", "explore"]);
     assert_eq!(names(Set::B), names(Set::A));
 }
+
+/// A part-run baseline (set C's, stopped under D27) names the levels it did not run.
+#[test]
+fn a_part_run_baseline_names_the_levels_not_run() {
+    let mut rs: Vec<LevelResult> = LEVELS[..22].iter().map(|l| fixture("best-old", "C", l, false, 2100.0)).collect();
+    rs.extend(LEVELS.iter().map(|l| fixture("new", "C", l, true, 400.0)));
+    let t = sf_bench::table::render(&rs);
+    assert!(t.contains("Set C baseline: 22 of 24 run; not run: W6-3, W6-4."), "{t}");
+    rs.extend(LEVELS[22..].iter().map(|l| fixture("best-old", "C", l, false, 2100.0)));
+    assert!(!sf_bench::table::render(&rs).contains("not run:"));
+}
