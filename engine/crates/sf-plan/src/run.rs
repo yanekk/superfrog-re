@@ -53,6 +53,10 @@ pub struct RunOptions {
     /// When set, the search gives up at this many rounds with no goal found, as at the budget's
     /// end (original mode's reach stretches, T24).
     pub max_rounds: Option<u64>,
+    /// Original mode's stretches (T33): the search gives up, as at the budget's end, once it is a
+    /// dead end (`oracle::dead_end`: `DEAD_ROUNDS` rounds with at most `DEAD_CELLS` cells), so
+    /// the repair can rewind instead of spending the budget there.
+    pub dead_end: bool,
 }
 
 impl Default for RunOptions {
@@ -65,6 +69,7 @@ impl Default for RunOptions {
             shorten_min_over: None,
             lag_limit: sf_conform::LAG_LIMIT,
             max_rounds: None,
+            dead_end: false,
         }
     }
 }
@@ -145,6 +150,11 @@ pub fn plan_engine(
         }
         if let Progress::Exit(r) = run_round(&mut ex, run.threads) {
             best = Some(r);
+        } else if run.dead_end
+            && crate::oracle::dead_end(ex.rounds(), ex.archive().entries().len() as u32)
+        {
+            // Counted in rounds and cells, never time: the same rounds end it on any machine.
+            return Err(ex.best_partial());
         }
     }
     let mut best = best.unwrap();

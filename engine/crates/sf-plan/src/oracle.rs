@@ -511,6 +511,79 @@ pub const HORIZON_POINTS: usize = HORIZON / TRACE_EVERY as usize;
 pub const REACH_ROUNDS: u64 = 300;
 /// A reach stretch's frames, at most, from its start to the point it reaches.
 pub const REACH_FRAMES: u32 = 3 * HORIZON as u32;
+/// A stretch whose archive holds at most `DEAD_CELLS` cells after `DEAD_ROUNDS` rounds is a dead
+/// end (T33, DESIGN D26): the repair rewinds rather than spending the budget there. W1-3 and W4-1
+/// unaided archived 5 and 2 cells in ~25 minutes; a live start archives hundreds in 100 rounds.
+pub const DEAD_CELLS: u32 = 8;
+pub const DEAD_ROUNDS: u64 = 100;
+/// Stretch starts kept to rewind to on a dead end (`Starts`).
+pub const DEAD_MARKS: usize = 4;
+
+/// Whether a search `rounds` rounds in with `cells` cells archived is a dead end. Rounds and cells,
+/// never time, so the same rounds end it on any machine (M8).
+pub fn dead_end(rounds: u64, cells: u32) -> bool {
+    rounds >= DEAD_ROUNDS && cells <= DEAD_CELLS
+}
+
+/// The last `DEAD_MARKS` stretch starts (route position and saved state) a dead end rewinds to
+/// (T33). Only starts not mid-pass are pushed, so a lag rewind after a dead-end rewind never
+/// reaches back before it (`Marks`).
+#[derive(Debug, Clone)]
+pub struct Starts<T> {
+    marks: Vec<(usize, T)>,
+    /// The start the last dead end rewound to.
+    last: Option<usize>,
+}
+
+impl<T> Default for Starts<T> {
+    fn default() -> Self {
+        Starts {
+            marks: Vec::new(),
+            last: None,
+        }
+    }
+}
+
+impl<T> Starts<T> {
+    /// A stretch start at route position `pos`; a start at or past it (a later future, or a
+    /// stretch that kept nothing) is replaced.
+    pub fn push(&mut self, pos: usize, state: T) {
+        self.marks.retain(|&(p, _)| p < pos);
+        self.marks.push((pos, state));
+        if self.marks.len() > DEAD_MARKS {
+            self.marks.remove(0);
+        }
+    }
+
+    /// A dead end with the route `pos` long: the start to rewind to, the latest before `pos`, or
+    /// the one before that when the last dead end already rewound there (the earliest kept when
+    /// there is none). The starts after it are dropped, their future discarded. `None` when no
+    /// start lies before `pos`: the stretch is planned again where it is.
+    pub fn rewind(&mut self, pos: usize) -> Option<&(usize, T)> {
+        let mut i = self.marks.iter().rposition(|&(p, _)| p < pos)?;
+        if self.last == Some(self.marks[i].0) {
+            i = i.saturating_sub(1);
+        }
+        self.marks.truncate(i + 1);
+        self.last = Some(self.marks[i].0);
+        self.marks.last()
+    }
+
+    pub fn len(&self) -> usize {
+        self.marks.len()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.marks.is_empty()
+    }
+}
+
+/// What a dead-end rewind restores at a stretch start.
+struct Start0 {
+    snap: sf_oracle::Snapshot,
+    lost: u16,
+    reference: Option<Reference>,
+}
 
 /// The point of a `points`-point reference a repair stretch from point `p` reaches for, or `None`
 /// when the reference's end is near enough to plan to the exit (less than 1½ horizons left).
@@ -639,6 +712,9 @@ pub fn plan_original(
     let mut marks: Marks<(sf_oracle::Snapshot, u16)> = Marks::default();
     let mut lag_row = 0u32;
     let mut rounds = 0u64;
+    let mut starts: Starts<Start0> = Starts::default();
+    // A stretch's plan that came to a dead end with budget left (T33): the repair rewinds.
+    let dead = |r: &Route| dead_end(r.rounds, r.cells) && t0.elapsed() < ro.budget;
 
     let mut stretch = 0u32;
     let finish = |stats: &mut Stats, confirm: Duration, route: &[FrameInput]| {
@@ -652,6 +728,16 @@ pub fn plan_original(
             display.clone(),
             Start::Transplant(sync::core_memory(amiga.memory())),
         );
+        if mid_run == 0 {
+            starts.push(
+                route.len(),
+                Start0 {
+                    snap: amiga.snapshot(),
+                    lost,
+                    reference: reference.clone(),
+                },
+            );
+        }
         let left = ro.budget.saturating_sub(t0.elapsed());
         let base = Options {
             seed: opt.seed.wrapping_add(stretch as u64),
@@ -692,10 +778,15 @@ pub fn plan_original(
                     shorten_share: 0.0,
                     shorten_min_rounds: 0,
                     max_rounds: Some(REACH_ROUNDS),
+                    dead_end: true,
                     ..ro.clone()
                 };
                 match plan_engine(start.clone(), facts.clone(), o, &reach_ro) {
                     Ok(r) => planned = Some((Ok(r), Kind::Reach(t))),
+                    // A dead end from here is one for the exit plan too: rewind at once.
+                    Err((partial, why)) if dead(&partial) => {
+                        planned = Some((Err((partial, why)), Kind::Reach(t)))
+                    }
                     Err((partial, _)) => {
                         stats.engine_frames += partial.engine_frames;
                         rounds += partial.rounds;
@@ -730,6 +821,7 @@ pub fn plan_original(
                 let stretch_ro = RunOptions {
                     budget: left,
                     shorten_min_over: over,
+                    dead_end: true,
                     ..ro.clone()
                 };
                 (plan_engine(start.clone(), facts.clone(), o, &stretch_ro), Kind::Exit)
@@ -740,6 +832,38 @@ pub fn plan_original(
                 stats.engine_frames += r.engine_frames;
                 rounds += r.rounds;
                 r
+            }
+            Err((partial, _)) if dead(&partial) => {
+                // A dead end (T33, D26): back to the last stretch start before this one, or one
+                // further if the last dead end rewound there, and that stretch planned again with
+                // the next seed. This backs up; it never gives up on the level (D16).
+                stats.engine_frames += partial.engine_frames;
+                rounds += partial.rounds;
+                stretch += 1;
+                let from = route.len();
+                if let Some((at, m)) = starts.rewind(from) {
+                    amiga.restore(&m.snap);
+                    lost = m.lost;
+                    reference = m.reference.clone();
+                    route.truncate(*at);
+                    route_mid.truncate(*at);
+                    mid_run = 0;
+                }
+                repeats = Repeats::default();
+                lag_row = 0;
+                if log {
+                    eprintln!(
+                        "  {:6.1}s stretch {}: {kind:?} dead end, {} cells in {} rounds (frog at {:?}), rewinds the route {from} -> {}",
+                        t0.elapsed().as_secs_f64(),
+                        stretch - 1,
+                        partial.cells,
+                        partial.rounds,
+                        frog_cell(start.state()),
+                        route.len(),
+                    );
+                }
+                stats.confirmed_frames = route.len() as u32;
+                continue;
             }
             Err((partial, reason)) => {
                 stats.engine_frames += partial.engine_frames;
