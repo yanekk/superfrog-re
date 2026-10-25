@@ -4,6 +4,7 @@
 //! frame, and the events along the way (a marker taken or killed, a heart or life lost, take-offs,
 //! landings, shots).
 //!
+//! Run through `tools/route_viz.py <route.txt>`, which also builds the page; by hand:
 //! cargo run --release -p sf-plan --example route_viz -- W1-4 route.txt out.json
 
 use std::fmt::Write as _;
@@ -47,33 +48,32 @@ fn markers(st: &State) -> Vec<u8> {
         .collect()
 }
 
-/// World 1's object markers and the templates their stubs spawn (sf-core `enemies/w1`), and the
-/// ones every world shares (`items`).
-fn marker_template(world: u32, m: u8) -> Option<u16> {
-    let shared = match m {
-        8 | 9 => Some(0),
-        29 => Some(5),
-        45 => Some(4),
-        _ => None,
+/// The template a marker's stub spawns, read from the game: `obj_flag_jumptab` (h0+$178ec) holds
+/// a `bra.w` per (world, marker) to a stub that loads the template into a0 (`lea abs.l,a0` or
+/// `lea d16(pc),a0`) before branching to a spawner (docs/09 "Placement").
+fn marker_template(rom: &sf_core::mem::Rom, world: u32, m: u8) -> Option<u16> {
+    let w = |o: u32| -> Option<u16> {
+        let o = o as usize;
+        Some(u16::from_be_bytes(rom.h0.get(o..o + 2)?.try_into().ok()?))
     };
-    if shared.is_some() || world != 0 {
-        return shared;
+    let entry = 0x178ec + (world * 64 + m as u32) * 4;
+    if w(entry)? != 0x6000 {
+        return None;
     }
-    Some(match m {
-        1 => 8,
-        2 => 12,
-        3 => 13,
-        10 => 33,
-        11 => 23,
-        12 => 22,
-        13 => 20,
-        14 => 19,
-        15 => 21,
-        16 => 78,
-        17 => 77,
-        18 => 76,
-        _ => return None,
-    })
+    let stub = (entry + 2).wrapping_add(w(entry + 2)? as i16 as i32 as u32);
+    let base = 0x1c6e2;
+    // A stub is a few instructions; past 48 bytes we are in the next one.
+    for at in (stub..stub + 48).step_by(2) {
+        let addr = match w(at)? {
+            0x41f9 => ((w(at + 2)? as u32) << 16 | w(at + 4)? as u32).wrapping_sub(h0(0)),
+            0x41fa => (at + 2).wrapping_add(w(at + 2)? as i16 as i32 as u32),
+            0x6000 | 0x4ef9 | 0x4e75 => return None,
+            _ => continue,
+        };
+        let off = addr.checked_sub(base)?;
+        return (off % 0xae == 0 && off / 0xae < 160).then_some((off / 0xae) as u16);
+    }
+    None
 }
 
 /// What the frog itself reacts to (docs/09, `level/collision.rs`).
@@ -142,6 +142,14 @@ fn category(name: &str) -> &'static str {
         "coin" | "falling coin" | "hidden coin spring" => "coin",
         "exit lock" => "exit",
         "bounce pad" | "launcher" | "lever" | "bubble" => "fixture",
+        // Kinds that only animate, carry or block the frog (docs/09 "Other"); the rest hurt.
+        n if ["scenery", "backdrop", "gate", "crumbl", "pad", "flow", "swing", "fountain"]
+            .iter()
+            .any(|w| n.contains(w))
+            && !n.contains("drop") =>
+        {
+            "fixture"
+        }
         _ => "enemy",
     }
 }
@@ -164,14 +172,25 @@ fn joy_text(x: FrameInput) -> String {
 fn main() {
     let args: Vec<String> = std::env::args().collect();
     let [_, level, route, out] = &args[..] else {
-        eprintln!("usage: route_viz <level> <route.txt> <out.json>");
+        eprintln!("usage: route_viz <level> <route.txt | -> <out.json>");
         std::process::exit(2);
     };
     let id: LevelId = level.parse().expect("level id");
-    let text = std::fs::read_to_string(route).expect("route file");
+    // `-`: no route, for a level the planner failed: the map and its objects, the frog at its start.
+    let text = if route == "-" {
+        "# timing: app\n# No route: the planner wrote none for this level.\n0: -\n".to_string()
+    } else {
+        std::fs::read_to_string(route).expect("route file")
+    };
     let seed = route_seed(&text).unwrap_or(1);
+    // Only an app-timed route replays from the app's start; one paced to the original's lag
+    // drifts here (sf-plan DESIGN §2.6), so the page says so instead of passing it off.
+    let timing = sf_plan::trace::timing(&text).unwrap_or("original").to_string();
+    if timing != "app" {
+        eprintln!("warning: route timing is `{timing}`, not `app`: replayed from the app's start, it may drift from what the planner saw");
+    }
     let script = InputScript::parse(&text).expect("route parses");
-    let n = script.lines.last().map_or(0, |l| l.0) + 600;
+    let n = if route == "-" { 1 } else { script.lines.last().map_or(0, |l| l.0) + 600 };
 
     let data = sf_conform::game_data();
     let display = sf_conform::display_data();
@@ -185,7 +204,7 @@ fn main() {
     let world_ix = st0.l(OBJ_WORLD_OFFSET) >> 8;
 
     let mut j = String::new();
-    write!(j, "{{\"level\":\"{id}\",\"seed\":{seed},\"cols\":{COLS},\"rows\":{ROWS},").unwrap();
+    write!(j, "{{\"level\":\"{id}\",\"timing\":\"{timing}\",\"seed\":{seed},\"cols\":{COLS},\"rows\":{ROWS},").unwrap();
     // `coins_left_for_exit` (h0+$832) at the start: the coins the exit lock wants.
     write!(j, "\"coins_needed\":{},", st0.w(h0(0x832))).unwrap();
     // The route's comment lines, for the page's header.
@@ -228,7 +247,7 @@ fn main() {
                     }
                     None => ("pickup", "pickup".into()),
                 }
-            } else if let Some(k) = marker_template(world_ix, m).and_then(|tp| d.kind(tp)) {
+            } else if let Some(k) = marker_template(display.rom(), world_ix, m).and_then(|tp| d.kind(tp)) {
                 (category(k.name), k.name.to_string())
             } else if let Some((cat, nm)) = frog_marker(m) {
                 (cat, nm.to_string())
@@ -307,7 +326,7 @@ fn main() {
                 let (ox, oy) = (st.w(slot + 8) as i16, st.w(slot + 0xa) as i16);
                 let name = slot_kind(st.l(slot));
                 let cell = cell_of(from).map_or("null".into(), |(c, r)| format!("[{c},{r}]"));
-                v.push(format!("[{ox},{oy},\"{}\",{cell}]", esc(name)));
+                v.push(format!("[{ox},{oy},\"{}\",{cell},\"{}\"]", esc(name), category(name)));
             }
             live.push(format!("[{}]", v.join(",")));
         }

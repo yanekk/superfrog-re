@@ -2,13 +2,15 @@
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
 <style>
-/* Layout: one dark instrument panel; the level map is the hero and fills the width, a timeline
-   strip under it, then stats + events side by side (stacked on phones). Single dark look by
-   choice: the map's own palette reads best on a dark surround. */
+/* Layout: one dark instrument panel. A route switcher strip on top (levels grouped by world,
+   each chip carrying its verdict), the selected route's verdict banner, then the level map as
+   the hero, a timeline strip, and stats + events side by side (stacked on phones). Single dark
+   look by choice: the map's own palette reads best on a dark surround. */
 :root {
   color-scheme: dark;
   --bg: #0f1412;          /* forest-night ground, biased green like Magic Woods */
   --panel: #171e1b;
+  --panel-2: #1e2723;
   --line: #2a3530;
   --fg: #e4ebe6;
   --muted: #8fa198;
@@ -18,16 +20,53 @@
   --pickup: #5ee6a8;
   --secret: #c792ff;
   --hazard: #ff8a3d;
+  --ok: #5ee6a8;          /* verdicts: clean / faults / failed */
+  --warn: #ffb547;
+  --bad: #ff4d5e;
   --display: "Barlow Condensed", "Arial Narrow", sans-serif;
   --body: "IBM Plex Sans", system-ui, sans-serif;
   --mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
 }
 body { background: var(--bg); color: var(--fg); font-family: var(--body); font-size: 14px; }
+[hidden] { display: none !important; }
 .wrap { padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 16px 32px; display: grid; gap: 14px; max-width: 1800px; margin: 0 auto; }
 header { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 18px; }
 h1 { font-family: var(--display); font-weight: 700; font-size: 30px; letter-spacing: .02em; margin: 0; text-wrap: balance; }
 h1 .lvl { color: var(--accent); }
-.sub { color: var(--muted); font-size: 13px; min-width: 0; }
+.sub { color: var(--muted); font-size: 13px; min-width: 0; overflow-wrap: anywhere; }
+
+/* switcher */
+.switch { display: grid; gap: 8px; background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 10px 12px; }
+.switch-top { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; }
+.switch-top .count { font-size: 12px; color: var(--muted); display: flex; flex-wrap: wrap; gap: 4px 14px; }
+.switch-top .count b { font-family: var(--mono); font-weight: 500; }
+.worlds { display: flex; flex-wrap: wrap; gap: 8px 18px; }
+.world { display: flex; align-items: center; gap: 5px; flex-wrap: wrap; }
+.world > span { font-family: var(--display); font-weight: 600; letter-spacing: .06em; color: var(--muted); font-size: 14px; margin-right: 2px; }
+.rt { font-family: var(--mono); font-size: 12px; display: inline-flex; align-items: center; gap: 5px; padding: 4px 8px; border-radius: 4px; border: 1px solid var(--line); background: var(--bg); color: var(--fg); cursor: pointer; }
+.rt:hover { border-color: var(--muted); }
+.rt[aria-current="true"] { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+.rt .g { font-size: 11px; width: 14px; height: 14px; border-radius: 3px; display: inline-grid; place-items: center; color: #111; font-weight: 700; }
+.rt.clean .g { background: var(--ok); }
+.rt.faults .g { background: var(--warn); }
+.rt.failed { border-color: color-mix(in srgb, var(--bad) 55%, var(--line)); }
+.rt.failed .g { background: var(--bad); }
+.rt.unknown .g { background: var(--muted); }
+.rt[hidden] { display: none; }
+.toggle { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--fg); cursor: pointer; user-select: none; }
+.toggle input { accent-color: var(--warn); }
+
+/* verdict banner for the selected route */
+.verdict { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; padding: 9px 12px; border-radius: 6px; border: 1px solid var(--line); background: var(--panel); }
+.verdict.failed { border-color: var(--bad); }
+.verdict.faults { border-color: var(--warn); }
+.pill { font-family: var(--display); font-weight: 700; letter-spacing: .06em; text-transform: uppercase; font-size: 13px; padding: 2px 9px; border-radius: 3px; color: #111; }
+.pill.clean { background: var(--ok); } .pill.faults { background: var(--warn); } .pill.failed { background: var(--bad); } .pill.unknown { background: var(--muted); }
+.fault { font-size: 12.5px; padding: 2px 8px; border-radius: 3px; background: var(--panel-2); border: 1px solid var(--line); }
+.verdict.failed .fault { border-color: color-mix(in srgb, var(--bad) 60%, var(--line)); }
+.verdict.faults .fault { border-color: color-mix(in srgb, var(--warn) 60%, var(--line)); }
+.info { font-size: 12px; color: var(--muted); }
+
 .mapbox { position: relative; border: 1px solid var(--line); border-radius: 6px; overflow: hidden; background: #000; height: min(62vh, 640px); min-height: 280px; touch-action: none; cursor: grab; }
 .mapbox.drag { cursor: grabbing; }
 .mapbox canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
@@ -36,6 +75,7 @@ h1 .lvl { color: var(--accent); }
 .zoom button:hover, .ctl button:hover { border-color: var(--accent); }
 button:focus-visible, input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .tip { position: absolute; pointer-events: none; background: rgba(15,20,18,.94); border: 1px solid var(--line); border-radius: 4px; padding: 5px 8px; font-family: var(--mono); font-size: 12px; white-space: nowrap; color: var(--fg); }
+.loading { position: absolute; inset: 0; display: grid; place-items: center; color: var(--muted); font-family: var(--mono); background: rgba(0,0,0,.5); }
 .legend { display: flex; flex-wrap: wrap; gap: 6px; }
 .chip { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; padding: 3px 9px 3px 7px; border: 1px solid var(--line); border-radius: 999px; background: var(--panel); cursor: pointer; user-select: none; color: var(--fg); font-family: var(--body); }
 .chip[aria-pressed="false"] { opacity: .4; }
@@ -45,22 +85,23 @@ button:focus-visible, input:focus-visible { outline: 2px solid var(--accent); ou
 .readout { font-family: var(--mono); font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
 .readout b { color: var(--fg); font-weight: 500; }
 .lower { display: grid; grid-template-columns: minmax(0, 320px) minmax(0, 1fr); gap: 14px; }
-@media (max-width: 760px) { .lower { grid-template-columns: minmax(0, 1fr); } .ctl { grid-template-columns: auto auto 1fr; } .ctl .readout { grid-column: 1 / -1; } }
+@media (max-width: 760px) { .lower { grid-template-columns: minmax(0, 1fr); } .ctl { grid-template-columns: auto auto 1fr; } .ctl .readout { grid-column: 1 / -1; white-space: normal; } }
 .card { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 12px 14px; min-width: 0; }
 .card h2 { font-family: var(--display); font-size: 15px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: 0 0 10px; font-weight: 600; }
-.stats { display: grid; grid-template-columns: 1fr auto; gap: 6px 12px; font-variant-numeric: tabular-nums; }
+.stats { display: grid; grid-template-columns: 1fr auto; gap: 6px 12px; font-variant-numeric: tabular-nums; margin: 0; }
 .stats dt { color: var(--muted); }
 .stats dd { margin: 0; font-family: var(--mono); text-align: right; }
 .events { max-height: 340px; overflow: auto; font-family: var(--mono); font-size: 12px; }
 .events table { border-collapse: collapse; width: 100%; }
 .events td { padding: 3px 8px 3px 0; border-bottom: 1px solid var(--line); vertical-align: top; }
 .events tr { cursor: pointer; }
-.events tr:hover td { background: #1e2723; }
+.events tr:hover td { background: var(--panel-2); }
 .events tr.now td { background: #26302b; }
 .events td.f { width: 1%; color: var(--muted); text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; vertical-align: 1px; }
 .filters { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
 .notes { color: var(--muted); font-size: 12px; font-family: var(--mono); white-space: pre-wrap; overflow-wrap: anywhere; margin: 0; }
+.empty { color: var(--muted); font-size: 13px; margin: 0; }
 </style>
 
 <div class="wrap">
@@ -69,12 +110,23 @@ button:focus-visible, input:focus-visible { outline: 2px solid var(--accent); ou
     <span class="sub" id="sub"></span>
   </header>
 
+  <nav class="switch" id="switch" aria-label="Routes">
+    <div class="switch-top">
+      <span class="count" id="count"></span>
+      <label class="toggle"><input type="checkbox" id="onlybad"> Only routes with faults or failures</label>
+    </div>
+    <div class="worlds" id="worlds"></div>
+  </nav>
+
+  <div class="verdict" id="verdict"></div>
+
   <div class="legend" id="legend"></div>
 
   <div class="mapbox" id="mapbox">
     <canvas id="cv"></canvas>
     <div class="zoom"><button id="zin" aria-label="Zoom in">+</button><button id="zout" aria-label="Zoom out">−</button><button id="zfit">Fit</button><button id="zfollow" aria-pressed="false">Follow frog</button></div>
     <div class="tip" id="tip" hidden></div>
+    <div class="loading" id="loading" hidden>loading…</div>
   </div>
 
   <div class="ctl">
@@ -99,62 +151,23 @@ button:focus-visible, input:focus-visible { outline: 2px solid var(--accent); ou
   </div>
 </div>
 
-<script id="data" type="application/json">__DATA__</script>
+<script id="manifest" type="application/json">__MANIFEST__</script>
 <script>
 (() => {
-const D = JSON.parse(document.getElementById('data').textContent);
-const W = D.cols * 16, H = D.rows * 16, END = D.track.length - 1;
+const M = JSON.parse(document.getElementById('manifest').textContent);
+window.ROUTE_DATA = window.ROUTE_DATA || {};
+
 // The frog's x,y are its record's (+0, +2): the planner's cell is ((x+$17)/16, (y-$10)/16), and y
 // sits on the ground line when landed, so the body's middle is about (x+$17, y-10).
 const FX = 0x17, FY = -10;
-const fp = k => { const p = D.track[Math.max(0, Math.min(END, k))]; return [p[0] + FX, p[1] + FY]; };
-
-// ---------- map image from tiles ----------
-const pal = D.palette.map(h => [parseInt(h.slice(1,3),16), parseInt(h.slice(3,5),16), parseInt(h.slice(5,7),16)]);
-const map = document.createElement('canvas'); map.width = W; map.height = H;
-{
-  const mx = map.getContext('2d'), img = mx.createImageData(W, H), px = img.data, cache = {};
-  const tile = ix => cache[ix] || (cache[ix] = (() => { const s = D.tiles[ix] || ''; const a = new Uint8Array(256); for (let i = 0; i < 256; i++) a[i] = parseInt(s.substr(i*2, 2), 16) || 0; return a; })());
-  for (let r = 0; r < D.rows; r++) for (let c = 0; c < D.cols; c++) {
-    const t = tile(D.body[r * D.cols + c]);
-    for (let y = 0; y < 16; y++) for (let x = 0; x < 16; x++) {
-      const col = pal[t[y*16+x]], o = ((r*16+y) * W + c*16 + x) * 4;
-      px[o] = col[0]; px[o+1] = col[1]; px[o+2] = col[2]; px[o+3] = 255;
-    }
-  }
-  mx.putImageData(img, 0, 0);
-}
-
-// ---------- objects, and what the route did to them ----------
-const objAt = new Map(); D.objects.forEach(o => objAt.set(o[0] + ',' + o[1], o));
-const done = new Map();     // cell -> frame the route took / killed / opened it
-const EV = [];              // {k, x, y, type, text}
-const label = { coin: 'coin taken', pickup: 'pickup', enemy: 'enemy defeated', secret: 'secret wall opened', coinspring: 'coin spring' };
-let lastSecret = -99;
-for (const e of D.events) {
-  const [k, x, y, kind, text] = e;
-  if (kind === 'marker') {
-    const m = text.match(/cell (\d+),(\d+): marker (\d+) → (\d+)/);
-    const c = +m[1], r = +m[2], o = objAt.get(c + ',' + r);
-    if (!done.has(c + ',' + r)) done.set(c + ',' + r, k);
-    const cx = c*16 + 8, cy = r*16 + 8;
-    if (!o) { EV.push({k, x: cx, y: cy, type: 'other', text: text}); continue; }
-    const cat = o[3], name = o[4];
-    if (cat === 'secret') { if (k - lastSecret > 20) EV.push({k, x: cx, y: cy, type: 'secret', text: 'secret wall opened at ' + c + ',' + r}); lastSecret = k; continue; }
-    if (cat === 'coin') EV.push({k, x: cx, y: cy, type: 'coin', text: (name === 'coin' ? 'coin' : name) + ' taken at ' + c + ',' + r});
-    else if (cat === 'enemy') EV.push({k, x: cx, y: cy, type: 'enemy', text: name.replace(/^w1 /,'') + ' defeated (from ' + c + ',' + r + ')'});
-    else if (cat === 'pickup') EV.push({k, x: cx, y: cy, type: 'pickup', text: name + ' picked up at ' + c + ',' + r});
-    else EV.push({k, x: cx, y: cy, type: 'other', text: name + ' at ' + c + ',' + r + ' changed (' + text.split(': ')[1] + ')'});
-  } else {
-    const [px, py] = [x + FX, y + FY];
-    EV.push({k, x: px, y: py, type: kind, text});
-  }
-}
-EV.sort((a, b) => a.k - b.k);
-
-// ---------- styling per kind ----------
 const C = getComputedStyle(document.documentElement);
 const tok = n => C.getPropertyValue(n).trim();
+const esc = s => String(s).replace(/[&<>"]/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[ch]));
+
+// ---------- per-route state, rebuilt by show() ----------
+let D = null, W = 0, H = 0, END = 0, map = null, objAt = new Map(), done = new Map(), EV = [], segBreak = new Uint8Array(1);
+const fp = k => { const p = D.track[Math.max(0, Math.min(END, k))]; return [p[0] + FX, p[1] + FY]; };
+
 const EVT = {
   coin:   { name: 'Coins taken', color: tok('--accent'), on: true },
   enemy:  { name: 'Enemies defeated', color: tok('--enemy'), on: true },
@@ -175,43 +188,78 @@ const LAYERS = {
   pickups:{ name: 'Collectibles', color: tok('--pickup'), on: true },
   hazards:{ name: 'Spikes', color: tok('--hazard'), on: true },
   secrets:{ name: 'Secret walls', color: tok('--secret'), on: true },
-  misc:   { name: 'Exits, springs, switches', color: '#ffffff', on: true },
-  terrain:{ name: 'Other map markers', color: '#9aa7a0', on: false },
+  misc:   { name: 'Exits, springs, switches, scenery', color: '#ffffff', on: true },
+  terrain:{ name: 'Ice, conveyors, other markers', color: '#9aa7a0', on: false },
   live:   { name: 'Live objects at frame', color: '#ff9db0', on: true },
   events: { name: 'Event marks', color: '#9fe8ff', on: true },
 };
 const layerOf = cat => ({ coin: 'coins', enemy: 'enemies', pickup: 'pickups', hazard: 'hazards', secret: 'secrets', other: 'terrain', surface: 'terrain' }[cat] || 'misc');
+
+function buildMap() {
+  const pal = D.palette.map(h => [parseInt(h.slice(1,3),16), parseInt(h.slice(3,5),16), parseInt(h.slice(5,7),16)]);
+  map = document.createElement('canvas'); map.width = W; map.height = H;
+  const mx = map.getContext('2d'), img = mx.createImageData(W, H), px = img.data, cache = {};
+  const tile = ix => cache[ix] || (cache[ix] = (() => { const s = D.tiles[ix] || ''; const a = new Uint8Array(256); for (let i = 0; i < 256; i++) a[i] = parseInt(s.substr(i*2, 2), 16) || 0; return a; })());
+  for (let r = 0; r < D.rows; r++) for (let c = 0; c < D.cols; c++) {
+    const t = tile(D.body[r * D.cols + c]);
+    for (let y = 0; y < 16; y++) for (let x = 0; x < 16; x++) {
+      const col = pal[t[y*16+x]], o = ((r*16+y) * W + c*16 + x) * 4;
+      px[o] = col[0]; px[o+1] = col[1]; px[o+2] = col[2]; px[o+3] = 255;
+    }
+  }
+  mx.putImageData(img, 0, 0);
+}
+
+function buildEvents() {
+  objAt = new Map(); D.objects.forEach(o => objAt.set(o[0] + ',' + o[1], o));
+  done = new Map(); EV = [];
+  let lastSecret = -99;
+  for (const e of D.events) {
+    const [k, x, y, kind, text] = e;
+    if (kind === 'marker') {
+      const m = text.match(/cell (\d+),(\d+): marker (\d+) → (\d+)/);
+      const c = +m[1], r = +m[2], o = objAt.get(c + ',' + r);
+      if (!done.has(c + ',' + r)) done.set(c + ',' + r, k);
+      const cx = c*16 + 8, cy = r*16 + 8;
+      if (!o) { EV.push({k, x: cx, y: cy, type: 'other', text}); continue; }
+      const cat = o[3], name = o[4];
+      if (cat === 'secret') { if (k - lastSecret > 20) EV.push({k, x: cx, y: cy, type: 'secret', text: 'secret wall opened at ' + c + ',' + r}); lastSecret = k; continue; }
+      if (cat === 'coin') EV.push({k, x: cx, y: cy, type: 'coin', text: name + ' taken at ' + c + ',' + r});
+      else if (cat === 'enemy') EV.push({k, x: cx, y: cy, type: 'enemy', text: name.replace(/^w\d /,'') + ' defeated (from ' + c + ',' + r + ')'});
+      else if (cat === 'pickup') EV.push({k, x: cx, y: cy, type: 'pickup', text: name + ' picked up at ' + c + ',' + r});
+      else EV.push({k, x: cx, y: cy, type: 'other', text: name + ' at ' + c + ',' + r + ' changed (' + text.split(': ')[1] + ')'});
+    } else EV.push({k, x: x + FX, y: y + FY, type: kind, text});
+  }
+  EV.sort((a, b) => a.k - b.k);
+  segBreak = new Uint8Array(END + 1);
+  for (let k = 1; k <= END; k++) { const a = D.track[k-1], b = D.track[k]; if (Math.abs(a[0]-b[0]) > 48 || Math.abs(a[1]-b[1]) > 48) segBreak[k] = 1; }
+}
 
 // ---------- view ----------
 const box = document.getElementById('mapbox'), cv = document.getElementById('cv'), cx = cv.getContext('2d');
 let scale = 1, ox = 0, oy = 0, frame = 0, follow = false, dpr = 1;
 function resize() {
   dpr = window.devicePixelRatio || 1;
-  box.style.height = Math.round(Math.max(280, Math.min(window.innerHeight * .72, box.clientWidth * H / W * 1.08))) + 'px';
+  if (W) box.style.height = Math.round(Math.max(280, Math.min(window.innerHeight * .72, box.clientWidth * H / W * 1.08))) + 'px';
   cv.width = box.clientWidth * dpr; cv.height = box.clientHeight * dpr;
   draw();
 }
 function fit() { scale = Math.min(box.clientWidth / W, box.clientHeight / H); ox = (box.clientWidth - W*scale)/2; oy = (box.clientHeight - H*scale)/2; draw(); }
 function zoomAt(f, sx, sy) { const ns = Math.max(0.12, Math.min(8, scale * f)); ox = sx - (sx - ox) * ns/scale; oy = sy - (sy - oy) * ns/scale; scale = ns; draw(); }
 function centerOn(x, y) { ox = box.clientWidth/2 - x*scale; oy = box.clientHeight/2 - y*scale; }
-
-// Precomputed route segments; a jump of more than 48 px in one frame is a teleport, not a path.
-const segBreak = new Uint8Array(END + 1);
-for (let k = 1; k <= END; k++) { const a = D.track[k-1], b = D.track[k]; if (Math.abs(a[0]-b[0]) > 48 || Math.abs(a[1]-b[1]) > 48) segBreak[k] = 1; }
 const ra = [0x5a, 0xd1, 0xff], rb = [0xf2, 0xc1, 0x4e];
 const rcol = t => `rgb(${ra.map((v,i) => Math.round(v + (rb[i]-v)*t)).join(',')})`;
 
 function draw() {
   const w = cv.width, h = cv.height;
   cx.setTransform(1,0,0,1,0,0); cx.fillStyle = '#000'; cx.fillRect(0,0,w,h);
+  if (!D) return;
   cx.setTransform(scale*dpr, 0, 0, scale*dpr, ox*dpr, oy*dpr);
   cx.imageSmoothingEnabled = false;
   cx.drawImage(map, 0, 0);
   cx.fillStyle = 'rgba(0,0,0,.28)'; cx.fillRect(0, 0, W, H);   // dim the map so marks read
-  const u = 1/scale;                                          // one screen pixel in level pixels
-  const S = Math.max(3.2, 4*u);                              // mark radius
+  const u = 1/scale, S = Math.max(3.2, 4*u);
 
-  // objects
   for (const o of D.objects) {
     const [c, r, m, cat, name] = o, L = layerOf(cat);
     if (!LAYERS[L].on) continue;
@@ -225,15 +273,15 @@ function draw() {
     if (cat === 'coin') { if (name === 'tile coin') cx.rect(x-S*.8, y-S*.8, S*1.6, S*1.6); else cx.arc(x, y, S, 0, 7); }
     else if (cat === 'enemy') { const s = S*1.5; cx.moveTo(x, y-s); cx.lineTo(x+s, y); cx.lineTo(x, y+s); cx.lineTo(x-s, y); cx.closePath(); }
     else if (cat === 'pickup') { const s = S*1.3; cx.moveTo(x, y-s); cx.lineTo(x+s*.95, y+s*.7); cx.lineTo(x-s*.95, y+s*.7); cx.closePath(); }
-    else { cx.rect(x-S, y-S, S*2, S*2); }
+    else cx.rect(x-S, y-S, S*2, S*2);
     if (took) { cx.globalAlpha = .28; cx.fill(); cx.globalAlpha = 1; cx.stroke(); }
-    else if (cat === 'exit' || cat === 'other' || cat === 'spring' || cat === 'switch' || cat === 'surface' || cat === 'fixture') { cx.globalAlpha = .9; cx.stroke(); cx.globalAlpha = 1; }
+    else if (!['coin', 'enemy', 'pickup'].includes(cat)) { cx.globalAlpha = .9; cx.stroke(); cx.globalAlpha = 1; }
     else { cx.fill(); cx.strokeStyle = 'rgba(0,0,0,.7)'; cx.stroke(); }
-    if (cat === 'exit' && name === 'level exit') { cx.fillStyle = '#fff'; cx.font = `${Math.max(8, 10*u)}px ${tok('--mono')}`; cx.fillText('EXIT', x - 9*u*1.2, y - S - 3*u); }
+    if (cat === 'exit' && name === 'level exit') { cx.fillStyle = '#fff'; cx.font = `${Math.max(8, 10*u)}px ${tok('--mono')}`; cx.fillText('EXIT', x - 11*u, y - S - 3*u); }
   }
 
   // route line, coloured from start (blue) to end (gold); the part not yet played is faint
-  if (LAYERS.route.on) {
+  if (LAYERS.route.on && END > 0) {
     cx.lineJoin = 'round'; cx.lineCap = 'round';
     const lw = Math.max(1.6, 2.6*u), CH = 40;
     for (let s = 0; s < END; s += CH) {
@@ -247,7 +295,6 @@ function draw() {
     }
   }
 
-  // event marks
   if (LAYERS.events.on) for (const e of EV) {
     const t = EVT[e.type]; if (!t || !t.on) continue;
     cx.globalAlpha = e.k > frame ? .35 : 1;
@@ -255,36 +302,35 @@ function draw() {
     cx.beginPath();
     const s = Math.max(2.4, 3.2*u);
     if (e.type === 'jump') { cx.moveTo(e.x, e.y - s*1.6); cx.lineTo(e.x + s, e.y); cx.lineTo(e.x - s, e.y); cx.closePath(); }
-    else if (e.type === 'hurt' || e.type === 'death') { cx.arc(e.x, e.y, s*2, 0, 7); }
+    else if (e.type === 'hurt' || e.type === 'death') cx.arc(e.x, e.y, s*2, 0, 7);
     else cx.arc(e.x, e.y, s, 0, 7);
     cx.fill(); cx.stroke();
     cx.globalAlpha = 1;
   }
 
-  // live objects at the current frame
-  if (LAYERS.live.on) {
+  if (LAYERS.live.on && D.live.length) {
     const L = D.live[Math.min(D.live.length-1, frame >> 1)] || [];
     for (const s of L) {
-      const [x, y, name] = s; if (name === 'coin') continue;
-      cx.strokeStyle = name.startsWith('w1') || name === 'object' ? '#ff9db0' : '#ffe9a8'; cx.lineWidth = Math.max(1, 1.6*u);
-      cx.strokeRect(x - 2, y - 14, 20, 18);
+      if (s[2] === 'coin') continue;
+      cx.strokeStyle = s[4] === 'enemy' ? '#ff9db0' : '#ffe9a8'; cx.lineWidth = Math.max(1, 1.6*u);
+      cx.strokeRect(s[0] - 2, s[1] - 14, 20, 18);
     }
   }
 
-  // the frog now
   const [fx, fy] = fp(frame);
   cx.fillStyle = '#7dff6a'; cx.strokeStyle = '#000'; cx.lineWidth = Math.max(1, 2*u);
   cx.beginPath(); cx.arc(fx, fy, Math.max(5, 7*u), 0, 7); cx.fill(); cx.stroke();
 }
 
-// ---------- interaction ----------
+// ---------- map interaction ----------
 let drag = null;
-box.addEventListener('pointerdown', e => { drag = { x: e.clientX, y: e.clientY, ox, oy, moved: false }; box.setPointerCapture(e.pointerId); box.classList.add('drag'); });
+box.addEventListener('pointerdown', e => { if (e.target.closest('.zoom')) return; drag = { x: e.clientX, y: e.clientY, ox, oy, moved: false }; box.setPointerCapture(e.pointerId); box.classList.add('drag'); });
 box.addEventListener('pointermove', e => {
+  if (!D) return;
   if (drag) { const dx = e.clientX - drag.x, dy = e.clientY - drag.y; if (Math.abs(dx)+Math.abs(dy) > 3) drag.moved = true; ox = drag.ox + dx; oy = drag.oy + dy; setFollow(false); draw(); return; }
   hover(e);
 });
-box.addEventListener('pointerup', e => { box.classList.remove('drag'); const d = drag; drag = null; if (d && !d.moved) clickAt(e); });
+box.addEventListener('pointerup', e => { box.classList.remove('drag'); const d = drag; drag = null; if (d && !d.moved && D) clickAt(e); });
 box.addEventListener('pointerleave', () => { tip.hidden = true; });
 box.addEventListener('wheel', e => { e.preventDefault(); const r = box.getBoundingClientRect(); zoomAt(Math.exp(-e.deltaY * 0.0015), e.clientX - r.left, e.clientY - r.top); }, { passive: false });
 document.getElementById('zin').onclick = () => zoomAt(1.4, box.clientWidth/2, box.clientHeight/2);
@@ -304,8 +350,7 @@ function nearest(lx, ly) {
 }
 function hover(e) {
   const [lx, ly, sx, sy] = toLevel(e), n = nearest(lx, ly);
-  const c = Math.floor(lx/16), r = Math.floor(ly/16);
-  let html = `${D.level}:${c},${r}`;
+  let html = `${D.level}:${Math.floor(lx/16)},${Math.floor(ly/16)}`;
   if (n && n.ev) html = `frame ${n.ev.k} · ${(n.ev.k/50).toFixed(1)} s<br>${esc(n.ev.text)}`;
   else if (n && n.obj) { const o = n.obj, k = done.get(o[0]+','+o[1]); html = `${D.level}:${o[0]},${o[1]} · ${esc(o[4])} (marker ${o[2]})<br>${k != null ? 'route got it at frame ' + k : 'route never touched it'}`; }
   tip.innerHTML = html; tip.hidden = false;
@@ -315,21 +360,19 @@ function hover(e) {
 function clickAt(e) {
   const [lx, ly] = toLevel(e), n = nearest(lx, ly);
   if (n && n.ev) { setFrame(n.ev.k); return; }
-  // otherwise jump to the frame where the frog came closest to the click
   let bk = 0, bd = Infinity;
   for (let k = 0; k <= END; k += 2) { const p = fp(k), d = (p[0]-lx)**2 + (p[1]-ly)**2; if (d < bd) { bd = d; bk = k; } }
   if (bd < 40*40) setFrame(bk);
 }
-const esc = s => String(s).replace(/[&<>]/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[ch]));
 
 // ---------- timeline ----------
 const scrub = document.getElementById('scrub'), readout = document.getElementById('readout'), playB = document.getElementById('play'), speedB = document.getElementById('speed');
-scrub.max = END;
 const joy = v => { let s = ''; if (v & 1) s += 'U'; if (v & 2) s += 'D'; if (v & 4) s += 'L'; if (v & 8) s += 'R'; if (v & 16) s += 'F'; return s || '–'; };
 function setFrame(k, fromPlay) {
+  if (!D) return;
   frame = Math.max(0, Math.min(END, k|0)); scrub.value = frame;
   const p = D.track[frame];
-  readout.innerHTML = `frame <b>${String(frame).padStart(5,' ')}</b> / ${END} · <b>${(frame/50).toFixed(1)}</b> s · input <b>${joy(D.inputs[frame])}</b> · ${D.level}:${Math.floor((p[0]+0x17)/16)},${Math.floor((p[1]-16)/16)}`;
+  readout.innerHTML = `frame <b>${frame}</b> / ${END} · <b>${(frame/50).toFixed(1)}</b> s · input <b>${joy(D.inputs[frame])}</b> · ${D.level}:${Math.floor((p[0]+0x17)/16)},${Math.floor((p[1]-16)/16)}`;
   if (follow || !fromPlay && !inView()) { const [x,y] = fp(frame); centerOn(x,y); }
   draw(); markRow();
 }
@@ -337,76 +380,148 @@ function inView() { const [x,y] = fp(frame), sx = x*scale+ox, sy = y*scale+oy; r
 scrub.oninput = () => setFrame(+scrub.value, true);
 const speeds = [1, 4, 16, 64]; let sp = 1, playing = false, last = 0, acc = 0;
 speedB.onclick = () => { sp = (sp + 1) % speeds.length; speedB.textContent = speeds[sp] + '×'; };
-playB.onclick = () => { playing = !playing; playB.textContent = playing ? '❚❚' : '▶'; playB.setAttribute('aria-label', playing ? 'Pause' : 'Play'); if (playing) { if (frame >= END) frame = 0; last = performance.now(); acc = 0; requestAnimationFrame(tick); } };
+function stop() { playing = false; playB.textContent = '▶'; playB.setAttribute('aria-label', 'Play'); }
+playB.onclick = () => { if (playing) return stop(); if (!END) return; playing = true; playB.textContent = '❚❚'; playB.setAttribute('aria-label', 'Pause'); if (frame >= END) frame = 0; last = performance.now(); acc = 0; requestAnimationFrame(tick); };
 function tick(t) {
   if (!playing) return;
   acc += (t - last) / 20 * speeds[sp]; last = t;
   const n = Math.floor(acc); acc -= n;
   if (n) setFrame(frame + n, !follow);
-  if (frame >= END) { playing = false; playB.textContent = '▶'; return; }
+  if (frame >= END) return stop();
   requestAnimationFrame(tick);
 }
 
-// ---------- legend, filters, events list, stats ----------
+// ---------- legend (layers persist across routes) ----------
 const legend = document.getElementById('legend');
-for (const [k, l] of Object.entries(LAYERS)) {
+for (const l of Object.values(LAYERS)) {
   const b = document.createElement('button'); b.className = 'chip'; b.setAttribute('aria-pressed', l.on);
   b.innerHTML = `<i style="background:${l.color}"></i>${l.name}`;
   b.onclick = () => { l.on = !l.on; b.setAttribute('aria-pressed', l.on); draw(); };
   legend.appendChild(b);
 }
-const filters = document.getElementById('filters'), body = document.getElementById('evbody');
+
+// ---------- events list, stats ----------
+const filters = document.getElementById('filters'), evbody = document.getElementById('evbody');
 const count = t => EV.filter(e => e.type === t).length;
-for (const [k, t] of Object.entries(EVT)) {
-  if (!count(k)) continue;
-  const b = document.createElement('button'); b.className = 'chip'; b.setAttribute('aria-pressed', t.on);
-  b.innerHTML = `<i style="background:${t.color}"></i>${t.name} <span style="color:var(--muted)">${count(k)}</span>`;
-  b.onclick = () => { t.on = !t.on; b.setAttribute('aria-pressed', t.on); rows(); draw(); };
-  filters.appendChild(b);
+function buildFilters() {
+  filters.innerHTML = '';
+  for (const [k, t] of Object.entries(EVT)) {
+    if (!count(k)) continue;
+    const b = document.createElement('button'); b.className = 'chip'; b.setAttribute('aria-pressed', t.on);
+    b.innerHTML = `<i style="background:${t.color}"></i>${t.name} <span style="color:var(--muted)">${count(k)}</span>`;
+    b.onclick = () => { t.on = !t.on; b.setAttribute('aria-pressed', t.on); rows(); draw(); };
+    filters.appendChild(b);
+  }
 }
-let rowEls = [];
+let rowEls = [], marked = null;
 function rows() {
-  body.innerHTML = ''; rowEls = [];
+  evbody.innerHTML = ''; rowEls = []; marked = null;
   for (const e of EV) {
     const t = EVT[e.type]; if (!t || !t.on) continue;
     const tr = document.createElement('tr');
     tr.innerHTML = `<td class="f">${e.k}</td><td class="f">${(e.k/50).toFixed(1)}s</td><td><span class="dot" style="background:${t.color}"></span>${esc(e.text)}</td>`;
-    tr.onclick = () => { setFrame(e.k); const [x,y] = [e.x, e.y]; if (scale < 1.5) scale = 2; centerOn(x, y); draw(); };
-    body.appendChild(tr); rowEls.push([e.k, tr]);
+    tr.onclick = () => { setFrame(e.k); if (scale < 1.5) scale = 2; centerOn(e.x, e.y); draw(); };
+    evbody.appendChild(tr); rowEls.push([e.k, tr]);
   }
+  if (!rowEls.length) evbody.innerHTML = '<tr><td class="empty">No events: this route has no frames to play.</td></tr>';
   markRow();
 }
-let marked = null;
 function markRow() {
   let cur = null; for (const [k, tr] of rowEls) { if (k <= frame) cur = tr; else break; }
   if (marked && marked !== cur) marked.classList.remove('now');
   if (cur) cur.classList.add('now'); marked = cur;
 }
+function buildStats(entry) {
+  const got = list => list.filter(o => done.has(o[0]+','+o[1])).length;
+  const by = n => D.objects.filter(o => o[4] === n), cat = c => D.objects.filter(o => o[3] === c);
+  const coinsObj = by('coin'), coinsTile = by('tile coin'), enemies = cat('enemy'), pickups = cat('pickup');
+  const S = [
+    ['Level ends at frame', D.end != null ? `${D.end} (${(D.end/50).toFixed(1)} s)` : 'never'],
+    ['Coins the exit needs', D.coins_needed],
+    ['Coins (objects)', `${got(coinsObj)} / ${coinsObj.length}`],
+    ['Coins (in tiles)', `${got(coinsTile)} / ${coinsTile.length}`],
+    ['Enemies defeated', `${got(enemies)} / ${enemies.length}`],
+    ['Collectibles taken', `${got(pickups)} / ${pickups.length}`],
+    ['Hearts lost', count('hurt')],
+    ['Lives lost', count('death')],
+    ['Take-offs', count('jump')],
+    ['Shots fired', count('fire')],
+    ['Secret walls opened', count('secret')],
+  ];
+  if (entry.bench) {
+    const b = entry.bench;
+    S.push(['Planning time', `${(b.wall_s/60).toFixed(1)} min`]);
+    if (b.ref_frames) S.push(['Reference route', `${b.ref_frames} frames`]);
+  }
+  document.getElementById('stats').innerHTML = S.map(([a,b]) => `<dt>${a}</dt><dd>${b}</dd>`).join('');
+  document.getElementById('notes').textContent = D.notes.join('\n');
+}
 
-const tot = cat => D.objects.filter(o => o[3] === cat);
-const got = list => list.filter(o => done.has(o[0]+','+o[1])).length;
-const coinsObj = D.objects.filter(o => o[4] === 'coin'), coinsTile = D.objects.filter(o => o[4] === 'tile coin');
-const enemies = tot('enemy'), pickups = tot('pickup');
-document.getElementById('lvl').textContent = D.level;
-document.getElementById('sub').textContent = `committed smart-planner route, replayed on the engine · seed ${D.seed} · ${END + 1} frames`;
-const S = [
-  ['Level ends at frame', D.end != null ? `${D.end} (${(D.end/50).toFixed(1)} s)` : 'never'],
-  ['Coins the exit needs', D.coins_needed],
-  ['Coins (objects)', `${got(coinsObj)} / ${coinsObj.length}`],
-  ['Coins (in tiles)', `${got(coinsTile)} / ${coinsTile.length}`],
-  ['Enemies defeated', `${got(enemies)} / ${enemies.length}`],
-  ['Collectibles taken', `${got(pickups)} / ${pickups.length}`],
-  ['Hearts lost', count('hurt')],
-  ['Lives lost', count('death')],
-  ['Take-offs', count('jump')],
-  ['Shots fired', count('fire')],
-  ['Secret walls opened', count('secret')],
-];
-document.getElementById('stats').innerHTML = S.map(([a,b]) => `<dt>${a}</dt><dd>${b}</dd>`).join('');
-document.getElementById('notes').textContent = D.notes.join('\n');
+// ---------- switcher ----------
+const GLYPH = { clean: '✓', faults: '!', failed: '✕', unknown: '?' };
+const WORD = { clean: 'Clean', faults: 'Faults', failed: 'Failed', unknown: 'No verdict' };
+const worlds = document.getElementById('worlds'), onlybad = document.getElementById('onlybad');
+const chips = new Map();
+{
+  const groups = new Map();
+  for (const e of M) { const g = e.group || 'Routes'; if (!groups.has(g)) groups.set(g, []); groups.get(g).push(e); }
+  for (const [g, list] of groups) {
+    const div = document.createElement('div'); div.className = 'world';
+    div.innerHTML = `<span>${esc(g)}</span>`;
+    for (const e of list) {
+      const b = document.createElement('button'); b.className = 'rt ' + e.status;
+      b.innerHTML = `<span class="g" aria-hidden="true">${GLYPH[e.status]}</span>${esc(e.label)}`;
+      b.title = `${WORD[e.status]}${e.faults.length ? ': ' + e.faults.join('; ') : ''}`;
+      b.onclick = () => select(e.id);
+      div.appendChild(b); chips.set(e.id, b);
+    }
+    worlds.appendChild(div);
+  }
+  const n = s => M.filter(e => e.status === s).length;
+  document.getElementById('count').innerHTML = `<span><b>${M.length}</b> routes</span><span style="color:var(--ok)"><b>${n('clean')}</b> clean</span><span style="color:var(--warn)"><b>${n('faults')}</b> with faults</span><span style="color:var(--bad)"><b>${n('failed')}</b> failed</span>`;
+  onlybad.onchange = () => { for (const e of M) chips.get(e.id).hidden = onlybad.checked && !(e.status === 'faults' || e.status === 'failed'); };
+  if (M.length < 2) document.getElementById('switch').hidden = true;
+}
+function verdict(e) {
+  const v = document.getElementById('verdict');
+  v.className = 'verdict ' + e.status;
+  v.innerHTML = `<span class="pill ${e.status}">${WORD[e.status]}</span>` +
+    (e.faults.length ? e.faults.map(f => `<span class="fault">${esc(f)}</span>`).join('') : '<span class="info">no faults: reaches the exit, no heart lost, within 25% of the reference route</span>') +
+    (e.info.length ? `<span class="info">${e.info.map(esc).join(' · ')}</span>` : '');
+}
 
+function loadData(e) {
+  if (window.ROUTE_DATA[e.id]) return Promise.resolve(window.ROUTE_DATA[e.id]);
+  return new Promise((ok, bad) => {
+    const s = document.createElement('script'); s.src = e.data;
+    s.onload = () => window.ROUTE_DATA[e.id] ? ok(window.ROUTE_DATA[e.id]) : bad(new Error('no data in ' + e.data));
+    s.onerror = () => bad(new Error('could not load ' + e.data));
+    document.head.appendChild(s);
+  });
+}
+let current = null;
+async function select(id) {
+  const e = M.find(x => x.id === id) || M[0];
+  current = e.id; stop();
+  for (const [k, b] of chips) b.setAttribute('aria-current', k === e.id);
+  try { if (location.hash.slice(1) !== e.id) history.replaceState(null, '', '#' + e.id); } catch (_) {}
+  verdict(e);
+  document.getElementById('lvl').textContent = e.label;
+  const ld = document.getElementById('loading'); ld.hidden = false; ld.textContent = 'loading ' + e.label + '…';
+  let data;
+  try { data = await loadData(e); } catch (err) { ld.textContent = err.message; return; }
+  if (current !== e.id) return;
+  ld.hidden = true;
+  D = data; W = D.cols * 16; H = D.rows * 16; END = D.track.length - 1;
+  scrub.max = END;
+  buildMap(); buildEvents(); buildFilters(); rows(); buildStats(e);
+  document.getElementById('sub').textContent = `${e.route_file || 'no route file'} · replayed on the engine · seed ${D.seed} · ${END + 1} frames` + (D.timing !== 'app' ? ` · timed for the original, so the replay may drift` : '');
+  resize(); fit();
+  // Open on the last frame, so the whole route and every event read at full strength at rest.
+  setFrame(END, true);
+}
 window.addEventListener('resize', resize);
-// Open on the last frame, so the whole route and every event read at full strength at rest.
-resize(); fit(); rows(); setFrame(END, true);
+const start = location.hash.slice(1);
+select(M.some(e => e.id === start) ? start : M[0].id);
 })();
 </script>

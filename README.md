@@ -176,6 +176,14 @@ cd engine && cargo run --release -p sf-plan -- W2-1 --out route.txt
 How it works, and the benchmark against the older tools (`sf-bench`), is in
 [`plans/smart-planner/`](plans/smart-planner/DESIGN.md).
 
+**Seeing a route:** `python3 tools/route_viz.py --planner` replays every route the planner has
+made on the engine and writes `build/route-viz/index.html`: each level's map with the frog's path,
+every coin, collectible and enemy, the events along the way (coins, kills, hits, jumps) and a
+timeline to play it back. A switcher on top lists the routes, marked failed (no route reaches the
+exit), faults (a heart lost, over +25% of the reference route, or a plan that used half its time
+budget) or clean. `python3 tools/route_viz.py my-route.txt` does the same for any app-timed route
+file. The page holds the disks' graphics, so it stays in `build/`.
+
 ## Tools
 
 | File | Purpose |
@@ -187,5 +195,6 @@ How it works, and the benchmark against the older tools (`sf-bench`), is in
 | `tools/render_levels.py` | render all levels to PNG (tileset + palette + tilemap) |
 | `tools/find_secrets.py` | find fake-wall secret passages, overlay + `SECRETS.md` |
 | `tools/export_annotated.py` | per-level PNG with a coordinate grid + level id (tile addressing) |
+| `tools/route_viz.py` | replay routes and draw them over the level map, a web page with a route switcher |
 | `tools/check_no_disk_data.py` | fail if any repo file carries a 128-byte run of disk data |
 | `tools/template_sweep.py` | every object template a level's map can spawn, against those the engine ports |
