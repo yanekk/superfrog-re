@@ -30,7 +30,9 @@ a task to fix it (D5). The worker asks with the table and each miss's cause in f
 
 - [ ] RESULTS.md verdict section lists M1–M6, M8, M9 and C1, C3, C4 with the measured value and
       met/missed, says the counted new-planner results were guided and the baseline unaided (D21) and
-      only T02's six-level sample (D27),
+      only T02's six-level sample (D27), in effect the best of two old tools since `explore` never started there
+      (stuck at frame 0), and that a level all failed shows the quickest failure's time, left as recorded
+      (owner, 2026-10-25),
       and shows T14's unaided set-A results beside them as recorded, not gated.
 - [ ] Every miss has the owner's recorded decision (dated FINDINGS row).
 - [ ] Old tools deleted only if M1 holds or the owner accepted; the test block is green after deletion
