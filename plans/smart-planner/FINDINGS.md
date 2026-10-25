@@ -11,6 +11,8 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-25 | 📌 | T28 compass trial, unguided, seeds 1–3, 30 min (`bench/compass-trial.md`): straight, map, walk each completed the same 5 of 18 (W5-3 seeds 2–3, W6-1). Engine frames there 65.2, 61.5, 40.2 M; walk fewer on 4 of 5. Walk kept: `sf-plan`'s default. |
+| 2026-10-25 | 📌 | T28: none completed W2-3, W3-4, W6-2, W6-4. Map runs as straight where its map has no path. W6-4's exit is gated: walk falls back to straight until its switch. DESIGN §2.2 still names straight the default. |
 | 2026-10-24 | 📌 | T27 set A unaided, seed 1, 0a66ec7–fc438f9: 9 of 24 done (W1-1, W1-2, W2-1, W2-4, W3-1, W4-3, W5-1, W5-2, W5-4; 6–25 min). No first exit: W2-3, W5-3, W6-2, W6-4. |
 | 2026-10-24 | 🐞 | T27 unaided: W1-4, W3-2, W3-3, W3-4, W4-2, W4-4 first exit at 18–28 min, then budget spent confirming; W1-3, W4-1 dead end (T33). Their "cells archived 1" is the last rest-of-level plan. |
 | 2026-10-24 | 🐞 | T27 unaided, not faithful (engine): W2-2 check 4 only, `frog_x` 3 px off from frame 334 (T32's kind); W6-1 `number_started` differs at 6 651. W6-3 route 18 s past budget, unverified. |
@@ -41,8 +43,7 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 | 2026-10-23 | 📌 | T14 set A guided, load 8–27, bbcb4dd–2bcd9f4, frames (ref): W1-1 3527 (4474), W1-2 4659 (5183), W1-3 5745 (7729), W2-1 2269 (2524), W2-2 4922 (4739), W3-1 4558 (5492). Also done: W3-3, W4-1, W4-3, W5-1, W5-2, W5-4. Nine failed; W6-2–W6-4 not run. |
 | 2026-10-23 | 🔄 | Owner, T14: the lockstep parts past the faithful check's lag bar, looked up from the level's completion case (`lag-limit`, else 100), never passed by `sf-bench` (DESIGN §2.6). W5-3's route exited but failed `verify`: 101 mid-pass frames from 5 310. |
 | 2026-10-22 | 🔄 | Owner, T14: guide pace on by default (DESIGN §2.11). Engine-only W1-2, W2-1, W1-3, seeds 1–3, frames in all: none 45 850, against the archive's fastest 42 117, against the route's time 37 661 but W1-4 no exit in 30 min. |
-| 2026-10-22 | 📌 | T23, load ~24: W1-4 original mode guided by `complete-w1-4` passed §4.1 in 629 s, 2 repairs, share 0.126, 1 heart, 10 062 frames; review rerun 388 s, same route, share 0.098. Engine only, guided: seeds 1, 2 exit in 237, 413 s; seed 3 none in 10 min. |
-| 2026-10-22 | 📌 | T23 regressions after the guide change: W6-2 guided engine only 123 s, 8 982 frames (T09: 109–141 s); W5-2 unguided original mode 284 s, 7 repairs, 1 heart (unguided runs build no `GuideIndex`). |
+| 2026-10-22 | 📌 | T23, load ~24: W1-4 original mode guided by `complete-w1-4` passed §4.1 in 629 s (review 388 s), 2 repairs, 10 062 frames; engine only seeds 1, 2 exit 237, 413 s. Regressions: W6-2 guided 123 s, W5-2 unguided 284 s. |
 | 2026-10-22 | 🔄 | Owner, T23: a guide point with coins known matches its band and every lower one (§2.11 said its band). W1-4 took coins out of route order; its guide index froze at p712 of 921 and the exit pull found 158,45. |
 | 2026-10-22 | 📌 | T12, worker-driven: the real app (`1: start-level`, `seed N N`, key i at step i+1) keeps the engine's state hashes to W1-1's exit; a wrong seed parts at frame 1. `sf-bench --set C` W1-1 guided: completed, 2 936 frames (3.7 min; review, load 25: 9.0 min). |
 | 2026-10-22 | 🐞 | T11: `sf-bench` `judge` marks any wall-clock past the budget `over-budget`, the new planner included; `plan_original` runs its last lockstep past the deadline (W1-1 at 1 min overran 33 s). T14/T15 should check 30-min runs for this. |

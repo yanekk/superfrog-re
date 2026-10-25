@@ -3,7 +3,7 @@
 //! ```text
 //! sf-plan <level> [--snap leg.snap] [--guide route-or-waypoints.txt] [--follow old.txt] [--seed N]
 //!         [--out route.txt] [--budget-min 30] [--frames 30000] [--max-mem-gb 4] [--threads N]
-//!         [--compass straight|map|walk] [--shorten-share 0.2] [--no-cache] [--engine-only | --app]
+//!         [--compass walk|straight|map] [--shorten-share 0.2] [--no-cache] [--engine-only | --app]
 //!         [--no-pace] [--lag-limit N]
 //!         [--via c,r]... [--avoid c0,r0,c1,r1]...
 //! ```
@@ -43,7 +43,7 @@ use sf_plan::trace::{script_inputs, timing, trace_original};
 
 const USAGE: &str = "usage: sf-plan <level> [--snap leg.snap] [--guide route-or-waypoints.txt] \
 [--follow old.txt] [--seed N] [--out route.txt] [--budget-min 30] [--frames 30000] [--max-mem-gb 4] \
-[--threads N] [--compass straight|map|walk] [--shorten-share 0.2] [--no-cache] [--engine-only | --app] \
+[--threads N] [--compass walk|straight|map] [--shorten-share 0.2] [--no-cache] [--engine-only | --app] \
 [--no-pace] [--lag-limit N] \
 [--via c,r]... [--avoid c0,r0,c1,r1]...";
 
@@ -121,7 +121,8 @@ fn parse_args(argv: &[String]) -> Result<Args, String> {
         frames: 30_000,
         max_mem_gb: 4.0,
         threads: std::thread::available_parallelism().map_or(4, |n| n.get()),
-        compass: CompassArg::Straight,
+        // The walk compass, kept by T28's trial: as many completions, fewer engine frames.
+        compass: CompassArg::Walk,
         shorten_share: sf_plan::run::SHORTEN_SHARE,
         no_cache: false,
         engine_only: false,

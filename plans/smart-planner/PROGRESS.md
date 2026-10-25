@@ -19,8 +19,8 @@ allowed everywhere, map a compass; T13 and T20 dropped, T22 route-shorten added.
 
 **Plan amended:** 2026-10-24 — D25: a walk compass (wall-aware fill) joins T28's trial (owner).
 **Status:** T00–T07, T19, T21 done; core rewritten by the amendment, not started.
-**Last updated:** 2026-10-22
-**Next `pir-work` will:** T08 search (the explorer), from `spike-explore/`.
+**Last updated:** 2026-10-25
+**Next `pir-work` will:** review T28 (compass-trial).
 
 ## Tasks
 
@@ -55,7 +55,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T25 | tuning-set-a | T14, T24; blocks T15 | ✅ | |
 | T26 | tuning-set-b | T14, T25; blocks T15 | ✅ | |
 | T27 | tuning-unaided | T14, T26; blocks T15 | ✅ | |
-| T28 | compass-trial | T14, T27; blocks T15 | ⬜ | |
+| T28 | compass-trial | T14, T27; blocks T15 | 🔍 | `core::walk` fill compass, `--compass walk`, 7 tests (`tests/walk.rs`, one ignored M8 route, passed). Trial 54 runs, `bench/compass-trial.md`: 5 of 18 each; walk 40.2 M frames against straight 65.2 M. Walk now `sf-plan`'s CLI default; `Options::default` stays straight. Deviation: full table in the bench file, the FINDINGS row summarises. |
 | T29 | engine-sound-ramp | T25; blocks T15 | ✅ | |
 | T30 | lag-repair | T25; blocks T15 | ✅ | |
 | T31 | leg-start-sync | T26; blocks T17 | ✅ | |
