@@ -42,6 +42,10 @@ opt-level = 2
 [profile.dev.package.sf-plan]
 opt-level = 2
 
+# The route viewer's tests replay whole routes, scanning the 300×84 map every frame.
+[profile.dev.package.sf-routeview]
+opt-level = 2
+
 [profile.dev.package.png]
 opt-level = 2
 

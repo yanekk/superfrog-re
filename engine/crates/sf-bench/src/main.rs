@@ -3,7 +3,7 @@
 //! ```text
 //! sf-bench --set A|B|C --planner new|plan_exit|plan_exit_w6|explore|best-old
 //!          [--levels W1-1,W1-4] [--jobs N] [--threads N] [--budget-min 30] [--seed 1] [--follow-standalone] [--unguided]
-//!          [--results plans/smart-planner/bench/results.jsonl] [--table plans/smart-planner/bench/RESULTS.md]
+//!          [--results plans/smart-planner/bench/results.jsonl] [--table plans/smart-planner/bench/RESULTS.md] [--no-view]
 //! sf-bench --table-only [--results …] [--table …]     # re-render RESULTS.md from results.jsonl
 //! ```
 //!
@@ -11,7 +11,9 @@
 //! ends; a rerun skips the levels recorded for the same planner, set and commit, guided or not.
 //! The new planner is guided by each level's committed route (DESIGN §4.2, D21); `--unguided`
 //! runs it with no guide, recorded beside the guided result. Routes and each
-//! planner's stderr go to `routes/` beside the results file.
+//! planner's stderr go to `routes/` beside the results file. A guided set-C run of the new planner
+//! ends by rebuilding the route page, `build/route-viz/index.html` (`sf-routeview --planner`;
+//! `--no-view` skips it).
 
 use std::path::PathBuf;
 use std::time::Duration;
@@ -21,7 +23,7 @@ use sf_bench::run::{Options, bench};
 fn usage() -> ! {
     eprintln!(
         "sf-bench --set A|B|C --planner new|plan_exit|plan_exit_w6|explore|best-old [--levels W1-1,W1-4] \
-         [--jobs N] [--threads N] [--budget-min 30] [--seed 1] [--follow-standalone] [--unguided] [--results FILE] [--table FILE]\n\
+         [--jobs N] [--threads N] [--budget-min 30] [--seed 1] [--follow-standalone] [--unguided] [--results FILE] [--table FILE] [--no-view]\n\
          sf-bench --table-only [--results FILE] [--table FILE]"
     );
     std::process::exit(2)
@@ -45,6 +47,7 @@ fn main() {
         table: bench_dir.join("RESULTS.md"),
     };
     let mut table_only = false;
+    let mut view = true;
     let mut it = std::env::args().skip(1);
     while let Some(k) = it.next() {
         let mut val = || it.next().unwrap_or_else(|| usage());
@@ -65,6 +68,7 @@ fn main() {
             "--results" => o.results = PathBuf::from(val()),
             "--table" => o.table = PathBuf::from(val()),
             "--table-only" => table_only = true,
+            "--no-view" => view = false,
             _ => usage(),
         }
     }
@@ -81,5 +85,11 @@ fn main() {
     if let Err(e) = bench(&o) {
         eprintln!("sf-bench: {e}");
         std::process::exit(1);
+    }
+    if view && sf_bench::view::wanted(&o) {
+        match sf_bench::view::run(&o.results) {
+            Ok(page) => eprintln!("sf-bench: routes drawn: open {}", page.display()),
+            Err(e) => eprintln!("sf-bench: no route page ({e}); the results stand"),
+        }
     }
 }
