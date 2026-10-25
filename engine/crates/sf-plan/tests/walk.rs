@@ -10,7 +10,8 @@ use std::time::Duration;
 
 use common::*;
 use sf_plan::core::facts::{COLS, ROWS};
-use sf_plan::core::walk::{SEALED, WalkCompass, fill};
+use sf_plan::core::walk::{self, SEALED, WalkCompass, fill};
+use sf_plan::core::archive;
 use sf_plan::core::*;
 use sf_plan::run::{RunOptions, plan_engine, run_round};
 
@@ -191,4 +192,30 @@ fn walk_same_route_any_threads() {
     let b = plan(1);
     assert_eq!(a.inputs, b.inputs);
     assert_eq!((a.engine_frames, a.rounds), (b.engine_frames, b.rounds));
+}
+
+/// Each entry the walk explorer keeps carries the walking coin distance of its own state: replay
+/// its inputs from the start and the compass gives the same number (`merge` fills it in, the burst
+/// cannot).
+#[test]
+fn walk_entries_carry_their_walking_coin_distance() {
+    let (g, fa) = at_start(id("W1-1"));
+    let mut ex = Explorer::new(g, fa, walk());
+    for _ in 0..6 {
+        if let Progress::Exit(_) = run_round(&mut ex, 2) {
+            panic!("W1-1 exited within 6 rounds");
+        }
+    }
+    let (start, fa) = at_start(id("W1-1"));
+    let mut w = WalkCompass::new(start.state(), &fa);
+    let n = ex.archive().entries().len();
+    assert!(n > 20, "the search went somewhere: {n} cells");
+    for i in (0..n).step_by((n / 40).max(1)) {
+        let e = &ex.archive().entries()[i];
+        let mut g = start.clone();
+        archive::replay(&mut g, &ex.archive().entry_inputs(i as u32));
+        let st = g.state();
+        let want = w.coin_dist(frog_cell(st), &walk::live_coins(&fa, st), e.key.switches);
+        assert_eq!(e.coin_dist, want, "entry {i} at {:?}", e.key);
+    }
 }
