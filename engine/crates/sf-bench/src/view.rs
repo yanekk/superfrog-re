@@ -21,6 +21,9 @@ pub fn wanted(o: &Options) -> bool {
 /// The viewer's command for the results file `results` (its routes are in `routes/` beside it).
 pub fn command(results: &Path) -> Command {
     let mut c = Command::new(crate::adapters::binary(TARGET));
+    // The child runs in engine/, so a `--results` given relative to sf-bench's own directory is
+    // made absolute first, or the viewer would read another (likely missing) file.
+    let results = std::path::absolute(results).unwrap_or_else(|_| results.to_path_buf());
     c.arg("--planner").arg("--results").arg(results).current_dir(crate::engine_dir());
     c
 }
@@ -72,5 +75,9 @@ mod tests {
         let args: Vec<String> = c.get_args().map(|a| a.to_string_lossy().into()).collect();
         assert_eq!(args, ["--planner", "--results", "/x/results.jsonl"]);
         assert!(c.get_program().to_string_lossy().ends_with("release/sf-routeview"));
+        // A relative results file is the caller's, not engine/'s.
+        let c = command(Path::new("r.jsonl"));
+        let arg = c.get_args().nth(2).unwrap().to_owned();
+        assert_eq!(Path::new(&arg), std::env::current_dir().unwrap().join("r.jsonl"));
     }
 }
