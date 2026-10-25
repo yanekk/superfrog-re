@@ -27,7 +27,7 @@ Run `sh plans/amiga-toolkit-prep/measure.sh` from the repo root for M2–M5. M1 
 | M1 | Does the engine still play exactly as the original after the step? | `cd engine && cargo test -q --workspace`; `cargo run -q --release -p sf-conform -- all` (~2 h); sf-e2e `whole_game.rs` | all green, no tolerance changed |
 | M2 | How many copies of each Amiga piece are left? | `measure.sh` "M2" rows | see the targets table below |
 | M3 | How many places still read the original's data tables by address through the front-end and sound readers? | `measure.sh` "M3" | lower after draft 1; 0 only with its full scope |
-| M4 | Which crates could move into a toolkit today, depending on nothing of Superfrog's and naming nothing of it in code? | `measure.sh` "M4/M5" (`PASS` lines) | ≥ 3 |
+| M4 | Which crates could move into a toolkit today, depending on nothing of Superfrog's (toolkit crates may depend on each other) and naming nothing of it in code? | `measure.sh` "M4/M5" (`PASS` lines) | ≥ 3 |
 | M5 | How many lines sit in those crates? | the `PASS` lines' counts | grows with each step |
 
 Targets for the M2 rows:
@@ -37,8 +37,8 @@ Targets for the M2 rows:
 | kbd_poll definitions | 1 | draft 3 |
 | key-byte encode sites | 1 | draft 3 |
 | blitter memory-effect implementations | 1 | draft 4 |
-| BLTSIZE decodes | 1 | draft 4 |
-| chip-memory containers | 1, plus the story's thin wrapper if it stays named | draft 4 |
+| BLTSIZE decodes | 3: the helper plus `story/bobs.rs`'s two ported lines, which compose a size rather than decode one | draft 4 |
+| chip-memory containers | 2: one `AmigaMemory`, and `StoryMem` as a newtype over it | draft 4 |
 | `is_paula` definitions | 1 | draft 4 |
 | frame/line length constants | ≤ 3, all in the clock crate; the probes and tests import them | draft 2 |
 | beam-position types and functions | each hit left is a client of one `BeamPos`; checked by reading the hits | draft 2 |
@@ -53,8 +53,8 @@ Targets for the M2 rows:
 
 ## Log
 
-Newest column on the right. A step's column is filled by the session that finishes it, on `main`
-after the merge.
+Newest column on the right. A step's column is filled by its plan's last task (or its single run),
+on its branch, with the values measured on that branch; they are the values that merge.
 
 | Question | Baseline 2026-10-23 (`e196a2e`) |
 |---|---|

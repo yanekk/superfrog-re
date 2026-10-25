@@ -19,10 +19,11 @@ echo "hunk-0 loads in sf-core:       $(rg -n 'loaded_hunk0\(game\)|relocate\(g, 
 echo "## M3 address reads of hunk 0 through front/sound readers"
 echo "h0_* reads:                    $(rg -o '\.h0_(b|w|l|bytes|byte|word)\(' $core | wc -l | tr -d ' ')"
 
-echo "## M4/M5 toolkit-bound crates (no sf-* dependency, no Superfrog name outside comments)"
+# Toolkit crates may depend on each other: sf-paula and any amiga-* crate.
+echo "## M4/M5 toolkit-bound crates (no non-toolkit sf-* dependency, no Superfrog name outside comments)"
 for dir in engine/crates/*/; do
   c=$(basename "$dir")
-  deps=$(rg -c '^\s*sf-[a-z-]+\s*=|^\s*sf-[a-z-]+\.workspace' "$dir/Cargo.toml" 2>/dev/null || echo 0)
+  deps=$(rg '^\s*sf-[a-z-]+\s*=|^\s*sf-[a-z-]+\.workspace' "$dir/Cargo.toml" 2>/dev/null | rg -v -c '^\s*sf-paula\b' || echo 0)
   names=$(rg -i -n 'superfrog|sf_core|sf_assets' "$dir/src" 2>/dev/null | rg -v '^\S+:\d+:\s*//' | wc -l | tr -d ' ')
   lines=$(find "$dir/src" -name '*.rs' -exec cat {} + 2>/dev/null | wc -l | tr -d ' ')
   if [ "$deps" = "0" ] && [ "$names" = "0" ]; then

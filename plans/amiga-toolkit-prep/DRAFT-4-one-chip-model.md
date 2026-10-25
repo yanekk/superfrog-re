@@ -1,79 +1,100 @@
 # Draft 4 — one copy of each chip model
 
-**Status:** draft, 2026-10-23; owner decisions recorded 2026-10-24. Not reviewed. Input for `pir plan` (2 tasks).
+**Status:** scope locked 2026-10-25 (rewritten after planner `plan-92b9` asked what the brief
+meant; its brief arrived cut off at "Last task's Done when:"). Owner decisions 2026-10-24. Input for
+`pir plan`, slug `amiga-chips`, exactly 2 tasks. This file supersedes the prompt text.
 Source: `docs/architecture/display-hardware.md`, `memory-model.md`, `story-and-ending.md`,
 `slot-and-bonus.md`; the native order's list of repeated ports.
 
-## The change
+## Goal
 
-What a blit writes is implemented three times:
+One implementation of each Amiga chip piece that exists more than once today, then those pieces,
+plus the copper, in a crate `engine/crates/amiga-chips` that names nothing of Superfrog. Pure
+refactor under the faithful bar (rust-engine DESIGN §2.1): no behaviour change, no tolerance
+touched, every check green.
 
-- `front/blit.rs` `Blit::run<M: BlitMem>` + `logic`: general (both directions, shifts, first/last
-  masks, any minterm, returns pointers); serves `State` and `StoryMem`.
-- `level/objects.rs` `Blit`/`blit` (l.606, 629): ascending only, over the level `Bus` (`WriteLog`,
-  `span`), own minterm loop, masks pointers `& 0x7fffe` after every modulo where `Blit::run` masks
-  once.
-- Hand-written A→D copies: `level/scroll.rs:340` `blit`, `level/panel.rs:41` `blit_panel` (no
-  size-0 = 1024/64 rule, no masking).
+## In scope (the complete list)
 
-Also duplicated: `AmigaMemory` twice (`sf-core/src/layout.rs:754`, `sf-oracle/src/amiga.rs:119`,
-bridged by `sf-conform/src/sync.rs:228` `core_memory`) plus `StoryMem` (`front/story/mem.rs:11`) as a
-third chip+slow container; `is_paula` twice (`front/mod.rs:1760`, `front/story/mod.rs:88`,
-identical); the BLTSIZE decode 9 times in 5 files.
+| # | Today | After |
+|---|---|---|
+| 1 | Blitter memory effect three ways: `front/blit.rs` `Blit::run<M: BlitMem>` + `logic`; `level/objects.rs` `Blit`/`blit` (l.606, 629); hand-written A→D copies `level/scroll.rs:340` `blit` and `level/panel.rs:41` `blit_panel` | `Blit::run` only. `impl BlitMem for mem::Bus` writes through `Bus::set_w`, so `WriteLog` and `span` keep working. `objects::Blit` and the three functions are deleted; their callers build a `Blit` and call `run` |
+| 2 | BLTSIZE decoded by hand in `scroll.rs` (2), `panel.rs`, `objects.rs` (2), `front/blit.rs` (2) | one `bltsize_words(size) -> (h, w)` with the size-0 rule (1024 rows, 64 words) |
+| 3 | `is_paula` twice, identical: `front/mod.rs:1760`, `front/story/mod.rs:88` | one |
+| 4 | Chip memory three times: `AmigaMemory` in `sf-core/src/layout.rs:754` (`Ram::byte` 0 off the map), `AmigaMemory` in `sf-oracle/src/amiga.rs:119` (`Option`, `impl sf_paula::ChipMemory`), `StoryMem` in `front/story/mem.rs:11` | one `AmigaMemory` with the `Ram` trait, offering both readers (0 off the map, and `Option`) and `impl sf_paula::ChipMemory`. sf-oracle uses it; `sf-conform/src/sync.rs:228` `core_memory`'s conversion goes. `StoryMem` stays a named newtype over it, keeping its serde form and 24-bit mask |
+| 5 | (T2) the above live in sf-core | moved to `amiga-chips`: `Blit` (with `cycles` and `word_times` unchanged), `logic`, `BlitMem`, `bltsize_words`, `Ram`, `AmigaMemory`, `SLOW_BASE` and the chip/slow constants they need, `is_paula`, and all of `render/copper.rs` |
 
-Change: (a) `BlitMem` for `mem::Bus`, writes through `Bus::set_w` so `WriteLog` and `span` keep
-working, and route `objects::blit`, `scroll::blit`, `blit_panel` through `Blit::run`; (b) one
-`bltsize_words`; (c) one `is_paula`; (d) one `AmigaMemory` with the `Ram` trait in a low crate,
-`StoryMem` a wrapper over it. T1 does (a)–(d) inside sf-core; T2 lifts `Blit`, `logic`, `BlitMem`,
-`Ram`, `AmigaMemory`, `is_paula` and `render/copper.rs` (already self-contained) into an
-`amiga-chips` crate on the `sf-paula` pattern, depending on nothing of Superfrog, and adds it to
-`PURE`.
+## Out of scope (do not touch)
 
-## Decisions
+- **Blit timing.** `Blit::cycles`, `word_times`, the slot's `cycles()*2/3` + `BLITTER_LOST`,
+  `Clock::blit_cycles`, `blitter_slot`, `sim.rs`'s SlowBlitter: not merged, not changed. `cycles`
+  and `word_times` move with `Blit` byte-for-byte because they are its methods and functions; the
+  one-clock plan merges them.
+- The cycle each blit word is written on, and the level copy blits' per-plane beam charge between
+  the two copies (`scroll.rs:363–366`): same order after the merge.
+- `story/bobs.rs:699, 721`: ported 68k arithmetic that composes a BLTSIZE value; not a decode.
+- `State` and the level `Bus` as by-variable memory; `LAYOUT`; transplant and probe.
+- `sf-paula` (only gains a dependent), its `PaulaWrite` emitters, `sf-disk`, the CIA keyboard
+  (draft 3), sprites and bobs (`front/sprite.rs`, `level/bobs.rs`).
+- Game-rule duplicates (darts and swings, the slot's second lamp drawer).
+- Chapter bodies in `docs/architecture/` are frozen; only front matter `owns` changes (T2).
 
-- 2026-10-24: blit timing stays out. The five timing models (`Blit::cycles`, the slot's `cycles()*2/3` +
-  `BLITTER_LOST`, `word_times`, `Clock::blit_cycles`, `sim.rs`'s SlowBlitter) differ on purpose and
-  go to draft 2, which runs after this one so it has one blit to time.
-- 2026-10-24: T2 moves the chip models into an `amiga-chips` crate. Reason: it is what makes the chips
-  liftable and measurable (north-star M4).
+## Crate rules
 
-## Not changing
+- `amiga-chips` depends on nothing in the workspace except `sf-paula` (a toolkit crate; needed for
+  `ChipMemory`), plus `serde` as sf-paula does. No Superfrog name in its code.
+- Added to `PURE` in `engine/crates/sf-conform/tests/purity.rs`.
+- `impl BlitMem for State`, `for StoryMem` and `for mem::Bus` stay in sf-core (the trait is
+  foreign, the types are local).
+- Each moved file's old path stays as a one-line `pub use amiga_chips::…` re-export
+  (`front/blit.rs`, `render/copper.rs`) so the frozen chapters' cited paths still exist
+  (`tools/test_architecture_docs.py` checks them). A file left with real code keeps it.
 
-The cycle each blit word is written on; the level copy blits' per-plane beam charge between the
-two copies (`scroll.rs:363–366`), whose order must be kept; the level `Bus` and `State` as
-by-variable memory; the copper (already one implementation); `sf-paula` and its `PaulaWrite`
-emitters; `sf-disk`. Game-rule duplicates (darts and swings, the slot's second lamp drawer) are not
-chip models and stay for a subsystem plan.
+## Tasks
 
-## Done when
+**T1 — one copy of each, inside sf-core** (rows 1–4). First commit: a unit test that runs a level
+blit whose pointer passes `$7fffe` through a modulo, through both the old `objects::blit` and
+`Blit::run`, to learn whether masking per modulo (`objects.rs`) versus once at the start
+(`Blit::run`) differs. If it differs, `Blit::run` keeps the level's per-modulo behaviour for `Bus`
+callers, with a comment saying why. Then the merges.
 
-- One blitter memory-effect implementation; one `bltsize_words`; one `is_paula`; one
-  `AmigaMemory` (north-star M2 baselines: 4 blitter implementations, 9 BLTSIZE decodes, 3 chip-memory containers, 2 `is_paula`).
-- `amiga-chips` builds with no `sf-*` dependency and no Superfrog name in its source; it is in
-  `PURE`.
-- Checks below green. `docs/architecture/README.md` gets a line under step 4's repeated ports.
+Done when:
+- `sh plans/amiga-toolkit-prep/measure.sh` prints: blitter memory-effect implementations 1, BLTSIZE
+  decodes 3 (the helper and the two story ports), is_paula definitions 1, chip-memory containers 2
+  (`AmigaMemory`, `StoryMem` newtype).
+- The test line and the sf-conform runs below are green.
 
-## Tests
+**T2 — the `amiga-chips` crate** (row 5), depends on T1.
 
-- pir's test line runs `cd engine && cargo test -q --workspace` (owner, 2026-10-24)
-  (`minterms`, `a_blit_copies_a_shifted_word_run_with_its_masks`, `level_routines.rs`'s
+Done when:
+- The crate exists under the rules above; `measure.sh` lists `PASS amiga-chips` beside
+  `PASS sf-paula`, and the T1 rows are unchanged.
+- `docs/architecture/display-hardware.md`'s `owns` gains `"engine/crates/amiga-chips/"`;
+  `memory-model.md`'s gains `"engine/crates/amiga-chips/src/<memory file>"` (longest prefix wins);
+  `python3 tools/test_architecture_docs.py` passes.
+- `docs/architecture/README.md` gets one line under "Recommended order", step 4's repeated ports:
+  the blitter and chip memory are merged and live in `amiga-chips`.
+- `plans/amiga-toolkit-prep/NORTH-STAR.md`'s log gets a column "amiga-chips" with this branch's
+  `measure.sh` values and M1 as this task's runs; J1 and J2 left "not asked" for the owner.
+
+## Tests (both tasks)
+
+- pir's test line: the Python suite and `cd engine && cargo test -q --workspace` (`minterms`,
+  `a_blit_copies_a_shifted_word_run_with_its_masks`, `level_routines.rs`'s
   `bob_draw_matches_the_original`, `copper_irq_blits_match_the_original`,
   `tile_anim_draw_matches_the_original`, `buffer_flip_matches_the_original`, `story_blits.rs`,
-  `story_draws.rs`, `front.rs` slot-attract, `render_vs_oracle.rs`, `beam.rs`, purity);
-  the builder also runs `cargo run -q --release -p sf-conform -- run conform/cases/render-*.toml
-  conform/cases/slot-attract.toml conform/cases/front-*.toml` and
+  `story_draws.rs`, `front.rs` slot-attract, `render_vs_oracle.rs`, `beam.rs`, `purity.rs`).
+- The builder also runs, from `engine/`: `cargo run -q --release -p sf-conform -- run
+  conform/cases/render-*.toml conform/cases/slot-attract.toml conform/cases/front-*.toml` and
   `cargo test -p sf-conform -- --ignored story` (80 s–5 min each).
-- New first, before the merge: a unit test wrapping a pointer past `$7fffe` through a modulo, to
-  learn whether the per-modulo masking difference matters.
 
 ## Risks
 
-- The masking difference: if a level blit ever wraps, the merged blitter must keep the level's
-  behaviour for it. The new test decides; a divergence there is a quirk to keep, with a comment.
+- The masking difference (T1's first test decides it).
+- Anything that changes the order of `Bus` writes changes `WriteLog`, which `level_as_drawn` reads:
+  `render_*` cases catch it.
 
 ## Toolkit payoff
 
-Generic after the merge: `Blit`, `logic`, `BlitMem`, `Ram`, `AmigaMemory`, `is_paula`, the copper;
-later `sim.rs`'s SlowBlitter and fixed-slot machinery (depends only on copper and
-`savestate::static_str`). Superfrog-only: callers and measured constants (`BLITTER_LOST`,
-`LAMP_CYCLES`, 1.23/slot). Moves north-star M2, M5.
+After T2, `amiga-chips` holds the blitter, chip memory, the Paula register filter and the copper.
+Superfrog-only, staying in sf-core: the callers, the `BlitMem` impls and the measured constants
+(`BLITTER_LOST`, `LAMP_CYCLES`, 1.23/slot). Moves north-star M2 and M4.
