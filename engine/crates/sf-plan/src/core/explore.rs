@@ -49,6 +49,10 @@ const KEEP: f64 = 0.6;
 const EXIT_TAIL: u32 = 40;
 /// Every this many frames a `seed_inputs` replay offers its state.
 const SEED_EVERY: usize = 8;
+/// Ordered guide: how many points ahead one state may move the index (`Explorer::advance`). A
+/// hold is up to 32 frames, and W6-4's frog crosses ~1.5 cells a frame; with a guide spaced about
+/// 2 cells this lets one hold move ~60 cells on, still short of skipping a loop like W1-1's tunnel.
+const ORDERED_LOOKAHEAD: usize = 32;
 /// The map compass's frames per cell, to put its distance in the pull's units (cells): the frog
 /// runs about 2 pixels a frame, a 16-pixel cell in 8.
 const FRAMES_PER_CELL: f64 = 8.0;
@@ -107,6 +111,11 @@ pub struct Options {
     /// The guide was sampled from a played route (false for waypoints): a cell slower than the
     /// fastest as far along it then weighs less (`guide::Pace`, T14).
     pub guide_pace: bool,
+    /// `--guide-ordered` (experiment/ghost-guide): a cell's guide index is inherited along its
+    /// trajectory and advances only through the next points in order (`Explorer::advance`), not
+    /// the furthest point whose region the cell is in. A player's path that walks back over
+    /// itself (W1-1's tunnel) can then not be skipped by matching its later, nearer points.
+    pub guide_ordered: bool,
     /// `--follow`'s inputs (§2.7): replayed from the start, every 8th state archived until death.
     /// Joystick only: keys held in them are not replayed.
     pub seed_inputs: Option<Vec<FrameInput>>,
@@ -127,6 +136,7 @@ impl Default for Options {
             compass: Compass::Straight,
             guide: Vec::new(),
             guide_pace: false,
+            guide_ordered: false,
             seed_inputs: None,
             goal: Goal::Exit,
             via: Vec::new(),
@@ -191,6 +201,8 @@ struct Held {
     /// coins live, so `merge` (which may fill) gives its coin distance.
     walk: Option<(Cell, Vec<u64>)>,
     game: Option<Game>,
+    /// Ordered guide: the trajectory's guide index after this hold.
+    gidx: u32,
 }
 
 struct Burst {
@@ -448,7 +460,8 @@ impl Explorer {
         };
         let guide = (!opt.guide.is_empty()).then(|| GuideIndex::new(&opt.guide));
         let key = cell_key(&facts, start.state(), 0);
-        let archive = Archive::new(&start, key, opt.max_mem_bytes / 4 * 3);
+        let mut archive = Archive::new(&start, key, opt.max_mem_bytes / 4 * 3);
+        archive.ordered = opt.guide_ordered && guide.is_some();
         let seed = opt.seed;
         let mut ex = Explorer {
             start_hearts: start.state().w(HEARTS),
@@ -473,11 +486,41 @@ impl Explorer {
         ex
     }
 
+    /// Ordered guide: index `p` moved on by a state at `key`, through each next point whose region
+    /// the key is in. Up to `ORDERED_LOOKAHEAD` points ahead may be jumped to, since a fast frog
+    /// (W6-4: 6 cells a hold) can pass a point's region between two holds; further than that
+    /// would be skipping the path. Without the ordered guide, 0.
+    fn advance(&self, mut p: u32, key: &CellKey) -> u32 {
+        if !self.archive.ordered {
+            return 0;
+        }
+        let pts = &self.opt.guide;
+        'more: loop {
+            for k in 1..=ORDERED_LOOKAHEAD {
+                let q = p as usize + k;
+                if q >= pts.len() {
+                    break;
+                }
+                if pts[q].covers(key) {
+                    p = q as u32;
+                    continue 'more;
+                }
+            }
+            return p;
+        }
+    }
+
+    /// Ordered guide: whether index `p` is within one look-ahead of the guide's last point.
+    fn at_guide_end(&self, p: u32) -> bool {
+        p as usize + ORDERED_LOOKAHEAD + 1 >= self.opt.guide.len()
+    }
+
     /// `seed_inputs` (DESIGN §2.7): replayed from the start, every 8th state offered, until the
     /// play ends; an exit on the way is the route at once.
     fn seed_from(&mut self, start: &Game, inputs: &[FrameInput]) {
         let mut g = start.clone();
         let (mut base, mut from) = (0u32, 0usize);
+        let mut gidx = 0u32;
         let mut since = Vec::new();
         let mut kept = Vec::new();
         let mut exit = None;
@@ -503,8 +546,9 @@ impl Explorer {
                 Some(wc) => wc.coin_dist(frog_cell(st), &live_coins(&self.facts, st), key.switches),
                 None => coin_dist(&self.facts, st),
             };
+            gidx = self.advance(gidx, &key);
             let a = &mut self.archive;
-            let want = a.improves(&key, hearts, w.frames) && a.wants_state(k + 1 - from);
+            let want = a.improves(&key, hearts, w.frames, gidx) && a.wants_state(k + 1 - from);
             let o = Offer {
                 key,
                 hearts,
@@ -513,6 +557,7 @@ impl Explorer {
                 base,
                 inputs: &since[from..],
                 game: want.then(|| g.clone()),
+                gidx,
             };
             let (i, cp) = a.offer(o, 0);
             kept.extend(i);
@@ -629,7 +674,10 @@ impl Explorer {
             .unwrap_or(0);
         let index: Vec<Option<u32>> = es
             .iter()
-            .map(|e| self.guide.as_ref().and_then(|g| g.index(&e.key)))
+            .map(|e| match self.archive.ordered {
+                true => Some(e.gidx),
+                false => self.guide.as_ref().and_then(|g| g.index(&e.key)),
+            })
             .collect();
         let p_max = index.iter().flatten().copied().max().unwrap_or(0);
         let pace = self.opt.guide_pace.then(|| {
@@ -663,7 +711,12 @@ impl Explorer {
                         (Some(pc), Some(p)) => pc.weight(p, e.frames),
                         _ => 1.0,
                     };
-                    g.weight(k, p_max) * pace
+                    let w = match (self.archive.ordered, p) {
+                        // Every cell has an index in order; the further along, the heavier.
+                        (true, Some(p)) => g.weight_at(p, p_max),
+                        _ => g.weight(k, p_max),
+                    };
+                    w * pace
                 });
                 let hearts = 0.25f64.powi(self.start_hearts.saturating_sub(e.hearts) as i32);
                 novelty * (-0.8 * behind).exp() * toward * guide * hearts
@@ -743,6 +796,7 @@ impl Explorer {
     /// offered. A caught engine panic ends it.
     fn burst(&self, pick: u32, i: u32, g0: &Game, seed: u64, frames: &mut u64) -> Burst {
         let e = &self.archive.entries()[i as usize];
+        let mut gidx = e.gidx;
         let mut b = Burst {
             pick,
             base: e.checkpoint,
@@ -768,7 +822,14 @@ impl Explorer {
                         Step::Go => {}
                         Step::End => return,
                         Step::Goal => {
-                            b.exit = Some((b.inputs.len(), g.state().w(HEARTS)));
+                            // Ordered guide: the planner stops at its first exit, so an exit
+                            // reached before the trajectory has followed the path to its end
+                            // (W1-1: found in 177 rounds, the player's tunnel never entered)
+                            // would end the copy early. Such a burst just ends.
+                            let at = self.advance(gidx, &w.key(g.state()));
+                            if !self.archive.ordered || self.at_guide_end(at) {
+                                b.exit = Some((b.inputs.len(), g.state().w(HEARTS)));
+                            }
                             return;
                         }
                     }
@@ -778,7 +839,8 @@ impl Explorer {
                 let hearts = st.w(HEARTS);
                 let len = b.prefix.len() + b.inputs.len();
                 let frames = w.frames;
-                let improves = self.archive.improves(&key, hearts, frames);
+                gidx = self.advance(gidx, &key);
+                let improves = self.archive.improves(&key, hearts, frames, gidx);
                 let game = (improves && self.archive.wants_state(len)).then(|| g.clone());
                 // An offer that does not improve now never will this round (entries only get
                 // better), so only one that does carries what `merge` needs.
@@ -795,6 +857,7 @@ impl Explorer {
                     coin_dist,
                     walk,
                     game,
+                    gidx,
                 });
             }
         }));
@@ -830,6 +893,7 @@ impl Explorer {
                     base: b.base,
                     inputs: &from,
                     game: h.game,
+                    gidx: h.gidx,
                 };
                 if let (Some(i), _) = self.archive.offer(o, round) {
                     self.set_dist(i);

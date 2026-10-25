@@ -132,6 +132,11 @@ impl GuideIndex {
         }
     }
 
+    /// The choice weight factor for a cell at guide index `p` (ordered guide: every cell has one).
+    pub fn weight_at(&self, p: u32, p_max: u32) -> f64 {
+        ON_PATH * (-(p_max.saturating_sub(p) as f64) / FALLOFF).exp()
+    }
+
     /// The furthest guide point whose region `key` falls in: a point with its coins known matches
     /// a cell in its band or a lower one (no more coins left than the route had there).
     pub fn index(&self, key: &CellKey) -> Option<u32> {

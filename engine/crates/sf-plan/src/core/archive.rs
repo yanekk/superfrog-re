@@ -106,6 +106,9 @@ pub struct Entry {
     pub dist: f64,
     /// `coin_dist` of its state.
     pub coin_dist: f64,
+    /// Ordered guide (`--guide-ordered`): the furthest guide point its trajectory reached in
+    /// order. 0 otherwise.
+    pub gidx: u32,
 }
 
 #[derive(Debug, Clone)]
@@ -132,6 +135,8 @@ pub struct Offer<'a> {
     pub inputs: &'a [u8],
     /// The state, when the archive may need it (`Archive::wants_state`).
     pub game: Option<Game>,
+    /// See `Entry::gidx`.
+    pub gidx: u32,
 }
 
 pub struct Archive {
@@ -142,6 +147,10 @@ pub struct Archive {
     cap: u64,
     stored_states: u64,
     input_bytes: u64,
+    /// Ordered guide: an offer further along the guide beats the entry at its key before hearts
+    /// and frames do, so a faster trajectory that skipped part of the path cannot replace one
+    /// that followed it.
+    pub ordered: bool,
 }
 
 /// A state's bytes as the archive counts them: its serialized size and an eighth, which is what a
@@ -169,6 +178,7 @@ impl Archive {
             cap,
             stored_states: 1,
             input_bytes: CHECKPOINT_OVERHEAD,
+            ordered: false,
         };
         a.index.insert(key, 0);
         a.entries.push(Entry {
@@ -182,6 +192,7 @@ impl Archive {
             reached: 1,
             dist: 0.0,
             coin_dist: 0.0,
+            gidx: 0,
         });
         a.input_bytes += ENTRY_OVERHEAD;
         a
@@ -217,10 +228,12 @@ impl Archive {
     }
 
     /// Whether a state reaching `key` with `hearts` in `frames` would be kept: its key is new, or
-    /// it beats the entry there (more hearts, then fewer frames).
-    pub fn improves(&self, key: &CellKey, hearts: u16, frames: u32) -> bool {
+    /// it beats the entry there (more hearts, then fewer frames; with `ordered`, further along
+    /// the guide, `gidx`, first).
+    pub fn improves(&self, key: &CellKey, hearts: u16, frames: u32, gidx: u32) -> bool {
         self.get(key).is_none_or(|e| {
-            (hearts, std::cmp::Reverse(frames)) > (e.hearts, std::cmp::Reverse(e.frames))
+            let g = if self.ordered { (gidx, e.gidx) } else { (0, 0) };
+            (g.0, hearts, std::cmp::Reverse(frames)) > (g.1, e.hearts, std::cmp::Reverse(e.frames))
         })
     }
 
@@ -238,7 +251,7 @@ impl Archive {
         if let Some(&i) = self.index.get(&o.key) {
             self.entries[i as usize].reached += 1;
         }
-        if !self.improves(&o.key, o.hearts, frames) {
+        if !self.improves(&o.key, o.hearts, frames, o.gidx) {
             return (None, None);
         }
         let (checkpoint, suffix, cp) = if self.wants_state(o.inputs.len()) {
@@ -261,6 +274,7 @@ impl Archive {
             reached: 1,
             dist: 0.0,
             coin_dist: o.coin_dist,
+            gidx: o.gidx,
         };
         self.input_bytes += fresh.suffix.len() as u64;
         let i = match self.index.get(&o.key) {

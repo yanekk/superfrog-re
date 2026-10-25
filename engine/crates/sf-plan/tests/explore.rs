@@ -182,6 +182,7 @@ fn more_hearts_win_a_cell() {
         base: 0,
         inputs: &inputs[..n],
         game: None,
+        gidx: 0,
     };
     assert_eq!(a.offer(offer(2, 10), 1).0, Some(1));
     assert_eq!(

@@ -4,7 +4,7 @@
 //! sf-plan <level> [--snap leg.snap] [--guide route-or-waypoints.txt] [--follow old.txt] [--seed N]
 //!         [--out route.txt] [--budget-min 30] [--frames 30000] [--max-mem-gb 4] [--threads N]
 //!         [--compass walk|straight|map] [--shorten-share 0.2] [--no-cache] [--engine-only | --app]
-//!         [--no-pace] [--lag-limit N]
+//!         [--no-pace] [--guide-ordered] [--lag-limit N]
 //!         [--via c,r]... [--avoid c0,r0,c1,r1]...
 //! ```
 //!
@@ -44,7 +44,7 @@ use sf_plan::trace::{script_inputs, timing, trace_original};
 const USAGE: &str = "usage: sf-plan <level> [--snap leg.snap] [--guide route-or-waypoints.txt] \
 [--follow old.txt] [--seed N] [--out route.txt] [--budget-min 30] [--frames 30000] [--max-mem-gb 4] \
 [--threads N] [--compass walk|straight|map] [--shorten-share 0.2] [--no-cache] [--engine-only | --app] \
-[--no-pace] [--lag-limit N] \
+[--no-pace] [--guide-ordered] [--lag-limit N] \
 [--via c,r]... [--avoid c0,r0,c1,r1]...";
 
 /// Oracle frames beyond `--frames` a start is given room for: the settle and the lag tail.
@@ -82,6 +82,7 @@ struct Args {
     app: bool,
     /// `--no-pace`: a played-route guide without its pace (for comparisons, T14).
     no_pace: bool,
+    guide_ordered: bool,
     /// `--lag-limit N`: overrides the faithful check's lag bar looked up for the level (T14;
     /// sf-bench never sets it).
     lag_limit: Option<u32>,
@@ -128,6 +129,7 @@ fn parse_args(argv: &[String]) -> Result<Args, String> {
         engine_only: false,
         app: false,
         no_pace: false,
+        guide_ordered: false,
         lag_limit: None,
         via: Vec::new(),
         avoid: Vec::new(),
@@ -178,6 +180,7 @@ fn parse_args(argv: &[String]) -> Result<Args, String> {
             }
             "--no-cache" => a.no_cache = true,
             "--no-pace" => a.no_pace = true,
+            "--guide-ordered" => a.guide_ordered = true,
             "--lag-limit" => {
                 a.lag_limit = Some(val()?.parse().map_err(|_| format!("{k}: not a number"))?)
             }
@@ -481,6 +484,7 @@ fn apply_guides(a: &Args, files: &Files, facts: &Facts, prefix: usize, mut opt: 
         // carry its pace; waypoints none (T14).
         opt.guide = g;
         opt.guide_pace = pace;
+        opt.guide_ordered = a.guide_ordered;
     }
     if a.app {
         // No pace in app mode (owner, 2026-10-23): on W1-1 it made app routes 15–56% longer on
