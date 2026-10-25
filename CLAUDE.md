@@ -40,6 +40,17 @@ derived by the tools.
 - **Handed a bug zip** (`bugs/bug-<level>-<date>.zip`, "fix the bug in …"): follow
   [`docs/BUG-FIX.md`](docs/BUG-FIX.md) step by step: replay it, compare it with the original, then
   a quirk report or a fix with a new conformance case (plan `plans/bug-recorder/`).
+- **When the planner struggles, ask the owner to play it** (owner, 2026-10-25). A level routing
+  job whose `sf-plan` finds no exit on two seeds, or stalls at the same spot twice, stops and asks
+  the owner instead of adding per-level hints or tuning. Show the stall (a map picture with the
+  spot, `<level-id>:<col>,<row>`), then hand over one command that starts the app a little before
+  it: an app script playing a route there with `native-ui`, `fast-until N`,
+  `start-level <level> lives=7 record`, every key released and `menu pause` at N. Script keys pass
+  through the owner's Controls mapping (`settings.toml [keys]`; the owner jumps with Space), so
+  write them from it. The owner plays the stretch and saves the recording with ⌘.; replay the zip
+  for the frog's trail, splice it into the guide and plan again with it. W6-4's seed 3 failed the
+  same way on every run and finished first time with a 44-second recording of its climb. This is
+  for routing work: the smart-planner benchmark's numbers stay unaided.
 
 ## Tile addressing (how the user points at spots)
 `tools/export_annotated.py` makes per-level images with a col/row grid + level id.
