@@ -29,7 +29,8 @@ the counted benchmark included (§2.11).
 
 ### Success criteria
 
-The benchmark (§4) committed in `plans/smart-planner/bench/` shows, side by side with today's tools:
+The benchmark (§4) committed in `plans/smart-planner/bench/` shows, side by side with today's tools
+(since D27, their numbers are T02's six-level sample):
 
 | # | Measure | Target |
 |---|---|---|
@@ -477,7 +478,7 @@ and short strings).
 
 | Cannot be tested automatically | Why |
 |---|---|
-| The counted benchmark timings | Hours of machine time on a quiet machine; run by T15–T17 as their own command, results committed |
+| The counted benchmark timings | Hours of machine time on a quiet machine; run by T15 and T17 as their own command, results committed |
 
 Nothing here needs a person: every measure is machine-decided.
 

@@ -5,7 +5,7 @@
 ## Goal
 
 Early numbers for today's tools, unaided, on the levels that matter most: enough to steer the design
-(especially DESIGN §2.6's choice), not the counted baseline (that is T16, D4). It also gives the first
+(especially DESIGN §2.6's choice), not the counted baseline (that was T16, D4; since D27 T16 is dropped and this sample is the baseline). It also gives the first
 measured answer to "how much of planning time is confirmation on the original".
 
 ## Design sections this implements

@@ -1,7 +1,7 @@
 # Implementation plan
 
-21 tasks in 4 phases (amended 2026-10-22: T13 and T20 dropped, T19, T21, T22 added since the plan was
-written). Each has a file in [tasks/](tasks/) with its goal, the files it touches, the
+31 tasks in 4 phases (amended 2026-10-22: T13 and T20 dropped, T19, T21, T22 added since the plan was
+written; T23–T33 added during the build; T16 dropped 2026-10-25, D27). Each has a file in [tasks/](tasks/) with its goal, the files it touches, the
 interfaces it defines, and what "done" means.
 
 Track state in [PROGRESS.md](PROGRESS.md). Read [DESIGN.md](DESIGN.md) first.
@@ -144,7 +144,7 @@ Leaves: T18 only.
 
 ## Parallel width
 
-21 tasks, 11 left · longest remaining chain 9 · up to 2 could run at once now (T09 and T22 after
+Snapshot of 2026-10-22, before T23–T33 and D27: 21 tasks, 11 left · longest remaining chain 9 · up to 2 could run at once now (T09 and T22 after
 T08). The tail T14–T18 is serial on purpose: counted runs need a quiet machine.
 
 ## Rough sizing
