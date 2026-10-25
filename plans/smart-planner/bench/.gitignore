@@ -1,0 +1,4 @@
+# sf-bench's per-run routes and planner logs (scratch); the committed app-timing routes are routes/app/.
+routes/*
+!routes/app/
+*/routes/

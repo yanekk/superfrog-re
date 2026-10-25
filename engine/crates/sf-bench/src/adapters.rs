@@ -77,23 +77,35 @@ pub struct OldTool {
     /// It takes coins only when asked (`plan_exit` steers for the exit alone without `--coins 0`;
     /// `plan_exit_w6` and `explore` add that step themselves).
     pub coins: bool,
+    /// It plans on the engine alone from the app's Start Level start (`--engine --seed`), so it
+    /// runs on set C.
+    pub engine: bool,
 }
 
 pub const PLAN_EXIT: OldTool = OldTool {
     name: "plan_exit",
     coins: true,
+    engine: true,
 };
 pub const PLAN_EXIT_W6: OldTool = OldTool {
     name: "plan_exit_w6",
     coins: false,
+    engine: false,
 };
 pub const EXPLORE: OldTool = OldTool {
     name: "explore",
     coins: false,
+    engine: false,
 };
 
 /// The three, in the order `best-old` runs them.
 pub const OLD: [&OldTool; 3] = [&PLAN_EXIT, &PLAN_EXIT_W6, &EXPLORE];
+
+/// The old tools that run on `set`: on set C only those with an engine mode (`plan_exit`), so
+/// set C's `best-old` is `plan_exit`'s result.
+pub fn old_for(set: Set) -> Vec<&'static OldTool> {
+    OLD.into_iter().filter(|t| set != Set::C || t.engine).collect()
+}
 
 impl Adapter for OldTool {
     fn name(&self) -> &str {
@@ -104,7 +116,7 @@ impl Adapter for OldTool {
         ("sf-conform", "example", self.name)
     }
 
-    fn command(&self, s: &Start, _seed: u32, out: &Path, _budget: Duration) -> Command {
+    fn command(&self, s: &Start, seed: u32, out: &Path, _budget: Duration) -> Command {
         let mut c = Command::new(binary(self.target()));
         c.arg(s.level.to_string());
         match &s.kind {
@@ -112,7 +124,12 @@ impl Adapter for OldTool {
             StartKind::Snap(p, _) => {
                 c.arg("--snap").arg(p);
             }
-            StartKind::App => panic!("{} has no app mode (set C is the new planner's)", self.name),
+            // Only `plan_exit` plans on the engine alone, from the app's start (bug-recorder T11's
+            // `--engine`), at the benchmark's seed like the new planner (verify's `app_start`).
+            StartKind::App if self.engine => {
+                c.arg("--engine").args(["--seed", &seed.to_string()]);
+            }
+            StartKind::App => panic!("{} has no app mode (set C's baseline is plan_exit's)", self.name),
         }
         if self.coins {
             c.args(["--coins", "0"]);

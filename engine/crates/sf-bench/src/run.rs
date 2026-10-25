@@ -149,8 +149,8 @@ pub fn run_one(
     r
 }
 
-/// D10's baseline from the three old tools' results on one level: a completed route before a
-/// failed one, then the shorter route, then the quicker run.
+/// D10's baseline from the old tools' results on one level (the three, or on set C `plan_exit`
+/// alone): a completed route before a failed one, then the shorter route, then the quicker run.
 pub fn best_of(rs: &[LevelResult]) -> LevelResult {
     let mut best = rs
         .iter()
@@ -159,7 +159,7 @@ pub fn best_of(rs: &[LevelResult]) -> LevelResult {
                 .cmp(&(!b.completed, b.route_frames.unwrap_or(u32::MAX)))
                 .then(a.wall_s.total_cmp(&b.wall_s))
         })
-        .expect("three old tools' results")
+        .expect("the old tools' results")
         .clone();
     best.tool = Some(best.planner.clone());
     best.planner = "best-old".into();
@@ -169,9 +169,9 @@ pub fn best_of(rs: &[LevelResult]) -> LevelResult {
 /// The run: every level of the set (or `levels`) not yet recorded for this commit, `jobs` at a
 /// time; `RESULTS.md` re-rendered after each level.
 pub fn bench(o: &Options) -> Result<(), String> {
-    let old = ["plan_exit", "plan_exit_w6", "explore", "best-old"];
-    if o.set == Set::C && old.contains(&o.planner.as_str()) {
-        return Err("the old tools have no app mode: set C is the new planner's".into());
+    let old = crate::adapters::old_for(o.set);
+    if o.set == Set::C && ["plan_exit_w6", "explore"].contains(&o.planner.as_str()) {
+        return Err(format!("{} has no app mode: set C's baseline is plan_exit's (--engine)", o.planner));
     }
     if o.follow_standalone && (o.planner != "new" || o.set != Set::B) {
         return Err("--follow-standalone is for --set B --planner new".into());
@@ -188,7 +188,7 @@ pub fn bench(o: &Options) -> Result<(), String> {
     };
     let adapters: Vec<&dyn Adapter> = match o.planner.as_str() {
         "new" => vec![&new],
-        "best-old" => OLD.iter().map(|a| *a as &dyn Adapter).collect(),
+        "best-old" => old.iter().map(|a| *a as &dyn Adapter).collect(),
         p => vec![*OLD.iter().find(|a| a.name == p).ok_or(format!(
             "planner {p}? (new, plan_exit, plan_exit_w6, explore, best-old)"
         ))?],

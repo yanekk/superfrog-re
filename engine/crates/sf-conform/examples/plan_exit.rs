@@ -27,7 +27,8 @@
 //! bug-recorder T11: `--engine`: plan and play on the engine alone, from `Game::start_level` with
 //! the Start Level dialog's defaults and seed 0 0 (a scripted app run's start), so the script
 //! plays the level to its exit in the app's recorder. The checks "on the original" below are then
-//! the engine's.
+//! the engine's. smart-planner T15: `--seed N` starts it under power-on seed `N N` instead, the
+//! app script's `seed N N` (sf-bench's set-C baseline plans at the benchmark's seed, 1).
 //!
 //! T205: `--snap <file>`: start from a snapshot `whole_game` saved at the leg's start in the whole
 //! game (`$TMPDIR/sf-whole-game/leg-NN.snap`) instead of the level's `AtLevel` sync point.
@@ -296,6 +297,7 @@ fn main() {
     let mut fly = false;
     let mut snap: Option<String> = None;
     let mut engine = false;
+    let mut seed: u32 = 0;
     let mut i = 1;
     while i < args.len() {
         match args[i].as_str() {
@@ -339,6 +341,7 @@ fn main() {
                 engine = true;
                 i -= 1;
             }
+            "--seed" => seed = args[i + 1].parse().unwrap(),
             "--frames" => budget = args[i + 1].parse().unwrap(),
             "--prefix" => {
                 let p = InputScript::load(std::path::Path::new(&args[i + 1])).unwrap();
@@ -375,7 +378,7 @@ fn main() {
         Side::Engine(Box::new(Game::start_level(
             display.clone(),
             &sf_core::recording::LevelSetup { level: id, ..Default::default() },
-            sf_core::Rng::seeded(0, 0),
+            sf_core::Rng::seeded(seed, seed),
         )))
     } else {
         Side::Original(Box::new(
