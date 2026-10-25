@@ -494,6 +494,12 @@ impl App {
     }
 
     /// One PAL frame: the script's events for it, the input, the step, the sound, the picture.
+    /// The script's `fast-until` has steps left to run.
+    fn fast_forwarding(&self) -> bool {
+        let until = self.script.as_ref().and_then(|s| s.fast_until);
+        until.is_some_and(|u| self.run.as_ref().is_some_and(|r| r.steps < u))
+    }
+
     fn step(&mut self, event_loop: &ActiveEventLoop) {
         let Some(run) = &self.run else { return };
         // Step n's events land before it: `steps` counts it once they are through.
@@ -884,6 +890,10 @@ impl ApplicationHandler for App {
                     }
                 }
             }
+            // While `fast-until` runs, the script alone drives the game: a real key (or a focus
+            // loss, which releases every held key, the script's too) would mix into the route at
+            // fifty times speed, and a few frames of it can lose every life before the handover.
+            WindowEvent::KeyboardInput { .. } | WindowEvent::Focused(false) if self.fast_forwarding() => {}
             WindowEvent::KeyboardInput { event, .. } if !event.repeat => {
                 if let PhysicalKey::Code(code) = event.physical_key {
                     self.host(event_loop, HostInput::Key {
