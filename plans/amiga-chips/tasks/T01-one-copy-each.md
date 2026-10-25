@@ -23,6 +23,8 @@ DESIGN §2.1 (rows 1–4), §2.3 (the pointer-wrap test), §2.4 (order), §2.5 (
   `draw_bob`, `draw_background` build a `front::blit::Blit`.
 - `engine/crates/sf-core/src/level/scroll.rs`: `blit` deleted; `blit_planes` uses `Blit::run` and
   `bltsize_words`.
+- `engine/crates/sf-core/src/level/mod.rs`: only `scheduled_blit`'s `size_words` closure, replaced
+  by `bltsize_words` (DESIGN §7, 2026-10-25).
 - `engine/crates/sf-core/src/level/panel.rs`: `blit_panel` deleted (the `measure.sh` pattern counts
   any `fn blit_panel`); its cost and register writes go to its two callers, `lives_icon_draw` and
   `lives_count`, in the same order.
@@ -32,8 +34,12 @@ DESIGN §2.1 (rows 1–4), §2.3 (the pointer-wrap test), §2.4 (order), §2.5 (
 - `engine/crates/sf-core/src/front/story/mem.rs`: `StoryMem` as a newtype.
 - `engine/crates/sf-oracle/src/amiga.rs` and its users: sf-core's `AmigaMemory`.
 - `engine/crates/sf-conform/src/sync.rs`: `core_memory` removed, its callers pass the value through.
-- Tests that build `StoryMem { chip, slow }` or call `core_memory` (e.g.
-  `sf-conform/tests/story_draws.rs`), updated to the new shape only.
+- Every other user of `core_memory`, of `sf_oracle::AmigaMemory`'s `byte`, or of a
+  `StoryMem { chip, slow }` literal or field, updated to the new shape only: `sf-conform/src/lib.rs`
+  and `src/routine.rs` (it builds an `sf_oracle::AmigaMemory` from sf-core's), about 25 files in
+  `sf-conform/examples/` (`cargo test --workspace` compiles them), about 7 in `sf-conform/tests/`
+  (e.g. `story_draws.rs`), and `front/story/mem.rs`'s own test. Count at 2026-10-25: 36 files call
+  `core_memory`.
 
 No new file under `engine/crates/`: every file there must be owned by an architecture chapter, and
 `owns` changes only in T02 (DESIGN §3.3).
@@ -107,12 +113,14 @@ Word for word from the draft:
 
 "The sf-conform runs below" are DESIGN §4's: from `engine/`, `cargo run -q --release -p sf-conform --
 run conform/cases/render-*.toml conform/cases/slot-attract.toml conform/cases/front-*.toml conform/cases/complete-w1-1.toml` and
-`cargo test -p sf-conform -- --ignored story`. Record their pass/fail in PROGRESS.
+`cargo test -p sf-conform --test story -- --ignored` with `cargo test -p sf-conform --test channels --
+--ignored story` (DESIGN §7, 2026-10-25). Record their pass/fail in PROGRESS.
 
 ## Automated checks (the worker runs these)
 
 ```
 sh plans/amiga-toolkit-prep/measure.sh
 cd engine && cargo run -q --release -p sf-conform -- run conform/cases/render-*.toml conform/cases/slot-attract.toml conform/cases/front-*.toml conform/cases/complete-w1-1.toml
-cd engine && cargo test -p sf-conform -- --ignored story
+cd engine && cargo test -p sf-conform --test story -- --ignored
+cd engine && cargo test -p sf-conform --test channels -- --ignored story
 ```

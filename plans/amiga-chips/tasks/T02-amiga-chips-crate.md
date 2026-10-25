@@ -96,5 +96,6 @@ sf-conform runs, run on this task's branch; the full `sf-conform all` is not par
 sh plans/amiga-toolkit-prep/measure.sh
 python3 tools/test_architecture_docs.py
 cd engine && cargo run -q --release -p sf-conform -- run conform/cases/render-*.toml conform/cases/slot-attract.toml conform/cases/front-*.toml conform/cases/complete-w1-1.toml
-cd engine && cargo test -p sf-conform -- --ignored story
+cd engine && cargo test -p sf-conform --test story -- --ignored
+cd engine && cargo test -p sf-conform --test channels -- --ignored story
 ```

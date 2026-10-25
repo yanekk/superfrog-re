@@ -43,7 +43,7 @@ same pieces.
 | # | Today | After |
 |---|---|---|
 | 1 | Blitter memory effect three ways: `front/blit.rs` `Blit::run<M: BlitMem>` + `logic`; `level/objects.rs` `Blit`/`blit` (l.606, 629); hand-written A→D copies `level/scroll.rs:340` `blit` and `level/panel.rs:41` `blit_panel` | `Blit::run` only. `impl BlitMem for mem::Bus` writes through `Bus::set_w`, so `WriteLog` and `span` keep working. `objects::Blit` and the three functions are deleted; their callers build a `Blit` and call `run` |
-| 2 | BLTSIZE decoded by hand in `scroll.rs` (2), `panel.rs`, `objects.rs` (2), `front/blit.rs` (2) | one `bltsize_words(size) -> (h, w)` with the size-0 rule (1024 rows, 64 words) |
+| 2 | BLTSIZE decoded by hand in `scroll.rs` (2), `panel.rs`, `objects.rs` (2), `front/blit.rs` (2), and `level/mod.rs` `scheduled_blit` (§7) | one `bltsize_words(size) -> (h, w)` with the size-0 rule (1024 rows, 64 words) |
 | 3 | `is_paula` twice, identical: `front/mod.rs:1760`, `front/story/mod.rs:88` | one |
 | 4 | Chip memory three times: `AmigaMemory` in `sf-core/src/layout.rs:754` (`Ram::byte` 0 off the map), `AmigaMemory` in `sf-oracle/src/amiga.rs:119` (`Option`, `impl sf_paula::ChipMemory`), `StoryMem` in `front/story/mem.rs:11` | one `AmigaMemory` with the `Ram` trait, offering both readers (0 off the map, and `Option`) and `impl sf_paula::ChipMemory`. sf-oracle uses it; `sf-conform/src/sync.rs:228` `core_memory`'s conversion goes. `StoryMem` stays a named newtype over it, keeping its serde form and 24-bit mask |
 
@@ -148,7 +148,9 @@ Taken word for word from the draft ("Tests (both tasks)"):
   `story_draws.rs`, `front.rs` slot-attract, `render_vs_oracle.rs`, `beam.rs`, `purity.rs`).
 - The builder also runs, from `engine/`: `cargo run -q --release -p sf-conform -- run
   conform/cases/render-*.toml conform/cases/slot-attract.toml conform/cases/front-*.toml` and
-  `cargo test -p sf-conform -- --ignored story` (80 s–5 min each).
+  `cargo test -p sf-conform -- --ignored story` (80 s–5 min each). That filter selects one test
+  (§7), so the story run is `cargo test -p sf-conform --test story -- --ignored` with `cargo test
+  -p sf-conform --test channels -- --ignored story`.
 
 Added by the owner on 2026-10-25, beyond the draft: a level 1-1 smoke test in both tasks, the
 case `conform/cases/complete-w1-1.toml` (W1-1 played from its start to its exit, every object live,
@@ -181,6 +183,12 @@ line runs in its own shell from the repo root. The Python line is quiet (`-q`, `
 The slower sf-conform runs in §4 are outside the test block for their length, not because they need
 a person. Nothing in this plan needs a person.
 
+### 5.3 Outside actions
+
+None. Every step is local: edits on the task branch, builds, the test block, and the sf-conform runs
+against the local oracle and the owner's disks. No `worker`, `ask` or `person` rows; the owner
+confirmed this at plan review, 2026-10-25. An action that turns up anyway is `ask` (CLAUDE.md).
+
 ## 6. Recovery
 
 A refactor on a feature branch; the way back is not merging it.
@@ -192,6 +200,14 @@ A refactor on a feature branch; the way back is not merging it.
   calls to `Blit::run` and touch nothing else in the file. The "do not touch" line is read as "the
   bob and sprite drawing are not merged", which still holds; keeping `objects::blit` alive instead
   would leave the blitter count at 2 and miss T01's target.
+- 2026-10-25, owner at plan review: the draft's story run, `cargo test -p sf-conform -- --ignored
+  story`, filters by test name and selects only `channels.rs`'s story-music test; none of
+  `tests/story.rs`'s nine ignored tests has "story" in its name. Replaced by `--test story --
+  --ignored` plus the music test, because the story's memory and blits are what T01 changes most.
+- 2026-10-25, owner at plan review: `level/mod.rs` `scheduled_blit` decodes BLTSIZE in a closure
+  (`s >> 6`) the draft does not list and `measure.sh` cannot see. T01 switches it to
+  `bltsize_words` too, so one decode really remains; `measure.sh`'s count is unchanged by it. It is
+  a decode beside the blit schedule, not timing, so §2.5's "blit timing" line does not cover it.
 - Plan numbering: the draft's T1 and T2 are T01 and T02 here. There is no spike task; T01's first
   commit, the pointer-wrap test, is the probe the draft asks for, and only T01's own merge depends
   on its answer.

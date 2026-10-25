@@ -7,7 +7,7 @@ task you pick up, and append yours there.
 
 **Sixty words to a Notes cell, counted.** Flat prose. The account is the commit message.
 
-**Plan reviewed:** not yet — the plan reviewer marks it before the build starts
+**Plan reviewed:** 2026-10-25 — 2 fixed, 3 decided with the user
 
 **Status:** Planned; nothing built.
 **Last updated:** 2026-10-25
