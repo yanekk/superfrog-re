@@ -165,7 +165,7 @@ const tok = n => C.getPropertyValue(n).trim();
 const esc = s => String(s).replace(/[&<>"]/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[ch]));
 
 // ---------- per-route state, rebuilt by show() ----------
-let D = null, W = 0, H = 0, END = 0, map = null, objAt = new Map(), done = new Map(), EV = [], segBreak = new Uint8Array(1);
+let D = null, W = 0, H = 0, END = 0, map = null, objAt = new Map(), done = new Map(), EV = [], segBreak = new Uint8Array(1), heat = null, heatMax = 1;
 const fp = k => { const p = D.track[Math.max(0, Math.min(END, k))]; return [p[0] + FX, p[1] + FY]; };
 
 const EVT = {
@@ -179,6 +179,7 @@ const EVT = {
   land:   { name: 'Landings', color: '#4c8aa0', on: false },
   fire:   { name: 'Shots fired', color: '#ffd9a0', on: false },
   end:    { name: 'Level end', color: tok('--accent'), on: true },
+  stall:  { name: 'Progress stops', color: '#ff4dd2', on: true },
   other:  { name: 'Other changes', color: '#aab', on: false },
 };
 const LAYERS = {
@@ -190,6 +191,8 @@ const LAYERS = {
   secrets:{ name: 'Secret walls', color: tok('--secret'), on: true },
   misc:   { name: 'Exits, springs, switches, scenery', color: '#ffffff', on: true },
   terrain:{ name: 'Ice, conveyors, other markers', color: '#9aa7a0', on: false },
+  guide:  { name: 'Guide path', color: '#ffffff', on: true },
+  heat:   { name: 'Time spent', color: '#ff4dd2', on: false },
   live:   { name: 'Live objects at frame', color: '#ff9db0', on: true },
   events: { name: 'Event marks', color: '#9fe8ff', on: true },
 };
@@ -231,6 +234,10 @@ function buildEvents() {
     } else EV.push({k, x: x + FX, y: y + FY, type: kind, text});
   }
   EV.sort((a, b) => a.k - b.k);
+  // Frames the frog spent per cell (the planner's cell: (x+$17)/16, (y-$10)/16).
+  heat = new Uint32Array(D.cols * D.rows); heatMax = 1;
+  const heatEnd = D.inputs_end != null ? Math.min(END, D.inputs_end) : END;
+  for (let k = 0; k <= heatEnd; k++) { const p = D.track[k], c = Math.floor((p[0]+0x17)/16), r = Math.floor((p[1]-16)/16); if (c >= 0 && r >= 0 && c < D.cols && r < D.rows) { const i = r*D.cols+c; heat[i]++; if (heat[i] > heatMax) heatMax = heat[i]; } }
   segBreak = new Uint8Array(END + 1);
   for (let k = 1; k <= END; k++) { const a = D.track[k-1], b = D.track[k]; if (Math.abs(a[0]-b[0]) > 48 || Math.abs(a[1]-b[1]) > 48) segBreak[k] = 1; }
 }
@@ -259,6 +266,10 @@ function draw() {
   cx.drawImage(map, 0, 0);
   cx.fillStyle = 'rgba(0,0,0,.28)'; cx.fillRect(0, 0, W, H);   // dim the map so marks read
   const u = 1/scale, S = Math.max(3.2, 4*u);
+  if (LAYERS.heat.on && heat) {
+    const lm = Math.log(heatMax + 1);
+    for (let i = 0; i < heat.length; i++) if (heat[i]) { cx.fillStyle = `rgba(255,77,210,${(0.12 + 0.78 * Math.log(heat[i] + 1) / lm).toFixed(3)})`; cx.fillRect((i % D.cols) * 16, Math.floor(i / D.cols) * 16, 16, 16); }
+  }
 
   for (const o of D.objects) {
     const [c, r, m, cat, name] = o, L = layerOf(cat);
@@ -295,6 +306,11 @@ function draw() {
     }
   }
 
+  if (LAYERS.guide.on && D.guide && D.guide.length) {
+    cx.setLineDash([6*u, 4*u]); cx.strokeStyle = 'rgba(255,255,255,.85)'; cx.lineWidth = Math.max(1.2, 1.8*u);
+    cx.beginPath(); D.guide.forEach((g, i) => { const x = g[0]*16+8, y = g[1]*16+8; if (i) cx.lineTo(x, y); else cx.moveTo(x, y); }); cx.stroke(); cx.setLineDash([]);
+    for (const g of D.guide) { cx.beginPath(); cx.arc(g[0]*16+8, g[1]*16+8, Math.max(1.6, 2.2*u), 0, 7); if (g[3]) { cx.strokeStyle = '#fff'; cx.lineWidth = Math.max(.8, 1*u); cx.stroke(); } else { cx.fillStyle = '#fff'; cx.fill(); } }
+  }
   if (LAYERS.events.on) for (const e of EV) {
     const t = EVT[e.type]; if (!t || !t.on) continue;
     cx.globalAlpha = e.k > frame ? .35 : 1;
@@ -302,7 +318,7 @@ function draw() {
     cx.beginPath();
     const s = Math.max(2.4, 3.2*u);
     if (e.type === 'jump') { cx.moveTo(e.x, e.y - s*1.6); cx.lineTo(e.x + s, e.y); cx.lineTo(e.x - s, e.y); cx.closePath(); }
-    else if (e.type === 'hurt' || e.type === 'death') cx.arc(e.x, e.y, s*2, 0, 7);
+    else if (e.type === 'hurt' || e.type === 'death' || e.type === 'stall') cx.arc(e.x, e.y, s*2.2, 0, 7);
     else cx.arc(e.x, e.y, s, 0, 7);
     cx.fill(); cx.stroke();
     cx.globalAlpha = 1;
@@ -350,7 +366,9 @@ function nearest(lx, ly) {
 }
 function hover(e) {
   const [lx, ly, sx, sy] = toLevel(e), n = nearest(lx, ly);
-  let html = `${D.level}:${Math.floor(lx/16)},${Math.floor(ly/16)}`;
+  const hc = Math.floor(lx/16), hr = Math.floor(ly/16), hi = hr*D.cols+hc;
+  let html = `${D.level}:${hc},${hr}` + (heat && heat[hi] ? ` · frog here ${heat[hi]} frames` : '');
+  if (LAYERS.guide.on && D.guide) { const g = D.guide.find(g => g[0] === hc && g[1] === hr); if (g) html += `<br>guide point${g[2] != null ? ' t ' + g[2] + ' s' : ''}${g[3] ? ' (estimated)' : ''}`; }
   if (n && n.ev) html = `frame ${n.ev.k} · ${(n.ev.k/50).toFixed(1)} s<br>${esc(n.ev.text)}`;
   else if (n && n.obj) { const o = n.obj, k = done.get(o[0]+','+o[1]); html = `${D.level}:${o[0]},${o[1]} · ${esc(o[4])} (marker ${o[2]})<br>${k != null ? 'route got it at frame ' + k : 'route never touched it'}`; }
   tip.innerHTML = html; tip.hidden = false;
@@ -515,7 +533,7 @@ async function select(id) {
   D = data; W = D.cols * 16; H = D.rows * 16; END = D.track.length - 1;
   scrub.max = END;
   buildMap(); buildEvents(); buildFilters(); rows(); buildStats(e);
-  document.getElementById('sub').textContent = `${e.route_file || 'no route file'} · replayed on the engine · seed ${D.seed} · ${END + 1} frames` + (D.timing !== 'app' ? ` · timed for the original, so the replay may drift` : '');
+  document.getElementById('sub').textContent = `${e.route_file || 'no route file'} · replayed on the engine · seed ${D.seed} · ${END + 1} frames` + (D.timing !== 'app' ? ` · timed for the original, so the replay may drift` : '') + (D.guide ? ` · guide ${D.guide_file} (${D.guide.length} points, hollow = estimated)` : '');
   resize(); fit();
   // Open on the last frame, so the whole route and every event read at full strength at rest.
   setFrame(END, true);

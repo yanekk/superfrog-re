@@ -337,6 +337,9 @@ fn main() {
         }
     }
     write!(j, "\"end\":{},", end.map_or("null".into(), |e| e.to_string())).unwrap();
+    // The route's last line: past it the replay only idles (for the tally), and a partial route
+    // stops there, so the page leaves those frames out of its time-spent heat.
+    write!(j, "\"inputs_end\":{},", script.lines.last().map_or(0, |l| l.0)).unwrap();
     write!(j, "\"track\":[{}],", track.iter().map(|p| format!("[{p}]")).collect::<Vec<_>>().join(",")).unwrap();
     write!(j, "\"inputs\":[{}],", inputs.join(",")).unwrap();
     write!(j, "\"live\":[{}],", live.join(",")).unwrap();

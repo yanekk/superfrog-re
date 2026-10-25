@@ -4,6 +4,7 @@
     python3 tools/route_viz.py --planner             # every route the smart planner has made
     python3 tools/route_viz.py path/to/W2-3.txt ...  # any route files (level from the name or
                                                      # the header, or --level W2-3)
+        [--guide waypoints.txt]                      # a waypoint path drawn over them
     open build/route-viz/index.html
 
 Each route is played on the engine from the app's start (`# timing: app`, its `# seed:`) by
@@ -76,6 +77,56 @@ def bench_results():
     return latest
 
 
+def read_guide(path):
+    """An sf-plan waypoint file: `col,row` per line, `# t <secs>[ est]` after it (est: the frog was
+    not visible, its place estimated from the camera). Returns [col, row, secs or None, est]."""
+    pts = []
+    for line in open(path):
+        body, _, note = line.partition('#')
+        m = re.match(r'\s*(\d+)\s*,\s*(\d+)\s*$', body)
+        if not m:
+            continue
+        t = re.search(r't\s+([\d.]+)', note)
+        pts.append([int(m.group(1)), int(m.group(2)), float(t.group(1)) if t else None, 'est' in note.split()])
+    return pts
+
+
+def progress(data):
+    """Where the frog stops making progress: the frame it last stood on a cell it had not been on,
+    and the frame it came closest to an exit cell (cells, Chebyshev). Both are appended to the
+    events as `stall` marks."""
+    end = data['end']
+    # Past the route's last line the replay only idles: judge the frames the route drives.
+    track = data['track'][:data.get('inputs_end', len(data['track'])) + 1]
+    if len(track) < 2:
+        return []
+    cell = lambda p: ((p[0] + 0x17) // 16, (p[1] - 0x10) // 16)
+    exits = [(o[0], o[1]) for o in data['objects'] if o[4] == 'level exit']
+    seen, last_new = set(), 0
+    best, best_k = None, 0
+    for k, p in enumerate(track):
+        c = cell(p)
+        if c not in seen:
+            seen.add(c)
+            last_new = k
+        if exits:
+            d = min(max(abs(c[0] - x), abs(c[1] - y)) for x, y in exits)
+            if best is None or d < best:
+                best, best_k = d, k
+    n = len(track) - 1
+    out = []
+    if end is None:
+        p = track[last_new]
+        data['events'].append([last_new, p[0], p[1], 'stall', f'last new ground: no cell after this one is new (inputs end {n - last_new} frames later)'])
+        out.append(f'last new ground at frame {last_new}; the route\'s inputs end at frame {n}')
+        if best is not None:
+            p = track[best_k]
+            data['events'].append([best_k, p[0], p[1], 'stall', f'closest to the exit: {best} cells; never closer after this'])
+            out.append(f'closest to the exit {best} cells, at frame {best_k}')
+        data['events'].sort(key=lambda e: e[0])
+    return out
+
+
 def verdict(entry, data, bench):
     """Status, faults and info for a route from its replay and, if it has one, its bench result."""
     faults, info = [], []
@@ -86,9 +137,13 @@ def verdict(entry, data, bench):
     if bench and not bench['completed']:
         status = 'failed'
         faults.append('planner failed: ' + bench.get('reason', ''))
+    if entry.get('partial'):
+        info.append('the line is a partial route from a re-run, not the scored run')
+    if status == 'failed':
+        pass
     elif entry['route'] and data['end'] is None:
         status = 'failed'
-        faults.append('the replay never reaches the exit')
+        faults.append('the replay never reaches the exit' + (' (a partial route)' if 'partial route' in ' '.join(data['notes']) else ''))
     elif not entry['route']:
         status = 'failed'
         faults.append('no route')
@@ -108,6 +163,7 @@ def verdict(entry, data, bench):
                 faults.append(f'{d:+.0%} longer than the reference route')
     if data.get('timing') != 'app':
         faults.append('timed for the original: replay may drift')
+    info.extend(progress(data))
     if status == 'clean' and faults:
         status = 'faults'
     return status, faults, info
@@ -119,6 +175,9 @@ def main():
     ap.add_argument('--planner', action='store_true', help="every route the smart planner has made, with verdicts")
     ap.add_argument('--level', help='level id for the route files, when their names do not say')
     ap.add_argument('--out', default=os.path.join(ROOT, 'build', 'route-viz'), help='output folder')
+    ap.add_argument('--guide', help='an sf-plan waypoint file (col,row per line) drawn over every route given')
+    ap.add_argument('--partials', default=os.path.join(ROOT, 'build', 'route-viz-runs'),
+                    help='folder of re-run partial routes, <level>.txt, for levels the planner failed')
     ap.add_argument('--jobs', type=int, default=4)
     ap.add_argument('--bare', action='store_true', help='index.html without its <!doctype>/<head> skeleton (for hosts that add one)')
     a = ap.parse_args()
@@ -130,18 +189,28 @@ def main():
         bench = bench_results()
         for lvl in LEVELS:
             route = os.path.join(BENCH, 'routes', 'app', f'{lvl}.txt')
-            has = os.path.exists(route)
-            if not has and lvl not in bench:
+            partial = False
+            if not os.path.exists(route):
+                # sf-bench keeps no route for a failed level; a re-run's best partial route,
+                # `sf-plan <lvl> --app ... --out build/route-viz-runs/<lvl>.txt`, stands in.
+                route = os.path.join(a.partials, f'{lvl}.txt')
+                partial = os.path.exists(route)
+                if not partial:
+                    route = None
+            if not route and lvl not in bench:
                 continue
             entries.append({'id': lvl, 'label': lvl, 'level': lvl, 'group': lvl.split('-')[0],
-                            'route': route if has else None, 'bench': bench.get(lvl)})
+                            'route': route, 'partial': partial, 'bench': bench.get(lvl)})
     for p in a.routes:
         lvl = level_of(p, a.level)
         rid = re.sub(r'[^A-Za-z0-9._-]', '_', os.path.splitext(os.path.basename(p))[0])
         while any(e['id'] == rid for e in entries):
             rid += '_'
-        entries.append({'id': rid, 'label': rid, 'level': lvl, 'group': 'Routes',
+        entries.append({'id': rid, 'label': rid, 'level': lvl, 'group': lvl,
                         'route': os.path.abspath(p), 'bench': None})
+    guide = read_guide(a.guide) if a.guide else None
+    if guide:
+        print(f'guide: {len(guide)} waypoints from {a.guide}', file=sys.stderr)
 
     os.makedirs(os.path.join(a.out, 'data'), exist_ok=True)
     build_binary()
@@ -152,6 +221,9 @@ def main():
         data = json.load(open(js))
         os.remove(js)
         status, faults, info = verdict(e, data, e['bench'])
+        if guide and e in entries[len(entries) - len(a.routes):]:
+            data['guide'] = guide
+            data['guide_file'] = os.path.basename(a.guide)
         with open(os.path.join(a.out, 'data', e['id'] + '.js'), 'w') as f:
             f.write('window.ROUTE_DATA=window.ROUTE_DATA||{};ROUTE_DATA[%s]=' % json.dumps(e['id']))
             f.write(json.dumps(data, separators=(',', ':')))
@@ -159,7 +231,7 @@ def main():
         print(f'  {e["id"]:10} {status:7} {msg}', file=sys.stderr)
         return {'id': e['id'], 'label': e['label'], 'group': e['group'], 'status': status,
                 'faults': faults, 'info': info, 'data': f'data/{e["id"]}.js',
-                'route_file': os.path.relpath(e['route'], ROOT) if e['route'] else None,
+                'route_file': e['route'] and (os.path.relpath(e['route'], ROOT) if e['route'].startswith(ROOT) else e['route']),
                 'bench': e['bench'] and {k: e['bench'].get(k) for k in ('wall_s', 'ref_frames', 'route_frames')}}
 
     with ThreadPoolExecutor(max_workers=a.jobs) as ex:
