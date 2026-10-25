@@ -3,7 +3,7 @@
 //! decides everything else, so the route is the same for any thread count (M8).
 
 use std::sync::Mutex;
-use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::atomic::{AtomicU64, AtomicUsize, Ordering};
 use std::time::{Duration, Instant};
 
 use sf_core::Game;
@@ -15,6 +15,20 @@ use crate::core::{Explorer, Facts, Options, PartResult, Progress, Reason, Route}
 /// Parts per thread a round is cut into: bursts vary in length, so small parts taken in turn keep
 /// the threads busy to the round's end.
 const PARTS_PER_THREAD: usize = 4;
+
+/// The compass's cost over the run, for its log (T28): the longest `Explorer::new` in nanoseconds
+/// (the walk compass's open cells and first fill; no clock in `core`), and the most fill bytes one
+/// explorer held at its end (outside the archive's count, D22).
+pub static COMPASS_BUILD_NS: AtomicU64 = AtomicU64::new(0);
+pub static COMPASS_FILL_BYTES: AtomicU64 = AtomicU64::new(0);
+pub static COMPASS_FILLS: AtomicU64 = AtomicU64::new(0);
+
+fn note_fills(ex: &Explorer) {
+    let (n, bytes) = ex.compass_fills();
+    if bytes > COMPASS_FILL_BYTES.fetch_max(bytes, Ordering::Relaxed) {
+        COMPASS_FILLS.store(n as u64, Ordering::Relaxed);
+    }
+}
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct RunOptions {
@@ -125,10 +139,13 @@ pub fn plan_engine(
     let shorten_on = run.shorten_share > 0.0 || run.shorten_min_rounds > 0;
     // Kept only when shortening needs them: the start's state is ~0.8 MB.
     let keep = shorten_on.then(|| (start.clone(), facts.clone(), opt.clone()));
+    let t_new = Instant::now();
     let mut ex = Explorer::new(start, facts, opt);
+    COMPASS_BUILD_NS.fetch_max(t_new.elapsed().as_nanos() as u64, Ordering::Relaxed);
     let mut best = ex.found().cloned();
     while best.is_none() {
         if t0.elapsed() >= run.budget || run.max_rounds.is_some_and(|m| ex.rounds() >= m) {
+            note_fills(&ex);
             return Err(ex.best_partial());
         }
         if let Progress::Exit(r) = run_round(&mut ex, run.threads) {
@@ -142,6 +159,7 @@ pub fn plan_engine(
     }
     let mut best = best.unwrap();
     let Some((start, facts, opt)) = keep else {
+        note_fills(&ex);
         return Ok(best);
     };
     let min = match run.shorten_min_over {
@@ -169,6 +187,7 @@ pub fn plan_engine(
     }
     let (mut rounds, mut frames) = (ex.rounds(), ex.engine_frames());
     best.cells = ex.archive().entries().len() as u32;
+    note_fills(&ex);
     drop(ex);
     // The pass's explorer runs know nothing of hints: a stretch from i could skip a `via` cell or
     // cross an `avoid` box, so a hinted route is only shortened by the search above.

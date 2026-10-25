@@ -3,7 +3,7 @@
 //! ```text
 //! sf-plan <level> [--snap leg.snap] [--guide route-or-waypoints.txt] [--follow old.txt] [--seed N]
 //!         [--out route.txt] [--budget-min 30] [--frames 30000] [--max-mem-gb 4] [--threads N]
-//!         [--compass straight|map] [--shorten-share 0.2] [--no-cache] [--engine-only | --app]
+//!         [--compass walk|straight|map] [--shorten-share 0.2] [--no-cache] [--engine-only | --app]
 //!         [--no-pace] [--lag-limit N]
 //!         [--via c,r]... [--avoid c0,r0,c1,r1]...
 //! ```
@@ -43,7 +43,7 @@ use sf_plan::trace::{script_inputs, timing, trace_original};
 
 const USAGE: &str = "usage: sf-plan <level> [--snap leg.snap] [--guide route-or-waypoints.txt] \
 [--follow old.txt] [--seed N] [--out route.txt] [--budget-min 30] [--frames 30000] [--max-mem-gb 4] \
-[--threads N] [--compass straight|map] [--shorten-share 0.2] [--no-cache] [--engine-only | --app] \
+[--threads N] [--compass walk|straight|map] [--shorten-share 0.2] [--no-cache] [--engine-only | --app] \
 [--no-pace] [--lag-limit N] \
 [--via c,r]... [--avoid c0,r0,c1,r1]...";
 
@@ -58,6 +58,8 @@ const TALLY_FIRE: usize = 4;
 enum CompassArg {
     Straight,
     Map,
+    /// D25: needs no map, nothing on disk.
+    Walk,
 }
 
 #[derive(Debug, Clone)]
@@ -119,7 +121,8 @@ fn parse_args(argv: &[String]) -> Result<Args, String> {
         frames: 30_000,
         max_mem_gb: 4.0,
         threads: std::thread::available_parallelism().map_or(4, |n| n.get()),
-        compass: CompassArg::Straight,
+        // The walk compass, kept by T28's trial: as many completions, fewer engine frames.
+        compass: CompassArg::Walk,
         shorten_share: sf_plan::run::SHORTEN_SHARE,
         no_cache: false,
         engine_only: false,
@@ -162,7 +165,8 @@ fn parse_args(argv: &[String]) -> Result<Args, String> {
                 a.compass = match val()?.as_str() {
                     "straight" => CompassArg::Straight,
                     "map" => CompassArg::Map,
-                    v => return Err(format!("{k} {v}: straight or map")),
+                    "walk" => CompassArg::Walk,
+                    v => return Err(format!("{k} {v}: straight, map or walk")),
                 }
             }
             "--shorten-share" => {
@@ -486,10 +490,16 @@ fn apply_guides(a: &Args, files: &Files, facts: &Facts, prefix: usize, mut opt: 
     Ok((opt, cost))
 }
 
-/// The map compass (§2.2), from the cache under the start's key.
+/// The compass (§2.2): the map from the cache under the start's key; walk (D25) is built by the
+/// explorer from its start.
 fn map_compass(a: &Args, game: &Game, facts: &Facts, opt: &mut Options) -> Result<(), Fail> {
-    if a.compass != CompassArg::Map {
-        return Ok(());
+    match a.compass {
+        CompassArg::Straight => return Ok(()),
+        CompassArg::Walk => {
+            opt.compass = Compass::Walk;
+            return Ok(());
+        }
+        CompassArg::Map => {}
     }
     let wings = game.state().w(FROG + f::FLIGHT) != 0;
     let sk = match &a.snap {
@@ -741,6 +751,15 @@ fn main() -> ExitCode {
     log_hints(&a, o.exit);
     if let Some(r) = &o.reason {
         eprintln!("{r}");
+    }
+    if a.compass == CompassArg::Walk {
+        use std::sync::atomic::Ordering::Relaxed;
+        eprintln!(
+            "sf-plan: walk compass: explorer built in {:.1} ms at most, fills {} ({:.1} MB) at most",
+            sf_plan::run::COMPASS_BUILD_NS.load(Relaxed) as f64 / 1e6,
+            sf_plan::run::COMPASS_FILLS.load(Relaxed),
+            sf_plan::run::COMPASS_FILL_BYTES.load(Relaxed) as f64 / 1e6,
+        );
     }
     eprintln!(
         "PLAN_STATS engine_frames={} oracle_frames={} confirm_share={:.4} route_frames={} hearts_lost={} hints={} \

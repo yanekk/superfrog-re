@@ -21,6 +21,7 @@ use super::archive::{Archive, COINS_LEFT, CellKey, HEARTS, Offer, cell_key, coin
 use super::facts::{Cell, Facts, frog_cell};
 use super::graph::{MoveMap, shortest};
 use super::guide::{GuideIndex, GuidePoint, Pace};
+use super::walk::{WalkCompass, live_coins};
 
 /// `level_state` (h0+$a06): −2 while the level is played.
 const LEVEL_STATE: u32 = h0(0xa06);
@@ -65,6 +66,9 @@ pub enum Compass {
     Straight,
     /// Edge frames to the nearest exit node over T04's map, straight where the map has no path.
     Map(MoveMap),
+    /// Steps over the open cells to the nearest exit, and on the last 8 coins to the nearest
+    /// object coin (D25, `walk`); straight where no open path.
+    Walk,
 }
 
 /// What the search is for.
@@ -183,6 +187,9 @@ struct Held {
     hearts: u16,
     coins_left: u16,
     coin_dist: f64,
+    /// With the walk compass, for a state the archive may keep: the frog's cell and the object
+    /// coins live, so `merge` (which may fill) gives its coin distance.
+    walk: Option<(Cell, Vec<u64>)>,
     game: Option<Game>,
 }
 
@@ -424,6 +431,7 @@ pub struct Explorer {
     archive: Archive,
     rng: Rng,
     compass: Option<MapCompass>,
+    walk: Option<WalkCompass>,
     guide: Option<GuideIndex>,
     start_hearts: u16,
     rounds: u64,
@@ -433,9 +441,10 @@ pub struct Explorer {
 
 impl Explorer {
     pub fn new(start: Game, facts: Facts, mut opt: Options) -> Explorer {
-        let compass = match std::mem::take(&mut opt.compass) {
-            Compass::Straight => None,
-            Compass::Map(m) => Some(MapCompass::new(m, &facts)),
+        let (compass, walk) = match std::mem::take(&mut opt.compass) {
+            Compass::Straight => (None, None),
+            Compass::Map(m) => (Some(MapCompass::new(m, &facts)), None),
+            Compass::Walk => (None, Some(WalkCompass::new(start.state(), &facts))),
         };
         let guide = (!opt.guide.is_empty()).then(|| GuideIndex::new(&opt.guide));
         let key = cell_key(&facts, start.state(), 0);
@@ -448,13 +457,14 @@ impl Explorer {
             archive,
             rng: Rng::new(seed),
             compass,
+            walk,
             guide,
             rounds: 0,
             frames: 0,
             found: None,
         };
         let d = ex.dist(&key);
-        let c = coin_dist(&ex.facts, start.state());
+        let c = ex.coin_dist_now(start.state(), &key);
         let e = &mut ex.archive.entries_mut()[0];
         (e.dist, e.coin_dist) = (d, c);
         if let Some(seed) = ex.opt.seed_inputs.take() {
@@ -488,13 +498,18 @@ impl Explorer {
             // Each offer is from the last checkpoint the seed took, so suffixes stay short.
             let st = g.state();
             let (key, hearts) = (w.key(st), st.w(HEARTS));
+            // Fields, not `coin_dist_now`: `w` holds the facts and options.
+            let coin_dist = match &mut self.walk {
+                Some(wc) => wc.coin_dist(frog_cell(st), &live_coins(&self.facts, st), key.switches),
+                None => coin_dist(&self.facts, st),
+            };
             let a = &mut self.archive;
             let want = a.improves(&key, hearts, w.frames) && a.wants_state(k + 1 - from);
             let o = Offer {
                 key,
                 hearts,
                 coins_left: st.w(COINS_LEFT),
-                coin_dist: coin_dist(&self.facts, st),
+                coin_dist,
                 base,
                 inputs: &since[from..],
                 game: want.then(|| g.clone()),
@@ -550,6 +565,21 @@ impl Explorer {
         self.frames
     }
 
+    /// The walk compass's fills held and their bytes, `(0, 0)` with another compass (logged by the
+    /// shell, outside the archive's count, D22).
+    pub fn compass_fills(&self) -> (usize, u64) {
+        self.walk.as_ref().map_or((0, 0), WalkCompass::fills)
+    }
+
+    /// `st`'s distance to the nearest object coin left: walking with the walk compass, else
+    /// straight (`archive::coin_dist`).
+    fn coin_dist_now(&mut self, st: &State, key: &CellKey) -> f64 {
+        match &mut self.walk {
+            Some(w) => w.coin_dist(frog_cell(st), &live_coins(&self.facts, st), key.switches),
+            None => coin_dist(&self.facts, st),
+        }
+    }
+
     fn straight(&self, key: &CellKey, to: &[Cell]) -> f64 {
         let (c, r) = ((key.col * 2) as f64, (key.row * 2) as f64);
         to.iter()
@@ -565,10 +595,18 @@ impl Explorer {
         match self.opt.goal {
             Goal::Key { key: k, .. } => self.straight(key, &[(k.col * 2, k.row * 2)]),
             Goal::Reach { point, .. } => self.straight(key, &[point.cell]),
-            Goal::Exit => match self.compass.as_mut().and_then(|m| m.frames(key)) {
-                Some(fr) => fr as f64 / FRAMES_PER_CELL,
-                None => self.straight(key, &self.facts.exits),
-            },
+            Goal::Exit => {
+                if let Some(w) = self.walk.as_mut() {
+                    return match w.exit_steps(key) {
+                        Some(s) => s as f64,
+                        None => self.straight(key, &self.facts.exits),
+                    };
+                }
+                match self.compass.as_mut().and_then(|m| m.frames(key)) {
+                    Some(fr) => fr as f64 / FRAMES_PER_CELL,
+                    None => self.straight(key, &self.facts.exits),
+                }
+            }
         }
     }
 
@@ -740,15 +778,22 @@ impl Explorer {
                 let hearts = st.w(HEARTS);
                 let len = b.prefix.len() + b.inputs.len();
                 let frames = w.frames;
-                let game = (self.archive.improves(&key, hearts, frames)
-                    && self.archive.wants_state(len))
-                .then(|| g.clone());
+                let improves = self.archive.improves(&key, hearts, frames);
+                let game = (improves && self.archive.wants_state(len)).then(|| g.clone());
+                // An offer that does not improve now never will this round (entries only get
+                // better), so only one that does carries what `merge` needs.
+                let (coin_dist, walk) = match &self.walk {
+                    None => (coin_dist(&self.facts, st), None),
+                    Some(_) if improves => (0.0, Some((frog_cell(st), live_coins(&self.facts, st)))),
+                    Some(_) => (0.0, None),
+                };
                 b.held.push(Held {
                     len: b.inputs.len(),
                     key,
                     hearts,
                     coins_left: st.w(COINS_LEFT),
-                    coin_dist: coin_dist(&self.facts, st),
+                    coin_dist,
+                    walk,
                     game,
                 });
             }
@@ -788,6 +833,10 @@ impl Explorer {
                 };
                 if let (Some(i), _) = self.archive.offer(o, round) {
                     self.set_dist(i);
+                    if let (Some(w), Some((cell, live))) = (self.walk.as_mut(), &h.walk) {
+                        let c = w.coin_dist(*cell, live, h.key.switches);
+                        self.archive.entries_mut()[i as usize].coin_dist = c;
+                    }
                 }
             }
             if let Some((len, hearts)) = b.exit {
