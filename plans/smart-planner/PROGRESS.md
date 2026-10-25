@@ -45,7 +45,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T11 | plan-command | T05, T10, T22 | ✅ | |
 | T12 | app-timing | T11 | ✅ | |
 | T14 | tuning-run | T11 | ✅ | |
-| T15 | set-c-run | T12, T14 | ⬜ | |
+| T15 | set-c-run | T12, T14 | ✅ | |
 | T17 | new-counted | T15 | ⬜ | |
 | T18 | results-and-retire | T17 | ⬜ | |
 | T19 | step-unseen-no-picture | T00; blocks T04 | ✅ | |
