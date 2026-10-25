@@ -500,3 +500,31 @@ fn set_c_turns_a_route_into_the_apps_script_and_replays_it_on_the_engine() {
     }
     assert_eq!(verify::app_parts(&wrong, &r.states).as_deref(), Some("the app parts from the engine at frame 1"));
 }
+
+/// Set C's baseline (T15): `plan_exit` alone plans on the engine from the app's start, at the
+/// benchmark's seed, so `best-old` on set C runs it and nothing else.
+#[test]
+fn set_c_runs_plan_exit_on_the_engine_at_the_seed() {
+    use sf_bench::adapters::{Adapter, PLAN_EXIT, old_for};
+    let s = &sets::starts(Set::C)[0];
+    assert_eq!(s.kind, StartKind::App);
+    let a = args(&PLAN_EXIT.command(s, 1, std::path::Path::new("route.txt"), Duration::from_secs(60)));
+    assert!(a.contains(&"--engine".to_string()), "{a:?}");
+    let i = a.iter().position(|x| x == "--seed").expect("--seed");
+    assert_eq!(a[i + 1], "1", "{a:?}");
+    let names = |set| old_for(set).iter().map(|t| t.name).collect::<Vec<_>>();
+    assert_eq!(names(Set::C), ["plan_exit"]);
+    assert_eq!(names(Set::A), ["plan_exit", "plan_exit_w6", "explore"]);
+    assert_eq!(names(Set::B), names(Set::A));
+}
+
+/// A part-run baseline (set C's, stopped under D27) names the levels it did not run.
+#[test]
+fn a_part_run_baseline_names_the_levels_not_run() {
+    let mut rs: Vec<LevelResult> = LEVELS[..22].iter().map(|l| fixture("best-old", "C", l, false, 2100.0)).collect();
+    rs.extend(LEVELS.iter().map(|l| fixture("new", "C", l, true, 400.0)));
+    let t = sf_bench::table::render(&rs);
+    assert!(t.contains("Set C baseline: 22 of 24 run; not run: W6-3, W6-4."), "{t}");
+    rs.extend(LEVELS[22..].iter().map(|l| fixture("best-old", "C", l, false, 2100.0)));
+    assert!(!sf_bench::table::render(&rs).contains("not run:"));
+}
