@@ -34,11 +34,18 @@ Each world's 32-colour OCS palette (12-bit `0x0RGB`, expanded `nibble×17`,
 colour 0 = black) is the one after the world's **loading picture** `LnLP`, at
 offset `0x11300` (docs/10, checked against the game's copper list). The ~71–72 KB
 chunk before each tileset is that picture, not a sprite bank; for world 6 it is
-`d2_c45` (`L6LP`). `render_levels.py` takes W6's from `d4_c01` at `0xC7FE`, which is
-the `L2ET` picture read two bytes out of line: its W6 renders are in the wrong
-colours. The `P41A` chunks are music modules (docs/08) and are **not** the level
+`d2_c45` (`L6LP`). The `P41A` chunks are music modules (docs/08) and are **not** the level
 palettes — using them was the earlier bug that made worlds come out the wrong
 colours.
+
+**Each level also carries the 32 colours itself**, in its `PALA` section at file offset
+`0x138`, and `render_levels.py` uses that list (2026-10-25). It equals the engine's
+copper palette on all 24 regular levels, 32 of 32 colours each (checked against the
+palettes of the engine's own `Game::render` picture mid-playfield, 100 frames after Start
+Level; `tools/test_render_levels.py` pins one colour per world). The neighbouring-chunk search
+it replaced is only a fallback: for World 6 it took `d4_c01` at `0xC7FE`, the `L2ET`
+picture read two bytes out of line (W6's levels precede their graphics on disk 4), and it
+was one colour off on worlds 1 and 4.
 
 The base palette is identified by the game's signature **grey shading ramp**
 `0x111, 0x222, 0x444, 0x0AAA` sitting consecutively near the top of the 32
@@ -47,7 +54,7 @@ carrying that ramp (the picture's bitplanes can hold palette-like runs earlier i
 the file). Verified against a real in-game screenshot: **World 2 renders as the
 grey stone "Spooky Castle"**, World 1 as a blue-sky grassland, etc.
 
-Palette confirmed accurate for worlds 1–5. The bonus (`LB`) and final (`LW`)
+Palette confirmed accurate for worlds 1–6. The bonus (`LB`) and final (`LW`)
 levels have their own tilesets (`d2_c40`, 640 tiles, and `d4_c10`); the script
 draws them with W6's as a fallback. docs/10 has the right ones.
 
