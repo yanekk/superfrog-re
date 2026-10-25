@@ -540,6 +540,7 @@ async function select(id) {
 }
 window.addEventListener('resize', resize);
 const start = location.hash.slice(1);
-select(M.some(e => e.id === start) ? start : M[0].id);
+if (M.length) select(M.some(e => e.id === start) ? start : M[0].id);
+else document.getElementById('verdict').innerHTML = '<span class="info">No routes to show.</span>';
 })();
 </script>

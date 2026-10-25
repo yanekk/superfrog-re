@@ -40,6 +40,16 @@ derived by the tools.
 - **Handed a bug zip** (`bugs/bug-<level>-<date>.zip`, "fix the bug in …"): follow
   [`docs/BUG-FIX.md`](docs/BUG-FIX.md) step by step: replay it, compare it with the original, then
   a quirk report or a fix with a new conformance case (plan `plans/bug-recorder/`).
+- **Seeing a route: `sf-routeview`.** Replays app-timed routes (`# timing: app`) on the engine
+  and writes `build/route-viz/index.html`: the level map, the frog's path, every coin, collectible
+  and enemy (named, all worlds), events (coins, kills, hearts lost, jumps), a timeline, and where a
+  failed route stops making progress. `cd engine && cargo run --release -p sf-routeview --
+  --planner` draws every smart-planner route with its verdict (failed / faults / clean, from
+  `bench/results.jsonl`); `-- route.txt [more.txt] [--guide waypoints.txt] [--out DIR]` draws any
+  routes, a waypoint file overlaid. `sf-bench` redraws it after each guided set-C run
+  (`--no-view` skips). Use it to show the owner a route or where one stalls instead of
+  describing it; the library (`sf_routeview::dump::replay`) gives the same facts as data. The page
+  holds disk graphics: keep it in `build/`, never commit it.
 
 ## Tile addressing (how the user points at spots)
 `tools/export_annotated.py` makes per-level images with a col/row grid + level id.

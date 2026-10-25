@@ -179,8 +179,9 @@ How it works, and the benchmark against the older tools (`sf-bench`), is in
 **Seeing a route:** `sf-routeview` replays routes on the engine and draws them over the level
 map, one page at `build/route-viz/index.html`: the frog's path, every coin, collectible and enemy,
 the events along the way (coins, kills, hits, jumps) and a timeline to play it back. A switcher on
-top lists the routes, marked failed (no route reaches the exit), faults (a heart lost, over +25% of
-the reference route, or a plan that used half its time budget) or clean. A failed route also shows
+top lists the routes, marked failed (the planner failed, or the route reaches no exit), faults (a
+heart or life lost, over +25% of the reference route, a plan that used half its time budget, or a
+route timed for the original, which may drift on replay) or clean. A failed route also shows
 where it stops making progress.
 
 ```bash
