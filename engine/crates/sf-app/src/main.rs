@@ -77,6 +77,10 @@ const SILENT_RATE: u32 = 48_000;
 /// Exit status when `--timeout` stops a run whose process group it cannot stop whole.
 const TIMED_OUT: i32 = 124;
 
+/// `fast-until`'s steps per turn of the event loop: about a second of play, so the window keeps
+/// drawing and the keyboard and menus keep answering while it runs.
+const FAST_BATCH: u64 = 50;
+
 fn main() {
     let args = match args::parse(std::env::args_os().skip(1)) {
         Ok(a) => a,
@@ -595,7 +599,10 @@ impl App {
             run.paula.frame(&out.mixed(), &run.game, &mut run.samples);
             ends.push(run.samples.len());
         }
-        if let Some(a) = &run.audio {
+        // Fast-forwarded steps make no sound: the device's queue is unbounded, so their samples
+        // would play on for minutes after the game is back on the clock.
+        let fast = self.script.as_ref().and_then(|s| s.fast_until).is_some_and(|until| n < until);
+        if let (Some(a), false) = (&run.audio, fast) {
             a.push(&run.samples);
         }
         let picture = outs.into_iter().last().expect("a frame steps").picture;
@@ -786,6 +793,29 @@ impl ApplicationHandler for App {
                 rate,
             };
             run.lead = 0;
+        }
+        // `fast-until N`: steps before N as fast as they run, in batches so the window still
+        // draws and takes events; reaching N, the pacer counts the time spent as stepped so the
+        // game carries on from now instead of catching up.
+        if let Some(until) = self.script.as_ref().and_then(|s| s.fast_until)
+            && run.steps < until
+        {
+            let batch = (until - run.steps).min(FAST_BATCH);
+            for _ in 0..batch {
+                self.step(event_loop);
+                if event_loop.exiting() {
+                    return;
+                }
+            }
+            self.show_menu();
+            self.show_newest();
+            let run = self.run.as_mut().expect("running");
+            if run.steps >= until {
+                eprintln!("superfrog: fast-forward done at step {}", run.steps);
+                run.pacer.skip_to(run.clock.samples() + run.lead);
+            }
+            event_loop.set_control_flow(ControlFlow::Poll);
+            return;
         }
         let due = run.pacer.due(run.clock.samples() + run.lead);
         for _ in 0..due {
