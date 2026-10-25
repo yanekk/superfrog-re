@@ -92,8 +92,7 @@ At the end of Phase 2: `sf-plan` is the one command, in original and app modes, 
 |---|---|---|
 | [T14](tasks/T14-tuning-run.md) | tuning-run | T11 |
 | [T15](tasks/T15-set-c-run.md) | set-c-run | T12, T14 |
-| [T16](tasks/T16-baseline-counted.md) | baseline-counted | T15 |
-| [T17](tasks/T17-new-counted.md) | new-counted | T16 |
+| [T17](tasks/T17-new-counted.md) | new-counted | T15 |
 | [T18](tasks/T18-results-and-retire.md) | results-and-retire | T17 |
 | [T24](tasks/T24-repair-cost.md) | repair-cost | T14; blocks T15 |
 | [T25](tasks/T25-tuning-set-a.md) | tuning-set-a | T14, T24; blocks T15 |
@@ -106,8 +105,8 @@ At the end of Phase 2: `sf-plan` is the one command, in original and app modes, 
 | [T32](tasks/T32-alone-pass-drift.md) | alone-pass-drift | T31; blocks T17 |
 | [T33](tasks/T33-dead-end-repair.md) | dead-end-repair | T27, T30; blocks T17 |
 
-T16 depends on T15 only so that it runs on a quiet machine after every other task (DESIGN D2, D4);
-T17 follows T16 for the same reason. (T13, M7's map-soundness run, was dropped 2026-10-22, D20.)
+T17 depends on T15 only so that it runs on a quiet machine after every other task (DESIGN D2).
+(T13, M7's map-soundness run, was dropped 2026-10-22, D20; T16, the counted baseline, 2026-10-25, D27.)
 
 ---
 
@@ -132,7 +131,7 @@ T17 follows T16 for the same reason. (T13, M7's map-soundness run, was dropped 2
 ## Critical path
 
 ```
-T08 → T09 → T10 → T11 → T14 → T15 → T16 → T17 → T18
+T08 → T09 → T10 → T11 → T14 → T15 → T17 → T18
 ```
 
 (T00–T07, T19, T21 are done.) Off it: T22 (beside T09 and T10, before T11) and T12 (before T15).
@@ -152,18 +151,18 @@ T08). The tail T14–T18 is serial on purpose: counted runs need a quiet machine
 
 | Weight | Tasks |
 |---|---|
-| **Heavy** | T00, T04, T08, T14, T16, T17 (the last two in machine hours, up to ~25 h each) |
+| **Heavy** | T00, T04, T08, T14, T17 (T17 in machine hours, ~15–20 h) |
 | **Medium** | T01, T02, T09, T10, T11, T15, T18, T22 |
 | **Light** | T03, T05, T06, T07, T12 |
 
 Overrun risks: T08's memory policy (D22: checkpoints and replay must stay deterministic and fast);
 W2-3 and W6-4, which the experiment never finished, land in T14; T14 is open-ended by nature
-(tuning until the stall levels pass), bounded by D5: what is not clear-cut goes to the owner; T16/T17
-are wall-clock bound and run as resumable background slices of at most 2 h each.
+(tuning until the stall levels pass), bounded by D5: what is not clear-cut goes to the owner; T17
+is wall-clock bound and run as resumable background slices of at most 2 h each.
 
 ## Decisions still open
 
 - The compass (straight, the map, coin choice): T14's trial settles it (D20).
 - Whether `pir/bug-recorder` is merged by the time T12 is ready: T12 checks; if not, T12 and T15
-  wait and the owner is asked. T16, T17 and T18 wait with them, being chained after T15 for a quiet
+  wait and the owner is asked. T17 and T18 wait with them, being chained after T15 for a quiet
   machine (owner, 2026-10-20: keep the order; reorder then if the merge is late).

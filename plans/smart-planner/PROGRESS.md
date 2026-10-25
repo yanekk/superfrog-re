@@ -18,6 +18,8 @@ allowed everywhere, map a compass; T13 and T20 dropped, T22 route-shorten added.
 **Amendment reviewed:** 2026-10-22 — 18 fixes, 1 decision (owner: T10's W1-4 check runs guided)
 
 **Plan amended:** 2026-10-24 — D25: a walk compass (wall-aware fill) joins T28's trial (owner).
+**Plan amended:** 2026-10-25 — D27: T16 and T17's set-B repair column dropped to finish sooner;
+baseline is T02's sample (owner).
 **Status:** T00–T07, T19, T21 done; core rewritten by the amendment, not started.
 **Last updated:** 2026-10-22
 **Next `pir-work` will:** T08 search (the explorer), from `spike-explore/`.
@@ -44,8 +46,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T12 | app-timing | T11 | ✅ | |
 | T14 | tuning-run | T11 | ✅ | |
 | T15 | set-c-run | T12, T14 | ⬜ | |
-| T16 | baseline-counted | T15 | ⬜ | |
-| T17 | new-counted | T16 | ⬜ | |
+| T17 | new-counted | T15 | ⬜ | |
 | T18 | results-and-retire | T17 | ⬜ | |
 | T19 | step-unseen-no-picture | T00; blocks T04 | ✅ | |
 | T21 | engine-memory-lookup | T04 | ✅ | |

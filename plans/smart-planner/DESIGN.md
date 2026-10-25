@@ -50,9 +50,12 @@ M7 (the map missing no reachable cell) was dropped on 2026-10-22: the map is a c
 be complete (D20).
 
 Recorded, not gated: engine frames simulated per level (machine-independent, so later changes compare
-fairly), oracle frames, the share of wall-clock spent checking on the original, route repair on set B
-(given the leg's standalone route), and, from the tuning run only, each set-A level planned unaided
-(no guide), so what the planner does on a level with no route is known.
+fairly), oracle frames, the share of wall-clock spent checking on the original, and, from the tuning run only, each set-A level planned unaided
+(no guide), so what the planner does on a level with no route is known. Route repair on set B given
+the leg's standalone route is not recorded (owner, 2026-10-25, D27).
+
+**Amended 2026-10-25 (D27).** The counted baseline (T16) and T17's set-B repair column are dropped to
+finish sooner; the old tools' baseline is T02's six-level sample, and every target stays as above.
 
 ### Stance
 
@@ -424,10 +427,11 @@ them. The results line and the table carry `guided`, so a guided new result is n
 unaided one. The tuning run (T14) also plans set A unaided, recorded and not gated. For the old tools "unaided" means each run with
 `--coins 0` style defaults and no `--via/--avoid/--ground/--jump/--launch/--fly/--skip/--to/--stomp/--hurt`; the
 baseline records the best of the three old tools per level, each given the full budget in turn,
-because an agent today would try them all. Records per level: completed, wall-clock, engine frames,
+because an agent today would try them all. Since D27 the counted baseline is not run: the baseline
+column is T02's sample (six set-A levels, `bench/sample/`), shown as such. Records per level: completed, wall-clock, engine frames,
 oracle frames, confirmation share, route frames, hearts lost, failure reason.
 
-Counted runs (T15–T17) run one level at a time with no other build or test on the machine
+Counted runs (T15, T17) run one level at a time with no other build or test on the machine
 (`--jobs 1`), because four oracles at once each run at ~95 frames/s against ~314 alone
 (rust-engine FINDINGS 2026-10-11). Set C may use `--jobs` up to the core count, memory allowing:
 each planner may hold `--max-mem-gb` (§5.2), so jobs × that stays under the machine's 16 GB.
@@ -516,14 +520,15 @@ The old tools stay in the tree until T18, so any level can still be planned the 
 - D2 (owner): the counted baseline and the counted new run go one level at a time on a quiet machine,
   timed in wall-clock; a flat 30 min per level for every level, W4-4's 24 000-frame route included.
   Why: four oracles at once each run at a third of their speed, and parallel build workers distort
-  timings.
+  timings. Since D27 only the counted new run (T17) is held to this; there is no counted baseline.
 - D3 (owner): set C stays in this plan and waits for `pir/bug-recorder` (which adds
   `Game::start_level` and `LevelSetup`) to be merged into main. T12 checks for it and stops to ask if
   absent. Copying the API here was refused: two copies collide at merge. T15–T18 wait with it, being
   chained after T15 for a quiet machine; the owner keeps that order (2026-10-20) and may reorder if
   the merge is late.
 - D4 (owner): an early baseline sample (T02) guides the design; the counted baseline (T16) runs at the
-  end, just before the counted new run, while the old tools still exist.
+  end, just before the counted new run, while the old tools still exist. Superseded by D27: T16 is
+  dropped and T02's sample is the baseline.
 - D5 (owner): a missed target at the end is brought to the owner with its cause; clear-cut planner bugs
   are fixed and those levels re-run within the task. The old tools are deleted once M1 holds or the
   owner accepts the miss.
@@ -605,7 +610,15 @@ The old tools stay in the tree until T18, so any level can still be planned the 
   cases already use, so "counts" means the same as in the rust-engine plan. Set B uses the existing
   `AtFrame { game-whole, frame, df1 }` sync point.
 - D10: old tools' baseline is the best of three per level, each with the full budget, since an agent
-  today would try all three.
+  today would try all three. Holds for T02's sample, the only baseline since D27.
+- D27 (owner, 2026-10-25): to finish sooner, T16 (the counted baseline, ~50–60 h: two of the three old
+  tools ran out the 30-min clock on every T02 level) and T17's ungated set-B repair column (up to
+  ~12 h) are dropped; T17 follows T15. The baseline column is T02's six-level sample (best-old 0 of 6,
+  busy machine), labelled as such. Why: no target is gated on the baseline; it is context. Refused:
+  old tools sharing one 30-min budget on set A only (~12 h), running counted slices in parallel
+  (oracles slow each other ~3×, so M3 and the 30-min budget would stop meaning what they say). Cost
+  accepted: the comparison is six levels on a busy machine and cannot be redone once T18 deletes the
+  old tools.
 
 ---
 
