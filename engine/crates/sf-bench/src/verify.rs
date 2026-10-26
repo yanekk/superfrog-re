@@ -25,7 +25,7 @@ const HEARTS: u32 = h0(0x830);
 /// Nothing held after a route's last line before the run ends: the exit's milestone is seen even
 /// for a route that stops on its exit frame.
 pub const TAIL: u32 = 25;
-/// The level's `level_state` is not yet −2 on its first frames (`plan_exit` waits 10 too).
+/// The level's `level_state` is not yet −2 on its first frames.
 const SETTLE: u32 = 10;
 
 #[derive(Debug, Clone, PartialEq, Eq)]

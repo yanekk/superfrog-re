@@ -1,7 +1,7 @@
 //! `sf-bench`: the smart-planner benchmark (plans/smart-planner DESIGN §4.2).
 //!
 //! ```text
-//! sf-bench --set A|B|C --planner new|plan_exit|plan_exit_w6|explore|best-old
+//! sf-bench --set A|B|C --planner new
 //!          [--levels W1-1,W1-4] [--jobs N] [--threads N] [--budget-min 30] [--seed 1] [--follow-standalone] [--unguided]
 //!          [--results plans/smart-planner/bench/results.jsonl] [--table plans/smart-planner/bench/RESULTS.md]
 //! sf-bench --table-only [--results …] [--table …]     # re-render RESULTS.md from results.jsonl
@@ -9,6 +9,7 @@
 //!
 //! Run from `engine/`: `cargo run --release -p sf-bench -- …`. Each level's line is appended as it
 //! ends; a rerun skips the levels recorded for the same planner, set and commit, guided or not.
+//! The old tools' `best-old` baseline was retired at T34: its recorded lines still render.
 //! The new planner is guided by each level's committed route (DESIGN §4.2, D21); `--unguided`
 //! runs it with no guide, recorded beside the guided result. Routes and each
 //! planner's stderr go to `routes/` beside the results file.
@@ -20,7 +21,7 @@ use sf_bench::run::{Options, bench};
 
 fn usage() -> ! {
     eprintln!(
-        "sf-bench --set A|B|C --planner new|plan_exit|plan_exit_w6|explore|best-old [--levels W1-1,W1-4] \
+        "sf-bench --set A|B|C --planner new [--levels W1-1,W1-4] \
          [--jobs N] [--threads N] [--budget-min 30] [--seed 1] [--follow-standalone] [--unguided] [--results FILE] [--table FILE]\n\
          sf-bench --table-only [--results FILE] [--table FILE]"
     );

@@ -36,7 +36,7 @@ struct Live {
     anim: u32,
 }
 
-/// The map's row 0 (`map_rows[1]`, h1) and a row's length in bytes, as `examples/complete.rs`.
+/// The map's row 0 (`map_rows[1]`, h1) and a row's length in bytes.
 const ROW0: u32 = h1(0x218e0 + 0x4c0);
 const ROW_BYTES: u32 = 0x260;
 
