@@ -33,6 +33,7 @@ supply your own copies in the repo root before running the tools.
 | The app's sound note for note: a note restarting a channel mid-sample is lost, as the engine's Paula writes have no beam position ([T213](plans/rust-engine/tasks/T213-paula-write-timing.md)) | ⬜ next |
 | App: menus, keyboard and gamepad controls, save states, CRT filters and widescreen, playing a level from a `.sflevel` file | ✅ |
 | Bug recorder: start any level with chosen values, record play, save a bug zip an agent replays and compares with the original ([`docs/BUG-FIX.md`](docs/BUG-FIX.md)) | ✅ |
+| Engine architecture documented: every file classified as Amiga imitation, game logic, copied-in data or shell, rated for reuse in another Amiga game, with a recommended native rewrite order ([`docs/architecture/`](docs/architecture/README.md)) | ✅ |
 | Map editor (view + edit + repack `ATN!` + rebuild `.adf`) | ⬜ next |
 
 **29 levels** found (all `300 × 84` blocks), stored as `ATN!`-packed `T7MP` files.
@@ -76,6 +77,7 @@ Full analysis in [`docs/`](docs/) (read in order):
 - [`06-graphics-and-rendering.md`](docs/06-graphics-and-rendering.md) — tilesets, palettes (`0x11300`), world→tileset mapping
 - [`07-secret-passages.md`](docs/07-secret-passages.md) — collision flags, fake-wall (flag 38) secret passages
 - [`LEVEL-INDEX.md`](docs/LEVEL-INDEX.md) — level ids + tile addressing (`<level-id>:<col>,<row>`)
+- [`architecture/`](docs/architecture/README.md) — how the Rust engine is built: which parts imitate the Amiga, which are the game's rules, which are data copied from the disks; reuse per part and a suggested order for a native rewrite
 
 ## Play it
 
