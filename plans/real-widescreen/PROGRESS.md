@@ -13,7 +13,7 @@ message. Whoever writes a cell also fixes the over-budget cell they walk past.
 
 **Status:** Planned; nothing built.
 **Last updated:** 2026-10-26
-**Next `pir-work` will:** review T03; then T06 wide-switch and T08 side-objects, which wait on it.
+**Next `pir-work` will:** T06 wide-switch and T08 side-objects, now unblocked by T03.
 
 ## Tasks
 
@@ -25,7 +25,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T00 | wide-spawn-spike | — | ✅ | |
 | T01 | wide-mode | — | ✅ | |
 | T02 | wide-spawn | T01 | ✅ | |
-| T03 | wide-capacity | T00, T01, T02 | 🔍 | 80 extra slots at $600000 (slots, bobs, free list, draw and hitbox lists); 9 tests, 4:3 hash unchanged. Deviations: wide lists relocated, readers follow `wide_*_at`; extra bob first set up from object bob 1; T02's find_free test fills extras; heaviest-scene test in sf-conform (purity); collide charges original entries only; workspace run skipped (parallel rule). |
+| T03 | wide-capacity | T00, T01, T02 | ✅ | Review: one missing test added (live extra walked after switch-off; mutation survived before). Base-commit rerun confirms the 4:3 hashes; probe of five levels shows 4:3 never writes the range and the live count never drifts across switches. Three mutations caught. Workspace run left to pir's end run. |
 | T04 | wide-camera | T01 | ✅ | |
 | T05 | wide-special-cases | T01 | ✅ | |
 | T06 | wide-switch | T02, T03 | ⬜ | |
@@ -36,7 +36,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T11 | widescreen-drill | T10 | ⬜ | |
 | T12 | wide-every-level | T11 | ⬜ | |
 
-**Review queue:** T03
+**Review queue:** *(empty)*
 
 ## Blocked on the user
 
