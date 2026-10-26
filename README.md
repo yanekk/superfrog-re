@@ -152,7 +152,8 @@ game included.
 ## Planning a route
 
 `sf-plan` finds an input script that plays a level to its exit, for a test case, a whole-game
-chain leg or a level you changed. It explores the level on the Rust engine, then plays what it
+chain leg or a level you changed. It is the one level-routing tool: the older per-level planners
+were retired, and only `plan_bonus` remains, for the bonus level. It explores the level on the Rust engine, then plays what it
 found on the original (the emulator oracle) and repairs any stretch where the two part, so a route
 it writes is one the original agrees with. One command, no per-level options:
 
@@ -174,7 +175,9 @@ cd engine && cargo run --release -p sf-plan -- W2-1 --out route.txt
   [`engine/conform/plan-hints.log`](engine/conform/plan-hints.log) as a planner gap to fix.
 
 How it works, and the benchmark against the older tools (`sf-bench`), is in
-[`plans/smart-planner/`](plans/smart-planner/DESIGN.md).
+[`plans/smart-planner/`](plans/smart-planner/DESIGN.md). It completes most levels from every start,
+not all: the levels it still fails are listed in
+[`bench/failing-levels.md`](plans/smart-planner/bench/failing-levels.md).
 
 ## Tools
 
