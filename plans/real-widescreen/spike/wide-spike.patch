@@ -1,0 +1,840 @@
+diff --git a/engine/crates/sf-core/src/enemies/common.rs b/engine/crates/sf-core/src/enemies/common.rs
+index 196e966..c63f758 100644
+--- a/engine/crates/sf-core/src/enemies/common.rs
++++ b/engine/crates/sf-core/src/enemies/common.rs
+@@ -268,7 +268,7 @@ const PARTNER_REACH: u32 = 0x98;
+ 
+ /// Whether a slot is live on map cell `cell`.
+ fn cell_live(b: &Bus, cell: u32) -> bool {
+-    (0..20).any(|k| b.l(OBJ_SLOTS + k * 0x7c + 0x40) == cell)
++    crate::spike::slots().any(|s| b.l(s + 0x40) == cell)
+ }
+ 
+ /// `find_marker_right` (h0+$1b350): whether the first cell right of `cell` (within `$98`) holding
+diff --git a/engine/crates/sf-core/src/enemies/w2/spikes.rs b/engine/crates/sf-core/src/enemies/w2/spikes.rs
+index 6216f64..360096c 100644
+--- a/engine/crates/sf-core/src/enemies/w2/spikes.rs
++++ b/engine/crates/sf-core/src/enemies/w2/spikes.rs
+@@ -65,8 +65,7 @@ fn spikes_init(c: &mut LevelCtx, slot: u32, m: u16, anim: u32, left_ahead: bool)
+             }
+             break;
+         }
+-        let Some(other) = (0..20)
+-            .map(|k| OBJ_SLOTS + k * 0x7c)
++        let Some(other) = crate::spike::slots()
+             .find(|&s| b.l(s + 0x40) == at)
+         else {
+             continue;
+diff --git a/engine/crates/sf-core/src/enemies/w3/scenery.rs b/engine/crates/sf-core/src/enemies/w3/scenery.rs
+index 09a8552..0dde114 100644
+--- a/engine/crates/sf-core/src/enemies/w3/scenery.rs
++++ b/engine/crates/sf-core/src/enemies/w3/scenery.rs
+@@ -102,8 +102,7 @@ fn flow_init(c: &mut LevelCtx, slot: u32, _d7: u16) {
+         .into_iter()
+         .find(|&a| b.w(a) & 0x3f == 0x18);
+     if let Some(side) = side
+-        && let Some(other) = (0..20u32)
+-            .map(|k| OBJ_SLOTS + k * 0x7c)
++        && let Some(other) = crate::spike::slots()
+             .find(|&s| b.l(s + 0x40) == side)
+     {
+         let ob = b.l(other + 0x50);
+diff --git a/engine/crates/sf-core/src/enemies/w3/swing.rs b/engine/crates/sf-core/src/enemies/w3/swing.rs
+index 1e66541..53470c2 100644
+--- a/engine/crates/sf-core/src/enemies/w3/swing.rs
++++ b/engine/crates/sf-core/src/enemies/w3/swing.rs
+@@ -97,8 +97,8 @@ pub fn update(c: &mut LevelCtx, slot: u32, _d7: u16) {
+     b.set_l(slot + 0x6c, b.l(slot + 8));
+     b.set_w(slot + 0x6e, b.w(slot + 0x6e).wrapping_add(4));
+     b.set_w(slot + 0x6c, b.w(slot + 0x6c).wrapping_add(8));
+-    let links = (0..20u32)
+-        .map(|k| b.l(OBJ_SLOTS + k * 0x7c + 0x50))
++    let links = crate::spike::slots()
++        .map(|s| b.l(s + 0x50))
+         .filter(|&bob| {
+             LINK_ANIMS.contains(&b.l(bob.wrapping_add(8)))
+                 || LINK_ANIMS.contains(&b.l(bob.wrapping_add(0x42)))
+diff --git a/engine/crates/sf-core/src/enemies/w4/mace.rs b/engine/crates/sf-core/src/enemies/w4/mace.rs
+index fc80a12..54f3f6a 100644
+--- a/engine/crates/sf-core/src/enemies/w4/mace.rs
++++ b/engine/crates/sf-core/src/enemies/w4/mace.rs
+@@ -95,8 +95,8 @@ fn mace_update(c: &mut LevelCtx, slot: u32, _d7: u16) {
+     b.set_l(slot + 0x6c, b.l(slot + 8));
+     b.set_w(slot + 0x6e, b.w(slot + 0x6e).wrapping_add(4));
+     b.set_w(slot + 0x6c, b.w(slot + 0x6c).wrapping_add(8));
+-    let links = (0..20)
+-        .map(|k| b.l(OBJ_SLOTS + k * 0x7c + 0x50))
++    let links = crate::spike::slots()
++        .map(|s| b.l(s + 0x50))
+         .filter(|&bob| {
+             LINKS.contains(&b.l(bob.wrapping_add(8)))
+                 || LINKS.contains(&b.l(bob.wrapping_add(0x42)))
+diff --git a/engine/crates/sf-core/src/layout.rs b/engine/crates/sf-core/src/layout.rs
+index ab97ae0..6d893c7 100644
+--- a/engine/crates/sf-core/src/layout.rs
++++ b/engine/crates/sf-core/src/layout.rs
+@@ -195,6 +195,8 @@ layout! {
+     PanelBitmap = "panel_bitmap", h3(0x4b390), Width::Bytes(5 * 0x2a0);
+     /// h3+$4c0b0..$64b70: the frog's attached-sprite frames (`hero_sprite_frames` h0+$19ce0).
+     HeroFrames = "hero_frames", h3(0x4c0b0), Width::Bytes(0x18ac0);
++    /// T00 spike: extra slots, bob records and free-list entries (THROWAWAY).
++    WideSpike = "wide_spike", crate::spike::BASE, Width::Bytes(crate::spike::BYTES);
+     /// The front end's flags (T20, docs/13), h0+$6..$26: `game_full_mode` (h0+$6), `loader_mode`,
+     /// `start_world`, `start_level` (from a level code), the words between them, `attract_mode`,
+     /// `final_level_flag`.
+diff --git a/engine/crates/sf-core/src/level/mod.rs b/engine/crates/sf-core/src/level/mod.rs
+index 6b9d2b0..8d4e673 100644
+--- a/engine/crates/sf-core/src/level/mod.rs
++++ b/engine/crates/sf-core/src/level/mod.rs
+@@ -437,7 +437,7 @@ impl LevelCtx<'_> {
+     pub fn spend_n(&mut self, k: beam::Cost, n: u32) {
+         self.interrupt_due();
+         self.stamp();
+-        if n == 0 {
++        if n == 0 || crate::spike::free() {
+             return;
+         }
+         self.tick(beam::Tick::Cpu(k, n));
+@@ -910,6 +910,9 @@ impl LevelCtx<'_> {
+     pub fn blit_words(&mut self, words: u32, con0: u16) {
+         self.interrupt_due();
+         self.stamp();
++        if crate::spike::free() {
++            return;
++        }
+         self.scheduled_blit(words);
+         let slots = words * beam::slots_per_word(con0);
+         self.tick(beam::Tick::Blit(slots));
+diff --git a/engine/crates/sf-core/src/level/objects.rs b/engine/crates/sf-core/src/level/objects.rs
+index 735bf17..1310f05 100644
+--- a/engine/crates/sf-core/src/level/objects.rs
++++ b/engine/crates/sf-core/src/level/objects.rs
+@@ -27,8 +27,17 @@ pub const BOB_FREE_LIST: u32 = h0(0x1ba16);
+ 
+ /// `obj_run_all` (h0+$1b324): each live slot's update routine (`+$04`), in slot order.
+ pub fn obj_run_all(c: &mut LevelCtx) {
+-    for k in 0..SLOTS {
+-        let slot = OBJ_SLOTS + k * SLOT_SIZE;
++    for k in 0..crate::spike::n_slots() {
++        let slot = crate::spike::slot(k);
++        if k >= SLOTS {
++            if c.bus.l(slot + 0x40) != 0 {
++                crate::spike::FREE.store(true, std::sync::atomic::Ordering::Relaxed);
++                let update = c.bus.l(slot + 4);
++                crate::level::call(c, update, slot, 0);
++                crate::spike::FREE.store(false, std::sync::atomic::Ordering::Relaxed);
++            }
++            continue;
++        }
+         c.spend(Cost::ObjSlot);
+         if c.bus.l(slot + 0x40) != 0 {
+             c.spend(Cost::ObjUpdate);
+@@ -61,22 +70,21 @@ pub struct Spawned {
+ 
+ /// The slot the spawner settles on (`a1`) after its search, or `None`: no slot.
+ fn find_free(c: &mut LevelCtx) -> Option<u32> {
+-    if let Some(s) = (0..SLOTS)
+-        .map(|k| OBJ_SLOTS + k * SLOT_SIZE)
+-        .find(|&s| c.bus.l(s + 0x40) == 0)
+-    {
++    if let Some(s) = crate::spike::slots().find(|&s| c.bus.l(s + 0x40) == 0) {
+         return Some(s);
+     }
+     // Every slot full: an evictable one off the screen is reclaimed.
+-    for k in 0..SLOTS {
+-        let s = OBJ_SLOTS + k * SLOT_SIZE;
++    for k in 0..crate::spike::n_slots() {
++        let s = crate::spike::slot(k);
+         if c.bus.w(s + 0x2a) != 0 {
+             obj_despawn_if_offscreen(c, s, 0);
+             if c.bus.l(s + 0x40) == 0 {
++                crate::spike::bump(&crate::spike::EVICT);
+                 return Some(s);
+             }
+         }
+     }
++    crate::spike::bump(&crate::spike::FIND_FAIL);
+     None
+ }
+ 
+@@ -91,6 +99,26 @@ fn take_bob(b: &mut Bus, slot: u32) -> bool {
+             return true;
+         }
+     }
++    if crate::spike::wide() {
++        for k in 0..crate::spike::extra() {
++            let entry = crate::spike::FREE_AT + 4 * k;
++            if b.l(entry) != 0 {
++                let bob = b.l(entry);
++                // A fresh copy of the first object bob record's set-up (anim lists, sub-records).
++                for o in (0..0x11c).step_by(2) {
++                    b.set_w(bob - 4 + o, b.w(SPUD_BOB + 0x11c - 4 + o));
++                }
++                for part in [0x10u32, 0x56, 0x9c, 0xe2] {
++                    b.set_l(bob + part, 0);
++                }
++                b.set_l(slot + 0x50, bob);
++                b.set_l(slot + 0x4c, entry);
++                b.set_l(entry, 0);
++                return true;
++            }
++        }
++    }
++    crate::spike::bump(&crate::spike::NO_BOB);
+     false
+ }
+ 
+@@ -157,8 +185,7 @@ fn fill_slot(c: &mut LevelCtx, slot: u32, template: u32, cell: u32) {
+ /// `obj_spawn_cell` (h0+$1b3d8): `template` at map cell `cell`, `dx`, `dy` pixels into it,
+ /// unless the cell already has a live slot (that slot is returned, `d1` -1).
+ pub fn obj_spawn_cell(c: &mut LevelCtx, template: u32, cell: u32, dx: u16, dy: u16) -> Spawned {
+-    if let Some(s) = (0..SLOTS)
+-        .map(|k| OBJ_SLOTS + k * SLOT_SIZE)
++    if let Some(s) = crate::spike::slots()
+         .find(|&s| c.bus.l(s + 0x40) == cell)
+     {
+         return Spawned { d0: 0, d1: 0xffff_ffff, a0: s };
+@@ -195,7 +222,7 @@ fn spawn_at_cell(c: &mut LevelCtx, template: u32, cell: u32, dx: u16, dy: u16) -
+ /// `obj_spawn_coin_forced` (h0+$1b5d0): a coin at map cell `cell`. With every slot full and none
+ /// evictable off the screen, the first slot that is neither evictable nor a coin is freed for it.
+ pub fn obj_spawn_coin_forced(c: &mut LevelCtx, template: u32, cell: u32, dx: u16, dy: u16) -> Spawned {
+-    let slots = || (0..SLOTS).map(|k| OBJ_SLOTS + k * SLOT_SIZE);
++    let slots = crate::spike::slots;
+     if let Some(s) = slots().find(|&s| c.bus.l(s + 0x40) == cell) {
+         return Spawned { d0: 0, d1: dy as u32, a0: s };
+     }
+@@ -209,6 +236,7 @@ pub fn obj_spawn_coin_forced(c: &mut LevelCtx, template: u32, cell: u32, dx: u16
+             else {
+                 return none;
+             };
++            crate::spike::bump(&crate::spike::FORCED);
+             obj_free(c, s, 0);
+             s
+         }
+@@ -227,8 +255,7 @@ pub fn obj_spawn_coin_forced(c: &mut LevelCtx, template: u32, cell: u32, dx: u16
+ /// spawned at that very position (that slot is returned, `d1` -1).
+ pub fn obj_spawn_at_xy(c: &mut LevelCtx, template: u32, x: u16, y: u16) -> Spawned {
+     let at = (x as u32) << 16 | y as u32;
+-    if let Some(s) = (0..SLOTS)
+-        .map(|k| OBJ_SLOTS + k * SLOT_SIZE)
++    if let Some(s) = crate::spike::slots()
+         .find(|&s| c.bus.l(s + 0x44) == at)
+     {
+         return Spawned { d0: 0, d1: 0xffff_ffff, a0: s };
+@@ -285,6 +312,13 @@ pub fn obj_free_all(c: &mut LevelCtx) {
+     for k in 0..SLOTS {
+         obj_free(c, OBJ_SLOTS + k * SLOT_SIZE, 0);
+     }
++    if crate::spike::wide() {
++        for k in 0..crate::spike::extra() {
++            let s = crate::spike::slot(20 + k);
++            obj_free(c, s, 0);
++            c.bus.set_l(crate::spike::FREE_AT + 4 * k, crate::spike::extra_bob(k));
++        }
++    }
+ }
+ 
+ /// The frame record a slot's bob shows: its animation step's frame (`(bob+$16)` → `(…)`).
+@@ -297,7 +331,8 @@ fn shown_frame(b: &Bus, slot: u32) -> u32 {
+ pub fn obj_free_if_left_behind(c: &mut LevelCtx, slot: u32, _d7: u16) {
+     let b = &c.bus;
+     let frame = shown_frame(b, slot);
+-    let d0 = b.w(CAMERA_X + 2).wrapping_sub(b.w(frame + 4));
++    let wide = if crate::spike::wide() { crate::spike::WIDE_PX } else { 0 };
++    let d0 = b.w(CAMERA_X + 2).wrapping_sub(wide).wrapping_sub(b.w(frame + 4));
+     if n_clear(d0.wrapping_sub(b.w(slot + 8))) {
+         obj_free(c, slot, 0);
+     }
+@@ -318,12 +353,13 @@ pub fn obj_despawn_if_offscreen(c: &mut LevelCtx, slot: u32, _d7: u16) {
+     let frame = shown_frame(b, slot);
+     let (x, y) = (b.w(slot + 8), b.w(slot + 0xa));
+     c.point(2);
+-    let gone = (dirs & 4 != 0 && n_clear(x.wrapping_sub(0x170).wrapping_sub(c.bus.w(CAMERA_X + 2))))
++    let wide = if crate::spike::wide() { crate::spike::WIDE_PX } else { 0 };
++    let gone = (dirs & 4 != 0 && n_clear(x.wrapping_sub(0x170 + wide).wrapping_sub(c.bus.w(CAMERA_X + 2))))
+         || {
+             c.point(3);
+             dirs & 2 != 0
+                 && !n_clear(
+-                    x.wrapping_add(c.bus.w(frame + 4)).wrapping_add(0x30).wrapping_sub(c.bus.w(CAMERA_X + 2)),
++                    x.wrapping_add(c.bus.w(frame + 4)).wrapping_add(0x30 + wide).wrapping_sub(c.bus.w(CAMERA_X + 2)),
+                 )
+         }
+         || {
+@@ -375,13 +411,21 @@ pub fn obj_path_xy(b: &mut Bus, slot: u32, dx: u16, dy: u16) {
+ /// `obj_build_hitboxes` (h0+$d2f6): every live slot's hitboxes, offset by its position.
+ pub fn obj_build_hitboxes(c: &mut LevelCtx) {
+     let mut out = HITBOXES;
+-    for k in 0..SLOTS {
+-        let slot = OBJ_SLOTS + k * SLOT_SIZE;
++    let mut entries = 0u32;
++    for k in 0..crate::spike::n_slots() {
++        let slot = crate::spike::slot(k);
++        let extra = k >= SLOTS;
++        crate::spike::FREE.store(extra, std::sync::atomic::Ordering::Relaxed);
+         c.spend(Cost::HitboxSlot);
+         let b = &mut c.bus;
+         let mut hb = if b.l(slot + 0x40) == 0 { 0 } else { b.l(slot + 0x14) };
+         let mut boxes = 0;
+         while hb != 0 {
++            entries += 1;
++            if entries > 127 {
++                crate::spike::bump(&crate::spike::HITBOX_DROPPED);
++                break;
++            }
+             boxes += 1;
+             let (dx, dy) = (b.w(hb + 4), b.w(hb + 6));
+             let x1 = b.w(slot + 8).wrapping_add(dx);
+@@ -398,8 +442,12 @@ pub fn obj_build_hitboxes(c: &mut LevelCtx) {
+             }
+         }
+         c.spend_n(Cost::Hitbox, boxes);
+-        c.step_done();
++        if !extra {
++            c.step_done();
++        }
+     }
++    crate::spike::FREE.store(false, std::sync::atomic::Ordering::Relaxed);
++    crate::spike::HITBOXES.fetch_max(entries.min(127), std::sync::atomic::Ordering::Relaxed);
+     c.bus.set_w(out, 0xffff);
+ }
+ 
+@@ -542,17 +590,29 @@ pub fn build_bob_draw_list(c: &mut LevelCtx) {
+     let mut out = BOB_DRAW_LIST;
+     c.bus.set_l(out, SPUD_BOB);
+     out += 4;
++    let mut n = 1u32;
+     for front in [true, false] {
+-        for k in 0..SLOTS {
+-            c.spend(Cost::DrawListSlot);
++        for k in 0..crate::spike::n_slots() {
++            let extra = k >= SLOTS;
++            if !extra {
++                c.spend(Cost::DrawListSlot);
++            }
+             let b = &mut c.bus;
+-            let slot = OBJ_SLOTS + k * SLOT_SIZE;
++            let slot = crate::spike::slot(k);
+             let bob = b.l(slot + 0x50);
+             if bob != 0 && ((b.l(slot + 0x26) as i32) >= 0) == front {
+-                b.set_l(out, bob);
+-                out += 4;
++                n += 1;
++                // The list's 0xa8 bytes: a 0, 40 bobs, the closing 0.
++                if n <= 40 {
++                    b.set_l(out, bob);
++                    out += 4;
++                } else {
++                    crate::spike::bump(&crate::spike::DRAW_DROPPED);
++                }
++            }
++            if !extra {
++                c.step_done();
+             }
+-            c.step_done();
+         }
+     }
+     for k in 0..SLOTS {
+@@ -560,11 +620,32 @@ pub fn build_bob_draw_list(c: &mut LevelCtx) {
+         let b = &mut c.bus;
+         let bob = b.l(BOB_FREE_LIST + 4 * k);
+         if bob != 0 && [0x10, 0x56, 0x9c, 0xe2].iter().any(|&o| b.l(bob + o) != 0) {
+-            b.set_l(out, bob);
+-            out += 4;
++            n += 1;
++            if n <= 40 {
++                b.set_l(out, bob);
++                out += 4;
++            } else {
++                crate::spike::bump(&crate::spike::DRAW_DROPPED);
++            }
+         }
+         c.step_done();
+     }
++    if crate::spike::wide() {
++        for k in 0..crate::spike::extra() {
++            let b = &mut c.bus;
++            let bob = b.l(crate::spike::FREE_AT + 4 * k);
++            if bob != 0 && [0x10, 0x56, 0x9c, 0xe2].iter().any(|&o| b.l(bob + o) != 0) {
++                n += 1;
++                if n <= 40 {
++                    b.set_l(out, bob);
++                    out += 4;
++                } else {
++                    crate::spike::bump(&crate::spike::DRAW_DROPPED);
++                }
++            }
++        }
++    }
++    crate::spike::DRAW.fetch_max(n, std::sync::atomic::Ordering::Relaxed);
+     c.bus.set_l(out, 0);
+ }
+ 
+@@ -859,6 +940,7 @@ fn draw_part(c: &mut LevelCtx, back: u32, sub: u32) {
+ 
+ /// h0+$1928c: copy the clean background back over a bob's last drawing (five planes).
+ fn erase(c: &mut LevelCtx, part: u32, dest: u32) {
++    let _g = crate::spike::Guard::of(part);
+     let b = &mut c.bus;
+     let size = b.w(part + 0x1e);
+     let modulo = b.w(part + 0x26);
+@@ -901,6 +983,7 @@ fn n_clear_l(v: u32) -> bool {
+ /// clipped to the part of the screen being drawn and cookie-cut into the back buffer, or, for a
+ /// bob drawn into the background (`+4` negative, h0+$19708), copied into it.
+ fn draw_bob(c: &mut LevelCtx, bob: u32, back: u32, sub: u32) {
++    let _g = crate::spike::Guard::of(bob);
+     c.spend(Cost::Bob);
+     let b = &mut c.bus;
+     b.set_l(bob + SUB, b.l(bob));
+diff --git a/engine/crates/sf-core/src/level/spawn.rs b/engine/crates/sf-core/src/level/spawn.rs
+index 5809138..a4da153 100644
+--- a/engine/crates/sf-core/src/level/spawn.rs
++++ b/engine/crates/sf-core/src/level/spawn.rs
+@@ -16,7 +16,8 @@ const CAMERA_Y: u32 = h0(0x16660);
+ /// h0+$177da: the cell 32 pixels left of and above the camera (0 at the level's edge).
+ fn scan_origin(b: &Bus) -> u32 {
+     let clamp = |v: u32| if (v as i32) < 0 { 0 } else { v };
+-    let x = clamp(b.l(CAMERA_X).wrapping_sub(0x20));
++    let wide = if crate::spike::wide() { crate::spike::WIDE_CELLS * 16 } else { 0 };
++    let x = clamp(b.l(CAMERA_X).wrapping_sub(0x20 + wide));
+     let y = clamp(b.l(CAMERA_Y).wrapping_sub(0x20));
+     let col = x & 0xffff_0000 | ((x as u16 >> 4).wrapping_mul(2)) as u32;
+     let row = (y as u16 >> 4).wrapping_mul(4);
+@@ -26,9 +27,16 @@ fn scan_origin(b: &Bus) -> u32 {
+ 
+ /// Run the spawner of each marker `1..$39` in `n` cells from `at`, `step` bytes apart.
+ fn scan(c: &mut LevelCtx, mut at: u32, n: u32, step: u32) {
++    scan_paid(c, at, n, step, n)
++}
++
++/// [`scan`], only the first `paid` cells charged (DESIGN §2.4, D11).
++fn scan_paid(c: &mut LevelCtx, mut at: u32, n: u32, step: u32, paid: u32) {
+     c.spend(Cost::Scan);
+-    for _ in 0..n {
+-        c.spend(Cost::ScanCell);
++    for i in 0..n {
++        if i < paid {
++            c.spend(Cost::ScanCell);
++        }
+         let m = c.bus.w(at) & 0x3f;
+         if m != 0 && !n_clear(m.wrapping_sub(0x3a)) {
+             c.spend(Cost::Spawner);
+@@ -50,18 +58,20 @@ pub fn scan_edges(c: &mut LevelCtx) {
+     }
+     let dirs = b.b(crate::level::camera::SCROLL_DIRS);
+     let origin = scan_origin(b);
+-    let col = if dirs & 4 != 0 { origin } else { origin.wrapping_add(0x2e) };
++    let wc = if crate::spike::wide() { crate::spike::WIDE_CELLS } else { 0 };
++    let col = if dirs & 4 != 0 { origin } else { origin.wrapping_add(0x2e + 4 * wc) };
+     scan(c, col, 0x15, 0x260);
+     let b = &c.bus;
+     let dirs = b.b(crate::level::camera::SCROLL_DIRS);
+     let origin = scan_origin(b);
+     let row = if dirs & 0x10 != 0 { origin } else { origin.wrapping_add(0x2d20) };
+-    scan(c, row, 0x19, 2);
++    scan_paid(c, row, 0x19 + 2 * wc, 2, 0x19);
+ }
+ 
+ /// h0+$1788a: the bonus level's right-hand column, 16 cells.
+ pub fn scan_right_column(c: &mut LevelCtx) {
+-    let at = scan_origin(&c.bus).wrapping_add(0x720).wrapping_add(0x2e);
++    let wc = if crate::spike::wide() { crate::spike::WIDE_CELLS } else { 0 };
++    let at = scan_origin(&c.bus).wrapping_add(0x720).wrapping_add(0x2e + 4 * wc);
+     scan(c, at, 0x10, 0x260);
+ }
+ 
+@@ -72,13 +82,19 @@ pub fn scan_screen(c: &mut LevelCtx) {
+     let start = scan_origin(&c.bus).wrapping_add(2);
+     let end = crate::mem::TILE_PTRS;
+     let world = (c.bus.l(OBJ_WORLD_OFFSET) >> 8) as u8;
++    let wc = if crate::spike::wide() { crate::spike::WIDE_CELLS } else { 0 };
+     for row in 0..0x12u32 {
+         let mut at = start.wrapping_add(row * 0x260);
+-        for _ in 0..0x18 {
+-            c.spend(Cost::ScreenScanCell);
++        for i in 0..0x18 + 2 * wc {
++            let paid = i < 0x18;
++            if paid {
++                c.spend(Cost::ScreenScanCell);
++            }
+             let m = c.bus.w(at) & 0x3f;
+             if let Some(spawn) = c.dispatch.marker(world, m as u8) {
+-                c.spend(Cost::ScreenSpawner);
++                if paid {
++                    c.spend(Cost::ScreenSpawner);
++                }
+                 spawn(c, at);
+             }
+             at = at.wrapping_add(2);
+diff --git a/engine/crates/sf-core/src/lib.rs b/engine/crates/sf-core/src/lib.rs
+index f7734e9..2f2f639 100644
+--- a/engine/crates/sf-core/src/lib.rs
++++ b/engine/crates/sf-core/src/lib.rs
+@@ -24,6 +24,7 @@ pub mod rng;
+ pub mod savestate;
+ pub mod scene;
+ pub mod slot;
++pub mod spike;
+ pub mod state;
+ 
+ pub use front::password::Progress;
+diff --git a/engine/crates/sf-core/src/spike.rs b/engine/crates/sf-core/src/spike.rs
+new file mode 100644
+index 0000000..d5b8609
+--- /dev/null
++++ b/engine/crates/sf-core/src/spike.rs
+@@ -0,0 +1,98 @@
++//! real-widescreen T00 spike: THROWAWAY. A global switch widening spawn/despawn by 65 px
++//! (DESIGN §2.2) and `EXTRA` extra object slots at an address the original never maps, plus
++//! counters the spike runner reads. Never committed.
++
++use std::sync::atomic::{AtomicBool, AtomicU32, Ordering::Relaxed};
++
++pub static WIDE: AtomicBool = AtomicBool::new(false);
++/// Set while an extra slot's work runs: its beam cost is skipped (DESIGN §2.4, D11).
++pub static FREE: AtomicBool = AtomicBool::new(false);
++
++pub const EXTRA: u32 = 100;
++/// Extra slots in use this run (at most `EXTRA`).
++pub static EXTRA_N: AtomicU32 = AtomicU32::new(60);
++
++pub fn extra() -> u32 {
++    EXTRA_N.load(Relaxed).min(EXTRA)
++}
++pub const WIDE_PX: u16 = 65;
++pub const WIDE_CELLS: u32 = 5;
++pub const BASE: u32 = 0x60_0000;
++pub const SLOTS_AT: u32 = BASE;
++pub const BOBS_AT: u32 = BASE + 0x4000;
++pub const FREE_AT: u32 = BASE + 0xb000;
++pub const BYTES: u32 = 0xb200;
++const _: () = assert!(EXTRA * 0x7c <= 0x4000 && EXTRA * 0x11c <= 0x7000 && EXTRA * 4 <= 0x200);
++
++/// Entries the last draw list held (spud, slot bobs, free bobs with something to erase).
++pub static DRAW: AtomicU32 = AtomicU32::new(0);
++/// Draw-list entries dropped because the list's 40 places were full.
++pub static DRAW_DROPPED: AtomicU32 = AtomicU32::new(0);
++/// Entries the last hitbox list held, and entries dropped at its 127.
++pub static HITBOXES: AtomicU32 = AtomicU32::new(0);
++pub static HITBOX_DROPPED: AtomicU32 = AtomicU32::new(0);
++/// `find_free` returning no slot; returning an evicted one.
++pub static FIND_FAIL: AtomicU32 = AtomicU32::new(0);
++pub static EVICT: AtomicU32 = AtomicU32::new(0);
++/// The coin's force-out of a non-evictable slot.
++pub static FORCED: AtomicU32 = AtomicU32::new(0);
++/// No free bob record for a found slot.
++pub static NO_BOB: AtomicU32 = AtomicU32::new(0);
++
++pub fn reset() {
++    for c in [&DRAW, &DRAW_DROPPED, &HITBOXES, &HITBOX_DROPPED, &FIND_FAIL, &EVICT, &FORCED, &NO_BOB] {
++        c.store(0, Relaxed);
++    }
++}
++
++pub fn wide() -> bool {
++    WIDE.load(Relaxed)
++}
++
++pub fn free() -> bool {
++    FREE.load(Relaxed)
++}
++
++pub fn bump(c: &AtomicU32) {
++    c.fetch_add(1, Relaxed);
++}
++
++/// Slots to loop over: the original's 20, then the extras in wide mode.
++pub fn n_slots() -> u32 {
++    if wide() { 20 + extra() } else { 20 }
++}
++
++pub fn slot(k: u32) -> u32 {
++    if k < 20 {
++        crate::level::objects::OBJ_SLOTS + k * 0x7c
++    } else {
++        SLOTS_AT + (k - 20) * 0x7c
++    }
++}
++
++pub fn slots() -> impl Iterator<Item = u32> {
++    (0..n_slots()).map(slot)
++}
++
++/// The extra bob record `k` (the long before it is its level position).
++pub fn extra_bob(k: u32) -> u32 {
++    BOBS_AT + 4 + k * 0x11c
++}
++
++/// FREE while a bob record of the extra range is being drawn or erased.
++pub struct Guard;
++
++impl Guard {
++    pub fn of(addr: u32) -> Option<Guard> {
++        (addr >= BASE && addr < BASE + BYTES).then(|| {
++            FREE.store(true, Relaxed);
++            Guard
++        })
++    }
++}
++
++impl Drop for Guard {
++    fn drop(&mut self) {
++        FREE.store(false, Relaxed);
++    }
++}
+diff --git a/engine/crates/sf-plan/examples/wide_spike.rs b/engine/crates/sf-plan/examples/wide_spike.rs
+new file mode 100644
+index 0000000..00ef351
+--- /dev/null
++++ b/engine/crates/sf-plan/examples/wide_spike.rs
+@@ -0,0 +1,250 @@
++//! real-widescreen T00 spike (THROWAWAY): each level's app-timed finishing route replayed on the
++//! engine from its app start, in 4:3 and with `sf_core::spike::WIDE` on, logging per frame the
++//! live object slots, draw-list and hitbox entries and the spawn failures.
++//! `cargo run --release -p sf-plan --example wide_spike -- ROUTES_DIR SCRIPTS_DIR [LEVEL…]`
++
++use std::panic::{AssertUnwindSafe, catch_unwind};
++use std::path::Path;
++use std::sync::atomic::Ordering::Relaxed;
++
++use sf_conform::InputScript;
++use sf_core::frog::{FROG, f};
++use sf_core::spike;
++use sf_core::{Game, LevelId};
++use sf_plan::app::{app_start, route_seed};
++use sf_plan::oracle::Look;
++const HEARTS: u32 = sf_core::layout::h0(0x830);
++
++#[derive(Default, Debug)]
++struct Row {
++    frames: u32,
++    exit: Option<u32>,
++    lives_lost: u32,
++    peak_live: u32,
++    peak_at: u32,
++    peak_draw: u32,
++    draw_at: u32,
++    peak_hit: u32,
++    hit_at: u32,
++    fails: u32,
++    evicts: u32,
++    forced: u32,
++    no_bob: u32,
++    draw_dropped: u32,
++    hit_dropped: u32,
++    over20_frames: u32,
++    panic: Option<String>,
++    lead_exit: Option<u32>,
++    census: String,
++    peak_far: u32,
++    peak_near: u32,
++    near_at: u32,
++    near_census: String,
++    far_at: u32,
++}
++
++const CAMERA_X: u32 = sf_core::layout::h0(0x16664);
++const CAMERA_Y: u32 = sf_core::layout::h0(0x16660);
++
++/// Live slots by where they are against the camera: inside the original's live band
++/// (x in cx-$30-64 .. cx+$170, y in cy-$30-64 .. cy+$150), in the wide band only, or past both.
++fn bands(g: &Game) -> Vec<(u32, i32, i32, &'static str)> {
++    let st = g.state();
++    let (cx, cy) = (st.w(CAMERA_X + 2) as i16 as i32, st.w(CAMERA_Y + 2) as i16 as i32);
++    spike::slots()
++        .filter(|&s| st.l(s + 0x40) != 0)
++        .map(|s| {
++            let (x, y) = (st.w(s + 8) as i16 as i32 - cx, st.w(s + 0xa) as i16 as i32 - cy);
++            let yin = (-0x30 - 64..=0x150).contains(&y);
++            let band = if (-0x30 - 64..=0x170).contains(&x) && yin {
++                "orig"
++            } else if (-0x30 - 64 - 65..=0x170 + 65).contains(&x) && yin {
++                "wide"
++            } else {
++                "far"
++            };
++            (st.l(s + 4).wrapping_sub(sf_core::layout::h0(0)), x, y, band)
++        })
++        .collect()
++}
++
++fn census(g: &Game) -> String {
++    let b = bands(g);
++    let n = |w: &str| b.iter().filter(|e| e.3 == w).count();
++    let mut far: Vec<String> = b.iter().filter(|e| e.3 == "far").map(|e| format!("${:x}@{},{}", e.0, e.1, e.2)).collect();
++    far.truncate(6);
++    format!("orig {} wide {} far {} [{}]", n("orig"), n("wide"), n("far"), far.join(" "))
++}
++
++fn census_far(g: &Game) -> u32 {
++    bands(g).iter().filter(|e| e.3 == "far").count() as u32
++}
++
++fn live(g: &Game) -> u32 {
++    spike::slots().filter(|&s| g.state().l(s + 0x40) != 0).count() as u32
++}
++
++/// `ghost`: a 4:3 game is stepped alongside and the wide game's frog block and hearts are set
++/// from it after every frame, so the wide camera travels the 4:3 route whatever the enemies do.
++fn run(level: LevelId, seed: u32, script: &InputScript, frames: u32, lives: Option<u16>, wide: bool, ghost: bool) -> Row {
++    spike::WIDE.store(wide, Relaxed);
++    spike::reset();
++    let mut r = Row::default();
++    let mut k = 0u32;
++    let res = catch_unwind(AssertUnwindSafe(|| {
++        let mut g = app_start(level, seed);
++        let mut lead = ghost.then(|| { spike::WIDE.store(false, Relaxed); let l = app_start(level, seed); spike::WIDE.store(wide, Relaxed); l });
++        if let Some(n) = lives {
++            g.poke(FROG + f::LIVES, &n.to_be_bytes());
++            if let Some(l) = lead.as_mut() {
++                l.poke(FROG + f::LIVES, &n.to_be_bytes());
++            }
++        }
++        let mut before = Look::of(g.state());
++        while k < frames {
++            if let Some(l) = lead.as_mut() {
++                spike::WIDE.store(false, Relaxed);
++                let (fails, ev, fo, nb, dd, hd) = (
++                    spike::FIND_FAIL.load(Relaxed), spike::EVICT.load(Relaxed), spike::FORCED.load(Relaxed),
++                    spike::NO_BOB.load(Relaxed), spike::DRAW_DROPPED.load(Relaxed), spike::HITBOX_DROPPED.load(Relaxed),
++                );
++                l.step_unseen(script.input_at(k));
++                spike::FIND_FAIL.store(fails, Relaxed);
++                spike::EVICT.store(ev, Relaxed);
++                spike::FORCED.store(fo, Relaxed);
++                spike::NO_BOB.store(nb, Relaxed);
++                spike::DRAW_DROPPED.store(dd, Relaxed);
++                spike::HITBOX_DROPPED.store(hd, Relaxed);
++                spike::DRAW.store(0, Relaxed);
++                spike::HITBOXES.store(0, Relaxed);
++                spike::WIDE.store(true, Relaxed);
++            }
++            g.step_unseen(script.input_at(k));
++            if let Some(l) = lead.as_ref() {
++                let frog: Vec<u8> = (0..0x100).map(|o| l.state().b(FROG + o)).collect();
++                g.poke(FROG, &frog);
++                g.poke(HEARTS, &l.state().w(HEARTS).to_be_bytes());
++                if !Look::of(l.state()).playing && k > 10 {
++                    r.lead_exit.get_or_insert(k + 1);
++                }
++            }
++            k += 1;
++            if std::env::var("SPIKE_TRACE").is_ok() && !ghost && (k % 250 == 0 || k + 3 >= frames) {
++                let st = g.state();
++                eprintln!("  {level} k {k} frog {},{} cam {} state {:x} coins_left {}", st.w(FROG + f::X) as i16, st.w(FROG + f::Y) as i16, st.w(CAMERA_X + 2), st.l(sf_core::layout::h0(0xa06)), st.w(sf_core::layout::h0(0x832)));
++            }
++            let now = Look::of(g.state());
++            r.lives_lost += before.lives.saturating_sub(now.lives) as u32;
++            before = now;
++            let n = live(&g);
++            if n > r.peak_live {
++                (r.peak_live, r.peak_at) = (n, k);
++                r.census = census(&g);
++            }
++            let near = n - census_far(&g);
++            if near > r.peak_near {
++                (r.peak_near, r.near_at) = (near, k);
++                r.near_census = census(&g);
++            }
++            let far = census_far(&g);
++            if far > r.peak_far {
++                (r.peak_far, r.far_at) = (far, k);
++            }
++            if n > 20 {
++                r.over20_frames += 1;
++            }
++            let d = spike::DRAW.swap(0, Relaxed);
++            if d > r.peak_draw {
++                (r.peak_draw, r.draw_at) = (d, k);
++            }
++            let h = spike::HITBOXES.swap(0, Relaxed);
++            if h > r.peak_hit {
++                (r.peak_hit, r.hit_at) = (h, k);
++            }
++            if k > 10 && (if lead.is_some() { r.lead_exit.is_some() } else { !now.playing }) {
++                r.exit = Some(k);
++                break;
++            }
++        }
++    }));
++    r.frames = k;
++    if let Err(e) = res {
++        let msg = e
++            .downcast_ref::<String>()
++            .cloned()
++            .or_else(|| e.downcast_ref::<&str>().map(|s| s.to_string()))
++            .unwrap_or_default();
++        r.panic = Some(format!("frame {k}: {msg}"));
++    }
++    r.fails = spike::FIND_FAIL.load(Relaxed);
++    r.evicts = spike::EVICT.load(Relaxed);
++    r.forced = spike::FORCED.load(Relaxed);
++    r.no_bob = spike::NO_BOB.load(Relaxed);
++    r.draw_dropped = spike::DRAW_DROPPED.load(Relaxed);
++    r.hit_dropped = spike::HITBOX_DROPPED.load(Relaxed);
++    spike::WIDE.store(false, Relaxed);
++    r
++}
++
++fn main() {
++    std::panic::set_hook(Box::new(|_| {}));
++    if let Ok(n) = std::env::var("SPIKE_EXTRA") {
++        spike::EXTRA_N.store(n.parse().unwrap(), Relaxed);
++    }
++    let args: Vec<String> = std::env::args().skip(1).collect();
++    let routes = Path::new(&args[0]);
++    let scripts = Path::new(&args[1]);
++    let all: Vec<String> = (1..=6)
++        .flat_map(|w| (1..=4).map(move |l| format!("W{w}-{l}")))
++        .chain(["WB-1".to_string(), "WW-1".to_string()])
++        .collect();
++    let levels: Vec<String> = if args.len() > 2 { args[2..].to_vec() } else { all };
++    println!("level\tmode\tsource\tframes\texit\tlives_lost\tpeak_live\tpeak_at\tpeak_draw\tdraw_at\tpeak_hitbox\thit_at\tframes_over20\tfind_free_fail\tevict\tcoin_forced\tno_bob\tdraw_dropped\thit_dropped\tpanic\tpeak_far\tfar_at\tcensus_at_peak\tpeak_near\tnear_at\tcensus_at_near");
++    for name in levels {
++        let level: LevelId = name.parse().unwrap();
++        // The bonus level: bonus-fire with 60 lives (bonus-end-wb-1's case); the final level:
++        // final-win. Both from their app start, seed 1.
++        let (src, text, frames, lives) = match name.as_str() {
++            "WB-1" => ("bonus-fire.txt", std::fs::read_to_string(scripts.join("bonus-fire.txt")).unwrap(), 8400, Some(60)),
++            "WW-1" => ("final-win.txt", std::fs::read_to_string(scripts.join("final-win.txt")).unwrap(), 2600, None),
++            _ => {
++                let p = routes.join(format!("{name}.txt"));
++                let t = std::fs::read_to_string(&p).unwrap();
++                ("app route", t, 0, std::env::var("SPIKE_LIVES").ok().map(|_| 60))
++            }
++        };
++        let script = InputScript::parse(&text).unwrap();
++        let seed = route_seed(&text).unwrap_or(1);
++        let frames = if frames == 0 { script.lines.last().map_or(0, |l| l.0) + 300 } else { frames };
++        for (wide, ghost) in [(false, false), (true, false), (true, true)] {
++            let r = run(level, seed, &script, frames, lives, wide, ghost);
++            println!(
++                "{name}\t{}\t{src}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}",
++                match (wide, ghost) { (false, _) => "4:3", (true, false) => "wide", _ => "wide-ghost" },
++                r.frames,
++                r.exit.map_or("-".into(), |e| e.to_string()),
++                r.lives_lost,
++                r.peak_live,
++                r.peak_at,
++                r.peak_draw,
++                r.draw_at,
++                r.peak_hit,
++                r.hit_at,
++                r.over20_frames,
++                r.fails,
++                r.evicts,
++                r.forced,
++                r.no_bob,
++                r.draw_dropped,
++                r.hit_dropped,
++                r.panic.unwrap_or("-".into()),
++                r.peak_far,
++                r.far_at,
++                r.census,
++                r.peak_near,
++                r.near_at,
++                r.near_census
++            );
++        }
++    }
++}

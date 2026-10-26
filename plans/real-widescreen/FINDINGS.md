@@ -12,6 +12,9 @@ changed.
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-26 | 🐞 | T00 review, fixed: the spike's ghost run started its 4:3 game with the hack on, so W6-3's ghost stopped at frame 1362. Re-run: W6-3 peaks 73 live over 8400 frames; `WIDE_SLOTS` 80 stands. |
+| 2026-10-26 | 📌 | T00: no panic or softlock in any level, bonus or final with spawns widened (`spike/README.md`). Given room, 95 live at once (W6-2), at most 57 inside the wide view (W4-2): stale objects stay until evicted. `WIDE_SLOTS` 80 recommended. |
+| 2026-10-26 | 📌 | T00: the wide draw list peaks at 96 entries against `bob_draw_list`'s 40 places (`$a8` bytes); hitboxes peak at 74 of 127. A wide replay of a 4:3 route drifts and mostly dies: enemies differ. |
 | 2026-10-26 | 📌 | T04 review: WB-1's start camera moves from x 17 to 82 in widescreen (start_point's clamp), so the bonus level starts 65 px, about 2.6 s of creep, further on; with D12 it ends about 5.6 s sooner. |
 | 2026-10-26 | 📌 | T04: WW-1's camera stays at x 949 in both modes, inside widescreen's clamp (81..4375), so widescreen does not move it and the witch's path is the original's. Her fight starts in a 1 000-step widescreen run. |
 | 2026-10-26 | 📌 | T04: a frog sprite parked at $195 needs HSTART $215, past 9 bits (wraps to $015, left of the widened window). T09 must keep a parked frog hidden in the strips. |
