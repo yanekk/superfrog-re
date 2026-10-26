@@ -4,7 +4,7 @@
 //! game. Engine only: there is no original to compare widescreen with.
 
 use sf_core::input::{FrameInput, Joy};
-use sf_core::level::camera::CAMERA_X;
+use sf_core::level::camera::{CAMERA_X, CAMERA_Y};
 use sf_core::level::objects::{SLOTS, WIDE_LIVE, WIDE_SLOTS, slot_at};
 use sf_core::{Game, LevelId, Start};
 
@@ -42,10 +42,17 @@ fn live(g: &Game) -> Vec<(i32, u32, u32)> {
 }
 
 /// In the right strip: past the original's screen (334 pixels) and inside widescreen's (399), short
-/// of the cells `map_spawn_scan_edges`' wide column reaches (from about 416), so only the switch's
-/// scan can have woken it.
-fn in_right_strip(x: i32) -> bool {
-    (334..400).contains(&x)
+/// of the cells `map_spawn_scan_edges`' wide column reaches (from about 416), and in the screen's
+/// rows, clear of its wide row (32 pixels above the camera or 272 below), so only the switch's scan
+/// can have woken it.
+fn in_right_strip(x: i32, y: i32) -> bool {
+    (334..400).contains(&x) && (0..240).contains(&y)
+}
+
+/// The slot's y from the camera.
+fn y_of(g: &Game, cell: u32) -> i32 {
+    let s = (0..SLOTS + WIDE_SLOTS).map(slot_at).find(|&s| l(g, s + 0x40) == cell).unwrap();
+    w(g, s + 0xa) as i32 - w(g, CAMERA_Y + 2) as i32
 }
 
 /// Not a coin, and not the cell the 4:3 game holds: an enemy (or a platform) woken in the strip.
@@ -53,7 +60,7 @@ fn woken_in_strip(narrow: &Game, wide: &Game) -> Vec<(i32, u32, u32)> {
     let had: Vec<u32> = live(narrow).iter().map(|o| o.1).collect();
     live(wide)
         .into_iter()
-        .filter(|o| in_right_strip(o.0) && o.2 != COIN_INIT && !had.contains(&o.1))
+        .filter(|o| in_right_strip(o.0, y_of(wide, o.1)) && o.2 != COIN_INIT && !had.contains(&o.1))
         .collect()
 }
 
@@ -227,23 +234,30 @@ fn left_strip(g: &Game) -> usize {
     live(g).iter().filter(|o| o.0 < -0x40).count()
 }
 
+/// What is live in the right strip, short of `map_spawn_scan_edges`' wide column: the edge scans
+/// alone leave it empty (the left one runs here, the camera last scrolled left), so only the
+/// switch's scan wakes it.
+fn right_strip(g: &Game) -> usize {
+    live(g).iter().filter(|o| (334..400).contains(&o.0)).count()
+}
+
 /// Switched on during the fade-in, after `level_init`'s start scan ran the original's: the loop's
 /// first step wakes the strips.
 #[test]
 fn switching_on_during_the_fade_in_wakes_the_strips() {
     let (off, on) = restart(3, 1);
-    assert_eq!(left_strip(&off), 0, "4:3: {:?}", live(&off));
-    assert!(left_strip(&on) > 0, "widescreen: {:?}", live(&on));
+    assert_eq!(left_strip(&off) + right_strip(&off), 0, "4:3: {:?}", live(&off));
+    assert!(left_strip(&on) > 0 && right_strip(&on) > 0, "widescreen: {:?}", live(&on));
 }
 
-/// Switched on just as the loop is entered (its first pass may be begun in that frame and carried
-/// into the next step, `Game::mid_pass`): the next step wakes the strips, the scan in the pass's
-/// start, so the pass run again keeps it.
+/// Switched on just as the loop is entered: the next step, the loop's first, wakes the strips.
+/// (Normal play carries no pass over here; a switch mid-pass is
+/// `switching_on_mid_pass_wakes_the_right_strip`.)
 #[test]
 fn switching_on_on_the_levels_first_frame_wakes_the_strips() {
     let (off, on) = restart(0, 1);
-    assert_eq!(left_strip(&off), 0, "4:3: {:?}", live(&off));
-    assert!(left_strip(&on) > 0, "widescreen: {:?}", live(&on));
+    assert_eq!(left_strip(&off) + right_strip(&off), 0, "4:3: {:?}", live(&off));
+    assert!(left_strip(&on) > 0 && right_strip(&on) > 0, "widescreen: {:?}", live(&on));
     // A level started directly (W6-1: its start has objects in the strips), its first step taken,
     // then switched.
     let mut off = start("W6-1");
@@ -289,3 +303,43 @@ fn switching_on_while_paused_wakes_the_strips() {
     assert!(on.scene().is_level());
 }
 
+
+/// Switched on with a pass carried over from the last step (`Game::mid_pass`, a frame cut on the
+/// original's schedule, as `alone.rs` cuts them): the pass runs again from its start, the switch's
+/// scan in that start, so what is in the right strip is live after the step (T06 review: no other
+/// test switched mid-pass).
+#[test]
+fn switching_on_mid_pass_wakes_the_right_strip() {
+    let late = sf_core::Pacing::Late {
+        writes: 500,
+        line: 40,
+        hpos: 100,
+        phase: 1,
+        step: 4,
+        point: 0,
+        blanks: 0,
+    };
+    let mut g = start("W1-1");
+    let mut found = None;
+    for f in 0..1500 {
+        g.step(walk(f));
+        if f >= 50 && f % 10 == 0 {
+            let mut cut = g.clone();
+            cut.step_paced(walk(f), late);
+            if !cut.mid_pass() {
+                continue;
+            }
+            let (mut narrow, mut wide) = (cut.clone(), cut);
+            wide.set_widescreen(true);
+            narrow.step(walk(f));
+            wide.step(walk(f));
+            let woken = woken_in_strip(&narrow, &wide);
+            if !woken.is_empty() {
+                found = Some((f, woken));
+                break;
+            }
+        }
+    }
+    let (f, woken) = found.expect("no switch mid-pass with an enemy in the right strip");
+    eprintln!("W1-1 switched on mid-pass at frame {f}: woke {woken:x?}");
+}

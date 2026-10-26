@@ -12,6 +12,7 @@ changed.
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-27 | 🐞 | T06 review, sweep: T02's `widescreen_spawn.rs` `a_restart_in_widescreen_wakes_the_strips` checks the left strip only; in T06's like case the wide left-column edge scan alone woke a coin there, so it may pass without the wide start scan. Not fixed. |
 | 2026-10-27 | 🐞 | T06: `recorder_follow` `a_recording_the_original_leaves_is_put_back_on_it` (once `recorder_compare` `a_short_run_compares_same`) panics "vAmiga refused a memory write: … not chip or slow RAM" on d0f5147 too. Suspect T03's wide range in LAYOUT written to the oracle (`sf-conform/src/lib.rs` 1409). Block line. |
 | 2026-10-27 | 🐞 | T06, fixed: switched off, the last extra freed on the screen kept its drawing: the draw list dropped the extras' free list once `WIDE_LIVE` hit 0. `build_bob_draw_list` now keeps the wide list while a free extra bob has drawings (`extra_left_drawn`). |
 | 2026-10-26 | 📌 | T03: with T02–T05's rules W6-2's ghost run peaks at 92 live of 100 (`sf-conform/tests/widescreen_capacity.rs`). Extras are compared as 0 in 4:3 conformance, not excluded: a 4:3 write there fails a case. |
