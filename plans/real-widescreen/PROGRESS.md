@@ -28,7 +28,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T03 | wide-capacity | T00, T01, T02 | ✅ | |
 | T04 | wide-camera | T01 | ✅ | |
 | T05 | wide-special-cases | T01 | ✅ | |
-| T06 | wide-switch | T02, T03 | ⬜ | |
+| T06 | wide-switch | T02, T03 | 🔍 | Pending flag in `Game`, consumed by `main_program` before the blank: widened `scan_screen`, unpaid; a carried pass gets it in its start. 6 tests in `widescreen_switch.rs`, 1 in sf-core `widescreen_capacity.rs`. Deviations: fixed T03's draw list for an extra freed on screen after switch-off (FINDINGS); `cargo test --workspace` not run (parallel worker rule). |
 | T07 | wide-recording | T01 | ✅ | |
 | T08 | side-objects | T02, T03 | ⬜ | |
 | T09 | side-frog | T04, T08 | ⬜ | |
@@ -36,7 +36,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T11 | widescreen-drill | T10 | ⬜ | |
 | T12 | wide-every-level | T11 | ⬜ | |
 
-**Review queue:** *(empty)*
+**Review queue:** T06
 
 ## Blocked on the user
 
