@@ -40,6 +40,19 @@ W6-1 A, C.
   `REACH_ROUNDS` after a parting with the original, then the rest-of-level plan spends the budget
   (FINDINGS 2026-10-23, 2026-10-24).
 
+## Reruns after the merge
+
+W3-4, 2026-10-26, a41f5707f44f, `sf-plan W3-4 --guide enemies-w3-4-complete --threads 5
+--budget-min 30` run directly (not through `sf-bench`, so no `results.jsonl` line), two runs at a
+time, load 37–45:
+
+| Set | Seed | Result |
+|---|---|---|
+| A | 1 | Coins met, exit 29 cells away |
+| A | 2 | Coins never met, 28 short; 6 repairs, the original confirmed to frame 11874 |
+| C | 1 | Coins never met, 3 short; no stall spot, 77 coins left across the map |
+| C | 2 | Completed in 17 min: 15 234 frames, 1 heart; `verify_route` in the real app passed. Kept as `routes/app/W3-4.txt` |
+
 ## Rerun
 
 From `engine/`, one set at a time (a level recorded for the same commit is skipped):
