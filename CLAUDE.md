@@ -49,8 +49,9 @@ derived by the tools.
   it: `python3 tools/handover.py ROUTE.txt <level> <col>,<row>` writes the app script (a route
   there, fast-forwarded with `fast-until`, the recorder on, every key released and a pause; keys
   from the owner's Controls mapping, he jumps with Space) and prints the owner's command. The
-  owner plays the stretch and saves the recording with ⌘.; `engine` example `bug_trail <zip>` gives
-  the frog's trail, which is spliced into the guide to plan again with it. W6-4's seed 3 failed the
+  owner plays the stretch and saves the recording with ⌘.; `python3 tools/recording_guide.py <zip>`
+  turns it (lead-in and his play, from the level's start) into the guide to plan again with,
+  `sf-plan <level> --guide-ordered --guide <it>`. W6-4's seed 3 failed the
   same way on every run and finished first time with a 44-second recording of its climb. This is
   for routing work: the smart-planner benchmark's numbers stay unaided.
 

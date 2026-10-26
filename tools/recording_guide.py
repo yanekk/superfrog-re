@@ -8,17 +8,14 @@ one every 2 cells, as `col,row  # step N` lines.
 A hand-over recording holds the route's lead-in and then the owner's play, so it is the whole
 path; no other trail is spliced in. The trail stops at the first life lost: the respawn puts the
 frog back, and an ordered guide that jumps back sends the planner the wrong way. Dying frames are
-skipped. The frog comes from the engine example `bug_trail`, run with cargo from engine/.
+skipped. The trail and the cell are tools/handover.py's.
 """
-import argparse, os, subprocess, sys
+import argparse, os, sys
 
-ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from handover import cell, trail
+
 SPACING = 2
-
-
-def cell(x, y):
-    """The frog's cell, as `plan_exit` and tools/handover.py count it."""
-    return (x + 0x17) // 16, (y - 0x10) // 16
 
 
 def guide(trail_lines):
@@ -44,10 +41,7 @@ def main():
     ap.add_argument('zip')
     ap.add_argument('--out')
     a = ap.parse_args()
-    trail = subprocess.run(['cargo', 'run', '-q', '--release', '-p', 'sf-conform', '--example',
-                            'bug_trail', '--', os.path.abspath(a.zip)],
-                           cwd=os.path.join(ROOT, 'engine'), capture_output=True, text=True, check=True)
-    lines, stop = guide(trail.stdout.splitlines())
+    lines, stop = guide(trail(os.path.abspath(a.zip)))
     if not lines:
         sys.exit(f'{a.zip}: no frog trail')
     head = f'# guide from {os.path.basename(a.zip)}' + (f', cut at step {stop} (a life lost)' if stop else '')

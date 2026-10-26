@@ -42,11 +42,25 @@ def route_lines(text):
     return out
 
 
+def cell(x, y):
+    """The frog's cell, as `plan_exit` counts it."""
+    return (x + 0x17) // 16, (y - 0x10) // 16
+
+
+def trail(*args):
+    """The engine example `bug_trail`'s lines for a bug zip, or an app-timed route and level."""
+    return subprocess.run(['cargo', 'run', '-q', '--release', '-p', 'sf-conform', '--example',
+                           'bug_trail', '--', *args],
+                          cwd=os.path.join(ROOT, 'engine'), capture_output=True, text=True,
+                          check=True).stdout.splitlines()
+
+
 def first_at(trail_lines, col, row):
-    """The first step whose frog is alive within one cell of (col, row) (`plan_exit`'s cell)."""
+    """The first step whose frog is alive within one cell of (col, row)."""
     for l in trail_lines:
         k, x, y, _, _, dying, _ = map(int, l.split())
-        if not dying and abs((x + 0x17) // 16 - col) <= 1 and abs((y - 0x10) // 16 - row) <= 1:
+        c, r = cell(x, y)
+        if not dying and abs(c - col) <= 1 and abs(r - row) <= 1:
             return k
     return None
 
@@ -87,10 +101,7 @@ def main():
     if '# timing: app' not in text or seed is None:
         sys.exit(f'{a.route}: not an sf-plan --app route (`# timing: app`, `# seed: N`)')
     col, row = map(int, a.at.split(','))
-    trail = subprocess.run(['cargo', 'run', '-q', '--release', '-p', 'sf-conform', '--example',
-                            'bug_trail', '--', os.path.abspath(a.route), a.level],
-                           cwd=os.path.join(ROOT, 'engine'), capture_output=True, text=True, check=True)
-    frame = first_at(trail.stdout.splitlines(), col, row)
+    frame = first_at(trail(os.path.abspath(a.route), a.level), col, row)
     if frame is None:
         sys.exit(f'the route never reaches {a.level}:{col},{row} with the frog alive')
     keys = keys_from(a.settings)
