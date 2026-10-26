@@ -104,6 +104,7 @@ At the end of Phase 2: `sf-plan` is the one command, in original and app modes, 
 | [T31](tasks/T31-leg-start-sync.md) | leg-start-sync | T26; blocks T17 |
 | [T32](tasks/T32-alone-pass-drift.md) | alone-pass-drift | T31; blocks T17 |
 | [T33](tasks/T33-dead-end-repair.md) | dead-end-repair | T27, T30; blocks T17 |
+| [T34](tasks/T34-retire-old-tools.md) | retire-old-tools | T18 |
 
 T17 depends on T15 only so that it runs on a quiet machine after every other task (DESIGN D2).
 (T13, M7's map-soundness run, was dropped 2026-10-22, D20; T16, the counted baseline, 2026-10-25, D27.)

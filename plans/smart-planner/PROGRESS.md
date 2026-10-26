@@ -22,7 +22,7 @@ allowed everywhere, map a compass; T13 and T20 dropped, T22 route-shorten added.
 baseline is T02's sample (owner).
 **Status:** T00–T07, T19, T21 done; core rewritten by the amendment, not started.
 **Last updated:** 2026-10-22
-**Next `pir-work` will:** T08 search (the explorer), from `spike-explore/`.
+**Next `pir-work` will:** review T18, then T34 retire-old-tools (asks the owner first).
 
 ## Tasks
 
@@ -47,7 +47,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T14 | tuning-run | T11 | ✅ | |
 | T15 | set-c-run | T12, T14 | ✅ | |
 | T17 | new-counted | T15 | ✅ | |
-| T18 | results-and-retire | T17 | ⬜ | |
+| T18 | results-and-retire | T17 | 🔍 | Verdict in `bench/verdict.md`, appended to RESULTS.md by `sf-bench` (`table::render_in`) with T27's unaided set A; 1 test. Deviation: old tools not deleted, owner 2026-10-26; set aside to T34 with the open question. M3, M4, M6 accepted; M1, M5, C1 recorded. |
 | T19 | step-unseen-no-picture | T00; blocks T04 | ✅ | |
 | T21 | engine-memory-lookup | T04 | ✅ | |
 | T22 | route-shorten | T08 | ✅ | |
@@ -62,8 +62,9 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T31 | leg-start-sync | T26; blocks T17 | ✅ | |
 | T32 | alone-pass-drift | T31; blocks T17 | ✅ | |
 | T33 | dead-end-repair | T27, T30; blocks T17 | ✅ | |
+| T34 | retire-old-tools | T18 | ⬜ | |
 
-**Review queue:** *(empty)*
+**Review queue:** T18
 
 ## Blocked on the user
 

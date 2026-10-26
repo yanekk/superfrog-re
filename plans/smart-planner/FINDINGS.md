@@ -11,6 +11,7 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-26 | 🔄 | Owner, T18: M3, M4, M6 misses accepted (M6 to the next plan); M1, M5, C1 recorded, old tools kept. T34 retire-old-tools added: owner accepts or plays the failing stretches first, then delete and recheck M9. |
 | 2026-10-26 | 📌 | T17 counted, guided: set A 21/24, set B 18/24, M6 10/24. Coins met, exit not reached: A W6-4; B W2-3, W3-2, W3-3, W6-4 (10–48 cells). Coins short: A W2-3, W3-4; B W4-4, W6-1. B W1-4 now completes (27 min). |
 | 2026-10-25 | 🔄 | Owner, T17: the counted run goes on a busy machine, load recorded per level in each slice's commit, no re-runs (deviates D2). Other sessions (a W6-4 sf-plan job, engine tests) held load 20–58; W1-1 timed out beside them. |
 | 2026-10-25 | 🔄 | Owner, T15 review: set-C C3 (median 7.3 min, target 2; ~4 M engine frames a level, 3 threads) and C4 (W4-1 +51%, W1-4 +37%, W5-3 +29%, W6-1 +27%) accepted as misses. 22 of 24 replay in the real app. |
