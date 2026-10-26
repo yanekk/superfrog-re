@@ -47,7 +47,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T14 | tuning-run | T11 | ✅ | |
 | T15 | set-c-run | T12, T14 | ✅ | |
 | T17 | new-counted | T15 | ✅ | |
-| T18 | results-and-retire | T17 | ⬜ | |
+| T18 | results-and-retire | T17 | ✅ | |
 | T19 | step-unseen-no-picture | T00; blocks T04 | ✅ | |
 | T21 | engine-memory-lookup | T04 | ✅ | |
 | T22 | route-shorten | T08 | ✅ | |
