@@ -10,6 +10,8 @@ owns = [
   "engine/crates/sf-oracle/",
   "engine/crates/sf-conform/",
   "engine/crates/sf-e2e/",
+  "engine/crates/sf-plan/",
+  "engine/crates/sf-bench/",
   "engine/conform/",
 ]
 +++
@@ -50,6 +52,13 @@ Three crates and one folder of inputs:
   script layer (`App::run_script`: `--script`, `--capture`, `--pacing`, `--capture-hashes`) and an
   OS layer of real key events, menu clicks and window captures (`src/os.rs`, only under
   `SF_E2E_OS=1`); `engine/crates/sf-e2e/README.md` has the detail.
+- **`sf-plan`** (`engine/crates/sf-plan/`): the level planner that writes an input script to a
+  level's exit (plans/smart-planner). `src/core/` is the pure search (`explore.rs`, the whole-level
+  explorer; `map.rs` and `walk.rs`, its compasses; `repair.rs`, `shorten.rs`, `guide.rs`), stepping
+  `sf-core`; `src/oracle.rs` checks a finished route on the original, `src/cache.rs` stores movement
+  maps, `src/app.rs` plans for the app's timing, which never lags as the original does.
+- **`sf-bench`** (`engine/crates/sf-bench/`): the planner benchmark, which runs a planner over a
+  fixed set of levels in child processes and checks each result on the original (`src/verify.rs`).
 - **`engine/conform/`**: 212 case files and 178 input scripts, inputs only, never disk data
   (`engine/conform/README.md` documents both). None of it is counted as code (DESIGN §2.2).
 
