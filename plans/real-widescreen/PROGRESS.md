@@ -27,7 +27,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T02 | wide-spawn | T01 | ⬜ | |
 | T03 | wide-capacity | T00, T01, T02 | ⬜ | |
 | T04 | wide-camera | T01 | ⬜ | |
-| T05 | wide-special-cases | T01 | 🔍 | Screen methods for Spud, bonus shots, `direction`'s x clamp; 7 tests in `sf-conform/tests/widescreen_special_cases.rs`. Deviations: shots' y keeps the narrow x's slip (no vertical move); chain, witch, `set_cell_tile` unchanged (commit body); whole-workspace run left to pir's end gate (worker rule), routine oracle tests for these routines green. |
+| T05 | wide-special-cases | T01 | ✅ | Review clean, no fix commit. Mutated `direction_x` and Spud's left bound, both caught; probed WB-1 played wide (parked shots sit at the wide far mark) and a strip map edit redrawn next frame without `set_cell_tile`. Literal grep clean. Whole-workspace run left to pir's end gate. |
 | T06 | wide-switch | T02, T03 | ⬜ | |
 | T07 | wide-recording | T01 | ⬜ | |
 | T08 | side-objects | T02, T03 | ⬜ | |
@@ -36,7 +36,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T11 | widescreen-drill | T10 | ⬜ | |
 | T12 | wide-every-level | T11 | ⬜ | |
 
-**Review queue:** T05
+**Review queue:** empty
 
 ## Blocked on the user
 
