@@ -12,6 +12,7 @@ changed.
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-26 | 🐞 | T00 review, fixed: the spike's ghost run started its 4:3 game with the hack on, so W6-3's ghost stopped at frame 1362. Re-run: W6-3 peaks 73 live over 8400 frames; `WIDE_SLOTS` 80 stands. |
 | 2026-10-26 | 📌 | T00: no panic or softlock in any level, bonus or final with spawns widened (`spike/README.md`). Given room, 95 live at once (W6-2), at most 57 inside the wide view (W4-2): stale objects stay until evicted. `WIDE_SLOTS` 80 recommended. |
 | 2026-10-26 | 📌 | T00: the wide draw list peaks at 96 entries against `bob_draw_list`'s 40 places (`$a8` bytes); hitboxes peak at 74 of 127. A wide replay of a 4:3 route drifts and mostly dies: enemies differ. |
 | 2026-10-22 | 📌 | Plan review: bonus markers 11 (chains fly off) and 55 (level end) act when `scan_right_column` reaches them, so widescreen's wider column ends the bonus level about 3 s sooner. Owner accepted, DESIGN D12. |

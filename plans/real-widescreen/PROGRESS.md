@@ -11,9 +11,9 @@ message. Whoever writes a cell also fixes the over-budget cell they walk past.
 
 **Plan reviewed:** 2026-10-22 — 10 fixed, 4 decided with the user
 
-**Status:** T00 implemented, awaiting review.
+**Status:** T00 done.
 **Last updated:** 2026-10-26
-**Next `pir-work` will:** review T00; T01 wide-mode; T03 takes `WIDE_SLOTS` from `spike/README.md`.
+**Next `pir-work` will:** T01 wide-mode; T03 takes `WIDE_SLOTS` from `spike/README.md`.
 
 ## Tasks
 
@@ -22,7 +22,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 
 | # | Task | Depends on | State | Notes |
 |---|---|---|---|---|
-| T00 | wide-spawn-spike | — | 🔍 | Spike measured, no engine code kept; `spike/README.md` table, logs, `wide-spike.patch`. No panics. Recommends `WIDE_SLOTS` 80. Deviations: bench app routes, not conform scripts (lag-paced, drift on the engine); added a ghost run copying the 4:3 frog each frame for whole-level coverage; W6 alt maps not run. |
+| T00 | wide-spawn-spike | — | ✅ | Spike, no engine code kept; `spike/README.md`, `WIDE_SLOTS` 80. Review fixed the ghost run's 4:3 game started with the hack on (W6-3 measured to 1362 only), re-ran every log: only W6-3 and WB-1 changed. Reproduced W4-2 x80 and W3-1; patch applies. Conform-script drift read-only. |
 | T01 | wide-mode | — | ⬜ | |
 | T02 | wide-spawn | T01 | ⬜ | |
 | T03 | wide-capacity | T00, T01, T02 | ⬜ | |
@@ -36,7 +36,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T11 | widescreen-drill | T10 | ⬜ | |
 | T12 | wide-every-level | T11 | ⬜ | |
 
-**Review queue:** T00
+**Review queue:** *(empty)*
 
 ## Blocked on the user
 
