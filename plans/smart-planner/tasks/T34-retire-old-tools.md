@@ -15,9 +15,9 @@ standing rule is that a level the planner fails twice goes to them to play the s
 The failing levels, from T17's counted run (`bench/verdict.md`):
 
 - Coins met, exit not reached: set A W6-4 (48 cells); set B W2-3, W3-2, W3-3, W6-4 (10–48 cells);
-  set C W3-4, W6-4 (45, 48 cells).
+  set C W6-4 (48 cells).
 - Coins never met (a repair's reach missed, then the rest-of-level plan spent the budget): set A
-  W2-3 (9 short), W3-4 (82 short); set B W4-4 (40 short), W6-1 (2 short).
+  W2-3 (9 short), W3-4 (82 short); set B W4-4 (40 short), W6-1 (2 short); set C W3-4 (3 short).
 
 ## Design sections this implements
 

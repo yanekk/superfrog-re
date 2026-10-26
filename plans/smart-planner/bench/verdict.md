@@ -23,7 +23,7 @@ How to read the numbers:
 | M6 | ≥ 20 / 24 | 10 / 24 | missed | A repair after a lag parting with the original accepts a lost heart and never tries to win it back (T10, T24); a planner gap, not unavoidable hits. Owner, 2026-10-26: accepted, to be fixed in the next plan (difficulty modes needs hitless routes). |
 | M8 | always | a test (T08, T11, T12) | met | |
 | M9 | 1 (+ `plan_bonus`) | 5 today: `sf-plan`, `plan_exit`, `plan_exit_w6`, `explore`, `complete` | not yet | The old tools stay until the owner accepts the M1 miss or plays the failing stretches (owner, 2026-10-26); T34 deletes them and rechecks M9. |
-| C1 | 24 / 24 | 22 / 24 | missed | W3-4 and W6-4 meet the coins and stall 45 and 48 cells short. Owner, 2026-10-25 (T15): recorded misses; 2026-10-26: T34 decides with M1. |
+| C1 | 24 / 24 | 22 / 24 | missed | W6-4 meets the coins and stalls 48 cells short; W3-4 never meets them (3 short; T15's row said 45 cells from the exit, not what `results.jsonl` holds). Owner, 2026-10-25 (T15): recorded misses; 2026-10-26: T34 decides with M1. |
 | C3 | median ≤ 2 min, slowest ≤ 30 min | median 7.3 min, slowest 30.0 min | missed | About 4 M engine frames a level on 3 threads. Owner, 2026-10-25 (T15 review): accepted. |
 | C4 | none over +25% | 4 over (W4-1 +51%, W1-4 +37%, W5-3 +29%, W6-1 +27%), 22 compared | missed | Owner, 2026-10-25 (T15 review): accepted. |
 
