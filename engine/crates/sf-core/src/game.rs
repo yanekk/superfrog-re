@@ -205,6 +205,10 @@ pub struct Game {
     /// §2.7). Not in a save state: the app sets it from its own setting.
     #[serde(skip)]
     view: View,
+    /// The widescreen game (real-widescreen DESIGN §2.1, §3.4): the level's horizontal screen
+    /// edges 65 pixels further out each side. Not in a save state, like `view`: the app sets it.
+    #[serde(skip)]
+    widescreen: bool,
     /// The seed a power-on start is waiting to put in place.
     seed: Option<Rng>,
     frame: u32,
@@ -401,6 +405,7 @@ impl Game {
             story,
             shown: None,
             view: View::default(),
+            widescreen: false,
             seed,
             frame: 0,
             keys: KeySet::NONE,
@@ -647,6 +652,7 @@ impl Game {
                 schedule: std::mem::take(&mut self.schedule),
                 blits: std::mem::take(&mut self.blits),
                 unported: &mut self.level_unported,
+                screen: crate::level::screen::Screen { wide: self.widescreen },
             };
             self.scene
                 .step(&mut m, &mut self.pending, pacing, self.view, draw, &mut after)
@@ -717,6 +723,18 @@ impl Game {
     /// The view [`Game::step`] draws for.
     pub fn view(&self) -> View {
         self.view
+    }
+
+    /// The widescreen game (real-widescreen DESIGN §2.1, §2.7): from the next step, a level plays
+    /// against a screen 65 pixels wider each side. Unlike [`Game::set_view`] this changes the game;
+    /// with it off the game is the original.
+    pub fn set_widescreen(&mut self, on: bool) {
+        self.widescreen = on;
+    }
+
+    /// Whether [`Game::set_widescreen`] is on.
+    pub fn widescreen(&self) -> bool {
+        self.widescreen
     }
 
     /// The frame the original shows for this state (DESIGN §3.3), widened by `view`.
