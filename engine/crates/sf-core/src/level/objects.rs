@@ -293,11 +293,13 @@ fn shown_frame(b: &Bus, slot: u32) -> u32 {
     b.l(b.l(bob + 0x16))
 }
 
-/// h0+$1b940: freed once its right edge is left of the camera.
+/// h0+$1b940: freed once its right edge is left of the camera (of widescreen's left edge,
+/// DESIGN §2.3).
 pub fn obj_free_if_left_behind(c: &mut LevelCtx, slot: u32, _d7: u16) {
     let b = &c.bus;
     let frame = shown_frame(b, slot);
-    let d0 = b.w(CAMERA_X + 2).wrapping_sub(b.w(frame + 4));
+    let edge = b.w(CAMERA_X + 2).wrapping_sub(c.screen.left_behind());
+    let d0 = edge.wrapping_sub(b.w(frame + 4));
     if n_clear(d0.wrapping_sub(b.w(slot + 8))) {
         obj_free(c, slot, 0);
     }
@@ -306,6 +308,7 @@ pub fn obj_free_if_left_behind(c: &mut LevelCtx, slot: u32, _d7: u16) {
 /// `obj_despawn_if_offscreen` (h0+$1b95e): freed once it is out of the screen on a side the
 /// camera last moved away from (`scroll_dirs`; every side in the bonus level): `$170` right of
 /// the camera, `$30` past the left edge by its width, `$150` below, `$30` above by its height.
+/// The horizontal tests are measured from widescreen's edges when it is on (DESIGN §2.3).
 pub fn obj_despawn_if_offscreen(c: &mut LevelCtx, slot: u32, _d7: u16) {
     if c.bus.l(slot + 0x40) == 0 {
         return;
@@ -317,13 +320,14 @@ pub fn obj_despawn_if_offscreen(c: &mut LevelCtx, slot: u32, _d7: u16) {
     let dirs = if b.w(SHOOTER_MODE) != 0 { 0xff } else { b.b(SCROLL_DIRS) };
     let frame = shown_frame(b, slot);
     let (x, y) = (b.w(slot + 8), b.w(slot + 0xa));
+    let (right, left) = (c.screen.right_despawn(), c.screen.left_despawn());
     c.point(2);
-    let gone = (dirs & 4 != 0 && n_clear(x.wrapping_sub(0x170).wrapping_sub(c.bus.w(CAMERA_X + 2))))
+    let gone = (dirs & 4 != 0 && n_clear(x.wrapping_sub(right).wrapping_sub(c.bus.w(CAMERA_X + 2))))
         || {
             c.point(3);
             dirs & 2 != 0
                 && !n_clear(
-                    x.wrapping_add(c.bus.w(frame + 4)).wrapping_add(0x30).wrapping_sub(c.bus.w(CAMERA_X + 2)),
+                    x.wrapping_add(c.bus.w(frame + 4)).wrapping_add(left).wrapping_sub(c.bus.w(CAMERA_X + 2)),
                 )
         }
         || {

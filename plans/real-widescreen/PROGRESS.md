@@ -24,7 +24,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 |---|---|---|---|---|
 | T00 | wide-spawn-spike | — | ⬜ | |
 | T01 | wide-mode | — | ✅ | |
-| T02 | wide-spawn | T01 | ⬜ | |
+| T02 | wide-spawn | T01 | ✅ | |
 | T03 | wide-capacity | T00, T01, T02 | ⬜ | |
 | T04 | wide-camera | T01 | ⬜ | |
 | T05 | wide-special-cases | T01 | ✅ | |
