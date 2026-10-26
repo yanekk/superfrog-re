@@ -1,4 +1,5 @@
-# sf-bench's per-run routes and planner logs (scratch); the committed app-timing routes are routes/app/.
+# sf-bench's per-run routes and planner logs (scratch); the committed routes are routes/app/ (set C) and routes/original/ (sets A, B).
 routes/*
 !routes/app/
+!routes/original/
 */routes/

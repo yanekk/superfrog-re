@@ -11,6 +11,8 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-26 | 📌 | T17 counted, guided: set A 21/24, set B 18/24, M6 10/24. Coins met, exit not reached: A W6-4; B W2-3, W3-2, W3-3, W6-4 (10–48 cells). Coins short: A W2-3, W3-4; B W4-4, W6-1. B W1-4 now completes (27 min). |
+| 2026-10-25 | 🔄 | Owner, T17: the counted run goes on a busy machine, load recorded per level in each slice's commit, no re-runs (deviates D2). Other sessions (a W6-4 sf-plan job, engine tests) held load 20–58; W1-1 timed out beside them. |
 | 2026-10-25 | 🔄 | Owner, T15 review: set-C C3 (median 7.3 min, target 2; ~4 M engine frames a level, 3 threads) and C4 (W4-1 +51%, W1-4 +37%, W5-3 +29%, W6-1 +27%) accepted as misses. 22 of 24 replay in the real app. |
 | 2026-10-25 | 🔄 | Owner, T15: set-C W3-4, W6-4 recorded misses: coins met, 45 and 48 cells short in 30 min, alone on 10 threads too. W6-4's near-exit stall now shows on sets A, B and C, W3-4's on A and C: one fix task across sets? |
 | 2026-10-25 | 🔄 | Owner, T15 (D27): set-C `plan_exit --engine --seed 1` baseline stopped at 15 of 24; not run: W4-4, W5-1–W5-4, W6-1–W6-4. Of the 15: 5 done, 10 timed out (35 min). |
