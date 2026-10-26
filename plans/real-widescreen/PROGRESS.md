@@ -11,9 +11,9 @@ message. Whoever writes a cell also fixes the over-budget cell they walk past.
 
 **Plan reviewed:** 2026-10-22 — 10 fixed, 4 decided with the user
 
-**Status:** Planned; nothing built.
-**Last updated:** 2026-10-22
-**Next `pir-work` will:** T00 wide-spawn-spike and T01 wide-mode, the two roots; T00 sizes T03.
+**Status:** T00 implemented, awaiting review.
+**Last updated:** 2026-10-26
+**Next `pir-work` will:** review T00; T01 wide-mode; T03 takes `WIDE_SLOTS` from `spike/README.md`.
 
 ## Tasks
 
@@ -22,7 +22,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 
 | # | Task | Depends on | State | Notes |
 |---|---|---|---|---|
-| T00 | wide-spawn-spike | — | ⬜ | |
+| T00 | wide-spawn-spike | — | 🔍 | Spike measured, no engine code kept; `spike/README.md` table, logs, `wide-spike.patch`. No panics. Recommends `WIDE_SLOTS` 80. Deviations: bench app routes, not conform scripts (lag-paced, drift on the engine); added a ghost run copying the 4:3 frog each frame for whole-level coverage; W6 alt maps not run. |
 | T01 | wide-mode | — | ⬜ | |
 | T02 | wide-spawn | T01 | ⬜ | |
 | T03 | wide-capacity | T00, T01, T02 | ⬜ | |
@@ -36,7 +36,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T11 | widescreen-drill | T10 | ⬜ | |
 | T12 | wide-every-level | T11 | ⬜ | |
 
-**Review queue:** *(empty)*
+**Review queue:** T00
 
 ## Blocked on the user
 
