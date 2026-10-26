@@ -53,6 +53,14 @@ time, load 37–45:
 | C | 1 | Coins never met, 3 short; no stall spot, 77 coins left across the map |
 | C | 2 | Completed in 17 min: 15 234 frames, 1 heart; `verify_route` in the real app passed. Kept as `routes/app/W3-4.txt` |
 
+Set A again, guided by that set-C route (`--guide routes/app/W3-4.txt`; the guide is traced from
+its app start), load 2–20:
+
+| Set | Seed | Result |
+|---|---|---|
+| A | 1 | Coins met, exit 35 cells away; 2 repairs |
+| A | 2 | Completed in 12 min: 13 796 frames, 1 heart, 10 repairs; `sf_bench::verify` set A (§4.1) passed. Kept as `routes/original/A/W3-4.txt` |
+
 ## Rerun
 
 From `engine/`, one set at a time (a level recorded for the same commit is skipped):
