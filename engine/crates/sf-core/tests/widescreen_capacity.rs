@@ -321,3 +321,31 @@ fn the_extras_cost_no_beam_time() {
         assert_eq!(a, b, "{name}");
     }
 }
+
+/// `slot_addrs` walks the extras while one is live after widescreen is off (DESIGN §2.4, §2.7):
+/// a 4:3 pass still updates and lists it, and `find_free` hands out no extra in 4:3.
+#[test]
+fn a_live_extra_is_walked_after_widescreen_is_off() {
+    let mut st = empty("W1-1");
+    let (slots, _) = run(&mut st, Screen::WIDE, |c| signs(c, 21));
+    let extra = slots[20];
+    assert!(peek(&mut st, |b| slot_addrs(b, Screen::NARROW).any(|s| s == extra)), "walked in 4:3");
+    let bob = peek(&mut st, |b| b.l(extra + 0x50));
+    let display = display();
+    Bus::new(&mut st, display.rom()).set_w(extra + 8, CX + 0x77);
+    run(&mut st, Screen::NARROW, |c| {
+        objects::obj_run_all(c);
+        objects::build_bob_draw_list(c);
+    });
+    peek(&mut st, |b| {
+        assert_eq!(b.w(bob - 4), CX + 0x77, "the extra slot's update ran in 4:3");
+        assert_eq!(draw_list(b), WIDE_BOB_DRAW_LIST, "the wide draw list while an extra is live");
+    });
+    run(&mut st, Screen::NARROW, |c| objects::obj_free(c, slots[0], 0));
+    let (s, _) = run(&mut st, Screen::NARROW, |c| signs(c, 1)[0]);
+    assert_eq!(s, slots[0], "4:3 takes the freed original slot");
+    let (s, _) = run(&mut st, Screen::NARROW, |c| signs(c, 1)[0]);
+    assert_eq!(s, 0, "and never an extra");
+    run(&mut st, Screen::NARROW, |c| objects::obj_free(c, extra, 0));
+    assert!(peek(&mut st, |b| slot_addrs(b, Screen::NARROW).all(|s| !is_wide(s))), "none live: 4:3 walks the 20");
+}
