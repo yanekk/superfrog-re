@@ -120,6 +120,87 @@ pub const LEVEL_MAP_BYTES: u32 = 0x30fe0 - 0x218e0;
 /// Bytes in one display buffer: five planes of `$3b70`.
 pub const PLAYFIELD_BUFFER_BYTES: u32 = 0x12930;
 
+/// The wide draw lists' addresses, one per display buffer (`playfield_buffer_0`, `_1`), past the
+/// extra slots' range (`level::objects::WIDE_BYTES`): a [`WIDE_BOB_HEAD`]-byte head ([`WideBobs`]), then up to
+/// [`WIDE_BOB_ENTRIES`] entries of [`WIDE_BOB_ENTRY`] bytes.
+pub const WIDE_BOBS: [u32; 2] = [0x60_c000, 0x60_c600];
+/// Room for every bob record a draw list can hold: the spud's and each slot's, the original's 20
+/// and the extras'.
+pub const WIDE_BOB_ENTRIES: u32 =
+    1 + crate::level::objects::SLOTS + crate::level::objects::WIDE_SLOTS;
+pub const WIDE_BOB_HEAD: u32 = 20;
+/// Where in a list's head the bitmask of map rows the scroller redrew since its pass starts: 12
+/// bytes, map row `r` at byte `r / 8`, bit `r % 8` (84 rows).
+pub const WIDE_BOB_WIPED: u32 = 8;
+pub const WIDE_BOB_ENTRY: u32 = 12;
+pub const WIDE_BOBS_BYTES: u32 = WIDE_BOB_HEAD + WIDE_BOB_ENTRIES * WIDE_BOB_ENTRY;
+const _: () = assert!(
+    WIDE_BOBS[0] >= crate::level::objects::WIDE_BASE + crate::level::objects::WIDE_BYTES
+        && WIDE_BOBS[0] + WIDE_BOBS_BYTES <= WIDE_BOBS[1]
+);
+
+/// A wide draw list: the bobs one pass drew into a display buffer, in draw order, and the level
+/// rows its two parts covered (the drawer splits at the display ring's seam and its lower part
+/// stops at a 16-line boundary, so a bob's rows outside them are not in the buffer). Head layout:
+/// count, `top`, `clean_top`, `bottom` (words), then [`WideBobs::wiped`].
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct WideBobs {
+    /// The first level row a masked bob is drawn on, and a background bob's (`BD_CLEAN_TOP`).
+    pub top: i16,
+    pub clean_top: i16,
+    /// The row after the last either is drawn on.
+    pub bottom: i16,
+    /// The map rows the scroller drew into both display buffers since the pass, over its bobs
+    /// (the camera moved up or down, or jumped): a bit per map row.
+    pub wiped: [u8; 12],
+    pub bobs: Vec<WideBob>,
+}
+
+/// One entry of a wide draw list: a bob as a pass drew it. `x`, `y` are its level position (the
+/// long before its record, which `screen_positions` measures from the latched camera), `frame`
+/// its frame record, `background` set for a bob drawn into the background (record `+4`
+/// negative: copied, no mask). Entry layout: x, y (words), frame (long), flags (word), a pad word.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct WideBob {
+    pub x: i16,
+    pub y: i16,
+    pub frame: u32,
+    pub background: bool,
+}
+
+impl WideBobs {
+    /// A list, from its variable's bytes.
+    pub fn read(bytes: &[u8]) -> WideBobs {
+        let w = |at: usize| u16::from_be_bytes([bytes[at], bytes[at + 1]]);
+        let n = (w(0) as u32).min(WIDE_BOB_ENTRIES) as usize;
+        let bobs = (0..n)
+            .map(|k| {
+                let at = (WIDE_BOB_HEAD + k as u32 * WIDE_BOB_ENTRY) as usize;
+                WideBob {
+                    x: w(at) as i16,
+                    y: w(at + 2) as i16,
+                    frame: (w(at + 4) as u32) << 16 | w(at + 6) as u32,
+                    background: w(at + 8) != 0,
+                }
+            })
+            .collect();
+        let at = WIDE_BOB_WIPED as usize;
+        WideBobs {
+            top: w(2) as i16,
+            clean_top: w(4) as i16,
+            bottom: w(6) as i16,
+            wiped: bytes[at..at + 12].try_into().unwrap(),
+            bobs,
+        }
+    }
+
+    /// Whether level row `y` is in a map row the scroller redrew.
+    pub fn wiped(&self, y: i32) -> bool {
+        let r = y.div_euclid(16);
+        (0..96).contains(&r) && self.wiped[(r / 8) as usize] >> (r % 8) & 1 != 0
+    }
+}
+
 /// Declares the variables: `Id = "symbol name", address, width;`, in address order.
 macro_rules! layout {
     ($( $(#[$doc:meta])* $id:ident = $name:literal, $addr:expr, $width:expr; )*
@@ -209,6 +290,11 @@ layout! {
     WideBobDrawList = "wide_bob_draw_list", crate::level::objects::WIDE_BOB_DRAW_LIST - 4, Width::Bytes(4 * (crate::level::objects::SLOTS + crate::level::objects::WIDE_SLOTS + 3));
     WideBobRecords = "wide_bob_records", crate::level::objects::WIDE_BOB_RECORDS - 4, Width::Bytes(crate::level::objects::WIDE_SLOTS * 0x11c);
     WideHitboxes = "wide_hitboxes", crate::level::objects::WIDE_HITBOXES, Width::Bytes(12 * crate::level::objects::WIDE_HITBOX_ENTRIES + 4);
+    /// The wide draw lists (DESIGN §2.9, D6): per display buffer, every bob its last pass drew,
+    /// in draw order ([`WideBob`]), for the renderer's side strips. Presentation, kept in save
+    /// states; filled in every mode, read only by a widescreen picture.
+    WideBobs0 = "wide_bobs_0", WIDE_BOBS[0], Width::Bytes(WIDE_BOBS_BYTES);
+    WideBobs1 = "wide_bobs_1", WIDE_BOBS[1], Width::Bytes(WIDE_BOBS_BYTES);
     /// The front end's flags (T20, docs/13), h0+$6..$26: `game_full_mode` (h0+$6), `loader_mode`,
     /// `start_world`, `start_level` (from a level code), the words between them, `attract_mode`,
     /// `final_level_flag`.
@@ -714,6 +800,7 @@ pub fn presentation(id: VarId) -> Option<&'static str> {
         PanelBitmap => "the status panel's bitmap, drawn from the counters",
         HeroFrames => "the frog's sprite images, copied for its animation",
         StoryText => "the text page's bitmap and palette",
+        WideBobs0 | WideBobs1 => "the bobs a pass drew, for widescreen's side strips",
         ShownBuffer => "which display buffer the beam shows",
         // Written only by the vertical blank's scroll (h0+$17076, +$171cc) and read only into
         // the level copper list's bitplane pointers (h0+$1728e): it follows `shown_buffer` (T181).

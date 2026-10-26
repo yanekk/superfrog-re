@@ -6,7 +6,9 @@
 //! display buffer.
 
 use crate::frog::{FROG, f};
-use crate::layout::{h0, h3};
+use crate::layout::{
+    WIDE_BOB_ENTRIES, WIDE_BOB_ENTRY, WIDE_BOB_HEAD, WIDE_BOB_WIPED, WIDE_BOBS, h0, h3,
+};
 use crate::level::camera::{CAMERA_X, CAMERA_Y, SCROLL_DIRS, SHOOTER_MODE, SPRITES_HIDDEN};
 use crate::level::beam::Cost;
 use crate::level::screen::Screen;
@@ -949,7 +951,7 @@ pub fn bob_draw(c: &mut LevelCtx) {
         c.wait_blank();
     }
     let b = &mut c.bus;
-    screen_positions(b);
+    let d6 = screen_positions(b);
     b.set_w(BD_SEAM, 0);
     // h0+$19216: the column, and which buffer is the back one.
     let col = ((b.w(BD_CX).wrapping_add(0xf) >> 4).wrapping_mul(2)) as u32;
@@ -962,6 +964,7 @@ pub fn bob_draw(c: &mut LevelCtx) {
         std::mem::swap(&mut back, &mut other);
         sub = SUB;
     }
+    wide_rows(b, back, d6, seam, pushed);
     draw_part(c, back, sub);
     // The part below the seam.
     let b = &mut c.bus;
@@ -983,9 +986,43 @@ pub fn bob_draw(c: &mut LevelCtx) {
     draw_part(c, back, sub + 0x8c);
 }
 
+/// The head of the wide draw list of the buffer at `back` (DESIGN §2.9): the level rows this
+/// pass's two parts cover, from the drawer's line space (a bob at level row `y` is on its line
+/// `y - camera + d6`): masked bobs from the seam, background ones from the 16-line row after it,
+/// both to `$130` and on through the lower part's `pushed` lines. Not the original's: no cost.
+fn wide_rows(b: &mut Bus, back: u32, d6: u16, seam: u16, pushed: u16) {
+    let list = WIDE_BOBS[(back >= BUFFER_1) as usize];
+    let lower = if n_clear(pushed) { pushed } else { 0 };
+    let row = |line: u16| line.wrapping_add(b.w(BD_CY)).wrapping_sub(d6);
+    let (top, clean_top, bottom) = (
+        row(seam),
+        row((seam & 0xfff0).wrapping_add(0x10)),
+        row(0x130 + lower),
+    );
+    b.set_w(list + 2, top);
+    b.set_w(list + 4, clean_top);
+    b.set_w(list + 6, bottom);
+    for k in 0..3 {
+        b.set_l(list + WIDE_BOB_WIPED + 4 * k, 0);
+    }
+}
+
+/// The scroller drew map row `row` (level rows `16 row ..`) into both display buffers, over what
+/// their passes drew: marked in both wide draw lists (DESIGN §2.9), so the strips leave out a bob's
+/// rows there as the centre does until the buffer's next pass. Not the original's: no cost.
+pub fn wide_rows_wiped(b: &mut Bus, row: u16) {
+    if row >= 96 {
+        return;
+    }
+    for list in WIDE_BOBS {
+        let at = list + WIDE_BOB_WIPED + (row / 8) as u32;
+        b.set_b(at, b.b(at) | 1 << (row % 8));
+    }
+}
+
 /// h0+$1909c: each listed bob's screen position from its level position (the long before the
-/// record) and the camera, the ring's line under the camera's top added.
-fn screen_positions(b: &mut Bus) {
+/// record) and the camera, the ring's line under the camera's top added (returned: `d6`).
+fn screen_positions(b: &mut Bus) -> u16 {
     let d1 = (b.w(BD_CY) as u32).wrapping_add(0xffff_fff4);
     let line = d1 as u16 & 0xf;
     let row = (((d1 as u16 & 0xfff0) >> 4).wrapping_mul(4)) >> 1;
@@ -1008,6 +1045,7 @@ fn screen_positions(b: &mut Bus) {
             break;
         }
     }
+    d6
 }
 
 /// h0+$19242: one part of the drawing into the back buffer at `back` (with the camera's column),
@@ -1054,6 +1092,9 @@ fn draw_part(c: &mut LevelCtx, back: u32, sub: u32) {
         at -= 4;
         let bob = c.bus.l(at);
         paid_unless(c, is_wide(bob), |c| draw_bob(c, bob, back, sub));
+        if stepped {
+            record_wide_bob(&mut c.bus, back, bob, sub, drawn as u32);
+        }
         drawn += 1;
         if c.bus.l(at - 4) == 0 {
             break;
@@ -1063,6 +1104,23 @@ fn draw_part(c: &mut LevelCtx, back: u32, sub: u32) {
         c.step_at(2 + drawn);
     }
     c.custom(0x96, 0x0400);
+}
+
+/// Entry `k` of the wide draw list of the buffer at `back` (DESIGN §2.9, D6): `bob`, whose
+/// sub-record `sub` on the main part just drew (or culled: what is past the buffer's 384 pixels is
+/// the strips'), as it drew it. The list's count is the entries written; the first resets it.
+/// Not the original's: no cost, no step.
+fn record_wide_bob(b: &mut Bus, back: u32, bob: u32, sub: u32, k: u32) {
+    let list = WIDE_BOBS[(back >= BUFFER_1) as usize];
+    if k >= WIDE_BOB_ENTRIES {
+        return;
+    }
+    let rec = bob.wrapping_add(sub);
+    let at = list + WIDE_BOB_HEAD + k * WIDE_BOB_ENTRY;
+    b.set_l(at, b.l(bob.wrapping_sub(4)));
+    b.set_l(at + 4, b.l(b.l(rec + 0x16)));
+    b.set_l(at + 8, (((b.l(rec + 4) as i32) < 0) as u32) << 16);
+    b.set_w(list, k as u16 + 1);
 }
 
 /// h0+$1928c: copy the clean background back over a bob's last drawing (five planes).

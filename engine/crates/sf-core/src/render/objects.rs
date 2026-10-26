@@ -1,7 +1,8 @@
 //! Hardware sprites, and the picture's composition (docs/12 "Sprites").
 //!
 //! Bobs need nothing here: the original blits them into the display buffers, which are state,
-//! so they arrive with the play field's fetched lines.
+//! so they arrive with the play field's fetched lines; widescreen's strips have theirs in the
+//! [`Field`] ([`super::bobs`]).
 //!
 //! Sprites follow Agnus's sprite DMA (vAmiga `Agnus::executeFirstSpriteCycle`,
 //! `updateSpriteDMA`): positions and pointers from the copper, data words fetched per line between
@@ -144,16 +145,17 @@ impl Sprite {
 const SPRITE_DELAY: i32 = 1;
 
 /// The picture's pixels: each line's fetched bitplane indices (on a play-field line, outside the
-/// original's window — widescreen's extra columns — the level from the map), then the sprites, a pair in front of the play field when its number is below the play field's
+/// original's window — widescreen's extra columns — the level from the map and its bobs), then the sprites, a pair in front of the play field when its number is below the play field's
 /// priority, the lower pair in front of the higher, an attached pair as one 16-colour sprite.
-pub(super) fn compose(pic: &mut Picture, rows: &[Row], field: &Field, extra: usize) {
+/// Without `sprites`, the play field alone (a test's look at the bobs).
+pub(super) fn compose(pic: &mut Picture, rows: &[Row], field: &Field, extra: usize, sprites: bool) {
     let width = pic.width as usize;
     for (y, row) in rows.iter().enumerate() {
         let line = &mut pic.pixels[y * width..(y + 1) * width];
         match row.under {
             Under::Nothing => line.fill(0),
             Under::Fetched => {}
-            Under::Field { y: ly, x0 } => {
+            Under::Field { y: ly, x0, .. } => {
                 for (x, px) in line.iter_mut().enumerate() {
                     if x < extra || x >= width - extra {
                         *px = field.at(x0 + x as i32, ly);
@@ -161,7 +163,7 @@ pub(super) fn compose(pic: &mut Picture, rows: &[Row], field: &Field, extra: usi
                 }
             }
         }
-        if row.sprites.iter().all(Option::is_none) {
+        if !sprites || row.sprites.iter().all(Option::is_none) {
             continue;
         }
         for (x, px) in line.iter_mut().enumerate() {
