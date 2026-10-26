@@ -6,6 +6,7 @@ use crate::bonus::death::become_reward;
 use crate::items::SCORE;
 use crate::layout::h0;
 use crate::level::objects::{OBJ_SLOTS, bob_anim, bob_follow, obj_despawn_if_offscreen, obj_free};
+use crate::level::screen::Screen;
 use crate::level::{LevelCtx, SlotFn, n_clear};
 use crate::mem::Bus;
 
@@ -191,12 +192,14 @@ pub fn touch_stomped(c: &mut LevelCtx, slot: u32, _d7: u16) {
 
 /// h0+$da62: the direction from (`x0`, `y0`) to (`x1`, `y1`), screen coordinates, as one of 16
 /// (0 right, 4 up, 8 left, 12 down; the original's `d1`). Each coordinate is clamped to the
-/// screen first. The steepness is `|dy| * $c0 / |dx|` against four thresholds, compared signed,
+/// screen first, in widescreen its wider one (`screen`, real-widescreen DESIGN §2.6), so an eye
+/// in a strip looks at a frog there. The steepness is `|dy| * $c0 / |dx|` against four thresholds, compared signed,
 /// so a quotient of `$8000` and over counts as flattest (the original's).
-pub fn direction(x0: u16, y0: u16, x1: u16, y1: u16) -> u8 {
-    let clamp = |v: u16, top: i32| (v as i16 as i32).clamp(0, top - 1) as u16;
-    let (x0, x1) = (clamp(x0, 0x154), clamp(x1, 0x154));
-    let (y0, y1) = (clamp(y0, 0xf0), clamp(y1, 0xf0));
+pub fn direction(screen: Screen, x0: u16, y0: u16, x1: u16, y1: u16) -> u8 {
+    let clamp = |v: u16, (lo, hi): (i32, i32)| (v as i16 as i32).clamp(lo, hi) as u16;
+    let xs = screen.direction_x();
+    let (x0, x1) = (clamp(x0, xs), clamp(x1, xs));
+    let (y0, y1) = (clamp(y0, (0, 0xef)), clamp(y1, (0, 0xef)));
     let mut dy = 0xf0u16.wrapping_sub(y1).wrapping_sub(0xf0u16.wrapping_sub(y0));
     let mut dx = x1.wrapping_sub(x0);
     if dx == 0 {
