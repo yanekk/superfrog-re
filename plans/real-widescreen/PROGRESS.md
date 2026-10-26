@@ -13,7 +13,7 @@ message. Whoever writes a cell also fixes the over-budget cell they walk past.
 
 **Status:** Planned; nothing built.
 **Last updated:** 2026-10-27
-**Next `pir-work` will:** review T08; T06 is ready, T09 waits for T08.
+**Next `pir-work` will:** T09 side-frog (T08 done); T06 is ready.
 
 ## Tasks
 
@@ -30,13 +30,13 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T05 | wide-special-cases | T01 | ✅ | |
 | T06 | wide-switch | T02, T03 | ⬜ | |
 | T07 | wide-recording | T01 | ✅ | |
-| T08 | side-objects | T02, T03 | 🔍 | Wide draw lists per buffer, strip bobs from them; 4 render units, 4 sf-core, 1 sf-e2e. Deviations: lists record covered and scroller-redrawn rows; conformance skips the lists (`engine_only`); buffer from fetched lines; `draw_bob` takes a row filter; extra-slot test on W4-2; e2e 4:3 game until T10; workspace run skipped. Commit body. |
+| T08 | side-objects | T02, T03 | ✅ | Review fixed four original-vs-engine comparisons reading or writing `wide_bobs_0/1` (level_routines, level_entry, recorder_setup_start, `Follow::writes`). Mutations of DX, wiped rows, buffer choice, lower part caught; `$fc00` skip survives, never occurs. Seam probed on six more levels: one culled-bob gap, owner keeps centre. e2e 5× green. recorder_follow red from T03. |
 | T09 | side-frog | T04, T08 | ⬜ | |
 | T10 | app-wiring | T05, T06, T07, T08, T09 | ⬜ | |
 | T11 | widescreen-drill | T10 | ⬜ | |
 | T12 | wide-every-level | T11 | ⬜ | |
 
-**Review queue:** T08
+**Review queue:** *(empty)*
 
 ## Blocked on the user
 

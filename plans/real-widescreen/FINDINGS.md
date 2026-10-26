@@ -12,6 +12,9 @@ changed.
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-27 | 🐞 | T08 review, fixed: level_routines (bob_draw, scroller), level_entry, recorder_setup_start and `bug::Follow::writes` compared or wrote `wide_bobs_0/1`, which a 4:3 game fills too; each now skips `layout::engine_only`. |
+| 2026-10-27 | 🐞 | Open, T03: recorder_follow `a_recording_the_original_leaves_is_put_back_on_it` panics "vAmiga refused a memory write": `Follow::writes` puts the extra slots' variables ($600000) into vAmiga. Same with T08's lists excluded; `recorder_*` is in the test block. |
+| 2026-10-27 | 📌 | T08 review: a bob the drawer culls at the buffer's right edge shows in the strip but not the centre's last 2 columns (W5-1 frame 561). Owner keeps the centre faithful; T11's drill judges it. No `$fc00` bob seen. |
 | 2026-10-27 | 📌 | T08: `scroll_column` is not the shown buffer's address (it stayed in buffer 1 while buffer 0 showed); the shown buffer is the play-field lines' bitplane pointer, which the strips now read. |
 | 2026-10-27 | 📌 | T08: the centre loses a pass's bob pixels where the scroller redraws map rows (camera moving vertically, restart jumps) and below the lower part's 16-line `pushed` bound; the lists record both so strips match. `redraw_cell` and `$fc00` bobs are not followed. |
 | 2026-10-26 | 📌 | T03: with T02–T05's rules W6-2's ghost run peaks at 92 live of 100 (`sf-conform/tests/widescreen_capacity.rs`). Extras are compared as 0 in 4:3 conformance, not excluded: a 4:3 write there fails a case. |
