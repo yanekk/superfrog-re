@@ -4,6 +4,7 @@
 
 use std::collections::{BTreeMap, BTreeSet};
 use std::fmt::Write as _;
+use std::path::Path;
 
 use crate::results::LevelResult;
 use crate::sets::LEVELS;
@@ -239,6 +240,41 @@ pub fn render(results: &[LevelResult]) -> String {
                 continue;
             }
             let _ = writeln!(o, "| {l} | {} |", cells.join(" | "));
+        }
+    }
+    o
+}
+
+/// The verdict, written by hand at the end of the plan (T18, D5): the file beside the table.
+pub const VERDICT: &str = "verdict.md";
+/// The tuning run's results, beside the table, whose unaided set-A column the verdict shows.
+pub const TUNING: &str = "tuning/results.jsonl";
+
+/// [`render`] plus, when `dir` (the table's folder) holds a [`VERDICT`], a verdict section: that
+/// file verbatim, then the tuning run's unaided set-A results as recorded, not gated (T18). The
+/// verdict is the owner's decisions on each target, so it is prose kept in its own file and
+/// `RESULTS.md` stays generated, never edited.
+pub fn render_in(results: &[LevelResult], dir: &Path) -> String {
+    let mut o = render(results);
+    let Ok(verdict) = std::fs::read_to_string(dir.join(VERDICT)) else { return o };
+    o += "\n## Verdict\n\n";
+    o += verdict.trim_end();
+    o += "\n";
+    let tuning = latest(&crate::results::load(&dir.join(TUNING)));
+    let unaided: Vec<_> = LEVELS
+        .iter()
+        .filter_map(|l| tuning.get(&(NEW.into(), false, "A".into(), l.to_string())))
+        .collect();
+    if !unaided.is_empty() {
+        let done = unaided.iter().filter(|r| r.completed).count();
+        let _ = writeln!(
+            o,
+            "\n### Set A unaided, from the tuning run (recorded, not gated)\n\n\
+             From `tuning/results.jsonl` as recorded: {done} of {} done.\n\n| Level | `new` unguided |\n|---|---|",
+            unaided.len()
+        );
+        for r in unaided {
+            let _ = writeln!(o, "| {} | {} |", r.level, cell(r));
         }
     }
     o
