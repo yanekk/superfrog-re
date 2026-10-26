@@ -52,6 +52,37 @@ impl Screen {
         0x30 + self.extra()
     }
 
+    /// How far left of the camera the spawn scans start, in pixels (`scan_origin`, h0+$177da):
+    /// `$20`, plus [`Screen::extra_cells`] whole cells, so the scans stay cell-aligned
+    /// (DESIGN §2.2). The site clamps the result at 0 as the original does.
+    pub fn scan_left(self) -> u16 {
+        0x20 + 16 * self.extra_cells()
+    }
+
+    /// The byte offset from the scan origin to `map_spawn_scan_edges`' right-hand column (and the
+    /// bonus level's right column, h0+$1788a): `$2e` (23 cells), plus twice
+    /// [`Screen::extra_cells`] cells, since the origin moved left by as many.
+    pub fn scan_right_column(self) -> u32 {
+        0x2e + 2 * 2 * self.extra_cells() as u32
+    }
+
+    /// The cells `map_spawn_scan_edges`' row scans: `$19`, plus [`Screen::extra_cells`] each side.
+    pub fn scan_row_cells(self) -> u32 {
+        0x19 + 2 * self.extra_cells() as u32
+    }
+
+    /// The cells of each row `map_spawn_scan_screen` (h0+$1777c) scans: `$18`, plus
+    /// [`Screen::extra_cells`] each side.
+    pub fn scan_screen_cells(self) -> u32 {
+        0x18 + 2 * self.extra_cells() as u32
+    }
+
+    /// `obj_free_if_left_behind`'s edge (h0+$1b940): an object whose right side is left of
+    /// `cx − this` is freed, 0 (the camera), plus [`Screen::extra`].
+    pub fn left_behind(self) -> u16 {
+        self.extra()
+    }
+
     /// Where a hardware sprite is hidden past the right of the screen, and parked to hide it
     /// (`frog/anim.rs`'s `OFF_SCREEN`): `$150`, plus [`Screen::extra`] (DESIGN §2.5).
     pub fn sprite_hide_right(self) -> u16 {
@@ -109,6 +140,11 @@ mod tests {
         assert_eq!(s.right_despawn(), 0x170);
         assert_eq!(s.left_despawn(), 0x30);
         assert_eq!(s.sprite_hide_right(), 0x150);
+        assert_eq!(s.scan_left(), 0x20);
+        assert_eq!(s.scan_right_column(), 0x2e);
+        assert_eq!(s.scan_row_cells(), 0x19);
+        assert_eq!(s.scan_screen_cells(), 0x18);
+        assert_eq!(s.left_behind(), 0);
         assert_eq!((s.spud_left(), s.spud_right()), (0, 0x150));
         assert_eq!((s.shot_spawn(), s.shot_gone(), s.shot_far()), (0x160, 0x150, 0x200));
         assert_eq!(s.direction_x(), (0, 0x153));
@@ -123,6 +159,11 @@ mod tests {
         assert_eq!(s.right_despawn(), 0x170 + 65);
         assert_eq!(s.left_despawn(), 0x30 + 65);
         assert_eq!(s.sprite_hide_right(), 0x150 + 65);
+        assert_eq!(s.scan_left(), 0x20 + 80);
+        assert_eq!(s.scan_right_column(), 0x2e + 20);
+        assert_eq!(s.scan_row_cells(), 0x19 + 10);
+        assert_eq!(s.scan_screen_cells(), 0x18 + 10);
+        assert_eq!(s.left_behind(), 65);
         assert_eq!((s.spud_left(), s.spud_right()), (65, 0x150 + 65));
         assert_eq!((s.shot_spawn(), s.shot_gone(), s.shot_far()), (0x160 + 65, 0x150 + 65, 0x200 + 65));
         assert_eq!(s.direction_x(), (-65, 0x153 + 65));

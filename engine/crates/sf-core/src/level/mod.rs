@@ -316,6 +316,9 @@ pub struct LevelCtx<'a> {
     /// The screen the step plays against: the original's, or widescreen's (real-widescreen
     /// DESIGN §2.2, §3.1). Set from `Game`'s mode each step; every horizontal edge test asks it.
     pub screen: screen::Screen,
+    /// Work being done only because the screen is wide, which costs no beam time
+    /// ([`LevelCtx::unpaid`], DESIGN §2.4, D11).
+    free: bool,
 }
 
 impl<'a> LevelCtx<'a> {
@@ -356,6 +359,7 @@ impl<'a> LevelCtx<'a> {
             vbl_held: false,
             unported: Vec::new(),
             screen: screen::Screen::default(),
+            free: false,
         }
     }
 }
@@ -438,11 +442,21 @@ impl LevelCtx<'_> {
         self.spend_n(k, 1);
     }
 
+    /// Run `f` as work widescreen adds beyond the original's (a scan cell outside the original's,
+    /// its spawn): every [`LevelCtx::spend`] in it costs nothing, so the extras never push a pass
+    /// past its frame (DESIGN §2.4, D11).
+    pub fn unpaid<R>(&mut self, f: impl FnOnce(&mut Self) -> R) -> R {
+        let was = std::mem::replace(&mut self.free, true);
+        let r = f(self);
+        self.free = was;
+        r
+    }
+
     /// The CPU does `n` pieces of work of kind `k` here.
     pub fn spend_n(&mut self, k: beam::Cost, n: u32) {
         self.interrupt_due();
         self.stamp();
-        if n == 0 {
+        if n == 0 || self.free {
             return;
         }
         self.tick(beam::Tick::Cpu(k, n));
