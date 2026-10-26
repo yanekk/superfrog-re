@@ -11,9 +11,9 @@ message. Whoever writes a cell also fixes the over-budget cell they walk past.
 
 **Plan reviewed:** 2026-10-22 — 10 fixed, 4 decided with the user
 
-**Status:** Planned; nothing built.
+**Status:** T01 done.
 **Last updated:** 2026-10-26
-**Next `pir-work` will:** T00 wide-spawn-spike and T01 wide-mode, the two roots; T00 sizes T03.
+**Next `pir-work` will:** T00 wide-spawn-spike (sizes T03); T02, T04, T05, T07 are unblocked.
 
 ## Tasks
 
@@ -23,7 +23,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | # | Task | Depends on | State | Notes |
 |---|---|---|---|---|
 | T00 | wide-spawn-spike | — | ⬜ | |
-| T01 | wide-mode | — | 🔍 | `level/screen.rs` (`WIDE_EXTRA`, `WIDE_CELLS`, `Screen` with `right_despawn`, `left_despawn`, `sprite_hide_right`), `LevelCtx.screen` via `Machine.screen`, `Game::set_widescreen`. 7 tests. Deviation: workspace `cargo test` not run; the parallel-build worker rule forbids whole-suite runs, pir runs it at the end. |
+| T01 | wide-mode | — | ✅ | Review fixed one defect: the restart's `level_init` and game over's vertical blank played narrow in widescreen (reproduced by probe; `Front.screen`, `Cx.screen` added). Probed both paths, mutated an edge and `WIDE_EXTRA`, both red. Workspace cargo test left to pir's end run. `load::enter` gap logged for T04. |
 | T02 | wide-spawn | T01 | ⬜ | |
 | T03 | wide-capacity | T00, T01, T02 | ⬜ | |
 | T04 | wide-camera | T01 | ⬜ | |
@@ -36,7 +36,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T11 | widescreen-drill | T10 | ⬜ | |
 | T12 | wide-every-level | T11 | ⬜ | |
 
-**Review queue:** T01
+**Review queue:** *(empty)*
 
 ## Blocked on the user
 
