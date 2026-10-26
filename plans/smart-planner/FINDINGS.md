@@ -11,10 +11,12 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-26 | 🐞 | T18 review: RESULTS.md M9 row hard-codes New `1 (+ plan_bonus)` (`table.rs`, T01) while five tools remain; the verdict row says 5. Left for T34 to make true. Dropped the 10-21 `best-old` row: in `verdict.md`, `routes/` now ignored. |
+| 2026-10-26 | 🔄 | Owner, T18: M3, M4, M6 misses accepted (M6 to the next plan); M1, M5, C1 recorded, old tools kept. T34 retire-old-tools added: owner accepts or plays the failing stretches first, then delete and recheck M9. |
 | 2026-10-26 | 📌 | T17 counted, guided: set A 21/24, set B 18/24, M6 10/24. Coins met, exit not reached: A W6-4; B W2-3, W3-2, W3-3, W6-4 (10–48 cells). Coins short: A W2-3, W3-4; B W4-4, W6-1. B W1-4 now completes (27 min). |
 | 2026-10-25 | 🔄 | Owner, T17: the counted run goes on a busy machine, load recorded per level in each slice's commit, no re-runs (deviates D2). Other sessions (a W6-4 sf-plan job, engine tests) held load 20–58; W1-1 timed out beside them. |
 | 2026-10-25 | 🔄 | Owner, T15 review: set-C C3 (median 7.3 min, target 2; ~4 M engine frames a level, 3 threads) and C4 (W4-1 +51%, W1-4 +37%, W5-3 +29%, W6-1 +27%) accepted as misses. 22 of 24 replay in the real app. |
-| 2026-10-25 | 🔄 | Owner, T15: set-C W3-4, W6-4 recorded misses: coins met, 45 and 48 cells short in 30 min, alone on 10 threads too. W6-4's near-exit stall now shows on sets A, B and C, W3-4's on A and C: one fix task across sets? |
+| 2026-10-25 | 🔄 | Owner, T15: set-C W3-4, W6-4 recorded misses, alone on 10 threads too: W6-4 coins met, 48 cells short; W3-4 recorded 3 coins short (the 45 cells unrecorded, T18 review). W6-4's near-exit stall shows on sets A, B and C. |
 | 2026-10-25 | 🔄 | Owner, T15 (D27): set-C `plan_exit --engine --seed 1` baseline stopped at 15 of 24; not run: W4-4, W5-1–W5-4, W6-1–W6-4. Of the 15: 5 done, 10 timed out (35 min). |
 | 2026-10-25 | 📌 | T28 compass trial, unguided, seeds 1–3, 30 min (`bench/compass-trial.md`): each compass completed only W5-3 seeds 2–3 and W6-1; engine frames there straight 65.2, map 61.5, walk 40.2 M. Walk kept as `sf-plan` default; DESIGN §2.2 still says straight. |
 | 2026-10-24 | 🐞 | T33: W4-1 unaided, seed 1, stretch 3's reach ended mid-fall over hazards 59–60,26 (`Goal::Reach` had no survival check). With it: W4-1 done 4.3 min, 3 979 frames; W1-3 8.2 min. Dead-end rewinds tested in review. |
@@ -63,7 +65,6 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 | 2026-10-21 | 🐞 | T04, D13 check (`map_stats`): 11 of 24 maps miss the exit or the coins, no enemy help. Exit unreached: W2-3, W2-4, W3-2, W3-4, W4-2, W4-4, W5-2, W6-1, W6-2, W6-4. W2-1 reaches 24 of 35 coins. Owner asked before T08. |
 | 2026-10-21 | 🐞 | `sf-bench` copies a failed run's reason verbatim, so `bench/sample/RESULTS.md` and `results.jsonl` carry this machine's absolute worktree path (`no route (/Users/…/routes/explore-A-W1-1.txt…)`). Found in T02 review; T01 code, left. |
 | 2026-10-21 | 📌 | T02 sample, set A, six levels, busy machine: old tools all timed out (`plan_exit --coins 0` ran the clock out; `plan_exit_w6` 3 744–5 760 frames in 35 min; `explore` stuck at frame 0, `--prefix` fixes). Median confirmation 6.8 %: T10 keeps 48-frame chunks. |
-| 2026-10-21 | 🐞 | `sf-bench` `best-old` with all three failed keeps the quickest failure (`explore`), so RESULTS.md's baseline shows M3 0.5 min and confirmation 0 %. Its `routes/` folder is not git-ignored; T02 left 1.4 MB of logs uncommitted. |
 | 2026-10-21 | 📌 | T07: `play_safe` with all three retries, 40-frame move on W6-3: 0.21 s at load ~20 (expected 0.19). W1-1 pit deaths drop a life with `frog_hearts` unchanged, so `died` must be checked beside hearts. |
 | 2026-10-21 | 🐞 | T03: tile coins (marker 55, `coin` h0+$ede0) add to `frog+$7e` only, never `coins_left_for_exit`; DESIGN §2.3 counts them toward the exit. `Facts` keeps them as `CoinKind::Tile`; T06 must meet `coins_needed` with `Object` coins. |
 | 2026-10-21 | 🔄 | Owner, T00: map moves landing within one cell of their target count as success, the search going on from where the frog is; D17's 3-failure ×4 rule stands. T04's move set adds mid-air steering and must reach W6-3's exit. |

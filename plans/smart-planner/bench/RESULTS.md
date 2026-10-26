@@ -121,3 +121,68 @@ Recorded, not gated:
 | W6-2 |  | done, 7.4 min, 8491 frames (ref 8430), 1 hearts lost |  |
 | W6-3 |  | done, 7.1 min, 8400 frames (ref 7892), 4 hearts lost |  |
 | W6-4 |  | failed (over-budget; budget spent; coins still needed 0, least exit distance with the coins met 48 cells, cells archived 29487), 30.0 min |  |
+
+## Verdict
+
+Written by hand at T18 (DESIGN D5) and included here by `sf-bench`; edit `bench/verdict.md`, not this
+file. The values are the counted run's (T17, seed 1, 30 min a level, a
+busy machine, owner 2026-10-25).
+
+How to read the numbers:
+
+- The new planner's counted results are **guided**: each level's committed route is its guide path
+  (DESIGN §2.11, D21). The baseline is **unaided**.
+- The baseline is only T02's six-level set-A sample (D27); no counted baseline was run, and set B has
+  none. It is in effect the best of two old tools: `explore` never started on any sample level (stuck
+  at frame 0, "no route"), so `plan_exit` and `plan_exit_w6` carry it.
+- A level every old tool failed shows the quickest failure's time (`best_of`), left as recorded (owner,
+  2026-10-25). Set C's baseline is `plan_exit --engine` alone, stopped at 15 of 24 levels (D27).
+- The unaided set-A results from the tuning run (T14/T27) follow below as recorded, not gated.
+
+| # | Target | Measured (new, guided) | Verdict | Cause, and the owner's decision |
+|---|---|---|---|---|
+| M1 | 24 / 24 | 21 / 24 | missed | W6-4 meets every coin and stalls 48 cells short of the exit; W2-3, W3-4 fail a repair's reach, then the rest-of-level plan never meets the coins (9, 82 short). Owner, 2026-10-26: recorded as a miss; old tools kept, T34 decides. |
+| M2 | 4 / 4, each under 30 min | 4 / 4 (W1-4 26.5, W2-4 15.5, W6-2 6.2, W6-3 5.8 min) | met | |
+| M3 | median ≤ 10 min, slowest ≤ 30 min | median 7.9 min, slowest 30.3 min | missed (slowest) | Only failed levels reach 30 min; W3-4 overran by 18 s in its last lockstep past the deadline (T11 finding). Slowest completed level 26.5 min. Owner, 2026-10-26: accepted. |
+| M4 | none over +25% | 4 over (W6-1 +56%, W3-2 +45%, W4-1 +40%, W1-4 +28%), 21 compared | missed | W3-2 detours to keep hearts the committed route loses; W4-1 goes back left for its last coins (last-8-coins pull); W1-4 takes coins out of route order; W6-1 not traced (4 hearts lost). Owner, 2026-10-26: accepted. |
+| M5 | 24 / 24 | 18 / 24 | missed | Coins met, exit 10–48 cells away: W2-3, W3-2, W3-3, W6-4. Coins never met: W4-4 (40 short), W6-1 (2 short). The same two stalls as M1. Owner, 2026-10-26: recorded as a miss; T34 decides. |
+| M6 | ≥ 20 / 24 | 10 / 24 | missed | A repair after a lag parting with the original accepts a lost heart and never tries to win it back (T10, T24); a planner gap, not unavoidable hits. Owner, 2026-10-26: accepted, to be fixed in the next plan (difficulty modes needs hitless routes). |
+| M8 | always | a test (T08, T11, T12) | met | |
+| M9 | 1 (+ `plan_bonus`) | 5 today: `sf-plan`, `plan_exit`, `plan_exit_w6`, `explore`, `complete` | not yet | The old tools stay until the owner accepts the M1 miss or plays the failing stretches (owner, 2026-10-26); T34 deletes them and rechecks M9. |
+| C1 | 24 / 24 | 22 / 24 | missed | W6-4 meets the coins and stalls 48 cells short; W3-4 never meets them (3 short; T15's row said 45 cells from the exit, not what `results.jsonl` holds). Owner, 2026-10-25 (T15): recorded misses; 2026-10-26: T34 decides with M1. |
+| C3 | median ≤ 2 min, slowest ≤ 30 min | median 7.3 min, slowest 30.0 min | missed | About 4 M engine frames a level on 3 threads. Owner, 2026-10-25 (T15 review): accepted. |
+| C4 | none over +25% | 4 over (W4-1 +51%, W1-4 +37%, W5-3 +29%, W6-1 +27%), 22 compared | missed | Owner, 2026-10-25 (T15 review): accepted. |
+
+Against the baseline: on the six sample levels the old tools completed none, the new planner all six;
+on set C `plan_exit` completed 5 of the 15 it ran (median 35 min, timeouts), the new planner 22 of 24.
+
+### Set A unaided, from the tuning run (recorded, not gated)
+
+From `tuning/results.jsonl` as recorded: 11 of 24 done.
+
+| Level | `new` unguided |
+|---|---|
+| W1-1 | done, 6.0 min, 4696 frames (ref 4474), 0 hearts lost, *before the thread share* |
+| W1-2 | done, 9.1 min, 5794 frames (ref 5183), 1 hearts lost, *before the thread share* |
+| W1-3 | done, 8.2 min, 7804 frames (ref 7729), 0 hearts lost |
+| W1-4 | failed (over-budget; budget spent; coins still needed 91, least exit distance with the coins met none (the coins were never met), cells archived 1, the original confirmed to frame 731), 30.1 min, *before the thread share* |
+| W2-1 | done, 7.3 min, 2933 frames (ref 2524), 0 hearts lost, *before the thread share* |
+| W2-2 | failed (not faithful: diverged at frame 1007), 4.1 min, 5054 frames (ref 4739), *before the thread share* |
+| W2-3 | failed (over-budget; budget spent; coins still needed 0, least exit distance with the coins met 17 cells, cells archived 36203, the original confirmed to frame 151), 30.0 min, *before the thread share* |
+| W2-4 | done, 16.6 min, 9794 frames (ref 7779), 2 hearts lost, *before the thread share* |
+| W3-1 | done, 23.4 min, 6507 frames (ref 5492), 0 hearts lost, *before the thread share* |
+| W3-2 | failed (over-budget; budget spent; coins still needed 61, least exit distance with the coins met none (the coins were never met), cells archived 1, the original confirmed to frame 2035), 30.2 min, *before the thread share* |
+| W3-3 | failed (over-budget; budget spent; coins still needed 37, least exit distance with the coins met none (the coins were never met), cells archived 1, the original confirmed to frame 1754), 30.2 min |
+| W3-4 | failed (over-budget; budget spent; coins still needed 52, least exit distance with the coins met none (the coins were never met), cells archived 1, the original confirmed to frame 5771), 30.5 min |
+| W4-1 | done, 4.3 min, 3979 frames (ref 2146), 0 hearts lost |
+| W4-2 | failed (over-budget; budget spent; coins still needed 83, least exit distance with the coins met none (the coins were never met), cells archived 1, the original confirmed to frame 449), 30.1 min |
+| W4-3 | done, 7.7 min, 7377 frames (ref 8486), 4 hearts lost, *before the thread share* |
+| W4-4 | failed (over-budget; budget spent; coins still needed 84, least exit distance with the coins met none (the coins were never met), cells archived 1, the original confirmed to frame 1554), 30.2 min |
+| W5-1 | done, 5.5 min, 3144 frames (ref 2254), 0 hearts lost, *before the thread share* |
+| W5-2 | done, 15.2 min, 6320 frames (ref 6094), 1 hearts lost, *before the thread share* |
+| W5-3 | failed (over-budget; budget spent; coins still needed 0, least exit distance with the coins met 20 cells, cells archived 24888, the original confirmed to frame 151), 30.0 min |
+| W5-4 | done, 24.8 min, 8635 frames (ref 8193), 1 hearts lost, *before the thread share* |
+| W6-1 | failed (not faithful: diverged at frame 6651), 27.3 min, 6619 frames (ref 6752) |
+| W6-2 | failed (over-budget; budget spent; coins still needed 0, least exit distance with the coins met 6 cells, cells archived 36195, the original confirmed to frame 151), 30.0 min |
+| W6-3 | failed (over-budget), 30.3 min |
+| W6-4 | failed (over-budget; budget spent; coins still needed 0, least exit distance with the coins met 88 cells, cells archived 28143, the original confirmed to frame 151), 30.0 min, *before the thread share* |

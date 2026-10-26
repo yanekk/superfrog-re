@@ -70,7 +70,7 @@ fn main() {
     }
     if table_only {
         let all = sf_bench::results::load(&o.results);
-        std::fs::write(&o.table, sf_bench::table::render(&all))
+        std::fs::write(&o.table, sf_bench::table::render_in(&all, o.table.parent().unwrap_or(std::path::Path::new("."))))
             .unwrap_or_else(|e| panic!("{}: {e}", o.table.display()));
         eprintln!("sf-bench: wrote {} from {} results", o.table.display(), all.len());
         return;

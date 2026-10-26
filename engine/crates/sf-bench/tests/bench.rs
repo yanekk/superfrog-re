@@ -541,3 +541,28 @@ fn the_header_names_the_baseline_source() {
     let m5 = t.lines().find(|l| l.starts_with("| M5 |")).unwrap();
     assert!(m5.contains("| — | — |"), "{m5}");
 }
+
+/// The verdict (T18): `verdict.md` beside the table is appended verbatim, then the tuning run's
+/// unaided set-A results as recorded; a folder with no verdict renders the table alone.
+#[test]
+fn the_verdict_and_the_unaided_tuning_column_follow_the_table() {
+    let dir = scratch("verdict");
+    let rs = [fixture("new", "A", "W1-1", true, 400.0)];
+    assert_eq!(sf_bench::table::render_in(&rs, &dir), sf_bench::table::render(&rs));
+    std::fs::write(dir.join("verdict.md"), "M1 missed, 21 / 24.\n\n").unwrap();
+    let t = sf_bench::table::render_in(&rs, &dir);
+    assert!(t.ends_with("\n## Verdict\n\nM1 missed, 21 / 24.\n"), "{t}");
+    std::fs::create_dir_all(dir.join("tuning")).unwrap();
+    let mut unaided = fixture("new", "A", "W1-2", false, 1800.0);
+    unaided.guided = false;
+    let guided = fixture("new", "A", "W1-3", true, 300.0);
+    for r in [&unaided, &guided] {
+        results::append(&dir.join("tuning/results.jsonl"), r).unwrap();
+    }
+    let t = sf_bench::table::render_in(&rs, &dir);
+    let tail = &t[t.find("## Verdict").unwrap()..];
+    assert!(tail.contains("### Set A unaided, from the tuning run (recorded, not gated)"), "{tail}");
+    assert!(tail.contains("0 of 1 done"), "{tail}");
+    assert!(tail.contains("| W1-2 | failed (no exit \"quoted\"), 30.0 min |"), "{tail}");
+    assert!(!tail.contains("| W1-3 |"), "{tail}");
+}

@@ -213,7 +213,7 @@ pub fn bench(o: &Options) -> Result<(), String> {
         let mut all = all.lock().unwrap();
         results::append(&o.results, r).unwrap_or_else(|e| panic!("{}: {e}", o.results.display()));
         all.push(r.clone());
-        let _ = std::fs::write(&o.table, crate::table::render(&all));
+        let _ = std::fs::write(&o.table, crate::table::render_in(&all, o.table.parent().unwrap_or(Path::new("."))));
     };
     std::thread::scope(|sc| {
         for _ in 0..o.jobs.max(1) {
@@ -247,7 +247,7 @@ pub fn bench(o: &Options) -> Result<(), String> {
         }
     });
     let all = all.into_inner().unwrap();
-    std::fs::write(&o.table, crate::table::render(&all)).map_err(|e| format!("{}: {e}", o.table.display()))?;
+    std::fs::write(&o.table, crate::table::render_in(&all, o.table.parent().unwrap_or(Path::new(".")))).map_err(|e| format!("{}: {e}", o.table.display()))?;
     eprintln!("sf-bench: wrote {} and {}", o.results.display(), o.table.display());
     Ok(())
 }
