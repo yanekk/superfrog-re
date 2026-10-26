@@ -7,6 +7,7 @@
 use sf_core::input::FrameInput;
 use sf_core::layout::{AmigaMemory, Ram, VarId, def};
 use sf_core::recording::Location;
+use sf_core::level::screen::WIDE_EXTRA;
 use sf_core::recording::{Recording, ZIP_RECORDING, ZIP_SCREENSHOT};
 use sf_core::{Game, LoadEnd, Picture, Scene, View};
 use sf_oracle::{Amiga, Rgb12Frame};
@@ -48,6 +49,29 @@ pub fn read_zip(bytes: &[u8]) -> Result<(Recording, Vec<u8>), String> {
     Ok((rec, png))
 }
 
+/// What `bug compare` and `bug case` say to a recording with any widescreen in it (real-widescreen
+/// DESIGN §2.8, D9): a widescreen game is ours, not the original's.
+pub const WIDESCREEN_REFUSED: &str =
+    "widescreen recording: there is no original to compare a widescreen game with (docs/BUG-FIX.md)";
+
+/// `Err(`[`WIDESCREEN_REFUSED`]`)` when any of `rec` was played in widescreen: there is no original
+/// to compare it with, so neither the oracle is started nor a case written.
+pub fn comparable(rec: &Recording) -> Result<(), String> {
+    match rec.has_widescreen() {
+        true => Err(WIDESCREEN_REFUSED.to_string()),
+        false => Ok(()),
+    }
+}
+
+/// The game set to widescreen `on` and drawing its view, the app's: the wide game draws its wide
+/// picture (real-widescreen DESIGN §2.7, §2.8).
+pub fn set_widescreen(game: &mut Game, on: bool) {
+    game.set_widescreen(on);
+    game.set_view(View {
+        extra_columns_each_side: if on { WIDE_EXTRA } else { 0 },
+    });
+}
+
 /// A recording played to its end.
 pub struct Replayed {
     pub game: Game,
@@ -61,12 +85,20 @@ pub struct Replayed {
 /// `rec` played as the app played it: [`Game::start_level`] with its setup and seed, then one
 /// [`Game::step`] per recorded input. `each` sees every step's frame number (0 the first input's),
 /// the game after it and the picture it drew, which is not always `Game::render`'s (a level frame
-/// whose pass ends mid-frame shows the picture drawn then). The 4:3 view: the screenshot is the
-/// core's picture at 1× (DESIGN §2.5).
+/// whose pass ends mid-frame shows the picture drawn then). The screenshot is the core's picture
+/// at 1× (DESIGN §2.5): 4:3, and the wide picture while the recording is in widescreen, which is
+/// set at frame 0 and switched before the step of each toggle (real-widescreen DESIGN §2.8).
 pub fn replay(rec: &Recording, mut each: impl FnMut(u32, &Game, &Picture)) -> Replayed {
     let mut game = Game::start_level(crate::display_data(), &rec.setup, rec.seed);
-    let mut last = game.render(View::default());
+    if rec.widescreen {
+        set_widescreen(&mut game, true);
+    }
+    let mut last = game.render(game.view());
     for (k, &input) in rec.inputs.iter().enumerate() {
+        let wide = rec.widescreen_at(k as u32);
+        if wide != game.widescreen() {
+            set_widescreen(&mut game, wide);
+        }
         let out = game.step(input);
         each(k as u32, &game, &out.picture);
         last = out.picture;
@@ -612,6 +644,7 @@ fn compare_inner(
     pokes: &Pokes,
     before_step: impl FnMut(u32, &mut Game),
 ) -> Result<Compared, String> {
+    comparable(rec)?;
     let played = play(rec, played_pokes);
     let start = || -> Result<Synced, String> {
         let cap = 2 * rec.inputs.len() as u32 + LOAD_SEARCH;
@@ -782,6 +815,7 @@ pub fn write_case(
     cases: &std::path::Path,
     scripts: &std::path::Path,
 ) -> Result<Vec<std::path::PathBuf>, String> {
+    comparable(rec)?;
     if name.is_empty()
         || !name
             .bytes()
@@ -1048,7 +1082,7 @@ mod tests {
         let z = sf_disk::zip::write_stored(&[(ZIP_SCREENSHOT, b"x")]);
         assert!(read_zip(&z).err().unwrap().contains("no recording.txt"));
         let z = sf_disk::zip::write_stored(&[
-            (ZIP_RECORDING, b"superfrog recording 2\n"),
+            (ZIP_RECORDING, b"superfrog recording 3\n"),
             (ZIP_SCREENSHOT, b"x"),
         ]);
         let e = read_zip(&z).err().unwrap();
