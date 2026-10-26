@@ -26,7 +26,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T01 | wide-mode | — | ✅ | |
 | T02 | wide-spawn | T01 | ⬜ | |
 | T03 | wide-capacity | T00, T01, T02 | ⬜ | |
-| T04 | wide-camera | T01 | ⬜ | |
+| T04 | wide-camera | T01 | 🔍 | Screen camera/sprite/bonus-frog edges; both clamp copies, sprite hide and park. 7 tests `widescreen_camera.rs`. Deviations: `set_widescreen` re-enters an unplayed `Start::Level` (T01 🐞); T01 "on changes nothing" test replaced; W1-1 frog stops at a wall 16 short of its clamp; workspace run left to pir's end gate (parallel rule). |
 | T05 | wide-special-cases | T01 | ⬜ | |
 | T06 | wide-switch | T02, T03 | ⬜ | |
 | T07 | wide-recording | T01 | ⬜ | |
@@ -36,7 +36,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T11 | widescreen-drill | T10 | ⬜ | |
 | T12 | wide-every-level | T11 | ⬜ | |
 
-**Review queue:** *(empty)*
+**Review queue:** T04
 
 ## Blocked on the user
 
