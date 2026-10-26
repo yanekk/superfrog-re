@@ -3,6 +3,7 @@
 //! can; the frog's sprites are hidden and parked 65 further out; the bonus frog reaches 65 further
 //! each side. In 4:3 every clamp is the original's.
 
+use sf_core::frog::anim::spr;
 use sf_core::frog::{FROG, f};
 use sf_core::input::{FrameInput, Joy};
 use sf_core::level::camera::{CAMERA_X, FROG_SPRITE_LEFT, FROG_SPRITE_RIGHT, LEVEL_WIDTH};
@@ -33,6 +34,21 @@ fn w(g: &Game, addr: u32) -> u16 {
 
 fn set_w(g: &mut Game, addr: u32, v: u16) {
     g.poke(addr, &v.to_be_bytes());
+}
+
+/// Where sprite record `s`'s copper words put it, the 9-bit HSTART less $80: what the hardware
+/// shows. The record's own x is rewritten by the camera after the copper words are, so only these
+/// show whether `place_frog_sprites` hid it.
+fn shown_x(g: &Game, s: u32) -> u16 {
+    let b = g.peek(s + spr::COPPER, 4);
+    let cop = u32::from_be_bytes([b[0], b[1], b[2], b[3]]);
+    let hstart = (g.peek(cop + 0xb, 1)[0] as u16) << 1 | w(g, cop + 0xe) & 1;
+    hstart.wrapping_sub(0x80) & 0x1ff
+}
+
+/// Sprite `s` is shown where the frog stands (the frog and camera at rest), not parked.
+fn shown_where_it_stands(g: &Game, s: u32) -> bool {
+    shown_x(g, s) == w(g, s) & 0x1ff
 }
 
 fn cx(g: &Game) -> u16 {
@@ -109,8 +125,27 @@ fn in_widescreen_the_frogs_sprites_stay_shown_past_150() {
     // The frog stands 0x128 + 65 from the camera: both sprites past $150, neither parked.
     assert!(r >= 0x150 && r < 0x150 + EXTRA, "right sprite at {r:#x}");
     assert!(l >= 0x128 && l < 0x150 + EXTRA, "left sprite at {l:#x}");
+    assert!(shown_where_it_stands(&wide, FROG_SPRITE_LEFT), "left sprite parked");
+    assert!(shown_where_it_stands(&wide, FROG_SPRITE_RIGHT), "right sprite parked");
     let (narrow, _) = drive_to_right_end(false);
     assert!(w(&narrow, FROG_SPRITE_RIGHT) < 0x150);
+    assert!(shown_where_it_stands(&narrow, FROG_SPRITE_RIGHT));
+}
+
+/// At W1-1's left end the frog walks into the left strip: its left sprite stands at screen x −50,
+/// shown in widescreen (hidden only at x + $20 + 65 < 0), where the original's bound (x + $20 < 0)
+/// would park it.
+#[test]
+fn in_widescreen_the_frogs_sprites_stay_shown_left_of_minus_20() {
+    let mut g = level("W1-1", true);
+    for _ in 0..200 {
+        g.step(joy(Joy::LEFT));
+    }
+    let (l, r) = (w(&g, FROG_SPRITE_LEFT) as i16, w(&g, FROG_SPRITE_RIGHT) as i16);
+    assert!(l < -0x20 && l >= -0x20 - EXTRA as i16, "left sprite at {l}");
+    assert_eq!(r, l + 0x10);
+    assert!(shown_where_it_stands(&g, FROG_SPRITE_LEFT), "left sprite parked");
+    assert!(shown_where_it_stands(&g, FROG_SPRITE_RIGHT), "right sprite parked");
 }
 
 /// A blinking frog's sprites are parked past the right of the screen: at $150 in 4:3, at $150 + 65
@@ -129,13 +164,13 @@ fn a_hidden_frog_is_parked_past_the_wide_edge() {
             if w(&g, FROG + f::BLINK) & 1 != 0 {
                 assert_eq!(w(&g, FROG_SPRITE_LEFT), at, "wide {wide}");
                 assert_eq!(w(&g, FROG_SPRITE_RIGHT), at, "wide {wide}");
+                assert_eq!(shown_x(&g, FROG_SPRITE_LEFT), at & 0x1ff, "wide {wide}");
                 parked += 1;
             }
         }
         assert!(parked > 0, "the frog blinked");
     }
 }
-
 
 /// The bonus frog, held left then right, stops at `cx − 8` and `cx + $12a`, 65 further each side
 /// in widescreen: it flies into the strips.
@@ -194,5 +229,40 @@ fn a_restart_in_widescreen_starts_at_the_wide_clamp() {
         }
         assert!(left && g.scene().is_level(), "wide {wide}: died and restarted");
         assert_eq!(cx(&g), at, "wide {wide}");
+    }
+}
+
+/// The scroller's first drawn column (h0+$1662c), which `start_point` sets from its clamped
+/// camera before `keep_inside` first runs: only it shows `start_point`'s copy of the clamp.
+fn first_drawn_column(g: &Game) -> u16 {
+    w(g, sf_core::layout::h0(0x1662c))
+}
+
+/// `start_point`'s own clamp, both ends: W3-1 starts at x 69, inside the 4:3 clamp and left of
+/// widescreen's; a W1-1 restart whose start (h0+$a1a) is put at x 4700 starts at the right clamp.
+/// Each starts, and draws its first column, from the clamped camera.
+#[test]
+fn start_points_copy_of_the_clamp_moves_in_by_65() {
+    for (wide, at) in [(false, 69), (true, 0x10 + EXTRA)] {
+        let g = level("W3-1", wide);
+        assert_eq!(cx(&g), at, "wide {wide}");
+        assert_eq!(first_drawn_column(&g), at & 0xfff0, "wide {wide}: W3-1's first column");
+    }
+    for wide in [false, true] {
+        let mut g = level("W1-1", wide);
+        g.poke(sf_core::layout::h0(0xa1a), &4700u32.to_be_bytes());
+        let right = w(&g, LEVEL_WIDTH) - 0x168 - if wide { EXTRA } else { 0 };
+        // The camera as `start_point` leaves it, before the level's loop (and `keep_inside`) runs.
+        let mut start = None;
+        for i in 0..400 {
+            g.step(joy(if i < 290 { Joy::RIGHT } else { Joy::NONE }));
+            if start.is_none() && cx(&g) > 4000 {
+                assert!(!g.scene().is_level(), "wide {wide}: the restart is still loading");
+                start = Some((cx(&g), first_drawn_column(&g)));
+            }
+        }
+        assert!(g.scene().is_level(), "wide {wide}: restarted");
+        assert_eq!(start, Some((right, right & 0xfff0)), "wide {wide}: the restart's start");
+        assert_eq!(cx(&g), right, "wide {wide}");
     }
 }
