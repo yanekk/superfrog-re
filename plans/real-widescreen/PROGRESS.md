@@ -13,7 +13,7 @@ message. Whoever writes a cell also fixes the over-budget cell they walk past.
 
 **Status:** T00, T01, T02, T04, T05, T07 done.
 **Last updated:** 2026-10-26
-**Next `pir-work` will:** T03 wide-capacity (takes takes `WIDE_SLOTS` from `spike/README.md`), then T06, T08.
+**Next `pir-work` will:** T03 wide-capacity (takes `WIDE_SLOTS` from `spike/README.md`), then T06, T08.
 
 ## Tasks
 
