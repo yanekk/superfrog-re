@@ -61,6 +61,15 @@ its app start), load 2–20:
 | A | 1 | Coins met, exit 35 cells away; 2 repairs |
 | A | 2 | Completed in 12 min: 13 796 frames, 1 heart, 10 repairs; `sf_bench::verify` set A (§4.1) passed. Kept as `routes/original/A/W3-4.txt` |
 
+W6-4 set C, 2026-10-25, `sf-plan W6-4 --app --seed 3 --guide-ordered --guide rec-guide.txt`. The
+guide is `tools/recording_guide.py bugs/bug-W6-4-2026-10-25-1851.zip`: the owner's 44-second
+recorded climb after a `tools/handover.py` lead-in, 1 656 waypoints, cut at step 13218 where a life
+was lost. No `--via`/`--avoid`. Real-app check 2026-10-26 at c3885591abe6, load 3:
+
+| Set | Seed | Result |
+|---|---|---|
+| C | 3 | Completed: 15 084 frames, 1 heart; `verify_route W6-4 … 3` in the real app passed (`completed=true route_frames=Some(15084) hearts_lost=1`). Kept as `routes/app/W6-4.txt`; set C is 24/24 |
+
 ## Rerun
 
 From `engine/`, one set at a time (a level recorded for the same commit is skipped):
