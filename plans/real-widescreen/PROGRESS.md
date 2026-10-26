@@ -11,9 +11,9 @@ message. Whoever writes a cell also fixes the over-budget cell they walk past.
 
 **Plan reviewed:** 2026-10-22 — 10 fixed, 4 decided with the user
 
-**Status:** T00 done.
+**Status:** T00, T01, T02, T04, T05, T07 done.
 **Last updated:** 2026-10-26
-**Next `pir-work` will:** T01 wide-mode; T03 takes `WIDE_SLOTS` from `spike/README.md`.
+**Next `pir-work` will:** T03 wide-capacity (takes takes `WIDE_SLOTS` from `spike/README.md`), then T06, T08.
 
 ## Tasks
 
@@ -23,13 +23,13 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | # | Task | Depends on | State | Notes |
 |---|---|---|---|---|
 | T00 | wide-spawn-spike | — | ✅ | Spike, no engine code kept; `spike/README.md`, `WIDE_SLOTS` 80. Review fixed the ghost run's 4:3 game started with the hack on (W6-3 measured to 1362 only), re-ran every log: only W6-3 and WB-1 changed. Reproduced W4-2 x80 and W3-1; patch applies. Conform-script drift read-only. |
-| T01 | wide-mode | — | ⬜ | |
-| T02 | wide-spawn | T01 | ⬜ | |
+| T01 | wide-mode | — | ✅ | |
+| T02 | wide-spawn | T01 | ✅ | |
 | T03 | wide-capacity | T00, T01, T02 | ⬜ | |
-| T04 | wide-camera | T01 | ⬜ | |
-| T05 | wide-special-cases | T01 | ⬜ | |
+| T04 | wide-camera | T01 | ✅ | |
+| T05 | wide-special-cases | T01 | ✅ | |
 | T06 | wide-switch | T02, T03 | ⬜ | |
-| T07 | wide-recording | T01 | ⬜ | |
+| T07 | wide-recording | T01 | ✅ | |
 | T08 | side-objects | T02, T03 | ⬜ | |
 | T09 | side-frog | T04, T08 | ⬜ | |
 | T10 | app-wiring | T05, T06, T07, T08, T09 | ⬜ | |

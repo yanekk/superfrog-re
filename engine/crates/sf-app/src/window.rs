@@ -186,6 +186,14 @@ mod tests {
         assert!((w as f64 / h as f64 - 16.0 / 9.0).abs() < 1.0 / h as f64 * 2.0);
     }
 
+    /// real-widescreen DESIGN §2.1: the game's wide screen edges and the picture's strips are one
+    /// number, or the strips would show what the game does not keep alive.
+    #[test]
+    fn the_games_wide_extra_is_the_pictures_extra_columns() {
+        assert_eq!(sf_core::level::screen::WIDE_EXTRA, extra_columns(GAME.1));
+        assert_eq!(sf_core::level::screen::WIDE_EXTRA, view(true).extra_columns_each_side);
+    }
+
     /// bug-recorder T09: the bar adds its height under the picture, and the picture keeps the
     /// scale and size it had without it, at every scale, widescreen or not, 1 or 2 pixels a point.
     #[test]
