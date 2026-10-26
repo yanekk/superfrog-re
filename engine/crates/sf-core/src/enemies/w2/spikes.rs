@@ -4,7 +4,7 @@
 
 use crate::enemies::w2::marker;
 use crate::layout::h0;
-use crate::level::objects::OBJ_SLOTS;
+use crate::level::objects::slot_addrs;
 use crate::level::{LevelCtx, ObjectKind};
 
 const STILL: u32 = h0(0x26692);
@@ -50,6 +50,7 @@ pub static SPIKES_B: ObjectKind = ObjectKind {
 /// marker 20's the other way round. Ahead past the cycle's end (a negative long) wraps back
 /// `$98`; behind before its start wraps from its end.
 fn spikes_init(c: &mut LevelCtx, slot: u32, m: u16, anim: u32, left_ahead: bool) {
+    let screen = c.screen;
     let b = &mut c.bus;
     let bob = b.l(slot + 0x50);
     b.set_l(bob + 0x42, anim);
@@ -65,9 +66,7 @@ fn spikes_init(c: &mut LevelCtx, slot: u32, m: u16, anim: u32, left_ahead: bool)
             }
             break;
         }
-        let Some(other) = (0..20)
-            .map(|k| OBJ_SLOTS + k * 0x7c)
-            .find(|&s| b.l(s + 0x40) == at)
+        let Some(other) = slot_addrs(b, screen).find(|&s| b.l(s + 0x40) == at)
         else {
             continue;
         };

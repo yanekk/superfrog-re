@@ -65,28 +65,28 @@ pub static PACER_B_RIGHT: ObjectKind = ObjectKind {
 
 /// Marker 2 (h0+$1880a): once marker 3 is found free to its right, `$1a` down its cell.
 pub fn spawn_80(c: &mut LevelCtx, cell: u32) {
-    if partner_right_free(&c.bus, cell, 3) {
+    if partner_right_free(c, cell, 3) {
         obj_spawn_cell(c, template(80), cell, 0, 0x1a);
     }
 }
 
 /// Marker 3 (h0+$18828): once marker 2 is found free to its left.
 pub fn spawn_79(c: &mut LevelCtx, cell: u32) {
-    if partner_left_free(&c.bus, cell, 2) {
+    if partner_left_free(c, cell, 2) {
         obj_spawn_cell(c, template(79), cell, 0, 0x1a);
     }
 }
 
 /// Marker 13 (h0+$18846): once marker 14 is found free to its right, `$1e` down its cell.
 pub fn spawn_82(c: &mut LevelCtx, cell: u32) {
-    if partner_right_free(&c.bus, cell, 0xe) {
+    if partner_right_free(c, cell, 0xe) {
         obj_spawn_cell(c, template(82), cell, 0, 0x1e);
     }
 }
 
 /// Marker 14 (h0+$18864): once marker 13 is found free to its left.
 pub fn spawn_81(c: &mut LevelCtx, cell: u32) {
-    if partner_left_free(&c.bus, cell, 0xd) {
+    if partner_left_free(c, cell, 0xd) {
         obj_spawn_cell(c, template(81), cell, 0, 0x1e);
     }
 }

@@ -412,9 +412,11 @@ mod tests {
                 let a = d.addr + k;
                 if a >= SLOW_BASE {
                     m.slow[(a - SLOW_BASE) as usize] = n;
-                } else {
+                } else if (a as usize) < m.chip.len() {
                     m.chip[a as usize] = n;
                 }
+                // (Else widescreen's extra slots, which the original's memory does not have: they
+                // transplant as the 0 it reads there, real-widescreen DESIGN §2.4.)
             }
         }
         let s = State::transplant(&m);

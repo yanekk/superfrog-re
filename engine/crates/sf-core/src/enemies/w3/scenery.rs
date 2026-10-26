@@ -7,7 +7,7 @@
 
 use crate::enemies::common::follow_and_despawn;
 use crate::layout::h0;
-use crate::level::objects::{OBJ_SLOTS, bob_anim, nothing};
+use crate::level::objects::{bob_anim, nothing, slot_addrs};
 use crate::level::{LevelCtx, ObjectKind};
 
 /// `w3_scenery_update` (h0+$27894) and `w3_scenery_17_update` (h0+$249e8): the bob follows; freed
@@ -93,6 +93,7 @@ fn update(c: &mut LevelCtx, slot: u32, _d7: u16) {
 /// cell is marked 24 (the neighbour's `+$28`, or its current step when that is 0). A step
 /// outside the flow's own steps, or no such neighbour, starts it from the first.
 fn flow_init(c: &mut LevelCtx, slot: u32, _d7: u16) {
+    let screen = c.screen;
     let b = &mut c.bus;
     let bob = b.l(slot + 0x50);
     b.set_l(bob + 0x42, FLOW_ANIM);
@@ -102,9 +103,7 @@ fn flow_init(c: &mut LevelCtx, slot: u32, _d7: u16) {
         .into_iter()
         .find(|&a| b.w(a) & 0x3f == 0x18);
     if let Some(side) = side
-        && let Some(other) = (0..20u32)
-            .map(|k| OBJ_SLOTS + k * 0x7c)
-            .find(|&s| b.l(s + 0x40) == side)
+        && let Some(other) = slot_addrs(b, screen).find(|&s| b.l(s + 0x40) == side)
     {
         let ob = b.l(other + 0x50);
         step = match b.l(ob + 0x28) {

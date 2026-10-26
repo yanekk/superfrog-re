@@ -40,14 +40,14 @@ pub static PACER_RIGHT: ObjectKind = ObjectKind {
 
 /// Marker 2 (h0+$1857a): `$a` down its cell, while the marker 3 to its right is not live.
 pub fn spawn_137(c: &mut LevelCtx, cell: u32) {
-    if partner_right_free(&c.bus, cell, 3) {
+    if partner_right_free(c, cell, 3) {
         obj_spawn_cell(c, template(137), cell, 0, 0xa);
     }
 }
 
 /// Marker 3 (h0+$18598): `$a` down its cell, while the marker 2 to its left is not live.
 pub fn spawn_136(c: &mut LevelCtx, cell: u32) {
-    if partner_left_free(&c.bus, cell, 2) {
+    if partner_left_free(c, cell, 2) {
         obj_spawn_cell(c, template(136), cell, 0, 0xa);
     }
 }

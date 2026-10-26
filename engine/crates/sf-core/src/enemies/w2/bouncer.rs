@@ -31,7 +31,7 @@ pub static BOUNCER_LEFT: ObjectKind = ObjectKind {
 /// Marker 2, the pair's left end (h0+$1812a): a 75, unless no marker 3 lies within `$98` cells right of it or one
 /// does with a live slot.
 pub fn spawn_at_left_end(c: &mut LevelCtx, cell: u32) {
-    if partner_right_free(&c.bus, cell, 3) {
+    if partner_right_free(c, cell, 3) {
         obj_spawn_cell(c, template(75), cell, 0, 0xa);
     }
 }
@@ -39,7 +39,7 @@ pub fn spawn_at_left_end(c: &mut LevelCtx, cell: u32) {
 /// Marker 3, the pair's right end (h0+$18148): a 74, unless no marker 2 lies within `$98` cells left of it or one does
 /// with a live slot.
 pub fn spawn_at_right_end(c: &mut LevelCtx, cell: u32) {
-    if partner_left_free(&c.bus, cell, 2) {
+    if partner_left_free(c, cell, 2) {
         obj_spawn_cell(c, template(74), cell, 0, 0xa);
     }
 }
