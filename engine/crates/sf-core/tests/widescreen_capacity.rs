@@ -349,3 +349,40 @@ fn a_live_extra_is_walked_after_widescreen_is_off() {
     run(&mut st, Screen::NARROW, |c| objects::obj_free(c, extra, 0));
     assert!(peek(&mut st, |b| slot_addrs(b, Screen::NARROW).all(|s| !is_wide(s))), "none live: 4:3 walks the 20");
 }
+
+/// Switched off, the last extra slot freed on the screen (a coin taken, an enemy killed) is erased
+/// like any freed bob (real-widescreen T06, DESIGN §2.7): its free bob stays in the draw list until
+/// its drawings in both buffers are gone, then the list is the original's again.
+#[test]
+fn an_extra_freed_on_the_screen_after_widescreen_is_off_is_erased() {
+    let mut st = empty("W1-1");
+    let (slots, _) = run(&mut st, Screen::WIDE, |c| signs(c, 21));
+    let extra = slots[20];
+    let bob = peek(&mut st, |b| b.l(extra + 0x50));
+    let pass = |st: &mut State, screen| {
+        run(st, screen, |c| {
+            objects::obj_run_all(c);
+            objects::build_bob_draw_list(c);
+            objects::bob_draw(c);
+        });
+    };
+    pass(&mut st, Screen::WIDE);
+    pass(&mut st, Screen::WIDE);
+    let drawn = |b: &Bus| [0x10, 0x56, 0x9c, 0xe2].iter().any(|&o| b.l(bob + o) != 0);
+    assert!(peek(&mut st, drawn), "the extra was drawn on the screen");
+    run(&mut st, Screen::NARROW, |c| objects::obj_free(c, extra, 0));
+    assert_eq!(peek(&mut st, |b| b.w(WIDE_LIVE)), 0, "no extra live");
+    let listed = |b: &Bus| {
+        let l = draw_list(b);
+        (0..).map(|k| b.l(l + 4 * k)).take_while(|&x| x != 0).any(|x| x == bob)
+    };
+    pass(&mut st, Screen::NARROW);
+    assert!(peek(&mut st, listed), "listed to be erased");
+    pass(&mut st, Screen::NARROW);
+    assert!(!peek(&mut st, drawn), "erased from both buffers");
+    pass(&mut st, Screen::NARROW);
+    peek(&mut st, |b| {
+        assert!(!listed(b));
+        assert_eq!(draw_list(b), objects::BOB_DRAW_LIST, "the original's list again");
+    });
+}

@@ -316,6 +316,9 @@ pub struct LevelCtx<'a> {
     /// The screen the step plays against: the original's, or widescreen's (real-widescreen
     /// DESIGN §2.2, §3.1). Set from `Game`'s mode each step; every horizontal edge test asks it.
     pub screen: screen::Screen,
+    /// Widescreen has just been switched on: [`frame::main_program`] wakes what is in the wide
+    /// view before the step's level work (DESIGN §2.7).
+    pub wide_switch: bool,
     /// Work being done only because the screen is wide, which costs no beam time
     /// ([`LevelCtx::unpaid`], DESIGN §2.4, D11).
     free: bool,
@@ -359,6 +362,7 @@ impl<'a> LevelCtx<'a> {
             vbl_held: false,
             unported: Vec::new(),
             screen: screen::Screen::default(),
+            wide_switch: false,
             free: false,
         }
     }
