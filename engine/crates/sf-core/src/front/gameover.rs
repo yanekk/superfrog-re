@@ -284,3 +284,34 @@ pub(crate) fn level_vbl(cx: &mut Cx, frog_only: bool, line: u16) -> u16 {
     }
     end
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::level::screen::Screen;
+
+    /// real-widescreen T03: the pass's writes cover the extra slots' range in widescreen (slots,
+    /// count, free list, draw list, bob records), and in 4:3 are the original's.
+    #[test]
+    fn pass_writes_cover_the_extras_in_widescreen_only() {
+        assert_eq!(pass_writes(Screen::NARROW), PASS_WRITES.to_vec());
+        let wide = pass_writes(Screen::WIDE);
+        assert_eq!(&wide[..3], &PASS_WRITES[..]);
+        let covered = |a: u32| wide.iter().any(|&(at, n)| (at..at + n).contains(&a));
+        let last = objects::slot_at(objects::SLOTS + objects::WIDE_SLOTS - 1);
+        for a in [
+            objects::slot_at(objects::SLOTS),
+            last + 0x7b,
+            objects::WIDE_LIVE,
+            objects::WIDE_DRAW_LIST_AT,
+            objects::WIDE_BOB_FREE_LIST + 4 * objects::WIDE_SLOTS,
+            objects::WIDE_BOB_DRAW_LIST - 4,
+            objects::WIDE_BOB_RECORDS - 4,
+            objects::WIDE_BOB_RECORDS + 0x11c * objects::WIDE_SLOTS - 5,
+        ] {
+            assert!(covered(a), "${a:x}");
+        }
+        let narrow = pass_writes(Screen::NARROW);
+        assert!(!narrow.iter().any(|&(at, n)| objects::is_wide(at) || objects::is_wide(at + n - 1)));
+    }
+}
