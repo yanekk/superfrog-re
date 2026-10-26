@@ -13,7 +13,7 @@ message. Whoever writes a cell also fixes the over-budget cell they walk past.
 
 **Status:** Planned; nothing built.
 **Last updated:** 2026-10-22
-**Next `pir-work` will:** T00 wide-spawn-spike and T01 wide-mode, the two roots; T00 sizes T03.
+**Next `pir-work` will:** T08 side-objects (T02, T03 done); then T09, T10.
 
 ## Tasks
 
@@ -28,7 +28,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T03 | wide-capacity | T00, T01, T02 | ✅ | |
 | T04 | wide-camera | T01 | ✅ | |
 | T05 | wide-special-cases | T01 | ✅ | |
-| T06 | wide-switch | T02, T03 | 🔍 | Pending flag in `Game`, consumed by `main_program` before the blank: widened `scan_screen`, unpaid; a carried pass gets it in its start. 6 tests in `widescreen_switch.rs`, 1 in sf-core `widescreen_capacity.rs`. Deviations: fixed T03's draw list for an extra freed on screen after switch-off (FINDINGS); `cargo test --workspace` not run (parallel worker rule). |
+| T06 | wide-switch | T02, T03 | ✅ | Review: three switch-on tests passed with the scan removed (edge scans woke the strips); tightened, mid-pass test added, both scan mutations now red. Probed 7 levels: nothing woken inside the 4:3 view. Draw-list fix held by mutation. `cargo test --workspace` left to pir's end run. |
 | T07 | wide-recording | T01 | ✅ | |
 | T08 | side-objects | T02, T03 | ⬜ | |
 | T09 | side-frog | T04, T08 | ⬜ | |
@@ -36,7 +36,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T11 | widescreen-drill | T10 | ⬜ | |
 | T12 | wide-every-level | T11 | ⬜ | |
 
-**Review queue:** T06
+**Review queue:** *(empty)*
 
 ## Blocked on the user
 
