@@ -16,6 +16,17 @@ what "faithful" means: `plans/rust-engine/DESIGN.md` §2.1.
 - **What is in it.** `recording.txt` (the start, the inputs, `stopped-at` and the owner's `note`)
   and `screenshot.png` (the frame STOP was pressed on). Read the header first:
   `unzip -p "$ZIP" recording.txt | sed -n '1,/^inputs$/p'`.
+- **A widescreen bug is ours** (real-widescreen DESIGN §2.8, D9). `widescreen on` in the header,
+  or a `W` in an input line (widescreen switched there), means the owner played the widescreen
+  game, which moves the screen's edges and so is not the original's game. There is no original to
+  compare it with: `bug compare` and `bug case` refuse it (`widescreen recording: there is no
+  original to compare a widescreen game with`, exit 1). `bug replay` still plays it, switching the
+  mode where the recording does and writing the wide picture while it is on. Find out whether
+  the bug also happens in 4:3 (play the same stretch in the engine with widescreen off): if it
+  does, it is an ordinary bug, compared and fixed by the steps below from a 4:3 recording. If it
+  happens only in widescreen, fix it in our widescreen code, with a widescreen test
+  (`engine/crates/sf-conform/tests/widescreen_*.rs`) that fails before the fix, in place of a
+  conformance case; no 4:3 case or test may change.
 - **Needs** the disks in the main checkout, `tools/setup/oracle.sh` run and Kickstart 1.3, as every
   `sf-conform` run does (`engine/conform/README.md`). Every command below runs from `engine/`.
 - Read `plans/rust-engine/FINDINGS.md` before touching a mechanic.

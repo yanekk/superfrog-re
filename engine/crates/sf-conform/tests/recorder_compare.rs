@@ -20,6 +20,8 @@ fn recording(setup: LevelSetup, script: &str, frames: u32) -> Recording {
         stopped_at: None,
         note: format!("{script}, built by recorder_compare.rs"),
         inputs: (0..frames).map(|f| s.input_at(f)).collect(),
+        widescreen: false,
+        toggles: Vec::new(),
     }
 }
 
@@ -155,6 +157,8 @@ fn played(
         stopped_at: Some(g.location()),
         note: "built by recorder_compare.rs".into(),
         inputs,
+        widescreen: false,
+        toggles: Vec::new(),
     }
 }
 
@@ -216,6 +220,8 @@ fn w1_1_through_the_slot_machine_to_w1_2_compares_same() {
         stopped_at: Some(g.location()),
         note: "built by recorder_compare.rs".into(),
         inputs,
+        widescreen: false,
+        toggles: Vec::new(),
     };
     let c = bug::compare_with(&rec, Mode::Faithful, &exit_forced(), |_, _| {}).unwrap();
     eprintln!("{}\n{:.0?}", c.report(), t0.elapsed());
