@@ -29,7 +29,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T04 | wide-camera | T01 | ⬜ | |
 | T05 | wide-special-cases | T01 | ✅ | |
 | T06 | wide-switch | T02, T03 | ⬜ | |
-| T07 | wide-recording | T01 | ⬜ | |
+| T07 | wide-recording | T01 | ✅ | |
 | T08 | side-objects | T02, T03 | ⬜ | |
 | T09 | side-frog | T04, T08 | ⬜ | |
 | T10 | app-wiring | T05, T06, T07, T08, T09 | ⬜ | |
