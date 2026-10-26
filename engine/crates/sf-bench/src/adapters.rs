@@ -1,20 +1,14 @@
-//! How each planner is started (DESIGN §4.2, D10). The old tools get only the level, `--snap`,
-//! `--out`, `--frames` and, where the tool needs it to take coins at all, `--coins 0`: none of
-//! the hints and per-level options (`--via/--avoid/--ground/--jump/--launch/--fly/--skip/--to/
-//! --stomp/--hurt`), because the benchmark measures them unaided.
+//! How the planner is started (DESIGN §4.2). The old tools the baseline ran (`best-old`, D10) were
+//! retired at T34: their recorded results stay in `results.jsonl` and the table, and no adapter
+//! runs them again.
 //!
-//! Threads: `sf-plan` is given its share of the cores (`--threads`, [`threads_per_job`]); the old
-//! tools take no thread option (each uses `available_parallelism()`), so they are left as they are.
+//! Threads: `sf-plan` is given its share of the cores (`--threads`, [`threads_per_job`]).
 
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::time::Duration;
 
 use crate::sets::{Set, Start, StartKind};
-
-/// The longest route any planner may write (`sf-plan --frames`'s default, DESIGN §5.2): W4-4's
-/// committed route is ~24 000 frames, so the old tools' own defaults (12 000, 20 000) are raised.
-pub const FRAMES: u32 = 30_000;
 
 pub trait Adapter: Send + Sync {
     fn name(&self) -> &str;
@@ -69,75 +63,6 @@ pub fn threads_per_job(cores: usize, jobs: usize) -> usize {
 /// The cores `threads_per_job` shares out.
 pub fn cores() -> usize {
     std::thread::available_parallelism().map_or(1, |n| n.get())
-}
-
-/// An old tool: an example of `sf-conform`.
-pub struct OldTool {
-    pub name: &'static str,
-    /// It takes coins only when asked (`plan_exit` steers for the exit alone without `--coins 0`;
-    /// `plan_exit_w6` and `explore` add that step themselves).
-    pub coins: bool,
-    /// It plans on the engine alone from the app's Start Level start (`--engine --seed`), so it
-    /// runs on set C.
-    pub engine: bool,
-}
-
-pub const PLAN_EXIT: OldTool = OldTool {
-    name: "plan_exit",
-    coins: true,
-    engine: true,
-};
-pub const PLAN_EXIT_W6: OldTool = OldTool {
-    name: "plan_exit_w6",
-    coins: false,
-    engine: false,
-};
-pub const EXPLORE: OldTool = OldTool {
-    name: "explore",
-    coins: false,
-    engine: false,
-};
-
-/// The three, in the order `best-old` runs them.
-pub const OLD: [&OldTool; 3] = [&PLAN_EXIT, &PLAN_EXIT_W6, &EXPLORE];
-
-/// The old tools that run on `set`: on set C only those with an engine mode (`plan_exit`), so
-/// set C's `best-old` is `plan_exit`'s result.
-pub fn old_for(set: Set) -> Vec<&'static OldTool> {
-    OLD.into_iter().filter(|t| set != Set::C || t.engine).collect()
-}
-
-impl Adapter for OldTool {
-    fn name(&self) -> &str {
-        self.name
-    }
-
-    fn target(&self) -> (&'static str, &'static str, &'static str) {
-        ("sf-conform", "example", self.name)
-    }
-
-    fn command(&self, s: &Start, seed: u32, out: &Path, _budget: Duration) -> Command {
-        let mut c = Command::new(binary(self.target()));
-        c.arg(s.level.to_string());
-        match &s.kind {
-            StartKind::AtLevel => {}
-            StartKind::Snap(p, _) => {
-                c.arg("--snap").arg(p);
-            }
-            // Only `plan_exit` plans on the engine alone, from the app's start (bug-recorder T11's
-            // `--engine`), at the benchmark's seed like the new planner (verify's `app_start`).
-            StartKind::App if self.engine => {
-                c.arg("--engine").args(["--seed", &seed.to_string()]);
-            }
-            StartKind::App => panic!("{} has no app mode (set C's baseline is plan_exit's)", self.name),
-        }
-        if self.coins {
-            c.args(["--coins", "0"]);
-        }
-        c.args(["--frames", &FRAMES.to_string()]).arg("--out").arg(out);
-        c.current_dir(crate::engine_dir());
-        c
-    }
 }
 
 /// The new planner, `sf-plan` (its options are DESIGN §2.1).

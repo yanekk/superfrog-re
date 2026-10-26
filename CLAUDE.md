@@ -35,6 +35,8 @@ derived by the tools.
   (DESIGN §2.1): `sf-conform` runs the original on the vAmiga oracle and compares state,
   picture, sound and milestones; `sf-e2e` drives the real app, the whole game included.
   Read `plans/rust-engine/FINDINGS.md` before touching a mechanic.
+- **Routes are planned with `sf-plan`** (`engine/crates/sf-plan`, plan `plans/smart-planner/`), the one
+  level-routing tool; `plan_bonus` stays for the bonus level. README "Planning a route".
 - **Levels from files:** the app plays a `.sflevel` (JSON of the level's original files,
   DESIGN §2.10) in place of a disk level, and exports any disk level to one.
 - **Handed a bug zip** (`bugs/bug-<level>-<date>.zip`, "fix the bug in …"): follow

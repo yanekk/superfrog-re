@@ -10,7 +10,7 @@ use std::time::Duration;
 
 use sf_conform::InputScript;
 
-use crate::adapters::{Adapter, NewPlanner, OLD};
+use crate::adapters::{Adapter, NewPlanner};
 use crate::child::{self, ChildRun};
 use crate::results::{self, LevelResult};
 use crate::sets::{self, Set, Start};
@@ -21,7 +21,7 @@ pub const GRACE: Duration = Duration::from_secs(5 * crate::MINUTE);
 
 pub struct Options {
     pub set: Set,
-    /// `new`, `plan_exit`, `plan_exit_w6`, `explore` or `best-old`.
+    /// `new`, the one planner benched since the old tools were retired (T34).
     pub planner: String,
     pub levels: Option<Vec<String>>,
     pub jobs: usize,
@@ -40,7 +40,7 @@ pub struct Options {
 /// What a planner's run comes to before and after its route is verified: a child killed for its
 /// timeout is `timeout`; one whose `PLAN_STATS` says it used hints is `hinted` (DESIGN §2.10: the
 /// benchmark passes none, so one used is a result that does not count); one that ran past its
-/// budget (an old tool, which takes none) is `over-budget`; otherwise `verify` decides.
+/// budget is `over-budget`; otherwise `verify` decides.
 pub fn judge(
     run: &ChildRun,
     stats: Option<&BTreeMap<String, String>>,
@@ -149,35 +149,18 @@ pub fn run_one(
     r
 }
 
-/// D10's baseline from the old tools' results on one level (the three, or on set C `plan_exit`
-/// alone): a completed route before a failed one, then the shorter route, then the quicker run.
-pub fn best_of(rs: &[LevelResult]) -> LevelResult {
-    let mut best = rs
-        .iter()
-        .min_by(|a, b| {
-            (!a.completed, a.route_frames.unwrap_or(u32::MAX))
-                .cmp(&(!b.completed, b.route_frames.unwrap_or(u32::MAX)))
-                .then(a.wall_s.total_cmp(&b.wall_s))
-        })
-        .expect("the old tools' results")
-        .clone();
-    best.tool = Some(best.planner.clone());
-    best.planner = "best-old".into();
-    best
-}
-
 /// The run: every level of the set (or `levels`) not yet recorded for this commit, `jobs` at a
 /// time; `RESULTS.md` re-rendered after each level.
 pub fn bench(o: &Options) -> Result<(), String> {
-    let old = crate::adapters::old_for(o.set);
-    if o.set == Set::C && ["plan_exit_w6", "explore"].contains(&o.planner.as_str()) {
-        return Err(format!("{} has no app mode: set C's baseline is plan_exit's (--engine)", o.planner));
+    if o.planner != "new" {
+        return Err(format!(
+            "planner {}? only `new` (sf-plan) runs: the old tools were retired (T34), their recorded \
+             `best-old` results stay in the table",
+            o.planner
+        ));
     }
-    if o.follow_standalone && (o.planner != "new" || o.set != Set::B) {
-        return Err("--follow-standalone is for --set B --planner new".into());
-    }
-    if o.unguided && o.planner != "new" {
-        return Err("--unguided is for --planner new (the old tools are never guided)".into());
+    if o.follow_standalone && o.set != Set::B {
+        return Err("--follow-standalone is for --set B".into());
     }
     let new = NewPlanner {
         follow_standalone: o.follow_standalone,
@@ -186,17 +169,7 @@ pub fn bench(o: &Options) -> Result<(), String> {
             .threads
             .unwrap_or_else(|| crate::adapters::threads_per_job(crate::adapters::cores(), o.jobs)),
     };
-    let adapters: Vec<&dyn Adapter> = match o.planner.as_str() {
-        "new" => vec![&new],
-        "best-old" => old.iter().map(|a| *a as &dyn Adapter).collect(),
-        p => vec![*OLD.iter().find(|a| a.name == p).ok_or(format!(
-            "planner {p}? (new, plan_exit, plan_exit_w6, explore, best-old)"
-        ))?],
-    };
-    let targets: Vec<_> = adapters.iter().map(|a| a.target()).collect();
-    crate::adapters::build(&targets).map_err(|e| {
-        if o.planner == "new" { format!("{e} (sf-plan is built by T11)") } else { e }
-    })?;
+    crate::adapters::build(&[new.target()])?;
     let mut starts = sets::starts(o.set);
     if let Some(ls) = &o.levels {
         for l in ls {
@@ -224,24 +197,12 @@ pub fn bench(o: &Options) -> Result<(), String> {
                     let level = s.level.to_string();
                     let set = o.set.to_string();
                     let done = |p: &str, g: bool| results::recorded(&all.lock().unwrap(), p, g, &set, &level, &commit);
-                    let guided = o.planner == "new" && !o.unguided;
-                    if done(&o.planner, guided).is_some() {
+                    if done(new.name(), new.guided()).is_some() {
                         eprintln!("sf-bench: {} on {set} {level} recorded for {commit}; skipped", o.planner);
                         continue;
                     }
-                    let ref_frames = verify::ref_frames(o.set, s);
-                    let mut got = Vec::new();
-                    for a in &adapters {
-                        let r = done(a.name(), a.guided()).unwrap_or_else(|| {
-                            let r = run_one(o, *a, s, &commit, ref_frames);
-                            record(&r);
-                            r
-                        });
-                        got.push(r);
-                    }
-                    if o.planner == "best-old" {
-                        record(&best_of(&got));
-                    }
+                    let r = run_one(o, &new, s, &commit, verify::ref_frames(o.set, s));
+                    record(&r);
                 }
             });
         }

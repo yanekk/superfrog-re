@@ -1,6 +1,6 @@
 //! Level facts every planner needs (DESIGN §2.2, §2.3, §3.2): standable cells, fixed hazards, coins,
 //! switches and their gates, exits, the coins the exit still needs, and where the frog is. One
-//! tested source in place of the copies in `plan_exit`, `plan_exit_w6`, `explore` and `plan_bonus`.
+//! tested source (the retired old planners each carried a copy; `plan_bonus` still does).
 //!
 //! Read from the live map in the game's memory (`level_map`, h1+$218e0), so a taken coin, a pressed
 //! switch or an opened gate reads as it is now, and from the level's file for what never changes

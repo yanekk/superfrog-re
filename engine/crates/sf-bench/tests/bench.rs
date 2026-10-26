@@ -6,7 +6,7 @@ use std::time::{Duration, Instant};
 
 use sf_bench::child::{self, ChildRun};
 use sf_bench::results::{self, LevelResult};
-use sf_bench::run::{best_of, judge};
+use sf_bench::run::{Options, bench, judge};
 use sf_bench::sets::{self, LEVELS, Set, StartKind};
 use sf_bench::verify::{self, Verdict};
 
@@ -176,7 +176,7 @@ fn results_append_reload_and_skip_a_level_recorded_for_the_same_commit() {
     let dir = scratch("results");
     let p = dir.join("results.jsonl");
     assert!(results::load(&p).is_empty());
-    let a = fixture("plan_exit", "A", "W1-1", true, 61.5);
+    let a = fixture("best-old", "A", "W1-1", true, 61.5);
     let mut b = fixture("best-old", "A", "W1-4", false, 1800.0);
     b.tool = Some("explore".into());
     b.route_frames = None;
@@ -184,10 +184,10 @@ fn results_append_reload_and_skip_a_level_recorded_for_the_same_commit() {
     results::append(&p, &b).unwrap();
     let back = results::load(&p);
     assert_eq!(back, vec![a.clone(), b.clone()]);
-    assert!(results::recorded(&back, "plan_exit", false, "A", "W1-1", "abc123").is_some());
-    assert!(results::recorded(&back, "plan_exit", false, "A", "W1-1", "def456").is_none());
-    assert!(results::recorded(&back, "plan_exit", false, "B", "W1-1", "abc123").is_none());
-    assert!(results::recorded(&back, "explore", false, "A", "W1-1", "abc123").is_none());
+    assert!(results::recorded(&back, "best-old", false, "A", "W1-1", "abc123").is_some());
+    assert!(results::recorded(&back, "best-old", false, "A", "W1-1", "def456").is_none());
+    assert!(results::recorded(&back, "best-old", false, "B", "W1-1", "abc123").is_none());
+    assert!(results::recorded(&back, "new", true, "A", "W1-1", "abc123").is_none());
     // A run killed mid-line: the cut line is ignored, not fatal, and the next append starts a
     // line of its own.
     let mut f = std::fs::read_to_string(&p).unwrap();
@@ -331,18 +331,25 @@ fn guided_and_unguided_results_of_one_level_are_both_recorded() {
     assert!(m1.contains("| — | 1 / 24 (1 run) |"), "{m1}");
 }
 
+/// T34: the old tools are retired and no adapter runs them, but their recorded `best-old` lines
+/// still load and render as the baseline column, naming the tool each result was by.
 #[test]
-fn best_old_keeps_a_completed_route_then_the_shortest() {
-    let mut a = fixture("plan_exit", "A", "W1-1", false, 100.0);
-    let mut b = fixture("plan_exit_w6", "A", "W1-1", true, 900.0);
-    let mut c = fixture("explore", "A", "W1-1", true, 300.0);
-    b.route_frames = Some(4000);
-    c.route_frames = Some(4500);
-    a.route_frames = Some(10);
-    let best = best_of(&[a, b, c]);
-    assert_eq!(best.planner, "best-old");
-    assert_eq!(best.tool.as_deref(), Some("plan_exit_w6"));
-    assert!(best.completed);
+fn recorded_best_old_results_render_with_no_old_tool_linked() {
+    let dir = scratch("best-old");
+    let p = dir.join("results.jsonl");
+    let mut old = fixture("best-old", "A", "W1-1", true, 900.0);
+    old.tool = Some("explore".into());
+    results::append(&p, &old).unwrap();
+    results::append(&p, &fixture("new", "A", "W1-1", true, 300.0)).unwrap();
+    let t = sf_bench::table::render_in(&results::load(&p), &dir);
+    assert!(t.contains("| Level | `best-old` unguided | `new` guided |"), "{t}");
+    let w11 = t.lines().find(|l| l.starts_with("| W1-1 |")).unwrap();
+    assert!(w11.contains("by `explore`"), "{w11}");
+    let m1 = t.lines().find(|l| l.starts_with("| M1 |")).unwrap();
+    assert!(m1.contains("| 1 / 24 (1 run) | 1 / 24 (1 run) |"), "{m1}");
+    let m9 = t.lines().find(|l| l.starts_with("| M9 |")).unwrap();
+    assert!(m9.contains("| 1 (+ `plan_bonus`) |"), "{m9}");
+    std::fs::remove_dir_all(&dir).unwrap();
 }
 
 #[test]
@@ -378,7 +385,7 @@ fn args(c: &Command) -> Vec<String> {
 
 #[test]
 fn the_planner_command_carries_its_share_of_the_cores() {
-    use sf_bench::adapters::{Adapter, NewPlanner, OLD, threads_per_job};
+    use sf_bench::adapters::{Adapter, NewPlanner, threads_per_job};
     assert_eq!(threads_per_job(10, 1), 10);
     assert_eq!(threads_per_job(10, 2), 5);
     assert_eq!(threads_per_job(10, 3), 3);
@@ -396,11 +403,6 @@ fn the_planner_command_carries_its_share_of_the_cores() {
     let i = a.iter().position(|x| x == "--threads").expect("--threads");
     assert_eq!(a[i + 1], "5", "{a:?}");
     assert_eq!(new.threads(), Some(5));
-    // The old tools take no thread option.
-    for t in OLD {
-        assert!(!args(&t.command(s, 1, out, budget)).contains(&"--threads".to_string()));
-        assert_eq!(t.threads(), None);
-    }
 }
 
 /// A line records the planner's threads; a new-planner line without them (written before sf-bench
@@ -415,7 +417,7 @@ fn a_new_planner_line_without_threads_is_kept_and_marked() {
     before.commit = "old000".into();
     assert!(!before.to_json().contains("threads"));
     assert_eq!(LevelResult::from_json(&before.to_json()), Some(before.clone()));
-    let old_tool = fixture("plan_exit", "A", "W1-1", true, 60.0);
+    let old_tool = fixture("best-old", "A", "W1-1", true, 60.0);
     let t = sf_bench::table::render(&[with, before, old_tool]);
     let line = |l: &str, p: &str| t.lines().find(|x| x.starts_with(&format!("| {l} |"))).map(|x| x.contains(p));
     assert_eq!(line("W1-2", "*before the thread share*"), Some(true), "{t}");
@@ -501,21 +503,30 @@ fn set_c_turns_a_route_into_the_apps_script_and_replays_it_on_the_engine() {
     assert_eq!(verify::app_parts(&wrong, &r.states).as_deref(), Some("the app parts from the engine at frame 1"));
 }
 
-/// Set C's baseline (T15): `plan_exit` alone plans on the engine from the app's start, at the
-/// benchmark's seed, so `best-old` on set C runs it and nothing else.
+/// T34: the old tools are retired, so `--planner` takes only `new`; any other name is refused
+/// before anything is built or run, and nothing is written.
 #[test]
-fn set_c_runs_plan_exit_on_the_engine_at_the_seed() {
-    use sf_bench::adapters::{Adapter, PLAN_EXIT, old_for};
-    let s = &sets::starts(Set::C)[0];
-    assert_eq!(s.kind, StartKind::App);
-    let a = args(&PLAN_EXIT.command(s, 1, std::path::Path::new("route.txt"), Duration::from_secs(60)));
-    assert!(a.contains(&"--engine".to_string()), "{a:?}");
-    let i = a.iter().position(|x| x == "--seed").expect("--seed");
-    assert_eq!(a[i + 1], "1", "{a:?}");
-    let names = |set| old_for(set).iter().map(|t| t.name).collect::<Vec<_>>();
-    assert_eq!(names(Set::C), ["plan_exit"]);
-    assert_eq!(names(Set::A), ["plan_exit", "plan_exit_w6", "explore"]);
-    assert_eq!(names(Set::B), names(Set::A));
+fn only_the_new_planner_runs() {
+    let dir = scratch("planner");
+    for p in ["best-old", "plan_exit", "explore"] {
+        let o = Options {
+            set: Set::A,
+            planner: p.into(),
+            levels: None,
+            jobs: 1,
+            threads: None,
+            budget: Duration::from_secs(60),
+            seed: 1,
+            follow_standalone: false,
+            unguided: false,
+            results: dir.join("results.jsonl"),
+            table: dir.join("RESULTS.md"),
+        };
+        let e = bench(&o).unwrap_err();
+        assert!(e.contains("only `new`") && e.contains("retired (T34)"), "{e}");
+    }
+    assert!(!dir.join("results.jsonl").exists() && !dir.join("RESULTS.md").exists());
+    std::fs::remove_dir_all(&dir).unwrap();
 }
 
 /// A part-run baseline (set C's, stopped under D27) names the levels it did not run.
