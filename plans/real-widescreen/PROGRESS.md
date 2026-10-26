@@ -12,7 +12,7 @@ message. Whoever writes a cell also fixes the over-budget cell they walk past.
 **Plan reviewed:** 2026-10-22 — 10 fixed, 4 decided with the user
 
 **Status:** Planned; nothing built.
-**Last updated:** 2026-10-22
+**Last updated:** 2026-10-26
 **Next `pir-work` will:** T00 wide-spawn-spike and T01 wide-mode, the two roots; T00 sizes T03.
 
 ## Tasks
@@ -23,7 +23,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | # | Task | Depends on | State | Notes |
 |---|---|---|---|---|
 | T00 | wide-spawn-spike | — | ⬜ | |
-| T01 | wide-mode | — | ⬜ | |
+| T01 | wide-mode | — | 🔍 | `level/screen.rs` (`WIDE_EXTRA`, `WIDE_CELLS`, `Screen` with `right_despawn`, `left_despawn`, `sprite_hide_right`), `LevelCtx.screen` via `Machine.screen`, `Game::set_widescreen`. 7 tests. Deviation: workspace `cargo test` not run; the parallel-build worker rule forbids whole-suite runs, pir runs it at the end. |
 | T02 | wide-spawn | T01 | ⬜ | |
 | T03 | wide-capacity | T00, T01, T02 | ⬜ | |
 | T04 | wide-camera | T01 | ⬜ | |
@@ -36,7 +36,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T11 | widescreen-drill | T10 | ⬜ | |
 | T12 | wide-every-level | T11 | ⬜ | |
 
-**Review queue:** *(empty)*
+**Review queue:** T01
 
 ## Blocked on the user
 
