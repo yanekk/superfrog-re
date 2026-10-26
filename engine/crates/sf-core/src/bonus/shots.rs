@@ -81,8 +81,11 @@ fn shot_down_init(c: &mut LevelCtx, slot: u32, _d7: u16) {
 /// them well below the screen, where [`shot_update`] parks them at once.
 pub fn spawn_shots(c: &mut LevelCtx) {
     let b = &mut c.bus;
-    let x = b.w(CAMERA_X + 2).wrapping_add(0x160);
-    let y = x.wrapping_add(0x130);
+    let x0 = b.w(CAMERA_X + 2).wrapping_add(0x160);
+    let y = x0.wrapping_add(0x130);
+    // In widescreen past its right edge (real-widescreen DESIGN §2.6); y keeps the original's
+    // slip from the narrow x, as no vertical margin moves (§2.2).
+    let x = b.w(CAMERA_X + 2).wrapping_add(c.screen.shot_spawn());
     b.set_l(SHOT_SPAWN_X, x as i16 as u32);
     b.set_l(SHOT_SPAWN_Y, y as i16 as u32);
     for (k, t) in [110u32, 110, 110, 111, 112].into_iter().enumerate() {
@@ -104,7 +107,7 @@ pub fn shooter_spud(c: &mut LevelCtx) {
     b.set_w(FROG + 0x72, 0);
     b.set_w(FROG + 0x74, 0x639c);
     b.set_l(h0(0x297b2), b.l(FROG + 0x74));
-    let edge = b.w(CAMERA_X + 2).wrapping_add(0x150);
+    let edge = b.w(CAMERA_X + 2).wrapping_add(c.screen.shot_gone());
     let x = b.w(FROG + f::X);
     let y = b.w(FROG + f::Y).wrapping_add(0x28);
     // Has the shot in this place left the screen (past the camera by `$150`)?
@@ -144,7 +147,7 @@ pub fn shooter_spud(c: &mut LevelCtx) {
 /// up or down (y − camera y outside `-$20..$120`) it is parked at the camera's `$200` instead.
 pub fn shot_update(c: &mut LevelCtx, slot: u32, _d7: u16) {
     let b = &mut c.bus;
-    let far = b.w(CAMERA_X + 2).wrapping_add(0x200);
+    let far = b.w(CAMERA_X + 2).wrapping_add(c.screen.shot_far());
     let mut x = b.w(slot + 8);
     if n_clear(far.wrapping_sub(x)) {
         x = x.wrapping_add(b.w(slot + 0xc));
