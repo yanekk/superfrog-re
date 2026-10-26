@@ -814,6 +814,13 @@ pub fn presentation(id: VarId) -> Option<&'static str> {
     })
 }
 
+/// Whether `id` is the engine's own, with nothing of the original's to compare it with even as 0:
+/// the wide draw lists, which a 4:3 game fills too (real-widescreen DESIGN §2.9, "never compared").
+/// The extra slots are not: a 4:3 game never writes them, so they are compared as the original's 0.
+pub fn engine_only(id: VarId) -> bool {
+    matches!(id, VarId::WideBobs0 | VarId::WideBobs1)
+}
+
 /// [`presentation`] for one piece of a variable: the whole variable's tag, or for `bob_records`
 /// the longs only the bob drawer writes and only it and the erase read (T199). Each bob record
 /// (`$11c` bytes from h0+$297b6, its level position in the long before it) has four
@@ -1063,6 +1070,16 @@ mod tests {
         assert!(presentation(VarId::LevelCopper).is_some());
         assert!(presentation(VarId::PlayfieldBuffer0).is_some());
         assert!(presentation(VarId::ScrollColumn).is_some());
+    }
+
+    /// The wide draw lists are presentation and the only variables no comparison reads; the
+    /// extra slots are compared (as the original's 0 in a 4:3 game).
+    #[test]
+    fn only_the_wide_draw_lists_are_the_engine_s_own() {
+        let own: Vec<&str> = LAYOUT.iter().filter(|d| engine_only(d.id)).map(|d| d.name).collect();
+        assert_eq!(own, ["wide_bobs_0", "wide_bobs_1"]);
+        assert!(own.iter().all(|n| LAYOUT.iter().any(|d| d.name == *n && presentation(d.id).is_some())));
+        assert!(!engine_only(VarId::WideObjSlots) && presentation(VarId::WideObjSlots).is_none());
     }
 
     /// `bob_records`' pieces (T199): the animation and level position compared, the drawing
