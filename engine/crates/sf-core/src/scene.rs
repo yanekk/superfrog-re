@@ -32,6 +32,8 @@ pub struct Machine<'a> {
     pub unported: &'a mut Vec<&'static str>,
     /// The screen a level step plays against ([`LevelCtx::screen`]), from `Game`'s mode.
     pub screen: crate::level::screen::Screen,
+    /// Widescreen has just been switched on ([`LevelCtx::wide_switch`]).
+    pub wide_switch: bool,
 }
 
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
@@ -252,6 +254,7 @@ impl Scene {
                 );
                 c.costs = *m.costs;
                 c.screen = m.screen;
+                c.wide_switch = std::mem::take(&mut m.wide_switch);
                 c.schedule = std::mem::take(&mut m.schedule);
                 c.blits = std::mem::take(&mut m.blits);
                 if m.trace.is_some() {

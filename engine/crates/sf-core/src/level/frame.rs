@@ -163,6 +163,19 @@ pub fn main_program(c: &mut LevelCtx, pending: Option<beam::Pending>, pacing: cr
         }
         p => p,
     };
+    let mut pending = pending;
+    if std::mem::take(&mut c.wide_switch) {
+        // Widescreen switched on (DESIGN §2.7): the start scan, widened, before the step's level
+        // work. A pass carried over runs again from its start, which takes the scan with it.
+        match pending.as_mut() {
+            Some(p) => {
+                *c.bus.st = (*p.start).clone();
+                wide_switch_scan(c);
+                p.start = Box::new(c.bus.st.clone());
+            }
+            None => wide_switch_scan(c),
+        }
+    }
     let resume = pending.map(|p| {
         f.specs = p.frames.clone();
         *c.bus.st = (*p.start).clone();
@@ -216,6 +229,15 @@ pub fn main_program(c: &mut LevelCtx, pending: Option<beam::Pending>, pacing: cr
             c.frame_end();
         }
     }
+}
+
+/// Widescreen switched on mid-level (DESIGN §2.7): every marker's spawner in the wide view, as
+/// the level's start scan runs them, so what is in the strips is live at once. Outside a pass and
+/// a frame, and work only widescreen adds, so it costs no beam time (DESIGN §2.4, D11). A marker
+/// whose object is already live finds its slot (`obj_spawn_cell`), so the original's 4:3 view
+/// gains nothing it did not hold.
+fn wide_switch_scan(c: &mut LevelCtx) {
+    c.unpaid(spawn::scan_screen);
 }
 
 /// A pass due straight after another (the last ran past two vertical blanks) waits for the next
