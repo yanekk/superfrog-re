@@ -22,7 +22,7 @@ allowed everywhere, map a compass; T13 and T20 dropped, T22 route-shorten added.
 baseline is T02's sample (owner).
 **Status:** T00–T07, T19, T21 done; core rewritten by the amendment, not started.
 **Last updated:** 2026-10-26
-**Next `pir-work` will:** review T17 (counted run), then T18.
+**Next `pir-work` will:** T18 results-and-retire.
 
 ## Tasks
 
@@ -46,7 +46,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T12 | app-timing | T11 | ✅ | |
 | T14 | tuning-run | T11 | ✅ | |
 | T15 | set-c-run | T12, T14 | ✅ | |
-| T17 | new-counted | T15 | 🔍 | 48 guided lines, seed 1: set A 21/24 (miss W2-3, W3-4, W6-4), set B 18/24 (miss W2-3, W3-2, W3-3, W4-4, W6-1, W6-4); completed routes in `bench/routes/original/`. Baseline: T02 lines copied, `table.rs` header names it, one test. Deviations: busy machine, no re-runs (owner); W4-3/W4-4 load unrecorded (cut-off session). No planner fix; misses go to T18. |
+| T17 | new-counted | T15 | ✅ | Set A 21/24, set B 18/24, guided, routes in `bench/routes/original/`. Review clean, no fix commit: baseline lines identical to T02's; all 48 lines match their routes; A W2-1 replayed on the original (2516 frames, 0 hearts); RESULTS.md regenerates identical; header mutation red. Busy machine held by owner's answer. No clear-cut bug (read-only). |
 | T18 | results-and-retire | T17 | ⬜ | |
 | T19 | step-unseen-no-picture | T00; blocks T04 | ✅ | |
 | T21 | engine-memory-lookup | T04 | ✅ | |
