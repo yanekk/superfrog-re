@@ -4,7 +4,7 @@
 //! it with one parser (D9).
 //!
 //! ```text
-//! superfrog recording 1
+//! superfrog recording 2
 //! build 0.1.0 abc1234
 //! level W1-1
 //! lives 3
@@ -13,6 +13,7 @@
 //! difficulty normal
 //! spud off
 //! wings off
+//! widescreen off
 //! seed 0000a5c3 1f00e2b7
 //! frames 18342
 //! stopped-at W1-2:94,51
@@ -21,6 +22,8 @@
 //! 0: -
 //! 112: R
 //! 130: R F
+//! 900: R W
+//! 901: R
 //! ```
 //!
 //! The header is fixed: every field, in this order, one per line, the value the rest of the line
@@ -28,6 +31,12 @@
 //! ([`crate::input::format_tokens`]): a line holds from its frame until the next, frames strictly
 //! increase, a `#` starts a comment; before the first line nothing is held. `frames` is how many
 //! steps were recorded, so held input past the last line is still counted.
+//!
+//! Version 2 (real-widescreen DESIGN §2.8) adds `widescreen`, the mode at frame 0, and the token
+//! `W`: the mode toggles once, before its line's first frame is stepped. Unlike the other tokens it
+//! is not held for the line's later frames, so the writer starts a line at every toggle frame and
+//! writes `W` after the held tokens. Version 1 reads as widescreen off with no toggles; the writer
+//! always writes 2.
 
 use core::fmt;
 
@@ -41,7 +50,10 @@ pub const ZIP_RECORDING: &str = "recording.txt";
 pub const ZIP_SCREENSHOT: &str = "screenshot.png";
 
 /// The first line of every recording; the number is the format's version.
-const MAGIC: &str = "superfrog recording 1";
+const MAGIC: &str = "superfrog recording 2";
+
+/// The input token that toggles widescreen once (DESIGN §2.8).
+const TOGGLE: &str = "W";
 
 /// The highest score the dialog takes: the score shows six digits.
 pub const MAX_POINTS: u32 = 999_999;
@@ -286,6 +298,11 @@ pub struct Recording {
     /// One per engine step from the level's frame 0 (the first step after which the scene is a
     /// level or the bonus level). Held expanded: the app appends one a step.
     pub inputs: Vec<FrameInput>,
+    /// Widescreen at frame 0 (real-widescreen DESIGN §2.8).
+    pub widescreen: bool,
+    /// The frames before whose step widescreen toggles, strictly increasing, each below
+    /// `inputs.len()`.
+    pub toggles: Vec<u32>,
 }
 
 /// Why a recording's text was refused: the 1-based line and what is wrong with it.
@@ -317,7 +334,30 @@ impl Recording {
                 return Err(format!("the {what} must be one line"));
             }
         }
+        if !self.toggles.windows(2).all(|w| w[0] < w[1]) {
+            return Err("widescreen toggles must be at strictly increasing frames".into());
+        }
+        if let Some(&last) = self.toggles.last()
+            && last as usize >= self.inputs.len()
+        {
+            return Err(format!(
+                "a widescreen toggle at frame {last} is past the recording's {} frames",
+                self.inputs.len()
+            ));
+        }
         Ok(())
+    }
+
+    /// Whether any of the game was played in widescreen: on at frame 0, or toggled on later. Such a
+    /// game has no original to compare with (DESIGN §2.8, D9).
+    pub fn has_widescreen(&self) -> bool {
+        self.widescreen || !self.toggles.is_empty()
+    }
+
+    /// Widescreen while frame `frame` is stepped: the header's mode, flipped by every toggle at or
+    /// before it.
+    pub fn widescreen_at(&self, frame: u32) -> bool {
+        self.widescreen ^ (self.toggles.partition_point(|&t| t <= frame) % 2 == 1)
     }
 
     /// The recording as text (DESIGN §2.6): the header in order, then an input line wherever the
@@ -339,6 +379,7 @@ impl Recording {
         line(&format!("difficulty {}", s.difficulty.word()));
         line(&format!("spud {}", on(s.spud)));
         line(&format!("wings {}", on(s.wings)));
+        line(&format!("widescreen {}", on(self.widescreen)));
         line(&format!("seed {:08x} {:08x}", self.seed.lo, self.seed.hi));
         line(&format!("frames {}", self.inputs.len()));
         match &self.stopped_at {
@@ -348,9 +389,16 @@ impl Recording {
         line(&with("note", &self.note));
         line("inputs");
         let mut held = None;
+        let mut toggles = self.toggles.iter().copied().peekable();
         for (frame, &input) in self.inputs.iter().enumerate() {
-            if held != Some(input) {
-                line(&format!("{frame}: {}", format_tokens(input)));
+            let toggle = toggles.next_if_eq(&(frame as u32)).is_some();
+            if held != Some(input) || toggle {
+                let tokens = match toggle {
+                    false => format_tokens(input),
+                    true if input == FrameInput::NONE => TOGGLE.to_string(),
+                    true => format!("{} {TOGGLE}", format_tokens(input)),
+                };
+                line(&format!("{frame}: {tokens}"));
                 held = Some(input);
             }
         }
@@ -378,12 +426,16 @@ impl Recording {
         let err = |line: usize, why: String| RecordingError { line, why };
 
         let (n, version) = next("superfrog recording")?;
-        if version != "1" {
-            return Err(err(
-                n,
-                format!("recording format `{version}` is not one this engine reads (1)"),
-            ));
-        }
+        let v2 = match version {
+            "1" => false,
+            "2" => true,
+            _ => {
+                return Err(err(
+                    n,
+                    format!("recording format `{version}` is not one this engine reads (1, 2)"),
+                ));
+            }
+        };
         let (_, build) = next("build")?;
         let (n, level) = next("level")?;
         let level: LevelId = level.parse().map_err(|e| err(n, e))?;
@@ -413,6 +465,7 @@ impl Recording {
         };
         let spud = flag("spud")?;
         let wings = flag("wings")?;
+        let widescreen = if v2 { flag("widescreen")? } else { false };
         let (n, seed) = next("seed")?;
         let seed = seed
             .split_once(' ')
@@ -444,6 +497,7 @@ impl Recording {
         }
 
         let mut inputs = Vec::with_capacity(frames as usize);
+        let mut toggles = Vec::new();
         let (mut held, mut prev) = (FrameInput::NONE, None);
         for (n, raw) in lines {
             let body = raw.split('#').next().unwrap_or("").trim();
@@ -471,7 +525,21 @@ impl Recording {
                     format!("frame {frame} is past the recording's {frames} frames"),
                 ));
             }
-            let input = parse_tokens(tokens).map_err(|e| err(n, e))?;
+            let (tokens, toggles_here) = without_toggle(tokens);
+            if toggles_here > 1 {
+                return Err(err(n, format!("`{TOGGLE}` twice in one line: a line toggles once")));
+            }
+            let toggle = toggles_here == 1;
+            if toggle && !v2 {
+                return Err(err(
+                    n,
+                    format!("`{TOGGLE}` is a version 2 token; this recording is version 1"),
+                ));
+            }
+            if toggle {
+                toggles.push(frame);
+            }
+            let input = parse_tokens(&tokens).map_err(|e| err(n, e))?;
             inputs.resize(frame as usize, held);
             inputs.push(input);
             held = input;
@@ -493,8 +561,16 @@ impl Recording {
             stopped_at,
             note: note.to_string(),
             inputs,
+            widescreen,
+            toggles,
         })
     }
+}
+
+/// A line's tokens with every `W` taken out, and how many there were.
+fn without_toggle(tokens: &str) -> (String, usize) {
+    let (w, rest): (Vec<&str>, Vec<&str>) = tokens.split_whitespace().partition(|&t| t == TOGGLE);
+    (rest.join(" "), w.len())
 }
 
 /// `key value`, or the bare key when the value is empty (so no line ends in a space).
@@ -562,6 +638,8 @@ mod tests {
             }),
             note: "black screen after the slot machine # not a comment".into(),
             inputs,
+            widescreen: true,
+            toggles: vec![0, 38, 900, 99_999],
         }
     }
 
@@ -576,6 +654,7 @@ mod tests {
         assert_eq!(Recording::parse(&s.to_text()), Ok(s.clone()));
         s.stopped_at = None;
         s.inputs.clear();
+        s.toggles.clear();
         assert_eq!(Recording::parse(&s.to_text()), Ok(s));
     }
 
@@ -588,20 +667,33 @@ mod tests {
             stopped_at: Some(Location::Screen("tally")),
             note: "n".into(),
             inputs: vec![FrameInput::NONE; 200],
+            widescreen: false,
+            toggles: vec![],
         };
         r.inputs[112..130].fill(FrameInput::joy(Joy::RIGHT));
         r.inputs[130..].fill(FrameInput::joy(Joy::RIGHT | Joy::FIRE));
         assert_eq!(
             r.to_text(),
-            "superfrog recording 1\nbuild b\nlevel W1-1\nlives 3\npoints 0\nenergy 4\n\
-             difficulty normal\nspud off\nwings off\nseed 00000001 00000abc\nframes 200\n\
-             stopped-at tally\nnote n\ninputs\n0: -\n112: R\n130: R F\n"
+            "superfrog recording 2\nbuild b\nlevel W1-1\nlives 3\npoints 0\nenergy 4\n\
+             difficulty normal\nspud off\nwings off\nwidescreen off\nseed 00000001 00000abc\n\
+             frames 200\nstopped-at tally\nnote n\ninputs\n0: -\n112: R\n130: R F\n"
         );
+        r.toggles = vec![0, 120, 130, 131];
+        r.widescreen = true;
+        let text = r.to_text();
+        assert!(text.contains("\nwings off\nwidescreen on\nseed"), "{text}");
+        assert!(
+            text.ends_with("inputs\n0: W\n112: R\n120: R W\n130: R F W\n131: R F W\n"),
+            "{text}"
+        );
+        assert_eq!(Recording::parse(&text), Ok(r));
     }
 
     #[test]
     fn held_input_and_comments_in_the_inputs() {
-        let text = full().to_text().replace("frames 100000", "frames 10");
+        let mut r = full();
+        r.toggles.clear();
+        let text = r.to_text().replace("frames 100000", "frames 10");
         let head = &text[..text.find("inputs\n").unwrap() + 7];
         let r = Recording::parse(&format!("{head}# a comment\n\n3: R # right\n5: K19\n")).unwrap();
         assert_eq!(r.inputs.len(), 10);
@@ -620,12 +712,17 @@ mod tests {
         let inputs_at = good.lines().position(|l| l == "inputs").unwrap() + 1;
         for (text, line, says) in [
             (
-                swap("superfrog recording 1", "superfrog recording 2"),
+                swap("superfrog recording 2", "superfrog recording 3"),
                 1,
-                "format `2`",
+                "format `3`",
             ),
             (
-                swap("superfrog recording 1", "superfrog recordings 1"),
+                swap("superfrog recording 2", "superfrog recording 1"),
+                10,
+                "missing `seed`",
+            ),
+            (
+                swap("superfrog recording 2", "superfrog recordings 2"),
                 1,
                 "missing `superfrog recording`",
             ),
@@ -633,8 +730,17 @@ mod tests {
             (swap("level W4-3\n", ""), 3, "missing `level`"),
             (
                 good[..good.find("note").unwrap()].to_string(),
-                13,
+                14,
                 "missing `note`",
+            ),
+            (swap("widescreen on\n", ""), 10, "missing `widescreen`"),
+            (swap("widescreen on", "wide-screen on"), 10, "missing `widescreen`"),
+            (swap("widescreen on", "widescreen yes"), 10, "not on or off"),
+            (swap("\n38: R W\n", "\n38: R W W\n"), inputs_at + 3, "twice in one line"),
+            (
+                swap("\n38: R W\n", "\n38: R V\n"),
+                inputs_at + 3,
+                "not an input",
             ),
             (swap("lives 7", "lives 4"), 4, "not 3, 5 or 7"),
             (swap("energy 1", "energy 0"), 6, "not 1 to 4"),
@@ -653,34 +759,34 @@ mod tests {
             (swap("spud on", "spud yes"), 8, "not on or off"),
             (
                 swap("seed 0000a5c3 ffff0001", "seed 0000a5c3"),
-                10,
+                11,
                 "two hex longs",
             ),
             (
                 swap("seed 0000a5c3 ffff0001", "seed 0000a5c3 1ffff0001"),
-                10,
+                11,
                 "two hex longs",
             ),
-            (swap("frames 100000", "frames -1"), 11, "not a frame count"),
+            (swap("frames 100000", "frames -1"), 12, "not a frame count"),
             (
                 swap("frames 100000", "frames 4320001"),
-                11,
+                12,
                 "longest recording",
             ),
             (
                 swap("frames 100000", "frames 4294967295"),
-                11,
+                12,
                 "longest recording",
             ),
             (swap("level W4-3", "level W9-1"), 3, "not a level id"),
             (
                 swap("stopped-at W1-2:94,51", "stopped-at W9-2:94,51"),
-                12,
+                13,
                 "not a level id",
             ),
             (
                 swap("stopped-at W1-2:94,51", "stopped-at the moon"),
-                12,
+                13,
                 "not a place",
             ),
             (swap("inputs\n", "inputs x\n"), inputs_at, "stands alone"),
@@ -717,6 +823,75 @@ mod tests {
         }
         assert_eq!(Recording::parse("").unwrap_err().line, 1);
         assert!(Recording::parse("PK\u{3}\u{4}junk").is_err());
+    }
+
+    #[test]
+    fn a_version_1_recording_reads_as_widescreen_off_with_no_toggles() {
+        let mut r = full();
+        r.widescreen = false;
+        r.toggles.clear();
+        let v1 = r
+            .to_text()
+            .replace("superfrog recording 2", "superfrog recording 1")
+            .replace("widescreen off\n", "");
+        assert_eq!(Recording::parse(&v1), Ok(r.clone()));
+        let with_w = v1.replacen("\n37: R\n", "\n37: R W\n", 1);
+        let e = Recording::parse(&with_w).unwrap_err();
+        assert!(e.why.contains("version 2 token"), "{e}");
+        // Read back and written again, a version 1 file becomes version 2, the game unchanged.
+        assert!(Recording::parse(&v1).unwrap().to_text().starts_with("superfrog recording 2\n"));
+        let mut r = full();
+        r.toggles.clear();
+        assert_eq!(Recording::parse(&r.to_text()), Ok(r));
+    }
+
+    #[test]
+    fn a_toggle_is_written_after_the_held_tokens_and_read_in_any_order() {
+        let mut r = full();
+        r.inputs.truncate(10);
+        r.inputs.fill(FrameInput {
+            joy: Joy::RIGHT | Joy::FIRE,
+            keys: KeySet::key(0x19),
+        });
+        r.toggles = vec![4];
+        let text = r.to_text();
+        assert!(text.ends_with("inputs\n0: R F K19\n4: R F K19 W\n"), "{text}");
+        let shuffled = text.replace("4: R F K19 W", "4: W K19 F R");
+        assert_eq!(Recording::parse(&shuffled), Ok(r.clone()));
+        let dash = text.replace("4: R F K19 W", "4: - W R F K19");
+        assert_eq!(Recording::parse(&dash), Ok(r));
+    }
+
+    #[test]
+    fn a_line_holding_w_for_several_frames_toggles_once() {
+        let head = full().to_text().replace("frames 100000", "frames 20");
+        let head = &head[..head.find("inputs\n").unwrap() + 7];
+        let r = Recording::parse(&format!("{head}0: -\n5: R W\n15: -\n")).unwrap();
+        assert_eq!(r.toggles, [5]);
+        assert_eq!(r.inputs[5..15], [FrameInput::joy(Joy::RIGHT); 10]);
+        assert!(r.widescreen);
+        let at: Vec<bool> = (0..20).map(|f| r.widescreen_at(f)).collect();
+        assert_eq!(at[..5], [true; 5]);
+        assert_eq!(at[5..], [false; 15]);
+        assert!(r.has_widescreen());
+    }
+
+    #[test]
+    fn the_mode_at_each_frame_and_whether_any_was_wide() {
+        let mut r = full();
+        r.widescreen = false;
+        r.toggles.clear();
+        assert!(!r.has_widescreen() && !r.widescreen_at(0) && !r.widescreen_at(99_999));
+        r.toggles = vec![0, 10, 11];
+        assert!(r.has_widescreen());
+        let at: Vec<bool> = (0..13).map(|f| r.widescreen_at(f)).collect();
+        assert_eq!(at, [[true; 10].as_slice(), &[false, true, true]].concat());
+        r.toggles = vec![10, 10];
+        assert!(r.validate().unwrap_err().contains("strictly increasing"));
+        r.toggles = vec![100_000];
+        assert!(r.validate().unwrap_err().contains("past the recording"));
+        r.toggles = vec![99_999];
+        assert_eq!(r.validate(), Ok(()));
     }
 
     #[test]

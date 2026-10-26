@@ -179,14 +179,19 @@ fn the_bonus_frog_reaches_into_the_strips() {
     for (wide, extra) in [(false, 0), (true, EXTRA)] {
         let mut g = level("WB-1", wide);
         let screen_x = |g: &Game| w(g, FROG + f::X).wrapping_sub(cx(g)) as i16;
+        // The furthest it gets each way: a bonus shot may knock it back off the clamp later
+        // (in widescreen they fly into the strips, T05).
+        let (mut least, mut most) = (i16::MAX, i16::MIN);
         for _ in 0..300 {
             g.step(joy(Joy::LEFT));
+            least = least.min(screen_x(&g));
         }
-        assert_eq!(screen_x(&g), -8 - extra as i16, "wide {wide}: left");
+        assert_eq!(least, -8 - extra as i16, "wide {wide}: left");
         for _ in 0..300 {
             g.step(joy(Joy::RIGHT));
+            most = most.max(screen_x(&g));
         }
-        assert_eq!(screen_x(&g), 0x12a + extra as i16, "wide {wide}: right");
+        assert_eq!(most, 0x12a + extra as i16, "wide {wide}: right");
         assert!(g.scene().is_level());
     }
 }

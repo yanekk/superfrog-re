@@ -35,6 +35,8 @@ impl Recorder {
                 stopped_at: None,
                 note: String::new(),
                 inputs: Vec::new(),
+                widescreen: false,
+                toggles: Vec::new(),
             },
         }
     }

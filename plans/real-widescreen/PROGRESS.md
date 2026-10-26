@@ -11,9 +11,9 @@ message. Whoever writes a cell also fixes the over-budget cell they walk past.
 
 **Plan reviewed:** 2026-10-22 — 10 fixed, 4 decided with the user
 
-**Status:** Building; T01, T04 done.
+**Status:** Building; T01, T02, T04, T05, T07 done.
 **Last updated:** 2026-10-26
-**Next `pir-work` will:** T00, T02, T05, T07 (T01 and T04 done); T00 sizes T03.
+**Next `pir-work` will:** T00 wide-spawn-spike (sizes T03); then T03, T06, T08, T09 as their dependencies finish.
 
 ## Tasks
 
@@ -24,12 +24,12 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 |---|---|---|---|---|
 | T00 | wide-spawn-spike | — | ⬜ | |
 | T01 | wide-mode | — | ✅ | |
-| T02 | wide-spawn | T01 | ⬜ | |
+| T02 | wide-spawn | T01 | ✅ | |
 | T03 | wide-capacity | T00, T01, T02 | ⬜ | |
 | T04 | wide-camera | T01 | ✅ | Review: four deviations held. Sprite tests read records the camera rewrites, and start_point's clamp was masked by keep_inside: five mutations survived; tests now read the copper words and the pre-keep_inside start, all red on mutation. Probed all 26 levels' wide start camera. Workspace run left to pir's end gate. |
-| T05 | wide-special-cases | T01 | ⬜ | |
+| T05 | wide-special-cases | T01 | ✅ | |
 | T06 | wide-switch | T02, T03 | ⬜ | |
-| T07 | wide-recording | T01 | ⬜ | |
+| T07 | wide-recording | T01 | ✅ | |
 | T08 | side-objects | T02, T03 | ⬜ | |
 | T09 | side-frog | T04, T08 | ⬜ | |
 | T10 | app-wiring | T05, T06, T07, T08, T09 | ⬜ | |

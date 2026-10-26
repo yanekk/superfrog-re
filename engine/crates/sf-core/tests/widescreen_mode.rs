@@ -1,5 +1,5 @@
-//! real-widescreen T01 (DESIGN §2.1, §3.4): the widescreen mode reaches every level step and is
-//! not saved; switched off again it leaves the 4:3 game.
+//! real-widescreen T01 (DESIGN §2.1, §3.4): the widescreen mode reaches every level step, is
+//! read there each step, and is not saved.
 
 use sf_core::input::{FrameInput, Joy};
 use sf_core::{Game, GameData, LevelId, Start};
@@ -41,21 +41,38 @@ fn the_mode_is_off_by_default_and_set_by_the_app() {
     assert!(!g.widescreen());
 }
 
-/// Switched on and off again before the level is played, the game is the 4:3 one: entering again
-/// for the mode (T04, `Game::set_widescreen`) leaves nothing of widescreen behind. (T01's version,
-/// "on changes nothing until a site reads it", stopped holding once T04's camera clamp read it.)
+/// The mode is read each step, not latched: a game switched on and back off before it steps is
+/// the 4:3 game, state, picture and sound, frame for frame.
 #[test]
-fn widescreen_on_and_off_before_play_is_the_4_3_game() {
-    let (mut off, mut on) = (w1_1(), w1_1());
-    on.set_widescreen(true);
-    on.set_widescreen(false);
+fn widescreen_switched_off_again_is_the_original() {
+    let (mut off, mut back) = (w1_1(), w1_1());
+    back.set_widescreen(true);
+    back.set_widescreen(false);
     for f in 0..500 {
-        let (a, b) = (off.step(input(f)), on.step(input(f)));
+        let (a, b) = (off.step(input(f)), back.step(input(f)));
         assert!(a.picture == b.picture, "frame {f}: the pictures differ");
         assert!(a.paula == b.paula, "frame {f}: the Paula writes differ");
-        assert!(off.state() == on.state(), "frame {f}: the states differ");
+        assert!(off.state() == back.state(), "frame {f}: the states differ");
     }
     assert!(off.scene().is_level(), "the run stayed in the level");
+}
+
+/// From T02 the mode reaches the spawn and despawn edges (DESIGN §2.3): a W1-1 run with it on
+/// wakes something the 4:3 run has not, so the states part, and the game plays on in the level.
+#[test]
+fn widescreen_on_changes_the_game_from_t02() {
+    let (mut off, mut on) = (w1_1(), w1_1());
+    on.set_widescreen(true);
+    let mut parted = None;
+    for f in 0..500 {
+        off.step(input(f));
+        on.step(input(f));
+        if parted.is_none() && off.state() != on.state() {
+            parted = Some(f);
+        }
+    }
+    assert!(parted.is_some(), "widescreen changed nothing in 500 frames");
+    assert!(on.scene().is_level(), "the widescreen run stayed in the level");
 }
 
 /// The mode is not in a save state (DESIGN §3.4): the app sets it, as it sets the view.
