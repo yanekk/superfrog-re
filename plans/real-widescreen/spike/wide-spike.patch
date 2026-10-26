@@ -584,7 +584,7 @@ index 0000000..d5b8609
 +}
 diff --git a/engine/crates/sf-plan/examples/wide_spike.rs b/engine/crates/sf-plan/examples/wide_spike.rs
 new file mode 100644
-index 0000000..36365f6
+index 0000000..00ef351
 --- /dev/null
 +++ b/engine/crates/sf-plan/examples/wide_spike.rs
 @@ -0,0 +1,250 @@
@@ -683,7 +683,7 @@ index 0000000..36365f6
 +    let mut k = 0u32;
 +    let res = catch_unwind(AssertUnwindSafe(|| {
 +        let mut g = app_start(level, seed);
-+        let mut lead = ghost.then(|| app_start(level, seed));
++        let mut lead = ghost.then(|| { spike::WIDE.store(false, Relaxed); let l = app_start(level, seed); spike::WIDE.store(wide, Relaxed); l });
 +        if let Some(n) = lives {
 +            g.poke(FROG + f::LIVES, &n.to_be_bytes());
 +            if let Some(l) = lead.as_mut() {
@@ -751,7 +751,7 @@ index 0000000..36365f6
 +            if h > r.peak_hit {
 +                (r.peak_hit, r.hit_at) = (h, k);
 +            }
-+            if k > 10 && !now.playing {
++            if k > 10 && (if lead.is_some() { r.lead_exit.is_some() } else { !now.playing }) {
 +                r.exit = Some(k);
 +                break;
 +            }
@@ -800,7 +800,7 @@ index 0000000..36365f6
 +            _ => {
 +                let p = routes.join(format!("{name}.txt"));
 +                let t = std::fs::read_to_string(&p).unwrap();
-+                ("app route", t, 0, None)
++                ("app route", t, 0, std::env::var("SPIKE_LIVES").ok().map(|_| 60))
 +            }
 +        };
 +        let script = InputScript::parse(&text).unwrap();

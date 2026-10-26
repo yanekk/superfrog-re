@@ -2,7 +2,7 @@
 
 Throwaway measurement for T03. The hack is `wide-spike.patch` (apply on `pir/real-widescreen` at
 e99e2f8 with `git apply`); nothing under `engine/` is committed. Logs: `run-extra{10,20,30,40,60}.tsv`
-(every level), `heavy-extra{50,60,80,100}.tsv` (the five heaviest), one row per level and mode.
+(every level), `heavy-extra{50,60,80,100}.tsv` (the six heaviest), one row per level and mode.
 
 ## What the hack does
 
@@ -68,12 +68,12 @@ for WW-1. The W6 alt maps were not run.
 | W5-4 | bench app route | 7124 / 2028 (died) / 7124 | 20 (2795) | 21 (1595) | 53 (6728) | 23 (2812) | 21 / 54 (6728) | 15 / 28 (6728) | 17 / 14 | 0 / 0 | 0 / 0 / 0 / 0 | none |
 | W6-1 | bench app route | 8551 / 1417 (died) / 8551 | 20 (1070) | 23 (776) | 41 (3906) | 23 (1048) | 21 / 42 (3906) | 20 / 30 (3342) | 4 / 33 | 0 / 0 | 1 / 0 / 0 / 0 | none |
 | W6-2 | bench app route | 8491 / 1146 (died) / 8491 | 20 (396) | 30 (388) | 80 (4843) | 23 (1132) | 21 / 81 (4844) | 20 / 51 (8484) | 68 / 71 | 0 / 11 | 74 / 21 / 36 / 21 | none |
-| W6-3 | bench app route | 8400 / 1664 (died) / 1362 (died) | 20 (990) | 22 (1054) | 22 (1054) | 21 (1054) | 21 / 23 (1054) | 20 / 16 (1054) | 9 / 40 | 0 / 0 | 0 / 0 / 0 / 0 | none |
+| W6-3 | bench app route | 8400 / 1664 (died) / 8400 | 20 (990) | 22 (1054) | 73 (8052) | 25 (4867) | 21 / 74 (8052) | 20 / 53 (8052) | 9 / 40 | 0 / 0 | 1 / 1 / 0 / 1 | none |
 | W6-4 | bench app route | 15084 / 1979 (died) / 15084 | 20 (779) | 23 (1372) | 54 (12187) | 26 (3769) | 21 / 55 (12188) | 20 / 54 (12188) | 26 / 60 | 0 / 0 | 23 / 0 / 0 / 0 | none |
-| WB-1 | bonus-fire.txt | 8075 / 7917 / 7915 | 19 (2139) | 23 (144) | 23 (144) | 21 (144) | 20 / 24 (144) | 14 / 18 (144) | 0 / 0 | 0 / 0 | 0 / 0 / 0 / 0 | none |
+| WB-1 | bonus-fire.txt | 8075 / 7917 / 8075 | 19 (2139) | 23 (144) | 23 (144) | 21 (144) | 20 / 24 (144) | 14 / 18 (144) | 0 / 0 | 0 / 0 | 0 / 0 / 0 / 0 | none |
 | WW-1 | final-win.txt | 2264 / 2264 / 2264 | 1 (1) | 1 (1) | 1 (1) | 1 (104) | 11 / 2 (2) | 10 / 1 (2) | 0 / 0 | 0 / 0 | 0 / 0 / 0 / 0 | none |
 
-Heaviest five at more extra slots (ghost runs, peak live / in wide view / draw list / hitboxes,
+Heaviest six at more extra slots (ghost runs, peak live / in wide view / draw list / hitboxes,
 `find_free` fails / evictions):
 
 | Level | x50 | x60 | x80 | x100 |
@@ -82,6 +82,7 @@ Heaviest five at more extra slots (ghost runs, peak live / in wide view / draw l
 | W4-2 | 67 / 54 / 68 / 56, 0 / 2 | 77 / 56 / 78 / 59, 0 / 1 | 79 / 57 / 80 / 61, 0 / 0 | 79 / 57 / 80 / 61, 0 / 0 |
 | W4-4 | 69 / 53 / 71 / 63, 0 / 15 | 79 / 52 / 80 / 70, 0 / 5 | 86 / 52 / 86 / 74, 0 / 0 | 86 / 52 / 86 / 74, 0 / 0 |
 | W6-2 | 70 / 23 / 71 / 49, 0 / 16 | 80 / 23 / 81 / 51, 0 / 11 | 95 / 23 / 96 / 58, 0 / 0 | 95 / 23 / 96 / 58, 0 / 0 |
+| W6-3 | 70 / 25 / 71 / 50, 1 / 2 | 73 / 25 / 74 / 53, 0 / 0 | 73 / 25 / 74 / 53, 0 / 0 | 73 / 25 / 74 / 53, 0 / 0 |
 | W6-4 | 54 / 26 / 55 / 54, 0 / 0 | 54 / 26 / 55 / 54, 0 / 0 | 54 / 26 / 55 / 54, 0 / 0 | 54 / 26 / 55 / 54, 0 / 0 |
 
 ## What it says
@@ -94,20 +95,22 @@ Heaviest five at more extra slots (ghost runs, peak live / in wide view / draw l
   At most 57 are inside the wide view at once (W4-2). In 4:3 the original is saturated at 20 in 19 of
   the 24 levels and refuses spawns in 18 (W4-2: 243 refusals).
 - **Refusals fall with room, but not monotonically**: each eviction changes the rest of the game
-  (W4-2 refuses 6 at x20, 32 at x30, 0 at x40). At x40 W4-4 and W6-2 still refuse; at x50 and x60
-  none of the heaviest five does, and at x60 no level does; from x80 nothing is evicted either.
+  (W4-2 refuses 6 at x20, 32 at x30, 0 at x40). At x40 W4-4, W6-2 and W6-3 still refuse; at x50
+  only W6-3 does (1), and at x60 no level does; from x80 nothing is evicted either.
 - **The draw list overflows**: its 40 places (0xa8 bytes) hold far fewer than the peak 96 entries
   (spud + slot bobs + free bobs to erase). T03 must give it `1 + 20 + WIDE_SLOTS + free bobs + 1` places.
   Hitbox entries peak at 74 (W4-4), inside the original's 127-entry `$600` table, but a table full
   of multi-box objects could pass it: size it per slot, not from this peak.
 - **Bonus and final levels** add little: WB-1 peaks at 23 live (21 in view), WW-1 at 1 (the witch).
-- W6-3's ghost run lost a life at 1362 although its frog block was copied from the 4:3 run: a wide-only
-  enemy hit it between copies. The game, not a fault (DESIGN §2.11).
+- Review fix (2026-10-26): the ghost's lockstep 4:3 game was first started with the hack on, so its
+  level-start scan was the wide one; on W6-3 that 4:3 game lost a life at 1362 and the ghost run
+  stopped there. The runner now starts it with the hack off and ends a ghost run at that game's exit; every log was
+  re-run and only W6-3's numbers and WB-1's ghost frames changed. `SPIKE_LIVES=1` gives a route 60 lives.
 
 ## Recommended `WIDE_SLOTS`: 80
 
 The measured peak is 95 live (75 extra) on W6-2, the most any route needs with no eviction at all;
-80 extras gives a margin of 5 over it, and x80 and x100 played identically on the heaviest five, so
+80 extras gives a margin of 5 over it, and x80 and x100 played identically on the heaviest six, so
 nothing more was ever wanted. The margin is small because past it the original's eviction still
 applies: only objects off the wide view's despawn sides are reclaimed, and at most 57 objects were
 ever inside the view: eviction starts only past 5 more live objects than W6-2's peak, and a spawn
