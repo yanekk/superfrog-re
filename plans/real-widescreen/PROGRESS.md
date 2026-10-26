@@ -12,8 +12,8 @@ message. Whoever writes a cell also fixes the over-budget cell they walk past.
 **Plan reviewed:** 2026-10-22 — 10 fixed, 4 decided with the user
 
 **Status:** Planned; nothing built.
-**Last updated:** 2026-10-22
-**Next `pir-work` will:** T00 wide-spawn-spike and T01 wide-mode, the two roots; T00 sizes T03.
+**Last updated:** 2026-10-27
+**Next `pir-work` will:** review T08; T06 is ready, T09 waits for T08.
 
 ## Tasks
 
@@ -30,13 +30,13 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T05 | wide-special-cases | T01 | ✅ | |
 | T06 | wide-switch | T02, T03 | ⬜ | |
 | T07 | wide-recording | T01 | ✅ | |
-| T08 | side-objects | T02, T03 | ⬜ | |
+| T08 | side-objects | T02, T03 | 🔍 | Wide draw lists per buffer, strip bobs from them; 4 render units, 4 sf-core, 1 sf-e2e. Deviations: lists record covered and scroller-redrawn rows; conformance skips the lists (`engine_only`); buffer from fetched lines; `draw_bob` takes a row filter; extra-slot test on W4-2; e2e 4:3 game until T10; workspace run skipped. Commit body. |
 | T09 | side-frog | T04, T08 | ⬜ | |
 | T10 | app-wiring | T05, T06, T07, T08, T09 | ⬜ | |
 | T11 | widescreen-drill | T10 | ⬜ | |
 | T12 | wide-every-level | T11 | ⬜ | |
 
-**Review queue:** *(empty)*
+**Review queue:** T08
 
 ## Blocked on the user
 

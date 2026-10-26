@@ -12,6 +12,8 @@ changed.
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-27 | 📌 | T08: `scroll_column` is not the shown buffer's address (it stayed in buffer 1 while buffer 0 showed); the shown buffer is the play-field lines' bitplane pointer, which the strips now read. |
+| 2026-10-27 | 📌 | T08: the centre loses a pass's bob pixels where the scroller redraws map rows (camera moving vertically, restart jumps) and below the lower part's 16-line `pushed` bound; the lists record both so strips match. `redraw_cell` and `$fc00` bobs are not followed. |
 | 2026-10-26 | 📌 | T03: with T02–T05's rules W6-2's ghost run peaks at 92 live of 100 (`sf-conform/tests/widescreen_capacity.rs`). Extras are compared as 0 in 4:3 conformance, not excluded: a 4:3 write there fails a case. |
 | 2026-10-26 | 📌 | T03: switched off with no extra live, the draw list is the original's, so an extra free bob's last drawing is never erased. T06 should test a switch-off right after an extra is freed on screen. |
 | 2026-10-26 | 🐞 | T00 review, fixed: the spike's ghost run started its 4:3 game with the hack on, so W6-3's ghost stopped at frame 1362. Re-run: W6-3 peaks 73 live over 8400 frames; `WIDE_SLOTS` 80 stands. |
