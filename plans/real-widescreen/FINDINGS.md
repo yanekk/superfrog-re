@@ -12,6 +12,8 @@ changed.
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-26 | 📌 | T02: task says run `cargo test --workspace` once; the parallel worker rule forbids whole-suite runs, so it was skipped. The 4:3 conformance cases outside the block were not run for T02; regression set and enemies_w1/w3 green. |
+| 2026-10-26 | 📌 | T02: widened row and start scans reach 6 cells past the map's right end (into the next row) with the camera at the 4:3 limit; T04's narrower wide clamp keeps them within the 4-cell row padding. |
 | 2026-10-26 | 🐞 | T01 review: `load::enter` (`Game::new` at a level) builds its LevelCtx before `set_widescreen` can be called, so a directly started level runs `start_point` and `scan_screen` narrow. T04's start-camera test meets this; left for T04. |
 | 2026-10-26 | 📌 | T01 review: the restart's `level_init` and game over's vertical blank get `c.screen` through `Front.screen` and `Cx.screen`, not `Machine`. Nothing reads it yet, so T02 and T04 tests should include a widescreen restart to lock it. |
 | 2026-10-22 | 📌 | Plan review: bonus markers 11 (chains fly off) and 55 (level end) act when `scan_right_column` reaches them, so widescreen's wider column ends the bonus level about 3 s sooner. Owner accepted, DESIGN D12. |

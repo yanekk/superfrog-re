@@ -11,9 +11,9 @@ message. Whoever writes a cell also fixes the over-budget cell they walk past.
 
 **Plan reviewed:** 2026-10-22 — 10 fixed, 4 decided with the user
 
-**Status:** Planned; nothing built.
-**Last updated:** 2026-10-22
-**Next `pir-work` will:** T00 wide-spawn-spike and T01 wide-mode, the two roots; T00 sizes T03.
+**Status:** Building; T01 ✅, T02 🔍.
+**Last updated:** 2026-10-26
+**Next `pir-work` will:** review T02; T00, T04, T05, T07 are free to build.
 
 ## Tasks
 
@@ -24,7 +24,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 |---|---|---|---|---|
 | T00 | wide-spawn-spike | — | ⬜ | |
 | T01 | wide-mode | — | ✅ | |
-| T02 | wide-spawn | T01 | ⬜ | |
+| T02 | wide-spawn | T01 | 🔍 | Scans, despawns, find_free read `c.screen`; `LevelCtx::unpaid` (D11). 14 tests in `widescreen_spawn.rs`, restart included. T01's no-change test rewritten: sites now read the mode. Workspace run skipped (parallel rule); regression set green, sf-conform enemies_w1/w3 too. Bob drawer's `$170`/`$180` are buffer clips, left. |
 | T03 | wide-capacity | T00, T01, T02 | ⬜ | |
 | T04 | wide-camera | T01 | ⬜ | |
 | T05 | wide-special-cases | T01 | ⬜ | |
@@ -36,7 +36,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T11 | widescreen-drill | T10 | ⬜ | |
 | T12 | wide-every-level | T11 | ⬜ | |
 
-**Review queue:** *(empty)*
+**Review queue:** T02
 
 ## Blocked on the user
 
