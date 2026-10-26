@@ -12,6 +12,7 @@ owns = [
   "engine/crates/sf-e2e/",
   "engine/crates/sf-plan/",
   "engine/crates/sf-bench/",
+  "engine/crates/sf-routeview/",
   "engine/conform/",
 ]
 +++
@@ -59,6 +60,10 @@ Three crates and one folder of inputs:
   maps, `src/app.rs` plans for the app's timing, which never lags as the original does.
 - **`sf-bench`** (`engine/crates/sf-bench/`): the planner benchmark, which runs a planner over a
   fixed set of levels in child processes and checks each result on the original (`src/verify.rs`).
+- **`sf-routeview`** (`engine/crates/sf-routeview/`): the route viewer, which replays app-timed
+  routes on the engine from the app's start (`src/dump.rs`) and writes a page drawing each over its
+  level map, with the planner's verdict per level (`src/verdict.rs`, from `sf-bench`'s results).
+  `sf-bench` runs it as a child after a guided set-C run (`sf-bench/src/view.rs`).
 - **`engine/conform/`**: 212 case files and 178 input scripts, inputs only, never disk data
   (`engine/conform/README.md` documents both). None of it is counted as code (DESIGN §2.2).
 
