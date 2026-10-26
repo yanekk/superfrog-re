@@ -181,6 +181,37 @@ How it works, and the benchmark against the older tools (`sf-bench`), is in
 not all: the levels it still fails are listed in
 [`bench/failing-levels.md`](plans/smart-planner/bench/failing-levels.md).
 
+**Seeing a route:** `sf-routeview` replays routes on the engine and draws them over the level
+map, one page at `build/route-viz/index.html`: the frog's path, every coin, collectible and enemy,
+the events along the way (coins, kills, hits, jumps) and a timeline to play it back. A switcher on
+top lists the routes, marked failed (the planner failed, or the route reaches no exit), faults (a
+heart or life lost, over +25% of the reference route, a plan that used half its time budget, or a
+route timed for the original, which may drift on replay) or clean. A failed route also shows
+where it stops making progress.
+
+```bash
+cd engine && cargo run --release -p sf-routeview -- --planner        # every planner route, with verdicts
+cd engine && cargo run --release -p sf-routeview -- my-route.txt --guide waypoints.txt
+```
+
+`sf-bench` rebuilds the page at the end of every guided set-C run of the new planner (`--no-view`
+skips it). Only app-timed routes (`# timing: app`) replay true. The page holds the disks' graphics,
+so it stays in `build/`.
+
+**When the planner gets stuck, a person plays the hard part.** If a level finds no exit on two
+seeds, or stalls at the same spot twice, the session shows the stall on the route page and asks
+you to play that stretch. It hands you one command: the app races (silently, keys locked) through
+a route to just before the stall, pauses, and records your play from there. You save the
+recording with ⌘. as for a bug report; the planner then follows it in order and plans again.
+
+```bash
+python3 tools/handover.py route.txt W6-4 263,66          # writes the app script, prints your command
+python3 tools/recording_guide.py bugs/bug-W6-4-….zip     # your recording, as the planner's guide
+cd engine && cargo run --release -p sf-plan -- W6-4 --guide-ordered --guide bug-W6-4-…-guide.txt
+```
+
+The script presses keys through your Controls mapping, so regenerate it after remapping.
+
 ## Tools
 
 | File | Purpose |

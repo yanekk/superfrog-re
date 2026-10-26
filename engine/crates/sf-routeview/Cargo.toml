@@ -1,0 +1,24 @@
+[package]
+name = "sf-routeview"
+version.workspace = true
+edition.workspace = true
+publish.workspace = true
+
+# The route viewer: plays app-timed routes on the engine and writes a web page drawing each over
+# its level map, with a switcher over the smart planner's routes and their verdicts. Shell: it
+# reads files and the disks. `sf-bench` runs its binary after a set-C run of the new planner
+# (a child process, so sf-bench does not link this crate and the two never form a cycle).
+
+[dependencies]
+sf-core = { path = "../sf-core" }
+sf-assets = { path = "../sf-assets" }
+# The disks (`game_data`, `display_data`) and the input-script format.
+sf-conform = { path = "../sf-conform" }
+# The app start a set-C route replays from (`app_start`) and its `# seed:` / `# timing:` lines.
+sf-plan = { path = "../sf-plan" }
+# `results.jsonl`: the planner's verdict per level.
+sf-bench = { path = "../sf-bench" }
+
+[[bin]]
+name = "sf-routeview"
+path = "src/main.rs"

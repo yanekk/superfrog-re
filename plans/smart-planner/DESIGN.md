@@ -620,6 +620,12 @@ The old tools stay in the tree until T18, so any level can still be planned the 
   (oracles slow each other ~3×, so M3 and the 30-min budget would stop meaning what they say). Cost
   accepted: the comparison is six levels on a busy machine and cannot be redone once T18 deletes the
   old tools.
+- D28 (owner, 2026-10-25): `sf-bench --unguided` is not used any more: no run passes it, and it
+  warns when given. It stays in the code. Refused: removing it from sf-bench (the one cheap measure of
+  a level with no route, which edited levels will be), and making sf-plan refuse to run unguided (that
+  blocks every level with no saved route). Cost accepted: nothing measures no-guide planning until a
+  plan needs it again; an unguided run would overwrite `routes/new-C-<level>.txt`, the file the route
+  page (`sf-routeview --planner`) draws.
 
 ---
 

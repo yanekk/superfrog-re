@@ -13,6 +13,7 @@ pub mod run;
 pub mod sets;
 pub mod table;
 pub mod verify;
+pub mod view;
 
 /// Seconds in a minute, for budgets given in minutes.
 pub const MINUTE: u64 = 60;
