@@ -1,5 +1,5 @@
-//! real-widescreen T01 (DESIGN §2.1, §3.4): the widescreen mode reaches every level step, and
-//! until a site reads it, switching it on changes nothing the game does or draws.
+//! real-widescreen T01 (DESIGN §2.1, §3.4): the widescreen mode reaches every level step and is
+//! not saved; switched off again it leaves the 4:3 game.
 
 use sf_core::input::{FrameInput, Joy};
 use sf_core::{Game, GameData, LevelId, Start};
@@ -41,12 +41,14 @@ fn the_mode_is_off_by_default_and_set_by_the_app() {
     assert!(!g.widescreen());
 }
 
-/// No site reads the mode yet (T02–T05 do): a W1-1 run with it on is the run with it off, state,
-/// picture and sound, frame for frame.
+/// Switched on and off again before the level is played, the game is the 4:3 one: entering again
+/// for the mode (T04, `Game::set_widescreen`) leaves nothing of widescreen behind. (T01's version,
+/// "on changes nothing until a site reads it", stopped holding once T04's camera clamp read it.)
 #[test]
-fn widescreen_on_changes_no_state_picture_or_sound_until_a_site_reads_it() {
+fn widescreen_on_and_off_before_play_is_the_4_3_game() {
     let (mut off, mut on) = (w1_1(), w1_1());
     on.set_widescreen(true);
+    on.set_widescreen(false);
     for f in 0..500 {
         let (a, b) = (off.step(input(f)), on.step(input(f)));
         assert!(a.picture == b.picture, "frame {f}: the pictures differ");

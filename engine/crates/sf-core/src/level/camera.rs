@@ -98,15 +98,18 @@ pub fn camera_follow(c: &mut LevelCtx) {
 }
 
 /// The camera stays inside the level: 360 pixels from its right edge, 240 from its bottom, and
-/// at least 16 and 32 from its left and top (those two write the whole long).
+/// at least 16 and 32 from its left and top (those two write the whole long). In widescreen the
+/// horizontal limits move in by 65 so the wide view shows no more of the map than the original's
+/// (real-widescreen DESIGN §2.5); [`crate::level::load`]'s `start_point` has the same clamp.
 fn keep_inside(c: &mut LevelCtx) {
+    let screen = c.screen;
     let b = &mut c.bus;
-    let right = b.w(LEVEL_WIDTH).wrapping_sub(0x168);
+    let right = b.w(LEVEL_WIDTH).wrapping_sub(screen.camera_right());
     if !n_clear(right.wrapping_sub(b.w(CAMERA_X + 2))) {
         b.set_w(CAMERA_X + 2, right);
     }
-    if !n_clear(b.w(CAMERA_X + 2).wrapping_sub(0x10)) {
-        b.set_l(CAMERA_X, 0x10);
+    if !n_clear(b.w(CAMERA_X + 2).wrapping_sub(screen.camera_left())) {
+        b.set_l(CAMERA_X, screen.camera_left() as u32);
     }
     let bottom = b.w(LEVEL_HEIGHT).wrapping_sub(0xf0);
     if !n_clear(bottom.wrapping_sub(b.w(CAMERA_Y + 2))) {
@@ -129,8 +132,9 @@ fn place_sprites(c: &mut LevelCtx) {
 }
 
 /// The bonus level's camera (h0+$dd40): it creeps right a pixel every second frame, carrying the
-/// frog, and the frog is kept on screen.
+/// frog, and the frog is kept on screen (in widescreen, the wide one: DESIGN §2.5).
 fn shooter(c: &mut LevelCtx) {
+    let screen = c.screen;
     let b = &mut c.bus;
     let half = !b.w(SHOOTER_HALF_STEP);
     b.set_w(SHOOTER_HALF_STEP, half);
@@ -152,11 +156,11 @@ fn shooter(c: &mut LevelCtx) {
     if !n_clear(bottom.wrapping_sub(b.w(FROG + f::Y))) {
         b.set_w(FROG + f::Y, bottom);
     }
-    let left = cx.wrapping_add(0xfff8);
+    let left = cx.wrapping_sub(screen.shooter_frog_left());
     if n_clear(left.wrapping_sub(b.w(FROG + f::X))) {
         b.set_w(FROG + f::X, left);
     }
-    let right = cx.wrapping_add(0x12a);
+    let right = cx.wrapping_add(screen.shooter_frog_right());
     if !n_clear(right.wrapping_sub(b.w(FROG + f::X))) {
         b.set_w(FROG + f::X, right);
     }

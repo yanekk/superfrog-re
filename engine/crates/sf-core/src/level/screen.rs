@@ -53,9 +53,38 @@ impl Screen {
     }
 
     /// Where a hardware sprite is hidden past the right of the screen, and parked to hide it
-    /// (`frog/anim.rs`'s `OFF_SCREEN`): `$150`, plus [`Screen::extra`] (DESIGN §2.5).
+    /// (`frog/anim.rs`'s `place_frog_sprites`): `$150`, plus [`Screen::extra`] (DESIGN §2.5).
     pub fn sprite_hide_right(self) -> u16 {
         0x150 + self.extra()
+    }
+
+    /// Where a hardware sprite is hidden past the left of the screen: at `x + this < 0`, `$20`,
+    /// plus [`Screen::extra`] (DESIGN §2.5).
+    pub fn sprite_hide_left(self) -> u16 {
+        0x20 + self.extra()
+    }
+
+    /// The camera's least x (`keep_inside`, `start_point`): `$10`, the view from level x 16, plus
+    /// [`Screen::extra`] so the wide view starts there too (DESIGN §2.5, D3).
+    pub fn camera_left(self) -> u16 {
+        0x10 + self.extra()
+    }
+
+    /// The camera's greatest x is the level's width less this: `$168`, the view to level x
+    /// `level_width − 26`, plus [`Screen::extra`] so the wide view ends there too (DESIGN §2.5).
+    pub fn camera_right(self) -> u16 {
+        0x168 + self.extra()
+    }
+
+    /// The bonus frog's least x is `cx` less this: `8`, plus [`Screen::extra`] (DESIGN §2.5).
+    pub fn shooter_frog_left(self) -> u16 {
+        8 + self.extra()
+    }
+
+    /// The bonus frog's greatest x is `cx` plus this: `$12a`, plus [`Screen::extra`] (DESIGN
+    /// §2.5).
+    pub fn shooter_frog_right(self) -> u16 {
+        0x12a + self.extra()
     }
 }
 
@@ -72,6 +101,11 @@ mod tests {
         assert_eq!(s.right_despawn(), 0x170);
         assert_eq!(s.left_despawn(), 0x30);
         assert_eq!(s.sprite_hide_right(), 0x150);
+        assert_eq!(s.sprite_hide_left(), 0x20);
+        assert_eq!(s.camera_left(), 0x10);
+        assert_eq!(s.camera_right(), 0x168);
+        assert_eq!(s.shooter_frog_left(), 8);
+        assert_eq!(s.shooter_frog_right(), 0x12a);
     }
 
     #[test]
@@ -83,6 +117,11 @@ mod tests {
         assert_eq!(s.right_despawn(), 0x170 + 65);
         assert_eq!(s.left_despawn(), 0x30 + 65);
         assert_eq!(s.sprite_hide_right(), 0x150 + 65);
+        assert_eq!(s.sprite_hide_left(), 0x20 + 65);
+        assert_eq!(s.camera_left(), 0x10 + 65);
+        assert_eq!(s.camera_right(), 0x168 + 65);
+        assert_eq!(s.shooter_frog_left(), 8 + 65);
+        assert_eq!(s.shooter_frog_right(), 0x12a + 65);
     }
 
     #[test]
