@@ -62,9 +62,9 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T31 | leg-start-sync | T26; blocks T17 | ✅ | |
 | T32 | alone-pass-drift | T31; blocks T17 | ✅ | |
 | T33 | dead-end-repair | T27, T30; blocks T17 | ✅ | |
-| T34 | retire-old-tools | T18 | 🔍 | Owner accepted the misses; `bench/failing-levels.md` lists the 7 levels, guides, rerun commands (partial routes from T15/T17 were not kept). Four tools, `common/plan_stats.rs` and sf-bench old adapters deleted; `--planner` takes only `new`. 2 new tests. Provenance comments and conform script headers naming the old tools kept as history. |
+| T34 | retire-old-tools | T18 | ✅ | Review clean, no fix commit. Owner's acceptance is a dated FINDINGS row; four tools and old adapters deleted, `plan_bonus` kept, all examples and tests compile. Probed: `--table-only` regenerates RESULTS.md byte-identical, CLI refuses `plan_exit`, all 11 failing-levels.md rows match `results.jsonl`. Mutation of the `best-old` baseline name caught by the new test. |
 
-**Review queue:** T34
+**Review queue:** none
 
 ## Blocked on the user
 
