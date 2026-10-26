@@ -262,6 +262,11 @@ impl<'d> Rig<'d> {
                 .iter()
                 .map(|&id| (before.var(id), st.var(id))),
         ) {
+            // The wide draw lists: the engine's own, written by `bob_draw` in every mode
+            // (real-widescreen DESIGN §2.9), with no counterpart in the original's memory.
+            if sf_core::layout::engine_only(d.id) {
+                continue;
+            }
             if b0 == b1 {
                 for k in 0..d.width.len() {
                     if let Some(&v) = theirs.get(&(d.addr + k)) {

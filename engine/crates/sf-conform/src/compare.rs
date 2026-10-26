@@ -109,14 +109,15 @@ pub fn var_diffs(
 
 /// The first `LAYOUT` piece whose engine value differs from the original's memory: (piece,
 /// original's value, engine's value). Pieces inside a `masked` run (address, length) are not
-/// compared: memory a job of the original's CPU has not finished writing (DESIGN §2.1).
+/// compared: memory a job of the original's CPU has not finished writing (DESIGN §2.1). Nor is
+/// a variable the original has no counterpart of ([`sf_core::layout::engine_only`]).
 pub fn vars(
     layout: &[VarDef],
     probe: &[(VarId, u32)],
     theirs: &AmigaMemory,
     masked: &[(u32, u32)],
 ) -> Option<(VarDef, u32, u32)> {
-    vars_except(layout, probe, theirs, masked, |_| false)
+    vars_except(layout, probe, theirs, masked, |d| sf_core::layout::engine_only(d.id))
 }
 
 /// [`vars`], leaving out the variables `skip` says.
@@ -544,9 +545,11 @@ pub fn gameplay_diffs(
         .collect()
 }
 
-/// Whether `case` leaves variable `d` out of its comparison (the panel, a `vars` list).
+/// Whether `case` leaves variable `d` out of its comparison (the panel, a `vars` list), or every
+/// case does ([`sf_core::layout::engine_only`]).
 pub fn case_skips(case: &Case, d: &VarDef) -> bool {
-    (case.excludes(crate::case::Excluded::Panel) && d.id == VarId::PanelBitmap)
+    sf_core::layout::engine_only(d.id)
+        || (case.excludes(crate::case::Excluded::Panel) && d.id == VarId::PanelBitmap)
         || case
             .only_vars
             .as_ref()

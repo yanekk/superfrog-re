@@ -249,6 +249,9 @@ impl Follow {
         self.game
             .layout()
             .iter()
+            // The wide draw lists are the engine's own (`engine_only`), outside the original's
+            // memory: vAmiga refuses a write there.
+            .filter(|d| !sf_core::layout::engine_only(d.id))
             .map(|d| (d.addr, self.game.peek(d.addr, d.width.len())))
             .collect()
     }

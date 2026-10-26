@@ -41,6 +41,10 @@ fn diffs(theirs: &AmigaMemory, game: &Game) -> Vec<(&'static str, usize, u32, u3
     let pieces: Vec<VarDef> = LAYOUT.iter().flat_map(|d| d.pieces()).collect();
     let mut out: Vec<(&'static str, usize, u32, u32)> = Vec::new();
     for (p, (_, ours)) in pieces.iter().zip(game.probe()) {
+        // The wide draw lists are the engine's own (`engine_only`): the original has none.
+        if sf_core::layout::engine_only(p.id) {
+            continue;
+        }
         let t = p.read(theirs as &dyn Ram);
         if t != ours {
             match out.last_mut() {

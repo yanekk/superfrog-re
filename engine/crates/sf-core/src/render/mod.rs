@@ -6,8 +6,10 @@
 //! panel or the shown display buffer ([`panel`], [`playfield`]), and puts the hardware sprites
 //! ([`objects`]) on top in the original's priority order. Nothing is blitted here: the buffers
 //! are state, as the original's blits left them. Widescreen ([`View`]) draws more of the same
-//! level from the map beside the original's window.
+//! level from the map beside the original's window, and over it the bobs the shown buffer's pass
+//! drew ([`bobs`]).
 
+mod bobs;
 pub mod copper;
 mod objects;
 mod panel;
@@ -392,7 +394,8 @@ enum Under {
     Fetched,
     /// Fetched from a display buffer (indices already in the picture), showing a level row with
     /// level x `x0` at picture pixel 0: widescreen's columns continue it from the map.
-    Field { y: i32, x0: i32 },
+    /// `buffer` is the display buffer it is fetched from.
+    Field { y: i32, x0: i32, buffer: u8 },
 }
 
 /// One frame of Denise: walks the lines following the copper's writes, then fills the picture.
@@ -595,8 +598,102 @@ fn draw(
     } else {
         playfield::Field::default()
     };
-    objects::compose(&mut pic, &rows, &field, n as usize);
+    objects::compose(&mut pic, &rows, &field, n as usize, true);
     (pic, writes)
+}
+
+/// For widescreen's strip tests (DESIGN §2.9): a level's picture for a view without its sprites,
+/// and the shown buffer's bobs as the strips draw them, over the whole width.
+#[doc(hidden)]
+#[derive(Debug, Clone)]
+pub struct StripLayers {
+    pub picture: Picture,
+    /// For each picture pixel, the bobs' drawing there, `None` where no bob is: beside the
+    /// centre's buffer pixels, the strips' drawing of the same bobs.
+    pub bobs: Vec<Option<u8>>,
+    /// Each listed bob, in draw order, with its drawing's rectangle in picture pixels: x, y,
+    /// width, height (the frame's blit, less a masked bob's shift word).
+    pub placed: Vec<(crate::layout::WideBob, i32, i32, i32, i32)>,
+    /// The picture rows that are play field.
+    pub field_rows: std::ops::Range<i32>,
+}
+
+#[doc(hidden)]
+pub fn strip_layers(state: &State, data: &DisplayData, view: View) -> StripLayers {
+    let mem = Mem::new(state, data);
+    let word = |a: u32, line: u16, _: u16| mem.word_at(a, line);
+    let n = view.extra_columns_each_side;
+    let mut start = Fetch::default();
+    for w in copper::run_beam(&word, LEVEL_COPPER, Fetch::default()) {
+        start.write(w.reg, w.value);
+    }
+    let writes = copper::run_beam(&word, LEVEL_COPPER, start);
+    let mut end = start;
+    for w in &writes {
+        end.write(w.reg, w.value);
+    }
+    let (hstart, hstop) = (end.diwstrt & 0xFF, end.diwstop & 0xFF | 0x100);
+    let lines = end.lines();
+    let mut pic = Picture::blank(
+        hstart as i32 - n as i32,
+        lines.start,
+        hstop.saturating_sub(hstart) + 2 * n,
+        lines.end.saturating_sub(lines.start),
+    );
+    let mut denise = Denise {
+        mem: &mem,
+        writes: &writes,
+        next: 0,
+        planes: Planes {
+            fetch: start,
+            ..Planes::default()
+        },
+        colours: [0; 32],
+        sprites: Default::default(),
+        level: true,
+        dma: None,
+    };
+    let rows = denise.walk(&mut pic);
+    let field = playfield::Field::draw(state, &mem, &rows, pic.width, n.max(1));
+    let mut bobs = field.filled(0xff);
+    bobs.draw_bobs(state, &mem, &rows);
+    objects::compose(&mut pic, &rows, &field, n as usize, false);
+    let mut layer = vec![None; pic.pixels.len()];
+    let mut origin = None;
+    for (y, row) in rows.iter().enumerate() {
+        if let Under::Field { y: ly, x0, .. } = row.under {
+            origin.get_or_insert((x0, ly - y as i32));
+            for x in 0..pic.width as usize {
+                let v = bobs.at(x0 + x as i32, ly);
+                if v != 0xff && bobs.has_row(ly) {
+                    layer[y * pic.width as usize + x] = Some(v);
+                }
+            }
+        }
+    }
+    let (ox, oy) = origin.unwrap_or_default();
+    let field_rows = rows
+        .iter()
+        .enumerate()
+        .filter(|(_, r)| matches!(r.under, Under::Field { .. }))
+        .map(|(y, _)| y as i32);
+    let field_rows = field_rows.clone().min().unwrap_or(0)..field_rows.max().map_or(0, |y| y + 1);
+    let placed = playfield::shown_bobs(state, &rows)
+        .bobs
+        .into_iter()
+        .map(|b| {
+            let (x, y) = bobs::placed(&b, &mem);
+            let size = mem.word(b.frame + 0x1a);
+            let words = (size & 0x3f) as i32 - !b.background as i32;
+            (b, x - ox, y - oy, 16 * words, (size >> 6) as i32)
+        })
+        .collect();
+    StripLayers {
+        picture: pic,
+        bobs: layer,
+        placed,
+        field_rows,
+    }
 }
 
 /// What the walk learns about one picture line.
@@ -656,7 +753,11 @@ impl Denise<'_> {
                     None
                 };
                 under = match line {
-                    Some((y, x)) => Under::Field { y, x0: x + x0 },
+                    Some((y, x, buffer)) => Under::Field {
+                        y,
+                        x0: x + x0,
+                        buffer: buffer as u8,
+                    },
                     None => Under::Fetched,
                 };
                 if let Some(y) = y {

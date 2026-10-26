@@ -201,6 +201,7 @@ fn draw_rows(b: &mut Bus) {
     for k in 0..0x11u32 {
         if !seen(b, ROWS_DRAWN + 2 * k, y as u16) {
             draw_row(b, x, y);
+            crate::level::objects::wide_rows_wiped(b, y as u16 >> 4);
             b.set_w(DRAWN, b.w(DRAWN).wrapping_add(1));
         }
         y = y & 0xffff_0000 | (y as u16).wrapping_add(0x10) as u32;

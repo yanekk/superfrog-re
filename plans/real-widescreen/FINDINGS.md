@@ -12,6 +12,10 @@ changed.
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-27 | 🐞 | T08 review, fixed: level_routines (bob_draw, scroller), level_entry, recorder_setup_start and `bug::Follow::writes` compared or wrote `wide_bobs_0/1`, which a 4:3 game fills too; each now skips `layout::engine_only`. |
+| 2026-10-27 | 📌 | T08 review: a bob the drawer culls at the buffer's right edge shows in the strip but not the centre's last 2 columns (W5-1 frame 561). Owner keeps the centre faithful; T11's drill judges it. No `$fc00` bob seen. |
+| 2026-10-27 | 📌 | T08: `scroll_column` is not the shown buffer's address (it stayed in buffer 1 while buffer 0 showed); the shown buffer is the play-field lines' bitplane pointer, which the strips now read. |
+| 2026-10-27 | 📌 | T08: the centre loses a pass's bob pixels where the scroller redraws map rows (camera moving vertically, restart jumps) and below the lower part's 16-line `pushed` bound; the lists record both so strips match. `redraw_cell` and `$fc00` bobs are not followed. |
 | 2026-10-27 | 🐞 | T06 review, sweep: T02's `widescreen_spawn.rs` `a_restart_in_widescreen_wakes_the_strips` checks the left strip only; in T06's like case the wide left-column edge scan alone woke a coin there, so it may pass without the wide start scan. Not fixed. |
 | 2026-10-27 | 🐞 | T06: `recorder_follow` `a_recording_the_original_leaves_is_put_back_on_it` (once `recorder_compare` `a_short_run_compares_same`) panics "vAmiga refused a memory write: … not chip or slow RAM" on d0f5147 too. Suspect T03's wide range in LAYOUT written to the oracle (`sf-conform/src/lib.rs` 1409). Block line. |
 | 2026-10-27 | 🐞 | T06, fixed: switched off, the last extra freed on the screen kept its drawing: the draw list dropped the extras' free list once `WIDE_LIVE` hit 0. `build_bob_draw_list` now keeps the wide list while a free extra bob has drawings (`extra_left_drawn`). |
