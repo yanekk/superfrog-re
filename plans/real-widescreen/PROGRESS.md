@@ -12,7 +12,7 @@ message. Whoever writes a cell also fixes the over-budget cell they walk past.
 **Plan reviewed:** 2026-10-22 — 10 fixed, 4 decided with the user
 
 **Status:** Planned; nothing built.
-**Last updated:** 2026-10-22
+**Last updated:** 2026-10-26
 **Next `pir-work` will:** T00 wide-spawn-spike and T01 wide-mode, the two roots; T00 sizes T03.
 
 ## Tasks
@@ -27,7 +27,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T02 | wide-spawn | T01 | ⬜ | |
 | T03 | wide-capacity | T00, T01, T02 | ⬜ | |
 | T04 | wide-camera | T01 | ⬜ | |
-| T05 | wide-special-cases | T01 | ⬜ | |
+| T05 | wide-special-cases | T01 | 🔍 | Screen methods for Spud, bonus shots, `direction`'s x clamp; 7 tests in `sf-conform/tests/widescreen_special_cases.rs`. Deviations: shots' y keeps the narrow x's slip (no vertical move); chain, witch, `set_cell_tile` unchanged (commit body); whole-workspace run left to pir's end gate (worker rule), routine oracle tests for these routines green. |
 | T06 | wide-switch | T02, T03 | ⬜ | |
 | T07 | wide-recording | T01 | ⬜ | |
 | T08 | side-objects | T02, T03 | ⬜ | |
@@ -36,7 +36,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T11 | widescreen-drill | T10 | ⬜ | |
 | T12 | wide-every-level | T11 | ⬜ | |
 
-**Review queue:** *(empty)*
+**Review queue:** T05
 
 ## Blocked on the user
 

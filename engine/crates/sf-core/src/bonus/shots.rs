@@ -8,6 +8,7 @@ use crate::frog::{FROG, f};
 use crate::layout::h0;
 use crate::level::camera::{CAMERA_X, CAMERA_Y, SPRITES_HIDDEN};
 use crate::level::objects::{bob_anim, bob_follow, nothing, obj_spawn_at_xy, overlapping};
+use crate::level::screen::Screen;
 use crate::level::{LevelCtx, ObjectKind, n_clear};
 
 /// h0+$7f0a, h0+$7f0e: where [`spawn_shots`] put the shots, as longs.
@@ -77,15 +78,16 @@ fn shot_down_init(c: &mut LevelCtx, slot: u32, _d7: u16) {
 }
 
 /// h0+$7e3e (the end of `level_init_lb`): the five shots, side by side `$160` right of the
-/// camera. Their y is that x plus `$130`, the original's slip (it adds to d0, not d1), which puts
-/// them well below the screen, where [`shot_update`] parks them at once.
+/// camera (in widescreen 65 more). Their y is the narrow x plus `$130`, the original's slip (it
+/// adds to d0, not d1), which puts them well below the screen, where [`shot_update`] parks them at
+/// once.
 pub fn spawn_shots(c: &mut LevelCtx) {
     let b = &mut c.bus;
-    let x0 = b.w(CAMERA_X + 2).wrapping_add(0x160);
-    let y = x0.wrapping_add(0x130);
+    let cx = b.w(CAMERA_X + 2);
     // In widescreen past its right edge (real-widescreen DESIGN §2.6); y keeps the original's
     // slip from the narrow x, as no vertical margin moves (§2.2).
-    let x = b.w(CAMERA_X + 2).wrapping_add(c.screen.shot_spawn());
+    let x = cx.wrapping_add(c.screen.shot_spawn());
+    let y = cx.wrapping_add(Screen::NARROW.shot_spawn()).wrapping_add(0x130);
     b.set_l(SHOT_SPAWN_X, x as i16 as u32);
     b.set_l(SHOT_SPAWN_Y, y as i16 as u32);
     for (k, t) in [110u32, 110, 110, 111, 112].into_iter().enumerate() {
