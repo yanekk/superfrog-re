@@ -1,0 +1,81 @@
+Q4 stall coins: 79
+  84,4 above-air: reachable by 4 moves, 218 frames, last hopL from 89,10 wings 0; replays and takes it: true
+  86,4 above-air: reachable by 3 moves, 190 frames, last runR8 from 77,15 wings 0; replays and takes it: true
+  253,4 above-air: unreachable on the map
+  255,4 above-air: unreachable on the map
+  82,5 above-air: reachable by 3 moves, 158 frames, last runR16 from 69,11 wings 0; replays and takes it: true
+  88,5 above-air: reachable by 3 moves, 190 frames, last runR8 from 77,15 wings 0; replays and takes it: true
+  253,5 above-air: unreachable on the map
+  254,5 above-air: unreachable on the map
+  255,5 above-air: unreachable on the map
+  128,6 above-air: reachable by 8 moves, 447 frames, last runR8 from 120,6 wings 0; replays and takes it: true
+  253,6 above-air: unreachable on the map
+  255,6 above-air: unreachable on the map
+  81,7 above-air: reachable by 3 moves, 190 frames, last hopR from 74,14 wings 0; replays and takes it: true
+  126,7 above-air: reachable by 9 moves, 388 frames, last walkR12 from 122,6 wings 0; replays and takes it: true
+  130,7 above-air: reachable by 8 moves, 447 frames, last runR8 from 120,6 wings 0; replays and takes it: true
+  253,7 above-air: unreachable on the map
+  255,7 above-air: unreachable on the map
+  66,20 above-air: unreachable on the map
+  68,20 above-air: unreachable on the map
+  64,21 above-air: unreachable on the map
+  70,21 above-air: unreachable on the map
+  63,23 above-air: unreachable on the map
+  71,23 above-air: unreachable on the map
+  42,25 above-air: unreachable on the map
+  43,25 above-air: unreachable on the map
+  44,25 above-air: unreachable on the map
+  45,25 above-air: unreachable on the map
+  46,25 above-air: unreachable on the map
+  63,25 above-air: unreachable on the map
+  71,25 above-air: unreachable on the map
+  43,26 above-air: unreachable on the map
+  45,26 above-air: unreachable on the map
+  214,30 above-air: unreachable on the map
+  218,31 above-air: unreachable on the map
+  225,33 above-air: unreachable on the map
+  216,34 above-air: unreachable on the map
+  219,37 above-air: unreachable on the map
+  108,39 above-air: unreachable on the map
+  107,41 above-air: unreachable on the map
+  205,43 above-air: unreachable on the map
+  213,45 above-air: unreachable on the map
+  225,45 above-air: unreachable on the map
+  173,47 above-air: unreachable on the map
+  175,49 above-air: unreachable on the map
+  177,51 above-air: unreachable on the map
+  151,53 above-air: unreachable on the map
+  158,53 above-air: unreachable on the map
+  62,56 above-air: unreachable on the map
+  63,56 above-air: unreachable on the map
+  115,56 above-air: unreachable on the map
+  95,57 above-air: unreachable on the map
+  101,57 above-air: unreachable on the map
+  107,57 above-air: unreachable on the map
+  62,58 above-air: unreachable on the map
+  63,58 above-air: unreachable on the map
+  251,58 above-air: unreachable on the map
+  253,58 above-air: unreachable on the map
+  255,58 above-air: unreachable on the map
+  97,59 above-air: unreachable on the map
+  252,59 above-air: unreachable on the map
+  253,59 above-air: unreachable on the map
+  254,59 above-air: unreachable on the map
+  62,60 above-air: unreachable on the map
+  63,60 above-air: unreachable on the map
+  252,60 above-air: unreachable on the map
+  254,60 above-air: unreachable on the map
+  93,61 above-air: unreachable on the map
+  109,61 above-air: unreachable on the map
+  255,61 above-air: unreachable on the map
+  153,63 above-air: unreachable on the map
+  187,63 above-air: unreachable on the map
+  189,63 above-air: unreachable on the map
+  79,64 above-air: unreachable on the map
+  151,64 above-air: unreachable on the map
+  155,64 above-air: unreachable on the map
+  79,65 above-air: unreachable on the map
+  81,65 above-air: unreachable on the map
+  185,65 above-air: unreachable on the map
+  81,66 above-air: unreachable on the map
+Q4: 8/79 reachable (8 without wings), 8 replayed from the start taking the coin

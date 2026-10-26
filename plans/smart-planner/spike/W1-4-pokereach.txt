@@ -1,0 +1,1 @@
+poke graph from the start: 1031 cells of 873; exit reached true; coin cells touched 33 of 122

@@ -1,0 +1,19 @@
+[package]
+name = "sf-bench"
+version.workspace = true
+edition.workspace = true
+publish.workspace = true
+
+# The smart-planner benchmark (plans/smart-planner DESIGN §4.2): runs each planner as a child
+# process, so measuring never links the thing measured, and verifies its route as the completion
+# cases are verified.
+
+[dependencies]
+sf-core = { path = "../sf-core" }
+# The faithful check (`sf_conform::run`) and the sync points a route is verified from.
+sf-conform = { path = "../sf-conform" }
+# Stepping the original to find a route's exit frame and the hearts it lost.
+sf-oracle = { path = "../sf-oracle" }
+# Planner children in their own process group, killed as a group (already in the workspace for
+# sf-e2e and sf-app).
+libc = "0.2"

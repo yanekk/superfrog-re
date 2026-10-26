@@ -91,22 +91,29 @@ pub fn redraw_cell(c: &mut LevelCtx, cell: u32, tile: u16) {
 pub const TILE_ANIM_QUEUE: u32 = h0(0xfa68);
 
 /// `tile_anim_draw` (h0+$fa7c): each queued cell steps to the next tile (its marker cleared) and
-/// is redrawn.
+/// is redrawn. A frame may end before it (step 0), after each slot (steps 1–4,
+/// [`LevelCtx::step_done`]) or with a slot read and not yet acted on (point 1): a slot is freed
+/// only once its turn comes, and the next vertical blank's pickups (`take_tile`) queue into the
+/// slots then free (T29: W2-4 7658, the original's frame ending at h0+$fa8c with the queue full,
+/// its second coin taken a frame later). One queued into the slot just read waits for the next
+/// pass (W2-1 2008).
 pub fn tile_anim_draw(c: &mut LevelCtx) {
+    c.walk_step(0);
     let mut slot = TILE_ANIM_QUEUE;
     loop {
         let cell = c.bus.l(slot);
         slot += 4;
+        c.point(1);
         if cell == 0xffff_ffff {
             return;
         }
-        if cell == 0 {
-            continue;
+        if cell != 0 {
+            c.bus.set_l(slot - 4, 0);
+            let tile = (c.bus.w(cell) >> 6).wrapping_add(1);
+            c.bus.set_w(cell, tile.wrapping_shl(6));
+            redraw_cell(c, cell, tile);
         }
-        c.bus.set_l(slot - 4, 0);
-        let tile = (c.bus.w(cell) >> 6).wrapping_add(1);
-        c.bus.set_w(cell, tile.wrapping_shl(6));
-        redraw_cell(c, cell, tile);
+        c.step_done();
     }
 }
 
@@ -119,6 +126,15 @@ const PASSAGE_TILES: u32 = h0(0x7876);
 fn diggable(m: u16) -> bool {
     m == 0x3e || m == 0x26
 }
+
+/// `passage_step`'s steps (T32; [`LevelCtx::walk_step`]): the cells dug up the column (from 0),
+/// [`PASSAGE_DOWN`] plus those dug down it, then [`PASSAGE_MOVE`] and the move's parts. Each
+/// dig redraws up to five cells, and two or three of a pass's digs can outlast a frame: a frame
+/// the original ended in the middle of one ends at the same dig, not at the clock past the
+/// whole step (W2-2, W5-1: the engine freed the frog a frame early, so its next vertical blank
+/// moved it and it stayed a move ahead).
+pub const PASSAGE_DOWN: u16 = 0x80;
+pub const PASSAGE_MOVE: u16 = 0x100;
 
 /// `passage_step` (h0+$7772): while the frog is in a secret passage (marker 38, docs/07), each
 /// pass opens the passage's column at the current cell, up and down, then moves along it; at
@@ -136,25 +152,34 @@ pub fn passage_step(c: &mut LevelCtx) {
         b.set_w(cy, b.w(cy).wrapping_add(2));
     }
     let mut a1 = c.bus.l(PASSAGE_CELL).wrapping_add(0x260);
+    let mut dug = 0;
     loop {
         a1 = a1.wrapping_sub(0x260);
         if !diggable(marker(&c.bus, a1)) {
             break;
         }
         dig(c, a1);
+        dug += 1;
+        c.walk_step(dug);
     }
+    c.walk_step(PASSAGE_DOWN);
     let mut a1 = c.bus.l(PASSAGE_CELL);
+    let mut dug = PASSAGE_DOWN;
     loop {
         a1 = a1.wrapping_add(0x260);
         if !diggable(marker(&c.bus, a1)) {
             break;
         }
         dig(c, a1);
+        dug += 1;
+        c.walk_step(dug);
     }
+    c.walk_step(PASSAGE_MOVE);
     let a1 = c.bus.l(PASSAGE_CELL).wrapping_add(2);
     for next in [a1, a1.wrapping_sub(4)] {
         if diggable(marker(&c.bus, next)) {
             c.bus.set_l(PASSAGE_CELL, next);
+            c.walk_step(PASSAGE_MOVE + 1);
             return;
         }
     }
@@ -163,8 +188,11 @@ pub fn passage_step(c: &mut LevelCtx) {
     b.set_w(FROG + f::CAMERA_HELD, 0);
     b.set_w(FROG + f::FROZEN, 0);
     b.set_w(FROG + f::IN_PASSAGE, 0);
+    c.walk_step(PASSAGE_MOVE + 1);
     c.sfx(0x16, 2);
+    c.walk_step(PASSAGE_MOVE + 2);
     c.sample(1);
+    c.walk_step(PASSAGE_MOVE + 3);
 }
 
 /// h0+$7a34: open the passage at `cell`: its neighbours' edges are mended, and it takes the

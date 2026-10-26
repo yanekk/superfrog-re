@@ -1,0 +1,3 @@
+poke (frog placed by writing X/Y): nodes 695 (with wings 2), cells 695, edges 10980 (taking a coin 394), build 76.9s, frames simulated 855312, moves dropped: lost heart 0, died 0, never landed 0
+Q1: standable cells 730, placed 695; cells covered poke 956 vs live 196 (live only 29, poke only 789); poke edges checkable from a real state 2166: false 1160 (53.6%)
+  of the false: died, hurt or never landed 656; misses by distance: adjacent cell 327, 2-3 cells 57, further 120, same cell other fields 0

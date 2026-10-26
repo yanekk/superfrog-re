@@ -4,9 +4,9 @@
 //! mapped at all; there is no third state in which a half-mapped variable could hide a divergence.
 //!
 //! Adding a variable is one line in the [`layout!`] list below: it makes the [`VarId`], the
-//! [`LAYOUT`] entry and the bytes [`State`] keeps for it. The list is in address order, so a
-//! variable is found by address with a binary search; the tests check the order, that entries do
-//! not overlap and that byte runs are whole longs.
+//! [`LAYOUT`] entry and the bytes [`State`] keeps for it. The list is in address order and a
+//! variable is found by address through a table built from it ([`index_of`]); the tests check the
+//! order, that entries do not overlap and that byte runs are whole longs.
 //!
 //! The engine keeps every variable as the original's bytes at the original's address (as the
 //! sound driver does, T11): the 68000 code overlays words and bytes and keeps pointers to its own
@@ -738,9 +738,65 @@ pub fn def(id: VarId) -> &'static VarDef {
 }
 
 /// The index in [`LAYOUT`] of the entry covering `addr`, if any.
+///
+/// Every byte the engine reads or writes comes through here, so it is a table lookup, not a
+/// binary search (which was ~35% of a map build, smart-planner T21): [`AddrIndex`].
+#[inline]
 pub fn index_of(addr: u32) -> Option<usize> {
-    let i = LAYOUT.partition_point(|d| d.addr <= addr).checked_sub(1)?;
-    (addr < LAYOUT[i].addr + LAYOUT[i].width.len()).then_some(i)
+    static INDEX: std::sync::OnceLock<AddrIndex> = std::sync::OnceLock::new();
+    INDEX.get_or_init(AddrIndex::build).get(addr)
+}
+
+/// [`index_of`] for every 24-bit address, two levels deep: one slot per 256-byte page, which is
+/// either the page's one answer (a page inside one entry or outside all of them) or, for a page
+/// an entry boundary falls in, a 256-slot sub-table. Only ~2 × [`LAYOUT`]'s length pages are
+/// mixed, so the whole index is a few hundred KB.
+struct AddrIndex {
+    /// Per page: [`NONE`], an entry index, or [`SUB`] | the sub-table's number.
+    pages: Vec<u16>,
+    /// Per byte of each mixed page: [`NONE`] or an entry index.
+    subs: Vec<u16>,
+}
+
+const PAGE_BITS: u32 = 8;
+const NONE: u16 = u16::MAX;
+const SUB: u16 = 0x8000;
+
+impl AddrIndex {
+    fn build() -> AddrIndex {
+        assert!(LAYOUT.len() < SUB as usize, "entry indices must stay below SUB");
+        // Every entry must end inside the 24-bit space, so addresses past it cover nothing.
+        assert!(LAYOUT.iter().all(|d| d.addr + d.width.len() <= 1 << 24));
+        let mut flat = vec![NONE; 1 << 24];
+        for (i, d) in LAYOUT.iter().enumerate() {
+            flat[d.addr as usize..(d.addr + d.width.len()) as usize].fill(i as u16);
+        }
+        let page = 1usize << PAGE_BITS;
+        let mut pages = Vec::with_capacity(flat.len() / page);
+        let mut subs = Vec::new();
+        for bytes in flat.chunks(page) {
+            if bytes.iter().all(|&b| b == bytes[0]) {
+                pages.push(bytes[0]);
+            } else {
+                let n = subs.len() / page;
+                assert!(n < SUB as usize - 1, "too many mixed pages");
+                pages.push(SUB | n as u16);
+                subs.extend_from_slice(bytes);
+            }
+        }
+        AddrIndex { pages, subs }
+    }
+
+    #[inline]
+    fn get(&self, addr: u32) -> Option<usize> {
+        let p = *self.pages.get((addr >> PAGE_BITS) as usize)?;
+        let i = if p != NONE && p & SUB != 0 {
+            self.subs[((p & !SUB) as usize) << PAGE_BITS | (addr & 0xFF) as usize]
+        } else {
+            p
+        };
+        (i != NONE).then_some(i as usize)
+    }
 }
 
 /// The original's memory as transplant reads it: one byte per CPU address.
@@ -799,6 +855,29 @@ mod tests {
         assert_eq!(index_of(0), Some(0), "low_vectors");
         assert_eq!(index_of(8), None);
         assert_eq!(index_of(0xF0_0000), None);
+    }
+
+    /// The binary search [`index_of`] was before T21: the reference the table is checked against.
+    fn index_by_search(addr: u32) -> Option<usize> {
+        let i = LAYOUT.partition_point(|d| d.addr <= addr).checked_sub(1)?;
+        (addr < LAYOUT[i].addr + LAYOUT[i].width.len()).then_some(i)
+    }
+
+    #[test]
+    fn the_address_table_agrees_with_a_binary_search_everywhere() {
+        // Every 24-bit address, which covers every entry and the bytes just outside each one.
+        for addr in 0..1u32 << 24 {
+            assert_eq!(index_of(addr), index_by_search(addr), "${addr:06x}");
+        }
+        for d in LAYOUT {
+            let end = d.addr + d.width.len();
+            for a in [d.addr.wrapping_sub(1), d.addr, end - 1, end] {
+                assert_eq!(index_of(a), index_by_search(a), "{} ${a:x}", d.name);
+            }
+        }
+        for addr in [1 << 24, 0x0100_0004, 0x80C0_0000, u32::MAX] {
+            assert_eq!(index_of(addr), None, "${addr:x}");
+        }
     }
 
     #[test]

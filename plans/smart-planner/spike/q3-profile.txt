@@ -1,0 +1,21 @@
+sample <pid> 8 s of zz_map_spike spin W1-4 (one thread, step_unseen, real walk), 2026-10-21. Top of stack, samples (total 6069):
+  2740  _RNvNtNtCs7hfAcbDUeSe_7sf_core6render5panel5fetch
+  1105  _RNvNtNtCs7hfAcbDUeSe_7sf_core6render7objects7compose
+  656  _RNvNtCs7hfAcbDUeSe_7sf_core6layout8index_of
+  233  _RNvMs_NtCs7hfAcbDUeSe_7sf_core5stateNtB4_5State4byte
+  229  _RINvNtNtNtNtCsjIpoRzUjyHQ_4core5slice4sort6stable5drift4sortTmhmENCINvMNtCs6zY7rJBZy9D_5alloc5sliceSBW_11sort_by_keymNCNvMs0_NtCs7hfAcbDUeSe_7sf_core6renderNtB1Z_3Mem8with_log0E0EB21_
+  220  _RNvMs0_NtCs7hfAcbDUeSe_7sf_core6renderNtB5_3Mem5bytes
+  211  _RNvMs0_NtCs7hfAcbDUeSe_7sf_core3memNtB5_3Bus5set_b
+  133  _RNvMs0_NtNtCs7hfAcbDUeSe_7sf_core5level4beamNtB5_5Clock11blit_cycles
+  97  _RNvMs0_NtCs7hfAcbDUeSe_7sf_core3memNtB5_3Bus1b
+  87  _RNvMs_NtCs7hfAcbDUeSe_7sf_core5stateNtB4_5State3put
+  76  _RNvNtCs7hfAcbDUeSe_7sf_core6render4draw
+  47  _RNvMs_NtCs7hfAcbDUeSe_7sf_core5stateNtB4_5State4long
+  38  _RNCNvNtNtCs7hfAcbDUeSe_7sf_core6render6copper7run_buss_0B7_
+  38  _RNvNtNtCs7hfAcbDUeSe_7sf_core6render6copper7run_bus
+  36  _RNvMs0_NtCs7hfAcbDUeSe_7sf_core6renderNtB5_3Mem5whole
+Call tree: step_unseen 6130 -> level_frame -> Scene::step 4684 -> render::level_as_drawn 4424 (72%): draw 2895 (panel::fetch 2739), objects::compose 1105.
+Scene::step draws level_as_drawn on every level frame whatever step_unseen's draw flag; the flag only skips the fallback render in level_frame.
+Local patch skipping level_as_drawn (never committed): state identical to the drawing run over 3000 frames (W1-4, W6-3); spin 7500 f/s W1-4, 5000 f/s W6-3, against 1643 (W1-4) and 625 (W6-3, busy machine) drawn.
+Map builds, same code, drawn vs skipped: W6-3 cells-only 38.2 s vs 11.8 s (load ~24); W1-4 first build 510 s drawn (3928 CPU-s) vs 393 s skipped (1200 CPU-s), load 11-20.
+Final move set, W1-4 cells-only, same 4 822 483 frames: drawn 738 s (load ~28); skipped 453 s (load ~16-20, in the all run) and 227 s (load ~33, in the bands run).

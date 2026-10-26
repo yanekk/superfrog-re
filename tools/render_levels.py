@@ -128,8 +128,14 @@ def associations(files=None):
     for i, (f, disk, ts, is_lvl, _) in enumerate(info):
         if not is_lvl:
             continue
-        world = world_id(open(f, 'rb').read())
-        out.append((f, world, pick_tileset(world), pick_palette(i, disk)))
+        d = open(f, 'rb').read()
+        world = world_id(d)
+        # Each level carries its own 32-colour list (in PALA, at 0x138), equal to what the engine
+        # draws with on every world: checked against the engine's copper palette for W1-1, W2-1,
+        # W3-1, W4-1, W5-1, W6-1, 32 of 32 each. The neighbouring-chunk search below put W6 in
+        # another picture's colours (its levels precede their graphics on disk 4) and was one
+        # colour off on W1 and W4; it stays only as a fallback.
+        out.append((f, world, pick_tileset(world), base_palette(d) or pick_palette(i, disk)))
     return out
 
 def main():

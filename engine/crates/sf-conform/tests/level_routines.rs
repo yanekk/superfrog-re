@@ -215,6 +215,69 @@ fn tile_anim_draw_matches_the_original() {
     }
 }
 
+/// A frame the original ended in `tile_anim_draw` with slot 2 read and not yet cleared (step 2,
+/// point 1, `sf_conform::sync::pass_point`) ends with that slot still queued, so the vertical
+/// blank's `take_tile` cannot queue into it; at step 2 with no point, slot 2 is done and freed
+/// (T29: W2-4 7658, W2-1 2008).
+#[test]
+fn a_frame_ends_in_tile_anim_draw_with_the_slot_read_still_queued() {
+    use sf_core::level::beam::{Cut, FrameSpec, Frames};
+    use sf_core::level::{Hw, LevelCtx, pass};
+    use sf_core::mem::Bus;
+    let rig = rig();
+    let display = sf_conform::display_data();
+    let q = pass::TILE_ANIM_QUEUE;
+    let run = |queue: [u32; 4], cut: Option<Cut>| {
+        let mut st = rig.state().clone();
+        let mut paula = Vec::new();
+        let mut c = LevelCtx::new(
+            Bus::new(&mut st, display.rom()),
+            sf_core::level::standard_dispatch(),
+            Hw::default(),
+            sound(),
+            &mut paula,
+        );
+        let (col, row) = (c.bus.l(h0(0x16664)) / 16 + 4, c.bus.l(h0(0x16660)) / 16 + 4);
+        for (k, n) in queue.into_iter().enumerate() {
+            c.bus.set_l(q + 4 * k as u32, if n == 0 { 0 } else { cell(col + n, row) });
+        }
+        c.enter_phase(7);
+        c.frames = cut.map(|cut| {
+            Box::new(Frames {
+                specs: vec![FrameSpec {
+                    hw: Hw::default(),
+                    cut: Some(cut),
+                }],
+                at: Some(0),
+                in_pass: true,
+                ..Frames::default()
+            })
+        });
+        pass::tile_anim_draw(&mut c);
+        let mid = c.frames.take().map(|fr| fr.mid.expect("the frame ended in the loop"));
+        (mid, c.bus.l(q + 4), paula.len() as u16)
+    };
+    // The custom writes slot 1's redraw makes: the original's frame, ended after it, had made
+    // them.
+    let (_, _, writes) = run([1, 0, 0, 0], None);
+    for (point, freed) in [(1, false), (0, true)] {
+        let cut = Cut {
+            writes,
+            line: 0,
+            hpos: 0,
+            phase: 7,
+            step: 2,
+            point,
+            blanks: 0,
+        };
+        let (mid, after, _) = run([1, 2, 0, 0], Some(cut));
+        let mid = mid.expect("frames");
+        assert_eq!(mid.l(q), 0, "point {point}: slot 1 done");
+        assert_eq!(mid.l(q + 4) == 0, freed, "point {point}: slot 2");
+        assert_eq!(after, 0, "the loop runs on past the cut");
+    }
+}
+
 #[test]
 fn passage_step_matches_the_original() {
     use sf_core::frog::{FROG, f};

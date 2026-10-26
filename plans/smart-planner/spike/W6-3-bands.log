@@ -1,0 +1,8 @@
+  bfs layer 10: 172 nodes, 2067 edges, frontier 13, 24s
+  bfs layer 10: 909 nodes, 13144 edges, frontier 54, 122s
+  bfs layer 20: 1135 nodes, 16087 edges, frontier 24, 160s
+  bfs layer 30: 1738 nodes, 24481 edges, frontier 11, 235s
+== /tmp/t00spike/W6-3-q6-bands.txt
+cells only: nodes 196 (with wings 0), cells 196, edges 2399 (taking a coin 76), build 28.4s, frames simulated 243419, moves dropped: lost heart 1240, died 432, never landed 0
+cell + speed band + facing: nodes 1756 (with wings 0), cells 397, edges 24893 (taking a coin 1037), build 237.0s, frames simulated 2000622, moves dropped: lost heart 9047, died 4849, never landed 457
+Q6: moving-band edges with a stopped counterpart 10750; landing cell differs 5705 (53.1%); cells reached only with bands 226, only cells-only 25

@@ -1,0 +1,3 @@
+cells only: nodes 2414 (with wings 1362), cells 1447, edges 49519 (taking a coin 8367), build 227.0s, frames simulated 4822483, moves dropped: lost heart 11583, died 4353, never landed 1372
+cell + speed band + facing: nodes 12262 (with wings 6279), cells 1469, edges 279388 (taking a coin 42475), build 1698.8s, frames simulated 21675681, moves dropped: lost heart 50773, died 15188, never landed 4076
+Q6: moving-band edges with a stopped counterpart 136624; landing cell differs 76258 (55.8%); cells reached only with bands 291, only cells-only 269

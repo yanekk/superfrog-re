@@ -106,3 +106,13 @@ case!(render_wb_1, "render-wb-1");
 case!(#[ignore = "slow: about 2 min uncached"] whole_w2_2_start, "whole-w2-2-start");
 case!(#[ignore = "slow: about 9 min uncached"] whole_w6_4_start, "whole-w6-4-start");
 case!(#[ignore = "slow: about 9 min uncached"] whole_final_load, "whole-final-load");
+
+// Planned routes that lag for long runs while the frog takes coins in the vertical blank (T29):
+// `tile_anim_draw`'s queue slots freed only as the original's loop frees them.
+case!(tile_queue_w2_4, "tile-queue-w2-4");
+case!(tile_queue_w6_2, "tile-queue-w6-2");
+
+// Set-B planned routes through a secret passage dug while the original lags (T32):
+// `passage_step`'s digs counted as pass steps, so the frog is freed in the original's frame.
+case!(alone_pass_w2_2, "alone-pass-w2-2");
+case!(alone_pass_w5_1, "alone-pass-w5-1");

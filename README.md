@@ -33,6 +33,7 @@ supply your own copies in the repo root before running the tools.
 | The app's sound note for note: a note restarting a channel mid-sample is lost, as the engine's Paula writes have no beam position ([T213](plans/rust-engine/tasks/T213-paula-write-timing.md)) | ⬜ next |
 | App: menus, keyboard and gamepad controls, save states, CRT filters and widescreen, playing a level from a `.sflevel` file | ✅ |
 | Bug recorder: start any level with chosen values, record play, save a bug zip an agent replays and compares with the original ([`docs/BUG-FIX.md`](docs/BUG-FIX.md)) | ✅ |
+| Engine architecture documented: every file classified as Amiga imitation, game logic, copied-in data or shell, rated for reuse in another Amiga game, with a recommended native rewrite order ([`docs/architecture/`](docs/architecture/README.md)) | ✅ |
 | Map editor (view + edit + repack `ATN!` + rebuild `.adf`) | ⬜ next |
 
 **29 levels** found (all `300 × 84` blocks), stored as `ATN!`-packed `T7MP` files.
@@ -76,6 +77,7 @@ Full analysis in [`docs/`](docs/) (read in order):
 - [`06-graphics-and-rendering.md`](docs/06-graphics-and-rendering.md) — tilesets, palettes (`0x11300`), world→tileset mapping
 - [`07-secret-passages.md`](docs/07-secret-passages.md) — collision flags, fake-wall (flag 38) secret passages
 - [`LEVEL-INDEX.md`](docs/LEVEL-INDEX.md) — level ids + tile addressing (`<level-id>:<col>,<row>`)
+- [`architecture/`](docs/architecture/README.md) — how the Rust engine is built: which parts imitate the Amiga, which are the game's rules, which are data copied from the disks; reuse per part and a suggested order for a native rewrite
 
 ## Play it
 
@@ -148,6 +150,67 @@ the original for the conformance checks: `cd engine && cargo run -q --release -p
 judges every case in [`engine/conform/`](engine/conform/README.md) (about 1¾ h), and
 [`engine/crates/sf-e2e`](engine/crates/sf-e2e/README.md) drives the real app end to end, the whole
 game included.
+
+## Planning a route
+
+`sf-plan` finds an input script that plays a level to its exit, for a test case, a whole-game
+chain leg or a level you changed. It is the one level-routing tool: the older per-level planners
+were retired, and only `plan_bonus` remains, for the bonus level. It explores the level on the Rust engine, then plays what it
+found on the original (the emulator oracle) and repairs any stretch where the two part, so a route
+it writes is one the original agrees with. One command, no per-level options:
+
+```bash
+cd engine && cargo run --release -p sf-plan -- W2-1 --out route.txt
+```
+
+- **A guide path** may steer it: `--guide` takes a committed route (it is played once and the frog's
+  path is followed) or a waypoint file, one `col,row` per line in the tile addressing above
+  (`W1-1:94,51` is `94,51`). A guide is not a hint: it is allowed everywhere, the benchmark guides
+  each level by its committed route.
+- **It writes what it got** in the route's own timing (`# timing: original` first line). Exit 0: the
+  route reaches the exit; 1: the time (`--budget-min`, 30) or the frames ran out, and the best
+  partial route is written with a one-line reason (coins still needed, how close it got); 2: bad
+  arguments or a guide it cannot read. `--follow old.txt` repairs an old route that no longer plays;
+  `--snap` starts from a whole-game leg; `--engine-only` skips the original (for tuning).
+- **Hints are a last resort:** `--via c,r` and `--avoid c0,r0,c1,r1` push it through a spot it
+  cannot find on its own, and every run using them is logged to
+  [`engine/conform/plan-hints.log`](engine/conform/plan-hints.log) as a planner gap to fix.
+
+How it works, and the benchmark against the older tools (`sf-bench`), is in
+[`plans/smart-planner/`](plans/smart-planner/DESIGN.md). It completes most levels from every start,
+not all: the levels it still fails are listed in
+[`bench/failing-levels.md`](plans/smart-planner/bench/failing-levels.md).
+
+**Seeing a route:** `sf-routeview` replays routes on the engine and draws them over the level
+map, one page at `build/route-viz/index.html`: the frog's path, every coin, collectible and enemy,
+the events along the way (coins, kills, hits, jumps) and a timeline to play it back. A switcher on
+top lists the routes, marked failed (the planner failed, or the route reaches no exit), faults (a
+heart or life lost, over +25% of the reference route, a plan that used half its time budget, or a
+route timed for the original, which may drift on replay) or clean. A failed route also shows
+where it stops making progress.
+
+```bash
+cd engine && cargo run --release -p sf-routeview -- --planner        # every planner route, with verdicts
+cd engine && cargo run --release -p sf-routeview -- my-route.txt --guide waypoints.txt
+```
+
+`sf-bench` rebuilds the page at the end of every guided set-C run of the new planner (`--no-view`
+skips it). Only app-timed routes (`# timing: app`) replay true. The page holds the disks' graphics,
+so it stays in `build/`.
+
+**When the planner gets stuck, a person plays the hard part.** If a level finds no exit on two
+seeds, or stalls at the same spot twice, the session shows the stall on the route page and asks
+you to play that stretch. It hands you one command: the app races (silently, keys locked) through
+a route to just before the stall, pauses, and records your play from there. You save the
+recording with ⌘. as for a bug report; the planner then follows it in order and plans again.
+
+```bash
+python3 tools/handover.py route.txt W6-4 263,66          # writes the app script, prints your command
+python3 tools/recording_guide.py bugs/bug-W6-4-….zip     # your recording, as the planner's guide
+cd engine && cargo run --release -p sf-plan -- W6-4 --guide-ordered --guide bug-W6-4-…-guide.txt
+```
+
+The script presses keys through your Controls mapping, so regenerate it after remapping.
 
 ## Tools
 
