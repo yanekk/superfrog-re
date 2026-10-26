@@ -20,6 +20,7 @@ pub mod load;
 pub mod objects;
 pub mod panel;
 pub mod pass;
+pub mod screen;
 pub mod scroll;
 pub mod spawn;
 pub mod tally;
@@ -312,6 +313,9 @@ pub struct LevelCtx<'a> {
     /// Paths of the original the engine met and does not follow (an object with no kind among
     /// them), each once: what [`crate::Game::unported`] reports.
     pub unported: Vec<&'static str>,
+    /// The screen the step plays against: the original's, or widescreen's (real-widescreen
+    /// DESIGN §2.2, §3.1). Set from `Game`'s mode each step; every horizontal edge test asks it.
+    pub screen: screen::Screen,
 }
 
 impl<'a> LevelCtx<'a> {
@@ -351,6 +355,7 @@ impl<'a> LevelCtx<'a> {
             over_end: None,
             vbl_held: false,
             unported: Vec::new(),
+            screen: screen::Screen::default(),
         }
     }
 }

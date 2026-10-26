@@ -325,6 +325,8 @@ pub(crate) struct Cx<'a> {
     pub jobs: Vec<crate::game::Job>,
     /// What a routine hands back to its caller (the menu's choice).
     pub ret: u32,
+    /// The screen a level routine run on the front end plays against ([`Front::screen`]).
+    pub screen: crate::level::screen::Screen,
     /// The line a long job began on (the memory it wrote before it shows from there).
     pub busy_from: Option<u16>,
     /// The line from which a part of the main program shows in this frame's picture, when it is not
@@ -642,6 +644,11 @@ pub struct Front {
     /// For conformance, a frame that loads: what runs on by itself while the original loads, as
     /// it had it ([`crate::Game::set_load_state`]), put in place after the work carried over.
     pub(crate) load_state: Vec<(u32, Vec<u8>)>,
+    /// The screen a level routine run here plays against (real-widescreen DESIGN §3.3): the
+    /// restart's `level_init` and game over's vertical blank are level steps too. Not in a save
+    /// state: `Game` sets it from its mode before each call.
+    #[serde(skip)]
+    pub(crate) screen: crate::level::screen::Screen,
 }
 
 /// An unpacking in progress, for the picture: where, what was there, and when it began and ends
@@ -753,6 +760,7 @@ impl Front {
             audio: sf_paula::AudioDma::booted(),
             schedule: Vec::new(),
             load_state: Vec::new(),
+            screen: Default::default(),
         }
     }
 
@@ -817,6 +825,7 @@ impl Front {
             audio: sf_paula::AudioDma::booted(),
             schedule: Vec::new(),
             load_state: Vec::new(),
+            screen: Default::default(),
         };
         if in_slot {
             front.chain_below(s, &display.front);
@@ -869,6 +878,7 @@ impl Front {
             audio: sf_paula::AudioDma::booted(),
             schedule: Vec::new(),
             load_state: Vec::new(),
+            screen: Default::default(),
         }
     }
 
@@ -945,6 +955,7 @@ impl Front {
             resync: Vec::new(),
             jobs: Vec::new(),
             ret: self.ret,
+            screen: self.screen,
             busy_from: None,
             reveal: None,
             reveal_state: None,
@@ -1021,6 +1032,7 @@ impl Front {
                 resync: Vec::new(),
                 jobs: Vec::new(),
                 ret: self.ret,
+                screen: self.screen,
                 busy_from: None,
                 reveal: None,
                 reveal_state: None,
@@ -1149,6 +1161,7 @@ impl Front {
                 resync: Vec::new(),
                 jobs: Vec::new(),
                 ret: 0,
+                screen: self.screen,
                 busy_from: None,
                 reveal: None,
                 reveal_state: None,
@@ -1214,6 +1227,7 @@ impl Front {
             resync: Vec::new(),
             jobs: Vec::new(),
             ret: self.ret,
+            screen: self.screen,
             busy_from: None,
             reveal: None,
             reveal_state: None,

@@ -251,6 +251,7 @@ fn in_level_from(cx: &mut Cx, frog_only: bool, line: u16, f: impl FnOnce(&mut Le
             &mut writes,
         );
         c.clock = Clock { line, into: 0 };
+        c.screen = cx.screen;
         f(&mut c);
         end = end.max(c.clock.line);
         for u in std::mem::take(&mut c.unported) {

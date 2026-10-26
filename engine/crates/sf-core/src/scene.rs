@@ -30,6 +30,8 @@ pub struct Machine<'a> {
     pub blits: Vec<(u16, u16, u16)>,
     /// What the level met and does not follow ([`LevelCtx::unported`]), added to.
     pub unported: &'a mut Vec<&'static str>,
+    /// The screen a level step plays against ([`LevelCtx::screen`]), from `Game`'s mode.
+    pub screen: crate::level::screen::Screen,
 }
 
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
@@ -249,6 +251,7 @@ impl Scene {
                     &mut out,
                 );
                 c.costs = *m.costs;
+                c.screen = m.screen;
                 c.schedule = std::mem::take(&mut m.schedule);
                 c.blits = std::mem::take(&mut m.blits);
                 if m.trace.is_some() {

@@ -205,6 +205,10 @@ pub struct Game {
     /// §2.7). Not in a save state: the app sets it from its own setting.
     #[serde(skip)]
     view: View,
+    /// The widescreen game (real-widescreen DESIGN §2.1, §3.4): the level's horizontal screen
+    /// edges 65 pixels further out each side. Not in a save state, like `view`: the app sets it.
+    #[serde(skip)]
+    widescreen: bool,
     /// The seed a power-on start is waiting to put in place.
     seed: Option<Rng>,
     frame: u32,
@@ -401,6 +405,7 @@ impl Game {
             story,
             shown: None,
             view: View::default(),
+            widescreen: false,
             seed,
             frame: 0,
             keys: KeySet::NONE,
@@ -547,6 +552,7 @@ impl Game {
         {
             self.seed = None;
             front.anchor_writes(std::mem::take(&mut self.schedule));
+            front.screen = crate::level::screen::Screen { wide: self.widescreen };
             let out = front.step(&mut self.state, &self.display, input);
             let level_list = front.cop1lc() == crate::render::LEVEL_COPPER;
             self.scene = front.scene(&self.state, self.scene);
@@ -625,10 +631,12 @@ impl Game {
         let display = Arc::clone(&self.display);
         let frog_only = self.frog_only;
         let sdr = self.sdr;
+        let screen = self.screen();
         let mut after = |s: &mut State, line: u16, into: u32| {
             // `level_frame_loop` returned: what follows runs on the front end's program, from
             // where the loop's last pass ended (T37, `crate::level::exit`).
             let mut front = crate::front::Front::level_over(s, &display.front, sdr, frog_only);
+            front.screen = screen;
             let (more, jobs) = front.finish_frame(s, &display, input, line, into);
             ended = Some((front, more, jobs));
         };
@@ -647,6 +655,7 @@ impl Game {
                 schedule: std::mem::take(&mut self.schedule),
                 blits: std::mem::take(&mut self.blits),
                 unported: &mut self.level_unported,
+                screen,
             };
             self.scene
                 .step(&mut m, &mut self.pending, pacing, self.view, draw, &mut after)
@@ -695,6 +704,7 @@ impl Game {
             // The intro's handler's, run at the load in the next step (T214).
             story.blanks = frames;
         } else if let Some(front) = self.front.as_mut() {
+            front.screen = crate::level::screen::Screen { wide: self.widescreen };
             front.load_blanks(&mut self.state, &self.display, frames, &mut self.load_paula);
         }
     }
@@ -717,6 +727,24 @@ impl Game {
     /// The view [`Game::step`] draws for.
     pub fn view(&self) -> View {
         self.view
+    }
+
+    /// The widescreen game (real-widescreen DESIGN §2.1, §2.7): from the next step, a level plays
+    /// against a screen 65 pixels wider each side. Unlike [`Game::set_view`] this changes the game;
+    /// with it off the game is the original.
+    pub fn set_widescreen(&mut self, on: bool) {
+        self.widescreen = on;
+    }
+
+    /// Whether [`Game::set_widescreen`] is on.
+    pub fn widescreen(&self) -> bool {
+        self.widescreen
+    }
+
+    /// The screen a level step plays against, the level's own or one the front end runs
+    /// (a restart's `level_init`, game over's vertical blank).
+    fn screen(&self) -> crate::level::screen::Screen {
+        crate::level::screen::Screen { wide: self.widescreen }
     }
 
     /// The frame the original shows for this state (DESIGN §3.3), widened by `view`.
