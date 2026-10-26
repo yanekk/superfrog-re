@@ -13,7 +13,7 @@ message. Whoever writes a cell also fixes the over-budget cell they walk past.
 
 **Status:** Planned; nothing built.
 **Last updated:** 2026-10-22
-**Next `pir-work` will:** T00 wide-spawn-spike and T01 wide-mode, the two roots; T00 sizes T03.
+**Next `pir-work` will:** T00 wide-spawn-spike, T02 wide-spawn and T04 wide-camera; T01, T05, T07 are done.
 
 ## Tasks
 
@@ -29,14 +29,14 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T04 | wide-camera | T01 | ⬜ | |
 | T05 | wide-special-cases | T01 | ✅ | |
 | T06 | wide-switch | T02, T03 | ⬜ | |
-| T07 | wide-recording | T01 | 🔍 | Format v2 (`widescreen`, `W` toggle), replay plays modes and wide picture, compare/case refuse (exit 1, stderr). 6 unit tests, 5 in `widescreen_recording.rs`. Deviations: `W` twice on a line is refused (doc silent); `W` alone writes as `W`, not `- W`; docs/architecture/game-flow.md format line updated too. |
+| T07 | wide-recording | T01 | ✅ | Review clean, no fix commit. Probed a hand-written v2 zip through the CLI (`W` held 100 frames toggles once, `- W` back; replay frame widths 334/464 at the toggles; compare exit 1, nothing written). Mutations caught: writer skipping toggle lines, toggle applied one step late. Three recorded deviations held by unit tests. App header/toggles left to T10. |
 | T08 | side-objects | T02, T03 | ⬜ | |
 | T09 | side-frog | T04, T08 | ⬜ | |
 | T10 | app-wiring | T05, T06, T07, T08, T09 | ⬜ | |
 | T11 | widescreen-drill | T10 | ⬜ | |
 | T12 | wide-every-level | T11 | ⬜ | |
 
-**Review queue:** T07
+**Review queue:** —
 
 ## Blocked on the user
 
