@@ -11,9 +11,9 @@ message. Whoever writes a cell also fixes the over-budget cell they walk past.
 
 **Plan reviewed:** 2026-10-22 — 10 fixed, 4 decided with the user
 
-**Status:** Building; T01 ✅, T02 ✅.
+**Status:** Building; T01, T02, T05 ✅.
 **Last updated:** 2026-10-26
-**Next `pir-work` will:** T00, T04, T05, T07 are free to build.
+**Next `pir-work` will:** T00, T04, T07 are free to build.
 
 ## Tasks
 
@@ -27,7 +27,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T02 | wide-spawn | T01 | ✅ | Review clean, no fix commit. Five mutations (despawn, left-behind, edge and bonus columns, unpaid range) each caught; probe of 7 levels both modes found one spawn-then-free at the wide right edge (finding). sf-core and sf-conform lib green; workspace run left to pir's end gate. |
 | T03 | wide-capacity | T00, T01, T02 | ⬜ | |
 | T04 | wide-camera | T01 | ⬜ | |
-| T05 | wide-special-cases | T01 | ⬜ | |
+| T05 | wide-special-cases | T01 | ✅ | |
 | T06 | wide-switch | T02, T03 | ⬜ | |
 | T07 | wide-recording | T01 | ⬜ | |
 | T08 | side-objects | T02, T03 | ⬜ | |

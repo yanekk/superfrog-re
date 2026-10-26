@@ -88,6 +88,43 @@ impl Screen {
     pub fn sprite_hide_right(self) -> u16 {
         0x150 + self.extra()
     }
+
+    /// Objects with their own edge tests (DESIGN §2.6). Spud's park bounds (`spud_update`): it is
+    /// parked when `x ≤ cx − this`, 0, plus [`Screen::extra`] (the left edge, as a distance left
+    /// of `cx`).
+    pub fn spud_left(self) -> u16 {
+        self.extra()
+    }
+
+    /// Spud is parked when `x > cx + this`: `$150`, plus [`Screen::extra`].
+    pub fn spud_right(self) -> u16 {
+        0x150 + self.extra()
+    }
+
+    /// Where `spawn_shots` puts the bonus level's first shot: `cx + $160`, plus
+    /// [`Screen::extra`]; the others follow `$10` apart.
+    pub fn shot_spawn(self) -> u16 {
+        0x160 + self.extra()
+    }
+
+    /// A bonus shot is gone, ready to fire again (`shooter_spud`), once `x > cx + this`: `$150`,
+    /// plus [`Screen::extra`].
+    pub fn shot_gone(self) -> u16 {
+        0x150 + self.extra()
+    }
+
+    /// A bonus shot moves while `x < cx + this`, and is parked there off the top or bottom
+    /// (`shot_update`): `$200`, plus [`Screen::extra`].
+    pub fn shot_far(self) -> u16 {
+        0x200 + self.extra()
+    }
+
+    /// `direction`'s clamp of a screen x (`x − cx`, signed): `−extra ..= $153 + extra`, the
+    /// original's `0 ..= $153` widened by [`Screen::extra`] each side.
+    pub fn direction_x(self) -> (i32, i32) {
+        let e = self.extra() as i32;
+        (-e, 0x154 + e - 1)
+    }
 }
 
 #[cfg(test)]
@@ -108,6 +145,9 @@ mod tests {
         assert_eq!(s.scan_row_cells(), 0x19);
         assert_eq!(s.scan_screen_cells(), 0x18);
         assert_eq!(s.left_behind(), 0);
+        assert_eq!((s.spud_left(), s.spud_right()), (0, 0x150));
+        assert_eq!((s.shot_spawn(), s.shot_gone(), s.shot_far()), (0x160, 0x150, 0x200));
+        assert_eq!(s.direction_x(), (0, 0x153));
     }
 
     #[test]
@@ -124,6 +164,9 @@ mod tests {
         assert_eq!(s.scan_row_cells(), 0x19 + 10);
         assert_eq!(s.scan_screen_cells(), 0x18 + 10);
         assert_eq!(s.left_behind(), 65);
+        assert_eq!((s.spud_left(), s.spud_right()), (65, 0x150 + 65));
+        assert_eq!((s.shot_spawn(), s.shot_gone(), s.shot_far()), (0x160 + 65, 0x150 + 65, 0x200 + 65));
+        assert_eq!(s.direction_x(), (-65, 0x153 + 65));
     }
 
     #[test]
