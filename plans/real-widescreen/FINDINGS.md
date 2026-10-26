@@ -12,6 +12,8 @@ changed.
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-26 | 📌 | T03: with T02–T05's rules W6-2's ghost run peaks at 92 live of 100 (`sf-conform/tests/widescreen_capacity.rs`). Extras are compared as 0 in 4:3 conformance, not excluded: a 4:3 write there fails a case. |
+| 2026-10-26 | 📌 | T03: switched off with no extra live, the draw list is the original's, so an extra free bob's last drawing is never erased. T06 should test a switch-off right after an extra is freed on screen. |
 | 2026-10-26 | 🐞 | T00 review, fixed: the spike's ghost run started its 4:3 game with the hack on, so W6-3's ghost stopped at frame 1362. Re-run: W6-3 peaks 73 live over 8400 frames; `WIDE_SLOTS` 80 stands. |
 | 2026-10-26 | 📌 | T00: no panic or softlock in any level, bonus or final with spawns widened (`spike/README.md`). Given room, 95 live at once (W6-2), at most 57 inside the wide view (W4-2): stale objects stay until evicted. `WIDE_SLOTS` 80 recommended. |
 | 2026-10-26 | 📌 | T00: the wide draw list peaks at 96 entries against `bob_draw_list`'s 40 places (`$a8` bytes); hitboxes peak at 74 of 127. A wide replay of a 4:3 route drifts and mostly dies: enemies differ. |
