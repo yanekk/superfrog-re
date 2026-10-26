@@ -195,6 +195,20 @@ layout! {
     PanelBitmap = "panel_bitmap", h3(0x4b390), Width::Bytes(5 * 0x2a0);
     /// h3+$4c0b0..$64b70: the frog's attached-sprite frames (`hero_sprite_frames` h0+$19ce0).
     HeroFrames = "hero_frames", h3(0x4c0b0), Width::Bytes(0x18ac0);
+    /// real-widescreen's extra slots (DESIGN §2.4, `level::objects::WIDE_BASE`), at an address
+    /// the original never maps: in a 4:3 game never written, so 0 as the oracle's transplant
+    /// reads it. The slots, how many are live, whether their free list is filled, which draw and
+    /// hitbox lists the last pass built, their bob free list, the wide draw list (a 0 first),
+    /// their bob records (each with its position before it) and the wide hitbox list.
+    WideObjSlots = "wide_obj_slots", crate::level::objects::WIDE_OBJ_SLOTS, Width::Bytes(crate::level::objects::WIDE_SLOTS * 0x7c);
+    WideLive = "wide_live", crate::level::objects::WIDE_LIVE, Width::W;
+    WideReady = "wide_ready", crate::level::objects::WIDE_READY, Width::W;
+    WideDrawListAt = "wide_draw_list_at", crate::level::objects::WIDE_DRAW_LIST_AT, Width::L;
+    WideHitboxesAt = "wide_hitboxes_at", crate::level::objects::WIDE_HITBOXES_AT, Width::L;
+    WideBobFreeList = "wide_bob_free_list", crate::level::objects::WIDE_BOB_FREE_LIST, Width::Bytes(4 * (crate::level::objects::WIDE_SLOTS + 1));
+    WideBobDrawList = "wide_bob_draw_list", crate::level::objects::WIDE_BOB_DRAW_LIST - 4, Width::Bytes(4 * (crate::level::objects::SLOTS + crate::level::objects::WIDE_SLOTS + 3));
+    WideBobRecords = "wide_bob_records", crate::level::objects::WIDE_BOB_RECORDS - 4, Width::Bytes(crate::level::objects::WIDE_SLOTS * 0x11c);
+    WideHitboxes = "wide_hitboxes", crate::level::objects::WIDE_HITBOXES, Width::Bytes(12 * crate::level::objects::WIDE_HITBOX_ENTRIES + 4);
     /// The front end's flags (T20, docs/13), h0+$6..$26: `game_full_mode` (h0+$6), `loader_mode`,
     /// `start_world`, `start_level` (from a level code), the words between them, `attract_mode`,
     /// `final_level_flag`.

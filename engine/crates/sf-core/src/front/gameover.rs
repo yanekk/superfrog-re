@@ -41,6 +41,16 @@ const PASS_WRITES: [(u32, u32); 3] = [
     (at(0x297b2), 0x1730),
 ];
 
+/// [`PASS_WRITES`], and in widescreen the extra slots' range up to its hitbox list: their slots,
+/// count, free list, draw list and bob records (real-widescreen DESIGN §2.4).
+pub(crate) fn pass_writes(screen: crate::level::screen::Screen) -> Vec<(u32, u32)> {
+    let mut w = PASS_WRITES.to_vec();
+    if screen.wide {
+        w.push((objects::WIDE_BASE, objects::WIDE_HITBOXES - objects::WIDE_BASE));
+    }
+    w
+}
+
 /// Template 1: the GAME OVER sign (h0+$2cdf8's frame), where `game_over_seq` puts it.
 pub static GAME_OVER: ObjectKind = ObjectKind {
     name: "game over",
@@ -131,7 +141,7 @@ impl GameOverSeq {
                     });
                     cx.jobs.push(crate::game::Job {
                         inside: IN_PASS[self.pass as usize].to_vec(),
-                        writes: PASS_WRITES.to_vec(),
+                        writes: pass_writes(cx.screen),
                     });
                     self.pc = 2;
                     if at_end >= super::FRAME_LINES {
@@ -148,7 +158,8 @@ impl GameOverSeq {
                     let line = cx.line + std::mem::take(&mut self.owed);
                     let bob = self.bob;
                     cx.line = in_level_from(cx, self.frog_only, line, |c| {
-                        c.bus.set_l(objects::BOB_DRAW_LIST, bob);
+                        let list = objects::draw_list(&c.bus);
+                        c.bus.set_l(list, bob);
                         objects::bob_draw(c);
                         pass::buffer_flip(c);
                         scroll::scroll_latch(c);

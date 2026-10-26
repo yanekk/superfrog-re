@@ -925,10 +925,14 @@ impl LevelCtx<'_> {
         self.bus.at = self.clock.nominal();
     }
 
-    /// The CPU waits while the blitter runs `words` words of a blit with BLTCON0 `con0`.
+    /// The CPU waits while the blitter runs `words` words of a blit with BLTCON0 `con0`; no
+    /// time in [`LevelCtx::unpaid`] work (an extra bob's, DESIGN §2.4, D11).
     pub fn blit_words(&mut self, words: u32, con0: u16) {
         self.interrupt_due();
         self.stamp();
+        if self.free {
+            return;
+        }
         self.scheduled_blit(words);
         let slots = words * beam::slots_per_word(con0);
         self.tick(beam::Tick::Blit(slots));

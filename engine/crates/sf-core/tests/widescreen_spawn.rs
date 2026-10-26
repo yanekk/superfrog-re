@@ -311,8 +311,8 @@ fn left_behind_is_measured_from_the_wide_left_edge() {
     assert_eq!(survives(&st, RIGHT, CX - w + 1, w, f), [true, true]);
 }
 
-/// `find_free`, every slot full: an evictable object in the right strip is on screen in
-/// widescreen (kept, no slot found) and off it in 4:3 (evicted).
+/// `find_free`, every slot full (widescreen's extras too, T03): an evictable object in the right
+/// strip is on screen in widescreen (kept, no slot found) and off it in 4:3 (evicted).
 #[test]
 fn find_free_keeps_an_object_in_the_strip() {
     let st = level("W1-1");
@@ -329,6 +329,10 @@ fn find_free_keeps_an_object_in_the_strip() {
                 b.set_w(s + 0x2a, (s == slot) as u16);
                 b.set_l(BOB_FREE_LIST + 4 * k, 0);
             }
+            for k in 0..objects::WIDE_SLOTS {
+                b.set_l(objects::slot_at(objects::SLOTS + k) + 0x40, 1);
+            }
+            b.set_w(objects::WIDE_LIVE, objects::WIDE_SLOTS as u16);
         }
         let template = objects::OBJ_TEMPLATES;
         let (spawned, _) = run(&mut st, screen, standard_dispatch(), |c| {

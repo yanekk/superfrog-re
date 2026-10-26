@@ -9,13 +9,118 @@ use crate::frog::{FROG, f};
 use crate::layout::{h0, h3};
 use crate::level::camera::{CAMERA_X, CAMERA_Y, SCROLL_DIRS, SHOOTER_MODE, SPRITES_HIDDEN};
 use crate::level::beam::Cost;
+use crate::level::screen::Screen;
 use crate::level::{LevelCtx, n_clear};
 use crate::mem::Bus;
 
 /// `obj_slots` (h0+$1ba6c): 20 slots of `$7c` bytes.
 pub const OBJ_SLOTS: u32 = h0(0x1ba6c);
 const SLOT_SIZE: u32 = 0x7c;
-const SLOTS: u32 = 20;
+/// The original's slots.
+pub const SLOTS: u32 = 20;
+/// Widescreen's extra slots (real-widescreen DESIGN §2.4, D4): T00 measured at most 95 live at
+/// once (W6-2) with room for them all, so 80 more than the original's 20, a margin of 5.
+pub const WIDE_SLOTS: u32 = 80;
+
+/// The extra slots' range, at an address the original never maps (nothing between chip RAM's
+/// end and slow RAM's `$c00000`), so every pointer the code follows stays a plain address and a
+/// 4:3 game, which never writes it, transplants and compares it as 0 (DESIGN §2.4).
+pub const WIDE_BASE: u32 = 0x60_0000;
+/// [`WIDE_SLOTS`] slots of `$7c` bytes, after the original's in every loop.
+pub const WIDE_OBJ_SLOTS: u32 = WIDE_BASE;
+/// How many extra slots are live: what makes the loops walk them after widescreen is switched
+/// off (DESIGN §2.7), and lets a 4:3 game skip them with one read. [`fill_slot`] and [`obj_free`]
+/// keep it, the only writers of a slot's `+$40`.
+pub const WIDE_LIVE: u32 = WIDE_BASE + 0x26c0;
+/// Non-zero once [`WIDE_BOB_FREE_LIST`] holds the extra bob records (set by the first extra
+/// slot's spawn).
+pub const WIDE_READY: u32 = WIDE_BASE + 0x26c2;
+/// The draw list and the hitbox list the last pass built: 0 for the original's
+/// ([`BOB_DRAW_LIST`], [`HITBOXES`]), else the wide one. Their readers follow it, so a pass
+/// reads the list it built whatever the mode is by then.
+pub const WIDE_DRAW_LIST_AT: u32 = WIDE_BASE + 0x26c4;
+pub const WIDE_HITBOXES_AT: u32 = WIDE_BASE + 0x26c8;
+/// The extra slots' bob free list: [`WIDE_SLOTS`] entries, then 0, as `bob_free_list` ends.
+pub const WIDE_BOB_FREE_LIST: u32 = WIDE_BASE + 0x2700;
+/// The wide draw list: a 0, then room for the spud and every object bob record (the original's
+/// 20 and the extras' [`WIDE_SLOTS`], each in a slot or a free list), then the closing 0.
+pub const WIDE_BOB_DRAW_LIST: u32 = WIDE_BASE + 0x2904;
+/// [`WIDE_SLOTS`] bob records of `$11c` bytes, each with its level position in the long before
+/// it, as `bob_records` has them.
+pub const WIDE_BOB_RECORDS: u32 = WIDE_BASE + 0x2b04;
+const BOB_SIZE: u32 = 0x11c;
+/// The wide hitbox list: the original's `$600` bytes are 128 entries for 20 slots, so as many
+/// a slot for all 100 (T00: a full table could pass any measured peak, so per slot).
+pub const WIDE_HITBOXES: u32 = WIDE_BASE + 0x8400;
+pub const WIDE_HITBOX_ENTRIES: u32 = 128 * (SLOTS + WIDE_SLOTS) / SLOTS;
+/// The range's bytes, [`crate::layout`]'s entries end to end with the gaps between them.
+pub const WIDE_BYTES: u32 = 0x8400 + 12 * WIDE_HITBOX_ENTRIES + 4;
+const _: () = assert!(
+    WIDE_SLOTS * SLOT_SIZE <= 0x26c0
+        && 4 * (WIDE_SLOTS + 1) <= 0x200
+        && 4 * (SLOTS + WIDE_SLOTS + 3) <= 0x200
+        && WIDE_BOB_RECORDS - 4 + WIDE_SLOTS * BOB_SIZE <= WIDE_HITBOXES
+);
+
+/// Slot `k` in loop order: the original's 20, then the extras.
+pub const fn slot_at(k: u32) -> u32 {
+    if k < SLOTS { OBJ_SLOTS + k * SLOT_SIZE } else { WIDE_OBJ_SLOTS + (k - SLOTS) * SLOT_SIZE }
+}
+
+/// Whether `slot` is an extra slot (or `bob` an extra bob record, or any address of the range).
+pub const fn is_wide(addr: u32) -> bool {
+    addr >= WIDE_BASE && addr < WIDE_BASE + WIDE_BYTES
+}
+
+/// Whether the loops walk the extra slots: in widescreen, or while one is still live after it
+/// was switched off (DESIGN §2.4, §2.7). A 4:3 game reads one word of the range, always 0.
+pub fn wide_walk(b: &Bus, screen: Screen) -> bool {
+    screen.wide || b.w(WIDE_LIVE) != 0
+}
+
+/// Every slot address in the order the original walks them, then the extras while `screen.wide`
+/// or any extra slot is live (DESIGN §2.4); [`find_free`] hands out an extra only when
+/// `screen.wide`.
+pub fn slot_addrs(b: &Bus, screen: Screen) -> impl Iterator<Item = u32> + use<> {
+    let n = if wide_walk(b, screen) { SLOTS + WIDE_SLOTS } else { SLOTS };
+    (0..n).map(slot_at)
+}
+
+/// The slots [`find_free`] may hand out: the extras only in widescreen.
+fn free_candidates(screen: Screen) -> impl Iterator<Item = u32> {
+    let n = if screen.wide { SLOTS + WIDE_SLOTS } else { SLOTS };
+    (0..n).map(slot_at)
+}
+
+/// The draw list the last [`build_bob_draw_list`] built (its first entry; the long before it is 0).
+pub fn draw_list(b: &Bus) -> u32 {
+    match b.l(WIDE_DRAW_LIST_AT) {
+        0 => BOB_DRAW_LIST,
+        at => at,
+    }
+}
+
+/// The hitbox list the last [`obj_build_hitboxes`] built.
+pub fn hitbox_list(b: &Bus) -> u32 {
+    match b.l(WIDE_HITBOXES_AT) {
+        0 => HITBOXES,
+        at => at,
+    }
+}
+
+/// Record which list a pass built, writing the range only when it changes, so a 4:3 game never
+/// writes it.
+fn set_list(b: &mut Bus, at: u32, list: u32, original: u32) {
+    let v = if list == original { 0 } else { list };
+    if b.l(at) != v {
+        b.set_l(at, v);
+    }
+}
+
+/// Run `f` unpaid when it is work on an extra slot or bob (DESIGN §2.4, D11).
+fn paid_unless<R>(c: &mut LevelCtx, extra: bool, f: impl FnOnce(&mut LevelCtx) -> R) -> R {
+    if extra { c.unpaid(f) } else { f(c) }
+}
 /// `hitboxes` (h0+$d350): 12-byte entries (x1, x2, y1, y2, slot), ending with a negative word.
 pub const HITBOXES: u32 = h0(0xd350);
 /// `spud_bob` (h0+$297b6): the spud's bob record; its level position is the long before it.
@@ -26,9 +131,16 @@ pub const BOB_DRAW_LIST: u32 = h0(0x2970e);
 pub const BOB_FREE_LIST: u32 = h0(0x1ba16);
 
 /// `obj_run_all` (h0+$1b324): each live slot's update routine (`+$04`), in slot order.
+/// An extra slot's update runs unpaid and is no step of the pass's loop (DESIGN §2.4, D11).
 pub fn obj_run_all(c: &mut LevelCtx) {
-    for k in 0..SLOTS {
-        let slot = OBJ_SLOTS + k * SLOT_SIZE;
+    for slot in slot_addrs(&c.bus, c.screen) {
+        if is_wide(slot) {
+            if c.bus.l(slot + 0x40) != 0 {
+                let update = c.bus.l(slot + 4);
+                c.unpaid(|c| crate::level::call(c, update, slot, 0));
+            }
+            continue;
+        }
         c.spend(Cost::ObjSlot);
         if c.bus.l(slot + 0x40) != 0 {
             c.spend(Cost::ObjUpdate);
@@ -59,19 +171,17 @@ pub struct Spawned {
     pub a0: u32,
 }
 
-/// The slot the spawner settles on (`a1`) after its search, or `None`: no slot.
+/// The slot the spawner settles on (`a1`) after its search, or `None`: no slot. In widescreen
+/// the extras are searched after the original's 20, and an evictable slot is reclaimed only once
+/// every one of them is full too; its look at an extra is unpaid (DESIGN §2.4, D11).
 fn find_free(c: &mut LevelCtx) -> Option<u32> {
-    if let Some(s) = (0..SLOTS)
-        .map(|k| OBJ_SLOTS + k * SLOT_SIZE)
-        .find(|&s| c.bus.l(s + 0x40) == 0)
-    {
+    if let Some(s) = free_candidates(c.screen).find(|&s| c.bus.l(s + 0x40) == 0) {
         return Some(s);
     }
     // Every slot full: an evictable one off the screen is reclaimed.
-    for k in 0..SLOTS {
-        let s = OBJ_SLOTS + k * SLOT_SIZE;
+    for s in free_candidates(c.screen) {
         if c.bus.w(s + 0x2a) != 0 {
-            obj_despawn_if_offscreen(c, s, 0);
+            paid_unless(c, is_wide(s), |c| obj_despawn_if_offscreen(c, s, 0));
             if c.bus.l(s + 0x40) == 0 {
                 return Some(s);
             }
@@ -80,18 +190,61 @@ fn find_free(c: &mut LevelCtx) -> Option<u32> {
     None
 }
 
-/// A free bob record for `slot` from `bob_free_list` (its entry taken), or false: none.
+/// A free bob record for `slot` from `bob_free_list` (its entry taken), or false: none. An extra
+/// slot takes one from the extras' own list, so its `+$4c` and `+$50` point into the range and
+/// [`obj_free`] gives the record back there.
 fn take_bob(b: &mut Bus, slot: u32) -> bool {
-    for k in 0..SLOTS {
-        let entry = BOB_FREE_LIST + 4 * k;
+    let (list, n) = if is_wide(slot) {
+        wide_ready(b);
+        (WIDE_BOB_FREE_LIST, WIDE_SLOTS)
+    } else {
+        (BOB_FREE_LIST, SLOTS)
+    };
+    for k in 0..n {
+        let entry = list + 4 * k;
         if b.l(entry) != 0 {
-            b.set_l(slot + 0x50, b.l(entry));
+            let bob = b.l(entry);
+            if is_wide(bob) {
+                wide_bob_setup(b, bob);
+            }
+            b.set_l(slot + 0x50, bob);
             b.set_l(slot + 0x4c, entry);
             b.set_l(entry, 0);
             return true;
         }
     }
     false
+}
+
+/// The extras' free list filled with their bob records, each parked as [`obj_free`] parks one,
+/// the first time an extra slot is spawned into.
+fn wide_ready(b: &mut Bus) {
+    if b.w(WIDE_READY) != 0 {
+        return;
+    }
+    for k in 0..WIDE_SLOTS {
+        let bob = WIDE_BOB_RECORDS + k * BOB_SIZE;
+        b.set_l(WIDE_BOB_FREE_LIST + 4 * k, bob);
+        b.set_l(bob - 4, 0x7d00_7d00);
+    }
+    b.set_l(WIDE_BOB_FREE_LIST + 4 * WIDE_SLOTS, 0);
+    b.set_w(WIDE_READY, 1);
+}
+
+/// An extra bob record never set up (no animation step): the executable sets the original's up,
+/// the level's set-up starts them (`bob_setup`), so an extra one starts as a copy of the first
+/// object's record, nothing of its drawing left to erase.
+fn wide_bob_setup(b: &mut Bus, bob: u32) {
+    if b.l(bob + 0x16) != 0 {
+        return;
+    }
+    let from = SPUD_BOB + BOB_SIZE;
+    for o in (0..BOB_SIZE - 4).step_by(2) {
+        b.set_w(bob + o, b.w(from + o));
+    }
+    for part in [0x10u32, 0x56, 0x9c, 0xe2] {
+        b.set_l(bob + part, 0);
+    }
 }
 
 /// The pixel position of map cell `cell`, offset by `dx`, `dy` (words): `(cell − map_rows) /
@@ -122,6 +275,9 @@ fn pixel_cell(b: &Bus, x: u16, y: u16) -> u32 {
 /// runs on it and `obj_count` grows.
 fn fill_slot(c: &mut LevelCtx, slot: u32, template: u32, cell: u32) {
     let b = &mut c.bus;
+    if is_wide(slot) {
+        b.set_w(WIDE_LIVE, b.w(WIDE_LIVE) + 1);
+    }
     b.set_l(slot + 0x44, b.l(template + 8));
     b.set_l(slot + 0x40, cell);
     for k in 0..TEMPLATE_HEAD / 4 {
@@ -157,9 +313,7 @@ fn fill_slot(c: &mut LevelCtx, slot: u32, template: u32, cell: u32) {
 /// `obj_spawn_cell` (h0+$1b3d8): `template` at map cell `cell`, `dx`, `dy` pixels into it,
 /// unless the cell already has a live slot (that slot is returned, `d1` -1).
 pub fn obj_spawn_cell(c: &mut LevelCtx, template: u32, cell: u32, dx: u16, dy: u16) -> Spawned {
-    if let Some(s) = (0..SLOTS)
-        .map(|k| OBJ_SLOTS + k * SLOT_SIZE)
-        .find(|&s| c.bus.l(s + 0x40) == cell)
+    if let Some(s) = slot_addrs(&c.bus, c.screen).find(|&s| c.bus.l(s + 0x40) == cell)
     {
         return Spawned { d0: 0, d1: 0xffff_ffff, a0: s };
     }
@@ -195,8 +349,7 @@ fn spawn_at_cell(c: &mut LevelCtx, template: u32, cell: u32, dx: u16, dy: u16) -
 /// `obj_spawn_coin_forced` (h0+$1b5d0): a coin at map cell `cell`. With every slot full and none
 /// evictable off the screen, the first slot that is neither evictable nor a coin is freed for it.
 pub fn obj_spawn_coin_forced(c: &mut LevelCtx, template: u32, cell: u32, dx: u16, dy: u16) -> Spawned {
-    let slots = || (0..SLOTS).map(|k| OBJ_SLOTS + k * SLOT_SIZE);
-    if let Some(s) = slots().find(|&s| c.bus.l(s + 0x40) == cell) {
+    if let Some(s) = slot_addrs(&c.bus, c.screen).find(|&s| c.bus.l(s + 0x40) == cell) {
         return Spawned { d0: 0, d1: dy as u32, a0: s };
     }
     let none = Spawned { d0: 0xffff_ffff, d1: dy as u32, a0: template };
@@ -204,7 +357,7 @@ pub fn obj_spawn_coin_forced(c: &mut LevelCtx, template: u32, cell: u32, dx: u16
         Some(s) => s,
         None => {
             let coin_init = h0(0x23f60);
-            let Some(s) = slots()
+            let Some(s) = free_candidates(c.screen)
                 .find(|&s| c.bus.w(s + 0x2a) == 0 && c.bus.l(s) != coin_init)
             else {
                 return none;
@@ -227,9 +380,7 @@ pub fn obj_spawn_coin_forced(c: &mut LevelCtx, template: u32, cell: u32, dx: u16
 /// spawned at that very position (that slot is returned, `d1` -1).
 pub fn obj_spawn_at_xy(c: &mut LevelCtx, template: u32, x: u16, y: u16) -> Spawned {
     let at = (x as u32) << 16 | y as u32;
-    if let Some(s) = (0..SLOTS)
-        .map(|k| OBJ_SLOTS + k * SLOT_SIZE)
-        .find(|&s| c.bus.l(s + 0x44) == at)
+    if let Some(s) = slot_addrs(&c.bus, c.screen).find(|&s| c.bus.l(s + 0x44) == at)
     {
         return Spawned { d0: 0, d1: 0xffff_ffff, a0: s };
     }
@@ -276,14 +427,19 @@ pub fn obj_free(c: &mut LevelCtx, slot: u32, _d7: u16) {
     b.set_l(slot + 0x40, 0);
     b.set_l(slot + 0x44, 0);
     b.set_w(OBJ_COUNT, b.w(OBJ_COUNT).wrapping_sub(1));
+    if is_wide(slot) {
+        b.set_w(WIDE_LIVE, b.w(WIDE_LIVE) - 1);
+    }
 }
 
 /// h0+$1b9ee: every slot freed (a level's set-up).
+/// The extras are freed too, unpaid (DESIGN §2.4, D11).
 pub fn obj_free_all(c: &mut LevelCtx) {
-    let in_use = (0..SLOTS).filter(|k| c.bus.l(OBJ_SLOTS + k * SLOT_SIZE + 0x40) != 0).count();
+    let slots: Vec<u32> = slot_addrs(&c.bus, c.screen).collect();
+    let in_use = slots.iter().filter(|&&s| !is_wide(s) && c.bus.l(s + 0x40) != 0).count();
     c.spend_n(crate::level::beam::Cost::InitFreed, in_use as u32);
-    for k in 0..SLOTS {
-        obj_free(c, OBJ_SLOTS + k * SLOT_SIZE, 0);
+    for s in slots {
+        obj_free(c, s, 0);
     }
 }
 
@@ -377,11 +533,18 @@ pub fn obj_path_xy(b: &mut Bus, slot: u32, dx: u16, dy: u16) {
 }
 
 /// `obj_build_hitboxes` (h0+$d2f6): every live slot's hitboxes, offset by its position.
+/// While the extra slots are walked the list is the wide one, with room for theirs; an extra's
+/// entries are unpaid and it is no step of the loop (DESIGN §2.4, D11).
 pub fn obj_build_hitboxes(c: &mut LevelCtx) {
-    let mut out = HITBOXES;
-    for k in 0..SLOTS {
-        let slot = OBJ_SLOTS + k * SLOT_SIZE;
-        c.spend(Cost::HitboxSlot);
+    let wide = wide_walk(&c.bus, c.screen);
+    let list = if wide { WIDE_HITBOXES } else { HITBOXES };
+    set_list(&mut c.bus, WIDE_HITBOXES_AT, list, HITBOXES);
+    let mut out = list;
+    for slot in slot_addrs(&c.bus, c.screen) {
+        let extra = is_wide(slot);
+        if !extra {
+            c.spend(Cost::HitboxSlot);
+        }
         let b = &mut c.bus;
         let mut hb = if b.l(slot + 0x40) == 0 { 0 } else { b.l(slot + 0x14) };
         let mut boxes = 0;
@@ -401,8 +564,10 @@ pub fn obj_build_hitboxes(c: &mut LevelCtx) {
                 break;
             }
         }
-        c.spend_n(Cost::Hitbox, boxes);
-        c.step_done();
+        if !extra {
+            c.spend_n(Cost::Hitbox, boxes);
+            c.step_done();
+        }
     }
     c.bus.set_w(out, 0xffff);
 }
@@ -421,7 +586,7 @@ pub fn overlapping(b: &Bus, x1: u16, x2: u16, y1: u16, y2: u16) -> Vec<u32> {
 /// counted).
 fn overlapping_at(b: &Bus, x1: u16, x2: u16, y1: u16, y2: u16) -> Vec<(u16, u32)> {
     let mut hits = Vec::new();
-    let mut at = HITBOXES;
+    let mut at = hitbox_list(b);
     let mut k = 0u16;
     while n_clear(b.w(at)) {
         let (ex1, ex2, ey1, ey2) = (b.w(at), b.w(at + 2), b.w(at + 4), b.w(at + 6));
@@ -442,9 +607,23 @@ fn overlapping_at(b: &Bus, x1: u16, x2: u16, y1: u16, y2: u16) -> Vec<(u16, u32)
 
 /// The entries in the hitbox list.
 fn hitbox_entries(b: &Bus) -> u16 {
+    let list = hitbox_list(b);
     let mut n = 0;
-    while n_clear(b.w(HITBOXES + 12 * n as u32)) {
+    while n_clear(b.w(list + 12 * n as u32)) {
         n += 1;
+    }
+    n
+}
+
+/// The entries in the hitbox list of the original's slots: the collision walk's paid entries,
+/// an extra slot's being unpaid (DESIGN §2.4, D11).
+fn paid_hitbox_entries(b: &Bus) -> u16 {
+    let list = hitbox_list(b);
+    let mut n = 0;
+    let mut at = list;
+    while n_clear(b.w(at)) {
+        n += !is_wide(b.l(at + 8)) as u16;
+        at += 12;
     }
     n
 }
@@ -460,7 +639,7 @@ const OPT_GAME_MODE: u32 = h0(0x9e6);
 /// platform until an object says otherwise), then in shooter mode the frog's shots. The hitbox
 /// list is the one this pass built; a handler that frees a slot does not change it.
 pub fn collide_all(c: &mut LevelCtx) {
-    let entries = hitbox_entries(&c.bus) as u32;
+    let entries = paid_hitbox_entries(&c.bus) as u32;
     c.spend(Cost::Collide);
     c.spend_n(Cost::CollideEntry, 2 * entries);
     spud_touches(c);
@@ -541,33 +720,51 @@ fn frog_touches(c: &mut LevelCtx) {
 
 /// `build_bob_draw_list` (h0+$19b42): the spud, the slots' bobs (those in front first), then
 /// the free bobs that still have something on screen to erase.
+///
+/// While the extra slots are walked the list is the wide one: the extras' bobs after the
+/// original's in each part, the extras' free list after `bob_free_list`. Their places are unpaid
+/// and no steps of the loop (DESIGN §2.4, D11).
 pub fn build_bob_draw_list(c: &mut LevelCtx) {
     c.spend(Cost::DrawList);
-    let mut out = BOB_DRAW_LIST;
+    let wide = wide_walk(&c.bus, c.screen);
+    let list = if wide { WIDE_BOB_DRAW_LIST } else { BOB_DRAW_LIST };
+    set_list(&mut c.bus, WIDE_DRAW_LIST_AT, list, BOB_DRAW_LIST);
+    let mut out = list;
     c.bus.set_l(out, SPUD_BOB);
     out += 4;
     for front in [true, false] {
-        for k in 0..SLOTS {
-            c.spend(Cost::DrawListSlot);
+        for slot in slot_addrs(&c.bus, c.screen) {
+            let extra = is_wide(slot);
+            if !extra {
+                c.spend(Cost::DrawListSlot);
+            }
             let b = &mut c.bus;
-            let slot = OBJ_SLOTS + k * SLOT_SIZE;
             let bob = b.l(slot + 0x50);
             if bob != 0 && ((b.l(slot + 0x26) as i32) >= 0) == front {
                 b.set_l(out, bob);
                 out += 4;
             }
-            c.step_done();
+            if !extra {
+                c.step_done();
+            }
         }
     }
-    for k in 0..SLOTS {
-        c.spend(Cost::DrawListSlot);
+    let free = (0..SLOTS).map(|k| BOB_FREE_LIST + 4 * k);
+    let wide_free = (0..if wide { WIDE_SLOTS } else { 0 }).map(|k| WIDE_BOB_FREE_LIST + 4 * k);
+    for entry in free.chain(wide_free) {
+        let extra = is_wide(entry);
+        if !extra {
+            c.spend(Cost::DrawListSlot);
+        }
         let b = &mut c.bus;
-        let bob = b.l(BOB_FREE_LIST + 4 * k);
+        let bob = b.l(entry);
         if bob != 0 && [0x10, 0x56, 0x9c, 0xe2].iter().any(|&o| b.l(bob + o) != 0) {
             b.set_l(out, bob);
             out += 4;
         }
-        c.step_done();
+        if !extra {
+            c.step_done();
+        }
     }
     c.bus.set_l(out, 0);
 }
@@ -721,12 +918,16 @@ pub fn bob_draw(c: &mut LevelCtx) {
     c.step_at(1);
     c.bus.set_l(BD_CAMERA_Y, c.bus.l(h0(0x16660)));
     // (The camera is latched first: an interrupt in the drawer's set-up comes after it.)
+    // An extra bob's position is unpaid (DESIGN §2.4, D11).
+    let list = draw_list(&c.bus);
     let mut bobs = 0;
-    while c.bus.l(BOB_DRAW_LIST + 4 * bobs) != 0 {
+    let mut paid = 0;
+    while c.bus.l(list + 4 * bobs) != 0 {
+        paid += !is_wide(c.bus.l(list + 4 * bobs)) as u32;
         bobs += 1;
     }
     c.spend(Cost::BobDraw);
-    c.spend_n(Cost::BobPosition, bobs);
+    c.spend_n(Cost::BobPosition, paid);
     let b = &mut c.bus;
     // The seam: the screen line where the ring wraps.
     let mut d1 = (b.w(BD_CY) as u32).wrapping_add(0xffff_fff4);
@@ -768,7 +969,7 @@ pub fn bob_draw(c: &mut LevelCtx) {
     b.set_w(BD_BOTTOM, if n_clear(pushed) { pushed } else { 0 });
     b.set_w(BD_CLEAN_TOP, b.w(BD_TOP));
     b.set_w(BD_CLEAN_BOTTOM, b.w(BD_BOTTOM));
-    let mut at = BOB_DRAW_LIST;
+    let mut at = list;
     loop {
         let bob = b.l(at).wrapping_add(sub);
         at += 4;
@@ -794,7 +995,7 @@ fn screen_positions(b: &mut Bus) {
     let d5 = !(b.w(BD_CX).wrapping_add(0xf)) & 0xf;
     let d7 = 0xfu16.wrapping_sub(d5);
     let (cx, cy) = (b.w(BD_CX), b.w(BD_CY));
-    let mut at = BOB_DRAW_LIST;
+    let mut at = draw_list(b);
     loop {
         let bob = b.l(at);
         at += 4;
@@ -811,11 +1012,12 @@ fn screen_positions(b: &mut Bus) {
 
 /// h0+$19242: one part of the drawing into the back buffer at `back` (with the camera's column),
 /// the bobs' sub-records `sub` on: first (unless this is the seam's part) each bob's last
-/// drawing is erased, going down the list; then each is drawn, going back up it.
+/// drawing is erased, going down the list; then each is drawn, going back up it. An extra bob's
+/// erase and drawing are unpaid (DESIGN §2.4, D11).
 fn draw_part(c: &mut LevelCtx, back: u32, sub: u32) {
     c.spend(Cost::BobPart);
     c.custom(0x96, 0x8400);
-    let mut at = BOB_DRAW_LIST;
+    let mut at = draw_list(&c.bus);
     if c.bus.w(BD_SEAM) != 0 {
         while c.bus.l(at) != 0 {
             at += 4;
@@ -824,14 +1026,16 @@ fn draw_part(c: &mut LevelCtx, back: u32, sub: u32) {
         loop {
             let rec = c.bus.l(at).wrapping_add(sub);
             at += 4;
-            for part in [rec, rec + 0x8c] {
-                c.spend(Cost::BobEraseLook);
-                let dest = c.bus.l(part + 0x10);
-                if dest != 0 {
-                    erase(c, part, dest);
+            paid_unless(c, is_wide(rec), |c| {
+                for part in [rec, rec + 0x8c] {
+                    c.spend(Cost::BobEraseLook);
+                    let dest = c.bus.l(part + 0x10);
+                    if dest != 0 {
+                        erase(c, part, dest);
+                    }
+                    c.bus.set_l(part + 0x10, 0);
                 }
-                c.bus.set_l(part + 0x10, 0);
-            }
+            });
             if c.bus.l(at) == 0 {
                 break;
             }
@@ -849,7 +1053,7 @@ fn draw_part(c: &mut LevelCtx, back: u32, sub: u32) {
         }
         at -= 4;
         let bob = c.bus.l(at);
-        draw_bob(c, bob, back, sub);
+        paid_unless(c, is_wide(bob), |c| draw_bob(c, bob, back, sub));
         drawn += 1;
         if c.bus.l(at - 4) == 0 {
             break;

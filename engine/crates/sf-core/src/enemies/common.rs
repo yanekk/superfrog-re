@@ -5,7 +5,7 @@
 use crate::bonus::death::become_reward;
 use crate::items::SCORE;
 use crate::layout::h0;
-use crate::level::objects::{OBJ_SLOTS, bob_anim, bob_follow, obj_despawn_if_offscreen, obj_free};
+use crate::level::objects::{bob_anim, slot_addrs, bob_follow, obj_despawn_if_offscreen, obj_free};
 use crate::level::screen::Screen;
 use crate::level::{LevelCtx, SlotFn, n_clear};
 use crate::mem::Bus;
@@ -269,24 +269,24 @@ pub fn obj_path_y(b: &mut Bus, slot: u32, dy: u16) {
 /// How far a pair's marker looks for its partner: `$98` cells.
 const PARTNER_REACH: u32 = 0x98;
 
-/// Whether a slot is live on map cell `cell`.
-fn cell_live(b: &Bus, cell: u32) -> bool {
-    (0..20).any(|k| b.l(OBJ_SLOTS + k * 0x7c + 0x40) == cell)
+/// Whether a slot is live on map cell `cell` (an extra slot too, real-widescreen DESIGN §2.4).
+fn cell_live(c: &LevelCtx, cell: u32) -> bool {
+    slot_addrs(&c.bus, c.screen).any(|s| c.bus.l(s + 0x40) == cell)
 }
 
 /// `find_marker_right` (h0+$1b350): whether the first cell right of `cell` (within `$98`) holding
 /// `marker` has no live slot; false too when there is none. A pair's left end spawns only then.
-pub fn partner_right_free(b: &Bus, cell: u32, marker: u16) -> bool {
+pub fn partner_right_free(c: &LevelCtx, cell: u32, marker: u16) -> bool {
     (1..=PARTNER_REACH)
         .map(|k| cell.wrapping_add(2 * k))
-        .find(|&a| b.w(a) & 0x3f == marker)
-        .is_some_and(|a| !cell_live(b, a))
+        .find(|&a| c.bus.w(a) & 0x3f == marker)
+        .is_some_and(|a| !cell_live(c, a))
 }
 
 /// `find_marker_left` (h0+$1b396): [`partner_right_free`] looking left.
-pub fn partner_left_free(b: &Bus, cell: u32, marker: u16) -> bool {
+pub fn partner_left_free(c: &LevelCtx, cell: u32, marker: u16) -> bool {
     (1..=PARTNER_REACH)
         .map(|k| cell.wrapping_sub(2 * k))
-        .find(|&a| b.w(a) & 0x3f == marker)
-        .is_some_and(|a| !cell_live(b, a))
+        .find(|&a| c.bus.w(a) & 0x3f == marker)
+        .is_some_and(|a| !cell_live(c, a))
 }

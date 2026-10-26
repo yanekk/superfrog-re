@@ -58,14 +58,14 @@ pub static SHOT: ObjectKind = ObjectKind {
 
 /// Marker 20 (h0+$18882): once marker 21 is found free to its right, `$1e` down its cell.
 pub fn spawn_84(c: &mut LevelCtx, cell: u32) {
-    if partner_right_free(&c.bus, cell, 0x15) {
+    if partner_right_free(c, cell, 0x15) {
         obj_spawn_cell(c, template(84), cell, 0, 0x1e);
     }
 }
 
 /// Marker 21 (h0+$188a0): once marker 20 is found free to its left.
 pub fn spawn_83(c: &mut LevelCtx, cell: u32) {
-    if partner_left_free(&c.bus, cell, 0x14) {
+    if partner_left_free(c, cell, 0x14) {
         obj_spawn_cell(c, template(83), cell, 0, 0x1e);
     }
 }

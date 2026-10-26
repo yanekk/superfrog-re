@@ -38,14 +38,14 @@ pub static CRAWLER_RIGHT: ObjectKind = ObjectKind {
 
 /// Marker 13 (h0+$186e4): 5 down its cell, while the marker 14 to its right is not live.
 pub fn spawn_139(c: &mut LevelCtx, cell: u32) {
-    if partner_right_free(&c.bus, cell, 0xe) {
+    if partner_right_free(c, cell, 0xe) {
         obj_spawn_cell(c, template(139), cell, 0, 5);
     }
 }
 
 /// Marker 14 (h0+$18702): 5 down its cell, while the marker 13 to its left is not live.
 pub fn spawn_138(c: &mut LevelCtx, cell: u32) {
-    if partner_left_free(&c.bus, cell, 0xd) {
+    if partner_left_free(c, cell, 0xd) {
         obj_spawn_cell(c, template(138), cell, 0, 5);
     }
 }
