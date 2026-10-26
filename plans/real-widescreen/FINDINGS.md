@@ -12,10 +12,13 @@ changed.
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-26 | 📌 | T04 review: WB-1's start camera moves from x 17 to 82 in widescreen (start_point's clamp), so the bonus level starts 65 px, about 2.6 s of creep, further on; with D12 it ends about 5.6 s sooner. |
+| 2026-10-26 | 📌 | T04: WW-1's camera stays at x 949 in both modes, inside widescreen's clamp (81..4375), so widescreen does not move it and the witch's path is the original's. Her fight starts in a 1 000-step widescreen run. |
+| 2026-10-26 | 📌 | T04: a frog sprite parked at $195 needs HSTART $215, past 9 bits (wraps to $015, left of the widened window). T09 must keep a parked frog hidden in the strips. |
+| 2026-10-26 | 🐞 | T01 review: `load::enter` (`Game::new` at a level) builds its LevelCtx before `set_widescreen` can be called, so a directly started level runs `start_point` and `scan_screen` narrow. Fixed in T04: `set_widescreen` enters an unplayed level again in the new mode. |
 | 2026-10-26 | 📌 | T02 review probe: W5-3 widescreen, camera moving left, the row scan woke an object at cx+432 freed next frame by the right despawn (cx+433); §2.2's whole-cell rounding puts the row's end 15 px past it. 4:3 run: none. |
 | 2026-10-26 | 📌 | T02: task says run `cargo test --workspace` once; the parallel worker rule forbids whole-suite runs, so it was skipped. The 4:3 conformance cases outside the block were not run for T02; regression set and enemies_w1/w3 green. |
 | 2026-10-26 | 📌 | T02: widened row and start scans reach 6 cells past the map's right end (into the next row) with the camera at the 4:3 limit; T04's narrower wide clamp keeps them within the 4-cell row padding. |
-| 2026-10-26 | 🐞 | T01 review: `load::enter` (`Game::new` at a level) builds its LevelCtx before `set_widescreen` can be called, so a directly started level runs `start_point` and `scan_screen` narrow. T04's start-camera test meets this; left for T04. |
 | 2026-10-26 | 📌 | T01 review: the restart's `level_init` and game over's vertical blank get `c.screen` through `Front.screen` and `Cx.screen`, not `Machine`. Nothing reads it yet, so T02 and T04 tests should include a widescreen restart to lock it. |
 | 2026-10-22 | 📌 | Plan review: bonus markers 11 (chains fly off) and 55 (level end) act when `scan_right_column` reaches them, so widescreen's wider column ends the bonus level about 3 s sooner. Owner accepted, DESIGN D12. |
 | 2026-10-22 | 📌 | Plan review: under machine load 13–18, `recorder_app` `every_ending_action_discarded…` hit its 150 s `--timeout` in the block's sf-e2e line; alone it took 85 s, and the line re-ran green. A timing flake, not a defect. |

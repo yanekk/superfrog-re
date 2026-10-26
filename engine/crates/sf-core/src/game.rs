@@ -732,8 +732,13 @@ impl Game {
     /// The widescreen game (real-widescreen DESIGN §2.1, §2.7): from the next step, a level plays
     /// against a screen 65 pixels wider each side. Unlike [`Game::set_view`] this changes the game;
     /// with it off the game is the original.
+    /// A level entered ([`Start::Level`]) and not yet played is entered again in the new mode, so
+    /// its camera starts where widescreen's clamp puts it (DESIGN §2.5).
     pub fn set_widescreen(&mut self, on: bool) {
-        self.widescreen = on;
+        if self.widescreen != on {
+            self.widescreen = on;
+            self.reenter();
+        }
     }
 
     /// Whether [`Game::set_widescreen`] is on.
@@ -1158,13 +1163,26 @@ impl Game {
     pub fn frog_only(&mut self) {
         self.frog_only = true;
         // A level entered and not yet played is entered again without its objects.
+        self.reenter();
+    }
+
+    /// A level entered ([`Start::Level`]) and not yet played is entered again, with the game's
+    /// dispatch and screen as they are now: entering already ran the start point and the first
+    /// spawn scan, which both read them.
+    fn reenter(&mut self) {
         if let (Some(id), 0) = (self.entered, self.frame) {
+            let screen = self.screen();
             self.state = State::default();
             self.level_unported = crate::level::load::enter_with(
                 &mut self.state,
                 &self.display,
                 id,
-                crate::level::frog_only_dispatch(),
+                if self.frog_only {
+                    crate::level::frog_only_dispatch()
+                } else {
+                    crate::level::standard_dispatch()
+                },
+                screen,
             );
             self.gather_unported();
         }
