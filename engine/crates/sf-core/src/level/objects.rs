@@ -720,6 +720,17 @@ fn frog_touches(c: &mut LevelCtx) {
     c.walk_step(2 + entries);
 }
 
+/// Whether a free extra bob still has something on the screen to erase: one freed after
+/// widescreen was switched off, the last extra slot to go, is listed until its drawings are
+/// erased, or they would stay in the 4:3 picture (DESIGN §2.7). Always false in a game that never
+/// had widescreen on: the extras' free list is all 0 until the first extra spawn fills it.
+fn extra_left_drawn(b: &Bus) -> bool {
+    (0..WIDE_SLOTS).any(|k| {
+        let bob = b.l(WIDE_BOB_FREE_LIST + 4 * k);
+        bob != 0 && [0x10, 0x56, 0x9c, 0xe2].iter().any(|&o| b.l(bob + o) != 0)
+    })
+}
+
 /// `build_bob_draw_list` (h0+$19b42): the spud, the slots' bobs (those in front first), then
 /// the free bobs that still have something on screen to erase.
 ///
@@ -728,7 +739,7 @@ fn frog_touches(c: &mut LevelCtx) {
 /// and no steps of the loop (DESIGN §2.4, D11).
 pub fn build_bob_draw_list(c: &mut LevelCtx) {
     c.spend(Cost::DrawList);
-    let wide = wide_walk(&c.bus, c.screen);
+    let wide = wide_walk(&c.bus, c.screen) || extra_left_drawn(&c.bus);
     let list = if wide { WIDE_BOB_DRAW_LIST } else { BOB_DRAW_LIST };
     set_list(&mut c.bus, WIDE_DRAW_LIST_AT, list, BOB_DRAW_LIST);
     let mut out = list;

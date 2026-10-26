@@ -209,6 +209,11 @@ pub struct Game {
     /// edges 65 pixels further out each side. Not in a save state, like `view`: the app sets it.
     #[serde(skip)]
     widescreen: bool,
+    /// Widescreen was switched on and the next level step has not yet run its scan of the wide
+    /// view (DESIGN §2.7): kept through a level's start (its fade-in), whose own scan may have
+    /// been the original's. Not in a save state, like `widescreen`.
+    #[serde(skip)]
+    wide_switch: bool,
     /// The seed a power-on start is waiting to put in place.
     seed: Option<Rng>,
     frame: u32,
@@ -406,6 +411,7 @@ impl Game {
             shown: None,
             view: View::default(),
             widescreen: false,
+            wide_switch: false,
             seed,
             frame: 0,
             keys: KeySet::NONE,
@@ -656,6 +662,7 @@ impl Game {
                 blits: std::mem::take(&mut self.blits),
                 unported: &mut self.level_unported,
                 screen,
+                wide_switch: std::mem::take(&mut self.wide_switch),
             };
             self.scene
                 .step(&mut m, &mut self.pending, pacing, self.view, draw, &mut after)
@@ -734,9 +741,13 @@ impl Game {
     /// with it off the game is the original.
     /// A level entered ([`Start::Level`]) and not yet played is entered again in the new mode, so
     /// its camera starts where widescreen's clamp puts it (DESIGN §2.5).
+    /// Switched on otherwise, the next level step first wakes everything in the wide view (the
+    /// level's start scan, widened, DESIGN §2.7); switched off, the extra slots run on until the
+    /// 4:3 despawn frees them.
     pub fn set_widescreen(&mut self, on: bool) {
         if self.widescreen != on {
             self.widescreen = on;
+            self.wide_switch = on;
             self.reenter();
         }
     }
@@ -1171,6 +1182,8 @@ impl Game {
     /// spawn scan, which both read them.
     fn reenter(&mut self) {
         if let (Some(id), 0) = (self.entered, self.frame) {
+            // The level's start scan is the new mode's: nothing is left to wake.
+            self.wide_switch = false;
             let screen = self.screen();
             self.state = State::default();
             self.level_unported = crate::level::load::enter_with(
