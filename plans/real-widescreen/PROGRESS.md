@@ -11,9 +11,9 @@ message. Whoever writes a cell also fixes the over-budget cell they walk past.
 
 **Plan reviewed:** 2026-10-22 — 10 fixed, 4 decided with the user
 
-**Status:** Planned; nothing built.
-**Last updated:** 2026-10-22
-**Next `pir-work` will:** T00 wide-spawn-spike and T01 wide-mode, the two roots; T00 sizes T03.
+**Status:** Building; T01, T04 done.
+**Last updated:** 2026-10-26
+**Next `pir-work` will:** T00, T02, T05, T07 (T01 and T04 done); T00 sizes T03.
 
 ## Tasks
 
@@ -26,7 +26,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T01 | wide-mode | — | ✅ | |
 | T02 | wide-spawn | T01 | ⬜ | |
 | T03 | wide-capacity | T00, T01, T02 | ⬜ | |
-| T04 | wide-camera | T01 | 🔍 | Screen camera/sprite/bonus-frog edges; both clamp copies, sprite hide and park. 7 tests `widescreen_camera.rs`. Deviations: `set_widescreen` re-enters an unplayed `Start::Level` (T01 🐞); T01 "on changes nothing" test replaced; W1-1 frog stops at a wall 16 short of its clamp; workspace run left to pir's end gate (parallel rule). |
+| T04 | wide-camera | T01 | ✅ | Review: four deviations held. Sprite tests read records the camera rewrites, and start_point's clamp was masked by keep_inside: five mutations survived; tests now read the copper words and the pre-keep_inside start, all red on mutation. Probed all 26 levels' wide start camera. Workspace run left to pir's end gate. |
 | T05 | wide-special-cases | T01 | ⬜ | |
 | T06 | wide-switch | T02, T03 | ⬜ | |
 | T07 | wide-recording | T01 | ⬜ | |
@@ -36,7 +36,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T11 | widescreen-drill | T10 | ⬜ | |
 | T12 | wide-every-level | T11 | ⬜ | |
 
-**Review queue:** T04
+**Review queue:** *(empty)*
 
 ## Blocked on the user
 

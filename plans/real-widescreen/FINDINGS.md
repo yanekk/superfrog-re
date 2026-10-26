@@ -12,6 +12,7 @@ changed.
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-26 | 📌 | T04 review: WB-1's start camera moves from x 17 to 82 in widescreen (start_point's clamp), so the bonus level starts 65 px, about 2.6 s of creep, further on; with D12 it ends about 5.6 s sooner. |
 | 2026-10-26 | 📌 | T04: WW-1's camera stays at x 949 in both modes, inside widescreen's clamp (81..4375), so widescreen does not move it and the witch's path is the original's. Her fight starts in a 1 000-step widescreen run. |
 | 2026-10-26 | 📌 | T04: a frog sprite parked at $195 needs HSTART $215, past 9 bits (wraps to $015, left of the widened window). T09 must keep a parked frog hidden in the strips. |
 | 2026-10-26 | 🐞 | T01 review: `load::enter` (`Game::new` at a level) builds its LevelCtx before `set_widescreen` can be called, so a directly started level runs `start_point` and `scan_screen` narrow. Fixed in T04: `set_widescreen` enters an unplayed level again in the new mode. |
