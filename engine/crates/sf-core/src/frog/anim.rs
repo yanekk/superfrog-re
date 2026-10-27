@@ -57,6 +57,31 @@ pub fn place_frog_sprites(c: &mut LevelCtx) {
         // h0+$19c92.
         c.sprite_wait();
         sprite_to_copper(&mut c.bus, s);
+        if c.screen.wide {
+            wide_hstart(&mut c.bus, s);
+        }
+    }
+}
+
+/// SPRxCTL's bit that carries a frog sprite's HSTART bit 9 in widescreen (real-widescreen DESIGN
+/// §2.9, T09). OCS Denise has no such bit (bits 3–6 are unused) and the renderer reads it only in a
+/// widened level picture, and only from a copper write (a sprite's own data may set it). The frog's sprites are shown up to x `$190` from the camera there (hidden
+/// from [`crate::level::screen::Screen::sprite_hide_right`] on), HSTART `x + $80` up to `$210`,
+/// past the 9 bits that would wrap a sprite at the right strip's last columns to the left of the
+/// picture. It happens while the camera catches up with a frog far right of it (a restart near a
+/// level's end). [`sprite_to_copper`] clears it each frame, so a 4:3 game never has it set.
+pub const WIDE_HSTART_BIT: u8 = 0x08;
+
+/// After [`sprite_to_copper`], in widescreen: HSTART bit 9 into [`WIDE_HSTART_BIT`] of the
+/// record's SPRxCTL and, attached, its partner's.
+fn wide_hstart(b: &mut Bus, s: u32) {
+    if b.w(s + spr::X).wrapping_add(0x80) & 0x200 == 0 {
+        return;
+    }
+    let cop = b.l(s + spr::COPPER);
+    b.set_b(cop + 0xf, b.b(cop + 0xf) | WIDE_HSTART_BIT);
+    if b.w(s + spr::ATTACHED) != 0 {
+        b.set_b(cop + 0x1f, b.b(cop + 0x1f) | WIDE_HSTART_BIT);
     }
 }
 

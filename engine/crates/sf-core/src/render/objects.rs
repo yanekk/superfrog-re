@@ -22,6 +22,10 @@ pub(super) struct Sprite {
     dma: bool,
     pos: u16,
     ctl: u16,
+    /// HSTART's widescreen tenth bit, from a copper write of SPRxCTL only: the frog's copper words
+    /// carry it ([`crate::frog::anim::WIDE_HSTART_BIT`]); control words a sprite's own data
+    /// fetches may have that bit set (WW-1's `$000c`) and mean nothing by it.
+    wide_high: bool,
     armed: bool,
     data: [u16; 2],
 }
@@ -64,6 +68,7 @@ impl Sprite {
             0 => self.set_pos(value, line),
             2 => {
                 self.set_ctl(value, line);
+                self.wide_high = value & crate::frog::anim::WIDE_HSTART_BIT as u16 != 0;
                 self.armed = false;
                 return true;
             }
@@ -110,6 +115,7 @@ impl Sprite {
                 self.pt += 4;
                 self.set_pos(pos, line);
                 self.set_ctl(ctl, line);
+                self.wide_high = false;
                 self.armed = false;
             }
         } else if self.dma && !blocked {
@@ -131,9 +137,12 @@ impl Sprite {
         }
     }
 
-    pub fn shown(&self) -> Option<SpriteLine> {
+    /// In a widened level picture (`wide`) HSTART has a tenth bit, the frog's in widescreen
+    /// (`wide_high`).
+    pub fn shown(&self, wide: bool) -> Option<SpriteLine> {
+        let high = if wide && self.wide_high { 0x200 } else { 0 };
         self.armed.then_some(SpriteLine {
-            hstart: (self.pos & 0xFF) << 1 | self.ctl & 1,
+            hstart: (self.pos & 0xFF) << 1 | self.ctl & 1 | high,
             data: self.data,
             attached: self.ctl & 0x80 != 0,
             cut: None,
@@ -167,37 +176,44 @@ pub(super) fn compose(pic: &mut Picture, rows: &[Row], field: &Field, extra: usi
             continue;
         }
         for (x, px) in line.iter_mut().enumerate() {
-            let at = pic.left + x as i32;
-            let bits = |n: usize| {
-                let s = row.sprites[n]?;
-                let i = at - s.hstart as i32 - SPRITE_DELAY;
-                if !(0..16).contains(&i) || s.cut.is_some_and(|c| x as i32 >= c) {
-                    return None;
-                }
-                let b = 15 - i;
-                Some((s.data[0] >> b & 1 | (s.data[1] >> b & 1) << 1) as u8)
-            };
-            for pair in 0..4 {
-                let (even, odd) = (bits(2 * pair), bits(2 * pair + 1));
-                let colour = if row.sprites[2 * pair + 1].is_some_and(|s| s.attached) {
-                    let v = even.unwrap_or(0) | odd.unwrap_or(0) << 2;
-                    (v != 0).then_some(16 + v)
-                } else {
-                    [even, odd]
-                        .into_iter()
-                        .flatten()
-                        .find(|&v| v != 0)
-                        .map(|v| 16 + 4 * pair as u8 + v)
-                };
-                if let Some(c) = colour {
-                    if pair < row.priority as usize || *px == 0 {
-                        *px = c;
-                    }
-                    break;
-                }
+            if let Some((c, pair)) = sprite_at(row, pic.left + x as i32, x as i32)
+                && (pair < row.priority as usize || *px == 0)
+            {
+                *px = c;
             }
         }
     }
+}
+
+/// The sprites' colour at picture pixel `x` (window position `at`) of `row`, and the pair that
+/// gives it: the lower pair in front of the higher, an attached pair as one 16-colour sprite.
+pub(super) fn sprite_at(row: &Row, at: i32, x: i32) -> Option<(u8, usize)> {
+    let bits = |n: usize| {
+        let s = row.sprites[n]?;
+        let i = at - s.hstart as i32 - SPRITE_DELAY;
+        if !(0..16).contains(&i) || s.cut.is_some_and(|c| x >= c) {
+            return None;
+        }
+        let b = 15 - i;
+        Some((s.data[0] >> b & 1 | (s.data[1] >> b & 1) << 1) as u8)
+    };
+    for pair in 0..4 {
+        let (even, odd) = (bits(2 * pair), bits(2 * pair + 1));
+        let colour = if row.sprites[2 * pair + 1].is_some_and(|s| s.attached) {
+            let v = even.unwrap_or(0) | odd.unwrap_or(0) << 2;
+            (v != 0).then_some(16 + v)
+        } else {
+            [even, odd]
+                .into_iter()
+                .flatten()
+                .find(|&v| v != 0)
+                .map(|v| 16 + 4 * pair as u8 + v)
+        };
+        if let Some(c) = colour {
+            return Some((c, pair));
+        }
+    }
+    None
 }
 
 #[cfg(test)]

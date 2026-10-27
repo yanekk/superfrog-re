@@ -408,6 +408,8 @@ struct Denise<'a> {
     sprites: [objects::Sprite; 8],
     /// A level's screen: lines fetched from a display buffer are play-field rows (widescreen).
     level: bool,
+    /// A widened level picture: sprite HSTART has widescreen's tenth bit (T09).
+    wide: bool,
     /// Following SPREN ([`SpriteDma`]): whether it is on, and the CPU's DMACON writes to come.
     dma: Option<(bool, &'a [(u16, u16)])>,
 }
@@ -590,6 +592,7 @@ fn draw(
         colours: [0; 32],
         sprites: Default::default(),
         level,
+        wide: level && n > 0,
         dma: dma.map(|d| (d.on, d.cpu.as_slice())),
     };
     let rows = denise.walk(&mut pic);
@@ -616,6 +619,9 @@ pub struct StripLayers {
     pub placed: Vec<(crate::layout::WideBob, i32, i32, i32, i32)>,
     /// The picture rows that are play field.
     pub field_rows: std::ops::Range<i32>,
+    /// For each picture pixel, the sprites' colour there as if over colour 0, `None` where no
+    /// sprite is (T09: the frog in the strips).
+    pub sprites: Vec<Option<u8>>,
 }
 
 #[doc(hidden)]
@@ -651,6 +657,7 @@ pub fn strip_layers(state: &State, data: &DisplayData, view: View) -> StripLayer
         colours: [0; 32],
         sprites: Default::default(),
         level: true,
+        wide: n > 0,
         dma: None,
     };
     let rows = denise.walk(&mut pic);
@@ -677,6 +684,12 @@ pub fn strip_layers(state: &State, data: &DisplayData, view: View) -> StripLayer
         .enumerate()
         .filter(|(_, r)| matches!(r.under, Under::Field { .. }))
         .map(|(y, _)| y as i32);
+    let sprites = rows
+        .iter()
+        .flat_map(|row| {
+            (0..pic.width as i32).map(move |x| objects::sprite_at(row, pic.left + x, x).map(|(c, _)| c))
+        })
+        .collect();
     let field_rows = field_rows.clone().min().unwrap_or(0)..field_rows.max().map_or(0, |y| y + 1);
     let placed = playfield::shown_bobs(state, &rows)
         .bobs
@@ -693,6 +706,7 @@ pub fn strip_layers(state: &State, data: &DisplayData, view: View) -> StripLayer
         bobs: layer,
         placed,
         field_rows,
+        sprites,
     }
 }
 
@@ -776,7 +790,7 @@ impl Denise<'_> {
             // `spriteClipBegin`): a line without one shows none.
             let sprites: [Option<objects::SpriteLine>; 8] = std::array::from_fn(|n| {
                 self.sprites[n]
-                    .shown()
+                    .shown(self.wide)
                     .filter(|_| !matches!(under, Under::Nothing))
             });
             let priority = self.planes.priority();
