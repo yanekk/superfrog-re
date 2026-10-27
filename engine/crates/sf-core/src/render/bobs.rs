@@ -61,14 +61,7 @@ pub(crate) fn draw_bob(
 ) {
     let size = mem.word(frame + 0x1a);
     let long = |a: u32| (mem.word(a) as u32) << 16 | mem.word(a + 2) as u32;
-    let words = match size & 0x3f {
-        0 => 64,
-        w => w as u32,
-    };
-    let height = match size >> 6 {
-        0 => 1024,
-        h => h as u32,
-    };
+    let (height, words) = crate::front::blit::bltsize_words(size);
     let (src, mask, step) = (long(frame + 0x1c), long(frame + 0x24), long(frame + 0x16));
     let stride = (2 * words as i32 + mem.word(frame + 0x20) as i16 as i32) as u32;
     let shown = if masked { words - 1 } else { words };
