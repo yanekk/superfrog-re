@@ -13,7 +13,7 @@ message. Whoever writes a cell also fixes the over-budget cell they walk past.
 
 **Status:** Planned; nothing built.
 **Last updated:** 2026-10-22
-**Next `pir-work` will:** T00 wide-spawn-spike and T01 wide-mode, the two roots; T00 sizes T03.
+**Next `pir-work` will:** review T09 side-frog; then T10 app-wiring.
 
 ## Tasks
 
@@ -31,12 +31,12 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T06 | wide-switch | T02, T03 | ✅ | |
 | T07 | wide-recording | T01 | ✅ | |
 | T08 | side-objects | T02, T03 | ✅ | |
-| T09 | side-frog | T04, T08 | ⬜ | |
+| T09 | side-frog | T04, T08 | 🔍 | Frog sprites past HSTART's 9 bits carry bit 9 in SPRxCTL bit 3 (widescreen only); 5 sf-core, 1 sf-e2e tests. Deviations: `frog/anim.rs` writes the bit, not the renderer from the engine's x (commit a1089c7). e2e loads a headless widescreen state, paused: the app's game mode is T10's. `StripLayers.sprites` added. |
 | T10 | app-wiring | T05, T06, T07, T08, T09 | ⬜ | |
 | T11 | widescreen-drill | T10 | ⬜ | |
 | T12 | wide-every-level | T11 | ⬜ | |
 
-**Review queue:** *(empty)*
+**Review queue:** T09
 
 ## Blocked on the user
 
