@@ -45,7 +45,7 @@ fn w1_1_renders_as_the_original_while_it_scrolls_both_ways() {
     let (mut xs, mut ys) = (Vec::new(), Vec::new());
     for f in 0..case.frames {
         amiga.step(case.script.input_at(f)).unwrap();
-        let m = sync::core_memory(amiga.memory());
+        let m = amiga.memory();
         xs.push(long(&m, CAMERA_X));
         ys.push(long(&m, CAMERA_Y));
     }
@@ -72,7 +72,7 @@ fn copper_palette_effects_match_for_100_frames() {
     let (mut compared, mut with_splits) = (0, 0);
     for f in 0..100 {
         let theirs = amiga.step(script.input_at(f)).unwrap().picture;
-        let mem = sync::core_memory(amiga.memory());
+        let mem = amiga.memory();
         let p = Game::with_display(display.clone(), Start::Transplant(mem)).render(View::default());
         if to_rgb12(&p) != theirs.pixels {
             continue; // a late redraw; the first test checks what each such frame is
@@ -103,7 +103,7 @@ fn transplanted(frames: &[u32]) -> Vec<Game> {
     for f in 0..last {
         amiga.step(script.input_at(f)).unwrap();
         if frames.contains(&f) {
-            let mem = sync::core_memory(amiga.memory());
+            let mem = amiga.memory();
             games.push(Game::with_display(display.clone(), Start::Transplant(mem)));
         }
     }

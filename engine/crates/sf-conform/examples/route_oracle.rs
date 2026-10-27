@@ -52,7 +52,7 @@ fn frog_of(w: impl Fn(u32) -> u16) -> Frog {
 fn hung(a: &Amiga) -> bool {
     let at = |pc: u32| (h0(0xe3fe)..=h0(0xe412)).contains(&pc);
     let cpu = a.cpu();
-    let m = sync::core_memory(a.memory());
+    let m = a.memory();
     sync::main_chain(&cpu, &m).first().is_some_and(|&pc| at(pc))
 }
 
@@ -212,7 +212,7 @@ fn main() {
         loop {
             // A pass the original has not finished cannot be transplanted: let it finish.
             let x = *inputs.last().unwrap();
-            while sync::mid_pass(&amiga.cpu(), &sync::core_memory(amiga.memory())) {
+            while sync::mid_pass(&amiga.cpu(), &amiga.memory()) {
                 play(&mut amiga, &mut inputs, x);
             }
             if reached(&|a| oracle_w(&amiga, a)) {
@@ -223,7 +223,7 @@ fn main() {
                 eprintln!("target {tc},{tr}: no progress on the original");
                 break 'targets;
             }
-            let mem = sync::core_memory(amiga.memory());
+            let mem = amiga.memory();
             let g = Game::with_display(display.clone(), Start::Transplant(mem));
             let mut beam: Vec<(Game, Vec<FrameInput>)> = vec![(g, Vec::new())];
             let mut done = None;

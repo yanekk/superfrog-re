@@ -257,7 +257,7 @@ fn the_trace_cache_hits_misses_and_rebuilds() {
     assert_eq!(made.frames.len(), 30);
     let last = made.memories().last().unwrap();
     assert_eq!(
-        last.hash(),
+        hash_memory(&last),
         made.frames[29].memory_hash,
         "memory deltas do not replay"
     );

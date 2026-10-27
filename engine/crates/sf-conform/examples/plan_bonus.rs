@@ -68,7 +68,7 @@ impl Real {
     fn game(&self, display: &std::sync::Arc<sf_core::DisplayData>) -> Game {
         match self {
             Real::Original(a) => {
-                Game::with_display(display.clone(), Start::Transplant(sync::core_memory(a.memory())))
+                Game::with_display(display.clone(), Start::Transplant(a.memory()))
             }
             Real::Engine(g) => (**g).clone(),
         }

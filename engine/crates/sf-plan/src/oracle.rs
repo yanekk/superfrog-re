@@ -160,7 +160,7 @@ fn frog_block(st: &State) -> Vec<u8> {
 
 /// The original's frog looked at now (a ~1 MB copy of its memory).
 fn look(amiga: &Amiga) -> Look {
-    Look::of(&State::transplant(&sync::core_memory(amiga.memory())))
+    Look::of(&State::transplant(&amiga.memory()))
 }
 
 /// From the first frame a start's level is played on (a sync point's or a leg snapshot's first
@@ -169,7 +169,7 @@ fn look(amiga: &Amiga) -> Look {
 pub fn settle(mut amiga: Amiga, t0: Instant) -> Result<OracleRun, String> {
     let mut inputs = Vec::new();
     loop {
-        let st = State::transplant(&sync::core_memory(amiga.memory()));
+        let st = State::transplant(&amiga.memory());
         if (landed(&st) && inputs.len() > 150) || inputs.len() >= 400 {
             break;
         }
@@ -208,7 +208,7 @@ pub fn facts_at(run: &OracleRun, id: LevelId) -> Facts {
     let display = sf_conform::display_data();
     let g = Game::with_display(
         display.clone(),
-        Start::Transplant(sync::core_memory(run.amiga.memory())),
+        Start::Transplant(run.amiga.memory()),
     );
     facts(&g, &data.levels[&id], display.rom())
 }
@@ -313,7 +313,7 @@ pub fn lockstep_with(
             return out;
         }
         *frames += 1;
-        let mem = sync::core_memory(amiga.memory());
+        let mem = amiga.memory();
         run = if sync::mid_pass(&amiga.cpu(), &mem) { run + 1 } else { 0 };
         out.mid_run.push(run);
         let o = Look::of(&State::transplant(&mem));
@@ -726,7 +726,7 @@ pub fn plan_original(
     loop {
         let start = Game::with_display(
             display.clone(),
-            Start::Transplant(sync::core_memory(amiga.memory())),
+            Start::Transplant(amiga.memory()),
         );
         if mid_run == 0 {
             starts.push(

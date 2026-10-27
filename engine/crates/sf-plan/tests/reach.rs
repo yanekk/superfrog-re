@@ -182,7 +182,7 @@ fn a_tailless_lockstep_ends_at_the_plans_end() {
     let run = start_at_level(id("W1-1"), 2_000);
     let eng = sf_core::Game::with_display(
         sf_conform::display_data(),
-        sf_core::Start::Transplant(sf_conform::sync::core_memory(run.amiga.memory())),
+        sf_core::Start::Transplant(run.amiga.memory()),
     );
     let plan = [FrameInput::NONE; 200];
     let no_lag = Lag {

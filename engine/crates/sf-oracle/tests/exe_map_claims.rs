@@ -209,7 +209,7 @@ fn the_game_sits_where_the_map_says_and_owns_the_vertical_blank() {
     let code = hunk0(&exe);
     for k in 0..0x150u32 {
         assert_eq!(
-            mem.byte(h0(0xce58) + k),
+            mem.byte_at(h0(0xce58) + k),
             Some(code[0xce58 + k as usize]),
             "atn_decompress byte {k:#x} is not at h0+$ce58 = {:#x}",
             h0(0xce58)
@@ -376,7 +376,7 @@ fn the_stragglers_are_what_the_game_loads() {
     let music = decompress(&extended(DiskSlot::D1, 16)).unwrap();
     let at = 0x73ef6u32;
     let got: Vec<u8> = (0..music.len() as u32)
-        .map(|k| mem.byte(at + k).unwrap())
+        .map(|k| mem.byte_at(at + k).unwrap())
         .collect();
     assert_eq!(&got[..4], &music[..4], "module tag");
     let differ = (0xc0..music.len()).filter(|&k| got[k] != music[k]).count();
@@ -400,7 +400,7 @@ fn a_level_is_the_world_files_plus_its_map() {
     ] {
         let data = decompress(&chunk(DiskSlot::D1, index).raw).unwrap();
         let same = (0..data.len() as u32)
-            .filter(|&k| mem.byte(at + k) == Some(data[k as usize]))
+            .filter(|&k| mem.byte_at(at + k) == Some(data[k as usize]))
             .count();
         assert_eq!(same, data.len(), "{what} (d1_c{index:02}) at {at:#x}");
     }

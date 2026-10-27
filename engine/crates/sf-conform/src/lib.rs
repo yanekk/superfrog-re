@@ -333,7 +333,7 @@ fn run_inner(
             for (addr, bytes) in eng.writes() {
                 amiga.write_memory(addr, &bytes);
             }
-            prev = sync::core_memory(amiga.memory());
+            prev = amiga.memory();
             match legs.as_deref_mut() {
                 Some(l) => l.force = true,
                 None => {
@@ -386,7 +386,7 @@ fn run_inner(
             d.serve(&mut amiga);
         }
         of += 1;
-        let mut mem = sync::core_memory(amiga.memory());
+        let mut mem = amiga.memory();
         let mut pacing = sync::pacing(&amiga.cpu(), &mem, &theirs.paula);
         // Under `--alone` the engine judged is the one run alone, so a planted divergence goes there.
         match alone.as_mut() {
@@ -465,7 +465,7 @@ fn run_inner(
                         d.serve(&mut amiga);
                     }
                     of += 1;
-                    prev_mem = std::mem::replace(&mut mem, sync::core_memory(amiga.memory()));
+                    prev_mem = std::mem::replace(&mut mem, amiga.memory());
                     // A frame the original loads under a screen it times itself counts as play
                     // for check 4 (owner, 2026-10-15); the others are the load's length, the
                     // vertical blanks the game's handler ran in it (owner, T209), or in the

@@ -16,7 +16,7 @@ fn main() {
     for f in 0..=to {
         let input = case.script.input_at(f);
         let cap = sync::step_inserting(&mut a, input).unwrap();
-        let m = sync::core_memory(a.memory());
+        let m = a.memory();
         let chain = sync::main_chain(&a.cpu(), &m);
         let ch: Vec<String> = chain.iter().take(4).map(|&x| format!("{:x}", x.wrapping_sub(h0))).collect();
         let vars = format!(

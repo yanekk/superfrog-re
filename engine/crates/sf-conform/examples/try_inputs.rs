@@ -23,7 +23,7 @@ fn main() {
     for k in 0..n {
         sync::step_inserting(&mut s.amiga, p.input_at(k)).unwrap();
     }
-    let mem = sync::core_memory(s.amiga.memory());
+    let mem = s.amiga.memory();
     let display = sf_conform::display_data();
     let start = Game::with_display(display, Start::Transplant(mem));
     let cell = |g: &Game| {

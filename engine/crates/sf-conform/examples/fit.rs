@@ -129,7 +129,7 @@ fn main() {
             frozen.apply(&mut a, &display);
             let input = case.script.input_at(f);
             let theirs = a.step(input).unwrap();
-            let mem = sync::core_memory(a.memory());
+            let mem = a.memory();
             let pacing = sync::pacing(&a.cpu(), &mem, &theirs.paula);
             let ours = game.step_paced(input, pacing);
             let mid = sync::mid_pass(&a.cpu(), &mem);

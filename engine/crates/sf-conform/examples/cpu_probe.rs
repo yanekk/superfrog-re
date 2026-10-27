@@ -15,7 +15,7 @@ fn main() {
             continue;
         }
         let cpu = amiga.cpu();
-        let m = sync::core_memory(amiga.memory());
+        let m = amiga.memory();
         println!(
             "{of} pc {:x} a0 {:x} a2 {:x} d0 {:x} step {} point {} chain {:x?}",
             cpu.pc,

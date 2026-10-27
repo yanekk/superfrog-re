@@ -300,7 +300,7 @@ pub struct Retimed {
 pub fn retime(rec: &Recording, original: &mut Synced) -> InputScript {
     let played = play(rec, &[]);
     let r = retime_played(rec, &played, &[], &mut original.amiga);
-    original.memory = sync::core_memory(original.amiga.memory());
+    original.memory = original.amiga.memory();
     r.script
 }
 
@@ -337,7 +337,7 @@ fn retime_played(rec: &Recording, played: &Played, pokes: &Pokes, a: &mut Amiga)
     let mut frames: Vec<FrameInput> = Vec::new();
     let mut held_in_loads = 0u32;
     let mut cop = played.start.cop1lc();
-    let mut disks = sync::Disks::at(&sync::core_memory(a.memory()));
+    let mut disks = sync::Disks::at(&a.memory());
     let mut was = (true, false);
     let (mut next, mut n, mut held) = (0usize, 0u32, 0u32);
     let mut step = |a: &mut Amiga,
@@ -395,7 +395,7 @@ fn retime_played(rec: &Recording, played: &Played, pokes: &Pokes, a: &mut Amiga)
             }
             held_in_loads += k;
         }
-        let m = sync::core_memory(a.memory());
+        let m = a.memory();
         let cpu = a.cpu();
         let now = (
             sync::in_level(&m),
@@ -482,7 +482,7 @@ fn retime_played(rec: &Recording, played: &Played, pokes: &Pokes, a: &mut Amiga)
             }
         }
     }
-    let m = sync::core_memory(a.memory());
+    let m = a.memory();
     r.stop_watched = WATCHED.into_iter().zip(watched_original(&m)).collect();
     r.original_frames = frames.len() as u32;
     r.frames = r.original_frames - held_in_loads;
@@ -496,7 +496,7 @@ fn retime_played(rec: &Recording, played: &Played, pokes: &Pokes, a: &mut Amiga)
 
 /// The original's load is over, as the runner decides it.
 fn load_over(a: &Amiga, end: LoadEnd, seen: &mut bool) -> bool {
-    let m = sync::core_memory(a.memory());
+    let m = a.memory();
     let chain = sync::main_chain_deep(&a.cpu(), &m, usize::MAX);
     match end {
         LoadEnd::Reached(x) => chain.iter().take(4).any(|&c| c == x),
@@ -659,7 +659,7 @@ fn compare_inner(
         for (addr, bytes) in pokes {
             s.amiga.write_memory(*addr, bytes);
         }
-        s.memory = sync::core_memory(s.amiga.memory());
+        s.memory = s.amiga.memory();
         Ok(s)
     };
     let mut original = start()?;

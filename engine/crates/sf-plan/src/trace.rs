@@ -25,7 +25,7 @@ pub fn trace_original(
     let mut s = Sampler::new(facts);
     for k in 0..=frames {
         // The original's memory is copied out only on a sampled frame: it is ~1 MB.
-        if Sampler::due(k) && !s.sample(&State::transplant(&sync::core_memory(amiga.memory()))) {
+        if Sampler::due(k) && !s.sample(&State::transplant(&amiga.memory())) {
             break;
         }
         if k == frames {

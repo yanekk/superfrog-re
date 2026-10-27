@@ -51,7 +51,7 @@ fn main() {
         let feed = std::env::var("NOFEED").is_err();
         irqs = amiga.irqs();
         of += 1;
-        let mut pacing = sync::pacing(&amiga.cpu(), &sync::core_memory(amiga.memory()), &cap.paula);
+        let mut pacing = sync::pacing(&amiga.cpu(), &amiga.memory(), &cap.paula);
         // A two-frame step of the original: the engine runs both frames (as `sf_conform::run`).
         let mut held = Vec::new();
         if amiga.frames_run() == 2 {
@@ -68,9 +68,9 @@ fn main() {
         out.paula.splice(0..0, held);
         if let Some(end) = out.load {
             let mut seen = false;
-            let mut prev_mem = sync::core_memory(amiga.memory());
+            let mut prev_mem = amiga.memory();
             loop {
-                let m = sync::core_memory(amiga.memory());
+                let m = amiga.memory();
                 let chain = sync::main_chain(&amiga.cpu(), &m);
                 let over = match end {
                     sf_core::LoadEnd::Reached(a) => chain.iter().take(4).any(|&x| x == a),
@@ -83,7 +83,7 @@ fn main() {
                 if over {
                     break;
                 }
-                prev_mem = sync::core_memory(amiga.memory());
+                prev_mem = amiga.memory();
                 let resumes = sync::intro_resumes(&amiga);
                 cap = sync::step_inserting(&mut amiga, case.script.input_at(of)).unwrap();
                 entry = sync::handler_entry(&irqs, &amiga.irqs());
@@ -91,8 +91,8 @@ fn main() {
                 irqs = amiga.irqs();
                 of += 1;
             }
-            pacing = sync::pacing(&amiga.cpu(), &sync::core_memory(amiga.memory()), &cap.paula);
-            let m = sync::core_memory(amiga.memory());
+            pacing = sync::pacing(&amiga.cpu(), &amiga.memory(), &cap.paula);
+            let m = amiga.memory();
             let take = |g: &mut Game, from: &sf_core::AmigaMemory, runs: &[(u32, u32)]| {
                 for &(addr, len) in runs {
                     let b: Vec<u8> = (addr..addr + len).map(|a| from.byte(a)).collect();
@@ -141,7 +141,7 @@ fn main() {
             }
         }
         let out_pic = out.picture.clone();
-        let m = sync::core_memory(amiga.memory());
+        let m = amiga.memory();
         if let Ok(spec) = std::env::var("PAL") {
             // `PAL=a-b`: per frame in a..b, each (original, engine) colour pair that differs,
             // with its pixel count and first row.

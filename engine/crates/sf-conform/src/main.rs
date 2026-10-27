@@ -546,7 +546,7 @@ fn record(path: &Path, rest: &[String]) -> Result<bool, String> {
         if let Some(d) = disks.as_mut() {
             d.serve(&mut amiga);
         }
-        let mem = sync::core_memory(amiga.memory());
+        let mem = amiga.memory();
         let mut vals: Vec<u32> = shown.iter().map(|d| d.read(&mem as &dyn Ram)).collect();
         let at = if trace {
             let chain = sync::main_chain(&amiga.cpu(), &mem);
