@@ -34,11 +34,11 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T09 | side-frog | T04, T08 | ✅ | |
 | T10 | app-wiring | T05, T06, T07, T08, T09 | ✅ | |
 | T11 | widescreen-drill | T10 | ✅ | |
-| T12 | wide-every-level | T11 | ⬜ | |
+| T12 | wide-every-level | T11 | 🟡 | 25 of 26 widescreen routes and `widescreen_complete.rs` (W1-1 in block, all 26 ignored). Waiting on the owner to play W6-4's stall. Deviations: app start, not `--engine-only` (no oracle in the test); WB-1 by `plan_bonus --widescreen`, WW-1 final-win's fire with Spud; opt-in widescreen hand-over tools. |
 
 **Review queue:** *(empty)*
 
 ## Blocked on the user
 
-Nothing yet. T12 needs smart-planner merged into main, then the owner's hand-merge of main into
-`pir/real-widescreen` with the run stopped (DESIGN §5, D5).
+T12: the owner plays W6-4's stalled climb in widescreen, recorded (`tools/handover.py --widescreen`,
+spot `W6-4:284,62`); the route is then planned from that recording.
