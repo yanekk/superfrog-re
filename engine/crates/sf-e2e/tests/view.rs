@@ -5,8 +5,9 @@
 //! Widescreen draws 65 extra columns each side (16:9 of a level's 334×261, T210). On a level
 //! they are the level's; on every other screen (title, story intro, slot machine) each line's
 //! colour 0, the border an Amiga monitor shows outside the display window (owner, 2026-10-18).
-//! The game is the same in every mode: its state and the centre 320 columns of every frame are
-//! the 4:3 run's.
+//! In a level widescreen is its own game (real-widescreen DESIGN §2.1, T10): the app plays the
+//! engine's widescreen game, mode and view together. With widescreen off the app is the 4:3 game;
+//! outside a level the centre of a widescreen frame is the 4:3 frame.
 //!
 //! Every filter runs after the integer scaling: the frames the game hands over are the same with
 //! any of them on, only the window differs.
@@ -57,11 +58,18 @@ fn level_input(n: u64) -> FrameInput {
     if (1700..1900).contains(&n) { FrameInput::joy(Joy::RIGHT) } else { FrameInput::NONE }
 }
 
-/// The game Continue starts at step 10 of a scripted run (seed 0 0), headless, drawn for `view`.
-fn w3_1(data: &sf_core::GameData, view: View) -> Game {
+/// `g` played and drawn in widescreen `on`, as the app sets both (sf-app `window::show`).
+fn show(g: &mut Game, on: bool) {
+    g.set_widescreen(on);
+    g.set_view(if on { WIDE } else { View::default() });
+}
+
+/// The game Continue starts at step 10 of a scripted run (seed 0 0), headless, in widescreen
+/// `wide`.
+fn w3_1(data: &sf_core::GameData, wide: bool) -> Game {
     let display = std::sync::Arc::new(DisplayData::new(data));
     let mut g = Game::start_at_with(display, &Progress { world: 3, level: 1 }, Rng::seeded(0, 0));
-    g.set_view(view);
+    show(&mut g, wide);
     g
 }
 
@@ -85,38 +93,46 @@ fn index_0(p: &Picture, x_end: usize, rows: std::ops::Range<usize>) -> bool {
 }
 
 #[test]
-fn widescreen_mid_level_keeps_the_centre_and_the_game_of_the_4_3_run() {
+fn widescreen_off_is_the_4_3_game() {
+    let (app, narrow) = level_run(false);
+    let data = cache_data(&app.home);
+    let mut g = w3_1(&data, false);
+    for n in 10..=LEVEL_FRAMES {
+        let p = g.step(level_input(n)).picture;
+        assert_eq!(narrow.read_frame(n), Image::of_picture(&p), "frame {n} is not the 4:3 engine's");
+        assert!(!g.widescreen());
+    }
+    assert!(g.scene() == Scene::Level && g.state().camera().x > N + 16, "mid-level");
+}
+
+#[test]
+fn widescreen_from_the_menu_plays_the_widescreen_game_and_its_strips_show_the_level() {
     let (app, wide) = level_run(true);
     let (_narrow_home, narrow) = level_run(false);
     let data = cache_data(&app.home);
     assert_eq!(wide.inputs, narrow.inputs);
 
-    // Every frame from the switch on is 130 wider, its centre the 4:3 run's: the title's frames
-    // before Continue, W3-1's loading picture and map, and W3-1. From Continue on, the app's
-    // frames are the engine's widescreen pictures headless, and the game, state and probe alike,
-    // is the 4:3 game's.
-    let mut g_wide = w3_1(&data, WIDE);
-    let mut g_narrow = w3_1(&data, View::default());
-    let mut scrolled = false;
+    // Before the switch the runs are one; from it every frame is 130 wider, and until Continue
+    // (the title) its centre is the 4:3 frame. From Continue on the app's frames are the engine's
+    // widescreen game headless, a game that is not the 4:3 one.
+    let mut g_wide = w3_1(&data, true);
+    let mut g_narrow = w3_1(&data, false);
+    let (mut scrolled, mut differs) = (false, false);
     for n in 0..=LEVEL_FRAMES {
         let (w, c) = (wide.read_frame(n), narrow.read_frame(n));
         if n < 5 {
             assert_eq!(w, c, "frame {n}, before the switch");
             continue;
         }
-        // The display window is the screen's own, widened (the boot screens' are shorter, the
-        // map's wider).
         assert_eq!((w.width, w.height), (c.width + 2 * N, c.height), "frame {n}");
-        assert_eq!(centre(&w), c, "frame {n}: the centre is the 4:3 frame");
         if n < 10 {
+            assert_eq!(centre(&w), c, "frame {n}: the title's centre is the 4:3 frame");
             continue;
         }
         let pw = g_wide.step(level_input(n)).picture;
-        let pn = g_narrow.step(level_input(n)).picture;
-        assert_eq!(w, Image::of_picture(&pw), "frame {n} is not the engine's");
-        assert_eq!(c, Image::of_picture(&pn), "frame {n}, 4:3");
-        assert_eq!(g_wide.probe(), g_narrow.probe(), "frame {n}: widescreen changed the game");
-        assert!(g_wide.state() == g_narrow.state(), "frame {n}: widescreen changed the state");
+        g_narrow.step(level_input(n));
+        assert_eq!(w, Image::of_picture(&pw), "frame {n} is not the engine's widescreen game");
+        differs |= g_wide.probe() != g_narrow.probe() || g_wide.state() != g_narrow.state();
         // Mid-level, the side columns show the level: not all colour 0 below the panel.
         if g_wide.scene() == Scene::Level && g_wide.state().camera().x > N + 16 {
             scrolled = true;
@@ -126,6 +142,7 @@ fn widescreen_mid_level_keeps_the_centre_and_the_game_of_the_4_3_run() {
         }
     }
     assert!(scrolled, "camera at x {}: the camera never left the level's left edge: not a mid-level check", g_wide.state().camera().x);
+    assert!(differs, "the widescreen run never differed from the 4:3 game: the mode did not reach it");
 }
 
 /// T29 drill: `level_start`'s fade-in runs in the front end on the level's own copper list, and
@@ -135,7 +152,7 @@ fn widescreen_mid_level_keeps_the_centre_and_the_game_of_the_4_3_run() {
 fn widescreen_draws_the_level_s_sides_through_its_fade_in_too() {
     let (app, wide) = level_run(true);
     let data = cache_data(&app.home);
-    let mut g = w3_1(&data, WIDE);
+    let mut g = w3_1(&data, true);
     let mut fading = 0;
     for n in 10..=LEVEL_FRAMES {
         g.step(level_input(n));
@@ -152,20 +169,19 @@ fn widescreen_draws_the_level_s_sides_through_its_fade_in_too() {
     assert!(fading > 0, "no frame of W3-1's fade-in was seen");
 }
 
+/// real-widescreen DESIGN §2.5: the widescreen game's camera stops 65 pixels further in, so at
+/// W1-1's left end the left strip begins at level x 16 and shows no colour 0 from off the map.
+/// (`widescreen_app.rs` drives both ends through the app.)
 #[test]
-fn widescreen_at_a_level_s_left_edge_shows_colour_0_off_the_map_and_nothing_wraps() {
+fn widescreen_at_a_level_s_left_edge_shows_the_map_not_colour_0() {
     let data = cache_data(&App::launch(LaunchOpts::default()).home);
-    // W1-1 entered as the original enters it: the camera at x 16.
     let mut g = Game::new(&data, Start::Level("W1-1".parse().unwrap()));
-    g.set_view(WIDE);
+    show(&mut g, true);
     for n in 1..=40u64 {
         let p = g.step(FrameInput::NONE).picture;
-        let x = g.state().camera().x as i32;
-        assert!(x < N as i32, "frame {n}: the camera is at the left edge ({x})");
-        // Picture column N shows level x `x`; everything left of level x 0 is off the map: colour
-        // 0, not the map's other end. Play-field rows only, below the panel.
-        let off = (N as i32 - x - 2).max(0) as usize;
-        assert!(index_0(&p, off, 20..p.height as usize), "frame {n}: off the map is not colour 0");
+        assert_eq!(g.state().camera().x, 16 + N, "frame {n}: the camera at widescreen's clamp");
+        let h = p.height as usize;
+        assert!(!(h / 2..h).all(|y| p.pixels[y * p.width as usize] == 0), "frame {n}: off the map shows");
     }
 }
 
@@ -173,6 +189,8 @@ fn widescreen_at_a_level_s_left_edge_shows_colour_0_off_the_map_and_nothing_wrap
 fn assert_border_sides(g: &mut Game, frames: u32, input: impl Fn(u32) -> FrameInput, what: &str) {
     let mut narrow = g.clone();
     narrow.set_view(View::default());
+    // The view alone: the mode would start an unplayed level's game again (`Game::set_widescreen`),
+    // and outside a level it changes nothing but the picture (DESIGN §2.7).
     g.set_view(WIDE);
     let mut seen = Vec::new();
     for n in 1..=frames {
@@ -214,7 +232,7 @@ fn widescreen_on_the_title_story_intro_and_slot_machine_shows_the_border_at_the_
     let c = app.run_script("");
     assert!(c.exit.success(), "{}", c.stderr);
     let mut g = Game::new(&data, Start::PowerOn { seed: Rng::seeded(0, 0) });
-    g.set_view(WIDE);
+    show(&mut g, true);
     assert_eq!(c.frames[0], Image::of_picture(&g.render(WIDE)));
     for n in 1..=300 {
         assert_eq!(c.frames[n], Image::of_picture(&g.step(FrameInput::NONE).picture), "frame {n}");
