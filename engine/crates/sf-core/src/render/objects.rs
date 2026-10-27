@@ -22,6 +22,10 @@ pub(super) struct Sprite {
     dma: bool,
     pos: u16,
     ctl: u16,
+    /// HSTART's widescreen tenth bit, from a copper write of SPRxCTL only: the frog's copper words
+    /// carry it ([`crate::frog::anim::WIDE_HSTART_BIT`]); control words a sprite's own data
+    /// fetches may have that bit set (WW-1's `$000c`) and mean nothing by it.
+    wide_high: bool,
     armed: bool,
     data: [u16; 2],
 }
@@ -64,6 +68,7 @@ impl Sprite {
             0 => self.set_pos(value, line),
             2 => {
                 self.set_ctl(value, line);
+                self.wide_high = value & crate::frog::anim::WIDE_HSTART_BIT as u16 != 0;
                 self.armed = false;
                 return true;
             }
@@ -110,6 +115,7 @@ impl Sprite {
                 self.pt += 4;
                 self.set_pos(pos, line);
                 self.set_ctl(ctl, line);
+                self.wide_high = false;
                 self.armed = false;
             }
         } else if self.dma && !blocked {
@@ -132,9 +138,9 @@ impl Sprite {
     }
 
     /// In a widened level picture (`wide`) HSTART has a tenth bit, the frog's in widescreen
-    /// ([`crate::frog::anim::WIDE_HSTART_BIT`]).
+    /// (`wide_high`).
     pub fn shown(&self, wide: bool) -> Option<SpriteLine> {
-        let high = if wide && self.ctl & crate::frog::anim::WIDE_HSTART_BIT as u16 != 0 { 0x200 } else { 0 };
+        let high = if wide && self.wide_high { 0x200 } else { 0 };
         self.armed.then_some(SpriteLine {
             hstart: (self.pos & 0xFF) << 1 | self.ctl & 1 | high,
             data: self.data,

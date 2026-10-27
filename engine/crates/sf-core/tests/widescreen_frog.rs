@@ -178,6 +178,33 @@ fn past_hstarts_9_bits_the_frog_shows_at_the_right_edge() {
     }
 }
 
+/// The game's own widened picture (not only the strip layers) reads the tenth bit: the frog at
+/// `$180`/`$190` shows over the right strip's last 7 columns (T09 review: a renderer reading it in
+/// `strip_layers` alone passed every other test).
+#[test]
+fn the_games_picture_draws_the_frog_past_hstarts_9_bits() {
+    let mut c = at_right_end();
+    set_w(&mut c, FROG_SPRITE_LEFT, 0x180);
+    set_w(&mut c, FROG_SPRITE_RIGHT, 0x190);
+    c.step(FrameInput::NONE);
+    let l = layers(&c);
+    let shown = c.render(WIDE);
+    let width = l.picture.width as i32;
+    assert_eq!((shown.width, shown.height), (l.picture.width, l.picture.height));
+    let (mut frog, mut drawn) = (0, 0);
+    for y in 0..l.picture.height as usize {
+        for x in width - 7..width {
+            let at = y * width as usize + x as usize;
+            if let Some(v) = l.sprites[at] {
+                frog += 1;
+                drawn += (shown.pixels[at] == v && v != l.picture.pixels[at]) as usize;
+            }
+        }
+    }
+    assert!(frog > 0, "the frog's sprites cover the last columns");
+    assert!(drawn * 2 > frog, "{drawn} of {frog} frog pixels drawn in the game's picture");
+}
+
 /// The tenth bit is widescreen's alone: a 4:3 game's frog put at `$180` is parked at `$150` and
 /// its copper words are the original's, the bit clear.
 #[test]
@@ -218,4 +245,26 @@ fn a_blinking_frog_shows_nothing_in_either_strip() {
         }
         assert!(parked > 0, "{end}: the frog blinked");
     }
+}
+
+/// Only the copper's SPRxCTL carries the tenth bit: WW-1 has a sprite whose own data fetches
+/// control words `$0000`/`$000c` (HSTART 0, bit 3 set), off the picture's left in either mode. Read
+/// as the tenth bit it showed in the right strip's last columns with the frog mid-screen (T09
+/// review).
+#[test]
+fn a_sprites_own_control_words_never_carry_the_tenth_bit() {
+    let mut g = level("WW-1", true);
+    let mut checked = 0;
+    for n in 0..300u32 {
+        g.step(FrameInput::joy(if n < 150 { Joy::RIGHT } else { Joy::LEFT }));
+        if n < 250 || w(&g, FROG_SPRITE_RIGHT) >= 0x170 {
+            continue;
+        }
+        checked += 1;
+        let l = layers(&g);
+        let width = l.picture.width as usize;
+        let stray = l.sprites.iter().enumerate().filter(|&(at, v)| v.is_some() && at % width >= width - 7).count();
+        assert_eq!(stray, 0, "frame {n}: sprite pixels at the right edge, frog at {:#x}", w(&g, FROG_SPRITE_LEFT));
+    }
+    assert!(checked > 0);
 }

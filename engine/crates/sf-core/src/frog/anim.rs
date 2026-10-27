@@ -65,7 +65,7 @@ pub fn place_frog_sprites(c: &mut LevelCtx) {
 
 /// SPRxCTL's bit that carries a frog sprite's HSTART bit 9 in widescreen (real-widescreen DESIGN
 /// §2.9, T09). OCS Denise has no such bit (bits 3–6 are unused) and the renderer reads it only in a
-/// widened level picture. The frog's sprites are shown up to x `$190` from the camera there (hidden
+/// widened level picture, and only from a copper write (a sprite's own data may set it). The frog's sprites are shown up to x `$190` from the camera there (hidden
 /// from [`crate::level::screen::Screen::sprite_hide_right`] on), HSTART `x + $80` up to `$210`,
 /// past the 9 bits that would wrap a sprite at the right strip's last columns to the left of the
 /// picture. It happens while the camera catches up with a frog far right of it (a restart near a
