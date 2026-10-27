@@ -7,6 +7,7 @@
 use sf_core::input::FrameInput;
 use sf_core::layout::{AmigaMemory, Ram, VarId, def};
 use sf_core::recording::Location;
+use sf_core::level::objects::{WIDE_BASE, WIDE_BYTES};
 use sf_core::level::screen::WIDE_EXTRA;
 use sf_core::recording::{Recording, ZIP_RECORDING, ZIP_SCREENSHOT};
 use sf_core::{Game, LoadEnd, Picture, Scene, View};
@@ -252,6 +253,9 @@ impl Follow {
             // The wide draw lists are the engine's own (`engine_only`), outside the original's
             // memory: vAmiga refuses a write there.
             .filter(|d| !sf_core::layout::engine_only(d.id))
+            // The extra slots' range (`WIDE_BASE`) is outside it too, and 0 in a 4:3 game, as the
+            // original reads an address it never maps.
+            .filter(|d| !(WIDE_BASE..WIDE_BASE + WIDE_BYTES).contains(&d.addr))
             .map(|d| (d.addr, self.game.peek(d.addr, d.width.len())))
             .collect()
     }

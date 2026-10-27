@@ -17,6 +17,7 @@ owns = [
   "engine/crates/sf-core/Cargo.toml",
   "engine/crates/sf-core/tests/savestate.rs",
   "engine/crates/sf-core/tests/start_level.rs",
+  "engine/crates/sf-core/tests/widescreen_mode.rs",
 ]
 +++
 
@@ -90,8 +91,9 @@ game is written to a file (save states and bug recordings).
 - `engine/crates/sf-core/src/lib.rs` declares the modules and re-exports the crate's public
   types; `engine/crates/sf-core/Cargo.toml` names its dependencies (`sf-assets`, `sf-disk` for the
   intro's `ATN!` unpacking, `sf-paula`, `serde` and `bincode` for save states).
-- Tests owned here: `engine/crates/sf-core/tests/savestate.rs` and
-  `engine/crates/sf-core/tests/start_level.rs`, plus the unit tests in each file.
+- Tests owned here: `engine/crates/sf-core/tests/savestate.rs`,
+  `engine/crates/sf-core/tests/start_level.rs` and `engine/crates/sf-core/tests/widescreen_mode.rs`
+  (the widescreen mode reaches every level step and is not saved), plus the unit tests in each file.
 
 **What belongs to [cpu-time-and-beam](cpu-time-and-beam.md).** `game.rs` also holds that
 mechanism's interface: `Pacing`, `PassClock`, `LoadEnd`, `Job`, `HandlerEnd`, `Cpu`, `RACE_LINES`

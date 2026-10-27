@@ -11,6 +11,8 @@ owns = [
   "engine/crates/sf-core/src/level/bobs.rs",
   "engine/crates/sf-core/src/front/blit.rs",
   "engine/crates/sf-core/src/front/sprite.rs",
+  "engine/crates/sf-core/tests/widescreen_frog.rs",
+  "engine/crates/sf-core/tests/widescreen_objects.rs",
 ]
 +++
 
@@ -121,6 +123,9 @@ cost of DESIGN §2.7.
   `copper::run_bus` (`engine/crates/sf-core/src/front/story/sim.rs`,
   `engine/crates/sf-core/src/front/story/cpu.rs`, `engine/crates/sf-core/src/front/story/intro.rs`).
   [story-and-ending](story-and-ending.md) documents that race.
+- Widescreen's side strips are tested in `engine/crates/sf-core/tests/widescreen_frog.rs` (the
+  frog's sprites past HSTART's 9 bits) and `engine/crates/sf-core/tests/widescreen_objects.rs`
+  (every drawn bob shows in the strips as it does in the centre).
 
 ## 2. Kind mix
 

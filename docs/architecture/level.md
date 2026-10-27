@@ -8,6 +8,9 @@ mix = { amiga = 50, game = 43, data = 6, shell = 1 }
 reuse = "superfrog-only"
 owns = [
   "engine/crates/sf-core/src/level/",
+  "engine/crates/sf-core/tests/widescreen_camera.rs",
+  "engine/crates/sf-core/tests/widescreen_capacity.rs",
+  "engine/crates/sf-core/tests/widescreen_spawn.rs",
 ]
 +++
 
@@ -97,6 +100,10 @@ Files owned (`engine/crates/sf-core/src/level/`, less `beam.rs`, `timeline.rs`, 
   and `pause_run` with `Pause`, the pause kept across frames.
 - `engine/crates/sf-core/src/level/fade.rs`: the four fade records the vertical blank steps
   (`fades_tick`: fade-in, fade-out, stepped) and `stepped_start`, the witch's flash.
+- Widescreen's level tests: `engine/crates/sf-core/tests/widescreen_camera.rs` (the camera's and
+  the frog's wider clamps), `engine/crates/sf-core/tests/widescreen_spawn.rs` (objects wake and are
+  freed by the wide view's edges) and `engine/crates/sf-core/tests/widescreen_capacity.rs` (the
+  extra object slots the 4:3 game never touches).
 
 ### What runs each frame
 
