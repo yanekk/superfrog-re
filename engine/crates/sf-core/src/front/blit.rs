@@ -231,6 +231,33 @@ mod tests {
     use crate::layout::{VarId, def};
     use crate::mem::{Bus, Rom, WriteLog};
 
+    /// The first- and last-word masks on A, each line, over the level's [`Bus`]: the bob drawer
+    /// (`objects.rs` `draw_bob`) runs with `alwm` 0, and a width of 1 takes both masks.
+    #[test]
+    fn a_bus_blit_masks_a_s_first_and_last_word() {
+        let rom = Rom::default();
+        let (src, dst) = (def(VarId::PlayfieldBuffer1).addr, def(VarId::PlayfieldBuffer0).addr);
+        for (w, want) in [(3u16, vec![0xff00u16, 0xffff, 0x00ff]), (1, vec![0x0000])] {
+            let mut st = State::default();
+            for k in 0..16 {
+                st.set_w(src + 2 * k, 0xffff);
+            }
+            let mut bus = Bus::new(&mut st, &rom);
+            Blit {
+                con0: 0x09f0,
+                con1: 0,
+                afwm: 0xff00,
+                alwm: 0x00ff,
+                pt: [src, 0, 0, dst],
+                modulo: [0; 4],
+                size: 2 << 6 | w,
+            }
+            .run(&mut bus);
+            let got = (0..2 * w as u32).map(|k| bus.w(dst + 2 * k)).collect::<Vec<_>>();
+            assert_eq!(got, [want.clone(), want].concat(), "width {w}");
+        }
+    }
+
     /// The level drawer's own blitter as it was before amiga-chips T01 merged it into
     /// [`Blit::run`] (`level/objects.rs` `blit`), kept as the reference the merge is held to:
     /// ascending, each pointer masked to `$7fffe` at the start and after every modulo add.
