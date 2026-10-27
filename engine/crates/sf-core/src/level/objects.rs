@@ -5,6 +5,7 @@
 //! touches, the bob draw list and the bob drawer, which erases and draws every bob into the back
 //! display buffer.
 
+use crate::front::blit::{Blit, bltsize_words};
 use crate::frog::{FROG, f};
 use crate::layout::{
     WIDE_BOB_ENTRIES, WIDE_BOB_ENTRY, WIDE_BOB_HEAD, WIDE_BOB_WIPED, WIDE_BOBS, h0, h3,
@@ -815,110 +816,6 @@ const CLEAN: u32 = h3(0x35860);
 /// part).
 const SUB: u32 = 0x46;
 
-/// One blit of the drawer: BLTCON0/1, masks, the four pointers and modulos, BLTSIZE.
-#[derive(Clone, Copy)]
-pub(crate) struct Blit {
-    pub(crate) con0: u16,
-    pub(crate) con1: u16,
-    pub(crate) afwm: u16,
-    pub(crate) alwm: u16,
-    pub(crate) a: u32,
-    pub(crate) b: u32,
-    pub(crate) c: u32,
-    pub(crate) d: u32,
-    pub(crate) amod: u16,
-    pub(crate) bmod: u16,
-    pub(crate) cmod: u16,
-    pub(crate) dmod: u16,
-    pub(crate) size: u16,
-}
-
-/// The words a blit of BLTSIZE `size` moves.
-fn blit_words(size: u16) -> u32 {
-    (match size >> 6 { 0 => 1024, h => h as u32 }) * (match size & 0x3f { 0 => 64, w => w as u32 })
-}
-
-/// The blitter in area mode, ascending (what the drawer uses): A shifted and masked, B shifted,
-/// C, minterm, into D.
-pub(crate) fn blit(b: &mut Bus, x: Blit) {
-    let h = match x.size >> 6 {
-        0 => 1024,
-        h => h as u32,
-    };
-    let w = match x.size & 0x3f {
-        0 => 64,
-        w => w as u32,
-    };
-    let (use_a, use_b, use_c, use_d) = (
-        x.con0 & 0x800 != 0,
-        x.con0 & 0x400 != 0,
-        x.con0 & 0x200 != 0,
-        x.con0 & 0x100 != 0,
-    );
-    let (ash, bsh) = ((x.con0 >> 12) as u32, (x.con1 >> 12) as u32);
-    let mt = x.con0 as u8;
-    let (mut pa, mut pb, mut pc, mut pd) = (x.a & 0x7_fffe, x.b & 0x7_fffe, x.c & 0x7_fffe, x.d & 0x7_fffe);
-    let (mut aold, mut bold) = (0u16, 0u16);
-    for _ in 0..h {
-        for col in 0..w {
-            let mut a = if use_a { b.w(pa) } else { 0 };
-            if use_a {
-                pa = pa.wrapping_add(2);
-            }
-            if col == 0 {
-                a &= x.afwm;
-            }
-            if col == w - 1 {
-                a &= x.alwm;
-            }
-            let bv = if use_b { b.w(pb) } else { 0 };
-            if use_b {
-                pb = pb.wrapping_add(2);
-            }
-            let cv = if use_c { b.w(pc) } else { 0 };
-            if use_c {
-                pc = pc.wrapping_add(2);
-            }
-            let ash_v = ((aold as u32) << 16 | a as u32) >> ash;
-            let bsh_v = ((bold as u32) << 16 | bv as u32) >> bsh;
-            let (sa, sb) = (ash_v as u16, bsh_v as u16);
-            aold = a;
-            bold = bv;
-            let mut d = 0u16;
-            for (bit, term) in [
-                (0x80, sa & sb & cv),
-                (0x40, sa & sb & !cv),
-                (0x20, sa & !sb & cv),
-                (0x10, sa & !sb & !cv),
-                (0x08, !sa & sb & cv),
-                (0x04, !sa & sb & !cv),
-                (0x02, !sa & !sb & cv),
-                (0x01, !sa & !sb & !cv),
-            ] {
-                if mt & bit != 0 {
-                    d |= term;
-                }
-            }
-            if use_d {
-                b.set_w(pd, d);
-                pd = pd.wrapping_add(2);
-            }
-        }
-        if use_a {
-            pa = pa.wrapping_add(x.amod as i16 as i32 as u32) & 0x7_fffe;
-        }
-        if use_b {
-            pb = pb.wrapping_add(x.bmod as i16 as i32 as u32) & 0x7_fffe;
-        }
-        if use_c {
-            pc = pc.wrapping_add(x.cmod as i16 as i32 as u32) & 0x7_fffe;
-        }
-        if use_d {
-            pd = pd.wrapping_add(x.dmod as i16 as i32 as u32) & 0x7_fffe;
-        }
-    }
-}
-
 /// `bob_draw` (h0+$19120): the bobs of the draw list, erased from the back buffer (copied back
 /// from the clean buffer where they were last drawn) and drawn again (cookie-cut, minterm `$ca`,
 /// their mask over the background), in two parts split at the display ring's seam; then the
@@ -1145,27 +1042,20 @@ fn erase(c: &mut LevelCtx, part: u32, dest: u32) {
     }
     c.spend(Cost::BobErase);
     c.custom(0x9a, 0x0010);
+    let (h, w) = bltsize_words(size);
     for p in 0..5 {
         c.spend(Cost::BobPlane);
-        c.blit_words(blit_words(size), 0x09f0);
-        blit(
-            &mut c.bus,
-            Blit {
-                con0: 0x09f0,
-                con1: 0,
-                afwm: 0xffff,
-                alwm: 0xffff,
-                a: src.wrapping_add(PLANE * p),
-                b: 0,
-                c: 0,
-                d: dest.wrapping_add(PLANE * p),
-                amod: modulo,
-                bmod: 0,
-                cmod: 0,
-                dmod: modulo,
-                size,
-            },
-        );
+        c.blit_words(h * w, 0x09f0);
+        Blit {
+            con0: 0x09f0,
+            con1: 0,
+            afwm: 0xffff,
+            alwm: 0xffff,
+            pt: [src.wrapping_add(PLANE * p), 0, 0, dest.wrapping_add(PLANE * p)],
+            modulo: [modulo as i16, 0, 0, modulo as i16],
+            size,
+        }
+        .run(&mut c.bus);
     }
     c.custom(0x9a, 0x8010);
 }
@@ -1302,27 +1192,20 @@ fn draw_bob(c: &mut LevelCtx, bob: u32, back: u32, sub: u32) {
     let step = b.l(a3 + 0x16);
     c.spend(Cost::BobShown);
     c.custom(0x9a, 0x0010);
+    let (h, w) = bltsize_words(size);
     for p in 0..5u32 {
         c.spend(Cost::BobPlane);
-        c.blit_words(blit_words(size), 0x0fca);
-        blit(
-            &mut c.bus,
-            Blit {
-                con0: shift | 0x0fca,
-                con1: shift,
-                afwm: 0xffff,
-                alwm: 0x0000,
-                a: a4,
-                b: src,
-                c: a1.wrapping_add(PLANE * p),
-                d: a1.wrapping_add(PLANE * p),
-                amod: bmod,
-                bmod,
-                cmod,
-                dmod: cmod,
-                size,
-            },
-        );
+        c.blit_words(h * w, 0x0fca);
+        Blit {
+            con0: shift | 0x0fca,
+            con1: shift,
+            afwm: 0xffff,
+            alwm: 0x0000,
+            pt: [a4, src, a1.wrapping_add(PLANE * p), a1.wrapping_add(PLANE * p)],
+            modulo: [bmod as i16, bmod as i16, cmod as i16, cmod as i16],
+            size,
+        }
+        .run(&mut c.bus);
         src = src.wrapping_add(step);
     }
     c.custom(0x9a, 0x8010);
@@ -1426,27 +1309,20 @@ fn draw_background(c: &mut LevelCtx, rec: u32, frame_at: u32, back: u32) {
     let shift = (b.w(rec) & 0xf).wrapping_shl(12);
     c.spend(Cost::BobShown);
     c.custom(0x9a, 0x0010);
+    let (h, w) = bltsize_words(size);
     for p in 0..5u32 {
         c.spend(Cost::BobPlane);
-        c.blit_words(blit_words(size), 0x09f0);
-        blit(
-            &mut c.bus,
-            Blit {
-                con0: shift | 0x09f0,
-                con1: shift,
-                afwm: 0xffff,
-                alwm: 0xffff,
-                a: src,
-                b: 0,
-                c: 0,
-                d: a1.wrapping_add(PLANE * p),
-                amod,
-                bmod: 0,
-                cmod: 0,
-                dmod,
-                size,
-            },
-        );
+        c.blit_words(h * w, 0x09f0);
+        Blit {
+            con0: shift | 0x09f0,
+            con1: shift,
+            afwm: 0xffff,
+            alwm: 0xffff,
+            pt: [src, 0, 0, a1.wrapping_add(PLANE * p)],
+            modulo: [amod as i16, 0, 0, dmod as i16],
+            size,
+        }
+        .run(&mut c.bus);
         src = src.wrapping_add(step);
     }
     c.custom(0x9a, 0x8010);

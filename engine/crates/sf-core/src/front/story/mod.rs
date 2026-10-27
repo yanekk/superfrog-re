@@ -26,6 +26,7 @@ pub use mem::StoryMem;
 
 use sf_paula::PaulaWrite;
 
+use crate::front::blit::is_paula;
 use crate::game::{Job, LoadEnd};
 use crate::layout::{VarDef, VarId, Width};
 use crate::render::copper::Fetch;
@@ -84,10 +85,6 @@ const COPPER_SEES_HANDLER: u16 = 2;
 /// The DMA cycle of line 0 by which the CPU has taken the vertical blank's interrupt: copper
 /// writes before it go with the frame before (oracle: the black list's DMACON on cycle 12).
 const BEFORE_IRQ: u16 = 0x14;
-
-fn is_paula(reg: u16) -> bool {
-    matches!(reg, 0x96 | 0x9a | 0x9c | 0x9e) || (0xa0..0xe0).contains(&reg)
-}
 
 /// Lines in a long frame; a short one has one fewer.
 const LONG_FRAME: u16 = 313;

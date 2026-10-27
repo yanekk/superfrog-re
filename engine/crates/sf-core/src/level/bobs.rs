@@ -9,7 +9,8 @@ use crate::layout::{h0, h2, h3};
 use crate::level::camera;
 use crate::level::LevelCtx;
 use crate::level::beam::Cost;
-use crate::level::objects::{BOB_FREE_LIST, Blit, WIDE_BOB_FREE_LIST, blit, draw_list};
+use crate::front::blit::Blit;
+use crate::level::objects::{BOB_FREE_LIST, WIDE_BOB_FREE_LIST, draw_list};
 use crate::mem::Bus;
 
 /// `bob_buffer` (h0+$18be4).
@@ -185,45 +186,29 @@ fn masks(c: &mut LevelCtx) {
     let size = 0x140u16 << 6 | 0x14;
     c.custom(0x96, 0x8400);
     c.spend_n(Cost::MaskClear10, 0x140 * 0x14 / 10);
-    blit(
-        &mut c.bus,
-        Blit {
-            con0: 0x0100,
-            con1: 0,
-            afwm: 0xffff,
-            alwm: 0xffff,
-            a: 0,
-            b: 0,
-            c: 0,
-            d: MASK,
-            amod: 0,
-            bmod: 0,
-            cmod: 0,
-            dmod: 0,
-            size,
-        },
-    );
+    Blit {
+        con0: 0x0100,
+        con1: 0,
+        afwm: 0xffff,
+        alwm: 0xffff,
+        pt: [0, 0, 0, MASK],
+        modulo: [0; 4],
+        size,
+    }
+    .run(&mut c.bus);
     for p in 0..5 {
         c.spend_n(Cost::MaskOr10, 0x140 * 0x14 / 10);
         let b = &mut c.bus;
-        blit(
-            b,
-            Blit {
-                con0: 0x0dfc,
-                con1: 0,
-                afwm: 0xffff,
-                alwm: 0xffff,
-                a: SHEET + p * SHEET_PLANE,
-                b: MASK,
-                c: 0,
-                d: MASK,
-                amod: 0,
-                bmod: 0,
-                cmod: 0,
-                dmod: 0,
-                size,
-            },
-        );
+        Blit {
+            con0: 0x0dfc,
+            con1: 0,
+            afwm: 0xffff,
+            alwm: 0xffff,
+            pt: [SHEET + p * SHEET_PLANE, MASK, 0, MASK],
+            modulo: [0; 4],
+            size,
+        }
+        .run(b);
     }
     c.custom(0x96, 0x0400);
 }

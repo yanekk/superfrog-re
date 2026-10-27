@@ -41,6 +41,7 @@ pub use story::{Story, StoryData};
 
 use sf_paula::PaulaWrite;
 
+use crate::front::blit::is_paula;
 use crate::input::FrameInput;
 use crate::layout::{H2, h0};
 use crate::render::{self, DisplayData, Picture};
@@ -1769,10 +1770,6 @@ impl Front {
             }
         }
     }
-}
-
-fn is_paula(reg: u16) -> bool {
-    matches!(reg, 0x96 | 0x9a | 0x9c | 0x9e) || (0xa0..0xe0).contains(&reg)
 }
 
 /// The copper list's bytes at one moment.
