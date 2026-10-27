@@ -56,20 +56,20 @@ Targets for the M2 rows:
 Newest column on the right. A step's column is filled by its plan's last task (or its single run),
 on its branch, with the values measured on that branch; they are the values that merge.
 
-| Question | Baseline 2026-10-23 (`e196a2e`) |
-|---|---|
-| M1 | not run by this session; last full `sf-conform all` was rust-engine T217 |
-| M2 kbd_poll | 2 |
-| M2 key-byte encode | 4 |
-| M2 blitter memory effect | 4 (`Blit::run`, `objects::blit`, `scroll::blit`, `blit_panel`) |
-| M2 BLTSIZE decodes | 9 |
-| M2 chip-memory containers | 3 (`AmigaMemory` ×2, `StoryMem`) |
-| M2 `is_paula` | 2 |
-| M2 frame/line constants | 12 (8 in sf-core, 4 in sf-conform probes and tests) |
-| M2 beam-position types | 6 (`Clock`, `Beam`, `Cx` ×2, slot `spend`, `sim::beam`) |
-| M2 hunk-0 loads | 4 |
-| M3 | 52 |
-| M4 | 1 (`sf-paula`) |
-| M5 | 838 |
-| J1 | not asked yet |
-| J2 | not asked yet |
+| Question | Baseline 2026-10-23 (`e196a2e`) | amiga-chips 2026-10-27 (`pir/amiga-chips-T02`) |
+|---|---|---|
+| M1 | not run by this session; last full `sf-conform all` was rust-engine T217 | DESIGN §4 sf-conform runs green (41 cases incl. `complete-w1-1`; story ×9; story music) and a regression subset of the test block; the whole block runs at the plan's end; `sf-conform all` not run |
+| M2 kbd_poll | 2 | 2 |
+| M2 key-byte encode | 4 | 4 |
+| M2 blitter memory effect | 4 (`Blit::run`, `objects::blit`, `scroll::blit`, `blit_panel`) | 1 (`Blit::run`) |
+| M2 BLTSIZE decodes | 9 | 3 |
+| M2 chip-memory containers | 3 (`AmigaMemory` ×2, `StoryMem`) | 2 (`AmigaMemory`, `StoryMem`) |
+| M2 `is_paula` | 2 | 1 |
+| M2 frame/line constants | 12 (8 in sf-core, 4 in sf-conform probes and tests) | 12 (2 now in amiga-chips) |
+| M2 beam-position types | 6 (`Clock`, `Beam`, `Cx` ×2, slot `spend`, `sim::beam`) | 5 (copper `Beam` moved to amiga-chips; measure.sh scans sf-core only) |
+| M2 hunk-0 loads | 4 | 4 |
+| M3 | 52 | 52 |
+| M4 | 1 (`sf-paula`) | 2 (`sf-paula`, `amiga-chips`) |
+| M5 | 838 | 1575 (838 + 737) |
+| J1 | not asked yet | not asked |
+| J2 | not asked yet | not asked |
