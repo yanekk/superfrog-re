@@ -236,6 +236,7 @@ what to keep and its §6 sketches a shape: [frog and items](frog-and-items.md),
 blitter three times, the keyboard poll twice, darts and swings twice, the slot's second lamp drawer)
 are merged here. The [story and the ending](story-and-ending.md) comes last of the subsystems: its
 draws race the beam to the cycle on its own bus simulator, the finest timing in the engine.
+Done 2026-10-27 (plan amiga-chips): the blitter and chip memory are merged and live in `engine/crates/amiga-chips`.
 
 **5. The display hardware: keep the picture contract, rewrite last.** `Picture` (indices, a palette
 per line, mid-line splits in display-window coordinates) is already what the checks compare, and

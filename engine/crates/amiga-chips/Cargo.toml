@@ -1,0 +1,11 @@
+[package]
+name = "amiga-chips"
+version.workspace = true
+edition.workspace = true
+publish.workspace = true
+
+[dependencies]
+# ChipMemory, what the mixer's DMA reads; AmigaMemory implements it (a toolkit crate).
+sf-paula = { path = "../sf-paula" }
+# Save states: AmigaMemory and the copper's Fetch are part of a game's saved state.
+serde = { version = "1", features = ["derive"] }
