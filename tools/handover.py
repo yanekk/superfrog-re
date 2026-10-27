@@ -116,6 +116,9 @@ def main():
     ap.add_argument('--widescreen', action='store_true', help='a sf-plan --widescreen route')
     ap.add_argument('--step', type=int, help='pause at this step, not the first one near COL,ROW')
     a = ap.parse_args()
+    if a.step is not None and a.step < 1:
+        # Steps count from 1; `--step 0` would otherwise read as no --step at all.
+        ap.error('--step counts from 1')
     text = open(a.route).read()
     wide_route = '# widescreen: on' in text.splitlines()
     if a.widescreen != wide_route:
@@ -125,7 +128,7 @@ def main():
         sys.exit(f'{a.route}: not an sf-plan --app route (`# timing: app`, `# seed: N`)')
     col, row = map(int, a.at.split(','))
     extra = ['--widescreen'] if a.widescreen else []
-    frame = a.step - 1 if a.step else first_at(trail(os.path.abspath(a.route), a.level, *extra), col, row)
+    frame = a.step - 1 if a.step is not None else first_at(trail(os.path.abspath(a.route), a.level, *extra), col, row)
     if frame is None:
         sys.exit(f'the route never reaches {a.level}:{col},{row} with the frog alive')
     keys = keys_from(a.settings)

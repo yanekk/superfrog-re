@@ -8,8 +8,9 @@
 //! 23 normal levels' routes are `sf-plan <level> --widescreen`'s; WB-1's is `plan_bonus
 //! --widescreen`'s; WW-1's is `final-win`'s fire pattern. **W6-4's is owner-played**, not the
 //! planner's (`# played: owner`; owner, 2026-10-27): the planner stalls 48 cells from its exit in
-//! widescreen even guided by the owner's run, so the route is that run's recording. W1-1 runs in the block (about 4 000
-//! frames); the whole set is about 200 000 frames and is `#[ignore]`d:
+//! widescreen even guided by the owner's run, so the route is that run's recording. W5-1 runs in the
+//! block (about 1 900 frames; its route loses a life in 4:3, where W1-1's still finishes, so the
+//! block fails if widescreen is not on); the whole set is about 200 000 frames and is `#[ignore]`d:
 //! `cargo test -p sf-conform --test widescreen_complete -- --ignored`.
 
 use sf_conform::InputScript;
@@ -36,6 +37,11 @@ fn header<'a>(text: &'a str, key: &str) -> Option<&'a str> {
 
 /// Replays `level`'s widescreen route; the frame its level ended on, or why it did not.
 fn finish(level: LevelId) -> Result<u32, String> {
+    finish_in(level, true)
+}
+
+/// [`finish`], with View ▸ Widescreen left off when not `wide`.
+fn finish_in(level: LevelId, wide: bool) -> Result<u32, String> {
     let p = path(level);
     let text = std::fs::read_to_string(&p).map_err(|e| format!("{}: {e}", p.display()))?;
     if header(&text, "timing") != Some("app") || header(&text, "widescreen") != Some("on") {
@@ -50,7 +56,9 @@ fn finish(level: LevelId) -> Result<u32, String> {
     let script = InputScript::parse(&text).map_err(|e| format!("{}: {e}", p.display()))?;
     let n = script.lines.last().map_or(0, |l| l.0);
     let mut g = Game::start_level(sf_conform::display_data(), &setup, Rng::seeded(seed, seed));
-    g.set_widescreen(true);
+    if wide {
+        g.set_widescreen(true);
+    }
     let lives = g.state().w(FROG + f::LIVES);
     for k in 0..n {
         g.step_unseen(script.input_at(k));
@@ -66,9 +74,11 @@ fn finish(level: LevelId) -> Result<u32, String> {
 }
 
 #[test]
-fn w1_1_is_finished_in_widescreen() {
-    let level: LevelId = "W1-1".parse().unwrap();
-    assert!(finish(level).is_ok(), "{:?}", finish(level));
+fn w5_1_is_finished_in_widescreen_and_not_in_4_3() {
+    let level: LevelId = "W5-1".parse().unwrap();
+    assert_eq!(finish(level), Ok(1869));
+    let narrow = finish_in(level, false);
+    assert!(narrow.as_ref().is_err_and(|e| e.contains("a life lost")), "{narrow:?}");
 }
 
 /// W6-4's route says it is the owner's play, so it is never taken for a planner result.

@@ -54,6 +54,17 @@ class Widescreen(unittest.TestCase):
     def test_no_toggle_by_default(self):
         self.assertNotIn('1: menu widescreen', H.script(ROUTE, 'W1-1', 1, 6, H.DEFAULT_KEYS, 7))
 
+    def test_step_counts_from_1(self):
+        # `--step 0` used to fall through to the trail search (a cargo run) as if no --step were given.
+        import subprocess
+        with tempfile.NamedTemporaryFile('w', suffix='.txt', delete=False) as f:
+            f.write(ROUTE)
+        r = subprocess.run([sys.executable, H.__file__, f.name, 'W1-1', '1,1', '--step', '0'],
+                           capture_output=True, text=True)
+        os.unlink(f.name)
+        self.assertEqual(r.returncode, 2, r.stderr)
+        self.assertIn('--step counts from 1', r.stderr)
+
     def test_the_owners_widescreen_setting(self):
         with tempfile.NamedTemporaryFile('w', suffix='.toml', delete=False) as f:
             f.write('widescreen = true\n[keys]\nup = ["Space"]\n')
