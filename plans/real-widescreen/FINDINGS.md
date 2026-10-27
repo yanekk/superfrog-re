@@ -12,6 +12,8 @@ changed.
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-27 | 🐞 | T10, fixed: `Game::start_level` plays the level code through in 4:3, so a Start Level or bug replay switched wide entered W1-1 at cx 16 (80 frames black past the map, then a 65 px jump). `set_widescreen` before the first step now restarts it wide. |
+| 2026-10-27 | 🔄 | T10, owner: during `--replay` View ▸ Widescreen is disabled; the recording alone switches the mode and the item's tick shows it. |
 | 2026-10-27 | 🐞 | T09 review, fixed: a WW-1 sprite's own data fetches SPRxCTL `$000c` (bit 3 set); read as `WIDE_HSTART_BIT` it drew stray pixels at the right strip's edge. The renderer now takes the bit from copper writes only. |
 | 2026-10-27 | 📌 | T09 review drill, worker-driven: W1-1 widescreen rendered with the frog at both ends, whole in each strip. A probe of every level's right-edge sprite pixels (600 frames) found only WB-1's frog after the fix. |
 | 2026-10-27 | 📌 | T09 measured: widescreen frog sprites show from x −$61 to $190 (HSTART $1F..$210; picture left $38). At a level's end the frog stands at $169/$179; $180..$190 occurs only while the camera catches up (2–6 frames per run). |
