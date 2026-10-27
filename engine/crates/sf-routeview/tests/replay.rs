@@ -68,3 +68,17 @@ fn a_level_with_no_route_draws_its_map_and_objects() {
     let v = verdict::verdict(&d, false, None);
     assert_eq!((v.status, v.faults[0].as_str()), (Status::Failed, "no route"));
 }
+
+/// real-widescreen T12: a `sf-plan --widescreen` route (`# widescreen: on`) is replayed from the
+/// wide start, where it reaches its exit; read as 4:3 the same inputs lose a life (enemies wake later).
+#[test]
+fn a_widescreen_route_replays_in_widescreen() {
+    let p = sf_bench::repo_dir().join("engine/conform/scripts/wide-w5-1.txt");
+    let text = std::fs::read_to_string(&p).unwrap();
+    let exit = |t: &str| t.split("# The level ends at frame ").nth(1).unwrap().split(',').next().unwrap().parse::<u32>().unwrap();
+    let d = dump::replay("W5-1".parse().unwrap(), Some(&text)).unwrap();
+    assert_eq!((d.end, d.lives_lost()), (Some(exit(&text)), 0));
+    let narrow = text.replace("# widescreen: on\n", "");
+    let n = dump::replay("W5-1".parse().unwrap(), Some(&narrow)).unwrap();
+    assert_eq!(n.lives_lost(), 1, "the 4:3 start plays another game: its frog dies");
+}

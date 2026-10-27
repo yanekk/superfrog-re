@@ -17,14 +17,31 @@ use crate::oracle::Look;
 /// script sets with `seed A B` and leaves at `0 0` without one (sf-app `menu.rs` `start_level`,
 /// `script.rs`); `sf-plan --app --seed N` is that seed with both halves N.
 pub fn app_start(level: LevelId, seed: u32) -> Game {
-    Game::start_level(
-        sf_conform::display_data(),
+    app_start_in(level, seed, false)
+}
+
+/// [`app_start`] in widescreen when `wide` (real-widescreen T12): View ▸ Widescreen on before the
+/// level's first step, which starts the level again wide (`Game::set_widescreen`, real-widescreen
+/// T10), so it is entered with the wide start camera and start scan as the app enters it.
+pub fn app_start_in(level: LevelId, seed: u32, wide: bool) -> Game {
+    app_start_with(
         &LevelSetup {
             level,
             ..Default::default()
         },
-        Rng::seeded(seed, seed),
+        seed,
+        wide,
     )
+}
+
+/// [`app_start_in`] from a dialog filled in as `setup`: the final level is started with Spud
+/// ticked, since without it the witch cannot be hit (real-widescreen T12).
+pub fn app_start_with(setup: &LevelSetup, seed: u32, wide: bool) -> Game {
+    let mut g = Game::start_level(sf_conform::display_data(), setup, Rng::seeded(seed, seed));
+    if wide {
+        g.set_widescreen(true);
+    }
+    g
 }
 
 /// Idle from the level's first frame until the frog has landed past frame 150, at most 400, as
@@ -59,7 +76,12 @@ impl Replay {
 
 /// `inputs` from `level`'s app start with `seed`, until the level ends or the inputs do.
 pub fn replay(level: LevelId, seed: u32, inputs: &[FrameInput]) -> Replay {
-    let mut g = app_start(level, seed);
+    replay_in(level, seed, false, inputs)
+}
+
+/// [`replay`] from [`app_start_in`].
+pub fn replay_in(level: LevelId, seed: u32, wide: bool, inputs: &[FrameInput]) -> Replay {
+    let mut g = app_start_in(level, seed, wide);
     let mut before = Look::of(g.state());
     let mut r = Replay {
         exit: None,
@@ -82,10 +104,18 @@ pub fn replay(level: LevelId, seed: u32, inputs: &[FrameInput]) -> Replay {
 
 /// A `# timing: app` script played on the engine from its own app start (DESIGN §2.11), sampled
 /// for guide points: T09 left this branch of `trace.rs` to T12.
-pub fn trace_app(level: LevelId, seed: u32, facts: &Facts, script: &InputScript) -> Vec<TracePoint> {
+pub fn trace_app(level: LevelId, seed: u32, wide: bool, facts: &Facts, script: &InputScript) -> Vec<TracePoint> {
     let n = script.lines.last().map_or(0, |l| l.0);
     let inputs: Vec<FrameInput> = (0..n).map(|k| script.input_at(k)).collect();
-    trace_engine(&app_start(level, seed), facts, &inputs)
+    trace_engine(&app_start_in(level, seed, wide), facts, &inputs)
+}
+
+/// Whether an app-timed route was planned in widescreen: its `# widescreen: on` line (`sf-plan
+/// --widescreen` writes one after the seed line). It replays only from the wide start.
+pub fn route_widescreen(text: &str) -> bool {
+    text.lines()
+        .take_while(|l| l.trim_start().starts_with('#'))
+        .any(|l| l.trim() == "# widescreen: on")
 }
 
 /// The seed an app-timed route was planned with: its `# seed: N` line (`sf-plan --app` writes one

@@ -43,5 +43,36 @@ class Script(unittest.TestCase):
         self.assertIsNone(H.first_at(trail[:2], 10, 5))
 
 
+class Widescreen(unittest.TestCase):
+    """real-widescreen T12: `--widescreen` hands over a wide route; 4:3 is unchanged without it."""
+
+    def test_the_toggle_comes_before_start_level_on_its_frame(self):
+        s = H.script(ROUTE, 'W6-4', 1, 6, H.DEFAULT_KEYS, 7, toggle_wide=True).splitlines()
+        i = s.index('1: menu widescreen')
+        self.assertEqual(s[i + 1], '1: start-level W6-4 lives=7 record')
+
+    def test_no_toggle_by_default(self):
+        self.assertNotIn('1: menu widescreen', H.script(ROUTE, 'W1-1', 1, 6, H.DEFAULT_KEYS, 7))
+
+    def test_step_counts_from_1(self):
+        # `--step 0` used to fall through to the trail search (a cargo run) as if no --step were given.
+        import subprocess
+        with tempfile.NamedTemporaryFile('w', suffix='.txt', delete=False) as f:
+            f.write(ROUTE)
+        r = subprocess.run([sys.executable, H.__file__, f.name, 'W1-1', '1,1', '--step', '0'],
+                           capture_output=True, text=True)
+        os.unlink(f.name)
+        self.assertEqual(r.returncode, 2, r.stderr)
+        self.assertIn('--step counts from 1', r.stderr)
+
+    def test_the_owners_widescreen_setting(self):
+        with tempfile.NamedTemporaryFile('w', suffix='.toml', delete=False) as f:
+            f.write('widescreen = true\n[keys]\nup = ["Space"]\n')
+        on = H.widescreen_setting(f.name)
+        os.unlink(f.name)
+        self.assertTrue(on)
+        self.assertFalse(H.widescreen_setting('/nonexistent/settings.toml'))
+
+
 if __name__ == '__main__':
     unittest.main()
