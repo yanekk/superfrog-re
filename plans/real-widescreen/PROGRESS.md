@@ -34,7 +34,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T09 | side-frog | T04, T08 | ✅ | |
 | T10 | app-wiring | T05, T06, T07, T08, T09 | ✅ | |
 | T11 | widescreen-drill | T10 | ✅ | |
-| T12 | wide-every-level | T11 | ⬜ | |
+| T12 | wide-every-level | T11 | ✅ | |
 
 **Review queue:** *(empty)*
 
