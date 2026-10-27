@@ -1,0 +1,9 @@
+[package]
+name = "amiga-clock"
+version.workspace = true
+edition.workspace = true
+publish.workspace = true
+
+[dependencies]
+# Save states: the level's clock and timeline are part of a game's saved state.
+serde = { version = "1", features = ["derive"] }

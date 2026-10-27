@@ -69,8 +69,16 @@ dependencies = [
 name = "amiga-chips"
 version = "0.1.0"
 dependencies = [
+ "amiga-clock",
  "serde",
  "sf-paula",
+]
+
+[[package]]
+name = "amiga-clock"
+version = "0.1.0"
+dependencies = [
+ "serde",
 ]
 
 [[package]]
@@ -2879,6 +2887,7 @@ dependencies = [
 name = "sf-conform"
 version = "0.1.0"
 dependencies = [
+ "amiga-clock",
  "miniz_oxide 0.9.1",
  "png",
  "sf-assets",
@@ -2894,6 +2903,7 @@ name = "sf-core"
 version = "0.1.0"
 dependencies = [
  "amiga-chips",
+ "amiga-clock",
  "bincode",
  "serde",
  "sf-assets",
@@ -2940,6 +2950,7 @@ dependencies = [
 name = "sf-paula"
 version = "0.1.0"
 dependencies = [
+ "amiga-clock",
  "serde",
 ]
 

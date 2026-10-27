@@ -11,7 +11,7 @@
 //! (vAmiga `Agnus::executeUntilBusIsFree`).
 
 /// DMA cycles per line.
-pub const LINE: u32 = crate::render::copper::LINE_CYCLES as u32;
+pub const LINE_SLOTS: u32 = amiga_clock::LINE_SLOTS as u32;
 
 /// The bus as the CPU finds it: whether DMA cycle `t` (counted from the frame's line 0, cycle 0)
 /// is taken by a DMA owner.
@@ -21,7 +21,7 @@ pub trait Bus {
 
 /// Refresh's four cycles in each line (vAmiga `DAS_REFRESH`: `$01`, `$03`, `$05`, `$E2`).
 pub fn refresh(t: u32) -> bool {
-    matches!(t % LINE, 0x01 | 0x03 | 0x05 | 0xe2)
+    matches!(t % LINE_SLOTS, 0x01 | 0x03 | 0x05 | 0xe2)
 }
 
 /// The CPU's clock on the bus.

@@ -88,7 +88,7 @@ fn scene_1s_masks_and_the_first_draw_begin_free_and_end_on_the_originals_cycles(
         coppers.push(c);
     }
 
-    let line = sf_core::front::story::cpu::LINE;
+    let line = sf_core::front::story::cpu::LINE_SLOTS;
     use sim::dmacon::*;
     // BLTCON0 and DMACON as the frames before left them (blitter DMA on before the first).
     let (mut con0, mut dma) = (0u16, DMAEN | BLTEN);

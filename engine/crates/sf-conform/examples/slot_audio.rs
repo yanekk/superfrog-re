@@ -5,6 +5,9 @@
 use sf_conform::{Case, sync};
 use sf_paula::{AudioDma, PaulaWrite};
 
+/// DMA slots in a line.
+const SLOTS: u32 = amiga_clock::LINE_SLOTS as u32;
+
 fn main() {
     let a: Vec<String> = std::env::args().skip(1).collect();
     let case = Case::load(std::path::Path::new(&a[0])).unwrap();
@@ -52,8 +55,8 @@ fn main() {
         }
         let by = |v: &[(u32, u8)], ln: u32| -> String {
             v.iter()
-                .filter(|s| s.0 / 227 == ln)
-                .map(|s| format!("{}:{}", s.1, s.0 % 227))
+                .filter(|s| s.0 / SLOTS == ln)
+                .map(|s| format!("{}:{}", s.1, s.0 % SLOTS))
                 .collect::<Vec<_>>()
                 .join(",")
         };

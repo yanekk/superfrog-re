@@ -70,9 +70,9 @@ const FADE_TAIL: u16 = 2;
 /// interrupt (measured on the options screen's exit: the interrupt's acknowledge on line 41).
 pub(crate) const STALL_VBL_LINE: u16 = 30;
 /// Lines in a PAL frame.
-pub const FRAME_LINES: u16 = 313;
+pub use amiga_clock::FRAME_LINES;
 /// CPU cycles in one raster line (227 DMA cycles of two).
-pub(crate) const BEAM_CYCLES_PER_LINE: u32 = 454;
+pub(crate) use amiga_clock::LINE_CYCLES as BEAM_CYCLES_PER_LINE;
 /// `wait_frame_raster` returns on this line (`$12b`) after passing `$ff`.
 const RASTER_LINE: u16 = 0x12b;
 

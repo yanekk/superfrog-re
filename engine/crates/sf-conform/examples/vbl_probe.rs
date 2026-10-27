@@ -4,7 +4,7 @@
 //! was at the line's end. `vbl_probe <case.toml> <frame>...`
 use sf_conform::{Case, sync};
 
-const LINE: u32 = 227;
+const SLOTS: u32 = amiga_clock::LINE_SLOTS as u32;
 
 fn main() {
     let args: Vec<String> = std::env::args().skip(1).collect();
@@ -31,7 +31,7 @@ fn main() {
         println!("== frame {f} entry {entry:?}");
         let mut ack_line = 80;
         for w in a.cpu_writes() {
-            let t = w.vpos as u32 * LINE + w.hpos as u32;
+            let t = w.vpos as u32 * SLOTS + w.hpos as u32;
             println!(
                 "  w {:3}:{:3} t{:6} ${:03x}={:04x}",
                 w.vpos, w.hpos, t, w.reg, w.value

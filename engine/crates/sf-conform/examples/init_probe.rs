@@ -38,7 +38,7 @@ fn main() {
             abs.push((frame, s.vpos, s.pc));
         }
         let first_frame = abs.first().map_or(frame, |x| x.0);
-        let t = |fr: i64, v: u16, h: u16| (fr * 313 + v as i64) * 227 + h as i64;
+        let t = |fr: i64, v: u16, h: u16| (fr * amiga_clock::FRAME_LINES as i64 + v as i64) * amiga_clock::LINE_SLOTS as i64 + h as i64;
         for &(fr, v, pc) in &abs {
             let c = (H0 + 0x8408..H0 + 0x8410).contains(&pc);
             if c != in_clear {

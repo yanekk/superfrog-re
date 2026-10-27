@@ -13,7 +13,7 @@ echo "BLTSIZE decodes (size >> 6):   $(rg -n 'size >> 6' engine/crates --type ru
 echo "chip-memory containers:        $(rg -n 'pub struct AmigaMemory|pub struct StoryMem' engine/crates --type rust | wc -l | tr -d ' ')"
 echo "is_paula definitions:          $(rg -n 'fn is_paula' engine/crates --type rust | wc -l | tr -d ' ')"
 echo "frame/line length constants:   $(rg -n 'const (FRAME_LINES|LINE_CYCLES|BEAM_CYCLES_PER_LINE|LINE)\b\s*:' engine/crates --type rust | wc -l | tr -d ' ')"
-echo "beam-position types/functions: $(rg -n 'pub struct Clock|pub struct Beam\b|struct Cx\b|struct Cx<|^fn spend|pub fn beam\(' $core | wc -l | tr -d ' ')"
+echo "beam-position types/functions: $(rg -n 'pub struct BeamPos|pub struct Clock|pub struct Beam\b|struct Cx\b|struct Cx<|^fn spend|pub fn beam\(' engine/crates --type rust | wc -l | tr -d ' ')"
 echo "hunk-0 loads in sf-core:       $(rg -n 'loaded_hunk0\(game\)|relocate\(g, 0|SoundData::from_game\(' $core | wc -l | tr -d ' ')"
 
 echo "## M3 address reads of hunk 0 through front/sound readers"

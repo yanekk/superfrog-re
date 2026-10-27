@@ -325,10 +325,10 @@ impl Options {
 
 /// How long unpacking the options picture (`$a000` bytes) takes: measured from line 50 of one
 /// frame to line 270 twelve frames on.
-const OPTIONS_UNPACK_CYCLES: u32 = (12 * 313 + 220) * super::BEAM_CYCLES_PER_LINE;
+const OPTIONS_UNPACK_CYCLES: u32 = (12 * super::FRAME_LINES as u32 + 220) * super::BEAM_CYCLES_PER_LINE;
 /// How long unpacking the eyes' graphics (`$3570` bytes, but the title is still shown) takes:
 /// measured as ending between lines 255 and 299 twelve frames after it began on line 143.
-const EYES_UNPACK_CYCLES: u32 = (12 * 313 + 140) * super::BEAM_CYCLES_PER_LINE;
+const EYES_UNPACK_CYCLES: u32 = (12 * super::FRAME_LINES as u32 + 140) * super::BEAM_CYCLES_PER_LINE;
 
 /// `options_draw` (h0+$1a00): each option's three choices in grey, the chosen one white; the row
 /// under the cursor flashes (shown 16 frames in 32). The game mode shown sets its tuning.

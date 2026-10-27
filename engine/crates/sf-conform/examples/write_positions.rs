@@ -4,6 +4,9 @@
 use sf_core::feed::Feed;
 use sf_core::{Game, Start};
 
+/// DMA slots in a line.
+const SLOTS: i32 = amiga_clock::LINE_SLOTS as i32;
+
 fn main() {
     let a: Vec<String> = std::env::args().skip(1).collect();
     let feed = Feed::parse(&std::fs::read_to_string(&a[0]).expect("feed")).expect("a feed");
@@ -27,8 +30,8 @@ fn main() {
                 if x.reg == 0x96 && x.value & 0x8000 == 0 {
                     for y in &w[k + 1..] {
                         if y.reg == 0x96 && y.value & 0x8000 != 0 && y.value & x.value & 0xf != 0 {
-                            let d = (y.vpos as i32 * 227 + y.hpos as i32) - (x.vpos as i32 * 227 + x.hpos as i32);
-                            if d < 227 * 4 { same = true; }
+                            let d = (y.vpos as i32 * SLOTS + y.hpos as i32) - (x.vpos as i32 * SLOTS + x.hpos as i32);
+                            if d < SLOTS * 4 { same = true; }
                             break;
                         }
                     }

@@ -7,6 +7,9 @@ use sf_core::front::fade;
 use sf_core::front::story::cpu::Bus;
 use sf_core::state::State;
 
+/// DMA slots in a line.
+const SLOTS: u32 = amiga_clock::LINE_SLOTS as u32;
+
 struct Owners(Vec<[u8; 228]>);
 
 /// A free bus that counts the accesses asked of it.
@@ -21,7 +24,7 @@ impl Bus for Count {
 
 impl Bus for Owners {
     fn taken(&self, t: u32) -> bool {
-        let (line, h) = ((t / 227) as usize, (t % 227) as usize);
+        let (line, h) = ((t / SLOTS) as usize, (t % SLOTS) as usize);
         self.0.get(line).is_some_and(|l| l[h] > 1)
     }
 }
@@ -48,8 +51,8 @@ fn main() {
         .cpu_writes()
         .into_iter()
         .find(|w| w.reg == 0x9c && w.value == 0x20)
-        .map(|w| w.vpos as u32 * 227 + w.hpos as u32);
-    let mut owners = vec![[0u8; 228]; 313];
+        .map(|w| w.vpos as u32 * SLOTS + w.hpos as u32);
+    let mut owners = vec![[0u8; 228]; amiga_clock::FRAME_LINES as usize];
     for s in a.line_samples() {
         owners[s.vpos as usize] = s.owners;
     }
@@ -59,21 +62,21 @@ fn main() {
         (a..b)
             .filter(|&t| {
                 owners
-                    .get((t / 227) as usize)
-                    .is_some_and(|l| l[(t % 227) as usize] == 1)
+                    .get((t / SLOTS) as usize)
+                    .is_some_and(|l| l[(t % SLOTS) as usize] == 1)
             })
             .count()
     };
     println!(
         "model: {} accesses, {free_end} cycles on a free bus; the original's CPU accesses from line 17 to its acknowledge {}",
         count.0.get(),
-        ack.map_or(0, |a| cpu(17 * 227, a))
+        ack.map_or(0, |a| cpu(17 * SLOTS, a))
     );
-    for t in (17 * 227..19 * 227).step_by(20) {
+    for t in (17 * SLOTS..19 * SLOTS).step_by(20) {
         println!(
             "  original's accesses from {t} ({}:{}) to the acknowledge: {}",
-            t / 227,
-            t % 227,
+            t / SLOTS,
+            t % SLOTS,
             ack.map_or(0, |a| cpu(t, a))
         );
     }
@@ -83,8 +86,8 @@ fn main() {
         let (writes, end) = fade::level_bus_times(&walks, start, &bus);
         println!(
             "from {start} ({}:{}): ack {end} first writes {:?}",
-            start / 227,
-            start % 227,
+            start / SLOTS,
+            start % SLOTS,
             &writes[..writes.len().min(3)]
         );
     }

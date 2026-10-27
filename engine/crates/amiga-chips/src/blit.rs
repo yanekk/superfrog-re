@@ -133,7 +133,7 @@ pub fn word_times(
     let mut half = false;
     while (out.len() as u32) < words {
         let fixed = c % 2 == 1 && c <= FIXED_TO;
-        if !fixed && !fetch.takes(l % 313, c) {
+        if !fixed && !fetch.takes(l % crate::copper::FRAME_LINES, c) {
             if half {
                 out.push((l, c));
             }
