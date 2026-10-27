@@ -1,8 +1,8 @@
 //! The copper, run for one frame (docs/12 "Copper timing").
 //!
-//! The level's copper list sets the panel and play-field palettes, the bitplane pointers, the
-//! scroll and the sprites, partly in the middle of a line. Which pixel a write lands on depends on
-//! when the copper gets the bus, so the list is run cycle by cycle on the original's bus model:
+//! A game's copper list sets palettes, the bitplane pointers, the scroll and the sprites, partly
+//! in the middle of a line. Which pixel a write lands on depends on when the copper gets the bus,
+//! so the list is run cycle by cycle on the A500's bus model:
 //! the copper takes an even DMA cycle that no bitplane fetch uses, never cycle `$E0`, and spends
 //! two cycles on each instruction word. WAIT wakes up as the reference emulator's comparator does
 //! (vAmiga `Copper::findMatch`, `runComparator`). The result is every register write with the
