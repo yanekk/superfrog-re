@@ -11,9 +11,9 @@ message. Whoever writes a cell also fixes the over-budget cell they walk past.
 
 **Plan reviewed:** 2026-10-22 — 10 fixed, 4 decided with the user
 
-**Status:** Planned; nothing built.
-**Last updated:** 2026-10-22
-**Next `pir-work` will:** T00 wide-spawn-spike and T01 wide-mode, the two roots; T00 sizes T03.
+**Status:** T00–T10 done; T11 awaiting review.
+**Last updated:** 2026-10-27
+**Next `pir-work` will:** review T11; then T12 once smart-planner is merged (D5).
 
 ## Tasks
 
@@ -33,10 +33,10 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T08 | side-objects | T02, T03 | ✅ | |
 | T09 | side-frog | T04, T08 | ✅ | |
 | T10 | app-wiring | T05, T06, T07, T08, T09 | ✅ | |
-| T11 | widescreen-drill | T10 | ⬜ | |
+| T11 | widescreen-drill | T10 | 🔍 | Drill driven headless and in the app (FINDINGS 2026-10-27); no one-answer defect found. 1 test, `widescreen_drill.rs`: switches in fade-in, mid-scroll and while paused, recording replayed. Deviations: file pins the owner's paused-picture decision, not a fix; `cargo test --workspace` not run (worker rule). |
 | T12 | wide-every-level | T11 | ⬜ | |
 
-**Review queue:** *(empty)*
+**Review queue:** T11
 
 ## Blocked on the user
 
