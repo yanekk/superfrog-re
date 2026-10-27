@@ -13,7 +13,7 @@ message. Whoever writes a cell also fixes the over-budget cell they walk past.
 
 **Status:** Planned; nothing built.
 **Last updated:** 2026-10-27
-**Next `pir-work` will:** review T10, then T11 widescreen-drill.
+**Next `pir-work` will:** T11 widescreen-drill.
 
 ## Tasks
 
@@ -32,11 +32,11 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T07 | wide-recording | T01 | ✅ | |
 | T08 | side-objects | T02, T03 | ✅ | |
 | T09 | side-frog | T04, T08 | ✅ | |
-| T10 | app-wiring | T05, T06, T07, T08, T09 | 🔍 | `window::show` sets mode and view at every game site; recorder toggles; `--replay` follows the recording, Widescreen disabled in a replay (owner). New `widescreen_app.rs` (3), view/recorder_app rewritten, 2 sf-app units. Deviations: sf-core `start_level` restarts wide when switched before a step (Escape T04); `cargo test --workspace` not run (worker rule). |
+| T10 | app-wiring | T05, T06, T07, T08, T09 | ✅ | Review clean, no fix commit. Mutations caught: mode dropped from `window::show` (3 e2e red), recorder toggle, replay mode, start_level restart. Probe: wide-then-off-at-0 recording replays equal to 4:3. Docs claims grep-checked. Workspace test left to pir's end run (worker rule). Drill is T11. |
 | T11 | widescreen-drill | T10 | ⬜ | |
 | T12 | wide-every-level | T11 | ⬜ | |
 
-**Review queue:** T10
+**Review queue:** *(empty)*
 
 ## Blocked on the user
 
