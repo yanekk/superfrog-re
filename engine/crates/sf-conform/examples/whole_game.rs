@@ -19,7 +19,7 @@
 use std::path::PathBuf;
 
 use sf_conform::InputScript;
-use sf_conform::sync::{Disks, core_memory, main_chain, step_inserting};
+use sf_conform::sync::{Disks, main_chain, step_inserting};
 use sf_core::input::{FrameInput, Joy};
 use sf_core::layout::{AmigaMemory, Ram, h0};
 use sf_disk::DiskSlot;
@@ -174,7 +174,7 @@ struct Presser {
 
 impl Presser {
     fn input(&mut self, a: &Amiga, slot_leg: bool) -> FrameInput {
-        let m = core_memory(a.memory());
+        let m = a.memory();
         let chain = main_chain(&a.cpu(), &m);
         let in_slot = chain.contains(&IN_SLOT_MACHINE);
         if in_slot {
@@ -331,7 +331,7 @@ fn check(path: &std::path::Path) {
     let mut disks: Option<Disks> = None;
     for f in 0..CAP {
         step_inserting(&mut a, s.input_at(f)).unwrap_or_else(|e| panic!("frame {f}: {e}"));
-        let m = core_memory(a.memory());
+        let m = a.memory();
         disks.get_or_insert_with(|| Disks::at(&m)).serve(&mut a);
         let chain = main_chain(&a.cpu(), &m);
         if chain.contains(&IN_GAME_OVER) {
@@ -366,7 +366,7 @@ fn diff(args: &Args, name: &str) {
     .unwrap_or_else(|e| panic!("{e}"))
     .amiga;
     let differ = |a: &Amiga, b: &Amiga| -> Vec<String> {
-        let (ma, mb) = (core_memory(a.memory()), core_memory(b.memory()));
+        let (ma, mb) = (a.memory(), b.memory());
         sf_core::layout::LAYOUT
             .iter()
             .filter(|v| v.width.len() <= 64)
@@ -377,7 +377,7 @@ fn diff(args: &Args, name: &str) {
     println!("at the start: {:?}", differ(&chain, &fresh));
     for v in sf_core::layout::LAYOUT.iter().filter(|v| v.width.len() <= 8) {
         let val = |a: &Amiga| {
-            let m = core_memory(a.memory());
+            let m = a.memory();
             (0..v.width.len()).map(|k| format!("{:02x}", m.byte(v.addr + k))).collect::<String>()
         };
         if val(&chain) != val(&fresh) {
@@ -385,7 +385,7 @@ fn diff(args: &Args, name: &str) {
         }
     }
     let pos = |a: &Amiga| {
-        let m = core_memory(a.memory());
+        let m = a.memory();
         (word(&m, FROG + f::X), word(&m, FROG + f::Y))
     };
     let (chain0, fresh0) = (chain.snapshot(), fresh.snapshot());
@@ -422,11 +422,11 @@ fn diff(args: &Args, name: &str) {
     // set to the fresh value alone in the chain's snapshot, then every one but it, and the frame
     // the path parts then.
     fresh.restore(&fresh0);
-    let fm = core_memory(fresh.memory());
-    let cm = core_memory({
+    let fm = fresh.memory();
+    let cm = {
         chain.restore(&chain0);
         chain.memory()
-    });
+    };
     let vars: Vec<_> = sf_core::layout::LAYOUT
         .iter()
         .filter(|v| (0..v.width.len()).any(|k| fm.byte(v.addr + k) != cm.byte(v.addr + k)))
@@ -506,7 +506,7 @@ fn main() {
         rec = Record::load(&p);
         println!("resumed at {from}, frame {}", rec.inputs.len());
     }
-    let mut disks = Disks::at(&core_memory(a.memory()));
+    let mut disks = Disks::at(&a.memory());
     let menu = menu();
     // The leg being played: (its index, the frame its first frame is, its script, its play's end).
     let mut playing: Option<(usize, u32, InputScript, u32)> = None;
@@ -528,7 +528,7 @@ fn main() {
         if rec.notes.last().is_some_and(|n| n.0 == start) {
             rec.notes.pop();
         }
-        let m = core_memory(a.memory());
+        let m = a.memory();
         rec.notes.push((start, leg_note(leg, start, end, &m)));
         println!("{}", rec.notes.last().unwrap().1);
         playing = Some((first, start, s, end));
@@ -549,7 +549,7 @@ fn main() {
         step_inserting(&mut a, input).unwrap_or_else(|e| panic!("oracle, frame {f}: {e}"));
         disks.serve(&mut a);
         rec.inputs.push(input);
-        let m = core_memory(a.memory());
+        let m = a.memory();
         let chain = main_chain(&a.cpu(), &m);
         let now_in_level = in_level(&m);
         if was_in_level && !now_in_level && word(&m, LOGIC_RUNNING) == 0 {

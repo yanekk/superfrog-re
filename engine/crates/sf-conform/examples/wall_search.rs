@@ -49,7 +49,7 @@ fn main() {
     }
     let start = Game::with_display(
         sf_conform::display_data(),
-        Start::Transplant(sync::core_memory(s.amiga.memory())),
+        Start::Transplant(s.amiga.memory()),
     );
     let acts = [
         Joy::NONE,

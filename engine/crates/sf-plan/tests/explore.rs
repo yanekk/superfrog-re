@@ -520,7 +520,7 @@ fn w4_1_doomed() -> ((Game, Facts), (Game, Facts)) {
         }
         let g = Game::with_display(
             display.clone(),
-            Start::Transplant(sync::core_memory(amiga.memory())),
+            Start::Transplant(amiga.memory()),
         );
         let fa = facts(&g, &data.levels[&id("W4-1")], display.rom());
         (g, fa)

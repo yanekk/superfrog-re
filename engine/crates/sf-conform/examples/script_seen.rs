@@ -34,7 +34,7 @@ fn main() {
     let mut broken = None;
     for k in 0..n {
         sync::step_inserting(&mut s.amiga, p.input_at(k)).unwrap();
-        let st = sf_core::State::transplant(&sync::core_memory(s.amiga.memory()));
+        let st = sf_core::State::transplant(&s.amiga.memory());
         for (i, (u, _)) in watch.iter().enumerate() {
             if first[i].is_none()
                 && (0..20).any(|j| {

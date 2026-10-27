@@ -235,12 +235,9 @@ fn check_draw(frames: &[Frame]) -> Option<bool> {
     // The engine's program from the original's memory at the draw's DMACON write, the buffer
     // toggle its first instructions flipped put back (the buffer it stores is the same again).
     let mem = a.draw_mem.as_ref().expect("RAM at the draw's start");
-    let mut m = StoryMem {
-        chip: mem.chip.clone(),
-        slow: mem.slow.clone(),
-    };
-    m.chip.resize(RAM_BYTES, 0);
-    m.slow.resize(RAM_BYTES, 0);
+    let mut m = StoryMem(mem.clone());
+    m.0.chip.resize(RAM_BYTES, 0);
+    m.0.slow.resize(RAM_BYTES, 0);
     m.set_w(bobs::TOGGLE, !m.w(bobs::TOGGLE));
     let prog = bobs::draw(&mut m);
     let from = prog.find_reg(DMACON, 0x8400).unwrap();

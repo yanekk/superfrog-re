@@ -671,7 +671,7 @@ fn run(a: &Args, t0: Instant) -> Result<Outcome, Fail> {
 
     let game = Game::with_display(
         sf_conform::display_data(),
-        Start::Transplant(sync::core_memory(run.amiga.memory())),
+        Start::Transplant(run.amiga.memory()),
     );
     map_compass(a, &game, &facts, &mut opt)?;
 

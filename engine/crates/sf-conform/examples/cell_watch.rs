@@ -28,7 +28,7 @@ fn main() {
         if k < from {
             continue;
         }
-        let st = sf_core::State::transplant(&sync::core_memory(s.amiga.memory()));
+        let st = sf_core::State::transplant(&s.amiga.memory());
         let m: Vec<u16> = cells
             .iter()
             .map(|&(c, r)| st.w(row0 + r * 0x260 + 2 * c) & 0x3f)

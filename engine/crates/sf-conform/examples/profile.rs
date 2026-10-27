@@ -44,7 +44,7 @@ fn main() {
         if f < from {
             continue;
         }
-        let mem = sync::core_memory(a.memory());
+        let mem = a.memory();
         let p = sync::pacing(&a.cpu(), &mem, &theirs.paula);
         let mid = sync::mid_pass(&a.cpu(), &mem);
         println!("== {f} {p:?}{}", if mid { " MID" } else { "" });

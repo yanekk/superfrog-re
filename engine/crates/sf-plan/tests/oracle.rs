@@ -113,7 +113,7 @@ fn the_same_parting_cell_three_times_running_is_accepted() {
 fn transplanted(run: &OracleRun) -> Game {
     Game::with_display(
         sf_conform::display_data(),
-        Start::Transplant(sync::core_memory(run.amiga.memory())),
+        Start::Transplant(run.amiga.memory()),
     )
 }
 
@@ -183,7 +183,7 @@ fn a_frozen_original_holds_the_engine() {
     }
     let eng = Game::with_display(
         sf_conform::display_data(),
-        Start::Transplant(sync::core_memory(amiga.memory())),
+        Start::Transplant(amiga.memory()),
     );
     let plan: Vec<FrameInput> = (from..from + 120).map(|k| s.input_at(k)).collect();
     let mut frames = 0;
@@ -386,12 +386,12 @@ fn a_stretch_past_the_lag_bar_parts() {
         let mut run = 0;
         for k in 0..from {
             sync::step_inserting(&mut amiga, s.input_at(k)).unwrap();
-            let mid = sync::mid_pass(&amiga.cpu(), &sync::core_memory(amiga.memory()));
+            let mid = sync::mid_pass(&amiga.cpu(), &amiga.memory());
             run = if mid { run + 1 } else { 0 };
         }
         let eng = Game::with_display(
             sf_conform::display_data(),
-            Start::Transplant(sync::core_memory(amiga.memory())),
+            Start::Transplant(amiga.memory()),
         );
         (amiga, eng, run)
     };

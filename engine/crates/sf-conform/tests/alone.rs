@@ -138,7 +138,7 @@ fn the_w1_1_replay_loses_its_life_to_pacing_and_the_start_not_a_mechanic() {
     let mut paces = Vec::new();
     for f in 0..case.frames {
         let cap = sync::step_inserting(&mut amiga, case.script.input_at(f)).unwrap();
-        let mem = sync::core_memory(amiga.memory());
+        let mem = amiga.memory();
         paces.push((sync::pacing(&amiga.cpu(), &mem, &cap.paula), amiga.frames_run()));
     }
     let display = display_data();

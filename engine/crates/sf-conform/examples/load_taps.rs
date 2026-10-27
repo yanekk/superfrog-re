@@ -4,7 +4,7 @@
 //! channel's DAC range (vAmiga's taps) and the frame's channel starts.
 //! `load_taps <script.txt> <from> <before> <after>`
 use sf_conform::InputScript;
-use sf_conform::sync::{Disks, core_memory, step_inserting};
+use sf_conform::sync::{Disks, step_inserting};
 use sf_disk::DiskSlot;
 use sf_oracle::{Amiga, OracleConfig};
 
@@ -20,7 +20,7 @@ fn main() {
     let mut left: Option<u32> = None;
     for f in 0..400_000 {
         let c = step_inserting(&mut a, s.input_at(f)).unwrap();
-        let m = core_memory(a.memory());
+        let m = a.memory();
         disks.get_or_insert_with(|| Disks::at(&m)).serve(&mut a);
         let mut range = [(i16::MAX, i16::MIN); 4];
         for t in c.taps() {

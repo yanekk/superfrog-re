@@ -25,7 +25,7 @@ fn main() {
             .map(|i| (i.vpos, i.hpos))
             .collect();
         irqs = now;
-        let m = sync::core_memory(amiga.memory());
+        let m = amiga.memory();
         let vector = (0x6c..0x70).fold(0u32, |v, a| v << 8 | m.byte(a) as u32);
         if vector != sync::INTRO_VBL {
             continue;

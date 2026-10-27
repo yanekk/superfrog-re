@@ -31,7 +31,7 @@ fn the_cost_model_alone_puts_paula_writes_on_the_originals_lines() {
         frozen.apply(&mut amiga, &display);
         let input = case.script.input_at(f);
         let theirs = sync::step_inserting(&mut amiga, input).unwrap_or_else(|e| panic!("{e}"));
-        let mem = sync::core_memory(amiga.memory());
+        let mem = amiga.memory();
         let pacing = sync::pacing(&amiga.cpu(), &mem, &theirs.paula);
         let two = amiga.frames_run() == 2;
         if two {
@@ -130,7 +130,7 @@ fn sfx_play_waits_three_lines_and_turns_the_dma_on_when_the_original_does() {
     for f in 0..case.frames {
         let input = case.script.input_at(f);
         let theirs = sync::step_inserting(&mut amiga, input).unwrap_or_else(|e| panic!("{e}"));
-        let mem = sync::core_memory(amiga.memory());
+        let mem = amiga.memory();
         let pacing = sync::pacing(&amiga.cpu(), &mem, &theirs.paula);
         if amiga.frames_run() == 2 {
             game.step_paced(input, pacing);

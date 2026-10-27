@@ -31,12 +31,12 @@ fn main() {
     }
     let mut g = Game::with_display(
         sf_conform::display_data(),
-        Start::Transplant(sync::core_memory(s.amiga.memory())),
+        Start::Transplant(s.amiga.memory()),
     );
     for k in 0..frames {
         sync::step_inserting(&mut s.amiga, FrameInput::default()).unwrap();
         g.step_unseen(FrameInput::default());
-        let o = sf_core::State::transplant(&sync::core_memory(s.amiga.memory()));
+        let o = sf_core::State::transplant(&s.amiga.memory());
         let pc = s.amiga.cpu().pc.wrapping_sub(h0(0));
         let st = g.state();
         if k % 10 == 0 || k < 5 {

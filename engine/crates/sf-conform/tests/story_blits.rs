@@ -55,7 +55,7 @@ fn scene_1s_masks_and_the_first_draw_begin_free_and_end_on_the_originals_cycles(
     let mut of = 0;
     while amiga.frame() <= DRAW {
         let frame = amiga.frame() + 1;
-        let mem = (frame >= FROM).then(|| sync::core_memory(amiga.memory()));
+        let mem = (frame >= FROM).then(|| amiga.memory());
         sync::step_inserting(&mut amiga, case.script.input_at(of)).unwrap();
         of += 1;
         let writes = amiga.cpu_writes();

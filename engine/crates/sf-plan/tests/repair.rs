@@ -177,7 +177,7 @@ fn set_b_w2_1_followed() {
     let display = sf_conform::display_data();
     let mut g = Game::with_display(
         display.clone(),
-        Start::Transplant(sync::core_memory(leg.memory())),
+        Start::Transplant(leg.memory()),
     );
     // The leg's first frame is the level's first, before its play begins: played on with the
     // route's own inputs until the frog stands past the level-start freeze, as `at_start`.
