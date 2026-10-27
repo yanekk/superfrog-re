@@ -12,7 +12,7 @@ questions in plain words, and the session writes the answers down with the date.
    The hunk-0 row is wanted but not required, since the relocator can be lifted with one caller.
 3. M4 lists at least three passing crates: `sf-paula`, a chips crate (draft 4) and a clock crate
    (draft 2).
-4. J1 is yes.
+4. J1 is yes: game two chosen (yes, 2026-10-27) and its original disk image at hand (not yet).
 5. J2 is "extract now".
 6. (Proposed 2026-10-24, owner to confirm.) The dry fit in `README.md`'s readiness plan passes.
 
@@ -50,6 +50,28 @@ Targets for the M2 rows:
 |---|---|
 | J1 | Is game two chosen, and are its disks at hand? A toolkit cut against one game is a guess at what the second needs; with the second game's disks, its first loader and oracle run can test the cut. |
 | J2 | Given the next step's size (its draft) and what the toolkit would hold today (M4), is the toolkit worth another step, or should it be extracted now? Answer "extract now", "one more step: N", or "stop". |
+
+**J1, owner 2026-10-27: chosen, disks not yet at hand.** Game two is *Forest Dumb Forever*
+(© 1998 L.K. Avalon, developer Eagle Soft; a Superfrog-like platformer), named via the WHDLoad
+package `ForestDumbForever_v1.1_Pl.lha` (whdownload.com). Inspected 2026-10-27, nothing run and
+nothing kept in the repo (copyrighted, like Superfrog's disks):
+
+- Main program `data/FOREST_DUMB_FOREVER` is RNC ProPack method 1 packed (119 132 → 521 640 bytes),
+  an AmigaDOS hunk executable with 5 hunks (code 376 424 bytes; four chip hunks, 368 040 bytes).
+  No AMOS or Blitz signatures; about 400 absolute custom-chip references (`$dff0xx`/`$dff1xx`):
+  hand-written 68k hitting the hardware, so the routine-port-and-compare method applies.
+- Loads through `dos.library` from a floppy labelled `!EAGLE_SOFT!` (AmigaDOS files, not a
+  trackloader); uses `graphics.library` and `topaz.font`. Needs 368 KB chip and 0.5 MB other
+  memory, which the oracle's A500 configuration provides.
+- Six worlds of level files (`_Mapa1-1` … `_Mapa6-1` with `.Mapa`, `_Gen*`, `_MapaBobow*`).
+- The WHDLoad install patches the game (protection and disk check removed, custom-register writes
+  and blitter waits fixed, files relocated). It is not the original; the oracle needs the original
+  floppy image (`.adf`), which the owner supplies outside the repo.
+
+What it means for the toolkit: none of the Team 17 "might share" items (ATN!, T7MP, Player 4.1A)
+apply. It needs two pieces Superfrog never did: an RNC unpacker and an AmigaDOS (OFS) file reader
+for `.adf` images (sf-disk has neither; amitools' `xdftool`, already in `requirements.txt`, reads
+OFS for RE work). Those belong to the extraction plan, not to drafts 1–4.
 
 ## Log
 
