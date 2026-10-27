@@ -41,6 +41,8 @@ pub enum StartKey {
     Snap(u64),
     /// `Game::start_level` under `Rng::seeded(seed, seed)` (set C).
     App { seed: u32 },
+    /// The same in widescreen (real-widescreen T12): another game, so another map.
+    AppWide { seed: u32 },
 }
 
 impl StartKey {
@@ -80,6 +82,7 @@ pub fn key(level: LevelId, start: StartKey, wings: bool) -> String {
         StartKey::AtLevel => "at".to_string(),
         StartKey::Snap(h) => format!("snap{h:016x}"),
         StartKey::App { seed } => format!("app{seed}"),
+        StartKey::AppWide { seed } => format!("appwide{seed}"),
     };
     let wings = if wings { "wings" } else { "nowings" };
     format!("{level}.{start}.{wings}.{:016x}", build_hash())

@@ -4,7 +4,7 @@
 //! sf-plan <level> [--snap leg.snap] [--guide route-or-waypoints.txt] [--follow old.txt] [--seed N]
 //!         [--out route.txt] [--budget-min 30] [--frames 30000] [--max-mem-gb 4] [--threads N]
 //!         [--compass walk|straight|map] [--shorten-share 0.2] [--no-cache] [--engine-only | --app]
-//!         [--no-pace] [--guide-ordered] [--lag-limit N]
+//!         [--no-pace] [--guide-ordered] [--lag-limit N] [--widescreen]
 //!         [--via c,r]... [--avoid c0,r0,c1,r1]...
 //! ```
 //!
@@ -19,6 +19,9 @@
 //! the same start and confirms nothing (for tuning). `--app` (set C, T12) starts the level as
 //! Game ▸ Start Level… does under a script with power-on seed `N N` (`--seed N`), and plans and
 //! confirms on the engine from there: the route is written `# timing: app` (DESIGN §2.6).
+//! `--widescreen` (real-widescreen T12) is `--app` with View ▸ Widescreen on from the level's first
+//! frame: there is no original of the widescreen game, so it is engine only, and refuses `--follow`,
+//! `--snap` and `--engine-only`; the route carries a `# widescreen: on` line.
 
 use std::fmt::Write as _;
 use std::path::{Path, PathBuf};
@@ -44,7 +47,7 @@ use sf_plan::trace::{script_inputs, timing, trace_original};
 const USAGE: &str = "usage: sf-plan <level> [--snap leg.snap] [--guide route-or-waypoints.txt] \
 [--follow old.txt] [--seed N] [--out route.txt] [--budget-min 30] [--frames 30000] [--max-mem-gb 4] \
 [--threads N] [--compass walk|straight|map] [--shorten-share 0.2] [--no-cache] [--engine-only | --app] \
-[--no-pace] [--guide-ordered] [--lag-limit N] \
+[--no-pace] [--guide-ordered] [--lag-limit N] [--widescreen] \
 [--via c,r]... [--avoid c0,r0,c1,r1]...";
 
 /// Oracle frames beyond `--frames` a start is given room for: the settle and the lag tail.
@@ -80,6 +83,8 @@ struct Args {
     engine_only: bool,
     /// Set C: the app's Start Level start, planned and confirmed on the engine (T12).
     app: bool,
+    /// The app start in widescreen, engine only (real-widescreen T12); sets `app`.
+    widescreen: bool,
     /// `--no-pace`: a played-route guide without its pace (for comparisons, T14).
     no_pace: bool,
     guide_ordered: bool,
@@ -128,6 +133,7 @@ fn parse_args(argv: &[String]) -> Result<Args, String> {
         no_cache: false,
         engine_only: false,
         app: false,
+        widescreen: false,
         no_pace: false,
         guide_ordered: false,
         lag_limit: None,
@@ -194,6 +200,7 @@ fn parse_args(argv: &[String]) -> Result<Args, String> {
                 a.avoid.push(((v[0], v[1]), (v[2], v[3])));
             }
             "--app" => a.app = true,
+            "--widescreen" => a.widescreen = true,
             s if s.starts_with("--") => return Err(format!("unknown option {s}")),
             s if level.is_none() => {
                 let id: LevelId = s.parse()?;
@@ -208,6 +215,20 @@ fn parse_args(argv: &[String]) -> Result<Args, String> {
         }
     }
     a.level = level.ok_or("no level given")?;
+    if a.widescreen {
+        // The widescreen game has no original (real-widescreen DESIGN §2.1, D1): nothing of it can
+        // be followed from, transplanted from or confirmed on the original.
+        if a.follow.is_some() {
+            return Err("--widescreen plays on the engine only: no --follow (there is no original to follow)".into());
+        }
+        if a.engine_only {
+            return Err("--widescreen already plans and confirms on the engine only: no --engine-only".into());
+        }
+        if a.snap.is_some() {
+            return Err("--widescreen starts the level as Start Level does in widescreen: no --snap".into());
+        }
+        a.app = true;
+    }
     if a.app {
         if a.snap.is_some() {
             return Err("--app starts the level as Start Level does: no --snap".into());
@@ -240,6 +261,8 @@ struct GuideScript {
     /// `# timing: app`: played on the engine from the app start with this seed (its `# seed:`
     /// line, else the run's); `None`: on the original.
     app_seed: Option<u32>,
+    /// An app-timed script's `# widescreen: on` line: played from the wide app start.
+    wide: bool,
 }
 
 /// A file whose first line is a timing line, or which parses as a script, is a script; otherwise
@@ -256,7 +279,10 @@ fn read_guide(path: &Path, waypoints_ok: bool, run_seed: u32) -> Result<GuideFil
     };
     if looks_script || !waypoints_ok {
         return InputScript::parse(&text)
-            .map(|script| GuideFile::Script(GuideScript { script, app_seed }))
+            .map(|script| {
+                let wide = app_seed.is_some() && app::route_widescreen(&text);
+                GuideFile::Script(GuideScript { script, app_seed, wide })
+            })
             .map_err(|e| format!("{}: {e}", path.display()));
     }
     parse_waypoints(&text)
@@ -279,7 +305,7 @@ fn trace_script(a: &Args, facts: &Facts, path: &Path, g: &GuideScript) -> Result
     let script = &g.script;
     let n = script.lines.last().map_or(0, |l| l.0);
     let t = match g.app_seed {
-        Some(seed) => app::trace_app(a.level, seed, facts, script),
+        Some(seed) => app::trace_app(a.level, seed, g.wide, facts, script),
         None => {
             let mut amiga = oracle_at(a, n + 100)?;
             trace_original(&mut amiga, facts, script, n)?
@@ -296,11 +322,17 @@ fn trace_script(a: &Args, facts: &Facts, path: &Path, g: &GuideScript) -> Result
 fn script_text(a: &Args, inputs: &[FrameInput], exit: bool) -> String {
     let mut s = if a.app {
         // The seed is read back by `app::route_seed`: an app route replays only from its own start.
-        format!("# timing: app\n# seed: {}\n", a.seed)
+        let mut s = format!("# timing: app\n# seed: {}\n", a.seed);
+        if a.widescreen {
+            s.push_str("# widescreen: on\n");
+        }
+        s
     } else {
         String::from("# timing: original\n")
     };
-    let how = if a.app {
+    let how = if a.widescreen {
+        "planned and confirmed on the engine in widescreen (--widescreen), engine only"
+    } else if a.app {
         "planned and confirmed on the engine (--app)"
     } else if a.engine_only {
         "planned on the engine only (--engine-only), not confirmed on the original"
@@ -313,8 +345,11 @@ fn script_text(a: &Args, inputs: &[FrameInput], exit: bool) -> String {
             p.file_name().map_or(String::new(), |n| n.to_string_lossy().into_owned())
         ),
         None if a.app => format!(
-            "{}'s first frame from Game ▸ Start Level… (the dialog's defaults, power-on seed {} {})",
-            a.level, a.seed, a.seed
+            "{}'s first frame from Game ▸ Start Level… (the dialog's defaults, power-on seed {} {}){}",
+            a.level,
+            a.seed,
+            a.seed,
+            if a.widescreen { " with View ▸ Widescreen on" } else { "" }
         ),
         None => format!("{}'s AtLevel sync point", a.level),
     };
@@ -376,6 +411,7 @@ fn log_hints(a: &Args, completed: bool) {
     }
     let start = match &a.snap {
         Some(p) => format!("snap:{}", p.file_name().map_or(String::new(), |n| n.to_string_lossy().into_owned())),
+        None if a.widescreen => format!("app-wide:{}", a.seed),
         None if a.app => format!("app:{}", a.seed),
         None => "at-level".into(),
     };
@@ -508,6 +544,7 @@ fn map_compass(a: &Args, game: &Game, facts: &Facts, opt: &mut Options) -> Resul
     let wings = game.state().w(FROG + f::FLIGHT) != 0;
     let sk = match &a.snap {
         Some(p) => StartKey::snap(&std::fs::read(p).map_err(|e| Fail::Usage(format!("--snap: {e}")))?),
+        None if a.widescreen => StartKey::AppWide { seed: a.seed as u32 },
         None if a.app => StartKey::App { seed: a.seed as u32 },
         None => StartKey::AtLevel,
     };
@@ -555,7 +592,7 @@ fn share(t0: Instant, on_oracle: Duration) -> f32 {
 /// and it gives cells, not inputs, so no frame of it is written under the app's timing.
 fn run_app(a: &Args, t0: Instant, files: &Files) -> Result<Outcome, Fail> {
     let seed = a.seed as u32;
-    let mut game = app::app_start(a.level, seed);
+    let mut game = app::app_start_in(a.level, seed, a.widescreen);
     let mut inputs = app::settle(&mut game);
     let prefix = inputs.len();
     let data = sf_conform::game_data();
@@ -590,7 +627,7 @@ fn run_app(a: &Args, t0: Instant, files: &Files) -> Result<Outcome, Fail> {
     };
     inputs.extend_from_slice(&route.inputs);
     if reason.is_none() {
-        let r = app::replay(a.level, seed, &inputs);
+        let r = app::replay_in(a.level, seed, a.widescreen, &inputs);
         if !r.completed() || r.exit != Some(inputs.len() as u32) {
             reason = Some(format!(
                 "sf-plan: no route: the plan did not replay from the app start (exit at {:?} of {} frames, lives lost {})",
