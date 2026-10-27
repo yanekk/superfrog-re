@@ -66,7 +66,8 @@ Three meanings, each defined once, in `amiga-clock`: `FRAME_LINES` (313, a long 
 means one of these lengths in non-test code becomes a use of them or a typed constant derived from
 them: `level/beam.rs`, `front/mod.rs` (`FRAME_LINES`, `BEAM_CYCLES_PER_LINE`), `slot/mod.rs`
 (its 312), `front/story/cpu.rs` (`LINE`), `story/mod.rs` (`LONG_FRAME`), `story/intro.rs`
-(`LINES`), `copper.rs`, `blit.rs` (`l % 313`), `sf-paula/src/channel.rs` (`CLOCKS_PER_LINE`,
+(`LINES`), `copper.rs` (its `LINE_CYCLES` is 227 DMA slots: it maps to `LINE_SLOTS`, not to
+`LINE_CYCLES`), `blit.rs` (`l % 313`), `sf-paula/src/channel.rs` (`CLOCKS_PER_LINE`,
 `LINES_PER_FRAME`), and the probes and tests in `sf-conform` (`examples/*.rs` `LINE`,
 `tests/beam.rs`'s `LINE: f64`). A derived constant outside `amiga-clock` does not reuse the names
 `measure.sh` counts (`FRAME_LINES`, `LINE_CYCLES`, `BEAM_CYCLES_PER_LINE`, `LINE`), so the count

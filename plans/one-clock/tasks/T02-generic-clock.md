@@ -23,7 +23,9 @@ DESIGN §2.3, §2.4, §2.6, §2.7, §3.1, §3.3 (row T02).
   `Frames` stay.
 - `engine/crates/sf-core/src/level/timeline.rs`: `of` and the beam trait's impl for `front::Cx`;
   `Timeline` re-exported or aliased.
-- `engine/crates/sf-core/src/level/mod.rs`, `level/panel.rs`, and other `Clock { .. }` literal sites.
+- `engine/crates/sf-core/src/level/mod.rs`, `level/panel.rs`, and the other `Clock { .. }` literal
+  sites (`level/frame.rs`, `level/beam.rs`, `game.rs`, `scene.rs`, `front/gameover.rs`,
+  `sf-conform/tests/frog_routines.rs`; `sf-app`'s and `SyncPoint`'s `Clock` are other types).
 - `engine/crates/amiga-chips/src/blit.rs`: `word_times` and `FIXED_TO` re-exported from
   `amiga-clock`; `Blit::cycles` calls the moved formula.
 - `engine/crates/sf-core/src/front/attract.rs` (`word_times` caller), `front/story/cpu.rs`
@@ -107,7 +109,8 @@ foreign type).
 ## Tests
 
 - [ ] `level::beam`'s unit tests (`the_cpu_gets_less_of_a_fetching_line`,
-      `a_blit_takes_longer_under_the_display`) pass unchanged, through `Clock<Level>`.
+      `a_blit_takes_longer_under_the_display`) pass unchanged through `Clock<Level>`, apart from
+      `Clock { line, into }` literals rewritten to `Clock::at` (the marker field is private).
 - [ ] The old `Clock::cpu`, `blit`, `blit_cycles` and `blitter_slot`, kept in the test module as
       references, equal the new ones over every line and slot of a frame and a spread of cycle
       counts, word counts and BLTCON0 values (all 16 channel sets, D on and off).

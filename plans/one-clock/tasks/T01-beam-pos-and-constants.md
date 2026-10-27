@@ -19,14 +19,21 @@ DESIGN §2.1, §2.2, §2.8 (the base run), §3.1, §3.3 (row T01), §7 (the `mea
 - `engine/crates/amiga-clock/Cargo.toml`, `src/lib.rs` (module names are the builder's).
 - `engine/Cargo.toml`: `[profile.dev.package.amiga-clock] opt-level = 2`.
 - `engine/crates/amiga-chips/Cargo.toml`, `src/copper.rs` (`Beam` → `BeamPos`, alias kept;
-  `LINE_CYCLES`, `FRAME_LINES` re-exported), `src/blit.rs` (`l % 313`, `LINE_CYCLES`).
+  `FRAME_LINES` re-exported; the copper's `LINE_CYCLES` is 227 DMA slots, not 454, so it is
+  `pub use amiga_clock::LINE_SLOTS as LINE_CYCLES`, never `amiga_clock::LINE_CYCLES`), `src/blit.rs`
+  (`l % 313`, `copper::LINE_CYCLES`).
 - `engine/crates/sf-paula/Cargo.toml`, `src/channel.rs` (`CLOCKS_PER_LINE`, `LINES_PER_FRAME`
   derived).
 - `engine/crates/sf-core/Cargo.toml`; `src/level/beam.rs` (lengths re-exported; `Clock::nominal`,
   `hpos` through `BeamPos`); `src/front/mod.rs`; `src/slot/mod.rs`, `src/slot/draw.rs`;
-  `src/front/story/cpu.rs`, `mod.rs`, `intro.rs`, `sim.rs`; any other sf-core file whose length
-  literal or import changes (`render/mod.rs`, `front/vbl.rs`, `level/timeline.rs`, `game.rs`, …).
-- `engine/crates/sf-conform/examples/{vbl_probe,slot_lamps_sim,handler_end_probe}.rs`,
+  `src/front/story/cpu.rs` (`LINE` is 227, from `copper::LINE_CYCLES`), `mod.rs`, `intro.rs`,
+  `sim.rs`; the frame-count literals `(N * 313 + M) * BEAM_CYCLES_PER_LINE` in `level/tally.rs`,
+  `front/chain.rs`, `front/menu.rs`, `front/attract.rs`; `slot/rounds.rs` `SFX_WAIT = 4 * 227`
+  (four lines in slots); any other sf-core file whose length literal or import changes
+  (`render/mod.rs`, `front/vbl.rs`, `level/timeline.rs`, `game.rs`, …). `level/beam.rs`'s
+  `LINE_SLOTS` is `u32` where `amiga_clock::LINE_SLOTS` is `u16`.
+- `engine/crates/sf-conform/examples/{vbl_probe,slot_lamps_sim,handler_end_probe}.rs`; the bare
+  `227`/`313`/`454` lengths in `examples/{fit,vbl_audio,write_positions,fade_probe,fade_times,init_probe,slot_audio}.rs`;
   `tests/beam.rs`, and any sf-conform file using `copper::Beam` literals (`tests/story_draws.rs`,
   `tests/story_blits.rs`).
 - `engine/crates/sf-conform/tests/purity.rs`: `amiga-clock` on `PURE` and `ALLOWED`.
