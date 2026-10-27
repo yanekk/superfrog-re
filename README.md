@@ -97,6 +97,14 @@ cd engine && cargo run --release -p sf-app
   State are under Game; View has the scale, fullscreen, widescreen and View ▸ Filter: None,
   Basic (the app's own light scanlines), or the RetroArch CRT shaders Lottes, Geom (both with a
   curved tube) and Easymode, at their stock settings, to compare while playing.
+- **Widescreen** (View ▸ Widescreen, remembered) widens a level to 16:9 and plays it as a wider
+  game: enemies, coins, platforms and the frog are alive and drawn in the 65 extra columns each
+  side, as they would be at the screen's own edges, and the camera stops 65 pixels sooner at a
+  level's ends so nothing past the map shows. It can be switched mid-level and takes effect at
+  once. This is our game, not the original's: with it off the game is the original, and a bug
+  recorded in widescreen has no original to compare with
+  ([`docs/12-display.md`](docs/12-display.md#widescreen), [`docs/BUG-FIX.md`](docs/BUG-FIX.md)).
+  Screens outside a level (title, map, slot machine) keep black sides.
 - **Where data lives:** `~/Library/Application Support/Superfrog-RE/` holds the decoded cache,
   `settings.toml`, `progress.toml`, save states and the remembered disk paths. Delete the folder to
   start over; the next launch asks for the disks again. `--home DIR` (or `SUPERFROG_HOME`) uses
@@ -128,7 +136,8 @@ describe it further or re-test the fix.
   following your recording part-way, so a bug late in a long recording may not be comparable yet;
   the agent says so rather than guess.
 - **Watch it back:** `superfrog --replay <zip>` (`cargo run --release -p sf-app -- --replay <zip>`)
-  plays a recording in the window, watch-only, for agents and tests; `sf-conform bug replay`,
+  plays a recording in the window, watch-only, for agents and tests, in widescreen where it was
+  recorded in widescreen whatever your setting (View ▸ Widescreen is greyed out meanwhile); `sf-conform bug replay`,
   `bug compare` and `bug case` are the headless tools ([`engine/conform/README.md`](engine/conform/README.md)).
 
 ## Rust engine

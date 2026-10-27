@@ -108,10 +108,11 @@ impl App {
         }
     }
 
-    /// A new game in place: drawn for the widescreen setting, a new sound chip, not paused.
+    /// A new game in place: played and drawn for the widescreen setting, a new sound chip, not
+    /// paused.
     fn restarted(&mut self) {
         let run = self.run.as_mut().expect("running");
-        run.game.set_view(crate::window::view(run.settings.widescreen));
+        crate::window::show(&mut run.game, run.settings.widescreen);
         run.paula = Paula::booted(run.rate);
         run.paused = false;
         run.from_dialog = false;

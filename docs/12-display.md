@@ -75,6 +75,30 @@ every pointer two bytes; the ring's slack (`$3b70` per plane = 317 lines) holds 
 The renderer uses this only for widescreen: picture columns beyond the original window continue the
 line's level row from the map; past the map's edges the level is colour 0 **(oracle: left edge)**.
 
+## Widescreen
+
+Not the original's: the app's View ▸ Widescreen (plan `plans/real-widescreen/`). The picture is 65
+columns wider each side (`WIDE_EXTRA`, 464×261 for a level), and in a level the game is too: every
+horizontal screen edge the original tests is moved out by 65 (`sf-core/src/level/screen.rs`), so
+objects wake as their cell reaches the wide edge and are freed after leaving it, in up to 80 extra
+object slots at an address the original never maps; the camera stops at `cx ≥ $10 + 65` and
+`cx ≤ level_width − $168 − 65`, so the wide view shows no more of the map than the original's can
+and nothing past the map's ends. `Game::set_widescreen` is the mode and `Game::set_view` the
+picture; the app always sets both together (`sf-app` `window::show`), at launch from the setting,
+from the menu (at once, mid-level included: the next step wakes everything in the wide view), and
+on every new or loaded game. A level started by `Game::start_level` (Start Level, a bug replay)
+and switched before its first step is started again in the new mode.
+
+The strips are drawn by the renderer, not by the display buffers (whose rows end 24 pixels past
+the window): the map's tiles, then every bob the shown buffer's pass drew, from that buffer's wide
+draw list (`wide_bobs_0`, `_1`), cookie-cut as `draw_bob` does, then the sprites. A frog past
+HSTART's nine bits carries the tenth in SPRxCTL bit 3 (`WIDE_HSTART_BIT`), read only from copper
+writes. Non-level screens and the panel's lines keep colour 0 at the sides.
+
+A recording (format 2) holds `widescreen on|off` at its start and a `W` token at each switch;
+`bug replay` and the app's `--replay` play and draw the mode as recorded, and `bug compare` and
+`bug case` refuse it (docs/BUG-FIX.md).
+
 ## Bobs
 
 `build_bob_draw_list` (h0+$19b42) and `h0+$19120` erase each bob from the clean buffer (`h3+$35860`)

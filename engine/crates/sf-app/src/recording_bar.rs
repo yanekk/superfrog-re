@@ -81,7 +81,7 @@ impl App {
             // once, and the bar's height is added to the size it had, not to that.
             let at = run.window.inner_size().to_logical(run.window.scale_factor());
             run.window
-                .set_min_inner_size(Some(window::min_size(run.settings.widescreen, on)));
+                .set_min_inner_size(Some(window::min_size(run.game.widescreen(), on)));
             self.fit_window_to_bar(Some(at));
         }
         let run = self.run.as_mut().expect("running");

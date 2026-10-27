@@ -4,9 +4,8 @@
 //! engine's widescreen picture headless, strips included, and on some frame a bob is drawn in the
 //! right strip.
 //!
-//! The app's widescreen sets the view only until T10 wires the game's mode, so the game here is
-//! the 4:3 one: its bobs reach the right strip as far as the original keeps them alive (36 pixels
-//! past the window, `obj_despawn_if_offscreen`).
+//! Since T10 the app's widescreen is the widescreen game, mode and view together, so the headless
+//! game has both set too, after `Game::start_level` as the app does it.
 
 mod common;
 
@@ -48,6 +47,7 @@ fn w1_1_s_right_strip_shows_bobs_and_every_frame_is_the_engine_s() {
     let data = cache_data(&app.home);
     let display = std::sync::Arc::new(DisplayData::new(&data));
     let mut g = Game::start_level(display.clone(), &LevelSetup::default(), Rng::seeded(0, 0));
+    g.set_widescreen(true);
     g.set_view(WIDE);
     let mut in_level = 0;
     let mut bob_frames = 0;

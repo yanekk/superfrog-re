@@ -4,9 +4,9 @@
 //! the app shows is the engine's widescreen picture of that state headless, the window is that
 //! frame at a whole scale, and the frog's pixels are drawn in the right strip.
 //!
-//! The game is put there headless because the app plays the 4:3 game until T10 wires its mode
-//! (`widescreen_objects.rs`), and a 4:3 frog stops short of the strip. A state does not hold the
-//! mode, so the loaded game is shown, held by the pause, and not played on.
+//! The game is put there headless, which is quicker than walking it there through the app. A state
+//! does not hold the mode; the app sets it on the loaded game from its setting (T10), and the
+//! game is shown, held by the pause. `widescreen_app.rs` plays such a state on.
 
 mod common;
 

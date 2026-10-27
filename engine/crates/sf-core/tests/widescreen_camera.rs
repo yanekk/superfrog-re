@@ -271,3 +271,36 @@ fn start_points_copy_of_the_clamp_moves_in_by_65() {
         assert_eq!(cx(&g), right, "wide {wide}");
     }
 }
+
+/// real-widescreen T10: a level from [`Game::start_level`] (the app's Start Level and every bug
+/// replay) switched to widescreen before its first step is started again in widescreen, so it
+/// starts at the wide clamp and shows nothing past the map; switched back before a step it is the
+/// 4:3 start again; switched after a step it plays on (DESIGN §2.7).
+#[test]
+fn a_dialog_started_level_switched_before_its_first_step_starts_at_the_wide_clamp() {
+    use sf_core::recording::LevelSetup;
+    let display = sf_conform::display_data();
+    let seed = sf_core::Rng::seeded(3, 4);
+    let narrow = Game::start_level(display.clone(), &LevelSetup::default(), seed);
+    let mut g = Game::start_level(display.clone(), &LevelSetup::default(), seed);
+    g.set_view(WIDE_VIEW);
+    g.set_widescreen(true);
+    assert_eq!(cx(&narrow), 0x10);
+    assert_eq!(cx(&g), 0x10 + EXTRA, "start_point's wide clamp");
+    assert!(g.widescreen() && g.view() == WIDE_VIEW, "the mode on and the view kept");
+    assert_eq!(g.frame(), narrow.frame());
+    for n in 0..40 {
+        g.step(joy(Joy::NONE));
+        assert!(!left_column_blank(&g), "frame {n}: colour 0 from off the map");
+        assert_eq!(cx(&g), 0x10 + EXTRA, "frame {n}");
+    }
+    let mut back = Game::start_level(display.clone(), &LevelSetup::default(), seed);
+    back.set_widescreen(true);
+    back.set_widescreen(false);
+    assert!(back.state() == narrow.state(), "switched back: the 4:3 start");
+    let mut late = narrow.clone();
+    late.step(joy(Joy::NONE));
+    let frame = late.frame();
+    late.set_widescreen(true);
+    assert_eq!((late.frame(), cx(&late)), (frame, 0x10), "after a step: played on, not started again");
+}

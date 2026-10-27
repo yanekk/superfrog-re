@@ -418,20 +418,28 @@ fn a_scripted_run_without_bugs_dir_saves_into_its_home_never_the_repo() {
     assert_eq!(read_zip(&found[0]).0.inputs.len(), 30);
 }
 
+/// real-widescreen DESIGN §2.8: a recording switched to widescreen and back and on again holds
+/// its switches, replays as played (`sf-conform bug replay`'s replay) and its screenshot is the
+/// wide picture it ended on. (`widescreen_app.rs` switches mid-level and replays in the app.)
 #[test]
-fn a_recording_in_widescreen_saves_the_4_3_picture_a_headless_replay_draws() {
-    // The replay (`sf-conform bug replay`) draws the 4:3 view, so the screenshot is the core's
-    // 4:3 picture whatever the window shows (DESIGN §2.5; T04's finding).
+fn a_recording_in_widescreen_replays_as_played_and_its_screenshot_is_the_wide_picture() {
     let (mut app, bugs) = launch(140, 120);
-    let data = cache_data(&app.home);
     let c = app.run_script(
-        "note w\n1: start-level W1-1 record\n10: menu widescreen\n20: down ArrowRight\n121: menu stop-recording\n",
+        "note w\n1: start-level W1-1 record\n10: menu widescreen\n20: down ArrowRight\n60: menu widescreen\n\
+         90: menu widescreen\n121: menu stop-recording\n",
     );
     assert!(c.exit.success(), "{}", c.stderr);
     let found = zips(&bugs);
     assert_eq!(found.len(), 1, "{}", c.prompts);
     let (rec, png) = read_zip(&found[0]);
     assert_eq!(rec.inputs.len(), 120, "widescreen leaves it running");
-    let (_, last) = replay(&data, &rec, None);
-    assert_eq!(png_image(&png, &c.dir), last, "the screenshot is the 4:3 picture");
+    assert!(!rec.widescreen);
+    assert_eq!(rec.toggles, [9, 59, 89], "a toggle before each switched step");
+    let r = sf_conform::bug::replay(&rec, |_, _, _| {});
+    assert!(r.game.widescreen());
+    assert_eq!(sf_conform::bug::screenshot_differs(&png, &r.last), Ok(0), "screenshot equal");
+    let shot = png_image(&png, &c.dir);
+    assert_eq!(shot, Image::of_picture(&r.last));
+    assert_eq!(shot, c.frames[120], "the screenshot is the app's last frame");
+    assert_eq!(shot.width, 334 + 2 * 65, "the wide picture");
 }

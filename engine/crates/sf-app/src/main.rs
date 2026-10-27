@@ -331,6 +331,9 @@ impl App {
         };
         let (settings, settings_damaged) = settings::load(&self.home);
         let (furthest, progress_damaged) = progress::load(&self.home);
+        // A replay plays in the recording's mode, not the setting's, which it leaves as it is
+        // (real-widescreen DESIGN §2.8).
+        let wide = replayed.as_ref().map_or(settings.widescreen, |r| r.widescreen);
 
         let scale = self.args.scale.map_or(settings.scale, Scale::N);
         let window = if self.args.max_frames == Some(0) {
@@ -338,8 +341,8 @@ impl App {
         } else {
             let attrs = Window::default_attributes()
                 .with_title("Superfrog")
-                .with_inner_size(window::initial_size(scale, settings.widescreen, false))
-                .with_min_inner_size(window::min_size(settings.widescreen, false))
+                .with_inner_size(window::initial_size(scale, wide, false))
+                .with_min_inner_size(window::min_size(wide, false))
                 .with_active(!self.args.unattended());
             match event_loop.create_window(attrs) {
                 Ok(w) => Some(Arc::new(w)),
@@ -431,7 +434,7 @@ impl App {
             Some(rec) => Game::start_level(display.clone(), &rec.setup, rec.seed),
             None => Game::with_display(display.clone(), Start::PowerOn { seed: start_rng }),
         };
-        game.set_view(window::view(settings.widescreen));
+        window::show(&mut game, wide);
         let mut run = Run {
             _lock: lock,
             input: Input::new(settings.keys.clone(), settings.pad.clone()),
@@ -556,6 +559,17 @@ impl App {
             return;
         }
         let input = run.input.frame();
+        // A replay switches widescreen where its recording did, before that step: the game's mode,
+        // its view and the window's shape, the setting untouched (real-widescreen DESIGN §2.8).
+        if let Some(wide) = run.replay.as_ref().map(Replay::widescreen)
+            && wide != run.game.widescreen()
+        {
+            window::show(&mut run.game, wide);
+            eprintln!("superfrog: replay widescreen {} before step {n}", if wide { "on" } else { "off" });
+            self.fit_window_to_mode();
+            self.show_menu();
+        }
+        let run = self.run.as_mut().expect("running");
         // A replay feeds its recording's input in place of the player's, and holds once that has
         // run out: no further steps, the last frame shown (and captured) as it is.
         let input = match &mut run.replay {
@@ -666,7 +680,7 @@ impl App {
         if let Scale::N(_) = s
             && !run.settings.fullscreen
         {
-            let _ = run.window.request_inner_size(window::initial_size(s, run.settings.widescreen, run.video.bar));
+            let _ = run.window.request_inner_size(window::initial_size(s, run.game.widescreen(), run.video.bar));
             run.window_bar = run.video.bar;
         }
         self.save_settings();
@@ -681,13 +695,24 @@ impl App {
         self.save_settings();
     }
 
-    /// View → Widescreen: the game draws 16:9 from the next step on, remembered. A window keeps
-    /// its scale and grows or shrinks to the new picture; fullscreen refits it.
+    /// View → Widescreen: the widescreen game, played and drawn 16:9 from the next step on
+    /// (real-widescreen DESIGN §2.7), remembered, and recorded as a switch while a recording runs
+    /// (§2.8).
     fn toggle_widescreen(&mut self) {
         let run = self.run.as_mut().expect("running");
         let wide = !run.settings.widescreen;
         run.settings.widescreen = wide;
-        run.game.set_view(window::view(wide));
+        window::show(&mut run.game, wide);
+        run.recorder.toggle();
+        self.fit_window_to_mode();
+        self.save_settings();
+    }
+
+    /// The window fitted to the game's widescreen mode: its minimum, and a window (not fullscreen)
+    /// keeps its scale and grows or shrinks to the new picture; fullscreen refits it.
+    fn fit_window_to_mode(&mut self) {
+        let run = self.run.as_mut().expect("running");
+        let wide = run.game.widescreen();
         run.window.set_min_inner_size(Some(window::min_size(wide, run.video.bar)));
         if !run.settings.fullscreen {
             let n = match run.video.scale {
@@ -697,7 +722,6 @@ impl App {
             let _ = run.window.request_inner_size(window::initial_size(Scale::N(n), wide, run.video.bar));
             run.window_bar = run.video.bar;
         }
-        self.save_settings();
     }
 
     fn save_settings(&self) {
@@ -869,7 +893,7 @@ impl ApplicationHandler for App {
                     // macOS keeps a person's drag above the minimum size, but not a resize asked
                     // for by code: the app holds the line itself.
                     let at: winit::dpi::LogicalSize<f64> = size.to_logical(run.window.scale_factor());
-                    let min = window::min_size(run.settings.widescreen, run.video.bar);
+                    let min = window::min_size(run.game.widescreen(), run.video.bar);
                     if at.width < min.width as f64 || at.height < min.height as f64 {
                         let _ = run.window.request_inner_size(winit::dpi::LogicalSize::new(
                             at.width.max(min.width as f64),
