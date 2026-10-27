@@ -18,7 +18,9 @@
 //! Continue, Import Disks, Play Level File and Quit. The rest leave it running.
 //!
 //! Under `--replay` the replay is watch-only (DESIGN §2.7): only Pause, Quit and the View items
-//! can be chosen ([`Command::during_replay`]); the others are disabled and refused.
+//! but Widescreen can be chosen ([`Command::during_replay`]); the others are disabled and refused.
+//! Widescreen changes the game (real-widescreen DESIGN §2.1), so in a replay the recording alone
+//! switches it and the item's tick shows the mode the replay plays in (owner, T10).
 
 use muda::accelerator::{Accelerator, Code, Modifiers};
 use muda::{
@@ -75,16 +77,12 @@ pub enum Command {
 
 impl Command {
     /// Can it be chosen while `--replay` plays? Only what leaves the game as it is: Pause, Quit
-    /// and the View items (bug-recorder T07).
+    /// and the View items (bug-recorder T07), less Widescreen, which changes the game
+    /// (real-widescreen T10).
     pub fn during_replay(self) -> bool {
         matches!(
             self,
-            Command::Pause
-                | Command::Quit
-                | Command::Scale(_)
-                | Command::ToggleFullscreen
-                | Command::Filter(_)
-                | Command::ToggleWidescreen
+            Command::Pause | Command::Quit | Command::Scale(_) | Command::ToggleFullscreen | Command::Filter(_)
         )
     }
 }
@@ -183,12 +181,13 @@ pub struct MenuState {
     pub scale: Scale,
     pub fullscreen: bool,
     pub filter: Filter,
+    /// The game's widescreen mode: the setting, or in a replay the recording's.
     pub widescreen: bool,
     /// Which save-state slots hold a state: Load State ▸ N can be chosen only then.
     pub states: [bool; SLOTS as usize],
     /// A bug recording is running: Stop Recording can be chosen only then.
     pub recording: bool,
-    /// `--replay` plays: everything but Pause, Quit and View is disabled.
+    /// `--replay` plays: everything but Pause, Quit and View (less Widescreen) is disabled.
     pub replay: bool,
 }
 
@@ -407,6 +406,7 @@ impl MenuBar {
             i.set_checked(*filter == s.filter);
         }
         self.widescreen.set_checked(s.widescreen);
+        self.widescreen.set_enabled(!s.replay);
         for (i, filled) in self.loads.iter().zip(s.states) {
             i.set_enabled(filled);
         }
@@ -492,7 +492,7 @@ impl App {
             scale: run.video.scale,
             fullscreen: run.settings.fullscreen,
             filter: run.settings.filter,
-            widescreen: run.settings.widescreen,
+            widescreen: run.game.widescreen(),
             states: run.states,
             recording: run.recorder.is_recording(),
             replay: run.replay.is_some(),
@@ -555,8 +555,9 @@ impl App {
         self.save_recording();
     }
 
-    /// The save window for the recording, which ends here (DESIGN §2.4): its screenshot the 4:3
-    /// picture of the last frame recorded at 1×, where play is, the zip's name. Saved, the path is
+    /// The save window for the recording, which ends here (DESIGN §2.4): its screenshot the
+    /// picture of the last frame recorded at 1× (the wide one in widescreen, real-widescreen DESIGN
+    /// §2.8), where play is, the zip's name. Saved, the path is
     /// on the clipboard and in a notice; a write that fails says so and the window stays open, so
     /// the note is not lost and the recording is kept until it is saved or discarded (§2.11).
     pub(crate) fn save_recording(&mut self) {
@@ -565,14 +566,10 @@ impl App {
         let Some(mut rec) = std::mem::take(&mut run.recorder).finish(at, String::new()) else {
             return;
         };
-        // The 4:3 picture whatever the window shows: a headless replay draws that view, and the
-        // screenshot is what it compares with (DESIGN §2.5). In widescreen the step's picture is
-        // no use narrowed (a level's status rows are laid out for the width), so the 4:3 view is
-        // drawn again; that misses only a picture a pass ended mid-frame on.
-        let pic = match run.game.view() == sf_core::View::default() {
-            true => run.picture.clone(),
-            false => run.game.render(sf_core::View::default()),
-        };
+        // The last step's picture as drawn: `bug replay` draws the same view, the mode's, at each
+        // step, and the screenshot is what it compares with (DESIGN §2.5). A switch after the last
+        // step is not in the recording (no step played in it) and this picture predates it too.
+        let pic = run.picture.clone();
         let shot = crate::capture::png(pic.width as u32, pic.height as u32, &crate::video::picture_rgba(&pic));
         let path = crate::recorder::zip_name(
             &self.bugs_dir,
@@ -614,12 +611,12 @@ impl App {
         let run = self.run.as_mut().expect("running");
         let seed = Rng::seeded(run.seed.0, run.seed.1);
         run.game = Game::start_level(run.display.clone(), &setup, seed);
-        run.game.set_view(crate::window::view(run.settings.widescreen));
+        crate::window::show(&mut run.game, run.settings.widescreen);
         run.paula = Paula::booted(run.rate);
         run.paused = false;
         run.from_dialog = true;
         run.recorder = match record {
-            true => Recorder::start(setup, seed, crate::home::build()),
+            true => Recorder::start(setup, seed, crate::home::build(), run.settings.widescreen),
             false => Recorder::Off,
         };
         // Frame 0 at once: the picture a STOP before any step would save.
@@ -652,7 +649,7 @@ impl App {
         run.from_dialog = false;
         let seed = Rng::seeded(run.seed.0, run.seed.1);
         run.game = Game::with_display(run.display.clone(), Start::PowerOn { seed });
-        run.game.set_view(crate::window::view(run.settings.widescreen));
+        crate::window::show(&mut run.game, run.settings.widescreen);
         run.paula = Paula::booted(run.rate);
         run.paused = false;
     }
@@ -682,7 +679,7 @@ impl App {
                 run.game = game;
                 // The loaded game is the one saved, dialog-started or not (bug-recorder DESIGN §2.1).
                 run.from_dialog = crate::states::from_dialog(&self.home, n);
-                run.game.set_view(crate::window::view(run.settings.widescreen));
+                crate::window::show(&mut run.game, run.settings.widescreen);
                 run.paula = Paula::booted(run.rate);
                 let pic = run.game.render(run.game.view());
                 let size = (pic.width as u32, pic.height as u32);
@@ -713,7 +710,7 @@ impl App {
         run.from_dialog = false;
         let seed = Rng::seeded(run.seed.0, run.seed.1);
         run.game = Game::start_at_with(run.display.clone(), &p, seed);
-        run.game.set_view(crate::window::view(run.settings.widescreen));
+        crate::window::show(&mut run.game, run.settings.widescreen);
         run.paula = Paula::booted(run.rate);
         run.paused = false;
     }
@@ -788,12 +785,12 @@ mod tests {
     }
 
     #[test]
-    fn a_replay_takes_only_pause_quit_and_the_view_items() {
-        let allowed: Vec<String> = [Command::Pause, Command::Quit, Command::Scale(Scale::N(2)), Command::Scale(Scale::Auto), Command::ToggleFullscreen, Command::Filter(Filter::Geom), Command::ToggleWidescreen]
+    fn a_replay_takes_only_pause_quit_and_the_view_items_less_widescreen() {
+        let allowed: Vec<String> = [Command::Pause, Command::Quit, Command::Scale(Scale::N(2)), Command::Scale(Scale::Auto), Command::ToggleFullscreen, Command::Filter(Filter::Geom)]
             .iter()
             .map(|c| c.id())
             .collect();
-        for c in [Command::ImportDisks, Command::ExportLevel(export_levels()[0]), Command::PlayLevelFile, Command::ContinueFromProgress, Command::StartLevel, Command::StopRecording, Command::Reset, Command::Controls, Command::SaveState(1), Command::LoadState(1)] {
+        for c in [Command::ToggleWidescreen, Command::ImportDisks, Command::ExportLevel(export_levels()[0]), Command::PlayLevelFile, Command::ContinueFromProgress, Command::StartLevel, Command::StopRecording, Command::Reset, Command::Controls, Command::SaveState(1), Command::LoadState(1)] {
             assert!(!c.during_replay(), "{}", c.id());
         }
         for id in allowed {
