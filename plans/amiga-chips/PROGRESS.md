@@ -9,9 +9,9 @@ task you pick up, and append yours there.
 
 **Plan reviewed:** 2026-10-25 — 2 fixed, 3 decided with the user
 
-**Status:** T01 done; T02 implemented, awaiting review.
+**Status:** T01 and T02 done; plan built.
 **Last updated:** 2026-10-27
-**Next `pir-work` will:** review T02.
+**Next `pir-work` will:** nothing; the plan is complete.
 
 ## Tasks
 
@@ -21,9 +21,9 @@ done · ⛔ blocked, needs a human.
 | # | Task | Depends on | State | Notes |
 |---|---|---|---|---|
 | T01 | one-copy-each | — | ✅ | |
-| T02 | amiga-chips-crate | T01 | 🔍 | Crate `amiga-chips` (blit, copper, memory, `is_paula` in lib.rs); sf-core paths re-export. 8 tests moved; Bus-based blit tests stay in sf-core since they need `Bus`/`State`. Copper module doc's `mod.rs` pointer reworded. measure.sh, docs check, all §4 sf-conform runs green. |
+| T02 | amiga-chips-crate | T01 | ✅ | Review: one fix, copper module doc named the game's level and panel. Moved files diffed byte-equal to old; mutations in copper (cycle $E0) and MASK_EACH_LINE caught; reran 41 conform cases and story 9/9 green. Bus blit tests staying in sf-core held. `is_paula` has no direct unit test. |
 
-**Review queue:** T02
+**Review queue:** *(empty)*
 
 ## Blocked on the user
 
