@@ -52,6 +52,11 @@ Targets for the M2 rows:
 | J1 | Is game two chosen, and are its disks at hand? A toolkit cut against one game is a guess at what the second needs; with the second game's disks, its first loader and oracle run can test the cut. |
 | J2 | Given the next step's size (its draft) and what the toolkit would hold today (M4), is the toolkit worth another step, or should it be extracted now? Answer "extract now", "one more step: N", or "stop". |
 
+**J2 after amiga-chips, owner 2026-10-27: one more step, the keyboard (draft 3 A+B) and the clock
+(draft 2); then extract (draft 5).** Note for that column: amiga-chips merged with pir's final test
+run red (app tests timing out in the full suite) and its slow sf-conform runs unrecorded
+(`plans/amiga-chips/REPORT.md`); M1 for that step is unproven until they are rerun.
+
 **J1, owner 2026-10-27: chosen; disks at hand, a cracked release (see the last bullet).** Game two is *Forest Dumb Forever*
 (© 1998 L.K. Avalon, developer Eagle Soft; a Superfrog-like platformer), named via the WHDLoad
 package `ForestDumbForever_v1.1_Pl.lha` (whdownload.com). Inspected 2026-10-27, nothing run and
