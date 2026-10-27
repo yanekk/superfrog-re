@@ -11,9 +11,9 @@ message. Whoever writes a cell also fixes the over-budget cell they walk past.
 
 **Plan reviewed:** 2026-10-22 — 10 fixed, 4 decided with the user
 
-**Status:** T00–T11 done; T12 implemented, awaiting review.
+**Status:** T00–T12 done.
 **Last updated:** 2026-10-27
-**Next `pir-work` will:** review T12 wide-every-level.
+**Next `pir-work` will:** nothing; every task is done.
 
 ## Tasks
 
@@ -34,9 +34,9 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T09 | side-frog | T04, T08 | ✅ | |
 | T10 | app-wiring | T05, T06, T07, T08, T09 | ✅ | |
 | T11 | widescreen-drill | T10 | ✅ | |
-| T12 | wide-every-level | T11 | 🔍 | 26 widescreen routes; `widescreen_complete.rs` (W1-1 in block, all 26 `--ignored`, green 140 s). W6-4 is owner-played (his choice). Deviations: app start, not `--engine-only` (test needs no oracle); WB-1 by `plan_bonus --widescreen`; WW-1 final-win's fire, Spud on; opt-in widescreen `handover.py`, `bug_trail`, `sf-routeview`. |
+| T12 | wide-every-level | T11 | ✅ | Review: 26 routes replay green (all, 120 s). Fixed: in-block test was W1-1, which also finishes in 4:3, so dropping widescreen survived; now W5-1 asserts wide finishes, 4:3 dies. `handover.py --step 0` now refused. Mutated wide start (sf-plan, replay), probed WW-1 without Spud (fails). W6-4 owner-played, his choice. |
 
-**Review queue:** T12
+**Review queue:** empty
 
 ## Blocked on the user
 
