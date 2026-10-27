@@ -12,7 +12,11 @@ changed.
 
 | Date | | Finding |
 |---|---|---|
-| 2026-10-27 | 🐞 | T10, fixed: `Game::start_level` plays the level code through in 4:3, so a Start Level or bug replay switched wide entered W1-1 at cx 16 (80 frames black past the map, then a 65 px jump). `set_widescreen` before the first step now restarts it wide. |
+| 2026-10-27 | 📌 | T11 drill, worker-driven: W1-1, W2-3, W3-1, W4-2, W5-1, W6-2 (bench routes, ghost and plain), WB-1, WW-1, ≥3 000 frames each, both ends, Spud, bonus shots, witch, app switches, record/replay, fullscreen. No black past map, map pop-in, seam tear or crash. |
+| 2026-10-27 | 🔄 | T11, owner: switching widescreen while paused keeps the paused 4:3 picture, centred in the wider window, until play resumes (`widescreen_drill.rs`). WW-1's strips keep showing the map, scraps past the castle's right wall included. |
+| 2026-10-27 | 📌 | T11: objects freed inside a strip are taken coins' sparkle ending (`+$5c`), child shots or bonus pieces; none by a despawn edge. WB-1's centre buffer and draw list differ under the panel by the left seam; not visible. |
+| 2026-10-27 | 📌 | T11: `cargo test --workspace` not run (parallel worker rule, as T02); the drill changed no engine or app code, only added `widescreen_drill.rs`. |
+| 2026-10-27 | 🐞 | T10, fixed: `Game::start_level` plays the level code in 4:3, so Start Level or bug replay switched wide entered W1-1 at cx 16 (80 frames black past the map, 65 px jump). `set_widescreen` before the first step restarts it wide. |
 | 2026-10-27 | 🔄 | T10, owner: during `--replay` View ▸ Widescreen is disabled; the recording alone switches the mode and the item's tick shows it. |
 | 2026-10-27 | 🐞 | T09 review, fixed: a WW-1 sprite's own data fetches SPRxCTL `$000c` (bit 3 set); read as `WIDE_HSTART_BIT` it drew stray pixels at the right strip's edge. The renderer now takes the bit from copper writes only. |
 | 2026-10-27 | 📌 | T09 review drill, worker-driven: W1-1 widescreen rendered with the frog at both ends, whole in each strip. A probe of every level's right-edge sprite pixels (600 frames) found only WB-1's frog after the fix. |
