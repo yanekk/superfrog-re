@@ -9,9 +9,11 @@ use sf_paula::PaulaWrite;
 
 use crate::audio::AudioDriver;
 use crate::front::password::Progress;
-use crate::input::{FrameInput, KeySet};
+use crate::input::FrameInput;
+use crate::keyboard::{self, CiaKeyboard};
 use crate::layout::{AmigaMemory, Ram, VarId, h0};
 use crate::level::Hw;
+use crate::pass_clock::PassClock;
 use crate::render::{DisplayData, Picture, View};
 use crate::recording::{LevelSetup, Location};
 use crate::rng::Rng;
@@ -217,10 +219,6 @@ pub struct Game {
     /// The seed a power-on start is waiting to put in place.
     seed: Option<Rng>,
     frame: u32,
-    /// The keyboard: the keys held last frame, and the byte it last sent, which CIA-A's serial
-    /// register holds (the code shifted up one, bit 0 set for a key going up, all inverted).
-    keys: KeySet,
-    sdr: u8,
     /// The level runs with no object kinds ([`Game::frog_only`]).
     frog_only: bool,
     /// What a level's work costs on the beam ([`crate::level::beam`]), and the last frame's clock
@@ -309,17 +307,8 @@ pub const CODE_TIMES: CodeTimes = CodeTimes {
     leave: 40,
 };
 
-/// `key_down`, `key_up` (h0+$16078, h0+$16079).
-const KEY_DOWN: u32 = h0(0x16078);
-const KEY_UP: u32 = h0(0x16079);
-
-/// The byte the keyboard sends for `code` going down or up.
-fn key_byte(code: u8, up: bool) -> u8 {
-    !(code << 1 | up as u8)
-}
-
-/// The sound driver and the keyboard's last byte as the original's memory `mem` has them.
-fn level_io(display: &DisplayData, mem: &AmigaMemory) -> (AudioDriver, u8) {
+/// The sound driver and the keyboard as the original's memory `mem` has them.
+fn level_io(display: &DisplayData, mem: &AmigaMemory) -> (AudioDriver, CiaKeyboard) {
     let word = |a: u32| (mem.byte(a) as u32) << 8 | mem.byte(a + 1) as u32;
     let long = |a: u32| word(a) << 16 | word(a + 2);
     let files = if display.sound().is_complete() {
@@ -328,12 +317,9 @@ fn level_io(display: &DisplayData, mem: &AmigaMemory) -> (AudioDriver, u8) {
         Vec::new()
     };
     let audio = AudioDriver::transplant(display.sound(), &|a| mem.byte(a), &files);
-    // The keyboard's last byte, as the last poll decoded it.
-    let sdr = match (mem.byte(KEY_DOWN), mem.byte(KEY_UP)) {
-        (0, up) if up != 0 => key_byte(up, true),
-        (down, _) => key_byte(down, false),
-    };
-    (audio, sdr)
+    // No keyboard came with the memory: the register as the last poll decoded it.
+    let kbd = CiaKeyboard::from_keys(mem.byte(keyboard::KEY_DOWN), mem.byte(keyboard::KEY_UP));
+    (audio, kbd)
 }
 
 impl Game {
@@ -362,7 +348,6 @@ impl Game {
     /// games from one [`GameData`] (conformance runs) keeps it.
     pub fn with_display(display: Arc<DisplayData>, start: Start) -> Game {
         let mut story = None;
-        let mut sdr = 0xff;
         let entered = match start {
             Start::Level(id) => Some(id),
             _ => None,
@@ -377,7 +362,7 @@ impl Game {
             ),
             Start::Transplant(mem) => {
                 let mut state = State::transplant(&mem);
-                (state.audio, sdr) = level_io(&display, &mem);
+                (state.audio, state.kbd) = level_io(&display, &mem);
                 (state, Scene::of(&mem), None, None)
             }
             Start::Resume { memory, cpu } => {
@@ -388,7 +373,7 @@ impl Game {
                         (state, scene, None, Some(f))
                     }
                     None => {
-                        (state.audio, sdr) = level_io(&display, &memory);
+                        (state.audio, state.kbd) = level_io(&display, &memory);
                         (state, Scene::of(&memory), None, None)
                     }
                 }
@@ -419,8 +404,6 @@ impl Game {
             wide_switch: false,
             seed,
             frame: 0,
-            keys: KeySet::NONE,
-            sdr,
             frog_only: false,
             costs: crate::level::beam::COSTS,
             trace: None,
@@ -471,7 +454,7 @@ impl Game {
         self.passes_ended = self.pass_clock.frame(
             self.scene.is_level() && self.state.pause.is_none(),
             self.pending.is_some(),
-            self.state.w(VBL_COUNT),
+            self.state.w(crate::pass_clock::VBL_COUNT),
         );
         self.passes += self.passes_ended as u64;
         if let Some(p) = self.place_now() {
@@ -515,19 +498,6 @@ impl Game {
     }
 
     fn step_body(&mut self, input: FrameInput, pacing: Pacing, draw: bool) -> FrameOut {
-        // A key going down or up this frame is the byte the keyboard sends (the last one wins).
-        let key_in = input.keys != self.keys;
-        for code in input.keys.codes() {
-            if !self.keys.contains(code) {
-                self.sdr = key_byte(code, false);
-            }
-        }
-        for code in self.keys.codes() {
-            if !input.keys.contains(code) {
-                self.sdr = key_byte(code, true);
-            }
-        }
-        self.keys = input.keys;
         self.frame += 1;
         if let (Scene::Story, Some(story)) = (self.scene, self.story.as_mut()) {
             let mut out = story.step(&self.state, &self.display, input, pacing);
@@ -578,11 +548,8 @@ impl Game {
             let mut paula = out.paula;
             if front.in_level_loop() {
                 // `level_start` is over and `level_frame_loop` entered (T37): the level scene
-                // from the next frame, its poll reading the keyboard's register as it is.
+                // from the next frame, its poll reading the keyboard as the front end left it.
                 let entered = front.loop_entered_on();
-                self.sdr = front.keyboard_sdr();
-                self.state.kbd_flag = front.keyboard_new();
-                self.state.kbd_acked = false;
                 self.front = None;
                 self.scene = Scene::level(self.state.l(h0(0x40da)), self.state.l(h0(0x40de)));
                 self.pending = None;
@@ -592,21 +559,17 @@ impl Game {
                 // in its middle).
                 if let Some(line) = entered
                     && line < crate::level::beam::FRAME_LINES
-                    && crate::level::n_clear(self.state.w(VBL_COUNT).wrapping_sub(2))
+                    && crate::pass_clock::pass_due(self.state.w(crate::pass_clock::VBL_COUNT))
                 {
                     self.pending = Some(crate::level::beam::Pending {
                         start: Box::new(self.state.clone()),
                         clock: crate::level::beam::Clock { line, into: 0 },
-                        hw: Hw {
-                            sdr: self.sdr,
-                            key_in,
-                            ..Hw::of(input)
-                        },
+                        hw: Hw::of(input),
                         pre: paula.len() as u16,
                         frames: Vec::new(),
                         vbl: false,
                     });
-                    paula.extend(self.level_frame(input, pacing, key_in, false).paula);
+                    paula.extend(self.level_frame(input, pacing, false).paula);
                 }
             }
             let picture = if level_list {
@@ -625,7 +588,7 @@ impl Game {
                 unheard: out.unheard,
             };
         }
-        self.level_frame(input, pacing, key_in, draw)
+        self.level_frame(input, pacing, draw)
     }
 
     /// A frame of the level's main program (or the rest of one, a pass begun in it pending).
@@ -633,21 +596,17 @@ impl Game {
         &mut self,
         input: FrameInput,
         pacing: Pacing,
-        key_in: bool,
         draw: bool,
     ) -> FrameOut {
-        let mut hw = Hw::of(input);
-        hw.sdr = self.sdr;
-        hw.key_in = key_in;
+        let hw = Hw::of(input);
         let mut ended: Option<(crate::front::Front, Vec<PaulaWrite>, Vec<Job>)> = None;
         let display = Arc::clone(&self.display);
         let frog_only = self.frog_only;
-        let sdr = self.sdr;
         let screen = self.screen();
         let mut after = |s: &mut State, line: u16, into: u32| {
             // `level_frame_loop` returned: what follows runs on the front end's program, from
             // where the loop's last pass ended (T37, `crate::level::exit`).
-            let mut front = crate::front::Front::level_over(s, &display.front, sdr, frog_only);
+            let mut front = crate::front::Front::level_over(s, &display.front, frog_only);
             front.screen = screen;
             let (more, jobs) = front.finish_frame(s, &display, input, line, into);
             ended = Some((front, more, jobs));
@@ -1274,7 +1233,6 @@ impl Game {
         self.front = Some(crate::front::Front::enter_slot(
             &self.state,
             &self.display.front,
-            self.sdr,
             self.frog_only,
         ));
         self.scene = Scene::Slot { coins_in: coins };
@@ -1326,42 +1284,6 @@ impl Game {
     }
 }
 
-/// `vbl_count` (h0+$9d8): vertical blanks since the level's pass last began.
-const VBL_COUNT: u32 = h0(0x9d8);
-
-/// Counts the main-loop passes frames end (DESIGN §2.1 check 1), by the same rule on both sides.
-/// Outside a level, where the main loop waits every frame, a frame is a pass. In a level a pass
-/// begins in a frame that ends with `vbl_count` 0 (`level_frame_loop` clears it as it begins one,
-/// and the next blank has not come), and ends in the first frame that does not end in the middle
-/// of it: the same frame, or, for a late pass, a later one (in which the next pass may begin and
-/// still be running at the frame's end, its predecessor's end then never seen).
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
-pub struct PassClock {
-    /// A pass has begun and not been seen to end.
-    running: bool,
-}
-
-impl PassClock {
-    /// The passes a frame ended (0 to 2): `in_level`, in a level's loop at the frame's end;
-    /// `mid_pass`, in the middle of a pass there.
-    pub fn frame(&mut self, in_level: bool, mid_pass: bool, vbl_count: u16) -> u32 {
-        if !in_level && !mid_pass {
-            self.running = false;
-            return 1;
-        }
-        let mut ended = 0;
-        if vbl_count == 0 {
-            ended += self.running as u32;
-            self.running = true;
-        }
-        if !mid_pass && self.running {
-            ended += 1;
-            self.running = false;
-        }
-        ended
-    }
-}
-
 /// Chip RAM as the audio channels' DMA reads it ([`Game::chip_word`]).
 impl sf_paula::ChipMemory for Game {
     fn chip_word(&self, addr: u32) -> u16 {
@@ -1385,29 +1307,6 @@ mod tests {
     }
 
     use super::*;
-
-    /// DESIGN §2.1 check 1: what a frame's end says of the passes, as the original's main loop
-    /// shows it (in a level: `vbl_count`, and whether it is in the middle of a pass).
-    #[test]
-    fn the_pass_clock_counts_passes_ended() {
-        let mut c = PassClock::default();
-        // Outside a level a frame is a pass.
-        assert_eq!(c.frame(false, false, 7), 1);
-        // On time: a pass begins and ends, then a frame's wait.
-        assert_eq!(c.frame(true, false, 0), 1);
-        assert_eq!(c.frame(true, false, 1), 0);
-        // Late: begun, still running at the frame's end, ended in the next.
-        assert_eq!(c.frame(true, true, 0), 0);
-        assert_eq!(c.frame(true, false, 1), 1);
-        // Late, and the next pass begun and running at the end of the frame the first ended in.
-        assert_eq!(c.frame(true, true, 0), 0);
-        assert_eq!(c.frame(true, true, 0), 1);
-        assert_eq!(c.frame(true, false, 1), 1);
-        // Out of the wait with no pass begun (the frame's end between its calls): nothing ended.
-        assert_eq!(c.frame(true, true, 1), 0);
-        assert_eq!(c.frame(true, true, 0), 0);
-        assert_eq!(c.frame(true, false, 1), 1);
-    }
 
     #[test]
     fn a_placeholder_game_steps_black_and_silent_and_keeps_its_state() {

@@ -4,7 +4,7 @@
 
 use super::BEAM_CYCLES_PER_LINE;
 use super::{Cx, fade, sprite};
-use crate::audio::{INTENA, TickWork, wr};
+use crate::audio::{TickWork, wr};
 use crate::layout::h0;
 
 /// `h0+$11b64`: the last JOY0DAT read; `$11b66`, `$11b68`: the pointer's x and y.
@@ -12,9 +12,8 @@ const MOUSE: u32 = h0(0x11b64);
 /// The pointer's sprite record.
 const POINTER: u32 = h0(0x1b10c);
 pub const DISPLAY_TIMER: u32 = h0(0x123d4);
-const KBD_TOGGLE: u32 = h0(0x16076);
-pub const KEY_DOWN: u32 = h0(0x16078);
-pub const KEY_UP: u32 = h0(0x16079);
+pub use crate::keyboard::KEY_DOWN;
+use crate::keyboard::{KBD_TOGGLE, kbd_poll};
 /// Set while the title's fades run: the VBL copies their palettes into the copper list.
 pub const TITLE_FADING: u32 = h0(0x9e0);
 pub const TITLE_TOGGLE: u32 = h0(0x3ca0);
@@ -38,7 +37,7 @@ pub(super) fn load_blank(cx: &mut Cx) -> Option<SoundMarks> {
         cx.s.audio.sfx_tick(d, cx.paula);
         marks = Some(SoundMarks { music, dma, work, streaming });
     }
-    kbd_poll(cx);
+    front_kbd_poll(cx.s, cx.paula);
     marks
 }
 
@@ -124,7 +123,7 @@ pub(super) fn run(cx: &mut Cx) -> (bool, Option<SoundMarks>) {
     if cx.s.l(super::chain::MAP_SHOWN) != 0 {
         super::chain::progress_map_vbl(cx);
     }
-    kbd_poll(cx);
+    front_kbd_poll(cx.s, cx.paula);
     let t = cx.s.w(DISPLAY_TIMER);
     if (t as i16) >= 0 {
         cx.s.set_w(DISPLAY_TIMER, t.wrapping_sub(1));
@@ -189,27 +188,31 @@ pub(crate) fn pointer(s: &mut crate::state::State) {
     sprite::update(s, POINTER);
 }
 
-/// `kbd_poll` (`$15ff2`): every second frame, the keyboard's last byte into `key_down`/`key_up`.
-fn kbd_poll(cx: &mut Cx) {
-    let t = !cx.s.b(KBD_TOGGLE);
-    cx.s.set_b(KBD_TOGGLE, t);
-    if t == 0 {
-        return;
+/// The front end's side of [`kbd_poll`]: the state's memory, and the interrupt writes among the
+/// handler's Paula writes, placed after the fact ([`place`]).
+pub struct FrontKbd<'a> {
+    pub s: &'a mut crate::state::State,
+    pub paula: &'a mut Vec<crate::PaulaWrite>,
+}
+
+impl crate::keyboard::KbdHost for FrontKbd<'_> {
+    fn b(&self, addr: u32) -> u8 {
+        self.s.b(addr)
     }
-    wr(cx.paula, INTENA, 0x0008);
-    let d0 = !cx.keyboard.sdr;
-    let (code, up) = (d0 >> 1 & 0x7f, d0 & 1 == 1);
-    if std::mem::take(&mut cx.keyboard.new) {
-        cx.keyboard.sdr = 0xff;
+    fn set_b(&mut self, addr: u32, v: u8) {
+        self.s.set_b(addr, v);
     }
-    if up {
-        cx.s.set_b(KEY_UP, code);
-        cx.s.set_b(KEY_DOWN, 0);
-    } else {
-        cx.s.set_b(KEY_DOWN, code);
-        cx.s.set_b(KEY_UP, 0);
+    fn keyboard(&mut self) -> &mut crate::keyboard::CiaKeyboard {
+        &mut self.s.kbd
     }
-    wr(cx.paula, INTREQ, 0x0008);
+    fn custom(&mut self, reg: u16, value: u16) {
+        wr(self.paula, reg, value);
+    }
+}
+
+/// The front end's vertical blank's `kbd_poll`.
+pub fn front_kbd_poll(s: &mut crate::state::State, paula: &mut Vec<crate::PaulaWrite>) {
+    kbd_poll(&mut FrontKbd { s, paula });
 }
 
 /// How long the handler's work up to its fades takes (T100, measured on `frog-pit-w1-1`'s exit
@@ -301,7 +304,7 @@ pub(super) const NO_FADE_TAIL: u32 = 1_500;
 
 /// Whether this frame's handler polls the keyboard ([`kbd_poll`] runs every second frame).
 pub(super) fn polls_keyboard(cx: &Cx) -> bool {
-    cx.s.b(KBD_TOGGLE) == 0
+    crate::keyboard::polls(cx.s.b(KBD_TOGGLE))
 }
 
 #[cfg(test)]

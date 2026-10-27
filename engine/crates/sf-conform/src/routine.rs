@@ -28,6 +28,9 @@ const STACK_AREA: Range<u32> = 0xC7_E600..0xC7_F800;
 pub struct Setup {
     pub pokes: Vec<(u32, Vec<u8>)>,
     pub hw: Hw,
+    /// CIA-A's serial data register (`$BFEC01`), the keyboard's last byte: the engine's
+    /// [`sf_core::keyboard::CiaKeyboard`] holds it, no new byte waiting.
+    pub sdr: u8,
     /// Registers the routine is entered with (`a7` is the rig's stack).
     pub d: [u32; 8],
     pub a: [u32; 8],
@@ -175,7 +178,7 @@ impl<'d> Rig<'d> {
         self.cpu.set_hardware_read(0xDF_F00C, hi);
         self.cpu.set_hardware_read(0xDF_F00D, lo);
         self.cpu.set_hardware_read(0xBF_E001, setup.hw.ciaa_pra());
-        self.cpu.set_hardware_read(0xBF_EC01, setup.hw.sdr);
+        self.cpu.set_hardware_read(0xBF_EC01, setup.sdr);
         let regs = Regs {
             d: setup.d,
             a: {
@@ -218,6 +221,7 @@ impl<'d> Rig<'d> {
         // The port.
         let mut st = self.state.clone();
         st.audio = self.audio.clone();
+        st.kbd.sdr = setup.sdr;
         for (a, b) in &setup.pokes {
             st.poke(*a, b);
         }

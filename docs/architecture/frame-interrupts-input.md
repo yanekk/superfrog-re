@@ -11,6 +11,8 @@ owns = [
   "engine/crates/sf-core/src/level/clock.rs",
   "engine/crates/sf-core/src/front/vbl.rs",
   "engine/crates/sf-core/src/input.rs",
+  "engine/crates/sf-core/src/keyboard.rs",
+  "engine/crates/sf-core/src/pass_clock.rs",
 ]
 +++
 
@@ -39,13 +41,20 @@ Files owned:
 - `engine/crates/sf-core/src/level/frame.rs` covers one frame of a level, in the original's order.
   `vbl` is the vertical blank and `copper_irq` the copper interrupt. `main_program` runs the main
   program on the beam for one step, including a pass left pending from the last step. `pass` and
-  `pass_tail` are `level_frame_loop`'s body and its end conditions. `pass_due` is the
-  `vbl_count` rule.
+  `pass_tail` are `level_frame_loop`'s body and its end conditions. `pass_due` asks the
+  `vbl_count` rule of `pass_clock.rs`.
+- `engine/crates/sf-core/src/pass_clock.rs` is the pass rule in one place: `VBL_COUNT`,
+  `pass_due` (two blanks or more), and `PassClock`, which counts the passes frames end for the
+  faithful comparison. The level's handler, `Game` and sf-conform use it.
+- `engine/crates/sf-core/src/keyboard.rs` is the CIA keyboard, one adapter for every handler:
+  `CiaKeyboard` (kept in `State::kbd`: the keys held, the serial register, its flag; `feed` sends
+  a byte per change, downs then ups, the last kept), `key_byte`, `from_keys` for a start from
+  memory, and the one `kbd_poll` over a `KbdHost`, which gives the caller's memory and takes its
+  INTENA/INTREQ writes (the level's `LevelCtx::custom`, the front end's `wr`).
 - `engine/crates/sf-core/src/level/clock.rs` has `level_clock_tick` (the level clock, a second
-  per 50 blanks, flashing red in its last ten seconds) and `kbd_poll`, the level's CIA keyboard
-  poll.
+  per 50 blanks, flashing red in its last ten seconds) and the level's `KbdHost`.
 - `engine/crates/sf-core/src/front/vbl.rs` is the same handler outside a level (`logic_running`
-  clear). It covers sound, the mouse pointer (`pointer`), `kbd_poll`, `display_timer`, the fades
+  clear). It covers sound, the mouse pointer (`pointer`), `kbd_poll` (its `FrontKbd` host), `display_timer`, the fades
   and the title's palette copy. It also holds the cost model that places the handler's Paula
   writes and the start of its fades on the beam (`place`, `fade_start`, module `cost`).
 - `engine/crates/sf-core/src/input.rs` holds `Joy`, `KeySet` and `FrameInput`: one frame's input,
@@ -102,7 +111,7 @@ the parts below; it is an estimate, not a count.
 - **`amiga`.** In `frame.rs`, the interrupt order, the 50/25 Hz split, `main_program`'s frames and
   their cuts, the pending pass and the resumed vertical blank, and the copper interrupt's masking
   and its run past the frame's end. All of it is imitating how a 68000 program and its interrupts
-  share a PAL frame. In `clock.rs`, `kbd_poll`. Most of `front/vbl.rs`: the Paula write placement
+  share a PAL frame. `keyboard.rs`, the CIA's serial port and `kbd_poll`. Most of `front/vbl.rs`: the Paula write placement
   and its measured `cost` table, `fade_start`, the mouse pointer's `JOY0DAT` read and its sprite,
   `kbd_poll`, and the acknowledge. In `input.rs`, the raw key codes and the joystick bits as
   ports (`Hw::of`, `joy1dat` in `engine/crates/sf-core/src/level/mod.rs` turns them into Denise's
@@ -139,13 +148,12 @@ Where else the mechanism appears:
 - `engine/crates/sf-core/src/level/beam.rs` holds `Frames`, `Pending` and `Cut`: the state of a
   pass that runs past a blank.
 - `engine/crates/sf-core/src/front/mod.rs` runs the front end's handler (`vbl::run`, `vbl::end`,
-  `vbl::load_blank` on frames spent loading). Its `Keyboard` is the front end's copy of the CIA
-  register.
+  `vbl::load_blank` on frames spent loading), and feeds `State::kbd` the frame's keys.
 - `engine/crates/sf-core/src/front/gameover.rs` runs a level's `frame::vbl` while game over plays
   over the level (`in_level_from`).
-- `engine/crates/sf-core/src/game.rs` turns `FrameInput` into the keyboard byte (`step_body`,
-  `key_byte`) and hands the keyboard over between front end and level. Its `PassClock` counts
-  passes by the same `vbl_count` rule for the faithful comparison.
+- `engine/crates/sf-core/src/game.rs` steps the scenes; the keyboard crosses between front end
+  and level in `State::kbd` as it is, and a transplant decodes it from memory (`level_io`). It
+  counts passes with `PassClock`.
 - `engine/crates/sf-core/src/level/pass.rs` has the pause (`pause_check`, `pause_run`, T191),
   which clears `logic_running` so the handler takes its non-level path, and `buffer_flip`, which
   clears `vbl_pass_flag`.
@@ -215,10 +223,10 @@ engine to it today.
 | Behaviour to keep | Check that proves it |
 |---|---|
 | The frog, camera, scroll and clock step every frame, the objects every second frame. | On the original: `the_frog_moves_every_frame_and_objects_every_other` in `engine/crates/sf-oracle/tests/exe_map_claims.rs`. On the engine: the faithful checks (state and picture) of `frog-run-w1-1` (`engine/conform/cases/frog-run-w1-1.toml`) and every level case. |
-| A pass begins once `vbl_count` reaches 2 and clears it; a pass due at a frame's end on time waits for the next frame. | `the_pass_clock_counts_passes_ended` (`engine/crates/sf-core/src/game.rs`); `state_is_matched_by_pass_count` (`engine/crates/sf-conform/tests/faithful.rs`); `enemies_w6_4_alone_waits_out_a_pass_due_at_the_frames_end` (`engine/crates/sf-conform/tests/enemies_w6_cases.rs`). |
+| A pass begins once `vbl_count` reaches 2 and clears it; a pass due at a frame's end on time waits for the next frame. | `the_pass_clock_counts_passes_ended` (`engine/crates/sf-core/src/pass_clock.rs`); `state_is_matched_by_pass_count` (`engine/crates/sf-conform/tests/faithful.rs`); `enemies_w6_4_alone_waits_out_a_pass_due_at_the_frames_end` (`engine/crates/sf-conform/tests/enemies_w6_cases.rs`). |
 | A late pass resumes after the blank, with the handler's work run in the middle of it. | `frog_run_w1_1` (`engine/crates/sf-conform/tests/frog_cases.rs`: its case is late on 320 frames, per `the_originals_late_frames_are_counted` there, and green); `a_late_cut_the_engine_cannot_reach_ends_the_frame_as_normal_play_does` (`engine/crates/sf-conform/tests/alone.rs`); the completion cases under `engine/conform/cases/` fed `Pacing::Late`. Normal play never lags, by owner decision (above). |
 | The copper interrupt runs the scroller's blits; masked by the pass's blit, it waits for the unmask; run past the frame's end, its tail is the next frame's. | `copper_irq_blits_match_the_original` (`engine/crates/sf-conform/tests/level_routines.rs`); `complete_w4_3` and `coper_tail_outside_a_pass_kept` (`engine/crates/sf-conform/tests/frog_cases.rs`). |
-| `kbd_poll` every second blank: the register's byte, `!(code << 1 \| released)`, into `key_down` / `key_up`, with `$ff` written back once a new byte is handled, so a held key reads as down for one poll. | `kbd_poll_matches_the_original` (`engine/crates/sf-conform/tests/level_routines.rs`); `the_keyboard_sends_a_byte_per_change_and_reads_ff_once_handled` (`engine/crates/sf-core/src/front/mod.rs`). |
+| `kbd_poll` every second blank: the register's byte, `!(code << 1 \| released)`, into `key_down` / `key_up`, with `$ff` written back once a new byte is handled, so a held key reads as down for one poll. | `kbd_poll_matches_the_original` (`engine/crates/sf-conform/tests/level_routines.rs`); `the_keyboard_sends_a_byte_per_change_and_reads_ff_once_handled` (`engine/crates/sf-core/src/keyboard.rs`). |
 | The poll's phase and the handled byte carry across the level/front-end boundary (ESC read once). | `frog_esc_w1_1` (`engine/crates/sf-conform/tests/frog_cases.rs`, case `engine/conform/cases/frog-esc-w1-1.toml`); `game_over_esc_w1_1` (`engine/crates/sf-conform/tests/cases.rs`). |
 | P pauses at the pass's pause check, and P or fire resumes it where it stopped, with the handler's paused path running meanwhile. | `p_pauses_and_p_resumes_as_the_original_does`, `fire_ends_the_pause_as_the_original_does` (`engine/crates/sf-conform/tests/chain.rs`). |
 | ESC, the exit, death, and fire in the attract demo end the loop at the pass's end. | `frog_esc_w1_1`; `fire_ends_the_attract_demo_as_the_original_does` (`engine/crates/sf-conform/tests/front.rs`); the completion and game-over cases. |
@@ -241,8 +249,8 @@ start) would become an explicit "where in the frame" value passed to the steps. 
 longer come from charging cycles. Conformance's `Pacing::Late` would keep its role as an input.
 The keyboard could become an event queue with an adapter that reproduces the CIA's behaviour:
 the last byte wins, a poll every second frame, and `$ff` once handled. That adapter is what the
-pause and ESC behaviour depend on. The two `kbd_poll` copies (`level/clock.rs` and
-`front/vbl.rs`, with their state in `State::kbd_flag` / `kbd_acked` and `Keyboard`) could be one.
+pause and ESC behaviour depend on. The two `kbd_poll` copies are one since amiga-toolkit-prep
+draft 3 A (`keyboard.rs`, its state in `State::kbd`).
 Whether the frame-boundary cut points can be dropped from normal play is unknown. They are never
 reached there, but the conformance runs need them, so the decision belongs with
 [verification](verification.md)'s address coupling.
@@ -270,7 +278,8 @@ several). This is unchecked.
 - Code: `engine/crates/sf-core/src/level/frame.rs`, `engine/crates/sf-core/src/level/clock.rs`,
   `engine/crates/sf-core/src/front/vbl.rs`, `engine/crates/sf-core/src/input.rs`,
   `engine/crates/sf-core/src/level/mod.rs` (`Hw`, `joy1dat`, `LevelCtx::frame_end`,
-  `LevelCtx::custom`), `engine/crates/sf-core/src/game.rs` (`step_body`, `key_byte`,
-  `PassClock`), `engine/crates/sf-core/src/front/mod.rs` (`Keyboard`, `Front::after_level`),
+  `LevelCtx::custom`), `engine/crates/sf-core/src/game.rs` (`step_body`, `level_io`),
+  `engine/crates/sf-core/src/keyboard.rs`, `engine/crates/sf-core/src/pass_clock.rs`,
+  `engine/crates/sf-core/src/front/mod.rs` (`Front::after_level`),
   `engine/crates/sf-core/src/level/pass.rs` (`pause_check`, `pause_run`, `buffer_flip`),
   `engine/crates/sf-core/src/front/story/vbl.rs`.

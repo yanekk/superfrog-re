@@ -49,8 +49,8 @@ Files owned:
   the call stack (`Front`, its private `Frame`) and `Cx`, the context a routine runs in: memory,
   input, the beam line, COP1LC, Paula writes, the jobs and loads reported for conformance.
   `Cx::busy`, `Cx::blit_wait`, `Cx::masked_job` and `Cx::unpack` move the beam for CPU work.
-  `Cx::read_entry` and `table_entries` raise disk prompts from `file_table`. `Keyboard` is the
-  front end's copy of CIA-A's serial register. `Front::power_on`, `Front::resume`,
+  `Cx::read_entry` and `table_entries` raise disk prompts from `file_table`. The keyboard is
+  `State::kbd` (`keyboard.rs`), fed the frame's keys by `Front::step`. `Front::power_on`, `Front::resume`,
   `Front::after_level`, `Front::level_over` and `Front::enter_slot` are the ways into the front
   end. `main_chain` reads the original's call stack off its memory. `RUNS_DURING_LOAD` and
   `LOAD_LEAVES` are what a load hands over from the original.
@@ -175,7 +175,7 @@ an estimate, not a count.
   moved by `Cx::busy`, `Cx::blit_wait` (1.23 cycles per fetch slot under the display) and
   `Cx::masked_job`, the picture drawn from copper-list snapshots by line, the fades' colour
   writes timed channel by channel, the stall of a blit with priority, the carry of Paula writes
-  past the frame's end, `Keyboard`. Also the copper-list and sprite-record writes in every
+  past the frame's end. Also the copper-list and sprite-record writes in every
   screen, the title's and the credits' blits, the measured cycle constants
   (`OVERLAY_UNPACK_CYCLES`, `OPTIONS_UNPACK_CYCLES`, `HALL_UNPACK_CYCLES`, `P41_INIT_LINES`), the
   fade records' layout and their `divu.w` timing, and the ANIM player's instruction-by-instruction
@@ -213,9 +213,9 @@ Terms are the [glossary](glossary.md)'s.
   `Front::step` runs `vbl::run` before the main program and `vbl::end` after it. During game
   over it runs the level's handler instead (`gameover::level_vbl`). `Front::load_blanks` runs the
   handler on the frames a load takes.
-- **The CIA keyboard** ([frame-interrupts-input](frame-interrupts-input.md)). `Keyboard::feed`
-  sends one byte per key change. `Front::after_level` hands the register over from the level so
-  ESC is not read twice. Code entry and name entry read `key_down` as the poll leaves it.
+- **The CIA keyboard** ([frame-interrupts-input](frame-interrupts-input.md)). `CiaKeyboard::feed`
+  sends one byte per key change. The level's keyboard goes on into the front end as it is
+  (`State::kbd`), so ESC is not read twice. Code entry and name entry read `key_down` as the poll leaves it.
 - **The copper run and bitplane fetch** ([display-hardware](display-hardware.md)). Each screen
   shows itself by writing a copper list (title `h2+$7158`, awards `h2+$6110`, hall `h2+$6ff0`,
   blank `h2+$6fd8`) and setting `cop1lc`. The picture is rendered from the snapshots of that list
@@ -316,7 +316,7 @@ from copper-list snapshots by line. Pieces that are generic or nearly so:
 
 - **The routine executor** (`Routine`/`Yield`/`Frame` and `Front::step`'s main-program loop):
   the approach carries, but the variant list and `Cx`'s fields are Superfrog's (`big-changes`).
-- **`Keyboard`**: CIA-A's serial register behaviour is the Amiga's (`as-is`), though another game
+- **`CiaKeyboard`** (`keyboard.rs`, frame-interrupts-input's): CIA-A's serial register behaviour is the Amiga's (`as-is`), though another game
   may use the keyboard interrupt instead of polling.
 - **`fade::divu_cycles`**: the 68000's `divu.w` timing (`as-is`). The fade records themselves are
   this game's code. Another Team 17 game may share the fade routines (unchecked).

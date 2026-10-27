@@ -1,5 +1,6 @@
 //! The level clock (`level_clock`, the frog's `+$a0`: four digits, minutes tens and units,
-//! seconds tens and units) and the keyboard, both run by the vertical blank.
+//! seconds tens and units), and the level's side of the keyboard's poll, both run by the vertical
+//! blank.
 
 use crate::frog::FROG;
 use crate::layout::h0;
@@ -63,40 +64,19 @@ fn clock_colours(b: &mut Bus) {
     b.set_w(CLOCK_COLOURS + 4, 0xf00);
 }
 
-/// `kbd_toggle`, `key_down`, `key_up` (h0+$16076..$16079).
-const KBD_TOGGLE: u32 = h0(0x16076);
-const KEY_DOWN: u32 = h0(0x16078);
-const KEY_UP: u32 = h0(0x16079);
-
-/// `kbd_poll` (h0+$15ff2): every second vertical blank the byte in CIA-A's serial register is
-/// the keyboard's last ([`crate::level::Hw::sdr`]): a key going down or up. The original masks the keyboard
-/// interrupt around it (INTENA, INTREQ `$0008`) and hands the line back when a byte came in,
-/// writing `$ff` to the register, which it then reads (T191: P let go reads as no key after).
-pub fn kbd_poll(c: &mut LevelCtx) {
-    if c.hw.key_in {
-        c.bus.st.kbd_flag = true;
-        c.bus.st.kbd_acked = false;
+/// The level's side of [`crate::keyboard::kbd_poll`]: its memory through the bus, and its
+/// interrupt writes among the frame's writes to the custom chips.
+impl crate::keyboard::KbdHost for LevelCtx<'_> {
+    fn b(&self, addr: u32) -> u8 {
+        self.bus.b(addr)
     }
-    let sdr = if c.bus.st.kbd_acked { 0xff } else { c.hw.sdr };
-    let b = &mut c.bus;
-    let t = !b.b(KBD_TOGGLE);
-    b.set_b(KBD_TOGGLE, t);
-    if t == 0 {
-        return;
+    fn set_b(&mut self, addr: u32, v: u8) {
+        self.bus.set_b(addr, v);
     }
-    c.custom(0x9a, 0x0008);
-    let v = !sdr;
-    let code = (v >> 1) & 0x7f;
-    let b = &mut c.bus;
-    if v & 1 == 0 {
-        b.set_b(KEY_DOWN, code);
-        b.set_b(KEY_UP, 0);
-    } else {
-        b.set_b(KEY_UP, code);
-        b.set_b(KEY_DOWN, 0);
+    fn keyboard(&mut self) -> &mut crate::keyboard::CiaKeyboard {
+        &mut self.bus.st.kbd
     }
-    if std::mem::take(&mut b.st.kbd_flag) {
-        b.st.kbd_acked = true;
+    fn custom(&mut self, reg: u16, value: u16) {
+        LevelCtx::custom(self, reg, value);
     }
-    c.custom(0x9c, 0x0008);
 }

@@ -8,9 +8,9 @@ use crate::layout::h0;
 use crate::level::beam::{self, Cost};
 use crate::level::{LevelCtx, camera, clock, collision, fade, pass, scroll, spawn};
 
-/// `logic_running` (h0+$9d6), `vbl_count` (h0+$9d8), `vbl_pass_flag` (h0+$9da).
+/// `logic_running` (h0+$9d6), `vbl_pass_flag` (h0+$9da).
 const LOGIC_RUNNING: u32 = h0(0x9d6);
-pub(crate) const VBL_COUNT: u32 = h0(0x9d8);
+pub(crate) use crate::pass_clock::VBL_COUNT;
 const PASS_FLAG: u32 = h0(0x9da);
 /// `display_timer` (h0+$123d4).
 const DISPLAY_TIMER: u32 = h0(0x123d4);
@@ -84,7 +84,11 @@ pub fn vbl(c: &mut LevelCtx) {
     c.audio_spent(at, Cost::AudioStop, Cost::AudioWrite);
     c.spend(Cost::VblTail);
     // (progress_map_vbl, h0+$3f22: the progress map's, off in a level.)
-    clock::kbd_poll(c);
+    // The frame's key changes reach CIA-A by its blank's poll. Fed from the frame's hardware into
+    // the state, so a pass run again from its start feeds each blank's again as it went.
+    let keys = c.hw.keys;
+    c.bus.st.kbd.feed(keys);
+    crate::keyboard::kbd_poll(c);
     let b = &mut c.bus;
     let t = b.w(DISPLAY_TIMER);
     if crate::level::n_clear(t) {
@@ -300,7 +304,7 @@ fn run_pass(c: &mut LevelCtx, resumed: bool) {
 /// Whether the main loop's pass is due: the vertical blank has counted two since the last.
 pub fn pass_due(c: &LevelCtx) -> bool {
     let b = &c.bus;
-    b.w(LOGIC_RUNNING) != 0 && crate::level::n_clear(b.w(VBL_COUNT).wrapping_sub(2))
+    b.w(LOGIC_RUNNING) != 0 && crate::pass_clock::pass_due(b.w(VBL_COUNT))
 }
 
 /// `player_died` (h0+$82c), `abort_flag` (h0+$9de), `game_full_mode` (h0+$6), `key_down`

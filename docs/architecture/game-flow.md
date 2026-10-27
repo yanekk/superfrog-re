@@ -110,7 +110,7 @@ describes what they do. `CODE_TIMES` is not part of it: it is how many frames ap
 
 - `amiga`: in `game.rs`, the conformance interface above, `Start::Transplant` and
   `Start::Resume`, `probe`, `peek`, `poke` and `chip_word` by original address, and the keyboard's
-  serial byte (`key_byte`, `sdr`, `level_io`); in `scene.rs`, `SceneKind::classify` (screens told
+  keyboard decoded from memory on a transplant (`level_io`); in `scene.rs`, `SceneKind::classify` (screens told
   by copper list addresses), `Scene::of` (a transplant's scene from `logic_running`) and
   `Scene::step`'s beam log and display-window cut; in `chain.rs`, reading and executing 68000
   opcodes out of hunk 0, the loads with their disk requests, and the screens' copper lists,
@@ -152,9 +152,8 @@ because most of Superfrog's rules live in the chapters the flow calls into, not 
   copper moves (`set_planes`, the split at `INTRO_SPLIT`), fade palettes and turn DMA on, and put
   the frog and clouds on hardware sprites (`front::sprite::attach`, `front::sprite::update`).
 - **Interrupts** ([frame-interrupts-input](frame-interrupts-input.md)). `exit_walk_vbl` and
-  `progress_map_vbl` run in the front end's vertical blank. `Game` turns key changes into the
-  CIA-A serial byte (`key_byte`) the keyboard poll reads, and carries it into a level
-  (`kbd_flag`, `kbd_acked`).
+  `progress_map_vbl` run in the front end's vertical blank. The keyboard crosses into a
+  level and back in `State::kbd` (`keyboard.rs`), as the level or the front end left it.
 - **CPU time and the beam** ([cpu-time-and-beam](cpu-time-and-beam.md)). Each level's
   `level_init_wN` runs on the beam with `BLANK_COSTS`, or `RESTART_COSTS` after the `bmi` back
   (`Chain::back`). `WorldLoad::clear_map_area` is a `Job` timed at 30 cycles a byte. Every load is
@@ -226,7 +225,7 @@ feed's `rng:` token, `AloneRun::seeds` in `engine/crates/sf-conform/src/lib.rs`)
 | RNG call order and seed | The same calls in the same order, the start's seed put in place where the original seeds | check 1 in every stepping case, `rng_state` among the compared variables; `the_title_case_is_green` (`title-rng`) in `engine/crates/sf-conform/tests/runner.rs`; `power_on_boots_the_front_end_with_its_seed` in `engine/crates/sf-core/src/game.rs`; `the_same_setup_and_seed_play_the_same_and_the_seed_reaches_the_rng` in `engine/crates/sf-core/tests/start_level.rs` |
 | The seed after the end sequence | Conformance's run alone takes the original's seed; normal play keeps its RNG | check 4 on `game-whole` through the end sequence (`AloneRun::seeds`); no test names it |
 | A level code typed as the player types it (`type_code_with`, `CODE_TIMES`) | `start_at` and `start_level` reach the same state as the original started the same way | `start_at_equals_the_code_typed_on_the_original` in `engine/crates/sf-conform/tests/flow.rs`; `w1_1_normal_starts_as_the_original`, `levels_2_to_7_normal_start_as_the_original` and the rest in `engine/crates/sf-conform/tests/recorder_setup_start.rs` |
-| `PassClock` | Passes counted by the same rule on both sides | `the_pass_clock_counts_passes_ended` in `engine/crates/sf-core/src/game.rs` ([cpu-time-and-beam](cpu-time-and-beam.md)) |
+| `PassClock` | Passes counted by the same rule on both sides | `the_pass_clock_counts_passes_ended` in `engine/crates/sf-core/src/pass_clock.rs` ([cpu-time-and-beam](cpu-time-and-beam.md)) |
 | `Start::Transplant`, `Start::Resume`, `Game::probe` | Described in [memory-model](memory-model.md) | `transplant_then_probe_returns_the_originals_values` in `engine/crates/sf-conform/tests/runner.rs` |
 | The story's hand-over to a disk-1 power-on | The game booted as from disk 1, what ran during the load put in place | the story cases; [story-and-ending](story-and-ending.md) |
 
