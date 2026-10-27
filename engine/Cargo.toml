@@ -1,4 +1,4 @@
-# The Superfrog engine workspace. Pure crates (sf-disk, sf-assets, sf-core, sf-paula) hold the game;
+# The Superfrog engine workspace. Pure crates (sf-disk, sf-assets, sf-core, sf-paula, amiga-chips) hold the game;
 # shell crates hold the app and the test tooling. The boundary is DESIGN §3.1, enforced by
 # crates/sf-conform/tests/purity.rs.
 [workspace]
@@ -17,6 +17,11 @@ opt-level = 2
 
 # The mixer runs four channels at 3.5 MHz; the oracle comparison runs it for thousands of frames.
 [profile.dev.package.sf-paula]
+opt-level = 2
+
+# The copper run is not generic, so it is compiled here and the render tests run it thousands of
+# times (amiga-chips T02).
+[profile.dev.package.amiga-chips]
 opt-level = 2
 
 # Decoding all of GameData (two IFF ANIMs, eight bob sheets) runs dozens of times in its tests.
