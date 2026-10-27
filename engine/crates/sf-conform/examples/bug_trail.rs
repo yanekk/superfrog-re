@@ -5,9 +5,11 @@
 //!   recorded play can be spliced into a guide (W6-4: the climb over the gap).
 //! - From an app-timed route (`sf-plan --app`'s `# timing: app` output): Game ▸ Start Level… with
 //!   the dialog's defaults and power-on seed `N N` from its `# seed:` line, then its inputs, so
-//!   `tools/handover.py` finds the step where the route reaches a spot.
+//!   `tools/handover.py` finds the step where the route reaches a spot. With `--widescreen`
+//!   (real-widescreen T12) the level is started with View ▸ Widescreen on, as `sf-plan
+//!   --widescreen` starts it; such a route says `# widescreen: on`, and the flag must match it.
 //!
-//! `cargo run --release --example bug_trail -- <bug.zip | route.txt LEVEL> > trail.tsv`
+//! `cargo run --release --example bug_trail -- <bug.zip | route.txt LEVEL [--widescreen]> > trail.tsv`
 use sf_core::frog::{FROG, f};
 use sf_core::level::camera::{CAMERA_X, CAMERA_Y};
 use sf_core::Game;
@@ -39,6 +41,11 @@ fn main() {
         return;
     }
     let text = std::fs::read_to_string(&a[0]).unwrap();
+    let wide = a.iter().any(|x| x == "--widescreen");
+    // A route replays only from the start it was planned from: a wide route from a 4:3 start parts
+    // at once, and the trail would be another game's.
+    let wide_route = text.lines().take_while(|l| l.starts_with('#')).any(|l| l.trim() == "# widescreen: on");
+    assert_eq!(wide, wide_route, "{}: `# widescreen: on` and --widescreen must agree", a[0]);
     assert!(text.lines().any(|l| l.trim() == "# timing: app"), "{}: not an app-timed route", a[0]);
     let seed: u32 = text
         .lines()
@@ -58,6 +65,9 @@ fn main() {
         &sf_core::recording::LevelSetup { level: id, ..Default::default() },
         sf_core::Rng::seeded(seed, seed),
     );
+    if wide {
+        g.set_widescreen(true);
+    }
     for k in 0..frames {
         g.step_unseen(script.input_at(k));
         line(&mut out, k, &g);

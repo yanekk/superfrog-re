@@ -10,7 +10,7 @@ use sf_core::layout::{h0, h1};
 use sf_core::level::standard_dispatch;
 use sf_core::mem::Rom;
 use sf_core::{LevelId, State};
-use sf_plan::app::{app_start, route_seed};
+use sf_plan::app::{app_start_in, route_seed, route_widescreen};
 
 use crate::json::{Json, esc, list};
 
@@ -269,7 +269,8 @@ fn objects(st: &State, rom: &Rom) -> Vec<Object> {
 }
 
 /// Plays `route` (a route file's text; `None` for no route) on `level` from the app's start with
-/// the route's `# seed:` (1 without one), until the level ends or 600 frames past its last line.
+/// the route's `# seed:` (1 without one), in widescreen when it says `# widescreen: on` (`sf-plan
+/// --widescreen`, real-widescreen T12; a 4:3 route is played as before), until the level ends or 600 frames past its last line.
 pub fn replay(level: LevelId, route: Option<&str>) -> Result<Dump, String> {
     let text = route.unwrap_or(NO_ROUTE);
     let seed = route_seed(text).unwrap_or(1);
@@ -293,7 +294,7 @@ pub fn replay(level: LevelId, route: Option<&str>) -> Result<Dump, String> {
         .filter_map(|&ix| Some((ix, *world.tiles.tiles.get(ix as usize)?)))
         .collect();
 
-    let mut g = app_start(level, seed);
+    let mut g = app_start_in(level, seed, route_widescreen(text));
     let st0 = g.state().clone();
     let objects = objects(&st0, display.rom());
 
