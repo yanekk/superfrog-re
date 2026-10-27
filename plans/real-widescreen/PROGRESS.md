@@ -11,9 +11,9 @@ message. Whoever writes a cell also fixes the over-budget cell they walk past.
 
 **Plan reviewed:** 2026-10-22 — 10 fixed, 4 decided with the user
 
-**Status:** T00–T10 done; T11 awaiting review.
+**Status:** T00–T11 done; T12 waits on smart-planner (D5).
 **Last updated:** 2026-10-27
-**Next `pir-work` will:** review T11; then T12 once smart-planner is merged (D5).
+**Next `pir-work` will:** T12 once smart-planner is merged (D5).
 
 ## Tasks
 
@@ -33,10 +33,10 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T08 | side-objects | T02, T03 | ✅ | |
 | T09 | side-frog | T04, T08 | ✅ | |
 | T10 | app-wiring | T05, T06, T07, T08, T09 | ✅ | |
-| T11 | widescreen-drill | T10 | 🔍 | Drill driven headless and in the app (FINDINGS 2026-10-27); no one-answer defect found. 1 test, `widescreen_drill.rs`: switches in fade-in, mid-scroll and while paused, recording replayed. Deviations: file pins the owner's paused-picture decision, not a fix; `cargo test --workspace` not run (worker rule). |
+| T11 | widescreen-drill | T10 | ✅ | Review clean, no fix commit. Mutation (recorder keeps cancelled double switches) red; test green 5/5. Probe: wide centre equals 4:3 picture of the same state every frame, W1-1, W3-1, WB-1, 3 850 frames. WW-1 ran 2 247 frames (level won). Fullscreen run read-only. `--workspace` not run (worker rule). |
 | T12 | wide-every-level | T11 | ⬜ | |
 
-**Review queue:** T11
+**Review queue:** *(empty)*
 
 ## Blocked on the user
 
