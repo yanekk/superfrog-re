@@ -514,7 +514,8 @@ impl LevelCtx<'_> {
             return;
         }
         let size_words = |s: u16| {
-            (match s >> 6 { 0 => 1024, h => h as u32 }) * (match s & 0x3f { 0 => 64, w => w as u32 })
+            let (h, w) = crate::front::blit::bltsize_words(s);
+            h * w
         };
         let from = self.blit_next;
         if let Some(j) = (from..self.blits.len().min(from + 3)).find(|&j| size_words(self.blits[j].0) == words) {

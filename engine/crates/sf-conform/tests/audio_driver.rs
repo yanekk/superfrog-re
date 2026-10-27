@@ -625,7 +625,7 @@ fn fades_match_the_original() {
 fn title_music_matches_the_full_system_oracle() {
     let t = title();
     let mem = &t.memory;
-    let read = |a: u32| mem.byte(a).unwrap_or(0);
+    let read = |a: u32| mem.byte_at(a).unwrap_or(0);
     let files = [(BANK_ADDR, File::Tune(TuneId::Title))];
     let mut ours = AudioDriver::transplant(data(), &read, &files);
     // The game's other code writes DMACON too (sprites, blitter priority); the driver's DMACON
@@ -661,7 +661,7 @@ fn title_music_matches_the_full_system_oracle() {
             let a = at + i as u32;
             assert_eq!(
                 Some(b),
-                end.byte(a),
+                end.byte_at(a),
                 "after {FULL_SYSTEM_FRAMES} frames: driver variable ${a:06x}"
             );
         }

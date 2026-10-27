@@ -227,7 +227,7 @@ fn pictures_are_the_screens_the_original_shows() {
 }
 
 fn ram(m: &AmigaMemory, at: u32, len: usize) -> Vec<u8> {
-    (0..len as u32).map(|k| m.byte(at + k).unwrap()).collect()
+    (0..len as u32).map(|k| m.byte_at(at + k).unwrap()).collect()
 }
 
 #[test]

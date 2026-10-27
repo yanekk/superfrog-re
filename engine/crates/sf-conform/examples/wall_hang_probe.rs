@@ -39,7 +39,7 @@ fn main() {
             u16::from_be_bytes([b[0], b[1]])
         };
         let cpu = amiga.cpu();
-        let m = sync::core_memory(amiga.memory());
+        let m = amiga.memory();
         let chain: Vec<String> = sync::main_chain(&cpu, &m)
             .iter()
             .map(|x| format!("{:x}", x.wrapping_sub(h0(0))))

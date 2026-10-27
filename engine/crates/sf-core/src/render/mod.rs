@@ -696,9 +696,9 @@ pub fn strip_layers(state: &State, data: &DisplayData, view: View) -> StripLayer
         .into_iter()
         .map(|b| {
             let (x, y) = bobs::placed(&b, &mem);
-            let size = mem.word(b.frame + 0x1a);
-            let words = (size & 0x3f) as i32 - !b.background as i32;
-            (b, x - ox, y - oy, 16 * words, (size >> 6) as i32)
+            let (h, w) = crate::front::blit::bltsize_words(mem.word(b.frame + 0x1a));
+            let words = w as i32 - !b.background as i32;
+            (b, x - ox, y - oy, 16 * words, h as i32)
         })
         .collect();
     StripLayers {

@@ -3,6 +3,7 @@
 //! graphics in hunk 2 (h0+$8620, h0+$d9e).
 
 use crate::frog::{FROG, f};
+use crate::front::blit::{Blit, bltsize_words};
 use crate::layout::{h0, h2, h3};
 use crate::level::beam::Cost;
 use crate::level::{LevelCtx, n_clear};
@@ -37,28 +38,19 @@ const EXTRA_LIFE_SHOWN: u32 = h0(0xdd4);
 const SCORE: u32 = 0x5e;
 const NEXT_LIFE: u32 = 0xaa;
 
-/// A panel blit: five planes of `size` from hunk 2 at `src` to the panel at `dst`.
-fn blit_panel(c: &mut LevelCtx, mut src: u32, mut dst: u32, amod: u16, dmod: u16, size: u16) {
-    c.spend(Cost::PanelBlit);
-    c.custom(0x9a, 0x0010);
-    c.custom(0x96, 0x8400);
-    let (h, w) = ((size >> 6) as u32, (size & 0x3f) as u32);
-    for _ in 0..5 {
-        c.blit_words(h * w, 0x09f0);
-        let (mut s, mut d) = (src, dst);
-        for _ in 0..h {
-            for _ in 0..w {
-                c.bus.set_w(d, c.bus.w(s));
-                s += 2;
-                d += 2;
-            }
-            s = s.wrapping_add(amod as u32);
-            d = d.wrapping_add(dmod as u32);
-        }
-        src += GFX_PLANE;
-        dst += PANEL_PLANE;
+/// One plane of a panel blit (the two callers' five each): a copy of `size` from hunk 2 at `src`
+/// to the panel at `dst`. Their sizes, modulos and addresses never reach the blitter's edge cases
+/// (a zero height or width, a negative modulo, a pointer past chip RAM: DESIGN amiga-chips §2.4).
+fn panel_copy(src: u32, dst: u32, amod: u16, dmod: u16, size: u16) -> Blit {
+    Blit {
+        con0: 0x09f0,
+        con1: 0,
+        afwm: 0xffff,
+        alwm: 0xffff,
+        pt: [src, 0, 0, dst],
+        modulo: [amod as i16, 0, 0, dmod as i16],
+        size,
     }
-    c.custom(0x9a, 0x8010);
 }
 
 /// Copy one 8-pixel digit: 14 lines of each plane, a byte each.
@@ -101,7 +93,16 @@ pub(crate) fn lives_icon_draw(c: &mut LevelCtx) {
     b.set_w(LIVES_ICON_SHOWN, v);
     let k = if n_clear(v) { v } else { 0 };
     let src = h2(0x2580).wrapping_add((k.wrapping_mul(4)) as i16 as i32 as u32);
-    blit_panel(c, src, PANEL + 0x20, 0x38, 0x2c, 0x382);
+    // A panel blit: five planes, the blitter given the bus (BLTPRI) and the copper interrupt off.
+    let (h, w) = bltsize_words(0x382);
+    c.spend(Cost::PanelBlit);
+    c.custom(0x9a, 0x0010);
+    c.custom(0x96, 0x8400);
+    for p in 0..5 {
+        c.blit_words(h * w, 0x09f0);
+        panel_copy(src + GFX_PLANE * p, PANEL + 0x20 + PANEL_PLANE * p, 0x38, 0x2c, 0x382).run(&mut c.bus);
+    }
+    c.custom(0x9a, 0x8010);
 }
 
 /// h0+$8982: every seventh pass the score is made into digits; the six passes between draw one
@@ -239,7 +240,16 @@ pub(crate) fn lives_count(c: &mut LevelCtx) {
         n = 0;
     }
     let src = h2(0x21c0).wrapping_add((n as u32) * 0xa);
-    blit_panel(c, src, PANEL + 0x12, 0x32, 0x26, 0x385);
+    // A panel blit, as the lives icon's.
+    let (h, w) = bltsize_words(0x385);
+    c.spend(Cost::PanelBlit);
+    c.custom(0x9a, 0x0010);
+    c.custom(0x96, 0x8400);
+    for p in 0..5 {
+        c.blit_words(h * w, 0x09f0);
+        panel_copy(src + GFX_PLANE * p, PANEL + 0x12 + PANEL_PLANE * p, 0x32, 0x26, 0x385).run(&mut c.bus);
+    }
+    c.custom(0x9a, 0x8010);
 }
 
 /// What `level_start` (h0+$6952) draws of the panel, in its order: the two sprite digits
@@ -333,5 +343,44 @@ fn clock_at_start(c: &mut LevelCtx) {
     b.set_l(CLOCK_SHOWN, 0xffff_ffff);
     for _ in 0..4 {
         clock_digit(c);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::level::beam::{Tick, slots_per_word};
+    use crate::level::{Dispatch, Hw};
+    use crate::mem::Rom;
+    use crate::state::State;
+
+    /// `f`'s clock steps and Paula writes (register, value), from a blank state.
+    fn traced(f: fn(&mut LevelCtx)) -> (Vec<Tick>, Vec<(u16, u16)>) {
+        let (mut st, rom, dispatch) = (State::default(), Rom::default(), Dispatch::default());
+        let sound = crate::audio::SoundData::from_parts(vec![0; 0x50000], vec![], vec![], vec![]);
+        let mut paula = Vec::new();
+        let mut c = LevelCtx::new(Bus::new(&mut st, &rom), &dispatch, Hw::default(), &sound, &mut paula);
+        c.trace = Some(Vec::new());
+        f(&mut c);
+        let trace = c.trace.take().unwrap();
+        (trace, paula.iter().map(|w| (w.reg, w.value)).collect())
+    }
+
+    /// The panel blit's order as `blit_panel` had it (DESIGN amiga-chips §2.4): its cost, INTENA
+    /// off and BLTPRI on, each plane's blit words, INTENA back on.
+    #[test]
+    fn a_panel_blit_charges_and_writes_in_order() {
+        for (f, size) in [(lives_icon_draw as fn(&mut LevelCtx), 0x382u32), (lives_count, 0x385)] {
+            let (trace, paula) = traced(f);
+            let (h, w) = bltsize_words(size as u16);
+            let words = h * w;
+            let blit = Tick::Blit(words * slots_per_word(0x09f0));
+            let mut want = vec![Tick::Cpu(Cost::PanelBlit, 1), Tick::Write(0), Tick::Write(1)];
+            want.extend([blit; 5]);
+            want.push(Tick::Write(2));
+            let at = trace.iter().position(|t| *t == Tick::Cpu(Cost::PanelBlit, 1)).unwrap();
+            assert_eq!(trace[at..at + want.len()], want[..], "size {size:#x}");
+            assert_eq!(paula, [(0x9a, 0x0010), (0x96, 0x8400), (0x9a, 0x8010)], "size {size:#x}");
+        }
     }
 }

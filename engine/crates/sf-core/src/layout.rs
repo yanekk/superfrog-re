@@ -907,33 +907,8 @@ impl AddrIndex {
     }
 }
 
-/// The original's memory as transplant reads it: one byte per CPU address.
-pub trait Ram {
-    fn byte(&self, addr: u32) -> u8;
-}
-
-/// Chip RAM at 0 and slow RAM at `$C00000`, as the A500 the original runs on has them. An address
-/// outside both reads 0.
-#[derive(Debug, Clone, Default, PartialEq, Eq, Hash)]
-pub struct AmigaMemory {
-    pub chip: Vec<u8>,
-    pub slow: Vec<u8>,
-}
-
-/// Where slow ("ranger") RAM sits on the A500.
-pub const SLOW_BASE: u32 = 0xC0_0000;
-
-impl Ram for AmigaMemory {
-    fn byte(&self, addr: u32) -> u8 {
-        if (addr as usize) < self.chip.len() {
-            self.chip[addr as usize]
-        } else {
-            addr.checked_sub(SLOW_BASE)
-                .and_then(|a| self.slow.get(a as usize).copied())
-                .unwrap_or(0)
-        }
-    }
-}
+/// The machine's RAM lives in amiga-chips (amiga-chips T02); this path stays for its callers.
+pub use amiga_chips::{AmigaMemory, Ram, SLOW_BASE};
 
 #[cfg(test)]
 mod tests {

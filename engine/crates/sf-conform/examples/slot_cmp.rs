@@ -40,7 +40,7 @@ fn main() {
         if f < from {
             continue;
         }
-        let m = sync::core_memory(a.memory());
+        let m = a.memory();
         let s = g.state();
         let mut line = format!("E{f} O{of}");
         for &(at, l) in &watch {

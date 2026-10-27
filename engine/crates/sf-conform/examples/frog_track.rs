@@ -24,7 +24,7 @@ fn main() {
     for k in 0..n {
         sync::step_inserting(&mut amiga, p.input_at(k)).unwrap();
         if (k + 1) % step == 0 {
-            let mem = sync::core_memory(amiga.memory());
+            let mem = amiga.memory();
             let pc = sync::main_chain(&amiga.cpu(), &mem)[0];
             let st = sf_core::State::transplant(&mem);
             let w = |o| st.w(FROG + o) as i16 as i32;

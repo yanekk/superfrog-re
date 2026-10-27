@@ -66,6 +66,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "amiga-chips"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "sf-paula",
+]
+
+[[package]]
 name = "android-activity"
 version = "0.6.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2885,6 +2893,7 @@ dependencies = [
 name = "sf-core"
 version = "0.1.0"
 dependencies = [
+ "amiga-chips",
  "bincode",
  "serde",
  "sf-assets",

@@ -144,7 +144,7 @@ fn slot_none_reaches_the_slot_machine_with_two_coins() {
     let loaded = (1..=1_000).find(|_| {
         s.amiga.step(sf_core::input::FrameInput::NONE).unwrap();
         disks.serve(&mut s.amiga);
-        let m = sync::core_memory(s.amiga.memory());
+        let m = s.amiga.memory();
         sync::main_chain(&s.amiga.cpu(), &m).contains(&h0(0xb7e2))
     });
     assert_eq!(loaded, Some(759));

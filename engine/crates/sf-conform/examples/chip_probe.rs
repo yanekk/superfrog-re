@@ -4,7 +4,7 @@
 //! and the sample's first 32 bytes in chip RAM. `chip_probe <script.txt> <from> <addr hex,…> <n>`:
 //! `n` starts of each address.
 use sf_conform::InputScript;
-use sf_conform::sync::{Disks, core_memory, step_inserting};
+use sf_conform::sync::{Disks, step_inserting};
 use sf_core::layout::Ram;
 use sf_disk::DiskSlot;
 use sf_oracle::{Amiga, OracleConfig};
@@ -21,7 +21,7 @@ fn main() {
     let mut seen = vec![0; addrs.len()];
     for f in 0..400_000 {
         let c = step_inserting(&mut a, s.input_at(f)).unwrap();
-        let m = core_memory(a.memory());
+        let m = a.memory();
         disks.get_or_insert_with(|| Disks::at(&m)).serve(&mut a);
         if f < from {
             continue;

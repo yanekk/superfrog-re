@@ -280,7 +280,9 @@ fn stepped(c: &Captured) -> String {
 }
 
 fn ending_app(max_frames: u64) -> (App, PathBuf) {
-    let (app, bugs) = launch(max_frames, 150);
+    // The timeout only catches a hang (max_frames bounds the run). 150 s was hit under full-suite
+    // load while the run takes ~45 s alone.
+    let (app, bugs) = launch(max_frames, 600);
     std::fs::write(app.home.join("progress.toml"), "world = 2\nlevel = 1\n").unwrap();
     (app, bugs)
 }

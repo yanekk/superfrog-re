@@ -182,7 +182,7 @@ fn engine_only_twice_gives_the_same_file() {
     .unwrap();
     let mut g = sf_core::Game::with_display(
         sf_conform::display_data(),
-        sf_core::Start::Transplant(sf_conform::sync::core_memory(at.amiga.memory())),
+        sf_core::Start::Transplant(at.amiga.memory()),
     );
     let mut ended = None;
     for k in 0..exit + 100 {

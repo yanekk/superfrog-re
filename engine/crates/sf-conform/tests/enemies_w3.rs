@@ -306,7 +306,7 @@ fn enemies_w3_3_slots_alone_in_the_originals_order() {
     for f in 0..4950 {
         let input = case.script.input_at(f);
         let cap = sync::step_inserting(&mut amiga, input).unwrap();
-        let mem = sync::core_memory(amiga.memory());
+        let mem = amiga.memory();
         let pacing = sync::pacing(&amiga.cpu(), &mem, &cap.paula);
         if let Pacing::Late { phase: 0, step: 0, blanks, .. } = pacing {
             held.push((f, blanks));

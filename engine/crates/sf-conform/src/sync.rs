@@ -224,14 +224,6 @@ pub fn core_cpu(c: &CpuRegs) -> sf_core::Cpu {
     }
 }
 
-/// The oracle's memory as the engine's type.
-pub fn core_memory(m: sf_oracle::AmigaMemory) -> AmigaMemory {
-    AmigaMemory {
-        chip: m.chip,
-        slow: m.slow,
-    }
-}
-
 /// Whether the main program ended the frame parked in `level_frame_loop`'s wait for its next
 /// pass (DESIGN §2.1 check 1: a level's pass ends there; anywhere else a pass is a frame).
 pub fn in_level_wait(cpu: &CpuRegs, m: &AmigaMemory) -> bool {
@@ -740,7 +732,7 @@ pub fn reach_frozen(
             let seed = power_on_seed(boot, drives, script, frames)?;
             let amiga = power_on(boot, drives, frames)?;
             let _ = frozen;
-            let memory = core_memory(amiga.memory());
+            let memory = amiga.memory();
             Ok(Synced {
                 amiga,
                 memory,
@@ -752,7 +744,7 @@ pub fn reach_frozen(
             let key = format!("{tag}frame {frame} script\n{}", s.to_oracle().canonical());
             at_snapshot(&key, 1 + *df1 as u8, frames, *frame, |a| {
                 // With df1, as a power-on case runs: each disk the original asks for goes in.
-                let mut disks = df1.then(|| Disks::at(&core_memory(a.memory())));
+                let mut disks = df1.then(|| Disks::at(&a.memory()));
                 for f in 0..*frame {
                     match disks.as_mut() {
                         None => step(a, s.input_at(f), frozen)?,
@@ -773,7 +765,7 @@ pub fn reach_frozen(
         SyncPoint::EndSequenceScore { score } => {
             let mut synced = end_sequence(frames)?;
             synced.amiga.write_memory(SCORE, &score.to_be_bytes());
-            synced.memory = core_memory(synced.amiga.memory());
+            synced.memory = synced.amiga.memory();
             Ok(synced)
         }
         SyncPoint::Slot { script, start } => slot(script, start.as_deref(), frames),
@@ -782,13 +774,13 @@ pub fn reach_frozen(
             let (m, s) = (seconds / 60, seconds % 60);
             let digits = [(m / 10) as u8, (m % 10) as u8, (s / 10) as u8, (s % 10) as u8];
             synced.amiga.write_memory(LEVEL_CLOCK, &digits);
-            synced.memory = core_memory(synced.amiga.memory());
+            synced.memory = synced.amiga.memory();
             Ok(synced)
         }
         SyncPoint::Exit(level) => {
             let mut synced = reach_frozen(&SyncPoint::AtLevel(*level), script, frames, frozen)?;
             synced.amiga.write_memory(LEVEL_STATE, &1u32.to_be_bytes());
-            synced.memory = core_memory(synced.amiga.memory());
+            synced.memory = synced.amiga.memory();
             Ok(synced)
         }
         SyncPoint::GameOver { script, score } => {
@@ -817,7 +809,7 @@ pub fn reach_frozen(
             let begins = (0..GAME_OVER_SEARCH)
                 .find(|&f| {
                     step(a, s.input_at(f), frozen).is_ok()
-                        && main_chain(&a.cpu(), &core_memory(a.memory())).contains(&IN_GAME_OVER)
+                        && main_chain(&a.cpu(), &a.memory()).contains(&IN_GAME_OVER)
                 })
                 .ok_or(format!(
                     "{script}: game_over_seq not reached in {GAME_OVER_SEARCH} frames of W1-1 with no lives left"
@@ -826,13 +818,13 @@ pub fn reach_frozen(
             for f in 0..begins {
                 step(&mut synced.amiga, s.input_at(f), frozen)?;
             }
-            synced.memory = core_memory(synced.amiga.memory());
+            synced.memory = synced.amiga.memory();
             Ok(synced)
         }
         SyncPoint::Lives { level, lives } => {
             let mut synced = reach_frozen(&SyncPoint::AtLevel(*level), script, frames, frozen)?;
             synced.amiga.write_memory(FROG_LIVES, &lives.to_be_bytes());
-            synced.memory = core_memory(synced.amiga.memory());
+            synced.memory = synced.amiga.memory();
             Ok(synced)
         }
         SyncPoint::Setup { setup, seed } => {
@@ -858,7 +850,7 @@ fn w1_1_key(tag: &str, start: &InputScript) -> String {
 fn to_w1_1(a: &mut Amiga, start: &InputScript, frozen: Freeze) -> Result<(), String> {
     for f in 0..LEVEL_SEARCH {
         step(a, start.input_at(f), frozen)?;
-        let m = core_memory(a.memory());
+        let m = a.memory();
         if in_level(&m) && long(&m, WORLD) == 1 && long(&m, LEVEL) == 1 {
             return Ok(());
         }
@@ -893,7 +885,7 @@ fn slot(script: &str, start: Option<&str>, frames: u32) -> Result<Synced, String
     let reach = LEVEL_SEARCH + play + SLOT_SEARCH;
     at_snapshot(&key, 1, frames, reach, |a| {
         to_w1_1(a, &menu, Freeze::None)?;
-        if long(&core_memory(a.memory()), ATTRACT_MODE) != 0 {
+        if long(&a.memory(), ATTRACT_MODE) != 0 {
             return Err(format!("{start}: W1-1 is reached in the attract demo"));
         }
         for f in 0..play {
@@ -901,7 +893,7 @@ fn slot(script: &str, start: Option<&str>, frames: u32) -> Result<Synced, String
         }
         a.write_memory(LEVEL_STATE, &1u32.to_be_bytes());
         for n in 0..SLOT_SEARCH {
-            let m = core_memory(a.memory());
+            let m = a.memory();
             let chain = main_chain(&a.cpu(), &m);
             let input = if !TALLY_WAIT.contains(&chain[0]) {
                 FrameInput::NONE
@@ -919,7 +911,7 @@ fn slot(script: &str, start: Option<&str>, frames: u32) -> Result<Synced, String
                 FrameInput::NONE
             };
             step(a, input, Freeze::None)?;
-            let m = core_memory(a.memory());
+            let m = a.memory();
             if main_chain(&a.cpu(), &m).contains(&IN_SLOT_MACHINE) {
                 return Ok(());
             }
@@ -1023,7 +1015,7 @@ fn drive_to(a: &mut Amiga, id: LevelId, r: &Route, frozen: Freeze) -> Result<(),
     let mut forced = false;
     for f in 0..search {
         if f == type_from {
-            let m = core_memory(a.memory());
+            let m = a.memory();
             let mut text = menu.clone();
             let mut t = type_from;
             for k in 0..6 {
@@ -1043,7 +1035,7 @@ fn drive_to(a: &mut Amiga, id: LevelId, r: &Route, frozen: Freeze) -> Result<(),
             script = InputScript::parse(&text).map_err(|e| e.to_string())?;
         }
         step(a, script.input_at(f), frozen)?;
-        let m = core_memory(a.memory());
+        let m = a.memory();
         if f > type_from {
             let want = long(&m, WANTED_DISK);
             if want != disk {
@@ -1150,12 +1142,12 @@ pub fn setup_start(setup: &LevelSetup, seed: Rng, frames: u32) -> Result<(Synced
     let search = search(&r);
     let menu = InputScript::parse(&script).map_err(|e| e.to_string())?;
     let mut synced = at_snapshot(&key, r.drives, frames, search, |a| {
-        let mut disks = Disks::at(&core_memory(a.memory()));
+        let mut disks = Disks::at(&a.memory());
         let mut forced = false;
         for f in 0..search {
             a.step(menu.input_at(f)).map_err(|e| e.to_string())?;
             disks.serve(a);
-            let m = core_memory(a.memory());
+            let m = a.memory();
             let at_level = in_level(&m) && long(&m, WORLD) == r.world && long(&m, LEVEL) == r.level;
             if r.finish_w6_4 {
                 if at_level && !forced && word(&m, FINAL_LEVEL_FLAG) == 0 {
@@ -1184,7 +1176,7 @@ pub fn setup_start(setup: &LevelSetup, seed: Rng, frames: u32) -> Result<(Synced
             .ok_or_else(|| format!("{name} is not a LAYOUT variable"))?;
         a.write_memory(d.addr, &game.peek(d.addr, d.width.len()));
     }
-    synced.memory = core_memory(a.memory());
+    synced.memory = a.memory();
     Ok((synced, game))
 }
 
@@ -1201,11 +1193,11 @@ fn end_sequence(frames: u32) -> Result<Synced, String> {
     at_snapshot(&key, r.drives, frames, search(&r) + END_SEARCH, |a| {
         drive_to(a, id, &r, Freeze::None)?;
         a.write_memory(LEVEL_STATE, &1u32.to_be_bytes());
-        let mut disks = Disks::at(&core_memory(a.memory()));
+        let mut disks = Disks::at(&a.memory());
         for _ in 0..END_SEARCH {
             a.step(FrameInput::NONE).map_err(|e| e.to_string())?;
             disks.serve(a);
-            let m = core_memory(a.memory());
+            let m = a.memory();
             if main_chain(&a.cpu(), &m).contains(&IN_END_SEQ_LOAD) {
                 return Ok(());
             }
@@ -1239,7 +1231,7 @@ impl Disks {
     /// After a frame of the original's. Only the game's own wanted disk counts: before the game
     /// owns the vertical blank (the boot, disk 3's story intro) h0+$af54 is not its yet.
     pub fn serve(&mut self, a: &mut Amiga) {
-        let m = core_memory(a.memory());
+        let m = a.memory();
         if long(&m, 0x6c) != VBL_HANDLER {
             return;
         }
@@ -1334,7 +1326,7 @@ pub fn handler_entry(before: &[sf_oracle::Irq], now: &[sf_oracle::Irq]) -> Optio
 /// begin at its entry (a step ends there): where the main program was interrupted.
 pub fn intro_resumes(a: &Amiga) -> Option<u32> {
     let cpu = a.cpu();
-    (cpu.pc == INTRO_VBL).then(|| main_chain(&cpu, &core_memory(a.memory()))[0])
+    (cpu.pc == INTRO_VBL).then(|| main_chain(&cpu, &a.memory())[0])
 }
 
 /// Where the story intro's handler of a step ended (owner, T46; T54): its acknowledge, the step's
@@ -1420,7 +1412,7 @@ const INTRO_READ_AGAIN: [u8; 2] = [0x60, 0xee];
 /// "no disk" branch is turned into that read again, so one press of fire goes on as on the hardware.
 pub fn step_inserting(a: &mut Amiga, input: FrameInput) -> Result<sf_oracle::FrameCapture, String> {
     let cap = a.step(input).map_err(|e| e.to_string())?;
-    let m = core_memory(a.memory());
+    let m = a.memory();
     if long(&m, 0x6c) == INTRO_VBL
         && !a.disk1_in()
         && main_chain(&a.cpu(), &m).contains(&INTRO_ASKS_DISK1)
@@ -1448,7 +1440,7 @@ fn power_on_seed(
     let mut prev = None;
     for f in 0..frames {
         step_inserting(&mut a, script.input_at(f))?;
-        let m = core_memory(a.memory());
+        let m = a.memory();
         let rng = (long(&m, RNG_STATE), long(&m, RNG_STATE + 4));
         if long(&m, 0x6c) == VBL_HANDLER {
             if prev.is_some_and(|p| p != rng) {
@@ -1485,7 +1477,7 @@ fn at_snapshot(
             store(&path, &key, &amiga.snapshot());
         }
     }
-    let memory = core_memory(amiga.memory());
+    let memory = amiga.memory();
     Ok(Synced {
         amiga,
         memory,

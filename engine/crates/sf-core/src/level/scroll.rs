@@ -1,6 +1,7 @@
 //! Scrolling (docs/12 "Scroll"): the vertical blank latches the camera into the level copper
 //! list (`scroll_latch`, h0+$1700a).
 
+use crate::front::blit::{Blit, bltsize_words};
 use crate::layout::{h0, h2, h3};
 use crate::level::beam::Cost;
 use crate::level::{LevelCtx, n_clear};
@@ -336,20 +337,16 @@ fn draw_col(b: &mut Bus, x: u32, y: u32) {
     }
 }
 
-/// A blitter copy (BLTCON0 `$09f0`: D = A, all masks open): `size` as BLTSIZE (height in bits
-/// 15–6, 0 for 1024; width in words in bits 5–0, 0 for 64), both modulos `modulo`.
-fn blit(b: &mut Bus, src: u32, dst: u32, size: u16, modulo: u16) {
-    let h = match size >> 6 { 0 => 1024, h => h as u32 };
-    let w = match size & 0x3f { 0 => 64, w => w as u32 };
-    let (mut s, mut d) = (src & 0x7_fffe, dst & 0x7_fffe);
-    for _ in 0..h {
-        for _ in 0..w {
-            b.set_w(d, b.w(s));
-            s = s.wrapping_add(2);
-            d = d.wrapping_add(2);
-        }
-        s = s.wrapping_add(modulo as i16 as i32 as u32);
-        d = d.wrapping_add(modulo as i16 as i32 as u32);
+/// A blitter copy (BLTCON0 `$09f0`: D = A, all masks open), both modulos `modulo`.
+fn copy(src: u32, dst: u32, size: u16, modulo: u16) -> Blit {
+    Blit {
+        con0: 0x09f0,
+        con1: 0,
+        afwm: 0xffff,
+        alwm: 0xffff,
+        pt: [src, 0, 0, dst],
+        modulo: [modulo as i16, 0, 0, modulo as i16],
+        size,
     }
 }
 
@@ -357,13 +354,14 @@ fn blit(b: &mut Bus, src: u32, dst: u32, size: u16, modulo: u16) {
 /// blitter given the bus (DMACON `$8400`, BLTPRI) while it runs.
 fn blit_planes(c: &mut LevelCtx, a1: u32, size: u16, modulo: u16) {
     c.custom(0x96, 0x8400);
-    let words = (match size >> 6 { 0 => 1024, h => h as u32 }) * (match size & 0x3f { 0 => 64, w => w as u32 });
+    let (h, w) = bltsize_words(size);
+    let words = h * w;
     for p in 0..5u32 {
         let src = a1.wrapping_add(PLANE * p);
         c.spend(Cost::IrqPlane);
-        blit(&mut c.bus, src, src.wrapping_sub(CLEAN_TO_BUFFER_0), size, modulo);
+        copy(src, src.wrapping_sub(CLEAN_TO_BUFFER_0), size, modulo).run(&mut c.bus);
         c.blit_words(words, 0x09f0);
-        blit(&mut c.bus, src, src.wrapping_sub(BUFFER_BYTES), size, modulo);
+        copy(src, src.wrapping_sub(BUFFER_BYTES), size, modulo).run(&mut c.bus);
         c.blit_words(words, 0x09f0);
     }
     c.custom(0x96, 0x0400);

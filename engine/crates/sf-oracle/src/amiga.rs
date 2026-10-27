@@ -114,54 +114,15 @@ pub struct BlitEvent {
 /// The rate of [`Amiga::mixed_audio`].
 pub const MIX_RATE: u32 = ffi::SF_AUDIO_RATE;
 
-/// Chip RAM (at 0x000000) and slow RAM (at 0xC00000), copied.
-#[derive(Debug, Clone, Default, PartialEq, Eq, Hash)]
-pub struct AmigaMemory {
-    pub chip: Vec<u8>,
-    pub slow: Vec<u8>,
-}
+/// Chip RAM (at 0x000000) and slow RAM (at 0xC00000), copied: the engine's own type, so the
+/// conformance side compares the two without converting (amiga-chips T01).
+pub use sf_core::layout::{AmigaMemory, SLOW_BASE};
 
-/// Where slow ("ranger") RAM sits on the A500.
-pub const SLOW_BASE: u32 = 0xC0_0000;
-
-impl AmigaMemory {
-    /// The byte at a CPU address, or None outside chip and slow RAM.
-    pub fn byte(&self, addr: u32) -> Option<u8> {
-        let a = addr as usize;
-        if a < self.chip.len() {
-            Some(self.chip[a])
-        } else if addr >= SLOW_BASE && ((addr - SLOW_BASE) as usize) < self.slow.len() {
-            Some(self.slow[(addr - SLOW_BASE) as usize])
-        } else {
-            None
-        }
-    }
-
-    /// The big-endian word at `addr`.
-    pub fn word(&self, addr: u32) -> Option<u16> {
-        Some(u16::from_be_bytes([self.byte(addr)?, self.byte(addr + 1)?]))
-    }
-
-    /// The big-endian long at `addr`.
-    pub fn long(&self, addr: u32) -> Option<u32> {
-        Some((self.word(addr)? as u32) << 16 | self.word(addr + 2)? as u32)
-    }
-
-    /// A fast 64-bit digest of both RAMs (not cryptographic; for comparing runs).
-    pub fn hash(&self) -> u64 {
-        hash_bytes(&self.slow, hash_bytes(&self.chip, 0x5346_4f52_4143_4c45))
-    }
-}
-
-/// What the mixer's DMA reads: chip RAM only, as Agnus sees it (an address past the RAM reads 0).
-impl sf_paula::ChipMemory for AmigaMemory {
-    fn chip_word(&self, addr: u32) -> u16 {
-        let a = addr as usize;
-        match self.chip.get(a..a + 2) {
-            Some(w) => u16::from_be_bytes([w[0], w[1]]),
-            None => 0,
-        }
-    }
+/// A fast 64-bit digest of both RAMs (not cryptographic; for comparing runs). Cached traces
+/// store it, so it must not change. A free function: `AmigaMemory` is sf-core's, and the digest
+/// shares [`hash_bytes`] with the trace files' checksum here.
+pub fn hash_memory(m: &AmigaMemory) -> u64 {
+    hash_bytes(&m.slow, hash_bytes(&m.chip, 0x5346_4f52_4143_4c45))
 }
 
 /// A word-at-a-time multiply-rotate hash: about 0.1 ms per megabyte.
@@ -830,10 +791,11 @@ mod tests {
         m.slow[2..4].copy_from_slice(&[0xAB, 0xCD]);
         assert_eq!(m.long(4), Some(0x1234_5678));
         assert_eq!(m.word(SLOW_BASE + 2), Some(0xABCD));
-        assert_eq!(m.byte(16), None);
-        assert_eq!(m.byte(SLOW_BASE + 16), None);
-        let h = m.hash();
+        assert_eq!(m.byte_at(16), None);
+        assert_eq!(m.byte_at(SLOW_BASE + 16), None);
+        let h = hash_memory(&m);
+        assert_eq!(h, 0x0ab2_4575_a092_e5a8, "cached traces store the digest: it must not change");
         m.slow[15] = 1;
-        assert_ne!(h, m.hash());
+        assert_ne!(h, hash_memory(&m));
     }
 }

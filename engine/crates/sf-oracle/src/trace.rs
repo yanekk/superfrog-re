@@ -13,7 +13,7 @@ use sf_core::input::FrameInput;
 use sf_disk::sha1_hex;
 use sf_paula::PaulaWrite;
 
-use crate::amiga::{Amiga, AmigaMemory, FrameCapture, Rgb12Frame, SLOW_BASE, Snapshot, hash_bytes};
+use crate::amiga::{Amiga, AmigaMemory, FrameCapture, Rgb12Frame, SLOW_BASE, Snapshot, hash_bytes, hash_memory};
 use crate::config::{OracleConfig, OracleError};
 
 /// Bump when the file layout or what a trace records changes.
@@ -229,7 +229,7 @@ fn run(
         let memory_delta = delta(&prev, &mem);
         out.push(TraceFrame {
             capture,
-            memory_hash: mem.hash(),
+            memory_hash: hash_memory(&mem),
             memory_delta,
         });
         prev = mem;
@@ -576,7 +576,7 @@ mod tests {
             start_memory: mem,
             frames: vec![TraceFrame {
                 capture,
-                memory_hash: after.hash(),
+                memory_hash: hash_memory(&after),
                 memory_delta,
             }],
         }
@@ -590,7 +590,7 @@ mod tests {
             vec![(3, vec![9, 0, 7]), (SLOW_BASE + 31, vec![1])]
         );
         let after = t.memories().next().unwrap();
-        assert_eq!(after.hash(), t.frames[0].memory_hash);
+        assert_eq!(hash_memory(&after), t.frames[0].memory_hash);
     }
 
     #[test]

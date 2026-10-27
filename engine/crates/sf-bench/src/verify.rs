@@ -89,7 +89,7 @@ pub fn lead(s: &Start) -> Result<u32, String> {
     let whole = InputScript::load(&sf_conform::case::script_path(WHOLE))?;
     let mut a = sync::at_snapshot_file(p, LEAD_MAX + 1)?;
     let mut k = 0;
-    while sync::mid_pass(&a.cpu(), &sync::core_memory(a.memory())) {
+    while sync::mid_pass(&a.cpu(), &a.memory()) {
         if k == LEAD_MAX {
             return Err(format!("{}: still mid-pass {LEAD_MAX} frames past the snapshot", p.display()));
         }

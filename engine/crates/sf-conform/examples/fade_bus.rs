@@ -39,7 +39,7 @@ fn main() {
         frozen.apply(&mut a, &display);
         a.step(case.script.input_at(f)).expect("step");
     }
-    let state = State::transplant(&sync::core_memory(a.memory()));
+    let state = State::transplant(&a.memory());
     let walks = fade::level_walks(&state);
     a.set_dma_profile();
     frozen.apply(&mut a, &display);

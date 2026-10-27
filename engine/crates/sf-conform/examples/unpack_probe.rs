@@ -19,7 +19,7 @@ fn main() {
     let mut inside: Option<(u32, u32)> = None;
     for f in 0..to {
         sync::step_inserting(&mut am, case.script.input_at(f)).unwrap();
-        let m = sync::core_memory(am.memory());
+        let m = am.memory();
         let chain = sync::main_chain(&am.cpu(), &m);
         let now = rets.iter().copied().find(|r| chain.contains(r));
         match (inside, now) {
