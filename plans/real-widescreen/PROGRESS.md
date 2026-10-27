@@ -11,9 +11,9 @@ message. Whoever writes a cell also fixes the over-budget cell they walk past.
 
 **Plan reviewed:** 2026-10-22 — 10 fixed, 4 decided with the user
 
-**Status:** Planned; nothing built.
-**Last updated:** 2026-10-22
-**Next `pir-work` will:** T00 wide-spawn-spike and T01 wide-mode, the two roots; T00 sizes T03.
+**Status:** T00–T11 done; T12 implemented, awaiting review.
+**Last updated:** 2026-10-27
+**Next `pir-work` will:** review T12 wide-every-level.
 
 ## Tasks
 
@@ -34,11 +34,10 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T09 | side-frog | T04, T08 | ✅ | |
 | T10 | app-wiring | T05, T06, T07, T08, T09 | ✅ | |
 | T11 | widescreen-drill | T10 | ✅ | |
-| T12 | wide-every-level | T11 | 🟡 | 25 of 26 widescreen routes and `widescreen_complete.rs` (W1-1 in block, all 26 ignored). Waiting on the owner to play W6-4's stall. Deviations: app start, not `--engine-only` (no oracle in the test); WB-1 by `plan_bonus --widescreen`, WW-1 final-win's fire with Spud; opt-in widescreen hand-over tools. |
+| T12 | wide-every-level | T11 | 🔍 | 26 widescreen routes; `widescreen_complete.rs` (W1-1 in block, all 26 `--ignored`, green 140 s). W6-4 is owner-played (his choice). Deviations: app start, not `--engine-only` (test needs no oracle); WB-1 by `plan_bonus --widescreen`; WW-1 final-win's fire, Spud on; opt-in widescreen `handover.py`, `bug_trail`, `sf-routeview`. |
 
-**Review queue:** *(empty)*
+**Review queue:** T12
 
 ## Blocked on the user
 
-T12: the owner plays W6-4's stalled climb in widescreen, recorded (`tools/handover.py --widescreen`,
-spot `W6-4:284,62`); the route is then planned from that recording.
+Nothing.

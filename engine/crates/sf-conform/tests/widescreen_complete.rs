@@ -5,8 +5,10 @@
 //! level (`level_state` leaves −2: the exit, the bonus level's marker 55, the witch beaten) within
 //! the script's frames with no life lost. Engine only: the widescreen game has no original.
 //!
-//! The 24 normal levels' routes are `sf-plan <level> --widescreen`'s; WB-1's is `plan_bonus
-//! --widescreen`'s; WW-1's is `final-win`'s fire pattern. W1-1 runs in the block (about 4 000
+//! 23 normal levels' routes are `sf-plan <level> --widescreen`'s; WB-1's is `plan_bonus
+//! --widescreen`'s; WW-1's is `final-win`'s fire pattern. **W6-4's is owner-played**, not the
+//! planner's (`# played: owner`; owner, 2026-10-27): the planner stalls 48 cells from its exit in
+//! widescreen even guided by the owner's run, so the route is that run's recording. W1-1 runs in the block (about 4 000
 //! frames); the whole set is about 200 000 frames and is `#[ignore]`d:
 //! `cargo test -p sf-conform --test widescreen_complete -- --ignored`.
 
@@ -67,6 +69,14 @@ fn finish(level: LevelId) -> Result<u32, String> {
 fn w1_1_is_finished_in_widescreen() {
     let level: LevelId = "W1-1".parse().unwrap();
     assert!(finish(level).is_ok(), "{:?}", finish(level));
+}
+
+/// W6-4's route says it is the owner's play, so it is never taken for a planner result.
+#[test]
+fn w6_4s_route_is_labelled_owner_played() {
+    let text = std::fs::read_to_string(path("W6-4".parse().unwrap())).unwrap();
+    assert_eq!(header(&text, "played"), Some("owner"));
+    assert!(text.contains("OWNER-PLAYED, not the planner's"));
 }
 
 /// Every level a game plays (W1-1 … W6-4, the bonus level, the final level) has a widescreen

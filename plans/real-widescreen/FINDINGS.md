@@ -12,11 +12,12 @@ changed.
 
 | Date | | Finding |
 |---|---|---|
-| 2026-10-27 | 🐞 | T12: W6-4 has no widescreen route. `sf-plan --widescreen` takes every coin, then stalls 13 cells from the exit at `W6-4:284,62` on seeds 1 and 2, guided by the set-C route or the owner's recording. The 4:3 planner stalled there too. |
+| 2026-10-27 | 🐞 | T12: `sf-plan --widescreen` fails W6-4 48 squares short of the exit on seeds 1 and 2, even guided by the owner's full widescreen run to it; closest at `W6-4:284,62`. The 4:3 planner stalled there too. |
+| 2026-10-27 | 🔄 | T12, owner: `wide-w6-4.txt` is owner-played (`# played: owner`), his `bug-W6-4-2026-10-27-0847.zip` from `handover.py --widescreen --step 12537`. The first hand-over dropped him mid-jump; `--step` picks a standing frame. |
 | 2026-10-27 | 📌 | T12: W6-1 widescreen seed 1 spent its 30 min 3 coins short; seed 2 finished (`wide-w6-1.txt`). The other 22 normal levels finished on seed 1, guided by `routes/app/`. |
 | 2026-10-27 | 📌 | T12: the app's Start Level dialog leaves Spud off, and without it `final-win`'s fire never hits the witch (game over). `wide-ww-1.txt` starts with Spud ticked (`# spud: on`), as `final-win`'s start has it. |
 | 2026-10-27 | 📌 | T12: of the 24 set-C routes replayed in widescreen only W2-2 and W3-1 still finish; the rest lose a life. The wide W1-1 route also finishes in 4:3; the wide W5-1 one does not. |
-| 2026-10-27 | 📌 | T12: `widescreen_complete -- --ignored` replays 25 routes green in 304 s under load 10–19, W6-4's file missing. WB-1 ends at 7804 in widescreen, `chain-wb-1` at 8094 in 4:3 (D12). |
+| 2026-10-27 | 📌 | T12: `widescreen_complete -- --include-ignored` replays all 26 routes green in 140 s. WB-1 ends at 7804 in widescreen, `chain-wb-1` at 8094 in 4:3 (D12). |
 | 2026-10-27 | 📌 | T11 drill, worker-driven: W1-1, W2-3, W3-1, W4-2, W5-1, W6-2 (bench routes, ghost and plain), WB-1, WW-1, ≥3 000 frames each, both ends, Spud, bonus shots, witch, app switches, record/replay, fullscreen. No black past map, map pop-in, seam tear or crash. |
 | 2026-10-27 | 🔄 | T11, owner: switching widescreen while paused keeps the paused 4:3 picture, centred in the wider window, until play resumes (`widescreen_drill.rs`). WW-1's strips keep showing the map, scraps past the castle's right wall included. |
 | 2026-10-27 | 📌 | T11: objects freed inside a strip are taken coins' sparkle ending (`+$5c`), child shots or bonus pieces; none by a despawn edge. WB-1's centre buffer and draw list differ under the panel by the left seam; not visible. |
