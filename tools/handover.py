@@ -5,6 +5,11 @@ recorder on, fast-forwarded, to the first step the frog is alive within a cell o
 releases every key and pauses, leaving the keyboard to the owner.
 
     python3 tools/handover.py ROUTE.txt LEVEL COL,ROW [--settings FILE] [--lives 7] [--out FILE]
+                              [--widescreen] [--step N]
+
+`--step N` pauses at the route's step N instead of the first step near COL,ROW: the first step
+there may be mid-jump, and the owner dropped in the air dies at once (W6-4 widescreen, 2026-10-27);
+pick a step the frog stands on a ledge.
 
 ROUTE is `sf-plan --app` output (`# timing: app`, `# seed: N`). `--widescreen` (real-widescreen
 T12) hands over a `sf-plan --widescreen` route (`# widescreen: on`): the trail is the wide start's,
@@ -109,6 +114,7 @@ def main():
     ap.add_argument('--lives', type=int, default=7, choices=(3, 5, 7))
     ap.add_argument('--out')
     ap.add_argument('--widescreen', action='store_true', help='a sf-plan --widescreen route')
+    ap.add_argument('--step', type=int, help='pause at this step, not the first one near COL,ROW')
     a = ap.parse_args()
     text = open(a.route).read()
     wide_route = '# widescreen: on' in text.splitlines()
@@ -119,7 +125,7 @@ def main():
         sys.exit(f'{a.route}: not an sf-plan --app route (`# timing: app`, `# seed: N`)')
     col, row = map(int, a.at.split(','))
     extra = ['--widescreen'] if a.widescreen else []
-    frame = first_at(trail(os.path.abspath(a.route), a.level, *extra), col, row)
+    frame = a.step - 1 if a.step else first_at(trail(os.path.abspath(a.route), a.level, *extra), col, row)
     if frame is None:
         sys.exit(f'the route never reaches {a.level}:{col},{row} with the frog alive')
     keys = keys_from(a.settings)
