@@ -13,7 +13,7 @@ message. Whoever writes a cell also fixes the over-budget cell they walk past.
 
 **Status:** Planned; nothing built.
 **Last updated:** 2026-10-22
-**Next `pir-work` will:** review T09 side-frog; then T10 app-wiring.
+**Next `pir-work` will:** T10 app-wiring.
 
 ## Tasks
 
@@ -31,12 +31,12 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T06 | wide-switch | T02, T03 | ✅ | |
 | T07 | wide-recording | T01 | ✅ | |
 | T08 | side-objects | T02, T03 | ✅ | |
-| T09 | side-frog | T04, T08 | 🔍 | Frog sprites past HSTART's 9 bits carry bit 9 in SPRxCTL bit 3 (widescreen only); 5 sf-core, 1 sf-e2e tests. Deviations: `frog/anim.rs` writes the bit, not the renderer from the engine's x (commit a1089c7). e2e loads a headless widescreen state, paused: the app's game mode is T10's. `StripLayers.sprites` added. |
+| T09 | side-frog | T04, T08 | ✅ | Review: fixed WW-1 stray sprite pixels at the right edge (a sprite's own control words set bit 3; now copper writes only); added a test that the game's own picture, not only `strip_layers`, reads the bit. Deviation (bit in `frog/anim.rs`) held by tests. Mutated both sides, probed all levels, drilled W1-1's ends. |
 | T10 | app-wiring | T05, T06, T07, T08, T09 | ⬜ | |
 | T11 | widescreen-drill | T10 | ⬜ | |
 | T12 | wide-every-level | T11 | ⬜ | |
 
-**Review queue:** T09
+**Review queue:** *(empty)*
 
 ## Blocked on the user
 

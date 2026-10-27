@@ -12,8 +12,10 @@ changed.
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-27 | 🐞 | T09 review, fixed: a WW-1 sprite's own data fetches SPRxCTL `$000c` (bit 3 set); read as `WIDE_HSTART_BIT` it drew stray pixels at the right strip's edge. The renderer now takes the bit from copper writes only. |
+| 2026-10-27 | 📌 | T09 review drill, worker-driven: W1-1 widescreen rendered with the frog at both ends, whole in each strip. A probe of every level's right-edge sprite pixels (600 frames) found only WB-1's frog after the fix. |
 | 2026-10-27 | 📌 | T09 measured: widescreen frog sprites show from x −$61 to $190 (HSTART $1F..$210; picture left $38). At a level's end the frog stands at $169/$179; $180..$190 occurs only while the camera catches up (2–6 frames per run). |
-| 2026-10-27 | 📌 | T09: HSTART bit 9 rides in SPRxCTL bit 3 (`WIDE_HSTART_BIT`, unused on OCS), set by `place_frog_sprites` in widescreen only, read only for a widened level picture. A parked frog ($191, HSTART $211) lands past the picture. |
+| 2026-10-27 | 📌 | T09: HSTART bit 9 rides in SPRxCTL bit 3 (`WIDE_HSTART_BIT`, unused on OCS), set by `place_frog_sprites` in widescreen only, read only for a widened level picture from a copper write. A parked frog ($191, HSTART $211) lands past the picture. |
 | 2026-10-27 | 🐞 | T08 review, fixed: level_routines (bob_draw, scroller), level_entry, recorder_setup_start and `bug::Follow::writes` compared or wrote `wide_bobs_0/1`, which a 4:3 game fills too; each now skips `layout::engine_only`. |
 | 2026-10-27 | 📌 | T08 review: a bob the drawer culls at the buffer's right edge shows in the strip but not the centre's last 2 columns (W5-1 frame 561). Owner keeps the centre faithful; T11's drill judges it. No `$fc00` bob seen. |
 | 2026-10-27 | 📌 | T08: `scroll_column` is not the shown buffer's address (it stayed in buffer 1 while buffer 0 showed); the shown buffer is the play-field lines' bitplane pointer, which the strips now read. |
