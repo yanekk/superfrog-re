@@ -948,7 +948,7 @@ impl Front {
                 display,
                 input: FrameInput::NONE,
                 paula: &mut paula,
-                    line: 0,
+                line: 0,
                 cop1lc: self.cop1lc,
                 load: None,
                 load_line: None,
@@ -981,7 +981,7 @@ impl Front {
             };
             let sound = vbl::load_blank(&mut cx);
             vbl::end(&mut cx);
-                // Where the original's handler, taken on time, makes them (T213).
+            // Where the original's handler, taken on time, makes them (T213).
             if let Some(m) = sound {
                 let at = vbl::place(0, paula.len(), m, 1);
                 for (w, (vpos, hpos)) in paula.iter_mut().zip(at) {
@@ -1065,7 +1065,7 @@ impl Front {
                 display,
                 input: FrameInput::NONE,
                 paula: &mut quiet,
-                    line: 0,
+                line: 0,
                 cop1lc: self.cop1lc,
                 load: None,
                 load_line: None,
