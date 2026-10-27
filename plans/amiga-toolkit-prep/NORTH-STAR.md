@@ -57,7 +57,8 @@ Targets for the M2 rows:
 package `ForestDumbForever_v1.1_Pl.lha` (whdownload.com). Inspected 2026-10-27, nothing run and
 nothing kept in the repo (copyrighted, like Superfrog's disks):
 
-- Main program `data/FOREST_DUMB_FOREVER` is RNC ProPack method 1 packed (119 132 → 521 640 bytes),
+- Main program `data/FOREST_DUMB_FOREVER` in the WHDLoad package is RNC ProPack method 1 packed
+  (119 132 → 521 640 bytes; the packing is the WHDLoad install's, the disk stores it unpacked),
   an AmigaDOS hunk executable with 5 hunks (code 376 424 bytes; four chip hunks, 368 040 bytes).
   No AMOS or Blitz signatures; about 400 absolute custom-chip references (`$dff0xx`/`$dff1xx`):
   hand-written 68k hitting the hardware, so the routine-port-and-compare method applies.
@@ -79,8 +80,8 @@ nothing kept in the repo (copyrighted, like Superfrog's disks):
   changed the executable cannot be told without an uncracked image.
 
 What it means for the toolkit: none of the Team 17 "might share" items (ATN!, T7MP, Player 4.1A)
-apply. It needs two pieces Superfrog never did: an RNC unpacker and an AmigaDOS (OFS) file reader
-for `.adf` images (sf-disk has neither; amitools' `xdftool`, already in `requirements.txt`, reads
+apply. It needs one piece Superfrog never did: an AmigaDOS (OFS) file reader for `.adf` images,
+since the game loads files through `dos.library` (sf-disk has none; amitools' `xdftool`, already in `requirements.txt`, reads
 OFS for RE work). Those belong to the extraction plan, not to drafts 1–4.
 
 ## Log
