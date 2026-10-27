@@ -232,6 +232,11 @@ pub struct Game {
     pending: Option<crate::level::beam::Pending>,
     /// The level a [`Start::Level`] game entered.
     entered: Option<LevelId>,
+    /// How a [`Game::start_level`] game was started, and the frame its level's first frame is:
+    /// [`Game::set_widescreen`] before any step starts it again in the new mode. Not in a save
+    /// state: a loaded game has been played.
+    #[serde(skip)]
+    level_start: Option<(LevelSetup, Rng, u32)>,
     /// For the next step: where the original made that frame's Paula writes.
     schedule: Vec<(u16, u16)>,
     blits: Vec<(u16, u16, u16)>,
@@ -421,6 +426,7 @@ impl Game {
             trace: None,
             pending: None,
             entered,
+            level_start: None,
             schedule: Vec::new(),
             blits: Vec::new(),
             outcome: None,
@@ -739,12 +745,25 @@ impl Game {
     /// The widescreen game (real-widescreen DESIGN §2.1, §2.7): from the next step, a level plays
     /// against a screen 65 pixels wider each side. Unlike [`Game::set_view`] this changes the game;
     /// with it off the game is the original.
-    /// A level entered ([`Start::Level`]) and not yet played is entered again in the new mode, so
-    /// its camera starts where widescreen's clamp puts it (DESIGN §2.5).
+    /// A level entered ([`Start::Level`]) and not yet played is entered again in the new mode, and
+    /// one started by [`Game::start_level`] and not yet played is started again in it, so its
+    /// camera starts where widescreen's clamp puts it (DESIGN §2.5).
     /// Switched on otherwise, the next level step first wakes everything in the wide view (the
     /// level's start scan, widened, DESIGN §2.7); switched off, the extra slots run on until the
     /// 4:3 despawn frees them.
     pub fn set_widescreen(&mut self, on: bool) {
+        // A level started from the dialog and not yet played is started again in the new mode:
+        // its level code was played through in the old one, so the level was entered with that
+        // mode's start camera and start scan (real-widescreen T10). The view is kept.
+        if self.widescreen != on
+            && let Some((setup, seed, at)) = self.level_start
+            && self.frame == at
+        {
+            let view = self.view;
+            *self = Game::start_level_in(self.display.clone(), &setup, seed, on);
+            self.view = view;
+            return;
+        }
         if self.widescreen != on {
             self.widescreen = on;
             self.wide_switch = on;
@@ -1071,7 +1090,14 @@ impl Game {
     /// through), then `score`, `frog_next_life`, `frog_hearts`, `frog_spud_on` and `frog_flight`
     /// written. At frame 0 every gameplay variable equals the original's started the same way
     /// (T00). Callers validate the setup first; an invalid one panics in debug builds.
+    /// [`Game::set_widescreen`] before its first step starts it again in widescreen, entering the
+    /// level as a widescreen game does (its start camera and scan, real-widescreen DESIGN §2.5).
     pub fn start_level(display: Arc<DisplayData>, setup: &LevelSetup, seed: Rng) -> Game {
+        Game::start_level_in(display, setup, seed, false)
+    }
+
+    /// [`Game::start_level`] with the game in widescreen `wide` from power-on.
+    fn start_level_in(display: Arc<DisplayData>, setup: &LevelSetup, seed: Rng, wide: bool) -> Game {
         use crate::front::password::{password_for, table};
         use sf_assets::World;
         if cfg!(debug_assertions)
@@ -1091,6 +1117,7 @@ impl Game {
         let code = password_for(&table(&display.front), &progress)
             .unwrap_or_else(|| panic!("start_level: the disks have no level code for {id}"));
         let mut g = Game::with_display(display, Start::PowerOn { seed });
+        g.widescreen = wide;
         let options = (setup.lives.opt_lives(), setup.difficulty.opt_game_mode());
         g.type_code_with(Some(code.0), (POWER_ON_OPTIONS, options), &CODE_TIMES);
         let mut forced = false;
@@ -1118,6 +1145,7 @@ impl Game {
         g.poke(h0(0x852), &(setup.spud as u16).to_be_bytes());
         g.poke(h0(0x866), &(setup.wings as u16).to_be_bytes());
         g.place = g.place_now();
+        g.level_start = Some((*setup, seed, g.frame));
         g
     }
 
