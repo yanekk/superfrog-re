@@ -20,7 +20,7 @@ done · ⛔ blocked, needs a human.
 
 | # | Task | Depends on | State | Notes |
 |---|---|---|---|---|
-| T01 | one-copy-each | — | ⬜ | |
+| T01 | one-copy-each | — | ✅ | |
 | T02 | amiga-chips-crate | T01 | ⬜ | |
 
 **Review queue:** *(empty)*
