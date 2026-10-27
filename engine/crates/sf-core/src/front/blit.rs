@@ -30,6 +30,18 @@ impl BlitMem for crate::front::story::StoryMem {
     }
 }
 
+/// The level's memory: each word goes through [`crate::mem::Bus::set_w`], so the [`crate::mem::WriteLog`]
+/// and a blit's `span` see it.
+impl BlitMem for crate::mem::Bus<'_> {
+    fn blit_w(&self, addr: u32) -> u16 {
+        self.w(addr)
+    }
+
+    fn blit_set_w(&mut self, addr: u32, v: u16) {
+        self.set_w(addr, v)
+    }
+}
+
 /// One area blit's registers.
 #[derive(Debug, Clone, Copy, Default)]
 pub struct Blit {
@@ -187,5 +199,72 @@ mod tests {
         assert_eq!(logic(0xaa, 0, 0, 0x5555), 0x5555);
         assert_eq!(logic(0x00, 0xffff, 0xffff, 0xffff), 0);
         assert_eq!(logic(0xca, 0xff00, 0x1234, 0x5678), 0x1278);
+    }
+
+    /// DESIGN §2.3: the level drawer (`objects::blit`) masks each pointer with `$7fffe` after
+    /// every modulo add, `Blit::run` once at the start. A level-shaped blit whose source pointers
+    /// pass `$7fffe` through a modulo, run both ways over a level `Bus`: the source memory differs
+    /// at `$0` (where the per-modulo mask wraps to) and `$80000` (where an unmasked pointer goes).
+    #[test]
+    fn a_pointer_crossing_7fffe_through_a_modulo() {
+        use crate::layout::{VarId, def};
+        use crate::level::objects;
+        use crate::mem::{Bus, Rom};
+        let rom = Rom {
+            regions: vec![
+                (0x0, vec![0x11, 0x11, 0x22, 0x22, 0x33, 0x33, 0x44, 0x44]),
+                (0x7_fff8, vec![0xa5, 0xa5, 0x5a, 0x5a, 0x0f, 0x0f, 0xf0, 0xf0]),
+                (0x8_0000, vec![0x99, 0x99, 0x88, 0x88, 0x77, 0x77, 0x66, 0x66]),
+            ],
+            ..Rom::default()
+        };
+        let dst = def(VarId::PlayfieldBuffer0).addr;
+        // (con0, con1, a, b, c): A→D, and A/B/C→D with C and D the destination, as the drawer's.
+        let cases = [(0x09f0u16, 0u16, 0x7_fffcu32, 0u32, 0u32), (0x1fca, 0x1000, 0x7_fffc, 0x7_fffa, dst)];
+        for (con0, con1, a, b, c) in cases {
+            let (amod, size) = (2u16, 3 << 6 | 1);
+            let drawer = {
+                let mut st = State::default();
+                let mut bus = Bus::new(&mut st, &rom);
+                objects::blit(
+                    &mut bus,
+                    objects::Blit {
+                        con0,
+                        con1,
+                        afwm: 0xffff,
+                        alwm: 0xffff,
+                        a,
+                        b,
+                        c,
+                        d: dst,
+                        amod,
+                        bmod: amod,
+                        cmod: 0,
+                        dmod: 0,
+                        size,
+                    },
+                );
+                (0..3).map(|k| bus.w(dst + 2 * k)).collect::<Vec<_>>()
+            };
+            let general = {
+                let mut st = State::default();
+                let mut bus = Bus::new(&mut st, &rom);
+                Blit {
+                    con0,
+                    con1,
+                    afwm: 0xffff,
+                    alwm: 0xffff,
+                    pt: [a, b, c, dst],
+                    modulo: [amod as i16, amod as i16, 0, 0],
+                    size,
+                }
+                .run(&mut bus);
+                (0..3).map(|k| bus.w(dst + 2 * k)).collect::<Vec<_>>()
+            };
+            // The probe's answer: they differ (the drawer reads `$0` on the second line, the
+            // general path `$80000`).
+            assert_eq!(drawer[0], general[0], "con0 {con0:04x}: the first line, before the wrap");
+            assert_ne!(drawer, general, "con0 {con0:04x}");
+        }
     }
 }
