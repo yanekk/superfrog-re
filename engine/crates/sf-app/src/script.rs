@@ -62,6 +62,9 @@
 //! native-ui                     # the OS layer's: those two questions, the notices and the
 //!                               # clipboard are the real windows, answered by real clicks and
 //!                               # keys (bug-recorder T10); the log still says what was answered
+//! fast-until 11183              # steps up to 11183 run unpaced and silent, then the clock
+//!                               # takes over from then: a person handed a mid-level start
+//!                               # (a scripted route, then the keyboard) need not sit through it
 //! ```
 //!
 //! The Start Level window driven as clicks drive it (bug-recorder T08): `form` lines, in order,
@@ -138,6 +141,9 @@ pub struct Script {
     pub notes: Vec<Option<String>>,
     /// `native-ui`: the recorder's windows, the notices and the clipboard are the real ones.
     pub native_ui: bool,
+    /// `fast-until N`: steps up to N run as fast as the machine allows, not on the clock, and
+    /// make no sound; from N on the game is paced again from that moment.
+    pub fast_until: Option<u64>,
 }
 
 impl Script {
@@ -187,6 +193,13 @@ impl Script {
             }
             if line == "native-ui" {
                 s.native_ui = true;
+                continue;
+            }
+            if words[0] == "fast-until" {
+                match (words.get(1).and_then(|w| w.parse::<u64>().ok()), words.len()) {
+                    (Some(n), 2) => s.fast_until = Some(n),
+                    _ => return Err(err("`fast-until` takes a step number")),
+                }
                 continue;
             }
             if words[0] == "answer-recording" {
@@ -545,6 +558,10 @@ mod tests {
         assert!(!s.native_ui);
         assert!(Script::parse("native-ui\n").unwrap().native_ui);
         assert!(Script::parse("native-ui now\n").is_err());
+        assert_eq!(Script::parse("fast-until 900\n").unwrap().fast_until, Some(900));
+        assert_eq!(Script::parse("seed 1 1\n").unwrap().fast_until, None);
+        assert!(Script::parse("fast-until\n").is_err());
+        assert!(Script::parse("fast-until soon\n").is_err());
     }
 
     #[test]

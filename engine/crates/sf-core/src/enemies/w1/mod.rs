@@ -15,7 +15,7 @@ pub mod walker;
 pub mod watcher;
 
 use crate::items::template;
-use crate::level::objects::{OBJ_SLOTS, obj_spawn_cell};
+use crate::level::objects::{obj_spawn_cell, slot_addrs};
 use crate::level::{Dispatch, LevelCtx, register};
 
 /// World 1's row of `obj_flag_jumptab` (`obj_world_offset` `$000`).
@@ -132,5 +132,5 @@ fn other_end_free(c: &LevelCtx, cell: u32, marker: u16, right: bool) -> bool {
     else {
         return false;
     };
-    !(0..20).any(|k| b.l(OBJ_SLOTS + k * 0x7c + 0x40) == end)
+    !slot_addrs(b, c.screen).any(|s| b.l(s + 0x40) == end)
 }

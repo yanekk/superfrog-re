@@ -240,12 +240,12 @@ fn enemies_w5_3() {
 /// markers 2 and 3, spawned as the camera passes 17/28,19 and 64/81,36), to the switch at 98,37,
 /// which opens the gate at 135,34; round the east side and back west along the top into the
 /// watchers' room, where the template-30 fallers (marker 12) fall once in view and the one at
-/// 150,9 hurts the frog (frame 4747). One re-sync pinned: the play field buffer at 414 (T121's
-/// class; freezing enemies freezes nothing in W5, and with every object frozen there is no lag).
-/// On the way it meets every other W5-4 type too.
+/// 150,9 hurts the frog (frame 4747). No re-sync: the play field buffer's at 414 (T121's class)
+/// went with smart-planner's pass steps (T29, T32 era). On the way it meets every other W5-4
+/// type too.
 #[test]
 fn enemies_w5_4() {
-    let seen = run("enemies-w5-4", &[414]);
+    let seen = run("enemies-w5-4", &[]);
     assert!(
         seen.frames.windows(2).any(|w| w[0].0 >= 200 && w[1].2 && !w[0].2),
         "hurt by an enemy"

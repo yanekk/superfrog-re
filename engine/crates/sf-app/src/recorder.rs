@@ -25,8 +25,9 @@ pub enum Recorder {
 }
 
 impl Recorder {
-    /// A recording of a level started with `setup` from `seed`, no frame stepped yet.
-    pub fn start(setup: LevelSetup, seed: Rng, build: &str) -> Recorder {
+    /// A recording of a level started with `setup` from `seed`, in widescreen when `widescreen`,
+    /// no frame stepped yet.
+    pub fn start(setup: LevelSetup, seed: Rng, build: &str, widescreen: bool) -> Recorder {
         Recorder::Recording {
             rec: Recording {
                 build: build.to_string(),
@@ -35,6 +36,8 @@ impl Recorder {
                 stopped_at: None,
                 note: String::new(),
                 inputs: Vec::new(),
+                widescreen,
+                toggles: Vec::new(),
             },
         }
     }
@@ -46,6 +49,20 @@ impl Recorder {
             && rec.inputs.len() < MAX_FRAMES as usize
         {
             rec.inputs.push(input);
+        }
+    }
+
+    /// Widescreen switched before the next step (real-widescreen DESIGN §2.8). Switched twice
+    /// before one step, the two cancel: the game steps in the mode it had.
+    pub fn toggle(&mut self) {
+        if let Recorder::Recording { rec } = self {
+            let at = rec.inputs.len() as u32;
+            match rec.toggles.last() {
+                Some(&t) if t == at => {
+                    rec.toggles.pop();
+                }
+                _ => rec.toggles.push(at),
+            }
         }
     }
 
@@ -71,6 +88,10 @@ impl Recorder {
         match self {
             Recorder::Off => None,
             Recorder::Recording { mut rec } => {
+                // A switch after the last step played nothing in its mode.
+                if rec.toggles.last().is_some_and(|&t| t as usize >= rec.inputs.len()) {
+                    rec.toggles.pop();
+                }
                 rec.stopped_at = Some(at);
                 rec.note = note;
                 Some(rec)
@@ -82,7 +103,8 @@ impl Recorder {
 /// `--replay`: a recording's inputs, fed to the game one a step in order.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Replay {
-    inputs: Vec<FrameInput>,
+    /// The recording: its inputs, its widescreen at frame 0 and its toggles.
+    rec: Recording,
     played: usize,
     /// [`Replay::just_finished`] has said so.
     told: bool,
@@ -90,19 +112,25 @@ pub struct Replay {
 
 impl Replay {
     pub fn new(rec: &Recording) -> Replay {
-        Replay { inputs: rec.inputs.clone(), played: 0, told: false }
+        Replay { rec: rec.clone(), played: 0, told: false }
+    }
+
+    /// Widescreen for the next step, as recorded (real-widescreen DESIGN §2.8): the mode at frame
+    /// 0 before any step, and once every input is played the mode the last step played in.
+    pub fn widescreen(&self) -> bool {
+        self.rec.widescreen_at(self.played.min(self.rec.inputs.len().saturating_sub(1)) as u32)
     }
 
     /// The input for the next step, `None` once every recorded one has been played.
     pub fn next(&mut self) -> Option<FrameInput> {
-        let input = self.inputs.get(self.played).copied()?;
+        let input = self.rec.inputs.get(self.played).copied()?;
         self.played += 1;
         Some(input)
     }
 
     /// Has every recorded input been played?
     pub fn finished(&self) -> bool {
-        self.played == self.inputs.len()
+        self.played == self.rec.inputs.len()
     }
 
     /// The frame the replay holds on, the first time it is asked once every input is played;
@@ -254,7 +282,7 @@ mod tests {
     }
 
     fn recording(frames: usize) -> Recording {
-        let mut r = Recorder::start(LevelSetup::default(), Rng::seeded(1, 2), "test build");
+        let mut r = Recorder::start(LevelSetup::default(), Rng::seeded(1, 2), "test build", false);
         for n in 0..frames {
             r.step(FrameInput { joy: if n % 3 == 0 { Joy::RIGHT } else { Joy::NONE }, ..FrameInput::NONE });
         }
@@ -268,7 +296,7 @@ mod tests {
         r.step(FrameInput::NONE);
         assert_eq!(r.clone().finish(Location::Screen("title"), String::new()), None);
         assert_eq!(r.frames(), None);
-        let mut on = Recorder::start(LevelSetup::default(), Rng::seeded(1, 2), "b");
+        let mut on = Recorder::start(LevelSetup::default(), Rng::seeded(1, 2), "b", false);
         assert_eq!(on.frames(), Some(0));
         on.step(FrameInput::NONE);
         assert_eq!(on.frames(), Some(1));
@@ -281,9 +309,54 @@ mod tests {
         assert_eq!(rec.setup, LevelSetup::default());
     }
 
+    /// real-widescreen DESIGN §2.8: the mode at the start, and a toggle before each step a switch
+    /// came before; two before one step cancel, and one after the last step is dropped.
+    #[test]
+    fn a_recording_holds_its_widescreen_and_every_switch_before_a_step() {
+        let mut r = Recorder::start(LevelSetup::default(), Rng::seeded(1, 2), "b", true);
+        r.toggle();
+        for n in 0..10 {
+            if n == 3 || n == 7 {
+                r.toggle();
+            }
+            if n == 5 {
+                r.toggle();
+                r.toggle();
+            }
+            r.step(FrameInput::NONE);
+        }
+        r.toggle();
+        let rec = r.finish(Location::Screen("title"), String::new()).unwrap();
+        assert!(rec.widescreen);
+        assert_eq!(rec.toggles, [0, 3, 7]);
+        assert!(rec.validate().is_ok());
+        assert_eq!(Recording::parse(&rec.to_text()).unwrap(), rec);
+        let modes: Vec<bool> = (0..10).map(|k| rec.widescreen_at(k)).collect();
+        assert_eq!(modes, [false, false, false, true, true, true, true, false, false, false]);
+        let mut off = Recorder::default();
+        off.toggle();
+        assert_eq!(off, Recorder::Off);
+    }
+
+    #[test]
+    fn a_replay_says_the_mode_of_the_step_it_feeds_next() {
+        let mut rec = recording(6);
+        rec.widescreen = true;
+        rec.toggles = vec![2, 4];
+        let mut r = Replay::new(&rec);
+        let mut modes = Vec::new();
+        while !r.finished() {
+            modes.push(r.widescreen());
+            r.next();
+        }
+        assert_eq!(modes, [true, true, false, false, true, true]);
+        assert!(r.widescreen(), "held on the last step's mode");
+        assert!(!Replay::new(&recording(0)).widescreen());
+    }
+
     #[test]
     fn a_full_recording_holds_no_more_than_a_day() {
-        let mut r = Recorder::start(LevelSetup::default(), Rng::seeded(0, 0), "b");
+        let mut r = Recorder::start(LevelSetup::default(), Rng::seeded(0, 0), "b", false);
         if let Recorder::Recording { rec } = &mut r {
             rec.inputs = vec![FrameInput::NONE; MAX_FRAMES as usize - 1];
         }

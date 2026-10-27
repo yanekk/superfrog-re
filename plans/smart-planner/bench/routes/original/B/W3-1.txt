@@ -1,0 +1,101 @@
+# timing: original
+# W3-1 by sf-plan, seed 1: planned on the engine, confirmed on the original; frame 0 is the leg snapshot leg-08.snap.
+# The level ends at frame 3182, then fire in the tally's wait takes the points.
+0: -
+151: U R
+155: R F
+171: D
+203: U L
+211: R F
+255: F
+295: D
+311: F
+375: R F
+403: R
+451: U L
+463: F
+515: R F
+559: R
+563: -
+599: R
+631: U
+663: U R
+695: U L
+703: U
+711: U R
+767: D
+815: F
+847: U
+887: U R
+943: F
+944: R
+948: U
+996: L F
+1028: U R
+1072: -
+1088: U R
+1156: R F
+1200: R
+1248: U R
+1292: L
+1300: U L
+1352: D
+1356: U L
+1376: U R
+1408: D
+1416: L F
+1448: R
+1488: U
+1492: D
+1540: U L
+1572: R
+1584: L
+1596: D
+1616: L F
+1632: U L
+1756: D
+1816: -
+1853: U R
+1861: R
+1909: U
+1941: R
+1965: -
+1973: L
+1981: U
+2013: F
+2021: U R
+2041: U
+2073: R F
+2089: U
+2093: F
+2109: -
+2125: U R
+2185: U
+2273: R
+2341: U
+2381: D
+2397: U
+2413: U R
+2445: U L
+2465: U R
+2541: U L
+2565: U
+2585: L F
+2589: R F
+2605: U L
+2653: R F
+2685: R
+2693: F
+2709: U
+2745: L
+2857: U
+2965: U L
+2989: U R
+3025: -
+3057: U R
+3105: R
+3113: U R
+3129: U
+3182: -
+3251: F
+3255: -

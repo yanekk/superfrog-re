@@ -1,0 +1,9 @@
+# W6-2 by T25's planned route, to frame 1760 (T29): the original mid-pass for long runs (81 frames
+# from 397) while the frog takes coins in the vertical blank. Before T29 the engine freed a
+# `tile_anim_draw` queue slot before the original's frame ended, took a coin a frame early and
+# missed the original's channel-3 volume 34 at 1718. Green faithful with the loop's slots counted
+# as steps (`sync::pass_step`).
+sync = { level = "W6-2" }
+script = "tile-queue-w6-2"
+frames = 1760
+resync = true

@@ -1,0 +1,310 @@
+//! `RESULTS.md` (DESIGN §1 success criteria, §3.4): rendered from `results.jsonl`, never edited by
+//! hand. The measures side by side, the baseline (`best-old`, D10) beside the new planner, then
+//! each set's levels for every planner recorded.
+
+use std::collections::{BTreeMap, BTreeSet};
+use std::fmt::Write as _;
+use std::path::Path;
+
+use crate::results::LevelResult;
+use crate::sets::LEVELS;
+
+pub const BASELINE: &str = "best-old";
+pub const NEW: &str = "new";
+/// M2's levels: the ones the rust-engine run spent hours on.
+pub const HARD: [&str; 4] = ["W1-4", "W2-4", "W6-2", "W6-3"];
+/// The budget M2 and M3 hold each level to, in seconds.
+const BUDGET_S: f64 = 30.0 * 60.0;
+
+/// (planner, guided, set, level).
+type Key = (String, bool, String, String);
+
+/// The latest line for each (planner, guided, set, level): a rerun under a later commit replaces
+/// an earlier one; a guided and an unguided result stand side by side.
+pub fn latest(results: &[LevelResult]) -> BTreeMap<Key, LevelResult> {
+    let mut m = BTreeMap::new();
+    for r in results {
+        m.insert((r.planner.clone(), r.guided, r.set.clone(), r.level.clone()), r.clone());
+    }
+    m
+}
+
+/// The measures read the baseline unaided and the new planner guided (DESIGN §1, D21).
+fn measured(planner: &str) -> bool {
+    planner == NEW
+}
+
+struct View<'a> {
+    latest: &'a BTreeMap<Key, LevelResult>,
+}
+
+impl View<'_> {
+    fn of(&self, planner: &str, set: &str) -> Vec<&LevelResult> {
+        LEVELS
+            .iter()
+            .filter_map(|l| self.latest.get(&(planner.into(), measured(planner), set.into(), l.to_string())))
+            .collect()
+    }
+
+    /// `n / 24`, with how many levels were run when not all were.
+    fn count(&self, planner: &str, set: &str, pred: impl Fn(&LevelResult) -> bool) -> String {
+        let rs = self.of(planner, set);
+        if rs.is_empty() {
+            return "—".into();
+        }
+        let n = rs.iter().filter(|r| pred(r)).count();
+        let mut s = format!("{n} / 24");
+        if rs.len() < 24 {
+            let _ = write!(s, " ({} run)", rs.len());
+        }
+        s
+    }
+
+    fn hard(&self, planner: &str) -> String {
+        let rs: Vec<_> = HARD
+            .iter()
+            .filter_map(|l| self.latest.get(&(planner.into(), measured(planner), "A".into(), l.to_string())))
+            .collect();
+        if rs.is_empty() {
+            return "—".into();
+        }
+        let n = rs.iter().filter(|r| r.completed && r.wall_s <= BUDGET_S).count();
+        let mut s = format!("{n} / 4");
+        if rs.len() < 4 {
+            let _ = write!(s, " ({} run)", rs.len());
+        }
+        s
+    }
+
+    fn times(&self, planner: &str, set: &str) -> String {
+        let mut t: Vec<f64> = self.of(planner, set).iter().map(|r| r.wall_s).collect();
+        if t.is_empty() {
+            return "—".into();
+        }
+        t.sort_by(f64::total_cmp);
+        format!("median {}, slowest {}", minutes(median(&t)), minutes(*t.last().unwrap()))
+    }
+
+    fn lengths(&self, planner: &str, set: &str) -> String {
+        let ratios: Vec<f64> = self
+            .of(planner, set)
+            .iter()
+            .filter(|r| r.completed)
+            .filter_map(|r| Some(r.route_frames? as f64 / r.ref_frames.filter(|&f| f > 0)? as f64))
+            .collect();
+        if ratios.is_empty() {
+            return "—".into();
+        }
+        let over = ratios.iter().filter(|&&q| q > 1.25).count();
+        let worst = ratios.iter().copied().fold(f64::MIN, f64::max);
+        format!("{over} over +25% (worst {:+.0}%, {} compared)", (worst - 1.0) * 100.0, ratios.len())
+    }
+
+    fn share(&self, planner: &str, set: &str) -> String {
+        let mut s: Vec<f64> = self.of(planner, set).iter().map(|r| r.confirm_share).collect();
+        if s.is_empty() {
+            return "—".into();
+        }
+        s.sort_by(f64::total_cmp);
+        format!("{:.0}%", median(&s) * 100.0)
+    }
+
+    fn frames(&self, planner: &str, set: &str, f: impl Fn(&LevelResult) -> u64) -> String {
+        let rs = self.of(planner, set);
+        if rs.is_empty() {
+            return "—".into();
+        }
+        group(rs.iter().map(|r| f(r)).sum())
+    }
+}
+
+fn median(sorted: &[f64]) -> f64 {
+    let n = sorted.len();
+    if n % 2 == 1 { sorted[n / 2] } else { (sorted[n / 2 - 1] + sorted[n / 2]) / 2.0 }
+}
+
+fn minutes(s: f64) -> String {
+    format!("{:.1} min", s / 60.0)
+}
+
+/// `1234567` as `1 234 567`.
+fn group(n: u64) -> String {
+    let d = n.to_string();
+    let mut o = String::new();
+    for (i, c) in d.chars().enumerate() {
+        if i > 0 && (d.len() - i) % 3 == 0 {
+            o.push(' ');
+        }
+        o.push(c);
+    }
+    o
+}
+
+pub fn render(results: &[LevelResult]) -> String {
+    let latest = latest(results);
+    let v = View { latest: &latest };
+    let (b, n) = (BASELINE, NEW);
+    let mut o = String::new();
+    o += "# Smart planner benchmark\n\n";
+    o += "Generated by `sf-bench` from `results.jsonl`; do not edit (DESIGN §3.4). Each cell is the \
+          latest result per planner, set and level. Baseline is `best-old`, as recorded before the old \
+          tools were retired (T34): the best of `plan_exit`, \
+          `plan_exit_w6` and `explore` per level, each given the full budget (D10), unaided; on set C \
+          `plan_exit` alone, the one old tool that plans on the engine from the app's start. Since D27 \
+          no counted baseline is run: set A's is T02's sample (`bench/sample/`), six set-A levels \
+          run on a busy machine, and set B has none. The new \
+          planner's measures are its guided results, each level guided by its committed route \
+          (DESIGN §4.2, D21); its unguided results are listed per set, not counted.\n\n";
+    if latest.values().any(before_thread_share) {
+        o += "Cells marked *before the thread share* are new-planner runs from before `sf-bench` gave \
+              each planner its share of the cores (owner, 2026-10-24): each took every core, so a run \
+              beside another under `--jobs 2` had about half the compute against its wall-clock budget.\n\n";
+    }
+    o += "| # | Measure | Baseline | New | Target |\n|---|---|---|---|---|\n";
+    let ok = |r: &LevelResult| r.completed;
+    let mut row = |id: &str, what: &str, base: String, new: String, target: &str| {
+        let _ = writeln!(o, "| {id} | {what} | {base} | {new} | {target} |");
+    };
+    row("M1", "Set A completed, faithful", v.count(b, "A", ok), v.count(n, "A", ok), "24 / 24");
+    row("M2", "W1-4, W2-4, W6-2, W6-3 completed, each under 30 min", v.hard(b), v.hard(n), "4 / 4");
+    row("M3", "Planning time, set A", v.times(b, "A"), v.times(n, "A"), "median ≤ 10 min, slowest ≤ 30 min");
+    row("M4", "Route length vs the committed route, set A", v.lengths(b, "A"), v.lengths(n, "A"), "none over +25%");
+    row("M5", "Set B legs completed", v.count(b, "B", ok), v.count(n, "B", ok), "24 / 24");
+    row(
+        "M6",
+        "Set A routes losing no heart",
+        v.count(b, "A", |r| r.completed && r.hearts_lost == 0),
+        v.count(n, "A", |r| r.completed && r.hearts_lost == 0),
+        "≥ 20 / 24",
+    );
+    row("M7", "Cells a free explorer reaches that the map calls unreachable", "—".into(), "— (T13)".into(), "0 on every level");
+    row("M8", "Same seed, level and start: byte-identical route", "—".into(), "a test (T08, T11, T12)".into(), "always");
+    row(
+        "M9",
+        "Tools an agent chooses between for level routing",
+        "3 (+ `plan_bonus`)".into(),
+        "1 (+ `plan_bonus`)".into(),
+        "1",
+    );
+    row("C1", "Set C completed on the engine with app timing", v.count(b, "C", ok), v.count(n, "C", ok), "24 / 24");
+    row("C3", "Planning time, set C", v.times(b, "C"), v.times(n, "C"), "median ≤ 2 min, slowest ≤ 30 min");
+    row("C4", "Route length vs the committed route, set C", v.lengths(b, "C"), v.lengths(n, "C"), "none over +25%");
+    // A baseline left part-run (set C's, stopped at 15 levels under D27) names the levels not run,
+    // so a short column is never read as the old tool failing them.
+    for set in ["A", "B", "C"] {
+        let run = v.of(b, set);
+        if run.is_empty() || run.len() == LEVELS.len() {
+            continue;
+        }
+        let missing: Vec<&str> =
+            LEVELS.iter().copied().filter(|l| !run.iter().any(|r| r.level == *l)).collect();
+        let _ = writeln!(o, "\nSet {set} baseline: {} of 24 run; not run: {}.", run.len(), missing.join(", "));
+    }
+    o += "\nRecorded, not gated:\n\n| Set | Measure | Baseline | New |\n|---|---|---|---|\n";
+    for set in ["A", "B", "C"] {
+        if v.of(b, set).is_empty() && v.of(n, set).is_empty() {
+            continue;
+        }
+        let _ = writeln!(o, "| {set} | Engine frames simulated | {} | {} |", v.frames(b, set, |r| r.engine_frames), v.frames(n, set, |r| r.engine_frames));
+        let _ = writeln!(o, "| {set} | Oracle frames | {} | {} |", v.frames(b, set, |r| r.oracle_frames), v.frames(n, set, |r| r.oracle_frames));
+        let _ = writeln!(o, "| {set} | Confirmation share of wall-clock (median) | {} | {} |", v.share(b, set), v.share(n, set));
+    }
+    for set in ["A", "B", "C"] {
+        let planners: BTreeSet<(&String, bool)> =
+            latest.keys().filter(|k| k.2 == set).map(|k| (&k.0, k.1)).collect();
+        if planners.is_empty() {
+            continue;
+        }
+        // A planner's guided column before its unguided one.
+        let mut planners: Vec<(&String, bool)> = planners.into_iter().collect();
+        planners.sort_by_key(|&(p, g)| (p, !g));
+        let _ = writeln!(o, "\n## Set {set}\n");
+        let _ = writeln!(
+            o,
+            "| Level | {} |\n|---|{}",
+            planners
+                .iter()
+                .map(|(p, g)| format!("`{p}` {}", if *g { "guided" } else { "unguided" }))
+                .collect::<Vec<_>>()
+                .join(" | "),
+            "---|".repeat(planners.len())
+        );
+        for l in LEVELS {
+            let cells: Vec<String> = planners
+                .iter()
+                .map(|(p, g)| match latest.get(&((*p).clone(), *g, set.into(), l.into())) {
+                    None => "".into(),
+                    Some(r) => cell(r),
+                })
+                .collect();
+            if cells.iter().all(|c| c.is_empty()) {
+                continue;
+            }
+            let _ = writeln!(o, "| {l} | {} |", cells.join(" | "));
+        }
+    }
+    o
+}
+
+/// The verdict, written by hand at the end of the plan (T18, D5): the file beside the table.
+pub const VERDICT: &str = "verdict.md";
+/// The tuning run's results, beside the table, whose unaided set-A column the verdict shows.
+pub const TUNING: &str = "tuning/results.jsonl";
+
+/// [`render`] plus, when `dir` (the table's folder) holds a [`VERDICT`], a verdict section: that
+/// file verbatim, then the tuning run's unaided set-A results as recorded, not gated (T18). The
+/// verdict is the owner's decisions on each target, so it is prose kept in its own file and
+/// `RESULTS.md` stays generated, never edited.
+pub fn render_in(results: &[LevelResult], dir: &Path) -> String {
+    let mut o = render(results);
+    let Ok(verdict) = std::fs::read_to_string(dir.join(VERDICT)) else { return o };
+    o += "\n## Verdict\n\n";
+    o += verdict.trim_end();
+    o += "\n";
+    let tuning = latest(&crate::results::load(&dir.join(TUNING)));
+    let unaided: Vec<_> = LEVELS
+        .iter()
+        .filter_map(|l| tuning.get(&(NEW.into(), false, "A".into(), l.to_string())))
+        .collect();
+    if !unaided.is_empty() {
+        let done = unaided.iter().filter(|r| r.completed).count();
+        let _ = writeln!(
+            o,
+            "\n### Set A unaided, from the tuning run (recorded, not gated)\n\n\
+             From `tuning/results.jsonl` as recorded: {done} of {} done.\n\n| Level | `new` unguided |\n|---|---|",
+            unaided.len()
+        );
+        for r in unaided {
+            let _ = writeln!(o, "| {} | {} |", r.level, cell(r));
+        }
+    }
+    o
+}
+
+/// One level's result: `done` or `failed (why)`, its time, its length against the committed
+/// route's, hearts lost.
+fn cell(r: &LevelResult) -> String {
+    let mut s = if r.completed { "done".to_string() } else { format!("failed ({})", r.reason.replace('|', "/")) };
+    let _ = write!(s, ", {}", minutes(r.wall_s));
+    if let Some(f) = r.route_frames {
+        let _ = write!(s, ", {f} frames");
+        if let Some(rf) = r.ref_frames {
+            let _ = write!(s, " (ref {rf})");
+        }
+    }
+    if r.completed {
+        let _ = write!(s, ", {} hearts lost", r.hearts_lost);
+    }
+    if let Some(t) = &r.tool {
+        let _ = write!(s, ", by `{t}`");
+    }
+    if before_thread_share(r) {
+        s += ", *before the thread share*";
+    }
+    s
+}
+
+/// A new-planner result with no thread count: run before sf-bench passed `--threads`.
+fn before_thread_share(r: &LevelResult) -> bool {
+    r.planner == "new" && r.threads.is_none()
+}

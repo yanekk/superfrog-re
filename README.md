@@ -97,6 +97,14 @@ cd engine && cargo run --release -p sf-app
   State are under Game; View has the scale, fullscreen, widescreen and View ▸ Filter: None,
   Basic (the app's own light scanlines), or the RetroArch CRT shaders Lottes, Geom (both with a
   curved tube) and Easymode, at their stock settings, to compare while playing.
+- **Widescreen** (View ▸ Widescreen, remembered) widens a level to 16:9 and plays it as a wider
+  game: enemies, coins, platforms and the frog are alive and drawn in the 65 extra columns each
+  side, as they would be at the screen's own edges, and the camera stops 65 pixels sooner at a
+  level's ends so nothing past the map shows. It can be switched mid-level and takes effect at
+  once. This is our game, not the original's: with it off the game is the original, and a bug
+  recorded in widescreen has no original to compare with
+  ([`docs/12-display.md`](docs/12-display.md#widescreen), [`docs/BUG-FIX.md`](docs/BUG-FIX.md)).
+  Screens outside a level (title, map, slot machine) keep black sides.
 - **Where data lives:** `~/Library/Application Support/Superfrog-RE/` holds the decoded cache,
   `settings.toml`, `progress.toml`, save states and the remembered disk paths. Delete the folder to
   start over; the next launch asks for the disks again. `--home DIR` (or `SUPERFROG_HOME`) uses
@@ -128,7 +136,8 @@ describe it further or re-test the fix.
   following your recording part-way, so a bug late in a long recording may not be comparable yet;
   the agent says so rather than guess.
 - **Watch it back:** `superfrog --replay <zip>` (`cargo run --release -p sf-app -- --replay <zip>`)
-  plays a recording in the window, watch-only, for agents and tests; `sf-conform bug replay`,
+  plays a recording in the window, watch-only, for agents and tests, in widescreen where it was
+  recorded in widescreen whatever your setting (View ▸ Widescreen is greyed out meanwhile); `sf-conform bug replay`,
   `bug compare` and `bug case` are the headless tools ([`engine/conform/README.md`](engine/conform/README.md)).
 
 ## Rust engine
@@ -150,6 +159,67 @@ the original for the conformance checks: `cd engine && cargo run -q --release -p
 judges every case in [`engine/conform/`](engine/conform/README.md) (about 1¾ h), and
 [`engine/crates/sf-e2e`](engine/crates/sf-e2e/README.md) drives the real app end to end, the whole
 game included.
+
+## Planning a route
+
+`sf-plan` finds an input script that plays a level to its exit, for a test case, a whole-game
+chain leg or a level you changed. It is the one level-routing tool: the older per-level planners
+were retired, and only `plan_bonus` remains, for the bonus level. It explores the level on the Rust engine, then plays what it
+found on the original (the emulator oracle) and repairs any stretch where the two part, so a route
+it writes is one the original agrees with. One command, no per-level options:
+
+```bash
+cd engine && cargo run --release -p sf-plan -- W2-1 --out route.txt
+```
+
+- **A guide path** may steer it: `--guide` takes a committed route (it is played once and the frog's
+  path is followed) or a waypoint file, one `col,row` per line in the tile addressing above
+  (`W1-1:94,51` is `94,51`). A guide is not a hint: it is allowed everywhere, the benchmark guides
+  each level by its committed route.
+- **It writes what it got** in the route's own timing (`# timing: original` first line). Exit 0: the
+  route reaches the exit; 1: the time (`--budget-min`, 30) or the frames ran out, and the best
+  partial route is written with a one-line reason (coins still needed, how close it got); 2: bad
+  arguments or a guide it cannot read. `--follow old.txt` repairs an old route that no longer plays;
+  `--snap` starts from a whole-game leg; `--engine-only` skips the original (for tuning).
+- **Hints are a last resort:** `--via c,r` and `--avoid c0,r0,c1,r1` push it through a spot it
+  cannot find on its own, and every run using them is logged to
+  [`engine/conform/plan-hints.log`](engine/conform/plan-hints.log) as a planner gap to fix.
+
+How it works, and the benchmark against the older tools (`sf-bench`), is in
+[`plans/smart-planner/`](plans/smart-planner/DESIGN.md). It completes most levels from every start,
+not all: the levels it still fails are listed in
+[`bench/failing-levels.md`](plans/smart-planner/bench/failing-levels.md).
+
+**Seeing a route:** `sf-routeview` replays routes on the engine and draws them over the level
+map, one page at `build/route-viz/index.html`: the frog's path, every coin, collectible and enemy,
+the events along the way (coins, kills, hits, jumps) and a timeline to play it back. A switcher on
+top lists the routes, marked failed (the planner failed, or the route reaches no exit), faults (a
+heart or life lost, over +25% of the reference route, a plan that used half its time budget, or a
+route timed for the original, which may drift on replay) or clean. A failed route also shows
+where it stops making progress.
+
+```bash
+cd engine && cargo run --release -p sf-routeview -- --planner        # every planner route, with verdicts
+cd engine && cargo run --release -p sf-routeview -- my-route.txt --guide waypoints.txt
+```
+
+`sf-bench` rebuilds the page at the end of every guided set-C run of the new planner (`--no-view`
+skips it). Only app-timed routes (`# timing: app`) replay true. The page holds the disks' graphics,
+so it stays in `build/`.
+
+**When the planner gets stuck, a person plays the hard part.** If a level finds no exit on two
+seeds, or stalls at the same spot twice, the session shows the stall on the route page and asks
+you to play that stretch. It hands you one command: the app races (silently, keys locked) through
+a route to just before the stall, pauses, and records your play from there. You save the
+recording with ⌘. as for a bug report; the planner then follows it in order and plans again.
+
+```bash
+python3 tools/handover.py route.txt W6-4 263,66          # writes the app script, prints your command
+python3 tools/recording_guide.py bugs/bug-W6-4-….zip     # your recording, as the planner's guide
+cd engine && cargo run --release -p sf-plan -- W6-4 --guide-ordered --guide bug-W6-4-…-guide.txt
+```
+
+The script presses keys through your Controls mapping, so regenerate it after remapping.
 
 ## Tools
 

@@ -9,7 +9,7 @@ use crate::layout::{h0, h2, h3};
 use crate::level::camera;
 use crate::level::LevelCtx;
 use crate::level::beam::Cost;
-use crate::level::objects::{BOB_DRAW_LIST, BOB_FREE_LIST, Blit, blit};
+use crate::level::objects::{BOB_FREE_LIST, Blit, WIDE_BOB_FREE_LIST, blit, draw_list};
 use crate::mem::Bus;
 
 /// `bob_buffer` (h0+$18be4).
@@ -70,17 +70,20 @@ pub fn bob_setup(c: &mut LevelCtx) {
     c.custom(0x96, 0x0020);
 }
 
-/// h0+$84f0: each free bob record's position marked `$c180`, `$c180`.
+/// h0+$84f0: each free bob record's position marked `$c180`, `$c180`; then the extra slots'
+/// (real-widescreen DESIGN §2.4), whose list is empty (its first entry 0) until widescreen has
+/// spawned into one.
 fn park_free(b: &mut Bus) {
-    let mut at = BOB_FREE_LIST;
-    loop {
-        let rec = b.l(at);
-        if rec == 0 {
-            break;
+    for mut at in [BOB_FREE_LIST, WIDE_BOB_FREE_LIST] {
+        loop {
+            let rec = b.l(at);
+            if rec == 0 {
+                break;
+            }
+            b.set_w(rec.wrapping_sub(4), 0xc180);
+            b.set_w(rec.wrapping_sub(2), 0xc180);
+            at += 4;
         }
-        b.set_w(rec.wrapping_sub(4), 0xc180);
-        b.set_w(rec.wrapping_sub(2), 0xc180);
-        at += 4;
     }
 }
 
@@ -136,13 +139,14 @@ fn blit_params(b: &mut Bus, mut list: u32) -> u32 {
 
 /// h0+$18ef8: the line offsets (`$30` a line), and each bob record of the draw list started on its
 /// animation's first step, its first sub-record copied to the second, then both to the third and
-/// fourth. Returns how many bob records.
+/// fourth. Returns how many bob records. The draw list is the one the last pass built, the wide
+/// one after a widescreen pass (real-widescreen DESIGN §2.4).
 fn sub_records(b: &mut Bus) -> u32 {
     b.set_w(BOB_BUFFER, 0);
     for k in 0..0x13d {
         b.set_w(LINE_OFFSETS + 2 * k, (k * 0x30) as u16);
     }
-    let first = BOB_DRAW_LIST;
+    let first = draw_list(b);
     let mut at = first;
     loop {
         let rec = b.l(at);

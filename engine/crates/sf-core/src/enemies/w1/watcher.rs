@@ -27,6 +27,7 @@ fn update(c: &mut LevelCtx, slot: u32, _d7: u16) {
     let b = &mut c.bus;
     let (cx, cy) = (b.w(CAMERA_X + 2), b.w(CAMERA_Y + 2));
     let d = direction(
+        c.screen,
         b.w(slot + 8).wrapping_sub(cx),
         b.w(slot + 0xa).wrapping_sub(cy),
         b.w(FROG + f::X).wrapping_sub(cx),

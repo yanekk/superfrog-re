@@ -36,6 +36,9 @@
 //! `sf-conform bug case <zip> <name>` — the zip as a permanent case:
 //! `engine/conform/cases/<name>.toml` and `engine/conform/scripts/<name>.txt`, its inputs in the
 //! original's frames; refuses a name either folder has.
+//! `bug compare` and `bug case` refuse a recording with any widescreen in it, exit 1 with one line
+//! (real-widescreen DESIGN §2.8): there is no original to compare it with. `bug replay` plays its
+//! modes and writes the wide picture while it is in widescreen.
 
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
@@ -143,6 +146,10 @@ fn bug_compare(zip: &Path, rest: &[String], mode: Mode) -> Result<bool, String> 
     };
     let bytes = std::fs::read(zip).map_err(|e| format!("{}: {e}", zip.display()))?;
     let (rec, _) = bug::read_zip(&bytes).map_err(|e| format!("{}: {e}", zip.display()))?;
+    if let Err(why) = bug::comparable(&rec) {
+        eprintln!("{why}");
+        return Ok(false);
+    }
     // Beside the zip: the pictures are disk-derived, and the zip's folder, `bugs/`, is
     // git-ignored (RE §2.3; bug-recorder DESIGN §2.10 step 3).
     let dir = match out {
@@ -172,6 +179,10 @@ fn bug_case(zip: &Path, name: &str) -> Result<bool, String> {
     use sf_conform::{bug, scripts_dir};
     let bytes = std::fs::read(zip).map_err(|e| format!("{}: {e}", zip.display()))?;
     let (rec, _) = bug::read_zip(&bytes).map_err(|e| format!("{}: {e}", zip.display()))?;
+    if let Err(why) = bug::comparable(&rec) {
+        eprintln!("{why}");
+        return Ok(false);
+    }
     let file = zip
         .file_name()
         .map_or("-".to_string(), |n| n.to_string_lossy().into_owned());

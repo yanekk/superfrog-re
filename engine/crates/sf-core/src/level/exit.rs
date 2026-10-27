@@ -267,6 +267,7 @@ fn level_ctx(
             cx.display.sound(),
             &mut writes,
         );
+        c.screen = cx.screen;
         if traced {
             c.trace = Some(Vec::new());
         }

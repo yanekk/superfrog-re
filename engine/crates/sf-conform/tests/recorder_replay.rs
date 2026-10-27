@@ -29,6 +29,8 @@ fn recording(first: FrameInput) -> Recording {
         stopped_at: None,
         note: "built by recorder_replay.rs".into(),
         inputs,
+        widescreen: false,
+        toggles: Vec::new(),
     }
 }
 

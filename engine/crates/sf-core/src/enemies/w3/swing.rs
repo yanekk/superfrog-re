@@ -10,7 +10,7 @@ use crate::enemies::common::{TOUCH_HURT, touch_hurt};
 use crate::items::template;
 use crate::layout::h0;
 use crate::level::objects::{
-    OBJ_SLOTS, bob_anim, bob_follow, nothing, obj_free, obj_path_xy, obj_spawn_cell,
+    bob_anim, bob_follow, nothing, obj_free, obj_path_xy, obj_spawn_cell, slot_addrs,
 };
 use crate::level::{LevelCtx, ObjectKind, n_clear};
 
@@ -90,6 +90,7 @@ fn init(c: &mut LevelCtx, slot: u32, _d7: u16) {
 /// (`+$6c`) 8 right of and 4 below the ball. Unless five or more of the 20 slots' bobs (live or
 /// not) show or are to start a link's animation, the ball is freed.
 pub fn update(c: &mut LevelCtx, slot: u32, _d7: u16) {
+    let screen = c.screen;
     let b = &mut c.bus;
     let (x, y) = (b.w(slot + 0x64).wrapping_sub(0x50), b.w(slot + 0x66));
     obj_path_xy(b, slot, x, y);
@@ -97,8 +98,8 @@ pub fn update(c: &mut LevelCtx, slot: u32, _d7: u16) {
     b.set_l(slot + 0x6c, b.l(slot + 8));
     b.set_w(slot + 0x6e, b.w(slot + 0x6e).wrapping_add(4));
     b.set_w(slot + 0x6c, b.w(slot + 0x6c).wrapping_add(8));
-    let links = (0..20u32)
-        .map(|k| b.l(OBJ_SLOTS + k * 0x7c + 0x50))
+    let links = slot_addrs(b, screen)
+        .map(|s| b.l(s + 0x50))
         .filter(|&bob| {
             LINK_ANIMS.contains(&b.l(bob.wrapping_add(8)))
                 || LINK_ANIMS.contains(&b.l(bob.wrapping_add(0x42)))

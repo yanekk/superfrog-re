@@ -205,6 +205,15 @@ pub struct Game {
     /// §2.7). Not in a save state: the app sets it from its own setting.
     #[serde(skip)]
     view: View,
+    /// The widescreen game (real-widescreen DESIGN §2.1, §3.4): the level's horizontal screen
+    /// edges 65 pixels further out each side. Not in a save state, like `view`: the app sets it.
+    #[serde(skip)]
+    widescreen: bool,
+    /// Widescreen was switched on and the next level step has not yet run its scan of the wide
+    /// view (DESIGN §2.7): kept through a level's start (its fade-in), whose own scan may have
+    /// been the original's. Not in a save state, like `widescreen`.
+    #[serde(skip)]
+    wide_switch: bool,
     /// The seed a power-on start is waiting to put in place.
     seed: Option<Rng>,
     frame: u32,
@@ -223,6 +232,11 @@ pub struct Game {
     pending: Option<crate::level::beam::Pending>,
     /// The level a [`Start::Level`] game entered.
     entered: Option<LevelId>,
+    /// How a [`Game::start_level`] game was started, and the frame its level's first frame is:
+    /// [`Game::set_widescreen`] before any step starts it again in the new mode. Not in a save
+    /// state: a loaded game has been played.
+    #[serde(skip)]
+    level_start: Option<(LevelSetup, Rng, u32)>,
     /// For the next step: where the original made that frame's Paula writes.
     schedule: Vec<(u16, u16)>,
     blits: Vec<(u16, u16, u16)>,
@@ -401,6 +415,8 @@ impl Game {
             story,
             shown: None,
             view: View::default(),
+            widescreen: false,
+            wide_switch: false,
             seed,
             frame: 0,
             keys: KeySet::NONE,
@@ -410,6 +426,7 @@ impl Game {
             trace: None,
             pending: None,
             entered,
+            level_start: None,
             schedule: Vec::new(),
             blits: Vec::new(),
             outcome: None,
@@ -439,7 +456,9 @@ impl Game {
 
     /// [`Game::step`] without drawing a level frame's picture, which nothing in the state reads:
     /// the game is left exactly as `step` leaves it, and the [`FrameOut`]'s picture is empty when
-    /// a level frame would have been drawn. For planners only, which step the engine thousands of
+    /// a level frame would have been drawn. The picture is skipped in [`Scene::step`] too (its
+    /// `level_as_drawn`, most of a frame's time; smart-planner T19), save on the frame a level
+    /// ends, whose picture the game keeps for the front end. For planners only, which step the engine thousands of
     /// times a frame of plan and never look (T104, `examples/plan_exit_w6`); conformance runs and the
     /// app keep [`Game::step`]. Locked by `sf-conform`'s `tests/step_unseen.rs`.
     pub fn step_unseen(&mut self, input: FrameInput) -> FrameOut {
@@ -545,6 +564,7 @@ impl Game {
         {
             self.seed = None;
             front.anchor_writes(std::mem::take(&mut self.schedule));
+            front.screen = crate::level::screen::Screen { wide: self.widescreen };
             let out = front.step(&mut self.state, &self.display, input);
             let level_list = front.cop1lc() == crate::render::LEVEL_COPPER;
             self.scene = front.scene(&self.state, self.scene);
@@ -623,10 +643,12 @@ impl Game {
         let display = Arc::clone(&self.display);
         let frog_only = self.frog_only;
         let sdr = self.sdr;
+        let screen = self.screen();
         let mut after = |s: &mut State, line: u16, into: u32| {
             // `level_frame_loop` returned: what follows runs on the front end's program, from
             // where the loop's last pass ended (T37, `crate::level::exit`).
             let mut front = crate::front::Front::level_over(s, &display.front, sdr, frog_only);
+            front.screen = screen;
             let (more, jobs) = front.finish_frame(s, &display, input, line, into);
             ended = Some((front, more, jobs));
         };
@@ -645,9 +667,11 @@ impl Game {
                 schedule: std::mem::take(&mut self.schedule),
                 blits: std::mem::take(&mut self.blits),
                 unported: &mut self.level_unported,
+                screen,
+                wide_switch: std::mem::take(&mut self.wide_switch),
             };
             self.scene
-                .step(&mut m, &mut self.pending, pacing, self.view, &mut after)
+                .step(&mut m, &mut self.pending, pacing, self.view, draw, &mut after)
         };
         // Each frame's writes are its own: one placed before the one ahead of it (the engine's
         // clock past where the pacing puts the original's) is no later frame's, though the mixer
@@ -693,6 +717,7 @@ impl Game {
             // The intro's handler's, run at the load in the next step (T214).
             story.blanks = frames;
         } else if let Some(front) = self.front.as_mut() {
+            front.screen = crate::level::screen::Screen { wide: self.widescreen };
             front.load_blanks(&mut self.state, &self.display, frames, &mut self.load_paula);
         }
     }
@@ -715,6 +740,46 @@ impl Game {
     /// The view [`Game::step`] draws for.
     pub fn view(&self) -> View {
         self.view
+    }
+
+    /// The widescreen game (real-widescreen DESIGN §2.1, §2.7): from the next step, a level plays
+    /// against a screen 65 pixels wider each side. Unlike [`Game::set_view`] this changes the game;
+    /// with it off the game is the original.
+    /// A level entered ([`Start::Level`]) and not yet played is entered again in the new mode, and
+    /// one started by [`Game::start_level`] and not yet played is started again in it, so its
+    /// camera starts where widescreen's clamp puts it (DESIGN §2.5).
+    /// Switched on otherwise, the next level step first wakes everything in the wide view (the
+    /// level's start scan, widened, DESIGN §2.7); switched off, the extra slots run on until the
+    /// 4:3 despawn frees them.
+    pub fn set_widescreen(&mut self, on: bool) {
+        // A level started from the dialog and not yet played is started again in the new mode:
+        // its level code was played through in the old one, so the level was entered with that
+        // mode's start camera and start scan (real-widescreen T10). The view is kept.
+        if self.widescreen != on
+            && let Some((setup, seed, at)) = self.level_start
+            && self.frame == at
+        {
+            let view = self.view;
+            *self = Game::start_level_in(self.display.clone(), &setup, seed, on);
+            self.view = view;
+            return;
+        }
+        if self.widescreen != on {
+            self.widescreen = on;
+            self.wide_switch = on;
+            self.reenter();
+        }
+    }
+
+    /// Whether [`Game::set_widescreen`] is on.
+    pub fn widescreen(&self) -> bool {
+        self.widescreen
+    }
+
+    /// The screen a level step plays against, the level's own or one the front end runs
+    /// (a restart's `level_init`, game over's vertical blank).
+    fn screen(&self) -> crate::level::screen::Screen {
+        crate::level::screen::Screen { wide: self.widescreen }
     }
 
     /// The frame the original shows for this state (DESIGN §3.3), widened by `view`.
@@ -1025,7 +1090,14 @@ impl Game {
     /// through), then `score`, `frog_next_life`, `frog_hearts`, `frog_spud_on` and `frog_flight`
     /// written. At frame 0 every gameplay variable equals the original's started the same way
     /// (T00). Callers validate the setup first; an invalid one panics in debug builds.
+    /// [`Game::set_widescreen`] before its first step starts it again in widescreen, entering the
+    /// level as a widescreen game does (its start camera and scan, real-widescreen DESIGN §2.5).
     pub fn start_level(display: Arc<DisplayData>, setup: &LevelSetup, seed: Rng) -> Game {
+        Game::start_level_in(display, setup, seed, false)
+    }
+
+    /// [`Game::start_level`] with the game in widescreen `wide` from power-on.
+    fn start_level_in(display: Arc<DisplayData>, setup: &LevelSetup, seed: Rng, wide: bool) -> Game {
         use crate::front::password::{password_for, table};
         use sf_assets::World;
         if cfg!(debug_assertions)
@@ -1045,6 +1117,7 @@ impl Game {
         let code = password_for(&table(&display.front), &progress)
             .unwrap_or_else(|| panic!("start_level: the disks have no level code for {id}"));
         let mut g = Game::with_display(display, Start::PowerOn { seed });
+        g.widescreen = wide;
         let options = (setup.lives.opt_lives(), setup.difficulty.opt_game_mode());
         g.type_code_with(Some(code.0), (POWER_ON_OPTIONS, options), &CODE_TIMES);
         let mut forced = false;
@@ -1072,6 +1145,7 @@ impl Game {
         g.poke(h0(0x852), &(setup.spud as u16).to_be_bytes());
         g.poke(h0(0x866), &(setup.wings as u16).to_be_bytes());
         g.place = g.place_now();
+        g.level_start = Some((*setup, seed, g.frame));
         g
     }
 
@@ -1128,13 +1202,28 @@ impl Game {
     pub fn frog_only(&mut self) {
         self.frog_only = true;
         // A level entered and not yet played is entered again without its objects.
+        self.reenter();
+    }
+
+    /// A level entered ([`Start::Level`]) and not yet played is entered again, with the game's
+    /// dispatch and screen as they are now: entering already ran the start point and the first
+    /// spawn scan, which both read them.
+    fn reenter(&mut self) {
         if let (Some(id), 0) = (self.entered, self.frame) {
+            // The level's start scan is the new mode's: nothing is left to wake.
+            self.wide_switch = false;
+            let screen = self.screen();
             self.state = State::default();
             self.level_unported = crate::level::load::enter_with(
                 &mut self.state,
                 &self.display,
                 id,
-                crate::level::frog_only_dispatch(),
+                if self.frog_only {
+                    crate::level::frog_only_dispatch()
+                } else {
+                    crate::level::standard_dispatch()
+                },
+                screen,
             );
             self.gather_unported();
         }

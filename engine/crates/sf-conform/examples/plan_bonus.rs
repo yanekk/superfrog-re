@@ -13,11 +13,80 @@
 //! its frog alive there, else the next best; with none, the chunk before takes its next. The
 //! original lags in a busy level and the engine free-running does not, so only the original's
 //! outcome counts.
+//!
+//! `--widescreen` (real-widescreen T12) plans the widescreen bonus level, which has no original:
+//! it starts as Game ▸ Start Level… starts WB-1 (the dialog's defaults, power-on seed 1 1) with View
+//! ▸ Widescreen on, and the engine stands in for the original in every check. No `--snap`.
 use sf_conform::{InputScript, sync};
 use sf_core::frog::{FROG, f};
 use sf_core::input::{FrameInput, Joy};
 use sf_core::layout::h0;
-use sf_core::{Game, Start};
+use sf_core::{Game, Rng, Start};
+
+/// What a path is confirmed on: the original, or (`--widescreen`) the engine.
+enum Real {
+    Original(Box<sf_oracle::Amiga>),
+    Engine(Box<Game>),
+}
+
+/// A [`Real`] saved before a chunk.
+enum Saved {
+    Original(sf_oracle::Snapshot),
+    Engine(Box<Game>),
+}
+
+impl Real {
+    fn step(&mut self, x: FrameInput) {
+        match self {
+            Real::Original(a) => {
+                sync::step_inserting(a, x).unwrap();
+            }
+            Real::Engine(g) => {
+                g.step_unseen(x);
+            }
+        }
+    }
+    fn w(&self, addr: u32) -> u16 {
+        match self {
+            Real::Original(a) => {
+                let b = a.peek(addr, 2);
+                u16::from_be_bytes([b[0], b[1]])
+            }
+            Real::Engine(g) => g.state().w(addr),
+        }
+    }
+    fn l(&self, addr: u32) -> u32 {
+        match self {
+            Real::Original(a) => {
+                let b = a.peek(addr, 4);
+                u32::from_be_bytes([b[0], b[1], b[2], b[3]])
+            }
+            Real::Engine(g) => g.state().l(addr),
+        }
+    }
+    /// The engine at this state, for the beam to search from.
+    fn game(&self, display: &std::sync::Arc<sf_core::DisplayData>) -> Game {
+        match self {
+            Real::Original(a) => {
+                Game::with_display(display.clone(), Start::Transplant(sync::core_memory(a.memory())))
+            }
+            Real::Engine(g) => (**g).clone(),
+        }
+    }
+    fn save(&self) -> Saved {
+        match self {
+            Real::Original(a) => Saved::Original(a.snapshot()),
+            Real::Engine(g) => Saved::Engine(g.clone()),
+        }
+    }
+    fn restore(&mut self, s: &Saved) {
+        match (self, s) {
+            (Real::Original(a), Saved::Original(s)) => a.restore(s),
+            (Real::Engine(g), Saved::Engine(s)) => **g = (**s).clone(),
+            _ => unreachable!("a save restores the kind it came from"),
+        }
+    }
+}
 
 const LEVEL_STATE: u32 = h0(0xa06);
 const LIVES: u32 = h0(0x82e);
@@ -47,8 +116,14 @@ fn score(st: &sf_core::State) -> i64 {
 fn main() {
     let args: Vec<String> = std::env::args().skip(1).collect();
     let (mut snap, mut prefix, mut out, mut budget) = (None, Vec::new(), None, 9000usize);
+    let mut wide = false;
     let mut i = 0;
     while i < args.len() {
+        if args[i] == "--widescreen" {
+            wide = true;
+            i += 1;
+            continue;
+        }
         let v = &args[i + 1];
         match args[i].as_str() {
             "--snap" => snap = Some(v.clone()),
@@ -63,18 +138,25 @@ fn main() {
         }
         i += 2;
     }
-    let snap = snap.expect("--snap <leg-NN.snap>");
-    let amiga = &mut sync::at_snapshot_file(std::path::Path::new(&snap), budget as u32 + 100)
-        .unwrap_or_else(|e| panic!("{e}"));
     let display = sf_conform::display_data();
-    let peek_w = |a: &sf_oracle::Amiga, addr: u32| {
-        let b = a.peek(addr, 2);
-        u16::from_be_bytes([b[0], b[1]])
+    let amiga = &mut if wide {
+        assert!(snap.is_none(), "--widescreen starts WB-1 as Start Level does: no --snap");
+        let setup = sf_core::recording::LevelSetup {
+            level: "WB-1".parse().unwrap(),
+            ..Default::default()
+        };
+        let mut g = Game::start_level(display.clone(), &setup, Rng::seeded(1, 1));
+        g.set_widescreen(true);
+        Real::Engine(Box::new(g))
+    } else {
+        let snap = snap.expect("--snap <leg-NN.snap>");
+        Real::Original(Box::new(
+            sync::at_snapshot_file(std::path::Path::new(&snap), budget as u32 + 100)
+                .unwrap_or_else(|e| panic!("{e}")),
+        ))
     };
-    let peek_l = |a: &sf_oracle::Amiga, addr: u32| {
-        let b = a.peek(addr, 4);
-        u32::from_be_bytes([b[0], b[1], b[2], b[3]])
-    };
+    let peek_w = |a: &Real, addr: u32| a.w(addr);
+    let peek_l = |a: &Real, addr: u32| a.l(addr);
     let acts: Vec<Joy> = [
         Joy::NONE,
         Joy::UP,
@@ -91,16 +173,15 @@ fn main() {
     .collect();
     let mut inputs: Vec<FrameInput> = Vec::new();
     for &x in &prefix {
-        sync::step_inserting(amiga, x).unwrap();
+        amiga.step(x);
         inputs.push(x);
     }
     let threads = std::thread::available_parallelism().map_or(4, |n| n.get());
     // Each chunk kept: the original before it, the inputs then, and the candidate it took.
-    let mut history: Vec<(sf_oracle::Snapshot, usize, usize)> = Vec::new();
+    let mut history: Vec<(Saved, usize, usize)> = Vec::new();
     let (mut skip, mut backtracks) = (0usize, 0);
     while inputs.len() < budget {
-        let mem = sync::core_memory(amiga.memory());
-        let start = Game::with_display(display.clone(), Start::Transplant(mem));
+        let start = amiga.game(&display);
         let lives = start.state().w(LIVES) as i16;
         let mut beam: Vec<(Game, Vec<FrameInput>)> = vec![(start, Vec::new())];
         let mut alive = Vec::new();
@@ -154,12 +235,12 @@ fn main() {
             }
             alive = beam.clone();
         }
-        let snap = amiga.snapshot();
+        let snap = amiga.save();
         let mut taken = None;
         for (_, p) in beam.iter().skip(skip).take(8) {
             let mut ok = true;
             for (k, &x) in p.iter().enumerate() {
-                sync::step_inserting(amiga, x).unwrap();
+                amiga.step(x);
                 if (peek_w(amiga, LIVES) as i16) < lives || peek_w(amiga, FROG + f::DYING) != 0 {
                     eprintln!("  a path dies {k} frames in on the original");
                     ok = false;
@@ -173,7 +254,7 @@ fn main() {
             if ok {
                 let mut k = 0;
                 while k < p.len().min(COMMIT) {
-                    sync::step_inserting(amiga, p[k]).unwrap();
+                    amiga.step(p[k]);
                     k += 1;
                     if inputs.len() + k > 10 && peek_l(amiga, LEVEL_STATE) != 0xffff_fffe {
                         break;

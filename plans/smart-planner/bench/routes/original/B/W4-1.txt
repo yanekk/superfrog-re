@@ -1,0 +1,66 @@
+# timing: original
+# W4-1 by sf-plan, seed 1: planned on the engine, confirmed on the original; frame 0 is the leg snapshot leg-12.snap.
+# The level ends at frame 2162, then fire in the tally's wait takes the points.
+0: -
+151: L F
+167: U R
+235: F
+251: L
+267: U R
+331: D
+363: U
+379: U R
+463: U L
+487: R
+519: U R
+567: U
+575: R
+583: D
+643: R F
+651: U R
+731: R F
+763: D
+779: R
+787: U R
+835: R F
+851: U R
+883: U
+915: U R
+927: R
+963: U
+1020: R
+1040: U
+1060: U R
+1124: D
+1180: R F
+1200: F
+1208: L
+1248: R F
+1268: L F
+1336: L
+1362: D
+1370: L
+1394: U R
+1426: L F
+1430: F
+1434: R
+1442: D
+1446: U
+1478: R
+1518: -
+1526: L
+1558: U R
+1838: R F
+1854: D
+1874: R
+1946: L
+1954: U R
+1994: L F
+2010: U R
+2102: R
+2118: R F
+2122: U R
+2130: R F
+2162: -
+2231: F
+2235: -

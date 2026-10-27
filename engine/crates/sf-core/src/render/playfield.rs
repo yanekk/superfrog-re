@@ -10,10 +10,11 @@
 //! Widescreen's extra columns are not in the buffers; they come from the map. A line fetched from
 //! ring line `R` of a buffer, with `scroll_column` at column `c` (h0+$1700a latches both from the
 //! camera), shows level row `R - 16` (mod 304), and fetch pixel `i` shows level x `16 c + i - 16`.
-//! Where the map ends the level is colour 0.
+//! Where the map ends the level is colour 0. Over the map go the bobs the shown buffer's pass drew
+//! ([`super::bobs`]).
 
 use super::{Mem, Row, Under};
-use crate::layout::{PLAYFIELD_BUFFER_BYTES, h3};
+use crate::layout::{PLAYFIELD_BUFFER_BYTES, VarId, WideBobs, h3};
 use crate::state::State;
 
 /// The two display buffers (h3+$10600 and h3+$22f30).
@@ -42,7 +43,8 @@ impl Lines {
     /// For a line fetched from `pt` with lines `stride` bytes apart: its level row and the level x
     /// of fetch pixel 0, when `pt` points into a display buffer on a whole line at the scrolled
     /// column.
-    pub fn line(&mut self, state: &State, pt: u32, stride: i32) -> Option<(i32, i32)> {
+    /// And which buffer it is.
+    pub fn line(&mut self, state: &State, pt: u32, stride: i32) -> Option<(i32, i32, usize)> {
         let buffer = buffer_of(pt)?;
         let column = state.scroll_column();
         let column_bytes = column.checked_sub(BUFFERS[buffer_of(column)?])?;
@@ -59,8 +61,23 @@ impl Lines {
             y -= RING;
         }
         self.prev = Some(y);
-        Some((y, 8 * column_bytes as i32 - COLUMN_OFFSET))
+        Some((y, 8 * column_bytes as i32 - COLUMN_OFFSET, buffer))
     }
+}
+
+/// The wide draw list of the display buffer `rows`' play-field lines show (DESIGN §2.9): the
+/// vertical blank points the copper list at it at the frame's start, so every one is from the
+/// same buffer.
+pub(super) fn shown_bobs(state: &State, rows: &[Row]) -> WideBobs {
+    rows.iter()
+        .find_map(|r| match r.under {
+            Under::Field { buffer, .. } => Some(buffer),
+            _ => None,
+        })
+        .map_or_else(WideBobs::default, |buffer| {
+            let id = [VarId::WideBobs0, VarId::WideBobs1][buffer as usize];
+            WideBobs::read(&state.bytes_of(id).1)
+        })
 }
 
 /// The level from the map, in level space, under the play-field lines: what widescreen's extra
@@ -75,7 +92,8 @@ pub(super) struct Field {
 
 impl Field {
     /// The map's tiles under the lines `rows` show, `width` picture pixels from each line's
-    /// level x; only where `extra` columns reach past the original's window.
+    /// level x, and over them the shown buffer's bobs; only where `extra` columns reach past the
+    /// original's window.
     pub fn draw(state: &State, mem: &Mem, rows: &[Row], width: u16, extra: u16) -> Field {
         if extra == 0 {
             return Field::default();
@@ -83,7 +101,7 @@ impl Field {
         let spans: Vec<(i32, i32)> = rows
             .iter()
             .filter_map(|r| match r.under {
-                Under::Field { y, x0 } => Some((y, x0)),
+                Under::Field { y, x0, .. } => Some((y, x0)),
                 _ => None,
             })
             .collect();
@@ -115,7 +133,60 @@ impl Field {
                 f.pixels[p] = px;
             }
         }
+        f.draw_bobs(state, mem, rows);
         f
+    }
+
+    /// Every bob the shown buffer's last pass drew, in its order (DESIGN §2.9), over the field.
+    pub fn draw_bobs(&mut self, state: &State, mem: &Mem, rows: &[Row]) {
+        let list = shown_bobs(state, rows);
+        for bob in &list.bobs {
+            // A background bob drawn into the clean buffer (frame y offset `$fc00`) is not in
+            // the shown one.
+            if bob.background && mem.word(bob.frame + 0xa) == 0xfc00 {
+                continue;
+            }
+            let at = super::bobs::placed(bob, mem);
+            let drawn = |y| super::bobs::drawn(bob, &list, y);
+            super::bobs::draw_bob(self, at, &drawn, bob.frame, mem, !bob.background);
+        }
+    }
+
+    /// A field of `width` × `height` level pixels from (`x`, `y`), every one `fill`.
+    #[cfg(test)]
+    pub fn blank(x: i32, y: i32, width: usize, height: usize, fill: u8) -> Field {
+        Field {
+            x,
+            y,
+            width,
+            pixels: vec![fill; width * height],
+        }
+    }
+
+    /// The field with every pixel `fill` and no bobs: for a test's look at the bobs alone.
+    pub fn filled(&self, fill: u8) -> Field {
+        Field {
+            x: self.x,
+            y: self.y,
+            width: self.width,
+            pixels: vec![fill; self.pixels.len()],
+        }
+    }
+
+    /// Whether level row `y` is in the field.
+    pub fn has_row(&self, y: i32) -> bool {
+        self.width > 0 && y >= self.y && ((y - self.y) as usize) < self.pixels.len() / self.width
+    }
+
+    /// Level pixel (`x`, `y`) set to `v`, if it is in the field.
+    pub fn set(&mut self, x: i32, y: i32, v: u8) {
+        let (dx, dy) = (x - self.x, y - self.y);
+        if dx < 0 || dx as usize >= self.width || dy < 0 {
+            return;
+        }
+        if let Some(px) = self.pixels.get_mut(dy as usize * self.width + dx as usize) {
+            *px = v;
+        }
     }
 
     pub fn at(&self, x: i32, y: i32) -> u8 {
@@ -143,7 +214,7 @@ mod tests {
         // Ring line 280 at column 1: level row 264 + 304, x of fetch pixel 0 is 0.
         assert_eq!(
             lines.line(&s, BUFFERS[0] + 2 + 280 * 48, 48),
-            Some((568, 0))
+            Some((568, 0, 0))
         );
         // The next line, after the copper's reload to ring line 0 (the ring wraps after 304).
         let mut y = 568;
@@ -154,7 +225,7 @@ mod tests {
                 Some(y)
             );
         }
-        assert_eq!(lines.line(&s, BUFFERS[0] + 2, 48), Some((592, 0)));
+        assert_eq!(lines.line(&s, BUFFERS[0] + 2, 48), Some((592, 0, 0)));
         // Not a whole line at the scrolled column, or not in a buffer: not the play field.
         assert_eq!(lines.line(&s, BUFFERS[0] + 3, 48), None);
         assert_eq!(lines.line(&s, 0x52b8c, 48), None);
@@ -178,7 +249,7 @@ mod tests {
         };
         let mem = Mem::new(&s, &data);
         let row = |y, x0| Row {
-            under: Under::Field { y, x0 },
+            under: Under::Field { y, x0, buffer: 0 },
             priority: 0,
             sprites: [None; 8],
         };

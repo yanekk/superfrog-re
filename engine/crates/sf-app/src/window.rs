@@ -36,6 +36,14 @@ pub fn view(widescreen: bool) -> View {
     }
 }
 
+/// `game` played and drawn for widescreen `on` (real-widescreen DESIGN §2.1, §2.7): the game's
+/// mode and its view always change together, so the strips show the game the mode plays. Every
+/// place the app makes or switches a game goes through here.
+pub fn show(game: &mut sf_core::Game, on: bool) {
+    game.set_widescreen(on);
+    game.set_view(view(on));
+}
+
 /// The largest picture the game draws for the widescreen setting, in its own pixels.
 pub fn frame(widescreen: bool) -> (u32, u32) {
     (GAME.0 + 2 * view(widescreen).extra_columns_each_side as u32, GAME.1)
@@ -184,6 +192,14 @@ mod tests {
         // 16:9 to within a column at every whole scale.
         let (w, h) = frame(true);
         assert!((w as f64 / h as f64 - 16.0 / 9.0).abs() < 1.0 / h as f64 * 2.0);
+    }
+
+    /// real-widescreen DESIGN §2.1: the game's wide screen edges and the picture's strips are one
+    /// number, or the strips would show what the game does not keep alive.
+    #[test]
+    fn the_games_wide_extra_is_the_pictures_extra_columns() {
+        assert_eq!(sf_core::level::screen::WIDE_EXTRA, extra_columns(GAME.1));
+        assert_eq!(sf_core::level::screen::WIDE_EXTRA, view(true).extra_columns_each_side);
     }
 
     /// bug-recorder T09: the bar adds its height under the picture, and the picture keeps the

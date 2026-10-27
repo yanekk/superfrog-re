@@ -44,6 +44,8 @@ fn played(
         stopped_at: Some(g.location()),
         note: "built by recorder_follow.rs".into(),
         inputs,
+        widescreen: false,
+        toggles: Vec::new(),
     }
 }
 
@@ -127,6 +129,8 @@ fn a_recording_the_original_leaves_is_put_back_on_it() {
         stopped_at: Some(g.location()),
         note: "complete-w4-3, 700 steps".into(),
         inputs,
+        widescreen: false,
+        toggles: Vec::new(),
     };
     // The judging run's engine on each frame, before it steps: after a put-back it starts from
     // the original written with the recording's engine, so it holds the owner's game there.
@@ -194,6 +198,8 @@ fn a_recording_the_original_leaves_for_good_is_judged_only_up_to_there() {
             stopped_at: Some(g.location()),
             note: "W1-1's exit forced in the recording's engine only".into(),
             inputs,
+            widescreen: false,
+            toggles: Vec::new(),
         }
     };
     let exit: &Pokes = &[(LEVEL_STATE, 1u32.to_be_bytes().to_vec())];

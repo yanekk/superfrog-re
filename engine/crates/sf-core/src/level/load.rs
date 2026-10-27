@@ -15,6 +15,7 @@ use sf_assets::{LevelId, World};
 use crate::frog::{self, FROG};
 use crate::layout::{H0, H1, H2, H3, LAYOUT, h0, h1};
 use crate::level::beam::Cost;
+use crate::level::screen::Screen;
 use crate::level::{Dispatch, Hw, LevelCtx, camera, collision, scroll, standard_dispatch};
 use crate::mem::Bus;
 use crate::render::{DisplayData, HERO_SPRITES};
@@ -58,16 +59,18 @@ const ROW: u32 = 0x260;
 /// Leave `st` as the original's memory is on the frame `level_frame_loop` starts for `id`, from
 /// a game started at that level's code.
 pub fn enter(st: &mut State, display: &DisplayData, id: LevelId) -> Vec<&'static str> {
-    enter_with(st, display, id, standard_dispatch())
+    enter_with(st, display, id, standard_dispatch(), Screen::NARROW)
 }
 
-/// [`enter`], spawning only the object kinds `dispatch` has (none, for a frog-only game). Returns
-/// what it met and does not follow ([`LevelCtx::unported`]).
+/// [`enter`], spawning only the object kinds `dispatch` has (none, for a frog-only game), against
+/// `screen` (widescreen's start point and first scan, real-widescreen DESIGN §2.5). Returns what
+/// it met and does not follow ([`LevelCtx::unported`]).
 pub fn enter_with(
     st: &mut State,
     display: &DisplayData,
     id: LevelId,
     dispatch: &Dispatch,
+    screen: Screen,
 ) -> Vec<&'static str> {
     boot_image(st, display);
     world_sound(st, display, id);
@@ -82,6 +85,7 @@ pub fn enter_with(
         display.sound(),
         &mut paula,
     );
+    c.screen = screen;
     new_game(&mut c, id);
     // The disk the map file was read from, which the next load's disk check reads (T21).
     if let Some(disk) = crate::front::chain::level_disk(&display.front, id) {
@@ -432,6 +436,7 @@ fn panel_clear(b: &mut Bus) {
 /// scroller's state reset (h0+$164c2), the drawn rows cleared and the drawn columns set to the
 /// camera's, one scroll and its blits, the scroll latched.
 fn start_point(c: &mut LevelCtx) {
+    let screen = c.screen;
     let b = &mut c.bus;
     let shooter = b.w(camera::SHOOTER_MODE);
     b.set_w(camera::SHOOTER_MODE, 0);
@@ -440,12 +445,13 @@ fn start_point(c: &mut LevelCtx) {
     b.set_w(FROG + 2, (y as u16).wrapping_add(0x70));
     b.set_l(camera::CAMERA_X, x);
     b.set_l(camera::CAMERA_Y, y);
-    let right = b.w(camera::LEVEL_WIDTH).wrapping_sub(0x168);
+    // `keep_inside`'s clamp, widescreen's included (real-widescreen DESIGN §2.5).
+    let right = b.w(camera::LEVEL_WIDTH).wrapping_sub(screen.camera_right());
     if !crate::level::n_clear(right.wrapping_sub(b.w(camera::CAMERA_X + 2))) {
         b.set_w(camera::CAMERA_X + 2, right);
     }
-    if !crate::level::n_clear(b.w(camera::CAMERA_X + 2).wrapping_sub(0x10)) {
-        b.set_l(camera::CAMERA_X, 0x10);
+    if !crate::level::n_clear(b.w(camera::CAMERA_X + 2).wrapping_sub(screen.camera_left())) {
+        b.set_l(camera::CAMERA_X, screen.camera_left() as u32);
     }
     let bottom = b.w(camera::LEVEL_HEIGHT).wrapping_sub(0xf0);
     if !crate::level::n_clear(bottom.wrapping_sub(b.w(camera::CAMERA_Y + 2))) {

@@ -17,6 +17,7 @@ owns = [
   "engine/crates/sf-core/Cargo.toml",
   "engine/crates/sf-core/tests/savestate.rs",
   "engine/crates/sf-core/tests/start_level.rs",
+  "engine/crates/sf-core/tests/widescreen_mode.rs",
 ]
 +++
 
@@ -82,15 +83,17 @@ game is written to a file (save states and bug recordings).
   state's own `.sflevel` maps are put back (`Game::restore_display`).
 - **Bug recordings** (`engine/crates/sf-core/src/recording.rs`;
   [bug-recorder DESIGN §2.6](../../plans/bug-recorder/DESIGN.md)). `Recording` is a text format:
-  a fixed header (`superfrog recording 1`, build, the `LevelSetup`, the seed, frames, `stopped-at`
-  as a `Location`, the note) and the inputs in the conformance script's tokens. One parser
+  a fixed header (`superfrog recording 2`, build, the `LevelSetup`, `widescreen` at frame 0, the
+  seed, frames, `stopped-at` as a `Location`, the note) and the inputs in the conformance script's
+  tokens, plus `W` where widescreen toggles (version 1, without either, reads as widescreen off). One parser
   (`Recording::parse`, `Recording::to_text`) serves the app (`engine/crates/sf-app/src/recorder.rs`)
   and `sf-conform` (`engine/crates/sf-conform/src/bug.rs`).
 - `engine/crates/sf-core/src/lib.rs` declares the modules and re-exports the crate's public
   types; `engine/crates/sf-core/Cargo.toml` names its dependencies (`sf-assets`, `sf-disk` for the
   intro's `ATN!` unpacking, `sf-paula`, `serde` and `bincode` for save states).
-- Tests owned here: `engine/crates/sf-core/tests/savestate.rs` and
-  `engine/crates/sf-core/tests/start_level.rs`, plus the unit tests in each file.
+- Tests owned here: `engine/crates/sf-core/tests/savestate.rs`,
+  `engine/crates/sf-core/tests/start_level.rs` and `engine/crates/sf-core/tests/widescreen_mode.rs`
+  (the widescreen mode reaches every level step and is not saved), plus the unit tests in each file.
 
 **What belongs to [cpu-time-and-beam](cpu-time-and-beam.md).** `game.rs` also holds that
 mechanism's interface: `Pacing`, `PassClock`, `LoadEnd`, `Job`, `HandlerEnd`, `Cpu`, `RACE_LINES`

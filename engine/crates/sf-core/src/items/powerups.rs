@@ -177,8 +177,9 @@ fn fly(c: &mut LevelCtx) {
     steer(b, SPUD_VY, b.w(FROG + SPUD_Y) & 0xfff0, to);
     let (x, y) = (b.w(FROG + SPUD_X), b.w(FROG + SPUD_Y));
     let (cx, cy) = (b.w(CAMERA_X + 2), b.w(CAMERA_Y + 2));
-    if n_clear(cx.wrapping_sub(x))
-        || !n_clear(cx.wrapping_add(0x150).wrapping_sub(x))
+    // Parked off either side of the screen: in widescreen its edges (real-widescreen DESIGN §2.6).
+    if n_clear(cx.wrapping_sub(c.screen.spud_left()).wrapping_sub(x))
+        || !n_clear(cx.wrapping_add(c.screen.spud_right()).wrapping_sub(x))
         || n_clear(cy.wrapping_sub(y))
         || !n_clear(cy.wrapping_add(0x110).wrapping_sub(y))
     {
