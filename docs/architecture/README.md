@@ -217,6 +217,10 @@ slot draw, story simulator) where they can share one clock
 rewritten afterwards must still emit timed writes. Must keep: a beam position on every Paula write
 (notes are otherwise lost, T213), on every display write that can race the beam, and frames ending
 mid-pass where the original's did in conformance ([cpu-time-and-beam §5](cpu-time-and-beam.md)).
+Done (minimal) 2026-10-28 (plan one-clock): one `BeamPos`, the frame and line lengths, a generic
+`Clock`, the blitter's timing, `Timeline` and the front end's and slot draw's roundings as named
+policies live in `engine/crates/amiga-clock`; costs stay inline, and the story simulator keeps its
+own arbitration.
 
 **3. The frame, interrupts and input: two explicit schedulers.** A per-frame step (the vertical
 blank's work, in its order) and a per-pass step (the 25 Hz pass), behind an explicit frame boundary,
