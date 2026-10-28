@@ -9,9 +9,9 @@ task you pick up, and append yours there.
 
 **Plan reviewed:** 2026-10-27 — 3 fixed, 1 decided with the user
 
-**Status:** T01 implemented, awaiting review.
+**Status:** T01 done; T02 next.
 **Last updated:** 2026-10-28
-**Next `pir-work` will:** review T01.
+**Next `pir-work` will:** implement T02.
 
 ## Tasks
 
@@ -20,11 +20,11 @@ done · ⛔ blocked, needs a human.
 
 | # | Task | Depends on | State | Notes |
 |---|---|---|---|---|
-| T01 | beam-pos-and-constants | — | 🔍 | `amiga-clock`: `BeamPos`, four lengths, 6 tests; copper `Beam` aliases it; every length reads it. Deviations: story `cpu::LINE` renamed `LINE_SLOTS` (counted name); front/slot names kept as `use … as` aliases; base `story`/`channels` not run, `channels` red pre-existing (FINDINGS). |
+| T01 | beam-pos-and-constants | — | ✅ | Review clean, no fix commit. Mutated `plus_slots`, `dma`, `paula_hpos`: amiga-clock tests red (client crates' unit tests stay green). Ran story_draws/blits, frog_cases, purity, beam, sf-core front/savestate, examples build; length-literal sweep clean; `channels` whole-game run gives the same verdict on base `1249729` as after (FINDINGS). |
 | T02 | generic-clock | T01 | ⬜ | |
 | T03 | front-end-and-slot-policies | T02 | ⬜ | |
 
-**Review queue:** T01
+**Review queue:** empty
 
 ## Blocked on the user
 
