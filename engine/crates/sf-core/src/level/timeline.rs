@@ -97,3 +97,70 @@ impl Timeline {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::level::beam::{Clock, Cost};
+
+    fn hex(b: &[u8]) -> String {
+        b.iter().map(|x| format!("{x:02x}")).collect()
+    }
+
+    /// Two writes 1000 and 500 CPU cycles in, 300 after the last; an index past the writes is
+    /// skipped.
+    fn sample() -> Timeline {
+        let mut costs = vec![0; Cost::COUNT];
+        costs[Cost::VblEntry as usize] = 500;
+        let trace = [
+            Tick::Cpu(Cost::VblEntry, 2),
+            Tick::Write(0),
+            Tick::Cpu(Cost::VblEntry, 1),
+            Tick::Write(1),
+            Tick::Write(5),
+            Tick::Blit(150),
+        ];
+        let job = Job {
+            inside: vec![0x1234_5678],
+            writes: vec![(0x100, 4)],
+        };
+        Timeline::of(&trace, &costs, &[(0xa0, 1), (0x96, 0x8001)], job)
+    }
+
+    /// Save states hold a `Clock` (in `Pending`) and a `Timeline` (in a front-end routine): their
+    /// bytes, captured before the clock moved to `amiga-clock` (one-clock T02), must not change.
+    #[test]
+    fn a_clock_and_a_timeline_keep_their_save_state_bytes() {
+        let clock = Clock {
+            line: 0x123,
+            into: 77,
+        };
+        assert_eq!(hex(&bincode::serialize(&clock).unwrap()), "23014d000000");
+        let fresh = sample();
+        assert_eq!(
+            hex(&bincode::serialize(&fresh).unwrap()),
+            "0200000000000000e8030000a0000100f4010000960001802c0100000000000000000000e8030000000000000101000000000000007856341201000000000000000001000004000000"
+        );
+        // Mid-run (yielded at the frame's end, its job handed over) and finished.
+        let polled = Timeline {
+            left: 546,
+            job: None,
+            ..sample()
+        };
+        assert_eq!(
+            hex(&bincode::serialize(&polled).unwrap()),
+            "0200000000000000e8030000a0000100f4010000960001802c0100000000000000000000220200000000000000"
+        );
+        let done = Timeline {
+            at: 2,
+            left: 0,
+            spare: 438,
+            job: None,
+            ..sample()
+        };
+        assert_eq!(
+            hex(&bincode::serialize(&done).unwrap()),
+            "0200000000000000e8030000a0000100f4010000960001802c010000020000000000000000000000b601000000"
+        );
+    }
+}
