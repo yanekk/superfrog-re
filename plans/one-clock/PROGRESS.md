@@ -9,9 +9,9 @@ task you pick up, and append yours there.
 
 **Plan reviewed:** 2026-10-27 — 3 fixed, 1 decided with the user
 
-**Status:** Planned; nothing built.
-**Last updated:** 2026-10-27
-**Next `pir-work` will:** T01, the only task with no dependency.
+**Status:** T01, T02 done; T03 built, awaiting review.
+**Last updated:** 2026-10-28
+**Next `pir-work` will:** review T03.
 
 ## Tasks
 
@@ -22,9 +22,9 @@ done · ⛔ blocked, needs a human.
 |---|---|---|---|---|
 | T01 | beam-pos-and-constants | — | ✅ | |
 | T02 | generic-clock | T01 | ✅ | |
-| T03 | front-end-and-slot-policies | T02 | ⬜ | |
+| T03 | front-end-and-slot-policies | T02 | 🔍 | `amiga_clock::policy`, five functions, 5 sweep tests against the old code. Deviations: `Cx` keeps `line`/`into` (allowed); slot `spend`, `done` stay as thin wrappers so their tests are unchanged; `finish_frame`'s fade line divisions left inline (costs, not spend); `sf-conform all` run in two parts. |
 
-**Review queue:** *(empty)*
+**Review queue:** T03
 
 ## Blocked on the user
 

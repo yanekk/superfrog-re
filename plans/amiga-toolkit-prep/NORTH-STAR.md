@@ -94,20 +94,20 @@ OFS for RE work). Those belong to the extraction plan, not to drafts 1–4.
 Newest column on the right. A step's column is filled by its plan's last task (or its single run),
 on its branch, with the values measured on that branch; they are the values that merge.
 
-| Question | Baseline 2026-10-23 (`e196a2e`) | amiga-chips 2026-10-27 (`pir/amiga-chips-T02`) |
+| Question | Baseline 2026-10-23 (`e196a2e`) | amiga-chips 2026-10-27 (`pir/amiga-chips-T02`) | one-clock 2026-10-28 (`pir/one-clock-T03`) |
 |---|---|---|
-| M1 | not run by this session; last full `sf-conform all` was rust-engine T217 | DESIGN §4 sf-conform runs green (41 cases incl. `complete-w1-1`; story ×9; story music) and a regression subset of the test block; the whole block runs at the plan's end; `sf-conform all` not run |
-| M2 kbd_poll | 2 | 2 |
-| M2 key-byte encode | 4 | 4 |
-| M2 blitter memory effect | 4 (`Blit::run`, `objects::blit`, `scroll::blit`, `blit_panel`) | 1 (`Blit::run`) |
-| M2 BLTSIZE decodes | 9 | 3 |
-| M2 chip-memory containers | 3 (`AmigaMemory` ×2, `StoryMem`) | 2 (`AmigaMemory`, `StoryMem`) |
-| M2 `is_paula` | 2 | 1 |
-| M2 frame/line constants | 12 (8 in sf-core, 4 in sf-conform probes and tests) | 12 (2 now in amiga-chips) |
-| M2 beam-position types | 6 (`Clock`, `Beam`, `Cx` ×2, slot `spend`, `sim::beam`) | 5 (copper `Beam` moved to amiga-chips; measure.sh scans sf-core only) |
-| M2 hunk-0 loads | 4 | 4 |
-| M3 | 52 | 52 |
-| M4 | 1 (`sf-paula`) | 2 (`sf-paula`, `amiga-chips`) |
-| M5 | 838 | 1575 (838 + 737) |
-| J1 | not asked yet | not asked |
-| J2 | not asked yet | not asked |
+| M1 | not run by this session; last full `sf-conform all` was rust-engine T217 | DESIGN §4 sf-conform runs green (41 cases incl. `complete-w1-1`; story ×9; story music) and a regression subset of the test block; the whole block runs at the plan's end; `sf-conform all` not run | `sf-conform all` 216 cases green (213 in one run cut by a 2 h limit, the last 3 run after); `whole_game.rs` 7 green; DESIGN §4 runs green except `channels`' whole-game test, which fails only its pre-existing `T216` label assert, its verdict byte-identical to base; test block runs at the plan's end |
+| M2 kbd_poll | 2 | 2 | 2 |
+| M2 key-byte encode | 4 | 4 | 4 |
+| M2 blitter memory effect | 4 (`Blit::run`, `objects::blit`, `scroll::blit`, `blit_panel`) | 1 (`Blit::run`) | 1 |
+| M2 BLTSIZE decodes | 9 | 3 | 3 |
+| M2 chip-memory containers | 3 (`AmigaMemory` ×2, `StoryMem`) | 2 (`AmigaMemory`, `StoryMem`) | 2 |
+| M2 `is_paula` | 2 | 1 | 1 |
+| M2 frame/line constants | 12 (8 in sf-core, 4 in sf-conform probes and tests) | 12 (2 now in amiga-chips) | 2 (`FRAME_LINES`, `LINE_CYCLES`, both in amiga-clock) |
+| M2 beam-position types | 6 (`Clock`, `Beam`, `Cx` ×2, slot `spend`, `sim::beam`) | 5 (copper `Beam` moved to amiga-chips; measure.sh scans sf-core only) | 6, each a `BeamPos` client or `BeamPos` itself (`BeamPos`, `Clock<T>`, `Cx` ×2, slot `spend` over `policy`, `sim::beam`); measure.sh scans `engine/crates` |
+| M2 hunk-0 loads | 4 | 4 | 4 |
+| M3 | 52 | 52 | 52 |
+| M4 | 1 (`sf-paula`) | 2 (`sf-paula`, `amiga-chips`) | 3 (`sf-paula`, `amiga-chips`, `amiga-clock`) |
+| M5 | 838 | 1575 (838 + 737) | 2425 (838 + 763 + 824) |
+| J1 | not asked yet | not asked | left for the owner |
+| J2 | not asked yet | not asked | left for the owner |
