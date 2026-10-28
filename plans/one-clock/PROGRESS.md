@@ -9,9 +9,9 @@ task you pick up, and append yours there.
 
 **Plan reviewed:** 2026-10-27 — 3 fixed, 1 decided with the user
 
-**Status:** T01, T02 done; T03 built, awaiting review.
+**Status:** T01, T02, T03 done.
 **Last updated:** 2026-10-28
-**Next `pir-work` will:** review T03.
+**Next `pir-work` will:** nothing; the plan's tasks are done.
 
 ## Tasks
 
@@ -22,9 +22,9 @@ done · ⛔ blocked, needs a human.
 |---|---|---|---|---|
 | T01 | beam-pos-and-constants | — | ✅ | |
 | T02 | generic-clock | T01 | ✅ | |
-| T03 | front-end-and-slot-policies | T02 | 🔍 | `amiga_clock::policy`, five functions, 5 sweep tests against the old code. Deviations: `Cx` keeps `line`/`into` (allowed); slot `spend`, `done` stay as thin wrappers so their tests are unchanged; `finish_frame`'s fade line divisions left inline (costs, not spend); `sf-conform all` run in two parts. |
+| T03 | front-end-and-slot-policies | T02 | ✅ | Review: one fix, NORTH-STAR log delimiter row had 3 cells for 4 columns. Mutations caught: `spend_stolen` rounding (policy sweep), `Cx::busy` floor (`front` conform). Ran `front`, `slot_routines`, `beam`, `alone`, measure.sh, docs test green; `sf-conform all`, `whole_game` read-only. Fade, `interrupt_lines` divisions logged. |
 
-**Review queue:** T03
+**Review queue:** *(empty)*
 
 ## Blocked on the user
 
