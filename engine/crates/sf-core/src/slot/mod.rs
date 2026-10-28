@@ -29,7 +29,7 @@ pub(super) const SOUND_KEPT_LEN: u32 = 0xfa00;
 
 /// The slot machine's frames are short, 312 lines (the oracle's, T129): its lamps' timing on the
 /// bus and its audio DMA count them so.
-pub(crate) const FRAME_LINES: u16 = 312;
+pub(crate) use amiga_clock::SHORT_FRAME_LINES as FRAME_LINES;
 
 /// `slot_state` (h0+$49c6): the coins put in, the three reels' positions, the hi-lo count, ...
 pub(crate) const COINS: u32 = at(0x49c6);

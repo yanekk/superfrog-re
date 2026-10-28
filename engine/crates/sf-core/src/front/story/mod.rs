@@ -86,9 +86,6 @@ const COPPER_SEES_HANDLER: u16 = 2;
 /// writes before it go with the frame before (oracle: the black list's DMACON on cycle 12).
 const BEFORE_IRQ: u16 = 0x14;
 
-/// Lines in a long frame; a short one has one fewer.
-const LONG_FRAME: u16 = 313;
-
 /// What a routine sees while it runs.
 pub struct Cx<'a> {
     pub m: &'a mut StoryMem,
@@ -112,7 +109,11 @@ pub struct Cx<'a> {
 
 impl Cx<'_> {
     fn frame_lines(&self) -> u16 {
-        if self.lof { LONG_FRAME } else { LONG_FRAME - 1 }
+        if self.lof {
+            amiga_clock::FRAME_LINES
+        } else {
+            amiga_clock::SHORT_FRAME_LINES
+        }
     }
 
     /// Busy-wait for the beam to reach a line whose low byte is each of `bytes` in turn
@@ -578,7 +579,7 @@ impl Story {
                         );
                         let mut cycles: Vec<u32> = taken
                             .iter()
-                            .map(|b| b.line as u32 * cpu::LINE + b.h as u32)
+                            .map(|b| b.dma())
                             .chain(audio.iter().copied())
                             .collect();
                         cycles.sort_unstable();
@@ -590,7 +591,7 @@ impl Story {
                 let word = |a: u32, line: u16, h: u16| {
                     // A word the handler's fade step rewrites: as its last write before the
                     // copper's read left it.
-                    let t = line as u32 * cpu::LINE + h as u32;
+                    let t = line as u32 * cpu::LINE_SLOTS + h as u32;
                     let mut rewritten = fade_writes.iter().filter(|w| w.0 == a).peekable();
                     if rewritten.peek().is_some() {
                         let o = a.wrapping_sub(list) as usize;

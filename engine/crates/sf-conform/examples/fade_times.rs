@@ -8,6 +8,9 @@
 use sf_conform::{Case, sync};
 use sf_core::layout::h2;
 
+/// DMA slots in a line.
+const SLOTS: u32 = amiga_clock::LINE_SLOTS as u32;
+
 fn main() {
     let args: Vec<String> = std::env::args().skip(1).collect();
     let case = Case::load(std::path::Path::new(&args[0])).expect("case");
@@ -96,23 +99,23 @@ fn main() {
         }
     };
     let mut prev = run(first, 0);
-    note(first as u32 * 227, &prev);
+    note(first as u32 * SLOTS, &prev);
     for line in first + 1..=last {
         let now = run(line, 0);
         if now != prev {
             // Something changed during the line before: every slot of it.
             for h in (2..0xe4).step_by(2) {
                 let cs = run(line - 1, h);
-                note((line as u32 - 1) * 227 + h as u32, &cs);
+                note((line as u32 - 1) * SLOTS + h as u32, &cs);
             }
         }
-        note(line as u32 * 227, &now);
+        note(line as u32 * SLOTS, &now);
         prev = now;
     }
     for (k, s) in seen.iter().enumerate() {
         let parts: Vec<String> = s
             .iter()
-            .map(|(t, c)| format!("{c:03x}@{}:{}(t{t})", t / 227, t % 227))
+            .map(|(t, c)| format!("{c:03x}@{}:{}(t{t})", t / SLOTS, t % SLOTS))
             .collect();
         println!("colour {k:2}: {}", parts.join(" "));
     }

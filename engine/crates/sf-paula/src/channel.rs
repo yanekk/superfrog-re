@@ -23,9 +23,9 @@ use crate::ChipMemory;
 use crate::write::PaulaWrite;
 
 /// Colour clocks in a PAL line (hpos 0..=0xE2).
-pub const CLOCKS_PER_LINE: u32 = 227;
+pub const CLOCKS_PER_LINE: u32 = amiga_clock::LINE_SLOTS as u32;
 /// Lines in a long PAL frame. A short frame has one fewer.
-pub const LINES_PER_FRAME: u32 = 313;
+pub const LINES_PER_FRAME: u32 = amiga_clock::FRAME_LINES as u32;
 /// Colour clocks (Paula clocks) in a long PAL frame: 3 546 895 / 71 051 = 49.92 Hz.
 pub const CLOCKS_PER_FRAME: u32 = CLOCKS_PER_LINE * LINES_PER_FRAME;
 

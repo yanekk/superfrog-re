@@ -7,6 +7,9 @@
 //! `4 k` cycles after the wait position.
 use sf_conform::{Case, sync};
 
+/// DMA slots in a line.
+const SLOTS: u32 = amiga_clock::LINE_SLOTS as u32;
+
 fn main() {
     let args: Vec<String> = std::env::args().collect();
     let case = Case::load(std::path::Path::new(&args[1])).unwrap();
@@ -100,17 +103,17 @@ fn main() {
             // Something changed during the line before: every position in it.
             for h in (2..0xe4).step_by(2) {
                 let cs = run(line - 1, h);
-                note((line as u32 - 1) * 227 + h as u32, &cs, &mut seen);
+                note((line as u32 - 1) * SLOTS + h as u32, &cs, &mut seen);
             }
         }
-        note(line as u32 * 227, &now, &mut seen);
+        note(line as u32 * SLOTS, &now, &mut seen);
         prev = now;
     }
     let _ = index;
     for (k, s) in seen.iter().enumerate() {
         let parts: Vec<String> = s
             .iter()
-            .map(|(t, c)| format!("{:03x}@{}:{:02x}(t{})", c, t / 227, t % 227, t))
+            .map(|(t, c)| format!("{:03x}@{}:{:02x}(t{})", c, t / SLOTS, t % SLOTS, t))
             .collect();
         println!("colour {k:2}: {}", parts.join(" "));
     }

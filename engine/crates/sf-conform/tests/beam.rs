@@ -12,7 +12,7 @@ use sf_conform::{Case, compare, sync};
 use sf_core::{Game, Start};
 
 /// Colour clocks in a PAL line (a write's `hpos` counts them).
-const LINE: f64 = 227.0;
+const SLOTS: f64 = amiga_clock::LINE_SLOTS as f64;
 
 #[test]
 fn the_cost_model_alone_puts_paula_writes_on_the_originals_lines() {
@@ -48,8 +48,8 @@ fn the_cost_model_alone_puts_paula_writes_on_the_originals_lines() {
         if same && !mid && !after_mid && !two && !theirs.paula.is_empty() {
             measured += 1;
             errors.extend(theirs.paula.iter().zip(&ours.paula).map(|(t, o)| {
-                let at = |w: &sf_paula::PaulaWrite| w.vpos as f64 * LINE + w.hpos as f64;
-                (at(o) - at(t)) / LINE
+                let at = |w: &sf_paula::PaulaWrite| w.vpos as f64 * SLOTS + w.hpos as f64;
+                (at(o) - at(t)) / SLOTS
             }));
         }
         after_mid = mid;
@@ -82,7 +82,7 @@ fn the_cost_model_alone_puts_paula_writes_on_the_originals_lines() {
 /// lines from its INTENA `$4000` to its `$c000` (the raster wait). An effect stealing its channel
 /// makes neither DMACON write and is left out.
 fn sfx_plays(ws: &[sf_paula::PaulaWrite]) -> Vec<(i64, u16)> {
-    let at = |w: &sf_paula::PaulaWrite| w.vpos as i64 * LINE as i64 + w.hpos as i64;
+    let at = |w: &sf_paula::PaulaWrite| w.vpos as i64 * SLOTS as i64 + w.hpos as i64;
     let mut out = Vec::new();
     for (i, w) in ws.iter().enumerate() {
         // DMACON off of one channel, then its period's 1, then INTENA `$4000` and `$c000`.

@@ -1173,7 +1173,7 @@ impl LevelLoad {
 }
 
 /// How long unpacking the progress map's picture takes (fitted to the oracle: T183).
-const MAP_UNPACK_CYCLES: u32 = (30 * 313 + 150) * super::BEAM_CYCLES_PER_LINE;
+const MAP_UNPACK_CYCLES: u32 = (30 * super::FRAME_LINES as u32 + 150) * super::BEAM_CYCLES_PER_LINE;
 
 /// `progress_map_show` (h0+$3de8): the screen before taken down (`overlays_end`), the map's
 /// picture (packed in hunk 0) unpacked, its marker on the level's place, faded in, shown for 300

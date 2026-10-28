@@ -7,7 +7,7 @@
 use sf_conform::{Case, sync};
 use sf_core::layout::h0;
 
-const LINE: u32 = 227;
+const SLOTS: u32 = amiga_clock::LINE_SLOTS as u32;
 
 fn main() {
     let frames: u32 = std::env::args().nth(1).unwrap().parse().unwrap();
@@ -30,10 +30,10 @@ fn main() {
         let mut last = 0;
         let mut wrap = 0;
         for w in amiga.cpu_writes() {
-            let mut c = wrap + w.vpos as u32 * LINE + w.hpos as u32;
+            let mut c = wrap + w.vpos as u32 * SLOTS + w.hpos as u32;
             if c < last {
-                wrap += 313 * LINE;
-                c += 313 * LINE;
+                wrap += amiga_clock::FRAME_LINES as u32 * SLOTS;
+                c += amiga_clock::FRAME_LINES as u32 * SLOTS;
             }
             last = c;
             t.push((c, w.reg, w.value));
@@ -52,8 +52,8 @@ fn main() {
             "O {} pc {rel:x} entry {entry:?} ack {} ({},{}) dmacon {} delta {}",
             amiga.frame(),
             t[ack].0,
-            t[ack].0 / LINE,
-            t[ack].0 % LINE,
+            t[ack].0 / SLOTS,
+            t[ack].0 % SLOTS,
             d.0,
             d.0 - t[ack].0
         );

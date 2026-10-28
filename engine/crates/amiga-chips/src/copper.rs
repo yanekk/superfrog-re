@@ -8,10 +8,11 @@
 //! (vAmiga `Copper::findMatch`, `runComparator`). The result is every register write with the
 //! beam position it happened at; Denise's side (what a write changes on screen) is the renderer's.
 
-/// DMA cycles per PAL line: `h` runs `0..=$E2`.
-pub const LINE_CYCLES: u16 = 0xE3;
+/// DMA cycles per PAL line: `h` runs `0..=$E2`. The copper counts DMA slots, so its "cycles" are
+/// [`amiga_clock::LINE_SLOTS`], not the CPU's [`amiga_clock::LINE_CYCLES`].
+pub use amiga_clock::LINE_SLOTS as LINE_CYCLES;
 /// Lines per long PAL frame.
-pub const FRAME_LINES: u16 = 313;
+pub use amiga_clock::FRAME_LINES;
 
 /// Custom registers the renderer follows, by their offset from `$DFF000`.
 pub mod reg {
@@ -113,25 +114,12 @@ impl Fetch {
     }
 }
 
-/// A beam position: line and DMA cycle.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
-pub struct Beam {
-    pub line: u16,
-    pub h: u16,
-}
+/// A beam position: the copper's are always on a DMA slot (`from_slot`, read back with `slot`).
+pub use amiga_clock::BeamPos as Beam;
 
-impl Beam {
-    fn plus(self, cycles: u16) -> Beam {
-        let h = self.h + cycles;
-        Beam {
-            line: self.line + h / LINE_CYCLES,
-            h: h % LINE_CYCLES,
-        }
-    }
-
-    fn word(self) -> u32 {
-        (self.line as u32) << 8 | self.h as u32
-    }
+/// The position as the copper's comparator packs it: line in the high byte, slot in the low.
+fn word(b: Beam) -> u32 {
+    (b.line as u32) << 8 | b.slot() as u32
 }
 
 /// Run the copper list at `start` for one frame from the vertical blank, `word` reading chip
@@ -166,49 +154,49 @@ pub fn run_bus(
 ) -> Vec<Write> {
     let mut writes = Vec::new();
     let free = |fetch: &Fetch, b: Beam| {
-        if b.h == 0xE0 {
+        if b.slot() == 0xE0 {
             return false;
         }
-        if b.h % 2 == 1 && b.h != 0xE1 {
+        if b.slot() % 2 == 1 && b.slot() != 0xE1 {
             // Refresh, disk, audio and sprite DMA own the odd cycles before the fetch window,
             // and the bitplanes most of those inside it; the copper reaches an odd cycle only
             // after being turned away at $E0.
-            return b.h > 0x34 && !fetch.takes(b.line, b.h);
+            return b.slot() > 0x34 && !fetch.takes(b.line, b.slot());
         }
-        !fetch.takes(b.line, b.h)
+        !fetch.takes(b.line, b.slot())
     };
     // Whether the copper gets cycle `b` when it asks for it; asked at $E0, it blocks it.
     let ask = |fetch: &Fetch, b: Beam, bus: &mut Vec<Beam>| {
-        if b.h == 0xE0 && !fetch.takes(b.line, b.h) {
+        if b.slot() == 0xE0 && !fetch.takes(b.line, b.slot()) {
             bus.push(b);
         }
         free(fetch, b)
     };
     let next_free = |fetch: &Fetch, mut b: Beam, bus: &mut Vec<Beam>| {
         while b.line < FRAME_LINES && !ask(fetch, b, bus) {
-            b = b.plus(1);
+            b = b.plus_slots(1);
         }
         b
     };
     let mut pc = start;
     // The vertical blank restarts the copper at COP1LC, taking cycle 0; its first fetch is two
     // cycles later.
-    bus.push(Beam { line: 0, h: 0 });
-    let mut b = Beam { line: 0, h: 2 };
+    bus.push(Beam::from_slot(0, 0));
+    let mut b = Beam::from_slot(0, 2);
     let mut skip = false;
     for _ in 0..8192 {
         b = next_free(&fetch, b, bus);
         if b.line >= FRAME_LINES {
             break;
         }
-        let w1 = word(pc, b.line, b.h);
+        let w1 = word(pc, b.line, b.slot());
         bus.push(b);
         pc += 2;
-        b = next_free(&fetch, b.plus(2), bus);
+        b = next_free(&fetch, b.plus_slots(2), bus);
         if b.line >= FRAME_LINES {
             break;
         }
-        let w2 = word(pc, b.line, b.h);
+        let w2 = word(pc, b.line, b.slot());
         bus.push(b);
         pc += 2;
         if w1 & 1 == 0 {
@@ -220,37 +208,37 @@ pub fn run_bus(
                 fetch.write(reg, w2);
                 writes.push(Write {
                     line: b.line,
-                    h: b.h,
+                    h: b.slot(),
                     reg,
                     value: w2,
                 });
             }
-            b = b.plus(2);
+            b = b.plus_slots(2);
             continue;
         }
         let (comp, mask) = (w1 & 0xFFFE, (w2 & 0x7FFE) | 0x8001);
         // WAIT1 and WAIT2 (or SKIP1 and SKIP2) each wait for a free cycle.
-        b = next_free(&fetch, b.plus(2), bus);
-        b = next_free(&fetch, b.plus(2), bus);
+        b = next_free(&fetch, b.plus_slots(2), bus);
+        b = next_free(&fetch, b.plus_slots(2), bus);
         if w2 & 1 == 1 {
-            skip = comparator(b.plus(2), comp, mask);
-            b = b.plus(2);
+            skip = comparator(b.plus_slots(2), comp, mask);
+            b = b.plus_slots(2);
             continue;
         }
         let Some(trigger) = find_match(b, comp, mask) else {
             break; // the end of the list: a wait that never comes
         };
         if trigger == b {
-            b = b.plus(2);
+            b = b.plus_slots(2);
             continue;
         }
         b = trigger;
         while b.line < FRAME_LINES
-            && !(ask(&fetch, b, bus) && b.h.is_multiple_of(2) && comparator(b, comp, mask))
+            && !(ask(&fetch, b, bus) && b.slot().is_multiple_of(2) && comparator(b, comp, mask))
         {
-            b = b.plus(1);
+            b = b.plus_slots(1);
         }
-        b = b.plus(2);
+        b = b.plus_slots(2);
     }
     writes
 }
@@ -262,7 +250,7 @@ fn comparator(b: Beam, comp: u16, mask: u16) -> bool {
     if v != vc {
         return v > vc;
     }
-    let h = if b.h < 0xE0 { b.h + 2 } else { b.h - 0xE0 };
+    let h = if b.slot() < 0xE0 { b.slot() + 2 } else { b.slot() - 0xE0 };
     (h & mask & 0xFF) >= (comp & mask & 0xFF)
 }
 
@@ -273,18 +261,15 @@ fn find_match(from: Beam, comp: u16, mask: u16) -> Option<Beam> {
     let vmask = (mask & 0xFF00) as u32;
     let vcomp = (comp as u32) & vmask;
     while b.line < FRAME_LINES {
-        let v = b.word() & 0xFFFF & vmask;
+        let v = word(b) & 0xFFFF & vmask;
         if v == vcomp {
             if let Some(h) = horizontal_match(b, comp, mask) {
-                return Some(Beam { line: b.line, h });
+                return Some(Beam::from_slot(b.line, h));
             }
         } else if v > vcomp {
             return Some(b);
         }
-        b = Beam {
-            line: b.line + 1,
-            h: 0,
-        };
+        b = Beam::from_slot(b.line + 1, 0);
     }
     None
 }
@@ -294,8 +279,8 @@ fn find_match(from: Beam, comp: u16, mask: u16) -> Option<Beam> {
 fn horizontal_match(b: Beam, comp: u16, mask: u16) -> Option<u16> {
     let v = (b.line as u32 & 0xFF) << 8;
     let (comp, mask) = (comp as u32 & mask as u32, mask as u32);
-    let mut h = b.h;
-    let mut i = b.h as u32 + 2;
+    let mut h = b.slot();
+    let mut i = b.slot() as u32 + 2;
     while i <= 0xE1 {
         if (v | i) & mask >= comp {
             return Some(h);
@@ -354,7 +339,7 @@ mod tests {
         ];
         let mut bus = Vec::new();
         run_bus(&|a, _, _| list(&w)(a), 0, Fetch::default(), &mut bus);
-        let h: Vec<u16> = bus.iter().map(|b| b.h).collect();
+        let h: Vec<u16> = bus.iter().map(|b| b.slot()).collect();
         assert!(bus.iter().all(|b| b.line == 0));
         assert_eq!(h, [0, 2, 4, 6, 8, 10, 12, 14, 16]);
         // WAIT $10,$DC wakes at $DA (the comparator runs two cycles ahead), taking nothing; the
@@ -363,7 +348,7 @@ mod tests {
         let w = [0x10DD, 0xFFFE, 0x0180, 0x0123, 0xFFFF, 0xFFFE];
         let mut bus = Vec::new();
         run_bus(&|a, _, _| list(&w)(a), 0, Fetch::default(), &mut bus);
-        let line: Vec<u16> = bus.iter().filter(|b| b.line == 0x10).map(|b| b.h).collect();
+        let line: Vec<u16> = bus.iter().filter(|b| b.line == 0x10).map(|b| b.slot()).collect();
         assert_eq!(&line[..4], &[0xDC, 0xDE, 0xE0, 0xE1]);
     }
 
@@ -397,38 +382,26 @@ mod tests {
         let comp = 0xFFDE;
         let mask = 0xFFFF;
         assert!(comparator(
-            Beam {
-                line: 0xFF,
-                h: 0xDC
-            },
+            Beam::from_slot(0xFF, 0xDC),
             comp,
             mask
         ));
         assert!(!comparator(
-            Beam {
-                line: 0xFF,
-                h: 0xE1
-            },
+            Beam::from_slot(0xFF, 0xE1),
             comp,
             mask
         ));
         assert_eq!(
             find_match(
-                Beam {
-                    line: 0xFF,
-                    h: 0xE1
-                },
+                Beam::from_slot(0xFF, 0xE1),
                 comp,
                 mask
             ),
             None
         );
         assert_eq!(
-            find_match(Beam { line: 0x40, h: 0 }, comp, mask),
-            Some(Beam {
-                line: 0xFF,
-                h: 0xDC
-            })
+            find_match(Beam::from_slot(0x40, 0), comp, mask),
+            Some(Beam::from_slot(0xFF, 0xDC))
         );
     }
 

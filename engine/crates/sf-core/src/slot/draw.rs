@@ -153,7 +153,7 @@ impl Draw {
                         // DMACON's write: where the original made it, else the engine's cycle.
                         let writes = frame_writes(cx);
                         let at = match cx.schedule.get(writes.len().wrapping_sub(1)) {
-                            Some(&(line, slot)) => line as u32 * cpu::LINE + slot as u32,
+                            Some(&(line, slot)) => line as u32 * cpu::LINE_SLOTS + slot as u32,
                             None => t / 2,
                         };
                         self.plan = plan(cx, at);
@@ -269,7 +269,7 @@ impl Bus for LampBus {
             || self.audio.binary_search(&t).is_ok()
             || self
                 .fetch
-                .takes((r / cpu::LINE) as u16, (r % cpu::LINE) as u16)
+                .takes((r / cpu::LINE_SLOTS) as u16, (r % cpu::LINE_SLOTS) as u16)
     }
 }
 
@@ -280,7 +280,7 @@ impl Bus for LampBus {
 /// next frame's on none (its interrupt's writes come after the lamps' interrupt).
 fn plan(cx: &Cx, dmacon: u32) -> Option<Vec<(u32, u32)>> {
     let lines = super::FRAME_LINES as u32;
-    let frame = lines * cpu::LINE;
+    let frame = lines * cpu::LINE_SLOTS;
     let mut dma = cx.audio?.clone();
     let now = crate::front::anchored(&frame_writes(cx), cx.schedule);
     let mut audio: Vec<u32> = dma.frame(&now, lines).iter().map(|s| s.0).collect();
@@ -289,7 +289,7 @@ fn plan(cx: &Cx, dmacon: u32) -> Option<Vec<(u32, u32)>> {
     crate::render::copper::run_bus(&|a, _, _| cx.w(a), cx.cop1lc, cx.fetch, &mut beams);
     let mut copper: Vec<u32> = beams
         .iter()
-        .map(|b| b.line as u32 * cpu::LINE + b.h as u32)
+        .map(|b| b.dma())
         .filter(|&c| c < frame)
         .collect();
     copper.sort_unstable();

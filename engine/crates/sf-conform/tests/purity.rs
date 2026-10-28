@@ -12,7 +12,14 @@
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
-const PURE: [&str; 5] = ["sf-disk", "sf-assets", "sf-core", "sf-paula", "amiga-chips"];
+const PURE: [&str; 6] = [
+    "sf-disk",
+    "sf-assets",
+    "sf-core",
+    "sf-paula",
+    "amiga-chips",
+    "amiga-clock",
+];
 
 /// Crates a pure crate may depend on (normal and build edges, transitively). Each entry beyond the
 /// pure crates themselves needs one line saying why it is pure (DESIGN §5, Dependencies).
@@ -22,6 +29,7 @@ const ALLOWED: &[&str] = &[
     "sf-core",
     "sf-paula",
     "amiga-chips",
+    "amiga-clock",
     // DEFLATE decoder for the zipped disks (T03): bytes in, bytes out; no I/O, clock, thread or float.
     "miniz_oxide",
     // miniz_oxide's Adler-32 checksum: integer arithmetic over a byte slice.

@@ -10,12 +10,10 @@
 //! and the blitter fewer DMA slots. The costs are fitted to the original's beam positions on the
 //! oracle (its DMACON, INTENA and INTREQ writes, and where its CPU is at each line's end).
 
-/// Lines in a PAL frame.
-pub const FRAME_LINES: u16 = 313;
-/// CPU cycles in a raster line (227 DMA slots of two).
-pub const LINE_CYCLES: u32 = 454;
-/// DMA slots in a raster line.
-pub const LINE_SLOTS: u32 = 227;
+/// Lines in a PAL frame, and CPU cycles in a raster line (227 DMA slots of two).
+pub use amiga_clock::{FRAME_LINES, LINE_CYCLES};
+/// DMA slots in a raster line, as the clock's `u32` slot counts use it.
+pub const LINE_SLOTS: u32 = amiga_clock::LINE_SLOTS as u32;
 
 /// The level's display fetches bitplanes on these lines (the panel from `$27`, the play field to
 /// the window's end): a line there gives the CPU and the blitter less.
@@ -558,12 +556,17 @@ impl Clock {
 
     /// The position in [`LINE_CYCLES`] from the frame's start.
     pub fn nominal(&self) -> u32 {
-        self.line as u32 * LINE_CYCLES + self.into
+        self.pos().nominal()
     }
 
     /// The horizontal position in DMA slots, as the beam counts it.
     pub fn hpos(&self) -> u16 {
-        (self.into / 2).min(LINE_SLOTS - 1) as u16
+        self.pos().paula_hpos()
+    }
+
+    /// The position as a [`amiga_clock::BeamPos`].
+    pub fn pos(&self) -> amiga_clock::BeamPos {
+        amiga_clock::BeamPos::new(self.line, self.into)
     }
 
     /// Past the frame's end: the same moment counted from the next frame's start.

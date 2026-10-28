@@ -130,7 +130,7 @@ pub fn handler_to_draw(resumes: u32) -> Option<sim::Prog> {
 const DRAW_DMACON: u16 = sim::dmacon::DMAEN | sim::dmacon::BLTEN | 0x0100;
 
 /// Lines in each of the intro's frames (interlace is off and the frames stay long).
-pub const LINES: u64 = 313;
+pub const LINES: u64 = amiga_clock::FRAME_LINES as u64;
 
 /// A fade's set-up's CPU time, with interrupts off (oracle: a fade in takes 14 lines for 8
 /// colours and 42 for 32; a fade out 17 for 8).
@@ -595,8 +595,8 @@ impl Intro {
         // Conformance gives where the original took the interrupt, for its writes' times only:
         // the schedule keeps the engine's own lines.
         out.entry = match entry {
-            Some((line, h)) => line as u32 * super::cpu::LINE + h as u32,
-            None => (at - top) as u32 * super::cpu::LINE + IRQ_ENTRY,
+            Some((line, h)) => line as u32 * super::cpu::LINE_SLOTS + h as u32,
+            None => (at - top) as u32 * super::cpu::LINE_SLOTS + IRQ_ENTRY,
         };
         if let Wait::Masked(until) = self.wait
             && until > top
@@ -634,7 +634,7 @@ impl Intro {
             // The wait's read, from where the interrupt was taken (conformance gives the
             // original's: the engine's own line can be far off while a draw's blits hold the CPU).
             let read =
-                out.entry as u64 / super::cpu::LINE as u64 + handler - WAIT_LINES - AFTER_WAIT;
+                out.entry as u64 / super::cpu::LINE_SLOTS as u64 + handler - WAIT_LINES - AFTER_WAIT;
             let split = wait_lines(read) > WAIT_LINES;
             let wait_end = top + read + wait_lines(read);
             let handler_end = if split {
@@ -652,7 +652,7 @@ impl Intro {
             }
             for w in &mut writes {
                 w.vpos = (at - top) as u16;
-                w.hpos = (out.entry % super::cpu::LINE) as u16;
+                w.hpos = (out.entry % super::cpu::LINE_SLOTS) as u16;
             }
             out.handler = ((at - top) as u16, (handler_end - top) as u16);
             out.copper = m.read(list, 0x400);
@@ -684,7 +684,7 @@ impl Intro {
             let k = frame - self.job.as_ref().map_or(frame, |j| j.frame);
             let ack = self
                 .handler_end
-                .map(|e| e.ack.0 as u32 * super::cpu::LINE + e.ack.1 as u32);
+                .map(|e| e.ack.0 as u32 * super::cpu::LINE_SLOTS + e.ack.1 as u32);
             if let Some(j) = &mut self.job {
                 let k = k as usize;
                 if j.acks.len() <= k {
@@ -852,7 +852,7 @@ impl Intro {
                     w.1.vpos = (at % LINES) as u16;
                 }
             }
-            let line = super::cpu::LINE as u64;
+            let line = super::cpu::LINE_SLOTS as u64;
             self.resume = Some(j.end.min(at * line));
         }
         match std::mem::replace(&mut self.then, Then::Nothing) {
@@ -913,7 +913,7 @@ impl Intro {
                     self.finish_busy(m, until);
                 }
                 Wait::Busy { until, .. } => {
-                    let line = super::cpu::LINE as u64;
+                    let line = super::cpu::LINE_SLOTS as u64;
                     if let Some(job) = self.job.as_ref().map(|j| j.end)
                         && until >= end
                         && job < end * line
@@ -984,7 +984,7 @@ impl Intro {
     /// Start the set-up's job `prog` now ([`SimJob`]): from the cycle the last job ended on, or
     /// this line's start. `out`: this frame so far, whose Paula writes run the audio DMA.
     fn start_job(&mut self, m: &StoryMem, out: &IntroFrame, prog: sim::Prog, list: u32) {
-        let line = super::cpu::LINE as u64;
+        let line = super::cpu::LINE_SLOTS as u64;
         let at = self
             .resume
             .take()
@@ -1022,7 +1022,7 @@ impl Intro {
             return;
         };
         let timed = self.run_job(m, &j);
-        let line = super::cpu::LINE as u64;
+        let line = super::cpu::LINE_SLOTS as u64;
         // What was due before this frame has been given out; the rest is scheduled anew.
         let sent = j.scheduled.iter().filter(|w| w.0 < top).count();
         let old: Vec<(u64, u16)> = j.scheduled[sent..].to_vec();
@@ -1056,12 +1056,12 @@ impl Intro {
     /// acknowledge when given, else for the engine's length ([`handler_lines`]).
     fn run_job(&self, m: &StoryMem, j: &SimJob) -> JobTimed {
         // The furthest a handler's acknowledge is from its entry (the longest, a fade's, ~50 lines).
-        const ACK_WITHIN: u32 = 60 * super::cpu::LINE;
+        const ACK_WITHIN: u32 = 60 * super::cpu::LINE_SLOTS;
         // Frames enough for the longest set-up (the masks' clearing alone is about nine).
         const FRAMES: usize = 24;
         let fixed = self.fixed_from(m, &j.audio, &j.writes, FRAMES, j.list);
         let mut s = sim::Sim::new(j.start, &fixed, DRAW_DMACON);
-        let handler = (handler_lines(m) as u32 * super::cpu::LINE).saturating_sub(2);
+        let handler = (handler_lines(m) as u32 * super::cpu::LINE_SLOTS).saturating_sub(2);
         let (mut handlers, mut merged) = (Vec::new(), Vec::new());
         let mut next = sim::FRAME + IRQ_ENTRY;
         let mut take = |s: &mut sim::Sim| {
@@ -1094,7 +1094,7 @@ impl Intro {
             }
         };
         j.prog.run(&mut s, 0, &mut take);
-        let base = j.frame * LINES * super::cpu::LINE as u64;
+        let base = j.frame * LINES * super::cpu::LINE_SLOTS as u64;
         JobTimed {
             end: base + s.t as u64,
             dmacon: s
@@ -1120,8 +1120,8 @@ impl Intro {
                 Some(HandlerEnd {
                     ack,
                     resumes: Some(r),
-                }) => (ack.0 as u32 * super::cpu::LINE + ack.1 as u32, r),
-                _ => ((self.t % LINES) as u32 * super::cpu::LINE, default),
+                }) => (ack.0 as u32 * super::cpu::LINE_SLOTS + ack.1 as u32, r),
+                _ => ((self.t % LINES) as u32 * super::cpu::LINE_SLOTS, default),
             };
             Some((ack, handler_to_draw(resumes)?))
         });
@@ -1132,7 +1132,7 @@ impl Intro {
         now.sort_by_key(|w| w.vpos);
         let timed = self.time_draw(m, &prog, lead, &now);
         let base = self.t - self.t % LINES;
-        let line = |t: u32| base + (t / super::cpu::LINE) as u64;
+        let line = |t: u32| base + (t / super::cpu::LINE_SLOTS) as u64;
         self.write_at(line(timed.dmacon), 0x96, 0x8400);
         self.handler_at = timed.handlers.iter().map(|&t| line(t)).collect();
         self.merged = timed.merged.iter().map(|&t| line(t)).collect();
@@ -1165,7 +1165,7 @@ impl Intro {
         now: &[PaulaWrite],
     ) -> Timed {
         let fixed = self.fixed(m, 3, now);
-        let line = super::cpu::LINE as u64;
+        let line = super::cpu::LINE_SLOTS as u64;
         let start = match &lead {
             // The acknowledge's write took its cycle: the CPU goes on from the next.
             Some((ack, _)) => ack + 1,
@@ -1173,12 +1173,12 @@ impl Intro {
             None => self
                 .resume
                 .filter(|r| r / line == self.t)
-                .map_or((self.t % LINES) as u32 * super::cpu::LINE, |r| {
+                .map_or((self.t % LINES) as u32 * super::cpu::LINE_SLOTS, |r| {
                     (r - (self.t - self.t % LINES) * line) as u32
                 }),
         };
         let mut s = sim::Sim::new(start, &fixed, DRAW_DMACON);
-        let handler = (handler_lines(m) as u32 * super::cpu::LINE).saturating_sub(2);
+        let handler = (handler_lines(m) as u32 * super::cpu::LINE_SLOTS).saturating_sub(2);
         let (mut handlers, mut merged) = (Vec::new(), Vec::new());
         let mut next = sim::FRAME + IRQ_ENTRY;
         let mut take = |s: &mut sim::Sim| {
@@ -1763,7 +1763,7 @@ mod tests {
             write(10, 0xa6, 200),
             write(10, 0x96, 0x8001),
         ];
-        let at = |line: u32, h: u32| line * super::super::cpu::LINE + h;
+        let at = |line: u32, h: u32| line * super::super::cpu::LINE_SLOTS + h;
         let fixed = intro.fixed(&m, 1, &on);
         assert!(fixed.taken(at(11, 0x0d)) && fixed.taken(at(12, 0x0d)));
         assert!(!intro.fixed(&m, 1, &[]).taken(at(11, 0x0d)));

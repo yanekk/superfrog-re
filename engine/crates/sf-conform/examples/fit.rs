@@ -17,6 +17,9 @@ use sf_conform::{Case, sync};
 use sf_core::level::beam::{COSTS, Clock, Cost, Tick};
 use sf_core::{Game, Start};
 
+/// CPU cycles in a line.
+const CYCLES: f64 = amiga_clock::LINE_CYCLES as f64;
+
 /// A frame: its clock steps, and the original's times (nominal cycles) for its writes (by index)
 /// and its landmarks (by the cost they mark).
 struct Frame {
@@ -35,15 +38,15 @@ fn eval(frames: &[Frame], th: &[f64], with_marks: bool) -> (Vec<f64>, Vec<Vec<f6
         let mut d = vec![0.0; np];
         let mut writes: Vec<(u32, f64, Vec<f64>)> = Vec::new();
         let mut marks: Vec<(Cost, f64, Vec<f64>)> = Vec::new();
-        let now = |c: &Clock| c.line as f64 * 454.0 + c.into as f64;
+        let now = |c: &Clock| c.line as f64 * CYCLES + c.into as f64;
         for t in &f.trace {
             match *t {
                 Tick::Cpu(k, n) => {
                     if !marks.iter().any(|m| m.0 == k) {
                         marks.push((k, now(&c), d.clone()));
                     }
-                    let fetching = (0x27..0x12c).contains(&(c.line % 313));
-                    let rate = if fetching { 454.0 / 414.0 } else { 1.0 };
+                    let fetching = (0x27..0x12c).contains(&(c.line % amiga_clock::FRAME_LINES));
+                    let rate = if fetching { CYCLES / 414.0 } else { 1.0 };
                     d[k as usize] += n as f64 * rate;
                     c.cpu((n as f64 * th[k as usize]).max(0.0).round() as u32);
                 }
@@ -77,7 +80,7 @@ fn eval(frames: &[Frame], th: &[f64], with_marks: bool) -> (Vec<f64>, Vec<Vec<f6
 }
 
 fn stats(r: &[f64]) -> String {
-    let mut a: Vec<f64> = r.iter().map(|x| x / 454.0).collect();
+    let mut a: Vec<f64> = r.iter().map(|x| x / CYCLES).collect();
     if a.is_empty() {
         return "none".into();
     }
@@ -148,7 +151,7 @@ fn main() {
                         .iter()
                         .enumerate()
                         .filter(|(_, w)| w.reg < 0xa0)
-                        .map(|(i, w)| (i as u32, w.vpos as f64 * 454.0 + w.hpos as f64 * 2.0))
+                        .map(|(i, w)| (i as u32, w.vpos as f64 * CYCLES + w.hpos as f64 * 2.0))
                         .collect(),
                     labels: theirs
                         .paula
@@ -159,7 +162,7 @@ fn main() {
                     marks: MARKS
                         .iter()
                         .zip(&om)
-                        .filter_map(|(m, o)| o.map(|l| (m.2, l as f64 * 454.0 + 227.0)))
+                        .filter_map(|(m, o)| o.map(|l| (m.2, l as f64 * CYCLES + CYCLES / 2.0)))
                         .collect(),
                 });
             }
@@ -176,7 +179,7 @@ fn main() {
     let np = th.len();
     let weights = |r: &[f64]| -> Vec<f64> {
         r.iter()
-            .map(|r| (2.0 * 454.0 / r.abs().max(1.0)).min(1.0))
+            .map(|r| (2.0 * CYCLES / r.abs().max(1.0)).min(1.0))
             .collect()
     };
     let cost = |r: &[f64], w: &[f64]| -> f64 { r.iter().zip(w).map(|(r, w)| r * r * w).sum() };
@@ -280,7 +283,7 @@ fn main() {
         for w in pts.windows(2) {
             seg.entry(format!("{} -> {}", w[0].1, w[1].1))
                 .or_default()
-                .push((w[1].2 - w[0].2) / 454.0);
+                .push((w[1].2 - w[0].2) / CYCLES);
         }
     }
     let mut rows: Vec<(f64, String)> = seg

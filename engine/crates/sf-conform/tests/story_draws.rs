@@ -17,7 +17,7 @@ use std::ops::Range;
 
 use sf_conform::{Case, sync};
 use sf_core::front::story::sim::{self, Fixed, Sim};
-use sf_core::front::story::{StoryMem, bobs, cpu::LINE, intro, mem::RAM_BYTES, vbl};
+use sf_core::front::story::{StoryMem, bobs, cpu::LINE_SLOTS, intro, mem::RAM_BYTES, vbl};
 use sf_core::render::copper::{self, Fetch};
 use sf_paula::AudioDma;
 
@@ -64,7 +64,7 @@ struct Frame {
 
 /// A beam position of the step as a cycle from the frame's start (`next`: in the frame after).
 fn cycle(vpos: u16, hpos: u16, next: bool) -> u32 {
-    vpos as u32 * LINE + hpos as u32 + if next { sim::FRAME } else { 0 }
+    vpos as u32 * LINE_SLOTS + hpos as u32 + if next { sim::FRAME } else { 0 }
 }
 
 /// Step the oracle through the last of `ranges`, checking each draw that starts in one of them;
@@ -119,7 +119,7 @@ fn check_draws(ranges: &[Range<u32>]) -> Vec<(u32, bool)> {
         let mut frame_of = 0;
         let mut last = 0;
         for w in &raw {
-            let mut t = frame_of * sim::FRAME + w.vpos as u32 * LINE + w.hpos as u32;
+            let mut t = frame_of * sim::FRAME + w.vpos as u32 * LINE_SLOTS + w.hpos as u32;
             if t < last {
                 frame_of += 1;
                 t += sim::FRAME;
@@ -379,14 +379,14 @@ fn audio_dma_takes_the_originals_slots_across_scene_1s_effect() {
                     let h = 0x0d + 2 * n as usize;
                     (4..=7)
                         .contains(&s.owners[h])
-                        .then(|| ((s.vpos as u32 - 1) * LINE + h as u32, s.owners[h] - 4))
+                        .then(|| ((s.vpos as u32 - 1) * LINE_SLOTS + h as u32, s.owners[h] - 4))
                 })
             })
             .collect();
         let ours: Vec<(u32, u8)> = ours
             .iter()
             .copied()
-            .filter(|s| lines.contains(&(s.0 / LINE)))
+            .filter(|s| lines.contains(&(s.0 / LINE_SLOTS)))
             .collect();
         assert_eq!(ours, theirs, "oracle frame {number}: audio slots");
         compared += theirs.len();

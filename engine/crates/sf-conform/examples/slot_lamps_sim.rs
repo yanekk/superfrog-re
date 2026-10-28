@@ -9,7 +9,7 @@ use sf_core::front::story::cpu::{self, Bus};
 use sf_core::front::story::sim::{Prog, Sim};
 use sf_paula::AudioDma;
 
-const LINE: u32 = 227;
+const SLOTS: u32 = amiga_clock::LINE_SLOTS as u32;
 
 struct B {
     lines: u32,
@@ -22,8 +22,8 @@ impl Bus for B {
         cpu::refresh(t)
             || self.planes.binary_search(&t).is_ok()
             || self.audio.binary_search(&t).is_ok()
-            || (t >= self.lines * LINE
-                && self.copper.binary_search(&(t - self.lines * LINE)).is_ok())
+            || (t >= self.lines * SLOTS
+                && self.copper.binary_search(&(t - self.lines * SLOTS)).is_ok())
     }
 }
 
@@ -148,12 +148,12 @@ fn main() {
                         .iter()
                         .enumerate()
                         .filter(|(_, o)| **o == 24)
-                        .map(move |(h, _)| l * LINE + h as u32)
+                        .map(move |(h, _)| l * SLOTS + h as u32)
                         .collect::<Vec<_>>()
                 })
                 .collect();
             let mut aud = pslots.clone();
-            aud.extend(slots.iter().map(|t| t + plines * LINE));
+            aud.extend(slots.iter().map(|t| t + plines * SLOTS));
             let bus = B {
                 lines: plines,
                 planes: planes_of.clone(),
@@ -164,13 +164,13 @@ fn main() {
             sizes.extend(starts.iter().map(|b| b.0));
             let p = prog(&on, &sizes);
             let w = if std::env::var("FIXSTART").is_ok() {
-                299 * LINE + 88
+                299 * SLOTS + 88
             } else {
                 w
             };
             let mut sim = Sim::new(w + 1, &bus, 0x0240);
             sim.poke(w, 0x96, 0x8400);
-            let irq = plines * LINE + std::env::var("IRQ").map_or(1, |v| v.parse().unwrap());
+            let irq = plines * SLOTS + std::env::var("IRQ").map_or(1, |v| v.parse().unwrap());
             let mut taken = None;
             let mut take = |s: &mut Sim| {
                 if taken.is_none() && s.irq_seen(irq) {
@@ -185,14 +185,14 @@ fn main() {
                 .filter(|r| r.1 == 0x58 && r.0 < cut)
                 .map(|r| {
                     let t = r.0;
-                    if t >= plines * LINE {
+                    if t >= plines * SLOTS {
                         format!(
                             "{}.{}",
-                            (t - plines * LINE) / LINE,
-                            (t - plines * LINE) % LINE
+                            (t - plines * SLOTS) / SLOTS,
+                            (t - plines * SLOTS) % SLOTS
                         )
                     } else {
-                        format!("{}.{}", t / LINE, t % LINE)
+                        format!("{}.{}", t / SLOTS, t % SLOTS)
                     }
                 })
                 .collect();
@@ -207,14 +207,14 @@ fn main() {
                 .collect();
             if std::env::var("EV").is_ok() {
                 let fmt = |t: u32| {
-                    if t >= plines * LINE {
+                    if t >= plines * SLOTS {
                         format!(
                             "+{}.{}",
-                            (t - plines * LINE) / LINE,
-                            (t - plines * LINE) % LINE
+                            (t - plines * SLOTS) / SLOTS,
+                            (t - plines * SLOTS) % SLOTS
                         )
                     } else {
-                        format!("{}.{}", t / LINE, t % LINE)
+                        format!("{}.{}", t / SLOTS, t % SLOTS)
                     }
                 };
                 let ev: Vec<String> = sim
@@ -227,7 +227,7 @@ fn main() {
                 let w: Vec<String> = sim
                     .writes
                     .iter()
-                    .filter(|&&t| t + 600 > plines * LINE && t < cut + 50)
+                    .filter(|&&t| t + 600 > plines * SLOTS && t < cut + 50)
                     .map(|&t| fmt(t))
                     .collect();
                 for s in ls_next.iter().filter(|s| s.vpos <= 2) {
@@ -262,7 +262,7 @@ fn main() {
             println!(
                 "{pf} lamps {off} {} irq@{:?}\n  sim   {}\n  orig  {}",
                 if ok { "SAME" } else { "DIFF" },
-                Some(cut).map(|t| t as i64 - (plines * LINE) as i64),
+                Some(cut).map(|t| t as i64 - (plines * SLOTS) as i64),
                 ours.join(" "),
                 theirs.join(" ")
             );
@@ -313,7 +313,7 @@ fn main() {
                 .cpu_writes()
                 .iter()
                 .find(|w| w.reg == 0x96 && w.value == 0x8400 && w.vpos >= 298)
-                .map(|w| w.vpos as u32 * LINE + w.hpos as u32);
+                .map(|w| w.vpos as u32 * SLOTS + w.hpos as u32);
             let reels = starts.iter().any(|b| b.1 >= 298 && b.0 == 0x1002);
             if let (Some(w), false) = (w, reels) {
                 let on: Vec<bool> = (0..26)
@@ -330,7 +330,7 @@ fn main() {
                             .iter()
                             .enumerate()
                             .filter(|(_, o)| (8..=15).contains(*o))
-                            .map(move |(h, _)| l * LINE + h as u32)
+                            .map(move |(h, _)| l * SLOTS + h as u32)
                             .collect::<Vec<_>>()
                     })
                     .collect();

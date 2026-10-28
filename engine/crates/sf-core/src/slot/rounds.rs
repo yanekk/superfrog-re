@@ -110,7 +110,7 @@ fn sfx(cx: &mut Cx, id: u8, chan: u8) {
 /// `sfx_play`'s raster wait, from its channel's period set to 1 to the INTENA `$c000` after it,
 /// and from one `sfx_play`'s last write to the next one's first (the oracle's `slot-gamble` frame
 /// 565: 307:119 to 311:144; 305:181 to 307:101).
-const SFX_WAIT: u16 = 4 * 227;
+const SFX_WAIT: u16 = 4 * amiga_clock::LINE_SLOTS;
 const SFX_GAP: u16 = 374;
 
 /// `rng_range` (h0+$160c0): a number in `0..=n`.

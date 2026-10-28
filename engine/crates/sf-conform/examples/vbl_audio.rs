@@ -3,6 +3,9 @@
 //! and it. `vbl_audio <case.toml> <from> <to>`
 use sf_conform::{Case, sync};
 
+/// DMA slots in a line.
+const SLOTS: u32 = amiga_clock::LINE_SLOTS as u32;
+
 fn main() {
     let args: Vec<String> = std::env::args().skip(1).collect();
     let case = Case::load(std::path::Path::new(&args[0])).expect("case");
@@ -24,19 +27,19 @@ fn main() {
             .cpu_writes()
             .into_iter()
             .find(|w| w.reg == 0x9c && w.value == 0x20)
-            .map(|w| w.vpos as u32 * 227 + w.hpos as u32)
+            .map(|w| w.vpos as u32 * SLOTS + w.hpos as u32)
         else {
             continue;
         };
         let mut n = 0;
         for s in a.line_samples() {
             for (h, &o) in s.owners.iter().enumerate() {
-                let t = s.vpos as u32 * 227 + h as u32;
-                if (4..=7).contains(&o) && t >= 17 * 227 && t < ack {
+                let t = s.vpos as u32 * SLOTS + h as u32;
+                if (4..=7).contains(&o) && t >= 17 * SLOTS && t < ack {
                     n += 1;
                 }
             }
         }
-        println!("O {f} ack {ack} ({}:{}) audio {n}", ack / 227, ack % 227);
+        println!("O {f} ack {ack} ({}:{}) audio {n}", ack / SLOTS, ack % SLOTS);
     }
 }

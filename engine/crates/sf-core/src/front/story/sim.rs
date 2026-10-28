@@ -18,11 +18,11 @@
 //! Times are DMA cycles counted from the first frame's line 0, cycle 0, running on into the next
 //! frames ([`FRAME`] cycles each).
 
-use super::cpu::{self, LINE};
+use super::cpu::{self, LINE_SLOTS};
 use crate::render::copper::{Beam, FRAME_LINES, Fetch, Write};
 
 /// DMA cycles per (long PAL) frame.
-pub const FRAME: u32 = FRAME_LINES as u32 * LINE;
+pub const FRAME: u32 = FRAME_LINES as u32 * LINE_SLOTS;
 
 /// DMACON's bits the blitter reads.
 pub mod dmacon {
@@ -60,7 +60,7 @@ impl Fixed {
     /// Append a frame: the copper's bus cycles and writes as `run_bus` gives them, and the bitplane
     /// set-up the frame starts with (the one `run_bus` was given).
     pub fn frame(mut self, copper: &[Beam], writes: &[Write], fetch: Fetch) -> Fixed {
-        let at = |b: &Beam| b.line as u32 * LINE + b.h as u32;
+        let at = |b: &Beam| b.dma();
         let mut f = fetch;
         let mut changes = vec![(0, f)];
         for w in writes {
@@ -68,7 +68,7 @@ impl Fixed {
             f.write(w.reg, w.value);
             if f != before {
                 // As `run_bus` has it: the write counts from the cycle after it.
-                changes.push((at(&Beam { line: w.line, h: w.h }) + 1, f));
+                changes.push((at(&Beam::from_slot(w.line, w.h)) + 1, f));
             }
         }
         self.frames.push(FixedFrame {
@@ -109,7 +109,7 @@ impl cpu::Bus for Fixed {
             || f.audio.binary_search(&r).is_ok()
             || self
                 .fetch(k, r)
-                .is_some_and(|fe| fe.takes((r / LINE) as u16, (r % LINE) as u16))
+                .is_some_and(|fe| fe.takes((r / LINE_SLOTS) as u16, (r % LINE_SLOTS) as u16))
     }
 }
 
@@ -582,8 +582,8 @@ impl Prog {
 
 /// A cycle as (line, DMA cycle) of its frame, and how many frames on.
 pub fn beam(t: u32) -> (u32, u16, u16) {
-    let r = t % FRAME;
-    (t / FRAME, (r / LINE) as u16, (r % LINE) as u16)
+    let p = Beam::from_dma(t % FRAME);
+    (t / FRAME, p.line, p.slot())
 }
 
 #[cfg(test)]
@@ -689,7 +689,7 @@ mod tests {
             ddfstrt: 0x38,
             ddfstop: 0xd0,
         };
-        let copper = [Beam { line: 0, h: 0x10 }, Beam { line: 0, h: 0x12 }];
+        let copper = [Beam::from_slot(0, 0x10), Beam::from_slot(0, 0x12)];
         let writes = [Write {
             line: 0x30,
             h: 0x10,
@@ -700,7 +700,7 @@ mod tests {
         use cpu::Bus;
         assert!(f.taken(0x10) && f.taken(0x12) && !f.taken(0x14));
         // Line $2c, five lores planes: the fifth's cycle in the unit from $38 is $3e.
-        let at = |line: u32, h: u32| line * LINE + h;
+        let at = |line: u32, h: u32| line * LINE_SLOTS + h;
         assert!(f.taken(at(0x2c, 0x3e)) && !f.taken(at(0x2c, 0x3c)));
         // BPLCON0 to no planes from line $30: no fetch after the write.
         assert!(!f.taken(at(0x30, 0x3e)) && f.taken(at(0x2f, 0x3e)));
@@ -726,7 +726,7 @@ mod tests {
         let slots = AudioDma::new().frame(&writes, 313).to_vec();
         // Two words in the lines after DMA is on (11, 12), the third after the second plays (13),
         // then one as each word's two periods (2 x 200 clocks) end: 3 139 asks, line 14 fetches.
-        let at = |line: u32, h: u32| line * LINE + h;
+        let at = |line: u32, h: u32| line * LINE_SLOTS + h;
         assert_eq!(
             slots[..4],
             [
