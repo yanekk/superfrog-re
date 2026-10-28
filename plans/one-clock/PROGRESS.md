@@ -9,9 +9,9 @@ task you pick up, and append yours there.
 
 **Plan reviewed:** 2026-10-27 — 3 fixed, 1 decided with the user
 
-**Status:** Planned; nothing built.
-**Last updated:** 2026-10-27
-**Next `pir-work` will:** T01, the only task with no dependency.
+**Status:** T01 implemented, awaiting review.
+**Last updated:** 2026-10-28
+**Next `pir-work` will:** review T01.
 
 ## Tasks
 
@@ -20,11 +20,11 @@ done · ⛔ blocked, needs a human.
 
 | # | Task | Depends on | State | Notes |
 |---|---|---|---|---|
-| T01 | beam-pos-and-constants | — | ⬜ | |
+| T01 | beam-pos-and-constants | — | 🔍 | `amiga-clock`: `BeamPos`, four lengths, 6 tests; copper `Beam` aliases it; every length reads it. Deviations: story `cpu::LINE` renamed `LINE_SLOTS` (counted name); front/slot names kept as `use … as` aliases; base `story`/`channels` not run, `channels` red pre-existing (FINDINGS). |
 | T02 | generic-clock | T01 | ⬜ | |
 | T03 | front-end-and-slot-policies | T02 | ⬜ | |
 
-**Review queue:** *(empty)*
+**Review queue:** T01
 
 ## Blocked on the user
 
