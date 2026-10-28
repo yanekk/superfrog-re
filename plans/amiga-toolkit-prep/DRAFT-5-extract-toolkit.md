@@ -62,6 +62,16 @@ is the next step's first task, not this one's.
 2. **Its name.** Recommended `amiga-toolkit`. If nothing is said: that.
 3. **Licence.** This repo has none; the toolkit would start with none and stay private. If nothing
    is said: none, private.
+4. **The route planner (`sf-plan`, 6 650 lines) stays out of this extraction.** Its search is
+   generic in shape (archive of cells, return, explore, graph shortest path, guides, shortening),
+   but `core/` is written in Superfrog's terms: `facts.rs` (frog cell, coins, switches), `coins.rs`,
+   `danger.rs` (heart cost), `map.rs` (maps built from the frog's moves), `moves.rs`, `walk.rs`;
+   only `graph.rs` and `guide.rs` (245 lines) name nothing of the game. Making it generic means
+   designing a game interface (state, step, facts, move set) against one game, and it cannot be
+   tested on game two until that game plays a level in the engine. Recommended: generalise it then,
+   with Forest Dumb Forever (a Superfrog-like platformer, so likely a close fit) as its second
+   user. The older planners under `sf-conform/examples/` are superseded by `sf-plan` and stay.
+   If nothing is said: out.
 
 ## Not changing
 
