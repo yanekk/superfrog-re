@@ -86,7 +86,7 @@ mod tests {
     use super::*;
     use crate::FRAME_LINES;
 
-    const LINE: u32 = 454;
+    use crate::LINE_CYCLES as LINE;
 
     // The clients' arithmetic as it was, the reference each policy is held to.
 
