@@ -4,10 +4,12 @@
 //! cycles. A long PAL frame is 313 lines; an interlaced or non-LOF frame one fewer. Every beam
 //! position and every frame or line length in the engine is written in terms of these, so the
 //! numbers are written once. On them: a beam [`Clock`] configured by a display's [`Timing`], the
-//! blitter's timing, and a [`Timeline`] that replays work done at once on the beam.
+//! blitter's timing, a [`Timeline`] that replays work done at once on the beam, and the
+//! [`policy`] functions a display's code spends CPU time on the beam through.
 
 mod blit;
 mod clock;
+pub mod policy;
 mod timeline;
 
 pub use blit::{FIXED_TO, is_refresh, rough_blit_cycles, slots_per_word, word_times};
