@@ -38,11 +38,9 @@ pub struct State {
     /// Where `pause` (h0+$7442) is while a level is paused: the original keeps it in its program
     /// counter and `d0` (T191).
     pub pause: Option<crate::level::pass::Pause>,
-    /// In a level, CIA-A's serial-port flag: a keyboard byte has come in that `kbd_poll` has not
-    /// handled; and, once it has, the register holds the `$ff` the poll wrote back (h0+$16038,
-    /// T191).
-    pub kbd_flag: bool,
-    pub kbd_acked: bool,
+    /// The keyboard and CIA-A's serial port, as every handler's `kbd_poll` reads them (T191):
+    /// kept with the state so a pass run again from its start sees them as they were then.
+    pub kbd: crate::keyboard::CiaKeyboard,
 }
 
 /// `camera_x`, `camera_y`: the level pixel the camera follows (docs/12 "Scroll").
@@ -85,8 +83,7 @@ impl Default for State {
             audio: AudioDriver::blank(),
             scratch: BTreeMap::new(),
             pause: None,
-            kbd_flag: false,
-            kbd_acked: false,
+            kbd: crate::keyboard::CiaKeyboard::default(),
         };
         s.set_l(4, EXEC_BASE);
         s.set_l(0x64, KICKSTART_LEVEL1);

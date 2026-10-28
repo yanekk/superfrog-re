@@ -51,11 +51,8 @@ pub struct Hw {
     pub joy1dat: u16,
     /// Port 2's fire button: CIA-A PRA (`$BFE001`) bit 7 reads 0 while it is held.
     pub fire: bool,
-    /// CIA-A's serial data register (`$BFEC01`): the keyboard's last byte (the code shifted up
-    /// one, bit 0 set for a key going up, all inverted).
-    pub sdr: u8,
-    /// The keyboard sent [`Hw::sdr`] this frame: CIA-A's serial-port flag goes up.
-    pub key_in: bool,
+    /// The keys held: the keyboard sends a byte for each change ([`crate::keyboard::CiaKeyboard`]).
+    pub keys: crate::input::KeySet,
 }
 
 impl Hw {
@@ -63,8 +60,7 @@ impl Hw {
         Hw {
             joy1dat: joy1dat(input.joy),
             fire: input.joy.contains(Joy::FIRE),
-            sdr: 0xff,
-            key_in: false,
+            keys: input.keys,
         }
     }
 

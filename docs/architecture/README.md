@@ -230,6 +230,11 @@ that keeps the CIA's poll-every-second-blank behaviour; the two `kbd_poll` copie
 from the beam. Must keep: frog every frame and objects every second frame, late passes as conformance
 feeds them, pause and ESC timing ([frame-interrupts-input §5](frame-interrupts-input.md)).
 
+A+B done (2026-10-27, single run `cia-keyboard-pass-counter`, amiga-toolkit-prep draft 3): one
+`CiaKeyboard` and one `kbd_poll` (`sf-core/src/keyboard.rs`, state in `State::kbd`), and one pass
+rule and `PassClock` (`sf-core/src/pass_clock.rs`). The "where in the frame" value and the generic
+late-pass runner (part C) are still open.
+
 **4. The subsystems, one at a time, onto native state.** With typed data, timed events and explicit
 schedulers, each subsystem can move its state off the byte store through the route chosen in
 step 0, while the others stay on it ([memory-model §10](memory-model.md)). Each chapter's §5 lists

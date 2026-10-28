@@ -233,8 +233,8 @@ From the [glossary](glossary.md):
   there) builds the bob records `bob_draw` uses.
 - **Paula writes** ([sound-chip](sound-chip.md), [sound-driver](sound-driver.md)). `LevelCtx::sfx`
   and `sample` call the driver and stamp its writes with the beam position.
-- **The CIA keyboard** ([frame-interrupts-input](frame-interrupts-input.md)). `Hw::sdr` and
-  `key_in`; the pause reads `key_down` (h0+$16078).
+- **The CIA keyboard** ([frame-interrupts-input](frame-interrupts-input.md)). `Hw::keys`, fed
+  to `State::kbd` at the blank's poll (`keyboard.rs`); the pause reads `key_down` (h0+$16078).
 
 ## 4. What depends on it
 

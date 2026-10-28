@@ -24,7 +24,7 @@ by address, big-endian, as the 68000 does. Four pieces make it up.
 
 - **`State`** (`engine/crates/sf-core/src/state.rs`): the bytes of every modelled variable, one
   `Vec<u8>` per layout entry, plus the few things the original keeps outside memory (`pause`, the
-  program counter and `d0` while paused; `kbd_flag`, `kbd_acked`, CIA-A's serial flag) and two
+  program counter and `d0` while paused; `kbd`, the keyboard and CIA-A's serial register and flag) and two
   exceptions to the one-buffer-per-entry rule: the sound driver's variables, kept inside
   `AudioDriver` (`State::audio`), and `State::scratch`, bytes the front end wrote outside every
   variable, kept so a later read sees them and never compared.

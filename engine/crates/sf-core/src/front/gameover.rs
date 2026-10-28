@@ -252,8 +252,7 @@ fn in_level_from(cx: &mut Cx, frog_only: bool, line: u16, f: impl FnOnce(&mut Le
         } else {
             crate::level::standard_dispatch()
         };
-        let mut hw = crate::level::Hw::of(cx.input);
-        hw.sdr = cx.keyboard.sdr;
+        let hw = crate::level::Hw::of(cx.input);
         let mut c = LevelCtx::new(
             crate::mem::Bus::new(cx.s, cx.display.rom()),
             dispatch,
@@ -276,13 +275,7 @@ fn in_level_from(cx: &mut Cx, frog_only: bool, line: u16, f: impl FnOnce(&mut Le
 /// The vertical blank while `logic_running` is set outside the level's own loop (in
 /// `game_over_seq`): the level's handler, from `line`. Returns the line it ends on.
 pub(crate) fn level_vbl(cx: &mut Cx, frog_only: bool, line: u16) -> u16 {
-    let polled = !cx.s.b(at(0x16076)) != 0;
-    let end = in_level_from(cx, frog_only, line, crate::level::frame::vbl);
-    // The poll has handled a new byte: the register reads `$ff` from then on.
-    if polled && std::mem::take(&mut cx.keyboard.new) {
-        cx.keyboard.sdr = 0xff;
-    }
-    end
+    in_level_from(cx, frog_only, line, crate::level::frame::vbl)
 }
 
 #[cfg(test)]

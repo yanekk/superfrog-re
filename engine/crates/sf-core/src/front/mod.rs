@@ -37,6 +37,7 @@ pub(crate) mod vbl;
 pub use data::FrontData;
 pub(crate) use gameover::{GameOverCheck, GameOverSeq};
 pub use gameover::GAME_OVER;
+pub use vbl::front_kbd_poll;
 pub use story::{Story, StoryData};
 
 use sf_paula::PaulaWrite;
@@ -246,57 +247,6 @@ impl Routine {
     }
 }
 
-/// The keyboard as the original's `kbd_poll` sees it: CIA-A's serial data register, which holds
-/// the last byte the keyboard sent (`!(code << 1 | released)`), and whether that byte is new
-/// (the serial-port flag). Once `kbd_poll` has handled a new byte it writes `$ff` there.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
-pub(crate) struct Keyboard {
-    pub sdr: u8,
-    pub new: bool,
-    held: crate::input::KeySet,
-}
-
-impl Default for Keyboard {
-    /// At power-on the register holds what the keyboard's start-up ends with: `$7e` released
-    /// (measured), never acknowledged.
-    fn default() -> Keyboard {
-        Keyboard {
-            sdr: !(0x7e << 1 | 1),
-            new: false,
-            held: crate::input::KeySet::NONE,
-        }
-    }
-}
-
-impl Keyboard {
-    /// The register as `kbd_poll` last left `key_down` and `key_up` (h0+$16078): the last byte
-    /// it handled, or `$ff` once it has (both read 0).
-    fn from_keys(key_down: u8, key_up: u8) -> Keyboard {
-        let sdr = match (key_down, key_up) {
-            (_, up) if up != 0 => !(up << 1 | 1),
-            (down, _) if down != 0 => !(down << 1),
-            _ => 0xff,
-        };
-        Keyboard {
-            sdr,
-            ..Keyboard::default()
-        }
-    }
-
-    /// The keyboard sends a byte for each key pressed or released since the last frame.
-    fn feed(&mut self, keys: crate::input::KeySet) {
-        let changed = self.held.0 ^ keys.0;
-        for code in 0..128u8 {
-            if changed >> code & 1 == 1 {
-                let up = !keys.contains(code) as u8;
-                self.sdr = !(code << 1 | up);
-                self.new = true;
-            }
-        }
-        self.held = keys;
-    }
-}
-
 /// What a routine sees while it runs.
 pub(crate) struct Cx<'a> {
     pub s: &'a mut State,
@@ -304,7 +254,6 @@ pub(crate) struct Cx<'a> {
     pub display: &'a DisplayData,
     pub input: FrameInput,
     pub paula: &'a mut Vec<PaulaWrite>,
-    pub keyboard: Keyboard,
     /// The line the beam is on while this code runs.
     pub line: u16,
     /// COP1LC: the copper list the next frame starts.
@@ -617,7 +566,6 @@ pub struct Front {
     booting: bool,
     stack: Vec<Frame>,
     cop1lc: u32,
-    keyboard: Keyboard,
     seed: Option<Rng>,
     /// A copper interrupt requested (INTREQ `$8010`) while it is masked, and not acknowledged: the
     /// next vertical blank's handler takes that branch first (h0+$11d1a) and acknowledges it (T37).
@@ -749,7 +697,6 @@ impl Front {
                 },
             ],
             cop1lc: h2(0x6fd8),
-            keyboard: Keyboard::default(),
             seed: Some(seed),
             coper: false,
             frog_only: false,
@@ -795,6 +742,8 @@ impl Front {
             };
             s.audio = crate::audio::AudioDriver::transplant(d, &|a| mem.byte(a), &files);
         }
+        // No keyboard came with the memory: the register as the last poll decoded it.
+        s.kbd = crate::keyboard::CiaKeyboard::from_keys(s.b(vbl::KEY_DOWN), s.b(crate::keyboard::KEY_UP));
         let mut front = Front {
             frame: 0,
             fetch: None,
@@ -814,7 +763,6 @@ impl Front {
                 })
                 .collect(),
             cop1lc: title::cop1lc_of(&chain),
-            keyboard: Keyboard::from_keys(s.b(vbl::KEY_DOWN), s.b(vbl::KEY_UP)),
             seed: None,
             coper: false,
             frog_only: false,
@@ -834,23 +782,11 @@ impl Front {
     }
 
     /// The program a level hands over to when its loop ends (`level_frame_loop` returns into
-    /// `top_loop`): `routine` on top, the level's copper list showing. `sdr` is the keyboard's
-    /// last byte: one the level's poll has handled reads `$ff` from then on (ESC's is not read
-    /// again, measured on `frog-esc-w1-1`), except the power-on byte, never acknowledged; one sent
+    /// `top_loop`): `routine` on top, the level's copper list showing. The keyboard goes on as the
+    /// level left it (`State::kbd`): a byte its poll has handled reads `$ff` (ESC's is not read
+    /// again, measured on `frog-esc-w1-1`), the power-on byte is never acknowledged, and one sent
     /// since that poll is still new.
-    pub(crate) fn after_level(s: &State, sdr: u8, routine: Routine, frog_only: bool) -> Front {
-        let handled = Keyboard::from_keys(s.b(vbl::KEY_DOWN), s.b(vbl::KEY_UP));
-        let keyboard = if sdr != handled.sdr {
-            Keyboard {
-                sdr,
-                new: true,
-                ..Keyboard::default()
-            }
-        } else if sdr == Keyboard::default().sdr {
-            handled
-        } else {
-            Keyboard::from_keys(0, 0)
-        };
+    pub(crate) fn after_level(routine: Routine, frog_only: bool) -> Front {
         Front {
             frame: 0,
             fetch: None,
@@ -867,7 +803,6 @@ impl Front {
                 deferred: None,
             }],
             cop1lc: render::LEVEL_COPPER,
-            keyboard,
             seed: None,
             coper: false,
             frog_only,
@@ -884,23 +819,18 @@ impl Front {
 
     /// [`Front::after_level`] with what follows the level's loop: `top_loop`'s own code from its
     /// `jsr level_exit_fade` when the level is one of its (T183), else the exit fade alone.
-    pub(crate) fn level_over(s: &State, data: &FrontData, sdr: u8, frog_only: bool) -> Front {
+    pub(crate) fn level_over(s: &State, data: &FrontData, frog_only: bool) -> Front {
         let routine = match chain::level_call(s, data) {
             Some(init) => Routine::Chain(chain::Chain::after_loop(data, init, frog_only)),
             None => Routine::LevelOver(crate::level::exit::LevelOver::new(frog_only)),
         };
-        Front::after_level(s, sdr, routine, frog_only)
+        Front::after_level(routine, frog_only)
     }
 
     /// The slot machine entered from the level's tally (T73, [`crate::Game::enter_slot`]):
     /// `slot_machine` on top of the tally's end, the screen blank.
-    pub(crate) fn enter_slot(s: &State, data: &FrontData, sdr: u8, frog_only: bool) -> Front {
-        let mut f = Front::after_level(
-            s,
-            sdr,
-            Routine::SlotOver(Default::default()),
-            frog_only,
-        );
+    pub(crate) fn enter_slot(s: &State, data: &FrontData, frog_only: bool) -> Front {
+        let mut f = Front::after_level(Routine::SlotOver(Default::default()), frog_only);
         f.chain_below(s, data);
         f.stack.push(Frame {
             routine: Routine::Slot(Default::default()),
@@ -936,8 +866,6 @@ impl Front {
         line: u16,
         into: u32,
     ) -> (Vec<PaulaWrite>, Vec<crate::game::Job>) {
-        // The level's own poll has handled this frame's keyboard byte.
-        self.keyboard.held = input.keys;
         let mut paula = Vec::new();
         let mut cx = Cx {
             s,
@@ -945,7 +873,6 @@ impl Front {
             display,
             input,
             paula: &mut paula,
-            keyboard: self.keyboard,
             line,
             cop1lc: self.cop1lc,
             load: None,
@@ -982,7 +909,6 @@ impl Front {
         self.stalled = cx.stall;
         self.ret = cx.ret;
         self.cop1lc = cx.cop1lc;
-        self.keyboard = cx.keyboard;
         self.unported.append(&mut cx.unported);
         self.slot_outcome = self.slot_outcome.or(cx.slot_outcome.take());
         self.outcome = cx.outcome.take().or(self.outcome);
@@ -1022,7 +948,6 @@ impl Front {
                 display,
                 input: FrameInput::NONE,
                 paula: &mut paula,
-                keyboard: self.keyboard,
                 line: 0,
                 cop1lc: self.cop1lc,
                 load: None,
@@ -1056,7 +981,6 @@ impl Front {
             };
             let sound = vbl::load_blank(&mut cx);
             vbl::end(&mut cx);
-            self.keyboard = cx.keyboard;
             // Where the original's handler, taken on time, makes them (T213).
             if let Some(m) = sound {
                 let at = vbl::place(0, paula.len(), m, 1);
@@ -1103,17 +1027,6 @@ impl Front {
         self.slot_outcome
     }
 
-    /// CIA-A's serial register as the front end's keyboard has it: what the level's own poll reads
-    /// once the level scene takes over (T33: the power-on byte, never acknowledged, in the demo).
-    pub(crate) fn keyboard_sdr(&self) -> u8 {
-        self.keyboard.sdr
-    }
-
-    /// Whether that byte is one the front end's poll has not handled yet (the serial-port flag).
-    pub(crate) fn keyboard_new(&self) -> bool {
-        self.keyboard.new
-    }
-
     /// The title waits in its idle, or its menu for a choice: fire in the next frame opens the
     /// menu, or takes its item lit (START GAME unless moved).
     pub(crate) fn title_waits(&self) -> bool {
@@ -1144,6 +1057,7 @@ impl Front {
     /// The boot's work, which is all load: done at once, before the first frame.
     pub fn boot(&mut self, s: &mut State, display: &DisplayData) {
         if std::mem::take(&mut self.booting) {
+            s.kbd = crate::keyboard::CiaKeyboard::power_on();
             let mut quiet = Vec::new();
             let mut cx = Cx {
                 s: &mut *s,
@@ -1151,7 +1065,6 @@ impl Front {
                 display,
                 input: FrameInput::NONE,
                 paula: &mut quiet,
-                keyboard: self.keyboard,
                 line: 0,
                 cop1lc: self.cop1lc,
                 load: None,
@@ -1195,7 +1108,7 @@ impl Front {
 
     /// One frame.
     pub fn step(&mut self, s: &mut State, display: &DisplayData, input: FrameInput) -> FrontOut {
-        self.keyboard.feed(input.keys);
+        s.kbd.feed(input.keys);
         self.new_frame();
         let mut paula = Vec::new();
         if self.booting {
@@ -1217,7 +1130,6 @@ impl Front {
             display,
             input,
             paula: &mut paula,
-            keyboard: self.keyboard,
             line: 0,
             cop1lc: self.cop1lc,
             load: None,
@@ -1569,7 +1481,6 @@ impl Front {
         self.ret = cx.ret;
         self.frame += 1;
         self.cop1lc = cx.cop1lc;
-        self.keyboard = cx.keyboard;
         self.seed = cx.seed;
         self.unported.append(&mut cx.unported);
         self.slot_outcome = self.slot_outcome.or(cx.slot_outcome.take());
@@ -1892,7 +1803,6 @@ pub const LOAD_LEAVES: &[(u32, u32)] = &[(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::input::KeySet;
 
     #[test]
     fn writes_take_the_originals_positions_when_given_for_all_else_their_lines() {
@@ -1914,20 +1824,6 @@ mod tests {
             own.iter().map(|w| (w.vpos, w.hpos)).collect::<Vec<_>>(),
             [(1, 0), (299, 0)]
         );
-    }
-
-    #[test]
-    fn the_keyboard_sends_a_byte_per_change_and_reads_ff_once_handled() {
-        let mut k = Keyboard::default();
-        // Power-on: $7e released, never acknowledged.
-        assert_eq!((!k.sdr >> 1 & 0x7f, !k.sdr & 1), (0x7e, 1));
-        assert!(!k.new);
-        k.feed(KeySet::key(0x19));
-        assert_eq!((!k.sdr >> 1 & 0x7f, !k.sdr & 1, k.new), (0x19, 0, true));
-        k.feed(KeySet::key(0x19));
-        assert!(k.new, "holding a key sends nothing more");
-        k.feed(KeySet::NONE);
-        assert_eq!((!k.sdr >> 1 & 0x7f, !k.sdr & 1), (0x19, 1));
     }
 
     #[test]

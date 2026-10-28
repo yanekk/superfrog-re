@@ -78,10 +78,7 @@ pub fn enter_with(
     let mut c = LevelCtx::new(
         Bus::new(st, display.rom()),
         dispatch,
-        Hw {
-            sdr: 0xff,
-            ..Hw::default()
-        },
+        Hw::default(),
         display.sound(),
         &mut paula,
     );

@@ -57,8 +57,9 @@ It does so in three parts, which are the files this chapter owns:
   `frame_hashes` hashes picture and state per frame for comparing them. Test tooling only:
   normal play never reads a feed (rust-engine DESIGN §2.5).
 
-`Pacing` itself and the pass counter `PassClock` live in `engine/crates/sf-core/src/game.rs`
-(chapter [game-flow](game-flow.md)); they are described here because they are this mechanism's
+`Pacing` itself lives in `engine/crates/sf-core/src/game.rs` (chapter [game-flow](game-flow.md))
+and the pass counter `PassClock` in `engine/crates/sf-core/src/pass_clock.rs` (chapter
+[frame-interrupts-input](frame-interrupts-input.md)); they are described here because they are this mechanism's
 interface.
 
 ## 2. Kind mix
@@ -174,7 +175,7 @@ positions and routine landmarks by least squares and prints the match arms to pa
 | Cost model placing a level's Paula writes | With no anchors, each write within a line of the original's at the median, 70 % within 3 lines, 98 % within 10, over `items-run-w1-1` | `the_cost_model_alone_puts_paula_writes_on_the_originals_lines`, `engine/crates/sf-conform/tests/beam.rs` |
 | `sfx_play`'s raster wait and DMA-on time (`SfxRecord`, `SfxWrite`) | Its wait ends three lines on and its off-to-on time is the original's within 150 colour clocks at the median, over `bonus-enter-wb-1` | `sfx_play_waits_three_lines_and_turns_the_dma_on_when_the_original_does`, `engine/crates/sf-conform/tests/beam.rs` |
 | Paula writes spread over the frame (all paths) | Each channel's output equals the original's within the owner's tolerance (`channels::OWNER`) over the whole game | `the_whole_games_channels_sound_as_the_original_does` (ignored, ~7 min), `engine/crates/sf-conform/tests/channels.rs`; `sf-conform channels <case>` |
-| Late pass (`Cut`, `Pending`, `Frames`) | The engine ends its frame at the original's write, step and point, runs the rest of the pass after the next interrupt, and state matches pass by pass | `items_pad_w1_1`, `items_run_w1_1`, `complete_w4_3` (DMACON/INTREQ on lag frames pinned) in `engine/crates/sf-conform/tests/frog_cases.rs`; `PassClock`'s `the_pass_clock_counts_passes_ended` in `engine/crates/sf-core/src/game.rs` |
+| Late pass (`Cut`, `Pending`, `Frames`) | The engine ends its frame at the original's write, step and point, runs the rest of the pass after the next interrupt, and state matches pass by pass | `items_pad_w1_1`, `items_run_w1_1`, `complete_w4_3` (DMACON/INTREQ on lag frames pinned) in `engine/crates/sf-conform/tests/frog_cases.rs`; `PassClock`'s `the_pass_clock_counts_passes_ended` in `engine/crates/sf-core/src/pass_clock.rs` |
 | Late frames counted | The original's late frames are counted per case (320 in `frog-run-w1-1`, from 155; none on the title) | `the_originals_late_frames_are_counted`, `engine/crates/sf-conform/tests/frog_cases.rs` |
 | Interrupt held behind the handler (`IRQ_PHASE`, T203) and the copper interrupt's tail past a frame's end | A blank held while the handler runs is taken as it returns; a tail outside a pass stays in its frame | `items_pad_w1_1`, `coper_tail_outside_a_pass_kept`, `engine/crates/sf-conform/tests/frog_cases.rs` |
 | An unreachable cut | A `Late` cut the engine cannot reach ends the frame as normal play does, never panics | `a_late_cut_the_engine_cannot_reach_ends_the_frame_as_normal_play_does`, `engine/crates/sf-conform/tests/alone.rs` |

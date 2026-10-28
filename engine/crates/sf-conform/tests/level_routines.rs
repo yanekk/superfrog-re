@@ -154,18 +154,22 @@ fn level_clock_tick_matches_the_original() {
     }
 }
 
+/// The one `kbd_poll` as each handler calls it: the level's vertical blank (its interrupt writes
+/// through `LevelCtx::custom`) and the front end's (through its Paula write list).
 #[test]
 fn kbd_poll_matches_the_original() {
-    use sf_core::level::clock;
     let mut rig = rig();
     let mut g = Gen::new(36);
     for case in 0..CASES / 10 {
         let mut s = Setup::default();
-        s.hw.sdr = g.next() as u8;
+        s.sdr = g.next() as u8;
         s.poke_b(h0(0x16076), g.pick(&[0, 0xff]));
         s.poke_b(h0(0x16078), g.next() as u8);
         s.poke_b(h0(0x16079), g.next() as u8);
-        rig.check("kbd_poll", case, 0x15ff2, &s, clock::kbd_poll);
+        rig.check("kbd_poll", case, 0x15ff2, &s, |c| sf_core::keyboard::kbd_poll(c));
+        rig.check("kbd_poll (front end)", case, 0x15ff2, &s, |c| {
+            sf_core::front::front_kbd_poll(c.bus.st, c.paula)
+        });
     }
 }
 
