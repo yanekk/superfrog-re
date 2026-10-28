@@ -199,10 +199,7 @@ pub fn main_program(c: &mut LevelCtx, pending: Option<beam::Pending>, pacing: cr
         }
         None => {
             if !vbl {
-                c.clock = beam::Clock {
-                    line: beam::FRAME_LINES,
-                    into: 0,
-                };
+                c.clock = beam::Clock::at(beam::FRAME_LINES, 0);
             }
             c.frame_end();
         }
@@ -220,10 +217,7 @@ pub fn main_program(c: &mut LevelCtx, pending: Option<beam::Pending>, pacing: cr
             ran = false;
             // Waiting for the next vertical blank.
             if c.clock.line < beam::FRAME_LINES {
-                c.clock = beam::Clock {
-                    line: beam::FRAME_LINES,
-                    into: 0,
-                };
+                c.clock = beam::Clock::at(beam::FRAME_LINES, 0);
             }
             c.frames.as_mut().expect("frames").past_end = false;
             c.frame_end();

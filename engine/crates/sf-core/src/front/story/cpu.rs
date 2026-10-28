@@ -21,7 +21,7 @@ pub trait Bus {
 
 /// Refresh's four cycles in each line (vAmiga `DAS_REFRESH`: `$01`, `$03`, `$05`, `$E2`).
 pub fn refresh(t: u32) -> bool {
-    matches!(t % LINE_SLOTS, 0x01 | 0x03 | 0x05 | 0xe2)
+    amiga_clock::is_refresh(t % LINE_SLOTS)
 }
 
 /// The CPU's clock on the bus.

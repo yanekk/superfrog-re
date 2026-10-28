@@ -286,7 +286,7 @@ impl Scene {
                     after(c.bus.st, line, into);
                     let new = c.bus.st.byte(diw).unwrap_or(0);
                     if new != old {
-                        let at = crate::level::beam::Clock { line, into: 0 }.nominal();
+                        let at = crate::level::beam::Clock::at(line, 0).nominal();
                         log.writes.push((diw, old, at));
                         window = Some(new.wrapping_sub(old) as u16);
                     }

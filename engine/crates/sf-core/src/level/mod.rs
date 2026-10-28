@@ -478,10 +478,7 @@ impl LevelCtx<'_> {
             return;
         }
         if let Some(&(line, hpos)) = self.schedule.get(k - f.out_from) {
-            self.anchor_to(beam::Clock {
-                line,
-                into: 2 * hpos as u32,
-            });
+            self.anchor_to(beam::Clock::at(line, 2 * hpos as u32));
         }
     }
 
@@ -525,10 +522,7 @@ impl LevelCtx<'_> {
         if let Some(j) = (from..self.blits.len().min(from + 3)).find(|&j| size_words(self.blits[j].0) == words) {
             self.blit_next = j + 1;
             let (_, line, hpos) = self.blits[j];
-            self.anchor_to(beam::Clock {
-                line,
-                into: 2 * hpos as u32,
-            });
+            self.anchor_to(beam::Clock::at(line, 2 * hpos as u32));
         }
     }
 
@@ -556,10 +550,7 @@ impl LevelCtx<'_> {
             && n >= cut.writes
         {
             f.anchored = true;
-            self.clock = beam::Clock {
-                line: cut.line,
-                into: 2 * cut.hpos as u32,
-            };
+            self.clock = beam::Clock::at(cut.line, 2 * cut.hpos as u32);
             self.bus.at = self.clock.nominal();
         }
     }
@@ -605,10 +596,7 @@ impl LevelCtx<'_> {
         };
         if due {
             if self.clock.line < beam::FRAME_LINES {
-                self.clock = beam::Clock {
-                    line: beam::FRAME_LINES,
-                    into: 0,
-                };
+                self.clock = beam::Clock::at(beam::FRAME_LINES, 0);
             }
             self.frame_end();
         }
@@ -643,10 +631,7 @@ impl LevelCtx<'_> {
             }
             self.stamp();
             if self.clock.line < beam::FRAME_LINES {
-                self.clock = beam::Clock {
-                    line: beam::FRAME_LINES,
-                    into: 0,
-                };
+                self.clock = beam::Clock::at(beam::FRAME_LINES, 0);
             }
             let f = self.frames.as_mut().expect("frames");
             if own {
@@ -701,10 +686,7 @@ impl LevelCtx<'_> {
             && self.bus.w(frame::VBL_COUNT) == cut.blanks
         {
             if self.clock.line < beam::FRAME_LINES {
-                self.clock = beam::Clock {
-                    line: beam::FRAME_LINES,
-                    into: 0,
-                };
+                self.clock = beam::Clock::at(beam::FRAME_LINES, 0);
             }
             self.frame_end();
         }
@@ -828,7 +810,7 @@ impl LevelCtx<'_> {
     fn interrupts_back(&mut self, on: PaulaWrite, off: u16) {
         let end = sfx_wait_end(off);
         if self.clock.line < end {
-            self.clock = beam::Clock { line: end, into: 0 };
+            self.clock = beam::Clock::at(end, 0);
         }
         self.bus.at = self.clock.nominal();
         self.scheduled(self.paula.len());
@@ -913,10 +895,7 @@ impl LevelCtx<'_> {
         let lines = beam::FRAME_LINES.saturating_sub(self.clock.line);
         self.tick(beam::Tick::Wait(lines));
         if self.clock.line < beam::FRAME_LINES {
-            self.clock = beam::Clock {
-                line: beam::FRAME_LINES,
-                into: 0,
-            };
+            self.clock = beam::Clock::at(beam::FRAME_LINES, 0);
         }
         self.frame_end();
     }
