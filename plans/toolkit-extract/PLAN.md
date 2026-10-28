@@ -17,7 +17,7 @@ fit and the whole-game runs come last, on the toolkit as built.
 
 ```
 Phase 1  ▸  T01                     baseline, workspace, chips/clock/paula, Picture, checks
-Phase 2  ▸  T02 T03 T04 T05 T07 T10   the moves, and the new display piece
+Phase 2  ▸  T02 T03 T04 T05 T07 T10   the moves, and the display piece
 Phase 3  ▸  T06 T08 T09             what builds on the oracle and the app parts
 Phase 4  ▸  T11                     dry fit, full runs, READMEs, north-star column
 ```
@@ -38,7 +38,7 @@ At the end: the baseline is recorded, `toolkit/` builds and tests on its own wit
 | [T02](tasks/T02-amiga-input.md) | amiga-input | T01 |
 | [T03](tasks/T03-amiga-disk.md) | amiga-disk | T01 |
 | [T04](tasks/T04-asset-readers.md) | asset-readers | T03 |
-| [T05](tasks/T05-amiga-oracle.md) | amiga-oracle | T02, T03 |
+| [T05](tasks/T05-amiga-oracle.md) | amiga-oracle | T02, T03, T04 |
 | [T07](tasks/T07-amiga-app-parts.md) | amiga-app-parts | T02 |
 | [T10](tasks/T10-display-piece.md) | display-piece | T01 |
 
@@ -65,24 +65,25 @@ baseline, `whole_game.rs` passes, READMEs and the north-star column are written.
 ## Critical path
 
 ```
-T01 → T02 → T05 → T06 → T09 → T11
+T01 → T03 → T04 → T05 → T06 → T09 → T11
 ```
 
-T03, T04, T07, T08 and T10 are off it. T05 is on it because `amiga-conform` compares against the
+T02, T07, T08 and T10 are off it. T04 is on it because the oracle's loader reads hunks with its
+reader (DESIGN §2.2). T05 is on it because `amiga-conform` compares against the
 oracle's `Rgb12Frame` and `FrameCapture`.
 
 Leaves: T11 only.
 
 ## Parallel width
 
-11 tasks · longest dependency chain 6 · up to 4 could run at once (T04, T05, T07, T10).
+11 tasks · longest dependency chain 7 · up to 3 could run at once (T02, T03, T10; then T04, T07, T10).
 
 ## Rough sizing
 
 | Weight | Tasks |
 |---|---|
-| **Heavy** | T01 (the 2 h baseline and the workspace), T05, T09, T11 (about 3.5 h of runs) |
-| **Medium** | T03, T04, T06, T07, T08, T10 |
+| **Heavy** | T01 (the 2 h baseline and the workspace), T05, T09, T10 (sf-core's Denise core moved), T11 (about 3.5 h of runs) |
+| **Medium** | T03, T04, T06, T07, T08 |
 | **Light** | T02 |
 
 Overruns: T05 if the disk-list change shifts a trace key, and its vAmiga rebuild refills caches; T09

@@ -17,6 +17,7 @@ DESIGN §2.2 row `amiga-disk` (modules), §7 (the readers decision).
 
 - New: `toolkit/crates/amiga-disk/src/{hunk,iff,palette,anim}.rs` (names the worker's), and an error
   type of its own.
+- `engine/crates/sf-assets/src/sound.rs` (`first_hunk` reads through `amiga_disk::hunk`).
 - `engine/crates/sf-assets/src/{exe,picture,palette,anim,error}.rs`, `sf-assets/Cargo.toml`.
 - `docs/architecture/disks-and-assets.md` `owns`, moved-path table, `sf-app/build.rs` `GAME` if needed.
 
@@ -26,6 +27,11 @@ The readers take bytes and return the parsed form; where today they carry `Chunk
 T7MP `Tag` (for error messages and picture placement), the toolkit form takes no such type and
 sf-assets wraps it: its error carries the chunk, the toolkit's carries the byte offset and what was
 wrong.
+
+`amiga_disk::hunk` is the toolkit's one hunk reader (owner, 2026-10-28, plan review): it exposes
+the block walk (header, each block's type, hunk sizes and memory flags, contents, RELOC32 lists)
+that `parse` is built on, so T05's `Cpu68k::load_exe` and sf-assets' `sound.rs::first_hunk` read
+through it instead of walking the longs themselves.
 
 ```rust
 // amiga_disk::hunk

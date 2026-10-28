@@ -1,6 +1,6 @@
 # T05 — amiga-oracle
 
-**Phase:** 2 · **Depends on:** T02, T03 · **Weight:** heavy
+**Phase:** 2 · **Depends on:** T02, T03, T04 · **Weight:** heavy
 
 ## Goal
 
@@ -45,6 +45,10 @@ impl Amiga {
 pub fn kickstart_path() -> Result<PathBuf, OracleError>; // AMIGA_KICKSTART, else ~/amiga-roms/kick1.3.rom; fails listing where it looked
 ```
 
+`Cpu68k::load_exe` reads the file's blocks through `amiga_disk::hunk` (T04) and keeps its own
+placement, relocation and the game loader's stopping rules (end at a 0x3ED–0x3F1 block, read on past
+the file's end); `HunkError` maps from the reader's error with today's variants and messages.
+
 `build.rs` finds the vAmiga build at `$AMIGA_TOOLKIT_CACHE` or `~/.cache/amiga-toolkit/vamiga/<commit>/<patch hash>`;
 `oracle.sh` builds there. Patch comments and C symbols renamed in one commit (DESIGN §2.5).
 
@@ -54,7 +58,8 @@ pub fn kickstart_path() -> Result<PathBuf, OracleError>; // AMIGA_KICKSTART, els
       measures and records), twice, identical `Rgb12Frame`s and memory hashes.
 - [ ] Game-free: snapshot at mid-boot, restore, step N frames: identical to the uninterrupted run.
 - [ ] Missing Kickstart: the error names every path tried (test with a scratch `AMIGA_KICKSTART`).
-- [ ] The moved Moira tests pass in the toolkit with no ROM and no disk.
+- [ ] The moved Moira tests pass in the toolkit with no ROM and no disk, `load_exe`'s included
+      (same `HunkMap` and memory as the base on their synthetic files).
 - [ ] Superfrog's trace and sync cache keys are byte-equal to the base's for a sample of cases
       (compute both, compare strings), apart from the one `BUILD` change the rebuild causes.
 - [ ] `tools/test_oracle_sh.py` passes against the moved script; `tools/setup/oracle.sh` still builds.

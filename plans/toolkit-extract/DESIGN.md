@@ -62,7 +62,7 @@ unoptimised.
 | `amiga-paula` | `engine/crates/sf-paula`, renamed | DMACON `$8200` boot state becomes a parameter (§2.3) | T01 |
 | `amiga-input` | `sf-core/src/input.rs` (`Joy`, `KeySet`, `FrameInput`, the token format); `keyboard.rs`'s `key_byte` and `CiaKeyboard` | `kbd_poll`, `KbdHost`, `polls()`, `KBD_TOGGLE`/`KEY_DOWN`/`KEY_UP`; `pass_clock.rs` | T02 |
 | `amiga-disk` | `sf-disk`'s `zip.rs` (with `tests/common/zipwrite.rs`), `sha1.rs`, `ADF_SIZE` | `DiskSlot`, `Adf`, `DiskSet`, `identify.rs`, `atn.rs`, `carve.rs` | T03 |
-| `amiga-disk` (modules) | `sf-assets`' `exe.rs` (hunk loader), `picture.rs` (IFF ILBM), `palette.rs`, `anim.rs` (IFF ANIM) | `ChunkId`, `World`, `Tag` naming, `pic_progress_map` | T04 |
+| `amiga-disk` (modules) | `sf-assets`' `exe.rs` (hunk reader; the oracle's `load_exe` and `sound.rs::first_hunk` read through it, owner at plan review), `picture.rs` (IFF ILBM), `palette.rs`, `anim.rs` (IFF ANIM) | `ChunkId`, `World`, `Tag` naming, `pic_progress_map` | T04 |
 | `amiga-oracle` | `sf-oracle`'s `amiga.rs`, `ffi.rs`, `routine.rs`, `trace.rs`, `build.rs`, `shim/`, `patches/`, `VAMIGA_COMMIT`; `tools/setup/oracle.sh`; the generic part of `config.rs` | `locate()`, the four disks, `SUPERFROG_*`, `identify`, `main_checkout`, `disk1_in` | T05 |
 | `amiga-conform` | the game-free half of `sf-conform` (§2.6) | cases, sync, milestones, memory-variable comparison, level outcomes, `routine.rs` Rig, `lib.rs` runner, `main.rs` | T06 |
 | `amiga-app` (library) | `sf-app`'s `atomic_write.rs`, `audio.rs`, `pacing.rs`, `pad.rs`, `lock.rs`, `video.rs` with the shaders, the generic part of `capture.rs`, `input.rs`'s Amiga key table and `KeyMap` | `main.rs` run loop, `script.rs`, menus, windows, `import`, `levelfile`, `home`, `progress`, `states`, `settings`, `controls_window`, `recording_bar` | T07 |
@@ -105,9 +105,11 @@ uses `learned on:` and states where a number came from, nothing more.
   and maps `DiskSlot` to an index. `boot: None` powers on with df0 empty (binding the shim's
   existing `sf_amiga_eject_disk`, or not inserting). Reason: game two has two disks and its own
   names; the Kickstart tests boot with none.
-- The trace and sync cache keys stay byte-identical for Superfrog's existing runs: the key text
-  that today prints `DiskSlot::D1` with `{:?}` keeps printing `D1` for Superfrog's boot disk (the
-  caller supplies the label). Reason: every cached trace would otherwise be recomputed for nothing.
+- The trace and sync cache keys stay byte-identical for Superfrog's existing runs: today's key text
+  (`trace.rs` `run`) appends nothing when booting `DiskSlot::D1` and ` boot {:?}` (` boot D3`) for
+  any other slot; the toolkit appends nothing for the caller's default boot and ` boot <label>` with
+  the caller's label otherwise, and `boot: None` gets a label of its own (` boot none`). Reason: every
+  cached trace would otherwise be recomputed for nothing.
 - Cache roots are the caller's: the toolkit takes them as parameters; its own default is
   `~/.cache/amiga-toolkit/` with an `AMIGA_TOOLKIT_CACHE` override. Superfrog keeps its trace and
   sync caches under `~/.cache/superfrog-re/` exactly as today.
@@ -157,14 +159,18 @@ frame, give the picture); the picture check (`screenshot_differs`, `picture_png`
 generic. `bug.rs`'s oracle comparison, put-back and case writing stay in sf-conform. The two
 duplicate `read_zip`s (sf-app, sf-conform) become one.
 
-### 2.9 The display piece (T10, new code)
+### 2.9 The display piece (T10)
 
-`amiga_chips::display::draw(mem: &impl Ram, writes: &[copper::Write], window) -> Picture`: lores,
-up to 5 bitplanes plus EHB, no sprites, no dual playfield. It fetches each line's planes from chip
-memory at the pointers and modulos the copper's writes leave, and takes each line's palette from the
-colour writes. Tested synthetically only; it is not used by Superfrog's renderer, which stays as it is.
-Reason: the dry fit needs a picture drawn from chip memory, and game two's first screens will want
-one (owner, 2026-10-28).
+`amiga_chips::display::draw(mem: &impl Ram, writes: &[copper::Write], start: copper::Fetch) -> Picture`:
+lores, up to 5 bitplanes plus EHB, no sprites, no dual playfield. Its register state and fetch
+timing are the generic core of sf-core's Denise (`render/mod.rs`: `Planes` with BPLxPT, BPLxMOD,
+BPLCON1 delay, the per-line pointer advance, `PIPELINE`/`HIRES_PIPELINE` from docs/12, the colour
+and `Split` apply), moved into `amiga_chips::display`; the window is the existing `copper::Fetch`,
+not a new type. sf-core's renderer calls the moved core and keeps what is Superfrog's: `Mem` and its
+write log, the level play field, widescreen, sprites and `panel::fetch`. Reason: one Denise, so a
+timing fix found on game two is made once and game two starts from the measured pipeline (owner,
+2026-10-28, at plan review). The move is under the faithful bar: sf-core's pictures stay
+bit-identical.
 
 ### 2.10 Unhappy paths
 
@@ -260,7 +266,8 @@ machine; they are a worker's to run and record.
 the toolkit line. T01 adds the same line to `.pir/settings.json`, because pir's single runs read that
 file. Each line runs in its own shell from the repo root. The person's
 `~/.pir/superfrog-re/settings.json` sets `testTimeoutMinutes: 120`; the cargo line took 1 h 45 min at
-one-clock's planning. Tests that move out of `engine/` leave its line and join the toolkit's, so the
+one-clock's planning, and the whole block 70 min in a fresh copy at plan review (2026-10-28, compile
+included). Tests that move out of `engine/` leave its line and join the toolkit's, so the
 total should change little, but the toolkit crates compile twice (two target directories). The
 toolkit line was not measured at planning because `toolkit/` does not exist yet; T01 records its time.
 Output is quiet: `-q`, `NO_COLOR=1`. `COLORTERM=truecolor` is set here but forces nothing.
@@ -277,7 +284,13 @@ length, not for a person.
 
 ### 5.3 Outside actions
 
-None. Every step is local. An action that turns up anyway is `ask` (CLAUDE.md).
+Approved by the owner at plan review, 2026-10-28.
+
+| Action | Command | Bin | What it touches | Way back | Cost | Login check |
+|---|---|---|---|---|---|---|
+| Fetch and build vAmiga at the pinned commit (T05's one rebuild) | `tools/setup/oracle.sh` (the wrapper; already on `.claude/settings.json` `allow`) | worker | read-only `git fetch` of public vAmiga source; builds into `~/.cache/amiga-toolkit/vamiga`, outside the repo | delete `~/.cache/amiga-toolkit/vamiga`; the old build under `~/.cache/superfrog-re/vamiga` is untouched | free | — |
+
+Every other step is local. An action that turns up anyway is `ask` (CLAUDE.md).
 
 ## 6. Recovery
 
@@ -297,8 +310,9 @@ cache directory beside the old one, so switching back to `main` finds the old bu
   `VarDef`/`VarId` and `FrameOut`; `report.rs` holds `LevelOutcome` and `MilestoneDiff`; `routine.rs`'s
   Rig is built on `State::transplant`, `LAYOUT`, `STACK = 0xC7F800` and Superfrog's sound banks.
   Rejected: a generic Rig behind a designed interface, for the same reason as the app.
-- 2026-10-28, owner: the picture type moves (§2.2) and a new display piece draws one from chip
-  memory (§2.9). The draft's dry fit names "the display path to a Picture", which does not exist:
+- 2026-10-28, owner: the picture type moves (§2.2) and a display piece draws one from chip
+  memory (§2.9); at plan review the owner chose to build it from sf-core's Denise core, moved, over a
+  second simpler copy beside it. The draft's dry fit names "the display path to a Picture", which does not exist:
   sf-core's renderer draws from `State` and `DisplayData`. Rejected: a dry fit without a drawn picture.
 - 2026-10-28, owner: the hunk loader and IFF readers move from sf-assets (§2.2, T04); no AmigaDOS
   (OFS) reader is written here. NORTH-STAR said game two needs one; it is written against game two's
@@ -312,6 +326,12 @@ cache directory beside the old one, so switching back to `main` finds the old bu
   architecture chapters stay frozen through a moved-path table (§3.4).
 - Planner: `Picture` goes to `amiga-chips` rather than a new crate, because the display piece that
   draws it and the copper writes it reads are there.
+- 2026-10-28, owner at plan review: one hunk reader in the toolkit. sf-assets' `exe.rs`, sf-oracle's
+  `Cpu68k::load_exe` and `sound.rs::first_hunk` each walked the format; the oracle's loader keeps its
+  game-loader rules on top of `amiga_disk::hunk`, so T05 waits for T04. Reason: game two is a hunk
+  executable read by both paths, and a format fix is then made once. The two PNG writers
+  (`capture::png`, `report::png`) stay apart: different encoders, so merging changes bytes the
+  checks compare.
 - Planner: the draft's `amiga-e2e`/`amiga-app` task is two (T07, T08), and the readers are their own
   task (T04), so each task's "Done when" fits in three lines.
 - Survey (planning Stage 4), 2026-10-28: three readers checked every row of the draft against the

@@ -54,7 +54,8 @@ If the PNG decode cannot be pure, the screenshot check lives in `amiga-conform` 
 
 ## Tests
 
-- [ ] Every recording and bug zip in the repo's tests and under `bugs/` parses and re-serialises
+- [ ] Every recording and bug zip in the repo's tests and under the main checkout's `bugs/`
+      (git-ignored, so not in the worktree; five zips on 2026-10-28) parses and re-serialises
       byte-identical (text and zip).
 - [ ] sf-conform `recorder_*` and `widescreen_recording` tests and sf-e2e `recorder_*` tests pass.
 - [ ] `Recorder` → `finish` → text → `parse` → `Replay` round-trips a synthetic game header in the

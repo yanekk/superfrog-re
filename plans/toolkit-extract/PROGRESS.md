@@ -7,7 +7,7 @@ the task you pick up, and append yours there.
 
 **Sixty words to a Notes cell, counted.** Flat prose. The account is the commit message.
 
-**Plan reviewed:** not yet — the plan reviewer marks it before the build starts
+**Plan reviewed:** 2026-10-28 — 4 fixed, 3 decided with the user
 
 **Status:** planned, nothing built.
 **Last updated:** 2026-10-28
@@ -25,7 +25,7 @@ done · ⛔ blocked, needs a human.
 | T02 | amiga-input | T01 | ⬜ | |
 | T03 | amiga-disk | T01 | ⬜ | |
 | T04 | asset-readers | T03 | ⬜ | |
-| T05 | amiga-oracle | T02, T03 | ⬜ | |
+| T05 | amiga-oracle | T02, T03, T04 | ⬜ | |
 | T06 | amiga-conform | T05 | ⬜ | |
 | T07 | amiga-app-parts | T02 | ⬜ | |
 | T08 | amiga-e2e | T07 | ⬜ | |
