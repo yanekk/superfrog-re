@@ -78,6 +78,13 @@ is the next step's first task, not this one's.
    now, and game two needs a recorder as soon as the owner plays it. Cost: one task, a redesign of
    about a third of the recorder's 2 000 lines around that start-point type. If nothing is said:
    in, as task T6b after T6.
+6. **The route viewer (`sf-routeview`, 1 900 lines) stays out, with the planner.** It exists to show
+   planner routes (`verdict.rs` reads `sf-bench` results, `main.rs --planner`), and its data comes
+   from Superfrog's replay (`dump.rs`: frog record offsets, coin, enemy and hurt events). The page
+   (`page.html`) hard-codes Superfrog's categories, cell formula and title; `json.rs`, `site.rs`
+   and `guide.rs` (about 270 lines) are generic. Generalising it means making the categories data,
+   designed against one game, and it shows nothing for game two until game two plays levels and has
+   routes. Recommended: generalise it together with the planner then. If nothing is said: out.
 
 ## Not changing
 
