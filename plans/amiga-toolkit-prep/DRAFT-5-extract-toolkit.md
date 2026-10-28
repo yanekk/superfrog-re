@@ -1,6 +1,7 @@
 # Draft 5 — extract the toolkit into its own repository
 
-**Status:** draft, 2026-10-27. Not reviewed. Input for `pir plan`, after drafts 3 (A+B) and 2 have
+**Status:** draft, 2026-10-27. Not reviewed. **2026-10-28: phase B and decisions 1–3 are superseded by
+[draft 6](DRAFT-6-monorepo-and-knowledge.md): the toolkit stays in this repository (monorepo).** Input for `pir plan`, after drafts 3 (A+B) and 2 have
 merged. Owner decisions 2026-10-27: extract after the keyboard and clock steps; the toolkit lives in
 its own new repository. Game two (Forest Dumb Forever) is the step after this one and is not in it.
 
