@@ -211,7 +211,7 @@ impl Routine {
             Routine::Restart(r) => r.run(cx),
             Routine::LevelStart(r) => r.run(cx),
             Routine::Tally(r) => r.run(cx),
-            Routine::Timeline(r) => r.run(cx),
+            Routine::Timeline(r) => crate::level::timeline::run(r, cx),
             Routine::LevelLoop => Yield::Poll,
             // The level is over this way: said, then back to the caller (`top_loop`'s next call).
             Routine::Outcome(o) => {

@@ -429,154 +429,25 @@ pub enum Tick {
     Write(u32),
 }
 
-/// The beam's position as the CPU sees it.
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
-pub struct Clock {
-    /// The line, counted from the frame's vertical blank; past [`FRAME_LINES`] when work runs on
-    /// past the frame's end.
-    pub line: u16,
-    /// How far into the line, in [`LINE_CYCLES`] (the beam's own pace, two a DMA slot).
-    pub into: u32,
+/// The level's display, as the beam clock needs it: the fetch on [`FETCH_LINES`] from
+/// [`FETCH_FROM`] to [`FETCH_TO`], lores five planes (the blitter keeps three of each 8 slots
+/// there: `$28`'s 0, 2 and 4), stealing [`FETCH_STOLEN_CYCLES`] of each fetching line's CPU
+/// cycles.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash)]
+pub struct Level;
+
+impl amiga_clock::Timing for Level {
+    const TIMING: amiga_clock::DisplayTiming = amiga_clock::DisplayTiming {
+        frame_lines: FRAME_LINES,
+        fetch_lines: FETCH_LINES,
+        fetch_slots: FETCH_FROM..FETCH_TO,
+        blitter_free: 0b10101,
+        stolen_cycles: FETCH_STOLEN_CYCLES,
+    };
 }
 
-impl Clock {
-    /// The frame's start, where the vertical blank's interrupt is taken.
-    pub const START: Clock = Clock { line: 0, into: 0 };
-
-    fn fetching(line: u16) -> bool {
-        FETCH_LINES.contains(&(line % FRAME_LINES))
-    }
-
-    /// CPU cycles a line gives the CPU.
-    fn cpu_cycles(line: u16) -> u32 {
-        if Clock::fetching(line) {
-            LINE_CYCLES - FETCH_STOLEN_CYCLES
-        } else {
-            LINE_CYCLES
-        }
-    }
-
-    /// The CPU works `cycles`.
-    pub fn cpu(&mut self, mut cycles: u32) {
-        loop {
-            let per = Clock::cpu_cycles(self.line);
-            // What is left of the line, in the CPU's cycles.
-            let left = (LINE_CYCLES - self.into.min(LINE_CYCLES)) * per / LINE_CYCLES;
-            if cycles < left {
-                self.into += cycles * LINE_CYCLES / per;
-                return;
-            }
-            cycles -= left;
-            self.into = 0;
-            self.line = self.line.saturating_add(1);
-        }
-    }
-
-    /// Whether the blitter may have DMA slot `slot` of line `line`: not the memory refresh's
-    /// (`$01`, `$03`, `$05`, `$e2`), and on a fetching line not the five planes' (lores: five of
-    /// each 8 slots from DDFSTRT `$28` to DDFSTOP `$d8`'s end). Audio and sprite fetches, which
-    /// come and go, are not counted (the oracle's DMA debugger, measured).
-    fn blitter_slot(line: u16, slot: u32) -> bool {
-        if matches!(slot, 1 | 3 | 5 | 0xe2) {
-            return false;
-        }
-        if Clock::fetching(line) && (FETCH_FROM..FETCH_TO).contains(&slot) {
-            return matches!((slot - FETCH_FROM) % 8, 0 | 2 | 4);
-        }
-        true
-    }
-
-    /// The blitter has the bus for `slots` DMA slots, the CPU waiting.
-    pub fn blit(&mut self, mut slots: u32) {
-        let mut slot = self.into / 2;
-        while slots > 0 {
-            if slot >= LINE_SLOTS {
-                slot = 0;
-                self.line = self.line.saturating_add(1);
-            }
-            if Clock::blitter_slot(self.line, slot) {
-                slots -= 1;
-            }
-            slot += 1;
-        }
-        self.into = 2 * slot;
-        if self.into >= LINE_CYCLES {
-            self.into = 0;
-            self.line = self.line.saturating_add(1);
-        }
-    }
-
-    /// A blit of `words` words with BLTCON0 `con0`, started (BLTSIZE written) here, cycle by
-    /// cycle as the reference emulator's blitter runs it (vAmiga's `SlowBlitter`): two start-up
-    /// cycles, then one micro-instruction a cycle, each that uses the bus waiting for a DMA slot
-    /// free to it: per word a read for each of A, B and C it uses, then the pipelined D write of
-    /// the word before (the first word's only waits for a free slot); after the last word one
-    /// cycle needing no bus, then the last word's D. Returns where each word's D write was made;
-    /// the clock is left where the blit ended.
-    pub fn blit_cycles(&mut self, words: u32, con0: u16) -> Vec<u32> {
-        let reads = (con0 >> 9 & 7).count_ones();
-        let mut slot = self.into / 2;
-        let mut line = self.line;
-        // The next cycle that may run an instruction: with `bus`, the next free one.
-        let mut next = |bus: bool| loop {
-            slot += 1;
-            if slot >= LINE_SLOTS {
-                slot -= LINE_SLOTS;
-                line = line.saturating_add(1);
-            }
-            if !bus || Clock::blitter_slot(line, slot) {
-                return line as u32 * LINE_CYCLES + 2 * slot;
-            }
-        };
-        // BLTSIZE takes effect a cycle after its write; the blit starts on the next two cycles
-        // that find the bus free.
-        next(false);
-        next(true);
-        next(true);
-        let mut out = Vec::with_capacity(words as usize);
-        for w in 0..words {
-            for _ in 0..reads {
-                next(true);
-            }
-            let at = next(true);
-            if w > 0 {
-                out.push(at);
-            }
-        }
-        next(false);
-        out.push(next(true));
-        let end = line as u32 * LINE_CYCLES + 2 * (slot + 1);
-        self.line = (end / LINE_CYCLES) as u16;
-        self.into = end % LINE_CYCLES;
-        if con0 & 0x100 == 0 {
-            out.clear();
-        }
-        out
-    }
-
-    /// The position in [`LINE_CYCLES`] from the frame's start.
-    pub fn nominal(&self) -> u32 {
-        self.pos().nominal()
-    }
-
-    /// The horizontal position in DMA slots, as the beam counts it.
-    pub fn hpos(&self) -> u16 {
-        self.pos().paula_hpos()
-    }
-
-    /// The position as a [`amiga_clock::BeamPos`].
-    pub fn pos(&self) -> amiga_clock::BeamPos {
-        amiga_clock::BeamPos::new(self.line, self.into)
-    }
-
-    /// Past the frame's end: the same moment counted from the next frame's start.
-    pub fn next_frame(&self) -> Clock {
-        Clock {
-            line: self.line.saturating_sub(FRAME_LINES),
-            into: self.into,
-        }
-    }
-}
+/// The beam's position as the CPU sees it, on the level's display ([`Level`]).
+pub type Clock = amiga_clock::Clock<Level>;
 
 /// Where a frame ended in the middle of a pass ([`crate::Pacing::Late`]): after its `writes`th
 /// Paula write, the last at `line`, slot `hpos`, in the pass's `phase`th call.
@@ -675,16 +546,8 @@ impl Frames {
     }
 }
 
-/// DMA slots one word of a blit takes, by the channels BLTCON0 enables (A, B, C, D): the
-/// hardware reference's table.
-pub fn slots_per_word(con0: u16) -> u32 {
-    let (a, b, c, d) = (con0 & 0x800 != 0, con0 & 0x400 != 0, con0 & 0x200 != 0, con0 & 0x100 != 0);
-    match (a, b, c, d) {
-        (_, true, true, _) => 4,
-        (_, true, false, _) | (_, false, true, true) => 3,
-        _ => 2,
-    }
-}
+/// The blitter's timing (one home with the rest: `amiga-clock`).
+pub use amiga_clock::slots_per_word;
 
 #[cfg(test)]
 mod tests {
@@ -695,7 +558,7 @@ mod tests {
         let mut c = Clock::START;
         c.cpu(LINE_CYCLES * 10);
         assert_eq!((c.line, c.into), (10, 0));
-        let mut c = Clock { line: 0x30, into: 0 };
+        let mut c = Clock::at(0x30, 0);
         c.cpu(LINE_CYCLES);
         assert_eq!(c.line, 0x31);
         let per = LINE_CYCLES - FETCH_STOLEN_CYCLES;
@@ -708,10 +571,200 @@ mod tests {
         // A line with no fetch leaves the blitter all but the four refresh slots: 223.
         blank.blit(400);
         assert_eq!(blank.line, 1);
-        let mut shown = Clock { line: 0x40, into: 0 };
+        let mut shown = Clock::at(0x40, 0);
         shown.blit(400);
         assert!(shown.line > 0x42);
         assert_eq!(slots_per_word(0x0fca), 4);
         assert_eq!(slots_per_word(0x09f0), 2);
+    }
+
+    /// `level::beam::Clock` as it was before it moved to `amiga-clock` (one-clock T02): the
+    /// reference the moved clock is held to.
+    #[derive(Debug, Clone, Copy, PartialEq)]
+    struct Old {
+        line: u16,
+        into: u32,
+    }
+
+    impl Old {
+        fn fetching(line: u16) -> bool {
+            (0x27..0x12c).contains(&(line % 313))
+        }
+
+        fn cpu_cycles(line: u16) -> u32 {
+            if Old::fetching(line) { 454 - 40 } else { 454 }
+        }
+
+        fn cpu(&mut self, mut cycles: u32) {
+            loop {
+                let per = Old::cpu_cycles(self.line);
+                let left = (454 - self.into.min(454)) * per / 454;
+                if cycles < left {
+                    self.into += cycles * 454 / per;
+                    return;
+                }
+                cycles -= left;
+                self.into = 0;
+                self.line = self.line.saturating_add(1);
+            }
+        }
+
+        fn blitter_slot(line: u16, slot: u32) -> bool {
+            if matches!(slot, 1 | 3 | 5 | 0xe2) {
+                return false;
+            }
+            if Old::fetching(line) && (0x28..0xe0).contains(&slot) {
+                return matches!((slot - 0x28) % 8, 0 | 2 | 4);
+            }
+            true
+        }
+
+        fn blit(&mut self, mut slots: u32) {
+            let mut slot = self.into / 2;
+            while slots > 0 {
+                if slot >= 227 {
+                    slot = 0;
+                    self.line = self.line.saturating_add(1);
+                }
+                if Old::blitter_slot(self.line, slot) {
+                    slots -= 1;
+                }
+                slot += 1;
+            }
+            self.into = 2 * slot;
+            if self.into >= 454 {
+                self.into = 0;
+                self.line = self.line.saturating_add(1);
+            }
+        }
+
+        fn blit_cycles(&mut self, words: u32, con0: u16) -> Vec<u32> {
+            let reads = (con0 >> 9 & 7).count_ones();
+            let mut slot = self.into / 2;
+            let mut line = self.line;
+            let mut next = |bus: bool| loop {
+                slot += 1;
+                if slot >= 227 {
+                    slot -= 227;
+                    line = line.saturating_add(1);
+                }
+                if !bus || Old::blitter_slot(line, slot) {
+                    return line as u32 * 454 + 2 * slot;
+                }
+            };
+            next(false);
+            next(true);
+            next(true);
+            let mut out = Vec::with_capacity(words as usize);
+            for w in 0..words {
+                for _ in 0..reads {
+                    next(true);
+                }
+                let at = next(true);
+                if w > 0 {
+                    out.push(at);
+                }
+            }
+            next(false);
+            out.push(next(true));
+            let end = line as u32 * 454 + 2 * (slot + 1);
+            self.line = (end / 454) as u16;
+            self.into = end % 454;
+            if con0 & 0x100 == 0 {
+                out.clear();
+            }
+            out
+        }
+
+        fn slots_per_word(con0: u16) -> u32 {
+            let (a, b, c, d) =
+                (con0 & 0x800 != 0, con0 & 0x400 != 0, con0 & 0x200 != 0, con0 & 0x100 != 0);
+            match (a, b, c, d) {
+                (_, true, true, _) => 4,
+                (_, true, false, _) | (_, false, true, true) => 3,
+                _ => 2,
+            }
+        }
+    }
+
+    fn same(c: Clock, o: Old) -> bool {
+        (c.line, c.into) == (o.line, o.into)
+    }
+
+    /// Every line of a frame and past its end (work runs on past it), wrapping lines included.
+    fn lines() -> impl Iterator<Item = u16> {
+        (0..FRAME_LINES + 40).chain([2 * FRAME_LINES + 0x30, u16::MAX - 2, u16::MAX])
+    }
+
+    #[test]
+    fn the_moved_blitter_slot_and_refresh_are_the_old_ones() {
+        for line in lines() {
+            for slot in 0..LINE_SLOTS + 3 {
+                assert_eq!(Clock::blitter_slot(line, slot), Old::blitter_slot(line, slot), "{line} {slot}");
+            }
+        }
+        // The story's bus and the clock's blitter test the same four refresh slots.
+        for t in 0..3 * LINE_SLOTS {
+            let slot = t % LINE_SLOTS;
+            assert_eq!(amiga_clock::is_refresh(slot), crate::front::story::cpu::refresh(t), "{t}");
+            assert_eq!(amiga_clock::is_refresh(slot), matches!(slot, 1 | 3 | 5 | 0xe2), "{t}");
+        }
+    }
+
+    #[test]
+    fn the_moved_cpu_and_blit_are_the_old_ones() {
+        let cycles = [0, 1, 2, 39, 40, 413, 414, 453, 454, 455, 908, 5_000, 141_000];
+        let slots = [0, 1, 2, 3, 4, 100, 223, 224, 227, 400, 5_000];
+        for line in lines() {
+            for into in (0..LINE_CYCLES + 4).step_by(3) {
+                for n in cycles {
+                    let (mut c, mut o) = (Clock::at(line, into), Old { line, into });
+                    c.cpu(n);
+                    o.cpu(n);
+                    assert!(same(c, o), "cpu {line} {into} {n}: {c:?} {o:?}");
+                }
+                for n in slots {
+                    let (mut c, mut o) = (Clock::at(line, into), Old { line, into });
+                    c.blit(n);
+                    o.blit(n);
+                    assert!(same(c, o), "blit {line} {into} {n}: {c:?} {o:?}");
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn the_moved_blit_cycles_and_slots_per_word_are_the_old_ones() {
+        // All 16 channel sets (A, B, C, D: D on and off), with and without minterm and shift bits.
+        let con0s = (0..16u16).flat_map(|ch| [ch << 8, ch << 8 | 0xf0, 0x4000 | ch << 8 | 0xca]);
+        let con0s: Vec<u16> = con0s.collect();
+        for &con0 in &con0s {
+            assert_eq!(slots_per_word(con0), Old::slots_per_word(con0), "{con0:04x}");
+        }
+        for line in lines().step_by(3) {
+            for into in (0..LINE_CYCLES + 2).step_by(23) {
+                for &con0 in &con0s {
+                    for words in [0, 1, 2, 3, 20, 400] {
+                        let (mut c, mut o) = (Clock::at(line, into), Old { line, into });
+                        let (dc, d_o) = (c.blit_cycles(words, con0), o.blit_cycles(words, con0));
+                        assert_eq!(dc, d_o, "{line} {into} {con0:04x} {words}");
+                        assert!(same(c, o), "{line} {into} {con0:04x} {words}: {c:?} {o:?}");
+                    }
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn the_moved_clock_keeps_its_position_and_next_frame() {
+        for line in lines() {
+            for into in [0, 1, 226, 452, 453] {
+                let c = Clock::at(line, into);
+                assert_eq!(c.nominal(), line as u32 * 454 + into);
+                assert_eq!(c.hpos(), (into / 2).min(227 - 1) as u16);
+                let n = c.next_frame();
+                assert_eq!((n.line, n.into), (line.saturating_sub(313), into));
+            }
+        }
     }
 }

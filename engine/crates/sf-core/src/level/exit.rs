@@ -12,7 +12,7 @@ use sf_assets::{LevelId, World};
 use crate::front::common::{FadeKind, call, fade, fade_timed};
 use crate::front::{BEAM_CYCLES_PER_LINE, Cx, Routine, Yield};
 use crate::layout::h0;
-use crate::level::timeline::Timeline;
+use crate::level::timeline;
 use crate::level::{Hw, LevelCtx, LevelOutcome};
 use crate::render::LEVEL_COPPER;
 use crate::state::State;
@@ -349,7 +349,7 @@ pub(crate) fn init_on_beam_costs(
         .collect();
     let ws: Vec<(u16, u16)> = ws.iter().map(|w| (w.reg, w.value)).collect();
     let job = crate::game::Job { inside, writes };
-    let t = Timeline::of(&trace, costs, &ws, job);
+    let t = timeline::of(&trace, costs, &ws, job);
     call(Routine::Timeline(t))
 }
 

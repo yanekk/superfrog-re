@@ -33,9 +33,7 @@ impl Blit {
     /// (approximate: only the order of a blit against the copper's writes depends on it).
     pub fn cycles(&self) -> u32 {
         let (h, w) = bltsize_words(self.size);
-        let words = h * w;
-        let channels = (self.con0 >> 8 & 15).count_ones().max(2);
-        words * channels * 3
+        amiga_clock::rough_blit_cycles(self.con0, h * w)
     }
 
     /// Run the blit. Returns the pointers as the blitter leaves them.
@@ -115,38 +113,9 @@ pub fn bltsize_words(size: u16) -> (u32, u32) {
     (h, w)
 }
 
-/// The last fixed DMA slot (refresh to `$07`, disk to `$0d`, audio to `$13`).
-pub const FIXED_TO: u16 = 0x0d;
-
-/// When each destination word of a blit with priority is written, as the blitter takes the bus
-/// cycles nothing else does: not the fixed slots (refresh, disk, audio: the odd cycles to `$13`),
-/// not the bitplanes' (`fetch`), two a word (an A-to-D copy). Starts on (`line`, `h`); returns each
-/// word's (line, h) in order. Copper and sprite slots are not counted (measured on the credits).
-pub fn word_times(
-    words: u32,
-    line: u16,
-    h: u16,
-    fetch: &crate::copper::Fetch,
-) -> Vec<(u16, u16)> {
-    let mut out = Vec::with_capacity(words as usize);
-    let (mut l, mut c) = (line, h);
-    let mut half = false;
-    while (out.len() as u32) < words {
-        let fixed = c % 2 == 1 && c <= FIXED_TO;
-        if !fixed && !fetch.takes(l % crate::copper::FRAME_LINES, c) {
-            if half {
-                out.push((l, c));
-            }
-            half = !half;
-        }
-        c += 1;
-        if c >= crate::copper::LINE_CYCLES {
-            c = 0;
-            l += 1;
-        }
-    }
-    out
-}
+/// The blitter's timing lives with the rest of it in `amiga-clock` (one home, DESIGN one-clock
+/// §2.4); its old paths stay.
+pub use amiga_clock::{FIXED_TO, word_times};
 
 /// The minterm function of A, B and C.
 pub fn logic(m: u8, a: u16, b: u16, c: u16) -> u16 {
@@ -182,5 +151,89 @@ mod tests {
         assert_eq!(bltsize_words(0x0001), (1024, 1));
         assert_eq!(bltsize_words(0x0382), (14, 2));
         assert_eq!(bltsize_words(0xffff), (1023, 63));
+    }
+
+    /// `word_times` as it was before it moved to `amiga-clock` (one-clock T02), with `&Fetch`:
+    /// the reference the moved one, given `|l, h| fetch.takes(l, h)`, is held to.
+    fn old_word_times(
+        words: u32,
+        line: u16,
+        h: u16,
+        fetch: &crate::copper::Fetch,
+    ) -> Vec<(u16, u16)> {
+        let mut out = Vec::with_capacity(words as usize);
+        let (mut l, mut c) = (line, h);
+        let mut half = false;
+        while (out.len() as u32) < words {
+            let fixed = c % 2 == 1 && c <= 0x0d;
+            if !fixed && !fetch.takes(l % 313, c) {
+                if half {
+                    out.push((l, c));
+                }
+                half = !half;
+            }
+            c += 1;
+            if c >= 227 {
+                c = 0;
+                l += 1;
+            }
+        }
+        out
+    }
+
+    #[test]
+    fn the_moved_word_times_are_the_old_ones() {
+        use crate::copper::Fetch;
+        let f = |bplcon0, diwstrt, diwstop, ddfstrt, ddfstop| Fetch {
+            bplcon0,
+            diwstrt,
+            diwstop,
+            ddfstrt,
+            ddfstop,
+        };
+        // The set-ups the engine draws with: no display, the front end's and story's lores
+        // screens of four to six planes, the level's scrolled fetch, hires, and a window past
+        // line $ff.
+        let fetches = [
+            Fetch::default(),
+            f(0x4200, 0x2c81, 0x2cc1, 0x38, 0xd0),
+            f(0x5200, 0x2c81, 0x2cc1, 0x38, 0xd0),
+            f(0x6200, 0x2c81, 0x2cc1, 0x38, 0xd0),
+            f(0x5200, 0x2781, 0x2cc1, 0x30, 0xd8),
+            f(0xc200, 0x2c81, 0x2cc1, 0x3c, 0xd4),
+            f(0x3200, 0x1081, 0xf4c1, 0x28, 0xd8),
+        ];
+        for fetch in &fetches {
+            for line in (0..313).step_by(5).chain([255, 256, 311, 312, 313, 400]) {
+                for h in (0..227).step_by(3).chain([0x0d, 0x0e, 0xe2]) {
+                    for words in [0, 1, 2, 3, 40, 321, 2000] {
+                        assert_eq!(
+                            word_times(words, line, h, |l, h| fetch.takes(l, h)),
+                            old_word_times(words, line, h, fetch),
+                            "{fetch:?} {line} {h} {words}"
+                        );
+                    }
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn blit_cycles_are_unchanged() {
+        // `Blit::cycles` as it was, before its formula moved to `amiga-clock`.
+        let old = |b: &Blit| {
+            let (h, w) = bltsize_words(b.size);
+            let words = h * w;
+            let channels = (b.con0 >> 8 & 15).count_ones().max(2);
+            words * channels * 3
+        };
+        for ch in 0..16u16 {
+            for con0 in [ch << 8, ch << 8 | 0xca, 0xf000 | ch << 8 | 0xf0] {
+                for size in [0, 1, 0x41, 0x0382, 0x1014, 0xffff, 0x8000] {
+                    let b = Blit { con0, size, ..Blit::default() };
+                    assert_eq!(b.cycles(), old(&b), "{con0:04x} {size:04x}");
+                }
+            }
+        }
     }
 }

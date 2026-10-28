@@ -396,7 +396,7 @@ fn the_frog_sprites_wait_out_lines_1d_to_21() {
         &mut paula,
     );
     let n = FRAME_LINES;
-    let on = |line| Clock { line, into: 0 };
+    let on = |line| Clock::at(line, 0);
     for (from, to) in [
         (0x1c, 0x1c),
         (0x1d, 0x22),

@@ -596,7 +596,7 @@ impl Game {
                 {
                     self.pending = Some(crate::level::beam::Pending {
                         start: Box::new(self.state.clone()),
-                        clock: crate::level::beam::Clock { line, into: 0 },
+                        clock: crate::level::beam::Clock::at(line, 0),
                         hw: Hw {
                             sdr: self.sdr,
                             key_in,

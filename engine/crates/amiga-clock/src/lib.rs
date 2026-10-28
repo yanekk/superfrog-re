@@ -3,7 +3,16 @@
 //! A raster line is 227 DMA slots, and the 68000 runs two cycles a slot, so a line is 454 CPU
 //! cycles. A long PAL frame is 313 lines; an interlaced or non-LOF frame one fewer. Every beam
 //! position and every frame or line length in the engine is written in terms of these, so the
-//! numbers are written once.
+//! numbers are written once. On them: a beam [`Clock`] configured by a display's [`Timing`], the
+//! blitter's timing, and a [`Timeline`] that replays work done at once on the beam.
+
+mod blit;
+mod clock;
+mod timeline;
+
+pub use blit::{FIXED_TO, is_refresh, rough_blit_cycles, slots_per_word, word_times};
+pub use clock::{Clock, DisplayTiming, Timing};
+pub use timeline::{Timeline, TimelineBeam, TimelineYield};
 
 /// Lines in a long PAL frame.
 pub const FRAME_LINES: u16 = 313;
