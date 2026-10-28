@@ -29,7 +29,8 @@ build and check every move inside this repo before anything leaves it:
 | `amiga-oracle` | `sf-oracle`'s harness: `amiga.rs`, `ffi.rs`, `routine.rs`, `trace.rs`, the shim, `build.rs`, the five vAmiga patches, `tools/setup/oracle.sh` | `config.rs` split: the generic part takes a disk list and a Kickstart path; the four Superfrog disks, their names and the `SUPERFROG_*` variables stay in `sf-oracle` |
 | `amiga-conform` | `sf-conform`'s `compare.rs` (bar `PANEL_ROWS`), `report.rs`, `sound_events.rs`, `channels.rs`, `script.rs` (bar the `C` token), `feed.rs`, `routine.rs` (`Rig` made generic over the port's context type), `faithful.rs`, `purity.rs` | about 3.3k lines per the verification chapter; cases, sync points, milestones, planners stay |
 | `amiga-e2e` | `sf-e2e/src` | the binary name and flags become parameters |
-| `amiga-app` | `sf-app`'s run loop, pacing, audio, picture and filters, input and pads, capture, script layer, atomic writes, lock | menus, recorder, level files, Start Level, import and save windows stay Superfrog's; the split is confirmed by reading |
+| `amiga-app` | `sf-app`'s run loop, pacing, audio, picture and filters, input and pads, capture, script layer (`script.rs`, including `fast-until`, the unpaced fast-forward, and its loop in `main.rs`), atomic writes, lock | menus, level files, Start Level, import and save windows stay Superfrog's; the split is confirmed by reading |
+| `amiga-record` (decision 5) | the bug recorder's generic half: `sf_core::recording`'s per-frame inputs, seed, build tag, stop point, zip of `recording.txt` + screenshot (`ZIP_RECORDING`, `ZIP_SCREENSHOT`, `MAX_FRAMES`); `sf-app/src/recorder.rs`'s `Recorder` and `Replay`; `sf-conform/src/bug.rs`'s headless replay loop and picture check | the start point (`LevelSetup`, Start Level), `Location` and `LevelId` naming of zips, the recording bar's Superfrog wording and the put-back into the original by `LAYOUT` stay Superfrog's, behind a game-defined start-point type |
 
 Copyright: nothing from any disk or ROM enters the toolkit. `tools/check_no_disk_data.py` and the
 purity test move with it. The GPL filter ports (`crt_geom.wgsl`, `crt_easymode.wgsl`) keep their
@@ -72,6 +73,11 @@ is the next step's first task, not this one's.
    with Forest Dumb Forever (a Superfrog-like platformer, so likely a close fit) as its second
    user. The older planners under `sf-conform/examples/` are superseded by `sf-plan` and stay.
    If nothing is said: out.
+5. **The bug recorder's generic half goes in** (`amiga-record`, row above). Unlike the planner its
+   interface is small (a start point the game defines), Superfrog keeps using it so it is tested
+   now, and game two needs a recorder as soon as the owner plays it. Cost: one task, a redesign of
+   about a third of the recorder's 2 000 lines around that start-point type. If nothing is said:
+   in, as task T6b after T6.
 
 ## Not changing
 
