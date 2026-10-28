@@ -213,13 +213,19 @@ pub fn feed(case: &Case) -> Result<FeedFiles, String> {
     })
 }
 
-/// Temp file, then rename, in the same folder.
+/// Temp file, then rename, in the same folder. The temp name keeps the whole file name and is
+/// unique per call: `with_extension` would give a key's four files one temp name, and two tests
+/// in one process making the same feed at once then rename each other's bytes into place.
 fn write(path: &Path, bytes: &[u8]) -> Result<(), String> {
+    static NEXT: std::sync::atomic::AtomicUsize = std::sync::atomic::AtomicUsize::new(0);
     let err = |e: std::io::Error| format!("{}: {e}", path.display());
     if let Some(dir) = path.parent() {
         std::fs::create_dir_all(dir).map_err(err)?;
     }
-    let tmp = path.with_extension(format!("tmp{}", std::process::id()));
+    let n = NEXT.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+    let mut name = path.file_name().unwrap_or_default().to_os_string();
+    name.push(format!(".tmp{}-{n}", std::process::id()));
+    let tmp = path.with_file_name(name);
     std::fs::write(&tmp, bytes).map_err(err)?;
     std::fs::rename(&tmp, path).map_err(err)
 }
