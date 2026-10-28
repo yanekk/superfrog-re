@@ -13,6 +13,8 @@
 
 use super::{ATTRACT_FIRST, ATTRACT_LEFT, ATTRACT_PASSES, ATTRACT_ROW};
 use super::{BUFFER_0, BUFFER_1, LAMP_COUNT, LAMP_RECTS, LAMPS, PLANE, REELS, ROW};
+use amiga_clock::BeamPos;
+
 use crate::front::blit::Blit;
 use crate::front::story::cpu::{self, Bus};
 use crate::front::story::sim::{self, BlitEventKind, Prog, Sim};
@@ -103,7 +105,7 @@ impl Draw {
     }
 
     pub(crate) fn run(&mut self, cx: &mut Cx) -> Yield {
-        let line_start = cx.line as u32 * LINE;
+        let line_start = BeamPos::new(cx.line, 0).nominal();
         let (mut t, set_up) = match self.resume.take() {
             Some((c, true)) => (line_start + c, false),
             Some((c, false)) => return self.next(cx, line_start + c),
@@ -180,7 +182,7 @@ impl Draw {
             return self.cut(cx);
         }
         b.run(cx.s);
-        let start = (t / LINE) as u16;
+        let start = BeamPos::from_nominal(t).line;
         let top = fetch.lines().start;
         let raster = (top + rows.0, top + rows.1);
         if let Some(r) = crate::game::beam_race(raster, start) {
@@ -217,7 +219,7 @@ impl Draw {
             return self.cut(cx);
         }
         self.t = t;
-        cx.line = (t / LINE) as u16;
+        cx.line = BeamPos::from_nominal(t).line;
         self.step += 1;
         let last = match self.part {
             Part::Reels { .. } => 18,
@@ -394,7 +396,7 @@ fn lamps_prog(cx: &Cx) -> Prog {
 /// A Paula register written by the CPU at `t`.
 fn write_at(cx: &mut Cx, t: u32, reg: u16, value: u16) {
     let line = cx.line;
-    cx.line = (t / LINE) as u16;
+    cx.line = BeamPos::from_nominal(t).line;
     cx.wr(reg, value);
     cx.line = line;
 }
@@ -409,7 +411,7 @@ pub(crate) struct Work {
 impl Work {
     pub(crate) fn run(&mut self, cx: &mut Cx) -> Yield {
         let fetch = cx.fetch;
-        let t = cx.line as u32 * LINE;
+        let t = BeamPos::new(cx.line, 0).nominal();
         let end = spend(&fetch, t, self.left, CPU_LOST);
         let frame = FRAME_LINES as u32 * LINE;
         if end >= frame {
@@ -417,50 +419,33 @@ impl Work {
             cx.line = FRAME_LINES;
             return Yield::Interrupt;
         }
-        cx.line = (end / LINE) as u16;
+        cx.line = BeamPos::from_nominal(end).line;
         Yield::Return
     }
 }
 
+/// The CPU cycles a fetched word takes from the work, `lost` tenths of a cycle each, on a line the
+/// display fetches bitplanes on: never the whole line.
+fn taken(fetch: &Fetch, lost: u32) -> u32 {
+    (fetch.planes() as u32 * fetch.words() as u32 * lost / 10).min(LINE - 1)
+}
+
 /// The work [`spend`] gets done between `t` and `until`.
 fn done(fetch: &Fetch, t: u32, until: u32, lost: u32) -> u32 {
-    let taken = (fetch.planes() as u32 * fetch.words() as u32 * lost / 10).min(LINE - 1);
     let lines = fetch.lines();
-    (t / LINE..until.div_ceil(LINE))
-        .map(|l| {
-            let (from, to) = ((l * LINE).max(t), ((l + 1) * LINE).min(until));
-            let free = if lines.contains(&((l % FRAME_LINES as u32) as u16)) {
-                LINE - taken
-            } else {
-                LINE
-            };
-            (to - from) * free / LINE
-        })
-        .sum()
+    // Wrapped at the front end's frame, not the slot's own (DESIGN §2.2 of one-clock).
+    amiga_clock::policy::free_between(t, until, taken(fetch, lost), FRAME_LINES, |l| {
+        lines.contains(&l)
+    })
 }
 
 /// `cycles` of work from `t` (CPU cycles since the frame's start), a line the display fetches
 /// bitplanes on taking `lost` tenths of a cycle from it for each word fetched: where it ends.
 fn spend(fetch: &Fetch, t: u32, cycles: u32, lost: u32) -> u32 {
-    let taken = (fetch.planes() as u32 * fetch.words() as u32 * lost / 10).min(LINE - 1);
     let lines = fetch.lines();
-    let (mut t, mut left) = (t, cycles);
-    while left > 0 {
-        let line = (t / LINE) as u16 % FRAME_LINES;
-        let into = t % LINE;
-        let free = if lines.contains(&line) {
-            LINE - taken
-        } else {
-            LINE
-        };
-        let here = (LINE - into) * free / LINE;
-        if left <= here {
-            return t + (left * LINE).div_ceil(free);
-        }
-        left -= here;
-        t += LINE - into;
-    }
-    t
+    amiga_clock::policy::spend_stolen(t, cycles, taken(fetch, lost), FRAME_LINES, |l| {
+        lines.contains(&l)
+    })
 }
 
 /// The reel blit of `plane` (h0+$65e4): the symbol at the reel's position in `FRUC` to the reel.

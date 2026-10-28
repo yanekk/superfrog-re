@@ -12,6 +12,9 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-28 | 📌 | T03 review: line divisions left inline, not `BeamPos`/policy: `finish_frame`'s fade (`front/mod.rs` `/ BEAM_CYCLES_PER_LINE`, floor) and `slot::interrupt_lines` (floor). Outside T03's spend sites; not fixed. |
+| 2026-10-28 | 📌 | T03: `sf-conform all` 216 cases green, run in two parts (a 2 h limit cut it after 213; the three `whole-*` cases run with `run`); `whole_game.rs` 7 green in 82 min; `story --ignored` 9 green; `channels` verdict byte-identical to base. |
+| 2026-10-28 | 📌 | T03: `amiga_clock::policy` holds `whole_lines`, `exact_on_line` (`Cx::busy`), `wait_lines` (`Cx::blit_wait`), `spend_stolen` and `free_between` (slot draw `spend`, `done`, wrapped at 313), each swept against the old code kept in its tests. |
 | 2026-10-28 | 📌 | T02 review: `amiga_clock::Timeline::run` yields at the fixed `FRAME_LINES - 1` and `word_times` wraps at `FRAME_LINES`, not at a `Timing`'s `frame_lines`; a game with another frame length needs them parameterised. As the task's interface specified. |
 | 2026-10-28 | 📌 | T02: `alone` 5, `beam` 2, `frog_cases` 36, `story --ignored` 9 green; `channels` whole-game `Verdict` byte-identical to base `1249729` (still the `T216` label assert). Full test block not run (pir runs it at the end). |
 | 2026-10-28 | 🐞 | T01 review: `channels` whole-game `Verdict` is byte-identical on base `1249729` and T01's head (`runs` empty); both fail the `T216` label assert. Pre-existing, open, not this plan's. |
