@@ -18,7 +18,8 @@ reviewed by pir yet. Each draft is input for `@repo/single` (a one-run change) o
 | [2 — one clock](DRAFT-2-one-clock.md) | 300–600 lines | `pir plan`, 3 tasks | 4 first (one blit to time) |
 | [3 — one frame scheduler, one keyboard](DRAFT-3-one-scheduler.md) | 250–400 lines (A+B) | `@repo/single`; part C a later plan | A+B none; C after 2 |
 | [4 — one copy of each chip model](DRAFT-4-one-chip-model.md) | 300–450 lines | `pir plan`, 2 tasks | none |
-| [5 — extract the toolkit](DRAFT-5-extract-toolkit.md) | moves, not new code; 8 tasks | `pir plan` | 3 (A+B) and 2 merged |
+| [5 — extract the toolkit](DRAFT-5-extract-toolkit.md) | moves, not new code; phase A, 7 tasks + recorder | `pir plan` | 3 (A+B) and 2 merged |
+| [6 — monorepo and knowledge tiers](DRAFT-6-monorepo-and-knowledge.md) | 4 tasks | `pir plan` | 5 phase A |
 
 **Recommended order:** 4, then 3 (A+B), then 2, then 3C only if the north star still asks for it.
 1 can run beside any of them; it touches different files.
