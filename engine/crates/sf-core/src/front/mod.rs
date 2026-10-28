@@ -471,7 +471,7 @@ impl Cx<'_> {
         self.s.write(at, bytes);
         let start = self.frame as u64 * FRAME_LINES as u64 + self.line as u64;
         self.busy(cycles);
-        let end = start + cycles.div_ceil(BEAM_CYCLES_PER_LINE) as u64;
+        let end = start + amiga_clock::policy::whole_lines(cycles) as u64;
         self.unpack = Some(Unpack {
             at,
             old,
@@ -508,13 +508,10 @@ impl Cx<'_> {
             self.busy_from = Some(self.line);
         }
         let per_line = (self.fetch.planes() * self.fetch.words()) as u32 * 123 / 100;
-        let mut need = b.cycles();
-        while need > 0 && self.line < u16::MAX {
-            let shown = self.fetch.lines().contains(&(self.line % FRAME_LINES));
-            let free = BEAM_CYCLES_PER_LINE - if shown { per_line } else { 0 };
-            need = need.saturating_sub(free);
-            self.line += 1;
-        }
+        let shown = self.fetch.lines();
+        self.line = amiga_clock::policy::wait_lines(self.line, b.cycles(), per_line, |l| {
+            shown.contains(&(l % FRAME_LINES))
+        });
     }
 
     /// The CPU is busy for `cycles` 7 MHz cycles (a blit it waits for): the beam moves on.
@@ -522,13 +519,15 @@ impl Cx<'_> {
         if self.busy_from.is_none() {
             self.busy_from = Some(self.line);
         }
+        // Whole lines unless the cycle is known: `AudioDma`'s positions, which the front end's
+        // constants were fitted on, are line-coarse, and a finer count moves note restarts (T213).
         let lines = match self.into.as_mut() {
             Some(into) => {
-                let t = *into + cycles;
-                *into = t % BEAM_CYCLES_PER_LINE;
-                t / BEAM_CYCLES_PER_LINE
+                let (lines, rest) = amiga_clock::policy::exact_on_line(*into, cycles);
+                *into = rest;
+                lines
             }
-            None => cycles.div_ceil(BEAM_CYCLES_PER_LINE),
+            None => amiga_clock::policy::whole_lines(cycles),
         };
         self.line = (self.line as u32 + lines).min(u16::MAX as u32) as u16;
     }
