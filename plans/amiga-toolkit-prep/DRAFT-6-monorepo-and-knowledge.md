@@ -12,7 +12,7 @@ superfrog-re/                 the repository (rename optional, decision 3)
   CLAUDE.md                   tier 1: the owner, the pir method, the faithful bar, the knowledge rules
   knowledge/                  tier 1 notes, indexed by KNOWLEDGE.md
   plans/                      every plan (pir reads plans/ at the root); slugs name their project
-  .pir/                       one settings file, one test line covering all projects
+  .pir/                       one settings file; its test line is the selector tools/test.sh
   toolkit/                    tier 2: Rust workspace (draft 5), RE tools, PLAYBOOK.md, CLAUDE.md, docs/
   games/superfrog/            tier 3: engine/, tools/, docs/, conform cases, CLAUDE.md
   games/forest-dumb/          tier 3: same skeleton, started from toolkit/template/
@@ -70,21 +70,21 @@ first conformance case; porting routine by routine against it; the app; the reco
 for disks, a disk-location variable, a conformance case stub. A new game is the template copied
 plus a first plan that walks the playbook's opening steps. Forest Dumb Forever is its first user.
 
-## Decisions (open, for the owner)
+## Decisions (owner, 2026-10-28)
 
-1. **Move Superfrog into `games/superfrog/`.** (a) Yes, as one task after draft 5's phase A,
-   recommended: every game sits the same way and tier 3 has one shape. It is a mechanical move but
-   touches every path (`SUPERFROG_DISKS`'s default, disk zips in the root, `build/`, scripts,
-   `docs/architecture` citations, `.pir/settings.json`). (b) Leave Superfrog at the root and add
-   `toolkit/` and `games/forest-dumb/` beside it: no move, but the root mixes tier 1 and tier 3.
-   If nothing is said: (a).
-2. **One test line for all projects.** pir runs one `test` line; it would cover the toolkit and
-   every game, growing with each game. Recommended for now; revisit with the `faster-tests` plan.
-   If nothing is said: one line.
-3. **Repository name.** Renaming the folder changes pir's per-repo settings path
-   (`~/.pir/superfrog-re/`) and Claude's memory path, and breaks open worktrees. Recommended: keep
-   `superfrog-re` until no build is running, then rename in one step if wanted. If nothing is said:
-   keep.
+1. **Superfrog moves into `games/superfrog/`**, as one task after draft 5's phase A. Mechanical,
+   but it touches every path: `SUPERFROG_DISKS`'s default, the disk zips in the root, `build/`,
+   scripts, `docs/architecture` citations, `.pir/settings.json`.
+2. **Each game has its own test command.** pir runs one `test` line, so the line is one selector,
+   `tools/test.sh`, the pattern pir's own repo uses (a test command that picks by change, widened by
+   `PIR_TEST_SCOPE=all`, which pir sets for plan-review verification and end-of-run helpers). Each
+   project owns its command: `toolkit/test.sh`, `games/<game>/test.sh`. The selector diffs the branch
+   against its merge base with `main`: files under one game run that game's command; `toolkit/`
+   runs the toolkit's and every game's (they build on it); root files other than `plans/` (`.pir/`,
+   `tools/`, `knowledge/`, CLAUDE.md) run everything; `plans/` alone runs nothing;
+   `PIR_TEST_SCOPE=all` runs everything. Every doubt widens the selection. The selector gets its own
+   unit tests on synthetic change lists.
+3. **The repository keeps its name, `superfrog-re`.**
 
 ## Order
 
