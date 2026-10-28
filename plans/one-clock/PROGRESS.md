@@ -22,7 +22,7 @@ done · ⛔ blocked, needs a human.
 |---|---|---|---|---|
 | T01 | beam-pos-and-constants | — | ✅ | |
 | T02 | generic-clock | T01 | ✅ | |
-| T03 | front-end-and-slot-policies | T02 | ⬜ | |
+| T03 | front-end-and-slot-policies | T02 | ✅ | |
 
 **Review queue:** *(empty)*
 
