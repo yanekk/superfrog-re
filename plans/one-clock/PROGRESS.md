@@ -20,7 +20,7 @@ done · ⛔ blocked, needs a human.
 
 | # | Task | Depends on | State | Notes |
 |---|---|---|---|---|
-| T01 | beam-pos-and-constants | — | ⬜ | |
+| T01 | beam-pos-and-constants | — | ✅ | |
 | T02 | generic-clock | T01 | ⬜ | |
 | T03 | front-end-and-slot-policies | T02 | ⬜ | |
 
