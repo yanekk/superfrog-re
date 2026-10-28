@@ -9,9 +9,9 @@ task you pick up, and append yours there.
 
 **Plan reviewed:** 2026-10-27 — 3 fixed, 1 decided with the user
 
-**Status:** T01 ✅; T02 implemented, awaiting review.
+**Status:** T01, T02 ✅; T03 next.
 **Last updated:** 2026-10-28
-**Next `pir-work` will:** review T02.
+**Next `pir-work` will:** implement T03.
 
 ## Tasks
 
@@ -21,10 +21,10 @@ done · ⛔ blocked, needs a human.
 | # | Task | Depends on | State | Notes |
 |---|---|---|---|---|
 | T01 | beam-pos-and-constants | — | ✅ | |
-| T02 | generic-clock | T01 | 🔍 | `Clock<T: Timing>`, blit timing, `Timeline<J>` in amiga-clock; sf-core keeps `Level`, `timeline::of`, `timeline::run`. 9 tests: old-code sweeps, pinned save bytes. Deviations: `Timing_` is `DisplayTiming`; `timeline::run` maps `TimelineYield` to `Yield`; timeline sweep uses seeded restart-shaped traces, not a disk recording. §4 runs green; `channels` as base. |
+| T02 | generic-clock | T01 | ✅ | Review clean, no fix commit. Pinned save bytes rerun green on base `545a1fe`; mutations in clock slot test and timeline stepping caught; recorded W1-1 restart (42 writes) replays identically old versus new from 320 start lines; `beam`, `alone`, `frog_cases`, purity, `measure.sh` green. `story`/`channels --ignored` builder's run, not rerun. |
 | T03 | front-end-and-slot-policies | T02 | ⬜ | |
 
-**Review queue:** T02
+**Review queue:** —
 
 ## Blocked on the user
 
