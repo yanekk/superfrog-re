@@ -95,7 +95,7 @@ Newest column on the right. A step's column is filled by its plan's last task (o
 on its branch, with the values measured on that branch; they are the values that merge.
 
 | Question | Baseline 2026-10-23 (`e196a2e`) | amiga-chips 2026-10-27 (`pir/amiga-chips-T02`) | one-clock 2026-10-28 (`pir/one-clock-T03`) |
-|---|---|---|
+|---|---|---|---|
 | M1 | not run by this session; last full `sf-conform all` was rust-engine T217 | DESIGN §4 sf-conform runs green (41 cases incl. `complete-w1-1`; story ×9; story music) and a regression subset of the test block; the whole block runs at the plan's end; `sf-conform all` not run | `sf-conform all` 216 cases green (213 in one run cut by a 2 h limit, the last 3 run after); `whole_game.rs` 7 green; DESIGN §4 runs green except `channels`' whole-game test, which fails only its pre-existing `T216` label assert, its verdict byte-identical to base; test block runs at the plan's end |
 | M2 kbd_poll | 2 | 2 | 2 |
 | M2 key-byte encode | 4 | 4 | 4 |
