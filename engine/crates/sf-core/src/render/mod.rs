@@ -22,6 +22,7 @@ use sf_assets::{ExeId, GameData, SpriteId, World};
 
 use crate::layout::{H2, h2, h3};
 use crate::state::State;
+use amiga_chips::display::{Colours, Planes};
 use copper::{Fetch, Write, reg};
 
 /// The level's copper list (`level_copper`).
@@ -109,8 +110,9 @@ impl DisplayData {
                 .map(|(id, l)| (*id, sf_assets::t7mp_encode(&l.t7mp)))
                 .collect(),
             rom: crate::mem::Rom::new(data),
-            sound: crate::audio::SoundData::from_game(data)
-                .unwrap_or_else(|_| crate::audio::SoundData::from_parts(vec![0; 0x50000], vec![], vec![], vec![])),
+            sound: crate::audio::SoundData::from_game(data).unwrap_or_else(|_| {
+                crate::audio::SoundData::from_parts(vec![0; 0x50000], vec![], vec![], vec![])
+            }),
         }
     }
 
@@ -317,73 +319,8 @@ impl<'a> Mem<'a> {
     }
 }
 
-/// Lores pixels from a line's first fetched bit to its display (Denise's pipeline): the fetch
-/// index of window pixel `x` is `left + x - (2 * DDFSTRT + 17) - delay` (docs/12, measured).
-const PIPELINE: i32 = 17;
-/// The hires counterpart of [`PIPELINE`], in hires pixels (see `Planes::index_hires`).
-const HIRES_PIPELINE: i32 = 2;
 /// The DMA cycle of sprite 0's slot; sprite `n`'s is four cycles later per sprite.
 const SPRITE_SLOT: u16 = 0x15;
-
-/// Bitplane registers as the copper leaves them.
-#[derive(Debug, Clone, Copy, Default)]
-struct Planes {
-    fetch: Fetch,
-    bplcon1: u16,
-    bplcon2: u16,
-    modulo: [i16; 2],
-    pt: [u32; 6],
-}
-
-impl Planes {
-    fn write(&mut self, reg: u16, value: u16) {
-        self.fetch.write(reg, value);
-        match reg {
-            reg::BPLCON1 => self.bplcon1 = value,
-            reg::BPLCON2 => self.bplcon2 = value,
-            reg::BPL1MOD => self.modulo[0] = value as i16,
-            reg::BPL2MOD => self.modulo[1] = value as i16,
-            r if (reg::BPL1PTH..reg::BPL1PTH + 24).contains(&r) => {
-                let p = ((r - reg::BPL1PTH) / 4) as usize;
-                self.pt[p] = if r & 2 == 0 {
-                    (value as u32 & 0x1F) << 16 | self.pt[p] & 0xFFFF
-                } else {
-                    self.pt[p] & 0xFFFF_0000 | value as u32 & 0xFFFE
-                };
-            }
-            _ => {}
-        }
-    }
-
-    /// Plane `p`'s scroll delay in lores pixels: odd planes (index 0, 2, 4) use PF1's.
-    fn delay(&self, p: usize) -> i32 {
-        (if p.is_multiple_of(2) {
-            self.bplcon1
-        } else {
-            self.bplcon1 >> 4
-        } & 15) as i32
-    }
-
-    /// The fetch index (lores pixel of the line's fetched data) plane `p` shows at window
-    /// position `left + x`.
-    fn index(&self, p: usize, left: i32) -> i32 {
-        left - (2 * self.fetch.first_cycle() as i32 + PIPELINE) - self.delay(p)
-    }
-
-    /// In hires, the fetched hires pixel the first half of lores position `left` shows: a hires
-    /// fetch reaches the screen 16 hires pixels (8 lores) sooner after its first cycle than a lores
-    /// one (pixel 0 at `$81` with DDFSTRT `$3c`, against `$38` in lores); the delay counts in lores
-    /// pixels.
-    fn index_hires(&self, p: usize, left: i32) -> i32 {
-        2 * left - 4 * self.fetch.first_cycle() as i32 - HIRES_PIPELINE - 2 * self.delay(p)
-    }
-
-    /// The play field's priority against the sprite pairs: in single-playfield mode Denise
-    /// uses PF2P (BPLCON2 bits 3-5); pairs below it are in front.
-    fn priority(&self) -> u16 {
-        self.bplcon2 >> 3 & 7
-    }
-}
 
 /// What a picture line shows under the sprites.
 #[derive(Debug, Clone, Copy)]
@@ -404,7 +341,7 @@ struct Denise<'a> {
     writes: &'a [Write],
     next: usize,
     planes: Planes,
-    colours: [u16; 32],
+    colours: Colours,
     sprites: [objects::Sprite; 8],
     /// A level's screen: lines fetched from a display buffer are play-field rows (widescreen).
     level: bool,
@@ -423,7 +360,12 @@ pub(crate) fn level(state: &State, data: &DisplayData, view: View) -> Picture {
 /// slide; T29) widened by `view`: the centre is `narrow`, the sides the level's play-field as
 /// `state` holds it, in each line's colours, so a level shows 16:9 from its first frame to its
 /// last.
-pub(crate) fn level_widened(narrow: &Picture, state: &State, data: &DisplayData, view: View) -> Picture {
+pub(crate) fn level_widened(
+    narrow: &Picture,
+    state: &State,
+    data: &DisplayData,
+    view: View,
+) -> Picture {
     let mut p = narrow.widened(view);
     let n = view.extra_columns_each_side as usize;
     if n == 0 {
@@ -589,7 +531,7 @@ fn draw(
             fetch: start,
             ..Planes::default()
         },
-        colours: [0; 32],
+        colours: Colours::default(),
         sprites: Default::default(),
         level,
         wide: level && n > 0,
@@ -654,7 +596,7 @@ pub fn strip_layers(state: &State, data: &DisplayData, view: View) -> StripLayer
             fetch: start,
             ..Planes::default()
         },
-        colours: [0; 32],
+        colours: Colours::default(),
         sprites: Default::default(),
         level: true,
         wide: n > 0,
@@ -687,7 +629,8 @@ pub fn strip_layers(state: &State, data: &DisplayData, view: View) -> StripLayer
     let sprites = rows
         .iter()
         .flat_map(|row| {
-            (0..pic.width as i32).map(move |x| objects::sprite_at(row, pic.left + x, x).map(|(c, _)| c))
+            (0..pic.width as i32)
+                .map(move |x| objects::sprite_at(row, pic.left + x, x).map(|(c, _)| c))
         })
         .collect();
     let field_rows = field_rows.clone().min().unwrap_or(0)..field_rows.max().map_or(0, |y| y + 1);
@@ -729,10 +672,8 @@ impl Denise<'_> {
             self.mem.line.set(line);
             let y = line.checked_sub(pic.top).map(|y| y as usize);
             let mut cuts = [None; 8];
-            let mut palette = None;
-            self.apply(line, SPRITE_SLOT, y, pic, &mut palette, &mut cuts);
-            let fetching =
-                self.planes.fetch.lines().contains(&line) && self.planes.fetch.planes() > 0;
+            self.apply(line, SPRITE_SLOT, y, pic, &mut cuts);
+            let fetching = self.planes.fetching(line);
             // The CPU's DMACON writes, taken as at their line's start.
             if let Some((on, cpu)) = &mut self.dma {
                 while let Some((&(l, v), rest)) = cpu.split_first() {
@@ -755,9 +696,9 @@ impl Denise<'_> {
                 );
             }
             let first = self.planes.fetch.first_cycle();
-            self.apply(line, first, y, pic, &mut palette, &mut cuts);
+            self.apply(line, first, y, pic, &mut cuts);
             let mut under = Under::Nothing;
-            if self.planes.fetch.lines().contains(&line) && self.planes.fetch.planes() > 0 {
+            if self.planes.fetching(line) {
                 let x0 = self.planes.index(0, left);
                 let words = self.planes.fetch.words() as i32;
                 let stride = 2 * words + self.planes.modulo[0] as i32;
@@ -780,11 +721,7 @@ impl Denise<'_> {
                     panel::fetch(self.mem, &self.planes, left, row);
                     self.mem.fetch_start.set(0);
                 }
-                let words = self.planes.fetch.words() as i32;
-                for p in 0..self.planes.fetch.planes() as usize {
-                    let m = self.planes.modulo[p % 2] as i32;
-                    self.planes.pt[p] = (self.planes.pt[p] as i32 + 2 * words + m) as u32;
-                }
+                self.planes.advance();
             }
             // OCS Denise shows sprites only from a line's first bitplane fetch on (vAmiga
             // `spriteClipBegin`): a line without one shows none.
@@ -794,12 +731,12 @@ impl Denise<'_> {
                     .filter(|_| !matches!(under, Under::Nothing))
             });
             let priority = self.planes.priority();
-            self.apply(line + 1, 0, y, pic, &mut palette, &mut cuts);
+            self.apply(line + 1, 0, y, pic, &mut cuts);
             for s in &mut self.sprites {
                 s.end_of_line(line + 1, copper::FRAME_LINES - 1);
             }
             if let Some(y) = y {
-                pic.palettes[y] = palette.unwrap_or(self.colours);
+                pic.palettes[y] = self.colours.end_line();
                 let sprites = std::array::from_fn(|n| {
                     sprites[n].map(|s| objects::SpriteLine { cut: cuts[n], ..s })
                 });
@@ -822,7 +759,6 @@ impl Denise<'_> {
         h: u16,
         y: Option<usize>,
         pic: &mut Picture,
-        palette: &mut Option<[u16; 32]>,
         cuts: &mut [Option<i32>; 8],
     ) {
         while let Some(w) = self.writes.get(self.next).copied() {
@@ -830,24 +766,12 @@ impl Denise<'_> {
                 break;
             }
             self.next += 1;
+            if self.colours.apply(&w, y, pic) {
+                continue;
+            }
             let x = 2 * w.h as i32 - pic.left;
             let on_line = y.filter(|&y| w.line == pic.top + y as u16);
             match w.reg {
-                r if (reg::COLOR00..reg::COLOR00 + 64).contains(&r) => {
-                    let index = ((r - reg::COLOR00) / 2) as u8;
-                    if let Some(y) = on_line.filter(|_| x > 0) {
-                        palette.get_or_insert(self.colours);
-                        if x < pic.width as i32 {
-                            pic.splits.push(Split {
-                                y: y as u16,
-                                x: x as u16,
-                                index,
-                                colour: w.value & 0xFFF,
-                            });
-                        }
-                    }
-                    self.colours[index as usize] = w.value & 0xFFF;
-                }
                 r if (reg::SPR0PTH..reg::SPR0POS + 64).contains(&r) => {
                     let n = objects::sprite_of(r);
                     let disarmed = self.sprites[n].write(r, w.value, w.line);
@@ -864,6 +788,93 @@ impl Denise<'_> {
                     self.planes.write(r, w.value)
                 }
             }
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::front::story::StoryMem;
+    use crate::layout::Ram;
+
+    /// A copper MOVE, after a WAIT for `(line, h)` if there is one.
+    type Move = (Option<(u16, u16)>, u16, u16);
+
+    /// A copper list at `$1000` of `moves`, its end mark after.
+    fn list(mem: &mut StoryMem, moves: &[Move]) {
+        let mut at = 0x1000usize;
+        let mut put = |w: u16| {
+            mem.0.chip[at..at + 2].copy_from_slice(&w.to_be_bytes());
+            at += 2;
+        };
+        for &(wait, r, v) in moves {
+            if let Some((line, h)) = wait {
+                put(line << 8 | h | 0x01);
+                put(0xFFFE);
+            }
+            put(r);
+            put(v);
+        }
+        put(0xFFFF);
+        put(0xFFFE);
+    }
+
+    /// The toolkit's `display::draw` is this renderer's Denise without sprites or a level: on a
+    /// screen with no sprites both give the same picture, bit for bit.
+    #[test]
+    fn the_toolkit_display_draws_what_this_renderer_draws() {
+        for (planes, bplcon0) in [(5u32, 0x5200u16), (6, 0x6200)] {
+            let mut mem = StoryMem::default();
+            // Bitplane data: a fixed pseudo-random fill.
+            let mut x = 0x2545_F491u32;
+            for b in &mut mem.0.chip[0x10000..0x40000] {
+                x ^= x << 13;
+                x ^= x >> 17;
+                x ^= x << 5;
+                *b = x as u8;
+            }
+            let mut moves = vec![
+                (None, reg::BPLCON0, bplcon0),
+                (None, reg::BPLCON1, 0x0035),
+                (None, reg::DIWSTRT, 0x2c81),
+                (None, reg::DIWSTOP, 0x2cc1),
+                (None, reg::DDFSTRT, 0x0038),
+                (None, reg::DDFSTOP, 0x00d0),
+                (None, reg::BPL1MOD, 8),
+                (None, reg::BPL2MOD, -4i16 as u16),
+            ];
+            for p in 0..planes {
+                let pt = 0x10000 + 0x8000 * p;
+                moves.push((None, reg::BPL1PTH + 4 * p as u16, (pt >> 16) as u16));
+                moves.push((None, reg::BPL1PTH + 4 * p as u16 + 2, pt as u16));
+            }
+            for c in 0..32u16 {
+                moves.push((None, reg::COLOR00 + 2 * c, (c * 0x111) & 0xFFF));
+            }
+            // A palette change between lines, one in the middle of a line, a pointer moved.
+            moves.push((Some((0x50, 0)), reg::COLOR00 + 6, 0xF00));
+            moves.push((Some((0x60, 0x80)), reg::BPL1PTH + 2, 0x4000));
+            moves.push((None, reg::COLOR00 + 8, 0x0F0));
+            moves.push((None, reg::COLOR00 + 10, 0x00F));
+            list(&mut mem, &moves);
+
+            let state = State::default();
+            let data = DisplayData::default();
+            let word = |a: u32, _: u16, _: u16| u16::from_be_bytes([mem.byte(a), mem.byte(a + 1)]);
+            let (ours, writes) = story_screen(&mem, &state, &data, 0x1000, &word, None);
+            let mut start = Fetch::default();
+            for w in copper::run_beam(&word, 0x1000, Fetch::default()) {
+                start.write(w.reg, w.value);
+            }
+            assert_eq!(writes, copper::run_beam(&word, 0x1000, start));
+            let theirs = amiga_chips::display::draw(&mem, &writes, start);
+            assert!(
+                !ours.splits.is_empty(),
+                "{planes} planes: the list makes splits"
+            );
+            assert!(ours.pixels.iter().any(|&i| i >= 32) == (planes == 6));
+            assert_eq!(ours, theirs, "{planes} planes");
         }
     }
 }
