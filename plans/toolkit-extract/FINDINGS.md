@@ -12,6 +12,7 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-29 | 📌 | T04: the toolkit purity test scans `tests/` as well as `src/`, so a synthetic file literal over 16 integers fails it; build it from pieces. `hunk::Blocks::peek` gives the raw type long for a loader that stops before reading a block (T05). |
 | 2026-10-29 | 🐞 | T10 ran `cargo fmt` over all of sf-core and amiga-chips: 75 files changed by formatting only. Review reverted them. Format only the files a task changes (`rustfmt <file>`), never the whole crate, or parallel tasks conflict. |
 | 2026-10-29 | 📌 | T03: the engine purity test runs `cargo tree -p` on a toolkit crate, a non-member, so it sees the whole engine's features: png turns on miniz_oxide's `simd-adler32`. A toolkit crate pulling a shared dependency may show more there than in its own workspace. |
 | 2026-10-29 | 📌 | T02: `cargo fmt --all` in `toolkit/` rewrites the T01 crates (no rustfmt.toml, code is at width 120); format only the crate you touch. Per-task runs after the move: frog_cases 36 (17 min), alone 5, beam 2, story `--ignored` 9, green. |

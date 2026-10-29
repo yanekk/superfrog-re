@@ -8,6 +8,8 @@ publish.workspace = true
 # Save states (T26): the types a game holds derive serde, so sf-core can write the game out.
 serde = { version = "1", features = ["derive"] }
 sf-disk = { path = "../sf-disk" }
+# The hunk, IFF, planar and palette readers (toolkit-extract T04); this crate names what they read.
+amiga-disk = { path = "../../../toolkit/crates/amiga-disk" }
 
 [dev-dependencies]
 # Finds the owner's disks (tests only; the levels and graphics tests need the real content).
