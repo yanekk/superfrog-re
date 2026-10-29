@@ -12,19 +12,20 @@
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
-const PURE: [&str; 6] = [
+const PURE: [&str; 7] = [
     "sf-disk",
     "sf-assets",
     "sf-core",
     "amiga-paula",
     "amiga-chips",
     "amiga-clock",
+    "amiga-input",
 ];
 
 /// The pure crates that live in the toolkit workspace (`toolkit/crates`, toolkit-extract DESIGN
 /// §2.1), scanned at their paths there; the toolkit's own purity test checks them too, from its
 /// workspace alone.
-const TOOLKIT: [&str; 3] = ["amiga-paula", "amiga-chips", "amiga-clock"];
+const TOOLKIT: [&str; 4] = ["amiga-paula", "amiga-chips", "amiga-clock", "amiga-input"];
 
 /// Crates a pure crate may depend on (normal and build edges, transitively). Each entry beyond the
 /// pure crates themselves needs one line saying why it is pure (DESIGN §5, Dependencies).
@@ -35,6 +36,7 @@ const ALLOWED: &[&str] = &[
     "amiga-paula",
     "amiga-chips",
     "amiga-clock",
+    "amiga-input",
     // DEFLATE decoder for the zipped disks (T03): bytes in, bytes out; no I/O, clock, thread or float.
     "miniz_oxide",
     // miniz_oxide's Adler-32 checksum: integer arithmetic over a byte slice.

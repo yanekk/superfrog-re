@@ -6,9 +6,9 @@
 use std::path::{Path, PathBuf};
 
 /// The crates whose code is the game a save state holds: the engine's, and the toolkit's whose
-/// mixer, blitter, copper and clock its behaviour depends on (toolkit-extract DESIGN §3.3).
+/// mixer, blitter, copper, clock and input its behaviour depends on (toolkit-extract DESIGN §3.3).
 const GAME: [&str; 3] = ["sf-core", "sf-assets", "sf-disk"];
-const TOOLKIT: [&str; 3] = ["amiga-paula", "amiga-chips", "amiga-clock"];
+const TOOLKIT: [&str; 4] = ["amiga-paula", "amiga-chips", "amiga-clock", "amiga-input"];
 
 fn files(dir: &Path, out: &mut Vec<PathBuf>) {
     let Ok(entries) = std::fs::read_dir(dir) else { return };

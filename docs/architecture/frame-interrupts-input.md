@@ -13,6 +13,7 @@ owns = [
   "engine/crates/sf-core/src/input.rs",
   "engine/crates/sf-core/src/keyboard.rs",
   "engine/crates/sf-core/src/pass_clock.rs",
+  "toolkit/crates/amiga-input/",
 ]
 +++
 

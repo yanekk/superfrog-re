@@ -1,0 +1,13 @@
+[package]
+name = "amiga-input"
+version.workspace = true
+edition.workspace = true
+publish.workspace = true
+
+[dependencies]
+# Save states: the keys held and CIA-A's serial port are part of a game's saved state.
+serde = { version = "1", features = ["derive"] }
+
+[dev-dependencies]
+# Pins the save-state byte layout of KeySet and CiaKeyboard (the encoding games save with).
+bincode = "1.3.3"
