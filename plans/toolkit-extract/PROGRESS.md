@@ -9,10 +9,9 @@ the task you pick up, and append yours there.
 
 **Plan reviewed:** 2026-10-28 — 4 fixed, 3 decided with the user
 
-**Status:** planned, nothing built.
-**Last updated:** 2026-10-28
-**Next `pir-work` will:** T01, the only task with no dependency; it records the baseline everything
-else is compared with.
+**Status:** phase 1 built, T01 awaiting review.
+**Last updated:** 2026-10-29
+**Next `pir-work` will:** review T01; then T02, T03, T10.
 
 ## Tasks
 
@@ -21,7 +20,7 @@ done · ⛔ blocked, needs a human.
 
 | # | Task | Depends on | State | Notes |
 |---|---|---|---|---|
-| T01 | toolkit-workspace | — | ⬜ | |
+| T01 | toolkit-workspace | — | 🔍 | Baseline 216/216 ok (`baseline-T01.txt`). Toolkit: clock, chips with `Picture`, paula, `toolkit-checks` (purity, names); 13 new tests. Deviations: View methods are the `PictureView` trait; toolkit lock seeded from engine's; regression set run, not the whole engine line (parallel rule); measure.sh M5 counts rise by `BOOT_DMACON` uses. |
 | T02 | amiga-input | T01 | ⬜ | |
 | T03 | amiga-disk | T01 | ⬜ | |
 | T04 | asset-readers | T03 | ⬜ | |
@@ -33,7 +32,7 @@ done · ⛔ blocked, needs a human.
 | T10 | display-piece | T01 | ⬜ | |
 | T11 | dry-fit-and-finish | T04, T05, T08, T09, T10 | ⬜ | |
 
-**Review queue:** *(empty)*
+**Review queue:** T01
 
 ## Blocked on the user
 
