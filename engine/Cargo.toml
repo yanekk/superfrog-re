@@ -1,8 +1,9 @@
 # The Superfrog engine workspace. Pure crates (sf-disk, sf-assets, sf-core) hold the game, on the
-# toolkit's pure crates (amiga-clock, amiga-chips, amiga-paula, amiga-input in ../toolkit, by
-# path); shell crates hold the app and the test tooling. The boundary is DESIGN §3.1, enforced by
-# crates/sf-conform/tests/purity.rs. The toolkit crates' profile overrides are kept here as well as in
-# toolkit/Cargo.toml, because a build reads them from the root manifest of the workspace it builds.
+# toolkit's pure crates (amiga-clock, amiga-chips, amiga-paula, amiga-input, amiga-disk in
+# ../toolkit, by path); shell crates hold the app and the test tooling. The boundary is DESIGN §3.1,
+# enforced by crates/sf-conform/tests/purity.rs. The toolkit crates' profile overrides are kept here
+# as well as in toolkit/Cargo.toml, because a build reads them from the root manifest of the
+# workspace it builds.
 [workspace]
 resolver = "3"
 members = ["crates/*"]

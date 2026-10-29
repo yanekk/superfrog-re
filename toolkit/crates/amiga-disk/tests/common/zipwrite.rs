@@ -1,5 +1,5 @@
-//! A zip writer for tests: builds archives the reader in `sf_disk::zip` must take apart. Stored
-//! entries are `sf_disk::zip::write_stored`'s; a deflated entry is written stored with its
+//! A zip writer for tests: builds archives the reader in `amiga_disk::zip` must take apart. Stored
+//! entries are `amiga_disk::zip::write_stored`'s; a deflated entry is written stored with its
 //! compressed bytes, then its header fields are patched to say deflated.
 
 #![allow(dead_code)]

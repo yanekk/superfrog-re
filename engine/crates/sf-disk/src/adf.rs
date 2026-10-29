@@ -1,9 +1,9 @@
-//! A standard Amiga double-density disk image and the four slots of the Superfrog set.
+//! The four slots of the Superfrog set and one identified disk. The image size, `ADF_SIZE`, is the
+//! toolkit's (`amiga_disk`).
 
 use std::fmt;
 
-/// Bytes in a double-density ADF: 2 sides × 80 cylinders × 11 sectors × 512 bytes.
-pub const ADF_SIZE: usize = 901_120;
+pub use amiga_disk::ADF_SIZE;
 
 /// Which of the four Superfrog disks.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
