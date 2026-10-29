@@ -12,7 +12,7 @@ use std::path::{Path, PathBuf};
 use serde::{Deserialize, Serialize};
 use sf_core::Progress;
 
-use crate::atomic_write::atomic_write;
+use amiga_app::atomic_write::write as atomic_write;
 
 pub fn path(home: &Path) -> PathBuf {
     home.join("progress.toml")

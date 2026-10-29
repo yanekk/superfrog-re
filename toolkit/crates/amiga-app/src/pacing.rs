@@ -1,6 +1,5 @@
-//! When to step the game (DESIGN §2.5): one step per PAL frame of a clock, never a fraction of
-//! one. The clock is the audio device's samples played, or the wall clock when there is no device
-//! (DESIGN §2.11); either way it is counted in host samples, and the pacer turns it into Paula
+//! When to step the game: one step per PAL frame of a clock, never a fraction of one. The clock is
+//! the audio device's samples played, or the wall clock when there is no device; either way it is counted in host samples, and the pacer turns it into Paula
 //! clocks, which is what a PAL frame is made of (`lines * 227`).
 
 use amiga_paula::{CLOCKS_PER_LINE, LINES_PER_FRAME, PAULA_CLOCK_PAL};
@@ -25,8 +24,7 @@ impl Pacer {
     }
 
     /// The length of the frames from now on (313 lines, or 312 while the game keeps short frames).
-    /// `Game` does not report its frame length yet, so nothing calls this outside the tests.
-    #[allow(dead_code)]
+    /// A game that does not report its frame length leaves this at 313.
     pub fn set_frame_lines(&mut self, lines: u32) {
         self.lines = lines;
     }
@@ -51,7 +49,7 @@ impl Pacer {
     }
 }
 
-/// What the window shows: the newest completed frame, whole (DESIGN §2.5). A refresh between two
+/// What the window shows: the newest completed frame, whole. A refresh between two
 /// steps shows the earlier frame again, never a blend of the two.
 #[derive(Debug, Default)]
 pub struct Presenter<F> {

@@ -17,18 +17,13 @@
 //! (bug-recorder DESIGN §2.7).
 
 mod args;
-mod atomic_write;
-mod audio;
 mod capture;
 mod controls_window;
 mod home;
 mod import;
 mod input;
 mod levelfile;
-mod lock;
 mod menu;
-mod pacing;
-mod pad;
 mod progress;
 mod recorder;
 mod recording_bar;
@@ -37,8 +32,10 @@ mod script;
 mod settings;
 mod start_level_window;
 mod states;
-mod video;
 mod window;
+
+// The app's game-free parts (toolkit-extract T07).
+use amiga_app::{audio, lock, pacing, pad, video};
 
 use std::collections::BTreeMap;
 use std::path::PathBuf;
@@ -145,7 +142,7 @@ fn main() {
         eprintln!("superfrog: no event loop: {e}");
         std::process::exit(1);
     });
-    let log = args.capture.as_ref().map(|d| d.join("prompts.txt"));
+    let log = args.capture.as_ref().map(|d| d.join(amiga_app::capture::PROMPTS));
     let ui: Box<dyn Ui> = match &script {
         Some(s) => Box::new(ScriptedUi {
             picks: s.picks.iter().cloned().collect(),
@@ -305,11 +302,11 @@ impl App {
         let menu = menu::build_menu();
         menu.install(event_loop);
         self.menu = Some(menu);
-        let lock = match Lock::acquire(&self.home) {
+        let lock = match lock::acquire(&self.home, "Superfrog") {
             Ok(l) => l,
             Err(e) => {
                 eprintln!("superfrog: {e}");
-                self.ui.notice(&e.to_string());
+                self.ui.notice(&e);
                 self.status = 1;
                 return event_loop.exit();
             }
@@ -385,7 +382,7 @@ impl App {
         let audio = if self.args.unattended() && self.args.audio_device.is_none() {
             None
         } else {
-            Audio::open(self.args.audio_device.as_deref())
+            Audio::open(self.args.audio_device.as_deref(), "superfrog")
                 .inspect_err(|e| eprintln!("superfrog: {e}; carrying on silently"))
                 .ok()
         };
@@ -402,6 +399,7 @@ impl App {
             Err(e) => return self.fail(event_loop, &e),
         };
         video.filter = settings.filter;
+        video.bar_points = window::BAR_HEIGHT;
         if settings.fullscreen {
             if self.args.fullscreen_allowed() {
                 window::set_fullscreen(&window, true);

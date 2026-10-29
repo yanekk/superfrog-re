@@ -1,10 +1,10 @@
-//! Gamepads (DESIGN §2.6): what a pad holds, which of the original's inputs each pad input feeds
-//! (the [`PadMap`], remembered in `settings.toml`, DESIGN §2.9), and the source of pad events.
+//! Gamepads: what a pad holds, which of the original's inputs each pad input feeds (the
+//! [`PadMap`], which an app remembers in its settings), and the source of pad events.
 //!
-//! A pad's events are [`PadEvent`]s: from gilrs in normal play ([`Gilrs`]), from a script's `pad …`
-//! lines under `--script` (`script.rs`), so a scripted run never reads a real pad. Each pad is held
-//! apart by its device number, so one unplugged mid-move lets go of what it held and nothing else
-//! (DESIGN §2.6: a pad connected or disconnected changes only which device feeds the mapping).
+//! A pad's events are [`PadEvent`]s: from gilrs in normal play ([`Gilrs`]), or from an app's test
+//! script, so a scripted run never reads a real pad. Each pad is held apart by its device number,
+//! so one unplugged mid-move lets go of what it held and nothing else: a pad connected or
+//! disconnected changes only which device feeds the mapping.
 //!
 //! By default the d-pad and the left stick are the joystick's directions and A and B (the bottom
 //! and right face buttons, gilrs's South and East) its fire button. The stick counts as a
@@ -12,7 +12,7 @@
 
 use std::collections::BTreeMap;
 
-use crate::input::OriginalInput;
+use crate::keys::OriginalInput;
 
 /// How far the stick must be pushed, in thousandths of full travel, to count as a direction:
 /// half way. Anything at or inside it is the dead zone.
@@ -44,7 +44,7 @@ pub enum PadInput {
     StickRight,
 }
 
-/// Every pad input, with its name in `settings.toml` and a script (gilrs's, `Stick…` for the left
+/// Every pad input, with its name in settings files and scripts (gilrs's, `Stick…` for the left
 /// stick) and the label the Controls window shows (an Xbox-layout pad's, as the 8BitDo's are).
 pub const PAD_INPUTS: &[(PadInput, &str, &str)] = {
     use PadInput::*;
@@ -95,7 +95,7 @@ impl PadInput {
     }
 }
 
-/// Which pad inputs feed each of the original's inputs (DESIGN §2.6). One may feed more than one.
+/// Which pad inputs feed each of the original's inputs. One may feed more than one.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PadMap(pub BTreeMap<OriginalInput, Vec<PadInput>>);
 
@@ -180,7 +180,6 @@ impl PadState {
     }
 
     /// The pads connected, by device number.
-    #[cfg(test)]
     pub fn connected(&self) -> impl Iterator<Item = usize> + '_ {
         self.pads.keys().copied()
     }

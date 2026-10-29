@@ -38,6 +38,17 @@ MOVED = {
     'engine/crates/sf-paula/': 'toolkit/crates/amiga-paula/',
     'engine/crates/sf-oracle/patches/': 'toolkit/crates/amiga-oracle/patches/',
     'engine/crates/sf-oracle/shim/': 'toolkit/crates/amiga-oracle/shim/',
+    'engine/crates/sf-app/src/atomic_write.rs': 'toolkit/crates/amiga-app/src/atomic_write.rs',
+    'engine/crates/sf-app/src/audio.rs': 'toolkit/crates/amiga-app/src/audio.rs',
+    'engine/crates/sf-app/src/lock.rs': 'toolkit/crates/amiga-app/src/lock.rs',
+    'engine/crates/sf-app/src/pacing.rs': 'toolkit/crates/amiga-app/src/pacing.rs',
+    'engine/crates/sf-app/src/pad.rs': 'toolkit/crates/amiga-app/src/pad.rs',
+    'engine/crates/sf-app/src/video.rs': 'toolkit/crates/amiga-app/src/video.rs',
+    'engine/crates/sf-app/src/crt.wgsl': 'toolkit/crates/amiga-app/src/crt.wgsl',
+    'engine/crates/sf-app/src/crt_lottes.wgsl': 'toolkit/crates/amiga-app/src/crt_lottes.wgsl',
+    'engine/crates/sf-app/src/crt_geom.wgsl': 'toolkit/crates/amiga-app/src/crt_geom.wgsl',
+    'engine/crates/sf-app/src/crt_easymode.wgsl': 'toolkit/crates/amiga-app/src/crt_easymode.wgsl',
+    'engine/crates/sf-app/src/port.wgsl': 'toolkit/crates/amiga-app/src/port.wgsl',
 }
 
 

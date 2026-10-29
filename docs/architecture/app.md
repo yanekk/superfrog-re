@@ -8,6 +8,7 @@ mix = { amiga = 10, game = 0, data = 0, shell = 90 }
 reuse = "small-changes"
 owns = [
   "engine/crates/sf-app/",
+  "toolkit/crates/amiga-app/",
 ]
 +++
 

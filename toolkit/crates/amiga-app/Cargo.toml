@@ -1,0 +1,30 @@
+[package]
+name = "amiga-app"
+version.workspace = true
+edition.workspace = true
+publish.workspace = true
+
+# The game-free parts of a desktop app that plays an Amiga game (a shell crate): sound out, PAL
+# frame pacing, gamepads, the picture on the GPU, capture files, atomic writes, the single-copy
+# lock and the Amiga key table. The run loop, menus and windows stay the game's.
+[dependencies]
+# Picture and its 12-bit colours, what the window draws (a toolkit crate).
+amiga-chips = { path = "../amiga-chips" }
+# The PAL clock and frame lengths the pacer counts in (a toolkit crate).
+amiga-paula = { path = "../amiga-paula" }
+# Joy, KeySet and FrameInput, what the keys and pads feed (a toolkit crate).
+amiga-input = { path = "../amiga-input" }
+# The window the picture is drawn on, and the host key codes.
+winit = "0.30"
+# Integer scaling on the GPU, and the CRT filters.
+wgpu = "30"
+# Blocks on wgpu's adapter and device requests at start-up.
+pollster = "0.4"
+# The audio device, whose sample clock paces the game.
+cpal = "0.16"
+# Captured frames are PNGs a person or a test can open.
+png = "0.18"
+# flock for the single-copy lock; proc_pid_rusage for the capture's memory figures.
+libc = "0.2"
+# Gamepads, hot-plugged.
+gilrs = "0.11"

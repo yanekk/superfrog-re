@@ -1,4 +1,4 @@
-//! Sound to the speakers (DESIGN §2.5, §2.11): the mixer's samples go into a queue the audio
+//! Sound to the speakers: the mixer's samples go into a queue the audio
 //! device drains, and the samples the device has asked for are the clock that paces the game.
 //! No device, or a device that fails, leaves the game running silently on the wall clock.
 
@@ -39,8 +39,9 @@ pub struct Audio {
 
 impl Audio {
     /// The output device called `name`, else the default one; `Err` says why there is none. A
-    /// name no device has is how a test makes the audio output unavailable (`--audio-device`).
-    pub fn open(name: Option<&str>) -> Result<Audio, String> {
+    /// name no device has is how a test makes the audio output unavailable. A device failing later
+    /// is logged on stderr, the line starting `log_name: ` (the binary's name).
+    pub fn open(name: Option<&str>, log_name: &str) -> Result<Audio, String> {
         let host = cpal::default_host();
         let device = match name {
             None => host.default_output_device().ok_or("no audio output device")?,
@@ -61,8 +62,9 @@ impl Audio {
         let played = Arc::new(AtomicU64::new(0));
         let failed = Arc::new(AtomicBool::new(false));
         let (q, p, f) = (queue.clone(), played.clone(), failed.clone());
+        let log = log_name.to_string();
         let on_error = move |e| {
-            eprintln!("superfrog: audio device: {e}; carrying on silently");
+            eprintln!("{log}: audio device: {e}; carrying on silently");
             f.store(true, Ordering::Release);
         };
         // The device asks for `n` sample frames; each one is a frame of the clock, whether the

@@ -26,7 +26,7 @@ done · ⛔ blocked, needs a human.
 | T04 | asset-readers | T03 | ✅ | |
 | T05 | amiga-oracle | T02, T03, T04 | ✅ | Review: one fix, `locate` skipped `AMIGA_KICKSTART` after `SUPERFROG_KICKSTART` (DESIGN §2.5), reproduced by new `tests/kickstart.rs`, fixed. Ran toolkit and sf-oracle tests, boot.rs five times, test_oracle_sh; mutated `setup_key` label and `load_exe` zero-fill, both red. Sweep reference loader matches the base word for word. Rebuild read off cache `.done`; DESIGN §4 runs builder's, not rerun. |
 | T06 | amiga-conform | T05 | ⬜ | |
-| T07 | amiga-app-parts | T02 | ⬜ | |
+| T07 | amiga-app-parts | T02 | ✅ | |
 | T08 | amiga-e2e | T07 | ⬜ | |
 | T09 | amiga-record | T03, T06, T07 | ⬜ | |
 | T10 | display-piece | T01 | ✅ | |

@@ -14,6 +14,7 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 |---|---|---|
 | 2026-10-29 | 📌 | T05: vAmiga rebuilt under `~/.cache/amiga-toolkit/vamiga` in 59 s. After it frog_cases 36 took 816 s, alone 47 s, beam 5 s, story `--ignored` 9 took 309 s: no visible cache-refill cost (frog_cases was 17 min at T02). |
 | 2026-10-29 | 📌 | T05: Kickstart 1.3 with df0 empty draws the insert-disk hand at frame 207 and holds it (6 colours, 320 wide); `amiga-oracle/tests/boot.rs` pins it. |
+| 2026-10-29 | 📌 | T07: a smoke capture's `clock.txt` and `pacing.txt` vary with machine load (one loaded run dropped 332 frames, reruns 0); byte-compare frames, `inputs.txt`, `audio.wav`, `audio-frames.txt` only. sf-app no longer depends on wgpu, cpal or gilrs directly. |
 | 2026-10-29 | 📌 | T04: the toolkit purity test scans `tests/` as well as `src/`, so a synthetic file literal over 16 integers fails it; build it from pieces. `hunk::Blocks::peek` gives the raw type long for a loader that stops before reading a block (T05). |
 | 2026-10-29 | 🐞 | T10 ran `cargo fmt` over all of sf-core and amiga-chips: 75 files changed by formatting only. Review reverted them. Format only the files a task changes (`rustfmt <file>`), never the whole crate, or parallel tasks conflict. |
 | 2026-10-29 | 📌 | T03: the engine purity test runs `cargo tree -p` on a toolkit crate, a non-member, so it sees the whole engine's features: png turns on miniz_oxide's `simd-adler32`. A toolkit crate pulling a shared dependency may show more there than in its own workspace. |
