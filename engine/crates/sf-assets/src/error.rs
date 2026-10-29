@@ -2,6 +2,8 @@
 
 use std::fmt;
 
+use amiga_disk::ReadError;
+
 use crate::gamedata::ChunkId;
 
 /// A chunk that could not be decoded. `chunk` is the disk chunk the content came from (for content
@@ -35,6 +37,16 @@ impl AssetError {
             what: what.into(),
             why,
         }
+    }
+
+    /// A toolkit reader's error, named by the chunk: its message is kept, the offset is in the
+    /// file the reader was handed.
+    pub(crate) fn read(chunk: ChunkId, what: impl Into<String>, e: ReadError) -> AssetError {
+        let why = match e {
+            ReadError::Truncated { at } => Why::Truncated { at },
+            ReadError::Malformed { what, .. } => Why::Malformed(what),
+        };
+        AssetError::new(chunk, what, why)
     }
 }
 
@@ -71,6 +83,11 @@ impl<'a> Reader<'a> {
 
     pub fn err(&self, why: Why) -> AssetError {
         AssetError::new(self.chunk, self.what.as_str(), why)
+    }
+
+    /// A toolkit reader's error on this content.
+    pub fn read_err(&self, e: ReadError) -> AssetError {
+        AssetError::read(self.chunk, self.what.as_str(), e)
     }
 
     pub fn bytes(&self, at: usize, len: usize) -> Result<&'a [u8], AssetError> {

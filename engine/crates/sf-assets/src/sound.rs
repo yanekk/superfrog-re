@@ -199,30 +199,18 @@ pub fn game_hunk0(disks: &DiskSet) -> Result<Vec<u8>, SoundError> {
     first_hunk(&exe).ok_or(SoundError::BadGame)
 }
 
-/// The first HUNK_CODE/HUNK_DATA block of a hunk executable.
+/// The first HUNK_CODE/HUNK_DATA block of a hunk executable; unit and name blocks before it are
+/// stepped over, and any other block first means there is none.
 fn first_hunk(exe: &[u8]) -> Option<Vec<u8>> {
-    let long = |i: usize| -> Option<usize> {
-        Some(u32::from_be_bytes(exe.get(i * 4..i * 4 + 4)?.try_into().ok()?) as usize)
-    };
-    if long(0)? != 0x3F3 {
-        return None;
-    }
-    let mut i = 1;
-    while long(i)? != 0 {
-        i += long(i)? + 1;
-    }
-    let (first, last) = (long(i + 2)?, long(i + 3)?);
-    i += 4 + (last - first + 1);
-    loop {
-        match long(i)? {
-            0x3E9 | 0x3EA => {
-                let n = long(i + 1)?;
-                return exe.get((i + 2) * 4..(i + 2 + n) * 4).map(<[u8]>::to_vec);
-            }
-            0x3E7 | 0x3E8 => i += 2 + long(i + 1)?,
+    use amiga_disk::hunk::{Block, Blocks, header};
+    for block in Blocks::new(exe, header(exe).ok()?.end) {
+        match block.ok()?.1 {
+            Block::Code(d) | Block::Data(d) => return Some(d.to_vec()),
+            Block::Unit(_) | Block::Name(_) => {}
             _ => return None,
         }
     }
+    None
 }
 
 fn be16(b: &[u8], at: usize) -> u16 {
