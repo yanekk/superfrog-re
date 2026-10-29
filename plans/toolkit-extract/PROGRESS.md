@@ -25,7 +25,7 @@ done · ⛔ blocked, needs a human.
 | T02 | amiga-input | T01 | ✅ | |
 | T03 | amiga-disk | T01 | ✅ | |
 | T04 | asset-readers | T03 | ✅ | |
-| T05 | amiga-oracle | T02, T03, T04 | ⬜ | |
+| T05 | amiga-oracle | T02, T03, T04 | 🔍 | amiga-oracle: disk list, `boot: None`, eject, `kickstart_path`; sf-oracle keeps `locate`, DiskSlot newtype, superfrog-re caches; keys byte-equal (`tests/keys.rs`). 20 tests. Deviations: `load_exe` keeps its own header walk; malformed-and-cut RELOC32 reports Truncated; disks passed as bytes; wrapper three lines (cmake install); CallError text names amiga_oracle. |
 | T06 | amiga-conform | T05 | ⬜ | |
 | T07 | amiga-app-parts | T02 | ⬜ | |
 | T08 | amiga-e2e | T07 | ⬜ | |
@@ -33,7 +33,7 @@ done · ⛔ blocked, needs a human.
 | T10 | display-piece | T01 | ✅ | |
 | T11 | dry-fit-and-finish | T04, T05, T08, T09, T10 | ⬜ | |
 
-**Review queue:** *(empty)*
+**Review queue:** T05
 
 ## Blocked on the user
 
