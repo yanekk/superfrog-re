@@ -26,7 +26,7 @@ done · ⛔ blocked, needs a human.
 | T03 | amiga-disk | T01 | ✅ | |
 | T04 | asset-readers | T03 | ✅ | |
 | T05 | amiga-oracle | T02, T03, T04 | ✅ | |
-| T06 | amiga-conform | T05 | ⬜ | |
+| T06 | amiga-conform | T05 | ✅ | |
 | T07 | amiga-app-parts | T02 | ✅ | |
 | T08 | amiga-e2e | T07 | ✅ | |
 | T09 | amiga-record | T03, T06, T07 | ⬜ | |
