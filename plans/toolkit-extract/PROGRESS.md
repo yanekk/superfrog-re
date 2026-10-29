@@ -29,7 +29,7 @@ done · ⛔ blocked, needs a human.
 | T06 | amiga-conform | T05 | ✅ | |
 | T07 | amiga-app-parts | T02 | ✅ | |
 | T08 | amiga-e2e | T07 | ✅ | |
-| T09 | amiga-record | T03, T06, T07 | ⬜ | |
+| T09 | amiga-record | T03, T06, T07 | ✅ | |
 | T10 | display-piece | T01 | ✅ | |
 | T11 | dry-fit-and-finish | T04, T05, T08, T09, T10 | ⬜ | |
 
