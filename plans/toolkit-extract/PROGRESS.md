@@ -21,7 +21,7 @@ done · ⛔ blocked, needs a human.
 
 | # | Task | Depends on | State | Notes |
 |---|---|---|---|---|
-| T01 | toolkit-workspace | — | ⬜ | |
+| T01 | toolkit-workspace | — | ✅ | |
 | T02 | amiga-input | T01 | ⬜ | |
 | T03 | amiga-disk | T01 | ⬜ | |
 | T04 | asset-readers | T03 | ⬜ | |
