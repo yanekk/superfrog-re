@@ -67,13 +67,7 @@ fn update(c: &mut LevelCtx, slot: u32, _d7: u16) {
         };
         bob_anim(b, slot, anim);
         let cell = b.l(slot + 0x40).wrapping_add(2);
-        obj_spawn_cell_alt(
-            c,
-            template(shot),
-            cell,
-            dx.wrapping_sub(0x10),
-            dy.wrapping_add(0xc),
-        );
+        obj_spawn_cell_alt(c, template(shot), cell, dx.wrapping_sub(0x10), dy.wrapping_add(0xc));
     }
     follow_and_despawn(c, slot);
 }

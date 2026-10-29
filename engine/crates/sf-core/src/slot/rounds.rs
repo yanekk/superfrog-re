@@ -710,9 +710,7 @@ impl Spin {
 }
 
 /// What a flash lights on its second half each pass.
-#[derive(
-    Debug, Clone, Copy, Default, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize,
-)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 enum Lights {
     /// The payout's line (h0+$504e): its lamp, if any, then every lamp; 4 frames each, 10 times.
     #[default]

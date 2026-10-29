@@ -77,8 +77,8 @@ use std::sync::Arc;
 use sf_core::level::beam::Clock;
 use sf_core::level::camera::{CAMERA_X, CAMERA_Y, SCROLL_DIRS};
 use sf_core::level::objects::{
-    self, SLOTS, WIDE_BOB_DRAW_LIST, WIDE_BOB_FREE_LIST, WIDE_HITBOXES, WIDE_LIVE, WIDE_SLOTS,
-    draw_list, hitbox_list, is_wide, slot_addrs, slot_at,
+    self, SLOTS, WIDE_BOB_DRAW_LIST, WIDE_BOB_FREE_LIST, WIDE_HITBOXES, WIDE_LIVE,
+    WIDE_SLOTS, draw_list, hitbox_list, is_wide, slot_addrs, slot_at,
 };
 use sf_core::level::screen::Screen;
 use sf_core::level::{LevelCtx, standard_dispatch};
@@ -116,13 +116,7 @@ fn empty(level: &str) -> State {
 fn run<R>(st: &mut State, screen: Screen, f: impl FnOnce(&mut LevelCtx) -> R) -> (R, Clock) {
     let display = display();
     let mut paula = Vec::new();
-    let mut c = LevelCtx::new(
-        Bus::new(st, display.rom()),
-        standard_dispatch(),
-        Default::default(),
-        display.sound(),
-        &mut paula,
-    );
+    let mut c = LevelCtx::new(Bus::new(st, display.rom()), standard_dispatch(), Default::default(), display.sound(), &mut paula);
     c.screen = screen;
     let r = f(&mut c);
     (r, c.clock)
@@ -146,44 +140,27 @@ fn signs(c: &mut LevelCtx, n: u32) -> Vec<u32> {
 }
 
 fn live(b: &Bus, screen: Screen) -> Vec<u32> {
-    slot_addrs(b, screen)
-        .filter(|&s| b.l(s + 0x40) != 0)
-        .collect()
+    slot_addrs(b, screen).filter(|&s| b.l(s + 0x40) != 0).collect()
 }
 
 #[test]
 fn the_21st_object_takes_an_extra_slot_and_is_updated_hit_tested_and_drawn() {
     let mut st = empty("W1-1");
     let (slots, _) = run(&mut st, Screen::WIDE, |c| signs(c, 21));
-    assert_eq!(
-        &slots[..20],
-        &(0..20).map(slot_at).collect::<Vec<_>>()[..],
-        "the original's 20 first"
-    );
+    assert_eq!(&slots[..20], &(0..20).map(slot_at).collect::<Vec<_>>()[..], "the original's 20 first");
     let extra = slots[20];
     assert_eq!(extra, slot_at(SLOTS), "the 21st: the first extra slot");
     let bob = peek(&mut st, |b| {
         assert_eq!(b.w(WIDE_LIVE), 1);
-        assert!(
-            is_wide(b.l(extra + 0x50)) && is_wide(b.l(extra + 0x4c)),
-            "its bob and free-list entry are the range's"
-        );
-        assert_eq!(
-            b.l(extra + 0x4c),
-            WIDE_BOB_FREE_LIST,
-            "the extras' first free entry"
-        );
+        assert!(is_wide(b.l(extra + 0x50)) && is_wide(b.l(extra + 0x4c)), "its bob and free-list entry are the range's");
+        assert_eq!(b.l(extra + 0x4c), WIDE_BOB_FREE_LIST, "the extras' first free entry");
         b.l(extra + 0x50)
     });
     // Updated: the sign's update puts its bob where the slot is.
     let display = display();
     Bus::new(&mut st, display.rom()).set_w(extra + 8, CX + 0x99);
     run(&mut st, Screen::WIDE, objects::obj_run_all);
-    assert_eq!(
-        peek(&mut st, |b| b.w(bob - 4)),
-        CX + 0x99,
-        "the extra slot's update ran"
-    );
+    assert_eq!(peek(&mut st, |b| b.w(bob - 4)), CX + 0x99, "the extra slot's update ran");
     // Hit-tested: its box is in the wide hitbox list.
     Bus::new(&mut st, display.rom()).set_l(extra + 0x14, ONE_BOX);
     run(&mut st, Screen::WIDE, objects::obj_build_hitboxes);
@@ -200,16 +177,10 @@ fn the_21st_object_takes_an_extra_slot_and_is_updated_hit_tested_and_drawn() {
     });
     peek(&mut st, |b| {
         assert_eq!(draw_list(b), WIDE_BOB_DRAW_LIST);
-        let listed: Vec<u32> = (0..)
-            .map(|k| b.l(WIDE_BOB_DRAW_LIST + 4 * k))
-            .take_while(|&x| x != 0)
-            .collect();
+        let listed: Vec<u32> = (0..).map(|k| b.l(WIDE_BOB_DRAW_LIST + 4 * k)).take_while(|&x| x != 0).collect();
         assert_eq!(listed.len(), 22, "the spud and 21 signs");
         assert!(listed.contains(&bob), "the extra's bob is listed");
-        assert!(
-            [0x10, 0x56, 0x9c, 0xe2].iter().any(|&o| b.l(bob + o) != 0),
-            "the extra's bob was drawn"
-        );
+        assert!([0x10, 0x56, 0x9c, 0xe2].iter().any(|&o| b.l(bob + o) != 0), "the extra's bob was drawn");
     });
     // Freed: its bob goes back to the extras' free list.
     run(&mut st, Screen::WIDE, |c| objects::obj_free(c, extra, 0));
@@ -238,13 +209,8 @@ fn in_4_3_the_21st_object_finds_no_slot() {
 fn a_chain_links_ball_can_be_an_extra_slot() {
     let mut st = empty("W3-1");
     run(&mut st, Screen::WIDE, |c| signs(c, 20));
-    let cell = peek(&mut st, |b| {
-        b.l(sf_core::level::collision::MAP_ROWS + 4 * ((CY as u32 + 0x40) >> 4))
-            + 2 * ((CX as u32 + 0x80) >> 4)
-    });
-    run(&mut st, Screen::WIDE, |c| {
-        sf_core::enemies::w3::swing::spawn(c, cell)
-    });
+    let cell = peek(&mut st, |b| b.l(sf_core::level::collision::MAP_ROWS + 4 * ((CY as u32 + 0x40) >> 4)) + 2 * ((CX as u32 + 0x80) >> 4));
+    run(&mut st, Screen::WIDE, |c| sf_core::enemies::w3::swing::spawn(c, cell));
     let (ball, links) = peek(&mut st, |b| {
         let ball = slot_at(SLOTS);
         assert_eq!(b.l(ball + 0x40), cell, "the ball took the first extra slot");
@@ -259,10 +225,7 @@ fn a_chain_links_ball_can_be_an_extra_slot() {
     run(&mut st, Screen::WIDE, objects::obj_run_all);
     run(&mut st, Screen::WIDE, objects::obj_run_all);
     peek(&mut st, |b| {
-        assert!(
-            b.l(ball + 0x40) != 0,
-            "the ball stays: its links are counted"
-        );
+        assert!(b.l(ball + 0x40) != 0, "the ball stays: its links are counted");
         for &l in &links {
             assert!(b.l(l + 0x40) != 0, "link {l:x} stays");
         }
@@ -276,26 +239,14 @@ fn a_bonus_shots_entry_can_be_an_extra_slot() {
     let mut st = empty("WB-1");
     run(&mut st, Screen::WIDE, |c| signs(c, 20));
     run(&mut st, Screen::WIDE, sf_core::bonus::shots::spawn_shots);
-    let shots: Vec<u32> = peek(&mut st, |b| {
-        (0..5)
-            .map(|k| b.l(sf_core::bonus::shots::SHOTS + 4 * k))
-            .collect()
-    });
-    assert_eq!(
-        shots,
-        (0..5).map(|k| slot_at(SLOTS + k)).collect::<Vec<_>>(),
-        "the shots are extras"
-    );
+    let shots: Vec<u32> = peek(&mut st, |b| (0..5).map(|k| b.l(sf_core::bonus::shots::SHOTS + 4 * k)).collect());
+    assert_eq!(shots, (0..5).map(|k| slot_at(SLOTS + k)).collect::<Vec<_>>(), "the shots are extras");
     let before: Vec<u16> = peek(&mut st, |b| shots.iter().map(|&s| b.w(s + 0xc)).collect());
     run(&mut st, Screen::WIDE, sf_core::bonus::shots::shots_faster);
     peek(&mut st, |b| {
         for (&s, v) in shots.iter().zip(before) {
             assert!(b.l(s + 0x40) != 0);
-            assert_eq!(
-                b.w(s + 0xc),
-                if v == 0x1e { v } else { v + 1 },
-                "shot {s:x} resolved"
-            );
+            assert_eq!(b.w(s + 0xc), if v == 0x1e { v } else { v + 1 }, "shot {s:x} resolved");
         }
     });
 }
@@ -315,23 +266,12 @@ fn find_free_evicts_only_when_every_slot_is_full() {
         b.set_b(SCROLL_DIRS, 4);
     }
     let one = |st: &mut State| run(st, Screen::WIDE, |c| signs(c, 1)[0]).0;
-    assert_eq!(
-        one(&mut st),
-        slot_at(SLOTS),
-        "an extra slot, not an eviction"
-    );
-    assert!(
-        peek(&mut st, |b| b.l(evictable + 0x40) != 0),
-        "the evictable object is kept"
-    );
+    assert_eq!(one(&mut st), slot_at(SLOTS), "an extra slot, not an eviction");
+    assert!(peek(&mut st, |b| b.l(evictable + 0x40) != 0), "the evictable object is kept");
     let (more, _) = run(&mut st, Screen::WIDE, |c| signs(c, WIDE_SLOTS - 1));
     assert!(more.iter().all(|&s| is_wide(s)), "every extra filled");
     assert_eq!(peek(&mut st, |b| b.w(WIDE_LIVE)), WIDE_SLOTS as u16);
-    assert_eq!(
-        one(&mut st),
-        evictable,
-        "now every slot is full: the evictable one is reclaimed"
-    );
+    assert_eq!(one(&mut st), evictable, "now every slot is full: the evictable one is reclaimed");
     assert_eq!(peek(&mut st, |b| live(b, Screen::WIDE).len()), 100);
 }
 
@@ -389,11 +329,7 @@ fn a_live_extra_is_walked_after_widescreen_is_off() {
     let mut st = empty("W1-1");
     let (slots, _) = run(&mut st, Screen::WIDE, |c| signs(c, 21));
     let extra = slots[20];
-    assert!(
-        peek(&mut st, |b| slot_addrs(b, Screen::NARROW)
-            .any(|s| s == extra)),
-        "walked in 4:3"
-    );
+    assert!(peek(&mut st, |b| slot_addrs(b, Screen::NARROW).any(|s| s == extra)), "walked in 4:3");
     let bob = peek(&mut st, |b| b.l(extra + 0x50));
     let display = display();
     Bus::new(&mut st, display.rom()).set_w(extra + 8, CX + 0x77);
@@ -402,30 +338,16 @@ fn a_live_extra_is_walked_after_widescreen_is_off() {
         objects::build_bob_draw_list(c);
     });
     peek(&mut st, |b| {
-        assert_eq!(
-            b.w(bob - 4),
-            CX + 0x77,
-            "the extra slot's update ran in 4:3"
-        );
-        assert_eq!(
-            draw_list(b),
-            WIDE_BOB_DRAW_LIST,
-            "the wide draw list while an extra is live"
-        );
+        assert_eq!(b.w(bob - 4), CX + 0x77, "the extra slot's update ran in 4:3");
+        assert_eq!(draw_list(b), WIDE_BOB_DRAW_LIST, "the wide draw list while an extra is live");
     });
-    run(&mut st, Screen::NARROW, |c| {
-        objects::obj_free(c, slots[0], 0)
-    });
+    run(&mut st, Screen::NARROW, |c| objects::obj_free(c, slots[0], 0));
     let (s, _) = run(&mut st, Screen::NARROW, |c| signs(c, 1)[0]);
     assert_eq!(s, slots[0], "4:3 takes the freed original slot");
     let (s, _) = run(&mut st, Screen::NARROW, |c| signs(c, 1)[0]);
     assert_eq!(s, 0, "and never an extra");
     run(&mut st, Screen::NARROW, |c| objects::obj_free(c, extra, 0));
-    assert!(
-        peek(&mut st, |b| slot_addrs(b, Screen::NARROW)
-            .all(|s| !is_wide(s))),
-        "none live: 4:3 walks the 20"
-    );
+    assert!(peek(&mut st, |b| slot_addrs(b, Screen::NARROW).all(|s| !is_wide(s))), "none live: 4:3 walks the 20");
 }
 
 /// Switched off, the last extra slot freed on the screen (a coin taken, an enemy killed) is erased
@@ -452,10 +374,7 @@ fn an_extra_freed_on_the_screen_after_widescreen_is_off_is_erased() {
     assert_eq!(peek(&mut st, |b| b.w(WIDE_LIVE)), 0, "no extra live");
     let listed = |b: &Bus| {
         let l = draw_list(b);
-        (0..)
-            .map(|k| b.l(l + 4 * k))
-            .take_while(|&x| x != 0)
-            .any(|x| x == bob)
+        (0..).map(|k| b.l(l + 4 * k)).take_while(|&x| x != 0).any(|x| x == bob)
     };
     pass(&mut st, Screen::NARROW);
     assert!(peek(&mut st, listed), "listed to be erased");
@@ -464,10 +383,6 @@ fn an_extra_freed_on_the_screen_after_widescreen_is_off_is_erased() {
     pass(&mut st, Screen::NARROW);
     peek(&mut st, |b| {
         assert!(!listed(b));
-        assert_eq!(
-            draw_list(b),
-            objects::BOB_DRAW_LIST,
-            "the original's list again"
-        );
+        assert_eq!(draw_list(b), objects::BOB_DRAW_LIST, "the original's list again");
     });
 }

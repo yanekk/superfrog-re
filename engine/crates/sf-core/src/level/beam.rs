@@ -677,12 +677,8 @@ mod tests {
         }
 
         fn slots_per_word(con0: u16) -> u32 {
-            let (a, b, c, d) = (
-                con0 & 0x800 != 0,
-                con0 & 0x400 != 0,
-                con0 & 0x200 != 0,
-                con0 & 0x100 != 0,
-            );
+            let (a, b, c, d) =
+                (con0 & 0x800 != 0, con0 & 0x400 != 0, con0 & 0x200 != 0, con0 & 0x100 != 0);
             match (a, b, c, d) {
                 (_, true, true, _) => 4,
                 (_, true, false, _) | (_, false, true, true) => 3,
@@ -704,34 +700,20 @@ mod tests {
     fn the_moved_blitter_slot_and_refresh_are_the_old_ones() {
         for line in lines() {
             for slot in 0..LINE_SLOTS + 3 {
-                assert_eq!(
-                    Clock::blitter_slot(line, slot),
-                    Old::blitter_slot(line, slot),
-                    "{line} {slot}"
-                );
+                assert_eq!(Clock::blitter_slot(line, slot), Old::blitter_slot(line, slot), "{line} {slot}");
             }
         }
         // The story's bus and the clock's blitter test the same four refresh slots.
         for t in 0..3 * LINE_SLOTS {
             let slot = t % LINE_SLOTS;
-            assert_eq!(
-                amiga_clock::is_refresh(slot),
-                crate::front::story::cpu::refresh(t),
-                "{t}"
-            );
-            assert_eq!(
-                amiga_clock::is_refresh(slot),
-                matches!(slot, 1 | 3 | 5 | 0xe2),
-                "{t}"
-            );
+            assert_eq!(amiga_clock::is_refresh(slot), crate::front::story::cpu::refresh(t), "{t}");
+            assert_eq!(amiga_clock::is_refresh(slot), matches!(slot, 1 | 3 | 5 | 0xe2), "{t}");
         }
     }
 
     #[test]
     fn the_moved_cpu_and_blit_are_the_old_ones() {
-        let cycles = [
-            0, 1, 2, 39, 40, 413, 414, 453, 454, 455, 908, 5_000, 141_000,
-        ];
+        let cycles = [0, 1, 2, 39, 40, 413, 414, 453, 454, 455, 908, 5_000, 141_000];
         let slots = [0, 1, 2, 3, 4, 100, 223, 224, 227, 400, 5_000];
         for line in lines() {
             for into in (0..LINE_CYCLES + 4).step_by(3) {
@@ -757,11 +739,7 @@ mod tests {
         let con0s = (0..16u16).flat_map(|ch| [ch << 8, ch << 8 | 0xf0, 0x4000 | ch << 8 | 0xca]);
         let con0s: Vec<u16> = con0s.collect();
         for &con0 in &con0s {
-            assert_eq!(
-                slots_per_word(con0),
-                Old::slots_per_word(con0),
-                "{con0:04x}"
-            );
+            assert_eq!(slots_per_word(con0), Old::slots_per_word(con0), "{con0:04x}");
         }
         for line in lines().step_by(3) {
             for into in (0..LINE_CYCLES + 2).step_by(23) {

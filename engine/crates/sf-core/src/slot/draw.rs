@@ -64,9 +64,7 @@ const CPU_LOST: u32 = 14;
 const BLITTER_LOST: u32 = 19;
 
 /// What a [`Draw`] draws.
-#[derive(
-    Debug, Clone, Copy, Default, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize,
-)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 pub(crate) enum Part {
     /// The attract frame (h0+$4d2a): the reels at 0, 9, $18, the pattern's row and the lamps.
     #[default]

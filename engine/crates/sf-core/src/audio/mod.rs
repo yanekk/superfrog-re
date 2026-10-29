@@ -22,8 +22,8 @@ pub use sfx::SfxRest;
 
 use std::collections::BTreeMap;
 
-pub use amiga_paula::PaulaWrite;
 pub use sf_assets::sound::{BANK_ADDR, BankId, H0, STREAM_BUFFER, SoundData, TuneId};
+pub use amiga_paula::PaulaWrite;
 
 /// The original's driver variables, as runs of hunk 0: `(h0 offset, length)`.
 pub mod vars {

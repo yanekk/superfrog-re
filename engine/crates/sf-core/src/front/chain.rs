@@ -223,11 +223,7 @@ fn level_id(world: u32, level: u8) -> LevelId {
         7 => World::Bonus,
         _ => World::W6,
     };
-    LevelId {
-        world,
-        level,
-        alt: false,
-    }
+    LevelId { world, level, alt: false }
 }
 
 /// Where the routine at h0+`from` ends: its first `rts`.
@@ -365,10 +361,7 @@ impl Chain {
                 _ if op & 0xf000 == 0x6000 => {
                     let (to, next) = match op & 0xff {
                         // Displacements back are negative: the sum wraps (a `bmi` after a death).
-                        0 => (
-                            (pc + 2).wrapping_add(cx.data.h0_w(pc + 2) as i16 as i32 as u32),
-                            pc + 4,
-                        ),
+                        0 => ((pc + 2).wrapping_add(cx.data.h0_w(pc + 2) as i16 as i32 as u32), pc + 4),
                         d => ((pc + 2).wrapping_add(d as i8 as i32 as u32), pc + 2),
                     };
                     let taken = match op >> 8 & 0xf {
@@ -433,11 +426,7 @@ impl Chain {
                 exit::init_on_beam_costs(cx, frog_only, id, exit::init_inside(id), costs)
             }
             Target::WorldLoadLb => call(Routine::WorldLoad(WorldLoad::new(exit::BONUS_WORLD, to))),
-            Target::LevelLoadLb => call(Routine::LevelLoad(LevelLoad::new(
-                level_id(exit::BONUS_WORLD, 1),
-                ret,
-                to,
-            ))),
+            Target::LevelLoadLb => call(Routine::LevelLoad(LevelLoad::new(level_id(exit::BONUS_WORLD, 1), ret, to))),
             Target::LevelInitLb => {
                 let id = level_id(exit::BONUS_WORLD, 1);
                 exit::init_on_beam(cx, frog_only, id, exit::init_inside(id))
@@ -488,9 +477,7 @@ impl Chain {
                 return None;
             }
             Target::Other => {
-                cx.unported(
-                    "a call in top_loop the engine does not follow (the bonus or final level)",
-                );
+                cx.unported("a call in top_loop the engine does not follow (the bonus or final level)");
                 Yield::Poll
             }
         })
@@ -583,15 +570,11 @@ impl WorldLoad {
     /// the CPU about 20 frames under the picture (T21: W6's disk 4 asked for only after it); the
     /// memory is cleared at once and compared once the original is out of the call.
     fn clear_map_area(&self, cx: &mut Cx) -> Yield {
-        exit::with_level(cx, false, |c| {
-            crate::level::load::clear_map_area(&mut c.bus)
-        });
+        exit::with_level(cx, false, |c| crate::level::load::clear_map_area(&mut c.bus));
         let end = code_end(cx.data, self.at);
         let ret = (self.at..end)
             .step_by(2)
-            .find(|&pc| {
-                cx.data.h0_w(pc) == 0x4eb9 && cx.data.h0_l(pc + 2).wrapping_sub(H0) == 0x172d6
-            })
+            .find(|&pc| cx.data.h0_w(pc) == 0x4eb9 && cx.data.h0_l(pc + 2).wrapping_sub(H0) == 0x172d6)
             .map_or(at(0x172e8), |pc| at(pc + 6));
         super::ending::work(
             MAP_CLEAR_BYTES * CLEAR_BYTE_CYCLES,
@@ -631,9 +614,7 @@ impl WorldLoad {
                     }
                     let display = cx.display;
                     exit::with_level(cx, false, |c| {
-                        c.bus
-                            .st
-                            .poke(crate::layout::H3, display.bob_sheet(World::Final));
+                        c.bus.st.poke(crate::layout::H3, display.bob_sheet(World::Final));
                         if let Some(h) = display.rom().tile_heights(World::Final) {
                             c.bus.st.poke(crate::mem::TILE_HEIGHTS, h);
                         }
@@ -658,10 +639,7 @@ impl WorldLoad {
                     // h0+$43e0's wait, called from `world_intro_show`.
                     cx.loaded(LoadEnd::Reached(at(0x411c)));
                 }
-                call(Routine::WorldIntro(WorldIntro::new(
-                    self.world,
-                    picture.first().copied(),
-                )))
+                call(Routine::WorldIntro(WorldIntro::new(self.world, picture.first().copied())))
             }
             2 => self.clear_map_area(cx),
             3 => {
@@ -721,11 +699,7 @@ pub(crate) struct WorldIntro {
 
 impl WorldIntro {
     fn new(world: u32, entry: Option<u32>) -> WorldIntro {
-        WorldIntro {
-            world,
-            pc: 0,
-            entry,
-        }
+        WorldIntro { world, pc: 0, entry }
     }
 
     pub(super) fn run(&mut self, cx: &mut Cx) -> Yield {
@@ -765,9 +739,7 @@ impl WorldIntro {
                 5 => return Yield::Fade(RECORDS[0]),
                 6 => {
                     return fade(
-                        FadeKind::In {
-                            target: BUFFER_0 + 0x11300,
-                        },
+                        FadeKind::In { target: BUFFER_0 + 0x11300 },
                         0,
                         INTRO_PALETTE,
                         0x20,
@@ -876,10 +848,7 @@ fn walk_setup(cx: &mut Cx) {
     cx.s.set_w(BOB_BASE, 0x38);
     cx.s.set_w(BOB_BASE + 2, 0x53);
     cx.s.set_w(BOB_BASE + 4, 0x6e);
-    for (&c, x) in CLOUDS
-        .iter()
-        .zip([0xffc8, 0xffd8, 0xffd0, 0xffe0, 0xffb8, 0xffc8])
-    {
+    for (&c, x) in CLOUDS.iter().zip([0xffc8, 0xffd8, 0xffd0, 0xffe0, 0xffb8, 0xffc8]) {
         cx.s.set_w(c, x);
         sprite::update(cx.s, c);
     }
@@ -1183,15 +1152,11 @@ impl LevelLoad {
             2 => {
                 // The map's file; W6's first set (the engine plays it as a game with a second
                 // drive does; both sets are on disk 4).
-                if let Some(&e) =
-                    super::table_entries(cx.data, self.at, code_end(cx.data, self.at)).first()
-                {
+                if let Some(&e) = super::table_entries(cx.data, self.at, code_end(cx.data, self.at)).first() {
                     cx.read_entry(e);
                 }
                 let (display, id) = (cx.display, self.id);
-                exit::with_level(cx, false, |c| {
-                    crate::level::load::level_load(c, display, id)
-                });
+                exit::with_level(cx, false, |c| crate::level::load::level_load(c, display, id));
                 match id.world {
                     // `level_load_lb`'s last: `reward_power_count` 9.
                     World::Bonus => cx.s.set_w(crate::bonus::death::REWARD_POWER_COUNT, 9),
@@ -1264,9 +1229,7 @@ impl MapShow {
                 Yield::Fade(RECORDS[0])
             }
             4 => fade(
-                FadeKind::In {
-                    target: BUFFER_0 + 0xc800,
-                },
+                FadeKind::In { target: BUFFER_0 + 0xc800 },
                 0,
                 MAP_PALETTE,
                 0x20,
@@ -1341,7 +1304,8 @@ impl IntroEnd {
                 // begun (holding `display_timer` up) before this looks; after the engine's
                 // instant load it waits until the walk first sets the timer (W2's walk in from
                 // the left sets none until h0+$1213e).
-                let unstarted = cx.s.l(WALK) != at(0x7d4) && (cx.s.w(DISPLAY_TIMER) as i16) < 1;
+                let unstarted =
+                    cx.s.l(WALK) != at(0x7d4) && (cx.s.w(DISPLAY_TIMER) as i16) < 1;
                 if !screen_over(cx) || (unstarted && !cx.fire()) {
                     return Yield::Poll;
                 }
@@ -1415,9 +1379,7 @@ impl EndPic {
                 Yield::Fade(RECORDS[0])
             }
             2 => fade(
-                FadeKind::In {
-                    target: BUFFER_1 + 0xc800,
-                },
+                FadeKind::In { target: BUFFER_1 + 0xc800 },
                 0,
                 END_PALETTE,
                 0x20,

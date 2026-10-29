@@ -56,13 +56,7 @@ pub static WITCH: ObjectKind = ObjectKind {
 
 /// Marker 1 (h0+$18aa8): the witch, keyed to the cell 8 rows above her marker's.
 pub fn spawn_134(c: &mut LevelCtx, cell: u32) {
-    obj_spawn_cell(
-        c,
-        crate::items::template(134),
-        cell.wrapping_sub(0x1300),
-        0,
-        0,
-    );
+    obj_spawn_cell(c, crate::items::template(134), cell.wrapping_sub(0x1300), 0, 0);
 }
 
 fn camera_y(c: &LevelCtx) -> u16 {
@@ -181,14 +175,7 @@ pub fn touch_boss_hit(c: &mut LevelCtx, slot: u32, _d7: u16) {
     }
     b.set_w(FADES[0] + 2, 1);
     let palette = b.l(LEVEL_PALETTE_PTR);
-    stepped_start(
-        c,
-        FADES[0],
-        WITCH_FLASH,
-        palette,
-        LEVEL_COPPER + 0x2d4,
-        0x20,
-    );
+    stepped_start(c, FADES[0], WITCH_FLASH, palette, LEVEL_COPPER + 0x2d4, 0x20);
     let b = &mut c.bus;
     b.set_w(slot + 0x30, 1);
     b.set_l(slot + 0x10, NOTHING);

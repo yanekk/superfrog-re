@@ -66,7 +66,8 @@ fn spikes_init(c: &mut LevelCtx, slot: u32, m: u16, anim: u32, left_ahead: bool)
             }
             break;
         }
-        let Some(other) = slot_addrs(b, screen).find(|&s| b.l(s + 0x40) == at) else {
+        let Some(other) = slot_addrs(b, screen).find(|&s| b.l(s + 0x40) == at)
+        else {
             continue;
         };
         let ob = b.l(other + 0x50);

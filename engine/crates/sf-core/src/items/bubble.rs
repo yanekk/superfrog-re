@@ -80,10 +80,7 @@ fn update(c: &mut LevelCtx, slot: u32, _d7: u16) {
         (cell.wrapping_add(0x4c0), true, false),
         (cell.wrapping_add(0x4c2), false, false),
     ];
-    if tests
-        .iter()
-        .any(|&(at, water, solid)| ends(m(at), water, solid))
-    {
+    if tests.iter().any(|&(at, water, solid)| ends(m(at), water, solid)) {
         return obj_free(c, slot, 0);
     }
     let bob = b.l(slot + 0x50);

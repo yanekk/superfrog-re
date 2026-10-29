@@ -249,10 +249,7 @@ mod tests {
         for (trace, writes) in traces() {
             let old = Old::of(&trace, &costs, &writes, job());
             let cycles = of(&trace, &costs, &writes, job()).cycles();
-            assert_eq!(
-                cycles,
-                old.steps.iter().map(|s| s.0).sum::<u32>() + old.tail
-            );
+            assert_eq!(cycles, old.steps.iter().map(|s| s.0).sum::<u32>() + old.tail);
             for start in [0u16, 1, 100, 300, 311, 312, 400] {
                 let mut new = of(&trace, &costs, &writes, job());
                 let mut old = Old::of(&trace, &costs, &writes, job());

@@ -56,9 +56,7 @@ fn update(c: &mut LevelCtx, slot: u32, _d7: u16) {
     let b = &mut c.bus;
     b.set_w(slot + 8, b.w(slot + 8).wrapping_add(b.w(slot + 0xc)));
     let x = b.w(slot + 8).wrapping_sub(0x10);
-    let at = ((x >> 4).wrapping_add(x >> 4) as u32)
-        .wrapping_add(b.l(slot + 0x64))
-        .wrapping_add(4);
+    let at = ((x >> 4).wrapping_add(x >> 4) as u32).wrapping_add(b.l(slot + 0x64)).wrapping_add(4);
     if matches!(b.w(at) & 0x3f, 0x10 | 0x11) {
         let vx = b.w(slot + 0xc).wrapping_neg();
         b.set_w(slot + 0xc, vx);

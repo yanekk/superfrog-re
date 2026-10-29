@@ -47,16 +47,10 @@ const FIRST_FRAME: [(&str, u32, u32); 5] = [
 fn levels_start_at_their_first_frame(part: usize) {
     let ids = levels();
     assert_eq!(ids.len(), 26);
-    assert!(
-        ids.iter().all(|i| !i.alt),
-        "W6's second map set is not startable (owner, T02)"
-    );
+    assert!(ids.iter().all(|i| !i.alt), "W6's second map set is not startable (owner, T02)");
     let mut bad = Vec::new();
     for &i in ids.iter().skip(part * 4).take(4) {
-        let g = start(LevelSetup {
-            level: i,
-            ..LevelSetup::default()
-        });
+        let g = start(LevelSetup { level: i, ..LevelSetup::default() });
         let entry = Game::with_display(display(), Start::Level(i));
         if !g.scene().is_level() {
             bad.push(format!("{i}: scene {:?}", g.scene()));
@@ -68,9 +62,7 @@ fn levels_start_at_their_first_frame(part: usize) {
         for (name, off, len) in FIRST_FRAME {
             let (ours, first) = (g.peek(h0(off), len), entry.peek(h0(off), len));
             if ours != first {
-                bad.push(format!(
-                    "{i}: {name} {ours:x?}, the level's first frame {first:x?}"
-                ));
+                bad.push(format!("{i}: {name} {ours:x?}, the level's first frame {first:x?}"));
             }
         }
     }
@@ -107,14 +99,7 @@ fn the_bonus_and_final_levels_start_at_their_first_frame() {
 }
 
 /// The setup started at W2-3: each value where the game keeps it.
-fn values_land(
-    lives: Lives,
-    difficulty: Difficulty,
-    energy: u8,
-    points: u32,
-    spud: bool,
-    wings: bool,
-) {
+fn values_land(lives: Lives, difficulty: Difficulty, energy: u8, points: u32, spud: bool, wings: bool) {
     let setup = LevelSetup {
         level: id("W2-3"),
         lives,
@@ -133,11 +118,7 @@ fn values_land(
     assert_eq!(w(&g, 0x830), energy as u16, "frog_hearts, {what}");
     assert_eq!(w(&g, 0x852), spud as u16, "frog_spud_on, {what}");
     assert_eq!(w(&g, 0x866), wings as u16, "frog_flight, {what}");
-    assert_eq!(
-        w(&g, 0x9e6),
-        difficulty.opt_game_mode() as u16,
-        "opt_game_mode, {what}"
-    );
+    assert_eq!(w(&g, 0x9e6), difficulty.opt_game_mode() as u16, "opt_game_mode, {what}");
     // What `frog_new_game` derives from the mode: the bounce, gravity and air tuning
     // (h0+$86e..$874) and the base speed (h0+$886).
     let (tuning, base) = match difficulty {
@@ -186,27 +167,17 @@ fn the_same_setup_and_seed_play_the_same_and_the_seed_reaches_the_rng() {
         difficulty: Difficulty::Easy,
         ..LevelSetup::default()
     };
-    let seed = Rng {
-        lo: 0x1234_5678,
-        hi: 0x9abc_def0,
-    };
+    let seed = Rng { lo: 0x1234_5678, hi: 0x9abc_def0 };
     let mut a = Game::start_level(display(), &setup, seed);
     let mut b = Game::start_level(display(), &setup, seed);
     let other = Game::start_level(display(), &setup, Rng::default());
     let rng = |g: &Game| g.peek(h0(0x160d4), 8);
-    assert_ne!(
-        rng(&a),
-        rng(&other),
-        "a different seed leaves another rng_state"
-    );
+    assert_ne!(rng(&a), rng(&other), "a different seed leaves another rng_state");
     for f in 0..1000 {
         a.step(input(f));
         b.step(input(f));
     }
-    assert!(
-        a.probe() == b.probe(),
-        "the probes differ after 1 000 frames"
-    );
+    assert!(a.probe() == b.probe(), "the probes differ after 1 000 frames");
     assert!(a == b, "the games differ after 1 000 frames");
 }
 
@@ -234,11 +205,7 @@ fn the_location_is_the_frogs_cell_then_each_screen_as_the_chain_goes() {
     let g = start(LevelSetup::default());
     // W1-1's start: the frog's lower half, as T00 checked the cell formula.
     let (x, y) = (w(&g, 0x7d6), w(&g, 0x7d8));
-    let at = Location::Level {
-        id: id("W1-1"),
-        col: 10,
-        row: 41,
-    };
+    let at = Location::Level { id: id("W1-1"), col: 10, row: 41 };
     assert_eq!(g.location(), at);
     assert_eq!(((x + 0x17) / 16, (y - 0x10) / 16), (10, 41));
     assert_eq!(at.to_string(), "W1-1:10,41");
@@ -250,46 +217,25 @@ fn the_location_is_the_frogs_cell_then_each_screen_as_the_chain_goes() {
         _ => FrameInput::NONE,
     };
     let places = places_after_exit(g, 1400, slot);
-    assert_eq!(
-        places,
-        ["W1-1", "tally", "slot machine", "world map", "W1-2"]
-    );
+    assert_eq!(places, ["W1-1", "tally", "slot machine", "world map", "W1-2"]);
 }
 
 #[test]
 fn after_a_worlds_fourth_level_come_its_end_picture_and_the_next_worlds_intro() {
-    let g = start(LevelSetup {
-        level: id("W1-4"),
-        ..LevelSetup::default()
-    });
-    let fire = |f: u32| {
-        if f % 50 < 2 {
-            FrameInput::joy(Joy::FIRE)
-        } else {
-            FrameInput::NONE
-        }
-    };
+    let g = start(LevelSetup { level: id("W1-4"), ..LevelSetup::default() });
+    let fire = |f: u32| if f % 50 < 2 { FrameInput::joy(Joy::FIRE) } else { FrameInput::NONE };
     let places = places_after_exit(g, 700, fire);
-    assert_eq!(
-        places,
-        ["W1-4", "tally", "world end", "intro", "world map", "W2-1"]
-    );
+    assert_eq!(places, ["W1-4", "tally", "world end", "intro", "world map", "W2-1"]);
 }
 
 #[test]
 #[should_panic(expected = "start_level: energy 0 is not 1 to 4 hearts")]
 fn an_invalid_setup_panics_with_the_reason() {
-    start(LevelSetup {
-        energy: 0,
-        ..LevelSetup::default()
-    });
+    start(LevelSetup { energy: 0, ..LevelSetup::default() });
 }
 
 #[test]
 #[should_panic(expected = "start_level: level W6-2alt is not one a game plays")]
 fn the_second_map_set_is_refused() {
-    start(LevelSetup {
-        level: id("W6-2alt"),
-        ..LevelSetup::default()
-    });
+    start(LevelSetup { level: id("W6-2alt"), ..LevelSetup::default() });
 }

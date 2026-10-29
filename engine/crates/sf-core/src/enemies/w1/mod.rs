@@ -127,13 +127,7 @@ fn spawn_76(c: &mut LevelCtx, cell: u32) {
 fn other_end_free(c: &LevelCtx, cell: u32, marker: u16, right: bool) -> bool {
     let b = &c.bus;
     let Some(end) = (1..=0x98u32)
-        .map(|k| {
-            if right {
-                cell.wrapping_add(2 * k)
-            } else {
-                cell.wrapping_sub(2 * k)
-            }
-        })
+        .map(|k| if right { cell.wrapping_add(2 * k) } else { cell.wrapping_sub(2 * k) })
         .find(|&a| b.w(a) & 0x3f == marker)
     else {
         return false;

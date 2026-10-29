@@ -35,12 +35,7 @@ pub(super) fn load_blank(cx: &mut Cx) -> Option<SoundMarks> {
         let dma = cx.paula.len();
         cx.s.audio.music_dma_tick(d, cx.paula);
         cx.s.audio.sfx_tick(d, cx.paula);
-        marks = Some(SoundMarks {
-            music,
-            dma,
-            work,
-            streaming,
-        });
+        marks = Some(SoundMarks { music, dma, work, streaming });
     }
     front_kbd_poll(cx.s, cx.paula);
     marks
@@ -93,10 +88,7 @@ pub(super) fn place(from: usize, to: usize, m: SoundMarks, entry: u16) -> Vec<(u
     at.into_iter()
         .map(|t| {
             last = t.max(last);
-            (
-                (last / BEAM_CYCLES_PER_LINE) as u16,
-                (last % BEAM_CYCLES_PER_LINE / 2) as u16,
-            )
+            ((last / BEAM_CYCLES_PER_LINE) as u16, (last % BEAM_CYCLES_PER_LINE / 2) as u16)
         })
         .collect()
 }
@@ -339,22 +331,13 @@ mod tests {
     fn the_fades_start_eight_lines_after_the_music() {
         // Four channels, no effect: 521 + 4 × 84 + 4 × 519 + 90 = 3 023 cycles, line 6.
         let w = tick(&[0, 0, 0, 0], 4);
-        assert_eq!(
-            fade_start(1, &w, false, false),
-            14 * LINE + cost::AFTER_WAIT
-        );
+        assert_eq!(fade_start(1, &w, false, false), 14 * LINE + cost::AFTER_WAIT);
         // A vibrato and a volume slide more: line 7 (frame 644's).
         let w = tick(&[4, 0, 0, 10, 0, 0], 4);
-        assert_eq!(
-            fade_start(1, &w, false, false),
-            15 * LINE + cost::AFTER_WAIT
-        );
+        assert_eq!(fade_start(1, &w, false, false), 15 * LINE + cost::AFTER_WAIT);
         // No channel playing: line 5 (frames 314-317's).
         let w = tick(&[], 4);
-        assert_eq!(
-            fade_start(1, &w, false, false),
-            13 * LINE + cost::AFTER_WAIT
-        );
+        assert_eq!(fade_start(1, &w, false, false), 13 * LINE + cost::AFTER_WAIT);
     }
 
     /// The keyboard's poll and a row's notes started come after the wait, so they add their time
@@ -366,11 +349,7 @@ mod tests {
         assert_eq!(fade_start(1, &w, false, true), base + cost::KEYBOARD);
         let row = TickWork {
             row: true,
-            ..TickWork {
-                on: true,
-                shadowed: 4,
-                ..TickWork::default()
-            }
+            ..TickWork { on: true, shadowed: 4, ..TickWork::default() }
         };
         // A row with no channel playing: 521 + 339 + 4 × 519 + 90 = 3 026 cycles, line 6.
         let start = fade_start(1, &row, false, false);
@@ -381,12 +360,7 @@ mod tests {
     /// A row's writes for channel 0, as the handler makes them: `row_note`'s DMACON off and the
     /// shadow copy's new sample (`music_tick`), then the DMA stage's DMACON on.
     fn retrigger() -> (Vec<amiga_paula::PaulaWrite>, super::SoundMarks) {
-        let w = |reg, value| amiga_paula::PaulaWrite {
-            reg,
-            value,
-            hpos: 0,
-            vpos: 0,
-        };
+        let w = |reg, value| amiga_paula::PaulaWrite { reg, value, hpos: 0, vpos: 0 };
         let writes = vec![
             w(0x96, 0x0001),
             w(0xa0, 0),
@@ -397,23 +371,8 @@ mod tests {
             w(0x96, 0x8001),
             w(0x9a, 0x4000),
         ];
-        let work = TickWork {
-            on: true,
-            row: true,
-            row_live: 1,
-            row_notes: 1,
-            shadowed: 1,
-            ..TickWork::default()
-        };
-        (
-            writes,
-            super::SoundMarks {
-                music: 0,
-                dma: 6,
-                work,
-                streaming: false,
-            },
-        )
+        let work = TickWork { on: true, row: true, row_live: 1, row_notes: 1, shadowed: 1, ..TickWork::default() };
+        (writes, super::SoundMarks { music: 0, dma: 6, work, streaming: false })
     }
 
     /// The handler's writes, placed: the DMA stage on the eighth line after the one
@@ -442,21 +401,9 @@ mod tests {
                 if addr < 0x1000 { 0x1010 } else { 0xe0e0 }
             }
         }
-        let w = |reg, value| amiga_paula::PaulaWrite {
-            reg,
-            value,
-            hpos: 0,
-            vpos: 0,
-        };
+        let w = |reg, value| amiga_paula::PaulaWrite { reg, value, hpos: 0, vpos: 0 };
         // 2 048 bytes at period 400: about 11 frames of the old sample.
-        let first = [
-            w(0xa0, 0),
-            w(0xa2, 0),
-            w(0xa4, 0x400),
-            w(0xa6, 400),
-            w(0xa8, 64),
-            w(0x96, 0x8001),
-        ];
+        let first = [w(0xa0, 0), w(0xa2, 0), w(0xa4, 0x400), w(0xa6, 400), w(0xa8, 64), w(0x96, 0x8001)];
         let (writes, m) = retrigger();
         let placed: Vec<_> = writes
             .iter()

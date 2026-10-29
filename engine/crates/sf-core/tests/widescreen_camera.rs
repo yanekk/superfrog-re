@@ -78,16 +78,8 @@ fn at_w1_1s_start_the_wide_view_begins_at_level_x_16() {
         wide.step(joy(Joy::NONE));
     }
     assert_eq!(cx(&narrow), 0x10);
-    assert!(
-        cx(&wide) >= 0x10 + EXTRA,
-        "keep_inside's clamp: {}",
-        cx(&wide)
-    );
-    assert_eq!(
-        cx(&wide) - EXTRA,
-        16,
-        "the wide view's first column is level x 16"
-    );
+    assert!(cx(&wide) >= 0x10 + EXTRA, "keep_inside's clamp: {}", cx(&wide));
+    assert_eq!(cx(&wide) - EXTRA, 16, "the wide view's first column is level x 16");
     // The picture: a narrow camera under the wide view shows black past the map; the wide one
     // does not.
     assert!(left_column_blank(&narrow), "the check sees the map's edge");
@@ -122,10 +114,7 @@ fn at_a_levels_right_end_the_camera_stops_65_earlier_and_the_frog_walks_on() {
     // (`level_width − $40`), off-centre into the right strip in widescreen.
     let frog = w(&wide, FROG + f::X);
     assert_eq!(frog, w(&narrow, FROG + f::X));
-    assert!(
-        frog <= width - 0x40 && frog > width - 0x60,
-        "frog at {frog}"
-    );
+    assert!(frog <= width - 0x40 && frog > width - 0x60, "frog at {frog}");
     assert!(frog - cx(&wide) > WINDOW, "past the original's right edge");
 }
 
@@ -136,14 +125,8 @@ fn in_widescreen_the_frogs_sprites_stay_shown_past_150() {
     // The frog stands 0x128 + 65 from the camera: both sprites past $150, neither parked.
     assert!(r >= 0x150 && r < 0x150 + EXTRA, "right sprite at {r:#x}");
     assert!(l >= 0x128 && l < 0x150 + EXTRA, "left sprite at {l:#x}");
-    assert!(
-        shown_where_it_stands(&wide, FROG_SPRITE_LEFT),
-        "left sprite parked"
-    );
-    assert!(
-        shown_where_it_stands(&wide, FROG_SPRITE_RIGHT),
-        "right sprite parked"
-    );
+    assert!(shown_where_it_stands(&wide, FROG_SPRITE_LEFT), "left sprite parked");
+    assert!(shown_where_it_stands(&wide, FROG_SPRITE_RIGHT), "right sprite parked");
     let (narrow, _) = drive_to_right_end(false);
     assert!(w(&narrow, FROG_SPRITE_RIGHT) < 0x150);
     assert!(shown_where_it_stands(&narrow, FROG_SPRITE_RIGHT));
@@ -158,20 +141,11 @@ fn in_widescreen_the_frogs_sprites_stay_shown_left_of_minus_20() {
     for _ in 0..200 {
         g.step(joy(Joy::LEFT));
     }
-    let (l, r) = (
-        w(&g, FROG_SPRITE_LEFT) as i16,
-        w(&g, FROG_SPRITE_RIGHT) as i16,
-    );
+    let (l, r) = (w(&g, FROG_SPRITE_LEFT) as i16, w(&g, FROG_SPRITE_RIGHT) as i16);
     assert!(l < -0x20 && l >= -0x20 - EXTRA as i16, "left sprite at {l}");
     assert_eq!(r, l + 0x10);
-    assert!(
-        shown_where_it_stands(&g, FROG_SPRITE_LEFT),
-        "left sprite parked"
-    );
-    assert!(
-        shown_where_it_stands(&g, FROG_SPRITE_RIGHT),
-        "right sprite parked"
-    );
+    assert!(shown_where_it_stands(&g, FROG_SPRITE_LEFT), "left sprite parked");
+    assert!(shown_where_it_stands(&g, FROG_SPRITE_RIGHT), "right sprite parked");
 }
 
 /// A blinking frog's sprites are parked past the right of the screen: at $150 in 4:3, at $150 + 65
@@ -258,10 +232,7 @@ fn a_restart_in_widescreen_starts_at_the_wide_clamp() {
             g.step(joy(if i < 290 { Joy::RIGHT } else { Joy::NONE }));
             left |= !g.scene().is_level();
         }
-        assert!(
-            left && g.scene().is_level(),
-            "wide {wide}: died and restarted"
-        );
+        assert!(left && g.scene().is_level(), "wide {wide}: died and restarted");
         assert_eq!(cx(&g), at, "wide {wide}");
     }
 }
@@ -280,11 +251,7 @@ fn start_points_copy_of_the_clamp_moves_in_by_65() {
     for (wide, at) in [(false, 69), (true, 0x10 + EXTRA)] {
         let g = level("W3-1", wide);
         assert_eq!(cx(&g), at, "wide {wide}");
-        assert_eq!(
-            first_drawn_column(&g),
-            at & 0xfff0,
-            "wide {wide}: W3-1's first column"
-        );
+        assert_eq!(first_drawn_column(&g), at & 0xfff0, "wide {wide}: W3-1's first column");
     }
     for wide in [false, true] {
         let mut g = level("W1-1", wide);
@@ -295,19 +262,12 @@ fn start_points_copy_of_the_clamp_moves_in_by_65() {
         for i in 0..400 {
             g.step(joy(if i < 290 { Joy::RIGHT } else { Joy::NONE }));
             if start.is_none() && cx(&g) > 4000 {
-                assert!(
-                    !g.scene().is_level(),
-                    "wide {wide}: the restart is still loading"
-                );
+                assert!(!g.scene().is_level(), "wide {wide}: the restart is still loading");
                 start = Some((cx(&g), first_drawn_column(&g)));
             }
         }
         assert!(g.scene().is_level(), "wide {wide}: restarted");
-        assert_eq!(
-            start,
-            Some((right, right & 0xfff0)),
-            "wide {wide}: the restart's start"
-        );
+        assert_eq!(start, Some((right, right & 0xfff0)), "wide {wide}: the restart's start");
         assert_eq!(cx(&g), right, "wide {wide}");
     }
 }
@@ -327,33 +287,20 @@ fn a_dialog_started_level_switched_before_its_first_step_starts_at_the_wide_clam
     g.set_widescreen(true);
     assert_eq!(cx(&narrow), 0x10);
     assert_eq!(cx(&g), 0x10 + EXTRA, "start_point's wide clamp");
-    assert!(
-        g.widescreen() && g.view() == WIDE_VIEW,
-        "the mode on and the view kept"
-    );
+    assert!(g.widescreen() && g.view() == WIDE_VIEW, "the mode on and the view kept");
     assert_eq!(g.frame(), narrow.frame());
     for n in 0..40 {
         g.step(joy(Joy::NONE));
-        assert!(
-            !left_column_blank(&g),
-            "frame {n}: colour 0 from off the map"
-        );
+        assert!(!left_column_blank(&g), "frame {n}: colour 0 from off the map");
         assert_eq!(cx(&g), 0x10 + EXTRA, "frame {n}");
     }
     let mut back = Game::start_level(display.clone(), &LevelSetup::default(), seed);
     back.set_widescreen(true);
     back.set_widescreen(false);
-    assert!(
-        back.state() == narrow.state(),
-        "switched back: the 4:3 start"
-    );
+    assert!(back.state() == narrow.state(), "switched back: the 4:3 start");
     let mut late = narrow.clone();
     late.step(joy(Joy::NONE));
     let frame = late.frame();
     late.set_widescreen(true);
-    assert_eq!(
-        (late.frame(), cx(&late)),
-        (frame, 0x10),
-        "after a step: played on, not started again"
-    );
+    assert_eq!((late.frame(), cx(&late)), (frame, 0x10), "after a step: played on, not started again");
 }

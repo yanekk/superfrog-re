@@ -79,10 +79,7 @@ fn frame_prepare(m: &mut StoryMem, p: &mut Prog, d: u32, row_bytes: u32) {
     m.set_w(d + 0x20, m.w(d + 0x14).wrapping_sub(bytes as u16));
     // `lsl.w #6, d5; add.w d6, d5`: an add, which a descriptor filled from past the scene's table
     // (code) carries into the height (oracle frame 11 295, T56).
-    m.set_w(
-        d + 0x1a,
-        (m.w(d + 6) << 6).wrapping_add((bytes >> 1) as u16),
-    );
+    m.set_w(d + 0x1a, (m.w(d + 6) << 6).wrapping_add((bytes >> 1) as u16));
     let at = (m.w(d + 2) as u32) * (m.w(d + 0x14) as u32) + (m.w(d) >> 3) as u32;
     m.set_l(d + 0x24, m.l(d + 0xc).wrapping_add(at));
     m.set_l(d + 0x1c, m.l(d + 0x10).wrapping_add(at));

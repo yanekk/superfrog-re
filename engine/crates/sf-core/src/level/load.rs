@@ -86,10 +86,7 @@ pub fn enter_with(
     new_game(&mut c, id);
     // The disk the map file was read from, which the next load's disk check reads (T21).
     if let Some(disk) = crate::front::chain::level_disk(&display.front, id) {
-        c.bus.set_l(
-            crate::layout::def(crate::layout::VarId::WantedDisk).addr,
-            disk,
-        );
+        c.bus.set_l(crate::layout::def(crate::layout::VarId::WantedDisk).addr, disk);
     }
     level_load(&mut c, display, id);
     level_init(&mut c, id);
@@ -128,14 +125,12 @@ fn world_sound(st: &mut State, display: &DisplayData, id: LevelId) {
     use crate::audio::{AudioDriver, BANK_ADDR, BankId, File, TuneId};
     let d = display.sound();
     st.audio = AudioDriver::new(d);
-    st.audio
-        .set_low_chip(crate::front::title::KICKSTART_LOW_CHIP);
+    st.audio.set_low_chip(crate::front::title::KICKSTART_LOW_CHIP);
     if !d.is_complete() {
         return;
     }
     // The title's music, faded out and stopped as a game starts (`music_fade_wait`, h0+$11a4).
-    st.audio
-        .file_loaded(d, BANK_ADDR, File::Tune(TuneId::Title));
+    st.audio.file_loaded(d, BANK_ADDR, File::Tune(TuneId::Title));
     st.audio.set_module_addr(BANK_ADDR);
     st.audio.stop_music(d, &mut Vec::new());
     let (bank, tune) = match id.world {
@@ -164,11 +159,7 @@ fn new_game(c: &mut LevelCtx, id: LevelId) {
     b.set_w(h0(0x9e0), 0);
     b.set_w(camera::SHOOTER_MODE, 0);
     // The final level has no code: a game reaches it from W6-4's.
-    let (world, level) = if id.world == World::Final {
-        (6, 4)
-    } else {
-        numbers(id)
-    };
+    let (world, level) = if id.world == World::Final { (6, 4) } else { numbers(id) };
     b.set_l(START_WORLD, world);
     b.set_l(START_LEVEL, level);
 }
@@ -197,16 +188,8 @@ fn level_of(world: u32, level: u32, final_flag: u16) -> Option<LevelId> {
         7 => World::Bonus,
         _ => return None,
     };
-    let level = if world == World::Final {
-        1
-    } else {
-        level as u8
-    };
-    Some(LevelId {
-        world,
-        level,
-        alt: false,
-    })
+    let level = if world == World::Final { 1 } else { level as u8 };
+    Some(LevelId { world, level, alt: false })
 }
 
 /// `world` and `level` for `id`.
@@ -226,15 +209,7 @@ fn numbers(id: LevelId) -> (u32, u32) {
 /// `demo_world_load` and `demo_level_load` (h0+$a580, $a5ec): `world_load_w1` without its sound
 /// and intro, and `level_load_w1_l1` without its progress map.
 pub(crate) fn demo_load(c: &mut LevelCtx, display: &DisplayData) {
-    level_load(
-        c,
-        display,
-        LevelId {
-            world: World::W1,
-            level: 1,
-            alt: false,
-        },
-    );
+    level_load(c, display, LevelId { world: World::W1, level: 1, alt: false });
 }
 
 /// `world_load_wN` and `level_load_wN_lM` (h0+$94a0, $9552 …): what they leave that a level
@@ -276,10 +251,7 @@ pub(crate) fn level_load(c: &mut LevelCtx, display: &DisplayData, id: LevelId) {
 
 /// h0+$1622a: the 32 colours `$44` bytes past the map's `PALA` tag into `level_palette`.
 fn palette_from_map(b: &mut Bus) {
-    let Some(at) = (0..0x80)
-        .map(|k| LOAD_BUFFER + 4 * k)
-        .find(|&a| b.l(a) == 0x5041_4c41)
-    else {
+    let Some(at) = (0..0x80).map(|k| LOAD_BUFFER + 4 * k).find(|&a| b.l(a) == 0x5041_4c41) else {
         return;
     };
     let from = at + 4 + 0x44;
@@ -293,10 +265,7 @@ fn palette_from_map(b: &mut Bus) {
 /// into `tile << 6 | marker`, four cells of padding after each row.
 fn map_unpack(b: &mut Bus) {
     clear_map_area(b);
-    let Some(body) = (0..0x800)
-        .map(|k| LOAD_BUFFER + 4 * k)
-        .find(|&a| b.l(a) == 0x424f_4459)
-    else {
+    let Some(body) = (0..0x800).map(|k| LOAD_BUFFER + 4 * k).find(|&a| b.l(a) == 0x424f_4459) else {
         return;
     };
     let len = b.l(body + 4) / 4;
@@ -396,14 +365,8 @@ pub fn level_init(c: &mut LevelCtx, id: LevelId) {
         (World::Final, _) => (h0(0x3ad8c), h0(0x309e8), 0x500),
         (_, w) => (
             h0(0x3ad8c),
-            [
-                h0(0x2ed2c),
-                h0(0x2f164),
-                h0(0x2f710),
-                h0(0x2fbfc),
-                h0(0x300a0),
-                h0(0x30598),
-            ][w as usize - 1],
+            [h0(0x2ed2c), h0(0x2f164), h0(0x2f710), h0(0x2fbfc), h0(0x300a0), h0(0x30598)]
+                [w as usize - 1],
             (w - 1) * 0x100,
         ),
     };

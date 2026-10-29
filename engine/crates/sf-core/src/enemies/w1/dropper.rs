@@ -3,7 +3,9 @@
 //! frog (immune, not passive). Template 17: `w1_drop`, which falls until the cell under it is
 //! solid and splats there, harmless.
 
-use crate::enemies::common::{NOTHING, SPLAT, follow_and_despawn, marker_right_of, solid};
+use crate::enemies::common::{
+    NOTHING, SPLAT, follow_and_despawn, marker_right_of, solid,
+};
 use crate::items::template;
 use crate::layout::h0;
 use crate::level::objects::{bob_anim, nothing, obj_free, obj_spawn_at_xy_nodedup};
@@ -61,10 +63,7 @@ fn update(c: &mut LevelCtx, slot: u32, _d7: u16) {
     b.set_w(slot + 0x5c, t);
     if !n_clear(t) {
         b.set_w(slot + 0x5c, 0x1e);
-        let (x, y) = (
-            b.w(slot + 8).wrapping_add(2),
-            b.w(slot + 0xa).wrapping_add(0x20),
-        );
+        let (x, y) = (b.w(slot + 8).wrapping_add(2), b.w(slot + 0xa).wrapping_add(0x20));
         obj_spawn_at_xy_nodedup(c, template(17), x, y);
     }
     let b = &mut c.bus;

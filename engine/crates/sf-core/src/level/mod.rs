@@ -11,9 +11,9 @@ pub mod beam;
 pub mod bobs;
 pub mod camera;
 pub mod clock;
-pub mod collision;
 pub mod death;
 pub mod exit;
+pub mod collision;
 pub mod fade;
 pub mod frame;
 pub mod load;
@@ -45,9 +45,7 @@ pub fn n_clear(result: u16) -> bool {
 
 /// What the custom chips and CIAs answer this frame: the original reads the joystick and the fire
 /// button itself, wherever it needs them (docs/08 "Input"); within a frame they hold still.
-#[derive(
-    Debug, Clone, Copy, Default, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize,
-)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 pub struct Hw {
     /// `JOY1DAT` (`$DFF00C`): the joystick in port 2, as Denise encodes it.
     pub joy1dat: u16,
@@ -128,18 +126,8 @@ pub struct Dispatch {
 impl std::fmt::Debug for Dispatch {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("Dispatch")
-            .field(
-                "kinds",
-                &self
-                    .kinds
-                    .iter()
-                    .map(|k| (k.0, k.1.name))
-                    .collect::<Vec<_>>(),
-            )
-            .field(
-                "markers",
-                &self.markers.iter().map(|m| m.0).collect::<Vec<_>>(),
-            )
+            .field("kinds", &self.kinds.iter().map(|k| (k.0, k.1.name)).collect::<Vec<_>>())
+            .field("markers", &self.markers.iter().map(|m| m.0).collect::<Vec<_>>())
             .finish()
     }
 }
@@ -257,9 +245,7 @@ pub enum LevelOutcome {
 }
 
 /// What the level-complete tally gave (`level_tally`, h0+$4466; T38).
-#[derive(
-    Debug, Clone, Copy, Default, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize,
-)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 pub struct Tally {
     /// Pages of 5 000 points earned (h0+$4796).
     pub pages: u16,
@@ -529,9 +515,7 @@ impl LevelCtx<'_> {
             h * w
         };
         let from = self.blit_next;
-        if let Some(j) =
-            (from..self.blits.len().min(from + 3)).find(|&j| size_words(self.blits[j].0) == words)
-        {
+        if let Some(j) = (from..self.blits.len().min(from + 3)).find(|&j| size_words(self.blits[j].0) == words) {
             self.blit_next = j + 1;
             let (_, line, hpos) = self.blits[j];
             self.anchor_to(beam::Clock::at(line, 2 * hpos as u32));
@@ -651,10 +635,7 @@ impl LevelCtx<'_> {
                 f.out_to = Some(self.paula.len());
                 f.log = self.bus.log.take();
                 f.mid = Some(Box::new(self.bus.st.clone()));
-                debug_assert!(
-                    f.vbl_start.is_some(),
-                    "a frame ending in the interrupt kept its blank's start"
-                );
+                debug_assert!(f.vbl_start.is_some(), "a frame ending in the interrupt kept its blank's start");
                 if let Some((start, clock, hw, k)) = f.vbl_start.clone() {
                     f.pending = Some(beam::Pending {
                         start,
@@ -730,9 +711,7 @@ impl LevelCtx<'_> {
         if next < f.specs.len() {
             let f = self.frames.as_mut().expect("frames");
             if !f.in_pass
-                && f.specs[next..]
-                    .iter()
-                    .any(|s| s.cut.is_some_and(|c| c.phase == beam::IRQ_PHASE))
+                && f.specs[next..].iter().any(|s| s.cut.is_some_and(|c| c.phase == beam::IRQ_PHASE))
             {
                 f.vbl_start = Some((Box::new(self.bus.st.clone()), self.clock, self.hw, next));
             }
@@ -763,9 +742,7 @@ impl LevelCtx<'_> {
             frame::vbl(self);
             // A vertical blank held behind the handler ([`LevelCtx::irq_due`]) is taken as it
             // returns.
-            while std::mem::take(&mut self.vbl_held)
-                && !self.frames.as_ref().is_some_and(|f| f.done)
-            {
+            while std::mem::take(&mut self.vbl_held) && !self.frames.as_ref().is_some_and(|f| f.done) {
                 frame::vbl(self);
             }
             let f = self.frames.as_mut().expect("frames");
@@ -857,10 +834,7 @@ impl LevelCtx<'_> {
         self.stamp();
         let (line, into) = (self.clock.line, self.clock.into);
         let f = self.frames.as_mut().expect("the main program's frames");
-        debug_assert!(
-            matches!(f.current(), Some((true, _))),
-            "the loop ends in the step's own frame"
-        );
+        debug_assert!(matches!(f.current(), Some((true, _))), "the loop ends in the step's own frame");
         f.done = true;
         f.ended = Some((line, into));
         f.out_to = Some(self.paula.len());
@@ -966,10 +940,7 @@ impl LevelCtx<'_> {
                 self.interrupt_due_at(true);
             }
             let at = self.paula.len();
-            let rest = self
-                .bus
-                .st
-                .audio
+            let rest = self.bus.st.audio
                 .play_sfx_begin(self.sound, effect, channel, self.paula);
             let Some(rest) = rest else {
                 self.audio_spent(at, beam::Cost::AudioStop, beam::Cost::AudioWrite);
@@ -1010,10 +981,7 @@ impl LevelCtx<'_> {
             // it, and music takes the channel back (T181: enemies-w6-1-complete 507–509).
             self.interrupt_due_at(true);
             let at = self.paula.len();
-            self.bus
-                .st
-                .audio
-                .play_sfx_start(self.sound, rest, self.paula);
+            self.bus.st.audio.play_sfx_start(self.sound, rest, self.paula);
             self.audio_spent(at, beam::Cost::SfxWrite, beam::Cost::SfxWrite);
         }
     }

@@ -210,18 +210,11 @@ pub fn due_channels(s: &State) -> Vec<(u32, u16, bool, bool)> {
                 continue;
             }
             let n = s.w(rec.at + COUNT) as u32;
-            let (list, target) = (
-                s.l(rec.at + LIST).wrapping_add(4),
-                s.l(rec.at + TARGET).wrapping_add(2),
-            );
+            let (list, target) = (s.l(rec.at + LIST).wrapping_add(4), s.l(rec.at + TARGET).wrapping_add(2));
             for k in 0..n {
                 for (mask, _) in CHANNELS {
                     let cur = s.w(list + 4 * k) & mask;
-                    let changes = if mode == 2 {
-                        cur != s.w(target + 2 * k) & mask
-                    } else {
-                        cur != 0
-                    };
+                    let changes = if mode == 2 { cur != s.w(target + 2 * k) & mask } else { cur != 0 };
                     out.push((list + 4 * k, mask, changes, mode == 2));
                 }
             }

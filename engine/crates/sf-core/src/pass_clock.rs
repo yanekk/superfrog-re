@@ -15,9 +15,7 @@ pub const VBL_COUNT: u32 = h0(0x9d8);
 /// and the next blank has not come), and ends in the first frame that does not end in the middle
 /// of it: the same frame, or, for a late pass, a later one (in which the next pass may begin and
 /// still be running at the frame's end, its predecessor's end then never seen).
-#[derive(
-    Debug, Clone, Copy, Default, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize,
-)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 pub struct PassClock {
     /// A pass has begun and not been seen to end.
     running: bool,

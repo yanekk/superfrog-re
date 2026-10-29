@@ -87,9 +87,7 @@ pub fn spawn_shots(c: &mut LevelCtx) {
     // In widescreen past its right edge (real-widescreen DESIGN §2.6); y keeps the original's
     // slip from the narrow x, as no vertical margin moves (§2.2).
     let x = cx.wrapping_add(c.screen.shot_spawn());
-    let y = cx
-        .wrapping_add(Screen::NARROW.shot_spawn())
-        .wrapping_add(0x130);
+    let y = cx.wrapping_add(Screen::NARROW.shot_spawn()).wrapping_add(0x130);
     b.set_l(SHOT_SPAWN_X, x as i16 as u32);
     b.set_l(SHOT_SPAWN_Y, y as i16 as u32);
     for (k, t) in [110u32, 110, 110, 111, 112].into_iter().enumerate() {

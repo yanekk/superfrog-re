@@ -5,10 +5,10 @@
 //! unregistered marker spawns nothing.
 
 use crate::layout::h0;
-use crate::level::beam::Cost;
 use crate::level::collision::{MAP_ROWS, OBJ_WORLD_OFFSET};
-use crate::level::screen::Screen;
+use crate::level::beam::Cost;
 use crate::level::{LevelCtx, n_clear};
+use crate::level::screen::Screen;
 use crate::mem::Bus;
 use std::ops::Range;
 
@@ -71,20 +71,12 @@ pub fn scan_edges(c: &mut LevelCtx) {
     }
     let dirs = b.b(crate::level::camera::SCROLL_DIRS);
     let origin = scan_origin(b, c.screen);
-    let col = if dirs & 4 != 0 {
-        origin
-    } else {
-        origin.wrapping_add(c.screen.scan_right_column())
-    };
+    let col = if dirs & 4 != 0 { origin } else { origin.wrapping_add(c.screen.scan_right_column()) };
     scan(c, col, 0x15, 0x260, 0..0x15);
     let b = &c.bus;
     let dirs = b.b(crate::level::camera::SCROLL_DIRS);
     let origin = scan_origin(b, c.screen);
-    let row = if dirs & 0x10 != 0 {
-        origin
-    } else {
-        origin.wrapping_add(0x2d20)
-    };
+    let row = if dirs & 0x10 != 0 { origin } else { origin.wrapping_add(0x2d20) };
     let paid = originals(c, Screen::NARROW.scan_row_cells());
     scan(c, row, c.screen.scan_row_cells(), 2, paid);
 }
@@ -92,9 +84,7 @@ pub fn scan_edges(c: &mut LevelCtx) {
 /// h0+$1788a: the bonus level's right-hand column, 16 cells (5 cells further out in widescreen,
 /// so its markers 11 and 55 act sooner, DESIGN §2.6, D12).
 pub fn scan_right_column(c: &mut LevelCtx) {
-    let at = scan_origin(&c.bus, c.screen)
-        .wrapping_add(0x720)
-        .wrapping_add(c.screen.scan_right_column());
+    let at = scan_origin(&c.bus, c.screen).wrapping_add(0x720).wrapping_add(c.screen.scan_right_column());
     scan(c, at, 0x10, 0x260, 0..0x10);
 }
 
@@ -105,10 +95,7 @@ pub fn scan_screen(c: &mut LevelCtx) {
     let start = scan_origin(&c.bus, c.screen).wrapping_add(2);
     let end = crate::mem::TILE_PTRS;
     let world = (c.bus.l(OBJ_WORLD_OFFSET) >> 8) as u8;
-    let (cells, paid) = (
-        c.screen.scan_screen_cells(),
-        originals(c, Screen::NARROW.scan_screen_cells()),
-    );
+    let (cells, paid) = (c.screen.scan_screen_cells(), originals(c, Screen::NARROW.scan_screen_cells()));
     for row in 0..0x12u32 {
         let mut at = start.wrapping_add(row * 0x260);
         for k in 0..cells {
