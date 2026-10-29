@@ -10,6 +10,8 @@ mod atn;
 mod carve;
 mod identify;
 mod sha1;
+// The zip reader and writer, SHA-1 and `ADF_SIZE` are the toolkit's `amiga-disk`, re-exported
+// here at their old paths.
 pub mod zip;
 
 pub use adf::{ADF_SIZE, Adf, DiskSlot};

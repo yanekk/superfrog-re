@@ -1,6 +1,6 @@
 //! One emulated A500 running the original, stepped a frame at a time.
 
-use sf_core::input::FrameInput;
+use amiga_input::FrameInput;
 use sf_disk::{DiskSet, DiskSlot};
 use amiga_paula::PaulaWrite;
 

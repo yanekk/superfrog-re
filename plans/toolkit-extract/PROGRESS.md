@@ -11,7 +11,7 @@ the task you pick up, and append yours there.
 
 **Status:** planned, nothing built.
 **Last updated:** 2026-10-29
-**Next `pir-work` will:** T02 and T03, whose only dependency (T01) is done.
+**Next `pir-work` will:** T04 and T07, now unblocked by T02 and T03.
 
 ## Tasks
 
@@ -21,8 +21,8 @@ done · ⛔ blocked, needs a human.
 | # | Task | Depends on | State | Notes |
 |---|---|---|---|---|
 | T01 | toolkit-workspace | — | ✅ | |
-| T02 | amiga-input | T01 | ⬜ | |
-| T03 | amiga-disk | T01 | ⬜ | |
+| T02 | amiga-input | T01 | ✅ | |
+| T03 | amiga-disk | T01 | ✅ | |
 | T04 | asset-readers | T03 | ⬜ | |
 | T05 | amiga-oracle | T02, T03, T04 | ⬜ | |
 | T06 | amiga-conform | T05 | ⬜ | |

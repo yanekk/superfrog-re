@@ -9,7 +9,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicU64, Ordering};
 
-use sf_core::input::FrameInput;
+use amiga_input::FrameInput;
 use sf_disk::sha1_hex;
 use amiga_paula::PaulaWrite;
 
@@ -449,7 +449,7 @@ impl<'a> Reader<'a> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use sf_core::input::{Joy, KeySet};
+    use amiga_input::{Joy, KeySet};
 
     #[test]
     fn a_script_holds_each_input_until_the_next() {
