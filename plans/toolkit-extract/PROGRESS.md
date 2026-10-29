@@ -10,7 +10,7 @@ the task you pick up, and append yours there.
 **Plan reviewed:** 2026-10-28 — 4 fixed, 3 decided with the user
 
 **Status:** planned, nothing built.
-**Last updated:** 2026-10-28
+**Last updated:** 2026-10-29
 **Next `pir-work` will:** T01, the only task with no dependency; it records the baseline everything
 else is compared with.
 
@@ -24,7 +24,7 @@ done · ⛔ blocked, needs a human.
 | T01 | toolkit-workspace | — | ✅ | |
 | T02 | amiga-input | T01 | ✅ | |
 | T03 | amiga-disk | T01 | ✅ | |
-| T04 | asset-readers | T03 | ⬜ | |
+| T04 | asset-readers | T03 | 🔍 | amiga_disk::{hunk,iff,anim,planar,palette} and ReadError; sf-assets wraps them (types re-exported, messages kept); first_hunk walks hunk::Blocks. 12 toolkit tests. Deviations: ilbm returns Ilbm (bitmap, palette, chunks), not a bare Bitmap; parse skips HUNK_UNIT/NAME (was refused); nested-IFF truncation offsets are file offsets; Picture is raw planes, stays. |
 | T05 | amiga-oracle | T02, T03, T04 | ⬜ | |
 | T06 | amiga-conform | T05 | ⬜ | |
 | T07 | amiga-app-parts | T02 | ⬜ | |
@@ -33,7 +33,7 @@ done · ⛔ blocked, needs a human.
 | T10 | display-piece | T01 | ⬜ | |
 | T11 | dry-fit-and-finish | T04, T05, T08, T09, T10 | ⬜ | |
 
-**Review queue:** *(empty)*
+**Review queue:** T04
 
 ## Blocked on the user
 
