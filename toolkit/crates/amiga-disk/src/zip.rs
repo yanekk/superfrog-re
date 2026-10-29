@@ -278,6 +278,22 @@ mod tests {
     }
 
     #[test]
+    fn written_bytes_are_pinned() {
+        // Built field by field in Python from the zip spec, and read back by Python's zipfile. The
+        // round trip above cannot see a header field change (write_zip is built on write_stored);
+        // bug zips already written must keep reading and rewriting the same (toolkit-extract T03).
+        let want = "504b0304140000000000000000007a7a6fed030000000300000005000000612e74787468690a\
+                    504b01021400140000000000000000007a7a6fed03000000030000000500000000000000000000\
+                    00000000000000612e747874\
+                    504b0506000000000100010033000000260000000000";
+        let got: String = write_stored(&[("a.txt", b"hi\n")])
+            .iter()
+            .map(|b| format!("{b:02x}"))
+            .collect();
+        assert_eq!(got, want);
+    }
+
+    #[test]
     fn an_empty_zip_has_no_entries() {
         let z = write_zip(&[]);
         assert!(is_zip(&z));
