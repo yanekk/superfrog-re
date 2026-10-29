@@ -25,7 +25,7 @@ done · ⛔ blocked, needs a human.
 | T02 | amiga-input | T01 | ✅ | |
 | T03 | amiga-disk | T01 | ✅ | |
 | T04 | asset-readers | T03 | ✅ | |
-| T05 | amiga-oracle | T02, T03, T04 | ⬜ | |
+| T05 | amiga-oracle | T02, T03, T04 | ✅ | |
 | T06 | amiga-conform | T05 | ⬜ | |
 | T07 | amiga-app-parts | T02 | ✅ | |
 | T08 | amiga-e2e | T07 | ⬜ | |
