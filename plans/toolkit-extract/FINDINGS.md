@@ -12,6 +12,7 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-29 | 📌 | T08: sf-e2e `recorder_bar` (bar under a resized/widescreen window) fails on the unchanged base under parallel-build load; `controls.rs` rebinding failed once, passed once. Window-timing flakes, not the move. |
 | 2026-10-29 | 📌 | T05: vAmiga rebuilt under `~/.cache/amiga-toolkit/vamiga` in 59 s. After it frog_cases 36 took 816 s, alone 47 s, beam 5 s, story `--ignored` 9 took 309 s: no visible cache-refill cost (frog_cases was 17 min at T02). |
 | 2026-10-29 | 📌 | T05: Kickstart 1.3 with df0 empty draws the insert-disk hand at frame 207 and holds it (6 colours, 320 wide); `amiga-oracle/tests/boot.rs` pins it. |
 | 2026-10-29 | 📌 | T07: a smoke capture's `clock.txt` and `pacing.txt` vary with machine load (one loaded run dropped 332 frames, reruns 0); byte-compare frames, `inputs.txt`, `audio.wav`, `audio-frames.txt` only. sf-app no longer depends on wgpu, cpal or gilrs directly. |

@@ -5,6 +5,10 @@ checks what it showed, played and saw (DESIGN §5, End to end). Every launch get
 `--home` with the owner's disks imported into it, and always passes `--max-frames` and `--timeout`.
 The app runs in its own process group, so a stuck run is killed whole.
 
+The driver itself is the toolkit's `amiga-e2e` (`toolkit/crates/amiga-e2e/`), which knows no game:
+`sf-e2e/src/lib.rs` gives it Superfrog's `AppSpec` (the `sf-app` package's `superfrog` binary, its
+flags, `SUPERFROG_HOME` cleared, `SF_E2E_KEEP`, the seed cache) and keeps every test under `tests/`.
+
 The disks are found as for every other test: `SUPERFROG_DISKS`, else the main checkout root. The
 imported cache is kept in `~/.cache/superfrog-re/e2e/` between runs (it is derived from the disks,
 so it stays outside the repository) and copied into each temporary home.

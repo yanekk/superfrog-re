@@ -5,20 +5,23 @@ edition.workspace = true
 publish.workspace = true
 
 [dependencies]
-# The engine the captures are compared against, headless, and the data it decodes from the cache.
-sf-core = { path = "../sf-core" }
+# The driver: launches the app, feeds it scripts, reads its captures, drives its windows
+# (toolkit-extract T08). This crate gives it Superfrog's spec.
+amiga-e2e = { path = "../../../toolkit/crates/amiga-e2e" }
+# Superfrog's seed cache: the cache format the import writes.
 sf-assets = { path = "../sf-assets" }
+# Finds the owner's disks (DESIGN §5, "Disk images").
+sf-conform = { path = "../sf-conform" }
+
+[dev-dependencies]
+# The engine the captures are compared against, headless.
+sf-core = { path = "../sf-core" }
 amiga-paula = { path = "../../../toolkit/crates/amiga-paula" }
 # Reads back the bug zips the app saves (bug-recorder T06).
 sf-disk = { path = "../sf-disk" }
-# Finds the owner's disks (DESIGN §5, "Disk images").
-sf-conform = { path = "../sf-conform" }
-# Reads the app's captured frames and the OS layer's window captures.
+# Reads PNGs the tests write and check; libc checks process groups and sends signals.
 png = "0.18"
-# Launches the app in its own process group and checks the group is gone afterwards.
 libc = "0.2"
-
-[dev-dependencies]
 # Set C's route checks (smart-planner T12, `tests/plan_routes.rs`): the app script a route becomes
 # and the engine replay it is compared with, shared with the benchmark's verification.
 sf-bench = { path = "../sf-bench" }
