@@ -11,8 +11,7 @@ the task you pick up, and append yours there.
 
 **Status:** planned, nothing built.
 **Last updated:** 2026-10-28
-**Next `pir-work` will:** T01, the only task with no dependency; it records the baseline everything
-else is compared with.
+**Next `pir-work` will:** T06 (amiga-conform), now unblocked by T05.
 
 ## Tasks
 
@@ -25,7 +24,7 @@ done · ⛔ blocked, needs a human.
 | T02 | amiga-input | T01 | ✅ | |
 | T03 | amiga-disk | T01 | ✅ | |
 | T04 | asset-readers | T03 | ✅ | |
-| T05 | amiga-oracle | T02, T03, T04 | 🔍 | amiga-oracle: disk list, `boot: None`, eject, `kickstart_path`; sf-oracle keeps `locate`, DiskSlot newtype, superfrog-re caches; keys byte-equal (`tests/keys.rs`). 20 tests. Deviations: `load_exe` keeps its own header walk; malformed-and-cut RELOC32 reports Truncated; disks passed as bytes; wrapper three lines (cmake install); CallError text names amiga_oracle. |
+| T05 | amiga-oracle | T02, T03, T04 | ✅ | Review: one fix, `locate` skipped `AMIGA_KICKSTART` after `SUPERFROG_KICKSTART` (DESIGN §2.5), reproduced by new `tests/kickstart.rs`, fixed. Ran toolkit and sf-oracle tests, boot.rs five times, test_oracle_sh; mutated `setup_key` label and `load_exe` zero-fill, both red. Sweep reference loader matches the base word for word. Rebuild read off cache `.done`; DESIGN §4 runs builder's, not rerun. |
 | T06 | amiga-conform | T05 | ⬜ | |
 | T07 | amiga-app-parts | T02 | ⬜ | |
 | T08 | amiga-e2e | T07 | ⬜ | |
@@ -33,7 +32,7 @@ done · ⛔ blocked, needs a human.
 | T10 | display-piece | T01 | ✅ | |
 | T11 | dry-fit-and-finish | T04, T05, T08, T09, T10 | ⬜ | |
 
-**Review queue:** T05
+**Review queue:** empty
 
 ## Blocked on the user
 
