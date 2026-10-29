@@ -1,8 +1,10 @@
-"""tools/setup/oracle.sh's cache and lock logic, against a scratch SUPERFROG_CACHE (no network, no build).
+"""The vAmiga build script's cache and lock logic, against a scratch AMIGA_TOOLKIT_CACHE (no network,
+no build). The script is toolkit/tools/setup/oracle.sh; tools/setup/oracle.sh runs it (toolkit-extract
+T05).
 
-The real build (fetch, patch, cmake) is exercised by the test block's setup; these cover what a
-parallel run leans on: a finished build is a no-op, a live builder is waited for, a dead one's lock
-is taken over, and the build lands where sf-oracle's build.rs looks (same patch-set hash)."""
+The real build (fetch, patch, cmake) is run by hand or by a task that changes a patch; these cover
+what a parallel run leans on: a finished build is a no-op, a live builder is waited for, a dead one's
+lock is taken over, and the build lands where amiga-oracle's build.rs looks (same patch-set hash)."""
 import hashlib
 import os
 import subprocess
@@ -13,8 +15,9 @@ import unittest
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-SCRIPT = ROOT / "tools" / "setup" / "oracle.sh"
-ORACLE = ROOT / "engine" / "crates" / "sf-oracle"
+SCRIPT = ROOT / "toolkit" / "tools" / "setup" / "oracle.sh"
+WRAPPER = ROOT / "tools" / "setup" / "oracle.sh"
+ORACLE = ROOT / "toolkit" / "crates" / "amiga-oracle"
 
 
 def build_dir(cache):
@@ -35,9 +38,9 @@ class OracleSh(unittest.TestCase):
     def tearDown(self):
         self.tmp.cleanup()
 
-    def run_script(self, **extra):
-        env = dict(os.environ, SUPERFROG_CACHE=self.cache, **extra)
-        return subprocess.run(["/bin/sh", str(SCRIPT)], env=env, capture_output=True, text=True, timeout=120)
+    def run_script(self, script=SCRIPT, **extra):
+        env = dict(os.environ, AMIGA_TOOLKIT_CACHE=self.cache, **extra)
+        return subprocess.run(["/bin/sh", str(script)], env=env, capture_output=True, text=True, timeout=120)
 
     def test_a_finished_build_is_a_no_op(self):
         self.dest.mkdir()
@@ -47,6 +50,14 @@ class OracleSh(unittest.TestCase):
         self.assertIn("already built", proc.stdout)
         self.assertIn(str(self.dest), proc.stdout)
         self.assertEqual(sorted(p.name for p in self.dest.parent.iterdir()), [self.dest.name])
+
+    def test_the_wrapper_runs_the_toolkit_script(self):
+        self.dest.mkdir()
+        (self.dest / ".done").write_text("x\n")
+        proc = self.run_script(WRAPPER, VAMIGA_URL="/nonexistent")
+        self.assertEqual(proc.returncode, 0, proc.stderr)
+        self.assertIn("already built", proc.stdout)
+        self.assertIn(str(self.dest), proc.stdout)
 
     def test_a_live_builder_is_waited_for(self):
         lock = Path(f"{self.dest}.lock")
@@ -87,7 +98,7 @@ class OracleSh(unittest.TestCase):
         # and two builds share one scratch tree. Each run's fetch fails, so they finish fast.
         lock = Path(f"{self.dest}.lock")
         url = str(Path(self.cache, "no-such-repo"))
-        env = dict(os.environ, SUPERFROG_CACHE=self.cache, VAMIGA_URL=url, ORACLE_LOCK_POLL="0.05")
+        env = dict(os.environ, AMIGA_TOOLKIT_CACHE=self.cache, VAMIGA_URL=url, ORACLE_LOCK_POLL="0.05")
         for trial in range(3):
             lock.mkdir()
             dead = subprocess.Popen(["/usr/bin/true"])

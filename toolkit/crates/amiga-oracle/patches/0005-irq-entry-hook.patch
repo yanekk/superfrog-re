@@ -5,7 +5,7 @@ diff --git a/Core/Components/Agnus/Blitter/Blitter.cpp b/Core/Components/Agnus/B
  
  namespace vamiga {
  
-+// superfrog-re (sf-oracle): called as a blit begins (0), as its busy flag clears (1) and as it ends
++// amiga-toolkit (amiga-oracle): called as a blit begins (0), as its busy flag clears (1) and as it ends
 +// (2), with the beam position. Null unless a client installs it.
 +void (*vamiga_blit_hook)(int event, isize vpos, isize hpos) = nullptr;
 +
@@ -45,7 +45,7 @@ diff --git a/Core/Components/CPU/CPU.cpp b/Core/Components/CPU/CPU.cpp
  
 +namespace vamiga {
 +
-+// superfrog-re (sf-oracle): called as the CPU starts an interrupt's exception, with its level and
++// amiga-toolkit (amiga-oracle): called as the CPU starts an interrupt's exception, with its level and
 +// the beam position. Null unless a client installs it.
 +void (*vamiga_irq_hook)(int level, isize vpos, isize hpos) = nullptr;
 +

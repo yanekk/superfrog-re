@@ -36,6 +36,8 @@ MOVED = {
     'engine/crates/amiga-clock/': 'toolkit/crates/amiga-clock/',
     'engine/crates/amiga-chips/': 'toolkit/crates/amiga-chips/',
     'engine/crates/sf-paula/': 'toolkit/crates/amiga-paula/',
+    'engine/crates/sf-oracle/patches/': 'toolkit/crates/amiga-oracle/patches/',
+    'engine/crates/sf-oracle/shim/': 'toolkit/crates/amiga-oracle/shim/',
     'engine/crates/sf-app/src/atomic_write.rs': 'toolkit/crates/amiga-app/src/atomic_write.rs',
     'engine/crates/sf-app/src/audio.rs': 'toolkit/crates/amiga-app/src/audio.rs',
     'engine/crates/sf-app/src/lock.rs': 'toolkit/crates/amiga-app/src/lock.rs',

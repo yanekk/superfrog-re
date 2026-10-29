@@ -1,5 +1,6 @@
-//! Compiles the shim (`shim/shim.cpp`) against the vAmiga core that `tools/setup/oracle.sh` built
-//! into `~/.cache/superfrog-re/vamiga/<commit>/<patch-set hash>/`, and links the core.
+//! Compiles the shim (`shim/shim.cpp`) against the vAmiga core that `toolkit/tools/setup/oracle.sh`
+//! built into `~/.cache/amiga-toolkit/vamiga/<commit>/<patch-set hash>/` (`AMIGA_TOOLKIT_CACHE`
+//! replaces `~/.cache/amiga-toolkit`), and links the core.
 //!
 //! The patch-set hash is the SHA-1 of `patches/*.patch` concatenated in name order, first 12 hex
 //! digits, exactly as the script computes it; a changed patch therefore asks for a fresh build.
@@ -22,13 +23,14 @@ fn main() {
     }
     let phash = &amiga_disk::sha1::sha1_hex(&all)[..12];
 
-    let cache = std::env::var_os("SUPERFROG_CACHE")
+    let cache = std::env::var_os("AMIGA_TOOLKIT_CACHE")
+        .filter(|v| !v.is_empty())
         .map(PathBuf::from)
         .unwrap_or_else(|| {
-            PathBuf::from(std::env::var("HOME").expect("HOME")).join(".cache/superfrog-re")
+            PathBuf::from(std::env::var("HOME").expect("HOME")).join(".cache/amiga-toolkit")
         });
     let dest = cache.join("vamiga").join(commit).join(phash);
-    println!("cargo:rerun-if-env-changed=SUPERFROG_CACHE");
+    println!("cargo:rerun-if-env-changed=AMIGA_TOOLKIT_CACHE");
     println!("cargo:rerun-if-changed=VAMIGA_COMMIT");
     println!("cargo:rerun-if-changed=patches");
     println!("cargo:rerun-if-changed=shim/shim.cpp");
@@ -39,12 +41,12 @@ fn main() {
     println!("cargo:rerun-if-changed={}", dest.join(".done").display());
     if !dest.join(".done").exists() {
         panic!(
-            "sf-oracle: no vAmiga build at {} (commit {commit}, patches {phash}). Run tools/setup/oracle.sh \
-             from the repository root (the test block's setup does).",
+            "amiga-oracle: no vAmiga build at {} (commit {commit}, patches {phash}). Run \
+             toolkit/tools/setup/oracle.sh (a game's tools/setup/oracle.sh wrapper runs it).",
             dest.display()
         );
     }
-    println!("cargo:rustc-env=SF_ORACLE_BUILD={commit}-{phash}");
+    println!("cargo:rustc-env=AMIGA_ORACLE_BUILD={commit}-{phash}");
 
     let mut build = cc::Build::new();
     build
@@ -65,7 +67,7 @@ fn main() {
             build.flag(&flag);
         }
     }
-    build.compile("sfshim");
+    build.compile("amigashim");
     build_moira(&dest);
 
     for lib in read_lines(&dest.join("libs.txt")) {
@@ -86,7 +88,7 @@ fn main() {
     println!("cargo:rustc-link-lib=framework=CoreFoundation");
 }
 
-/// The routine runner (T06): Moira compiled alone from the fetched vAmiga tree, with
+/// The routine runner: Moira compiled alone from the fetched vAmiga tree, with
 /// `shim/moira-stub` standing in for the two vAmiga headers it includes, and its `vamiga` namespace
 /// renamed so it cannot collide with the Moira inside libVACore. None of vAmiga's other headers are
 /// on the include path.
@@ -99,7 +101,7 @@ fn build_moira(dest: &Path) {
         .include("shim/moira-stub")
         .include(&moira)
         .include("shim")
-        .define("vamiga", "sf_moira")
+        .define("vamiga", "amiga_moira")
         .define("NDEBUG", None)
         .opt_level(2)
         .warnings(false)
@@ -113,12 +115,12 @@ fn build_moira(dest: &Path) {
     ] {
         build.file(moira.join(f));
     }
-    build.compile("sfmoira");
+    build.compile("amigamoira");
 }
 
 fn read_lines(path: &Path) -> Vec<String> {
     std::fs::read_to_string(path)
-        .unwrap_or_else(|e| panic!("{}: {e}; rerun tools/setup/oracle.sh", path.display()))
+        .unwrap_or_else(|e| panic!("{}: {e}; rerun toolkit/tools/setup/oracle.sh", path.display()))
         .lines()
         .map(str::trim)
         .filter(|l| !l.is_empty())

@@ -1,4 +1,4 @@
-// sf-oracle's routine runner over Moira (see moira_shim.h). Compiled by build.rs together with a copy
+// amiga-oracle's routine runner over Moira (see moira_shim.h). Compiled by build.rs together with a copy
 // of Moira's sources whose `vamiga` namespace is renamed by a -D flag, so this copy and the one inside
 // libVACore never collide at link time. Moira is built with MOIRA_VIRTUAL_API false, so its memory
 // and delegate functions are plain members defined here, as vAmiga's CPU.cpp defines its own.
@@ -17,7 +17,7 @@ namespace vamiga::moira {
 
 namespace {
 
-constexpr u32 kMemMask = SF_CPU_MEM_SIZE - 1;
+constexpr u32 kMemMask = AMIGA_CPU68K_MEM_SIZE - 1;
 
 // $DFF000-$DFF1FF (the custom chips) and $BF0000-$BFFFFF (the CIAs).
 inline bool is_hardware(u32 a) { return (a & 0xFFFE00) == 0xDFF000 || (a & 0xFF0000) == 0xBF0000; }
@@ -38,14 +38,14 @@ public:
     u32 resetSsp = 0, resetPc = 0;
     bool overrideVectors = false;
 
-    sf_call_status status {};
+    amiga_call_status status {};
 
-    // Hardware mode (sf_cpu_set_hw): custom-chip writes are recorded instead of refused, VHPOSR
+    // Hardware mode (amiga_cpu68k_set_hw): custom-chip writes are recorded instead of refused, VHPOSR
     // counts up on every read so raster waits end, and the CIAs read 0 and ignore writes.
     bool hw = false;
     u16 beam = 0;
-    std::vector<sf_hw_write> hwWrites;
-    // Bytes a hardware read returns (sf_cpu_set_hw_read), by address; any other reads 0.
+    std::vector<amiga_hw_write> hwWrites;
+    // Bytes a hardware read returns (amiga_cpu68k_set_hw_read), by address; any other reads 0.
     std::map<u32, u8> hwReads;
     // The blitter's registers ($DFF040-$DFF074, by word): a write to BLTSIZE runs the blit at
     // once, in area mode, into this memory (journalled like the CPU's writes).
@@ -119,11 +119,11 @@ public:
 
     static bool is_custom(u32 a) { return (a & 0xFFFE00) == 0xDFF000; }
 
-    explicit FlatCpu(Amiga &ref) : Moira(ref), mem(SF_CPU_MEM_SIZE, 0), dirty(SF_CPU_MEM_SIZE / 64, 0) { }
+    explicit FlatCpu(Amiga &ref) : Moira(ref), mem(AMIGA_CPU68K_MEM_SIZE, 0), dirty(AMIGA_CPU68K_MEM_SIZE / 64, 0) { }
 
     void fault(u32 a) {
-        if (status.status == SF_CALL_RETURNED) {
-            status.status = SF_CALL_CUSTOM;
+        if (status.status == AMIGA_CALL_RETURNED) {
+            status.status = AMIGA_CALL_CUSTOM;
             status.pc = reg.pc0;
             status.addr = a;
         }
@@ -193,7 +193,7 @@ public:
         jold.clear();
     }
 
-    void call(u32 entry, sf_regs *r, u32 sentinel, u64 max_instr, sf_call_status *out) {
+    void call(u32 entry, amiga_regs *r, u32 sentinel, u64 max_instr, amiga_call_status *out) {
         status = {};
         hwWrites.clear();
         std::fill(std::begin(blt), std::end(blt), u16(0));
@@ -210,17 +210,17 @@ public:
         setPC0(getPC());
 
         u64 n = 0;
-        while (status.status == SF_CALL_RETURNED) {
+        while (status.status == AMIGA_CALL_RETURNED) {
             if (getPC() == sentinel) break;
             if (n == max_instr) {
-                status.status = SF_CALL_TIMEOUT;
+                status.status = AMIGA_CALL_TIMEOUT;
                 status.pc = getPC();
                 break;
             }
             execute();
             n++;
-            if (isHalted() && status.status == SF_CALL_RETURNED) {
-                status.status = SF_CALL_HALTED;
+            if (isHalted() && status.status == AMIGA_CALL_RETURNED) {
+                status.status = AMIGA_CALL_HALTED;
                 status.pc = getPC0();
             }
         }
@@ -266,8 +266,8 @@ void Moira::didExecute(const char *, Instr, Mode, Size, u16) { }
 void Moira::willExecute(M68kException, u16 vector)
 {
     FlatCpu &c = self(this);
-    if (c.status.status == SF_CALL_RETURNED) {
-        c.status.status = SF_CALL_EXCEPTION;
+    if (c.status.status == AMIGA_CALL_RETURNED) {
+        c.status.status = AMIGA_CALL_EXCEPTION;
         c.status.pc = reg.pc0;
         c.status.vector = vector;
     }
@@ -292,39 +292,39 @@ using vamiga::moira::FlatCpu;
 // Moira's base class keeps the reference and never uses it; this is all it is given.
 static char g_noAmiga;
 
-struct sf_cpu {
+struct amiga_cpu68k {
     FlatCpu cpu { *reinterpret_cast<vamiga::Amiga *>(&g_noAmiga) };
 };
 
 extern "C" {
 
-sf_cpu *sf_cpu_new(void) { return new (std::nothrow) sf_cpu; }
-void sf_cpu_free(sf_cpu *c) { delete c; }
-uint8_t *sf_cpu_mem(sf_cpu *c) { return c->cpu.mem.data(); }
+amiga_cpu68k *amiga_cpu68k_new(void) { return new (std::nothrow) amiga_cpu68k; }
+void amiga_cpu68k_free(amiga_cpu68k *c) { delete c; }
+uint8_t *amiga_cpu68k_mem(amiga_cpu68k *c) { return c->cpu.mem.data(); }
 
-void sf_cpu_call(sf_cpu *c, uint32_t entry, sf_regs *regs, uint32_t sentinel, uint64_t max_instr,
-                 sf_call_status *out)
+void amiga_cpu68k_call(amiga_cpu68k *c, uint32_t entry, amiga_regs *regs, uint32_t sentinel, uint64_t max_instr,
+                 amiga_call_status *out)
 {
     c->cpu.call(entry, regs, sentinel, max_instr, out);
 }
 
-size_t sf_cpu_journal(const sf_cpu *c, const uint32_t **addrs, const uint8_t **olds)
+size_t amiga_cpu68k_journal(const amiga_cpu68k *c, const uint32_t **addrs, const uint8_t **olds)
 {
     *addrs = c->cpu.jaddr.data();
     *olds = c->cpu.jold.data();
     return c->cpu.jaddr.size();
 }
 
-void sf_cpu_rollback(sf_cpu *c) { c->cpu.rollback(); }
+void amiga_cpu68k_rollback(amiga_cpu68k *c) { c->cpu.rollback(); }
 
-void sf_cpu_set_hw(sf_cpu *c, int on) { c->cpu.hw = on != 0; }
+void amiga_cpu68k_set_hw(amiga_cpu68k *c, int on) { c->cpu.hw = on != 0; }
 
-void sf_cpu_set_hw_read(sf_cpu *c, uint32_t addr, uint8_t value)
+void amiga_cpu68k_set_hw_read(amiga_cpu68k *c, uint32_t addr, uint8_t value)
 {
     c->cpu.hwReads[addr & 0xFFFFFF] = value;
 }
 
-size_t sf_cpu_hw_writes(const sf_cpu *c, const sf_hw_write **out)
+size_t amiga_cpu68k_hw_writes(const amiga_cpu68k *c, const amiga_hw_write **out)
 {
     *out = c->cpu.hwWrites.data();
     return c->cpu.hwWrites.size();

@@ -25,7 +25,7 @@ done · ⛔ blocked, needs a human.
 | T02 | amiga-input | T01 | ✅ | |
 | T03 | amiga-disk | T01 | ✅ | |
 | T04 | asset-readers | T03 | ✅ | |
-| T05 | amiga-oracle | T02, T03, T04 | ⬜ | |
+| T05 | amiga-oracle | T02, T03, T04 | ✅ | |
 | T06 | amiga-conform | T05 | ⬜ | |
 | T07 | amiga-app-parts | T02 | ✅ | |
 | T08 | amiga-e2e | T07 | ✅ | Review clean, no fix commit. Driver in amiga-e2e behind `AppSpec`; sf-e2e keeps Superfrog's spec and tests. All six deviations held. Ran all sf-e2e (whole_game non-ignored, recorder_bar green), purity, toolkit names, architecture docs; mutating `is_frame_file` went red; smoke passes with a bogus `SUPERFROG_HOME`. |
