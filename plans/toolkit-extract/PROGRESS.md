@@ -10,7 +10,7 @@ the task you pick up, and append yours there.
 **Plan reviewed:** 2026-10-28 — 4 fixed, 3 decided with the user
 
 **Status:** planned, nothing built.
-**Last updated:** 2026-10-28
+**Last updated:** 2026-10-29
 **Next `pir-work` will:** T01, the only task with no dependency; it records the baseline everything
 else is compared with.
 
@@ -22,7 +22,7 @@ done · ⛔ blocked, needs a human.
 | # | Task | Depends on | State | Notes |
 |---|---|---|---|---|
 | T01 | toolkit-workspace | — | ✅ | |
-| T02 | amiga-input | T01 | ⬜ | |
+| T02 | amiga-input | T01 | 🔍 | amiga-input crate; sf-core input.rs re-exports, keyboard.rs keeps kbd_poll. 5 tests added (bincode bytes, tokens, from_keys). Deviations: format_tokens by value, parse_token Option<Result>, key_byte(code, up) kept as today; kbd_poll+feed test stays in sf-core (chapter cites it); MOVED unchanged, old paths remain; sf-oracle uses amiga_input directly. |
 | T03 | amiga-disk | T01 | ⬜ | |
 | T04 | asset-readers | T03 | ⬜ | |
 | T05 | amiga-oracle | T02, T03, T04 | ⬜ | |
@@ -33,7 +33,7 @@ done · ⛔ blocked, needs a human.
 | T10 | display-piece | T01 | ⬜ | |
 | T11 | dry-fit-and-finish | T04, T05, T08, T09, T10 | ⬜ | |
 
-**Review queue:** *(empty)*
+**Review queue:** T02
 
 ## Blocked on the user
 
