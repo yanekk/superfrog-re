@@ -17,7 +17,7 @@ fn main() {
         let scene = format!("{:?}", g.scene()).chars().take(12).collect::<String>();
         let outs = fr.play(&mut g);
         let blanks = g.take_load_paula();
-        let mut all: Vec<(String, Vec<sf_paula::PaulaWrite>)> = blanks.into_iter().map(|b| ("blank".to_string(), b)).collect();
+        let mut all: Vec<(String, Vec<amiga_paula::PaulaWrite>)> = blanks.into_iter().map(|b| ("blank".to_string(), b)).collect();
         all.extend(outs.into_iter().map(|o| (scene.clone(), o.paula)));
         for (s, w) in &all {
             if w.is_empty() { continue; }

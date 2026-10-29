@@ -16,7 +16,7 @@ mod common;
 
 use common::{assert_integer_scaled, cache_data, not_black};
 use sf_core::input::{FrameInput, Joy};
-use sf_core::{DisplayData, Game, Picture, Progress, Rng, Scene, Start, View};
+use sf_core::{DisplayData, Game, Picture, PictureView, Progress, Rng, Scene, Start, View};
 use sf_e2e::{App, Captured, Image, LaunchOpts, Shot};
 
 const WIDE: View = View {

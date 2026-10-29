@@ -1,11 +1,12 @@
 //! The decision function (DESIGN §3.3): `Game` is a function of the [`GameData`], its [`Start`]
 //! and the inputs, and nothing else.
 
+use crate::render::PictureView;
 use std::sync::Arc;
 
 use sf_assets::{GameData, LevelData, LevelId};
 use serde::{Deserialize, Serialize};
-use sf_paula::PaulaWrite;
+use amiga_paula::PaulaWrite;
 
 use crate::audio::AudioDriver;
 use crate::front::password::Progress;
@@ -1285,7 +1286,7 @@ impl Game {
 }
 
 /// Chip RAM as the audio channels' DMA reads it ([`Game::chip_word`]).
-impl sf_paula::ChipMemory for Game {
+impl amiga_paula::ChipMemory for Game {
     fn chip_word(&self, addr: u32) -> u16 {
         Game::chip_word(self, addr)
     }

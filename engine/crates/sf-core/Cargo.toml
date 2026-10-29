@@ -6,15 +6,15 @@ publish.workspace = true
 
 [dependencies]
 # The frame and line lengths and the beam position (a toolkit crate).
-amiga-clock = { path = "../amiga-clock" }
+amiga-clock = { path = "../../../toolkit/crates/amiga-clock" }
 # The blitter, the copper and the machine's RAM (pure, a toolkit crate on the allowlist).
-amiga-chips = { path = "../amiga-chips" }
+amiga-chips = { path = "../../../toolkit/crates/amiga-chips" }
 sf-assets = { path = "../sf-assets" }
 # The story intro unpacks its banks as it plays, with the ATN! decompressor (pure, on the
 # allowlist).
 sf-disk = { path = "../sf-disk" }
 # PaulaWrite, the sound chip's event that FrameOut carries (pure, already on the allowlist).
-sf-paula = { path = "../sf-paula" }
+amiga-paula = { path = "../../../toolkit/crates/amiga-paula" }
 # Save states (DESIGN §2.8; T26): the whole game as bytes and back. serde derives the encoding at
 # compile time; bincode lays it out as fixed-width integers in field order, with no I/O or clock.
 serde = { version = "1", features = ["derive", "rc"] }

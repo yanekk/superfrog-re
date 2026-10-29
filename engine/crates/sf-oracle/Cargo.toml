@@ -7,7 +7,7 @@ links = "sfshim"
 
 [dependencies]
 sf-core = { path = "../sf-core" }
-sf-paula = { path = "../sf-paula" }
+amiga-paula = { path = "../../../toolkit/crates/amiga-paula" }
 # Reads the zipped or raw disks and names them by slot (T03).
 sf-disk = { path = "../sf-disk" }
 # Compresses cached traces (already in the workspace for sf-disk).

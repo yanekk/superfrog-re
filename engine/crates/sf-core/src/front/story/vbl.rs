@@ -3,7 +3,7 @@
 //! stream, the fades' steps, fire or the mouse button for `intro_skip`, the music, the effects
 //! and the timeline of sound events.
 
-use sf_paula::PaulaWrite;
+use amiga_paula::PaulaWrite;
 
 use super::bobs::{PLANE, PLANES_COPPER, SHOWN};
 use super::cpu::{self, op};

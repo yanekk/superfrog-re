@@ -11,7 +11,7 @@ use std::sync::atomic::{AtomicU64, Ordering};
 
 use sf_core::input::FrameInput;
 use sf_disk::sha1_hex;
-use sf_paula::PaulaWrite;
+use amiga_paula::PaulaWrite;
 
 use crate::amiga::{Amiga, AmigaMemory, FrameCapture, Rgb12Frame, SLOW_BASE, Snapshot, hash_bytes, hash_memory};
 use crate::config::{OracleConfig, OracleError};

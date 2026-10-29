@@ -16,7 +16,7 @@ mod panel;
 mod playfield;
 mod view;
 
-pub use view::{Picture, Split, View, to_rgb12};
+pub use view::{Picture, PictureView, Split, View, to_rgb12};
 
 use sf_assets::{ExeId, GameData, SpriteId, World};
 

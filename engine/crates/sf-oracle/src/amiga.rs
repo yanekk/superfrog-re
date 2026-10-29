@@ -2,7 +2,7 @@
 
 use sf_core::input::FrameInput;
 use sf_disk::{DiskSet, DiskSlot};
-use sf_paula::PaulaWrite;
+use amiga_paula::PaulaWrite;
 
 use crate::config::{OracleConfig, OracleError, disk};
 use crate::ffi::{self, ErrBuf, SfAmiga};

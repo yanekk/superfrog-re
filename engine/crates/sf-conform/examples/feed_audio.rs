@@ -4,14 +4,14 @@
 use sf_conform::sound_events;
 use sf_core::feed::Feed;
 use sf_core::{Game, Start};
-use sf_paula::Paula;
+use amiga_paula::Paula;
 
 fn main() {
     let args: Vec<String> = std::env::args().skip(1).collect();
     let feed = Feed::parse(&std::fs::read_to_string(&args[0]).expect("feed")).expect("a feed");
     let (from, to): (usize, usize) = (args[1].parse().unwrap(), args[2].parse().unwrap());
     let mut g = Game::with_display(sf_conform::display_data(), Start::PowerOn { seed: feed.seed });
-    let mut paula = Paula::booted(48_000);
+    let mut paula = Paula::booted(48_000, sf_core::BOOT_DMACON);
     let mut events = sound_events::Paula::default();
     for (i, fr) in feed.frames.iter().enumerate().take(to) {
         let n = i + 1;

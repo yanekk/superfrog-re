@@ -191,17 +191,18 @@ mod tests {
             ddfstrt,
             ddfstop,
         };
-        // The set-ups the engine draws with: no display, the front end's and story's lores
-        // screens of four to six planes, the level's scrolled fetch, hires, and a window past
-        // line $ff.
+        // Synthetic set-ups: no display, lores of one to six planes with assorted windows and
+        // fetches, hires, and a window past line $ff. (A game's own set-ups are tested in the
+        // game's crate.)
         let fetches = [
             Fetch::default(),
-            f(0x4200, 0x2c81, 0x2cc1, 0x38, 0xd0),
-            f(0x5200, 0x2c81, 0x2cc1, 0x38, 0xd0),
-            f(0x6200, 0x2c81, 0x2cc1, 0x38, 0xd0),
-            f(0x5200, 0x2781, 0x2cc1, 0x30, 0xd8),
-            f(0xc200, 0x2c81, 0x2cc1, 0x3c, 0xd4),
-            f(0x3200, 0x1081, 0xf4c1, 0x28, 0xd8),
+            f(0x1200, 0x3081, 0x2ac1, 0x40, 0xc8),
+            f(0x2200, 0x2c91, 0x2cb1, 0x48, 0xc0),
+            f(0x4200, 0x2481, 0x34c1, 0x30, 0xd0),
+            f(0x5200, 0x2081, 0x30c1, 0x30, 0xd0),
+            f(0x6200, 0x1a81, 0x2ec1, 0x38, 0xc8),
+            f(0xa200, 0x3081, 0x28c1, 0x40, 0xd0),
+            f(0x3200, 0x0881, 0xfcc1, 0x20, 0xd8),
         ];
         for fetch in &fetches {
             for line in (0..313).step_by(5).chain([255, 256, 311, 312, 313, 400]) {

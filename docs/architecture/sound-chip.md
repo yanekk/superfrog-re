@@ -7,7 +7,7 @@ kind = "amiga"
 mix = { amiga = 87, game = 0, data = 0, shell = 13 }
 reuse = "as-is"
 owns = [
-  "engine/crates/sf-paula/",
+  "toolkit/crates/amiga-paula/",
 ]
 +++
 

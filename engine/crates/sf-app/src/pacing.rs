@@ -3,7 +3,7 @@
 //! (DESIGN §2.11); either way it is counted in host samples, and the pacer turns it into Paula
 //! clocks, which is what a PAL frame is made of (`lines * 227`).
 
-use sf_paula::{CLOCKS_PER_LINE, LINES_PER_FRAME, PAULA_CLOCK_PAL};
+use amiga_paula::{CLOCKS_PER_LINE, LINES_PER_FRAME, PAULA_CLOCK_PAL};
 
 #[derive(Debug, Clone)]
 pub struct Pacer {

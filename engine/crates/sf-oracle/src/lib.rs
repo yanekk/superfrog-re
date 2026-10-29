@@ -26,7 +26,7 @@ pub use routine::{
 };
 pub use sf_core::input::{FrameInput, Joy, KeySet};
 pub use sf_disk::DiskSlot;
-pub use sf_paula::PaulaWrite;
+pub use amiga_paula::PaulaWrite;
 pub use trace::{
     CacheOutcome, InputScript, SyncPoint, Trace, TraceFrame, cached_trace, cached_trace_in,
     trace_key,

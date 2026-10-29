@@ -11,9 +11,9 @@ build = "../sf-app/build.rs"
 # The engine under test and the types it shares with the oracle.
 sf-core = { path = "../sf-core" }
 sf-assets = { path = "../sf-assets" }
-sf-paula = { path = "../sf-paula" }
+amiga-paula = { path = "../../../toolkit/crates/amiga-paula" }
 # The frame and line lengths its probes and tests count beam positions in.
-amiga-clock = { path = "../amiga-clock" }
+amiga-clock = { path = "../../../toolkit/crates/amiga-clock" }
 # The original, run by the reference emulator (sf-oracle's dev-dependency on this crate is a
 # test-only cycle, which Cargo allows).
 sf-oracle = { path = "../sf-oracle" }

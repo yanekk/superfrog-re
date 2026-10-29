@@ -9,7 +9,7 @@
 //! not over by the next blank shows from the blank after. A fade's set-up runs with interrupts
 //! off, so a blank that comes during it is taken when it ends.
 
-use sf_paula::{AudioDma, PaulaWrite};
+use amiga_paula::{AudioDma, PaulaWrite};
 
 use super::bobs;
 use super::fade::Rec;
@@ -536,7 +536,7 @@ impl Intro {
             fresh: false,
             handler_end: None,
             tail: None,
-            audio: AudioDma::booted(),
+            audio: AudioDma::booted(crate::BOOT_DMACON),
             job: None,
             resume: None,
         }

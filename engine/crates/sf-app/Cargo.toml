@@ -13,7 +13,7 @@ path = "src/main.rs"
 sf-disk = { path = "../sf-disk" }
 sf-assets = { path = "../sf-assets" }
 sf-core = { path = "../sf-core" }
-sf-paula = { path = "../sf-paula" }
+amiga-paula = { path = "../../../toolkit/crates/amiga-paula" }
 # The window and its events (DESIGN §3.2).
 winit = "0.30"
 # Integer scaling on the GPU, and later the CRT shader (DESIGN §2.7, §3.2).

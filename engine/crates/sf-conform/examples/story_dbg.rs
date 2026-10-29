@@ -174,7 +174,7 @@ fn main() {
         if std::env::var("DRAWS").is_ok() {
             // `DRAWS=1` (T54): frames whose DMACON writes (a draw's `$8400` and `$0400` above all)
             // differ in value or order, both sides with their lines.
-            let dmacon = |ws: &[sf_paula::PaulaWrite]| {
+            let dmacon = |ws: &[amiga_paula::PaulaWrite]| {
                 ws.iter()
                     .filter(|w| w.reg == 0x96)
                     .map(|w| (w.value, w.vpos))
@@ -239,7 +239,7 @@ fn main() {
             );
 
             let all = std::env::var("ALLW").is_ok();
-            let ev = |ws: &[sf_paula::PaulaWrite]| {
+            let ev = |ws: &[amiga_paula::PaulaWrite]| {
                 ws.iter()
                     .filter(|w| all || w.reg == 0x96 || w.reg == 0x9a)
                     .map(|w| format!("{:x}={:x}@{}", w.reg, w.value, w.vpos))

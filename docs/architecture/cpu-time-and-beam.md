@@ -10,7 +10,7 @@ owns = [
   "engine/crates/sf-core/src/level/beam.rs",
   "engine/crates/sf-core/src/level/timeline.rs",
   "engine/crates/sf-core/src/feed.rs",
-  "engine/crates/amiga-clock/",
+  "toolkit/crates/amiga-clock/",
 ]
 +++
 

@@ -248,7 +248,7 @@ pub fn in_level(m: &AmigaMemory) -> bool {
 /// middle of it (T36); the frame's Paula writes say where ([`Pacing::Late`]). In the story
 /// intro, late while the original is in a long job at the blank (owner, 2026-10-12). Every
 /// other screen paces on a raster wait and is never late.
-pub fn pacing(cpu: &CpuRegs, m: &AmigaMemory, writes: &[sf_paula::PaulaWrite]) -> Pacing {
+pub fn pacing(cpu: &CpuRegs, m: &AmigaMemory, writes: &[amiga_paula::PaulaWrite]) -> Pacing {
     let last = writes.last().copied().unwrap_or_default();
     let late = |phase, step| Pacing::Late {
         writes: writes.len() as u16,
@@ -1333,7 +1333,7 @@ pub fn intro_resumes(a: &Amiga) -> Option<u32> {
 /// first `INTREQ = $20` among its Paula writes, and the PC it returned to ([`intro_resumes`] before
 /// the step) when the step began at its entry. The acknowledge alone times the set-up's jobs
 /// (T56).
-pub fn handler_end(paula: &[sf_paula::PaulaWrite], resumes: Option<u32>) -> Option<HandlerEnd> {
+pub fn handler_end(paula: &[amiga_paula::PaulaWrite], resumes: Option<u32>) -> Option<HandlerEnd> {
     paula
         .iter()
         .find(|w| w.reg == 0x9c && w.value == 0x20)
@@ -1353,7 +1353,7 @@ pub fn handlers(
     carried: bool,
     before: &[sf_oracle::Irq],
     now: &[sf_oracle::Irq],
-    paula: &[sf_paula::PaulaWrite],
+    paula: &[amiga_paula::PaulaWrite],
 ) -> (u32, bool) {
     let taken: Vec<&sf_oracle::Irq> = now.iter().filter(|i| i.level == 3 && !i.next).collect();
     let late = taken.last().is_some_and(|i| {
@@ -1586,8 +1586,8 @@ mod tests {
         }
     }
 
-    fn write(reg: u16, vpos: u16, hpos: u16) -> sf_paula::PaulaWrite {
-        sf_paula::PaulaWrite {
+    fn write(reg: u16, vpos: u16, hpos: u16) -> amiga_paula::PaulaWrite {
+        amiga_paula::PaulaWrite {
             reg,
             value: 0,
             vpos,

@@ -12,6 +12,9 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-29 | 📌 | T01 baseline, `sf-conform -- all` on b7a2f53: all 216 cases ok, none red. Per-case lines with tolerated counts in `baseline-T01.txt`; T11 compares against it. Took ~80 min in four parallel slices. |
+| 2026-10-29 | 📌 | T01: the toolkit test line takes 14 s from a cold `toolkit/target`. Engine regression after the move: frog_cases 36, alone 5, beam 2, story `--ignored` 9, purity, paula_vs_oracle, sf-core, sf-app, sf-e2e smoke all green. |
+| 2026-10-29 | 📌 | T01: the name check found its own test literal; the names in `toolkit-checks` are built from pieces. A later crate quoting a game name in a test must do the same. |
 | 2026-10-28 | 📌 | Planning: `sf-app/build.rs` `GAME` hashes sf-core, sf-assets, sf-paula, sf-disk only; amiga-chips and amiga-clock changes do not change the save-state build tag. T01 adds them (DESIGN §3.3). |
 | 2026-10-28 | 📌 | Planning: `tests/purity.rs` reads sources from `engine/crates/<name>` and panics on a missing directory; `tools/architecture.py` `DOMAIN` is `engine/crates/`, `engine/conform/`. Both must learn `toolkit/` before any crate moves. |
 | 2026-10-28 | 📌 | Planning: `sf-oracle` trace keys append ` boot {:?}` for any boot slot but `DiskSlot::D1`; patch text feeds the vAmiga build hash and the oracle `BUILD`. Changing either invalidates every cached trace and sync point. |

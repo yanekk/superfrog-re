@@ -10,7 +10,7 @@ use sf_conform::{Case, Mode, SoundEvent, Tolerance, sound_events};
 use sf_core::Picture;
 use sf_core::layout::{AmigaMemory, LAYOUT, Ram, VarId, def};
 use sf_oracle::Rgb12Frame;
-use sf_paula::PaulaWrite;
+use amiga_paula::PaulaWrite;
 
 const T: Tolerance = Tolerance::OWNER;
 

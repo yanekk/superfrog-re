@@ -7,7 +7,7 @@
 use sf_conform::{Case, sync};
 use sf_core::front::story::cpu::{self, Bus};
 use sf_core::front::story::sim::{Prog, Sim};
-use sf_paula::AudioDma;
+use amiga_paula::AudioDma;
 
 const SLOTS: u32 = amiga_clock::LINE_SLOTS as u32;
 
@@ -99,7 +99,7 @@ fn main() {
     let to: u32 = a[2].parse().unwrap();
     let s = sync::reach(&case.sync, &case.script, to + 100).unwrap();
     let mut am = s.amiga;
-    let mut audio = AudioDma::booted();
+    let mut audio = AudioDma::booted(sf_core::BOOT_DMACON);
     let lamps = sf_core::layout::h0(0x6842);
     // (frame, its lines, DMACON write cycle, lamps on, audio slots of the frame, lamp blit sizes)
     let mut pending: Option<(u32, u32, u32, Vec<bool>, Vec<u32>, Vec<(u16, u16, u16)>)> = None;
@@ -116,10 +116,10 @@ fn main() {
             .collect();
         let cap = sync::step_inserting(&mut am, case.script.input_at(f)).unwrap();
         let lines = am.frame_lines();
-        let feed: Vec<sf_paula::PaulaWrite> = if std::env::var("LINEAUDIO").is_ok() {
+        let feed: Vec<amiga_paula::PaulaWrite> = if std::env::var("LINEAUDIO").is_ok() {
             cap.paula
                 .iter()
-                .map(|w| sf_paula::PaulaWrite { hpos: 0, ..*w })
+                .map(|w| amiga_paula::PaulaWrite { hpos: 0, ..*w })
                 .collect()
         } else {
             cap.paula.clone()

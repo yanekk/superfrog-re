@@ -332,10 +332,10 @@ mod tests {
 
     #[test]
     fn the_copper_takes_the_vblank_cycle_and_its_fetches_but_not_a_waits() {
-        // The intro's scene-1 list (T89): three moves and the end. Nine cycles: 0 and the eight
-        // fetches; WAIT1 and WAIT2 ($12, $14) only wait for the bus.
+        // Three moves and the end. Nine cycles: 0 and the eight fetches; WAIT1 and WAIT2 ($12,
+        // $14) only wait for the bus.
         let w = [
-            0x0180, 0x0000, 0x0100, 0x0200, 0x0096, 0x0020, 0xFFFF, 0xFFFE,
+            0x0182, 0x0F00, 0x0184, 0x00F0, 0x0186, 0x000F, 0xFFFF, 0xFFFE,
         ];
         let mut bus = Vec::new();
         run_bus(&|a, _, _| list(&w)(a), 0, Fetch::default(), &mut bus);

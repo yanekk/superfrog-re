@@ -1,0 +1,5 @@
+# Pinned on 2026-10-11 (T01): the stable rustc installed by tools/setup/install-rust.sh.
+[toolchain]
+channel = "1.99.0"
+profile = "minimal"
+components = ["rustfmt", "clippy"]

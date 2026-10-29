@@ -7,7 +7,7 @@ fn main() {
     let case = Case::load(std::path::Path::new(&args[1])).unwrap();
     let from: u32 = args.get(2).map_or(0, |a| a.parse().unwrap());
     let h0 = sf_core::layout::h0(0);
-    let show = |w: &[sf_paula::PaulaWrite]| {
+    let show = |w: &[amiga_paula::PaulaWrite]| {
         w.iter()
             .filter(|w| matches!(w.reg, 0x96 | 0x9a))
             .map(|w| format!("{:02x}={:04x}@{}", w.reg, w.value, w.vpos))

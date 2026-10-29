@@ -17,7 +17,7 @@ fn the_intro_from_disk_3_matches_the_original() {
     let mut draws = Vec::new();
     let mut masks = None;
     let result = sf_conform::run_observing(&case, |f, ours, theirs| {
-        let starts = |ws: &[sf_paula::PaulaWrite]| {
+        let starts = |ws: &[amiga_paula::PaulaWrite]| {
             ws.iter()
                 .filter(|w| w.reg == 0x96 && w.value == 0x8400)
                 .map(|w| w.vpos)

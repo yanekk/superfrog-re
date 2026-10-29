@@ -3,7 +3,7 @@
 //! stopped), with their exact positions and with each write's hpos 0 (as the engine has them).
 //! `slot_audio <case.toml> <original frame>...`
 use sf_conform::{Case, sync};
-use sf_paula::{AudioDma, PaulaWrite};
+use amiga_paula::{AudioDma, PaulaWrite};
 
 /// DMA slots in a line.
 const SLOTS: u32 = amiga_clock::LINE_SLOTS as u32;
@@ -15,8 +15,8 @@ fn main() {
     let to = *frames.iter().max().unwrap();
     let s = sync::reach(&case.sync, &case.script, to + 100).unwrap();
     let mut am = s.amiga;
-    let mut exact = AudioDma::booted();
-    let mut line = AudioDma::booted();
+    let mut exact = AudioDma::booted(sf_core::BOOT_DMACON);
+    let mut line = AudioDma::booted(sf_core::BOOT_DMACON);
     for f in 0..=to {
         let shown = frames.contains(&f);
         if shown {

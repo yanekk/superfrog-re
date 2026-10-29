@@ -10,7 +10,7 @@
 use std::collections::VecDeque;
 use std::fmt;
 
-use sf_paula::PaulaWrite;
+use amiga_paula::PaulaWrite;
 
 /// One thing a listener hears on a channel.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]

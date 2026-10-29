@@ -24,7 +24,7 @@ pub mod vbl;
 pub use data::StoryData;
 pub use mem::StoryMem;
 
-use sf_paula::PaulaWrite;
+use amiga_paula::PaulaWrite;
 
 use crate::front::blit::is_paula;
 use crate::game::{Job, LoadEnd};

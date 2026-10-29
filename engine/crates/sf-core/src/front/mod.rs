@@ -40,7 +40,7 @@ pub use gameover::GAME_OVER;
 pub use vbl::front_kbd_poll;
 pub use story::{Story, StoryData};
 
-use sf_paula::PaulaWrite;
+use amiga_paula::PaulaWrite;
 
 use crate::front::blit::is_paula;
 use crate::input::FrameInput;
@@ -301,7 +301,7 @@ pub(crate) struct Cx<'a> {
     pub slot_outcome: Option<crate::slot::SlotOutcome>,
     /// The audio channels' DMA as this frame began, which the slot machine's lamps drawn after the
     /// picture run beside (T129, [`crate::slot`]'s `draw`).
-    pub audio: Option<&'a sf_paula::AudioDma>,
+    pub audio: Option<&'a amiga_paula::AudioDma>,
     /// For conformance: where the original made this frame's Paula writes, in order
     /// ([`crate::Game::anchor_writes`]); empty in normal play.
     pub schedule: &'a [(u16, u16)],
@@ -585,7 +585,7 @@ pub struct Front {
     outcome: Option<crate::level::LevelOutcome>,
     /// The audio channels' DMA, run on each frame's Paula writes: the slots it takes time the slot
     /// machine's lamps (T129). It starts idle; the slot machine stops every channel first.
-    audio: sf_paula::AudioDma,
+    audio: amiga_paula::AudioDma,
     /// For conformance, the next frame's: where the original made its Paula writes
     /// ([`Front::anchor_writes`]).
     schedule: Vec<(u16, u16)>,
@@ -627,11 +627,11 @@ impl Unpack {
 pub(crate) const HANDLER: u16 = u16::MAX;
 
 /// Writes in the order they are compared, each placed no earlier than the one before it: the
-/// mixer takes a write whose position goes back for the next frame's (`sf_paula::Paula::frame`).
+/// mixer takes a write whose position goes back for the next frame's (`amiga_paula::Paula::frame`).
 /// An `hpos` past the line's end (a wait's offset from the line, `slot::rounds`) is carried into
 /// the lines after.
 pub(crate) fn in_beam_order(writes: &mut [PaulaWrite]) {
-    let line = sf_paula::CLOCKS_PER_LINE;
+    let line = amiga_paula::CLOCKS_PER_LINE;
     let mut last = 0;
     for w in writes {
         last = (w.vpos as u32 * line + w.hpos as u32).max(last);
@@ -704,7 +704,7 @@ impl Front {
             unported: Vec::new(),
             slot_outcome: None,
             outcome: None,
-            audio: sf_paula::AudioDma::booted(),
+            audio: amiga_paula::AudioDma::booted(crate::BOOT_DMACON),
             schedule: Vec::new(),
             load_state: Vec::new(),
             screen: Default::default(),
@@ -770,7 +770,7 @@ impl Front {
             unported: Vec::new(),
             slot_outcome: None,
             outcome: None,
-            audio: sf_paula::AudioDma::booted(),
+            audio: amiga_paula::AudioDma::booted(crate::BOOT_DMACON),
             schedule: Vec::new(),
             load_state: Vec::new(),
             screen: Default::default(),
@@ -810,7 +810,7 @@ impl Front {
             unported: Vec::new(),
             slot_outcome: None,
             outcome: None,
-            audio: sf_paula::AudioDma::booted(),
+            audio: amiga_paula::AudioDma::booted(crate::BOOT_DMACON),
             schedule: Vec::new(),
             load_state: Vec::new(),
             screen: Default::default(),

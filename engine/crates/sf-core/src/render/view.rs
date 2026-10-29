@@ -1,5 +1,7 @@
-//! What the renderer hands out: the [`Picture`], the [`View`] it was drawn for, and its 12-bit
-//! colours (DESIGN §2.7, §3.3).
+//! What the renderer hands out: the [`Picture`] (the toolkit's, `amiga_chips::picture`), the
+//! [`View`] it was drawn for, and its 12-bit colours (DESIGN §2.7, §3.3).
+
+pub use amiga_chips::picture::{Picture, Split, to_rgb12};
 
 /// Presentation choices that change the picture and nothing else (DESIGN §2.7).
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash)]
@@ -8,62 +10,31 @@ pub struct View {
     pub extra_columns_each_side: u16,
 }
 
-/// A frame as Denise would show it: palette indices inside the display window, and each line's
-/// 32-colour palette as the copper leaves it at the window's left edge. `left` and `top` are the
-/// window's position in DIWSTRT's units (lores pixel, raster line), as the oracle reports them;
-/// a widescreen window can start left of the hardware's position 0, so `left` is signed.
-#[derive(Debug, Clone, Default, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
-pub struct Picture {
-    pub left: i32,
-    pub top: u16,
-    pub width: u16,
-    pub height: u16,
-    /// Row-major, `width * height` palette indices; 32..=63 are extra-half-brite.
-    pub pixels: Vec<u8>,
-    /// One palette per line, 12-bit OCS colour `0x0RGB`.
-    pub palettes: Vec<[u16; 32]>,
-    /// Colour registers the copper rewrites inside a line, in order of `(y, x)`: from pixel `x`
-    /// of line `y` on, colour `index` is `colour` (docs/12 "Copper timing").
-    pub splits: Vec<Split>,
-}
-
-/// A colour register written while its line is being drawn.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, serde::Serialize, serde::Deserialize)]
-pub struct Split {
-    pub y: u16,
-    pub x: u16,
-    pub index: u8,
-    pub colour: u16,
-}
-
 /// The PAL display window the original opens on its title screen: DIWSTRT `$2C81`, 320×256.
 const DEFAULT_WINDOW: (u16, u16, u16, u16) = (0x81, 0x2C, 320, 256);
 
-impl Picture {
-    /// A window of `width` × `height` at (`left`, `top`), every pixel colour 0, every colour
-    /// black.
-    pub fn blank(left: i32, top: u16, width: u16, height: u16) -> Picture {
-        Picture {
-            left,
-            top,
-            width,
-            height,
-            pixels: vec![0; width as usize * height as usize],
-            palettes: vec![[0; 32]; height as usize],
-            splits: Vec::new(),
-        }
-    }
-
+/// The picture's widescreen side: the title screen's window and a [`View`]'s extra columns. A trait
+/// because [`Picture`] is the toolkit's and widescreen is this game's (toolkit-extract DESIGN §2.2).
+pub trait PictureView {
     /// The default window, widened for `view`, every pixel colour 0, every colour black.
-    pub fn black(view: View) -> Picture {
+    fn black(view: View) -> Picture;
+
+    /// This picture widened by `view`'s extra columns on each side, which show each line's colour
+    /// 0 (the border outside the display window) where the screen is not a level's.
+    fn widened(&self, view: View) -> Picture;
+
+    /// The 4:3 picture this one was widened from by `view`: its centre.
+    fn narrowed(&self, view: View) -> Picture;
+}
+
+impl PictureView for Picture {
+    fn black(view: View) -> Picture {
         let (left, top, width, height) = DEFAULT_WINDOW;
         let n = view.extra_columns_each_side;
         Picture::blank(left as i32 - n as i32, top, width + 2 * n, height)
     }
 
-    /// This picture widened by `view`'s extra columns on each side, which show each line's colour
-    /// 0 (the border outside the display window) where the screen is not a level's.
-    pub fn widened(&self, view: View) -> Picture {
+    fn widened(&self, view: View) -> Picture {
         let n = view.extra_columns_each_side as usize;
         if n == 0 {
             return self.clone();
@@ -92,90 +63,13 @@ impl Picture {
         }
     }
 
-    /// The 4:3 picture this one was widened from by `view`: its centre.
-    pub fn narrowed(&self, view: View) -> Picture {
+    fn narrowed(&self, view: View) -> Picture {
         let n = view.extra_columns_each_side;
         if n == 0 {
             return self.clone();
         }
         self.rewindow(self.left + n as i32, self.top, self.width - 2 * n, self.height)
     }
-
-    /// This picture seen through another display window: what lies outside this one shows each
-    /// line's colour 0 (the border), and lines outside it show the first or last line's palette.
-    pub fn rewindow(&self, left: i32, top: u16, width: u16, height: u16) -> Picture {
-        let mut p = Picture::blank(left, top, width, height);
-        for y in 0..height as i32 {
-            let sy = y + top as i32 - self.top as i32;
-            let src = sy.clamp(0, self.height as i32 - 1).max(0) as usize;
-            if self.height > 0 {
-                p.palettes[y as usize] = self.palettes[src];
-            }
-            if sy < 0 || sy >= self.height as i32 {
-                continue;
-            }
-            for x in 0..width as i32 {
-                let sx = x + left - self.left;
-                if (0..self.width as i32).contains(&sx) {
-                    p.pixels[(y * width as i32 + x) as usize] =
-                        self.pixels[sy as usize * self.width as usize + sx as usize];
-                }
-            }
-        }
-        p.splits = self
-            .splits
-            .iter()
-            .filter_map(|s| {
-                let y = s.y as i32 + self.top as i32 - top as i32;
-                let x = s.x as i32 + self.left - left;
-                ((0..height as i32).contains(&y) && (0..width as i32).contains(&x)).then_some(
-                    Split {
-                        y: y as u16,
-                        x: x as u16,
-                        ..*s
-                    },
-                )
-            })
-            .collect();
-        p
-    }
-
-    /// The 12-bit colour shown at (`x`, `y`).
-    pub fn rgb12(&self, x: u16, y: u16) -> u16 {
-        let i = self.pixels[y as usize * self.width as usize + x as usize];
-        let mut pal = self.palettes[y as usize];
-        for s in self.splits.iter().filter(|s| s.y == y && s.x <= x) {
-            pal[s.index as usize] = s.colour;
-        }
-        colour(&pal, i)
-    }
-}
-
-fn colour(pal: &[u16; 32], i: u8) -> u16 {
-    if i < 32 {
-        pal[i as usize]
-    } else {
-        pal[(i & 31) as usize] >> 1 & 0x777
-    }
-}
-
-/// Every pixel's 12-bit colour, row-major: what the window shows.
-pub fn to_rgb12(p: &Picture) -> Vec<u16> {
-    let (w, h) = (p.width as usize, p.height as usize);
-    let mut out = Vec::with_capacity(w * h);
-    let mut splits = p.splits.iter().peekable();
-    for y in 0..h {
-        let mut pal = p.palettes[y];
-        for x in 0..w {
-            while let Some(s) = splits.next_if(|s| (s.y as usize, s.x as usize) <= (y, x)) {
-                if s.y as usize == y {
-                    pal[s.index as usize] = s.colour;
-                }
-            }
-            out.push(colour(&pal, p.pixels[y * w + x]));
-        }
-    }
-    out
 }
 
 #[cfg(test)]
@@ -225,23 +119,28 @@ mod tests {
     }
 
     #[test]
-    fn a_split_recolours_its_line_from_its_pixel_on() {
-        let mut p = Picture::blank(0, 0, 4, 2);
-        p.palettes = vec![[0x111; 32]; 2];
-        p.splits = vec![Split {
-            y: 0,
-            x: 2,
-            index: 0,
-            colour: 0xF00,
-        }];
-        let rgb = to_rgb12(&p);
-        assert_eq!(
-            rgb,
-            [0x111, 0x111, 0xF00, 0xF00, 0x111, 0x111, 0x111, 0x111]
-        );
-        assert_eq!(
-            (p.rgb12(1, 0), p.rgb12(3, 0), p.rgb12(3, 1)),
-            (0x111, 0xF00, 0x111)
-        );
+    fn picture_save_state_bytes_are_unchanged_by_the_move() {
+        // bincode bytes of this Picture written before it moved to amiga_chips (toolkit-extract
+        // T01): a save state holds Pictures, so the layout must not change.
+        let p = Picture {
+            left: -3,
+            top: 0x2c,
+            width: 2,
+            height: 1,
+            pixels: vec![1, 35],
+            palettes: vec![[0x0FE8; 32]],
+            splits: vec![Split { y: 0, x: 1, index: 3, colour: 0xF00 }],
+        };
+        // left, top, width, height; then each Vec as a u64 length and its items, in field order.
+        let mut want = vec![253, 255, 255, 255, 44, 0, 2, 0, 1, 0];
+        want.extend([2, 0, 0, 0, 0, 0, 0, 0, 1, 35]);
+        want.extend([1, 0, 0, 0, 0, 0, 0, 0]);
+        for _ in 0..32 {
+            want.extend([232, 15]);
+        }
+        want.extend([1, 0, 0, 0, 0, 0, 0, 0]);
+        want.extend([0, 0, 1, 0, 3, 0, 15]);
+        assert_eq!(bincode::serialize(&p).unwrap(), want);
+        assert_eq!(bincode::deserialize::<Picture>(&want).unwrap(), p);
     }
 }

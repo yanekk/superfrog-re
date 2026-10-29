@@ -80,7 +80,7 @@ impl Fixed {
     }
 
     /// The last frame's audio DMA: the slots the channels took, as (cycle in the frame, channel)
-    /// in order ([`sf_paula::AudioDma::frame`], which runs vAmiga's audio state machine on the
+    /// in order ([`amiga_paula::AudioDma::frame`], which runs vAmiga's audio state machine on the
     /// frame's Paula writes: a channel's word fetched in its slot of the line after it asked).
     pub fn audio(mut self, slots: &[(u32, u8)]) -> Fixed {
         let f = self.frames.last_mut().expect("a frame to give audio to");
@@ -710,7 +710,7 @@ mod tests {
 
     #[test]
     fn audio_dma_takes_its_slots_from_the_cpu_and_the_blitter() {
-        use sf_paula::{AudioDma, PaulaWrite};
+        use amiga_paula::{AudioDma, PaulaWrite};
         let w = |vpos: u16, hpos: u16, reg: u16, value: u16| PaulaWrite {
             reg,
             value,

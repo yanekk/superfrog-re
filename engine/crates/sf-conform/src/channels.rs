@@ -1,6 +1,6 @@
 //! The channels' output, compared (T213): what each of Paula's four channels played, frame of play
 //! by frame, the original's (vAmiga's DAC taps, [`sf_oracle::FrameCapture::taps`]) against the
-//! app's mixer run on the engine's writes and chip RAM ([`sf_paula::Paula::channel_taps`]).
+//! app's mixer run on the engine's writes and chip RAM ([`amiga_paula::Paula::channel_taps`]).
 //!
 //! Check 3 compares sound events (where a sample starts, its length, period and volume), never what
 //! a channel then plays: a note whose restart Paula missed (its channel turned off and on again
@@ -18,7 +18,7 @@ use sf_core::{Game, Start};
 
 use crate::{Alone, Case, SyncPoint, feed};
 use sf_oracle::{AudioTap, FrameCapture};
-use sf_paula::{CLOCKS_PER_LINE, Paula};
+use amiga_paula::{CLOCKS_PER_LINE, Paula};
 
 /// The first line of a channels file: then one line a frame of play, from frame 1, the four
 /// channels' [`level`]s in the original's frame its step ended in, or `-` where that step ran two
@@ -136,7 +136,7 @@ pub fn parse(text: &str) -> Result<Vec<Option<Levels>>, String> {
 /// them), the last video frame of each.
 pub fn engine_levels(feed: &Feed, start: Start) -> Vec<Levels> {
     let mut g = Game::with_display(crate::display_data(), start);
-    let mut paula = Paula::booted(48_000);
+    let mut paula = Paula::booted(48_000, sf_core::BOOT_DMACON);
     let mut sink = Vec::new();
     let mut out = Vec::with_capacity(feed.frames.len());
     for fr in &feed.frames {

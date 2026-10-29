@@ -1,4 +1,4 @@
-//! The mixer (`sf-paula`) against the reference emulator on the title music (T10).
+//! The mixer (`amiga-paula`) against the reference emulator on the title music (T10).
 //!
 //! One run from power-on: the crack intro (music from frame ~345), a port-1 click at frames
 //! 1 000-1 004 to skip it, then the title, whose music starts near frame 3 996. Every frame's
@@ -7,14 +7,14 @@
 //! the reference's own DAC taps (core patch 0004) and its own 48 kHz mix.
 //!
 //! Needs what sf-oracle's tests need: `tools/setup/oracle.sh` run, the four disks and Kickstart 1.3.
-//! It lives here, not in `sf-paula/tests/`, because the purity test scans the pure crates' tests
+//! It lives here, not in `amiga-paula/tests/`, because the purity test scans the pure crates' tests
 //! too, and this one runs the emulator and measures in floating point.
 
 use std::ops::Range;
 use std::sync::OnceLock;
 
 use sf_oracle::*;
-use sf_paula::{CLOCKS_PER_LINE, Paula, RESAMPLER_DELAY};
+use amiga_paula::{CLOCKS_PER_LINE, Paula, RESAMPLER_DELAY};
 
 /// The crack intro skips on a port-1 click (FINDINGS 2026-10-11).
 const CLICK: Range<u32> = 1_000..1_005;

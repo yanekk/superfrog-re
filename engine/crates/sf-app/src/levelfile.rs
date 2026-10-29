@@ -9,7 +9,7 @@ use std::path::Path;
 
 use sf_assets::{LevelData, LevelId, SflevelError, sflevel_decode, sflevel_encode, sflevel_replaces};
 use sf_core::{Game, Start};
-use sf_paula::Paula;
+use amiga_paula::Paula;
 
 use crate::App;
 use crate::atomic_write::atomic_write;
@@ -113,7 +113,7 @@ impl App {
     fn restarted(&mut self) {
         let run = self.run.as_mut().expect("running");
         crate::window::show(&mut run.game, run.settings.widescreen);
-        run.paula = Paula::booted(run.rate);
+        run.paula = Paula::booted(run.rate, sf_core::BOOT_DMACON);
         run.paused = false;
         run.from_dialog = false;
     }
