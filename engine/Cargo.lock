@@ -82,6 +82,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "amiga-disk"
+version = "0.1.0"
+dependencies = [
+ "miniz_oxide 0.9.1",
+]
+
+[[package]]
 name = "amiga-paula"
 version = "0.1.0"
 dependencies = [
@@ -2924,6 +2931,7 @@ dependencies = [
 name = "sf-disk"
 version = "0.1.0"
 dependencies = [
+ "amiga-disk",
  "miniz_oxide 0.9.1",
  "sf-conform",
 ]
@@ -2946,6 +2954,7 @@ dependencies = [
 name = "sf-oracle"
 version = "0.1.0"
 dependencies = [
+ "amiga-disk",
  "amiga-paula",
  "cc",
  "miniz_oxide 0.9.1",

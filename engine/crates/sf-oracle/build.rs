@@ -20,7 +20,7 @@ fn main() {
         all.extend(std::fs::read(p).unwrap());
         println!("cargo:rerun-if-changed={}", p.display());
     }
-    let phash = &sf_disk::sha1_hex(&all)[..12];
+    let phash = &amiga_disk::sha1::sha1_hex(&all)[..12];
 
     let cache = std::env::var_os("SUPERFROG_CACHE")
         .map(PathBuf::from)

@@ -1,0 +1,9 @@
+[package]
+name = "amiga-disk"
+version.workspace = true
+edition.workspace = true
+publish.workspace = true
+
+[dependencies]
+# DEFLATE decoder for zipped disk images: pure (bytes in, bytes out; no I/O, clock or floats).
+miniz_oxide = "0.9.1"
