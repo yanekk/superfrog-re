@@ -12,6 +12,7 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-29 | 📌 | T09: three of five saved bug zips are format 1; rewritten they become format 2 (`widescreen off` added), as before, so only format 2 re-saves byte-identical. sf-e2e `recorder_save_window`/`recorder_drill` are OS-layer (`SF_E2E_OS=1`), not run. |
 | 2026-10-29 | 📌 | T06 review: `docs/architecture/verification.md` (frozen) cites the four `sound_events` tests in `engine/crates/sf-conform/tests/faithful.rs`; they now live in `toolkit/crates/amiga-conform/tests/faithful.rs`. The cited-path check passes because the old file still exists. |
 | 2026-10-29 | 📌 | T06: `channels --ignored` (whole game, uncached feed) took 37 min, failing only the known `T216` label assert at line 84. `sf_conform::sound_events` is module and function from one `pub use`; do not re-export the function separately. |
 | 2026-10-29 | 📌 | T08: sf-e2e `recorder_bar` (bar under a resized/widescreen window) fails on the unchanged base under parallel-build load; `controls.rs` rebinding failed once, passed once. Window-timing flakes, not the move. |

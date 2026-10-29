@@ -29,11 +29,11 @@ done · ⛔ blocked, needs a human.
 | T06 | amiga-conform | T05 | ✅ | |
 | T07 | amiga-app-parts | T02 | ✅ | |
 | T08 | amiga-e2e | T07 | ✅ | |
-| T09 | amiga-record | T03, T06, T07 | ⬜ | |
+| T09 | amiga-record | T03, T06, T07 | 🔍 | amiga-record: `GameRecording` header trait, `Recording<G>` (derefs to header), Recorder, Replay, `replay` loop, one `read_zip`/`zip_bytes`; 5 toolkit tests, saved-zip byte check. Deviations: screenshot check in amiga-conform (png not pure, as allowed); `zip_bytes` returns Result (validates); sf-conform `bug::open_zip` adds the PNG check; sf-app `start`/`toggle`/`replay_widescreen` are free functions; seed is bytes, `rec.rng()`. |
 | T10 | display-piece | T01 | ✅ | |
 | T11 | dry-fit-and-finish | T04, T05, T08, T09, T10 | ⬜ | |
 
-**Review queue:** *(empty)*
+**Review queue:** T09
 
 ## Blocked on the user
 
