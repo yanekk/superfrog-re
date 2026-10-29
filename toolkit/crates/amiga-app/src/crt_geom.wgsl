@@ -137,8 +137,9 @@ fn fs_geom(o: Out) -> @location(0) vec4<f32> {
     let mask_coord = p.uv * 1.00001;
     let stretch = geom_maxscale();
     let texture_size = vec2<f32>(GEOM_SHARPER * p.source.x, p.source.y);
-    // `ilfac`: 1 unless the frame is 400 lines or more (`interlace_detect`), and Superfrog's
-    // frames are at most 261, so `ilvec` is 0 and the frame count is never read.
+    // `ilfac`: 1 unless the frame is 400 lines or more (`interlace_detect`). It is fixed at 1, so
+    // `ilvec` is 0 and the frame count is never read; an interlaced picture would need it back.
+    // learned on: Superfrog, whose frames are at most 261 lines.
     let ilfac = vec2<f32>(1.0, 1.0);
     // The size of one texel, in texture-coordinates.
     let one = ilfac / texture_size;

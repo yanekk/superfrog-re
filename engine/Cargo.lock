@@ -66,6 +66,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "amiga-app"
+version = "0.1.0"
+dependencies = [
+ "amiga-chips",
+ "amiga-input",
+ "amiga-paula",
+ "cpal",
+ "gilrs",
+ "libc",
+ "png",
+ "pollster",
+ "wgpu",
+ "winit",
+]
+
+[[package]]
 name = "amiga-chips"
 version = "0.1.0"
 dependencies = [
@@ -2864,23 +2880,19 @@ dependencies = [
 name = "sf-app"
 version = "0.1.0"
 dependencies = [
+ "amiga-app",
  "amiga-paula",
- "cpal",
- "gilrs",
  "libc",
  "muda",
  "objc2 0.6.5",
  "objc2-app-kit 0.3.2",
  "objc2-foundation 0.3.2",
- "png",
- "pollster",
  "rfd",
  "serde",
  "sf-assets",
  "sf-core",
  "sf-disk",
  "toml 0.9.12+spec-1.1.0",
- "wgpu",
  "winit",
 ]
 

@@ -8,7 +8,7 @@ use std::sync::Arc;
 
 use sf_core::{DisplayData, Game, StateError};
 
-use crate::atomic_write::atomic_write;
+use amiga_app::atomic_write::write as atomic_write;
 
 /// The slots the Game menu offers.
 pub const SLOTS: u8 = 5;

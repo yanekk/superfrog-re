@@ -14,17 +14,12 @@ sf-disk = { path = "../sf-disk" }
 sf-assets = { path = "../sf-assets" }
 sf-core = { path = "../sf-core" }
 amiga-paula = { path = "../../../toolkit/crates/amiga-paula" }
+# The app's game-free parts: sound out, pacing, pads, the GPU picture and filters, capture files,
+# atomic writes, the lock and the Amiga key table (toolkit-extract T07).
+amiga-app = { path = "../../../toolkit/crates/amiga-app" }
 # The window and its events (DESIGN §3.2).
 winit = "0.30"
-# Integer scaling on the GPU, and later the CRT shader (DESIGN §2.7, §3.2).
-wgpu = "30"
-# Blocks on wgpu's adapter and device requests at start-up.
-pollster = "0.4"
-# The audio device, whose sample clock paces the game (DESIGN §2.5).
-cpal = "0.16"
-# Captured frames are PNGs a person or a test can open (DESIGN §5, End to end).
-png = "0.18"
-# The --timeout seatbelt stops the app's whole process group (DESIGN §5.2).
+# The --timeout seatbelt stops the app's whole process group (DESIGN §5.2); the recorder names its zip by the local time.
 libc = "0.2"
 # The native disk picker and the import's messages (DESIGN §2.2, §2.11).
 rfd = "0.15"
@@ -33,8 +28,6 @@ muda = "0.21"
 # settings.toml, progress.toml and disks.toml (DESIGN §2.9, §3.5).
 serde = { version = "1", features = ["derive"] }
 toml = "0.9"
-# Gamepads, hot-plugged, fed onto the same original inputs as the keys (DESIGN §2.6, §3.2; T25).
-gilrs = "0.11"
 
 [target.'cfg(target_os = "macos")'.dependencies]
 # One AppKit default: keep AppKit from adding its own "Enter Full Screen" to the View menu (menu.rs).

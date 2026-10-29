@@ -1,17 +1,104 @@
-//! The picture to the window (DESIGN §2.7): the game's frame as a texture, drawn at a whole-number
-//! scale with nearest-neighbour sampling, centred, black around it (`window.rs` decides the scale
-//! and place). View → Filter draws it through one of the filters instead, after the scaling:
-//! Basic (`crt.wgsl`) or a libretro port (`crt_lottes.wgsl`, `crt_geom.wgsl`, `crt_easymode.wgsl`,
-//! on `port.wgsl`).
+//! The picture to the window: the game's frame as a texture, drawn at a whole-number scale with
+//! nearest-neighbour sampling, centred, black around it ([`picture_scale`], [`viewport`]). A
+//! [`Filter`] draws it through one of the filters instead, after the scaling: Basic (`crt.wgsl`) or
+//! a libretro port (`crt_lottes.wgsl`, `crt_geom.wgsl`, `crt_easymode.wgsl`, on `port.wgsl`).
+//!
+//! Sizes are in the surface's pixels. On a Retina display a point is two of them, so `Scale::N(n)`
+//! is `2n` pixels a game pixel there, and `Auto` may land on an odd number of pixels: still a whole
+//! number, so every game pixel is the same solid square and nothing is smeared.
 
 use std::path::Path;
 use std::sync::Arc;
 
-use sf_core::{Picture, to_rgb12};
+use amiga_chips::{Picture, to_rgb12};
 use winit::window::Window;
 
-use crate::settings::{Filter, Scale};
-use crate::window::{effective, picture_area, picture_scale, viewport};
+/// How large the picture is drawn.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Scale {
+    /// The largest whole multiple that fits the window.
+    Auto,
+    /// This multiple of the picture's size, or the largest that fits when the window is smaller.
+    N(u32),
+}
+
+/// How the scaled picture is drawn. Presentation only, after the scaling; the game's frame is the
+/// same under every one.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Filter {
+    None,
+    /// A plain scanline filter, `crt.wgsl`.
+    Basic,
+    /// libretro `crt-lottes.slang`, `crt_lottes.wgsl`.
+    Lottes,
+    /// libretro `crt-geom.slang`, `crt_geom.wgsl`.
+    Geom,
+    /// libretro `crt-easymode.slang`, `crt_easymode.wgsl`.
+    Easymode,
+}
+
+impl Filter {
+    /// Every filter, in the order an app's menu offers them.
+    pub const ALL: [Filter; 5] = [Filter::None, Filter::Basic, Filter::Lottes, Filter::Geom, Filter::Easymode];
+
+    /// Its name in a settings file and in its menu item's id.
+    pub fn name(self) -> &'static str {
+        match self {
+            Filter::None => "none",
+            Filter::Basic => "basic",
+            Filter::Lottes => "lottes",
+            Filter::Geom => "geom",
+            Filter::Easymode => "easymode",
+        }
+    }
+
+    pub fn named(name: &str) -> Option<Filter> {
+        Filter::ALL.into_iter().find(|f| f.name() == name)
+    }
+
+    /// Its title in a menu.
+    pub fn title(self) -> &'static str {
+        match self {
+            Filter::None => "None",
+            Filter::Basic => "Basic",
+            Filter::Lottes => "Lottes",
+            Filter::Geom => "Geom",
+            Filter::Easymode => "Easymode",
+        }
+    }
+}
+
+/// The part of a `surface` (pixels, at `scale_factor` pixels a point) the picture is placed in: all
+/// of it, less `below` points at the bottom kept for the app's own strip. The strip is at the
+/// bottom, so the area's origin is the surface's.
+pub fn picture_area(surface: (u32, u32), scale_factor: f64, below: u32) -> (u32, u32) {
+    let below = (below as f64 * scale_factor).round() as u32;
+    (surface.0, surface.1.saturating_sub(below))
+}
+
+/// Surface pixels a game pixel, for a `frame` drawn on a `surface` (a [`picture_area`]) of that many pixels at
+/// `scale_factor` pixels a point: the setting's multiple, or the largest that fits when the
+/// surface is smaller; never below 1.
+pub fn picture_scale(surface: (u32, u32), frame: (u32, u32), scale: Scale, scale_factor: f64) -> u32 {
+    let fit = (surface.0 / frame.0.max(1)).min(surface.1 / frame.1.max(1)).max(1);
+    match scale {
+        Scale::Auto => fit,
+        Scale::N(n) => (n * scale_factor.round().max(1.0) as u32).min(fit),
+    }
+}
+
+/// The scale the picture is drawn at: the setting in a window, the largest that fits fullscreen.
+pub fn effective(scale: Scale, fullscreen: bool) -> Scale {
+    if fullscreen { Scale::Auto } else { scale }
+}
+
+/// The picture's place on the surface at `s` pixels a game pixel, centred in its `surface` (a
+/// [`picture_area`]): `(x, y, w, h)`.
+pub fn viewport(surface: (u32, u32), frame: (u32, u32), s: u32) -> (u32, u32, u32, u32) {
+    let (w, h) = (frame.0 * s, frame.1 * s);
+    (surface.0.saturating_sub(w) / 2, surface.1.saturating_sub(h) / 2, w, h)
+}
+
 
 /// `pic` as 8-bit RGBA, row-major: each 4-bit channel times 17, so 0xF is 255.
 pub fn picture_rgba(pic: &Picture) -> Vec<u8> {
@@ -84,14 +171,15 @@ pub struct Video {
     /// The frame texture, its size and the bind group reading it.
     frame: Option<(wgpu::Texture, (u32, u32), wgpu::BindGroup)>,
     pub scale: Scale,
-    /// Fullscreen draws at the largest whole scale, whatever the setting (DESIGN §2.7).
+    /// Fullscreen draws at the largest whole scale, whatever the setting.
     pub fullscreen: bool,
-    /// View → Filter.
+    /// The filter the picture is drawn through.
     pub filter: Filter,
-    /// The recording bar shows under the picture: the picture is placed above it
-    /// (`window::picture_area`, bug-recorder DESIGN §2.3).
+    /// The app's strip shows under the picture: the picture is placed above it ([`picture_area`]).
     pub bar: bool,
-    /// A script's `occlude on`: present as macOS does for a window it will not draw.
+    /// The strip's height in points; 0 until the app sets it.
+    pub bar_points: u32,
+    /// Present as macOS does for a window it will not draw (a test's stand-in for a covered window).
     pub occluded: bool,
 }
 
@@ -222,6 +310,7 @@ impl Video {
             fullscreen: false,
             filter: Filter::None,
             bar: false,
+            bar_points: 0,
             occluded: false,
         })
     }
@@ -296,7 +385,7 @@ impl Video {
     fn layout(&self, frame: (u32, u32)) -> Shown {
         let surface = (self.config.width, self.config.height);
         let scale_factor = self.window.scale_factor();
-        let area = picture_area(surface, scale_factor, self.bar);
+        let area = picture_area(surface, scale_factor, if self.bar { self.bar_points } else { 0 });
         let s = picture_scale(area, frame, effective(self.scale, self.fullscreen), scale_factor);
         Shown {
             surface,
@@ -468,7 +557,6 @@ impl Video {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use sf_core::{PictureView, View};
 
     /// The present shader and every filter parse and validate, so a mistake in a port fails here,
     /// not at launch.
@@ -487,11 +575,40 @@ mod tests {
 
     #[test]
     fn twelve_bit_colour_widens_to_eight_bits_a_channel() {
-        let mut p = Picture::black(View::default());
+        let mut p = Picture::blank(0, 0, 320, 256);
         p.palettes[0][1] = 0xF80;
         p.pixels[1] = 1;
         let rgba = picture_rgba(&p);
         assert_eq!(rgba.len(), 320 * 256 * 4);
         assert_eq!(&rgba[..8], &[0, 0, 0, 255, 255, 136, 0, 255]);
+    }
+
+    #[test]
+    fn the_picture_is_the_largest_whole_scale_that_fits_centred() {
+        let frame = (320, 200);
+        assert_eq!(picture_scale((1000, 700), frame, Scale::Auto, 1.0), 3);
+        assert_eq!(picture_scale((1000, 700), frame, Scale::N(2), 1.0), 2);
+        assert_eq!(picture_scale((1000, 700), frame, Scale::N(5), 1.0), 3, "shrunk to fit");
+        assert_eq!(picture_scale((100, 100), frame, Scale::Auto, 1.0), 1, "never below 1");
+        assert_eq!(picture_scale((1280, 800), frame, Scale::N(2), 2.0), 4, "a point is two pixels");
+        assert_eq!(viewport((1000, 700), frame, 3), (20, 50, 960, 600));
+        assert_eq!(effective(Scale::N(2), true), Scale::Auto);
+        assert_eq!(effective(Scale::N(2), false), Scale::N(2));
+    }
+
+    #[test]
+    fn the_strip_below_is_kept_free_in_points() {
+        assert_eq!(picture_area((640, 480), 1.0, 0), (640, 480));
+        assert_eq!(picture_area((640, 480), 1.0, 30), (640, 450));
+        assert_eq!(picture_area((1280, 960), 2.0, 30), (1280, 900));
+        assert_eq!(picture_area((10, 10), 1.0, 30), (10, 0), "never below nothing");
+    }
+
+    #[test]
+    fn every_filter_is_found_by_its_name() {
+        for f in Filter::ALL {
+            assert_eq!(Filter::named(f.name()), Some(f));
+        }
+        assert_eq!(Filter::named("nope"), None);
     }
 }

@@ -8,7 +8,8 @@
 //!
 //! While a bug recording runs, the recording bar (`recording_bar.rs`) sits under the picture
 //! (bug-recorder DESIGN §2.3): the window is [`BAR_HEIGHT`] points taller and the picture is placed
-//! in the surface above the bar, [`picture_area`], so its size and scale stay as they were.
+//! in the surface above the bar (`amiga_app::video::picture_area`), so its size and scale stay as
+//! they were.
 
 use sf_core::View;
 use winit::dpi::LogicalSize;
@@ -75,37 +76,6 @@ pub fn min_size(widescreen: bool, bar: bool) -> LogicalSize<u32> {
     LogicalSize::new(w, h + bar_points(bar))
 }
 
-/// The part of a `surface` (pixels, at `scale_factor` pixels a point) the picture is placed in:
-/// all of it, or the part above the bar when it shows. The bar is at the bottom, so the area's
-/// origin is the surface's.
-pub fn picture_area(surface: (u32, u32), scale_factor: f64, bar: bool) -> (u32, u32) {
-    let bar = (bar_points(bar) as f64 * scale_factor).round() as u32;
-    (surface.0, surface.1.saturating_sub(bar))
-}
-
-/// Surface pixels a game pixel, for a `frame` drawn on a `surface` (a [`picture_area`]) of that many pixels at
-/// `scale_factor` pixels a point: the setting's multiple, or the largest that fits when the
-/// surface is smaller; never below 1.
-pub fn picture_scale(surface: (u32, u32), frame: (u32, u32), scale: Scale, scale_factor: f64) -> u32 {
-    let fit = (surface.0 / frame.0.max(1)).min(surface.1 / frame.1.max(1)).max(1);
-    match scale {
-        Scale::Auto => fit,
-        Scale::N(n) => (n * scale_factor.round().max(1.0) as u32).min(fit),
-    }
-}
-
-/// The scale the picture is drawn at: the setting in a window, the largest that fits fullscreen.
-pub fn effective(scale: Scale, fullscreen: bool) -> Scale {
-    if fullscreen { Scale::Auto } else { scale }
-}
-
-/// The picture's place on the surface at `s` pixels a game pixel, centred in its `surface` (a
-/// [`picture_area`]): `(x, y, w, h)`.
-pub fn viewport(surface: (u32, u32), frame: (u32, u32), s: u32) -> (u32, u32, u32, u32) {
-    let (w, h) = (frame.0 * s, frame.1 * s);
-    (surface.0.saturating_sub(w) / 2, surface.1.saturating_sub(h) / 2, w, h)
-}
-
 /// Fullscreen on the window's display, or back to the window.
 pub fn set_fullscreen(window: &Window, on: bool) {
     window.set_fullscreen(on.then_some(Fullscreen::Borderless(None)));
@@ -114,6 +84,13 @@ pub fn set_fullscreen(window: &Window, on: bool) {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use amiga_app::video::{effective, picture_scale, viewport};
+
+    /// The part of a `surface` the picture is placed in: all of it, or the part above the bar
+    /// when it shows (the app sets `Video::bar_points` to [`BAR_HEIGHT`]).
+    fn picture_area(surface: (u32, u32), scale_factor: f64, bar: bool) -> (u32, u32) {
+        amiga_app::video::picture_area(surface, scale_factor, bar_points(bar))
+    }
 
     /// The title's display window, the smallest full screen.
     const TITLE: (u32, u32) = (320, 256);

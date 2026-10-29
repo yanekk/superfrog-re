@@ -14,7 +14,7 @@ use sf_core::input::FrameInput;
 use sf_core::recording::{LevelSetup, Location, MAX_FRAMES, Recording, ZIP_RECORDING, ZIP_SCREENSHOT};
 use sf_core::{LevelId, Rng};
 
-use crate::atomic_write::atomic_write;
+use amiga_app::atomic_write::write as atomic_write;
 
 /// Whether a recording is running, and the recording.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]

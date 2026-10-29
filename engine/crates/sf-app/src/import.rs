@@ -16,7 +16,7 @@ use sf_core::recording::{LevelSetup, Location};
 use sf_disk::{DiskSlot, ImportError, Offered};
 use winit::window::Window;
 
-use crate::atomic_write::atomic_write;
+use amiga_app::atomic_write::write as atomic_write;
 use crate::home::{build, cache_path};
 use crate::recorder::EndChoice;
 use crate::save_window::{Outcome, SaveAction, SaveForm};

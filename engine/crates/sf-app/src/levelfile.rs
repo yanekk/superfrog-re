@@ -12,7 +12,7 @@ use sf_core::{Game, Start};
 use amiga_paula::Paula;
 
 use crate::App;
-use crate::atomic_write::atomic_write;
+use amiga_app::atomic_write::write as atomic_write;
 
 /// The name the save panel suggests.
 pub fn export_name(id: LevelId) -> String {
