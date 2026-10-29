@@ -10,7 +10,7 @@ the task you pick up, and append yours there.
 **Plan reviewed:** 2026-10-28 — 4 fixed, 3 decided with the user
 
 **Status:** planned, nothing built.
-**Last updated:** 2026-10-28
+**Last updated:** 2026-10-29
 **Next `pir-work` will:** T01, the only task with no dependency; it records the baseline everything
 else is compared with.
 
@@ -27,13 +27,13 @@ done · ⛔ blocked, needs a human.
 | T04 | asset-readers | T03 | ⬜ | |
 | T05 | amiga-oracle | T02, T03, T04 | ⬜ | |
 | T06 | amiga-conform | T05 | ⬜ | |
-| T07 | amiga-app-parts | T02 | ⬜ | |
+| T07 | amiga-app-parts | T02 | 🔍 | amiga-app: atomic_write, audio, pacing, pad, keys, lock, video with shaders, capture; 29 toolkit tests. Smoke capture byte-equal to base (frames, inputs, audio). Deviations: `frame_file()`/`window_file()` not a `FRAME` const; seed.txt stays sf-app's; Scale, Filter, layout moved with video (`bar_points`); MOVED test accepts files; frog_cases, story not rerun: sf-conform tree untouched. Commit e1635f3. |
 | T08 | amiga-e2e | T07 | ⬜ | |
 | T09 | amiga-record | T03, T06, T07 | ⬜ | |
 | T10 | display-piece | T01 | ⬜ | |
 | T11 | dry-fit-and-finish | T04, T05, T08, T09, T10 | ⬜ | |
 
-**Review queue:** *(empty)*
+**Review queue:** T07
 
 ## Blocked on the user
 

@@ -12,6 +12,7 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-29 | 📌 | T07: a smoke capture's `clock.txt` and `pacing.txt` vary with machine load (one loaded run dropped 332 frames, reruns 0); byte-compare frames, `inputs.txt`, `audio.wav`, `audio-frames.txt` only. sf-app no longer depends on wgpu, cpal or gilrs directly. |
 | 2026-10-29 | 📌 | T02: `cargo fmt --all` in `toolkit/` rewrites the T01 crates (no rustfmt.toml, code is at width 120); format only the crate you touch. Per-task runs after the move: frog_cases 36 (17 min), alone 5, beam 2, story `--ignored` 9, green. |
 | 2026-10-29 | 📌 | T01 baseline, `sf-conform -- all` on b7a2f53: all 216 cases ok, none red. Per-case lines with tolerated counts in `baseline-T01.txt`; T11 compares against it. Took ~80 min in four parallel slices. |
 | 2026-10-29 | 📌 | T01: the toolkit test line takes 14 s from a cold `toolkit/target`. Engine regression after the move: frog_cases 36, alone 5, beam 2, story `--ignored` 9, purity, paula_vs_oracle, sf-core, sf-app, sf-e2e smoke all green. |
