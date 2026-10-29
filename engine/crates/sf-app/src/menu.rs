@@ -616,7 +616,7 @@ impl App {
         run.paused = false;
         run.from_dialog = true;
         run.recorder = match record {
-            true => Recorder::start(setup, seed, crate::home::build(), run.settings.widescreen),
+            true => crate::recorder::start(setup, seed, crate::home::build(), run.settings.widescreen),
             false => Recorder::Off,
         };
         // Frame 0 at once: the picture a STOP before any step would save.

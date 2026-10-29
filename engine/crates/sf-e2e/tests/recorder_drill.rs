@@ -107,12 +107,14 @@ fn zips(dir: &Path) -> Vec<PathBuf> {
     v
 }
 
-fn read_zip(path: &Path) -> (Recording, Vec<u8>) {
-    let entries = sf_disk::zip::read_entries(&std::fs::read(path).unwrap(), |_| true, 1 << 26).unwrap();
+/// A saved bug zip's recording and screenshot, its entries in the app's order, read as the
+/// replay reads it (`sf_conform::bug::open_zip`, the one zip reader).
+fn saved_zip(path: &Path) -> (Recording, Vec<u8>) {
+    let bytes = std::fs::read(path).unwrap();
+    let entries = sf_disk::zip::read_entries(&bytes, |_| true, 1 << 26).unwrap();
     let names: Vec<&str> = entries.iter().map(|e| e.name.as_str()).collect();
     assert_eq!(names, [ZIP_RECORDING, ZIP_SCREENSHOT], "{}", path.display());
-    let rec = Recording::parse(std::str::from_utf8(&entries[0].bytes).unwrap()).unwrap();
-    (rec, entries[1].bytes.clone())
+    sf_conform::bug::open_zip(&bytes).unwrap_or_else(|e| panic!("{}: {e}", path.display()))
 }
 
 fn png_image(png: &[u8], scratch: &Path) -> Image {
@@ -154,7 +156,7 @@ fn w1_1_played_to_its_exit_through_the_slot_machine_to_w1_2_saves_and_replays_to
     eprintln!("{marks:?}, {n} frames");
     let name = zip.file_name().unwrap().to_string_lossy().into_owned();
     assert!(name.starts_with("bug-W1-2-"), "named for the level STOP was pressed in: {name}");
-    let (rec, png) = read_zip(&zip);
+    let (rec, png) = saved_zip(&zip);
     assert_eq!(rec.inputs, inputs, "the recording holds every frame's input, as played");
     assert_eq!(rec.note, note);
     assert!(matches!(rec.stopped_at, Some(Location::Level { id, .. }) if id.to_string() == "W1-2"), "{:?}", rec.stopped_at);
@@ -283,7 +285,7 @@ fn os_layer_in_the_save_window_esc_and_cmd_period_keep_it_and_a_long_pasted_note
     assert!(c.exit.success(), "{}", c.stderr);
     let found = zips(&bugs);
     assert_eq!(found.len(), 1, "{found:?}");
-    let (rec, _) = read_zip(&found[0]);
+    let (rec, _) = saved_zip(&found[0]);
     assert_eq!(rec.note, want, "the whole note, one line");
     assert_eq!(rec.inputs.len(), 79, "Esc, ⌘. and the note's keys added no frame");
 }

@@ -106,6 +106,7 @@ dependencies = [
  "amiga-oracle",
  "amiga-paula",
  "miniz_oxide 0.9.1",
+ "png",
 ]
 
 [[package]]
@@ -151,6 +152,15 @@ version = "0.1.0"
 dependencies = [
  "amiga-clock",
  "serde",
+]
+
+[[package]]
+name = "amiga-record"
+version = "0.1.0"
+dependencies = [
+ "amiga-chips",
+ "amiga-disk",
+ "amiga-input",
 ]
 
 [[package]]

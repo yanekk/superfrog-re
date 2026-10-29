@@ -22,6 +22,7 @@ owns = [
   "toolkit/crates/toolkit-checks/",
   "toolkit/crates/amiga-oracle/",
   "toolkit/crates/amiga-conform/",
+  "toolkit/crates/amiga-record/",
   "toolkit/tools/",
 ]
 +++

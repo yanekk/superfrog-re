@@ -36,7 +36,7 @@ fn main() {
     let out = std::io::stdout();
     let mut out = std::io::BufWriter::new(out.lock());
     if a[0].ends_with(".zip") {
-        let (rec, _) = sf_conform::bug::read_zip(&std::fs::read(&a[0]).unwrap()).unwrap();
+        let (rec, _) = sf_conform::bug::open_zip(&std::fs::read(&a[0]).unwrap()).unwrap();
         sf_conform::bug::replay(&rec, |k, g, _| line(&mut out, k, g));
         return;
     }

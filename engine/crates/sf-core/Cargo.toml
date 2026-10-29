@@ -11,6 +11,9 @@ amiga-clock = { path = "../../../toolkit/crates/amiga-clock" }
 amiga-chips = { path = "../../../toolkit/crates/amiga-chips" }
 # The joystick, the keys held, their text form and CIA-A's keyboard port (pure, a toolkit crate).
 amiga-input = { path = "../../../toolkit/crates/amiga-input" }
+# The bug recording, its text form's shared rules, the recorder and the zip (pure, a toolkit
+# crate); Superfrog's header in it is `recording.rs`.
+amiga-record = { path = "../../../toolkit/crates/amiga-record" }
 sf-assets = { path = "../sf-assets" }
 # The story intro unpacks its banks as it plays, with the ATN! decompressor (pure, on the
 # allowlist).

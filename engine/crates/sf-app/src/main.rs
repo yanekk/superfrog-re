@@ -44,6 +44,7 @@ use std::time::{Duration, Instant, SystemTime};
 
 use sf_assets::LevelData;
 use sf_core::feed::{Feed, FeedFrame};
+use sf_core::recording::RecordingRng;
 use sf_core::{DisplayData, Game, LevelId, Picture, Progress, Rng, Start};
 use amiga_paula::Paula;
 use winit::application::ApplicationHandler;
@@ -315,7 +316,7 @@ impl App {
         // and ends the run.
         let replayed = match &self.args.replay {
             None => None,
-            Some(path) => match std::fs::read(path).map_err(|e| e.to_string()).and_then(|b| recorder::read_zip(&b)) {
+            Some(path) => match std::fs::read(path).map_err(|e| e.to_string()).and_then(|b| recorder::open_zip(&b)) {
                 Ok(rec) => Some(rec),
                 Err(e) => {
                     let m = format!("{} cannot be replayed: {e}", path.display());
@@ -429,7 +430,7 @@ impl App {
         let start_rng = feed.as_ref().map_or_else(|| Rng::seeded(seed.0, seed.1), |f| f.seed);
         // A replay starts where its recording did: the level from the dialog's values and seed.
         let mut game = match &replayed {
-            Some(rec) => Game::start_level(display.clone(), &rec.setup, rec.seed),
+            Some(rec) => Game::start_level(display.clone(), &rec.setup, rec.rng()),
             None => Game::with_display(display.clone(), Start::PowerOn { seed: start_rng }),
         };
         window::show(&mut game, wide);
@@ -559,7 +560,7 @@ impl App {
         let input = run.input.frame();
         // A replay switches widescreen where its recording did, before that step: the game's mode,
         // its view and the window's shape, the setting untouched (real-widescreen DESIGN §2.8).
-        if let Some(wide) = run.replay.as_ref().map(Replay::widescreen)
+        if let Some(wide) = run.replay.as_ref().map(recorder::replay_widescreen)
             && wide != run.game.widescreen()
         {
             window::show(&mut run.game, wide);
@@ -701,7 +702,7 @@ impl App {
         let wide = !run.settings.widescreen;
         run.settings.widescreen = wide;
         window::show(&mut run.game, wide);
-        run.recorder.toggle();
+        recorder::toggle(&mut run.recorder);
         self.fit_window_to_mode();
         self.save_settings();
     }

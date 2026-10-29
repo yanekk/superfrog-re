@@ -8,7 +8,7 @@ use std::path::{Path, PathBuf};
 use std::process::{Command, Output};
 
 use sf_conform::{InputScript, bug, cases_dir, display_data, scripts_dir};
-use sf_core::recording::{LevelSetup, Recording, ZIP_RECORDING, ZIP_SCREENSHOT};
+use sf_core::recording::{Header, LevelSetup, Recording, RecordingRng, seed_bytes, ZIP_RECORDING, ZIP_SCREENSHOT};
 use sf_core::{Game, Rng};
 
 /// Past the frog's drop-in and its first jumps: both toggles fall inside the level.
@@ -23,13 +23,15 @@ fn recording(wide: bool, toggles: &[u32]) -> Recording {
     let script = InputScript::load(&scripts_dir().join("frog-run-right.txt")).unwrap();
     Recording {
         build: "test".into(),
-        setup: LevelSetup::default(),
-        seed: Rng::default(),
-        stopped_at: None,
+        seed: seed_bytes(Rng::default()),
         note: "built by widescreen_recording.rs".into(),
         inputs: (0..FRAMES).map(|f| script.input_at(f)).collect(),
-        widescreen: wide,
-        toggles: toggles.to_vec(),
+        header: Header {
+            setup: LevelSetup::default(),
+            stopped_at: None,
+            widescreen: wide,
+            toggles: toggles.to_vec(),
+        },
     }
 }
 
@@ -40,7 +42,7 @@ fn toggled() -> Recording {
 
 /// `rec` zipped with a picture of the engine as the screenshot (any PNG the zip reader takes).
 fn zip(rec: &Recording) -> Vec<u8> {
-    let g = Game::start_level(display_data(), &rec.setup, rec.seed);
+    let g = Game::start_level(display_data(), &rec.setup, rec.rng());
     let png = bug::picture_png(&g.render(g.view()));
     sf_disk::zip::write_stored(&[
         (ZIP_RECORDING, rec.to_text().as_bytes()),
@@ -94,7 +96,7 @@ fn a_replay_with_two_toggles_is_the_engine_run_with_the_same_switches() {
     let rec = toggled();
     // The direct run: the engine started as the app starts it, its mode switched by hand at the
     // same frames, stepped in lockstep with the replay and held to it after every step.
-    let mut direct = Game::start_level(display_data(), &rec.setup, rec.seed);
+    let mut direct = Game::start_level(display_data(), &rec.setup, rec.rng());
     let mut wide = false;
     let mut seen = 0;
     bug::replay(&rec, |k, game, _| {
@@ -222,7 +224,7 @@ fn a_recording_with_no_widescreen_replays_as_before() {
         .replace("widescreen off\n", "");
     assert_eq!(Recording::parse(&v1).as_ref(), Ok(&rec));
     assert_eq!(bug::comparable(&rec), Ok(()));
-    let mut direct = Game::start_level(display_data(), &rec.setup, rec.seed);
+    let mut direct = Game::start_level(display_data(), &rec.setup, rec.rng());
     bug::replay(&rec, |k, game, pic| {
         let out = direct.step(rec.inputs[k as usize]);
         assert!(!game.widescreen());

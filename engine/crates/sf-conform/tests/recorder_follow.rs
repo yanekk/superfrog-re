@@ -8,7 +8,7 @@ use sf_conform::bug::{self, Pokes};
 use sf_conform::{InputScript, Mode, case::script_path};
 use sf_core::input::{FrameInput, Joy};
 use sf_core::layout::{VarId, def, h0};
-use sf_core::recording::{LevelSetup, Recording};
+use sf_core::recording::{Header, LevelSetup, Recording, seed_bytes};
 use sf_core::{Game, Rng, Scene};
 
 const LEVEL_STATE: u32 = h0(0xa06);
@@ -39,13 +39,15 @@ fn played(
     }
     Recording {
         build: "test".into(),
-        setup,
-        seed,
-        stopped_at: Some(g.location()),
+        seed: seed_bytes(seed),
         note: "built by recorder_follow.rs".into(),
-        inputs,
-        widescreen: false,
-        toggles: Vec::new(),
+        inputs: inputs,
+        header: Header {
+            setup,
+            stopped_at: Some(g.location()),
+            widescreen: false,
+            toggles: Vec::new(),
+        },
     }
 }
 
@@ -124,13 +126,15 @@ fn a_recording_the_original_leaves_is_put_back_on_it() {
         .collect();
     let rec = Recording {
         build: "test".into(),
-        setup,
-        seed: Rng::default(),
-        stopped_at: Some(g.location()),
+        seed: seed_bytes(Rng::default()),
         note: "complete-w4-3, 700 steps".into(),
-        inputs,
-        widescreen: false,
-        toggles: Vec::new(),
+        inputs: inputs,
+        header: Header {
+            setup,
+            stopped_at: Some(g.location()),
+            widescreen: false,
+            toggles: Vec::new(),
+        },
     };
     // The judging run's engine on each frame, before it steps: after a put-back it starts from
     // the original written with the recording's engine, so it holds the owner's game there.
@@ -193,13 +197,15 @@ fn a_recording_the_original_leaves_for_good_is_judged_only_up_to_there() {
             .collect();
         Recording {
             build: "test".into(),
-            setup,
-            seed: Rng::default(),
-            stopped_at: Some(g.location()),
+            seed: seed_bytes(Rng::default()),
             note: "W1-1's exit forced in the recording's engine only".into(),
-            inputs,
-            widescreen: false,
-            toggles: Vec::new(),
+            inputs: inputs,
+            header: Header {
+                setup,
+                stopped_at: Some(g.location()),
+                widescreen: false,
+                toggles: Vec::new(),
+            },
         }
     };
     let exit: &Pokes = &[(LEVEL_STATE, 1u32.to_be_bytes().to_vec())];

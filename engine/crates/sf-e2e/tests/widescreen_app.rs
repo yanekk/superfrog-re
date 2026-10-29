@@ -193,7 +193,7 @@ fn two_switches_while_recording_play_replay_and_replay_in_the_app_as_played() {
     // its screenshot, frame for frame the app's.
     let found = zips(&bugs);
     assert_eq!(found.len(), 1, "{}", c.prompts);
-    let (rec, png) = sf_conform::bug::read_zip(&std::fs::read(&found[0]).unwrap()).unwrap();
+    let (rec, png) = sf_conform::bug::open_zip(&std::fs::read(&found[0]).unwrap()).unwrap();
     assert!(!rec.widescreen);
     assert_eq!(rec.toggles, SWITCHES.map(|s| (s - START - 1) as u32));
     assert_eq!(rec.inputs.len() as u64, STOP - START - 1);

@@ -12,7 +12,7 @@ use std::sync::Arc;
 
 use common::cache_data;
 use sf_core::input::FrameInput;
-use sf_core::recording::{LevelSetup, Location, Recording, ZIP_RECORDING, ZIP_SCREENSHOT};
+use sf_core::recording::{LevelSetup, Location, Recording, RecordingRng, ZIP_RECORDING, ZIP_SCREENSHOT};
 use sf_core::{DisplayData, Game, GameData, Rng};
 use sf_e2e::{App, Captured, Image, LaunchOpts};
 
@@ -39,15 +39,14 @@ fn zips(dir: &Path) -> Vec<PathBuf> {
     v
 }
 
-/// A bug zip's recording and screenshot.
-fn read_zip(path: &Path) -> (Recording, Vec<u8>) {
+/// A saved bug zip's recording and screenshot, its entries in the app's order, read as the
+/// replay reads it (`sf_conform::bug::open_zip`, the one zip reader).
+fn saved_zip(path: &Path) -> (Recording, Vec<u8>) {
     let bytes = std::fs::read(path).unwrap();
     let entries = sf_disk::zip::read_entries(&bytes, |_| true, 1 << 26).unwrap();
     let names: Vec<&str> = entries.iter().map(|e| e.name.as_str()).collect();
     assert_eq!(names, [ZIP_RECORDING, ZIP_SCREENSHOT], "{}", path.display());
-    let text = String::from_utf8(entries[0].bytes.clone()).unwrap();
-    let rec = Recording::parse(&text).unwrap_or_else(|e| panic!("{}: {e}", path.display()));
-    (rec, entries[1].bytes.clone())
+    sf_conform::bug::open_zip(&bytes).unwrap_or_else(|e| panic!("{}: {e}", path.display()))
 }
 
 /// A PNG's pixels.
@@ -61,7 +60,7 @@ fn png_image(png: &[u8], scratch: &Path) -> Image {
 /// `exit_before`: the step index before which the test set the level's exit (`N: exit`).
 fn replay(data: &GameData, rec: &Recording, exit_before: Option<usize>) -> (Vec<Location>, Image) {
     let display = Arc::new(DisplayData::new(data));
-    let mut g = Game::start_level(display, &rec.setup, rec.seed);
+    let mut g = Game::start_level(display, &rec.setup, rec.rng());
     let mut places = Vec::new();
     let mut last = Image::of_picture(&g.render(g.view()));
     for (i, &input) in rec.inputs.iter().enumerate() {
@@ -125,9 +124,9 @@ fn a_recording_started_from_the_dialog_and_stopped_saves_one_zip_of_every_frame(
     assert_eq!(found.len(), 1, "one zip: {found:?}\n{}", c.prompts);
     let name = found[0].file_name().unwrap().to_string_lossy().into_owned();
     assert!(name.starts_with("bug-W1-1-20") && name.len() == "bug-W1-1-YYYY-MM-DD-HHMM.zip".len(), "{name}");
-    let (rec, png) = read_zip(&found[0]);
+    let (rec, png) = saved_zip(&found[0]);
     assert_eq!(rec.setup, LevelSetup::default());
-    assert_eq!(rec.seed, Rng::seeded(0, 0), "the script's seed, as power-on takes it");
+    assert_eq!(rec.rng(), Rng::seeded(0, 0), "the script's seed, as power-on takes it");
     assert_eq!(rec.inputs.len(), 300, "steps 1..=300");
     assert_eq!(rec.note, "x");
     assert!(rec.build.starts_with("superfrog "), "{}", rec.build);
@@ -189,7 +188,7 @@ fn a_recording_goes_on_through_the_level_s_end_the_tally_and_into_the_slot_machi
     assert!(c.exit.success(), "{}", c.stderr);
     let found = zips(&bugs);
     assert_eq!(found.len(), 1, "{}", c.prompts);
-    let (rec, png) = read_zip(&found[0]);
+    let (rec, png) = saved_zip(&found[0]);
     assert_eq!(rec.inputs.len(), 400, "every step from the level's first frame to STOP");
     assert_eq!(recorded_inputs(&rec, |i| i + 1), captured_inputs(&c, |n| n <= 400));
     let (places, last) = replay(&data, &rec, Some(1));
@@ -209,7 +208,7 @@ fn a_recording_goes_on_past_game_over() {
     assert!(c.exit.success(), "{}", c.stderr);
     let found = zips(&bugs);
     assert_eq!(found.len(), 1, "{}", c.prompts);
-    let (rec, png) = read_zip(&found[0]);
+    let (rec, png) = saved_zip(&found[0]);
     assert_eq!(rec.inputs.len(), 1100);
     let (places, last) = replay(&data, &rec, None);
     assert_eq!(screens(&places), ["game over"], "{:?}", rec.stopped_at);
@@ -303,7 +302,7 @@ fn every_ending_action_cancelled_keeps_recording_and_is_not_taken() {
     assert!(c.stderr.contains("superfrog: saved state 1"), "Save State leaves it running");
     let found = zips(&bugs);
     assert_eq!(found.len(), 1);
-    let (rec, _) = read_zip(&found[0]);
+    let (rec, _) = saved_zip(&found[0]);
     assert_eq!(rec.inputs.len(), 160, "one recording, every step to STOP");
     assert_eq!(rec.note, "kept");
 }
@@ -344,7 +343,7 @@ fn every_ending_action_saved_writes_a_zip_then_is_taken() {
     let mut by_note: Vec<(String, usize)> = found
         .iter()
         .map(|z| {
-            let (rec, _) = read_zip(z);
+            let (rec, _) = saved_zip(z);
             (rec.note, rec.inputs.len())
         })
         .collect();
@@ -368,7 +367,7 @@ fn pause_is_not_recorded_and_save_state_scale_and_crt_leave_it_running() {
     assert!(!c.prompts.lines().any(|l| l.starts_with("recording: ")), "nothing asked: {}", c.prompts);
     let found = zips(&bugs);
     assert_eq!(found.len(), 1, "{}", c.prompts);
-    let (rec, png) = read_zip(&found[0]);
+    let (rec, png) = saved_zip(&found[0]);
     assert_eq!(rec.inputs.len(), 150, "200 steps, 50 of them paused");
     // Index i is step i + 1 before the pause, step i + 51 after it.
     let step = |i: u64| if i < 49 { i + 1 } else { i + 51 };
@@ -417,7 +416,7 @@ fn a_scripted_run_without_bugs_dir_saves_into_its_home_never_the_repo() {
     assert!(c.exit.success(), "{}", c.stderr);
     let found = zips(&app.home.join("bugs"));
     assert_eq!(found.len(), 1, "{}", c.prompts);
-    assert_eq!(read_zip(&found[0]).0.inputs.len(), 30);
+    assert_eq!(saved_zip(&found[0]).0.inputs.len(), 30);
 }
 
 /// real-widescreen DESIGN §2.8: a recording switched to widescreen and back and on again holds
@@ -433,7 +432,7 @@ fn a_recording_in_widescreen_replays_as_played_and_its_screenshot_is_the_wide_pi
     assert!(c.exit.success(), "{}", c.stderr);
     let found = zips(&bugs);
     assert_eq!(found.len(), 1, "{}", c.prompts);
-    let (rec, png) = read_zip(&found[0]);
+    let (rec, png) = saved_zip(&found[0]);
     assert_eq!(rec.inputs.len(), 120, "widescreen leaves it running");
     assert!(!rec.widescreen);
     assert_eq!(rec.toggles, [9, 59, 89], "a toggle before each switched step");

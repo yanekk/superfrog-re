@@ -7,7 +7,7 @@ use sf_conform::bug::{self, LEG_PASSES};
 use sf_conform::{InputScript, Mode, case::script_path};
 use sf_core::input::FrameInput;
 use sf_core::layout::{VarId, def};
-use sf_core::recording::{LevelSetup, Recording};
+use sf_core::recording::{Header, LevelSetup, Recording, seed_bytes};
 use sf_core::{Game, Rng, Scene};
 
 /// `script`'s first `frames` frames from `setup`'s start, as a recording.
@@ -15,13 +15,15 @@ fn recording(setup: LevelSetup, script: &str, frames: u32) -> Recording {
     let s = InputScript::load(&script_path(script)).unwrap();
     Recording {
         build: "test".into(),
-        setup,
-        seed: Rng::default(),
-        stopped_at: None,
+        seed: seed_bytes(Rng::default()),
         note: format!("{script}, built by recorder_compare.rs"),
         inputs: (0..frames).map(|f| s.input_at(f)).collect(),
-        widescreen: false,
-        toggles: Vec::new(),
+        header: Header {
+            setup,
+            stopped_at: None,
+            widescreen: false,
+            toggles: Vec::new(),
+        },
     }
 }
 
@@ -152,13 +154,15 @@ fn played(
     }
     Recording {
         build: "test".into(),
-        setup,
-        seed: Rng::default(),
-        stopped_at: Some(g.location()),
+        seed: seed_bytes(Rng::default()),
         note: "built by recorder_compare.rs".into(),
-        inputs,
-        widescreen: false,
-        toggles: Vec::new(),
+        inputs: inputs,
+        header: Header {
+            setup,
+            stopped_at: Some(g.location()),
+            widescreen: false,
+            toggles: Vec::new(),
+        },
     }
 }
 
@@ -215,13 +219,15 @@ fn w1_1_through_the_slot_machine_to_w1_2_compares_same() {
     eprintln!("slot at step {slot:?}, W1-2 at {w1_2:?}, {n} steps");
     let rec = Recording {
         build: "test".into(),
-        setup,
-        seed: Rng::default(),
-        stopped_at: Some(g.location()),
+        seed: seed_bytes(Rng::default()),
         note: "built by recorder_compare.rs".into(),
-        inputs,
-        widescreen: false,
-        toggles: Vec::new(),
+        inputs: inputs,
+        header: Header {
+            setup,
+            stopped_at: Some(g.location()),
+            widescreen: false,
+            toggles: Vec::new(),
+        },
     };
     let c = bug::compare_with(&rec, Mode::Faithful, &exit_forced(), |_, _| {}).unwrap();
     eprintln!("{}\n{:.0?}", c.report(), t0.elapsed());

@@ -58,13 +58,14 @@ fn zips(dir: &Path) -> Vec<PathBuf> {
     v
 }
 
-fn read_zip(path: &Path) -> (Recording, Vec<u8>) {
+/// A saved bug zip's recording and screenshot, its entries in the app's order, read as the
+/// replay reads it (`sf_conform::bug::open_zip`, the one zip reader).
+fn saved_zip(path: &Path) -> (Recording, Vec<u8>) {
     let bytes = std::fs::read(path).unwrap();
     let entries = sf_disk::zip::read_entries(&bytes, |_| true, 1 << 26).unwrap();
     let names: Vec<&str> = entries.iter().map(|e| e.name.as_str()).collect();
     assert_eq!(names, [ZIP_RECORDING, ZIP_SCREENSHOT], "{}", path.display());
-    let text = String::from_utf8(entries[0].bytes.clone()).unwrap();
-    (Recording::parse(&text).unwrap(), entries[1].bytes.clone())
+    sf_conform::bug::open_zip(&bytes).unwrap_or_else(|e| panic!("{}: {e}", path.display()))
 }
 
 /// The step a menu command came after (`superfrog: menu <id> after step N`), the `k`th time.
@@ -134,7 +135,7 @@ fn stop_save_note(scale: u32, fullscreen: bool) {
     assert_eq!(clipboard(), path, "the path is on the clipboard");
     assert!(c.prompts.contains(&format!("clipboard: {path}\n")), "{}", c.prompts);
     assert!(c.prompts.contains(&format!("notice: The bug recording is saved as {path}.")), "{}", c.prompts);
-    let (rec, png) = read_zip(&found[0]);
+    let (rec, png) = saved_zip(&found[0]);
     assert_eq!(rec.note, "xbug ");
     let stop = after_step(&c.stderr, "stop-recording", 0);
     assert_eq!(rec.inputs.len() as u64, stop, "the recording ends at STOP's frame");
@@ -242,7 +243,7 @@ fn os_layer_load_state_save_opens_the_save_window_then_loads() {
     assert!(c.exit.success(), "{}", c.stderr);
     let found = zips(&bugs);
     assert_eq!(found.len(), 1, "{found:?}");
-    assert_eq!(read_zip(&found[0]).0.note, "l");
+    assert_eq!(saved_zip(&found[0]).0.note, "l");
     let saved = c.stderr.find("superfrog: recording saved to").expect("saved");
     let loaded = c.stderr.find("superfrog: loaded state 2").expect("loaded");
     assert!(saved < loaded, "saved, then loaded");

@@ -95,7 +95,7 @@ fn switches_in_the_fade_in_mid_scroll_and_while_paused_play_as_the_headless_game
 
     let zip: Vec<_> = std::fs::read_dir(&bugs).unwrap().flatten().map(|e| e.path()).collect();
     assert_eq!(zip.len(), 1, "{}", c.prompts);
-    let (rec, png) = sf_conform::bug::read_zip(&std::fs::read(&zip[0]).unwrap()).unwrap();
+    let (rec, png) = sf_conform::bug::open_zip(&std::fs::read(&zip[0]).unwrap()).unwrap();
     // A toggle before each unpaused switch, one for the pause's three at its first step after.
     assert_eq!(rec.toggles, [25, 55, 65, 195, 395, 525, 575, 625]);
     let mut replayed = Vec::new();

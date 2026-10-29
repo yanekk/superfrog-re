@@ -17,6 +17,8 @@ amiga-paula = { path = "../../../toolkit/crates/amiga-paula" }
 # The app's game-free parts: sound out, pacing, pads, the GPU picture and filters, capture files,
 # atomic writes, the lock and the Amiga key table (toolkit-extract T07).
 amiga-app = { path = "../../../toolkit/crates/amiga-app" }
+# The bug recorder and replay state machines and the bug zip (toolkit-extract T09).
+amiga-record = { path = "../../../toolkit/crates/amiga-record" }
 # The window and its events (DESIGN §3.2).
 winit = "0.30"
 # The --timeout seatbelt stops the app's whole process group (DESIGN §5.2); the recorder names its zip by the local time.

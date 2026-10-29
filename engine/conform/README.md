@@ -195,7 +195,8 @@ default the last 250) into `--out`, by default `~/.cache/superfrog-re/bugs/<zip 
 repo (the pictures are disk-derived). Then one line each: `frames N`, `stopped-at <recorded>`,
 `replay-at <location>`, `screenshot equal|differs (P pixels)`. Exit 0 whatever the comparison says
 (a fixed engine is meant to differ); a zip it cannot read is refused with the reason, exit 2. The
-replay draws the 4:3 view. `sf_conform::bug` holds `read_zip` and `replay` for tests.
+replay draws the 4:3 view. `sf_conform::bug` holds `open_zip` (`amiga_record::read_zip` plus the
+PNG check) and `replay` for tests.
 
 ## Comparing a bug zip with the original, and keeping it as a case (bug-recorder T05)
 

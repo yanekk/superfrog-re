@@ -18,3 +18,5 @@ amiga-input = { path = "../amiga-input" }
 amiga-oracle = { path = "../amiga-oracle" }
 # Compresses the diff PNG.
 miniz_oxide = "0.9.1"
+# Decodes a bug recording's screenshot to hold it against the engine's picture.
+png = "0.18"

@@ -105,7 +105,7 @@ fn bug_replay(zip: &Path, rest: &[String]) -> Result<bool, String> {
         *slot = Some(it.next().ok_or(USAGE)?.as_str());
     }
     let bytes = std::fs::read(zip).map_err(|e| format!("{}: {e}", zip.display()))?;
-    let (rec, screenshot) = bug::read_zip(&bytes).map_err(|e| format!("{}: {e}", zip.display()))?;
+    let (rec, screenshot) = bug::open_zip(&bytes).map_err(|e| format!("{}: {e}", zip.display()))?;
     let pick = bug::FramePick::parse(range, every, rec.inputs.len() as u32)?;
     let dir = match out {
         Some(d) => PathBuf::from(d),
@@ -145,7 +145,7 @@ fn bug_compare(zip: &Path, rest: &[String], mode: Mode) -> Result<bool, String> 
         _ => return Err(USAGE.to_string()),
     };
     let bytes = std::fs::read(zip).map_err(|e| format!("{}: {e}", zip.display()))?;
-    let (rec, _) = bug::read_zip(&bytes).map_err(|e| format!("{}: {e}", zip.display()))?;
+    let (rec, _) = bug::open_zip(&bytes).map_err(|e| format!("{}: {e}", zip.display()))?;
     if let Err(why) = bug::comparable(&rec) {
         eprintln!("{why}");
         return Ok(false);
@@ -178,7 +178,7 @@ fn bug_compare(zip: &Path, rest: &[String], mode: Mode) -> Result<bool, String> 
 fn bug_case(zip: &Path, name: &str) -> Result<bool, String> {
     use sf_conform::{bug, scripts_dir};
     let bytes = std::fs::read(zip).map_err(|e| format!("{}: {e}", zip.display()))?;
-    let (rec, _) = bug::read_zip(&bytes).map_err(|e| format!("{}: {e}", zip.display()))?;
+    let (rec, _) = bug::open_zip(&bytes).map_err(|e| format!("{}: {e}", zip.display()))?;
     if let Err(why) = bug::comparable(&rec) {
         eprintln!("{why}");
         return Ok(false);

@@ -106,6 +106,7 @@ dependencies = [
  "amiga-oracle",
  "amiga-paula",
  "miniz_oxide 0.9.1",
+ "png",
 ]
 
 [[package]]
@@ -150,6 +151,15 @@ version = "0.1.0"
 dependencies = [
  "amiga-clock",
  "serde",
+]
+
+[[package]]
+name = "amiga-record"
+version = "0.1.0"
+dependencies = [
+ "amiga-chips",
+ "amiga-disk",
+ "amiga-input",
 ]
 
 [[package]]
@@ -2915,6 +2925,7 @@ version = "0.1.0"
 dependencies = [
  "amiga-app",
  "amiga-paula",
+ "amiga-record",
  "libc",
  "muda",
  "objc2 0.6.5",
@@ -2958,6 +2969,7 @@ dependencies = [
  "amiga-clock",
  "amiga-conform",
  "amiga-paula",
+ "amiga-record",
  "miniz_oxide 0.9.1",
  "png",
  "sf-assets",
@@ -2975,6 +2987,7 @@ dependencies = [
  "amiga-clock",
  "amiga-input",
  "amiga-paula",
+ "amiga-record",
  "bincode",
  "serde",
  "sf-assets",

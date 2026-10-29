@@ -9,7 +9,7 @@ use std::sync::OnceLock;
 
 use sf_conform::{InputScript, bug, display_data, scripts_dir};
 use sf_core::input::{FrameInput, Joy};
-use sf_core::recording::{LevelSetup, Recording, ZIP_RECORDING, ZIP_SCREENSHOT};
+use sf_core::recording::{Header, LevelSetup, Recording, RecordingRng, seed_bytes, ZIP_RECORDING, ZIP_SCREENSHOT};
 use sf_core::{Game, Rng};
 
 /// Past the frog's drop-in and the first two jumps: long enough that a change at frame 0 shows.
@@ -24,13 +24,15 @@ fn recording(first: FrameInput) -> Recording {
     }
     Recording {
         build: "test".into(),
-        setup: LevelSetup::default(),
-        seed: Rng::default(),
-        stopped_at: None,
+        seed: seed_bytes(Rng::default()),
         note: "built by recorder_replay.rs".into(),
-        inputs,
-        widescreen: false,
-        toggles: Vec::new(),
+        inputs: inputs,
+        header: Header {
+            setup: LevelSetup::default(),
+            stopped_at: None,
+            widescreen: false,
+            toggles: Vec::new(),
+        },
     }
 }
 
@@ -44,7 +46,7 @@ fn faithful_zip() -> &'static [u8] {
             joy: Joy::RIGHT,
             ..FrameInput::NONE
         });
-        let mut game = Game::start_level(display_data(), &rec.setup, rec.seed);
+        let mut game = Game::start_level(display_data(), &rec.setup, rec.rng());
         let mut last = None;
         for &input in &rec.inputs {
             last = Some(game.step(input).picture);
@@ -103,7 +105,7 @@ fn pngs(dir: &Path) -> Vec<String> {
 fn the_replay_ends_on_the_screenshot_and_the_place() {
     let dir = scratch("equal");
     let zip = write(&dir, "bug-W1-1-test.zip", faithful_zip());
-    let (rec, _) = bug::read_zip(faithful_zip()).unwrap();
+    let (rec, _) = bug::open_zip(faithful_zip()).unwrap();
     let at = rec.stopped_at.expect("written");
     assert!(at.to_string().starts_with("W1-1:"), "{at}");
     let o = sf_conform(
@@ -126,7 +128,7 @@ fn the_replay_ends_on_the_screenshot_and_the_place() {
 #[test]
 fn a_changed_input_differs() {
     let dir = scratch("differs");
-    let (faithful, png) = bug::read_zip(faithful_zip()).unwrap();
+    let (faithful, png) = bug::open_zip(faithful_zip()).unwrap();
     // `0: R` became `0: L`: the frog runs the other way, and the end is not the screenshot.
     let mut rec = recording(FrameInput {
         joy: Joy::LEFT,
@@ -158,7 +160,7 @@ fn a_changed_input_differs() {
 #[test]
 fn what_is_not_a_bug_zip_is_refused_with_the_reason() {
     let dir = scratch("refused");
-    let bad_header = bug::read_zip(faithful_zip())
+    let bad_header = bug::open_zip(faithful_zip())
         .unwrap()
         .0
         .to_text()
@@ -183,7 +185,7 @@ fn what_is_not_a_bug_zip_is_refused_with_the_reason() {
             sf_disk::zip::write_stored(&[
                 (
                     ZIP_RECORDING,
-                    bug::read_zip(faithful_zip())
+                    bug::open_zip(faithful_zip())
                         .unwrap()
                         .0
                         .to_text()
