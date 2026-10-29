@@ -11,8 +11,7 @@ the task you pick up, and append yours there.
 
 **Status:** planned, nothing built.
 **Last updated:** 2026-10-28
-**Next `pir-work` will:** T01, the only task with no dependency; it records the baseline everything
-else is compared with.
+**Next `pir-work` will:** T11, dry fit and finish; every task it depends on is ✅.
 
 ## Tasks
 
@@ -29,11 +28,11 @@ done · ⛔ blocked, needs a human.
 | T06 | amiga-conform | T05 | ✅ | |
 | T07 | amiga-app-parts | T02 | ✅ | |
 | T08 | amiga-e2e | T07 | ✅ | |
-| T09 | amiga-record | T03, T06, T07 | 🔍 | amiga-record: `GameRecording` header trait, `Recording<G>` (derefs to header), Recorder, Replay, `replay` loop, one `read_zip`/`zip_bytes`; 5 toolkit tests, saved-zip byte check. Deviations: screenshot check in amiga-conform (png not pure, as allowed); `zip_bytes` returns Result (validates); sf-conform `bug::open_zip` adds the PNG check; sf-app `start`/`toggle`/`replay_widescreen` are free functions; seed is bytes, `rec.rng()`. |
+| T09 | amiga-record | T03, T06, T07 | ✅ | Review: one fix, conform README named the removed `bug::read_zip`. Probed `bug replay` on all five saved bug zips: same stop, screenshot equal. Mutating the parser's held-input fill turned toolkit and sf-core tests red. All five deviations held. sf-e2e `recorder_drill`/`recorder_save_window` (OS layer) not run. |
 | T10 | display-piece | T01 | ✅ | |
 | T11 | dry-fit-and-finish | T04, T05, T08, T09, T10 | ⬜ | |
 
-**Review queue:** T09
+**Review queue:** *(empty)*
 
 ## Blocked on the user
 
