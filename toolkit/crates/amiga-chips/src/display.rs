@@ -382,6 +382,22 @@ mod tests {
     }
 
     #[test]
+    fn even_planes_take_bpl2mod() {
+        let mut m = chip(0x1000);
+        // Plane 1 (odd) with BPL1MOD 8 starts line 1 48 bytes on; plane 2 (even) with BPL2MOD -4,
+        // 36 bytes on.
+        m.chip[0x100 + 48] = 0x80;
+        m.chip[0x400 + 36] = 0x40;
+        let mut writes = pt(0, 0x100).to_vec();
+        writes.extend(pt(1, 0x400));
+        writes.push(mov(0, 8, reg::BPL1MOD, 8));
+        writes.push(mov(0, 10, reg::BPL2MOD, -4i16 as u16));
+        writes.sort_by_key(|w| (w.line, w.h));
+        let p = draw(&m, &writes, screen(2));
+        assert_eq!(&row(&p, 1)[..3], &[1, 2, 0]);
+    }
+
+    #[test]
     fn bplcon1_delays_the_odd_planes() {
         let mut m = chip(0x1000);
         m.chip[0x100] = 0x80;
