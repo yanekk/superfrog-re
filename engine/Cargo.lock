@@ -2888,6 +2888,7 @@ dependencies = [
 name = "sf-assets"
 version = "0.1.0"
 dependencies = [
+ "amiga-disk",
  "blake3",
  "serde",
  "sf-conform",

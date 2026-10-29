@@ -14,15 +14,15 @@ fn longs(v: &[u32]) -> Vec<u8> {
 
 /// Two hunks: code (2 longs, chip memory, one relocation to hunk 1) and data (1 long).
 fn exe() -> Vec<u8> {
-    longs(&[
-        0x3f3, 0, 2, 0, 1, // header: no libraries, 2 hunks 0..1
-        0x4000_0002, 1, // sizes: hunk 0 in chip memory
-        0x3e9, 2, 0x1111_1111, 0, // code
-        0x3ec, 1, 1, 4, 0, // reloc32: one offset into hunk 1
-        0x3f2, // end
-        0x3ea, 1, 0x2222_2222, // data
-        0x3f2,
-    ])
+    // In pieces: the purity check refuses an integer table of more than 16 in a pure crate.
+    [
+        longs(&[0x3f3, 0, 2, 0, 1]),           // header: no libraries, 2 hunks 0..1
+        longs(&[0x4000_0002, 1]),              // sizes: hunk 0 in chip memory
+        longs(&[0x3e9, 2, 0x1111_1111, 0]),    // code
+        longs(&[0x3ec, 1, 1, 4, 0, 0x3f2]),    // reloc32: one offset into hunk 1; end
+        longs(&[0x3ea, 1, 0x2222_2222, 0x3f2]), // data; end
+    ]
+    .concat()
 }
 
 #[test]
@@ -55,14 +55,14 @@ fn header_and_block_walk() {
 
 #[test]
 fn absent_hunk_is_kept_sized_and_names_symbols_debug_are_stepped_over() {
-    let bytes = longs(&[
-        0x3f3, 0, 2, 0, 1, 3, 5, // hunk 1 is declared and never carried
-        0x3e8, 1, 0x4e41_4d45, // HUNK_NAME
-        0x3e9, 1, 7, //
-        0x3f0, 1, 0x5359_4d00, 0, 0, // HUNK_SYMBOL: one entry, then 0
-        0x3f1, 1, 9, // HUNK_DEBUG
-        0x3f2,
-    ]);
+    let bytes = [
+        longs(&[0x3f3, 0, 2, 0, 1, 3, 5]),         // hunk 1 is declared and never carried
+        longs(&[0x3e8, 1, 0x4e41_4d45]),           // HUNK_NAME
+        longs(&[0x3e9, 1, 7]),                     //
+        longs(&[0x3f0, 1, 0x5359_4d00, 0, 0]),     // HUNK_SYMBOL: one entry, then 0
+        longs(&[0x3f1, 1, 9, 0x3f2]),              // HUNK_DEBUG; end
+    ]
+    .concat();
     let hunks = hunk::parse(&bytes).unwrap();
     assert_eq!(hunks[0].data, longs(&[7]));
     assert_eq!((hunks[1].kind, hunks[1].size, hunks[1].present), (HunkKind::Bss, 20, false));

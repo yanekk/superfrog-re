@@ -4,7 +4,7 @@
 
 use crate::error::{AssetError, Reader};
 use crate::gamedata::World;
-use crate::picture::Bitmap;
+use crate::picture::{Bitmap, read_bitmap};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum SpriteId {
@@ -31,7 +31,7 @@ impl SpriteBank {
         r.size(Bitmap::planar_len(320, h, d))?;
         Ok(SpriteBank {
             id,
-            sheet: Bitmap::read(r, 0, 320, h, d)?,
+            sheet: read_bitmap(r, 0, 320, h, d)?,
         })
     }
 }
