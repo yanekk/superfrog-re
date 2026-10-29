@@ -47,6 +47,8 @@ MOVED = {
     'engine/crates/sf-app/src/crt_geom.wgsl': 'toolkit/crates/amiga-app/src/crt_geom.wgsl',
     'engine/crates/sf-app/src/crt_easymode.wgsl': 'toolkit/crates/amiga-app/src/crt_easymode.wgsl',
     'engine/crates/sf-app/src/port.wgsl': 'toolkit/crates/amiga-app/src/port.wgsl',
+    'engine/crates/sf-e2e/src/app.rs': 'toolkit/crates/amiga-e2e/src/app.rs',
+    'engine/crates/sf-e2e/src/os.rs': 'toolkit/crates/amiga-e2e/src/os.rs',
 }
 
 

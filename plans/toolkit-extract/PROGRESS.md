@@ -28,12 +28,12 @@ done · ⛔ blocked, needs a human.
 | T05 | amiga-oracle | T02, T03, T04 | ⬜ | |
 | T06 | amiga-conform | T05 | ⬜ | |
 | T07 | amiga-app-parts | T02 | ✅ | |
-| T08 | amiga-e2e | T07 | ⬜ | |
+| T08 | amiga-e2e | T07 | 🔍 | amiga-e2e holds app.rs, os.rs, Image; sf-e2e keeps `superfrog()` spec and an `App` newtype (Deref), so tests are unchanged. 5 new unit tests. Deviations: `Flags` struct, not `Vec<String>`; no free `run()`, `App` methods kept; `scratch` prefix field; `run_waiting_for_lock` helper; sf-core, amiga-paula, sf-disk, png, libc moved to dev-deps (tests use them). recorder_bar fails on base too. |
 | T09 | amiga-record | T03, T06, T07 | ⬜ | |
 | T10 | display-piece | T01 | ✅ | |
 | T11 | dry-fit-and-finish | T04, T05, T08, T09, T10 | ⬜ | |
 
-**Review queue:** *(empty)*
+**Review queue:** T08
 
 ## Blocked on the user
 
