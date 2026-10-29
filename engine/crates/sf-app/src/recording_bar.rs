@@ -25,7 +25,7 @@ use crate::window::{self, BAR_HEIGHT};
 /// The recording's length after `frames` PAL frames (313 lines of 227 Paula clocks each):
 /// `mm:ss`, and `h:mm:ss` from an hour.
 pub fn elapsed(frames: usize) -> String {
-    use sf_paula::{CLOCKS_PER_LINE, LINES_PER_FRAME, PAULA_CLOCK_PAL};
+    use amiga_paula::{CLOCKS_PER_LINE, LINES_PER_FRAME, PAULA_CLOCK_PAL};
     let clocks = frames as u64 * (LINES_PER_FRAME * CLOCKS_PER_LINE) as u64;
     let s = clocks / PAULA_CLOCK_PAL as u64;
     match s / 3600 {

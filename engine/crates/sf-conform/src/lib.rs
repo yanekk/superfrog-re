@@ -154,7 +154,7 @@ pub fn run_with(
 /// compared: the hook a test uses to check what the comparison leaves out (a write's beam).
 pub fn run_observing(
     case: &Case,
-    mut after_step: impl FnMut(u32, &[sf_paula::PaulaWrite], &[sf_paula::PaulaWrite]),
+    mut after_step: impl FnMut(u32, &[amiga_paula::PaulaWrite], &[amiga_paula::PaulaWrite]),
 ) -> Result<Outcome, Divergence> {
     run_inner(case, |_, _| {}, &mut after_step, None, false, None, None)
 }
@@ -163,7 +163,7 @@ pub fn run_observing(
 pub fn run_hooked(
     case: &Case,
     before_step: impl FnMut(u32, &mut Game),
-    mut after_step: impl FnMut(u32, &[sf_paula::PaulaWrite], &[sf_paula::PaulaWrite]),
+    mut after_step: impl FnMut(u32, &[amiga_paula::PaulaWrite], &[amiga_paula::PaulaWrite]),
 ) -> Result<Outcome, Divergence> {
     run_inner(case, before_step, &mut after_step, None, false, None, None)
 }
@@ -172,7 +172,7 @@ pub fn run_hooked(
 /// a pass (lag), which the comparison leaves out but whose Paula writes count (T197).
 pub fn run_observing_lag(
     case: &Case,
-    mut after_step: impl FnMut(u32, &[sf_paula::PaulaWrite], &[sf_paula::PaulaWrite]),
+    mut after_step: impl FnMut(u32, &[amiga_paula::PaulaWrite], &[amiga_paula::PaulaWrite]),
 ) -> Result<Outcome, Divergence> {
     run_inner(case, |_, _| {}, &mut after_step, None, true, None, None)
 }
@@ -194,7 +194,7 @@ pub fn scan_counting(case: &Case) -> (Vec<Divergence>, Outcome) {
 fn run_inner(
     case: &Case,
     mut before_step: impl FnMut(u32, &mut Game),
-    after_step: &mut dyn FnMut(u32, &[sf_paula::PaulaWrite], &[sf_paula::PaulaWrite]),
+    after_step: &mut dyn FnMut(u32, &[amiga_paula::PaulaWrite], &[amiga_paula::PaulaWrite]),
     found: Option<&mut Vec<Divergence>>,
     observe_lag: bool,
     mut record: Option<&mut feed::Recorded>,

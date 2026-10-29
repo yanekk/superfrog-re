@@ -9,7 +9,7 @@
 //! too.
 //!
 //! The audio channels' DMA slots come from the original's Paula writes, every frame from the sync
-//! point on, through `sf_paula::AudioDma` (T96): from scene 1's effect (oracle frame 3 034, line 48)
+//! point on, through `amiga_paula::AudioDma` (T96): from scene 1's effect (oracle frame 3 034, line 48)
 //! channel 0's slot `$0D` holds the blits up.
 
 use std::collections::VecDeque;
@@ -19,7 +19,7 @@ use sf_conform::{Case, sync};
 use sf_core::front::story::sim::{self, Fixed, Sim};
 use sf_core::front::story::{StoryMem, bobs, cpu::LINE_SLOTS, intro, mem::RAM_BYTES, vbl};
 use sf_core::render::copper::{self, Fetch};
-use sf_paula::AudioDma;
+use amiga_paula::AudioDma;
 
 /// The oracle's frames from here on are followed: COP1LC is picked up from the CPU's writes (it
 /// sets it in 3 005).

@@ -44,7 +44,7 @@ impl AmigaMemory {
 }
 
 /// What the mixer's DMA reads: chip RAM only, as Agnus sees it (an address past the RAM reads 0).
-impl sf_paula::ChipMemory for AmigaMemory {
+impl amiga_paula::ChipMemory for AmigaMemory {
     fn chip_word(&self, addr: u32) -> u16 {
         let a = addr as usize;
         match self.chip.get(a..a + 2) {
@@ -60,7 +60,7 @@ mod tests {
 
     #[test]
     fn amiga_memory_reads_0_or_none_off_the_map() {
-        use sf_paula::ChipMemory;
+        use amiga_paula::ChipMemory;
         let m = AmigaMemory {
             chip: vec![1, 2, 3, 4],
             slow: vec![5, 6],

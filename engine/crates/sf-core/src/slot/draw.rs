@@ -242,7 +242,7 @@ impl Draw {
 
 /// The frame's Paula writes so far, in the order they are compared: the copper's, then the CPU's
 /// by line (as [`crate::front::Front::step`] orders them at the frame's end).
-fn frame_writes(cx: &Cx) -> Vec<sf_paula::PaulaWrite> {
+fn frame_writes(cx: &Cx) -> Vec<amiga_paula::PaulaWrite> {
     let mut all = cx.early.clone();
     all.extend(cx.paula.iter().copied());
     all.sort_by_key(|w| w.vpos);

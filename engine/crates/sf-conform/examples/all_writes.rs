@@ -2,7 +2,7 @@
 //! (the runner's engine, anchored to the original's positions), and the engine run alone's (A). `all_writes <case.toml> <from> <to>`
 use sf_conform::{Alone, Case};
 
-fn show(ws: &[sf_paula::PaulaWrite]) -> String {
+fn show(ws: &[amiga_paula::PaulaWrite]) -> String {
     ws.iter().map(|w| format!("{}:{} {:02x}={:04x}", w.vpos, w.hpos, w.reg, w.value)).collect::<Vec<_>>().join("  ")
 }
 

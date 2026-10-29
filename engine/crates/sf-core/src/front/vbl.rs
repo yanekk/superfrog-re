@@ -359,8 +359,8 @@ mod tests {
 
     /// A row's writes for channel 0, as the handler makes them: `row_note`'s DMACON off and the
     /// shadow copy's new sample (`music_tick`), then the DMA stage's DMACON on.
-    fn retrigger() -> (Vec<sf_paula::PaulaWrite>, super::SoundMarks) {
-        let w = |reg, value| sf_paula::PaulaWrite { reg, value, hpos: 0, vpos: 0 };
+    fn retrigger() -> (Vec<amiga_paula::PaulaWrite>, super::SoundMarks) {
+        let w = |reg, value| amiga_paula::PaulaWrite { reg, value, hpos: 0, vpos: 0 };
         let writes = vec![
             w(0x96, 0x0001),
             w(0xa0, 0),
@@ -395,23 +395,23 @@ mod tests {
     #[test]
     fn a_note_retriggered_mid_sample_restarts() {
         struct Chip;
-        impl sf_paula::ChipMemory for Chip {
+        impl amiga_paula::ChipMemory for Chip {
             fn chip_word(&self, addr: u32) -> u16 {
                 // The old sample (16s) below $1000, the new one (-32s) from there.
                 if addr < 0x1000 { 0x1010 } else { 0xe0e0 }
             }
         }
-        let w = |reg, value| sf_paula::PaulaWrite { reg, value, hpos: 0, vpos: 0 };
+        let w = |reg, value| amiga_paula::PaulaWrite { reg, value, hpos: 0, vpos: 0 };
         // 2 048 bytes at period 400: about 11 frames of the old sample.
         let first = [w(0xa0, 0), w(0xa2, 0), w(0xa4, 0x400), w(0xa6, 400), w(0xa8, 64), w(0x96, 0x8001)];
         let (writes, m) = retrigger();
         let placed: Vec<_> = writes
             .iter()
             .zip(super::place(0, writes.len(), m, 1))
-            .map(|(w, (vpos, hpos))| sf_paula::PaulaWrite { vpos, hpos, ..*w })
+            .map(|(w, (vpos, hpos))| amiga_paula::PaulaWrite { vpos, hpos, ..*w })
             .collect();
-        let third_frame = |retrigger: &[sf_paula::PaulaWrite]| {
-            let mut p = sf_paula::Paula::booted(48_000);
+        let third_frame = |retrigger: &[amiga_paula::PaulaWrite]| {
+            let mut p = amiga_paula::Paula::booted(48_000, crate::BOOT_DMACON);
             let mut out = Vec::new();
             for f in [&first[..], retrigger, &[]] {
                 p.frame(f, &Chip, &mut out);

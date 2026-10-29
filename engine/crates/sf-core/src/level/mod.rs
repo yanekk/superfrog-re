@@ -26,7 +26,7 @@ pub mod spawn;
 pub mod tally;
 pub mod timeline;
 
-use sf_paula::PaulaWrite;
+use amiga_paula::PaulaWrite;
 
 use crate::audio::SoundData;
 use crate::input::{FrameInput, Joy};

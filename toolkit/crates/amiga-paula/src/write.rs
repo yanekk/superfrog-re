@@ -1,5 +1,5 @@
-//! One write to a Paula-related custom register: the chip's own event, shared by the engine
-//! (`sf-core`), the mixer (`sf-paula`) and the oracle (`sf-oracle`).
+//! One write to a Paula-related custom register: the chip's own event, shared by a game's
+//! engine, the mixer (`amiga-paula`) and the oracle.
 //!
 //! Conformance compares the ordered `(reg, value)` list of a frame. `vpos`/`hpos` are the beam
 //! position the write was made at: the original's (the oracle's), or where the engine's model of

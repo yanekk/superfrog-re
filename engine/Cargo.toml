@@ -1,6 +1,8 @@
-# The Superfrog engine workspace. Pure crates (sf-disk, sf-assets, sf-core, sf-paula, amiga-chips, amiga-clock) hold the game;
-# shell crates hold the app and the test tooling. The boundary is DESIGN §3.1, enforced by
-# crates/sf-conform/tests/purity.rs.
+# The Superfrog engine workspace. Pure crates (sf-disk, sf-assets, sf-core) hold the game, on the
+# toolkit's pure crates (amiga-clock, amiga-chips, amiga-paula in ../toolkit, by path); shell crates
+# hold the app and the test tooling. The boundary is DESIGN §3.1, enforced by
+# crates/sf-conform/tests/purity.rs. The toolkit crates' profile overrides are kept here as well as in
+# toolkit/Cargo.toml, because a build reads them from the root manifest of the workspace it builds.
 [workspace]
 resolver = "3"
 members = ["crates/*"]
@@ -16,7 +18,7 @@ publish = false
 opt-level = 2
 
 # The mixer runs four channels at 3.5 MHz; the oracle comparison runs it for thousands of frames.
-[profile.dev.package.sf-paula]
+[profile.dev.package.amiga-paula]
 opt-level = 2
 
 # The copper run and the clock's loops run in every render and level test (one-clock T01).

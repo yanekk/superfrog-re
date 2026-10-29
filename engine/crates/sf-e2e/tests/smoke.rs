@@ -13,7 +13,7 @@ use std::time::{Duration, Instant};
 use sf_core::input::{FrameInput, Joy};
 use sf_core::{Game, Rng, Start, VarId, View};
 use sf_e2e::{App, Captured, Image, Key, LaunchOpts, binary, os_permissions, read_wav};
-use sf_paula::Paula;
+use amiga_paula::Paula;
 
 /// The script of the shared run: one tap on the joystick's left at step 10.
 const SCRIPT: &str = "10: press ArrowLeft\n";
@@ -69,7 +69,7 @@ fn the_first_frame_is_power_on_and_frame_400_is_the_engine_s() {
     assert_eq!(c.frames[400], Image::of_picture(&pic.unwrap()));
 }
 
-/// The app's sound is sf-paula's mix, from its boot (DMA's master switch on), of the engine's
+/// The app's sound is amiga-paula's mix, from its boot (DMA's master switch on), of the engine's
 /// Paula writes over the engine's chip RAM, and it is not silence: the app was silent until T29,
 /// its mixer reading zeroed chip RAM with DMA off.
 #[test]
@@ -77,7 +77,7 @@ fn the_captured_audio_is_the_mixer_s_output_for_the_same_writes() {
     let (_, data, (rate, samples)) = shared_run();
     let rate = *rate;
     let mut game = headless(data);
-    let mut paula = Paula::booted(rate);
+    let mut paula = Paula::booted(rate, sf_core::BOOT_DMACON);
     let mut want = Vec::new();
     for n in 1..=FRAMES {
         let out = game.step(script_input(n));
@@ -85,7 +85,7 @@ fn the_captured_audio_is_the_mixer_s_output_for_the_same_writes() {
     }
     assert!(want.len() > (FRAMES as usize) * (rate as usize) / 51, "{} samples", want.len());
     assert_eq!(samples.len(), want.len());
-    assert!(*samples == want, "the captured audio differs from sf-paula's");
+    assert!(*samples == want, "the captured audio differs from amiga-paula's");
     let loud = samples.iter().filter(|s| s[0].unsigned_abs().max(s[1].unsigned_abs()) > 1000).count();
     assert!(loud > samples.len() / 10, "the app is all but silent: {loud} of {} samples", samples.len());
 }

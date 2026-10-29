@@ -7,7 +7,7 @@
 //! of effects and samples in hunk 2.
 
 use sf_assets::sound::SoundData;
-use sf_paula::PaulaWrite;
+use amiga_paula::PaulaWrite;
 
 use super::mem::StoryMem;
 use super::{data, h0, h2, h3};

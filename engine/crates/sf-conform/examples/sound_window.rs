@@ -15,7 +15,7 @@ fn main() {
         let (eo, et) = (ours.frame(o), theirs.frame(t));
         if f >= from {
             let s = |e: Vec<sf_conform::SoundEvent>| e.iter().map(|e| e.to_string()).collect::<Vec<_>>().join("; ");
-            let w = |ws: &[sf_paula::PaulaWrite]| {
+            let w = |ws: &[amiga_paula::PaulaWrite]| {
                 ws.iter()
                     .filter(|w| w.reg == 0x96 || (0xa0..0xe0).contains(&w.reg))
                     .map(|w| format!("{:02x}={:04x}@{}", w.reg, w.value, w.vpos))

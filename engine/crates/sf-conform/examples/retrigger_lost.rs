@@ -5,13 +5,13 @@
 //! one instant missed its restart. `retrigger_lost <file.feed>`
 use sf_core::feed::Feed;
 use sf_core::{Game, Start};
-use sf_paula::{Paula, PaulaWrite};
+use amiga_paula::{Paula, PaulaWrite};
 
 fn main() {
     let path = std::env::args().nth(1).expect("a feed");
     let feed = Feed::parse(&std::fs::read_to_string(path).expect("feed")).expect("a feed");
     let mut g = Game::with_display(sf_conform::display_data(), Start::PowerOn { seed: feed.seed });
-    let (mut at_once, mut spread) = (Paula::booted(48_000), Paula::booted(48_000));
+    let (mut at_once, mut spread) = (Paula::booted(48_000, sf_core::BOOT_DMACON), Paula::booted(48_000, sf_core::BOOT_DMACON));
     let spaced = |w: &[PaulaWrite]| -> Vec<PaulaWrite> {
         w.iter().enumerate().map(|(i, w)| PaulaWrite { vpos: i as u16, hpos: 0, ..*w }).collect()
     };

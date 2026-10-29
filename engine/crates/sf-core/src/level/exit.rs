@@ -251,7 +251,7 @@ fn level_ctx(
     frog_only: bool,
     traced: bool,
     f: impl FnOnce(&mut LevelCtx),
-) -> (Vec<crate::level::beam::Tick>, Vec<sf_paula::PaulaWrite>) {
+) -> (Vec<crate::level::beam::Tick>, Vec<amiga_paula::PaulaWrite>) {
     let mut writes = Vec::new();
     let mut trace = Vec::new();
     {

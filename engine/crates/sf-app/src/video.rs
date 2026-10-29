@@ -468,7 +468,7 @@ impl Video {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use sf_core::View;
+    use sf_core::{PictureView, View};
 
     /// The present shader and every filter parse and validate, so a mistake in a port fails here,
     /// not at launch.

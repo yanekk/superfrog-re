@@ -6,7 +6,7 @@
 //! app must not depend on the test tooling (the shipped game may not contain an emulator).
 //!
 //! If this test fails, move the code to the shell side or read the data from the disks. Never relax
-//! the test. The one exemption, `sf-paula/src/resample.rs` from the float and array rules, is the
+//! the test. The one exemption, `amiga-paula/src/resample.rs` from the float and array rules, is the
 //! owner's decision of 2026-10-10 and covers that file only.
 
 use std::path::{Path, PathBuf};
@@ -16,10 +16,15 @@ const PURE: [&str; 6] = [
     "sf-disk",
     "sf-assets",
     "sf-core",
-    "sf-paula",
+    "amiga-paula",
     "amiga-chips",
     "amiga-clock",
 ];
+
+/// The pure crates that live in the toolkit workspace (`toolkit/crates`, toolkit-extract DESIGN
+/// §2.1), scanned at their paths there; the toolkit's own purity test checks them too, from its
+/// workspace alone.
+const TOOLKIT: [&str; 3] = ["amiga-paula", "amiga-chips", "amiga-clock"];
 
 /// Crates a pure crate may depend on (normal and build edges, transitively). Each entry beyond the
 /// pure crates themselves needs one line saying why it is pure (DESIGN §5, Dependencies).
@@ -27,7 +32,7 @@ const ALLOWED: &[&str] = &[
     "sf-disk",
     "sf-assets",
     "sf-core",
-    "sf-paula",
+    "amiga-paula",
     "amiga-chips",
     "amiga-clock",
     // DEFLATE decoder for the zipped disks (T03): bytes in, bytes out; no I/O, clock, thread or float.
@@ -52,7 +57,7 @@ const ALLOWED: &[&str] = &[
 const TEST_TOOLING: [&str; 3] = ["sf-oracle", "sf-conform", "sf-e2e"];
 
 /// Exempt from the float and array rules only (DESIGN §3.1).
-const RESAMPLER: &str = "sf-paula/src/resample.rs";
+const RESAMPLER: &str = "amiga-paula/src/resample.rs";
 
 const FORBIDDEN_STD: [&str; 6] = ["fs", "time", "net", "thread", "env", "process"];
 const FORBIDDEN_IDENTS: [&str; 4] = ["Instant", "SystemTime", "HashMap", "HashSet"];
@@ -230,7 +235,8 @@ fn string_at(s: &[char], i: usize) -> Option<(usize, usize, usize)> {
 // The rules
 // ---------------------------------------------------------------------------------------------
 
-/// Every violation in one source file, as `path:line: what`. `rel` is relative to `engine/crates`.
+/// Every violation in one source file, as `path:line: what`. `rel` is relative to the crates folder
+/// the file's crate is in (`engine/crates` or `toolkit/crates`).
 fn scan(rel: &str, src: &str) -> Vec<String> {
     let toks = lex(src);
     let exempt = rel == RESAMPLER;
@@ -371,6 +377,20 @@ fn crates_dir() -> PathBuf {
         .to_path_buf()
 }
 
+/// Where pure crate `krate` lives: `engine/crates/<krate>`, or `toolkit/crates/<krate>` for a
+/// toolkit crate.
+fn crate_root(krate: &str) -> PathBuf {
+    if TOOLKIT.contains(&krate) {
+        toolkit_crates_dir()
+    } else {
+        crates_dir()
+    }
+}
+
+fn toolkit_crates_dir() -> PathBuf {
+    crates_dir().join("../../toolkit/crates")
+}
+
 fn rust_files(dir: &Path, out: &mut Vec<PathBuf>) {
     for e in std::fs::read_dir(dir).unwrap_or_else(|e| panic!("{}: {e}", dir.display())) {
         let p = e.unwrap().path();
@@ -414,7 +434,9 @@ fn cargo_tree(krate: &str) -> String {
 fn the_real_pure_crates_pass() {
     let mut files = Vec::new();
     for k in PURE {
-        rust_files(&crates_dir().join(k), &mut files);
+        let mut own = Vec::new();
+        rust_files(&crate_root(k).join(k), &mut own);
+        files.extend(own.into_iter().map(|f| (crate_root(k), f)));
     }
     assert!(
         files.len() >= PURE.len(),
@@ -422,15 +444,28 @@ fn the_real_pure_crates_pass() {
         files.len()
     );
     let mut violations = Vec::new();
-    for f in &files {
+    for (root, f) in &files {
         let rel = f
-            .strip_prefix(crates_dir())
+            .strip_prefix(root)
             .unwrap()
             .to_string_lossy()
             .replace('\\', "/");
         violations.extend(scan(&rel, &std::fs::read_to_string(f).unwrap()));
     }
     assert!(violations.is_empty(), "{}", report(&violations));
+}
+
+#[test]
+fn the_toolkit_crates_are_scanned_where_they_live() {
+    for k in TOOLKIT {
+        assert!(PURE.contains(&k), "{k} is a toolkit crate but not on PURE");
+        assert!(
+            toolkit_crates_dir().join(k).join("Cargo.toml").is_file(),
+            "{k} is not in toolkit/crates"
+        );
+        assert!(!crates_dir().join(k).exists(), "{k} is still in engine/crates");
+    }
+    assert!(toolkit_crates_dir().join(RESAMPLER).is_file(), "{RESAMPLER} moved: update RESAMPLER");
 }
 
 #[test]
@@ -541,8 +576,8 @@ fn only_the_resampler_is_exempt_from_the_float_and_array_rules() {
     for src in [float, &table, long_bytes] {
         assert!(!flagged(RESAMPLER, src), "the resampler is exempt: {src}");
         for other in [
-            "sf-paula/src/lib.rs",
-            "sf-paula/src/resample/mod.rs",
+            "amiga-paula/src/lib.rs",
+            "amiga-paula/src/resample/mod.rs",
             "sf-core/src/resample.rs",
         ] {
             assert!(

@@ -209,7 +209,7 @@ fn the_slot_machine_plays_its_rounds_as_the_original_does() {
         .unwrap_or_else(|e| panic!("{e}"));
     let (mut scenes, mut last) = (Vec::new(), None);
     // The draws' DMACON $8400 and INTENA $0010/$8010, on the original's line or one off.
-    let lines = |ws: &[sf_paula::PaulaWrite]| {
+    let lines = |ws: &[amiga_paula::PaulaWrite]| {
         ws.iter()
             .filter(|w| {
                 (w.reg == 0x96 && w.value == 0x8400) || (w.reg == 0x9a && w.value & 0x7fff == 0x10)
@@ -337,7 +337,7 @@ fn a_slot_machine_entered_from_a_level_returns_its_outcome() {
 fn the_slot_machine_attract_loop_draws_as_the_original_does() {
     let case = sf_conform::Case::load(&sf_conform::cases_dir().join("slot-attract.toml"))
         .unwrap_or_else(|e| panic!("{e}"));
-    let lines = |ws: &[sf_paula::PaulaWrite]| {
+    let lines = |ws: &[amiga_paula::PaulaWrite]| {
         ws.iter()
             .filter(|w| {
                 (w.reg == 0x96 && w.value == 0x8400) || (w.reg == 0x9a && w.value & 0x7fff == 0x10)

@@ -10,7 +10,7 @@ fn main() {
         frames: to.min(case.frames),
         ..case
     };
-    let show = |ws: &[sf_paula::PaulaWrite]| {
+    let show = |ws: &[amiga_paula::PaulaWrite]| {
         ws.iter()
             .filter(|w| matches!(w.reg, 0x96 | 0x9a | 0x9c))
             .map(|w| format!("{}:{} {:x}={:04x}", w.vpos, w.hpos, w.reg, w.value))

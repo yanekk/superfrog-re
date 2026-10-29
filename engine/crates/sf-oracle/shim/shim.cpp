@@ -232,7 +232,7 @@ struct sf_amiga {
         emu().set(Opt::HOST_TEX_FORMAT, (i64)TexFormat::ARGB);
         amiga().controlPort1.setDevice(ControlPortDevice::MOUSE);
         amiga().controlPort2.setDevice(ControlPortDevice::JOYSTICK);
-        // The core's mix, kept for sf-paula's comparison (shim.h, SF_AUDIO_RATE): the hardware's
+        // The core's mix, kept for amiga-paula's comparison (shim.h, SF_AUDIO_RATE): the hardware's
         // pairing with nothing added, at a fixed rate (the adaptive rate follows the wall clock).
         emu().set(Opt::HOST_SAMPLE_RATE, SF_AUDIO_RATE);
         emu().set(Opt::AUD_ASR, false);

@@ -70,14 +70,22 @@ name = "amiga-chips"
 version = "0.1.0"
 dependencies = [
  "amiga-clock",
+ "amiga-paula",
  "serde",
- "sf-paula",
 ]
 
 [[package]]
 name = "amiga-clock"
 version = "0.1.0"
 dependencies = [
+ "serde",
+]
+
+[[package]]
+name = "amiga-paula"
+version = "0.1.0"
+dependencies = [
+ "amiga-clock",
  "serde",
 ]
 
@@ -2842,6 +2850,7 @@ dependencies = [
 name = "sf-app"
 version = "0.1.0"
 dependencies = [
+ "amiga-paula",
  "cpal",
  "gilrs",
  "libc",
@@ -2856,7 +2865,6 @@ dependencies = [
  "sf-assets",
  "sf-core",
  "sf-disk",
- "sf-paula",
  "toml 0.9.12+spec-1.1.0",
  "wgpu",
  "winit",
@@ -2888,13 +2896,13 @@ name = "sf-conform"
 version = "0.1.0"
 dependencies = [
  "amiga-clock",
+ "amiga-paula",
  "miniz_oxide 0.9.1",
  "png",
  "sf-assets",
  "sf-core",
  "sf-disk",
  "sf-oracle",
- "sf-paula",
  "toml 0.9.12+spec-1.1.0",
 ]
 
@@ -2904,12 +2912,12 @@ version = "0.1.0"
 dependencies = [
  "amiga-chips",
  "amiga-clock",
+ "amiga-paula",
  "bincode",
  "serde",
  "sf-assets",
  "sf-conform",
  "sf-disk",
- "sf-paula",
 ]
 
 [[package]]
@@ -2924,6 +2932,7 @@ dependencies = [
 name = "sf-e2e"
 version = "0.1.0"
 dependencies = [
+ "amiga-paula",
  "libc",
  "png",
  "sf-assets",
@@ -2931,27 +2940,18 @@ dependencies = [
  "sf-conform",
  "sf-core",
  "sf-disk",
- "sf-paula",
 ]
 
 [[package]]
 name = "sf-oracle"
 version = "0.1.0"
 dependencies = [
+ "amiga-paula",
  "cc",
  "miniz_oxide 0.9.1",
  "sf-conform",
  "sf-core",
  "sf-disk",
- "sf-paula",
-]
-
-[[package]]
-name = "sf-paula"
-version = "0.1.0"
-dependencies = [
- "amiga-clock",
- "serde",
 ]
 
 [[package]]

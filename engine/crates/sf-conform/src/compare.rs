@@ -5,7 +5,7 @@ use std::ops::Range;
 use sf_core::layout::{AmigaMemory, VarDef, VarId};
 use sf_core::{FrameOut, Picture};
 use sf_oracle::{FrameCapture, Rgb12Frame};
-use sf_paula::PaulaWrite;
+use amiga_paula::PaulaWrite;
 
 use crate::case::Case;
 use crate::report::{self, Divergence};

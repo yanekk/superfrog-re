@@ -307,7 +307,7 @@ fn complete_w4_3() {
     let name = "complete-w4-3";
     let case = sf_conform::Case::load(&sf_conform::cases_dir().join(format!("{name}.toml")))
         .unwrap_or_else(|e| panic!("{e}"));
-    let dma = |w: &[sf_paula::PaulaWrite]| -> Vec<(u16, u16)> {
+    let dma = |w: &[amiga_paula::PaulaWrite]| -> Vec<(u16, u16)> {
         w.iter().filter(|w| matches!(w.reg, 0x96 | 0x9c)).map(|w| (w.reg, w.value)).collect()
     };
     let mut seen = Vec::new();
@@ -341,7 +341,7 @@ fn complete_w4_3() {
 fn coper_tail_outside_a_pass_kept() {
     let case = sf_conform::Case::load(&sf_conform::cases_dir().join("enemies-w3-3.toml"))
         .unwrap_or_else(|e| panic!("{e}"));
-    let tail = |w: &[sf_paula::PaulaWrite]| {
+    let tail = |w: &[amiga_paula::PaulaWrite]| {
         w.iter().filter(|w| matches!((w.reg, w.value), (0x96, 0x0400) | (0x9c, 0x0010))).count()
     };
     let (mut ours, mut theirs) = (0, 0);

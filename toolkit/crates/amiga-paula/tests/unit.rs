@@ -1,7 +1,7 @@
 //! The mixer on hand-made register writes and memory (T10). The reference comparison is
-//! `sf-conform/tests/paula_vs_oracle.rs`.
+//! the game's comparison against the oracle.
 
-use sf_paula::{CLOCKS_PER_FRAME, CLOCKS_PER_LINE, ChipMemory, Paula, PaulaWrite, RESAMPLER_DELAY};
+use amiga_paula::{CLOCKS_PER_FRAME, CLOCKS_PER_LINE, ChipMemory, Paula, PaulaWrite, RESAMPLER_DELAY};
 
 /// Chip RAM as a byte vector.
 struct Mem(Vec<u8>);

@@ -5,8 +5,10 @@
 
 use std::path::{Path, PathBuf};
 
-/// The crates whose code is the game a save state holds.
-const GAME: [&str; 4] = ["sf-core", "sf-assets", "sf-paula", "sf-disk"];
+/// The crates whose code is the game a save state holds: the engine's, and the toolkit's whose
+/// mixer, blitter, copper and clock its behaviour depends on (toolkit-extract DESIGN §3.3).
+const GAME: [&str; 3] = ["sf-core", "sf-assets", "sf-disk"];
+const TOOLKIT: [&str; 3] = ["amiga-paula", "amiga-chips", "amiga-clock"];
 
 fn files(dir: &Path, out: &mut Vec<PathBuf>) {
     let Ok(entries) = std::fs::read_dir(dir) else { return };
@@ -32,9 +34,13 @@ fn main() {
     let manifest = PathBuf::from(std::env::var("CARGO_MANIFEST_DIR").unwrap());
     let crates = manifest.parent().unwrap();
     let workspace = crates.parent().unwrap();
+    let repo = workspace.parent().unwrap();
+    let toolkit = repo.join("toolkit/crates");
     let mut inputs = vec![workspace.join("Cargo.lock")];
-    for c in GAME {
-        let dir = crates.join(c);
+    let dirs = GAME.iter().map(|c| crates.join(c)).chain(TOOLKIT.iter().map(|c| toolkit.join(c)));
+    for dir in dirs {
+        // A crate that moved without this list following would hash as nothing.
+        assert!(dir.join("src").is_dir(), "build tag: no sources at {}", dir.display());
         println!("cargo:rerun-if-changed={}", dir.join("src").display());
         println!("cargo:rerun-if-changed={}", dir.join("Cargo.toml").display());
         inputs.push(dir.join("Cargo.toml"));
@@ -44,7 +50,8 @@ fn main() {
     inputs.sort();
     let mut h = 0xcbf2_9ce4_8422_2325u64;
     for p in &inputs {
-        fnv(&mut h, p.strip_prefix(workspace).unwrap_or(p).to_string_lossy().as_bytes());
+        // Relative to the repository, so the tag is the same on every checkout.
+        fnv(&mut h, p.strip_prefix(repo).unwrap_or(p).to_string_lossy().as_bytes());
         fnv(&mut h, &[0]);
         fnv(&mut h, &std::fs::read(p).unwrap_or_default());
         fnv(&mut h, &[0]);

@@ -48,7 +48,7 @@ fn the_cost_model_alone_puts_paula_writes_on_the_originals_lines() {
         if same && !mid && !after_mid && !two && !theirs.paula.is_empty() {
             measured += 1;
             errors.extend(theirs.paula.iter().zip(&ours.paula).map(|(t, o)| {
-                let at = |w: &sf_paula::PaulaWrite| w.vpos as f64 * SLOTS + w.hpos as f64;
+                let at = |w: &amiga_paula::PaulaWrite| w.vpos as f64 * SLOTS + w.hpos as f64;
                 (at(o) - at(t)) / SLOTS
             }));
         }
@@ -81,8 +81,8 @@ fn the_cost_model_alone_puts_paula_writes_on_the_originals_lines() {
 /// Each `sfx_play` in a frame's writes: the clocks from its DMACON off to its DMACON on, and the
 /// lines from its INTENA `$4000` to its `$c000` (the raster wait). An effect stealing its channel
 /// makes neither DMACON write and is left out.
-fn sfx_plays(ws: &[sf_paula::PaulaWrite]) -> Vec<(i64, u16)> {
-    let at = |w: &sf_paula::PaulaWrite| w.vpos as i64 * SLOTS as i64 + w.hpos as i64;
+fn sfx_plays(ws: &[amiga_paula::PaulaWrite]) -> Vec<(i64, u16)> {
+    let at = |w: &amiga_paula::PaulaWrite| w.vpos as i64 * SLOTS as i64 + w.hpos as i64;
     let mut out = Vec::new();
     for (i, w) in ws.iter().enumerate() {
         // DMACON off of one channel, then its period's 1, then INTENA `$4000` and `$c000`.

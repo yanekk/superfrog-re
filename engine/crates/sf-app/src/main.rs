@@ -48,7 +48,7 @@ use std::time::{Duration, Instant, SystemTime};
 use sf_assets::LevelData;
 use sf_core::feed::{Feed, FeedFrame};
 use sf_core::{DisplayData, Game, LevelId, Picture, Progress, Rng, Start};
-use sf_paula::Paula;
+use amiga_paula::Paula;
 use winit::application::ApplicationHandler;
 use winit::event::{ElementState, MouseButton, WindowEvent};
 use winit::event_loop::{ActiveEventLoop, ControlFlow, EventLoop};
@@ -455,7 +455,7 @@ impl App {
             game,
             feed: feed.map(|f| f.frames),
             picture: Picture::default(),
-            paula: Paula::booted(rate),
+            paula: Paula::booted(rate, sf_core::BOOT_DMACON),
             rate,
             paused: false,
             pacer: Pacer::new(rate),

@@ -4,7 +4,8 @@
 //! [`SceneKind`] is the screen a frame shows, told by its copper list: one classifier for
 //! sf-conform's milestones and the app's bug recorder (`Game::location`; bug-recorder T02).
 
-use sf_paula::PaulaWrite;
+use crate::render::PictureView;
+use amiga_paula::PaulaWrite;
 
 use crate::game::Pacing;
 use crate::layout::{Ram, h0, h2};

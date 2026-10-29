@@ -1,5 +1,5 @@
 [package]
-name = "sf-paula"
+name = "amiga-chips"
 version.workspace = true
 edition.workspace = true
 publish.workspace = true
@@ -7,5 +7,7 @@ publish.workspace = true
 [dependencies]
 # The frame and line lengths and the beam position (a toolkit crate).
 amiga-clock = { path = "../amiga-clock" }
-# Save states (T26): the types a game holds derive serde, so sf-core can write the game out.
+# ChipMemory, what the mixer's DMA reads; AmigaMemory implements it (a toolkit crate).
+amiga-paula = { path = "../amiga-paula" }
+# Save states: AmigaMemory and the copper's Fetch are part of a game's saved state.
 serde = { version = "1", features = ["derive"] }

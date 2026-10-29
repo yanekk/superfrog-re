@@ -28,7 +28,7 @@ use muda::{
 };
 use sf_core::{Game, LevelId, Progress, Rng, Start};
 use sf_core::recording::Location;
-use sf_paula::Paula;
+use amiga_paula::Paula;
 use winit::event_loop::ActiveEventLoop;
 
 use crate::App;
@@ -612,7 +612,7 @@ impl App {
         let seed = Rng::seeded(run.seed.0, run.seed.1);
         run.game = Game::start_level(run.display.clone(), &setup, seed);
         crate::window::show(&mut run.game, run.settings.widescreen);
-        run.paula = Paula::booted(run.rate);
+        run.paula = Paula::booted(run.rate, sf_core::BOOT_DMACON);
         run.paused = false;
         run.from_dialog = true;
         run.recorder = match record {
@@ -650,7 +650,7 @@ impl App {
         let seed = Rng::seeded(run.seed.0, run.seed.1);
         run.game = Game::with_display(run.display.clone(), Start::PowerOn { seed });
         crate::window::show(&mut run.game, run.settings.widescreen);
-        run.paula = Paula::booted(run.rate);
+        run.paula = Paula::booted(run.rate, sf_core::BOOT_DMACON);
         run.paused = false;
     }
 
@@ -680,7 +680,7 @@ impl App {
                 // The loaded game is the one saved, dialog-started or not (bug-recorder DESIGN §2.1).
                 run.from_dialog = crate::states::from_dialog(&self.home, n);
                 crate::window::show(&mut run.game, run.settings.widescreen);
-                run.paula = Paula::booted(run.rate);
+                run.paula = Paula::booted(run.rate, sf_core::BOOT_DMACON);
                 let pic = run.game.render(run.game.view());
                 let size = (pic.width as u32, pic.height as u32);
                 run.shown.completed((run.steps, size, crate::video::picture_rgba(&pic)));
@@ -711,7 +711,7 @@ impl App {
         let seed = Rng::seeded(run.seed.0, run.seed.1);
         run.game = Game::start_at_with(run.display.clone(), &p, seed);
         crate::window::show(&mut run.game, run.settings.widescreen);
-        run.paula = Paula::booted(run.rate);
+        run.paula = Paula::booted(run.rate, sf_core::BOOT_DMACON);
         run.paused = false;
     }
 
