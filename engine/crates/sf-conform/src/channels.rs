@@ -166,6 +166,4 @@ mod tests {
         assert!(parse("1 2 3 4\n").is_err());
         assert!(parse(&format!("{CHANNELS_HEADER}\n1 2 3\n")).is_err());
     }
-
-
 }
