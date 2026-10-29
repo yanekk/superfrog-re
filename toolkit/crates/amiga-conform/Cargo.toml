@@ -1,0 +1,20 @@
+[package]
+name = "amiga-conform"
+version.workspace = true
+edition.workspace = true
+publish.workspace = true
+
+# The game-free half of a conformance harness (a shell crate, test tooling): an engine's picture
+# and sound judged against the original's, within the owner's tolerances; the diff picture; the
+# input-script lexer. A game's cases, memory map, levels and milestones stay the game's.
+[dependencies]
+# Picture and its 12-bit colours, the engine's side of a picture comparison.
+amiga-chips = { path = "../amiga-chips" }
+# PaulaWrite, the writes compared, and the mixer whose channels are judged.
+amiga-paula = { path = "../amiga-paula" }
+# FrameInput and the shared input tokens a script is written in.
+amiga-input = { path = "../amiga-input" }
+# The original's side: Rgb12Frame, FrameCapture, AudioTap.
+amiga-oracle = { path = "../amiga-oracle" }
+# Compresses the diff PNG.
+miniz_oxide = "0.9.1"

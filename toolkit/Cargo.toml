@@ -2,8 +2,9 @@
 # (amiga-clock, amiga-chips, amiga-paula, amiga-input, amiga-disk) model the machine and its disk
 # formats and read no clock, file or network; the boundary is enforced by
 # crates/toolkit-checks/tests/purity.rs, and no game's name enters this tree
-# (crates/toolkit-checks/tests/names.rs). Shell crates (amiga-oracle, the reference emulator) are
-# test tooling. Games depend on these crates by path.
+# (crates/toolkit-checks/tests/names.rs). Shell crates (amiga-oracle, the reference emulator;
+# amiga-conform, the game-free half of a conformance harness) are test tooling. Games depend on
+# these crates by path.
 [workspace]
 resolver = "3"
 members = ["crates/*"]
@@ -31,4 +32,8 @@ opt-level = 2
 
 # The oracle's tests step the emulator thousands of frames and hash 1 MB of RAM per frame.
 [profile.dev.package.amiga-oracle]
+opt-level = 2
+
+# The picture judges compare every pixel of every frame of a case.
+[profile.dev.package.amiga-conform]
 opt-level = 2
