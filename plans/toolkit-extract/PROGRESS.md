@@ -24,7 +24,7 @@ done · ⛔ blocked, needs a human.
 | T01 | toolkit-workspace | — | ✅ | |
 | T02 | amiga-input | T01 | ✅ | |
 | T03 | amiga-disk | T01 | ✅ | |
-| T04 | asset-readers | T03 | 🔍 | amiga_disk::{hunk,iff,anim,planar,palette} and ReadError; sf-assets wraps them (types re-exported, messages kept); first_hunk walks hunk::Blocks. 12 toolkit tests. Deviations: ilbm returns Ilbm (bitmap, palette, chunks), not a bare Bitmap; parse skips HUNK_UNIT/NAME (was refused); nested-IFF truncation offsets are file offsets; Picture is raw planes, stays. |
+| T04 | asset-readers | T03 | ✅ | Review clean, no fix commit. Probe: cache_encode hash and game_hunk0 byte-identical to base on the real disks; error text identical on every exe and END2 prefix but one (a cut-off HUNK_BSS size long is now refused). Mutations of ByteRun1 and the op-5 buffer choice go red. Conformance runs not repeated: GameData identical. |
 | T05 | amiga-oracle | T02, T03, T04 | ⬜ | |
 | T06 | amiga-conform | T05 | ⬜ | |
 | T07 | amiga-app-parts | T02 | ⬜ | |
@@ -33,7 +33,7 @@ done · ⛔ blocked, needs a human.
 | T10 | display-piece | T01 | ⬜ | |
 | T11 | dry-fit-and-finish | T04, T05, T08, T09, T10 | ⬜ | |
 
-**Review queue:** T04
+**Review queue:** *(empty)*
 
 ## Blocked on the user
 
