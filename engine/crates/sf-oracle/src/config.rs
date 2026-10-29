@@ -7,9 +7,6 @@ use std::process::Command;
 use amiga_oracle::{OracleError, read_only};
 use sf_disk::{DiskSet, DiskSlot, Offered};
 
-/// The Kickstart that boots the crack to the title (FINDINGS 2026-10-11): 1.3 (34.5).
-const KICKSTART: &str = "kick1.3.rom";
-
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct OracleConfig {
     /// A 256 or 512 KB Kickstart image. Opened read-only, never copied (DESIGN §5).
@@ -27,21 +24,30 @@ pub struct OracleConfig {
 }
 
 impl OracleConfig {
-    /// The owner's ROM and disks where DESIGN §5 says they are: `SUPERFROG_KICKSTART`, else
-    /// `~/amiga-roms/kick1.3.rom`; `SUPERFROG_DISKS`, else the main checkout's root.
+    /// The owner's ROM and disks where DESIGN §5 says they are: `SUPERFROG_KICKSTART`, else the
+    /// toolkit's [`amiga_oracle::kickstart_path`] (`AMIGA_KICKSTART`, else
+    /// `~/amiga-roms/kick1.3.rom`, the 1.3 (34.5) that boots the crack to the title, FINDINGS
+    /// 2026-10-11); `SUPERFROG_DISKS`, else the main checkout's root.
     pub fn locate(max_frames: u32) -> Result<OracleConfig, OracleError> {
         let kickstart = match std::env::var_os("SUPERFROG_KICKSTART").filter(|v| !v.is_empty()) {
-            Some(p) => PathBuf::from(p),
-            None => PathBuf::from(std::env::var_os("HOME").unwrap_or_default())
-                .join("amiga-roms")
-                .join(KICKSTART),
+            Some(p) => {
+                let p = PathBuf::from(p);
+                if !p.is_file() {
+                    return Err(OracleError::Setup(format!(
+                        "Kickstart not found at {} (SUPERFROG_KICKSTART); set it to Kickstart 1.3 (34.5)",
+                        p.display()
+                    )));
+                }
+                p
+            }
+            // Then the toolkit's own lookup (DESIGN §2.5): `AMIGA_KICKSTART`, else the default.
+            None => amiga_oracle::kickstart_path().map_err(|e| match e {
+                OracleError::Setup(m) => {
+                    OracleError::Setup(format!("{m}, or SUPERFROG_KICKSTART to override both"))
+                }
+                e => e,
+            })?,
         };
-        if !kickstart.is_file() {
-            return Err(OracleError::Setup(format!(
-                "Kickstart not found at {}; set SUPERFROG_KICKSTART to Kickstart 1.3 (34.5)",
-                kickstart.display()
-            )));
-        }
         let dir = match std::env::var_os("SUPERFROG_DISKS").filter(|v| !v.is_empty()) {
             Some(d) => PathBuf::from(d),
             None => main_checkout()?,
