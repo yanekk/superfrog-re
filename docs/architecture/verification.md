@@ -10,6 +10,7 @@ owns = [
   "engine/crates/sf-oracle/",
   "engine/crates/sf-conform/",
   "engine/crates/sf-e2e/",
+  "toolkit/crates/amiga-e2e/",
   "engine/crates/sf-plan/",
   "engine/crates/sf-bench/",
   "engine/crates/sf-routeview/",

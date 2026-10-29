@@ -28,7 +28,7 @@ done · ⛔ blocked, needs a human.
 | T05 | amiga-oracle | T02, T03, T04 | ✅ | |
 | T06 | amiga-conform | T05 | ✅ | Review clean bar a stray-blank-line fix. Probed: old and new script parsers agree on 208 committed scripts and edge texts; mutations of the game-token hook and the glitch-run limit went red. Reran frog_cases, alone, beam, channels, story `--ignored` green; channels `--ignored` builder-run only. |
 | T07 | amiga-app-parts | T02 | ✅ | |
-| T08 | amiga-e2e | T07 | ⬜ | |
+| T08 | amiga-e2e | T07 | ✅ | |
 | T09 | amiga-record | T03, T06, T07 | ⬜ | |
 | T10 | display-piece | T01 | ✅ | |
 | T11 | dry-fit-and-finish | T04, T05, T08, T09, T10 | ⬜ | |

@@ -116,6 +116,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "amiga-e2e"
+version = "0.1.0"
+dependencies = [
+ "amiga-app",
+ "amiga-chips",
+ "libc",
+ "png",
+]
+
+[[package]]
 name = "amiga-input"
 version = "0.1.0"
 dependencies = [
@@ -2985,6 +2995,7 @@ dependencies = [
 name = "sf-e2e"
 version = "0.1.0"
 dependencies = [
+ "amiga-e2e",
  "amiga-paula",
  "libc",
  "png",

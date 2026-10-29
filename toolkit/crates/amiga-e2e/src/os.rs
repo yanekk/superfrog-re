@@ -365,7 +365,7 @@ impl App {
             .unwrap_or_else(|| panic!("no item {title:?} in {path:?}: {items:?}"))
     }
 
-    /// Click the menu item at `path`, from the menu bar down: `["superfrog", "Quit Superfrog"]` (the app menu is titled with the process name).
+    /// Click the menu item at `path`, from the menu bar down: `["myapp", "Quit My App"]` (the app menu is titled with the process name).
     pub fn os_menu(&mut self, path: &[&str]) {
         assert!(path.len() >= 2, "a menu path names a menu and an item");
         let app = ax::app(self.os_pid());
