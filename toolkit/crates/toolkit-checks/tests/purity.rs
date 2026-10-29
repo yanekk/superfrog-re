@@ -588,7 +588,10 @@ fn a_violation_names_the_place_and_the_fix() {
         "amiga-chips/src/copper.rs",
         "fn f() {}\nuse std::collections::HashMap;\n",
     );
-    assert_eq!(found, vec!["amiga-chips/src/copper.rs:2: `HashMap`".to_string()]);
+    assert_eq!(
+        found,
+        vec!["amiga-chips/src/copper.rs:2: `HashMap`".to_string()]
+    );
     assert!(report(&found).contains("move the code, do not relax the test"));
     assert!(found.len() == 1 && report(&found).contains("amiga-chips/src/copper.rs:2"));
 }

@@ -14,7 +14,16 @@ const PROVENANCE: &str = "learned on:";
 
 /// The game's own crates, after its two-letter prefix and a `-` or `_`.
 const GAME_CRATES: [&str; 11] = [
-    "core", "assets", "disk", "oracle", "conform", "app", "e2e", "plan", "bench", "routeview",
+    "core",
+    "assets",
+    "disk",
+    "oracle",
+    "conform",
+    "app",
+    "e2e",
+    "plan",
+    "bench",
+    "routeview",
     "paula",
 ];
 
@@ -53,7 +62,15 @@ fn toolkit_dir() -> PathBuf {
 fn toolkit_files() -> Vec<String> {
     let out = Command::new("git")
         .current_dir(toolkit_dir())
-        .args(["ls-files", "--cached", "--others", "--exclude-standard", "-z", "--", "."])
+        .args([
+            "ls-files",
+            "--cached",
+            "--others",
+            "--exclude-standard",
+            "-z",
+            "--",
+            ".",
+        ])
         .output()
         .expect("run git ls-files");
     assert!(
@@ -73,13 +90,18 @@ fn toolkit_files() -> Vec<String> {
 fn no_file_in_the_toolkit_names_a_game() {
     let files = toolkit_files();
     for want in ["Cargo.toml", "crates/toolkit-checks/tests/names.rs"] {
-        assert!(files.iter().any(|f| f == want), "git ls-files did not list {want}: {files:?}");
+        assert!(
+            files.iter().any(|f| f == want),
+            "git ls-files did not list {want}: {files:?}"
+        );
     }
     let mut found = Vec::new();
     for f in &files {
         let path = toolkit_dir().join(f);
         // A file listed but deleted in the working tree has nothing left to check.
-        let Ok(bytes) = std::fs::read(&path) else { continue };
+        let Ok(bytes) = std::fs::read(&path) else {
+            continue;
+        };
         found.extend(hits(f, &String::from_utf8_lossy(&bytes)));
     }
     assert!(
@@ -105,7 +127,13 @@ fn a_game_name_is_found_in_any_case_and_form() {
     assert_eq!(found.len(), 5, "{found:?}");
     assert!(found[0].starts_with("x.rs:2: "), "{found:?}");
     assert!(found[4].starts_with("x.rs:6: "), "{found:?}");
-    for clean in ["sf-x", "sfcore", "use amiga_chips::Picture;", "team 18", "super frog"] {
+    for clean in [
+        "sf-x",
+        "sfcore",
+        "use amiga_chips::Picture;",
+        "team 18",
+        "super frog",
+    ] {
         assert!(hits("x.rs", clean).is_empty(), "flagged: {clean}");
     }
 }

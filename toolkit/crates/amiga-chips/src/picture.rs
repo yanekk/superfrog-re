@@ -21,7 +21,9 @@ pub struct Picture {
 }
 
 /// A colour register written while its line is being drawn.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, serde::Serialize, serde::Deserialize)]
+#[derive(
+    Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, serde::Serialize, serde::Deserialize,
+)]
 pub struct Split {
     pub y: u16,
     pub x: u16,
@@ -94,7 +96,6 @@ impl Picture {
     }
 }
 
-
 fn colour(pal: &[u16; 32], i: u8) -> u16 {
     if i < 32 {
         pal[i as usize]
@@ -122,7 +123,6 @@ pub fn to_rgb12(p: &Picture) -> Vec<u16> {
     out
 }
 
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -141,12 +141,25 @@ mod tests {
         let mut p = Picture::blank(10, 20, 2, 2);
         p.palettes = vec![[0x111; 32], [0x222; 32]];
         p.pixels = vec![1, 2, 3, 4];
-        p.splits = vec![Split { y: 1, x: 1, index: 0, colour: 0xF00 }];
+        p.splits = vec![Split {
+            y: 1,
+            x: 1,
+            index: 0,
+            colour: 0xF00,
+        }];
         let q = p.rewindow(9, 19, 4, 4);
         assert_eq!(q.pixels, [0, 0, 0, 0, 0, 1, 2, 0, 0, 3, 4, 0, 0, 0, 0, 0]);
         assert_eq!(q.palettes[0], [0x111; 32]);
         assert_eq!(q.palettes[3], [0x222; 32]);
-        assert_eq!(q.splits, [Split { y: 2, x: 2, index: 0, colour: 0xF00 }]);
+        assert_eq!(
+            q.splits,
+            [Split {
+                y: 2,
+                x: 2,
+                index: 0,
+                colour: 0xF00
+            }]
+        );
         assert_eq!(q.rewindow(10, 20, 2, 2), p);
     }
 

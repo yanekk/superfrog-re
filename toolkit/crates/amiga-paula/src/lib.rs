@@ -169,7 +169,12 @@ mod tests {
     fn booted_with_8200_is_the_old_boot() {
         assert_eq!(AudioDma::booted(0x8200), old_dma_booted());
         // A channel turned on by its bit alone, as a game's sound driver does after the boot.
-        let w = |reg, value| PaulaWrite { reg, value, hpos: 0x20, vpos: 0x30 };
+        let w = |reg, value| PaulaWrite {
+            reg,
+            value,
+            hpos: 0x20,
+            vpos: 0x30,
+        };
         let writes = [
             w(0xa0, 0x0001),
             w(0xa2, 0x2000),
@@ -191,9 +196,15 @@ mod tests {
                 assert_eq!(a, b, "rate {rate} frame {frame}");
                 assert_eq!(new.channel_taps(), old.channel_taps());
                 assert_eq!(new.chip, old.chip);
-                assert_eq!(dma.frame(ws, LINES_PER_FRAME), old_dma.frame(ws, LINES_PER_FRAME));
+                assert_eq!(
+                    dma.frame(ws, LINES_PER_FRAME),
+                    old_dma.frame(ws, LINES_PER_FRAME)
+                );
             }
-            assert!(new.channel_taps()[0].iter().any(|&v| v != 0), "the channel played");
+            assert!(
+                new.channel_taps()[0].iter().any(|&v| v != 0),
+                "the channel played"
+            );
         }
     }
 }
