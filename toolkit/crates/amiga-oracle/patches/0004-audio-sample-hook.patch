@@ -6,7 +6,7 @@ diff --git a/Core/Components/Paula/Audio/StateMachine.cpp b/Core/Components/Paul
  
  namespace vamiga {
 +
-+// superfrog-re (sf-oracle): called whenever a channel's DAC takes a new value (penhi/penlo), with
++// amiga-toolkit (amiga-oracle): called whenever a channel's DAC takes a new value (penhi/penlo), with
 +// the channel, the sample byte, the volume and the beam position. Null unless a client installs it.
 +void (*vamiga_audio_sample_hook)(int channel, i8 sample, u16 volume, isize vpos, isize hpos) = nullptr;
  

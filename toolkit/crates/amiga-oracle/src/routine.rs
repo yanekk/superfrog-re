@@ -1,5 +1,5 @@
-//! The routine oracle (DESIGN §4, routine conformance): one routine of the original, run alone on
-//! Moira (vAmiga's 68000 core) over a flat 24-bit memory with no chipset.
+//! The routine oracle: one routine of the original, run alone on Moira (vAmiga's 68000 core) over a
+//! flat 24-bit memory with no chipset.
 //!
 //! A test fills a [`Cpu68k`]'s memory (from [`crate::Amiga::memory`] at a sync point, an executable
 //! loaded with [`Cpu68k::load_exe`], its own bytes), then [`Cpu68k::call`]s a routine with chosen
@@ -12,14 +12,17 @@
 use std::fmt;
 use std::ptr::NonNull;
 
+use amiga_disk::ReadError;
+use amiga_disk::hunk::{self, Block};
+
 use crate::amiga::{AmigaMemory, SLOW_BASE};
-use crate::ffi::{self, SfCallStatus, SfCpu, SfRegs};
+use crate::ffi::{self, RawCallStatus, RawCpu, RawRegs};
 
 /// The return address [`Cpu68k::call`] pushes; the call ends when the PC reaches it.
 pub const RETURN_SENTINEL: u32 = 0xF0_0000;
 
 /// Bytes of memory: every 24-bit address.
-pub const MEM_SIZE: usize = ffi::SF_CPU_MEM_SIZE;
+pub const MEM_SIZE: usize = ffi::AMIGA_CPU68K_MEM_SIZE;
 
 /// The 68000's registers a routine sees and leaves.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -101,7 +104,7 @@ impl fmt::Display for CallError {
             CallError::CustomChipAccess { pc, addr } => write!(
                 f,
                 "the instruction at ${pc:06x} touches hardware register ${addr:06x}: run this routine on \
-                 the full-system oracle (sf_oracle::Amiga)"
+                 the full-system oracle (amiga_oracle::Amiga)"
             ),
             CallError::IllegalInstruction { pc } => write!(f, "illegal instruction at ${pc:06x}"),
             CallError::Exception { pc, vector } => {
@@ -120,8 +123,8 @@ pub enum HunkKind {
     Code,
     Data,
     Bss,
-    /// Declared in the header but not in the file: room is reserved, nothing is written
-    /// (docs/RE-WORKBENCH.md, `d1_c03` and `d3_c04`).
+    /// Declared in the header but not in the file: room is reserved, nothing is written.
+    /// learned on: Superfrog, whose main and intro executables declare such hunks.
     Absent,
 }
 
@@ -155,7 +158,7 @@ impl HunkMap {
 pub enum HunkError {
     /// The file does not start with `HUNK_HEADER` (0x3F3).
     NotAnExecutable,
-    /// The file ends inside a block.
+    /// The file ends inside a block (or the header).
     Truncated { at: usize },
     /// A block the game's loader would run wild on: an unknown type, a zero or oversized length, a
     /// relocation to a hunk that does not exist or outside its hunk.
@@ -177,9 +180,21 @@ impl fmt::Display for HunkError {
 
 impl std::error::Error for HunkError {}
 
+/// The reader's errors as the loader names them. The loader checks each block's type and length
+/// before the reader reads it, so only a cut-short block reaches the reader in practice; `why`
+/// names a malformed one should the two ever disagree. The reader measures a whole RELOC32 block
+/// before the loader checks its groups, so a block both malformed and cut short is reported cut
+/// short (the one difference from the loader this replaced; tests/routine.rs sweeps both).
+fn read_error(e: ReadError, why: &'static str) -> HunkError {
+    match e {
+        ReadError::Truncated { at } => HunkError::Truncated { at },
+        ReadError::Malformed { at, .. } => HunkError::Malformed { at, why },
+    }
+}
+
 /// Moira with flat 24-bit memory (16 MB, zeroed, everything RAM except the custom chips and CIAs).
 pub struct Cpu68k {
-    raw: NonNull<SfCpu>,
+    raw: NonNull<RawCpu>,
 }
 
 // The shim object is used from one thread at a time, through &mut self.
@@ -187,14 +202,14 @@ unsafe impl Send for Cpu68k {}
 
 impl Drop for Cpu68k {
     fn drop(&mut self) {
-        unsafe { ffi::sf_cpu_free(self.raw.as_ptr()) }
+        unsafe { ffi::amiga_cpu68k_free(self.raw.as_ptr()) }
     }
 }
 
 impl Cpu68k {
     /// A CPU whose memory holds `mem`'s chip RAM at 0 and slow RAM at `$C00000`; the rest is zero.
     pub fn new(mem: AmigaMemory) -> Cpu68k {
-        let raw = NonNull::new(unsafe { ffi::sf_cpu_new() }).expect("allocating the routine CPU");
+        let raw = NonNull::new(unsafe { ffi::amiga_cpu68k_new() }).expect("allocating the routine CPU");
         let mut cpu = Cpu68k { raw };
         cpu.write(0, &mem.chip);
         cpu.write(SLOW_BASE, &mem.slow);
@@ -203,11 +218,11 @@ impl Cpu68k {
 
     /// The whole memory, `MEM_SIZE` bytes.
     pub fn memory(&self) -> &[u8] {
-        unsafe { std::slice::from_raw_parts(ffi::sf_cpu_mem(self.raw.as_ptr()), MEM_SIZE) }
+        unsafe { std::slice::from_raw_parts(ffi::amiga_cpu68k_mem(self.raw.as_ptr()), MEM_SIZE) }
     }
 
     pub fn memory_mut(&mut self) -> &mut [u8] {
-        unsafe { std::slice::from_raw_parts_mut(ffi::sf_cpu_mem(self.raw.as_ptr()), MEM_SIZE) }
+        unsafe { std::slice::from_raw_parts_mut(ffi::amiga_cpu68k_mem(self.raw.as_ptr()), MEM_SIZE) }
     }
 
     /// `len` bytes at `addr`. Panics past 16 MB.
@@ -220,37 +235,54 @@ impl Cpu68k {
         self.memory_mut()[addr as usize..addr as usize + bytes.len()].copy_from_slice(bytes);
     }
 
-    /// Load a hunk executable at `at` as the game's own loader does (`hunk_load`, stage 1.5
-    /// `+0x43A`): hunks back to back from `at` at their declared sizes, `HUNK_CODE`/`HUNK_DATA`
-    /// copied and the rest of the hunk cleared, `HUNK_BSS` cleared for its own length,
-    /// `HUNK_RELOC32` applied by adding the target hunk's base. Loading ends after one `HUNK_END`
-    /// per declared hunk, at a 0x3ED–0x3F1 block, or at the end of the file (where the game's
-    /// loader reads on past it; T07).
+    /// Load a hunk executable at `at` as a game's own trackloader does (learned on: Superfrog's
+    /// `hunk_load`, stage 1.5 `+0x43A`): hunks back to back from `at` at their declared sizes,
+    /// `HUNK_CODE`/`HUNK_DATA` copied and the rest of the hunk cleared, `HUNK_BSS` cleared for its
+    /// own length, `HUNK_RELOC32` applied by adding the target hunk's base. Loading ends after one
+    /// `HUNK_END` per declared hunk, at a 0x3ED–0x3F1 block, or at the end of the file (where that
+    /// loader reads on past it). The blocks after the header are read by [`amiga_disk::hunk`]; the
+    /// header walk, placement, clearing and stopping rules are the loader's, checked here before
+    /// each block is read.
     pub fn load_exe(&mut self, exe: &[u8], at: u32) -> Result<HunkMap, HunkError> {
-        let mut r = Reader { exe, pos: 0 };
-        if r.long()? != 0x3F3 {
+        // The header is the loader's own walk, not the reader's: it reads `count` sizes whatever
+        // the table's first and last say, and takes no memory-attribute longs.
+        let mut pos = 0;
+        let long = |pos: &mut usize| {
+            let v = long_at(exe, *pos);
+            *pos += 4;
+            v
+        };
+        if long(&mut pos)? != hunk::HUNK_HEADER {
             return Err(HunkError::NotAnExecutable);
         }
         loop {
-            let n = r.long()?;
+            let n = long(&mut pos)?;
             if n == 0 {
                 break;
             }
-            r.skip(n)?;
+            // Resident library names: skipped, as a cut-short name reports where it starts.
+            if exe.len() < pos.saturating_add(n as usize * 4) {
+                return Err(HunkError::Truncated { at: pos });
+            }
+            pos += n as usize * 4;
         }
-        let count = r.long()? as usize;
+        let count = long(&mut pos)? as usize;
         if count == 0 || count > 0x10000 {
             return Err(HunkError::Malformed {
-                at: r.pos - 4,
+                at: pos - 4,
                 why: "hunk count",
             });
         }
-        r.skip(2)?;
+        // The table's first and last.
+        if exe.len() < pos + 8 {
+            return Err(HunkError::Truncated { at: pos });
+        }
+        pos += 8;
         let mut hunks = Vec::with_capacity(count);
         let mut base = at as u64;
         for _ in 0..count {
             // The loader multiplies the whole long by four, so the memory flags fall off the top.
-            let size = r.long()?.wrapping_mul(4);
+            let size = long(&mut pos)?.wrapping_mul(4);
             hunks.push(Hunk {
                 base: base as u32,
                 size,
@@ -262,64 +294,83 @@ impl Cpu68k {
             return Err(HunkError::TooBig);
         }
 
+        let mut blocks = hunk::Blocks::new(exe, pos);
         let mut cur = 0;
-        while r.pos < exe.len() {
-            let at = r.pos;
-            match r.long()? {
-                // HUNK_UNIT, HUNK_NAME: skipped.
-                0x3E7 | 0x3E8 => {
-                    let n = r.long()?;
-                    r.skip(n)?;
-                }
-                kind @ (0x3E9 | 0x3EA) => {
+        while let Some(next) = blocks.peek() {
+            let (at, kind) = next.map_err(|e| read_error(e, "block type"))?;
+            // The length long, which the loader checks before it reads the body.
+            let len = || long_at(exe, at + 4);
+            match kind {
+                // HUNK_RELOC16, RELOC8, EXT, SYMBOL, DEBUG: the game's loader stops here.
+                0x3ED..=0x3F1 => break,
+                0x3E9 | 0x3EA => {
                     let h = hunk(&mut hunks, cur, at)?;
-                    let n = r.long()?;
+                    let n = len()?;
                     if n == 0 || n as u64 * 4 > h.size as u64 {
                         return Err(HunkError::Malformed {
                             at,
                             why: "code/data length",
                         });
                     }
-                    let body = r.bytes(n as usize * 4)?;
-                    let (b, size) = (h.base, h.size);
-                    h.kind = if kind == 0x3E9 {
-                        HunkKind::Code
-                    } else {
-                        HunkKind::Data
-                    };
-                    self.write(b, body);
-                    self.memory_mut()[(b + n * 4) as usize..(b + size) as usize].fill(0);
                 }
                 0x3EB => {
                     let h = hunk(&mut hunks, cur, at)?;
-                    let n = r.long()?;
+                    let n = len()?;
                     if n == 0 || h.base as u64 + n as u64 * 4 > MEM_SIZE as u64 {
                         return Err(HunkError::Malformed {
                             at,
                             why: "bss length",
                         });
                     }
-                    h.kind = HunkKind::Bss;
-                    let b = h.base as usize;
-                    self.memory_mut()[b..b + n as usize * 4].fill(0);
                 }
                 0x3EC => {
-                    let h = *hunk(&mut hunks, cur, at)?;
-                    loop {
-                        let n = r.long()?;
-                        if n == 0 {
-                            break;
-                        }
-                        let target = r.long()? as usize;
+                    hunk(&mut hunks, cur, at)?;
+                }
+                0x3E7 | 0x3E8 | 0x3F2 => {}
+                // The type long as the file has it: memory bits on a block type are unknown here.
+                _ => {
+                    return Err(HunkError::Malformed {
+                        at,
+                        why: "unknown block type",
+                    });
+                }
+            }
+            let (_, block) = blocks
+                .next()
+                .expect("peeked")
+                .map_err(|e| read_error(e, "unknown block type"))?;
+            match block {
+                // HUNK_UNIT, HUNK_NAME: skipped.
+                Block::Unit(_) | Block::Name(_) => {}
+                Block::Code(body) | Block::Data(body) => {
+                    let h = &mut hunks[cur];
+                    let (b, size) = (h.base, h.size);
+                    h.kind = if kind == hunk::HUNK_CODE {
+                        HunkKind::Code
+                    } else {
+                        HunkKind::Data
+                    };
+                    self.write(b, body);
+                    self.memory_mut()[(b + body.len() as u32) as usize..(b + size) as usize]
+                        .fill(0);
+                }
+                Block::Bss { longs } => {
+                    let h = &mut hunks[cur];
+                    h.kind = HunkKind::Bss;
+                    let b = h.base as usize;
+                    self.memory_mut()[b..b + longs as usize * 4].fill(0);
+                }
+                Block::Reloc32(groups) => {
+                    let h = hunks[cur];
+                    for (target, offsets) in groups {
                         let delta = hunks
-                            .get(target)
+                            .get(target as usize)
                             .ok_or(HunkError::Malformed {
                                 at,
                                 why: "relocation to a missing hunk",
                             })?
                             .base;
-                        for _ in 0..n {
-                            let off = r.long()?;
+                        for off in offsets {
                             if off as u64 + 4 > h.size as u64 {
                                 return Err(HunkError::Malformed {
                                     at,
@@ -333,20 +384,13 @@ impl Cpu68k {
                         }
                     }
                 }
-                // HUNK_RELOC16, RELOC8, EXT, SYMBOL, DEBUG: the game's loader stops here.
-                0x3ED..=0x3F1 => break,
-                0x3F2 => {
+                Block::End => {
                     cur += 1;
                     if cur == count {
                         break;
                     }
                 }
-                _ => {
-                    return Err(HunkError::Malformed {
-                        at,
-                        why: "unknown block type",
-                    });
-                }
+                Block::Symbol | Block::Debug => unreachable!("the loader stops before these"),
             }
         }
         Ok(HunkMap { hunks })
@@ -364,14 +408,14 @@ impl Cpu68k {
     /// registers and the CIAs read 0, and CIA writes are dropped. Nothing else of the chipset is
     /// modelled: a routine that waits on DMA or an interrupt still times out.
     pub fn set_hardware(&mut self, on: bool) {
-        unsafe { ffi::sf_cpu_set_hw(self.raw.as_ptr(), on as i32) }
+        unsafe { ffi::amiga_cpu68k_set_hw(self.raw.as_ptr(), on as i32) }
     }
 
     /// In hardware mode, make a read of the byte at `addr` (a custom register or a CIA's) return
     /// `value` from now on: the joystick (`JOY1DAT`, `$DFF00C`), the fire buttons (CIA-A PRA,
     /// `$BFE001`). VHPOSR keeps stepping; every other hardware byte reads 0.
     pub fn set_hardware_read(&mut self, addr: u32, value: u8) {
-        unsafe { ffi::sf_cpu_set_hw_read(self.raw.as_ptr(), addr, value) }
+        unsafe { ffi::amiga_cpu68k_set_hw_read(self.raw.as_ptr(), addr, value) }
     }
 
     /// Put a call's memory changes back: what [`Cpu68k::call`] undid, for a caller that runs a
@@ -405,15 +449,15 @@ impl Cpu68k {
         let saved: [u8; 4] = self.read(sp, 4).try_into().unwrap();
         self.write(sp, &RETURN_SENTINEL.to_be_bytes());
 
-        let mut r = SfRegs {
+        let mut r = RawRegs {
             d: regs.d,
             a: regs.a,
             sr: regs.sr,
         };
         r.a[7] = sp_reg;
-        let mut st = SfCallStatus::default();
+        let mut st = RawCallStatus::default();
         unsafe {
-            ffi::sf_cpu_call(
+            ffi::amiga_cpu68k_call(
                 self.raw.as_ptr(),
                 entry,
                 &mut r,
@@ -425,9 +469,9 @@ impl Cpu68k {
 
         let mut writes = Vec::new();
         let mut hw_writes = Vec::new();
-        if st.status == ffi::SF_CALL_RETURNED {
+        if st.status == ffi::AMIGA_CALL_RETURNED {
             let mut hw = std::ptr::null();
-            let n = unsafe { ffi::sf_cpu_hw_writes(self.raw.as_ptr(), &mut hw) };
+            let n = unsafe { ffi::amiga_cpu68k_hw_writes(self.raw.as_ptr(), &mut hw) };
             if n > 0 {
                 hw_writes = unsafe { std::slice::from_raw_parts(hw, n) }
                     .iter()
@@ -435,7 +479,7 @@ impl Cpu68k {
                     .collect();
             }
             let (mut addrs, mut olds) = (std::ptr::null(), std::ptr::null());
-            let n = unsafe { ffi::sf_cpu_journal(self.raw.as_ptr(), &mut addrs, &mut olds) };
+            let n = unsafe { ffi::amiga_cpu68k_journal(self.raw.as_ptr(), &mut addrs, &mut olds) };
             if n > 0 {
                 let (addrs, olds) = unsafe {
                     (
@@ -453,11 +497,11 @@ impl Cpu68k {
                 writes.sort_unstable_by_key(|w| w.0);
             }
         }
-        unsafe { ffi::sf_cpu_rollback(self.raw.as_ptr()) };
+        unsafe { ffi::amiga_cpu68k_rollback(self.raw.as_ptr()) };
         self.write(sp, &saved);
 
         match st.status {
-            ffi::SF_CALL_RETURNED => Ok(CallResult {
+            ffi::AMIGA_CALL_RETURNED => Ok(CallResult {
                 regs: Regs {
                     d: r.d,
                     a: r.a,
@@ -468,19 +512,19 @@ impl Cpu68k {
                 cycles: st.cycles,
                 hw_writes,
             }),
-            ffi::SF_CALL_TIMEOUT => Err(CallError::Timeout),
-            ffi::SF_CALL_CUSTOM => Err(CallError::CustomChipAccess {
+            ffi::AMIGA_CALL_TIMEOUT => Err(CallError::Timeout),
+            ffi::AMIGA_CALL_CUSTOM => Err(CallError::CustomChipAccess {
                 pc: st.pc,
                 addr: st.addr,
             }),
-            ffi::SF_CALL_EXCEPTION if matches!(st.vector, 4 | 10 | 11) => {
+            ffi::AMIGA_CALL_EXCEPTION if matches!(st.vector, 4 | 10 | 11) => {
                 Err(CallError::IllegalInstruction { pc: st.pc })
             }
-            ffi::SF_CALL_EXCEPTION => Err(CallError::Exception {
+            ffi::AMIGA_CALL_EXCEPTION => Err(CallError::Exception {
                 pc: st.pc,
                 vector: st.vector,
             }),
-            ffi::SF_CALL_HALTED => Err(CallError::Halted { pc: st.pc }),
+            ffi::AMIGA_CALL_HALTED => Err(CallError::Halted { pc: st.pc }),
             other => unreachable!("moira_shim returned status {other}"),
         }
     }
@@ -493,26 +537,9 @@ fn hunk(hunks: &mut [Hunk], cur: usize, at: usize) -> Result<&mut Hunk, HunkErro
     })
 }
 
-struct Reader<'a> {
-    exe: &'a [u8],
-    pos: usize,
-}
-
-impl Reader<'_> {
-    fn bytes(&mut self, n: usize) -> Result<&[u8], HunkError> {
-        let s = self
-            .exe
-            .get(self.pos..self.pos.saturating_add(n))
-            .ok_or(HunkError::Truncated { at: self.pos })?;
-        self.pos += n;
-        Ok(s)
-    }
-
-    fn long(&mut self) -> Result<u32, HunkError> {
-        Ok(u32::from_be_bytes(self.bytes(4)?.try_into().unwrap()))
-    }
-
-    fn skip(&mut self, longs: u32) -> Result<(), HunkError> {
-        self.bytes(longs as usize * 4).map(|_| ())
-    }
+/// The long at byte `at`, or where the file ends before it.
+fn long_at(exe: &[u8], at: usize) -> Result<u32, HunkError> {
+    exe.get(at..at + 4)
+        .map(|b| u32::from_be_bytes(b.try_into().unwrap()))
+        .ok_or(HunkError::Truncated { at })
 }

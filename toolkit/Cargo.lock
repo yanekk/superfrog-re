@@ -113,6 +113,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "amiga-oracle"
+version = "0.1.0"
+dependencies = [
+ "amiga-chips",
+ "amiga-disk",
+ "amiga-input",
+ "amiga-paula",
+ "cc",
+ "miniz_oxide 0.9.1",
+]
+
+[[package]]
 name = "amiga-paula"
 version = "0.1.0"
 dependencies = [

@@ -18,6 +18,10 @@ publish = false
 [profile.dev.package.sf-oracle]
 opt-level = 2
 
+# The same for the harness itself, moved to the toolkit (toolkit-extract T05).
+[profile.dev.package.amiga-oracle]
+opt-level = 2
+
 # The mixer runs four channels at 3.5 MHz; the oracle comparison runs it for thousands of frames.
 [profile.dev.package.amiga-paula]
 opt-level = 2
