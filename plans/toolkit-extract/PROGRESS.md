@@ -10,9 +10,8 @@ the task you pick up, and append yours there.
 **Plan reviewed:** 2026-10-28 — 4 fixed, 3 decided with the user
 
 **Status:** planned, nothing built.
-**Last updated:** 2026-10-28
-**Next `pir-work` will:** T01, the only task with no dependency; it records the baseline everything
-else is compared with.
+**Last updated:** 2026-10-29
+**Next `pir-work` will:** T02 and T03, whose only dependency (T01) is done.
 
 ## Tasks
 
@@ -30,10 +29,10 @@ done · ⛔ blocked, needs a human.
 | T07 | amiga-app-parts | T02 | ⬜ | |
 | T08 | amiga-e2e | T07 | ⬜ | |
 | T09 | amiga-record | T03, T06, T07 | ⬜ | |
-| T10 | display-piece | T01 | 🔍 | `amiga_chips::display`: `Planes` (+`fetching`, `advance`, `fetch_line`), `Colours` (colour/`Split` apply), `window`, `draw`; 11 toolkit tests; sf-core uses them, plus a test that `draw` equals sf-core's `story_screen` on 5- and 6-plane screens. Deviation: `draw` applies writes at the fetch's first cycle, not sprite slot `$15` (no sprites). |
+| T10 | display-piece | T01 | ✅ | `amiga_chips::display` (`Planes`, `Colours`, `window`, `draw`). Review: reverted a whole-crate `cargo fmt` of 75 files outside the task; added a BPL2MOD test (mutation survived). PIPELINE mutation red in sf-core; beam, frog_cases 36, story `--ignored` 9 green. Deviation held by the draw-equals-story_screen test. |
 | T11 | dry-fit-and-finish | T04, T05, T08, T09, T10 | ⬜ | |
 
-**Review queue:** T10
+**Review queue:** empty
 
 ## Blocked on the user
 

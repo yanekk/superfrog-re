@@ -12,6 +12,7 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-29 | 🐞 | T10 ran `cargo fmt` over all of sf-core and amiga-chips: 75 files changed by formatting only. Review reverted them. Format only the files a task changes (`rustfmt <file>`), never the whole crate, or parallel tasks conflict. |
 | 2026-10-29 | 📌 | T01 baseline, `sf-conform -- all` on b7a2f53: all 216 cases ok, none red. Per-case lines with tolerated counts in `baseline-T01.txt`; T11 compares against it. Took ~80 min in four parallel slices. |
 | 2026-10-29 | 📌 | T01: the toolkit test line takes 14 s from a cold `toolkit/target`. Engine regression after the move: frog_cases 36, alone 5, beam 2, story `--ignored` 9, purity, paula_vs_oracle, sf-core, sf-app, sf-e2e smoke all green. |
 | 2026-10-29 | 📌 | T01: the name check found its own test literal; the names in `toolkit-checks` are built from pieces. A later crate quoting a game name in a test must do the same. |
