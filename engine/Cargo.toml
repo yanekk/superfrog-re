@@ -58,6 +58,23 @@ opt-level = 2
 [profile.dev.package.sf-app]
 opt-level = 2
 
+# The app's game-free half, moved from sf-app (toolkit-extract T07): it encodes a PNG of every
+# captured frame and converts every picture to RGBA. Unoptimised, a long scripted run falls behind
+# the pacer, as sf-app did before its override (T193); sf-e2e's whole-game soak found it (T11).
+[profile.dev.package.amiga-app]
+opt-level = 2
+
+# Moved from sf-core (frame input, toolkit-extract T02; the recorder, T09) and from sf-assets (the
+# hunk and IFF readers, T04), each optimised before it moved.
+[profile.dev.package.amiga-input]
+opt-level = 2
+
+[profile.dev.package.amiga-record]
+opt-level = 2
+
+[profile.dev.package.amiga-disk]
+opt-level = 2
+
 # The planner's coin choice, map and search are step-bounded loops over hundreds of targets and
 # thousands of nodes; unoptimised, a W6 coin choice alone nears its 1 s test budget (smart-planner T06).
 [profile.dev.package.sf-plan]

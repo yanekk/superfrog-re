@@ -37,3 +37,19 @@ opt-level = 2
 # The picture judges compare every pixel of every frame of a case.
 [profile.dev.package.amiga-conform]
 opt-level = 2
+
+# A desktop app's game-free half: a PNG of every captured frame and every picture to RGBA, run at
+# the PAL rate by a game's end-to-end tests.
+[profile.dev.package.amiga-app]
+opt-level = 2
+
+# Frame input, recordings and the disk readers run over whole games in a game's tests; each was
+# optimised in the game's workspace before it moved here.
+[profile.dev.package.amiga-input]
+opt-level = 2
+
+[profile.dev.package.amiga-record]
+opt-level = 2
+
+[profile.dev.package.amiga-disk]
+opt-level = 2
