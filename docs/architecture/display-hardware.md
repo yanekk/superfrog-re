@@ -7,11 +7,12 @@ kind = "amiga"
 mix = { amiga = 76, game = 5, data = 9, shell = 10 }
 reuse = "small-changes"
 owns = [
-  "engine/crates/amiga-chips/",
+  "toolkit/crates/amiga-chips/",
   "engine/crates/sf-core/src/render/",
   "engine/crates/sf-core/src/level/bobs.rs",
   "engine/crates/sf-core/src/front/blit.rs",
   "engine/crates/sf-core/src/front/sprite.rs",
+  "engine/crates/sf-core/tests/chips_original_data.rs",
   "engine/crates/sf-core/tests/widescreen_frog.rs",
   "engine/crates/sf-core/tests/widescreen_objects.rs",
 ]

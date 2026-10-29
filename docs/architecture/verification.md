@@ -14,6 +14,11 @@ owns = [
   "engine/crates/sf-bench/",
   "engine/crates/sf-routeview/",
   "engine/conform/",
+  "toolkit/Cargo.toml",
+  "toolkit/Cargo.lock",
+  "toolkit/rust-toolchain.toml",
+  "toolkit/.gitignore",
+  "toolkit/crates/toolkit-checks/",
 ]
 +++
 

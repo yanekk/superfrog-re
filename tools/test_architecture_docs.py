@@ -29,6 +29,19 @@ class RealTree(unittest.TestCase):
         _, problems = arch.assign(files, arch.load_chapters(ROOT))
         self.assertEqual(problems, [])
 
+    def test_every_toolkit_file_is_owned_once(self):
+        files = [f for f in arch.tracked_files(ROOT) if f.startswith('toolkit/')]
+        self.assertIn('toolkit/Cargo.toml', files)
+        self.assertIn('toolkit/crates/amiga-paula/src/lib.rs', files)
+        assignment, problems = arch.assign(files, arch.load_chapters(ROOT))
+        self.assertEqual([p for p in problems if 'toolkit/' in p and 'stale' not in p], [])
+        self.assertEqual(sorted(assignment), files)
+
+    def test_the_moved_table_points_at_real_folders(self):
+        for old, new in arch.MOVED.items():
+            self.assertFalse(os.path.exists(os.path.join(ROOT, old)), f'{old} still exists')
+            self.assertTrue(os.path.isdir(os.path.join(ROOT, new)), f'{new} does not exist')
+
     def test_front_matter_is_valid(self):
         chapters = arch.load_chapters(ROOT)
         self.assertEqual(len(chapters), 17)
@@ -183,6 +196,29 @@ class CitedPaths(unittest.TestCase):
 
     def test_fenced_blocks_and_commands_are_skipped(self):
         self.assertEqual(self.check('```\nengine/gone.rs `engine/gone.rs`\n```\n`python tools/gone.py totals`'), [])
+
+    def test_a_cited_old_path_resolves_through_the_moved_table(self):
+        files = ['toolkit/crates/amiga-paula/src/lib.rs']
+        table = {'engine/crates/sf-paula/': 'toolkit/crates/amiga-paula/'}
+        with tempfile.TemporaryDirectory() as d:
+            for rel in ('docs/architecture/x.md', *files):
+                os.makedirs(os.path.dirname(os.path.join(d, rel)), exist_ok=True)
+                open(os.path.join(d, rel), 'w').close()
+            with open(os.path.join(d, 'docs/architecture/x.md'), 'w') as f:
+                f.write('`engine/crates/sf-paula/src/lib.rs:12`, `engine/crates/sf-paula/`, '
+                        '`engine/crates/sf-paula`, `toolkit/crates/amiga-paula/src/lib.rs`, '
+                        '`engine/crates/sf-paula/src/gone.rs`, `engine/crates/sf-gone/x.rs`')
+            problems = arch.check_paths(d, ['docs/architecture/x.md'], table)
+        self.assertEqual(problems, [
+            'docs/architecture/x.md: cites engine/crates/sf-paula/src/gone.rs, which does not exist',
+            'docs/architecture/x.md: cites engine/crates/sf-gone/x.rs, which does not exist'])
+
+    def test_moved_replaces_the_longest_old_prefix_only(self):
+        table = {'engine/a/': 'toolkit/a/', 'engine/a/b/': 'toolkit/b/'}
+        self.assertEqual(arch.moved('engine/a/b/x.rs', table), 'toolkit/b/x.rs')
+        self.assertEqual(arch.moved('engine/a/x.rs', table), 'toolkit/a/x.rs')
+        self.assertEqual(arch.moved('engine/a', table), 'toolkit/a')
+        self.assertEqual(arch.moved('engine/ab/x.rs', table), 'engine/ab/x.rs')
 
     def test_web_links_are_skipped(self):
         self.assertEqual(self.check('[vAmiga](https://github.com/dirkwhoffmann/vAmiga/engine/x)'), [])

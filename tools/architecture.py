@@ -4,7 +4,10 @@
 
 Every chapter in docs/architecture/ opens with TOML front matter between `+++` lines. Its `owns`
 lists path prefixes (a directory ending in `/`, or a file); each tracked file under
-engine/crates/ and engine/conform/ belongs to the chapter with the longest matching prefix.
+engine/crates/, engine/conform/ and toolkit/ belongs to the chapter with the longest matching prefix.
+
+The chapter bodies are a dated record and stay frozen when code moves: a path they cite that has
+moved resolves through MOVED, the one table of old -> new prefixes (toolkit-extract DESIGN §3.4).
 
     python tools/architecture.py totals     # the overview's tables, in Markdown
 
@@ -15,7 +18,7 @@ drift check built on them.
 import os, re, subprocess, sys, tomllib
 
 DOCS = 'docs/architecture'
-DOMAIN = ('engine/crates/', 'engine/conform/')
+DOMAIN = ('engine/crates/', 'engine/conform/', 'toolkit/')
 KEYS = ('id', 'title', 'tier', 'depth', 'kind', 'mix', 'reuse', 'owns')
 TIERS = ('mechanism', 'subsystem', 'component')
 DEPTHS = ('deep', 'light')
@@ -25,7 +28,15 @@ TBD = 'tbd'
 # A line is a line of code (DESIGN §2.2): recorded input scripts, `.toml`, patches and Markdown
 # would otherwise make verification half the codebase.
 CODE_EXTS = ('.rs', '.cpp', '.h', '.wgsl')
-PATH_ROOTS = ('engine/', 'docs/', 'plans/', 'tools/', 're/')
+PATH_ROOTS = ('engine/', 'docs/', 'plans/', 'tools/', 're/', 'toolkit/')
+# Moved code, old prefix -> new prefix: a cited old path resolves through this table, so the frozen
+# chapter bodies need no edit when code moves (toolkit-extract DESIGN §3.4). Directory prefixes end
+# in `/`; the directory itself, cited without the slash, resolves too.
+MOVED = {
+    'engine/crates/amiga-clock/': 'toolkit/crates/amiga-clock/',
+    'engine/crates/amiga-chips/': 'toolkit/crates/amiga-chips/',
+    'engine/crates/sf-paula/': 'toolkit/crates/amiga-paula/',
+}
 
 
 def repo_root():
@@ -168,16 +179,34 @@ def cited_paths(text):
     return paths
 
 
-def check_paths(root, md_files):
-    """Problems for each cited path that does not exist. A path starting with a PATH_ROOT is from
-    the repo root; a relative link target is from the citing file's folder."""
+def moved(path, table=None):
+    """Where a repo path is now: `path` with an old prefix of `table` (MOVED by default) replaced by
+    its new one, or `path` itself when no old prefix matches."""
+    table = MOVED if table is None else table
+    for old, new in sorted(table.items(), key=lambda kv: len(kv[0]), reverse=True):
+        if path.startswith(old):
+            return new + path[len(old):]
+        if old.endswith('/') and path == old[:-1]:
+            return new[:-1]
+    return path
+
+
+def check_paths(root, md_files, table=None):
+    """Problems for each cited path that does not exist, here or where MOVED (or `table`) says it
+    went. A path starting with a PATH_ROOT is from the repo root; a relative link target is from
+    the citing file's folder."""
     problems = []
     for rel in md_files:
         with open(os.path.join(root, rel), encoding='utf-8') as f:
             text = f.read()
         for path, _ in cited_paths(text):
-            base = root if path.startswith(PATH_ROOTS) else os.path.join(root, os.path.dirname(rel))
-            if not os.path.exists(os.path.normpath(os.path.join(base, path))):
+            if path.startswith(PATH_ROOTS):
+                candidates = [path, moved(path, table)]
+                base = root
+            else:
+                candidates = [path]
+                base = os.path.join(root, os.path.dirname(rel))
+            if not any(os.path.exists(os.path.normpath(os.path.join(base, c))) for c in candidates):
                 problems.append(f'{rel}: cites {path}, which does not exist')
     return problems
 
