@@ -23,7 +23,7 @@ done · ⛔ blocked, needs a human.
 |---|---|---|---|---|
 | T01 | toolkit-workspace | — | ✅ | |
 | T02 | amiga-input | T01 | ⬜ | |
-| T03 | amiga-disk | T01 | ⬜ | |
+| T03 | amiga-disk | T01 | 🔍 | amiga-disk: zip, SHA-1 (`sha1` now pub), `ADF_SIZE`; sf-disk re-exports at old paths; 7 moved unit tests, new `sf-conform/tests/bug_zips.rs` (5 owner zips rewrite byte-equal). Deviations: bug-zip test in sf-conform (purity bars `std::fs` in sf-disk tests); engine ALLOWED gains `simd-adler32`; no moved-path row, old files still exist. |
 | T04 | asset-readers | T03 | ⬜ | |
 | T05 | amiga-oracle | T02, T03, T04 | ⬜ | |
 | T06 | amiga-conform | T05 | ⬜ | |
@@ -33,7 +33,7 @@ done · ⛔ blocked, needs a human.
 | T10 | display-piece | T01 | ⬜ | |
 | T11 | dry-fit-and-finish | T04, T05, T08, T09, T10 | ⬜ | |
 
-**Review queue:** *(empty)*
+**Review queue:** T03
 
 ## Blocked on the user
 
