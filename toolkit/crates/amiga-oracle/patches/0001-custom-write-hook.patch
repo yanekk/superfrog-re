@@ -6,7 +6,7 @@ index 1b7087b15..b247bc157 100644
      }
  }
  
-+// superfrog-re (sf-oracle): called on every custom-register write, CPU and Copper alike, with the
++// amiga-toolkit (amiga-oracle): called on every custom-register write, CPU and Copper alike, with the
 +// beam position, before the write takes effect. Null unless a client installs it.
 +void (*vamiga_custom_write_hook)(u32 addr, u16 value, int accessor, isize vpos, isize hpos) = nullptr;
 +

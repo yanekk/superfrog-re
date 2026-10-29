@@ -6,8 +6,8 @@ index 40915968c..d2d23e921 100644
  
  class Keyboard final : public SubComponent {
  
-+    // superfrog-re (sf-oracle): snapshots do not carry keyDown; the shim re-seats it after a restore.
-+    friend struct SfShimAccess;
++    // amiga-toolkit (amiga-oracle): snapshots do not carry keyDown; the shim re-seats it after a restore.
++    friend struct AmigaShimAccess;
 +
      Descriptions descriptions = {{
  

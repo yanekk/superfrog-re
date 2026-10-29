@@ -36,6 +36,8 @@ MOVED = {
     'engine/crates/amiga-clock/': 'toolkit/crates/amiga-clock/',
     'engine/crates/amiga-chips/': 'toolkit/crates/amiga-chips/',
     'engine/crates/sf-paula/': 'toolkit/crates/amiga-paula/',
+    'engine/crates/sf-oracle/patches/': 'toolkit/crates/amiga-oracle/patches/',
+    'engine/crates/sf-oracle/shim/': 'toolkit/crates/amiga-oracle/shim/',
 }
 
 

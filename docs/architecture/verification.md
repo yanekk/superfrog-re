@@ -19,6 +19,8 @@ owns = [
   "toolkit/rust-toolchain.toml",
   "toolkit/.gitignore",
   "toolkit/crates/toolkit-checks/",
+  "toolkit/crates/amiga-oracle/",
+  "toolkit/tools/",
 ]
 +++
 
