@@ -49,6 +49,7 @@ MOVED = {
     'engine/crates/sf-app/src/crt_geom.wgsl': 'toolkit/crates/amiga-app/src/crt_geom.wgsl',
     'engine/crates/sf-app/src/crt_easymode.wgsl': 'toolkit/crates/amiga-app/src/crt_easymode.wgsl',
     'engine/crates/sf-app/src/port.wgsl': 'toolkit/crates/amiga-app/src/port.wgsl',
+    'engine/crates/sf-conform/src/sound_events.rs': 'toolkit/crates/amiga-conform/src/sound_events.rs',
 }
 
 

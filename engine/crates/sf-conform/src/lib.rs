@@ -22,15 +22,18 @@ pub mod reference;
 pub mod report;
 pub mod routine;
 pub mod script;
-pub mod sound_events;
 pub mod sync;
+
+// Moved whole to the toolkit (toolkit-extract T06); kept at this path for its callers. The
+// module and its `sound_events` function, both.
+pub use amiga_conform::sound_events;
 
 pub use case::{Alone, Case, Compare, Excluded, Exclusion, LagLimit, PutBacks, cases_dir, scripts_dir};
 pub use compare::{Mode, Tolerance};
 pub use milestones::{FrameState, Milestone, MilestoneDiff, Milestones};
 pub use report::{Divergence, PictureDiff};
 pub use script::InputScript;
-pub use sound_events::{SoundEvent, sound_events};
+pub use sound_events::SoundEvent;
 pub use sync::SyncPoint;
 
 use std::collections::VecDeque;

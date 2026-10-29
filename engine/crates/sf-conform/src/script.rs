@@ -16,12 +16,16 @@
 //! it), `K<hex>` for a raw key code 00..7F, `C<entry>.<k>` for the raw key of digit `k` (0..5) of
 //! `password_table` entry `entry` (0..27, h0+$24dc), `-` (or nothing) for nothing. A level code's
 //! digits are the player's disks' (DESIGN §2.3): `C` reads them from the disks when the script is
-//! parsed, so a script types a code without holding it.
+//! parsed, so a script types a code without holding it. The lexer is `amiga_conform::script`'s;
+//! `C` is Superfrog's token, through its hook.
 
-use std::fmt;
 use std::path::Path;
 
-use sf_core::input::{FrameInput, KeySet, format_tokens, parse_token};
+use sf_core::input::FrameInput;
+
+// The lexer and its error moved to the toolkit (toolkit-extract T06); Superfrog's `C` token is its
+// hook.
+pub use amiga_conform::script::ScriptError;
 
 /// `password_table` (h0+$24dc): 28 entries of six ASCII digits and a handler.
 const PASSWORD_TABLE: u32 = 0x24dc;
@@ -31,21 +35,6 @@ pub struct InputScript {
     /// (first frame, what is held from it), frames strictly increasing.
     pub lines: Vec<(u32, FrameInput)>,
 }
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct ScriptError {
-    /// 1-based line in the text.
-    pub line: usize,
-    pub why: String,
-}
-
-impl fmt::Display for ScriptError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "line {}: {}", self.line, self.why)
-    }
-}
-
-impl std::error::Error for ScriptError {}
 
 impl InputScript {
     /// Nothing held, ever.
@@ -67,69 +56,10 @@ impl InputScript {
         text: &str,
         digit: &dyn Fn(u32, u32) -> u8,
     ) -> Result<InputScript, ScriptError> {
-        let mut lines: Vec<(u32, FrameInput)> = Vec::new();
-        for (i, raw) in text.lines().enumerate() {
-            let line = i + 1;
-            let err = |why: String| ScriptError { line, why };
-            let body = raw.split('#').next().unwrap_or("").trim();
-            if body.is_empty() {
-                continue;
-            }
-            let (frame, tokens) = body
-                .split_once(':')
-                .ok_or_else(|| err(format!("`{body}`: expected `<frame>: <inputs>`")))?;
-            let frame = frame.trim();
-            let frame: u32 = frame
-                .bytes()
-                .all(|b| b.is_ascii_digit())
-                .then(|| frame.parse().ok())
-                .flatten()
-                .ok_or_else(|| err(format!("`{frame}` is not a frame number")))?;
-            if let Some(&(prev, _)) = lines.last()
-                && frame <= prev
-            {
-                return Err(err(format!(
-                    "frame {frame} comes after frame {prev}: frames must strictly increase"
-                )));
-            }
-            let mut input = FrameInput::NONE;
-            for t in tokens.split_whitespace() {
-                let one = if let Some(c) = t.strip_prefix('C') {
-                    let bad = || {
-                        err(format!(
-                            "`{t}`: a code digit is C<entry 0..27>.<digit 0..5>"
-                        ))
-                    };
-                    let (e, k) = c.split_once('.').ok_or_else(bad)?;
-                    let e: u32 = e.parse().ok().filter(|&e| e < 28).ok_or_else(bad)?;
-                    let k: u32 = k.parse().ok().filter(|&k| k < 6).ok_or_else(bad)?;
-                    // The number keys' raw codes: 1..9 are 01..09, 0 is 0A.
-                    let code = match digit(e, k) {
-                        b'0' => 0x0a,
-                        d @ b'1'..=b'9' => d - b'0',
-                        _ => {
-                            return Err(err(format!(
-                                "`{t}`: password_table entry {e} is not digits"
-                            )));
-                        }
-                    };
-                    FrameInput::key(code)
-                } else {
-                    // The shared tokens (`sf_core::input`, also a bug recording's).
-                    parse_token(t)
-                        .ok_or_else(|| {
-                            err(format!(
-                                "`{t}` is not an input (U D L R F M K<hex> C<entry>.<k> -)"
-                            ))
-                        })?
-                        .map_err(err)?
-                };
-                input.joy = input.joy | one.joy;
-                input.keys = KeySet(input.keys.0 | one.keys.0);
-            }
-            lines.push((frame, input));
-        }
-        Ok(InputScript { lines })
+        amiga_conform::script::parse_with_forms(text, " C<entry>.<k>", |t| {
+            t.strip_prefix('C').map(|c| code_digit(t, c, digit))
+        })
+        .map(|s| InputScript { lines: s.lines })
     }
 
     pub fn load(path: &Path) -> Result<InputScript, String> {
@@ -139,22 +69,12 @@ impl InputScript {
 
     /// What is held on `frame`.
     pub fn input_at(&self, frame: u32) -> FrameInput {
-        match self.lines.partition_point(|l| l.0 <= frame) {
-            0 => FrameInput::NONE,
-            i => self.lines[i - 1].1,
-        }
+        amiga_conform::script::input_at(&self.lines, frame)
     }
 
     /// The script as played from its frame `from` on: its frame 0 holds what `from` held.
     pub fn from_frame(&self, from: u32) -> InputScript {
-        let mut lines = vec![(0, self.input_at(from))];
-        lines.extend(
-            self.lines
-                .iter()
-                .filter(|l| l.0 > from)
-                .map(|&(f, i)| (f - from, i)),
-        );
-        InputScript { lines }
+        InputScript { lines: amiga_conform::script::from_frame(&self.lines, from) }
     }
 
     /// The same script for the oracle's trace cache.
@@ -164,6 +84,22 @@ impl InputScript {
 
     /// One input as a script writes it: `R F`, `K19`, `-` ([`sf_core::input::format_tokens`]).
     pub fn format_input(input: FrameInput) -> String {
-        format_tokens(input)
+        amiga_conform::script::InputScript::format_input(input)
     }
+}
+
+/// Token `t`, `C` then `c`: the raw key of digit `k` of `password_table` entry `e`, `c` being
+/// `<e>.<k>`.
+fn code_digit(t: &str, c: &str, digit: &dyn Fn(u32, u32) -> u8) -> Result<FrameInput, String> {
+    let bad = || format!("`{t}`: a code digit is C<entry 0..27>.<digit 0..5>");
+    let (e, k) = c.split_once('.').ok_or_else(bad)?;
+    let e: u32 = e.parse().ok().filter(|&e| e < 28).ok_or_else(bad)?;
+    let k: u32 = k.parse().ok().filter(|&k| k < 6).ok_or_else(bad)?;
+    // The number keys' raw codes: 1..9 are 01..09, 0 is 0A.
+    let code = match digit(e, k) {
+        b'0' => 0x0a,
+        d @ b'1'..=b'9' => d - b'0',
+        _ => return Err(format!("`{t}`: password_table entry {e} is not digits")),
+    };
+    Ok(FrameInput::key(code))
 }

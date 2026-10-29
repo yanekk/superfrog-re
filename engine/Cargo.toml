@@ -22,6 +22,11 @@ opt-level = 2
 [profile.dev.package.amiga-oracle]
 opt-level = 2
 
+# The picture judges compare every pixel of every frame of a case, as sf-conform does (moved to the
+# toolkit, toolkit-extract T06).
+[profile.dev.package.amiga-conform]
+opt-level = 2
+
 # The mixer runs four channels at 3.5 MHz; the oracle comparison runs it for thousands of frames.
 [profile.dev.package.amiga-paula]
 opt-level = 2

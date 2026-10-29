@@ -62,8 +62,8 @@ const ALLOWED: &[&str] = &[
 
 /// Shell crates that must never be in the shipped app's dependency tree (DESIGN §3.2).
 /// `amiga-oracle` is the toolkit's emulator under sf-oracle (toolkit-extract T05): test tooling,
-/// not pure.
-const TEST_TOOLING: [&str; 4] = ["sf-oracle", "amiga-oracle", "sf-conform", "sf-e2e"];
+/// not pure; `amiga-conform` is the harness's game-free half under sf-conform (T06).
+const TEST_TOOLING: [&str; 5] = ["sf-oracle", "amiga-oracle", "sf-conform", "amiga-conform", "sf-e2e"];
 
 /// Exempt from the float and array rules only (DESIGN §3.1).
 const RESAMPLER: &str = "amiga-paula/src/resample.rs";

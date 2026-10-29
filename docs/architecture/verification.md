@@ -20,6 +20,7 @@ owns = [
   "toolkit/.gitignore",
   "toolkit/crates/toolkit-checks/",
   "toolkit/crates/amiga-oracle/",
+  "toolkit/crates/amiga-conform/",
   "toolkit/tools/",
 ]
 +++
