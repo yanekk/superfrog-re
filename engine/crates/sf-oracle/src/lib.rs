@@ -24,7 +24,7 @@ pub use routine::{
     CallError, CallResult, Cpu68k, Hunk, HunkError, HunkKind, HunkMap, MEM_SIZE, RETURN_SENTINEL,
     Regs,
 };
-pub use sf_core::input::{FrameInput, Joy, KeySet};
+pub use amiga_input::{FrameInput, Joy, KeySet};
 pub use sf_disk::DiskSlot;
 pub use amiga_paula::PaulaWrite;
 pub use trace::{

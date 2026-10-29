@@ -9,6 +9,8 @@ publish.workspace = true
 amiga-clock = { path = "../../../toolkit/crates/amiga-clock" }
 # The blitter, the copper and the machine's RAM (pure, a toolkit crate on the allowlist).
 amiga-chips = { path = "../../../toolkit/crates/amiga-chips" }
+# The joystick, the keys held, their text form and CIA-A's keyboard port (pure, a toolkit crate).
+amiga-input = { path = "../../../toolkit/crates/amiga-input" }
 sf-assets = { path = "../sf-assets" }
 # The story intro unpacks its banks as it plays, with the ATN! decompressor (pure, on the
 # allowlist).

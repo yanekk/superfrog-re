@@ -22,7 +22,7 @@ done · ⛔ blocked, needs a human.
 | # | Task | Depends on | State | Notes |
 |---|---|---|---|---|
 | T01 | toolkit-workspace | — | ✅ | |
-| T02 | amiga-input | T01 | ⬜ | |
+| T02 | amiga-input | T01 | ✅ | |
 | T03 | amiga-disk | T01 | ✅ | Review: one fix, a pinned-bytes test for `write_stored` in the toolkit (a header mutation passed every toolkit test; only `bug_zips` caught it). Moved code diffed identical; patch hash 30c211fb8bca matched by Python; deviations held; frog_cases rerun. |
 | T04 | asset-readers | T03 | ⬜ | |
 | T05 | amiga-oracle | T02, T03, T04 | ⬜ | |

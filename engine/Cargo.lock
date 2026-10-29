@@ -89,6 +89,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "amiga-input"
+version = "0.1.0"
+dependencies = [
+ "serde",
+]
+
+[[package]]
 name = "amiga-paula"
 version = "0.1.0"
 dependencies = [
@@ -2919,6 +2926,7 @@ version = "0.1.0"
 dependencies = [
  "amiga-chips",
  "amiga-clock",
+ "amiga-input",
  "amiga-paula",
  "bincode",
  "serde",
@@ -2955,6 +2963,7 @@ name = "sf-oracle"
 version = "0.1.0"
 dependencies = [
  "amiga-disk",
+ "amiga-input",
  "amiga-paula",
  "cc",
  "miniz_oxide 0.9.1",
