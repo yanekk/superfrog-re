@@ -1,0 +1,17 @@
+[package]
+name = "amiga-record"
+version.workspace = true
+edition.workspace = true
+publish.workspace = true
+
+# The game-free half of a bug recorder (pure): a recording of every frame's input with its seed,
+# build and note, its text form around a game's own header, its zip, the recorder and replay state
+# machines and the headless replay loop. Writing the zip to a file is the app's (amiga-app's atomic
+# write); the screenshot check decodes a PNG, so it is amiga-conform's.
+[dependencies]
+# FrameInput and the input tokens a recording's lines are written in.
+amiga-input = { path = "../amiga-input" }
+# The zip a bug recording travels in: stored entries written, any entries read.
+amiga-disk = { path = "../amiga-disk" }
+# Picture, what a replayed step shows.
+amiga-chips = { path = "../amiga-chips" }

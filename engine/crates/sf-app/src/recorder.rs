@@ -6,158 +6,55 @@
 //!
 //! The other way round, [`Replay`] is `--replay`'s source (§2.7): a bug zip's inputs fed one a
 //! step in place of the player's, then nothing, so the app holds on the last frame.
+//!
+//! The recorder and replay state machines and the zip's layout are the toolkit's (`amiga_record`,
+//! toolkit-extract DESIGN §2.8); widescreen's toggles, the zip's name and folder are kept here.
 
 use std::io;
 use std::path::{Path, PathBuf};
 
-use sf_core::input::FrameInput;
-use sf_core::recording::{LevelSetup, Location, MAX_FRAMES, Recording, ZIP_RECORDING, ZIP_SCREENSHOT};
+use sf_core::recording::{Header, LevelSetup, Location, Recording, Superfrog, seed_bytes};
 use sf_core::{LevelId, Rng};
 
 use amiga_app::atomic_write::write as atomic_write;
 
-/// Whether a recording is running, and the recording.
-#[derive(Debug, Clone, Default, PartialEq, Eq)]
-pub enum Recorder {
-    #[default]
-    Off,
-    Recording { rec: Recording },
-}
-
-impl Recorder {
-    /// A recording of a level started with `setup` from `seed`, in widescreen when `widescreen`,
-    /// no frame stepped yet.
-    pub fn start(setup: LevelSetup, seed: Rng, build: &str, widescreen: bool) -> Recorder {
-        Recorder::Recording {
-            rec: Recording {
-                build: build.to_string(),
-                setup,
-                seed,
-                stopped_at: None,
-                note: String::new(),
-                inputs: Vec::new(),
-                widescreen,
-                toggles: Vec::new(),
-            },
-        }
-    }
-
-    /// One stepped frame's input. Past [`MAX_FRAMES`] nothing more is held ([`Recorder::full`]):
-    /// the app stops the recording there.
-    pub fn step(&mut self, input: FrameInput) {
-        if let Recorder::Recording { rec } = self
-            && rec.inputs.len() < MAX_FRAMES as usize
-        {
-            rec.inputs.push(input);
-        }
-    }
-
-    /// Widescreen switched before the next step (real-widescreen DESIGN §2.8). Switched twice
-    /// before one step, the two cancel: the game steps in the mode it had.
-    pub fn toggle(&mut self) {
-        if let Recorder::Recording { rec } = self {
-            let at = rec.inputs.len() as u32;
-            match rec.toggles.last() {
-                Some(&t) if t == at => {
-                    rec.toggles.pop();
-                }
-                _ => rec.toggles.push(at),
-            }
-        }
-    }
-
-    /// How many frames the recording holds; `None` when none runs.
-    pub fn frames(&self) -> Option<usize> {
-        match self {
-            Recorder::Off => None,
-            Recorder::Recording { rec } => Some(rec.inputs.len()),
-        }
-    }
-
-    pub fn is_recording(&self) -> bool {
-        matches!(self, Recorder::Recording { .. })
-    }
-
-    /// Has the recording reached the longest a recording may be (a day)?
-    pub fn full(&self) -> bool {
-        matches!(self, Recorder::Recording { rec } if rec.inputs.len() >= MAX_FRAMES as usize)
-    }
-
-    /// The recording, stopped at `at` with `note`; `None` when none was running.
-    pub fn finish(self, at: Location, note: String) -> Option<Recording> {
-        match self {
-            Recorder::Off => None,
-            Recorder::Recording { mut rec } => {
-                // A switch after the last step played nothing in its mode.
-                if rec.toggles.last().is_some_and(|&t| t as usize >= rec.inputs.len()) {
-                    rec.toggles.pop();
-                }
-                rec.stopped_at = Some(at);
-                rec.note = note;
-                Some(rec)
-            }
-        }
-    }
-}
+/// Whether a recording is running, and the recording (`amiga_record`'s, with Superfrog's header).
+pub type Recorder = amiga_record::Recorder<Superfrog>;
 
 /// `--replay`: a recording's inputs, fed to the game one a step in order.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Replay {
-    /// The recording: its inputs, its widescreen at frame 0 and its toggles.
-    rec: Recording,
-    played: usize,
-    /// [`Replay::just_finished`] has said so.
-    told: bool,
+pub type Replay = amiga_record::Replay<Superfrog>;
+
+/// A recording of a level started with `setup` from `seed`, in widescreen when `widescreen`, no
+/// frame stepped yet.
+pub fn start(setup: LevelSetup, seed: Rng, build: &str, widescreen: bool) -> Recorder {
+    Recorder::start(Header::new(setup, widescreen), seed_bytes(seed), build)
 }
 
-impl Replay {
-    pub fn new(rec: &Recording) -> Replay {
-        Replay { rec: rec.clone(), played: 0, told: false }
-    }
-
-    /// Widescreen for the next step, as recorded (real-widescreen DESIGN §2.8): the mode at frame
-    /// 0 before any step, and once every input is played the mode the last step played in.
-    pub fn widescreen(&self) -> bool {
-        self.rec.widescreen_at(self.played.min(self.rec.inputs.len().saturating_sub(1)) as u32)
-    }
-
-    /// The input for the next step, `None` once every recorded one has been played.
-    pub fn next(&mut self) -> Option<FrameInput> {
-        let input = self.rec.inputs.get(self.played).copied()?;
-        self.played += 1;
-        Some(input)
-    }
-
-    /// Has every recorded input been played?
-    pub fn finished(&self) -> bool {
-        self.played == self.rec.inputs.len()
-    }
-
-    /// The frame the replay holds on, the first time it is asked once every input is played;
-    /// `None` before and after.
-    pub fn just_finished(&mut self) -> Option<usize> {
-        (self.finished() && !std::mem::replace(&mut self.told, true)).then_some(self.played)
+/// Widescreen switched before the next step (real-widescreen DESIGN §2.8). Switched twice before
+/// one step, the two cancel: the game steps in the mode it had.
+pub fn toggle(recorder: &mut Recorder) {
+    if let Some(rec) = recorder.recording_mut() {
+        let at = rec.inputs.len() as u32;
+        match rec.toggles.last() {
+            Some(&t) if t == at => {
+                rec.toggles.pop();
+            }
+            _ => rec.toggles.push(at),
+        }
     }
 }
 
-/// The largest entry read out of a bug zip: `recording.txt` at [`MAX_FRAMES`] with the input
-/// changing every frame is ~60 MB.
-const MAX_ENTRY: usize = 256 << 20;
+/// Widescreen for the replay's next step, as recorded (real-widescreen DESIGN §2.8): the mode at
+/// frame 0 before any step, and once every input is played the mode the last step played in.
+pub fn replay_widescreen(r: &Replay) -> bool {
+    let rec = r.recording();
+    rec.widescreen_at(r.played().min(rec.inputs.len().saturating_sub(1)) as u32)
+}
 
-/// The recording in a bug zip's bytes, or why there is none: not a zip, no `recording.txt` or
-/// `screenshot.png`, or a recording the parser or [`Recording::validate`] refuses (as
-/// `sf-conform`'s `bug::read_zip`, which sf-app may not depend on, minus its PNG check: the app
-/// replays without the screenshot).
-pub fn read_zip(bytes: &[u8]) -> Result<Recording, String> {
-    let entries = sf_disk::zip::read_entries(bytes, |n| n == ZIP_RECORDING || n == ZIP_SCREENSHOT, MAX_ENTRY)
-        .map_err(|e| format!("not a bug zip: {e}"))?;
-    let has = |name: &str| entries.iter().find(|e| e.name == name).ok_or_else(|| format!("not a bug zip: it has no {name}"));
-    let text = has(ZIP_RECORDING)?;
-    has(ZIP_SCREENSHOT)?;
-    let text = std::str::from_utf8(&text.bytes).map_err(|_| format!("{ZIP_RECORDING}: it is not UTF-8 text"))?;
-    let rec = Recording::parse(text).map_err(|e| format!("{ZIP_RECORDING}: {e}"))?;
-    rec.validate().map_err(|e| format!("{ZIP_RECORDING}: {e}"))?;
-    Ok(rec)
+/// The recording in a bug zip's bytes (`amiga_record::read_zip`), or why there is none. The app
+/// replays without the screenshot, so it is not decoded.
+pub fn open_zip(bytes: &[u8]) -> Result<Recording, String> {
+    amiga_record::read_zip::<Superfrog>(bytes).map(|(rec, _)| rec)
 }
 
 /// What the player answered "Recording in progress" with, before an action that would end it.
@@ -238,9 +135,7 @@ pub fn zip_name(dir: &Path, at_level: LevelId, now: (i32, u8, u8, u8, u8)) -> Pa
 /// The bug zip (DESIGN §2.5): `recording.txt` and `screenshot.png`, stored, written whole or not
 /// at all. A recording that cannot be read back is refused before anything is written.
 pub fn write_zip(path: &Path, rec: &Recording, png: &[u8]) -> io::Result<()> {
-    rec.validate().map_err(io::Error::other)?;
-    let text = rec.to_text();
-    let zip = sf_disk::zip::write_stored(&[(ZIP_RECORDING, text.as_bytes()), (ZIP_SCREENSHOT, png)]);
+    let zip = amiga_record::zip_bytes(rec, png).map_err(io::Error::other)?;
     atomic_write(path, &zip)
 }
 
@@ -268,7 +163,8 @@ pub fn named_level(at: &Location, rec: &Recording) -> LevelId {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use sf_core::input::Joy;
+    use sf_core::input::{FrameInput, Joy};
+    use sf_core::recording::{MAX_FRAMES, RecordingRng, ZIP_RECORDING, ZIP_SCREENSHOT};
 
     fn temp(name: &str) -> PathBuf {
         let d = std::env::temp_dir().join(format!("sf-app-recorder-{name}-{}", std::process::id()));
@@ -282,7 +178,7 @@ mod tests {
     }
 
     fn recording(frames: usize) -> Recording {
-        let mut r = Recorder::start(LevelSetup::default(), Rng::seeded(1, 2), "test build", false);
+        let mut r = start(LevelSetup::default(), Rng::seeded(1, 2), "test build", false);
         for n in 0..frames {
             r.step(FrameInput { joy: if n % 3 == 0 { Joy::RIGHT } else { Joy::NONE }, ..FrameInput::NONE });
         }
@@ -296,7 +192,7 @@ mod tests {
         r.step(FrameInput::NONE);
         assert_eq!(r.clone().finish(Location::Screen("title"), String::new()), None);
         assert_eq!(r.frames(), None);
-        let mut on = Recorder::start(LevelSetup::default(), Rng::seeded(1, 2), "b", false);
+        let mut on = start(LevelSetup::default(), Rng::seeded(1, 2), "b", false);
         assert_eq!(on.frames(), Some(0));
         on.step(FrameInput::NONE);
         assert_eq!(on.frames(), Some(1));
@@ -305,7 +201,7 @@ mod tests {
         assert_eq!(rec.inputs[0].joy, Joy::RIGHT);
         assert_eq!(rec.stopped_at, Some(Location::Screen("tally")));
         assert_eq!((rec.note.as_str(), rec.build.as_str()), ("a note", "test build"));
-        assert_eq!(rec.seed, Rng::seeded(1, 2));
+        assert_eq!(rec.rng(), Rng::seeded(1, 2));
         assert_eq!(rec.setup, LevelSetup::default());
     }
 
@@ -313,19 +209,19 @@ mod tests {
     /// came before; two before one step cancel, and one after the last step is dropped.
     #[test]
     fn a_recording_holds_its_widescreen_and_every_switch_before_a_step() {
-        let mut r = Recorder::start(LevelSetup::default(), Rng::seeded(1, 2), "b", true);
-        r.toggle();
+        let mut r = start(LevelSetup::default(), Rng::seeded(1, 2), "b", true);
+        toggle(&mut r);
         for n in 0..10 {
             if n == 3 || n == 7 {
-                r.toggle();
+                toggle(&mut r);
             }
             if n == 5 {
-                r.toggle();
-                r.toggle();
+                toggle(&mut r);
+                toggle(&mut r);
             }
             r.step(FrameInput::NONE);
         }
-        r.toggle();
+        toggle(&mut r);
         let rec = r.finish(Location::Screen("title"), String::new()).unwrap();
         assert!(rec.widescreen);
         assert_eq!(rec.toggles, [0, 3, 7]);
@@ -334,7 +230,7 @@ mod tests {
         let modes: Vec<bool> = (0..10).map(|k| rec.widescreen_at(k)).collect();
         assert_eq!(modes, [false, false, false, true, true, true, true, false, false, false]);
         let mut off = Recorder::default();
-        off.toggle();
+        toggle(&mut off);
         assert_eq!(off, Recorder::Off);
     }
 
@@ -346,17 +242,17 @@ mod tests {
         let mut r = Replay::new(&rec);
         let mut modes = Vec::new();
         while !r.finished() {
-            modes.push(r.widescreen());
+            modes.push(replay_widescreen(&r));
             r.next();
         }
         assert_eq!(modes, [true, true, false, false, true, true]);
-        assert!(r.widescreen(), "held on the last step's mode");
-        assert!(!Replay::new(&recording(0)).widescreen());
+        assert!(replay_widescreen(&r), "held on the last step's mode");
+        assert!(!replay_widescreen(&Replay::new(&recording(0))));
     }
 
     #[test]
     fn a_full_recording_holds_no_more_than_a_day() {
-        let mut r = Recorder::start(LevelSetup::default(), Rng::seeded(0, 0), "b", false);
+        let mut r = start(LevelSetup::default(), Rng::seeded(0, 0), "b", false);
         if let Recorder::Recording { rec } = &mut r {
             rec.inputs = vec![FrameInput::NONE; MAX_FRAMES as usize - 1];
         }
@@ -484,16 +380,44 @@ mod tests {
         let d = temp("read");
         let rec = recording(7);
         write_zip(&d.join("z.zip"), &rec, b"png").unwrap();
-        assert_eq!(read_zip(&std::fs::read(d.join("z.zip")).unwrap()), Ok(rec.clone()));
-        assert!(read_zip(b"hello").unwrap_err().starts_with("not a bug zip"));
+        assert_eq!(open_zip(&std::fs::read(d.join("z.zip")).unwrap()), Ok(rec.clone()));
+        assert!(open_zip(b"hello").unwrap_err().starts_with("not a bug zip"));
         let only_shot = sf_disk::zip::write_stored(&[(ZIP_SCREENSHOT, b"png".as_slice())]);
-        assert!(read_zip(&only_shot).unwrap_err().contains("no recording.txt"));
+        assert!(open_zip(&only_shot).unwrap_err().contains("no recording.txt"));
         let text = rec.to_text();
         let only_rec = sf_disk::zip::write_stored(&[(ZIP_RECORDING, text.as_bytes())]);
-        assert!(read_zip(&only_rec).unwrap_err().contains("no screenshot.png"));
+        assert!(open_zip(&only_rec).unwrap_err().contains("no screenshot.png"));
         let bad = sf_disk::zip::write_stored(&[(ZIP_RECORDING, b"not a recording".as_slice()), (ZIP_SCREENSHOT, b"png")]);
-        assert!(read_zip(&bad).unwrap_err().starts_with("recording.txt: "), "{:?}", read_zip(&bad));
+        assert!(open_zip(&bad).unwrap_err().starts_with("recording.txt: "), "{:?}", open_zip(&bad));
         std::fs::remove_dir_all(&d).unwrap();
+    }
+
+    /// toolkit-extract T09: every bug zip the owner saved (the main checkout's `bugs/`, git-ignored,
+    /// so none on a fresh clone) reads back and is written again as it was, text and zip. A version
+    /// 1 file is written as version 2, as before the move: the magic's number and `widescreen off`
+    /// after `wings`, nothing else.
+    #[test]
+    fn every_saved_bug_zip_reads_back_byte_for_byte() {
+        let Ok(dir) = std::fs::read_dir(bugs_dir(None)) else { return };
+        let mut n = 0;
+        for p in dir.flatten().map(|e| e.path()).filter(|p| p.extension().is_some_and(|x| x == "zip")) {
+            let bytes = std::fs::read(&p).unwrap();
+            let (rec, png) = amiga_record::read_zip::<Superfrog>(&bytes).unwrap_or_else(|e| panic!("{}: {e}", p.display()));
+            let entries = sf_disk::zip::read_entries(&bytes, |_| true, 1 << 28).unwrap();
+            let text = String::from_utf8(entries[0].bytes.clone()).unwrap();
+            let want = match text.strip_prefix("superfrog recording 1\n") {
+                Some(v1) => format!("superfrog recording 2\n{}", v1.replacen("\nwings off\n", "\nwings off\nwidescreen off\n", 1).replacen("\nwings on\n", "\nwings on\nwidescreen off\n", 1)),
+                None => text.clone(),
+            };
+            assert_eq!(rec.to_text(), want, "{}: the text", p.display());
+            let zip = sf_disk::zip::write_stored(&[(ZIP_RECORDING, want.as_bytes()), (ZIP_SCREENSHOT, &png)]);
+            assert_eq!(amiga_record::zip_bytes(&rec, &png).unwrap(), zip, "{}: the zip", p.display());
+            if want == text {
+                assert_eq!(zip, bytes, "{}: the zip as saved", p.display());
+            }
+            n += 1;
+        }
+        eprintln!("{n} saved bug zips read back as saved");
     }
 
     #[test]

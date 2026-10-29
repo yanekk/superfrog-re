@@ -17,6 +17,8 @@ amiga-clock = { path = "../../../toolkit/crates/amiga-clock" }
 # The game-free half of the harness: the picture and sound judges, the diff PNG, the script lexer
 # (toolkit-extract T06).
 amiga-conform = { path = "../../../toolkit/crates/amiga-conform" }
+# A bug zip read and its recording replayed headlessly (toolkit-extract T09).
+amiga-record = { path = "../../../toolkit/crates/amiga-record" }
 # The original, run by the reference emulator (sf-oracle's dev-dependency on this crate is a
 # test-only cycle, which Cargo allows).
 sf-oracle = { path = "../sf-oracle" }
@@ -26,7 +28,8 @@ sf-disk = { path = "../sf-disk" }
 miniz_oxide = "0.9.1"
 # Case files are TOML (T12 interface).
 toml = "0.9"
-# Reads a bug zip's screenshot back (bug-recorder T04); the app writes it with the same crate.
-png = "0.18"
 
 [dev-dependencies]
+# Reads the app's saved frames back in widescreen_recording.rs; a bug zip's screenshot is
+# decoded by amiga-conform (toolkit-extract T09).
+png = "0.18"

@@ -26,8 +26,11 @@
 //! 901: R
 //! ```
 //!
-//! The header is fixed: every field, in this order, one per line, the value the rest of the line
-//! (a note may hold `#`). The inputs are the conformance script's tokens and rule
+//! The recording, its text form's shared rules, the recorder and the zip are the toolkit's
+//! (`amiga_record`, toolkit-extract DESIGN §2.8); this file is Superfrog's header in it
+//! ([`Header`]): the Start Level setup, where STOP was pressed, widescreen and its toggles, and the
+//! magic. The header is fixed: every field, in this order, one per line, the value the rest of the
+//! line (a note may hold `#`). The inputs are the conformance script's tokens and rule
 //! ([`crate::input::format_tokens`]): a line holds from its frame until the next, frames strictly
 //! increase, a `#` starts a comment; before the first line nothing is held. `frames` is how many
 //! steps were recorded, so held input past the last line is still counted.
@@ -40,30 +43,24 @@
 
 use core::fmt;
 
+use amiga_record::{GameRecording, Head, HeaderReader, HeaderWriter};
 use sf_assets::LevelId;
 
-use crate::input::{FrameInput, format_tokens, parse_tokens};
 use crate::rng::Rng;
 
-/// The bug zip's entries (DESIGN §2.5).
-pub const ZIP_RECORDING: &str = "recording.txt";
-pub const ZIP_SCREENSHOT: &str = "screenshot.png";
+pub use amiga_record::{MAX_FRAMES, RecordingError, ZIP_RECORDING, ZIP_SCREENSHOT};
 
-/// The first line of every recording; the number is the format's version.
-const MAGIC: &str = "superfrog recording 2";
+/// One recording (DESIGN §2.2, §2.6): the toolkit's, with Superfrog's [`Header`]. It reads as its
+/// header too (`rec.setup`, `rec.stopped_at`).
+pub type Recording = amiga_record::Recording<Superfrog>;
 
 /// The input token that toggles widescreen once (DESIGN §2.8).
 const TOGGLE: &str = "W";
 
-/// The highest score the dialog takes: the score shows six digits.
 pub const MAX_POINTS: u32 = 999_999;
 
 /// An extra life comes at every multiple of this score (`frog_next_life`, h0+$880).
 const LIFE_EVERY: u32 = 200_000;
-
-/// The longest recording: a day of play at one PAL frame a step (138 MB held expanded). The parser
-/// holds `frames` inputs, so without a bound a header of a few bytes asks for 128 GB.
-pub const MAX_FRAMES: u32 = 50 * 60 * 60 * 24;
 
 /// The screens [`Location::Screen`] names (DESIGN §2.6; `Game::location`, T02). `world end` is the
 /// end-of-world picture after a world's fourth level (owner, T02, 2026-10-20).
@@ -283,69 +280,27 @@ fn number<T: core::str::FromStr>(s: &str) -> Option<T> {
         .flatten()
 }
 
-/// One recording (DESIGN §2.2, §2.6).
+/// Superfrog's part of a recording ([`GameRecording`]): its header, its text and its magic.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Superfrog {}
+
+/// Superfrog's header: where the level was started, where it stopped, and widescreen.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Recording {
-    /// The engine build that made it; informational, never refused.
-    pub build: String,
+pub struct Header {
     pub setup: LevelSetup,
-    /// The random state the start (b) boots with (`Start::PowerOn { seed }`, T00/T02).
-    pub seed: Rng,
     /// Where STOP was pressed; `None` (written `-`) before it was.
     pub stopped_at: Option<Location>,
-    /// The owner's one-line note; may be empty.
-    pub note: String,
-    /// One per engine step from the level's frame 0 (the first step after which the scene is a
-    /// level or the bonus level). Held expanded: the app appends one a step.
-    pub inputs: Vec<FrameInput>,
     /// Widescreen at frame 0 (real-widescreen DESIGN §2.8).
     pub widescreen: bool,
     /// The frames before whose step widescreen toggles, strictly increasing, each below
-    /// `inputs.len()`.
+    /// the recording's frame count.
     pub toggles: Vec<u32>,
 }
 
-/// Why a recording's text was refused: the 1-based line and what is wrong with it.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct RecordingError {
-    pub line: usize,
-    pub why: String,
-}
-
-impl fmt::Display for RecordingError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "line {}: {}", self.line, self.why)
-    }
-}
-
-impl Recording {
-    /// Whether the recording can be written and read back: the setup in range, at most
-    /// [`MAX_FRAMES`] inputs, and the build and note each one line.
-    pub fn validate(&self) -> Result<(), String> {
-        self.setup.validate()?;
-        if self.inputs.len() > MAX_FRAMES as usize {
-            return Err(format!(
-                "{} frames is past the longest recording, {MAX_FRAMES} (a day)",
-                self.inputs.len()
-            ));
-        }
-        for (what, text) in [("build", &self.build), ("note", &self.note)] {
-            if text.contains(['\n', '\r']) {
-                return Err(format!("the {what} must be one line"));
-            }
-        }
-        if !self.toggles.windows(2).all(|w| w[0] < w[1]) {
-            return Err("widescreen toggles must be at strictly increasing frames".into());
-        }
-        if let Some(&last) = self.toggles.last()
-            && last as usize >= self.inputs.len()
-        {
-            return Err(format!(
-                "a widescreen toggle at frame {last} is past the recording's {} frames",
-                self.inputs.len()
-            ));
-        }
-        Ok(())
+impl Header {
+    /// A level started with `setup` in widescreen when `widescreen`, not stopped, no toggles.
+    pub fn new(setup: LevelSetup, widescreen: bool) -> Header {
+        Header { setup, stopped_at: None, widescreen, toggles: Vec::new() }
     }
 
     /// Whether any of the game was played in widescreen: on at frame 0, or toggled on later. Such a
@@ -359,226 +314,162 @@ impl Recording {
     pub fn widescreen_at(&self, frame: u32) -> bool {
         self.widescreen ^ (self.toggles.partition_point(|&t| t <= frame) % 2 == 1)
     }
+}
 
-    /// The recording as text (DESIGN §2.6): the header in order, then an input line wherever the
-    /// input changes, the first at frame 0.
-    pub fn to_text(&self) -> String {
-        let s = &self.setup;
+/// The seed's bytes in a recording: `lo` then `hi`, each big-endian.
+pub fn seed_bytes(rng: Rng) -> Vec<u8> {
+    [rng.lo.to_be_bytes(), rng.hi.to_be_bytes()].concat()
+}
+
+/// [`seed_bytes`] read back; `None` unless eight bytes.
+fn rng_of(seed: &[u8]) -> Option<Rng> {
+    let long = |at: usize| Some(u32::from_be_bytes(seed.get(at..at + 4)?.try_into().ok()?));
+    (seed.len() == 8).then(|| Some(Rng { lo: long(0)?, hi: long(4)? })).flatten()
+}
+
+/// The random state a recording starts from.
+pub trait RecordingRng {
+    /// The seed as the game's [`Rng`]. Panics on a seed not eight bytes, which
+    /// [`amiga_record::Recording::validate`] refuses and the parser never makes.
+    fn rng(&self) -> Rng;
+}
+
+impl RecordingRng for Recording {
+    fn rng(&self) -> Rng {
+        rng_of(&self.seed).unwrap_or_else(|| panic!("a recording's seed is 8 bytes, not {}", self.seed.len()))
+    }
+}
+
+impl GameRecording for Superfrog {
+    type Header = Header;
+    type Stop = Location;
+    const MAGIC: &'static str = "superfrog recording";
+    const VERSION: &'static str = "2";
+    const TOKENS: &'static [&'static str] = &[TOGGLE];
+
+    fn write_header(rec: &Recording, w: &mut HeaderWriter) {
+        let s = &rec.setup;
         let on = |b: bool| if b { "on" } else { "off" };
-        let mut out = String::new();
-        let mut line = |l: &str| {
-            out.push_str(l);
-            out.push('\n');
-        };
-        line(MAGIC);
-        line(&with("build", &self.build));
-        line(&format!("level {}", s.level));
-        line(&format!("lives {}", s.lives.count()));
-        line(&format!("points {}", s.points));
-        line(&format!("energy {}", s.energy));
-        line(&format!("difficulty {}", s.difficulty.word()));
-        line(&format!("spud {}", on(s.spud)));
-        line(&format!("wings {}", on(s.wings)));
-        line(&format!("widescreen {}", on(self.widescreen)));
-        line(&format!("seed {:08x} {:08x}", self.seed.lo, self.seed.hi));
-        line(&format!("frames {}", self.inputs.len()));
-        match &self.stopped_at {
-            Some(at) => line(&format!("stopped-at {at}")),
-            None => line("stopped-at -"),
+        w.build(&rec.build);
+        w.field("level", &s.level.to_string());
+        w.field("lives", &s.lives.count().to_string());
+        w.field("points", &s.points.to_string());
+        w.field("energy", &s.energy.to_string());
+        w.field("difficulty", s.difficulty.word());
+        w.field("spud", on(s.spud));
+        w.field("wings", on(s.wings));
+        w.field("widescreen", on(rec.widescreen));
+        let seed = rng_of(&rec.seed).unwrap_or_default();
+        w.field("seed", &format!("{:08x} {:08x}", seed.lo, seed.hi));
+        w.frames(rec.inputs.len());
+        match &rec.stopped_at {
+            Some(at) => w.field("stopped-at", &at.to_string()),
+            None => w.field("stopped-at", "-"),
         }
-        line(&with("note", &self.note));
-        line("inputs");
-        let mut held = None;
-        let mut toggles = self.toggles.iter().copied().peekable();
-        for (frame, &input) in self.inputs.iter().enumerate() {
-            let toggle = toggles.next_if_eq(&(frame as u32)).is_some();
-            if held != Some(input) || toggle {
-                let tokens = match toggle {
-                    false => format_tokens(input),
-                    true if input == FrameInput::NONE => TOGGLE.to_string(),
-                    true => format!("{} {TOGGLE}", format_tokens(input)),
-                };
-                line(&format!("{frame}: {tokens}"));
-                held = Some(input);
-            }
-        }
-        out
+        w.note(&rec.note);
     }
 
-    /// Reads [`Recording::to_text`]'s format back. Every refusal names its line; never a panic.
-    pub fn parse(text: &str) -> Result<Recording, RecordingError> {
-        let mut lines = text.lines().enumerate().map(|(i, l)| (i + 1, l));
-        let last = text.lines().count();
-        let mut next = |key: &str| -> Result<(usize, &str), RecordingError> {
-            let missing = |line: usize| RecordingError {
-                line,
-                why: format!("missing `{key}`, which comes next in the header"),
-            };
-            let (n, l) = lines.next().ok_or_else(|| missing(last + 1))?;
-            if l == key {
-                return Ok((n, ""));
-            }
-            l.strip_prefix(key)
-                .and_then(|r| r.strip_prefix(' '))
-                .map(|r| (n, r))
-                .ok_or_else(|| missing(n))
-        };
-        let err = |line: usize, why: String| RecordingError { line, why };
-
-        let (n, version) = next("superfrog recording")?;
+    fn read_header(n: usize, version: &str, r: &mut HeaderReader<'_>) -> Result<Head<Superfrog>, RecordingError> {
+        let err = HeaderReader::error;
         let v2 = match version {
             "1" => false,
             "2" => true,
             _ => {
-                return Err(err(
-                    n,
-                    format!("recording format `{version}` is not one this engine reads (1, 2)"),
-                ));
+                return Err(err(n, format!("recording format `{version}` is not one this engine reads (1, 2)")));
             }
         };
-        let (_, build) = next("build")?;
-        let (n, level) = next("level")?;
+        let build = r.build()?;
+        let (n, level) = r.next("level")?;
         let level: LevelId = level.parse().map_err(|e| err(n, e))?;
-        let (n, lives) = next("lives")?;
-        let lives = Lives::from_count(lives)
-            .ok_or_else(|| err(n, format!("lives `{lives}` is not 3, 5 or 7")))?;
-        let (n, points) = next("points")?;
+        let (n, lives) = r.next("lives")?;
+        let lives = Lives::from_count(lives).ok_or_else(|| err(n, format!("lives `{lives}` is not 3, 5 or 7")))?;
+        let (n, points) = r.next("points")?;
         let points: u32 = number(points)
             .filter(|&p| p <= MAX_POINTS)
             .ok_or_else(|| err(n, format!("points `{points}` is not 0 to {MAX_POINTS}")))?;
-        let (n, energy) = next("energy")?;
+        let (n, energy) = r.next("energy")?;
         let energy: u8 = number(energy)
             .filter(|e| (1..=4).contains(e))
             .ok_or_else(|| err(n, format!("energy `{energy}` is not 1 to 4 hearts")))?;
-        let (n, difficulty) = next("difficulty")?;
+        let (n, difficulty) = r.next("difficulty")?;
         let difficulty = match difficulty {
             "easy" => Difficulty::Easy,
             "normal" => Difficulty::Normal,
             d => return Err(err(n, format!("difficulty `{d}` is not easy or normal"))),
         };
-        let mut flag = |key: &str| -> Result<bool, RecordingError> {
-            match next(key)? {
-                (_, "on") => Ok(true),
-                (_, "off") => Ok(false),
-                (n, v) => Err(err(n, format!("{key} `{v}` is not on or off"))),
-            }
-        };
-        let spud = flag("spud")?;
-        let wings = flag("wings")?;
-        let widescreen = if v2 { flag("widescreen")? } else { false };
-        let (n, seed) = next("seed")?;
+        let spud = r.flag("spud")?;
+        let wings = r.flag("wings")?;
+        let widescreen = if v2 { r.flag("widescreen")? } else { false };
+        let (n, seed) = r.next("seed")?;
         let seed = seed
             .split_once(' ')
-            .and_then(|(lo, hi)| {
-                Some(Rng {
-                    lo: hex32(lo)?,
-                    hi: hex32(hi)?,
-                })
-            })
+            .and_then(|(lo, hi)| Some(Rng { lo: hex32(lo)?, hi: hex32(hi)? }))
             .ok_or_else(|| err(n, format!("seed `{seed}` is not two hex longs, `lo hi`")))?;
-        let (n, frames) = next("frames")?;
-        let frames: u32 = number(frames)
-            .ok_or_else(|| err(n, format!("frames `{frames}` is not a frame count")))?;
-        if frames > MAX_FRAMES {
-            return Err(err(
-                n,
-                format!("frames {frames} is past the longest recording, {MAX_FRAMES} (a day)"),
-            ));
-        }
-        let (n, stopped) = next("stopped-at")?;
+        let frames = r.frames()?;
+        let (n, stopped) = r.next("stopped-at")?;
         let stopped_at = match stopped {
             "-" => None,
             s => Some(s.parse().map_err(|e| err(n, e))?),
         };
-        let (_, note) = next("note")?;
-        let (n, rest) = next("inputs")?;
-        if !rest.is_empty() {
-            return Err(err(n, "`inputs` stands alone on its line".into()));
-        }
-
-        let mut inputs = Vec::with_capacity(frames as usize);
-        let mut toggles = Vec::new();
-        let (mut held, mut prev) = (FrameInput::NONE, None);
-        for (n, raw) in lines {
-            let body = raw.split('#').next().unwrap_or("").trim();
-            if body.is_empty() {
-                continue;
-            }
-            let (frame, tokens) = body
-                .split_once(':')
-                .ok_or_else(|| err(n, format!("`{body}`: expected `<frame>: <inputs>`")))?;
-            let frame: u32 = number(frame.trim())
-                .ok_or_else(|| err(n, format!("`{}` is not a frame number", frame.trim())))?;
-            if let Some(prev) = prev
-                && frame <= prev
-            {
-                return Err(err(
-                    n,
-                    format!(
-                        "frame {frame} comes after frame {prev}: frames must strictly increase"
-                    ),
-                ));
-            }
-            if frame >= frames {
-                return Err(err(
-                    n,
-                    format!("frame {frame} is past the recording's {frames} frames"),
-                ));
-            }
-            let (tokens, toggles_here) = without_toggle(tokens);
-            if toggles_here > 1 {
-                return Err(err(n, format!("`{TOGGLE}` twice in one line: a line toggles once")));
-            }
-            let toggle = toggles_here == 1;
-            if toggle && !v2 {
-                return Err(err(
-                    n,
-                    format!("`{TOGGLE}` is a version 2 token; this recording is version 1"),
-                ));
-            }
-            if toggle {
-                toggles.push(frame);
-            }
-            let input = parse_tokens(&tokens).map_err(|e| err(n, e))?;
-            inputs.resize(frame as usize, held);
-            inputs.push(input);
-            held = input;
-            prev = Some(frame);
-        }
-        inputs.resize(frames as usize, held);
-        Ok(Recording {
-            build: build.to_string(),
-            setup: LevelSetup {
-                level,
-                lives,
-                points,
-                energy,
-                difficulty,
-                spud,
-                wings,
-            },
-            seed,
-            stopped_at,
-            note: note.to_string(),
-            inputs,
-            widescreen,
-            toggles,
+        let note = r.note()?;
+        let setup = LevelSetup { level, lives, points, energy, difficulty, spud, wings };
+        Ok(Head {
+            build,
+            seed: seed_bytes(seed),
+            frames,
+            note,
+            header: Header { setup, stopped_at, widescreen, toggles: Vec::new() },
         })
     }
-}
 
-/// A line's tokens with every `W` taken out, and how many there were.
-fn without_toggle(tokens: &str) -> (String, usize) {
-    let (w, rest): (Vec<&str>, Vec<&str>) = tokens.split_whitespace().partition(|&t| t == TOGGLE);
-    (rest.join(" "), w.len())
-}
+    /// The setup in range, the seed two longs, and the toggles strictly increasing, each before
+    /// the last step.
+    fn validate(rec: &Recording) -> Result<(), String> {
+        rec.setup.validate()?;
+        if rng_of(&rec.seed).is_none() {
+            return Err(format!("the seed is two longs, 8 bytes, not {}", rec.seed.len()));
+        }
+        if !rec.toggles.windows(2).all(|w| w[0] < w[1]) {
+            return Err("widescreen toggles must be at strictly increasing frames".into());
+        }
+        if let Some(&last) = rec.toggles.last()
+            && last as usize >= rec.inputs.len()
+        {
+            return Err(format!(
+                "a widescreen toggle at frame {last} is past the recording's {} frames",
+                rec.inputs.len()
+            ));
+        }
+        Ok(())
+    }
 
-/// `key value`, or the bare key when the value is empty (so no line ends in a space).
-fn with(key: &str, value: &str) -> String {
-    if value.is_empty() {
-        key.to_string()
-    } else {
-        format!("{key} {value}")
+    fn frame_tokens(h: &Header, frame: u32) -> Vec<&'static str> {
+        match h.toggles.binary_search(&frame) {
+            Ok(_) => vec![TOGGLE],
+            Err(_) => Vec::new(),
+        }
+    }
+
+    fn read_frame_tokens(h: &mut Header, version: &str, frame: u32, tokens: &[&str]) -> Result<(), String> {
+        match tokens.len() {
+            0 => return Ok(()),
+            1 => {}
+            _ => return Err(format!("`{TOGGLE}` twice in one line: a line toggles once")),
+        }
+        if version == "1" {
+            return Err(format!("`{TOGGLE}` is a version 2 token; this recording is version 1"));
+        }
+        h.toggles.push(frame);
+        Ok(())
+    }
+
+    /// Stopped at `at`; a widescreen switch after the last step played nothing in its mode, so it
+    /// is dropped.
+    fn stop(rec: &mut Recording, at: Location) {
+        if rec.toggles.last().is_some_and(|&t| t as usize >= rec.inputs.len()) {
+            rec.toggles.pop();
+        }
+        rec.stopped_at = Some(at);
     }
 }
 
@@ -594,7 +485,7 @@ fn hex32(s: &str) -> Option<u32> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::input::{Joy, KeySet};
+    use crate::input::{FrameInput, Joy, KeySet};
 
     fn id(s: &str) -> LevelId {
         s.parse().unwrap()
@@ -618,28 +509,30 @@ mod tests {
             .collect();
         Recording {
             build: "0.1.0 abc1234 dirty".into(),
-            setup: LevelSetup {
-                level: id("W4-3"),
-                lives: Lives::Seven,
-                points: 999_999,
-                energy: 1,
-                difficulty: Difficulty::Easy,
-                spud: true,
-                wings: true,
-            },
-            seed: Rng {
+            seed: seed_bytes(Rng {
                 lo: 0x0000_a5c3,
                 hi: 0xffff_0001,
-            },
-            stopped_at: Some(Location::Level {
-                id: id("W1-2"),
-                col: 94,
-                row: 51,
             }),
             note: "black screen after the slot machine # not a comment".into(),
             inputs,
-            widescreen: true,
-            toggles: vec![0, 38, 900, 99_999],
+            header: Header {
+                setup: LevelSetup {
+                    level: id("W4-3"),
+                    lives: Lives::Seven,
+                    points: 999_999,
+                    energy: 1,
+                    difficulty: Difficulty::Easy,
+                    spud: true,
+                    wings: true,
+                },
+                stopped_at: Some(Location::Level {
+                    id: id("W1-2"),
+                    col: 94,
+                    row: 51,
+                }),
+                widescreen: true,
+                toggles: vec![0, 38, 900, 99_999],
+            },
         }
     }
 
@@ -662,13 +555,13 @@ mod tests {
     fn the_header_is_in_design_order_and_inputs_only_where_they_change() {
         let mut r = Recording {
             build: "b".into(),
-            setup: LevelSetup::default(),
-            seed: Rng { lo: 1, hi: 0xabc },
-            stopped_at: Some(Location::Screen("tally")),
+            seed: seed_bytes(Rng { lo: 1, hi: 0xabc }),
             note: "n".into(),
             inputs: vec![FrameInput::NONE; 200],
-            widescreen: false,
-            toggles: vec![],
+            header: Header {
+                stopped_at: Some(Location::Screen("tally")),
+                ..Header::new(LevelSetup::default(), false)
+            },
         };
         r.inputs[112..130].fill(FrameInput::joy(Joy::RIGHT));
         r.inputs[130..].fill(FrameInput::joy(Joy::RIGHT | Joy::FIRE));
@@ -892,6 +785,16 @@ mod tests {
         assert!(r.validate().unwrap_err().contains("past the recording"));
         r.toggles = vec![99_999];
         assert_eq!(r.validate(), Ok(()));
+    }
+
+    #[test]
+    fn the_seed_is_its_two_longs_and_a_wrong_length_is_refused() {
+        let r = full();
+        assert_eq!(r.seed, [0, 0, 0xa5, 0xc3, 0xff, 0xff, 0, 1]);
+        assert_eq!(r.rng(), Rng { lo: 0xa5c3, hi: 0xffff_0001 });
+        let mut short = r.clone();
+        short.seed.pop();
+        assert!(short.validate().unwrap_err().contains("8 bytes"));
     }
 
     #[test]

@@ -6,47 +6,25 @@
 
 use sf_core::input::FrameInput;
 use sf_core::layout::{AmigaMemory, Ram, VarId, def};
-use sf_core::recording::Location;
 use sf_core::level::objects::{WIDE_BASE, WIDE_BYTES};
 use sf_core::level::screen::WIDE_EXTRA;
-use sf_core::recording::{Recording, ZIP_RECORDING, ZIP_SCREENSHOT};
+use sf_core::recording::{Location, Recording, RecordingRng, Superfrog, ZIP_SCREENSHOT};
 use sf_core::{Game, LoadEnd, Picture, Scene, View};
 use sf_oracle::{Amiga, Rgb12Frame};
+
+pub use amiga_conform::screenshot::{picture_png, picture_rgb, screenshot_differs};
 
 use crate::sync::{self, Synced};
 use crate::{Case, Divergence, InputScript, Mode, Outcome, SyncPoint};
 
-/// The largest entry read out of a bug zip. `recording.txt` at `MAX_FRAMES` with the input
-/// changing every frame is ~60 MB; a 1× screenshot is well under 1 MB.
-const MAX_ENTRY: usize = 256 << 20;
-
-/// The recording and the screenshot's PNG bytes of a bug zip. Refuses, naming why, anything that
-/// is not a zip, lacks either entry, holds a screenshot that is not a PNG (refused here, not
-/// after a replay that may run minutes), or holds a recording the parser or
-/// [`Recording::validate`] refuses (a level no game starts at included, which `Game::start_level`
-/// could not reach).
-pub fn read_zip(bytes: &[u8]) -> Result<(Recording, Vec<u8>), String> {
-    let entries = sf_disk::zip::read_entries(
-        bytes,
-        |n| n == ZIP_RECORDING || n == ZIP_SCREENSHOT,
-        MAX_ENTRY,
-    )
-    .map_err(|e| format!("not a bug zip: {e}"))?;
-    let take = |name: &str| {
-        entries
-            .iter()
-            .find(|e| e.name == name)
-            .map(|e| e.bytes.clone())
-            .ok_or_else(|| format!("not a bug zip: it has no {name}"))
-    };
-    let text = take(ZIP_RECORDING)?;
-    let png = take(ZIP_SCREENSHOT)?;
-    let text =
-        String::from_utf8(text).map_err(|_| format!("{ZIP_RECORDING}: it is not UTF-8 text"))?;
-    let rec = Recording::parse(&text).map_err(|e| format!("{ZIP_RECORDING}: {e}"))?;
-    rec.validate()
-        .map_err(|e| format!("{ZIP_RECORDING}: {e}"))?;
-    decode_png(&png).map_err(|e| format!("{ZIP_SCREENSHOT}: it is not a PNG: {e}"))?;
+/// The recording and the screenshot's PNG bytes of a bug zip (`amiga_record::read_zip`), the
+/// screenshot also refused when it is not a PNG: here, not after a replay that may run minutes. A
+/// recording the parser or `validate` refuses is refused, a level no game starts at included,
+/// which `Game::start_level` could not reach.
+pub fn open_zip(bytes: &[u8]) -> Result<(Recording, Vec<u8>), String> {
+    let (rec, png) = amiga_record::read_zip::<Superfrog>(bytes)?;
+    amiga_conform::screenshot::decode_png(&png)
+        .map_err(|e| format!("{ZIP_SCREENSHOT}: it is not a PNG: {e}"))?;
     Ok((rec, png))
 }
 
@@ -90,24 +68,38 @@ pub struct Replayed {
 /// at 1× (DESIGN §2.5): 4:3, and the wide picture while the recording is in widescreen, which is
 /// set at frame 0 and switched before the step of each toggle (real-widescreen DESIGN §2.8).
 pub fn replay(rec: &Recording, mut each: impl FnMut(u32, &Game, &Picture)) -> Replayed {
-    let mut game = Game::start_level(crate::display_data(), &rec.setup, rec.seed);
+    let mut game = Game::start_level(crate::display_data(), &rec.setup, rec.rng());
     if rec.widescreen {
         set_widescreen(&mut game, true);
     }
-    let mut last = game.render(game.view());
-    for (k, &input) in rec.inputs.iter().enumerate() {
-        let wide = rec.widescreen_at(k as u32);
-        if wide != game.widescreen() {
-            set_widescreen(&mut game, wide);
-        }
-        let out = game.step(input);
-        each(k as u32, &game, &out.picture);
-        last = out.picture;
-    }
+    let mut play = Play { game, rec };
+    let last = amiga_record::replay(&mut play, &rec.inputs, |k, p, pic| each(k, &p.game, pic));
+    let game = play.game;
     Replayed {
         location: game.location(),
         game,
         last,
+    }
+}
+
+/// A recording's game as the replay loop steps it: widescreen switched before the step of each
+/// toggle.
+struct Play<'a> {
+    game: Game,
+    rec: &'a Recording,
+}
+
+impl amiga_record::Replayable for Play<'_> {
+    fn picture(&self) -> Picture {
+        self.game.render(self.game.view())
+    }
+
+    fn step(&mut self, frame: u32, input: FrameInput) -> Picture {
+        let wide = self.rec.widescreen_at(frame);
+        if wide != self.game.widescreen() {
+            set_widescreen(&mut self.game, wide);
+        }
+        self.game.step(input).picture
     }
 }
 
@@ -171,7 +163,7 @@ fn watched_original(m: &AmigaMemory) -> [u32; WATCHED.len()] {
 }
 
 fn play(rec: &Recording, pokes: &Pokes) -> Played {
-    let mut game = Game::start_level(crate::display_data(), &rec.setup, rec.seed);
+    let mut game = Game::start_level(crate::display_data(), &rec.setup, rec.rng());
     for (addr, bytes) in pokes {
         game.poke(*addr, bytes);
     }
@@ -329,7 +321,7 @@ fn retime_played(rec: &Recording, played: &Played, pokes: &Pokes, a: &mut Amiga)
         stop: None,
         stop_watched: Vec::new(),
     };
-    let mut follow = Follow::new(&rec.setup, rec.seed, pokes);
+    let mut follow = Follow::new(&rec.setup, rec.rng(), pokes);
     // The original's pass ends since it was seen off the recording with the recording's engine
     // mid-pass, and where it was first seen off: what is reported if it is never put back.
     let mut waited = 0u32;
@@ -655,7 +647,7 @@ fn compare_inner(
     let played = play(rec, played_pokes);
     let start = || -> Result<Synced, String> {
         let cap = 2 * rec.inputs.len() as u32 + LOAD_SEARCH;
-        let (mut s, _) = sync::setup_start(&rec.setup, rec.seed, cap)?;
+        let (mut s, _) = sync::setup_start(&rec.setup, rec.rng(), cap)?;
         for (addr, bytes) in pokes {
             s.amiga.write_memory(*addr, bytes);
         }
@@ -673,7 +665,7 @@ fn compare_inner(
         case.alone = crate::Alone::Off;
     }
     // The runner's engine: the recording's start, poked as every side is.
-    let mut engine = Game::start_level(crate::display_data(), &rec.setup, rec.seed);
+    let mut engine = Game::start_level(crate::display_data(), &rec.setup, rec.rng());
     for (addr, bytes) in pokes {
         engine.poke(*addr, bytes);
     }
@@ -778,8 +770,8 @@ pub fn case_files(
         s.energy,
         s.spud,
         s.wings,
-        rec.seed.lo,
-        rec.seed.hi,
+        rec.rng().lo,
+        rec.rng().hi,
         r.frames,
     );
     let mut steps = None;
@@ -845,7 +837,7 @@ pub fn write_case(
     }
     let played = play(rec, &[]);
     let cap = 2 * rec.inputs.len() as u32 + LOAD_SEARCH;
-    let (mut original, _) = sync::setup_start(&rec.setup, rec.seed, cap)?;
+    let (mut original, _) = sync::setup_start(&rec.setup, rec.rng(), cap)?;
     let r = retime_played(rec, &played, &[], &mut original.amiga);
     let (toml, text, steps_text) = case_files(rec, name, zip, &r);
     let mut files = vec![(script, text)];
@@ -878,7 +870,7 @@ fn case_of(rec: &Recording, name: &str, r: &Retimed) -> Case {
         name: name.to_string(),
         sync: SyncPoint::Setup {
             setup: rec.setup,
-            seed: rec.seed,
+            seed: rec.rng(),
         },
         script: r.script.clone(),
         frames: r.frames,
@@ -897,25 +889,6 @@ fn case_of(rec: &Recording, name: &str, r: &Retimed) -> Case {
     }
 }
 
-/// `pic` as 8-bit RGB, each 4-bit channel times 17, as the app shows it (`sf_app::video`).
-pub fn picture_rgb(pic: &Picture) -> Vec<u8> {
-    sf_core::to_rgb12(pic)
-        .into_iter()
-        .flat_map(|c| {
-            [
-                (c >> 8 & 15) as u8 * 17,
-                (c >> 4 & 15) as u8 * 17,
-                (c & 15) as u8 * 17,
-            ]
-        })
-        .collect()
-}
-
-/// `pic` as a PNG.
-pub fn picture_png(pic: &Picture) -> Vec<u8> {
-    crate::report::png(pic.width as u32, pic.height as u32, &picture_rgb(pic))
-}
-
 /// The original's picture as a PNG.
 pub fn frame_png(f: &Rgb12Frame) -> Vec<u8> {
     let rgb: Vec<u8> = f
@@ -930,49 +903,6 @@ pub fn frame_png(f: &Rgb12Frame) -> Vec<u8> {
         })
         .collect();
     crate::report::png(f.width as u32, f.height as u32, &rgb)
-}
-
-/// How many pixels of the screenshot `png` differ from `pic`: 0 is equal. A screenshot of another
-/// size differs in every pixel of the larger of the two. `Err` when `png` does not decode.
-pub fn screenshot_differs(png: &[u8], pic: &Picture) -> Result<u64, String> {
-    let (w, h, rgb) = decode_png(png).map_err(|e| format!("{ZIP_SCREENSHOT}: {e}"))?;
-    let (pw, ph) = (pic.width as u32, pic.height as u32);
-    if (w, h) != (pw, ph) {
-        return Ok(u64::from(w * h).max(u64::from(pw * ph)));
-    }
-    let ours = picture_rgb(pic);
-    Ok(rgb
-        .chunks_exact(3)
-        .zip(ours.chunks_exact(3))
-        .filter(|(a, b)| a != b)
-        .count() as u64)
-}
-
-/// A PNG as (width, height, 8-bit RGB). The app writes RGB (`sf_app::capture::png`); any other
-/// colour type a PNG may hold is taken too, alpha dropped.
-fn decode_png(bytes: &[u8]) -> Result<(u32, u32, Vec<u8>), String> {
-    let mut dec = png::Decoder::new(std::io::Cursor::new(bytes));
-    dec.set_transformations(png::Transformations::EXPAND | png::Transformations::STRIP_16);
-    let mut r = dec.read_info().map_err(|e| e.to_string())?;
-    let mut buf = vec![0; r.output_buffer_size().ok_or("the PNG is too large")?];
-    let info = r.next_frame(&mut buf).map_err(|e| e.to_string())?;
-    buf.truncate(info.buffer_size());
-    let rgb = match info.color_type {
-        png::ColorType::Rgb => buf,
-        png::ColorType::Rgba => buf
-            .chunks_exact(4)
-            .flat_map(|p| [p[0], p[1], p[2]])
-            .collect(),
-        png::ColorType::Grayscale => buf.iter().flat_map(|&g| [g, g, g]).collect(),
-        png::ColorType::GrayscaleAlpha => buf
-            .chunks_exact(2)
-            .flat_map(|p| [p[0], p[0], p[0]])
-            .collect(),
-        png::ColorType::Indexed => {
-            return Err("an indexed PNG, which EXPAND should have widened".into());
-        }
-    };
-    Ok((info.width, info.height, rgb))
 }
 
 /// The frames `bug replay` writes: `from..to` (to excluded), every `every`th from `from`.
@@ -1043,6 +973,7 @@ pub fn default_out(zip: &std::path::Path) -> Result<std::path::PathBuf, String> 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use sf_core::recording::ZIP_RECORDING;
 
     #[test]
     fn frame_picks() {
@@ -1070,29 +1001,28 @@ mod tests {
     }
 
     #[test]
-    fn a_screenshot_of_another_size_differs_everywhere() {
-        let pic = Picture::blank(0, 0, 4, 2);
-        let same = picture_png(&pic);
-        assert_eq!(screenshot_differs(&same, &pic).unwrap(), 0);
-        let other = picture_png(&Picture::blank(0, 0, 5, 3));
-        assert_eq!(screenshot_differs(&other, &pic).unwrap(), 15);
-        let mut lit = pic.clone();
-        lit.palettes[1][0] = 0xFFF;
-        assert_eq!(screenshot_differs(&picture_png(&lit), &pic).unwrap(), 4);
-        assert!(screenshot_differs(b"not a png", &pic).is_err());
-    }
-
-    #[test]
     fn refusals_name_why() {
-        let e = read_zip(b"hello").err().unwrap();
+        let e = open_zip(b"hello").err().unwrap();
         assert!(e.starts_with("not a bug zip"), "{e}");
         let z = sf_disk::zip::write_stored(&[(ZIP_SCREENSHOT, b"x")]);
-        assert!(read_zip(&z).err().unwrap().contains("no recording.txt"));
+        assert!(open_zip(&z).err().unwrap().contains("no recording.txt"));
         let z = sf_disk::zip::write_stored(&[
             (ZIP_RECORDING, b"superfrog recording 3\n"),
             (ZIP_SCREENSHOT, b"x"),
         ]);
-        let e = read_zip(&z).err().unwrap();
+        let e = open_zip(&z).err().unwrap();
         assert!(e.starts_with("recording.txt: line 1"), "{e}");
+        let rec = Recording {
+            build: "b".into(),
+            seed: sf_core::recording::seed_bytes(sf_core::Rng::seeded(1, 2)),
+            note: String::new(),
+            inputs: vec![FrameInput::NONE; 3],
+            header: sf_core::recording::Header::new(Default::default(), false),
+        };
+        let z = amiga_record::zip_bytes(&rec, b"not a png").unwrap();
+        let e = open_zip(&z).err().unwrap();
+        assert!(e.starts_with("screenshot.png: it is not a PNG"), "{e}");
+        let z = amiga_record::zip_bytes(&rec, &picture_png(&Picture::blank(0, 0, 2, 2))).unwrap();
+        assert_eq!(open_zip(&z).unwrap().0, rec);
     }
 }

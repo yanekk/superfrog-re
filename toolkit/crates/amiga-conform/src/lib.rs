@@ -9,6 +9,7 @@
 //! - [`channels`]: each channel's output reduced to a level per frame, and judged.
 //! - [`feed`]: how far a frame of the original's mix swings.
 //! - [`report`]: the diff picture beside a divergence.
+//! - [`screenshot`]: a bug recording's screenshot held against the engine's picture.
 //! - [`script`]: input scripts, with a hook for a game's own tokens.
 //!
 //! A game keeps its cases, its memory map, its levels and milestones, and the run loop that drives
@@ -18,6 +19,7 @@ pub mod channels;
 pub mod compare;
 pub mod feed;
 pub mod report;
+pub mod screenshot;
 pub mod script;
 pub mod sound_events;
 
