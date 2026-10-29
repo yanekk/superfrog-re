@@ -37,10 +37,12 @@ class RealTree(unittest.TestCase):
         self.assertEqual([p for p in problems if 'toolkit/' in p and 'stale' not in p], [])
         self.assertEqual(sorted(assignment), files)
 
-    def test_the_moved_table_points_at_real_folders(self):
+    def test_the_moved_table_points_at_real_folders_and_files(self):
         for old, new in arch.MOVED.items():
             self.assertFalse(os.path.exists(os.path.join(ROOT, old)), f'{old} still exists')
-            self.assertTrue(os.path.isdir(os.path.join(ROOT, new)), f'{new} does not exist')
+            # A folder moved whole ends in `/`; a file moved out of a folder that stays does not.
+            exists = os.path.isdir if new.endswith('/') else os.path.isfile
+            self.assertTrue(exists(os.path.join(ROOT, new)), f'{new} does not exist')
 
     def test_front_matter_is_valid(self):
         chapters = arch.load_chapters(ROOT)

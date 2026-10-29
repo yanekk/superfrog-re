@@ -23,65 +23,11 @@ use std::path::{Path, PathBuf};
 
 use serde::{Deserialize, Serialize};
 
-use crate::atomic_write::atomic_write;
+use amiga_app::atomic_write::write as atomic_write;
 use crate::input::{KeyMap, OriginalInput, key_name, key_named};
 use crate::pad::{PadInput, PadMap};
 
-/// How large the game is drawn (DESIGN §2.7).
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum Scale {
-    /// The largest whole multiple that fits the window.
-    Auto,
-    /// This multiple of the game's largest display window (334×261), or the largest that fits
-    /// when the window is smaller.
-    N(u32),
-}
-
-/// View → Filter: how the scaled picture is drawn (DESIGN §2.7). Presentation only, after the
-/// scaling; the game's frame is the same under every one.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum Filter {
-    None,
-    /// T27's own filter, `crt.wgsl`.
-    Basic,
-    /// libretro `crt-lottes.slang`, `crt_lottes.wgsl`.
-    Lottes,
-    /// libretro `crt-geom.slang`, `crt_geom.wgsl`.
-    Geom,
-    /// libretro `crt-easymode.slang`, `crt_easymode.wgsl`.
-    Easymode,
-}
-
-impl Filter {
-    /// The filters the View menu offers, in its order.
-    pub const ALL: [Filter; 5] = [Filter::None, Filter::Basic, Filter::Lottes, Filter::Geom, Filter::Easymode];
-
-    /// Its name in `settings.toml` and in its menu item's id.
-    pub fn name(self) -> &'static str {
-        match self {
-            Filter::None => "none",
-            Filter::Basic => "basic",
-            Filter::Lottes => "lottes",
-            Filter::Geom => "geom",
-            Filter::Easymode => "easymode",
-        }
-    }
-
-    pub fn named(name: &str) -> Option<Filter> {
-        Filter::ALL.into_iter().find(|f| f.name() == name)
-    }
-
-    /// Its title in View → Filter.
-    pub fn title(self) -> &'static str {
-        match self {
-            Filter::None => "None",
-            Filter::Basic => "Basic",
-            Filter::Lottes => "Lottes",
-            Filter::Geom => "Geom",
-            Filter::Easymode => "Easymode",
-        }
-    }
-}
+pub use amiga_app::video::{Filter, Scale};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Settings {
