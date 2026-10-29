@@ -5,11 +5,11 @@
 //! ORed together), then the frog's and the panel digits' hardware sprites.
 
 use crate::frog;
+use crate::front::blit::Blit;
 use crate::layout::{h0, h2, h3};
-use crate::level::camera;
 use crate::level::LevelCtx;
 use crate::level::beam::Cost;
-use crate::front::blit::Blit;
+use crate::level::camera;
 use crate::level::objects::{BOB_FREE_LIST, WIDE_BOB_FREE_LIST, draw_list};
 use crate::mem::Bus;
 
@@ -128,7 +128,8 @@ fn blit_params(b: &mut Bus, mut list: u32) -> u32 {
         b.set_w(rec + 0x20, b.w(rec + 0x14).wrapping_sub(width));
         let size = b.w(rec + 6).wrapping_shl(6).wrapping_add(width >> 1);
         b.set_w(rec + 0x1a, size);
-        let at = (b.w(rec + 2) as u32 * b.w(rec + 0x14) as u32).wrapping_add((b.w(rec) >> 3) as u32);
+        let at =
+            (b.w(rec + 2) as u32 * b.w(rec + 0x14) as u32).wrapping_add((b.w(rec) >> 3) as u32);
         b.set_l(rec + 0x24, at.wrapping_add(b.l(rec + 0xc)));
         b.set_l(rec + 0x1c, at.wrapping_add(b.l(rec + 0x10)));
         list = list.wrapping_add(8);

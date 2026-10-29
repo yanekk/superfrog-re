@@ -184,10 +184,20 @@ pub fn levels() -> Vec<LevelId> {
     use sf_assets::World;
     let mut v: Vec<LevelId> = World::ALL[..6]
         .iter()
-        .flat_map(|&world| (1..=4).map(move |level| LevelId { world, level, alt: false }))
+        .flat_map(|&world| {
+            (1..=4).map(move |level| LevelId {
+                world,
+                level,
+                alt: false,
+            })
+        })
         .collect();
     for world in [World::Bonus, World::Final] {
-        v.push(LevelId { world, level: 1, alt: false });
+        v.push(LevelId {
+            world,
+            level: 1,
+            alt: false,
+        });
     }
     v
 }
@@ -527,7 +537,10 @@ impl Recording {
             }
             let (tokens, toggles_here) = without_toggle(tokens);
             if toggles_here > 1 {
-                return Err(err(n, format!("`{TOGGLE}` twice in one line: a line toggles once")));
+                return Err(err(
+                    n,
+                    format!("`{TOGGLE}` twice in one line: a line toggles once"),
+                ));
             }
             let toggle = toggles_here == 1;
             if toggle && !v2 {
@@ -734,9 +747,17 @@ mod tests {
                 "missing `note`",
             ),
             (swap("widescreen on\n", ""), 10, "missing `widescreen`"),
-            (swap("widescreen on", "wide-screen on"), 10, "missing `widescreen`"),
+            (
+                swap("widescreen on", "wide-screen on"),
+                10,
+                "missing `widescreen`",
+            ),
             (swap("widescreen on", "widescreen yes"), 10, "not on or off"),
-            (swap("\n38: R W\n", "\n38: R W W\n"), inputs_at + 3, "twice in one line"),
+            (
+                swap("\n38: R W\n", "\n38: R W W\n"),
+                inputs_at + 3,
+                "twice in one line",
+            ),
             (
                 swap("\n38: R W\n", "\n38: R V\n"),
                 inputs_at + 3,
@@ -839,7 +860,12 @@ mod tests {
         let e = Recording::parse(&with_w).unwrap_err();
         assert!(e.why.contains("version 2 token"), "{e}");
         // Read back and written again, a version 1 file becomes version 2, the game unchanged.
-        assert!(Recording::parse(&v1).unwrap().to_text().starts_with("superfrog recording 2\n"));
+        assert!(
+            Recording::parse(&v1)
+                .unwrap()
+                .to_text()
+                .starts_with("superfrog recording 2\n")
+        );
         let mut r = full();
         r.toggles.clear();
         assert_eq!(Recording::parse(&r.to_text()), Ok(r));
@@ -855,7 +881,10 @@ mod tests {
         });
         r.toggles = vec![4];
         let text = r.to_text();
-        assert!(text.ends_with("inputs\n0: R F K19\n4: R F K19 W\n"), "{text}");
+        assert!(
+            text.ends_with("inputs\n0: R F K19\n4: R F K19 W\n"),
+            "{text}"
+        );
         let shuffled = text.replace("4: R F K19 W", "4: W K19 F R");
         assert_eq!(Recording::parse(&shuffled), Ok(r.clone()));
         let dash = text.replace("4: R F K19 W", "4: - W R F K19");
@@ -1035,12 +1064,25 @@ mod tests {
     fn a_setup_starts_the_26_levels_a_game_plays_and_no_second_map() {
         let all = levels();
         assert_eq!(all.len(), 26);
-        assert_eq!((all[0], all[23], all[24], all[25]), (id("W1-1"), id("W6-4"), id("WB-1"), id("WW-1")));
+        assert_eq!(
+            (all[0], all[23], all[24], all[25]),
+            (id("W1-1"), id("W6-4"), id("WB-1"), id("WW-1"))
+        );
         for level in all {
-            assert_eq!(LevelSetup { level, ..LevelSetup::default() }.validate(), Ok(()));
+            assert_eq!(
+                LevelSetup {
+                    level,
+                    ..LevelSetup::default()
+                }
+                .validate(),
+                Ok(())
+            );
         }
         for alt in ["W6-2alt", "W6-3alt", "W6-4alt"] {
-            let s = LevelSetup { level: id(alt), ..LevelSetup::default() };
+            let s = LevelSetup {
+                level: id(alt),
+                ..LevelSetup::default()
+            };
             assert!(s.validate().unwrap_err().contains(alt), "{alt}");
         }
     }
@@ -1049,7 +1091,11 @@ mod tests {
     fn a_location_is_carried_as_its_text() {
         for l in [
             Location::Screen("world end"),
-            Location::Level { id: id("W6-4"), col: 299, row: 83 },
+            Location::Level {
+                id: id("W6-4"),
+                col: 299,
+                row: 83,
+            },
         ] {
             let bytes = bincode::serialize(&l).unwrap();
             assert_eq!(bincode::deserialize::<Location>(&bytes).unwrap(), l);

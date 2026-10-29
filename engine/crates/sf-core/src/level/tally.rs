@@ -65,7 +65,8 @@ const SLOT_COINS: u32 = at(0x49c6);
 /// its exit's fade ends in, and makes its first page blit on line 196 seventeen frames later): the
 /// packed copy (h0+$ce38) and `atn_decompress` of the picture; `number_to_text`; the pages'
 /// arithmetic.
-const UNPACK_CYCLES: u32 = (17 * crate::front::FRAME_LINES as u32 + 150) * crate::front::BEAM_CYCLES_PER_LINE;
+const UNPACK_CYCLES: u32 =
+    (17 * crate::front::FRAME_LINES as u32 + 150) * crate::front::BEAM_CYCLES_PER_LINE;
 const NUMBER_CYCLES: u32 = 2_000;
 const PAGES_CYCLES: u32 = 1_000;
 /// The text printer's: a character looked at in its table, a glyph's eight rows (measured for the

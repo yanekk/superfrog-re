@@ -293,7 +293,8 @@ pub(crate) struct HiscoreCredits {
 
 /// How long copying `HPIC` out of hunk 1 and unpacking it takes: measured from line 299 to line
 /// 184 forty-nine frames on.
-const HALL_UNPACK_CYCLES: u32 = (49 * super::FRAME_LINES as u32 - 115) * super::BEAM_CYCLES_PER_LINE;
+const HALL_UNPACK_CYCLES: u32 =
+    (49 * super::FRAME_LINES as u32 - 115) * super::BEAM_CYCLES_PER_LINE;
 
 impl HiscoreCredits {
     pub(super) fn run(&mut self, cx: &mut Cx) -> Yield {

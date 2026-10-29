@@ -180,7 +180,10 @@ mod tests {
         assert_eq!(s.scan_screen_cells(), 0x18);
         assert_eq!(s.left_behind(), 0);
         assert_eq!((s.spud_left(), s.spud_right()), (0, 0x150));
-        assert_eq!((s.shot_spawn(), s.shot_gone(), s.shot_far()), (0x160, 0x150, 0x200));
+        assert_eq!(
+            (s.shot_spawn(), s.shot_gone(), s.shot_far()),
+            (0x160, 0x150, 0x200)
+        );
         assert_eq!(s.direction_x(), (0, 0x153));
     }
 
@@ -204,7 +207,10 @@ mod tests {
         assert_eq!(s.scan_screen_cells(), 0x18 + 10);
         assert_eq!(s.left_behind(), 65);
         assert_eq!((s.spud_left(), s.spud_right()), (65, 0x150 + 65));
-        assert_eq!((s.shot_spawn(), s.shot_gone(), s.shot_far()), (0x160 + 65, 0x150 + 65, 0x200 + 65));
+        assert_eq!(
+            (s.shot_spawn(), s.shot_gone(), s.shot_far()),
+            (0x160 + 65, 0x150 + 65, 0x200 + 65)
+        );
         assert_eq!(s.direction_x(), (-65, 0x153 + 65));
     }
 

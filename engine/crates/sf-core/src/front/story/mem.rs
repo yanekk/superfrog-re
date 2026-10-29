@@ -85,7 +85,11 @@ impl StoryMem {
     /// `bytes` written from `addr` on.
     pub fn write(&mut self, addr: u32, bytes: &[u8]) {
         if let Some((chip, o)) = self.at(addr) {
-            let ram = if chip { &mut self.0.chip } else { &mut self.0.slow };
+            let ram = if chip {
+                &mut self.0.chip
+            } else {
+                &mut self.0.slow
+            };
             if let Some(dst) = ram.get_mut(o..o + bytes.len()) {
                 dst.copy_from_slice(bytes);
                 return;
@@ -154,10 +158,18 @@ mod tests {
         };
         // The save state's options (`savestate.rs` `opts`).
         use bincode::Options;
-        let opts = || bincode::DefaultOptions::new().with_fixint_encoding().with_little_endian().reject_trailing_bytes();
+        let opts = || {
+            bincode::DefaultOptions::new()
+                .with_fixint_encoding()
+                .with_little_endian()
+                .reject_trailing_bytes()
+        };
         let bytes = opts().serialize(&old).unwrap();
         let new: StoryMem = opts().deserialize(&bytes).unwrap();
-        assert_eq!((new.0.chip.as_slice(), new.0.slow.as_slice()), (&old.chip[..], &old.slow[..]));
+        assert_eq!(
+            (new.0.chip.as_slice(), new.0.slow.as_slice()),
+            (&old.chip[..], &old.slow[..])
+        );
         assert_eq!(opts().serialize(&new).unwrap(), bytes);
     }
 }

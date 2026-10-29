@@ -5,6 +5,7 @@
 
 pub mod blit;
 pub mod copper;
+pub mod display;
 pub mod memory;
 pub mod picture;
 
@@ -17,4 +18,3 @@ pub use picture::{Picture, Split, to_rgb12};
 pub fn is_paula(reg: u16) -> bool {
     matches!(reg, 0x96 | 0x9a | 0x9c | 0x9e) || (0xa0..0xe0).contains(&reg)
 }
-

@@ -831,8 +831,9 @@ pub fn presentation_piece(p: &VarDef) -> Option<&'static str> {
     presentation(p.id).or_else(|| {
         let r = (p.addr.wrapping_sub(def(VarId::BobRecords).addr) % BOB_RECORD) as i32 - 4;
         let dest = |at: i32| (1..4).any(|k| (r..r + 4).contains(&(k * BOB_SUB + 0x10 + at)));
-        (p.id == VarId::BobRecords && r >= BOB_SUB && !dest(0) && !dest(3))
-            .then_some("a bob's drawing records for the other buffer and the seam: how it was drawn")
+        (p.id == VarId::BobRecords && r >= BOB_SUB && !dest(0) && !dest(3)).then_some(
+            "a bob's drawing records for the other buffer and the seam: how it was drawn",
+        )
     })
 }
 
@@ -872,7 +873,10 @@ const SUB: u16 = 0x8000;
 
 impl AddrIndex {
     fn build() -> AddrIndex {
-        assert!(LAYOUT.len() < SUB as usize, "entry indices must stay below SUB");
+        assert!(
+            LAYOUT.len() < SUB as usize,
+            "entry indices must stay below SUB"
+        );
         // Every entry must end inside the 24-bit space, so addresses past it cover nothing.
         assert!(LAYOUT.iter().all(|d| d.addr + d.width.len() <= 1 << 24));
         let mut flat = vec![NONE; 1 << 24];
@@ -1051,9 +1055,17 @@ mod tests {
     /// extra slots are compared (as the original's 0 in a 4:3 game).
     #[test]
     fn only_the_wide_draw_lists_are_the_engine_s_own() {
-        let own: Vec<&str> = LAYOUT.iter().filter(|d| engine_only(d.id)).map(|d| d.name).collect();
+        let own: Vec<&str> = LAYOUT
+            .iter()
+            .filter(|d| engine_only(d.id))
+            .map(|d| d.name)
+            .collect();
         assert_eq!(own, ["wide_bobs_0", "wide_bobs_1"]);
-        assert!(own.iter().all(|n| LAYOUT.iter().any(|d| d.name == *n && presentation(d.id).is_some())));
+        assert!(own.iter().all(|n| {
+            LAYOUT
+                .iter()
+                .any(|d| d.name == *n && presentation(d.id).is_some())
+        }));
         assert!(!engine_only(VarId::WideObjSlots) && presentation(VarId::WideObjSlots).is_none());
     }
 
@@ -1072,12 +1084,21 @@ mod tests {
         // The 10th object's: its seam part's blit size (`items-shield-w3-1`'s frame 295).
         assert!(tagged.contains(&0xaa8) && 0xaa8 == rec(9, 0x8c + 0x1c));
         for k in 0..20 {
-            assert!(!tagged.contains(&(k * 0x11c)), "record {k}'s level position");
+            assert!(
+                !tagged.contains(&(k * 0x11c)),
+                "record {k}'s level position"
+            );
             for at in [0x08, 0x14, 0x18, 0x28, 0x40] {
-                assert!(!tagged.contains(&rec(k, at)), "record {k}'s animation +{at:x}");
+                assert!(
+                    !tagged.contains(&rec(k, at)),
+                    "record {k}'s animation +{at:x}"
+                );
             }
             for at in [0x56 - 2, 0x56 + 2, 0x9c, 0xe2 - 2, 0xe2 + 2] {
-                assert!(!tagged.contains(&rec(k, at)), "record {k}'s destination +{at:x}");
+                assert!(
+                    !tagged.contains(&rec(k, at)),
+                    "record {k}'s destination +{at:x}"
+                );
             }
             for at in [0x48, 0x5c, 0x8c, 0xa8, 0xd4, 0x114] {
                 assert!(tagged.contains(&rec(k, at)), "record {k}'s drawing +{at:x}");

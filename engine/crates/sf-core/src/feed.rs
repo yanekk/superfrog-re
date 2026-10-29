@@ -157,10 +157,14 @@ pub fn parse_hashes(text: &str) -> Result<Vec<(u64, u64)>, String> {
         .enumerate()
         .map(|(n, l)| {
             let v: Vec<&str> = l.split(' ').collect();
-            let hex = |s: &str| u64::from_str_radix(s, 16).map_err(|_| format!("line {}: {l:?}", n + 2));
+            let hex =
+                |s: &str| u64::from_str_radix(s, 16).map_err(|_| format!("line {}: {l:?}", n + 2));
             match v[..] {
                 [f, p, s] if f == n.to_string() => Ok((hex(p)?, hex(s)?)),
-                _ => Err(format!("line {}: expected `{n} picture state`, got {l:?}", n + 2)),
+                _ => Err(format!(
+                    "line {}: expected `{n} picture state`, got {l:?}",
+                    n + 2
+                )),
             }
         })
         .collect()
@@ -210,7 +214,15 @@ fn pacing_text(p: Pacing) -> String {
         Pacing::Unpaced => "-".into(),
         Pacing::OnTime => "o".into(),
         Pacing::PassDue => "d".into(),
-        Pacing::Late { writes, line, hpos, phase, step, point, blanks } => {
+        Pacing::Late {
+            writes,
+            line,
+            hpos,
+            phase,
+            step,
+            point,
+            blanks,
+        } => {
             format!("l{writes},{line},{hpos},{phase},{step},{point},{blanks}")
         }
     }
@@ -223,7 +235,9 @@ fn parse_pacing(s: &str) -> Option<Pacing> {
         "d" => Pacing::PassDue,
         _ => {
             let v: Vec<&str> = s.strip_prefix('l')?.split(',').collect();
-            let [w, l, h, p, st, pt, b] = v[..] else { return None };
+            let [w, l, h, p, st, pt, b] = v[..] else {
+                return None;
+            };
             Pacing::Late {
                 writes: w.parse().ok()?,
                 line: l.parse().ok()?,
@@ -242,7 +256,11 @@ fn opt<T: std::fmt::Display>(v: Option<T>) -> String {
 }
 
 fn parse_opt<T: std::str::FromStr>(s: &str) -> Option<Option<T>> {
-    if s == "-" { Some(None) } else { s.parse().ok().map(Some) }
+    if s == "-" {
+        Some(None)
+    } else {
+        s.parse().ok().map(Some)
+    }
 }
 
 impl FeedFrame {
@@ -253,7 +271,13 @@ impl FeedFrame {
             s.push_str(" 2");
         }
         if let Some(l) = self.load {
-            let _ = write!(s, " load:{},{},{}", l.blanks, opt(l.screen_frames), opt(l.line));
+            let _ = write!(
+                s,
+                " load:{},{},{}",
+                l.blanks,
+                opt(l.screen_frames),
+                opt(l.line)
+            );
         }
         for seed in &self.seeds {
             s.push_str(" rng:");
@@ -371,12 +395,21 @@ impl Feed {
             .map_err(|_| "the feed's frame count is not a number".to_string())?;
         let frames = lines
             .enumerate()
-            .map(|(k, l)| FeedFrame::parse_line(l).ok_or_else(|| format!("feed line {}: {l:?}", k + 5)))
+            .map(|(k, l)| {
+                FeedFrame::parse_line(l).ok_or_else(|| format!("feed line {}: {l:?}", k + 5))
+            })
             .collect::<Result<Vec<_>, _>>()?;
         if frames.len() != n {
-            return Err(format!("the feed says {n} frames and holds {}: cut short?", frames.len()));
+            return Err(format!(
+                "the feed says {n} frames and holds {}: cut short?",
+                frames.len()
+            ));
         }
-        Ok(Feed { engine, seed, frames })
+        Ok(Feed {
+            engine,
+            seed,
+            frames,
+        })
     }
 }
 
@@ -388,42 +421,90 @@ mod tests {
     fn a_feed_reads_back_as_written() {
         let feed = Feed {
             engine: "superfrog 0.1.0 (0123456789abcdef)".into(),
-            seed: Rng { lo: 0x1a2b_3c4d, hi: 0x21 },
+            seed: Rng {
+                lo: 0x1a2b_3c4d,
+                hi: 0x21,
+            },
             frames: vec![
                 FeedFrame::default(),
                 FeedFrame {
-                    input: FrameInput { joy: Joy::RIGHT | Joy::FIRE, keys: KeySet::key(0x45) },
-                    pacing: Pacing::Late { writes: 3, line: 120, hpos: 64, phase: 1, step: 7, point: 3, blanks: 2 },
+                    input: FrameInput {
+                        joy: Joy::RIGHT | Joy::FIRE,
+                        keys: KeySet::key(0x45),
+                    },
+                    pacing: Pacing::Late {
+                        writes: 3,
+                        line: 120,
+                        hpos: 64,
+                        phase: 1,
+                        step: 7,
+                        point: 3,
+                        blanks: 2,
+                    },
                     twice: true,
-                    load: Some(FeedLoad { blanks: 12, screen_frames: None, line: Some(118) }),
+                    load: Some(FeedLoad {
+                        blanks: 12,
+                        screen_frames: None,
+                        line: Some(118),
+                    }),
                     seeds: vec![vec![0, 0xff, 1, 2, 3, 4, 5, 6], vec![9; 8]],
-                    then: vec![FrameInput::joy(Joy::LEFT), FrameInput::NONE, FrameInput::NONE, FrameInput::NONE],
+                    then: vec![
+                        FrameInput::joy(Joy::LEFT),
+                        FrameInput::NONE,
+                        FrameInput::NONE,
+                        FrameInput::NONE,
+                    ],
                 },
-                FeedFrame { pacing: Pacing::OnTime, ..FeedFrame::default() },
-                FeedFrame { pacing: Pacing::PassDue, load: Some(FeedLoad::default()), ..FeedFrame::default() },
+                FeedFrame {
+                    pacing: Pacing::OnTime,
+                    ..FeedFrame::default()
+                },
+                FeedFrame {
+                    pacing: Pacing::PassDue,
+                    load: Some(FeedLoad::default()),
+                    ..FeedFrame::default()
+                },
             ],
         };
         let text = feed.to_text();
-        assert!(text.starts_with("superfrog pacing feed 1\nengine superfrog 0.1.0"), "{text}");
+        assert!(
+            text.starts_with("superfrog pacing feed 1\nengine superfrog 0.1.0"),
+            "{text}"
+        );
         assert!(text.contains(" then:4.0,0.0*3\n"), "{text}");
         assert_eq!(Feed::parse(&text).unwrap(), feed);
     }
 
     #[test]
     fn a_feed_cut_short_or_damaged_is_refused() {
-        let feed = Feed { frames: vec![FeedFrame::default(); 3], ..Feed::default() };
+        let feed = Feed {
+            frames: vec![FeedFrame::default(); 3],
+            ..Feed::default()
+        };
         let text = feed.to_text();
         let short: String = text.lines().take(6).map(|l| format!("{l}\n")).collect();
         assert!(Feed::parse(&short).unwrap_err().contains("cut short"));
         assert!(Feed::parse(&text.replace("0.0 -", "0.0 q")).is_err());
-        assert!(Feed::parse("hello\n").unwrap_err().contains("not a pacing feed"));
+        assert!(
+            Feed::parse("hello\n")
+                .unwrap_err()
+                .contains("not a pacing feed")
+        );
     }
 
     #[test]
     fn hash_files_read_back_and_refuse_a_skipped_frame() {
-        let text = format!("{HASHES_HEADER}\n{}{}", hash_line(0, (1, 2)), hash_line(1, (u64::MAX, 0)));
+        let text = format!(
+            "{HASHES_HEADER}\n{}{}",
+            hash_line(0, (1, 2)),
+            hash_line(1, (u64::MAX, 0))
+        );
         assert_eq!(parse_hashes(&text).unwrap(), vec![(1, 2), (u64::MAX, 0)]);
-        let gap = format!("{HASHES_HEADER}\n{}{}", hash_line(0, (1, 2)), hash_line(2, (3, 4)));
+        let gap = format!(
+            "{HASHES_HEADER}\n{}{}",
+            hash_line(0, (1, 2)),
+            hash_line(2, (3, 4))
+        );
         assert!(parse_hashes(&gap).is_err());
     }
 

@@ -12,21 +12,13 @@ use crate::level::{LevelCtx, ObjectKind};
 /// Template 57: flies left.
 pub static DART_LEFT: ObjectKind = ObjectKind {
     name: "dart (left)",
-    routines: &[
-        (h0(0x25e9a), dart_left_init),
-        (WAIT, wait),
-        (FLY, fly),
-    ],
+    routines: &[(h0(0x25e9a), dart_left_init), (WAIT, wait), (FLY, fly)],
 };
 
 /// Template 58: flies right.
 pub static DART_RIGHT: ObjectKind = ObjectKind {
     name: "dart (right)",
-    routines: &[
-        (h0(0x25eb6), dart_right_init),
-        (WAIT, wait),
-        (FLY, fly),
-    ],
+    routines: &[(h0(0x25eb6), dart_right_init), (WAIT, wait), (FLY, fly)],
 };
 
 /// Marker 18 (h0+$1895a): a left dart, `$15` pixels down its cell.

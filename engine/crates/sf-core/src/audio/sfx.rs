@@ -181,7 +181,12 @@ impl AudioDriver {
 
     /// The rest of `sfx_play`, after its raster wait (h0+$12b40): the channel's record set up and
     /// the effect started.
-    pub(crate) fn sfx_play_rest(&mut self, data: &SoundData, rest: SfxRest, out: &mut Vec<PaulaWrite>) {
+    pub(crate) fn sfx_play_rest(
+        &mut self,
+        data: &SoundData,
+        rest: SfxRest,
+        out: &mut Vec<PaulaWrite>,
+    ) {
         self.sfx_play_setup(data, rest);
         self.sfx_play_start(data, rest, out);
     }
@@ -224,7 +229,12 @@ impl AudioDriver {
 
     /// The rest's end (h0+$12c12): the duration, then the effect started on Paula (the period and
     /// volume as the record holds them).
-    pub(crate) fn sfx_play_start(&mut self, data: &SoundData, rest: SfxRest, out: &mut Vec<PaulaWrite>) {
+    pub(crate) fn sfx_play_start(
+        &mut self,
+        data: &SoundData,
+        rest: SfxRest,
+        out: &mut Vec<PaulaWrite>,
+    ) {
         let SfxRest {
             chan,
             effect,
@@ -407,7 +417,11 @@ impl AudioDriver {
         // the copy was missing, so the mixer played the buffer as silence). The source is in
         // hunk 0, which nothing writes.
         let from = self.stream.l(0);
-        for (i, b) in data.h0_bytes(from.wrapping_sub(H0), STREAM_COPY).into_iter().enumerate() {
+        for (i, b) in data
+            .h0_bytes(from.wrapping_sub(H0), STREAM_COPY)
+            .into_iter()
+            .enumerate()
+        {
             self.mem.set_b(STREAM_BUFFER + i as u32, b);
         }
         self.stream.set_l(0, from.wrapping_add(0xa0));

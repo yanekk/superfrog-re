@@ -11,7 +11,9 @@ use super::title::{BUFFER_0, START_LEVEL, START_WORLD, eyes_init};
 use super::{Cx, Yield, at, h2, sprite, vbl};
 
 /// Where the game is in the run: what a level code stands for.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, serde::Serialize, serde::Deserialize)]
+#[derive(
+    Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, serde::Serialize, serde::Deserialize,
+)]
 pub struct Progress {
     /// 1..6, 7 the bonus level.
     pub world: u8,

@@ -150,7 +150,10 @@ fn periods(a: &mut AudioDriver, d: &SoundData, n: usize) -> Vec<u16> {
     for _ in 0..n {
         a.sfx_tick(d, &mut out);
     }
-    out.iter().filter(|w| w.reg == 0xc6).map(|w| w.value).collect()
+    out.iter()
+        .filter(|w| w.reg == 0xc6)
+        .map(|w| w.value)
+        .collect()
 }
 
 /// T194: a vertical blank `sfx_play`'s raster wait held off is taken one instruction after it,
@@ -175,7 +178,9 @@ fn a_blank_held_by_sfx_plays_wait_steps_the_new_effects_period_on() {
     let mut no_blank = a.clone();
     // Played again, the blank coming after the wait.
     let mut out = Vec::new();
-    let rest = a.play_sfx_begin(&d, 0, 2, &mut out).expect("the effect plays");
+    let rest = a
+        .play_sfx_begin(&d, 0, 2, &mut out)
+        .expect("the effect plays");
     a.play_sfx_wait_over(rest);
     assert_eq!(periods(&mut a, &d, 1), [300]);
     a.play_sfx_record(&d, rest);
@@ -239,7 +244,10 @@ fn a_streamed_sample_plays_160_bytes_a_frame_then_stops() {
 #[test]
 fn files_for_keeps_the_titles_module_in_the_attract_demo() {
     use sf_core::audio::files_for;
-    assert_eq!(files_for(1, BANK_ADDR), [(BANK_ADDR, File::Tune(TuneId::Title))]);
+    assert_eq!(
+        files_for(1, BANK_ADDR),
+        [(BANK_ADDR, File::Tune(TuneId::Title))]
+    );
     assert_eq!(
         files_for(1, BANK_ADDR + 0x8000),
         [
@@ -247,5 +255,8 @@ fn files_for_keeps_the_titles_module_in_the_attract_demo() {
             (BANK_ADDR + 0x8000, File::Tune(TuneId::World(1))),
         ]
     );
-    assert_eq!(files_for(0, BANK_ADDR), [(BANK_ADDR, File::Tune(TuneId::Title))]);
+    assert_eq!(
+        files_for(0, BANK_ADDR),
+        [(BANK_ADDR, File::Tune(TuneId::Title))]
+    );
 }

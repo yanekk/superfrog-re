@@ -46,7 +46,10 @@ const PASS_WRITES: [(u32, u32); 3] = [
 pub(crate) fn pass_writes(screen: crate::level::screen::Screen) -> Vec<(u32, u32)> {
     let mut w = PASS_WRITES.to_vec();
     if screen.wide {
-        w.push((objects::WIDE_BASE, objects::WIDE_HITBOXES - objects::WIDE_BASE));
+        w.push((
+            objects::WIDE_BASE,
+            objects::WIDE_HITBOXES - objects::WIDE_BASE,
+        ));
     }
     w
 }
@@ -305,6 +308,10 @@ mod tests {
             assert!(covered(a), "${a:x}");
         }
         let narrow = pass_writes(Screen::NARROW);
-        assert!(!narrow.iter().any(|&(at, n)| objects::is_wide(at) || objects::is_wide(at + n - 1)));
+        assert!(
+            !narrow
+                .iter()
+                .any(|&(at, n)| objects::is_wide(at) || objects::is_wide(at + n - 1))
+        );
     }
 }

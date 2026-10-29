@@ -11,8 +11,8 @@ use crate::items::template;
 use crate::layout::h0;
 use crate::level::collision::LEVEL_STATE;
 use crate::level::objects::{
-    bob_anim, bob_follow, obj_despawn_if_offscreen, obj_free, obj_free_if_left_behind,
-    obj_path_xy, obj_spawn_at_xy_nodedup, obj_spawn_cell,
+    bob_anim, bob_follow, obj_despawn_if_offscreen, obj_free, obj_free_if_left_behind, obj_path_xy,
+    obj_spawn_at_xy_nodedup, obj_spawn_cell,
 };
 use crate::level::{Dispatch, LevelCtx, ObjectKind, n_clear, register};
 
@@ -226,7 +226,8 @@ fn wave_update(c: &mut LevelCtx, slot: u32, d7: u16) {
 fn dart_init(c: &mut LevelCtx, slot: u32, _d7: u16) {
     bob_anim(&mut c.bus, slot, h0(0x32f94));
     let dy = c.rng_range(0xe0);
-    c.bus.set_w(slot + 0xa, c.bus.w(slot + 0xa).wrapping_add(dy));
+    c.bus
+        .set_w(slot + 0xa, c.bus.w(slot + 0xa).wrapping_add(dy));
     let v = c.rng_range(6).wrapping_add(4);
     c.bus.set_w(slot + 0xc, v.wrapping_neg());
     alternate(c, slot, TOGGLE_114, h0(0x32fb0));
@@ -497,13 +498,21 @@ pub static GUNNER: ObjectKind = ObjectKind {
 /// Template 127 (marker 10): the head of a chain following a path.
 pub static CHAIN_HEAD: ObjectKind = ObjectKind {
     name: "bonus chain head",
-    routines: &[(h0(0x29348), chain_head_init), (h0(0x293d0), chain_update), (FLEE, flee)],
+    routines: &[
+        (h0(0x29348), chain_head_init),
+        (h0(0x293d0), chain_update),
+        (FLEE, flee),
+    ],
 };
 
 /// Template 128 (marker 10, a row below): the chain's tail, a step behind.
 pub static CHAIN_TAIL: ObjectKind = ObjectKind {
     name: "bonus chain tail",
-    routines: &[(h0(0x29388), chain_tail_init), (h0(0x293d0), chain_update), (FLEE, flee)],
+    routines: &[
+        (h0(0x29388), chain_tail_init),
+        (h0(0x293d0), chain_update),
+        (FLEE, flee),
+    ],
 };
 
 /// Template 129 (marker 12): rides the wave at double step.
@@ -589,7 +598,12 @@ pub fn level_end(c: &mut LevelCtx, _cell: u32) {
 
 /// A path of words at `+$64` (its start in `+$68`), starting over at `restart`: the step to
 /// take, the pointer moved on by `stride`.
-fn path_step(b: &mut crate::mem::Bus, slot: u32, restart: impl Fn(u16) -> bool, stride: u32) -> u32 {
+fn path_step(
+    b: &mut crate::mem::Bus,
+    slot: u32,
+    restart: impl Fn(u16) -> bool,
+    stride: u32,
+) -> u32 {
     let mut at = b.l(slot + 0x64);
     if restart(b.w(at)) {
         at = b.l(slot + 0x68);
@@ -757,7 +771,10 @@ fn waver_130_init(c: &mut LevelCtx, slot: u32, _d7: u16) {
 fn waver_update(c: &mut LevelCtx, slot: u32, _d7: u16) {
     let b = &mut c.bus;
     let at = path_step(b, slot, |w| !n_clear(w), 8);
-    let y = b.w(slot + 0x5c).wrapping_add(b.w(at + 2)).wrapping_sub(0x80);
+    let y = b
+        .w(slot + 0x5c)
+        .wrapping_add(b.w(at + 2))
+        .wrapping_sub(0x80);
     b.set_w(slot + 0xa, y);
     drift_x(c, slot);
 }
@@ -821,7 +838,8 @@ fn tracer_init(c: &mut LevelCtx, slot: u32, _d7: u16) {
     b.set_w(slot + 0x5c, b.w(slot + 8));
     b.set_w(slot + 0x60, b.w(slot + 0xa));
     let dy = c.rng_range(0x80).wrapping_sub(0x40).wrapping_add(0x30);
-    c.bus.set_w(slot + 0x60, c.bus.w(slot + 0x60).wrapping_add(dy));
+    c.bus
+        .set_w(slot + 0x60, c.bus.w(slot + 0x60).wrapping_add(dy));
 }
 
 /// h0+$296ea.

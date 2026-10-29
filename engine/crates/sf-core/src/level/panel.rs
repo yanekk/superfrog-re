@@ -100,7 +100,14 @@ pub(crate) fn lives_icon_draw(c: &mut LevelCtx) {
     c.custom(0x96, 0x8400);
     for p in 0..5 {
         c.blit_words(h * w, 0x09f0);
-        panel_copy(src + GFX_PLANE * p, PANEL + 0x20 + PANEL_PLANE * p, 0x38, 0x2c, 0x382).run(&mut c.bus);
+        panel_copy(
+            src + GFX_PLANE * p,
+            PANEL + 0x20 + PANEL_PLANE * p,
+            0x38,
+            0x2c,
+            0x382,
+        )
+        .run(&mut c.bus);
     }
     c.custom(0x9a, 0x8010);
 }
@@ -221,7 +228,10 @@ pub fn extra_life(c: &mut LevelCtx) {
             if !crate::level::collision::n_clear_l(score.wrapping_sub(b.l(FROG + NEXT_LIFE))) {
                 break;
             }
-            b.set_l(FROG + NEXT_LIFE, b.l(FROG + NEXT_LIFE).wrapping_add(0x30d40));
+            b.set_l(
+                FROG + NEXT_LIFE,
+                b.l(FROG + NEXT_LIFE).wrapping_add(0x30d40),
+            );
             b.set_w(FROG + f::LIVES, b.w(FROG + f::LIVES).wrapping_add(1));
         }
     }
@@ -247,7 +257,14 @@ pub(crate) fn lives_count(c: &mut LevelCtx) {
     c.custom(0x96, 0x8400);
     for p in 0..5 {
         c.blit_words(h * w, 0x09f0);
-        panel_copy(src + GFX_PLANE * p, PANEL + 0x12 + PANEL_PLANE * p, 0x32, 0x26, 0x385).run(&mut c.bus);
+        panel_copy(
+            src + GFX_PLANE * p,
+            PANEL + 0x12 + PANEL_PLANE * p,
+            0x32,
+            0x26,
+            0x385,
+        )
+        .run(&mut c.bus);
     }
     c.custom(0x9a, 0x8010);
 }
@@ -286,7 +303,10 @@ pub(crate) fn sprite_digits(b: &mut Bus) {
     } else {
         ((n / 10) as i32, (n % 10) as i32)
     };
-    for (k, table, rec) in [(tens, h0(0x86c2), h0(0x1b130)), (ones, h0(0x86ee), h0(0x1b14c))] {
+    for (k, table, rec) in [
+        (tens, h0(0x86c2), h0(0x1b130)),
+        (ones, h0(0x86ee), h0(0x1b14c)),
+    ] {
         let frame = b.l(table.wrapping_add((4 * k) as u32));
         let at = b.l(rec);
         for (o, v) in [(0, frame), (0x10, frame.wrapping_add(0x78))] {
@@ -334,7 +354,14 @@ fn clock_at_start(c: &mut LevelCtx) {
     let b = &mut c.bus;
     if b.w(h0(0x9e6)) == 0 {
         let m = b.b(h0(0x877)).wrapping_add(b.b(h0(0x877)));
-        b.set_b(h0(0x877), if (m.wrapping_sub(0xa) as i8) < 0 { m } else { 9 });
+        b.set_b(
+            h0(0x877),
+            if (m.wrapping_sub(0xa) as i8) < 0 {
+                m
+            } else {
+                9
+            },
+        );
     }
     b.set_w(h2(0x6bd0) + 0x1f2, 0x149);
     b.set_w(h2(0x6bd0) + 0x1f6, 0xbf);
@@ -359,7 +386,13 @@ mod tests {
         let (mut st, rom, dispatch) = (State::default(), Rom::default(), Dispatch::default());
         let sound = crate::audio::SoundData::from_parts(vec![0; 0x50000], vec![], vec![], vec![]);
         let mut paula = Vec::new();
-        let mut c = LevelCtx::new(Bus::new(&mut st, &rom), &dispatch, Hw::default(), &sound, &mut paula);
+        let mut c = LevelCtx::new(
+            Bus::new(&mut st, &rom),
+            &dispatch,
+            Hw::default(),
+            &sound,
+            &mut paula,
+        );
         c.trace = Some(Vec::new());
         f(&mut c);
         let trace = c.trace.take().unwrap();
@@ -370,17 +403,31 @@ mod tests {
     /// off and BLTPRI on, each plane's blit words, INTENA back on.
     #[test]
     fn a_panel_blit_charges_and_writes_in_order() {
-        for (f, size) in [(lives_icon_draw as fn(&mut LevelCtx), 0x382u32), (lives_count, 0x385)] {
+        for (f, size) in [
+            (lives_icon_draw as fn(&mut LevelCtx), 0x382u32),
+            (lives_count, 0x385),
+        ] {
             let (trace, paula) = traced(f);
             let (h, w) = bltsize_words(size as u16);
             let words = h * w;
             let blit = Tick::Blit(words * slots_per_word(0x09f0));
-            let mut want = vec![Tick::Cpu(Cost::PanelBlit, 1), Tick::Write(0), Tick::Write(1)];
+            let mut want = vec![
+                Tick::Cpu(Cost::PanelBlit, 1),
+                Tick::Write(0),
+                Tick::Write(1),
+            ];
             want.extend([blit; 5]);
             want.push(Tick::Write(2));
-            let at = trace.iter().position(|t| *t == Tick::Cpu(Cost::PanelBlit, 1)).unwrap();
+            let at = trace
+                .iter()
+                .position(|t| *t == Tick::Cpu(Cost::PanelBlit, 1))
+                .unwrap();
             assert_eq!(trace[at..at + want.len()], want[..], "size {size:#x}");
-            assert_eq!(paula, [(0x9a, 0x0010), (0x96, 0x8400), (0x9a, 0x8010)], "size {size:#x}");
+            assert_eq!(
+                paula,
+                [(0x9a, 0x0010), (0x96, 0x8400), (0x9a, 0x8010)],
+                "size {size:#x}"
+            );
         }
     }
 }

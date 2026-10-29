@@ -64,7 +64,11 @@ fn picture_x(g: &Game, s: u32, l: &StripLayers) -> i32 {
     let ctl = w(g, cop + 0xe);
     let hstart = (g.peek(cop + 0xb, 1)[0] as i32) << 1
         | (ctl & 1) as i32
-        | if ctl as u8 & WIDE_HSTART_BIT != 0 { 0x200 } else { 0 };
+        | if ctl as u8 & WIDE_HSTART_BIT != 0 {
+            0x200
+        } else {
+            0
+        };
     hstart + 1 - l.picture.left
 }
 
@@ -74,7 +78,10 @@ fn layers(g: &Game) -> StripLayers {
 
 fn sprite(l: &StripLayers, x: i32, y: usize) -> Option<u8> {
     let width = l.picture.width as i32;
-    (0..width).contains(&x).then(|| l.sprites[y * width as usize + x as usize]).flatten()
+    (0..width)
+        .contains(&x)
+        .then(|| l.sprites[y * width as usize + x as usize])
+        .flatten()
 }
 
 /// `g` and a clone stepped once with the same input, the clone's frog sprites put at screen x
@@ -90,12 +97,24 @@ fn moved(g: &Game, at: u16) -> (Game, Game) {
 
 /// The frog's sprite pixels in `a` from picture x `xa`, columns `cols`, equal `b`'s from `xb`,
 /// on every row; returns how many of `a`'s are drawn.
-fn same_frog(a: &StripLayers, xa: i32, b: &StripLayers, xb: i32, cols: std::ops::Range<i32>) -> usize {
+fn same_frog(
+    a: &StripLayers,
+    xa: i32,
+    b: &StripLayers,
+    xb: i32,
+    cols: std::ops::Range<i32>,
+) -> usize {
     let mut drawn = 0;
     for y in 0..a.picture.height as usize {
         for k in cols.clone() {
             let (pa, pb) = (sprite(a, xa + k, y), sprite(b, xb + k, y));
-            assert_eq!(pa, pb, "row {y}, frog column {k}: strip {} vs centre {}", xa + k, xb + k);
+            assert_eq!(
+                pa,
+                pb,
+                "row {y}, frog column {k}: strip {} vs centre {}",
+                xa + k,
+                xb + k
+            );
             drawn += pa.is_some() as usize;
         }
     }
@@ -126,13 +145,23 @@ fn at_left_end() -> Game {
 fn at_the_right_end_the_frog_in_the_right_strip_is_the_centres_shifted() {
     let (a, b) = moved(&at_right_end(), 0x90);
     let (la, lb) = (layers(&a), layers(&b));
-    let (xa, xb) = (picture_x(&a, FROG_SPRITE_LEFT, &la), picture_x(&b, FROG_SPRITE_LEFT, &lb));
+    let (xa, xb) = (
+        picture_x(&a, FROG_SPRITE_LEFT, &la),
+        picture_x(&b, FROG_SPRITE_LEFT, &lb),
+    );
     let strip = la.picture.width as i32 - N;
-    assert!(xa + FROG_WIDTH > strip && xa + FROG_WIDTH <= la.picture.width as i32, "frog at {xa}");
+    assert!(
+        xa + FROG_WIDTH > strip && xa + FROG_WIDTH <= la.picture.width as i32,
+        "frog at {xa}"
+    );
     assert_eq!(picture_x(&a, FROG_SPRITE_RIGHT, &la), xa + 16);
     assert!(same_frog(&la, xa, &lb, xb, 0..FROG_WIDTH) > 0);
-    let in_strip = (strip - xa..FROG_WIDTH).filter(|&k| (0..la.picture.height as usize).any(|y| sprite(&la, xa + k, y).is_some()));
-    assert!(in_strip.count() > 4, "the frog's pixels reach into the right strip");
+    let in_strip = (strip - xa..FROG_WIDTH)
+        .filter(|&k| (0..la.picture.height as usize).any(|y| sprite(&la, xa + k, y).is_some()));
+    assert!(
+        in_strip.count() > 4,
+        "the frog's pixels reach into the right strip"
+    );
 }
 
 #[test]
@@ -140,7 +169,10 @@ fn at_the_left_end_the_frog_in_the_left_strip_is_the_centres_shifted() {
     let g = at_left_end();
     let (a, b) = moved(&g, 0x90);
     let (la, lb) = (layers(&a), layers(&b));
-    let (xa, xb) = (picture_x(&a, FROG_SPRITE_LEFT, &la), picture_x(&b, FROG_SPRITE_LEFT, &lb));
+    let (xa, xb) = (
+        picture_x(&a, FROG_SPRITE_LEFT, &la),
+        picture_x(&b, FROG_SPRITE_LEFT, &lb),
+    );
     assert!(xa >= 0 && xa < N, "frog at {xa}");
     assert!(same_frog(&la, xa, &lb, xb, 0..FROG_WIDTH) > 0);
     assert!(
@@ -167,13 +199,24 @@ fn past_hstarts_9_bits_the_frog_shows_at_the_right_edge() {
     let (lc, lb) = (layers(&c), layers(&b));
     let xc = picture_x(&c, FROG_SPRITE_LEFT, &lc);
     let width = lc.picture.width as i32;
-    assert_eq!(xc, width - 7, "the left sprite's first 7 columns are the picture's last");
+    assert_eq!(
+        xc,
+        width - 7,
+        "the left sprite's first 7 columns are the picture's last"
+    );
     let xb = picture_x(&b, FROG_SPRITE_LEFT, &lb);
-    assert!(same_frog(&lc, xc, &lb, xb, 0..7) > 0, "frog pixels at the right edge");
+    assert!(
+        same_frog(&lc, xc, &lb, xb, 0..7) > 0,
+        "frog pixels at the right edge"
+    );
     // Nothing of it wraps to the left.
     for y in 0..lc.picture.height as usize {
         for x in 0..N {
-            assert_eq!(sprite(&lc, x, y), sprite(&lb, x, y), "row {y} x {x}: a wrapped sprite");
+            assert_eq!(
+                sprite(&lc, x, y),
+                sprite(&lb, x, y),
+                "row {y} x {x}: a wrapped sprite"
+            );
         }
     }
 }
@@ -190,7 +233,10 @@ fn the_games_picture_draws_the_frog_past_hstarts_9_bits() {
     let l = layers(&c);
     let shown = c.render(WIDE);
     let width = l.picture.width as i32;
-    assert_eq!((shown.width, shown.height), (l.picture.width, l.picture.height));
+    assert_eq!(
+        (shown.width, shown.height),
+        (l.picture.width, l.picture.height)
+    );
     let (mut frog, mut drawn) = (0, 0);
     for y in 0..l.picture.height as usize {
         for x in width - 7..width {
@@ -202,7 +248,10 @@ fn the_games_picture_draws_the_frog_past_hstarts_9_bits() {
         }
     }
     assert!(frog > 0, "the frog's sprites cover the last columns");
-    assert!(drawn * 2 > frog, "{drawn} of {frog} frog pixels drawn in the game's picture");
+    assert!(
+        drawn * 2 > frog,
+        "{drawn} of {frog} frog pixels drawn in the game's picture"
+    );
 }
 
 /// The tenth bit is widescreen's alone: a 4:3 game's frog put at `$180` is parked at `$150` and
@@ -218,7 +267,10 @@ fn a_4_3_game_never_sets_the_bit() {
         assert_eq!(ctl_low(&g, s) & WIDE_HSTART_BIT, 0);
     }
     let l = layers(&g);
-    assert_eq!(picture_x(&g, FROG_SPRITE_LEFT, &l), 0x150 + 0x81 - l.picture.left);
+    assert_eq!(
+        picture_x(&g, FROG_SPRITE_LEFT, &l),
+        0x150 + 0x81 - l.picture.left
+    );
 }
 
 /// A blinking frog is parked at `$150 + 65` (T04): HSTART `$211`, with the tenth bit past the
@@ -236,7 +288,10 @@ fn a_blinking_frog_shows_nothing_in_either_strip() {
             parked += 1;
             let l = layers(&g);
             let width = l.picture.width as i32;
-            assert!(picture_x(&g, FROG_SPRITE_LEFT, &l) >= width, "{end}: parked past the right");
+            assert!(
+                picture_x(&g, FROG_SPRITE_LEFT, &l) >= width,
+                "{end}: parked past the right"
+            );
             for y in 0..l.picture.height as usize {
                 for x in (0..N).chain(width - N..width) {
                     assert_eq!(sprite(&l, x, y), None, "{end} end: row {y} x {x}");
@@ -256,15 +311,29 @@ fn a_sprites_own_control_words_never_carry_the_tenth_bit() {
     let mut g = level("WW-1", true);
     let mut checked = 0;
     for n in 0..300u32 {
-        g.step(FrameInput::joy(if n < 150 { Joy::RIGHT } else { Joy::LEFT }));
+        g.step(FrameInput::joy(if n < 150 {
+            Joy::RIGHT
+        } else {
+            Joy::LEFT
+        }));
         if n < 250 || w(&g, FROG_SPRITE_RIGHT) >= 0x170 {
             continue;
         }
         checked += 1;
         let l = layers(&g);
         let width = l.picture.width as usize;
-        let stray = l.sprites.iter().enumerate().filter(|&(at, v)| v.is_some() && at % width >= width - 7).count();
-        assert_eq!(stray, 0, "frame {n}: sprite pixels at the right edge, frog at {:#x}", w(&g, FROG_SPRITE_LEFT));
+        let stray = l
+            .sprites
+            .iter()
+            .enumerate()
+            .filter(|&(at, v)| v.is_some() && at % width >= width - 7)
+            .count();
+        assert_eq!(
+            stray,
+            0,
+            "frame {n}: sprite pixels at the right edge, frog at {:#x}",
+            w(&g, FROG_SPRITE_LEFT)
+        );
     }
     assert!(checked > 0);
 }

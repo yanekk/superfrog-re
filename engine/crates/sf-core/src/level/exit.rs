@@ -212,7 +212,10 @@ pub(crate) fn init_inside(id: LevelId) -> Vec<u32> {
 
 /// `demo_init`'s calls' return addresses (h0+$8f3a: `level_init_w1`'s code again).
 pub(crate) fn demo_init_inside() -> Vec<u32> {
-    [6, 0x2e, 0x34, 0x38, 0x4a].iter().map(|o| h0(0x8f3a + o)).collect()
+    [6, 0x2e, 0x34, 0x38, 0x4a]
+        .iter()
+        .map(|o| h0(0x8f3a + o))
+        .collect()
 }
 
 /// A level routine run on the front end's program, its Paula writes made on the line the beam is
@@ -296,7 +299,8 @@ impl Restart {
         match self.pc {
             0 => {
                 self.pc = 1;
-                let Some(id) = crate::level::load::current(&crate::mem::Bus::new(cx.s, cx.display.rom()))
+                let Some(id) =
+                    crate::level::load::current(&crate::mem::Bus::new(cx.s, cx.display.rom()))
                 else {
                     cx.unported("a restart in a level with no world and level numbers");
                     return Yield::Poll;
@@ -359,8 +363,9 @@ const AFTER_FADE_IN_SETUP: u32 = h0(0x69f8);
 const FADE_TARGET: u32 = h0(0x9fe);
 /// `level_start`'s calls' return addresses up to its `wait_frame_raster` (h0+$6952 …), where
 /// the original is while it takes the frog's first step.
-const START_FROG_INSIDE: [u32; 10] =
-    [0x6960, 0x697a, 0x6980, 0x6986, 0x6992, 0x6998, 0x699e, 0x69a4, 0x69aa, 0x69c0];
+const START_FROG_INSIDE: [u32; 10] = [
+    0x6960, 0x697a, 0x6980, 0x6986, 0x6992, 0x6998, 0x699e, 0x69a4, 0x69aa, 0x69c0,
+];
 /// The lines from the set-up's last write (its copper interrupt on) to `level_start`'s
 /// `wait_frame_raster`: measured on the oracle in `frog-pit-w1-1`'s first restart, its objects
 /// frozen (lines 142 to 173; T199).
@@ -424,7 +429,13 @@ impl LevelStart {
                     cx.cop1lc = LEVEL_COPPER;
                     self.pc = 2;
                     let target = cx.s.l(FADE_TARGET);
-                    return fade(FadeKind::In { target }, 0, PALETTE, 0x20, AFTER_FADE_IN_SETUP);
+                    return fade(
+                        FadeKind::In { target },
+                        0,
+                        PALETTE,
+                        0x20,
+                        AFTER_FADE_IN_SETUP,
+                    );
                 }
                 2 => {
                     cx.wr(0x96, 0x8020);

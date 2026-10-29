@@ -5,13 +5,13 @@
 //! touches, the bob draw list and the bob drawer, which erases and draws every bob into the back
 //! display buffer.
 
-use crate::front::blit::{Blit, bltsize_words};
 use crate::frog::{FROG, f};
+use crate::front::blit::{Blit, bltsize_words};
 use crate::layout::{
     WIDE_BOB_ENTRIES, WIDE_BOB_ENTRY, WIDE_BOB_HEAD, WIDE_BOB_WIPED, WIDE_BOBS, h0, h3,
 };
-use crate::level::camera::{CAMERA_X, CAMERA_Y, SCROLL_DIRS, SHOOTER_MODE, SPRITES_HIDDEN};
 use crate::level::beam::Cost;
+use crate::level::camera::{CAMERA_X, CAMERA_Y, SCROLL_DIRS, SHOOTER_MODE, SPRITES_HIDDEN};
 use crate::level::screen::Screen;
 use crate::level::{LevelCtx, n_clear};
 use crate::mem::Bus;
@@ -67,7 +67,11 @@ const _: () = assert!(
 
 /// Slot `k` in loop order: the original's 20, then the extras.
 pub const fn slot_at(k: u32) -> u32 {
-    if k < SLOTS { OBJ_SLOTS + k * SLOT_SIZE } else { WIDE_OBJ_SLOTS + (k - SLOTS) * SLOT_SIZE }
+    if k < SLOTS {
+        OBJ_SLOTS + k * SLOT_SIZE
+    } else {
+        WIDE_OBJ_SLOTS + (k - SLOTS) * SLOT_SIZE
+    }
 }
 
 /// Whether `slot` is an extra slot (or `bob` an extra bob record, or any address of the range).
@@ -85,13 +89,21 @@ pub fn wide_walk(b: &Bus, screen: Screen) -> bool {
 /// or any extra slot is live (DESIGN §2.4); [`find_free`] hands out an extra only when
 /// `screen.wide`.
 pub fn slot_addrs(b: &Bus, screen: Screen) -> impl Iterator<Item = u32> + use<> {
-    let n = if wide_walk(b, screen) { SLOTS + WIDE_SLOTS } else { SLOTS };
+    let n = if wide_walk(b, screen) {
+        SLOTS + WIDE_SLOTS
+    } else {
+        SLOTS
+    };
     (0..n).map(slot_at)
 }
 
 /// The slots [`find_free`] may hand out: the extras only in widescreen.
 fn free_candidates(screen: Screen) -> impl Iterator<Item = u32> {
-    let n = if screen.wide { SLOTS + WIDE_SLOTS } else { SLOTS };
+    let n = if screen.wide {
+        SLOTS + WIDE_SLOTS
+    } else {
+        SLOTS
+    };
     (0..n).map(slot_at)
 }
 
@@ -260,7 +272,10 @@ fn cell_position(b: &Bus, cell: u32, dx: u16, dy: u16) -> (u16, u16) {
     } else {
         ((d / 0x260) as u16, (d % 0x260) as u16)
     };
-    (dx.wrapping_add(rem.wrapping_shl(3)), dy.wrapping_add(row.wrapping_shl(4)))
+    (
+        dx.wrapping_add(rem.wrapping_shl(3)),
+        dy.wrapping_add(row.wrapping_shl(4)),
+    )
 }
 
 /// The map cell under pixel `x`, `y` less one cell (h0+$1b79c): what a pixel spawn records as its
@@ -298,7 +313,10 @@ fn fill_slot(c: &mut LevelCtx, slot: u32, template: u32, cell: u32) {
         let off = template.wrapping_sub(OBJ_TEMPLATES);
         let init = init.wrapping_sub(h0(0));
         let text = if off < TEMPLATES * TEMPLATE_SIZE && off % TEMPLATE_SIZE == 0 {
-            format!("object template {} (init h0+${init:x}): no kind", off / TEMPLATE_SIZE)
+            format!(
+                "object template {} (init h0+${init:x}): no kind",
+                off / TEMPLATE_SIZE
+            )
         } else {
             let at = template.wrapping_sub(h0(0));
             format!("an object at h0+${at:x} (init h0+${init:x}): no kind")
@@ -316,28 +334,53 @@ fn fill_slot(c: &mut LevelCtx, slot: u32, template: u32, cell: u32) {
 /// `obj_spawn_cell` (h0+$1b3d8): `template` at map cell `cell`, `dx`, `dy` pixels into it,
 /// unless the cell already has a live slot (that slot is returned, `d1` -1).
 pub fn obj_spawn_cell(c: &mut LevelCtx, template: u32, cell: u32, dx: u16, dy: u16) -> Spawned {
-    if let Some(s) = slot_addrs(&c.bus, c.screen).find(|&s| c.bus.l(s + 0x40) == cell)
-    {
-        return Spawned { d0: 0, d1: 0xffff_ffff, a0: s };
+    if let Some(s) = slot_addrs(&c.bus, c.screen).find(|&s| c.bus.l(s + 0x40) == cell) {
+        return Spawned {
+            d0: 0,
+            d1: 0xffff_ffff,
+            a0: s,
+        };
     }
     // With no slot the original sets d0 to -1, then clears it.
     spawn_at_cell(c, template, cell, dx, dy).map_or(
-        Spawned { d0: 0, d1: dy as u32, a0: 0 },
-        |(s, _)| Spawned { d0: 0, d1: 0, a0: s },
+        Spawned {
+            d0: 0,
+            d1: dy as u32,
+            a0: 0,
+        },
+        |(s, _)| Spawned {
+            d0: 0,
+            d1: 0,
+            a0: s,
+        },
     )
 }
 
 /// `obj_spawn_cell_alt` (h0+$1b4e6): [`obj_spawn_cell`] without looking for a live slot there.
 pub fn obj_spawn_cell_alt(c: &mut LevelCtx, template: u32, cell: u32, dx: u16, dy: u16) -> Spawned {
     spawn_at_cell(c, template, cell, dx, dy).map_or(
-        Spawned { d0: 0xffff_ffff, d1: dy as u32, a0: 0 },
-        |(s, y)| Spawned { d0: 0, d1: y as u32, a0: s },
+        Spawned {
+            d0: 0xffff_ffff,
+            d1: dy as u32,
+            a0: 0,
+        },
+        |(s, y)| Spawned {
+            d0: 0,
+            d1: y as u32,
+            a0: s,
+        },
     )
 }
 
 /// The cell spawners' search and fill: the slot and the y it took, or `None` (nothing changed
 /// but evictions).
-fn spawn_at_cell(c: &mut LevelCtx, template: u32, cell: u32, dx: u16, dy: u16) -> Option<(u32, u16)> {
+fn spawn_at_cell(
+    c: &mut LevelCtx,
+    template: u32,
+    cell: u32,
+    dx: u16,
+    dy: u16,
+) -> Option<(u32, u16)> {
     let slot = find_free(c)?;
     if !take_bob(&mut c.bus, slot) {
         return None;
@@ -351,11 +394,25 @@ fn spawn_at_cell(c: &mut LevelCtx, template: u32, cell: u32, dx: u16, dy: u16) -
 
 /// `obj_spawn_coin_forced` (h0+$1b5d0): a coin at map cell `cell`. With every slot full and none
 /// evictable off the screen, the first slot that is neither evictable nor a coin is freed for it.
-pub fn obj_spawn_coin_forced(c: &mut LevelCtx, template: u32, cell: u32, dx: u16, dy: u16) -> Spawned {
+pub fn obj_spawn_coin_forced(
+    c: &mut LevelCtx,
+    template: u32,
+    cell: u32,
+    dx: u16,
+    dy: u16,
+) -> Spawned {
     if let Some(s) = slot_addrs(&c.bus, c.screen).find(|&s| c.bus.l(s + 0x40) == cell) {
-        return Spawned { d0: 0, d1: dy as u32, a0: s };
+        return Spawned {
+            d0: 0,
+            d1: dy as u32,
+            a0: s,
+        };
     }
-    let none = Spawned { d0: 0xffff_ffff, d1: dy as u32, a0: template };
+    let none = Spawned {
+        d0: 0xffff_ffff,
+        d1: dy as u32,
+        a0: template,
+    };
     let slot = match find_free(c) {
         Some(s) => s,
         None => {
@@ -376,28 +433,51 @@ pub fn obj_spawn_coin_forced(c: &mut LevelCtx, template: u32, cell: u32, dx: u16
     c.bus.set_w(template + 8, x);
     c.bus.set_w(template + 0xa, y);
     fill_slot(c, slot, template, cell);
-    Spawned { d0: 0, d1: y as u32, a0: slot }
+    Spawned {
+        d0: 0,
+        d1: y as u32,
+        a0: slot,
+    }
 }
 
 /// `obj_spawn_at_xy` (h0+$1b706): `template` at level pixel `x`, `y`, unless a live slot was
 /// spawned at that very position (that slot is returned, `d1` -1).
 pub fn obj_spawn_at_xy(c: &mut LevelCtx, template: u32, x: u16, y: u16) -> Spawned {
     let at = (x as u32) << 16 | y as u32;
-    if let Some(s) = slot_addrs(&c.bus, c.screen).find(|&s| c.bus.l(s + 0x44) == at)
-    {
-        return Spawned { d0: 0, d1: 0xffff_ffff, a0: s };
+    if let Some(s) = slot_addrs(&c.bus, c.screen).find(|&s| c.bus.l(s + 0x44) == at) {
+        return Spawned {
+            d0: 0,
+            d1: 0xffff_ffff,
+            a0: s,
+        };
     }
     spawn_at_pixel(c, template, x, y).map_or(
-        Spawned { d0: 0xffff_ffff, d1: 0, a0: 0 },
-        |s| Spawned { d0: 0, d1: 0, a0: s },
+        Spawned {
+            d0: 0xffff_ffff,
+            d1: 0,
+            a0: 0,
+        },
+        |s| Spawned {
+            d0: 0,
+            d1: 0,
+            a0: s,
+        },
     )
 }
 
 /// `obj_spawn_at_xy_nodedup` (h0+$1b822): [`obj_spawn_at_xy`] without looking for a slot there.
 pub fn obj_spawn_at_xy_nodedup(c: &mut LevelCtx, template: u32, x: u16, y: u16) -> Spawned {
     spawn_at_pixel(c, template, x, y).map_or(
-        Spawned { d0: 0xffff_ffff, d1: y as u32, a0: 0 },
-        |s| Spawned { d0: 0, d1: y as u32, a0: s },
+        Spawned {
+            d0: 0xffff_ffff,
+            d1: y as u32,
+            a0: 0,
+        },
+        |s| Spawned {
+            d0: 0,
+            d1: y as u32,
+            a0: s,
+        },
     )
 }
 
@@ -439,7 +519,10 @@ pub fn obj_free(c: &mut LevelCtx, slot: u32, _d7: u16) {
 /// The extras are freed too, unpaid (DESIGN §2.4, D11).
 pub fn obj_free_all(c: &mut LevelCtx) {
     let slots: Vec<u32> = slot_addrs(&c.bus, c.screen).collect();
-    let in_use = slots.iter().filter(|&&s| !is_wide(s) && c.bus.l(s + 0x40) != 0).count();
+    let in_use = slots
+        .iter()
+        .filter(|&&s| !is_wide(s) && c.bus.l(s + 0x40) != 0)
+        .count();
     c.spend_n(crate::level::beam::Cost::InitFreed, in_use as u32);
     for s in slots {
         obj_free(c, s, 0);
@@ -476,17 +559,24 @@ pub fn obj_despawn_if_offscreen(c: &mut LevelCtx, slot: u32, _d7: u16) {
     // the vertical blank moving the camera the later tests read (T212: W2-2 1228).
     c.point(1);
     let b = &c.bus;
-    let dirs = if b.w(SHOOTER_MODE) != 0 { 0xff } else { b.b(SCROLL_DIRS) };
+    let dirs = if b.w(SHOOTER_MODE) != 0 {
+        0xff
+    } else {
+        b.b(SCROLL_DIRS)
+    };
     let frame = shown_frame(b, slot);
     let (x, y) = (b.w(slot + 8), b.w(slot + 0xa));
     let (right, left) = (c.screen.right_despawn(), c.screen.left_despawn());
     c.point(2);
-    let gone = (dirs & 4 != 0 && n_clear(x.wrapping_sub(right).wrapping_sub(c.bus.w(CAMERA_X + 2))))
+    let gone = (dirs & 4 != 0
+        && n_clear(x.wrapping_sub(right).wrapping_sub(c.bus.w(CAMERA_X + 2))))
         || {
             c.point(3);
             dirs & 2 != 0
                 && !n_clear(
-                    x.wrapping_add(c.bus.w(frame + 4)).wrapping_add(left).wrapping_sub(c.bus.w(CAMERA_X + 2)),
+                    x.wrapping_add(c.bus.w(frame + 4))
+                        .wrapping_add(left)
+                        .wrapping_sub(c.bus.w(CAMERA_X + 2)),
                 )
         }
         || {
@@ -497,7 +587,9 @@ pub fn obj_despawn_if_offscreen(c: &mut LevelCtx, slot: u32, _d7: u16) {
             c.point(5);
             dirs & 8 != 0
                 && !n_clear(
-                    y.wrapping_add(c.bus.w(frame + 6)).wrapping_add(0x30).wrapping_sub(c.bus.w(CAMERA_Y + 2)),
+                    y.wrapping_add(c.bus.w(frame + 6))
+                        .wrapping_add(0x30)
+                        .wrapping_sub(c.bus.w(CAMERA_Y + 2)),
                 )
         };
     if gone {
@@ -549,7 +641,11 @@ pub fn obj_build_hitboxes(c: &mut LevelCtx) {
             c.spend(Cost::HitboxSlot);
         }
         let b = &mut c.bus;
-        let mut hb = if b.l(slot + 0x40) == 0 { 0 } else { b.l(slot + 0x14) };
+        let mut hb = if b.l(slot + 0x40) == 0 {
+            0
+        } else {
+            b.l(slot + 0x14)
+        };
         let mut boxes = 0;
         while hb != 0 {
             boxes += 1;
@@ -704,9 +800,17 @@ fn frog_touches(c: &mut LevelCtx) {
         if b.w(slot + 0x2e) != 0
             && !hurt
             && n_clear(b.w(FROG + f::VY))
-            && !n_clear(b.w(FROG + f::Y).wrapping_add(0x29).wrapping_sub(b.w(slot + 0xa)))
+            && !n_clear(
+                b.w(FROG + f::Y)
+                    .wrapping_add(0x29)
+                    .wrapping_sub(b.w(slot + 0xa)),
+            )
         {
-            let vy = if b.w(OPT_GAME_MODE) == 0 { 0xffff } else { 0xfffe };
+            let vy = if b.w(OPT_GAME_MODE) == 0 {
+                0xffff
+            } else {
+                0xfffe
+            };
             b.set_w(FROG + f::VY, vy);
             let touch = b.l(slot + 0x10);
             crate::level::call(c, touch, slot, 0);
@@ -741,7 +845,11 @@ fn extra_left_drawn(b: &Bus) -> bool {
 pub fn build_bob_draw_list(c: &mut LevelCtx) {
     c.spend(Cost::DrawList);
     let wide = wide_walk(&c.bus, c.screen) || extra_left_drawn(&c.bus);
-    let list = if wide { WIDE_BOB_DRAW_LIST } else { BOB_DRAW_LIST };
+    let list = if wide {
+        WIDE_BOB_DRAW_LIST
+    } else {
+        BOB_DRAW_LIST
+    };
     set_list(&mut c.bus, WIDE_DRAW_LIST_AT, list, BOB_DRAW_LIST);
     let mut out = list;
     c.bus.set_l(out, SPUD_BOB);
@@ -1051,7 +1159,12 @@ fn erase(c: &mut LevelCtx, part: u32, dest: u32) {
             con1: 0,
             afwm: 0xffff,
             alwm: 0xffff,
-            pt: [src.wrapping_add(PLANE * p), 0, 0, dest.wrapping_add(PLANE * p)],
+            pt: [
+                src.wrapping_add(PLANE * p),
+                0,
+                0,
+                dest.wrapping_add(PLANE * p),
+            ],
             modulo: [modulo as i16, 0, 0, modulo as i16],
             size,
         }
@@ -1201,7 +1314,12 @@ fn draw_bob(c: &mut LevelCtx, bob: u32, back: u32, sub: u32) {
             con1: shift,
             afwm: 0xffff,
             alwm: 0x0000,
-            pt: [a4, src, a1.wrapping_add(PLANE * p), a1.wrapping_add(PLANE * p)],
+            pt: [
+                a4,
+                src,
+                a1.wrapping_add(PLANE * p),
+                a1.wrapping_add(PLANE * p),
+            ],
             modulo: [bmod as i16, bmod as i16, cmod as i16, cmod as i16],
             size,
         }
@@ -1254,7 +1372,10 @@ fn draw_background(c: &mut LevelCtx, rec: u32, frame_at: u32, back: u32) {
         let words = neg >> 4;
         b.set_w(rec + 0x1e, b.w(rec + 0x1e).wrapping_sub(words));
         let bytes = words.wrapping_mul(2);
-        b.set_l(rec + 0x20, b.l(rec + 0x20).wrapping_add(bytes as i16 as i32 as u32));
+        b.set_l(
+            rec + 0x20,
+            b.l(rec + 0x20).wrapping_add(bytes as i16 as i32 as u32),
+        );
         b.set_w(rec + 0x26, b.w(rec + 0x26).wrapping_add(bytes));
         b.set_w(rec + 0x24, b.w(rec + 0x24).wrapping_add(bytes));
         let d6 = 0xfu16.wrapping_sub(neg & 0xf);
@@ -1292,7 +1413,10 @@ fn draw_background(c: &mut LevelCtx, rec: u32, frame_at: u32, back: u32) {
         b.set_l(rec + 0x20, b.l(rec + 0x20).wrapping_add(skip));
         index = b.w(BD_CLEAN_TOP).wrapping_mul(2).wrapping_sub(d5);
     } else {
-        index = y.wrapping_add(b.w(BD_CLEAN_TOP)).wrapping_mul(2).wrapping_sub(d5);
+        index = y
+            .wrapping_add(b.w(BD_CLEAN_TOP))
+            .wrapping_mul(2)
+            .wrapping_sub(d5);
     }
     a1 = a1.wrapping_add(line_offset_long(b, index));
     if (b.w(rec) as i16) < 0 && !n_clear(b.w(rec + 2).wrapping_sub(1)) {

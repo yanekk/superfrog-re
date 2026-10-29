@@ -28,13 +28,17 @@ impl AmigaMemory {
         if (addr as usize) < self.chip.len() {
             Some(self.chip[addr as usize])
         } else {
-            addr.checked_sub(SLOW_BASE).and_then(|a| self.slow.get(a as usize).copied())
+            addr.checked_sub(SLOW_BASE)
+                .and_then(|a| self.slow.get(a as usize).copied())
         }
     }
 
     /// The big-endian word at `addr`, or `None` if either byte is outside both RAMs.
     pub fn word(&self, addr: u32) -> Option<u16> {
-        Some(u16::from_be_bytes([self.byte_at(addr)?, self.byte_at(addr + 1)?]))
+        Some(u16::from_be_bytes([
+            self.byte_at(addr)?,
+            self.byte_at(addr + 1)?,
+        ]))
     }
 
     /// The big-endian long at `addr`, or `None` if any byte is outside both RAMs.
@@ -66,7 +70,10 @@ mod tests {
             slow: vec![5, 6],
         };
         assert_eq!((m.byte(1), m.byte_at(1)), (2, Some(2)));
-        assert_eq!((m.byte(SLOW_BASE + 1), m.byte_at(SLOW_BASE + 1)), (6, Some(6)));
+        assert_eq!(
+            (m.byte(SLOW_BASE + 1), m.byte_at(SLOW_BASE + 1)),
+            (6, Some(6))
+        );
         assert_eq!(m.word(2), Some(0x0304));
         assert_eq!(m.long(0), Some(0x0102_0304));
         for past in [4, 0x10_0000, SLOW_BASE + 2, 0xff_ffff] {

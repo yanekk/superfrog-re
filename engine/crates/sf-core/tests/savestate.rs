@@ -38,7 +38,11 @@ fn input(f: u32) -> FrameInput {
 
 /// Everything a frame gives that a player or conformance sees: the frame, its Paula writes and the
 /// probe after it.
-fn run(g: &mut Game, from: u32, frames: u32) -> Vec<(sf_core::FrameOut, Vec<(sf_core::VarId, u32)>)> {
+fn run(
+    g: &mut Game,
+    from: u32,
+    frames: u32,
+) -> Vec<(sf_core::FrameOut, Vec<(sf_core::VarId, u32)>)> {
     (from..from + frames)
         .map(|f| {
             let out = g.step(input(f));
@@ -52,13 +56,21 @@ fn run(g: &mut Game, from: u32, frames: u32) -> Vec<(sf_core::FrameOut, Vec<(sf_
 fn check(name: &str, mut g: Game, n: u32, m: u32) {
     run(&mut g, 0, n);
     let state = g.save(BUILD, hash());
-    let mut loaded = Game::load(data(), &state, BUILD, hash()).unwrap_or_else(|e| panic!("{name}: {e}"));
-    assert!(loaded == g, "{name}: the loaded game differs from the saved one");
+    let mut loaded =
+        Game::load(data(), &state, BUILD, hash()).unwrap_or_else(|e| panic!("{name}: {e}"));
+    assert!(
+        loaded == g,
+        "{name}: the loaded game differs from the saved one"
+    );
     let scene = g.scene();
     let a = run(&mut g, n, m);
     let b = run(&mut loaded, n, m);
     for (k, (x, y)) in a.iter().zip(&b).enumerate() {
-        assert!(x == y, "{name} ({scene:?}): frame {} after the load differs", k);
+        assert!(
+            x == y,
+            "{name} ({scene:?}): frame {} after the load differs",
+            k
+        );
     }
     assert_eq!(a.len(), m as usize);
 }
@@ -69,13 +81,23 @@ fn level(id: &str) -> Start {
 
 #[test]
 fn a_loaded_story_intro_runs_on_as_the_saved_one() {
-    let g = Game::new(data(), Start::Disk3 { seed: Rng::default() });
+    let g = Game::new(
+        data(),
+        Start::Disk3 {
+            seed: Rng::default(),
+        },
+    );
     check("story", g, 300, 120);
 }
 
 #[test]
 fn a_loaded_front_end_runs_on_as_the_saved_one() {
-    let g = Game::new(data(), Start::PowerOn { seed: Rng::default() });
+    let g = Game::new(
+        data(),
+        Start::PowerOn {
+            seed: Rng::default(),
+        },
+    );
     check("front, early", g.clone(), 50, 100);
     check("front, title", g, 700, 150);
 }
@@ -122,10 +144,15 @@ fn a_state_from_another_build_or_cache_is_refused() {
     let state = g.save("superfrog other-build", hash());
     assert_eq!(
         Game::load(data(), &state, BUILD, hash()),
-        Err(StateError::OtherBuild { theirs: "superfrog other-build".into() })
+        Err(StateError::OtherBuild {
+            theirs: "superfrog other-build".into()
+        })
     );
     let state = g.save(BUILD, &[7; 32]);
-    assert_eq!(Game::load(data(), &state, BUILD, hash()), Err(StateError::OtherCache));
+    assert_eq!(
+        Game::load(data(), &state, BUILD, hash()),
+        Err(StateError::OtherCache)
+    );
 }
 
 #[test]
@@ -136,7 +163,11 @@ fn a_damaged_or_foreign_file_is_refused() {
     let load = |b: &[u8]| Game::load(data(), b, BUILD, hash()).map(|_| ());
     // Cut short anywhere: in the magic, the header, the hash or the body.
     for cut in [2, 6, 30, 60, 80, state.len() / 2, state.len() - 1] {
-        assert_eq!(load(&state[..cut]), Err(StateError::Corrupt), "cut at {cut}");
+        assert_eq!(
+            load(&state[..cut]),
+            Err(StateError::Corrupt),
+            "cut at {cut}"
+        );
     }
     // One byte of the body changed.
     let mut bad = state.clone();
@@ -159,7 +190,10 @@ fn a_damaged_or_foreign_file_is_refused() {
         })
         .collect();
     assert_eq!(load(&noise), Err(StateError::NotAState));
-    assert_eq!(load("[settings]\nscale = 2\n".as_bytes()), Err(StateError::NotAState));
+    assert_eq!(
+        load("[settings]\nscale = 2\n".as_bytes()),
+        Err(StateError::NotAState)
+    );
 }
 
 #[test]
@@ -169,7 +203,11 @@ fn a_damaged_length_in_the_header_is_refused_without_reading_past_the_file() {
         let mut b = b"SFST".to_vec();
         b.extend_from_slice(&len.to_le_bytes());
         b.extend_from_slice(&[0; 64]);
-        assert_eq!(Game::state_header(&b), Err(StateError::Corrupt), "length {len}");
+        assert_eq!(
+            Game::state_header(&b),
+            Err(StateError::Corrupt),
+            "length {len}"
+        );
     }
 }
 
@@ -180,7 +218,14 @@ fn the_encoding_is_deterministic() {
     let a = g.save(BUILD, hash());
     assert_eq!(a, g.clone().save(BUILD, hash()));
     let loaded = Game::load(data(), &a, BUILD, hash()).unwrap();
-    assert_eq!(loaded.save(BUILD, hash()), a, "a loaded game saves to the same bytes");
+    assert_eq!(
+        loaded.save(BUILD, hash()),
+        a,
+        "a loaded game saves to the same bytes"
+    );
     let h = Game::state_header(&a).unwrap();
-    assert_eq!((h.magic, h.engine_build.as_str(), h.frame), (*b"SFST", BUILD, 100));
+    assert_eq!(
+        (h.magic, h.engine_build.as_str(), h.frame),
+        (*b"SFST", BUILD, 100)
+    );
 }

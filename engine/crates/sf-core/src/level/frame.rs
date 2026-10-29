@@ -109,7 +109,10 @@ pub fn vbl(c: &mut LevelCtx) {
 /// The copper interrupt (`vbl_handler`'s other half, h0+$11d1a): the scroller's queued blits.
 pub fn copper_irq(c: &mut LevelCtx) {
     // An interrupt: nothing in it is the main program's.
-    let outer = c.frames.as_mut().map(|f| std::mem::replace(&mut f.in_vbl, true));
+    let outer = c
+        .frames
+        .as_mut()
+        .map(|f| std::mem::replace(&mut f.in_vbl, true));
     let coper = std::mem::replace(&mut c.in_coper, true);
     scroll::copper_irq_blits(c);
     c.custom(0x9c, 0x0010);
@@ -244,7 +247,10 @@ fn wide_switch_scan(c: &mut LevelCtx) {
 /// on the wait's last check, h0+$aae). [`crate::Pacing::PassDue`] says so outright, with no
 /// writes to count (the engine run alone).
 fn waits_out(c: &LevelCtx, pacing: crate::Pacing) -> bool {
-    let own = c.frames.as_ref().is_some_and(|f| matches!(f.current(), Some((true, None))));
+    let own = c
+        .frames
+        .as_ref()
+        .is_some_and(|f| matches!(f.current(), Some((true, None))));
     own && (pacing == crate::Pacing::PassDue
         || pacing == crate::Pacing::OnTime
             && !c.schedule.is_empty()
@@ -286,7 +292,9 @@ fn run_pass(c: &mut LevelCtx, resumed: bool) {
         let spec = f.specs[f.at.expect("a frame")];
         f.pass_frames = vec![spec];
         // A pass its frame may end in the middle of is kept as it begins.
-        let may_cut = f.specs[f.at.expect("a frame")..].iter().any(|s| s.cut.is_some());
+        let may_cut = f.specs[f.at.expect("a frame")..]
+            .iter()
+            .any(|s| s.cut.is_some());
         f.pass_start = may_cut.then(|| (Box::new(c.bus.st.clone()), c.clock, c.hw, writes));
     }
     f.in_pass = true;
@@ -364,7 +372,11 @@ fn pass_tail(c: &mut LevelCtx) {
         let esc = b.b(KEY_DOWN) == 0x45;
         if demo_stop || esc {
             b.set_w(ABORT_FLAG, 1);
-            debug_assert_ne!(b.w(GAME_FULL_MODE), 0, "a game run from a disk loader exits to it");
+            debug_assert_ne!(
+                b.w(GAME_FULL_MODE),
+                0,
+                "a game run from a disk loader exits to it"
+            );
         }
         demo_stop || esc
     };

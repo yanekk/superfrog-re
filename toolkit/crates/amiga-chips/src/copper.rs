@@ -8,11 +8,11 @@
 //! (vAmiga `Copper::findMatch`, `runComparator`). The result is every register write with the
 //! beam position it happened at; Denise's side (what a write changes on screen) is the renderer's.
 
+/// Lines per long PAL frame.
+pub use amiga_clock::FRAME_LINES;
 /// DMA cycles per PAL line: `h` runs `0..=$E2`. The copper counts DMA slots, so its "cycles" are
 /// [`amiga_clock::LINE_SLOTS`], not the CPU's [`amiga_clock::LINE_CYCLES`].
 pub use amiga_clock::LINE_SLOTS as LINE_CYCLES;
-/// Lines per long PAL frame.
-pub use amiga_clock::FRAME_LINES;
 
 /// Custom registers the renderer follows, by their offset from `$DFF000`.
 pub mod reg {
@@ -42,7 +42,9 @@ pub struct Write {
 
 /// What decides which DMA cycles the bitplanes take: BPLCON0, the vertical window and the fetch
 /// window.
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
+#[derive(
+    Debug, Clone, Copy, Default, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize,
+)]
 pub struct Fetch {
     pub bplcon0: u16,
     pub diwstrt: u16,
@@ -250,7 +252,11 @@ fn comparator(b: Beam, comp: u16, mask: u16) -> bool {
     if v != vc {
         return v > vc;
     }
-    let h = if b.slot() < 0xE0 { b.slot() + 2 } else { b.slot() - 0xE0 };
+    let h = if b.slot() < 0xE0 {
+        b.slot() + 2
+    } else {
+        b.slot() - 0xE0
+    };
     (h & mask & 0xFF) >= (comp & mask & 0xFF)
 }
 
@@ -348,7 +354,11 @@ mod tests {
         let w = [0x10DD, 0xFFFE, 0x0180, 0x0123, 0xFFFF, 0xFFFE];
         let mut bus = Vec::new();
         run_bus(&|a, _, _| list(&w)(a), 0, Fetch::default(), &mut bus);
-        let line: Vec<u16> = bus.iter().filter(|b| b.line == 0x10).map(|b| b.slot()).collect();
+        let line: Vec<u16> = bus
+            .iter()
+            .filter(|b| b.line == 0x10)
+            .map(|b| b.slot())
+            .collect();
         assert_eq!(&line[..4], &[0xDC, 0xDE, 0xE0, 0xE1]);
     }
 
@@ -381,24 +391,9 @@ mod tests {
         // the lines after $ff the low eight bits are below $ff: it never fires (docs/12).
         let comp = 0xFFDE;
         let mask = 0xFFFF;
-        assert!(comparator(
-            Beam::from_slot(0xFF, 0xDC),
-            comp,
-            mask
-        ));
-        assert!(!comparator(
-            Beam::from_slot(0xFF, 0xE1),
-            comp,
-            mask
-        ));
-        assert_eq!(
-            find_match(
-                Beam::from_slot(0xFF, 0xE1),
-                comp,
-                mask
-            ),
-            None
-        );
+        assert!(comparator(Beam::from_slot(0xFF, 0xDC), comp, mask));
+        assert!(!comparator(Beam::from_slot(0xFF, 0xE1), comp, mask));
+        assert_eq!(find_match(Beam::from_slot(0xFF, 0xE1), comp, mask), None);
         assert_eq!(
             find_match(Beam::from_slot(0x40, 0), comp, mask),
             Some(Beam::from_slot(0xFF, 0xDC))

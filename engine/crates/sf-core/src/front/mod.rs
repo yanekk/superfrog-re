@@ -35,10 +35,10 @@ pub(crate) mod title;
 pub(crate) mod vbl;
 
 pub use data::FrontData;
-pub(crate) use gameover::{GameOverCheck, GameOverSeq};
 pub use gameover::GAME_OVER;
-pub use vbl::front_kbd_poll;
+pub(crate) use gameover::{GameOverCheck, GameOverSeq};
 pub use story::{Story, StoryData};
+pub use vbl::front_kbd_poll;
 
 use amiga_paula::PaulaWrite;
 
@@ -491,7 +491,9 @@ impl Cx<'_> {
         let id = entry_disk_id(self.data, entry);
         if self.s.l(at(0xaf54)) != id {
             self.s.set_l(at(0xaf54), id);
-            self.disk_prompt = Some(crate::game::DiskPrompt::Insert(sf_disk::DiskSlot::ALL[disk as usize]));
+            self.disk_prompt = Some(crate::game::DiskPrompt::Insert(
+                sf_disk::DiskSlot::ALL[disk as usize],
+            ));
         }
     }
 
@@ -743,7 +745,10 @@ impl Front {
             s.audio = crate::audio::AudioDriver::transplant(d, &|a| mem.byte(a), &files);
         }
         // No keyboard came with the memory: the register as the last poll decoded it.
-        s.kbd = crate::keyboard::CiaKeyboard::from_keys(s.b(vbl::KEY_DOWN), s.b(crate::keyboard::KEY_UP));
+        s.kbd = crate::keyboard::CiaKeyboard::from_keys(
+            s.b(vbl::KEY_DOWN),
+            s.b(crate::keyboard::KEY_UP),
+        );
         let mut front = Front {
             frame: 0,
             fetch: None,
@@ -994,7 +999,10 @@ impl Front {
 
     /// A copper interrupt requested, or acknowledged, by these writes in order.
     fn note_coper(&mut self, writes: &[PaulaWrite]) {
-        for w in writes.iter().filter(|w| w.reg == 0x9c && w.value & 0x10 != 0) {
+        for w in writes
+            .iter()
+            .filter(|w| w.reg == 0x9c && w.value & 0x10 != 0)
+        {
             self.coper = w.value & 0x8000 != 0;
         }
     }
@@ -1039,7 +1047,10 @@ impl Front {
 
     /// The level's loop has been entered again (a restart, T37): the level scene goes on.
     pub(crate) fn in_level_loop(&self) -> bool {
-        matches!(self.stack.last().map(|f| &f.routine), Some(Routine::LevelLoop))
+        matches!(
+            self.stack.last().map(|f| &f.routine),
+            Some(Routine::LevelLoop)
+        )
     }
 
     /// The line `level_start` entered the level's loop on, in the frame just run (T209).
@@ -1094,7 +1105,7 @@ impl Front {
                 load_given: false,
                 disk_prompt: None,
                 unheard: Vec::new(),
-            into: None,
+                into: None,
             };
             title::boot(&mut cx);
             self.cop1lc = cx.cop1lc;
@@ -1191,7 +1202,11 @@ impl Front {
                 }
             }
         }
-        let load_runs: Vec<(u32, u32)> = self.load_state.iter().map(|(a, b)| (*a, b.len() as u32)).collect();
+        let load_runs: Vec<(u32, u32)> = self
+            .load_state
+            .iter()
+            .map(|(a, b)| (*a, b.len() as u32))
+            .collect();
         for (at, bytes) in std::mem::take(&mut self.load_state) {
             cx.s.poke(at, &bytes);
         }
@@ -1220,7 +1235,12 @@ impl Front {
                 let d = cx.data.sound.as_ref()?;
                 let work = cx.s.audio.tick_work(d);
                 let keyboard = vbl::polls_keyboard(&cx);
-                Some(vbl::fade_start(vbl_line, &work, cx.s.audio.streaming(), keyboard))
+                Some(vbl::fade_start(
+                    vbl_line,
+                    &work,
+                    cx.s.audio.streaming(),
+                    keyboard,
+                ))
             })
             .flatten();
         // What the slot screen's handler is about to do that lengthens it (T94).
@@ -1257,9 +1277,9 @@ impl Front {
         } else {
             match fade_from {
                 // No fade due: the dispatch and the rest of the handler (T100).
-                Some(start) if fading.is_empty() => {
-                    cx.line.max(((start + vbl::NO_FADE_TAIL) / BEAM_CYCLES_PER_LINE) as u16)
-                }
+                Some(start) if fading.is_empty() => cx
+                    .line
+                    .max(((start + vbl::NO_FADE_TAIL) / BEAM_CYCLES_PER_LINE) as u16),
                 _ => cx.line.max(VBL_END_LINE).max(vbl_line + VBL_END_LINE - 9),
             }
         };
@@ -1289,7 +1309,11 @@ impl Front {
                 for &(word, mask, changes, fade_in) in &fading {
                     t += if fade_in { FADE_IN_LOOK } else { FADE_OUT_LOOK };
                     if changes {
-                        t += if fade_in { FADE_IN_CHANGE } else { FADE_OUT_CHANGE };
+                        t += if fade_in {
+                            FADE_IN_CHANGE
+                        } else {
+                            FADE_OUT_CHANGE
+                        };
                         partial.copy_bits(&after, word, mask);
                         let line = (t / BEAM_CYCLES_PER_LINE) as u16;
                         history.push((line.max(VBL_END_LINE + 1), partial.clone()));
@@ -1308,8 +1332,9 @@ impl Front {
         // line; where each falls on it ([`vbl::place`]) is theirs once the order is made, the
         // writes marked [`HANDLER`] until then.
         let handler_from = from.max(from_carry);
-        let handler_at =
-            sound.map_or_else(Vec::new, |m| vbl::place(handler_from, cx.paula.len(), m, vbl_line));
+        let handler_at = sound.map_or_else(Vec::new, |m| {
+            vbl::place(handler_from, cx.paula.len(), m, vbl_line)
+        });
         for w in cx.paula[handler_from..].iter_mut() {
             w.vpos = vbl_line;
             if !handler_at.is_empty() {
@@ -1780,17 +1805,17 @@ pub const RUNS_DURING_LOAD: &[(u32, u32)] = &[
     // The screens the original loads under (T183; owner, 2026-10-15): the loading picture's
     // walk and clouds, the progress map's blink and fade, the end-of-world picture's time, each
     // run by the vertical blank and waited for by the main program after the load.
-    (h0(0x123d4), 2),                    // display_timer
-    (h0(0x9f8), 2),                      // frog_exit_sprites
-    (h0(0x4112), 4),                     // map_shown
-    (h0(0x11e92), 4),                    // exit_walk_state
-    (h0(0x11fd8), 6),                    // exit_walk_count
-    (h0(0x122f0), 0x4a),                 // cloud_bob
-    (h0(0x1b02c), 0x38 + 0xa8),          // exit_sprite_left, _right, cloud_sprites
-    (h0(0x802), 0xe),                    // frog_anim .. frog_sprite_dy
-    (h0(0x3f50), 2),                     // map_blink
-    (h0(0x157d8), 4 * 0x1f2),            // fades
-    (crate::layout::h2(0x6750), 0x480),  // intro_copper, exit_sprite_copper, map_copper
+    (h0(0x123d4), 2),                   // display_timer
+    (h0(0x9f8), 2),                     // frog_exit_sprites
+    (h0(0x4112), 4),                    // map_shown
+    (h0(0x11e92), 4),                   // exit_walk_state
+    (h0(0x11fd8), 6),                   // exit_walk_count
+    (h0(0x122f0), 0x4a),                // cloud_bob
+    (h0(0x1b02c), 0x38 + 0xa8),         // exit_sprite_left, _right, cloud_sprites
+    (h0(0x802), 0xe),                   // frog_anim .. frog_sprite_dy
+    (h0(0x3f50), 2),                    // map_blink
+    (h0(0x157d8), 4 * 0x1f2),           // fades
+    (crate::layout::h2(0x6750), 0x480), // intro_copper, exit_sprite_copper, map_copper
 ];
 
 /// What a load leaves that the engine does not model, taken from the original once the load is
@@ -1870,7 +1895,12 @@ mod tests {
     /// the lines after; the order is never changed.
     #[test]
     fn writes_in_beam_order_never_go_back() {
-        let w = |vpos, hpos, value| PaulaWrite { reg: 0x96, value, vpos, hpos };
+        let w = |vpos, hpos, value| PaulaWrite {
+            reg: 0x96,
+            value,
+            vpos,
+            hpos,
+        };
         let mut writes = vec![w(5, 100, 0), w(3, 0, 1), w(5, 2 * 227 + 10, 2), w(4, 0, 3)];
         in_beam_order(&mut writes);
         let at: Vec<(u16, u16, u16)> = writes.iter().map(|w| (w.vpos, w.hpos, w.value)).collect();

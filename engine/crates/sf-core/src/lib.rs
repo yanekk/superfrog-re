@@ -28,17 +28,19 @@ pub mod scene;
 pub mod slot;
 pub mod state;
 
+pub use amiga_paula::PaulaWrite;
 pub use front::password::Progress;
-pub use game::{CODE_TIMES, CodeTimes, Cpu, DiskPrompt, FrameOut, Game, HandlerEnd, Job, LoadEnd, Pacing, Start};
-pub use pass_clock::PassClock;
+pub use game::{
+    CODE_TIMES, CodeTimes, Cpu, DiskPrompt, FrameOut, Game, HandlerEnd, Job, LoadEnd, Pacing, Start,
+};
 pub use layout::{AmigaMemory, LAYOUT, Ram, VarDef, VarId, Width};
+pub use pass_clock::PassClock;
 pub use render::{DisplayData, Picture, PictureView, Split, View, to_rgb12};
 pub use rng::Rng;
 pub use savestate::{StateError, StateHeader};
 pub use scene::Scene;
-pub use slot::{Award, SlotOutcome};
 pub use sf_assets::{GameData, LevelId};
-pub use amiga_paula::PaulaWrite;
+pub use slot::{Award, SlotOutcome};
 
 /// DMACON as the original's boot leaves Agnus and Paula: DMA's master switch on (its frame 58; its
 /// trackloader's `$8210` after, which the engine loads without), every audio channel off. The mixer

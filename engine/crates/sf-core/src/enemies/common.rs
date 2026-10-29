@@ -5,7 +5,7 @@
 use crate::bonus::death::become_reward;
 use crate::items::SCORE;
 use crate::layout::h0;
-use crate::level::objects::{bob_anim, slot_addrs, bob_follow, obj_despawn_if_offscreen, obj_free};
+use crate::level::objects::{bob_anim, bob_follow, obj_despawn_if_offscreen, obj_free, slot_addrs};
 use crate::level::screen::Screen;
 use crate::level::{LevelCtx, SlotFn, n_clear};
 use crate::mem::Bus;
@@ -128,7 +128,10 @@ pub fn kill_fall(c: &mut LevelCtx, slot: u32, _d7: u16) {
     b.set_w(slot + 0x2c, 0);
     b.set_w(slot + 0x2e, 0);
     b.set_w(slot + 0x30, 1);
-    let (x, y) = (b.w(slot + 8).wrapping_add(8), b.w(slot + 0xa).wrapping_add(8));
+    let (x, y) = (
+        b.w(slot + 8).wrapping_add(8),
+        b.w(slot + 0xa).wrapping_add(8),
+    );
     if !solid(marker_right_of(b, x, y)) {
         return;
     }
@@ -200,7 +203,9 @@ pub fn direction(screen: Screen, x0: u16, y0: u16, x1: u16, y1: u16) -> u8 {
     let xs = screen.direction_x();
     let (x0, x1) = (clamp(x0, xs), clamp(x1, xs));
     let (y0, y1) = (clamp(y0, (0, 0xef)), clamp(y1, (0, 0xef)));
-    let mut dy = 0xf0u16.wrapping_sub(y1).wrapping_sub(0xf0u16.wrapping_sub(y0));
+    let mut dy = 0xf0u16
+        .wrapping_sub(y1)
+        .wrapping_sub(0xf0u16.wrapping_sub(y0));
     let mut dx = x1.wrapping_sub(x0);
     if dx == 0 {
         return if n_clear(dy) { 0 } else { 8 };

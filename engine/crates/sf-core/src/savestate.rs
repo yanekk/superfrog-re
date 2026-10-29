@@ -55,10 +55,16 @@ impl fmt::Display for StateError {
         match self {
             StateError::NotAState => write!(f, "the file is not a save state"),
             StateError::OtherBuild { theirs } => {
-                write!(f, "the save state was made by another version of this game ({theirs})")
+                write!(
+                    f,
+                    "the save state was made by another version of this game ({theirs})"
+                )
             }
             StateError::OtherCache => {
-                write!(f, "the save state was made with other game data (the disks imported differently)")
+                write!(
+                    f,
+                    "the save state was made with other game data (the disks imported differently)"
+                )
             }
             StateError::Corrupt => write!(f, "the save state is damaged"),
         }
@@ -118,7 +124,9 @@ impl Game {
         }
         // Read from the slice, not through `io::Read`: the slice reader checks a length against the
         // bytes left, where the reader would allocate whatever a damaged length says first.
-        bincode::Options::allow_trailing_bytes(opts()).deserialize(bytes).map_err(|_| StateError::Corrupt)
+        bincode::Options::allow_trailing_bytes(opts())
+            .deserialize(bytes)
+            .map_err(|_| StateError::Corrupt)
     }
 
     /// The game a save state holds, on `data`, if it was written by `engine_build` on game data
@@ -129,7 +137,12 @@ impl Game {
         engine_build: &str,
         cache_hash: &[u8; 32],
     ) -> Result<Game, StateError> {
-        Game::load_with(Arc::new(DisplayData::new(data)), bytes, engine_build, cache_hash)
+        Game::load_with(
+            Arc::new(DisplayData::new(data)),
+            bytes,
+            engine_build,
+            cache_hash,
+        )
     }
 
     /// [`Game::load`] with the disks' display content already built (as [`Game::with_display`]).
@@ -142,12 +155,16 @@ impl Game {
         use bincode::Options;
         let header = Game::state_header(bytes)?;
         if header.engine_build != engine_build {
-            return Err(StateError::OtherBuild { theirs: header.engine_build });
+            return Err(StateError::OtherBuild {
+                theirs: header.engine_build,
+            });
         }
         if header.cache_hash != *cache_hash {
             return Err(StateError::OtherCache);
         }
-        let at = opts().serialized_size(&header).map_err(|_| StateError::Corrupt)? as usize;
+        let at = opts()
+            .serialized_size(&header)
+            .map_err(|_| StateError::Corrupt)? as usize;
         let rest = &bytes[at..];
         if rest.len() < 32 {
             return Err(StateError::Corrupt);
@@ -192,7 +209,10 @@ pub(crate) mod static_str {
     pub mod vec {
         use super::*;
 
-        pub fn serialize<S: serde::Serializer>(v: &[&'static str], ser: S) -> Result<S::Ok, S::Error> {
+        pub fn serialize<S: serde::Serializer>(
+            v: &[&'static str],
+            ser: S,
+        ) -> Result<S::Ok, S::Error> {
             ser.collect_seq(v.iter())
         }
 
@@ -234,7 +254,10 @@ pub(crate) mod big_array {
             fn visit_seq<A: SeqAccess<'de>>(self, mut seq: A) -> Result<[T; N], A::Error> {
                 let mut v = Vec::with_capacity(N);
                 for i in 0..N {
-                    v.push(seq.next_element()?.ok_or_else(|| A::Error::invalid_length(i, &self))?);
+                    v.push(
+                        seq.next_element()?
+                            .ok_or_else(|| A::Error::invalid_length(i, &self))?,
+                    );
                 }
                 v.try_into().map_err(|_| A::Error::custom("array length"))
             }

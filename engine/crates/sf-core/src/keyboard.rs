@@ -76,8 +76,16 @@ impl CiaKeyboard {
     /// The keys held this frame: the keyboard sends a byte for each key gone down (by code), then
     /// each gone up, and the register keeps the last.
     pub fn feed(&mut self, keys: KeySet) {
-        for (code, up) in keys.codes().map(|c| (c, false)).chain(self.held.codes().map(|c| (c, true))) {
-            let changed = if up { !keys.contains(code) } else { !self.held.contains(code) };
+        for (code, up) in keys
+            .codes()
+            .map(|c| (c, false))
+            .chain(self.held.codes().map(|c| (c, true)))
+        {
+            let changed = if up {
+                !keys.contains(code)
+            } else {
+                !self.held.contains(code)
+            };
             if changed {
                 self.sdr = key_byte(code, up);
                 self.new = true;
@@ -173,7 +181,11 @@ mod tests {
         // The poll: every second blank, the byte decoded, then `$ff` once handled.
         let mut m = Mem(vec![0xff, 0, 0, 0], k, Vec::new());
         kbd_poll(&mut m);
-        assert_eq!((m.0[0], m.2.len()), (0, 0), "the toggle's off blank polls nothing");
+        assert_eq!(
+            (m.0[0], m.2.len()),
+            (0, 0),
+            "the toggle's off blank polls nothing"
+        );
         kbd_poll(&mut m);
         assert_eq!((m.0[2], m.0[3]), (0, 0x10));
         assert_eq!(m.2, vec![(INTENA, 8), (INTREQ, 8)]);

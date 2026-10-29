@@ -37,7 +37,9 @@ pub struct Machine<'a> {
     pub wide_switch: bool,
 }
 
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
+#[derive(
+    Debug, Clone, Copy, Default, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize,
+)]
 pub enum Scene {
     /// Nothing ported yet: changes no state, writes nothing to Paula and renders black. Until the
     /// mechanic tasks land, every start is here.
@@ -155,9 +157,10 @@ impl SceneKind {
     pub fn screen_name(self) -> Option<&'static str> {
         Some(match self {
             SceneKind::Story => "story",
-            SceneKind::Title | SceneKind::Awards | SceneKind::HallOfTalent | SceneKind::AttractDemo => {
-                "title"
-            }
+            SceneKind::Title
+            | SceneKind::Awards
+            | SceneKind::HallOfTalent
+            | SceneKind::AttractDemo => "title",
             SceneKind::GameOver => "game over",
             SceneKind::Tally => "tally",
             SceneKind::SlotMachine => "slot machine",
@@ -295,7 +298,12 @@ impl Scene {
                 if draw {
                     let mut p = render::level_as_drawn(c.bus.st, m.display, view, &log);
                     if let Some(down) = window {
-                        p = p.rewindow(p.left, p.top + down, p.width, p.height.saturating_sub(down));
+                        p = p.rewindow(
+                            p.left,
+                            p.top + down,
+                            p.width,
+                            p.height.saturating_sub(down),
+                        );
                     }
                     picture = Some(p);
                 }
@@ -334,7 +342,11 @@ mod tests {
             (INTRO_COPPER, SceneKind::Intro, Some("intro")),
             (MAP_COPPER, SceneKind::WorldMap, Some("world map")),
             (WORLD_END_COPPER, SceneKind::WorldEnd, Some("world end")),
-            (render::LEVEL_COPPER, SceneKind::Level { world: 1, level: 3 }, None),
+            (
+                render::LEVEL_COPPER,
+                SceneKind::Level { world: 1, level: 3 },
+                None,
+            ),
             (h2(0x1000), SceneKind::Other(h2(0x1000)), None),
         ] {
             assert_eq!(on(cop), Some(kind), "{cop:x}");
@@ -353,7 +365,10 @@ mod tests {
         assert_eq!(level(false, 0xffff, 1), Some(SceneKind::GameOver));
         assert_eq!(SceneKind::GameOver.screen_name(), Some("game over"));
         assert_eq!(level(false, 2, 7), Some(SceneKind::BonusLevel { level: 1 }));
-        assert_eq!(SceneKind::classify(true, None, false, 0, 0, 0), Some(SceneKind::Story));
+        assert_eq!(
+            SceneKind::classify(true, None, false, 0, 0, 0),
+            Some(SceneKind::Story)
+        );
         assert_eq!(SceneKind::Story.screen_name(), Some("story"));
     }
 }

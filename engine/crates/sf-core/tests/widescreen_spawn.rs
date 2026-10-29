@@ -50,7 +50,13 @@ fn run<R>(
 ) -> (R, Clock) {
     let display = display();
     let mut paula = Vec::new();
-    let mut c = LevelCtx::new(Bus::new(st, display.rom()), dispatch, Hw::default(), display.sound(), &mut paula);
+    let mut c = LevelCtx::new(
+        Bus::new(st, display.rom()),
+        dispatch,
+        Hw::default(),
+        display.sound(),
+        &mut paula,
+    );
     c.screen = screen;
     let r = f(&mut c);
     (r, c.clock)
@@ -104,7 +110,10 @@ fn place(st: &mut State, cx: u16, cy: u16, dirs: u8, marks: &[(u16, u16)]) {
 fn taken(st: &mut State, marks: &[(u16, u16)]) -> Vec<bool> {
     let display = display();
     let b = Bus::new(st, display.rom());
-    marks.iter().map(|&(x, y)| b.w(cell(&b, x, y)) & 0x3f != MARK).collect()
+    marks
+        .iter()
+        .map(|&(x, y)| b.w(cell(&b, x, y)) & 0x3f != MARK)
+        .collect()
 }
 
 /// `scan_edges` with the camera at (`cx`, `cy`) moving `dirs`: which of `marks` spawned, per screen.
@@ -157,8 +166,16 @@ fn a_row_spans_the_wider_width() {
             (CX - 0x20 + 30 * 16, y),
         ];
         let [narrow, wide] = edges(&st, CX, CY, dirs, &marks);
-        assert_eq!(narrow, [false, false, true, true, false, false, false], "dirs {dirs:#x}");
-        assert_eq!(wide, [true, true, true, true, true, true, false], "dirs {dirs:#x}");
+        assert_eq!(
+            narrow,
+            [false, false, true, true, false, false, false],
+            "dirs {dirs:#x}"
+        );
+        assert_eq!(
+            wide,
+            [true, true, true, true, true, true, false],
+            "dirs {dirs:#x}"
+        );
     }
 }
 
@@ -185,7 +202,11 @@ fn at_the_levels_left_edge_the_wide_origin_clamps_at_0() {
         b.set_w(row_end, b.w(row_end) & !0x3f | MARK);
     }
     run(&mut st, Screen::WIDE, &d, spawn::scan_edges);
-    assert_eq!(Bus::new(&mut st, display.rom()).w(row_end) & 0x3f, MARK, "the scan wrapped");
+    assert_eq!(
+        Bus::new(&mut st, display.rom()).w(row_end) & 0x3f,
+        MARK,
+        "the scan wrapped"
+    );
 }
 
 #[test]
@@ -219,7 +240,12 @@ fn the_scan_cells_widescreen_adds_cost_nothing() {
     let st = level("W1-1");
     let y_row = CY - 0x20 + 19 * 16;
     // Markers in the original's cells of the row and the start scan's first row.
-    let originals = [(CX - 0x20, y_row), (CX + 0x100, y_row), (CX - 0x10, CY - 0x20), (CX + 0x80, CY - 0x20)];
+    let originals = [
+        (CX - 0x20, y_row),
+        (CX + 0x100, y_row),
+        (CX - 0x10, CY - 0x20),
+        (CX + 0x80, CY - 0x20),
+    ];
     // Markers only widescreen scans: the row's ends, the start scan's ends.
     let extras = [
         (CX - 0x20 - 80, y_row),
@@ -242,8 +268,15 @@ fn the_scan_cells_widescreen_adds_cost_nothing() {
         assert_eq!(wide, narrow, "the original's cells cost what they cost");
         let (wide, spawned) = clock(Screen::WIDE, &both, f);
         assert_eq!(wide, narrow, "widescreen's cells and spawns cost nothing");
-        let n = if std::ptr::fn_addr_eq(f, spawn::scan_edges as fn(&mut LevelCtx)) { 2 } else { 4 };
-        assert!(spawned.iter().filter(|&&s| s).count() >= n, "the extras were scanned: {spawned:?}");
+        let n = if std::ptr::fn_addr_eq(f, spawn::scan_edges as fn(&mut LevelCtx)) {
+            2
+        } else {
+            4
+        };
+        assert!(
+            spawned.iter().filter(|&&s| s).count() >= n,
+            "the extras were scanned: {spawned:?}"
+        );
     }
 }
 
@@ -285,7 +318,10 @@ fn the_right_despawn_is_65_further_out() {
     let st = level("W1-1");
     let f = objects::obj_despawn_if_offscreen;
     assert_eq!(survives(&st, LEFT, CX + 0x170 + 64, 0x20, f), [false, true]);
-    assert_eq!(survives(&st, LEFT, CX + 0x170 + 65, 0x20, f), [false, false]);
+    assert_eq!(
+        survives(&st, LEFT, CX + 0x170 + 65, 0x20, f),
+        [false, false]
+    );
     assert_eq!(survives(&st, LEFT, CX + 0x170 - 1, 0x20, f), [true, true]);
 }
 
@@ -294,9 +330,21 @@ fn the_left_despawn_is_65_further_out_by_the_frame_width() {
     let st = level("W1-1");
     let f = objects::obj_despawn_if_offscreen;
     for w in [0x10, 0x30] {
-        assert_eq!(survives(&st, RIGHT, CX - 0x30 - 65 - w, w, f), [false, true], "width {w}");
-        assert_eq!(survives(&st, RIGHT, CX - 0x30 - 65 - w - 1, w, f), [false, false], "width {w}");
-        assert_eq!(survives(&st, RIGHT, CX - 0x30 - w, w, f), [true, true], "width {w}");
+        assert_eq!(
+            survives(&st, RIGHT, CX - 0x30 - 65 - w, w, f),
+            [false, true],
+            "width {w}"
+        );
+        assert_eq!(
+            survives(&st, RIGHT, CX - 0x30 - 65 - w - 1, w, f),
+            [false, false],
+            "width {w}"
+        );
+        assert_eq!(
+            survives(&st, RIGHT, CX - 0x30 - w, w, f),
+            [true, true],
+            "width {w}"
+        );
     }
 }
 
@@ -362,7 +410,11 @@ fn bonus() -> (State, u16, u16) {
 fn bonus_cell(st: &mut State, cx: u16, cy: u16, cells: u16, row: u16) -> u32 {
     let display = display();
     let b = Bus::new(st, display.rom());
-    cell(&b, cx - 0x20 + (23 + cells) * 16, cy - 0x20 + (3 + row) * 16)
+    cell(
+        &b,
+        cx - 0x20 + (23 + cells) * 16,
+        cy - 0x20 + (3 + row) * 16,
+    )
 }
 
 fn set_marker(st: &mut State, at: u32, m: u16) {
@@ -391,12 +443,24 @@ fn bonus_markers_11_and_55_act_five_cells_sooner() {
             set_marker(&mut st, at, m);
             let display = display();
             let mut b = Bus::new(&mut st, display.rom());
-            if long { b.set_l(flag, 0) } else { b.set_w(flag, 0) }
-            run(&mut st, screen, standard_dispatch(), spawn::scan_right_column);
+            if long {
+                b.set_l(flag, 0)
+            } else {
+                b.set_w(flag, 0)
+            }
+            run(
+                &mut st,
+                screen,
+                standard_dispatch(),
+                spawn::scan_right_column,
+            );
             let b = Bus::new(&mut st, display.rom());
             if long { b.l(flag) } else { b.w(flag) as u32 }
         });
-        assert_eq!(narrow, 0, "marker {m}: the original's column has not reached it");
+        assert_eq!(
+            narrow, 0,
+            "marker {m}: the original's column has not reached it"
+        );
         if set != 0 {
             assert_eq!(wide, set, "marker {m}");
         } else {
@@ -420,21 +484,33 @@ fn a_bonus_enemy_spawned_in_the_strip_is_not_freed_at_once() {
     }
     let at = bonus_cell(&mut st, cx, cy, 5, 4);
     set_marker(&mut st, at, 1);
-    run(&mut st, Screen::WIDE, standard_dispatch(), spawn::scan_right_column);
+    run(
+        &mut st,
+        Screen::WIDE,
+        standard_dispatch(),
+        spawn::scan_right_column,
+    );
     let display = display();
     let slot = (0..20)
         .map(|k| OBJ_SLOTS + k * SLOT_SIZE)
         .find(|&s| Bus::new(&mut st, display.rom()).l(s + 0x40) == at)
         .expect("marker 1 spawned in the strip");
     let live = |st: &mut State| Bus::new(st, display.rom()).l(slot + 0x40) != 0;
-    for f in [objects::obj_despawn_if_offscreen, objects::obj_free_if_left_behind] {
+    for f in [
+        objects::obj_despawn_if_offscreen,
+        objects::obj_free_if_left_behind,
+    ] {
         let mut wide = st.clone();
-        run(&mut wide, Screen::WIDE, standard_dispatch(), |c| f(c, slot, 0));
+        run(&mut wide, Screen::WIDE, standard_dispatch(), |c| {
+            f(c, slot, 0)
+        });
         assert!(live(&mut wide), "widescreen keeps what its column spawned");
     }
     // The hazard the rule avoids: the original's despawn would free it in the same pass.
     let mut narrow = st.clone();
-    run(&mut narrow, Screen::NARROW, standard_dispatch(), |c| objects::obj_despawn_if_offscreen(c, slot, 0));
+    run(&mut narrow, Screen::NARROW, standard_dispatch(), |c| {
+        objects::obj_despawn_if_offscreen(c, slot, 0)
+    });
     assert!(!live(&mut narrow));
 }
 

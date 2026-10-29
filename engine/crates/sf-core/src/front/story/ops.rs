@@ -119,7 +119,9 @@ pub enum Op {
     WaitFire(bool),
     /// `intro_wait_disk1`'s read of disk 1's id sector (`$77e`, h0+$c462; `ret` is the call's
     /// return address): a load, instant.
-    ReadDiskId { ret: u32 },
+    ReadDiskId {
+        ret: u32,
+    },
 
     /// `timeline_start` (h0+$b17c): the vertical blank plays this list of sound events.
     Timeline(u32),

@@ -231,7 +231,11 @@ mod tests {
         for ch in 0..16u16 {
             for con0 in [ch << 8, ch << 8 | 0xca, 0xf000 | ch << 8 | 0xf0] {
                 for size in [0, 1, 0x41, 0x0382, 0x1014, 0xffff, 0x8000] {
-                    let b = Blit { con0, size, ..Blit::default() };
+                    let b = Blit {
+                        con0,
+                        size,
+                        ..Blit::default()
+                    };
                     assert_eq!(b.cycles(), old(&b), "{con0:04x} {size:04x}");
                 }
             }

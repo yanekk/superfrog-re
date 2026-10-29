@@ -6,8 +6,8 @@
 //! timeline of sound events the vertical blank plays (`timeline_tick` h0+$b18c), and the tables
 //! of effects and samples in hunk 2.
 
-use sf_assets::sound::SoundData;
 use amiga_paula::PaulaWrite;
+use sf_assets::sound::SoundData;
 
 use super::mem::StoryMem;
 use super::{data, h0, h2, h3};

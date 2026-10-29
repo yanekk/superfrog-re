@@ -109,10 +109,10 @@ pub fn scroll_latch(c: &mut LevelCtx) {
 /// `$25260` below it, buffer 1 `$12930`.
 pub const CLEAN: u32 = h3(0x35860);
 const CLEAN_TO_BUFFER_0: u32 = 0x25260;
-/// `tile_ptrs` (h1+$30fe0).
-use crate::mem::TILE_PTRS;
 /// `map_rows` (h0+$17334).
 use crate::level::collision::MAP_ROWS;
+/// `tile_ptrs` (h1+$30fe0).
+use crate::mem::TILE_PTRS;
 
 /// The scroller's variables (h0+$16668..$1668a).
 const ROW_SHIFT: u32 = h0(0x16668);
@@ -171,7 +171,10 @@ pub fn scroller(c: &mut LevelCtx) {
 fn shooter_scroll(c: &mut LevelCtx) {
     let b = &mut c.bus;
     b.set_w(DRAW_TOGGLE, 0);
-    b.set_b(crate::level::camera::SCROLL_DIRS, b.b(crate::level::camera::SCROLL_DIRS) | 2);
+    b.set_b(
+        crate::level::camera::SCROLL_DIRS,
+        b.b(crate::level::camera::SCROLL_DIRS) | 2,
+    );
     b.set_l(COL_SHIFT_X, 0x18);
     b.set_l(COL_SHIFT_Y, b.l(SHOOTER_COLUMN));
     b.set_l(TILES_PER_LINE, 1);
@@ -180,7 +183,14 @@ fn shooter_scroll(c: &mut LevelCtx) {
     crate::level::spawn::scan_right_column(c);
     let b = &mut c.bus;
     let n = b.l(SHOOTER_COLUMN).wrapping_add(1);
-    b.set_l(SHOOTER_COLUMN, if (n.wrapping_sub(0x14) as i32) < 0 { n } else { 1 });
+    b.set_l(
+        SHOOTER_COLUMN,
+        if (n.wrapping_sub(0x14) as i32) < 0 {
+            n
+        } else {
+            1
+        },
+    );
     b.set_l(BLIT_NEXT, BLIT_QUEUE);
     b.set_w(BLITS_PENDING, 1);
     c.custom(0x9c, 0x8010);
@@ -392,7 +402,11 @@ pub fn copper_irq_blits(c: &mut LevelCtx) {
             let lines = n.wrapping_shl(4);
             let left = CLEAN.wrapping_add(PLANE).wrapping_sub(a1);
             let q = left / 0x30;
-            let d2 = if q > 0xffff { left } else { left & 0xffff_0000 | q };
+            let d2 = if q > 0xffff {
+                left
+            } else {
+                left & 0xffff_0000 | q
+            };
             let to_end = d2 as u16 & 0xfff0;
             let rest = to_end.wrapping_sub(lines);
             if n_clear(rest) {

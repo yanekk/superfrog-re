@@ -177,7 +177,9 @@ const SETUP_WRITES: [(u32, u32); 7] = [
 /// unpack) at the end of a frame, from where it is (`chain`: its PC, then the return addresses on
 /// its stack): what conformance feeds the intro as [`Pacing`] (owner, 2026-10-12).
 pub fn busy(chain: &[u32]) -> bool {
-    chain.first().is_some_and(|pc| BUSY_BODIES.iter().any(|r| r.contains(pc)))
+    chain
+        .first()
+        .is_some_and(|pc| BUSY_BODIES.iter().any(|r| r.contains(pc)))
         || chain
             .iter()
             .any(|a| BUSY_RETURNS.contains(a) || scenes::UNPACK_FRAMES.iter().any(|(r, ..)| r == a))
@@ -455,13 +457,17 @@ mod script {
 
     pub fn serialize<S: Serializer>(s: &&'static [Op], ser: S) -> Result<S::Ok, S::Error> {
         let at = scripts().iter().position(|a| std::ptr::eq(*a, *s));
-        let at = at.ok_or_else(|| serde::ser::Error::custom("a script not reached from the intro's"))?;
+        let at =
+            at.ok_or_else(|| serde::ser::Error::custom("a script not reached from the intro's"))?;
         ser.serialize_u32(at as u32)
     }
 
     pub fn deserialize<'de, D: Deserializer<'de>>(de: D) -> Result<&'static [Op], D::Error> {
         let at = u32::deserialize(de)? as usize;
-        scripts().get(at).copied().ok_or_else(|| D::Error::custom("no such script"))
+        scripts()
+            .get(at)
+            .copied()
+            .ok_or_else(|| D::Error::custom("no such script"))
     }
 }
 
@@ -497,7 +503,11 @@ pub fn load_blank(m: &mut StoryMem, data: &data::StoryData) -> Vec<PaulaWrite> {
     let read = handler - WAIT_LINES - AFTER_WAIT;
     let wait_end = (read + wait_lines(read)) as u16;
     for (i, w) in paula.iter_mut().enumerate() {
-        (w.vpos, w.hpos) = if i < tick { (0, IRQ_ENTRY as u16) } else { (wait_end, 0) };
+        (w.vpos, w.hpos) = if i < tick {
+            (0, IRQ_ENTRY as u16)
+        } else {
+            (wait_end, 0)
+        };
     }
     paula
 }
@@ -633,8 +643,9 @@ impl Intro {
             out.walk = Some(super::vbl::to_wait(m, sound_data(data), input, &mut writes));
             // The wait's read, from where the interrupt was taken (conformance gives the
             // original's: the engine's own line can be far off while a draw's blits hold the CPU).
-            let read =
-                out.entry as u64 / super::cpu::LINE_SLOTS as u64 + handler - WAIT_LINES - AFTER_WAIT;
+            let read = out.entry as u64 / super::cpu::LINE_SLOTS as u64 + handler
+                - WAIT_LINES
+                - AFTER_WAIT;
             let split = wait_lines(read) > WAIT_LINES;
             let wait_end = top + read + wait_lines(read);
             let handler_end = if split {
@@ -828,8 +839,9 @@ impl Intro {
             }
         }
         let now = self.t;
-        let (made, later): (Vec<_>, Vec<_>) =
-            std::mem::take(&mut self.writes).into_iter().partition(|(at, _)| *at <= now);
+        let (made, later): (Vec<_>, Vec<_>) = std::mem::take(&mut self.writes)
+            .into_iter()
+            .partition(|(at, _)| *at <= now);
         self.writes = later;
         began.extend(made.into_iter().map(|(_, w)| w));
         began.sort_by_key(|w| (w.vpos, w.hpos));
@@ -1230,7 +1242,8 @@ impl Intro {
         for k in 0..frames {
             let mut cycles = Vec::new();
             let list = if k == 0 { first } else { self.shown_list };
-            let writes = crate::render::copper::run_bus(&|a, _, _| m.w(a), list, fetch, &mut cycles);
+            let writes =
+                crate::render::copper::run_bus(&|a, _, _| m.w(a), list, fetch, &mut cycles);
             let writes_k = paula.get(k).map_or(&[][..], |w| &w[..]);
             fixed = fixed
                 .frame(&cycles, &writes, fetch)

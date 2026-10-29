@@ -72,7 +72,10 @@ fn widescreen_on_changes_the_game_from_t02() {
         }
     }
     assert!(parted.is_some(), "widescreen changed nothing in 500 frames");
-    assert!(on.scene().is_level(), "the widescreen run stayed in the level");
+    assert!(
+        on.scene().is_level(),
+        "the widescreen run stayed in the level"
+    );
 }
 
 /// The mode is not in a save state (DESIGN §3.4): the app sets it, as it sets the view.

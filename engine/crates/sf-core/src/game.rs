@@ -4,9 +4,9 @@
 use crate::render::PictureView;
 use std::sync::Arc;
 
-use sf_assets::{GameData, LevelData, LevelId};
-use serde::{Deserialize, Serialize};
 use amiga_paula::PaulaWrite;
+use serde::{Deserialize, Serialize};
+use sf_assets::{GameData, LevelData, LevelId};
 
 use crate::audio::AudioDriver;
 use crate::front::password::Progress;
@@ -15,8 +15,8 @@ use crate::keyboard::{self, CiaKeyboard};
 use crate::layout::{AmigaMemory, Ram, VarId, h0};
 use crate::level::Hw;
 use crate::pass_clock::PassClock;
-use crate::render::{DisplayData, Picture, View};
 use crate::recording::{LevelSetup, Location};
+use crate::render::{DisplayData, Picture, View};
 use crate::rng::Rng;
 use crate::scene::{Machine, Scene, SceneKind};
 use crate::state::State;
@@ -73,7 +73,9 @@ pub struct HandlerEnd {
 /// 50 Hz work (frog, camera, clock) runs in the vertical-blank interrupt. In busy stretches the
 /// pass overruns, so a vertical blank arrives while it is still running (a late pass; docs/08
 /// "Lag"). Normal play never lags; conformance runs feed the original's schedule from the oracle.
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
+#[derive(
+    Debug, Clone, Copy, Default, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize,
+)]
 pub enum Pacing {
     /// No schedule given: the engine keeps its own time (normal play, always). In a level this is
     /// [`Pacing::OnTime`]; in the story intro the engine's own timing model decides when its long
@@ -103,7 +105,15 @@ pub enum Pacing {
     /// original's, so one the engine gets to the end of is cut there, not run on into the next
     /// (T184). `point` is where in the step running the frame ended
     /// ([`crate::level::beam::Cut::point`]; 0: none). The intro reads none of the fields.
-    Late { writes: u16, line: u16, hpos: u16, phase: u8, step: u16, point: u8, blanks: u16 },
+    Late {
+        writes: u16,
+        line: u16,
+        hpos: u16,
+        phase: u8,
+        step: u16,
+        point: u8,
+        blanks: u16,
+    },
 }
 
 /// What one frame produced.
@@ -535,7 +545,9 @@ impl Game {
         {
             self.seed = None;
             front.anchor_writes(std::mem::take(&mut self.schedule));
-            front.screen = crate::level::screen::Screen { wide: self.widescreen };
+            front.screen = crate::level::screen::Screen {
+                wide: self.widescreen,
+            };
             let out = front.step(&mut self.state, &self.display, input);
             let level_list = front.cop1lc() == crate::render::LEVEL_COPPER;
             self.scene = front.scene(&self.state, self.scene);
@@ -593,12 +605,7 @@ impl Game {
     }
 
     /// A frame of the level's main program (or the rest of one, a pass begun in it pending).
-    fn level_frame(
-        &mut self,
-        input: FrameInput,
-        pacing: Pacing,
-        draw: bool,
-    ) -> FrameOut {
+    fn level_frame(&mut self, input: FrameInput, pacing: Pacing, draw: bool) -> FrameOut {
         let hw = Hw::of(input);
         let mut ended: Option<(crate::front::Front, Vec<PaulaWrite>, Vec<Job>)> = None;
         let display = Arc::clone(&self.display);
@@ -630,8 +637,14 @@ impl Game {
                 screen,
                 wide_switch: std::mem::take(&mut self.wide_switch),
             };
-            self.scene
-                .step(&mut m, &mut self.pending, pacing, self.view, draw, &mut after)
+            self.scene.step(
+                &mut m,
+                &mut self.pending,
+                pacing,
+                self.view,
+                draw,
+                &mut after,
+            )
         };
         // Each frame's writes are its own: one placed before the one ahead of it (the engine's
         // clock past where the pacing puts the original's) is no later frame's, though the mixer
@@ -677,7 +690,9 @@ impl Game {
             // The intro's handler's, run at the load in the next step (T214).
             story.blanks = frames;
         } else if let Some(front) = self.front.as_mut() {
-            front.screen = crate::level::screen::Screen { wide: self.widescreen };
+            front.screen = crate::level::screen::Screen {
+                wide: self.widescreen,
+            };
             front.load_blanks(&mut self.state, &self.display, frames, &mut self.load_paula);
         }
     }
@@ -739,7 +754,9 @@ impl Game {
     /// The screen a level step plays against, the level's own or one the front end runs
     /// (a restart's `level_init`, game over's vertical blank).
     fn screen(&self) -> crate::level::screen::Screen {
-        crate::level::screen::Screen { wide: self.widescreen }
+        crate::level::screen::Screen {
+            wide: self.widescreen,
+        }
     }
 
     /// The frame the original shows for this state (DESIGN §3.3), widened by `view`.
@@ -977,9 +994,17 @@ impl Game {
     /// on) to `to` (`opt_lives`, `opt_game_mode`): from the cursor on LIVES, right or left once per
     /// step, down, the same for the mode, down twice. Each press is held 10 frames, the next 40
     /// after it, as the first down was; bug-recorder T00 measured this on the original.
-    pub fn type_code_with(&mut self, code: Option<[u8; 6]>, (from, to): ((u8, u8), (u8, u8)), times: &CodeTimes) {
+    pub fn type_code_with(
+        &mut self,
+        code: Option<[u8; 6]>,
+        (from, to): ((u8, u8), (u8, u8)),
+        times: &CodeTimes,
+    ) {
         use crate::input::Joy;
-        let joy = |joy: Joy| FrameInput { joy, ..FrameInput::NONE };
+        let joy = |joy: Joy| FrameInput {
+            joy,
+            ..FrameInput::NONE
+        };
         let wait = |g: &mut Game| {
             for _ in 0..START_AT_FRAMES {
                 if g.title_waits() {
@@ -1018,9 +1043,19 @@ impl Game {
             }
             t += times.first_digit;
             for d in code {
-                let raw = if d == b'0' { 0x0a } else { d.wrapping_sub(b'0') };
+                let raw = if d == b'0' {
+                    0x0a
+                } else {
+                    d.wrapping_sub(b'0')
+                };
                 let keys = crate::input::KeySet::key(raw);
-                script.push((t, FrameInput { keys, ..FrameInput::NONE }));
+                script.push((
+                    t,
+                    FrameInput {
+                        keys,
+                        ..FrameInput::NONE
+                    },
+                ));
                 script.push((t + 6, FrameInput::NONE));
                 t += times.digit;
             }
@@ -1057,7 +1092,12 @@ impl Game {
     }
 
     /// [`Game::start_level`] with the game in widescreen `wide` from power-on.
-    fn start_level_in(display: Arc<DisplayData>, setup: &LevelSetup, seed: Rng, wide: bool) -> Game {
+    fn start_level_in(
+        display: Arc<DisplayData>,
+        setup: &LevelSetup,
+        seed: Rng,
+        wide: bool,
+    ) -> Game {
         use crate::front::password::{password_for, table};
         use sf_assets::World;
         if cfg!(debug_assertions)

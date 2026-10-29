@@ -68,7 +68,12 @@ impl PictureView for Picture {
         if n == 0 {
             return self.clone();
         }
-        self.rewindow(self.left + n as i32, self.top, self.width - 2 * n, self.height)
+        self.rewindow(
+            self.left + n as i32,
+            self.top,
+            self.width - 2 * n,
+            self.height,
+        )
     }
 }
 
@@ -129,7 +134,12 @@ mod tests {
             height: 1,
             pixels: vec![1, 35],
             palettes: vec![[0x0FE8; 32]],
-            splits: vec![Split { y: 0, x: 1, index: 3, colour: 0xF00 }],
+            splits: vec![Split {
+                y: 0,
+                x: 1,
+                index: 3,
+                colour: 0xF00,
+            }],
         };
         // left, top, width, height; then each Vec as a u64 length and its items, in field order.
         let mut want = vec![253, 255, 255, 255, 44, 0, 2, 0, 1, 0];

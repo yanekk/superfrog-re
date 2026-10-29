@@ -135,13 +135,17 @@ pub(crate) fn interrupt_lines(h: Handler) -> u16 {
 }
 
 /// What the slot machine gave: the points its rounds added to the score and the lives (T73).
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
+#[derive(
+    Debug, Clone, Copy, Default, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize,
+)]
 pub struct SlotOutcome {
     pub award: Award,
 }
 
 /// A prize in points and lives.
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
+#[derive(
+    Debug, Clone, Copy, Default, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize,
+)]
 pub struct Award {
     pub points: u32,
     pub lives: u16,
@@ -309,7 +313,8 @@ fn load(cx: &mut Cx) {
     cx.s.write(SOUND_KEPT_AT, &kept);
     use crate::audio::File;
     use sf_assets::sound::{BANK_ADDR, BankId, TuneId};
-    cx.s.audio.file_loaded(d, BANK_ADDR, File::Bank(BankId::Slot));
+    cx.s.audio
+        .file_loaded(d, BANK_ADDR, File::Bank(BankId::Slot));
     cx.s.audio.sfx_bank_init(d);
     let module = cx.s.audio.module_addr();
     cx.s.audio.file_loaded(d, module, File::Tune(TuneId::Slot));
@@ -417,7 +422,11 @@ pub(super) fn print_text(cx: &mut Cx, text: u32, to: u32) -> u32 {
             return cycles;
         }
         let glyph = FONT + k;
-        let dst = if cx.s.w(TEXT_PLANE) == 2 { a1 + PLANE } else { a1 };
+        let dst = if cx.s.w(TEXT_PLANE) == 2 {
+            a1 + PLANE
+        } else {
+            a1
+        };
         for r in 0..8 {
             let v = cx.b(glyph + 0x50 * r);
             cx.s.set_b(dst + ROW * r, v);
@@ -462,7 +471,11 @@ pub(super) fn slot_digits(cx: &mut Cx) {
 
 /// A count's tens and units as `slot_digits` takes them: at most 99 (a negative word as it is).
 fn split(n: u16) -> (u16, u16) {
-    let n = if (n.wrapping_sub(0x63) as i16) < 0 { n } else { 0x63 };
+    let n = if (n.wrapping_sub(0x63) as i16) < 0 {
+        n
+    } else {
+        0x63
+    };
     let tens = n / 10;
     (tens, n.wrapping_sub(tens.wrapping_mul(10)))
 }
@@ -522,7 +535,7 @@ mod tests {
             ("two notes", handler(false, 4, false, false), 21), // 21.15
             ("three notes", handler(false, 5, false, false), 21), // 21.1
             ("keyboard, rows read", handler(true, 0, true, false), 19), // 19.67
-            ("quiet", handler(false, 0, false, true), 16), // 16.69
+            ("quiet", handler(false, 0, false, true), 16),    // 16.69
             ("keyboard, quiet", handler(true, 0, false, true), 17), // 17.68
         ] {
             assert_eq!(interrupt_lines(h), line, "{what}");

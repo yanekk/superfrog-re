@@ -55,7 +55,10 @@ mod tests {
     #[test]
     fn a_bus_blit_masks_a_s_first_and_last_word() {
         let rom = Rom::default();
-        let (src, dst) = (def(VarId::PlayfieldBuffer1).addr, def(VarId::PlayfieldBuffer0).addr);
+        let (src, dst) = (
+            def(VarId::PlayfieldBuffer1).addr,
+            def(VarId::PlayfieldBuffer0).addr,
+        );
         for (w, want) in [(3u16, vec![0xff00u16, 0xffff, 0x00ff]), (1, vec![0x0000])] {
             let mut st = State::default();
             for k in 0..16 {
@@ -72,7 +75,9 @@ mod tests {
                 size: 2 << 6 | w,
             }
             .run(&mut bus);
-            let got = (0..2 * w as u32).map(|k| bus.w(dst + 2 * k)).collect::<Vec<_>>();
+            let got = (0..2 * w as u32)
+                .map(|k| bus.w(dst + 2 * k))
+                .collect::<Vec<_>>();
             assert_eq!(got, [want.clone(), want].concat(), "width {w}");
         }
     }
@@ -83,7 +88,12 @@ mod tests {
     #[allow(clippy::too_many_arguments)]
     fn old_drawer(b: &mut Bus, con0: u16, con1: u16, pt: [u32; 4], modulo: [u16; 4], size: u16) {
         let (h, w) = bltsize_words(size);
-        let uses = [con0 & 0x800 != 0, con0 & 0x400 != 0, con0 & 0x200 != 0, con0 & 0x100 != 0];
+        let uses = [
+            con0 & 0x800 != 0,
+            con0 & 0x400 != 0,
+            con0 & 0x200 != 0,
+            con0 & 0x100 != 0,
+        ];
         let (ash, bsh) = ((con0 >> 12) as u32, (con1 >> 12) as u32);
         let mut p = pt.map(|p| p & 0x7_fffe);
         let (mut aold, mut bold) = (0u16, 0u16);
@@ -133,8 +143,14 @@ mod tests {
         Rom {
             regions: vec![
                 (0x0, vec![0x11, 0x11, 0x22, 0x22, 0x33, 0x33, 0x44, 0x44]),
-                (0x7_fff8, vec![0xa5, 0xa5, 0x5a, 0x5a, 0x0f, 0x0f, 0xf0, 0xf0]),
-                (0x8_0000, vec![0x99, 0x99, 0x88, 0x88, 0x77, 0x77, 0x66, 0x66]),
+                (
+                    0x7_fff8,
+                    vec![0xa5, 0xa5, 0x5a, 0x5a, 0x0f, 0x0f, 0xf0, 0xf0],
+                ),
+                (
+                    0x8_0000,
+                    vec![0x99, 0x99, 0x88, 0x88, 0x77, 0x77, 0x66, 0x66],
+                ),
             ],
             ..Rom::default()
         }
@@ -150,13 +166,23 @@ mod tests {
         let rom = wrap_rom();
         let dst = def(VarId::PlayfieldBuffer0).addr;
         // (con0, con1, a, b, c): A→D, and A/B/C→D with C and D the destination, as the drawer's.
-        let cases = [(0x09f0u16, 0u16, 0x7_fffcu32, 0u32, 0u32), (0x1fca, 0x1000, 0x7_fffc, 0x7_fffa, dst)];
+        let cases = [
+            (0x09f0u16, 0u16, 0x7_fffcu32, 0u32, 0u32),
+            (0x1fca, 0x1000, 0x7_fffc, 0x7_fffa, dst),
+        ];
         for (con0, con1, a, b, c) in cases {
             let (amod, size) = (2u16, 3 << 6 | 1);
             let drawer = {
                 let mut st = State::default();
                 let mut bus = Bus::new(&mut st, &rom);
-                old_drawer(&mut bus, con0, con1, [a, b, c, dst], [amod, amod, 0, 0], size);
+                old_drawer(
+                    &mut bus,
+                    con0,
+                    con1,
+                    [a, b, c, dst],
+                    [amod, amod, 0, 0],
+                    size,
+                );
                 (0..3).map(|k| bus.w(dst + 2 * k)).collect::<Vec<_>>()
             };
             let mut st = State::default();
@@ -174,7 +200,11 @@ mod tests {
             let general = (0..3).map(|k| bus.w(dst + 2 * k)).collect::<Vec<_>>();
             assert_eq!(drawer, general, "con0 {con0:04x}");
             if con0 == 0x09f0 {
-                assert_eq!(general, [bus.w(0x7_fffc), bus.w(0), bus.w(4)], "the second line reads $0");
+                assert_eq!(
+                    general,
+                    [bus.w(0x7_fffc), bus.w(0), bus.w(4)],
+                    "the second line reads $0"
+                );
             }
         }
     }
@@ -185,7 +215,10 @@ mod tests {
     #[test]
     fn a_bus_copy_logs_as_the_old_scroll_copy() {
         let rom = wrap_rom();
-        let (src, dst) = (def(VarId::PlayfieldBuffer1).addr + 0x40, def(VarId::PlayfieldBuffer0).addr + 0x10);
+        let (src, dst) = (
+            def(VarId::PlayfieldBuffer1).addr + 0x40,
+            def(VarId::PlayfieldBuffer0).addr + 0x10,
+        );
         let (size, modulo) = (3u16 << 6 | 2, 0x2cu16);
         let logged = |f: &dyn Fn(&mut Bus)| {
             let mut st = State::default();
