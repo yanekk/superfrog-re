@@ -1,19 +1,22 @@
 //! Launching the real binary: its temporary home, the script layer, and waiting for it to end.
 
+use std::ffi::OsString;
 use std::os::unix::process::CommandExt;
 use std::path::{Path, PathBuf};
 use std::process::{Child, Command, ExitStatus, Stdio};
-use std::sync::OnceLock;
+use std::sync::Mutex;
 use std::time::{Duration, Instant};
 
-use crate::Image;
+use amiga_app::capture;
+
+use crate::{AppSpec, Image};
 
 /// How a launch runs. Every run is bounded: `max_frames` and `timeout_s` are always passed.
 #[derive(Debug, Clone)]
 pub struct LaunchOpts {
     pub max_frames: u64,
     pub timeout_s: u64,
-    /// `--scale`; `None` leaves the app to its remembered setting.
+    /// The scale flag; `None` leaves the app to its remembered setting.
     pub scale: Option<u32>,
     /// Start the app at launch, unscripted, for the OS layer to drive.
     pub os: bool,
@@ -41,10 +44,10 @@ pub struct Captured {
     pub frames: Vec<Image>,
     pub audio_wav: PathBuf,
     pub exit: ExitStatus,
-    /// `N joy keys` for each step N whose input was not empty (sf-app `capture.rs`).
+    /// `N joy keys` for each step N whose input was not empty (`amiga_app::capture`).
     pub inputs: String,
     pub stderr: String,
-    /// Every question the launch asked (sf-app `import.rs`), one a line.
+    /// Every question the launch asked, one a line.
     pub prompts: String,
     /// The capture folder.
     pub dir: PathBuf,
@@ -53,20 +56,18 @@ pub struct Captured {
 impl Captured {
     /// Frame `n` as the app wrote it (frame 0 is the start, frame N the picture after step N).
     pub fn read_frame(&self, n: u64) -> Image {
-        Image::read_png(&self.dir.join(format!("frame-{n:05}.png")))
-            .unwrap_or_else(|e| panic!("{e}"))
+        Image::read_png(&self.dir.join(capture::frame_file(n))).unwrap_or_else(|e| panic!("{e}"))
     }
 
-    /// The window as presented at the script's `shot` at step `n`, and what `windows.txt` says
+    /// The window as presented at the script's `shot` at step `n`, and what the windows file says
     /// of it.
     pub fn read_shot(&self, n: u64) -> (Image, Shot) {
-        let img = Image::read_png(&self.dir.join(format!("window-{n:05}.png")))
-            .unwrap_or_else(|e| panic!("{e}"));
-        let text = std::fs::read_to_string(self.dir.join("windows.txt")).unwrap_or_default();
+        let img = Image::read_png(&self.dir.join(capture::window_file(n))).unwrap_or_else(|e| panic!("{e}"));
+        let text = std::fs::read_to_string(self.dir.join(capture::WINDOWS)).unwrap_or_default();
         let line = text
             .lines()
             .find(|l| l.split(' ').next() == Some(&n.to_string()))
-            .unwrap_or_else(|| panic!("no shot at step {n} in windows.txt: {text:?}"));
+            .unwrap_or_else(|| panic!("no shot at step {n} in {}: {text:?}", capture::WINDOWS));
         let v: Vec<f64> = line.split(' ').skip(1).map(|v| v.parse().unwrap()).collect();
         let shot = Shot {
             frame: v[0] as u64,
@@ -90,8 +91,9 @@ pub struct Shot {
 }
 
 /// The app under test, in its own temporary home. The home is removed when this is dropped,
-/// unless `SF_E2E_KEEP=1`.
+/// unless the spec's keep variable is `1`.
 pub struct App {
+    pub spec: &'static AppSpec,
     pub opts: LaunchOpts,
     pub home: PathBuf,
     runs: u32,
@@ -100,45 +102,20 @@ pub struct App {
 }
 
 impl App {
-    /// A temporary home with the real disks imported into it.
-    pub fn launch(opts: LaunchOpts) -> App {
-        let home = temp_home();
-        std::fs::create_dir_all(home.join("cache")).expect("temp home");
-        let seed = seed_cache();
-        std::fs::copy(seed, home.join("cache").join(seed.file_name().unwrap()))
-            .unwrap_or_else(|e| panic!("copying the imported cache into {}: {e}", home.display()));
-        App::in_home(opts, home)
-    }
-
-    /// An empty temporary home: a first launch. Its runs go through the import. (The harness's
-    /// own files, the scripts, captures and stderr, are `capture-*` in it.)
-    pub fn launch_empty(opts: LaunchOpts) -> App {
-        let home = temp_home();
+    /// A temporary home the spec's `provision` has filled.
+    pub fn launch(spec: &'static AppSpec, opts: LaunchOpts) -> App {
+        let home = temp_home(spec);
         std::fs::create_dir_all(&home).expect("temp home");
-        App::in_home(opts, home)
+        (spec.provision)(&home).unwrap_or_else(|e| panic!("provisioning {}: {e}", home.display()));
+        App::in_home(spec, opts, home)
     }
 
-    /// Copies of the owner's four disk images in `<home>/<folder>`, by path in disk order, for
-    /// a script's `pick` (the copies are under the home, so a test may move or damage them).
-    pub fn disks_in_home(&self, folder: &str) -> Vec<PathBuf> {
-        let src = sf_conform::disks::disk_dir().unwrap_or_else(|e| panic!("{e}"));
-        let dir = self.home.join(folder);
-        std::fs::create_dir_all(&dir).expect("disk folder");
-        let mut names: Vec<_> = std::fs::read_dir(&src)
-            .expect("the disk folder")
-            .flatten()
-            .map(|e| e.file_name())
-            .filter(|n| n.to_string_lossy().starts_with("Superfrog") && n.to_string_lossy().ends_with(".zip"))
-            .collect();
-        names.sort();
-        assert_eq!(names.len(), 4, "four Superfrog zips in {}", src.display());
-        names
-            .iter()
-            .map(|n| {
-                std::fs::copy(src.join(n), dir.join(n)).expect("copying a disk");
-                dir.join(n)
-            })
-            .collect()
+    /// An empty temporary home: a first launch. (The harness's own files, the scripts, captures
+    /// and stderr, are `capture-*` in it.)
+    pub fn launch_empty(spec: &'static AppSpec, opts: LaunchOpts) -> App {
+        let home = temp_home(spec);
+        std::fs::create_dir_all(&home).expect("temp home");
+        App::in_home(spec, opts, home)
     }
 
     /// Start the app on this home for the OS layer to drive, as [`LaunchOpts::os`] does at launch.
@@ -164,8 +141,9 @@ impl App {
         let _ = c.wait();
     }
 
-    fn in_home(opts: LaunchOpts, home: PathBuf) -> App {
+    fn in_home(spec: &'static AppSpec, opts: LaunchOpts, home: PathBuf) -> App {
         let mut app = App {
+            spec,
             opts,
             home,
             runs: 0,
@@ -226,33 +204,37 @@ impl App {
     }
 
     fn spawn(&self, script: Option<&Path>, capture: &Path) -> Child {
-        let mut cmd = Command::new(binary());
-        cmd.arg("--home")
+        let flags = &self.spec.flags;
+        let bin = binary(self.spec);
+        let mut cmd = Command::new(bin);
+        cmd.arg(flags.home)
             .arg(&self.home)
-            .arg("--capture")
+            .arg(flags.capture)
             .arg(capture)
-            .arg("--max-frames")
+            .arg(flags.max_frames)
             .arg(self.opts.max_frames.to_string())
-            .arg("--timeout")
+            .arg(flags.timeout)
             .arg(self.opts.timeout_s.to_string());
         if let Some(s) = self.opts.scale {
-            cmd.arg("--scale").arg(s.to_string());
+            cmd.arg(flags.scale).arg(s.to_string());
         }
         if let Some(s) = script {
-            cmd.arg("--script").arg(s);
+            cmd.arg(flags.script).arg(s);
         }
-        cmd.args(&self.opts.extra_args)
-            .env_remove("SUPERFROG_HOME")
-            .stdin(Stdio::null())
+        cmd.args(&self.opts.extra_args);
+        for v in &self.spec.clear_env {
+            cmd.env_remove(v);
+        }
+        cmd.stdin(Stdio::null())
             .stdout(Stdio::null())
             .stderr(Stdio::from(
                 std::fs::File::create(capture.with_extension("stderr")).expect("stderr file"),
             ))
-            // Its own process group: the app's --timeout stops the whole group, and so does the
+            // Its own process group: the app's timeout stops the whole group, and so does the
             // harness's own guard below.
             .process_group(0);
         cmd.spawn()
-            .unwrap_or_else(|e| panic!("launching {}: {e}", binary().display()))
+            .unwrap_or_else(|e| panic!("launching {}: {e}", bin.display()))
     }
 
     fn wait(&self, mut child: Child, dir: &Path, read_frames: bool) -> Captured {
@@ -264,9 +246,7 @@ impl App {
         let mut names: Vec<PathBuf> = std::fs::read_dir(dir)
             .map(|d| d.filter_map(|e| e.ok().map(|e| e.path())).collect())
             .unwrap_or_default();
-        names.retain(|p| {
-            read_frames && p.file_name().is_some_and(|n| n.to_string_lossy().starts_with("frame-"))
-        });
+        names.retain(|p| read_frames && p.file_name().is_some_and(|n| is_frame_file(&n.to_string_lossy())));
         names.sort();
         let frames = names
             .iter()
@@ -274,10 +254,10 @@ impl App {
             .collect();
         Captured {
             frames,
-            audio_wav: dir.join("audio.wav"),
+            audio_wav: dir.join(capture::AUDIO),
             exit,
-            inputs: std::fs::read_to_string(dir.join("inputs.txt")).unwrap_or_default(),
-            prompts: std::fs::read_to_string(dir.join("prompts.txt")).unwrap_or_default(),
+            inputs: std::fs::read_to_string(dir.join(capture::INPUTS)).unwrap_or_default(),
+            prompts: std::fs::read_to_string(dir.join(capture::PROMPTS)).unwrap_or_default(),
             stderr,
             dir: dir.to_path_buf(),
         }
@@ -290,17 +270,25 @@ impl Drop for App {
             kill_group(c.id());
             let _ = c.wait();
         }
-        if std::env::var_os("SF_E2E_KEEP").is_none_or(|v| v != "1") {
+        if std::env::var_os(self.spec.keep_env).is_none_or(|v| v != "1") {
             let _ = std::fs::remove_dir_all(&self.home);
         }
     }
 }
 
+/// Is `name` a captured frame's file? Matched on [`capture::frame_file`]'s own prefix, so the two
+/// cannot drift apart.
+fn is_frame_file(name: &str) -> bool {
+    let first = capture::frame_file(0);
+    let prefix = &first[..first.find('0').unwrap_or(first.len())];
+    name.starts_with(prefix)
+}
+
 /// A fresh temporary home's path, removed if it was left from before.
-fn temp_home() -> PathBuf {
+fn temp_home(spec: &AppSpec) -> PathBuf {
     static N: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(0);
     let n = N.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
-    let home = std::env::temp_dir().join(format!("sf-e2e-{}-{n}", std::process::id()));
+    let home = std::env::temp_dir().join(format!("{}-{}-{n}", spec.scratch, std::process::id()));
     let _ = std::fs::remove_dir_all(&home);
     home
 }
@@ -334,82 +322,65 @@ pub fn group_alive(pgid: u32) -> bool {
     unsafe { libc::killpg(pgid as i32, 0) == 0 }
 }
 
-/// The `superfrog` binary, built once per test process into the same target folder as the tests
-/// (Cargo builds a package's binary only for that package's own tests).
-pub fn binary() -> &'static Path {
-    static BIN: OnceLock<PathBuf> = OnceLock::new();
-    BIN.get_or_init(|| {
-        let exe = std::env::current_exe().expect("test executable");
-        // target/<profile>/deps/<test> → target/<profile>
-        let profile_dir = exe.parent().and_then(Path::parent).expect("target folder").to_path_buf();
-        let target = profile_dir.parent().expect("target folder");
-        let workspace = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
-        let cargo = std::env::var_os("CARGO").unwrap_or_else(|| "cargo".into());
-        let mut cmd = Command::new(cargo);
-        cmd.current_dir(&workspace)
-            .args(["build", "-q", "-p", "sf-app", "--bin", "superfrog"])
-            .env("CARGO_TARGET_DIR", target)
-            .env("CARGO_TERM_COLOR", "never");
-        if profile_dir.file_name().is_some_and(|n| n == "release") {
-            cmd.arg("--release");
+/// Run the spec's binary with `args` alone (none of the flags a launch always passes), in its own
+/// process group, stopped after `limit`. Another test process (another worktree's) may hold the
+/// lock of the home `args` name: while its stderr says [`AppSpec::already_running`], it is run
+/// again, for up to 300 s. Returns its exit status and stderr.
+pub fn run_waiting_for_lock(spec: &AppSpec, args: &[OsString], limit: Duration) -> (ExitStatus, String) {
+    let start = Instant::now();
+    loop {
+        let mut child = Command::new(binary(spec))
+            .args(args)
+            .stderr(Stdio::piped())
+            .process_group(0)
+            .spawn()
+            .expect("launching the app");
+        let status = wait_bounded(&mut child, limit);
+        let mut err = String::new();
+        if let Some(mut e) = child.stderr.take() {
+            use std::io::Read;
+            let _ = e.read_to_string(&mut err);
         }
-        let out = cmd.output().expect("running cargo build");
-        assert!(
-            out.status.success(),
-            "cargo build -p sf-app failed:\n{}",
-            String::from_utf8_lossy(&out.stderr)
-        );
-        profile_dir.join("superfrog")
-    })
+        let held = err.contains(spec.already_running);
+        if status.success() || !held || start.elapsed() > Duration::from_secs(300) {
+            return (status, err);
+        }
+        std::thread::sleep(Duration::from_millis(500));
+    }
 }
 
-/// The asset cache imported from the owner's disks by the real binary, kept between runs in
-/// `~/.cache/superfrog-re/e2e/` (derived from the disks, so outside the repository: DESIGN §2.3).
-/// Each launch copies it into its own home; the app re-imports when it is stale.
-fn seed_cache() -> &'static Path {
-    static SEED: OnceLock<PathBuf> = OnceLock::new();
-    SEED.get_or_init(|| {
-        let disks = sf_conform::disks::disk_dir().unwrap_or_else(|e| panic!("{e}"));
-        let home = PathBuf::from(std::env::var_os("HOME").expect("HOME"))
-            .join(".cache/superfrog-re/e2e");
-        // Scripted, so the app opens no native panel that would wait for a person; and another
-        // test process (another worktree's) may hold the seed home's lock: wait it out.
-        std::fs::create_dir_all(&home).expect("the seed home");
-        let script = home.join("seed.script");
-        std::fs::write(&script, "").expect("the seed script");
-        let start = Instant::now();
-        let (status, err) = loop {
-            let mut child = Command::new(binary())
-                .arg("--home")
-                .arg(&home)
-                .arg("--cache-from-disks")
-                .arg(&disks)
-                .arg("--script")
-                .arg(&script)
-                .args(["--max-frames", "0", "--timeout", "120"])
-                .stderr(Stdio::piped())
-                .process_group(0)
-                .spawn()
-                .expect("launching the import");
-            let status = wait_bounded(&mut child, Duration::from_secs(150));
-            let mut err = String::new();
-            if let Some(mut e) = child.stderr.take() {
-                use std::io::Read;
-                let _ = e.read_to_string(&mut err);
-            }
-            let held = err.contains("already running");
-            if status.success() || !held || start.elapsed() > Duration::from_secs(300) {
-                break (status, err);
-            }
-            std::thread::sleep(Duration::from_millis(500));
-        };
-        assert!(status.success(), "importing the disks failed ({status}): {err}");
-        // The file this build reads, by name: an older format's file may sit beside it, and
-        // `assets-v9.bin` sorts after `assets-v10.bin`.
-        let file = home.join(format!("cache/assets-v{}.bin", sf_assets::CACHE_FORMAT));
-        assert!(file.is_file(), "the import wrote no {}", file.display());
-        file
-    })
+/// The spec's binary, built once per test process into the same target folder as the tests
+/// (Cargo builds a package's binary only for that package's own tests).
+pub fn binary(spec: &AppSpec) -> &'static Path {
+    // Held across the build, so two threads asking at once build once.
+    static BUILT: Mutex<Vec<(&'static str, &'static str, &'static Path)>> = Mutex::new(Vec::new());
+    let mut built = BUILT.lock().unwrap_or_else(|e| e.into_inner());
+    if let Some(&(_, _, p)) = built.iter().find(|(pkg, bin, _)| *pkg == spec.package && *bin == spec.binary) {
+        return p;
+    }
+    let exe = std::env::current_exe().expect("test executable");
+    // target/<profile>/deps/<test> → target/<profile>
+    let profile_dir = exe.parent().and_then(Path::parent).expect("target folder").to_path_buf();
+    let target = profile_dir.parent().expect("target folder");
+    let cargo = std::env::var_os("CARGO").unwrap_or_else(|| "cargo".into());
+    let mut cmd = Command::new(cargo);
+    cmd.current_dir(&spec.workspace)
+        .args(["build", "-q", "-p", spec.package, "--bin", spec.binary])
+        .env("CARGO_TARGET_DIR", target)
+        .env("CARGO_TERM_COLOR", "never");
+    if profile_dir.file_name().is_some_and(|n| n == "release") {
+        cmd.arg("--release");
+    }
+    let out = cmd.output().expect("running cargo build");
+    assert!(
+        out.status.success(),
+        "cargo build -p {} failed:\n{}",
+        spec.package,
+        String::from_utf8_lossy(&out.stderr)
+    );
+    let path: &'static Path = Box::leak(profile_dir.join(spec.binary).into_boxed_path());
+    built.push((spec.package, spec.binary, path));
+    path
 }
 
 /// The 16-bit stereo samples of a WAV the app wrote, and its rate.
@@ -427,4 +398,35 @@ pub fn read_wav(path: &Path) -> (u32, Vec<[i16; 2]>) {
         })
         .collect();
     (rate, samples)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn frame_files_are_told_from_the_capture_s_other_files() {
+        assert!(is_frame_file(&capture::frame_file(0)));
+        assert!(is_frame_file(&capture::frame_file(12345)));
+        for other in [capture::window_file(3).as_str(), capture::AUDIO, capture::INPUTS, capture::WINDOWS] {
+            assert!(!is_frame_file(other), "{other}");
+        }
+    }
+
+    #[test]
+    fn a_wav_reads_back_as_its_rate_and_stereo_samples() {
+        let mut b = Vec::new();
+        b.extend_from_slice(b"RIFF\0\0\0\0WAVEfmt ");
+        b.extend_from_slice(&[0; 8]);
+        b.extend_from_slice(&48_000u32.to_le_bytes());
+        b.extend_from_slice(&[0; 8]);
+        b.extend_from_slice(b"data\0\0\0\0");
+        b.extend_from_slice(&[1, 0, 0xFF, 0xFF, 0, 0x80, 0xFF, 0x7F]);
+        let path = std::env::temp_dir().join(format!("amiga-e2e-wav-{}.wav", std::process::id()));
+        std::fs::write(&path, &b).unwrap();
+        let (rate, samples) = read_wav(&path);
+        std::fs::remove_file(&path).unwrap();
+        assert_eq!(rate, 48_000);
+        assert_eq!(samples, [[1, -1], [i16::MIN, i16::MAX]]);
+    }
 }

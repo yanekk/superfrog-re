@@ -61,7 +61,7 @@ const ALLOWED: &[&str] = &[
 ];
 
 /// Shell crates that must never be in the shipped app's dependency tree (DESIGN §3.2).
-const TEST_TOOLING: [&str; 3] = ["sf-oracle", "sf-conform", "sf-e2e"];
+const TEST_TOOLING: [&str; 4] = ["sf-oracle", "sf-conform", "sf-e2e", "amiga-e2e"];
 
 /// Exempt from the float and array rules only (DESIGN §3.1).
 const RESAMPLER: &str = "amiga-paula/src/resample.rs";
