@@ -26,14 +26,14 @@ done · ⛔ blocked, needs a human.
 | T03 | amiga-disk | T01 | ✅ | |
 | T04 | asset-readers | T03 | ✅ | |
 | T05 | amiga-oracle | T02, T03, T04 | ✅ | |
-| T06 | amiga-conform | T05 | ⬜ | |
+| T06 | amiga-conform | T05 | 🔍 | Moved compare/report/channels/feed halves, sound_events whole, script lexer, synthetic faithful tests (and the trailing-change one past line 232); 28 toolkit tests. Deviations: `reg_name(u16) -> String` kept; `parse_with` returns `ScriptError`, plus `parse_with_forms` for the error's token list; channel/audio headers, diff folder are parameters; `Original`, `Run`, `Verdict`, channels `OWNER` also moved; sf `InputScript` stays (struct literals). |
 | T07 | amiga-app-parts | T02 | ✅ | |
 | T08 | amiga-e2e | T07 | ⬜ | |
 | T09 | amiga-record | T03, T06, T07 | ⬜ | |
 | T10 | display-piece | T01 | ✅ | |
 | T11 | dry-fit-and-finish | T04, T05, T08, T09, T10 | ⬜ | |
 
-**Review queue:** *(empty)*
+**Review queue:** T06
 
 ## Blocked on the user
 
