@@ -20,6 +20,7 @@ owns = [
   "toolkit/rust-toolchain.toml",
   "toolkit/.gitignore",
   "toolkit/crates/toolkit-checks/",
+  "toolkit/crates/dry-fit/",
   "toolkit/crates/amiga-oracle/",
   "toolkit/crates/amiga-conform/",
   "toolkit/crates/amiga-record/",
