@@ -8,6 +8,8 @@ links = "sfshim"
 [dependencies]
 sf-core = { path = "../sf-core" }
 amiga-paula = { path = "../../../toolkit/crates/amiga-paula" }
+# FrameInput, the input the emulator is driven with (a toolkit crate).
+amiga-input = { path = "../../../toolkit/crates/amiga-input" }
 # Reads the zipped or raw disks and names them by slot (T03).
 sf-disk = { path = "../sf-disk" }
 # Compresses cached traces (already in the workspace for sf-disk).

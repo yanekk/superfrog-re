@@ -4,9 +4,11 @@
 //! serial data register holds the last one and its serial-port flag says it came in; every second
 //! vertical blank `kbd_poll` decodes the register into `key_down`/`key_up` and, once it has
 //! handled a new byte, writes `$ff` there, which it then reads (T191: P let go reads as no key
-//! after).
+//! after). The keyboard and CIA-A's serial port themselves ([`CiaKeyboard`], [`key_byte`]) are the
+//! Amiga's and live in the toolkit's `amiga-input`; `kbd_poll` at Superfrog's addresses stays here.
 
-use crate::input::KeySet;
+pub use amiga_input::{CiaKeyboard, key_byte};
+
 use crate::layout::h0;
 
 /// `kbd_toggle`, `key_down`, `key_up` (h0+$16076..$16079): the original's own, compared.
@@ -18,74 +20,6 @@ pub const KEY_UP: u32 = h0(0x16079);
 /// hands the line back after.
 const INTENA: u16 = 0x9a;
 const INTREQ: u16 = 0x9c;
-
-/// The byte the keyboard sends for `code` going down or up: the code shifted up one, bit 0 set
-/// for a key going up, all inverted.
-pub fn key_byte(code: u8, up: bool) -> u8 {
-    !(code << 1 | up as u8)
-}
-
-/// The keyboard and CIA-A's serial port: the keys the keyboard has seen held, the register's
-/// byte as `kbd_poll` reads it, and the serial-port flag. In [`crate::State`], so a pass run again
-/// from its start (a late pass, DESIGN §2.1) sees the keyboard as it was then.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
-pub struct CiaKeyboard {
-    held: KeySet,
-    /// CIA-A's serial data register (`$BFEC01`).
-    pub sdr: u8,
-    /// The serial-port flag: a byte has come in that `kbd_poll` has not handled.
-    pub new: bool,
-}
-
-impl Default for CiaKeyboard {
-    /// No byte the poll would decode as a key: what a level started on its own reads.
-    fn default() -> CiaKeyboard {
-        CiaKeyboard {
-            held: KeySet::NONE,
-            sdr: 0xff,
-            new: false,
-        }
-    }
-}
-
-impl CiaKeyboard {
-    /// At power-on the register holds what the keyboard's start-up ends with: `$7e` released
-    /// (measured), never acknowledged.
-    pub fn power_on() -> CiaKeyboard {
-        CiaKeyboard {
-            sdr: key_byte(0x7e, true),
-            ..CiaKeyboard::default()
-        }
-    }
-
-    /// The register as `kbd_poll` last left `key_down` and `key_up` in the original's memory: the
-    /// last byte it decoded, or `$ff` once it has handled one (both read 0). For a start from
-    /// that memory, where no keyboard was carried over.
-    pub fn from_keys(key_down: u8, key_up: u8) -> CiaKeyboard {
-        let sdr = match (key_down, key_up) {
-            (_, up) if up != 0 => key_byte(up, true),
-            (down, _) if down != 0 => key_byte(down, false),
-            _ => 0xff,
-        };
-        CiaKeyboard {
-            sdr,
-            ..CiaKeyboard::default()
-        }
-    }
-
-    /// The keys held this frame: the keyboard sends a byte for each key gone down (by code), then
-    /// each gone up, and the register keeps the last.
-    pub fn feed(&mut self, keys: KeySet) {
-        for (code, up) in keys.codes().map(|c| (c, false)).chain(self.held.codes().map(|c| (c, true))) {
-            let changed = if up { !keys.contains(code) } else { !self.held.contains(code) };
-            if changed {
-                self.sdr = key_byte(code, up);
-                self.new = true;
-            }
-        }
-        self.held = keys;
-    }
-}
 
 /// Whether the next [`kbd_poll`] decodes the register (it does every second blank).
 pub fn polls(kbd_toggle: u8) -> bool {
@@ -131,6 +65,7 @@ pub fn kbd_poll(h: &mut impl KbdHost) {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::input::KeySet;
 
     fn decoded(k: &CiaKeyboard) -> (u8, u8) {
         (!k.sdr >> 1 & 0x7f, !k.sdr & 1)
