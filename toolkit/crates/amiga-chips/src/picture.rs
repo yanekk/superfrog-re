@@ -16,7 +16,7 @@ pub struct Picture {
     /// One palette per line, 12-bit OCS colour `0x0RGB`.
     pub palettes: Vec<[u16; 32]>,
     /// Colour registers the copper rewrites inside a line, in order of `(y, x)`: from pixel `x`
-    /// of line `y` on, colour `index` is `colour` (docs/12 "Copper timing").
+    /// of line `y` on, colour `index` is `colour` (a game's display notes, "Copper timing").
     pub splits: Vec<Split>,
 }
 

@@ -1,4 +1,4 @@
-//! The copper, run for one frame (docs/12 "Copper timing").
+//! The copper, run for one frame (a game's display notes, "Copper timing").
 //!
 //! A game's copper list sets palettes, the bitplane pointers, the scroll and the sprites, partly
 //! in the middle of a line. Which pixel a write lands on depends on when the copper gets the bus,
@@ -378,7 +378,7 @@ mod tests {
     #[test]
     fn a_wait_reached_past_cycle_e0_of_its_line_waits_for_the_next_frame() {
         // WAIT $ff,$de reached on line $ff after $E0 compares against the wrapped counter, and on
-        // the lines after $ff the low eight bits are below $ff: it never fires (docs/12).
+        // the lines after $ff the low eight bits are below $ff: it never fires.
         let comp = 0xFFDE;
         let mask = 0xFFFF;
         assert!(comparator(

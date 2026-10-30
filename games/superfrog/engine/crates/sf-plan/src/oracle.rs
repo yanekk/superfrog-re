@@ -1,0 +1,1023 @@
+//! Shell: original mode (DESIGN §2.6, D24), stretch and repair. The engine plans a whole stretch to
+//! the exit from the original's own state; the original plays it in lockstep with an engine copy;
+//! where they part, the plan is kept to 16 frames before the parting and planning continues from
+//! the original's state there, the plan's rest as `--follow` (§2.7). The original lags in busy
+//! passes and the engine does not, so only what the original played is ever kept.
+
+use std::path::Path;
+use std::time::{Duration, Instant};
+
+use sf_conform::{InputScript, SyncPoint, sync};
+use sf_core::frog::{FROG, f};
+use sf_core::input::FrameInput;
+use sf_core::layout::h0;
+use sf_core::{Game, LevelId, Start, State};
+use sf_oracle::Amiga;
+
+use crate::core::archive::HEARTS;
+use crate::core::repair::{
+    Sampler, TRACE_EVERY, TracePoint, follow_options, points_from_trace,
+};
+use crate::core::{
+    Cell, CellKey, Facts, Goal, GuidePoint, Options, Reason, Route, cell_key, facts, frog_cell,
+    landed,
+};
+use crate::run::{RunOptions, plan_engine};
+
+/// `level_state` (h0+$a06): −2 while the level is played.
+const LEVEL_STATE: u32 = h0(0xa06);
+const PLAYING: u32 = 0xffff_fffe;
+/// Frames of an agreed plan given up before a parting (§2.6 step 3): the frames just before it
+/// already carry what made the two machines differ.
+pub const BACK_OFF: usize = 16;
+/// Repairs running parting at one cell after which the original's way there is accepted (§2.6
+/// step 4).
+pub const ACCEPT_AFTER: u32 = 3;
+/// Frames the original may run on past the plan's end, the last input held, to reach the exit it
+/// lags behind the engine to.
+const LAG_TAIL: usize = 50;
+
+/// The oracle at the planner's start, and what it took to get there.
+pub struct OracleRun {
+    pub amiga: Amiga,
+    /// Inputs the original already played from the start the caller named (the level-start
+    /// freeze): the route returned begins with them.
+    pub inputs: Vec<FrameInput>,
+    pub oracle_frames: u64,
+    /// Wall-clock spent on the original so far; the start's time is all of it.
+    pub confirm_time: Duration,
+}
+
+#[derive(Debug, Clone, Default, PartialEq)]
+pub struct Stats {
+    pub engine_frames: u64,
+    pub oracle_frames: u64,
+    /// Wall-clock on the original over the whole run's wall-clock, the start's included.
+    pub confirm_share: f32,
+    pub repairs: u32,
+    /// The last frame the original agreed to, from the run's start (DESIGN §2.9's reason).
+    pub confirmed_frames: u32,
+}
+
+/// One machine's frog after a frame, as the parting rule reads it.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Look {
+    pub cell: Cell,
+    pub lives: u16,
+    pub hearts: u16,
+    pub dying: bool,
+    pub playing: bool,
+}
+
+impl Look {
+    pub fn of(st: &State) -> Look {
+        Look {
+            cell: frog_cell(st),
+            lives: st.w(FROG + f::LIVES),
+            hearts: st.w(HEARTS),
+            dying: st.w(FROG + f::DYING) != 0,
+            playing: st.l(LEVEL_STATE) == PLAYING,
+        }
+    }
+}
+
+/// Why the original and the engine parted (§2.6 step 2).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Parting {
+    /// Frog cells more than one apart.
+    Apart,
+    /// The original lost a life (a 1-up gained is not a loss).
+    LifeLost,
+    Dying,
+    /// `sync::in_wall_loop`: the original hung in `frog_tiles`.
+    WallLoop,
+    /// The original has fewer hearts than the engine.
+    Heart,
+    /// The oracle refused the frame (its cap, an emulator error; §2.9).
+    Oracle(String),
+    /// The original ended more frames in a row mid-pass than the faithful check allows (the
+    /// level's completion case's `lag-limit`, `LAG_LIMIT` without one): the check would compare
+    /// nothing there and fail the route (T14: W5-3, 101 from frame 5 310).
+    Lag,
+}
+
+impl Parting {
+    /// Partings the original can be let have its way at (§2.6 step 4: "a heart lost"); a death or
+    /// a hang never makes a route, so those are repaired until the budget ends.
+    pub fn acceptable(&self) -> bool {
+        matches!(self, Parting::Apart | Parting::Heart)
+    }
+}
+
+/// The parting rule on one frame: the original's look before and after it, the engine's after it,
+/// and whether the original ended the frame in the wall loop.
+pub fn parts(before: &Look, orig: &Look, eng: &Look, wall_loop: bool) -> Option<Parting> {
+    if wall_loop {
+        Some(Parting::WallLoop)
+    } else if orig.dying {
+        Some(Parting::Dying)
+    } else if orig.lives < before.lives {
+        Some(Parting::LifeLost)
+    } else if orig.hearts < eng.hearts {
+        Some(Parting::Heart)
+    } else if orig.cell.0.abs_diff(eng.cell.0) > 1 || orig.cell.1.abs_diff(eng.cell.1) > 1 {
+        Some(Parting::Apart)
+    } else {
+        None
+    }
+}
+
+/// Partings at one cell, repairs running (§2.6 step 4).
+#[derive(Debug, Clone, Default)]
+pub struct Repeats {
+    last: Option<Cell>,
+    count: u32,
+}
+
+impl Repeats {
+    /// Takes a parting at the original's `cell`: true if it is accepted (the third running there,
+    /// of a kind that may be), false if it is repaired. An accepted parting starts the count over.
+    pub fn accept(&mut self, cell: Cell, why: &Parting) -> bool {
+        if self.last == Some(cell) {
+            self.count += 1;
+        } else {
+            (self.last, self.count) = (Some(cell), 1);
+        }
+        let yes = self.count >= ACCEPT_AFTER && why.acceptable();
+        if yes {
+            (self.last, self.count) = (None, 0);
+        }
+        yes
+    }
+}
+
+/// The frog's block of state, as the lockstep's hold compares it.
+const FROG_BLOCK: u32 = 0x100;
+
+fn frog_block(st: &State) -> Vec<u8> {
+    (0..FROG_BLOCK).map(|k| st.byte(FROG + k).unwrap_or(0)).collect()
+}
+
+/// The original's frog looked at now (a ~1 MB copy of its memory).
+fn look(amiga: &Amiga) -> Look {
+    Look::of(&State::transplant(&amiga.memory()))
+}
+
+/// From the first frame a start's level is played on (a sync point's or a leg snapshot's first
+/// frame has `level_state` ≠ −2, FINDINGS T09), idle until the frog has landed past frame 150, as
+/// the engine-side starts do.
+pub fn settle(mut amiga: Amiga, t0: Instant) -> Result<OracleRun, String> {
+    let mut inputs = Vec::new();
+    loop {
+        let st = State::transplant(&amiga.memory());
+        if (landed(&st) && inputs.len() > 150) || inputs.len() >= 400 {
+            break;
+        }
+        sync::step_inserting(&mut amiga, FrameInput::NONE)?;
+        inputs.push(FrameInput::NONE);
+    }
+    Ok(OracleRun {
+        amiga,
+        oracle_frames: inputs.len() as u64,
+        inputs,
+        confirm_time: t0.elapsed(),
+    })
+}
+
+/// The oracle at `id`'s sync point (`sync::reach(AtLevel)`), with room for `cap` more frames, past
+/// the level-start freeze. Panics if the oracle cannot be started, as the conformance cases do.
+pub fn start_at_level(id: LevelId, cap: u32) -> OracleRun {
+    let t0 = Instant::now();
+    let a = sync::reach(&SyncPoint::AtLevel(id), &InputScript::idle(), cap)
+        .unwrap_or_else(|e| panic!("{id}: the oracle cannot reach the level: {e}"))
+        .amiga;
+    settle(a, t0).unwrap_or_else(|e| panic!("{id}: {e}"))
+}
+
+/// The oracle at a `whole_game` leg snapshot (`sync::at_snapshot_file`), with room for `cap` more
+/// frames, past the level-start freeze.
+pub fn start_at_snap(path: &Path, cap: u32) -> OracleRun {
+    let t0 = Instant::now();
+    let a = sync::at_snapshot_file(path, cap).unwrap_or_else(|e| panic!("{}: {e}", path.display()));
+    settle(a, t0).unwrap_or_else(|e| panic!("{}: {e}", path.display()))
+}
+
+/// The level's facts as the original has them at the run's start.
+pub fn facts_at(run: &OracleRun, id: LevelId) -> Facts {
+    let data = sf_conform::game_data();
+    let display = sf_conform::display_data();
+    let g = Game::with_display(
+        display.clone(),
+        Start::Transplant(run.amiga.memory()),
+    );
+    facts(&g, &data.levels[&id], display.rom())
+}
+
+/// The faithful check's lag bar over a lockstep: its limit, and the frames the original has ended
+/// mid-pass in a row so far (`sf_conform`'s `LagRun`, check 1).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Lag {
+    pub limit: u32,
+    pub run: u32,
+}
+
+/// What one stretch's lockstep found.
+#[derive(Debug, Clone, PartialEq)]
+pub struct Lockstep {
+    /// Original frames the original agreed to (the plan's frames, the frames held through its lag
+    /// and the lag-tail frames past the plan's end).
+    pub agreed: usize,
+    /// The original left the level alive after `agreed` frames.
+    pub exited: bool,
+    /// Why it stopped short, and the original's cell there.
+    pub parting: Option<(Parting, Cell)>,
+    /// The input played on each original frame, the parting frame included: the plan's, its next
+    /// frame held while the original lags, its last held past its end.
+    pub fed: Vec<FrameInput>,
+    /// The plan frames used after each original frame of `fed`.
+    pub used: Vec<usize>,
+    /// The original's frames ended mid-pass in a row after each frame of `fed`.
+    pub mid_run: Vec<u32>,
+    /// Hearts the original lost over the frames agreed to (a heart gained is not netted).
+    pub hearts_lost: u16,
+}
+
+impl Lockstep {
+    /// The plan frames used once the first `k` original frames are played.
+    pub fn used_at(&self, k: usize) -> usize {
+        k.checked_sub(1).map_or(0, |j| self.used[j])
+    }
+
+    /// The mid-pass run once the first `k` original frames are played, `start` before any.
+    pub fn mid_run_at(&self, k: usize, start: u32) -> u32 {
+        k.checked_sub(1).map_or(start, |j| self.mid_run[j])
+    }
+}
+
+/// Plays `plan` on the original and on `eng` (the original's state transplanted) side by side
+/// until they part or the original exits, counting the original's frames into `frames`.
+///
+/// The original lags in busy passes and the engine never does (games/superfrog/docs/08 "Lag"). Most late passes
+/// still move the frog, but some freeze it: W1-2's scroller held the original's frog block
+/// unchanged through nine frames at x 1625 while the engine ran on, and without a hold the two
+/// parted there on every repair, 18 repairs in 25 minutes (T14). A frame on which the original's
+/// frog block (`FROG`, 256 bytes) does not change while the engine's would is held: the engine is
+/// not stepped and the plan's next frame is played again. Holding on every mid-pass frame instead
+/// parted engine-planned W1-2, W2-1 and W1-3 routes within 10 frames of their start.
+pub fn lockstep(
+    amiga: &mut Amiga,
+    eng: Game,
+    plan: &[FrameInput],
+    frames: &mut u64,
+    lag: Lag,
+) -> Lockstep {
+    lockstep_with(amiga, eng, plan, frames, lag, LAG_TAIL)
+}
+
+/// `lockstep` with `tail` frames past the plan's end, the last input held. With no tail (a reach
+/// stretch's plan, which ends on the old plan's path, not at the exit) a plan the original played
+/// to its end without a parting ends with `parting` `None`, every frame agreed (T24).
+pub fn lockstep_with(
+    amiga: &mut Amiga,
+    mut eng: Game,
+    plan: &[FrameInput],
+    frames: &mut u64,
+    lag: Lag,
+    tail: usize,
+) -> Lockstep {
+    let mut before = look(amiga);
+    let mut out = Lockstep {
+        agreed: 0,
+        exited: false,
+        parting: None,
+        fed: Vec::new(),
+        used: Vec::new(),
+        mid_run: Vec::new(),
+        hearts_lost: 0,
+    };
+    let mut run = lag.run;
+    let last = plan.last().copied().unwrap_or(FrameInput::NONE);
+    let mut e = before;
+    let mut i = 0usize;
+    // A lag bounded by the oracle's own frame cap; this bounds a pass that never ends.
+    let most = 2 * (plan.len() + tail);
+    while i < plan.len() + tail && out.fed.len() < most {
+        let x = plan.get(i).copied().unwrap_or(last);
+        let past = i >= plan.len();
+        out.fed.push(x);
+        let frog_before = amiga.peek(FROG, FROG_BLOCK as usize);
+        if let Err(err) = sync::step_inserting(amiga, x) {
+            out.used.push(i);
+            out.mid_run.push(run);
+            out.parting = Some((Parting::Oracle(err), before.cell));
+            return out;
+        }
+        *frames += 1;
+        let mem = amiga.memory();
+        run = if sync::mid_pass(&amiga.cpu(), &mem) { run + 1 } else { 0 };
+        out.mid_run.push(run);
+        let o = Look::of(&State::transplant(&mem));
+        if past {
+            // Past the plan's end the engine has left the level: only the original is judged.
+            e = o;
+            i += 1;
+        } else {
+            let mut next = eng.clone();
+            next.step_unseen(x);
+            let frozen = amiga.peek(FROG, FROG_BLOCK as usize) == frog_before
+                && frog_block(next.state()) != frog_block(eng.state());
+            if !frozen {
+                eng = next;
+                e = Look::of(eng.state());
+                i += 1;
+            }
+        }
+        out.used.push(i);
+        if run > lag.limit {
+            out.parting = Some((Parting::Lag, o.cell));
+            return out;
+        }
+        if let Some(why) = parts(&before, &o, &e, sync::in_wall_loop(amiga)) {
+            out.parting = Some((why, o.cell));
+            return out;
+        }
+        out.hearts_lost += before.hearts.saturating_sub(o.hearts);
+        out.agreed = out.fed.len();
+        // Only an end of play counts: a start's first frames (`level_state` not yet −2) are not
+        // an exit.
+        if before.playing && !o.playing {
+            out.exited = true;
+            return out;
+        }
+        before = o;
+    }
+    // The original played the whole plan and the lag tail with no exit: it parts at the end. A
+    // plan with no tail that was played to its end has reached its goal.
+    if tail > 0 || i < plan.len() {
+        out.parting = Some((Parting::Apart, before.cell));
+    }
+    out
+}
+
+/// The faithful check's lag bar for a route from `level`'s start (T14, owner 2026-10-23; a deviation
+/// from DESIGN §2.6): the `lag-limit` of the case `sf-bench`'s §4.1 check takes it from, the
+/// level's completion case (or `game-whole`'s for a leg snapshot), else `sf_conform::LAG_LIMIT`.
+/// The names follow `sf-bench`'s `verify::committed_script`.
+pub fn lag_limit_for(level: LevelId, snap: bool) -> u32 {
+    let l = level.to_string().to_lowercase();
+    let name = if snap {
+        "game-whole".to_string()
+    } else {
+        match l.as_bytes()[1] {
+            b'1' | b'4' => format!("complete-{l}"),
+            b'2' => format!("{l}-complete"),
+            _ => format!("enemies-{l}-complete"),
+        }
+    };
+    sf_conform::Case::load(&sf_conform::cases_dir().join(format!("{name}.toml")))
+        .ok()
+        .and_then(|c| c.lag_limit)
+        .map_or(sf_conform::LAG_LIMIT, |l| l.frames)
+}
+
+/// What follows a parting (§2.6 steps 3, 4).
+#[derive(Debug, Clone, PartialEq)]
+pub enum Next {
+    /// Accepted: the plan's frames from `used` on, played on from the original's state (no
+    /// planning; the route carries no engine frames or rounds of its own).
+    Resume(Route),
+    /// Repaired: the plan's rest from `used`, the next stretch's guide and seed.
+    Repair(Vec<FrameInput>),
+}
+
+/// What a parting in `ls` keeps of a `plan_len`-frame plan (§2.6 steps 3, 4): the original frames
+/// of `ls.fed` kept, the plan frames they used, and the mid-pass run at their end (`start` before
+/// the stretch). Accepted, the parting frame is kept too; repaired, `BACK_OFF` frames before it,
+/// counted within the plan (not its lag tail). Held frames use no plan frame (T14).
+///
+/// A `Lag` parting with `before_run` (every second lag repair in a row, `lag_before_run`) keeps
+/// the frames before the mid-pass run it ended instead; when the run began before the stretch,
+/// nothing is kept and the run carried in stands, and `plan_original` rewinds the route to the
+/// run's start (`run_start`). Some runs end only from inside (W1-4 at 148,9: from before it every
+/// plan entered it and parted 100 frames in, 2 800 times), some only from before (W5-2 at 111,29:
+/// from 16 frames back, inside, ~200 partings in 27 minutes), and neither resume point alone
+/// finished both (T25, T30).
+pub fn kept(
+    ls: &Lockstep,
+    plan_len: usize,
+    accepted: bool,
+    start: u32,
+    before_run: bool,
+) -> (usize, usize, u32) {
+    let agreed = (0..=ls.agreed)
+        .rev()
+        .find(|&k| ls.used_at(k) <= plan_len)
+        .unwrap_or(0);
+    let keep = if accepted {
+        (agreed + 1).min(ls.fed.len())
+    } else if before_run && matches!(ls.parting, Some((Parting::Lag, _))) {
+        (0..=agreed)
+            .rev()
+            .find(|&k| ls.mid_run_at(k, start) == 0)
+            .unwrap_or(0)
+    } else {
+        agreed.saturating_sub(BACK_OFF)
+    };
+    (
+        keep,
+        ls.used_at(keep).min(plan_len),
+        ls.mid_run_at(keep, start),
+    )
+}
+
+/// Whether the `row`th lag repair in a row (from 1) resumes from before the run it ended: the
+/// first backs off `BACK_OFF` frames into it, the next goes before it, and so on alternately
+/// (`kept`). Alternating reaches each resume point on every other repair, whichever the run needs.
+pub fn lag_before_run(row: u32) -> bool {
+    row.is_multiple_of(2)
+}
+
+/// The route frames to keep to end before its last mid-pass run, given the run after each route
+/// frame: up to the last frame not ended mid-pass (0 for none; the route's start is not mid-pass).
+pub fn run_start(mid: &[u32]) -> usize {
+    mid.iter().rposition(|&m| m == 0).map_or(0, |i| i + 1)
+}
+
+/// Saved states of the original at route positions, enough to rewind the route to any frame of
+/// the mid-pass run it ends in (`run_start`): each stretch's start is pushed, and every mark
+/// before the last one at or before the run's start is dropped. A run is at most the lag bar
+/// long, so a few marks are kept, not one per stretch (W1-4 ran 2 800 stretches).
+#[derive(Debug, Clone)]
+pub struct Marks<T> {
+    marks: Vec<(usize, T)>,
+}
+
+impl<T> Default for Marks<T> {
+    fn default() -> Self {
+        Marks { marks: Vec::new() }
+    }
+}
+
+impl<T> Marks<T> {
+    /// A state at route position `pos` (the route's length), the route's mid-pass run there
+    /// `carry` frames long.
+    pub fn push(&mut self, pos: usize, state: T, carry: u32) {
+        self.marks.retain(|&(p, _)| p < pos);
+        self.marks.push((pos, state));
+        let first = pos.saturating_sub(carry as usize);
+        if let Some(i) = self.marks.iter().rposition(|&(p, _)| p <= first) {
+            self.marks.drain(..i);
+        }
+    }
+
+    /// The latest mark at or before route position `pos`.
+    pub fn at(&self, pos: usize) -> Option<&(usize, T)> {
+        self.marks.iter().rev().find(|&&(p, _)| p <= pos)
+    }
+
+    pub fn len(&self) -> usize {
+        self.marks.len()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.marks.is_empty()
+    }
+}
+
+/// After a parting with `used` of `plan`'s frames kept: an accepted parting plays the same plan
+/// on, unless nothing of it is left.
+pub fn next_stretch(accepted: bool, plan: &Route, used: usize) -> Next {
+    let rest = plan.inputs[used.min(plan.inputs.len())..].to_vec();
+    if accepted && !rest.is_empty() {
+        Next::Resume(Route {
+            inputs: rest,
+            engine_frames: 0,
+            rounds: 0,
+            ..plan.clone()
+        })
+    } else {
+        Next::Repair(rest)
+    }
+}
+
+/// Frames of the last whole plan a repair stretch plans ahead of the original (T24): a repair
+/// plans back onto that plan's path this far on, not to the exit. Repairs to the exit re-planned
+/// the whole level's rest each time: W4-4 parted 1 863 frames into a 10 710-frame plan and its
+/// repair found no exit in 24 minutes; W1-4's ran 2 383 rounds and stalled 15 cells short.
+pub const HORIZON: usize = 1024;
+/// The reference trace's points in `HORIZON` frames.
+pub const HORIZON_POINTS: usize = HORIZON / TRACE_EVERY as usize;
+/// Rounds a reach stretch may take before the repair plans to the exit instead.
+pub const REACH_ROUNDS: u64 = 300;
+/// A reach stretch's frames, at most, from its start to the point it reaches.
+pub const REACH_FRAMES: u32 = 3 * HORIZON as u32;
+/// A stretch whose archive holds at most `DEAD_CELLS` cells after `DEAD_ROUNDS` rounds is a dead
+/// end (T33, DESIGN D26): the repair rewinds rather than spending the budget there. W1-3 and W4-1
+/// unaided archived 5 and 2 cells in ~25 minutes; a live start archives hundreds in 100 rounds.
+pub const DEAD_CELLS: u32 = 8;
+pub const DEAD_ROUNDS: u64 = 100;
+/// Stretch starts kept to rewind to on a dead end (`Starts`).
+pub const DEAD_MARKS: usize = 4;
+
+/// Whether a search `rounds` rounds in with `cells` cells archived is a dead end. Rounds and cells,
+/// never time, so the same rounds end it on any machine (M8).
+pub fn dead_end(rounds: u64, cells: u32) -> bool {
+    rounds >= DEAD_ROUNDS && cells <= DEAD_CELLS
+}
+
+/// The last `DEAD_MARKS` stretch starts (route position and saved state) a dead end rewinds to
+/// (T33). Only starts not mid-pass are pushed, so a lag rewind after a dead-end rewind never
+/// reaches back before it (`Marks`).
+#[derive(Debug, Clone)]
+pub struct Starts<T> {
+    marks: Vec<(usize, T)>,
+    /// The start the last dead end rewound to.
+    last: Option<usize>,
+}
+
+impl<T> Default for Starts<T> {
+    fn default() -> Self {
+        Starts {
+            marks: Vec::new(),
+            last: None,
+        }
+    }
+}
+
+impl<T> Starts<T> {
+    /// A stretch start at route position `pos`; a start at or past it (a later future, or a
+    /// stretch that kept nothing) is replaced.
+    pub fn push(&mut self, pos: usize, state: T) {
+        self.marks.retain(|&(p, _)| p < pos);
+        self.marks.push((pos, state));
+        if self.marks.len() > DEAD_MARKS {
+            self.marks.remove(0);
+        }
+    }
+
+    /// A dead end with the route `pos` long: the start to rewind to, the latest before `pos`, or
+    /// the one before that when the last dead end already rewound there (the earliest kept when
+    /// there is none). The starts after it are dropped, their future discarded. `None` when no
+    /// start lies before `pos`: the stretch is planned again where it is.
+    pub fn rewind(&mut self, pos: usize) -> Option<&(usize, T)> {
+        let mut i = self.marks.iter().rposition(|&(p, _)| p < pos)?;
+        if self.last == Some(self.marks[i].0) {
+            i = i.saturating_sub(1);
+        }
+        self.marks.truncate(i + 1);
+        self.last = Some(self.marks[i].0);
+        self.marks.last()
+    }
+
+    pub fn len(&self) -> usize {
+        self.marks.len()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.marks.is_empty()
+    }
+}
+
+/// What a dead-end rewind restores at a stretch start.
+struct Start0 {
+    snap: sf_oracle::Snapshot,
+    lost: u16,
+    reference: Option<Reference>,
+}
+
+/// The point of a `points`-point reference a repair stretch from point `p` reaches for, or `None`
+/// when the reference's end is near enough to plan to the exit (less than 1½ horizons left).
+pub fn reach_target(points: usize, p: usize) -> Option<usize> {
+    let t = p + HORIZON_POINTS;
+    (t + HORIZON_POINTS / 2 < points).then_some(t)
+}
+
+/// The last whole plan (a plan to the exit) that parted, which repair stretches plan back onto:
+/// its inputs and its trace on the engine from its own start, where it reached the exit (T24).
+/// The plan's rest traced from the original's state instead dies where the replay does (W1-4
+/// ~2 000 frames on), and its trace past a death steers nowhere.
+#[derive(Debug, Clone)]
+pub struct Reference {
+    pub inputs: Vec<FrameInput>,
+    pub points: Vec<GuidePoint>,
+    pub trace: Vec<TracePoint>,
+    /// The hearts the plan had lost on the engine at each trace point.
+    pub lost: Vec<u16>,
+    /// The point the original is known to have passed.
+    pub at: usize,
+    /// The hearts the plan lost on the engine.
+    pub hearts_lost: u8,
+}
+
+impl Reference {
+    pub fn new(start: &Game, facts: &Facts, plan: &Route, used: usize) -> Reference {
+        // `trace_engine`, the hearts lost read beside each sample.
+        let mut g = start.clone();
+        let h0 = g.state().w(HEARTS);
+        let mut s = Sampler::new(facts);
+        let mut lost = Vec::new();
+        for k in 0..=plan.inputs.len() {
+            if Sampler::due(k as u32) {
+                if !s.sample(g.state()) {
+                    break;
+                }
+                lost.resize(s.points.len(), h0.saturating_sub(g.state().w(HEARTS)));
+            }
+            if let Some(&x) = plan.inputs.get(k) {
+                g.step_unseen(x);
+            }
+        }
+        let trace = s.points;
+        Reference {
+            inputs: plan.inputs.clone(),
+            points: points_from_trace(&trace),
+            lost,
+            at: (used / TRACE_EVERY as usize).min(trace.len().saturating_sub(1)),
+            trace,
+            hearts_lost: plan.hearts_lost,
+        }
+    }
+
+    /// The furthest point from `at` to `upto` whose region holds `key`, else `at`.
+    pub fn locate(&self, key: &CellKey, upto: usize) -> usize {
+        let hi = upto.min(self.points.len().saturating_sub(1));
+        (self.at..=hi)
+            .rev()
+            .find(|&k| self.points[k].covers(key))
+            .unwrap_or(self.at)
+    }
+
+    /// The hearts the plan lost on the engine from point `p` to point `t`.
+    pub fn lost_between(&self, p: usize, t: usize) -> u16 {
+        let at = |k: usize| self.lost.get(k.min(self.lost.len().saturating_sub(1))).copied();
+        at(t).unwrap_or(0).saturating_sub(at(p).unwrap_or(0))
+    }
+
+    /// The plan's inputs from point `p` on.
+    pub fn inputs_from(&self, p: usize) -> Vec<FrameInput> {
+        self.inputs[(p * TRACE_EVERY as usize).min(self.inputs.len())..].to_vec()
+    }
+}
+
+/// What a stretch's plan heads for.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Kind {
+    /// The exit: a whole plan.
+    Exit,
+    /// The reference's point `t` (a reach stretch).
+    Reach(usize),
+}
+
+/// Plans `run`'s level against the original (§2.6): the route from the run's start (its `inputs`
+/// first) to the frame the original leaves the level, or the best partial route and why, its
+/// confirmed part `Stats::confirmed_frames` long. `ro.budget` covers the whole run.
+///
+/// A repair plans back onto the last whole plan's path `HORIZON` frames on (`Kind::Reach`), and to
+/// the exit once that plan's end is near or a reach stretch finds nothing in `REACH_ROUNDS` (T24).
+pub fn plan_original(
+    run: OracleRun,
+    facts: Facts,
+    opt: Options,
+    ro: &RunOptions,
+) -> Result<(Route, Stats), (Route, Stats, Reason)> {
+    let t0 = Instant::now();
+    let display = sf_conform::display_data();
+    let log = std::env::var_os("SF_PLAN_LOG").is_some();
+    let OracleRun {
+        mut amiga,
+        inputs: mut route,
+        oracle_frames,
+        confirm_time: start_time,
+    } = run;
+    let mut confirm = Duration::ZERO;
+    let mut stats = Stats {
+        oracle_frames,
+        ..Stats::default()
+    };
+    // Hearts lost on the original over the frames kept, counted as `verify` counts them.
+    let mut lost = 0u16;
+    let hearts = |a: &Amiga| {
+        let b = a.peek(HEARTS, 2);
+        u16::from_be_bytes([b[0], b[1]])
+    };
+    let mut repeats = Repeats::default();
+    let mut reference: Option<Reference> = None;
+    // After an accepted parting, the plan's rest, played on from the original's state as it is.
+    let mut resume: Option<(Route, Kind)> = None;
+    // Frames the original has ended mid-pass in a row at the kept route's end (`Lag`).
+    let mut mid_run = 0u32;
+    // The mid-pass run after each route frame, the original's states saved at stretch starts, and
+    // the lag repairs in a row: a lag repair may rewind the route to before its run (`kept`).
+    let mut route_mid = vec![0u32; route.len()];
+    let mut marks: Marks<(sf_oracle::Snapshot, u16)> = Marks::default();
+    let mut lag_row = 0u32;
+    let mut rounds = 0u64;
+    let mut starts: Starts<Start0> = Starts::default();
+    // A stretch's plan that came to a dead end with budget left (T33): the repair rewinds.
+    let dead = |r: &Route| dead_end(r.rounds, r.cells) && t0.elapsed() < ro.budget;
+
+    let mut stretch = 0u32;
+    let finish = |stats: &mut Stats, confirm: Duration, route: &[FrameInput]| {
+        let all = start_time + t0.elapsed();
+        stats.confirm_share = ((start_time + confirm).as_secs_f64() / all.as_secs_f64().max(1e-9))
+            .clamp(0.0, 1.0) as f32;
+        stats.confirmed_frames = route.len() as u32;
+    };
+    loop {
+        let start = Game::with_display(
+            display.clone(),
+            Start::Transplant(amiga.memory()),
+        );
+        if mid_run == 0 {
+            starts.push(
+                route.len(),
+                Start0 {
+                    snap: amiga.snapshot(),
+                    lost,
+                    reference: reference.clone(),
+                },
+            );
+        }
+        let left = ro.budget.saturating_sub(t0.elapsed());
+        let base = Options {
+            seed: opt.seed.wrapping_add(stretch as u64),
+            max_frames: opt.max_frames.saturating_sub(route.len() as u32),
+            ..opt.clone()
+        };
+        // The reference from where the original is, guiding and seeding (§2.7); an explicit guide
+        // still steers.
+        let follow = |r: &Reference, p: usize| {
+            let mut o = follow_options(base.clone(), r.inputs_from(p), &r.trace[p..]);
+            if !opt.guide.is_empty() {
+                o.guide = opt.guide.clone();
+                o.guide_pace = opt.guide_pace;
+            }
+            o
+        };
+        let mut planned = match resume.take() {
+            Some((r, kind)) => Some((Ok(r), kind)),
+            None => None,
+        };
+        let mut p = 0;
+        if planned.is_none()
+            && let Some(r) = reference.as_mut().filter(|_| !left.is_zero())
+        {
+            p = r.locate(&cell_key(&facts, start.state(), 0), r.at + HORIZON_POINTS);
+            r.at = p;
+            if let Some(t) = reach_target(r.points.len(), p) {
+                let o = Options {
+                    goal: Goal::Reach {
+                        point: r.points[t],
+                        within_frames: REACH_FRAMES,
+                        hearts: start.state().w(HEARTS).saturating_sub(r.lost_between(p, t)),
+                    },
+                    ..follow(r, p)
+                };
+                let reach_ro = RunOptions {
+                    budget: left,
+                    shorten_share: 0.0,
+                    shorten_min_rounds: 0,
+                    max_rounds: Some(REACH_ROUNDS),
+                    dead_end: true,
+                    ..ro.clone()
+                };
+                match plan_engine(start.clone(), facts.clone(), o, &reach_ro) {
+                    Ok(r) => planned = Some((Ok(r), Kind::Reach(t))),
+                    // A dead end from here is one for the exit plan too: rewind at once.
+                    Err((partial, why)) if dead(&partial) => {
+                        planned = Some((Err((partial, why)), Kind::Reach(t)))
+                    }
+                    Err((partial, _)) => {
+                        stats.engine_frames += partial.engine_frames;
+                        rounds += partial.rounds;
+                        if log {
+                            eprintln!(
+                                "  {:6.1}s stretch {stretch}: no reach from point {p} to {t} {:?} of {} in {} rounds (frog at {:?}), to the exit",
+                                t0.elapsed().as_secs_f64(),
+                                r.points[t],
+                                r.points.len(),
+                                partial.rounds,
+                                frog_cell(start.state()),
+                            );
+                        }
+                    }
+                }
+            }
+        }
+        let (plan, kind) = match planned {
+            Some(x) => x,
+            None => {
+                let left = ro.budget.saturating_sub(t0.elapsed());
+                // A repair's whole plan gets the shortening minimum only if its exit is longer
+                // than the reference's rest or loses a heart: otherwise its route is mostly the
+                // last plan's, already shortened (FINDINGS, T10, T14).
+                let (o, over) = match reference.as_ref().filter(|_| !left.is_zero()) {
+                    Some(r) => (
+                        follow(r, p),
+                        Some((r.inputs.len().saturating_sub(p * TRACE_EVERY as usize), r.hearts_lost)),
+                    ),
+                    None => (base.clone(), None),
+                };
+                let stretch_ro = RunOptions {
+                    budget: left,
+                    shorten_min_over: over,
+                    dead_end: true,
+                    ..ro.clone()
+                };
+                (plan_engine(start.clone(), facts.clone(), o, &stretch_ro), Kind::Exit)
+            }
+        };
+        let plan = match plan {
+            Ok(r) => {
+                stats.engine_frames += r.engine_frames;
+                rounds += r.rounds;
+                r
+            }
+            Err((partial, _)) if dead(&partial) => {
+                // A dead end (T33, D26): back to the last stretch start before this one, or one
+                // further if the last dead end rewound there, and that stretch planned again with
+                // the next seed. This backs up; it never gives up on the level (D16).
+                stats.engine_frames += partial.engine_frames;
+                rounds += partial.rounds;
+                stretch += 1;
+                let from = route.len();
+                if let Some((at, m)) = starts.rewind(from) {
+                    amiga.restore(&m.snap);
+                    lost = m.lost;
+                    reference = m.reference.clone();
+                    route.truncate(*at);
+                    route_mid.truncate(*at);
+                    mid_run = 0;
+                }
+                repeats = Repeats::default();
+                lag_row = 0;
+                if log {
+                    eprintln!(
+                        "  {:6.1}s stretch {}: {kind:?} dead end, {} cells in {} rounds (frog at {:?}), rewinds the route {from} -> {}",
+                        t0.elapsed().as_secs_f64(),
+                        stretch - 1,
+                        partial.cells,
+                        partial.rounds,
+                        frog_cell(start.state()),
+                        route.len(),
+                    );
+                }
+                stats.confirmed_frames = route.len() as u32;
+                continue;
+            }
+            Err((partial, reason)) => {
+                stats.engine_frames += partial.engine_frames;
+                rounds += partial.rounds;
+                finish(&mut stats, confirm, &route);
+                let confirmed = route.len();
+                route.extend(partial.inputs.iter().copied());
+                let r = Route {
+                    inputs: route,
+                    engine_frames: stats.engine_frames,
+                    hearts_lost: lost
+                        .saturating_add(partial.hearts_lost as u16)
+                        .min(u8::MAX as u16) as u8,
+                    rounds,
+                    cells: partial.cells,
+                };
+                stats.confirmed_frames = confirmed as u32;
+                return Err((r, stats, reason));
+            }
+        };
+
+        let c0 = Instant::now();
+        let snap = amiga.snapshot();
+        marks.push(route.len(), (snap.clone(), lost), mid_run);
+        let lag = Lag {
+            limit: ro.lag_limit,
+            run: mid_run,
+        };
+        let tail = if kind == Kind::Exit { LAG_TAIL } else { 0 };
+        let ls = lockstep_with(
+            &mut amiga,
+            start.clone(),
+            &plan.inputs,
+            &mut stats.oracle_frames,
+            lag,
+            tail,
+        );
+        stretch += 1;
+        if ls.exited {
+            route.extend_from_slice(&ls.fed[..ls.agreed]);
+            confirm += c0.elapsed();
+            finish(&mut stats, confirm, &route);
+            let r = Route {
+                inputs: route,
+                engine_frames: stats.engine_frames,
+                hearts_lost: lost.saturating_add(ls.hearts_lost).min(u8::MAX as u16) as u8,
+                rounds,
+                cells: plan.cells,
+            };
+            return Ok((r, stats));
+        }
+        let Some((why, cell)) = ls.parting.clone() else {
+            // A reach stretch the original played to its end: all of it is kept, and the next
+            // stretch starts there, on the reference's path.
+            let Kind::Reach(t) = kind else {
+                unreachable!("an exit plan with a tail ends in an exit or a parting")
+            };
+            if log {
+                eprintln!(
+                    "  {:6.1}s stretch {}: reach to point {t} of {}: plan {} frames ({} rounds, {} hearts), agreed {} ({} hearts), route {}",
+                    t0.elapsed().as_secs_f64(),
+                    stretch - 1,
+                    reference.as_ref().map_or(0, |r| r.points.len()),
+                    plan.inputs.len(),
+                    plan.rounds,
+                    plan.hearts_lost,
+                    ls.agreed,
+                    ls.hearts_lost,
+                    route.len()
+                );
+            }
+            lost += ls.hearts_lost;
+            route.extend_from_slice(&ls.fed[..ls.agreed]);
+            route_mid.extend_from_slice(&ls.mid_run[..ls.agreed]);
+            confirm += c0.elapsed();
+            mid_run = ls.mid_run_at(ls.agreed, mid_run);
+            lag_row = 0;
+            if let Some(r) = reference.as_mut() {
+                r.at = t;
+            }
+            stats.confirmed_frames = route.len() as u32;
+            continue;
+        };
+        if log {
+            eprintln!(
+                "  {:6.1}s stretch {}: {kind:?} plan {} frames ({} rounds), agreed {} ({} held), {why:?} at {cell:?}, route {}",
+                t0.elapsed().as_secs_f64(),
+                stretch - 1,
+                plan.inputs.len(),
+                plan.rounds,
+                ls.agreed,
+                ls.agreed - ls.used_at(ls.agreed).min(ls.agreed),
+                route.len()
+            );
+        }
+        // Accepted: the same plan plays on from the state the original insists on, the engine
+        // copy taken from it again. Repaired: plan again. Planning again after an acceptance
+        // moved set-B W2-2 one frame past a heart the original loses there, then parted again at
+        // once, ten repairs at one cell (T14).
+        let accepted = repeats.accept(cell, &why);
+        lag_row = if why == Parting::Lag { lag_row + 1 } else { 0 };
+        let before_run = why == Parting::Lag && lag_before_run(lag_row);
+        let (keep, used, run_then) = kept(&ls, plan.inputs.len(), accepted, mid_run, before_run);
+        amiga.restore(&snap);
+        let mut h = hearts(&amiga);
+        for &x in &ls.fed[..keep] {
+            // These frames were just played from the same snapshot: they replay the same.
+            sync::step_inserting(&mut amiga, x).expect("the kept frames replay");
+            stats.oracle_frames += 1;
+            let now = hearts(&amiga);
+            lost += h.saturating_sub(now);
+            h = now;
+        }
+        route.extend_from_slice(&ls.fed[..keep]);
+        route_mid.extend_from_slice(&ls.mid_run[..keep]);
+        mid_run = run_then;
+        if before_run && run_then > 0 {
+            // The run began before this stretch: the route is rewound to its start, the original
+            // replayed there from the last state saved at or before it.
+            let to = run_start(&route_mid);
+            let (at, (s, l)) = marks.at(to).expect("a mark at or before the run's start");
+            amiga.restore(s);
+            lost = *l;
+            let mut h = hearts(&amiga);
+            for &x in &route[*at..to] {
+                sync::step_inserting(&mut amiga, x).expect("the route's frames replay");
+                stats.oracle_frames += 1;
+                let now = hearts(&amiga);
+                lost += h.saturating_sub(now);
+                h = now;
+            }
+            if log {
+                eprintln!(
+                    "  {:6.1}s stretch {}: lag repair {lag_row} in a row rewinds the route {} -> {to}",
+                    t0.elapsed().as_secs_f64(),
+                    stretch - 1,
+                    route.len(),
+                );
+            }
+            route.truncate(to);
+            route_mid.truncate(to);
+            mid_run = 0;
+        }
+        confirm += c0.elapsed();
+        match next_stretch(accepted, &plan, used) {
+            Next::Resume(r) => resume = Some((r, kind)),
+            // A whole plan that parts is the reference repairs plan back onto; a reach stretch's
+            // plan is only a way onto it.
+            Next::Repair(_) if kind == Kind::Exit => {
+                reference = Some(Reference::new(&start, &facts, &plan, used))
+            }
+            Next::Repair(_) => {}
+        }
+        stats.repairs += 1;
+        stats.confirmed_frames = route.len() as u32;
+    }
+}

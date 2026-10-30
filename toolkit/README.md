@@ -3,7 +3,7 @@
 The parts of an Amiga game's engine that carry to another game: the machine's chips and timing, its
 disk formats, recorded input, a desktop app's game-free parts, and the test tooling that judges an
 engine against the original game running on an emulator. No game's code, data or name is in this
-tree; a game depends on these crates by path (`../../../toolkit/crates/<name>` from a crate in the
+tree; a game depends on these crates by path (`../../../../../toolkit/crates/<name>` from a crate in the
 game's own workspace) and keeps everything of its own.
 
 ## What is in it
@@ -33,7 +33,7 @@ And two that are not for a game to depend on:
 
 | Crate | What it is |
 |---|---|
-| `toolkit-checks` | The purity test (the pure/shell boundary, each pure crate's dependencies on an allowlist, no game crate in any toolkit crate's tree) and the name check (no game's name in any tracked file here, bar a `learned on:` provenance line) |
+| `toolkit-checks` | The purity test (the pure/shell boundary, each pure crate's dependencies on an allowlist, no game crate in any toolkit crate's tree) |
 | `dry-fit` | One frame of a made-up game from `amiga-chips`, `amiga-clock` and `amiga-paula` alone: a blit into a bitplane, a copper list that sets up the screen and changes colours, the frame drawn to a `Picture`, the clock stepped across the frame and a Paula note. Its tests assert each step and that its dependency tree holds toolkit crates only. `cargo run -p dry-fit` prints what each chip did |
 
 ## Testing it
@@ -43,7 +43,7 @@ cd toolkit && cargo test -q --workspace
 ```
 
 This is a workspace of its own, with its own toolchain pin and lock file, and runs from this folder
-alone. The oracle's tests need vAmiga built (`tools/setup/oracle.sh`, under `~/.cache/amiga-toolkit/`,
+alone. The oracle's tests need vAmiga built (`toolkit/tools/setup/oracle.sh`, under `~/.cache/amiga-toolkit/`,
 or `AMIGA_TOOLKIT_CACHE`) and a Kickstart 1.3 ROM (`AMIGA_KICKSTART`, else
 `~/amiga-roms/kick1.3.rom`); without the ROM they fail and say where they looked. The oracle's own
 tests boot with no disk in the drive, so they need no game.

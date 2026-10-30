@@ -51,6 +51,7 @@ exists with the settled skeleton, and the cracked-copy answer is recorded with i
 |---|---|---|
 | [T03](tasks/T03-playbook-and-template.md) | playbook-and-template | T02 |
 | [T04](tasks/T04-games-forest-dumb.md) | games-forest-dumb | T03 |
+| [T05](tasks/T05-architecture-chapters-carve.md) | architecture-chapters-carve | T02 |
 
 The Task cell is the task's kebab slug, matching its `tasks/T{nn}-{slug}.md` filename. Every task
 is built by an autonomous worker; T04's cracked-copy question is raised through the normal

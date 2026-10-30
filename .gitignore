@@ -5,7 +5,7 @@ __pycache__/
 
 # Generated / extracted artifacts (regenerate with the tools)
 build/
-engine/target/
+games/superfrog/engine/target/
 renders/    # derived game-art PNGs — reproducible from build/ via the tools
 
 # Copyrighted Superfrog disk images — supply your own; never committed/distributed

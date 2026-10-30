@@ -14,7 +14,7 @@ writes a cell also fixes the over-budget cell they walk past.**
 **Plan reviewed:** 2026-10-30 — 10 fixed, 3 decided with the user
 **Status:** Plan reviewed, awaiting the build start; no task started, nothing blocked.
 **Last updated:** 2026-10-30
-**Next `pir-work` will:** T01-knowledge-tiers — the only task nothing waits on.
+**Next `pir-work` will:** review T02.
 
 ## Tasks
 
@@ -28,9 +28,10 @@ to keep in sync.
 | # | Task | Depends on | State | Notes |
 |---|---|---|---|---|
 | T01 | knowledge-tiers | — | ✅ | |
-| T02 | superfrog-move | T01 | ⬜ | |
+| T02 | superfrog-move | T01 | 🔍 | Moved to monorepo layout; selector, project test.sh, tool splits, move-disks. Deviations: tools/select_scope.py not select.py (shadows stdlib select); six chapters stay game-side, owner, carried by T05; crate paths need five `../` not four; Ghidra script renamed ApplySymbols. |
 | T03 | playbook-and-template | T02 | ⬜ | |
 | T04 | games-forest-dumb | T03 | ⬜ | |
+| T05 | architecture-chapters-carve | T02 | ⬜ | |
 
 A Notes cell holds what was built or what the review found, the test count, and one line per
 deviation from the task doc. A deviation needing a paragraph needs the commit message: name
@@ -39,7 +40,7 @@ it here and point there.
 **A ✅ task's cell may be cut to one line** once the next task has been reviewed — its detail
 is in the commit and the file is read in full by every session from here on.
 
-**Review queue:** *(empty)*
+**Review queue:** T02
 
 ## Blocked on the user
 

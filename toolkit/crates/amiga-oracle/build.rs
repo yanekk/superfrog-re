@@ -42,7 +42,7 @@ fn main() {
     if !dest.join(".done").exists() {
         panic!(
             "amiga-oracle: no vAmiga build at {} (commit {commit}, patches {phash}). Run \
-             toolkit/tools/setup/oracle.sh (a game's tools/setup/oracle.sh wrapper runs it).",
+             toolkit/tools/setup/oracle.sh.",
             dest.display()
         );
     }
