@@ -14,7 +14,7 @@ writes a cell also fixes the over-budget cell they walk past.**
 **Plan reviewed:** 2026-10-30 — 10 fixed, 3 decided with the user
 **Status:** Plan reviewed, awaiting the build start; no task started, nothing blocked.
 **Last updated:** 2026-10-30
-**Next `pir-work` will:** T01-knowledge-tiers — the only task nothing waits on.
+**Next `pir-work` will:** T03-playbook-and-template — T04 waits on it.
 
 ## Tasks
 
@@ -31,7 +31,7 @@ to keep in sync.
 | T02 | superfrog-move | T01 | ✅ | |
 | T03 | playbook-and-template | T02 | ⬜ | |
 | T04 | games-forest-dumb | T03 | ⬜ | |
-| T05 | architecture-chapters-carve | T02 | 🔍 | Six toolkit chapters; game chapters reduced; validator reads both trees, 37 tests. Deviations: `amiga-app` and `amiga-disk` owned by toolkit verification (no chapter of their own), so app.md and disks-and-assets.md owns changed; game sound-chip owns nothing; game verification rated superfrog-only. |
+| T05 | architecture-chapters-carve | T02 | ✅ | Review clean, no fix commit. Probed lost facts by token and sentence against the base, section numbers, cited test names; four mutations went red. Unrecorded: game mix and sound-chip rating re-estimated, accepted. Stale widescreen test names logged. Whole suite left to pir. |
 
 A Notes cell holds what was built or what the review found, the test count, and one line per
 deviation from the task doc. A deviation needing a paragraph needs the commit message: name
@@ -40,7 +40,7 @@ it here and point there.
 **A ✅ task's cell may be cut to one line** once the next task has been reviewed — its detail
 is in the commit and the file is read in full by every session from here on.
 
-**Review queue:** T05
+**Review queue:** empty
 
 ## Blocked on the user
 
