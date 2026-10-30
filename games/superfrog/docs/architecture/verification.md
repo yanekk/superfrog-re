@@ -16,6 +16,8 @@ owns = [
   "games/superfrog/engine/crates/sf-routeview/",
   "games/superfrog/engine/conform/",
   "toolkit/README.md",
+  "toolkit/PLAYBOOK.md",
+  "toolkit/template/",
   "toolkit/CLAUDE.md",
   "toolkit/docs/",
   "toolkit/test.sh",
