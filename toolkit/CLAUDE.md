@@ -1,0 +1,18 @@
+# The Amiga toolkit (tier 2)
+
+What carries from one Amiga game to the next: the Rust crates under crates/, the RE tools, and how
+to start a game. A game depends on it by path, so a toolkit change and its use land in one commit.
+[README.md](README.md) lists the crates and how to test them.
+
+## Rules
+
+- No game's name, code or data enters this tree. `tools/check_tier_names.py` (at the repo root) fails
+  any line naming a game here, except a line carrying `learned on:`, which says where a value or a
+  lesson came from.
+- A lesson enters here when a second game confirms it (root CLAUDE.md, rule 2). A backlog note is
+  headed "Backlog": it is a plan, not a fact.
+
+## Notes
+
+- [docs/reuse-for-another-game.md](docs/reuse-for-another-game.md): what carried to the toolkit, what stayed per game, and the toolkit's history.
+- [docs/explorer-go-explore-idea.md](docs/explorer-go-explore-idea.md): backlog, an archive-return-explore search for routing and bug finding.

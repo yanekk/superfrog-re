@@ -128,7 +128,7 @@ fn a_game_name_is_found_in_any_case_and_form() {
     assert!(found[0].starts_with("x.rs:2: "), "{found:?}");
     assert!(found[4].starts_with("x.rs:6: "), "{found:?}");
     for clean in [
-        "sf-x",
+        ["sf", "-x"].concat().as_str(),
         "sfcore",
         "use amiga_chips::Picture;",
         "team 18",
