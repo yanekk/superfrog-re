@@ -29,7 +29,7 @@ to keep in sync.
 |---|---|---|---|---|
 | T01 | knowledge-tiers | — | ✅ | |
 | T02 | superfrog-move | T01 | ✅ | |
-| T03 | playbook-and-template | T02 | ⬜ | |
+| T03 | playbook-and-template | T02 | 🔍 | PLAYBOOK.md, five-piece template, test_playbook.py (7 tests). Deviations: toolkit/CLAUDE.md indexes both (DESIGN §2.2); verification.md owns both. toolkit/test.sh's cargo half not run: no Rust changed, pir's whole suite covers it. |
 | T04 | games-forest-dumb | T03 | ⬜ | |
 | T05 | architecture-chapters-carve | T02 | ⬜ | |
 
@@ -40,7 +40,7 @@ it here and point there.
 **A ✅ task's cell may be cut to one line** once the next task has been reviewed — its detail
 is in the commit and the file is read in full by every session from here on.
 
-**Review queue:** *(empty)*
+**Review queue:** T03
 
 ## Blocked on the user
 

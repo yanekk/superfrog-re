@@ -14,5 +14,7 @@ to start a game. A game depends on it by path, so a toolkit change and its use l
 
 ## Notes
 
+- [PLAYBOOK.md](PLAYBOOK.md): the steps the first game took, in order, each with its artifacts and lesson.
+- [template/](template/): a new game's starting kit, copied to `games/<game>/`.
 - [docs/reuse-for-another-game.md](docs/reuse-for-another-game.md): what carried to the toolkit, what stayed per game, and the toolkit's history.
 - [docs/explorer-go-explore-idea.md](docs/explorer-go-explore-idea.md): backlog, an archive-return-explore search for routing and bug finding.
