@@ -131,12 +131,14 @@ fn timeout_kills_a_stuck_run_and_everything_in_its_process_group() {
     let script = app.home.join("hang.script");
     std::fs::write(&script, "5: hang\n").unwrap();
     let t = Instant::now();
+    // The limit is wall clock from process start, so it has to outlast starting up and playing to
+    // frame 5 on a loaded machine: 2 s lost that race, and the hang was never reached.
     let mut child = Command::new(binary())
         .arg("--home")
         .arg(&app.home)
         .arg("--script")
         .arg(&script)
-        .args(["--max-frames", "100000", "--timeout", "2"])
+        .args(["--max-frames", "100000", "--timeout", "30"])
         .stderr(Stdio::piped())
         .process_group(0)
         .spawn()
@@ -152,7 +154,7 @@ fn timeout_kills_a_stuck_run_and_everything_in_its_process_group() {
         if let Some(s) = child.try_wait().unwrap() {
             break s;
         }
-        assert!(t.elapsed() < Duration::from_secs(30), "--timeout 2 did not stop the run");
+        assert!(t.elapsed() < Duration::from_secs(90), "--timeout 30 did not stop the run");
         std::thread::sleep(Duration::from_millis(20));
     };
     let took = t.elapsed();
@@ -160,9 +162,9 @@ fn timeout_kills_a_stuck_run_and_everything_in_its_process_group() {
     let mut err = String::new();
     std::io::Read::read_to_string(&mut child.stderr.take().unwrap(), &mut err).unwrap();
     assert!(!status.success(), "{status}");
-    assert!(took >= Duration::from_secs(2) && took < Duration::from_secs(15), "{took:?}");
+    assert!(took >= Duration::from_secs(30) && took < Duration::from_secs(60), "{took:?}");
     assert!(err.contains("hangs at frame 5"), "{err}");
-    assert!(err.contains("--timeout 2 s reached"), "{err}");
+    assert!(err.contains("--timeout 30 s reached"), "{err}");
     assert!(!helper_status.success(), "the helper in the run's group survived: {helper_status}");
     assert!(!sf_e2e::group_alive(pgid), "something in the run's group survived");
 }
