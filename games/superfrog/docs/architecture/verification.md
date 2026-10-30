@@ -5,30 +5,15 @@ tier = "component"
 depth = "light"
 kind = "shell"
 mix = { amiga = 4, game = 0, data = 0, shell = 96 }
-reuse = "big-changes"
+reuse = "superfrog-only"
 owns = [
   "games/superfrog/engine/crates/sf-oracle/",
   "games/superfrog/engine/crates/sf-conform/",
   "games/superfrog/engine/crates/sf-e2e/",
-  "toolkit/crates/amiga-e2e/",
   "games/superfrog/engine/crates/sf-plan/",
   "games/superfrog/engine/crates/sf-bench/",
   "games/superfrog/engine/crates/sf-routeview/",
   "games/superfrog/engine/conform/",
-  "toolkit/README.md",
-  "toolkit/CLAUDE.md",
-  "toolkit/docs/",
-  "toolkit/test.sh",
-  "toolkit/Cargo.toml",
-  "toolkit/Cargo.lock",
-  "toolkit/rust-toolchain.toml",
-  "toolkit/.gitignore",
-  "toolkit/crates/toolkit-checks/",
-  "toolkit/crates/dry-fit/",
-  "toolkit/crates/amiga-oracle/",
-  "toolkit/crates/amiga-conform/",
-  "toolkit/crates/amiga-record/",
-  "toolkit/tools/",
 ]
 +++
 
@@ -38,22 +23,14 @@ owns = [
 
 The machinery that judges the engine against the original, by machine
 (rust-engine [DESIGN §2.1, §4](../../../../plans/rust-engine/DESIGN.md)). It is the largest chapter by
-lines (47 779) and most of the code that carries to another Amiga game. It is also what a native
-rewrite must keep passing, so this chapter is the rewrite's acceptance test, seen from the inside.
-Three crates and one folder of inputs:
+lines (47 779, counted on 2026-10-23 before the generic harness moved). It is also what a native rewrite
+must keep passing, so this chapter is the rewrite's acceptance test, seen from the inside. The harness that
+carries to another game (the oracle, the patches, the checks' core) is the toolkit's [verification](../../../../toolkit/docs/architecture/verification.md).
+Three crates and one folder of inputs here:
 
-- **`sf-oracle`** (`games/superfrog/engine/crates/sf-oracle/`): the original, run on vAmiga (MPL-2.0) at a pinned
-  commit (`VAMIGA_COMMIT`) with five core patches (`patches/`), built outside the repo by
-  `toolkit/tools/setup/oracle.sh` and linked through a C shim (`shim/shim.cpp`, `shim/shim.h`, `src/ffi.rs`).
-  `Amiga` steps one PAL frame per `Amiga::step` with the engine's own `FrameInput` and returns a
-  `FrameCapture` (the display window's picture as 12-bit colour, the Paula writes with their beam
-  positions, the DAC taps). It snapshots and restores the whole machine, reads and pokes RAM, and
-  reports the CPU's registers, interrupts taken, blitter events and every CPU custom-register write.
-  `cached_trace` memoises a scripted run in `~/.cache/superfrog-re/traces/`. `Cpu68k`
-  (`src/routine.rs`, `shim/moira_shim.cpp`) is the routine runner: Moira, vAmiga's 68000 core,
-  compiled alone over a flat 16 MiB memory with no chipset, which calls one routine of the original
-  and returns its registers and every byte it changed ([games/superfrog/docs/RE-WORKBENCH](../RE-WORKBENCH.md)
-  "Differential-testing a routine").
+- **`sf-oracle`** (`games/superfrog/engine/crates/sf-oracle/`): `amiga-oracle` told about Superfrog: its disk count and
+  names and the `SUPERFROG_*` variables (`src/config.rs`), a trace cache in `~/.cache/superfrog-re/traces/`, and tests that
+  run on Superfrog's disks ([games/superfrog/docs/RE-WORKBENCH](../RE-WORKBENCH.md) "Differential-testing a routine").
 - **`sf-conform`** (`games/superfrog/engine/crates/sf-conform/`): the conformance runner and its CLI
   (`src/main.rs`: `run`, `all`, `scan`, `record`, `feed`, `channels`, `bug replay|compare|case`).
   `src/case.rs` reads cases, `src/script.rs` input scripts, `src/sync.rs` brings both sides to a
@@ -91,12 +68,7 @@ milestones, route planners, case tests) stay `shell` here because none of it wou
 reimplementation of the game, and their specificity shows in the reuse rating instead. What counts
 as `amiga` is the little that imitates the hardware rather than driving the emulator that does:
 
-- `sf-conform/src/sound_events.rs` (430): Paula's latching, reproduced to reduce writes to events (a
-  sample's address and length as the DMA latches them at the channel's start, period and volume as
-  the frame leaves them).
-- `Cpu68k`'s hardware mode (`set_hardware`, `set_hardware_read`): the routine runner records custom
-  writes, runs area-mode blits, reproduces a CPU read of a write-only register as vAmiga does, and
-  steps `VHPOSR` so a routine's raster waits end, standing in for the chipset.
+- What the toolkit's chapter counts as `amiga` (Paula's latching in `sound_events`, `Cpu68k`'s hardware mode), used here.
 - The bus and beam studies in `sf-conform/examples/`: `slot_lamps_sim.rs` and `fade_bus.rs` run
   routines on the story's bus model, `slot_audio.rs` runs `AudioDma`, and `fit.rs` fits the level's
   beam costs (`sf_core::level::beam::Cost::cycles`) to the original's positions.
@@ -180,24 +152,7 @@ way to find out is to plant divergences (as `runner.rs`'s
 
 ### The vAmiga patches
 
-Five patches to the core at `VAMIGA_COMMIT`, applied by `toolkit/tools/setup/oracle.sh`; their SHA-1 is part
-of the build path and of `sf_oracle::BUILD`, so every trace and sync-point cache key changes with
-them. Each hook is a null function pointer in the core that the shim installs.
-
-| Patch | Hook or access | What it exposes | Why |
-|---|---|---|---|
-| `0001-custom-write-hook.patch` | `vamiga_custom_write_hook` in `Memory::pokeCustom16` | every custom-register write, CPU or copper, with the beam position, before it takes effect | check 3's Paula writes (`FrameCapture::paula`), the beam anchors (`Amiga::blit_starts`, each Paula write's line and slot), `Amiga::cpu_writes` (COP1LC for check 4's scene), `Amiga::watch_write` |
-| `0002-shim-access.patch` | `SfShimAccess` a friend of `Emulator` | the emulator's private power-on and per-frame stepping | step one frame synchronously on the caller's thread, with no emulator thread or wall clock, so a run is deterministic and repeatable |
-| `0003-keyboard-access.patch` | `SfShimAccess` a friend of `Keyboard` | the key-down matrix | vAmiga snapshots do not carry the ports' and keyboard's held state; `seatInput` re-seats them after `Amiga::restore`, so a cached sync point continues as the run that made it |
-| `0004-audio-sample-hook.patch` | `vamiga_audio_sample_hook` in Paula's state machine (`penhi`, `penlo`) | each new DAC value per channel, with volume and beam position | `FrameCapture::taps`, the original's channel output for `channels` and `paula_vs_oracle.rs` |
-| `0005-irq-entry-hook.patch` | `vamiga_irq_hook` in `Moira::willInterrupt`, `vamiga_blit_hook` in the blitter's begin, busy-clear and end | interrupts taken and blitter events with their beam position | `Amiga::irqs` for the handler's entry fed to the engine (owner, T46), `Amiga::blit_events` for the story's draw timing |
-
-The shim adds what needs no patch: snapshots, RAM reads and pokes, the CPU's registers at the frame
-boundary (`Amiga::cpu`), per-line CPU samples for profiling (`Amiga::line_samples`), and RAM copied
-at the first CPU write of a value to a register (`Amiga::watch_write`). `Cpu68k` compiles a private
-copy of Moira from the same source tree in its own namespace, with `shim/moira-stub/` standing in
-for the two vAmiga headers Moira includes, because vAmiga's copy has its memory interface bound to
-the emulated Amiga.
+The five patches to the vAmiga core are in the toolkit's [verification](../../../../toolkit/docs/architecture/verification.md), with what each exposes.
 
 The oracle also patches the original game, in emulated RAM, not the core: `freeze` writes `rts` over
 spawners the engine does not model (a case's `[[exclude]]`), and `sync::step_inserting` rewrites
@@ -215,10 +170,10 @@ The Amiga-shaped parts of this chapter, and the check that proves each.
 | Custom-write capture (patch 0001) | Every Paula write with its beam position, in order | every case's check 3; `a_paula_divergence_shows_the_first_differing_write_with_its_index` (`games/superfrog/engine/crates/sf-conform/tests/runner.rs`) |
 | DAC taps (patch 0004) | Each channel's DAC value at every change | `channel_taps_are_the_references_at_every_clock_through_the_title_music` (`games/superfrog/engine/crates/sf-conform/tests/paula_vs_oracle.rs`) |
 | Interrupt and blitter events (patch 0005) | Each blit's begin, free and end with its beam, flagged when past the frame's end; the interrupts taken | `a_frame_of_the_intro_has_its_bltsize_writes_and_each_blits_begin_free_end`, `a_blit_run_past_the_frames_end_is_flagged_next` (`games/superfrog/engine/crates/sf-oracle/tests/blits.rs`); `draws_write_their_blits_on_the_originals_cycles` (`games/superfrog/engine/crates/sf-conform/tests/story_draws.rs`, which reads `Amiga::irqs`) |
-| Paula latching in `sound_events` | Writes reduce to the same events whatever their order in a frame; a sample's address and length latch at its start | `sound_events_from_writes`, `sound_events_reordered_in_a_frame_or_shifted_2_frames_match`, `sound_events_3_frames_apart_or_a_different_sample_fail`, `a_change_just_before_its_channel_stops_need_not_be_met` (`games/superfrog/engine/crates/sf-conform/tests/faithful.rs`) |
+| Paula latching in `sound_events` | As the toolkit's chapter says | the toolkit's `amiga-conform` tests; every case's check 3 |
 | The original's pacing read (`sync::pacing`, `mid_pass`) | A late pass is not a divergence; frames ending mid-pass are left out, a lag re-synced or failed, and a case fails past its lag limit | `a_resync_after_lag_fails_a_case_that_forbids_it`, `a_case_fails_once_the_original_stays_mid_pass_past_its_limit` (`runner.rs`); `a_faithful_case_fails_once_the_original_stays_mid_pass_past_its_limit` (`faithful.rs`); `a_late_cut_the_engine_cannot_reach_ends_the_frame_as_normal_play_does` (`games/superfrog/engine/crates/sf-conform/tests/alone.rs`) |
 | Beam-race excusal (`RACE_LINES`, `picture_except`) | A frame differing only on rows a draw raced the beam on is excused and counted, never silently | `a_frame_differing_only_on_raced_lines_is_excused` (a difference on a row not raced is not excused), `a_frame_differing_only_on_raced_lines_does_not_diverge` (`games/superfrog/engine/crates/sf-conform/src/compare.rs` unit tests); `the_slot_machine_attract_loop_draws_as_the_original_does` (`games/superfrog/engine/crates/sf-conform/tests/front.rs`: races seen, at most 45) |
-| Pass matching (`PassMatch`) | State compared by pass count, a pass a frame late on one side not a difference | `state_is_matched_by_pass_count` (`faithful.rs`) |
+| Pass matching (`PassMatch`) | State compared by pass count | the toolkit's `state_is_matched_by_pass_count`; every case's check 1 |
 | Transplant and probe | The engine started from the original's memory probes back the original's values | `transplant_then_probe_returns_the_originals_values` (`runner.rs`) |
 | `Cpu68k` hardware mode | A routine touching the chipset is refused outside hardware mode; in it, raster waits end, blits run and custom writes are recorded | `custom_chip_and_cia_accesses_are_errors_with_the_pc` (`games/superfrog/engine/crates/sf-oracle/tests/routine.rs`); the routine suites that use `Rig` (`items_routines.rs`, `enemies_w1_routines.rs` and the rest) |
 | Beam cost fitting and bus studies (`fit.rs`, `slot_lamps_sim.rs`, `fade_bus.rs`) | Tools, not behaviour; what they fitted is proven in the engine | no check runs them; `the_cost_model_alone_puts_paula_writes_on_the_originals_lines` (`games/superfrog/engine/crates/sf-conform/tests/beam.rs`) holds the fitted costs |
@@ -229,23 +184,11 @@ the title never lags, the RNG seed comes from the clock), so a native rewrite do
 
 ## Reuse
 
-Judged against another Amiga game by any developer (DESIGN §2.2). The machinery carries; the content
-does not.
+Judged against another Amiga game by any developer (DESIGN §2.2). The generic part below has gone to the
+toolkit, so the rating here is for what stays; the counts are of 2026-10-23, before it moved.
 
-**Generic, `as-is` to `small-changes`: 9 521 lines.**
-
-- `sf-oracle`'s harness, 3 843 lines: `amiga.rs`, `ffi.rs`, `routine.rs`, `trace.rs`, `lib.rs`,
-  the shim, `build.rs`, the five core patches (any OCS game; nothing in them names Superfrog).
-  `config.rs` needs the disk count and names and the `SUPERFROG_*` variables changed; the A500
-  configuration (OCS, 512K chip plus 512K slow, Kickstart 1.3) suits most OCS games and is a change
-  of a line for others.
-- `sf-conform`'s checks and plumbing, 3 339 lines: `compare.rs` (bar `PANEL_ROWS` and the panel
-  exclusion), `report.rs`, `sound_events.rs`, `channels.rs`, `script.rs` (bar the `C` token),
-  `feed.rs`, `main.rs`, `routine.rs` (whose `Rig` takes a port as `LevelCtx`, the engine's type).
-- `sf-e2e/src`, 1 333 lines: any macOS app with the same script layer; the binary's name and flags
-  change.
-- `faithful.rs` and `purity.rs`, 1 006 lines of tests: synthetic tests of the checks and the purity
-  rule, which carry with what they test.
+**Moved to the toolkit: 9 521 lines**, the harness, the checks and plumbing, `sf-e2e/src` and the synthetic tests.
+What stays of them is small: `compare.rs`'s `PANEL_ROWS` and panel exclusion, `script.rs`'s `C` token, and `config.rs`.
 
 **Approach carries, `big-changes`: 4 556 lines.** `sf-conform`'s `lib.rs` (the run loop: its
 shape carries, but loads, jobs, handler timing, the story's memory and the frog-only start are
@@ -269,9 +212,8 @@ puts 3.3k there as `small-changes` and most of the rest of `lib.rs`, `case.rs` a
 Team 17 game nothing here is likely to carry beyond what carries to any game, since the coupling is
 to Superfrog's addresses, not its formats (unchecked).
 
-The front matter carries the combined rating, `big-changes`, over 47 779 lines: the approach and a
-fifth of the code carry, and 70% of the lines are per game. The totals in the overview count all of
-it as `big-changes`; the split above is the better figure for a reuse estimate.
+The front matter rates what stays, `superfrog-only`: 70% of the lines counted were per game, and what carried has
+moved. The totals in the overview are of the tree before the move.
 
 ## Sources
 

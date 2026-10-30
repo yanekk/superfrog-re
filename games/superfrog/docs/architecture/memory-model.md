@@ -7,7 +7,6 @@ kind = "amiga"
 mix = { amiga = 80, game = 5, data = 15, shell = 0 }
 reuse = "big-changes"
 owns = [
-  "toolkit/crates/amiga-chips/src/memory.rs",
   "games/superfrog/engine/crates/sf-core/src/state.rs",
   "games/superfrog/engine/crates/sf-core/src/layout.rs",
   "games/superfrog/engine/crates/sf-core/src/mem.rs",
@@ -22,6 +21,8 @@ The mechanism the whole engine stands on: every original variable the engine mod
 the original's bytes at the original's address, and the ported 68000 routines read and write it
 by address, big-endian, as the 68000 does. Four pieces make it up.
 
+The Amiga's side of this, the A500's `Ram`, `AmigaMemory` and `SLOW_BASE` in `amiga-chips`, is the toolkit's [memory-model](../../../../toolkit/docs/architecture/memory-model.md). This chapter is what the game does on top.
+
 - **`State`** (`games/superfrog/engine/crates/sf-core/src/state.rs`): the bytes of every modelled variable, one
   `Vec<u8>` per layout entry, plus the few things the original keeps outside memory (`pause`, the
   program counter and `d0` while paused; `kbd`, the keyboard and CIA-A's serial register and flag) and two
@@ -32,9 +33,9 @@ by address, big-endian, as the 68000 does. Four pieces make it up.
   (`VarId`, the name from `games/superfrog/re/symbols.toml`, address, `Width`) in address order, declared by the
   `layout!` macro so one line makes the id, the entry and the bytes `State` keeps. `index_of` finds
   an entry by address with a binary search. The hunk bases (`H0`, `H1`, `H2`, `H3`, and `h0()` …
-  `h3()`) and the A500 memory picture (`Ram`, `AmigaMemory`, `SLOW_BASE`) live here too, and so
-  does the `presentation` tag (`presentation`, `presentation_piece`) that says which variables the
-  state check leaves to the picture and sound checks.
+  `h3()`) live here too, and so does the `presentation` tag (`presentation`, `presentation_piece`)
+  that says which variables the state check leaves to the picture and sound checks. The memory
+  picture (`Ram`, `AmigaMemory`, `SLOW_BASE`) is the toolkit's.
 - **The loaded executable image** (`games/superfrog/engine/crates/sf-core/src/mem.rs`): `Rom`, hunk 0 of `d1_c03`
   as the loader leaves it (`loaded_hunk0`, relocated to `HUNK_BASES`) with the tables the boot
   builds in it (`boot_tables`, `tile_heights`), hunk 2's contents and each world's tiles. What the
@@ -55,8 +56,8 @@ whose state is probed by address is [rust-engine DESIGN §3.3](../../../../plans
 `amiga` 80, `game` 5, `data` 15, `shell` 0.
 
 - **`amiga`**: `State`'s byte store and its by-address readers and writers, the `LAYOUT` table
-  (an address map of the original's memory, about 540 of `layout.rs`'s 916 lines), `Ram`,
-  `AmigaMemory`, the transplant and probe, the `presentation` tags, and `Bus`. All of it exists
+  (an address map of the original's memory, about 540 of `layout.rs`'s 916 lines), the transplant and
+  probe, the `presentation` tags, and `Bus`. All of it exists
   to make the engine's memory look like the A500's.
 - **`data`**: the first half of `mem.rs` (`loaded_hunk0`, `boot_tables`, `tile_heights`,
   `Rom::new`), which rebuilds the original's loaded image and boot-built tables.
@@ -254,7 +255,7 @@ read-only data source either way.
 The approach carries to any Amiga game whose port is checked against the original by memory:
 byte store, table-driven transplant and probe, a bus over the loaded image. Roughly 700 lines are
 generic and carry nearly as they are: `State`'s byte store and readers, `Width`, `VarDef` and
-`pieces`, `index_of`, `Ram`, `AmigaMemory`, `loaded_hunk0`, `Rom::byte`, `Bus`. The rest is
+`pieces`, `index_of`, `loaded_hunk0`, `Rom::byte`, `Bus` (`Ram` and `AmigaMemory` have already moved). The rest is
 rewritten per game: the 292-entry `layout!` list and its tests, the hunk bases (another game's
 loader places hunks elsewhere), `presentation`'s tags, `boot_tables` and `tile_heights`,
 `Rom::new`'s choice of files, the sound driver's special case, the named accessors, and the

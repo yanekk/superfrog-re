@@ -4,10 +4,9 @@ title = "The display hardware"
 tier = "mechanism"
 depth = "deep"
 kind = "amiga"
-mix = { amiga = 76, game = 5, data = 9, shell = 10 }
+mix = { amiga = 55, game = 12, data = 17, shell = 16 }
 reuse = "small-changes"
 owns = [
-  "toolkit/crates/amiga-chips/",
   "games/superfrog/engine/crates/sf-core/src/render/",
   "games/superfrog/engine/crates/sf-core/src/level/bobs.rs",
   "games/superfrog/engine/crates/sf-core/src/front/blit.rs",
@@ -34,6 +33,8 @@ level copper list line by line, the copper's timing, the fetch pipeline, the scr
 the sprites. This chapter covers how the engine copies that, and which parts are the Amiga's and
 which are Superfrog's.
 
+The Amiga's side of this, the copper, the blitter, `Picture` and the lores `draw` in `amiga-chips`, is the toolkit's [display-hardware](../../../../toolkit/docs/architecture/display-hardware.md). This chapter is what the game does on top.
+
 Files owned:
 
 - `games/superfrog/engine/crates/sf-core/src/render/mod.rs` is the renderer. `DisplayData` is what the disks
@@ -46,12 +47,8 @@ Files owned:
   advances the bitplane pointers by their modulos and runs each sprite's DMA. `level`,
   `level_as_drawn`, `level_widened`, `screen`, `story_screen` and `copper_writes` are the entry
   points, and `SpriteDma` follows DMACON's sprite bit on screens that turn it off.
-- `games/superfrog/engine/crates/sf-core/src/render/copper.rs` is the copper. `run_bus` runs a list for one frame
-  on the bus model: even DMA cycles, two per instruction word, never cycle `$E0`, losing the cycles
-  the bitplane fetch takes (`Fetch::takes`). WAIT and SKIP wake up as vAmiga's comparator does
-  (`comparator`, `find_match`, `horizontal_match`). It returns every register `Write` with its beam
-  position, and optionally every bus cycle it took, for the CPU and blitter models that need to
-  know which cycles are free. `Fetch` is the fetch set-up (BPLCON0, DIWSTRT/STOP, DDFSTRT/STOP).
+- `games/superfrog/engine/crates/sf-core/src/render/copper.rs` re-exports `amiga_chips::copper`, the copper run.
+  The slot machine and the story use `run_bus`'s bus cycles.
 - `games/superfrog/engine/crates/sf-core/src/render/panel.rs` holds `panel::fetch`, which turns one fetched line
   into colour indices. Despite its name it fetches every bitplane line, the play field's included.
   Each plane's words are read at their own fetch slot, so a write the beam is racing is seen on
@@ -72,22 +69,17 @@ Files owned:
   blit parameters (`blit_params`), builds the line offsets and the bob records' four sub-records
   (`sub_records`), and builds the sheet's mask with the blitter (`masks`). Then it points the
   frog's and the panel digits' sprite moves in the level copper list (`sprite_attach`).
-- `games/superfrog/engine/crates/sf-core/src/front/blit.rs` is the front end's blitter in area mode. `Blit::run`
-  covers ascending and descending, both shifts, first and last word masks and every minterm
-  (`logic`), on `State` or the story's RAM (`BlitMem`). `Blit::cycles` is a rough duration and
-  `word_times` the beam position of each word of a blit with priority.
+- `games/superfrog/engine/crates/sf-core/src/front/blit.rs` gives the toolkit's blitter the game's two memories
+  (`BlitMem` on `State` and on the story's RAM). The front end's blits all finish before the CPU looks
+  again (it waits on the blitter after each, h0+$19054).
 - `games/superfrog/engine/crates/sf-core/src/front/sprite.rs` holds the front end's sprite records (h0+$1b208
   `attach`, h0+$1b23e `update`). They put a sprite or an attached pair on screen by rewriting the
   SPRxPTH and SPRxPOS/CTL moves of a copper list, and step its animation.
 
 ### What the renderer produces, and what is the app's
 
-`Picture` is Amiga output. Its fields are what Denise produces for one field: an index per lores
-pixel inside the window DIWSTRT and DIWSTOP open (`left`, `top`, `width`, `height` in the
-hardware's own units), the 32 colour registers per line as the copper leaves them at the window's
-left edge, and the colour writes the copper makes inside a line (`Split`, from lores pixel `2h`).
-The oracle reports its picture in the same terms, so the two compare pixel for pixel
-(section 4).
+`Picture` is the toolkit's, and the oracle reports its picture in the same terms, so the two compare
+pixel for pixel (section 4).
 
 Widescreen is the app's extension (rust-engine DESIGN §2.7). `View::extra_columns_each_side`
 widens the window on both sides, and `left` may then be negative. On a level's lines the extra
@@ -131,15 +123,12 @@ cost of DESIGN §2.7.
 
 ## 2. Kind mix
 
-`amiga` 76, `game` 5, `data` 9, `shell` 10. Judged by reading each file and weighing its lines by
-the parts below. It is an estimate, not a count.
+`amiga` 55, `game` 12, `data` 17, `shell` 16, re-weighed on 2026-10-30 once the copper, the blitter and
+`Picture` had gone to `amiga-chips`. Judged by reading each file. It is an estimate, not a count.
 
-- **`amiga`.** Nearly all of `render/copper.rs`, the `Mem`/`Planes`/`Denise` half of
-  `render/mod.rs`, `render/panel.rs`, `render/objects.rs`, `Picture`, `Split` and `to_rgb12` in
-  `render/view.rs`, and all of `front/blit.rs`. In `level/bobs.rs`, the blit parameters, the mask
-  blits and the copper sprite moves. In `front/sprite.rs`, the SPRxPOS/CTL encoding. All of it
-  copies what OCS chips do with memory and registers, or what a routine writes into chip memory
-  for them.
+- **`amiga`.** The `Mem`/`Planes`/`Denise` half of `render/mod.rs`, `render/panel.rs` and
+  `render/objects.rs`: OCS imitation not yet in the toolkit. In `level/bobs.rs`, the blit parameters, the
+  mask blits and the copper sprite moves. In `front/sprite.rs`, the SPRxPOS/CTL encoding.
 - **`data`.** `DisplayData::new` and `hero_sprites` in `render/mod.rs`, which build hunk 2's
   contents and the frog's sprite frames from the disks as the original's boot and `load_hero`
   lay them out. In `level/bobs.rs`, `frame_records` copying the world's frame tables out of the
@@ -192,25 +181,22 @@ Where else the mechanisms appear, outside the files this chapter owns:
 
 This split drives the reuse rating (section 7).
 
-| Generic OCS imitation | Specific to Superfrog |
+| Generic OCS imitation still here | Specific to Superfrog |
 |---|---|
-| `copper::run_bus` and its comparator, `Fetch` (fetch window, plane order, OCS VSTOP bit 8), `Write`, `Beam` | `LEVEL_COPPER` (h2+$6bd0) and the list's layout ([games/superfrog/docs/12 "The copper list"](../12-display.md#the-copper-list)): two palettes for the panel, the black lines, the ring seam's reload, the second reload past line `$ff` |
-| `Denise::walk`: copper writes at beam positions, mid-line colour splits, modulos, the pipeline constant `PIPELINE` (17) and `HIRES_PIPELINE`, sprite clipping to lines with a fetch | The double buffer and its 19-row ring (`playfield::BUFFERS`, `RING`, `RING_OFFSET`, `COLUMN_OFFSET`), which only widescreen needs |
-| `panel::fetch`: one line's planes into indices, in lores or hires, each plane at its fetch slot | The panel's five planes of 14 lines, whose last two lines read into the frog's frames (a property of where Superfrog put them, reproduced by reading memory as it is) |
-| `objects::Sprite` and `compose`: sprite DMA from line 25, VSTART/VSTOP, a control write disarming, attached pairs, PF2P priority | `hero_sprites` (`load_hero`'s conversion) and `HERO_SPRITES`; `DisplayData`'s hunk 2 block (`accessing-picture`) |
-| `Picture`, `Split`, `to_rgb12`, extra-half-brite | `level/bobs.rs` entire: the frame record, sub-record and bob record formats, the sheet (`LnBO`, 320 × 320, five planes) and its mask at h3+$48190 |
-| `front::blit::Blit::run`, `logic`, `word_times`, `SpriteDma` | `front/sprite.rs`'s record format (`$1c` bytes) and its routines h0+$1b208, h0+$1b23e |
+| `Denise::walk`: copper writes at beam positions, mid-line colour splits, modulos, sprite clipping to lines with a fetch | `LEVEL_COPPER` (h2+$6bd0) and the list's layout ([games/superfrog/docs/12 "The copper list"](../12-display.md#the-copper-list)): two palettes for the panel, the black lines, the ring seam's reload, the second reload past line `$ff` |
+| `panel::fetch`: one line's planes into indices, in lores or hires, each plane at its fetch slot | The double buffer and its 19-row ring (`playfield::BUFFERS`, `RING`, `RING_OFFSET`, `COLUMN_OFFSET`), which only widescreen needs; the panel's five planes of 14 lines, whose last two lines read into the frog's frames (a property of where Superfrog put them, reproduced by reading memory as it is) |
+| `objects::Sprite` and `compose`: sprite DMA from line 25, VSTART/VSTOP, a control write disarming, attached pairs, PF2P priority; `SpriteDma` | `hero_sprites` (`load_hero`'s conversion) and `HERO_SPRITES`; `DisplayData`'s hunk 2 block (`accessing-picture`) |
+| | `level/bobs.rs` entire: the frame record, sub-record and bob record formats, the sheet (`LnBO`, 320 × 320, five planes) and its mask at h3+$48190; `front/sprite.rs`'s record format (`$1c` bytes) and its routines h0+$1b208, h0+$1b23e |
 
-The generic column is about two thirds of the 2 421 lines.
+Of the 2 421 lines counted on 2026-10-23, the generic part was about two thirds, counting what has since moved to `amiga-chips`.
 
 ### What the imitation leaves out
 
-This is what OCS can do that the engine does not model, because Superfrog does not use it. Another
-game might. Dual-playfield priority (only single-playfield PF2P is followed), HAM, interlace (the logo's
-is two copper lists alternating by field, `games/superfrog/engine/crates/sf-core/src/front/story/boot.rs`, which
-the copper run plays as ordinary lists; BPLCON0's LACE bit is not modelled), sprite and playfield collision registers, the blitter's line and fill modes, ECS and AGA
-registers, and the copper's danger bit. The level's blitter model in
-`games/superfrog/engine/crates/sf-core/src/level/objects.rs` also lacks descending mode. The front end's has it.
+What OCS can do that the engine does not model is listed in the toolkit's chapter, because Superfrog does
+not use it. Two notes are Superfrog's: the logo's interlace is two copper lists alternating by field,
+`games/superfrog/engine/crates/sf-core/src/front/story/boot.rs`, which the copper run plays as ordinary lists; and the
+level's blitter model in `games/superfrog/engine/crates/sf-core/src/level/objects.rs` lacks descending mode, which the
+front end's has.
 
 ## 4. What depends on it
 
@@ -268,10 +254,9 @@ engine to it today.
 
 | Behaviour to keep | Check that proves it |
 |---|---|
-| Copper timing: two cycles a word on even cycles, never `$E0`, the vertical blank taking cycle 0, one even cycle in four lost to a fifth plane inside the fetch window, WAIT waking with the comparator two cycles ahead. | `moves_take_two_cycles_a_word_and_a_wait_holds_until_its_line`, `the_copper_takes_the_vblank_cycle_and_its_fetches_but_not_a_waits`, `a_fifth_plane_slows_the_copper_inside_the_fetch_window` (`games/superfrog/engine/crates/sf-core/src/render/copper.rs`); every `render-*` case. |
-| A WAIT reached past cycle `$E0` of its line never fires that frame (the level list's second seam reload, games/superfrog/docs/12). | `a_wait_reached_past_cycle_e0_of_its_line_waits_for_the_next_frame` (`games/superfrog/engine/crates/sf-core/src/render/copper.rs`); the `render-*` cases whose seam is above line `$100`. |
-| Colours written inside a line change from lores pixel `2h` on: the panel's palette switched mid-line on line `$28`. | `copper_palette_effects_match_for_100_frames` (`games/superfrog/engine/crates/sf-conform/tests/render_vs_oracle.rs`); `a_split_recolours_its_line_from_its_pixel_on` (`games/superfrog/engine/crates/sf-core/src/render/view.rs`). |
-| OCS vertical window, with VSTOP's bit 8 the inverse of bit 7; bitplane DMA only inside it, so the panel's pointers advance from line `$27`. | `the_vertical_window_and_ocs_vstop_bit_8` (`games/superfrog/engine/crates/sf-core/src/render/copper.rs`); the `render-*` cases. |
+| The copper's timing and a WAIT past cycle `$E0` (the level list's second seam reload, games/superfrog/docs/12), held by the toolkit's unit tests. | Every `render-*` case; the `render-*` cases whose seam is above line `$100`. |
+| Colours written inside a line change from lores pixel `2h` on: the panel's palette switched mid-line on line `$28`. | `copper_palette_effects_match_for_100_frames` (`games/superfrog/engine/crates/sf-conform/tests/render_vs_oracle.rs`); the toolkit's `a_split_recolours_its_line_from_its_pixel_on`. |
+| OCS vertical window, so the panel's pointers advance from line `$27`. | The `render-*` cases; the toolkit's `the_vertical_window_and_ocs_vstop_bit_8`. |
 | The play field fetched from the shown display buffer through the scroll: BPLCON1 delay, pointer column, ring reload; the pipeline constant 17. | `w1_1_renders_as_the_original_while_it_scrolls_both_ways` (`games/superfrog/engine/crates/sf-conform/tests/render_vs_oracle.rs`, camera moving ≥160 px and ≥32 px); `scroll_latch_matches_the_original` (`games/superfrog/engine/crates/sf-conform/tests/level_routines.rs`); every `render-*` case. |
 | The display buffers are state: tiles, tile animations, bobs and scrolled-in rows as the original's blits left them, not drawn from the map. | `bob_draw_matches_the_original`, `tile_anim_draw_matches_the_original`, `buffer_flip_matches_the_original`, `copper_irq_blits_match_the_original` (`games/superfrog/engine/crates/sf-conform/tests/level_routines.rs`); the `render-*` cases on W2–W5, where drawing from the map was wrong on nearly every frame. |
 | The panel: five planes of 14 lines `$2a0` apart, its last two lines read past the fifth plane into the frog's frames. | The `render-*` cases (panel rows). No dedicated test. |
@@ -279,12 +264,12 @@ engine to it today.
 | The frog's sprite frames as `load_hero` builds them at h3+$4c0b0 (games/superfrog/docs/12 calls them byte-identical on the oracle). | `every_level_is_entered_as_the_original_enters_it` (`games/superfrog/engine/crates/sf-conform/tests/level_entry.rs`) compares every `LAYOUT` piece after entry, `hero_frames` among them; the `render-*` cases draw the frog from them. |
 | `bob_setup`: frame records, blit parameters, sub-records, line offsets, the mask as the OR of the sheet's planes, the sprite moves in the level list. | `every_level_is_entered_as_the_original_enters_it` (`bob_frames`, `bob_records`, `hunk3_gap` holding the mask, `level_copper`). |
 | Sprite DMA turned off by DMACON on a screen (the slot machine's list on line 107, the progress map's blinking marker). | The slot machine cases (`games/superfrog/engine/crates/sf-conform/tests/front.rs`, `the_slot_machine_plays_its_rounds_as_the_original_does`, case `games/superfrog/engine/conform/cases/slot-fire.toml`) under check 2; `game-whole` (`games/superfrog/engine/conform/cases/game-whole.toml`) through the progress map. |
-| The front end's blitter: shifts, masks, minterms, ascending and descending. | `minterms` (`games/superfrog/engine/crates/sf-core/src/front/blit.rs`); every front-end case's check 2 (`power_on_to_the_title_matches_the_original`, `the_attract_cycle_matches_the_original`, `the_level_code_entry_matches_the_original` in `games/superfrog/engine/crates/sf-conform/tests/front.rs`). |
+| The front end's blitter: shifts, masks, minterms, ascending and descending. | The toolkit's `minterms`; every front-end case's check 2 (`power_on_to_the_title_matches_the_original`, `the_attract_cycle_matches_the_original`, `the_level_code_entry_matches_the_original` in `games/superfrog/engine/crates/sf-conform/tests/front.rs`). |
 | Blits racing the beam land on the original's cycles (the story's masks and draws; the credits' `word_times`). | `scene_1s_masks_and_the_first_draw_begin_free_and_end_on_the_originals_cycles` (`games/superfrog/engine/crates/sf-conform/tests/story_blits.rs`); `draws_write_their_blits_on_the_originals_cycles` (`games/superfrog/engine/crates/sf-conform/tests/story_draws.rs`); `the_attract_cycle_matches_the_original` for the credits. |
 | The front end's sprite records: SPRxPOS/CTL encoding (x + `$80`, y + `$2c`, bit 8 of start and stop), attached pairs' second sprite, animation stepping. | The menu, level code and high-score cases (cursor, eye, pointer) under check 2: `the_level_code_entry_matches_the_original`, `the_hiscore_name_entry_after_game_over_matches_the_original` (`games/superfrog/engine/crates/sf-conform/tests/front.rs`). No unit test. |
 | The picture as the beam drew it: writes after the beam passed a line not shown on it (a late redraw); lines drawn before part of the main program ran show the older memory. | Check 2 on every stepped level case (frog, enemies, completion cases), which a transplant-only renderer would fail on about 4% of level frames ([games/superfrog/docs/12 "Late redraws"](../12-display.md#late-redraws)); `a_frame_ends_in_bob_draw_after_the_bobs_the_original_had_drawn` (`games/superfrog/engine/crates/sf-conform/tests/items_routines.rs`). |
 | Hires fetch, used only by the Team 17 logo (four hires planes): hires fetch units of four cycles in plane order 4, 2, 3, 1, `HIRES_PIPELINE`, and a lores pixel showing the first of its two hires pixels. | Case `games/superfrog/engine/conform/cases/story-boot.toml` (`story_boot` in `games/superfrog/engine/crates/sf-conform/tests/cases.rs`) under check 2, and the opening frames of `story-intro`. No unit test. |
-| Extra-half-brite: indices 32–63 show half the colour. | `extra_half_brite_halves_the_colour` (`games/superfrog/engine/crates/sf-core/src/render/view.rs`). Whether any Superfrog screen uses it is not established here; it costs nothing to keep. |
+| Extra-half-brite: indices 32–63 show half the colour. | The toolkit's `extra_half_brite_halves_the_colour`. Whether any Superfrog screen uses it is not established here; it costs nothing to keep. |
 | Widescreen (the app's, not the Amiga's): the centre equals the 4:3 picture; off the map is colour 0; outside a level the sides are the border. | `widescreen_keeps_the_centre_and_shows_colour_0_off_the_map` (`games/superfrog/engine/crates/sf-conform/tests/render_vs_oracle.rs`); `widescreen_mid_level_keeps_the_centre_and_the_game_of_the_4_3_run`, `widescreen_at_a_level_s_left_edge_shows_colour_0_off_the_map_and_nothing_wraps`, `widescreen_on_the_title_story_intro_and_slot_machine_shows_the_border_at_the_sides` (`games/superfrog/engine/crates/sf-e2e/tests/view.rs`); `a_buffer_line_maps_to_its_level_row_through_the_ring`, `past_the_map_s_edges_the_level_is_colour_0` (`games/superfrog/engine/crates/sf-core/src/render/playfield.rs`). |
 
 ## 6. Native sketch (non-binding)
@@ -312,9 +297,8 @@ address coupling resolved first ([memory-model](memory-model.md), [verification]
 
 Rating: **`small-changes`** for the whole. 2 421 lines (`python games/superfrog/tools/architecture.py totals`).
 
-The generic OCS part, about two thirds (section 3's table: the copper, Denise's walk, the fetch,
-sprite DMA and composition, `Picture`, the front end's blitter), carries to another Amiga game.
-The changes would be local:
+The generic OCS part still here (section 3's table: Denise's walk, the fetch, sprite DMA and composition)
+carries to another Amiga game, and the toolkit's chapter rates what has moved. The changes would be local:
 
 - `Mem`'s regions: what `DisplayData` puts at which address, and which `LAYOUT` variables the
   display reads.

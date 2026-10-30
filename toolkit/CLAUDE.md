@@ -16,3 +16,4 @@ to start a game. A game depends on it by path, so a toolkit change and its use l
 
 - [docs/reuse-for-another-game.md](docs/reuse-for-another-game.md): what carried to the toolkit, what stayed per game, and the toolkit's history.
 - [docs/explorer-go-explore-idea.md](docs/explorer-go-explore-idea.md): backlog, an archive-return-explore search for routing and bug finding.
+- [docs/architecture/](docs/architecture/display-hardware.md): the hardware and the toolkit crates, six chapters: display, CPU time and the beam, frame and input, memory, sound, verification.

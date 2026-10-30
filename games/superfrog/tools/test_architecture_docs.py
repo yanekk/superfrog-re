@@ -37,6 +37,13 @@ class RealTree(unittest.TestCase):
         self.assertEqual([p for p in problems if 'toolkit/' in p and 'stale' not in p], [])
         self.assertEqual(sorted(assignment), files)
 
+    def test_the_six_hardware_chapters_are_in_both_trees(self):
+        chapters = arch.load_chapters(ROOT)
+        for cid in ('display-hardware', 'cpu-time-and-beam', 'frame-interrupts-input',
+                    'memory-model', 'sound-chip', 'verification'):
+            self.assertEqual(chapters[cid]['path'], f'{arch.DOCS}/{cid}.md')
+            self.assertEqual(chapters['toolkit/' + cid]['path'], f'{arch.TOOLKIT_DOCS}/{cid}.md')
+
     def test_the_moved_table_points_at_real_folders_and_files(self):
         for old, new in arch.MOVED.items():
             self.assertFalse(os.path.exists(os.path.join(ROOT, old)), f'{old} still exists')
@@ -46,11 +53,12 @@ class RealTree(unittest.TestCase):
 
     def test_front_matter_is_valid(self):
         chapters = arch.load_chapters(ROOT)
-        self.assertEqual(len(chapters), 17)
+        self.assertEqual(len(chapters), 23)
         self.assertEqual(arch.validate(chapters, ALLOW_TBD), [])
 
     def test_every_cited_path_exists(self):
-        md = sorted(f'{arch.DOCS}/{n}' for n in os.listdir(os.path.join(ROOT, arch.DOCS)) if n.endswith('.md'))
+        md = sorted(f'{docs}/{n}' for docs in (arch.DOCS, arch.TOOLKIT_DOCS)
+                    for n in os.listdir(os.path.join(ROOT, docs)) if n.endswith('.md'))
         self.assertEqual(arch.check_paths(ROOT, md), [])
 
     def test_totals_prints_a_row_per_chapter_and_exits_0(self):
@@ -90,6 +98,15 @@ class Assign(unittest.TestCase):
             'story': chapter('story', [src + 'front/story/', src + 'front/ending.rs'])})
         self.assertEqual(problems, [])
         self.assertEqual(assignment, {files[0]: 'front-end', files[1]: 'story', files[2]: 'story'})
+
+    def test_a_file_owned_across_the_toolkit_game_line_is_reported(self):
+        toolkit = chapter('t', ['games/superfrog/engine/crates/a.rs'], path='toolkit/docs/architecture/t.md')
+        game = chapter('g', ['toolkit/b.rs'])
+        _, problems = arch.assign(['games/superfrog/engine/crates/a.rs', 'toolkit/b.rs'],
+                                  {'toolkit/t': toolkit, 'g': game})
+        self.assertEqual(problems, [
+            'games/superfrog/engine/crates/a.rs is owned across the toolkit/game line, by toolkit/t',
+            'toolkit/b.rs is owned across the toolkit/game line, by g'])
 
     def test_a_chapter_may_own_nothing(self):
         _, problems = arch.assign(['games/superfrog/engine/crates/a.rs'],
@@ -161,6 +178,18 @@ class FrontMatter(unittest.TestCase):
             chapters = arch.load_chapters(d)
         self.assertEqual(list(chapters), ['level'])
         self.assertEqual(chapters['level']['path'], 'games/superfrog/docs/architecture/level.md')
+
+
+class BothTrees(unittest.TestCase):
+    def test_chapters_load_from_both_trees_keyed_apart(self):
+        with tempfile.TemporaryDirectory() as d:
+            for folder in (arch.DOCS, arch.TOOLKIT_DOCS):
+                os.makedirs(os.path.join(d, folder))
+                with open(os.path.join(d, folder, 'level.md'), 'w') as f:
+                    f.write('+++\nid = "level"\n+++\n# The level\n')
+            chapters = arch.load_chapters(d)
+        self.assertEqual(sorted(chapters), ['level', 'toolkit/level'])
+        self.assertEqual(chapters['toolkit/level']['path'], 'toolkit/docs/architecture/level.md')
 
 
 class CitedPaths(unittest.TestCase):
