@@ -13,7 +13,7 @@ me for help", and (2026-10-26) "I need to see where planner is stuck before I he
 
 **How to apply:**
 1. Show the stall first: `cd games/superfrog/engine && cargo run --release -p sf-routeview -- route.txt [--guide g.txt]`
-   (or `--planner`), page `build/route-viz/index.html`; name the spot `<level-id>:<col>,<row>`.
+   (or `--planner`), page `games/superfrog/build/route-viz/index.html`; name the spot `<level-id>:<col>,<row>`.
 2. `python3 games/superfrog/tools/handover.py ROUTE.txt <level> <col>,<row>`: app script with fast-until, record,
    keys from the owner's settings.toml (the owner jumps with Space), and the owner's command.
 3. `python3 games/superfrog/tools/recording_guide.py <zip>` → guide; `sf-plan <level> --guide-ordered --guide <it>`;

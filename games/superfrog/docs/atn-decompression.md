@@ -1,6 +1,6 @@
 # ATN! decompression
 
-Moved from Claude's memory 2026-10-30; checked against docs/03-atn-codec.md and the code. Corrected:
+Moved from Claude's memory 2026-10-30; checked against games/superfrog/docs/03-atn-codec.md and the code. Corrected:
 the note said emulation was the only working decoder and warned against a hand port. A Rust port now
 exists and is the product decoder; emulation is its reference.
 

@@ -1,6 +1,6 @@
 # T7MP level format
 
-Moved from Claude's memory 2026-10-30; checked against docs/04, docs/06, docs/14 and the render tool.
+Moved from Claude's memory 2026-10-30; checked against games/superfrog/docs/04, 06, 14 and the render tool.
 Corrected: World 6 colours (fix/world6-palette is merged: each level's own PALA list), and the "next"
 line, since a level edit now plays as a `.sflevel` with no repack.
 
@@ -17,7 +17,7 @@ Split (confirmed): tile index = cell & 0x3FF (0..839, matches 840-tile set); fla
 cell >> 10 (6-bit collision/behaviour, exact bits TBD via IFFC). This is the core data
 a map editor edits.
 
-Graphics/rendering (`games/superfrog/tools/render_levels.py` renders all 29 → build/levels/*.png):
+Graphics/rendering (`games/superfrog/tools/render_levels.py` renders all 29 → games/superfrog/build/levels/*.png):
 - Tileset = 134400-byte chunk = 840 tiles of 16x16, 5bpp, per-tile plane-major
   (160 B/tile). One per world; level→tileset matched by IFFP world id (L1..L6, LB
   bonus, LW world-map), NOT disk order (disk4 L6 levels precede their tileset d4_c07).
@@ -29,6 +29,6 @@ Graphics/rendering (`games/superfrog/tools/render_levels.py` renders all 29 → 
   (24/24 against the engine on World 6).
 - Verified vs a real screenshot: World 2 = grey stone castle, World 1 = blue-sky grassland.
 
-Next: map editor (view/edit, saved as `.sflevel`, docs/14). Writing back to an `.adf` needs an ATN!
+Next: map editor (view/edit, saved as `.sflevel`, [14-sflevel-format.md](14-sflevel-format.md)). Writing back to an `.adf` needs an ATN!
 *compressor* (only the decompressor exists, see [atn-decompression.md](atn-decompression.md)). Also
 refine flags-bit meanings.

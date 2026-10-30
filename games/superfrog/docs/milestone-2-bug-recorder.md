@@ -1,8 +1,8 @@
 # Milestone 2: the bug recorder
 
 Moved from Claude's memory 2026-10-30; checked against plans/bug-recorder (15 tasks ✅, REPORT.md) and
-docs/BUG-FIX.md. Corrected: this was a plan to come and is now built; kept as the record of why and of
-the owner's decisions. The procedure is docs/BUG-FIX.md.
+games/superfrog/docs/BUG-FIX.md. Corrected: this was a plan to come and is now built; kept as the record of why and of
+the owner's decisions. The procedure is [BUG-FIX.md](BUG-FIX.md).
 
 Decided 2026-10-15: once the `rust-engine` pir run finished, milestone 2 was a bug-report
 flow, planned separately with `pir plan`.
@@ -16,4 +16,4 @@ recording into a permanent case, fresh review, `Escape:` trailer.
 **Why:** the owner wants to report bugs without testing fixes themselves
 (knowledge/self-testing-faithful-bar.md).
 
-Update 2026-10-20: planned as `plans/bug-recorder/` (branch pir/bug-recorder), since built. Owner decisions: Start Level dialog (Lives 3/5/7, Energy 1–4 dropdowns), STOP ⌘., one zip in git-ignored `bugs/`, game over never ends a recording, quirk → report only, test block scoped to touched crates.
+Update 2026-10-20: planned as `plans/bug-recorder/` (branch pir/bug-recorder), since built. Owner decisions: Start Level dialog (Lives 3/5/7, Energy 1–4 dropdowns), STOP ⌘., one zip in git-ignored `games/superfrog/bugs/`, game over never ends a recording, quirk → report only, test block scoped to touched crates.

@@ -44,7 +44,7 @@ A fact true of Superfrog goes here even if it might hold elsewhere (root CLAUDE.
   and enemy (named, all worlds), events (coins, kills, hearts lost, jumps), a timeline, and where a
   failed route stops making progress. `cd games/superfrog/engine && cargo run --release -p sf-routeview --
   --planner` draws every smart-planner route with its verdict (failed / faults / clean, from
-  `bench/results.jsonl`); `-- route.txt [more.txt] [--guide waypoints.txt] [--out DIR]` draws any
+  `plans/smart-planner/bench/results.jsonl`); `-- route.txt [more.txt] [--guide waypoints.txt] [--out DIR]` draws any
   routes, a waypoint file overlaid. `sf-bench` redraws it after each guided set-C run
   (`--no-view` skips). Use it to show the owner a route or where one stalls instead of
   describing it; the library (`sf_routeview::dump::replay`) gives the same facts as data. The page
