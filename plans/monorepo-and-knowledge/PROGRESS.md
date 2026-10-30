@@ -1,0 +1,51 @@
+# Progress
+
+**Update this whenever a task changes state.** It is the handoff between sessions; a stale
+tracker costs the next session more than keeping it current ever saves.
+
+**What the build taught lives next door in [FINDINGS.md](FINDINGS.md)** — read the rows
+touching the task you pick up, and append yours there.
+
+**Sixty words to a Notes cell, counted.** Flat prose, no bold-per-clause, no aphorism. The
+cell is an index for the next session; the account is the commit message you are about to
+write, and writing it twice is what turns a tracker into a history nobody reads. **Whoever
+writes a cell also fixes the over-budget cell they walk past.**
+
+**Plan reviewed:** not yet — the plan reviewer marks it before the build starts
+*(Replaced by that session with the date and its verdict. The engine reads this line and
+refuses to build while it says "not yet": an unreviewed plan copies its defects into every
+task built from it, and no later review catches them.)*
+
+**Status:** Plan written, awaiting plan review; no task started, nothing blocked.
+**Last updated:** 2026-10-30
+**Next `pir-work` will:** T01-knowledge-tiers — the only task nothing waits on.
+
+## Tasks
+
+Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review · ✅ reviewed and
+done · ⛔ blocked, needs a human.
+
+**The Task cell is the task's kebab slug** (DESIGN §2.9) — the same name as its
+`tasks/T{nn}-{slug}.md` file and, in parallel mode, its worker's agent name. One name, not two
+to keep in sync.
+
+| # | Task | Depends on | State | Notes |
+|---|---|---|---|---|
+| T01 | knowledge-tiers | — | ⬜ | |
+| T02 | superfrog-move | T01 | ⬜ | |
+| T03 | playbook-and-template | T02 | ⬜ | |
+| T04 | games-forest-dumb | T03 | ⬜ | |
+
+A Notes cell holds what was built or what the review found, the test count, and one line per
+deviation from the task doc. A deviation needing a paragraph needs the commit message: name
+it here and point there.
+
+**A ✅ task's cell may be cut to one line** once the next task has been reviewed — its detail
+is in the commit and the file is read in full by every session from here on.
+
+**Review queue:** *(empty)*
+
+## Blocked on the user
+
+*(Anything waiting on a person: what it is, the exact command, what to look for. Empty is a
+good state and should say so.)*
