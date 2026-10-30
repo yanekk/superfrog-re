@@ -46,5 +46,6 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-30 | 📌 | ~/Documents/Amiga is not listable by sessions (macOS TCC): a worker cannot check the Forest Dumb zip names itself. T04 records them from the north-star; the owner's cracked-copy answer confirms the set. |
 | 2026-10-30 | 📌 | Fresh-copy run of the stored setup and test lines passes: Python 82 tests (2 skipped, 23 s), engine and toolkit suites exit 0; a warm engine run exceeded 30 min, so the everything scope is ~an hour. |
-| 2026-10-30 | 📌 | The `learned on:` marker already exists in four toolkit doc comments (toolkit-extract); the tier-names check reuses it, and its tests must keep those lines passing. |
+| 2026-10-30 | 📌 | The `learned on:` marker already exists in six toolkit doc comments (toolkit-extract); the tier-names check reuses it, and its tests must keep those lines passing. |

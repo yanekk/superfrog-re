@@ -89,10 +89,15 @@ The four writing rules, in the root CLAUDE.md:
 tools/check_tier_names.py scans toolkit/ and knowledge/ and exits non-zero with one line per
 offence, `path:line`. Banned tokens, matched case-insensitively with `[-_ ]+` interchangeable (so
 "forest dumb forever" matches "forest-dumb"): every games/*/ directory name, plus the literal
-prefix token `sf-` (Superfrog's crate prefix; the toolkit's own crates are amiga-*). Exempt: the
+prefix token `sf-` (Superfrog's crate prefix; the toolkit's own crates are amiga-*), plus the
+studio tokens team17 / team 17. Exempt: the
 repo's own name token superfrog-re, and any line containing `learned on:` anywhere in it — the
-marker four toolkit doc comments already use, so the check extends a convention instead of
+marker six toolkit doc comments already use, so the check extends a convention instead of
 inventing one. games/ itself, plans/ and the root CLAUDE.md are not scanned.
+
+This check replaces the toolkit's existing Rust name check (toolkit-checks/tests/names.rs), removed
+in T02: its bans are all covered here (game names, sf-*, team17/team 17), and one machine beats two
+rule sets that drift. The owner chose this at plan review (2026-10-30).
 
 The check exists because a rule without a machine behind it gets overturned by the first session
 it inconveniences. It runs as part of the toolkit scope and the everything scope (§2.4). If a
@@ -128,16 +133,19 @@ The path rules:
 - Engine-to-toolkit path dependencies: engine crates already depend on the toolkit by path
   (`../../../toolkit/crates/…`); the move rewrites them to `../../../../toolkit/crates/…`. Nothing
   else changes in the workspaces; the profile overrides in engine/Cargo.toml move with it.
-- Disk location: every disk_dir becomes `SUPERFROG_DISKS`, else `<repo>/games/superfrog/`, else
-  the repo root. The game owns its disks, so its folder is the default; the root fallback keeps
-  pre-move checkouts and the transition working, and it is what the owner's own checkout uses
-  until the run merges.
+- Disk location: every disk_dir becomes `SUPERFROG_DISKS`, else `<main checkout>/games/superfrog/`,
+  else the main checkout root, the main checkout resolved as today via the git common dir, so the
+  lookup works from any worktree. The game owns its disks, so its folder is the default; the root
+  fallback keeps post-move code working while the zips are still at the root (the transition, and
+  the owner's checkout until the run merges); §2.8 covers the old-code window after the move.
 - Generated output: the game's tools and sf-routeview write build/ (route-viz included) under
   games/superfrog/, and the app's bug zips default to games/superfrog/bugs/. Game artifacts live
   with the game.
 - The split points the draft names: the generic halves of re_listing.py and re_ghidra_import.py,
-  tools/setup/*, check_no_disk_data.py and their disk-free tests go to toolkit/tools/; Superfrog's
-  chunk table stays game-side; docs/architecture splits by whether the chapter's subject moved to
+  tools/setup/*, and the scan engine of check_no_disk_data.py go to toolkit/tools/ with tests that
+  run without the disks; Superfrog's
+  chunk table and the disk-data check's driver (disk lookup, ATN! chunk sources, .sflevel decode)
+  stay game-side; docs/architecture splits by whether the chapter's subject moved to
   toolkit/crates.
 - plans/ is untouched, including every path its files cite. History stays history.
 - The owner's disk zips move from the main-checkout root into games/superfrog/ as the task's last
@@ -192,9 +200,9 @@ game's disk note.
   merges, and no other task of this run touches disks), the root fallback keeps post-move code
   working against zips in either place, and the owner's app reads its cache, not the zips. A
   straggler test that cannot find the zips fails with the existing clear message.
-- A tool exists in two places (setup/oracle.sh is already in both root tools/setup/ and
-  toolkit/tools/setup/): the move merges the two copies and the root one is removed, so the two
-  never drift again.
+- The oracle setup script exists in two places: the real toolkit/tools/setup/oracle.sh, and a root
+  tools/setup/oracle.sh shim that checks for cmake and runs it. The move folds the shim's cmake
+  fallback into the toolkit script and removes the shim, so the two never drift again.
 
 ## 3. Architecture
 
@@ -257,8 +265,11 @@ preexisting disk-location environment variables; the selector writes nothing.
 | **Deliberately absent** | Node (nothing here needs it); no new pip packages; no per-project venv or toolchain |
 
 **The test command.** The block above is the end state: setup unchanged from the stored lines
-(measured: leaves the copy clean), the test line the selector. Until T02 merges, each branch keeps
-the stored three-line block in its own .pir/settings.json, so nothing breaks mid-build. The
+(measured: leaves the copy clean), the test line the selector. Nothing runs the block's test line
+mid-build: pir runs the plan's suite once, on the merged feature branch, after every task has
+merged (tests-at-end), by which time the selector exists, and per-task workers run only their
+regression sets. The stored three-line block stays in .pir/settings.json until T02 switches it in
+the same commit, so a single run mid-build keeps working. The
 selector redistributes exactly the stored commands, measured green in a fresh copy at plan time:
 the Python suite (82 tests, 2 skipped, ~23 s), the engine workspace and the toolkit workspace, all
 exit 0. The engine suite is the slow part — a warm re-run was stopped at 30 minutes — so the
@@ -340,6 +351,11 @@ transition, whatever order the steps land in.
   paths; neither gets split, because nothing forces the cost of two places to look yet.
 - Plan time: the memory emptying and the zip move are worker actions with scripts as seatbelts;
   both were pre-approved by the owner in draft 6 and both are one command back.
+- Owner, 2026-10-30 (plan review): the disk-data check splits — its scan engine goes to the
+  toolkit game-neutral, its Superfrog driver stays game-side. Tier 2 cannot hold Superfrog
+  specifics under rule 3, and the plan's own check would fail the tool as drafted.
+- Owner, 2026-10-30 (plan review): one name check, the Python one; the toolkit's Rust name test
+  is removed and its team17 ban folded in. One machine beats two rule sets that drift.
 
 ## 8. Explicitly out of scope
 

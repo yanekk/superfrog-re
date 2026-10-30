@@ -31,20 +31,30 @@ DESIGN §2.1, §2.4, §2.5.
   tools/empty_memory.sh and tools/__init__.py, and gains tools/test.sh, tools/select.py,
   tools/test_select.py. The rest
   moves: → toolkit/tools/: re_listing.py's generic half (hunk parse, relocate, print symbols —
-  nothing Superfrog-specific), re_ghidra_import.py and its test if it is disk-free (read it;
-  if it needs Superfrog data it stays game-side and tests the game's use),
-  check_no_disk_data.py + test_check_no_disk_data.py, setup/ (install-brew-deps.sh,
-  install-ghidra.sh, install-rust.sh, oracle.sh — the root oracle.sh merges over
-  toolkit/tools/setup/oracle.sh; diff them and keep the union, then remove the root copy),
+  nothing Superfrog-specific); re_ghidra_import.py's generic half (Ghidra project import, symbol
+  application from a toml, decompilation export) — if it still needs Superfrog data after the
+  split, keep the whole tool game-side and say why in the commit message;
+  check_no_disk_data.py's scan engine (the indexed-stride run finder over given source blobs
+  and repo files, game-neutral: no game names, no game formats, nothing disk-derived) with a new
+  synthetic-source unit test — its Superfrog driver (default disk lookup, ATN! chunk sources,
+  .sflevel decode) and its real-disks test stay game-side and import the toolkit core;
+  setup/ (install-brew-deps.sh,
+  install-ghidra.sh, install-rust.sh, oracle.sh — the root oracle.sh's cmake fallback folds into
+  toolkit/tools/setup/oracle.sh; diff them and keep the union, then remove the root shim),
   test_install_brew_deps.py, test_oracle_sh.py. → games/superfrog/tools/: everything else,
   including re_listing.py's Superfrog driver (chunk table, RAW_REGIONS, disks_dir, the atn
-  import, the CLI) importing the toolkit half, and all remaining test files.
+  import, the CLI) importing the toolkit half, the disk-data check's driver and its test, and
+  all remaining test files.
+- toolkit/crates/toolkit-checks/tests/names.rs: delete — tools/check_tier_names.py is the one
+  name check now (DESIGN §2.3); its team17/team-17 ban is folded into the checker's banned set.
 - games/superfrog/test.sh, toolkit/test.sh (new — Interface below), and
   games/superfrog/tools/move-disks.sh (new — the §5.3 script).
 - engine/crates/*/Cargo.toml: every `../../../toolkit/` becomes `../../../../toolkit/`.
 - Disk lookup (sf-conform/src/disks.rs, sf-oracle/src/config.rs, the game-side re_listing.py,
-  toolkit/tools/check_no_disk_data.py, sf-e2e/README.md): SUPERFROG_DISKS, else
-  `<repo>/games/superfrog/`, else the repo root (DESIGN §2.5); the error message names all three.
+  the game-side check_no_disk_data driver, sf-e2e/README.md): SUPERFROG_DISKS, else
+  `<main checkout>/games/superfrog/`, else the main checkout root — the main checkout resolved
+  as today via the git common dir (sf-conform/src/disks.rs main_checkout()), so the lookup works
+  from any worktree (DESIGN §2.5); the error message names all three.
 - Generated output: render_levels.py, find_secrets.py, export_annotated.py, unpack.py,
   extract_disks.py and sf-routeview write under games/superfrog/build/ (route-viz included);
   sf-app's bug-zip default folder becomes games/superfrog/bugs/, and handover.py,
@@ -52,6 +62,9 @@ DESIGN §2.1, §2.4, §2.5.
 - .gitignore: `engine/target/` → `games/superfrog/engine/target/` (build/, renders/, bugs/,
   *.zip, *.adf, *.sflevel already match at any depth).
 - .pir/settings.json: the test line becomes `["tools/test.sh"]`; setup lines unchanged.
+- .claude/settings.json: the four permission rules for tools/setup/* move with the scripts —
+  toolkit/tools/setup/install-rust.sh, install-brew-deps.sh, install-ghidra.sh, oracle.sh.
+  Permission rules name exact paths, so stale ones silently stop auto-approving the scripts.
 - README.md: every path updated; add a short "Repository layout" section naming the three
   projects and the knowledge tiers.
 - Root CLAUDE.md: T01 wrote it with final paths; fix anything it got wrong, nothing else.
@@ -84,7 +97,8 @@ def scope(changed: list[str], env: dict) -> dict:
 #   cd .. && NO_COLOR=1 venv/bin/python -m unittest discover -q -s toolkit/tools -p 'test_*.py' || [ $? -eq 5 ]
 #   venv/bin/python tools/check_tier_names.py
 
-# games/superfrog/test.sh (run from games/superfrog/):
+# games/superfrog/test.sh — anchors itself (cd "$(dirname "$0")"), so the selector's repo-root
+# cwd (DESIGN §2.4) holds whatever the caller's:
 #   cd engine && cargo test -q --workspace
 #   cd .. && NO_COLOR=1 ../../venv/bin/python -m unittest discover -q -s tools -p 'test_*.py' || [ $? -eq 5 ]
 
@@ -97,7 +111,9 @@ def scope(changed: list[str], env: dict) -> dict:
 
 - [ ] tools/test_select.py: the decision-2 cases — a game path, a toolkit path, each root file
   kind (.pir/, tools/, knowledge/, CLAUDE.md, README, requirements.txt, .gitignore), plans-only,
-  the all-override, an empty diff, mixed scopes merging by union, unparseable input → everything,
+  the all-override, an empty diff → everything (the widen-on-doubt rule: a branch identical to
+  main is a doubt, never a reason to run less), mixed scopes merging by union, unparseable input
+  → everything,
   and the purity source scan of select.py.
 - [ ] The moved Python suites pass from their new homes (the game's discover run and
   toolkit/tools').
@@ -106,12 +122,16 @@ def scope(changed: list[str], env: dict) -> dict:
   home, the Python count still 82 tests (2 skipped). Budget the session: the engine suite is the
   slow part, the everything scope ~an hour (FINDINGS 2026-10-30).
 - [ ] Grep checks after the move: no `engine/`, root `docs/` or moved `tools/<name>` references
-  outside plans/ (README, both CLAUDE.md files, .pir, scripts); no `../../../toolkit` left under
-  games/superfrog/engine/.
-- [ ] The disk_dir tests updated for the three-step default (env, game folder, root) and green.
+  in any tracked file outside plans/ — the moved docs included (docs/BUG-FIX.md,
+  docs/RE-WORKBENCH.md, the moved architecture chapters, engine/conform/README.md,
+  sf-e2e/README.md, toolkit/README.md all cite `tools/setup/…` today); no `../../../toolkit`
+  left under games/superfrog/engine/.
+- [ ] The disk_dir tests updated for the three-step default (env, main checkout's game folder,
+  main checkout root) and green.
 - [ ] tools/check_tier_names.py still passes — toolkit/ gained files, none may name a game
   unmarked.
-- [ ] check_no_disk_data.py passes from toolkit/tools/.
+- [ ] The split check_no_disk_data.py passes on both sides: the toolkit core from toolkit/tools/
+  (synthetic sources), the game-side driver from games/superfrog/tools/ (real disks).
 
 ## Done when
 

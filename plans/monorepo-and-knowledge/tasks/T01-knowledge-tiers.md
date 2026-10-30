@@ -51,7 +51,8 @@ exists; MEMORY.md lists the twelve files).
 ```
 tools/check_tier_names.py                    # exit 1, one line per offence: path:line
 # Banned tokens, case-insensitive, [-_ ]+ interchangeable (so "forest dumb forever" matches
-# "forest-dumb"): every games/*/ directory name, plus the literal prefix token "sf-".
+# "forest-dumb"): every games/*/ directory name, plus the literal prefix token "sf-",
+# plus the studio tokens team17 / team 17 (folded in from toolkit's Rust name check).
 # Exempt: the repo's own name token "superfrog-re", and any line containing "learned on:"
 # anywhere in it (a comment leader ///, //, #, ;, * is ignored). Scanned: toolkit/ and
 # knowledge/ only — games/, plans/ and the root CLAUDE.md are not scanned.
@@ -77,11 +78,12 @@ The four rules, as they go into the root CLAUDE.md (the draft's words, flattened
 ## Tests
 
 - [ ] tools/test_tier_names.py: a bare slug, an uppercase name, a hyphen/space variant, "forest
-  dumb forever", the `sf-` prefix, a "learned on:" line exempt (mid-line marker and in a ///
+  dumb forever", the `sf-` prefix, team17 / team 17, a "learned on:" line exempt (mid-line
+  marker and in a ///
   doc comment), the "superfrog-re" token exempt, knowledge/ scanned, toolkit/ scanned, games/
   not scanned, a synthetic games/<newname>/ directory makes its slug banned, exit codes.
 - [ ] The checker passes over this branch (run `venv/bin/python tools/check_tier_names.py`),
-  including the four existing "learned on:" lines in toolkit crate comments.
+  including the six existing "learned on:" lines in toolkit crate comments.
 - [ ] The stored test block still passes on this branch (nothing has moved; it is the baseline
   T02 must preserve): `NO_COLOR=1 venv/bin/python -m unittest discover -q -s . -p 'test_*.py'`,
   `cd engine && cargo test -q --workspace`, `cd toolkit && cargo test -q --workspace`.

@@ -29,10 +29,17 @@ DESIGN §2.7.
   the first plan adds real tests.
 - FINDINGS.md — the cracked-copy answer, dated, ✅.
 
+## Interface
+
+The template's five files, filled (T03's interface); games/forest-dumb/test.sh prints
+`forest-dumb: no tests yet` and exits 0 until the first plan adds real tests. The selector
+discovers the game by its games/*/ folder.
+
 ## Tests
 
-- [ ] tools/test.sh on this branch selects the game scope (the whole diff is under
-  games/forest-dumb/) and exits 0 through the stub.
+- [ ] tools/test.sh on this branch exits 0: the merge-base diff includes T02's root-file move,
+  so the scope widens to everything (DESIGN §2.4's accepted consequence), the stub running as
+  one suite among the rest.
 - [ ] The name check still passes: the banned list grew by "forest-dumb" (derived from games/*/);
   toolkit/ and knowledge/ stay clean.
 - [ ] The template copy check from T03, run against the new game directory, passes.

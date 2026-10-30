@@ -11,12 +11,8 @@ cell is an index for the next session; the account is the commit message you are
 write, and writing it twice is what turns a tracker into a history nobody reads. **Whoever
 writes a cell also fixes the over-budget cell they walk past.**
 
-**Plan reviewed:** not yet — the plan reviewer marks it before the build starts
-*(Replaced by that session with the date and its verdict. The engine reads this line and
-refuses to build while it says "not yet": an unreviewed plan copies its defects into every
-task built from it, and no later review catches them.)*
-
-**Status:** Plan written, awaiting plan review; no task started, nothing blocked.
+**Plan reviewed:** 2026-10-30 — 10 fixed, 3 decided with the user
+**Status:** Plan reviewed, awaiting the build start; no task started, nothing blocked.
 **Last updated:** 2026-10-30
 **Next `pir-work` will:** T01-knowledge-tiers — the only task nothing waits on.
 

@@ -16,7 +16,9 @@
       "Bash(tools/setup/install-rust.sh)",
       "Bash(tools/setup/install-brew-deps.sh)",
       "Bash(tools/setup/install-ghidra.sh)",
-      "Bash(tools/setup/oracle.sh)"
+      "Bash(tools/setup/oracle.sh)",
+      "Bash(tools/empty_memory.sh)",
+      "Bash(games/superfrog/tools/move-disks.sh)"
     ]
   }
 }
