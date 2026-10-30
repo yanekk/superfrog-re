@@ -8,6 +8,8 @@ mix = { amiga = 10, game = 0, data = 0, shell = 90 }
 reuse = "small-changes"
 owns = [
   "toolkit/README.md",
+  "toolkit/PLAYBOOK.md",
+  "toolkit/template/",
   "toolkit/CLAUDE.md",
   "toolkit/docs/",
   "toolkit/test.sh",

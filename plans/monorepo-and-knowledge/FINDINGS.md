@@ -47,7 +47,9 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 | Date | | Finding |
 |---|---|---|
 | 2026-10-30 | 🐞 | Open, predates T05: display-hardware.md §5 cites `widescreen_at_a_level_s_left_edge_shows_colour_0_off_the_map_and_nothing_wraps` and `widescreen_mid_level_keeps_the_centre_and_the_game_of_the_4_3_run`; neither is in view.rs. check_paths checks paths, not test names. |
-| 2026-10-30 | 📌 | T05: toolkit files must now be owned by a toolkit chapter, or test_architecture_docs.py fails. T03: put toolkit/PLAYBOOK.md and toolkit/template/ in toolkit/docs/architecture/verification.md `owns`, not the game's. |
+| 2026-10-30 | 📌 | T05: a toolkit file must be owned by a toolkit chapter, or test_architecture_docs.py fails. New toolkit files go in toolkit/docs/architecture/verification.md `owns`; T03's PLAYBOOK.md and template/ went there at the T05 merge. |
+| 2026-10-30 | 🐞 | Root .gitignore line `renders/    # derived…` has an inline comment git reads as pattern, so renders/ is not ignored (check-ignore exit 1). Open, seen in T03 review, left alone. |
+| 2026-10-30 | 📌 | Root README.md does not mention toolkit/PLAYBOOK.md or toolkit/template/. T03's doc does not ask for it, so it was left alone; T04, or a later README pass, is the natural place. |
 | 2026-10-30 | 🔄 | Owner accepted T02 at review with two Done-when items deferred: PIR_TEST_SCOPE=all not run on the branch, zips not moved. move-disks.sh is tracked under Blocked on the user in PROGRESS.md, for after the end-of-build suite. |
 | 2026-10-30 | 📌 | A partial disk set in games/superfrog/ gets three answers: disk_lookup.py takes it for any name holding `disk`, sf-oracle for any ` of 4`, sf-conform falls through to the root unless all four are there. Left as is. |
 | 2026-10-30 | 🔄 | Owner stopped T02's whole-suite run; it runs after the plan is built. move-disks.sh not run, since its seatbelt needs a green suite: run it after that run. Lookup falls back to the root meanwhile. |
