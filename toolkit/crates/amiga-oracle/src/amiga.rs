@@ -478,7 +478,7 @@ impl Amiga {
     }
 
     /// Write `bytes` at `addr` in chip or slow RAM before the next frame. Not a player's input:
-    /// only for a sync point the original offers no input route to (docs/12 "Reaching every
+    /// only for a sync point the original offers no input route to (a game's display notes, "Reaching every
     /// level"). Panics unless every byte is chip or slow RAM as the CPU sees it now.
     pub fn write_memory(&mut self, addr: u32, bytes: &[u8]) {
         let mut err = ErrBuf::new();

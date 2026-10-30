@@ -31,6 +31,7 @@ to keep in sync.
 | T02 | superfrog-move | T01 | ⬜ | |
 | T03 | playbook-and-template | T02 | ⬜ | |
 | T04 | games-forest-dumb | T03 | ⬜ | |
+| T05 | architecture-chapters-carve | T02 | ⬜ | |
 
 A Notes cell holds what was built or what the review found, the test count, and one line per
 deviation from the task doc. A deviation needing a paragraph needs the commit message: name

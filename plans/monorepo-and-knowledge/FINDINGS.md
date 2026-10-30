@@ -46,6 +46,13 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-30 | 🔄 | Owner accepted T02 at review with two Done-when items deferred: PIR_TEST_SCOPE=all not run on the branch, zips not moved. move-disks.sh is tracked under Blocked on the user in PROGRESS.md, for after the end-of-build suite. |
+| 2026-10-30 | 📌 | A partial disk set in games/superfrog/ gets three answers: disk_lookup.py takes it for any name holding `disk`, sf-oracle for any ` of 4`, sf-conform falls through to the root unless all four are there. Left as is. |
+| 2026-10-30 | 🔄 | Owner stopped T02's whole-suite run; it runs after the plan is built. move-disks.sh not run, since its seatbelt needs a green suite: run it after that run. Lookup falls back to the root meanwhile. |
+| 2026-10-30 | 🔄 | Owner kept the six hardware chapters game-side: they name the game on 322 lines and own game files. Added T05 to carve the generic parts into toolkit/docs/architecture/. No `learned on:` marking to pass the check. |
+| 2026-10-30 | 🐞 | DESIGN and T02 name tools/select.py, but that shadows stdlib `select` and breaks `import subprocess` for every script in tools/. Named tools/select_scope.py; test_select.py keeps its name. |
+| 2026-10-30 | 📌 | Owner's existing bug zips stay in the main checkout's root bugs/; the app now saves to games/superfrog/bugs/. bug_zips.rs reads the game folder if present, else the root; move-disks.sh moves disks only. |
+| 2026-10-30 | 📌 | T03: toolkit/PLAYBOOK.md and toolkit/template/ must be owned by a chapter (`owns` in games/superfrog/docs/architecture/verification.md) or test_architecture_docs.py fails. |
 | 2026-10-30 | 📌 | check_tier_names.py tokens have no right boundary, and `team 17` no left one: `steam 17` and `team 170` fail it. Left as is, the error is loud and only ever on the strict side. Also empty_memory.sh leaves dotfiles alone. |
 | 2026-10-30 | 📌 | T01 ran tools/empty_memory.sh: twelve memory files deleted, MEMORY.md is the pointer. The originals are gone, so a review compares notes with the code. Way back: copy the notes from the repo. |
 | 2026-10-30 | 📌 | ~/Documents/Amiga is not listable by sessions (macOS TCC): a worker cannot check the Forest Dumb zip names itself. T04 records them from the north-star; the owner's cracked-copy answer confirms the set. |

@@ -2,7 +2,7 @@
 
 What carries from one Amiga game to the next: the Rust crates under crates/, the RE tools, and how
 to start a game. A game depends on it by path, so a toolkit change and its use land in one commit.
-[README.md](README.md) lists the crates and how to test them.
+[README.md](README.md) lists the crates; `test.sh`, run from the repo root, is the toolkit's test command.
 
 ## Rules
 

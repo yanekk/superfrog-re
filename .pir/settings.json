@@ -1,5 +1,5 @@
 {
   "baseBranch": "main",
   "setup": ["python3 -m venv venv", "venv/bin/pip install -q -r requirements.txt"],
-  "test": ["NO_COLOR=1 venv/bin/python -m unittest discover -q -s . -p 'test_*.py' || [ $? -eq 5 ]", "cd engine && cargo test -q --workspace", "if [ -d toolkit ]; then cd toolkit && cargo test -q --workspace; fi"]
+  "test": ["tools/test.sh"]
 }

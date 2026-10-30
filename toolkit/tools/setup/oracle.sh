@@ -10,7 +10,7 @@
 #
 # No-op when the build is there. Parallel worktrees build once: a lock directory holds the builder's
 # PID, the others wait for it, and a lock left by a dead process is taken over by one of them.
-# Writes nothing in the repository. Needs cmake. Overrides (for tests): AMIGA_TOOLKIT_CACHE (default
+# Writes nothing in the repository. Needs cmake, and installs it through install-brew-deps.sh if missing. Overrides (for tests): AMIGA_TOOLKIT_CACHE (default
 # ~/.cache/amiga-toolkit), VAMIGA_URL, ORACLE_LOCK_POLL (seconds between looks at the lock, default 2).
 set -eu
 
@@ -78,6 +78,7 @@ if [ -f "$DEST/.done" ]; then
     exit 0
 fi
 
+command -v cmake >/dev/null 2>&1 || [ -x /opt/homebrew/bin/cmake ] || "$(dirname "$0")/install-brew-deps.sh"
 CMAKE=$(command -v cmake || echo /opt/homebrew/bin/cmake)
 [ -x "$CMAKE" ] || { say "cmake not found; install it (brew install cmake)" >&2; exit 1; }
 

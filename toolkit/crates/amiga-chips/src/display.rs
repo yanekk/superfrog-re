@@ -11,7 +11,7 @@ use crate::picture::{Picture, Split};
 
 /// Lores pixels from a line's first fetched bit to its display (Denise's pipeline): the fetch
 /// index of window pixel `x` is `left + x - (2 * DDFSTRT + 17) - delay`.
-/// learned on: Superfrog's level and panel against the vAmiga oracle (its docs/12, "Fetched lines").
+/// learned on: Superfrog's level and panel against the vAmiga oracle (its display notes, "Fetched lines").
 pub const PIPELINE: i32 = 17;
 /// The hires counterpart of [`PIPELINE`], in hires pixels (see [`Planes::index_hires`]).
 /// learned on: the Team 17 logo screen (hires) against the vAmiga oracle.
