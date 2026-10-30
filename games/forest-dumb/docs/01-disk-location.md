@@ -25,4 +25,6 @@ and the `!EAGLE_SOFT!` marker file. The executable and all 48 data files are byt
 WHDLoad package's (its executable after RNC unpacking). Whether the crack also changed the executable
 cannot be told without an uncracked image.
 
-<The cracked-copy answer goes here.>
+Decided 2026-10-30: the cracked `[cr WT]` set is game two's source. The faithful bar's measuring stick
+is this cracked release, whose executable may differ from the original's. An uncracked copy, if one
+turns up, is the thing to compare it against.

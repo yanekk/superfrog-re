@@ -46,6 +46,9 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-30 | 🐞 | PROGRESS.md's Blocked on the user no longer lists move-disks.sh, though the T02 row below says it does; a merge or reconcile dropped it. The owner's zip move is still pending. Open, left alone. |
+| 2026-10-30 | ✅ | Cracked-copy question answered in T04's session: proceed with the cracked [cr WT] two-disk set as game two's source. The faithful bar's measuring stick is that release; compare again if an uncracked copy appears. |
+| 2026-10-30 | 📌 | Root README.md's layout table and root CLAUDE.md's `today that is games/superfrog/` omit games/forest-dumb/. T04's doc lists neither, so both were left alone for a later pass. |
 | 2026-10-30 | 🐞 | Root .gitignore line `renders/    # derived…` has an inline comment git reads as pattern, so renders/ is not ignored (check-ignore exit 1). Open, seen in T03 review, left alone. |
 | 2026-10-30 | 📌 | Root README.md does not mention toolkit/PLAYBOOK.md or toolkit/template/. T03's doc does not ask for it, so it was left alone; T04, or a later README pass, is the natural place. |
 | 2026-10-30 | 🔄 | Owner accepted T02 at review with two Done-when items deferred: PIR_TEST_SCOPE=all not run on the branch, zips not moved. move-disks.sh is tracked under Blocked on the user in PROGRESS.md, for after the end-of-build suite. |

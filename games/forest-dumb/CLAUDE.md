@@ -15,7 +15,9 @@ it is built yet. Source of everything below: `plans/amiga-toolkit-prep/NORTH-STA
 Two AmigaDOS (OFS) `.adf` images in zips, kept outside the repo and never committed.
 Lookup and file names: [docs/01-disk-location.md](docs/01-disk-location.md).
 
-<The cracked-copy answer goes here.>
+Decided 2026-10-30: the cracked `[cr WT]` set is game two's source. The faithful bar's measuring stick
+is this cracked release, whose executable may differ from the original's. An uncracked copy, if one
+turns up, is the thing to compare it against.
 
 ## What's known (don't re-derive)
 
