@@ -515,7 +515,7 @@ mod tests {
     fn threads_storing_the_same_trace_all_succeed() {
         // Parallel tests in one process can make the same run at once; each write needs its own
         // temporary file, or one thread renames another's away and its store fails.
-        let dir = std::env::temp_dir().join(format!("sf-trace-race-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("amiga-trace-race-{}", std::process::id()));
         let t = sample();
         let path = dir.join("k.trace");
         let failed: usize = (0..4)
@@ -585,7 +585,7 @@ mod tests {
 
     #[test]
     fn a_stored_trace_reads_back_and_damage_is_seen() {
-        let dir = std::env::temp_dir().join(format!("sf-trace-unit-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("amiga-trace-unit-{}", std::process::id()));
         let t = sample();
         let path = dir.join("k.trace");
         store(&dir, &path, &t).unwrap();
