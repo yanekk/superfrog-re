@@ -12,7 +12,7 @@ worktree. Disks are copyrighted: they are never committed, nor is anything deriv
 
 The named default is the owner's copy, outside the repo: `~/Documents/Amiga`. Point
 `FOREST_DUMB_DISKS` there. A session cannot list that folder (macOS privacy protection), so the
-names below come from the owner's inspection of 2026-10-27, not from a check by a session.
+names below come from the north-star's record of 2026-10-27 (J1), not from a check by this session.
 
 The disk set itself: two zips, each holding one 901 120-byte OFS `.adf`, volume `FOREVER`:
 
