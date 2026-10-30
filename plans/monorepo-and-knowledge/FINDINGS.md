@@ -46,6 +46,7 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-30 | 🐞 | Root .gitignore line `renders/    # derived…` has an inline comment git reads as pattern, so renders/ is not ignored (check-ignore exit 1). Open, seen in T03 review, left alone. |
 | 2026-10-30 | 📌 | Root README.md does not mention toolkit/PLAYBOOK.md or toolkit/template/. T03's doc does not ask for it, so it was left alone; T04, or a later README pass, is the natural place. |
 | 2026-10-30 | 🔄 | Owner accepted T02 at review with two Done-when items deferred: PIR_TEST_SCOPE=all not run on the branch, zips not moved. move-disks.sh is tracked under Blocked on the user in PROGRESS.md, for after the end-of-build suite. |
 | 2026-10-30 | 📌 | A partial disk set in games/superfrog/ gets three answers: disk_lookup.py takes it for any name holding `disk`, sf-oracle for any ` of 4`, sf-conform falls through to the root unless all four are there. Left as is. |

@@ -14,7 +14,7 @@ writes a cell also fixes the over-budget cell they walk past.**
 **Plan reviewed:** 2026-10-30 — 10 fixed, 3 decided with the user
 **Status:** Plan reviewed, awaiting the build start; no task started, nothing blocked.
 **Last updated:** 2026-10-30
-**Next `pir-work` will:** review T03-playbook-and-template.
+**Next `pir-work` will:** T04-games-forest-dumb, T05-architecture-chapters-carve.
 
 ## Tasks
 
@@ -29,7 +29,7 @@ to keep in sync.
 |---|---|---|---|---|
 | T01 | knowledge-tiers | — | ✅ | |
 | T02 | superfrog-move | T01 | ✅ | |
-| T03 | playbook-and-template | T02 | 🔍 | PLAYBOOK.md, five-piece template, test_playbook.py (7 tests). Deviations: toolkit/CLAUDE.md indexes both (DESIGN §2.2); verification.md owns both. toolkit/test.sh's cargo half not run: no Rust changed, pir's whole suite covers it. |
+| T03 | playbook-and-template | T02 | ✅ | Clean, no fix commit. Eight mutations probed: seven red across test_playbook and the name check, the eighth was gutting the test itself. Template gitignore probed in a scratch repo. Root README gap stays a finding. cargo half: toolkit-checks only, no Rust changed. |
 | T04 | games-forest-dumb | T03 | ⬜ | |
 | T05 | architecture-chapters-carve | T02 | ⬜ | |
 
@@ -40,7 +40,7 @@ it here and point there.
 **A ✅ task's cell may be cut to one line** once the next task has been reviewed — its detail
 is in the commit and the file is read in full by every session from here on.
 
-**Review queue:** T03
+**Review queue:** *(empty)*
 
 ## Blocked on the user
 
