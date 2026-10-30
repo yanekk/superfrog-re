@@ -46,6 +46,7 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-30 | 📌 | check_tier_names.py tokens have no right boundary, and `team 17` no left one: `steam 17` and `team 170` fail it. Left as is, the error is loud and only ever on the strict side. Also empty_memory.sh leaves dotfiles alone. |
 | 2026-10-30 | 📌 | T01 ran tools/empty_memory.sh: twelve memory files deleted, MEMORY.md is the pointer. The originals are gone, so a review compares notes with the code. Way back: copy the notes from the repo. |
 | 2026-10-30 | 📌 | ~/Documents/Amiga is not listable by sessions (macOS TCC): a worker cannot check the Forest Dumb zip names itself. T04 records them from the north-star; the owner's cracked-copy answer confirms the set. |
 | 2026-10-30 | 📌 | Fresh-copy run of the stored setup and test lines passes: Python 82 tests (2 skipped, 23 s), engine and toolkit suites exit 0; a warm engine run exceeded 30 min, so the everything scope is ~an hour. |
