@@ -12,9 +12,9 @@ write, and writing it twice is what turns a tracker into a history nobody reads.
 writes a cell also fixes the over-budget cell they walk past.**
 
 **Plan reviewed:** 2026-10-30 — 10 fixed, 3 decided with the user
-**Status:** Plan reviewed, awaiting the build start; no task started, nothing blocked.
+**Status:** T01 implemented, awaiting review; nothing blocked.
 **Last updated:** 2026-10-30
-**Next `pir-work` will:** T01-knowledge-tiers — the only task nothing waits on.
+**Next `pir-work` will:** review T01-knowledge-tiers.
 
 ## Tasks
 
@@ -27,7 +27,7 @@ to keep in sync.
 
 | # | Task | Depends on | State | Notes |
 |---|---|---|---|---|
-| T01 | knowledge-tiers | — | ⬜ | |
+| T01 | knowledge-tiers | — | 🔍 | Tiers, twelve notes moved and corrected, memory emptied. 29 new tests. Deviations: fixed three toolkit lines the check flagged (trace.rs temp prefixes, names.rs literal); added tools/test_empty_memory.py; script also refuses unknown memory files; whole suite left to pir's end run. |
 | T02 | superfrog-move | T01 | ⬜ | |
 | T03 | playbook-and-template | T02 | ⬜ | |
 | T04 | games-forest-dumb | T03 | ⬜ | |
@@ -39,7 +39,7 @@ it here and point there.
 **A ✅ task's cell may be cut to one line** once the next task has been reviewed — its detail
 is in the commit and the file is read in full by every session from here on.
 
-**Review queue:** *(empty)*
+**Review queue:** T01
 
 ## Blocked on the user
 
