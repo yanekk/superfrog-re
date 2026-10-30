@@ -34,6 +34,7 @@ supply your own copies in the repo root before running the tools.
 | App: menus, keyboard and gamepad controls, save states, CRT filters and widescreen, playing a level from a `.sflevel` file | ✅ |
 | Bug recorder: start any level with chosen values, record play, save a bug zip an agent replays and compares with the original ([`docs/BUG-FIX.md`](docs/BUG-FIX.md)) | ✅ |
 | Engine architecture documented: every file classified as Amiga imitation, game logic, copied-in data or shell, rated for reuse in another Amiga game, with a recommended native rewrite order ([`docs/architecture/`](docs/architecture/README.md)) | ✅ |
+| [Amiga toolkit](#the-amiga-toolkit): the engine's game-free parts moved into `toolkit/`, a workspace with no Superfrog code or names that the engine uses by path; Superfrog's conformance unchanged | ✅ |
 | Map editor (view + edit + repack `ATN!` + rebuild `.adf`) | ⬜ next |
 
 **29 levels** found (all `300 × 84` blocks), stored as `ATN!`-packed `T7MP` files.
@@ -159,6 +160,27 @@ the original for the conformance checks: `cd engine && cargo run -q --release -p
 judges every case in [`engine/conform/`](engine/conform/README.md) (about 1¾ h), and
 [`engine/crates/sf-e2e`](engine/crates/sf-e2e/README.md) drives the real app end to end, the whole
 game included.
+
+## The Amiga toolkit
+
+[`toolkit/`](toolkit/README.md) holds the parts of the engine that carry to another Amiga game, with
+no Superfrog code, data or names in it: the chips and the beam clock (`amiga-clock`, `amiga-chips`
+with a display piece that draws a frame from chip memory, `amiga-paula`), input, disk formats and
+the recorder's game-free half (`amiga-input`, `amiga-disk`, `amiga-record`), the app's game-free
+parts (`amiga-app`), and the test tooling (`amiga-oracle`, the vAmiga reference; `amiga-conform`,
+the comparison harness's game-free half; `amiga-e2e`, the app driver). The engine uses these crates
+by path, so a change to the toolkit and its use land together. Superfrog's own rules, data and
+menus stay in `engine/`.
+
+```bash
+cd toolkit && cargo test -q --workspace   # its own workspace; also checks no game name and no sf-* dependency
+cd toolkit && cargo run -q -p dry-fit     # one made-up frame from the chips, clock and Paula crates alone
+```
+
+The dry fit is the proof the toolkit is enough to start game two on: a blit, a copper list, a drawn
+picture, a frame of the clock and a Paula note, each asserted by a test, built from toolkit crates
+only. The toolkit is still PAL's 313-line frame throughout and has no AmigaDOS file reader yet; both
+are game two's first steps ([`plans/amiga-toolkit-prep/`](plans/amiga-toolkit-prep/README.md)).
 
 ## Planning a route
 
