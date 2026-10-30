@@ -46,6 +46,10 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-30 | 📌 | Forest Dumb sources disagree on the year: north-star © 1998, zip names 1996. Both recorded verbatim in games/forest-dumb/; the first plan can settle it. Seen in T04 review. |
+| 2026-10-30 | 🐞 | PROGRESS.md's Blocked on the user no longer lists move-disks.sh, though the T02 row below says it does; a merge or reconcile dropped it. The owner's zip move is still pending. Open, left alone. |
+| 2026-10-30 | ✅ | Cracked-copy question answered in T04's session: proceed with the cracked [cr WT] two-disk set as game two's source. The faithful bar's measuring stick is that release; compare again if an uncracked copy appears. |
+| 2026-10-30 | 📌 | Root README.md's layout table and root CLAUDE.md's `today that is games/superfrog/` omit games/forest-dumb/. T04's doc lists neither, so both were left alone for a later pass. |
 | 2026-10-30 | 🐞 | Open, predates T05: display-hardware.md §5 cites `widescreen_at_a_level_s_left_edge_shows_colour_0_off_the_map_and_nothing_wraps` and `widescreen_mid_level_keeps_the_centre_and_the_game_of_the_4_3_run`; neither is in view.rs. check_paths checks paths, not test names. |
 | 2026-10-30 | 📌 | T05: a toolkit file must be owned by a toolkit chapter, or test_architecture_docs.py fails. New toolkit files go in toolkit/docs/architecture/verification.md `owns`; T03's PLAYBOOK.md and template/ went there at the T05 merge. |
 | 2026-10-30 | 🐞 | Root .gitignore line `renders/    # derived…` has an inline comment git reads as pattern, so renders/ is not ignored (check-ignore exit 1). Open, seen in T03 review, left alone. |
