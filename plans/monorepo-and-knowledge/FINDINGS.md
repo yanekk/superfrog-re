@@ -46,6 +46,7 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-30 | 🔄 | Owner stopped T02's whole-suite run; it runs after the plan is built. move-disks.sh not run, since its seatbelt needs a green suite: run it after that run. Lookup falls back to the root meanwhile. |
 | 2026-10-30 | 🔄 | Owner kept the six hardware chapters game-side: they name the game on 322 lines and own game files. Added T05 to carve the generic parts into toolkit/docs/architecture/. No `learned on:` marking to pass the check. |
 | 2026-10-30 | 🐞 | DESIGN and T02 name tools/select.py, but that shadows stdlib `select` and breaks `import subprocess` for every script in tools/. Named tools/select_scope.py; test_select.py keeps its name. |
 | 2026-10-30 | 📌 | Owner's existing bug zips stay in the main checkout's root bugs/; the app now saves to games/superfrog/bugs/. bug_zips.rs reads the game folder if present, else the root; move-disks.sh moves disks only. |

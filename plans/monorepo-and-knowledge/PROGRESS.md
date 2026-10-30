@@ -28,7 +28,7 @@ to keep in sync.
 | # | Task | Depends on | State | Notes |
 |---|---|---|---|---|
 | T01 | knowledge-tiers | — | ✅ | |
-| T02 | superfrog-move | T01 | 🔍 | Moved to monorepo layout; selector, project test.sh, tool splits, move-disks. Deviations: tools/select_scope.py not select.py (shadows stdlib select); six chapters stay game-side, owner, carried by T05; crate paths need five `../` not four; Ghidra script renamed ApplySymbols. |
+| T02 | superfrog-move | T01 | 🔍 | Moved to monorepo layout; selector, project test.sh, tool splits, move-disks. Deviations: tools/select_scope.py not select.py (shadows stdlib select); six chapters stay game-side, owner, carried by T05; crate paths need five `../` not four; Ghidra script renamed ApplySymbols. Whole suite not run (owner); zips not moved. |
 | T03 | playbook-and-template | T02 | ⬜ | |
 | T04 | games-forest-dumb | T03 | ⬜ | |
 | T05 | architecture-chapters-carve | T02 | ⬜ | |
