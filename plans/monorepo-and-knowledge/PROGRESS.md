@@ -28,7 +28,7 @@ to keep in sync.
 | # | Task | Depends on | State | Notes |
 |---|---|---|---|---|
 | T01 | knowledge-tiers | — | ✅ | |
-| T02 | superfrog-move | T01 | ⬜ | |
+| T02 | superfrog-move | T01 | ✅ | |
 | T03 | playbook-and-template | T02 | ⬜ | |
 | T04 | games-forest-dumb | T03 | ⬜ | |
 | T05 | architecture-chapters-carve | T02 | ⬜ | |
