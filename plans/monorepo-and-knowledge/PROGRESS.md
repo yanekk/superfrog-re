@@ -14,7 +14,7 @@ writes a cell also fixes the over-budget cell they walk past.**
 **Plan reviewed:** 2026-10-30 — 10 fixed, 3 decided with the user
 **Status:** Plan reviewed, awaiting the build start; no task started, nothing blocked.
 **Last updated:** 2026-10-30
-**Next `pir-work` will:** T01-knowledge-tiers — the only task nothing waits on.
+**Next `pir-work` will:** review T03-playbook-and-template.
 
 ## Tasks
 
