@@ -1,91 +1,43 @@
-# Superfrog RE — start here
+# superfrog-re — start here
 
-Reverse-engineering **Superfrog** (Team 17, 1993, Amiga) to build a **map editor**.
-The four Superfrog disk `.zip`s are the only source input; everything else is
-derived by the tools.
+One repository, three projects: the Amiga toolkit, and the games built on it, each reverse-engineered
+and rebuilt in Rust. Its name stays superfrog-re. **Working on a game (a level, a bug zip, a route, its
+tools)? Read `games/<game>/CLAUDE.md` first**; today that is `games/superfrog/`. For the toolkit, read
+`toolkit/CLAUDE.md`.
 
-> **Disk images are copyrighted and are NOT committed** (git-ignored). Put your own
-> `Superfrog (1993)(Team 17)(Disk N of 4)...zip` files in the repo root before running
-> the tools.
+## Where knowledge lives
 
-## Orientation
-- The project lives on **`main`** (landed via PR #1 from branch `re-env-to-main`).
-  Just work on `main` / a feature branch — there is no `superfrog-re-env` branch.
-- `build/` (extracted ADFs, decompressed chunks, rendered PNGs) is git-ignored and
-  regenerated. Before any render/secret/annotate tool: `python tools/extract_disks.py`
-  then `python tools/unpack.py`. Full setup in [`README.md`](README.md).
-- Findings are in [`docs/`](docs/) (read 01→07); [`README.md`](README.md) has the
-  quickstart, tool list, and status.
+| Tier | Holds | Where |
+|---|---|---|
+| 1 generic | how the owner works and decides, the pir method, the faithful bar, the owner's controls | this file; notes in `knowledge/`, indexed by `knowledge/KNOWLEDGE.md` |
+| 2 toolkit | what each toolkit piece does and its invariants, the oracle, the RE workbench, the playbook | `toolkit/CLAUDE.md`, `toolkit/docs/`, `toolkit/PLAYBOOK.md` |
+| 3 game | what's known, the disk set, formats, addressing, bug-fix procedure | `games/<game>/CLAUDE.md`, `games/<game>/docs/` |
 
-## What's known (don't re-derive)
-- **Disks** are a custom trackloader: back-to-back sector-aligned `ATN!` chunks.
-- **`ATN!` is a custom cruncher.** The Rust port in `engine/crates/sf-disk/src/atn.rs`
-  is the product decoder; `tools/atn.py` (the game's own 68k routine, emulated under
-  Musashi) is the reference it is tested against. Both decode 103/106 chunks as carved;
-  the other 3 need the next sector for their trailer (`docs/03`).
-- **Levels** are `T7MP` files: `[tag][u32 len][data]`. `BODY` = `300×84` grid of
-  16-bit cells = `tile index (low 10 bits) | flags (high 6 bits)`.
-- **Graphics:** 840 per-tile `16×16` 5bpp tiles per world; the 32-colour OCS palette
-  sits at offset `0x11300` in each world's sprite bank. See `docs/06`.
-- **Collision:** a cell is solid iff `flag & 0b11000 == 0b11000`; **flag 38 = fake
-  wall = secret passage** (`tools/find_secrets.py`, 144 found). See `docs/07`.
-- **The Rust engine plays the whole game** (`engine/`, plan `plans/rust-engine/`;
-  T213, the app's note timing, still open): `sf-core` is the game, `sf-app` the macOS app (`cd engine && cargo run
-  --release -p sf-app`; "Play it" in the README). It is **faithful, judged by machine**
-  (DESIGN §2.1): `sf-conform` runs the original on the vAmiga oracle and compares state,
-  picture, sound and milestones; `sf-e2e` drives the real app, the whole game included.
-  Read `plans/rust-engine/FINDINGS.md` before touching a mechanic.
-- **Routes are planned with `sf-plan`** (`engine/crates/sf-plan`, plan `plans/smart-planner/`), the one
-  level-routing tool; `plan_bonus` stays for the bonus level. README "Planning a route".
-- **Levels from files:** the app plays a `.sflevel` (JSON of the level's original files,
-  DESIGN §2.10) in place of a disk level, and exports any disk level to one.
-- **Handed a bug zip** (`bugs/bug-<level>-<date>.zip`, "fix the bug in …"): follow
-  [`docs/BUG-FIX.md`](docs/BUG-FIX.md) step by step: replay it, compare it with the original, then
-  a quirk report or a fix with a new conformance case (plan `plans/bug-recorder/`).
-- **Seeing a route: `sf-routeview`.** Replays app-timed routes (`# timing: app`) on the engine
-  and writes `build/route-viz/index.html`: the level map, the frog's path, every coin, collectible
-  and enemy (named, all worlds), events (coins, kills, hearts lost, jumps), a timeline, and where a
-  failed route stops making progress. `cd engine && cargo run --release -p sf-routeview --
-  --planner` draws every smart-planner route with its verdict (failed / faults / clean, from
-  `bench/results.jsonl`); `-- route.txt [more.txt] [--guide waypoints.txt] [--out DIR]` draws any
-  routes, a waypoint file overlaid. `sf-bench` redraws it after each guided set-C run
-  (`--no-view` skips). Use it to show the owner a route or where one stalls instead of
-  describing it; the library (`sf_routeview::dump::replay`) gives the same facts as data. The page
-  holds disk graphics: keep it in `build/`, never commit it.
-- **When the planner struggles, ask the owner to play it** (owner, 2026-10-25). A level routing job
-  whose `sf-plan` finds no exit on two seeds, or stalls at the same spot twice, stops and asks the
-  owner instead of adding per-level hints or tuning. First show where it is stuck with
-  `sf-routeview` (above): the failed routes, with `--guide` the guide they followed, and the
-  progress-stops marks; name the spot as `<level-id>:<col>,<row>`. Then hand over one command that
-  starts the app a little before it: `python3 tools/handover.py ROUTE.txt <level> <col>,<row>`
-  writes the app script (a route there, fast-forwarded with `fast-until`, the recorder on, every key
-  released and a pause; keys from the owner's Controls mapping, he jumps with Space) and prints the
-  owner's command. The owner plays the stretch and saves the recording with ⌘.; `python3
-  tools/recording_guide.py <zip>` turns it (lead-in and his play, from the level's start) into the
-  guide to plan again with, `sf-plan <level> --guide-ordered --guide <it>`; show the new route in
-  `sf-routeview` with that guide overlaid. W6-4's seed 3 failed the same way on every run and
-  finished first time with a 44-second recording of its climb. This is for routing work: the
-  smart-planner benchmark's numbers stay unaided.
+Each tier's `CLAUDE.md` is rules and an index, one line a note. `plans/{slug}/FINDINGS.md` stays the
+per-plan log; a finding that outlives its plan is promoted to a tier note when the plan finishes.
 
-## Tile addressing (how the user points at spots)
-`tools/export_annotated.py` makes per-level images with a col/row grid + level id.
-Address a tile as **`<level-id>:<col>,<row>`** (0-indexed, top-left origin), e.g.
-`W1-1:94,51`. Level-id ↔ chunk map and every passage's id are in
-[`docs/LEVEL-INDEX.md`](docs/LEVEL-INDEX.md). When the user says "missing secret
-passage at `<id>`", resolve id → level chunk, then inspect that tile's index+flag.
+## The four knowledge rules
 
-## Next up
-Map editor, a new plan: view + **edit** `BODY`, saved as a `.sflevel` the engine plays
-(File ▸ Play Level File…), so an edit is tried in the faithful engine with no repack.
-Writing back to an `.adf` still needs an `ATN!` *compressor* — only the decompressor
-exists (see `docs/03`). Also still open: the rarer collision flags (hazards / one-way /
-water) and flag-0-through-terrain passages (deliberately excluded from the secret count
-as ambiguous).
+1. Write at the lowest tier where it is true. A Superfrog fact goes in `games/superfrog/`, even if it
+   might hold elsewhere.
+2. Promote when a second user confirms it. A lesson a game note holds that proves true for another
+   game moves up to `toolkit/` (or tier 1 for a way of working), in the commit that shows it.
+3. No game names above tier 3. The name check (`tools/check_tier_names.py`) enforces it: `toolkit/`
+   and `knowledge/` must not name a game except in a marked `learned on:` line.
+4. Claude's memory keeps only what is about this machine or this conversation; anything a future
+   session needs goes in the repo.
+
+## The bar
+
+A game's engine is faithful to the original, judged by machine against the original on the oracle,
+never by the owner playing or looking (`knowledge/self-testing-faithful-bar.md`).
 
 ## Conventions
-Do RE work on a feature branch and open a PR to `main`. Never commit the
-copyrighted disk images (they are git-ignored).
-Commit tools/docs (small); leave regenerable `build/` artifacts out of git.
+
+- Disk images and ROMs are copyrighted and are **never committed** (git-ignored). Nor is anything
+  derived from them. Bring your own copies; each game's `CLAUDE.md` says where they go.
+- Do RE work on a feature branch and open a PR to `main`. Commit tools and docs (small); leave
+  regenerable `build/` artifacts out of git.
 
 <!-- ─────────────────────────────────────────────────────────────────────────
      Appended by plan-implement-review. Everything above this line is the
