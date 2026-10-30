@@ -46,6 +46,7 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-30 | 📌 | Forest Dumb sources disagree on the year: north-star © 1998, zip names 1996. Both recorded verbatim in games/forest-dumb/; the first plan can settle it. Seen in T04 review. |
 | 2026-10-30 | 🐞 | PROGRESS.md's Blocked on the user no longer lists move-disks.sh, though the T02 row below says it does; a merge or reconcile dropped it. The owner's zip move is still pending. Open, left alone. |
 | 2026-10-30 | ✅ | Cracked-copy question answered in T04's session: proceed with the cracked [cr WT] two-disk set as game two's source. The faithful bar's measuring stick is that release; compare again if an uncracked copy appears. |
 | 2026-10-30 | 📌 | Root README.md's layout table and root CLAUDE.md's `today that is games/superfrog/` omit games/forest-dumb/. T04's doc lists neither, so both were left alone for a later pass. |

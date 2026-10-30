@@ -14,7 +14,7 @@ writes a cell also fixes the over-budget cell they walk past.**
 **Plan reviewed:** 2026-10-30 — 10 fixed, 3 decided with the user
 **Status:** Plan reviewed, awaiting the build start; no task started, nothing blocked.
 **Last updated:** 2026-10-30
-**Next `pir-work` will:** review T04-games-forest-dumb.
+**Next `pir-work` will:** T05-architecture-chapters-carve.
 
 ## Tasks
 
@@ -30,7 +30,7 @@ to keep in sync.
 | T01 | knowledge-tiers | — | ✅ | |
 | T02 | superfrog-move | T01 | ✅ | |
 | T03 | playbook-and-template | T02 | ✅ | |
-| T04 | games-forest-dumb | T03 | 🔍 | Skeleton, stub test.sh, cracked set chosen. Own checks only, 46 tests green; tools/test.sh left to pir's end run. Deviation: the doc says disks labelled !EAGLE_SOFT!; the north-star's images are volume FOREVER with a marker file, so the note says that. No committed test for the copy check. |
+| T04 | games-forest-dumb | T03 | ✅ | One wording fix: the disk note credited an owner inspection the north-star does not state. Drove the stub through tools/test.sh in a scratch clone; a failing stub, a removed stub and a name in toolkit/ all went red. Whole suite is pir's end run. Owner's answer confirmed in the ledger. |
 | T05 | architecture-chapters-carve | T02 | ⬜ | |
 
 A Notes cell holds what was built or what the review found, the test count, and one line per
@@ -40,7 +40,7 @@ it here and point there.
 **A ✅ task's cell may be cut to one line** once the next task has been reviewed — its detail
 is in the commit and the file is read in full by every session from here on.
 
-**Review queue:** T04
+**Review queue:** *(empty)*
 
 ## Blocked on the user
 
