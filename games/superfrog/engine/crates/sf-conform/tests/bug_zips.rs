@@ -10,17 +10,16 @@ use sf_disk::zip;
 fn every_bug_zip_reads_back_and_rewrites_byte_equal() {
     let main = sf_conform::disks::main_checkout().unwrap_or_else(|e| panic!("{e}"));
     // The app saves into the game's folder; zips saved before the monorepo move stay at the root
-    // until the owner moves them.
-    let dir = Some(main.join("games/superfrog/bugs"))
-        .filter(|d| d.is_dir())
-        .unwrap_or_else(|| main.join("bugs"));
-    let mut zips: Vec<_> = std::fs::read_dir(&dir)
-        .unwrap_or_else(|e| panic!("no bug zips: cannot read {}: {e}", dir.display()))
-        .map(|e| e.unwrap().path())
+    // until the owner moves them, so a first save in the new folder must not hide them.
+    let dirs = [main.join("games/superfrog/bugs"), main.join("bugs")];
+    let mut zips: Vec<_> = dirs
+        .iter()
+        .filter_map(|d| std::fs::read_dir(d).ok())
+        .flat_map(|d| d.map(|e| e.unwrap().path()))
         .filter(|p| p.extension().is_some_and(|x| x == "zip"))
         .collect();
     zips.sort();
-    assert!(!zips.is_empty(), "no bug zips in {}", dir.display());
+    assert!(!zips.is_empty(), "no bug zips in {} or {}", dirs[0].display(), dirs[1].display());
     for path in &zips {
         let bytes = std::fs::read(path).unwrap();
         let entries = zip::read_entries(&bytes, |_| true, 1 << 26)

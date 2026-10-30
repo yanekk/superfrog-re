@@ -2,6 +2,8 @@
 # The repo's one test command (monorepo-and-knowledge DESIGN §2.4): runs the suites this branch's
 # diff against main needs, from the repo root. tools/select_scope.py decides; any doubt runs everything.
 # PIR_TEST_SCOPE=all runs everything. One printed line per suite; any failure fails the whole.
+# --no-renames: a rename otherwise lists only its new path, so a file moved out of a project would not
+# run that project's suite.
 cd "$(dirname "$0")/.." || exit 1
 
 games=$(cd games && for d in */; do printf '%s ' "${d%/}"; done)
@@ -12,7 +14,7 @@ for g in $games; do
     fi
 done
 
-if base=$(git merge-base HEAD main 2>/dev/null) && changed=$(git diff --name-only "$base"..HEAD 2>/dev/null); then
+if base=$(git merge-base HEAD main 2>/dev/null) && changed=$(git diff --name-only --no-renames "$base"..HEAD 2>/dev/null); then
     :
 else
     changed=DOUBT

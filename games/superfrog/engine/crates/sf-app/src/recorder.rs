@@ -392,15 +392,17 @@ mod tests {
         std::fs::remove_dir_all(&d).unwrap();
     }
 
-    /// toolkit-extract T09: every bug zip the owner saved (the main checkout's `games/superfrog/bugs/`, git-ignored,
-    /// so none on a fresh clone) reads back and is written again as it was, text and zip. A version
+    /// toolkit-extract T09: every bug zip the owner saved (the main checkout's `games/superfrog/bugs/`, and
+    /// its root `bugs/` for zips saved before the monorepo move; git-ignored, so none on a fresh clone) reads back and is written again as it was, text and zip. A version
     /// 1 file is written as version 2, as before the move: the magic's number and `widescreen off`
     /// after `wings`, nothing else.
     #[test]
     fn every_saved_bug_zip_reads_back_byte_for_byte() {
-        let Ok(dir) = std::fs::read_dir(bugs_dir(None)) else { return };
+        let game = bugs_dir(None);
+        let root = game.ancestors().nth(3).map(|r| r.join("bugs"));
+        let dirs = [Some(game), root].into_iter().flatten().filter_map(|d| std::fs::read_dir(d).ok());
         let mut n = 0;
-        for p in dir.flatten().map(|e| e.path()).filter(|p| p.extension().is_some_and(|x| x == "zip")) {
+        for p in dirs.flat_map(|d| d.flatten()).map(|e| e.path()).filter(|p| p.extension().is_some_and(|x| x == "zip")) {
             let bytes = std::fs::read(&p).unwrap();
             let (rec, png) = amiga_record::read_zip::<Superfrog>(&bytes).unwrap_or_else(|e| panic!("{}: {e}", p.display()));
             let entries = sf_disk::zip::read_entries(&bytes, |_| true, 1 << 28).unwrap();
