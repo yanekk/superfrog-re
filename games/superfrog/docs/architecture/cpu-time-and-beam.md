@@ -10,7 +10,6 @@ owns = [
   "games/superfrog/engine/crates/sf-core/src/level/beam.rs",
   "games/superfrog/engine/crates/sf-core/src/level/timeline.rs",
   "games/superfrog/engine/crates/sf-core/src/feed.rs",
-  "toolkit/crates/amiga-clock/",
 ]
 +++
 
@@ -26,6 +25,8 @@ DMACON off and on are lines apart, and in busy stretches the pass runs past the 
 next interrupt lands in the middle of it ([games/superfrog/docs/08 "Lag"](../08-executable-map.md#lag-oracle)).
 The engine computes each routine's result at once, so it has to model the time separately.
 
+The Amiga's side of this, the beam, `Clock`, the blitter's timing and `Timeline` in `amiga-clock`, is the toolkit's [cpu-time-and-beam](../../../../toolkit/docs/architecture/cpu-time-and-beam.md). This chapter is what the game does on top.
+
 It does so in three parts, which are the files this chapter owns:
 
 - **The level's beam clock and cost model**, `games/superfrog/engine/crates/sf-core/src/level/beam.rs`. Ported
@@ -33,11 +34,9 @@ It does so in three parts, which are the files this chapter owns:
   `LevelCtx::blit_words` for a blit the CPU waits on, all in
   `games/superfrog/engine/crates/sf-core/src/level/mod.rs`). `Cost` names 77 kinds of work, `Cost::cycles` gives
   each a fitted cycle count, and `COSTS`, `BLANK_COSTS` (a level's entry with the screen blank) and
-  `RESTART_COSTS` (the restart after a death) are the three tables. `Clock` turns cycles into a
-  beam position: 313 lines of 454 cycles, a fetching line (`$27`..`$12c`) giving the CPU 40 fewer
-  (`FETCH_STOLEN_CYCLES`) and the blitter only the slots the five planes and the refresh leave
-  (`Clock::blitter_slot`). `Clock::blit_cycles` runs a blit micro-instruction by micro-instruction
-  as vAmiga's `SlowBlitter` does, giving each word's D write its position. The same file holds the
+  `RESTART_COSTS` (the restart after a death) are the three tables. The toolkit's `Clock`, set up here for
+  the level's display, turns cycles into a beam position: a fetching line (`$27`..`$12c`) gives the CPU 40
+  fewer (`FETCH_STOLEN_CYCLES`) and the blitter only the slots the five planes and the refresh leave. The same file holds the
   late-pass machinery: `Cut` (where the original's frame ended mid-pass), `Pending` (the pass's
   start state, carried into the next step), `Frames` (the frames one step runs through) and
   `IRQ_PHASE` (a frame ending inside the interrupt handler, T203).
@@ -224,14 +223,13 @@ game rules, which today call `spend` inline.
 carries to any Amiga game whose picture or sound depends on where in the frame its CPU works;
 the costs are per routine and refitted against the oracle for each game.
 
-- `Clock` (the line model, `blitter_slot`, `blit_cycles`, `slots_per_word`) carries with small
-  changes: the fetch window (`FETCH_LINES`, `FETCH_FROM`, `FETCH_TO`) and the planes stolen
-  depend on the game's display set-up.
+- `Clock` is the toolkit's: another game gives it its own fetch window (`FETCH_LINES`, `FETCH_FROM`,
+  `FETCH_TO`) and planes stolen.
 - `Cost`, `COSTS`, `BLANK_COSTS`, `RESTART_COSTS` and `routine_cost` are Superfrog's; another
   game writes its own and fits them with a tool like `fit.rs`.
 - `Cut`, `Pending`, `Frames` are shaped by the pass's 14 phases (`LevelCtx::enter_phase` 0–13 in `games/superfrog/engine/crates/sf-core/src/level/frame.rs`); the idea (end the
   frame where the original's did, run the pass again) carries, the fields do not.
-- `Timeline` carries almost as it is, given a trace and a beam.
+- `Timeline`'s beam-independent part is the toolkit's; `Timeline::of` here reads this engine's trace.
 - `feed.rs` carries with small changes: the fields `load` and `seeds` are Superfrog's needs; the
   stepping order and the hashes are generic.
 

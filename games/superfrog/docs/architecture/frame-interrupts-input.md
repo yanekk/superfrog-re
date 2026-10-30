@@ -4,7 +4,7 @@ title = "The frame, interrupts and input"
 tier = "mechanism"
 depth = "deep"
 kind = "amiga"
-mix = { amiga = 70, game = 16, data = 0, shell = 14 }
+mix = { amiga = 75, game = 20, data = 0, shell = 5 }
 reuse = "big-changes"
 owns = [
   "games/superfrog/engine/crates/sf-core/src/level/frame.rs",
@@ -13,7 +13,6 @@ owns = [
   "games/superfrog/engine/crates/sf-core/src/input.rs",
   "games/superfrog/engine/crates/sf-core/src/keyboard.rs",
   "games/superfrog/engine/crates/sf-core/src/pass_clock.rs",
-  "toolkit/crates/amiga-input/",
 ]
 +++
 
@@ -37,6 +36,8 @@ serial register, polled every second blank
 [games/superfrog/docs/13 "The keyboard"](../13-front-end.md#the-keyboard-oracle)). The engine gives the game one
 `FrameInput` per frame and turns it into what those registers would read.
 
+The Amiga's side of this, `FrameInput`, the token format and `CiaKeyboard` in `amiga-input`, is the toolkit's [frame-interrupts-input](../../../../toolkit/docs/architecture/frame-interrupts-input.md). This chapter is what the game does on top.
+
 Files owned:
 
 - `games/superfrog/engine/crates/sf-core/src/level/frame.rs` covers one frame of a level, in the original's order.
@@ -47,20 +48,16 @@ Files owned:
 - `games/superfrog/engine/crates/sf-core/src/pass_clock.rs` is the pass rule in one place: `VBL_COUNT`,
   `pass_due` (two blanks or more), and `PassClock`, which counts the passes frames end for the
   faithful comparison. The level's handler, `Game` and sf-conform use it.
-- `games/superfrog/engine/crates/sf-core/src/keyboard.rs` is the CIA keyboard, one adapter for every handler:
-  `CiaKeyboard` (kept in `State::kbd`: the keys held, the serial register, its flag; `feed` sends
-  a byte per change, downs then ups, the last kept), `key_byte`, `from_keys` for a start from
-  memory, and the one `kbd_poll` over a `KbdHost`, which gives the caller's memory and takes its
-  INTENA/INTREQ writes (the level's `LevelCtx::custom`, the front end's `wr`).
+- `games/superfrog/engine/crates/sf-core/src/keyboard.rs` is `kbd_poll` at Superfrog's addresses, one adapter for every
+  handler: the toolkit's `CiaKeyboard` is kept in `State::kbd`, and the one `kbd_poll` runs over a `KbdHost`, which gives
+  the caller's memory and takes its INTENA/INTREQ writes (the level's `LevelCtx::custom`, the front end's `wr`).
 - `games/superfrog/engine/crates/sf-core/src/level/clock.rs` has `level_clock_tick` (the level clock, a second
   per 50 blanks, flashing red in its last ten seconds) and the level's `KbdHost`.
 - `games/superfrog/engine/crates/sf-core/src/front/vbl.rs` is the same handler outside a level (`logic_running`
   clear). It covers sound, the mouse pointer (`pointer`), `kbd_poll` (its `FrontKbd` host), `display_timer`, the fades
   and the title's palette copy. It also holds the cost model that places the handler's Paula
   writes and the start of its fades on the beam (`place`, `fade_start`, module `cost`).
-- `games/superfrog/engine/crates/sf-core/src/input.rs` holds `Joy`, `KeySet` and `FrameInput`: one frame's input,
-  taken by the engine and the oracle alike. It also holds the script token format
-  (`format_tokens`, `parse_tokens`) that conformance scripts and bug recordings write.
+- `games/superfrog/engine/crates/sf-core/src/input.rs` re-exports `amiga_input`, so every caller keeps its path.
 
 A second instance of the handler, owned by [story-and-ending](story-and-ending.md), is
 `games/superfrog/engine/crates/sf-core/src/front/story/vbl.rs`. It is the story intro's own handler (`intro_vbl`,
@@ -106,22 +103,20 @@ middle of one.
 
 ## 2. Kind mix
 
-`amiga` 70, `game` 16, `data` 0, `shell` 14. Judged by reading each file and weighing its lines by
-the parts below; it is an estimate, not a count.
+`amiga` 75, `game` 20, `shell` 5, re-weighed on 2026-10-30 once `FrameInput` and the token format had gone
+to `amiga-input`. Judged by reading each file; it is an estimate, not a count.
 
 - **`amiga`.** In `frame.rs`, the interrupt order, the 50/25 Hz split, `main_program`'s frames and
   their cuts, the pending pass and the resumed vertical blank, and the copper interrupt's masking
   and its run past the frame's end. All of it is imitating how a 68000 program and its interrupts
-  share a PAL frame. `keyboard.rs`, the CIA's serial port and `kbd_poll`. Most of `front/vbl.rs`: the Paula write placement
+  share a PAL frame. `keyboard.rs`'s `kbd_poll`. Most of `front/vbl.rs`: the Paula write placement
   and its measured `cost` table, `fade_start`, the mouse pointer's `JOY0DAT` read and its sprite,
-  `kbd_poll`, and the acknowledge. In `input.rs`, the raw key codes and the joystick bits as
-  ports (`Hw::of`, `joy1dat` in `games/superfrog/engine/crates/sf-core/src/level/mod.rs` turns them into Denise's
-  encoding).
+  `kbd_poll`, and the acknowledge. (`Hw::of`, `joy1dat` in `games/superfrog/engine/crates/sf-core/src/level/mod.rs` turn the
+  frame's input into Denise's encoding.)
 - **`game`.** `level_clock_tick` and its colours. What the pass calls and when the loop ends (the
   exit, death, ESC, fire in the demo). `display_timer`, the fades' dispatch and the title's
   palette copy in `front/vbl.rs`.
-- **`shell`.** In `input.rs`, the token format scripts and recordings use, and its tests: test
-  tooling, not the game.
+- **`shell`.** The small remainder: `input.rs`'s re-export and test plumbing.
 - **`data`.** None. The `cost` constants were measured on the oracle, not read out of the
   executable.
 
@@ -265,8 +260,7 @@ paced on a counter or a raster wait, a copper interrupt, frames cut mid-pass by 
 per-frame `Hw` snapshot, and a polled CIA keyboard. The handler's contents are Superfrog's: which
 routines run at 50 Hz and in what order, the pass's thirteen calls, the end conditions, the clock,
 and the measured `cost` table (re-measured per game on its oracle). Another game may also use the
-keyboard interrupt instead of polling it, or run its logic at 50 Hz. `input.rs` carries as-is,
-since joystick bits and raw key codes are the Amiga's and the token format is generic. The
+keyboard interrupt instead of polling it, or run its logic at 50 Hz. The
 handler files would be rewritten around the same structure. Another Team 17 game of the period
 may share the handler's shape and the 8-line wait after the music (Player 4.1A is common to
 several). This is unchecked.
