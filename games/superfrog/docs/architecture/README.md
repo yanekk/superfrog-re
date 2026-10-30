@@ -7,6 +7,11 @@ parts as plain native code while the game stays faithful: every chapter names be
 the check that proves it, never behaviour that may be dropped
 (`plans/engine-architecture/DESIGN.md`).
 
+Six chapters are split in two. What is true of the Amiga or of a toolkit crate is in
+[`toolkit/docs/architecture/`](../../../../toolkit/docs/architecture/display-hardware.md); the chapter of the same name here keeps what
+Superfrog does on top. `python games/superfrog/tools/architecture.py totals` prints the toolkit's with the
+prefix `toolkit/`.
+
 ## How to read it
 
 Start here, then the [glossary](glossary.md), then the chapter you need. Each deep chapter has the
@@ -36,8 +41,8 @@ share more (`ATN!`, `T7MP`, Player 4.1A), a chapter says so and marks it uncheck
 
 **A line** is a line of code in an owned `.rs`, `.cpp`, `.h` or `.wgsl` file, tests included.
 Recorded input scripts, `.toml`, patches and Markdown are counted once, separately, as uncounted.
-Each tracked file under `games/superfrog/engine/crates/` and `games/superfrog/engine/conform/` belongs to exactly one chapter (the
-`owns` prefixes in its front matter); `games/superfrog/tools/test_architecture_docs.py` fails when one does not.
+Each tracked file under `games/superfrog/engine/crates/`, `games/superfrog/engine/conform/` and `toolkit/` belongs to exactly one chapter (the
+`owns` prefixes in its front matter), a toolkit file to a toolkit chapter; `games/superfrog/tools/test_architecture_docs.py` fails when one does not.
 
 ## How the parts connect
 
@@ -119,7 +124,7 @@ every mechanism, which is what "woven through, not layered under" means.
 ## Every chapter
 
 As `python games/superfrog/tools/architecture.py totals` printed it on 2026-10-23, on the tree with every chapter
-task merged. The counts move as the code does; rerun the command for today's.
+task merged, before the 2026-10-30 split into toolkit chapters. The counts move as the code does; rerun the command for today's.
 
 | Chapter | Tier | Kind | Mix | Reuse | Lines |
 |---|---|---|---|---|---:|
@@ -331,3 +336,9 @@ Subsystems: [the sound driver](sound-driver.md), [game flow](game-flow.md),
 
 Components: [disks and assets](disks-and-assets.md), [the app](app.md),
 [verification](verification.md).
+
+The toolkit's halves: [display hardware](../../../../toolkit/docs/architecture/display-hardware.md),
+[CPU time and the beam](../../../../toolkit/docs/architecture/cpu-time-and-beam.md),
+[the frame, interrupts and input](../../../../toolkit/docs/architecture/frame-interrupts-input.md),
+[the memory model](../../../../toolkit/docs/architecture/memory-model.md), [the sound chip](../../../../toolkit/docs/architecture/sound-chip.md),
+[verification](../../../../toolkit/docs/architecture/verification.md).

@@ -2,9 +2,10 @@
 """The architecture docs' front matter: who owns which engine file, and the line totals
 (plans/engine-architecture DESIGN §2.4, §3.2).
 
-Every chapter in games/superfrog/docs/architecture/ opens with TOML front matter between `+++` lines. Its `owns`
+Every chapter in games/superfrog/docs/architecture/ and toolkit/docs/architecture/ opens with TOML front matter between `+++` lines. Its `owns`
 lists path prefixes (a directory ending in `/`, or a file); each tracked file under
-games/superfrog/engine/crates/, games/superfrog/engine/conform/ and toolkit/ belongs to the chapter with the longest matching prefix.
+games/superfrog/engine/crates/, games/superfrog/engine/conform/ and toolkit/ belongs to the chapter with the longest matching prefix,
+and a toolkit file only to a toolkit chapter.
 
 The chapter bodies are a dated record and stay frozen when code moves: a path they cite that has
 moved resolves through MOVED, the one table of old -> new prefixes (toolkit-extract DESIGN §3.4).
@@ -18,6 +19,9 @@ drift check built on them.
 import os, re, subprocess, sys, tomllib
 
 DOCS = 'games/superfrog/docs/architecture'
+TOOLKIT_DOCS = 'toolkit/docs/architecture'
+# A toolkit chapter shares its id with the game chapter on top of it, so it is keyed apart.
+TOOLKIT_KEY = 'toolkit/'
 DOMAIN = ('games/superfrog/engine/crates/', 'games/superfrog/engine/conform/', 'toolkit/')
 KEYS = ('id', 'title', 'tier', 'depth', 'kind', 'mix', 'reuse', 'owns')
 TIERS = ('mechanism', 'subsystem', 'component')
@@ -72,20 +76,23 @@ def parse_front_matter(text):
 
 
 def load_chapters(root):
-    """id -> front matter plus `path` (repo-relative), for each games/superfrog/docs/architecture/*.md that has
-    front matter. The README, glossary and template have none and are not chapters."""
+    """key -> front matter plus `path` (repo-relative), for each chapter in both trees that has front
+    matter: a game chapter's key is its id, a toolkit chapter's is `toolkit/<id>`. The README,
+    glossary and template have none and are not chapters."""
     chapters = {}
-    folder = os.path.join(root, DOCS)
-    for name in sorted(os.listdir(folder)):
-        if not name.endswith('.md'):
+    for docs, prefix in ((DOCS, ''), (TOOLKIT_DOCS, TOOLKIT_KEY)):
+        folder = os.path.join(root, docs)
+        if not os.path.isdir(folder):
             continue
-        rel = f'{DOCS}/{name}'
-        with open(os.path.join(root, rel), encoding='utf-8') as f:
-            fm = parse_front_matter(f.read())
-        if fm is None:
-            continue
-        cid = fm.get('id', name[:-3])
-        chapters[cid] = dict(fm, path=rel)
+        for name in sorted(os.listdir(folder)):
+            if not name.endswith('.md'):
+                continue
+            rel = f'{docs}/{name}'
+            with open(os.path.join(root, rel), encoding='utf-8') as f:
+                fm = parse_front_matter(f.read())
+            if fm is None:
+                continue
+            chapters[prefix + fm.get('id', name[:-3])] = dict(fm, path=rel)
     return chapters
 
 
@@ -101,7 +108,8 @@ def _matches(prefix, path):
 
 def assign(files, chapters):
     """(file -> chapter id, problems). A file goes to the longest prefix that matches it; a file
-    no prefix matches, a prefix two chapters list, and a prefix matching no file are problems."""
+    no prefix matches, a prefix two chapters list, a prefix matching no file, and a file owned across
+    the toolkit/game line are problems."""
     problems = []
     owner = {}
     for cid, ch in sorted(chapters.items()):
@@ -118,6 +126,9 @@ def assign(files, chapters):
             unowned.append(path)
         else:
             assignment[path] = owner[best]
+            in_toolkit = chapters[owner[best]].get('path', '').startswith(TOOLKIT_DOCS + '/')
+            if in_toolkit != path.startswith('toolkit/'):
+                problems.append(f'{path} is owned across the toolkit/game line, by {owner[best]}')
     for path in unowned:
         problems.append(f'unowned file {path}: add it to the right chapter\'s owns (DESIGN §2.4)')
     for prefix in sorted(owner):

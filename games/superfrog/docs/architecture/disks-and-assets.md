@@ -8,7 +8,6 @@ mix = { amiga = 15, game = 0, data = 40, shell = 45 }
 reuse = "big-changes"
 owns = [
   "games/superfrog/engine/crates/sf-disk/",
-  "toolkit/crates/amiga-disk/",
   "games/superfrog/engine/crates/sf-assets/",
 ]
 +++
