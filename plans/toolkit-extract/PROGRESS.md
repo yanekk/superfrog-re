@@ -9,10 +9,9 @@ the task you pick up, and append yours there.
 
 **Plan reviewed:** 2026-10-28 — 4 fixed, 3 decided with the user
 
-**Status:** planned, nothing built.
-**Last updated:** 2026-10-28
-**Next `pir-work` will:** T01, the only task with no dependency; it records the baseline everything
-else is compared with.
+**Status:** every task built; T11 awaiting review.
+**Last updated:** 2026-10-30
+**Next `pir-work` will:** review T11.
 
 ## Tasks
 
@@ -31,9 +30,9 @@ done · ⛔ blocked, needs a human.
 | T08 | amiga-e2e | T07 | ✅ | |
 | T09 | amiga-record | T03, T06, T07 | ✅ | |
 | T10 | display-piece | T01 | ✅ | |
-| T11 | dry-fit-and-finish | T04, T05, T08, T09, T10 | ⬜ | |
+| T11 | dry-fit-and-finish | T04, T05, T08, T09, T10 | 🔍 | `toolkit/crates/dry-fit` (lib+bin, 7 tests), toolkit README, README section, NORTH-STAR column. `sf-conform all` 216/216 identical to T01; `whole_game` 7 green. Deviations: fixed a T07 escape, opt-level overrides for amiga-app/input/record/disk (soak fell behind unoptimised; commit 689b2513); `docs/architecture/README.md` unchanged (no checked table names a crate). |
 
-**Review queue:** *(empty)*
+**Review queue:** T11
 
 ## Blocked on the user
 
