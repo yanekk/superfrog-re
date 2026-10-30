@@ -46,6 +46,8 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-30 | 🔄 | Owner accepted T02 at review with two Done-when items deferred: PIR_TEST_SCOPE=all not run on the branch, zips not moved. move-disks.sh is tracked under Blocked on the user in PROGRESS.md, for after the end-of-build suite. |
+| 2026-10-30 | 📌 | A partial disk set in games/superfrog/ gets three answers: disk_lookup.py takes it for any name holding `disk`, sf-oracle for any ` of 4`, sf-conform falls through to the root unless all four are there. Left as is. |
 | 2026-10-30 | 🔄 | Owner stopped T02's whole-suite run; it runs after the plan is built. move-disks.sh not run, since its seatbelt needs a green suite: run it after that run. Lookup falls back to the root meanwhile. |
 | 2026-10-30 | 🔄 | Owner kept the six hardware chapters game-side: they name the game on 322 lines and own game files. Added T05 to carve the generic parts into toolkit/docs/architecture/. No `learned on:` marking to pass the check. |
 | 2026-10-30 | 🐞 | DESIGN and T02 name tools/select.py, but that shadows stdlib `select` and breaks `import subprocess` for every script in tools/. Named tools/select_scope.py; test_select.py keeps its name. |
