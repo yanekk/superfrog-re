@@ -35,7 +35,7 @@ AmigaDOS ignores case, so the last line runs `FOREST_DUMB_FOREVER`.
 
 | Step | File | Size | What it is | Packed |
 |---|---|---|---|---|
-| 1 | `Show` | 9 508 | SuperView v3.0 by David Grothe, a public picture viewer. `-o` overrides AutoOverscan | no: an ordinary 1-hunk program with readable strings |
+| 1 | `Show` | 9 508 | SuperView v3.0 by David Grothe, a public picture viewer. `-o` overrides AutoOverscan | no: an ordinary program, a 9 020-byte code hunk and a 4-byte chip data hunk, with readable strings |
 | 1 | `Kwach4` | 46 000 | The crack's picture: IFF ILBM, 640×512 interlaced, 4 planes | only the format's own ByteRun1 |
 | 2 | `BillClintonToDupek` | 62 896 | The crack's intro, signed Wanted Team, cracked 06-11-96 | yes by its shape: a 76-byte code hunk, then about 62 kB of data at 7.91 bits a byte in a hunk sized 173 kB in memory; packer named by T04 |
 | 3 | `FOREST_DUMB_FOREVER` | 521 640 | The game: 5 hunks | no: 2.96 bits a byte, strings readable |
@@ -70,7 +70,7 @@ So the arrangement is one drive: disk 1 alone in df0, then disk 2 in df0. Both d
 name `FOREVER`, so a volume name could not tell them apart; a marker file can.
 
 Once running, every load (`0x8ec4`, `0x8f58`) opens a name from the buffer at `0x90a2` and on failure
-calls `0x7bf4`, which prompts `włóż dysk 2` (insert disk 2), then retries. A level's load list in hunk
+calls `0x7bf4` through the stub at `0x494`; it prompts `włóż dysk 2` (insert disk 2), then retries. A level's load list in hunk
 4 keeps each name inline, jumped over by a `bra.w`, and copies it into that buffer before the call.
 
 ## Names against the inventory
@@ -85,7 +85,7 @@ Three names it holds are on neither disk. The check lists them exactly, so a new
 | Name | At | What it is |
 |---|---|---|
 | `FileName.exe` | `0x90a2` | The default text of the load buffer above. Hunk 4 overwrites it before each load, so it is never opened under this name |
-| `DF0:ST` | `0x918c` | Opened at `0x944c` as an existing file, then 128 bytes of the high-score table at `0x84b6` are written to it. Never read. See below |
+| `DF0:ST` | `0x918c` | Opened at `0x944a` as an existing file, then 128 bytes of the high-score table at `0x84b6` are written to it. Never read. See below |
 | `HD_ID` | `0x91f8`, among the name buffers | No reference found. Left for T06 |
 
 `DF0:ST` is the one to watch. The routine holding it (from `0x92d8`: waits for the write-protect tab,
