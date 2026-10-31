@@ -25,7 +25,21 @@ tiers, each at the lowest level where it is true (see [CLAUDE.md](CLAUDE.md)).
 | `games/superfrog/` | Tier 3: the engine, tools, docs, symbols and disk home of Superfrog |
 | `knowledge/` | Tier 1: how the owner works and decides, and the faithful bar |
 | `plans/` | Every plan, sealed as history once finished |
-| `tools/` | Shared: `tools/test.sh`, the one test command, which runs what a branch's changes need (`PIR_TEST_SCOPE=all` runs everything), and the name check |
+| `tools/` | Shared: `tools/smoke.sh` and `tools/full.sh`, the two test commands (see [Tests](#tests)); `tools/test.sh`, which runs what a branch's changes need (`PIR_TEST_SCOPE=all` runs everything); and the name check |
+
+## Tests
+
+```bash
+tools/smoke.sh               # 15 minutes at most: what must work, in the toolkit and every game
+tools/smoke.sh --check-only  # only the labels: every test file labelled, every crucial area covered
+tools/full.sh                # every test, the slow ones included
+```
+
+pir runs `tools/smoke.sh` at the end of every plan and for every single run. A nightly schedule runs
+`tools/full.sh`, and pir never does. Each project's `smoke.toml` says which of its test files are smoke and
+which crucial areas they cover. `tools/smoke.sh` fails if a test file has no label. A break only the full set
+can see shows in the next nightly run, possibly after a merge. Full leaves out the tests that post real
+screen input unless `SF_E2E_OS=1` is set.
 
 ## Status
 

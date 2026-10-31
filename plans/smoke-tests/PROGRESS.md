@@ -13,7 +13,7 @@ the account is the commit message. Whoever writes a cell also fixes the over-bud
 
 **Status:** Plan written 2026-10-31. Nothing built.
 **Last updated:** 2026-10-31
-**Next `pir-work` will:** T01 and T04, which depend on nothing; T01 unblocks the most.
+**Next `pir-work` will:** review T08, the last task.
 
 ## Tasks
 
@@ -29,9 +29,9 @@ done · ⛔ blocked, needs a human.
 | T05 | toolkit-and-forest-labels | T02, T03 | ✅ | |
 | T06 | superfrog-labels | T02, T03 | ✅ | |
 | T07 | smoke-fits | T02, T05, T06 | ✅ | |
-| T08 | switch-and-directives | T04, T07 | ⬜ | |
+| T08 | switch-and-directives | T04, T07 | 🔍 | `.pir/settings.json` names `tools/smoke.sh`; directive in root Conventions, one line in each project and template; stub, playbook, README `Tests` section. Name check, label check and 40 regression tests pass. Deviation: added a test that the stub passes the label check, not listed in the doc. |
 
-**Review queue:** *(empty)*
+**Review queue:** T08
 
 ## Blocked on the user
 

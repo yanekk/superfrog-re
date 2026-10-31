@@ -6,11 +6,12 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(os.path.dirname(HERE))
 sys.path.insert(0, os.path.join(ROOT, 'tools'))
 import check_tier_names
+import smoke_core
 
 PLAYBOOK = 'toolkit/PLAYBOOK.md'
 TEMPLATE = 'toolkit/template'
 PIECES = {'CLAUDE.md', 'docs/01-disk-location.md', 'docs/README.md', '.gitignore',
-          'conform/case-stub.txt'}
+          'conform/case-stub.txt', 'smoke.toml'}
 STEPS = ['Disks and how the game boots', 'The packer', 'The file formats', 'The executable map',
          'The oracle and the first conformance case', 'Porting routine by routine against it',
          'The app', 'The recorder', 'The planner']
@@ -84,7 +85,7 @@ class Steps(unittest.TestCase):
 
 
 class Template(unittest.TestCase):
-    def test_a_copy_is_the_five_pieces_and_names_no_game(self):
+    def test_a_copy_is_the_six_pieces_and_names_no_game(self):
         with tempfile.TemporaryDirectory() as scratch:
             copy = os.path.join(scratch, 'game')
             shutil.copytree(os.path.join(ROOT, TEMPLATE), copy)
@@ -99,6 +100,10 @@ class Template(unittest.TestCase):
                 for pattern in patterns:
                     with self.subTest(file=rel, token=pattern.pattern):
                         self.assertIsNone(pattern.search(text))
+
+    def test_the_smoke_stub_passes_the_label_check_in_a_new_game(self):
+        project = smoke_core.Project('games/new', read(f'{TEMPLATE}/smoke.toml'), sorted(PIECES), {})
+        self.assertEqual(smoke_core.check(project), [])
 
     def test_git_keeps_every_piece(self):
         # A root ignore rule swallowing a piece would leave a template incomplete on a fresh clone.

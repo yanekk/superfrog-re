@@ -9,7 +9,8 @@ A second game that confirms a lesson or breaks one corrects this file in the com
 
 1. Copy `toolkit/template/` to `games/<game>/` and fill its placeholders.
 2. Add `games/<game>/test.sh`, the game's test command. The selector (`tools/test.sh`) fails on a game folder without one.
-3. Write a first plan, its slug starting with the game's name, that walks the opening steps below.
+3. Keep `games/<game>/smoke.toml`, copied from the template: it labels each of the game's test files smoke or full, and `tools/smoke.sh` fails on a game folder without one.
+4. Write a first plan, its slug starting with the game's name, that walks the opening steps below.
 
 ## 1. Disks and how the game boots
 

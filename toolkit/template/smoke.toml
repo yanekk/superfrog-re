@@ -1,0 +1,22 @@
+# What smoke runs for this game. `tools/smoke.sh` checks this file and fails on a test file with no label.
+# Fast means a file alone finishes in 10 s or less, and fast files are smoke. A slow file enters only for a
+# crucial area, by named test where it holds more than the area needs. Format, keys relative to `workspace`
+# under [tests] and to this folder under [python]:
+#
+#   [tests]                                 every tests/*.rs, tests/*/main.rs and crate with inline tests
+#   "crates/x/tests/quick.rs" = "smoke"
+#   "crates/x/tests/slow.rs"  = "full"
+#   "crates/x/tests/mixed.rs" = ["one_named_test", "another"]   smoke runs only these
+#   "crates/x/src"            = "smoke"     inline tests in a crate's src/
+#
+#   [python]                                every test_*.py in the game
+#   "tools/test_x.py" = "smoke"
+#
+#   [[area]]                                at least one once the game has tests
+#   name = "picture matches the original"
+#   covers = ["crates/x/tests/quick.rs", "crates/x/tests/mixed.rs::one_named_test"]
+workspace = "engine"
+
+[tests]
+
+[python]

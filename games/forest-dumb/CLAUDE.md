@@ -28,6 +28,10 @@ Decided 2026-10-30: the cracked `[cr WT]` set is game two's source. The faithful
 is this cracked release, whose executable may differ from the original's. An uncracked copy, if one
 turns up, is the thing to compare it against.
 
+## Tests
+
+- Every new test file gets a label in [smoke.toml](smoke.toml); something crucial also gets a smoke test and an `[[area]]`. The full rule is under Conventions in the root CLAUDE.md.
+
 ## What's known (don't re-derive)
 
 Inspected 2026-10-27 from the WHDLoad package and the disk set. Not yet reproduced by a tool in this
