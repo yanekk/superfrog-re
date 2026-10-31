@@ -1,0 +1,527 @@
+# Our names for places in Forest Dumb Forever's main program. Committed; the listing they label is not.
+# Read by games/forest-dumb/tools/re_listing.py; the map is docs/07-executable-map.md.
+#
+# exe    always "forest_dumb_forever"
+# hunk   hunk index
+# offset byte offset within that hunk
+# name   identifier, unique
+# kind   func | data | table | var
+# size   bytes; required for data, table and var, which may not overlap
+# note   one line
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x0
+name = "entry"
+kind = "func"
+note = "saves registers, prompts for disk 2, reads the marker, then the start-up below"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x30
+name = "integrity_check_skipped"
+kind = "func"
+note = "bra.b over an eor sum of h4+$199be..$19f0a against $7187f53d; a bad sum would flash COLOR00 for ever"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x158
+name = "session_loop"
+kind = "func"
+note = "one game session: reset, title, then level init; game over returns here"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x1a8
+name = "quit_flag"
+kind = "var"
+size = 2
+note = "set by the title on KONIEC; session_loop then quits"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x1ba
+name = "next_world"
+kind = "func"
+note = "advances world index h0+$6dfe; six worlds done goes to h0+$604, the end screen"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x1ee
+name = "level_init"
+kind = "func"
+note = "clears level state, loads the world, builds tiles, sets the level copper list"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x252
+name = "main_loop"
+kind = "func"
+note = "the foreground loop: status checks each 32 interrupts, then redraws the map edges the flags at h0+$5196 ask for"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x35c
+name = "quit_to_dos"
+kind = "func"
+note = "restores the saved DMA, interrupts and vectors and returns to AmigaDOS"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x3cc
+name = "system_on"
+kind = "func"
+note = "hands the machine back to the OS before a disk load: old vectors, old INTENA and DMACON"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x440
+name = "system_off"
+kind = "func"
+note = "takes the machine again after loading: game vectors, INTENA $c018"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x494
+name = "disk_retry_stub"
+kind = "func"
+note = "calls the insert-disk prompt h0+$7bf4 when an open fails"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x4c4
+name = "game_over_screen"
+kind = "func"
+note = "waits for fire press and release"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x578
+name = "load_world"
+kind = "func"
+note = "jumps to the load list of world h0+$6dfe in hunk 4"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x604
+name = "end_screen"
+kind = "func"
+note = "loads _END and _BALLA, then the high-score routine"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x620
+name = "wait_vpos_wrap"
+kind = "func"
+note = "waits on VPOSR low byte"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x844
+name = "redraw_edge_a"
+kind = "func"
+note = "one of four map-edge redraws, picked by h0+$519c"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0xb20
+name = "redraw_edge_b"
+kind = "func"
+note = "picked by h0+$519a"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0xdf6
+name = "redraw_edge_c"
+kind = "func"
+note = "picked by h0+$5198"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x114a
+name = "redraw_edge_d"
+kind = "func"
+note = "picked by h0+$5196"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x1d16
+name = "unpack_esl"
+kind = "func"
+note = "ESL! unpacker, see docs/08-packers.md"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x1e6a
+name = "irq_count"
+kind = "var"
+size = 2
+note = "counts level3_handler runs; stands still at the title, whose interrupts are the OS own"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x1ed4
+name = "game_running"
+kind = "var"
+size = 2
+note = "nonzero: the level 3 handler runs the game frame h0+$1fec"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x1eda
+name = "level3_handler"
+kind = "func"
+note = "copper interrupt: counts, runs the game frame, sets h0+$519e"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x1f78
+name = "last_key_byte"
+kind = "var"
+size = 1
+note = "raw CIA serial byte from the keyboard interrupt; $75 is Esc pressed"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x1f7a
+name = "level2_handler"
+kind = "func"
+note = "CIA-A keyboard interrupt"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x1fec
+name = "game_frame"
+kind = "func"
+note = "one frame of play, run inside the interrupt"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x519e
+name = "frame_flag"
+kind = "var"
+size = 2
+note = "set by level3_handler, cleared by main_loop"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x6dee
+name = "title_start_flag"
+kind = "var"
+size = 4
+note = "set when fire is pressed on START"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x6df2
+name = "title_cursor"
+kind = "var"
+size = 4
+note = "menu row: 0 START, 1 KODY, 2 KONIEC"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x6dfe
+name = "world_index"
+kind = "var"
+size = 4
+note = "0 to 5"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x6e06
+name = "title_screen"
+kind = "func"
+note = "runs the title until START or KONIEC"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x6e6e
+name = "title_pass"
+kind = "func"
+note = "one pass of the title: raster wait, input, menu, code digits, music"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x6ee8
+name = "title_quit_flag"
+kind = "var"
+size = 2
+note = "set by KONIEC"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x70bc
+name = "title_fire"
+kind = "func"
+note = "reads CIA-A fire, acts on the menu row"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x79de
+name = "title_read_joy"
+kind = "func"
+note = "JOY1DAT into h0+$79d6..$79dc"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x7b06
+name = "wait_line_1"
+kind = "func"
+note = "busy-waits for the beam at line 1; paces the title"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x7b70
+name = "prompt_disk_2"
+kind = "func"
+note = "draws the insert-disk-2 screen and waits for fire"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x7bf4
+name = "prompt_insert_disk"
+kind = "func"
+note = "the prompt behind a failed open"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x8ec4
+name = "load_file"
+kind = "func"
+note = "opens the name at h0+$90a2, reads to h0+$437c8, unpacks ESL! to the pointer h0+$9086"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x8f58
+name = "load_file_raw"
+kind = "func"
+note = "as load_file, reading straight to the pointer h0+$9086; used for _BALLA"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x8fd8
+name = "read_marker"
+kind = "func"
+note = "opens df0:!EAGLE_SOFT!; failure prompts and retries"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x9086
+name = "load_target"
+kind = "var"
+size = 4
+note = "where the next load goes"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x90a2
+name = "load_name"
+kind = "data"
+size = 32
+note = "file name buffer; default text FileName.exe"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x918c
+name = "save_name"
+kind = "data"
+size = 7
+note = "DF0:ST, used only by the unreferenced save routine"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x91f8
+name = "hd_id_name"
+kind = "data"
+size = 6
+note = "HD_ID, referenced by nothing"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x92d8
+name = "save_scores_unreferenced"
+kind = "func"
+note = "write-protect wait and save to DF0:ST; nothing in the file reaches it"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x437c8
+name = "load_buffer"
+kind = "data"
+size = 4
+note = "packed files land here; read length up to $6ffff"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 3
+offset = 0xf000
+name = "song"
+kind = "data"
+size = 4
+note = "_BALLA, the title and end music module, where mt_init points"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 4
+offset = 0x18480
+name = "mt_init"
+kind = "func"
+note = "ProTracker-style player init: speed 6, counter 0, position in h4+$195d2 cleared"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 4
+offset = 0x18508
+name = "mt_end"
+kind = "func"
+note = "silences the four channels"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 4
+offset = 0x1852a
+name = "mt_music"
+kind = "func"
+note = "player tick; called once a title pass"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 4
+offset = 0x195c8
+name = "mt_speed"
+kind = "var"
+size = 1
+note = "ticks a row; 6 from mt_init, never changed by this song"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 4
+offset = 0x195c9
+name = "mt_counter"
+kind = "var"
+size = 1
+note = "the first case variable: 0..5, +1 a frame"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 4
+offset = 0x195ca
+name = "mt_songpos"
+kind = "var"
+size = 1
+note = "song position; set to 0 before mt_init, 0..26 on this song"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 4
+offset = 0x195d2
+name = "mt_patternpos"
+kind = "var"
+size = 2
+note = "pattern position in bytes, +16 a row"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 4
+offset = 0x19f6e
+name = "load_list_end"
+kind = "func"
+note = "_END, _BALLA"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 4
+offset = 0x1a062
+name = "load_list_title"
+kind = "func"
+note = "_NAPIS, _CZOLOWKA, _OPCJE, _BALLA"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 4
+offset = 0x1a260
+name = "load_list_world_2"
+kind = "func"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 4
+offset = 0x1a8d4
+name = "load_list_world_3"
+kind = "func"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 4
+offset = 0x1af46
+name = "load_list_world_4"
+kind = "func"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 4
+offset = 0x1b5b8
+name = "load_list_world_5"
+kind = "func"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 4
+offset = 0x1bc2a
+name = "load_list_world_6"
+kind = "func"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 4
+offset = 0x1c29c
+name = "load_list_world_1"
+kind = "func"

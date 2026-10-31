@@ -46,6 +46,9 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-31 | 📌 | First case variable: `mt_counter`, h4+$195c9 ($66c31), one byte. Value `(n-4922)%6` for frames 4922-20000, identical across two runs and with the click at 1400. Evidence and near misses: `docs/07-executable-map.md`. |
+| 2026-10-31 | 📌 | T03's open items settled: `DF0:ST`'s routine and `HD_ID` have no reference in the file, so no save and no hang. Play runs in the copper interrupt; the title uses the OS's interrupts, so `irq_count` stands still. |
+| 2026-10-31 | 📌 | Hunk 4's header says DATA but holds code (music player, load lists), so `toolkit/tools/hunk_listing.py` prints it undecoded; `re_listing.py` overrides the kind. Hunk bases: h0 $c077d8, h1 $10178, h2 $11400, h3 $12c38, h4 $4d668. |
 | 2026-10-31 | 📌 | T04 review sweep: Superfrog's `games/superfrog/tools/atn.py` has no `raise` or `ValueError`, so may return damaged input as plausible bytes like `unpack.py` did. Read-only, not fixed. |
 | 2026-10-31 | 📌 | T04: 46 disk 2 files are `ESL!`, PowerPacker's format renamed; `BillClintonToDupek` is `S404`; 14 plain. Unpacked to `build/unpacked/` by the originals' routines; PP crates are copyleft (`format198x` GPL, `newtua-amiga` LGPL). T05 reads there. |
 | 2026-10-31 | 📌 | `DF0:ST`, the high-score save, is on neither disk and its routine (`0x92d8`) has no caller found. A call would retry for ever. T06 should settle reachability. `FileName.exe` and `HD_ID` are also absent; see `docs/03-boot-chain.md`. |

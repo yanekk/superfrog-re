@@ -34,7 +34,7 @@ to keep in sync.
 | T03 | fd-boot-chain | T00, T02 | ✅ | |
 | T04 | fd-pack-check | T02 | ✅ | |
 | T05 | fd-file-formats | T02, T04 | ⬜ | |
-| T06 | fd-exe-map | T02, T03 | ⬜ | |
+| T06 | fd-exe-map | T02, T03 | 🔍 | Map, symbols, listing tool, 7 claims tests, variable `mt_counter` h4+$195c9. Deviations: symbols use Superfrog's real schema (exe, offset, kind), not the doc's addr; driver decodes hunk 4 as code; Ghidra unused; oracle evidence from a scratch program, reproduced by T09. |
 | T07 | frame-parameterise | T00 | ⬜ | |
 | T08 | fd-core | T00, T06, T07 | ⬜ | |
 | T09 | fd-first-case | T00, T02, T03, T08 | ⬜ | |
@@ -46,7 +46,7 @@ it here and point there.
 **A ✅ task's cell may be cut to one line** once the next task has been reviewed — its detail
 is in the commit and the file is read in full by every session from here on.
 
-**Review queue:** *(empty)*
+**Review queue:** T06
 
 ## Blocked on the user
 
