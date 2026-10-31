@@ -1,0 +1,59 @@
+# What the toolkit runs in smoke (smoke-tests DESIGN §2.2, §2.4, §2.5). Fast files are all smoke.
+workspace = "."
+
+[tests]
+"crates/amiga-app/src" = "smoke"
+"crates/amiga-chips/src" = "smoke"
+"crates/amiga-clock/src" = "smoke"
+"crates/amiga-conform/src" = "smoke"
+"crates/amiga-conform/tests/faithful.rs" = "smoke"
+"crates/amiga-disk/src" = "smoke"
+"crates/amiga-disk/tests/ofs.rs" = "smoke"
+"crates/amiga-disk/tests/readers.rs" = "smoke"
+"crates/amiga-e2e/src" = "smoke"
+"crates/amiga-input/src" = "smoke"
+"crates/amiga-oracle/src" = "smoke"
+"crates/amiga-oracle/tests/boot.rs" = "smoke"
+"crates/amiga-oracle/tests/kickstart_missing.rs" = "smoke"
+"crates/amiga-oracle/tests/routine.rs" = "smoke"
+"crates/amiga-paula/src" = "smoke"
+"crates/amiga-paula/tests/unit.rs" = "smoke"
+"crates/amiga-record/tests/round_trip.rs" = "smoke"
+"crates/dry-fit/tests/deps.rs" = "smoke"
+"crates/dry-fit/tests/dry_fit.rs" = "smoke"
+"crates/toolkit-checks/tests/purity.rs" = "smoke"
+
+[python]
+"tools/test_disk_data_scan.py" = "smoke"
+"tools/test_hunk_listing.py" = "smoke"
+"tools/test_install_brew_deps.py" = "smoke"
+"tools/test_oracle_sh.py" = "smoke"
+"tools/test_playbook.py" = "smoke"
+
+[[area]]
+name = "disk reading"
+covers = ["crates/amiga-disk/src", "crates/amiga-disk/tests/ofs.rs", "crates/amiga-disk/tests/readers.rs"]
+
+[[area]]
+name = "sound"
+covers = ["crates/amiga-paula/src", "crates/amiga-paula/tests/unit.rs"]
+
+[[area]]
+name = "the original on the emulator"
+covers = ["crates/amiga-oracle/src", "crates/amiga-oracle/tests/boot.rs", "crates/amiga-oracle/tests/kickstart_missing.rs", "crates/amiga-oracle/tests/routine.rs"]
+
+[[area]]
+name = "comparison judges"
+covers = ["crates/amiga-conform/src", "crates/amiga-conform/tests/faithful.rs"]
+
+[[area]]
+name = "recording"
+covers = ["crates/amiga-record/tests/round_trip.rs"]
+
+[[area]]
+name = "the other pieces"
+covers = ["crates/amiga-chips/src", "crates/amiga-clock/src", "crates/amiga-input/src", "crates/amiga-app/src", "crates/amiga-e2e/src"]
+
+[[area]]
+name = "rule checks"
+covers = ["crates/toolkit-checks/tests/purity.rs", "crates/dry-fit/tests/deps.rs", "crates/dry-fit/tests/dry_fit.rs"]

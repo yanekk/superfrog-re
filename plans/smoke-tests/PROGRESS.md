@@ -13,7 +13,7 @@ the account is the commit message. Whoever writes a cell also fixes the over-bud
 
 **Status:** Plan written 2026-10-31. Nothing built.
 **Last updated:** 2026-10-31
-**Next `pir-work` will:** T05, then T07 once T05 and T06 are in.
+**Next `pir-work` will:** T07, now T05 and T06 are in.
 
 ## Tasks
 
@@ -26,7 +26,7 @@ done · ⛔ blocked, needs a human.
 | T02 | smoke-runner | T01 | ✅ | |
 | T03 | file-timings | T01 | ✅ | |
 | T04 | full-command | — | ✅ | |
-| T05 | toolkit-and-forest-labels | T02, T03 | ⬜ | |
+| T05 | toolkit-and-forest-labels | T02, T03 | ✅ | |
 | T06 | superfrog-labels | T02, T03 | ✅ | Clean, no fix commit. T07 estimate 464 s (compile excluded, busy). Ran all 17 areas alone: green, 250 s. Probed names match exactly, labels against `timings.tsv`; five manifest mutations caught by the check. Assertions read: read-only as proof of each area. |
 | T07 | smoke-fits | T02, T05, T06 | ⬜ | |
 | T08 | switch-and-directives | T04, T07 | ⬜ | |
