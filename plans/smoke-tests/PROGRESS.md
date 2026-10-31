@@ -24,7 +24,7 @@ done · ⛔ blocked, needs a human.
 |---|---|---|---|---|
 | T01 | label-check | — | ✅ | |
 | T02 | smoke-runner | T01 | ✅ | |
-| T03 | file-timings | T01 | ⬜ | |
+| T03 | file-timings | T01 | ✅ | |
 | T04 | full-command | — | ✅ | |
 | T05 | toolkit-and-forest-labels | T02, T03 | ⬜ | |
 | T06 | superfrog-labels | T02, T03 | ⬜ | |
