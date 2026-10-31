@@ -192,8 +192,12 @@ cd toolkit && cargo run -q -p dry-fit     # one made-up frame from the chips, cl
 
 The dry fit is the proof the toolkit is enough to start game two on: a blit, a copper list, a drawn
 picture, a frame of the clock and a Paula note, each asserted by a test, built from toolkit crates
-only. The toolkit is still PAL's 313-line frame throughout and has no AmigaDOS file reader yet; both
-are game two's first steps ([`plans/amiga-toolkit-prep/`](plans/amiga-toolkit-prep/README.md)).
+only. A game now supplies its own frame length, and `amiga-disk` reads AmigaDOS floppies.
+
+Game two, Forest Dumb Forever, has started by the toolkit's [playbook](toolkit/PLAYBOOK.md): its disks
+are opened and documented, and its [first conformance case](games/forest-dumb/engine/conform/README.md)
+compares one variable of our code with the original on the emulator, frame by frame, at the idle title.
+The game itself is not ported yet.
 
 ## Planning a route
 

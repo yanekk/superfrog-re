@@ -7,8 +7,8 @@ Start from `toolkit/PLAYBOOK.md`, whose opening steps fill most of this file.
 ## What the game is
 
 Forest Dumb Forever, © 1996 L.K. Avalon (read off the title screen, 2026-10-31), developer Eagle Soft: an Amiga platformer in the manner of
-the first game. This project reverse-engineers it and rebuilds it in Rust on the toolkit. Nothing of
-it is built yet. Source of everything below: `plans/amiga-toolkit-prep/NORTH-STAR.md`, J1.
+the first game. This project reverse-engineers it and rebuilds it in Rust on the toolkit. Only the
+first conformance case is built so far, no playable engine. Source of everything below: `plans/amiga-toolkit-prep/NORTH-STAR.md`, J1.
 
 ## Its disks and where they live
 
@@ -61,6 +61,13 @@ Not written yet: there is no engine to fix. It comes with the recorder, step 8 o
 - [docs/LEVEL-INDEX.md](docs/LEVEL-INDEX.md): every level id, its files and its render.
 
 - [docs/frame-length.md](docs/frame-length.md): the measured frame length, 313 lines, dated.
+- [engine/conform/README.md](engine/conform/README.md): the conformance runner `fd-conform` and its case format.
+
+## The first case
+
+`cases/first-case.toml` compares the engine's `mt_counter` (`fd-core`) with the original's from power-on,
+state only, on every frame of the idle title. Run it from `engine/` with
+`cargo run -p fd-conform -- run cases/first-case.toml`; it also runs in `test.sh`.
 
 ## Backlog
 

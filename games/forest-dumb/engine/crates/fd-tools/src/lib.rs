@@ -110,7 +110,7 @@ pub fn entry_path(name: &str) -> Result<PathBuf, String> {
 }
 
 /// The one ADF inside a zip, whole and the right size, or an error naming the zip and its checksum.
-fn read_adf(path: &Path) -> Result<Vec<u8>, String> {
+pub fn read_adf(path: &Path) -> Result<Vec<u8>, String> {
     let bytes = std::fs::read(path).map_err(|e| format!("{}: {e}", path.display()))?;
     let bad = |e: String| format!("{}: {e}", describe_bytes(path, &bytes));
     // One byte over the limit, so an oversized image reaches the size check below and says so.
