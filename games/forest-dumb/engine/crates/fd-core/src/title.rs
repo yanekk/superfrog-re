@@ -32,8 +32,9 @@ impl TitleScene {
     /// Advance one frame, as `mt_music` does: add one, clear on reaching the speed.
     ///
     /// The input is ignored because the scene models only the idle title. The counter was measured
-    /// the same with an earlier click, but fire at the title leaves for the game, which this
-    /// placeholder does not model, so a case feeding it input after the sync point says nothing.
+    /// the same with a later click (1400, not 1300), but fire at the title leaves for the game,
+    /// which this placeholder does not model, so a case feeding it fire after the sync point says
+    /// nothing.
     pub fn frame(&mut self, _input: FrameInput) {
         self.mt_counter += 1;
         if self.mt_counter == MT_SPEED {
