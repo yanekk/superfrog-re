@@ -46,6 +46,9 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-31 | 🐞 | T05 review, worker-driven: builder's pass called levels coherent, yet all were drawn transposed; maps are stored by column (hunk 0 `$708`). Fixed, seam test. Levels, collision re-judged, level pictures whole. Not compared with the emulator's screen. |
+| 2026-10-31 | 🐞 | T05 worker-driven: 41 renders opened. `_WYBIJACZKA*` and `_ELEMENTY` frame sizes were wrong, fixed, tested. Sprites and tile sheets coherent. |
+| 2026-10-31 | 📌 | T05: all six worlds share one palette, hunk 1 `$404`. Object map values are grouped, not understood. `_NAPIS`, `_CZOLOWKA`, `_OPCJE`, `_END` are front-end pictures, left undecoded as outside the task's list. |
 | 2026-10-31 | 📌 | `amiga-paula` allows only 312 or 313 lines: a non-PAL frame needs `check_frame_lines` widened. T07 review: copper's other three `frame_lines` guards survive single mutation, redundant with the read guards, read-only. |
 | 2026-10-31 | 📌 | T04 review sweep: Superfrog's `games/superfrog/tools/atn.py` has no `raise` or `ValueError`, so may return damaged input as plausible bytes like `unpack.py` did. Read-only, not fixed. |
 | 2026-10-31 | 📌 | T04: 46 disk 2 files are `ESL!`, PowerPacker's format renamed; `BillClintonToDupek` is `S404`; 14 plain. Unpacked to `build/unpacked/` by the originals' routines; PP crates are copyleft (`format198x` GPL, `newtua-amiga` LGPL). T05 reads there. |
