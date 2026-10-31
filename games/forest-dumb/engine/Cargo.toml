@@ -1,0 +1,43 @@
+# The Forest Dumb Forever engine workspace. The toolkit crates' profile overrides are kept here as well
+# as in toolkit/Cargo.toml, because a build reads them from the root manifest of the workspace it builds.
+[workspace]
+resolver = "3"
+members = ["crates/*"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+publish = false
+
+# The oracle's tests step the emulator thousands of frames and hash 1 MB of RAM per frame.
+[profile.dev.package.amiga-oracle]
+opt-level = 2
+
+# The picture judges compare every pixel of every frame of a case.
+[profile.dev.package.amiga-conform]
+opt-level = 2
+
+# The mixer runs four channels at 3.5 MHz; the oracle comparison runs it for thousands of frames.
+[profile.dev.package.amiga-paula]
+opt-level = 2
+
+# The copper run and the clock's loops run in every render and level test.
+[profile.dev.package.amiga-clock]
+opt-level = 2
+
+[profile.dev.package.amiga-chips]
+opt-level = 2
+
+# A long scripted run falls behind the pacer unoptimised.
+[profile.dev.package.amiga-app]
+opt-level = 2
+
+[profile.dev.package.amiga-input]
+opt-level = 2
+
+[profile.dev.package.amiga-record]
+opt-level = 2
+
+# Inflating and hashing two whole disks runs in several tests.
+[profile.dev.package.amiga-disk]
+opt-level = 2

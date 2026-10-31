@@ -14,6 +14,9 @@ it is built yet. Source of everything below: `plans/amiga-toolkit-prep/NORTH-STA
 
 Two AmigaDOS (OFS) `.adf` images in zips, kept outside the repo and never committed.
 Lookup and file names: [docs/01-disk-location.md](docs/01-disk-location.md).
+Layout: [docs/02-disk-format.md](docs/02-disk-format.md). Every file with size and SHA-1:
+[docs/04-file-inventory.txt](docs/04-file-inventory.txt), written by `cargo run -p fd-tools -- extract` in
+`engine/`, which extracts into `build/`.
 
 Decided 2026-10-30: the cracked `[cr WT]` set is game two's source. The faithful bar's measuring stick
 is this cracked release, whose executable may differ from the original's. An uncracked copy, if one
@@ -25,8 +28,7 @@ Inspected 2026-10-27 from the WHDLoad package and the disk set. Not yet reproduc
 folder.
 
 - Loads its files through `dos.library` from a floppy labelled `!EAGLE_SOFT!`: AmigaDOS files, no
-  trackloader. The images' volume name is `FOREVER`; `!EAGLE_SOFT!` is a marker file on disk 2. The
-  toolkit has no OFS reader yet; amitools' `xdftool` reads OFS for RE work.
+  trackloader. The images' volume name is `FOREVER`; `!EAGLE_SOFT!` is a marker file on disk 2.
 - Six worlds of level files: `_Mapa1-1` … `_Mapa6-1`, with `.Mapa`, `_Gen*`, `_MapaBobow*`.
 - Executable `FOREST_DUMB_FOREVER`, 521 640 bytes, stored unpacked on disk: an AmigaDOS hunk
   executable of 5 hunks, hand-written 68k hitting the hardware, no AMOS or Blitz signatures.
