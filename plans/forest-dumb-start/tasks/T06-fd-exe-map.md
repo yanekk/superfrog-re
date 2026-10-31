@@ -1,6 +1,6 @@
 # T06 — fd-exe-map
 
-**Phase:** 4 · **Depends on:** T02 · **Weight:** heavy
+**Phase:** 4 · **Depends on:** T02, T03 · **Weight:** heavy
 
 ## Goal
 

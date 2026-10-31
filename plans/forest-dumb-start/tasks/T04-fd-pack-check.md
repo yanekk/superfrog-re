@@ -30,10 +30,11 @@ packed, no tool is added and the classification lives in the doc and FINDINGS.
 
 1. Scan every file for known signatures: PowerPacker (PP20), RNC (method 1 and 2), Imploder,
    LZX, and the rest of the usual set, plus a size/entropy look at the level files.
-2. A known packer: take in a decoder under the dependency policy (the `format198x` PowerPacker
-   crate, an RNC decoder; DESIGN §5 admits exactly what this task names), unpack to `build/`,
-   and cross-check by re-packing where the decoder allows or by comparing against the game's own
-   loading behaviour.
+2. A known packer: take in a decoder under the dependency policy (permissive only; DESIGN §5
+   admits exactly what this task names — the GPL `format198x` family does not pass, and it is an
+   ADF reader rather than a packer decoder anyway), unpack to `build/`, and cross-check by
+   re-packing where the decoder allows or by comparing against the game's own loading behaviour.
+   A known packer with no permissive decoder is step 3.
 3. An unknown packer: the game's own unpacking routine run under the emulator's routine runner is
    the reference (playbook step 2's lesson). Locating that routine in the executable is T06's
    territory; this task then stops with a FINDINGS row naming the signature and the files, and

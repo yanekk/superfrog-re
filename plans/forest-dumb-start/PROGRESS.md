@@ -11,13 +11,10 @@ cell is an index for the next session; the account is the commit message you are
 write, and writing it twice is what turns a tracker into a history nobody reads. **Whoever
 writes a cell also fixes the over-budget cell they walk past.**
 
-**Plan reviewed:** not yet — the plan reviewer marks it before the build starts
-*(Replaced by that session with the date and its verdict. The engine reads this line and
-refuses to build while it says "not yet": an unreviewed plan copies its defects into every
-task built from it, and no later review catches them.)*
+**Plan reviewed:** 2026-10-31 — 7 fixed, 2 decided with the user
 
 **Status:** The plan is written, nothing is built. The oracle spike (T00) is the first task.
-**Last updated:** 2026-10-30
+**Last updated:** 2026-10-31
 **Next `pir-work` will:** take T00, the oracle spike, because it gates everything after it.
 
 ## Tasks
@@ -37,7 +34,7 @@ to keep in sync.
 | T03 | fd-boot-chain | T00, T02 | ⬜ | |
 | T04 | fd-pack-check | T02 | ⬜ | |
 | T05 | fd-file-formats | T02, T04 | ⬜ | |
-| T06 | fd-exe-map | T02 | ⬜ | |
+| T06 | fd-exe-map | T02, T03 | ⬜ | |
 | T07 | frame-parameterise | T00 | ⬜ | |
 | T08 | fd-core | T00, T06, T07 | ⬜ | |
 | T09 | fd-first-case | T00, T02, T03, T08 | ⬜ | |

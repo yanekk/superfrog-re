@@ -34,7 +34,8 @@ DESIGN §2.3, §2.10 (the import's unhappy paths), §5.2 (the write-target seatb
 
 ```
 /// Where the two zips live: FOREST_DUMB_DISKS, else games/forest-dumb/ in the main checkout,
-/// else its root. Pure: the lookup inputs arrive as arguments.
+/// else its root. Testable: the lookup inputs arrive as arguments (fd-tools is shell-side,
+/// DESIGN §3.1; it does I/O and no purity test covers it).
 pub fn locate(env: Option<&str>, checkout: &Path) -> Result<PathBuf, String>;
 
 /// One extracted file of the inventory.

@@ -38,7 +38,9 @@ impl<'a> OfsImage<'a> {
 - `toolkit/crates/amiga-disk/Cargo.toml` — the chosen third-party crate.
 - `toolkit/crates/amiga-disk/src/lib.rs` — `pub mod ofs;`.
 - `toolkit/crates/toolkit-checks/tests/purity.rs` — the allowlist gains the chosen crate and its
-  dependencies, one purity-reason line each (the test currently fails on any unlisted dependency).
+  dependencies, one purity-reason line each (the test currently fails on any unlisted dependency);
+  GAME_PREFIX also gains `fd-` (the second game's crate prefix), so a toolkit crate depending on a
+  game crate is caught whichever game it is.
 
 ## Interface
 
@@ -70,7 +72,7 @@ checksum, a root block with its hash chain, file header blocks and data blocks.
 - [ ] Case-insensitive lookup, as dos.library matches.
 - [ ] A bad block checksum fails with the byte offset.
 - [ ] A truncated image and a non-OFS dos type fail with the offset.
-- [ ] The toolkit purity test passes with the new dependency admitted.
+- [ ] The toolkit purity test passes with the new dependency admitted and `fd-` in GAME_PREFIX.
 
 ## Done when
 

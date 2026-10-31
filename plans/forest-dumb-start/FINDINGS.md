@@ -46,6 +46,6 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
-| 2026-10-30 | 📌 | The stored setup/test lines pass in a fresh worktree: setup leaves the copy clean and the everything-run (toolkit, both games, root checks) is green in under an hour. Re-measured because the plan adds a package folder. |
+| 2026-10-31 | 📌 | The stored setup/test lines pass in a fresh worktree: setup leaves the copy clean and the everything-run (toolkit, both games, root checks) is green in ~70 minutes. Re-measured because the plan adds a package folder. |
 | 2026-10-30 | 📌 | The only permissive Rust OFS readers are `amiga-ffs` (MIT/Apache-2.0, 0.4.0) and `affs-read` (MIT, 0.5.1); the `format198x` ADF family is GPL-2.0-or-later. Found while planning, DESIGN §2.2. |
 | 2026-10-30 | 📌 | `amiga-oracle` already reports each stepped frame's length in lines (`amiga_frame_lines`, shim.h: 313 long, 312 short), so T00 measures the frame length with no new patch. |

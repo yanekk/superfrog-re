@@ -41,10 +41,23 @@ later plan implements from the doc alone. Tile addressing is `<level-id>:<col>,<
       `<level-id>:<col>,<row>` resolves through the index.
 - [ ] The parser reports a truncated or corrupt file with the offset, on synthetic bytes.
 
+## End to end
+
+The renders are the proof of the format docs, and "non-blank" would also pass a wrong format:
+swapped bytes, a wrong offset or a wrong palette all draw colourful noise. So the worker, after
+the tests are green, opens every rendered picture and judges each against what a level map and a
+sprite sheet should look like: tile structure, coherent terrain, sprite shapes, a sane palette,
+no noise where the format promises content. A defect with one right answer is fixed, each fix
+with a unittest that fails without it; anything with two defensible answers is a decision for the
+owner, asked in the session. The verdict and what was driven go in a dated, worker-driven
+FINDINGS row (🐞 or 📌), not a hand-verification.
+
 ## Done when
 
 - [ ] Every level map and every sprite sheet of all six worlds renders from the real disks, the
       pictures in `build/` (git-ignored, nothing derived committed).
+- [ ] The end-to-end pass above is done: every picture opened and judged, defects fixed with
+      their tests, the FINDINGS row written (or the owner asked about a two-answer surprise).
 - [ ] The two format chapters are written with offsets that the renders prove, and the
       addressing convention and LEVEL-INDEX are in place.
 

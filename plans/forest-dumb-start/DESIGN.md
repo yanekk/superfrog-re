@@ -103,8 +103,9 @@ applied.
 The level files (`_Mapa1-1.Mapa` and their `_Gen*`, `_MapaBobow*` companions) and the graphics
 they point at are documented and proven by rendering: every level map and every sprite sheet
 becomes a picture in `build/`, and a picture is how a person and a session point at the same spot
-(`<level-id>:<col>,<row>`, the playbook's step 3 lesson). The formats stay in Python tools this
-plan; the Rust readers arrive with the porting plan that consumes them.
+(`<level-id>:<col>,<row>`, the playbook's step 3 lesson). A render is proven right by the
+worker-judged pass in T05's end-to-end section, not by its non-blank test alone. The formats stay
+in Python tools this plan; the Rust readers arrive with the porting plan that consumes them.
 
 ### 2.7 The executable map (T06)
 
@@ -177,7 +178,7 @@ the test.
 - `toolkit/crates/amiga-clock`, `amiga-chips`, `amiga-paula`: the frame length as a parameter
   where it is still a constant.
 - `toolkit/crates/toolkit-checks`: the purity allowlist admits the chosen OFS crate, one purity
-  line per entry.
+  line per entry, and its game-prefix list gains `fd-` so no toolkit crate can lean on either game.
 - `games/forest-dumb/engine/crates/fd-tools`: locate, extract, inventory; the amitools
   cross-checks.
 - `games/forest-dumb/engine/crates/fd-core`: the game's timing, the placeholder scene, the
@@ -226,7 +227,7 @@ tool regenerates.
 | | |
 |---|---|
 | OS | macOS (darwin) |
-| Language / runtime | Rust 1.99.0, pinned in the engine workspace as Superfrog's is; Python 3.14 in the repo venv |
+| Language / runtime | Rust 1.99.0, pinned in the engine workspace as Superfrog's is; Python 3.15.1 in fresh worktree venvs (the machine's `python3`; the main checkout's venv is 3.14.8) |
 | Toolchain | rustup 1.29.1, cmake at /opt/homebrew/bin |
 | Installed here | Ghidra (ghidraRun, plus the ghidra MCP server), Kickstart ROMs in `~/amiga-roms/` (1.3, 2.04, 3.1), vAmiga already built at the pinned commit in `~/.cache/amiga-toolkit/vamiga/`, amitools in the venv (from requirements.txt) |
 | **Deliberately absent** | No Rust OFS reader is a dependency yet; T01 adds one. Nothing else this plan needs is missing. |
@@ -238,7 +239,8 @@ from `.pir/settings.json` and are not re-derived here. The plan adds a new packa
 game's engine workspace) but no new install step: the pinned Rust toolchain is already on this
 machine and the venv line is unchanged. The stored lines were re-measured in a fresh worktree
 during planning: the setup leaves the copy clean, and the everything-run (toolkit, both games,
-root checks) is green in under an hour. Re-measured because the plan adds a new package folder.
+root checks) is green in about 70 minutes (plan review re-ran it 2026-10-31, same result).
+Re-measured because the plan adds a new package folder.
 
 **Quiet, no colour, loud on failure.** The suites already run quiet (`cargo test -q`, `-q`
 unittest discovery) and set `NO_COLOR=1` inside the commands themselves; failures print in full
@@ -257,9 +259,10 @@ line. What may not: anything else, and nothing copyleft, because the toolkit cra
 into the engine and the licence follows the link.
 
 **End to end.** Nothing in this plan has a surface a person moves through: the tools are
-command-line, the renders are build artifacts, and the first case is judged headless by the
-harness. No rig task and no prototype; the direction was confirmed in the requirements list, not
-in a mock.
+command-line, the first case is judged headless by the harness, and the renders — the plan's
+pictures — are judged by the worker who builds them, in T05's end-to-end pass, never handed to
+the owner for a feel. No rig task and no prototype; the direction was confirmed in the
+requirements list, not in a mock.
 
 ### 5.1 What the test command cannot reach
 
@@ -280,7 +283,7 @@ in a mock.
 | Action | Command (exact, wrapped) | Bin | Why this bin | Way back | Expected cost | Login check |
 |---|---|---|---|---|---|---|
 | Fetch and build vAmiga at the pinned commit | `toolkit/tools/setup/oracle.sh` | `worker` | Public read-only fetch, already built on this machine; a rebuild changes only the local cache | `rm -rf ~/.cache/amiga-toolkit/vamiga` | none | none |
-| Fetch a crates.io dependency | `cargo add amiga-ffs` (or the packer decoder T04 names) | `worker` | Public read-only fetch, recorded in Cargo.lock | revert the lockfile and remove the dependency | none | none |
+| Fetch a crates.io dependency | `cargo add amiga-ffs` (or the permissive packer decoder T04 names) | `worker` | Public read-only fetch, recorded in Cargo.lock | revert the lockfile and remove the dependency | none | none |
 
 Credentials measured at plan time: none exist for this plan. No cloud account, paid service,
 domain or device is touched; the two rows are both public read-only fetches of source code.

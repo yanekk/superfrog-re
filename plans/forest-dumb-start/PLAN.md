@@ -80,7 +80,7 @@ and a session point at the same spot with `<level-id>:<col>,<row>`.
 
 | # | Task | Depends on |
 |---|---|---|
-| [T06](tasks/T06-fd-exe-map.md) | fd-exe-map | T02 |
+| [T06](tasks/T06-fd-exe-map.md) | fd-exe-map | T02, T03 |
 
 At the end: one shared map of the main program exists, and the variable the first case models is
 chosen with evidence. T06 may amend T08's and T09's docs if its variable choice demands it; that
@@ -103,10 +103,10 @@ emulator and passes in the game's test suite.
 ## Critical path
 
 ```
-T01 → T02 → T06 → T08 → T09
+T01 → T02 → T03 → T06 → T08 → T09
 ```
 
-Off it: T00 (the parallel gate), T03, T04, T05, T07, which slot in wherever convenient.
+Off it: T00 (the parallel gate), T04, T05, T07, which slot in wherever convenient.
 
 Leaves: T09 is the final deliverable. T05 (file formats) is terminal within this plan because its
 consumer is the next plan's porting work; the formats are proven by rendering here, and the Rust
@@ -114,8 +114,8 @@ readers land where they are consumed.
 
 ## Parallel width
 
-10 tasks, longest dependency chain 5, up to 4 can run at once (T00 and T01 at the start; T03,
-T04, T06 and T07 once T02 is done). The width is modest on purpose: the plan is a discovery
+10 tasks, longest dependency chain 6, up to 4 can run at once (T00 and T01 at the start; T03,
+T04 and T07 once T02 is done, then T06 once T03 is). The width is modest on purpose: the plan is a discovery
 chain, and each phase's answers feed the next.
 
 ## Rough sizing
