@@ -13,6 +13,10 @@ Start from `toolkit/PLAYBOOK.md`, whose opening steps fill most of this file.
 <The disk set: how many, their file names, and which release they are. Never committed.>
 Lookup: [docs/01-disk-location.md](docs/01-disk-location.md).
 
+## Tests
+
+- Every new test file gets a label in [smoke.toml](smoke.toml); something crucial also gets a smoke test and an `[[area]]`. The full rule is under Conventions in the root CLAUDE.md.
+
 ## What's known (don't re-derive)
 
 <One line a fact, each pointing at its note under docs/: the disk layout, the packer, the file

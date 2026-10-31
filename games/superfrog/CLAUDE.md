@@ -14,6 +14,9 @@ A fact true of Superfrog goes here even if it might hold elsewhere (root CLAUDE.
 - Findings are in [`games/superfrog/docs/`](docs/) (read 01→07); [`README.md`](../../README.md) has the
   quickstart, tool list, and status.
 
+## Tests
+- Every new test file gets a label in [smoke.toml](smoke.toml); something crucial also gets a smoke test and an `[[area]]`. The full rule is under Conventions in the root CLAUDE.md.
+
 ## What's known (don't re-derive)
 - **Disks** are a custom trackloader: back-to-back sector-aligned `ATN!` chunks.
 - **`ATN!` is a custom cruncher.** The Rust port in `games/superfrog/engine/crates/sf-disk/src/atn.rs`

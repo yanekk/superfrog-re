@@ -11,6 +11,7 @@ to start a game. A game depends on it by path, so a toolkit change and its use l
   lesson came from.
 - A lesson enters here when a second game confirms it (root CLAUDE.md, rule 2). A backlog note is
   headed "Backlog": it is a plan, not a fact.
+- Every new test file gets a label in [smoke.toml](smoke.toml); something crucial also gets a smoke test and an `[[area]]`. The full rule is under Conventions in the root CLAUDE.md.
 
 ## Notes
 

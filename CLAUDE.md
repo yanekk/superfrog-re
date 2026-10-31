@@ -38,6 +38,14 @@ never by the owner playing or looking (`knowledge/self-testing-faithful-bar.md`)
   derived from them. Bring your own copies; each game's `CLAUDE.md` says where they go.
 - Do RE work on a feature branch and open a PR to `main`. Commit tools and docs (small); leave
   regenerable `build/` artifacts out of git.
+- Tests: smoke and full. pir runs `tools/smoke.sh` (15 minutes at most) at the end of every plan and for
+  every single run; a nightly schedule runs `tools/full.sh`; a session runs neither unless its task says so.
+  - Every new test file gets a label in its project's `smoke.toml`. A file that finishes alone in 10 s or
+    less is smoke.
+  - A change adding something crucial adds its test to smoke and an `[[area]]` for it. A plan adding a
+    crucial feature puts this in that task's Done when.
+  - Before adding a slow test, read `~/.cache/superfrog-re/smoke-times.tsv`. If smoke would pass 15 minutes,
+    move fast tests to full first. If crucial tests alone do not fit, ask the owner.
 
 <!-- ─────────────────────────────────────────────────────────────────────────
      Appended by plan-implement-review. Everything above this line is the
