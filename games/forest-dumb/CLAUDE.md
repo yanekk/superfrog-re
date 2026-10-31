@@ -43,7 +43,7 @@ Not written yet: there is no engine to fix. It comes with the recorder, step 8 o
 
 ## Notes
 
-- [docs/ROADMAP.md](docs/ROADMAP.md): backlog, the owner's sequence of plans after `forest-dumb-start`, level 1 first.
+- [docs/ROADMAP.md](docs/ROADMAP.md): backlog, the one level 1 plan the owner wants after `forest-dumb-start`.
 
 ## Backlog
 
