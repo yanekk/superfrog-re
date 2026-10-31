@@ -46,6 +46,7 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-31 | 📌 | T00 review, worker-driven: with disk 2 in df1 the boot runs about 170 frames later, so the one-drive input script stalls on the crack picture. The title stands still to frame 14000 at least, past the 4078 frames measured. |
 | 2026-10-31 | 📌 | Gate verdict go. Kickstart: `kick1.3.rom`, SHA-1 90933936cce43ca9bc6bf375662c076b27e3c458, boots the set first try; 2.04 and 3.1 not needed. |
 | 2026-10-31 | 📌 | Drives: disk 1 alone in df0, then swap. The prompt (frame 3461) says insert disk 2 in DF0, press fire. Disk 2 in df1 from power-on still prompts; fire without the swap stays on the prompt. |
 | 2026-10-31 | 📌 | Repeatable: two lockstep runs byte-identical every frame in chip, slow, picture, Paula, taps, mix and CPU: 3 000 frames idle and 7 000 frames scripted to the title. No configuration switch needed. |

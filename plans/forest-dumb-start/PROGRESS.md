@@ -13,9 +13,9 @@ writes a cell also fixes the over-budget cell they walk past.**
 
 **Plan reviewed:** 2026-10-31 — 7 fixed, 2 decided with the user
 
-**Status:** The oracle spike (T00) says go and awaits review.
+**Status:** The oracle spike (T00) says go, reviewed.
 **Last updated:** 2026-10-31
-**Next `pir-work` will:** review T00; T01 needs no result from it.
+**Next `pir-work` will:** take the next dispatched task; T00's answers are in FINDINGS.
 
 ## Tasks
 
@@ -28,7 +28,7 @@ to keep in sync.
 
 | # | Task | Depends on | State | Notes |
 |---|---|---|---|---|
-| T00 | oracle-spike | — | 🔍 | Gate verdict: go. Throwaway spike answered every question, see FINDINGS 2026-10-31. Kickstart 1.3, df0 swap, byte-identical runs, 313 lines in game, title at frame 4921, year 1996. No permanent tests by design. Deviation: gameplay picture capture crops to the status bar, logged, not fixed. |
+| T00 | oracle-spike | — | ✅ | Gate go. Review clean, no fix commit. Rerun with an independent throwaway probe: Kickstart, frames 3461 and 4921, 313/312 counts, VPOSW, lockstep, snapshots, df1 prompt, disk files in RAM, status-bar crop all reproduced; title read 1996. Documents only, no mutation possible. |
 | T01 | ofs-reader | — | ⬜ | |
 | T02 | fd-import | T01 | ⬜ | |
 | T03 | fd-boot-chain | T00, T02 | ⬜ | |
@@ -46,7 +46,7 @@ it here and point there.
 **A ✅ task's cell may be cut to one line** once the next task has been reviewed — its detail
 is in the commit and the file is read in full by every session from here on.
 
-**Review queue:** T00
+**Review queue:** *(empty)*
 
 ## Blocked on the user
 
