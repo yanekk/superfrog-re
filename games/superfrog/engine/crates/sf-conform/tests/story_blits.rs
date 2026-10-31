@@ -40,7 +40,7 @@ struct CopperFrame {
 fn copper_frame(mem: &AmigaMemory, cop1lc: u32, fetch: Fetch) -> CopperFrame {
     let mut bus = Vec::new();
     let word = |a: u32| u16::from_be_bytes([mem.byte(a), mem.byte(a + 1)]);
-    let writes = copper::run_bus(&|a, _, _| word(a), cop1lc, fetch, &mut bus);
+    let writes = copper::run_bus(&|a, _, _| word(a), cop1lc, fetch, copper::FRAME_LINES, &mut bus);
     CopperFrame { bus, writes, fetch }
 }
 

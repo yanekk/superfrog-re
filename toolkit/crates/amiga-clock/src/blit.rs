@@ -2,7 +2,7 @@
 //! how long a blit holds the CPU. Each is the engine's calculation as it was, in one home; what a
 //! blit does to memory is `amiga-chips`'.
 
-use crate::{FRAME_LINES, LINE_SLOTS};
+use crate::LINE_SLOTS;
 
 /// Whether DMA slot `slot` of a line is the memory refresh's (vAmiga `DAS_REFRESH`: `$01`, `$03`,
 /// `$05`, `$E2`).
@@ -35,13 +35,14 @@ pub const FIXED_TO: u16 = 0x0d;
 
 /// When each destination word of a blit with priority is written, as the blitter takes the bus
 /// cycles nothing else does: not the fixed slots (refresh, disk, audio: the odd cycles to `$13`),
-/// not the bitplanes' (`takes(line, h)`, the line wrapped to the frame), two a word (an A-to-D
+/// not the bitplanes' (`takes(line, h)`, the line wrapped to the frame of `frame_lines` lines), two a word (an A-to-D
 /// copy). Starts on (`line`, `h`); returns each word's (line, h) in order. Copper and sprite slots
 /// are not counted (measured on the credits).
 pub fn word_times(
     words: u32,
     line: u16,
     h: u16,
+    frame_lines: u16,
     takes: impl Fn(u16, u16) -> bool,
 ) -> Vec<(u16, u16)> {
     let mut out = Vec::with_capacity(words as usize);
@@ -49,7 +50,7 @@ pub fn word_times(
     let mut half = false;
     while (out.len() as u32) < words {
         let fixed = c % 2 == 1 && c <= FIXED_TO;
-        if !fixed && !takes(l % FRAME_LINES, c) {
+        if !fixed && !takes(l % frame_lines, c) {
             if half {
                 out.push((l, c));
             }
@@ -62,4 +63,20 @@ pub fn word_times(
         }
     }
     out
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn the_line_a_word_asks_about_wraps_at_the_frame_length_it_is_given() {
+        // Bitplanes take every slot of line 0 only. A blit starting on line 312 finds that line is
+        // line 0 of the next frame in a 312-line frame, so it waits it out; in a 313-line frame it
+        // is the frame's last line, free.
+        let takes = |l: u16, _: u16| l == 0;
+        let first_line = |frame_lines| word_times(1, 312, 0, frame_lines, takes)[0].0;
+        assert_eq!(first_line(312), 313);
+        assert_eq!(first_line(313), 312);
+    }
 }

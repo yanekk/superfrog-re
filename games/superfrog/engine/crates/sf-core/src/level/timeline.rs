@@ -41,7 +41,7 @@ pub fn of(trace: &[Tick], costs: &[u32], writes: &[(u16, u16)], job: Job) -> Tim
 
 /// Runs `t` on the front end's beam.
 pub(crate) fn run(t: &mut Timeline, cx: &mut Cx) -> Yield {
-    match t.run(cx) {
+    match t.run(cx, crate::front::FRAME_LINES) {
         TimelineYield::Poll => Yield::Poll,
         TimelineYield::Return => Yield::Return,
     }
@@ -256,7 +256,7 @@ mod tests {
                 let (mut nb, mut ob) = (Beam::at(start), Beam::at(start));
                 // Frame after frame, the beam back at line 0 after each vertical blank.
                 for frame in 0..1000 {
-                    let (yn, yo) = (new.run(&mut nb), old.run(&mut ob));
+                    let (yn, yo) = (new.run(&mut nb, FRAME_LINES), old.run(&mut ob));
                     assert_eq!((yn, &nb), (yo, &ob), "start {start} frame {frame}");
                     runs += 1;
                     if yn == TimelineYield::Return {
@@ -286,13 +286,13 @@ mod tests {
         // the bytes were captured from the states built field by field before the move.
         let mut polled = sample();
         let mut beam = Beam::at(FRAME_LINES - 2);
-        assert_eq!(polled.run(&mut beam), TimelineYield::Poll);
+        assert_eq!(polled.run(&mut beam, FRAME_LINES), TimelineYield::Poll);
         assert_eq!(
             hex(&bincode::serialize(&polled).unwrap()),
             "0200000000000000e8030000a0000100f4010000960001802c0100000000000000000000220200000000000000"
         );
         let mut done = sample();
-        assert_eq!(done.run(&mut Beam::at(10)), TimelineYield::Return);
+        assert_eq!(done.run(&mut Beam::at(10), FRAME_LINES), TimelineYield::Return);
         assert_eq!(
             hex(&bincode::serialize(&done).unwrap()),
             "0200000000000000e8030000a0000100f4010000960001802c010000020000000000000000000000b601000000"

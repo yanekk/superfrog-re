@@ -209,7 +209,7 @@ mod tests {
                 for h in (0..227).step_by(3).chain([0x0d, 0x0e, 0xe2]) {
                     for words in [0, 1, 2, 3, 40, 321, 2000] {
                         assert_eq!(
-                            word_times(words, line, h, |l, h| fetch.takes(l, h)),
+                            word_times(words, line, h, 313, |l, h| fetch.takes(l, h)),
                             old_word_times(words, line, h, fetch),
                             "{fetch:?} {line} {h} {words}"
                         );

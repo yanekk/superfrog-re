@@ -11,8 +11,6 @@
 /// DMA cycles per PAL line: `h` runs `0..=$E2`. The copper counts DMA slots, so its "cycles" are
 /// [`amiga_clock::LINE_SLOTS`], not the CPU's [`amiga_clock::LINE_CYCLES`].
 pub use amiga_clock::LINE_SLOTS as LINE_CYCLES;
-/// Lines per long PAL frame.
-pub use amiga_clock::FRAME_LINES;
 
 /// Custom registers the renderer follows, by their offset from `$DFF000`.
 pub mod reg {
@@ -122,23 +120,33 @@ fn word(b: Beam) -> u32 {
     (b.line as u32) << 8 | b.slot() as u32
 }
 
-/// Run the copper list at `start` for one frame from the vertical blank, `word` reading chip
-/// memory. `fetch` is the bitplane setup the frame starts with (the previous frame's, as the
+/// Run the copper list at `start` for one frame of `frame_lines` lines from the vertical blank,
+/// `word` reading chip memory. `fetch` is the bitplane setup the frame starts with (the previous frame's, as the
 /// list left it). Returns every register write in beam order.
-pub fn run(word: &dyn Fn(u32) -> u16, start: u32, fetch: Fetch) -> Vec<Write> {
-    run_timed(&|a, _| word(a), start, fetch)
+pub fn run(word: &dyn Fn(u32) -> u16, start: u32, fetch: Fetch, frame_lines: u16) -> Vec<Write> {
+    run_timed(&|a, _| word(a), start, fetch, frame_lines)
 }
 
 /// [`run`], `word(addr, line)` reading the list as the copper sees it on that line: a list the CPU
 /// rewrites during the frame is read old above the line it was rewritten on, new below.
-pub fn run_timed(word: &dyn Fn(u32, u16) -> u16, start: u32, fetch: Fetch) -> Vec<Write> {
-    run_beam(&|a, line, _| word(a, line), start, fetch)
+pub fn run_timed(
+    word: &dyn Fn(u32, u16) -> u16,
+    start: u32,
+    fetch: Fetch,
+    frame_lines: u16,
+) -> Vec<Write> {
+    run_beam(&|a, line, _| word(a, line), start, fetch, frame_lines)
 }
 
 /// [`run_timed`], `word(addr, line, h)` given the DMA cycle of the read as well (a list a routine
 /// rewrites word by word as the copper reads it).
-pub fn run_beam(word: &dyn Fn(u32, u16, u16) -> u16, start: u32, fetch: Fetch) -> Vec<Write> {
-    run_bus(word, start, fetch, &mut Vec::new())
+pub fn run_beam(
+    word: &dyn Fn(u32, u16, u16) -> u16,
+    start: u32,
+    fetch: Fetch,
+    frame_lines: u16,
+) -> Vec<Write> {
+    run_bus(word, start, fetch, frame_lines, &mut Vec::new())
 }
 
 /// [`run_beam`], also giving every bus cycle the copper takes, in order: what the CPU and the
@@ -150,6 +158,7 @@ pub fn run_bus(
     word: &dyn Fn(u32, u16, u16) -> u16,
     start: u32,
     mut fetch: Fetch,
+    frame_lines: u16,
     bus: &mut Vec<Beam>,
 ) -> Vec<Write> {
     let mut writes = Vec::new();
@@ -173,7 +182,7 @@ pub fn run_bus(
         free(fetch, b)
     };
     let next_free = |fetch: &Fetch, mut b: Beam, bus: &mut Vec<Beam>| {
-        while b.line < FRAME_LINES && !ask(fetch, b, bus) {
+        while b.line < frame_lines && !ask(fetch, b, bus) {
             b = b.plus_slots(1);
         }
         b
@@ -186,14 +195,14 @@ pub fn run_bus(
     let mut skip = false;
     for _ in 0..8192 {
         b = next_free(&fetch, b, bus);
-        if b.line >= FRAME_LINES {
+        if b.line >= frame_lines {
             break;
         }
         let w1 = word(pc, b.line, b.slot());
         bus.push(b);
         pc += 2;
         b = next_free(&fetch, b.plus_slots(2), bus);
-        if b.line >= FRAME_LINES {
+        if b.line >= frame_lines {
             break;
         }
         let w2 = word(pc, b.line, b.slot());
@@ -225,7 +234,7 @@ pub fn run_bus(
             b = b.plus_slots(2);
             continue;
         }
-        let Some(trigger) = find_match(b, comp, mask) else {
+        let Some(trigger) = find_match(b, comp, mask, frame_lines) else {
             break; // the end of the list: a wait that never comes
         };
         if trigger == b {
@@ -233,7 +242,7 @@ pub fn run_bus(
             continue;
         }
         b = trigger;
-        while b.line < FRAME_LINES
+        while b.line < frame_lines
             && !(ask(&fetch, b, bus) && b.slot().is_multiple_of(2) && comparator(b, comp, mask))
         {
             b = b.plus_slots(1);
@@ -255,12 +264,12 @@ fn comparator(b: Beam, comp: u16, mask: u16) -> bool {
 }
 
 /// vAmiga's `Copper::findMatch`: the first beam position at or after `from` where the WAIT's
-/// comparator fires, or `None` for one that never does this frame.
-fn find_match(from: Beam, comp: u16, mask: u16) -> Option<Beam> {
+/// comparator fires, or `None` for one that never does in a frame of `frame_lines` lines.
+fn find_match(from: Beam, comp: u16, mask: u16, frame_lines: u16) -> Option<Beam> {
     let mut b = from;
     let vmask = (mask & 0xFF00) as u32;
     let vcomp = (comp as u32) & vmask;
-    while b.line < FRAME_LINES {
+    while b.line < frame_lines {
         let v = word(b) & 0xFFFF & vmask;
         if v == vcomp {
             if let Some(h) = horizontal_match(b, comp, mask) {
@@ -300,6 +309,7 @@ fn horizontal_match(b: Beam, comp: u16, mask: u16) -> Option<u16> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use amiga_clock::FRAME_LINES;
 
     fn list(words: &[u16]) -> impl Fn(u32) -> u16 + '_ {
         move |a| words.get(a as usize / 2).copied().unwrap_or(0xFFFF)
@@ -310,7 +320,7 @@ mod tests {
         let w = [
             0x0180, 0x0123, 0x2001, 0xFF00, 0x0182, 0x0456, 0xFFFF, 0xFFFE,
         ];
-        let out = run(&list(&w), 0, Fetch::default());
+        let out = run(&list(&w), 0, Fetch::default(), FRAME_LINES);
         assert_eq!(
             out,
             [
@@ -338,7 +348,7 @@ mod tests {
             0x0182, 0x0F00, 0x0184, 0x00F0, 0x0186, 0x000F, 0xFFFF, 0xFFFE,
         ];
         let mut bus = Vec::new();
-        run_bus(&|a, _, _| list(&w)(a), 0, Fetch::default(), &mut bus);
+        run_bus(&|a, _, _| list(&w)(a), 0, Fetch::default(), FRAME_LINES, &mut bus);
         let h: Vec<u16> = bus.iter().map(|b| b.slot()).collect();
         assert!(bus.iter().all(|b| b.line == 0));
         assert_eq!(h, [0, 2, 4, 6, 8, 10, 12, 14, 16]);
@@ -347,7 +357,7 @@ mod tests {
         // fetches at $E1.
         let w = [0x10DD, 0xFFFE, 0x0180, 0x0123, 0xFFFF, 0xFFFE];
         let mut bus = Vec::new();
-        run_bus(&|a, _, _| list(&w)(a), 0, Fetch::default(), &mut bus);
+        run_bus(&|a, _, _| list(&w)(a), 0, Fetch::default(), FRAME_LINES, &mut bus);
         let line: Vec<u16> = bus.iter().filter(|b| b.line == 0x10).map(|b| b.slot()).collect();
         assert_eq!(&line[..4], &[0xDC, 0xDE, 0xE0, 0xE1]);
     }
@@ -368,7 +378,7 @@ mod tests {
             w.extend([0x0180 + 2 * k, k]);
         }
         w.extend([0xFFFF, 0xFFFE]);
-        let out = run(&list(&w), 0, fetch);
+        let out = run(&list(&w), 0, fetch, FRAME_LINES);
         let h: Vec<u16> = out.iter().map(|w| w.h).collect();
         // Four cycles a move before the window; from $28 one even cycle in four is taken.
         assert_eq!(&h[..10], &[4, 8, 12, 16, 20, 24, 28, 32, 36, 40]);
@@ -395,12 +405,13 @@ mod tests {
             find_match(
                 Beam::from_slot(0xFF, 0xE1),
                 comp,
-                mask
+                mask,
+                FRAME_LINES
             ),
             None
         );
         assert_eq!(
-            find_match(Beam::from_slot(0x40, 0), comp, mask),
+            find_match(Beam::from_slot(0x40, 0), comp, mask, FRAME_LINES),
             Some(Beam::from_slot(0xFF, 0xDC))
         );
     }
@@ -422,5 +433,25 @@ mod tests {
             .lines(),
             0x27..0xf0
         );
+    }
+
+    #[test]
+    fn the_run_ends_at_the_frame_length_it_is_given() {
+        // Past line 255 the comparator sees only the line's low byte, so a list gets there as a
+        // real one does: WAIT $FF,$DE, then moves (to the no-op register) that cross into line 256.
+        // Then WAIT for $37 (line 311), a move, WAIT for $38 (line 312), a move. A 312-line frame
+        // ends before the last wait comes.
+        let to_line_256 = [0xFFDF, 0xFFFE, 0x01FE, 0, 0x01FE, 0, 0x01FE, 0];
+        let then = [0x3701, 0xFF00, 0x0180, 0x0111, 0x3801, 0xFF00, 0x0182, 0x0222, 0xFFFF, 0xFFFE];
+        let w = [&to_line_256[..], &then[..]].concat();
+        let lines = |frame_lines| -> Vec<(u16, u16)> {
+            run(&list(&w), 0, Fetch::default(), frame_lines)
+                .iter()
+                .filter(|w| w.reg != 0x1FE)
+                .map(|w| (w.line, w.reg))
+                .collect()
+        };
+        assert_eq!(lines(312), [(311, 0x180)]);
+        assert_eq!(lines(313), [(311, 0x180), (312, 0x182)]);
     }
 }

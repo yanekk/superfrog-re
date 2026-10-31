@@ -411,7 +411,7 @@ mod tests {
             .map(|(w, (vpos, hpos))| amiga_paula::PaulaWrite { vpos, hpos, ..*w })
             .collect();
         let third_frame = |retrigger: &[amiga_paula::PaulaWrite]| {
-            let mut p = amiga_paula::Paula::booted(48_000, crate::BOOT_DMACON);
+            let mut p = amiga_paula::Paula::booted(48_000, crate::BOOT_DMACON, amiga_paula::LINES_PER_FRAME);
             let mut out = Vec::new();
             for f in [&first[..], retrigger, &[]] {
                 p.frame(f, &Chip, &mut out);

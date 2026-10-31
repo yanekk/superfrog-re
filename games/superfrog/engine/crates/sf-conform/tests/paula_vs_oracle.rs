@@ -80,7 +80,7 @@ fn run() -> &'static Run {
     RUN.get_or_init(|| {
         let cfg = OracleConfig::locate(DEFAULT_MAX_FRAMES).unwrap_or_else(|e| panic!("{e}"));
         let mut amiga = Amiga::power_on(&cfg).unwrap();
-        let mut paula = Paula::new(MIX_RATE);
+        let mut paula = Paula::new(MIX_RATE, amiga_paula::LINES_PER_FRAME);
         let mut reference = Reference::default();
         let mut run = Run {
             start: 0,

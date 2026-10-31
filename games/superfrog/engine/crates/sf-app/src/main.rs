@@ -454,7 +454,7 @@ impl App {
             game,
             feed: feed.map(|f| f.frames),
             picture: Picture::default(),
-            paula: Paula::booted(rate, sf_core::BOOT_DMACON),
+            paula: Paula::booted(rate, sf_core::BOOT_DMACON, amiga_paula::LINES_PER_FRAME),
             rate,
             paused: false,
             pacer: Pacer::new(rate),

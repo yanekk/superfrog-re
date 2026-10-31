@@ -528,7 +528,7 @@ fn scroll(cx: &mut Cx, bytes: u32, inside: u32) {
     b.run(cx.s);
     // The beam overtakes the blit: each word shows new only if written before its fetch (the
     // plane is the fifth, fetched sixth in each unit of eight cycles from DDFSTRT).
-    let times = super::blit::word_times(n, start, SCROLL_START_H, |l, h| cx.fetch.takes(l, h));
+    let times = super::blit::word_times(n, start, SCROLL_START_H, super::FRAME_LINES, |l, h| cx.fetch.takes(l, h));
     if start < super::FRAME_LINES {
         let mut shown = cx.s.clone();
         let first = cx.fetch.first_cycle();
