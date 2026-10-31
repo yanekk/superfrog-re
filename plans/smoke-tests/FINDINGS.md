@@ -11,6 +11,7 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-31 | 🐞 | T07: pid 40416, `superfrog` from T03's timing pass, still alive after 4 h as an orphan, so the T02 row's "bounded by `timeout_s`" did not hold there. Open; not killed. |
 | 2026-10-31 | 📌 | T07 measured smoke green: warm 503 s; cold 887 s (fresh worktree, empty target, 13 s under budget). Load 6 to 10 from other sessions. Compile adds 384 s; no labels moved, runner unchanged. |
 | 2026-10-31 | 🐞 | T07: first real run failed `test_architecture_docs`: `toolkit/smoke.toml`, added by T05, had no owning chapter. `verification.md` now owns it. |
 | 2026-10-31 | 📌 | T06 review: `front-password` types only an unknown code, so no conformance case plays a valid code into a level; the area rests on `every_six_digit_code…` plus `level_entry`. `recorder_drill.rs` and `plan_routes.rs` are smoke but wholly `#[ignore]`d, so run nothing. |
