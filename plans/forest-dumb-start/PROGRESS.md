@@ -15,7 +15,7 @@ writes a cell also fixes the over-budget cell they walk past.**
 
 **Status:** The plan is written, nothing is built. The oracle spike (T00) is the first task.
 **Last updated:** 2026-10-31
-**Next `pir-work` will:** take T00, the oracle spike, because it gates everything after it.
+**Next `pir-work` will:** review T08, then build T09.
 
 ## Tasks
 
@@ -36,7 +36,7 @@ to keep in sync.
 | T05 | fd-file-formats | T02, T04 | ✅ | |
 | T06 | fd-exe-map | T02, T03 | ✅ | |
 | T07 | frame-parameterise | T00 | ✅ | |
-| T08 | fd-core | T00, T06, T07 | ⬜ | |
+| T08 | fd-core | T00, T06, T07 | 🔍 | `fd-core`: `FdTiming` (313, empty fetch), `TitleScene` modelling `mt_counter`, `LAYOUT`; 7 tests, one checks `LAYOUT` against `symbols.toml`. Deviations: added `LAYOUT_HUNK` because a hunk-relative address needs its hunk; `new()` is sync frame 4922, per T06's map. |
 | T09 | fd-first-case | T00, T02, T03, T08 | ⬜ | |
 
 A Notes cell holds what was built or what the review found, the test count, and one line per
@@ -46,7 +46,7 @@ it here and point there.
 **A ✅ task's cell may be cut to one line** once the next task has been reviewed — its detail
 is in the commit and the file is read in full by every session from here on.
 
-**Review queue:** *(empty)*
+**Review queue:** T08
 
 ## Blocked on the user
 

@@ -1,0 +1,11 @@
+[package]
+name = "fd-core"
+version.workspace = true
+edition.workspace = true
+publish.workspace = true
+
+[dependencies]
+# The display timing a game supplies (pure, a toolkit crate).
+amiga-clock = { path = "../../../../../toolkit/crates/amiga-clock" }
+# The per-frame input (pure, a toolkit crate).
+amiga-input = { path = "../../../../../toolkit/crates/amiga-input" }
