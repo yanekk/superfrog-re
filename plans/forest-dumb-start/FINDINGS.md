@@ -46,6 +46,7 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-31 | 📌 | T04: 46 disk 2 files are `ESL!`, PowerPacker's format renamed; `BillClintonToDupek` is `S404`; 14 plain. Unpacked to `build/unpacked/` by the originals' routines; only PP crate is GPL `format198x`. T05 reads there. |
 | 2026-10-31 | 📌 | T02 review: `fd-tools` seatbelt checks path text only; `--out` under any `build` ancestor or through a symlink there is accepted (probed). Fixed target names mean zips and tracked files are not overwritten. Left as is. |
 | 2026-10-31 | 📌 | T02 cross-check: `xdftool unpack` on both real disks agrees with `fd-tools extract`: 61 files (12 + 49), names, sizes, all bytes identical. |
 | 2026-10-31 | 📌 | Unused `amiga-*` profile overrides in `games/forest-dumb/engine/Cargo.toml` print eight cargo warnings on a non-quiet build until T08/T09 depend on those crates; harmless, `-q` hides them. |
