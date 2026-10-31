@@ -37,7 +37,7 @@ to keep in sync.
 | T06 | fd-exe-map | T02, T03 | ✅ | |
 | T07 | frame-parameterise | T00 | ✅ | |
 | T08 | fd-core | T00, T06, T07 | ✅ | |
-| T09 | fd-first-case | T00, T02, T03, T08 | ⬜ | |
+| T09 | fd-first-case | T00, T02, T03, T08 | ✅ | |
 
 A Notes cell holds what was built or what the review found, the test count, and one line per
 deviation from the task doc. A deviation needing a paragraph needs the commit message: name
