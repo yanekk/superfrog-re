@@ -22,7 +22,7 @@ done · ⛔ blocked, needs a human.
 
 | # | Task | Depends on | State | Notes |
 |---|---|---|---|---|
-| T01 | label-check | — | ⬜ | |
+| T01 | label-check | — | ✅ | |
 | T02 | smoke-runner | T01 | ⬜ | |
 | T03 | file-timings | T01 | ⬜ | |
 | T04 | full-command | — | ⬜ | |
