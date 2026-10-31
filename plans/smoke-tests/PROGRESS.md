@@ -13,7 +13,7 @@ the account is the commit message. Whoever writes a cell also fixes the over-bud
 
 **Status:** Plan written 2026-10-31. Nothing built.
 **Last updated:** 2026-10-31
-**Next `pir-work` will:** T01 and T04, which depend on nothing; T01 unblocks the most.
+**Next `pir-work` will:** T01, which depends on nothing and unblocks the most.
 
 ## Tasks
 
@@ -25,13 +25,13 @@ done · ⛔ blocked, needs a human.
 | T01 | label-check | — | ⬜ | |
 | T02 | smoke-runner | T01 | ⬜ | |
 | T03 | file-timings | T01 | ⬜ | |
-| T04 | full-command | — | 🔍 | `tools/full.sh` plus flag in three `test.sh`; 9 tests. Proven on a fake cargo only, unrun for real. Deviation: added `--exact` beside `--skip`, because `--skip` alone matches substrings; a screen test in a module would need its path. |
+| T04 | full-command | — | ✅ | Proven on fake cargo plus real `--list`; unrun for real. Review fixed `zips` panicking every night: reproduced by running it, owner left it out, test locks it. Four mutations plus one went red, `--exact` held. Whether the 72 others pass is read-only. |
 | T05 | toolkit-and-forest-labels | T02, T03 | ⬜ | |
 | T06 | superfrog-labels | T02, T03 | ⬜ | |
 | T07 | smoke-fits | T02, T05, T06 | ⬜ | |
 | T08 | switch-and-directives | T04, T07 | ⬜ | |
 
-**Review queue:** T04
+**Review queue:** none
 
 ## Blocked on the user
 
