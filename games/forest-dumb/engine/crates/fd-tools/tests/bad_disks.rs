@@ -82,7 +82,13 @@ fn a_truncated_adf_is_reported_by_name() {
 #[test]
 fn an_oversized_adf_is_reported_by_name() {
     let big = write_stored(&[("d.adf", &vec![0u8; ADF_SIZE + 1])]);
-    refused("long", &big, &adf_zip(ADF_SIZE), ONE, "901121 bytes");
+    refused(
+        "long",
+        &big,
+        &adf_zip(ADF_SIZE),
+        ONE,
+        "901121 bytes, not the 901120",
+    );
 }
 
 #[test]

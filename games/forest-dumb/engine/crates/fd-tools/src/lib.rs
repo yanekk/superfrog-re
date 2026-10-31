@@ -41,7 +41,7 @@ pub fn extract(dir: &Path, out: &Path) -> Result<Vec<InventoryFile>, String> {
             let bytes = image
                 .read_file(&name)
                 .map_err(|e| bad(format!("{name:?} on its ADF: {e}")))?;
-            let rel = entry_path(&name).map_err(&bad)?;
+            let rel = entry_path(&name).map_err(bad)?;
             inventory.push(InventoryFile {
                 disk,
                 size: bytes.len() as u32,
@@ -115,7 +115,7 @@ fn read_adf(path: &Path) -> Result<Vec<u8>, String> {
     let bad = |e: String| format!("{}: {e}", describe_bytes(path, &bytes));
     // One byte over the limit, so an oversized image reaches the size check below and says so.
     let entries = zip::read_entries(&bytes, |n| n.to_lowercase().ends_with(".adf"), ADF_SIZE + 1)
-        .map_err(&bad)?;
+        .map_err(bad)?;
     let [entry] = &entries[..] else {
         return Err(bad(format!("it holds {} ADFs, not one", entries.len())));
     };
