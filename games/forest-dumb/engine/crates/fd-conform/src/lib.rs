@@ -71,18 +71,47 @@ impl Case {
             let (key, value) = body
                 .split_once('=')
                 .ok_or_else(|| at(format!("`{body}`: expected `key = value`")))?;
-            let value = value.trim();
-            match key.trim() {
-                "sync" => sync = Some(sync_table(value).map_err(at)?),
-                "swap" => swap = Some(swap_table(value).map_err(at)?),
-                "frames" => frames = Some(int(value).map_err(at)?),
-                "compare" => compare = Some(strings(value).map_err(at)?),
-                "vars" => vars = Some(strings(value).map_err(at)?),
+            let (key, value) = (key.trim(), value.trim());
+            // A second `frames` would otherwise win silently over the one a reader saw first.
+            let once = |taken: bool| {
+                if taken {
+                    Err(at(format!("`{key}` is given twice")))
+                } else {
+                    Ok(())
+                }
+            };
+            match key {
+                "sync" => {
+                    once(sync.is_some())?;
+                    sync = Some(sync_table(value).map_err(at)?);
+                }
+                "swap" => {
+                    once(swap.is_some())?;
+                    swap = Some(swap_table(value).map_err(at)?);
+                }
+                "frames" => {
+                    once(frames.is_some())?;
+                    frames = Some(int(value).map_err(at)?);
+                }
+                "compare" => {
+                    once(compare.is_some())?;
+                    compare = Some(strings(value).map_err(at)?);
+                }
+                "vars" => {
+                    once(vars.is_some())?;
+                    vars = Some(strings(value).map_err(at)?);
+                }
                 other => return Err(at(format!("`{other}` is not a case key"))),
             }
         }
         let missing = |k: &str| format!("no `{k}`");
-        let (script, sync_frame) = sync.ok_or_else(|| missing("sync"))?;
+        let (script, sync_frame): (String, u32) = sync.ok_or_else(|| missing("sync"))?;
+        // `run` swaps only on the way to the sync point, so a later swap would never happen.
+        if let Some(Swap { frame, .. }) = swap.filter(|s: &Swap| s.frame >= sync_frame) {
+            return Err(format!(
+                "swap at frame {frame}: a swap must come before the sync frame {sync_frame}"
+            ));
+        }
         let compare = compare.ok_or_else(|| missing("compare"))?;
         if compare != ["vars"] {
             return Err(format!(
@@ -96,12 +125,18 @@ impl Case {
         for v in &vars {
             address(v)?;
         }
+        let frames: u32 = frames.ok_or_else(|| missing("frames"))?;
+        if sync_frame.checked_add(frames).is_none() {
+            return Err(format!(
+                "sync frame {sync_frame} plus frames {frames} is past any frame cap"
+            ));
+        }
         Ok(Case {
             name: name.to_string(),
             script,
             sync_frame,
             swap,
-            frames: frames.ok_or_else(|| missing("frames"))?,
+            frames,
             vars,
         })
     }
@@ -325,6 +360,9 @@ mod tests {
             ("[\"mt_counter\"]", "[]", "compare nothing"),
             ("disk = 2", "disk = 3", "disks 1 and 2"),
             ("frame = 7", "frame = 7, df1 = true", "df1"),
+            ("frames = 9", "frames = 9\nframes = 8", "twice"),
+            ("frame = 3,", "frame = 7,", "before the sync frame"),
+            ("frames = 9", "frames = 4294967295", "frame cap"),
         ] {
             let text = GOOD.replace(from, to);
             assert_ne!(text, GOOD, "{from}");
@@ -349,7 +387,13 @@ mod tests {
             oracle: 2,
         }
         .to_string();
-        for part in ["pass 3", "4925", "mt_counter", "3 in the engine", "2 in the original"] {
+        for part in [
+            "pass 3",
+            "4925",
+            "mt_counter",
+            "3 in the engine",
+            "2 in the original",
+        ] {
             assert!(text.contains(part), "{text}");
         }
     }

@@ -13,9 +13,9 @@ writes a cell also fixes the over-budget cell they walk past.**
 
 **Plan reviewed:** 2026-10-31 — 7 fixed, 2 decided with the user
 
-**Status:** All tasks built; T09 awaits review.
+**Status:** All tasks built and reviewed; pir's end run of the suite is next.
 **Last updated:** 2026-10-31
-**Next `pir-work` will:** review T09.
+**Next `pir-work` will:** nothing; every task is ✅.
 
 ## Tasks
 
@@ -37,7 +37,7 @@ to keep in sync.
 | T06 | fd-exe-map | T02, T03 | ✅ | |
 | T07 | frame-parameterise | T00 | ✅ | |
 | T08 | fd-core | T00, T06, T07 | ✅ | |
-| T09 | fd-first-case | T00, T02, T03, T08 | 🔍 | Runner, case, purity: 16 tests, same on 15079 passes. Deviations: sync 4922, T06's correction; added `swap` key; hand parser, `toml` not admitted; `read_adf` public, no direct amiga-disk; `test.sh` already complete, unchanged, not run: worker rule leaves it to pir's end run. |
+| T09 | fd-first-case | T00, T02, T03, T08 | ✅ | Reproduced and fixed: duplicate keys, swap after sync ignored, frames overflow panic; parse tests lock them. Case same on 15079 passes, added tests five times. Four mutations caught, post-sync input index survives (FINDINGS). `test.sh` not run here: pir's end run. |
 
 A Notes cell holds what was built or what the review found, the test count, and one line per
 deviation from the task doc. A deviation needing a paragraph needs the commit message: name
@@ -46,7 +46,7 @@ it here and point there.
 **A ✅ task's cell may be cut to one line** once the next task has been reviewed — its detail
 is in the commit and the file is read in full by every session from here on.
 
-**Review queue:** T09
+**Review queue:** *(empty)*
 
 ## Blocked on the user
 
