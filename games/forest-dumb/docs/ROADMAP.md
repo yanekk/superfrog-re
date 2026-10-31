@@ -1,4 +1,4 @@
-# Backlog: the plan after forest-dumb-start
+# Backlog: the plans after forest-dumb-start
 
 Owner's sequence, 2026-10-31. Not planned or built yet. It is a `pir plan` run with a slug starting
 `forest-dumb-`. Start it once `forest-dumb-start` is merged: a plan branches from
@@ -21,13 +21,16 @@ The stages below are its order of work; the planner turns them into tasks and ma
 | Enemies | Level 1 with enemies, playable end to end | A test |
 | The rest of the level | Any special mechanics, such as doors or secret passages | A test plays the level from start to end |
 
-After this plan, continue with the next levels.
+## After level 1
+
+One plan a level, in order: W2-1 to W6-1 if the count below holds (owner, 2026-10-31). Then a plan for
+sound. The title screen and menus are also a later plan; their place in this order is not decided.
 
 ## Decided by the owner, 2026-10-31
 
-- Level 1 first, as one plan with the stages above, then the next levels.
+- Level 1 first, as one plan with the stages above; then one plan a level; then sound.
 - The app starts straight in level 1. The title screen and menus are a later plan.
-- Silent for now. Sound is a later plan.
+- Silent until the sound plan, which follows the level plans.
 
 The standing rule on disk-derived files applies to the map page: it holds disk graphics, so it stays in
 `build/` and is never committed.
