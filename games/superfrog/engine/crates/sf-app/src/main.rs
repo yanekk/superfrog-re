@@ -457,7 +457,7 @@ impl App {
             paula: Paula::booted(rate, sf_core::BOOT_DMACON, amiga_paula::LINES_PER_FRAME),
             rate,
             paused: false,
-            pacer: Pacer::new(rate),
+            pacer: Pacer::new(rate, amiga_paula::LINES_PER_FRAME),
             clock: match &audio {
                 Some(a) => a.clock(),
                 None => Clock::Wall { start: Instant::now(), rate },
