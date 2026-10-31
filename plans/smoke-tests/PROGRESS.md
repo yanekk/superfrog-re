@@ -13,7 +13,7 @@ the account is the commit message. Whoever writes a cell also fixes the over-bud
 
 **Status:** Plan written 2026-10-31. Nothing built.
 **Last updated:** 2026-10-31
-**Next `pir-work` will:** T01, which depends on nothing and unblocks the most.
+**Next `pir-work` will:** T02 and T03, which T01 unblocked.
 
 ## Tasks
 
