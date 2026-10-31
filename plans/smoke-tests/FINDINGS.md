@@ -11,6 +11,8 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-31 | 📌 | T06 review: `front-password` types only an unknown code, so no conformance case plays a valid code into a level; the area rests on `every_six_digit_code…` plus `level_entry`. `recorder_drill.rs` and `plan_routes.rs` are smoke but wholly `#[ignore]`d, so run nothing. |
+| 2026-10-31 | 📌 | T06: re-measured `bosses_routines` 9.7 s (smoke), `widescreen_objects` 11.0 s and `sf-plan` `map` 13.1 s (full). `determinism` read 13.9 s, in smoke for its area. `window.rs` whole takes 165 s, so named. No area needed a new test. |
 | 2026-10-31 | 📌 | T05: under load 17, `exe_map_claims` took 4.5 s fresh, not `over`; `amiga-clock/src` 7.6 s; `test_render_levels.py` 11.3 s then 6 s. All smoke. `first_case`'s title test 60 s alone, 113 s whole-file earlier. |
 | 2026-10-31 | 📌 | T03 review: `amiga-clock/src` re-measured at 8.6 s, not the 10.5 s in `timings.tsv`, on a less busy machine, so load can flip a borderline row. T05, T06 re-measure rows near 10 s before labelling. |
 | 2026-10-31 | 📌 | T03: pass had another session's `cargo test --workspace` running, so times read high. Finished over 10 s: `amiga-clock/src`, `bosses_routines`, `widescreen_objects`, `sf-plan/tests/map`. No file failed; `over` hides any red. Re-measure before trusting borderline rows. |

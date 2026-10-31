@@ -1,0 +1,293 @@
+# What smoke runs for Superfrog (smoke-tests DESIGN §2.2, §2.4, §2.5). `tools/smoke.sh` checks this file.
+# Fast means a file alone finishes in 10 s or less (plans/smoke-tests/timings.tsv). A slow file enters only for
+# a crucial area, by named test where it holds more than the area needs. Times beside an area were measured
+# alone with pir-test on 2026-10-31, on a busy machine.
+workspace = "engine"
+
+[tests]
+"crates/sf-assets/tests/cache.rs" = "smoke"
+"crates/sf-assets/tests/graphics_vs_python.rs" = "smoke"
+"crates/sf-assets/tests/levels.rs" = "smoke"
+"crates/sf-assets/tests/sflevel.rs" = "full"
+"crates/sf-bench/tests/bench.rs" = "full"
+"crates/sf-conform/tests/alone.rs" = "full"
+"crates/sf-conform/tests/asset_cache_speed.rs" = "smoke"
+"crates/sf-conform/tests/audio_driver.rs" = [
+    "title_music_matches_the_full_system_oracle",
+]
+"crates/sf-conform/tests/beam.rs" = "smoke"
+"crates/sf-conform/tests/bonus_enemy_routines.rs" = "full"
+"crates/sf-conform/tests/bonus_routines.rs" = "full"
+"crates/sf-conform/tests/bosses.rs" = "full"
+"crates/sf-conform/tests/bosses_routines.rs" = "smoke"   # 9.7 s re-measured; T03 read 10.7 under load
+"crates/sf-conform/tests/bug_zips.rs" = "smoke"
+"crates/sf-conform/tests/cases.rs" = "full"
+"crates/sf-conform/tests/chain.rs" = "full"
+"crates/sf-conform/tests/channels.rs" = "full"
+"crates/sf-conform/tests/collision_routines.rs" = "full"
+"crates/sf-conform/tests/enemies_w1.rs" = [
+    "w1_1",
+    "w1_activation",
+]
+"crates/sf-conform/tests/enemies_w1_routines.rs" = "full"
+"crates/sf-conform/tests/enemies_w2_cases.rs" = "full"
+"crates/sf-conform/tests/enemies_w2_routines.rs" = "full"
+"crates/sf-conform/tests/enemies_w3.rs" = "full"
+"crates/sf-conform/tests/enemies_w3_routines.rs" = "full"
+"crates/sf-conform/tests/enemies_w4_routines.rs" = "full"
+"crates/sf-conform/tests/enemies_w5_cases.rs" = "full"
+"crates/sf-conform/tests/enemies_w5_routines.rs" = "full"
+"crates/sf-conform/tests/enemies_w6_cases.rs" = "full"
+"crates/sf-conform/tests/enemies_w6_routines.rs" = "full"
+"crates/sf-conform/tests/faithful.rs" = "smoke"
+"crates/sf-conform/tests/flow.rs" = "full"
+"crates/sf-conform/tests/frog_cases.rs" = [
+    "frog_run_w1_1",
+    "complete_w1_1_to_exit_fade",
+]
+"crates/sf-conform/tests/frog_routines.rs" = "full"
+"crates/sf-conform/tests/front.rs" = [
+    "power_on_to_the_title_matches_the_original",
+    "the_level_code_entry_matches_the_original",
+    "each_world_and_level_has_a_code_that_starts_it",
+    "every_six_digit_code_starts_where_the_original_starts_it",
+]
+"crates/sf-conform/tests/game_over.rs" = "full"
+"crates/sf-conform/tests/graphics_vs_oracle.rs" = "full"
+"crates/sf-conform/tests/items_routines.rs" = "full"
+"crates/sf-conform/tests/level_entry.rs" = "smoke"
+"crates/sf-conform/tests/level_routines.rs" = "full"
+"crates/sf-conform/tests/paula_vs_oracle.rs" = [
+    "channel_taps_are_the_references_at_every_clock_through_the_title_music",
+]
+"crates/sf-conform/tests/purity.rs" = "smoke"
+"crates/sf-conform/tests/recorder_compare.rs" = "full"
+"crates/sf-conform/tests/recorder_follow.rs" = "full"
+"crates/sf-conform/tests/recorder_replay.rs" = [
+    "the_replay_ends_on_the_screenshot_and_the_place",
+    "a_changed_input_differs",
+]
+"crates/sf-conform/tests/recorder_setup_start.rs" = "smoke"
+"crates/sf-conform/tests/render_vs_oracle.rs" = "smoke"
+"crates/sf-conform/tests/restart_routines.rs" = "smoke"
+"crates/sf-conform/tests/runner.rs" = "full"
+"crates/sf-conform/tests/script.rs" = "smoke"
+"crates/sf-conform/tests/slot_routines.rs" = "full"
+"crates/sf-conform/tests/step_unseen.rs" = "full"
+"crates/sf-conform/tests/story.rs" = "full"
+"crates/sf-conform/tests/story_blits.rs" = "full"
+"crates/sf-conform/tests/story_draws.rs" = "full"
+"crates/sf-conform/tests/sync_points.rs" = "smoke"
+"crates/sf-conform/tests/tally_routines.rs" = "smoke"
+"crates/sf-conform/tests/widescreen_capacity.rs" = "full"
+"crates/sf-conform/tests/widescreen_complete.rs" = "smoke"
+"crates/sf-conform/tests/widescreen_recording.rs" = "full"
+"crates/sf-conform/tests/widescreen_special_cases.rs" = "smoke"
+"crates/sf-conform/tests/widescreen_switch.rs" = [
+    "switching_on_mid_level_wakes_an_enemy_in_the_right_strip",
+]
+"crates/sf-core/tests/audio_driver.rs" = "smoke"
+"crates/sf-core/tests/chips_original_data.rs" = "smoke"
+"crates/sf-core/tests/front.rs" = "smoke"
+"crates/sf-core/tests/savestate.rs" = [
+    "a_loaded_level_runs_on_as_the_saved_one",
+    "a_state_from_another_build_or_cache_is_refused",
+    "a_damaged_or_foreign_file_is_refused",
+]
+"crates/sf-core/tests/start_level.rs" = "full"
+"crates/sf-core/tests/widescreen_camera.rs" = [
+    "at_w1_1s_start_the_wide_view_begins_at_level_x_16",
+    "at_a_levels_right_end_the_camera_stops_65_earlier_and_the_frog_walks_on",
+]
+"crates/sf-core/tests/widescreen_capacity.rs" = "smoke"
+"crates/sf-core/tests/widescreen_frog.rs" = "smoke"
+"crates/sf-core/tests/widescreen_mode.rs" = "smoke"
+"crates/sf-core/tests/widescreen_objects.rs" = "full"   # 11.0 s re-measured
+"crates/sf-core/tests/widescreen_spawn.rs" = "smoke"
+"crates/sf-disk/tests/atn_fuzz.rs" = "smoke"
+"crates/sf-disk/tests/atn_reference.rs" = "smoke"
+"crates/sf-disk/tests/real_disks.rs" = "smoke"
+"crates/sf-e2e/tests/controls.rs" = "full"
+"crates/sf-e2e/tests/drill.rs" = "full"
+"crates/sf-e2e/tests/import.rs" = "full"
+"crates/sf-e2e/tests/levelfile.rs" = "full"
+"crates/sf-e2e/tests/menus.rs" = "smoke"
+"crates/sf-e2e/tests/persist.rs" = "full"
+"crates/sf-e2e/tests/plan_routes.rs" = "smoke"
+"crates/sf-e2e/tests/recorder_app.rs" = "full"
+"crates/sf-e2e/tests/recorder_bar.rs" = "full"
+"crates/sf-e2e/tests/recorder_drill.rs" = "smoke"
+"crates/sf-e2e/tests/recorder_replay.rs" = "full"
+"crates/sf-e2e/tests/recorder_save_window.rs" = "smoke"
+"crates/sf-e2e/tests/recorder_start_level.rs" = "smoke"
+"crates/sf-e2e/tests/smoke.rs" = "smoke"
+"crates/sf-e2e/tests/states.rs" = "full"
+"crates/sf-e2e/tests/view.rs" = "full"
+"crates/sf-e2e/tests/whole_game.rs" = "full"
+"crates/sf-e2e/tests/widescreen_app.rs" = "full"
+"crates/sf-e2e/tests/widescreen_drill.rs" = "full"
+"crates/sf-e2e/tests/widescreen_frog.rs" = "smoke"
+"crates/sf-e2e/tests/widescreen_objects.rs" = "full"
+"crates/sf-e2e/tests/window.rs" = [
+    "at_1x_2x_and_3x_the_window_is_that_multiple_and_the_picture_fills_it_unsmeared",
+]
+"crates/sf-oracle/tests/blits.rs" = "smoke"
+"crates/sf-oracle/tests/determinism.rs" = "smoke"
+"crates/sf-oracle/tests/drives.rs" = "full"
+"crates/sf-oracle/tests/exe_map_claims.rs" = "full"
+"crates/sf-oracle/tests/keys.rs" = "smoke"
+"crates/sf-oracle/tests/kickstart.rs" = "smoke"
+"crates/sf-oracle/tests/routine.rs" = "smoke"
+"crates/sf-plan/tests/app.rs" = "full"
+"crates/sf-plan/tests/cache.rs" = "smoke"
+"crates/sf-plan/tests/cli.rs" = "full"
+"crates/sf-plan/tests/coins.rs" = "smoke"
+"crates/sf-plan/tests/danger.rs" = "smoke"
+"crates/sf-plan/tests/explore.rs" = "full"
+"crates/sf-plan/tests/facts.rs" = "smoke"
+"crates/sf-plan/tests/guide.rs" = "full"
+"crates/sf-plan/tests/map.rs" = "full"   # 13.1 s re-measured
+"crates/sf-plan/tests/oracle.rs" = "full"
+"crates/sf-plan/tests/purity.rs" = "smoke"
+"crates/sf-plan/tests/reach.rs" = "smoke"
+"crates/sf-plan/tests/repair.rs" = "smoke"
+"crates/sf-plan/tests/shorten.rs" = "full"
+"crates/sf-plan/tests/walk.rs" = [
+    "fill_goes_around_a_wall",
+    "the_start_walks_at_least_as_far_as_straight",
+    "walk_entries_carry_their_walking_coin_distance",
+]
+"crates/sf-plan/tests/widescreen.rs" = "smoke"
+"crates/sf-routeview/tests/replay.rs" = "smoke"
+"crates/sf-app/src" = "smoke"
+"crates/sf-assets/src" = "smoke"
+"crates/sf-bench/src" = "smoke"
+"crates/sf-conform/src" = "smoke"
+"crates/sf-core/src" = "smoke"
+"crates/sf-disk/src" = "smoke"
+"crates/sf-routeview/src" = "smoke"
+
+[python]
+"tools/test_architecture_docs.py" = "smoke"
+"tools/test_check_no_disk_data.py" = "smoke"
+"tools/test_disk_lookup.py" = "smoke"
+"tools/test_handover.py" = "smoke"
+"tools/test_no_bug_zips.py" = "smoke"
+"tools/test_re_ghidra_import.py" = "smoke"
+"tools/test_re_listing.py" = "smoke"
+"tools/test_recording_guide.py" = "smoke"
+"tools/test_render_levels.py" = "smoke"
+"tools/test_template_sweep.py" = "smoke"
+
+# 1.6 s
+[[area]]
+name = "reading the disks"
+covers = ["crates/sf-disk/tests/real_disks.rs"]
+
+# 4.6 s
+[[area]]
+name = "game data"
+covers = ["crates/sf-assets/tests/levels.rs"]
+
+# 15 s
+[[area]]
+name = "the original boots and repeats"
+covers = ["crates/sf-oracle/tests/determinism.rs"]
+
+# 40 s alone; the four named in front.rs together, 35 s
+[[area]]
+name = "power-on to the title"
+covers = ["crates/sf-conform/tests/front.rs::power_on_to_the_title_matches_the_original"]
+
+# 7 s for level_entry.rs; 25 s for the typed code, 2.7 s for the code table. level_entry starts at a level
+# directly, so only the front.rs tests prove a code gets there.
+[[area]]
+name = "entering a level by its code"
+covers = [
+    "crates/sf-conform/tests/level_entry.rs",
+    "crates/sf-conform/tests/front.rs::the_level_code_entry_matches_the_original",
+    "crates/sf-conform/tests/front.rs::every_six_digit_code_starts_where_the_original_starts_it",
+    "crates/sf-conform/tests/front.rs::each_world_and_level_has_a_code_that_starts_it",
+]
+
+# 22 s alone; with the next area, one call of 78 s
+[[area]]
+name = "the frog in one level"
+covers = ["crates/sf-conform/tests/frog_cases.rs::frog_run_w1_1"]
+
+# 85 s; fixed by the owner (DESIGN §2.5)
+[[area]]
+name = "W1-1 can be finished"
+covers = ["crates/sf-conform/tests/frog_cases.rs::complete_w1_1_to_exit_fade"]
+
+# 7.5 s and 4.2 s
+[[area]]
+name = "a sample of enemies"
+covers = [
+    "crates/sf-conform/tests/enemies_w1.rs::w1_1",
+    "crates/sf-conform/tests/enemies_w1.rs::w1_activation",
+]
+
+# 7.2 s
+[[area]]
+name = "the picture"
+covers = ["crates/sf-conform/tests/render_vs_oracle.rs"]
+
+# 18 s and 15 s
+[[area]]
+name = "the sound"
+covers = [
+    "crates/sf-conform/tests/paula_vs_oracle.rs::channel_taps_are_the_references_at_every_clock_through_the_title_music",
+    "crates/sf-conform/tests/audio_driver.rs::title_music_matches_the_full_system_oracle",
+]
+
+# 2.9 s and 1.8 s
+[[area]]
+name = "widescreen"
+covers = [
+    "crates/sf-core/tests/widescreen_camera.rs::at_w1_1s_start_the_wide_view_begins_at_level_x_16",
+    "crates/sf-core/tests/widescreen_camera.rs::at_a_levels_right_end_the_camera_stops_65_earlier_and_the_frog_walks_on",
+    "crates/sf-conform/tests/widescreen_switch.rs::switching_on_mid_level_wakes_an_enemy_in_the_right_strip",
+]
+
+# 6.1 s
+[[area]]
+name = "save states"
+covers = [
+    "crates/sf-core/tests/savestate.rs::a_loaded_level_runs_on_as_the_saved_one",
+    "crates/sf-core/tests/savestate.rs::a_state_from_another_build_or_cache_is_refused",
+    "crates/sf-core/tests/savestate.rs::a_damaged_or_foreign_file_is_refused",
+]
+
+# 10.6 s
+[[area]]
+name = "the bug recorder"
+covers = [
+    "crates/sf-conform/tests/recorder_replay.rs::the_replay_ends_on_the_screenshot_and_the_place",
+    "crates/sf-conform/tests/recorder_replay.rs::a_changed_input_differs",
+]
+
+# 2.4 s and 10.9 s
+[[area]]
+name = "the route planner"
+covers = [
+    "crates/sf-plan/tests/reach.rs",
+    "crates/sf-plan/tests/walk.rs::fill_goes_around_a_wall",
+    "crates/sf-plan/tests/walk.rs::the_start_walks_at_least_as_far_as_straight",
+    "crates/sf-plan/tests/walk.rs::walk_entries_carry_their_walking_coin_distance",
+]
+
+# 45 s
+[[area]]
+name = "the app starts"
+covers = ["crates/sf-e2e/tests/smoke.rs"]
+
+# 21 s
+[[area]]
+name = "its menus work"
+covers = ["crates/sf-e2e/tests/menus.rs"]
+
+# 17 s by name; the whole file takes 165 s
+[[area]]
+name = "its window opens"
+covers = ["crates/sf-e2e/tests/window.rs::at_1x_2x_and_3x_the_window_is_that_multiple_and_the_picture_fills_it_unsmeared"]
