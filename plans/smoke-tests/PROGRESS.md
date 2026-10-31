@@ -11,9 +11,9 @@ the account is the commit message. Whoever writes a cell also fixes the over-bud
 
 **Plan reviewed:** 2026-10-31 — 13 fixed, 2 decided with the user
 
-**Status:** T01 to T06 done; T07 awaiting review.
+**Status:** T01 to T07 done; T08 next.
 **Last updated:** 2026-10-31
-**Next `pir-work` will:** review T07, then T08.
+**Next `pir-work` will:** build T08.
 
 ## Tasks
 
@@ -28,10 +28,10 @@ done · ⛔ blocked, needs a human.
 | T04 | full-command | — | ✅ | |
 | T05 | toolkit-and-forest-labels | T02, T03 | ✅ | |
 | T06 | superfrog-labels | T02, T03 | ✅ | |
-| T07 | smoke-fits | T02, T05, T06 | 🔍 | Added `test_smoke_labels.py` (1 test). Real runs green: warm 503 s, cold 887 s, machine busy. No labels moved. Fixed `toolkit/smoke.toml` unowned in `verification.md`; doc did not name that file, allowed by Done when. |
+| T07 | smoke-fits | T02, T05, T06 | ✅ | Green: warm 503 s, cold 887 s, machine busy; no labels moved. Review clean, no fix commit. Timings read from history file and logs, smoke not rerun. Mutated a dropped label, the `verification.md` owner and `_problems`, all red. Probed an unlabelled test file, and that cold target started empty. |
 | T08 | switch-and-directives | T04, T07 | ⬜ | |
 
-**Review queue:** T07
+**Review queue:** —
 
 ## Blocked on the user
 
