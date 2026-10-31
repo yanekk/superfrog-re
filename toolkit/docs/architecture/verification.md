@@ -13,6 +13,7 @@ owns = [
   "toolkit/CLAUDE.md",
   "toolkit/docs/",
   "toolkit/test.sh",
+  "toolkit/smoke.toml",
   "toolkit/Cargo.toml",
   "toolkit/Cargo.lock",
   "toolkit/rust-toolchain.toml",
