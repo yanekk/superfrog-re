@@ -67,6 +67,9 @@ const ALLOWED: &[&str] = &[
     "unicode-ident",
     // The save state's byte layout (T26): fixed-width integers in field order into a Vec<u8>.
     "bincode",
+    // The OFS reader behind amiga-disk's `ofs` module, built without its `std` feature: blocks in,
+    // parsed volume out; no I/O, clock, thread or float, and no dependencies of its own.
+    "amiga-ffs",
 ];
 
 /// Shell crates that must never be in the shipped app's dependency tree (DESIGN §3.2).

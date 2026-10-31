@@ -7,3 +7,6 @@ publish.workspace = true
 [dependencies]
 # DEFLATE decoder for zipped disk images: pure (bytes in, bytes out; no I/O, clock or floats).
 miniz_oxide = "0.9.1"
+# The AmigaDOS OFS reader behind `ofs.rs`. `std` off: that feature is the only part with file or clock
+# access, and the reader takes bytes. No dependencies of its own; MIT OR Apache-2.0.
+amiga-ffs = { version = "0.4.0", default-features = false }
