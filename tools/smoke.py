@@ -43,6 +43,11 @@ def _label(entry: Entry) -> str:
     return f'{entry.project}: {shlex.join(entry.argv)}'
 
 
+def _print_output(output: str) -> None:
+    if output:
+        print(output, end='' if output.endswith('\n') else '\n', flush=True)
+
+
 # --- Running the entries ---------------------------------------------------------------------------
 
 @dataclass
@@ -79,6 +84,10 @@ def run_entries(entries, *, warn_s, limit_s, now, spawn) -> Result:
             if code is None:
                 result.killed = entry
                 result.unrun = entries[i + 1:]
+                # A hang is a failure, and failures print in full (DESIGN §5): this is what says where it hung.
+                running.kill()
+                _print_output(running.output())
+                running = None
                 break
             # An entry that exited may have left a child behind, and no entry survives (DESIGN §2.8).
             running.kill()
@@ -89,8 +98,7 @@ def run_entries(entries, *, warn_s, limit_s, now, spawn) -> Result:
                 project_failed = True
                 result.failed.append(entry)
                 _say(f'smoke: FAILED, exit {code}: {_label(entry)}')
-                if output:
-                    print(output, end='' if output.endswith('\n') else '\n', flush=True)
+                _print_output(output)
             if i + 1 == len(entries) or entries[i + 1].project != entry.project:
                 _say(f'smoke: {entry.project} {"FAILED" if project_failed else "ok"} at {now():.0f} s')
                 project_failed = False
@@ -146,10 +154,12 @@ class _Running:
         self.proc.wait()
         if self.watchdog:
             self.watchdog.tell(f'-{self.proc.pid}')
-        if self.capture:
-            self.capture.seek(0)
-            self.text = self.capture.read().decode(errors='replace')
-            self.capture.close()
+        # Once only: a signal can land between this and the runner forgetting the entry, and it kills again.
+        capture, self.capture = self.capture, None
+        if capture:
+            capture.seek(0)
+            self.text = capture.read().decode(errors='replace')
+            capture.close()
 
     def output(self) -> str:
         return self.text
@@ -193,6 +203,14 @@ class _Watchdog:
             self.proc.stdin.flush()
         except OSError:
             pass  # it died; the run itself is still good
+
+    def finish(self) -> None:
+        self.tell('end')
+        try:
+            self.proc.stdin.close()
+        except OSError:
+            pass  # it died, and close flushes what tell could not; a green run must not read as a crash
+        self.proc.wait()  # it exits on the closed pipe; the run leaves nothing behind
 
 
 def _watchdog_main(history: str, commit: str, started: str) -> int:
@@ -320,9 +338,7 @@ def _run(started_mono: float, started_wall: float) -> int:
         _say(f'smoke: FAILED, stopped by signal {stop.args[0]}')
         return 1
     finally:
-        watchdog.tell('end')
-        watchdog.proc.stdin.close()
-        watchdog.proc.wait()  # it exits on the closed pipe; the run leaves nothing behind
+        watchdog.finish()
         _record(history, commit, now(), status)
 
 

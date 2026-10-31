@@ -157,6 +157,29 @@ class RealProcesses(unittest.TestCase):
                 pid = int(f.read())
             self.assertTrue(wait_until(lambda: not alive(pid)), name)
 
+    def test_the_output_of_an_entry_killed_at_the_limit_prints(self):
+        # The text is computed, so that the entry's label, which holds the script, cannot satisfy the assertion.
+        hang = Entry('p', 'python', self.dir, sh('echo $((40+2)) reached; touch ready; sleep 30'))
+        ready = os.path.join(self.dir, 'ready')
+        result, out = self.run_real([hang], 0.5, now=lambda: 1.0 if os.path.exists(ready) else 0.0)
+        self.assertEqual(result.status, 'limit')
+        self.assertIn('42 reached', out)
+
+    def test_killing_twice_is_harmless(self):
+        # A signal can land between the kill of an entry that exited and the runner forgetting it.
+        handle = smoke.make_spawn()(Entry('p', 'python', self.dir, sh('echo said')))
+        self.assertTrue(wait_until(lambda: handle.poll() is not None))
+        handle.kill()
+        handle.kill()
+        self.assertEqual(handle.output(), 'said\n')
+
+    def test_a_dead_watchdog_does_not_stop_the_runner_finishing(self):
+        watchdog = smoke._Watchdog(os.path.join(self.dir, 'times.tsv'), 'abc', time.time())
+        watchdog.proc.kill()
+        watchdog.proc.wait()
+        watchdog.tell('+1')
+        watchdog.finish()
+
     def test_a_child_left_behind_by_an_entry_that_exited_is_killed(self):
         leaves = Entry('p', 'python', self.dir, sh('sleep 30 >/dev/null 2>&1 & echo $! > child'))
         result, _ = self.run_real([leaves], 20)
@@ -316,6 +339,14 @@ covers = ["crates/x/tests/quick.rs"]
         self.assertIn('fake break', run.stdout)
         self.assertEqual(len(self.cargo_log()), 1)
         self.assertEqual(self.rows()[0][3], 'failed')
+
+    def test_a_python_file_with_no_tests_fails(self):
+        # Unlike tools/test.sh: a labelled file that runs nothing would otherwise be a silence.
+        self.write('toolkit/tools/test_kit.py', '')
+        self.commit()
+        run = self.smoke()
+        self.assertNotEqual(run.returncode, 0)
+        self.assertIn('smoke: FAILED, exit 5', run.stdout)
 
     def test_sigkill_to_the_process_group_leaves_nothing_running(self):
         self.write('toolkit/tools/test_kit.py', HANG_TEST)
