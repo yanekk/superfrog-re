@@ -11,6 +11,8 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-31 | 📌 | T07 measured smoke green: warm 503 s; cold 887 s (fresh worktree, empty target, 13 s under budget). Load 6 to 10 from other sessions. Compile adds 384 s; no labels moved, runner unchanged. |
+| 2026-10-31 | 🐞 | T07: first real run failed `test_architecture_docs`: `toolkit/smoke.toml`, added by T05, had no owning chapter. `verification.md` now owns it. |
 | 2026-10-31 | 📌 | T06 review: `front-password` types only an unknown code, so no conformance case plays a valid code into a level; the area rests on `every_six_digit_code…` plus `level_entry`. `recorder_drill.rs` and `plan_routes.rs` are smoke but wholly `#[ignore]`d, so run nothing. |
 | 2026-10-31 | 📌 | T06: re-measured `bosses_routines` 9.7 s (smoke), `widescreen_objects` 11.0 s and `sf-plan` `map` 13.1 s (full). `determinism` read 13.9 s, in smoke for its area. `window.rs` whole takes 165 s, so named. No area needed a new test. |
 | 2026-10-31 | 📌 | T05: under load 17, `exe_map_claims` took 4.5 s fresh, not `over`; `amiga-clock/src` 7.6 s; `test_render_levels.py` 11.3 s then 6 s. All smoke. `first_case`'s title test 60 s alone, 113 s whole-file earlier. |
