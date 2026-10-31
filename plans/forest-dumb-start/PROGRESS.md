@@ -35,7 +35,7 @@ to keep in sync.
 | T04 | fd-pack-check | T02 | ✅ | |
 | T05 | fd-file-formats | T02, T04 | ⬜ | |
 | T06 | fd-exe-map | T02, T03 | ⬜ | |
-| T07 | frame-parameterise | T00 | 🔍 | `frame_lines` through copper run, `word_times`, `Timeline::run`, `Paula::new`/`booted`; 5 new tests. Deviation: `Timeline` takes it in `run`, not a field, because Superfrog pins its saved bytes. `sf-app`, `sf-e2e`, `sf-conform` call sites also touched. Whole Superfrog suite unrun here; pir runs it. |
+| T07 | frame-parameterise | T00 | ✅ | Review fixed `Pacer::new` still reading the constant and stale PLAYBOOK line, added copper frame-cut test. Timeline argument deviation held by adding a field: pinned bytes go red. Mutated blit, timeline, Paula, pacer, copper; all red. Superfrog regression set green, whole suite is pir's. |
 | T08 | fd-core | T00, T06, T07 | ⬜ | |
 | T09 | fd-first-case | T00, T02, T03, T08 | ⬜ | |
 
@@ -46,7 +46,7 @@ it here and point there.
 **A ✅ task's cell may be cut to one line** once the next task has been reviewed — its detail
 is in the commit and the file is read in full by every session from here on.
 
-**Review queue:** T07
+**Review queue:** empty
 
 ## Blocked on the user
 
