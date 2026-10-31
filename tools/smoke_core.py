@@ -17,6 +17,7 @@ from dataclasses import dataclass
 
 _RUST_TEST = re.compile(r'crates/([^/]+)/tests/(?:([^/]+)\.rs|([^/]+)/main\.rs)$')
 _RUST_SRC = re.compile(r'crates/([^/]+)/src/(.+\.rs)$')
+_RUST_ANYWHERE = re.compile(r'(?:^|/)crates/[^/]+/(?:src|tests)/.+\.rs$')
 _PYTHON_TEST = re.compile(r'(?:(.*)/)?(test_[^/]*\.py)$')
 
 
@@ -395,6 +396,13 @@ def check(project: Project) -> list[str]:
     targets = _rust_targets(project, workspace)
     crate_sources = _existing_crate_sources(project, workspace)
     python_files = _python_files(project)
+
+    # A wrong workspace would put every crate out of sight, so that nothing needs a label and the check
+    # passes on a project it never read. One line, since that wrong value would otherwise give hundreds.
+    inside = _workspace_prefix(workspace) + 'crates/'
+    outside = [p for p in project.files if _RUST_ANYWHERE.search(p) and not p.startswith(inside)]
+    if outside:
+        problems.append(f'{where}: {outside[0]}: outside the workspace "{workspace}", so no label can reach it')
 
     for key in targets:
         if key not in rust:

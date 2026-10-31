@@ -233,6 +233,20 @@ class Labels(unittest.TestCase):
         problems = check(project(toolkit(f'{LABELLED}\n"crates/x/tests/common/mod.rs" = "smoke"'), sources))
         self.assertIn('no such test file', problems[0])
 
+    def test_a_workspace_that_misses_the_crates_cannot_hide_them(self):
+        # A wrong workspace puts every test file out of the check's sight, so nothing would need a label.
+        at_engine = {f'engine/{QUICK}': LIVE}
+        for workspace in ('nope', '.'):
+            problems = check(project(f'workspace = "{workspace}"\n', at_engine, root='games/g'))
+            self.assertEqual(len(problems), 1, workspace)
+            self.assertIn(f'engine/{QUICK}', problems[0])
+            self.assertIn('outside the workspace', problems[0])
+        problems = check(project('workspace = "engine"\n', {QUICK: LIVE}, root='games/g'))
+        self.assertIn('outside the workspace', problems[0])
+        src_only = {'engine/crates/x/src/lib.rs': 'fn a() {}'}
+        self.assertTrue(check(project('workspace = "nope"\n', src_only, root='games/g')))
+        self.assertEqual(check(project('workspace = "engine"\n', src_only, root='games/g')), [])
+
     def test_a_python_test_file_without_a_label(self):
         problems = check(project(toolkit(LABELLED), {QUICK: LIVE}, ['tools/test_x.py', 'tools/helper.py']))
         self.assertEqual(len(problems), 1)
