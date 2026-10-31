@@ -77,7 +77,7 @@ fn the_captured_audio_is_the_mixer_s_output_for_the_same_writes() {
     let (_, data, (rate, samples)) = shared_run();
     let rate = *rate;
     let mut game = headless(data);
-    let mut paula = Paula::booted(rate, sf_core::BOOT_DMACON);
+    let mut paula = Paula::booted(rate, sf_core::BOOT_DMACON, amiga_paula::LINES_PER_FRAME);
     let mut want = Vec::new();
     for n in 1..=FRAMES {
         let out = game.step(script_input(n));

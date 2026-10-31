@@ -31,11 +31,11 @@ to keep in sync.
 | T00 | oracle-spike | — | ✅ | |
 | T01 | ofs-reader | — | ✅ | |
 | T02 | fd-import | T01 | ✅ | |
-| T03 | fd-boot-chain | T00, T02 | ⬜ | |
+| T03 | fd-boot-chain | T00, T02 | ✅ | |
 | T04 | fd-pack-check | T02 | ✅ | |
 | T05 | fd-file-formats | T02, T04 | ✅ | Review fixed: levels drawn transposed (maps stored by column, proven by hunk 0 `$708`), whole-column truncation accepted, palette and mask untested. 20 tests. Probed disassembly, seams, renders; mutations caught. Not compared with emulator screen. Deviation held: extra pictures. |
 | T06 | fd-exe-map | T02, T03 | ⬜ | |
-| T07 | frame-parameterise | T00 | ⬜ | |
+| T07 | frame-parameterise | T00 | ✅ | |
 | T08 | fd-core | T00, T06, T07 | ⬜ | |
 | T09 | fd-first-case | T00, T02, T03, T08 | ⬜ | |
 

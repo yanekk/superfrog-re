@@ -18,6 +18,8 @@ Layout: [docs/02-disk-format.md](docs/02-disk-format.md). Every file with size a
 [docs/04-file-inventory.txt](docs/04-file-inventory.txt), written by `cargo run -p fd-tools -- extract` in
 `engine/`, which extracts into `build/`. What is packed and how to unpack it (`ESL!` is PowerPacker's
 format): [docs/08-packers.md](docs/08-packers.md).
+Boot chain, the crack's programs and why the game asks for disk 2:
+[docs/03-boot-chain.md](docs/03-boot-chain.md).
 
 Decided 2026-10-30: the cracked `[cr WT]` set is game two's source. The faithful bar's measuring stick
 is this cracked release, whose executable may differ from the original's. An uncracked copy, if one
@@ -51,6 +53,8 @@ Not written yet: there is no engine to fix. It comes with the recorder, step 8 o
 - [docs/05-file-formats.md](docs/05-file-formats.md): the level files, byte by byte.
 - [docs/06-graphics-and-rendering.md](docs/06-graphics-and-rendering.md): tiles, sprites, the palette, the renderer.
 - [docs/LEVEL-INDEX.md](docs/LEVEL-INDEX.md): every level id, its files and its render.
+
+- [docs/frame-length.md](docs/frame-length.md): the measured frame length, 313 lines, dated.
 
 ## Backlog
 

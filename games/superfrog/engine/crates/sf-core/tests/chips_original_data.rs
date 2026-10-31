@@ -17,7 +17,7 @@ fn the_intro_s_scene_1_list_takes_the_vblank_cycle_and_its_fetches() {
         0x0180, 0x0000, 0x0100, 0x0200, 0x0096, 0x0020, 0xFFFF, 0xFFFE,
     ];
     let mut bus = Vec::new();
-    run_bus(&|a, _, _| list(&w)(a), 0, Fetch::default(), &mut bus);
+    run_bus(&|a, _, _| list(&w)(a), 0, Fetch::default(), 313, &mut bus);
     let h: Vec<u16> = bus.iter().map(|b| b.slot()).collect();
     assert!(bus.iter().all(|b| b.line == 0));
     assert_eq!(h, [0, 2, 4, 6, 8, 10, 12, 14, 16]);
@@ -72,7 +72,7 @@ fn word_times_on_the_game_s_display_set_ups_are_the_old_ones() {
             for h in (0..227).step_by(3).chain([0x0d, 0x0e, 0xe2]) {
                 for words in [0, 1, 2, 3, 40, 321, 2000] {
                     assert_eq!(
-                        word_times(words, line, h, |l, h| fetch.takes(l, h)),
+                        word_times(words, line, h, 313, |l, h| fetch.takes(l, h)),
                         old_word_times(words, line, h, fetch),
                         "{fetch:?} {line} {h} {words}"
                     );

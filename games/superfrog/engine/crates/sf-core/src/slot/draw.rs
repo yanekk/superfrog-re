@@ -288,7 +288,7 @@ fn plan(cx: &Cx, dmacon: u32) -> Option<Vec<(u32, u32)>> {
     let mut audio: Vec<u32> = dma.frame(&now, lines).iter().map(|s| s.0).collect();
     audio.extend(dma.frame(&[], lines).iter().map(|s| s.0 + frame));
     let mut beams = Vec::new();
-    crate::render::copper::run_bus(&|a, _, _| cx.w(a), cx.cop1lc, cx.fetch, &mut beams);
+    crate::render::copper::run_bus(&|a, _, _| cx.w(a), cx.cop1lc, cx.fetch, crate::render::copper::FRAME_LINES, &mut beams);
     let mut copper: Vec<u32> = beams
         .iter()
         .map(|b| b.dma())

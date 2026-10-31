@@ -9,7 +9,7 @@
 
 use amiga_chips::copper::{self, Fetch, Write, reg};
 use amiga_chips::{AmigaMemory, Blit, BlitMem, Picture, Ram, display};
-use amiga_clock::{Clock, DisplayTiming, FRAME_LINES, LINE_CYCLES, Timing};
+use amiga_clock::{Clock, DisplayTiming, LINE_CYCLES, Timing};
 use amiga_paula::{ChipMemory, Paula, PaulaWrite};
 
 /// Chip RAM the fit uses: 64 KB is plenty for a list, a sample, a pattern and one plane.
@@ -109,6 +109,9 @@ impl ChipMemory for Machine {
         self.mem.chip_word(addr)
     }
 }
+
+/// The frame this stand-in game runs: a long PAL frame, supplied here as any game's is.
+pub const FRAME_LINES: u16 = 313;
 
 /// The screen's timing for the beam clock: one lores plane fetched on the window's lines. One to
 /// four lores planes take only odd DMA slots, so they take nothing from the CPU and leave the
@@ -234,10 +237,10 @@ pub fn run() -> Frame {
     let used = clock.nominal();
     clock.cpu(FRAME_LINES as u32 * LINE_CYCLES - used);
 
-    let writes = copper::run(&|a| m.word(a), COPPER, Fetch::default());
+    let writes = copper::run(&|a| m.word(a), COPPER, Fetch::default(), FRAME_LINES);
     let picture = display::draw(&m, &writes, Fetch::default());
 
-    let mut paula = Paula::new(HOST_RATE);
+    let mut paula = Paula::new(HOST_RATE, FRAME_LINES as u32);
     let mut audio = Vec::new();
     paula.frame(&note(), &m, &mut audio);
     let tap = paula.channel_taps()[0].to_vec();

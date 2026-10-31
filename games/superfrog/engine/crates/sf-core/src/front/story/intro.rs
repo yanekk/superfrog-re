@@ -1230,7 +1230,7 @@ impl Intro {
         for k in 0..frames {
             let mut cycles = Vec::new();
             let list = if k == 0 { first } else { self.shown_list };
-            let writes = crate::render::copper::run_bus(&|a, _, _| m.w(a), list, fetch, &mut cycles);
+            let writes = crate::render::copper::run_bus(&|a, _, _| m.w(a), list, fetch, crate::render::copper::FRAME_LINES, &mut cycles);
             let writes_k = paula.get(k).map_or(&[][..], |w| &w[..]);
             fixed = fixed
                 .frame(&cycles, &writes, fetch)
