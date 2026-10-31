@@ -1,9 +1,12 @@
 """smoke_timings on fake entries: the cap, the row and the key form. Nothing here runs cargo."""
+import contextlib
+import io
 import os
 import tempfile
 import time
 import unittest
 from pathlib import Path
+from unittest import mock
 
 import smoke_core
 import smoke_timings
@@ -48,6 +51,43 @@ class Measure(unittest.TestCase):
     def test_a_compile_failure_is_not_a_time(self):
         entry = smoke_timings.Timed('p', 'k', '.', ['sh', '-c', 'exit 101'])
         self.assertEqual(smoke_timings.measure(entry, 5, cwd='.')[:2], ('uncompiled', '101'))
+
+
+class Pieces(unittest.TestCase):
+    """The pass is cut into pieces; a piece that re-ran or lost rows would corrupt the result file."""
+
+    def main(self, *args, free=10 ** 12):
+        entries = [smoke_timings.Timed('p', k, '.', ['sh', '-c', 'exit 0']) for k in ('a', 'b', 'c')]
+        out = io.StringIO()
+        with mock.patch.object(smoke_timings, 'discover', return_value=entries), \
+                mock.patch.object(smoke_timings.signal, 'signal'), \
+                mock.patch.object(smoke_timings.shutil, 'disk_usage', return_value=mock.Mock(free=free)), \
+                contextlib.redirect_stdout(out), contextlib.redirect_stderr(io.StringIO()):
+            status = smoke_timings.main(list(args))
+        return status, [line.split('\t')[:2] for line in out.getvalue().splitlines()]
+
+    def test_a_whole_pass_prints_the_header_and_every_entry(self):
+        status, rows = self.main()
+        self.assertEqual(status, 0)
+        self.assertEqual(rows, [['project', 'key'], ['p', 'a'], ['p', 'b'], ['p', 'c']])
+
+    def test_done_skips_its_rows_and_prints_no_second_header(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            done = Path(tmp) / 't.tsv'
+            done.write_text('project\tkey\tseconds\tstatus\np\ta\t1.0\t0\np\tb\tover\t-\n')
+            status, rows = self.main('--done', str(done))
+        self.assertEqual(status, 0)
+        self.assertEqual(rows, [['p', 'c']])
+
+    def test_stop_after_starts_nothing_more_and_exits_3(self):
+        status, rows = self.main('--stop-after', '-1')
+        self.assertEqual(status, 3)
+        self.assertEqual(rows, [['project', 'key']])
+
+    def test_a_nearly_full_disk_stops_with_4(self):
+        status, rows = self.main(free=smoke_timings.MIN_FREE_BYTES - 1)
+        self.assertEqual(status, 4)
+        self.assertEqual(rows, [['project', 'key']])
 
 
 class Keys(unittest.TestCase):
