@@ -25,7 +25,7 @@ done · ⛔ blocked, needs a human.
 | T01 | label-check | — | ✅ | |
 | T02 | smoke-runner | T01 | ✅ | Three defects fixed, each reproduced by a failing test: killed entry's output lost, dead watchdog crashed a green run, second kill raised. Probed a real cargo entry; mutated the watchdog kill and limit, both caught. A `process_group(0)` app outlives a kill until its timeout: logged, read-only. |
 | T03 | file-timings | T01 | ⬜ | |
-| T04 | full-command | — | ⬜ | |
+| T04 | full-command | — | ✅ | |
 | T05 | toolkit-and-forest-labels | T02, T03 | ⬜ | |
 | T06 | superfrog-labels | T02, T03 | ⬜ | |
 | T07 | smoke-fits | T02, T05, T06 | ⬜ | |
