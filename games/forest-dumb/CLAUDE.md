@@ -6,7 +6,7 @@ Start from `toolkit/PLAYBOOK.md`, whose opening steps fill most of this file.
 
 ## What the game is
 
-Forest Dumb Forever, © 1998 L.K. Avalon, developer Eagle Soft: an Amiga platformer in the manner of
+Forest Dumb Forever, © 1996 L.K. Avalon (read off the title screen, 2026-10-31), developer Eagle Soft: an Amiga platformer in the manner of
 the first game. This project reverse-engineers it and rebuilds it in Rust on the toolkit. Nothing of
 it is built yet. Source of everything below: `plans/amiga-toolkit-prep/NORTH-STAR.md`, J1.
 
