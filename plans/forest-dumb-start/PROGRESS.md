@@ -29,8 +29,8 @@ to keep in sync.
 | # | Task | Depends on | State | Notes |
 |---|---|---|---|---|
 | T00 | oracle-spike | — | ✅ | Gate go. Review clean, no fix commit. Rerun with an independent throwaway probe: Kickstart, frames 3461 and 4921, 313/312 counts, VPOSW, lockstep, snapshots, df1 prompt, disk files in RAM, status-bar crop all reproduced; title read 1996. Documents only, no mutation possible. |
-| T01 | ofs-reader | — | ⬜ | |
-| T02 | fd-import | T01 | ⬜ | |
+| T01 | ofs-reader | — | ✅ | |
+| T02 | fd-import | T01 | ✅ | |
 | T03 | fd-boot-chain | T00, T02 | ⬜ | |
 | T04 | fd-pack-check | T02 | ⬜ | |
 | T05 | fd-file-formats | T02, T04 | ⬜ | |

@@ -1,7 +1,6 @@
 # 01 — Disk location
 
-Where the tools and tests look for the game's disks. No tool reads them yet; the first plan's tools
-follow this order.
+Where the tools and tests look for the game's disks (`fd-tools`' `locate`), in this order.
 
 1. `FOREST_DUMB_DISKS`, the environment variable, used as given.
 2. `<repo>/games/forest-dumb`, this game's folder in the main checkout.
