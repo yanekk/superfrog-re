@@ -80,4 +80,3 @@ Lesson: build the measuring instrument before the thing measured: the benchmark 
 
 - learned on: Forest Dumb Forever. The toolkit still lacks an AmigaDOS (OFS) `.adf` reader, which Superfrog never exercised and this game needs: it loads its files through `dos.library` (`plans/amiga-toolkit-prep/NORTH-STAR.md`, J1).
 - `toolkit/crates/amiga-disk/` is where that reader belongs, and it is the first toolkit change a second game forces.
-- learned on: Superfrog. The frame is PAL's 313 lines throughout the toolkit; parameterising it is named as the next game's first step in `toolkit/README.md`.

@@ -110,7 +110,7 @@ fn paced_app_is_the_run_alone(frames: Option<u32>, timeout_s: u64) {
 fn sound_differs_from_headless(wav: &std::path::Path, feed: &Feed) -> Option<String> {
     let (rate, app) = read_wav(wav);
     let mut g = Game::with_display(sf_conform::display_data(), Start::PowerOn { seed: feed.seed });
-    let mut paula = amiga_paula::Paula::booted(rate, sf_core::BOOT_DMACON);
+    let mut paula = amiga_paula::Paula::booted(rate, sf_core::BOOT_DMACON, amiga_paula::LINES_PER_FRAME);
     let (mut at, mut ours, mut unheard) = (0, Vec::new(), Vec::new());
     for (n, fr) in feed.frames.iter().enumerate() {
         let outs = fr.play(&mut g);

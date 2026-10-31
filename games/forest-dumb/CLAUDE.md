@@ -46,13 +46,21 @@ folder.
 `h4+$195c9` is byte `$195c9` of the main program's hunk 4, as in
 [docs/07-executable-map.md](docs/07-executable-map.md), which gives each hunk's base on the oracle.
 
+A spot is `<level-id>:<col>,<row>`, 0-indexed, top-left origin, 16-pixel cells, e.g. `W1-1:10,20`. Level
+ids and their files: [docs/LEVEL-INDEX.md](docs/LEVEL-INDEX.md). `tools/render_levels.py --spot W1-1:10,20`
+prints what is there; the pictures are in `build/renders/`.
+
 ## Bug-fix procedure
 
 Not written yet: there is no engine to fix. It comes with the recorder, step 8 of the playbook.
 
 ## Notes
 
-None yet besides the numbered docs/ chapters.
+- [docs/05-file-formats.md](docs/05-file-formats.md): the level files, byte by byte.
+- [docs/06-graphics-and-rendering.md](docs/06-graphics-and-rendering.md): tiles, sprites, the palette, the renderer.
+- [docs/LEVEL-INDEX.md](docs/LEVEL-INDEX.md): every level id, its files and its render.
+
+- [docs/frame-length.md](docs/frame-length.md): the measured frame length, 313 lines, dated.
 
 ## Backlog
 

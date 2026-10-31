@@ -42,7 +42,7 @@ pub fn parse(text: &str) -> Result<Vec<Option<Levels>>, String> {
 /// them), the last video frame of each.
 pub fn engine_levels(feed: &Feed, start: Start) -> Vec<Levels> {
     let mut g = Game::with_display(crate::display_data(), start);
-    let mut paula = Paula::booted(48_000, sf_core::BOOT_DMACON);
+    let mut paula = Paula::booted(48_000, sf_core::BOOT_DMACON, amiga_paula::LINES_PER_FRAME);
     let mut sink = Vec::new();
     let mut out = Vec::with_capacity(feed.frames.len());
     for fr in &feed.frames {

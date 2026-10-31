@@ -575,6 +575,7 @@ impl Story {
                             &|a, line, _| snap(a, line),
                             list,
                             carry,
+                            crate::render::copper::FRAME_LINES,
                             &mut taken,
                         );
                         let mut cycles: Vec<u32> = taken
@@ -652,7 +653,7 @@ impl Story {
             && !matches!(self.stage, Stage::Boot(_) | Stage::BootDone)
         {
             let mem = &self.mem;
-            let next = crate::render::copper::run_timed(&|a, _| mem.w(a), self.cop1lc, carry);
+            let next = crate::render::copper::run_timed(&|a, _| mem.w(a), self.cop1lc, carry, crate::render::copper::FRAME_LINES);
             for w in next
                 .iter()
                 .take_while(|w| (w.line, w.h) < (0, BEFORE_IRQ))

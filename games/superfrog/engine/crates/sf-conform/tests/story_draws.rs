@@ -95,7 +95,7 @@ fn check_draws(ranges: &[Range<u32>]) -> Vec<(u32, bool)> {
                 let b = amiga.peek(a, 2);
                 u16::from_be_bytes([b[0], b[1]])
             };
-            copper::run_bus(&|a, _, _| word(a), cop1lc, fetch, &mut bus)
+            copper::run_bus(&|a, _, _| word(a), cop1lc, fetch, copper::FRAME_LINES, &mut bus)
         } else {
             Vec::new()
         };

@@ -33,9 +33,9 @@ to keep in sync.
 | T02 | fd-import | T01 | ✅ | |
 | T03 | fd-boot-chain | T00, T02 | ✅ | |
 | T04 | fd-pack-check | T02 | ✅ | |
-| T05 | fd-file-formats | T02, T04 | ⬜ | |
+| T05 | fd-file-formats | T02, T04 | ✅ | |
 | T06 | fd-exe-map | T02, T03 | ✅ | Fixed: odd symbol sizes garbled most of hunk 0's listing, test added; T09 must sync at 4922, not 4921. Reran the oracle to frame 20000, title RAM, segment chain, load lists, reference scan; four mutations red. Hand-checks none. Decode readings of play code stay `read-only`. |
-| T07 | frame-parameterise | T00 | ⬜ | |
+| T07 | frame-parameterise | T00 | ✅ | |
 | T08 | fd-core | T00, T06, T07 | ⬜ | |
 | T09 | fd-first-case | T00, T02, T03, T08 | ⬜ | |
 

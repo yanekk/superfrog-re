@@ -2,7 +2,7 @@
 //! the audio device's samples played, or the wall clock when there is no device; either way it is counted in host samples, and the pacer turns it into Paula
 //! clocks, which is what a PAL frame is made of (`lines * 227`).
 
-use amiga_paula::{CLOCKS_PER_LINE, LINES_PER_FRAME, PAULA_CLOCK_PAL};
+use amiga_paula::{CLOCKS_PER_LINE, PAULA_CLOCK_PAL};
 
 #[derive(Debug, Clone)]
 pub struct Pacer {
@@ -14,17 +14,18 @@ pub struct Pacer {
 }
 
 impl Pacer {
-    pub fn new(host_rate: u32) -> Pacer {
+    /// `frame_lines` is the length of the frames from the start, the game's.
+    pub fn new(host_rate: u32, frame_lines: u32) -> Pacer {
         assert!(host_rate > 0);
         Pacer {
             host_rate: host_rate as u64,
             stepped: 0,
-            lines: LINES_PER_FRAME,
+            lines: frame_lines,
         }
     }
 
     /// The length of the frames from now on (313 lines, or 312 while the game keeps short frames).
-    /// A game that does not report its frame length leaves this at 313.
+    /// A game that does not report its frame length leaves this at what it gave [`Pacer::new`].
     pub fn set_frame_lines(&mut self, lines: u32) {
         self.lines = lines;
     }
@@ -69,10 +70,11 @@ impl<F> Presenter<F> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use amiga_paula::LINES_PER_FRAME;
 
     /// Ten seconds of a clock advancing `chunk` samples at a time.
     fn steps_over_10s(rate: u32, chunk: u64) -> u32 {
-        let mut p = Pacer::new(rate);
+        let mut p = Pacer::new(rate, LINES_PER_FRAME);
         let end = rate as u64 * 10;
         let mut t = 0;
         let mut n = 0;
@@ -95,7 +97,7 @@ mod tests {
 
     #[test]
     fn steps_come_whole_and_only_once_their_frame_has_elapsed() {
-        let mut p = Pacer::new(48_000);
+        let mut p = Pacer::new(48_000, LINES_PER_FRAME);
         // One PAL frame is 961.5… samples at 48 kHz.
         assert_eq!(p.due(961), 0);
         assert_eq!(p.due(962), 1);
@@ -105,16 +107,23 @@ mod tests {
 
     #[test]
     fn short_frames_run_a_little_faster() {
-        let mut p = Pacer::new(48_000);
+        let mut p = Pacer::new(48_000, LINES_PER_FRAME);
         p.set_frame_lines(312);
         assert_eq!(p.due(48_000 * 10), 500, "312-line frames: 50.08 Hz");
+    }
+
+    #[test]
+    fn it_paces_the_frame_length_it_is_given_from_the_start() {
+        // At 3 546 895 Hz over 48 000 Hz, ten seconds hold 499.2 long frames and 500.8 short ones.
+        assert_eq!(Pacer::new(48_000, 313).due(48_000 * 10), 499);
+        assert_eq!(Pacer::new(48_000, 312).due(48_000 * 10), 500);
     }
 
     #[test]
     fn the_presenter_shows_the_newest_whole_frame_at_every_refresh() {
         // 60 Hz refreshes against 49.92 Hz steps: each refresh shows a frame that was stepped,
         // the newest one, and never one in between.
-        let mut p = Pacer::new(48_000);
+        let mut p = Pacer::new(48_000, LINES_PER_FRAME);
         let mut shown = Presenter::default();
         let mut stepped = 0u32;
         let mut last = None;

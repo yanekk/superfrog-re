@@ -55,4 +55,4 @@ tests boot with no disk in the drive, so they need no game.
   `learned on:`, the one place a game may be named.
 - A pure crate that needs a file, a clock or a dependency off the allowlist is wrong: move the code
   to a shell crate, never relax the test.
-- The frame is PAL's 313 lines throughout; parameterising it is the next game's first step.
+- The frame's length is a value the game supplies (`frame_lines`); `FRAME_LINES` and `SHORT_FRAME_LINES` stay as the PAL constants.

@@ -11,7 +11,7 @@ fn main() {
     let path = std::env::args().nth(1).expect("a feed");
     let feed = Feed::parse(&std::fs::read_to_string(path).expect("feed")).expect("a feed");
     let mut g = Game::with_display(sf_conform::display_data(), Start::PowerOn { seed: feed.seed });
-    let (mut at_once, mut spread) = (Paula::booted(48_000, sf_core::BOOT_DMACON), Paula::booted(48_000, sf_core::BOOT_DMACON));
+    let (mut at_once, mut spread) = (Paula::booted(48_000, sf_core::BOOT_DMACON, amiga_paula::LINES_PER_FRAME), Paula::booted(48_000, sf_core::BOOT_DMACON, amiga_paula::LINES_PER_FRAME));
     let spaced = |w: &[PaulaWrite]| -> Vec<PaulaWrite> {
         w.iter().enumerate().map(|(i, w)| PaulaWrite { vpos: i as u16, hpos: 0, ..*w }).collect()
     };

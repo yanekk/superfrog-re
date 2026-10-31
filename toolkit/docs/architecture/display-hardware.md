@@ -103,8 +103,8 @@ fail the picture check.
 ## 7. Reuse
 
 **`small-changes`**. The crate names no game. What another game may need is an addition: sprites,
-hires, dual playfield, HAM, interlace, collisions, line and fill blits. The frame is PAL's 313 lines
-throughout.
+hires, dual playfield, HAM, interlace, collisions, line and fill blits. The frame's length is a
+value the game passes to the copper run.
 
 ## 8. Sources
 

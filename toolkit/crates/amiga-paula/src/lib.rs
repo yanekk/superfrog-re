@@ -82,6 +82,11 @@ impl AudioDma {
     }
 }
 
+/// A PAL frame is long or short; anything else is a caller's mistake, not a frame.
+fn check_frame_lines(lines: u32) {
+    assert!(matches!(lines, 312 | 313), "a PAL frame of {lines} lines");
+}
+
 /// The four audio channels, their DMA, and the resampler to the host rate.
 pub struct Paula {
     chip: channel::Chip,
@@ -91,33 +96,31 @@ pub struct Paula {
 }
 
 impl Paula {
-    /// Power-on: silent, DMA off. `host_rate` is the output's sample rate in Hz.
-    pub fn new(host_rate: u32) -> Paula {
+    /// Power-on: silent, DMA off. `host_rate` is the output's sample rate in Hz; `frame_lines` the
+    /// length of the frames from the start, the game's, as [`Paula::set_frame_lines`].
+    pub fn new(host_rate: u32, frame_lines: u32) -> Paula {
+        check_frame_lines(frame_lines);
         Paula {
             chip: channel::Chip::new(),
             resampler: resample::Resampler::new(host_rate),
             taps: [Vec::new(), Vec::new(), Vec::new(), Vec::new()],
-            lines: LINES_PER_FRAME,
+            lines: frame_lines,
         }
     }
 
     /// As the game's boot leaves Paula: DMACON as the boot left it (`dmacon`, as
     /// [`AudioDma::booted`]), every channel idle and silent. The game's own writes then turn the
     /// channels on with their bits alone, so a mixer that starts here, not at power-on, hears them.
-    pub fn booted(host_rate: u32, dmacon: u16) -> Paula {
-        let mut p = Paula::new(host_rate);
+    pub fn booted(host_rate: u32, dmacon: u16, frame_lines: u32) -> Paula {
+        let mut p = Paula::new(host_rate, frame_lines);
         p.chip.set_dmacon(dmacon);
         p
     }
 
-    /// The length of the frames from now on: [`LINES_PER_FRAME`] (a long frame, the default) or one
-    /// fewer (short). Agnus's LOF bit decides it: it alternates while BPLCON0's LACE bit is set and
+    /// The length of the frames from now on: 313 lines (long) or 312 (short). Agnus's LOF bit decides it: it alternates while BPLCON0's LACE bit is set and
     /// keeps the last value when LACE is cleared, so a game can run whole stretches of short frames.
     pub fn set_frame_lines(&mut self, lines: u32) {
-        assert!(
-            lines == LINES_PER_FRAME || lines == LINES_PER_FRAME - 1,
-            "a PAL frame of {lines} lines"
-        );
+        check_frame_lines(lines);
         self.lines = lines;
     }
 
@@ -147,7 +150,7 @@ mod tests {
     /// The boots as they were before the boot DMACON became a parameter (toolkit-extract T01):
     /// the reference `booted(.., 0x8200)` is held to.
     fn old_paula_booted(host_rate: u32) -> Paula {
-        let mut p = Paula::new(host_rate);
+        let mut p = Paula::new(host_rate, LINES_PER_FRAME);
         p.chip.set_dmacon(0x8200);
         p
     }
@@ -185,7 +188,7 @@ mod tests {
         ];
         let (mut dma, mut old_dma) = (AudioDma::booted(0x8200), old_dma_booted());
         for rate in [22_050, 44_100, 48_000] {
-            let (mut new, mut old) = (Paula::booted(rate, 0x8200), old_paula_booted(rate));
+            let (mut new, mut old) = (Paula::booted(rate, 0x8200, LINES_PER_FRAME), old_paula_booted(rate));
             assert_eq!(new.chip, old.chip);
             assert_eq!(new.lines, old.lines);
             for frame in 0..4 {
