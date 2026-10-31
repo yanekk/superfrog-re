@@ -24,14 +24,14 @@ done · ⛔ blocked, needs a human.
 |---|---|---|---|---|
 | T01 | label-check | — | ✅ | |
 | T02 | smoke-runner | T01 | ⬜ | |
-| T03 | file-timings | T01 | ⬜ | |
+| T03 | file-timings | T01 | 🔍 | `tools/smoke_timings.py`, `timings.tsv` (139 files, 18 crates: 74 over, 83 within cap, none red). 6 fake tests. Deviations: added `--done`, `--stop-after`, disk floor, header row, `uncompiled` value, `tools/test_smoke_timings.py`; pass ran in four pieces for the tool's time limit. |
 | T04 | full-command | — | ⬜ | |
 | T05 | toolkit-and-forest-labels | T02, T03 | ⬜ | |
 | T06 | superfrog-labels | T02, T03 | ⬜ | |
 | T07 | smoke-fits | T02, T05, T06 | ⬜ | |
 | T08 | switch-and-directives | T04, T07 | ⬜ | |
 
-**Review queue:** *(empty)*
+**Review queue:** T03
 
 ## Blocked on the user
 

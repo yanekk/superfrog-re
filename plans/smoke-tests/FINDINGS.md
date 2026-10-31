@@ -11,6 +11,7 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-31 | 📌 | T03: pass had another session's `cargo test --workspace` running, so times read high. Finished over 10 s: `amiga-clock/src`, `bosses_routines`, `widescreen_objects`, `sf-plan/tests/map`. No file failed; `over` hides any red. Re-measure before trusting borderline rows. |
 | 2026-10-31 | 📌 | T01: parser counts 114 `#[ignore]`d tests, not the 104 in DESIGN §7: `code_cases!` makes 23 in `chain.rs`. Reconciled against grep: 1399 written plus 93 macro-made is 1492 tests. |
 | 2026-10-31 | 🔄 | Owner: DESIGN §2.2 contradicts itself. `[tests]` keys are relative to `workspace` (`crates/x/...`), as its example shows; `[python]` keys relative to the project folder. T05, T06 write game labels this way. |
 | 2026-10-31 | 🔄 | Plan review: 32 of 104 `#[ignore]` tests panic without `SF_E2E_OS=1` and post real screen input with it. Owner excluded them from `tools/full.sh`; a later plan runs them in `tart`. |
