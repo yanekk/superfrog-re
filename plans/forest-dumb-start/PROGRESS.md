@@ -30,7 +30,7 @@ to keep in sync.
 |---|---|---|---|---|
 | T00 | oracle-spike | — | ⬜ | |
 | T01 | ofs-reader | — | ✅ | |
-| T02 | fd-import | T01 | ⬜ | |
+| T02 | fd-import | T01 | ✅ | |
 | T03 | fd-boot-chain | T00, T02 | ⬜ | |
 | T04 | fd-pack-check | T02 | ⬜ | |
 | T05 | fd-file-formats | T02, T04 | ⬜ | |
