@@ -23,9 +23,9 @@ done · ⛔ blocked, needs a human.
 | # | Task | Depends on | State | Notes |
 |---|---|---|---|---|
 | T01 | label-check | — | ✅ | |
-| T02 | smoke-runner | T01 | ⬜ | |
+| T02 | smoke-runner | T01 | ✅ | |
 | T03 | file-timings | T01 | ✅ | Review: one gap fixed, resuming pieces untested (mutation survived); tests added. Probed real cargo in a throwaway crate: cap kills test binary, tail correct; SIGTERM leaves nothing; 157 rows match independent count. Mutated kill, `--no-run`, resume, stops. `pir-test` for the pass read-only. Times taken under load; borderline rows need re-measuring. |
-| T04 | full-command | — | ⬜ | |
+| T04 | full-command | — | ✅ | |
 | T05 | toolkit-and-forest-labels | T02, T03 | ⬜ | |
 | T06 | superfrog-labels | T02, T03 | ⬜ | |
 | T07 | smoke-fits | T02, T05, T06 | ⬜ | |
