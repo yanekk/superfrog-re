@@ -48,11 +48,14 @@ const ALLOWED: &[&str] = &[
     "unicode-ident",
     // A save state's byte layout: fixed-width integers in field order into a Vec<u8>.
     "bincode",
+    // The OFS reader behind amiga-disk's `ofs` module, built without its `std` feature: blocks in,
+    // parsed volume out; no I/O, clock, thread or float, and no dependencies of its own.
+    "amiga-ffs",
 ];
 
-/// The name prefix of a game's own crates, which no toolkit crate may depend on (DESIGN §3.2).
+/// The name prefixes of the games' own crates, which no toolkit crate may depend on (DESIGN §3.2).
 /// Built from two pieces so this file does not trip the name check.
-const GAME_PREFIX: [&str; 2] = ["sf", "-"];
+const GAME_PREFIX: [[&str; 2]; 2] = [["sf", "-"], ["fd", "-"]];
 
 /// Exempt from the float and array rules only (DESIGN §3.1).
 const RESAMPLER: &str = "amiga-paula/src/resample.rs";
@@ -459,10 +462,9 @@ fn members() -> Vec<String> {
 
 /// Dependencies in `tree` that are a game's own crates.
 fn game_crates(tree: &str) -> Vec<String> {
-    let prefix = GAME_PREFIX.concat();
     tree_names(tree)
         .into_iter()
-        .filter(|n| n.starts_with(&prefix))
+        .filter(|n| GAME_PREFIX.iter().any(|p| n.starts_with(&p.concat())))
         .collect()
 }
 
@@ -626,8 +628,10 @@ fn a_pure_crate_depending_off_the_allowlist_is_flagged() {
 
 #[test]
 fn a_game_crate_in_a_toolkit_tree_would_be_seen() {
-    let game = format!("{}core", GAME_PREFIX.concat());
-    let tree = format!("amiga-chips v0.1.0 (/x)\n{game} v0.1.0 (/y)\ncc v1.2.0\n");
-    assert_eq!(game_crates(&tree), [game]);
+    for prefix in GAME_PREFIX {
+        let game = format!("{}core", prefix.concat());
+        let tree = format!("amiga-chips v0.1.0 (/x)\n{game} v0.1.0 (/y)\ncc v1.2.0\n");
+        assert_eq!(game_crates(&tree), [game]);
+    }
     assert!(game_crates("amiga-chips v0.1.0 (/x)\nserde v1.0.0\n").is_empty());
 }

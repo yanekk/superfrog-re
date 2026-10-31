@@ -46,6 +46,10 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-31 | 📌 | OFS verdict: `amiga-ffs` 0.4.0 (MIT/Apache-2.0, no dependencies, `std` off) chosen. Against `xdftool` on both real disks: 12 and 49 files, names, sizes, bytes identical. `affs-read` not needed. |
+| 2026-10-31 | 📌 | `s/startup-sequence` sits in a subdirectory, so `OfsImage::files()` lists paths (`s/startup-sequence`), against T01's root-only doc. T02 must create parent folders under `out`; disk 1 lists 12 files. |
+| 2026-10-31 | 📌 | `pir`'s hand_command cannot read `~/Documents` (macOS refused the zip copy); the owner copied them from outside. Zips now in the main checkout's `games/forest-dumb/`. |
+| 2026-10-31 | 📌 | `toolkit/crates/dry-fit/tests/deps.rs` still has only the first game's `GAME_PREFIX`; left alone, outside T01's file list. |
 | 2026-10-31 | 📌 | The stored setup/test lines pass in a fresh worktree: setup leaves the copy clean and the everything-run (toolkit, both games, root checks) is green in ~70 minutes. Re-measured because the plan adds a package folder. |
 | 2026-10-30 | 📌 | The only permissive Rust OFS readers are `amiga-ffs` (MIT/Apache-2.0, 0.4.0) and `affs-read` (MIT, 0.5.1); the `format198x` ADF family is GPL-2.0-or-later. Found while planning, DESIGN §2.2. |
 | 2026-10-30 | 📌 | `amiga-oracle` already reports each stepped frame's length in lines (`amiga_frame_lines`, shim.h: 313 long, 312 short), so T00 measures the frame length with no new patch. |
