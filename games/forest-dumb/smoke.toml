@@ -1,0 +1,34 @@
+# What Forest Dumb runs in smoke (smoke-tests DESIGN §2.2, §2.4, §2.5). Fast files are all smoke.
+workspace = "engine"
+
+[tests]
+"crates/fd-conform/src" = "smoke"
+# 60 s for the title on every pass, which the area needs; the three missing-file tests take under a second.
+# a_start_one_frame_early_is_caught_and_named (16 s) stays in full.
+"crates/fd-conform/tests/first_case.rs" = [
+    "the_idle_title_matches_the_original_on_every_pass",
+    "a_missing_disk_names_the_path",
+    "a_missing_kickstart_names_the_path_and_does_not_panic",
+    "a_missing_case_names_the_path_and_does_not_panic",
+]
+"crates/fd-conform/tests/purity.rs" = "smoke"
+"crates/fd-core/src" = "smoke"
+"crates/fd-tools/tests/bad_disks.rs" = "smoke"
+"crates/fd-tools/tests/boot_chain.rs" = "smoke"
+"crates/fd-tools/tests/exe_map_claims.rs" = "smoke"
+"crates/fd-tools/tests/locate.rs" = "smoke"
+"crates/fd-tools/tests/real_disks.rs" = "smoke"
+
+[python]
+"tools/test_find_file_names.py" = "smoke"
+"tools/test_re_listing.py" = "smoke"
+"tools/test_render_levels.py" = "smoke"
+"tools/test_unpack.py" = "smoke"
+
+[[area]]
+name = "reading its disks"
+covers = ["crates/fd-tools/tests/real_disks.rs"]
+
+[[area]]
+name = "its first comparison with the original"
+covers = ["crates/fd-conform/tests/first_case.rs::the_idle_title_matches_the_original_on_every_pass"]
