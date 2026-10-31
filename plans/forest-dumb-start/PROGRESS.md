@@ -30,7 +30,7 @@ to keep in sync.
 |---|---|---|---|---|
 | T00 | oracle-spike | — | ⬜ | |
 | T01 | ofs-reader | — | ✅ | |
-| T02 | fd-import | T01 | ⬜ | |
+| T02 | fd-import | T01 | 🔍 | fd-tools locate, extract, inventory; 20 tests. Deviations: 48 data files are disk 2 minus its marker, only 30 match the doc's patterns; default out is `games/forest-dumb/build` per DESIGN §2.3, not `build/forest-dumb`; `out` must sit inside a `build` folder. |
 | T03 | fd-boot-chain | T00, T02 | ⬜ | |
 | T04 | fd-pack-check | T02 | ⬜ | |
 | T05 | fd-file-formats | T02, T04 | ⬜ | |
@@ -46,7 +46,7 @@ it here and point there.
 **A ✅ task's cell may be cut to one line** once the next task has been reviewed — its detail
 is in the commit and the file is read in full by every session from here on.
 
-**Review queue:** *(empty)*
+**Review queue:** T02
 
 ## Blocked on the user
 

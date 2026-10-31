@@ -1,0 +1,5 @@
+# Pinned to the toolkit's and the first game's toolchain.
+[toolchain]
+channel = "1.99.0"
+profile = "minimal"
+components = ["rustfmt", "clippy"]

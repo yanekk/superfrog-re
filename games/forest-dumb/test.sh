@@ -1,5 +1,5 @@
 #!/bin/sh
-# Forest Dumb Forever's test command (monorepo-and-knowledge DESIGN §2.7): a stub until the first plan
-# adds real tests. It exists because tools/test.sh fails on a game folder without one.
-echo "forest-dumb: no tests yet"
-exit 0
+# Forest Dumb Forever's test command. Anchors itself, so any caller's cwd holds. The Python tools line
+# arrives with the first Python tool.
+cd "$(dirname "$0")" || exit 1
+(cd engine && cargo test -q --workspace)
