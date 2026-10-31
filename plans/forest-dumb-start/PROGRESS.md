@@ -33,7 +33,7 @@ to keep in sync.
 | T02 | fd-import | T01 | ✅ | |
 | T03 | fd-boot-chain | T00, T02 | ✅ | |
 | T04 | fd-pack-check | T02 | ✅ | |
-| T05 | fd-file-formats | T02, T04 | ⬜ | |
+| T05 | fd-file-formats | T02, T04 | ✅ | |
 | T06 | fd-exe-map | T02, T03 | ⬜ | |
 | T07 | frame-parameterise | T00 | ✅ | |
 | T08 | fd-core | T00, T06, T07 | ⬜ | |
