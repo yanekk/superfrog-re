@@ -46,6 +46,7 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-31 | 📌 | T02 review: `fd-tools` seatbelt checks path text only; `--out` under any `build` ancestor or through a symlink there is accepted (probed). Fixed target names mean zips and tracked files are not overwritten. Left as is. |
 | 2026-10-31 | 📌 | T02 cross-check: `xdftool unpack` on both real disks agrees with `fd-tools extract`: 61 files (12 + 49), names, sizes, all bytes identical. |
 | 2026-10-31 | 📌 | Unused `amiga-*` profile overrides in `games/forest-dumb/engine/Cargo.toml` print eight cargo warnings on a non-quiet build until T08/T09 depend on those crates; harmless, `-q` hides them. |
 | 2026-10-31 | 📌 | OFS verdict: `amiga-ffs` 0.4.0 (MIT/Apache-2.0, no dependencies, `std` off) chosen. Against `xdftool` on both real disks: 12 and 49 files, names, sizes, bytes identical. `affs-read` not needed. |
