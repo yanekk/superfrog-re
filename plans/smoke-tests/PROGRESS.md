@@ -27,7 +27,7 @@ done · ⛔ blocked, needs a human.
 | T03 | file-timings | T01 | ✅ | |
 | T04 | full-command | — | ✅ | |
 | T05 | toolkit-and-forest-labels | T02, T03 | ✅ | |
-| T06 | superfrog-labels | T02, T03 | ⬜ | |
+| T06 | superfrog-labels | T02, T03 | ✅ | |
 | T07 | smoke-fits | T02, T05, T06 | ⬜ | |
 | T08 | switch-and-directives | T04, T07 | ⬜ | |
 
