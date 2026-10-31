@@ -24,14 +24,14 @@ done · ⛔ blocked, needs a human.
 |---|---|---|---|---|
 | T01 | label-check | — | ✅ | |
 | T02 | smoke-runner | T01 | ⬜ | |
-| T03 | file-timings | T01 | 🔍 | `tools/smoke_timings.py`, `timings.tsv` (139 files, 18 crates: 74 over, 83 within cap, none red). 6 fake tests. Deviations: added `--done`, `--stop-after`, disk floor, header row, `uncompiled` value, `tools/test_smoke_timings.py`; pass ran in four pieces for the tool's time limit. |
+| T03 | file-timings | T01 | ✅ | Review: one gap fixed, resuming pieces untested (mutation survived); tests added. Probed real cargo in a throwaway crate: cap kills test binary, tail correct; SIGTERM leaves nothing; 157 rows match independent count. Mutated kill, `--no-run`, resume, stops. `pir-test` for the pass read-only. Times taken under load; borderline rows need re-measuring. |
 | T04 | full-command | — | ⬜ | |
 | T05 | toolkit-and-forest-labels | T02, T03 | ⬜ | |
 | T06 | superfrog-labels | T02, T03 | ⬜ | |
 | T07 | smoke-fits | T02, T05, T06 | ⬜ | |
 | T08 | switch-and-directives | T04, T07 | ⬜ | |
 
-**Review queue:** T03
+**Review queue:** *(empty)*
 
 ## Blocked on the user
 
