@@ -11,27 +11,31 @@ A level is five files plus the shared sprites. `N` is the world, 1 to 6.
 
 | File | Holds | Bytes | Layout | Loaded at |
 |---|---|---|---|---|
-| `_MapaN-1` | tile map | 53760 (W6 61440) | words, 96 to a row | hunk 0 `$16318` |
+| `_MapaN-1` | tile map | 53760 (W6 61440) | words, 96 to a column | hunk 0 `$16318` |
 | `_GenN-1` | tile pictures | 160 x tile count | see chapter 06 | hunk 3 `$13540` |
-| `_MapaN-1.Mapa` | collision map | 23040 (W6 30720) | bytes, 96 to a row | hunk 0 `$28f18` |
+| `_MapaN-1.Mapa` | collision map | 23040 (W6 30720) | bytes, 96 to a column | hunk 0 `$28f18` |
 | `_GenN-1.Mapa` | collision shapes | 32 x shape count | see below | hunk 0 `$bda0` |
-| `_MapaBobowN` | object map | 38400 | bytes, 96 to a row | hunk 0 `$cb38` |
+| `_MapaBobowN` | object map | 38400 | bytes, 96 to a column | hunk 0 `$cb38` |
 
 Each load is a block in hunk 4 from `$19fc4` (name, then `move.l #dest,$9086`), one section a world in the
 order 2, 3, 4, 5, 6, 1. The sprite files of chapter 06 load in the same sections.
 
 ## Tile map
 
-Cell at (col, row): the word at `2 * (row * 96 + col)`. The value is a tile number, an index into `_GenN-1`.
+All three maps are stored a column at a time: a level is 96 cells tall, and the next column follows the
+last. The drawing loop at hunk 0 `$708` proves it, reading index `col * $60 + row` for the screen word at
+`row * $2e0 + col * 2`. Read as 96 across, a level draws as terrain that does not join up at the tile edges.
+
+Cell at (col, row): the word at `2 * (col * 96 + row)`. The value is a tile number, an index into `_GenN-1`.
 The game goes through a table at hunk 0 `$3b988` holding `number * 160`, so it is a plain index. Every
 level uses every tile of its set at least once (tested).
 
-Rows: 280, W6 320. Past row 240 the five shorter levels hold only repeating filler rock, with no collision
+Columns: 280, W6 320. Past column 240 the five shorter levels hold only repeating filler rock, with no collision
 under it.
 
 ## Collision map and shapes
 
-Cell at (col, row): the byte at `row * 96 + col`, an index into `_GenN-1.Mapa`. Rows: 240, W6 320.
+Cell at (col, row): the byte at `col * 96 + row`, an index into `_GenN-1.Mapa`. Columns: 240, W6 320.
 
 A shape is 32 bytes: 16 words, one a line, top line first, most significant bit leftmost. A set bit is
 solid. The drawing loop at hunk 0 `$708` copies a cell's shape line by line into the screen's collision
@@ -45,11 +49,12 @@ cells (76% to 88% of them) never occur in a solid cell, not once.
 
 ## Object map
 
-Cell at (col, row): the byte at `row * 96 + col`, 0 for nothing. The file always fills 400 rows; the used
-rows stay inside the level's collision rows (tested). The game scans it per screen column (hunk 0 `$970`,
-index `(x / 16) * $60 + y / 16` with its own axes) and also writes to it at run time (hunk 0 `$2e54`).
+Cell at (col, row): the byte at `col * 96 + row`, 0 for nothing. The file always fills 400 columns; the used
+columns stay inside the level's collision columns (tested). The game scans one row across the 20 screen
+columns (hunk 0 `$970`, index `(x / 16) * $60 + y / 16`) and also writes to it at run time (hunk 0 `$2e54`).
 
-What the code proves, from the scan at hunk 0 `$9a8`:
+What the code proves, from the scan at hunk 0 `$9a8`. Its compares are signed, so `$87` to `$fe` would take
+the creature branch; the highest value in any file below `$ff` is `$48`:
 
 | Value | Group in the render | The code |
 |---|---|---|

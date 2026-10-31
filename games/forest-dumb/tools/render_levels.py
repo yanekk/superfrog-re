@@ -24,11 +24,15 @@ MAIN_PROGRAM = BUILD / 'files' / 'disk1' / 'FOREST_DUMB_FOREVER'
 INDEX_DOC = GAME / 'docs' / 'LEVEL-INDEX.md'
 
 CELL = 16
-MAP_WIDTH = 96
+# The maps are stored a column at a time, 96 cells to a column: hunk 0 $708 puts the cell at index
+# column * $60 + row on screen at row * $2e0 + column * 2. So 96 is the level's height, not its width.
+LEVEL_HEIGHT = 96
 PLANES = 5
 TILE_BYTES = 160
 SHAPE_BYTES = 32
 OBJECT_MAP_BYTES = 38400
+TILE_MAP_COLUMNS = {6: 320}
+COLLISION_COLUMNS = {6: 320}
 OBJECT_END = 0xff
 WORLDS = range(1, 7)
 
@@ -79,16 +83,25 @@ def parse_tiles(data, name='tiles'):
     return planes_to_pixels(data, 2, name).reshape(-1, CELL, CELL)
 
 
-def parse_tile_map(data, tile_count, name='tile map'):
-    """A `_MapaN-1` file: rows x 96 array of big-endian tile numbers."""
-    if not data or len(data) % (MAP_WIDTH * 2):
-        raise FormatError(f'{name}: truncated at offset {len(data)}: not a whole number of {MAP_WIDTH * 2}-byte rows')
-    cells = np.frombuffer(data, '>u2').reshape(-1, MAP_WIDTH)
-    bad = np.flatnonzero(cells.ravel() >= tile_count)
+def check_size(data, expected, name):
+    """Whole columns are not enough: a file short by exactly one column would still parse."""
+    if expected is not None and len(data) < expected:
+        raise FormatError(f'{name}: truncated at offset {len(data)}: expected {expected} bytes')
+    if expected is not None and len(data) > expected:
+        raise FormatError(f'{name}: corrupt at offset {expected}: bytes past the expected {expected}')
+
+
+def parse_tile_map(data, tile_count, name='tile map', columns=None):
+    """A `_MapaN-1` file: rows x columns array of big-endian tile numbers, stored column by column."""
+    check_size(data, columns and columns * LEVEL_HEIGHT * 2, name)
+    if not data or len(data) % (LEVEL_HEIGHT * 2):
+        raise FormatError(f'{name}: truncated at offset {len(data)}: not a whole number of {LEVEL_HEIGHT * 2}-byte columns')
+    raw = np.frombuffer(data, '>u2')
+    bad = np.flatnonzero(raw >= tile_count)
     if bad.size:
         at = int(bad[0])
-        raise FormatError(f'{name}: corrupt at offset {at * 2}: tile {int(cells.ravel()[at])}, only {tile_count} tiles')
-    return cells
+        raise FormatError(f'{name}: corrupt at offset {at * 2}: tile {int(raw[at])}, only {tile_count} tiles')
+    return raw.reshape(-1, LEVEL_HEIGHT).T
 
 
 def parse_shapes(data, name='shapes'):
@@ -98,23 +111,23 @@ def parse_shapes(data, name='shapes'):
     return planes_to_pixels(data, 2, name, planes=1).reshape(-1, CELL, CELL)
 
 
-def parse_collision_map(data, shape_count, name='collision map'):
-    """A `_MapaN-1.Mapa` file: rows x 96 array of shape numbers, one byte a cell."""
-    if not data or len(data) % MAP_WIDTH:
-        raise FormatError(f'{name}: truncated at offset {len(data)}: not a whole number of {MAP_WIDTH}-byte rows')
-    cells = np.frombuffer(data, 'u1').reshape(-1, MAP_WIDTH)
-    bad = np.flatnonzero(cells.ravel() >= shape_count)
+def parse_collision_map(data, shape_count, name='collision map', columns=None):
+    """A `_MapaN-1.Mapa` file: rows x columns array of shape numbers, one byte a cell, column by column."""
+    check_size(data, columns and columns * LEVEL_HEIGHT, name)
+    if not data or len(data) % LEVEL_HEIGHT:
+        raise FormatError(f'{name}: truncated at offset {len(data)}: not a whole number of {LEVEL_HEIGHT}-byte columns')
+    raw = np.frombuffer(data, 'u1')
+    bad = np.flatnonzero(raw >= shape_count)
     if bad.size:
         at = int(bad[0])
-        raise FormatError(f'{name}: corrupt at offset {at}: shape {int(cells.ravel()[at])}, only {shape_count} shapes')
-    return cells
+        raise FormatError(f'{name}: corrupt at offset {at}: shape {int(raw[at])}, only {shape_count} shapes')
+    return raw.reshape(-1, LEVEL_HEIGHT).T
 
 
 def parse_object_map(data, name='object map'):
-    """A `_MapaBobowN` file: 400 rows x 96 of object bytes. Every file fills the game's whole buffer."""
-    if len(data) != OBJECT_MAP_BYTES:
-        raise FormatError(f'{name}: truncated at offset {len(data)}: expected {OBJECT_MAP_BYTES} bytes')
-    return np.frombuffer(data, 'u1').reshape(-1, MAP_WIDTH)
+    """A `_MapaBobowN` file: 96 rows x 400 columns of object bytes. Every file fills the game's whole buffer."""
+    check_size(data, OBJECT_MAP_BYTES, name)
+    return np.frombuffer(data, 'u1').reshape(-1, LEVEL_HEIGHT).T
 
 
 def parse_palette(program, offset=PALETTE_OFFSET, name='main program'):
@@ -157,8 +170,8 @@ def load_level(world):
     return {
         'tiles': tiles,
         'shapes': shapes,
-        'map': parse_tile_map(read(files['tile map']), len(tiles), files['tile map']),
-        'collision': parse_collision_map(read(files['collision']), len(shapes), files['collision']),
+        'map': parse_tile_map(read(files['tile map']), len(tiles), files['tile map'], TILE_MAP_COLUMNS.get(world, 280)),
+        'collision': parse_collision_map(read(files['collision']), len(shapes), files['collision'], COLLISION_COLUMNS.get(world, 240)),
         'objects': parse_object_map(read(files['objects']), files['objects']),
     }
 
@@ -248,28 +261,29 @@ def world_of(identifier):
 
 
 def resolve_spot(spot):
-    """`W1-1:10,20` to what is there: the tile, shape and object numbers, -1 past a map's last row."""
+    """`W1-1:10,20` to what is there: the tile, shape and object numbers, -1 past a map's last column."""
     match = re.fullmatch(r'([^:]+):(\d+),(\d+)', spot)
     if not match:
         raise ValueError(f'{spot!r} is not <level-id>:<col>,<row>')
     world, col, row = world_of(match.group(1)), int(match.group(2)), int(match.group(3))
     level = load_level(world)
-    if col >= MAP_WIDTH or row >= level['map'].shape[0]:
-        raise ValueError(f'{spot}: outside the level, {MAP_WIDTH} columns by {level["map"].shape[0]} rows')
-    in_map = lambda cells: int(cells[row, col]) if row < cells.shape[0] else -1
+    rows, columns = level['map'].shape
+    if col >= columns or row >= rows:
+        raise ValueError(f'{spot}: outside the level, {columns} columns by {rows} rows')
+    in_map = lambda cells: int(cells[row, col]) if col < cells.shape[1] else -1
     return {'level': match.group(1), 'col': col, 'row': row, 'x': col * CELL, 'y': row * CELL,
             'tile': in_map(level['map']), 'shape': in_map(level['collision']), 'object': in_map(level['objects'])}
 
 
 def index_table():
     rows = ['| level id | tile map | tiles | collision | shapes | objects | tiles count | size (cols x rows) '
-            '| collision rows | render |',
+            '| collision columns | render |',
             '|---|---|---|---|---|---|---:|---|---:|---|']
     for world in WORLDS:
         level, files = load_level(world), level_files(world)
         rows.append(f'| {level_id(world)} | `{files["tile map"]}` | `{files["tiles"]}` | `{files["collision"]}` '
                     f'| `{files["shapes"]}` | `{files["objects"]}` | {len(level["tiles"])} '
-                    f'| {MAP_WIDTH}x{level["map"].shape[0]} | {level["collision"].shape[0]} '
+                    f'| {level["map"].shape[1]}x{LEVEL_HEIGHT} | {level["collision"].shape[1]} '
                     f'| `{level_id(world)}.png` |')
     return '\n'.join(rows) + '\n'
 
