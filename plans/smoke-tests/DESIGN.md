@@ -49,7 +49,7 @@ set. The variable is new so that `tools/test.sh` on its own behaves as today.
 Full leaves out the 32 Superfrog screen tests, those whose `#[ignore]` reason names `SF_E2E_OS=1`, unless that
 variable is set. They panic without it, so full would be red every night whatever the code did, and with it they
 post real input to the screen. They are found from that reason in the source, so a new one is left out without
-being listed. With the variable set nothing is left out; their one-at-a-time need is the later plan's (§8). Full is never run in this
+being listed. With the variable set no screen test is left out; their one-at-a-time need is the later plan's (§8). Full also leaves out the `zips` tool unless `SF_T14_ZIPS` is set: it panics without it and checks nothing (owner, T04 review). Full is never run in this
 plan, as the owner ordered, so it is proven with a fake `cargo` on the PATH (T04) and for real only by
 the first nightly run.
 

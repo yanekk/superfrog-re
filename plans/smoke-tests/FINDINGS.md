@@ -11,6 +11,8 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-31 | 🔄 | T04 review: ignored `zips` (sf-conform `recorder_follow`) panics without `SF_T14_ZIPS`, so `tools/full.sh` was red every night. Owner left it out unless set; DESIGN §2.1 updated. |
+| 2026-10-31 | 📌 | T04 review: `--skip` is by test name across all binaries, so a future ordinary test sharing a skipped name would silently leave `tools/full.sh`. No such collision today, checked against the real list. |
 | 2026-10-31 | 📌 | T01: parser counts 114 `#[ignore]`d tests, not the 104 in DESIGN §7: `code_cases!` makes 23 in `chain.rs`. Reconciled against grep: 1399 written plus 93 macro-made is 1492 tests. |
 | 2026-10-31 | 🔄 | Owner: DESIGN §2.2 contradicts itself. `[tests]` keys are relative to `workspace` (`crates/x/...`), as its example shows; `[python]` keys relative to the project folder. T05, T06 write game labels this way. |
 | 2026-10-31 | 🔄 | Plan review: 32 of 104 `#[ignore]` tests panic without `SF_E2E_OS=1` and post real screen input with it. Owner excluded them from `tools/full.sh`; a later plan runs them in `tart`. |
