@@ -23,7 +23,7 @@ done · ⛔ blocked, needs a human.
 | # | Task | Depends on | State | Notes |
 |---|---|---|---|---|
 | T01 | label-check | — | ✅ | |
-| T02 | smoke-runner | T01 | ⬜ | |
+| T02 | smoke-runner | T01 | 🔍 | `tools/smoke.sh`, `tools/smoke.py`, watchdog in its own session for pir's SIGKILL. 25 tests in `test_smoke_shell.py`. Beyond the doc: a check failure and a SIGKILLed run also write a `failed` row; a Python entry exiting 5 (no tests) fails, unlike `test.sh`. |
 | T03 | file-timings | T01 | ⬜ | |
 | T04 | full-command | — | ⬜ | |
 | T05 | toolkit-and-forest-labels | T02, T03 | ⬜ | |
@@ -31,7 +31,7 @@ done · ⛔ blocked, needs a human.
 | T07 | smoke-fits | T02, T05, T06 | ⬜ | |
 | T08 | switch-and-directives | T04, T07 | ⬜ | |
 
-**Review queue:** *(empty)*
+**Review queue:** T02
 
 ## Blocked on the user
 
