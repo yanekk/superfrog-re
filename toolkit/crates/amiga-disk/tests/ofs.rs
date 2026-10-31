@@ -76,23 +76,27 @@ impl Builder {
         self.next - 1
     }
 
-    /// Hook block `n` named `name` at the head of its root hash chain.
-    fn link(&mut self, n: usize, name: &[u8]) {
+    /// Hook block `n` named `name` at the head of a hash chain of directory `dir`.
+    fn link(&mut self, dir: usize, n: usize, name: &[u8]) {
         let slot = 6 + hash(name);
-        let head = u32::from_be_bytes(self.block(ROOT)[slot * 4..slot * 4 + 4].try_into().unwrap());
+        let head = u32::from_be_bytes(self.block(dir)[slot * 4..slot * 4 + 4].try_into().unwrap());
         let b = self.block(n);
         name_at_tail(b, name);
         put(b, 124, head);
-        put(b, 125, ROOT as u32);
+        put(b, 125, dir as u32);
         seal(b, 5);
-        let root = self.block(ROOT);
-        put(root, slot, n as u32);
-        seal(root, 5);
+        let d = self.block(dir);
+        put(d, slot, n as u32);
+        seal(d, 5);
     }
 
     /// A file of any length: its data blocks, as many extension blocks as they need, and its header
     /// block. Returns (header block, its data blocks in order).
     fn file(&mut self, name: &[u8], data: &[u8]) -> (usize, Vec<usize>) {
+        self.file_in(ROOT, name, data)
+    }
+
+    fn file_in(&mut self, dir: usize, name: &[u8], data: &[u8]) -> (usize, Vec<usize>) {
         let header = self.alloc();
         let chunks: Vec<&[u8]> = data.chunks(PAYLOAD).collect();
         let blocks: Vec<usize> = chunks.iter().map(|_| self.alloc()).collect();
@@ -138,7 +142,7 @@ impl Builder {
         put(h, 81, data.len() as u32);
         put(h, 126, extensions.first().copied().unwrap_or(0) as u32);
         put(h, 127, ST_FILE);
-        self.link(header, name);
+        self.link(dir, header, name);
         (header, blocks)
     }
 
@@ -148,7 +152,7 @@ impl Builder {
         put(b, 0, T_HEADER);
         put(b, 1, n as u32);
         put(b, 127, ST_USERDIR);
-        self.link(n, name);
+        self.link(ROOT, n, name);
         n
     }
 }
@@ -259,13 +263,40 @@ fn a_latin1_name_lists_as_its_characters_and_reads() {
 }
 
 #[test]
-fn directories_are_not_listed_and_do_not_read_as_files() {
+fn files_in_subdirectories_list_by_path_and_read() {
     let mut b = Builder::new(b"V");
-    let dir = b.directory(b"sub");
+    let dir = b.directory(b"s");
+    b.file_in(dir, b"Startup-Sequence", b"boot");
+    let deeper = b.alloc();
+    let d = b.block(deeper);
+    put(d, 0, T_HEADER);
+    put(d, 1, deeper as u32);
+    put(d, 127, ST_USERDIR);
+    b.link(dir, deeper, b"deep");
+    b.file_in(deeper, b"leaf", b"low");
     b.file(b"plain", b"x");
     let image = OfsImage::parse(&b.image).unwrap();
-    assert_eq!(image.files().collect::<Vec<_>>(), [("plain", 1)]);
-    assert_eq!(malformed_at(image.read_file("sub").unwrap_err()), dir * BLOCK);
+
+    let mut listed: Vec<(&str, u32)> = image.files().collect();
+    listed.sort();
+    assert_eq!(listed, [("plain", 1), ("s/Startup-Sequence", 4), ("s/deep/leaf", 3)]);
+    assert_eq!(image.read_file("s/Startup-Sequence").unwrap(), b"boot");
+    assert_eq!(image.read_file("S/STARTUP-SEQUENCE").unwrap(), b"boot");
+    assert_eq!(image.read_file("s/deep/leaf").unwrap(), b"low");
+    // A directory is not a file, and a name alone does not reach into one.
+    assert_eq!(malformed_at(image.read_file("s").unwrap_err()), dir * BLOCK);
+    assert_eq!(malformed_at(image.read_file("leaf").unwrap_err()), ROOT * BLOCK);
+}
+
+#[test]
+fn a_directory_that_loops_back_fails_instead_of_recursing() {
+    let mut b = Builder::new(b"V");
+    let dir = b.directory(b"a");
+    // The directory's own hash table names the directory itself.
+    let d = b.block(dir);
+    put(d, 6 + hash(b"a"), dir as u32);
+    seal(d, 5);
+    assert_eq!(malformed_at(OfsImage::parse(&b.image).unwrap_err()), dir * BLOCK);
 }
 
 #[test]
