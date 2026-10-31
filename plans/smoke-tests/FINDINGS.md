@@ -11,6 +11,8 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-31 | 📌 | T01: parser counts 114 `#[ignore]`d tests, not the 104 in DESIGN §7: `code_cases!` makes 23 in `chain.rs`. Reconciled against grep: 1399 written plus 93 macro-made is 1492 tests. |
+| 2026-10-31 | 🔄 | Owner: DESIGN §2.2 contradicts itself. `[tests]` keys are relative to `workspace` (`crates/x/...`), as its example shows; `[python]` keys relative to the project folder. T05, T06 write game labels this way. |
 | 2026-10-31 | 🔄 | Plan review: 32 of 104 `#[ignore]` tests panic without `SF_E2E_OS=1` and post real screen input with it. Owner excluded them from `tools/full.sh`; a later plan runs them in `tart`. |
 | 2026-10-31 | 📌 | Plan review: `cargo tree` shows `-p` picks different features of shared crates (`bitflags`, `syn`, `thiserror`, `objc2-*`) than `--workspace`, so a workspace `--no-run` does not cover per-crate test calls. |
 | 2026-10-31 | 📌 | Plan review: pir spawns each test line detached and kills with `SIGKILL` to that group (`commands.mjs`). An entry in its own group would survive unless something outlives the runner. |

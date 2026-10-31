@@ -11,9 +11,9 @@ the account is the commit message. Whoever writes a cell also fixes the over-bud
 
 **Plan reviewed:** 2026-10-31 — 13 fixed, 2 decided with the user
 
-**Status:** Plan written 2026-10-31. Nothing built.
+**Status:** T01 implemented, awaiting review.
 **Last updated:** 2026-10-31
-**Next `pir-work` will:** T01 and T04, which depend on nothing; T01 unblocks the most.
+**Next `pir-work` will:** review T01; T04 depends on nothing.
 
 ## Tasks
 
@@ -22,7 +22,7 @@ done · ⛔ blocked, needs a human.
 
 | # | Task | Depends on | State | Notes |
 |---|---|---|---|---|
-| T01 | label-check | — | ⬜ | |
+| T01 | label-check | — | 🔍 | `smoke_core.py` check and run list, 39 tests. Deviations: owner chose workspace-relative `[tests]` keys over §2.2's sentence; crate name taken from its folder, since `Project` has no Cargo text. Parser counted against the real repo: 1492 tests, 114 ignored. |
 | T02 | smoke-runner | T01 | ⬜ | |
 | T03 | file-timings | T01 | ⬜ | |
 | T04 | full-command | — | ⬜ | |
@@ -31,7 +31,7 @@ done · ⛔ blocked, needs a human.
 | T07 | smoke-fits | T02, T05, T06 | ⬜ | |
 | T08 | switch-and-directives | T04, T07 | ⬜ | |
 
-**Review queue:** *(empty)*
+**Review queue:** T01
 
 ## Blocked on the user
 
