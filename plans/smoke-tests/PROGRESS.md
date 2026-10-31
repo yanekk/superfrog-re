@@ -22,7 +22,7 @@ done · ⛔ blocked, needs a human.
 
 | # | Task | Depends on | State | Notes |
 |---|---|---|---|---|
-| T01 | label-check | — | ⬜ | |
+| T01 | label-check | — | ✅ | |
 | T02 | smoke-runner | T01 | ⬜ | |
 | T03 | file-timings | T01 | ⬜ | |
 | T04 | full-command | — | ✅ | Proven on fake cargo plus real `--list`; unrun for real. Review fixed `zips` panicking every night: reproduced by running it, owner left it out, test locks it. Four mutations plus one went red, `--exact` held. Whether the 72 others pass is read-only. |
