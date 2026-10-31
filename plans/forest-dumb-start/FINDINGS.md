@@ -46,6 +46,13 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-31 | 🐞 | T06 review: odd-sized `last_key_byte`, `save_name` put 69438 listing lines of hunk 0 at odd addresses, `game_frame` included. Fixed in `symbols.toml`; `exe_map_claims` now fails on an odd line in hunk 0. |
+| 2026-10-31 | 📌 | T06 review sweep: Superfrog's `symbols.toml` `kbd_toggle` (d1_c03 h0+$16076, size 1) ends odd; the listing may decode out of step after it. Read-only, not fixed. |
+| 2026-10-31 | 📌 | T06 review sweep: Superfrog's `symbols.toml` `key_down` (d1_c03 h0+$16078, size 1) ends odd, same risk. Read-only, not fixed. |
+| 2026-10-31 | 🐞 | T06 review: T09's doc says sync at T00's frame, which is 4921; `mt_counter` is 0 at 4921 and 4922, so the model must start at 4922 or runs one ahead. Map now says so; T09's doc untouched. |
+| 2026-10-31 | 📌 | First case variable: `mt_counter`, h4+$195c9 ($66c31), one byte. Value `(n-4922)%6` for frames 4922-20000, identical across two runs and with the click at 1400. Evidence and near misses: `docs/07-executable-map.md`. |
+| 2026-10-31 | 📌 | T03's open items settled: `DF0:ST`'s routine and `HD_ID` have no reference in the file, so no save and no hang. Play runs in the copper interrupt; the title uses the OS's interrupts, so `irq_count` stands still. |
+| 2026-10-31 | 📌 | Hunk 4's header says DATA but holds code (music player, load lists), so `toolkit/tools/hunk_listing.py` prints it undecoded; `re_listing.py` overrides the kind. Hunk bases: h0 $c077d8, h1 $10178, h2 $11400, h3 $12c38, h4 $4d668. |
 | 2026-10-31 | 🐞 | T05 review, worker-driven: builder's pass called levels coherent, yet all were drawn transposed; maps are stored by column (hunk 0 `$708`). Fixed, seam test. Levels, collision re-judged, level pictures whole. Not compared with the emulator's screen. |
 | 2026-10-31 | 🐞 | T05 worker-driven: 41 renders opened. `_WYBIJACZKA*` and `_ELEMENTY` frame sizes were wrong, fixed, tested. Sprites and tile sheets coherent. |
 | 2026-10-31 | 📌 | T05: all six worlds share one palette, hunk 1 `$404`. Object map values are grouped, not understood. `_NAPIS`, `_CZOLOWKA`, `_OPCJE`, `_END` are front-end pictures, left undecoded as outside the task's list. |
