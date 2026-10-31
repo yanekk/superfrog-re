@@ -23,8 +23,8 @@ The order of moves when over budget, from DESIGN §2.4: move the slowest fast fi
 each move in the commit message. Never move a test covering an area. If the areas alone do not fit, stop and ask
 the owner what to drop or swap, with the measured time of each area.
 
-Measure twice: once warm, and once from a fresh worktree under the main checkout's `.claude/worktrees/` with its
-own empty cargo target, because pir's gate may compile from nothing. The worktree is removed afterwards, pass or
+Measure twice: once warm, and once from a fresh worktree under the main checkout's `.claude/worktrees/` with the block's
+setup lines run and its own empty cargo target, because pir's gate may compile from nothing. The worktree is removed afterwards, pass or
 fail. If other sessions were running tests at the time, say so beside the number.
 
 ## Tests

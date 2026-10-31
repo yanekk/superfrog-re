@@ -1,6 +1,6 @@
 # T06 — superfrog-labels
 
-**Phase:** 2 · **Depends on:** T03 · **Weight:** heavy
+**Phase:** 2 · **Depends on:** T02, T03 · **Weight:** heavy
 
 ## Goal
 

@@ -1,6 +1,6 @@
 # T05 — toolkit-and-forest-labels
 
-**Phase:** 2 · **Depends on:** T03 · **Weight:** medium
+**Phase:** 2 · **Depends on:** T02, T03 · **Weight:** medium
 
 ## Goal
 
@@ -28,6 +28,7 @@ unless an area needs it. Starting areas, which the worker may refine but not dro
 | toolkit: the original on the emulator | `amiga-oracle` `boot`, `routine` |
 | toolkit: comparison judges | `amiga-conform` `faithful` |
 | toolkit: recording | `amiga-record` `round_trip` |
+| toolkit: the other pieces | `amiga-chips`, `amiga-clock`, `amiga-input`, `amiga-app`, `amiga-e2e`: each `src` (DESIGN §2.5 says each piece) |
 | toolkit: rule checks | `toolkit-checks` `purity`, `dry-fit` `deps`, `dry_fit` |
 | Forest Dumb: reading its disks | `fd-tools` `real_disks` |
 | Forest Dumb: first comparison | `fd-conform` `first_case`, by name `the_idle_title_matches_the_original_on_every_pass` if the whole file is not needed |

@@ -24,11 +24,12 @@ venv/bin/python tools/smoke_timings.py [--cap 11] > plans/smoke-tests/timings.ts
 columns: project, label key (as in smoke.toml), seconds or "over", exit status
 ```
 
-It compiles each workspace first with `cargo test --workspace --no-run`, so compile time is not charged to a
-file, then runs entries one at a time and kills each process group at the cap. A file that exits non-zero
+Each entry is compiled first with its own command plus `--no-run`, uncapped, so compile time is not charged to a
+file (a workspace-wide pre-build does not cover it: DESIGN §3.2), then run with the cap, one at a time, its
+process group killed at the cap. A file that exits non-zero
 within the cap is recorded with its status, and is reported in FINDINGS, since a red test is not this task's to
-fix. `#[ignore]`d tests stay skipped. Python files are not timed: all of them together take about 23 s (monorepo
-FINDINGS) and all go in smoke.
+fix. `#[ignore]`d tests stay skipped. Python files are not timed: all of them together take about 33 s (measured at
+plan review) and all go in smoke.
 
 ## Tests
 
@@ -39,4 +40,4 @@ FINDINGS) and all go in smoke.
 ## Done when
 
 - [ ] `timings.tsv` has a row for every test file and every crate with inline tests, checked by count against `git ls-files`.
-- [ ] The pass ran under `pir-test`, took at most about 30 minutes after compiling, and no file ran beyond the cap.
+- [ ] The pass ran under `pir-test`, took at most about 30 minutes, compiling aside, and no file ran beyond the cap.

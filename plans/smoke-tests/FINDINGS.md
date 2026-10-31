@@ -11,6 +11,10 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-31 | 🔄 | Plan review: 32 of 104 `#[ignore]` tests panic without `SF_E2E_OS=1` and post real screen input with it. Owner excluded them from `tools/full.sh`; a later plan runs them in `tart`. |
+| 2026-10-31 | 📌 | Plan review: `cargo tree` shows `-p` picks different features of shared crates (`bitflags`, `syn`, `thiserror`, `objc2-*`) than `--workspace`, so a workspace `--no-run` does not cover per-crate test calls. |
+| 2026-10-31 | 📌 | Plan review: pir spawns each test line detached and kills with `SIGKILL` to that group (`commands.mjs`). An entry in its own group would survive unless something outlives the runner. |
+| 2026-10-31 | 📌 | Plan review: all Python test files together took 33 s in a fresh copy, not about 23 s. |
 | 2026-10-31 | 📌 | pir's report records only pass or fail, written by the coordinator without the gate log. A passing run's `smoke: WARNING` is seen only in the end gate's output; hence `smoke-times.tsv`. |
 | 2026-10-31 | 📌 | pir's end gate parses the DESIGN block and sets `PIR_TEST_SCOPE=all`. It reads the block on the merged branch at the end, so a block naming a script a task creates works. |
 | 2026-10-31 | 📌 | 104 `#[ignore]` tests run in no normal run. Some docs ask for `--release`; `tools/full.sh` runs them in debug, so times may exceed their comments. Total unknown. |

@@ -39,8 +39,8 @@ At the end, both commands exist and are proven on fakes, and every test file has
 
 | # | Task | Depends on |
 |---|---|---|
-| [T05](tasks/T05-toolkit-and-forest-labels.md) | toolkit-and-forest-labels | T03 |
-| [T06](tasks/T06-superfrog-labels.md) | superfrog-labels | T03 |
+| [T05](tasks/T05-toolkit-and-forest-labels.md) | toolkit-and-forest-labels | T02, T03 |
+| [T06](tasks/T06-superfrog-labels.md) | superfrog-labels | T02, T03 |
 | [T07](tasks/T07-smoke-fits.md) | smoke-fits | T02, T05, T06 |
 
 At the end, `tools/smoke.sh` runs for real, green, in 15 minutes or less.
@@ -68,14 +68,14 @@ At the end, new plans take smoke as their test line and agents are told to keep 
 ## Critical path
 
 ```
-T01 → T03 → T05/T06 → T07 → T08
+T01 → T02/T03 → T05/T06 → T07 → T08
 ```
 
-T02 and T04 are off it. Leaves: only T08, the final deliverable.
+T04 is off it. Leaves: only T08, the final deliverable.
 
 ## Parallel width
 
-8 tasks · longest dependency chain 5 · up to 4 could run at once (T02, T04, T05, T06).
+8 tasks · longest dependency chain 5 · up to 3 could run at once (T02, T03, T04, or T04, T05, T06).
 
 ## Rough sizing
 

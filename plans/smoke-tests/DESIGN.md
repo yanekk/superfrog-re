@@ -21,7 +21,7 @@ games grow.
 
 - `tools/smoke.sh` runs in 15 minutes or less on this machine with nothing else running, compile
   included, measured by T07.
-- `tools/full.sh` runs every test, the ones marked `#[ignore]` included.
+- `tools/full.sh` runs every test, the ones marked `#[ignore]` included, except the screen tests of §2.1.
 - A test file with no label, or a crucial area with no live smoke test, fails `tools/smoke.sh`.
 - This plan's own end gate runs `tools/smoke.sh` and is green.
 - No session of this plan runs the full set.
@@ -44,7 +44,12 @@ at the end of a build would be one more way to miss a break.
 
 `tools/full.sh` sets `PIR_TEST_SCOPE=all` and `PIR_TEST_INCLUDE_IGNORED=1` and execs `tools/test.sh`.
 `toolkit/test.sh` and each game's `test.sh` pass `-- --include-ignored` to cargo when the variable is
-set. The variable is new so that `tools/test.sh` on its own behaves as today. Full is never run in this
+set. The variable is new so that `tools/test.sh` on its own behaves as today.
+
+Full leaves out the 32 Superfrog screen tests, those whose `#[ignore]` reason names `SF_E2E_OS=1`, unless that
+variable is set. They panic without it, so full would be red every night whatever the code did, and with it they
+post real input to the screen. They are found from that reason in the source, so a new one is left out without
+being listed. With the variable set nothing is left out; their one-at-a-time need is the later plan's (§8). Full is never run in this
 plan, as the owner ordered, so it is proven with a fake `cargo` on the PATH (T04) and for real only by
 the first nightly run.
 
@@ -150,8 +155,9 @@ do not fit, ask the owner. This is what makes smoke grow with the games.
   one failure shows every break. pir's end gate then treats it as any red run.
 - Disks or Kickstart missing: tests fail naming where they looked, as today. Smoke needs them too.
 - A test hangs: the 20-minute limit ends it and fails the run.
-- Smoke killed by anything else: child processes run in one process group, killed on exit, so no emulator
-  is left running.
+- Smoke killed by anything else, pir's `SIGKILL` of the test line's process group included: no entry survives,
+  so no emulator is left running. pir's kill reaches only that group and cannot be caught, so an entry in a
+  group of its own needs something that outlives the runner to end it (T02).
 - A break only full can see: it passes the end check and shows in the next nightly run, possibly after the
   merge. The owner accepted this by asking for the split.
 
@@ -179,12 +185,13 @@ from the workspace folder:
 
 - whole file: `cargo test -q -p <crate> --test <file>`
 - named tests: the same with `-- --exact <names>`; a test inside a module is labelled by its path
-- inline tests: `cargo test -q -p <crate> --lib`, plus `--bins` when the crate has them
+- inline tests: `cargo test -q -p <crate>` with `--lib` when it has a library and `--bins` when it has binaries
+  (`sf-app` has no library, and `--lib` is an error there)
 
 Per-entry calls are chosen over one big call because test file names repeat between crates (`purity`,
-`front`) and `--test` matches all of them. If T07 finds that per-crate feature selection rebuilds shared
-crates between calls and costs real time, it may run `cargo test --workspace --no-run` first or add `-p`
-sets; that is a how, recorded in FINDINGS.
+`front`) and `--test` matches all of them. `cargo tree` shows `-p` resolves different features of shared crates
+than `--workspace`, so a workspace pre-build does not cover per-crate calls. If that costs real time, T07 may
+group calls into `-p` sets; that is a how, recorded in FINDINGS.
 
 Python entries keep today's working directories, because tests may rely on them: the toolkit's from the
 repo root, a game's from its folder, using `unittest discover -q -s <dir> -p <file>`.
@@ -253,7 +260,12 @@ exe_map_claims 33 s; window 30 s; menus 18 s. By the worst sample about 35 of 13
 | Flag / mechanism | Default | Effect |
 |---|---|---|
 | Smoke's hard limit | 20 min | Kills the process group and fails, so smoke cannot run away |
-| T03's per-file cap | 11 s | Stops each file once it cannot be fast, so the pass never amounts to the full set; at most about 25 min |
+| T03's per-file cap | 11 s | Stops each file once it cannot be fast, so the pass never amounts to the full set; at most about 30 min |
+
+### 5.3 Outside the code
+
+None. No task deploys, pays, publishes or changes anything outside this machine's checkouts; the one write
+outside the repo is the local history file (§2.6).
 
 ---
 
@@ -264,11 +276,15 @@ All by the owner, 2026-10-31.
 - pir runs smoke at the end of a plan and never runs full; a nightly schedule outside this plan runs full.
 - Proof of coverage is the machine-checked checklist and labels. Measured code coverage was first chosen as
   a separate nightly command, then dropped from the requirements the same day.
+- `@repo/single` runs take smoke too, since they read the same stored line T08 changes and a second one needs a pir
+  change. A plans-only change now waits for smoke, and a break only full sees waits for the nightly.
 - Over budget: warn at 15, fail at 20, rather than fail at 15 or warn only.
 - Fast tests all go in smoke, fast being 10 s alone. Fast tests leave for full before crucial ones.
 - W1-1's finish is proven against the original, not in the real app and not both.
-- Full includes the 104 `#[ignore]`d tests. Their total time is unknown, one alone can take 40 minutes, and
-  some may fail, so the first nightly run may be long or red. Chosen knowingly over leaving them out.
+- Full includes the 72 `#[ignore]`d tests that need no screen. Their total time is unknown, one alone can take
+  40 minutes, and some may fail, so the first nightly run may be long or red. Chosen knowingly over leaving them out.
+- The 32 screen tests leave full and go to a separate later plan running them in a `tart` virtual machine, so the
+  nightly can pass from the start and never takes the screen. They run at night only once that plan is built.
 - The warning does not reach the build report, because that needs a pir change; it is in the gate's output
   and the history file instead.
 
@@ -283,8 +299,10 @@ neither blocks nor is blocked.
 ## 8. Explicitly out of scope
 
 - The nightly schedule and any notice of its results: the owner's, separately.
+- Running the 32 screen tests in a `tart` macOS virtual machine: a separate later plan. Its image is 25 GB against
+  24 GB free here on 2026-10-31, and the tests are unproven in a guest.
 - Measured code coverage: dropped by the owner.
 - Making the full set faster: `faster-tests` is that plan.
 - Any change to pir, whose installed copy is not in this repo.
 - Moving, deleting or weakening a test: a selection must not change what is tested.
-- Re-timing or un-ignoring the 104 tests: the first nightly run will show what they need.
+- Re-timing or un-ignoring the `#[ignore]`d tests: the first nightly run will show what they need.

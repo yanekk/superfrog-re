@@ -43,13 +43,15 @@ is found the way `tools/test.sh` finds one, so a new game cannot be missed.
 
 ## Tests
 
-Using fake entries and limits of a fraction of a second, never real waits of minutes.
+Using fake entries and limits of a fraction of a second, never real waits of minutes. Never run the real root
+entries from a test: they discover `tools/test_*.py`, this file included, and would recurse.
 
 - [ ] all pass: exit 0, summary printed, one history row with `ok`
 - [ ] a check problem: exit non-zero, no entry runs
 - [ ] one entry fails: the rest still run, exit non-zero
 - [ ] past the warn limit: `smoke: WARNING` printed, exit 0
 - [ ] past the hard limit: the running entry and a child it spawned are dead, the unrun entries named, exit non-zero, row `limit`
+- [ ] the runner itself killed with `SIGKILL` to its process group, as pir does (DESIGN §2.8): the running entry and its child are dead shortly after
 - [ ] an unwritable history path prints a line and does not change the exit status
 - [ ] the run leaves the worktree clean
 - [ ] `--list` runs nothing; `--check-only` runs no entry

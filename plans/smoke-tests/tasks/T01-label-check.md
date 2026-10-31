@@ -40,14 +40,17 @@ def run_list(project: Project) -> list[Entry]       # the smoke entries; only ca
 
 A test is live when its `#[test]` attribute block has no `#[ignore`. A crate has inline tests when any file
 under its `src/` has `#[test]`, and is labelled by `"crates/x/src"`. `tests/common/` and other helper folders
-are not test files; `tests/*.rs` and `tests/*/main.rs` are. The module imports only `re`, `tomllib` and
+are not test files; `tests/*.rs` and `tests/*/main.rs` are. A test made by a macro in its file (`case!` in
+`sf-conform`'s `cases.rs`, `code_cases!` in `chain.rs`) counts under the name its invocation gives it, with any
+`#[ignore` in the invocation or the macro. The module imports only `re`, `tomllib` and
 `dataclasses`.
 
 ## Tests
 
-- [ ] a clean manifest gives no problems and the expected argv for whole-file, named and inline entries
+- [ ] a clean manifest gives no problems and the expected argv for whole-file, named and inline entries; a bin-only crate's inline entry has `--bins` and no `--lib`
+- [ ] a named test made by a macro invocation is found, and is reported when that invocation is `#[ignore]`d
 - [ ] named tests produce `-- --exact a b`
-- [ ] no manifest, with test files present, is a problem; no manifest and no test files is not
+- [ ] no manifest is a problem, with or without test files; a manifest with no tests and no area is not
 - [ ] an unlabelled test file; an unlabelled crate with inline tests; a label for a missing file
 - [ ] a helper under `tests/common/` needs no label; `tests/x/main.rs` does
 - [ ] a named test absent from its file; a named test that is `#[ignore]`d, with the attribute before and after `#[test]`
