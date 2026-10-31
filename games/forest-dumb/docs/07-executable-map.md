@@ -201,7 +201,9 @@ pattern-break commands, so a model must read `_BALLA` from the disk: the next st
 
 What it proves is small: the two sides can be compared, and one pass is one frame. It says nothing
 about the picture or sound. The engine side (T08): `TitleScene::variable() -> u8`, starting at 0 at
-the sync frame. T08's and T09's docs need no change.
+the sync frame. T08's and T09's docs need no change, with one catch: T09's sync frame is this 4922,
+not the first title frame 4921 in [03-boot-chain.md](03-boot-chain.md). The value is 0 at both, so a
+counter started at 4921 runs one frame ahead.
 
 ## Memory layout
 

@@ -46,6 +46,7 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-31 | 🐞 | T06 review: T09's doc says sync at T00's frame, which is 4921; `mt_counter` is 0 at 4921 and 4922, so the model must start at 4922 or runs one ahead. Map now says so; T09's doc untouched. |
 | 2026-10-31 | 📌 | First case variable: `mt_counter`, h4+$195c9 ($66c31), one byte. Value `(n-4922)%6` for frames 4922-20000, identical across two runs and with the click at 1400. Evidence and near misses: `docs/07-executable-map.md`. |
 | 2026-10-31 | 📌 | T03's open items settled: `DF0:ST`'s routine and `HD_ID` have no reference in the file, so no save and no hang. Play runs in the copper interrupt; the title uses the OS's interrupts, so `irq_count` stands still. |
 | 2026-10-31 | 📌 | Hunk 4's header says DATA but holds code (music player, load lists), so `toolkit/tools/hunk_listing.py` prints it undecoded; `re_listing.py` overrides the kind. Hunk bases: h0 $c077d8, h1 $10178, h2 $11400, h3 $12c38, h4 $4d668. |
