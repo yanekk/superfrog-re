@@ -1,9 +1,8 @@
 # Backlog: the plans after forest-dumb-start
 
-Owner's sequence, 2026-10-31. Not planned or built yet. It is a `pir plan` run with a slug starting
-`forest-dumb-`. Start it once `forest-dumb-start` is merged: a plan branches from
-`main`, which until then lacks that plan's disk reader, formats and program map. Size it
-from T06's map.
+Owner's sequence, 2026-10-31. Nothing here is planned or built yet. Each plan is a `pir plan` run with a slug
+starting `forest-dumb-`. Start the level 1 plan once `forest-dumb-start` is merged: a plan branches from
+`main`, which until then lacks that plan's disk reader, formats and program map. Size it from T06's map.
 
 ## Level 1
 
