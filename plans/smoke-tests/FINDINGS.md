@@ -11,6 +11,7 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-31 | 🐞 | T02 review, read-only: `amiga-e2e` `app.rs` starts the app with `process_group(0)` and only `Drop` stops it, so smoke's group kill leaves it running until its own `timeout_s` (default 60). Open, bounded; §2.8 says none survive. |
 | 2026-10-31 | 🔄 | T04 review: ignored `zips` (sf-conform `recorder_follow`) panics without `SF_T14_ZIPS`, so `tools/full.sh` was red every night. Owner left it out unless set; DESIGN §2.1 updated. |
 | 2026-10-31 | 📌 | T04 review: `--skip` is by test name across all binaries, so a future ordinary test sharing a skipped name would silently leave `tools/full.sh`. No such collision today, checked against the real list. |
 | 2026-10-31 | 📌 | T01: parser counts 114 `#[ignore]`d tests, not the 104 in DESIGN §7: `code_cases!` makes 23 in `chain.rs`. Reconciled against grep: 1399 written plus 93 macro-made is 1492 tests. |
