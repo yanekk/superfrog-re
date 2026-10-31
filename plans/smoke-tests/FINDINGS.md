@@ -11,6 +11,7 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-31 | 📌 | T06: re-measured `bosses_routines` 9.7 s (smoke), `widescreen_objects` 11.0 s and `sf-plan` `map` 13.1 s (full). `determinism` read 13.9 s, in smoke for its area. `window.rs` whole takes 165 s, so named. No area needed a new test. |
 | 2026-10-31 | 📌 | T03 review: `amiga-clock/src` re-measured at 8.6 s, not the 10.5 s in `timings.tsv`, on a less busy machine, so load can flip a borderline row. T05, T06 re-measure rows near 10 s before labelling. |
 | 2026-10-31 | 📌 | T03: pass had another session's `cargo test --workspace` running, so times read high. Finished over 10 s: `amiga-clock/src`, `bosses_routines`, `widescreen_objects`, `sf-plan/tests/map`. No file failed; `over` hides any red. Re-measure before trusting borderline rows. |
 | 2026-10-31 | 🐞 | T02 review, read-only: `amiga-e2e` `app.rs` starts the app with `process_group(0)` and only `Drop` stops it, so smoke's group kill leaves it running until its own `timeout_s` (default 60). Open, bounded; §2.8 says none survive. |

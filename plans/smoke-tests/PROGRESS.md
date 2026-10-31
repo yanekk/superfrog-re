@@ -27,11 +27,11 @@ done · ⛔ blocked, needs a human.
 | T03 | file-timings | T01 | ✅ | |
 | T04 | full-command | — | ✅ | |
 | T05 | toolkit-and-forest-labels | T02, T03 | ⬜ | |
-| T06 | superfrog-labels | T02, T03 | ⬜ | |
+| T06 | superfrog-labels | T02, T03 | 🔍 | `smoke.toml`, 17 areas, all run alone and green. Estimate for T07: 464 s, about 7.7 min, compile excluded, busy machine. Deviation: code entry adds three `front` tests, since `level_entry` starts directly. No Python times per file: 24.5 s together. |
 | T07 | smoke-fits | T02, T05, T06 | ⬜ | |
 | T08 | switch-and-directives | T04, T07 | ⬜ | |
 
-**Review queue:** *(empty)*
+**Review queue:** T06
 
 ## Blocked on the user
 
