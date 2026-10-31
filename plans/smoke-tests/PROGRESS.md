@@ -25,13 +25,13 @@ done · ⛔ blocked, needs a human.
 | T01 | label-check | — | ⬜ | |
 | T02 | smoke-runner | T01 | ⬜ | |
 | T03 | file-timings | T01 | ⬜ | |
-| T04 | full-command | — | ⬜ | |
+| T04 | full-command | — | 🔍 | `tools/full.sh` plus flag in three `test.sh`; 9 tests. Proven on a fake cargo only, unrun for real. Deviation: added `--exact` beside `--skip`, because `--skip` alone matches substrings; a screen test in a module would need its path. |
 | T05 | toolkit-and-forest-labels | T02, T03 | ⬜ | |
 | T06 | superfrog-labels | T02, T03 | ⬜ | |
 | T07 | smoke-fits | T02, T05, T06 | ⬜ | |
 | T08 | switch-and-directives | T04, T07 | ⬜ | |
 
-**Review queue:** *(empty)*
+**Review queue:** T04
 
 ## Blocked on the user
 
