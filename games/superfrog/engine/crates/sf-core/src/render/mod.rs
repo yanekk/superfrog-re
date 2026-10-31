@@ -486,10 +486,10 @@ pub(crate) fn copper_writes(state: &State, data: &DisplayData, cop1lc: u32) -> V
     let mem = Mem::new(state, data);
     let word = |a: u32, _: u16| mem.word(a);
     let mut start = Fetch::default();
-    for w in copper::run_timed(&word, cop1lc, Fetch::default()) {
+    for w in copper::run_timed(&word, cop1lc, Fetch::default(), copper::FRAME_LINES) {
         start.write(w.reg, w.value);
     }
-    copper::run_timed(&word, cop1lc, start)
+    copper::run_timed(&word, cop1lc, start, copper::FRAME_LINES)
 }
 
 fn draw(
@@ -505,12 +505,12 @@ fn draw(
     // with the setup the list leaves at its end, as if the last frame ran it too.
     let start = carry.unwrap_or_else(|| {
         let mut f = Fetch::default();
-        for w in copper::run_beam(word, cop1lc, Fetch::default()) {
+        for w in copper::run_beam(word, cop1lc, Fetch::default(), copper::FRAME_LINES) {
             f.write(w.reg, w.value);
         }
         f
     });
-    let writes = copper::run_beam(word, cop1lc, start);
+    let writes = copper::run_beam(word, cop1lc, start, copper::FRAME_LINES);
     let mut end = start;
     for w in &writes {
         end.write(w.reg, w.value);
@@ -572,10 +572,10 @@ pub fn strip_layers(state: &State, data: &DisplayData, view: View) -> StripLayer
     let word = |a: u32, line: u16, _: u16| mem.word_at(a, line);
     let n = view.extra_columns_each_side;
     let mut start = Fetch::default();
-    for w in copper::run_beam(&word, LEVEL_COPPER, Fetch::default()) {
+    for w in copper::run_beam(&word, LEVEL_COPPER, Fetch::default(), copper::FRAME_LINES) {
         start.write(w.reg, w.value);
     }
-    let writes = copper::run_beam(&word, LEVEL_COPPER, start);
+    let writes = copper::run_beam(&word, LEVEL_COPPER, start, copper::FRAME_LINES);
     let mut end = start;
     for w in &writes {
         end.write(w.reg, w.value);
@@ -864,10 +864,10 @@ mod tests {
             let word = |a: u32, _: u16, _: u16| u16::from_be_bytes([mem.byte(a), mem.byte(a + 1)]);
             let (ours, writes) = story_screen(&mem, &state, &data, 0x1000, &word, None);
             let mut start = Fetch::default();
-            for w in copper::run_beam(&word, 0x1000, Fetch::default()) {
+            for w in copper::run_beam(&word, 0x1000, Fetch::default(), copper::FRAME_LINES) {
                 start.write(w.reg, w.value);
             }
-            assert_eq!(writes, copper::run_beam(&word, 0x1000, start));
+            assert_eq!(writes, copper::run_beam(&word, 0x1000, start, copper::FRAME_LINES));
             let theirs = amiga_chips::display::draw(&mem, &writes, start);
             assert!(
                 !ours.splits.is_empty(),

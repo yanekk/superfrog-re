@@ -1,7 +1,7 @@
 //! The mixer on hand-made register writes and memory (T10). The reference comparison is
 //! the game's comparison against the oracle.
 
-use amiga_paula::{CLOCKS_PER_FRAME, CLOCKS_PER_LINE, ChipMemory, Paula, PaulaWrite, RESAMPLER_DELAY};
+use amiga_paula::{CLOCKS_PER_FRAME, CLOCKS_PER_LINE, ChipMemory, LINES_PER_FRAME, Paula, PaulaWrite, RESAMPLER_DELAY};
 
 /// Chip RAM as a byte vector.
 struct Mem(Vec<u8>);
@@ -64,7 +64,7 @@ fn run(
     mem: &dyn ChipMemory,
     frames: usize,
 ) -> ([Vec<i16>; 4], Vec<[i16; 2]>) {
-    let mut p = Paula::new(host);
+    let mut p = Paula::new(host, LINES_PER_FRAME);
     let mut taps: [Vec<i16>; 4] = Default::default();
     let mut out = Vec::new();
     for f in 0..frames {
@@ -108,7 +108,7 @@ fn the_pointer_and_length_reload_at_the_end_of_each_block() {
     // A 2-word block at 0x100; LC moved to 0x200 mid-play takes effect at the next block end.
     let mut mem = Mem::with(0x100, &[1, 2, 5, 6]);
     mem.put(0x200, &[3, 4, 7, 8]);
-    let mut p = Paula::new(48_000);
+    let mut p = Paula::new(48_000, LINES_PER_FRAME);
     let mut out = Vec::new();
     let mut taps = Vec::new();
     p.frame(&play(0, 0x100, 2, 300, 1), &mem, &mut out);
@@ -198,7 +198,7 @@ fn the_output_is_a_pure_function_of_the_writes_and_memory() {
 
 #[test]
 fn a_frame_makes_the_host_rate_share_of_samples_with_a_fixed_delay() {
-    let mut p = Paula::new(48_000);
+    let mut p = Paula::new(48_000, LINES_PER_FRAME);
     let mut out = Vec::new();
     let mut clocks = 0u64;
     for _ in 0..50 {
@@ -222,8 +222,24 @@ fn a_frame_makes_the_host_rate_share_of_samples_with_a_fixed_delay() {
 }
 
 #[test]
+fn a_frame_runs_the_length_paula_was_given_from_the_start() {
+    for lines in [312u32, 313] {
+        let mut p = Paula::new(48_000, lines);
+        let mut out = Vec::new();
+        p.frame(&[], &Mem(vec![0; 16]), &mut out);
+        assert_eq!(p.channel_taps()[0].len(), (lines * CLOCKS_PER_LINE) as usize);
+    }
+}
+
+#[test]
+#[should_panic(expected = "a PAL frame of 200 lines")]
+fn paula_refuses_to_start_on_a_frame_that_is_neither_long_nor_short() {
+    Paula::new(48_000, 200);
+}
+
+#[test]
 fn a_short_frame_is_one_line_shorter() {
-    let mut p = Paula::new(48_000);
+    let mut p = Paula::new(48_000, LINES_PER_FRAME);
     let mut out = Vec::new();
     p.set_frame_lines(312);
     p.frame(&[], &Mem(vec![0; 16]), &mut out);
@@ -236,7 +252,7 @@ fn a_short_frame_is_one_line_shorter() {
 #[test]
 #[should_panic(expected = "a PAL frame of 200 lines")]
 fn a_frame_is_long_or_short_and_nothing_else() {
-    Paula::new(48_000).set_frame_lines(200);
+    Paula::new(48_000, LINES_PER_FRAME).set_frame_lines(200);
 }
 
 #[test]

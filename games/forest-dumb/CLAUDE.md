@@ -50,6 +50,8 @@ Not written yet: there is no engine to fix. It comes with the recorder, step 8 o
 
 None yet besides the numbered docs/ chapters.
 
+- [docs/frame-length.md](docs/frame-length.md): the measured frame length, 313 lines, dated.
+
 ## Backlog
 
 - First plan: walk `toolkit/PLAYBOOK.md`'s opening steps. It is a future `pir plan` run, with a

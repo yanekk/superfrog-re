@@ -32,7 +32,7 @@ host-rate stereo.
   one clock is fixed (module header of `channel.rs`). ADKCON's attach modes (a channel's data setting
   the next one's volume or period) are modelled.
 - **`Paula`** (`toolkit/crates/amiga-paula/src/lib.rs`): the channels, the frame length in lines
-  (`Paula::set_frame_lines`, 313 long or 312 short), and the mix: channels 0 and 3 left, 1 and 2 right
+  (given to `Paula::new` and `Paula::booted`, changed by `Paula::set_frame_lines`, 313 long or 312 short), and the mix: channels 0 and 3 left, 1 and 2 right
   (`Paula::frame`). `Paula::channel_taps` gives each channel's DAC value at every clock of the last
   frame, for a per-channel check. `Paula::booted` starts with DMA's master switch on.
 - **`AudioDma`** (`lib.rs`): the same state machine on zeroed chip memory, run only for which DMA slots
