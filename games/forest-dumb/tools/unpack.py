@@ -6,8 +6,8 @@
     unpack.py --table              the classification table docs/08-packers.md carries
 
 Two packers occur. `ESL!` is PowerPacker's format under another magic; `S404` is StoneCracker 4
-inside a self-unpacking executable. Neither has a permissive decoder (the only PowerPacker crate is
-the GPL format198x family), so each is unpacked by the original's own 68k routine under Musashi: the
+inside a self-unpacking executable. Neither has a permissive decoder (the PowerPacker crates are the
+GPL format198x family and the LGPL newtua-amiga), so each is unpacked by the original's own 68k routine under Musashi: the
 playbook's step 2 reference, and exact by construction. The ESL! routine is cut from the main
 program, so unpacking needs build/files from `fd-tools extract`.
 """
@@ -93,7 +93,11 @@ class Unpacker:
         return self.routine
 
     def esl(self, data):
+        # The routine trusts its input and has no failure path, so a damaged file would otherwise
+        # come back as plausible bytes of the size its tail claims.
         size = int.from_bytes(data[-4:-1], 'big')
+        if len(data) < 16 or len(data) % 4 or not 0 < size <= RETURN - DST or data[-1] > 32:
+            raise ValueError(f'not a well-formed ESL! file ({len(data)} bytes, claims {size} unpacked)')
         mem, cpu = self.machine.mem, self.machine.cpu
         mem.w_block(CODE, self._esl_routine())
         mem.w_block(RETURN, STOP_INSN)
@@ -109,9 +113,14 @@ class Unpacker:
         self.machine.execute(MAX_CYCLES)
         if cpu.r_pc() != RETURN + len(STOP_INSN):
             raise ValueError(f'the ESL! routine did not return (pc {cpu.r_pc():#x})')
+        # A0 back at the stream's first long, D5 holding its end marker and at most one unread bit.
+        if cpu.r_reg(8) != SRC + 8 or cpu.r_reg(5) > 3:
+            raise ValueError(f'the ESL! stream did not end where it starts (a0 {cpu.r_reg(8):#x}, d5 {cpu.r_reg(5):#x})')
         return bytes(mem.r_block(DST, size))
 
     def s404(self, data):
+        if not data.startswith(HUNK_HEADER):
+            raise ValueError('S404 outside a self-unpacking executable: no routine for that')
         # Hunk header: magic, no names, table size, first, last, one size per hunk, then each
         # hunk's HUNK_CODE, length in longs and data. The payload's hunk is the last one.
         count = struct.unpack_from('>I', data, 8)[0]

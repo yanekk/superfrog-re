@@ -1,5 +1,6 @@
 """The signature scan on synthetic bytes, and unpacking checked three ways: a synthetic round trip, an
 independent decoder against the game's routine on every real file, and docs/08-packers.md's table."""
+import struct
 import subprocess
 import sys
 import unittest
@@ -49,8 +50,9 @@ def literals(bits, text):
         bits.put(byte, 8)
 
 
-def stream():
-    """(text, packed) built token by token, in the order the unpacker meets them."""
+def stream(unread=0):
+    """(text, packed) built token by token, in the order the unpacker meets them, with `unread` spare bits
+    left at the stream's end."""
     bits = Bits()
     literals(bits, b'abcdefgh')                # 8 literals, needing the count's continuation
     bits.put(1, 2); bits.put(2, 9)             # length 3, offset 2: copies 'abc'
@@ -59,6 +61,7 @@ def stream():
     bits.put(3, 2); bits.put(0, 1); bits.put(1, 7)
     bits.put(7, 3); bits.put(2, 3)             # length 5 + 7 + 2 = 14, repeating 'XY'
     text = b'XY' * 7 + b'XY' + b'abc' + b'abcdefgh'
+    bits.put(0, unread)
     return text, bits.pack(len(text))
 
 
@@ -146,6 +149,37 @@ class RoundTrip(unittest.TestCase):
         self.assertEqual(unpack.Unpacker().unpack(packed), text)
 
 
+class Damaged(unittest.TestCase):
+    def setUp(self):
+        extracted()
+        self.packed = stream()[1]
+
+    def test_a_malformed_file_is_refused_before_it_runs(self):
+        p = self.packed
+        for name, data in (('magic alone', b'ESL!'), ('no stream', b'ESL!' + EFFICIENCY),
+                           ('not whole longs', p + b'\0'),
+                           ('size beyond memory', p[:-4] + b'\xff\xff\xff' + p[-1:]),
+                           ('size zero', p[:-4] + bytes(3) + p[-1:])):
+            with self.subTest(name), self.assertRaisesRegex(ValueError, 'not a well-formed'):
+                unpack.Unpacker().unpack(data)
+
+    def test_a_stream_missing_its_first_long_is_refused(self):
+        with self.assertRaisesRegex(ValueError, 'did not end where it starts'):
+            unpack.Unpacker().unpack(self.packed[:8] + self.packed[12:])
+
+    def test_a_stream_with_an_extra_first_long_is_refused(self):
+        with self.assertRaisesRegex(ValueError, 'did not end where it starts'):
+            unpack.Unpacker().unpack(self.packed[:8] + bytes(4) + self.packed[8:])
+
+
+    def test_a_stream_ending_with_unread_bits_is_refused(self):
+        unread = stream()[1][-1]  # exactly what the first long has spare, so A0 still ends right
+        self.assertGreaterEqual(unread, 2)
+        self.assertEqual(len(stream(unread)[1]), len(self.packed))
+        with self.assertRaisesRegex(ValueError, 'did not end where it starts'):
+            unpack.Unpacker().unpack(stream(unread)[1])
+
+
 class RealDisks(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
@@ -177,6 +211,10 @@ class RealDisks(unittest.TestCase):
         self.assertEqual(int.from_bytes(out[:4], 'big'), 6)
         self.assertEqual(out[-2:], b'\xff\xff')
         self.assertIn(b'CRACKED ON 06-11-96', out)
+        # The sizes it lists account for all but the relocations between them.
+        longs = sum(size & 0x3fffffff for size in struct.unpack_from('>7I', out, 4))
+        self.assertLess(len(out) - (4 + 7 * 4 + longs * 4), 256)
+        self.assertGreater(len(out) - (4 + 7 * 4 + longs * 4), 0)
 
     def test_the_doc_carries_the_current_table(self):
         doc = (unpack.GAME / 'docs' / '08-packers.md').read_text()

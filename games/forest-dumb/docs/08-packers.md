@@ -19,16 +19,18 @@ magic replaced:
 | end-1 | bits to skip before the stream starts |
 
 Evidence it is PowerPacker: that layout, every file a multiple of 4 bytes, and the routine's token
-structure. Every file consumes its stream exactly and yields the size in its tail.
+structure. Every file yields the size in its tail and ends in the stream's first byte, with at most one
+bit unread (39 files leave one); `unpack.py` refuses a file that does not.
 
 The main program loads a file at `$437c8`, tests for the magic with `cmpi.l #'ESL!',$437c8` and calls
 its unpacker at hunk 0 offset `$1d16`. Hunk 0 starts at file offset `$30`. `unpack.py` runs that
 routine, from `$1d28`, under Musashi. `test_unpack.py` holds a second decoder written from the format;
 the two agree byte for byte on all 46 files.
 
-Why the game's routine: the only PowerPacker crate is `format198x-commodore-amiga-powerpacker`, which
-is the GPL family DESIGN §5 rules out, and no PyPI package turned up under `powerpacker` or `pp20`. A Rust port later has the routine
-and the test decoder to check against.
+Why the game's routine: the crates.io PowerPacker decoders are `format198x-commodore-amiga-powerpacker`
+(GPL) and `newtua-amiga` (LGPL), both copyleft, which DESIGN §5 rules out (checked 2026-10-31), and no
+PyPI package turned up under `powerpacker` or `pp20`. A Rust port later has the routine and the test
+decoder to check against.
 
 ## `S404`: `BillClintonToDupek` on disk 1
 
