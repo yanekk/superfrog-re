@@ -18,6 +18,8 @@ Layout: [docs/02-disk-format.md](docs/02-disk-format.md). Every file with size a
 [docs/04-file-inventory.txt](docs/04-file-inventory.txt), written by `cargo run -p fd-tools -- extract` in
 `engine/`, which extracts into `build/`. What is packed and how to unpack it (`ESL!` is PowerPacker's
 format): [docs/08-packers.md](docs/08-packers.md).
+Boot chain, the crack's programs and why the game asks for disk 2:
+[docs/03-boot-chain.md](docs/03-boot-chain.md).
 
 Decided 2026-10-30: the cracked `[cr WT]` set is game two's source. The faithful bar's measuring stick
 is this cracked release, whose executable may differ from the original's. An uncracked copy, if one
