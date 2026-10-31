@@ -11,6 +11,7 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-31 | 📌 | T05: under load 17, `exe_map_claims` took 4.5 s fresh, not `over`; `amiga-clock/src` 7.6 s; `test_render_levels.py` 11.3 s then 6 s. All smoke. `first_case`'s title test 60 s alone, 113 s whole-file earlier. |
 | 2026-10-31 | 📌 | T03 review: `amiga-clock/src` re-measured at 8.6 s, not the 10.5 s in `timings.tsv`, on a less busy machine, so load can flip a borderline row. T05, T06 re-measure rows near 10 s before labelling. |
 | 2026-10-31 | 📌 | T03: pass had another session's `cargo test --workspace` running, so times read high. Finished over 10 s: `amiga-clock/src`, `bosses_routines`, `widescreen_objects`, `sf-plan/tests/map`. No file failed; `over` hides any red. Re-measure before trusting borderline rows. |
 | 2026-10-31 | 🐞 | T02 review, read-only: `amiga-e2e` `app.rs` starts the app with `process_group(0)` and only `Drop` stops it, so smoke's group kill leaves it running until its own `timeout_s` (default 60). Open, bounded; §2.8 says none survive. |
