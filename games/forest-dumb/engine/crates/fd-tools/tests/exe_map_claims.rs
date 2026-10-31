@@ -168,4 +168,15 @@ fn the_listing_regenerates_and_decodes_hunk_4() {
     for wanted in ["\nmain_loop:", "\nentry:", "addq.b   #$1, mt_counter"] {
         assert!(text.contains(wanted), "{wanted}");
     }
+    // A 68000 instruction never starts at an odd address. An odd-sized data symbol leaves the sweep
+    // on one until the next symbol, so everything up to there decodes as noise and still lists.
+    let odd: Vec<&str> = text
+        .lines()
+        .filter(|l| l.get(8..10) == Some("  "))
+        .filter(|l| {
+            let at = u32::from_str_radix(&l[..8], 16);
+            at.is_ok_and(|a| a < 0x5be68 && a & 1 == 1)
+        })
+        .collect();
+    assert!(odd.is_empty(), "{} lines of hunk 0 start odd, first {:?}", odd.len(), odd.first());
 }

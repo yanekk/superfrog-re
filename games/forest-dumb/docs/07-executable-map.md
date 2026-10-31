@@ -57,7 +57,7 @@ it back (`system_off`).
 
 Written by absolute address, 400 references by the listing's sweep: 376 in hunk 0, 24 in hunk 4 (the
 player). A plain scan for a word-aligned long `$00dff0xx` or `$00dff1xx` finds 403, 379 and 24 (test);
-the three extra sit where the sweep is out of step. Reads are included, and `$dff000(a6)`-relative
+the three extra (`h0+$7b42`, `$89d4`, `$8e1e`) sit in stretches the sweep prints as `dc.w`. Reads are included, and `$dff000(a6)`-relative
 accesses are not.
 
 | Registers | References | Used for |

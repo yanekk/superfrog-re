@@ -7,6 +7,8 @@
 # name   identifier, unique
 # kind   func | data | table | var
 # size   bytes; required for data, table and var, which may not overlap
+#        keep it even where code follows: the sweep resumes where the symbol ends, and from an odd
+#        address it decodes noise up to the next symbol (exe_map_claims checks hunk 0)
 # note   one line
 
 [[sym]]
@@ -202,7 +204,7 @@ hunk = 0
 offset = 0x1f78
 name = "last_key_byte"
 kind = "var"
-size = 1
+size = 2
 note = "raw CIA serial byte from the keyboard interrupt; $75 is Esc pressed"
 
 [[sym]]
@@ -370,7 +372,7 @@ hunk = 0
 offset = 0x918c
 name = "save_name"
 kind = "data"
-size = 7
+size = 8
 note = "DF0:ST, used only by the unreferenced save routine"
 
 [[sym]]
