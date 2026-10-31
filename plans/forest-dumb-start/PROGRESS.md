@@ -33,7 +33,7 @@ to keep in sync.
 | T02 | fd-import | T01 | ✅ | |
 | T03 | fd-boot-chain | T00, T02 | ⬜ | |
 | T04 | fd-pack-check | T02 | ✅ | |
-| T05 | fd-file-formats | T02, T04 | 🔍 | `render_levels.py`, 16 tests, 41 pictures, format docs, LEVEL-INDEX. Deviation: also writes collision, objects, tile and shape pictures per level. Front-end pictures undecoded; object values only grouped. |
+| T05 | fd-file-formats | T02, T04 | ✅ | Review fixed: levels drawn transposed (maps stored by column, proven by hunk 0 `$708`), whole-column truncation accepted, palette and mask untested. 20 tests. Probed disassembly, seams, renders; mutations caught. Not compared with emulator screen. Deviation held: extra pictures. |
 | T06 | fd-exe-map | T02, T03 | ⬜ | |
 | T07 | frame-parameterise | T00 | ⬜ | |
 | T08 | fd-core | T00, T06, T07 | ⬜ | |
@@ -46,7 +46,7 @@ it here and point there.
 **A ✅ task's cell may be cut to one line** once the next task has been reviewed — its detail
 is in the commit and the file is read in full by every session from here on.
 
-**Review queue:** T05
+**Review queue:** *(empty)*
 
 ## Blocked on the user
 
