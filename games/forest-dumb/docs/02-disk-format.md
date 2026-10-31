@@ -37,3 +37,5 @@ six worlds' level files (`_Gen<W>-1`, `_Mapa<W>-1`, each with a `.Mapa` companio
 `fd-tools extract` writes `games/forest-dumb/build/disk<N>.adf` and
 `games/forest-dumb/build/files/disk<N>/<name>`, git-ignored and regenerable. It refuses an output
 folder that is not inside one named `build`, and reads both disks whole before writing anything.
+
+Most files on disk 2 are packed: [08-packers.md](08-packers.md) classifies every file.

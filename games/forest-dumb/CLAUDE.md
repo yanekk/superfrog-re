@@ -16,7 +16,8 @@ Two AmigaDOS (OFS) `.adf` images in zips, kept outside the repo and never commit
 Lookup and file names: [docs/01-disk-location.md](docs/01-disk-location.md).
 Layout: [docs/02-disk-format.md](docs/02-disk-format.md). Every file with size and SHA-1:
 [docs/04-file-inventory.txt](docs/04-file-inventory.txt), written by `cargo run -p fd-tools -- extract` in
-`engine/`, which extracts into `build/`.
+`engine/`, which extracts into `build/`. What is packed and how to unpack it (`ESL!` is PowerPacker's
+format): [docs/08-packers.md](docs/08-packers.md).
 Boot chain, the crack's programs and why the game asks for disk 2:
 [docs/03-boot-chain.md](docs/03-boot-chain.md).
 

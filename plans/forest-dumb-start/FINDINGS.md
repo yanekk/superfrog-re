@@ -46,6 +46,8 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-31 | 📌 | T04 review sweep: Superfrog's `games/superfrog/tools/atn.py` has no `raise` or `ValueError`, so may return damaged input as plausible bytes like `unpack.py` did. Read-only, not fixed. |
+| 2026-10-31 | 📌 | T04: 46 disk 2 files are `ESL!`, PowerPacker's format renamed; `BillClintonToDupek` is `S404`; 14 plain. Unpacked to `build/unpacked/` by the originals' routines; PP crates are copyleft (`format198x` GPL, `newtua-amiga` LGPL). T05 reads there. |
 | 2026-10-31 | 📌 | `DF0:ST`, the high-score save, is on neither disk and its routine (`0x92d8`) has no caller found. A call would retry for ever. T06 should settle reachability. `FileName.exe` and `HD_ID` are also absent; see `docs/03-boot-chain.md`. |
 | 2026-10-31 | 📌 | Most file names sit inline in hunk 4, jumped over by `bra.w`, in mixed case. Load routine `0x8ec4` checks magic `ESL!` at `$437c8` and branches to a decoder at `0x1d16`: relevant to T04. |
 | 2026-10-31 | 📌 | T00 review, worker-driven: with disk 2 in df1 the boot runs about 170 frames later, so the one-drive input script stalls on the crack picture. The title stands still to frame 14000 at least, past the 4078 frames measured. |
