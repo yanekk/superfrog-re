@@ -454,4 +454,30 @@ mod tests {
         assert_eq!(lines(312), [(311, 0x180)]);
         assert_eq!(lines(313), [(311, 0x180), (312, 0x182)]);
     }
+
+    #[test]
+    fn a_short_frame_is_the_long_one_cut_at_its_end() {
+        // Whatever the copper is doing as line 311 ends, a move half read included: nothing it
+        // reads or writes falls past the frame it was given, and all before that is the same.
+        let to_line_256 = [0xFFDF, 0xFFFE, 0x01FE, 0, 0x01FE, 0, 0x01FE, 0];
+        for h in (0..0xE4u16).step_by(2) {
+            let mut w = to_line_256.to_vec();
+            w.extend([0x3701 | h, 0xFFFE]);
+            for k in 0..120 {
+                w.extend([0x0180, k]);
+            }
+            w.extend([0xFFFF, 0xFFFE]);
+            let run = |frame_lines| {
+                let mut bus = Vec::new();
+                let writes = run_bus(&|a, _, _| list(&w)(a), 0, Fetch::default(), frame_lines, &mut bus);
+                (writes, bus)
+            };
+            let ((short, short_bus), (long, long_bus)) = (run(312), run(313));
+            let cut: Vec<_> = long.iter().filter(|w| w.line < 312).copied().collect();
+            assert_eq!(short, cut, "writes, wait at h {h:#x}");
+            assert!(long.iter().any(|w| w.line == 312), "h {h:#x} reaches the long frame's last line");
+            let cut: Vec<_> = long_bus.iter().filter(|b| b.line < 312).copied().collect();
+            assert_eq!(short_bus, cut, "bus, wait at h {h:#x}");
+        }
+    }
 }
