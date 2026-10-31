@@ -28,7 +28,7 @@ to keep in sync.
 
 | # | Task | Depends on | State | Notes |
 |---|---|---|---|---|
-| T00 | oracle-spike | — | ⬜ | |
+| T00 | oracle-spike | — | ✅ | |
 | T01 | ofs-reader | — | ✅ | |
 | T02 | fd-import | T01 | ✅ | |
 | T03 | fd-boot-chain | T00, T02 | ⬜ | |
