@@ -11,9 +11,9 @@ the account is the commit message. Whoever writes a cell also fixes the over-bud
 
 **Plan reviewed:** 2026-10-31 — 13 fixed, 2 decided with the user
 
-**Status:** Plan written 2026-10-31. Nothing built.
+**Status:** All tasks ✅ 2026-10-31; end run pending.
 **Last updated:** 2026-10-31
-**Next `pir-work` will:** review T08, the last task.
+**Next `pir-work` will:** nothing; all tasks reviewed, pir runs the end check.
 
 ## Tasks
 
@@ -29,9 +29,9 @@ done · ⛔ blocked, needs a human.
 | T05 | toolkit-and-forest-labels | T02, T03 | ✅ | |
 | T06 | superfrog-labels | T02, T03 | ✅ | |
 | T07 | smoke-fits | T02, T05, T06 | ✅ | |
-| T08 | switch-and-directives | T04, T07 | 🔍 | `.pir/settings.json` names `tools/smoke.sh`; directive in root Conventions, one line in each project and template; stub, playbook, README `Tests` section. Name check, label check and 40 regression tests pass. Deviation: added a test that the stub passes the label check, not listed in the doc. |
+| T08 | switch-and-directives | T04, T07 | ✅ | Review clean, no fix commit. Fresh template copy passes the real label check; unlabelled test and missing manifest fail it; stub's commented example parses clean. Two mutations of stub and piece list went red. Name check, label check, playbook, selector, architecture docs green. Whole smoke not run: pir's. |
 
-**Review queue:** T08
+**Review queue:** *(empty)*
 
 ## Blocked on the user
 
