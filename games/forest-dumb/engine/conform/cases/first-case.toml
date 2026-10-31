@@ -1,0 +1,9 @@
+# The first comparison of our code with the original (plans/forest-dumb-start DESIGN §2.8): the idle
+# title's `mt_counter`, state only. Frame 4922 and not the title's first frame 4921: the counter is 0
+# at both, so a start at 4921 runs one ahead for ever (docs/07-executable-map.md). The 15 078 frames
+# end at the oracle's cap of 20 000, the whole window the map measured, all of the song's positions.
+sync = { script = "boot-to-title", frame = 4922 }
+swap = { frame = 3600, disk = 2 }
+frames = 15078
+compare = ["vars"]
+vars = ["mt_counter"]

@@ -1,0 +1,17 @@
+[package]
+name = "fd-conform"
+version.workspace = true
+edition.workspace = true
+publish.workspace = true
+
+# Shell, test tooling: Forest Dumb Forever's own conformance runner. Its cases are parsed by hand in
+# lib.rs: DESIGN §5 admits only the crates the tasks name, and `toml` is not one.
+[dependencies]
+# The engine under test.
+fd-core = { path = "../fd-core" }
+# Finds the owner's zips and takes the ADFs out of them.
+fd-tools = { path = "../fd-tools" }
+# The input the two sides are fed, and the script format it is written in.
+amiga-conform = { path = "../../../../../toolkit/crates/amiga-conform" }
+# The original, run by the reference emulator.
+amiga-oracle = { path = "../../../../../toolkit/crates/amiga-oracle" }

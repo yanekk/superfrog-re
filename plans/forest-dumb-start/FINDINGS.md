@@ -46,6 +46,7 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-10-31 | 📌 | First case green: `mt_counter` equal to the original on all 15079 passes, frames 4922 to 20000, about 35 s. Sync at 4921 fails at pass 1, tested. Script's Esc and click end one frame after T00's inclusive ranges. |
 | 2026-10-31 | 🐞 | T06 review: odd-sized `last_key_byte`, `save_name` put 69438 listing lines of hunk 0 at odd addresses, `game_frame` included. Fixed in `symbols.toml`; `exe_map_claims` now fails on an odd line in hunk 0. |
 | 2026-10-31 | 📌 | T06 review sweep: Superfrog's `symbols.toml` `kbd_toggle` (d1_c03 h0+$16076, size 1) ends odd; the listing may decode out of step after it. Read-only, not fixed. |
 | 2026-10-31 | 📌 | T06 review sweep: Superfrog's `symbols.toml` `key_down` (d1_c03 h0+$16078, size 1) ends odd, same risk. Read-only, not fixed. |
