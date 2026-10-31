@@ -13,7 +13,7 @@ writes a cell also fixes the over-budget cell they walk past.**
 
 **Plan reviewed:** 2026-10-31 — 7 fixed, 2 decided with the user
 
-**Status:** The plan is written, nothing is built. The oracle spike (T00) is the first task.
+**Status:** T01 is reviewed. The oracle spike (T00) gates what follows.
 **Last updated:** 2026-10-31
 **Next `pir-work` will:** take T00, the oracle spike, because it gates everything after it.
 
@@ -29,7 +29,7 @@ to keep in sync.
 | # | Task | Depends on | State | Notes |
 |---|---|---|---|---|
 | T00 | oracle-spike | — | ⬜ | |
-| T01 | ofs-reader | — | 🔍 | `amiga-disk::ofs` on `amiga-ffs`, 15 tests, matches xdftool on both disks. Deviations: `read_file` returns `Vec<u8>` (OFS data is never contiguous); `files()` borrows self and lists subdirectory paths; first game's purity allowlist also gained `amiga-ffs`; boot checksum unchecked. |
+| T01 | ofs-reader | — | ✅ | Clean, no fix commit. `amiga-disk::ofs` on `amiga-ffs`, 15 tests. Reviewer re-ran both real disks and an xdftool-built volume against xdftool: identical. Four mutations caught. Deviations held: `Vec<u8>`, subdirectory paths, first game's allowlist, boot checksum unchecked. Probed case folding, odd paths, 800 nested directories. |
 | T02 | fd-import | T01 | ⬜ | |
 | T03 | fd-boot-chain | T00, T02 | ⬜ | |
 | T04 | fd-pack-check | T02 | ⬜ | |
@@ -46,7 +46,7 @@ it here and point there.
 **A ✅ task's cell may be cut to one line** once the next task has been reviewed — its detail
 is in the commit and the file is read in full by every session from here on.
 
-**Review queue:** T01
+**Review queue:** empty
 
 ## Blocked on the user
 
