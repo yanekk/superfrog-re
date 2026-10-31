@@ -31,7 +31,7 @@ to keep in sync.
 | T00 | oracle-spike | — | ✅ | |
 | T01 | ofs-reader | — | ✅ | |
 | T02 | fd-import | T01 | ✅ | |
-| T03 | fd-boot-chain | T00, T02 | 🔍 | Boot chapter, name scanner (10 unittests), agreement check (4 tests). Deviations: three names on neither disk are an exact exception list, owner chose 2026-10-31; the program does not hold `FOREST_DUMB_FOREVER`, so that is asserted on the scripts instead; added: every disk 2 file is named. |
+| T03 | fd-boot-chain | T00, T02 | ✅ | Boot chapter, name scanner, agreement check. Review: three doc slips fixed (`Show` has two hunks; stub `0x494`; `0x944a`), else doc re-derived from disks and disassembly. Five mutations red. Owner's exception list confirmed in builder's session. T00 frame claims not re-run, only matched to rows, read-only. |
 | T04 | fd-pack-check | T02 | ⬜ | |
 | T05 | fd-file-formats | T02, T04 | ⬜ | |
 | T06 | fd-exe-map | T02, T03 | ⬜ | |
@@ -46,7 +46,7 @@ it here and point there.
 **A ✅ task's cell may be cut to one line** once the next task has been reviewed — its detail
 is in the commit and the file is read in full by every session from here on.
 
-**Review queue:** T03
+**Review queue:** empty
 
 ## Blocked on the user
 
