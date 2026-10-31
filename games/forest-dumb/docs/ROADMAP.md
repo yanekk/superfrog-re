@@ -22,13 +22,24 @@ The stages below are its order of work; the planner turns them into tasks and ma
 
 ## After level 1
 
-One plan a level, in order: W2-1 to W6-1 if the count below holds (owner, 2026-10-31). Then a plan for
-sound. The title screen and menus are also a later plan; their place in this order is not decided.
+One plan a level, in order: W2-1 to W6-1 if the count below holds. Then a plan for sound. All owner,
+2026-10-31.
+
+A plan for the title screen and menus, which can run at any point after level 1, independent of the
+level plans.
+
+The game probably has an ending; none has been seen or located yet. Its work goes in the last plan below
+unless it proves large enough for its own.
+
+Last, once everything above is done: a plan for the whole-game end-to-end test, as Superfrog has
+(`games/superfrog/engine/crates/sf-e2e/`, `whole_game.rs`), played from power-on through the ending.
 
 ## Decided by the owner, 2026-10-31
 
-- Level 1 first, as one plan with the stages above; then one plan a level; then sound.
-- The app starts straight in level 1. The title screen and menus are a later plan.
+- Level 1 first, as one plan with the stages above; then one plan a level; then sound; the whole-game
+  end-to-end test last.
+- The title screen and menus are their own plan, in any order relative to the levels.
+- The app starts straight in level 1 until the title screen and menus plan lands.
 - Silent until the sound plan, which follows the level plans.
 
 The standing rule on disk-derived files applies to the map page: it holds disk graphics, so it stays in
