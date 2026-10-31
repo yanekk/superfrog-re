@@ -24,6 +24,10 @@ fn a_screen_test() {
 }
 
 #[test]
+#[ignore = "a tool: writes the dry runs' zips into $SF_T14_ZIPS"]
+fn a_tool() {}
+
+#[test]
 #[ignore = "slow: about 3 min"]
 fn a_slow_test() {}
 
@@ -62,7 +66,7 @@ class FullCommand(unittest.TestCase):
 
     def run_it(self, script, **env):
         """(exit status, {project: its cargo arguments}) with a fake cargo first on the PATH."""
-        clean = {k: v for k, v in os.environ.items() if k not in ('PIR_TEST_INCLUDE_IGNORED', 'SF_E2E_OS')}
+        clean = {k: v for k, v in os.environ.items() if k not in ('PIR_TEST_INCLUDE_IGNORED', 'SF_E2E_OS', 'SF_T14_ZIPS')}
         r = subprocess.run(['sh', script], cwd=self.repo, capture_output=True, text=True, env={
             **clean, 'PATH': self.path('fake') + os.pathsep + os.environ['PATH'],
             'FAKE_CARGO_LOG': self.path('log'), 'FAKE_CARGO_FAIL': '', **env})
@@ -103,15 +107,25 @@ class FullCommand(unittest.TestCase):
         for project, args in calls.items():
             self.assertEqual(args, ['test', '-q', '--workspace'], project)
 
-    def test_superfrog_skips_a_screen_test_and_no_other(self):
+    def test_superfrog_skips_a_screen_test_and_the_tool_and_no_other(self):
         self.seed_superfrog()
         _, calls = self.run_it('tools/full.sh')
         # --exact, so a skip cannot also take a test whose name merely contains this one.
-        self.assertEqual(calls['superfrog'][5:], ['--exact', '--skip', 'a_screen_test'])
+        self.assertEqual(calls['superfrog'][5:], ['--exact', '--skip', 'a_screen_test', '--skip', 'a_tool'])
 
-    def test_with_the_screen_variable_superfrog_skips_nothing(self):
+    def test_with_the_screen_variable_only_the_tool_is_skipped(self):
         self.seed_superfrog()
         _, calls = self.run_it('tools/full.sh', SF_E2E_OS='1')
+        self.assertEqual(calls['superfrog'][5:], ['--exact', '--skip', 'a_tool'])
+
+    def test_with_the_tool_variable_only_the_screen_test_is_skipped(self):
+        self.seed_superfrog()
+        _, calls = self.run_it('tools/full.sh', SF_T14_ZIPS='/tmp/somewhere')
+        self.assertEqual(calls['superfrog'][5:], ['--exact', '--skip', 'a_screen_test'])
+
+    def test_with_both_variables_superfrog_skips_nothing(self):
+        self.seed_superfrog()
+        _, calls = self.run_it('tools/full.sh', SF_E2E_OS='1', SF_T14_ZIPS='/tmp/somewhere')
         self.assertEqual(calls['superfrog'], ['test', '-q', '--workspace', '--', '--include-ignored'])
 
     def test_a_screen_variable_other_than_1_still_skips(self):
@@ -125,8 +139,10 @@ class FullCommand(unittest.TestCase):
         _, calls = self.run_it('tools/full.sh')
         args = calls['superfrog']
         names = [args[i + 1] for i, a in enumerate(args) if a == '--skip']
-        self.assertEqual(len(names), 32, names)
-        self.assertEqual(len(set(names)), 32, names)
+        # 32 screen tests and the zips tool.
+        self.assertEqual(len(names), 33, names)
+        self.assertEqual(len(set(names)), 33, names)
+        self.assertIn('zips', names)
         self.assertIn('fullscreen_is_remembered_across_a_relaunch', names)
         self.assertIn('os_layer_a_menu_click_reaches_the_app', names)
 
