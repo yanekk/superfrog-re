@@ -132,7 +132,10 @@ fn the_file_table_is_the_data_disk_exactly() {
     let doc = std::fs::read_to_string(game_dir().join("docs/07-executable-map.md")).unwrap();
     let table: BTreeSet<String> = doc
         .lines()
-        .filter(|l| l.split('|').nth(2) == Some(" 2 "))
+        .skip_while(|l| !l.starts_with("| File | Disk | When |"))
+        .skip(2)
+        .take_while(|l| l.starts_with('|'))
+        .inspect(|l| assert_eq!(l.split('|').nth(2), Some(" 2 "), "{l}"))
         .filter_map(|l| l.split('`').nth(1))
         .map(String::from)
         .collect();
