@@ -1,6 +1,6 @@
 # T13 — forest-dumb-app
 
-**Phase:** 3 · **Depends on:** T10, T12 · **Weight:** medium
+**Phase:** 3 · **Depends on:** T01, T10, T12 · **Weight:** medium
 
 ## Goal
 The app the owner opens: window, keys, pad, menu, quit, disks message, straight into level 1, driven by a real end-to-end test.

@@ -48,7 +48,7 @@ Lives behave as in the original. At game over the original's game over screen sh
 
 ### 2.5 Finishing the level
 
-The original's end-of-level sequence plays where the level ends. Then the app shows "Level 1 complete" until fire is pressed, and the level restarts (owner, 2026-11-01). The message is not the original's. It lives in the app's level-end scene, marked for removal when world 2 arrives, and is excluded from comparison by ending the comparison at the point the original starts loading world 2.
+The original's end-of-level sequence plays where the level ends. Then the app shows "Level 1 complete" until fire is pressed, and the level restarts with full lives and score zero, as after game over (owner, 2026-11-01), because every attempt then starts from the state the original is compared from. The message is not the original's. It lives in the app's level-end scene, marked for removal when world 2 arrives, and is excluded from comparison by ending the comparison at the point the original starts loading world 2.
 
 ### 2.6 Status bar
 
@@ -61,12 +61,13 @@ Same as Superfrog's where listed, nothing else (owner, 2026-11-01), because the 
 - Keys default to the owner's: Up on Space, Fire on Left Option (`knowledge/owner-controls.md`). Rebinding is in the same Controls window. Game pad works.
 - Native menu bar with Start Level, Controls, Quit. Esc also quits. Nothing new is drawn in-game, except §2.5's message.
 - Start Level opens the same modal as Superfrog's, with a level selector offering only level 1 and "Enable recorder?" (owner, 2026-11-01). More fields are added as the game's options are discovered. Lives, points and such are not added now, because their meanings are not measured.
+- No pause, since it is not listed. Losing focus releases held keys and play goes on, as `sf-app/src/input.rs` does.
 - A plain picture: no filters, no widescreen.
 - Settings live at `<home>/settings.toml`. Home is `--home`, then `FOREST_DUMB_HOME`, then `~/Library/Application Support/Forest-Dumb-RE`.
 
 ### 2.8 Recorder
 
-As Superfrog's (`plans/bug-recorder/DESIGN.md`). A recording begins only at a level start from the Start Level modal, because a start the oracle can reproduce is what makes it comparable. It holds inputs, not snapshots. Stop shows the same bar, note and save window and writes one zip, to `games/forest-dumb/bugs/` (git-ignored) or `~/Documents/Forest Dumb Bugs` when there is no checkout. Under lag, app frames are retimed as `plans/bug-recorder/FINDINGS.md` describes; T15 measures it for this game.
+As Superfrog's (`plans/bug-recorder/DESIGN.md`). A recording begins only at a level start from the Start Level modal, because a start the oracle can reproduce is what makes it comparable. It runs until Stop, through game over and the restarts of §2.4 and §2.5, because a bug may come straight after them (owner, 2026-11-01, as Superfrog's). Start Level and Quit during one ask Save, Discard or Cancel, as Superfrog's. It holds inputs, not snapshots. Stop shows the same bar, note and save window and writes one zip, to `games/forest-dumb/bugs/` (git-ignored) or `~/Documents/Forest Dumb Bugs` when there is no checkout. Under lag, app frames are retimed as `plans/bug-recorder/FINDINGS.md` describes; T15 measures it for this game.
 
 ### 2.9 Disks
 
@@ -98,7 +99,8 @@ The planner plans the whole of `W1-1` within this plan (owner, 2026-11-01). Whil
 ### 3.1 The boundary
 
 ```
-fd-core, fd-assets, amiga-plan's core   take inputs as parameters, return decisions. No clock, I/O, floats, hash maps or network.
+fd-core, fd-assets   take inputs as parameters, return decisions. No clock, I/O, floats, hash maps or network.
+amiga-plan's core   no clock, I/O or network. Hash maps and floats stay, as in sf-plan's core, because replacing them could change routes T02 pins; its purity test is sf-plan's list.
 fd-app, fd-conform, fd-e2e, fd-plan's shell, fd-routeview, fd-tools   everything platform-shaped.
 ```
 
@@ -109,10 +111,10 @@ fd-app, fd-conform, fd-e2e, fd-plan's shell, fd-routeview, fd-tools   everything
 | Crate | Owns | Depends on |
 |---|---|---|
 | `fd-assets` (new, pure) | Level, sprite and table readers over unpacked bytes | none |
-| `fd-core` | `Game`, level state, character, camera, objects, scenes, drawing, `LAYOUT` | `fd-assets`, `amiga-chips`, `amiga-clock`, `amiga-input` |
+| `fd-core` | `Game`, level state, character, camera, objects, scenes, drawing, `LAYOUT` | `fd-assets`, `amiga-chips`, `amiga-clock`, `amiga-input`, `amiga-record` (T14, on `ALLOWED`) |
 | `fd-tools` | Disk lookup, extraction, unpack | `amiga-disk` |
 | `fd-conform` | Cases, level sync, transplant, routine rig, bug replay and compare | `fd-core`, `amiga-oracle`, `amiga-conform`, `amiga-record` |
-| `fd-app` (new) | Window, menu, pacing, recorder wiring | `fd-core`, `amiga-app`, `amiga-record` |
+| `fd-app` (new) | Window, menu, pacing, recorder wiring | `fd-core`, `fd-tools`, `amiga-app`, `amiga-record` |
 | `fd-e2e` (new) | `AppSpec`, tests of the built app | `amiga-e2e` |
 | `amiga-plan` (new, toolkit) | Planner core and `PlanGame` | `amiga-input` |
 | `amiga-routeview` (new, toolkit) | Map page site, verdict, JSON | `amiga-plan` |
@@ -162,7 +164,7 @@ A crucial feature adds its smoke test and `[[area]]` in `games/forest-dumb/smoke
 | Installed here | Ghidra with its MCP server, Kickstart 1.3 at `~/amiga-roms/kick1.3.rom`, `xdftool`, the zips in the main checkout's `games/forest-dumb/` |
 | **Deliberately absent** | No uncracked disk set; no WHDLoad or other emulator is part of testing |
 
-**The test command.** The block's lines come from `.pir/settings.json` and are not re-derived. `tools/smoke.sh` runs the smoke set under a 15-minute clock. The plan adds crates to existing workspaces but no install step, so they were not re-measured. To run this game's suite while working: `cd games/forest-dumb/engine && cargo test -q -p <crate>`; verbose by dropping `-q`. The suites run quiet with `NO_COLOR=1` and nothing here forces colour (`env` checked 2026-11-01); failures print in full.
+**The test command.** The block's lines come from `.pir/settings.json` and are not re-derived. `tools/smoke.sh` runs the smoke set; it warns over 900 s and fails at 1 200 s (`tools/smoke.py`), and 900 s is the budget. The plan adds crates to existing workspaces but no install step, so they were not re-measured. To run this game's suite while working: `cd games/forest-dumb/engine && cargo test -q -p <crate>`; verbose by dropping `-q`. The suites run quiet with `NO_COLOR=1` and nothing here forces colour (`env` checked 2026-11-01); failures print in full.
 
 **Smoke is nearly full.** Recent runs took 503 to 887 s of 900 s (`~/.cache/superfrog-re/smoke-times.tsv`). T01 makes room first. Whoever adds a slow test reads that file first; if crucial tests alone do not fit, ask the owner.
 
@@ -224,6 +226,7 @@ All 2026-11-01 unless dated.
 - Recording uses Start Level like Superfrog, not always-on (owner). The planner proposed always-on; the owner chose the same modal with a one-level selector, to be extended as options are discovered.
 - Planner must finish the level in this plan (owner), and the finish is proved in the real app.
 - Disks: known folder, no picker (owner).
+- The map page has no drill task: it is a working tool the player never sees, so T19's worker drives it in headless Chrome (owner).
 - `amiga-app` gets the windows; a game's `script.rs` stays split, core parser in the toolkit, game events per game, because Superfrog's script events name its levels and menus.
 
 ---

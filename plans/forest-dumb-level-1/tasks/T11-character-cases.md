@@ -9,7 +9,7 @@ Stage proof: the same inputs on both sides, movement and picture match on stretc
 ## Reuses
 T06's runner.
 ## Files
-`engine/conform/cases/stretch-*.toml`, `conform/scripts/stretch-*.txt`, `fd-conform/tests/stretches.rs`, `smoke.toml`.
+`engine/conform/cases/stretch-*.toml`, `engine/conform/scripts/stretch-*.txt`, `fd-conform/tests/stretches.rs`, `smoke.toml`.
 ## Interface
 Case files only. If T00 and T21-style measurement allow it, a frozen case per `sf-conform/src/freeze.rs` also runs.
 ## Tests

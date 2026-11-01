@@ -12,7 +12,7 @@ The planner works on `W1-1`, reaches the furthest point the built engine allows,
 `games/forest-dumb/engine/crates/fd-plan/{src/{main.rs,game.rs,facts.rs},tests/route.rs}`, `fd-routeview`, `smoke.toml`.
 ## Interface
 ```
-impl PlanGame for Game { .. }
+pub struct PlanState(Game);   impl PlanGame for PlanState { .. }   // a newtype: the orphan rule bars implementing it on fd-core's Game here
 pub fn facts(level: &Level, data: &GameData) -> Facts
 fd-plan level W1-1 [--guide FILE] [--budget-mins N] [--out FILE]
 ```

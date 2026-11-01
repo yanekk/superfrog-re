@@ -9,7 +9,7 @@ Grow `fd-conform` from one byte at the title to a level case runner: many variab
 ## Reuses
 `amiga-conform` (`compare`, `PictureJudge`, `PassMatch`, `report`, `script`), `sf-conform/src/{case,freeze}.rs` as pattern, `amiga-oracle/src/routine.rs`, `sf-conform/src/routine.rs` as pattern. `Gen` is extracted to the toolkit if it ends up generic, since this is its second user.
 ## Files
-`games/forest-dumb/engine/crates/fd-conform/src/{lib.rs,case.rs,routine.rs,freeze.rs}`, `fd-conform/conform/README` updates, `fd-core/src/layout.rs`, `fd-conform/tests/{runner.rs,input_timing.rs}`, `smoke.toml`.
+`games/forest-dumb/engine/crates/fd-conform/src/{lib.rs,case.rs,routine.rs,freeze.rs}`, `engine/conform/README.md` updates, `toolkit/crates/amiga-oracle/src/routine.rs` and `sf-conform/src/routine.rs` if `Gen` moves, `fd-core/src/layout.rs`, `fd-conform/tests/{runner.rs,input_timing.rs}`, `smoke.toml`.
 ## Interface
 ```
 pub struct Var { name: &str, hunk: u8, offset: u32, width: Width }  pub const LAYOUT: &[Var];

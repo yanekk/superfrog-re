@@ -9,7 +9,7 @@ Start Level with a one-entry selector and the recorder box, Stop with a note, on
 ## Reuses
 `amiga-record` (`GameRecording`, `Replayable`, zip), T12's windows, `sf-app/src/recorder.rs`, `sf-core/src/recording.rs:343`, `sf-conform/src/bug.rs` replay as pattern.
 ## Files
-`fd-core/src/recording.rs`, `fd-app/src/{recorder.rs,menu.rs}`, `fd-conform/src/bug.rs`, `fd-conform/src/main.rs`, `fd-e2e/tests/{recorder_app.rs,recorder_replay.rs}`, `smoke.toml`.
+`fd-core/src/recording.rs`, `fd-core/Cargo.toml`, `fd-conform/tests/purity.rs` (`amiga-record`, `amiga-disk` on `ALLOWED`), `fd-app/src/{recorder.rs,menu.rs}`, `fd-conform/src/bug.rs`, `fd-conform/src/main.rs`, `fd-e2e/tests/{recorder_app.rs,recorder_replay.rs}`, `smoke.toml`.
 ## Interface
 ```
 impl GameRecording for FdRecording { .. }   impl Replayable for Game { .. }
@@ -17,7 +17,7 @@ fd-conform bug replay <zip>    // prints `screenshot equal|differs`
 ```
 ## Tests
 - [ ] Round trip of format; version and build mismatch named.
-- [ ] Empty recording; recording across a restart ends cleanly.
+- [ ] Empty recording; Start Level and Quit during a recording ask Save, Discard or Cancel.
 - [ ] Replay reaches the same final picture as its screenshot.
 ## End to end (the worker drives this)
 - suite: `fd-e2e` · sizes: default, scale 1

@@ -13,7 +13,7 @@ A worker uses the finished game as a person would, judges it against DESIGN and 
 ## End to end (the worker drives this)
 - suite: `fd-e2e`, OS layer · sizes: default, scale 1
 - [ ] Through the level with planned route; deaths to game over; each enemy and mechanic; recording during all of it; second run after restart.
-- [ ] Unlisted things a person tries: holding keys, opposite keys, pausing, resize mid-play, pad unplugged.
+- [ ] Unlisted things a person tries: holding keys, opposite keys, focus lost, resize mid-play, pad unplugged.
 - [ ] Each screen saved to scratch and judged against the oracle's.
 ## Done when
 - [ ] Decidable defects each have a test; two-answer choices went to the owner.

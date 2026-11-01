@@ -20,7 +20,7 @@ fd-routeview --script FILE [--out build/route-viz]
 - [ ] Missing script names the path.
 ## End to end (the worker drives this)
 - suite: test above plus a worker's look · sizes: 1280×800
-- [ ] Open from disk in a headless browser if available, else judged from the generated data and a saved image: map and track visible, no external requests.
+- [ ] Open from disk in headless Chrome (`/Applications/Google Chrome.app`, `--headless=new`, a temp `--user-data-dir`, a time limit; measured 2026-11-01), saving a screenshot: map and track visible, script ran, no external requests.
 ## Done when
 - [ ] A test generates the page and checks its contents.
 - [ ] Nothing derived from disks is committed.

@@ -11,7 +11,7 @@ Replace the readings the plan rests on with measurements on the original, so not
 ## Files
 `games/forest-dumb/engine/conform/scripts/boot-to-level1.txt`, `games/forest-dumb/docs/09-play-measured.md`, `games/forest-dumb/re/symbols.toml`, `games/forest-dumb/engine/crates/fd-conform/tests/play_measured.rs`, `games/forest-dumb/smoke.toml`.
 ## Interface
-The note answers, each with the evidence and date: first level frame from fire, fire, on the `SCENA 1` path; `game_frame` runs per displayed frame in play and under load; input mid-run takes effect on which frame; where DIW is set (copper or CPU) and the window in play; which of hardware sprites, bobs and dual playfield the level uses; random-number source and the input to it; character position, lives, energy and camera variables' addresses; what "level end" and game over set.
+The note answers, each with the evidence and date: first level frame from fire, fire, on the `SCENA 1` path; `game_frame` runs per displayed frame in play and under load; input mid-run takes effect on which frame; where DIW is set (copper or CPU) and the window in play; which of hardware sprites, bobs and dual playfield the level uses; random-number source and the input to it; character position, lives, energy and camera variables' addresses; what "level end" and game over set; which keys play reads beyond the joystick (a key the original acts on, such as a pause or Esc, is raised with the owner because §2.7 gives Esc to quit).
 ## Tests
 - [ ] A mid-run input on frame N changes the character on the measured frame, and not sooner.
 - [ ] The script reaches the level twice with identical chip RAM at the sync frame.

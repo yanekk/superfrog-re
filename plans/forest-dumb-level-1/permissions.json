@@ -1,0 +1,4 @@
+{
+  "allow": ["Bash(cargo build)", "Bash(toolkit/tools/setup/oracle.sh)"],
+  "ask": []
+}

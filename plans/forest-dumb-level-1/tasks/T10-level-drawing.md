@@ -9,7 +9,7 @@ Draw the level, character and status bar as the original does: the picture half 
 ## Reuses
 `amiga-chips` (`Planes`, `Colours`, `copper::run*`, `Blit`), `sf-core/src/render/` as pattern, T04's `picture_in`, `Picture::rewindow`. Sprite composition moves to the toolkit only if T00 found hardware sprites.
 ## Files
-`fd-core/src/render/{mod.rs,playfield.rs,status.rs,objects.rs}`, `fd-conform/cases/picture-*.toml`, `fd-conform/tests/purity.rs`, `smoke.toml`.
+`fd-core/src/render/{mod.rs,playfield.rs,status.rs,objects.rs}`, `engine/conform/cases/picture-*.toml`, `fd-conform/tests/purity.rs`, `smoke.toml`.
 ## Interface
 ```
 impl Game { pub fn picture(&self) -> Picture; pub fn picture_rgba(&self, out: &mut [u8]) }

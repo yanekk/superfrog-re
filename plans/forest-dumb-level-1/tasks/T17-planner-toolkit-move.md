@@ -9,7 +9,7 @@ Move the planner's explorer path into toolkit crate `amiga-plan` behind `PlanGam
 ## Reuses
 `sf-plan/src/core/{archive,explore,guide,shorten,repair,walk,graph}.rs`, `run.rs`, `threads.rs`, `guide_file.rs`; `map`, `moves`, `coins`, `danger` as needed by `Compass::Map`. `facts.rs` stays per game. `dry-fit` is the precedent for a made-up game.
 ## Files
-`toolkit/crates/amiga-plan/`, `toolkit/crates/amiga-plan/tests/made_up_game.rs`, `sf-plan/src/**`, `games/superfrog/smoke.toml`, `toolkit/smoke.toml`, `toolkit/README.md`.
+`toolkit/crates/amiga-plan/`, `toolkit/crates/amiga-plan/tests/{made_up_game.rs,purity.rs}`, `sf-plan/src/**`, `games/superfrog/smoke.toml`, `toolkit/smoke.toml`, `toolkit/README.md`.
 ## Interface
 ```
 pub trait PlanGame: Clone + Send + Sync {
@@ -30,7 +30,7 @@ pub trait PlanGame: Clone + Send + Sync {
 }
 pub struct Facts { pub cols: u16, pub rows: u16, pub exits: Vec<Cell>, pub collectibles: Vec<Cell>, pub gates: Vec<Vec<Cell>> }
 ```
-`sf_plan::core` stays via re-export, so its tests need few edits. `COLS`, `ROWS` become runtime values, and `InputScript`'s use gets a toolkit home or a parameter.
+Neither game's `Game` can implement a toolkit trait from a third crate, so `sf-plan` and `fd-plan` each hold a newtype around it. `sf_plan::core` stays via re-export, so its tests need few edits. `COLS`, `ROWS` become runtime values, and `InputScript`'s use gets a toolkit home or a parameter.
 ## Tests
 - [ ] T02's pins pass, unchanged.
 - [ ] `sf-plan` reach, walk, repair, facts, purity, cache and `explore.rs:88` pass; the `#[ignore]`d `explore.rs:115`, `walk.rs:180`, `cli.rs:202` run once in the session.

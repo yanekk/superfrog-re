@@ -1,15 +1,15 @@
 # T24 — enemies
 
-**Phase:** 5 · **Depends on:** T21, T23 · **Weight:** heavy
+**Phase:** 5 · **Depends on:** T20, T21, T22, T23 · **Weight:** heavy
 
 ## Goal
 Level 1's enemies: movement, drawing and hurting the character.
 ## Design sections this implements
 §2.1, §2.2.
 ## Reuses
-T07's dispatch, T21's table, T06's rig, `$abc` and `$3a18` readings, `fd-assets`' `StworkiNew`.
+T07's dispatch, T22's scan, T21's table, T06's rig, `$abc` and `$3a18` readings, `fd-assets`' `StworkiNew`.
 ## Files
-`fd-core/src/objects/creature*.rs`, `fd-core/src/render/objects.rs`, `conform/cases/enemy-*.toml`, `fd-conform/tests/enemy_routines.rs`, `fd-plan/src/game.rs`, `smoke.toml`.
+`fd-core/src/objects/creature*.rs`, `fd-core/src/render/objects.rs`, `engine/conform/cases/enemy-*.toml`, `fd-conform/tests/enemy_routines.rs`, `fd-plan/src/game.rs`, `smoke.toml`.
 ## Interface
 ```
 impl ObjectKind for Creature { .. }   // one per kind T21 lists, value 1 to 6
@@ -22,6 +22,6 @@ Random-number use follows T00; seed in state.
 - [ ] Hit reduces energy and matches timing, then T23's path.
 - [ ] Kill behaviour if the game has one.
 ## Done when
-- [ ] Exclusions naming T24 are gone, with whole-run cases passing.
+- [ ] Exclusions naming T24 are gone; cases pass with only exclusions naming T25 left. T27 proves none remain.
 - [ ] Planner's danger avoids them; a replay survives them.
 - [ ] A smoke test and `[[area]]`.

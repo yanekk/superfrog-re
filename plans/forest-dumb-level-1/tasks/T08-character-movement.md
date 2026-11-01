@@ -9,7 +9,7 @@ Port the character's running, jumping, falling and collision against the collisi
 ## Reuses
 T06's rig; `sf-conform/tests/collision_routines.rs` as pattern; `amiga-input`.
 ## Files
-`fd-core/src/character/{mod.rs,physics.rs,anim.rs}`, `fd-core/src/level/collision.rs`, `fd-conform/tests/character_routines.rs`, `engine/conform/cases/character-*.toml`, `conform/scripts/character-*.txt`, `re/symbols.toml`, `docs/` note, `smoke.toml`.
+`fd-core/src/character/{mod.rs,physics.rs,anim.rs}`, `fd-core/src/{game.rs,layout.rs}` (calls it from `Game::step`), `fd-core/src/level/collision.rs`, `fd-conform/tests/character_routines.rs`, `engine/conform/cases/character-*.toml`, `engine/conform/scripts/character-*.txt`, `re/symbols.toml`, `docs/` note, `smoke.toml`.
 ## Interface
 ```
 pub struct Character { pub x: i32, pub y: i32, pub vx: i16, pub vy: i16, pub frame: u16, /* the original's fields */ }

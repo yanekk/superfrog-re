@@ -9,7 +9,7 @@ Port the camera and scroll state, including the map's edge-redraw flags (`redraw
 ## Reuses
 T06; `amiga-clock`.
 ## Files
-`fd-core/src/level/camera.rs`, `fd-conform/tests/camera_routines.rs`, `conform/cases/camera-*.toml`, `re/symbols.toml`, `smoke.toml`.
+`fd-core/src/level/camera.rs`, `fd-core/src/{game.rs,layout.rs}` (calls it from `Game::step`), `fd-conform/tests/camera_routines.rs`, `engine/conform/cases/camera-*.toml`, `re/symbols.toml`, `smoke.toml`.
 ## Interface
 ```
 pub struct Camera { pub x: i32, pub y: i32, pub edges: EdgeFlags }

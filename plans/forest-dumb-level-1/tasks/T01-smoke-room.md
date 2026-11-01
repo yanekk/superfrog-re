@@ -3,7 +3,7 @@
 **Phase:** 0 · **Depends on:** — · **Weight:** light
 
 ## Goal
-Make room in the smoke set for this plan's tests, because it runs at up to 887 of 900 seconds, and a plan whose end gate times out cannot finish.
+Make room in the smoke set for this plan's tests, because it runs at up to 887 of its 900-second budget and fails outright at 1 200.
 ## Design sections this implements
 §4, §5; root CLAUDE.md Conventions.
 ## Reuses
