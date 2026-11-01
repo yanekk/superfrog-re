@@ -66,7 +66,8 @@ Not written yet: there is no engine to fix. It comes with the recorder, step 8 o
 
 - [docs/frame-length.md](docs/frame-length.md): the measured frame length, 313 lines, dated.
 - [engine/conform/README.md](engine/conform/README.md): the conformance runner `fd-conform` and its case format.
-- [docs/ROADMAP.md](docs/ROADMAP.md): backlog, the one level 1 plan the owner wants after `forest-dumb-start`.
+- [docs/ROADMAP.md](docs/ROADMAP.md): backlog, the owner's sequence of plans, level 1 next.
+- [docs/level-1-brief.md](docs/level-1-brief.md): the brief for the level 1 plan.
 
 ## The first case
 
@@ -76,5 +77,4 @@ state only, on every frame of the idle title. Run it from `engine/` with
 
 ## Backlog
 
-- First plan: walk `toolkit/PLAYBOOK.md`'s opening steps. It is a future `pir plan` run, with a
-  slug starting `forest-dumb-`.
+- Next plan: level 1, `forest-dumb-level-1`, from [docs/level-1-brief.md](docs/level-1-brief.md).

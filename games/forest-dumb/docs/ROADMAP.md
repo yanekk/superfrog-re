@@ -1,8 +1,7 @@
 # Backlog: the plans after forest-dumb-start
 
 Owner's sequence, 2026-10-31. Nothing here is planned or built yet. Each plan is a `pir plan` run with a slug
-starting `forest-dumb-`. Start the level 1 plan once `forest-dumb-start` is merged: a plan branches from
-`main`, which until then lacks that plan's disk reader, formats and program map. Size it from T06's map.
+starting `forest-dumb-`. `forest-dumb-start` is merged; the level 1 plan's brief is [level-1-brief.md](level-1-brief.md).
 
 ## Level 1
 
@@ -28,8 +27,8 @@ One plan a level, in order: W2-1 to W6-1 if the count below holds. Then a plan f
 A plan for the title screen and menus, which can run at any point after level 1, independent of the
 level plans.
 
-The game probably has an ending; none has been seen or located yet. Its work goes in the last plan below
-unless it proves large enough for its own.
+The game has an ending: `end_screen`, after world 6, using `_END` (`docs/07-executable-map.md`, read from
+the code and not run). Its work goes in the last plan below unless it proves large enough for its own.
 
 Last, once everything above is done: a plan for the whole-game end-to-end test, as Superfrog has
 (`games/superfrog/engine/crates/sf-e2e/`, `whole_game.rs`), played from power-on through the ending.
@@ -45,17 +44,7 @@ Last, once everything above is done: a plan for the whole-game end-to-end test, 
 The standing rule on disk-derived files applies to the map page: it holds disk graphics, so it stays in
 `build/` and is never committed.
 
-## Open, for the planner
-
-- Character stage: what "correct" means while the engine has no enemies or collectibles and the original does.
-  Proposed: compare movement, collision and scrolling only, on stretches where nothing else interferes.
-- Map page and route planner: copy Superfrog's route planner and map page, or move their shared parts into the toolkit.
-  Both are outside the toolkit today. Proposed: move the shared parts, since every later level uses them.
-- Route planner: if the exit needs a mechanic from the last stage, the route stops short of it until then.
-  Proposed test: reaches the furthest point possible, with the full run at the last stage.
-
 ## Level count
 
-Six levels, one a world, W1-1 to W6-1, per the unreviewed T05 of `forest-dumb-start` (2026-10-31). It read
-the files only. Whether the game replays a level or has bonus stages is unconfirmed; T06 or this plan
-confirms it.
+Six levels, one a world, W1-1 to W6-1. `next_world` advances `world_index` and `end_screen` follows world 6
+(`docs/07-executable-map.md`), read from the code and not run. Bonus stages or replays are not ruled out.
