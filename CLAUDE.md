@@ -32,6 +32,12 @@ per-plan log; a finding that outlives its plan is promoted to a tier note when t
 A game's engine is faithful to the original, judged by machine against the original on the oracle,
 never by the owner playing or looking (`knowledge/self-testing-faithful-bar.md`).
 
+## Before building something
+
+Check the toolkit first, then how the other games did it (`toolkit/PLAYBOOK.md` lists what each step
+produced). Reuse what fits, and move it into the toolkit when a second game needs it. Do not carry over
+a game's details: an engine matches its own original, whatever another game did.
+
 ## Conventions
 
 - Disk images and ROMs are copyrighted and are **never committed** (git-ignored). Nor is anything
