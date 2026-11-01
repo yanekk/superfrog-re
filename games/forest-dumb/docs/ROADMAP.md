@@ -1,9 +1,8 @@
-# Backlog: the plan after forest-dumb-start
+# Backlog: the plans after forest-dumb-start
 
-Owner's sequence, 2026-10-31. Not planned or built yet. It is a `pir plan` run with a slug starting
-`forest-dumb-`. Start it once `forest-dumb-start` is merged: a plan branches from
-`main`, which until then lacks that plan's disk reader, formats and program map. Size it
-from T06's map.
+Owner's sequence, 2026-10-31. Nothing here is planned or built yet. Each plan is a `pir plan` run with a slug
+starting `forest-dumb-`. Start the level 1 plan once `forest-dumb-start` is merged: a plan branches from
+`main`, which until then lacks that plan's disk reader, formats and program map. Size it from T06's map.
 
 ## Level 1
 
@@ -21,13 +20,27 @@ The stages below are its order of work; the planner turns them into tasks and ma
 | Enemies | Level 1 with enemies, playable end to end | A test |
 | The rest of the level | Any special mechanics, such as doors or secret passages | A test plays the level from start to end |
 
-After this plan, continue with the next levels.
+## After level 1
+
+One plan a level, in order: W2-1 to W6-1 if the count below holds. Then a plan for sound. All owner,
+2026-10-31.
+
+A plan for the title screen and menus, which can run at any point after level 1, independent of the
+level plans.
+
+The game probably has an ending; none has been seen or located yet. Its work goes in the last plan below
+unless it proves large enough for its own.
+
+Last, once everything above is done: a plan for the whole-game end-to-end test, as Superfrog has
+(`games/superfrog/engine/crates/sf-e2e/`, `whole_game.rs`), played from power-on through the ending.
 
 ## Decided by the owner, 2026-10-31
 
-- Level 1 first, as one plan with the stages above, then the next levels.
-- The app starts straight in level 1. The title screen and menus are a later plan.
-- Silent for now. Sound is a later plan.
+- Level 1 first, as one plan with the stages above; then one plan a level; then sound; the whole-game
+  end-to-end test last.
+- The title screen and menus are their own plan, in any order relative to the levels.
+- The app starts straight in level 1 until the title screen and menus plan lands.
+- Silent until the sound plan, which follows the level plans.
 
 The standing rule on disk-derived files applies to the map page: it holds disk graphics, so it stays in
 `build/` and is never committed.
