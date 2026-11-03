@@ -7,7 +7,7 @@ Measure what each object value in `W1-1` does, listing the enemies, collectibles
 ## Design sections this implements
 §2.2; `docs/05-file-formats.md`.
 ## Reuses
-`fd-conform` routines and oracle, `render_levels.py`'s object boxes, Ghidra MCP, `tools/re_listing.py`.
+`toolkit/docs/porting-routines.md` §1 and §2; `fd-conform` routines and oracle, `render_levels.py`'s object boxes, Ghidra MCP, `tools/re_listing.py`.
 ## Files
 `games/forest-dumb/docs/10-object-system.md`, `re/symbols.toml`, `docs/05-file-formats.md`, `fd-conform/src/freeze.rs` (the entry points), `fd-conform/tests/object_claims.rs`, `games/forest-dumb/re/objects-W1-1.toml` (the spawnable values and their porting task), `fd-conform/tests/ported.rs` (shared with T06; appends its test), `smoke.toml`.
 ## Interface

@@ -7,7 +7,7 @@ Replace the readings the plan rests on with measurements on the original, so not
 ## Design sections this implements
 §2.2, §2.3; `docs/07-executable-map.md`.
 ## Reuses
-`amiga-oracle` (`cpu_writes`, `step`, `snapshot`, `set_profile`'s per-line PC samples), T00 of `forest-dumb-start`'s boot script, `tools/re_listing.py`, the Ghidra MCP server.
+`toolkit/docs/porting-routines.md` §1 and §2 (readings are not evidence; the 68k traps), `amiga-oracle` (`cpu_writes`, `step`, `snapshot`, `set_profile`'s per-line PC samples), T00 of `forest-dumb-start`'s boot script, `tools/re_listing.py`, the Ghidra MCP server.
 ## Files
 `games/forest-dumb/engine/conform/scripts/boot-to-level1.txt`, `games/forest-dumb/docs/09-play-measured.md`, `games/forest-dumb/re/symbols.toml`, `games/forest-dumb/engine/crates/fd-conform/tests/play_measured.rs`, `games/forest-dumb/smoke.toml`.
 ## Interface

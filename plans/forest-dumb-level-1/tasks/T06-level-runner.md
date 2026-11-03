@@ -7,7 +7,7 @@ Grow `fd-conform` from one byte at the title to a level case runner: many variab
 ## Design sections this implements
 §2.1, §2.2, §4.
 ## Reuses
-`amiga-conform` (`compare`, `PictureJudge`, `PassMatch`, `report`, `script`), `sf-conform/src/{case,freeze}.rs` as pattern, `amiga-oracle/src/routine.rs`, `sf-conform/src/routine.rs` as pattern, its `last_regs` included; `sf-conform/src/lib.rs`' nothing-compared failure (T120 there) as pattern; T31's `watch_pcs` and `pc_hits`. `Gen` is extracted to the toolkit if it ends up generic, since this is its second user.
+`toolkit/docs/porting-routines.md` §3 and §4, which this runner enforces; `amiga-conform` (`compare`, `PictureJudge`, `PassMatch`, `report`, `script`), `sf-conform/src/{case,freeze}.rs` as pattern, `amiga-oracle/src/routine.rs`, `sf-conform/src/routine.rs` as pattern, its `last_regs` included; `sf-conform/src/lib.rs`' nothing-compared failure (T120 there) as pattern; T31's `watch_pcs` and `pc_hits`. `Gen` is extracted to the toolkit if it ends up generic, since this is its second user.
 ## Files
 `games/forest-dumb/engine/crates/fd-conform/src/{lib.rs,case.rs,routine.rs,freeze.rs}`, `engine/conform/README.md` updates, `toolkit/crates/amiga-oracle/src/routine.rs` and `sf-conform/src/routine.rs` if `Gen` moves, `fd-core/src/{layout.rs,ported.rs}`, `fd-conform/src/coverage.rs`, `fd-conform/tests/{runner.rs,input_timing.rs,ported.rs}`, `games/forest-dumb/docs/09-play-measured.md` (re-measured rates), `smoke.toml`.
 ## Interface

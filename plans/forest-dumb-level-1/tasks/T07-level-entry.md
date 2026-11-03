@@ -7,7 +7,7 @@ The engine enters level 1 in the same state the original has at the sync point, 
 ## Design sections this implements
 §2.3, §3.3.
 ## Reuses
-`plans/rust-engine/tasks/T14-frog-and-level.md`'s shape, `level_init` (`docs/07`), `amiga-input`'s `FrameInput`.
+`toolkit/docs/porting-routines.md` §4 (the port register); `plans/rust-engine/tasks/T14-frog-and-level.md`'s shape, `level_init` (`docs/07`), `amiga-input`'s `FrameInput`.
 ## Files
 `fd-core/src/{lib.rs,game.rs,scene.rs,level/mod.rs,state.rs,layout.rs}`, `fd-conform/tests/level_entry.rs`, `re/symbols.toml`, `smoke.toml`.
 ## Interface
