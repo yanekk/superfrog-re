@@ -26,6 +26,6 @@ Object values are the original's, so a transplanted list maps one to one. A valu
 - [ ] Missing data file reports, not panics.
 - [ ] Purity test.
 ## Done when
-- [ ] `Game` starts and steps idle on a clear stretch with variables equal for 200 frames, or differences excluded by name.
+- [ ] `Game` starts and steps idle on a clear stretch with variables equal for 200 frames, or differences excluded by name; its case's goal is `idle = true`.
 - [ ] Dispatch is documented in a comment for T22, T24, T25.
 - [ ] A test spawns an unregistered value and sees `Event::Unported`, and a case containing it fails.

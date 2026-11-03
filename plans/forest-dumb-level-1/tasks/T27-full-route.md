@@ -19,7 +19,7 @@ A route is inputs only and holds no disk data; it may be committed as a test fix
 - [ ] Route replayed on the engine reaches the level-end milestone with no life lost.
 - [ ] The same route on the original passes the case and reaches the milestone.
 - [ ] No exclusions but sound in that case.
-- [ ] No `Event::Unported` over the whole route, and every `PORTED` routine shows non-zero hits on the original in some case; a routine with none is named and raised with the owner.
+- [ ] Every value in `re/objects-W1-1.toml` has a registered `ObjectKind`; no `Event::Unported` over the whole route, and every `PORTED` routine shows non-zero hits on the original in some case; a routine with none is named and raised with the owner.
 - [ ] The engine alone meets every milestone within tolerance.
 ## Done when
 - [ ] Route and checks pass, in full; a committed route guards it.

@@ -16,7 +16,7 @@ Case files only. If T00 and T21-style measurement allow it, a frozen case per `s
 - [ ] At least five stretches covering run, jump, slope, pit edge and scroll.
 - [ ] Each compared by variables and picture.
 - [ ] A mutated jump constant fails a stretch.
-- [ ] Every stretch has a `goal` (a cell reached by a frame), and each fails when the goal is moved one cell.
+- [ ] Every stretch has a `goal` (a cell reached by a frame, as the character's two position variables), and each fails when the goal is moved one cell.
 - [ ] Every `PORTED` routine of T08, T09 and T10 shows non-zero hits on the original in at least one stretch.
 ## Done when
 - [ ] Stretches pass; one under 60 s is smoke with an `[[area]]`, "level 1's character against the original".

@@ -9,7 +9,7 @@ Build the object scan, which reads the object map and brings objects into play a
 ## Reuses
 T07's dispatch, T21's table, T06's rig. `sf-core`'s pickup code as pattern only.
 ## Files
-`fd-core/src/objects/{mod.rs,scan.rs,collectible.rs}`, `fd-core/src/game.rs`, `fd-core/src/render/objects.rs`, `engine/conform/cases/collect-*.toml`, `fd-conform/tests/collect_routines.rs`, `fd-plan/src/game.rs`, `smoke.toml`.
+`fd-core/src/objects/{mod.rs,scan.rs,collectible.rs}`, `fd-core/src/ported.rs` (appends), `fd-core/src/game.rs`, `fd-core/src/render/objects.rs`, `engine/conform/cases/collect-*.toml`, `fd-conform/tests/collect_routines.rs`, `fd-plan/src/game.rs`, `smoke.toml`.
 ## Interface
 ```
 pub fn scan(l: &mut LevelCtx, d: &Dispatch, camera: &Camera)   // the original's activation rule, per T21
@@ -25,3 +25,6 @@ Whatever T21 names; the object map writes at `h0+$2e54` reproduced.
 - [ ] Exclusions naming T22 are gone from cases.
 - [ ] A test plays through collecting on engine and original, and an `[[area]]` is added.
 - [ ] Follows `toolkit/docs/porting-routines.md`: each routine's interruptible points are listed in its `docs/` note before it is ported; each ported routine has a `PORTED` entry; each fix carries a test that fails without it; each ported routine shows non-zero hits on the original in at least one case (T06's coverage report).
+
+## Shared files
+`fd-core/src/ported.rs` is shared by every porting task: entries are appended only, and whoever merges second keeps both sides' entries.

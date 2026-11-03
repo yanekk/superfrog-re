@@ -36,11 +36,15 @@ Each of these cost at least one defect on the first game.
 - Branch displacements are signed. Add them with `wrapping_add` on the address, or a backward branch
   panics in a debug build. Run the routine tests in debug, which is where the panic shows.
   - learned on: Superfrog. `plans/rust-engine/` T183.
-- Respect the operation size. `.b` and `.w` touch only the low byte or word of a register, and the rest
-  keeps its old value. Sign-extend where the instruction does (`ext`, address-register writes,
-  `movea.w`), and nowhere else.
-- `clr` on a hardware register reads before it writes, and on a custom chip register the bus carries
-  the prefetch word first, then zero.
+- Respect the operation size. `.b` and `.w` touch only the low byte or word of a data register, and
+  the rest keeps its old value. Sign-extend exactly where the 68000 does: `ext`; `moveq` (8 to 32 bits);
+  absolute short addresses (`$8000.w` is `$ffff8000`); word index registers (`d8(An,Xn.w)`); branch
+  and `d16` displacements; and any word operand to an address register. An address register is always
+  written whole: `movea.w`, `adda.w`, `suba.w`, and `addq`/`subq` to it act on all 32 bits, and
+  `cmpa.w` compares the sign-extended word.
+- `clr` on the 68000 reads before it writes. On a write-only custom chip register that is two writes:
+  first the word then on the data bus, usually the prefetch but not always (after audio DMA it was the
+  DMA's word), then zero.
   - learned on: Superfrog. `plans/rust-engine/` T20, T107.
 - `or` is not `add`, even where the operands never overlap in the test data. Port the operator the
   original uses.
@@ -48,9 +52,11 @@ Each of these cost at least one defect on the first game.
 - A hardware read that clears or changes state (a keyboard byte, a collision register) is read the
   number of times the original reads it. A second read returns something else.
   - learned on: Superfrog. `plans/rust-engine/` T37, T191.
-- An interrupt is taken one instruction after interrupts are re-enabled, not on the enabling
-  instruction.
-  - learned on: Superfrog. `plans/rust-engine/` T194.
+- A write to INTENA or INTREQ that raises the interrupt level is seen one instruction late: the CPU
+  samples the level at one bus access inside each instruction, before that write lands, so the
+  interrupt is taken after the next instruction. Changes to the status register's mask were not
+  measured.
+  - learned on: Superfrog. `plans/rust-engine/` T96, T194.
 - A write through a null or stale pointer still lands somewhere in the original. Port where it lands,
   or name it as an exclusion; never drop it silently.
   - learned on: Superfrog. `plans/rust-engine/` T43, T44.

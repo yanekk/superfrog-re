@@ -9,7 +9,7 @@ Draw the level, character and status bar as the original does: the picture half 
 ## Reuses
 `amiga-chips` (`Planes`, `Colours`, `copper::run*`, `Blit`), `sf-core/src/render/` as pattern, T04's `picture_in`, `Picture::rewindow`. Sprite composition moves to the toolkit only if T00 found hardware sprites.
 ## Files
-`fd-core/src/render/{mod.rs,playfield.rs,status.rs,objects.rs}`, `engine/conform/cases/picture-*.toml`, `fd-conform/tests/purity.rs`, `smoke.toml`.
+`fd-core/src/render/{mod.rs,playfield.rs,status.rs,objects.rs}`, `fd-core/src/ported.rs` (appends), `engine/conform/cases/picture-*.toml`, `fd-conform/tests/purity.rs`, `smoke.toml`.
 ## Interface
 ```
 impl Game { pub fn picture(&self) -> Picture; pub fn picture_rgba(&self, out: &mut [u8]) }
@@ -27,3 +27,6 @@ Rendering reads state only.
 - [ ] A worker opened frames from both sides; recorded as worker-driven.
 - [ ] Follows `toolkit/docs/porting-routines.md`: each routine's interruptible points are listed in its `docs/` note before it is ported; each ported routine has a `PORTED` entry; each fix carries a test that fails without it; each ported routine shows non-zero hits on the original in at least one case (T06's coverage report).
 - [ ] The display buffers are engine state or drawn from the map as T00's answer says, and the choice is written in the render note.
+
+## Shared files
+`fd-core/src/ported.rs` is shared by every porting task: entries are appended only, and whoever merges second keeps both sides' entries.

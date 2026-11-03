@@ -3,13 +3,13 @@
 **Phase:** 2 · **Depends on:** T07 · **Weight:** heavy
 
 ## Goal
-Port the character's running, jumping, falling and collision against the collision plane, routine by routine.
+Port the character's running, jumping, falling and collision against the collision plane, routine by routine: the routine families T00's note assigns to T08. Families T00 assigned to added sibling tasks are theirs.
 ## Design sections this implements
 §2.1, §2.2; `docs/05` collision.
 ## Reuses
 T06's rig; `sf-conform/tests/collision_routines.rs` as pattern; `amiga-input`.
 ## Files
-`fd-core/src/character/{mod.rs,physics.rs,anim.rs}`, `fd-core/src/{game.rs,layout.rs}` (calls it from `Game::step`), `fd-core/src/level/collision.rs`, `fd-conform/tests/character_routines.rs`, `engine/conform/cases/character-*.toml`, `engine/conform/scripts/character-*.txt`, `re/symbols.toml`, `docs/` note, `smoke.toml`.
+`fd-core/src/character/{mod.rs,physics.rs,anim.rs}`, `fd-core/src/{game.rs,layout.rs}` (calls it from `Game::step`), `fd-core/src/level/collision.rs`, `fd-core/src/ported.rs` (appends), `fd-conform/tests/character_routines.rs`, `engine/conform/cases/character-*.toml`, `engine/conform/scripts/character-*.txt`, `re/symbols.toml`, `docs/` note, `smoke.toml`.
 ## Interface
 ```
 pub struct Character { pub x: i32, pub y: i32, pub vx: i16, pub vy: i16, pub frame: u16, /* the original's fields */ }
@@ -26,3 +26,6 @@ pub fn solid(c: &CollisionPlane, x: i32, y: i32) -> bool
 - [ ] Unmodelled effects are listed as exclusions with their task.
 - [ ] Character variables are in `LAYOUT` and `symbols.toml`.
 - [ ] Follows `toolkit/docs/porting-routines.md`: each routine's interruptible points are listed in its `docs/` note before it is ported; each ported routine has a `PORTED` entry; each fix carries a test that fails without it; each ported routine shows non-zero hits on the original in at least one case (T06's coverage report).
+
+## Shared files
+`fd-core/src/ported.rs` is shared by every porting task: entries are appended only, and whoever merges second keeps both sides' entries.

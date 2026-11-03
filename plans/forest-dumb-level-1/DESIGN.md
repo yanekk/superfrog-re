@@ -157,14 +157,14 @@ A crucial feature adds its smoke test and `[[area]]` in `games/forest-dumb/smoke
 
 `toolkit/docs/porting-routines.md` is named in the Done when of T08, T09, T10, T22, T24 and T25 (owner, 2026-11-03). It holds the first game's porting lessons so a session need not read that game's findings log. Four rules are enforced here by tests:
 
-- The port register `fd-core/src/ported.rs` lists every original routine ported, by hunk and offset, with its Rust function. A second entry for one address fails (T06). An object value with no registered kind raises `Event::Unported`, which fails every case (T07); the app writes it to stderr and leaves the object out. Parallel ports of one routine and unported objects skipped unseen were the first game's most repeated silent gaps.
+- The port register `fd-core/src/ported.rs` lists every original routine ported, by hunk and offset, with its Rust function; each entry matches a `func` in `re/symbols.toml`. A second entry for one address fails (T06). Porting tasks only append to it. An object value with no registered kind raises `Event::Unported`, which fails every case (T07); the app writes it to stderr and leaves the object out. Parallel ports of one routine and unported objects skipped unseen were the first game's most repeated silent gaps.
 - A case fails when it compares nothing, and a level case states its `goal`; agreement that misses the goal fails (T06), because two sides failing alike agree.
 - Coverage: each run reports how often the original executed each registered routine, from T31's counter. A ported routine with no hits in any case is not proven; T11 checks the character's, T27 all.
 - The routine rig compares returned registers and hardware writes, not memory only (T06).
 
 ### 4.2 The base branch stays green
 
-A test red on the base branch is turned into a task the day it is seen, by the coordinator or by the worker who saw it with the owner's yes, never only logged (owner, 2026-11-03). On the first game a red stayed for weeks and hid newer ones.
+A test red on the base branch is raised as a task to add the day it is seen, by the add-task rule (root CLAUDE.md: a worker asks, the owner or the coordinator approves), never only logged; a red seen between runs goes to the owner (owner, 2026-11-03). On the first game a red stayed for weeks and hid newer ones.
 
 ---
 

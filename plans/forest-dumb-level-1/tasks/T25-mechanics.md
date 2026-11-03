@@ -9,7 +9,7 @@ Level 1's remaining mechanics, whatever T21 lists: expected flames, vanishing bl
 ## Reuses
 T07's dispatch, T22's scan, T21, `_ELEMENTY`, `_Plomien`, `_ZNIKAJKA`, `_WYBIJACZKA` readers.
 ## Files
-`fd-core/src/objects/{flame,vanish,launcher,*}.rs`, `fd-core/src/render/objects.rs`, `engine/conform/cases/mechanic-*.toml`, `fd-conform/tests/mechanic_routines.rs`, `fd-plan/src/facts.rs`, `smoke.toml`.
+`fd-core/src/objects/{flame,vanish,launcher,*}.rs`, `fd-core/src/ported.rs` (appends), `fd-core/src/render/objects.rs`, `engine/conform/cases/mechanic-*.toml`, `fd-conform/tests/mechanic_routines.rs`, `fd-plan/src/facts.rs`, `smoke.toml`.
 ## Interface
 One `ObjectKind` per mechanic T21 lists; high values `$40`+ per the `$a06` tables.
 ## Tests
@@ -21,3 +21,6 @@ One `ObjectKind` per mechanic T21 lists; high values `$40`+ per the `$a06` table
 - [ ] T21's list is implemented; exclusions naming T25 are gone, others name T24. T27 proves none remain but sound.
 - [ ] A test uses each mechanic; `[[area]]` added.
 - [ ] Follows `toolkit/docs/porting-routines.md`: each routine's interruptible points are listed in its `docs/` note before it is ported; each ported routine has a `PORTED` entry; each fix carries a test that fails without it; each ported routine shows non-zero hits on the original in at least one case (T06's coverage report).
+
+## Shared files
+`fd-core/src/ported.rs` is shared by every porting task: entries are appended only, and whoever merges second keeps both sides' entries.
