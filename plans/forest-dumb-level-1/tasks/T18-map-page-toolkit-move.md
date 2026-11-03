@@ -25,3 +25,4 @@ pub fn progress(events: &[Event], facts: &Facts) -> Vec<Event>   // stall events
 ## Done when
 - [ ] Superfrog's page has the same content, byte-compared on one level.
 - [ ] `page.html` holds no game names or fixed cell constants.
+- [ ] Each moved crate keeps its `opt-level` override in the root manifest of every workspace that builds it (toolkit, both games), and the bench or page timing matches the pre-move run.

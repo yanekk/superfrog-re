@@ -25,3 +25,4 @@ pub fn solid(c: &CollisionPlane, x: i32, y: i32) -> bool
 - [ ] Variables match the original on each run on clear stretches.
 - [ ] Unmodelled effects are listed as exclusions with their task.
 - [ ] Character variables are in `LAYOUT` and `symbols.toml`.
+- [ ] Follows `toolkit/docs/porting-routines.md`: each routine's interruptible points are listed in its `docs/` note before it is ported; each ported routine has a `PORTED` entry; each fix carries a test that fails without it; each ported routine shows non-zero hits on the original in at least one case (T06's coverage report).

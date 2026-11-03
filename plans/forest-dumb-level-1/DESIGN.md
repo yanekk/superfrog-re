@@ -143,7 +143,8 @@ Moved parts must name no game (`tools/check_tier_names.py`). Superfrog keeps wor
 | Layer | Proves | Cannot prove |
 |---|---|---|
 | Unit, in `fd-core`, `fd-assets`, `amiga-plan` | Rules, in milliseconds | That the rules are the original's |
-| Routine (`routine.rs` rig, 10 000 generated states) | A ported routine equals the 68k one | Whole-play behaviour |
+| Routine (`routine.rs` rig, 10 000 generated states) | A ported routine equals the 68k one, registers and hardware writes included | Whole-play behaviour |
+| Coverage (T31's counter) | A ported routine actually ran in a case on the original | That it ran on every path |
 | Case (`fd-conform`) | Engine equals the original across a run | Anything off the scripted run |
 | Milestones | The engine alone reaches what the original reaches | Exact path |
 | Route (`fd-plan`) | The level can be finished, on both sides | That a person enjoys it |
@@ -151,6 +152,19 @@ Moved parts must name no game (`tools/check_tier_names.py`). Superfrog keeps wor
 | Drill | What nobody thought to assert | Taste decisions, which go to the owner |
 
 A crucial feature adds its smoke test and `[[area]]` in `games/forest-dumb/smoke.toml`; every new test file gets a label. Slow tests are `#[ignore]`d for the nightly full set.
+
+### 4.1 Rules every porting task follows
+
+`toolkit/docs/porting-routines.md` is named in the Done when of T08, T09, T10, T22, T24 and T25 (owner, 2026-11-03). It holds the first game's porting lessons so a session need not read that game's findings log. Four rules are enforced here by tests:
+
+- The port register `fd-core/src/ported.rs` lists every original routine ported, by hunk and offset, with its Rust function. A second entry for one address fails (T06). An object value with no registered kind raises `Event::Unported`, which fails every case (T07); the app writes it to stderr and leaves the object out. Parallel ports of one routine and unported objects skipped unseen were the first game's most repeated silent gaps.
+- A case fails when it compares nothing, and a level case states its `goal`; agreement that misses the goal fails (T06), because two sides failing alike agree.
+- Coverage: each run reports how often the original executed each registered routine, from T31's counter. A ported routine with no hits in any case is not proven; T11 checks the character's, T27 all.
+- The routine rig compares returned registers and hardware writes, not memory only (T06).
+
+### 4.2 The base branch stays green
+
+A test red on the base branch is turned into a task the day it is seen, by the coordinator or by the worker who saw it with the owner's yes, never only logged (owner, 2026-11-03). On the first game a red stayed for weeks and hid newer ones.
 
 ---
 
@@ -169,6 +183,8 @@ A crucial feature adds its smoke test and `[[area]]` in `games/forest-dumb/smoke
 **Smoke is nearly full.** Recent runs took 503 to 887 s of 900 s (`~/.cache/superfrog-re/smoke-times.tsv`). T01 makes room first. Whoever adds a slow test reads that file first; if crucial tests alone do not fit, ask the owner.
 
 **Setup.** The venv lines leave the copy clean; `venv/` is git-ignored.
+
+**Working beside other tasks.** Format only the files the task touched (`rustfmt <file>`), never `cargo fmt` over a crate. Any tool that writes a dump, trace or recording has a size cap from its first commit. A crate created or moved carries its `opt-level` override in the root manifest of every workspace that builds it (T17, T18). Test time limits are sized for a loaded machine, and runs are bounded by frames where they can be. Sources: `toolkit/docs/porting-routines.md` §5.
 
 **Dependencies.** May be added: crates Superfrog's matching crate already uses (`winit`, `muda`, `libc`, `serde`, `toml`, `png`, `bincode`), permissive only and on the purity list if pure. Anything else asks the owner first. Nothing copyleft, because toolkit crates are linked into the engine and the licence follows the link.
 
@@ -220,6 +236,8 @@ All 2026-11-01 unless dated.
 - Move the planner, page and app windows to the toolkit rather than copying (owner). A move costs about 1.5 to 2 times a copy, mostly checks, and later levels use one copy. T02 exists because nothing pinned routes across a refactor: determinism tests compare runs within one build.
 - Toolkit `amiga-plan` takes the explorer path plus compass and map only as needed. `facts.rs` stays per game.
 - `sf-e2e`'s `plan_routes.rs` is labelled smoke while its only test is `#[ignore]`d, so it only compiles there. T28 does not copy that: its short test really runs.
+- 2026-11-03 (owner): the plan takes the first game's lessons as `toolkit/docs/porting-routines.md`, §4.1 and §4.2, T00's two added questions and T31.
+- 2026-11-03 (owner): T31 adds a sixth vAmiga patch, an instruction-address counter, because the oracle cannot otherwise show a routine ran. It changes the build hash, so every sync cache, Superfrog's included, rebuilds once; that cost was accepted. `picture_in` below still needs no patch.
 - Add `Amiga::picture_in` and leave `picture()` alone: Superfrog's `level_exit_fade` and `display::draw` rely on the frame-end window, and changing the default would invalidate traces. No vAmiga patch, so caches stay valid.
 - Stretches first, freeze later (§2.2), because the freeze needs entry points that are readings today.
 - Whether this game uses hardware sprites is unknown, so `objects.rs` is not moved in advance; T00 measures and T10 decides.

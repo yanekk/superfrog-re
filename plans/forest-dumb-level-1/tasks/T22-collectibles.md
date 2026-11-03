@@ -24,3 +24,4 @@ Whatever T21 names; the object map writes at `h0+$2e54` reproduced.
 ## Done when
 - [ ] Exclusions naming T22 are gone from cases.
 - [ ] A test plays through collecting on engine and original, and an `[[area]]` is added.
+- [ ] Follows `toolkit/docs/porting-routines.md`: each routine's interruptible points are listed in its `docs/` note before it is ported; each ported routine has a `PORTED` entry; each fix carries a test that fails without it; each ported routine shows non-zero hits on the original in at least one case (T06's coverage report).

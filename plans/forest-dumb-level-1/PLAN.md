@@ -1,11 +1,12 @@
 # Implementation plan
 
-31 tasks in 7 phases. Each has a file in [tasks/](tasks/). Track state in [PROGRESS.md](PROGRESS.md). Read [DESIGN.md](DESIGN.md) first.
+32 tasks in 7 phases. Each has a file in [tasks/](tasks/). Track state in [PROGRESS.md](PROGRESS.md). Read [DESIGN.md](DESIGN.md) first.
 
 ## Shape of the build
 
 - Measure before porting. T00 replaces the readings the rest depends on, so a wrong reading costs one task.
 - Everything is proven headless before a window opens: the character stage ends at T11, and T13 wires a window to it.
+- Prove a port ran, not only that it matched: T06's port register and coverage report, on T31's counter, are in place before the first routine is ported (DESIGN §4.1).
 - Protect the first game before moving its code: T02 pins routes before T17 and T18 move anything.
 - The planner comes before collectibles and enemies, so each later stage extends how far a route reaches, and T27 proves the finish.
 
@@ -24,6 +25,7 @@
 | Recorder | T14 | T14 `fd-app` menu |
 | Controls | T12 | T13 menu |
 | Route to the end | T20, T27 | T28 plays it in the app |
+| Port register, coverage | T06, on T31's counter | T07's dispatch raises `Unported`; T11, T27 check coverage |
 
 ## Phase 0: prove the ground
 
@@ -32,6 +34,7 @@
 | [T00](tasks/T00-measure-play.md) | measure-play | — |
 | [T01](tasks/T01-smoke-room.md) | smoke-room | — |
 | [T02](tasks/T02-route-pin.md) | route-pin | — |
+| [T31](tasks/T31-code-ran-counter.md) | code-ran-counter | — |
 
 T00 gates the sync point, pass matching in T06, how T10 draws objects, and the start seed. Its answers are written in `games/forest-dumb/docs/`. If play is not one pass a frame, T06 matches passes instead of frames. If the game uses hardware sprites, T10 takes Superfrog's composition pattern into the toolkit.
 
@@ -43,7 +46,7 @@ T00 gates the sync point, pass matching in T06, how T10 draws objects, and the s
 | [T04](tasks/T04-picture-in-play.md) | picture-in-play | T00 |
 | [T30](tasks/T30-unpack-in-rust.md) | unpack-in-rust | — |
 | [T05](tasks/T05-level-readers.md) | level-readers | T03, T04, T30 |
-| [T06](tasks/T06-level-runner.md) | level-runner | T03, T04 |
+| [T06](tasks/T06-level-runner.md) | level-runner | T03, T04, T31 |
 
 ## Phase 2: the character, headless
 
@@ -99,18 +102,18 @@ T00 gates the sync point, pass matching in T06, how T10 draws objects, and the s
 T00 → T03 → T05 → T07 → T08 → T10 → T11 → T19 → T20 → T22 → T24 → T27 → T28 → T29
 ```
 
-T01, T02, T12, T30, T17 and T18 are off it and start early. Leaves: only T29, the final deliverable.
+T01, T02, T31, T12, T30, T17 and T18 are off it and start early. T31 changes the oracle's build hash, so every sync cache rebuilds once after it merges. Leaves: only T29, the final deliverable.
 
 ## Parallel width
 
-31 tasks · longest dependency chain 14 · up to 5 could run at once. Computed from the table by a small script; `analyzeParallelism` is not in this repo.
+32 tasks · longest dependency chain 14 · up to 6 could run at once. Computed from the table by a small script; `analyzeParallelism` is not in this repo.
 
 ## Rough sizing
 
 | Weight | Tasks |
 |---|---|
 | **Heavy** | T06, T08, T10, T12, T17, T24, T25, T27 |
-| **Medium** | T30, T00, T03, T05, T07, T09, T11, T13, T14, T15, T18, T20, T21, T22, T23, T26, T28 |
+| **Medium** | T31, T30, T00, T03, T05, T07, T09, T11, T13, T14, T15, T18, T20, T21, T22, T23, T26, T28 |
 | **Light** | T01, T02, T04, T16, T19, T29 |
 
 T24, T25 and T27 are the likeliest overruns: what level 1 holds is unknown until T21, and the planner finished 9 of 24 levels unguided on the first game.

@@ -40,3 +40,4 @@ Neither game's `Game` can implement a toolkit trait from a third crate, so `sf-p
 - [ ] `sf-plan` contains only Superfrog's facts, shell and tests.
 - [ ] Tier name check passes; core comments name no game or its creatures.
 - [ ] Cache key still changes when core sources change.
+- [ ] Each moved crate keeps its `opt-level` override in the root manifest of every workspace that builds it (toolkit, both games), and the bench or page timing matches the pre-move run.

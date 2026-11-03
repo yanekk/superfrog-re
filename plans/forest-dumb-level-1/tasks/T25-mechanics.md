@@ -20,3 +20,4 @@ One `ObjectKind` per mechanic T21 lists; high values `$40`+ per the `$a06` table
 ## Done when
 - [ ] T21's list is implemented; exclusions naming T25 are gone, others name T24. T27 proves none remain but sound.
 - [ ] A test uses each mechanic; `[[area]]` added.
+- [ ] Follows `toolkit/docs/porting-routines.md`: each routine's interruptible points are listed in its `docs/` note before it is ported; each ported routine has a `PORTED` entry; each fix carries a test that fails without it; each ported routine shows non-zero hits on the original in at least one case (T06's coverage report).

@@ -19,7 +19,7 @@ impl Game { pub fn new(data: Arc<GameData>, start: Start) -> Game; pub fn step(&
 pub trait ObjectKind { fn update(&self, o: &mut Object, l: &mut LevelCtx); fn draw(&self, o: &Object, out: &mut DrawList); }
 pub fn register(d: &mut Dispatch, value: u8, k: &'static dyn ObjectKind);
 ```
-Object values are the original's, so a transplanted list maps one to one.
+Object values are the original's, so a transplanted list maps one to one. A value with no registered kind is not skipped: `step` records `Event::Unported(value)`, every case fails on one, and the app writes it to stderr and leaves the object out.
 ## Tests
 - [ ] All `LAYOUT` variables equal the oracle at the sync point.
 - [ ] Two `Game::new` give equal state; clones step identically.
@@ -28,3 +28,4 @@ Object values are the original's, so a transplanted list maps one to one.
 ## Done when
 - [ ] `Game` starts and steps idle on a clear stretch with variables equal for 200 frames, or differences excluded by name.
 - [ ] Dispatch is documented in a comment for T22, T24, T25.
+- [ ] A test spawns an unregistered value and sees `Event::Unported`, and a case containing it fails.

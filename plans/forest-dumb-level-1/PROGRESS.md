@@ -3,9 +3,10 @@
 **Update this whenever a task changes state.** It is the handoff between sessions. What the build taught lives in [FINDINGS.md](FINDINGS.md). Sixty words to a Notes cell, counted.
 
 **Plan reviewed:** 2026-11-01 — 15 fixed, 6 decided with the user
+**Amended:** 2026-11-03 — the first game's lessons: porting rulebook, port register and coverage, T31 added (owner)
 
 **Status:** Plan written; nothing built.
-**Last updated:** 2026-11-01
+**Last updated:** 2026-11-03
 **Next `pir-work` will:** T00, because every level task rests on its measurements.
 
 ## Tasks
@@ -17,11 +18,12 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T00 | measure-play | — | ⬜ | |
 | T01 | smoke-room | — | ⬜ | |
 | T02 | route-pin | — | ⬜ | |
+| T31 | code-ran-counter | — | ⬜ | |
 | T03 | level-sync | T00 | ⬜ | |
 | T04 | picture-in-play | T00 | ⬜ | |
 | T30 | unpack-in-rust | — | ⬜ | |
 | T05 | level-readers | T03, T04, T30 | ⬜ | |
-| T06 | level-runner | T03, T04 | ⬜ | |
+| T06 | level-runner | T03, T04, T31 | ⬜ | |
 | T07 | level-entry | T05, T06 | ⬜ | |
 | T08 | character-movement | T07 | ⬜ | |
 | T09 | camera-scroll | T07 | ⬜ | |

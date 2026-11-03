@@ -25,3 +25,4 @@ Random-number use follows T00; seed in state.
 - [ ] Exclusions naming T24 are gone; cases pass with only exclusions naming T25 left. T27 proves none remain.
 - [ ] Planner's danger avoids them; a replay survives them.
 - [ ] A smoke test and `[[area]]`.
+- [ ] Follows `toolkit/docs/porting-routines.md`: each routine's interruptible points are listed in its `docs/` note before it is ported; each ported routine has a `PORTED` entry; each fix carries a test that fails without it; each ported routine shows non-zero hits on the original in at least one case (T06's coverage report).

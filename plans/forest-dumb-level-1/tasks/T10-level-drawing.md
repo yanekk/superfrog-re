@@ -25,3 +25,5 @@ Rendering reads state only.
 - [ ] Picture cases pass on clear stretches, with the differing pixels' report empty apart from named exclusions.
 - [ ] `amiga-chips` admitted to purity's `ALLOWED` with why-pure lines.
 - [ ] A worker opened frames from both sides; recorded as worker-driven.
+- [ ] Follows `toolkit/docs/porting-routines.md`: each routine's interruptible points are listed in its `docs/` note before it is ported; each ported routine has a `PORTED` entry; each fix carries a test that fails without it; each ported routine shows non-zero hits on the original in at least one case (T06's coverage report).
+- [ ] The display buffers are engine state or drawn from the map as T00's answer says, and the choice is written in the render note.

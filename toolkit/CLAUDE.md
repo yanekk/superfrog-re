@@ -16,6 +16,7 @@ to start a game. A game depends on it by path, so a toolkit change and its use l
 ## Notes
 
 - [PLAYBOOK.md](PLAYBOOK.md): the steps the first game took, in order, each with its artifacts and lesson.
+- [docs/porting-routines.md](docs/porting-routines.md): the rules a porting task names in its Done when: readings are not evidence, the 68k traps, proving a port, the port register.
 - [template/](template/): a new game's starting kit, copied to `games/<game>/`.
 - [docs/reuse-for-another-game.md](docs/reuse-for-another-game.md): what carried to the toolkit, what stayed per game, and the toolkit's history.
 - [docs/explorer-go-explore-idea.md](docs/explorer-go-explore-idea.md): backlog, an archive-return-explore search for routing and bug finding.

@@ -23,3 +23,4 @@ impl Camera { pub fn step(&mut self, target: (i32, i32), level: &Level) }
 ## Done when
 - [ ] Camera variables match the original on a scripted run that scrolls both ways.
 - [ ] Foreground timing of redraws is matched or named as an exclusion.
+- [ ] Follows `toolkit/docs/porting-routines.md`: each routine's interruptible points are listed in its `docs/` note before it is ported; each ported routine has a `PORTED` entry; each fix carries a test that fails without it; each ported routine shows non-zero hits on the original in at least one case (T06's coverage report).
