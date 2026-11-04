@@ -48,9 +48,27 @@ nonsense instructions; a label the code writes to with move is a variable.
 Mind the 68000's semantics: .b/.w operations on a data register change only its low byte/word;
 operations on an address register are 32-bit (a .w source is sign-extended); mulu.w multiplies the
 low words; lsr/lsl/asr/rol by a register count use it modulo 64; dbra counts the low word down to -1.
-Use wrapping arithmetic: the build panics on overflow.
+Use wrapping arithmetic: the build panics on overflow.{hw}
 
 Answer with the whole file in one ```rust block and nothing else after it."""
+
+
+HW = """
+
+The hardware: $DFF000-$DFF1FF are the custom chips' registers and $BFxxxx the CIAs. Reach them
+through cpu.mem like any other address, with the access size the instruction uses. The judge
+compares every custom-chip write, in order, with the original's: a long write is two word writes,
+high word first; a byte write reaches the register as that byte on both halves. A write to BLTSIZE
+($DFF058) runs the blit at once; cpu.mem does it for you from the blitter registers written before.
+A read of $DFF006 or $DFF007 (VHPOSR) returns a counter that steps by one on every byte read, so a
+raster wait ends; any other hardware read returns what the judge set for that state, often 0. Make
+the hardware reads and writes the original makes, in the same order and sizes: an instruction that
+reads and writes (and.b, or.b, bset on a register) is a read, then a write. Labels named in the
+listing (mt_counter and the like) are listed with their addresses after it."""
+
+
+SYS = [SYSTEM.replace('{hw}', '')]
+MUSE_MAX = [32000]
 
 
 def load_listing():
@@ -110,6 +128,69 @@ def routine_text(routine):
     return '\n'.join(out), len([a for a in ins if lo <= a < hi])
 
 
+def flow_text(routine):
+    """Every instruction reachable from the routine (fall-through, branches both ways, calls), as
+    listing lines in address order; gaps marked. Then the named labels it uses, with addresses."""
+    import tomllib
+    lines, ins, at = load_listing()
+    labels = {}
+    for i, l in enumerate(lines):
+        m = re.match(r'^(\S+):$', l)
+        if m:
+            j = i + 1
+            while j < len(lines) and not re.match(r'^[0-9a-f]{8} ', lines[j]):
+                j += 1
+            if j < len(lines):
+                labels[m.group(1)] = int(lines[j][:8], 16)
+    addrs = sorted(ins)
+    import bisect
+
+    def containing(t):
+        k = bisect.bisect_right(addrs, t) - 1
+        return addrs[k] if k >= 0 and t < addrs[k] + ins[addrs[k]][1] else None
+
+    hunk, off = routine.split('-') if '-' in routine else ('0', routine)
+    syms = tomllib.load(open(os.path.join(GAME, 're', 'symbols.toml'), 'rb'))['sym']
+    named = {(s['hunk'], s['offset']): s['name'] for s in syms}
+    start = labels.get(f'h{hunk}+${off}') or labels[named[(int(hunk), int(off, 16))]]
+    seen, todo = set(), [start]
+    while todo:
+        pc = todo.pop()
+        while pc is not None and pc in ins and pc not in seen:
+            seen.add(pc)
+            txt, sz = ins[pc]
+            parts = txt.split(None, 1)
+            op = parts[0]
+            t = labels.get(parts[1].split(',')[-1].strip()) if len(parts) > 1 else None
+            if t is not None and t not in ins:
+                t = containing(t)
+            if op in ('rts', 'rte'):
+                break
+            if op.startswith('bra') or op == 'jmp':
+                pc = t
+                continue
+            if t is not None and (op.startswith('b') or op.startswith('db') or op == 'jsr'):
+                todo.append(t)
+            pc += sz
+    out, prev = [], None
+    for a in sorted(seen):
+        i = at[a]
+        if prev is not None and a != prev:
+            out.append('          ...')
+        k = i
+        while k > 0 and not re.match(r'^[0-9a-f]{8} ', lines[k - 1]) and not lines[k - 1].startswith('          ...'):
+            k -= 1
+        out += [l for l in lines[k:i] if re.match(r'^\S+:$', l)]
+        out.append(lines[i])
+        prev = a + ins[a][1]
+    text = '\n'.join(out)
+    syms = tomllib.load(open(os.path.join(GAME, 're', 'symbols.toml'), 'rb'))['sym']
+    used = [s for s in syms if re.search(r'\b' + re.escape(s['name']) + r'\b', text)]
+    if used:
+        text += '\n\nNamed labels:\n' + '\n'.join(f"{s['name']} = h{s['hunk']}+${s['offset']:x}" for s in used)
+    return text, len(seen)
+
+
 def zsh_key():
     if os.environ.get('OPENROUTER_API_KEY'):
         return os.environ['OPENROUTER_API_KEY'].strip()
@@ -128,7 +209,7 @@ log_lock = threading.Lock()
 
 def call_muse(state, user):
     state['messages'].append({'role': 'user', 'content': user})
-    body = {'model': MUSE, 'max_tokens': 32000, 'usage': {'include': True}, 'messages': state['messages']}
+    body = {'model': MUSE, 'max_tokens': MUSE_MAX[0], 'usage': {'include': True}, 'messages': state['messages']}
     req = urllib.request.Request('https://openrouter.ai/api/v1/chat/completions', json.dumps(body).encode(),
                                  {'Authorization': f'Bearer {state["key"]}', 'Content-Type': 'application/json'})
     with urllib.request.urlopen(req, timeout=900) as r:
@@ -146,7 +227,7 @@ def call_muse(state, user):
 
 def call_opus(state, user):
     args = ['claude', '-p', '--model', OPUS, '--output-format', 'json', '--tools', '',
-            '--system-prompt', SYSTEM, '--setting-sources', '', '--strict-mcp-config']
+            '--system-prompt', SYS[0], '--setting-sources', '', '--strict-mcp-config']
     if state.get('session'):
         args += ['--resume', state['session']]
     else:
@@ -187,7 +268,7 @@ def judge(port_path, routine):
 def one_run(model, routine, run, args, key, prompt, log):
     d = os.path.join(args.out, model, routine, f'run{run}')
     os.makedirs(d, exist_ok=True)
-    state = {'messages': [{'role': 'system', 'content': SYSTEM}], 'key': key, 'cwd': d}
+    state = {'messages': [{'role': 'system', 'content': SYS[0]}], 'key': key, 'cwd': d}
     user = prompt
     for n in range(1, args.tries + 1):
         with spent_lock:
@@ -230,9 +311,13 @@ def main():
     ap.add_argument('--runs', type=int, default=3)
     ap.add_argument('--tries', type=int, default=3)
     ap.add_argument('--parallel', type=int, default=8)
+    ap.add_argument('--muse-max-tokens', type=int, default=32000)
+    ap.add_argument('--hw', action='store_true', help='hardware routines: the hardware paragraph and flow extraction')
     ap.add_argument('--out', default=os.path.join(GAME, 'build', 'spike', 'muse-spark'))
     args = ap.parse_args()
     args.out = os.path.abspath(args.out)
+    SYS[0] = SYSTEM.replace('{hw}', HW if args.hw else '')
+    MUSE_MAX[0] = args.muse_max_tokens
     os.makedirs(args.out, exist_ok=True)
     key = zsh_key() if 'muse' in args.models else None
     calls = open(os.path.join(args.out, 'calls.jsonl'), 'a')
@@ -246,8 +331,9 @@ def main():
 
     prompts = {}
     for r in args.routines.split(','):
-        text, n = routine_text(r)
-        prompts[r] = f"Translate the routine at h0+${r} ({n} instructions with what it calls).\n\n```\n{text}\n```"
+        text, n = (flow_text if args.hw else routine_text)(r)
+        label = 'h{}+${}'.format(*r.split('-')) if '-' in r else f'h0+${r}'
+        prompts[r] = f"Translate the routine at {label} ({n} instructions with what it calls).\n\n```\n{text}\n```"
         open(os.path.join(args.out, f'prompt-{r}.md'), 'w').write(prompts[r])
     # The judge built once before the clock starts, so the first try does not pay for the oracle.
     subprocess.run(['cargo', 'build', '--release', '-q'], cwd=JUDGE, check=True)

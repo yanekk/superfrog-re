@@ -2,6 +2,11 @@
 //! port built in (SPIKE_PORT) from the same generated states, and prints one JSON line: pass or the
 //! first failing case's inputs and differences. A case where the original faults or does not return
 //! is not counted. Bytes on the call's stack are not compared (return addresses of inner calls).
+//!
+//! The original runs in hardware mode: its custom-chip writes, in order, are compared with the
+//! port's, and its blits land in memory like its own writes. The program is loaded at the hunk bases
+//! the full-system oracle measured (docs/07-executable-map.md), so the chip hunks are in chip RAM
+//! where the blitter reaches them.
 
 use std::panic::{AssertUnwindSafe, catch_unwind};
 use std::sync::Arc;
@@ -9,7 +14,11 @@ use std::sync::Arc;
 use amiga_oracle::{AmigaMemory, Cpu68k, Regs};
 use fd_spike_judge::{Cpu, HUNK_BASES, Mem, h, port};
 
-const LOAD: u32 = 0x2_0000;
+/// Each hunk's base on the oracle at the title (docs/07-executable-map.md).
+const BASES: [u32; 5] = [0xc0_77d8, 0x1_0178, 0x1_1400, 0x1_2c38, 0x4_d668];
+/// `move.b $dff006.l,d0; rts`: reads the shim's VHPOSR counter, which runs on across calls.
+const PROBE: u32 = 0x70_0000;
+const PROBE_CODE: [u8; 8] = [0x10, 0x39, 0x00, 0xdf, 0xf0, 0x06, 0x4e, 0x75];
 const STACK: u32 = 0x7F_0000;
 const STACK_AREA: std::ops::Range<u32> = 0x7E_0000..0x7F_0000;
 const MAX_INSTR: u64 = 200_000;
@@ -44,6 +53,8 @@ impl Gen {
 #[derive(Default)]
 struct Setup {
     pokes: Vec<(u32, Vec<u8>)>,
+    /// What hardware bytes read (a custom register's or a CIA's), by address.
+    hw_reads: Vec<(u32, u8)>,
     d: [u32; 8],
     a: [u32; 8],
 }
@@ -151,24 +162,119 @@ fn generate(routine: &str, g: &mut Gen) -> Setup {
                 s.b(h(3, 0xfa50) + off, if g.one_in(2) { 0 } else { g.next() as u8 });
             }
         }
+        // A tile blit: d5 the tile, a3 where it goes (a screen in hunk 3).
+        "774" => {
+            s.d[5] = if g.one_in(8) { g.next() as u32 } else { g.below(0x300) as u32 };
+            s.a[3] = h(3, g.below(0x3_0000) as u32 & !1);
+        }
+        // The map edges: the camera's scroll position in h0+$1e66/$1e68.
+        "844" | "b20" => {
+            s.w(h(0, 0x1e66), g.below(0x900) as u16);
+            let x = if g.one_in(8) { g.next() as u16 } else { g.below(0x600) as u16 };
+            s.w(h(0, 0x1e68), x);
+        }
+        "3adc" => {}
+        // Collision register, then the objects against the player.
+        "3b2a" => {
+            let clx = g.next() as u16;
+            s.hw_reads.push((0xdf_f00e, (clx >> 8) as u8));
+            s.hw_reads.push((0xdf_f00f, clx as u8));
+            objects(g, &mut s, 9);
+            s.w(h(0, 0x4b62), if g.one_in(5) { 1 } else { 0 });
+            s.b(h(0, 0x4ed0), if g.one_in(5) { 0 } else { 1 });
+            for a in [0x3b26, 0x3b28, 0x4ecf] {
+                s.b(h(0, a), g.next() as u8);
+            }
+        }
+        // One channel of the music player: a5 its Paula registers, a6 its 0x2c-byte state.
+        "4-18870" => {
+            let n = g.below(4) as u32;
+            s.a[5] = 0xdf_f0a0 + n * 0x10;
+            let st = h(4, 0x1_9498 + n * 0x2c);
+            s.a[6] = st;
+            let state: Vec<u8> = (0..0x2c).map(|_| g.next() as u8).collect();
+            s.pokes.push((st, state));
+            // The command word: a note's period bits, an effect 0-f, its parameter.
+            let cmd = g.below(16) as u16;
+            let note = if g.one_in(3) { 0 } else { g.below(0x1000) as u16 };
+            s.w(st + 2, (note & 0xf000) | cmd << 8 | g.below(256) as u16);
+            if g.one_in(6) {
+                s.w(st + 2, 0);
+            }
+            s.w(st + 0x10, 0x71 + g.below(0x2e8) as u16);
+            s.b(st + 0x1f, if g.one_in(2) { 0 } else { g.next() as u8 });
+            s.l(st + 4, h(4, g.below(0x1_0000) as u32 & !1));
+            s.l(st + 0xa, h(4, g.below(0x1_0000) as u32 & !1));
+            s.b(h(4, 0x1_95c9), g.below(7) as u8);
+            s.b(h(4, 0x1_95c8), 1 + g.below(6) as u8);
+        }
         other => panic!("unknown routine {other}"),
     }
     s
 }
 
-fn entry(routine: &str) -> u32 {
-    h(0, u32::from_str_radix(routine, 16).expect("routine is a hunk 0 offset in hex"))
+/// What a routine's memory holds before any case: the chip hunk's screens and tiles, and for the
+/// map edges the map, filled with seeded noise so a blit's source is never all zero.
+fn fill_base(routine: &str, mem: &mut [u8]) {
+    let mut g = Gen(0x5EED_0000_0000_0001);
+    let mut fill = |from: u32, len: u32, f: &mut dyn FnMut(&mut Gen) -> u8| {
+        for i in 0..len {
+            mem[(from + i) as usize] = f(&mut g);
+        }
+    };
+    match routine {
+        "774" | "844" | "b20" => {
+            fill(h(3, 0), 0x3_aa28, &mut |g| g.next() as u8);
+            if routine != "774" {
+                // Map words: tile numbers, mostly small.
+                let mut hi = true;
+                fill(h(0, 0x1_6318), 0x6000, &mut |g| {
+                    hi = !hi;
+                    if hi { g.below(0x400) as u8 } else { (g.below(8) == 0) as u8 }
+                });
+            }
+        }
+        _ => {}
+    }
 }
 
-/// `hN+$off` for an address inside the program, else the address.
+/// The routine's hunk and offset: `5462` is h0+$5462, `4-18870` is h4+$18870.
+fn entry(routine: &str) -> u32 {
+    let (hunk, off) = routine.split_once('-').unwrap_or(("0", routine));
+    h(hunk.parse().unwrap(), u32::from_str_radix(off, 16).expect("routine offset in hex"))
+}
+
+/// The size of each hunk, for naming addresses.
+static SIZES: std::sync::OnceLock<Vec<u32>> = std::sync::OnceLock::new();
+
+/// `hN+$off` for an address inside the program, `$dffxxx` for a custom register, else the address.
 fn name(a: u32) -> String {
     let bases = HUNK_BASES.get().unwrap();
-    for (i, &b) in bases.iter().enumerate().rev() {
-        if a >= b && a < b + 0x6_0000 && (i + 1 == bases.len() || a < bases[i + 1]) {
+    for (i, (&b, &n)) in bases.iter().zip(SIZES.get().unwrap()).enumerate() {
+        if a >= b && a < b + n {
             return format!("h{i}+${:x}", a - b);
         }
     }
     format!("${a:06x}")
+}
+
+/// The program's hunks at `BASES`, relocated: the loader the game's own `LoadSeg` would be.
+fn load(exe: &[u8], mem: &mut [u8]) {
+    let hunks = amiga_disk::hunk::parse(exe).expect("parsing the program");
+    assert_eq!(hunks.len(), BASES.len());
+    for (hk, &base) in hunks.iter().zip(&BASES) {
+        mem[base as usize..base as usize + hk.data.len()].copy_from_slice(&hk.data);
+    }
+    for (hk, &base) in hunks.iter().zip(&BASES) {
+        for r in &hk.relocs {
+            for &off in &r.offsets {
+                let at = (base + off) as usize;
+                let v = u32::from_be_bytes(mem[at..at + 4].try_into().unwrap()).wrapping_add(BASES[r.target as usize]);
+                mem[at..at + 4].copy_from_slice(&v.to_be_bytes());
+            }
+        }
+    }
+    SIZES.set(hunks.iter().map(|h| h.size).collect()).unwrap();
 }
 
 fn describe_inputs(s: &Setup) -> String {
@@ -178,6 +284,9 @@ fn describe_inputs(s: &Setup) -> String {
     for (a, bytes) in &s.pokes {
         let hex: String = bytes.iter().map(|b| format!("{b:02x}")).collect();
         t += &format!("  {} = ${hex}\n", name(*a));
+    }
+    for (a, v) in &s.hw_reads {
+        t += &format!("hardware byte ${a:06x} reads ${v:02x}\n");
     }
     t
 }
@@ -208,11 +317,15 @@ fn main() {
     let exe_path = concat!(env!("CARGO_MANIFEST_DIR"), "/../../../build/files/disk1/FOREST_DUMB_FOREVER");
     let exe = std::fs::read(exe_path).unwrap_or_else(|e| panic!("{exe_path}: {e} (run fd-tools extract)"));
     let mut cpu = Cpu68k::new(AmigaMemory { chip: vec![], slow: vec![] });
-    let map = cpu.load_exe(&exe, LOAD).expect("loading the program");
-    HUNK_BASES.set(map.hunks.iter().map(|h| h.base).collect()).unwrap();
+    HUNK_BASES.set(BASES.to_vec()).unwrap();
+    load(&exe, cpu.memory_mut());
+    fill_base(&routine, cpu.memory_mut());
+    cpu.write(PROBE, &PROBE_CODE);
+    cpu.set_hardware(true);
     let base = Arc::new(cpu.memory().to_vec());
 
-    let mut g = Gen(0x9E37_79B9_7F4A_7C15 ^ u64::from_str_radix(&routine, 16).unwrap());
+    let seed = routine.bytes().fold(0u64, |h, b| h.wrapping_mul(31).wrapping_add(b as u64));
+    let mut g = Gen(0x9E37_79B9_7F4A_7C15 ^ seed);
     let (mut valid, mut faulted) = (0usize, 0usize);
     let mut paths = std::collections::BTreeSet::new();
     let mut failure: Option<String> = None;
@@ -225,11 +338,22 @@ fn main() {
         for (a, b) in &s.pokes {
             cpu.write(*a, b);
         }
+        for &(a, v) in &s.hw_reads {
+            cpu.set_hardware_read(a, v);
+        }
+        // Where the VHPOSR counter stands: the probe reads one byte of it, so the routine sees the next.
+        let beam = cpu.call(PROBE, Regs { a: [0, 0, 0, 0, 0, 0, 0, STACK], ..Regs::default() }, 10)
+            .expect("the VHPOSR probe")
+            .regs
+            .d[0] as u8;
         let mut regs = Regs { d: s.d, a: s.a, ..Regs::default() };
         regs.a[7] = STACK;
         let res = cpu.call(entry(&routine), regs, MAX_INSTR);
         for (a, b) in saved.iter().rev() {
             cpu.write(*a, b);
+        }
+        for &(a, _) in &s.hw_reads {
+            cpu.set_hardware_read(a, 0);
         }
         let Ok(res) = res else {
             faulted += 1;
@@ -245,7 +369,9 @@ fn main() {
             .collect();
 
         // The port.
-        let before = Mem::new(base.clone(), &s.pokes);
+        let mut before = Mem::new(base.clone(), &s.pokes);
+        before.beam.set(beam.wrapping_add(1) as u16);
+        before.hw_reads = s.hw_reads.iter().copied().collect();
         let mut a = s.a;
         a[7] = STACK;
         let mut pc = Cpu { d: s.d, a, mem: before.clone() };
@@ -288,12 +414,27 @@ fn main() {
                         i += 1;
                         j += 1;
                     } else if wa < ga {
-                        diffs.push(format!("byte {}: original wrote ${:02x}, port left it ${:02x}", name(wa), want[i].1, before.rb(wa)));
+                        diffs.push(format!("byte {}: original wrote ${:02x}, port left it ${:02x}", name(wa), want[i].1, before.ram(wa)));
                         i += 1;
                     } else {
-                        diffs.push(format!("byte {}: original left it ${:02x}, port wrote ${:02x}", name(ga), before.rb(ga), got[j].1));
+                        diffs.push(format!("byte {}: original left it ${:02x}, port wrote ${:02x}", name(ga), before.ram(ga), got[j].1));
                         j += 1;
                     }
+                }
+                // The custom-chip writes, in order.
+                let (ow, pw) = (&res.hw_writes, &pc.mem.hw_writes);
+                if ow != pw {
+                    let k = ow.iter().zip(pw.iter()).take_while(|(x, y)| x == y).count();
+                    let show = |v: &[(u16, u16)]| {
+                        v.iter().skip(k).take(6).map(|(r, w)| format!("$dff{r:03x}=${w:04x}")).collect::<Vec<_>>().join(" ")
+                    };
+                    diffs.insert(0, format!(
+                        "custom-chip writes: original made {}, port {}; the first {k} agree, then original [{}] port [{}]",
+                        ow.len(),
+                        pw.len(),
+                        show(ow),
+                        show(pw)
+                    ));
                 }
             }
         }

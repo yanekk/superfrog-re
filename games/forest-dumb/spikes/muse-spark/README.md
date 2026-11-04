@@ -82,8 +82,72 @@ the third. Opus passed each first time.
   judge's hardware mode (`Cpu68k::set_hardware`).
 - Opus ran through `claude -p` with its default thinking; its cost is notional on a subscription.
 
+## Round 2: routines that drive the custom chips (2026-11-04)
+
+The judge now runs in the routine oracle's hardware mode and compares the custom-chip writes, in
+order, as well as registers and memory. The port's `Mem` reproduces the shim's hardware mode
+(`judge/src/lib.rs`): custom writes recorded, a BLTSIZE write runs the blit (the shim's `blit`,
+line for line), VHPOSR bytes step a counter, other reads return what the case set. VHPOSR's counter
+runs on across calls, so a two-instruction probe reads it before each case and the port starts from
+there. The program is loaded at the oracle's hunk bases, not packed from `$20000`, so the chip hunks
+sit where the blitter reaches them; round 1's numbers were taken under the old loader. Positive check:
+a hand translation of `h0+$774` passes 2000 of 2000. Not modelled: a CPU read of a write-only register,
+which the shim answers with the data bus's last word (none of these routines does it).
+
+`run.py --hw` adds a hardware paragraph to the system prompt and extracts the listing by control flow
+(every branch, backward ones too, which the music player uses), followed by the named labels it uses.
+
+| Routine | Kind | Instructions | Paths | What it does |
+|---|---|---|---|---|
+| `h0+$3adc` | Paula | 12 | 1 | raster wait, then starts a sample on channel 2 |
+| `h0+$774` | blitter | 20 | 3 | waits for raster and blitter, blits one tile |
+| `redraw_edge_a` `h0+$844` | blitter | 131 | 7 | redraws one map edge as the screen scrolls |
+| `h0+$3b2a` | Paula, CLXDAT | 183 | 69 | collision register, objects against the player, a sound |
+| `redraw_edge_b` `h0+$b20` | blitter | 298 | 7 | the opposite edge |
+| `h4+$18870` | Paula | 461 | 86 | the music player's per-channel effects tick |
+
+Same rules as round 1 (3 runs, up to 3 tries, Muse `max_tokens` 32 000):
+
+| Model | Routine | Runs passed | First try | Calls | Tokens in | Tokens out | Cost $ | Secs/call |
+|---|---|---|---|---|---|---|---|---|
+| muse | 3adc | 3/3 | 3/3 | 3 | 3 585 | 11 642 | 0.0027 | 40 |
+| opus | 3adc | 3/3 | 3/3 | 3 | 8 031 | 2 016 | 0.0723 | 7 |
+| muse | 774 | 3/3 | 3/3 | 3 | 4 008 | 20 114 | 0.0044 | 60 |
+| opus | 774 | 3/3 | 3/3 | 3 | 8 541 | 2 651 | 0.0864 | 10 |
+| muse | 844 | 3/3 | 2/3 | 4 | 14 938 | 90 949 | 0.0190 | 194 |
+| opus | 844 | 3/3 | 3/3 | 3 | 16 653 | 15 506 | 0.3662 | 44 |
+| muse | 3b2a | 3/3 | 2/3 | 5 | 34 406 | 140 859 | 0.0315 | 262 |
+| opus | 3b2a | 3/3 | 3/3 | 3 | 21 327 | 21 520 | 0.4996 | 60 |
+| muse | b20 | 1/3 | 0/3 | 9 | 72 916 | 263 843 | 0.0593 | 285 |
+| opus | b20 | 3/3 | 3/3 | 3 | 29 151 | 58 592 | 1.2536 | 158 |
+| muse | 4-18870 | 0/3 | 0/3 | 9 | 102 654 | 288 177 | 0.0657 | 265 |
+| opus | 4-18870 | 3/3 | 3/3 | 3 | 42 441 | 53 428 | 1.1876 | 143 |
+| **muse** | all | 13/18 | | 33 | 232 507 | 815 584 | 0.1826 | |
+| **opus** | all | 18/18 | | 18 | 126 144 | 153 713 | 3.4656 | |
+
+17 of Muse's 21 failed tries were no code: the answer stopped at 32 000 tokens, all reasoning. Muse
+alone was rerun on the two large routines with `--muse-max-tokens 128000` (the model allows ~940 000):
+
+| Model | Routine | Runs passed | First try | Calls | Cost $ | Secs/call | Outcomes |
+|---|---|---|---|---|---|---|---|
+| muse 128k | b20 | 1/3 | 0/3 | 8 | 0.0703 | 321 | pass 1, fail 2, compile 4, no-code 1 |
+| muse 128k | 4-18870 | 1/3 | 0/3 | 9 | 0.0757 | 260 | pass 1, fail 7, compile 1 |
+
+With room it writes code, but large answers broke: unbalanced braces, one 1 600-line general 68000
+interpreter instead of a translation (panics "bad size"), and translations off on 10 to 300 states.
+
+### What round 2 shows
+
+- Up to ~180 instructions, hardware makes no difference: Muse passed 12 of 12 runs (10 first try),
+  blits, Paula writes and raster waits included, at 1/20 to 1/30 of Opus's cost.
+- At ~300 to 460 instructions Muse fails: 2 of 6 runs with room to answer, 1 of 6 without. Opus passed
+  all 6 first time, at $1.19 to $1.25 a routine.
+- So the line is size, not hardware. Large routines go to Opus, or are split at their callees before
+  Muse sees them; the music player's effect handlers are separate routines a port could take one by one.
+
 ## Next if adopted
 
-Raise Muse's `max_tokens` above 32 000 for routines over ~300 instructions; split large routines at
-their callees; have the level 1 plan's porting tasks send translation to Muse through this judge and
-keep Claude on the generators, the typed-state shape and review.
+Send routines up to ~180 instructions to Muse through this judge; split larger ones at their callees
+first, or give them to Opus (a larger `max_tokens` alone did not fix them, round 2). Keep Claude on
+the generators, the typed-state shape and review. Untested: whether split pieces of a large routine
+pass as reliably as routines that size do.

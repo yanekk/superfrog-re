@@ -11,6 +11,8 @@ publish = false
 [dependencies]
 # The original routine, run alone on Moira over the loaded program.
 amiga-oracle = { path = "../../../../../toolkit/crates/amiga-oracle" }
+# The hunk reader, to load the program at the oracle's own hunk bases.
+amiga-disk = { path = "../../../../../toolkit/crates/amiga-disk" }
 
 [profile.release]
 # A translated routine with an overflow is a wrong translation: the 68000 wraps, and so must the port.
