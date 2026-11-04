@@ -1,0 +1,17 @@
+# Spike (2026-11-04, no plan): the judge for model-translated routines. Its own workspace, so the
+# game's `cargo test --workspace` neither builds it nor needs a port to exist.
+[workspace]
+
+[package]
+name = "fd-spike-judge"
+version = "0.1.0"
+edition = "2024"
+publish = false
+
+[dependencies]
+# The original routine, run alone on Moira over the loaded program.
+amiga-oracle = { path = "../../../../../toolkit/crates/amiga-oracle" }
+
+[profile.release]
+# A translated routine with an overflow is a wrong translation: the 68000 wraps, and so must the port.
+overflow-checks = true
