@@ -73,13 +73,16 @@ fn the_storys_music_plays_on_through_its_loads_as_the_original_does() {
 /// The whole game (T215), power-on to `end_seq_load`, judged with the owner's tolerance: each frame
 /// against the original's range over it and its neighbours, so a slow sound a few lines off passes.
 /// Only the stretch `game-whole.toml` lists as known (WB-1's channel 3, T216) may differ past it.
+/// The stretch is found by a frame inside it, not by its `task` label: T216 relabelled it an
+/// accepted difference awaiting the owner's confirmation, and the label changes again when they do.
 /// The feed from the trace cache: 7 min (434 s), 40 uncached.
 #[test]
 #[ignore]
 fn the_whole_games_channels_sound_as_the_original_does() {
     let case = Case::load(&cases_dir().join("game-whole.toml")).unwrap();
+    let wb1 = case.channels_known(180887, 180887).expect("game-whole lists WB-1's channel-3 stretch");
     let v = channels::check(&case, channels::OWNER).unwrap_or_else(|e| panic!("{e}"));
     println!("{v:?}");
     assert!(v.runs.is_empty(), "{:?}", v.runs);
-    assert!(v.known.iter().all(|(_, task)| task == "T216"), "{:?}", v.known);
+    assert!(v.known.iter().all(|(r, task)| r.channel == 3 && task == wb1), "{:?}", v.known);
 }
