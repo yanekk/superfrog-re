@@ -4,6 +4,7 @@
 //! format is in `engine/conform/README.md`.
 
 pub mod disks;
+pub mod sync;
 
 use std::fmt;
 use std::path::{Path, PathBuf};

@@ -22,7 +22,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T02 | route-pin | — | ✅ | |
 | T31 | code-ran-counter | — | ⬜ | |
 | T32 | routine-rig | — | ⬜ | |
-| T03 | level-sync | T00 | ⬜ | |
+| T03 | level-sync | T00 | ✅ | |
 | T04 | picture-in-play | T00 | ✅ | Review: clean code; reverted builder's formatter churn in seven untouched oracle files, dropped an unused `mut`. Mutated `picture_in` to ignore its window: `picture_in.rs` red. Ran play test, opened the saved frame: play area, gap, status bar. Title 320x238 deviation held by the play test. |
 | T30 | unpack-in-rust | — | ✅ | |
 | T05 | level-readers | T03, T04, T30 | ⬜ | |

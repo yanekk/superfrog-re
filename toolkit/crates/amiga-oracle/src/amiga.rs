@@ -214,6 +214,13 @@ pub struct Amiga {
 // The shim keeps no state shared between instances; an instance may move between threads.
 unsafe impl Send for Amiga {}
 
+/// So code taking the machine or a game's wrapper of it (`AsMut<Amiga>`) takes the machine itself.
+impl AsMut<Amiga> for Amiga {
+    fn as_mut(&mut self) -> &mut Amiga {
+        self
+    }
+}
+
 impl Drop for Amiga {
     fn drop(&mut self) {
         unsafe { ffi::amiga_free(self.raw) };
