@@ -24,6 +24,7 @@
 //! the view passes is T22's. Where in the pass the original updates its objects is T21's to measure:
 //! [`game_frame`] runs them after the character and camera until then.
 
+pub mod camera;
 pub mod collision;
 
 use amiga_input::FrameInput;
@@ -172,8 +173,11 @@ pub fn game_frame(
     events: &mut Vec<Event>,
     input: FrameInput,
 ) {
-    // char_sprite_copy, h0+$94ba (T10), camera_update, h0+$513c (T09), char_sprite_position,
-    // h0+$9754 (T10).
+    // char_sprite_copy, h0+$94ba (T10).
+    // `camera_update`, then `h0+$513c` (T09).
+    let s = &mut *l.state;
+    s.camera.step((s.char_x, s.char_y), &mut s.frame_flag);
+    // char_sprite_position, h0+$9754 (T10).
     if l.state.paused != 0 {
         // play_keys (T23).
         return;

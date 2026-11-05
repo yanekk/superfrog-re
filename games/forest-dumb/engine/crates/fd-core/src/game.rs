@@ -106,6 +106,8 @@ impl Game {
                     &mut self.events,
                     i,
                 );
+                // `level3_handler` after `game_frame`: `move.w #$ffff, frame_flag`.
+                self.state.frame_flag = 0xffff;
             }
         }
     }
@@ -285,11 +287,19 @@ mod tests {
     }
 
     #[test]
-    fn a_step_counts_the_pass_reads_the_joystick_and_runs_the_character() {
+    fn a_step_counts_the_pass_runs_the_camera_reads_the_joystick_and_runs_the_character() {
         let mut g = Game::new(data(), Start::Level1);
         g.step(FrameInput::joy(Joy::RIGHT));
         let s = g.state();
         assert_eq!(s.irq_count, 2);
+        // camera_update (T09): the character is at rest in the dead zone, and the latches the first
+        // pass set block the left edge: the camera stays, its crossed flags clear, and it notes the
+        // character's distance, before the character moves.
+        let want = State::level_1().camera;
+        assert_eq!((s.camera.x, s.camera.y), (want.x, want.y));
+        assert_eq!(s.camera.edges.crossed, [false; 4]);
+        assert_eq!(s.camera.screen_y, 0x70 - 0x17);
+        assert_eq!(s.frame_flag, 0xffff);
         // read_joystick (T51): right held, one more byte in the log.
         assert_eq!((s.joy.right, s.input_log.index), (1, 2));
         // char_update (T08): on an empty plane `char_probe_1` is 0, so four sub-steps fall; the
@@ -305,15 +315,20 @@ mod tests {
     }
 
     #[test]
-    fn paused_runs_nothing_after_the_count() {
+    fn paused_runs_the_camera_and_nothing_after_it() {
+        // game_frame runs camera_update before its `paused` test (h0+$200a); the joystick, the
+        // objects and the character wait.
         let mut g = Game::new(data(), Start::Level1);
         g.state.paused = 1;
         g.step(FrameInput::joy(Joy::RIGHT));
-        let want = State {
+        let mut want = State {
             irq_count: 2,
             paused: 1,
+            frame_flag: 0xffff,
             ..State::level_1()
         };
+        want.camera.edges.crossed = [false; 4];
+        want.camera.screen_y = 0x70 - 0x17;
         assert_eq!(*g.state(), want);
     }
 

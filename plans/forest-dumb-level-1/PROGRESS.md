@@ -10,7 +10,7 @@
 
 **Status:** Amendment read back and its 4 decisions settled; ready to build. Nothing built.
 **Last updated:** 2026-11-05
-**Next `pir-work` will:** T09 (camera scroll); T41 and T42 wait on it.
+**Next `pir-work` will:** T55 (edge redraw), which T10, T41, T42 and T43 wait on.
 
 ## Tasks
 
@@ -38,7 +38,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T40 | batch-translate | T35, T36, T37, T38, T39 | ✅ | |
 | T07 | level-entry | T05, T06, T32 | ✅ | |
 | T08 | character-movement | T07, T40 | ✅ | Review: one doc fix (`Files` names disk 1's program). Rig 10 000 states x14 reran green; mutants `p1 == 3`, dying `>= 8` went red; `loaded_hunk` tables equal the oracle's memory; T63, T64 well-formed; `exe_map_claims` red identically on base (73 lines), T64's. Interface deviations held by the rig. Unverified: none. |
-| T09 | camera-scroll | T07, T40 | ⬜ | |
+| T09 | camera-scroll | T07, T40 | ✅ | |
 | T10 | level-drawing | T08, T09, T40 | ⬜ | |
 | T41 | case-run-jump | T08, T09 | ⬜ | |
 | T42 | case-walls-pits | T08, T09, T41 | ⬜ | |
@@ -79,7 +79,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T58 | translate-btst-fix | T33; blocks T40 | ✅ | |
 | T59 | oracle-sprite-collision | T21; blocks T24, T41, T42, T43, T44, T45, T46, T47 | ✅ | |
 | T60 | rig-branch-coverage | T32 | ✅ | |
-| T61 | generate-service | T33, T60; blocks T49 | ⬜ | |
+| T61 | generate-service | T33, T60; blocks T49 | ✅ | |
 | T62 | engine-shape-trial | T08, T09, T33 | ⬜ | |
 | T63 | game-frame-rig | T08, T09, T10, T22, T23, T24, T25, T26, T51, T52, T55; blocks T27 | ⬜ | |
 | T64 | listing-odd-bytes | T08, T51 | ⬜ | |
