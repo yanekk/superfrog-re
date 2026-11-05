@@ -66,6 +66,7 @@ Not written yet: there is no engine to fix. It comes with the recorder, step 8 o
 
 - [docs/frame-length.md](docs/frame-length.md): the measured frame length, 313 lines, dated.
 - [docs/09-play-measured.md](docs/09-play-measured.md): W1-1 play measured: sync frame, passes, input, display, sprites, state variables, level end, the character's routines.
+- [docs/10-object-system.md](docs/10-object-system.md): what each object value of W1-1 does, measured; the freeze list; creature contact needs T59.
 - [docs/11-translation.md](docs/11-translation.md): translation by Muse: `tools/translate.py` (how to call it, what a pass proves) and the inventory of routines to translate, sized and given tasks in [re/translate.toml](re/translate.toml) by `tools/call_tree.py`.
 - [toolkit/docs/porting-routines.md](../../toolkit/docs/porting-routines.md): read before porting or reading any routine of the original; the first game's porting lessons as rules.
 - [engine/conform/README.md](engine/conform/README.md): the conformance runner `fd-conform` and its case format.

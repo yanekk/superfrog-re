@@ -36,6 +36,9 @@ workspace = "engine"
 "crates/fd-conform/tests/gen_character.rs" = "smoke"
 # T36's camera generators against the original, branches both ways: under a second.
 "crates/fd-conform/tests/gen_camera.rs" = "smoke"
+# T21: what each object value of W1-1 does, scripted slides from the cached sync point, 3 s warm;
+# the map and note checks read disk 2. A machine with no sync cache boots to W1-1 once first.
+"crates/fd-conform/tests/object_claims.rs" = "smoke"
 # Three boots to W1-1, about 32 s together: the measurements of docs/09-play-measured.md.
 "crates/fd-conform/tests/play_measured.rs" = "full"
 # One boot to W1-1 (title and play), 12 to 27 s: picture_in on the whole play picture (T04).
