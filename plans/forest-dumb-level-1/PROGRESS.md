@@ -9,7 +9,7 @@
 
 **Status:** Amendment read back and its 4 decisions settled; ready to build. Nothing built.
 **Last updated:** 2026-11-05
-**Next `pir-work` will:** review T38.
+**Next `pir-work` will:** pick the next ⬜ task whose dependencies are ✅.
 
 ## Tasks
 
@@ -32,7 +32,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T35 | gen-character | T33, T34 | ⬜ | |
 | T36 | gen-camera | T33, T34 | ✅ | |
 | T37 | gen-drawing | T33, T34 | ⬜ | |
-| T38 | gen-objects | T33, T34 | 🔍 | 10 generators in `gen/objects.rs`; `gen_objects.rs` 4 tests: witnesses match the original on 2 000 states, branches both ways but 5 named one-way waits. `h0+$2e0e` passed the service (try 2). Deviations: spike entry `char_hit_check` renamed `h0+$3b2a` (spike.rs, rig.rs) to free the name; counters valid BCD only. |
+| T38 | gen-objects | T33, T34 | ✅ | Review: one fix, branch `h0+$3aec` was the cmp, renamed `h0+$3af2`; branch lists of all ten checked against a flow walk of the listing. Mutations caught: box corners always hitting, witness missing the slot-flag clear (caught via `h0_2dd6` only, `h0_2e0e` alone passes). Probe: 74 000 counter pokes valid BCD. Service pass read-only. |
 | T39 | gen-rest | T33, T34 | ⬜ | |
 | T40 | batch-translate | T35, T36, T37, T38, T39 | ⬜ | |
 | T07 | level-entry | T05, T06, T32 | ⬜ | |
@@ -76,7 +76,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T56 | gen-edge-redraw | T33, T34; blocks T40 | ⬜ | |
 | T57 | sf-scale-fullscreen-os-test | — | ⬜ | |
 
-**Review queue:** T38
+**Review queue:** *(empty)*
 
 ## Blocked on the user
 
