@@ -15,24 +15,13 @@
 use sf_core::input::{FrameInput, Joy, KeySet};
 use winit::keyboard::KeyCode;
 
-pub use amiga_app::keys::{KeyMap, OriginalInput, key_label, key_name, key_named};
+pub use amiga_app::keys::KeyMap;
 
 use crate::menu::Command;
-use crate::pad::{PadEvent, PadInput, PadMap, PadState};
+use crate::pad::{PadInput, PadMap, PadState};
 
-/// A host input event, from winit or from a script.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum HostInput {
-    Key { code: KeyCode, pressed: bool },
-    /// The left mouse button over the window.
-    MouseLeft { pressed: bool },
-    /// The window lost focus. macOS sends no key-up for a key held across it (winit resets only
-    /// the modifiers), so every key and the mouse are let go. A pad is not: it is not the
-    /// window's.
-    FocusLost,
-    /// A gamepad's event (`pad.rs`).
-    Pad(PadEvent),
-}
+/// A host input event, from winit or from a script (the toolkit's since forest-dumb-level-1 T12).
+pub use amiga_app::script_core::HostInput;
 
 /// The host keys held, one entry a press.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
@@ -184,6 +173,8 @@ impl Input {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::pad::PadEvent;
+    use amiga_app::keys::OriginalInput;
 
     fn key(code: KeyCode, pressed: bool) -> HostInput {
         HostInput::Key { code, pressed }

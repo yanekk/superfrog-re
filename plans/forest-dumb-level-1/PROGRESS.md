@@ -67,6 +67,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T48 | route-on-original | T27 | ⬜ | |
 | T28 | finish-end-to-end | T16, T48 | ⬜ | |
 | T29 | level-drill | T15, T28 | ⬜ | |
+| T50 | sf-menus-os-test-stale | — | ⬜ | |
 
 **Review queue:** *(empty)*
 
