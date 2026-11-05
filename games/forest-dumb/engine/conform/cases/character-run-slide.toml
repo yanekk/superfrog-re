@@ -1,6 +1,6 @@
-# T41: right held from the start. The ground slopes away at once, so the character slides, with no
-# control (up does nothing), to W1-1:42,35, char_x $29d, by frame 6515, where a creature's contact
-# costs a life from frame 6521: the case ends before it. The camera scrolls all the way.
+# T41: right held from the start. The ground slopes away at once and the character slides down it,
+# reaching W1-1:42,35, char_x $29d, at frame 6522, where the case ends: a creature's contact costs a
+# life soon after. The camera scrolls all the way. Up held while sliding jumps (character-run-right-jump).
 # hits_taken counts a creature's contact on the way, which T24 models.
 sync = { script = "boot-to-level1", frame = 6400 }
 input = "character-run-slide"

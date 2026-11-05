@@ -1,5 +1,6 @@
 //! The character's runs against the original on clear stretches of W1-1 (plans/forest-dumb-level-1
-//! T41): running left to the wall and back, the slide right, standing jumps tapped and held, and input
+//! T41): running left to the wall and back, the slide right, a running jump right into a wall,
+//! standing jumps tapped and held, and input
 //! on the frame of a landing. Each case runs fd-core's `Game` from the level sync point and compares
 //! the character's `LAYOUT` variables on every pass; together they reach every routine T08 and T51
 //! ported. Needs the disks and the Kickstart: absent, it fails naming where it looked.
@@ -10,9 +11,10 @@ use std::thread;
 use fd_conform::{Case, Goal, Outcome, Verdict, run};
 use fd_core::PORTED;
 
-const CASES: [&str; 4] = [
+const CASES: [&str; 5] = [
     "character-run-left",
     "character-run-slide",
+    "character-run-right-jump",
     "character-run-jumps",
     "character-run-landing",
 ];

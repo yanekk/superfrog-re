@@ -1,4 +1,4 @@
 # T41: from the sync frame 6400: right held. The ground slopes from the start, so the character
-# slides to W1-1:42,35 (char_x $29d) by frame 6515.
+# slides to W1-1:42,35 (char_x $29d) at frame 6522.
 0: -
 10: R
