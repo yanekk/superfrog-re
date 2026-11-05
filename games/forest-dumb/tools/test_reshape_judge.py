@@ -57,6 +57,16 @@ class RealRig(unittest.TestCase):
         self.assertEqual(r.read(os.path.join(r.ENGINE, r.TASKS['T08']['src'])).count(right), 1,
                          'the committed source is never changed')
 
+    def test_a_unit_whose_routines_the_rig_never_ran_is_not_a_pass(self):
+        # A misspelled routine in a TASKS entry makes RESHAPE_ONLY skip every routine: the test
+        # then passes with nothing compared, so a wrong answer would read as a pass.
+        cfg, u = r.find_unit('T08', 'h0_4274')
+        wrong = committed('rise_step').replace('self.state.char_y.wrapping_sub(v as u32)',
+                                               'self.state.char_y.wrapping_sub(v as u32).wrapping_add(1)')
+        with self.assertRaises(r.Usage) as e:
+            r.run_rig('T08', dict(u, routines=[('h0_no_such', 0x4274)]), "impl Character<'_> {\n" + wrong + "}\n")
+        self.assertIn('h0_no_such', str(e.exception))
+
 
 if __name__ == '__main__':
     unittest.main()

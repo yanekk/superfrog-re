@@ -789,7 +789,8 @@ the spend guard are `translate.py`'s.
 - **The judge** copies `engine/` to `build/reshape/scratch/engine` (path dependencies outside it made
   absolute, `re/` linked), cuts the unit's functions out, appends the answer, limits the rig test's loop
   to the unit's routines (`RESHAPE_ONLY`) and runs that test: 10 000 states a routine with its
-  generators. The copy must stay inside the checkout, because fd-tools finds the zips through git.
+  generators. A pass counts only if the test reports paths for every routine of the unit; a name
+  missing from the rig table is a usage error, not a pass of nothing. The copy must stay inside the checkout, because fd-tools finds the zips through git.
   Warm, a build and run takes about 6 s.
 
 ### The run, 2026-11-05

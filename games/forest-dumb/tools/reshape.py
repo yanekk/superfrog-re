@@ -493,8 +493,16 @@ def run_rig(task, u, answer, root=ENGINE):
                     'state your function never returns. Return the whole corrected impl block.'}
     text = r.stdout + r.stderr
     # T08's test prints `paths: name N (h hangs), ...`, T09's `name: N paths`.
-    paths = sum(int(a or b) for a, b in re.findall(r'\b\w+ (\d+) \(\d+ hangs\)|: (\d+) paths', text))
+    ran = {a or c: int(b or d) for a, b, c, d in
+           re.findall(r'\b(\w+) (\d+) \(\d+ hangs\)|\b(\w+): (\d+) paths', text)}
+    paths = sum(ran.values())
     if r.returncode == 0:
+        # A routine name RESHAPE_ONLY matches nowhere skips it and the test passes with nothing
+        # compared: a pass counts only when the rig reports every routine of the unit.
+        missing = [n for n, _ in u['routines'] if n not in ran]
+        if missing:
+            raise Usage(f"{cfg['test']} passed without running {', '.join(missing)}: the name is not in "
+                        f"its routine table, or the test no longer prints its paths: update TASKS")
         return {'outcome': 'pass', 'paths': paths}
     m = re.search(r"panicked at [^\n]*\n(.*?)(?:\nnote: run with|\n\nfailures:|\Z)", text, re.S)
     why = (m.group(1) if m else text[-2500:]).strip()[:3000]
