@@ -6,6 +6,8 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-11-05 | 📌 | T67 added by T41 with the owner's yes: while the camera scrolls a pass reads `JOY1DAT` in the step after its `irq_count` rose (57 of 76 slide passes), so `run_with` pairs the wrong input; blocks T42, T43, T44, T15. |
+| 2026-11-05 | 📌 | T41, measured from frame 6400: holding right slides W1-1's first slope uncontrolled (up ignored) to `char_x` $29d, a life lost from frame 6521. Up on a landing frame, or held through a landing, jumps again; up mid-air does nothing. |
 | 2026-11-05 | 📌 | T55 review: `cases/w1-idle.toml` (T07) compares no `edge_latch_*` or `edge_at_*`, so it cannot see the camera/redraw hand-off; T55's `the_edge_latches_step_with_the_original_over_the_idle_case` does. Left. |
 | 2026-11-05 | 📌 | T55, measured: a pass's state precedes `main_loop`'s redraws (`h0+$1e66` lags the latches a pass; `frame_flag` reads `$ffff`), so `Game::step` redraws first. Two edges in one frame finish after the next pass (8 of 520 frames). |
 | 2026-11-05 | 📌 | T65 added by T55 with the owner's yes: nothing ported `level_init`'s first view (`h0+$62e` tiles, `h0+$6c4` `collision_map`), so `Game::new` had an empty `collision_map` (cases transplant it). Blocks T13, T20. |
@@ -26,8 +28,7 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 | 2026-11-05 | 📌 | T59: oracle collision on, `BUILD` now ends `-clx`, so every sync and trace cache rebuilt once (Superfrog `level_entry` 396 s cold). Superfrog route pins and oracle smoke tests unchanged. Replaces T21's CLXDAT `$8000` row, now tested. |
 | 2026-11-05 | 📌 | T59: contact hurts only once `h0+$9b04` wraps to 0, ~100 passes after the sync point. The slide now loses a life at its end, `W1-1:42,35` (tiles); `level_files` covered cells at 6640 fell 11 to 8. |
 | 2026-11-05 | 📌 | T59: `test_architecture_docs.py` fails 3 checks with and without T59 (unowned `amiga-plan` files, missing cited paths). Left alone. |
-| 2026-11-05 | 📌 | T57 review: in fullscreen `os_window` (toolkit `amiga-e2e/src/os.rs`) can return a 1920×32 layer-0 strip at y −32, seen 625 ms in; `find` takes the first layer-0 window. Harmless while the wait passes on its first sample. Not fixed. |
-| 2026-11-05 | 🐞 | T57: every red of `os_layer_scale_and_fullscreen…` was a locked screen (front app `loginwindow`); `os_layer()` now refuses one (`CGSSessionScreenIsLocked`). |
+| 2026-11-05 | 🐞 | T57: every red of `os_layer_scale_and_fullscreen…` was a locked screen (`loginwindow`); `os_layer()` now refuses one (`CGSSessionScreenIsLocked`). Review: fullscreen `os_window` (`amiga-e2e/src/os.rs`) can return a 1920×32 layer-0 strip at y −32; `find` takes the first. Not fixed. |
 | 2026-11-05 | 📌 | T56 review sweep: `generators::generator` (`gen/mod.rs`) returns the first of duplicate names and no test checks the whole registry is unique; only `gen_edge_redraw.rs` checks its own names. Not fixed. |
 | 2026-11-05 | 📌 | T56: the oracle's VHPOSR counter runs on across calls, so a routine with a raster wait (`h0_3ac2`) differs between two runs of one state; `gen_edge_redraw.rs` sets it per state first. The spike's `h0+$774` generator duplicates `h0_774`; `judge.rs` still uses it. |
 | 2026-11-05 | 📌 | T54: creature probes (`h0_3530`..`h0_35dc`) index `collision_map` by `(x >> 3)` with x a level coordinate, reading up to `$4dd2` bytes past `h3+$fa50`, beyond its `$2e00`. T24 ports that reach as is. `h0_3698` compares the middle slot pairs as bytes. |

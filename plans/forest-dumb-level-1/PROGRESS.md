@@ -40,7 +40,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T08 | character-movement | T07, T40 | ✅ | |
 | T09 | camera-scroll | T07, T40 | ✅ | |
 | T10 | level-drawing | T08, T09, T40 | ⬜ | |
-| T41 | case-run-jump | T08, T09 | ⬜ | |
+| T41 | case-run-jump | T08, T09 | 🔍 | Four cases (left run with running jump, slide right, tapped and held jumps, landing-frame input), one smoke test; all match, every T08/T51 routine hit, no engine fix. Deviation: right from the start is an uncontrolled slide, no gap to jump; covered as the slide. Mid-scroll button-change case deferred to T67 (owner). |
 | T42 | case-walls-pits | T08, T09, T41 | ⬜ | |
 | T43 | case-scroll | T08, T09 | ⬜ | |
 | T44 | case-picture | T10 | ⬜ | |
@@ -85,8 +85,9 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T64 | listing-odd-bytes | T08, T51 | ✅ | |
 | T66 | reshape-decision | T62; blocks T22 | ⬜ | |
 | T65 | level-start-draw | T55; blocks T13, T20 | ⬜ | |
+| T67 | pass-input-read | T06; blocks T42, T43, T44, T15 | ⬜ | |
 
-**Review queue:** *(empty)*
+**Review queue:** T41
 
 ## Blocked on the user
 
