@@ -196,7 +196,9 @@ def run_cover(path, hunk, off, name, out):
         b = subprocess.run(['cargo', 'build', '-q', '-p', 'fd-conform', '--bin', 'fd-judge',
                             '--message-format', 'short'], cwd=ENGINE, env=env, capture_output=True, text=True)
         if b.returncode != 0:
-            errs = [l for l in b.stderr.splitlines() if 'error' in l or l.startswith(' ')][:60]
+            # build.rs copies the answer line for line, so its positions are the answer's own.
+            errs = [re.sub(r'\S*/candidate\.rs', 'your file', l) for l in b.stderr.splitlines()
+                    if 'error' in l or l.startswith(' ')][:60]
             return {'outcome': 'compile', 'feedback': 'It did not compile:\n' + '\n'.join(errs)}
         argv = [tr.judge_bin(), tr.label(hunk, off), '--gen', name, '--cases', str(CASES), '--cover']
         try:

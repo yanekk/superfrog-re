@@ -6,6 +6,8 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-11-05 | 📌 | T61 live runs, worker action: `generate.py` on one routine per subsystem, all `covered`, 6 tries, $0.0139 in all. Muse covered `h0_4b0e`'s two callee branches its hand-written generator misses. Table in docs/11-translation.md. |
+| 2026-11-05 | 🐞 | T61: `fd-judge --cover` finds hand-written generators failing `generate.py`'s rules: `h0_3566` (`probe`) and `char_object_cells` poke bytes the original never reads; `char_object_cells` and `h0_4b0e` leave branch ways untaken. Left alone. |
 | 2026-11-05 | 📌 | T49: nothing to translate, no batch run, $0. The 36 object routines in `objects-W1-1.toml` and docs/10 are all in T40's table: 33 pass, `h0_2c7e`, `h0_5e44` by hand in T52, `h0_62b6` in T25. Recorded in docs/11; T49's amended per-generator items are void with no generator. |
 | 2026-11-05 | 🔄 | Owner amended mid-run after checkpoint 2: Muse writes generators, judged by branch coverage (T60, T61, T49 uses them); T62 trials Muse on engine-shaped ports for T10's routines. Run stopped for the edit. |
 | 2026-11-05 | 📌 | T40 batch, worker action: `translate_batch.py --max-usd 5 --parallel 8`: 87 routines, 77 pass, 1 fail (`camera_update`), 4 too-big, 3 blocked, 2 no-gen; $0.1596, 1 102 s, 86 calls. Table in docs/11-translation.md. |
@@ -59,9 +61,6 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 | 2026-11-05 | 🔄 | Owner set every Muse call to `worker`, the batch included (caps $0.10 a routine, $5 a batch), and asked for a read-back of the amendment. |
 | 2026-11-05 | 🔄 | Owner adopted translation by Muse and small sessions (brief): T32 rig split from T06, T33 to T40 translation track, T41 to T48 frame-matching per case. pir deletes `.parallel/control/conversations/` only on Remove; DESIGN §5.3 copies them first. |
 | 2026-11-03 | 🔄 | Owner approved the first game's lessons before the build: `toolkit/docs/porting-routines.md`, DESIGN §4.1 and §4.2, two T00 questions, and T31, a sixth vAmiga patch counting executed addresses. Every sync cache rebuilds once after T31. |
-| 2026-11-01 | 🐞 | Plan review: no Rust unpacker existed, only `tools/unpack.py`; `fd-tools` only extracts. T30 added before T05 (owner). |
 | 2026-11-01 | 📌 | Plan review, measured: Accessibility and Screen Recording granted, screen unlocked, headless Chrome runs a local page. Fresh-copy smoke: 904 s, over its 900 s budget, fails at 1 200 s. |
 | 2026-11-01 | 🔄 | Owner replaced the planner's always-on recorder with Superfrog's Start Level modal, one level in its selector, fields added as discovered. |
 | 2026-11-01 | 📌 | `sf-e2e/tests/plan_routes.rs` is labelled smoke but its only test is `#[ignore]`d, so smoke only compiles it. Left alone. |
-| 2026-11-01 | 📌 | Nothing pins a Superfrog planned route across a refactor: its determinism tests compare runs within one build. T02 adds the pin. |
-| 2026-11-01 | 📌 | Smoke took 503 to 887 s of 900 s in recent runs (`~/.cache/superfrog-re/smoke-times.tsv`). T01 makes room. |
