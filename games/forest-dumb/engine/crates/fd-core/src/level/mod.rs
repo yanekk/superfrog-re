@@ -24,6 +24,8 @@
 //! the view passes is T22's. Where in the pass the original updates its objects is T21's to measure:
 //! [`game_frame`] runs them after the character and camera until then.
 
+pub mod collision;
+
 use amiga_input::FrameInput;
 use fd_assets::Level;
 

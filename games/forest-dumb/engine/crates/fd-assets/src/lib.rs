@@ -8,6 +8,7 @@
 
 mod error;
 mod level;
+mod program;
 mod sprites;
 
 pub use error::{AssetError, Why};
@@ -15,6 +16,7 @@ pub use level::{
     CollisionMap, LEVEL_ROWS, Level, OBJECT_COLUMNS, ObjectMap, SHAPE_BYTES, TILE_BYTES, TileMap,
     level_file_names, read_level,
 };
+pub use program::loaded_hunk;
 pub use sprites::{Sheet, Sprites, read_sprites, sprite_file_names};
 
 /// A closure handing over one of the game's files, unpacked, by its name on disk 2.

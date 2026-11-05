@@ -1130,3 +1130,281 @@ name = "anim_cells"
 kind = "var"
 size = 384
 note = "the animated cells: x.w, y.w, object value.b, 3 more bytes, 48 of them"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x3b28
+name = "char_jump_3b28"
+kind = "var"
+size = 2
+note = "word; set, the rise reads h0+$42ec (h0_4274); cleared on landing (T08)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x41b4
+name = "char_jump_41b4"
+kind = "var"
+size = 2
+note = "word; set, the rise reads h0+$43ba (h0_4274) (T08)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x41b6
+name = "char_jump_41b6"
+kind = "var"
+size = 2
+note = "word; a take-off with it set sets char_jump_41b4 (char_step) (T08)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x4b60
+name = "char_dying_t"
+kind = "var"
+size = 2
+note = "the dying fall's counter; its high nibble picks the frame (char_step) (T08)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x4b62
+name = "char_dying"
+kind = "var"
+size = 2
+note = "set, char_step runs the dying fall and nothing else (T08)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x4ecf
+name = "char_rising"
+kind = "var"
+size = 1
+note = "the jump's rise runs (char_step) (T08)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x4ed0
+name = "char_falling"
+kind = "var"
+size = 1
+note = "the fall runs (h0_410c) (T08)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x4ed3
+name = "char_probe_3"
+kind = "var"
+size = 1
+note = "wall left: samples $54f5 or $54f6 (char_probe_flags) (T08)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x4ed4
+name = "char_probe_4"
+kind = "var"
+size = 1
+note = "wall right: samples $54f7 or $54f8 (char_probe_flags) (T08)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x4ed5
+name = "char_probe_5"
+kind = "var"
+size = 1
+note = "above: samples $54f9..$54fb (char_probe_flags) (T08)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x4ed6
+name = "char_probe_6"
+kind = "var"
+size = 1
+note = "above: samples $54fc..$54fe (char_probe_flags) (T08)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x4108
+name = "char_slide_t"
+kind = "var"
+size = 1
+note = "the slide's step into h0+$40ac/$40cb (h0_3ea8) (T08)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x4109
+name = "char_jumped"
+kind = "var"
+size = 1
+note = "the rise has left the ground (char_step) (T08)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x410a
+name = "char_jump_t"
+kind = "var"
+size = 1
+note = "the rise's or fall's step into its table (h0_4274, h0_416c) (T08)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x4710
+name = "char_run_left"
+kind = "var"
+size = 4
+note = "run counter left, index into h0+$49d0 (h0_47e2) (T08)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x4714
+name = "char_run_right"
+kind = "var"
+size = 4
+note = "run counter right, index into h0+$49d0 (h0_497c) (T08)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x54f0
+name = "char_samples_0"
+kind = "var"
+size = 4
+note = "char_probe's samples $54f0..$54f3, $ff solid or 0 (T08)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x54f4
+name = "char_samples_4"
+kind = "var"
+size = 4
+note = "char_probe's samples $54f4..$54f7 (T08)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x54f8
+name = "char_samples_8"
+kind = "var"
+size = 4
+note = "char_probe's samples $54f8..$54fb (T08)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x54fc
+name = "char_samples_c"
+kind = "var"
+size = 4
+note = "char_probe's samples $54fc..$54ff; $54ff the low ground point (T08)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x3e2c
+name = "char_update_t"
+kind = "var"
+size = 4
+note = "char_update's sub-step count, 3 to 0 (T08)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x9b04
+name = "char_unhurt_t"
+kind = "var"
+size = 1
+note = "set to $9b when the dying fall lands (char_step); contact hurts once it wraps to 0 (T59) (T08)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x3ea8
+name = "h0_3ea8"
+kind = "func"
+note = "nothing pressed: land or fall, then the slide or a stop (T08)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x410c
+name = "h0_410c"
+kind = "func"
+note = "land, or a fall step with a pixel of air steering (T08)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x416c
+name = "h0_416c"
+kind = "func"
+note = "one fall step down by h0+$44d4 (T08)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x4274
+name = "h0_4274"
+kind = "func"
+note = "one rise step up by h0+$431e, $42ec or $43ba (T08)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x4696
+name = "h0_4696"
+kind = "func"
+note = "a pixel left or right in the air unless a wall; ends run and slide (T08)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x4718
+name = "h0_4718"
+kind = "func"
+note = "left pressed: walk and run step, following the slope (T08)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x47e2
+name = "h0_47e2"
+kind = "func"
+note = "the left run's step from h0+$49d0, moved and left in d0 (T08)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x48be
+name = "h0_48be"
+kind = "func"
+note = "right pressed: walk and run step, following the slope (T08)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x497c
+name = "h0_497c"
+kind = "func"
+note = "the right run's step from h0+$49d0, moved and left in d0 (T08)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x4b0e
+name = "h0_4b0e"
+kind = "func"
+note = "up pressed: the jump starts, or the fall (T08)"
