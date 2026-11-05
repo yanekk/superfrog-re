@@ -9,7 +9,7 @@
 
 **Status:** Amendment read back and its 4 decisions settled; ready to build. Nothing built.
 **Last updated:** 2026-11-05
-**Next `pir-work` will:** review T07; then T08, T09, T51 build on its `Game::step`.
+**Next `pir-work` will:** T08, T09, T51, which build on T07's `Game::step`.
 
 ## Tasks
 
@@ -35,7 +35,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T38 | gen-objects | T33, T34 | ⬜ | |
 | T39 | gen-rest | T33, T34 | ⬜ | |
 | T40 | batch-translate | T35, T36, T37, T38, T39 | ⬜ | |
-| T07 | level-entry | T05, T06, T32 | 🔍 | Game, State::level_1, dispatch, Event::Unported; w1-idle case; 14 fd-core, 4 level_entry tests. Deviations: case format gains `what = "var NAME"` exclusions (countdown, T23); Engine::events typed, Unported fails every case, T06's refusal test dropped; GameData holds level only; layout.rs, symbols.toml untouched; mt_counter constant 1. |
+| T07 | level-entry | T05, T06, T32 | ✅ | Review clean, no fix commit. Probed an unused `var` exclusion (fails ExclusionUnused); mutations caught: unported object kept silently, camera_y at sync, excluded variable never counted. Deviations held: var exclusions, typed events with Unported failing every case, T06 refusal test dropped. GameData holds level only; app stderr write is later work. |
 | T08 | character-movement | T07, T40 | ⬜ | |
 | T09 | camera-scroll | T07, T40 | ⬜ | |
 | T10 | level-drawing | T08, T09, T40 | ⬜ | |
@@ -76,7 +76,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T56 | gen-edge-redraw | T33, T34; blocks T40 | ⬜ | |
 | T57 | sf-scale-fullscreen-os-test | — | ⬜ | |
 
-**Review queue:** T07
+**Review queue:** *(empty)*
 
 ## Blocked on the user
 
