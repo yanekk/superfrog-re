@@ -6,14 +6,20 @@
 //! switch or an opened gate reads as it is now, and from the level's file for what never changes
 //! (hazards, exits).
 
+use std::sync::Arc;
+
+use amiga_plan::PlanGame;
 use sf_assets::LevelData;
 use sf_core::frog::{FROG, f};
+use sf_core::input::{FrameInput, Joy};
 use sf_core::layout::{h0, h1};
 use sf_core::mem::Rom;
 use sf_core::{Game, LevelId, State};
 
+use super::map::in_gate_block;
+
 /// A map cell, `(col, row)`, on the 300×84 map, top-left origin.
-pub type Cell = (u16, u16);
+pub use amiga_plan::Cell;
 
 pub const COLS: u16 = 300;
 pub const ROWS: u16 = 84;
@@ -32,7 +38,12 @@ const TILE_PICKUP: u16 = 55;
 const SWITCHES: std::ops::RangeInclusive<u16> = 48..=51;
 
 /// `coins_left_for_exit` (h0+$832): coins still needed before the exit lock goes.
-const COINS_LEFT: u32 = h0(0x832);
+pub(crate) const COINS_LEFT: u32 = h0(0x832);
+/// `frog_hearts` (h0+$830).
+pub(crate) const HEARTS: u32 = h0(0x830);
+/// `level_state` (h0+$a06): −2 while the level is played.
+pub(crate) const LEVEL_STATE: u32 = h0(0xa06);
+pub(crate) const PLAYING: u32 = 0xffff_fffe;
 /// `marker_cells` (h0+$162e4): per switch marker 48–51, the address of its gate's cell, 0 if it
 /// opens nothing (`switch`, h0+$f6be, then does nothing: W6-4's 51).
 const MARKER_CELLS: u32 = h0(0x162e4);
@@ -81,6 +92,33 @@ pub struct Facts {
     pub switches: Vec<Switch>,
     pub exits: Vec<Cell>,
     pub coins_needed: u16,
+    /// Per `switches` index: its gate block's cells (`map::in_gate_block`) that are ground now,
+    /// open once it is pressed (the walk compass's gates).
+    pub gates: Vec<Vec<Cell>>,
+}
+
+impl Facts {
+    /// The facts the toolkit's planner reads: the map's size, the exits, the object coins (only
+    /// they count toward `coins_needed`) in `coins` order, and the gates.
+    pub fn plan(&self) -> amiga_plan::Facts {
+        amiga_plan::Facts {
+            cols: COLS,
+            rows: ROWS,
+            exits: self.exits.clone(),
+            collectibles: object_coins(self).map(|(_, c)| c).collect(),
+            gates: self.gates.clone(),
+        }
+    }
+}
+
+/// `Facts::coins`' object coins, with their indices there, in order.
+fn object_coins(facts: &Facts) -> impl Iterator<Item = (usize, Cell)> + '_ {
+    facts
+        .coins
+        .iter()
+        .enumerate()
+        .filter(|(_, k)| matches!(k.kind, CoinKind::Object(_)))
+        .map(|(i, k)| (i, k.cell))
 }
 
 /// Where `cell`'s word lives in the game's memory.
@@ -155,7 +193,7 @@ pub fn facts(game: &Game, level: &LevelData, rom: &Rom) -> Facts {
         .collect();
     // A switch is the top of a vertical pair; one whose `marker_cells` entry is 0 opens nothing
     // and is left out (the game ignores it too).
-    let switches = cells()
+    let switches: Vec<Switch> = cells()
         .filter_map(|(c, r)| {
             let m = live(st, c, r);
             if !SWITCHES.contains(&m) || r + 1 >= ROWS || live(st, c, r + 1) != m {
@@ -172,6 +210,15 @@ pub fn facts(game: &Game, level: &LevelData, rom: &Rom) -> Facts {
             })
         })
         .collect();
+    let gates = switches
+        .iter()
+        .map(|s| {
+            cells()
+                .filter(|&cell| in_gate_block(s.gate, cell))
+                .filter(|&(c, r)| live(st, c, r) >= GROUND)
+                .collect()
+        })
+        .collect();
     Facts {
         level: level.id,
         standable,
@@ -180,6 +227,7 @@ pub fn facts(game: &Game, level: &LevelData, rom: &Rom) -> Facts {
         switches,
         exits,
         coins_needed: st.w(COINS_LEFT),
+        gates,
     }
 }
 
@@ -196,6 +244,181 @@ pub fn frog_cell(st: &State) -> Cell {
 /// stop).
 pub fn landed(st: &State) -> bool {
     (st.w(FROG + f::ON_GROUND) != 0 || st.w(FROG + f::ON_PLATFORM) != 0) && st.w(FROG + f::AIR) == 0
+}
+
+/// Lives left, signed: `$ffff` is the game over mark, below any count.
+pub fn lives(st: &State) -> i16 {
+    st.w(FROG + f::LIVES) as i16
+}
+
+/// The frog is dying.
+pub fn dying(st: &State) -> bool {
+    st.w(FROG + f::DYING) != 0
+}
+
+/// Hearts left (`frog_hearts`).
+pub fn hearts(st: &State) -> u16 {
+    st.w(HEARTS)
+}
+
+/// The level is being played (`level_state` −2).
+pub fn playing(st: &State) -> bool {
+    st.l(LEVEL_STATE) == PLAYING
+}
+
+/// Object coins still needed before the exit lock goes.
+pub fn coins_left(st: &State) -> u16 {
+    st.w(COINS_LEFT)
+}
+
+/// The wings held (`frog+$90`): flight moves are open.
+pub fn wings(st: &State) -> bool {
+    st.w(FROG + f::FLIGHT) != 0
+}
+
+/// Open now: marker below `$3a` and not deadly (the walk compass's open cells).
+pub fn open(st: &State, (c, r): Cell) -> bool {
+    let m = live(st, c, r);
+    m < GROUND && m != DEADLY
+}
+
+/// The object coin at `cell` is still in the map (its marker 8 or 9).
+pub fn coin_live(st: &State, (c, r): Cell) -> bool {
+    matches!(live(st, c, r), 8 | 9)
+}
+
+/// Switches pressed in `st`, as bits over `facts.switches`: a pressed switch's cells no longer
+/// carry its marker (`switch` rewrites the lever's cells).
+pub fn pressed(facts: &Facts, st: &State) -> u32 {
+    levers_pressed(
+        facts.switches.iter().map(|s| (s.cells[0], s.marker as u16)),
+        st,
+    )
+}
+
+fn levers_pressed(levers: impl Iterator<Item = (Cell, u16)>, st: &State) -> u32 {
+    levers
+        .enumerate()
+        .filter(|&(_, ((c, r), marker))| live(st, c, r) != marker)
+        .fold(0, |m, (k, _)| m | 1 << k)
+}
+
+/// Object coins live in `st`, a bit per `Facts::plan`'s collectible index (its object coins in
+/// order), as the toolkit's `walk::live_coins` gives them.
+pub fn live_coins(facts: &Facts, st: &State) -> Vec<u64> {
+    let mut v = vec![0u64; object_coins(facts).count().div_ceil(64)];
+    for (i, (_, cell)) in object_coins(facts).enumerate() {
+        if coin_live(st, cell) {
+            v[i / 64] |= 1 << (i % 64);
+        }
+    }
+    v
+}
+
+/// The burst's joystick states (smart-planner DESIGN §2.4): none, the four directions, up with
+/// left or right, fire, fire with left or right.
+pub const ACTS: [Joy; 10] = [
+    Joy::NONE,
+    Joy::RIGHT,
+    Joy::LEFT,
+    Joy::UP,
+    Joy(Joy::RIGHT.0 | Joy::UP.0),
+    Joy(Joy::LEFT.0 | Joy::UP.0),
+    Joy::DOWN,
+    Joy::FIRE,
+    Joy(Joy::RIGHT.0 | Joy::FIRE.0),
+    Joy(Joy::LEFT.0 | Joy::FIRE.0),
+];
+
+/// The game as the toolkit's planner plays it: the engine, and its level's switch levers in
+/// `Facts::switches` order, for `pressed` (a toolkit `Facts` holds no levers). A newtype because
+/// neither the trait nor `Game` is this crate's. Derefs to the game, so a state the planner hands
+/// back reads as one.
+#[derive(Clone)]
+pub struct Frog {
+    game: Game,
+    levers: Arc<[(Cell, u16)]>,
+}
+
+impl Frog {
+    /// `game` on the level `facts` describes.
+    pub fn new(game: Game, facts: &Facts) -> Frog {
+        let levers = facts
+            .switches
+            .iter()
+            .map(|s| (s.cells[0], s.marker as u16))
+            .collect();
+        Frog { game, levers }
+    }
+
+    /// `game` with no switches known: `pressed` reads 0. Only for plays that never key a state
+    /// (`shorten::replay_exit`).
+    pub fn unswitched(game: Game) -> Frog {
+        Frog {
+            game,
+            levers: Arc::from([]),
+        }
+    }
+
+    pub fn game(&self) -> &Game {
+        &self.game
+    }
+
+    pub fn into_game(self) -> Game {
+        self.game
+    }
+}
+
+impl std::ops::Deref for Frog {
+    type Target = Game;
+    fn deref(&self) -> &Game {
+        &self.game
+    }
+}
+
+impl PlanGame for Frog {
+    fn step(&mut self, i: FrameInput) {
+        self.game.step_unseen(i);
+    }
+    /// Its serialized size and an eighth, which is what a clone holds on the heap (W5-2, measured
+    /// 2026-10-22: 620 KB a clone, 565 KB serialized).
+    fn state_bytes(&self) -> u64 {
+        bincode::serialized_size(&self.game).unwrap_or(1 << 20) * 9 / 8
+    }
+    fn cell(&self) -> Cell {
+        frog_cell(self.game.state())
+    }
+    fn lives(&self) -> i16 {
+        lives(self.game.state())
+    }
+    fn dying(&self) -> bool {
+        dying(self.game.state())
+    }
+    fn health(&self) -> u16 {
+        hearts(self.game.state())
+    }
+    fn playing(&self) -> bool {
+        playing(self.game.state())
+    }
+    fn collectibles_left(&self) -> u16 {
+        coins_left(self.game.state())
+    }
+    fn held_flag(&self) -> bool {
+        wings(self.game.state())
+    }
+    fn landed(&self) -> bool {
+        landed(self.game.state())
+    }
+    fn open(&self, c: Cell) -> bool {
+        open(self.game.state(), c)
+    }
+    fn collectible_live(&self, c: Cell) -> bool {
+        coin_live(self.game.state(), c)
+    }
+    fn pressed(&self, _: &amiga_plan::Facts) -> u32 {
+        levers_pressed(self.levers.iter().copied(), self.game.state())
+    }
+    const ACTS: &'static [Joy] = &ACTS;
 }
 
 /// Landed and not moving sideways: where a standing-start move (§2.5's waits) begins.

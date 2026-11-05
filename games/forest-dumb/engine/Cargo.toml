@@ -41,3 +41,7 @@ opt-level = 2
 # Inflating and hashing two whole disks runs in several tests.
 [profile.dev.package.amiga-disk]
 opt-level = 2
+
+# The route planner (fd-plan, from T20): its explorer steps the engine every frame of every burst.
+[profile.dev.package.amiga-plan]
+opt-level = 2
