@@ -54,18 +54,16 @@ columns stay inside the level's collision columns (tested). The game scans one r
 columns (hunk 0 `$970`, index `(x / 16) * $60 + y / 16`) and also writes to it at run time (hunk 0 `$2e54`).
 
 What the code proves, from the scan at hunk 0 `$9a8`. Its compares are signed, so `$87` to `$fe` would take
-the creature branch; the highest value in any file below `$ff` is `$48`:
+the creature branch; the highest value in any file below `$ff` is `$48`. What each group does in play was
+measured in W1-1 (T21): [10-object-system.md](10-object-system.md), one row a value.
 
-| Value | Group in the render | The code |
+| Value | Group in the render | The code, and what it does in play |
 |---|---|---|
-| `$ff` | end (white) | stops the scan |
-| 1 to 6 | creature (red) | branches to `$abc`; the name is an inference from `$3a18`'s creature frames, not proven |
-| 7 to `$1f` | ignored (grey) | the scan skips them; `$10`, `$11` occur |
-| `$20` to `$3f` | element (green) | calls `$6882`; the draw loop at `$6384` subtracts `$20`: below 8 cycles `_ELEMENTY` frames, 8 and `$a` also animate, `$10` and up reach the flame and vanishing-block paths |
-| `$40` and up | high (blue) | calls `$a06`, indexing tables at hunk 4 `$c80` and `$2580` by `(value - $40) * 2`; in the render they cover whole areas |
-
-**Not established:** what each value does in play. Chapter 06's render boxes the groups and nothing more;
-the porting plan settles the meanings.
+| `$ff` | end (white) | stops the scan; the exit (`level_exit_touched`) |
+| 1 to 6 | creature (red) | branches to `$abc`, which spawns creature kind `value - 1` (`h0_681c`) |
+| 7 to `$1f` | ignored (grey) | the scan skips them; `$10` to `$13` are springs, read under the feet by `h0_24ce` |
+| `$20` to `$3f` | element (green) | calls `$6882`, the animated cells: `$20`-`$27` coins (counted items), `$28` and `$2a` water, `$30`-`$33` vanishing blocks, `$34` a flame |
+| `$40` and up | high (blue) | calls `$a06`, blitting `_ELEMENTY`'s second row (hunk 4 `$c80`, mask `$2580`) frame `value - $40`: bonuses taken for score, `$4c` for time |
 
 ## Not decoded here
 

@@ -6,6 +6,11 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-11-05 | 📌 | T21 review: objects-W1-1.toml `port_task` is the value's behaviour; its routines keep translate.toml's tasks, so spawn, bonus blits and creature drawing port in T55 and T52, not T22 or T24. |
+| 2026-11-05 | 📌 | T59 added by T21 with the owner's yes: turn on vAmiga's sprite-to-playfield collision in the oracle, Superfrog unchanged or ask the owner; `blocks T24, T41, T42, T43, T44, T45, T46, T47`. |
+| 2026-11-05 | 🐞 | T21: CLXDAT is always `$8000` on the oracle (`DENISE_CLX_SPR_PLF` off), so `char_hit_check` never sees contact. CLXCON `$37dd`: colours 21, 23, 29, 31, also in 134 of 328 W1-1 tiles. |
+| 2026-11-05 | 📌 | T21: no object dispatch tables; the scan, `h0_2fea`, `h0_26ec`, `h0_62b6` branch by compares. Every object routine was already in `re/translate.toml`, so T21 appended none and T49 has nothing to translate. |
+| 2026-11-05 | 📌 | T21: W1-1 holds 332 coins (`$20`-`$23`); `items_left` starts at 282 from `load_list_world_1`, so 50 are spare. docs/06's untraced `_ELEMENTY` second row is `h0_a06`'s bonuses (`h4+$c80`). |
 | 2026-11-05 | 🐞 | T37: `translate.py`'s `flow_text` reads the linear listing, so `h0_2c7e`, `h0_2d4c`, `h0_5820`, `h0_94ba` stop with "has no label" (exit 2) and `h0_62b6` extracts 37 of 224 instructions. T40 meets this; `call_tree.py` decodes correctly. |
 | 2026-11-05 | 📌 | T37 live call, worker action: `translate.py 'h0+$9754' --gen h0_9754` passed on try 1: 2 177 tokens in, 8 052 out, $0.0018, 81 s, 2 paths. |
 | 2026-11-05 | 🐞 | T39: `translate.py 'game_frame'` exits 2: `flow_text` cuts at listing labels and split callee `h0+$2c7e` has none (T34's lost-step sweep). T40 needs a label there or `call_tree.py`'s decoding. |

@@ -936,3 +936,102 @@ name = "collision_map"
 kind = "table"
 size = 0x2e00
 note = "1 bit a pixel, 256 rows of $2e bytes, row = y & $ff; written by the edge redraws (oracle: game state)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x1fe6
+name = "clxdat_copy"
+kind = "var"
+size = 2
+note = "CLXDAT as char_hit_check read it this pass; bits 1-2 are contact (docs/10)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x21b4
+name = "spring_x"
+kind = "var"
+size = 4
+note = "where the spring fired, x: char_x + $e or - 2 by value (h0_24ce)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x21b8
+name = "spring_y"
+kind = "var"
+size = 4
+note = "where the spring fired, y: char_y + $23"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x21bc
+name = "spring_timer"
+kind = "var"
+size = 2
+note = "set to 1 when a spring fires; h0_21c0 counts it to 6, redraws the spring, clears it"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x21be
+name = "spring_kind"
+kind = "var"
+size = 2
+note = "0 for $10, $11; 1 for $12, $13"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x2faa
+name = "creature_slot_index"
+kind = "var"
+size = 4
+note = "h0_2fae's loop counter over the five slots; h0_2e0e reads it"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x62b2
+name = "anim_tick"
+kind = "var"
+size = 2
+note = "byte $62b2: the animation tick, +1 every fourth pass; byte $62b3 counts the passes (h0_62b6)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x67da
+name = "creature_active"
+kind = "var"
+size = 18
+note = "five flag bytes, one a slot, $ff when used; h0+$67b4 clears all 18 bytes"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x67ec
+name = "creature_slots"
+kind = "var"
+size = 40
+note = "five slots of x.w, y.w, kind.w, direction.b, phase.b; kind = object value - 1, 7 dying (docs/10)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 2
+offset = 0x1680
+name = "anim_cell_used"
+kind = "var"
+size = 48
+note = "h0_62b6's four lists of 12 animated cells: a flag byte each"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 2
+offset = 0x16b0
+name = "anim_cells"
+kind = "var"
+size = 384
+note = "the animated cells: x.w, y.w, object value.b, 3 more bytes, 48 of them"

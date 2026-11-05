@@ -248,13 +248,17 @@ fn the_coverage_report_counts_each_registered_routine_and_shows_an_unreached_one
 }
 
 #[test]
-fn freezing_before_t21_lists_anything_is_an_error() {
+fn a_freeze_case_patches_every_listed_entry_and_an_empty_list_is_an_error() {
     let case = Case {
         freeze: true,
         ..short(5)
     };
-    let err = fd_conform::reach_case(&case, 0)
-        .err()
-        .expect("freeze refused");
-    assert!(err.contains("T21"), "{err}");
+    let am = fd_conform::reach_case(&case, 0).unwrap_or_else(|e| panic!("{e}"));
+    for f in fd_conform::freeze::FROZEN {
+        let at = fd_conform::HUNK_BASES[f.hunk as usize] + f.offset;
+        assert_eq!(am.peek(at, 2), [0x4e, 0x75], "{} not frozen", f.what);
+    }
+    let mut am = am;
+    let err = fd_conform::freeze::apply(&mut am, &[]).unwrap_err();
+    assert!(err.contains("empty"), "{err}");
 }
