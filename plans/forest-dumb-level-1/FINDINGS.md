@@ -6,6 +6,10 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-11-05 | 📌 | T59 added by T21 with the owner's yes: turn on vAmiga's sprite-to-playfield collision in the oracle, Superfrog unchanged or ask the owner; `blocks T24, T41, T42, T43, T44, T45, T46, T47`. |
+| 2026-11-05 | 🐞 | T21: CLXDAT is always `$8000` on the oracle (`DENISE_CLX_SPR_PLF` off), so `char_hit_check` never sees contact. CLXCON `$37dd`: colours 21, 23, 29, 31, also in 134 of 328 W1-1 tiles. |
+| 2026-11-05 | 📌 | T21: no object dispatch tables; the scan, `h0_2fea`, `h0_26ec`, `h0_62b6` branch by compares. Every object routine was already in `re/translate.toml`, so T21 appended none and T49 has nothing to translate. |
+| 2026-11-05 | 📌 | T21: W1-1 holds 332 coins (`$20`-`$23`); `items_left` starts at 282 from `load_list_world_1`, so 50 are spare. docs/06's untraced `_ELEMENTY` second row is `h0_a06`'s bonuses (`h4+$c80`). |
 | 2026-11-05 | 📌 | T58 added by T35 with the owner's yes: fix `flow_text` following `btst` as a branch before T40 (`blocks T40`), fix commit with `Escape: forest-dumb-level-1 T33`. |
 | 2026-11-05 | 🐞 | T35: `translate.py` `flow_text` follows `btst.b #n,<label>` as a branch (opcode starts with `b`), runs into data at `h0+$4ed2` and `char_probe`: `h0_3ea8`, `h0_4718`, `h0_48be`, `h0_4b0e` size 295-371, so T40 gets `too-big`. |
 | 2026-11-05 | 📌 | T35 live call, worker action: `translate.py 'h0+$4274' --gen h0_4274` passed on try 1, 1 482 tokens in, 4 299 out, $0.0010, 6 paths. |
