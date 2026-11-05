@@ -243,7 +243,7 @@ is undocumented, so a port judged on them would be judged on one emulator's choi
 `fd-conform/tests/gen_objects.rs` proves it, as `gen_camera.rs` does: a witness per routine matches
 the original on all 2 000 states, and every conditional branch of the flow listing, callees
 included, goes both ways, except five that can only go one way: the VHPOSR waits `h0+$265e`,
-`$291c`, `$3aec`, `$3da4` (the rig's VHPOSR steps on every read, so two reads never match) and the
+`$291c`, `$3af2`, `$3da4` (the rig's VHPOSR steps on every read, so two reads never match) and the
 blitter wait `h0+$2a1c` (BLTBUSY set never clears: a hang). Measured 2026-11-05, no hang or fault:
 
 | Generator | `RigReport::paths` | Branches | Fewest states one way |

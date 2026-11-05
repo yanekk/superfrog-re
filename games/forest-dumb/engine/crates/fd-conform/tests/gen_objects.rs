@@ -35,7 +35,7 @@ const ONE_WAY: &[(u32, &str)] = &[
     // `cmp.b $dff006,d1; beq`: the rig's VHPOSR steps on every read, so two reads never match.
     (0x265e, "VHPOSR read twice never matches on the rig"),
     (0x291c, "VHPOSR read twice never matches on the rig"),
-    (0x3aec, "VHPOSR read twice never matches on the rig"),
+    (0x3af2, "VHPOSR read twice never matches on the rig"),
     (0x3da4, "VHPOSR read twice never matches on the rig"),
     // `btst #6,$dff002; bne`: BLTBUSY reads 0; a state setting it would wait for ever (a hang).
     (0x2a1c, "BLTBUSY set would never clear: the wait hangs"),
@@ -148,7 +148,7 @@ fn sound_3adc(cpu: &mut Cpu) {
         h(4, 0x1_0df4),
         0xe6c,
         0x165,
-        (3, 0x3aec, 0x3af6),
+        (3, 0x3af2, 0x3af6),
     );
 }
 
@@ -603,7 +603,7 @@ fn routines() -> Vec<(&'static str, u32, Witness, Vec<u32>)> {
             0x3ca6, 0x3ce4, 0x3cf4, 0x3cfe,
         ],
         vec![
-            0x3d3c, 0x3d52, 0x3d5e, 0x3da4, 0x3da8, 0x3aec, 0x3af6, 0x69dc,
+            0x3d3c, 0x3d52, 0x3d5e, 0x3da4, 0x3da8, 0x3af2, 0x3af6, 0x69dc,
         ],
         BOX_BRANCHES.to_vec(),
     ]
