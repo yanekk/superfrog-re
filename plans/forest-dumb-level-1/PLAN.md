@@ -116,6 +116,7 @@ T34 assigns every routine a generator batch and a porting task, and asks the own
 |---|---|---|
 | [T21](tasks/T21-object-meanings.md) | object-meanings | T05, T06, T32 |
 | [T49](tasks/T49-translate-objects.md) | translate-objects | T21, T38, T40 |
+| [T59](tasks/T59-oracle-sprite-collision.md) | oracle-sprite-collision | T21; blocks T24, T41, T42, T43, T44, T45, T46, T47 |
 | [T22](tasks/T22-collectibles.md) | collectibles | T11, T20, T21, T40, T49 |
 | [T23](tasks/T23-lives-and-game-over.md) | lives-and-game-over | T11, T13, T14, T20 |
 | [T24](tasks/T24-enemies.md) | enemies | T20, T21, T22, T23 |

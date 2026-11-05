@@ -9,7 +9,7 @@
 
 **Status:** Amendment read back and its 4 decisions settled; ready to build. Nothing built.
 **Last updated:** 2026-11-05
-**Next `pir-work` will:** T40 once T37, T53, T56 and T58 are done; the generators it judges on are its inputs.
+**Next `pir-work` will:** T40 once T56 is done; the generators it judges on are its inputs.
 
 ## Tasks
 
@@ -31,7 +31,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T34 | translate-inventory | T00 | ✅ | |
 | T35 | gen-character | T33, T34 | ✅ | |
 | T36 | gen-camera | T33, T34 | ✅ | |
-| T37 | gen-drawing | T33, T34 | ⬜ | |
+| T37 | gen-drawing | T33, T34 | ✅ | |
 | T38 | gen-objects | T33, T34 | ✅ | |
 | T39 | gen-rest | T33, T34 | ✅ | |
 | T40 | batch-translate | T35, T36, T37, T38, T39 | ⬜ | |
@@ -53,7 +53,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T18 | map-page-toolkit-move | T17 | ✅ | |
 | T19 | map-page | T11, T18 | ⬜ | |
 | T20 | planner-level-1 | T11, T17, T19 | ⬜ | |
-| T21 | object-meanings | T05, T06, T32 | ⬜ | |
+| T21 | object-meanings | T05, T06, T32 | ✅ | |
 | T49 | translate-objects | T21, T38, T40 | ⬜ | |
 | T22 | collectibles | T11, T20, T21, T40, T49 | ⬜ | |
 | T23 | lives-and-game-over | T11, T13, T14, T20 | ⬜ | |
@@ -70,12 +70,13 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T50 | sf-menus-os-test-stale | — | ✅ | |
 | T51 | character-anim-input | T07, T40; blocks T08 | ⬜ | |
 | T52 | creature-drawing | T10, T22; blocks T46 | ⬜ | |
-| T53 | gen-character-2 | T33, T34; blocks T40 | ⬜ | |
+| T53 | gen-character-2 | T33, T34; blocks T40 | ✅ | |
 | T54 | gen-objects-2 | T33, T34; blocks T40 | ✅ | Review clean, no fix commit. Branch list checked against the listing (21/19/0/1/5, no short branches); mutations caught (probe bytes always clear, a poke outside reads); measured fewest-states column matches the doc. Deviations held. 11 generators, `tests/gen_objects_move.rs` smoke, 2.7 s. |
 | T55 | edge-redraw | T09; blocks T10, T41, T42, T43 | ⬜ | |
 | T56 | gen-edge-redraw | T33, T34; blocks T40 | ⬜ | |
 | T57 | sf-scale-fullscreen-os-test | — | ⬜ | |
-| T58 | translate-btst-fix | T33; blocks T40 | ⬜ | |
+| T58 | translate-btst-fix | T33; blocks T40 | ✅ | |
+| T59 | oracle-sprite-collision | T21; blocks T24, T41, T42, T43, T44, T45, T46, T47 | ⬜ | |
 
 **Review queue:** *(empty)*
 

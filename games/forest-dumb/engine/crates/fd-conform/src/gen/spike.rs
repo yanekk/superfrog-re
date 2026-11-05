@@ -1,25 +1,12 @@
 //! The spike's generators (`games/forest-dumb/spikes/muse-spark/judge/src/main.rs`, 2026-11-04),
 //! carried over unchanged in what they set, named as in `re/symbols.toml` or by address. What each
 //! routine reads is the spike's reading of the listing, not a measurement: a generator task that
-//! takes one of these routines over checks it against the listing and its paths.
+//! takes one of these routines over checks it against the listing and its paths, and moves it out
+//! of here: T37 took `char_sprite_position` and `h0+$9754` (now `h0_9754`) into `drawing.rs`.
 
 use super::{Gen, Generator, Setup, h};
 
 pub const ALL: &[(&str, Generator)] = &[
-    (
-        "char_sprite_position",
-        Generator {
-            base: None,
-            case: char_sprite_position,
-        },
-    ),
-    (
-        "h0+$9754",
-        Generator {
-            base: None,
-            case: camera_to_bitplanes,
-        },
-    ),
     (
         "h0+$24ce",
         Generator {
@@ -146,29 +133,6 @@ fn objects(g: &mut Gen, s: &mut Setup, types: u64) {
             s.b(at, cell_value(g));
         }
     }
-}
-
-/// h0+$5462: the player's position to sprite control words in hunk 1.
-fn char_sprite_position(g: &mut Gen) -> Setup {
-    let mut s = Setup::random(g);
-    s.l(h(0, 0x1e5a), coord(g));
-    s.l(h(0, 0x1e5e), coord(g));
-    s.w(h(0, 0x1e62), coord(g) as u16);
-    s.w(h(0, 0x1e64), coord(g) as u16);
-    s
-}
-
-/// h0+$9754: the camera to the copper's bitplane pointers.
-fn camera_to_bitplanes(g: &mut Gen) -> Setup {
-    let mut s = Setup::random(g);
-    s.w(h(0, 0x1e62), coord(g) as u16);
-    let y = if g.one_in(3) {
-        g.next() as u16
-    } else {
-        g.below(0x120) as u16
-    };
-    s.w(h(0, 0x1e64), y);
-    s
 }
 
 /// h0+$24ce: the map cell under the player, trigger codes $10-$13.
