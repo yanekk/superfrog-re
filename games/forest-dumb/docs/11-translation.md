@@ -623,3 +623,12 @@ Translated by hand, under the porting task that owns each:
   call passed it on try 1; T09 may re-run `translate.py 'camera_update' --gen camera_update` first.
 - Two first answers did not compile (`char_hit_check`, `h0_94ba`) and passed on try 2. 86 calls in
   all: 211 547 tokens in, 702 210 out.
+
+## Ported (porting tasks)
+
+What each porting task did with its share of the table above, and which routines it translated by hand.
+
+- **T51** (2026-11-05): `char_step_4be6`, `h0_4c28`, `h0_4c6a`, `h0_4d32`, `h0_4d54`, `read_joystick`. None by
+  hand: each was rewritten from its passing T40 port and the listing as `fd_core::character::{Anim,
+  JoyFlags}` methods, and passes the rig on 10 000 states (`tests/character_anim_routines.rs`; paths 2, 2,
+  6, 1, 1, 10). The literal ports needed no fix.

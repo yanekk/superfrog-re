@@ -1,7 +1,7 @@
 //! The character's animation frame pickers (T51): the routines that set `char_anim_ptr`, the frame
 //! `char_sprite_copy` copies into sprites 0-3. Ported from `char_step_4be6`, `h0_4c28`, `h0_4c6a`,
-//! `h0_4d32` and `h0_4d54` (`h0+$4be6`..`$4d74`); docs/12-character-anim-input.md lists what each
-//! reads and why none can be stopped partway.
+//! `h0_4d32` and `h0_4d54` (`h0+$4be6`..`$4d74`). docs/09-play-measured.md, "The animation
+//! pickers and the joystick read", lists what each reads and why none can be stopped partway.
 //!
 //! A frame is a pointer the original reads from tables in its own hunk 0 (`h0+$4edc`..`$4f63`), so
 //! [`AnimTables`] holds those bytes as the program was loaded: a frame's value is whatever the

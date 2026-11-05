@@ -1,6 +1,6 @@
 //! The joystick read (T51): `read_joystick` (`h0+$8dfc`), the first thing `game_frame` does each
 //! pass. It reads JOY1DAT once into four flag words and appends them to `input_log` while the log
-//! has room (docs/09-play-measured.md "Input"; docs/12-character-anim-input.md).
+//! has room (docs/09-play-measured.md, "Input" and "The animation pickers and the joystick read").
 
 use std::sync::Arc;
 
@@ -75,7 +75,7 @@ impl JoyFlags {
         let byte = (self.left | self.right << 1 | self.up << 2 | self.down << 3) as u8;
         // The original writes `input_log + index` for any index but $2ee0. Past $2ee0 that lands
         // outside the log; the game never gets there (it counts up from 0 and stops at $2ee0), so
-        // such a byte is not kept: an exclusion, docs/12-character-anim-input.md.
+        // such a byte is not kept: an exclusion (docs/09-play-measured.md).
         if log.index < LOG_FULL {
             let bytes = Arc::make_mut(&mut log.bytes);
             let at = log.index as usize;

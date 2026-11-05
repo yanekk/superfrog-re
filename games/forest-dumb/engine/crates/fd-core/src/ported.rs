@@ -20,4 +20,26 @@ pub struct Ported {
 }
 
 /// Every ported routine. Append only.
-pub const PORTED: &[Ported] = &[];
+pub const PORTED: &[Ported] = &[
+    // T51: the animation frame pickers and the joystick read.
+    port("char_step_4be6", 0x4be6, "character::Anim::walk_left"),
+    port("h0_4c28", 0x4c28, "character::Anim::walk_right"),
+    port("h0_4c6a", 0x4c6a, "character::Anim::frame_from_probes"),
+    port("h0_4d32", 0x4d32, "character::Anim::frame_4d32"),
+    port("h0_4d54", 0x4d54, "character::Anim::frame_4d54"),
+    port(
+        "read_joystick",
+        0x8dfc,
+        "character::JoyFlags::read_joystick",
+    ),
+];
+
+/// A hunk 0 routine's entry.
+const fn port(name: &'static str, offset: u32, port: &'static str) -> Ported {
+    Ported {
+        name,
+        hunk: 0,
+        offset,
+        port,
+    }
+}
