@@ -20,12 +20,12 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T00 | measure-play | — | ✅ | |
 | T01 | smoke-room | — | ✅ | |
 | T02 | route-pin | — | ✅ | |
-| T31 | code-ran-counter | — | ⬜ | |
+| T31 | code-ran-counter | — | ✅ | |
 | T32 | routine-rig | — | ✅ | |
 | T03 | level-sync | T00 | ✅ | |
 | T04 | picture-in-play | T00 | ✅ | |
 | T30 | unpack-in-rust | — | ✅ | |
-| T05 | level-readers | T03, T04, T30 | ⬜ | |
+| T05 | level-readers | T03, T04, T30 | ✅ | |
 | T06 | level-runner | T03, T04, T31, T32 | ⬜ | |
 | T33 | translate-service | T32 | ✅ | Review clean, no fix commit. Probed: re-judged the live `h0+$5462` port with fd-judge (2000/2000) and a one-constant break of it (1926 failures); four mutations (blit modulo, line/fill mask, spend guard, 502 wait) all red; judge 0.9 s against its 120 s limit; concurrent judges on two `--out` folders gave no wrong verdict. |
 | T34 | translate-inventory | T00 | ⬜ | |
@@ -49,7 +49,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T14 | recorder | T12, T13 | ⬜ | |
 | T15 | recording-compare | T03, T14 | ⬜ | |
 | T16 | app-drill | T13, T14 | ⬜ | |
-| T17 | planner-toolkit-move | T02 | ⬜ | |
+| T17 | planner-toolkit-move | T02 | ✅ | |
 | T18 | map-page-toolkit-move | T17 | ⬜ | |
 | T19 | map-page | T11, T18 | ⬜ | |
 | T20 | planner-level-1 | T11, T17, T19 | ⬜ | |

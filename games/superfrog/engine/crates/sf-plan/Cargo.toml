@@ -12,6 +12,8 @@ build = "../sf-app/build.rs"
 # shell (tests/purity.rs).
 
 [dependencies]
+# The planner's game-free half (forest-dumb-level-1 T17): the explorer and its run shell.
+amiga-plan = { path = "../../../../../toolkit/crates/amiga-plan" }
 sf-core = { path = "../sf-core" }
 sf-assets = { path = "../sf-assets" }
 serde = { version = "1", features = ["derive"] }
