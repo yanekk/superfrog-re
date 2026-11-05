@@ -1,0 +1,942 @@
+# game_frame's call tree, sized for translation (plan forest-dumb-level-1, T34; DESIGN §4.3).
+# Sizes and calls are written by games/forest-dumb/tools/call_tree.py from the listing; subsystem,
+# gen_task, port_task, note and reason are a person's reading, kept by address on a rewrite.
+# own: own flow; instructions: with all callees; unit: less split_at and what only they reach.
+# Over 180 a unit is split_at callees; still over, it is by_hand (T33 answers too-big).
+# sound is out of scope (the plan is silent): no gen_task, no port_task.
+# Totals per task: docs/11-translation.md. Addresses and sizes only, no listing text.
+
+[[routine]]
+name = "game_frame"
+hunk = 0
+offset = 0x1fec
+own = 36
+instructions = 3026
+unit = 176
+subsystem = "rest"
+gen_task = "T39"
+port_task = "T08"
+calls = ["h0+$9b06", "h0+$94ba", "h0+$4d7e", "h0+$513c", "h0+$5462", "h0+$9754", "h0+$2104", "h0+$2c7e", "h0+$2fae", "h0+$21c0", "h0+$62b6", "h0+$2dd6", "h0+$3698", "h0+$2d4c", "h0+$8dfc", "h0+$3b2a", "h0+$20b0", "h0+$24ce", "h0+$3e0c", "h0+$2698"]
+split_at = ["h0+$21c0", "h0+$24ce", "h0+$2698", "h0+$2c7e", "h0+$2d4c", "h0+$2dd6", "h0+$2fae", "h0+$3698", "h0+$3b2a", "h0+$3e0c", "h0+$4d7e", "h0+$62b6", "h0+$94ba", "h0+$9754", "h0+$9b06"]
+note = "the pass: calls each subsystem in order; each porting task adds its calls to Game::step"
+
+[[routine]]
+name = "countdown_step"
+hunk = 0
+offset = 0x20b0
+own = 17
+instructions = 17
+unit = 17
+subsystem = "rest"
+gen_task = "T39"
+port_task = "T23"
+calls = []
+note = "countdown -1 every 63 passes; 0 is game over"
+
+[[routine]]
+name = "play_keys"
+hunk = 0
+offset = 0x2104
+own = 14
+instructions = 36
+unit = 36
+subsystem = "rest"
+gen_task = "T39"
+port_task = "T23"
+calls = ["h0+$2146", "h0+$2176"]
+note = "P, Esc and HELP keys in play"
+
+[[routine]]
+name = "help_key"
+hunk = 0
+offset = 0x2146
+own = 10
+instructions = 10
+unit = 10
+subsystem = "rest"
+gen_task = "T39"
+port_task = "T26"
+calls = []
+note = "HELP with cheat_flag ends the level"
+
+[[routine]]
+name = "esc_key"
+hunk = 0
+offset = 0x2176
+own = 12
+instructions = 12
+unit = 12
+subsystem = "rest"
+gen_task = "T39"
+port_task = "T23"
+calls = []
+note = "Esc sets give_up"
+
+[[routine]]
+name = "h0_21c0"
+hunk = 0
+offset = 0x21c0
+own = 153
+instructions = 156
+unit = 156
+subsystem = "drawing"
+gen_task = "T37"
+port_task = "T25"
+calls = ["h0+$3ab4"]
+note = "reading: blits a tile at the cell 24ce marked and starts a sound; trigger cells"
+
+[[routine]]
+name = "h0_24ce"
+hunk = 0
+offset = 0x24ce
+own = 69
+instructions = 69
+unit = 69
+subsystem = "objects"
+gen_task = "T38"
+port_task = "T25"
+calls = []
+note = "reading: map codes $10-$13 under the character mark a cell for 21c0"
+
+[[routine]]
+name = "h0_2648"
+hunk = 0
+offset = 0x2648
+own = 12
+instructions = 12
+unit = 12
+subsystem = "sound"
+calls = []
+note = "starts a sample on audio channel 2"
+
+[[routine]]
+name = "char_object_cells"
+hunk = 0
+offset = 0x2698
+own = 14
+instructions = 255
+unit = 14
+subsystem = "objects"
+gen_task = "T38"
+port_task = "T22"
+calls = ["h0+$26ec"]
+split_at = ["h0+$26ec"]
+
+[[routine]]
+name = "h0_26ec"
+hunk = 0
+offset = 0x26ec
+own = 153
+instructions = 241
+unit = 175
+subsystem = "objects"
+gen_task = "T38"
+port_task = "T22"
+calls = ["h0+$29ca", "h0+$6a4c", "h0+$2a6e", "h0+$2648", "h0+$6a04"]
+split_at = ["h0+$29ca", "h0+$6a04", "h0+$6a4c"]
+note = "reading: object-map cells under the character: items, exit, score, countdown"
+
+[[routine]]
+name = "h0_29ca"
+hunk = 0
+offset = 0x29ca
+own = 35
+instructions = 35
+unit = 35
+subsystem = "drawing"
+gen_task = "T37"
+port_task = "T22"
+calls = []
+note = "reading: redraws a taken item cell"
+
+[[routine]]
+name = "score_add_routine"
+hunk = 0
+offset = 0x2a6e
+own = 10
+instructions = 10
+unit = 10
+subsystem = "objects"
+gen_task = "T38"
+port_task = "T22"
+calls = []
+
+[[routine]]
+name = "h0_2c7e"
+hunk = 0
+offset = 0x2c7e
+own = 20
+instructions = 220
+unit = 20
+subsystem = "drawing"
+gen_task = "T37"
+port_task = "T24"
+calls = ["h0+$5e44"]
+split_at = ["h0+$5e44"]
+note = "reading: with the old object set swapped in, calls 5e44: restores behind creatures"
+
+[[routine]]
+name = "h0_2d4c"
+hunk = 0
+offset = 0x2d4c
+own = 24
+instructions = 201
+unit = 24
+subsystem = "drawing"
+gen_task = "T37"
+port_task = "T24"
+calls = ["h0+$5820"]
+split_at = ["h0+$5820"]
+note = "reading: calls 5820 to cut the five creatures onto the screen"
+
+[[routine]]
+name = "h0_2dd6"
+hunk = 0
+offset = 0x2dd6
+own = 11
+instructions = 122
+unit = 122
+subsystem = "objects"
+gen_task = "T38"
+port_task = "T22"
+calls = ["h0+$2e0e"]
+note = "spike: objects leaving the screen written back into the object map"
+
+[[routine]]
+name = "h0_2e0e"
+hunk = 0
+offset = 0x2e0e
+own = 111
+instructions = 111
+unit = 111
+subsystem = "objects"
+gen_task = "T38"
+port_task = "T22"
+calls = []
+note = "spike: body of 2dd6"
+
+[[routine]]
+name = "h0_2fae"
+hunk = 0
+offset = 0x2fae
+own = 11
+instructions = 237
+unit = 11
+subsystem = "objects"
+gen_task = "T38"
+port_task = "T24"
+calls = ["h0+$2fea"]
+split_at = ["h0+$2fea"]
+note = "spike: five objects per-type movement"
+
+[[routine]]
+name = "h0_2fea"
+hunk = 0
+offset = 0x2fea
+own = 160
+instructions = 226
+unit = 172
+subsystem = "objects"
+gen_task = "T38"
+port_task = "T24"
+calls = ["h0+$3566", "h0+$3530", "h0+$35dc", "h0+$35a0", "h0+$32f8", "h0+$3322", "h0+$320a", "h0+$3222"]
+split_at = ["h0+$32f8", "h0+$3322", "h0+$3566", "h0+$35dc"]
+note = "spike: body of 2fae; reads collision_map"
+
+[[routine]]
+name = "h0_320a"
+hunk = 0
+offset = 0x320a
+own = 6
+instructions = 6
+unit = 6
+subsystem = "objects"
+gen_task = "T38"
+port_task = "T24"
+calls = []
+
+[[routine]]
+name = "h0_3222"
+hunk = 0
+offset = 0x3222
+own = 6
+instructions = 6
+unit = 6
+subsystem = "objects"
+gen_task = "T38"
+port_task = "T24"
+calls = []
+
+[[routine]]
+name = "h0_32f8"
+hunk = 0
+offset = 0x32f8
+own = 11
+instructions = 11
+unit = 11
+subsystem = "objects"
+gen_task = "T38"
+port_task = "T24"
+calls = []
+
+[[routine]]
+name = "h0_3322"
+hunk = 0
+offset = 0x3322
+own = 11
+instructions = 11
+unit = 11
+subsystem = "objects"
+gen_task = "T38"
+port_task = "T24"
+calls = []
+
+[[routine]]
+name = "h0_3530"
+hunk = 0
+offset = 0x3530
+own = 15
+instructions = 15
+unit = 15
+subsystem = "objects"
+gen_task = "T38"
+port_task = "T24"
+calls = []
+note = "collision_map probe"
+
+[[routine]]
+name = "h0_3566"
+hunk = 0
+offset = 0x3566
+own = 16
+instructions = 16
+unit = 16
+subsystem = "objects"
+gen_task = "T38"
+port_task = "T24"
+calls = []
+note = "collision_map probe"
+
+[[routine]]
+name = "h0_35a0"
+hunk = 0
+offset = 0x35a0
+own = 16
+instructions = 16
+unit = 16
+subsystem = "objects"
+gen_task = "T38"
+port_task = "T24"
+calls = []
+note = "collision_map probe"
+
+[[routine]]
+name = "h0_35dc"
+hunk = 0
+offset = 0x35dc
+own = 16
+instructions = 16
+unit = 16
+subsystem = "objects"
+gen_task = "T38"
+port_task = "T24"
+calls = []
+note = "collision_map probe"
+
+[[routine]]
+name = "h0_3698"
+hunk = 0
+offset = 0x3698
+own = 86
+instructions = 86
+unit = 86
+subsystem = "objects"
+gen_task = "T38"
+port_task = "T24"
+calls = []
+note = "sorts the five object slots by y: drawing order"
+
+[[routine]]
+name = "h0_3ab4"
+hunk = 0
+offset = 0x3ab4
+own = 3
+instructions = 3
+unit = 3
+subsystem = "drawing"
+gen_task = "T37"
+port_task = "T10"
+calls = []
+note = "blitter wait"
+
+[[routine]]
+name = "h0_3adc"
+hunk = 0
+offset = 0x3adc
+own = 12
+instructions = 12
+unit = 12
+subsystem = "sound"
+calls = []
+note = "starts a sample on audio channel 2"
+
+[[routine]]
+name = "char_hit_check"
+hunk = 0
+offset = 0x3b2a
+own = 131
+instructions = 183
+unit = 165
+subsystem = "objects"
+gen_task = "T38"
+port_task = "T24"
+calls = ["h0+$69d6", "h0+$3dd8", "h0+$2a6e", "h0+$3adc"]
+split_at = ["h0+$3dd8"]
+note = "reading: creature contact hurts the character; hits_taken, lives"
+
+[[routine]]
+name = "h0_3dd8"
+hunk = 0
+offset = 0x3dd8
+own = 18
+instructions = 18
+unit = 18
+subsystem = "objects"
+gen_task = "T38"
+port_task = "T24"
+calls = []
+note = "box overlap test for char_hit_check"
+
+[[routine]]
+name = "char_update"
+hunk = 0
+offset = 0x3e0c
+own = 8
+instructions = 729
+unit = 68
+subsystem = "character"
+gen_task = "T35"
+port_task = "T08"
+calls = ["h0+$4f84", "h0+$4f90", "h0+$3e30"]
+split_at = ["h0+$3e30", "h0+$4f84"]
+
+[[routine]]
+name = "char_step"
+hunk = 0
+offset = 0x3e30
+own = 107
+instructions = 462
+unit = 178
+subsystem = "character"
+gen_task = "T35"
+port_task = "T08"
+calls = ["h0+$4274", "h0+$4696", "h0+$4d32", "h0+$416c", "h0+$4d54", "h0+$4b0e", "h0+$4718", "h0+$48be", "h0+$3ea8"]
+split_at = ["h0+$3ea8", "h0+$4718", "h0+$48be", "h0+$4b0e"]
+
+[[routine]]
+name = "h0_3ea8"
+hunk = 0
+offset = 0x3ea8
+own = 93
+instructions = 185
+unit = 127
+subsystem = "character"
+gen_task = "T35"
+port_task = "T08"
+calls = ["h0+$410c", "h0+$4c6a"]
+split_at = ["h0+$410c"]
+note = "starts a sound inline"
+
+[[routine]]
+name = "h0_410c"
+hunk = 0
+offset = 0x410c
+own = 18
+instructions = 58
+unit = 58
+subsystem = "character"
+gen_task = "T35"
+port_task = "T08"
+calls = ["h0+$416c", "h0+$4d54", "h0+$4696"]
+
+[[routine]]
+name = "h0_416c"
+hunk = 0
+offset = 0x416c
+own = 13
+instructions = 13
+unit = 13
+subsystem = "character"
+gen_task = "T35"
+port_task = "T08"
+calls = []
+
+[[routine]]
+name = "h0_4274"
+hunk = 0
+offset = 0x4274
+own = 25
+instructions = 25
+unit = 25
+subsystem = "character"
+gen_task = "T35"
+port_task = "T08"
+calls = []
+
+[[routine]]
+name = "h0_4696"
+hunk = 0
+offset = 0x4696
+own = 21
+instructions = 21
+unit = 21
+subsystem = "character"
+gen_task = "T35"
+port_task = "T08"
+calls = []
+
+[[routine]]
+name = "h0_4718"
+hunk = 0
+offset = 0x4718
+own = 57
+instructions = 104
+unit = 104
+subsystem = "character"
+gen_task = "T35"
+port_task = "T08"
+calls = ["h0+$4c6a", "h0+$47e2", "h0+$4be6"]
+
+[[routine]]
+name = "h0_47e2"
+hunk = 0
+offset = 0x47e2
+own = 15
+instructions = 15
+unit = 15
+subsystem = "character"
+gen_task = "T35"
+port_task = "T08"
+calls = []
+
+[[routine]]
+name = "h0_48be"
+hunk = 0
+offset = 0x48be
+own = 57
+instructions = 104
+unit = 104
+subsystem = "character"
+gen_task = "T35"
+port_task = "T08"
+calls = ["h0+$4c6a", "h0+$497c", "h0+$4c28"]
+
+[[routine]]
+name = "h0_497c"
+hunk = 0
+offset = 0x497c
+own = 15
+instructions = 15
+unit = 15
+subsystem = "character"
+gen_task = "T35"
+port_task = "T08"
+calls = []
+
+[[routine]]
+name = "h0_4b0e"
+hunk = 0
+offset = 0x4b0e
+own = 17
+instructions = 51
+unit = 51
+subsystem = "character"
+gen_task = "T35"
+port_task = "T08"
+calls = ["h0+$4c6a"]
+
+[[routine]]
+name = "char_step_4be6"
+hunk = 0
+offset = 0x4be6
+own = 13
+instructions = 13
+unit = 13
+subsystem = "character"
+gen_task = "T35"
+port_task = "T08"
+calls = []
+note = "sets char_anim_ptr"
+
+[[routine]]
+name = "h0_4c28"
+hunk = 0
+offset = 0x4c28
+own = 13
+instructions = 13
+unit = 13
+subsystem = "character"
+gen_task = "T35"
+port_task = "T08"
+calls = []
+note = "sets char_anim_ptr"
+
+[[routine]]
+name = "h0_4c6a"
+hunk = 0
+offset = 0x4c6a
+own = 34
+instructions = 34
+unit = 34
+subsystem = "character"
+gen_task = "T35"
+port_task = "T08"
+calls = []
+note = "sets char_anim_ptr"
+
+[[routine]]
+name = "h0_4d32"
+hunk = 0
+offset = 0x4d32
+own = 6
+instructions = 6
+unit = 6
+subsystem = "character"
+gen_task = "T35"
+port_task = "T08"
+calls = []
+note = "sets char_anim_ptr"
+
+[[routine]]
+name = "h0_4d54"
+hunk = 0
+offset = 0x4d54
+own = 6
+instructions = 6
+unit = 6
+subsystem = "character"
+gen_task = "T35"
+port_task = "T08"
+calls = []
+note = "sets char_anim_ptr"
+
+[[routine]]
+name = "camera_update"
+hunk = 0
+offset = 0x4d7e
+own = 48
+instructions = 178
+unit = 178
+subsystem = "camera"
+gen_task = "T36"
+port_task = "T09"
+calls = ["h0+$4e9a", "h0+$4ea6", "h0+$4ec2", "h0+$4eb4"]
+
+[[routine]]
+name = "h0_4e9a"
+hunk = 0
+offset = 0x4e9a
+own = 9
+instructions = 32
+unit = 32
+subsystem = "camera"
+gen_task = "T36"
+port_task = "T09"
+calls = ["h0+$51fc"]
+note = "edge flag"
+
+[[routine]]
+name = "h0_4ea6"
+hunk = 0
+offset = 0x4ea6
+own = 10
+instructions = 33
+unit = 33
+subsystem = "camera"
+gen_task = "T36"
+port_task = "T09"
+calls = ["h0+$526a"]
+note = "edge flag"
+
+[[routine]]
+name = "h0_4eb4"
+hunk = 0
+offset = 0x4eb4
+own = 10
+instructions = 33
+unit = 33
+subsystem = "camera"
+gen_task = "T36"
+port_task = "T09"
+calls = ["h0+$52d8"]
+note = "edge flag"
+
+[[routine]]
+name = "h0_4ec2"
+hunk = 0
+offset = 0x4ec2
+own = 9
+instructions = 32
+unit = 32
+subsystem = "camera"
+gen_task = "T36"
+port_task = "T09"
+calls = ["h0+$5346"]
+note = "edge flag"
+
+[[routine]]
+name = "char_probe"
+hunk = 0
+offset = 0x4f84
+own = 199
+instructions = 199
+unit = 199
+subsystem = "character"
+gen_task = "T35"
+port_task = "T08"
+calls = []
+by_hand = true
+
+[[routine]]
+name = "char_probe_flags"
+hunk = 0
+offset = 0x4f90
+own = 60
+instructions = 60
+unit = 60
+subsystem = "character"
+gen_task = "T35"
+port_task = "T08"
+calls = []
+
+[[routine]]
+name = "h0_513c"
+hunk = 0
+offset = 0x513c
+own = 13
+instructions = 13
+unit = 13
+subsystem = "camera"
+gen_task = "T36"
+port_task = "T09"
+calls = []
+note = "clamps camera to $17cf, $53f"
+
+[[routine]]
+name = "h0_51fc"
+hunk = 0
+offset = 0x51fc
+own = 23
+instructions = 23
+unit = 23
+subsystem = "camera"
+gen_task = "T36"
+port_task = "T09"
+calls = []
+note = "edge flag from camera_x"
+
+[[routine]]
+name = "h0_526a"
+hunk = 0
+offset = 0x526a
+own = 23
+instructions = 23
+unit = 23
+subsystem = "camera"
+gen_task = "T36"
+port_task = "T09"
+calls = []
+note = "edge flag from camera_x"
+
+[[routine]]
+name = "h0_52d8"
+hunk = 0
+offset = 0x52d8
+own = 23
+instructions = 23
+unit = 23
+subsystem = "camera"
+gen_task = "T36"
+port_task = "T09"
+calls = []
+note = "edge flag from camera_y"
+
+[[routine]]
+name = "h0_5346"
+hunk = 0
+offset = 0x5346
+own = 23
+instructions = 23
+unit = 23
+subsystem = "camera"
+gen_task = "T36"
+port_task = "T09"
+calls = []
+note = "edge flag from camera_y"
+
+[[routine]]
+name = "char_sprite_position"
+hunk = 0
+offset = 0x5462
+own = 34
+instructions = 34
+unit = 34
+subsystem = "drawing"
+gen_task = "T37"
+port_task = "T10"
+calls = []
+
+[[routine]]
+name = "h0_5820"
+hunk = 0
+offset = 0x5820
+own = 177
+instructions = 177
+unit = 177
+subsystem = "drawing"
+gen_task = "T37"
+port_task = "T24"
+calls = []
+note = "reading: cuts creatures from StworkiNew onto the screen"
+
+[[routine]]
+name = "h0_5e44"
+hunk = 0
+offset = 0x5e44
+own = 200
+instructions = 200
+unit = 200
+subsystem = "drawing"
+gen_task = "T37"
+port_task = "T24"
+calls = []
+by_hand = true
+note = "reading: tile copies restoring the screen behind creatures"
+
+[[routine]]
+name = "h0_62b6"
+hunk = 0
+offset = 0x62b6
+own = 224
+instructions = 227
+unit = 224
+subsystem = "drawing"
+gen_task = "T37"
+port_task = "T25"
+calls = ["h0+$3ab4"]
+split_at = ["h0+$3ab4"]
+by_hand = true
+note = "reading: animated map cells, codes $20-$28; writes collision_map"
+
+[[routine]]
+name = "lives_minus_one"
+hunk = 0
+offset = 0x69d6
+own = 12
+instructions = 12
+unit = 12
+subsystem = "rest"
+gen_task = "T39"
+port_task = "T23"
+calls = []
+
+[[routine]]
+name = "countdown_plus_100"
+hunk = 0
+offset = 0x6a04
+own = 17
+instructions = 17
+unit = 17
+subsystem = "objects"
+gen_task = "T38"
+port_task = "T22"
+calls = []
+
+[[routine]]
+name = "items_left_minus_one"
+hunk = 0
+offset = 0x6a4c
+own = 14
+instructions = 14
+unit = 14
+subsystem = "objects"
+gen_task = "T38"
+port_task = "T22"
+calls = []
+
+[[routine]]
+name = "read_joystick"
+hunk = 0
+offset = 0x8dfc
+own = 40
+instructions = 40
+unit = 40
+subsystem = "character"
+gen_task = "T35"
+port_task = "T08"
+calls = []
+note = "reads JOY1DAT; appends to input_log"
+
+[[routine]]
+name = "h0_94ba"
+hunk = 0
+offset = 0x94ba
+own = 13
+instructions = 66
+unit = 66
+subsystem = "drawing"
+gen_task = "T37"
+port_task = "T10"
+calls = ["h0+$94fe"]
+note = "reading: copper list in hunk 1"
+
+[[routine]]
+name = "h0_94fe"
+hunk = 0
+offset = 0x94fe
+own = 12
+instructions = 53
+unit = 53
+subsystem = "drawing"
+gen_task = "T37"
+port_task = "T10"
+calls = ["h0+$9550"]
+note = "reading: copper list in hunk 1"
+
+[[routine]]
+name = "h0_9550"
+hunk = 0
+offset = 0x9550
+own = 41
+instructions = 41
+unit = 41
+subsystem = "drawing"
+gen_task = "T37"
+port_task = "T10"
+calls = []
+note = "reading: copper list in hunk 1"
+
+[[routine]]
+name = "h0_9754"
+hunk = 0
+offset = 0x9754
+own = 61
+instructions = 61
+unit = 61
+subsystem = "drawing"
+gen_task = "T37"
+port_task = "T10"
+calls = []
+note = "spike: camera to the copper bitplane pointers"
+
+[[routine]]
+name = "char_sprite_copy"
+hunk = 0
+offset = 0x9b06
+own = 73
+instructions = 73
+unit = 73
+subsystem = "drawing"
+gen_task = "T37"
+port_task = "T10"
+calls = []
