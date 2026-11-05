@@ -85,9 +85,9 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T64 | listing-odd-bytes | T08, T51 | ✅ | |
 | T66 | reshape-decision | T62; blocks T22 | ⬜ | |
 | T65 | level-start-draw | T55; blocks T13, T20 | ⬜ | |
-| T67 | pass-input-read | T06; blocks T42, T43, T44, T15 | ⬜ | |
+| T67 | pass-input-read | T06; blocks T42, T43, T44, T15 | 🔍 | `PassInputs` in `run_with`: joystick from the step `read_joystick` (or the paused branch) ran in, keys from the start step, measured. Anchored at W1-1 sync, checked against `input_log_index`. New case `character-run-slide-buttons`, `tests/pass_input.rs` (3 tests, smoke). Deviation: goal is `char_x` $294 and `char_jump_t` 167, since up jumps. |
 
-**Review queue:** *(empty)*
+**Review queue:** T67
 
 ## Blocked on the user
 

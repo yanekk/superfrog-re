@@ -6,7 +6,7 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
-| 2026-11-05 | 📌 | T67 added by T41 with the owner's yes: while the camera scrolls a pass reads `JOY1DAT` in the step after its `irq_count` rose (57 of 76 slide passes), so `run_with` pairs the wrong input; blocks T42, T43, T44, T15. |
+| 2026-11-06 | 📌 | T67, measured: a pass's joystick is its `read_joystick` step's (`PassInputs`, checked by `input_log_index`); its keys are its start step's, standing or sliding. A paused pass runs `h0+$200e`, no read. T41's pairing premise held. |
 | 2026-11-05 | 📌 | T41, from frame 6400: holding right slides W1-1's first slope to `char_x` $29d by frame 6522; up held jumps (review falsified "up ignored"). Right and up from frame 10 lands on a creature at 6487 (`char_hit_check` stomp sets `h0+$3b28`): T24's. |
 | 2026-11-05 | 📌 | T43, measured: W1-1's right wall stops the character at column 229, `camera_x` `$dc9` (`$17cf` unreachable); `redraw_edge_d` reads filler column 241, `collision_map` equal. Two-edge frames (T55) never differed over 2 826 passes, so unexcluded; `hits_taken` excluded (T24). |
 | 2026-11-05 | 📌 | T55 review: `cases/w1-idle.toml` (T07) compares no `edge_latch_*` or `edge_at_*`, so it cannot see the camera/redraw hand-off; T55's `the_edge_latches_step_with_the_original_over_the_idle_case` does. Left. |
@@ -61,8 +61,7 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 | 2026-11-05 | 📌 | T30 review, read-only: `game_file` treats any `read_file` error as absent, so a damaged file block reads as "no such file" rather than its read error. Left; only a damaged zip reaches it. |
 | 2026-11-05 | 📌 | T01 smoke after the move: 761 s ok, cold worktree, load 9 on 10 cores. Before: 887 s warm, 904 s fresh copy. A cold smoke compile took about 8 GB; free disk fell to 14 GB. |
 | 2026-11-05 | 🔄 | Read-back decisions (owner): finisher copies conversation logs (`.pir/rules/on-finish.md` step 1); T49 translates T21's object routines before T22; generator tasks share the porting size limit; T23, T26 keep the split-by-case escape line. |
-| 2026-11-05 | 🔄 | Owner set every Muse call to `worker`, the batch included (caps $0.10 a routine, $5 a batch), and asked for a read-back of the amendment. |
-| 2026-11-05 | 🔄 | Owner adopted translation by Muse and small sessions (brief): T32 rig split from T06, T33 to T40 translation track, T41 to T48 frame-matching per case. pir deletes `.parallel/control/conversations/` only on Remove; DESIGN §5.3 copies them first. |
+| 2026-11-05 | 🔄 | Owner adopted translation by Muse and small sessions: T32 rig split from T06, T33-T40 translation, T41-T48 per case; every Muse call `worker` (caps $0.10 a routine, $5 a batch). pir deletes `.parallel/control/conversations/` only on Remove; DESIGN §5.3 copies them first. |
 | 2026-11-03 | 🔄 | Owner approved the first game's lessons before the build: `toolkit/docs/porting-routines.md`, DESIGN §4.1 and §4.2, two T00 questions, and T31, a sixth vAmiga patch counting executed addresses. Every sync cache rebuilds once after T31. |
 | 2026-11-01 | 📌 | Plan review, measured: Accessibility and Screen Recording granted, screen unlocked, headless Chrome runs a local page. Fresh-copy smoke: 904 s, over its 900 s budget, fails at 1 200 s. |
 | 2026-11-01 | 🔄 | Owner replaced the planner's always-on recorder with Superfrog's Start Level modal, one level in its selector, fields added as discovered. |
