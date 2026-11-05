@@ -9,7 +9,7 @@
 
 **Status:** Amendment read back and its 4 decisions settled; ready to build. Nothing built.
 **Last updated:** 2026-11-05
-**Next `pir-work` will:** T00 and T32, because every level task rests on T00's measurements and every port on T32's rig.
+**Next `pir-work` will:** review T34; then T35 to T39, T53, T54 and T56 once T33 is done, all sized by `re/translate.toml`.
 
 ## Tasks
 
@@ -28,7 +28,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T05 | level-readers | T03, T04, T30 | ✅ | |
 | T06 | level-runner | T03, T04, T31, T32 | ⬜ | |
 | T33 | translate-service | T32 | ⬜ | |
-| T34 | translate-inventory | T00 | ⬜ | |
+| T34 | translate-inventory | T00 | 🔍 | `tools/call_tree.py` writes `re/translate.toml`: 87 routines, shares in `docs/11-translation.md`, 22 tests. Deviations: decodes the program, not the listing (sweep desyncs); `by_hand` for own flow over 180 (4 routines); roots add `redraw_edge_a..d` (owner); `gen_task` allows siblings T53, T54, T56. T51 to T56 added (owner). |
 | T35 | gen-character | T33, T34 | ⬜ | |
 | T36 | gen-camera | T33, T34 | ⬜ | |
 | T37 | gen-drawing | T33, T34 | ⬜ | |
@@ -68,8 +68,14 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T28 | finish-end-to-end | T16, T48 | ⬜ | |
 | T29 | level-drill | T15, T28 | ⬜ | |
 | T50 | sf-menus-os-test-stale | — | ⬜ | |
+| T51 | character-anim-input | T07, T40; blocks T08 | ⬜ | |
+| T52 | creature-drawing | T10, T22; blocks T46 | ⬜ | |
+| T53 | gen-character-2 | T33, T34; blocks T40 | ⬜ | |
+| T54 | gen-objects-2 | T33, T34; blocks T40 | ⬜ | |
+| T55 | edge-redraw | T09; blocks T10, T41, T42, T43 | ⬜ | |
+| T56 | gen-edge-redraw | T33, T34; blocks T40 | ⬜ | |
 
-**Review queue:** *(empty)*
+**Review queue:** T34
 
 ## Blocked on the user
 

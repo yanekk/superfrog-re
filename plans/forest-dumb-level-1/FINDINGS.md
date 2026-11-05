@@ -6,6 +6,9 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-11-05 | 📌 | T51 to T56 added (owner): T34 counted T08 21 routines, T24 17, T35 20, T38 21, over §4.3's 15; `redraw_edge_a..d` run from `main_loop`, outside `game_frame`, 14 routines. Siblings take them; shares in `games/forest-dumb/docs/11-translation.md`. |
+| 2026-11-05 | 🐞 | T34: `re_listing.py`'s linear sweep loses step after data in code; 7 of `game_frame`'s call targets fall inside an instruction. `tools/call_tree.py` decodes from each reached address. `h0+$513c` clamps `camera_y` to `$53f`, not T00's `$52f`. |
+| 2026-11-05 | 📌 | T34: `char_probe` (199), `h0_5e44` (200), `h0_62b6` (224), `redraw_edge_c` (181) are over 180 in their own flow, so T33 answers `too-big`; T08, T52, T25 and T55 translate them by hand. |
 | 2026-11-05 | 📌 | T17 review: under load 10–20, wall time of the exit pin swung 20–38 s per run; user CPU time (`/usr/bin/time -p` on the test binary) stayed within 2%, so A/B timing on a busy machine uses CPU time. |
 | 2026-11-05 | 📌 | T17: every Superfrog map cache key changed (facts.rs, map.rs, toolkit graph.rs hashed), so maps rebuild once. Pin bench (route_pin with exit pin, release) 38.9 s before, 33.5 and 35.4 s after, all under load 6–10, not idle. |
 | 2026-11-05 | 📌 | T05: world 1's load list loads `_WYBIJACZKA` to `h4+$9618` twice, never `$9898`, which keeps program bytes. Play fades its palette in until frame 6331. The view's top-left is level pixel (`camera_x + 17`, `camera_y + 1`). |

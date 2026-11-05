@@ -65,6 +65,9 @@ Runs beside the rest of phase 1. Every porting task waits for T40.
 | [T37](tasks/T37-gen-drawing.md) | gen-drawing | T33, T34 |
 | [T38](tasks/T38-gen-objects.md) | gen-objects | T33, T34 |
 | [T39](tasks/T39-gen-rest.md) | gen-rest | T33, T34 |
+| [T53](tasks/T53-gen-character-2.md) | gen-character-2 | T33, T34; blocks T40 |
+| [T54](tasks/T54-gen-objects-2.md) | gen-objects-2 | T33, T34; blocks T40 |
+| [T56](tasks/T56-gen-edge-redraw.md) | gen-edge-redraw | T33, T34; blocks T40 |
 | [T40](tasks/T40-batch-translate.md) | batch-translate | T35, T36, T37, T38, T39 |
 
 T34 assigns every routine a generator batch and a porting task, and asks the owner to add sibling tasks where a share passes DESIGN §4.3's size. T40's run is a `worker` row of DESIGN §5.3, capped at $5.
@@ -75,7 +78,9 @@ T34 assigns every routine a generator batch and a porting task, and asks the own
 |---|---|---|
 | [T07](tasks/T07-level-entry.md) | level-entry | T05, T06, T32 |
 | [T08](tasks/T08-character-movement.md) | character-movement | T07, T40 |
+| [T51](tasks/T51-character-anim-input.md) | character-anim-input | T07, T40; blocks T08 |
 | [T09](tasks/T09-camera-scroll.md) | camera-scroll | T07, T40 |
+| [T55](tasks/T55-edge-redraw.md) | edge-redraw | T09; blocks T10, T41, T42, T43 |
 | [T10](tasks/T10-level-drawing.md) | level-drawing | T08, T09, T40 |
 | [T41](tasks/T41-case-run-jump.md) | case-run-jump | T08, T09 |
 | [T42](tasks/T42-case-walls-pits.md) | case-walls-pits | T08, T09, T41 |
@@ -114,6 +119,7 @@ T34 assigns every routine a generator batch and a porting task, and asks the own
 | [T24](tasks/T24-enemies.md) | enemies | T20, T21, T22, T23 |
 | [T45](tasks/T45-case-collect.md) | case-collect | T22 |
 | [T46](tasks/T46-case-enemies.md) | case-enemies | T24, T45 |
+| [T52](tasks/T52-creature-drawing.md) | creature-drawing | T10, T22; blocks T46 |
 
 ## Phase 6: finishing the level
 

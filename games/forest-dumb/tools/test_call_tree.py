@@ -68,7 +68,8 @@ def program(asm):
 
 
 def scan(asm, root="root", names=None):
-    return ct.scan(program(asm), asm.labels[root], names or {})
+    roots = [root] if isinstance(root, str) else root
+    return ct.scan(program(asm), [asm.labels[r] for r in roots], names or {})
 
 
 def by_off(entries):
@@ -116,6 +117,14 @@ class Scan(unittest.TestCase):
         a.label("root").raw("ffff")
         _, unf = scan(a)
         self.assertEqual(unf[0]["kind"], "undecodable")
+
+    def test_every_root_and_its_callees_are_listed_once(self):
+        a = Asm()
+        a.label("one").bsr("shared").rts()
+        a.label("two").bsr("shared").rts()
+        a.label("shared").rts()
+        entries, _ = scan(a, root=["one", "two"])
+        self.assertEqual([e["offset"] for e in entries], [0, a.labels["two"], a.labels["shared"]])
 
     def test_named_routines_take_their_symbol(self):
         a = Asm()
