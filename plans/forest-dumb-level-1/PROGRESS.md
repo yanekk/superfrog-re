@@ -76,9 +76,9 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T56 | gen-edge-redraw | T33, T34; blocks T40 | ⬜ | |
 | T57 | sf-scale-fullscreen-os-test | — | ⬜ | |
 | T58 | translate-btst-fix | T33; blocks T40 | ✅ | |
-| T59 | oracle-sprite-collision | T21; blocks T24, T41, T42, T43, T44, T45, T46, T47 | ⬜ | |
+| T59 | oracle-sprite-collision | T21; blocks T24, T41, T42, T43, T44, T45, T46, T47 | 🔍 | All three Denise collision checks on, `BUILD` tagged `-clx`; toolkit `collision.rs` (2 tests); 4 contact claims plus a CLXDAT test in `object_claims.rs`. Superfrog smoke oracle tests and route pins unchanged. Deviations: SPR_SPR and PLF_PLF on too (hardware sets every bit); `level_files` 6640 covered cells 11 to 8, caused by contact. |
 
-**Review queue:** *(empty)*
+**Review queue:** T59
 
 ## Blocked on the user
 

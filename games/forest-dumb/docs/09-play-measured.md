@@ -141,7 +141,7 @@ event not in the probe (an enemy type not met) is not ruled out; T21 meets every
 | `camera_x`, `camera_y` | `h0+$1e62`, `$1e64` | word | view's top-left; clamped to `$17cf`, `$52f` | measured follows, clamps read |
 | `char_screen_x` | `h0+$4d78` | word | `char_x - camera_x` | measured |
 | `lives` | `h0+$6a84` | BCD word | 32 at level 1 (`lives_reset`); +1 to 99, -1 to 0 | measured start, rest read |
-| `hits_taken` | `h0+$3b26` | word | reading: the third hit costs a life (`char_hit_check`) | read |
+| `hits_taken` | `h0+$3b26` | word | contact passes in a row; the third costs a life (`char_hit_check`, [10](10-object-system.md)) | measured (T59) |
 | `countdown` | `h0+$6a80` | BCD, 3 digits | 999 at level start, -1 every 63 passes; +100 capped at 999 | measured |
 | `items_left` | `h0+$6a88` | BCD word | 282 in world 1, -1 a pickup; the exit counts only at 0 | measured |
 | `score` | `h0+$2a66` | BCD long | `score_add` added by `score_add_routine` | measured |
