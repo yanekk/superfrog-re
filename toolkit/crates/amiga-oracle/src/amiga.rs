@@ -209,6 +209,8 @@ pub struct Amiga {
     df0: Option<usize>,
     frame: u32,
     input: FrameInput,
+    /// [`Amiga::pc_hits`]: the watched addresses and their counts in the last step.
+    pc_hits: Vec<(u32, u32)>,
 }
 
 // The shim keeps no state shared between instances; an instance may move between threads.
@@ -238,6 +240,7 @@ impl Amiga {
             df0: None,
             frame: 0,
             input: FrameInput::NONE,
+            pc_hits: Vec::new(),
         };
         for d in 1..cfg.drives {
             let rc = unsafe {
@@ -286,6 +289,7 @@ impl Amiga {
         }
         self.frame += 1;
         self.input = input;
+        self.read_pc_hits();
         Ok(FrameCapture {
             picture: self.picture(),
             paula: self.paula(),
@@ -475,6 +479,7 @@ impl Amiga {
         assert_eq!(rc, 0, "vAmiga refused a snapshot: {}", err.message());
         self.frame = s.frame;
         self.input = s.input;
+        self.pc_hits.iter_mut().for_each(|h| h.1 = 0);
     }
 
     /// Write `bytes` at `addr` in chip or slow RAM before the next frame. Not a player's input:
@@ -670,6 +675,36 @@ impl Amiga {
                     std::slice::from_raw_parts(slow, s).to_vec()
                 },
             })
+        }
+    }
+
+    /// Count, in each step from now on, how often the CPU executes the instruction at each of `pcs`
+    /// (core patch 0006); replaces the watched set, and an empty one turns it off. An address is
+    /// the CPU's PC as the instruction starts; duplicates count once. An instruction an interrupt
+    /// pre-empts counts once, when it runs after the return; a STOPped CPU counts nothing. The run
+    /// is the same with or without a watch list (`tests/exec_counts.rs`); its cost is in
+    /// `toolkit/docs/architecture/verification.md`.
+    pub fn watch_pcs(&mut self, pcs: &[u32]) {
+        unsafe { ffi::amiga_watch_pcs(self.raw, pcs.as_ptr(), pcs.len()) };
+        self.read_pc_hits();
+    }
+
+    /// `(pc, count)` for every watched address ([`Amiga::watch_pcs`]), ascending, zero counts
+    /// included: how often each ran in the last step. All zero after [`Amiga::watch_pcs`] or
+    /// [`Amiga::restore`], until the next step.
+    pub fn pc_hits(&self) -> &[(u32, u32)] {
+        &self.pc_hits
+    }
+
+    fn read_pc_hits(&mut self) {
+        let (mut pcs, mut counts) = (std::ptr::null(), std::ptr::null());
+        let n = unsafe { ffi::amiga_pc_hits(self.raw, &mut pcs, &mut counts) };
+        self.pc_hits.clear();
+        if n > 0 {
+            let (pcs, counts) = unsafe {
+                (std::slice::from_raw_parts(pcs, n), std::slice::from_raw_parts(counts, n))
+            };
+            self.pc_hits.extend(pcs.iter().copied().zip(counts.iter().copied()));
         }
     }
 

@@ -181,6 +181,15 @@ typedef struct {
 void amiga_set_profile(amiga_machine *a, int on);
 size_t amiga_line_samples(const amiga_machine *a, const amiga_line_sample **out);
 
+/* Count, in each step from now on, how often the CPU executes the instruction at each of `pcs` (core
+ * patch 0006): replaces the watched set, `n` 0 turns it off. Addresses are the CPU's 32-bit PC as the
+ * instruction starts; duplicates count once. An instruction an interrupt pre-empts is counted when it
+ * runs, after the return; a STOPped CPU counts nothing. The run is the same with or without it. */
+void amiga_watch_pcs(amiga_machine *a, const uint32_t *pcs, size_t n);
+/* The watched addresses, ascending and distinct, and how often each ran in the last step, zero
+ * included. Valid until the next step or amiga_watch_pcs. */
+size_t amiga_pc_hits(const amiga_machine *a, const uint32_t **pcs, const uint32_t **counts);
+
 /* The whole machine state as a vAmiga snapshot. The returned buffer is freed with amiga_buffer_free. */
 uint8_t *amiga_snapshot(amiga_machine *a, size_t *len, char *err, size_t err_len);
 void amiga_buffer_free(uint8_t *buf);
