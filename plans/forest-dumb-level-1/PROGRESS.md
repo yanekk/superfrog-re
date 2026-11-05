@@ -50,7 +50,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T15 | recording-compare | T03, T14 | ⬜ | |
 | T16 | app-drill | T13, T14 | ⬜ | |
 | T17 | planner-toolkit-move | T02 | ✅ | |
-| T18 | map-page-toolkit-move | T17 | 🔍 | Toolkit `amiga-routeview` (site, json, guide, verdict, page.html); 6 new tests. Data files, manifest, Chrome screenshots byte-identical. Deviations: PageSpec adds actor, anchor, cell_origin, live_box; LevelDump adds `entry()`; `progress` returns `Stall` (event plus fact); index.html differs (spec injected). Timing load 4–8, not idle. |
+| T18 | map-page-toolkit-move | T17 | ✅ | Review: one fix, test locking the first frame at closest exit distance (tie mutation survived). Rebuilt old and new: 24 planner and 8 cut-short routes' data and manifests byte-identical, Chrome shots identical at two sizes, CPU 122.7 vs 123.8 s, load 5, not idle. |
 | T19 | map-page | T11, T18 | ⬜ | |
 | T20 | planner-level-1 | T11, T17, T19 | ⬜ | |
 | T21 | object-meanings | T05, T06, T32 | ⬜ | |
@@ -69,7 +69,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T29 | level-drill | T15, T28 | ⬜ | |
 | T50 | sf-menus-os-test-stale | — | ⬜ | |
 
-**Review queue:** T18
+**Review queue:** *(empty)*
 
 ## Blocked on the user
 
