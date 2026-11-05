@@ -20,5 +20,5 @@ The note answers, each with the evidence and date: first level frame from fire, 
 - [ ] Every question above has an answer with evidence, or is named as open with why.
 - [ ] `symbols.toml` holds each measured name; a name changed from `docs/07` is corrected there.
 - [ ] `PLAN.md`'s gates can be read off the note; a result that changes a later task is raised, not patched in.
-- [ ] The note assigns the character's routines to families. If they are more than T08 can port and prove in one session, the owner is asked to add sibling tasks for the families beyond T08's, each with `blocks` edges onto T10 and T11; T08 is not edited (root CLAUDE.md: a worker adds tasks, never splits one).
+- [ ] The note lists the routines the character's update calls; sizing them into porting tasks is T34's.
 - [ ] Each per-frame rate answer says whether it is measured or inferred; T06 re-measures them with T31's counter.

@@ -113,7 +113,8 @@ fd-app, fd-conform, fd-e2e, fd-plan's shell, fd-routeview, fd-tools   everything
 | `fd-assets` (new, pure) | Level, sprite and table readers over unpacked bytes | none |
 | `fd-core` | `Game`, level state, character, camera, objects, scenes, drawing, `LAYOUT` | `fd-assets`, `amiga-chips`, `amiga-clock`, `amiga-input`, `amiga-record` (T14, on `ALLOWED`) |
 | `fd-tools` | Disk lookup, extraction, unpack | `amiga-disk` |
-| `fd-conform` | Cases, level sync, transplant, routine rig, bug replay and compare | `fd-core`, `amiga-oracle`, `amiga-conform`, `amiga-record` |
+| `fd-conform` | Cases, level sync, transplant, routine rig and generators (T32), the translation judge `fd-judge` (T33), bug replay and compare | `fd-core`, `amiga-oracle`, `amiga-conform`, `amiga-record` |
+| `tools/translate.py`, `translate_batch.py` (new) | Muse calls, retries, spend caps, the batch table (§4.3) | `fd-judge`, Python standard library only |
 | `fd-app` (new) | Window, menu, pacing, recorder wiring | `fd-core`, `fd-tools`, `amiga-app`, `amiga-record` |
 | `fd-e2e` (new) | `AppSpec`, tests of the built app | `amiga-e2e` |
 | `amiga-plan` (new, toolkit) | Planner core and `PlanGame` | `amiga-input` |
@@ -143,6 +144,7 @@ Moved parts must name no game (`tools/check_tier_names.py`). Superfrog keeps wor
 | Layer | Proves | Cannot prove |
 |---|---|---|
 | Unit, in `fd-core`, `fd-assets`, `amiga-plan` | Rules, in milliseconds | That the rules are the original's |
+| Translation (T33's judge, 2 000 generated states) | A literal Muse port equals the 68k routine, custom-chip writes in order | That the engine port equals it, or states the generator never makes |
 | Routine (`routine.rs` rig, 10 000 generated states) | A ported routine equals the 68k one, registers and hardware writes included | Whole-play behaviour |
 | Coverage (T31's counter) | A ported routine actually ran in a case on the original | That it ran on every path |
 | Case (`fd-conform`) | Engine equals the original across a run | Anything off the scripted run |
@@ -157,14 +159,27 @@ A crucial feature adds its smoke test and `[[area]]` in `games/forest-dumb/smoke
 
 `toolkit/docs/porting-routines.md` is named in the Done when of T08, T09, T10, T22, T24 and T25 (owner, 2026-11-03). It holds the first game's porting lessons so a session need not read that game's findings log. Four rules are enforced here by tests:
 
-- The port register `fd-core/src/ported.rs` lists every original routine ported, by hunk and offset, with its Rust function; each entry matches a `func` in `re/symbols.toml`. A second entry for one address fails (T06). Porting tasks only append to it. An object value with no registered kind raises `Event::Unported`, which fails every case (T07); the app writes it to stderr and leaves the object out. Parallel ports of one routine and unported objects skipped unseen were the first game's most repeated silent gaps.
+- The port register `fd-core/src/ported.rs` lists every original routine ported, by hunk and offset, with its Rust function; each entry matches a `func` in `re/symbols.toml`. A second entry for one address fails (T32). Porting tasks only append to it. An object value with no registered kind raises `Event::Unported`, which fails every case (T07); the app writes it to stderr and leaves the object out. Parallel ports of one routine and unported objects skipped unseen were the first game's most repeated silent gaps.
 - A case fails when it compares nothing, and a level case states its `goal`; agreement that misses the goal fails (T06), because two sides failing alike agree.
-- Coverage: each run reports how often the original executed each registered routine, from T31's counter. A ported routine with no hits in any case is not proven; T11 checks the character's, T27 all.
-- The routine rig compares returned registers and hardware writes, not memory only (T06).
+- Coverage: each run reports how often the original executed each registered routine, from T31's counter. A ported routine with no hits in any case is not proven; The frame-matching task of each porting task shows its routines' hits (T41 to T47), T11 the character's together, T48 all.
+- The routine rig compares returned registers and hardware writes, not memory only (T32).
 
 ### 4.2 The base branch stays green
 
 A test red on the base branch is raised as a task to add the day it is seen, by the add-task rule (root CLAUDE.md: a worker asks, the owner or the coordinator approves), never only logged; a red seen between runs goes to the owner (owner, 2026-11-03). On the first game a red stayed for weeks and hid newer ones.
+
+
+### 4.3 Translation by Muse, and session size (owner, 2026-11-05)
+
+From `games/forest-dumb/docs/level-1-brief.md`, "Translation by Muse, and session size". In `plans/rust-engine` 98.6 to 99.3% of a heavy task's tokens were cache reads, builders took 86% of the run, and T14's first builder reached the 1M context limit in its frame-matching loop. The cost is long sessions re-reading their context, so:
+
+- Literal translation goes to `meta/muse-spark-1.3-contributor` through T33's service, judged on the routine oracle in hardware mode. A builder sees the result line and the port, never the listing or the retries. Measured in the spike: 24 of 24 runs passed up to 183 instructions, 2 of 6 at 298 to 461. So a routine over 180 instructions is split at its callees first (T34), and one that fails three tries is translated by the builder.
+- One unattended batch (T40) runs the service over `game_frame`'s call tree before any porting task starts. Generators are written per subsystem (T35 to T39) and reviewed. A pass is only as strong as the states it ran on, so the reviewer looks for branches no state reaches.
+- A porting task (T08, T09, T10, T22, T24, T25) turns literal ports into engine code on typed state and proves each on the rig. It holds one subsystem's routines, at most about 1 500 instructions or 15 routines of original code. That figure is a planning estimate; T34 and T21 measure each task's share and ask the owner to add tasks over it.
+- Whole-run agreement is its own task per group of cases (T41 to T48), never the porting task's.
+- Auto-compact stays on in every session.
+- Raw ports, listings and prompts derive from the game's code and stay in `build/`. What lands in `fd-core` is the engine-shaped port.
+- The run's conversation logs are kept for measuring tokens per activity afterwards. pir deletes `plans/forest-dumb-level-1/.parallel/control/conversations/` in the main checkout only when the run is removed from the dashboard, and nothing archives them, so they are copied out before that (§5.3, §6).
 
 ---
 
@@ -176,6 +191,7 @@ A test red on the base branch is raised as a task to add the day it is seen, by 
 | Language / runtime | Rust 1.99.0 pinned in the workspaces; python3 in a fresh venv |
 | Toolchain | rustup, cmake; vAmiga at the pinned commit in `~/.cache/amiga-toolkit/vamiga/` |
 | Installed here | Ghidra with its MCP server, Kickstart 1.3 at `~/amiga-roms/kick1.3.rom`, `xdftool`, the zips in the main checkout's `games/forest-dumb/` |
+| Translation | `OPENROUTER_API_KEY` in `~/.zshrc` (present 2026-11-05, checked without printing it); the spike's judge and `run.py` in `games/forest-dumb/spikes/muse-spark/` |
 | **Deliberately absent** | No uncracked disk set; no WHDLoad or other emulator is part of testing |
 
 **The test command.** The block's lines come from `.pir/settings.json` and are not re-derived. `tools/smoke.sh` runs the smoke set; it warns over 900 s and fails at 1 200 s (`tools/smoke.py`), and 900 s is the budget. The plan adds crates to existing workspaces but no install step, so they were not re-measured. To run this game's suite while working: `cd games/forest-dumb/engine && cargo test -q -p <crate>`; verbose by dropping `-q`. The suites run quiet with `NO_COLOR=1` and nothing here forces colour (`env` checked 2026-11-01); failures print in full.
@@ -207,6 +223,8 @@ A test red on the base branch is raised as a task to add the day it is seen, by 
 | Planner budget | 30 min a run, memory reported | A search ends and reports |
 | Scripted runs | No focus taken, no real pads | The owner's machine stays usable |
 | Zips | Opened read-only | The irreplaceable input is never written |
+| Translation `--max-usd` | 0.10 a routine, 5 a batch | No call starts that would pass the cap |
+| Translation tries, `max_tokens` | 3 tries, 96 000 | A routine ends as `fail` and goes to its builder |
 
 Never run the unbounded version of any of these to find something out.
 
@@ -216,14 +234,17 @@ Never run the unbounded version of any of these to find something out.
 |---|---|---|---|---|---|---|
 | Fetch a crates.io dependency on the policy above | `cargo build` | `worker` | Public read-only fetch, recorded in `Cargo.lock` | Revert the lockfile | none | none |
 | Fetch and build vAmiga at the pinned commit | `toolkit/tools/setup/oracle.sh` | `worker` | Public fetch into a local cache; already built here | `rm -rf ~/.cache/amiga-toolkit/vamiga` | none | none |
+| Translate one routine through Muse (T33, porting tasks) | `python3 -I games/forest-dumb/tools/translate.py <routine> --gen <name> --max-usd 0.10` | `worker` | Paid but capped at cents; sending the game's code to Meta was accepted by the owner on 2026-11-04 | Spend stops at the cap; code sent cannot be recalled | under $0.01 a call, $0.10 cap | `no-key` result names where it looked |
+| Batch translation over `game_frame`'s call tree (T40) | `python3 -I games/forest-dumb/tools/translate_batch.py --max-usd 5` | `ask` | One unattended run spending dollars | Spend stops at the cap; ports regenerate; code sent cannot be recalled | a few dollars, $5 cap | as above |
+| Keep the run's conversation logs (finish, before Remove) | `mkdir -p ~/.cache/superfrog-re/runs/forest-dumb-level-1 && cp -R <main checkout>/plans/forest-dumb-level-1/.parallel/control/conversations ~/.cache/superfrog-re/runs/forest-dumb-level-1/` | `worker` | Local copy | Delete the copy | none | none |
 
-Credentials measured at plan time: none are needed. No cloud account, paid service, domain or device is touched.
+Credentials measured at plan time: `OPENROUTER_API_KEY` only (2026-11-05). OpenRouter is the one paid service; no cloud account, domain or device is touched.
 
 ---
 
 ## 6. Recovery
 
-Nothing here can lock anyone out. A bad settings file: delete `~/Library/Application Support/Forest-Dumb-RE/settings.toml`. A stale snapshot: delete the sync cache. A Superfrog break from a move: revert that task's commit; T02's pins name it.
+Nothing here can lock anyone out. A bad settings file: delete `~/Library/Application Support/Forest-Dumb-RE/settings.toml`. A stale snapshot: delete the sync cache. A Superfrog break from a move: revert that task's commit; T02's pins name it. Conversation logs: pressing Remove on the run in pir's dashboard deletes them for good, so the copy row of §5.3 runs first.
 
 ---
 
@@ -238,6 +259,7 @@ All 2026-11-01 unless dated.
 - `sf-e2e`'s `plan_routes.rs` is labelled smoke while its only test is `#[ignore]`d, so it only compiles there. T28 does not copy that: its short test really runs.
 - 2026-11-03 (owner): the plan takes the first game's lessons as `toolkit/docs/porting-routines.md`, §4.1 and §4.2, T00's two added questions and T31.
 - 2026-11-03 (owner): T31 adds a sixth vAmiga patch, an instruction-address counter, because the oracle cannot otherwise show a routine ran. It changes the build hash, so every sync cache, Superfrog's included, rebuilds once; that cost was accepted. `picture_in` below still needs no patch.
+- 2026-11-05 (owner, brief "Translation by Muse"): literal translation goes to Muse through a judged service (T33), one batch over `game_frame`'s call tree (T40) before the porting tasks, builder sessions sized to one subsystem, frame-matching split by case (T41 to T48), auto-compact on, logs kept. T06's rig and register moved to T32 so the service can start early.
 - Add `Amiga::picture_in` and leave `picture()` alone: Superfrog's `level_exit_fade` and `display::draw` rely on the frame-end window, and changing the default would invalidate traces. No vAmiga patch, so caches stay valid.
 - Stretches first, freeze later (§2.2), because the freeze needs entry points that are readings today.
 - Whether this game uses hardware sprites is unknown, so `objects.rs` is not moved in advance; T00 measures and T10 decides.

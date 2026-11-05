@@ -1,13 +1,13 @@
 # T07 — level-entry
 
-**Phase:** 2 · **Depends on:** T05, T06 · **Weight:** medium
+**Phase:** 2 · **Depends on:** T05, T06, T32 · **Weight:** medium
 
 ## Goal
 The engine enters level 1 in the same state the original has at the sync point, and establishes the level scene and object dispatch that later tasks extend rather than restructure.
 ## Design sections this implements
 §2.3, §3.3.
 ## Reuses
-`toolkit/docs/porting-routines.md` §4 (the port register); `plans/rust-engine/tasks/T14-frog-and-level.md`'s shape, `level_init` (`docs/07`), `amiga-input`'s `FrameInput`.
+`toolkit/docs/porting-routines.md` §4 (T32's port register); `plans/rust-engine/tasks/T14-frog-and-level.md`'s shape, `level_init` (`docs/07`), `amiga-input`'s `FrameInput`.
 ## Files
 `fd-core/src/{lib.rs,game.rs,scene.rs,level/mod.rs,state.rs,layout.rs}`, `fd-conform/tests/level_entry.rs`, `re/symbols.toml`, `smoke.toml`.
 ## Interface

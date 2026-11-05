@@ -1,6 +1,6 @@
 # T28 — finish-end-to-end
 
-**Phase:** 6 · **Depends on:** T16, T27 · **Weight:** medium
+**Phase:** 6 · **Depends on:** T16, T48 · **Weight:** medium
 
 ## Goal
 A test plays the planned route in the real app, from launch to the end of the level, the plan's final proof; a short version really runs in smoke.

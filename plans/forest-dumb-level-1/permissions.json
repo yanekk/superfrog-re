@@ -1,4 +1,10 @@
 {
-  "allow": ["Bash(cargo build)", "Bash(toolkit/tools/setup/oracle.sh)"],
-  "ask": []
+  "allow": [
+    "Bash(cargo build)",
+    "Bash(toolkit/tools/setup/oracle.sh)",
+    "Bash(python3 -I games/forest-dumb/tools/translate.py:*)"
+  ],
+  "ask": [
+    "Bash(python3 -I games/forest-dumb/tools/translate_batch.py:*)"
+  ]
 }
