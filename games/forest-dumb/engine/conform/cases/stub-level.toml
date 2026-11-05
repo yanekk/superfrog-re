@@ -1,7 +1,7 @@
 # T06's stub level case: 130 frames of W1-1 from the level sync point, state and picture, with the
-# character standing, walking right, jumping and standing again (scripts/w1-stub.txt). There is no
-# level engine until T07, so `fd-conform run` refuses it; tests/runner.rs runs it against a second
-# copy of the original standing in for the engine.
+# character standing, walking right, jumping and standing again (scripts/w1-stub.txt).
+# tests/runner.rs runs it against a second copy of the original standing in for the engine; on
+# fd-core's Game it fails until the character moves (T08).
 sync = { script = "boot-to-level1", frame = 6301 }
 input = "w1-stub"
 frames = 130

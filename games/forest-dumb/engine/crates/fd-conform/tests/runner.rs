@@ -6,11 +6,10 @@
 mod common;
 
 use std::path::Path;
-use std::process::Command;
 
 use amiga_conform::Mode;
 use common::{Feed, StandIn};
-use fd_conform::{Case, Exclusion, Goal, Options, Outcome, Verdict, run, run_with};
+use fd_conform::{Case, Exclusion, Goal, Options, Outcome, Verdict, run_with};
 use fd_core::Ported;
 
 fn stub() -> Case {
@@ -116,6 +115,7 @@ fn a_difference_past_the_tolerance_fails_and_an_excluded_area_passes_and_is_repo
 
     let bar = Exclusion {
         rows: 194..250,
+        var: None,
         what: "rows 194..250".into(),
         task: "T10".into(),
     };
@@ -188,13 +188,22 @@ fn an_idle_case_passes_only_with_every_pass_compared_and_no_event() {
     assert_eq!(v.outcome, Outcome::Same, "{v}");
     assert_eq!(v.passes, 19, "{v}");
 
+    // An unported object fails it, as it fails every case (tests/level_entry.rs: an `all` goal).
     let mut e = honest(&case);
     e.event = Some(5);
     let v = run_on(&case, &mut e, &Options::default());
     assert!(
-        matches!(v.outcome, Outcome::NotIdle { ref why } if why.contains("at pass 5")),
+        matches!(
+            v.outcome,
+            Outcome::Unported {
+                pass: 5,
+                value: 0xee,
+                ..
+            }
+        ),
         "{v}"
     );
+    assert!(v.outcome.to_string().contains("0xee"), "{v}");
 
     // Past main_loop's first 32-interrupt check, where one step ends two passes.
     let case = idle(40);
@@ -236,19 +245,6 @@ fn the_coverage_report_counts_each_registered_routine_and_shows_an_unreached_one
     assert!((19..=21).contains(&hits[0].1), "{v}");
     assert_eq!(v.coverage.unreached(), vec!["title_screen"]);
     assert!(v.to_string().contains("never reached"), "{v}");
-}
-
-#[test]
-fn a_level_case_is_refused_by_run_until_the_level_engine_exists() {
-    let err = run(&stub()).unwrap_err();
-    assert!(err.contains("T07"), "{err}");
-    let out = Command::new(env!("CARGO_BIN_EXE_fd-conform"))
-        .args(["run", "cases/stub-level.toml"])
-        .output()
-        .unwrap();
-    let text = String::from_utf8_lossy(&out.stderr);
-    assert_eq!(out.status.code(), Some(1), "{text}");
-    assert!(text.contains("T07") && !text.contains("panicked"), "{text}");
 }
 
 #[test]

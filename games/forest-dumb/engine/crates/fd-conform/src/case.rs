@@ -42,11 +42,14 @@ pub enum Goal {
     Idle,
 }
 
-/// Picture rows a case does not compare, and the task that will make them compared.
+/// Picture rows, or a variable, whose differences a case does not fail on, and the task that will
+/// make them compared.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Exclusion {
-    /// Rows of the compared picture (row 0 is the play area's first line).
+    /// Rows of the compared picture (row 0 is the play area's first line); empty for a variable.
     pub rows: Range<u16>,
+    /// A `LAYOUT` variable read each pass and counted where it differs (`what = "var NAME"`).
+    pub var: Option<String>,
     /// As the case file wrote it.
     pub what: String,
     pub task: String,
@@ -173,10 +176,30 @@ impl Case {
                     .to_string(),
             );
         }
-        if !exclude.is_empty() && !compare.picture {
-            return Err(
-                "`exclude` leaves picture rows out, but `compare` has no \"picture\"".to_string(),
-            );
+        for e in &exclude {
+            match &e.var {
+                None if !compare.picture => {
+                    return Err(
+                        "`exclude` leaves picture rows out, but `compare` has no \"picture\""
+                            .to_string(),
+                    );
+                }
+                Some(_) if !compare.vars => {
+                    return Err(format!(
+                        "`exclude` {}: a variable is excluded from `compare = [\"vars\"]`, \
+                         which the case does not have",
+                        e.what
+                    ));
+                }
+                Some(v) if vars.contains(v) => {
+                    return Err(format!(
+                        "`exclude` {}: `{v}` is also in `vars`; a variable is compared or \
+                         excluded, not both",
+                        e.what
+                    ));
+                }
+                _ => {}
+            }
         }
         if level {
             // The level sync point is the cached snapshot, which made its own disk change.
@@ -530,12 +553,27 @@ fn exclusion(v: &Value) -> Result<Exclusion, String> {
     let t = v.table("exclude", &["what", "task"])?;
     let what = field(t, "what", "exclude")?.string("what")?;
     let task = field(t, "task", "exclude")?.string("task")?;
-    let rows = what
-        .strip_prefix("rows ")
-        .and_then(|r| r.split_once(".."))
-        .and_then(|(a, b)| Some(a.trim().parse::<u16>().ok()?..b.trim().parse::<u16>().ok()?))
-        .filter(|r| r.start < r.end)
-        .ok_or_else(|| format!("exclude what = \"{what}\": expected \"rows A..B\", A below B"))?;
+    let var = match what.strip_prefix("var ") {
+        Some(name) => {
+            known(name.trim())?;
+            Some(name.trim().to_string())
+        }
+        None => None,
+    };
+    let rows = if var.is_some() {
+        0..0
+    } else {
+        what.strip_prefix("rows ")
+            .and_then(|r| r.split_once(".."))
+            .and_then(|(a, b)| Some(a.trim().parse::<u16>().ok()?..b.trim().parse::<u16>().ok()?))
+            .filter(|r| r.start < r.end)
+            .ok_or_else(|| {
+                format!(
+                    "exclude what = \"{what}\": expected \"rows A..B\", A below B, or \
+                     \"var NAME\""
+                )
+            })?
+    };
     // Every exclusion names the task that removes it (porting-routines §4).
     let is_task = task
         .strip_prefix('T')
@@ -545,7 +583,12 @@ fn exclusion(v: &Value) -> Result<Exclusion, String> {
             "exclude task = \"{task}\": name the task that removes it, as `T10`"
         ));
     }
-    Ok(Exclusion { rows, what, task })
+    Ok(Exclusion {
+        rows,
+        var,
+        what,
+        task,
+    })
 }
 
 #[cfg(test)]
@@ -608,6 +651,7 @@ mod tests {
             c.exclude,
             vec![Exclusion {
                 rows: 180..250,
+                var: None,
                 what: "rows 180..250".into(),
                 task: "T10".into()
             }]
@@ -692,6 +736,8 @@ mod tests {
             ),
             ("rows 180..250", "rows 250..180", "A below B"),
             ("rows 180..250", "columns 0..8", "rows A..B"),
+            ("rows 180..250", "var no_such", "not in fd-core's LAYOUT"),
+            ("rows 180..250", "var char_x", "also in `vars`"),
             ("task = \"T10\"", "task = \"later\"", "name the task"),
             (", task = \"T10\"", "", "no `task`"),
             ("[\"vars\", \"picture\"]", "[\"vars\"]", "no \"picture\""),
@@ -705,6 +751,24 @@ mod tests {
         ] {
             refused(LEVEL, from, to, says);
         }
+    }
+
+    #[test]
+    fn a_variable_is_excluded_by_name_with_its_task() {
+        let text = LEVEL.replace("rows 180..250", "var countdown");
+        let c = Case::parse("l", &text).unwrap();
+        assert_eq!(
+            c.exclude,
+            vec![Exclusion {
+                rows: 0..0,
+                var: Some("countdown".into()),
+                what: "var countdown".into(),
+                task: "T10".into()
+            }]
+        );
+        // A variable exclusion needs no picture, but does need compared variables.
+        let state_only = text.replace("[\"vars\", \"picture\"]", "[\"vars\"]");
+        assert!(Case::parse("l", &state_only).is_ok());
     }
 
     #[test]

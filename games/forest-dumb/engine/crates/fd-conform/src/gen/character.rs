@@ -98,7 +98,7 @@ impl Var {
         (h(0, off), n)
     }
 
-    fn poke(self, g: &mut Gen, s: &mut Setup) {
+    pub(crate) fn poke(self, g: &mut Gen, s: &mut Setup) {
         use Var::*;
         let (at, _) = self.span();
         match self {

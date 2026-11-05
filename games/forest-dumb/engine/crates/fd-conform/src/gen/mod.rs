@@ -5,14 +5,26 @@
 //! Each subsystem's generators live in their own module with a `pub const ALL` list; a generator
 //! task (T35 to T39, T49) adds its module and appends one line to [`MODULES`], nothing else.
 
-pub mod character;
 pub mod camera;
+pub mod character;
+pub mod character_anim;
+pub mod drawing;
+pub mod objects;
+pub mod rest;
 pub mod spike;
 
 pub use crate::routine::{Gen, Generator, Setup, h};
 
 /// Every module's generators.
-pub const MODULES: &[&[(&str, Generator)]] = &[spike::ALL, character::ALL, camera::ALL];
+pub const MODULES: &[&[(&str, Generator)]] = &[
+    spike::ALL,
+    character::ALL,
+    camera::ALL,
+    objects::ALL,
+    rest::ALL,
+    drawing::ALL,
+    character_anim::ALL,
+];
 
 /// The generator registered as `name`.
 pub fn generator(name: &str) -> Option<Generator> {

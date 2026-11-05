@@ -327,10 +327,9 @@ fn w1_1_values() -> BTreeSet<u8> {
         .collect()
 }
 
-/// The object values fd-core's dispatch has an `ObjectKind` for. T07 builds the dispatch and
-/// replaces this with its lookup; until then no value has one.
+/// The object values fd-core's dispatch (T07's `Dispatch::level_1`) has an `ObjectKind` for.
 fn dispatch_kinds() -> BTreeSet<u8> {
-    BTreeSet::new()
+    fd_core::Dispatch::level_1().values().into_iter().collect()
 }
 
 /// Everything wrong with `listed` for a map holding `values`, one line each.

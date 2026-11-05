@@ -31,11 +31,11 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T34 | translate-inventory | T00 | ✅ | |
 | T35 | gen-character | T33, T34 | ✅ | |
 | T36 | gen-camera | T33, T34 | ✅ | |
-| T37 | gen-drawing | T33, T34 | ⬜ | |
-| T38 | gen-objects | T33, T34 | ⬜ | |
-| T39 | gen-rest | T33, T34 | ⬜ | |
+| T37 | gen-drawing | T33, T34 | ✅ | |
+| T38 | gen-objects | T33, T34 | ✅ | |
+| T39 | gen-rest | T33, T34 | ✅ | |
 | T40 | batch-translate | T35, T36, T37, T38, T39 | ⬜ | |
-| T07 | level-entry | T05, T06, T32 | ⬜ | |
+| T07 | level-entry | T05, T06, T32 | ✅ | |
 | T08 | character-movement | T07, T40 | ⬜ | |
 | T09 | camera-scroll | T07, T40 | ⬜ | |
 | T10 | level-drawing | T08, T09, T40 | ⬜ | |
@@ -70,7 +70,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T50 | sf-menus-os-test-stale | — | ✅ | |
 | T51 | character-anim-input | T07, T40; blocks T08 | ⬜ | |
 | T52 | creature-drawing | T10, T22; blocks T46 | ⬜ | |
-| T53 | gen-character-2 | T33, T34; blocks T40 | ⬜ | |
+| T53 | gen-character-2 | T33, T34; blocks T40 | ✅ | |
 | T54 | gen-objects-2 | T33, T34; blocks T40 | ⬜ | |
 | T55 | edge-redraw | T09; blocks T10, T41, T42, T43 | ⬜ | |
 | T56 | gen-edge-redraw | T33, T34; blocks T40 | ⬜ | |

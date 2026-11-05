@@ -1,0 +1,11 @@
+# The level engine's own case (T07): fd-core's Game against the original over 200 frames of W1-1 with
+# nothing pressed, state only. From frame 6400 the character has landed (by pass 16) and the camera is
+# still, and no step in the stretch ends two passes (main_loop's first 32-interrupt check, which does,
+# is at frame 6334), so every pass is compared. Measured 2026-11-05.
+# `countdown` loses one every 63 passes (`countdown_step`), which T23 ports; until then it is excluded.
+sync = { script = "boot-to-level1", frame = 6400 }
+frames = 200
+compare = ["vars"]
+vars = ["mt_counter", "char_x", "char_y", "camera_x", "camera_y", "char_screen_x", "lives", "hits_taken", "items_left", "score", "world_index", "irq_count", "paused", "level_exit_touched", "give_up"]
+goal = { idle = true }
+exclude = [{ what = "var countdown", task = "T23" }]
