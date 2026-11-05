@@ -24,7 +24,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T32 | routine-rig | — | ⬜ | |
 | T03 | level-sync | T00 | ⬜ | |
 | T04 | picture-in-play | T00 | ⬜ | |
-| T30 | unpack-in-rust | — | ⬜ | |
+| T30 | unpack-in-rust | — | 🔍 | `fd-tools` `unpack`, `game_file`; 9 tests in `tests/unpack.rs`, smoke plus an area; level 1 read in 166 ms. Deviations: `game_file` takes `disk<N>/<name>` or a name on one disk only; StoneCracker input is an error, not passed through; the `unpack.py` comparison runs through `venv/bin/python`. |
 | T05 | level-readers | T03, T04, T30 | ⬜ | |
 | T06 | level-runner | T03, T04, T31, T32 | ⬜ | |
 | T33 | translate-service | T32 | ⬜ | |
@@ -68,7 +68,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T28 | finish-end-to-end | T16, T48 | ⬜ | |
 | T29 | level-drill | T15, T28 | ⬜ | |
 
-**Review queue:** *(empty)*
+**Review queue:** T30
 
 ## Blocked on the user
 
