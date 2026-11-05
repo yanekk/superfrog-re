@@ -22,7 +22,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T02 | route-pin | — | ✅ | |
 | T31 | code-ran-counter | — | ⬜ | |
 | T32 | routine-rig | — | ⬜ | |
-| T03 | level-sync | T00 | ⬜ | |
+| T03 | level-sync | T00 | 🔍 | `amiga_conform::sync_cache` (moved, Superfrog wraps it); `fd_conform::sync::reach_level_1`, 0.27 s cached, 16 s cold; 5 tests plus 5 unit. Deviations: `reach_level_1(frames)` takes its cap; `at_snapshot` takes `power_on` and `get_there`, generic over `AsMut<Amiga>`; `drives: u8`; files carry a SHA-1, named `.sync2`, so Superfrog snapshots rebuild once (FINDINGS). |
 | T04 | picture-in-play | T00 | ⬜ | |
 | T30 | unpack-in-rust | — | ✅ | |
 | T05 | level-readers | T03, T04, T30 | ⬜ | |
@@ -68,7 +68,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T28 | finish-end-to-end | T16, T48 | ⬜ | |
 | T29 | level-drill | T15, T28 | ⬜ | |
 
-**Review queue:** *(empty)*
+**Review queue:** T03
 
 ## Blocked on the user
 

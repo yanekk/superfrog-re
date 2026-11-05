@@ -54,9 +54,12 @@ pub fn hex(key: &[u8]) -> String {
     key.iter().map(|b| format!("{b:02x}")).collect()
 }
 
-/// Where the snapshot for `key` lives under `root`.
+/// Where the snapshot for `key` lives under `root`. `.sync2`, not the `.sync` files callers wrote
+/// before the digest: a checkout still on the old layout shares the cache folder, and would read
+/// this layout's digest as snapshot bytes and overwrite the file in its own, each side rebuilding
+/// the other's for ever.
 pub fn cache_path(root: &Path, key: [u8; 20]) -> PathBuf {
-    root.join(format!("{}.sync", hex(&key)))
+    root.join(format!("{}.sync2", hex(&key)))
 }
 
 /// The oracle at the sync point `key` names: `power_on`, then restored from the cache under `root`
