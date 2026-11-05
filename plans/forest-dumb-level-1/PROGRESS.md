@@ -70,14 +70,14 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T50 | sf-menus-os-test-stale | — | ✅ | |
 | T51 | character-anim-input | T07, T40; blocks T08 | ⬜ | |
 | T52 | creature-drawing | T10, T22; blocks T46 | ⬜ | |
-| T53 | gen-character-2 | T33, T34; blocks T40 | 🔍 | Six generators in `gen/character_anim.rs`, 5 tests, every branch both ways, none unreachable. Deviations: `character::Var::poke` made `pub(crate)` to reuse T35's draws; `read_joystick`'s `Bcc.b` and far `Bcc.w` detoured with their lead instruction moved; rustfmt split `MODULES` over lines. |
+| T53 | gen-character-2 | T33, T34; blocks T40 | ✅ | Review clean, no fix commit. Branch lists checked against a fresh `re_listing.py` listing: 1, 1, 11, 1, 1, 9, all match, leads 4 and 6 bytes right. Mutations caught: no full `input_log_index` (`$8e6e`), JOY1DAT bit 9 never set (`$8e26`, `$8e7e`). Paths match `docs/11-translation.md`. |
 | T54 | gen-objects-2 | T33, T34; blocks T40 | ⬜ | |
 | T55 | edge-redraw | T09; blocks T10, T41, T42, T43 | ⬜ | |
 | T56 | gen-edge-redraw | T33, T34; blocks T40 | ⬜ | |
 | T57 | sf-scale-fullscreen-os-test | — | ⬜ | |
 | T58 | translate-btst-fix | T33; blocks T40 | ⬜ | |
 
-**Review queue:** T53
+**Review queue:** *(empty)*
 
 ## Blocked on the user
 
