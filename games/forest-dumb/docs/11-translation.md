@@ -232,3 +232,35 @@ T51 to T54 on 2026-11-05 to take the excess, and T55, T56 for the edge redraws, 
 | T56 | 14 | 936 | `redraw_edge_c` |
 
 A `by_hand` routine still needs its generator: its port is proven on the rig like any other.
+
+## Generators: `camera` (T36)
+
+`fd-conform/src/gen/camera.rs`, one generator per T36 entry of `re/translate.toml`, named as there.
+The routines read only `char_x`/`char_y`, `camera_x`/`camera_y`, the edge flags `h0+$51f8..$51fb` and
+the four latch words `h0+$5196..$519c`; no hardware, so no base. States lean to where the branches
+turn: a camera on a 16-pixel boundary, at its clamp (`$17cf`, `$53f`, 0), negative (with the
+`$8000..$853e` band where `cmpi.w #$53f` overflows and `h0_513c` sets `$53f`, not 0), and a character
+either side of each dead-zone edge (`$94`, `$78`, `$5a`, `$46`).
+
+`fd-conform/tests/gen_camera.rs` proves it. The rig has no trace, so a witness (a literal model of each
+routine counting its branches) must match the original on all 2 000 states; then every conditional
+branch in the routine's flow listing, callees included, is taken both ways. No branch is unreachable.
+Measured 2026-11-05, 2 000 states each, no hang or fault:
+
+| Generator | `RigReport::paths` | Branches | Fewest states one way |
+|---|---|---|---|
+| `camera_update` | 385 | 28 | 41 |
+| `h0_4e9a` | 65 | 5 | 207 |
+| `h0_4ea6` | 64 | 5 | 208 |
+| `h0_4eb4` | 64 | 5 | 210 |
+| `h0_4ec2` | 65 | 5 | 239 |
+| `h0_513c` | 3 | 4 | 151 |
+| `h0_51fc` | 4 | 3 | 25 |
+| `h0_526a` | 4 | 3 | 32 |
+| `h0_52d8` | 4 | 3 | 35 |
+| `h0_5346` | 4 | 3 | 27 |
+
+`h0_513c`'s 3 paths cover its 4 branches: a skipped `move` and a `clr` cost one instruction alike.
+
+- 2026-11-05, T36: `camera_update` with `camera_update`: pass on try 1, 4 837 tokens in, 16 485 out,
+  $0.0038, 115 s, 385 paths.
