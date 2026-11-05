@@ -6,6 +6,7 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-11-05 | 📌 | T56 review sweep: `generators::generator` (`gen/mod.rs`) returns the first of duplicate names and no test checks the whole registry is unique; only `gen_edge_redraw.rs` checks its own names. Not fixed. |
 | 2026-11-05 | 📌 | T56: the oracle's VHPOSR counter runs on across calls, so a routine with a raster wait (`h0_3ac2`) differs between two runs of one state; `gen_edge_redraw.rs` sets it per state first. The spike's `h0+$774` generator duplicates `h0_774`; `judge.rs` still uses it. |
 | 2026-11-05 | 🐞 | T37: `translate.py`'s `flow_text` reads the linear listing, so `h0_2c7e`, `h0_2d4c`, `h0_5820`, `h0_94ba` stop with "has no label" (exit 2) and `h0_62b6` extracts 37 of 224 instructions. T40 meets this; `call_tree.py` decodes correctly. |
 | 2026-11-05 | 📌 | T37 live call, worker action: `translate.py 'h0+$9754' --gen h0_9754` passed on try 1: 2 177 tokens in, 8 052 out, $0.0018, 81 s, 2 paths. |
