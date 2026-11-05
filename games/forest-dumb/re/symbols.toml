@@ -1035,3 +1035,185 @@ name = "anim_cells"
 kind = "var"
 size = 384
 note = "the animated cells: x.w, y.w, object value.b, 3 more bytes, 48 of them"
+
+# T09, the camera: its routines and its hand-off to main_loop's edge redraws (docs/09, "The camera").
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x4e9a
+name = "h0_4e9a"
+kind = "func"
+note = "camera flag step right: scrolls h0_51fc while char_x - camera_x is past $94 (T09)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x4ea6
+name = "h0_4ea6"
+kind = "func"
+note = "camera flag step left: scrolls h0_526a while char_x - camera_x is below $78 (T09)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x4eb4
+name = "h0_4eb4"
+kind = "func"
+note = "camera flag step up: scrolls h0_52d8 while char_y - camera_y is below $46 (T09)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x4ec2
+name = "h0_4ec2"
+kind = "func"
+note = "camera flag step down: scrolls h0_5346 while char_y - camera_y is past $5a (T09)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x513c
+name = "h0_513c"
+kind = "func"
+note = "clamps camera_y to $53f then 0, camera_x to $17cf then 0, by cmpi.w (T09)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x51fc
+name = "h0_51fc"
+kind = "func"
+note = "camera_x +1; on a 16-pixel crossing only if its latch is clear, then sets flag, latch, frame_flag (T09)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x526a
+name = "h0_526a"
+kind = "func"
+note = "camera_x -1, as h0_51fc (T09)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x52d8
+name = "h0_52d8"
+kind = "func"
+note = "camera_y -1, as h0_51fc (T09)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x5346
+name = "h0_5346"
+kind = "func"
+note = "camera_y +1, as h0_51fc (T09)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x5186
+name = "edge_at_right_x"
+kind = "var"
+size = 2
+note = "camera_x when camera_update last saw the right edge crossed; read by main_loop (T09)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x5188
+name = "edge_at_right_y"
+kind = "var"
+size = 2
+note = "camera_y with edge_at_right_x (T09)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x518a
+name = "edge_at_left_x"
+kind = "var"
+size = 2
+note = "camera_x when camera_update last saw the left edge crossed; read by main_loop (T09)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x518c
+name = "edge_at_left_y"
+kind = "var"
+size = 2
+note = "camera_y with edge_at_left_x (T09)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x518e
+name = "edge_at_up_x"
+kind = "var"
+size = 2
+note = "camera_x when camera_update last saw the up edge crossed; read by main_loop (T09)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x5190
+name = "edge_at_up_y"
+kind = "var"
+size = 2
+note = "camera_y with edge_at_up_x (T09)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x5192
+name = "edge_at_down_x"
+kind = "var"
+size = 2
+note = "camera_x when camera_update last saw the down edge crossed; read by main_loop (T09)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x5194
+name = "edge_at_down_y"
+kind = "var"
+size = 2
+note = "camera_y with edge_at_down_x (T09)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x5196
+name = "edge_latch_right"
+kind = "var"
+size = 2
+note = "set $ffff by a right scroll crossing a cell; blocks the next until main_loop clears it (T09)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x5198
+name = "edge_latch_left"
+kind = "var"
+size = 2
+note = "set $ffff by a left scroll crossing a cell; blocks the next until main_loop clears it (T09)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x519a
+name = "edge_latch_up"
+kind = "var"
+size = 2
+note = "set $ffff by a up scroll crossing a cell; blocks the next until main_loop clears it (T09)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x519c
+name = "edge_latch_down"
+kind = "var"
+size = 2
+note = "set $ffff by a down scroll crossing a cell; blocks the next until main_loop clears it (T09)"

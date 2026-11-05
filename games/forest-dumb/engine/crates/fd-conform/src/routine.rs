@@ -135,6 +135,33 @@ pub struct Effects {
     pub hw_writes: Vec<(u16, u16)>,
 }
 
+/// Which returned registers a check compares: bit `n` of `d` for `dn`, of `a` for `an`. `a7`, the
+/// stack pointer, is never compared. A literal port is checked on [`RegsCompared::ALL`]; an engine
+/// port on typed state models only the registers a caller reads (a scroll step's `d0`, say), and
+/// names those, so the rest, scratch the original leaves behind, are not held against it.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct RegsCompared {
+    pub d: u8,
+    pub a: u8,
+}
+
+impl RegsCompared {
+    pub const ALL: RegsCompared = RegsCompared { d: 0xff, a: 0x7f };
+    /// Memory and custom-chip writes only: a routine whose every caller saves and restores the
+    /// registers around it, or reloads them before reading.
+    pub const NONE: RegsCompared = RegsCompared { d: 0, a: 0 };
+
+    /// The data registers `ds` only.
+    pub const fn d(ds: &[usize]) -> RegsCompared {
+        let (mut d, mut i) = (0u8, 0);
+        while i < ds.len() {
+            d |= 1 << ds[i];
+            i += 1;
+        }
+        RegsCompared { d, a: 0 }
+    }
+}
+
 /// What a check ran.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub struct RigReport {
@@ -295,9 +322,22 @@ impl Rig {
         cases: usize,
         entry: u32,
         generator: &Generator,
+        port: impl FnMut(&Setup) -> Effects,
+    ) -> Result<RigReport, RigFailure> {
+        self.check_regs(name, cases, entry, generator, RegsCompared::ALL, port)
+    }
+
+    /// [`Rig::check`], comparing only the returned registers `regs` names.
+    pub fn check_regs(
+        &mut self,
+        name: &str,
+        cases: usize,
+        entry: u32,
+        generator: &Generator,
+        regs: RegsCompared,
         mut port: impl FnMut(&Setup) -> Effects,
     ) -> Result<RigReport, RigFailure> {
-        self.run(name, cases, entry, generator, Some(&mut port))
+        self.run(name, cases, entry, generator, regs, Some(&mut port))
     }
 
     /// The original alone over `cases` states: how many it returns from (`passed`), its paths, its
@@ -310,7 +350,7 @@ impl Rig {
         entry: u32,
         generator: &Generator,
     ) -> RigReport {
-        match self.run(name, cases, entry, generator, None) {
+        match self.run(name, cases, entry, generator, RegsCompared::ALL, None) {
             Ok(r) => r,
             Err(f) => f.report,
         }
@@ -322,6 +362,7 @@ impl Rig {
         cases: usize,
         entry: u32,
         generator: &Generator,
+        compared: RegsCompared,
         mut port: Option<&mut dyn FnMut(&Setup) -> Effects>,
     ) -> Result<RigReport, RigFailure> {
         if let Some(lay) = generator.base {
@@ -383,7 +424,7 @@ impl Rig {
                             let ran = catch_unwind(AssertUnwindSafe(|| p(&s)));
                             Some(match ran {
                                 Err(e) => vec![format!("the port panicked: {}", panic_text(&e))],
-                                Ok(eff) => self.compare(r, &eff),
+                                Ok(eff) => self.compare(r, &eff, compared),
                             })
                         }
                     }
@@ -439,7 +480,7 @@ impl Rig {
 
     /// The differences between the original's result and the port's effects, custom-chip writes
     /// first. The cpu's memory holds the case's state (the call rolled its own writes back).
-    fn compare(&self, want: &CallResult, got: &Effects) -> Vec<String> {
+    fn compare(&self, want: &CallResult, got: &Effects, regs: RegsCompared) -> Vec<String> {
         let mut diffs = Vec::new();
         let (ow, pw) = (&want.hw_writes, &got.hw_writes);
         if ow != pw {
@@ -460,13 +501,13 @@ impl Rig {
                 show(pw)
             ));
         }
-        for i in 0..8 {
+        for i in (0..8).filter(|i| regs.d & 1 << i != 0) {
             let (o, p) = (want.regs.d[i], got.regs.d[i]);
             if o != p {
                 diffs.push(format!("d{i}: original ${o:08x}, port ${p:08x}"));
             }
         }
-        for i in 0..7 {
+        for i in (0..7).filter(|i| regs.a & 1 << i != 0) {
             let (o, p) = (want.regs.a[i], got.regs.a[i]);
             if o != p {
                 diffs.push(format!("a{i}: original ${o:08x}, port ${p:08x}"));

@@ -3,6 +3,8 @@
 //! original adds its fields here and, if a case compares them, a `LAYOUT` entry and an arm in
 //! [`State::get`] and [`State::set`].
 
+use crate::level::camera::{Camera, EdgeFlags};
+
 /// The game state of a level in play. BCD variables are held as stored.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct State {
@@ -11,9 +13,12 @@ pub struct State {
     pub mt_counter: u8,
     pub char_x: u32,
     pub char_y: u32,
-    pub camera_x: u16,
-    pub camera_y: u16,
-    pub char_screen_x: u16,
+    /// `camera_x`, `camera_y`, `char_screen_x` (the low word of `camera.screen_x`) and the edge
+    /// latches and positions (T09).
+    pub camera: Camera,
+    /// `h0+$519e`: set by a scroll that crosses a cell and by the level-3 handler after every pass;
+    /// cleared by `main_loop`, which the engine does not run yet.
+    pub frame_flag: u16,
     /// BCD.
     pub lives: u16,
     pub hits_taken: u16,
@@ -43,10 +48,21 @@ impl State {
             // Set by world 1's load list.
             char_x: 0x70,
             char_y: 0x70,
-            camera_x: 0,
-            // `camera_update` in play's first pass has already followed the character.
-            camera_y: 0x17,
-            char_screen_x: 0x70,
+            // `camera_update` in play's first pass has already followed the character, from (0, 0):
+            // down `$17` pixels across the cell edge at `$10`, and left across 0, clamped back. Both
+            // latched at (0, `$17`); `main_loop` has not cleared them yet (measured, T09).
+            camera: Camera {
+                x: 0,
+                y: 0x17,
+                screen_x: 0x70,
+                screen_y: 0x70,
+                edges: EdgeFlags {
+                    crossed: [false, true, false, true],
+                    latch: [0, 0xffff, 0, 0xffff],
+                    at: [(0, 0), (0, 0x17), (0, 0), (0, 0x17)],
+                },
+            },
+            frame_flag: 0,
             // `lives_reset`, `move.w #$32`.
             lives: 0x32,
             hits_taken: 0,
@@ -69,9 +85,21 @@ impl State {
             "mt_counter" => self.mt_counter.into(),
             "char_x" => self.char_x,
             "char_y" => self.char_y,
-            "camera_x" => self.camera_x.into(),
-            "camera_y" => self.camera_y.into(),
-            "char_screen_x" => self.char_screen_x.into(),
+            "camera_x" => self.camera.x.into(),
+            "camera_y" => self.camera.y.into(),
+            "char_screen_x" => self.camera.screen_x & 0xffff,
+            "edge_latch_right" => self.camera.edges.latch[0].into(),
+            "edge_latch_left" => self.camera.edges.latch[1].into(),
+            "edge_latch_up" => self.camera.edges.latch[2].into(),
+            "edge_latch_down" => self.camera.edges.latch[3].into(),
+            "edge_at_right_x" => self.camera.edges.at[0].0.into(),
+            "edge_at_right_y" => self.camera.edges.at[0].1.into(),
+            "edge_at_left_x" => self.camera.edges.at[1].0.into(),
+            "edge_at_left_y" => self.camera.edges.at[1].1.into(),
+            "edge_at_up_x" => self.camera.edges.at[2].0.into(),
+            "edge_at_up_y" => self.camera.edges.at[2].1.into(),
+            "edge_at_down_x" => self.camera.edges.at[3].0.into(),
+            "edge_at_down_y" => self.camera.edges.at[3].1.into(),
             "lives" => self.lives.into(),
             "hits_taken" => self.hits_taken.into(),
             "countdown" => self.countdown,
@@ -94,9 +122,23 @@ impl State {
             "mt_counter" => self.mt_counter = b,
             "char_x" => self.char_x = value,
             "char_y" => self.char_y = value,
-            "camera_x" => self.camera_x = w,
-            "camera_y" => self.camera_y = w,
-            "char_screen_x" => self.char_screen_x = w,
+            "camera_x" => self.camera.x = w,
+            "camera_y" => self.camera.y = w,
+            "char_screen_x" => {
+                self.camera.screen_x = (self.camera.screen_x & 0xffff_0000) | w as u32
+            }
+            "edge_latch_right" => self.camera.edges.latch[0] = w,
+            "edge_latch_left" => self.camera.edges.latch[1] = w,
+            "edge_latch_up" => self.camera.edges.latch[2] = w,
+            "edge_latch_down" => self.camera.edges.latch[3] = w,
+            "edge_at_right_x" => self.camera.edges.at[0].0 = w,
+            "edge_at_right_y" => self.camera.edges.at[0].1 = w,
+            "edge_at_left_x" => self.camera.edges.at[1].0 = w,
+            "edge_at_left_y" => self.camera.edges.at[1].1 = w,
+            "edge_at_up_x" => self.camera.edges.at[2].0 = w,
+            "edge_at_up_y" => self.camera.edges.at[2].1 = w,
+            "edge_at_down_x" => self.camera.edges.at[3].0 = w,
+            "edge_at_down_y" => self.camera.edges.at[3].1 = w,
             "lives" => self.lives = w,
             "hits_taken" => self.hits_taken = w,
             "countdown" => self.countdown = value,

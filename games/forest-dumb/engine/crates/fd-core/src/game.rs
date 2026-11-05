@@ -78,6 +78,8 @@ impl Game {
                     &mut self.events,
                     i,
                 );
+                // `level3_handler` after `game_frame`: `move.w #$ffff, frame_flag`.
+                self.state.frame_flag = 0xffff;
             }
         }
     }
@@ -242,13 +244,18 @@ mod tests {
     }
 
     #[test]
-    fn a_step_counts_the_pass_and_changes_nothing_else_yet() {
+    fn a_step_counts_the_pass_sets_frame_flag_and_leaves_a_settled_camera() {
         let mut g = Game::new(data(), Start::Level1);
         g.step(FrameInput::joy(Joy::RIGHT));
-        let want = State {
+        // The character is at rest in the dead zone, and the latches the first pass set block the
+        // left edge: the camera stays, its crossed flags clear, and it notes the character's distance.
+        let mut want = State {
             irq_count: 2,
+            frame_flag: 0xffff,
             ..State::level_1()
         };
+        want.camera.edges.crossed = [false; 4];
+        want.camera.screen_y = 0x70 - 0x17;
         assert_eq!(*g.state(), want);
         // The count wraps as the original's word does.
         g.state.irq_count = 0xffff;

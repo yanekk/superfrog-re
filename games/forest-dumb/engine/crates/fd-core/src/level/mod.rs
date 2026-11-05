@@ -24,6 +24,8 @@
 //! the view passes is T22's. Where in the pass the original updates its objects is T21's to measure:
 //! [`game_frame`] runs them after the character and camera until then.
 
+pub mod camera;
+
 use amiga_input::FrameInput;
 use fd_assets::Level;
 
@@ -160,6 +162,9 @@ pub fn game_frame(
     events: &mut Vec<Event>,
     _input: FrameInput,
 ) {
+    // `camera_update`, then `h0+$513c` (T09).
+    let s = &mut *l.state;
+    s.camera.step((s.char_x, s.char_y), &mut s.frame_flag);
     update_objects(l, objects, dispatch, events);
 }
 
