@@ -21,6 +21,8 @@ workspace = "engine"
 "crates/fd-conform/tests/purity.rs" = "smoke"
 # Three boots to W1-1, about 32 s together: the measurements of docs/09-play-measured.md.
 "crates/fd-conform/tests/play_measured.rs" = "full"
+# One boot to W1-1 (title and play), 12 to 27 s: picture_in on the whole play picture (T04).
+"crates/fd-conform/tests/play_picture.rs" = "full"
 "crates/fd-core/src" = "smoke"
 "crates/fd-tools/tests/bad_disks.rs" = "smoke"
 "crates/fd-tools/tests/boot_chain.rs" = "smoke"
