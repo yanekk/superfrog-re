@@ -127,13 +127,16 @@ def gen_files():
 
 def examples(hunk, off, name, files=None, inv=None):
     """Up to EXAMPLES committed generator modules to show Muse: those registering the most routines of
-    this routine's subsystem in re/translate.toml, then the smallest, never one registering `name` or
-    the routine's own label (it would be the answer)."""
+    this routine's subsystem in re/translate.toml, then the smallest, never one registering `name`,
+    the routine's own label or its re/translate.toml name (it would be the answer, whatever --name)."""
     files = gen_files() if files is None else files
     inv = inventory() if inv is None else inv
+    row = next((r for r in inv if r.get('hunk') == hunk and r.get('offset') == off), {})
     own = {f'"{name}"', f'"{tr.label(hunk, off)}"', f'"h{hunk}_{off:x}"'}
+    if row.get('name'):
+        own.add(f'"{row["name"]}"')
     allowed = {f: s for f, s in files.items() if not any(o in s for o in own)}
-    sub = next((r.get('subsystem') for r in inv if r.get('hunk') == hunk and r.get('offset') == off), None)
+    sub = row.get('subsystem')
     peers = [r['name'] for r in inv if sub and r.get('subsystem') == sub and r.get('name')]
     score = {f: sum(f'"{p}"' in s for p in peers) for f, s in allowed.items()}
     ranked = sorted(allowed, key=lambda f: (-score[f], len(allowed[f]), f))

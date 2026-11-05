@@ -178,6 +178,15 @@ class Service(unittest.TestCase):
         self.assertEqual((res['result'], res['tries']), ('partial', 3))
         self.assertIn('oops', read(res['gen']))
 
+    def test_a_branch_every_state_takes_is_uncovered_not_taken(self):
+        def run_cover(path, hunk, off, name, out):
+            return cover([['h0+$5464', 900, 1100], ['h0+$5470', 1100, 0]])
+        self.answers = [(answer(FULL), usage())] * 2
+        with mock.patch.object(g, 'run_cover', run_cover):
+            res = self.run_it(tries=2)
+        self.assertEqual(res['uncovered'], [{'at': 'h0+$5470', 'never': 'not-taken'}])
+        self.assertIn('h0+$5470: every state took it', self.calls[1][-1]['content'])
+
     def test_a_generator_hanging_the_original_is_a_failed_try_with_the_reason_back(self):
         self.answers = [(answer(HANG), usage()), (answer(FULL), usage())]
         res = self.run_it()
@@ -304,6 +313,11 @@ class Pieces(unittest.TestCase):
         self.assertEqual(len(shown), g.EXAMPLES)
         shown = [f for f, _ in g.examples(0, 0x9000, 'h0_9000', self.FILES, self.INV)]
         self.assertNotIn('objects.rs', shown)
+
+    def test_the_routine_s_own_module_is_never_shown_whatever_its_name(self):
+        # --name differs from the routine's re/translate.toml name: camera.rs still holds the answer.
+        shown = [f for f, _ in g.examples(0, 0x4e00, 'my_name', self.FILES, self.INV)]
+        self.assertNotIn('camera.rs', shown)
 
     def test_an_unknown_routine_gets_the_smallest_modules(self):
         shown = [f for f, _ in g.examples(0, 0xabc, 'h0_abc', self.FILES, self.INV)]
