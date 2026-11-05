@@ -239,6 +239,18 @@ unsafe extern "C" {
     pub fn amiga_cpu68k_set_hw(c: *mut RawCpu, on: c_int);
     pub fn amiga_cpu68k_set_hw_read(c: *mut RawCpu, addr: u32, value: u8);
     pub fn amiga_cpu68k_hw_writes(c: *const RawCpu, out: *mut *const RawHwWrite) -> usize;
+    pub fn amiga_cpu68k_set_trace(c: *mut RawCpu, on: c_int);
+    pub fn amiga_cpu68k_branches(c: *const RawCpu, out: *mut *const RawBranch) -> usize;
+    pub fn amiga_cpu68k_reads(c: *const RawCpu, out: *mut *const u32) -> usize;
+    pub fn amiga_cpu68k_insn_len(c: *const RawCpu, addr: u32) -> c_int;
+}
+
+#[repr(C)]
+#[derive(Clone, Copy)]
+pub struct RawBranch {
+    pub at: u32,
+    pub not_taken: u8,
+    pub taken: u8,
 }
 
 #[repr(C)]

@@ -154,6 +154,49 @@ pub struct RigReport {
     pub unmodelled_blits: usize,
 }
 
+/// One conditional branch of a routine or its callees (`Bcc` other than `BRA`/`BSR`, `DBcc`), by
+/// address, and over how many states it went each way. A `DBcc` loop's exit is not taken. A branch
+/// with either count 0 is uncovered: no state took it that way.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub struct Branch {
+    pub at: u32,
+    pub taken: u32,
+    pub not_taken: u32,
+}
+
+impl Branch {
+    pub fn covered(&self) -> bool {
+        self.taken > 0 && self.not_taken > 0
+    }
+}
+
+/// What [`Rig::coverage`] measured: the survey of the same states, every branch, every byte read.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct Coverage {
+    pub report: RigReport,
+    /// The static walk's branches from the entry and every branch executed (one reached only
+    /// through an indirect jump), each once, ascending. One never executed has both counts 0.
+    pub branches: Vec<Branch>,
+    /// Every byte the original read in data space on some state it returned from, off the rig's
+    /// stack ([`STACK_AREA`]): its operands, tables it indexes, hardware registers. Instruction
+    /// fetches and PC-relative operands are not here.
+    pub reads: BTreeSet<u32>,
+}
+
+impl Coverage {
+    /// The branches some way of which no state took.
+    pub fn uncovered(&self) -> impl Iterator<Item = &Branch> {
+        self.branches.iter().filter(|b| !b.covered())
+    }
+}
+
+/// What a traced run gathers, state by state.
+#[derive(Default)]
+struct Tally {
+    branches: BTreeMap<u32, Branch>,
+    reads: BTreeSet<u32>,
+}
+
 /// A check that failed: how many states differed, the first one in full, and the counts.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct RigFailure {
@@ -297,7 +340,7 @@ impl Rig {
         generator: &Generator,
         mut port: impl FnMut(&Setup) -> Effects,
     ) -> Result<RigReport, RigFailure> {
-        self.run(name, cases, entry, generator, Some(&mut port))
+        self.run(name, cases, entry, generator, Some(&mut port), None)
     }
 
     /// The original alone over `cases` states: how many it returns from (`passed`), its paths, its
@@ -310,9 +353,45 @@ impl Rig {
         entry: u32,
         generator: &Generator,
     ) -> RigReport {
-        match self.run(name, cases, entry, generator, None) {
+        match self.run(name, cases, entry, generator, None, None) {
             Ok(r) => r,
             Err(f) => f.report,
+        }
+    }
+
+    /// The original alone over the same `cases` states as [`Rig::check`] and [`Rig::survey`] with
+    /// the same `name`, traced: every conditional branch of the routine and its callees, over how
+    /// many returning states it went each way, and every byte those states read. A generator that
+    /// leaves a branch uncovered does not exercise that way of the routine. The report is the
+    /// survey's. Tracing costs time (`toolkit/docs/architecture/verification.md`), so `check` and
+    /// `survey` run without it.
+    pub fn coverage(
+        &mut self,
+        name: &str,
+        cases: usize,
+        entry: u32,
+        generator: &Generator,
+    ) -> Coverage {
+        let mut tally = Tally::default();
+        for at in self.cpu.conditional_branches(entry) {
+            tally.branches.insert(
+                at,
+                Branch {
+                    at,
+                    ..Branch::default()
+                },
+            );
+        }
+        self.cpu.set_trace(true);
+        let report = match self.run(name, cases, entry, generator, None, Some(&mut tally)) {
+            Ok(r) => r,
+            Err(f) => f.report,
+        };
+        self.cpu.set_trace(false);
+        Coverage {
+            report,
+            branches: tally.branches.into_values().collect(),
+            reads: tally.reads,
         }
     }
 
@@ -323,6 +402,7 @@ impl Rig {
         entry: u32,
         generator: &Generator,
         mut port: Option<&mut dyn FnMut(&Setup) -> Effects>,
+        mut tally: Option<&mut Tally>,
     ) -> Result<RigReport, RigFailure> {
         if let Some(lay) = generator.base {
             lay(self.cpu.memory_mut());
@@ -373,6 +453,19 @@ impl Rig {
                 }
                 Ok(r) => {
                     paths.insert(r.instr);
+                    if let Some(t) = tally.as_mut() {
+                        let trace = self.cpu.last_trace();
+                        for w in trace.branches {
+                            let b = t.branches.entry(w.at).or_insert(Branch {
+                                at: w.at,
+                                ..Branch::default()
+                            });
+                            b.taken += w.taken as u32;
+                            b.not_taken += w.not_taken as u32;
+                        }
+                        t.reads
+                            .extend(trace.reads.into_iter().filter(|a| !STACK_AREA.contains(a)));
+                    }
                     if unmodelled_blit(&r.hw_writes) {
                         report.unmodelled_blits += 1;
                     }
