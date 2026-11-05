@@ -20,7 +20,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T00 | measure-play | — | ✅ | |
 | T01 | smoke-room | — | ✅ | |
 | T02 | route-pin | — | ✅ | |
-| T31 | code-ran-counter | — | ⬜ | |
+| T31 | code-ran-counter | — | ✅ | |
 | T32 | routine-rig | — | ✅ | |
 | T03 | level-sync | T00 | ✅ | |
 | T04 | picture-in-play | T00 | ✅ | |

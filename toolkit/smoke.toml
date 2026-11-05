@@ -14,6 +14,12 @@ workspace = "."
 "crates/amiga-input/src" = "smoke"
 "crates/amiga-oracle/src" = "smoke"
 "crates/amiga-oracle/tests/boot.rs" = "smoke"
+# watching_does_not_change_the_run (13 s, 3 000 frames on three machines) stays in full.
+"crates/amiga-oracle/tests/exec_counts.rs" = [
+    "the_vertical_blank_handler_counts_once_a_frame_and_an_unreached_address_zero",
+    "an_instruction_an_interrupt_pre_empts_counts_once",
+    "a_restored_run_counts_as_the_run_that_took_the_snapshot",
+]
 "crates/amiga-oracle/tests/kickstart_missing.rs" = "smoke"
 "crates/amiga-oracle/tests/picture_in.rs" = "smoke"
 "crates/amiga-oracle/tests/routine.rs" = "smoke"
@@ -60,6 +66,13 @@ covers = ["crates/amiga-chips/src", "crates/amiga-clock/src", "crates/amiga-inpu
 [[area]]
 name = "rule checks"
 covers = ["crates/toolkit-checks/tests/purity.rs", "crates/dry-fit/tests/deps.rs", "crates/dry-fit/tests/dry_fit.rs"]
+
+[[area]]
+name = "counting the instructions the original ran"
+covers = [
+    "crates/amiga-oracle/tests/exec_counts.rs::the_vertical_blank_handler_counts_once_a_frame_and_an_unreached_address_zero",
+    "crates/amiga-oracle/tests/exec_counts.rs::an_instruction_an_interrupt_pre_empts_counts_once",
+]
 
 # Milliseconds: the planner's explorer solves a made-up grid game with no disk. Every game's levels
 # are routed with it.
