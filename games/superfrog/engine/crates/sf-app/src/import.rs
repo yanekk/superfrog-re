@@ -196,7 +196,7 @@ impl Ui for NativeUi {
         name: &str,
         save: &mut dyn FnMut(&str) -> Result<(), String>,
     ) -> bool {
-        crate::save_window::run(self.parent.as_deref(), shot, SaveForm::new(name, *at), save)
+        crate::save_window::run("superfrog", self.parent.as_deref(), shot, SaveForm::new(name, at), save)
     }
 
     fn copy(&mut self, text: &str) {

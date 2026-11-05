@@ -33,7 +33,7 @@ pub fn trace_original(
         }
         sync::step_inserting(amiga, script.input_at(k))?;
     }
-    Ok(s.points)
+    Ok(std::mem::take(&mut s.points))
 }
 
 /// A script's timing line (DESIGN §2.6): `original`, `app`, or none (`None`, read as original).

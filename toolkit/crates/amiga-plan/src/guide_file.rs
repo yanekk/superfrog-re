@@ -1,6 +1,6 @@
-//! Shell: a waypoint guide file parsed (DESIGN §2.11). One `col,row` or `col,row,coins_left` per
-//! line, `#` comments, blank lines ignored; a point without coins matches any band. A waypoint
-//! names no switches, so it matches any switch set.
+//! A waypoint guide file parsed. One `col,row` or `col,row,coins_left` per
+//! line, `#` comments, blank lines ignored; a point without a count matches any band. A waypoint
+//! names no switches, so it matches any switch set. (`coins_left` is the collectibles left.)
 
 use crate::core::GuidePoint;
 

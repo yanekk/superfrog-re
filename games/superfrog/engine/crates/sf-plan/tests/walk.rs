@@ -15,6 +15,9 @@ use sf_plan::core::archive;
 use sf_plan::core::*;
 use sf_plan::run::{RunOptions, plan_engine, run_round};
 
+/// The map's size, as the compass takes it.
+const SIZE: (u16, u16) = (COLS, ROWS);
+
 fn at((c, r): Cell) -> usize {
     r as usize * COLS as usize + c as usize
 }
@@ -41,7 +44,7 @@ fn key(col: u16, row: u16, switches: u32) -> CellKey {
 
 #[test]
 fn fill_goes_around_a_wall() {
-    let d = fill(&walled(), &[(12, 5)]);
+    let d = fill(SIZE, &walled(), &[(12, 5)]);
     // Straight from 8,5 to 12,5 is 4, through the wall; walking goes down to row 21 and back up.
     assert_eq!(d[at((12, 5))], 0);
     assert_eq!(d[at((8, 5))], 4 + 2 * (21 - 5));
@@ -52,7 +55,7 @@ fn fill_goes_around_a_wall() {
 
 #[test]
 fn exit_steps_least_over_the_key_cells() {
-    let mut w = WalkCompass::from_grid(walled(), Vec::new(), vec![(12, 5)], Vec::new());
+    let mut w = WalkCompass::from_grid(SIZE, walled(), Vec::new(), vec![(12, 5)], Vec::new());
     // Key 4,2 covers cells 8–9 × 4–5; the nearest is 9,5.
     assert_eq!(w.exit_steps(&key(4, 2, 0)), Some(3 + 2 * (21 - 5)));
     assert_eq!(w.exit_steps(&key(6, 2, 0)), Some(0), "the key holding the exit");
@@ -68,7 +71,7 @@ fn a_sealed_cell_has_no_walking_distance() {
             open[at((c, r))] = !edge;
         }
     }
-    let mut w = WalkCompass::from_grid(open.clone(), Vec::new(), vec![(5, 5)], vec![(0, (5, 6))]);
+    let mut w = WalkCompass::from_grid(SIZE, open.clone(), Vec::new(), vec![(5, 5)], vec![(0, (5, 6))]);
     assert_eq!(w.exit_steps(&key(25, 25, 0)), None, "cells 50–51 × 50–51 are boxed in");
     assert!(w.exit_steps(&key(10, 10, 0)).is_some());
     // The coin pull falls back to straight for a sealed frog: 45 + 44 cells.
@@ -80,7 +83,7 @@ fn a_sealed_cell_has_no_walking_distance() {
     assert_eq!(w.coin_dist((10, 10), &[1], 0), 8.0);
     // A gate in the box's wall opens it in its switch's set only.
     let gate = vec![vec![(53, 50)]];
-    let mut g = WalkCompass::from_grid(open, gate, vec![(60, 50)], Vec::new());
+    let mut g = WalkCompass::from_grid(SIZE, open, gate, vec![(60, 50)], Vec::new());
     assert_eq!(g.exit_steps(&key(25, 25, 0)), None);
     assert_eq!(g.exit_steps(&key(25, 25, 1)), Some(60 - 51));
 }
@@ -92,7 +95,7 @@ fn a_gate_opens_only_in_its_switch_set() {
     let (g, fa) = at_start(id("W2-1"));
     assert_eq!(fa.switches.len(), 1);
     assert_eq!(fa.switches[0].gate, (143, 37));
-    let w = WalkCompass::new(g.state(), &fa);
+    let w = walk::compass(&g, &fa);
     let block: Vec<Cell> = (142..=146)
         .flat_map(|c| (35..=41).map(move |r| (c, r)))
         .filter(|&c| !w.is_open(c, 0))
@@ -117,7 +120,7 @@ fn the_start_walks_at_least_as_far_as_straight() {
     for level in ["W1-1", "W2-3"] {
         let (g, fa) = at_start(id(level));
         let k = cell_key(&fa, g.state(), 0);
-        let mut w = WalkCompass::new(g.state(), &fa);
+        let mut w = walk::compass(&g, &fa);
         let steps = w.exit_steps(&k).unwrap_or_else(|| panic!("{level}: the start walks to an exit"));
         let straight = (0..2)
             .flat_map(|dc| (0..2).map(move |dr| (k.col * 2 + dc, k.row * 2 + dr)))
@@ -207,7 +210,7 @@ fn walk_entries_carry_their_walking_coin_distance() {
         }
     }
     let (start, fa) = at_start(id("W1-1"));
-    let mut w = WalkCompass::new(start.state(), &fa);
+    let mut w = walk::compass(&start, &fa);
     let n = ex.archive().entries().len();
     assert!(n > 20, "the search went somewhere: {n} cells");
     for i in (0..n).step_by((n / 40).max(1)) {

@@ -491,3 +491,20 @@ fn load_exe_matches_the_loader_it_replaced_over_a_sweep() {
     assert!(cases > 5_000, "{cases}");
     assert!(differ.is_empty(), "{} of {cases} differ:\n{}", differ.len(), differ.join("\n"));
 }
+
+/// The generator's sequence is pinned: a game's routine tests were written against these states,
+/// and a changed sequence would quietly change what they cover.
+#[test]
+fn gen_sequence_is_pinned() {
+    let mut g = Gen::new(1);
+    assert_eq!(
+        [g.next(), g.next(), g.next()],
+        [0xdc1b_77ae_0bf3_4dad, 0x64f0_eeb9_026e_6076, 0x7b07_ce91_e590_6136]
+    );
+    assert_eq!(Gen::new(27).below(1000), 739);
+    let mut g = Gen::new(0);
+    assert_ne!(g.next(), 0, "seed 0 must still move");
+    assert_eq!(Gen::new(5).below(0), 0);
+    let mut g = Gen::new(9);
+    assert!((0..100).all(|_| [3u8, 7].contains(&g.pick(&[3, 7]))));
+}

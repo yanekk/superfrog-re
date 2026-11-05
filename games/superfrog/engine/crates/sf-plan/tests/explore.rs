@@ -135,11 +135,11 @@ fn rebuilt_states_equal_the_stored_ones() {
     let a = ex.archive();
     let n = a.checkpoints() as u32;
     assert!(n > 10, "checkpoints taken: {n}");
-    let stored: Vec<(u32, Game)> = (0..n)
+    let stored: Vec<(u32, Frog)> = (0..n)
         .filter_map(|k| a.stored(k).map(|g| (k, g.clone())))
         .collect();
     let mut f = 0;
-    let entries: Vec<Game> = (0..a.entries().len() as u32)
+    let entries: Vec<Frog> = (0..a.entries().len() as u32)
         .map(|i| a.entry_state(i, &mut f, &mut Vec::new()))
         .collect();
     ex.archive_mut().drop_states();
@@ -168,7 +168,7 @@ fn rebuilt_states_equal_the_stored_ones() {
 fn more_hearts_win_a_cell() {
     let (g, fa) = at_start(id("W1-1"));
     let key = cell_key(&fa, g.state(), 0);
-    let mut a = Archive::new(&g, key, u64::MAX);
+    let mut a = Archive::new(&Frog::new(g, &fa), key, u64::MAX);
     let other = CellKey {
         col: key.col + 3,
         ..key

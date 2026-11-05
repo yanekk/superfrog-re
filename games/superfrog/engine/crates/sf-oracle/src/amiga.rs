@@ -35,6 +35,13 @@ impl Amiga {
     }
 }
 
+/// For toolkit code that takes the machine or a wrapper of it (`amiga_conform::sync_cache`).
+impl AsMut<amiga_oracle::Amiga> for Amiga {
+    fn as_mut(&mut self) -> &mut amiga_oracle::Amiga {
+        &mut self.0
+    }
+}
+
 impl Deref for Amiga {
     type Target = amiga_oracle::Amiga;
 

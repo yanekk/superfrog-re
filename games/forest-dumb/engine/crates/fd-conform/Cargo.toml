@@ -15,3 +15,9 @@ fd-tools = { path = "../fd-tools" }
 amiga-conform = { path = "../../../../../toolkit/crates/amiga-conform" }
 # The original, run by the reference emulator.
 amiga-oracle = { path = "../../../../../toolkit/crates/amiga-oracle" }
+# The main program's hunks, for the routine rig's loader at the oracle's hunk bases.
+amiga-disk = { path = "../../../../../toolkit/crates/amiga-disk" }
+
+[dev-dependencies]
+# The level and sprite readers that tests/level_files.rs checks against the original.
+fd-assets = { path = "../fd-assets" }

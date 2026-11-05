@@ -1,5 +1,5 @@
-//! The save window after STOP (bug-recorder DESIGN §2.4): the screenshot, where play is, the zip's
-//! name, a one-line note, Discard and Save. Native, as every panel of the app is (RE §2.7).
+//! The save window after a bug recording's STOP: the screenshot, where play is, the zip's name, a
+//! one-line note, Discard and Save. Native AppKit, as every panel of a game's app is.
 //!
 //! ```text
 //! ┌ Save Bug Recording ───────────────┐
@@ -15,18 +15,20 @@
 //! It is modal: while it is open nothing else in the app runs, so the game is paused (no step is
 //! taken, so the recording's inputs end at STOP's frame) and every key goes to the note, never to
 //! the game. A write that fails is said in an alert over it and the window stays open with the
-//! note (§2.11). On a game window it is a sheet, so it shows in fullscreen too.
+//! note. On a game window it is a sheet, so it shows in fullscreen too.
 //!
-//! The model ([`SaveForm`]) holds no AppKit and is what the tests and the script drive.
+//! The model ([`SaveForm`]) holds no AppKit and is what the tests and the script drive. Where play
+//! is comes from the game as text (its `Location`'s `Display`), so the window names no game's places.
 
-use sf_core::recording::Location;
+use std::fmt::Display;
 
 /// What the window shows and what the player has typed.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SaveForm {
     pub note: String,
     pub name: String,
-    pub location: Location,
+    /// Where play is, as the game writes it: `W1-2:94,51`, `slot machine`.
+    pub location: String,
 }
 
 /// What the player did in the window.
@@ -49,8 +51,8 @@ pub enum Outcome {
 }
 
 impl SaveForm {
-    pub fn new(name: &str, location: Location) -> SaveForm {
-        SaveForm { note: String::new(), name: name.to_string(), location }
+    pub fn new(name: &str, location: impl Display) -> SaveForm {
+        SaveForm { note: String::new(), name: name.to_string(), location: location.to_string() }
     }
 
     /// The note is one line (the recording's header holds it on one): a newline is not accepted,
@@ -81,15 +83,16 @@ pub const TITLE: &str = "Save Bug Recording";
 #[cfg(target_os = "macos")]
 pub use view::run;
 
-/// Only macOS is built for (DESIGN §1); elsewhere the recording is discarded.
+/// Only macOS is built for; elsewhere the recording is discarded. `app` names the app in the log.
 #[cfg(not(target_os = "macos"))]
 pub fn run(
+    app: &str,
     _parent: Option<&winit::window::Window>,
     _shot: &[u8],
     _form: SaveForm,
     _save: &mut dyn FnMut(&str) -> Result<(), String>,
 ) -> bool {
-    eprintln!("superfrog: the save window is macOS only; the recording is discarded");
+    eprintln!("{app}: the save window is macOS only; the recording is discarded");
     false
 }
 
@@ -122,7 +125,7 @@ mod view {
         // SAFETY: NSObject has no subclassing requirements and `Target` implements no `Drop`.
         #[unsafe(super(NSObject))]
         #[thread_kind = MainThreadOnly]
-        #[name = "SuperfrogSaveTarget"]
+        #[name = "AmigaAppSaveTarget"]
         struct Target;
 
         impl Target {
@@ -147,12 +150,12 @@ mod view {
         // SAFETY: NSWindow may be subclassed; `EditWindow` adds no state and no `Drop`.
         #[unsafe(super(NSWindow, NSResponder, NSObject))]
         #[thread_kind = MainThreadOnly]
-        #[name = "SuperfrogSaveWindow"]
+        #[name = "AmigaAppSaveWindow"]
         struct EditWindow;
 
         impl EditWindow {
             /// ⌘X, ⌘C, ⌘V, ⌘A and ⌘Z in the note. A text field takes them from the Edit menu's
-            /// items, and the app's menu bar has no Edit menu (RE §2.7 fixes its menus), so the
+            /// items, and a game's menu bar has no Edit menu (its menus are fixed), so the
             /// window sends them to the field itself.
             #[unsafe(method(performKeyEquivalent:))]
             fn perform_key_equivalent(&self, event: &NSEvent) -> Bool {
@@ -198,15 +201,16 @@ mod view {
 
     /// Show the window for `form` with the screenshot `shot` (a PNG) until Save writes the zip
     /// (`save`, with the note) or Discard: `true` when saved. A `save` that fails says why in an
-    /// alert, and the window stays open with the note.
+    /// alert, and the window stays open with the note. `app` names the app in the log.
     pub fn run(
+        app: &str,
         parent: Option<&Window>,
         shot: &[u8],
         mut form: SaveForm,
         save: &mut dyn FnMut(&str) -> Result<(), String>,
     ) -> bool {
         let Some(mtm) = MainThreadMarker::new() else {
-            eprintln!("superfrog: the save window opens on the main thread; the recording is discarded");
+            eprintln!("{app}: the save window opens on the main thread; the recording is discarded");
             return false;
         };
         let app = NSApplication::sharedApplication(mtm);
@@ -335,7 +339,7 @@ mod tests {
     use super::*;
 
     fn form() -> SaveForm {
-        SaveForm::new("bug-W1-2-2026-10-20-1432.zip", Location::Level { id: "W1-2".parse().unwrap(), col: 94, row: 51 })
+        SaveForm::new("bug-W1-2-2026-10-20-1432.zip", "W1-2:94,51")
     }
 
     #[test]
@@ -348,7 +352,7 @@ mod tests {
         assert_eq!(f.action(SaveAction::Save), Outcome::Save("black screen".into()));
         assert_eq!(f.note, "black screen", "kept after Save, for a write that fails");
         assert_eq!(f.action(SaveAction::Discard), Outcome::Discard);
-        let mut s = SaveForm::new("bug-W1-1.zip", Location::Screen("slot machine"));
+        let mut s = SaveForm::new("bug-W1-1.zip", "slot machine");
         assert_eq!(s.location_line(), "Location: slot machine");
         assert_eq!(s.action(SaveAction::Save), Outcome::Save(String::new()));
     }

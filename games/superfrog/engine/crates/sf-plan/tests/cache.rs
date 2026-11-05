@@ -299,6 +299,37 @@ fn the_key_hashes_every_core_file_a_map_is_built_from() {
     }
 }
 
+/// A core file that re-exports a toolkit module (`pub use amiga_plan::graph::*`, T17) builds maps
+/// from the toolkit's source: it is hashed (`cache::TOOLKIT_FILES`) as it is now on disk.
+#[test]
+fn the_key_hashes_the_toolkit_files_a_map_is_built_from() {
+    let toolkit = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../../../../toolkit/crates");
+    let listed: Vec<&str> = cache::TOOLKIT_FILES.iter().map(|(n, _)| *n).collect();
+    for (name, bytes) in cache::CORE_FILES {
+        let src = std::str::from_utf8(bytes).unwrap();
+        for (at, _) in src.match_indices("amiga_plan::") {
+            let m: String = src[at + "amiga_plan::".len()..]
+                .chars()
+                .take_while(|c| c.is_ascii_alphanumeric() || *c == '_')
+                .collect();
+            // A module, not an item (`amiga_plan::Cell`, `PlanGame`).
+            if !m.starts_with(|c: char| c.is_ascii_lowercase()) {
+                continue;
+            }
+            let want = format!("amiga-plan/{m}.rs");
+            assert!(
+                listed.contains(&want.as_str()),
+                "{name} re-exports amiga_plan::{m}: add {want} to cache::TOOLKIT_FILES"
+            );
+        }
+    }
+    for (name, bytes) in cache::TOOLKIT_FILES {
+        let (krate, file) = name.split_once('/').unwrap();
+        let path = toolkit.join(krate).join("src/core").join(file);
+        assert_eq!(std::fs::read(&path).unwrap(), bytes, "{name}");
+    }
+}
+
 #[test]
 fn core_uses_reads_every_form() {
     let src = "use super::facts::{Cell, live};\nuse super::{graph, moves::Macro};\n\

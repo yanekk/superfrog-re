@@ -51,8 +51,8 @@ pub fn frame(widescreen: bool) -> (u32, u32) {
 }
 
 /// The recording bar's height in points: the prototype's 34, room for a regular push button and
-/// 13-point labels.
-pub const BAR_HEIGHT: u32 = 34;
+/// 13-point labels. The toolkit's, which lays the bar out (forest-dumb-level-1 T12).
+pub use amiga_app::recording_bar::BAR_HEIGHT;
 
 /// Points under the picture: the bar's height while it shows.
 fn bar_points(bar: bool) -> u32 {

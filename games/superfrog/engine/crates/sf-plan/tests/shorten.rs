@@ -10,7 +10,7 @@ use std::time::{Duration, Instant};
 
 use sf_core::input::{FrameInput, Joy};
 use sf_core::{Game, LevelId, Start};
-use sf_plan::core::shorten::{self, Shortcut, budget, replay_exit};
+use sf_plan::core::shorten::{self, budget, replay_exit};
 use sf_plan::core::*;
 use sf_plan::run::{RunOptions, over_slack, plan_engine, shortcut_pass};
 
@@ -105,7 +105,7 @@ fn a_detour_is_cut() {
 fn a_stretch_is_kept_only_if_the_route_still_exits() {
     let (g, fa) = at_start("W1-1".parse().unwrap());
     let route = detoured();
-    let mut sc = Shortcut::new(&g, &fa, route.clone(), 1000);
+    let mut sc = shorten::shortcut(&g, &fa, route.clone(), 1000);
     let lost = sc.hearts_lost();
     let mut bad = 0;
     let mut f = 0;
@@ -153,7 +153,7 @@ fn a_stretch_losing_a_heart_is_refused() {
     cut.extend_from_slice(&route[CUT + 8..]);
     let mut f = 0;
     assert_eq!(replay_exit(&g, &cut, &mut f).map(|(_, lost)| lost), Some(1));
-    let mut sc = Shortcut::new(&g, &fa, route.clone(), u64::MAX);
+    let mut sc = shorten::shortcut(&g, &fa, route.clone(), u64::MAX);
     assert_eq!(sc.hearts_lost(), 0);
     let mut offered = false;
     while let Some((s, goal)) = sc.next() {
@@ -196,7 +196,7 @@ fn a_route_short_of_the_exit_gives_nothing() {
     let (g, fa) = at_start("W1-1".parse().unwrap());
     let mut route = fixture();
     route.truncate(1000);
-    let mut sc = Shortcut::new(&g, &fa, route, 1000);
+    let mut sc = shorten::shortcut(&g, &fa, route, 1000);
     assert!(sc.next().is_none());
 }
 

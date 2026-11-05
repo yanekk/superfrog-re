@@ -21,8 +21,11 @@ workspace = "."
     "a_restored_run_counts_as_the_run_that_took_the_snapshot",
 ]
 "crates/amiga-oracle/tests/kickstart_missing.rs" = "smoke"
+"crates/amiga-oracle/tests/picture_in.rs" = "smoke"
 "crates/amiga-oracle/tests/routine.rs" = "smoke"
 "crates/amiga-paula/src" = "smoke"
+"crates/amiga-plan/tests/made_up_game.rs" = "smoke"
+"crates/amiga-plan/tests/purity.rs" = "smoke"
 "crates/amiga-paula/tests/unit.rs" = "smoke"
 "crates/amiga-record/tests/round_trip.rs" = "smoke"
 "crates/dry-fit/tests/deps.rs" = "smoke"
@@ -70,3 +73,9 @@ covers = [
     "crates/amiga-oracle/tests/exec_counts.rs::the_vertical_blank_handler_counts_once_a_frame_and_an_unreached_address_zero",
     "crates/amiga-oracle/tests/exec_counts.rs::an_instruction_an_interrupt_pre_empts_counts_once",
 ]
+
+# Milliseconds: the planner's explorer solves a made-up grid game with no disk. Every game's levels
+# are routed with it.
+[[area]]
+name = "the route planner"
+covers = ["crates/amiga-plan/tests/made_up_game.rs"]

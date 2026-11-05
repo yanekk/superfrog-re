@@ -7,9 +7,9 @@
 **Amended:** 2026-11-05 — translation by Muse and small sessions (brief): T32 to T48 added; T06, T08 to T11, T22, T24, T25, T27 reshaped (owner).
 **Amendment reviewed:** 2026-11-05 — 15 fixed, 4 decided with the owner (T49 added)
 
-**Status:** Building. T01, T02, T30, T31 done.
+**Status:** Building. T00 to T05, T12, T17, T30 to T32 done.
 **Last updated:** 2026-11-05
-**Next `pir-work` will:** T00 and T32, because every level task rests on T00's measurements and every port on T32's rig.
+**Next `pir-work` will:** T06, now that its dependencies T03, T04, T31 and T32 are done.
 
 ## Tasks
 
@@ -17,15 +17,15 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 
 | # | Task | Depends on | State | Notes |
 |---|---|---|---|---|
-| T00 | measure-play | — | ⬜ | |
+| T00 | measure-play | — | ✅ | |
 | T01 | smoke-room | — | ✅ | |
 | T02 | route-pin | — | ✅ | |
 | T31 | code-ran-counter | — | ✅ | Review: one doc fix (idle figure owed → owner accepted busy-machine figures). Mutations caught: count reset removed in shim; core hook moved before the IRQ check double-counts a pre-empted NOP. Patch reverse-applies to the cached source; routine runner links, tests pass; smoke labels valid. Smoke first-run timing left to pir's end run. |
-| T32 | routine-rig | — | ⬜ | |
-| T03 | level-sync | T00 | ⬜ | |
-| T04 | picture-in-play | T00 | ⬜ | |
+| T32 | routine-rig | — | ✅ | |
+| T03 | level-sync | T00 | ✅ | |
+| T04 | picture-in-play | T00 | ✅ | |
 | T30 | unpack-in-rust | — | ✅ | |
-| T05 | level-readers | T03, T04, T30 | ⬜ | |
+| T05 | level-readers | T03, T04, T30 | ✅ | |
 | T06 | level-runner | T03, T04, T31, T32 | ⬜ | |
 | T33 | translate-service | T32 | ⬜ | |
 | T34 | translate-inventory | T00 | ⬜ | |
@@ -44,12 +44,12 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T43 | case-scroll | T08, T09 | ⬜ | |
 | T44 | case-picture | T10 | ⬜ | |
 | T11 | character-cases | T01, T41, T42, T43, T44 | ⬜ | |
-| T12 | app-toolkit-move | — | ⬜ | |
+| T12 | app-toolkit-move | — | ✅ | |
 | T13 | forest-dumb-app | T01, T10, T12 | ⬜ | |
 | T14 | recorder | T12, T13 | ⬜ | |
 | T15 | recording-compare | T03, T14 | ⬜ | |
 | T16 | app-drill | T13, T14 | ⬜ | |
-| T17 | planner-toolkit-move | T02 | ⬜ | |
+| T17 | planner-toolkit-move | T02 | ✅ | |
 | T18 | map-page-toolkit-move | T17 | ⬜ | |
 | T19 | map-page | T11, T18 | ⬜ | |
 | T20 | planner-level-1 | T11, T17, T19 | ⬜ | |
@@ -67,6 +67,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T48 | route-on-original | T27 | ⬜ | |
 | T28 | finish-end-to-end | T16, T48 | ⬜ | |
 | T29 | level-drill | T15, T28 | ⬜ | |
+| T50 | sf-menus-os-test-stale | — | ⬜ | |
 
 **Review queue:** *(empty)*
 

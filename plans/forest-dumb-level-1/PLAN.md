@@ -92,6 +92,7 @@ T34 assigns every routine a generator batch and a porting task, and asks the own
 | [T14](tasks/T14-recorder.md) | recorder | T12, T13 |
 | [T15](tasks/T15-recording-compare.md) | recording-compare | T03, T14 |
 | [T16](tasks/T16-app-drill.md) | app-drill | T13, T14 |
+| [T50](tasks/T50-sf-menus-os-test-stale.md) | sf-menus-os-test-stale | — |
 
 ## Phase 4: map page and planner
 
