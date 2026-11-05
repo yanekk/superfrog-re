@@ -9,7 +9,7 @@
 
 **Status:** Amendment read back and its 4 decisions settled; ready to build. Nothing built.
 **Last updated:** 2026-11-05
-**Next `pir-work` will:** T00 and T32, because every level task rests on T00's measurements and every port on T32's rig.
+**Next `pir-work` will:** review T40; then T08, T09, T49 and T51, which wait on it.
 
 ## Tasks
 
@@ -34,7 +34,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T37 | gen-drawing | T33, T34 | ✅ | |
 | T38 | gen-objects | T33, T34 | ✅ | |
 | T39 | gen-rest | T33, T34 | ✅ | |
-| T40 | batch-translate | T35, T36, T37, T38, T39 | ⬜ | |
+| T40 | batch-translate | T35, T36, T37, T38, T39 | 🔍 | translate_batch.py, 14 tests; ran: 77 of 87 pass, $0.16, 18 min. Deviations: fixed the listing sweep (re_listing.py, toolkit hunk_listing.py, exe_map_claims.rs), unlisted, since flow_text failed on 9 routines; results add blocked, not-attempted, error; ports copied to the main checkout's build/translate. |
 | T07 | level-entry | T05, T06, T32 | ✅ | |
 | T08 | character-movement | T07, T40 | ⬜ | |
 | T09 | camera-scroll | T07, T40 | ⬜ | |
@@ -78,7 +78,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T58 | translate-btst-fix | T33; blocks T40 | ✅ | |
 | T59 | oracle-sprite-collision | T21; blocks T24, T41, T42, T43, T44, T45, T46, T47 | ⬜ | |
 
-**Review queue:** *(empty)*
+**Review queue:** T40
 
 ## Blocked on the user
 

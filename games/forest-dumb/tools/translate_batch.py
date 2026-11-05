@@ -210,7 +210,7 @@ def table(batch):
     count = {r: sum(1 for x in rows if x['result'] == r) for r in RESULTS}
     total = sum(x['usd'] for x in rows)
     lines = [f"{len(rows)} routines: " + ', '.join(f'{n} {r}' for r, n in count.items() if n) +
-             f". This run spent {money(batch['spent'])} of its ${batch['max_usd']} cap in {batch['secs']} s"
+             f". This run spent {money(batch['spent'])} of its ${batch['max_usd']:g} cap in {batch['secs']} s"
              + (f" (resumed, {batch['kept']} rows kept)" if batch.get('resumed') else '') +
              f"; the table's routines cost {money(total)} in all.", '',
              '| Routine | Result | Port task | Port | Generator | Paths | Tries | Cost |',
