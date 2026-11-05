@@ -6,6 +6,8 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-11-05 | 📌 | T57 review: in fullscreen `os_window` (toolkit `amiga-e2e/src/os.rs`) can return a 1920×32 layer-0 strip at y −32, seen 625 ms in; `find` takes the first layer-0 window. Harmless while the wait passes on its first sample. Not fixed. |
+| 2026-11-05 | 🐞 | T57: every red of `os_layer_scale_and_fullscreen…` was a locked screen (front app `loginwindow`): scaling still works, fullscreen never happens. `os_layer()` now refuses a locked screen (`CGSSessionScreenIsLocked`); unlocked, five of five pass, waits under 0.8 s. |
 | 2026-11-05 | 📌 | T56 review sweep: `generators::generator` (`gen/mod.rs`) returns the first of duplicate names and no test checks the whole registry is unique; only `gen_edge_redraw.rs` checks its own names. Not fixed. |
 | 2026-11-05 | 📌 | T56: the oracle's VHPOSR counter runs on across calls, so a routine with a raster wait (`h0_3ac2`) differs between two runs of one state; `gen_edge_redraw.rs` sets it per state first. The spike's `h0+$774` generator duplicates `h0_774`; `judge.rs` still uses it. |
 | 2026-11-05 | 📌 | T54: creature probes (`h0_3530`..`h0_35dc`) index `collision_map` by `(x >> 3)` with x a level coordinate, reading up to `$4dd2` bytes past `h3+$fa50`, beyond its `$2e00`. T24 ports that reach as is. `h0_3698` compares the middle slot pairs as bytes. |

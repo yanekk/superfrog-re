@@ -222,6 +222,28 @@ fn os_layer() {
         "OS-layer tests click the real menu bar; run them with SF_E2E_OS=1"
     );
     sf_e2e::os_permissions().unwrap_or_else(|e| panic!("{e}"));
+    assert!(!screen_locked(), "{LOCKED}");
+}
+
+const LOCKED: &str = "the screen is locked: unlock it and run again. Locked, the menu bar still \
+                      answers and the window still resizes, but fullscreen never happens (README.md)";
+
+/// The console session's screen is locked: `CGSSessionScreenIsLocked` in the session dictionary.
+/// The front app is then `loginwindow` and every OS-layer wait on the window's display fails
+/// (T57: each "not within 20 s" of 2026-11-05 was a locked screen).
+fn screen_locked() -> bool {
+    let out = std::process::Command::new("osascript")
+        .args([
+            "-l",
+            "JavaScript",
+            "-e",
+            "ObjC.import('CoreGraphics'); \
+             const d = ObjC.deepUnwrap(ObjC.castRefToObject($.CGSessionCopyCurrentDictionary())); \
+             String(!!(d && d.CGSSessionScreenIsLocked))",
+        ])
+        .output()
+        .expect("running osascript");
+    String::from_utf8_lossy(&out.stdout).trim() == "true"
 }
 
 /// The run's seed, from its capture's `seed.txt`.
@@ -246,6 +268,31 @@ fn until(what: &str, mut f: impl FnMut() -> bool) {
     }
 }
 
+/// Wait until the window's bounds satisfy `f`, at most `bound`. A failure lists every bounds the
+/// window showed and when, so a red says where the window stopped. `SF_E2E_TIMES=1` prints how
+/// long each wait took, the measurement its bound rests on.
+fn until_window(app: &App, what: &str, bound: Duration, mut f: impl FnMut([i32; 4]) -> bool) -> [i32; 4] {
+    let t = Instant::now();
+    let mut seen: Vec<(u128, [i32; 4])> = Vec::new();
+    loop {
+        let b = app.os_window().1;
+        if seen.last().is_none_or(|s| s.1 != b) {
+            seen.push((t.elapsed().as_millis(), b));
+        }
+        if f(b) {
+            if std::env::var_os("SF_E2E_TIMES").is_some() {
+                eprintln!("{what}: {} ms, {seen:?}", t.elapsed().as_millis());
+            }
+            return b;
+        }
+        if t.elapsed() >= bound {
+            let locked = if screen_locked() { format!("; {LOCKED}") } else { String::new() };
+            panic!("{what}: not within {bound:?}; the window's bounds [x, y, w, h], from the wait's start in ms: {seen:?}{locked}");
+        }
+        std::thread::sleep(Duration::from_millis(50));
+    }
+}
+
 fn item(title: &str, enabled: bool, checked: bool) -> MenuItemState {
     MenuItemState {
         title: title.into(),
@@ -257,8 +304,7 @@ fn item(title: &str, enabled: bool, checked: bool) -> MenuItemState {
 /// The window's width, in the window server's units, is `units` game pixels: its bounds are in
 /// the main display's points, so on another display they are that display's points scaled
 /// (measured 0.9 here), and 3 points in from each side of the frame (FINDINGS, T23).
-fn window_is(app: &App, units: f64, pixels: u32) -> bool {
-    let (_, b) = app.os_window();
+fn window_is(b: [i32; 4], units: f64, pixels: u32) -> bool {
     (b[2] as f64 - units * pixels as f64).abs() <= 8.0
 }
 
@@ -456,9 +502,14 @@ fn os_layer_scale_and_fullscreen_through_the_menu_bar_and_its_shortcut() {
     app.start_os();
     // Auto opens the window at 2×: what a game pixel measures in the window server's units.
     let units = app.os_window().1[2] as f64 / 668.0;
+    // Bounds from five runs on the 1920×1080 display, unlocked (T57, 2026-11-05): a scale took
+    // 48–139 ms, entering fullscreen 51–134 ms and leaving it (the animation) 396–753 ms. 5 s is
+    // over six times the slowest; a locked screen, the cause of every earlier red, is refused up
+    // front by `os_layer`.
+    let scale_bound = Duration::from_secs(5);
     for (title, n) in [("3×", 3), ("1×", 1), ("2×", 2)] {
         app.os_menu(&["View", "Scale", title]);
-        until(&format!("the window at {title}"), || window_is(&app, units, 334 * n));
+        until_window(&app, &format!("the window at {title}"), scale_bound, |b| window_is(b, units, 334 * n));
         let items = app.os_menu_items(&["View", "Scale"]);
         assert!(items.iter().all(|i| i.checked == (i.title == title)), "{items:?}");
     }
@@ -466,23 +517,23 @@ fn os_layer_scale_and_fullscreen_through_the_menu_bar_and_its_shortcut() {
     until("Auto checked", || app.os_menu_item(&["View", "Scale"], "Auto").checked);
 
     let windowed = app.os_window().1;
+    let full_bound = Duration::from_secs(5);
+    let full = |b: [i32; 4]| b[2] > windowed[2] + 200 && b[3] > windowed[3] + 200;
+    let back = |b: [i32; 4]| b[2] < windowed[2] + 50;
     app.os_menu(&["View", "Fullscreen"]);
-    until("fullscreen", || {
-        let b = app.os_window().1;
-        b[2] > windowed[2] + 200 && b[3] > windowed[3] + 200
-    });
+    until_window(&app, "fullscreen", full_bound, full);
     assert!(app.os_menu_item(&["View"], "Fullscreen").checked);
     std::thread::sleep(Duration::from_millis(800));
     app.os_activate();
     app.os_key_with(Mods::CONTROL_COMMAND, Key::Char('f'));
-    until("back to the window", || app.os_window().1[2] < windowed[2] + 50);
+    until_window(&app, "back to the window", full_bound, back);
     assert!(!app.os_menu_item(&["View"], "Fullscreen").checked);
     std::thread::sleep(Duration::from_millis(800));
     app.os_key_with(Mods::CONTROL_COMMAND, Key::Char('f'));
-    until("fullscreen by ⌃⌘F", || app.os_window().1[2] > windowed[2] + 200);
+    until_window(&app, "fullscreen by ⌃⌘F", full_bound, full);
     std::thread::sleep(Duration::from_millis(800));
     app.os_menu(&["View", "Fullscreen"]);
-    until("back to the window again", || app.os_window().1[2] < windowed[2] + 50);
+    until_window(&app, "back to the window again", full_bound, back);
     app.os_menu(&["superfrog", "Quit Superfrog"]);
     let c = app.finish_unread();
     assert_eq!(c.exit.code(), Some(0), "{}", c.stderr);
@@ -490,4 +541,3 @@ fn os_layer_scale_and_fullscreen_through_the_menu_bar_and_its_shortcut() {
     let settings = std::fs::read_to_string(app.home.join("settings.toml")).unwrap();
     assert!(settings.contains("scale = \"auto\"") && settings.contains("fullscreen = false"), "{settings}");
 }
-
