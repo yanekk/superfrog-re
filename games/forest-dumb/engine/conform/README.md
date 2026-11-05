@@ -77,8 +77,19 @@ because a script holds only what the player holds (`amiga-conform`'s `script` mo
   runner takes the original's RAM at the pass end, the handler's `INTREQ=$4010` at `h0+$1f02`
   (`Amiga::watch_write`), and numbers passes by the original's own `irq_count`.
 - **Pass for pass.** The engine is transplanted (`fd_core::Transplant`) from the first pass end after
-  the sync point, then runs each later pass on the input of the step that pass started in. A step now
+  the sync point, then runs each later pass on the input the original read for it. A step now
   and then ends two passes and shows only the first; the other is counted unseen and not compared.
+- **The input a pass read** (T67, `fd_conform::PassInputs`). Its joystick is the input of the step in
+  which its `read_joystick` (`h0+$8dfc`) ran, counted by `Amiga::watch_pcs`: every pass runs either it
+  or the paused branch (`h0+$200e`), one pass after another, so the hits in step order are the passes'
+  in pass order. While the camera scrolls a pass usually reads in the step after its start (57 of 76
+  slide passes), so the start step's joystick is wrong there. Its keys are the step it started in
+  (measured: P held from step `N`, standing or sliding, reaches the pass started in `N`, though when
+  sliding its `play_keys` runs in `N + 1`). A paused pass reads no joystick and gets that of its paused
+  branch's step, which nothing reads. The count is anchored at the level sync point (`irq_count` and
+  `input_log_index` both 1) and checked every step against `input_log_index`; a mismatch is an error.
+  `tests/pass_input.rs` holds it: `character-run-slide-buttons` (up held 6480 to 6489 mid-scroll)
+  matches on `Game` and fails on the start-step pairing.
 - **A case that compares nothing fails**: no pass ended, no variable or no picture compared.
 - **An unported object fails every case.** When the engine meets an object value with no `ObjectKind`
   registered (`fd_core::Event::Unported`), the case stops there with `Outcome::Unported`, naming the
