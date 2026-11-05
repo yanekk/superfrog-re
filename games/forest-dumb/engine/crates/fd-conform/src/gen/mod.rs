@@ -17,8 +17,17 @@ pub mod spike;
 
 pub use crate::routine::{Gen, Generator, Setup, h};
 
+/// The generator service's candidate (T61, `tools/generate.py`): the module `FD_GEN` names, built in
+/// by `build.rs`, or none. Listed first in [`MODULES`], so under its name it is the one looked up,
+/// ahead of a committed generator of the same name. Never set outside the service's builds.
+#[allow(unused_imports, dead_code, unused_variables, unused_mut, clippy::all)]
+pub mod candidate {
+    include!(concat!(env!("OUT_DIR"), "/candidate.rs"));
+}
+
 /// Every module's generators.
 pub const MODULES: &[&[(&str, Generator)]] = &[
+    candidate::ALL,
     spike::ALL,
     character::ALL,
     camera::ALL,

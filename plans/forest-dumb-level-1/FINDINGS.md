@@ -6,6 +6,8 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-11-05 | 📌 | T61 live runs, worker action: `generate.py` on one routine per subsystem, all `covered`, 6 tries, $0.0139 in all. Muse covered `h0_4b0e`'s two callee branches its hand-written generator misses. Table in docs/11-translation.md. |
+| 2026-11-05 | 🐞 | T61: `fd-judge --cover` finds hand-written generators failing `generate.py`'s rules: `h0_3566` (`probe`) and `char_object_cells` poke bytes the original never reads; `char_object_cells` and `h0_4b0e` leave branch ways untaken. Left alone. |
 | 2026-11-05 | 📌 | T09: the engine camera crosses one 16-pixel boundary a direction, then stops, until `main_loop`'s redraw (T55) clears `edge_latch_*`. At the sync point left and down are latched. Engine ports skip scratch registers through `judge::check_regs`. |
 | 2026-11-05 | 📌 | T51 review, worker-driven: on the oracle after fire, each direction and diagonal held three frames gave `joy_left`..`joy_down` equal to `JoyFlags::read_joystick(joy1dat(input))`, so `joy1dat`'s JOY1DAT encoding matches the oracle's joystick. |
 | 2026-11-05 | 📌 | T51 review: T53's generator comments (`gen/character.rs:55`, `gen/character_anim.rs:4`) and T51's task doc still say `joy_flags`, now `joy_left`..`joy_down` in LAYOUT and symbols.toml. Comments only; left. |
@@ -63,9 +65,6 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 | 2026-11-05 | 🔄 | Owner set every Muse call to `worker`, the batch included (caps $0.10 a routine, $5 a batch), and asked for a read-back of the amendment. |
 | 2026-11-05 | 🔄 | Owner adopted translation by Muse and small sessions (brief): T32 rig split from T06, T33 to T40 translation track, T41 to T48 frame-matching per case. pir deletes `.parallel/control/conversations/` only on Remove; DESIGN §5.3 copies them first. |
 | 2026-11-03 | 🔄 | Owner approved the first game's lessons before the build: `toolkit/docs/porting-routines.md`, DESIGN §4.1 and §4.2, two T00 questions, and T31, a sixth vAmiga patch counting executed addresses. Every sync cache rebuilds once after T31. |
-| 2026-11-01 | 🐞 | Plan review: no Rust unpacker existed, only `tools/unpack.py`; `fd-tools` only extracts. T30 added before T05 (owner). |
 | 2026-11-01 | 📌 | Plan review, measured: Accessibility and Screen Recording granted, screen unlocked, headless Chrome runs a local page. Fresh-copy smoke: 904 s, over its 900 s budget, fails at 1 200 s. |
 | 2026-11-01 | 🔄 | Owner replaced the planner's always-on recorder with Superfrog's Start Level modal, one level in its selector, fields added as discovered. |
 | 2026-11-01 | 📌 | `sf-e2e/tests/plan_routes.rs` is labelled smoke but its only test is `#[ignore]`d, so smoke only compiles it. Left alone. |
-| 2026-11-01 | 📌 | Nothing pins a Superfrog planned route across a refactor: its determinism tests compare runs within one build. T02 adds the pin. |
-| 2026-11-01 | 📌 | Smoke took 503 to 887 s of 900 s in recent runs (`~/.cache/superfrog-re/smoke-times.tsv`). T01 makes room. |
