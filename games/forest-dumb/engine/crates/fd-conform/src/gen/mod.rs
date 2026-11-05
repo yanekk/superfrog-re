@@ -9,6 +9,7 @@ pub mod camera;
 pub mod character;
 pub mod drawing;
 pub mod objects;
+pub mod rest;
 pub mod spike;
 
 pub use crate::routine::{Gen, Generator, Setup, h};
@@ -19,6 +20,7 @@ pub const MODULES: &[&[(&str, Generator)]] = &[
     character::ALL,
     camera::ALL,
     objects::ALL,
+    rest::ALL,
     drawing::ALL,
 ];
 
