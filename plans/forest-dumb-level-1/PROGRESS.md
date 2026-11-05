@@ -26,16 +26,16 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T04 | picture-in-play | T00 | ✅ | |
 | T30 | unpack-in-rust | — | ✅ | |
 | T05 | level-readers | T03, T04, T30 | ✅ | |
-| T06 | level-runner | T03, T04, T31, T32 | ⬜ | |
+| T06 | level-runner | T03, T04, T31, T32 | ✅ | |
 | T33 | translate-service | T32 | ✅ | |
 | T34 | translate-inventory | T00 | ✅ | |
-| T35 | gen-character | T33, T34 | ⬜ | |
-| T36 | gen-camera | T33, T34 | ⬜ | |
+| T35 | gen-character | T33, T34 | ✅ | |
+| T36 | gen-camera | T33, T34 | ✅ | |
 | T37 | gen-drawing | T33, T34 | ✅ | Review clean, no fix commit. Branch list matched an independent flow walk of the listing for all 14 units; waits checked as `btst #6,$dff002`. Survey reproduces the doc table. Mutations red: fade flag pinned (branch test), poke past READS (write check). Probe: `translate.py h0+$9550 --gen h0_9550` passed, 12 paths. |
-| T38 | gen-objects | T33, T34 | ⬜ | |
+| T38 | gen-objects | T33, T34 | ✅ | |
 | T39 | gen-rest | T33, T34 | ⬜ | |
 | T40 | batch-translate | T35, T36, T37, T38, T39 | ⬜ | |
-| T07 | level-entry | T05, T06, T32 | ⬜ | |
+| T07 | level-entry | T05, T06, T32 | ✅ | |
 | T08 | character-movement | T07, T40 | ⬜ | |
 | T09 | camera-scroll | T07, T40 | ⬜ | |
 | T10 | level-drawing | T08, T09, T40 | ⬜ | |
@@ -75,6 +75,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T55 | edge-redraw | T09; blocks T10, T41, T42, T43 | ⬜ | |
 | T56 | gen-edge-redraw | T33, T34; blocks T40 | ⬜ | |
 | T57 | sf-scale-fullscreen-os-test | — | ⬜ | |
+| T58 | translate-btst-fix | T33; blocks T40 | ⬜ | |
 
 **Review queue:** *(empty)*
 

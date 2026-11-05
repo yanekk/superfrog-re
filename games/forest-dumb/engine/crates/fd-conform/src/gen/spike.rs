@@ -57,7 +57,8 @@ pub const ALL: &[(&str, Generator)] = &[
         },
     ),
     (
-        "char_hit_check",
+        // `h0+$3b2a`, `char_hit_check`: the name is T38's generator (`objects.rs`).
+        "h0+$3b2a",
         Generator {
             base: None,
             case: char_hit_check,

@@ -96,6 +96,47 @@ A new run of a routine clears its folder first.
 
 - 2026-11-05, T33: `h0+$5462` with `char_sprite_position`: pass on try 1, 1 629 tokens in, 7 897 out
   (7 131 reasoning), $0.0017, 67 s, 4 paths.
+- 2026-11-05, T35: `h0+$4274` with `h0_4274`: pass on try 1, 1 482 tokens in, 4 299 out, $0.0010,
+  6 paths.
+
+## Generators: `character` (T35)
+
+`engine/crates/fd-conform/src/gen/character.rs`, one generator for each of the 14 `gen_task = "T35"`
+routines, named as in `re/translate.toml`. Its `COVER` table holds, per routine, what it reads (callees
+included, since the original runs them) and the conditional branches of its own flow, read off the
+listing. `tests/gen_character.rs` checks, on the program from disk 1:
+
+- 2 000 states each, no hang, fault or unmodelled blit;
+- every `Bcc`/`DBcc` in `COVER` goes both ways on some state, or is named unreachable. With no
+  instruction trace in the routine oracle, the test detours one branch at a time through a stub
+  that traps on one way and runs the other as the original would;
+- each generator pokes only bytes its routine reads, and its base only `collision_map`.
+
+`char_update` and `char_probe` lay `collision_map` as blocks of clear, solid and noise. The others
+poke state variables, biased to the tables' `$ff` ends and to the signed compares; a quarter of
+`char_step`'s and `h0_3ea8`'s states are set up for the slide, which random draws reach about once
+in 2 000.
+
+| Generator | Paths | Branches | Unreachable |
+|---|---|---|---|
+| `char_update` | 223 | 1 (`dbra`) | |
+| `char_step` | 74 | 20 | |
+| `h0_3ea8` | 28 | 16 | `h0+$3f42`, `$401a` taken: the raster wait's `beq`; VHPOSR steps on every read in the oracle |
+| `h0_410c` | 9 | 1 | |
+| `h0_416c` | 2 | 1 | |
+| `h0_4274` | 6 | 5 | |
+| `h0_4696` | 4 | 4 | |
+| `h0_4718` | 24 | 9 | |
+| `h0_47e2` | 3 | 2 | |
+| `h0_48be` | 24 | 9 | |
+| `h0_497c` | 3 | 2 | |
+| `h0_4b0e` | 8 | 3 | |
+| `char_probe` | 1 | 0 | no branches (`sne` only) |
+| `char_probe_flags` | 15 | 15 | |
+
+`char_probe` is `by_hand`; its generator is for the rig. `h0+$406c` in `h0_3ea8` loads `h0+$40ac`
+over the `h0+$40cb` just chosen, so the right slide always reads the left table: a reading of the
+original, kept by a literal port.
 
 ## Inventory: `game_frame`'s call tree and the edge redraws
 
@@ -239,3 +280,75 @@ prints each branch's counts.
 
 **Through the service:** 2026-11-05, `translate.py 'h0+$9754' --gen h0_9754`: pass on try 1, 2 177
 tokens in, 8 052 out, $0.0018, 81 s, 2 paths.
+
+## Generators: `camera` (T36)
+
+`fd-conform/src/gen/camera.rs`, one generator per T36 entry of `re/translate.toml`, named as there.
+The routines read only `char_x`/`char_y`, `camera_x`/`camera_y`, the edge flags `h0+$51f8..$51fb` and
+the four latch words `h0+$5196..$519c`; no hardware, so no base. States lean to where the branches
+turn: a camera on a 16-pixel boundary, at its clamp (`$17cf`, `$53f`, 0), negative (with the
+`$8000..$853e` band where `cmpi.w #$53f` overflows and `h0_513c` sets `$53f`, not 0), and a character
+either side of each dead-zone edge (`$94`, `$78`, `$5a`, `$46`).
+
+`fd-conform/tests/gen_camera.rs` proves it. The rig has no trace, so a witness (a literal model of each
+routine counting its branches) must match the original on all 2 000 states; then every conditional
+branch in the routine's flow listing, callees included, is taken both ways. No branch is unreachable.
+Measured 2026-11-05, 2 000 states each, no hang or fault:
+
+| Generator | `RigReport::paths` | Branches | Fewest states one way |
+|---|---|---|---|
+| `camera_update` | 385 | 28 | 41 |
+| `h0_4e9a` | 65 | 5 | 207 |
+| `h0_4ea6` | 64 | 5 | 208 |
+| `h0_4eb4` | 64 | 5 | 210 |
+| `h0_4ec2` | 65 | 5 | 239 |
+| `h0_513c` | 3 | 4 | 151 |
+| `h0_51fc` | 4 | 3 | 25 |
+| `h0_526a` | 4 | 3 | 32 |
+| `h0_52d8` | 4 | 3 | 35 |
+| `h0_5346` | 4 | 3 | 27 |
+
+`h0_513c`'s 3 paths cover its 4 branches: a skipped `move` and a `clr` cost one instruction alike.
+
+- 2026-11-05, T36: `camera_update` with `camera_update`: pass on try 1, 4 837 tokens in, 16 485 out,
+  $0.0038, 115 s, 385 paths.
+
+## Generators: `objects` (T38)
+
+`fd-conform/src/gen/objects.rs`, one generator per T38 entry of `re/translate.toml`, named as there.
+They read the byte map (`h0+$cb38`, `$60` cells a column), `char_x`/`char_y`, `camera_x`/`camera_y`,
+the five slots (flags `h0+$67da`, eight bytes each at `h0+$67ec`: x, y, kind), the BCD counters
+(score `h0+$2a66`, `score_add`, `countdown`, `items_left`, `lives`), `hits_taken`, `cheat_flag`, the
+gates `h0+$4ed0`, `h0+$4b62`, `h0+$9b04`, and CLXDAT as a hardware read. The item blit (`h0_29ca`) reads a
+tile word at `h0+$16318` and a table long at `h0+$3b988`; `char_object_cells` and `h0_26ec` lay
+hunk 3 with noise as their base so the blit copies something. States lean to where branches turn:
+each map code `h0_24ce` and `h0_26ec` test (N-flag ranges, so `$a0..$ff` read as below `$20`), a
+slot on and either side of each camera-window edge, a box corner at `p - size`, `p - size - 1`,
+`p - 1` and `p`, the countdown at `$0898`/`$0899`, `hits_taken` at 2, 3 and `$ffff`.
+
+Counters are valid BCD on every state: the game writes only BCD there, and ABCD/SBCD on other digits
+is undocumented, so a port judged on them would be judged on one emulator's choice.
+
+`fd-conform/tests/gen_objects.rs` proves it, as `gen_camera.rs` does: a witness per routine matches
+the original on all 2 000 states, and every conditional branch of the flow listing, callees
+included, goes both ways, except five that can only go one way: the VHPOSR waits `h0+$265e`,
+`$291c`, `$3af2`, `$3da4` (the rig's VHPOSR steps on every read, so two reads never match) and the
+blitter wait `h0+$2a1c` (BLTBUSY set never clears: a hang). Measured 2026-11-05, no hang or fault:
+
+| Generator | `RigReport::paths` | Branches | Fewest states one way |
+|---|---|---|---|
+| `h0_24ce` | 7 | 6 | 125 |
+| `char_object_cells` | 108 | 29 | 44 |
+| `h0_26ec` | 23 | 29 | 32 |
+| `score_add_routine` | 1 | 0 | |
+| `h0_2dd6` | 125 | 14 | 117 |
+| `h0_2e0e` | 10 | 12 | 37 |
+| `char_hit_check` | 105 | 30 | 32 |
+| `h0_3dd8` | 4 | 4 | 235 |
+| `countdown_plus_100` | 2 | 1 | 874 |
+| `items_left_minus_one` | 2 | 1 | 525 |
+
+`score_add_routine` has no branch: four ABCDs and a clear.
+
+- 2026-11-05, T38: `h0+$2e0e` with `h0_2e0e`: pass on try 2 (try 1 differed on 9 of 2 000 states),
+  9 772 tokens in, 23 238 out, $0.0056, 180 s, 10 paths.

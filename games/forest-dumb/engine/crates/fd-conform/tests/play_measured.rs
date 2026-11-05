@@ -3,7 +3,7 @@
 //! Kickstart: absent, it fails naming where it looked.
 
 use amiga_conform::script::{self, InputScript};
-use amiga_oracle::{Amiga, OracleConfig, kickstart_path};
+use amiga_oracle::{Amiga, FrameInput, Joy, OracleConfig, kickstart_path};
 use fd_conform::{HUNK_BASES, conform_dir, disks};
 
 /// Frames run before the first frame of play: the SCENA 1 fire is held in step 6300, whose frame
@@ -170,4 +170,60 @@ fn irq_count_and_game_frame_run_once_a_frame_over_3000_frames_of_play() {
         late > 0,
         "no pass straddled a frame boundary: the load is not exercised"
     );
+}
+
+/// T00's per-frame rates re-measured with T31's code-ran counter (T06): over 3 000 frames idle and
+/// 3 000 moving, `level3_handler` and `game_frame` start once in every step, and the pass end
+/// (`INTREQ=$4010` at `h0+$1f02`) is reached once a pass, though a step now and then sees none
+/// and the next two. Idle, a pass mostly ends in the step it started in; moving, mostly in the
+/// next, so a frame's end is mid-pass and cases compare at the pass end.
+#[test]
+fn the_code_ran_counter_sees_one_handler_one_game_frame_and_one_pass_end_a_step() {
+    const FRAMES: u32 = 3000;
+    const LEVEL3_HANDLER: u32 = 0x1eda;
+    const GAME_FRAME: u32 = 0x1fec;
+    const PASS_END: u32 = 0x1f02;
+    let pcs = [h0(LEVEL3_HANDLER), h0(PASS_END), h0(GAME_FRAME)];
+    for moving in [false, true] {
+        let mut am = fd_conform::sync::reach_level_1(FRAMES).unwrap_or_else(|e| panic!("{e}"));
+        am.watch_pcs(&pcs);
+        am.watch_write(Some(fd_conform::PASS_END));
+        let (mut totals, mut next_step) = ([0u32; 3], 0u32);
+        for k in 0..FRAMES {
+            let input = match (moving, k / 50 % 3) {
+                (false, _) | (true, 2) => FrameInput::NONE,
+                (true, 0) => FrameInput::joy(Joy::RIGHT),
+                (true, _) => FrameInput::joy(Joy::RIGHT | Joy::FIRE),
+            };
+            am.step(input).unwrap();
+            // pc_hits is ascending by address: handler, pass end, game_frame.
+            let hits: Vec<u32> = am.pc_hits().iter().map(|h| h.1).collect();
+            assert_eq!(hits[0], 1, "level3_handler in step {k}, moving {moving}");
+            assert!(hits[1] <= 2, "pass ends in step {k}, moving {moving}");
+            assert_eq!(hits[2], 1, "game_frame in step {k}, moving {moving}");
+            for (t, h) in totals.iter_mut().zip(&hits) {
+                *t += h;
+            }
+            // The pass whose end this step saw started in an earlier step.
+            if let Some(m) = am.watched_memory() {
+                let at = (h0(IRQ_COUNT) - 0xc0_0000) as usize;
+                let ended = u16::from_be_bytes([m.slow[at], m.slow[at + 1]]);
+                next_step += (ended != word(&am, h0(IRQ_COUNT))) as u32;
+            }
+        }
+        // The sync point's own pass ends in the first step, so one more end than starts at most.
+        assert!(
+            (totals[0]..=totals[0] + 1).contains(&totals[1]),
+            "{} pass ends for {} interrupts, moving {moving}",
+            totals[1],
+            totals[0]
+        );
+        // Measured 2026-11-05: idle 32 of 3 000 passes end in the next step, moving 2 977.
+        if moving {
+            assert!(next_step > FRAMES * 9 / 10, "moving: {next_step}");
+        } else {
+            assert!(next_step < FRAMES / 10, "idle: {next_step}");
+        }
+        println!("moving {moving}: {totals:?}, pass ends in the next step {next_step}");
+    }
 }

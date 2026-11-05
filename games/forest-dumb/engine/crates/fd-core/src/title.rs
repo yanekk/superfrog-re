@@ -7,13 +7,6 @@ use amiga_input::FrameInput;
 /// window, which covers all its positions. A later speed command would need the song from the disk.
 const MT_SPEED: u8 = 6;
 
-/// The hunk [`LAYOUT`]'s addresses are relative to: the main program's hunk 4.
-pub const LAYOUT_HUNK: u32 = 4;
-
-/// Where the harness reads each modelled variable in the original's memory, relative to the start
-/// of [`LAYOUT_HUNK`]. `fd-conform` resolves the hunk's base.
-pub const LAYOUT: &[(&str, u32)] = &[("mt_counter", 0x195c9)];
-
 /// The idle title screen's state, advanced once a frame.
 ///
 /// [`TitleScene::new`] is the state at the case's sync point, oracle frame 4922, the first after
@@ -103,26 +96,5 @@ mod tests {
             b.frame(input);
             assert_eq!(a.variable(), b.variable(), "frame {k}");
         }
-    }
-
-    #[test]
-    fn layout_is_the_address_the_map_records() {
-        // The committed map is the one source of the address; a copy that drifted from it would
-        // make the case compare our counter with some other byte.
-        let map = include_str!("../../../../re/symbols.toml");
-        let (name, offset) = LAYOUT[0];
-        let entry = map
-            .split("[[sym]]")
-            .find(|s| s.contains(&format!("name = \"{name}\"")))
-            .expect("the variable is in symbols.toml");
-        assert!(
-            entry.contains(&format!("hunk = {LAYOUT_HUNK}\n")),
-            "{entry}"
-        );
-        assert!(
-            entry.contains(&format!("offset = {offset:#x}\n")),
-            "{entry}"
-        );
-        assert!(entry.contains("size = 1\n"), "{entry}");
     }
 }

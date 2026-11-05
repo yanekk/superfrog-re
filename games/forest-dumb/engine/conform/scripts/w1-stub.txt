@@ -1,0 +1,8 @@
+# The stub level case's input after the level sync point (frames count from the case's sync frame,
+# 6301): stand still, walk right, jump, stand. Mid-run input, so a runner feeding the engine a frame
+# early or late is seen (T06; plans/forest-dumb-start FINDINGS, the surviving mutant).
+0: -
+20: R        # right from frame 6321
+60: R F      # a jump while walking
+66: R
+80: -        # stand from frame 6381

@@ -30,24 +30,33 @@ frame ~6420.
 
 ## Passes and frames
 
-Measured over 3 000 frames of idle play and 3 000 of moving and jumping (test, and probes):
+Measured over 3 000 frames of idle play and 3 000 of moving and jumping (test, and probes), and
+**re-measured with T31's code-ran counter** at `level3_handler` (`h0+$1eda`), `game_frame` (`h0+$1fec`)
+and the pass end (`h0+$1f02`) by T06, 2026-11-05 (`play_measured.rs`,
+`the_code_ran_counter_sees_one_handler_one_game_frame_and_one_pass_end_a_step`):
 
 - One level-3 interrupt a frame, always: the copper raises it (`INTREQ=$8010` in the copper list at line
   `$e9` = 233). The CPU took it at line 233 when idle and up to 239 when moving (the blitter was holding
-  the bus; inferred).
+  the bus; inferred). Counter: `level3_handler` started once in each of 6 000 steps.
 - `irq_count` +1 every frame. `game_frame` runs once per interrupt, never skipped and never twice.
-- `game_frame` and the handler's 7-line wait end after the frame's end: every frame the step ends with the
-  CPU in the handler (supervisor). The handler starts `game_frame` around line 233 and finishes after line
-  0 of the next frame.
-- Under load, `game_frame`'s own tail (`countdown_step`, near its end) fell after the step's end in 35 of
-  3 000 moving frames, and none of 3 000 idle frames. State read at the end of a step is then mid-pass.
-  So a case should compare at the end of each pass, not at the end of each frame: the handler writes
-  `INTREQ=$4010` at `h0+$1f02` just after `game_frame` returns, which `Amiga::watch_write(Some((0x9c,
-  0x4010)))` catches (inferred: not run with the watch). For T06.
+  Counter: `game_frame` started once in each of 6 000 steps.
+- **Where a pass ends** (counter). The handler writes `INTREQ=$4010` at `h0+$1f02` just after
+  `game_frame` returns; `Amiga::watch_write(Some((0x9c, 0x4010)))` catches it, and the RAM it copies
+  holds `irq_count`, which names the pass. Idle, `game_frame` returned before the step's end in 2 968
+  of 3 000 frames. Moving and jumping, it returned after the step's end in 2 977 of 3 000: the state at
+  a step's end is mid-pass on almost every moving frame (`char_update`, `char_object_cells` and
+  `play_keys` come after `countdown_step` in `game_frame`). Once in a while a step sees no pass end
+  and the next sees two (around `main_loop`'s 32-interrupt check); the RAM copy then holds only the
+  first. T00 saw the CPU in the handler at every step's end; when idle that is the 7-line wait after
+  `h0+$1f02` (read, not counted).
+- T00 wrote (2026-11-05, corrected by T06 the same day): "`game_frame` and the handler's 7-line wait end
+  after the frame's end: every frame", and "`game_frame`'s own tail (`countdown_step`, near its end) fell
+  after the step's end in 35 of 3 000 moving frames, and none of 3 000 idle frames". Both were read from
+  the CPU being in supervisor mode and from `countdown_tick`, not from the routine's return; the counter
+  shows the return before the step's end when idle, and after it on nearly every moving frame.
+- So a case compares at the end of each pass, not at the end of each frame. T06's runner does
+  (`engine/conform/README.md`, "How a level case compares").
 - Paused (`paused` set) the interrupt still counts and `game_frame` runs only `play_keys`.
-
-These are measured on the oracle's `step` boundary. T06 re-measures them with T31's counter at
-`game_frame` and `level3_handler`.
 
 ## Input
 
@@ -207,7 +216,7 @@ About 780 instructions for the movement itself and 760 more around it. What can 
 - T03: the sync point is frame 6301 of `boot-to-level1`, or any frame on the SCENA wait.
 - T04: the window to capture is the play area above plus the status bar.
 - T06: compare at the end of each pass (`INTREQ=$4010` at `h0+$1f02`), because the frame's end falls inside
-  `game_frame` under load. One pass a frame holds.
+  `game_frame` on almost every moving frame. One pass a frame holds (measured with the counter, T06).
 - T08, T09: the character runs four sub-steps a pass; `collision_map` is state the edge redraws build.
 - T10: the character is a hardware sprite; the screen is picture state, not logic state.
 - T23, T26: game over and level end act at `main_loop`'s 32-interrupt check.
