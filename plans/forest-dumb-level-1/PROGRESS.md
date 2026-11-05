@@ -9,7 +9,7 @@
 
 **Status:** Amendment read back and its 4 decisions settled; ready to build. Nothing built.
 **Last updated:** 2026-11-05
-**Next `pir-work` will:** T00 and T32, because every level task rests on T00's measurements and every port on T32's rig.
+**Next `pir-work` will:** review T04; T03 and T32 remain open for every level task.
 
 ## Tasks
 
@@ -23,7 +23,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T31 | code-ran-counter | — | ⬜ | |
 | T32 | routine-rig | — | ⬜ | |
 | T03 | level-sync | T00 | ⬜ | |
-| T04 | picture-in-play | T00 | ⬜ | |
+| T04 | picture-in-play | T00 | 🔍 | `Amiga::picture_in`; `picture()` now calls it with the frame-end DIW. Tests: 2 crop units, trace-format pin, 3 Kickstart (`picture_in.rs`, smoke), 1 play boot (`play_picture.rs`, full, 27 s). Deviation: title window is 320x238, measured, not PAL 256. Play test checks the title too, one boot. |
 | T30 | unpack-in-rust | — | ✅ | |
 | T05 | level-readers | T03, T04, T30 | ⬜ | |
 | T06 | level-runner | T03, T04, T31, T32 | ⬜ | |
@@ -69,7 +69,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T29 | level-drill | T15, T28 | ⬜ | |
 | T50 | sf-menus-os-test-stale | — | ⬜ | |
 
-**Review queue:** *(empty)*
+**Review queue:** T04
 
 ## Blocked on the user
 
