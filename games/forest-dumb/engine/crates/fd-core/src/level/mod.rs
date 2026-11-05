@@ -170,6 +170,40 @@ pub fn game_frame(
     update_objects(l, objects, dispatch, events);
 }
 
+/// `main_loop`'s redraw half (`h0+$2a0` to `$358`), which runs in the foreground between passes: when
+/// `frame_flag` is set, each latched edge in the order down, up, left, right has its position copied to
+/// the redraws' (`h0+$1e66`), its latch cleared and its redraw run; then `frame_flag` is cleared. The
+/// engine runs it whole. The original's can be cut short by the next pass's interrupt (docs/09, "The
+/// edge redraws": inferred, not seen), and a latch the interrupt sets between `main_loop`'s test and
+/// its clear is cleared unredrawn.
+pub fn main_loop_redraws(s: &mut State, image: &redraw::LevelImage, blits: &mut Vec<redraw::Blit>) {
+    use camera::Dir;
+    if s.frame_flag == 0 {
+        return;
+    }
+    let mut io = redraw::PlayIo {
+        image,
+        objects: &mut s.object_map,
+        collision: &mut s.collision,
+        blits,
+    };
+    for dir in [Dir::Down, Dir::Up, Dir::Left, Dir::Right] {
+        let i = dir as usize;
+        if s.camera.edges.latch[i] == 0 {
+            continue;
+        }
+        s.edges.pos = s.camera.edges.at[i];
+        s.camera.edges.latch[i] = 0;
+        match dir {
+            Dir::Down => s.edges.redraw_below(&mut io),
+            Dir::Up => s.edges.redraw_above(&mut io),
+            Dir::Left => s.edges.redraw_left(&mut io),
+            Dir::Right => s.edges.redraw_right(&mut io),
+        }
+    }
+    s.frame_flag = 0;
+}
+
 /// Each object's pass through its kind; an object with none is reported and dropped, and one its
 /// kind removed is dropped.
 pub fn update_objects(

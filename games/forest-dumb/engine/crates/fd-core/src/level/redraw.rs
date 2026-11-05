@@ -354,7 +354,11 @@ fn shape_column(io: &mut impl Io, shapes: u32, blk: u32, dx: u32) {
 /// A creature's kind, from its cell's byte, and its y with the original's `+ 2` for kind 0.
 fn creature(b: u8, y: u32) -> (u16, u32) {
     let kind = (b as u32).wrapping_sub(1);
-    let y = if kind as u8 == 0 { y.wrapping_add(2) } else { y };
+    let y = if kind as u8 == 0 {
+        y.wrapping_add(2)
+    } else {
+        y
+    };
     (kind as u16, y)
 }
 
@@ -384,7 +388,11 @@ impl Edges {
         self.p83c = Ptr::Screen(dst);
         let tiles = TILE_MAP.wrapping_add((row << 1) + 0x1a + col * TILE_COLUMN);
         tile_row(io, tiles, dst);
-        shape_row(io, SHAPE_MAP.wrapping_add(row + 0xd + col * BYTE_COLUMN), at);
+        shape_row(
+            io,
+            SHAPE_MAP.wrapping_add(row + 0xd + col * BYTE_COLUMN),
+            at,
+        );
 
         let row = (y.wrapping_add(0xc0) >> 4) as u32;
         // `d0` as the shape loop's `dbra` left it.
@@ -398,8 +406,7 @@ impl Edges {
                 Code::Bob => d0 = bob_below(io, b, (x, y), d4, d0),
                 Code::Animated => {
                     d0 = ((d0 & 0xffff_0000) | x as u32).wrapping_add(step(d4, 0x14)) & 0xfff0;
-                    self.cells
-                        .add(d0 as u16, y.wrapping_add(0xc1) & 0xfff0, b);
+                    self.cells.add(d0 as u16, y.wrapping_add(0xc1) & 0xfff0, b);
                 }
                 Code::Creature => {
                     let cx = (x as u32).wrapping_add(step(d4, 0x14));
@@ -424,7 +431,8 @@ impl Edges {
         self.p840 = Ptr::Collision(at);
         let dst = screen_band(k).wrapping_add(col * 2);
         self.p83c = Ptr::Screen(dst);
-        let tiles = TILE_MAP.wrapping_add(((row << 1).wrapping_sub(4)).wrapping_add(col * TILE_COLUMN));
+        let tiles =
+            TILE_MAP.wrapping_add(((row << 1).wrapping_sub(4)).wrapping_add(col * TILE_COLUMN));
         tile_row(io, tiles, dst);
         // `subi.w #2` on the row: a word, so row 0 is `$fffe`.
         let shapes = (row as u16).wrapping_sub(2) as u32 + col * BYTE_COLUMN;
@@ -471,9 +479,21 @@ impl Edges {
         let blk = block(y);
         self.p840 = Ptr::Raw(blk);
         let tiles = ((row << 1).wrapping_sub(TILE_COLUMN)).wrapping_add(col * TILE_COLUMN);
-        tile_column(io, TILE_MAP.wrapping_add(tiles), blk, (col * 2).wrapping_sub(2));
-        let shapes = row.wrapping_sub(BYTE_COLUMN).wrapping_add(col * BYTE_COLUMN);
-        shape_column(io, SHAPE_MAP.wrapping_add(shapes), blk, (col * 2).wrapping_sub(2));
+        tile_column(
+            io,
+            TILE_MAP.wrapping_add(tiles),
+            blk,
+            (col * 2).wrapping_sub(2),
+        );
+        let shapes = row
+            .wrapping_sub(BYTE_COLUMN)
+            .wrapping_add(col * BYTE_COLUMN);
+        shape_column(
+            io,
+            SHAPE_MAP.wrapping_add(shapes),
+            blk,
+            (col * 2).wrapping_sub(2),
+        );
 
         if minus(x, 0) {
             return;
@@ -504,10 +524,22 @@ impl Edges {
         let (col, row) = ((x >> 4) as u32, (y >> 4) as u32);
         let blk = block(y);
         self.p840 = Ptr::Raw(blk);
-        let tiles = (row << 1).wrapping_add(0xfc0).wrapping_add(col * TILE_COLUMN);
-        tile_column(io, TILE_MAP.wrapping_add(tiles), blk, (col * 2).wrapping_add(0x2a));
+        let tiles = (row << 1)
+            .wrapping_add(0xfc0)
+            .wrapping_add(col * TILE_COLUMN);
+        tile_column(
+            io,
+            TILE_MAP.wrapping_add(tiles),
+            blk,
+            (col * 2).wrapping_add(0x2a),
+        );
         let shapes = row.wrapping_add(0x7e0).wrapping_add(col * BYTE_COLUMN);
-        shape_column(io, SHAPE_MAP.wrapping_add(shapes), blk, (col * 2).wrapping_add(0x2a));
+        shape_column(
+            io,
+            SHAPE_MAP.wrapping_add(shapes),
+            blk,
+            (col * 2).wrapping_add(0x2a),
+        );
 
         let xr = x.wrapping_add(0x130);
         let col = (xr >> 4) as u32;
@@ -529,6 +561,89 @@ impl Edges {
                 }
             }
         }
+    }
+}
+
+/// Where the level buffers end: world 6's shape map, the largest, from [`SHAPE_MAP`].
+pub const IMAGE_END: u32 = SHAPE_MAP + 0x7800;
+
+/// The level buffers of hunk 0 as the original lays them out, `h0+$bda0` to [`IMAGE_END`]: what a
+/// redraw reads of the level in play. What lies between the buffers (program data) reads 0, which only
+/// positions past the camera's clamps reach. The object map is play state, kept apart ([`PlayIo`]).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct LevelImage {
+    bytes: Vec<u8>,
+}
+
+impl LevelImage {
+    pub fn new(level: &fd_assets::Level) -> LevelImage {
+        let mut bytes = vec![0; (IMAGE_END - SHAPES) as usize];
+        let mut put = |a: u32, v: &[u8]| {
+            let at = (a - SHAPES) as usize;
+            let n = v.len().min(bytes.len() - at);
+            bytes[at..at + n].copy_from_slice(&v[..n]);
+        };
+        // The shapes buffer holds 108 and a bit before the object map; the loader's later files win.
+        let shapes: Vec<u8> = level
+            .shapes
+            .iter()
+            .flat_map(|s| s.iter().flat_map(|w| w.to_be_bytes()))
+            .take((OBJECT_MAP - SHAPES) as usize)
+            .collect();
+        put(SHAPES, &shapes);
+        put(OBJECT_MAP, &level.objects.cells);
+        let tiles: Vec<u8> = level
+            .tiles
+            .cells
+            .iter()
+            .flat_map(|t| t.to_be_bytes())
+            .collect();
+        put(TILE_MAP, &tiles);
+        put(SHAPE_MAP, &level.collision.cells);
+        LevelImage { bytes }
+    }
+
+    /// The byte at hunk 0 offset `a`; 0 outside the buffers.
+    pub fn byte(&self, a: u32) -> u8 {
+        let i = a.wrapping_sub(SHAPES) as usize;
+        self.bytes.get(i).copied().unwrap_or(0)
+    }
+}
+
+/// The redraws' [`Io`] in play: the level read from its image and the object map, the cleared cells
+/// written to the object map, `collision_map` kept, and the blits listed for the picture.
+pub struct PlayIo<'a> {
+    pub image: &'a LevelImage,
+    /// The object map from `h0+$cb38`.
+    pub objects: &'a mut [u8],
+    pub collision: &'a mut super::collision::CollisionMap,
+    pub blits: &'a mut Vec<Blit>,
+}
+
+impl PlayIo<'_> {
+    fn object(&self, a: u32) -> Option<usize> {
+        let i = a.wrapping_sub(OBJECT_MAP) as usize;
+        (i < self.objects.len()).then_some(i)
+    }
+}
+
+impl Io for PlayIo<'_> {
+    fn rb(&self, a: u32) -> u8 {
+        match self.object(a) {
+            Some(i) => self.objects[i],
+            None => self.image.byte(a),
+        }
+    }
+    fn clear_object(&mut self, a: u32) {
+        if let Some(i) = self.object(a) {
+            self.objects[i] = 0;
+        }
+    }
+    fn blit(&mut self, b: Blit) {
+        self.blits.push(b);
+    }
+    fn collision_word(&mut self, at: u32, v: u16) {
+        self.collision.set_word(at, v);
     }
 }
 
@@ -568,7 +683,10 @@ mod tests {
         c.used[3][5] = 1;
         c.add(0x10, 0x20, 0x21);
         assert_eq!(c.used[2][0], 0xff);
-        assert_eq!((c.cells[2][0].x, c.cells[2][0].y, c.cells[2][0].code), (0x10, 0x20, 0x21));
+        assert_eq!(
+            (c.cells[2][0].x, c.cells[2][0].y, c.cells[2][0].code),
+            (0x10, 0x20, 0x21)
+        );
         let mut full = AnimatedCells {
             used: [[0xff; 12]; 4],
             ..AnimatedCells::default()
@@ -586,7 +704,16 @@ mod tests {
         };
         assert!(!s.start(1, 2, 3, 0xff));
         assert_eq!((s.current, s.last, s.active[1]), (1, 1, 0xff));
-        assert_eq!(s.slots[1], CreatureSlot { x: 1, y: 2, kind: 3, facing: 0xff, phase: 0 });
+        assert_eq!(
+            s.slots[1],
+            CreatureSlot {
+                x: 1,
+                y: 2,
+                kind: 3,
+                facing: 0xff,
+                phase: 0
+            }
+        );
         let mut full = CreatureSlots {
             active: [1; 5],
             ..CreatureSlots::default()

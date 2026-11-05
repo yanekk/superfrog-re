@@ -5,6 +5,8 @@
 
 use crate::character::{Anim, InputLog, JoyFlags};
 use crate::level::camera::{Camera, EdgeFlags};
+use crate::level::collision::CollisionMap;
+use crate::level::redraw::Edges;
 
 /// The game state of a level in play. BCD variables are held as stored.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -18,7 +20,8 @@ pub struct State {
     /// latches and positions (T09).
     pub camera: Camera,
     /// `h0+$519e`: set by a scroll that crosses a cell and by the level-3 handler after every pass;
-    /// cleared by `main_loop`, which the engine does not run yet.
+    /// cleared by `main_loop` once it has run the edge redraws (`level::main_loop_redraws`), so a
+    /// pass's state always reads `$ffff`.
     pub frame_flag: u16,
     /// BCD.
     pub lives: u16,
@@ -41,6 +44,13 @@ pub struct State {
     pub joy: JoyFlags,
     /// `input_log` and `input_log_index` (T51).
     pub input_log: InputLog,
+    /// What the edge redraws keep: their position, the creature slots and the animated cells (T55).
+    pub edges: Edges,
+    /// `collision_map`, which the edge redraws build as the view scrolls (T55).
+    pub collision: CollisionMap,
+    /// The object map as play has it (`h0+$cb38`): the level's, less the creature cells the redraws
+    /// started. Filled from the level by `Game::new`.
+    pub object_map: Vec<u8>,
 }
 
 impl State {
@@ -69,7 +79,8 @@ impl State {
                     at: [(0, 0), (0, 0x17), (0, 0), (0, 0x17)],
                 },
             },
-            frame_flag: 0,
+            // Set by the first pass's handler; `main_loop` has not run yet (measured, T55).
+            frame_flag: 0xffff,
             // `lives_reset`, `move.w #$32`.
             lives: 0x32,
             hits_taken: 0,
@@ -91,6 +102,12 @@ impl State {
             // Idle: play's first pass read no direction and appended its one byte, 0.
             joy: JoyFlags::default(),
             input_log: InputLog::at(1),
+            // Not measured at the sync point: level_init's first draw of the view (outside this plan's
+            // translation) has built `collision_map`, started creatures and cleared their cells
+            // there. A case takes them from the original by transplant (T55).
+            edges: Edges::default(),
+            collision: CollisionMap::default(),
+            object_map: Vec::new(),
         }
     }
 

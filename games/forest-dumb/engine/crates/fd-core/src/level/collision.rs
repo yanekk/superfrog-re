@@ -16,7 +16,7 @@ pub const ROWS: u32 = 256;
 pub const ORIGIN: u32 = 0xfa50;
 /// Bytes kept before [`ORIGIN`]: the left edge redraw writes its first cell's word 2 bytes before its
 /// band (`redraw_edge_c`'s `suba.l #2`), which for band 0 is before the map.
-const BEFORE: u32 = 0x40;
+pub const BEFORE: u32 = 0x40;
 /// Bytes kept from [`ORIGIN`]: the map and the slack after it up to the tiles (`h3+$13540`). A
 /// redraw at the camera's largest x (`$17cf`, column 380) writes up to `$311a` bytes in.
 pub const KEPT: u32 = 0x13540 - ORIGIN;
@@ -61,6 +61,12 @@ impl CollisionMap {
         let [hi, lo] = v.to_be_bytes();
         self.set_byte(at, hi);
         self.set_byte(at.wrapping_add(1), lo);
+    }
+
+    /// The map from the original's bytes at `h3+$fa50 - BEFORE`, [`BEFORE`] + [`KEPT`] of them.
+    pub fn from_bytes(bytes: Vec<u8>) -> CollisionMap {
+        assert_eq!(bytes.len(), (BEFORE + KEPT) as usize, "collision_map bytes");
+        CollisionMap { bytes }
     }
 
     /// Every kept byte with its offset from [`ORIGIN`] (wrapping), for a transplant or a test that

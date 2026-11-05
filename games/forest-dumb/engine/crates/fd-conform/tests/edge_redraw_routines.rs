@@ -10,13 +10,17 @@
 //! whose high word the scan carries to the next bob; none after the rest (`main_loop` reloads `d0`
 //! before it reads it, and the redraws reload every register a helper leaves).
 
+use amiga_oracle::{FrameInput, Joy};
+use fd_conform::Live;
 use fd_conform::generators::{self, Gen, Generator};
 use fd_conform::judge::{self, Cpu};
 use fd_conform::routine::{RegsCompared, Rig, RigReport, Setup};
-use fd_core::PORTED;
+use fd_conform::sync::reach_level_1;
+use fd_core::level::collision::{BEFORE, CollisionMap, KEPT, ORIGIN};
 use fd_core::level::redraw::{
     self, AnimCell, AnimatedCells, Blit, CreatureSlot, CreatureSlots, Edges, Io, Ptr,
 };
+use fd_core::{Game, Mem, PORTED, Start, Transplant};
 
 const CASES: usize = 10_000;
 
@@ -265,8 +269,13 @@ fn free_slot(cpu: &mut Cpu) {
 fn fill_slot(cpu: &mut Cpu) {
     let d = cpu.d;
     on_edges(cpu, |e, _| {
-        e.creatures
-            .fill(d[7] as usize, d[0] as u16, d[1] as u16, d[2] as u16, d[3] as u8);
+        e.creatures.fill(
+            d[7] as usize,
+            d[0] as u16,
+            d[1] as u16,
+            d[2] as u16,
+            d[3] as u8,
+        );
     });
 }
 
@@ -470,8 +479,16 @@ fn the_pointer_tables_are_sixteen_rotated_bands() {
     let mem = r.memory_for(&generators::generator("h0_3ac2").unwrap());
     let rl = |a: u32| u32::from_be_bytes(mem[a as usize..a as usize + 4].try_into().unwrap());
     for k in 0..256u32 {
-        assert_eq!(rl(h0(0x1496 + 4 * k)), SCREEN + redraw::screen_band(k), "screen {k}");
-        assert_eq!(rl(h0(0x18d6 + 4 * k)), COLLISION + redraw::collision_band(k), "collision {k}");
+        assert_eq!(
+            rl(h0(0x1496 + 4 * k)),
+            SCREEN + redraw::screen_band(k),
+            "screen {k}"
+        );
+        assert_eq!(
+            rl(h0(0x18d6 + 4 * k)),
+            COLLISION + redraw::collision_band(k),
+            "collision {k}"
+        );
     }
 }
 
@@ -514,10 +531,17 @@ fn the_cell_table_filter_drops_few_states_and_not_none() {
     set_base(&r);
     let mut lines = Vec::new();
     let mut any = 0;
-    for name in ["redraw_edge_a", "redraw_edge_b", "redraw_edge_c", "redraw_edge_d"] {
+    for name in [
+        "redraw_edge_a",
+        "redraw_edge_b",
+        "redraw_edge_c",
+        "redraw_edge_d",
+    ] {
         let case = generators::generator(name).unwrap().case;
         let mut g = Gen::new(0x55);
-        let hit = (0..2000).filter(|_| hits_the_cells(&case(&mut g), name)).count();
+        let hit = (0..2000)
+            .filter(|_| hits_the_cells(&case(&mut g), name))
+            .count();
         // Under 1 in 20: the filter is an exclusion of wild positions, not of the redraw.
         assert!(hit < 100, "{name}: {hit} of 2000");
         any += hit;
@@ -525,4 +549,101 @@ fn the_cell_table_filter_drops_few_states_and_not_none() {
     }
     assert!(any > 0);
     println!("{}", lines.join("\n"));
+}
+
+/// What [`collision_after_redraws`] saw.
+#[derive(Debug, Default)]
+struct Seen {
+    /// Frames the engine redrew each edge (down, up, left, right) and matched.
+    redrawn: [u32; 4],
+    /// Frames where the original's foreground was cut by the next pass and matched one frame later.
+    cut: Vec<u32>,
+    /// The first frame that did not match, even a frame later.
+    differ: Option<String>,
+}
+
+/// The original from the level sync point with `script` (frame after it, input from then on), and
+/// the engine started from its memory each frame and run through its foreground. After the original's
+/// next frame, `collision_map` must equal the engine's; where the original's foreground was cut short
+/// by the next pass (it runs between interrupts, its blits waiting on the raster), the bytes that
+/// differ must equal the engine's a frame later, when the original has finished, and that frame is
+/// not compared on its own.
+fn collision_after_redraws(script: &[(u32, FrameInput)], frames: u32) -> Seen {
+    let mut am = reach_level_1(frames + 1).unwrap_or_else(|e| panic!("{e}"));
+    let data = fd_conform::game_data().unwrap_or_else(|e| panic!("{e}"));
+    let input = |f: u32| {
+        script
+            .iter()
+            .rev()
+            .find(|(at, _)| *at <= f)
+            .map_or(FrameInput::NONE, |(_, i)| *i)
+    };
+    let theirs =
+        |am: &amiga_oracle::Amiga| Live(am).read(3, ORIGIN - BEFORE, (BEFORE + KEPT) as usize);
+    let mut seen = Seen::default();
+    let mut f = 0;
+    while f < frames {
+        let mut g = Game::new(data.clone(), Start::Level1);
+        g.transplant(&Live(&am));
+        // main_loop's order: down, up, left, right; `Dir` indexes right, left, up, down.
+        let latched: Vec<bool> = [3, 2, 1, 0]
+            .iter()
+            .map(|&i| g.state().camera.edges.latch[i] != 0)
+            .collect();
+        g.foreground();
+        let ours = &g.state().collision;
+        am.step(input(f)).unwrap_or_else(|e| panic!("{e}"));
+        let differ: Vec<u32> = CollisionMap::offsets()
+            .zip(theirs(&am))
+            .filter(|&(at, b)| ours.byte(at) != b)
+            .map(|(at, _)| at)
+            .collect();
+        if !differ.is_empty() {
+            am.step(input(f + 1)).unwrap_or_else(|e| panic!("{e}"));
+            let later = theirs(&am);
+            let at = |a: u32| (a.wrapping_add(BEFORE)) as usize;
+            let still: Vec<u32> = differ
+                .iter()
+                .copied()
+                .filter(|&a| ours.byte(a) != later[at(a)])
+                .collect();
+            if !still.is_empty() {
+                seen.differ = Some(format!(
+                    "frame +{f}: {} byte(s) differ, {} still a frame later, first at \
+                     collision_map{:+#x}; latched (down, up, left, right) {latched:?}",
+                    differ.len(),
+                    still.len(),
+                    still[0] as i32
+                ));
+                return seen;
+            }
+            seen.cut.push(f);
+            f += 1;
+        }
+        for (n, l) in seen.redrawn.iter_mut().zip(&latched) {
+            *n += *l as u32;
+        }
+        f += 1;
+    }
+    seen
+}
+
+#[test]
+fn after_a_scroll_each_way_the_collision_map_equals_the_originals() {
+    // From the sync point: the camera settles down onto the character (down), the character walks
+    // right (right), jumps (up is the jump; the camera follows it up), and walks back left (left).
+    let script = [
+        (0, FrameInput::NONE),
+        (40, FrameInput::joy(Joy::RIGHT)),
+        (200, FrameInput::joy(Joy::RIGHT | Joy::UP)),
+        (215, FrameInput::joy(Joy::RIGHT)),
+        (260, FrameInput::joy(Joy::LEFT | Joy::UP)),
+        (275, FrameInput::joy(Joy::LEFT)),
+        (400, FrameInput::joy(Joy::LEFT | Joy::UP)),
+        (415, FrameInput::joy(Joy::LEFT)),
+    ];
+    let seen = collision_after_redraws(&script, 520);
+    println!("{seen:?}");
+    assert_eq!(seen.differ, None, "{seen:?}");
+    assert!(seen.redrawn.iter().all(|&n| n > 0), "{seen:?}");
 }

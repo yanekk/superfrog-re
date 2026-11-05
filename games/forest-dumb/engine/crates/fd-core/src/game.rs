@@ -6,6 +6,7 @@ use std::sync::Arc;
 use amiga_input::FrameInput;
 use fd_assets::{AssetError, Files, Level, read_level};
 
+use crate::level::redraw::{Blit, LevelImage};
 use crate::level::{self, Dispatch, DrawList, Event, LevelCtx, Object};
 use crate::{Mem, Scene, State, Transplant, Var};
 
@@ -44,25 +45,40 @@ pub struct Game {
     objects: Vec<Object>,
     dispatch: Dispatch,
     events: Vec<Event>,
+    /// The level buffers the edge redraws read, built once from `data`.
+    image: Arc<LevelImage>,
+    /// The blits the last step's edge redraws started, for the picture (T10).
+    blits: Vec<Blit>,
 }
 
 impl Game {
     pub fn new(data: Arc<GameData>, start: Start) -> Game {
         match start {
-            Start::Level1 => Game {
-                data,
-                scene: Scene::Level,
-                state: State::level_1(),
-                objects: Vec::new(),
-                dispatch: Dispatch::level_1(),
-                events: Vec::new(),
-            },
+            Start::Level1 => {
+                let mut state = State::level_1();
+                state.object_map = data.level.objects.cells.clone();
+                Game {
+                    image: Arc::new(LevelImage::new(&data.level)),
+                    data,
+                    scene: Scene::Level,
+                    state,
+                    objects: Vec::new(),
+                    dispatch: Dispatch::level_1(),
+                    events: Vec::new(),
+                    blits: Vec::new(),
+                }
+            }
         }
     }
 
-    /// One pass: the original's level-3 handler counts, then runs `game_frame`. Events it raises
-    /// are kept until [`Game::take_events`].
+    /// One pass: first the foreground's redraws for the edges the last pass latched
+    /// ([`Game::foreground`]), then the original's level-3 handler counts and runs `game_frame`.
+    /// A state is the original's as a pass leaves it, before the foreground has run (measured, T55:
+    /// `h0+$1e66` lags the latches by one pass), so the foreground of the frame before comes first.
+    /// Events it raises are kept until [`Game::take_events`].
     pub fn step(&mut self, i: FrameInput) {
+        self.blits.clear();
+        self.foreground();
         match self.scene {
             Scene::Level => {
                 // `level3_handler`: `addi.w #1, irq_count`, then `game_frame` while the game runs.
@@ -82,6 +98,20 @@ impl Game {
                 self.state.frame_flag = 0xffff;
             }
         }
+    }
+
+    /// `main_loop`'s edge redraws (T55): what the foreground does between passes. Their blits are
+    /// added to [`Game::blits`].
+    pub fn foreground(&mut self) {
+        match self.scene {
+            Scene::Level => level::main_loop_redraws(&mut self.state, &self.image, &mut self.blits),
+        }
+    }
+
+    /// The blits the last step's edge redraws started, in order: tiles and bobs onto the play screen,
+    /// for the picture (T10).
+    pub fn blits(&self) -> &[Blit] {
+        &self.blits
     }
 
     pub fn scene(&self) -> &Scene {
@@ -134,6 +164,51 @@ impl PartialEq for Game {
 
 impl Eq for Game {}
 
+impl Game {
+    /// What play keeps beyond `LAYOUT`'s variables (T55): `frame_flag`, `collision_map`, the object
+    /// map, the creature slots and the animated cells, from the original's memory.
+    fn transplant_play(&mut self, mem: &dyn Mem) {
+        use crate::level::collision::{BEFORE, CollisionMap, KEPT, ORIGIN};
+        use crate::level::redraw::{AnimCell, CreatureSlot, OBJECT_MAP};
+        let word = |b: &[u8], i: usize| u16::from_be_bytes([b[i], b[i + 1]]);
+        let s = &mut self.state;
+        s.frame_flag = word(&mem.read(0, 0x519e, 2), 0);
+        s.collision =
+            CollisionMap::from_bytes(mem.read(3, ORIGIN - BEFORE, (BEFORE + KEPT) as usize));
+        let len = s.object_map.len().max(self.data.level.objects.cells.len());
+        s.object_map = mem.read(0, OBJECT_MAP, len);
+        let c = &mut s.edges.creatures;
+        let active = mem.read(0, 0x67da, 5);
+        let slots = mem.read(0, 0x67ec, 40);
+        for i in 0..5 {
+            c.active[i] = active[i];
+            let b = &slots[8 * i..8 * i + 8];
+            c.slots[i] = CreatureSlot {
+                x: word(b, 0),
+                y: word(b, 2),
+                kind: word(b, 4),
+                facing: b[6],
+                phase: b[7],
+            };
+        }
+        c.current = word(&mem.read(0, 0x581c, 2), 0);
+        let last = mem.read(0, 0x687e, 4);
+        c.last = u32::from_be_bytes([last[0], last[1], last[2], last[3]]);
+        let used = mem.read(2, 0x1680, 48);
+        let cells = mem.read(2, 0x16b0, 384);
+        for n in 0..48 {
+            let b = &cells[8 * n..8 * n + 8];
+            s.edges.cells.used[n / 12][n % 12] = used[n];
+            s.edges.cells.cells[n / 12][n % 12] = AnimCell {
+                x: word(b, 0),
+                y: word(b, 2),
+                code: b[4],
+                rest: [b[5], b[6], b[7]],
+            };
+        }
+    }
+}
+
 impl Transplant for Game {
     /// Every `LAYOUT` variable from the original. Objects are not transplanted until T21 measures
     /// where the original keeps them.
@@ -142,6 +217,7 @@ impl Transplant for Game {
             let known = self.state.set(v.name, mem.value(v));
             debug_assert!(known, "{} is in LAYOUT but not in State", v.name);
         }
+        self.transplant_play(mem);
     }
 
     fn probe(&self, v: &Var) -> u32 {
@@ -219,7 +295,11 @@ mod tests {
         );
         assert_eq!(a, b);
         assert_eq!(*a.scene(), Scene::Level);
-        assert_eq!(*a.state(), State::level_1());
+        let want = State {
+            object_map: a.data().level.objects.cells.clone(),
+            ..State::level_1()
+        };
+        assert_eq!(*a.state(), want);
         // Equal data read twice compares equal too.
         assert_eq!(a, Game::new(data(), Start::Level1));
     }
@@ -247,16 +327,25 @@ mod tests {
     fn a_step_counts_the_pass_sets_frame_flag_and_leaves_a_settled_camera() {
         let mut g = Game::new(data(), Start::Level1);
         g.step(FrameInput::joy(Joy::RIGHT));
-        // The character is at rest in the dead zone, and the latches the first pass set block the
-        // left edge: the camera stays, its crossed flags clear, and it notes the character's distance.
+        // The foreground first redraws the two edges the first pass latched, down (the row below
+        // the view, 23 tiles) and left (x 0: nothing), and clears their latches. Then the pass: the
+        // character is at rest in the dead zone and the camera stays, but at x 0 its left scroll
+        // crosses the cell edge again and latches left anew, as the original does every pass there
+        // (measured, T55); it notes the character's distance.
         let mut want = State {
             irq_count: 2,
             frame_flag: 0xffff,
             ..State::level_1()
         };
-        want.camera.edges.crossed = [false; 4];
+        want.camera.edges.crossed = [false, true, false, false];
+        want.camera.edges.latch = [0, 0xffff, 0, 0];
         want.camera.screen_y = 0x70 - 0x17;
+        want.edges = g.state().edges.clone();
+        want.collision = g.state().collision.clone();
+        want.object_map = g.state().object_map.clone();
         assert_eq!(*g.state(), want);
+        assert_eq!(g.state().edges.pos, (0, 0x17));
+        assert_eq!(g.blits().len(), 23);
         // The count wraps as the original's word does.
         g.state.irq_count = 0xffff;
         g.step(FrameInput::NONE);
@@ -316,7 +405,7 @@ mod tests {
     impl Mem for Bytes {
         /// Byte `k` of every variable is `k + 1`, whatever its address.
         fn read(&self, _hunk: u8, _offset: u32, len: usize) -> Vec<u8> {
-            (1..=len as u8).collect()
+            (0..len).map(|k| (k + 1) as u8).collect()
         }
     }
 
