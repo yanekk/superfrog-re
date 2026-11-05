@@ -95,13 +95,18 @@ fn the_old_pairing_fails_where_up_changes_mid_scroll() {
 /// holds the byte before the level-3 interrupt of the step the key goes down in. The pairing also
 /// counts every pass through the pause that follows the release (paused passes run no
 /// `read_joystick`), with `input_log_index` agreeing.
+///
+/// Every pass whose end is seen is paired with P exactly when its `pause_key_down` is set. With P
+/// held 6455 to 6460 the reads lag a step from 6459 (T67 review): pass 161 starts in 6460 with P and
+/// reads the joystick in 6461 without it, and its end shows P down, so keys are the start step's
+/// and not the read step's. From 6470 every pass reads in its start step and cannot tell the two.
 #[test]
 fn keys_reach_the_pass_started_in_their_step_standing_or_sliding_and_a_pause_pairs() {
     const P: u8 = 0x19;
     let slide = load("character-run-slide");
     // The slide's script, which counts from its own sync frame 6400.
     let slide_inputs = Inputs::load(&slide).unwrap_or_else(|e| panic!("{e}"));
-    for (what, from) in [("standing", 6340u32), ("sliding", 6470)] {
+    for (what, from) in [("standing", 6340u32), ("sliding", 6455), ("sliding", 6470)] {
         let end = from + 40;
         // A case from the level sync point itself, so the pairing runs over every step.
         let case = Case {
@@ -129,6 +134,8 @@ fn keys_reach_the_pass_started_in_their_step_standing_or_sliding_and_a_pause_pai
             layout_var("paused").unwrap(),
         );
         let (mut first_down, mut paused_passes) = (None, 0);
+        // (pass, whether its end shows pause_key_down) for every pass end seen.
+        let mut seen: Vec<(u32, bool)> = Vec::new();
         // paired[k] is pass k + 2's: pass 1 read the joystick before the level sync point.
         let mut paired: Vec<FrameInput> = Vec::new();
         for f in sync::LEVEL_1_SYNC..end {
@@ -139,6 +146,7 @@ fn keys_reach_the_pass_started_in_their_step_standing_or_sliding_and_a_pause_pai
                 let o = OracleMem(&m);
                 // pause_key_down, the word after `paused`.
                 let key_down = o.read(0, paused.offset + 2, 2) != [0, 0];
+                seen.push((o.value(irq), key_down));
                 if o.value(paused) != 0 {
                     paused_passes += 1;
                 }
@@ -154,6 +162,13 @@ fn keys_reach_the_pass_started_in_their_step_standing_or_sliding_and_a_pause_pai
         let keys = |pass: u32| paired[(pass - 2) as usize].keys;
         assert!(keys(n).contains(P), "{what}: pass {n} is not paired with P");
         assert!(!keys(n - 1).contains(P), "{what}: pass {} is", n - 1);
+        for &(pass, down) in seen.iter().filter(|(p, _)| *p >= 2) {
+            assert_eq!(
+                keys(pass).contains(P),
+                down,
+                "{what} from {from}: pass {pass} paired with P is not its pause_key_down"
+            );
+        }
         assert!(paused_passes > 5, "{what}: the release never paused");
         // Every pass up to the last step's was paired, the paused ones included.
         assert!(
