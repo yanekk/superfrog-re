@@ -25,6 +25,11 @@ workspace = "engine"
 # The routine rig and the port register: about 3 s, the rig half on the program from disk 1.
 "crates/fd-conform/tests/ported.rs" = "smoke"
 "crates/fd-conform/tests/rig.rs" = "smoke"
+# T06: the level case runner against a stand-in copy of the original, from the cached sync point:
+# 9 s warm (runner.rs, ten short runs in parallel) and 3 s (input_timing.rs). A machine with no
+# sync cache boots to W1-1 once first (about 16 s).
+"crates/fd-conform/tests/runner.rs" = "smoke"
+"crates/fd-conform/tests/input_timing.rs" = "smoke"
 # Three boots to W1-1, about 32 s together: the measurements of docs/09-play-measured.md.
 "crates/fd-conform/tests/play_measured.rs" = "full"
 # One boot to W1-1 (title and play), 12 to 27 s: picture_in on the whole play picture (T04).
@@ -63,3 +68,10 @@ covers = ["crates/fd-conform/tests/level_files.rs::every_level_1_file_equals_the
 [[area]]
 name = "comparing a ported routine with the original"
 covers = ["crates/fd-conform/tests/rig.rs", "crates/fd-conform/tests/ported.rs"]
+
+[[area]]
+name = "judging a level case against the original"
+covers = [
+    "crates/fd-conform/tests/runner.rs",
+    "crates/fd-conform/tests/input_timing.rs",
+]
