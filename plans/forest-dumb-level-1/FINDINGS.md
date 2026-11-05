@@ -6,6 +6,8 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-11-05 | 🐞 | T35: `translate.py` `flow_text` follows `btst.b #n,<label>` as a branch (opcode starts with `b`), runs into data at `h0+$4ed2` and `char_probe`: `h0_3ea8`, `h0_4718`, `h0_48be`, `h0_4b0e` size 295-371, so T40 gets `too-big`. |
+| 2026-11-05 | 📌 | T35 live call, worker action: `translate.py 'h0+$4274' --gen h0_4274` passed on try 1, 1 482 tokens in, 4 299 out, $0.0010, 6 paths. |
 | 2026-11-05 | 📌 | T33 live call, worker action: `translate.py 'h0+$5462' --gen char_sprite_position` passed on try 1: 1 629 tokens in, 7 897 out (7 131 reasoning), $0.0017, 67 s, 4 paths. |
 | 2026-11-05 | 📌 | T33: `char_hit_check` (`h0+$3b2a`) is 183 instructions with callees, so `translate.py` answers `too-big` though the spike passed it 3 of 3. T34 splits it or the owner moves the 180 line. |
 | 2026-11-05 | 📌 | T33: the routine oracle returns from line-mode blits (the shim skips them) and has no fill mode, so "returns on no state" misses them. `RigReport::unmodelled_blits` counts them; `translate.py` answers `no-oracle`. |

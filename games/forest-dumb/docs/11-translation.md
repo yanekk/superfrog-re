@@ -96,6 +96,47 @@ A new run of a routine clears its folder first.
 
 - 2026-11-05, T33: `h0+$5462` with `char_sprite_position`: pass on try 1, 1 629 tokens in, 7 897 out
   (7 131 reasoning), $0.0017, 67 s, 4 paths.
+- 2026-11-05, T35: `h0+$4274` with `h0_4274`: pass on try 1, 1 482 tokens in, 4 299 out, $0.0010,
+  6 paths.
+
+## Generators: `character` (T35)
+
+`engine/crates/fd-conform/src/gen/character.rs`, one generator for each of the 14 `gen_task = "T35"`
+routines, named as in `re/translate.toml`. Its `COVER` table holds, per routine, what it reads (callees
+included, since the original runs them) and the conditional branches of its own flow, read off the
+listing. `tests/gen_character.rs` checks, on the program from disk 1:
+
+- 2 000 states each, no hang, fault or unmodelled blit;
+- every `Bcc`/`DBcc` in `COVER` goes both ways on some state, or is named unreachable. With no
+  instruction trace in the routine oracle, the test detours one branch at a time through a stub
+  that traps on one way and runs the other as the original would;
+- each generator pokes only bytes its routine reads, and its base only `collision_map`.
+
+`char_update` and `char_probe` lay `collision_map` as blocks of clear, solid and noise. The others
+poke state variables, biased to the tables' `$ff` ends and to the signed compares; a quarter of
+`char_step`'s and `h0_3ea8`'s states are set up for the slide, which random draws reach about once
+in 2 000.
+
+| Generator | Paths | Branches | Unreachable |
+|---|---|---|---|
+| `char_update` | 223 | 1 (`dbra`) | |
+| `char_step` | 74 | 20 | |
+| `h0_3ea8` | 28 | 16 | `h0+$3f42`, `$401a` taken: the raster wait's `beq`; VHPOSR steps on every read in the oracle |
+| `h0_410c` | 9 | 1 | |
+| `h0_416c` | 2 | 1 | |
+| `h0_4274` | 6 | 5 | |
+| `h0_4696` | 4 | 4 | |
+| `h0_4718` | 24 | 9 | |
+| `h0_47e2` | 3 | 2 | |
+| `h0_48be` | 24 | 9 | |
+| `h0_497c` | 3 | 2 | |
+| `h0_4b0e` | 8 | 3 | |
+| `char_probe` | 1 | 0 | no branches (`sne` only) |
+| `char_probe_flags` | 15 | 15 | |
+
+`char_probe` is `by_hand`; its generator is for the rig. `h0+$406c` in `h0_3ea8` loads `h0+$40ac`
+over the `h0+$40cb` just chosen, so the right slide always reads the left table: a reading of the
+original, kept by a literal port.
 
 ## Inventory: `game_frame`'s call tree and the edge redraws
 
