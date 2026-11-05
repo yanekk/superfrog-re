@@ -73,11 +73,11 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T53 | gen-character-2 | T33, T34; blocks T40 | ⬜ | |
 | T54 | gen-objects-2 | T33, T34; blocks T40 | ⬜ | |
 | T55 | edge-redraw | T09; blocks T10, T41, T42, T43 | ⬜ | |
-| T56 | gen-edge-redraw | T33, T34; blocks T40 | ⬜ | |
+| T56 | gen-edge-redraw | T33, T34; blocks T40 | 🔍 | 14 generators in `gen/edge_redraw.rs`, 5 tests in `gen_edge_redraw.rs`; branches by T37's flips, each run first setting VHPOSR (h0_3ac2 waits on it). Deviations: moved spike's `redraw_edge_a`/`_b` out (`spike.rs`, `rig.rs` SPIKE list), else registered twice; READS counts callees, T37's only the unit. |
 | T57 | sf-scale-fullscreen-os-test | — | ⬜ | |
 | T58 | translate-btst-fix | T33; blocks T40 | ⬜ | |
 
-**Review queue:** *(empty)*
+**Review queue:** T56
 
 ## Blocked on the user
 

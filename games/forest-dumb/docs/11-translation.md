@@ -386,3 +386,45 @@ Measured 2026-11-05, 2 000 states each, no hang or fault, no branch unreachable:
   43 s, 5 paths. `fd-judge 'h0+$1fec' --gen game_frame --survey`: 2 000 passed, 661 paths, 0.3 s.
 - `translate.py 'game_frame'` exits 2 today: its `split_at` callee `h0+$2c7e` has no label in the
   listing (T34's lost-step sweep), so its flow cannot be cut there.
+
+## Generators: edge redraws (T56)
+
+`fd-conform/src/gen/edge_redraw.rs`, one generator for each of the 14 `gen_task = "T56"` entries, named
+as there; `READS` lists what each routine reads when it runs, callees included. T56 took the spike's
+`redraw_edge_a` and `redraw_edge_b` over; the spike's `h0+$774` stays, under that name, for `judge.rs`.
+
+- The redraws read their position at `h0+$1e66`/`$1e68` (x, y), not `camera_x`/`camera_y`. Each draws
+  23 or 16 tiles from `_MapaN-1` (`h0_774`) and as many shapes from `_MapaN-1.Mapa` into `collision_map`
+  (`h0_7cc`), then scans 20 (a, b) or 13 (c, d) object-map cells: 0 and 7-`$1f` skip, `$ff` ends the
+  scan, 1-6 and `$87`-`$fe` take a creature slot (`h0_681c`) and clear the cell, `$20`-`$3f` add an
+  animated cell (`h0_6882`), `$40`-`$86` blit a bob.
+- States set the position (biased to each guard: y around `$53c`, y 0-8, x 0 and `$8000`, the only x
+  that passes `redraw_edge_c`'s `x >= 1` and fails its `tst.w`), the scanned cells, the five slot flags
+  and the 48 animated-cell flags (all full one state in six). The base lays tiles, shapes and screen as
+  noise and the tile and shape maps.
+- `h0_7cc` indexes 32-byte shapes by a byte from `h0+$bda0`, so shapes past `$6b` are read from the
+  object map at `h0+$cb38`.
+
+`tests/gen_edge_redraw.rs` measures branches by flipping, as `gen_drawing.rs` does. `h0_3ac2` also
+waits for VHPOSR to leave `$e7`-`$66`, and the oracle's counter runs on across calls, so every run there
+first sets the counter by the state's index; `the_beam_sync_sets_the_raster_and_runs_repeat` checks it.
+Every conditional branch of each unit goes both ways except the blitter-busy `bne` at `h0+$3ad6`, which
+no state can take on the oracle (in every unit that holds `h0_3ac2`). `h0_7cc` and `h0_6852` have no branch.
+
+Measured 2026-11-05, 2 000 states each, all returned, no hang, fault or unmodelled blit:
+
+| Generator | `RigReport::paths` | Branches both ways | Named, not taken |
+|---|---|---|---|
+| `redraw_edge_a` | 1 174 | 10 | 1 |
+| `redraw_edge_b` | 1 137 | 11 | 1 |
+| `redraw_edge_c` | 1 095 | 9 | 0 |
+| `redraw_edge_d` | 1 168 | 7 | 0 |
+| `h0_774` | 3 | 1 | 1 |
+| `h0_7cc` | 1 | 0 | 0 |
+| `h0_a06`, `h0_ce4`, `h0_104c`, `h0_1390` | 2 each | 1 each | 1 each |
+| `h0_3ac2` | 2 | 1 | 1 |
+| `h0_681c` | 6 | 2 | 0 |
+| `h0_6852` | 1 | 0 | 0 |
+| `h0_6882` | 98 | 13 | 0 |
+
+`cargo test -p fd-conform --test gen_edge_redraw -- --nocapture` prints each branch's counts.
