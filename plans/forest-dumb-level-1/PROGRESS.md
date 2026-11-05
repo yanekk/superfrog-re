@@ -74,10 +74,10 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T54 | gen-objects-2 | T33, T34; blocks T40 | ⬜ | |
 | T55 | edge-redraw | T09; blocks T10, T41, T42, T43 | ⬜ | |
 | T56 | gen-edge-redraw | T33, T34; blocks T40 | ⬜ | |
-| T57 | sf-scale-fullscreen-os-test | — | ⬜ | |
+| T57 | sf-scale-fullscreen-os-test | — | 🔍 | Cause: locked screen, not timing; app unchanged. `os_layer()` refuses a locked screen; `until_window` prints bounds seen with times (`SF_E2E_TIMES=1` prints them on pass). Bounds cut 20 s to 5 s from measured ≤753 ms. All three menus OS tests 5/5 with the owner's screen unlocked. No deviation. |
 | T58 | translate-btst-fix | T33; blocks T40 | ⬜ | |
 
-**Review queue:** *(empty)*
+**Review queue:** T57
 
 ## Blocked on the user
 

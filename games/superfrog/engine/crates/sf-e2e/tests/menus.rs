@@ -502,7 +502,11 @@ fn os_layer_scale_and_fullscreen_through_the_menu_bar_and_its_shortcut() {
     app.start_os();
     // Auto opens the window at 2×: what a game pixel measures in the window server's units.
     let units = app.os_window().1[2] as f64 / 668.0;
-    let scale_bound = Duration::from_secs(20);
+    // Bounds from five runs on the 1920×1080 display, unlocked (T57, 2026-11-05): a scale took
+    // 48–139 ms, entering fullscreen 51–134 ms and leaving it (the animation) 396–753 ms. 5 s is
+    // over six times the slowest; a locked screen, the cause of every earlier red, is refused up
+    // front by `os_layer`.
+    let scale_bound = Duration::from_secs(5);
     for (title, n) in [("3×", 3), ("1×", 1), ("2×", 2)] {
         app.os_menu(&["View", "Scale", title]);
         until_window(&app, &format!("the window at {title}"), scale_bound, |b| window_is(b, units, 334 * n));
@@ -513,7 +517,7 @@ fn os_layer_scale_and_fullscreen_through_the_menu_bar_and_its_shortcut() {
     until("Auto checked", || app.os_menu_item(&["View", "Scale"], "Auto").checked);
 
     let windowed = app.os_window().1;
-    let full_bound = Duration::from_secs(20);
+    let full_bound = Duration::from_secs(5);
     let full = |b: [i32; 4]| b[2] > windowed[2] + 200 && b[3] > windowed[3] + 200;
     let back = |b: [i32; 4]| b[2] < windowed[2] + 50;
     app.os_menu(&["View", "Fullscreen"]);
