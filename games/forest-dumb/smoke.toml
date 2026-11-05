@@ -12,12 +12,15 @@ workspace = "engine"
     "a_missing_case_names_the_path_and_does_not_panic",
 ]
 "crates/fd-conform/tests/purity.rs" = "smoke"
+# Three boots to W1-1, about 32 s together: the measurements of docs/09-play-measured.md.
+"crates/fd-conform/tests/play_measured.rs" = "full"
 "crates/fd-core/src" = "smoke"
 "crates/fd-tools/tests/bad_disks.rs" = "smoke"
 "crates/fd-tools/tests/boot_chain.rs" = "smoke"
 "crates/fd-tools/tests/exe_map_claims.rs" = "smoke"
 "crates/fd-tools/tests/locate.rs" = "smoke"
 "crates/fd-tools/tests/real_disks.rs" = "smoke"
+"crates/fd-tools/tests/unpack.rs" = "smoke"
 
 [python]
 "tools/test_find_file_names.py" = "smoke"
@@ -32,3 +35,7 @@ covers = ["crates/fd-tools/tests/real_disks.rs"]
 [[area]]
 name = "its first comparison with the original"
 covers = ["crates/fd-conform/tests/first_case.rs::the_idle_title_matches_the_original_on_every_pass"]
+
+[[area]]
+name = "unpacking its packed files in Rust"
+covers = ["crates/fd-tools/tests/unpack.rs::every_esl_file_unpacks_to_the_sha1_in_the_doc"]
