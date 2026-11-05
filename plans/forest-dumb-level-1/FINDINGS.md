@@ -6,6 +6,7 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-11-05 | 📌 | T30 review, read-only: `game_file` treats any `read_file` error as absent, so a damaged file block reads as "no such file" rather than its read error. Left; only a damaged zip reaches it. |
 | 2026-11-05 | 📌 | T01 smoke after the move: 761 s ok, cold worktree, load 9 on 10 cores. Before: 887 s warm, 904 s fresh copy. A cold smoke compile took about 8 GB; free disk fell to 14 GB. |
 | 2026-11-05 | 🔄 | Read-back decisions (owner): finisher copies conversation logs (`.pir/rules/on-finish.md` step 1); T49 translates T21's object routines before T22; generator tasks share the porting size limit; T23, T26 keep the split-by-case escape line. |
 | 2026-11-05 | 🔄 | Owner set every Muse call to `worker`, the batch included (caps $0.10 a routine, $5 a batch), and asked for a read-back of the amendment. |
