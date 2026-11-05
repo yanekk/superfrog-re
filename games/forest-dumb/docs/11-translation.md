@@ -1,8 +1,9 @@
 # 11 — Translation
 
 Literal translation of the original's routines by Muse, judged on the routine oracle (plan
-`forest-dumb-level-1`, DESIGN §4.3). This note holds the service (T33) and the inventory (T34); the generators (T35 to T39, T53,
-T54, T56) and the batch's table (T40, at the end) add their sections.
+`forest-dumb-level-1`, DESIGN §4.3). This note holds the service (T33), the generator service (T61)
+and the inventory (T34); the generators (T35 to T39, T53, T54, T56) and the batch's table (T40, at
+the end) add their sections.
 
 ## The service: `tools/translate.py`
 
@@ -100,6 +101,98 @@ A new run of a routine clears its folder first.
   (7 131 reasoning), $0.0017, 67 s, 4 paths.
 - 2026-11-05, T35: `h0+$4274` with `h0_4274`: pass on try 1, 1 482 tokens in, 4 299 out, $0.0010,
   6 paths.
+
+## The generator service: `tools/generate.py` (T61)
+
+Muse writes a routine's generator and the machine judges it on the original, so a builder reviews a
+generator instead of writing one (plans/forest-dumb-level-1 T61, DESIGN §4.3). The builder sees the
+result line and the generator, never the listing or the retries.
+
+### Calling it
+
+From the repo root, the routine quoted; `--name` is what the generator is registered as (the
+routine's name in `re/translate.toml`):
+
+```
+python3 -I games/forest-dumb/tools/generate.py 'h0+$4e9a' --name h0_4e9a --max-usd 0.10
+```
+
+`--tries` (3), `--max-usd` (0.10, DESIGN §5.2) and `--out` (`games/forest-dumb/build/generate`). It
+needs what `translate.py` needs: the key, the extracted program and its listing. One line on stdout:
+
+```
+{"routine":"h0+$4e9a","result":"covered","tries":1,"usd":0.0021,"branches":5,"uncovered":[],"returns":2000,"base":false,"gen":"games/forest-dumb/build/generate/h0_4e9a.rs"}
+```
+
+| `result` | Meaning | Exit | What the builder does |
+|---|---|---|---|
+| `covered` | a valid generator took every branch both ways | 0 | reads `gen`, commits it into `fd-conform/src/gen/` |
+| `partial` | the best valid try left the ways in `uncovered` untaken | 1 | as `covered`; the reviewer judges each uncovered way and its `reason` |
+| `fail` | no try was valid (compiles, returns, pokes only what is read), or `"stopped":"max-usd"` came first | 1 | writes the generator by hand |
+| `no-oracle` | on every answer that ran, the original returned on no state or started a line or fill blit | 1 | the routine is out of the routine oracle's reach; by hand |
+| `no-key` | no key; stderr says where it looked | 1 | asks the owner for the key |
+
+`uncovered` lists `{"at":"hN+$off","never":"taken|not-taken|either"}`, with `"reason"` where Muse
+said that way cannot be reached. `either` is a branch no state reached (one in the listing the rig
+never counted included). `base` is true when the generator lays a base, which the reviewer reads: a
+base is shown, not judged. Exit 2 is a usage error, as `translate.py`'s.
+
+### What it does
+
+1. The prompt: the listing by control flow with callees (`translate.flow_text`, no `split_at`: the
+   original runs its callees), and up to three committed modules from `fd-conform/src/gen/` as
+   examples. They are the modules registering the most routines of its `subsystem` in
+   `re/translate.toml`, then the smallest. A module that registers this routine's name is never
+   shown, since it holds the answer.
+2. Each answer, a module shaped as the committed ones, is built into `fd-judge` (`FD_GEN`,
+   `fd-conform/build.rs`; `generators::candidate`, ahead of every committed module) and judged by
+   `fd-judge --cover` over its 2 000 states. A try is valid when it compiles and lists `--name`, the
+   original returns on at least 95% of the states with no hang and no line or fill blit, and every
+   byte a state pokes, or makes a hardware read return, is one the original read on some state
+   (`Coverage::reads`) or on the rig's stack. An invalid try gets the reasons back.
+3. A valid try is measured by `Rig::coverage`. A way of a `Bcc`/`DBcc` no state took goes back with
+   the branch's listing line and the three before it, up to `--tries`. Muse may answer
+   `UNREACHABLE hN+$off <way>: <reason>`; such a way is passed through and not asked again.
+4. The result is the valid try with the fewest uncovered ways, the later on a tie, copied to
+   `<out>/<name>.rs`. Spend, waits and `calls.jsonl` (`"service":"generate"`) are `translate.py`'s.
+
+The candidate's judge build takes the same lock as `translate.py`'s default (`build/translate/judge.lock`),
+since both build into the one `fd-judge`.
+
+### What it cannot prove
+
+- That the states are ones the game can be in. The judge checks returns and pokes; whether a
+  state is plausible (and whether a `base` is right) is the reviewer's reading.
+- That a claimed unreachable way is unreachable: the reason is Muse's, for the reviewer.
+- Equality of anything: a generator only makes states. A port is proven on them by `translate.py`
+  or the rig.
+- Branch coverage is per branch, not per path: two branches each taken both ways may never be
+  taken together.
+
+### Files
+
+Under `--out`, never committed: `calls.jsonl`, `<name>.rs` (the result), and per generator `<name>/`
+with `prompt.md`, `answerN.md`, `tryN.rs` and `result.json`. A new run of a name clears its folder.
+
+### Record
+
+2026-11-05, T61, one live run per subsystem on a routine with a hand-written generator (`--max-usd
+0.10`, a §5.3 `worker` action). Coverage is `fd-judge --cover` on both: branch ways untaken, and
+poked bytes the original reads on no state ("outside").
+
+| Routine | Subsystem | Muse: result, tries | Muse $ | Branches | Hand-written (module) |
+|---|---|---|---|---|---|
+| `h0_4e9a` | camera | covered, 2 (try 1 did not compile) | 0.0041 | 5 | covered, outside 0 (`camera.rs`) |
+| `play_keys` | rest | covered, 1 | 0.0018 | 8 | covered, outside 0 (`rest.rs`) |
+| `char_sprite_position` | drawing | covered, 1 | 0.0032 | 3 | covered, outside 0 (`drawing.rs`) |
+| `h0_3566` | objects | covered, 1 | 0.0025 | 1 | covered, outside 5 102 (`objects_move.rs`) |
+| `h0_4b0e` | character | covered, 1 | 0.0022 | 14 | `h0+$4cb8`, `$4d00` never taken (`character.rs`) |
+
+Every Muse generator returned on all 2 000 states with no byte outside. Total $0.0139, 10 to 98 s an
+answer, 9 000 to 12 600 tokens in. `h0_3566`'s hand-written `probe` lays all four collision bytes a
+probe could read, so it fails this service's rule; `h0_4b0e`'s misses two branches in its callees,
+which T35's table (its own flow, 3 branches) did not list. Whether Muse's states are plausible was not
+judged here: that is the reviewer's reading.
 
 ## Generators: `character` (T35)
 
@@ -684,3 +777,8 @@ What each porting task did with its share of the table above, and which routines
   hand: each was rewritten from its passing T40 port and the listing as `fd_core::character::{Anim,
   JoyFlags}` methods, and passes the rig on 10 000 states (`tests/character_anim_routines.rs`; paths 2, 2,
   6, 1, 1, 10). The literal ports needed no fix.
+- **T08** (2026-11-05): the fourteen character routines, as `fd_core::character::Character` methods
+  over `State.motion` (paths on the rig: `char_update` 301, `char_step` 91, `h0_3ea8` 29, the rest 1
+  to 24). By hand: `char_probe` (too-big) and `char_update` (blocked behind it), from the listing; the
+  other twelve rewritten from their passing T40 ports and the listing. `game_frame` (blocked) went to
+  T63 (owner, 2026-11-05): its rig proof needs every routine it calls ported first.

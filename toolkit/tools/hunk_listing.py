@@ -253,6 +253,13 @@ def _decode(exe, namer, entries=()):
                     rows.append((h, addr + k, len(chunk), 'dc.b ' + ','.join(f'${b:02x}' for b in chunk), []))
                 pos += n
                 continue
+            if pos & 1:
+                # A 68000 instruction never starts at an odd address. An odd-sized data symbol
+                # (a byte variable) leaves the sweep here; listing the byte as dc.b puts it back
+                # on the next word, where decoding out of step would otherwise run to the next symbol.
+                rows.append((h, addr, 1, f'dc.b ${h.data[pos]:02x}', []))
+                pos += 1
+                continue
             # stop the sweep at the next symbol so a data symbol or a function entry
             # is not swallowed by an instruction decoded out of step
             i = bisect.bisect_right(stops, addr)

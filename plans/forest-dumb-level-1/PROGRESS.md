@@ -37,7 +37,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T39 | gen-rest | T33, T34 | ✅ | |
 | T40 | batch-translate | T35, T36, T37, T38, T39 | ✅ | |
 | T07 | level-entry | T05, T06, T32 | ✅ | |
-| T08 | character-movement | T07, T40 | ⬜ | |
+| T08 | character-movement | T07, T40 | ✅ | |
 | T09 | camera-scroll | T07, T40 | ✅ | |
 | T10 | level-drawing | T08, T09, T40 | ⬜ | |
 | T41 | case-run-jump | T08, T09 | ⬜ | |
@@ -79,8 +79,10 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T58 | translate-btst-fix | T33; blocks T40 | ✅ | |
 | T59 | oracle-sprite-collision | T21; blocks T24, T41, T42, T43, T44, T45, T46, T47 | ✅ | |
 | T60 | rig-branch-coverage | T32 | ✅ | |
-| T61 | generate-service | T33, T60; blocks T49 | ⬜ | |
+| T61 | generate-service | T33, T60; blocks T49 | ✅ | |
 | T62 | engine-shape-trial | T08, T09, T33 | ⬜ | |
+| T63 | game-frame-rig | T08, T09, T10, T22, T23, T24, T25, T26, T51, T52, T55; blocks T27 | ⬜ | |
+| T64 | listing-odd-bytes | T08, T51 | ✅ | |
 | T65 | level-start-draw | T55; blocks T13, T20 | ⬜ | |
 
 **Review queue:** *(empty)*

@@ -3,10 +3,12 @@
 //! update").
 //!
 //! T51 ports the walk animation's frame pickers ([`anim`]) and the joystick read ([`input`]); T08
-//! builds `Character` on them and appends here.
+//! the movement on them ([`physics`]).
 
 pub mod anim;
 pub mod input;
+pub mod physics;
 
 pub use anim::{Anim, AnimTables};
 pub use input::{InputLog, JoyFlags, joy1dat};
+pub use physics::{Character, Motion};

@@ -13,7 +13,7 @@ Port `level_init`'s first draw of the view so a game started on its own holds th
 §2.1, §2.3, §4.1, §4.3.
 
 ## Reuses
-T55's `level/redraw.rs` (`LevelImage`, `Io`, `Blit`, the band offsets) and `level/collision.rs`; T32's rig; `toolkit/docs/porting-routines.md`.
+T55's `level/redraw.rs` (`LevelImage`, `Io`, `Blit`, the band offsets) and `level/collision.rs` (`CollisionPlane`); T32's rig; `toolkit/docs/porting-routines.md`.
 
 ## Files
 `fd-core/src/level/redraw.rs` or a new `fd-core/src/level/start.rs`, `fd-core/src/game.rs` (`Game::new` runs it), `fd-core/src/ported.rs` (appends), `re/symbols.toml` (the four as `func`), `fd-conform/tests/` (a rig test file and the sync-point check), `docs/` note, `smoke.toml`.
@@ -23,7 +23,7 @@ T55's `level/redraw.rs` (`LevelImage`, `Io`, `Blit`, the band offsets) and `leve
 
 ## Tests
 - [ ] Each of the four routines through the rig against the original, 10 000 states from a generator written for them (Muse through T61's service, or by hand), memory and the registers callers read compared.
-- [ ] `Game::new(Start::Level1)`'s `collision_map` equals the original's at the level sync point, byte for byte over what `CollisionMap` keeps.
+- [ ] `Game::new(Start::Level1)`'s `collision_map` equals the original's at the level sync point, byte for byte over what `CollisionPlane` keeps.
 
 ## Done when
 - [ ] The four routines have `PORTED` entries and `func` symbols, and pass the rig.

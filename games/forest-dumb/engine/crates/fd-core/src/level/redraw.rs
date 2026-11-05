@@ -18,7 +18,7 @@
 //!
 //! What the engine models of the picture is the list of blits, in order ([`Blit`]): the play screen is
 //! picture state, not game state (docs/09), and T10 draws it. `collision_map` is game state
-//! (`level/collision.rs`).
+//! (`level/collision.rs`, `CollisionPlane`).
 
 /// Hunk 0 offsets of the level buffers the redraws read: `_GenN-1.Mapa` (32-byte shapes), the object
 /// map (`_MapaBobowN`), the tile map (`_MapaN-1`, words), the shape map (`_MapaN-1.Mapa`, bytes). The
@@ -30,6 +30,8 @@ pub const SHAPE_MAP: u32 = 0x2_8f18;
 /// Bytes a map column, tile map (words) and the byte maps.
 const TILE_COLUMN: u32 = 0xc0;
 const BYTE_COLUMN: u32 = 0x60;
+/// Bytes a `collision_map` row.
+const ROW_BYTES: u32 = 0x2e;
 /// A play screen line: five interleaved planes of `$2e` bytes.
 pub const SCREEN_LINE: u32 = 0xe6;
 
@@ -49,7 +51,7 @@ pub fn screen_band(k: u32) -> u32 {
 
 /// Entry `k`'s `collision_map` offset from `h3+$fa50`.
 pub fn collision_band(k: u32) -> u32 {
-    band(k) * 16 * super::collision::ROW_BYTES
+    band(k) * 16 * ROW_BYTES
 }
 
 /// One blit a redraw starts, in the original's order. `dst` is a byte offset from the play screen
@@ -244,7 +246,7 @@ pub fn shape_copy(io: &mut impl Io, n: u32, at: u32) {
     let src = SHAPES.wrapping_add(n.wrapping_shl(5));
     for k in 0..16u32 {
         let w = io.rw(src.wrapping_add(2 * k));
-        io.collision_word(at.wrapping_add(k * super::collision::ROW_BYTES), w);
+        io.collision_word(at.wrapping_add(k * ROW_BYTES), w);
     }
 }
 
@@ -616,7 +618,7 @@ pub struct PlayIo<'a> {
     pub image: &'a LevelImage,
     /// The object map from `h0+$cb38`.
     pub objects: &'a mut [u8],
-    pub collision: &'a mut super::collision::CollisionMap,
+    pub collision: &'a mut super::collision::CollisionPlane,
     pub blits: &'a mut Vec<Blit>,
 }
 

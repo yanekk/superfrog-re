@@ -92,6 +92,30 @@ pub const LAYOUT: &[Var] = &[
     var("joy_up", 0, 0x8df6, Width::Word),
     var("joy_down", 0, 0x8df8, Width::Word),
     var("input_log_index", 0, 0x8ec0, Width::Long),
+    // The character's movement (T08). The probe's sixteen samples as four longs: LAYOUT has no
+    // wider width.
+    var("char_jump_3b28", 0, 0x3b28, Width::Word),
+    var("char_jump_41b4", 0, 0x41b4, Width::Word),
+    var("char_jump_41b6", 0, 0x41b6, Width::Word),
+    var("char_dying_t", 0, 0x4b60, Width::Word),
+    var("char_dying", 0, 0x4b62, Width::Word),
+    var("char_rising", 0, 0x4ecf, Width::Byte),
+    var("char_falling", 0, 0x4ed0, Width::Byte),
+    var("char_probe_3", 0, 0x4ed3, Width::Byte),
+    var("char_probe_4", 0, 0x4ed4, Width::Byte),
+    var("char_probe_5", 0, 0x4ed5, Width::Byte),
+    var("char_probe_6", 0, 0x4ed6, Width::Byte),
+    var("char_slide_t", 0, 0x4108, Width::Byte),
+    var("char_jumped", 0, 0x4109, Width::Byte),
+    var("char_jump_t", 0, 0x410a, Width::Byte),
+    var("char_run_left", 0, 0x4710, Width::Long),
+    var("char_run_right", 0, 0x4714, Width::Long),
+    var("char_samples_0", 0, 0x54f0, Width::Long),
+    var("char_samples_4", 0, 0x54f4, Width::Long),
+    var("char_samples_8", 0, 0x54f8, Width::Long),
+    var("char_samples_c", 0, 0x54fc, Width::Long),
+    var("char_update_t", 0, 0x3e2c, Width::Long),
+    var("char_unhurt_t", 0, 0x9b04, Width::Byte),
 ];
 
 /// The variable called `name`.

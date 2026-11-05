@@ -144,6 +144,8 @@ T34 assigns every routine a generator batch and a porting task, and asks the own
 | [T60](tasks/T60-rig-branch-coverage.md) | rig-branch-coverage | T32 |
 | [T61](tasks/T61-generate-service.md) | generate-service | T33, T60; blocks T49 |
 | [T62](tasks/T62-engine-shape-trial.md) | engine-shape-trial | T08, T09, T33 |
+| [T63](tasks/T63-game-frame-rig.md) | game-frame-rig | T08, T09, T10, T22, T23, T24, T25, T26, T51, T52, T55; blocks T27 |
+| [T64](tasks/T64-listing-odd-bytes.md) | listing-odd-bytes | T08, T51 |
 
 Muse writes generators from here on, judged by branch coverage on the original (T60, T61); T49 is the first user. T62 tries Muse on engine-shaped ports of T08's and T09's routines, set against what Opus wrote and spent, holds up no task, and asks the owner before any other task changes (DESIGN §4.3).
 

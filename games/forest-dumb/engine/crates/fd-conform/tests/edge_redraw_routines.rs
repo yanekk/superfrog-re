@@ -16,7 +16,7 @@ use fd_conform::generators::{self, Gen, Generator};
 use fd_conform::judge::{self, Cpu};
 use fd_conform::routine::{RegsCompared, Rig, RigReport, Setup};
 use fd_conform::sync::reach_level_1;
-use fd_core::level::collision::{BEFORE, CollisionMap, KEPT, ORIGIN};
+use fd_core::level::collision::{BEFORE, CollisionPlane, KEPT, MAP};
 use fd_core::level::redraw::{
     self, AnimCell, AnimatedCells, Blit, CreatureSlot, CreatureSlots, Edges, Io, Ptr,
 };
@@ -579,7 +579,7 @@ fn collision_after_redraws(script: &[(u32, FrameInput)], frames: u32) -> Seen {
             .map_or(FrameInput::NONE, |(_, i)| *i)
     };
     let theirs =
-        |am: &amiga_oracle::Amiga| Live(am).read(3, ORIGIN - BEFORE, (BEFORE + KEPT) as usize);
+        |am: &amiga_oracle::Amiga| Live(am).read(3, MAP - BEFORE, (BEFORE + KEPT) as usize);
     let mut seen = Seen::default();
     let mut f = 0;
     while f < frames {
@@ -591,11 +591,11 @@ fn collision_after_redraws(script: &[(u32, FrameInput)], frames: u32) -> Seen {
             .map(|&i| g.state().camera.edges.latch[i] != 0)
             .collect();
         g.foreground();
-        let ours = &g.state().collision;
+        let ours = g.plane();
         am.step(input(f)).unwrap_or_else(|e| panic!("{e}"));
-        let differ: Vec<u32> = CollisionMap::offsets()
+        let differ: Vec<u32> = CollisionPlane::kept_offsets()
             .zip(theirs(&am))
-            .filter(|&(at, b)| ours.byte(at) != b)
+            .filter(|&(at, b)| ours.kept_byte(at) != b)
             .map(|(at, _)| at)
             .collect();
         if !differ.is_empty() {
@@ -605,7 +605,7 @@ fn collision_after_redraws(script: &[(u32, FrameInput)], frames: u32) -> Seen {
             let still: Vec<u32> = differ
                 .iter()
                 .copied()
-                .filter(|&a| ours.byte(a) != later[at(a)])
+                .filter(|&a| ours.kept_byte(a) != later[at(a)])
                 .collect();
             if !still.is_empty() {
                 seen.differ = Some(format!(

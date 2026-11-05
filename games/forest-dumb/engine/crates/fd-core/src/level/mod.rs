@@ -32,6 +32,10 @@ use amiga_input::FrameInput;
 use fd_assets::Level;
 
 use crate::State;
+use crate::character::{AnimTables, Character};
+use crate::program::{Program, Scratch};
+
+use collision::CollisionPlane;
 
 /// What happened in a step that its caller must see. Later tasks add events (a life lost, the
 /// level ended), so callers match it with a fallback.
@@ -75,6 +79,11 @@ impl Object {
 pub struct LevelCtx<'a> {
     pub state: &'a mut State,
     pub level: &'a Level,
+    /// The main program's hunk 0 as loaded: the tables the original's routines read (T08).
+    pub program: &'a Program,
+    pub anim: &'a AnimTables,
+    /// The collision plane, play state (T08; T55 draws it, T25 changes it).
+    pub plane: &'a CollisionPlane,
 }
 
 /// One thing an object shows: an image at a place in level pixels. T10 and the kinds' tasks
@@ -156,18 +165,40 @@ pub fn register(d: &mut Dispatch, value: u8, k: &'static dyn ObjectKind) {
 /// `char_sprite_position`, `h0+$9754`; if `paused`, only `play_keys`; else `h0+$2c7e`,
 /// `h0+$2fae`, `h0+$21c0`, `h0+$62b6`, `h0+$2dd6`, `h0+$3698`, `h0+$2d4c`, `read_joystick`,
 /// `char_hit_check`, `countdown_step`, `h0+$24ce`, `char_update`, `char_object_cells`, `play_keys`.
-/// T08 is the first to fill it in; each later porting task adds its calls in that order.
+/// T08 filled in the character's (T51's `read_joystick`, T08's `char_update`); each later porting
+/// task adds its calls in that order. Its rig proof is T63's, once every call is ported.
 pub fn game_frame(
     l: &mut LevelCtx,
     objects: &mut Vec<Object>,
     dispatch: &Dispatch,
     events: &mut Vec<Event>,
-    _input: FrameInput,
+    input: FrameInput,
 ) {
+    // char_sprite_copy, h0+$94ba (T10).
     // `camera_update`, then `h0+$513c` (T09).
     let s = &mut *l.state;
     s.camera.step((s.char_x, s.char_y), &mut s.frame_flag);
+    // char_sprite_position, h0+$9754 (T10).
+    if l.state.paused != 0 {
+        // play_keys (T23).
+        return;
+    }
+    // h0+$2c7e .. h0+$2d4c: the objects (T22, T24, T25, T52); until they are ported, the
+    // dispatch's kinds run here.
     update_objects(l, objects, dispatch, events);
+    let s = &mut *l.state;
+    s.joy.read_joystick(&mut s.input_log, &input);
+    // char_hit_check (T24), countdown_step (T23), h0+$24ce (T25).
+    // The registers and custom-chip writes the original leaves are the rig's; play drops them.
+    Character {
+        state: l.state,
+        program: l.program,
+        anim: l.anim,
+        plane: l.plane,
+        scratch: &mut Scratch::default(),
+    }
+    .update();
+    // char_object_cells (T22), play_keys (T23).
 }
 
 /// `main_loop`'s redraw half (`h0+$2a0` to `$358`), which runs in the foreground between passes: when
@@ -175,7 +206,12 @@ pub fn game_frame(
 /// the redraws' (`h0+$1e66`), its latch cleared and its redraw run; then `frame_flag` is cleared. The
 /// engine runs it whole, before the next pass. The original's is cut short by the next pass when it
 /// draws two edges in one frame, and finishes after it (measured, T55; docs/09, "The edge redraws").
-pub fn main_loop_redraws(s: &mut State, image: &redraw::LevelImage, blits: &mut Vec<redraw::Blit>) {
+pub fn main_loop_redraws(
+    s: &mut State,
+    plane: &mut CollisionPlane,
+    image: &redraw::LevelImage,
+    blits: &mut Vec<redraw::Blit>,
+) {
     use camera::Dir;
     if s.frame_flag == 0 {
         return;
@@ -183,7 +219,7 @@ pub fn main_loop_redraws(s: &mut State, image: &redraw::LevelImage, blits: &mut 
     let mut io = redraw::PlayIo {
         image,
         objects: &mut s.object_map,
-        collision: &mut s.collision,
+        collision: plane,
         blits,
     };
     for dir in [Dir::Down, Dir::Up, Dir::Left, Dir::Right] {
