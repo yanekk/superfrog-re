@@ -10,7 +10,7 @@ case or the compiler's errors sent back, up to --tries answers. Every call is a 
 <out>/calls.jsonl. The listing and every answer derive from the game's code: they stay under build/.
 Spend guards: Muse stops starting calls past $1, Opus past $15 (its reported cost).
 """
-import argparse, json, os, re, subprocess, sys, threading, time, urllib.request, uuid
+import argparse, collections, json, os, re, subprocess, sys, threading, time, urllib.request, uuid
 from concurrent.futures import ThreadPoolExecutor
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -19,7 +19,8 @@ LISTING = os.path.join(GAME, 'build', 're', 'forest_dumb_forever.lst')
 JUDGE = os.path.join(HERE, 'judge')
 MUSE = 'meta/muse-spark-1.3-contributor'
 OPUS = 'claude-opus-5-5'
-CEILING = {'muse': 1.0, 'opus': 15.0}
+CEILING = {'muse': 1.0, 'opus': 15.0}  # any other model: OTHER_CEILING
+OTHER_CEILING = 0.5
 
 SYSTEM = """You translate one routine of an Amiga game from its 68000 disassembly into Rust, exactly.
 
@@ -69,6 +70,7 @@ listing (mt_counter and the like) are listed with their addresses after it."""
 
 SYS = [SYSTEM.replace('{hw}', '')]
 MUSE_MAX = [32000]
+MAXOUT = {}  # model id -> its top provider's max_completion_tokens, from OpenRouter's model list
 
 
 def load_listing():
@@ -201,19 +203,39 @@ def zsh_key():
     raise SystemExit('no OPENROUTER_API_KEY')
 
 
-spent = {'muse': 0.0, 'opus': 0.0}
+spent = collections.defaultdict(float)
 spent_lock = threading.Lock()
 judge_lock = threading.Lock()
 log_lock = threading.Lock()
 
 
-def call_muse(state, user):
+def or_id(model):
+    """`muse` is Muse Spark contributor; any other name but `opus` is an OpenRouter model id."""
+    return MUSE if model == 'muse' else model
+
+
+def call_or(state, user, model):
     state['messages'].append({'role': 'user', 'content': user})
-    body = {'model': MUSE, 'max_tokens': MUSE_MAX[0], 'usage': {'include': True}, 'messages': state['messages']}
-    req = urllib.request.Request('https://openrouter.ai/api/v1/chat/completions', json.dumps(body).encode(),
-                                 {'Authorization': f'Bearer {state["key"]}', 'Content-Type': 'application/json'})
-    with urllib.request.urlopen(req, timeout=900) as r:
-        d = json.load(r)
+    # --muse-max-tokens, lowered to what the model's top provider allows (an over-limit request fails).
+    cap = MAXOUT.get(or_id(model)) or MUSE_MAX[0]
+    body = {'model': or_id(model), 'max_tokens': min(MUSE_MAX[0], cap), 'usage': {'include': True},
+            'messages': state['messages']}
+    # A free model's rate limit (429) or a busy provider (502/503) is waited out, not counted as a try.
+    for wait in (20, 40, 80, 160, 0):
+        req = urllib.request.Request('https://openrouter.ai/api/v1/chat/completions', json.dumps(body).encode(),
+                                     {'Authorization': f'Bearer {state["key"]}', 'Content-Type': 'application/json'})
+        try:
+            with urllib.request.urlopen(req, timeout=1200) as r:
+                d = json.load(r)
+        except urllib.error.HTTPError as e:
+            msg = e.read().decode(errors='replace')[:400]
+            if e.code in (429, 502, 503) and wait:
+                time.sleep(wait)
+                continue
+            raise RuntimeError(f'HTTP {e.code}: {msg}')
+        if 'choices' in d or not wait:
+            break
+        time.sleep(wait)
     if 'choices' not in d:
         raise RuntimeError(json.dumps(d)[:500])
     text = d['choices'][0]['message'].get('content') or ''
@@ -252,8 +274,14 @@ def judge(port_path, routine):
         if b.returncode != 0:
             errs = [l for l in b.stderr.splitlines() if 'error' in l or l.startswith(' ')][:60]
             return {'outcome': 'compile', 'feedback': 'It did not compile:\n' + '\n'.join(errs)}
-        r = subprocess.run([os.path.join(JUDGE, 'target', 'release', 'fd-spike-judge'), routine],
-                           capture_output=True, text=True, timeout=600)
+        try:
+            r = subprocess.run([os.path.join(JUDGE, 'target', 'release', 'fd-spike-judge'), routine],
+                               capture_output=True, text=True, timeout=120)
+        except subprocess.TimeoutExpired:
+            # The original returns on every generated state, so a port that runs on loops for ever.
+            return {'outcome': 'hang', 'feedback': 'The judge stopped your port after 120 seconds: on at least '
+                    'one state it never returns (an endless loop the original does not have). '
+                    'Return the whole corrected file.'}
     try:
         j = json.loads(r.stdout.strip().splitlines()[-1])
     except (json.JSONDecodeError, IndexError):
@@ -266,22 +294,22 @@ def judge(port_path, routine):
 
 
 def one_run(model, routine, run, args, key, prompt, log):
-    d = os.path.join(args.out, model, routine, f'run{run}')
+    d = os.path.join(args.out, re.sub(r'[/:]', '_', model), routine, f'run{run}')
     os.makedirs(d, exist_ok=True)
     state = {'messages': [{'role': 'system', 'content': SYS[0]}], 'key': key, 'cwd': d}
     user = prompt
     for n in range(1, args.tries + 1):
         with spent_lock:
-            if spent[model] >= CEILING[model]:
+            if spent[model] >= CEILING.get(model, OTHER_CEILING):
                 log({'model': model, 'routine': routine, 'run': run, 'try': n, 'outcome': 'budget'})
                 return 'budget'
         t0 = time.time()
         try:
-            text, usage = (call_muse if model == 'muse' else call_opus)(state, user)
+            text, usage = call_opus(state, user) if model == 'opus' else call_or(state, user, model)
         except Exception as e:  # a failed call is a lost try, as a broken answer is
             log({'model': model, 'routine': routine, 'run': run, 'try': n, 'outcome': 'error',
                  'error': str(e)[:400], 'secs': round(time.time() - t0)})
-            if model == 'muse':
+            if model != 'opus':
                 state['messages'].pop()
             continue
         with spent_lock:
@@ -312,21 +340,41 @@ def main():
     ap.add_argument('--tries', type=int, default=3)
     ap.add_argument('--parallel', type=int, default=8)
     ap.add_argument('--muse-max-tokens', type=int, default=32000)
+    ap.add_argument('--resume', action='store_true', help='keep finished runs in --out, redo the rest')
     ap.add_argument('--hw', action='store_true', help='hardware routines: the hardware paragraph and flow extraction')
     ap.add_argument('--out', default=os.path.join(GAME, 'build', 'spike', 'muse-spark'))
     args = ap.parse_args()
     args.out = os.path.abspath(args.out)
     SYS[0] = SYSTEM.replace('{hw}', HW if args.hw else '')
     MUSE_MAX[0] = args.muse_max_tokens
+    if any(m != 'opus' for m in args.models.split(',')):
+        with urllib.request.urlopen('https://openrouter.ai/api/v1/models', timeout=60) as r:
+            for m in json.load(r)['data']:
+                MAXOUT[m['id']] = (m.get('top_provider') or {}).get('max_completion_tokens')
     os.makedirs(args.out, exist_ok=True)
-    key = zsh_key() if 'muse' in args.models else None
-    calls = open(os.path.join(args.out, 'calls.jsonl'), 'a')
+    key = zsh_key() if any(m != 'opus' for m in args.models.split(',')) else None
+    log_path = os.path.join(args.out, 'calls.jsonl')
+    done = set()
+    if args.resume and os.path.exists(log_path):
+        # Keep the runs that finished (a pass, or every try spent); drop the rest's lines and redo them.
+        recs = [json.loads(l) for l in open(log_path)]
+        by_run = collections.defaultdict(list)
+        for c in recs:
+            by_run[(c['model'], c['routine'], c['run'])].append(c)
+        for k, cs in by_run.items():
+            if any(c['outcome'] in ('pass', 'budget') for c in cs) or len(cs) >= args.tries:
+                done.add(k)
+        with open(log_path, 'w') as f:
+            for c in recs:
+                if (c['model'], c['routine'], c['run']) in done:
+                    f.write(json.dumps(c) + '\n')
+    calls = open(log_path, 'a')
 
     def log(rec):
         with log_lock:
             calls.write(json.dumps(rec) + '\n')
             calls.flush()
-            print(f"{rec['model']:4} {rec['routine']} run{rec['run']} try{rec['try']}: {rec['outcome']}"
+            print(f"{rec['model']:40} {rec['routine']} run{rec['run']} try{rec['try']}: {rec['outcome']}"
                   f" in={rec.get('in')} out={rec.get('out')} ${rec.get('cost', 0):.4f} {rec.get('secs')}s", flush=True)
 
     prompts = {}
@@ -339,7 +387,7 @@ def main():
     subprocess.run(['cargo', 'build', '--release', '-q'], cwd=JUDGE, check=True)
     jobs = [(m, r, k) for k in range(1, args.runs + 1) for r in args.routines.split(',') for m in args.models.split(',')]
     with ThreadPoolExecutor(args.parallel) as ex:
-        for f in [ex.submit(one_run, m, r, k, args, key, prompts[r], log) for m, r, k in jobs]:
+        for f in [ex.submit(one_run, m, r, k, args, key, prompts[r], log) for m, r, k in jobs if (m, r, k) not in done]:
             f.result()
     print(json.dumps(spent))
 

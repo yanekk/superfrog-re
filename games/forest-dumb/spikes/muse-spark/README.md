@@ -145,6 +145,61 @@ interpreter instead of a translation (panics "bad size"), and translations off o
 - So the line is size, not hardware. Large routines go to Opus, or are split at their callees before
   Muse sees them; the music player's effect handlers are separate routines a port could take one by one.
 
+## Round 3: free and nearly free models (2026-11-04/05)
+
+`run.py --models` now takes any OpenRouter id (`muse` and `opus` stay aliases). It waits out
+429/502/503 instead of counting a try, caps each new model at $0.50, lowers `--muse-max-tokens` to the
+model's own `max_completion_tokens`, scores a port still running after 120 s as `hang`, and `--resume`
+redoes only unfinished runs. `rank.py` prints the tables below (digit: the try a run passed on; x: failed).
+
+Candidates: OpenRouter's model list (453) filtered to text models at most $0.50 per million output
+tokens that can write code; 19 answered a test call (`stealth/crouton-alpha`: region-blocked).
+
+**Screen**, one run on `774` (20), `2dd6` (122), `3b2a` (183), `--hw`, at `max_tokens` 32 000. Every
+no-code answer in it stopped at 32 000 tokens of reasoning, so it was rerun at 96 000:
+
+| Model | $/M out | Passed | First try | 774 | 2dd6 | 3b2a | Cost $ | Secs/call |
+|---|---|---|---|---|---|---|---|---|
+| muse | 0.20 | 3/3 | 2 | 1 | 1 | 2 | 0.0147 | 156 |
+| nvidia/nemotron-3-ultra-550b-a55b:free | 0 | 2/3 | 1 | 1 | 2 | x | 0 | 153 |
+| nvidia/nemotron-3.5-super-vl:free | 0 | 2/3 | 1 | 1 | 2 | x | 0 | 166 |
+| xiaomi/mimo-v2.6-flash | 0.28 | 2/3 | 1 | 1 | 2 | x | 0.0373 | 198 |
+| deepseek/deepseek-v4-flash | 0.18 | 2/3 | 1 | 1 | x | 2 | 0.0679 | 275 |
+| z-ai/glm-5.3-flash | 0.10 | 2/3 | 0 | 2 | 3 | x | 0.0963 | 393 |
+| minimax/minimax-m3.1-flash | 0.30 | 2/3 | 0 | 3 | 2 | x | 0.1142 | 115 |
+| inclusionai/ling-3.1-flash | 0.23 | 2/3 | 0 | 3 | 2 | x | 0.1281 | 683 |
+| dots-studio/dots-3-note-preview:free | 0 | 1/3 | 1 | 1 | x | x | 0 | 202 |
+| openai/gpt-oss-120b | 0.09 | 1/3 | 1 | 1 | x | x | 0.0247 | 47 |
+| cohere/north-mini-code:free | 0 | 1/3 | 0 | 3 | x | x | 0 | 467 |
+| qwen/qwen3.7-flash | 0.13 | 1/3 | 0 | 2 | x | x | 0.0180 | 135 |
+| stepfun/step-3.5-flash | 0.30 | 1/3 | 0 | 3 | x | x | 0.0992 | 473 |
+| google/gemma-4-31b-it:free | 0 | 0/3 | 0 | x | x | x | 0 | rate-limited upstream, every call |
+| nvidia/nemotron-3.5-lightning:free | 0 | 0/3 | 0 | x | x | x | 0 | 439 |
+| recursive/flint-v1.0:free | 0 | 0/3 | 0 | x | x | x | 0 | 186 |
+| xingchen-agi/xing4.0-29b-a4b:free | 0 | 0/3 | 0 | x | x | x | 0 | 532 |
+| inception/mercury-2.5 | 0.15 | 0/3 | 0 | x | x | x | 0.0069 | 23 |
+| nex-agi/nex-n2.5-mini | 0.10 | 0/3 | 0 | x | x | x | 0.0870 | 443 |
+
+**Final**, 3 runs on the eight routines up to 183 instructions, 96 000 tokens:
+
+| Model | Passed | First try | 3adc | 774 | 5462 | 9754 | 24ce | 2dd6 | 844 | 3b2a | Cost $ | Secs/call |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| muse | 24/24 | 22 | 111 | 111 | 121 | 111 | 111 | 111 | 111 | 211 | 0.0762 | 106 |
+| deepseek/deepseek-v4-flash | 20/24 | 8 | 121 | 211 | 123 | 322 | 212 | 13x | 13x | 2xx | 0.3590 | 172 |
+| xiaomi/mimo-v2.6-flash | 17/24 | 7 | x13 | 221 | 212 | 211 | 131 | 2xx | xx2 | xx2 | 0.2972 | 205 |
+| nemotron-3-ultra, nemotron-3.5-super (free) | not run | | | | | | | | | | | |
+
+The two free finalists got HTTP 429 `free-models-per-day` on every call: the account's limit is 50
+free requests a day (1000 with 5 credits bought), and the screens used it.
+
+### What round 3 shows
+
+- No free or cheaper model matches Muse. The paid near-free ones fail more and cost more per run,
+  because they need more tries and more tokens: DeepSeek V4 Flash $0.018 a passed run, MiMo $0.017,
+  Muse $0.003.
+- Errors cluster in the 122 to 183 instruction routines; up to ~70 every finalist passes, given tries.
+- The free models screen no better than the cheap paid ones, and the two best were not finalised.
+
 ## Next if adopted
 
 Send routines up to ~180 instructions to Muse through this judge; split larger ones at their callees
