@@ -32,7 +32,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T35 | gen-character | T33, T34 | ✅ | |
 | T36 | gen-camera | T33, T34 | ✅ | |
 | T37 | gen-drawing | T33, T34 | ⬜ | |
-| T38 | gen-objects | T33, T34 | ⬜ | |
+| T38 | gen-objects | T33, T34 | ✅ | |
 | T39 | gen-rest | T33, T34 | ⬜ | |
 | T40 | batch-translate | T35, T36, T37, T38, T39 | ⬜ | |
 | T07 | level-entry | T05, T06, T32 | ✅ | |
