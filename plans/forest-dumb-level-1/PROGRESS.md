@@ -18,7 +18,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | # | Task | Depends on | State | Notes |
 |---|---|---|---|---|
 | T00 | measure-play | — | ⬜ | |
-| T01 | smoke-room | — | ⬜ | |
+| T01 | smoke-room | — | ✅ | |
 | T02 | route-pin | — | ✅ | |
 | T31 | code-ran-counter | — | ⬜ | |
 | T32 | routine-rig | — | ⬜ | |
