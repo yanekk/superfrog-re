@@ -119,6 +119,7 @@ version = "0.1.0"
 name = "fd-conform"
 version = "0.1.0"
 dependencies = [
+ "amiga-chips",
  "amiga-conform",
  "amiga-disk",
  "amiga-oracle",
@@ -133,6 +134,7 @@ version = "0.1.0"
 dependencies = [
  "amiga-clock",
  "amiga-input",
+ "fd-assets",
 ]
 
 [[package]]

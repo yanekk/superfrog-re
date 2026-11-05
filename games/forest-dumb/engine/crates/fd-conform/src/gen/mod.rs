@@ -6,13 +6,15 @@
 //! task (T35 to T39, T49) adds its module and appends one line to [`MODULES`], nothing else.
 
 pub mod camera;
+pub mod character;
 pub mod objects;
 pub mod spike;
 
 pub use crate::routine::{Gen, Generator, Setup, h};
 
 /// Every module's generators.
-pub const MODULES: &[&[(&str, Generator)]] = &[spike::ALL, camera::ALL, objects::ALL];
+pub const MODULES: &[&[(&str, Generator)]] =
+    &[spike::ALL, character::ALL, camera::ALL, objects::ALL];
 
 /// The generator registered as `name`.
 pub fn generator(name: &str) -> Option<Generator> {

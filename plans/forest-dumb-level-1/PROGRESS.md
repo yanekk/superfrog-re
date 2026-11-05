@@ -26,16 +26,16 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T04 | picture-in-play | T00 | ✅ | |
 | T30 | unpack-in-rust | — | ✅ | |
 | T05 | level-readers | T03, T04, T30 | ✅ | |
-| T06 | level-runner | T03, T04, T31, T32 | ⬜ | |
+| T06 | level-runner | T03, T04, T31, T32 | ✅ | |
 | T33 | translate-service | T32 | ✅ | |
 | T34 | translate-inventory | T00 | ✅ | |
-| T35 | gen-character | T33, T34 | ⬜ | |
+| T35 | gen-character | T33, T34 | ✅ | |
 | T36 | gen-camera | T33, T34 | ✅ | |
 | T37 | gen-drawing | T33, T34 | ⬜ | |
 | T38 | gen-objects | T33, T34 | ✅ | Review: one fix, branch `h0+$3aec` was the cmp, renamed `h0+$3af2`; branch lists of all ten checked against a flow walk of the listing. Mutations caught: box corners always hitting, witness missing the slot-flag clear (caught via `h0_2dd6` only, `h0_2e0e` alone passes). Probe: 74 000 counter pokes valid BCD. Service pass read-only. |
 | T39 | gen-rest | T33, T34 | ⬜ | |
 | T40 | batch-translate | T35, T36, T37, T38, T39 | ⬜ | |
-| T07 | level-entry | T05, T06, T32 | ⬜ | |
+| T07 | level-entry | T05, T06, T32 | ✅ | |
 | T08 | character-movement | T07, T40 | ⬜ | |
 | T09 | camera-scroll | T07, T40 | ⬜ | |
 | T10 | level-drawing | T08, T09, T40 | ⬜ | |
@@ -75,6 +75,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T55 | edge-redraw | T09; blocks T10, T41, T42, T43 | ⬜ | |
 | T56 | gen-edge-redraw | T33, T34; blocks T40 | ⬜ | |
 | T57 | sf-scale-fullscreen-os-test | — | ⬜ | |
+| T58 | translate-btst-fix | T33; blocks T40 | ⬜ | |
 
 **Review queue:** *(empty)*
 
