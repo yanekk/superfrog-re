@@ -43,6 +43,7 @@ states that nothing exists.
 | Need | Start from |
 |---|---|
 | Porting routines against the original | `toolkit/crates/amiga-oracle/src/routine.rs`, `toolkit/crates/amiga-conform/`, `games/forest-dumb/engine/crates/fd-conform/`; pattern in `games/superfrog/engine/crates/sf-conform/tests/collision_routines.rs` |
+| Translating routines with Muse | `games/forest-dumb/spikes/muse-spark/` (judge, `run.py`, README with the measurements); see "Translation by Muse" below |
 | One level with only the character first | `plans/rust-engine/tasks/T14-frog-and-level.md`, `plans/rust-engine/PLAN.md` ("The small thing before the big thing") |
 | Display, blitter, copper, timing | `toolkit/crates/amiga-chips/`, `amiga-clock` |
 | App | `toolkit/crates/amiga-app/`, `amiga-input`; `games/superfrog/engine/crates/sf-app/` for how a game wires them |
@@ -52,6 +53,45 @@ states that nothing exists.
 | Level files | `games/forest-dumb/tools/render_levels.py`, `docs/05-file-formats.md`, `docs/06-graphics-and-rendering.md`; the Rust readers land in this plan |
 
 Superfrog's game logic is a pattern for how to port, never a source for how this game behaves.
+
+## Translation by Muse, and session size (decided 2026-11-05)
+
+The owner decided this after the Muse spike (`spikes/muse-spark/README.md`, rounds 1-3), to keep Opus
+tokens for what only Opus does. In `plans/rust-engine` 98.6-99.3% of each heavy task's tokens were cache
+reads, builders took 86% of the run, and T14's first builder reached the 1M context limit after ~9 h and
+$57 with auto-compact off. The cost is long sessions re-reading their context, so the plan does three
+things.
+
+1. **A translation service**, built early, before the character work needs it. A command takes a routine
+   (`hN+$off`) and a generator, sends the listing (control-flow extraction, named labels) to
+   `meta/muse-spark-1.3-contributor` on OpenRouter, judges each answer on the routine oracle (hardware
+   mode, custom-chip writes in order), sends back the first failing case, and returns a passing port and
+   a log line (tokens, cost, tries). The builder sees only that result, never the listing or the retries.
+   - Start from the spike's judge and `run.py`. It lives in the game first (root CLAUDE.md, "Before
+     building something"); the judge's `Mem` and hardware model are generic and move to the toolkit when
+     a second game uses them.
+   - Measured limits: Muse passed 24 of 24 runs on routines up to 183 instructions and 2 of 6 at 298-461,
+     so a routine over ~180 instructions is split at its callees first. One that still fails after three
+     tries is translated by the builder.
+   - `max_tokens` 96 000 (32 000 cut most answers off mid-reasoning). The key is `OPENROUTER_API_KEY`
+     from the environment or `~/.zshrc`. A call costs under a cent; it needs a `DESIGN.md` §5.3 row.
+     Sending the game's code to Meta through the contributor model was accepted on 2026-11-04.
+   - The generator is the builder's work and the reviewer's check: a pass is only as strong as the states
+     it ran on. The judge reports how many paths the original took; a reviewer looks for branches no state
+     reaches.
+   - Raw ports and listings derive from the game's code and stay in `build/`. What lands in `fd-core` is
+     the engine-shaped port, as with Superfrog.
+2. **A batch translation before the stages build on it.** Run the service over `game_frame`'s call tree
+   (about 8 300 instructions with callees by the spike's scan) in one unattended run, a night run if that
+   suits. It writes a table: routine, pass, fail or too big, port path, generator, cost. Failures become
+   the routines a builder translates. Generators for the batch are written in batches by sessions sized
+   for it and reviewed. The model calls should cost a few dollars at most.
+3. **Small builder sessions.** Size tasks so a builder stays well below the context limit: one
+   subsystem's routines, not a whole stage. Give each frame-matching effort its own task, split by case,
+   since T14's builder died in that loop. Auto-compact stays on. Keep the run's conversation logs
+   (`plans/forest-dumb-level-1/.parallel/control/conversations/`) somewhere cleanup does not reach, so the
+   tokens spent per activity can be measured after the run. The rust-engine logs were deleted, and that
+   breakdown is missing.
 
 ## Known gaps to plan for
 
