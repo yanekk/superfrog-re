@@ -12,6 +12,8 @@ workspace = "engine"
     "a_missing_case_names_the_path_and_does_not_panic",
 ]
 "crates/fd-conform/tests/purity.rs" = "smoke"
+# Three boots to W1-1, about 32 s together: the measurements of docs/09-play-measured.md.
+"crates/fd-conform/tests/play_measured.rs" = "full"
 "crates/fd-core/src" = "smoke"
 "crates/fd-tools/tests/bad_disks.rs" = "smoke"
 "crates/fd-tools/tests/boot_chain.rs" = "smoke"
