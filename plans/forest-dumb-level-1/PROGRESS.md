@@ -9,7 +9,7 @@
 
 **Status:** Amendment read back and its 4 decisions settled; ready to build. Nothing built.
 **Last updated:** 2026-11-05
-**Next `pir-work` will:** T34, then the generator tasks T35 to T39, which need both T33 and T34.
+**Next `pir-work` will:** the generator tasks T35 to T39, T53, T54 and T56, now that T33 and T34 are done.
 
 ## Tasks
 
@@ -28,7 +28,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T05 | level-readers | T03, T04, T30 | ✅ | |
 | T06 | level-runner | T03, T04, T31, T32 | ⬜ | |
 | T33 | translate-service | T32 | ✅ | Review clean, no fix commit. Probed: re-judged the live `h0+$5462` port with fd-judge (2000/2000) and a one-constant break of it (1926 failures); four mutations (blit modulo, line/fill mask, spend guard, 502 wait) all red; judge 0.9 s against its 120 s limit; concurrent judges on two `--out` folders gave no wrong verdict. |
-| T34 | translate-inventory | T00 | ⬜ | |
+| T34 | translate-inventory | T00 | ✅ | |
 | T35 | gen-character | T33, T34 | ⬜ | |
 | T36 | gen-camera | T33, T34 | ⬜ | |
 | T37 | gen-drawing | T33, T34 | ⬜ | |
@@ -68,6 +68,12 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T28 | finish-end-to-end | T16, T48 | ⬜ | |
 | T29 | level-drill | T15, T28 | ⬜ | |
 | T50 | sf-menus-os-test-stale | — | ⬜ | |
+| T51 | character-anim-input | T07, T40; blocks T08 | ⬜ | |
+| T52 | creature-drawing | T10, T22; blocks T46 | ⬜ | |
+| T53 | gen-character-2 | T33, T34; blocks T40 | ⬜ | |
+| T54 | gen-objects-2 | T33, T34; blocks T40 | ⬜ | |
+| T55 | edge-redraw | T09; blocks T10, T41, T42, T43 | ⬜ | |
+| T56 | gen-edge-redraw | T33, T34; blocks T40 | ⬜ | |
 
 **Review queue:** *(empty)*
 

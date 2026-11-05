@@ -66,11 +66,11 @@ Not written yet: there is no engine to fix. It comes with the recorder, step 8 o
 
 - [docs/frame-length.md](docs/frame-length.md): the measured frame length, 313 lines, dated.
 - [docs/09-play-measured.md](docs/09-play-measured.md): W1-1 play measured: sync frame, passes, input, display, sprites, state variables, level end, the character's routines.
+- [docs/11-translation.md](docs/11-translation.md): translation by Muse: `tools/translate.py` (how to call it, what a pass proves) and the inventory of routines to translate, sized and given tasks in [re/translate.toml](re/translate.toml) by `tools/call_tree.py`.
 - [toolkit/docs/porting-routines.md](../../toolkit/docs/porting-routines.md): read before porting or reading any routine of the original; the first game's porting lessons as rules.
 - [engine/conform/README.md](engine/conform/README.md): the conformance runner `fd-conform` and its case format.
 - [docs/ROADMAP.md](docs/ROADMAP.md): backlog, the owner's sequence of plans, level 1 next.
 - [docs/level-1-brief.md](docs/level-1-brief.md): the brief for the level 1 plan.
-- [docs/11-translation.md](docs/11-translation.md): `tools/translate.py`, a routine's literal Rust port through Muse, judged on the routine oracle; how to call it and what a pass proves.
 - [spikes/muse-spark/README.md](spikes/muse-spark/README.md): spike 2026-11-04, Muse Spark contributor matches Opus translating routines up to ~180 instructions (blitter and Paula included) at 1/15-1/30 the cost; fails at ~300+.
 
 ## The first case

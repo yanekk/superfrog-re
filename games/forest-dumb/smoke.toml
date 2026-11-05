@@ -41,6 +41,7 @@ workspace = "engine"
 "crates/fd-tools/tests/unpack.rs" = "smoke"
 
 [python]
+"tools/test_call_tree.py" = "smoke"
 "tools/test_find_file_names.py" = "smoke"
 "tools/test_re_listing.py" = "smoke"
 "tools/test_render_levels.py" = "smoke"
