@@ -19,7 +19,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 |---|---|---|---|---|
 | T00 | measure-play | — | ⬜ | |
 | T01 | smoke-room | — | ✅ | 39 non-area Superfrog files smoke to full, purity and inline kept. Review clean, no fix commit: label check clean, mutating an area cover to full turned it red, all 39 exist and run under full.sh's `cargo test --workspace`. 720 s item unverified (761 s under load); pir's end smoke decides, per owner. |
-| T02 | route-pin | — | ⬜ | |
+| T02 | route-pin | — | ✅ | |
 | T31 | code-ran-counter | — | ⬜ | |
 | T32 | routine-rig | — | ⬜ | |
 | T03 | level-sync | T00 | ⬜ | |

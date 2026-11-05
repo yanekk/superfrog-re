@@ -153,6 +153,7 @@ workspace = "engine"
 "crates/sf-plan/tests/purity.rs" = "smoke"
 "crates/sf-plan/tests/reach.rs" = "smoke"
 "crates/sf-plan/tests/repair.rs" = "full"
+"crates/sf-plan/tests/route_pin.rs" = "smoke"   # 21-23 s alone, dev profile; its exit pin is #[ignore]d
 "crates/sf-plan/tests/shorten.rs" = "full"
 "crates/sf-plan/tests/walk.rs" = [
     "fill_goes_around_a_wall",
@@ -278,6 +279,11 @@ covers = [
     "crates/sf-plan/tests/walk.rs::the_start_walks_at_least_as_far_as_straight",
     "crates/sf-plan/tests/walk.rs::walk_entries_carry_their_walking_coin_distance",
 ]
+
+# 21-23 s (forest-dumb-level-1 T02: routes held across the planner's move to the toolkit)
+[[area]]
+name = "planned routes do not change"
+covers = ["crates/sf-plan/tests/route_pin.rs"]
 
 # 45 s
 [[area]]
