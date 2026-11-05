@@ -84,6 +84,9 @@ workspace = "engine"
 [python]
 "tools/test_call_tree.py" = "smoke"
 "tools/test_find_file_names.py" = "smoke"
+# T61: model calls stubbed, no network. The judge one builds three canned generators into fd-judge: about 4 s warm.
+"tools/test_generate.py" = "smoke"
+"tools/test_generate_judge.py" = "smoke"
 "tools/test_re_listing.py" = "smoke"
 "tools/test_render_levels.py" = "smoke"
 # Model calls stubbed, no network. The second builds canned ports into fd-judge: about 8 s warm.
@@ -130,3 +133,7 @@ covers = ["crates/fd-conform/tests/level_entry.rs"]
 [[area]]
 name = "translating a routine through Muse, judged on the original"
 covers = ["crates/fd-conform/tests/judge.rs", "tools/test_translate.py", "tools/test_translate_judge.py"]
+
+[[area]]
+name = "having Muse write a generator, judged by its coverage on the original"
+covers = ["tools/test_generate.py", "tools/test_generate_judge.py"]

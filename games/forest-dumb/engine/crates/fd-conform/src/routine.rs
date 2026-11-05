@@ -629,7 +629,9 @@ fn unmodelled_blit(writes: &[(u16, u16)]) -> bool {
 }
 
 /// A routine's seed from its name, so each generator's states are fixed and differ between routines.
-fn seed(name: &str) -> u64 {
+/// The seed of the states a check, survey or coverage run named `name` makes: a generator's states
+/// are reproduced from it (fd-judge's `--cover` poke check).
+pub fn seed(name: &str) -> u64 {
     name.bytes().fold(0xcbf2_9ce4_8422_2325u64, |h, b| {
         (h ^ b as u64).wrapping_mul(0x100_0000_01b3)
     })
