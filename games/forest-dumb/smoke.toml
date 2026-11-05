@@ -30,6 +30,9 @@ workspace = "engine"
 # sync cache boots to W1-1 once first (about 16 s).
 "crates/fd-conform/tests/runner.rs" = "smoke"
 "crates/fd-conform/tests/input_timing.rs" = "smoke"
+# T07: the level engine entering W1-1 against the original, and its idle case (200 frames, also
+# through the command line): 2 s warm. A machine with no sync cache boots to W1-1 once first.
+"crates/fd-conform/tests/level_entry.rs" = "smoke"
 # The translation judge on h0+$774, under a second.
 "crates/fd-conform/tests/judge.rs" = "smoke"
 # T35: the character routines' generators, 2 000 states each and every branch both ways, about 2.5 s.
@@ -85,6 +88,10 @@ covers = [
     "crates/fd-conform/tests/runner.rs",
     "crates/fd-conform/tests/input_timing.rs",
 ]
+
+[[area]]
+name = "entering level 1 on the engine"
+covers = ["crates/fd-conform/tests/level_entry.rs"]
 
 [[area]]
 name = "translating a routine through Muse, judged on the original"

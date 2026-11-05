@@ -29,7 +29,11 @@ use amiga_conform::{Mode, Tolerance, report, script};
 use amiga_oracle::{
     Amiga, AmigaMemory, FrameInput, OracleConfig, Rgb12Frame, SLOW_BASE, kickstart_path,
 };
-use fd_core::{Mem, PORTED, Ported, TitleScene, Transplant, Var, layout_var};
+use std::sync::Arc;
+
+use fd_core::{
+    Event, Game, GameData, Mem, PORTED, Ported, Start, TitleScene, Transplant, Var, layout_var,
+};
 
 pub use case::{Case, Compare, Exclusion, Goal, Swap};
 pub use coverage::Coverage;
@@ -100,11 +104,45 @@ pub trait Engine: Transplant {
     fn pass(&mut self, input: FrameInput);
     /// The picture after the last pass, in [`PLAY_WINDOW`]; `None` if the engine draws none.
     fn picture(&self) -> Option<Picture>;
-    /// What happened in the last pass that a case must see (an unported object, T07). An `idle`
-    /// goal fails on any.
-    fn events(&mut self) -> Vec<String> {
+    /// What happened in the last pass that a case must see. An [`Event::Unported`] fails every
+    /// case (DESIGN §4.1); an `idle` goal fails on any event.
+    fn events(&mut self) -> Vec<Event> {
         Vec::new()
     }
+}
+
+/// The level engine, fd-core's [`Game`], as a case runs it: one [`Game::step`] a pass. It draws
+/// nothing until T10.
+impl Engine for Game {
+    fn pass(&mut self, input: FrameInput) {
+        self.step(input);
+    }
+
+    fn picture(&self) -> Option<Picture> {
+        None
+    }
+
+    fn events(&mut self) -> Vec<Event> {
+        self.take_events()
+    }
+}
+
+/// The game's data from the owner's disks, which [`fd_tools::disk_dir`] finds; a missing disk or
+/// file is an error naming it.
+pub fn game_data() -> Result<Arc<GameData>, String> {
+    let dir = fd_tools::disk_dir()?;
+    game_data_in(&dir)
+}
+
+/// [`game_data`] from the zips in `dir`.
+pub fn game_data_in(dir: &Path) -> Result<Arc<GameData>, String> {
+    let files = |name: &str| {
+        fd_tools::game_file(dir, &format!("disk2/{name}"))
+            .map_err(|e| fd_assets::AssetError::missing(name, e))
+    };
+    GameData::read(&files)
+        .map(Arc::new)
+        .map_err(|e| format!("game data from {}: {e}", dir.display()))
 }
 
 /// How a run is made: what a case file cannot choose.
@@ -150,6 +188,8 @@ pub enum Outcome {
     GoalMissed { goal: String },
     /// An `idle` goal failed: an event, or a pass not compared.
     NotIdle { why: String },
+    /// The engine met an object value nobody has ported (DESIGN §4.1): every case fails on it.
+    Unported { pass: u32, frame: u32, value: u8 },
     /// An exclusion hid no difference over the whole run: it is no longer needed.
     ExclusionUnused { what: String, task: String },
 }
@@ -166,10 +206,11 @@ pub struct Verdict {
     pub unseen: u32,
     /// Frames tolerated as a colour step, as a few pixels, as a short glitch.
     pub tolerated: [u32; 3],
-    /// Each exclusion and the frames on which its rows differed.
+    /// Each exclusion and the frames on which its rows differed, or the passes on which its
+    /// variable did.
     pub excluded: Vec<(Exclusion, u32)>,
     /// `(pass, event)` as the engine raised them.
-    pub events: Vec<(u32, String)>,
+    pub events: Vec<(u32, Event)>,
     /// The oracle frame at whose pass end the goal held.
     pub goal_met: Option<u32>,
     pub coverage: Coverage,
@@ -219,6 +260,11 @@ impl fmt::Display for Outcome {
                 write!(f, "both sides agree but miss the goal: {goal}")
             }
             Outcome::NotIdle { why } => write!(f, "not idle: {why}"),
+            Outcome::Unported { pass, frame, value } => write!(
+                f,
+                "unported object value {value:#04x} met at pass {pass} (oracle frame {frame}): \
+                 no ObjectKind is registered for it"
+            ),
             Outcome::ExclusionUnused { what, task } => write!(
                 f,
                 "exclusion `{what}` ({task}) hid no difference: remove it"
@@ -250,12 +296,14 @@ impl fmt::Display for Verdict {
         for (e, n) in &self.excluded {
             write!(
                 f,
-                "\nexcluded {} ({}): differed on {n} frames",
-                e.what, e.task
+                "\nexcluded {} ({}): differed on {n} {}",
+                e.what,
+                e.task,
+                if e.var.is_some() { "passes" } else { "frames" }
             )?;
         }
         for (pass, e) in &self.events {
-            write!(f, "\nevent at pass {pass}: {e}")?;
+            write!(f, "\nevent at pass {pass}: {e:?}")?;
         }
         if let Some(fr) = self.goal_met {
             write!(f, "\ngoal reached at oracle frame {fr}")?;
@@ -268,11 +316,8 @@ impl fmt::Display for Verdict {
 /// the cheap checks come first so a wrong setup fails before any emulation.
 pub fn run(case: &Case) -> Result<Verdict, String> {
     if case.is_level() {
-        return Err(format!(
-            "{}: a level case needs the level engine, fd-core's `Game`, which T07 builds; until \
-             then level cases run in tests through `run_with`",
-            case.name
-        ));
+        let mut game = Game::new(game_data()?, Start::Level1);
+        return run_with(case, &mut game, &Options::default());
     }
     run_title(case, &Options::default())
 }
@@ -441,7 +486,19 @@ pub fn run_with(case: &Case, engine: &mut dyn Engine, opts: &Options) -> Result<
 
     let mut verdict = Verdict::new(opts.register);
     verdict.excluded = case.exclude.iter().map(|e| (e.clone(), 0)).collect();
-    let rows: Vec<Range<u16>> = case.exclude.iter().map(|e| e.rows.clone()).collect();
+    let rows: Vec<Range<u16>> = case
+        .exclude
+        .iter()
+        .filter(|e| e.var.is_none())
+        .map(|e| e.rows.clone())
+        .collect();
+    // (index in `excluded`, the variable) for each excluded variable.
+    let excluded_vars: Vec<(usize, &Var)> = case
+        .exclude
+        .iter()
+        .enumerate()
+        .filter_map(|(i, e)| Some((i, layout_var(e.var.as_deref()?)?)))
+        .collect();
     let tol = Tolerance::OWNER;
     let mut judge = PictureJudge::new(tol, case.frames);
     let mut started = Live(&am).value(irq);
@@ -484,6 +541,15 @@ pub fn run_with(case: &Case, engine: &mut dyn Engine, opts: &Options) -> Result<
             passes_run += 1;
             for e in engine.events() {
                 verdict.events.push((n - first, e));
+                if let Event::Unported(value) = e {
+                    // Every case fails on an object nobody ported (DESIGN §4.1).
+                    verdict.outcome = Outcome::Unported {
+                        pass: n - first,
+                        frame,
+                        value,
+                    };
+                    return Ok(verdict);
+                }
             }
         }
         verdict.unseen += ended - last - 1;
@@ -504,6 +570,11 @@ pub fn run_with(case: &Case, engine: &mut dyn Engine, opts: &Options) -> Result<
                     return Ok(verdict);
                 }
             }
+            for &(i, v) in &excluded_vars {
+                if engine.probe(v) != theirs.value(v) {
+                    verdict.excluded[i].1 += 1;
+                }
+            }
             verdict.passes += 1;
         }
         if case.compare.picture {
@@ -513,7 +584,7 @@ pub fn run_with(case: &Case, engine: &mut dyn Engine, opts: &Options) -> Result<
             let pic = am.picture_in(PLAY_WINDOW.0, PLAY_WINDOW.1);
             let colours = to_rgb12(&ours);
             for (i, e) in case.exclude.iter().enumerate() {
-                if differs_in(&colours, ours.width, &pic, &e.rows) {
+                if e.var.is_none() && differs_in(&colours, ours.width, &pic, &e.rows) {
                     verdict.excluded[i].1 += 1;
                 }
             }
@@ -576,7 +647,7 @@ pub fn run_with(case: &Case, engine: &mut dyn Engine, opts: &Options) -> Result<
                 })
             }
             Some(Goal::Idle) => if let Some((pass, e)) = verdict.events.first() {
-                Some(format!("the engine raised `{e}` at pass {pass}"))
+                Some(format!("the engine raised `{e:?}` at pass {pass}"))
             } else if verdict.unseen > 0 || verdict.passes != passes_run {
                 Some(format!(
                     "{} of {passes_run} passes compared: every pass must be",
