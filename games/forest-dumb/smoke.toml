@@ -32,6 +32,8 @@ workspace = "engine"
 "crates/fd-conform/tests/input_timing.rs" = "smoke"
 # The translation judge on h0+$774, under a second.
 "crates/fd-conform/tests/judge.rs" = "smoke"
+# T35: the character routines' generators, 2 000 states each and every branch both ways, about 2.5 s.
+"crates/fd-conform/tests/gen_character.rs" = "smoke"
 # T36's camera generators against the original, branches both ways: under a second.
 "crates/fd-conform/tests/gen_camera.rs" = "smoke"
 # Three boots to W1-1, about 32 s together: the measurements of docs/09-play-measured.md.

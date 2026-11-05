@@ -68,6 +68,7 @@ Runs beside the rest of phase 1. Every porting task waits for T40.
 | [T53](tasks/T53-gen-character-2.md) | gen-character-2 | T33, T34; blocks T40 |
 | [T54](tasks/T54-gen-objects-2.md) | gen-objects-2 | T33, T34; blocks T40 |
 | [T56](tasks/T56-gen-edge-redraw.md) | gen-edge-redraw | T33, T34; blocks T40 |
+| [T58](tasks/T58-translate-btst-fix.md) | translate-btst-fix | T33; blocks T40 |
 | [T40](tasks/T40-batch-translate.md) | batch-translate | T35, T36, T37, T38, T39 |
 
 T34 assigns every routine a generator batch and a porting task, and asks the owner to add sibling tasks where a share passes DESIGN §4.3's size. T40's run is a `worker` row of DESIGN §5.3, capped at $5.

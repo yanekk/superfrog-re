@@ -6,6 +6,9 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-11-05 | 📌 | T58 added by T35 with the owner's yes: fix `flow_text` following `btst` as a branch before T40 (`blocks T40`), fix commit with `Escape: forest-dumb-level-1 T33`. |
+| 2026-11-05 | 🐞 | T35: `translate.py` `flow_text` follows `btst.b #n,<label>` as a branch (opcode starts with `b`), runs into data at `h0+$4ed2` and `char_probe`: `h0_3ea8`, `h0_4718`, `h0_48be`, `h0_4b0e` size 295-371, so T40 gets `too-big`. |
+| 2026-11-05 | 📌 | T35 live call, worker action: `translate.py 'h0+$4274' --gen h0_4274` passed on try 1, 1 482 tokens in, 4 299 out, $0.0010, 6 paths. |
 | 2026-11-05 | 🔄 | T06's counter corrects T00 in docs/09: idle, `game_frame` returns before the step ends in 2 968 of 3 000 frames; moving, after in 2 977. Owner: correct the note, keep T00's wording dated. |
 | 2026-11-05 | 📌 | T06: a step ending two passes hides the second (`watch_write` copies the first): 7 in the stub case's first 130 frames, 2 in 3 000 later moving frames. An `idle` case spanning one fails. |
 | 2026-11-05 | 📌 | T36: the rig has no instruction trace, so `gen_camera.rs` shows branch coverage with literal witness models that must match the original on every state. `h0_513c` clamps `camera_y` `$8000..$853e` to `$53f`, not 0 (`cmpi.w` overflow). |
