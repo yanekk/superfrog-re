@@ -6,6 +6,7 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-11-05 | 📌 | T18, worker-driven: old and new route page in headless Chrome gave byte-identical PNGs; with the heat layer on, each page alternates between two images per run. page.html still keys on names `tile coin`, `level exit`, `wN ` prefix. |
 | 2026-11-05 | 📌 | T17 review: under load 10–20, wall time of the exit pin swung 20–38 s per run; user CPU time (`/usr/bin/time -p` on the test binary) stayed within 2%, so A/B timing on a busy machine uses CPU time. |
 | 2026-11-05 | 📌 | T17: every Superfrog map cache key changed (facts.rs, map.rs, toolkit graph.rs hashed), so maps rebuild once. Pin bench (route_pin with exit pin, release) 38.9 s before, 33.5 and 35.4 s after, all under load 6–10, not idle. |
 | 2026-11-05 | 📌 | T04, worker-driven: `picture_in(0x2F81, 0x29C1)` at frame 6500 opened as PNG: sky, moon, ledge, character from sprites 0-3, black gap lines 226-241, whole status bar. Title window is 320x238; Kickstart's 320x308 from line 5. |
