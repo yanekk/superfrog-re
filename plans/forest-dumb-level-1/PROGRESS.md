@@ -49,7 +49,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T14 | recorder | T12, T13 | ⬜ | |
 | T15 | recording-compare | T03, T14 | ⬜ | |
 | T16 | app-drill | T13, T14 | ⬜ | |
-| T17 | planner-toolkit-move | T02 | 🔍 | amiga-plan: explorer, archive, guide, graph, walk, shorten, repair, run, guide_file; made_up_game, purity tests; pins hold. Deviations: map, moves, coins, danger, threads stay in sf-plan (map builder pokes Superfrog's map; Compass::Map needs only graph); fields hearts/coins_left/wings kept; RunOptions lag_limit stays sf-side; cache hashes TOOLKIT_FILES. Bench timed under load, not idle. Commit 1 body. |
+| T17 | planner-toolkit-move | T02 | ✅ | Reviewed: one fix, a made-up-game test that fails if the explorer's life check is removed (it survived before). Pins, ignored determinism tests and exit pin pass; purity mutation caught; exit pin CPU time equal before and after (147.6 s, three A/B pairs, machine loaded, not idle). Shortcut-pair gates read-only: those explorers use Straight. |
 | T18 | map-page-toolkit-move | T17 | ⬜ | |
 | T19 | map-page | T11, T18 | ⬜ | |
 | T20 | planner-level-1 | T11, T17, T19 | ⬜ | |
@@ -68,7 +68,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T28 | finish-end-to-end | T16, T48 | ⬜ | |
 | T29 | level-drill | T15, T28 | ⬜ | |
 
-**Review queue:** T17
+**Review queue:** empty
 
 ## Blocked on the user
 
