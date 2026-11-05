@@ -82,7 +82,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T61 | generate-service | T33, T60; blocks T49 | ✅ | |
 | T62 | engine-shape-trial | T08, T09, T33 | ✅ | Review: fixed a vacuous judge pass (a routine name missing from the rig table skipped every routine, 0 paths, pass); now a usage error, test locks it. Probed: real-rig rerun of a T09 four-routine unit, `--opus-cost` against `total_cost_usd`, result files against docs/11; two mutations caught. T66 holds the owner question. |
 | T63 | game-frame-rig | T08, T09, T10, T22, T23, T24, T25, T26, T51, T52, T55; blocks T27 | ⬜ | |
-| T64 | listing-odd-bytes | T08, T51 | ⬜ | |
+| T64 | listing-odd-bytes | T08, T51 | ✅ | |
 | T66 | reshape-decision | T62; blocks T22 | ⬜ | |
 
 **Review queue:** *(empty)*
