@@ -88,17 +88,16 @@
 
 use std::path::PathBuf;
 
-use winit::keyboard::KeyCode;
+use amiga_app::script_core::{Line, ScriptError, ScriptGame, parse_script_core};
 
 use sf_core::recording::{Difficulty, LevelSetup, Lives};
 
 use crate::controls_window::ControlsAction;
 use crate::import::Pick;
-use crate::input::{HostInput, key_named};
+use crate::input::HostInput;
 use crate::menu::Command;
 use crate::recorder::EndChoice;
 use crate::start_level_window::{FormAction, StartLevelForm};
-use crate::pad::{PadEvent, PadInput, StickAxis};
 use crate::settings::Scale;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -146,176 +145,165 @@ pub struct Script {
     pub fast_until: Option<u64>,
 }
 
+/// The lines that are Superfrog's: the launch's and the panels' answers, and the frame events
+/// beyond the toolkit's host input (`amiga_app::script_core`, forest-dumb-level-1 T12).
+struct Game {
+    s: Script,
+    /// The `form` lines of the Start Level window not yet closed by a Start it takes or a Cancel,
+    /// run through its model to find where they end.
+    form: Option<(StartLevelForm, Vec<FormAction>)>,
+}
+
+impl ScriptGame for Game {
+    type Event = Event;
+
+    fn host(&self, input: HostInput) -> Event {
+        Event::Input(input)
+    }
+
+    fn directive(&mut self, line: &Line) -> Result<bool, ScriptError> {
+        let (words, s) = (&line.words, &mut self.s);
+        if words[0] == "pick" {
+            let rest = line.text["pick".len()..].trim();
+            s.picks.push(match rest {
+                "cancel" => Pick::Cancel,
+                _ => Pick::Files(
+                    rest.split(';')
+                        .map(str::trim)
+                        .filter(|p| !p.is_empty())
+                        .map(PathBuf::from)
+                        .collect(),
+                ),
+            });
+            return Ok(true);
+        }
+        if words[0] == "answer" {
+            match (words.get(1).copied(), words.len()) {
+                (Some("choose"), 2) => s.answers.push(true),
+                (Some("quit"), 2) => s.answers.push(false),
+                (Some("disk-level"), 2) => s.level_answers.push(true),
+                (Some("cancel"), 2) => s.level_answers.push(false),
+                _ => return Err(line.error("`answer` takes `choose`, `quit`, `disk-level` or `cancel`")),
+            }
+            return Ok(true);
+        }
+        if line.text == "native-ui" {
+            s.native_ui = true;
+            return Ok(true);
+        }
+        if words[0] == "answer-recording" {
+            s.endings.push(match (words.get(1).copied(), words.len()) {
+                (Some("save"), 2) => EndChoice::Save,
+                (Some("discard"), 2) => EndChoice::Discard,
+                (Some("cancel"), 2) => EndChoice::Cancel,
+                _ => return Err(line.error("`answer-recording` takes `save`, `discard` or `cancel`")),
+            });
+            return Ok(true);
+        }
+        if words[0] == "form" {
+            let a = FormAction::named(&words[1..]).ok_or_else(|| {
+                line.error(
+                    "`form` takes level ID, lives 3|5|7, points N, energy 1..4, difficulty easy|normal, \
+                     spud|wings|record on|off, start or cancel",
+                )
+            })?;
+            let (model, actions) = self.form.get_or_insert_with(|| (StartLevelForm::new(), Vec::new()));
+            actions.push(a.clone());
+            if model.apply(a).is_some() {
+                s.starts.push(self.form.take().expect("open").1);
+            }
+            return Ok(true);
+        }
+        if words[0] == "note" {
+            s.notes.push(match line.text["note".len()..].trim() {
+                "discard" => None,
+                note => Some(note.to_string()),
+            });
+            return Ok(true);
+        }
+        if words[0] == "save" || words[0] == "open" {
+            let rest = line.text[words[0].len()..].trim();
+            let answer = match rest {
+                "" => return Err(line.error("a path or `cancel` is missing")),
+                "cancel" => None,
+                p => Some(PathBuf::from(p)),
+            };
+            if words[0] == "save" {
+                s.saves.push(answer);
+            } else {
+                s.opens.push(answer);
+            }
+            return Ok(true);
+        }
+        Ok(false)
+    }
+
+    fn event(&mut self, line: &Line, words: &[&str]) -> Result<Option<Vec<Event>>, ScriptError> {
+        let err = |why: &str| line.error(why);
+        Ok(Some(match (words.first().copied(), words.len()) {
+            (Some("hang"), 1) => vec![Event::Hang],
+            (Some("occlude"), 2) => match words[1] {
+                "on" => vec![Event::Occlude(true)],
+                "off" => vec![Event::Occlude(false)],
+                _ => return Err(err("`occlude` takes `on` or `off`")),
+            },
+            (Some("resize"), 3) => {
+                let num = |i: usize| words[i].parse::<u32>().ok().filter(|&n| n > 0);
+                match (num(1), num(2)) {
+                    (Some(w), Some(h)) => vec![Event::Resize(w, h)],
+                    _ => return Err(err("`resize` takes a width and a height in points")),
+                }
+            }
+            (Some("scale"), 2) => vec![Event::Command(Command::Scale(match words[1] {
+                "auto" => Scale::Auto,
+                n => match n.parse::<u32>() {
+                    Ok(n) if (1..=16).contains(&n) => Scale::N(n),
+                    _ => return Err(err("`scale` takes `auto` or a whole number 1 to 16")),
+                },
+            }))],
+            (Some("shot"), 1) => vec![Event::Shot],
+            (Some("continue"), 1) => vec![Event::Command(Command::ContinueFromProgress)],
+            (Some("exit"), 1) => vec![Event::Exit],
+            (Some("start-level"), 2..) => {
+                if self.form.is_some() {
+                    return Err(err("the `form` lines above are not closed by `form start` or `form cancel`"));
+                }
+                self.s.starts.push(match level_start(&words[1..]).map_err(|why| err(&why))? {
+                    Some((setup, record)) => FormAction::filling(&setup, record),
+                    None => vec![FormAction::Cancel],
+                });
+                vec![Event::Command(Command::StartLevel)]
+            }
+            (Some("controls"), 2..) => match ControlsAction::named(&words[1..]) {
+                Some(a) => vec![Event::Controls(a)],
+                None => return Err(err("`controls` takes an input and `keys` or `pad`, `defaults` or `close`")),
+            },
+            (Some("menu"), 2..) => match Command::from_id(&words[1..].join("-")) {
+                Some(c) => vec![Event::Command(c)],
+                None => return Err(err("no menu command is named so")),
+            },
+            _ => return Ok(None),
+        }))
+    }
+
+    fn finish(&mut self) -> Result<(), ScriptError> {
+        if self.form.is_some() {
+            return Err(ScriptError(
+                "script: the last `form` lines are not closed by `form start` or `form cancel`".into(),
+            ));
+        }
+        Ok(())
+    }
+}
+
 impl Script {
     pub fn parse(text: &str) -> Result<Script, String> {
-        let mut s = Script::default();
-        // The `form` lines of the Start Level window not yet closed by a Start it takes or a
-        // Cancel, run through its model to find where they end.
-        let mut form: Option<(StartLevelForm, Vec<FormAction>)> = None;
-        for (n, raw) in text.lines().enumerate() {
-            let line = raw.split('#').next().unwrap_or("").trim();
-            if line.is_empty() {
-                continue;
-            }
-            let err = |why: &str| format!("script line {}: {why}: {raw:?}", n + 1);
-            let words: Vec<&str> = line.split_whitespace().collect();
-            if words[0] == "seed" {
-                let num = |i: usize| words.get(i).and_then(|w| w.parse::<u32>().ok());
-                match (num(1), num(2), words.len()) {
-                    (Some(a), Some(b), 3) => s.seed = Some((a, b)),
-                    _ => return Err(err("`seed` takes two whole numbers")),
-                }
-                continue;
-            }
-            if words[0] == "pick" {
-                let rest = line["pick".len()..].trim();
-                s.picks.push(match rest {
-                    "cancel" => Pick::Cancel,
-                    _ => Pick::Files(
-                        rest.split(';')
-                            .map(str::trim)
-                            .filter(|p| !p.is_empty())
-                            .map(PathBuf::from)
-                            .collect(),
-                    ),
-                });
-                continue;
-            }
-            if words[0] == "answer" {
-                match (words.get(1).copied(), words.len()) {
-                    (Some("choose"), 2) => s.answers.push(true),
-                    (Some("quit"), 2) => s.answers.push(false),
-                    (Some("disk-level"), 2) => s.level_answers.push(true),
-                    (Some("cancel"), 2) => s.level_answers.push(false),
-                    _ => return Err(err("`answer` takes `choose`, `quit`, `disk-level` or `cancel`")),
-                }
-                continue;
-            }
-            if line == "native-ui" {
-                s.native_ui = true;
-                continue;
-            }
-            if words[0] == "fast-until" {
-                match (words.get(1).and_then(|w| w.parse::<u64>().ok()), words.len()) {
-                    (Some(n), 2) => s.fast_until = Some(n),
-                    _ => return Err(err("`fast-until` takes a step number")),
-                }
-                continue;
-            }
-            if words[0] == "answer-recording" {
-                s.endings.push(match (words.get(1).copied(), words.len()) {
-                    (Some("save"), 2) => EndChoice::Save,
-                    (Some("discard"), 2) => EndChoice::Discard,
-                    (Some("cancel"), 2) => EndChoice::Cancel,
-                    _ => return Err(err("`answer-recording` takes `save`, `discard` or `cancel`")),
-                });
-                continue;
-            }
-            if words[0] == "form" {
-                let a = FormAction::named(&words[1..]).ok_or_else(|| {
-                    err("`form` takes level ID, lives 3|5|7, points N, energy 1..4, difficulty easy|normal, \
-                         spud|wings|record on|off, start or cancel")
-                })?;
-                let (model, actions) = form.get_or_insert_with(|| (StartLevelForm::new(), Vec::new()));
-                actions.push(a.clone());
-                if model.apply(a).is_some() {
-                    s.starts.push(form.take().expect("open").1);
-                }
-                continue;
-            }
-            if words[0] == "note" {
-                s.notes.push(match line["note".len()..].trim() {
-                    "discard" => None,
-                    note => Some(note.to_string()),
-                });
-                continue;
-            }
-            if words[0] == "save" || words[0] == "open" {
-                let rest = line[words[0].len()..].trim();
-                let answer = match rest {
-                    "" => return Err(err("a path or `cancel` is missing")),
-                    "cancel" => None,
-                    p => Some(PathBuf::from(p)),
-                };
-                if words[0] == "save" {
-                    s.saves.push(answer);
-                } else {
-                    s.opens.push(answer);
-                }
-                continue;
-            }
-            let Some(frame) = words[0].strip_suffix(':').and_then(|f| f.parse::<u64>().ok()) else {
-                return Err(err("expected `N: event` or `seed A B`"));
-            };
-            if frame == 0 {
-                return Err(err("frames count from 1 (the first step)"));
-            }
-            let key = |name: Option<&&str>| -> Result<KeyCode, String> {
-                let name = name.ok_or_else(|| err("a key name is missing"))?;
-                key_named(name).ok_or_else(|| err(&format!("no key is named {name}")))
-            };
-            let events: Vec<Event> = match (words.get(1).copied(), words.len()) {
-                (Some("down"), 3) => vec![key_event(key(words.get(2))?, true)],
-                (Some("up"), 3) => vec![key_event(key(words.get(2))?, false)],
-                (Some("press"), 3) => {
-                    let k = key(words.get(2))?;
-                    vec![key_event(k, true), key_event(k, false)]
-                }
-                (Some("mouse"), 3) if matches!(words[2], "down" | "up") => {
-                    vec![Event::Input(HostInput::MouseLeft {
-                        pressed: words[2] == "down",
-                    })]
-                }
-                (Some("blur"), 2) => vec![Event::Input(HostInput::FocusLost)],
-                (Some("hang"), 2) => vec![Event::Hang],
-                (Some("occlude"), 3) => match words[2] {
-                    "on" => vec![Event::Occlude(true)],
-                    "off" => vec![Event::Occlude(false)],
-                    _ => return Err(err("`occlude` takes `on` or `off`")),
-                },
-                (Some("resize"), 4) => {
-                    let num = |i: usize| words[i].parse::<u32>().ok().filter(|&n| n > 0);
-                    match (num(2), num(3)) {
-                        (Some(w), Some(h)) => vec![Event::Resize(w, h)],
-                        _ => return Err(err("`resize` takes a width and a height in points")),
-                    }
-                }
-                (Some("scale"), 3) => vec![Event::Command(Command::Scale(match words[2] {
-                    "auto" => Scale::Auto,
-                    n => match n.parse::<u32>() {
-                        Ok(n) if (1..=16).contains(&n) => Scale::N(n),
-                        _ => return Err(err("`scale` takes `auto` or a whole number 1 to 16")),
-                    },
-                }))],
-                (Some("shot"), 2) => vec![Event::Shot],
-                (Some("continue"), 2) => vec![Event::Command(Command::ContinueFromProgress)],
-                (Some("exit"), 2) => vec![Event::Exit],
-                (Some("start-level"), 3..) => {
-                    if form.is_some() {
-                        return Err(err("the `form` lines above are not closed by `form start` or `form cancel`"));
-                    }
-                    s.starts.push(match level_start(&words[2..]).map_err(|why| err(&why))? {
-                        Some((setup, record)) => FormAction::filling(&setup, record),
-                        None => vec![FormAction::Cancel],
-                    });
-                    vec![Event::Command(Command::StartLevel)]
-                }
-                (Some("controls"), 3..) => match ControlsAction::named(&words[2..]) {
-                    Some(a) => vec![Event::Controls(a)],
-                    None => return Err(err("`controls` takes an input and `keys` or `pad`, `defaults` or `close`")),
-                },
-                (Some("pad"), 4..) => pad_events(&words[2..]).ok_or_else(|| err("bad `pad` event"))?,
-                (Some("menu"), 3..) => match Command::from_id(&words[2..].join("-")) {
-                    Some(c) => vec![Event::Command(c)],
-                    None => return Err(err("no menu command is named so")),
-                },
-                _ => return Err(err("unknown event")),
-            };
-            s.events.extend(events.into_iter().map(|e| (frame, e)));
-        }
-        if form.is_some() {
-            return Err("script: the last `form` lines are not closed by `form start` or `form cancel`".into());
-        }
+        let mut game = Game { s: Script::default(), form: None };
+        let core = parse_script_core(text, &mut game)?;
+        let mut s = game.s;
+        s.seed = core.seed;
+        s.fast_until = core.fast_until;
+        s.events = core.events;
         Ok(s)
     }
 
@@ -367,39 +355,15 @@ fn level_start(words: &[&str]) -> Result<Option<(LevelSetup, bool)>, String> {
     Ok(Some((setup, record)))
 }
 
-/// A `pad …` line's events: `connect N`, `disconnect N`, `down|up|press N BUTTON`, `stick N X Y`.
-fn pad_events(words: &[&str]) -> Option<Vec<Event>> {
-    let pad: usize = words.get(1)?.parse().ok()?;
-    let ev = |e| Event::Input(HostInput::Pad(e));
-    let button = |pressed| {
-        let button = PadInput::named(words.get(2)?).filter(|b| b.is_button())?;
-        Some(ev(PadEvent::Button { pad, button, pressed }))
-    };
-    let axis = |i: usize| -> Option<i16> {
-        let v: f32 = words.get(i)?.parse().ok()?;
-        (-1.0..=1.0).contains(&v).then(|| (v * 1000.0).round() as i16)
-    };
-    Some(match (words[0], words.len()) {
-        ("connect", 2) => vec![ev(PadEvent::Connected(pad))],
-        ("disconnect", 2) => vec![ev(PadEvent::Disconnected(pad))],
-        ("down", 3) => vec![button(true)?],
-        ("up", 3) => vec![button(false)?],
-        ("press", 3) => vec![button(true)?, button(false)?],
-        ("stick", 4) => vec![
-            ev(PadEvent::Stick { pad, axis: StickAxis::X, value: axis(2)? }),
-            ev(PadEvent::Stick { pad, axis: StickAxis::Y, value: axis(3)? }),
-        ],
-        _ => return None,
-    })
-}
-
-fn key_event(code: KeyCode, pressed: bool) -> Event {
-    Event::Input(HostInput::Key { code, pressed })
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::pad::{PadEvent, PadInput, StickAxis};
+    use winit::keyboard::KeyCode;
+
+    fn key_event(code: KeyCode, pressed: bool) -> Event {
+        Event::Input(HostInput::Key { code, pressed })
+    }
 
     #[test]
     fn a_script_parses_into_events_by_frame() {
@@ -491,7 +455,7 @@ mod tests {
     #[test]
     fn controls_and_pad_lines_parse() {
         use crate::controls_window::Device;
-        use crate::input::OriginalInput;
+        use amiga_app::keys::OriginalInput;
         let s = Script::parse(
             "1: menu controls\n2: controls fire keys\n3: controls up pad\n4: controls defaults\n\
              5: controls close\n6: pad connect 2\n7: pad press 2 South\n8: pad stick 2 -0.8 0.25\n\

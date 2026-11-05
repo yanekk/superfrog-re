@@ -6,7 +6,8 @@ publish.workspace = true
 
 # The game-free parts of a desktop app that plays an Amiga game (a shell crate): sound out, PAL
 # frame pacing, gamepads, the picture on the GPU, capture files, atomic writes, the single-copy
-# lock and the Amiga key table. The run loop, menus and windows stay the game's.
+# lock, the Amiga key table, settings.toml, the Controls, Start Level, recording bar and save
+# windows, and a script's game-free lines. The run loop, game window and menus stay the game's.
 [dependencies]
 # Picture and its 12-bit colours, what the window draws (a toolkit crate).
 amiga-chips = { path = "../amiga-chips" }
@@ -28,3 +29,20 @@ png = "0.18"
 libc = "0.2"
 # Gamepads, hot-plugged.
 gilrs = "0.11"
+# settings.toml.
+serde = { version = "1", features = ["derive"] }
+toml = "0.9"
+
+[target.'cfg(target_os = "macos")'.dependencies]
+# The Controls window's labels and buttons on a window winit opens; Start Level, an NSWindow of its
+# own run modally with NSPopUpButton dropdowns, taking ⌘A/⌘C/⌘V itself; the save window, an
+# NSWindow sheet with an NSImageView and an NSAlert for a write that fails; the recording bar, an
+# NSBox strip on the game window. The versions and features the first game's app used, and block2 for
+# the sheet, which its workspace had switched on through another crate.
+objc2 = "0.6"
+objc2-app-kit = { version = "0.3", default-features = false, features = ["std", "NSResponder", "NSView", "NSControl", "NSButton", "NSTextField", "NSText", "NSColor", "NSFont", "NSAccessibilityProtocols", "NSAccessibilityConstants", "NSPasteboard", "NSWindow", "NSApplication", "NSPopUpButton", "NSMenu", "NSMenuItem", "NSCell", "NSGraphics", "NSEvent", "NSImage", "NSImageView", "NSImageCell", "NSTextFieldCell", "NSAlert", "NSBox", "NSFontDescriptor", "objc2-core-foundation", "block2"] }
+objc2-foundation = { version = "0.3", default-features = false, features = ["std", "NSUserDefaults", "NSString", "NSDictionary", "NSValue", "NSGeometry", "NSObject", "NSData"] }
+
+[dev-dependencies]
+# MAX_FRAMES, the longest recording the bar's clock must show (a toolkit crate).
+amiga-record = { path = "../amiga-record" }
