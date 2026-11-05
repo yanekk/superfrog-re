@@ -68,7 +68,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T28 | finish-end-to-end | T16, T48 | ⬜ | |
 | T29 | level-drill | T15, T28 | ⬜ | |
 | T50 | sf-menus-os-test-stale | — | ✅ | |
-| T51 | character-anim-input | T07, T40; blocks T08 | ⬜ | |
+| T51 | character-anim-input | T07, T40; blocks T08 | 🔍 | Six routines on `Anim`/`JoyFlags`, rig 10 000 states each, 4 mutants caught; 7 new fd-core unit tests. Deviations: `joy_flags` split into `joy_left`..`joy_down` (LAYOUT has no 8-byte width); note is a section of docs/09, not a new chapter; tables not wired into `GameData` (game.rs is T08's); registers rebuilt test-side from engine results. |
 | T52 | creature-drawing | T10, T22; blocks T46 | ⬜ | |
 | T53 | gen-character-2 | T33, T34; blocks T40 | ✅ | |
 | T54 | gen-objects-2 | T33, T34; blocks T40 | ✅ | |
@@ -78,7 +78,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T58 | translate-btst-fix | T33; blocks T40 | ✅ | |
 | T59 | oracle-sprite-collision | T21; blocks T24, T41, T42, T43, T44, T45, T46, T47 | ✅ | |
 
-**Review queue:** *(empty)*
+**Review queue:** T51
 
 ## Blocked on the user
 
