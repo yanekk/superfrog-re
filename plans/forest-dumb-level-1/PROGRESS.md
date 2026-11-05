@@ -10,7 +10,7 @@
 
 **Status:** Amendment read back and its 4 decisions settled; ready to build. Nothing built.
 **Last updated:** 2026-11-05
-**Next `pir-work` will:** T00 and T32, because every level task rests on T00's measurements and every port on T32's rig.
+**Next `pir-work` will:** review T55 (edge redraws), the only task waiting for review.
 
 ## Tasks
 
@@ -73,7 +73,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T52 | creature-drawing | T10, T22; blocks T46 | ⬜ | |
 | T53 | gen-character-2 | T33, T34; blocks T40 | ✅ | |
 | T54 | gen-objects-2 | T33, T34; blocks T40 | ✅ | |
-| T55 | edge-redraw | T09; blocks T10, T41, T42, T43 | ⬜ | |
+| T55 | edge-redraw | T09; blocks T10, T41, T42, T43 | 🔍 | level/redraw.rs, collision.rs; 14 routines pass 10 000 rig states; Game::step redraws before the pass; collision_map equals the original after scrolls each way (8 cut frames, equal a frame later). Deviations: h0_6852 states with d7 past 5 taken into range; redraw states whose stray bob blit hits the cell table redrawn (counted); frame_flag at sync now $ffff (measured). |
 | T56 | gen-edge-redraw | T33, T34; blocks T40 | ✅ | |
 | T57 | sf-scale-fullscreen-os-test | — | ✅ | |
 | T58 | translate-btst-fix | T33; blocks T40 | ✅ | |
@@ -82,7 +82,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T61 | generate-service | T33, T60; blocks T49 | ⬜ | |
 | T62 | engine-shape-trial | T08, T09, T33 | ⬜ | |
 
-**Review queue:** *(empty)*
+**Review queue:** T55
 
 ## Blocked on the user
 
