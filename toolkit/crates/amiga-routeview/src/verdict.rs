@@ -277,4 +277,21 @@ mod tests {
         let end = Event { k: 13, x: 0, y: 0, kind: "end", text: String::new() };
         assert!(progress(&[end], &facts).is_empty());
     }
+
+    #[test]
+    fn progress_marks_the_first_frame_at_the_closest_distance() {
+        // Reaches cell 10 at frame 10, steps back, and stands on it again at frame 12: the mark
+        // stays at frame 10, the first time it got that close.
+        let cells: Vec<(i32, i32)> = (0..=10).map(|c| (c, 5)).chain([(9, 5), (10, 5), (9, 5)]).collect();
+        let facts = Facts {
+            track: cells.iter().map(|&(c, r)| (c * 10, r * 10)).collect(),
+            inputs_end: cells.len() as u32 - 1,
+            cells,
+            exits: vec![(20, 5)],
+            exit_open_at: Some(0),
+        };
+        let s = progress(&[], &facts);
+        assert_eq!(s[1].fact, "closest to the open exit 10 cells, at frame 10");
+        assert_eq!(s[1].event.k, 10);
+    }
 }
