@@ -29,7 +29,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T06 | level-runner | T03, T04, T31, T32 | ⬜ | |
 | T33 | translate-service | T32 | ✅ | |
 | T34 | translate-inventory | T00 | ✅ | |
-| T35 | gen-character | T33, T34 | 🔍 | 14 generators in `gen/character.rs` with a `COVER` table (reads, branches); 4 tests in `gen_character.rs`: 2 000 states, branches both ways via a trap detour, pokes within reads. `h0_4274` passed T33's service. Deviation: branch check by detour, the oracle has no trace. Two raster-wait branches named unreachable. |
+| T35 | gen-character | T33, T34 | ✅ | Review clean, no fix commit. Branch lists match an independent walk of the listing; inline-callee branches probed too (only `h0+$4cb8`/`$4d00` taken unreached, needs `$4ed1`>3). Detour without trap reproduces the original on all 88 branches. Three mutations (probes zeroed, stray poke, no slide bias) went red. T58 addition valid. |
 | T36 | gen-camera | T33, T34 | ⬜ | |
 | T37 | gen-drawing | T33, T34 | ⬜ | |
 | T38 | gen-objects | T33, T34 | ⬜ | |
@@ -76,7 +76,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T56 | gen-edge-redraw | T33, T34; blocks T40 | ⬜ | |
 | T58 | translate-btst-fix | T33; blocks T40 | ⬜ | |
 
-**Review queue:** T35
+**Review queue:** *(empty)*
 
 ## Blocked on the user
 
