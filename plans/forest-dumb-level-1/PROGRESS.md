@@ -30,7 +30,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T33 | translate-service | T32 | ✅ | |
 | T34 | translate-inventory | T00 | ✅ | |
 | T35 | gen-character | T33, T34 | ⬜ | |
-| T36 | gen-camera | T33, T34 | 🔍 | 10 generators, 4 tests: every T36 entry, every branch both ways, none unreachable. `camera_update` passed T33's service on try 1, $0.0038. Deviations: names as in `translate.toml` (`h0_4e9a`), not mod.rs's `hN+$off`; branches shown by literal witness models in the test, the rig having no trace; no base or blits, the edge redraws having gone to T56. |
+| T36 | gen-camera | T33, T34 | ✅ | Review clean, no fix commit. Branch list checked against `translate.py` flow listing: 28+5×4+4+3×4 conditional branches match the witnesses. Ran the 4 tests, matching the doc table. Mutations red: latch generator always 0 (`h0+$5228` one way), witness LEFT bias $7a (311 states differ). Service pass read back from `build/translate/calls.jsonl`. Edge redraws are T56's. |
 | T37 | gen-drawing | T33, T34 | ⬜ | |
 | T38 | gen-objects | T33, T34 | ⬜ | |
 | T39 | gen-rest | T33, T34 | ⬜ | |
@@ -75,7 +75,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T55 | edge-redraw | T09; blocks T10, T41, T42, T43 | ⬜ | |
 | T56 | gen-edge-redraw | T33, T34; blocks T40 | ⬜ | |
 
-**Review queue:** T36
+**Review queue:** *(empty)*
 
 ## Blocked on the user
 
