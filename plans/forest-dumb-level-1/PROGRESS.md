@@ -37,7 +37,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T40 | batch-translate | T35, T36, T37, T38, T39 | ✅ | |
 | T07 | level-entry | T05, T06, T32 | ✅ | |
 | T08 | character-movement | T07, T40 | ⬜ | |
-| T09 | camera-scroll | T07, T40 | 🔍 | `Camera` in `State`, run by `game_frame`; 10 routines in PORTED, each matched 10 000 states first try; 6 tests. Deviations: `u16` not `i32` (state.rs widths); no `level` argument (limits are constants); rig/judge gained `check_regs` to skip scratch registers; edge latches and positions added to LAYOUT. |
+| T09 | camera-scroll | T07, T40 | ✅ | Review clean, no fix commit. Four deviations held (rig, listing, `level_entry` layout test). Mutations caught: right bias `$93`→`$94`, dropped scroll `frame_flag`. Probe: 200 000 random/extreme `Camera::step` states stay clamped. `RegsCompared::NONE` safe: listing shows `game_frame`'s next callees write registers before reading. |
 | T10 | level-drawing | T08, T09, T40 | ⬜ | |
 | T41 | case-run-jump | T08, T09 | ⬜ | |
 | T42 | case-walls-pits | T08, T09, T41 | ⬜ | |
