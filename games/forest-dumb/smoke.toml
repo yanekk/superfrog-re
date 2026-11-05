@@ -19,6 +19,9 @@ workspace = "engine"
     "missing_disks_name_the_path",
 ]
 "crates/fd-conform/tests/purity.rs" = "smoke"
+# The routine rig and the port register: about 3 s, the rig half on the program from disk 1.
+"crates/fd-conform/tests/ported.rs" = "smoke"
+"crates/fd-conform/tests/rig.rs" = "smoke"
 # Three boots to W1-1, about 32 s together: the measurements of docs/09-play-measured.md.
 "crates/fd-conform/tests/play_measured.rs" = "full"
 # One boot to W1-1 (title and play), 12 to 27 s: picture_in on the whole play picture (T04).
@@ -48,3 +51,7 @@ covers = ["crates/fd-conform/tests/first_case.rs::the_idle_title_matches_the_ori
 [[area]]
 name = "unpacking its packed files in Rust"
 covers = ["crates/fd-tools/tests/unpack.rs::every_esl_file_unpacks_to_the_sha1_in_the_doc"]
+
+[[area]]
+name = "comparing a ported routine with the original"
+covers = ["crates/fd-conform/tests/rig.rs", "crates/fd-conform/tests/ported.rs"]

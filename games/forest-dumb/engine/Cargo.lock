@@ -116,6 +116,7 @@ name = "fd-conform"
 version = "0.1.0"
 dependencies = [
  "amiga-conform",
+ "amiga-disk",
  "amiga-oracle",
  "fd-core",
  "fd-tools",

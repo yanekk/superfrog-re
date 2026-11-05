@@ -4,6 +4,10 @@
 //! format is in `engine/conform/README.md`.
 
 pub mod disks;
+// `gen` is a reserved word in edition 2024; the files keep the task's folder name.
+#[path = "gen/mod.rs"]
+pub mod generators;
+pub mod routine;
 pub mod sync;
 
 use std::fmt;
