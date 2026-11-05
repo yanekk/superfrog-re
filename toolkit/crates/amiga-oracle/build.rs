@@ -120,7 +120,12 @@ fn build_moira(dest: &Path) {
 
 fn read_lines(path: &Path) -> Vec<String> {
     std::fs::read_to_string(path)
-        .unwrap_or_else(|e| panic!("{}: {e}; rerun toolkit/tools/setup/oracle.sh", path.display()))
+        .unwrap_or_else(|e| {
+            panic!(
+                "{}: {e}; rerun toolkit/tools/setup/oracle.sh",
+                path.display()
+            )
+        })
         .lines()
         .map(str::trim)
         .filter(|l| !l.is_empty())

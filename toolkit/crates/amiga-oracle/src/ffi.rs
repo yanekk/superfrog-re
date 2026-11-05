@@ -232,7 +232,11 @@ unsafe extern "C" {
         max_instr: u64,
         out: *mut RawCallStatus,
     );
-    pub fn amiga_cpu68k_journal(c: *const RawCpu, addrs: *mut *const u32, olds: *mut *const u8) -> usize;
+    pub fn amiga_cpu68k_journal(
+        c: *const RawCpu,
+        addrs: *mut *const u32,
+        olds: *mut *const u8,
+    ) -> usize;
     pub fn amiga_cpu68k_rollback(c: *mut RawCpu);
     pub fn amiga_cpu68k_set_hw(c: *mut RawCpu, on: c_int);
     pub fn amiga_cpu68k_set_hw_read(c: *mut RawCpu, addr: u32, value: u8);
