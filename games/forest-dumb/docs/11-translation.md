@@ -624,6 +624,17 @@ Translated by hand, under the porting task that owns each:
 - Two first answers did not compile (`char_hit_check`, `h0_94ba`) and passed on try 2. 86 calls in
   all: 211 547 tokens in, 702 210 out.
 
+## Object routines (T49)
+
+T49 was to translate the object routines T21 found reached only through dispatch tables, which T34's
+call-tree scan cannot see. T21 found none (docs/10, "No dispatch tables") and appended no entry to
+`re/translate.toml`, so T49 wrote no generator and made no call: $0.
+
+Checked 2026-11-05: the 36 routines `re/objects-W1-1.toml`'s `routines` and docs/10 name are all in
+`re/translate.toml` (enforced by `fd-conform/tests/ported.rs`) and all in the batch table above. 33
+pass; `h0_2c7e` (blocked), `h0_5e44` (too-big) go by hand under T52, and `h0_62b6` (too-big) under
+T25, as listed above.
+
 ## Ported (porting tasks)
 
 What each porting task did with its share of the table above, and which routines it translated by hand.

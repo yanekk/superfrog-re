@@ -25,6 +25,8 @@ workspace = "engine"
 # The routine rig and the port register: about 3 s, the rig half on the program from disk 1.
 "crates/fd-conform/tests/ported.rs" = "smoke"
 "crates/fd-conform/tests/rig.rs" = "smoke"
+# T60: branch coverage on the original, a hand-made routine and two generators: under a second.
+"crates/fd-conform/tests/rig_branches.rs" = "smoke"
 # T06: the level case runner against a stand-in copy of the original, from the cached sync point:
 # 9 s warm (runner.rs, ten short runs in parallel) and 3 s (input_timing.rs). A machine with no
 # sync cache boots to W1-1 once first (about 16 s).
@@ -111,6 +113,10 @@ covers = ["crates/fd-conform/tests/level_files.rs::every_level_1_file_equals_the
 [[area]]
 name = "comparing a ported routine with the original"
 covers = ["crates/fd-conform/tests/rig.rs", "crates/fd-conform/tests/ported.rs"]
+
+[[area]]
+name = "judging a generator by the branches it covers on the original"
+covers = ["crates/fd-conform/tests/rig_branches.rs"]
 
 [[area]]
 name = "judging a level case against the original"
