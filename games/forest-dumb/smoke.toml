@@ -49,8 +49,18 @@ workspace = "engine"
 "crates/fd-conform/tests/gen_camera.rs" = "smoke"
 # T38's objects generators against the original, branches both ways: under 2 s.
 "crates/fd-conform/tests/gen_objects.rs" = "smoke"
+# T54: the creature movement and sort generators, every branch both ways: under 3 s.
+"crates/fd-conform/tests/gen_objects_move.rs" = "smoke"
 # T39: the rest generators, game_frame over the cached sync point's RAM, every branch both ways: about 2 s warm.
 "crates/fd-conform/tests/gen_rest.rs" = "smoke"
+# T56: the edge redraws' generators, the 2 000-state survey, the write check and the beam sync, about 4 s.
+# each_branch_goes_both_ways_or_is_named (about 55 s, three runs a branch) stays in full.
+"crates/fd-conform/tests/gen_edge_redraw.rs" = [
+    "every_t56_entry_has_its_generator_and_its_lists",
+    "each_generator_runs_2000_states_on_the_original_with_no_hang",
+    "no_generator_writes_outside_what_its_routine_reads",
+    "the_beam_sync_sets_the_raster_and_runs_repeat",
+]
 # T53: the walk-animation and joystick routines' generators, branches both ways: under a second.
 "crates/fd-conform/tests/gen_character_anim.rs" = "smoke"
 # T21: what each object value of W1-1 does, scripted slides from the cached sync point, 3 s warm;

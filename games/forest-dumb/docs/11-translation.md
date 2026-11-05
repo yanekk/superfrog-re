@@ -355,6 +355,33 @@ blitter wait `h0+$2a1c` (BLTBUSY set never clears: a hang). Measured 2026-11-05,
 - 2026-11-05, T38: `h0+$2e0e` with `h0_2e0e`: pass on try 2 (try 1 differed on 9 of 2 000 states),
   9 772 tokens in, 23 238 out, $0.0056, 180 s, 10 paths.
 
+## Generators: `objects` movement (T54)
+
+`fd-conform/src/gen/objects_move.rs`, one generator per T54 entry of `re/translate.toml`, named as
+there: the slots' movement `h0_2fae`, its per-slot body `h0_2fea`, the step-table helpers `h0_320a`,
+`h0_3222`, `h0_32f8`, `h0_3322`, the `collision_map` probes `h0_3530`, `h0_3566`, `h0_35a0`,
+`h0_35dc`, and the sort by y `h0_3698`. They read the five slots (flags `h0+$67da`; x, y, kind words,
+a direction byte and a step counter at `h0+$67ec`), the slot index `h0+$2faa` (kind 7, `h0_2fea`
+alone), `char_x` (kind 0) and `collision_map`. A probe reads `((y + dy) & $ff) * $2e + (x' >> 3)` with
+x a level coordinate, so it reaches `$4dd2` bytes past `h3+$fa50`, not only the map's `$2e00`. Each
+slot lays every collision byte its probes can reach after moving up to 5 pixels, clear or solid at
+even odds. Kinds lean to 0..7, the counter to kind 7's `$1f`/`$20` edge, `char_x` to the slot's
+`x + $10`; the sort's y words come from a few tied values in a third of the states, since its middle
+two compares are `cmp.b`.
+
+`tests/gen_objects_move.rs` checks them as `gen_rest.rs` does T39's: 2 000 states with no hang,
+fault or unmodelled blit; every conditional branch of the flow, callees included, both ways through
+a detour stub (first on the first 200 states, the full 2 000 only if a way is unseen); no poke outside
+what the routine reads. No branch is unreachable. Measured 2026-11-05:
+
+| Generator | `RigReport::paths` | Branches | Fewest states one way |
+|---|---|---|---|
+| `h0_2fae` | 211 | 21 | 307 |
+| `h0_2fea` | 23 | 19 | 83 |
+| `h0_320a`, `h0_3222`, `h0_32f8`, `h0_3322` | 1 each | 0 | |
+| `h0_3530`, `h0_3566`, `h0_35a0`, `h0_35dc` | 2 each | 1 each | 960 |
+| `h0_3698` | 15 | 5 | 1 085 |
+
 ## Generators: `rest` (T39)
 
 `fd-conform/src/gen/rest.rs`, one generator for each of the six `gen_task = "T39"` entries, named as
@@ -388,6 +415,48 @@ Measured 2026-11-05, 2 000 states each, no hang or fault, no branch unreachable:
   43 s, 5 paths. `fd-judge 'h0+$1fec' --gen game_frame --survey`: 2 000 passed, 661 paths, 0.3 s.
 - `translate.py 'game_frame'` exits 2 today: its `split_at` callee `h0+$2c7e` has no label in the
   listing (T34's lost-step sweep), so its flow cannot be cut there.
+
+## Generators: edge redraws (T56)
+
+`fd-conform/src/gen/edge_redraw.rs`, one generator for each of the 14 `gen_task = "T56"` entries, named
+as there; `READS` lists what each routine reads when it runs, callees included. T56 took the spike's
+`redraw_edge_a` and `redraw_edge_b` over; the spike's `h0+$774` stays, under that name, for `judge.rs`.
+
+- The redraws read their position at `h0+$1e66`/`$1e68` (x, y), not `camera_x`/`camera_y`. Each draws
+  23 or 16 tiles from `_MapaN-1` (`h0_774`) and as many shapes from `_MapaN-1.Mapa` into `collision_map`
+  (`h0_7cc`), then scans 20 (a, b) or 13 (c, d) object-map cells: 0 and 7-`$1f` skip, `$ff` ends the
+  scan, 1-6 and `$87`-`$fe` take a creature slot (`h0_681c`) and clear the cell, `$20`-`$3f` add an
+  animated cell (`h0_6882`), `$40`-`$86` blit a bob.
+- States set the position (biased to each guard: y around `$53c`, y 0-8, x 0 and `$8000`, the only x
+  that passes `redraw_edge_c`'s `x >= 1` and fails its `tst.w`), the scanned cells, the five slot flags
+  and the 48 animated-cell flags (all full one state in six). The base lays tiles, shapes and screen as
+  noise and the tile and shape maps.
+- `h0_7cc` indexes 32-byte shapes by a byte from `h0+$bda0`, so shapes past `$6b` are read from the
+  object map at `h0+$cb38`.
+
+`tests/gen_edge_redraw.rs` measures branches by flipping, as `gen_drawing.rs` does. `h0_3ac2` also
+waits for VHPOSR to leave `$e7`-`$66`, and the oracle's counter runs on across calls, so every run there
+first sets the counter by the state's index; `the_beam_sync_sets_the_raster_and_runs_repeat` checks it.
+Every conditional branch of each unit goes both ways except the blitter-busy `bne` at `h0+$3ad6`, which
+no state can take on the oracle (in every unit that holds `h0_3ac2`). `h0_7cc` and `h0_6852` have no branch.
+
+Measured 2026-11-05, 2 000 states each, all returned, no hang, fault or unmodelled blit:
+
+| Generator | `RigReport::paths` | Branches both ways | Named, not taken |
+|---|---|---|---|
+| `redraw_edge_a` | 1 174 | 10 | 1 |
+| `redraw_edge_b` | 1 137 | 11 | 1 |
+| `redraw_edge_c` | 1 095 | 9 | 0 |
+| `redraw_edge_d` | 1 168 | 7 | 0 |
+| `h0_774` | 3 | 1 | 1 |
+| `h0_7cc` | 1 | 0 | 0 |
+| `h0_a06`, `h0_ce4`, `h0_104c`, `h0_1390` | 2 each | 1 each | 1 each |
+| `h0_3ac2` | 2 | 1 | 1 |
+| `h0_681c` | 6 | 2 | 0 |
+| `h0_6852` | 1 | 0 | 0 |
+| `h0_6882` | 98 | 13 | 0 |
+
+`cargo test -p fd-conform --test gen_edge_redraw -- --nocapture` prints each branch's counts.
 
 ## Generators: `character`, second share (T53)
 
