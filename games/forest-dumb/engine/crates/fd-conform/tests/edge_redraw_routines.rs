@@ -647,3 +647,22 @@ fn after_a_scroll_each_way_the_collision_map_equals_the_originals() {
     assert_eq!(seen.differ, None, "{seen:?}");
     assert!(seen.redrawn.iter().all(|&n| n > 0), "{seen:?}");
 }
+
+#[test]
+fn the_edge_latches_step_with_the_original_over_the_idle_case() {
+    // `Game::step` runs the foreground's redraws before the pass, because a pass's state is the
+    // original's before `main_loop` has cleared the latches it set (docs/09, "The edge redraws"). At
+    // x 0 the left scroll latches every pass, so a foreground run after the pass would leave
+    // `edge_latch_left` 0 where the original reads `$ffff` (T55 review: that mutation fails here).
+    use fd_conform::{Case, Outcome, run};
+    let base =
+        Case::load(std::path::Path::new("cases/w1-idle.toml")).unwrap_or_else(|e| panic!("{e}"));
+    let mut vars = base.vars.clone();
+    for d in ["right", "left", "up", "down"] {
+        vars.push(format!("edge_latch_{d}"));
+        vars.push(format!("edge_at_{d}_x"));
+        vars.push(format!("edge_at_{d}_y"));
+    }
+    let v = run(&Case { vars, ..base }).unwrap_or_else(|e| panic!("{e}"));
+    assert_eq!(v.outcome, Outcome::Same, "{v}");
+}

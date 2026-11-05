@@ -61,6 +61,7 @@ workspace = "engine"
     "a_row_bob_dropping_the_high_word_of_d0_fails",
     "a_state_with_d7_past_the_slots_is_one_the_engine_does_not_model",
     "after_a_scroll_each_way_the_collision_map_equals_the_originals",
+    "the_edge_latches_step_with_the_original_over_the_idle_case",
 ]
 # T38's objects generators against the original, branches both ways: under 2 s.
 "crates/fd-conform/tests/gen_objects.rs" = "smoke"
