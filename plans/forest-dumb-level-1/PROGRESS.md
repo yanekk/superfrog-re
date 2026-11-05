@@ -27,7 +27,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T30 | unpack-in-rust | — | ✅ | |
 | T05 | level-readers | T03, T04, T30 | ⬜ | |
 | T06 | level-runner | T03, T04, T31, T32 | ⬜ | |
-| T33 | translate-service | T32 | ⬜ | |
+| T33 | translate-service | T32 | 🔍 | `translate.py`, `fd-judge`, `judge/{mod,mem}.rs`, `build.rs`; 23 tests. Deviations: `RigReport::unmodelled_blits` added to T32's rig (oracle returns from line/fill blits); key checked first; missing split callee port exits 2; `--max-usd` stop is `fail` plus `stopped`; extra `tests/judge.rs`, `test_translate_judge.py`, README and CLAUDE.md lines. Live call passed. |
 | T34 | translate-inventory | T00 | ⬜ | |
 | T35 | gen-character | T33, T34 | ⬜ | |
 | T36 | gen-camera | T33, T34 | ⬜ | |
@@ -69,7 +69,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T29 | level-drill | T15, T28 | ⬜ | |
 | T50 | sf-menus-os-test-stale | — | ⬜ | |
 
-**Review queue:** *(empty)*
+**Review queue:** T33
 
 ## Blocked on the user
 

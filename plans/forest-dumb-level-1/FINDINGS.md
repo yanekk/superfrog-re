@@ -6,6 +6,9 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-11-05 | 📌 | T33 live call, worker action: `translate.py 'h0+$5462' --gen char_sprite_position` passed on try 1: 1 629 tokens in, 7 897 out (7 131 reasoning), $0.0017, 67 s, 4 paths. |
+| 2026-11-05 | 📌 | T33: `char_hit_check` (`h0+$3b2a`) is 183 instructions with callees, so `translate.py` answers `too-big` though the spike passed it 3 of 3. T34 splits it or the owner moves the 180 line. |
+| 2026-11-05 | 📌 | T33: the routine oracle returns from line-mode blits (the shim skips them) and has no fill mode, so "returns on no state" misses them. `RigReport::unmodelled_blits` counts them; `translate.py` answers `no-oracle`. |
 | 2026-11-05 | 📌 | T04, worker-driven: `picture_in(0x2F81, 0x29C1)` at frame 6500 opened as PNG: sky, moon, ledge, character from sprites 0-3, black gap lines 226-241, whole status bar. Title window is 320x238; Kickstart's 320x308 from line 5. |
 | 2026-11-05 | 📌 | T03 review: a cached reach leaves `Amiga::df0()` `None` where a boot leaves `Some(1)`, since `restore` does not set it. Nothing in fd-conform reads it yet; a task that does must not trust it after `reach_level_1`. |
 | 2026-11-05 | 📌 | T03: sync snapshots now end in a SHA-1 and are `.sync2`, so Superfrog sync points rebuild once per machine: `level_entry.rs` (smoke) took 597 s cold. Two boots give equal RAM, not byte-equal vAmiga snapshots. |

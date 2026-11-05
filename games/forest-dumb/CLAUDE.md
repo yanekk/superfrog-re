@@ -70,6 +70,7 @@ Not written yet: there is no engine to fix. It comes with the recorder, step 8 o
 - [engine/conform/README.md](engine/conform/README.md): the conformance runner `fd-conform` and its case format.
 - [docs/ROADMAP.md](docs/ROADMAP.md): backlog, the owner's sequence of plans, level 1 next.
 - [docs/level-1-brief.md](docs/level-1-brief.md): the brief for the level 1 plan.
+- [docs/11-translation.md](docs/11-translation.md): `tools/translate.py`, a routine's literal Rust port through Muse, judged on the routine oracle; how to call it and what a pass proves.
 - [spikes/muse-spark/README.md](spikes/muse-spark/README.md): spike 2026-11-04, Muse Spark contributor matches Opus translating routines up to ~180 instructions (blitter and Paula included) at 1/15-1/30 the cost; fails at ~300+.
 
 ## The first case
