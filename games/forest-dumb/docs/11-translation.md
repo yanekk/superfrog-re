@@ -223,3 +223,43 @@ Measured 2026-11-05, 2 000 states each, no hang or fault:
 
 - 2026-11-05, T36: `camera_update` with `camera_update`: pass on try 1, 4 837 tokens in, 16 485 out,
   $0.0038, 115 s, 385 paths.
+
+## Generators: `objects` (T38)
+
+`fd-conform/src/gen/objects.rs`, one generator per T38 entry of `re/translate.toml`, named as there.
+They read the byte map (`h0+$cb38`, `$60` cells a column), `char_x`/`char_y`, `camera_x`/`camera_y`,
+the five slots (flags `h0+$67da`, eight bytes each at `h0+$67ec`: x, y, kind), the BCD counters
+(score `h0+$2a66`, `score_add`, `countdown`, `items_left`, `lives`), `hits_taken`, `cheat_flag`, the
+gates `h0+$4ed0`, `h0+$4b62`, `h0+$9b04`, and CLXDAT as a hardware read. The item blit (`h0_29ca`) reads a
+tile word at `h0+$16318` and a table long at `h0+$3b988`; `char_object_cells` and `h0_26ec` lay
+hunk 3 with noise as their base so the blit copies something. States lean to where branches turn:
+each map code `h0_24ce` and `h0_26ec` test (N-flag ranges, so `$a0..$ff` read as below `$20`), a
+slot on and either side of each camera-window edge, a box corner at `p - size`, `p - size - 1`,
+`p - 1` and `p`, the countdown at `$0898`/`$0899`, `hits_taken` at 2, 3 and `$ffff`.
+
+Counters are valid BCD on every state: the game writes only BCD there, and ABCD/SBCD on other digits
+is undocumented, so a port judged on them would be judged on one emulator's choice.
+
+`fd-conform/tests/gen_objects.rs` proves it, as `gen_camera.rs` does: a witness per routine matches
+the original on all 2 000 states, and every conditional branch of the flow listing, callees
+included, goes both ways, except five that can only go one way: the VHPOSR waits `h0+$265e`,
+`$291c`, `$3aec`, `$3da4` (the rig's VHPOSR steps on every read, so two reads never match) and the
+blitter wait `h0+$2a1c` (BLTBUSY set never clears: a hang). Measured 2026-11-05, no hang or fault:
+
+| Generator | `RigReport::paths` | Branches | Fewest states one way |
+|---|---|---|---|
+| `h0_24ce` | 7 | 6 | 125 |
+| `char_object_cells` | 108 | 29 | 44 |
+| `h0_26ec` | 23 | 29 | 32 |
+| `score_add_routine` | 1 | 0 | |
+| `h0_2dd6` | 125 | 14 | 117 |
+| `h0_2e0e` | 10 | 12 | 37 |
+| `char_hit_check` | 105 | 30 | 32 |
+| `h0_3dd8` | 4 | 4 | 235 |
+| `countdown_plus_100` | 2 | 1 | 874 |
+| `items_left_minus_one` | 2 | 1 | 525 |
+
+`score_add_routine` has no branch: four ABCDs and a clear.
+
+- 2026-11-05, T38: `h0+$2e0e` with `h0_2e0e`: pass on try 2 (try 1 differed on 9 of 2 000 states),
+  9 772 tokens in, 23 238 out, $0.0056, 180 s, 10 paths.

@@ -6,6 +6,7 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-11-05 | 📌 | T38: the rig's VHPOSR steps every read, so raster-wait `beq`s (`h0+$265e`, `$3aec`) never go taken; BLTBUSY set hangs `h0+$2a1c`. Write-only cells (`h0+$4710`, slot flags in `h0_2e0e`) are not poked, so an omitted clear passes where the program's byte is already 0. |
 | 2026-11-05 | 📌 | T36: the rig has no instruction trace, so `gen_camera.rs` shows branch coverage with literal witness models that must match the original on every state. `h0_513c` clamps `camera_y` `$8000..$853e` to `$53f`, not 0 (`cmpi.w` overflow). |
 | 2026-11-05 | 📌 | T57 added (owner) by T50 review: `os_layer_scale_and_fullscreen_through_the_menu_bar_and_its_shortcut` red at another wait each run (3×, fullscreen) on 1920×1080, base-identical code; T50 closed on its own menu test. |
 | 2026-11-05 | 🐞 | T50: sf-e2e `os_layer_scale_and_fullscreen_through_the_menu_bar_and_its_shortcut` fails three runs of three, each at another wait (3×, fullscreen, ⌃⌘F), on a 1920×1080 display. Timing or screen size, not a stale assertion; left alone. |
