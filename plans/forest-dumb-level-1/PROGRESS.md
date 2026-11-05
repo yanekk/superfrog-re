@@ -31,7 +31,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T34 | translate-inventory | T00 | ✅ | |
 | T35 | gen-character | T33, T34 | ⬜ | |
 | T36 | gen-camera | T33, T34 | ⬜ | |
-| T37 | gen-drawing | T33, T34 | 🔍 | 14 generators in `gen/drawing.rs`, `READS` per routine; 5 tests, branch-flip coverage (full, 27 s), rest smoke. Deviations: took spike's `char_sprite_position` and `h0+$9754` (now `h0_9754`) out of `spike.rs`, `rig.rs` SPIKE list, since names must be unique; generators named as translate.toml, not `hN+$off`. |
+| T37 | gen-drawing | T33, T34 | ✅ | Review clean, no fix commit. Branch list matched an independent flow walk of the listing for all 14 units; waits checked as `btst #6,$dff002`. Survey reproduces the doc table. Mutations red: fade flag pinned (branch test), poke past READS (write check). Probe: `translate.py h0+$9550 --gen h0_9550` passed, 12 paths. |
 | T38 | gen-objects | T33, T34 | ⬜ | |
 | T39 | gen-rest | T33, T34 | ⬜ | |
 | T40 | batch-translate | T35, T36, T37, T38, T39 | ⬜ | |
