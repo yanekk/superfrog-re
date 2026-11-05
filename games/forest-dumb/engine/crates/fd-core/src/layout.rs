@@ -65,6 +65,19 @@ pub const LAYOUT: &[Var] = &[
     var("paused", 0, 0x2100, Width::Word),
     var("level_exit_touched", 0, 0x2696, Width::Word),
     var("give_up", 0, 0x21b2, Width::Word),
+    // The character's animation pickers and the joystick read (T51).
+    var("char_walk_t", 0, 0x4be4, Width::Byte),
+    var("char_facing", 0, 0x4ece, Width::Byte),
+    var("char_probe_1", 0, 0x4ed1, Width::Byte),
+    var("char_probe_2", 0, 0x4ed2, Width::Byte),
+    // A pointer as the original stores it: equal only with tables loaded at the oracle's bases
+    // (`character::anim`).
+    var("char_anim_ptr", 0, 0x4ed8, Width::Long),
+    var("joy_left", 0, 0x8df2, Width::Word),
+    var("joy_right", 0, 0x8df4, Width::Word),
+    var("joy_up", 0, 0x8df6, Width::Word),
+    var("joy_down", 0, 0x8df8, Width::Word),
+    var("input_log_index", 0, 0x8ec0, Width::Long),
 ];
 
 /// The variable called `name`.
