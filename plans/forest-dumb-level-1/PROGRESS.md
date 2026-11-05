@@ -10,7 +10,7 @@
 
 **Status:** Amendment read back and its 4 decisions settled; ready to build. Nothing built.
 **Last updated:** 2026-11-05
-**Next `pir-work` will:** review T61 (generate-service).
+**Next `pir-work` will:** T49, now unblocked by T61.
 
 ## Tasks
 
@@ -79,10 +79,10 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T58 | translate-btst-fix | T33; blocks T40 | ✅ | |
 | T59 | oracle-sprite-collision | T21; blocks T24, T41, T42, T43, T44, T45, T46, T47 | ✅ | |
 | T60 | rig-branch-coverage | T32 | ✅ | |
-| T61 | generate-service | T33, T60; blocks T49 | 🔍 | generate.py, fd-judge --cover, FD_GEN candidate; 24 python tests. Five live runs all covered, $0.0139. Deviations: line/fill blits fail a try; no-oracle means every answer run returned nowhere (no generator to survey first); result line adds base, uncovered as {at, never, reason}; best valid try kept; listing includes split callees. |
+| T61 | generate-service | T33, T60; blocks T49 | ✅ | Review fixed one defect: examples() showed the routine's own hand-written generator when --name differed from its inventory name; added a stubbed never-not-taken test. Probed fd-judge --cover on three committed generators (matches docs table); mutated the poke check and uncovered(), both red. Live-run costs read-only. |
 | T62 | engine-shape-trial | T08, T09, T33 | ⬜ | |
 
-**Review queue:** T61
+**Review queue:** *(empty)*
 
 ## Blocked on the user
 
