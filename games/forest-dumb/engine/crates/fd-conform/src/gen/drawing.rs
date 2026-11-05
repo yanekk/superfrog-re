@@ -116,6 +116,8 @@ pub const ALL: &[(&str, Generator)] = &[
 /// generator's pokes, hardware reads and base all fall inside these. Program data a routine reads
 /// but no generator changes (the tile table h0+$3b988, the creature frame tables h0+$3818-$3a58,
 /// the fade table h0+$9624, h4's frames) is left out, so nothing may write there.
+// A one-range list is a list of one range here, not a mistaken `vec![a..b]`.
+#[allow(clippy::single_range_in_vec_init)]
 pub const READS: &[(&str, &[Range<u32>])] = &[
     ("h0_21c0", &[h(0, 0x21b4)..h(0, 0x21c0), MAP_WORDS, TILES]),
     ("h0_29ca", &[h(0, 0x29c6)..h(0, 0x29ca), MAP_WORDS, TILES]),
