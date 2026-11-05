@@ -56,13 +56,15 @@ public:
     // per way (1 not taken, 2 taken); and its data reads, one bit per address with a list to
     // clear them by. The bitmap is allocated the first time tracing is turned on.
     bool trace = false;
+    // Whether the last call left a trace to clear: an untraced call skips the clearing.
+    bool traced = false;
     std::unordered_map<u32, u8> branchWays;
     std::vector<amiga_branch> branchOut;
     std::vector<u64> readBits;
     std::vector<u32> reads;
 
     void note_read(u32 a) {
-        if (!trace || (readFC() & 3) != 1) return;
+        if ((readFC() & 3) != 1) return;
         a &= kMemMask;
         u64 bit = u64(1) << (a & 63);
         if (!(readBits[a >> 6] & bit)) {
@@ -226,10 +228,13 @@ public:
         hwWrites.clear();
         std::fill(std::begin(blt), std::end(blt), u16(0));
         bus = 0;
-        branchWays.clear();
-        branchOut.clear();
-        for (u32 a : reads) readBits[a >> 6] = 0;
-        reads.clear();
+        if (traced) {
+            branchWays.clear();
+            branchOut.clear();
+            for (u32 a : reads) readBits[a >> 6] = 0;
+            reads.clear();
+            traced = false;
+        }
         resetSsp = r->a[7];
         resetPc = entry;
         overrideVectors = true;
@@ -242,6 +247,7 @@ public:
         setPC0(getPC());
 
         u64 n = 0;
+        traced = trace;
         while (status.status == AMIGA_CALL_RETURNED) {
             if (getPC() == sentinel) break;
             if (n == max_instr) {
@@ -271,20 +277,27 @@ public:
         for (int i = 0; i < 8; i++) r->a[i] = getA(i);
         r->sr = getSR();
         *out = status;
-        for (auto &[at, ways] : branchWays) branchOut.push_back({ at, u8(ways & 1), u8(ways >> 1) });
-        std::sort(reads.begin(), reads.end());
+        if (traced) {
+            for (auto &[at, ways] : branchWays) branchOut.push_back({ at, u8(ways & 1), u8(ways >> 1) });
+            std::sort(reads.begin(), reads.end());
+        }
     }
 };
 
 namespace { inline FlatCpu &self(const Moira *m) { return *const_cast<FlatCpu *>(static_cast<const FlatCpu *>(m)); } }
 
 void Moira::sync(int cycles) { clock += cycles; }
-u8 Moira::read8(u32 addr) const { self(this).note_read(addr); return self(this).rd8(addr); }
+u8 Moira::read8(u32 addr) const
+{
+    FlatCpu &c = self(this);
+    if (c.trace) [[unlikely]] c.note_read(addr);
+    return c.rd8(addr);
+}
 u16 Moira::read16(u32 addr) const
 {
-    self(this).note_read(addr);
-    self(this).note_read(addr + 1);
-    return self(this).rd16(addr);
+    FlatCpu &c = self(this);
+    if (c.trace) [[unlikely]] { c.note_read(addr); c.note_read(addr + 1); }
+    return c.rd16(addr);
 }
 u32 Moira::read32(u32 addr) const { return u32(read16(addr)) << 16 | read16(addr + 2); }
 u16 Moira::read16Dasm(u32 addr) const { return self(this).mem[addr & kMemMask] << 8 | self(this).mem[(addr + 1) & kMemMask]; }

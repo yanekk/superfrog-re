@@ -158,7 +158,7 @@ fn the_walk_follows_direct_calls_and_not_indirect_jumps() {
     let at: Vec<u32> = cpu.last_trace().branches.iter().map(|b| b.at).collect();
     assert_eq!(at, vec![0x3102, 0x3202]);
     // jsr (d16,pc) and jmp abs.w are followed too: 3300 jsr $3100(pc); 3304 jmp $3200.w
-    let mut cpu = cpu_with(&[
+    let cpu = cpu_with(&[
         (0x3300, &[0x4eba, 0xfdfe, 0x4ef8, 0x3200]),
         (0x3100, &[0x4a40, 0x6602, 0x4e71, 0x4e75]),
         (0x3200, &[0x4a41, 0x6700, 0x0002, 0x4e75]),
