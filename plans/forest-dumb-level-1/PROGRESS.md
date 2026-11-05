@@ -76,9 +76,9 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T56 | gen-edge-redraw | T33, T34; blocks T40 | ⬜ | |
 | T57 | sf-scale-fullscreen-os-test | — | ⬜ | |
 | T58 | translate-btst-fix | T33; blocks T40 | ✅ | |
-| T59 | oracle-sprite-collision | T21; blocks T24, T41, T42, T43, T44, T45, T46, T47 | 🔍 | All three Denise collision checks on, `BUILD` tagged `-clx`; toolkit `collision.rs` (2 tests); 4 contact claims plus a CLXDAT test in `object_claims.rs`. Superfrog smoke oracle tests and route pins unchanged. Deviations: SPR_SPR and PLF_PLF on too (hardware sets every bit); `level_files` 6640 covered cells 11 to 8, caused by contact. |
+| T59 | oracle-sprite-collision | T21; blocks T24, T41, T42, T43, T44, T45, T46, T47 | ✅ | Review clean, no fix commit. Collision switches on, `BUILD` tagged `-clx`. Mutation (SPR_PLF off) turned `collision.rs` and five `object_claims` tests red. Superfrog W1-1 memory identical with switches on and off over 2 200 frames; route pins, level_entry green. Grace `h0+$9b04` probed; `h0+$4b62` claim read-only. |
 
-**Review queue:** T59
+**Review queue:** *(empty)*
 
 ## Blocked on the user
 
