@@ -53,3 +53,9 @@ opt-level = 2
 
 [profile.dev.package.amiga-disk]
 opt-level = 2
+
+# The planner's archive, compasses and search are step-bounded loops over hundreds of targets and
+# thousands of cells, stepping a game's engine every frame; unoptimised, a game's planner tests miss
+# their time budgets. Every game workspace that builds it keeps its own copy of this override.
+[profile.dev.package.amiga-plan]
+opt-level = 2

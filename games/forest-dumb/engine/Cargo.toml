@@ -45,3 +45,7 @@ opt-level = 2
 # The level readers decode every tile pixel the picture checks and the engine's drawing compare.
 [profile.dev.package.fd-assets]
 opt-level = 2
+
+# The route planner (fd-plan, from T20): its explorer steps the engine every frame of every burst.
+[profile.dev.package.amiga-plan]
+opt-level = 2
