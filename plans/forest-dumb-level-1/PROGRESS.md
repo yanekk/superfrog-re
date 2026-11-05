@@ -29,7 +29,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T06 | level-runner | T03, T04, T31, T32 | ✅ | |
 | T33 | translate-service | T32 | ✅ | |
 | T34 | translate-inventory | T00 | ✅ | |
-| T35 | gen-character | T33, T34 | ⬜ | |
+| T35 | gen-character | T33, T34 | ✅ | |
 | T36 | gen-camera | T33, T34 | ✅ | |
 | T37 | gen-drawing | T33, T34 | ⬜ | |
 | T38 | gen-objects | T33, T34 | ⬜ | |
@@ -75,6 +75,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T55 | edge-redraw | T09; blocks T10, T41, T42, T43 | ⬜ | |
 | T56 | gen-edge-redraw | T33, T34; blocks T40 | ⬜ | |
 | T57 | sf-scale-fullscreen-os-test | — | ⬜ | |
+| T58 | translate-btst-fix | T33; blocks T40 | ⬜ | |
 
 **Review queue:** *(empty)*
 
