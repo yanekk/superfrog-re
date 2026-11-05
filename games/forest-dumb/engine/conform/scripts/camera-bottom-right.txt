@@ -1,0 +1,116 @@
+# T43: to the bottom and right ends of W1-1 and back. From the level sync point: stand 40 frames;
+# right with a jump every 40 frames (290) onto the first hill, W1-1:73,46; left without jumping (100)
+# down the hill's west slope to W1-1:49,55; right (190) through the shaft at columns 59 to 72 and
+# down to the bottom corridor, rows 89 to 93, where camera_y reaches its clamp $53f; right with a jump
+# every 25 frames (810) along the corridor, over the pits at columns 195 to 197, to the right wall at
+# column 229 (camera_x $dc9, its furthest); stand (150); then left with a jump every 25 frames (300).
+# Every object frozen. Measured 2026-11-05: four passes of contact (hits_taken 1, no life lost), at
+# columns 200 to 204 and on the way back.
+0: -
+40: R U
+52: R
+80: R U
+92: R
+120: R U
+132: R
+160: R U
+172: R
+200: R U
+212: R
+240: R U
+252: R
+280: R U
+292: R
+320: R U
+330: L
+430: R
+620: R U
+632: R
+645: R U
+657: R
+670: R U
+682: R
+695: R U
+707: R
+720: R U
+732: R
+745: R U
+757: R
+770: R U
+782: R
+795: R U
+807: R
+820: R U
+832: R
+845: R U
+857: R
+870: R U
+882: R
+895: R U
+907: R
+920: R U
+932: R
+945: R U
+957: R
+970: R U
+982: R
+995: R U
+1007: R
+1020: R U
+1032: R
+1045: R U
+1057: R
+1070: R U
+1082: R
+1095: R U
+1107: R
+1120: R U
+1132: R
+1145: R U
+1157: R
+1170: R U
+1182: R
+1195: R U
+1207: R
+1220: R U
+1232: R
+1245: R U
+1257: R
+1270: R U
+1282: R
+1295: R U
+1307: R
+1320: R U
+1332: R
+1345: R U
+1357: R
+1370: R U
+1382: R
+1395: R U
+1407: R
+1420: R U
+1430: -
+1580: L U
+1592: L
+1605: L U
+1617: L
+1630: L U
+1642: L
+1655: L U
+1667: L
+1680: L U
+1692: L
+1705: L U
+1717: L
+1730: L U
+1742: L
+1755: L U
+1767: L
+1780: L U
+1792: L
+1805: L U
+1817: L
+1830: L U
+1842: L
+1855: L U
+1867: L
