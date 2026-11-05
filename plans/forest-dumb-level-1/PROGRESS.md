@@ -27,7 +27,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T30 | unpack-in-rust | — | ✅ | |
 | T05 | level-readers | T03, T04, T30 | ✅ | |
 | T06 | level-runner | T03, T04, T31, T32 | ⬜ | |
-| T33 | translate-service | T32 | ⬜ | |
+| T33 | translate-service | T32 | ✅ | |
 | T34 | translate-inventory | T00 | ✅ | |
 | T35 | gen-character | T33, T34 | ⬜ | |
 | T36 | gen-camera | T33, T34 | ⬜ | |
