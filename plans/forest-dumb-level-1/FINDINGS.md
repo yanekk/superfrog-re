@@ -6,6 +6,7 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-11-05 | 📌 | T08: `purity.rs`'s lexer reads a hex literal ending `f64` or `f32` (`0x4f64`) as a float; written `0x4F64`. On the rig, table reads past an end hit live variables (`h0+$40cb + $3d` is `char_slide_t`). |
 | 2026-11-05 | 🐞 | T64 added by T08 with the owner's yes: `exe_map_claims::the_listing_regenerates_and_decodes_hunk_4` red since T51 (73 hunk-0 lines start odd after byte vars `char_walk_t`, `char_probe_1`..); T08's byte vars add more. Escape T51. |
 | 2026-11-05 | 📌 | T63 added by T08 with the owner's yes: `game_frame` calls 20 routines of T09, T10, T22 to T26, T51, T52, T55, so its rig proof waits for them; `blocks T27`. T08 wires the character's calls only. |
 | 2026-11-05 | 📌 | T51 review, worker-driven: on the oracle after fire, each direction and diagonal held three frames gave `joy_left`..`joy_down` equal to `JoyFlags::read_joystick(joy1dat(input))`, so `joy1dat`'s JOY1DAT encoding matches the oracle's joystick. |
