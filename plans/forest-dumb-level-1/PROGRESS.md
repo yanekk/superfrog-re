@@ -30,7 +30,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T33 | translate-service | T32 | ✅ | |
 | T34 | translate-inventory | T00 | ✅ | |
 | T35 | gen-character | T33, T34 | ⬜ | |
-| T36 | gen-camera | T33, T34 | ⬜ | |
+| T36 | gen-camera | T33, T34 | 🔍 | 10 generators, 4 tests: every T36 entry, every branch both ways, none unreachable. `camera_update` passed T33's service on try 1, $0.0038. Deviations: names as in `translate.toml` (`h0_4e9a`), not mod.rs's `hN+$off`; branches shown by literal witness models in the test, the rig having no trace; no base or blits, the edge redraws having gone to T56. |
 | T37 | gen-drawing | T33, T34 | ⬜ | |
 | T38 | gen-objects | T33, T34 | ⬜ | |
 | T39 | gen-rest | T33, T34 | ⬜ | |
@@ -75,7 +75,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T55 | edge-redraw | T09; blocks T10, T41, T42, T43 | ⬜ | |
 | T56 | gen-edge-redraw | T33, T34; blocks T40 | ⬜ | |
 
-**Review queue:** *(empty)*
+**Review queue:** T36
 
 ## Blocked on the user
 
