@@ -6,6 +6,7 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-11-05 | 📌 | T63 added by T08 with the owner's yes: `game_frame` calls 20 routines of T09, T10, T22 to T26, T51, T52, T55, so its rig proof waits for them; `blocks T27`. T08 wires the character's calls only. |
 | 2026-11-05 | 📌 | T51 review, worker-driven: on the oracle after fire, each direction and diagonal held three frames gave `joy_left`..`joy_down` equal to `JoyFlags::read_joystick(joy1dat(input))`, so `joy1dat`'s JOY1DAT encoding matches the oracle's joystick. |
 | 2026-11-05 | 📌 | T51 review: T53's generator comments (`gen/character.rs:55`, `gen/character_anim.rs:4`) and T51's task doc still say `joy_flags`, now `joy_left`..`joy_down` in LAYOUT and symbols.toml. Comments only; left. |
 | 2026-11-05 | 📌 | T51: `char_anim_ptr` and `AnimTables` hold relocated pointers; the sync value `$c491a0` assumes hunk 0 at the oracle base `$c077d8`. `GameData` does not read the tables yet: T08 (owner of `game.rs`) loads hunk 0 there and calls `AnimTables::from_hunk0`. |
