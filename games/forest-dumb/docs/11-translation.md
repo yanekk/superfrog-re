@@ -305,6 +305,33 @@ blitter wait `h0+$2a1c` (BLTBUSY set never clears: a hang). Measured 2026-11-05,
 - 2026-11-05, T38: `h0+$2e0e` with `h0_2e0e`: pass on try 2 (try 1 differed on 9 of 2 000 states),
   9 772 tokens in, 23 238 out, $0.0056, 180 s, 10 paths.
 
+## Generators: `objects` movement (T54)
+
+`fd-conform/src/gen/objects_move.rs`, one generator per T54 entry of `re/translate.toml`, named as
+there: the slots' movement `h0_2fae`, its per-slot body `h0_2fea`, the step-table helpers `h0_320a`,
+`h0_3222`, `h0_32f8`, `h0_3322`, the `collision_map` probes `h0_3530`, `h0_3566`, `h0_35a0`,
+`h0_35dc`, and the sort by y `h0_3698`. They read the five slots (flags `h0+$67da`; x, y, kind words,
+a direction byte and a step counter at `h0+$67ec`), the slot index `h0+$2faa` (kind 7, `h0_2fea`
+alone), `char_x` (kind 0) and `collision_map`. A probe reads `((y + dy) & $ff) * $2e + (x' >> 3)` with
+x a level coordinate, so it reaches `$4dd2` bytes past `h3+$fa50`, not only the map's `$2e00`. Each
+slot lays every collision byte its probes can reach after moving up to 5 pixels, clear or solid at
+even odds. Kinds lean to 0..7, the counter to kind 7's `$1f`/`$20` edge, `char_x` to the slot's
+`x + $10`; the sort's y words come from a few tied values in a third of the states, since its middle
+two compares are `cmp.b`.
+
+`tests/gen_objects_move.rs` checks them as `gen_rest.rs` does T39's: 2 000 states with no hang,
+fault or unmodelled blit; every conditional branch of the flow, callees included, both ways through
+a detour stub (first on the first 200 states, the full 2 000 only if a way is unseen); no poke outside
+what the routine reads. No branch is unreachable. Measured 2026-11-05:
+
+| Generator | `RigReport::paths` | Branches | Fewest states one way |
+|---|---|---|---|
+| `h0_2fae` | 211 | 21 | 307 |
+| `h0_2fea` | 23 | 19 | 83 |
+| `h0_320a`, `h0_3222`, `h0_32f8`, `h0_3322` | 1 each | 0 | |
+| `h0_3530`, `h0_3566`, `h0_35a0`, `h0_35dc` | 2 each | 1 each | 960 |
+| `h0_3698` | 15 | 5 | 1 085 |
+
 ## Generators: `rest` (T39)
 
 `fd-conform/src/gen/rest.rs`, one generator for each of the six `gen_task = "T39"` entries, named as
