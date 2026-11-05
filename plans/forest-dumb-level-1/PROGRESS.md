@@ -80,12 +80,12 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T59 | oracle-sprite-collision | T21; blocks T24, T41, T42, T43, T44, T45, T46, T47 | ✅ | |
 | T60 | rig-branch-coverage | T32 | ✅ | |
 | T61 | generate-service | T33, T60; blocks T49 | ✅ | |
-| T62 | engine-shape-trial | T08, T09, T33 | 🔍 | `tools/reshape.py`, `--opus-cost`; 13 stubbed and 1 real-rig test. Trial: 15/15 units pass, $0.0324. Deviations: T09's `follow`, `scroll` judged as four-routine units; prompt shows other functions' signatures and docs; real-rig test in `test_reshape_judge.py`. Owner question set aside as T66 (coordinator), awaiting the owner. |
+| T62 | engine-shape-trial | T08, T09, T33 | ✅ | Review: fixed a vacuous judge pass (a routine name missing from the rig table skipped every routine, 0 paths, pass); now a usage error, test locks it. Probed: real-rig rerun of a T09 four-routine unit, `--opus-cost` against `total_cost_usd`, result files against docs/11; two mutations caught. T66 holds the owner question. |
 | T63 | game-frame-rig | T08, T09, T10, T22, T23, T24, T25, T26, T51, T52, T55; blocks T27 | ⬜ | |
 | T64 | listing-odd-bytes | T08, T51 | ⬜ | |
 | T66 | reshape-decision | T62; blocks T22 | ⬜ | |
 
-**Review queue:** T62
+**Review queue:** *(empty)*
 
 ## Blocked on the user
 
