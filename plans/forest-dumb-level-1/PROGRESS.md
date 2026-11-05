@@ -76,7 +76,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T56 | gen-edge-redraw | T33, T34; blocks T40 | ✅ | |
 | T57 | sf-scale-fullscreen-os-test | — | ✅ | |
 | T58 | translate-btst-fix | T33; blocks T40 | ✅ | |
-| T59 | oracle-sprite-collision | T21; blocks T24, T41, T42, T43, T44, T45, T46, T47 | ⬜ | |
+| T59 | oracle-sprite-collision | T21; blocks T24, T41, T42, T43, T44, T45, T46, T47 | ✅ | |
 
 **Review queue:** *(empty)*
 
