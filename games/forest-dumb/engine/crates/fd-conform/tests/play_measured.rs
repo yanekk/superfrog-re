@@ -149,7 +149,7 @@ fn irq_count_and_game_frame_run_once_a_frame_over_3000_frames_of_play() {
         let now = word(&am, h0(IRQ_COUNT));
         assert_eq!(now, irq.wrapping_add(1), "irq_count in frame {frame}");
         irq = now;
-        // game_frame's own counter (h0+$20b0) runs 0..=62 and wraps; it advances once a pass.
+        // countdown_tick (h0+$20ac), game_frame's own counter, runs 0..=62 and wraps; it advances once a pass.
         let t = am.peek(h0(GAME_FRAME_TICK) + 3, 1)[0];
         let advanced = (t as i32 - tick as i32).rem_euclid(63) as u32;
         assert!(
