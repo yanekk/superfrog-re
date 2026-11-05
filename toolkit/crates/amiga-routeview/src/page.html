@@ -1,4 +1,4 @@
-<title>Superfrog Route Viewer</title>
+<title>__TITLE__ Route Viewer</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
 <style>
@@ -8,7 +8,7 @@
    look by choice: the map's own palette reads best on a dark surround. */
 :root {
   color-scheme: dark;
-  --bg: #0f1412;          /* forest-night ground, biased green like Magic Woods */
+  --bg: #0f1412;          /* forest-night ground, biased green */
   --panel: #171e1b;
   --panel-2: #1e2723;
   --line: #2a3530;
@@ -106,7 +106,7 @@ button:focus-visible, input:focus-visible { outline: 2px solid var(--accent); ou
 
 <div class="wrap">
   <header>
-    <h1>Superfrog route · <span class="lvl" id="lvl"></span></h1>
+    <h1>__TITLE__ route · <span class="lvl" id="lvl"></span></h1>
     <span class="sub" id="sub"></span>
   </header>
 
@@ -124,7 +124,7 @@ button:focus-visible, input:focus-visible { outline: 2px solid var(--accent); ou
 
   <div class="mapbox" id="mapbox">
     <canvas id="cv"></canvas>
-    <div class="zoom"><button id="zin" aria-label="Zoom in">+</button><button id="zout" aria-label="Zoom out">−</button><button id="zfit">Fit</button><button id="zfollow" aria-pressed="false">Follow frog</button></div>
+    <div class="zoom"><button id="zin" aria-label="Zoom in">+</button><button id="zout" aria-label="Zoom out">−</button><button id="zfit">Fit</button><button id="zfollow" aria-pressed="false">Follow __ACTOR__</button></div>
     <div class="tip" id="tip" hidden></div>
     <div class="loading" id="loading" hidden>loading…</div>
   </div>
@@ -151,15 +151,19 @@ button:focus-visible, input:focus-visible { outline: 2px solid var(--accent); ou
   </div>
 </div>
 
+<script id="spec" type="application/json">__SPEC__</script>
 <script id="manifest" type="application/json">__MANIFEST__</script>
 <script>
 (() => {
 const M = JSON.parse(document.getElementById('manifest').textContent);
 window.ROUTE_DATA = window.ROUTE_DATA || {};
 
-// The frog's x,y are its record's (+0, +2): the planner's cell is ((x+$17)/16, (y-$10)/16), and y
-// sits on the ground line when landed, so the body's middle is about (x+$17, y-10).
-const FX = 0x17, FY = -10;
+// The game's page spec: a map cell's size in level pixels; a track position plus `anchor` is where
+// the character is drawn (its body's middle), and plus `cell_origin`, divided by the cell, is the
+// planner's cell it stands on.
+const SPEC = JSON.parse(document.getElementById('spec').textContent);
+const CELL_W = SPEC.cell[0], CELL_H = SPEC.cell[1], FX = SPEC.anchor[0], FY = SPEC.anchor[1], LB = SPEC.live_box;
+const cellOf = p => [Math.floor((p[0] + SPEC.cell_origin[0]) / CELL_W), Math.floor((p[1] + SPEC.cell_origin[1]) / CELL_H)];
 const C = getComputedStyle(document.documentElement);
 const tok = n => C.getPropertyValue(n).trim();
 const esc = s => String(s).replace(/[&<>"]/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[ch]));
@@ -182,31 +186,32 @@ const EVT = {
   stall:  { name: 'Progress stops', color: '#ff4dd2', on: true },
   other:  { name: 'Other changes', color: '#aab', on: false },
 };
-const LAYERS = {
-  route:  { name: 'Route line', color: tok('--route-a'), on: true },
-  coins:  { name: 'Coins', color: tok('--accent'), on: true },
-  enemies:{ name: 'Enemies', color: tok('--enemy'), on: true },
-  pickups:{ name: 'Collectibles', color: tok('--pickup'), on: true },
-  hazards:{ name: 'Spikes', color: tok('--hazard'), on: true },
-  secrets:{ name: 'Secret walls', color: tok('--secret'), on: true },
-  misc:   { name: 'Exits, springs, switches, scenery', color: '#ffffff', on: true },
-  terrain:{ name: 'Ice, conveyors, other markers', color: '#9aa7a0', on: false },
+// The route line first, then the game's object layers, then the page's own.
+const LAYERS = { route: { name: 'Route line', color: tok('--route-a'), on: true } };
+for (const l of SPEC.layers) LAYERS[l.key] = { name: l.name, color: l.color.startsWith('--') ? tok(l.color) : l.color, on: l.on };
+Object.assign(LAYERS, {
   guide:  { name: 'Guide path', color: '#ffffff', on: true },
   heat:   { name: 'Time spent', color: '#ff4dd2', on: false },
   live:   { name: 'Live objects at frame', color: '#ff9db0', on: true },
   events: { name: 'Event marks', color: '#9fe8ff', on: true },
-};
-const layerOf = cat => ({ coin: 'coins', enemy: 'enemies', pickup: 'pickups', hazard: 'hazards', secret: 'secrets', other: 'terrain', surface: 'terrain' }[cat] || 'misc');
+});
+// An object's layer: the first listing its cat, else the first listing none.
+const CAT_LAYER = {};
+for (const l of SPEC.layers) for (const c of l.cats) if (!(c in CAT_LAYER)) CAT_LAYER[c] = l.key;
+const REST = (SPEC.layers.find(l => !l.cats.length) || {}).key;
+const layerOf = cat => CAT_LAYER[cat] || REST;
+const shown = cat => { const L = LAYERS[layerOf(cat)]; return !!L && L.on; };
 
 function buildMap() {
   const pal = D.palette.map(h => [parseInt(h.slice(1,3),16), parseInt(h.slice(3,5),16), parseInt(h.slice(5,7),16)]);
   map = document.createElement('canvas'); map.width = W; map.height = H;
   const mx = map.getContext('2d'), img = mx.createImageData(W, H), px = img.data, cache = {};
-  const tile = ix => cache[ix] || (cache[ix] = (() => { const s = D.tiles[ix] || ''; const a = new Uint8Array(256); for (let i = 0; i < 256; i++) a[i] = parseInt(s.substr(i*2, 2), 16) || 0; return a; })());
+  const TN = CELL_W * CELL_H;
+  const tile = ix => cache[ix] || (cache[ix] = (() => { const s = D.tiles[ix] || ''; const a = new Uint8Array(TN); for (let i = 0; i < TN; i++) a[i] = parseInt(s.substr(i*2, 2), 16) || 0; return a; })());
   for (let r = 0; r < D.rows; r++) for (let c = 0; c < D.cols; c++) {
     const t = tile(D.body[r * D.cols + c]);
-    for (let y = 0; y < 16; y++) for (let x = 0; x < 16; x++) {
-      const col = pal[t[y*16+x]], o = ((r*16+y) * W + c*16 + x) * 4;
+    for (let y = 0; y < CELL_H; y++) for (let x = 0; x < CELL_W; x++) {
+      const col = pal[t[y*CELL_W+x]], o = ((r*CELL_H+y) * W + c*CELL_W + x) * 4;
       px[o] = col[0]; px[o+1] = col[1]; px[o+2] = col[2]; px[o+3] = 255;
     }
   }
@@ -223,7 +228,7 @@ function buildEvents() {
       const m = text.match(/cell (\d+),(\d+): marker (\d+) → (\d+)/);
       const c = +m[1], r = +m[2], o = objAt.get(c + ',' + r);
       if (!done.has(c + ',' + r)) done.set(c + ',' + r, k);
-      const cx = c*16 + 8, cy = r*16 + 8;
+      const cx = c*CELL_W + CELL_W/2, cy = r*CELL_H + CELL_H/2;
       if (!o) { EV.push({k, x: cx, y: cy, type: 'other', text}); continue; }
       const cat = o[3], name = o[4];
       if (cat === 'secret') { if (k - lastSecret > 20) EV.push({k, x: cx, y: cy, type: 'secret', text: 'secret wall opened at ' + c + ',' + r}); lastSecret = k; continue; }
@@ -234,12 +239,12 @@ function buildEvents() {
     } else EV.push({k, x: x + FX, y: y + FY, type: kind, text});
   }
   EV.sort((a, b) => a.k - b.k);
-  // Frames the frog spent per cell (the planner's cell: (x+$17)/16, (y-$10)/16).
+  // Frames the character spent per cell (the planner's cell).
   heat = new Uint32Array(D.cols * D.rows); heatMax = 1;
   const heatEnd = D.inputs_end != null ? Math.min(END, D.inputs_end) : END;
-  for (let k = 0; k <= heatEnd; k++) { const p = D.track[k], c = Math.floor((p[0]+0x17)/16), r = Math.floor((p[1]-16)/16); if (c >= 0 && r >= 0 && c < D.cols && r < D.rows) { const i = r*D.cols+c; heat[i]++; if (heat[i] > heatMax) heatMax = heat[i]; } }
+  for (let k = 0; k <= heatEnd; k++) { const [c, r] = cellOf(D.track[k]); if (c >= 0 && r >= 0 && c < D.cols && r < D.rows) { const i = r*D.cols+c; heat[i]++; if (heat[i] > heatMax) heatMax = heat[i]; } }
   segBreak = new Uint8Array(END + 1);
-  for (let k = 1; k <= END; k++) { const a = D.track[k-1], b = D.track[k]; if (Math.abs(a[0]-b[0]) > 48 || Math.abs(a[1]-b[1]) > 48) segBreak[k] = 1; }
+  for (let k = 1; k <= END; k++) { const a = D.track[k-1], b = D.track[k]; if (Math.abs(a[0]-b[0]) > 3*CELL_W || Math.abs(a[1]-b[1]) > 3*CELL_H) segBreak[k] = 1; }
 }
 
 // ---------- view ----------
@@ -268,16 +273,16 @@ function draw() {
   const u = 1/scale, S = Math.max(3.2, 4*u);
   if (LAYERS.heat.on && heat) {
     const lm = Math.log(heatMax + 1);
-    for (let i = 0; i < heat.length; i++) if (heat[i]) { cx.fillStyle = `rgba(255,77,210,${(0.12 + 0.78 * Math.log(heat[i] + 1) / lm).toFixed(3)})`; cx.fillRect((i % D.cols) * 16, Math.floor(i / D.cols) * 16, 16, 16); }
+    for (let i = 0; i < heat.length; i++) if (heat[i]) { cx.fillStyle = `rgba(255,77,210,${(0.12 + 0.78 * Math.log(heat[i] + 1) / lm).toFixed(3)})`; cx.fillRect((i % D.cols) * CELL_W, Math.floor(i / D.cols) * CELL_H, CELL_W, CELL_H); }
   }
 
   for (const o of D.objects) {
     const [c, r, m, cat, name] = o, L = layerOf(cat);
-    if (!LAYERS[L].on) continue;
-    const x = c*16+8, y = r*16+8, took = done.has(c+','+r) && done.get(c+','+r) <= frame;
+    if (!shown(cat)) continue;
+    const x = c*CELL_W+CELL_W/2, y = r*CELL_H+CELL_H/2, took = done.has(c+','+r) && done.get(c+','+r) <= frame;
     cx.lineWidth = Math.max(1, 1.4*u);
-    if (cat === 'hazard') { cx.fillStyle = 'rgba(255,138,61,.45)'; cx.fillRect(c*16, r*16, 16, 16); cx.strokeStyle = tok('--hazard'); cx.strokeRect(c*16+.5, r*16+.5, 15, 15); continue; }
-    if (cat === 'secret') { cx.strokeStyle = took ? 'rgba(199,146,255,.35)' : tok('--secret'); cx.setLineDash([3,2]); cx.strokeRect(c*16+1, r*16+1, 14, 14); cx.setLineDash([]); continue; }
+    if (cat === 'hazard') { cx.fillStyle = 'rgba(255,138,61,.45)'; cx.fillRect(c*CELL_W, r*CELL_H, CELL_W, CELL_H); cx.strokeStyle = tok('--hazard'); cx.strokeRect(c*CELL_W+.5, r*CELL_H+.5, CELL_W-1, CELL_H-1); continue; }
+    if (cat === 'secret') { cx.strokeStyle = took ? 'rgba(199,146,255,.35)' : tok('--secret'); cx.setLineDash([3,2]); cx.strokeRect(c*CELL_W+1, r*CELL_H+1, CELL_W-2, CELL_H-2); cx.setLineDash([]); continue; }
     const col = LAYERS[L].color;
     cx.strokeStyle = col; cx.fillStyle = col;
     cx.beginPath();
@@ -308,8 +313,8 @@ function draw() {
 
   if (LAYERS.guide.on && D.guide && D.guide.length) {
     cx.setLineDash([6*u, 4*u]); cx.strokeStyle = 'rgba(255,255,255,.85)'; cx.lineWidth = Math.max(1.2, 1.8*u);
-    cx.beginPath(); D.guide.forEach((g, i) => { const x = g[0]*16+8, y = g[1]*16+8; if (i) cx.lineTo(x, y); else cx.moveTo(x, y); }); cx.stroke(); cx.setLineDash([]);
-    for (const g of D.guide) { cx.beginPath(); cx.arc(g[0]*16+8, g[1]*16+8, Math.max(1.6, 2.2*u), 0, 7); if (g[3]) { cx.strokeStyle = '#fff'; cx.lineWidth = Math.max(.8, 1*u); cx.stroke(); } else { cx.fillStyle = '#fff'; cx.fill(); } }
+    cx.beginPath(); D.guide.forEach((g, i) => { const x = g[0]*CELL_W+CELL_W/2, y = g[1]*CELL_H+CELL_H/2; if (i) cx.lineTo(x, y); else cx.moveTo(x, y); }); cx.stroke(); cx.setLineDash([]);
+    for (const g of D.guide) { cx.beginPath(); cx.arc(g[0]*CELL_W+CELL_W/2, g[1]*CELL_H+CELL_H/2, Math.max(1.6, 2.2*u), 0, 7); if (g[3]) { cx.strokeStyle = '#fff'; cx.lineWidth = Math.max(.8, 1*u); cx.stroke(); } else { cx.fillStyle = '#fff'; cx.fill(); } }
   }
   if (LAYERS.events.on) for (const e of EV) {
     const t = EVT[e.type]; if (!t || !t.on) continue;
@@ -329,7 +334,7 @@ function draw() {
     for (const s of L) {
       if (s[2] === 'coin') continue;
       cx.strokeStyle = s[4] === 'enemy' ? '#ff9db0' : '#ffe9a8'; cx.lineWidth = Math.max(1, 1.6*u);
-      cx.strokeRect(s[0] - 2, s[1] - 14, 20, 18);
+      cx.strokeRect(s[0] + LB[0], s[1] + LB[1], LB[2], LB[3]);
     }
   }
 
@@ -361,13 +366,13 @@ const toLevel = e => { const r = box.getBoundingClientRect(); return [(e.clientX
 function nearest(lx, ly) {
   const rad = Math.max(8, 10/scale); let best = null, bd = rad*rad;
   for (const e of EV) { const t = EVT[e.type]; if (!LAYERS.events.on || !t || !t.on) continue; const d = (e.x-lx)**2 + (e.y-ly)**2; if (d < bd) { bd = d; best = { ev: e }; } }
-  if (!best) { const c = Math.floor(lx/16), r = Math.floor(ly/16), o = objAt.get(c+','+r); if (o && LAYERS[layerOf(o[3])].on) best = { obj: o }; }
+  if (!best) { const c = Math.floor(lx/CELL_W), r = Math.floor(ly/CELL_H), o = objAt.get(c+','+r); if (o && shown(o[3])) best = { obj: o }; }
   return best;
 }
 function hover(e) {
   const [lx, ly, sx, sy] = toLevel(e), n = nearest(lx, ly);
-  const hc = Math.floor(lx/16), hr = Math.floor(ly/16), hi = hr*D.cols+hc;
-  let html = `${D.level}:${hc},${hr}` + (heat && heat[hi] ? ` · frog here ${heat[hi]} frames` : '');
+  const hc = Math.floor(lx/CELL_W), hr = Math.floor(ly/CELL_H), hi = hr*D.cols+hc;
+  let html = `${D.level}:${hc},${hr}` + (heat && heat[hi] ? ` · ${esc(SPEC.actor)} here ${heat[hi]} frames` : '');
   if (LAYERS.guide.on && D.guide) { const g = D.guide.find(g => g[0] === hc && g[1] === hr); if (g) html += `<br>guide point${g[2] != null ? ' t ' + g[2] + ' s' : ''}${g[3] ? ' (estimated)' : ''}`; }
   if (n && n.ev) html = `frame ${n.ev.k} · ${(n.ev.k/50).toFixed(1)} s<br>${esc(n.ev.text)}`;
   else if (n && n.obj) { const o = n.obj, k = done.get(o[0]+','+o[1]); html = `${D.level}:${o[0]},${o[1]} · ${esc(o[4])} (marker ${o[2]})<br>${k != null ? 'route got it at frame ' + k : 'route never touched it'}`; }
@@ -390,7 +395,7 @@ function setFrame(k, fromPlay) {
   if (!D) return;
   frame = Math.max(0, Math.min(END, k|0)); scrub.value = frame;
   const p = D.track[frame];
-  readout.innerHTML = `frame <b>${frame}</b> / ${END} · <b>${(frame/50).toFixed(1)}</b> s · input <b>${joy(D.inputs[frame])}</b> · ${D.level}:${Math.floor((p[0]+0x17)/16)},${Math.floor((p[1]-16)/16)}`;
+  readout.innerHTML = `frame <b>${frame}</b> / ${END} · <b>${(frame/50).toFixed(1)}</b> s · input <b>${joy(D.inputs[frame])}</b> · ${D.level}:${cellOf(p).join(',')}`;
   if (follow || !fromPlay && !inView()) { const [x,y] = fp(frame); centerOn(x,y); }
   draw(); markRow();
 }
@@ -530,7 +535,7 @@ async function select(id) {
   try { data = await loadData(e); } catch (err) { ld.textContent = err.message; return; }
   if (current !== e.id) return;
   ld.hidden = true;
-  D = data; W = D.cols * 16; H = D.rows * 16; END = D.track.length - 1;
+  D = data; W = D.cols * CELL_W; H = D.rows * CELL_H; END = D.track.length - 1;
   scrub.max = END;
   buildMap(); buildEvents(); buildFilters(); rows(); buildStats(e);
   document.getElementById('sub').textContent = `${e.route_file || 'no route file'} · replayed on the engine · seed ${D.seed} · ${END + 1} frames` + (D.timing !== 'app' ? ` · timed for the original, so the replay may drift` : '') + (D.guide ? ` · guide ${D.guide_file} (${D.guide.length} points, hollow = estimated)` : '');

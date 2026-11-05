@@ -1,5 +1,4 @@
-//! Just enough JSON to write the page's data: `serde_json` is not in the workspace (sf-bench
-//! `results.rs` reads and writes its lines by hand for the same reason).
+//! Just enough JSON to write the page's data, by hand, so the crate needs no dependency.
 
 /// `s` as the inside of a JSON string. `</` is written `<\/`, so the text can sit inside a
 /// `<script>` element without closing it.

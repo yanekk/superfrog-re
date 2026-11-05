@@ -185,6 +185,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "amiga-routeview"
+version = "0.1.0"
+
+[[package]]
 name = "android-activity"
 version = "0.6.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3071,6 +3075,7 @@ dependencies = [
 name = "sf-routeview"
 version = "0.1.0"
 dependencies = [
+ "amiga-routeview",
  "sf-assets",
  "sf-bench",
  "sf-conform",
