@@ -54,7 +54,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T19 | map-page | T11, T18 | ⬜ | |
 | T20 | planner-level-1 | T11, T17, T19 | ⬜ | |
 | T21 | object-meanings | T05, T06, T32 | ✅ | |
-| T49 | translate-objects | T21, T38, T40 | 🔍 | No-op as T21 measured: no dispatch-only routines, so no generator, no batch run, $0. Checked all 36 object routines have T40 results; non-pass ones already under T25, T52. Docs/11 section added. Deviation: no tests written, none to write; `ported.rs` already enforces the listing. |
+| T49 | translate-objects | T21, T38, T40 | ✅ | Review clean, no fix commit. No dispatch-only object routines (T21; T34 found no `jsr (an)` in the tree), so $0 and no generator. Probe recounted 36 routines against T40's table: 33 pass, three by hand under T25, T52. Mutation: an unknown routine in `objects-W1-1.toml` turns `ported.rs` red. |
 | T22 | collectibles | T11, T20, T21, T40, T49 | ⬜ | |
 | T23 | lives-and-game-over | T11, T13, T14, T20 | ⬜ | |
 | T24 | enemies | T20, T21, T22, T23 | ⬜ | |
