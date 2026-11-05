@@ -1,7 +1,7 @@
 //! The workspace's purity test: the guard on the pure/shell boundary and on embedded tables
 //! (plans/forest-dumb-start DESIGN §3.1), written from the first game's and the toolkit's with this
 //! workspace's lists. Each workspace runs its own, from that workspace alone; the toolkit's checks
-//! the toolkit crates' sources, so this one scans `fd-core`'s.
+//! the toolkit crates' sources, so this one scans the pure crates' (`PURE`).
 //!
 //! The pure crates must not read a clock, touch a file, socket, thread, environment or process, use
 //! floating point or a randomly-seeded hash map, or carry an integer table of more than 16 elements
@@ -14,13 +14,14 @@
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
-const PURE: [&str; 1] = ["fd-core"];
+const PURE: [&str; 2] = ["fd-core", "fd-assets"];
 
 /// Crates a pure crate may depend on (normal and build edges, transitively). Each entry beyond the
 /// pure crates needs one line saying why it is pure. The two toolkit crates' sources are scanned by
 /// the toolkit's own purity test.
 const ALLOWED: &[&str] = &[
     "fd-core",
+    "fd-assets",
     "amiga-clock",
     "amiga-input",
     // amiga-input's save-state derive: serde's traits and derive. The derive runs at compile time
@@ -406,7 +407,7 @@ fn the_real_pure_crates_pass() {
     }
     assert!(
         files.len() >= 3,
-        "found only {} source files in fd-core",
+        "found only {} source files in the pure crates",
         files.len()
     );
     let mut violations = Vec::new();

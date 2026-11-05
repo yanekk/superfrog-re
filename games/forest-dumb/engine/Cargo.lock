@@ -112,12 +112,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "fd-assets"
+version = "0.1.0"
+
+[[package]]
 name = "fd-conform"
 version = "0.1.0"
 dependencies = [
  "amiga-conform",
  "amiga-disk",
  "amiga-oracle",
+ "fd-assets",
  "fd-core",
  "fd-tools",
 ]
