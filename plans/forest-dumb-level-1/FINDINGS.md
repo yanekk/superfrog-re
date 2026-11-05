@@ -6,6 +6,7 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-11-05 | 🐞 | T50: sf-e2e `os_layer_scale_and_fullscreen_through_the_menu_bar_and_its_shortcut` fails three runs of three, each at another wait (3×, fullscreen, ⌃⌘F), on a 1920×1080 display. Timing or screen size, not a stale assertion; left alone. |
 | 2026-11-05 | 📌 | T51 to T56 added (owner): T34 counted T08 21 routines, T24 17, T35 20, T38 21, over §4.3's 15; `redraw_edge_a..d` run from `main_loop`, outside `game_frame`, 14 routines. Siblings take them; shares in `games/forest-dumb/docs/11-translation.md`. |
 | 2026-11-05 | 🐞 | T34: `re_listing.py`'s linear sweep loses step after data in code; 7 of `game_frame`'s call targets fall inside an instruction. `tools/call_tree.py` decodes from each reached address. `h0+$513c` clamps `camera_y` to `$53f`, not T00's `$52f`. |
 | 2026-11-05 | 📌 | T34: `char_probe` (199), `h0_5e44` (200), `h0_62b6` (224), `redraw_edge_c` (181) are over 180 in their own flow, so T33 answers `too-big`; T08, T52, T25 and T55 translate them by hand. |
