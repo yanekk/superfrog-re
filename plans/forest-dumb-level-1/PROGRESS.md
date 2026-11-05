@@ -4,9 +4,10 @@
 
 **Plan reviewed:** 2026-11-01 — 15 fixed, 6 decided with the user
 **Amended:** 2026-11-03 — the first game's lessons: porting rulebook, port register and coverage, T31 added (owner)
-**Amended:** 2026-11-05 — translation by Muse and small sessions (brief): T32 to T48 added; T06, T08 to T11, T22, T24, T25, T27 reshaped (owner). Not yet read back.
+**Amended:** 2026-11-05 — translation by Muse and small sessions (brief): T32 to T48 added; T06, T08 to T11, T22, T24, T25, T27 reshaped (owner).
+**Amendment reviewed:** 2026-11-05 — 15 fixed, 4 decisions open with the owner
 
-**Status:** Plan amended; the 2026-11-05 amendment awaits its read-back. Nothing built.
+**Status:** Amendment read back; 4 decisions await the owner (see the plan-review commit). Nothing built.
 **Last updated:** 2026-11-05
 **Next `pir-work` will:** T00 and T32, because every level task rests on T00's measurements and every port on T32's rig.
 
@@ -39,7 +40,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T09 | camera-scroll | T07, T40 | ⬜ | |
 | T10 | level-drawing | T08, T09, T40 | ⬜ | |
 | T41 | case-run-jump | T08, T09 | ⬜ | |
-| T42 | case-walls-pits | T08, T09 | ⬜ | |
+| T42 | case-walls-pits | T08, T09, T41 | ⬜ | |
 | T43 | case-scroll | T08, T09 | ⬜ | |
 | T44 | case-picture | T10 | ⬜ | |
 | T11 | character-cases | T01, T41, T42, T43, T44 | ⬜ | |

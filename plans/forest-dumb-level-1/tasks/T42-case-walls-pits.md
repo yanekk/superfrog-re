@@ -1,6 +1,6 @@
 # T42 — case-walls-pits
 
-**Phase:** 2 · **Depends on:** T08, T09 · **Weight:** medium
+**Phase:** 2 · **Depends on:** T08, T09, T41 · **Weight:** medium
 
 ## Goal
 The character agrees with the original against walls, pits, slopes and the level edges. This is frame-matching work, one group of cases in its own session, because the first game's character builder died in this loop with porting still in its context (owner, 2026-11-05; DESIGN §4.3). A difference is fixed in the engine, never in the comparison; a fix to a routine port carries a rig test that fails without it.

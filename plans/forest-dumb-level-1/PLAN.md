@@ -78,7 +78,7 @@ T34 assigns every routine a generator batch and a porting task, and asks the own
 | [T09](tasks/T09-camera-scroll.md) | camera-scroll | T07, T40 |
 | [T10](tasks/T10-level-drawing.md) | level-drawing | T08, T09, T40 |
 | [T41](tasks/T41-case-run-jump.md) | case-run-jump | T08, T09 |
-| [T42](tasks/T42-case-walls-pits.md) | case-walls-pits | T08, T09 |
+| [T42](tasks/T42-case-walls-pits.md) | case-walls-pits | T08, T09, T41 |
 | [T43](tasks/T43-case-scroll.md) | case-scroll | T08, T09 |
 | [T44](tasks/T44-case-picture.md) | case-picture | T10 |
 | [T11](tasks/T11-character-cases.md) | character-cases | T01, T41, T42, T43, T44 |

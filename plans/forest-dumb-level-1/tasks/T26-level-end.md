@@ -7,7 +7,7 @@ The original's end-of-level sequence, then the "Level 1 complete" message until 
 ## Design sections this implements
 §2.5.
 ## Reuses
-`next_world` (`docs/07`), T00's end reading, the status font if suitable; plain `Scene`.
+`next_world` (`docs/07`), T00's end reading, the status font if suitable; plain `Scene`; T40's ports and T33's service for the routines `re/translate.toml` gives T26, proven on T32's rig.
 ## Files
 `fd-core/src/{scene.rs,level_end.rs}`, `fd-core/src/render/message.rs`, `fd-app/src/main.rs`, `fd-plan/src/game.rs` (`playing`), `engine/conform/cases/level-end.toml`, `fd-conform/tests/level_end.rs`, `fd-e2e/tests/level_end.rs`, `smoke.toml`.
 ## Interface

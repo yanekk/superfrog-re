@@ -7,7 +7,7 @@ Losing a life, the original's game over screen, and restart with full lives and 
 ## Design sections this implements
 §2.4.
 ## Reuses
-`game_over_screen` (`docs/07`), T00's readings, `Scene`.
+`game_over_screen` (`docs/07`), T00's readings, `Scene`; T40's ports and T33's service for the routines `re/translate.toml` gives T23, proven on T32's rig.
 ## Files
 `fd-core/src/{scene.rs,game_over.rs,character/death.rs}`, `fd-app/src/main.rs`, `fd-plan/src/game.rs` (`lives`, `dying`, `health`), `engine/conform/cases/death-*.toml`, `fd-conform/tests/death.rs`, `fd-e2e/tests/game_over.rs`, `smoke.toml`.
 ## Interface

@@ -161,7 +161,7 @@ A crucial feature adds its smoke test and `[[area]]` in `games/forest-dumb/smoke
 
 - The port register `fd-core/src/ported.rs` lists every original routine ported, by hunk and offset, with its Rust function; each entry matches a `func` in `re/symbols.toml`. A second entry for one address fails (T32). Porting tasks only append to it. An object value with no registered kind raises `Event::Unported`, which fails every case (T07); the app writes it to stderr and leaves the object out. Parallel ports of one routine and unported objects skipped unseen were the first game's most repeated silent gaps.
 - A case fails when it compares nothing, and a level case states its `goal`; agreement that misses the goal fails (T06), because two sides failing alike agree.
-- Coverage: each run reports how often the original executed each registered routine, from T31's counter. A ported routine with no hits in any case is not proven; The frame-matching task of each porting task shows its routines' hits (T41 to T47), T11 the character's together, T48 all.
+- Coverage: each run reports how often the original executed each registered routine, from T31's counter. A ported routine with no hits in any case is not proven. The frame-matching task of each porting task shows its routines' hits (T41 to T47), T11 the character's together, T48 all.
 - The routine rig compares returned registers and hardware writes, not memory only (T32).
 
 ### 4.2 The base branch stays green
@@ -177,7 +177,7 @@ From `games/forest-dumb/docs/level-1-brief.md`, "Translation by Muse, and sessio
 - One unattended batch (T40) runs the service over `game_frame`'s call tree before any porting task starts. Generators are written per subsystem (T35 to T39) and reviewed. A pass is only as strong as the states it ran on, so the reviewer looks for branches no state reaches.
 - A porting task (T08, T09, T10, T22, T24, T25) turns literal ports into engine code on typed state and proves each on the rig. It holds one subsystem's routines, at most about 1 500 instructions or 15 routines of original code. That figure is a planning estimate; T34 and T21 measure each task's share and ask the owner to add tasks over it.
 - Whole-run agreement is its own task per group of cases (T41 to T48), never the porting task's.
-- Auto-compact stays on in every session.
+- Auto-compact stays on in every session: `autoCompactEnabled` is true in `~/.claude/settings.json` and pir's engine sets nothing that overrides it (checked 2026-11-05).
 - Raw ports, listings and prompts derive from the game's code and stay in `build/`. What lands in `fd-core` is the engine-shaped port.
 - The run's conversation logs are kept for measuring tokens per activity afterwards. pir deletes `plans/forest-dumb-level-1/.parallel/control/conversations/` in the main checkout only when the run is removed from the dashboard, and nothing archives them, so they are copied out before that (§5.3, §6).
 
@@ -234,7 +234,7 @@ Never run the unbounded version of any of these to find something out.
 |---|---|---|---|---|---|---|
 | Fetch a crates.io dependency on the policy above | `cargo build` | `worker` | Public read-only fetch, recorded in `Cargo.lock` | Revert the lockfile | none | none |
 | Fetch and build vAmiga at the pinned commit | `toolkit/tools/setup/oracle.sh` | `worker` | Public fetch into a local cache; already built here | `rm -rf ~/.cache/amiga-toolkit/vamiga` | none | none |
-| Translate one routine through Muse (T33, porting tasks) | `python3 -I games/forest-dumb/tools/translate.py <routine> --gen <name> --max-usd 0.10` | `worker` | Paid but capped at cents; sending the game's code to Meta was accepted by the owner on 2026-11-04 | Spend stops at the cap; code sent cannot be recalled | under $0.01 a call, $0.10 cap | `no-key` result names where it looked |
+| Translate one routine through Muse (T33, T35 to T39, porting tasks) | `python3 -I games/forest-dumb/tools/translate.py '<routine>' --gen <name> --max-usd 0.10` | `worker` | Paid but capped at cents; sending the game's code to Meta was accepted by the owner on 2026-11-04 | Spend stops at the cap; code sent cannot be recalled | under $0.01 a call, $0.10 cap | `no-key` result names where it looked |
 | Batch translation over `game_frame`'s call tree (T40) | `python3 -I games/forest-dumb/tools/translate_batch.py --max-usd 5` | `worker` | One unattended run spending dollars; owner moved it from `ask` (2026-11-05) so it can run unattended, a night run included | Spend stops at the cap; ports regenerate; code sent cannot be recalled | a few dollars, $5 cap | as above |
 | Keep the run's conversation logs (finish, before Remove) | `mkdir -p ~/.cache/superfrog-re/runs/forest-dumb-level-1 && cp -R <main checkout>/plans/forest-dumb-level-1/.parallel/control/conversations ~/.cache/superfrog-re/runs/forest-dumb-level-1/` | `worker` | Local copy | Delete the copy | none | none |
 

@@ -11,7 +11,7 @@ The spike's call-tree scan (about 8 300 instructions with callees), `tools/re_li
 ## Files
 `games/forest-dumb/re/translate.toml`, `games/forest-dumb/docs/11-translation.md` (inventory section), `games/forest-dumb/tools/call_tree.py`, `games/forest-dumb/tools/test_call_tree.py`, `smoke.toml`.
 ## Interface
-`re/translate.toml`, one entry a routine: `name`, `hunk`, `offset`, `instructions` (with callees), `subsystem` (`character`, `camera`, `drawing`, `objects`, `rest`, `sound`), `gen_task` (T35 to T39), `port_task` (T08, T09, T10, T22, T24, T25 or an added one), `split_at` (the callees it is split at when over 180 instructions). Addresses and sizes only; no listing text.
+`re/translate.toml`, one entry a routine: `name`, `hunk`, `offset`, `instructions` (with callees), `subsystem` (`character`, `camera`, `drawing`, `objects`, `rest`, `sound`), `gen_task` (T35 to T39), `port_task` (T08, T09, T10, T22, T23, T24, T25, T26 or an added one), `split_at` (the callees it is split at when over 180 instructions). Addresses and sizes only; no listing text.
 ## Tests
 - [ ] Every `bsr`/`jsr` target reachable from `game_frame` has an entry or a reason (`sound`, a Kickstart call, an indirect jump named as such).
 - [ ] No entry is over 180 instructions without `split_at`; each split piece is its own entry.
