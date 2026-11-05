@@ -6,6 +6,7 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-11-05 | 📌 | T57 review: in fullscreen `os_window` (toolkit `amiga-e2e/src/os.rs`) can return a 1920×32 layer-0 strip at y −32, seen 625 ms in; `find` takes the first layer-0 window. Harmless while the wait passes on its first sample. Not fixed. |
 | 2026-11-05 | 🐞 | T57: every red of `os_layer_scale_and_fullscreen…` was a locked screen (front app `loginwindow`): scaling still works, fullscreen never happens. `os_layer()` now refuses a locked screen (`CGSSessionScreenIsLocked`); unlocked, five of five pass, waits under 0.8 s. |
 | 2026-11-05 | 🐞 | T37: `translate.py`'s `flow_text` reads the linear listing, so `h0_2c7e`, `h0_2d4c`, `h0_5820`, `h0_94ba` stop with "has no label" (exit 2) and `h0_62b6` extracts 37 of 224 instructions. T40 meets this; `call_tree.py` decodes correctly. |
 | 2026-11-05 | 📌 | T37 live call, worker action: `translate.py 'h0+$9754' --gen h0_9754` passed on try 1: 2 177 tokens in, 8 052 out, $0.0018, 81 s, 2 paths. |
