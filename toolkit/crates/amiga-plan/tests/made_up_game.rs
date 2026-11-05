@@ -33,11 +33,22 @@ struct Grid {
     playing: bool,
     lives: i16,
     dying: bool,
+    /// The pit ends the life (`dying`); else it takes a life and the player walks on, so only the
+    /// planner's count of lives keeps a route out of it.
+    pit_kills: bool,
 }
+
+/// A pit on the straight way to the exit, and a way round it above.
+const ROUND_THE_PIT: [&str; 5] = ["#######", "#.....#", "#.###.#", "#S.x.E#", "#######"];
 
 impl Grid {
     fn new() -> (Grid, Facts) {
-        let map: Vec<Vec<u8>> = LEVEL.iter().map(|r| r.bytes().collect()).collect();
+        Grid::on(&LEVEL)
+    }
+
+    /// The game on `level`; with no collectible in it, the exit counts at once.
+    fn on(level: &[&str]) -> (Grid, Facts) {
+        let map: Vec<Vec<u8>> = level.iter().map(|r| r.bytes().collect()).collect();
         let find = |b: u8| -> Vec<Cell> {
             (0..map.len())
                 .flat_map(|r| (0..map[r].len()).map(move |c| (c, r)))
@@ -54,12 +65,13 @@ impl Grid {
         };
         let g = Grid {
             at: find(b'S')[0],
+            taken: facts.collectibles.is_empty(),
             map: Arc::new(map),
-            taken: false,
             pressed: false,
             playing: true,
             lives: 3,
             dying: false,
+            pit_kills: true,
         };
         (g, facts)
     }
@@ -102,7 +114,7 @@ impl PlanGame for Grid {
         match self.tile(to) {
             b'x' => {
                 self.lives -= 1;
-                self.dying = true;
+                self.dying = self.pit_kills;
             }
             b's' => self.pressed = true,
             b'c' => self.taken = true,
@@ -161,11 +173,15 @@ fn run(threads: usize) -> RunOptions {
 /// Plans the grid to its exit with `compass` on `threads` threads, and checks the route on a fresh
 /// game: the exit reached with the collectible and the switch, no life lost.
 fn solve(compass: Compass, threads: usize) -> Vec<FrameInput> {
-    let (start, facts) = Grid::new();
+    solve_on(Grid::new(), compass, threads)
+}
+
+fn solve_on((start, facts): (Grid, Facts), compass: Compass, threads: usize) -> Vec<FrameInput> {
     let opt = Options {
         compass,
         ..Options::default()
     };
+    let gated = facts.gates.iter().any(|g| !g.is_empty());
     let route = match plan_engine(start.clone(), facts, opt, &run(threads)) {
         Ok(r) => r,
         Err((_, why)) => panic!("no route: {why:?}"),
@@ -175,7 +191,7 @@ fn solve(compass: Compass, threads: usize) -> Vec<FrameInput> {
         g.step(x);
     }
     assert!(!g.playing, "the route ends at the exit");
-    assert!(g.taken && g.pressed);
+    assert!(g.taken && (g.pressed || !gated));
     assert_eq!(g.lives, 3, "no life lost");
     let mut f = 0;
     assert_eq!(
@@ -193,6 +209,17 @@ fn the_grid_is_solved_with_the_straight_compass() {
 #[test]
 fn the_grid_is_solved_with_the_walk_compass() {
     solve(Compass::Walk, 2);
+}
+
+/// A pit the player walks on through still costs a life, so the planner never keeps a route
+/// through it, though it is the straight way: it goes round (`solve_on` checks no life is lost).
+#[test]
+fn a_route_through_a_pit_that_takes_a_life_is_not_kept() {
+    for compass in [Compass::Straight, Compass::Walk] {
+        let (mut g, facts) = Grid::on(&ROUND_THE_PIT);
+        g.pit_kills = false;
+        solve_on((g, facts), compass, 2);
+    }
 }
 
 /// The same seed gives the same route on any thread count.
