@@ -25,6 +25,8 @@
 //! [`game_frame`] runs them after the character and camera until then.
 
 pub mod camera;
+pub mod collision;
+pub mod redraw;
 
 use amiga_input::FrameInput;
 use fd_assets::Level;

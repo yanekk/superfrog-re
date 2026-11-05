@@ -43,6 +43,21 @@ pub const PORTED: &[Ported] = &[
     port("h0_526a", 0x526a, "level::camera::Camera::scroll"),
     port("h0_52d8", 0x52d8, "level::camera::Camera::scroll"),
     port("h0_5346", 0x5346, "level::camera::Camera::scroll"),
+    // T55, the edge redraws (level/redraw.rs).
+    port("h0_774", 0x774, "level::redraw::tile_blit"),
+    port("h0_7cc", 0x7cc, "level::redraw::shape_copy"),
+    port("redraw_edge_a", 0x844, "level::redraw::Edges::redraw_below"),
+    port("h0_a06", 0xa06, "level::redraw::bob_below"),
+    port("redraw_edge_b", 0xb20, "level::redraw::Edges::redraw_above"),
+    port("h0_ce4", 0xce4, "level::redraw::bob_above"),
+    port("redraw_edge_c", 0xdf6, "level::redraw::Edges::redraw_left"),
+    port("h0_104c", 0x104c, "level::redraw::bob_left"),
+    port("redraw_edge_d", 0x114a, "level::redraw::Edges::redraw_right"),
+    port("h0_1390", 0x1390, "level::redraw::bob_right"),
+    port("h0_3ac2", 0x3ac2, "level::redraw::blitter_wait"),
+    port("h0_681c", 0x681c, "level::redraw::CreatureSlots::start"),
+    port("h0_6852", 0x6852, "level::redraw::CreatureSlots::fill"),
+    port("h0_6882", 0x6882, "level::redraw::AnimatedCells::add"),
 ];
 
 /// A hunk 0 routine's entry.
