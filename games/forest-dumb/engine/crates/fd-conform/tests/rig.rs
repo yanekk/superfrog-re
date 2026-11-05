@@ -423,13 +423,11 @@ fn a_hand_port_of_the_tile_blit_passes() {
 }
 
 /// Each of the spike's routines and its entry.
-const SPIKE: [(&str, u32); 9] = [
+const SPIKE: [(&str, u32); 7] = [
     ("h0+$24ce", h(0, 0x24ce)),
     ("h0+$2dd6", h(0, 0x2dd6)),
     ("h0+$2fae", h(0, 0x2fae)),
     ("h0+$774", h(0, 0x774)),
-    ("redraw_edge_a", h(0, 0x844)),
-    ("redraw_edge_b", h(0, 0xb20)),
     ("h0+$3adc", h(0, 0x3adc)),
     ("h0+$3b2a", h(0, 0x3b2a)),
     ("h4+$18870", h(4, 0x1_8870)),

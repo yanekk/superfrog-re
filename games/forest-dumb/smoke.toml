@@ -51,6 +51,14 @@ workspace = "engine"
 "crates/fd-conform/tests/gen_objects.rs" = "smoke"
 # T39: the rest generators, game_frame over the cached sync point's RAM, every branch both ways: about 2 s warm.
 "crates/fd-conform/tests/gen_rest.rs" = "smoke"
+# T56: the edge redraws' generators, the 2 000-state survey, the write check and the beam sync, about 4 s.
+# each_branch_goes_both_ways_or_is_named (about 55 s, three runs a branch) stays in full.
+"crates/fd-conform/tests/gen_edge_redraw.rs" = [
+    "every_t56_entry_has_its_generator_and_its_lists",
+    "each_generator_runs_2000_states_on_the_original_with_no_hang",
+    "no_generator_writes_outside_what_its_routine_reads",
+    "the_beam_sync_sets_the_raster_and_runs_repeat",
+]
 # Three boots to W1-1, about 32 s together: the measurements of docs/09-play-measured.md.
 "crates/fd-conform/tests/play_measured.rs" = "full"
 # One boot to W1-1 (title and play), 12 to 27 s: picture_in on the whole play picture (T04).

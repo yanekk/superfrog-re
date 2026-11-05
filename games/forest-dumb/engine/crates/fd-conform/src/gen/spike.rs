@@ -2,7 +2,8 @@
 //! carried over unchanged in what they set, named as in `re/symbols.toml` or by address. What each
 //! routine reads is the spike's reading of the listing, not a measurement: a generator task that
 //! takes one of these routines over checks it against the listing and its paths, and moves it out
-//! of here: T37 took `char_sprite_position` and `h0+$9754` (now `h0_9754`) into `drawing.rs`.
+//! of here: T37 took `char_sprite_position` and `h0+$9754` (now `h0_9754`) into `drawing.rs`, T56
+//! `redraw_edge_a` and `redraw_edge_b` into `edge_redraw.rs`.
 
 use super::{Gen, Generator, Setup, h};
 
@@ -33,20 +34,6 @@ pub const ALL: &[(&str, Generator)] = &[
         Generator {
             base: Some(screens),
             case: tile_blit,
-        },
-    ),
-    (
-        "redraw_edge_a",
-        Generator {
-            base: Some(screens_and_map),
-            case: map_edge,
-        },
-    ),
-    (
-        "redraw_edge_b",
-        Generator {
-            base: Some(screens_and_map),
-            case: map_edge,
         },
     ),
     (
@@ -185,19 +172,6 @@ fn tile_blit(g: &mut Gen) -> Setup {
     s
 }
 
-/// redraw_edge_a, redraw_edge_b: the camera's scroll position in h0+$1e66/$1e68.
-fn map_edge(g: &mut Gen) -> Setup {
-    let mut s = Setup::random(g);
-    s.w(h(0, 0x1e66), g.below(0x900) as u16);
-    let x = if g.one_in(8) {
-        g.next() as u16
-    } else {
-        g.below(0x600) as u16
-    };
-    s.w(h(0, 0x1e68), x);
-    s
-}
-
 /// h0+$3b2a: the collision register, then the objects against the player.
 fn char_hit_check(g: &mut Gen) -> Setup {
     let mut s = Setup::random(g);
@@ -251,21 +225,5 @@ fn screens(mem: &mut [u8]) {
     let mut g = Gen::new(0x5EED);
     for b in &mut mem[h(3, 0) as usize..h(3, 0x3_aa28) as usize] {
         *b = g.next() as u8;
-    }
-}
-
-/// [`screens`], and the map's words at h0+$16318: tile numbers, mostly below $100.
-fn screens_and_map(mem: &mut [u8]) {
-    screens(mem);
-    let mut g = Gen::new(0x5EED_0001);
-    for (i, b) in mem[h(0, 0x1_6318) as usize..h(0, 0x1_c318) as usize]
-        .iter_mut()
-        .enumerate()
-    {
-        *b = if i % 2 == 0 {
-            g.one_in(8) as u8
-        } else {
-            g.below(0x400) as u8
-        };
     }
 }

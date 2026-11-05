@@ -8,6 +8,7 @@
 pub mod camera;
 pub mod character;
 pub mod drawing;
+pub mod edge_redraw;
 pub mod objects;
 pub mod rest;
 pub mod spike;
@@ -22,6 +23,7 @@ pub const MODULES: &[&[(&str, Generator)]] = &[
     objects::ALL,
     rest::ALL,
     drawing::ALL,
+    edge_redraw::ALL,
 ];
 
 /// The generator registered as `name`.
