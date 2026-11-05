@@ -1,0 +1,233 @@
+//! The port register's rules (plans/forest-dumb-level-1 DESIGN §4.1): no two entries for one
+//! address or one name, and each entry is a `kind = "func"` symbol of `re/symbols.toml` at the same
+//! hunk and offset. `re/symbols.toml` is committed, so this needs no disk. It is read by a small
+//! parser here, since the plan admits no `toml` dependency.
+
+use std::collections::BTreeMap;
+use std::path::Path;
+
+use fd_core::{PORTED, Ported};
+
+/// One `[[sym]]` of `re/symbols.toml`, the keys this test reads.
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct Sym {
+    name: String,
+    hunk: u8,
+    offset: u32,
+    kind: String,
+}
+
+/// Every `[[sym]]` block's name, hunk, offset and kind. Other keys are skipped; a block missing one
+/// of the four, or a value that does not read, is an error naming its line.
+fn parse_symbols(text: &str) -> Result<Vec<Sym>, String> {
+    type Block = (usize, BTreeMap<String, String>);
+    let mut blocks: Vec<Block> = Vec::new();
+    for (i, line) in text.lines().enumerate() {
+        let line = line.trim();
+        if line.is_empty() || line.starts_with('#') {
+            continue;
+        }
+        if line == "[[sym]]" {
+            blocks.push((i + 1, BTreeMap::new()));
+            continue;
+        }
+        let Some((k, v)) = line.split_once('=') else {
+            return Err(format!("line {}: not `key = value`: {line}", i + 1));
+        };
+        let Some((_, keys)) = blocks.last_mut() else {
+            return Err(format!("line {}: a key before the first [[sym]]", i + 1));
+        };
+        keys.insert(k.trim().to_string(), v.trim().to_string());
+    }
+    blocks
+        .into_iter()
+        .map(|(line, keys)| {
+            let get = |k: &str| {
+                keys.get(k)
+                    .ok_or(format!("the [[sym]] at line {line} has no `{k}`"))
+            };
+            let string = |k: &str| -> Result<String, String> {
+                let v = get(k)?;
+                v.strip_prefix('"')
+                    .and_then(|v| v.strip_suffix('"'))
+                    .map(str::to_string)
+                    .ok_or(format!(
+                        "the [[sym]] at line {line}: `{k}` is not a string: {v}"
+                    ))
+            };
+            let int = |k: &str| -> Result<u32, String> {
+                let v = get(k)?;
+                match v.strip_prefix("0x") {
+                    Some(hex) => u32::from_str_radix(&hex.replace('_', ""), 16),
+                    None => v.replace('_', "").parse(),
+                }
+                .map_err(|e| format!("the [[sym]] at line {line}: `{k}` = {v}: {e}"))
+            };
+            Ok(Sym {
+                name: string("name")?,
+                hunk: int("hunk")? as u8,
+                offset: int("offset")?,
+                kind: string("kind")?,
+            })
+        })
+        .collect()
+}
+
+/// Everything wrong with `entries` against `syms`, one line each.
+fn register_problems(entries: &[Ported], syms: &[Sym]) -> Vec<String> {
+    let mut problems = Vec::new();
+    let mut by_addr: BTreeMap<(u8, u32), Vec<&str>> = BTreeMap::new();
+    let mut by_name: BTreeMap<&str, usize> = BTreeMap::new();
+    for e in entries {
+        by_addr.entry((e.hunk, e.offset)).or_default().push(e.name);
+        *by_name.entry(e.name).or_default() += 1;
+    }
+    for ((hunk, offset), names) in &by_addr {
+        if names.len() > 1 {
+            problems.push(format!(
+                "h{hunk}+${offset:x} is registered {} times ({}): a routine is ported once; call the \
+                 registered port instead",
+                names.len(),
+                names.join(", ")
+            ));
+        }
+    }
+    for (name, n) in &by_name {
+        if *n > 1 {
+            problems.push(format!("{name} is registered {n} times"));
+        }
+    }
+    for e in entries {
+        match syms.iter().find(|s| s.name == e.name) {
+            None => problems.push(format!(
+                "{} (h{}+${:x}, {}) has no entry in re/symbols.toml: name the routine there first",
+                e.name, e.hunk, e.offset, e.port
+            )),
+            Some(s) if s.kind != "func" => problems.push(format!(
+                "{} is a `{}` in re/symbols.toml, not a func",
+                e.name, s.kind
+            )),
+            Some(s) if (s.hunk, s.offset) != (e.hunk, e.offset) => problems.push(format!(
+                "{} is registered at h{}+${:x}, but re/symbols.toml has it at h{}+${:x}",
+                e.name, e.hunk, e.offset, s.hunk, s.offset
+            )),
+            Some(_) => {}
+        }
+    }
+    problems
+}
+
+fn symbols() -> Vec<Sym> {
+    let path = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../../re/symbols.toml");
+    let text = std::fs::read_to_string(&path).unwrap_or_else(|e| panic!("{}: {e}", path.display()));
+    parse_symbols(&text).unwrap_or_else(|e| panic!("{}: {e}", path.display()))
+}
+
+const fn entry(name: &'static str, hunk: u8, offset: u32) -> Ported {
+    Ported {
+        name,
+        hunk,
+        offset,
+        port: "level::x",
+    }
+}
+
+#[test]
+fn the_real_register_is_consistent_with_the_symbols() {
+    let problems = register_problems(PORTED, &symbols());
+    assert!(
+        problems.is_empty(),
+        "fd-core/src/ported.rs:\n  {}",
+        problems.join("\n  ")
+    );
+}
+
+#[test]
+fn the_symbols_file_reads() {
+    let syms = symbols();
+    let funcs = syms.iter().filter(|s| s.kind == "func").count();
+    assert!(funcs > 50, "only {funcs} funcs read from re/symbols.toml");
+    let step = syms
+        .iter()
+        .find(|s| s.name == "char_step")
+        .expect("char_step");
+    assert_eq!(
+        (step.hunk, step.offset, step.kind.as_str()),
+        (0, 0x3e30, "func")
+    );
+    let mt = syms
+        .iter()
+        .find(|s| s.name == "mt_music")
+        .expect("mt_music");
+    assert_eq!((mt.hunk, mt.offset), (4, 0x1852a));
+}
+
+#[test]
+fn two_entries_for_one_address_fail() {
+    let syms = symbols();
+    let twice = [entry("char_step", 0, 0x3e30), entry("char_step", 0, 0x3e30)];
+    let p = register_problems(&twice, &syms);
+    assert!(
+        p.iter()
+            .any(|l| l.contains("h0+$3e30 is registered 2 times")),
+        "{p:?}"
+    );
+    // Two names for one address is the same routine ported twice.
+    let other = Sym {
+        name: "char_step_alias".into(),
+        hunk: 0,
+        offset: 0x3e30,
+        kind: "func".into(),
+    };
+    let syms2: Vec<Sym> = syms.iter().cloned().chain([other]).collect();
+    let two_names = [
+        entry("char_step", 0, 0x3e30),
+        entry("char_step_alias", 0, 0x3e30),
+    ];
+    let p = register_problems(&two_names, &syms2);
+    assert_eq!(p.len(), 1, "{p:?}");
+    assert!(
+        p[0].contains("registered 2 times (char_step, char_step_alias)"),
+        "{p:?}"
+    );
+}
+
+#[test]
+fn an_entry_must_match_a_func_symbol() {
+    let syms = symbols();
+    assert!(register_problems(&[entry("char_step", 0, 0x3e30)], &syms).is_empty());
+    let p = register_problems(&[entry("char_step", 0, 0x3e32)], &syms);
+    assert!(p[0].contains("re/symbols.toml has it at h0+$3e30"), "{p:?}");
+    let p = register_problems(&[entry("char_step", 4, 0x3e30)], &syms);
+    assert_eq!(p.len(), 1, "{p:?}");
+    let p = register_problems(&[entry("no_such_routine", 0, 0x10)], &syms);
+    assert!(p[0].contains("has no entry in re/symbols.toml"), "{p:?}");
+    let p = register_problems(&[entry("quit_flag", 0, 0x1a8)], &syms);
+    assert!(p[0].contains("is a `var`"), "{p:?}");
+}
+
+#[test]
+fn a_damaged_symbols_file_is_an_error_not_a_pass() {
+    assert!(
+        parse_symbols("[[sym]]\nname = \"a\"\nhunk = 0\nkind = \"func\"\n")
+            .unwrap_err()
+            .contains("no `offset`")
+    );
+    assert!(
+        parse_symbols("[[sym]]\nname = \"a\"\nhunk = 0\noffset = 0xzz\nkind = \"func\"\n").is_err()
+    );
+    assert!(parse_symbols("name = \"a\"\n").is_err());
+    let ok = parse_symbols(
+        "# c\n[[sym]]\nexe = \"x\"\nname = \"a\"\nhunk = 4\noffset = 0x1_0000\nkind = \"func\"\n",
+    )
+    .unwrap();
+    assert_eq!(
+        ok,
+        [Sym {
+            name: "a".into(),
+            hunk: 4,
+            offset: 0x10000,
+            kind: "func".into()
+        }]
+    );
+}

@@ -16,10 +16,10 @@ mod trace;
 pub use amiga::Amiga;
 pub use amiga_oracle::{
     AmigaMemory, AudioTap, BUILD, BlitEvent, BlitEventKind, CacheOutcome, CallError, CallResult,
-    Cpu68k, CpuRegs, CpuWrite, DEFAULT_MAX_FRAMES, FrameCapture, FrameInput, Hunk, HunkError,
-    HunkKind, HunkMap, InputScript, Irq, Joy, KeySet, LineSample, MEM_SIZE, MIX_RATE, OracleError,
-    PaulaWrite, RETURN_SENTINEL, Regs, Rgb12Frame, Snapshot, SyncPoint, Trace, TraceFrame,
-    hash_memory, trace_key,
+    Cpu68k, CpuRegs, CpuWrite, DEFAULT_MAX_FRAMES, FrameCapture, FrameInput, Gen, Hunk,
+    HunkError, HunkKind, HunkMap, InputScript, Irq, Joy, KeySet, LineSample, MEM_SIZE, MIX_RATE,
+    OracleError, PaulaWrite, RETURN_SENTINEL, Regs, Rgb12Frame, Snapshot, SyncPoint, Trace,
+    TraceFrame, hash_memory, trace_key,
 };
 pub use config::{OracleConfig, trace_cache};
 pub use sf_disk::DiskSlot;

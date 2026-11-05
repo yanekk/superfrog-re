@@ -117,6 +117,41 @@ impl fmt::Display for CallError {
 
 impl std::error::Error for CallError {}
 
+/// A small deterministic generator for a routine test's states: xorshift64, seeded so that seed 0
+/// still moves. One generator serves every game's routine rigs, so a sequence never changes: a
+/// routine test's states, and the paths they reach, stay what they were when it was written.
+/// - learned on: Superfrog (`sf-conform`'s routine tests), then Forest Dumb Forever's spike judge.
+#[derive(Debug, Clone)]
+pub struct Gen(u64);
+
+impl Gen {
+    pub fn new(seed: u64) -> Gen {
+        Gen(seed.wrapping_mul(0x9E37_79B9_7F4A_7C15) | 1)
+    }
+
+    pub fn next(&mut self) -> u64 {
+        self.0 ^= self.0 << 13;
+        self.0 ^= self.0 >> 7;
+        self.0 ^= self.0 << 17;
+        self.0
+    }
+
+    /// A number in `0..n` (0 when `n` is 0).
+    pub fn below(&mut self, n: u64) -> u64 {
+        self.next() % n.max(1)
+    }
+
+    /// One of `choices`.
+    pub fn pick<T: Copy>(&mut self, choices: &[T]) -> T {
+        choices[self.below(choices.len() as u64) as usize]
+    }
+
+    /// True one time in `n`.
+    pub fn one_in(&mut self, n: u64) -> bool {
+        self.below(n) == 0
+    }
+}
+
 /// What kind of hunk the loader filled.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum HunkKind {
