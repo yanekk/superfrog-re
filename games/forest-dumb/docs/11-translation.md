@@ -638,3 +638,14 @@ T36 generator. Behaviour and interruptible points: [09](09-play-measured.md), "T
   registers compared: `d0` for the scrolls and flag steps (a flag step's loop tests a scroll's `d0`), none
   for `camera_update` and `h0_513c` (`level3_handler` saves and restores every register around
   `game_frame`; `camera_update` reloads `d0`, `d1` after each flag step). `check` still compares all.
+
+## Object routines (T49)
+
+T49 was to translate the object routines T21 found reached only through dispatch tables, which T34's
+call-tree scan cannot see. T21 found none (docs/10, "No dispatch tables") and appended no entry to
+`re/translate.toml`, so T49 wrote no generator and made no call: $0.
+
+Checked 2026-11-05: the 36 routines `re/objects-W1-1.toml`'s `routines` and docs/10 name are all in
+`re/translate.toml` (enforced by `fd-conform/tests/ported.rs`) and all in the batch table above. 33
+pass; `h0_2c7e` (blocked), `h0_5e44` (too-big) go by hand under T52, and `h0_62b6` (too-big) under
+T25, as listed above.

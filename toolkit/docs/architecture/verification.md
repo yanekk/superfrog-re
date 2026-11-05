@@ -49,7 +49,7 @@ the workspace files, `toolkit/tools/`, `amiga-app` and `amiga-disk`. Those two c
   `cached_trace` memoises a scripted run outside git. `Cpu68k` (`src/routine.rs`,
   `shim/moira_shim.cpp`) is the routine runner: Moira, vAmiga's 68000 core, compiled alone over a flat
   16 MiB memory with no chipset, which calls one routine of the original and returns its registers and
-  every byte it changed. A game passes in its disks, their names and its cache roots.
+  every byte it changed; traced, also the branches it took and the bytes it read. A game passes in its disks, their names and its cache roots.
   Denise's three collision checks (sprite to sprite, sprite to playfield, playfield to playfield) are
   on, so CLXDAT reads what the hardware would; vAmiga leaves them off and CLXDAT then reads `$8000`
   whatever is drawn. A snapshot carries the switches, so the shim sets them again after every restore
@@ -133,6 +133,38 @@ the earlier 565 to 571 was measured at a game's sync point, a different workload
 
 A game may also patch the original in emulated RAM rather than the core, by `Amiga::poke`.
 
+### Branch coverage of a routine: `set_trace`, `conditional_branches`
+
+A generator of states for a routine is judged by which of the routine's branches its states take on
+the original. `Cpu68k::set_trace(true)` makes each call record every conditional branch it executes
+(`Bcc` other than `BRA`/`BSR`, and `DBcc`) with the ways it went, and every byte address it read in data
+space; `Cpu68k::last_trace()` returns them. A branch is taken when the next instruction is not the one
+after it, so a `DBcc` that loops is taken and its exit is not taken. The recording is in the routine
+runner's own instruction loop and its memory reads, with no vAmiga patch (`0006-exec-hook.patch` is one
+process-wide pointer, and runners run on several threads). Tracing changes nothing a call returns
+(`tracing_changes_nothing_a_call_returns_and_is_off_by_default`).
+
+Reads are the accesses Moira makes with the data function code: operands, the stack, custom-chip
+registers. Instruction fetches and PC-relative operands (`move.w tab(pc),d0`, a `(pc,d0)` jump table)
+use the program function code and are not listed.
+
+`Cpu68k::conditional_branches(entry)` walks the code statically from `entry` with Moira's disassembler
+for lengths: both ways of each conditional branch, `BRA`, and into and past each `BSR`, and each
+`JSR`/`JMP` whose target is absolute or `(d16,pc)`. It stops at `RTS`, `RTE`, `RTR`, `ILLEGAL`. What it
+misses: code reached only through a register (`jmp (a0)`, `jsr (a1,d0)`, a jump table, a pointer read
+from memory), which shows up only once a traced call executes it; and it walks past a callee that never
+returns as if it did, so it may list branches after such a call that cannot run. It does not tell code
+from data, so a direct branch into data would decode the data; the walk stops after 2^20 instructions.
+
+A game's routine rig builds its coverage report on these: the walk's branches plus every executed one,
+each with how many states took it each way, one never executed at 0 and 0. learned on: Forest Dumb Forever's `Rig::coverage` (T60), which agreed exactly with a hand-written witness's 28 branches and minimum counts.
+
+Cost, measured 2026-11-05 on an Apple-silicon Mac shared with a parallel build, release build, 2 000 states of two routines
+through a game's rig, median of four runs. Before tracing existed a survey took 7.7 ms and 4.8 ms. With
+the code in and recording off, 8.0 ms and 4.9 ms (about 3 % slower: one test per instruction and per
+read). With recording on, 15.4 ms and 6.3 ms (1.9 and 1.3 times a survey with it off), the cost being
+the per-instruction opcode test, the per-call branch table and the read bitmap. learned on: Forest Dumb Forever's `camera_update` and `h0_29ca`, `fd-conform/tests/rig_branches.rs`, `measure_the_cost_of_recording`.
+
 ## What must be preserved
 
 | Part | Behaviour to keep | Check that proves it |
@@ -141,6 +173,7 @@ A game may also patch the original in emulated RAM rather than the core, by `Ami
 | Snapshot restore | A restored snapshot continues as the run that made it | `a_snapshot_taken_mid_boot_continues_as_the_uninterrupted_run` (same file) |
 | Instruction counts (patch 0006) | The hook only observes; a pre-empted instruction counts once; a restored run counts as the one that made the snapshot | `watching_does_not_change_the_run`, `an_instruction_an_interrupt_pre_empts_counts_once`, `a_restored_run_counts_as_the_run_that_took_the_snapshot` (`toolkit/crates/amiga-oracle/tests/exec_counts.rs`) |
 | `Cpu68k` | A routine touching the chipset is refused outside hardware mode; relocations, timeouts and exceptions behave | `custom_chip_and_cia_accesses_are_errors_with_the_pc`, `max_instr_stops_an_infinite_loop`, `relocation_points_an_absolute_reference_at_the_relocated_target` (`toolkit/crates/amiga-oracle/tests/routine.rs`) |
+| `Cpu68k` tracing | Off by default and changes no result; branches and their ways, data reads only, the static walk's reach | `tracing_changes_nothing_a_call_returns_and_is_off_by_default`, `states_setting_one_condition_leave_exactly_the_others_uncovered`, `reads_are_data_space_only`, `the_walk_follows_direct_calls_and_not_indirect_jumps` (`toolkit/crates/amiga-oracle/tests/routine_branches.rs`) |
 | Paula latching in `sound_events` | Writes reduce to the same events whatever their order in a frame; a sample's address and length latch at its start | `sound_events_from_writes`, `sound_events_reordered_in_a_frame_or_shifted_2_frames_match`, `sound_events_3_frames_apart_or_a_different_sample_fail`, `a_change_just_before_its_channel_stops_need_not_be_met` (`toolkit/crates/amiga-conform/tests/faithful.rs`) |
 | The tolerance | The owner's numbers stay | `the_owners_tolerance_is_unchanged`, `the_owners_channel_tolerance_is_unchanged`, `the_glitch_budget_of_1_percent_fails_when_exceeded` |
 | Pass matching | State compared by pass count, a pass a frame late on one side not a difference | `state_is_matched_by_pass_count` |

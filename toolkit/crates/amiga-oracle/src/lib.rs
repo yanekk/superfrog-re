@@ -27,8 +27,8 @@ pub use config::{
     DEFAULT_MAX_FRAMES, OracleConfig, OracleError, default_cache, kickstart_path, read_only,
 };
 pub use routine::{
-    CallError, CallResult, Cpu68k, Gen, Hunk, HunkError, HunkKind, HunkMap, MEM_SIZE,
-    RETURN_SENTINEL, Regs,
+    BranchWays, CallError, CallResult, CallTrace, Cpu68k, Gen, Hunk, HunkError, HunkKind, HunkMap,
+    MEM_SIZE, RETURN_SENTINEL, Regs,
 };
 pub use trace::{
     CacheOutcome, InputScript, SyncPoint, Trace, TraceFrame, cached_trace, cached_trace_in,

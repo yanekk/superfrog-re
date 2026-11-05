@@ -3,7 +3,9 @@
     "Bash(cargo build)",
     "Bash(toolkit/tools/setup/oracle.sh)",
     "Bash(python3 -I games/forest-dumb/tools/translate.py:*)",
-    "Bash(python3 -I games/forest-dumb/tools/translate_batch.py:*)"
+    "Bash(python3 -I games/forest-dumb/tools/translate_batch.py:*)",
+    "Bash(python3 -I games/forest-dumb/tools/generate.py:*)",
+    "Bash(python3 -I games/forest-dumb/tools/reshape.py:*)"
   ],
   "ask": []
 }

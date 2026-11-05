@@ -24,6 +24,7 @@ workspace = "."
 "crates/amiga-oracle/tests/kickstart_missing.rs" = "smoke"
 "crates/amiga-oracle/tests/picture_in.rs" = "smoke"
 "crates/amiga-oracle/tests/routine.rs" = "smoke"
+"crates/amiga-oracle/tests/routine_branches.rs" = "smoke"
 "crates/amiga-paula/src" = "smoke"
 "crates/amiga-plan/tests/made_up_game.rs" = "smoke"
 "crates/amiga-plan/tests/purity.rs" = "smoke"
@@ -52,7 +53,7 @@ covers = ["crates/amiga-paula/src", "crates/amiga-paula/tests/unit.rs"]
 
 [[area]]
 name = "the original on the emulator"
-covers = ["crates/amiga-oracle/src", "crates/amiga-oracle/tests/boot.rs", "crates/amiga-oracle/tests/kickstart_missing.rs", "crates/amiga-oracle/tests/routine.rs"]
+covers = ["crates/amiga-oracle/src", "crates/amiga-oracle/tests/boot.rs", "crates/amiga-oracle/tests/kickstart_missing.rs", "crates/amiga-oracle/tests/routine.rs", "crates/amiga-oracle/tests/routine_branches.rs"]
 
 [[area]]
 name = "comparison judges"
