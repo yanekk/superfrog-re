@@ -44,7 +44,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T43 | case-scroll | T08, T09 | ⬜ | |
 | T44 | case-picture | T10 | ⬜ | |
 | T11 | character-cases | T01, T41, T42, T43, T44 | ⬜ | |
-| T12 | app-toolkit-move | — | 🔍 | Six modules to amiga-app; 62 amiga-app tests, sf-app 83; six sf-e2e files green, OS layer too (bar test flaked once under load); menus OS red on base: T50. Deviations: fixed `AmigaApp*` ObjC names, no `class_prefix` (compile-time names); `run_modal` returns `Values`, no `on_ok`; `ScriptGame` trait, not `ScriptEvent`; `ControlsHost` map accessors; input/args/recorder stay; `settings::read` added. |
+| T12 | app-toolkit-move | — | ✅ | Reviewed clean, no fix commit. Six modules in amiga-app; T50 added for a stale sf menus OS test. Deviations held (no `class_prefix`, `run_modal` returns `Values`, `ScriptGame`, `ControlsHost` maps, `settings::read`). Probed: app script errors, OS layer start-level, save-window, controls green; mutations of `press` and `Form::apply` caught. |
 | T13 | forest-dumb-app | T01, T10, T12 | ⬜ | |
 | T14 | recorder | T12, T13 | ⬜ | |
 | T15 | recording-compare | T03, T14 | ⬜ | |
@@ -69,7 +69,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T28 | finish-end-to-end | T16, T48 | ⬜ | |
 | T29 | level-drill | T15, T28 | ⬜ | |
 
-**Review queue:** T12
+**Review queue:** *(empty)*
 
 ## Blocked on the user
 
