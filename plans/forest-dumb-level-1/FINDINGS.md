@@ -6,6 +6,7 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-11-05 | 📌 | T36: the rig has no instruction trace, so `gen_camera.rs` shows branch coverage with literal witness models that must match the original on every state. `h0_513c` clamps `camera_y` `$8000..$853e` to `$53f`, not 0 (`cmpi.w` overflow). |
 | 2026-11-05 | 📌 | T57 added (owner) by T50 review: `os_layer_scale_and_fullscreen_through_the_menu_bar_and_its_shortcut` red at another wait each run (3×, fullscreen) on 1920×1080, base-identical code; T50 closed on its own menu test. |
 | 2026-11-05 | 🐞 | T50: sf-e2e `os_layer_scale_and_fullscreen_through_the_menu_bar_and_its_shortcut` fails three runs of three, each at another wait (3×, fullscreen, ⌃⌘F), on a 1920×1080 display. Timing or screen size, not a stale assertion; left alone. |
 | 2026-11-05 | 📌 | T33 live call, worker action: `translate.py 'h0+$5462' --gen char_sprite_position` passed on try 1: 1 629 tokens in, 7 897 out (7 131 reasoning), $0.0017, 67 s, 4 paths. |
