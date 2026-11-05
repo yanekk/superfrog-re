@@ -9,7 +9,7 @@
 
 **Status:** Amendment read back and its 4 decisions settled; ready to build. Nothing built.
 **Last updated:** 2026-11-05
-**Next `pir-work` will:** T00 and T32, because every level task rests on T00's measurements and every port on T32's rig.
+**Next `pir-work` will:** T40 once T37, T53, T56 and T58 are done; the generators it judges on are its inputs.
 
 ## Tasks
 
@@ -71,13 +71,13 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T51 | character-anim-input | T07, T40; blocks T08 | ⬜ | |
 | T52 | creature-drawing | T10, T22; blocks T46 | ⬜ | |
 | T53 | gen-character-2 | T33, T34; blocks T40 | ⬜ | |
-| T54 | gen-objects-2 | T33, T34; blocks T40 | 🔍 | 11 generators in `gen/objects_move.rs`; `tests/gen_objects_move.rs`, 4 tests, 2.6 s, smoke. Deviation: branches proven by detour stubs (as T39), not T38's witnesses; detoured runs try 200 states before 2 000 (seeded prefix). No branch unreachable. No translation call made. |
+| T54 | gen-objects-2 | T33, T34; blocks T40 | ✅ | Review clean, no fix commit. Branch list checked against the listing (21/19/0/1/5, no short branches); mutations caught (probe bytes always clear, a poke outside reads); measured fewest-states column matches the doc. Deviations held. 11 generators, `tests/gen_objects_move.rs` smoke, 2.7 s. |
 | T55 | edge-redraw | T09; blocks T10, T41, T42, T43 | ⬜ | |
 | T56 | gen-edge-redraw | T33, T34; blocks T40 | ⬜ | |
 | T57 | sf-scale-fullscreen-os-test | — | ⬜ | |
 | T58 | translate-btst-fix | T33; blocks T40 | ⬜ | |
 
-**Review queue:** T54
+**Review queue:** *(empty)*
 
 ## Blocked on the user
 
