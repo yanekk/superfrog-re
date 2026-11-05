@@ -6,6 +6,8 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-11-05 | 📌 | T31 sync rebuild under oracle hash `c453a4b584dc`: both games' oracle smoke tests green; `level_entry` 523 s cold, 15 s warm. A cold smoke (761 s before) would overrun 900 s; T31 warmed the shared cache. Core build 115 s. |
+| 2026-11-05 | 📌 | T31 speed, Kickstart idle screen, CPU time, busy machine (load 6 to 13): 611 frames/s before patch 0006, 606 with no watch list, 562 with 200 addresses. Owner accepted these in place of an idle figure (T31 review). |
 | 2026-11-05 | 📌 | T17 review: under load 10–20, wall time of the exit pin swung 20–38 s per run; user CPU time (`/usr/bin/time -p` on the test binary) stayed within 2%, so A/B timing on a busy machine uses CPU time. |
 | 2026-11-05 | 📌 | T17: every Superfrog map cache key changed (facts.rs, map.rs, toolkit graph.rs hashed), so maps rebuild once. Pin bench (route_pin with exit pin, release) 38.9 s before, 33.5 and 35.4 s after, all under load 6–10, not idle. |
 | 2026-11-05 | 📌 | T05: world 1's load list loads `_WYBIJACZKA` to `h4+$9618` twice, never `$9898`, which keeps program bytes. Play fades its palette in until frame 6331. The view's top-left is level pixel (`camera_x + 17`, `camera_y + 1`). |
