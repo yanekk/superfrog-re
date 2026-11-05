@@ -6,6 +6,7 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-11-05 | 📌 | T05: world 1's load list loads `_WYBIJACZKA` to `h4+$9618` twice, never `$9898`, which keeps program bytes. Play fades its palette in until frame 6331. The view's top-left is level pixel (`camera_x + 17`, `camera_y + 1`). |
 | 2026-11-05 | 📌 | T04, worker-driven: `picture_in(0x2F81, 0x29C1)` at frame 6500 opened as PNG: sky, moon, ledge, character from sprites 0-3, black gap lines 226-241, whole status bar. Title window is 320x238; Kickstart's 320x308 from line 5. |
 | 2026-11-05 | 📌 | T03 review: a cached reach leaves `Amiga::df0()` `None` where a boot leaves `Some(1)`, since `restore` does not set it. Nothing in fd-conform reads it yet; a task that does must not trust it after `reach_level_1`. |
 | 2026-11-05 | 📌 | T03: sync snapshots now end in a SHA-1 and are `.sync2`, so Superfrog sync points rebuild once per machine: `level_entry.rs` (smoke) took 597 s cold. Two boots give equal RAM, not byte-equal vAmiga snapshots. |

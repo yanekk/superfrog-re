@@ -31,7 +31,9 @@ Frames sit side by side in a bitmap, like a screen. Bytes a line is per plane.
   hold byte offsets, stepping 4 a frame and 6400 a row; creature kind 6's table points at blank frame 68.
 - A mask has the size and layout of its picture, one plane repeated five times (tested). The render paints
   magenta where the mask is clear. 13 bytes of `_ELEMENTY` draw outside the mask; `StworkiNew` none.
-- `WYBIJACZKA` is loaded twice, to hunk 4 `$9618` and `$9898`, and `$23dc` picks a copy by a flag.
+- `WYBIJACZKA` is loaded twice, to hunk 4 `$9618` and `$9898`, and `$23dc` picks a copy by a flag. World 1's
+  load list is the exception: it loads `$9618` twice and never `$9898`, which keeps the main program's own
+  bytes, not a picture (measured 2026-11-05, `level_files.rs`). Whether world 1 ever picks that copy is not traced.
 - Which world loads which set of `_ZNIKAJKA`, `_WYBIJACZKA` and `_Plomien`: 1 in W1 and W2, 2 in W3 and W4,
   3 in W5 and W6. These pictures carry their world's background, so they have no mask file.
 
@@ -51,6 +53,21 @@ and `sprites-<sheet>.png`. One map pixel block is one cell, so `<level-id>:<col>
 
 ## How far this is proven
 
-The formats are proven by the code that addresses them, by the tile and collision maps agreeing, and by a
-worker looking at every picture (plan FINDINGS, 2026-10-31). The renders were not compared with the
-emulator's screen in play, so run-time colour changes the copper makes during a level are not covered.
+The Rust readers in `engine/crates/fd-assets` (`read_level`, `read_sprites`) read the same files, and
+`engine/crates/fd-conform/tests/level_files.rs` checks them against the original on the oracle (plan
+`forest-dumb-level-1` T05, 2026-11-05):
+
+- **Bytes.** At the level sync point (frame 6301) all five W1-1 files and the seven sprite files of world 1
+  equal, byte for byte, what the game holds at the targets in [07](07-executable-map.md)'s memory layout,
+  the object map included: nothing has written to it yet. World 1's second `_WYBIJACZKA` copy is the one
+  difference (above).
+- **Picture.** In play, every whole cell in the 272 x 179 view, 160 of them, shows the tile the map names,
+  pixel for pixel through the level palette at hunk 1 `$304`, except cells under the character or a creature:
+  at camera (0, 51) and again scrolled to (522, 464). The view's top-left pixel is level pixel
+  (`camera_x + 17`, `camera_y + 1`). That proves the column order, the tile bit order and the palette.
+- **Column order.** Between neighbouring different tiles, edges agree in at least half their pixels
+  0.46 of the time read by columns and 0.32 read as 96 across; the test holds the gap.
+- **Not proven.** The first 31 frames of play fade the palette in, so the first play frame does not show
+  the level. Only W1-1 and world 1's sprites are compared with the original; the other worlds rest on the
+  formats above. Sprite frames are compared as bytes, not as drawn: the character is a hardware sprite and the
+  bobs' drawing is T10's. Collision shapes are compared as bytes; their meaning in play is T08's.

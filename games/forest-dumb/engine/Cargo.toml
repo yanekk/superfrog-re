@@ -41,3 +41,7 @@ opt-level = 2
 # Inflating and hashing two whole disks runs in several tests.
 [profile.dev.package.amiga-disk]
 opt-level = 2
+
+# The level readers decode every tile pixel the picture checks and the engine's drawing compare.
+[profile.dev.package.fd-assets]
+opt-level = 2
