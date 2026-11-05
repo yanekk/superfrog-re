@@ -304,3 +304,30 @@ blitter wait `h0+$2a1c` (BLTBUSY set never clears: a hang). Measured 2026-11-05,
 
 - 2026-11-05, T38: `h0+$2e0e` with `h0_2e0e`: pass on try 2 (try 1 differed on 9 of 2 000 states),
   9 772 tokens in, 23 238 out, $0.0056, 180 s, 10 paths.
+
+## Generators: `character`, second share (T53)
+
+`fd-conform/src/gen/character_anim.rs`, one generator per T53 entry of `re/translate.toml`, named as
+there. The four walk-frame pickers read `h0+$4be4` (walk counter, wraps at `$28`), `$4ece` (facing),
+`$4ed1` and bits 0-1 of `$4ed2`, drawn as T35's `character::Var` draws them; the pointer tables they
+copy into `char_anim_ptr` are the program's and are not poked. `read_joystick` reads JOY1DAT (a
+hardware read: half the states only bits 9, 8, 1, 0, half any word) and `input_log_index` (0 to
+`$2ee0`, leaning to full and one short of it). No base.
+
+`fd-conform/tests/gen_character_anim.rs` proves them as `gen_character.rs` does, by detouring each
+branch through a trapping stub. `read_joystick`'s `beq.b`s, and its `beq.w`s out of a `bra.w`'s
+reach of free memory, are detoured with the instruction before them moved into the stub; a test
+checks a non-trapping detour runs as the plain program. No branch is unreachable. Measured
+2026-11-05, 2 000 states each, no hang or fault:
+
+| Generator | `RigReport::paths` | Branches |
+|---|---|---|
+| `char_step_4be6` | 2 | 1 |
+| `h0_4c28` | 2 | 1 |
+| `h0_4c6a` | 6 | 11 |
+| `h0_4d32` | 1 | 1 |
+| `h0_4d54` | 1 | 1 |
+| `read_joystick` | 10 | 9 |
+
+`h0_4d32`'s and `h0_4d54`'s one path covers their branch both ways: each way runs one `move.l` and
+an `rts`.
