@@ -59,3 +59,8 @@ opt-level = 2
 # their time budgets. Every game workspace that builds it keeps its own copy of this override.
 [profile.dev.package.amiga-plan]
 opt-level = 2
+
+# The route viewer's page writer: a game's tests write whole levels' data (tiles, a track of
+# thousands of frames) through it; it was optimised in the first game's workspace before it moved.
+[profile.dev.package.amiga-routeview]
+opt-level = 2

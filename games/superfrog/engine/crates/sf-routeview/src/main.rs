@@ -151,10 +151,6 @@ fn main() {
                         v.info.insert(0, s.to_string());
                     }
                     v.info.extend(facts);
-                    if let Err(e) = site::write_data(&out, &j.id, &d.to_json()) {
-                        eprintln!("sf-routeview: {}: {e}", out.display());
-                        std::process::exit(1)
-                    }
                     eprintln!(
                         "  {:<12} {:<7} {} frames, exit {}, {} objects",
                         j.id,
@@ -172,6 +168,10 @@ fn main() {
                         wall_s: j.bench.as_ref().map(|b| b.wall_s),
                         ref_frames: j.bench.as_ref().and_then(|b| b.ref_frames),
                     };
+                    if let Err(e) = site::write_level(&out, &site::Route { dump: &d, entry: e.clone() }) {
+                        eprintln!("sf-routeview: {}: {e}", out.display());
+                        std::process::exit(1)
+                    }
                     let i = todo.iter().position(|t| t.id == j.id).unwrap();
                     done.lock().unwrap().push((i, e));
                 }
@@ -181,7 +181,7 @@ fn main() {
     let mut entries = done.into_inner().unwrap();
     entries.sort_by_key(|e| e.0);
     let entries: Vec<Entry> = entries.into_iter().map(|e| e.1).collect();
-    let page = site::write_index(&out, &entries, bare).unwrap_or_else(|e| panic!("{}: {e}", out.display()));
+    let page = site::write_index(&out, &site::spec(), &entries, bare).unwrap_or_else(|e| panic!("{}: {e}", out.display()));
     let n = |s: verdict::Status| entries.iter().filter(|e| e.verdict.status == s).count();
     println!(
         "{}: {} routes, {} clean, {} with faults, {} failed",

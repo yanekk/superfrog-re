@@ -89,6 +89,10 @@ opt-level = 2
 [profile.dev.package.sf-routeview]
 opt-level = 2
 
+# Its page writer, moved to the toolkit (forest-dumb-level-1 T18).
+[profile.dev.package.amiga-routeview]
+opt-level = 2
+
 [profile.dev.package.png]
 opt-level = 2
 
