@@ -6,6 +6,8 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-11-05 | 📌 | T31 sync rebuild under oracle hash `c453a4b584dc`: both games' oracle smoke tests green; `level_entry` 523 s cold, 15 s warm. A cold smoke (761 s before) would overrun 900 s; T31 warmed the shared cache. Core build 115 s. |
+| 2026-11-05 | 📌 | T31 speed, Kickstart idle screen, CPU time, busy machine (load 6 to 13): 611 frames/s before patch 0006, 606 with no watch list, 562 with 200 addresses. Idle-machine figure still owed. |
 | 2026-11-05 | 📌 | T30 review, read-only: `game_file` treats any `read_file` error as absent, so a damaged file block reads as "no such file" rather than its read error. Left; only a damaged zip reaches it. |
 | 2026-11-05 | 📌 | T01 smoke after the move: 761 s ok, cold worktree, load 9 on 10 cores. Before: 887 s warm, 904 s fresh copy. A cold smoke compile took about 8 GB; free disk fell to 14 GB. |
 | 2026-11-05 | 🔄 | Read-back decisions (owner): finisher copies conversation logs (`.pir/rules/on-finish.md` step 1); T49 translates T21's object routines before T22; generator tasks share the porting size limit; T23, T26 keep the split-by-case escape line. |

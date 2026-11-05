@@ -86,7 +86,7 @@ Paula writes or an adapter.
 
 ## The vAmiga patches
 
-Five patches to the core at `VAMIGA_COMMIT`, applied by `toolkit/tools/setup/oracle.sh`; their SHA-1 is
+Six patches to the core at `VAMIGA_COMMIT`, applied by `toolkit/tools/setup/oracle.sh`; their SHA-1 is
 part of the build path and of `amiga_oracle::BUILD`, so every trace and snapshot cache key changes with
 them. Each hook is a null function pointer in the core that the shim installs.
 
@@ -97,6 +97,7 @@ them. Each hook is a null function pointer in the core that the shim installs.
 | `0003-keyboard-access.patch` | the shim's access class a friend of `Keyboard` | the key-down matrix | vAmiga snapshots do not carry the ports' and keyboard's held state; `seatInput` re-seats them after `Amiga::restore`, so a cached snapshot continues as the run that made it |
 | `0004-audio-sample-hook.patch` | `vamiga_audio_sample_hook` in Paula's state machine (`penhi`, `penlo`) | each new DAC value per channel, with volume and beam position | `FrameCapture::taps`, the original's channel output |
 | `0005-irq-entry-hook.patch` | `vamiga_irq_hook` in `Moira::willInterrupt`, `vamiga_blit_hook` in the blitter's begin, busy-clear and end | interrupts taken and blitter events with their beam position | `Amiga::irqs`, `Amiga::blit_events` |
+| `0006-exec-hook.patch` | `vamiga_exec_hook` in `Moira::execute`, defined in `Moira.cpp` so the routine runner's private copy still links | each instruction the CPU executes, by its address | `Amiga::watch_pcs`, `Amiga::pc_hits`: proof a ported routine ran in play |
 
 The shim adds what needs no patch: snapshots, RAM reads and pokes, the CPU's registers at the frame
 boundary (`Amiga::cpu`), per-line CPU samples for profiling (`Amiga::line_samples`), and RAM copied at
@@ -104,6 +105,26 @@ the first CPU write of a value to a register (`Amiga::watch_write`). `Cpu68k` co
 Moira from the same source tree in its own namespace, with `shim/moira-stub/` standing in for the two
 vAmiga headers Moira includes, because vAmiga's copy has its memory interface bound to the emulated
 Amiga.
+
+### Counting instructions run: `watch_pcs`, `pc_hits`
+
+`Amiga::watch_pcs(&[u32])` replaces the set of watched instruction addresses (an empty slice turns it
+off); after each step `Amiga::pc_hits()` gives `(pc, count)` for every watched address, ascending, zero
+counts included. A case uses it to show a ported routine really ran in the original's play: the
+per-line samples of `set_profile` miss short routines. The hook is called before each instruction's
+handler, after the interrupt and STOP checks, so an instruction an interrupt pre-empts counts once,
+when it runs after the return, and a STOPped CPU counts nothing. A step's counts include the start of
+the next frame the step runs into, as `Amiga::irqs` does. The watched set is not in a snapshot; set it
+again on a fresh machine before restoring. Counts are zero after `watch_pcs` or `restore` until the
+next step. Checks: `toolkit/crates/amiga-oracle/tests/exec_counts.rs`, which also proves the run is
+byte-identical with no list, an empty one and a full one.
+
+Cost, measured 2026-11-05 on the Kickstart idle screen (3 300 frames a run, CPU time, best of seven
+interleaved rounds on a machine busy with a parallel build, load 6 to 13): 611 frames a second before
+the patch, 606 after it with no list, 562 with 200 addresses (8 % slower). The shim installs the core
+hook only when a machine first watches, so a process that never watches pays one null check per
+instruction. An idle-machine figure is still owed (the earlier 565 to 571 was measured at a game's sync
+point, a different workload).
 
 A game may also patch the original in emulated RAM rather than the core, by `Amiga::poke`.
 
@@ -113,6 +134,7 @@ A game may also patch the original in emulated RAM rather than the core, by `Ami
 |---|---|---|
 | The oracle's determinism (patch 0002) | The same inputs from the same start give the same frames | `a_disk_less_boot_reaches_the_insert_disk_screen_the_same_way_twice` (`toolkit/crates/amiga-oracle/tests/boot.rs`) |
 | Snapshot restore | A restored snapshot continues as the run that made it | `a_snapshot_taken_mid_boot_continues_as_the_uninterrupted_run` (same file) |
+| Instruction counts (patch 0006) | The hook only observes; a pre-empted instruction counts once; a restored run counts as the one that made the snapshot | `watching_does_not_change_the_run`, `an_instruction_an_interrupt_pre_empts_counts_once`, `a_restored_run_counts_as_the_run_that_took_the_snapshot` (`toolkit/crates/amiga-oracle/tests/exec_counts.rs`) |
 | `Cpu68k` | A routine touching the chipset is refused outside hardware mode; relocations, timeouts and exceptions behave | `custom_chip_and_cia_accesses_are_errors_with_the_pc`, `max_instr_stops_an_infinite_loop`, `relocation_points_an_absolute_reference_at_the_relocated_target` (`toolkit/crates/amiga-oracle/tests/routine.rs`) |
 | Paula latching in `sound_events` | Writes reduce to the same events whatever their order in a frame; a sample's address and length latch at its start | `sound_events_from_writes`, `sound_events_reordered_in_a_frame_or_shifted_2_frames_match`, `sound_events_3_frames_apart_or_a_different_sample_fail`, `a_change_just_before_its_channel_stops_need_not_be_met` (`toolkit/crates/amiga-conform/tests/faithful.rs`) |
 | The tolerance | The owner's numbers stay | `the_owners_tolerance_is_unchanged`, `the_owners_channel_tolerance_is_unchanged`, `the_glitch_budget_of_1_percent_fails_when_exceeded` |

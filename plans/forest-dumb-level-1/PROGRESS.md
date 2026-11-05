@@ -20,7 +20,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T00 | measure-play | — | ⬜ | |
 | T01 | smoke-room | — | ✅ | |
 | T02 | route-pin | — | ✅ | |
-| T31 | code-ran-counter | — | ⬜ | |
+| T31 | code-ran-counter | — | 🔍 | Patch 0006, shim hook (installed on first watch), `watch_pcs`/`pc_hits`, 4 tests in `exec_counts.rs`. Deviations: speed measured busy, not idle (parallel build), idle figure owed; three tests smoke, not one (about 1 s each); game checks were only the oracle-backed smoke tests (owner), so smoke's first-run timing is left to pir's end run. Commit body has detail. |
 | T32 | routine-rig | — | ⬜ | |
 | T03 | level-sync | T00 | ⬜ | |
 | T04 | picture-in-play | T00 | ⬜ | |
@@ -68,7 +68,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T28 | finish-end-to-end | T16, T48 | ⬜ | |
 | T29 | level-drill | T15, T28 | ⬜ | |
 
-**Review queue:** *(empty)*
+**Review queue:** T31
 
 ## Blocked on the user
 
