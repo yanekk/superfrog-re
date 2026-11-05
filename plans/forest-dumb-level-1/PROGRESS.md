@@ -82,9 +82,9 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T61 | generate-service | T33, T60; blocks T49 | ✅ | |
 | T62 | engine-shape-trial | T08, T09, T33 | ⬜ | |
 | T63 | game-frame-rig | T08, T09, T10, T22, T23, T24, T25, T26, T51, T52, T55; blocks T27 | ⬜ | |
-| T64 | listing-odd-bytes | T08, T51 | 🔍 | Odd-address byte after a byte var lists as `dc.b`; sweep resyncs on a word. 1 toolkit test; `exe_map_claims` exempts `dc.b` lines. Deviation: Superfrog `d1_c03` not unchanged, `key_down` now lists (owner accepted); 7 other listings byte-identical. |
+| T64 | listing-odd-bytes | T08, T51 | ✅ | Review: one fix, the entry test's `h0+$2:` no-label check had moved into the new test; restored. Superfrog's 8 listings diffed before/after: only `d1_c03` `key_down` changes. Mutation (odd branch off) reds both test files. Fresh listing: `char_step_4be6`, `char_sprite_copy` decode; `h0+$4edc` tables in step but unsymbolized. |
 
-**Review queue:** T64
+**Review queue:** empty
 
 ## Blocked on the user
 
