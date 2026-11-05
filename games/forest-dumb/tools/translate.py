@@ -422,6 +422,10 @@ def translate(routine, gen, tries=3, max_usd=0.10, out=OUT):
         print(f"translate: the original returned on none of {s['cases']} states of `{gen}` "
               f"({s['hangs']} hang(s), {s['faults']} fault(s)): nothing to judge a port against", file=sys.stderr)
         return dict(res, result='no-oracle')
+    if s.get('unmodelled_blits', 0):
+        print(f"translate: on {s['unmodelled_blits']} of {s['passed']} states the original started a line or fill "
+              "blit, which the routine oracle does not model: a port agreeing there proves nothing", file=sys.stderr)
+        return dict(res, result='no-oracle')
 
     os.makedirs(d, exist_ok=True)
     for f in os.listdir(d):

@@ -2,7 +2,7 @@
 //! original routine at `hN+$off` and the port built in (`FD_PORT`, see `build.rs`) from `N` states
 //! (2 000 unless set) of the generator registered as `name`, and prints one JSON line:
 //!
-//! `{"routine":..,"gen":..,"cases":n,"passed":n,"paths":n,"hangs":n,"faults":n,"failures":n,"pass":bool,"first_failure":".."}`
+//! `{"routine":..,"gen":..,"cases":n,"passed":n,"paths":n,"hangs":n,"faults":n,"unmodelled_blits":n,"failures":n,"pass":bool,"first_failure":".."}`
 //!
 //! `--survey` runs the original alone: `passed` is then the states it returned from, the line
 //! `tools/translate.py` reads to answer `no-oracle` before any model call. Exit 0 when the line was
@@ -122,7 +122,7 @@ fn main() -> ExitCode {
     };
     let pass = !a.survey && failures == 0 && report.passed > 0;
     println!(
-        "{{\"routine\":\"{}\",\"gen\":\"{}\",\"cases\":{},\"passed\":{},\"paths\":{},\"hangs\":{},\"faults\":{},\"failures\":{failures},\"pass\":{pass},\"first_failure\":\"{}\"}}",
+        "{{\"routine\":\"{}\",\"gen\":\"{}\",\"cases\":{},\"passed\":{},\"paths\":{},\"hangs\":{},\"faults\":{},\"unmodelled_blits\":{},\"failures\":{failures},\"pass\":{pass},\"first_failure\":\"{}\"}}",
         esc(&a.routine),
         esc(&a.gen_name),
         a.cases,
@@ -130,6 +130,7 @@ fn main() -> ExitCode {
         report.paths,
         report.hangs,
         report.faults,
+        report.unmodelled_blits,
         esc(&first)
     );
     ExitCode::SUCCESS

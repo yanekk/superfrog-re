@@ -4,7 +4,7 @@
 
 use fd_conform::generators::{self, h};
 use fd_conform::judge::{self, Cpu, port};
-use fd_conform::routine::Rig;
+use fd_conform::routine::{Generator, Rig, Setup};
 
 /// `h0+$774` by hand: a raster wait (reads only), then one 80-row, one-word blit of tile `d5` from
 /// h3+$13540 to `a3`, A to D, D's modulo $2c, its registers written in the original's order. The
@@ -55,4 +55,37 @@ fn the_stub_fails_and_a_hand_port_passes() {
     .unwrap_err();
     assert_eq!(f.failures, 50, "{f}");
     assert!(f.first.contains("$dff066=$002c"), "{f}");
+}
+
+/// `move.w #con1,$dff042.l; move.w #$0041,$dff058.l; rts` at $2000 in empty memory.
+fn blit_with_bltcon1(con1: u16) -> Rig {
+    let code: [u16; 9] = [
+        0x33fc, con1, 0x00df, 0xf042, 0x33fc, 0x0041, 0x00df, 0xf058, 0x4e75,
+    ];
+    let mut mem = vec![0u8; 0x10_0000];
+    for (i, w) in code.iter().enumerate() {
+        mem[0x2000 + i * 2..0x2002 + i * 2].copy_from_slice(&w.to_be_bytes());
+    }
+    let mut r = Rig::from_memory(mem);
+    r.set_max_instr(1_000);
+    r
+}
+
+#[test]
+fn line_and_fill_blits_are_counted_as_unmodelled() {
+    let random = Generator {
+        base: None,
+        case: Setup::random,
+    };
+    for (con1, unmodelled) in [
+        (0x0000, 0),
+        (0x0002, 0),
+        (0x0001, 20),
+        (0x0008, 20),
+        (0x0010, 20),
+    ] {
+        let rep = blit_with_bltcon1(con1).survey("blit", 20, 0x2000, &random);
+        assert_eq!(rep.passed, 20, "BLTCON1 ${con1:04x}");
+        assert_eq!(rep.unmodelled_blits, unmodelled, "BLTCON1 ${con1:04x}");
+    }
 }

@@ -169,6 +169,14 @@ class Service(unittest.TestCase):
         self.assertEqual(self.calls, [])
         self.assertIn('2000 hang(s)', self.stderr.getvalue())
 
+    def test_a_routine_starting_a_line_or_fill_blit_is_no_oracle(self):
+        self.survey = dict(self.survey, unmodelled_blits=3)
+        self.answers = [AssertionError('a call')]
+        res = self.run_it()
+        self.assertEqual((res['result'], res['tries']), ('no-oracle', 0))
+        self.assertEqual(self.calls, [])
+        self.assertIn('line or fill blit', self.stderr.getvalue())
+
     def test_a_routine_over_180_instructions_is_too_big(self):
         self.answers = [AssertionError('a call')]
         with mock.patch.object(t, 'flow_text', lambda h, o, stops=(): ('...', 181)):
