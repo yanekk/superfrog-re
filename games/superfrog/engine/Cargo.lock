@@ -75,8 +75,13 @@ dependencies = [
  "cpal",
  "gilrs",
  "libc",
+ "objc2 0.6.5",
+ "objc2-app-kit 0.3.2",
+ "objc2-foundation 0.3.2",
  "png",
  "pollster",
+ "serde",
+ "toml 0.9.12+spec-1.1.0",
  "wgpu",
  "winit",
 ]
@@ -102,6 +107,7 @@ name = "amiga-conform"
 version = "0.1.0"
 dependencies = [
  "amiga-chips",
+ "amiga-disk",
  "amiga-input",
  "amiga-oracle",
  "amiga-paula",

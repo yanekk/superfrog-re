@@ -27,15 +27,13 @@ mod menu;
 mod progress;
 mod recorder;
 mod recording_bar;
-mod save_window;
 mod script;
-mod settings;
 mod start_level_window;
 mod states;
 mod window;
 
 // The app's game-free parts (toolkit-extract T07).
-use amiga_app::{audio, lock, pacing, pad, video};
+use amiga_app::{audio, lock, pacing, pad, save_window, settings, video};
 
 use std::collections::BTreeMap;
 use std::path::PathBuf;

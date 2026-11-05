@@ -1,8 +1,9 @@
 //! Shell side (DESIGN §3.1): takes the game's two disks out of the owner's zips into `build/` and
-//! writes the inventory. The zips are only ever read, and nothing is written until both disks have
+//! writes the inventory, and reads one file from them unpacked, in memory (`game_file`). The zips are only ever read, and nothing is written until both disks have
 //! been read whole, so a bad zip never leaves a partial result.
 
 mod locate;
+mod unpack;
 
 use std::fmt::Write as _;
 use std::path::{Component, Path, PathBuf};
@@ -12,6 +13,7 @@ use amiga_disk::sha1::sha1_hex;
 use amiga_disk::{ADF_SIZE, zip};
 
 pub use locate::{disk_dir, locate, main_checkout, zip_paths};
+pub use unpack::{game_file, unpack};
 
 /// One extracted file of the inventory.
 #[derive(Debug, Clone, PartialEq, Eq)]

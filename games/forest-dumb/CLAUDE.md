@@ -65,6 +65,7 @@ Not written yet: there is no engine to fix. It comes with the recorder, step 8 o
 - [docs/LEVEL-INDEX.md](docs/LEVEL-INDEX.md): every level id, its files and its render.
 
 - [docs/frame-length.md](docs/frame-length.md): the measured frame length, 313 lines, dated.
+- [docs/09-play-measured.md](docs/09-play-measured.md): W1-1 play measured: sync frame, passes, input, display, sprites, state variables, level end, the character's routines.
 - [toolkit/docs/porting-routines.md](../../toolkit/docs/porting-routines.md): read before porting or reading any routine of the original; the first game's porting lessons as rules.
 - [engine/conform/README.md](engine/conform/README.md): the conformance runner `fd-conform` and its case format.
 - [docs/ROADMAP.md](docs/ROADMAP.md): backlog, the owner's sequence of plans, level 1 next.

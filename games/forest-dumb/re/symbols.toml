@@ -527,3 +527,412 @@ hunk = 4
 offset = 0x1c29c
 name = "load_list_world_1"
 kind = "func"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x534
+name = "lives_reset"
+kind = "func"
+note = "session start: lives to BCD 32 (oracle, docs/09)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x1e5a
+name = "char_x"
+kind = "var"
+size = 4
+note = "character x, level pixels (oracle, docs/09)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x1e5e
+name = "char_y"
+kind = "var"
+size = 4
+note = "character y, level pixels; world 1 starts at $70,$70 (oracle)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x1e62
+name = "camera_x"
+kind = "var"
+size = 2
+note = "left edge of the view, level pixels; clamped to $17cf (oracle follows char_x)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x1e64
+name = "camera_y"
+kind = "var"
+size = 2
+note = "top edge of the view; clamped to $52f (oracle follows char_y)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x20ac
+name = "countdown_tick"
+kind = "var"
+size = 4
+note = "game_frame passes 0..62; at 63 countdown loses one (oracle)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x20b0
+name = "countdown_step"
+kind = "func"
+note = "once a game_frame: countdown_tick, then BCD countdown -1 every 63 passes"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x2100
+name = "paused"
+kind = "var"
+size = 2
+note = "P toggles it; game_frame then only reads keys (oracle)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x2102
+name = "pause_key_down"
+kind = "var"
+size = 2
+note = "P pressed, waiting for its release"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x2104
+name = "play_keys"
+kind = "func"
+note = "HELP, Esc and P during play, from last_key_byte"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x2146
+name = "help_key"
+kind = "func"
+note = "HELP with cheat_flag set: level_exit_touched and items_left 0"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x2176
+name = "esc_key"
+kind = "func"
+note = "Esc press then release sets give_up (oracle)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x21b0
+name = "esc_down"
+kind = "var"
+size = 2
+note = "Esc pressed, waiting for its release"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x21b2
+name = "give_up"
+kind = "var"
+size = 2
+note = "main_loop goes to game over on it within 32 interrupts (oracle)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x2696
+name = "level_exit_touched"
+kind = "var"
+size = 2
+note = "cleared each pass by char_object_cells, set on an $ff object cell (oracle)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x2698
+name = "char_object_cells"
+kind = "func"
+note = "object map under the character: $ff the exit, $20..$27 items (oracle for $ff)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x2a66
+name = "score"
+kind = "var"
+size = 4
+note = "BCD (oracle)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x2a6a
+name = "score_add"
+kind = "var"
+size = 4
+note = "BCD amount score_add_routine adds"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x2a6e
+name = "score_add_routine"
+kind = "func"
+note = "adds score_add to score"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x3b26
+name = "hits_taken"
+kind = "var"
+size = 2
+note = "reading: three hits cost a life in char_hit_check"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x3b2a
+name = "char_hit_check"
+kind = "func"
+note = "reading: hits, hits_taken, lives_minus_one; not run"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x3e0c
+name = "char_update"
+kind = "func"
+note = "four sub-steps a game_frame: char_probe, char_probe_flags, char_step"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x3e30
+name = "char_step"
+kind = "func"
+note = "one sub-step: joystick flags to movement, writes char_x and char_y"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x4be6
+name = "char_step_4be6"
+kind = "func"
+note = "called by char_step; not read"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x4d78
+name = "char_screen_x"
+kind = "var"
+size = 2
+note = "char_x minus camera_x (oracle)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x4d7e
+name = "camera_update"
+kind = "func"
+note = "screen position and the edge-redraw flags h0+$5196..$519c"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x4ed8
+name = "char_anim_ptr"
+kind = "var"
+size = 4
+note = "the animation frame char_sprite_copy copies"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x4f84
+name = "char_probe"
+kind = "func"
+note = "bra to h0+$5500: samples the collision map around the character into h0+$54f0.."
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x4f90
+name = "char_probe_flags"
+kind = "func"
+note = "probe flags to h0+$4ed1; not read further"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x5462
+name = "char_sprite_position"
+kind = "func"
+note = "sprite 0-3 control words from char_screen_x (oracle)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x69a6
+name = "lives_plus_one"
+kind = "func"
+note = "BCD, capped at 99"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x69d6
+name = "lives_minus_one"
+kind = "func"
+note = "BCD, stops at 0"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x6a04
+name = "countdown_plus_100"
+kind = "func"
+note = "BCD, capped at 999"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x6a4c
+name = "items_left_minus_one"
+kind = "func"
+note = "BCD"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x6a80
+name = "countdown"
+kind = "var"
+size = 4
+note = "BCD from 999, -1 every 63 passes; 0 is game over within 32 interrupts (oracle)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x6a84
+name = "lives"
+kind = "var"
+size = 2
+note = "BCD, 32 at the first level (oracle); 0 is game over"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x6a88
+name = "items_left"
+kind = "var"
+size = 2
+note = "BCD, 282 in world 1 (oracle); the exit counts only at 0"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x777e
+name = "title_code_world"
+kind = "func"
+note = "the title code picks the start world; one code sets cheat_flag"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x780c
+name = "cheat_flag"
+kind = "var"
+size = 2
+note = "lets HELP end the level and stops life loss"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x7c4c
+name = "scena_screen"
+kind = "func"
+note = "SCENA N: draws the world name, waits for fire from frame 6206 (oracle)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x8df2
+name = "joy_flags"
+kind = "var"
+size = 8
+note = "left, right, up, down words from JOY1DAT"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x8dfa
+name = "beam_sample_unread"
+kind = "var"
+size = 2
+note = "VHPOSR written each game_frame, read by nothing"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x8dfc
+name = "read_joystick"
+kind = "func"
+note = "JOY1DAT to joy_flags; appends them to input_log while it has room"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x8ec0
+name = "input_log_index"
+kind = "var"
+size = 4
+note = "entries in input_log, stops at 12000"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x9b06
+name = "char_sprite_copy"
+kind = "func"
+note = "copies char_anim_ptr into sprites 0-3 each game_frame (oracle)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x34c28
+name = "input_log"
+kind = "table"
+size = 0x2ee0
+note = "one byte of joy_flags a game_frame, 12000 frames; read by nothing found"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x37b08
+name = "collision_rows"
+kind = "table"
+size = 0x400
+note = "256 row offsets, $2e apart, into the collision map at h3+$fa50"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 3
+offset = 0xfa50
+name = "collision_map"
+kind = "table"
+size = 0x2e00
+note = "1 bit a pixel, 256 rows of $2e bytes, row = y & $ff; written by the edge redraws (oracle: game state)"
