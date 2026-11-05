@@ -26,3 +26,4 @@ The `Complete` scene is commented as temporary until world 2 lands.
 - [ ] Script reaches the state → message fits at each size and is unclipped → fire restarts the level.
 ## Done when
 - [ ] Case and end-to-end tests pass, and a milestone for level end exists for T27.
+- [ ] If matching its cases against the original needs more than one session, the owner is asked to add a task for the rest, split by case (DESIGN §4.3).

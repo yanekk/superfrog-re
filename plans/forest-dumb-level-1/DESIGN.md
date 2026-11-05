@@ -175,11 +175,12 @@ From `games/forest-dumb/docs/level-1-brief.md`, "Translation by Muse, and sessio
 
 - Literal translation goes to `meta/muse-spark-1.3-contributor` through T33's service, judged on the routine oracle in hardware mode. A builder sees the result line and the port, never the listing or the retries. Measured in the spike: 24 of 24 runs passed up to 183 instructions, 2 of 6 at 298 to 461. So a routine over 180 instructions is split at its callees first (T34), and one that fails three tries is translated by the builder.
 - One unattended batch (T40) runs the service over `game_frame`'s call tree before any porting task starts. Generators are written per subsystem (T35 to T39) and reviewed. A pass is only as strong as the states it ran on, so the reviewer looks for branches no state reaches.
-- A porting task (T08, T09, T10, T22, T24, T25) turns literal ports into engine code on typed state and proves each on the rig. It holds one subsystem's routines, at most about 1 500 instructions or 15 routines of original code. That figure is a planning estimate; T34 and T21 measure each task's share and ask the owner to add tasks over it.
+- A porting task (T08, T09, T10, T22, T24, T25) turns literal ports into engine code on typed state and proves each on the rig. It holds one subsystem's routines, at most about 1 500 instructions or 15 routines of original code. That figure is a planning estimate; T34 and T21 measure each task's share and ask the owner to add tasks over it. The same limit holds for a generator task (T35 to T39, T49) (owner, 2026-11-05).
+- Object routines reached only through dispatch tables are found by T21, not T34's scan, and translated by T49 before T22.
 - Whole-run agreement is its own task per group of cases (T41 to T48), never the porting task's.
 - Auto-compact stays on in every session: `autoCompactEnabled` is true in `~/.claude/settings.json` and pir's engine sets nothing that overrides it (checked 2026-11-05).
 - Raw ports, listings and prompts derive from the game's code and stay in `build/`. What lands in `fd-core` is the engine-shaped port.
-- The run's conversation logs are kept for measuring tokens per activity afterwards. pir deletes `plans/forest-dumb-level-1/.parallel/control/conversations/` in the main checkout only when the run is removed from the dashboard, and nothing archives them, so they are copied out before that (§5.3, §6).
+- The run's conversation logs are kept for measuring tokens per activity afterwards. pir deletes `plans/forest-dumb-level-1/.parallel/control/conversations/` in the main checkout only when the run is removed from the dashboard, so the finisher copies them out before merging (`.pir/rules/on-finish.md` step 1, owner, 2026-11-05).
 
 ---
 
@@ -236,7 +237,7 @@ Never run the unbounded version of any of these to find something out.
 | Fetch and build vAmiga at the pinned commit | `toolkit/tools/setup/oracle.sh` | `worker` | Public fetch into a local cache; already built here | `rm -rf ~/.cache/amiga-toolkit/vamiga` | none | none |
 | Translate one routine through Muse (T33, T35 to T39, porting tasks) | `python3 -I games/forest-dumb/tools/translate.py '<routine>' --gen <name> --max-usd 0.10` | `worker` | Paid but capped at cents; sending the game's code to Meta was accepted by the owner on 2026-11-04 | Spend stops at the cap; code sent cannot be recalled | under $0.01 a call, $0.10 cap | `no-key` result names where it looked |
 | Batch translation over `game_frame`'s call tree (T40) | `python3 -I games/forest-dumb/tools/translate_batch.py --max-usd 5` | `worker` | One unattended run spending dollars; owner moved it from `ask` (2026-11-05) so it can run unattended, a night run included | Spend stops at the cap; ports regenerate; code sent cannot be recalled | a few dollars, $5 cap | as above |
-| Keep the run's conversation logs (finish, before Remove) | `mkdir -p ~/.cache/superfrog-re/runs/forest-dumb-level-1 && cp -R <main checkout>/plans/forest-dumb-level-1/.parallel/control/conversations ~/.cache/superfrog-re/runs/forest-dumb-level-1/` | `worker` | Local copy | Delete the copy | none | none |
+| Keep the run's conversation logs (the finisher, `.pir/rules/on-finish.md` step 1) | `mkdir -p ~/.cache/superfrog-re/runs/forest-dumb-level-1 && cp -R <main checkout>/plans/forest-dumb-level-1/.parallel/control/conversations ~/.cache/superfrog-re/runs/forest-dumb-level-1/` | `worker` | Local copy | Delete the copy | none | none |
 
 Credentials measured at plan time: `OPENROUTER_API_KEY` only (2026-11-05). OpenRouter is the one paid service; no cloud account, domain or device is touched.
 
@@ -244,7 +245,7 @@ Credentials measured at plan time: `OPENROUTER_API_KEY` only (2026-11-05). OpenR
 
 ## 6. Recovery
 
-Nothing here can lock anyone out. A bad settings file: delete `~/Library/Application Support/Forest-Dumb-RE/settings.toml`. A stale snapshot: delete the sync cache. A Superfrog break from a move: revert that task's commit; T02's pins name it. Conversation logs: pressing Remove on the run in pir's dashboard deletes them for good, so the copy row of §5.3 runs first.
+Nothing here can lock anyone out. A bad settings file: delete `~/Library/Application Support/Forest-Dumb-RE/settings.toml`. A stale snapshot: delete the sync cache. A Superfrog break from a move: revert that task's commit; T02's pins name it. Conversation logs: pressing Remove on the run in pir's dashboard deletes them for good, so the finisher copies them first (§5.3).
 
 ---
 

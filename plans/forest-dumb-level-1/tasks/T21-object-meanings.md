@@ -18,4 +18,4 @@ A table per value used in `W1-1`: count, location example, group, entry routine,
 - [ ] Every value `W1-1`'s object map can spawn is in `re/objects-W1-1.toml` with the task that ports it (T22, T24 or T25); `fd-conform/tests/ported.rs` fails on a spawnable value missing from the list, and reports which listed values T07's dispatch has no `ObjectKind` for yet.
 ## Done when
 - [ ] Every value is measured or named as unreached with why.
-- [ ] Each spawnable value's routines are in `re/translate.toml` with T22, T24 or T25 as `port_task`. If T24's or T25's share passes DESIGN §4.3's size, the owner is asked to add tasks, split by kind, before they start.
+- [ ] Each spawnable value's routines are in `re/translate.toml` with T22, T24 or T25 as `port_task` and T49 as `gen_task`. If T24's or T25's share passes DESIGN §4.3's size, the owner is asked to add tasks, split by kind, before they start.

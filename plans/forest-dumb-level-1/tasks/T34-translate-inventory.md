@@ -18,5 +18,5 @@ The spike's call-tree scan (about 8 300 instructions with callees), `tools/re_li
 - [ ] `sound` entries are out of scope (the plan is silent) and have no `gen_task`.
 ## Done when
 - [ ] Each porting task's share is summed in `docs/11-translation.md`. Over 1 500 instructions or 15 routines for one task (§4.3) means asking the owner to add sibling tasks, each with `blocks` edges onto the tasks after it; no existing task is edited (root CLAUDE.md: a worker adds tasks, never splits one).
-- [ ] The same check for T35 to T39's generator batches.
+- [ ] The same check, at the same limit, for T35 to T39's generator batches.
 - [ ] A result that changes a later task is raised, not patched in.

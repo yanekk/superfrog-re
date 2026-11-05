@@ -7,7 +7,7 @@ Port level 1's remaining mechanics, whatever T21 lists: expected flames, vanishi
 ## Design sections this implements
 §2.1, §4.3; `docs/05`, `docs/06`.
 ## Reuses
-T40's ports and table, T33's service for a missing or failed port, T32's rig and T38's generators, T07's dispatch, T22's scan, T21, `_ELEMENTY`, `_Plomien`, `_ZNIKAJKA`, `_WYBIJACZKA` readers.
+T40's and T49's ports and table, T33's service for a missing or failed port, T32's rig and T38's generators, T07's dispatch, T22's scan, T21, `_ELEMENTY`, `_Plomien`, `_ZNIKAJKA`, `_WYBIJACZKA` readers.
 ## Files
 `fd-core/src/objects/{flame,vanish,launcher,*}.rs`, `fd-core/src/ported.rs` (appends), `fd-core/src/render/objects.rs`, `fd-conform/tests/mechanic_routines.rs`, `fd-plan/src/facts.rs`, `smoke.toml`.
 ## Interface

@@ -5,9 +5,9 @@
 **Plan reviewed:** 2026-11-01 — 15 fixed, 6 decided with the user
 **Amended:** 2026-11-03 — the first game's lessons: porting rulebook, port register and coverage, T31 added (owner)
 **Amended:** 2026-11-05 — translation by Muse and small sessions (brief): T32 to T48 added; T06, T08 to T11, T22, T24, T25, T27 reshaped (owner).
-**Amendment reviewed:** 2026-11-05 — 15 fixed, 4 decisions open with the owner
+**Amendment reviewed:** 2026-11-05 — 15 fixed, 4 decided with the owner (T49 added)
 
-**Status:** Amendment read back; 4 decisions await the owner (see the plan-review commit). Nothing built.
+**Status:** Amendment read back and its 4 decisions settled; ready to build. Nothing built.
 **Last updated:** 2026-11-05
 **Next `pir-work` will:** T00 and T32, because every level task rests on T00's measurements and every port on T32's rig.
 
@@ -54,7 +54,8 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T19 | map-page | T11, T18 | ⬜ | |
 | T20 | planner-level-1 | T11, T17, T19 | ⬜ | |
 | T21 | object-meanings | T05, T06, T32 | ⬜ | |
-| T22 | collectibles | T11, T20, T21, T40 | ⬜ | |
+| T49 | translate-objects | T21, T38, T40 | ⬜ | |
+| T22 | collectibles | T11, T20, T21, T40, T49 | ⬜ | |
 | T23 | lives-and-game-over | T11, T13, T14, T20 | ⬜ | |
 | T24 | enemies | T20, T21, T22, T23 | ⬜ | |
 | T45 | case-collect | T22 | ⬜ | |

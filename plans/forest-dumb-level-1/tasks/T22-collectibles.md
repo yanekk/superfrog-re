@@ -1,13 +1,13 @@
 # T22 — collectibles
 
-**Phase:** 5 · **Depends on:** T11, T20, T21, T40 · **Weight:** medium
+**Phase:** 5 · **Depends on:** T11, T20, T21, T40, T49 · **Weight:** medium
 
 ## Goal
 Port the object scan, which reads the object map and brings objects into play as the screen scrolls, then level 1's collectibles, updating score and status bar through the engine: the `objects` routines `re/translate.toml` gives T22. Most arrive as passing literal ports from T40. T24 and T25 register in the same scan. Agreement over runs is T45's (DESIGN §4.3).
 ## Design sections this implements
 §2.1, §2.2, §4.3.
 ## Reuses
-T40's ports and table, T33's service for a missing or failed port, T32's rig and T38's generators, T07's dispatch, T21's table. `sf-core`'s pickup code as pattern only.
+T40's and T49's ports and table, T33's service for a missing or failed port, T32's rig and T38's generators, T07's dispatch, T21's table. `sf-core`'s pickup code as pattern only.
 ## Files
 `fd-core/src/objects/{mod.rs,scan.rs,collectible.rs}`, `fd-core/src/ported.rs` (appends), `fd-core/src/game.rs`, `fd-core/src/render/objects.rs`, `fd-conform/tests/collect_routines.rs`, `fd-plan/src/game.rs`, `smoke.toml`.
 ## Interface

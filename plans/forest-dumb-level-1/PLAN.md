@@ -1,6 +1,6 @@
 # Implementation plan
 
-49 tasks in 7 phases and a translation track. Each has a file in [tasks/](tasks/). Track state in [PROGRESS.md](PROGRESS.md). Read [DESIGN.md](DESIGN.md) first.
+50 tasks in 7 phases and a translation track. Each has a file in [tasks/](tasks/). Track state in [PROGRESS.md](PROGRESS.md). Read [DESIGN.md](DESIGN.md) first.
 
 ## Shape of the build
 
@@ -17,7 +17,7 @@
 | Step | Built by | Wired by |
 |---|---|---|
 | Files read from the disks | T30, T05 | T07's `GameData`, T13 calls it |
-| Literal ports of `game_frame`'s calls | T33, T35 to T39, T40 | Porting tasks read T40's table |
+| Literal ports of `game_frame`'s calls | T33, T35 to T39, T40; object routines T49 | Porting tasks read T40's table |
 | App opens, disks found | T13 | T13 `fd-app/src/main.rs` |
 | Enters level 1 | T07 | T13 constructs `Game` |
 | Character, camera | T08, T09 | T08, T09 edit `Game::step` |
@@ -107,7 +107,8 @@ T34 assigns every routine a generator batch and a porting task, and asks the own
 | # | Task | Depends on |
 |---|---|---|
 | [T21](tasks/T21-object-meanings.md) | object-meanings | T05, T06, T32 |
-| [T22](tasks/T22-collectibles.md) | collectibles | T11, T20, T21, T40 |
+| [T49](tasks/T49-translate-objects.md) | translate-objects | T21, T38, T40 |
+| [T22](tasks/T22-collectibles.md) | collectibles | T11, T20, T21, T40, T49 |
 | [T23](tasks/T23-lives-and-game-over.md) | lives-and-game-over | T11, T13, T14, T20 |
 | [T24](tasks/T24-enemies.md) | enemies | T20, T21, T22, T23 |
 | [T45](tasks/T45-case-collect.md) | case-collect | T22 |
@@ -135,14 +136,14 @@ The translation track (T32, T33, T34 to T40) runs beside T03 to T07 and joins at
 
 ## Parallel width
 
-49 tasks · longest dependency chain 17 · up to 8 could run at once. Computed from the table by a small script; `analyzeParallelism` is not in this repo.
+50 tasks · longest dependency chain 17 · up to 8 could run at once. Computed from the table by a small script; `analyzeParallelism` is not in this repo.
 
 ## Rough sizing
 
 | Weight | Tasks |
 |---|---|
 | **Heavy** | T12, T17 |
-| **Medium** | T00, T03, T05, T06, T07, T08, T09, T10, T13, T14, T15, T18, T20, T21, T22, T23, T24, T25, T26, T27, T28, T30, T31, T32, T33, T34, T35 to T39, T41 to T48 |
+| **Medium** | T00, T03, T05, T06, T07, T08, T09, T10, T13, T14, T15, T18, T20, T21, T22, T23, T24, T25, T26, T27, T28, T30, T31, T32, T33, T34, T35 to T39, T41 to T49 |
 | **Light** | T01, T02, T04, T11, T16, T19, T29, T40 |
 
 The two heavy tasks are moves of the first game's code, checked by its existing tests, with no frame-matching loop. Porting tasks are sized by T34 and T21 against DESIGN §4.3; one over it gets sibling tasks before it starts. A frame-matching task whose cases need more than one session asks for a task for the rest, split by case.

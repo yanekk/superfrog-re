@@ -7,7 +7,7 @@ Port level 1's enemies, movement, drawing and hurting the character: the `object
 ## Design sections this implements
 §2.1, §2.2, §4.3.
 ## Reuses
-T40's ports and table, T33's service for a missing or failed port, T32's rig and T38's generators, T07's dispatch, T22's scan, T21's table, `$abc` and `$3a18` readings, `fd-assets`' `StworkiNew`.
+T40's and T49's ports and table, T33's service for a missing or failed port, T32's rig and T38's generators, T07's dispatch, T22's scan, T21's table, `$abc` and `$3a18` readings, `fd-assets`' `StworkiNew`.
 ## Files
 `fd-core/src/objects/creature*.rs`, `fd-core/src/ported.rs` (appends), `fd-core/src/render/objects.rs`, `fd-conform/tests/enemy_routines.rs`, `fd-plan/src/game.rs`, `smoke.toml`.
 ## Interface

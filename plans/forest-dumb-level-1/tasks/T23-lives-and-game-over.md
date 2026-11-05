@@ -27,3 +27,4 @@ impl Game { pub fn lives(&self) -> i16; pub fn energy(&self) -> u16 }
 ## Done when
 - [ ] Cases and end-to-end tests pass; death is in `LAYOUT`.
 - [ ] The high score skip is named in the app's code and DESIGN §2.4.
+- [ ] If matching its cases against the original needs more than one session, the owner is asked to add a task for the rest, split by case (DESIGN §4.3).
