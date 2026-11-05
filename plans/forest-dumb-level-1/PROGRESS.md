@@ -9,7 +9,7 @@
 
 **Status:** Amendment read back and its 4 decisions settled; ready to build. Nothing built.
 **Last updated:** 2026-11-05
-**Next `pir-work` will:** review T05; T06, T07 and T21 build on its readers.
+**Next `pir-work` will:** T06, T07 and T21, which build on T05's readers.
 
 ## Tasks
 
@@ -25,7 +25,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T03 | level-sync | T00 | ✅ | |
 | T04 | picture-in-play | T00 | ✅ | |
 | T30 | unpack-in-rust | — | ✅ | |
-| T05 | level-readers | T03, T04, T30 | 🔍 | `fd-assets` readers, 12 unit tests, 3 oracle tests in `level_files.rs`, smoke. Deviations: `read_sprites` takes the world, since sets differ by world; picture checked at frames 6340 and 6640, since the palette fades in until 6331; world 1 never loads the second `_WYBIJACZKA` copy, named in docs/06. |
+| T05 | level-readers | T03, T04, T30 | ✅ | Review: picture check's 16-cell slack replaced by exact counts (0 at 6340, 11 at 6640, probed), two clippy fixes. Probed fade-in (all wrong at 6320, none at 6332); mutated bit order, cell order and purity, each red. Interface deviation `read_sprites(world, ..)` accepted. |
 | T06 | level-runner | T03, T04, T31, T32 | ⬜ | |
 | T33 | translate-service | T32 | ⬜ | |
 | T34 | translate-inventory | T00 | ⬜ | |
@@ -69,7 +69,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T29 | level-drill | T15, T28 | ⬜ | |
 | T50 | sf-menus-os-test-stale | — | ⬜ | |
 
-**Review queue:** T05
+**Review queue:** *(empty)*
 
 ## Blocked on the user
 
