@@ -78,11 +78,11 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T57 | sf-scale-fullscreen-os-test | — | ✅ | |
 | T58 | translate-btst-fix | T33; blocks T40 | ✅ | |
 | T59 | oracle-sprite-collision | T21; blocks T24, T41, T42, T43, T44, T45, T46, T47 | ✅ | |
-| T60 | rig-branch-coverage | T32 | 🔍 | Trace in moira_shim's own loop, no patch; `Cpu68k::set_trace`, `last_trace`, `conditional_branches`; `Rig::coverage`. 6 toolkit, 3 game tests, 1 ignored timing. camera_update matches T36 exactly. Deviations: `Branch`/`Coverage` in fd-conform beside `RigReport`; reads omit the rig stack and program-space (PC-relative) reads; the walk is Rust, Moira gives lengths only. |
+| T60 | rig-branch-coverage | T32 | ✅ | Review clean, no fix commit. Three mutations (taken/not-taken swapped, FC filter dropped, static walk skipped) each caught. Re-measured cost 1.91x and 1.32x, as documented; camera_update 28 branches, least 41, matches T36. Probed random-memory walk and `beq.w +2`, which always reads not taken (inherent). Stack and program-space reads omitted, held by tests. |
 | T61 | generate-service | T33, T60; blocks T49 | ⬜ | |
 | T62 | engine-shape-trial | T08, T09, T33 | ⬜ | |
 
-**Review queue:** T60
+**Review queue:** empty
 
 ## Blocked on the user
 
