@@ -1,0 +1,256 @@
+# Every value W1-1's object map (_MapaBobow1, its 240 used columns) holds, with what it does and the
+# task that ports it (plan forest-dumb-level-1, T21). Measured on the oracle by
+# engine/crates/fd-conform/tests/object_claims.rs; the account is docs/10-object-system.md.
+#
+# value       the object byte
+# count       cells holding it in the file as shipped
+# example     one spot, W1-1:col,row
+# group       creature | spring | item | water | vanishing-block | bonus | exit
+# what        what it does, measured unless the line says "reading"
+# seen        walk: met on the scripted slide with the map as shipped; placed: put on the slide's path
+#             at the sync point; the claim test names the cell
+# port_task   the task that ports what the value does (T22, T24 or T25)
+# routines    re/translate.toml names of the routines the value runs through, the drawing and the
+#             spawn included; every one is already in game_frame's or the edge redraws' call tree
+#
+# fd-conform/tests/ported.rs fails when the file holds a value missing here.
+
+[[value]]
+value = 0x01
+count = 77
+example = "W1-1:2,89"
+group = "creature"
+what = "spawns creature kind 0 when its cell comes into view; reading: flies at the character on a 32-step path (h0+$30fe, $313e)"
+seen = "walk"
+port_task = "T24"
+routines = ["h0_681c", "h0_6852", "h0_2fae", "h0_2fea", "h0_2dd6", "h0_2e0e", "h0_3698", "h0_2c7e", "h0_5e44", "h0_2d4c", "h0_5820", "char_hit_check", "h0_3dd8"]
+
+[[value]]
+value = 0x02
+count = 16
+example = "W1-1:9,92"
+group = "creature"
+what = "spawns creature kind 1; reading: walks a pixel a pass, turning on the collision_map probes"
+seen = "placed"
+port_task = "T24"
+routines = ["h0_681c", "h0_6852", "h0_2fae", "h0_2fea", "h0_3530", "h0_3566", "h0_35a0", "h0_35dc", "h0_2dd6", "h0_2e0e", "h0_3698", "h0_2c7e", "h0_5e44", "h0_2d4c", "h0_5820", "char_hit_check", "h0_3dd8"]
+
+[[value]]
+value = 0x03
+count = 15
+example = "W1-1:5,92"
+group = "creature"
+what = "spawns creature kind 2; reading: walks at the speed table h0+$323a/$328a, same probes"
+seen = "placed"
+port_task = "T24"
+routines = ["h0_681c", "h0_6852", "h0_2fae", "h0_2fea", "h0_320a", "h0_3222", "h0_3530", "h0_3566", "h0_35a0", "h0_35dc", "h0_2dd6", "h0_2e0e", "h0_3698", "h0_2c7e", "h0_5e44", "h0_2d4c", "h0_5820", "char_hit_check", "h0_3dd8"]
+
+[[value]]
+value = 0x04
+count = 21
+example = "W1-1:6,40"
+group = "creature"
+what = "spawns creature kind 3; reading: hops on the x and y tables h0+$334c/$336c, same probes"
+seen = "placed"
+port_task = "T24"
+routines = ["h0_681c", "h0_6852", "h0_2fae", "h0_2fea", "h0_32f8", "h0_3322", "h0_3530", "h0_35a0", "h0_2dd6", "h0_2e0e", "h0_3698", "h0_2c7e", "h0_5e44", "h0_2d4c", "h0_5820", "char_hit_check", "h0_3dd8"]
+
+[[value]]
+value = 0x05
+count = 4
+example = "W1-1:45,92"
+group = "creature"
+what = "spawns creature kind 4; reading: walks at the speed table h0+$33f6/$3416, same probes"
+seen = "placed"
+port_task = "T24"
+routines = ["h0_681c", "h0_6852", "h0_2fae", "h0_2fea", "h0_3530", "h0_3566", "h0_35a0", "h0_35dc", "h0_2dd6", "h0_2e0e", "h0_3698", "h0_2c7e", "h0_5e44", "h0_2d4c", "h0_5820", "char_hit_check", "h0_3dd8"]
+
+[[value]]
+value = 0x06
+count = 30
+example = "W1-1:30,11"
+group = "creature"
+what = "spawns creature kind 5; reading: probes first, then walks at the speed table h0+$348c/$34dc"
+seen = "walk"
+port_task = "T24"
+routines = ["h0_681c", "h0_6852", "h0_2fae", "h0_2fea", "h0_3530", "h0_3566", "h0_35a0", "h0_35dc", "h0_2dd6", "h0_2e0e", "h0_3698", "h0_2c7e", "h0_5e44", "h0_2d4c", "h0_5820", "char_hit_check", "h0_3dd8"]
+
+[[value]]
+value = 0x10
+count = 2
+example = "W1-1:222,56"
+group = "spring"
+what = "a spring's left half: under the feet while h0+$4ed0 is set, throws the character up (h0+$4ecf, $41b6 set); its tiles are redrawn six passes later; the cell stays"
+seen = "placed"
+port_task = "T25"
+routines = ["h0_24ce", "h0_21c0"]
+
+[[value]]
+value = 0x11
+count = 1
+example = "W1-1:224,56"
+group = "spring"
+what = "a spring's right half: as $10, the redraw origin 16 pixels left"
+seen = "placed"
+port_task = "T25"
+routines = ["h0_24ce", "h0_21c0"]
+
+[[value]]
+value = 0x20
+count = 128
+example = "W1-1:2,73"
+group = "item"
+what = "a counted coin: drawn spinning; taken for +100 (BCD), items_left -1, cell cleared and its tile redrawn"
+seen = "placed"
+port_task = "T22"
+routines = ["h0_6882", "h0_62b6", "char_object_cells", "h0_26ec", "h0_29ca", "items_left_minus_one", "score_add_routine"]
+
+[[value]]
+value = 0x21
+count = 108
+example = "W1-1:2,74"
+group = "item"
+what = "as $20, its spin one frame on"
+seen = "placed"
+port_task = "T22"
+routines = ["h0_6882", "h0_62b6", "char_object_cells", "h0_26ec", "h0_29ca", "items_left_minus_one", "score_add_routine"]
+
+[[value]]
+value = 0x22
+count = 51
+example = "W1-1:23,72"
+group = "item"
+what = "as $20, its spin two frames on"
+seen = "placed"
+port_task = "T22"
+routines = ["h0_6882", "h0_62b6", "char_object_cells", "h0_26ec", "h0_29ca", "items_left_minus_one", "score_add_routine"]
+
+[[value]]
+value = 0x23
+count = 45
+example = "W1-1:2,77"
+group = "item"
+what = "as $20, its spin three frames on"
+seen = "placed"
+port_task = "T22"
+routines = ["h0_6882", "h0_62b6", "char_object_cells", "h0_26ec", "h0_29ca", "items_left_minus_one", "score_add_routine"]
+
+[[value]]
+value = 0x28
+count = 11
+example = "W1-1:136,66"
+group = "water"
+what = "a water surface, animated by h0_62b6 (_ELEMENTY frames 8-11); nothing reads it under the character; whether it hurts through CLXDAT is unmeasurable until T59"
+seen = "placed"
+port_task = "T25"
+routines = ["h0_6882", "h0_62b6"]
+
+[[value]]
+value = 0x30
+count = 8
+example = "W1-1:22,86"
+group = "vanishing-block"
+what = "a block that fades out and back (_ZNIKAJKA1) on a 64-step cycle; collision_map is solid under it except at the empty frame"
+seen = "placed"
+port_task = "T25"
+routines = ["h0_6882", "h0_62b6"]
+
+[[value]]
+value = 0x31
+count = 8
+example = "W1-1:25,86"
+group = "vanishing-block"
+what = "as $30, a quarter cycle on"
+seen = "placed"
+port_task = "T25"
+routines = ["h0_6882", "h0_62b6"]
+
+[[value]]
+value = 0x32
+count = 7
+example = "W1-1:22,80"
+group = "vanishing-block"
+what = "as $30, half a cycle on"
+seen = "placed"
+port_task = "T25"
+routines = ["h0_6882", "h0_62b6"]
+
+[[value]]
+value = 0x33
+count = 3
+example = "W1-1:25,80"
+group = "vanishing-block"
+what = "as $30, three quarters on"
+seen = "placed"
+port_task = "T25"
+routines = ["h0_6882", "h0_62b6"]
+
+[[value]]
+value = 0x40
+count = 200
+example = "W1-1:2,37"
+group = "bonus"
+what = "an orange: blitted once by the edge redraw that brings it in; taken for 20 (BCD), cell cleared and its tile redrawn; items_left unchanged"
+seen = "placed"
+port_task = "T22"
+routines = ["h0_a06", "h0_ce4", "h0_104c", "h0_1390", "char_object_cells", "h0_26ec", "h0_29ca", "score_add_routine"]
+
+[[value]]
+value = 0x41
+count = 129
+example = "W1-1:2,38"
+group = "bonus"
+what = "an apple, as $40 for 30"
+seen = "placed"
+port_task = "T22"
+routines = ["h0_a06", "h0_ce4", "h0_104c", "h0_1390", "char_object_cells", "h0_26ec", "h0_29ca", "score_add_routine"]
+
+[[value]]
+value = 0x42
+count = 105
+example = "W1-1:2,39"
+group = "bonus"
+what = "cherries, as $40 for 40"
+seen = "placed"
+port_task = "T22"
+routines = ["h0_a06", "h0_ce4", "h0_104c", "h0_1390", "char_object_cells", "h0_26ec", "h0_29ca", "score_add_routine"]
+
+[[value]]
+value = 0x43
+count = 1
+example = "W1-1:172,58"
+group = "bonus"
+what = "a pear, as $40 for 50"
+seen = "placed"
+port_task = "T22"
+routines = ["h0_a06", "h0_ce4", "h0_104c", "h0_1390", "char_object_cells", "h0_26ec", "h0_29ca", "score_add_routine"]
+
+[[value]]
+value = 0x44
+count = 13
+example = "W1-1:11,91"
+group = "bonus"
+what = "a banana, as $40 for 60"
+seen = "placed"
+port_task = "T22"
+routines = ["h0_a06", "h0_ce4", "h0_104c", "h0_1390", "char_object_cells", "h0_26ec", "h0_29ca", "score_add_routine"]
+
+[[value]]
+value = 0x48
+count = 34
+example = "W1-1:6,24"
+group = "bonus"
+what = "a diamond, as $40 for 100"
+seen = "placed"
+port_task = "T22"
+routines = ["h0_a06", "h0_ce4", "h0_104c", "h0_1390", "char_object_cells", "h0_26ec", "h0_29ca", "score_add_routine"]
+
+[[value]]
+value = 0xff
+count = 6
+example = "W1-1:207,91"
+group = "exit"
+what = "the exit: sets level_exit_touched each pass the character is on it; main_loop ends the level when items_left is 0 (T26)"
+seen = "placed"
+port_task = "T22"
+routines = ["char_object_cells", "h0_26ec"]
