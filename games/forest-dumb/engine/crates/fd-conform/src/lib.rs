@@ -12,10 +12,11 @@ use amiga_conform::script;
 use amiga_oracle::{Amiga, OracleConfig, kickstart_path};
 use fd_core::{LAYOUT, LAYOUT_HUNK, TitleScene};
 
-/// The main program's hunks where the boot of `boot-to-title` loads them
+/// The main program's hunks where the boot of `boot-to-title` loads them, and `boot-to-level1`'s too
+/// (it shares the boot up to the title)
 /// (`docs/07-executable-map.md`). AmigaDOS picks them when the program loads, so another boot may
 /// differ; there a wrong base shows as a comparison failing on its first change.
-const HUNK_BASES: [u32; 5] = [0xc0_77d8, 0x1_0178, 0x1_1400, 0x1_2c38, 0x4_d668];
+pub const HUNK_BASES: [u32; 5] = [0xc0_77d8, 0x1_0178, 0x1_1400, 0x1_2c38, 0x4_d668];
 
 /// `engine/conform/`, wherever this is run from.
 pub fn conform_dir() -> PathBuf {
