@@ -9,7 +9,7 @@
 
 **Status:** Amendment read back and its 4 decisions settled; ready to build. Nothing built.
 **Last updated:** 2026-11-05
-**Next `pir-work` will:** T00 and T32, because every level task rests on T00's measurements and every port on T32's rig.
+**Next `pir-work` will:** T34, then the generator tasks T35 to T39, which need both T33 and T34.
 
 ## Tasks
 
@@ -27,7 +27,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T30 | unpack-in-rust | — | ✅ | |
 | T05 | level-readers | T03, T04, T30 | ⬜ | |
 | T06 | level-runner | T03, T04, T31, T32 | ⬜ | |
-| T33 | translate-service | T32 | 🔍 | `translate.py`, `fd-judge`, `judge/{mod,mem}.rs`, `build.rs`; 23 tests. Deviations: `RigReport::unmodelled_blits` added to T32's rig (oracle returns from line/fill blits); key checked first; missing split callee port exits 2; `--max-usd` stop is `fail` plus `stopped`; extra `tests/judge.rs`, `test_translate_judge.py`, README and CLAUDE.md lines. Live call passed. |
+| T33 | translate-service | T32 | ✅ | Review clean, no fix commit. Probed: re-judged the live `h0+$5462` port with fd-judge (2000/2000) and a one-constant break of it (1926 failures); four mutations (blit modulo, line/fill mask, spend guard, 502 wait) all red; judge 0.9 s against its 120 s limit; concurrent judges on two `--out` folders gave no wrong verdict. |
 | T34 | translate-inventory | T00 | ⬜ | |
 | T35 | gen-character | T33, T34 | ⬜ | |
 | T36 | gen-camera | T33, T34 | ⬜ | |
@@ -69,7 +69,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T29 | level-drill | T15, T28 | ⬜ | |
 | T50 | sf-menus-os-test-stale | — | ⬜ | |
 
-**Review queue:** T33
+**Review queue:** *(empty)*
 
 ## Blocked on the user
 
