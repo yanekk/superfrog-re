@@ -96,6 +96,10 @@ workspace = "engine"
 "tools/test_generate.py" = "smoke"
 "tools/test_generate_judge.py" = "smoke"
 "tools/test_re_listing.py" = "smoke"
+# T62: model calls stubbed, no network. The judge one builds three canned answers into the engine's
+# scratch copy and runs T08's rig on h0_4274: about 4 s warm, 20 s on a cold scratch target.
+"tools/test_reshape.py" = "smoke"
+"tools/test_reshape_judge.py" = "smoke"
 "tools/test_render_levels.py" = "smoke"
 # Model calls stubbed, no network. The second builds canned ports into fd-judge: about 8 s warm.
 "tools/test_translate.py" = "smoke"
