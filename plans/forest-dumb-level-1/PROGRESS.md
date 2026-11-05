@@ -30,7 +30,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T33 | translate-service | T32 | ✅ | |
 | T34 | translate-inventory | T00 | ✅ | |
 | T35 | gen-character | T33, T34 | ⬜ | |
-| T36 | gen-camera | T33, T34 | ⬜ | |
+| T36 | gen-camera | T33, T34 | ✅ | |
 | T37 | gen-drawing | T33, T34 | ⬜ | |
 | T38 | gen-objects | T33, T34 | ⬜ | |
 | T39 | gen-rest | T33, T34 | ⬜ | |
