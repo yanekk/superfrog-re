@@ -226,6 +226,74 @@ note = "one frame of play, run inside the interrupt"
 [[sym]]
 exe = "forest_dumb_forever"
 hunk = 0
+offset = 0x4be4
+name = "char_walk_t"
+kind = "var"
+size = 1
+note = "walk frame counter, 0 to $27; char_step_4be6 and h0_4c28 step it (T51)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x4c28
+name = "h0_4c28"
+kind = "func"
+note = "walk right: facing 1, steps char_walk_t, frame from h0+$4edc (T51)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x4c6a
+name = "h0_4c6a"
+kind = "func"
+note = "frame from char_probe_1, char_probe_2 bits 0-1 and char_facing (T51)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x4d32
+name = "h0_4d32"
+kind = "func"
+note = "frame h0+$4ef0 or, facing left, h0+$4f44 (T51)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x4d54
+name = "h0_4d54"
+kind = "func"
+note = "frame h0+$4ef4 or, facing left, h0+$4f48 (T51)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x4ece
+name = "char_facing"
+kind = "var"
+size = 1
+note = "$ff left, 1 right (read: set with char_x -1 / +1 in h0+$4696)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x4ed1
+name = "char_probe_1"
+kind = "var"
+size = 1
+note = "written by char_probe_flags; 1, 2, 3 pick frames in h0_4c6a"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x4ed2
+name = "char_probe_2"
+kind = "var"
+size = 1
+note = "bits 0 and 1 pick frames in h0_4c6a"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
 offset = 0x519e
 name = "frame_flag"
 kind = "var"
@@ -323,6 +391,42 @@ offset = 0x7bf4
 name = "prompt_insert_disk"
 kind = "func"
 note = "the prompt behind a failed open"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x8df2
+name = "joy_left"
+kind = "var"
+size = 2
+note = "1 when JOY1DAT bit 9 is set, else 0 (read_joystick)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x8df4
+name = "joy_right"
+kind = "var"
+size = 2
+note = "1 when JOY1DAT bit 1 is set (read_joystick)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x8df6
+name = "joy_up"
+kind = "var"
+size = 2
+note = "1 when JOY1DAT bit 9 xor bit 8 (read_joystick)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x8df8
+name = "joy_down"
+kind = "var"
+size = 2
+note = "1 when JOY1DAT bit 1 xor bit 0 (read_joystick)"
 
 [[sym]]
 exe = "forest_dumb_forever"
@@ -731,7 +835,7 @@ hunk = 0
 offset = 0x4be6
 name = "char_step_4be6"
 kind = "func"
-note = "called by char_step; not read"
+note = "walk left: facing $ff, steps char_walk_t, frame from h0+$4f30 (T51)"
 
 [[sym]]
 exe = "forest_dumb_forever"
@@ -870,15 +974,6 @@ note = "SCENA N: draws the world name, waits for fire from frame 6206 (oracle)"
 [[sym]]
 exe = "forest_dumb_forever"
 hunk = 0
-offset = 0x8df2
-name = "joy_flags"
-kind = "var"
-size = 8
-note = "left, right, up, down words from JOY1DAT"
-
-[[sym]]
-exe = "forest_dumb_forever"
-hunk = 0
 offset = 0x8dfa
 name = "beam_sample_unread"
 kind = "var"
@@ -891,7 +986,7 @@ hunk = 0
 offset = 0x8dfc
 name = "read_joystick"
 kind = "func"
-note = "JOY1DAT to joy_flags; appends them to input_log while it has room"
+note = "JOY1DAT to joy_left..joy_down; appends them to input_log while it has room"
 
 [[sym]]
 exe = "forest_dumb_forever"
@@ -917,7 +1012,7 @@ offset = 0x34c28
 name = "input_log"
 kind = "table"
 size = 0x2ee0
-note = "one byte of joy_flags a game_frame, 12000 frames; read by nothing found"
+note = "one byte of joy_left..joy_down a game_frame, 12000 frames; read by nothing found"
 
 [[sym]]
 exe = "forest_dumb_forever"
@@ -1035,3 +1130,185 @@ name = "anim_cells"
 kind = "var"
 size = 384
 note = "the animated cells: x.w, y.w, object value.b, 3 more bytes, 48 of them"
+
+# T09, the camera: its routines and its hand-off to main_loop's edge redraws (docs/09, "The camera").
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x4e9a
+name = "h0_4e9a"
+kind = "func"
+note = "camera flag step right: scrolls h0_51fc while char_x - camera_x is past $94 (T09)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x4ea6
+name = "h0_4ea6"
+kind = "func"
+note = "camera flag step left: scrolls h0_526a while char_x - camera_x is below $78 (T09)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x4eb4
+name = "h0_4eb4"
+kind = "func"
+note = "camera flag step up: scrolls h0_52d8 while char_y - camera_y is below $46 (T09)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x4ec2
+name = "h0_4ec2"
+kind = "func"
+note = "camera flag step down: scrolls h0_5346 while char_y - camera_y is past $5a (T09)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x513c
+name = "h0_513c"
+kind = "func"
+note = "clamps camera_y to $53f then 0, camera_x to $17cf then 0, by cmpi.w (T09)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x51fc
+name = "h0_51fc"
+kind = "func"
+note = "camera_x +1; on a 16-pixel crossing only if its latch is clear, then sets flag, latch, frame_flag (T09)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x526a
+name = "h0_526a"
+kind = "func"
+note = "camera_x -1, as h0_51fc (T09)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x52d8
+name = "h0_52d8"
+kind = "func"
+note = "camera_y -1, as h0_51fc (T09)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x5346
+name = "h0_5346"
+kind = "func"
+note = "camera_y +1, as h0_51fc (T09)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x5186
+name = "edge_at_right_x"
+kind = "var"
+size = 2
+note = "camera_x when camera_update last saw the right edge crossed; read by main_loop (T09)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x5188
+name = "edge_at_right_y"
+kind = "var"
+size = 2
+note = "camera_y with edge_at_right_x (T09)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x518a
+name = "edge_at_left_x"
+kind = "var"
+size = 2
+note = "camera_x when camera_update last saw the left edge crossed; read by main_loop (T09)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x518c
+name = "edge_at_left_y"
+kind = "var"
+size = 2
+note = "camera_y with edge_at_left_x (T09)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x518e
+name = "edge_at_up_x"
+kind = "var"
+size = 2
+note = "camera_x when camera_update last saw the up edge crossed; read by main_loop (T09)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x5190
+name = "edge_at_up_y"
+kind = "var"
+size = 2
+note = "camera_y with edge_at_up_x (T09)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x5192
+name = "edge_at_down_x"
+kind = "var"
+size = 2
+note = "camera_x when camera_update last saw the down edge crossed; read by main_loop (T09)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x5194
+name = "edge_at_down_y"
+kind = "var"
+size = 2
+note = "camera_y with edge_at_down_x (T09)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x5196
+name = "edge_latch_right"
+kind = "var"
+size = 2
+note = "set $ffff by a right scroll crossing a cell; blocks the next until main_loop clears it (T09)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x5198
+name = "edge_latch_left"
+kind = "var"
+size = 2
+note = "set $ffff by a left scroll crossing a cell; blocks the next until main_loop clears it (T09)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x519a
+name = "edge_latch_up"
+kind = "var"
+size = 2
+note = "set $ffff by a up scroll crossing a cell; blocks the next until main_loop clears it (T09)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x519c
+name = "edge_latch_down"
+kind = "var"
+size = 2
+note = "set $ffff by a down scroll crossing a cell; blocks the next until main_loop clears it (T09)"

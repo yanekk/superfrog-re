@@ -49,6 +49,9 @@ workspace = "engine"
 "crates/fd-conform/tests/gen_character.rs" = "smoke"
 # T36's camera generators against the original, branches both ways: under a second.
 "crates/fd-conform/tests/gen_camera.rs" = "smoke"
+# T09: the camera's engine port against the original, 10 000 states a routine and the negative
+# checks: about 3 s on the program from disk 1.
+"crates/fd-conform/tests/camera_routines.rs" = "smoke"
 # T38's objects generators against the original, branches both ways: under 2 s.
 "crates/fd-conform/tests/gen_objects.rs" = "smoke"
 # T54: the creature movement and sort generators, every branch both ways: under 3 s.
@@ -65,6 +68,8 @@ workspace = "engine"
 ]
 # T53: the walk-animation and joystick routines' generators, branches both ways: under a second.
 "crates/fd-conform/tests/gen_character_anim.rs" = "smoke"
+# T51: the animation pickers and read_joystick against the original, 10 000 states each, under 2 s.
+"crates/fd-conform/tests/character_anim_routines.rs" = "smoke"
 # T21: what each object value of W1-1 does, scripted slides from the cached sync point, 3 s warm;
 # the map and note checks read disk 2. A machine with no sync cache boots to W1-1 once first.
 "crates/fd-conform/tests/object_claims.rs" = "smoke"
@@ -114,6 +119,10 @@ covers = ["crates/fd-conform/tests/level_files.rs::every_level_1_file_equals_the
 [[area]]
 name = "comparing a ported routine with the original"
 covers = ["crates/fd-conform/tests/rig.rs", "crates/fd-conform/tests/ported.rs"]
+
+[[area]]
+name = "the camera following the character"
+covers = ["crates/fd-conform/tests/camera_routines.rs::every_camera_routine_matches_the_original"]
 
 [[area]]
 name = "judging a generator by the branches it covers on the original"

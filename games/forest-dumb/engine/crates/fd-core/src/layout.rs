@@ -53,6 +53,20 @@ pub const LAYOUT: &[Var] = &[
     var("camera_x", 0, 0x1e62, Width::Word),
     var("camera_y", 0, 0x1e64, Width::Word),
     var("char_screen_x", 0, 0x4d78, Width::Word),
+    // The camera's hand-off to `main_loop`'s edge redraws (T09, docs/09 "The camera"): a latch a
+    // direction, and where the camera was when that edge was crossed.
+    var("edge_at_right_x", 0, 0x5186, Width::Word),
+    var("edge_at_right_y", 0, 0x5188, Width::Word),
+    var("edge_at_left_x", 0, 0x518a, Width::Word),
+    var("edge_at_left_y", 0, 0x518c, Width::Word),
+    var("edge_at_up_x", 0, 0x518e, Width::Word),
+    var("edge_at_up_y", 0, 0x5190, Width::Word),
+    var("edge_at_down_x", 0, 0x5192, Width::Word),
+    var("edge_at_down_y", 0, 0x5194, Width::Word),
+    var("edge_latch_right", 0, 0x5196, Width::Word),
+    var("edge_latch_left", 0, 0x5198, Width::Word),
+    var("edge_latch_up", 0, 0x519a, Width::Word),
+    var("edge_latch_down", 0, 0x519c, Width::Word),
     var("lives", 0, 0x6a84, Width::Word),
     var("hits_taken", 0, 0x3b26, Width::Word),
     var("countdown", 0, 0x6a80, Width::Long),
@@ -65,6 +79,19 @@ pub const LAYOUT: &[Var] = &[
     var("paused", 0, 0x2100, Width::Word),
     var("level_exit_touched", 0, 0x2696, Width::Word),
     var("give_up", 0, 0x21b2, Width::Word),
+    // The character's animation pickers and the joystick read (T51).
+    var("char_walk_t", 0, 0x4be4, Width::Byte),
+    var("char_facing", 0, 0x4ece, Width::Byte),
+    var("char_probe_1", 0, 0x4ed1, Width::Byte),
+    var("char_probe_2", 0, 0x4ed2, Width::Byte),
+    // A pointer as the original stores it: equal only with tables loaded at the oracle's bases
+    // (`character::anim`).
+    var("char_anim_ptr", 0, 0x4ed8, Width::Long),
+    var("joy_left", 0, 0x8df2, Width::Word),
+    var("joy_right", 0, 0x8df4, Width::Word),
+    var("joy_up", 0, 0x8df6, Width::Word),
+    var("joy_down", 0, 0x8df8, Width::Word),
+    var("input_log_index", 0, 0x8ec0, Width::Long),
 ];
 
 /// The variable called `name`.
