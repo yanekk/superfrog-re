@@ -1,9 +1,15 @@
 # 08 — Packers
 
-Forty-seven of the 61 files are packed, by two packers. Every packed file unpacks with
-`venv/bin/python games/forest-dumb/tools/unpack.py --all`, into
-`games/forest-dumb/build/unpacked/disk<N>/<name>` (git-ignored). Later tools read the game's data from
-there. It needs `fd-tools extract` to have run, because the unpacking code comes from the disks.
+Forty-seven of the 61 files are packed, by two packers. The engine reads them through the Rust
+decoder in `fd-tools` (`engine/crates/fd-tools/src/unpack.rs`): `fd_tools::game_file(disks, name)`
+reads one file from the zips and unpacks it in memory, writing nothing, and `fd_tools::unpack` takes
+the bytes. It decodes `ESL!` only; the crack intro's `S404` is refused, as the game never loads it.
+`engine/crates/fd-tools/tests/unpack.rs` checks it against the table below on all 46 `ESL!` files and
+against `unpack.py` on level 1's.
+
+`venv/bin/python games/forest-dumb/tools/unpack.py --all` unpacks every packed file, `S404` included,
+into `games/forest-dumb/build/unpacked/disk<N>/<name>` (git-ignored), for the Python tools. It needs
+`fd-tools extract` to have run, because the unpacking code comes from the disks.
 
 ## `ESL!`: 46 files, all on disk 2
 
@@ -29,8 +35,10 @@ the two agree byte for byte on all 46 files.
 
 Why the game's routine: the crates.io PowerPacker decoders are `format198x-commodore-amiga-powerpacker`
 (GPL) and `newtua-amiga` (LGPL), both copyleft, which DESIGN §5 rules out (checked 2026-10-31), and no
-PyPI package turned up under `powerpacker` or `pp20`. A Rust port later has the routine and the test
-decoder to check against.
+PyPI package turned up under `powerpacker` or `pp20`. The Rust decoder (2026-11-05, forest-dumb-level-1
+T30) is written from `test_unpack.py`'s decoder, with `unpack.py`'s checks: a truncated file, a wrong size
+or a wrong skip count is an error, never a panic. Reading level 1's five files from the zips through
+`game_file` took 166 ms in a debug test build.
 
 ## `S404`: `BillClintonToDupek` on disk 1
 
