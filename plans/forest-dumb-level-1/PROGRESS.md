@@ -7,7 +7,7 @@
 **Amended:** 2026-11-05 — translation by Muse and small sessions (brief): T32 to T48 added; T06, T08 to T11, T22, T24, T25, T27 reshaped (owner).
 **Amendment reviewed:** 2026-11-05 — 15 fixed, 4 decided with the owner (T49 added)
 
-**Status:** Amendment read back and its 4 decisions settled; ready to build. Nothing built.
+**Status:** Building. T01 awaiting review.
 **Last updated:** 2026-11-05
 **Next `pir-work` will:** T00 and T32, because every level task rests on T00's measurements and every port on T32's rig.
 
@@ -18,7 +18,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | # | Task | Depends on | State | Notes |
 |---|---|---|---|---|
 | T00 | measure-play | — | ⬜ | |
-| T01 | smoke-room | — | ⬜ | |
+| T01 | smoke-room | — | 🔍 | 39 fast Superfrog test files outside every area moved smoke to full (117 to 78 entries); purity and inline tests kept. Label check clean. One run: 761 s ok, cold, under load from three workers, so the 720 s item is unverified; pir's end smoke decides (owner). No new tests: labels only. |
 | T02 | route-pin | — | ⬜ | |
 | T31 | code-ran-counter | — | ⬜ | |
 | T32 | routine-rig | — | ⬜ | |
