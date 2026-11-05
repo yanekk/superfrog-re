@@ -40,7 +40,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T08 | character-movement | T07, T40 | ✅ | |
 | T09 | camera-scroll | T07, T40 | ✅ | |
 | T10 | level-drawing | T08, T09, T40 | ⬜ | |
-| T41 | case-run-jump | T08, T09 | ⬜ | |
+| T41 | case-run-jump | T08, T09 | ✅ | |
 | T42 | case-walls-pits | T08, T09, T41 | ⬜ | |
 | T43 | case-scroll | T08, T09 | ✅ | Review clean, no fix commit. Ran the 4 tests 5 times; clamp `MAX_Y` one short and a dropped `edge_at_left` record both go red. Probed: 203 two-latch frames on the original, latches same every pass; W1-1 map right of column 230 has no floor, exit at 207. Picture timing left to T44. |
 | T44 | case-picture | T10 | ⬜ | |
@@ -85,6 +85,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T64 | listing-odd-bytes | T08, T51 | ✅ | |
 | T66 | reshape-decision | T62; blocks T22 | ⬜ | |
 | T65 | level-start-draw | T55; blocks T13, T20 | ⬜ | |
+| T67 | pass-input-read | T06; blocks T42, T43, T44, T15 | ⬜ | |
 
 **Review queue:** *(empty)*
 

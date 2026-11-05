@@ -87,6 +87,9 @@ workspace = "engine"
 # T08: the character's movement against the original, 14 routines at 10 000 states each and 5
 # mutants, about 9 s (one rig per test, run in parallel).
 "crates/fd-conform/tests/character_routines.rs" = "smoke"
+# T41: the character's runs in play against the original, five cases from the cached sync point in
+# parallel: about 1.5 s warm. A machine with no sync cache boots to W1-1 once first (about 16 s).
+"crates/fd-conform/tests/character_run.rs" = "smoke"
 # T21: what each object value of W1-1 does, scripted slides from the cached sync point, 3 s warm;
 # the map and note checks read disk 2. A machine with no sync cache boots to W1-1 once first.
 "crates/fd-conform/tests/object_claims.rs" = "smoke"
@@ -163,6 +166,10 @@ covers = [
 [[area]]
 name = "the character's movement against the original"
 covers = ["crates/fd-conform/tests/character_routines.rs::every_t08_routine_is_registered_and_passes_the_rig"]
+
+[[area]]
+name = "the character running and jumping in play, against the original"
+covers = ["crates/fd-conform/tests/character_run.rs"]
 
 [[area]]
 name = "entering level 1 on the engine"
