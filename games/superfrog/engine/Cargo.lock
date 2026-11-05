@@ -161,6 +161,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "amiga-plan"
+version = "0.1.0"
+dependencies = [
+ "amiga-input",
+ "libc",
+ "serde",
+]
+
+[[package]]
 name = "amiga-record"
 version = "0.1.0"
 dependencies = [
@@ -3041,6 +3050,7 @@ name = "sf-plan"
 version = "0.1.0"
 dependencies = [
  "amiga-disk",
+ "amiga-plan",
  "bincode",
  "libc",
  "serde",
