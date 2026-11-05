@@ -55,6 +55,18 @@ workspace = "engine"
 # T55: the edge redraws' engine port. Registration, the pointer tables, the d0 carry's negative check
 # and collision_map after a scroll each way from the cached sync point, about 7 s. The 10 000-state
 # check of all 14 routines (about 7 min) and the cell-table filter's count (16 s) stay in full.
+# T10: the renderer's ports, registration, the display at the sync point and the picture against the
+# oracle's, under 2 s together. The 10 000-state check of all 16 routines (about 2 min) and the
+# mutants (11 s) stay in full.
+"crates/fd-conform/tests/drawing_routines.rs" = [
+    "every_t10_routine_is_registered_and_checked_here",
+    "the_status_generators_poke_only_what_their_routines_read",
+    "the_adapters_store_back_what_they_load",
+    "the_palette_is_the_one_the_program_holds_and_the_original_fades_to",
+    "the_display_equals_the_original_at_the_sync_point",
+    "the_first_frame_is_drawn_with_the_status_bar",
+    "after_a_transplant_the_picture_is_the_originals_still_and_scrolled",
+]
 "crates/fd-conform/tests/edge_redraw_routines.rs" = [
     "every_t55_routine_is_registered_and_checked_here",
     "the_pointer_tables_are_sixteen_rotated_bands",
@@ -141,6 +153,10 @@ covers = ["crates/fd-conform/tests/rig.rs", "crates/fd-conform/tests/ported.rs"]
 [[area]]
 name = "the camera following the character"
 covers = ["crates/fd-conform/tests/camera_routines.rs::every_camera_routine_matches_the_original"]
+
+[[area]]
+name = "the engine's picture: play area, character sprites and status bar as the original draws them"
+covers = ["crates/fd-conform/tests/drawing_routines.rs::after_a_transplant_the_picture_is_the_originals_still_and_scrolled"]
 
 [[area]]
 name = "the map's edges redrawn into collision_map as the view scrolls"

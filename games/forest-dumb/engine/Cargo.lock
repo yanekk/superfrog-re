@@ -132,6 +132,7 @@ dependencies = [
 name = "fd-core"
 version = "0.1.0"
 dependencies = [
+ "amiga-chips",
  "amiga-clock",
  "amiga-input",
  "fd-assets",

@@ -1674,3 +1674,115 @@ offset = 0x6882
 name = "h0_6882"
 kind = "func"
 note = "adds an animated cell (d0, d1, value at a2) to the emptiest of h0_62b6's four lists (T55)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x3ab4
+name = "h0_3ab4"
+kind = "func"
+note = "waits while the blitter is busy (T10)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x94ba
+name = "h0_94ba"
+kind = "func"
+note = "one pass of the level palette's fade-in, 32 passes from h0+$94b4 set (T10)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x94fe
+name = "h0_94fe"
+kind = "func"
+note = "every copper colour (h1+$13e) one step toward h1+$306 at fade column d6 (T10)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x9550
+name = "h0_9550"
+kind = "func"
+note = "one colour d1 one step toward d0, by the fade table h0+$9624; result in d3 (T10)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x9754
+name = "h0_9754"
+kind = "func"
+note = "the copper list's bitplane pointers, scroll and wrap from the camera (T10)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x6a96
+name = "h0_6a96"
+kind = "func"
+note = "main_loop's status bar: redraws countdown, lives, score, items where changed (T10)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x6ae8
+name = "h0_6ae8"
+kind = "func"
+note = "draws the score's six digits into the status bar (T10)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x6b70
+name = "h0_6b70"
+kind = "func"
+note = "a score digit d0 at place d1 (T10)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x6b78
+name = "h0_6b78"
+kind = "func"
+note = "an 8x8 digit d0 from the font at h4+$8fc0 to a1 (T10)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x6bc0
+name = "h0_6bc0"
+kind = "func"
+note = "draws the countdown's three digits (T10)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x6c20
+name = "h0_6c20"
+kind = "func"
+note = "draws the items left's three digits (T10)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x6c80
+name = "h0_6c80"
+kind = "func"
+note = "draws the lives: their count of threes and the remainder's icons (T10)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x988a
+name = "h0_988a"
+kind = "func"
+note = "start-up: the status bar's bitplane pointers at h1+$248 (T10)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x9a34
+name = "h0_9a34"
+kind = "func"
+note = "start-up: the level copper list's sprite pointers at h1+$d8 (T10)"

@@ -84,6 +84,10 @@ pub struct LevelCtx<'a> {
     pub anim: &'a AnimTables,
     /// The collision plane, play state (T08; T55 draws it, T25 changes it).
     pub plane: &'a CollisionPlane,
+    /// What the display shows (T10): picture state, which play logic never reads.
+    pub display: &'a mut crate::render::Display,
+    /// What the display reads from the disks: the level palette the fade reaches.
+    pub display_data: &'a crate::render::DisplayData,
 }
 
 /// One thing an object shows: an image at a place in level pixels. T10 and the kinds' tasks
@@ -175,10 +179,16 @@ pub fn game_frame(
     input: FrameInput,
 ) {
     // char_sprite_copy, h0+$94ba (T10).
-    // `camera_update`, then `h0+$513c` (T09).
     let s = &mut *l.state;
+    l.display.sprite.copy(&mut s.motion.unhurt_t, s.anim.ptr);
+    l.display.fade.step(&l.display_data.palette(), l.program);
+    // `camera_update`, then `h0+$513c` (T09).
     s.camera.step((s.char_x, s.char_y), &mut s.frame_flag);
-    // char_sprite_position, h0+$9754 (T10).
+    // char_sprite_position (T10). `h0+$9754` points the copper list at the play screen from the
+    // camera, which nothing changes again before the picture: `render::picture` computes it then.
+    l.display
+        .sprite
+        .position(s.char_x, s.char_y, s.camera.x, s.camera.y);
     if l.state.paused != 0 {
         // play_keys (T23).
         return;

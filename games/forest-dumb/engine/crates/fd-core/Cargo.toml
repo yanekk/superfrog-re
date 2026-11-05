@@ -7,6 +7,9 @@ publish.workspace = true
 [dependencies]
 # The display timing a game supplies (pure, a toolkit crate).
 amiga-clock = { path = "../../../../../toolkit/crates/amiga-clock" }
+# The copper run, the bitplane fetch and the sprite composition the renderer draws with (pure, a
+# toolkit crate).
+amiga-chips = { path = "../../../../../toolkit/crates/amiga-chips" }
 # The per-frame input (pure, a toolkit crate).
 amiga-input = { path = "../../../../../toolkit/crates/amiga-input" }
 # The level files, read through a closure (pure, this game's crate).
