@@ -7,9 +7,9 @@
 **Amended:** 2026-11-05 — translation by Muse and small sessions (brief): T32 to T48 added; T06, T08 to T11, T22, T24, T25, T27 reshaped (owner).
 **Amendment reviewed:** 2026-11-05 — 15 fixed, 4 decided with the owner (T49 added)
 
-**Status:** Amendment read back and its 4 decisions settled; ready to build. Nothing built.
+**Status:** Building. T00 implemented, awaiting review.
 **Last updated:** 2026-11-05
-**Next `pir-work` will:** T00 and T32, because every level task rests on T00's measurements and every port on T32's rig.
+**Next `pir-work` will:** review T00, then T03, T04 and T34 on it; T32 for the rig.
 
 ## Tasks
 
@@ -17,7 +17,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 
 | # | Task | Depends on | State | Notes |
 |---|---|---|---|---|
-| T00 | measure-play | — | ⬜ | |
+| T00 | measure-play | — | 🔍 | docs/09-play-measured.md answers every question, each marked measured, read or inferred; boot-to-level1 (sync frame 6301), play_measured.rs (3 tests, full, 32 s), 49 symbols. Deviations: rates measured at the step boundary only; creature erase and half-drawn edges left open, named in the note; fd-conform's HUNK_BASES made pub; docs/07 and CLAUDE.md link the note. Probes deleted. |
 | T01 | smoke-room | — | ⬜ | |
 | T02 | route-pin | — | ⬜ | |
 | T31 | code-ran-counter | — | ⬜ | |
@@ -68,7 +68,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T28 | finish-end-to-end | T16, T48 | ⬜ | |
 | T29 | level-drill | T15, T28 | ⬜ | |
 
-**Review queue:** *(empty)*
+**Review queue:** T00
 
 ## Blocked on the user
 

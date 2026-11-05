@@ -6,6 +6,9 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-11-05 | 🔄 | Owner kept DESIGN §2.7: Esc quits, no pause key, though the original's play acts on P (pause) and Esc (give up, game over). The engine models both for cases (T00). |
+| 2026-11-05 | 📌 | T00: `game_frame` ends after the frame boundary in 35 of 3 000 moving frames, so step-end state can be mid-pass. Compare at the pass end, `INTREQ=$4010` at `h0+$1f02` (T06). |
+| 2026-11-05 | 📌 | T00: `collision_map` (`h3+$fa50`) is game state built by the foreground edge redraws; the play screen is picture state only; the character is hardware sprites 0-3. `docs/09-play-measured.md`. |
 | 2026-11-05 | 🔄 | Read-back decisions (owner): finisher copies conversation logs (`.pir/rules/on-finish.md` step 1); T49 translates T21's object routines before T22; generator tasks share the porting size limit; T23, T26 keep the split-by-case escape line. |
 | 2026-11-05 | 🔄 | Owner set every Muse call to `worker`, the batch included (caps $0.10 a routine, $5 a batch), and asked for a read-back of the amendment. |
 | 2026-11-05 | 🔄 | Owner adopted translation by Muse and small sessions (brief): T32 rig split from T06, T33 to T40 translation track, T41 to T48 frame-matching per case. pir deletes `.parallel/control/conversations/` only on Remove; DESIGN §5.3 copies them first. |
