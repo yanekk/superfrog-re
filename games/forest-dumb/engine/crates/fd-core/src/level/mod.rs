@@ -173,9 +173,8 @@ pub fn game_frame(
 /// `main_loop`'s redraw half (`h0+$2a0` to `$358`), which runs in the foreground between passes: when
 /// `frame_flag` is set, each latched edge in the order down, up, left, right has its position copied to
 /// the redraws' (`h0+$1e66`), its latch cleared and its redraw run; then `frame_flag` is cleared. The
-/// engine runs it whole. The original's can be cut short by the next pass's interrupt (docs/09, "The
-/// edge redraws": inferred, not seen), and a latch the interrupt sets between `main_loop`'s test and
-/// its clear is cleared unredrawn.
+/// engine runs it whole, before the next pass. The original's is cut short by the next pass when it
+/// draws two edges in one frame, and finishes after it (measured, T55; docs/09, "The edge redraws").
 pub fn main_loop_redraws(s: &mut State, image: &redraw::LevelImage, blits: &mut Vec<redraw::Blit>) {
     use camera::Dir;
     if s.frame_flag == 0 {

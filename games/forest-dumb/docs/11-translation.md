@@ -639,6 +639,32 @@ T36 generator. Behaviour and interruptible points: [09](09-play-measured.md), "T
   for `camera_update` and `h0_513c` (`level3_handler` saves and restores every register around
   `game_frame`; `camera_update` reloads `d0`, `d1` after each flag step). `check` still compares all.
 
+## Engine ports: edge redraws (T55)
+
+`fd-core/src/level/redraw.rs` (and `level/collision.rs`), proven by `fd-conform/tests/edge_redraw_routines.rs`
+on 10 000 states of each T56 generator; paths 3, 1, 2 680, 2, 2 633, 2, 2 110, 2, 2 119, 3, 2, 6, 1, 127 in
+`re/translate.toml`'s order. Behaviour and interruptible points: [09](09-play-measured.md), "The edge redraws".
+
+- **By hand: `redraw_edge_c`**, because it is `by_hand` (181 instructions of its own flow, over 180) and the
+  batch answered `too-big`. Written from the listing beside its twin `redraw_edge_d`; it matched on the
+  first check.
+- The other 13 came from T40's passing ports, reshaped onto `Edges`, `CreatureSlots` and `AnimatedCells`.
+  The level buffers are read, and the outputs written, through `redraw::Io` at the original's offsets,
+  because the original's long arithmetic runs past each map's end (a column of -1 reads the object map, a
+  wild x the program after the buffers); the rig's `Io` is the state's memory, the game's `PlayIo`.
+- The blits are a list (`Blit`), turned into the original's register writes in order by the rig's `Io`.
+- `h0_681c` and `h0_6852` are also reached from `h0+$3a38`'s fixed creature starts, and `h0_6882` fills
+  `h0_62b6`'s lists (T25): kept here as `CreatureSlots::start`, `fill` and `AnimatedCells::add` for T24 and
+  T25 to call.
+- Two kinds of state are left out of the check, each counted by a test: T56's `h0_6852` states with `d7` 5
+  to `$3f` (1 in 50; the original writes past the five slots over its own code; its one caller passes 0 to
+  4), taken into range; and redraw states where the engine's bob blit, masked to chip RAM, would land on
+  the animated-cell table (hunk 2), which the original then reads back (35, 53, 0, 0 of 2 000 for a to d;
+  wild x or the `d0` carry), drawn again. The rig's adapters store only the bytes the engine changed, so a
+  blit's write is not undone by the store.
+- Registers compared: `d0` after `h0_681c` and after the row bobs `h0_a06`, `h0_ce4`, whose high word the
+  scan carries to the next bob; none for the rest (`main_loop` reloads what it reads).
+
 ## Object routines (T49)
 
 T49 was to translate the object routines T21 found reached only through dispatch tables, which T34's
