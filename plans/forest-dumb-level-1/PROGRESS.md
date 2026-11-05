@@ -67,15 +67,16 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T48 | route-on-original | T27 | ⬜ | |
 | T28 | finish-end-to-end | T16, T48 | ⬜ | |
 | T29 | level-drill | T15, T28 | ⬜ | |
-| T50 | sf-menus-os-test-stale | — | 🔍 | Test now asserts File (Import Disks…, Export Level with 30 levels, Play Level File…) and View (adds Filter, Widescreen; Filter items, None checked); passes on the real app. Deviation: `os_layer_scale_and_fullscreen…` in the same file fails at a varying step on this 1920×1080 screen, untouched, logged in FINDINGS. |
+| T50 | sf-menus-os-test-stale | — | ✅ | Review: clean, no fix commit. Ran the menu test on the real app (green), mutated menu.rs dropping Widescreen (red), checked File, Export 30 levels, Filter titles and None default against menu.rs and the toolkit. Whole-file Done when red on the scale and fullscreen test, base-identical; owner moved it to T57. |
 | T51 | character-anim-input | T07, T40; blocks T08 | ⬜ | |
 | T52 | creature-drawing | T10, T22; blocks T46 | ⬜ | |
 | T53 | gen-character-2 | T33, T34; blocks T40 | ⬜ | |
 | T54 | gen-objects-2 | T33, T34; blocks T40 | ⬜ | |
 | T55 | edge-redraw | T09; blocks T10, T41, T42, T43 | ⬜ | |
 | T56 | gen-edge-redraw | T33, T34; blocks T40 | ⬜ | |
+| T57 | sf-scale-fullscreen-os-test | — | ⬜ | |
 
-**Review queue:** T50
+**Review queue:** empty
 
 ## Blocked on the user
 
