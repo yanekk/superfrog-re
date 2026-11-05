@@ -28,6 +28,9 @@ sf-oracle = { path = "../sf-oracle" }
 # T12 review: the planner's `app::app_start` held to set C's verification start, the one sf-e2e's
 # `plan_routes.rs` checks against the real app (sf-bench never links sf-plan, so no cycle).
 sf-bench = { path = "../sf-bench" }
+# T02 (forest-dumb-level-1): the route pins' SHA-1, the toolkit's own (already in the workspace
+# through sf-disk).
+amiga-disk = { path = "../../../../../toolkit/crates/amiga-disk" }
 
 [[bin]]
 name = "sf-plan"
