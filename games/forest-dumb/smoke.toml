@@ -25,6 +25,8 @@ workspace = "engine"
 # The routine rig and the port register: about 3 s, the rig half on the program from disk 1.
 "crates/fd-conform/tests/ported.rs" = "smoke"
 "crates/fd-conform/tests/rig.rs" = "smoke"
+# The translation judge on h0+$774, under a second.
+"crates/fd-conform/tests/judge.rs" = "smoke"
 # Three boots to W1-1, about 32 s together: the measurements of docs/09-play-measured.md.
 "crates/fd-conform/tests/play_measured.rs" = "full"
 # One boot to W1-1 (title and play), 12 to 27 s: picture_in on the whole play picture (T04).
@@ -43,6 +45,9 @@ workspace = "engine"
 "tools/test_find_file_names.py" = "smoke"
 "tools/test_re_listing.py" = "smoke"
 "tools/test_render_levels.py" = "smoke"
+# Model calls stubbed, no network. The second builds canned ports into fd-judge: about 8 s warm.
+"tools/test_translate.py" = "smoke"
+"tools/test_translate_judge.py" = "smoke"
 "tools/test_unpack.py" = "smoke"
 
 [[area]]
@@ -64,3 +69,7 @@ covers = ["crates/fd-conform/tests/level_files.rs::every_level_1_file_equals_the
 [[area]]
 name = "comparing a ported routine with the original"
 covers = ["crates/fd-conform/tests/rig.rs", "crates/fd-conform/tests/ported.rs"]
+
+[[area]]
+name = "translating a routine through Muse, judged on the original"
+covers = ["crates/fd-conform/tests/judge.rs", "tools/test_translate.py", "tools/test_translate_judge.py"]

@@ -148,6 +148,10 @@ pub struct RigReport {
     /// States the original took an exception on (an address error from a pointer read off a
     /// table's end, say).
     pub faults: usize,
+    /// States the original returned from after starting a blit the routine oracle does not model:
+    /// line mode or fill mode (BLTCON1 bit 0, 3 or 4 at the BLTSIZE write). The shim runs neither,
+    /// so a port agreeing on such a state proves nothing (T33 answers `no-oracle`).
+    pub unmodelled_blits: usize,
 }
 
 /// A check that failed: how many states differed, the first one in full, and the counts.
@@ -369,6 +373,9 @@ impl Rig {
                 }
                 Ok(r) => {
                     paths.insert(r.instr);
+                    if unmodelled_blit(&r.hw_writes) {
+                        report.unmodelled_blits += 1;
+                    }
                     self.last_regs = Some(r.regs);
                     match port.as_mut() {
                         None => Some(Vec::new()),
@@ -512,6 +519,20 @@ impl Rig {
         }
         t
     }
+}
+
+/// Whether `writes` start a blit in line or fill mode: BLTCON1 ($dff042) as last written before a
+/// BLTSIZE ($dff058) write. A BLTCON1 not written in the call counts as 0.
+fn unmodelled_blit(writes: &[(u16, u16)]) -> bool {
+    let mut con1 = 0u16;
+    for &(reg, v) in writes {
+        match reg {
+            0x42 => con1 = v,
+            0x58 if con1 & 0x19 != 0 => return true,
+            _ => {}
+        }
+    }
+    false
 }
 
 /// A routine's seed from its name, so each generator's states are fixed and differ between routines.

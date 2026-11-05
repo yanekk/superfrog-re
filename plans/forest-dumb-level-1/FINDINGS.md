@@ -6,6 +6,9 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-11-05 | 📌 | T33 live call, worker action: `translate.py 'h0+$5462' --gen char_sprite_position` passed on try 1: 1 629 tokens in, 7 897 out (7 131 reasoning), $0.0017, 67 s, 4 paths. |
+| 2026-11-05 | 📌 | T33: `char_hit_check` (`h0+$3b2a`) is 183 instructions with callees, so `translate.py` answers `too-big` though the spike passed it 3 of 3. T34 splits it or the owner moves the 180 line. |
+| 2026-11-05 | 📌 | T33: the routine oracle returns from line-mode blits (the shim skips them) and has no fill mode, so "returns on no state" misses them. `RigReport::unmodelled_blits` counts them; `translate.py` answers `no-oracle`. |
 | 2026-11-05 | 📌 | T18, worker-driven: old and new route page in headless Chrome gave byte-identical PNGs; with the heat layer on, each page alternates between two images per run. page.html still keys on names `tile coin`, `level exit`, `wN ` prefix. |
 | 2026-11-05 | 📌 | T51 to T56 added (owner): T34 counted T08 21 routines, T24 17, T35 20, T38 21, over §4.3's 15; `redraw_edge_a..d` run from `main_loop`, outside `game_frame`, 14 routines. Siblings take them; shares in `games/forest-dumb/docs/11-translation.md`. |
 | 2026-11-05 | 🐞 | T34: `re_listing.py`'s linear sweep loses step after data in code; 7 of `game_frame`'s call targets fall inside an instruction. `tools/call_tree.py` decodes from each reached address. `h0+$513c` clamps `camera_y` to `$53f`, not T00's `$52f`. |
