@@ -138,7 +138,7 @@ event not in the probe (an enemy type not met) is not ruled out; T21 meets every
 | Name | Where | Size | What | How known |
 |---|---|---|---|---|
 | `char_x`, `char_y` | `h0+$1e5a`, `$1e5e` | long | level pixels; start `$70`, `$70` | measured |
-| `camera_x`, `camera_y` | `h0+$1e62`, `$1e64` | word | view's top-left; clamped to `$17cf`, `$52f` | measured follows, clamps read |
+| `camera_x`, `camera_y` | `h0+$1e62`, `$1e64` | word | view's top-left; clamped to `$17cf`, `$53f` (`$52f` corrected by T34, T36) | measured follows, clamps read |
 | `char_screen_x` | `h0+$4d78` | word | `char_x - camera_x` | measured |
 | `lives` | `h0+$6a84` | BCD word | 32 at level 1 (`lives_reset`); +1 to 99, -1 to 0 | measured start, rest read |
 | `hits_taken` | `h0+$3b26` | word | contact passes in a row; the third costs a life (`char_hit_check`, [10](10-object-system.md)) | measured (T59) |
@@ -236,6 +236,34 @@ None waits on the beam or the blitter, touches INTENA or loops across passes; ea
 - `char_anim_ptr` and the tables hold relocated pointers. At the sync point it is `$c491a0`, the
   program's own `h0+$419c8` at the oracle's hunk 0 base. Whoever loads the tables for play (T08)
   loads hunk 0 at that base for `char_anim_ptr` to compare.
+
+## The camera (T09)
+
+Ported in `fd-core/src/level/camera.rs`, each proven on the routine rig (`fd-conform/tests/camera_routines.rs`).
+Read from the listing 2026-11-05; the behaviour is what T36's witnesses showed equal to the original.
+
+| Routine | Address | Instructions | Interruptible points |
+|---|---|---|---|
+| `camera_update` | `h0+$4d7e` | 48 | none inside; writes the latches and positions `main_loop` reads |
+| `h0_4e9a`, `h0_4ea6`, `h0_4eb4`, `h0_4ec2` | flag steps (right, left, up, down) | 9-10, loop at `h0+$51a0`.. | none: a `dbra` loop on `d7`, run whole |
+| `h0_51fc`, `h0_526a`, `h0_52d8`, `h0_5346` | one-pixel scrolls | 23 | none |
+| `h0_513c` | clamp | 13 | none |
+
+- All run inside `game_frame` at level 3, which nothing interrupts (above). No raster wait, no hardware.
+- `camera_update` clears the crossed flags `h0+$51f8..$51fb`, then for right, left, down, up in that order
+  reloads `char_x - camera_x`, `char_y - camera_y` (low words) and runs the flag step past the dead zone
+  (`$94`, `$78`, `$5a`, `$46`). A flag step scrolls one pixel at a time until a scroll refuses.
+- A scroll that crosses a 16-pixel boundary sets its crossed flag, its latch (`h0+$5196`, `$5198`, `$519a`,
+  `$519c`: right, left, up, down) and `frame_flag`, unless the latch is already set, when it does not move.
+  So the camera crosses at most one boundary per direction until `main_loop` clears the latch.
+- The latches are the hand-off to the foreground: `main_loop` reads them with the positions `camera_update`
+  stored (`h0+$5186`.. one x, y word pair a direction) and redraws that edge (T55). That is where the two
+  interleave: the interrupt can set a latch between `main_loop`'s read and its clear (T55 ports that side).
+- The clamp is `$17cf`, `$53f`: `cmpi.w` overflows for `camera_y` in `$8000..$853e`, giving `$53f`, not 0
+  (T34, T36). T00's `$52f` is the clamp of an unlabelled joystick pan at `h0+$50a2`, which calls the flag
+  steps' loops with `d7 = 4`; nothing in `game_frame`'s tree reaches it.
+- `level3_handler` saves and restores every register around `game_frame` and sets `frame_flag` after it, so
+  no register the camera leaves is read, and a scroll's `frame_flag` write is overwritten the same pass.
 
 ## What this changes for later tasks
 

@@ -6,6 +6,7 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-11-05 | 📌 | T09: the engine camera crosses one 16-pixel boundary a direction, then stops, until `main_loop`'s redraw (T55) clears `edge_latch_*`. At the sync point left and down are latched. Engine ports skip scratch registers through `judge::check_regs`. |
 | 2026-11-05 | 📌 | T51 review, worker-driven: on the oracle after fire, each direction and diagonal held three frames gave `joy_left`..`joy_down` equal to `JoyFlags::read_joystick(joy1dat(input))`, so `joy1dat`'s JOY1DAT encoding matches the oracle's joystick. |
 | 2026-11-05 | 📌 | T51 review: T53's generator comments (`gen/character.rs:55`, `gen/character_anim.rs:4`) and T51's task doc still say `joy_flags`, now `joy_left`..`joy_down` in LAYOUT and symbols.toml. Comments only; left. |
 | 2026-11-05 | 📌 | T51: `char_anim_ptr` and `AnimTables` hold relocated pointers; the sync value `$c491a0` assumes hunk 0 at the oracle base `$c077d8`. `GameData` does not read the tables yet: T08 (owner of `game.rs`) loads hunk 0 there and calls `AnimTables::from_hunk0`. |

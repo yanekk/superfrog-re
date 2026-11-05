@@ -12,7 +12,7 @@ mod mem;
 pub use mem::{Cpu, Mem};
 
 pub use crate::routine::h;
-use crate::routine::{Effects, Generator, Rig, RigFailure, RigReport, STACK};
+use crate::routine::{Effects, Generator, RegsCompared, Rig, RigFailure, RigReport, STACK};
 use amiga_oracle::Regs;
 
 /// The port built in from `FD_PORT`, or the stub. A split routine's file carries its callees'
@@ -34,8 +34,23 @@ pub fn check(
     generator: &Generator,
     port: fn(&mut Cpu),
 ) -> Result<RigReport, RigFailure> {
+    check_regs(rig, name, cases, entry, generator, RegsCompared::ALL, port)
+}
+
+/// [`check`], comparing only the returned registers `regs` names: how an engine port on typed state,
+/// loaded from and stored back to the [`Cpu`]'s memory by its test, is held to the original
+/// (plans/forest-dumb-level-1 T09).
+pub fn check_regs(
+    rig: &mut Rig,
+    name: &str,
+    cases: usize,
+    entry: u32,
+    generator: &Generator,
+    regs: RegsCompared,
+    port: fn(&mut Cpu),
+) -> Result<RigReport, RigFailure> {
     let base = rig.memory_for(generator);
-    rig.check(name, cases, entry, generator, |s| {
+    rig.check_regs(name, cases, entry, generator, regs, |s| {
         let mut before = Mem::new(base.clone(), &s.pokes);
         // The rig set `beam` to the byte the original's first VHPOSR read returned.
         before.beam.set(s.beam as u16);

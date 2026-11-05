@@ -32,6 +32,17 @@ pub const PORTED: &[Ported] = &[
         0x8dfc,
         "character::JoyFlags::read_joystick",
     ),
+    // T09, the camera (level/camera.rs).
+    port("camera_update", 0x4d7e, "level::camera::Camera::update"),
+    port("h0_4e9a", 0x4e9a, "level::camera::Camera::follow"),
+    port("h0_4ea6", 0x4ea6, "level::camera::Camera::follow"),
+    port("h0_4eb4", 0x4eb4, "level::camera::Camera::follow"),
+    port("h0_4ec2", 0x4ec2, "level::camera::Camera::follow"),
+    port("h0_513c", 0x513c, "level::camera::Camera::clamp"),
+    port("h0_51fc", 0x51fc, "level::camera::Camera::scroll"),
+    port("h0_526a", 0x526a, "level::camera::Camera::scroll"),
+    port("h0_52d8", 0x52d8, "level::camera::Camera::scroll"),
+    port("h0_5346", 0x5346, "level::camera::Camera::scroll"),
 ];
 
 /// A hunk 0 routine's entry.
