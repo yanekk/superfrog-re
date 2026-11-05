@@ -70,14 +70,14 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T50 | sf-menus-os-test-stale | — | ✅ | |
 | T51 | character-anim-input | T07, T40; blocks T08 | ⬜ | |
 | T52 | creature-drawing | T10, T22; blocks T46 | ⬜ | |
-| T53 | gen-character-2 | T33, T34; blocks T40 | ⬜ | |
+| T53 | gen-character-2 | T33, T34; blocks T40 | 🔍 | Six generators in `gen/character_anim.rs`, 5 tests, every branch both ways, none unreachable. Deviations: `character::Var::poke` made `pub(crate)` to reuse T35's draws; `read_joystick`'s `Bcc.b` and far `Bcc.w` detoured with their lead instruction moved; rustfmt split `MODULES` over lines. |
 | T54 | gen-objects-2 | T33, T34; blocks T40 | ⬜ | |
 | T55 | edge-redraw | T09; blocks T10, T41, T42, T43 | ⬜ | |
 | T56 | gen-edge-redraw | T33, T34; blocks T40 | ⬜ | |
 | T57 | sf-scale-fullscreen-os-test | — | ⬜ | |
 | T58 | translate-btst-fix | T33; blocks T40 | ⬜ | |
 
-**Review queue:** *(empty)*
+**Review queue:** T53
 
 ## Blocked on the user
 

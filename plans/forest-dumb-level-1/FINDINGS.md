@@ -6,6 +6,7 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-11-05 | 📌 | T53: a `Bcc.b`, or a `Bcc.w` beyond a `bra.w` of free memory (past about `h0+$6800`), is detoured by moving the instruction before it into the stub behind a `jmp`; `tests/gen_character_anim.rs` has the helper and its check. |
 | 2026-11-05 | 📌 | T38: the rig's VHPOSR steps every read, so raster-wait `beq`s (`h0+$265e`, `$3af2`) never go taken; BLTBUSY set hangs `h0+$2a1c`. Write-only cells (`h0+$4710`, slot flags in `h0_2e0e`) are not poked, so an omitted clear passes where the program's byte is already 0. |
 | 2026-11-05 | 📌 | T58 added by T35 with the owner's yes: fix `flow_text` following `btst` as a branch before T40 (`blocks T40`), fix commit with `Escape: forest-dumb-level-1 T33`. |
 | 2026-11-05 | 🐞 | T35: `translate.py` `flow_text` follows `btst.b #n,<label>` as a branch (opcode starts with `b`), runs into data at `h0+$4ed2` and `char_probe`: `h0_3ea8`, `h0_4718`, `h0_48be`, `h0_4b0e` size 295-371, so T40 gets `too-big`. |
