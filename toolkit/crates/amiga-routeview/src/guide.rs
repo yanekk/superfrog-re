@@ -1,7 +1,6 @@
-//! An sf-plan waypoint file (`sf-plan --guide`, sf-plan `guide_file.rs`): `col,row` per line, in
-//! the tile addressing (`W1-1:94,51` is `94,51`). A comment after it may carry `t <secs>` and
-//! `est` (a waypoint traced from a video while the frog was not visible: its place estimated from
-//! the camera), which the page shows.
+//! A planner's waypoint file: `col,row` per line, in the level's cell addressing. A comment after it
+//! may carry `t <secs>` and `est` (a waypoint traced from a video while the character was not
+//! visible: its place estimated from the camera), which the page shows.
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Waypoint {

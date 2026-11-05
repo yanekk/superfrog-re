@@ -286,7 +286,17 @@ fn os_layer_the_menu_bar_holds_every_item_and_continue_follows_the_progress() {
             item("Quit Superfrog", true, false),
         ]
     );
-    assert_eq!(app.os_menu_items(&["File"]), [item("Import Disks…", true, false)]);
+    assert_eq!(
+        app.os_menu_items(&["File"]),
+        [
+            item("Import Disks…", true, false),
+            item("Export Level", true, false),
+            item("Play Level File…", true, false),
+        ]
+    );
+    let exports = app.os_menu_items(&["File", "Export Level"]);
+    assert_eq!(exports.len(), 30, "{exports:?}");
+    assert_eq!((exports[0].clone(), exports[29].clone()), (item("W1-1…", true, false), item("WW-1…", true, false)));
     assert_eq!(
         app.os_menu_items(&["Game"]),
         [
@@ -301,7 +311,25 @@ fn os_layer_the_menu_bar_holds_every_item_and_continue_follows_the_progress() {
         ],
         "no progress: Continue is disabled"
     );
-    assert_eq!(app.os_menu_items(&["View"]), [item("Scale", true, false), item("Fullscreen", true, false)]);
+    assert_eq!(
+        app.os_menu_items(&["View"]),
+        [
+            item("Scale", true, false),
+            item("Fullscreen", true, false),
+            item("Filter", true, false),
+            item("Widescreen", true, false),
+        ]
+    );
+    assert_eq!(
+        app.os_menu_items(&["View", "Filter"]),
+        [
+            item("None", true, true),
+            item("Basic", true, false),
+            item("Lottes", true, false),
+            item("Geom", true, false),
+            item("Easymode", true, false),
+        ]
+    );
     assert_eq!(
         app.os_menu_items(&["View", "Scale"]),
         [item("1×", true, true), item("2×", true, false), item("3×", true, false), item("Auto", true, false)]

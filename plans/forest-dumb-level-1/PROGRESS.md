@@ -27,10 +27,10 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T30 | unpack-in-rust | — | ✅ | |
 | T05 | level-readers | T03, T04, T30 | ✅ | |
 | T06 | level-runner | T03, T04, T31, T32 | ✅ | Clean, no fix commit. Ran unit, purity, runner, input_timing, first_case, the play_measured counter test. Mutations caught: previous step's input to a pass, goal deadline dropped. Probes: CLI on bad and short title cases, LAYOUT past 16 rows, clock in layout.rs fails purity. Deviations held; see review commit. |
-| T33 | translate-service | T32 | ⬜ | |
-| T34 | translate-inventory | T00 | ⬜ | |
+| T33 | translate-service | T32 | ✅ | |
+| T34 | translate-inventory | T00 | ✅ | |
 | T35 | gen-character | T33, T34 | ⬜ | |
-| T36 | gen-camera | T33, T34 | ⬜ | |
+| T36 | gen-camera | T33, T34 | ✅ | |
 | T37 | gen-drawing | T33, T34 | ⬜ | |
 | T38 | gen-objects | T33, T34 | ⬜ | |
 | T39 | gen-rest | T33, T34 | ⬜ | |
@@ -50,7 +50,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T15 | recording-compare | T03, T14 | ⬜ | |
 | T16 | app-drill | T13, T14 | ⬜ | |
 | T17 | planner-toolkit-move | T02 | ✅ | |
-| T18 | map-page-toolkit-move | T17 | ⬜ | |
+| T18 | map-page-toolkit-move | T17 | ✅ | |
 | T19 | map-page | T11, T18 | ⬜ | |
 | T20 | planner-level-1 | T11, T17, T19 | ⬜ | |
 | T21 | object-meanings | T05, T06, T32 | ⬜ | |
@@ -67,7 +67,14 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T48 | route-on-original | T27 | ⬜ | |
 | T28 | finish-end-to-end | T16, T48 | ⬜ | |
 | T29 | level-drill | T15, T28 | ⬜ | |
-| T50 | sf-menus-os-test-stale | — | ⬜ | |
+| T50 | sf-menus-os-test-stale | — | ✅ | |
+| T51 | character-anim-input | T07, T40; blocks T08 | ⬜ | |
+| T52 | creature-drawing | T10, T22; blocks T46 | ⬜ | |
+| T53 | gen-character-2 | T33, T34; blocks T40 | ⬜ | |
+| T54 | gen-objects-2 | T33, T34; blocks T40 | ⬜ | |
+| T55 | edge-redraw | T09; blocks T10, T41, T42, T43 | ⬜ | |
+| T56 | gen-edge-redraw | T33, T34; blocks T40 | ⬜ | |
+| T57 | sf-scale-fullscreen-os-test | — | ⬜ | |
 
 **Review queue:** *(empty)*
 

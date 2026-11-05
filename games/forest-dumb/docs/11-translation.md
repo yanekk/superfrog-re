@@ -1,0 +1,225 @@
+# 11 — Translation
+
+Literal translation of the original's routines by Muse, judged on the routine oracle (plan
+`forest-dumb-level-1`, DESIGN §4.3). This note holds the service (T33) and the inventory (T34); the generators (T35 to T39, T53,
+T54, T56) and the batch's table (T40) add their sections.
+
+## The service: `tools/translate.py`
+
+How a builder gets a literal Rust port of one routine of the main program without reading its
+listing (plans/forest-dumb-level-1 T33, DESIGN §4.3). Measured background: `spikes/muse-spark/README.md`.
+
+### Calling it
+
+From the repo root, the routine quoted (`$5` is a shell parameter):
+
+```
+python3 -I games/forest-dumb/tools/translate.py 'h0+$5462' --gen char_sprite_position --max-usd 0.10
+```
+
+- The routine is `hN+$off` or its name in `re/symbols.toml`.
+- `--gen` names a generator registered in `engine/crates/fd-conform/src/gen/` (T32, T35 to T39). No
+  generator, no translation: write or ask for one first.
+- `--tries` (3), `--max-usd` (0.10, DESIGN §5.2) and `--out` (`games/forest-dumb/build/translate`).
+- Needs `OPENROUTER_API_KEY` in the environment or as an `export` line in `~/.zshrc`, the extracted
+  program (`cargo run -p fd-tools -- extract` in `engine/`) and its listing (`tools/re_listing.py`).
+
+It prints one line and nothing else on stdout; read that and the port, not the files beside them:
+
+```
+{"routine":"h0+$5462","result":"pass","tries":1,"tokens_in":1629,"tokens_out":7897,"usd":0.001742,"paths":4,"port":"games/forest-dumb/build/translate/h0-5462/port.rs"}
+```
+
+| `result` | Meaning | Exit | What the builder does |
+|---|---|---|---|
+| `pass` | `port` matched the original on all 2 000 states | 0 | turns it into engine code on typed state, proves that on the rig |
+| `fail` | `--tries` answers were wrong, or `"stopped":"max-usd"` came first | 1 | translates it by hand |
+| `too-big` | over 180 instructions with its callees, less its `split_at` callees; no call made | 1 | asks for `split_at` in `re/translate.toml` (T34), or translates by hand |
+| `no-oracle` | the original returned on none of the generator's states, or started a line or fill blit on one; no call made | 1 | fixes the generator, or translates by hand |
+| `no-key` | no key; stderr says where it looked | 1 | asks the owner for the key |
+
+Exit 2 is a usage error with the reason on stderr: an unknown routine or generator, a missing
+listing or disks, or a split callee with no passing port yet.
+
+`paths` is how many distinct instruction counts the original ran over the states: a proxy for the
+branches the generator reaches. A `pass` with few paths proves little.
+
+### What it does
+
+1. The listing by control flow from the routine (every branch both ways, calls followed), then the
+   named labels it uses: the spike's `run.py --hw` extraction. Its size decides `too-big`.
+2. `fd-judge --survey`: the original alone over the generator's states. It is `no-oracle` when it
+   returns on none (a wait on DMA or an interrupt never ends in the routine oracle's hardware mode)
+   or when any state starts a blit in line or fill mode (`RigReport::unmodelled_blits`): the
+   oracle's blitter runs area mode only, so a port would agree with a blit that never happened.
+3. Muse (`meta/muse-spark-1.3-contributor`, `max_tokens` 96 000) answers; the last ```` ```rust ````
+   block is built into `fd-judge` (`FD_PORT`, `fd-conform/build.rs`) and judged against the original
+   over 2 000 states: registers d0-d7 and a0-a6, every byte written off the stack, and every
+   custom-chip write in order. A wrong answer gets the first failing case back; one that does not
+   compile gets the compiler's errors; one with no code (cut off while reasoning) gets asked again.
+   Each counts as a try. A 429, 502 or 503 is waited out and is not a try.
+4. Before each call, its worst case (the conversation at three characters a token, plus 96 000
+   answer tokens, at OpenRouter's listed price) must fit under `--max-usd` with what is spent.
+
+The port is written against `Cpu { d, a, mem: Mem }` (`fd-conform/src/judge/mem.rs`), the spike's
+model of memory and the custom chips. One judge build and run at a time, across processes
+(`<out>/judge.lock`), since the port is compiled into the one binary.
+
+#### A split routine
+
+A routine T34 splits names its callees in `split_at`. Those are translated first; each must have a
+passing port in its own folder. The prompt leaves their listing out and tells Muse to call
+`port_hN_off(cpu)` where the original calls them, and the judge builds their ports in as modules.
+The caller's `port.rs` is its own code only; its callees' are in their folders.
+
+### What it cannot prove
+
+- Only the generated states. A pass is equality on the generator's 2 000 states, nothing else: a
+  branch no state reaches is untested. The reviewer of each generator checks branches against the
+  listing (T35 to T39).
+- Only what the routine oracle models. Line and fill blits are refused (`no-oracle`); a read of a
+  write-only register, DMA and interrupt timing are not modelled on either side, so a port agreeing
+  there proves nothing.
+- Not the engine port. A literal port over raw memory is the input to a porting task, which proves
+  its engine code on the rig (`fd-conform/src/routine.rs`).
+- Condition codes and the stack bytes are not compared.
+
+### Files
+
+Under `--out`, never committed (they derive from the game's code): `calls.jsonl`, a line a call
+(time, tries, tokens, reasoning, cost, outcome, the feedback's start); per routine `hN-off/` with
+`prompt.md`, `answerN.md`, `tryN.rs` (the code), `judgedN.rs` (what was built, callees included),
+`port.rs` (the passing answer only) and `result.json` (the result line, its generator and `split_at`).
+A new run of a routine clears its folder first.
+
+### Record
+
+- 2026-11-05, T33: `h0+$5462` with `char_sprite_position`: pass on try 1, 1 629 tokens in, 7 897 out
+  (7 131 reasoning), $0.0017, 67 s, 4 paths.
+
+## Inventory: `game_frame`'s call tree and the edge redraws
+
+Measured 2026-11-05 (T34) by `tools/call_tree.py` from the program `fd-tools extract` writes; the result,
+one entry a routine, is [`re/translate.toml`](../re/translate.toml). Rerun with
+`venv/bin/python games/forest-dumb/tools/call_tree.py`, which keeps each routine's classification by
+address; `--check` compares the toml with the program, `--summary` prints the tables below.
+
+- **The roots are `game_frame` and `redraw_edge_a..d`.** The edge redraws run from `main_loop`, not
+  `game_frame`, but write `collision_map`, which is play state (T00), and T09's goal named them; the owner
+  added them as roots on 2026-11-05, with T55 and T56 to take them.
+- **87 routines, 4 041 instructions of their own.** `game_frame`'s tree is 73 of them and 3 105 (3 026
+  with callees counted once; some routines share tails, so own flows overlap by 79); the edge redraws add
+  14 and 936, sharing nothing with it. The spike's "about 8 300" counted address ranges, data included,
+  and did not follow calls written as names.
+- **No call or jump the scan could not follow.** No `jsr (an)`, no computed `jmp`, no Kickstart call
+  is reached from the roots. The `[[unfollowed]]` table is empty.
+- **The listing's linear sweep is not usable for this.** After data inside the code it decodes out of
+  step: 7 of the tree's call targets (`h0+$2c7e`, `h0+$3698`, `h0+$5820`, `h0+$94ba` among them) fall
+  inside an instruction there. `call_tree.py` decodes from each address the flow reaches instead.
+- Sizes agree with T00's for every routine T00 sized (`char_probe` 199, `char_step` 107, `h0+$3ea8` 93,
+  `char_hit_check` 131, `h0+$26ec` 153, `camera_update` 48, `char_sprite_copy` 73).
+
+Each entry has `own`, `instructions` (with callees) and `unit`: what one translation call sees, its
+callees less `split_at` and what only they reach. `split_at` is chosen greedily, the callee whose removal
+drops the unit most first, until the unit is 180 or less. Sixteen routines are split.
+
+**Four routines are `by_hand`:** their own flow is over 180 with no callee left to split at, so T33
+answers `too-big` and the porting task's builder translates them.
+
+| Routine | Own | Port task | What it reads as |
+|---|---|---|---|
+| `char_probe` | 199 | T08 | the character's collision probe on `collision_map` |
+| `h0_5e44` | 200 | T52 | tile copies restoring the screen behind creatures |
+| `h0_62b6` | 224 | T25 | animated map cells, codes `$20`-`$28`; also writes `collision_map` |
+| `redraw_edge_c` | 181 | T55 | one of the four edge redraws |
+
+`h0_62b6` calls `h0_3ab4` (a blitter wait), which is split off; that changes nothing, since 224 is its
+own flow.
+
+### Subsystems and tasks
+
+Classified from what each routine reads and writes, and from T00's note and the spike: a **reading**,
+noted per entry where it is not measured. The subsystem picks the generator batch, by the kind of state
+a generator has to build (blitter and screen for `drawing`). The port task is the task that owns the
+behaviour, so drawing of collectibles, creatures and animated cells goes to T22, T52 and T25, which list
+`render/objects.rs` in their files, not to T10.
+
+- `sound`: `h0_2648` and `h0_3adc`, which only start a sample on audio channel 2. Out of scope, no
+  tasks. Four routines also start a sound inline: `h0_21c0` and `char_hit_check` on channel 1, `h0_3ea8` on
+  2, `h0_26ec` on 3. How a port treats those writes, with sound out of scope (§8), is its porting task's call.
+- `rest`: `game_frame` itself goes to T08, the first task to edit `Game::step`; each later porting task
+  adds its calls. `countdown_step`, `play_keys`, `esc_key`, `lives_minus_one` go to T23, `help_key` to T26.
+- `char_hit_check` and its box test `h0_3dd8` are `objects` and T24: they read the five creature slots.
+- `h0_24ce` (map codes `$10`-`$13` under the character) and `h0_21c0` (blits a tile at the cell it
+  marked) read as a mechanic: T25. T21 confirms what those codes are.
+
+Object routines reached only through dispatch tables are T21's and T49's, not this scan's (§4.3).
+The edge redraws and their 10 helpers are `camera`, generators T56, port T55; T09 keeps the edge flags
+that trigger them (`h0_4e9a` to `h0_5346`). Three helpers read as other subsystems' (`h0_681c`, `h0_6852`
+touch the object slots; `h0_6882` adds to `h0_62b6`'s animated-cell list), which T55 checks. The rest of
+`main_loop`, about 110 routines, is outside this plan's translation.
+
+### Each task's share
+
+Own instructions summed per task, `sound` left out; DESIGN §4.3's limit is 1 500 instructions or 15
+routines. The first count put T08 at 21 routines, T24 at 17, T35 at 20 and T38 at 21. The owner added
+T51 to T54 on 2026-11-05 to take the excess, and T55, T56 for the edge redraws, so every task now fits.
+
+| Porting task | Routines | Own instructions | By hand |
+|---|---|---|---|
+| T08 | 15 | 741 | `char_probe` |
+| T09 | 10 | 191 | |
+| T10 | 7 | 237 | |
+| T22 | 8 | 365 | |
+| T23 | 4 | 55 | |
+| T24 | 13 | 503 | |
+| T25 | 3 | 446 | `h0_62b6` |
+| T26 | 1 | 10 | |
+| T51 | 6 | 112 | |
+| T52 | 4 | 421 | `h0_5e44` |
+| T55 | 14 | 936 | `redraw_edge_c` |
+
+| Generator task | Routines | Own instructions | By hand |
+|---|---|---|---|
+| T35 | 14 | 705 | `char_probe` |
+| T36 | 10 | 191 | |
+| T37 | 14 | 1 070 | `h0_5e44`, `h0_62b6` |
+| T38 | 10 | 548 | |
+| T39 | 6 | 101 | |
+| T53 | 6 | 112 | |
+| T54 | 11 | 354 | |
+| T56 | 14 | 936 | `redraw_edge_c` |
+
+A `by_hand` routine still needs its generator: its port is proven on the rig like any other.
+
+## Generators: `camera` (T36)
+
+`fd-conform/src/gen/camera.rs`, one generator per T36 entry of `re/translate.toml`, named as there.
+The routines read only `char_x`/`char_y`, `camera_x`/`camera_y`, the edge flags `h0+$51f8..$51fb` and
+the four latch words `h0+$5196..$519c`; no hardware, so no base. States lean to where the branches
+turn: a camera on a 16-pixel boundary, at its clamp (`$17cf`, `$53f`, 0), negative (with the
+`$8000..$853e` band where `cmpi.w #$53f` overflows and `h0_513c` sets `$53f`, not 0), and a character
+either side of each dead-zone edge (`$94`, `$78`, `$5a`, `$46`).
+
+`fd-conform/tests/gen_camera.rs` proves it. The rig has no trace, so a witness (a literal model of each
+routine counting its branches) must match the original on all 2 000 states; then every conditional
+branch in the routine's flow listing, callees included, is taken both ways. No branch is unreachable.
+Measured 2026-11-05, 2 000 states each, no hang or fault:
+
+| Generator | `RigReport::paths` | Branches | Fewest states one way |
+|---|---|---|---|
+| `camera_update` | 385 | 28 | 41 |
+| `h0_4e9a` | 65 | 5 | 207 |
+| `h0_4ea6` | 64 | 5 | 208 |
+| `h0_4eb4` | 64 | 5 | 210 |
+| `h0_4ec2` | 65 | 5 | 239 |
+| `h0_513c` | 3 | 4 | 151 |
+| `h0_51fc` | 4 | 3 | 25 |
+| `h0_526a` | 4 | 3 | 32 |
+| `h0_52d8` | 4 | 3 | 35 |
+| `h0_5346` | 4 | 3 | 27 |
+
+`h0_513c`'s 3 paths cover its 4 branches: a skipped `move` and a `clr` cost one instruction alike.
+
+- 2026-11-05, T36: `camera_update` with `camera_update`: pass on try 1, 4 837 tokens in, 16 485 out,
+  $0.0038, 115 s, 385 paths.

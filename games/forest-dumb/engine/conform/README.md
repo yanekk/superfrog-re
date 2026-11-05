@@ -106,7 +106,12 @@ A porting task proves each routine it ports on the routine rig before any case r
   the setup's pokes (`Setup::byte`). States the original hangs or faults on are counted in
   `RigReport::hangs` and `faults`, never passed; a check that compared nothing fails, and
   `RigReport::paths` counts the distinct instruction counts the original took, so a generator that
-  never takes a branch shows fewer. `Rig::survey` runs the original alone.
+  never takes a branch shows fewer. `Rig::survey` runs the original alone. `RigReport::unmodelled_blits`
+  counts states that started a line or fill blit, which the oracle's blitter does not run.
+- **The translation judge**, `fd-conform/src/judge/` and `fd-judge`: a literal port written against
+  `Cpu` and `Mem` (the spike's memory and custom-chip model), built in from `FD_PORT` by `build.rs`
+  (a stub without it), checked through `Rig::check`. Driven by `tools/translate.py`;
+  `docs/11-translation.md` says how.
 - **The generators**, `fd-conform/src/gen/` (module `generators`; `gen` is reserved in Rust 2024).
   One `Generator` per routine, a base laid once and a function making each case, looked up by the
   routine's name in `re/symbols.toml` (or `hN+$off` until it has one) with `generator(name)`. The
