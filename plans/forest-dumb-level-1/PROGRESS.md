@@ -9,7 +9,7 @@
 
 **Status:** Amendment read back and its 4 decisions settled; ready to build. Nothing built.
 **Last updated:** 2026-11-05
-**Next `pir-work` will:** review T21; T59 (oracle collision) once T21 merges, before T24 and T41 to T47.
+**Next `pir-work` will:** T59 (oracle collision) once T21 merges, before T24 and T41 to T47.
 
 ## Tasks
 
@@ -53,7 +53,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T18 | map-page-toolkit-move | T17 | ✅ | |
 | T19 | map-page | T11, T18 | ⬜ | |
 | T20 | planner-level-1 | T11, T17, T19 | ⬜ | |
-| T21 | object-meanings | T05, T06, T32 | 🔍 | docs/10, objects-W1-1.toml, FROZEN (8 entries); 11 claim tests, 3 in ported.rs. Deviations: values other than 1, 6 placed on the slide's path; no dispatch tables, so translate.toml unchanged and nothing for T49; ObjectKind report stubbed (`dispatch_kinds`) until T07; contact unmeasurable, T59 added; runner.rs's empty-freeze test replaced. |
+| T21 | object-meanings | T05, T06, T32 | ✅ | Review clean, no fix commit. Ran claims 5x green; mutation dropping the spring freeze went red; probe removing `$43` from objects-W1-1.toml failed naming it. Routines keep T34's owner-approved tasks (T52, T55 split from T24), shares under §4.3; T49 has no input. Creature movement per kind `read-only`. |
 | T49 | translate-objects | T21, T38, T40 | ⬜ | |
 | T22 | collectibles | T11, T20, T21, T40, T49 | ⬜ | |
 | T23 | lives-and-game-over | T11, T13, T14, T20 | ⬜ | |
@@ -78,7 +78,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T58 | translate-btst-fix | T33; blocks T40 | ⬜ | |
 | T59 | oracle-sprite-collision | T21; blocks T24, T41, T42, T43, T44, T45, T46, T47 | ⬜ | |
 
-**Review queue:** T21
+**Review queue:** *(empty)*
 
 ## Blocked on the user
 

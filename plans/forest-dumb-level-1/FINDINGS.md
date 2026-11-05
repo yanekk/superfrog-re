@@ -6,6 +6,7 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-11-05 | 📌 | T21 review: objects-W1-1.toml `port_task` is the value's behaviour; its routines keep translate.toml's tasks, so spawn, bonus blits and creature drawing port in T55 and T52, not T22 or T24. |
 | 2026-11-05 | 📌 | T59 added by T21 with the owner's yes: turn on vAmiga's sprite-to-playfield collision in the oracle, Superfrog unchanged or ask the owner; `blocks T24, T41, T42, T43, T44, T45, T46, T47`. |
 | 2026-11-05 | 🐞 | T21: CLXDAT is always `$8000` on the oracle (`DENISE_CLX_SPR_PLF` off), so `char_hit_check` never sees contact. CLXCON `$37dd`: colours 21, 23, 29, 31, also in 134 of 328 W1-1 tiles. |
 | 2026-11-05 | 📌 | T21: no object dispatch tables; the scan, `h0_2fea`, `h0_26ec`, `h0_62b6` branch by compares. Every object routine was already in `re/translate.toml`, so T21 appended none and T49 has nothing to translate. |
