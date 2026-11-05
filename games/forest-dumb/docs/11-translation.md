@@ -751,3 +751,8 @@ What each porting task did with its share of the table above, and which routines
   hand: each was rewritten from its passing T40 port and the listing as `fd_core::character::{Anim,
   JoyFlags}` methods, and passes the rig on 10 000 states (`tests/character_anim_routines.rs`; paths 2, 2,
   6, 1, 1, 10). The literal ports needed no fix.
+- **T08** (2026-11-05): the fourteen character routines, as `fd_core::character::Character` methods
+  over `State.motion` (paths on the rig: `char_update` 301, `char_step` 91, `h0_3ea8` 29, the rest 1
+  to 24). By hand: `char_probe` (too-big) and `char_update` (blocked behind it), from the listing; the
+  other twelve rewritten from their passing T40 ports and the listing. `game_frame` (blocked) went to
+  T63 (owner, 2026-11-05): its rig proof needs every routine it calls ported first.

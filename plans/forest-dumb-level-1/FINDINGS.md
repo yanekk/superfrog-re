@@ -6,6 +6,9 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-11-05 | 📌 | T08: `purity.rs`'s lexer reads a hex literal ending `f64` or `f32` (`0x4f64`) as a float; written `0x4F64`. On the rig, table reads past an end hit live variables (`h0+$40cb + $3d` is `char_slide_t`). |
+| 2026-11-05 | 🐞 | T64 added by T08 with the owner's yes: `exe_map_claims::the_listing_regenerates_and_decodes_hunk_4` red since T51 (73 hunk-0 lines start odd after byte vars `char_walk_t`, `char_probe_1`..); T08's byte vars add more. Escape T51. |
+| 2026-11-05 | 📌 | T63 added by T08 with the owner's yes: `game_frame` calls 20 routines of T09, T10, T22 to T26, T51, T52, T55, so its rig proof waits for them; `blocks T27`. T08 wires the character's calls only. |
 | 2026-11-05 | 📌 | T61 live runs, worker action: `generate.py` on one routine per subsystem, all `covered`, 6 tries, $0.0139 in all. Muse covered `h0_4b0e`'s two callee branches its hand-written generator misses. Table in docs/11-translation.md. |
 | 2026-11-05 | 🐞 | T61: `fd-judge --cover` finds hand-written generators failing `generate.py`'s rules: `h0_3566` (`probe`) and `char_object_cells` poke bytes the original never reads; `char_object_cells` and `h0_4b0e` leave branch ways untaken. Left alone. |
 | 2026-11-05 | 📌 | T09: the engine camera crosses one 16-pixel boundary a direction, then stops, until `main_loop`'s redraw (T55) clears `edge_latch_*`. At the sync point left and down are latched. Engine ports skip scratch registers through `judge::check_regs`. |

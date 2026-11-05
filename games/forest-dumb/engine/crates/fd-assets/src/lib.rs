@@ -8,6 +8,7 @@
 
 mod error;
 mod level;
+mod program;
 mod sprites;
 
 pub use error::{AssetError, Why};
@@ -15,9 +16,11 @@ pub use level::{
     CollisionMap, LEVEL_ROWS, Level, OBJECT_COLUMNS, ObjectMap, SHAPE_BYTES, TILE_BYTES, TileMap,
     level_file_names, read_level,
 };
+pub use program::loaded_hunk;
 pub use sprites::{Sheet, Sprites, read_sprites, sprite_file_names};
 
-/// A closure handing over one of the game's files, unpacked, by its name on disk 2.
+/// A closure handing over one of the game's files, unpacked, by its name: a level file of disk 2,
+/// or the main program `FOREST_DUMB_FOREVER` of disk 1 (T08).
 pub type Files<'a> = dyn Fn(&str) -> Result<Vec<u8>, AssetError> + 'a;
 
 /// Interleaved bitmaps hold five planes, one line of each plane after the other (chapter 06).

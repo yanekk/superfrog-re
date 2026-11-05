@@ -237,6 +237,32 @@ None waits on the beam or the blitter, touches INTENA or loops across passes; ea
   program's own `h0+$419c8` at the oracle's hunk 0 base. Whoever loads the tables for play (T08)
   loads hunk 0 at that base for `char_anim_ptr` to compare.
 
+### The character's movement (T08)
+
+Read off the listing before porting, 2026-11-05; ported to `fd-core/src/character/physics.rs`
+(`Character`, state in `State.motion`) and `level/collision.rs` (`CollisionPlane`), and proven on the
+rig (`fd-conform/tests/character_routines.rs`, 10 000 states each). `game_frame` itself is T63's.
+
+| Routine | Reads | Writes | Interruptible points |
+|---|---|---|---|
+| `char_update` | all below | `char_update_t` (`h0+$3e2c`, 3 to 0); d7 `$ffff` | the loop count lives in memory, but nothing interrupts `game_frame` (above) |
+| `char_probe` | `char_x`, `char_y`, `collision_rows`, `collision_map` and past it | `char_samples` (`h0+$54f0`..`$54ff`); d0-d4, a0, a5 | reads `collision_map`, which the foreground redraws write between passes |
+| `char_probe_flags` | the samples, `h0+$4f88` | `char_probe_1`..`_6`; d0, a0 | none |
+| `char_step` | flags, joystick, `char_dying`, `char_rising`, `char_falling` | as its callees; the dying fall `char_dying_t`, `char_unhurt_t` | none |
+| `h0_3ea8` | run counters, `h0+$40ac`/`$40cb` | slide, `char_x`, `char_anim_ptr`; AUD2 and DMACON on the slide's step 3 | a 4-line raster wait before the sound: time only |
+| `h0_410c`, `h0_416c`, `h0_4274` | `char_jump_t`, `h0+$44d4`, `$431e`, `$42ec`, `$43ba`, up | `char_y`, jump state; d0, a0 | none |
+| `h0_4696`, `h0_4718`, `h0_48be`, `h0_47e2`, `h0_497c`, `h0_4b0e` | walls, slope bits, run counters, `h0+$49d0` | `char_x`, `char_y`, run and slide state; d0, a0 | none |
+
+Readings the port keeps:
+
+- The collision map is indexed `rows[y & $ff] + (x >> 4 << 1)` with `x` a level coordinate and no
+  wrap at a row's `$2e` bytes, so past 368 pixels a probe reads later rows, and near row 255 past
+  the map's `$2e00` bytes. `CollisionPlane` holds `$400` bytes after the map; a case transplants them.
+- `h0_47e2` and `h0_497c` return their step in d0 and the callers move `char_y` by it.
+- A table indexed past its end reads what follows: `h0+$40cb + $3d` is `char_slide_t` itself. The
+  engine reads a modelled variable there from the state (found on the rig).
+- `char_update_t` is 3 at the sync point, not the 0 a whole pass leaves; why is not known.
+
 ## The camera (T09)
 
 Ported in `fd-core/src/level/camera.rs`, each proven on the routine rig (`fd-conform/tests/camera_routines.rs`).

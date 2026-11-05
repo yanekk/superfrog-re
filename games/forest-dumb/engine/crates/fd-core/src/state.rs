@@ -3,7 +3,7 @@
 //! original adds its fields here and, if a case compares them, a `LAYOUT` entry and an arm in
 //! [`State::get`] and [`State::set`].
 
-use crate::character::{Anim, InputLog, JoyFlags};
+use crate::character::{Anim, InputLog, JoyFlags, Motion};
 use crate::level::camera::{Camera, EdgeFlags};
 
 /// The game state of a level in play. BCD variables are held as stored.
@@ -41,6 +41,8 @@ pub struct State {
     pub joy: JoyFlags,
     /// `input_log` and `input_log_index` (T51).
     pub input_log: InputLog,
+    /// The character's movement state (T08).
+    pub motion: Motion,
 }
 
 impl State {
@@ -91,6 +93,14 @@ impl State {
             // Idle: play's first pass read no direction and appended its one byte, 0.
             joy: JoyFlags::default(),
             input_log: InputLog::at(1),
+            // Measured at the sync point (`level_entry.rs`). `char_update_t` is 3 there, not the 0
+            // a whole `char_update` leaves: why is not known. `char_unhurt_t` is counted by a routine
+            // another task ports (T59: contact hurts once it wraps to 0). The rest are 0.
+            motion: Motion {
+                update_t: 3,
+                unhurt_t: 0x9c,
+                ..Motion::default()
+            },
         }
     }
 
@@ -136,6 +146,28 @@ impl State {
             "joy_up" => self.joy.up.into(),
             "joy_down" => self.joy.down.into(),
             "input_log_index" => self.input_log.index,
+            "char_jump_3b28" => self.motion.jump_3b28.into(),
+            "char_jump_41b4" => self.motion.jump_41b4.into(),
+            "char_jump_41b6" => self.motion.jump_41b6.into(),
+            "char_dying_t" => self.motion.dying_t.into(),
+            "char_dying" => self.motion.dying.into(),
+            "char_rising" => self.motion.rising.into(),
+            "char_falling" => self.motion.falling.into(),
+            "char_probe_3" => self.motion.probe_3.into(),
+            "char_probe_4" => self.motion.probe_4.into(),
+            "char_probe_5" => self.motion.probe_5.into(),
+            "char_probe_6" => self.motion.probe_6.into(),
+            "char_slide_t" => self.motion.slide_t.into(),
+            "char_jumped" => self.motion.jumped.into(),
+            "char_jump_t" => self.motion.jump_t.into(),
+            "char_run_left" => self.motion.run_left,
+            "char_run_right" => self.motion.run_right,
+            "char_samples_0" => u32::from_be_bytes(self.motion.samples[0..4].try_into().unwrap()),
+            "char_samples_4" => u32::from_be_bytes(self.motion.samples[4..8].try_into().unwrap()),
+            "char_samples_8" => u32::from_be_bytes(self.motion.samples[8..12].try_into().unwrap()),
+            "char_samples_c" => u32::from_be_bytes(self.motion.samples[12..16].try_into().unwrap()),
+            "char_update_t" => self.motion.update_t,
+            "char_unhurt_t" => self.motion.unhurt_t.into(),
             _ => return None,
         })
     }
@@ -185,6 +217,28 @@ impl State {
             "joy_up" => self.joy.up = w,
             "joy_down" => self.joy.down = w,
             "input_log_index" => self.input_log.index = value,
+            "char_jump_3b28" => self.motion.jump_3b28 = w,
+            "char_jump_41b4" => self.motion.jump_41b4 = w,
+            "char_jump_41b6" => self.motion.jump_41b6 = w,
+            "char_dying_t" => self.motion.dying_t = w,
+            "char_dying" => self.motion.dying = w,
+            "char_rising" => self.motion.rising = b,
+            "char_falling" => self.motion.falling = b,
+            "char_probe_3" => self.motion.probe_3 = b,
+            "char_probe_4" => self.motion.probe_4 = b,
+            "char_probe_5" => self.motion.probe_5 = b,
+            "char_probe_6" => self.motion.probe_6 = b,
+            "char_slide_t" => self.motion.slide_t = b,
+            "char_jumped" => self.motion.jumped = b,
+            "char_jump_t" => self.motion.jump_t = b,
+            "char_run_left" => self.motion.run_left = value,
+            "char_run_right" => self.motion.run_right = value,
+            "char_samples_0" => self.motion.samples[0..4].copy_from_slice(&value.to_be_bytes()),
+            "char_samples_4" => self.motion.samples[4..8].copy_from_slice(&value.to_be_bytes()),
+            "char_samples_8" => self.motion.samples[8..12].copy_from_slice(&value.to_be_bytes()),
+            "char_samples_c" => self.motion.samples[12..16].copy_from_slice(&value.to_be_bytes()),
+            "char_update_t" => self.motion.update_t = value,
+            "char_unhurt_t" => self.motion.unhurt_t = b,
             _ => return false,
         }
         true
