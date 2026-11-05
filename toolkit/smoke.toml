@@ -14,6 +14,7 @@ workspace = "."
 "crates/amiga-input/src" = "smoke"
 "crates/amiga-oracle/src" = "smoke"
 "crates/amiga-oracle/tests/boot.rs" = "smoke"
+"crates/amiga-oracle/tests/collision.rs" = "smoke"
 # watching_does_not_change_the_run (13 s, 3 000 frames on three machines) stays in full.
 "crates/amiga-oracle/tests/exec_counts.rs" = [
     "the_vertical_blank_handler_counts_once_a_frame_and_an_unreached_address_zero",

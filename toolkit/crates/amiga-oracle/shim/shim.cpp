@@ -269,6 +269,14 @@ struct amiga_machine {
         for (auto opt : { Opt::AUD_VOL0, Opt::AUD_VOL1, Opt::AUD_VOL2, Opt::AUD_VOL3 }) emu().set(opt, 100);
         emu().set(Opt::AUD_VOLL, 50);
         emu().set(Opt::AUD_VOLR, 50);
+        // Denise detects every collision CLXCON asks for; vAmiga skips all three checks by default,
+        // so CLXDAT read $8000 whatever was drawn. A snapshot carries these switches (Denise's
+        // serialize), so they are set again after every restore. All three, because a game reading
+        // CLXDAT gets every bit the hardware sets; the checks stop at the first hit of a line, so
+        // they cost little. Changing any of them changes `BUILD`'s settings tag (src/lib.rs).
+        emu().set(Opt::DENISE_CLX_SPR_SPR, true);
+        emu().set(Opt::DENISE_CLX_SPR_PLF, true);
+        emu().set(Opt::DENISE_CLX_PLF_PLF, true);
     }
 
     void configure()
