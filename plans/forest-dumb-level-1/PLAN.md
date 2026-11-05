@@ -1,6 +1,6 @@
 # Implementation plan
 
-50 tasks in 7 phases and a translation track. Each has a file in [tasks/](tasks/). Track state in [PROGRESS.md](PROGRESS.md). Read [DESIGN.md](DESIGN.md) first.
+63 tasks in 7 phases, a translation track and a mid-run amendment. Each has a file in [tasks/](tasks/). Track state in [PROGRESS.md](PROGRESS.md). Read [DESIGN.md](DESIGN.md) first.
 
 ## Shape of the build
 
@@ -149,14 +149,14 @@ Muse writes generators from here on, judged by branch coverage on the original (
 ## Critical path
 
 ```
-T00 → T03 → T05 → T07 → T08 → T10 → T44 → T11 → T19 → T20 → T22 → T24 → T46 → T27 → T48 → T28 → T29
+T00 → T03 → T05 → T07 → T51 → T08 → T62 → T10 → T44 → T11 → T19 → T20 → T22 → T24 → T46 → T27 → T48 → T28 → T29
 ```
 
 The translation track (T32, T33, T34 to T40) runs beside T03 to T07 and joins at T08; if the batch is slower than T07, it is on the critical path. T01, T02, T31, T32, T12, T30 and T17 are off it and start early. T31 changes the oracle's build hash, so every sync cache rebuilds once after it merges. Leaves: only T29, the final deliverable.
 
 ## Parallel width
 
-50 tasks · longest dependency chain 17 · up to 8 could run at once. Computed from the table by a small script; `analyzeParallelism` is not in this repo.
+63 tasks · longest dependency chain 19 (counted by hand at the mid-run read-back) · up to 8 could run at once (computed before the amendments by a small script; `analyzeParallelism` is not in this repo).
 
 ## Rough sizing
 

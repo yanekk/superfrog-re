@@ -9,9 +9,9 @@ Find out whether Muse can turn literal ports into engine code on typed state, ju
 ## Design sections this implements
 §4.3.
 ## Reuses
-T33's `translate.py` as the base (call, retries, spend guard), T32's rig with the porting task's `port` closure as the judge, T08's and T09's engine code and their rig tests as the prompt's example of the shape, T40's literal ports for T10's routines, the conversation logs in `plans/forest-dumb-level-1/.parallel/control/conversations/` for T08's and T09's Opus cost.
+T33's `translate.py` as the base (call, retries, spend guard), T32's rig with the porting task's `port` closure as the judge, T08's and T09's engine code and their rig tests as the prompt's example of the shape, T40's literal ports for T10's routines, the conversation logs in the main checkout's `plans/forest-dumb-level-1/.parallel/control/conversations/` (not the task's worktree; every `T08-*` and `T09-*` session, restarts included) for T08's and T09's Opus cost.
 ## Files
-`games/forest-dumb/tools/reshape.py`, `games/forest-dumb/tools/test_reshape.py`, `games/forest-dumb/docs/11-translation.md` (the trial and its numbers), FINDINGS.
+`games/forest-dumb/tools/reshape.py`, `games/forest-dumb/tools/test_reshape.py`, `games/forest-dumb/docs/11-translation.md` (the trial and its numbers), `smoke.toml` (`test_reshape.py`), FINDINGS.
 ## Interface
 ```
 python3 -I games/forest-dumb/tools/reshape.py 'h0+$9754' --task T10 [--tries 3] [--max-usd 0.10] [--out build/reshape]

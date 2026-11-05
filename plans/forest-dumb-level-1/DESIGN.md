@@ -113,7 +113,7 @@ fd-app, fd-conform, fd-e2e, fd-plan's shell, fd-routeview, fd-tools   everything
 | `fd-assets` (new, pure) | Level, sprite and table readers over unpacked bytes | none |
 | `fd-core` | `Game`, level state, character, camera, objects, scenes, drawing, `LAYOUT` | `fd-assets`, `amiga-chips`, `amiga-clock`, `amiga-input`, `amiga-record` (T14, on `ALLOWED`) |
 | `fd-tools` | Disk lookup, extraction, unpack | `amiga-disk` |
-| `fd-conform` | Cases, level sync, transplant, routine rig and generators (T32), the translation judge `fd-judge` (T33), bug replay and compare | `fd-core`, `amiga-oracle`, `amiga-conform`, `amiga-record` |
+| `fd-conform` | Cases, level sync, transplant, routine rig and generators (T32), branch coverage (T60), the translation judge `fd-judge` (T33), bug replay and compare | `fd-core`, `amiga-oracle`, `amiga-conform`, `amiga-record` |
 | `tools/translate.py`, `translate_batch.py`, `generate.py` (T61), `reshape.py` (T62) (new) | Muse calls, retries, spend caps, the batch table (§4.3) | `fd-judge`, Python standard library only |
 | `fd-app` (new) | Window, menu, pacing, recorder wiring | `fd-core`, `fd-tools`, `amiga-app`, `amiga-record` |
 | `fd-e2e` (new) | `AppSpec`, tests of the built app | `amiga-e2e` |
