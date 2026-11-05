@@ -29,6 +29,7 @@ Shell crates touch devices, files or the emulator:
 | `amiga-app` | A desktop app's game-free parts: audio out and the sample clock that paces the game, gamepads, the Amiga key table, the picture on the GPU with CRT filters, run capture, whole-file writes, the single-copy lock; and the panels a game's app shares (see below) |
 | `amiga-e2e` | End-to-end tests of a game's built app, driven by script or through the real window system; the game describes its app in an `AppSpec` |
 | `amiga-plan` | The route planner: a whole-level explorer over a game's engine (archive of cells, guides, walk and map compasses, shortening, repair), and its run shell on threads under a time budget. A game implements `PlanGame` on its engine and hands it the level's `Facts`. Its core is pure (`tests/purity.rs`) but keeps hash maps and floats, so it is not on the pure list above |
+| `amiga-routeview` | The route viewer's page: `index.html` and a data file per route, drawing a game's routes over its level maps with a switcher, verdicts (failed, faults, clean) and where a route stops making progress. A game replays its routes, hands each over as a `LevelDump`, and describes its map in a `PageSpec` (cell size, layers, where its character is drawn). Shell: it writes files |
 
 ### What moved into `amiga-app` from the first game's app
 

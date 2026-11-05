@@ -1,0 +1,12 @@
+[package]
+name = "amiga-routeview"
+version.workspace = true
+edition.workspace = true
+publish.workspace = true
+
+# The route viewer's game-free half: a web page drawing a game's routes over its level maps, with a
+# switcher over the routes and their verdicts. A game replays its routes and hands each level's data
+# over as a `LevelDump`; this crate writes the page around them. Shell: it writes files. No
+# dependencies: the page's JSON is written by hand.
+
+[dependencies]
