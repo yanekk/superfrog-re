@@ -28,6 +28,13 @@ const CREATURE_ACTIVE: u32 = 0x67da;
 const CREATURE_SLOTS: u32 = 0x67ec;
 /// `clxdat_copy`: `char_hit_check` copies CLXDAT here each pass.
 const CLXDAT_COPY: u32 = 0x1fe6;
+/// `lives` (BCD word) and `hits_taken` (word), `docs/09-play-measured.md`.
+const LIVES: u32 = 0x6a84;
+const HITS_TAKEN: u32 = 0x3b26;
+/// `h0+$4ed0`: the flag under which contact stomps instead of hurting.
+const FLAG_4ED0: u32 = 0x4ed0;
+/// CLXDAT bits `char_hit_check` tests: odd bitplanes against sprites 0/1 and 2/3.
+const CONTACT_BITS: u16 = 0b110;
 /// The object map in hunk 0, 96 cells a column.
 const OBJECT_MAP: u32 = 0xcb38;
 
@@ -86,6 +93,7 @@ struct State {
     score: u32,
     items_left: u16,
     countdown: u16,
+    lives: u16,
 }
 
 fn state(am: &Amiga) -> State {
@@ -95,6 +103,7 @@ fn state(am: &Amiga) -> State {
         score: long(am, SCORE),
         items_left: word(am, ITEMS_LEFT),
         countdown: word(am, COUNTDOWN),
+        lives: word(am, LIVES),
     }
 }
 
@@ -113,6 +122,14 @@ struct Seen {
     exit_passes: u32,
     /// Every CLXDAT value `char_hit_check` copied.
     clxdat: BTreeSet<u16>,
+    /// Passes (from 0) on which the CLXDAT copy had a contact bit, with `h0+$4ed0` set or not.
+    contact: Vec<(u32, bool)>,
+    /// `hits_taken` after each pass.
+    hits_by_pass: Vec<u16>,
+    /// The largest `hits_taken` seen.
+    max_hits: u16,
+    /// Passes (from 0) after which `lives` was lower than before them.
+    lives_lost: Vec<u32>,
 }
 
 impl Seen {
@@ -145,13 +162,25 @@ fn watched() -> Vec<u32> {
 /// From the sync point, place `placed` (col, row, value) in the object map, optionally freeze what
 /// `freeze.rs` lists, then hold right for `passes` passes.
 fn slide(placed: &[(u32, u32, u8)], frozen: bool, passes: u32) -> Seen {
-    let mut am = sync::reach_level_1(passes + 4).unwrap_or_else(|e| panic!("{e}"));
+    run(placed, frozen, |_| {}, Joy::RIGHT, passes)
+}
+
+/// [`slide`] with `setup` applied to the machine after the placing and freezing, and `joy` held.
+fn run(
+    placed: &[(u32, u32, u8)],
+    frozen: bool,
+    setup: impl FnOnce(&mut Amiga),
+    joy: Joy,
+    passes: u32,
+) -> Seen {
+    let mut am = sync::reach_level_1(passes + 256).unwrap_or_else(|e| panic!("{e}"));
     for &(c, r, v) in placed {
         am.poke(cell(c, r), &[v]);
     }
     if frozen {
         freeze::apply(&mut am, FROZEN).unwrap_or_else(|e| panic!("{e}"));
     }
+    setup(&mut am);
     let offsets = watched();
     let pcs: Vec<u32> = offsets.iter().map(|&o| h0(o)).collect();
     am.watch_pcs(&pcs);
@@ -160,8 +189,13 @@ fn slide(placed: &[(u32, u32, u8)], frozen: bool, passes: u32) -> Seen {
     let mut kinds = BTreeSet::new();
     let mut exit_passes = 0;
     let mut clxdat = BTreeSet::new();
-    for _ in 0..passes {
-        am.step(FrameInput::joy(Joy::RIGHT))
+    let mut contact = Vec::new();
+    let mut max_hits = 0;
+    let mut lives_lost = Vec::new();
+    let mut hits_by_pass = Vec::new();
+    for pass in 0..passes {
+        let lives = word(&am, LIVES);
+        am.step(FrameInput::joy(joy))
             .unwrap_or_else(|e| panic!("{e}"));
         for (pc, n) in am.pc_hits() {
             let i = pcs.iter().position(|p| p == pc).unwrap();
@@ -173,7 +207,16 @@ fn slide(placed: &[(u32, u32, u8)], frozen: bool, passes: u32) -> Seen {
             }
         }
         exit_passes += u32::from(word(&am, LEVEL_EXIT_TOUCHED) != 0);
-        clxdat.insert(word(&am, CLXDAT_COPY));
+        let clx = word(&am, CLXDAT_COPY);
+        clxdat.insert(clx);
+        if clx & CONTACT_BITS != 0 {
+            contact.push((pass, am.peek(h0(FLAG_4ED0), 1)[0] != 0));
+        }
+        max_hits = max_hits.max(word(&am, HITS_TAKEN));
+        hits_by_pass.push(word(&am, HITS_TAKEN));
+        if word(&am, LIVES) < lives {
+            lives_lost.push(pass);
+        }
     }
     Seen {
         before,
@@ -186,6 +229,10 @@ fn slide(placed: &[(u32, u32, u8)], frozen: bool, passes: u32) -> Seen {
             .collect(),
         exit_passes,
         clxdat,
+        contact,
+        max_hits,
+        lives_lost,
+        hits_by_pass,
     }
 }
 
@@ -476,13 +523,88 @@ fn freezing_stops_every_object() {
     assert!(drawn > 0, "no frozen bonus blit reached: {s:x?}");
 }
 
-/// The oracle reports no sprite-to-playfield collision: vAmiga leaves `DENISE_CLX_SPR_PLF` off and
-/// `amiga-oracle` never sets it, so CLXDAT reads `$8000` and `char_hit_check` never sees contact.
-/// Creature contact is not measurable until T59 turns it on; T59 changes this test.
+/// The oracle reports sprite-to-playfield collision (T59): on the slide, `char_hit_check` copies
+/// CLXDAT values with its contact bits (1, 2) set as well as clear. Before T59 it read `$8000` only.
 #[test]
-fn the_oracle_reports_no_sprite_collision_until_t59() {
+fn the_oracle_reports_sprite_collision() {
     let s = slide(&[(AHEAD.0, AHEAD.1, 0x02)], false, PASSES);
-    assert_eq!(s.clxdat, BTreeSet::from([0x8000]), "{s:x?}");
+    assert!(s.clxdat.contains(&0x8000), "{s:x?}");
+    assert!(s.clxdat.iter().any(|c| c & CONTACT_BITS != 0), "{s:x?}");
+}
+
+/// Wait `idle` passes from the sync point with no input, then put a creature of `kind` in slot 0 at
+/// (`dx`, `dy`) from the character, everything else frozen, and run `passes` more with no input.
+fn creature_placed(idle: u32, kind: u16, dx: i32, dy: i32, passes: u32) -> Seen {
+    let place = |am: &mut Amiga| {
+        for _ in 0..idle {
+            am.step(FrameInput::NONE).unwrap_or_else(|e| panic!("{e}"));
+        }
+        let x = long(am, CHAR_X) as i32 + dx;
+        let y = long(am, CHAR_Y) as i32 + dy;
+        let mut slot = Vec::new();
+        slot.extend((x as u16).to_be_bytes());
+        slot.extend((y as u16).to_be_bytes());
+        slot.extend(kind.to_be_bytes());
+        slot.extend([0, 0]);
+        am.poke(h0(CREATURE_SLOTS), &slot);
+        am.poke(h0(CREATURE_ACTIVE), &[1]);
+    };
+    run(&[], true, place, Joy(0), passes)
+}
+
+/// At the sync point the character is falling (`h0+$4ed0` set). A creature under its feet (the box
+/// `h0_3dd8` tests: character + (`$10`, `$24`) inside creature + (`$30`, `$20`)) is stomped: kind 7,
+/// +250 (BCD), no hit counted, no life lost.
+#[test]
+fn a_creature_under_the_falling_character_is_stomped_for_250() {
+    let s = creature_placed(0, 1, -8, 0x14, 40);
+    assert!(s.contact.iter().any(|&(_, flag)| flag), "{s:x?}");
+    assert!(s.kinds.contains(&7), "{s:x?}");
+    assert_eq!(s.after.score, s.before.score + 0x250, "{s:x?}");
+    assert_eq!((s.max_hits, s.after.lives), (0, s.before.lives), "{s:x?}");
+}
+
+/// Standing (`h0+$4ed0` clear) and past the level start's grace (`h0+$9b04` counts up from the start
+/// and contact counts only once it is 0, ~100 passes after the sync point), a creature over the
+/// character counts `hits_taken` 1, 2, 3 on three passes in a row, and the third costs a life. The
+/// same creature 200 pixels away is never touched.
+#[test]
+fn a_creature_against_the_standing_character_costs_a_life_on_the_third_pass() {
+    for kind in [0, 1, 5] {
+        let s = creature_placed(120, kind, 0, 0, 12);
+        assert_eq!(&s.hits_by_pass[..4], [0, 1, 2, 3], "kind {kind}: {s:x?}");
+        assert_eq!(s.lives_lost, [3], "kind {kind}: {s:x?}");
+        assert_eq!(s.after.lives, 0x31, "kind {kind}: {s:x?}");
+    }
+    let far = creature_placed(120, 1, 200, 0, 12);
+    assert!(far.contact.is_empty(), "{far:x?}");
+    assert_eq!((far.max_hits, far.after.lives), (0, 0x32), "{far:x?}");
+}
+
+/// `$28` water hurts: under the feet on the slide it gives contact on passes 107 to 109 and the third
+/// costs a life, although `h0+$4ed0` is set (no creature to stomp).
+#[test]
+fn water_under_the_feet_costs_a_life() {
+    let s = slide(&[(FEET.0, FEET.1, 0x28)], false, PASSES);
+    for pass in 107..=109 {
+        assert!(s.contact.contains(&(pass, true)), "pass {pass}: {s:x?}");
+    }
+    assert_eq!(s.lives_lost, [109], "{s:x?}");
+}
+
+/// Scenery hurts: with every object frozen, the slide ends against the wall at `W1-1:42,35` (pass
+/// ~133) in contact on every pass, and the third costs a life. Nothing but the level's tiles is
+/// drawn there, so a tile of colour 21, 23, 29 or 31 is under the character's sprites.
+#[test]
+fn the_tiles_at_the_end_of_the_first_slope_cost_a_life() {
+    let s = slide(&[], true, PASSES);
+    assert!(s.kinds.is_empty(), "{s:x?}");
+    assert_eq!(s.contact.first(), Some(&(133, false)), "{s:x?}");
+    assert!(
+        (133..PASSES).all(|p| s.contact.contains(&(p, false))),
+        "{s:x?}"
+    );
+    assert_eq!(s.lives_lost, [135], "{s:x?}");
 }
 
 /// Every non-zero value in `_MapaBobow1`'s used columns, as shipped, has a row in
