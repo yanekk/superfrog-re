@@ -50,7 +50,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T15 | recording-compare | T03, T14 | ⬜ | |
 | T16 | app-drill | T13, T14 | ⬜ | |
 | T17 | planner-toolkit-move | T02 | ✅ | |
-| T18 | map-page-toolkit-move | T17 | ⬜ | |
+| T18 | map-page-toolkit-move | T17 | ✅ | |
 | T19 | map-page | T11, T18 | ⬜ | |
 | T20 | planner-level-1 | T11, T17, T19 | ⬜ | |
 | T21 | object-meanings | T05, T06, T32 | ⬜ | |
