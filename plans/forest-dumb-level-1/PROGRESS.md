@@ -37,7 +37,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T40 | batch-translate | T35, T36, T37, T38, T39 | ✅ | |
 | T07 | level-entry | T05, T06, T32 | ✅ | |
 | T08 | character-movement | T07, T40 | ⬜ | |
-| T09 | camera-scroll | T07, T40 | ⬜ | |
+| T09 | camera-scroll | T07, T40 | 🔍 | `Camera` in `State`, run by `game_frame`; 10 routines in PORTED, each matched 10 000 states first try; 6 tests. Deviations: `u16` not `i32` (state.rs widths); no `level` argument (limits are constants); rig/judge gained `check_regs` to skip scratch registers; edge latches and positions added to LAYOUT. |
 | T10 | level-drawing | T08, T09, T40 | ⬜ | |
 | T41 | case-run-jump | T08, T09 | ⬜ | |
 | T42 | case-walls-pits | T08, T09, T41 | ⬜ | |

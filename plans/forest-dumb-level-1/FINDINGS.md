@@ -6,6 +6,7 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-11-05 | 📌 | T09: the engine camera crosses one 16-pixel boundary a direction, then stops, until `main_loop`'s redraw (T55) clears `edge_latch_*`. At the sync point left and down are latched. Engine ports skip scratch registers through `judge::check_regs`. |
 | 2026-11-05 | 📌 | T40 batch, worker action: `translate_batch.py --max-usd 5 --parallel 8`: 87 routines, 77 pass, 1 fail (`camera_update`), 4 too-big, 3 blocked, 2 no-gen; $0.1596, 1 102 s, 86 calls. Table in docs/11-translation.md. |
 | 2026-11-05 | 🐞 | T40 fixed T37's, T39's and T58's listing rows ("has no label", undercounts): `re_listing.py` resyncs the sweep at every instruction `call_tree.py` reaches, so `flow_text` counts every routine's `unit` exactly. |
 | 2026-11-05 | 📌 | T59: oracle collision on, `BUILD` now ends `-clx`, so every sync and trace cache rebuilt once (Superfrog `level_entry` 396 s cold). Superfrog route pins and oracle smoke tests unchanged. Replaces T21's CLXDAT `$8000` row, now tested. |

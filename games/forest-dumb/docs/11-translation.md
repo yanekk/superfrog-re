@@ -623,3 +623,18 @@ Translated by hand, under the porting task that owns each:
   call passed it on try 1; T09 may re-run `translate.py 'camera_update' --gen camera_update` first.
 - Two first answers did not compile (`char_hit_check`, `h0_94ba`) and passed on try 2. 86 calls in
   all: 211 547 tokens in, 702 210 out.
+
+## Engine ports: `camera` (T09)
+
+`fd-core/src/level/camera.rs`, proven by `fd-conform/tests/camera_routines.rs` on 10 000 states of each
+T36 generator. Behaviour and interruptible points: [09](09-play-measured.md), "The camera".
+
+- **By hand: `camera_update`**, because the batch answered `fail` (above). It was written from the listing
+  and T36's witness in `tests/gen_camera.rs`, which already matched the original on 2 000 states; the
+  service was not re-run. It matched on the first check: 532 paths.
+- The other nine came from T40's passing ports, reshaped onto `Camera` (words at the original's width,
+  one `scroll` and one `follow` for the four directions). Each matched on the first check.
+- An engine port models no scratch register. `judge::check_regs` with `routine::RegsCompared` names the
+  registers compared: `d0` for the scrolls and flag steps (a flag step's loop tests a scroll's `d0`), none
+  for `camera_update` and `h0_513c` (`level3_handler` saves and restores every register around
+  `game_frame`; `camera_update` reloads `d0`, `d1` after each flag step). `check` still compares all.
