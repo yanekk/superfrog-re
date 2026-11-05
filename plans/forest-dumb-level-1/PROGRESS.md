@@ -42,7 +42,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T10 | level-drawing | T08, T09, T40 | ⬜ | |
 | T41 | case-run-jump | T08, T09 | ⬜ | |
 | T42 | case-walls-pits | T08, T09, T41 | ⬜ | |
-| T43 | case-scroll | T08, T09 | 🔍 | Three cases (`camera-top-left`, `-right-left`, `-bottom-right`), all four ends, 2 826 passes same; `camera_cases.rs` 4 tests, smoke and an area. No engine fix needed. Deviations: right limit is the wall at column 229 (`$dc9`), not the `$17cf` clamp; foreground timing matched, not excluded (FINDINGS); `hits_taken` excluded for T24. |
+| T43 | case-scroll | T08, T09 | ✅ | Review clean, no fix commit. Ran the 4 tests 5 times; clamp `MAX_Y` one short and a dropped `edge_at_left` record both go red. Probed: 203 two-latch frames on the original, latches same every pass; W1-1 map right of column 230 has no floor, exit at 207. Picture timing left to T44. |
 | T44 | case-picture | T10 | ⬜ | |
 | T11 | character-cases | T01, T41, T42, T43, T44 | ⬜ | |
 | T12 | app-toolkit-move | — | ✅ | |
@@ -86,7 +86,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T66 | reshape-decision | T62; blocks T22 | ⬜ | |
 | T65 | level-start-draw | T55; blocks T13, T20 | ⬜ | |
 
-**Review queue:** T43
+**Review queue:** *(empty)*
 
 ## Blocked on the user
 
