@@ -8,6 +8,7 @@ use fd_assets::{AssetError, Files, Level, read_level};
 
 use crate::character::AnimTables;
 use crate::level::collision::{self, CollisionPlane};
+use crate::level::redraw::{Blit, LevelImage};
 use crate::level::{self, Dispatch, DrawList, Event, LevelCtx, Object};
 use crate::program::{HUNK_BASES, PROGRAM_FILE, Program};
 use crate::{Mem, Scene, State, Transplant, Var};
@@ -65,29 +66,44 @@ pub struct Game {
     objects: Vec<Object>,
     dispatch: Dispatch,
     events: Vec<Event>,
-    /// The collision plane: empty at a new game until T55's edge redraws draw it; a case takes the
-    /// original's ([`Transplant`]).
+    /// The collision plane: the edge redraws (T55) draw it as the view scrolls; empty at a new game
+    /// until T65 ports level_init's first view; a case takes the original's ([`Transplant`]).
     plane: CollisionPlane,
+    /// The level buffers the edge redraws read, built once from `data`.
+    image: Arc<LevelImage>,
+    /// The blits the last step's edge redraws started, for the picture (T10).
+    blits: Vec<Blit>,
 }
 
 impl Game {
     pub fn new(data: Arc<GameData>, start: Start) -> Game {
         match start {
-            Start::Level1 => Game {
-                plane: CollisionPlane::new(&data.program),
-                data,
-                scene: Scene::Level,
-                state: State::level_1(),
-                objects: Vec::new(),
-                dispatch: Dispatch::level_1(),
-                events: Vec::new(),
-            },
+            Start::Level1 => {
+                let mut state = State::level_1();
+                state.object_map = data.level.objects.cells.clone();
+                Game {
+                    plane: CollisionPlane::new(&data.program),
+                    image: Arc::new(LevelImage::new(&data.level)),
+                    data,
+                    scene: Scene::Level,
+                    state,
+                    objects: Vec::new(),
+                    dispatch: Dispatch::level_1(),
+                    events: Vec::new(),
+                    blits: Vec::new(),
+                }
+            }
         }
     }
 
-    /// One pass: the original's level-3 handler counts, then runs `game_frame`. Events it raises
-    /// are kept until [`Game::take_events`].
+    /// One pass: first the foreground's redraws for the edges the last pass latched
+    /// ([`Game::foreground`]), then the original's level-3 handler counts and runs `game_frame`.
+    /// A state is the original's as a pass leaves it, before the foreground has run (measured, T55:
+    /// `h0+$1e66` lags the latches by one pass), so the foreground of the frame before comes first.
+    /// Events it raises are kept until [`Game::take_events`].
     pub fn step(&mut self, i: FrameInput) {
+        self.blits.clear();
+        self.foreground();
         match self.scene {
             Scene::Level => {
                 // `level3_handler`: `addi.w #1, irq_count`, then `game_frame` while the game runs.
@@ -110,6 +126,25 @@ impl Game {
                 self.state.frame_flag = 0xffff;
             }
         }
+    }
+
+    /// `main_loop`'s edge redraws (T55): what the foreground does between passes. Their blits are
+    /// added to [`Game::blits`].
+    pub fn foreground(&mut self) {
+        match self.scene {
+            Scene::Level => level::main_loop_redraws(
+                &mut self.state,
+                &mut self.plane,
+                &self.image,
+                &mut self.blits,
+            ),
+        }
+    }
+
+    /// The blits the last step's edge redraws started, in order: tiles and bobs onto the play screen,
+    /// for the picture (T10).
+    pub fn blits(&self) -> &[Blit] {
+        &self.blits
     }
 
     pub fn scene(&self) -> &Scene {
@@ -168,6 +203,52 @@ impl PartialEq for Game {
 
 impl Eq for Game {}
 
+impl Game {
+    /// What play keeps beyond `LAYOUT`'s variables (T55): `frame_flag`, the collision plane, the object
+    /// map, the creature slots and the animated cells, from the original's memory.
+    fn transplant_play(&mut self, mem: &dyn Mem) {
+        use crate::level::collision::BEFORE;
+        use crate::level::redraw::{AnimCell, CreatureSlot, OBJECT_MAP};
+        let word = |b: &[u8], i: usize| u16::from_be_bytes([b[i], b[i + 1]]);
+        let s = &mut self.state;
+        s.frame_flag = word(&mem.read(0, 0x519e, 2), 0);
+        // `h3+$fa50` less BEFORE: the map, the tail the probes reach and the slack the redraws write.
+        let kept = self.plane.kept_mut();
+        kept.copy_from_slice(&mem.read(3, collision::MAP - BEFORE, kept.len()));
+        let len = s.object_map.len().max(self.data.level.objects.cells.len());
+        s.object_map = mem.read(0, OBJECT_MAP, len);
+        let c = &mut s.edges.creatures;
+        let active = mem.read(0, 0x67da, 5);
+        let slots = mem.read(0, 0x67ec, 40);
+        for i in 0..5 {
+            c.active[i] = active[i];
+            let b = &slots[8 * i..8 * i + 8];
+            c.slots[i] = CreatureSlot {
+                x: word(b, 0),
+                y: word(b, 2),
+                kind: word(b, 4),
+                facing: b[6],
+                phase: b[7],
+            };
+        }
+        c.current = word(&mem.read(0, 0x581c, 2), 0);
+        let last = mem.read(0, 0x687e, 4);
+        c.last = u32::from_be_bytes([last[0], last[1], last[2], last[3]]);
+        let used = mem.read(2, 0x1680, 48);
+        let cells = mem.read(2, 0x16b0, 384);
+        for n in 0..48 {
+            let b = &cells[8 * n..8 * n + 8];
+            s.edges.cells.used[n / 12][n % 12] = used[n];
+            s.edges.cells.cells[n / 12][n % 12] = AnimCell {
+                x: word(b, 0),
+                y: word(b, 2),
+                code: b[4],
+                rest: [b[5], b[6], b[7]],
+            };
+        }
+    }
+}
+
 impl Transplant for Game {
     /// Every `LAYOUT` variable from the original, and the collision plane (`h3+$fa50` and the
     /// tail a probe reaches past it). Objects are not transplanted until T21 measures where the
@@ -177,8 +258,7 @@ impl Transplant for Game {
             let known = self.state.set(v.name, mem.value(v));
             debug_assert!(known, "{} is in LAYOUT but not in State", v.name);
         }
-        let plane = self.plane.bytes_mut();
-        plane.copy_from_slice(&mem.read(3, collision::MAP, plane.len()));
+        self.transplant_play(mem);
     }
 
     fn probe(&self, v: &Var) -> u32 {
@@ -262,7 +342,11 @@ mod tests {
         );
         assert_eq!(a, b);
         assert_eq!(*a.scene(), Scene::Level);
-        assert_eq!(*a.state(), State::level_1());
+        let want = State {
+            object_map: a.data().level.objects.cells.clone(),
+            ..State::level_1()
+        };
+        assert_eq!(*a.state(), want);
         // Equal data read twice compares equal too.
         assert_eq!(a, Game::new(data(), Start::Level1));
     }
@@ -292,17 +376,26 @@ mod tests {
         g.step(FrameInput::joy(Joy::RIGHT));
         let s = g.state();
         assert_eq!(s.irq_count, 2);
-        // camera_update (T09): the character is at rest in the dead zone, and the latches the first
-        // pass set block the left edge: the camera stays, its crossed flags clear, and it notes the
-        // character's distance, before the character moves.
+        // main_loop's redraws (T55) run first, for the two edges the first pass latched: down (the
+        // row below the view, 23 tiles) and left (x 0: nothing); their latches clear.
+        assert_eq!(s.edges.pos, (0, 0x17));
+        assert_eq!(g.blits().len(), 23);
+        let s = g.state();
+        assert_eq!(s.irq_count, 2);
+        // camera_update (T09): the character is at rest in the dead zone and the camera stays, but at
+        // x 0 its left scroll crosses the cell edge again and latches left anew, as the original does
+        // every pass there (measured, T55); it notes the character's distance, before the character
+        // moves.
         let want = State::level_1().camera;
         assert_eq!((s.camera.x, s.camera.y), (want.x, want.y));
-        assert_eq!(s.camera.edges.crossed, [false; 4]);
+        assert_eq!(s.camera.edges.crossed, [false, true, false, false]);
+        assert_eq!(s.camera.edges.latch, [0, 0xffff, 0, 0]);
         assert_eq!(s.camera.screen_y, 0x70 - 0x17);
         assert_eq!(s.frame_flag, 0xffff);
         // read_joystick (T51): right held, one more byte in the log.
         assert_eq!((s.joy.right, s.input_log.index), (1, 2));
-        // char_update (T08): on an empty plane `char_probe_1` is 0, so four sub-steps fall; the
+        // char_update (T08): the plane holds only that row below the view, which the probes at the
+        // character's feet do not reach, so `char_probe_1` is 0, so four sub-steps fall; the
         // first starts the fall, the next three step it down `h0+$44d4` (all 0 here) and steer
         // right a pixel each.
         assert_eq!(s.motion.falling, 1);
@@ -327,8 +420,11 @@ mod tests {
             frame_flag: 0xffff,
             ..State::level_1()
         };
-        want.camera.edges.crossed = [false; 4];
+        want.camera.edges.crossed = [false, true, false, false];
+        want.camera.edges.latch = [0, 0xffff, 0, 0];
         want.camera.screen_y = 0x70 - 0x17;
+        want.edges = g.state().edges.clone();
+        want.object_map = g.state().object_map.clone();
         assert_eq!(*g.state(), want);
     }
 
@@ -401,8 +497,9 @@ mod tests {
             };
             assert_eq!(g.probe(v), want, "{}", v.name);
         }
-        // The plane's first long is bytes 1..4.
-        assert_eq!(g.plane().window(0, 0), 0x0102);
+        // The plane is read from `collision::BEFORE` bytes before the map: its first long is bytes
+        // $41..$44.
+        assert_eq!(g.plane().window(0, 0), 0x4142);
     }
 
     #[test]

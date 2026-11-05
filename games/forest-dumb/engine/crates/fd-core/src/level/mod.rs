@@ -26,6 +26,7 @@
 
 pub mod camera;
 pub mod collision;
+pub mod redraw;
 
 use amiga_input::FrameInput;
 use fd_assets::Level;
@@ -198,6 +199,44 @@ pub fn game_frame(
     }
     .update();
     // char_object_cells (T22), play_keys (T23).
+}
+
+/// `main_loop`'s redraw half (`h0+$2a0` to `$358`), which runs in the foreground between passes: when
+/// `frame_flag` is set, each latched edge in the order down, up, left, right has its position copied to
+/// the redraws' (`h0+$1e66`), its latch cleared and its redraw run; then `frame_flag` is cleared. The
+/// engine runs it whole, before the next pass. The original's is cut short by the next pass when it
+/// draws two edges in one frame, and finishes after it (measured, T55; docs/09, "The edge redraws").
+pub fn main_loop_redraws(
+    s: &mut State,
+    plane: &mut CollisionPlane,
+    image: &redraw::LevelImage,
+    blits: &mut Vec<redraw::Blit>,
+) {
+    use camera::Dir;
+    if s.frame_flag == 0 {
+        return;
+    }
+    let mut io = redraw::PlayIo {
+        image,
+        objects: &mut s.object_map,
+        collision: plane,
+        blits,
+    };
+    for dir in [Dir::Down, Dir::Up, Dir::Left, Dir::Right] {
+        let i = dir as usize;
+        if s.camera.edges.latch[i] == 0 {
+            continue;
+        }
+        s.edges.pos = s.camera.edges.at[i];
+        s.camera.edges.latch[i] = 0;
+        match dir {
+            Dir::Down => s.edges.redraw_below(&mut io),
+            Dir::Up => s.edges.redraw_above(&mut io),
+            Dir::Left => s.edges.redraw_left(&mut io),
+            Dir::Right => s.edges.redraw_right(&mut io),
+        }
+    }
+    s.frame_flag = 0;
 }
 
 /// Each object's pass through its kind; an object with none is reported and dropped, and one its

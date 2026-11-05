@@ -52,6 +52,17 @@ workspace = "engine"
 # T09: the camera's engine port against the original, 10 000 states a routine and the negative
 # checks: about 3 s on the program from disk 1.
 "crates/fd-conform/tests/camera_routines.rs" = "smoke"
+# T55: the edge redraws' engine port. Registration, the pointer tables, the d0 carry's negative check
+# and collision_map after a scroll each way from the cached sync point, about 7 s. The 10 000-state
+# check of all 14 routines (about 7 min) and the cell-table filter's count (16 s) stay in full.
+"crates/fd-conform/tests/edge_redraw_routines.rs" = [
+    "every_t55_routine_is_registered_and_checked_here",
+    "the_pointer_tables_are_sixteen_rotated_bands",
+    "a_row_bob_dropping_the_high_word_of_d0_fails",
+    "a_state_with_d7_past_the_slots_is_one_the_engine_does_not_model",
+    "after_a_scroll_each_way_the_collision_map_equals_the_originals",
+    "the_edge_latches_step_with_the_original_over_the_idle_case",
+]
 # T38's objects generators against the original, branches both ways: under 2 s.
 "crates/fd-conform/tests/gen_objects.rs" = "smoke"
 # T54: the creature movement and sort generators, every branch both ways: under 3 s.
@@ -130,6 +141,10 @@ covers = ["crates/fd-conform/tests/rig.rs", "crates/fd-conform/tests/ported.rs"]
 [[area]]
 name = "the camera following the character"
 covers = ["crates/fd-conform/tests/camera_routines.rs::every_camera_routine_matches_the_original"]
+
+[[area]]
+name = "the map's edges redrawn into collision_map as the view scrolls"
+covers = ["crates/fd-conform/tests/edge_redraw_routines.rs::after_a_scroll_each_way_the_collision_map_equals_the_originals"]
 
 [[area]]
 name = "judging a generator by the branches it covers on the original"

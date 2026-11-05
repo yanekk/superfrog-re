@@ -283,13 +283,51 @@ Read from the listing 2026-11-05; the behaviour is what T36's witnesses showed e
   `$519c`: right, left, up, down) and `frame_flag`, unless the latch is already set, when it does not move.
   So the camera crosses at most one boundary per direction until `main_loop` clears the latch.
 - The latches are the hand-off to the foreground: `main_loop` reads them with the positions `camera_update`
-  stored (`h0+$5186`.. one x, y word pair a direction) and redraws that edge (T55). That is where the two
-  interleave: the interrupt can set a latch between `main_loop`'s read and its clear (T55 ports that side).
+  stored (`h0+$5186`.. one x, y word pair a direction) and redraws that edge (T55, below).
 - The clamp is `$17cf`, `$53f`: `cmpi.w` overflows for `camera_y` in `$8000..$853e`, giving `$53f`, not 0
   (T34, T36). T00's `$52f` is the clamp of an unlabelled joystick pan at `h0+$50a2`, which calls the flag
   steps' loops with `d7 = 4`; nothing in `game_frame`'s tree reaches it.
 - `level3_handler` saves and restores every register around `game_frame` and sets `frame_flag` after it, so
   no register the camera leaves is read, and a scroll's `frame_flag` write is overwritten the same pass.
+
+## The edge redraws (T55)
+
+Ported in `fd-core/src/level/redraw.rs`, each proven on the routine rig over 10 000 states
+(`fd-conform/tests/edge_redraw_routines.rs`). Interruptible points listed from the listing 2026-11-05,
+before porting; the cut was then measured.
+
+| Routine | Address | Instructions (own) | Interruptible points |
+|---|---|---|---|
+| `redraw_edge_a`, `_b` (down, up) | `h0+$844`, `$b20` | 140, 141 | anywhere: run by `main_loop` in the foreground, which every pass interrupts; a raster wait in `h0_3ac2` before each of 23 tile blits and each bob |
+| `redraw_edge_c`, `_d` (left, right) | `h0+$df6`, `$114a` | 181, 177 | the same, 16 tile blits |
+| `h0_774`, `h0_a06`, `h0_ce4`, `h0_104c`, `h0_1390` | blits | 15-38 | the raster and blitter wait before the register writes |
+| `h0_3ac2` | wait | 5 | loops while VHPOSR's byte is `$e7` to `$66` (signed) or the blitter is busy |
+| `h0_7cc`, `h0_681c`, `h0_6852`, `h0_6882` | | 13-78 | none inside; interrupted between, like any foreground code |
+
+- `main_loop` (`h0+$2a0`): when `frame_flag` is set, for down, up, left, right in that order, it copies a
+  latched direction's `edge_at` to `h0+$1e66`/`$1e68`, clears the latch and calls its redraw, then clears
+  `frame_flag`. While a latch is set the camera refuses to cross that way again, so the interrupt cannot set
+  a latch `main_loop` then clears unredrawn.
+- A pass's state is the original's before the foreground has redrawn: `h0+$1e66` lags the latches by one
+  pass, and `frame_flag` reads `$ffff` at every pass's end, the sync point included (measured 2026-11-05).
+  So `Game::step` runs the foreground's redraws for the last pass's latches first, then the pass.
+- At x 0 (y 0) the left (up) scroll crosses every pass and latches; the redraw's `x >= 1` (`y >= 1`) guard
+  then draws nothing (measured: the left latch reads `$ffff` at every pass from the sync point).
+- **Cut short, measured.** Two edges in one frame (a row and a column) do not finish before the next pass:
+  8 of 520 frames of a scroll each way, the original's `collision_map` after the next pass lacked part of
+  the second redraw and equalled the engine's one pass later. The engine runs the foreground whole, so a
+  pass in such a frame sees a whole edge where the original's `char_probe` could see half of one. Not
+  modelled: it needs the foreground's timing against the raster (T41 to T43 show whether a case meets it).
+- Each redraw draws a row of 23 tiles or a column of 16 into its 16-line band of the play screen (the program's
+  pointer tables at `h0+$1496` and `h0+$18d6` are 16 rotations of the bands; tile row `r` lands in band
+  `r & 15`), the same cells' shapes into `collision_map`, then scans 20 (rows) or 13 (columns) object-map
+  cells just outside: 1 to 6 and `$87` to `$fe` start a creature (`h0_681c`) and clear the cell, `$20` to
+  `$3f` add an animated cell (`h0_6882`), `$40` to `$86` cut a bob over the screen, `$ff` ends the scan.
+- `collision_map` is not wrapped across: a cell's shape goes `col * 2` bytes into its band, so moving right
+  the writes run past the map's `$2e00` bytes into the slack before the tiles (`h3+$13540`).
+- The rows' scans load only `d0`'s low word before a bob, so after a creature that found no slot (`d0 = -1`)
+  the next bob's column is `$1fffxxxx` and its blit, masked to chip RAM, lands far off the screen. The
+  engine lists it as the original computes it; T10 decides what the picture does with it.
 
 ## What this changes for later tasks
 

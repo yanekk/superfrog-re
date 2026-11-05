@@ -1592,3 +1592,85 @@ offset = 0x4b0e
 name = "h0_4b0e"
 kind = "func"
 note = "up pressed: the jump starts, or the fall (T08)"
+
+# T55, the edge redraws' helpers (docs/09, "The edge redraws").
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x774
+name = "h0_774"
+kind = "func"
+note = "blits one map tile to the play screen at a3 (T55: level::redraw::tile_blit)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x7cc
+name = "h0_7cc"
+kind = "func"
+note = "copies collision shape d5 as 16 words down a collision_map column at a3 (T55)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0xa06
+name = "h0_a06"
+kind = "func"
+note = "redraw_edge_a's bob: cuts an _ELEMENTY bob over the row below the view (T55)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0xce4
+name = "h0_ce4"
+kind = "func"
+note = "redraw_edge_b's bob: cuts an _ELEMENTY bob over the row above the view (T55)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x104c
+name = "h0_104c"
+kind = "func"
+note = "redraw_edge_c's bob: cuts an _ELEMENTY bob over the column at x (T55)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x1390
+name = "h0_1390"
+kind = "func"
+note = "redraw_edge_d's bob: cuts an _ELEMENTY bob over the column at x + $130 (T55)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x3ac2
+name = "h0_3ac2"
+kind = "func"
+note = "waits for the raster to leave lines $e7-$66, then for the blitter (T55)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x681c
+name = "h0_681c"
+kind = "func"
+note = "starts a creature (d0-d3) in the first free of five slots; d0 = -1 if none (T55)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x6852
+name = "h0_6852"
+kind = "func"
+note = "fills creature slot d7 and marks it used; only h0_681c calls it (T55)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x6882
+name = "h0_6882"
+kind = "func"
+note = "adds an animated cell (d0, d1, value at a2) to the emptiest of h0_62b6's four lists (T55)"

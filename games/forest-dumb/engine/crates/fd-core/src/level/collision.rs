@@ -7,6 +7,11 @@
 //! row's end: `x` is a level coordinate, so past 368 pixels a read lands in later rows, and near the
 //! bottom row past the map. The original reads there; so does [`CollisionPlane`], which holds the
 //! map and [`TAIL`] bytes after it, enough for every `x` a level reaches (`$1800` and less).
+//!
+//! The edge redraws (T55, `level/redraw.rs`) write it a cell's shape at `(col * 2)` bytes from its
+//! band, with no wrap either: moving right their writes run past the map into the slack before the
+//! tiles (`h3+$13540`), and the left edge's first word lands 2 bytes before band 0. So a plane keeps
+//! [`BEFORE`] bytes before the map and [`KEPT`] from it, of which the probe's [`TAIL`] is a part.
 
 use std::sync::Arc;
 
@@ -18,6 +23,11 @@ pub const MAP_BYTES: u32 = 0x2e00;
 /// Bytes after the map a probe reaches with `x` below `$1800`: row 255's offset `$2dd2` plus
 /// `($1800 + $24 - $10) >> 4 << 1` plus a long, past `$2e00`.
 pub const TAIL: u32 = 0x400;
+/// Bytes kept before [`MAP`]: `redraw_edge_c`'s `suba.l #2` puts band 0's first word 2 bytes before.
+pub const BEFORE: u32 = 0x40;
+/// Bytes kept from [`MAP`]: the map and the slack after it up to the tiles (`h3+$13540`). A redraw at
+/// the camera's largest x (`$17cf`, column 380) writes up to `$311a` bytes in.
+pub const KEPT: u32 = 0x1_3540 - MAP;
 /// `collision_rows`' hunk 0 offset.
 pub const ROWS: u32 = 0x3_7b08;
 
@@ -46,8 +56,8 @@ impl CollisionPlane {
     /// An empty plane (every pixel clear), rows from the program's `collision_rows`.
     pub fn new(p: &Program) -> CollisionPlane {
         CollisionPlane {
-            mem: Arc::new(vec![0; (MAP_BYTES + TAIL) as usize]),
-            at: 0,
+            mem: Arc::new(vec![0; (BEFORE + KEPT) as usize]),
+            at: BEFORE,
             rows: Arc::new(rows(p)),
         }
     }
@@ -67,6 +77,45 @@ impl CollisionPlane {
         let at = self.at as usize;
         let n = (MAP_BYTES + TAIL) as usize;
         &mut Arc::make_mut(&mut self.mem)[at..at + n]
+    }
+
+    /// What the plane keeps, [`BEFORE`] bytes before the map's first and [`KEPT`] from it: laid
+    /// from the original by a transplant.
+    pub fn kept_mut(&mut self) -> &mut [u8] {
+        let at = self.at.wrapping_sub(BEFORE) as usize;
+        let n = (BEFORE + KEPT) as usize;
+        &mut Arc::make_mut(&mut self.mem)[at..at + n]
+    }
+
+    /// Every kept byte's offset from the map's first (wrapping: `-2` is `$ffff_fffe`), for a test
+    /// that compares the whole plane.
+    pub fn kept_offsets() -> impl Iterator<Item = u32> {
+        (0..BEFORE + KEPT).map(|i| i.wrapping_sub(BEFORE))
+    }
+
+    /// The byte at `off` from the map's first; 0 where nothing is kept.
+    pub fn kept_byte(&self, off: u32) -> u8 {
+        if off.wrapping_add(BEFORE) < BEFORE + KEPT {
+            self.byte(off)
+        } else {
+            0
+        }
+    }
+
+    /// The edge redraws' write: a big-endian word at `off` from the map's first. A byte outside what
+    /// is kept is dropped: the original would land it on the tiles or before the map, which only
+    /// positions past the camera's clamps reach (the routine rig writes those to the original's
+    /// memory itself).
+    pub fn set_word(&mut self, off: u32, v: u16) {
+        for (k, b) in v.to_be_bytes().into_iter().enumerate() {
+            let o = off.wrapping_add(k as u32);
+            if o.wrapping_add(BEFORE) < BEFORE + KEPT {
+                let i = (self.at.wrapping_add(o) & 0xff_ffff) as usize;
+                if let Some(m) = Arc::make_mut(&mut self.mem).get_mut(i) {
+                    *m = b;
+                }
+            }
+        }
     }
 
     fn byte(&self, off: u32) -> u8 {
@@ -139,5 +188,24 @@ mod tests {
         assert_eq!(c.window(15, 0), 0x0080);
         assert_eq!(c.window(31, 0) & 0x8000, 0);
         assert!(solid(&c, 23, 0));
+    }
+
+    #[test]
+    fn words_land_big_endian_and_outside_what_is_kept_is_dropped() {
+        let mut c = CollisionPlane::new(&program());
+        c.set_word(0, 0x1234);
+        assert_eq!((c.kept_byte(0), c.kept_byte(1)), (0x12, 0x34));
+        assert_eq!(c.window(0, 0), 0x1234);
+        // Two bytes before the map: kept.
+        c.set_word(0u32.wrapping_sub(2), 0xabcd);
+        assert_eq!(c.kept_byte(0u32.wrapping_sub(2)), 0xab);
+        // On the tiles: dropped, reads 0.
+        c.set_word(KEPT, 0xffff);
+        assert_eq!(c.kept_byte(KEPT), 0);
+        assert_eq!(c.kept_mut().len(), (BEFORE + KEPT) as usize);
+        assert_eq!(
+            CollisionPlane::kept_offsets().count(),
+            (BEFORE + KEPT) as usize
+        );
     }
 }
