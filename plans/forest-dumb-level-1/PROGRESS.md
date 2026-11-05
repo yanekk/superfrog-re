@@ -10,7 +10,7 @@
 
 **Status:** Amendment read back and its 4 decisions settled; ready to build. Nothing built.
 **Last updated:** 2026-11-05
-**Next `pir-work` will:** review T08 (character movement); T41 and T42 then wait on T09.
+**Next `pir-work` will:** T09 (camera scroll); T41 and T42 wait on it.
 
 ## Tasks
 
@@ -37,7 +37,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T39 | gen-rest | T33, T34 | ✅ | |
 | T40 | batch-translate | T35, T36, T37, T38, T39 | ✅ | |
 | T07 | level-entry | T05, T06, T32 | ✅ | |
-| T08 | character-movement | T07, T40 | 🔍 | 14 routines on a `Character` view over `State.motion`, rig 10 000 states each, 5 mutants; `w1-idle` compares 33 character vars, same. Deviations: no x/y/vx/vy struct or `step(i, c)`, methods per routine; registers in `Scratch`; added `program.rs` (hunk 0 loader, tables); `game_frame` to T63, T64 added (owner). Unverified: none. |
+| T08 | character-movement | T07, T40 | ✅ | Review: one doc fix (`Files` names disk 1's program). Rig 10 000 states x14 reran green; mutants `p1 == 3`, dying `>= 8` went red; `loaded_hunk` tables equal the oracle's memory; T63, T64 well-formed; `exe_map_claims` red identically on base (73 lines), T64's. Interface deviations held by the rig. Unverified: none. |
 | T09 | camera-scroll | T07, T40 | ⬜ | |
 | T10 | level-drawing | T08, T09, T40 | ⬜ | |
 | T41 | case-run-jump | T08, T09 | ⬜ | |
@@ -84,7 +84,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T63 | game-frame-rig | T08, T09, T10, T22, T23, T24, T25, T26, T51, T52, T55; blocks T27 | ⬜ | |
 | T64 | listing-odd-bytes | T08, T51 | ⬜ | |
 
-**Review queue:** T08
+**Review queue:** *(empty)*
 
 ## Blocked on the user
 
