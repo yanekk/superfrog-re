@@ -756,3 +756,94 @@ What each porting task did with its share of the table above, and which routines
   to 24). By hand: `char_probe` (too-big) and `char_update` (blocked behind it), from the listing; the
   other twelve rewritten from their passing T40 ports and the listing. `game_frame` (blocked) went to
   T63 (owner, 2026-11-05): its rig proof needs every routine it calls ported first.
+
+## The engine-shape trial: `tools/reshape.py` (T62)
+
+Whether Muse can also write the engine-shaped port, judged by the porting task's own rig test, for
+less than Opus spends (DESIGN §4.3, owner 2026-11-05). Measured on T08's and T09's routines, whose
+engine code and rig tests exist. A measurement only: nothing in `fd-core` was replaced.
+
+### Calling it
+
+```
+python3 -I games/forest-dumb/tools/reshape.py 'h0+$4274' --task T08 --max-usd 0.10
+python3 -I games/forest-dumb/tools/reshape.py --opus-cost
+```
+
+One result line as `translate.py`'s, plus `routines` and `fn`; the answer is
+`build/reshape/<slug>/port.rs`, an `impl` block. `--tries`, `--max-usd`, the key, the model call and
+the spend guard are `translate.py`'s.
+
+### What it does
+
+- A **unit** is one engine function and the routines its rig test checks with it (`TASKS` in the
+  tool). T09's `follow` serves four flag steps and `scroll` four scrolls, so each is one unit judged on
+  its four routines, and its prompt holds four literal ports. `char_update`, `char_probe` and
+  `camera_update` have no passing literal port and are not units.
+- **Leave one out.** The prompt holds the unit's literal ports (T40's, from `build/translate` here or in
+  the main checkout), the subsystem's typed state as a skeleton (structs, enums, consts and `LAYOUT` in
+  full; every other function's doc and signature, no body), and one other unit's engine function,
+  literal port and rig line as the example. The unit's function, the helpers only it calls
+  (`step`: `dying_fall`, `rise`; `idle`: `slide`, `slide_sound`; `scroll`: `set`) and its rig lines are
+  left out; `test_reshape.py` checks this on every built prompt.
+- **The judge** copies `engine/` to `build/reshape/scratch/engine` (path dependencies outside it made
+  absolute, `re/` linked), cuts the unit's functions out, appends the answer, limits the rig test's loop
+  to the unit's routines (`RESHAPE_ONLY`) and runs that test: 10 000 states a routine with its
+  generators. A pass counts only if the test reports paths for every routine of the unit; a name
+  missing from the rig table is a usage error, not a pass of nothing. The copy must stay inside the checkout, because fd-tools finds the zips through git.
+  Warm, a build and run takes about 6 s.
+
+### The run, 2026-11-05
+
+Worker action, DESIGN §5.3 row "Muse writes an engine-shaped port", `--max-usd 0.10` a unit:
+
+| Task | Routines | Function | Result | Tries | Muse $ | Paths | s |
+|---|---|---|---|---|---|---|---|
+| T08 | `char_step` | `step` | pass | 1 | 0.0033 | 91 | 76 |
+| T08 | `h0_3ea8` | `idle` | pass | 2 | 0.0041 | 29 | 196 |
+| T08 | `h0_410c` | `land_or_fall` | pass | 1 | 0.0025 | 9 | 82 |
+| T08 | `h0_416c` | `fall_step` | pass | 1 | 0.0016 | 2 | 26 |
+| T08 | `h0_4274` | `rise_step` | pass | 1 | 0.0017 | 6 | 34 |
+| T08 | `h0_4696` | `move_x` | pass | 1 | 0.0014 | 4 | 16 |
+| T08 | `h0_4718` | `left_pressed` | pass | 1 | 0.0027 | 24 | 83 |
+| T08 | `h0_47e2` | `run_left_step` | pass | 1 | 0.0018 | 3 | 36 |
+| T08 | `h0_48be` | `right_pressed` | pass | 1 | 0.0027 | 24 | 48 |
+| T08 | `h0_497c` | `run_right_step` | pass | 1 | 0.0024 | 3 | 45 |
+| T08 | `h0_4b0e` | `up_pressed` | pass | 1 | 0.0017 | 8 | 23 |
+| T08 | `char_probe_flags` | `probe_flags` | pass | 1 | 0.0018 | 15 | 31 |
+| T09 | `h0_4e9a`, `h0_4ea6`, `h0_4eb4`, `h0_4ec2` | `follow` | pass | 1 | 0.0023 | 260 | 47 |
+| T09 | `h0_513c` | `clamp` | pass | 1 | 0.0010 | 3 | 29 |
+| T09 | `h0_51fc`, `h0_526a`, `h0_52d8`, `h0_5346` | `scroll` | pass | 1 | 0.0012 | 16 | 28 |
+
+15 of 15 units (21 routines) pass, $0.0324 and 800 s in all. Every first answer passed: `idle`'s first
+try was a call error, not a wrong answer.
+
+### Against Opus
+
+`--opus-cost` sums `costUSD` over every session of a task in the run's conversation logs (implement and
+review, restarts included) and divides by the routines it ported to engine code:
+
+| Task | Sessions | Opus $ | Routines | $ a routine |
+|---|---|---|---|---|
+| T08 | implement-1, review-1 | 12.50 | 14 | 0.89 |
+| T09 | implement-1, implement-2, review-1 | 9.68 | 10 | 0.97 |
+| T51 | implement-1, implement-2, review-1 | 9.39 | 6 | 1.56 |
+
+Muse: $0.0015 a routine (21 routines, $0.0324). The Opus figure is the whole task, not only reshaping:
+interruptible-point notes, `symbols.toml`, `LAYOUT`, the rig tests and mutants, docs, the review, and
+the by-hand ports of `char_probe`, `char_update` and `camera_update`. The trial needed those tests to
+exist; a task using `reshape.py` still writes them and reviews the answers.
+
+**What the answers look like.** On typed state throughout: no raw memory, no `unsafe`, the tables read
+through `table()`. But less factored than Opus's: 717 lines against 441 (Opus's with doc comments).
+`scroll` is four near-identical arms where Opus wrote one; `idle` repeats the slide for each side and
+inlines `slide_sound`; table offsets are bare numbers where the file has named constants; no doc
+comments. Passing the rig, they are not yet the code `fd-core` keeps.
+
+### The owner's decision
+
+Whether T22, T24, T25 and later porting tasks use `reshape.py` is the owner's. Asked 2026-11-05 with
+the recommendation "Muse drafts, the builder tidies" (the builder writes the rig test and the tool's
+`TASKS` entry first, then tidies and re-proves the passing answer). The owner was asleep, so the
+coordinator set the question aside as T66, `blocks T22`. Awaiting the owner; nothing else changes until
+then.

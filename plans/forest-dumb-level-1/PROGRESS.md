@@ -83,6 +83,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T62 | engine-shape-trial | T08, T09, T33 | ⬜ | |
 | T63 | game-frame-rig | T08, T09, T10, T22, T23, T24, T25, T26, T51, T52, T55; blocks T27 | ⬜ | |
 | T64 | listing-odd-bytes | T08, T51 | ✅ | |
+| T66 | reshape-decision | T62; blocks T22 | ⬜ | |
 
 **Review queue:** *(empty)*
 
