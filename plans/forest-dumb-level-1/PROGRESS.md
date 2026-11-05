@@ -85,7 +85,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T64 | listing-odd-bytes | T08, T51 | ✅ | |
 | T66 | reshape-decision | T62; blocks T22 | ⬜ | |
 | T65 | level-start-draw | T55; blocks T13, T20 | ⬜ | |
-| T67 | pass-input-read | T06; blocks T42, T43, T44, T15 | ⬜ | |
+| T67 | pass-input-read | T06; blocks T42, T43, T44, T15 | ✅ | |
 
 **Review queue:** *(empty)*
 
