@@ -136,6 +136,16 @@ T34 assigns every routine a generator batch and a porting task, and asks the own
 | [T28](tasks/T28-finish-end-to-end.md) | finish-end-to-end | T16, T48 |
 | [T29](tasks/T29-level-drill.md) | level-drill | T15, T28 |
 
+## Mid-run amendment, 2026-11-05 (owner)
+
+| # | Task | Depends on |
+|---|---|---|
+| [T60](tasks/T60-rig-branch-coverage.md) | rig-branch-coverage | T32 |
+| [T61](tasks/T61-generate-service.md) | generate-service | T33, T60; blocks T49 |
+| [T62](tasks/T62-engine-shape-trial.md) | engine-shape-trial | T08, T09, T33; blocks T10 |
+
+Muse writes generators from here on, judged by branch coverage on the original (T60, T61); T49 is the first user. T62 tries Muse on engine-shaped ports for T10's routines and asks the owner before any other task changes (DESIGN §4.3).
+
 ## Critical path
 
 ```
