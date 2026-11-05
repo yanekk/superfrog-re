@@ -73,7 +73,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T52 | creature-drawing | T10, T22; blocks T46 | ⬜ | |
 | T53 | gen-character-2 | T33, T34; blocks T40 | ✅ | |
 | T54 | gen-objects-2 | T33, T34; blocks T40 | ✅ | |
-| T55 | edge-redraw | T09; blocks T10, T41, T42, T43 | ⬜ | |
+| T55 | edge-redraw | T09; blocks T10, T41, T42, T43 | ✅ | |
 | T56 | gen-edge-redraw | T33, T34; blocks T40 | ✅ | |
 | T57 | sf-scale-fullscreen-os-test | — | ✅ | |
 | T58 | translate-btst-fix | T33; blocks T40 | ✅ | |
