@@ -35,6 +35,14 @@ workspace = "engine"
 "crates/fd-conform/tests/level_entry.rs" = "smoke"
 # The translation judge on h0+$774, under a second.
 "crates/fd-conform/tests/judge.rs" = "smoke"
+# T37's drawing generators: the 2 000-state survey, the write check and the flip self-test, about 4 s.
+# each_branch_goes_both_ways_or_is_named (about 27 s, three runs a branch) stays in full.
+"crates/fd-conform/tests/gen_drawing.rs" = [
+    "every_drawing_entry_has_its_generator_and_its_lists",
+    "each_generator_runs_2000_states_on_the_original_with_no_hang",
+    "no_generator_writes_outside_what_its_routine_reads",
+    "the_flips_see_a_branch_that_goes_one_way",
+]
 # T35: the character routines' generators, 2 000 states each and every branch both ways, about 2.5 s.
 "crates/fd-conform/tests/gen_character.rs" = "smoke"
 # T36's camera generators against the original, branches both ways: under a second.
