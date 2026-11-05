@@ -9,7 +9,7 @@
 
 **Status:** Amendment read back and its 4 decisions settled; ready to build. Nothing built.
 **Last updated:** 2026-11-05
-**Next `pir-work` will:** T00 and T32, because every level task rests on T00's measurements and every port on T32's rig.
+**Next `pir-work` will:** review T32 (🔍); then T33, which rests on its rig and generators.
 
 ## Tasks
 
@@ -21,7 +21,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T01 | smoke-room | — | ✅ | |
 | T02 | route-pin | — | ✅ | |
 | T31 | code-ran-counter | — | ⬜ | |
-| T32 | routine-rig | — | ⬜ | |
+| T32 | routine-rig | — | 🔍 | Rig, 11 spike generators, empty `PORTED`; 16 tests. Deviations: module `generators` over `src/gen/` (`gen` reserved in Rust 2024); added `RigReport.faults`, `Setup.beam`, `Rig::survey`, `memory_for`, `from_memory`; `Gen` moved to amiga-oracle, sf-conform re-exports it, sequence pinned; `h0+$774` hand port in tests/rig.rs, not `PORTED` (no symbol). |
 | T03 | level-sync | T00 | ✅ | |
 | T04 | picture-in-play | T00 | ⬜ | |
 | T30 | unpack-in-rust | — | ✅ | |
