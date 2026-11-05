@@ -161,6 +161,13 @@ def load_listing():
     return lines, ins, at, labels
 
 
+# Only real control flow is followed: `btst`/`bset`/`bclr`/`bchg` (and the `bf*` bitfield ops) also start
+# with `b` and take a label, which is data (T58: `btst.b #n,h0+$4ed2` led into `char_probe`). The same
+# set as call_tree.BRANCH_RE, copied rather than imported because call_tree needs amitools.
+_CC = 'hi|ls|cc|cs|ne|eq|vc|vs|pl|mi|ge|lt|gt|le|hs|lo'
+BRANCH_RE = re.compile(rf'^(bra|bsr|b({_CC})|db(ra|t|f|{_CC}))(\.[bsw])?$')
+
+
 def flow_text(hunk, off, stops=()):
     """The spike's `run.py --hw` extraction: every instruction reachable from the routine
     (fall-through, branches both ways, calls), as listing lines in address order with gaps marked,
@@ -202,7 +209,7 @@ def flow_text(hunk, off, stops=()):
             if op.startswith('bra') or op == 'jmp':
                 pc = t
                 continue
-            if t is not None and (op.startswith('b') or op.startswith('db') or op == 'jsr'):
+            if t is not None and (BRANCH_RE.match(op) or op == 'jsr'):
                 todo.append(t)
             pc += sz
     out, prev = [], None

@@ -308,5 +308,49 @@ class Pieces(unittest.TestCase):
             self.assertEqual(t.split_at(0, 0xb20), [])
 
 
+class FlowText(unittest.TestCase):
+    """flow_text on a small made-up listing: real branches are followed, bit ops on a label are not (T58)."""
+
+    LISTING = {
+        0x100: 'btst.b   #$0, h0+$200', 0x102: 'bset.b   #$1, h0+$210', 0x104: 'bclr.b   #$2, h0+$220',
+        0x106: 'bchg.b   #$3, h0+$230', 0x108: 'beq.s    h0+$140', 0x10a: 'dbra     d0, h0+$150',
+        0x10c: 'bsr.w    h0+$160', 0x10e: 'jsr      h0+$170', 0x110: 'bra.s    h0+$180', 0x112: 'nop',
+        0x140: 'nop', 0x142: 'rts', 0x150: 'nop', 0x152: 'rts', 0x160: 'rts', 0x170: 'rts',
+        0x180: 'jmp      h0+$190', 0x182: 'nop', 0x190: 'rts',
+        0x200: 'nop', 0x202: 'rts', 0x210: 'rts', 0x220: 'rts', 0x230: 'rts',
+    }
+    LABELS = (0x100, 0x140, 0x150, 0x160, 0x170, 0x180, 0x190, 0x200, 0x210, 0x220, 0x230)
+
+    def flow(self):
+        rows = []
+        for a, txt in sorted(self.LISTING.items()):
+            if a in self.LABELS:
+                rows.append(f'h0+${a:x}:')
+            rows.append(f'{a:08x}  4e71                  {txt}')
+        with tempfile.TemporaryDirectory() as d:
+            lst = os.path.join(d, 'x.lst')
+            write(lst, '\n'.join(rows) + '\n')
+            with mock.patch.object(t, 'LISTING', lst), mock.patch.object(t, 'symbols', lambda: []):
+                text, n = t.flow_text(0, 0x100)
+        return {int(l[:8], 16) for l in text.splitlines() if l[:8].isalnum() and len(l) > 8 and l[8] == ' '}, n
+
+    def test_bit_ops_on_a_label_are_not_followed(self):
+        seen, _ = self.flow()
+        self.assertEqual(seen & {0x200, 0x202, 0x210, 0x220, 0x230}, set())
+
+    def test_branches_dbcc_calls_and_jumps_are_followed(self):
+        seen, n = self.flow()
+        want = {0x100, 0x102, 0x104, 0x106, 0x108, 0x10a, 0x10c, 0x10e, 0x110,
+                0x140, 0x142, 0x150, 0x152, 0x160, 0x170, 0x180, 0x190}
+        self.assertEqual((seen, n), (want, len(want)))
+
+    @unittest.skipUnless(os.path.exists(t.LISTING), 'needs the listing from the owner\'s disks (re_listing.py)')
+    def test_real_sizes_match_their_unit_in_the_inventory(self):
+        # The T35 and T53 routines T58 was measured on; before it, btst on h0+$4ed2 gave 371, 348, 348, 295.
+        for off, unit in ((0x3ea8, 127), (0x4718, 104), (0x48be, 104), (0x4b0e, 51)):
+            with self.subTest(routine=t.label(0, off)):
+                self.assertEqual(t.flow_text(0, off, t.split_at(0, off))[1], unit)
+
+
 if __name__ == '__main__':
     unittest.main()
