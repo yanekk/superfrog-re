@@ -1,0 +1,6 @@
+# T41: from the sync frame 6400: a standing jump tapped (3 frames), then one held (40 frames).
+0: -
+10: U        # tapped: peaks at char_y $5c
+13: -
+60: U        # held: peaks at char_y $30
+100: -
