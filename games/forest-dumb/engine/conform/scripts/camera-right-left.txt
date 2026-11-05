@@ -1,0 +1,43 @@
+# T43: right along the upper route and back. From the level sync point: stand 40 frames, then right
+# with a jump (up) for 12 frames in every 40, for 620 frames, over the first hill and up the slopes to
+# W1-1:143,34 (camera_x 0 to $8db, camera_y up and down between 0 and $31f); then left the same way
+# for 120 frames. Every object frozen; no contact on the original. Measured 2026-11-05.
+0: -
+40: R U
+52: R
+80: R U
+92: R
+120: R U
+132: R
+160: R U
+172: R
+200: R U
+212: R
+240: R U
+252: R
+280: R U
+292: R
+320: R U
+332: R
+360: R U
+372: R
+400: R U
+412: R
+440: R U
+452: R
+480: R U
+492: R
+520: R U
+532: R
+560: R U
+572: R
+600: R U
+612: R
+640: R U
+652: R
+660: L U
+672: L
+700: L U
+712: L
+740: L U
+752: L
