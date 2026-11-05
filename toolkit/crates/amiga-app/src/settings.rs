@@ -1,6 +1,7 @@
-//! `settings.toml` in the app-data folder (DESIGN §2.9, §3.5): scale, fullscreen, filter, widescreen
-//! and the key and pad bindings. A damaged file is replaced by the defaults with a one-line message, never
-//! a refusal to start (DESIGN §2.9).
+//! `settings.toml` in a game's app-data folder: scale, fullscreen, filter, widescreen and the key
+//! and pad bindings. A damaged file gives the defaults with a one-line message, never a refusal to
+//! start: [`load`] also writes the defaults over it, [`read`] leaves it for the player to fix.
+//! A game with no filter or widescreen in its menus leaves them at their defaults.
 //!
 //! ```toml
 //! scale = "auto"        # or a whole number, 1 to 16
@@ -23,19 +24,19 @@ use std::path::{Path, PathBuf};
 
 use serde::{Deserialize, Serialize};
 
-use amiga_app::atomic_write::write as atomic_write;
-use crate::input::{KeyMap, OriginalInput, key_name, key_named};
+use crate::atomic_write::write as atomic_write;
+use crate::keys::{KeyMap, OriginalInput, key_name, key_named};
 use crate::pad::{PadInput, PadMap};
 
-pub use amiga_app::video::{Filter, Scale};
+pub use crate::video::{Filter, Scale};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Settings {
     pub scale: Scale,
     pub fullscreen: bool,
-    /// View → Filter (DESIGN §2.7).
+    /// View → Filter.
     pub filter: Filter,
-    /// View → Widescreen: 16:9, the level's extra columns each side (DESIGN §2.7).
+    /// View → Widescreen: 16:9, the level's extra columns each side.
     pub widescreen: bool,
     pub keys: KeyMap,
     pub pad: PadMap,
@@ -161,32 +162,43 @@ impl Settings {
 /// The settings in `home`, and a one-line message for the player when the file was damaged (it
 /// is then replaced by the defaults). No file is the defaults, silently.
 pub fn load(home: &Path) -> (Settings, Option<String>) {
-    let p = path(home);
-    let text = match std::fs::read(&p) {
-        Ok(bytes) => bytes,
-        Err(e) if e.kind() == std::io::ErrorKind::NotFound => return (Settings::default(), None),
-        Err(e) => return damaged(home, &e.to_string()),
-    };
-    match String::from_utf8(text)
-        .map_err(|_| "it is not text".to_string())
-        .and_then(|t| Settings::from_toml(&t))
-    {
+    match parse(home) {
         Ok(s) => (s, None),
-        Err(why) => damaged(home, &why),
+        Err(why) => {
+            let s = Settings::default();
+            let note = match save(home, &s) {
+                Ok(()) => "they are back to their defaults",
+                Err(_) => "the defaults are used",
+            };
+            (s, Some(damaged(&why, note)))
+        }
     }
 }
 
-fn damaged(home: &Path, why: &str) -> (Settings, Option<String>) {
-    let s = Settings::default();
-    let note = match save(home, &s) {
-        Ok(()) => "they are back to their defaults",
-        Err(_) => "the defaults are used",
+/// [`load`], but a damaged file is left as it is, to be written only when a setting changes: the
+/// defaults are used and the message says so.
+pub fn read(home: &Path) -> (Settings, Option<String>) {
+    match parse(home) {
+        Ok(s) => (s, None),
+        Err(why) => (Settings::default(), Some(damaged(&why, "the defaults are used"))),
+    }
+}
+
+/// The settings `home` holds, the defaults with no file; `Err` says what is wrong with the file.
+fn parse(home: &Path) -> Result<Settings, String> {
+    let text = match std::fs::read(path(home)) {
+        Ok(bytes) => bytes,
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => return Ok(Settings::default()),
+        Err(e) => return Err(e.to_string()),
     };
-    let msg = format!(
-        "Your settings could not be read ({}), so {note}.",
-        why.replace('\n', " ")
-    );
-    (s, Some(msg))
+    String::from_utf8(text)
+        .map_err(|_| "it is not text".to_string())
+        .and_then(|t| Settings::from_toml(&t))
+}
+
+/// The one line saying the file could not be read, and `note`, what was done instead.
+fn damaged(why: &str, note: &str) -> String {
+    format!("Your settings could not be read ({}), so {note}.", why.replace('\n', " "))
 }
 
 pub fn save(home: &Path, s: &Settings) -> std::io::Result<()> {
@@ -199,7 +211,7 @@ mod tests {
     use winit::keyboard::KeyCode;
 
     fn home(name: &str) -> PathBuf {
-        let d = std::env::temp_dir().join(format!("sf-app-settings-{name}-{}", std::process::id()));
+        let d = std::env::temp_dir().join(format!("amiga-app-settings-{name}-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&d);
         d
     }
@@ -322,6 +334,21 @@ mod tests {
         assert!(text.contains("filter = \"basic\"\n") && !text.contains("crt"), "{text}");
         assert_eq!(load(&h).0, s);
         std::fs::remove_dir_all(&h).unwrap();
+    }
+
+    #[test]
+    fn read_names_a_damaged_file_but_leaves_it_alone() {
+        let h = home("read");
+        std::fs::create_dir_all(&h).unwrap();
+        std::fs::write(path(&h), "scale = 0\n").unwrap();
+        let (s, msg) = read(&h);
+        assert_eq!(s, Settings::default());
+        let msg = msg.expect("a message");
+        assert!(msg.starts_with("Your settings could not be read") && msg.ends_with("so the defaults are used."), "{msg}");
+        assert_eq!(std::fs::read_to_string(path(&h)).unwrap(), "scale = 0\n", "not overwritten");
+        std::fs::remove_dir_all(&h).unwrap();
+        assert_eq!(read(&h), (Settings::default(), None), "no file: the defaults, silently");
+        assert!(!h.exists());
     }
 
     #[test]
