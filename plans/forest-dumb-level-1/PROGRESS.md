@@ -71,13 +71,13 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T51 | character-anim-input | T07, T40; blocks T08 | ⬜ | |
 | T52 | creature-drawing | T10, T22; blocks T46 | ⬜ | |
 | T53 | gen-character-2 | T33, T34; blocks T40 | ⬜ | |
-| T54 | gen-objects-2 | T33, T34; blocks T40 | ⬜ | |
+| T54 | gen-objects-2 | T33, T34; blocks T40 | 🔍 | 11 generators in `gen/objects_move.rs`; `tests/gen_objects_move.rs`, 4 tests, 2.6 s, smoke. Deviation: branches proven by detour stubs (as T39), not T38's witnesses; detoured runs try 200 states before 2 000 (seeded prefix). No branch unreachable. No translation call made. |
 | T55 | edge-redraw | T09; blocks T10, T41, T42, T43 | ⬜ | |
 | T56 | gen-edge-redraw | T33, T34; blocks T40 | ⬜ | |
 | T57 | sf-scale-fullscreen-os-test | — | ⬜ | |
 | T58 | translate-btst-fix | T33; blocks T40 | ⬜ | |
 
-**Review queue:** *(empty)*
+**Review queue:** T54
 
 ## Blocked on the user
 

@@ -6,6 +6,7 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-11-05 | 📌 | T54: creature probes (`h0_3530`..`h0_35dc`) index `collision_map` by `(x >> 3)` with x a level coordinate, reading up to `$4dd2` bytes past `h3+$fa50`, beyond its `$2e00`. T24 ports that reach as is. `h0_3698` compares the middle slot pairs as bytes. |
 | 2026-11-05 | 🐞 | T39: `translate.py 'game_frame'` exits 2: `flow_text` cuts at listing labels and split callee `h0+$2c7e` has none (T34's lost-step sweep). T40 needs a label there or `call_tree.py`'s decoding. |
 | 2026-11-05 | 📌 | T39 live call, worker action: `translate.py play_keys --gen play_keys` passed on try 1, 1 716 tokens in, 4 349 out, $0.0010, 43 s, 5 paths. |
 | 2026-11-05 | 📌 | T38: the rig's VHPOSR steps every read, so raster-wait `beq`s (`h0+$265e`, `$3af2`) never go taken; BLTBUSY set hangs `h0+$2a1c`. Write-only cells (`h0+$4710`, slot flags in `h0_2e0e`) are not poked, so an omitted clear passes where the program's byte is already 0. |
