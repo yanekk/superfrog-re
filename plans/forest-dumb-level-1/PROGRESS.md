@@ -10,7 +10,7 @@
 
 **Status:** Amendment read back and its 4 decisions settled; ready to build. Nothing built.
 **Last updated:** 2026-11-05
-**Next `pir-work` will:** review T55 (edge redraws), the only task waiting for review.
+**Next `pir-work` will:** whatever the coordinator dispatches; T65 (level-start-draw) is now unblocked.
 
 ## Tasks
 
@@ -73,7 +73,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T52 | creature-drawing | T10, T22; blocks T46 | ⬜ | |
 | T53 | gen-character-2 | T33, T34; blocks T40 | ✅ | |
 | T54 | gen-objects-2 | T33, T34; blocks T40 | ✅ | |
-| T55 | edge-redraw | T09; blocks T10, T41, T42, T43 | 🔍 | level/redraw.rs, collision.rs; 14 routines pass 10 000 rig states; Game::step redraws before the pass; collision_map equals the original after scrolls each way (8 cut frames, equal a frame later). Deviations: h0_6852 states with d7 past 5 taken into range; redraw states whose stray bob blit hits the cell table redrawn (counted); frame_flag at sync now $ffff (measured). |
+| T55 | edge-redraw | T09; blocks T10, T41, T42, T43 | ✅ | Review: one fix, the redraw-before-pass order had no oracle test (a foreground-after-pass mutant passed all); added the idle case comparing edge latches, red on it. Probed: level image equals hunk 0 at sync byte for byte; shape-row mutant caught; rig 14×10 000 rerun green. Interrupt points listed before porting: read-only. |
 | T56 | gen-edge-redraw | T33, T34; blocks T40 | ✅ | |
 | T57 | sf-scale-fullscreen-os-test | — | ✅ | |
 | T58 | translate-btst-fix | T33; blocks T40 | ✅ | |
@@ -83,7 +83,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T62 | engine-shape-trial | T08, T09, T33 | ⬜ | |
 | T65 | level-start-draw | T55; blocks T13, T20 | ⬜ | |
 
-**Review queue:** T55
+**Review queue:** *(empty)*
 
 ## Blocked on the user
 
