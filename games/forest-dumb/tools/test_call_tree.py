@@ -91,6 +91,17 @@ class Scan(unittest.TestCase):
         self.assertEqual(root["calls"], [f"h0+${a.labels['a']:x}", f"h0+${a.labels['b']:x}"])
         self.assertEqual(root["instructions"], 6 + 3 + 1)
 
+    def test_code_reached_only_by_a_taken_branch_is_followed(self):
+        # T34 review: the test above reaches its branch target by fall-through too, so dropping
+        # the branch-taken path survived every test but the one that needs the real program
+        a = Asm()
+        a.label("root").beq("far").rts()
+        a.label("far").bsr("a").rts()
+        a.label("a").rts()
+        e = by_off(scan(a)[0])
+        self.assertEqual(sorted(e), [0, a.labels["a"]])
+        self.assertEqual(e[0]["own"], 4)
+
     def test_a_shared_callee_is_counted_once_with_callees(self):
         a = Asm()
         a.label("root").bsr("x").bsr("y").rts()
