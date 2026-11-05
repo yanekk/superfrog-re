@@ -79,7 +79,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T58 | translate-btst-fix | T33; blocks T40 | ✅ | |
 | T59 | oracle-sprite-collision | T21; blocks T24, T41, T42, T43, T44, T45, T46, T47 | ✅ | |
 | T60 | rig-branch-coverage | T32 | ✅ | |
-| T61 | generate-service | T33, T60; blocks T49 | ⬜ | |
+| T61 | generate-service | T33, T60; blocks T49 | ✅ | |
 | T62 | engine-shape-trial | T08, T09, T33 | ⬜ | |
 
 **Review queue:** *(empty)*
