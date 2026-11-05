@@ -82,7 +82,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T61 | generate-service | T33, T60; blocks T49 | ✅ | |
 | T62 | engine-shape-trial | T08, T09, T33 | ⬜ | |
 | T63 | game-frame-rig | T08, T09, T10, T22, T23, T24, T25, T26, T51, T52, T55; blocks T27 | ⬜ | |
-| T64 | listing-odd-bytes | T08, T51 | ⬜ | |
+| T64 | listing-odd-bytes | T08, T51 | ✅ | |
 
 **Review queue:** *(empty)*
 
