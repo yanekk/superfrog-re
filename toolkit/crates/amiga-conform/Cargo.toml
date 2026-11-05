@@ -16,6 +16,8 @@ amiga-paula = { path = "../amiga-paula" }
 amiga-input = { path = "../amiga-input" }
 # The original's side: Rgb12Frame, FrameCapture, AudioTap.
 amiga-oracle = { path = "../amiga-oracle" }
+# SHA-1 for the sync-cache keys and file digests.
+amiga-disk = { path = "../amiga-disk" }
 # Compresses the diff PNG.
 miniz_oxide = "0.9.1"
 # Decodes a bug recording's screenshot to hold it against the engine's picture.

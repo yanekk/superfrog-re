@@ -6,17 +6,17 @@
 //! decides it (`~/.cache/superfrog-re/sync/`, `SUPERFROG_CACHE` replacing the root).
 
 use crate::freeze::Freeze;
+use amiga_conform::sync_cache;
 use std::fs;
 use std::ops::Range;
 use std::path::PathBuf;
-use std::sync::atomic::{AtomicU64, Ordering};
 
 use sf_assets::{LevelId, World};
-use sf_core::input::{FrameInput, Joy, KeySet};
+use sf_core::input::{FrameInput, Joy};
 use sf_core::layout::{AmigaMemory, LAYOUT, Ram, h0};
 use sf_core::recording::LevelSetup;
 use sf_core::{Game, HandlerEnd, Pacing, Rng};
-use sf_disk::{DiskSlot, sha1_hex};
+use sf_disk::DiskSlot;
 use sf_oracle::{Amiga, CpuRegs, OracleConfig, Snapshot};
 
 use crate::case::script_path;
@@ -1456,7 +1456,7 @@ fn power_on_seed(
 }
 
 /// The oracle with `drives` drives after `get_there`, from the snapshot cache when it has this
-/// key.
+/// key (the toolkit's `amiga_conform::sync_cache`, under [`MAGIC`]).
 fn at_snapshot(
     what: &str,
     drives: u8,
@@ -1467,16 +1467,14 @@ fn at_snapshot(
     let cfg = OracleConfig::locate(reach_frames + frames)
         .map_err(|e| e.to_string())?
         .with_drives(drives);
-    let key = cache_key(&cfg, what)?;
-    let path = cache_dir().join(format!("{key}.sync"));
-    let mut amiga = Amiga::power_on(&cfg).map_err(|e| e.to_string())?;
-    match fs::read(&path).ok().and_then(|b| decode(&b, &key)) {
-        Some(snap) => amiga.restore(&snap),
-        None => {
-            get_there(&mut amiga)?;
-            store(&path, &key, &amiga.snapshot());
-        }
-    }
+    let key = key_bytes(&cfg, what)?;
+    let amiga = sync_cache::at_snapshot(
+        &cache_dir(),
+        MAGIC,
+        key,
+        || Amiga::power_on(&cfg).map_err(|e| e.to_string()),
+        get_there,
+    )?;
     let memory = amiga.memory();
     Ok(Synced {
         amiga,
@@ -1499,68 +1497,24 @@ pub(crate) fn cache_root() -> PathBuf {
         })
 }
 
-/// SHA-1 over the format, the vAmiga build, the Kickstart and disk files and the way there.
+/// SHA-1 over the format, the vAmiga build, the Kickstart and disk files and the way there, in hex.
 pub(crate) fn cache_key(cfg: &OracleConfig, what: &str) -> Result<String, String> {
-    let file = |p: &PathBuf| {
-        fs::read(p)
-            .map(|b| sha1_hex(&b))
-            .map_err(|e| format!("{}: {e}", p.display()))
-    };
-    let mut text = format!(
-        "sync format {SYNC_FORMAT}\nvamiga {}\nkickstart {}\n",
-        sf_oracle::BUILD,
-        file(&cfg.kickstart)?
-    );
-    for d in &cfg.disks {
-        text += &format!("disk {}\n", file(d)?);
-    }
-    // A one-drive key is what it was before drives could be connected.
-    if cfg.drives != 1 {
-        text += &format!("drives {}\n", cfg.drives);
-    }
-    text += what;
-    Ok(sha1_hex(text.as_bytes()))
+    key_bytes(cfg, what).map(|k| sync_cache::hex(&k))
 }
 
-/// `MAGIC`, the key, the frame, the held input, the snapshot bytes.
-fn store(path: &PathBuf, key: &str, s: &Snapshot) {
-    let mut b = MAGIC.to_vec();
-    b.extend(key.as_bytes());
-    b.extend(s.frame.to_le_bytes());
-    b.push(s.input.joy.bits());
-    b.extend(s.input.keys.0.to_le_bytes());
-    b.extend(&s.bytes);
-    // A cache that cannot be written only costs the next run time.
-    if let Some(dir) = path.parent()
-        && fs::create_dir_all(dir).is_ok()
-    {
-        static N: AtomicU64 = AtomicU64::new(0);
-        let n = N.fetch_add(1, Ordering::Relaxed);
-        let tmp = path.with_extension(format!("tmp{}-{n}", std::process::id()));
-        if fs::write(&tmp, &b).is_ok() {
-            let _ = fs::rename(&tmp, path);
-        }
-    }
-}
-
-fn decode(b: &[u8], key: &str) -> Option<Snapshot> {
-    let rest = b.strip_prefix(MAGIC)?.strip_prefix(key.as_bytes())?;
-    if rest.len() < 21 {
-        return None;
-    }
-    Some(Snapshot {
-        frame: u32::from_le_bytes(rest[..4].try_into().ok()?),
-        input: FrameInput {
-            joy: Joy(rest[4]),
-            keys: KeySet(u128::from_le_bytes(rest[5..21].try_into().ok()?)),
-        },
-        bytes: rest[21..].to_vec(),
-    })
+/// The toolkit's key over the files `cfg` names; an unreadable one is named.
+fn key_bytes(cfg: &OracleConfig, what: &str) -> Result<[u8; 20], String> {
+    let file = |p: &PathBuf| fs::read(p).map_err(|e| format!("{}: {e}", p.display()));
+    let kickstart = file(&cfg.kickstart)?;
+    let disks = cfg.disks.iter().map(file).collect::<Result<Vec<_>, _>>()?;
+    let disks: Vec<&[u8]> = disks.iter().map(Vec::as_slice).collect();
+    Ok(sync_cache::cache_key(SYNC_FORMAT, &kickstart, &disks, cfg.drives, what))
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use sf_disk::sha1_hex;
 
     #[test]
     fn a_snapshot_file_reads_back_as_written() {

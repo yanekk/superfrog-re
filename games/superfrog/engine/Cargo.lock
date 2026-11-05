@@ -102,6 +102,7 @@ name = "amiga-conform"
 version = "0.1.0"
 dependencies = [
  "amiga-chips",
+ "amiga-disk",
  "amiga-input",
  "amiga-oracle",
  "amiga-paula",
