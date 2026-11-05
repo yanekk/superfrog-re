@@ -40,7 +40,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T08 | character-movement | T07, T40 | ✅ | |
 | T09 | camera-scroll | T07, T40 | ✅ | |
 | T10 | level-drawing | T08, T09, T40 | ⬜ | |
-| T41 | case-run-jump | T08, T09 | 🔍 | Four cases (left run with running jump, slide right, tapped and held jumps, landing-frame input), one smoke test; all match, every T08/T51 routine hit, no engine fix. Deviation: right from the start is an uncontrolled slide, no gap to jump; covered as the slide. Mid-scroll button-change case deferred to T67 (owner). |
+| T41 | case-run-jump | T08, T09 | ✅ | Review fixed: the builder's "up ignored sliding right" was false on the original (up held jumps); added `character-run-right-jump` (running jump into the wall at $14c, matches), slide comments corrected ($29d at 6522). Probed: T67's `joy_up` failure reproduced; a jump right from frame 10 differs at 6487 on a creature stomp (T24). Mutation: `rise_step` ignoring up goes red. |
 | T42 | case-walls-pits | T08, T09, T41 | ⬜ | |
 | T43 | case-scroll | T08, T09 | ⬜ | |
 | T44 | case-picture | T10 | ⬜ | |
@@ -87,7 +87,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T65 | level-start-draw | T55; blocks T13, T20 | ⬜ | |
 | T67 | pass-input-read | T06; blocks T42, T43, T44, T15 | ⬜ | |
 
-**Review queue:** T41
+**Review queue:** *(empty)*
 
 ## Blocked on the user
 
