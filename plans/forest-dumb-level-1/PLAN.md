@@ -142,21 +142,21 @@ T34 assigns every routine a generator batch and a porting task, and asks the own
 |---|---|---|
 | [T60](tasks/T60-rig-branch-coverage.md) | rig-branch-coverage | T32 |
 | [T61](tasks/T61-generate-service.md) | generate-service | T33, T60; blocks T49 |
-| [T62](tasks/T62-engine-shape-trial.md) | engine-shape-trial | T08, T09, T33; blocks T10 |
+| [T62](tasks/T62-engine-shape-trial.md) | engine-shape-trial | T08, T09, T33 |
 
-Muse writes generators from here on, judged by branch coverage on the original (T60, T61); T49 is the first user. T62 tries Muse on engine-shaped ports for T10's routines and asks the owner before any other task changes (DESIGN §4.3).
+Muse writes generators from here on, judged by branch coverage on the original (T60, T61); T49 is the first user. T62 tries Muse on engine-shaped ports of T08's and T09's routines, set against what Opus wrote and spent, holds up no task, and asks the owner before any other task changes (DESIGN §4.3).
 
 ## Critical path
 
 ```
-T00 → T03 → T05 → T07 → T51 → T08 → T62 → T10 → T44 → T11 → T19 → T20 → T22 → T24 → T46 → T27 → T48 → T28 → T29
+T00 → T03 → T05 → T07 → T51 → T08 → T41 → T42 → T11 → T19 → T20 → T22 → T24 → T46 → T27 → T48 → T28 → T29
 ```
 
 The translation track (T32, T33, T34 to T40) runs beside T03 to T07 and joins at T08; if the batch is slower than T07, it is on the critical path. T01, T02, T31, T32, T12, T30 and T17 are off it and start early. T31 changes the oracle's build hash, so every sync cache rebuilds once after it merges. Leaves: only T29, the final deliverable.
 
 ## Parallel width
 
-63 tasks · longest dependency chain 19 (counted by hand at the mid-run read-back) · up to 8 could run at once (computed before the amendments by a small script; `analyzeParallelism` is not in this repo).
+63 tasks · longest dependency chain 18, `blocks` clauses folded in, computed from pir's own `parseProgress` (2026-11-05, after T62 stopped blocking T10). `analyzeParallelism` is not in this repo.
 
 ## Rough sizing
 

@@ -6,7 +6,7 @@
 **Amended:** 2026-11-03 — the first game's lessons: porting rulebook, port register and coverage, T31 added (owner)
 **Amended:** 2026-11-05 — translation by Muse and small sessions (brief): T32 to T48 added; T06, T08 to T11, T22, T24, T25, T27 reshaped (owner).
 **Amendment reviewed:** 2026-11-05 — 15 fixed, 4 decided with the owner (T49 added)
-**Amended mid-run:** 2026-11-05 — Muse writes generators (T60, T61; T49 uses them) and an engine-shape trial (T62) (owner). Read back 2026-11-05: 11 fixed, 1 open.
+**Amended mid-run:** 2026-11-05 — Muse writes generators (T60, T61; T49 uses them) and an engine-shape trial (T62) (owner). Read back 2026-11-05: 11 fixed, 1 decided (T62 measures on T08's and T09's routines, blocks nothing).
 
 **Status:** Amendment read back and its 4 decisions settled; ready to build. Nothing built.
 **Last updated:** 2026-11-05
@@ -80,7 +80,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T59 | oracle-sprite-collision | T21; blocks T24, T41, T42, T43, T44, T45, T46, T47 | ✅ | |
 | T60 | rig-branch-coverage | T32 | ⬜ | |
 | T61 | generate-service | T33, T60; blocks T49 | ⬜ | |
-| T62 | engine-shape-trial | T08, T09, T33; blocks T10 | ⬜ | |
+| T62 | engine-shape-trial | T08, T09, T33 | ⬜ | |
 
 **Review queue:** *(empty)*
 
