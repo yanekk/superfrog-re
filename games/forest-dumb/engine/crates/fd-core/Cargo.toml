@@ -9,3 +9,5 @@ publish.workspace = true
 amiga-clock = { path = "../../../../../toolkit/crates/amiga-clock" }
 # The per-frame input (pure, a toolkit crate).
 amiga-input = { path = "../../../../../toolkit/crates/amiga-input" }
+# The level files, read through a closure (pure, this game's crate).
+fd-assets = { path = "../fd-assets" }

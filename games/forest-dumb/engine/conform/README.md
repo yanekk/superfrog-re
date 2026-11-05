@@ -14,6 +14,7 @@ Anywhere under `games/forest-dumb/engine/`:
 
 ```sh
 cargo run -p fd-conform -- run cases/first-case.toml   # one case, prints the verdict; about 35 s
+cargo run -p fd-conform -- run cases/w1-idle.toml      # a level case, on fd-core's Game
 ```
 
 Exit 0 when the case passes, 1 for a failure or a missing input, 2 for a wrong command line. The
@@ -22,10 +23,12 @@ each exclusion with the frames it hid a difference on, engine events, the frame 
 at, and the coverage report. It needs the two zips (`docs/01-disk-location.md`) and the Kickstart
 (`~/amiga-roms/kick1.3.rom` or `AMIGA_KICKSTART`); absent, it fails naming where it looked.
 
-A level case needs the level engine, fd-core's `Game`, which T07 builds. Until then `run` refuses a
-level case, and the tests run level cases through `fd_conform::run_with` with a stand-in engine, a
-second copy of the original (`fd-conform/tests/common/mod.rs`, used by `tests/runner.rs` and
-`tests/input_timing.rs`).
+`run` runs a level case on fd-core's `Game`, started at `Start::Level1` on the data the disks hold
+(`fd_conform::game_data`) and transplanted at the first pass end. The runner's own tests run level cases
+through `fd_conform::run_with` with a stand-in engine, a second copy of the original
+(`fd-conform/tests/common/mod.rs`, used by `tests/runner.rs` and `tests/input_timing.rs`), so it can be
+made to differ in exactly one way. `stub-level.toml` fails on `Game` until the character moves (T08);
+`w1-idle.toml` is the level engine's own case (T07).
 
 ## A case
 
@@ -40,7 +43,7 @@ frames = 130                 # oracle frames run after the sync point
 compare = ["vars", "picture"]
 vars = ["char_x", "camera_x"]                       # names in LAYOUT
 goal = { all = [{ var = "char_x", value = 0x1a3 }], by_frame = 6431 }   # or { idle = true }
-exclude = [{ what = "rows 194..250", task = "T10" }]                    # optional
+exclude = [{ what = "rows 194..250", task = "T10" }, { what = "var countdown", task = "T23" }]  # optional
 freeze = false               # optional
 swap = { frame = 3600, disk = 2 }                   # title cases only: this disk into df0 then
 ```
@@ -55,9 +58,11 @@ swap = { frame = 3600, disk = 2 }                   # title cases only: this dis
   compared pass ending at or before oracle frame `by_frame`, on both sides. `idle = true`, for stretches
   where only state is expected to stay in step: the run reaches its last frame with no engine event and
   every listed variable compared on every pass; a pass whose end the original hides (below) fails it.
-- **`exclude`.** Picture rows not compared, each with the task that removes it. Row 0 is line 47, the
-  play area's top; the status bar is rows 194 to 249. An exclusion that hid no difference over the whole
-  run fails the case: it is no longer needed.
+- **`exclude`.** Picture rows (`"rows A..B"`) or a variable (`"var NAME"`) whose differences do not
+  fail the case, each with the task that removes it. Row 0 is line 47, the play area's top; the status
+  bar is rows 194 to 249. An excluded variable is read every pass and its differing passes counted; it
+  needs `compare = ["vars"]` and is not also in `vars`. An exclusion that hid no difference over the
+  whole run fails the case: it is no longer needed.
 - **`freeze`.** Patches the routines `fd-conform/src/freeze.rs` lists to return at once in the
   original at the sync point. The list is empty until T21 measures the object entry points, so
   `freeze = true` is an error until then.
@@ -75,6 +80,9 @@ because a script holds only what the player holds (`amiga-conform`'s `script` mo
   the sync point, then runs each later pass on the input of the step that pass started in. A step now
   and then ends two passes and shows only the first; the other is counted unseen and not compared.
 - **A case that compares nothing fails**: no pass ended, no variable or no picture compared.
+- **An unported object fails every case.** When the engine meets an object value with no `ObjectKind`
+  registered (`fd_core::Event::Unported`), the case stops there with `Outcome::Unported`, naming the
+  value, the pass and the frame (DESIGN §4.1).
 - **The picture** is `PLAY_WINDOW`, the play area and the status bar together, from the frame the pass
   ended in, judged within the owner's tolerance (`amiga_conform::Tolerance::OWNER`, `PictureJudge`). A
   run made with `Options { mode: Mode::Strict, .. }` fails on any pixel; a case cannot choose its bar.

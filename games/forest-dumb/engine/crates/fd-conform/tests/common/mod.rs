@@ -1,4 +1,4 @@
-//! A stand-in for the level engine, which T07 builds: a second copy of the original on the oracle,
+//! A stand-in for the level engine: a second copy of the original on the oracle,
 //! started at the same sync point and stepped a pass per call, so the runner has an engine that
 //! matches the original and can be made to differ in exactly one way. Shared by the level tests.
 
@@ -9,7 +9,7 @@ use std::ops::Range;
 use amiga_chips::{Picture, Split};
 use amiga_oracle::{Amiga, AmigaMemory, FrameInput, Rgb12Frame};
 use fd_conform::{Case, Engine, Inputs, Live, OracleMem, PASS_END, PLAY_WINDOW, reach_case};
-use fd_core::{Mem, Transplant, Var, layout_var};
+use fd_core::{Event, Mem, Transplant, Var, layout_var};
 
 /// The original's picture as an engine `Picture`: colour 0 of each line, rewritten by a split at
 /// every pixel whose colour changes. Lossless, whatever the number of colours on a line.
@@ -54,9 +54,9 @@ pub struct StandIn {
     pub bump: Option<(u32, &'static str)>,
     /// Paint `pixels` pixels of row `row` white on these passes.
     pub paint: Option<(Range<u32>, u16, u16)>,
-    /// Raise an event on this pass.
+    /// Raise `Event::Unported(0xee)` on this pass.
     pub event: Option<u32>,
-    events: Vec<String>,
+    events: Vec<Event>,
 }
 
 fn irq() -> &'static Var {
@@ -153,7 +153,7 @@ impl Engine for StandIn {
             self.am.watch_write(Some(PASS_END));
         }
         if self.event == Some(self.passes) {
-            self.events.push("a test's event".to_string());
+            self.events.push(Event::Unported(0xee));
         }
     }
 
@@ -172,7 +172,7 @@ impl Engine for StandIn {
         Some(picture_of(&pic))
     }
 
-    fn events(&mut self) -> Vec<String> {
+    fn events(&mut self) -> Vec<Event> {
         std::mem::take(&mut self.events)
     }
 }

@@ -1,16 +1,24 @@
-//! Forest Dumb Forever's engine core, so far its smallest real port: the game's measured timing and
-//! a placeholder scene for the idle title screen, whose one modelled variable the first conformance
-//! case compares with the original (plans/forest-dumb-start DESIGN §2.8, §3.3).
+//! Forest Dumb Forever's engine core: the game's measured timing, the idle title's placeholder
+//! scene (forest-dumb-start), and the level engine, `Game`, which enters W1-1 at the level sync
+//! point and steps it a pass at a time (plans/forest-dumb-level-1 DESIGN §2.3, §3.3).
 //!
-//! Pure: everything arrives per frame as a parameter. No clock, file or network, and the only
-//! dependencies are `amiga-clock` and `amiga-input`.
+//! Pure: everything arrives per step as a parameter, and the disks' data through a closure. No
+//! clock, file or network (`fd-conform/tests/purity.rs`).
 
+pub mod game;
 pub mod layout;
+pub mod level;
 pub mod ported;
+pub mod scene;
+pub mod state;
 pub mod timing;
 pub mod title;
 
+pub use game::{Game, GameData, Start};
 pub use layout::{LAYOUT, Mem, Transplant, Var, Width, layout_var};
+pub use level::{Bob, Dispatch, DrawList, Event, LevelCtx, Object, ObjectKind, register};
 pub use ported::{PORTED, Ported};
+pub use scene::Scene;
+pub use state::State;
 pub use timing::FdTiming;
 pub use title::TitleScene;
