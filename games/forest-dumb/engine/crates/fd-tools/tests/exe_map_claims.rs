@@ -174,10 +174,14 @@ fn the_listing_regenerates_and_decodes_hunk_4() {
         assert!(text.contains(&format!("\n{start}:\n")), "{start} has no label");
     }
     // A 68000 instruction never starts at an odd address. An odd-sized data symbol leaves the sweep
-    // on one until the next symbol, so everything up to there decodes as noise and still lists.
+    // on one; if it decoded from there, everything up to the next symbol would be noise and still
+    // list. A byte var may sit at an odd address, and the byte after one that is not a symbol
+    // lists as dc.b to bring the sweep back to a word (T64), so dc.b lines are exempt; nothing
+    // else is.
     let odd: Vec<&str> = text
         .lines()
         .filter(|l| l.get(8..10) == Some("  "))
+        .filter(|l| l.split_whitespace().nth(2) != Some("dc.b"))
         .filter(|l| {
             let at = u32::from_str_radix(&l[..8], 16);
             at.is_ok_and(|a| a < 0x5be68 && a & 1 == 1)
