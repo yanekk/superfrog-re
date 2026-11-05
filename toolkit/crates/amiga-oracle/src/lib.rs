@@ -35,5 +35,9 @@ pub use trace::{
     trace_key,
 };
 
-/// The vAmiga build this crate links: `<commit>-<patch-set hash>`. Part of every trace cache key.
-pub const BUILD: &str = env!("AMIGA_ORACLE_BUILD");
+/// The vAmiga build this crate links and how the shim sets it up: `<commit>-<patch-set
+/// hash>-<settings>`. Part of every trace and sync cache key. The settings tag names emulation
+/// options the shim sets that change what a run computes (`fixedSettings` in `shim/shim.cpp`);
+/// change it with them, so a snapshot or trace taken under the old settings is never reused.
+/// `clx`: Denise's three collision checks on.
+pub const BUILD: &str = concat!(env!("AMIGA_ORACLE_BUILD"), "-clx");

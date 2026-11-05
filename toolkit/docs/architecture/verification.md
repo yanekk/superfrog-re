@@ -50,6 +50,11 @@ the workspace files, `toolkit/tools/`, `amiga-app` and `amiga-disk`. Those two c
   `shim/moira_shim.cpp`) is the routine runner: Moira, vAmiga's 68000 core, compiled alone over a flat
   16 MiB memory with no chipset, which calls one routine of the original and returns its registers and
   every byte it changed. A game passes in its disks, their names and its cache roots.
+  Denise's three collision checks (sprite to sprite, sprite to playfield, playfield to playfield) are
+  on, so CLXDAT reads what the hardware would; vAmiga leaves them off and CLXDAT then reads `$8000`
+  whatever is drawn. A snapshot carries the switches, so the shim sets them again after every restore
+  (`fixedSettings`), and `BUILD` ends in a settings tag (`-clx`) that every trace and sync cache key
+  includes, so a cache made under other settings is never reused (`tests/collision.rs`).
 - **`amiga-conform`** (`toolkit/crates/amiga-conform/`): the game-free half of a conformance harness:
   `compare` (picture and Paula writes, `Tolerance`, `PictureJudge`, `PassMatch`), `sound_events`,
   `channels`, `feed`, `report` (the diff PNG), `screenshot`, `script` (with a hook for a game's tokens).

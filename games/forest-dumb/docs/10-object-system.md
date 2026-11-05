@@ -66,15 +66,21 @@ cell). `h0_3698` sorts the slots by y for drawing; `h0_5820` cuts them onto the 
 restores behind them. Kind 6's frame table points at blank frames ([06](06-graphics-and-rendering.md)), and
 no value spawns it. The movements per kind are readings of the listing; T24 measures them by porting.
 
-**Contact is not measured.** `char_hit_check` reads CLXDAT (`$dff00e`, its bits 1 and 2: odd bitplanes
-against sprites 0 and 2), not a box test. CLXCON is `$37dd` from the play copper list (`h1+$118`): a
-playfield pixel of colour 21, 23, 29 or 31 under the character's sprites. With contact and `h0+$4ed0`
-set, `h0_3dd8` tests each creature's 48 x 32 box against the character; a hit creature becomes kind 7
-and scores 250. Otherwise `hits_taken` counts contact passes, cleared on any pass without, and the third
-in a row costs a life. Those colours are also in 134 of W1-1's 328 tiles (9 975 cells), in the coin and
-water frames and in `_ZNIKAJKA1`, so terrain and items can hurt too. vAmiga leaves sprite-to-playfield
-collision off (`DENISE_CLX_SPR_PLF`) and `amiga-oracle` never sets it: on the oracle CLXDAT is always
-`$8000` (tested), and nothing ever touches the character. T59 turns it on and measures contact.
+**Contact (measured, T59, `object_claims.rs`).** `char_hit_check` reads CLXDAT (`$dff00e`, its bits 1 and
+2: odd bitplanes against sprites 0 and 2), not a box test. CLXCON is `$37dd` from the play copper list
+(`h1+$118`): a playfield pixel of colour 21, 23, 29 or 31 under the character's sprites. Contact does
+nothing while `h0+$4b62` is set (after a life is lost). With `h0+$4ed0` set (falling), `h0_3dd8` tests
+each creature's 48 x 32 box against the character + (`$10`, `$24`); the first one hit becomes kind 7 and
+scores 250, and no hit is counted that pass. Otherwise, once `h0+$9b04` is 0, `hits_taken` counts
+contact passes, cleared on any pass without, and the third in a row costs a life. `h0+$9b04` counts up
+from the level start and wraps to 0 about 100 passes after the sync point: until then contact never
+hurts. Measured: a creature (kinds 0, 1, 5) over the standing character, hits 1, 2, 3, a life lost on
+the third; one 200 pixels away, no contact. A creature under the falling character, kind 7 and +250.
+`$28` water under the feet hurts (contact passes 107 to 109 of the slide, a life lost), and so do the
+tiles where the first slope ends against a wall (`W1-1:42,35`, every object frozen: contact from pass
+133, a life lost at 135). Which tiles carry the colours there is not measured. Those colours are in
+134 of W1-1's 328 tiles, in the coin and water frames and in `_ZNIKAJKA1`. The oracle reports
+collision only since T59 (`DENISE_CLX_SPR_PLF`, off in vAmiga by default; before it CLXDAT read `$8000`).
 
 **Springs (`$10` to `$13`).** `h0_24ce` reads the cell under the feet (`char_x + $e`, `char_y + $23`) each
 pass, only while `h0+$4ed0` is set and `h0+$4b62` is clear (measured: the same spring with the flag clear
@@ -127,7 +133,7 @@ are springs, `$24` to `$27` coins, `$2a` water, `$34` a flame, `$45` to `$4b` an
 | Water | `W1-1:136,66` to `141,66` | `$28`, 11 cells |
 | Exit | `W1-1:207,91` to `208,93` | `$ff`, 6 cells |
 | Countdown | the whole level: 999 at start, -1 every 63 passes, game over at 0 ([09](09-play-measured.md)); measured falling while sliding | none |
-| Contact damage | creatures and colour 21, 23, 29, 31 pixels | not measurable until T59 |
+| Contact damage | creatures, `$28` water, the tiles at `W1-1:42,35`: three contact passes in a row cost a life; a falling character stomps a creature (kind 7, +250) | `$01`-`$06`, `$28` |
 
 ## Freezing objects (DESIGN §2.2)
 
@@ -136,7 +142,7 @@ animated cell, so no coin, water or block drawn and no block writes `collision_m
 blits, `h0_26ec` (nothing taken, and no exit) and `h0_24ce` (no spring). Measured: with all of them
 frozen, a creature, coin, bonus, block and spring placed on the slide do nothing and the character
 ends where it does on an empty map. Left running: the per-pass creature loop over empty slots and
-`char_hit_check`, harmless while the oracle reports no collision.
+`char_hit_check`, so tiles still hurt: the frozen slide loses a life at its end (pass 135).
 
 ## No dispatch tables
 
