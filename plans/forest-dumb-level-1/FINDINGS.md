@@ -6,6 +6,8 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-11-05 | 📌 | T56 review sweep: `generators::generator` (`gen/mod.rs`) returns the first of duplicate names and no test checks the whole registry is unique; only `gen_edge_redraw.rs` checks its own names. Not fixed. |
+| 2026-11-05 | 📌 | T56: the oracle's VHPOSR counter runs on across calls, so a routine with a raster wait (`h0_3ac2`) differs between two runs of one state; `gen_edge_redraw.rs` sets it per state first. The spike's `h0+$774` generator duplicates `h0_774`; `judge.rs` still uses it. |
 | 2026-11-05 | 📌 | T54: creature probes (`h0_3530`..`h0_35dc`) index `collision_map` by `(x >> 3)` with x a level coordinate, reading up to `$4dd2` bytes past `h3+$fa50`, beyond its `$2e00`. T24 ports that reach as is. `h0_3698` compares the middle slot pairs as bytes. |
 | 2026-11-05 | 📌 | T58: after the btst fix, `flow_text` with `split_at` still undercounts `redraw_edge_a` (109, unit 160) and `h0_2fea` (128, unit 172), same before the fix; 7 inventory routines have no listing label, e.g. `h0+$2c7e`, `h0+$5820`. |
 | 2026-11-05 | 📌 | T21 review: objects-W1-1.toml `port_task` is the value's behaviour; its routines keep translate.toml's tasks, so spawn, bonus blits and creature drawing port in T55 and T52, not T22 or T24. |
