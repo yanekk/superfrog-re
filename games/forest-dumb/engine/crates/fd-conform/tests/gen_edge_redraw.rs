@@ -180,6 +180,13 @@ fn every_t56_entry_has_its_generator_and_its_lists() {
             "{n}: not in edge_redraw::ALL"
         );
         gen_of(n);
+        // `generators::generator` returns the first match and the spike's module comes first, so a
+        // second registration of the name would silently serve another generator.
+        assert_eq!(
+            generators::all().filter(|(r, _)| r == n).count(),
+            1,
+            "{n}: registered more than once"
+        );
         assert!(
             edge_redraw::READS.iter().any(|(r, _)| r == n),
             "{n}: no READS entry"
