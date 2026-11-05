@@ -233,6 +233,54 @@ T51 to T54 on 2026-11-05 to take the excess, and T55, T56 for the edge redraws, 
 
 A `by_hand` routine still needs its generator: its port is proven on the rig like any other.
 
+## Generators: drawing (T37)
+
+`engine/crates/fd-conform/src/gen/drawing.rs`, one generator per `drawing` entry, named as in
+`re/translate.toml`; `READS` there lists what each routine reads, the only places its states write.
+Proven by `engine/crates/fd-conform/tests/gen_drawing.rs` on the program from disk 1 (2026-11-05).
+T37 took the spike's `char_sprite_position` and `h0+$9754` over; the latter is now `h0_9754`.
+
+**Branches measured by flipping.** The routine oracle has no instruction trace, so the test runs each
+state three times: as the program is, with the branch made `bra`, and with it made never taken (a `nop`,
+or `bra.b` over a `.w`'s displacement, so the instruction count holds). Equal to the first flip, the
+state took it on every pass; to the second, on none; to neither, both ways (a loop); to both, it never
+got there. `the_flips_see_a_branch_that_goes_one_way` checks the method on `h0_9754`.
+
+Every conditional branch of each unit goes both ways on some state except these, which no state can
+take on the oracle:
+
+- **Blitter waits** (`btst #6,$dff002` then `bne` back): the oracle's blitter finishes each blit as it
+  starts, so busy never reads set; a state setting it would wait for ever. In `h0_21c0` (5 with
+  `h0_3ab4`), `h0_29ca`, `h0_3ab4`, `h0_5820` (3), `h0_5e44` (9), `h0_62b6`.
+- **`h0+$23aa`** in `h0_21c0`, a raster wait: VHPOSR reads one more on every read, so two reads never match.
+
+The `dbra`s count fixed loops (sprites, bitplanes, 32 colours, three lines) and are left out.
+
+| Routine | States returned of 2 000 | Paths | Faults | Branches both ways | Named, not taken |
+|---|---|---|---|---|---|
+| `h0_21c0` | 2 000 | 6 | 0 | 5 | 6 |
+| `h0_29ca` | 2 000 | 1 | 0 | 0 | 1 |
+| `h0_2c7e` | 2 000 | 366 | 0 | 2 | 0 |
+| `h0_2d4c` | 1 945 | 177 | 55 | 2 | 0 |
+| `h0_3ab4` | 2 000 | 1 | 0 | 0 | 1 |
+| `char_sprite_position` | 2 000 | 4 | 0 | 3 | 0 |
+| `h0_5820` | 1 968 | 9 | 32 | 9 | 3 |
+| `h0_5e44` | 2 000 | 20 | 0 | 8 | 9 |
+| `h0_62b6` | 2 000 | 636 | 0 | 16 | 1 |
+| `h0_94ba` | 2 000 | 162 | 0 | 8 | 0 |
+| `h0_94fe` | 2 000 | 162 | 0 | 6 | 0 |
+| `h0_9550` | 2 000 | 12 | 0 | 6 | 0 |
+| `h0_9754` | 2 000 | 2 | 0 | 1 | 0 |
+| `char_sprite_copy` | 2 000 | 4 | 0 | 3 | 0 |
+
+No state hangs or starts a line or fill blit. The faults come from the few creatures given a kind of 8
+or more (or, for `h0_5820`, one state in 50 a slot past the five), whose frame table pointer is read from
+code past h0+$3a18's eight entries; the original takes an exception there. They are counted, never compared. `cargo test -p fd-conform --test gen_drawing -- --nocapture`
+prints each branch's counts.
+
+**Through the service:** 2026-11-05, `translate.py 'h0+$9754' --gen h0_9754`: pass on try 1, 2 177
+tokens in, 8 052 out, $0.0018, 81 s, 2 paths.
+
 ## Generators: `camera` (T36)
 
 `fd-conform/src/gen/camera.rs`, one generator per T36 entry of `re/translate.toml`, named as there.
@@ -304,6 +352,40 @@ blitter wait `h0+$2a1c` (BLTBUSY set never clears: a hang). Measured 2026-11-05,
 
 - 2026-11-05, T38: `h0+$2e0e` with `h0_2e0e`: pass on try 2 (try 1 differed on 9 of 2 000 states),
   9 772 tokens in, 23 238 out, $0.0056, 180 s, 10 paths.
+
+## Generators: `rest` (T39)
+
+`fd-conform/src/gen/rest.rs`, one generator for each of the six `gen_task = "T39"` entries, named as
+there. `COVER` holds what each reads (callees included) and the conditional branches of its own flow;
+`tests/gen_rest.rs` checks them as `gen_character.rs` does T35's (2 000 states, no hang, fault or
+unmodelled blit; every branch both ways through a detour stub; pokes only what the routine reads).
+
+- The five small routines read hunk 0 variables only: `last_key_byte` biased to `$41`, `$75`/`$74`,
+  `$cd`/`$cc`; the flags 0, 1 or any; `countdown_tick` near `$3f`; BCD counters at 0, 1, a borrow, or
+  any word in one state of eight, so a port's `sbcd` meets bad digits. `lives_minus_one` reaches
+  `sbcd` with X as entered; the rig enters with `sr = $2700`, X clear.
+- `game_frame` runs the whole pass, so its base is the original's chip and slow RAM at the level sync
+  point (`sync::reach_level_1`, from the cache). It pokes its unit's own inputs only: the key and pause
+  variables, the countdown, `char_x`/`char_y` and the camera within 24 pixels of the sync point's,
+  `input_log`'s index (`$2ee0` or below), and JOY1DAT. Paused in a quarter of the states. No memory
+  within a `bra.w` is known free there, so its one branch (`h0+$200a`) is shown by `illegal` over its
+  target or fall-through, neither reached any other way.
+
+Measured 2026-11-05, 2 000 states each, no hang or fault, no branch unreachable:
+
+| Generator | `RigReport::paths` | Branches |
+|---|---|---|
+| `game_frame` | 661 | 1 |
+| `countdown_step` | 3 | 2 |
+| `play_keys` | 5 | 3 |
+| `help_key` | 3 | 2 |
+| `esc_key` | 4 | 3 |
+| `lives_minus_one` | 2 | 1 |
+
+- 2026-11-05, T39: `play_keys` with `play_keys`: pass on try 1, 1 716 tokens in, 4 349 out, $0.0010,
+  43 s, 5 paths. `fd-judge 'h0+$1fec' --gen game_frame --survey`: 2 000 passed, 661 paths, 0.3 s.
+- `translate.py 'game_frame'` exits 2 today: its `split_at` callee `h0+$2c7e` has no label in the
+  listing (T34's lost-step sweep), so its flow cannot be cut there.
 
 ## Generators: `character`, second share (T53)
 
