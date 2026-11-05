@@ -10,6 +10,7 @@ pub mod character;
 pub mod character_anim;
 pub mod drawing;
 pub mod objects;
+pub mod objects_move;
 pub mod rest;
 pub mod spike;
 
@@ -24,6 +25,7 @@ pub const MODULES: &[&[(&str, Generator)]] = &[
     rest::ALL,
     drawing::ALL,
     character_anim::ALL,
+    objects_move::ALL,
 ];
 
 /// The generator registered as `name`.

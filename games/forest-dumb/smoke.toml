@@ -49,6 +49,8 @@ workspace = "engine"
 "crates/fd-conform/tests/gen_camera.rs" = "smoke"
 # T38's objects generators against the original, branches both ways: under 2 s.
 "crates/fd-conform/tests/gen_objects.rs" = "smoke"
+# T54: the creature movement and sort generators, every branch both ways: under 3 s.
+"crates/fd-conform/tests/gen_objects_move.rs" = "smoke"
 # T39: the rest generators, game_frame over the cached sync point's RAM, every branch both ways: about 2 s warm.
 "crates/fd-conform/tests/gen_rest.rs" = "smoke"
 # T53: the walk-animation and joystick routines' generators, branches both ways: under a second.
