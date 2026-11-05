@@ -59,7 +59,7 @@ fn in_play_the_spanning_window_holds_the_play_area_and_the_status_bar() {
     let disks = disks::load().unwrap_or_else(|e| panic!("{e}"));
     let mut am = Amiga::power_on(&OracleConfig::new(kickstart, disks, PLAY))
         .unwrap_or_else(|e| panic!("{e}"));
-    let mut step = |am: &mut Amiga, frame: u32| {
+    let step = |am: &mut Amiga, frame: u32| {
         if frame == SWAP {
             am.insert_disk(0, 1);
         }

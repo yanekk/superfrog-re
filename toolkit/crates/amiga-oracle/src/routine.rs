@@ -209,8 +209,7 @@ impl Drop for Cpu68k {
 impl Cpu68k {
     /// A CPU whose memory holds `mem`'s chip RAM at 0 and slow RAM at `$C00000`; the rest is zero.
     pub fn new(mem: AmigaMemory) -> Cpu68k {
-        let raw =
-            NonNull::new(unsafe { ffi::amiga_cpu68k_new() }).expect("allocating the routine CPU");
+        let raw = NonNull::new(unsafe { ffi::amiga_cpu68k_new() }).expect("allocating the routine CPU");
         let mut cpu = Cpu68k { raw };
         cpu.write(0, &mem.chip);
         cpu.write(SLOW_BASE, &mem.slow);
@@ -223,9 +222,7 @@ impl Cpu68k {
     }
 
     pub fn memory_mut(&mut self) -> &mut [u8] {
-        unsafe {
-            std::slice::from_raw_parts_mut(ffi::amiga_cpu68k_mem(self.raw.as_ptr()), MEM_SIZE)
-        }
+        unsafe { std::slice::from_raw_parts_mut(ffi::amiga_cpu68k_mem(self.raw.as_ptr()), MEM_SIZE) }
     }
 
     /// `len` bytes at `addr`. Panics past 16 MB.

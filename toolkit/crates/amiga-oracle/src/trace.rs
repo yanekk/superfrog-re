@@ -14,9 +14,7 @@ use amiga_disk::sha1::sha1_hex;
 use amiga_input::FrameInput;
 use amiga_paula::PaulaWrite;
 
-use crate::amiga::{
-    Amiga, AmigaMemory, FrameCapture, Rgb12Frame, SLOW_BASE, Snapshot, hash_bytes, hash_memory,
-};
+use crate::amiga::{Amiga, AmigaMemory, FrameCapture, Rgb12Frame, SLOW_BASE, Snapshot, hash_bytes, hash_memory};
 use crate::config::{OracleConfig, OracleError};
 
 /// Bump when the file layout or what a trace records changes.

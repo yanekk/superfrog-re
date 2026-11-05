@@ -253,6 +253,7 @@ fn not_an_executable_and_truncated_files_are_refused() {
     ));
 }
 
+
 // ---------------------------------------------------------------------------------------------
 // `load_exe` reads its blocks through `amiga_disk::hunk` since the toolkit move; the loader it
 // replaced, kept here word for word, is the reference it is compared with over a sweep of files.
@@ -422,24 +423,7 @@ fn sweep_files() -> Vec<Vec<u8>> {
     let mut short = vec![0x3F3, 0, 2, 0, 1, 1, 3];
     short.extend([0x3E9, 1, 0x4E75_4E71, 0x3F2, 0x3EA, 1, 0x1234_5678]);
     let mut groups = vec![0x3F3, 0, 2, 0, 1, 4, 2];
-    groups.extend([
-        0x3E9,
-        4,
-        0,
-        4,
-        8,
-        0x4E75_0000,
-        0x3EC,
-        1,
-        0,
-        0,
-        2,
-        1,
-        4,
-        8,
-        0,
-        0x3F2,
-    ]);
+    groups.extend([0x3E9, 4, 0, 4, 8, 0x4E75_0000, 0x3EC, 1, 0, 0, 2, 1, 4, 8, 0, 0x3F2]);
     groups.extend([0x3EA, 2, 1, 2, 0x3F2]);
     vec![
         two_hunk_exe(2),
@@ -505,10 +489,5 @@ fn load_exe_matches_the_loader_it_replaced_over_a_sweep() {
         }
     }
     assert!(cases > 5_000, "{cases}");
-    assert!(
-        differ.is_empty(),
-        "{} of {cases} differ:\n{}",
-        differ.len(),
-        differ.join("\n")
-    );
+    assert!(differ.is_empty(), "{} of {cases} differ:\n{}", differ.len(), differ.join("\n"));
 }

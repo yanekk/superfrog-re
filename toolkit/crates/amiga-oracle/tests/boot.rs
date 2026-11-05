@@ -38,11 +38,7 @@ fn a_disk_less_boot_reaches_the_insert_disk_screen_the_same_way_twice() {
     assert!(first == second, "two boots with no disk differ");
 
     let hand = HAND as usize;
-    assert_ne!(
-        first[hand - 1].0,
-        first[hand].0,
-        "the hand is drawn at frame {HAND}"
-    );
+    assert_ne!(first[hand - 1].0, first[hand].0, "the hand is drawn at frame {HAND}");
     assert!(
         first[hand..].iter().all(|f| f.0 == first[hand].0),
         "the insert-disk screen stands still"
@@ -67,18 +63,12 @@ fn a_snapshot_taken_mid_boot_continues_as_the_uninterrupted_run() {
     run(&mut a, 40);
     a.restore(&snap);
     assert_eq!(a.frame(), MID);
-    assert!(
-        run(&mut a, FRAMES - MID) == whole[MID as usize..],
-        "restored in place"
-    );
+    assert!(run(&mut a, FRAMES - MID) == whole[MID as usize..], "restored in place");
 
     // Restored into a fresh machine.
     let mut b = Amiga::power_on(&cfg).unwrap();
     b.restore(&snap);
-    assert!(
-        run(&mut b, FRAMES - MID) == whole[MID as usize..],
-        "restored into a new machine"
-    );
+    assert!(run(&mut b, FRAMES - MID) == whole[MID as usize..], "restored into a new machine");
 }
 
 #[test]
@@ -103,10 +93,6 @@ fn disks_are_named_by_index_and_df0_can_be_emptied() {
     assert!(why.contains("no disk 1"), "{why}");
     let no_drive = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| a.insert_disk(1, 0)));
     let why = no_drive.unwrap_err();
-    assert!(
-        why.downcast_ref::<String>()
-            .unwrap()
-            .contains("no drive df1")
-    );
+    assert!(why.downcast_ref::<String>().unwrap().contains("no drive df1"));
     assert_eq!(a.df0(), Some(0));
 }

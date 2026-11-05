@@ -39,10 +39,7 @@ impl fmt::Debug for OracleConfig {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("OracleConfig")
             .field("kickstart", &self.kickstart)
-            .field(
-                "disks",
-                &self.disks.iter().map(Vec::len).collect::<Vec<_>>(),
-            )
+            .field("disks", &self.disks.iter().map(Vec::len).collect::<Vec<_>>())
             .field("boot", &self.boot)
             .field("boot_label", &self.boot_label)
             .field("max_frames", &self.max_frames)
@@ -70,10 +67,7 @@ impl OracleConfig {
 
     /// The same set-up with `drives` drives connected (1..=4).
     pub fn with_drives(self, drives: u8) -> OracleConfig {
-        assert!(
-            (1..=4).contains(&drives),
-            "an Amiga has 1 to 4 floppy drives"
-        );
+        assert!((1..=4).contains(&drives), "an Amiga has 1 to 4 floppy drives");
         OracleConfig { drives, ..self }
     }
 
@@ -111,10 +105,7 @@ impl OracleConfig {
 /// `AMIGA_KICKSTART`, else `~/amiga-roms/kick1.3.rom`; an error names the path it looked at and
 /// how to point it elsewhere.
 pub fn kickstart_path() -> Result<PathBuf, OracleError> {
-    find_kickstart(
-        std::env::var_os("AMIGA_KICKSTART"),
-        std::env::var_os("HOME"),
-    )
+    find_kickstart(std::env::var_os("AMIGA_KICKSTART"), std::env::var_os("HOME"))
 }
 
 /// [`kickstart_path`] with the two variables passed in. A set `AMIGA_KICKSTART` is the only place
@@ -126,9 +117,7 @@ pub(crate) fn find_kickstart(
     let (path, from) = match var.filter(|v| !v.is_empty()) {
         Some(p) => (PathBuf::from(p), "AMIGA_KICKSTART"),
         None => (
-            PathBuf::from(home.unwrap_or_default())
-                .join("amiga-roms")
-                .join(KICKSTART),
+            PathBuf::from(home.unwrap_or_default()).join("amiga-roms").join(KICKSTART),
             "the default, AMIGA_KICKSTART not set",
         ),
     };
@@ -227,28 +216,18 @@ mod tests {
     #[test]
     fn a_missing_kickstart_names_where_it_looked() {
         let scratch = std::env::temp_dir().join("amiga-oracle-no-such-dir");
-        let e = find_kickstart(
-            Some(scratch.join("kick.rom").into()),
-            Some("/home/x".into()),
-        )
-        .unwrap_err()
-        .to_string();
-        assert!(
-            e.contains(&scratch.join("kick.rom").display().to_string()),
-            "{e}"
-        );
-        assert!(e.contains("AMIGA_KICKSTART"), "{e}");
-        let e = find_kickstart(None, Some(scratch.clone().into()))
+        let e = find_kickstart(Some(scratch.join("kick.rom").into()), Some("/home/x".into()))
             .unwrap_err()
             .to_string();
+        assert!(e.contains(&scratch.join("kick.rom").display().to_string()), "{e}");
+        assert!(e.contains("AMIGA_KICKSTART"), "{e}");
+        let e = find_kickstart(None, Some(scratch.clone().into())).unwrap_err().to_string();
         assert!(
             e.contains(&scratch.join("amiga-roms/kick1.3.rom").display().to_string()),
             "{e}"
         );
         // An empty variable is unset.
-        let e = find_kickstart(Some("".into()), Some(scratch.into()))
-            .unwrap_err()
-            .to_string();
+        let e = find_kickstart(Some("".into()), Some(scratch.into())).unwrap_err().to_string();
         assert!(e.contains("kick1.3.rom"), "{e}");
     }
 }

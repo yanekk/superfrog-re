@@ -240,8 +240,9 @@ impl Amiga {
             input: FrameInput::NONE,
         };
         for d in 1..cfg.drives {
-            let rc =
-                unsafe { ffi::amiga_connect_drive(amiga.raw, d as i32, 1, err.ptr(), ErrBuf::LEN) };
+            let rc = unsafe {
+                ffi::amiga_connect_drive(amiga.raw, d as i32, 1, err.ptr(), ErrBuf::LEN)
+            };
             if rc != 0 {
                 return Err(OracleError::Setup(err.message()));
             }
@@ -865,10 +866,7 @@ mod tests {
         assert_eq!(m.byte_at(16), None);
         assert_eq!(m.byte_at(SLOW_BASE + 16), None);
         let h = hash_memory(&m);
-        assert_eq!(
-            h, 0x0ab2_4575_a092_e5a8,
-            "cached traces store the digest: it must not change"
-        );
+        assert_eq!(h, 0x0ab2_4575_a092_e5a8, "cached traces store the digest: it must not change");
         m.slow[15] = 1;
         assert_ne!(h, hash_memory(&m));
     }
