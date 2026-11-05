@@ -62,7 +62,7 @@ The Rust readers in `engine/crates/fd-assets` (`read_level`, `read_sprites`) rea
   the object map included: nothing has written to it yet. World 1's second `_WYBIJACZKA` copy is the one
   difference (above).
 - **Picture.** In play, every whole cell in the 272 x 179 view, 160 of them, shows the tile the map names,
-  pixel for pixel through the level palette at hunk 1 `$304`, except cells under the character or a creature:
+  pixel for pixel through the level palette at hunk 1 `$304`, except cells under a creature or item (0, then 11):
   at camera (0, 51) and again scrolled to (522, 464). The view's top-left pixel is level pixel
   (`camera_x + 17`, `camera_y + 1`). That proves the column order, the tile bit order and the palette.
 - **Column order.** Between neighbouring different tiles, edges agree in at least half their pixels

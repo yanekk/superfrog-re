@@ -127,8 +127,10 @@ pub fn read_level(world: u8, files: &Files) -> Result<Level, AssetError> {
     let raw = files(&map)?;
     sized(&map, &raw, cells(tile_cols) * 2)?;
     let tile_cells: Vec<u16> = raw
-        .chunks_exact(2)
-        .map(|w| u16::from_be_bytes([w[0], w[1]]))
+        .as_chunks::<2>()
+        .0
+        .iter()
+        .map(|&w| u16::from_be_bytes(w))
         .collect();
     below(
         &map,
@@ -197,10 +199,7 @@ fn units<const N: usize>(file: &str, data: &[u8]) -> Result<Vec<[u8; N]>, AssetE
             },
         ));
     }
-    Ok(data
-        .chunks_exact(N)
-        .map(|c| c.try_into().expect("chunks_exact gives N bytes"))
-        .collect())
+    Ok(data.as_chunks::<N>().0.to_vec())
 }
 
 /// Every value an index into a set of `count`, or the first that is not, by its byte offset.

@@ -136,16 +136,16 @@ fn compare_view(am: &Amiga, level: &Level) -> (usize, Vec<(i32, i32)>) {
     (whole, wrong)
 }
 
-/// Every whole cell in view shows its tile, pixel for pixel, except under the character (a 32 x 40
-/// sprite) and the creatures and items cut over the tiles. So the map's cells, the tile pictures,
-/// their bit order and the palette are what the original draws. The first frames of play fade the
+/// Every whole cell in view shows its tile, pixel for pixel, except under the creatures and items
+/// cut over the tiles: none at frame 6340, 11 at 6640 (measured 2026-11-05). So the map's cells, the
+/// tile pictures, their bit order and the palette are what the original draws. The first frames of play fade the
 /// palette in (frames 6301 to 6331), so the first still view checked is frame 6340.
 #[test]
 fn cells_in_view_show_the_tile_the_map_names_still_and_scrolled() {
     let level = read_level(1, &files).unwrap_or_else(|e| panic!("{e}"));
     let sc = script::parse("6345: R\n6400: R F\n6410: R\n6600: -\n").unwrap();
     let mut am = sync::reach_level_1(340).unwrap_or_else(|e| panic!("{e}"));
-    for (frame, camera) in [(6340, (0, 51)), (6640, (522, 464))] {
+    for (frame, camera, covered) in [(6340, (0, 51), 0), (6640, (522, 464), 11)] {
         while am.frame() < frame {
             let at = am.frame();
             am.step(script::input_at(&sc.lines, at))
@@ -161,9 +161,10 @@ fn cells_in_view_show_the_tile_the_map_names_still_and_scrolled() {
             whole, 160,
             "whole cells in the 272 x 179 view at frame {frame}"
         );
-        // 5 cells under the character at 6340; 13 under it and a creature at 6640.
+        // The oracle is deterministic, so the count is exact; a reader that gets a few tiles wrong
+        // must not hide inside a slack allowance.
         assert!(
-            wrong.len() <= 16,
+            wrong.len() == covered,
             "frame {frame}: {} of {whole} cells are not their tile: {wrong:?}",
             wrong.len()
         );
