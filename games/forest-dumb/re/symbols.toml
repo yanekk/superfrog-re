@@ -226,6 +226,74 @@ note = "one frame of play, run inside the interrupt"
 [[sym]]
 exe = "forest_dumb_forever"
 hunk = 0
+offset = 0x4be4
+name = "char_walk_t"
+kind = "var"
+size = 1
+note = "walk frame counter, 0 to $27; char_step_4be6 and h0_4c28 step it (T51)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x4c28
+name = "h0_4c28"
+kind = "func"
+note = "walk right: facing 1, steps char_walk_t, frame from h0+$4edc (T51)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x4c6a
+name = "h0_4c6a"
+kind = "func"
+note = "frame from char_probe_1, char_probe_2 bits 0-1 and char_facing (T51)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x4d32
+name = "h0_4d32"
+kind = "func"
+note = "frame h0+$4ef0 or, facing left, h0+$4f44 (T51)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x4d54
+name = "h0_4d54"
+kind = "func"
+note = "frame h0+$4ef4 or, facing left, h0+$4f48 (T51)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x4ece
+name = "char_facing"
+kind = "var"
+size = 1
+note = "$ff left, 1 right (read: set with char_x -1 / +1 in h0+$4696)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x4ed1
+name = "char_probe_1"
+kind = "var"
+size = 1
+note = "written by char_probe_flags; 1, 2, 3 pick frames in h0_4c6a"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x4ed2
+name = "char_probe_2"
+kind = "var"
+size = 1
+note = "bits 0 and 1 pick frames in h0_4c6a"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
 offset = 0x519e
 name = "frame_flag"
 kind = "var"
@@ -323,6 +391,42 @@ offset = 0x7bf4
 name = "prompt_insert_disk"
 kind = "func"
 note = "the prompt behind a failed open"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x8df2
+name = "joy_left"
+kind = "var"
+size = 2
+note = "1 when JOY1DAT bit 9 is set, else 0 (read_joystick)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x8df4
+name = "joy_right"
+kind = "var"
+size = 2
+note = "1 when JOY1DAT bit 1 is set (read_joystick)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x8df6
+name = "joy_up"
+kind = "var"
+size = 2
+note = "1 when JOY1DAT bit 9 xor bit 8 (read_joystick)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x8df8
+name = "joy_down"
+kind = "var"
+size = 2
+note = "1 when JOY1DAT bit 1 xor bit 0 (read_joystick)"
 
 [[sym]]
 exe = "forest_dumb_forever"
@@ -731,7 +835,7 @@ hunk = 0
 offset = 0x4be6
 name = "char_step_4be6"
 kind = "func"
-note = "called by char_step; not read"
+note = "walk left: facing $ff, steps char_walk_t, frame from h0+$4f30 (T51)"
 
 [[sym]]
 exe = "forest_dumb_forever"
@@ -870,15 +974,6 @@ note = "SCENA N: draws the world name, waits for fire from frame 6206 (oracle)"
 [[sym]]
 exe = "forest_dumb_forever"
 hunk = 0
-offset = 0x8df2
-name = "joy_flags"
-kind = "var"
-size = 8
-note = "left, right, up, down words from JOY1DAT"
-
-[[sym]]
-exe = "forest_dumb_forever"
-hunk = 0
 offset = 0x8dfa
 name = "beam_sample_unread"
 kind = "var"
@@ -891,7 +986,7 @@ hunk = 0
 offset = 0x8dfc
 name = "read_joystick"
 kind = "func"
-note = "JOY1DAT to joy_flags; appends them to input_log while it has room"
+note = "JOY1DAT to joy_left..joy_down; appends them to input_log while it has room"
 
 [[sym]]
 exe = "forest_dumb_forever"
@@ -917,7 +1012,7 @@ offset = 0x34c28
 name = "input_log"
 kind = "table"
 size = 0x2ee0
-note = "one byte of joy_flags a game_frame, 12000 frames; read by nothing found"
+note = "one byte of joy_left..joy_down a game_frame, 12000 frames; read by nothing found"
 
 [[sym]]
 exe = "forest_dumb_forever"

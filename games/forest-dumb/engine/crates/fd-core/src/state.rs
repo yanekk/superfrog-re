@@ -3,6 +3,7 @@
 //! original adds its fields here and, if a case compares them, a `LAYOUT` entry and an arm in
 //! [`State::get`] and [`State::set`].
 
+use crate::character::{Anim, InputLog, JoyFlags};
 use crate::level::camera::{Camera, EdgeFlags};
 
 /// The game state of a level in play. BCD variables are held as stored.
@@ -34,6 +35,12 @@ pub struct State {
     pub paused: u16,
     pub level_exit_touched: u16,
     pub give_up: u16,
+    /// The character's animation frame and what picks it (T51).
+    pub anim: Anim,
+    /// The joystick flags `read_joystick` sets each pass (T51).
+    pub joy: JoyFlags,
+    /// `input_log` and `input_log_index` (T51).
+    pub input_log: InputLog,
 }
 
 impl State {
@@ -75,6 +82,15 @@ impl State {
             paused: 0,
             level_exit_touched: 0,
             give_up: 0,
+            // The program's own initial frame, `h0+$419c8`, at the oracle's hunk 0 base: no picker
+            // has run (`char_anim_ptr`'s note, `character::anim`). The rest are 0 as loaded.
+            anim: Anim {
+                ptr: 0x00c4_91a0,
+                ..Anim::default()
+            },
+            // Idle: play's first pass read no direction and appended its one byte, 0.
+            joy: JoyFlags::default(),
+            input_log: InputLog::at(1),
         }
     }
 
@@ -110,6 +126,16 @@ impl State {
             "paused" => self.paused.into(),
             "level_exit_touched" => self.level_exit_touched.into(),
             "give_up" => self.give_up.into(),
+            "char_walk_t" => self.anim.walk_t.into(),
+            "char_facing" => self.anim.facing.into(),
+            "char_probe_1" => self.anim.probe_1.into(),
+            "char_probe_2" => self.anim.probe_2.into(),
+            "char_anim_ptr" => self.anim.ptr,
+            "joy_left" => self.joy.left.into(),
+            "joy_right" => self.joy.right.into(),
+            "joy_up" => self.joy.up.into(),
+            "joy_down" => self.joy.down.into(),
+            "input_log_index" => self.input_log.index,
             _ => return None,
         })
     }
@@ -149,6 +175,16 @@ impl State {
             "paused" => self.paused = w,
             "level_exit_touched" => self.level_exit_touched = w,
             "give_up" => self.give_up = w,
+            "char_walk_t" => self.anim.walk_t = b,
+            "char_facing" => self.anim.facing = b,
+            "char_probe_1" => self.anim.probe_1 = b,
+            "char_probe_2" => self.anim.probe_2 = b,
+            "char_anim_ptr" => self.anim.ptr = value,
+            "joy_left" => self.joy.left = w,
+            "joy_right" => self.joy.right = w,
+            "joy_up" => self.joy.up = w,
+            "joy_down" => self.joy.down = w,
+            "input_log_index" => self.input_log.index = value,
             _ => return false,
         }
         true

@@ -211,6 +211,32 @@ About 780 instructions for the movement itself and 760 more around it. What can 
 - `main_loop`'s 32-interrupt check is a latch for level end and game over (above).
 - `game_frame`'s tail crosses the frame's end under load (above).
 
+### The animation pickers and the joystick read (T51)
+
+Read off the listing before porting, 2026-11-05; ported to `fd-core/src/character/{anim,input}.rs`
+and proven on the rig (`fd-conform/tests/character_anim_routines.rs`, 10 000 states each).
+
+| Routine | Reads | Writes | Interruptible points |
+|---|---|---|---|
+| `char_step_4be6`, `h0_4c28` | `char_walk_t`, the walk table (`h0+$4f30` left, `$4edc` right) | `char_facing` (`$ff`, 1), `char_walk_t`, `char_anim_ptr`; d0, a0 | none |
+| `h0_4c6a` | `char_probe_1`, bits 0-1 of `char_probe_2`, `char_facing`'s sign, one of `h0+$4f04`..`$4f60` | `char_anim_ptr`, or nothing | none |
+| `h0_4d32`, `h0_4d54` | `char_facing`'s sign, `h0+$4ef0`/`$4f44`, `$4ef4`/`$4f48` | `char_anim_ptr` | none |
+| `read_joystick` | JOY1DAT once, `input_log_index` | `joy_left`..`joy_down`, `input_log`, `input_log_index`; d0, d1, a0 | none: one hardware read, no wait |
+
+None waits on the beam or the blitter, touches INTENA or loops across passes; each runs whole inside
+`game_frame`. Readings kept by the port:
+
+- `cmpi.b #$28; bmi` keeps a walk counter of `$a8`..`$ff` (the difference is negative), so the walk
+  tables are read up to 31 entries in, past `h0+$4f84` into code. The game counts up from 0 and wraps
+  at `$28`, so play never gets there; the port reads hunk 0 as loaded (`AnimTables`) and matches anyway.
+- JOY1DAT encodes direction as the hardware does: left bit 9, right bit 1, up bit 9 xor 8, down bit 1
+  xor 0. So `$0002` is right and down. `fd_core::character::joy1dat` makes the word from a `FrameInput`.
+- `input_log_index` past `$2ee0` would write past `input_log`; the game stops at `$2ee0`. The engine
+  keeps no byte there: an exclusion no generator state reaches.
+- `char_anim_ptr` and the tables hold relocated pointers. At the sync point it is `$c491a0`, the
+  program's own `h0+$419c8` at the oracle's hunk 0 base. Whoever loads the tables for play (T08)
+  loads hunk 0 at that base for `char_anim_ptr` to compare.
+
 ## The camera (T09)
 
 Ported in `fd-core/src/level/camera.rs`, each proven on the routine rig (`fd-conform/tests/camera_routines.rs`).
