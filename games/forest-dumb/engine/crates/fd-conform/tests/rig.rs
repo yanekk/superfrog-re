@@ -433,7 +433,7 @@ const SPIKE: [(&str, u32); 11] = [
     ("redraw_edge_a", h(0, 0x844)),
     ("redraw_edge_b", h(0, 0xb20)),
     ("h0+$3adc", h(0, 0x3adc)),
-    ("char_hit_check", h(0, 0x3b2a)),
+    ("h0+$3b2a", h(0, 0x3b2a)),
     ("h4+$18870", h(4, 0x1_8870)),
 ];
 
