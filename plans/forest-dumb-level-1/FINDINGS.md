@@ -6,6 +6,7 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-11-05 | 📌 | T58: after the btst fix, `flow_text` with `split_at` still undercounts `redraw_edge_a` (109, unit 160) and `h0_2fea` (128, unit 172), same before the fix; 7 inventory routines have no listing label, e.g. `h0+$2c7e`, `h0+$5820`. |
 | 2026-11-05 | 📌 | T21 review: objects-W1-1.toml `port_task` is the value's behaviour; its routines keep translate.toml's tasks, so spawn, bonus blits and creature drawing port in T55 and T52, not T22 or T24. |
 | 2026-11-05 | 📌 | T59 added by T21 with the owner's yes: turn on vAmiga's sprite-to-playfield collision in the oracle, Superfrog unchanged or ask the owner; `blocks T24, T41, T42, T43, T44, T45, T46, T47`. |
 | 2026-11-05 | 🐞 | T21: CLXDAT is always `$8000` on the oracle (`DENISE_CLX_SPR_PLF` off), so `char_hit_check` never sees contact. CLXCON `$37dd`: colours 21, 23, 29, 31, also in 134 of 328 W1-1 tiles. |

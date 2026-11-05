@@ -47,7 +47,9 @@ branches the generator reaches. A `pass` with few paths proves little.
 ### What it does
 
 1. The listing by control flow from the routine (every branch both ways, calls followed), then the
-   named labels it uses: the spike's `run.py --hw` extraction. Its size decides `too-big`.
+   named labels it uses: the spike's `run.py --hw` extraction. Its size decides `too-big`. Only
+   `Bcc`, `DBcc`, `bra`, `bsr`, `jsr` and `jmp` are followed; `btst`/`bset`/`bclr`/`bchg` on a label
+   reach data, not code (T58).
 2. `fd-judge --survey`: the original alone over the generator's states. It is `no-oracle` when it
    returns on none (a wait on DMA or an interrupt never ends in the routine oracle's hardware mode)
    or when any state starts a blit in line or fill mode (`RigReport::unmodelled_blits`): the
