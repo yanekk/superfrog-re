@@ -65,6 +65,8 @@ workspace = "engine"
 ]
 # T53: the walk-animation and joystick routines' generators, branches both ways: under a second.
 "crates/fd-conform/tests/gen_character_anim.rs" = "smoke"
+# T51: the animation pickers and read_joystick against the original, 10 000 states each, under 2 s.
+"crates/fd-conform/tests/character_anim_routines.rs" = "smoke"
 # T21: what each object value of W1-1 does, scripted slides from the cached sync point, 3 s warm;
 # the map and note checks read disk 2. A machine with no sync cache boots to W1-1 once first.
 "crates/fd-conform/tests/object_claims.rs" = "smoke"

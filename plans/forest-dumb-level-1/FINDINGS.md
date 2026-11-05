@@ -6,6 +6,9 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-11-05 | 📌 | T51 review, worker-driven: on the oracle after fire, each direction and diagonal held three frames gave `joy_left`..`joy_down` equal to `JoyFlags::read_joystick(joy1dat(input))`, so `joy1dat`'s JOY1DAT encoding matches the oracle's joystick. |
+| 2026-11-05 | 📌 | T51 review: T53's generator comments (`gen/character.rs:55`, `gen/character_anim.rs:4`) and T51's task doc still say `joy_flags`, now `joy_left`..`joy_down` in LAYOUT and symbols.toml. Comments only; left. |
+| 2026-11-05 | 📌 | T51: `char_anim_ptr` and `AnimTables` hold relocated pointers; the sync value `$c491a0` assumes hunk 0 at the oracle base `$c077d8`. `GameData` does not read the tables yet: T08 (owner of `game.rs`) loads hunk 0 there and calls `AnimTables::from_hunk0`. |
 | 2026-11-05 | 📌 | T49: nothing to translate, no batch run, $0. The 36 object routines in `objects-W1-1.toml` and docs/10 are all in T40's table: 33 pass, `h0_2c7e`, `h0_5e44` by hand in T52, `h0_62b6` in T25. Recorded in docs/11; T49's amended per-generator items are void with no generator. |
 | 2026-11-05 | 🔄 | Owner amended mid-run after checkpoint 2: Muse writes generators, judged by branch coverage (T60, T61, T49 uses them); T62 trials Muse on engine-shaped ports for T10's routines. Run stopped for the edit. |
 | 2026-11-05 | 📌 | T40 batch, worker action: `translate_batch.py --max-usd 5 --parallel 8`: 87 routines, 77 pass, 1 fail (`camera_update`), 4 too-big, 3 blocked, 2 no-gen; $0.1596, 1 102 s, 86 calls. Table in docs/11-translation.md. |

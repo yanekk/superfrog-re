@@ -5,6 +5,7 @@
 //! Pure: everything arrives per step as a parameter, and the disks' data through a closure. No
 //! clock, file or network (`fd-conform/tests/purity.rs`).
 
+pub mod character;
 pub mod game;
 pub mod layout;
 pub mod level;

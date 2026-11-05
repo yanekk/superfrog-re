@@ -634,3 +634,12 @@ Checked 2026-11-05: the 36 routines `re/objects-W1-1.toml`'s `routines` and docs
 `re/translate.toml` (enforced by `fd-conform/tests/ported.rs`) and all in the batch table above. 33
 pass; `h0_2c7e` (blocked), `h0_5e44` (too-big) go by hand under T52, and `h0_62b6` (too-big) under
 T25, as listed above.
+
+## Ported (porting tasks)
+
+What each porting task did with its share of the table above, and which routines it translated by hand.
+
+- **T51** (2026-11-05): `char_step_4be6`, `h0_4c28`, `h0_4c6a`, `h0_4d32`, `h0_4d54`, `read_joystick`. None by
+  hand: each was rewritten from its passing T40 port and the listing as `fd_core::character::{Anim,
+  JoyFlags}` methods, and passes the rig on 10 000 states (`tests/character_anim_routines.rs`; paths 2, 2,
+  6, 1, 1, 10). The literal ports needed no fix.
