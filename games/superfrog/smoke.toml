@@ -2,25 +2,27 @@
 # Fast means a file alone finishes in 10 s or less (plans/smoke-tests/timings.tsv). A slow file enters only for
 # a crucial area, by named test where it holds more than the area needs. Times beside an area were measured
 # alone with pir-test on 2026-10-31, on a busy machine.
+# Fast files outside every area and not a purity guard moved to full on 2026-11-05 to make room under the
+# 900 s budget (forest-dumb-level-1 T01, smoke-tests DESIGN §2.4): crucial tests never move, fast ones first.
 workspace = "engine"
 
 [tests]
-"crates/sf-assets/tests/cache.rs" = "smoke"
-"crates/sf-assets/tests/graphics_vs_python.rs" = "smoke"
+"crates/sf-assets/tests/cache.rs" = "full"
+"crates/sf-assets/tests/graphics_vs_python.rs" = "full"
 "crates/sf-assets/tests/levels.rs" = "smoke"
 "crates/sf-assets/tests/sflevel.rs" = "full"
 "crates/sf-bench/tests/bench.rs" = "full"
 "crates/sf-conform/tests/alone.rs" = "full"
-"crates/sf-conform/tests/asset_cache_speed.rs" = "smoke"
+"crates/sf-conform/tests/asset_cache_speed.rs" = "full"
 "crates/sf-conform/tests/audio_driver.rs" = [
     "title_music_matches_the_full_system_oracle",
 ]
-"crates/sf-conform/tests/beam.rs" = "smoke"
+"crates/sf-conform/tests/beam.rs" = "full"
 "crates/sf-conform/tests/bonus_enemy_routines.rs" = "full"
 "crates/sf-conform/tests/bonus_routines.rs" = "full"
 "crates/sf-conform/tests/bosses.rs" = "full"
-"crates/sf-conform/tests/bosses_routines.rs" = "smoke"   # 9.7 s re-measured; T03 read 10.7 under load
-"crates/sf-conform/tests/bug_zips.rs" = "smoke"
+"crates/sf-conform/tests/bosses_routines.rs" = "full"   # 9.7 s re-measured; T03 read 10.7 under load
+"crates/sf-conform/tests/bug_zips.rs" = "full"
 "crates/sf-conform/tests/cases.rs" = "full"
 "crates/sf-conform/tests/chain.rs" = "full"
 "crates/sf-conform/tests/channels.rs" = "full"
@@ -39,7 +41,7 @@ workspace = "engine"
 "crates/sf-conform/tests/enemies_w5_routines.rs" = "full"
 "crates/sf-conform/tests/enemies_w6_cases.rs" = "full"
 "crates/sf-conform/tests/enemies_w6_routines.rs" = "full"
-"crates/sf-conform/tests/faithful.rs" = "smoke"
+"crates/sf-conform/tests/faithful.rs" = "full"
 "crates/sf-conform/tests/flow.rs" = "full"
 "crates/sf-conform/tests/frog_cases.rs" = [
     "frog_run_w1_1",
@@ -67,28 +69,28 @@ workspace = "engine"
     "the_replay_ends_on_the_screenshot_and_the_place",
     "a_changed_input_differs",
 ]
-"crates/sf-conform/tests/recorder_setup_start.rs" = "smoke"
+"crates/sf-conform/tests/recorder_setup_start.rs" = "full"
 "crates/sf-conform/tests/render_vs_oracle.rs" = "smoke"
-"crates/sf-conform/tests/restart_routines.rs" = "smoke"
+"crates/sf-conform/tests/restart_routines.rs" = "full"
 "crates/sf-conform/tests/runner.rs" = "full"
-"crates/sf-conform/tests/script.rs" = "smoke"
+"crates/sf-conform/tests/script.rs" = "full"
 "crates/sf-conform/tests/slot_routines.rs" = "full"
 "crates/sf-conform/tests/step_unseen.rs" = "full"
 "crates/sf-conform/tests/story.rs" = "full"
 "crates/sf-conform/tests/story_blits.rs" = "full"
 "crates/sf-conform/tests/story_draws.rs" = "full"
-"crates/sf-conform/tests/sync_points.rs" = "smoke"
-"crates/sf-conform/tests/tally_routines.rs" = "smoke"
+"crates/sf-conform/tests/sync_points.rs" = "full"
+"crates/sf-conform/tests/tally_routines.rs" = "full"
 "crates/sf-conform/tests/widescreen_capacity.rs" = "full"
-"crates/sf-conform/tests/widescreen_complete.rs" = "smoke"
+"crates/sf-conform/tests/widescreen_complete.rs" = "full"
 "crates/sf-conform/tests/widescreen_recording.rs" = "full"
-"crates/sf-conform/tests/widescreen_special_cases.rs" = "smoke"
+"crates/sf-conform/tests/widescreen_special_cases.rs" = "full"
 "crates/sf-conform/tests/widescreen_switch.rs" = [
     "switching_on_mid_level_wakes_an_enemy_in_the_right_strip",
 ]
-"crates/sf-core/tests/audio_driver.rs" = "smoke"
-"crates/sf-core/tests/chips_original_data.rs" = "smoke"
-"crates/sf-core/tests/front.rs" = "smoke"
+"crates/sf-core/tests/audio_driver.rs" = "full"
+"crates/sf-core/tests/chips_original_data.rs" = "full"
+"crates/sf-core/tests/front.rs" = "full"
 "crates/sf-core/tests/savestate.rs" = [
     "a_loaded_level_runs_on_as_the_saved_one",
     "a_state_from_another_build_or_cache_is_refused",
@@ -99,13 +101,13 @@ workspace = "engine"
     "at_w1_1s_start_the_wide_view_begins_at_level_x_16",
     "at_a_levels_right_end_the_camera_stops_65_earlier_and_the_frog_walks_on",
 ]
-"crates/sf-core/tests/widescreen_capacity.rs" = "smoke"
-"crates/sf-core/tests/widescreen_frog.rs" = "smoke"
-"crates/sf-core/tests/widescreen_mode.rs" = "smoke"
+"crates/sf-core/tests/widescreen_capacity.rs" = "full"
+"crates/sf-core/tests/widescreen_frog.rs" = "full"
+"crates/sf-core/tests/widescreen_mode.rs" = "full"
 "crates/sf-core/tests/widescreen_objects.rs" = "full"   # 11.0 s re-measured
-"crates/sf-core/tests/widescreen_spawn.rs" = "smoke"
-"crates/sf-disk/tests/atn_fuzz.rs" = "smoke"
-"crates/sf-disk/tests/atn_reference.rs" = "smoke"
+"crates/sf-core/tests/widescreen_spawn.rs" = "full"
+"crates/sf-disk/tests/atn_fuzz.rs" = "full"
+"crates/sf-disk/tests/atn_reference.rs" = "full"
 "crates/sf-disk/tests/real_disks.rs" = "smoke"
 "crates/sf-e2e/tests/controls.rs" = "full"
 "crates/sf-e2e/tests/drill.rs" = "full"
@@ -113,52 +115,52 @@ workspace = "engine"
 "crates/sf-e2e/tests/levelfile.rs" = "full"
 "crates/sf-e2e/tests/menus.rs" = "smoke"
 "crates/sf-e2e/tests/persist.rs" = "full"
-"crates/sf-e2e/tests/plan_routes.rs" = "smoke"
+"crates/sf-e2e/tests/plan_routes.rs" = "full"
 "crates/sf-e2e/tests/recorder_app.rs" = "full"
 "crates/sf-e2e/tests/recorder_bar.rs" = "full"
-"crates/sf-e2e/tests/recorder_drill.rs" = "smoke"
+"crates/sf-e2e/tests/recorder_drill.rs" = "full"
 "crates/sf-e2e/tests/recorder_replay.rs" = "full"
-"crates/sf-e2e/tests/recorder_save_window.rs" = "smoke"
-"crates/sf-e2e/tests/recorder_start_level.rs" = "smoke"
+"crates/sf-e2e/tests/recorder_save_window.rs" = "full"
+"crates/sf-e2e/tests/recorder_start_level.rs" = "full"
 "crates/sf-e2e/tests/smoke.rs" = "smoke"
 "crates/sf-e2e/tests/states.rs" = "full"
 "crates/sf-e2e/tests/view.rs" = "full"
 "crates/sf-e2e/tests/whole_game.rs" = "full"
 "crates/sf-e2e/tests/widescreen_app.rs" = "full"
 "crates/sf-e2e/tests/widescreen_drill.rs" = "full"
-"crates/sf-e2e/tests/widescreen_frog.rs" = "smoke"
+"crates/sf-e2e/tests/widescreen_frog.rs" = "full"
 "crates/sf-e2e/tests/widescreen_objects.rs" = "full"
 "crates/sf-e2e/tests/window.rs" = [
     "at_1x_2x_and_3x_the_window_is_that_multiple_and_the_picture_fills_it_unsmeared",
 ]
-"crates/sf-oracle/tests/blits.rs" = "smoke"
+"crates/sf-oracle/tests/blits.rs" = "full"
 "crates/sf-oracle/tests/determinism.rs" = "smoke"
 "crates/sf-oracle/tests/drives.rs" = "full"
 "crates/sf-oracle/tests/exe_map_claims.rs" = "full"
-"crates/sf-oracle/tests/keys.rs" = "smoke"
-"crates/sf-oracle/tests/kickstart.rs" = "smoke"
-"crates/sf-oracle/tests/routine.rs" = "smoke"
+"crates/sf-oracle/tests/keys.rs" = "full"
+"crates/sf-oracle/tests/kickstart.rs" = "full"
+"crates/sf-oracle/tests/routine.rs" = "full"
 "crates/sf-plan/tests/app.rs" = "full"
-"crates/sf-plan/tests/cache.rs" = "smoke"
+"crates/sf-plan/tests/cache.rs" = "full"
 "crates/sf-plan/tests/cli.rs" = "full"
-"crates/sf-plan/tests/coins.rs" = "smoke"
-"crates/sf-plan/tests/danger.rs" = "smoke"
+"crates/sf-plan/tests/coins.rs" = "full"
+"crates/sf-plan/tests/danger.rs" = "full"
 "crates/sf-plan/tests/explore.rs" = "full"
-"crates/sf-plan/tests/facts.rs" = "smoke"
+"crates/sf-plan/tests/facts.rs" = "full"
 "crates/sf-plan/tests/guide.rs" = "full"
 "crates/sf-plan/tests/map.rs" = "full"   # 13.1 s re-measured
 "crates/sf-plan/tests/oracle.rs" = "full"
 "crates/sf-plan/tests/purity.rs" = "smoke"
 "crates/sf-plan/tests/reach.rs" = "smoke"
-"crates/sf-plan/tests/repair.rs" = "smoke"
+"crates/sf-plan/tests/repair.rs" = "full"
 "crates/sf-plan/tests/shorten.rs" = "full"
 "crates/sf-plan/tests/walk.rs" = [
     "fill_goes_around_a_wall",
     "the_start_walks_at_least_as_far_as_straight",
     "walk_entries_carry_their_walking_coin_distance",
 ]
-"crates/sf-plan/tests/widescreen.rs" = "smoke"
-"crates/sf-routeview/tests/replay.rs" = "smoke"
+"crates/sf-plan/tests/widescreen.rs" = "full"
+"crates/sf-routeview/tests/replay.rs" = "full"
 "crates/sf-app/src" = "smoke"
 "crates/sf-assets/src" = "smoke"
 "crates/sf-bench/src" = "smoke"
