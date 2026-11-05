@@ -62,7 +62,7 @@ impl MoveMap {
 }
 
 /// Frames from `from` to every node (`u32::MAX`: unreachable), Dijkstra on edge frames, using only
-/// edges whose switches are all in `switches` and, unless `wings`, that need no wings.
+/// edges whose switches are all in `switches` and, unless `wings` (the held flag), that need no held flag.
 pub fn shortest(map: &MoveMap, from: u32, switches: u32, wings: bool) -> Vec<u32> {
     let mut d = vec![u32::MAX; map.nodes.len()];
     let Some(start) = d.get_mut(from as usize) else {

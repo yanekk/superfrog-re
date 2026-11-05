@@ -204,7 +204,7 @@ pub struct PartResult<G> {
     frames: u64,
 }
 
-/// The map compass's distances, per switch set and wings, cached.
+/// The map compass's distances, per switch set and held flag, cached.
 struct MapCompass {
     /// The map with its edges reversed: shortest paths from the exits are distances to them.
     reversed: MoveMap,

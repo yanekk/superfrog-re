@@ -28,6 +28,7 @@ Shell crates touch devices, files or the emulator:
 | `amiga-conform` | The game-free half of a conformance harness: picture and Paula comparisons against the oracle, the faithful bar's `Tolerance`, sound events, diff pictures, the script token lexer |
 | `amiga-app` | A desktop app's game-free parts: audio out and the sample clock that paces the game, gamepads, the Amiga key table, the picture on the GPU with CRT filters, run capture, whole-file writes, the single-copy lock |
 | `amiga-e2e` | End-to-end tests of a game's built app, driven by script or through the real window system; the game describes its app in an `AppSpec` |
+| `amiga-plan` | The route planner: a whole-level explorer over a game's engine (archive of cells, guides, walk and map compasses, shortening, repair), and its run shell on threads under a time budget. A game implements `PlanGame` on its engine and hands it the level's `Facts`. Its core is pure (`tests/purity.rs`) but keeps hash maps and floats, so it is not on the pure list above |
 
 And two that are not for a game to depend on:
 

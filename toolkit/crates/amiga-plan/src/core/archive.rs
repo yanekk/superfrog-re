@@ -138,7 +138,7 @@ pub struct Archive<G> {
     cap: u64,
     stored_states: u64,
     input_bytes: u64,
-    /// Ordered guide: an offer further along the guide beats the entry at its key before hearts
+    /// Ordered guide: an offer further along the guide beats the entry at its key before health
     /// and frames do, so a faster trajectory that skipped part of the path cannot replace one
     /// that followed it.
     pub ordered: bool,

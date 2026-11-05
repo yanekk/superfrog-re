@@ -17,6 +17,8 @@ workspace = "."
 "crates/amiga-oracle/tests/kickstart_missing.rs" = "smoke"
 "crates/amiga-oracle/tests/routine.rs" = "smoke"
 "crates/amiga-paula/src" = "smoke"
+"crates/amiga-plan/tests/made_up_game.rs" = "smoke"
+"crates/amiga-plan/tests/purity.rs" = "smoke"
 "crates/amiga-paula/tests/unit.rs" = "smoke"
 "crates/amiga-record/tests/round_trip.rs" = "smoke"
 "crates/dry-fit/tests/deps.rs" = "smoke"
@@ -57,3 +59,9 @@ covers = ["crates/amiga-chips/src", "crates/amiga-clock/src", "crates/amiga-inpu
 [[area]]
 name = "rule checks"
 covers = ["crates/toolkit-checks/tests/purity.rs", "crates/dry-fit/tests/deps.rs", "crates/dry-fit/tests/dry_fit.rs"]
+
+# Milliseconds: the planner's explorer solves a made-up grid game with no disk. Every game's levels
+# are routed with it.
+[[area]]
+name = "the route planner"
+covers = ["crates/amiga-plan/tests/made_up_game.rs"]
