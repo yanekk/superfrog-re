@@ -9,7 +9,7 @@
 
 **Status:** Amendment read back and its 4 decisions settled; ready to build. Nothing built.
 **Last updated:** 2026-11-05
-**Next `pir-work` will:** T00 and T32, because every level task rests on T00's measurements and every port on T32's rig.
+**Next `pir-work` will:** T04, T31 and T32, whose dependencies are met; T05 then waits on T04.
 
 ## Tasks
 
@@ -22,7 +22,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T02 | route-pin | — | ✅ | |
 | T31 | code-ran-counter | — | ⬜ | |
 | T32 | routine-rig | — | ⬜ | |
-| T03 | level-sync | T00 | 🔍 | `amiga_conform::sync_cache` (moved, Superfrog wraps it); `fd_conform::sync::reach_level_1`, 0.27 s cached, 16 s cold; 5 tests plus 5 unit. Deviations: `reach_level_1(frames)` takes its cap; `at_snapshot` takes `power_on` and `get_there`, generic over `AsMut<Amiga>`; `drives: u8`; files carry a SHA-1, named `.sync2`, so Superfrog snapshots rebuild once (FINDINGS). |
+| T03 | level-sync | T00 | ✅ | Clean, no fix commit. 0.27 s cached. Probed: 600 played frames after a cached start match a boot's RAM; mutations (digest check off, script out of key) went red. Ran level_sync, amiga-conform unit, sf-conform lib and sync_points; the rest of sf-conform is left to the plan-end and nightly runs. Restore leaves `df0()` None (FINDINGS). |
 | T04 | picture-in-play | T00 | ⬜ | |
 | T30 | unpack-in-rust | — | ✅ | |
 | T05 | level-readers | T03, T04, T30 | ⬜ | |
@@ -68,7 +68,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T28 | finish-end-to-end | T16, T48 | ⬜ | |
 | T29 | level-drill | T15, T28 | ⬜ | |
 
-**Review queue:** T03
+**Review queue:** *(empty)*
 
 ## Blocked on the user
 
