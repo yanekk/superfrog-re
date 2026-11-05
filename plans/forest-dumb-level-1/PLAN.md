@@ -67,7 +67,7 @@ Runs beside the rest of phase 1. Every porting task waits for T40.
 | [T39](tasks/T39-gen-rest.md) | gen-rest | T33, T34 |
 | [T40](tasks/T40-batch-translate.md) | batch-translate | T35, T36, T37, T38, T39 |
 
-T34 assigns every routine a generator batch and a porting task, and asks the owner to add sibling tasks where a share passes DESIGN §4.3's size. T40's run is the `ask` row of DESIGN §5.3.
+T34 assigns every routine a generator batch and a porting task, and asks the owner to add sibling tasks where a share passes DESIGN §4.3's size. T40's run is a `worker` row of DESIGN §5.3, capped at $5.
 
 ## Phase 2: the character, headless
 

@@ -19,5 +19,5 @@ The table, committed: routine, result (`pass`, `fail`, `too-big`, `no-gen`), por
 - [ ] `--resume` redoes only unfinished routines (stubbed calls).
 - [ ] The cap stops the run, and the table names what was not attempted.
 ## Done when
-- [ ] The run finished under its cap, started through the `ask` row of §5.3; its cost and duration are in FINDINGS.
+- [ ] The run finished under its cap, under the `worker` row of §5.3; its cost and duration are in FINDINGS.
 - [ ] Each `fail` and `too-big` routine is listed under the porting task that translates it by hand.
