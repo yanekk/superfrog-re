@@ -7,12 +7,13 @@
 
 pub mod character;
 pub mod camera;
+pub mod rest;
 pub mod spike;
 
 pub use crate::routine::{Gen, Generator, Setup, h};
 
 /// Every module's generators.
-pub const MODULES: &[&[(&str, Generator)]] = &[spike::ALL, character::ALL, camera::ALL];
+pub const MODULES: &[&[(&str, Generator)]] = &[spike::ALL, character::ALL, camera::ALL, rest::ALL];
 
 /// The generator registered as `name`.
 pub fn generator(name: &str) -> Option<Generator> {

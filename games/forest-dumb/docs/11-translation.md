@@ -264,3 +264,37 @@ Measured 2026-11-05, 2 000 states each, no hang or fault:
 
 - 2026-11-05, T36: `camera_update` with `camera_update`: pass on try 1, 4 837 tokens in, 16 485 out,
   $0.0038, 115 s, 385 paths.
+
+## Generators: `rest` (T39)
+
+`fd-conform/src/gen/rest.rs`, one generator for each of the six `gen_task = "T39"` entries, named as
+there. `COVER` holds what each reads (callees included) and the conditional branches of its own flow;
+`tests/gen_rest.rs` checks them as `gen_character.rs` does T35's (2 000 states, no hang, fault or
+unmodelled blit; every branch both ways through a detour stub; pokes only what the routine reads).
+
+- The five small routines read hunk 0 variables only: `last_key_byte` biased to `$41`, `$75`/`$74`,
+  `$cd`/`$cc`; the flags 0, 1 or any; `countdown_tick` near `$3f`; BCD counters at 0, 1, a borrow, or
+  any word in one state of eight, so a port's `sbcd` meets bad digits. `lives_minus_one` reaches
+  `sbcd` with X as entered; the rig enters with `sr = $2700`, X clear.
+- `game_frame` runs the whole pass, so its base is the original's chip and slow RAM at the level sync
+  point (`sync::reach_level_1`, from the cache). It pokes its unit's own inputs only: the key and pause
+  variables, the countdown, `char_x`/`char_y` and the camera within 24 pixels of the sync point's,
+  `input_log`'s index (`$2ee0` or below), and JOY1DAT. Paused in a quarter of the states. No memory
+  within a `bra.w` is known free there, so its one branch (`h0+$200a`) is shown by `illegal` over its
+  target or fall-through, neither reached any other way.
+
+Measured 2026-11-05, 2 000 states each, no hang or fault, no branch unreachable:
+
+| Generator | `RigReport::paths` | Branches |
+|---|---|---|
+| `game_frame` | 661 | 1 |
+| `countdown_step` | 3 | 2 |
+| `play_keys` | 5 | 3 |
+| `help_key` | 3 | 2 |
+| `esc_key` | 4 | 3 |
+| `lives_minus_one` | 2 | 1 |
+
+- 2026-11-05, T39: `play_keys` with `play_keys`: pass on try 1, 1 716 tokens in, 4 349 out, $0.0010,
+  43 s, 5 paths. `fd-judge 'h0+$1fec' --gen game_frame --survey`: 2 000 passed, 661 paths, 0.3 s.
+- `translate.py 'game_frame'` exits 2 today: its `split_at` callee `h0+$2c7e` has no label in the
+  listing (T34's lost-step sweep), so its flow cannot be cut there.
