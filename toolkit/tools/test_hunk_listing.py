@@ -78,6 +78,7 @@ class Listing(unittest.TestCase):
         text = L.listing('x', e, [], entries=[2])
         self.assertIn('00000002  4e71', text)
         self.assertIn('00000004  4e71', text)
+        self.assertNotIn('h0+$2:', text)
 
     def test_a_byte_var_leaves_the_sweep_on_the_next_even_address(self):
         # A byte variable, a spare byte, then a function: nop, rts. Read from the odd byte, the
@@ -95,7 +96,6 @@ class Listing(unittest.TestCase):
         self.assertNotIn('falls inside', text)
         # with no symbol after it the sweep is back on a word all the same
         self.assertIn('00000002  4e71', L.listing('x', e, syms[:1]))
-        self.assertNotIn('h0+$2:', text)
 
     def test_a_symbol_past_its_hunk_is_refused(self):
         bad = SYMS.replace('offset = 4', 'offset = 0x100').replace('size = 4', 'size = 1')
