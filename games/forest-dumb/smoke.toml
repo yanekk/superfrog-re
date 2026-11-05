@@ -22,6 +22,9 @@ workspace = "engine"
 # T05: level 1's files against the original at the cached sync point, 3.4 s warm; a machine with no
 # sync cache boots to W1-1 once first (about 16 s).
 "crates/fd-conform/tests/level_files.rs" = "smoke"
+# The routine rig and the port register: about 3 s, the rig half on the program from disk 1.
+"crates/fd-conform/tests/ported.rs" = "smoke"
+"crates/fd-conform/tests/rig.rs" = "smoke"
 # Three boots to W1-1, about 32 s together: the measurements of docs/09-play-measured.md.
 "crates/fd-conform/tests/play_measured.rs" = "full"
 # One boot to W1-1 (title and play), 12 to 27 s: picture_in on the whole play picture (T04).
@@ -56,3 +59,7 @@ covers = ["crates/fd-tools/tests/unpack.rs::every_esl_file_unpacks_to_the_sha1_i
 [[area]]
 name = "reading its level files"
 covers = ["crates/fd-conform/tests/level_files.rs::every_level_1_file_equals_the_bytes_at_its_target_at_the_sync_point"]
+
+[[area]]
+name = "comparing a ported routine with the original"
+covers = ["crates/fd-conform/tests/rig.rs", "crates/fd-conform/tests/ported.rs"]
