@@ -26,7 +26,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T04 | picture-in-play | T00 | ✅ | |
 | T30 | unpack-in-rust | — | ✅ | |
 | T05 | level-readers | T03, T04, T30 | ✅ | |
-| T06 | level-runner | T03, T04, T31, T32 | ⬜ | |
+| T06 | level-runner | T03, T04, T31, T32 | 🔍 | Runner, LAYOUT by hunk/width, coverage, freeze, 19 tests. Deviations: passes numbered by irq_count, not PassMatch; level cases run via run_with on a stand-in original until T07; added `input` key; exclusions are picture rows; one-pixel test uses strict mode; rate test in play_measured.rs; docs/09 corrected (owner). |
 | T33 | translate-service | T32 | ⬜ | |
 | T34 | translate-inventory | T00 | ⬜ | |
 | T35 | gen-character | T33, T34 | ⬜ | |
@@ -69,7 +69,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T29 | level-drill | T15, T28 | ⬜ | |
 | T50 | sf-menus-os-test-stale | — | ⬜ | |
 
-**Review queue:** *(empty)*
+**Review queue:** T06
 
 ## Blocked on the user
 

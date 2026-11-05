@@ -6,6 +6,8 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-11-05 | 🔄 | T06's counter corrects T00 in docs/09: idle, `game_frame` returns before the step ends in 2 968 of 3 000 frames; moving, after in 2 977. Owner: correct the note, keep T00's wording dated. |
+| 2026-11-05 | 📌 | T06: a step ending two passes hides the second (`watch_write` copies the first): 7 in the stub case's first 130 frames, 2 in 3 000 later moving frames. An `idle` case spanning one fails. |
 | 2026-11-05 | 📌 | T31 sync rebuild under oracle hash `c453a4b584dc`: both games' oracle smoke tests green; `level_entry` 523 s cold, 15 s warm. A cold smoke (761 s before) would overrun 900 s; T31 warmed the shared cache. Core build 115 s. |
 | 2026-11-05 | 📌 | T31 speed, Kickstart idle screen, CPU time, busy machine (load 6 to 13): 611 frames/s before patch 0006, 606 with no watch list, 562 with 200 addresses. Owner accepted these in place of an idle figure (T31 review). |
 | 2026-11-05 | 📌 | T17 review: under load 10–20, wall time of the exit pin swung 20–38 s per run; user CPU time (`/usr/bin/time -p` on the test binary) stayed within 2%, so A/B timing on a busy machine uses CPU time. |
@@ -17,7 +19,6 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 | 2026-11-05 | 🐞 | T50 added (owner): sf-e2e `menus.rs` OS test `os_layer_the_menu_bar_holds_every_item…` is red on base; it expects File to hold only "Import Disks…", the app also has Export Level and Play Level File…. |
 | 2026-11-05 | 📌 | T12, worker-driven: OS layer of controls, recorder_start_level, recorder_save_window, recorder_bar, persist green on the moved windows. `recorder_bar` OS test failed once at load 15 ("second recording's bar: not within 30 s"), passed on rerun. |
 | 2026-11-05 | 🔄 | Owner kept DESIGN §2.7: Esc quits, no pause key, though the original's play acts on P (pause) and Esc (give up, game over). The engine models both for cases (T00). |
-| 2026-11-05 | 📌 | T00: `game_frame` ends after the frame boundary in 35 of 3 000 moving frames, so step-end state can be mid-pass. Compare at the pass end, `INTREQ=$4010` at `h0+$1f02` (T06). |
 | 2026-11-05 | 📌 | T00: `collision_map` (`h3+$fa50`) is game state built by the foreground edge redraws; the play screen is picture state only; the character is hardware sprites 0-3. `docs/09-play-measured.md`. |
 | 2026-11-05 | 📌 | T30 review, read-only: `game_file` treats any `read_file` error as absent, so a damaged file block reads as "no such file" rather than its read error. Left; only a damaged zip reaches it. |
 | 2026-11-05 | 📌 | T01 smoke after the move: 761 s ok, cold worktree, load 9 on 10 cores. Before: 887 s warm, 904 s fresh copy. A cold smoke compile took about 8 GB; free disk fell to 14 GB. |
