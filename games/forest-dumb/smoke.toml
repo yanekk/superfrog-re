@@ -25,6 +25,11 @@ workspace = "engine"
 # The routine rig and the port register: about 3 s, the rig half on the program from disk 1.
 "crates/fd-conform/tests/ported.rs" = "smoke"
 "crates/fd-conform/tests/rig.rs" = "smoke"
+# T06: the level case runner against a stand-in copy of the original, from the cached sync point:
+# 9 s warm (runner.rs, ten short runs in parallel) and 3 s (input_timing.rs). A machine with no
+# sync cache boots to W1-1 once first (about 16 s).
+"crates/fd-conform/tests/runner.rs" = "smoke"
+"crates/fd-conform/tests/input_timing.rs" = "smoke"
 # The translation judge on h0+$774, under a second.
 "crates/fd-conform/tests/judge.rs" = "smoke"
 # T36's camera generators against the original, branches both ways: under a second.
@@ -71,6 +76,13 @@ covers = ["crates/fd-conform/tests/level_files.rs::every_level_1_file_equals_the
 [[area]]
 name = "comparing a ported routine with the original"
 covers = ["crates/fd-conform/tests/rig.rs", "crates/fd-conform/tests/ported.rs"]
+
+[[area]]
+name = "judging a level case against the original"
+covers = [
+    "crates/fd-conform/tests/runner.rs",
+    "crates/fd-conform/tests/input_timing.rs",
+]
 
 [[area]]
 name = "translating a routine through Muse, judged on the original"

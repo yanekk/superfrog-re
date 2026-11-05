@@ -1,0 +1,152 @@
+//! The variables a conformance case compares, where each lives in the original's memory, and how an
+//! engine is started from and read against them (plans/forest-dumb-level-1 DESIGN §2.1, T06).
+//!
+//! Every entry is a `kind = "var"` of `re/symbols.toml` with the same name, hunk, offset and size; a
+//! test below holds the two together, so a case never compares the engine with some other byte.
+//! `fd-conform` resolves a hunk to its base on the oracle; nothing here knows an address.
+
+/// How many bytes a variable is, read big-endian as the 68000 stores it.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum Width {
+    Byte,
+    Word,
+    Long,
+}
+
+impl Width {
+    pub const fn bytes(self) -> usize {
+        match self {
+            Width::Byte => 1,
+            Width::Word => 2,
+            Width::Long => 4,
+        }
+    }
+}
+
+/// One compared variable: byte `offset` of the main program's hunk `hunk`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct Var {
+    pub name: &'static str,
+    pub hunk: u8,
+    pub offset: u32,
+    pub width: Width,
+}
+
+const fn var(name: &'static str, hunk: u8, offset: u32, width: Width) -> Var {
+    Var {
+        name,
+        hunk,
+        offset,
+        width,
+    }
+}
+
+/// Every variable a case may name. A porting task appends what it models; the runner reads a
+/// variable from the original and asks the engine for it through [`Transplant::probe`].
+/// Measured or read in games/forest-dumb/docs/09-play-measured.md ("Variables"); the BCD ones are
+/// compared as stored.
+pub const LAYOUT: &[Var] = &[
+    // The idle title's song tick (forest-dumb-start), the first case's one variable.
+    var("mt_counter", 4, 0x195c9, Width::Byte),
+    var("char_x", 0, 0x1e5a, Width::Long),
+    var("char_y", 0, 0x1e5e, Width::Long),
+    var("camera_x", 0, 0x1e62, Width::Word),
+    var("camera_y", 0, 0x1e64, Width::Word),
+    var("char_screen_x", 0, 0x4d78, Width::Word),
+    var("lives", 0, 0x6a84, Width::Word),
+    var("hits_taken", 0, 0x3b26, Width::Word),
+    var("countdown", 0, 0x6a80, Width::Long),
+    var("items_left", 0, 0x6a88, Width::Word),
+    var("score", 0, 0x2a66, Width::Long),
+    var("world_index", 0, 0x6dfe, Width::Long),
+    // The level-3 handler's count: one a pass in play, so it numbers the passes (fd-conform
+    // matches the engine's pass n with the original's by it).
+    var("irq_count", 0, 0x1e6a, Width::Word),
+    var("paused", 0, 0x2100, Width::Word),
+    var("level_exit_touched", 0, 0x2696, Width::Word),
+    var("give_up", 0, 0x21b2, Width::Word),
+];
+
+/// The variable called `name`.
+pub fn layout_var(name: &str) -> Option<&'static Var> {
+    LAYOUT.iter().find(|v| v.name == name)
+}
+
+/// The original's memory as the main program's hunks see it. The runner implements it over the
+/// oracle's RAM; a test implements it over a few bytes.
+pub trait Mem {
+    /// `len` bytes from byte `offset` of hunk `hunk`.
+    fn read(&self, hunk: u8, offset: u32, len: usize) -> Vec<u8>;
+
+    /// Variable `v`'s value, big-endian, zero-extended.
+    fn value(&self, v: &Var) -> u32 {
+        self.read(v.hunk, v.offset, v.width.bytes())
+            .iter()
+            .fold(0, |acc, &b| acc << 8 | b as u32)
+    }
+}
+
+/// An engine that a case starts from the original's state and then reads variable by variable.
+pub trait Transplant {
+    /// Take the state the engine models from the original's memory at a pass's end.
+    fn transplant(&mut self, mem: &dyn Mem);
+    /// The engine's value of `v`, as the original stores it (zero-extended to 32 bits).
+    fn probe(&self, v: &Var) -> u32;
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn every_variable_is_the_one_symbols_toml_records() {
+        // The committed map is the one source of an address; a copy that drifted from it would make
+        // a case compare the engine with some other byte.
+        let map = include_str!("../../../../re/symbols.toml");
+        for v in LAYOUT {
+            let entry = map
+                .split("[[sym]]")
+                .find(|s| s.contains(&format!("name = \"{}\"\n", v.name)))
+                .unwrap_or_else(|| panic!("{} is not in symbols.toml", v.name));
+            for want in [
+                format!("hunk = {}\n", v.hunk),
+                format!("offset = {:#x}\n", v.offset),
+                "kind = \"var\"\n".to_string(),
+                format!("size = {}\n", v.width.bytes()),
+            ] {
+                assert!(entry.contains(&want), "{}: no `{want}` in {entry}", v.name);
+            }
+        }
+    }
+
+    #[test]
+    fn names_are_unique() {
+        for (i, v) in LAYOUT.iter().enumerate() {
+            assert!(
+                LAYOUT[i + 1..].iter().all(|w| w.name != v.name),
+                "{} twice",
+                v.name
+            );
+            assert_eq!(layout_var(v.name), Some(v));
+        }
+        assert_eq!(layout_var("no_such"), None);
+    }
+
+    struct Bytes(Vec<u8>);
+
+    impl Mem for Bytes {
+        fn read(&self, hunk: u8, offset: u32, len: usize) -> Vec<u8> {
+            assert_eq!(hunk, 0);
+            self.0[offset as usize..offset as usize + len].to_vec()
+        }
+    }
+
+    #[test]
+    fn a_value_is_read_big_endian_at_its_width() {
+        let m = Bytes(vec![0x12, 0x34, 0x56, 0x78, 0x9a]);
+        let at = |offset, width| m.value(&var("v", 0, offset, width));
+        assert_eq!(at(0, Width::Byte), 0x12);
+        assert_eq!(at(1, Width::Word), 0x3456);
+        assert_eq!(at(1, Width::Long), 0x3456_789a);
+    }
+}

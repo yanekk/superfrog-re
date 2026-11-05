@@ -1,0 +1,10 @@
+# T06's stub level case: 130 frames of W1-1 from the level sync point, state and picture, with the
+# character standing, walking right, jumping and standing again (scripts/w1-stub.txt). There is no
+# level engine until T07, so `fd-conform run` refuses it; tests/runner.rs runs it against a second
+# copy of the original standing in for the engine.
+sync = { script = "boot-to-level1", frame = 6301 }
+input = "w1-stub"
+frames = 130
+compare = ["vars", "picture"]
+vars = ["char_x", "char_y", "camera_x", "camera_y", "char_screen_x", "lives", "countdown", "items_left", "score", "world_index", "irq_count"]
+goal = { all = [{ var = "char_x", value = 0x1a3 }, { var = "char_y", value = 0x153 }], by_frame = 6431 }
