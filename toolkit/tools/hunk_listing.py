@@ -229,8 +229,10 @@ def _refs(ins, exe, hunk):
     return refs
 
 
-def _decode(exe, namer):
-    """Linear sweep: [(hunk, addr, size, text, refs)], data symbols kept as dc."""
+def _decode(exe, namer, entries=()):
+    """Linear sweep: [(hunk, addr, size, text, refs)], data symbols kept as dc. The sweep also starts
+    afresh at each of `entries` (load addresses a flow decoder reached as instruction starts), so data
+    inside code cannot leave it out of step past them."""
     md = Cs(CS_ARCH_M68K, CS_MODE_BIG_ENDIAN | CS_MODE_M68K_000)
     md.detail = True
     rows = []
@@ -239,7 +241,7 @@ def _decode(exe, namer):
             continue
         data_syms = {h.base + s.offset: s for a, s in namer.sized
                      if s.kind != 'func' and s.hunk == h.index}
-        stops = sorted(set(data_syms) | {a for a in namer.at if h.base < a < h.base + h.size})
+        stops = sorted(set(data_syms) | {a for a in set(namer.at) | set(entries) if h.base < a < h.base + h.size})
         pos = 0
         while pos < h.size:
             addr = h.base + pos
@@ -277,9 +279,11 @@ def _decode(exe, namer):
     return rows
 
 
-def listing(chunk_id, exe, syms, xrefs=False, tool='hunk_listing.py'):
+def listing(chunk_id, exe, syms, xrefs=False, tool='hunk_listing.py', entries=()):
+    """The listing text. `entries`: load addresses known to start an instruction, where the sweep
+    resyncs; they get no label of their own."""
     namer = Namer(exe, syms)
-    rows = _decode(exe, namer)
+    rows = _decode(exe, namer, entries)
     xref = {}
     for h, addr, size, text, refs in rows:
         for target, how in refs:

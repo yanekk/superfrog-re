@@ -168,6 +168,11 @@ fn the_listing_regenerates_and_decodes_hunk_4() {
     for wanted in ["\nmain_loop:", "\nentry:", "addq.b   #$1, mt_counter"] {
         assert!(text.contains(wanted), "{wanted}");
     }
+    // T40: the sweep resyncs at every instruction call_tree.py's flow reaches, so these call
+    // targets, once inside instructions decoded out of step after data, start lines of their own.
+    for start in ["h0+$2c7e", "h0+$3698", "h0+$5820", "h0+$62b6", "h0+$94ba"] {
+        assert!(text.contains(&format!("\n{start}:\n")), "{start} has no label");
+    }
     // A 68000 instruction never starts at an odd address. An odd-sized data symbol leaves the sweep
     // on one until the next symbol, so everything up to there decodes as noise and still lists.
     let odd: Vec<&str> = text

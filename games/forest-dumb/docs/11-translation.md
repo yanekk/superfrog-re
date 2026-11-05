@@ -2,7 +2,7 @@
 
 Literal translation of the original's routines by Muse, judged on the routine oracle (plan
 `forest-dumb-level-1`, DESIGN §4.3). This note holds the service (T33) and the inventory (T34); the generators (T35 to T39, T53,
-T54, T56) and the batch's table (T40) add their sections.
+T54, T56) and the batch's table (T40, at the end) add their sections.
 
 ## The service: `tools/translate.py`
 
@@ -159,6 +159,9 @@ address; `--check` compares the toml with the program, `--summary` prints the ta
 - **The listing's linear sweep is not usable for this.** After data inside the code it decodes out of
   step: 7 of the tree's call targets (`h0+$2c7e`, `h0+$3698`, `h0+$5820`, `h0+$94ba` among them) fall
   inside an instruction there. `call_tree.py` decodes from each address the flow reaches instead.
+  Since T40 `re_listing.py` passes every instruction that decoding reaches to the lister as a place
+  to resync (`hunk_listing.listing(entries=)`), so the listing is in step over the whole tree and
+  `translate.py`'s extraction counts each routine's `unit` exactly.
 - Sizes agree with T00's for every routine T00 sized (`char_probe` 199, `char_step` 107, `h0+$3ea8` 93,
   `char_hit_check` 131, `h0+$26ec` 153, `camera_update` 48, `char_sprite_copy` 73).
 
@@ -413,8 +416,8 @@ Measured 2026-11-05, 2 000 states each, no hang or fault, no branch unreachable:
 
 - 2026-11-05, T39: `play_keys` with `play_keys`: pass on try 1, 1 716 tokens in, 4 349 out, $0.0010,
   43 s, 5 paths. `fd-judge 'h0+$1fec' --gen game_frame --survey`: 2 000 passed, 661 paths, 0.3 s.
-- `translate.py 'game_frame'` exits 2 today: its `split_at` callee `h0+$2c7e` has no label in the
-  listing (T34's lost-step sweep), so its flow cannot be cut there.
+- `translate.py 'game_frame'` exited 2 until T40: its `split_at` callee `h0+$2c7e` had no label in
+  the listing (T34's lost-step sweep). The listing now resyncs there (see the inventory).
 
 ## Generators: edge redraws (T56)
 
@@ -484,3 +487,139 @@ checks a non-trapping detour runs as the plain program. No branch is unreachable
 
 `h0_4d32`'s and `h0_4d54`'s one path covers their branch both ways: each way runs one `move.l` and
 an `rts`.
+
+## The batch: `tools/translate_batch.py` (T40)
+
+Every routine of `re/translate.toml` through the service in one unattended run, before the porting
+tasks start (DESIGN §4.3; `worker` bin, $5 cap, DESIGN §5.3):
+
+```
+python3 -I games/forest-dumb/tools/translate_batch.py --max-usd 5 [--parallel 8] [--resume]
+```
+
+- One `translate.py '<routine>' --gen <name>` process per routine, the generator named as the routine,
+  up to `--parallel` at once. Model calls overlap; judge builds and runs take turns on `judge.lock`.
+- A routine with `split_at` starts once its callees have results: `blocked` unless all passed.
+- The cap is the run's own spend. Each routine gets min($0.10, what is left less what running routines
+  may still spend); below one call's worst case (96 000 answer tokens) the next waits for a running one,
+  and with none running nothing more starts and the rest are `not-attempted`.
+- `--resume` keeps the rows of `build/translate/batch.json` that finished (a pass whose `port.rs` is on
+  disk, `fail`, `too-big`, `no-oracle`, `no-gen`) and runs the rest.
+- Writes `batch.json` after each routine and `table.md`; prints a one-line summary. Sound has no
+  generator and makes no call (`no-gen`).
+
+**The ports are in the build folder of the T40 worktree, copied to the main checkout's
+`games/forest-dumb/build/translate/`** (git-ignored, 2026-11-05). A porting task copies its routines'
+folders (`hN-off/`) from there, or re-runs `translate.py` on one routine when its checkout has none.
+
+### The run, 2026-11-05
+
+87 routines: 77 pass, 1 fail, 4 too-big, 2 no-gen, 3 blocked. This run spent $0.1596 of its $5 cap in 1102 s; the table's routines cost $0.1596 in all.
+
+| Routine | Result | Port task | Port | Generator | Paths | Tries | Cost |
+|---|---|---|---|---|---|---|---|
+| `h0+$774` `h0_774` | pass | T55 | `build/translate/h0-774/port.rs` | `h0_774` | 3 | 1 | $0.0012 |
+| `h0+$7cc` `h0_7cc` | pass | T55 | `build/translate/h0-7cc/port.rs` | `h0_7cc` | 1 | 1 | $0.0008 |
+| `h0+$844` `redraw_edge_a` | pass | T55 | `build/translate/h0-844/port.rs` | `redraw_edge_a` | 1174 | 1 | $0.0042 |
+| `h0+$a06` `h0_a06` | pass | T55 | `build/translate/h0-a06/port.rs` | `h0_a06` | 3 | 1 | $0.0025 |
+| `h0+$b20` `redraw_edge_b` | pass | T55 | `build/translate/h0-b20/port.rs` | `redraw_edge_b` | 1126 | 1 | $0.0036 |
+| `h0+$ce4` `h0_ce4` | pass | T55 | `build/translate/h0-ce4/port.rs` | `h0_ce4` | 3 | 1 | $0.0022 |
+| `h0+$df6` `redraw_edge_c` | too-big | T55 |  | `redraw_edge_c` |  |  |  |
+| `h0+$104c` `h0_104c` | pass | T55 | `build/translate/h0-104c/port.rs` | `h0_104c` | 3 | 1 | $0.0020 |
+| `h0+$114a` `redraw_edge_d` | pass | T55 | `build/translate/h0-114a/port.rs` | `redraw_edge_d` | 1168 | 1 | $0.0037 |
+| `h0+$1390` `h0_1390` | pass | T55 | `build/translate/h0-1390/port.rs` | `h0_1390` | 3 | 1 | $0.0015 |
+| `h0+$1fec` `game_frame` | blocked | T08 |  | `game_frame` |  |  |  |
+| `h0+$20b0` `countdown_step` | pass | T23 | `build/translate/h0-20b0/port.rs` | `countdown_step` | 3 | 1 | $0.0029 |
+| `h0+$2104` `play_keys` | pass | T23 | `build/translate/h0-2104/port.rs` | `play_keys` | 5 | 1 | $0.0006 |
+| `h0+$2146` `help_key` | pass | T26 | `build/translate/h0-2146/port.rs` | `help_key` | 3 | 1 | $0.0005 |
+| `h0+$2176` `esc_key` | pass | T23 | `build/translate/h0-2176/port.rs` | `esc_key` | 4 | 1 | $0.0005 |
+| `h0+$21c0` `h0_21c0` | pass | T25 | `build/translate/h0-21c0/port.rs` | `h0_21c0` | 6 | 1 | $0.0028 |
+| `h0+$24ce` `h0_24ce` | pass | T25 | `build/translate/h0-24ce/port.rs` | `h0_24ce` | 7 | 1 | $0.0013 |
+| `h0+$2648` `h0_2648` | no-gen |  |  |  |  |  |  |
+| `h0+$2698` `char_object_cells` | pass | T22 | `build/translate/h0-2698/port.rs` | `char_object_cells` | 108 | 1 | $0.0011 |
+| `h0+$26ec` `h0_26ec` | pass | T22 | `build/translate/h0-26ec/port.rs` | `h0_26ec` | 23 | 1 | $0.0039 |
+| `h0+$29ca` `h0_29ca` | pass | T22 | `build/translate/h0-29ca/port.rs` | `h0_29ca` | 1 | 1 | $0.0017 |
+| `h0+$2a6e` `score_add_routine` | pass | T22 | `build/translate/h0-2a6e/port.rs` | `score_add_routine` | 1 | 1 | $0.0018 |
+| `h0+$2c7e` `h0_2c7e` | blocked | T52 |  | `h0_2c7e` |  |  |  |
+| `h0+$2d4c` `h0_2d4c` | pass | T52 | `build/translate/h0-2d4c/port.rs` | `h0_2d4c` | 177 | 1 | $0.0020 |
+| `h0+$2dd6` `h0_2dd6` | pass | T22 | `build/translate/h0-2dd6/port.rs` | `h0_2dd6` | 125 | 1 | $0.0026 |
+| `h0+$2e0e` `h0_2e0e` | pass | T22 | `build/translate/h0-2e0e/port.rs` | `h0_2e0e` | 10 | 1 | $0.0024 |
+| `h0+$2fae` `h0_2fae` | pass | T24 | `build/translate/h0-2fae/port.rs` | `h0_2fae` | 211 | 1 | $0.0009 |
+| `h0+$2fea` `h0_2fea` | pass | T24 | `build/translate/h0-2fea/port.rs` | `h0_2fea` | 23 | 1 | $0.0036 |
+| `h0+$320a` `h0_320a` | pass | T24 | `build/translate/h0-320a/port.rs` | `h0_320a` | 1 | 1 | $0.0005 |
+| `h0+$3222` `h0_3222` | pass | T24 | `build/translate/h0-3222/port.rs` | `h0_3222` | 1 | 1 | $0.0005 |
+| `h0+$32f8` `h0_32f8` | pass | T24 | `build/translate/h0-32f8/port.rs` | `h0_32f8` | 1 | 1 | $0.0009 |
+| `h0+$3322` `h0_3322` | pass | T24 | `build/translate/h0-3322/port.rs` | `h0_3322` | 1 | 1 | $0.0008 |
+| `h0+$3530` `h0_3530` | pass | T24 | `build/translate/h0-3530/port.rs` | `h0_3530` | 2 | 1 | $0.0006 |
+| `h0+$3566` `h0_3566` | pass | T24 | `build/translate/h0-3566/port.rs` | `h0_3566` | 2 | 1 | $0.0007 |
+| `h0+$35a0` `h0_35a0` | pass | T24 | `build/translate/h0-35a0/port.rs` | `h0_35a0` | 2 | 1 | $0.0017 |
+| `h0+$35dc` `h0_35dc` | pass | T24 | `build/translate/h0-35dc/port.rs` | `h0_35dc` | 2 | 1 | $0.0006 |
+| `h0+$3698` `h0_3698` | pass | T24 | `build/translate/h0-3698/port.rs` | `h0_3698` | 15 | 1 | $0.0017 |
+| `h0+$3ab4` `h0_3ab4` | pass | T10 | `build/translate/h0-3ab4/port.rs` | `h0_3ab4` | 1 | 1 | $0.0005 |
+| `h0+$3ac2` `h0_3ac2` | pass | T55 | `build/translate/h0-3ac2/port.rs` | `h0_3ac2` | 3 | 1 | $0.0016 |
+| `h0+$3adc` `h0_3adc` | no-gen |  |  |  |  |  |  |
+| `h0+$3b2a` `char_hit_check` | pass | T24 | `build/translate/h0-3b2a/port.rs` | `char_hit_check` | 105 | 2 | $0.0089 |
+| `h0+$3dd8` `h0_3dd8` | pass | T24 | `build/translate/h0-3dd8/port.rs` | `h0_3dd8` | 4 | 1 | $0.0011 |
+| `h0+$3e0c` `char_update` | blocked | T08 |  | `char_update` |  |  |  |
+| `h0+$3e30` `char_step` | pass | T08 | `build/translate/h0-3e30/port.rs` | `char_step` | 74 | 1 | $0.0038 |
+| `h0+$3ea8` `h0_3ea8` | pass | T08 | `build/translate/h0-3ea8/port.rs` | `h0_3ea8` | 28 | 1 | $0.0031 |
+| `h0+$410c` `h0_410c` | pass | T08 | `build/translate/h0-410c/port.rs` | `h0_410c` | 9 | 1 | $0.0017 |
+| `h0+$416c` `h0_416c` | pass | T08 | `build/translate/h0-416c/port.rs` | `h0_416c` | 2 | 1 | $0.0007 |
+| `h0+$4274` `h0_4274` | pass | T08 | `build/translate/h0-4274/port.rs` | `h0_4274` | 6 | 1 | $0.0010 |
+| `h0+$4696` `h0_4696` | pass | T08 | `build/translate/h0-4696/port.rs` | `h0_4696` | 4 | 1 | $0.0006 |
+| `h0+$4718` `h0_4718` | pass | T08 | `build/translate/h0-4718/port.rs` | `h0_4718` | 24 | 2 | $0.0037 |
+| `h0+$47e2` `h0_47e2` | pass | T08 | `build/translate/h0-47e2/port.rs` | `h0_47e2` | 3 | 1 | $0.0009 |
+| `h0+$48be` `h0_48be` | pass | T08 | `build/translate/h0-48be/port.rs` | `h0_48be` | 24 | 1 | $0.0032 |
+| `h0+$497c` `h0_497c` | pass | T08 | `build/translate/h0-497c/port.rs` | `h0_497c` | 3 | 1 | $0.0010 |
+| `h0+$4b0e` `h0_4b0e` | pass | T08 | `build/translate/h0-4b0e/port.rs` | `h0_4b0e` | 8 | 1 | $0.0016 |
+| `h0+$4be6` `char_step_4be6` | pass | T51 | `build/translate/h0-4be6/port.rs` | `char_step_4be6` | 2 | 1 | $0.0008 |
+| `h0+$4c28` `h0_4c28` | pass | T51 | `build/translate/h0-4c28/port.rs` | `h0_4c28` | 2 | 1 | $0.0009 |
+| `h0+$4c6a` `h0_4c6a` | pass | T51 | `build/translate/h0-4c6a/port.rs` | `h0_4c6a` | 6 | 1 | $0.0009 |
+| `h0+$4d32` `h0_4d32` | pass | T51 | `build/translate/h0-4d32/port.rs` | `h0_4d32` | 1 | 1 | $0.0004 |
+| `h0+$4d54` `h0_4d54` | pass | T51 | `build/translate/h0-4d54/port.rs` | `h0_4d54` | 1 | 1 | $0.0004 |
+| `h0+$4d7e` `camera_update` | fail | T09 |  | `camera_update` | 385 | 3 | $0.0184 |
+| `h0+$4e9a` `h0_4e9a` | pass | T09 | `build/translate/h0-4e9a/port.rs` | `h0_4e9a` | 65 | 2 | $0.0035 |
+| `h0+$4ea6` `h0_4ea6` | pass | T09 | `build/translate/h0-4ea6/port.rs` | `h0_4ea6` | 64 | 1 | $0.0018 |
+| `h0+$4eb4` `h0_4eb4` | pass | T09 | `build/translate/h0-4eb4/port.rs` | `h0_4eb4` | 64 | 1 | $0.0017 |
+| `h0+$4ec2` `h0_4ec2` | pass | T09 | `build/translate/h0-4ec2/port.rs` | `h0_4ec2` | 65 | 1 | $0.0025 |
+| `h0+$4f84` `char_probe` | too-big | T08 |  | `char_probe` |  |  |  |
+| `h0+$4f90` `char_probe_flags` | pass | T08 | `build/translate/h0-4f90/port.rs` | `char_probe_flags` | 15 | 1 | $0.0009 |
+| `h0+$513c` `h0_513c` | pass | T09 | `build/translate/h0-513c/port.rs` | `h0_513c` | 3 | 1 | $0.0007 |
+| `h0+$51fc` `h0_51fc` | pass | T09 | `build/translate/h0-51fc/port.rs` | `h0_51fc` | 4 | 1 | $0.0008 |
+| `h0+$526a` `h0_526a` | pass | T09 | `build/translate/h0-526a/port.rs` | `h0_526a` | 4 | 1 | $0.0009 |
+| `h0+$52d8` `h0_52d8` | pass | T09 | `build/translate/h0-52d8/port.rs` | `h0_52d8` | 4 | 1 | $0.0010 |
+| `h0+$5346` `h0_5346` | pass | T09 | `build/translate/h0-5346/port.rs` | `h0_5346` | 4 | 1 | $0.0012 |
+| `h0+$5462` `char_sprite_position` | pass | T10 | `build/translate/h0-5462/port.rs` | `char_sprite_position` | 4 | 1 | $0.0012 |
+| `h0+$5820` `h0_5820` | pass | T52 | `build/translate/h0-5820/port.rs` | `h0_5820` | 9 | 1 | $0.0034 |
+| `h0+$5e44` `h0_5e44` | too-big | T52 |  | `h0_5e44` |  |  |  |
+| `h0+$62b6` `h0_62b6` | too-big | T25 |  | `h0_62b6` |  |  |  |
+| `h0+$681c` `h0_681c` | pass | T55 | `build/translate/h0-681c/port.rs` | `h0_681c` | 6 | 1 | $0.0011 |
+| `h0+$6852` `h0_6852` | pass | T55 | `build/translate/h0-6852/port.rs` | `h0_6852` | 1 | 1 | $0.0007 |
+| `h0+$6882` `h0_6882` | pass | T55 | `build/translate/h0-6882/port.rs` | `h0_6882` | 98 | 1 | $0.0013 |
+| `h0+$69d6` `lives_minus_one` | pass | T23 | `build/translate/h0-69d6/port.rs` | `lives_minus_one` | 2 | 1 | $0.0022 |
+| `h0+$6a04` `countdown_plus_100` | pass | T22 | `build/translate/h0-6a04/port.rs` | `countdown_plus_100` | 2 | 2 | $0.0043 |
+| `h0+$6a4c` `items_left_minus_one` | pass | T22 | `build/translate/h0-6a4c/port.rs` | `items_left_minus_one` | 2 | 1 | $0.0042 |
+| `h0+$8dfc` `read_joystick` | pass | T51 | `build/translate/h0-8dfc/port.rs` | `read_joystick` | 10 | 1 | $0.0015 |
+| `h0+$94ba` `h0_94ba` | pass | T10 | `build/translate/h0-94ba/port.rs` | `h0_94ba` | 162 | 2 | $0.0038 |
+| `h0+$94fe` `h0_94fe` | pass | T10 | `build/translate/h0-94fe/port.rs` | `h0_94fe` | 162 | 1 | $0.0020 |
+| `h0+$9550` `h0_9550` | pass | T10 | `build/translate/h0-9550/port.rs` | `h0_9550` | 12 | 1 | $0.0013 |
+| `h0+$9754` `h0_9754` | pass | T10 | `build/translate/h0-9754/port.rs` | `h0_9754` | 2 | 1 | $0.0018 |
+| `h0+$9b06` `char_sprite_copy` | pass | T10 | `build/translate/h0-9b06/port.rs` | `char_sprite_copy` | 4 | 2 | $0.0029 |
+
+Translated by hand, under the porting task that owns each:
+
+- T08: `game_frame` (blocked: split callee h0+$2c7e is blocked); `char_update` (blocked: split callee h0+$4f84 is too-big); `char_probe` (too-big)
+- T09: `camera_update` (fail)
+- T25: `h0_62b6` (too-big)
+- T52: `h0_2c7e` (blocked: split callee h0+$5e44 is too-big); `h0_5e44` (too-big)
+- T55: `redraw_edge_c` (too-big)
+
+- The four `too-big` routines are T34's four `by_hand`. The three `blocked` ones call one of them
+  through `split_at`: `char_update` calls `char_probe`, `h0_2c7e` calls `h0_5e44`, and `game_frame` calls
+  `h0_2c7e`. `translate.py` judges a caller only with its callees' passing ports in their folders, so
+  each waits for its callee's hand port (a `port.rs` and a passing `result.json` there) or is
+  translated by hand.
+- `camera_update` failed three answers (1 409, 1 409, then 72 of 2 000 states differ) where T36's
+  call passed it on try 1; T09 may re-run `translate.py 'camera_update' --gen camera_update` first.
+- Two first answers did not compile (`char_hit_check`, `h0_94ba`) and passed on try 2. 86 calls in
+  all: 211 547 tokens in, 702 210 out.

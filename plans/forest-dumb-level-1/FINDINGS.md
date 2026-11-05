@@ -6,6 +6,8 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-11-05 | 📌 | T40 batch, worker action: `translate_batch.py --max-usd 5 --parallel 8`: 87 routines, 77 pass, 1 fail (`camera_update`), 4 too-big, 3 blocked, 2 no-gen; $0.1596, 1 102 s, 86 calls. Table in docs/11-translation.md. |
+| 2026-11-05 | 🐞 | T40 fixed T37's, T39's and T58's listing rows ("has no label", undercounts): `re_listing.py` resyncs the sweep at every instruction `call_tree.py` reaches, so `flow_text` counts every routine's `unit` exactly. |
 | 2026-11-05 | 📌 | T59: oracle collision on, `BUILD` now ends `-clx`, so every sync and trace cache rebuilt once (Superfrog `level_entry` 396 s cold). Superfrog route pins and oracle smoke tests unchanged. Replaces T21's CLXDAT `$8000` row, now tested. |
 | 2026-11-05 | 📌 | T59: contact hurts only once `h0+$9b04` wraps to 0, ~100 passes after the sync point. The slide now loses a life at its end, `W1-1:42,35` (tiles); `level_files` covered cells at 6640 fell 11 to 8. |
 | 2026-11-05 | 📌 | T59: `test_architecture_docs.py` fails 3 checks with and without T59 (unowned `amiga-plan` files, missing cited paths). Left alone. |
@@ -14,14 +16,11 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 | 2026-11-05 | 📌 | T56 review sweep: `generators::generator` (`gen/mod.rs`) returns the first of duplicate names and no test checks the whole registry is unique; only `gen_edge_redraw.rs` checks its own names. Not fixed. |
 | 2026-11-05 | 📌 | T56: the oracle's VHPOSR counter runs on across calls, so a routine with a raster wait (`h0_3ac2`) differs between two runs of one state; `gen_edge_redraw.rs` sets it per state first. The spike's `h0+$774` generator duplicates `h0_774`; `judge.rs` still uses it. |
 | 2026-11-05 | 📌 | T54: creature probes (`h0_3530`..`h0_35dc`) index `collision_map` by `(x >> 3)` with x a level coordinate, reading up to `$4dd2` bytes past `h3+$fa50`, beyond its `$2e00`. T24 ports that reach as is. `h0_3698` compares the middle slot pairs as bytes. |
-| 2026-11-05 | 📌 | T58: after the btst fix, `flow_text` with `split_at` still undercounts `redraw_edge_a` (109, unit 160) and `h0_2fea` (128, unit 172), same before the fix; 7 inventory routines have no listing label, e.g. `h0+$2c7e`, `h0+$5820`. |
 | 2026-11-05 | 📌 | T21 review: objects-W1-1.toml `port_task` is the value's behaviour; its routines keep translate.toml's tasks, so spawn, bonus blits and creature drawing port in T55 and T52, not T22 or T24. |
 | 2026-11-05 | 📌 | T59 added by T21 with the owner's yes: turn on vAmiga's sprite-to-playfield collision in the oracle, Superfrog unchanged or ask the owner; `blocks T24, T41, T42, T43, T44, T45, T46, T47`. |
 | 2026-11-05 | 📌 | T21: no object dispatch tables; the scan, `h0_2fea`, `h0_26ec`, `h0_62b6` branch by compares. Every object routine was already in `re/translate.toml`, so T21 appended none and T49 has nothing to translate. |
 | 2026-11-05 | 📌 | T21: W1-1 holds 332 coins (`$20`-`$23`); `items_left` starts at 282 from `load_list_world_1`, so 50 are spare. docs/06's untraced `_ELEMENTY` second row is `h0_a06`'s bonuses (`h4+$c80`). |
-| 2026-11-05 | 🐞 | T37: `translate.py`'s `flow_text` reads the linear listing, so `h0_2c7e`, `h0_2d4c`, `h0_5820`, `h0_94ba` stop with "has no label" (exit 2) and `h0_62b6` extracts 37 of 224 instructions. T40 meets this; `call_tree.py` decodes correctly. |
 | 2026-11-05 | 📌 | T37 live call, worker action: `translate.py 'h0+$9754' --gen h0_9754` passed on try 1: 2 177 tokens in, 8 052 out, $0.0018, 81 s, 2 paths. |
-| 2026-11-05 | 🐞 | T39: `translate.py 'game_frame'` exits 2: `flow_text` cuts at listing labels and split callee `h0+$2c7e` has none (T34's lost-step sweep). T40 needs a label there or `call_tree.py`'s decoding. |
 | 2026-11-05 | 📌 | T39 live call, worker action: `translate.py play_keys --gen play_keys` passed on try 1, 1 716 tokens in, 4 349 out, $0.0010, 43 s, 5 paths. |
 | 2026-11-05 | 📌 | T53: a `Bcc.b`, or a `Bcc.w` beyond a `bra.w` of free memory (past about `h0+$6800`), is detoured by moving the instruction before it into the stub behind a `jmp`; `tests/gen_character_anim.rs` has the helper and its check. |
 | 2026-11-05 | 📌 | T38: the rig's VHPOSR steps every read, so raster-wait `beq`s (`h0+$265e`, `$3af2`) never go taken; BLTBUSY set hangs `h0+$2a1c`. Write-only cells (`h0+$4710`, slot flags in `h0_2e0e`) are not poked, so an omitted clear passes where the program's byte is already 0. |

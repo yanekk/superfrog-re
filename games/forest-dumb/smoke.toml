@@ -86,6 +86,7 @@ workspace = "engine"
 "tools/test_render_levels.py" = "smoke"
 # Model calls stubbed, no network. The second builds canned ports into fd-judge: about 8 s warm.
 "tools/test_translate.py" = "smoke"
+"tools/test_translate_batch.py" = "smoke"
 "tools/test_translate_judge.py" = "smoke"
 "tools/test_unpack.py" = "smoke"
 

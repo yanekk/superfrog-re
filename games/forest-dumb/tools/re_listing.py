@@ -17,12 +17,22 @@ ROOT = os.path.dirname(HERE)
 sys.path.insert(0, os.path.join(ROOT, '..', '..', 'toolkit', 'tools'))
 import hunk_listing
 from hunk_listing import SymbolError
+import call_tree
 
 EXE_ID = 'forest_dumb_forever'
 EXE = os.path.join(ROOT, 'build', 'files', 'disk1', 'FOREST_DUMB_FOREVER')
 SYMBOLS = os.path.join(ROOT, 're', 'symbols.toml')
 OUT = os.path.join(ROOT, 'build', 're')
 CODE_IN_DATA_HUNK = 4
+
+
+def flow_entries(exe, syms):
+    """Every instruction call_tree.py's flow decoding reaches from its ROOTS. The sweep resyncs at each,
+    so game_frame's tree lists in step: without them data in the code put h0+$2c7e, $3698, $5820,
+    $62b6 and $94ba inside other instructions, and translate.py's flow_text found no label (T40)."""
+    at = {s.name: exe.hunks[s.hunk].base + s.offset for s in syms}
+    roots = [at[r] for r in call_tree.ROOTS if r in at]
+    return set().union(*call_tree.Tree(call_tree.Program(exe), roots).own.values()) if roots else set()
 
 
 def main(argv=None):
@@ -44,7 +54,7 @@ def main(argv=None):
         # player), and the shared lister prints a DATA hunk as dc.w without decoding it.
         exe.hunks[CODE_IN_DATA_HUNK].kind = 'CODE'
         text = hunk_listing.listing(EXE_ID, exe, syms, a.xrefs,
-                                    tool='games/forest-dumb/tools/re_listing.py')
+                                    tool='games/forest-dumb/tools/re_listing.py', entries=flow_entries(exe, syms))
     except (SymbolError, ValueError) as e:
         raise SystemExit(f"re_listing: {e}")
     os.makedirs(a.out, exist_ok=True)
