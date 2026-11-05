@@ -81,6 +81,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T60 | rig-branch-coverage | T32 | ✅ | |
 | T61 | generate-service | T33, T60; blocks T49 | ⬜ | |
 | T62 | engine-shape-trial | T08, T09, T33 | ⬜ | |
+| T65 | level-start-draw | T55; blocks T13, T20 | ⬜ | |
 
 **Review queue:** T55
 

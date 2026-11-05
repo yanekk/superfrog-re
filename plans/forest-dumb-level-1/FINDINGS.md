@@ -7,7 +7,7 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 | Date | | Finding |
 |---|---|---|
 | 2026-11-05 | 📌 | T55, measured: a pass's state precedes `main_loop`'s redraws (`h0+$1e66` lags the latches a pass; `frame_flag` reads `$ffff`), so `Game::step` redraws first. Two edges in one frame finish after the next pass (8 of 520 frames). |
-| 2026-11-05 | 📌 | T55: nothing ports `level_init`'s first view (`h0+$62e` tiles, `h0+$6c4` `collision_map`), so `Game::new` starts with an empty `collision_map`; cases get it by transplant. Proposed to the owner as a new task. |
+| 2026-11-05 | 📌 | T65 added by T55 with the owner's yes: nothing ported `level_init`'s first view (`h0+$62e` tiles, `h0+$6c4` `collision_map`), so `Game::new` had an empty `collision_map` (cases transplant it). Blocks T13, T20. |
 | 2026-11-05 | 📌 | T55: `h0_681c`, `h0_6852` (creature slots, also from `h0+$3a38`) and `h0_6882` (`h0_62b6`'s lists) are `CreatureSlots::start`, `fill` and `AnimatedCells::add` in `level/redraw.rs`; T24 and T25 call them. |
 | 2026-11-05 | 📌 | T51 review, worker-driven: on the oracle after fire, each direction and diagonal held three frames gave `joy_left`..`joy_down` equal to `JoyFlags::read_joystick(joy1dat(input))`, so `joy1dat`'s JOY1DAT encoding matches the oracle's joystick. |
 | 2026-11-05 | 📌 | T51 review: T53's generator comments (`gen/character.rs:55`, `gen/character_anim.rs:4`) and T51's task doc still say `joy_flags`, now `joy_left`..`joy_down` in LAYOUT and symbols.toml. Comments only; left. |
