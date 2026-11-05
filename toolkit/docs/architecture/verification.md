@@ -123,8 +123,8 @@ Cost, measured 2026-11-05 on the Kickstart idle screen (3 300 frames a run, CPU 
 interleaved rounds on a machine busy with a parallel build, load 6 to 13): 611 frames a second before
 the patch, 606 after it with no list, 562 with 200 addresses (8 % slower). The shim installs the core
 hook only when a machine first watches, so a process that never watches pays one null check per
-instruction. An idle-machine figure is still owed (the earlier 565 to 571 was measured at a game's sync
-point, a different workload).
+instruction. The owner accepted these busy-machine figures in place of an idle-machine one (2026-11-05;
+the earlier 565 to 571 was measured at a game's sync point, a different workload).
 
 A game may also patch the original in emulated RAM rather than the core, by `Amiga::poke`.
 
