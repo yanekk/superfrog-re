@@ -137,7 +137,8 @@ fn compare_view(am: &Amiga, level: &Level) -> (usize, Vec<(i32, i32)>) {
 }
 
 /// Every whole cell in view shows its tile, pixel for pixel, except under the creatures and items
-/// cut over the tiles: none at frame 6340, 11 at 6640 (measured 2026-11-05). So the map's cells, the
+/// cut over the tiles: none at frame 6340, 8 at 6640 (measured 2026-11-05; 11 before T59 turned the
+/// oracle's collision detection on, which changes what is cut there). So the map's cells, the
 /// tile pictures, their bit order and the palette are what the original draws. The first frames of play fade the
 /// palette in (frames 6301 to 6331), so the first still view checked is frame 6340.
 #[test]
@@ -145,7 +146,7 @@ fn cells_in_view_show_the_tile_the_map_names_still_and_scrolled() {
     let level = read_level(1, &files).unwrap_or_else(|e| panic!("{e}"));
     let sc = script::parse("6345: R\n6400: R F\n6410: R\n6600: -\n").unwrap();
     let mut am = sync::reach_level_1(340).unwrap_or_else(|e| panic!("{e}"));
-    for (frame, camera, covered) in [(6340, (0, 51), 0), (6640, (522, 464), 11)] {
+    for (frame, camera, covered) in [(6340, (0, 51), 0), (6640, (522, 464), 8)] {
         while am.frame() < frame {
             let at = am.frame();
             am.step(script::input_at(&sc.lines, at))

@@ -6,6 +6,9 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-11-05 | 📌 | T59: oracle collision on, `BUILD` now ends `-clx`, so every sync and trace cache rebuilt once (Superfrog `level_entry` 396 s cold). Superfrog route pins and oracle smoke tests unchanged. Replaces T21's CLXDAT `$8000` row, now tested. |
+| 2026-11-05 | 📌 | T59: contact hurts only once `h0+$9b04` wraps to 0, ~100 passes after the sync point. The slide now loses a life at its end, `W1-1:42,35` (tiles); `level_files` covered cells at 6640 fell 11 to 8. |
+| 2026-11-05 | 📌 | T59: `test_architecture_docs.py` fails 3 checks with and without T59 (unowned `amiga-plan` files, missing cited paths). Left alone. |
 | 2026-11-05 | 📌 | T57 review: in fullscreen `os_window` (toolkit `amiga-e2e/src/os.rs`) can return a 1920×32 layer-0 strip at y −32, seen 625 ms in; `find` takes the first layer-0 window. Harmless while the wait passes on its first sample. Not fixed. |
 | 2026-11-05 | 🐞 | T57: every red of `os_layer_scale_and_fullscreen…` was a locked screen (front app `loginwindow`): scaling still works, fullscreen never happens. `os_layer()` now refuses a locked screen (`CGSSessionScreenIsLocked`); unlocked, five of five pass, waits under 0.8 s. |
 | 2026-11-05 | 📌 | T56 review sweep: `generators::generator` (`gen/mod.rs`) returns the first of duplicate names and no test checks the whole registry is unique; only `gen_edge_redraw.rs` checks its own names. Not fixed. |
@@ -14,7 +17,6 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 | 2026-11-05 | 📌 | T58: after the btst fix, `flow_text` with `split_at` still undercounts `redraw_edge_a` (109, unit 160) and `h0_2fea` (128, unit 172), same before the fix; 7 inventory routines have no listing label, e.g. `h0+$2c7e`, `h0+$5820`. |
 | 2026-11-05 | 📌 | T21 review: objects-W1-1.toml `port_task` is the value's behaviour; its routines keep translate.toml's tasks, so spawn, bonus blits and creature drawing port in T55 and T52, not T22 or T24. |
 | 2026-11-05 | 📌 | T59 added by T21 with the owner's yes: turn on vAmiga's sprite-to-playfield collision in the oracle, Superfrog unchanged or ask the owner; `blocks T24, T41, T42, T43, T44, T45, T46, T47`. |
-| 2026-11-05 | 🐞 | T21: CLXDAT is always `$8000` on the oracle (`DENISE_CLX_SPR_PLF` off), so `char_hit_check` never sees contact. CLXCON `$37dd`: colours 21, 23, 29, 31, also in 134 of 328 W1-1 tiles. |
 | 2026-11-05 | 📌 | T21: no object dispatch tables; the scan, `h0_2fea`, `h0_26ec`, `h0_62b6` branch by compares. Every object routine was already in `re/translate.toml`, so T21 appended none and T49 has nothing to translate. |
 | 2026-11-05 | 📌 | T21: W1-1 holds 332 coins (`$20`-`$23`); `items_left` starts at 282 from `load_list_world_1`, so 50 are spare. docs/06's untraced `_ELEMENTY` second row is `h0_a06`'s bonuses (`h4+$c80`). |
 | 2026-11-05 | 🐞 | T37: `translate.py`'s `flow_text` reads the linear listing, so `h0_2c7e`, `h0_2d4c`, `h0_5820`, `h0_94ba` stop with "has no label" (exit 2) and `h0_62b6` extracts 37 of 224 instructions. T40 meets this; `call_tree.py` decodes correctly. |
