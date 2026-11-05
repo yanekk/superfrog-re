@@ -47,7 +47,9 @@ branches the generator reaches. A `pass` with few paths proves little.
 ### What it does
 
 1. The listing by control flow from the routine (every branch both ways, calls followed), then the
-   named labels it uses: the spike's `run.py --hw` extraction. Its size decides `too-big`.
+   named labels it uses: the spike's `run.py --hw` extraction. Its size decides `too-big`. Only
+   `Bcc`, `DBcc`, `bra`, `bsr`, `jsr` and `jmp` are followed; `btst`/`bset`/`bclr`/`bchg` on a label
+   reach data, not code (T58).
 2. `fd-judge --survey`: the original alone over the generator's states. It is `no-oracle` when it
    returns on none (a wait on DMA or an interrupt never ends in the routine oracle's hardware mode)
    or when any state starts a blit in line or fill mode (`RigReport::unmodelled_blits`): the
@@ -353,6 +355,33 @@ blitter wait `h0+$2a1c` (BLTBUSY set never clears: a hang). Measured 2026-11-05,
 - 2026-11-05, T38: `h0+$2e0e` with `h0_2e0e`: pass on try 2 (try 1 differed on 9 of 2 000 states),
   9 772 tokens in, 23 238 out, $0.0056, 180 s, 10 paths.
 
+## Generators: `objects` movement (T54)
+
+`fd-conform/src/gen/objects_move.rs`, one generator per T54 entry of `re/translate.toml`, named as
+there: the slots' movement `h0_2fae`, its per-slot body `h0_2fea`, the step-table helpers `h0_320a`,
+`h0_3222`, `h0_32f8`, `h0_3322`, the `collision_map` probes `h0_3530`, `h0_3566`, `h0_35a0`,
+`h0_35dc`, and the sort by y `h0_3698`. They read the five slots (flags `h0+$67da`; x, y, kind words,
+a direction byte and a step counter at `h0+$67ec`), the slot index `h0+$2faa` (kind 7, `h0_2fea`
+alone), `char_x` (kind 0) and `collision_map`. A probe reads `((y + dy) & $ff) * $2e + (x' >> 3)` with
+x a level coordinate, so it reaches `$4dd2` bytes past `h3+$fa50`, not only the map's `$2e00`. Each
+slot lays every collision byte its probes can reach after moving up to 5 pixels, clear or solid at
+even odds. Kinds lean to 0..7, the counter to kind 7's `$1f`/`$20` edge, `char_x` to the slot's
+`x + $10`; the sort's y words come from a few tied values in a third of the states, since its middle
+two compares are `cmp.b`.
+
+`tests/gen_objects_move.rs` checks them as `gen_rest.rs` does T39's: 2 000 states with no hang,
+fault or unmodelled blit; every conditional branch of the flow, callees included, both ways through
+a detour stub (first on the first 200 states, the full 2 000 only if a way is unseen); no poke outside
+what the routine reads. No branch is unreachable. Measured 2026-11-05:
+
+| Generator | `RigReport::paths` | Branches | Fewest states one way |
+|---|---|---|---|
+| `h0_2fae` | 211 | 21 | 307 |
+| `h0_2fea` | 23 | 19 | 83 |
+| `h0_320a`, `h0_3222`, `h0_32f8`, `h0_3322` | 1 each | 0 | |
+| `h0_3530`, `h0_3566`, `h0_35a0`, `h0_35dc` | 2 each | 1 each | 960 |
+| `h0_3698` | 15 | 5 | 1 085 |
+
 ## Generators: `rest` (T39)
 
 `fd-conform/src/gen/rest.rs`, one generator for each of the six `gen_task = "T39"` entries, named as
@@ -428,3 +457,30 @@ Measured 2026-11-05, 2 000 states each, all returned, no hang, fault or unmodell
 | `h0_6882` | 98 | 13 | 0 |
 
 `cargo test -p fd-conform --test gen_edge_redraw -- --nocapture` prints each branch's counts.
+
+## Generators: `character`, second share (T53)
+
+`fd-conform/src/gen/character_anim.rs`, one generator per T53 entry of `re/translate.toml`, named as
+there. The four walk-frame pickers read `h0+$4be4` (walk counter, wraps at `$28`), `$4ece` (facing),
+`$4ed1` and bits 0-1 of `$4ed2`, drawn as T35's `character::Var` draws them; the pointer tables they
+copy into `char_anim_ptr` are the program's and are not poked. `read_joystick` reads JOY1DAT (a
+hardware read: half the states only bits 9, 8, 1, 0, half any word) and `input_log_index` (0 to
+`$2ee0`, leaning to full and one short of it). No base.
+
+`fd-conform/tests/gen_character_anim.rs` proves them as `gen_character.rs` does, by detouring each
+branch through a trapping stub. `read_joystick`'s `beq.b`s, and its `beq.w`s out of a `bra.w`'s
+reach of free memory, are detoured with the instruction before them moved into the stub; a test
+checks a non-trapping detour runs as the plain program. No branch is unreachable. Measured
+2026-11-05, 2 000 states each, no hang or fault:
+
+| Generator | `RigReport::paths` | Branches |
+|---|---|---|
+| `char_step_4be6` | 2 | 1 |
+| `h0_4c28` | 2 | 1 |
+| `h0_4c6a` | 6 | 11 |
+| `h0_4d32` | 1 | 1 |
+| `h0_4d54` | 1 | 1 |
+| `read_joystick` | 10 | 9 |
+
+`h0_4d32`'s and `h0_4d54`'s one path covers their branch both ways: each way runs one `move.l` and
+an `rts`.

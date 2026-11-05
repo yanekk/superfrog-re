@@ -1,0 +1,148 @@
+# 10 — The object system, W1-1 measured
+
+What each value of W1-1's object map (`_MapaBobow1`, [05](05-file-formats.md)) does, measured on the
+oracle (plan `forest-dumb-level-1`, T21, 2026-11-05). The kept evidence is
+`engine/crates/fd-conform/tests/object_claims.rs`; the list with each value's porting task is
+[`re/objects-W1-1.toml`](../re/objects-W1-1.toml), which `fd-conform/tests/ported.rs` checks against the map.
+Addresses are `hN+$x` ([07](07-executable-map.md)); routine names are `re/translate.toml`'s.
+
+## How it was measured
+
+One scripted run per claim, from the level sync point ([09](09-play-measured.md)): hold right, and the
+character slides down the first slope from `W1-1:7,7` to `W1-1:42,35`, where a wall stops it at pass ~135
+(x 669, y 553). The edge redraws bring new cells into view as it goes. A value either lies on that path
+as shipped (**walk**: values 1 and 6), or is poked into a cell on the path at the sync point, before the
+cell is in view, so the original's own code meets it (**placed**). T31's counter shows each entry point
+ran; the state after the run shows the effect. The cells: `W1-1:24,20` (the body, pass ~71), `W1-1:28,23`
+(a creature ahead, pass ~83), `W1-1:36,30` (under the feet, pass ~107, while `h0+$4ed0` is set). One run
+takes about 0.3 s from the cached sync point.
+
+## Every value in W1-1
+
+Every non-zero value of the 240 used columns (tested). "Entry" is where the value first acts: the scan
+in the edge redraws (`redraw_edge_a..d`, hunk 0 `$9b2`, `$c92` and their twins) dispatches on the value by
+compares, never through a table.
+
+| Value | Count | Example | Group | Entry | What it does | Seen how |
+|---|---|---|---|---|---|---|
+| `$01` | 77 | `W1-1:2,89` | creature | `h0_681c` | creature kind 0; reading: flies at the character on a 32-step path | walk, `W1-1:26,19` |
+| `$02` | 16 | `W1-1:9,92` | creature | `h0_681c` | creature kind 1; reading: walks a pixel a pass, turning on `collision_map` probes | placed |
+| `$03` | 15 | `W1-1:5,92` | creature | `h0_681c` | creature kind 2; reading: walks on a speed table | placed |
+| `$04` | 21 | `W1-1:6,40` | creature | `h0_681c` | creature kind 3; reading: hops on x and y tables | placed |
+| `$05` | 4 | `W1-1:45,92` | creature | `h0_681c` | creature kind 4; reading: walks on a speed table | placed |
+| `$06` | 30 | `W1-1:30,11` | creature | `h0_681c` | creature kind 5; reading: walks on a speed table | walk, `W1-1:30,11` |
+| `$10` | 2 | `W1-1:222,56` | spring | `h0_24ce` | spring, left half: throws the character up | placed |
+| `$11` | 1 | `W1-1:224,56` | spring | `h0_24ce` | spring, right half | placed |
+| `$20` | 128 | `W1-1:2,73` | item | `h0_6882`, `h0_26ec` | coin: +100, `items_left` -1 | placed |
+| `$21` | 108 | `W1-1:2,74` | item | `h0_6882`, `h0_26ec` | coin, spin one frame on | placed |
+| `$22` | 51 | `W1-1:23,72` | item | `h0_6882`, `h0_26ec` | coin, two frames on | placed |
+| `$23` | 45 | `W1-1:2,77` | item | `h0_6882`, `h0_26ec` | coin, three frames on | placed |
+| `$28` | 11 | `W1-1:136,66` | water | `h0_6882` | animated water surface; no state | placed |
+| `$30` | 8 | `W1-1:22,86` | vanishing block | `h0_6882` | fades out and back; solid while shown | placed |
+| `$31` | 8 | `W1-1:25,86` | vanishing block | `h0_6882` | a quarter cycle on | placed |
+| `$32` | 7 | `W1-1:22,80` | vanishing block | `h0_6882` | half a cycle on | placed |
+| `$33` | 3 | `W1-1:25,80` | vanishing block | `h0_6882` | three quarters on | placed |
+| `$40` | 200 | `W1-1:2,37` | bonus | `h0_a06` etc., `h0_26ec` | orange: +20 | placed |
+| `$41` | 129 | `W1-1:2,38` | bonus | as `$40` | apple: +30 | placed |
+| `$42` | 105 | `W1-1:2,39` | bonus | as `$40` | cherries: +40 | placed |
+| `$43` | 1 | `W1-1:172,58` | bonus | as `$40` | pear: +50 | placed |
+| `$44` | 13 | `W1-1:11,91` | bonus | as `$40` | banana: +60 | placed |
+| `$48` | 34 | `W1-1:6,24` | bonus | as `$40` | diamond: +100 | placed |
+| `$ff` | 6 | `W1-1:207,91` | exit | `h0_26ec` | sets `level_exit_touched` | placed |
+
+Scores are BCD (`score_add`), so `+20` is `$20`. The fruit names are read off `_ELEMENTY`'s second row.
+
+## Each group
+
+**Creatures (1 to 6).** When an edge redraw brings the cell into view, `h0_681c` finds a free slot of
+five and `h0_6852` fills it: `creature_slots` (`h0+$67ec`, 8 bytes each: x.w, y.w, kind.w, direction.b,
+phase.b), kind `value - 1`, direction +1 or -1 by which half of the view the cell is in; `creature_active`
+(`h0+$67da`) flags it. The cell is cleared; with no free slot it stays and is met again next time.
+Measured: spawn, the slot's kind, and `h0_2fea`'s branch for that kind running every pass. Every pass
+`h0_2fae` runs `h0_2fea` on each active slot, which branches on kind (compares, no table): kinds 0 to 5
+move, kind 7 counts its phase to `$20` and frees the slot. When a creature leaves the view, `h0_2dd6`
+(`h0_2e0e`) writes `kind + 1` back into the map near it and frees the slot (measured: counter, map
+cell). `h0_3698` sorts the slots by y for drawing; `h0_5820` cuts them onto the screen and `h0_5e44`
+restores behind them. Kind 6's frame table points at blank frames ([06](06-graphics-and-rendering.md)), and
+no value spawns it. The movements per kind are readings of the listing; T24 measures them by porting.
+
+**Contact is not measured.** `char_hit_check` reads CLXDAT (`$dff00e`, its bits 1 and 2: odd bitplanes
+against sprites 0 and 2), not a box test. CLXCON is `$37dd` from the play copper list (`h1+$118`): a
+playfield pixel of colour 21, 23, 29 or 31 under the character's sprites. With contact and `h0+$4ed0`
+set, `h0_3dd8` tests each creature's 48 x 32 box against the character; a hit creature becomes kind 7
+and scores 250. Otherwise `hits_taken` counts contact passes, cleared on any pass without, and the third
+in a row costs a life. Those colours are also in 134 of W1-1's 328 tiles (9 975 cells), in the coin and
+water frames and in `_ZNIKAJKA1`, so terrain and items can hurt too. vAmiga leaves sprite-to-playfield
+collision off (`DENISE_CLX_SPR_PLF`) and `amiga-oracle` never sets it: on the oracle CLXDAT is always
+`$8000` (tested), and nothing ever touches the character. T59 turns it on and measures contact.
+
+**Springs (`$10` to `$13`).** `h0_24ce` reads the cell under the feet (`char_x + $e`, `char_y + $23`) each
+pass, only while `h0+$4ed0` is set and `h0+$4b62` is clear (measured: the same spring with the flag clear
+does nothing). It sets `h0+$4ecf` and `h0+$41b6`, which `char_step` takes as a throw, and marks the spring's
+position; `$10` and `$12` take the redraw origin 14 pixels right of `char_x`, `$11` and `$13` 2 left, and
+`$12`, `$13` set `h0+$21be`. Six passes later `h0_21c0` redraws the 2 x 2 tiles there and starts a sound.
+Measured: the character thrown up to y 264 instead of sliding on. The cell stays, so a spring fires
+again. The picture is `_WYBIJACZKA`.
+
+**Items (`$20` to `$27`).** In view, `h0_6882` adds the cell to `h0_62b6`'s animated cells (four lists of
+12 at `h2+$1680`, positions and values at `h2+$16b0`; the shortest list takes it). Each pass `h0_62b6`
+drops cells whose map value is gone or that left the view, and draws `_ELEMENTY` frame
+`(value - $20 + tick) & 7`, the tick at `h0+$62b2` stepping every fourth pass. `char_object_cells` reads
+the cells at `char_y + $19` and `char_y + 9`, column `char_x + $e`: `h0_26ec` takes an item, clears the
+cell, redraws its tile (`h0_29ca`), adds 100 and takes one from `items_left`. W1-1 holds 332 items;
+`items_left` starts at 282 (set by `load_list_world_1`), so 50 are spare. `h0+$7a9e` counts `$20`-`$27`
+over the whole map but is not what sets `items_left`.
+
+**Water (`$28`) and the other animated cells.** `$28` draws `_ELEMENTY` frames 8 and 9, or 8 to 11 when
+`h0+$6342` is set; `$2a` frames 10 and 11. `h0_26ec` ignores `$28` to `$3f`, so water changes no state
+except, perhaps, through its pixels' colours (above). `$29`, `$2b` to `$2f` and `$35` to `$3f` end
+`h0_62b6`'s loop for the pass (an `rts` mid-loop); none is in W1-1.
+
+**Vanishing blocks (`$30` to `$33`).** `h0_62b6` draws `_ZNIKAJKA` (32 x 16) at the frame the table at
+`h0+$63ec` gives for `(value - $30) * 16 + tick`, a 64-step cycle, so the four values run a quarter apart.
+On every frame but the empty one (offset `$14`) it writes `collision_map` solid (`$fffffff0`, 28 pixels on 8
+lines); on the empty one it clears it. So `collision_map` under a block changes with time: play state.
+`$34` draws `_Plomien` (a flame) and writes nothing; not in W1-1.
+
+**Bonuses (`$40` to `$5f`).** The edge redraw that brings the cell in blits `_ELEMENTY`'s second row,
+frame `value - $40`, into the screen once (`h0_a06`, `h0_ce4`, `h0_104c`, `h0_1390`, one per edge). Taken by
+`h0_26ec`: the cell cleared, the tile redrawn, the score raised by `$20` to `$5000` by value; `$4c` instead
+adds 100 to `countdown` with its own sound. Only `$40`-`$44` and `$48` are in W1-1.
+
+**The exit (`$ff`).** See [09](09-play-measured.md), "Level end". The scan in the edge redraws also stops
+at a `$ff` cell. Measured here: `level_exit_touched` set on each pass on it, nothing else with items left.
+
+## Values W1-1 does not hold
+
+Read, not measured: `7` to `$f` and `$14` to `$1f` are skipped by the scan and by `h0_24ce`; `$12`, `$13`
+are springs, `$24` to `$27` coins, `$2a` water, `$34` a flame, `$45` to `$4b` and `$4d` to `$50` bonuses,
+`$4c` time. The placed runs measured `$12` and `$13` too.
+
+## Mechanics in W1-1
+
+| Mechanic | Spot | Values |
+|---|---|---|
+| Springs | `W1-1:222,56` to `224,56` | `$10`, `$10`, `$11` |
+| Vanishing blocks | `W1-1:22,86`, `25,86`, `22,80`, `25,80`, and on to `W1-1:195,27` | `$30` to `$33`, 26 cells |
+| Water | `W1-1:136,66` to `141,66` | `$28`, 11 cells |
+| Exit | `W1-1:207,91` to `208,93` | `$ff`, 6 cells |
+| Countdown | the whole level: 999 at start, -1 every 63 passes, game over at 0 ([09](09-play-measured.md)); measured falling while sliding | none |
+| Contact damage | creatures and colour 21, 23, 29, 31 pixels | not measurable until T59 |
+
+## Freezing objects (DESIGN §2.2)
+
+`fd-conform/src/freeze.rs` returns at once (`rts`) from `h0_681c` (no creature ever spawns), `h0_6882` (no
+animated cell, so no coin, water or block drawn and no block writes `collision_map`), the four bonus
+blits, `h0_26ec` (nothing taken, and no exit) and `h0_24ce` (no spring). Measured: with all of them
+frozen, a creature, coin, bonus, block and spring placed on the slide do nothing and the character
+ends where it does on an empty map. Left running: the per-pass creature loop over empty slots and
+`char_hit_check`, harmless while the oracle reports no collision.
+
+## No dispatch tables
+
+The plan expected object routines reached only through dispatch tables, outside T34's call-tree scan
+(DESIGN §4.3). There are none: the scan and `h0_2fea` dispatch by compares, `char_object_cells` and
+`h0_24ce` by compares, `h0_62b6` by compares and a frame table of data. Every routine the values run
+through is already in `re/translate.toml`, so T21 appended nothing to it and T49 has no routine to
+translate. The four `jmp (an)` in the program (`h0+$435bc`, `h4+$12ddc`, `h4+$19a66`, `h4+$19bc2`) are
+outside play's call tree.

@@ -53,7 +53,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T18 | map-page-toolkit-move | T17 | ✅ | |
 | T19 | map-page | T11, T18 | ⬜ | |
 | T20 | planner-level-1 | T11, T17, T19 | ⬜ | |
-| T21 | object-meanings | T05, T06, T32 | ⬜ | |
+| T21 | object-meanings | T05, T06, T32 | ✅ | |
 | T49 | translate-objects | T21, T38, T40 | ⬜ | |
 | T22 | collectibles | T11, T20, T21, T40, T49 | ⬜ | |
 | T23 | lives-and-game-over | T11, T13, T14, T20 | ⬜ | |
@@ -70,12 +70,13 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T50 | sf-menus-os-test-stale | — | ✅ | |
 | T51 | character-anim-input | T07, T40; blocks T08 | ⬜ | |
 | T52 | creature-drawing | T10, T22; blocks T46 | ⬜ | |
-| T53 | gen-character-2 | T33, T34; blocks T40 | ⬜ | |
-| T54 | gen-objects-2 | T33, T34; blocks T40 | ⬜ | |
+| T53 | gen-character-2 | T33, T34; blocks T40 | ✅ | |
+| T54 | gen-objects-2 | T33, T34; blocks T40 | ✅ | |
 | T55 | edge-redraw | T09; blocks T10, T41, T42, T43 | ⬜ | |
 | T56 | gen-edge-redraw | T33, T34; blocks T40 | ✅ | Review: one fix, a test refusing a second registration of a T56 name (spike's would win silently). Branch list re-derived from `call_tree.py`'s flow decoder, matches exactly; mutations ($8000 x, DMACONR bit 6 set, READS less CELL_FLAGS) each went red; path counts reproduced; smoke subset 4.6 s unoptimised. |
 | T57 | sf-scale-fullscreen-os-test | — | ⬜ | |
-| T58 | translate-btst-fix | T33; blocks T40 | ⬜ | |
+| T58 | translate-btst-fix | T33; blocks T40 | ✅ | |
+| T59 | oracle-sprite-collision | T21; blocks T24, T41, T42, T43, T44, T45, T46, T47 | ⬜ | |
 
 **Review queue:** *(empty)*
 
