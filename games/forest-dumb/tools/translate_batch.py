@@ -11,8 +11,8 @@ Their model calls overlap; their judge builds and runs take turns, since transla
 callee has its result: all passed, or it is `blocked`.
 
 The cap is this run's spend. Each routine gets min($0.10, what is left less what running routines may
-still spend); when that is less than one call's worst case, nothing more starts, and every routine not
-started is `not-attempted`. translate.py itself starts no call past the cap it is given.
+still spend); when that is less than one call's worst case, the next routine waits for a running one to
+finish, and with none running nothing more starts and every routine not started is `not-attempted`. translate.py itself starts no call past the cap it is given.
 
 `--resume` keeps every row of <out>/batch.json that finished (pass with its port on disk, fail,
 too-big, no-oracle, no-gen) and runs only the rest. Without it the batch starts afresh.
@@ -161,8 +161,11 @@ def run_batch(todo, out, max_usd, parallel=8, resume=False, runner=run_one, min_
                     with lock:
                         budget = min(PER_ROUTINE_USD, max_usd - batch['spent'] - sum(reserved.values()))
                     if budget <= 0 or budget < min_call:
-                        # Nothing starts that the cap could not pay for; what runs finishes.
-                        capped = True
+                        # Short only because of what running routines reserved: wait, since they
+                        # usually spend far less. Short with nothing running is the cap itself:
+                        # nothing more starts.
+                        if not running:
+                            capped = True
                         continue
                     reserved[e['label']] = budget
                     running[pool.submit(runner, e, budget, out)] = (e, clock())

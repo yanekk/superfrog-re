@@ -109,6 +109,16 @@ class Batch(unittest.TestCase):
         self.assertEqual(len(stub.calls), 4)
         self.assertEqual(sum(1 for r in batch['rows'].values() if r['result'] == 'not-attempted'), 4)
 
+    def test_a_reservation_short_of_the_cap_waits_instead_of_stopping_the_run(self):
+        # Eight at once reserve $0.10 each against $0.35, but each spends $0.01: once the first
+        # four finish there is money for the rest, so nothing is not-attempted.
+        todo = [entry(0x10 * i) for i in range(1, 9)]
+        stub = Stub(self.out, usd=0.01)
+        batch = b.run_batch(todo, self.out, max_usd=0.35, parallel=8, runner=stub, min_call=0.02)
+        self.assertEqual(len(stub.calls), 8)
+        self.assertEqual(set(self.results(batch).values()), {'pass'})
+        self.assertLessEqual(batch['spent'], 0.35)
+
     def test_a_call_translate_refuses_for_the_cap_is_not_attempted(self):
         stub = Stub(self.out, {'h0+$10': {'result': 'fail', 'tries': 0, 'stopped': 'max-usd', 'usd': 0.0}})
         batch = b.run_batch([entry(0x10), entry(0x20)], self.out, 5, parallel=1, runner=stub)

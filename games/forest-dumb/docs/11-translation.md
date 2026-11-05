@@ -501,8 +501,8 @@ python3 -I games/forest-dumb/tools/translate_batch.py --max-usd 5 [--parallel 8]
   up to `--parallel` at once. Model calls overlap; judge builds and runs take turns on `judge.lock`.
 - A routine with `split_at` starts once its callees have results: `blocked` unless all passed.
 - The cap is the run's own spend. Each routine gets min($0.10, what is left less what running routines
-  may still spend); below one call's worst case (96 000 answer tokens) nothing more starts, and the rest
-  are `not-attempted`.
+  may still spend); below one call's worst case (96 000 answer tokens) the next waits for a running one,
+  and with none running nothing more starts and the rest are `not-attempted`.
 - `--resume` keeps the rows of `build/translate/batch.json` that finished (a pass whose `port.rs` is on
   disk, `fail`, `too-big`, `no-oracle`, `no-gen`) and runs the rest.
 - Writes `batch.json` after each routine and `table.md`; prints a one-line summary. Sound has no
