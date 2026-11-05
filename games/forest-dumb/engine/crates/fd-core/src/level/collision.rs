@@ -22,12 +22,24 @@ pub const TAIL: u32 = 0x400;
 pub const ROWS: u32 = 0x3_7b08;
 
 /// The plane's bytes and the row table, as the original holds them.
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Clone, PartialEq, Eq, Hash)]
 pub struct CollisionPlane {
     mem: Arc<Vec<u8>>,
     /// Index of `collision_map`'s first byte in `mem`.
     at: u32,
     rows: Arc<[u32; 256]>,
+}
+
+/// The length only.
+impl std::fmt::Debug for CollisionPlane {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "CollisionPlane({:#x} bytes, map at {:#x})",
+            self.mem.len(),
+            self.at
+        )
+    }
 }
 
 impl CollisionPlane {

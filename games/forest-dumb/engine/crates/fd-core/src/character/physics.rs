@@ -55,7 +55,7 @@ pub struct Motion {
     /// `char_update_t` (`h0+$3e2c`): `char_update`'s sub-step count, 0 after a pass.
     pub update_t: u32,
     /// `char_unhurt_t` (`h0+$9b04`): set to `$9b` when the dying fall lands; contact hurts only once
-    /// it wraps to 0 (T59). `char_hit_check` (T24) counts it.
+    /// it wraps to 0 (T59), and `char_sprite_copy` (T10) blanks frames by it. Counted outside T08.
     pub unhurt_t: u8,
 }
 
@@ -71,7 +71,10 @@ const SLIDE_FAST: u32 = 0x40cb;
 
 /// `char_probe`'s points: (x from `char_x - $10`, y from `char_y`, (window bit, sample) pairs), in
 /// the listing's order.
-const POINTS: [(u32, u32, &[(u32, usize)]); 9] = [
+/// One probe point: x and y offsets, then (window bit, sample) pairs.
+type Point = (u32, u32, &'static [(u32, usize)]);
+
+const POINTS: [Point; 9] = [
     (0x18, 0x28, &[(15, 0), (13, 1), (11, 2)]),
     (0x18, 0x2c, &[(13, 15)]),
     (0x18, 0x27, &[(14, 3), (12, 4)]),
@@ -114,10 +117,10 @@ impl Character<'_> {
         for v in crate::LAYOUT.iter().filter(|v| v.hunk == 0) {
             let k = off.wrapping_sub(v.offset);
             let n = v.width.bytes() as u32;
-            if k < n {
-                if let Some(x) = self.state.get(v.name) {
-                    return (x >> (8 * (n - 1 - k))) as u8;
-                }
+            if k < n
+                && let Some(x) = self.state.get(v.name)
+            {
+                return (x >> (8 * (n - 1 - k))) as u8;
             }
         }
         self.program.byte(off)
@@ -233,7 +236,7 @@ impl Character<'_> {
         }
         let d0 = d0 << 2;
         let table = if self.state.anim.facing & 0x80 != 0 {
-            0x4f64
+            0x4F64 // upper case: the purity lexer reads a trailing `f64` as a float
         } else {
             0x4f10
         };

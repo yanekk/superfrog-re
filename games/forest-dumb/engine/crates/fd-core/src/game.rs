@@ -6,24 +6,45 @@ use std::sync::Arc;
 use amiga_input::FrameInput;
 use fd_assets::{AssetError, Files, Level, read_level};
 
+use crate::character::AnimTables;
+use crate::level::collision::{self, CollisionPlane};
 use crate::level::{self, Dispatch, DrawList, Event, LevelCtx, Object};
+use crate::program::{HUNK_BASES, PROGRAM_FILE, Program};
 use crate::{Mem, Scene, State, Transplant, Var};
 
 /// What the game reads from the disks, at run time: the copyrighted data never enters the repo
-/// (DESIGN §3.1). A task needing a table of the main program adds it here, read through the same
-/// closure.
+/// (DESIGN §3.1). A task needing a table of the main program reads it from [`GameData::program`].
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct GameData {
     /// World 1's level files.
     pub level: Level,
+    /// The main program's hunk 0, relocated as the oracle loads it ([`HUNK_BASES`]), so a pointer
+    /// copied from a table equals the original's (T08).
+    pub program: Program,
+    /// The animation frame tables in it (T51).
+    pub anim: AnimTables,
 }
 
 impl GameData {
-    /// Read everything from `files`, which hands over a file of disk 2 by its name, unpacked. A
-    /// file missing or malformed is an error naming it.
+    /// Read everything from `files`, which hands over a file by its name, unpacked: the level
+    /// files of disk 2, and the main program [`PROGRAM_FILE`] of disk 1. A file missing or
+    /// malformed is an error naming it.
     pub fn read(files: &Files) -> Result<GameData, AssetError> {
+        let level = read_level(1, files)?;
+        let exe = files(PROGRAM_FILE)?;
+        let program = Program::hunk0(fd_assets::loaded_hunk(&exe, PROGRAM_FILE, 0, &HUNK_BASES)?);
+        GameData::new(level, program)
+    }
+
+    /// From the level and hunk 0 as loaded; an error if hunk 0 is too short for the tables.
+    pub fn new(level: Level, program: Program) -> Result<GameData, AssetError> {
+        let anim = AnimTables::from_hunk0(program.bytes()).map_err(|e| {
+            AssetError::new(PROGRAM_FILE, fd_assets::Why::Malformed { at: 0, what: e })
+        })?;
         Ok(GameData {
-            level: read_level(1, files)?,
+            level,
+            program,
+            anim,
         })
     }
 }
@@ -44,12 +65,16 @@ pub struct Game {
     objects: Vec<Object>,
     dispatch: Dispatch,
     events: Vec<Event>,
+    /// The collision plane: empty at a new game until T55's edge redraws draw it; a case takes the
+    /// original's ([`Transplant`]).
+    plane: CollisionPlane,
 }
 
 impl Game {
     pub fn new(data: Arc<GameData>, start: Start) -> Game {
         match start {
             Start::Level1 => Game {
+                plane: CollisionPlane::new(&data.program),
                 data,
                 scene: Scene::Level,
                 state: State::level_1(),
@@ -70,6 +95,9 @@ impl Game {
                 let mut ctx = LevelCtx {
                     state: &mut self.state,
                     level: &self.data.level,
+                    program: &self.data.program,
+                    anim: &self.data.anim,
+                    plane: &self.plane,
                 };
                 level::game_frame(
                     &mut ctx,
@@ -88,6 +116,11 @@ impl Game {
 
     pub fn state(&self) -> &State {
         &self.state
+    }
+
+    /// The collision plane the character probes.
+    pub fn plane(&self) -> &CollisionPlane {
+        &self.plane
     }
 
     pub fn data(&self) -> &Arc<GameData> {
@@ -127,19 +160,23 @@ impl PartialEq for Game {
             && self.state == o.state
             && self.objects == o.objects
             && self.events == o.events
+            && self.plane == o.plane
     }
 }
 
 impl Eq for Game {}
 
 impl Transplant for Game {
-    /// Every `LAYOUT` variable from the original. Objects are not transplanted until T21 measures
-    /// where the original keeps them.
+    /// Every `LAYOUT` variable from the original, and the collision plane (`h3+$fa50` and the
+    /// tail a probe reaches past it). Objects are not transplanted until T21 measures where the
+    /// original keeps them.
     fn transplant(&mut self, mem: &dyn Mem) {
         for v in crate::LAYOUT {
             let known = self.state.set(v.name, mem.value(v));
             debug_assert!(known, "{} is in LAYOUT but not in State", v.name);
         }
+        let plane = self.plane.bytes_mut();
+        plane.copy_from_slice(&mem.read(3, collision::MAP, plane.len()));
     }
 
     fn probe(&self, v: &Var) -> u32 {
@@ -153,6 +190,7 @@ impl Transplant for Game {
 mod tests {
     use super::*;
     use crate::level::{ObjectKind, register};
+    use crate::program::Program;
     use crate::{LAYOUT, Width};
     use amiga_input::Joy;
     use fd_assets::{CollisionMap, LEVEL_ROWS, ObjectMap, TileMap};
@@ -160,24 +198,29 @@ mod tests {
     /// A one-column level: enough for the state and the dispatch, which read no tiles yet.
     fn data() -> Arc<GameData> {
         let cells = LEVEL_ROWS as usize;
-        Arc::new(GameData {
-            level: Level {
-                tiles: TileMap {
-                    columns: 1,
-                    cells: vec![0; cells],
+        Arc::new(
+            GameData::new(
+                Level {
+                    tiles: TileMap {
+                        columns: 1,
+                        cells: vec![0; cells],
+                    },
+                    gens: vec![[0; fd_assets::TILE_BYTES]],
+                    collision: CollisionMap {
+                        columns: 1,
+                        cells: vec![0; cells],
+                    },
+                    shapes: vec![[0; 16]],
+                    objects: ObjectMap {
+                        columns: 1,
+                        cells: vec![0; cells],
+                    },
                 },
-                gens: vec![[0; fd_assets::TILE_BYTES]],
-                collision: CollisionMap {
-                    columns: 1,
-                    cells: vec![0; cells],
-                },
-                shapes: vec![[0; 16]],
-                objects: ObjectMap {
-                    columns: 1,
-                    cells: vec![0; cells],
-                },
-            },
-        })
+                // Every table 0: the character stands on nothing and falls.
+                Program::hunk0(vec![0; 0x3_7f08]),
+            )
+            .unwrap(),
+        )
     }
 
     fn inputs(n: usize) -> impl Iterator<Item = FrameInput> {
@@ -242,18 +285,36 @@ mod tests {
     }
 
     #[test]
-    fn a_step_counts_the_pass_and_changes_nothing_else_yet() {
+    fn a_step_counts_the_pass_reads_the_joystick_and_runs_the_character() {
         let mut g = Game::new(data(), Start::Level1);
         g.step(FrameInput::joy(Joy::RIGHT));
-        let want = State {
-            irq_count: 2,
-            ..State::level_1()
-        };
-        assert_eq!(*g.state(), want);
+        let s = g.state();
+        assert_eq!(s.irq_count, 2);
+        // read_joystick (T51): right held, one more byte in the log.
+        assert_eq!((s.joy.right, s.input_log.index), (1, 2));
+        // char_update (T08): on an empty plane `char_probe_1` is 0, so four sub-steps fall; the
+        // first starts the fall, the next three step it down `h0+$44d4` (all 0 here) and steer
+        // right a pixel each.
+        assert_eq!(s.motion.falling, 1);
+        assert_eq!(s.motion.update_t, 0);
+        assert_eq!((s.char_x, s.char_y), (0x70 + 3, 0x70));
         // The count wraps as the original's word does.
         g.state.irq_count = 0xffff;
         g.step(FrameInput::NONE);
         assert_eq!(g.state().irq_count, 0);
+    }
+
+    #[test]
+    fn paused_runs_nothing_after_the_count() {
+        let mut g = Game::new(data(), Start::Level1);
+        g.state.paused = 1;
+        g.step(FrameInput::joy(Joy::RIGHT));
+        let want = State {
+            irq_count: 2,
+            paused: 1,
+            ..State::level_1()
+        };
+        assert_eq!(*g.state(), want);
     }
 
     #[test]
@@ -309,7 +370,7 @@ mod tests {
     impl Mem for Bytes {
         /// Byte `k` of every variable is `k + 1`, whatever its address.
         fn read(&self, _hunk: u8, _offset: u32, len: usize) -> Vec<u8> {
-            (1..=len as u8).collect()
+            (1..=len).map(|k| k as u8).collect()
         }
     }
 
@@ -325,6 +386,8 @@ mod tests {
             };
             assert_eq!(g.probe(v), want, "{}", v.name);
         }
+        // The plane's first long is bytes 1..4.
+        assert_eq!(g.plane().window(0, 0), 0x0102);
     }
 
     #[test]

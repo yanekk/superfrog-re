@@ -24,11 +24,23 @@ pub const fn h(hunk: usize, off: u32) -> u32 {
 }
 
 /// Bytes the original reads as data, addressed by hunk 0 offset.
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Clone, PartialEq, Eq, Hash)]
 pub struct Program {
     mem: Arc<Vec<u8>>,
     /// Index of `h0+$0` in `mem`.
     at: u32,
+}
+
+/// The length only: hunk 0 is 376 KB.
+impl std::fmt::Debug for Program {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "Program({:#x} bytes, h0 at {:#x})",
+            self.mem.len(),
+            self.at
+        )
+    }
 }
 
 impl Program {

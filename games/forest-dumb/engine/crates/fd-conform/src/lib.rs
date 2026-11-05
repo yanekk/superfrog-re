@@ -42,7 +42,7 @@ pub use coverage::Coverage;
 /// (it shares the boot up to the title)
 /// (`docs/07-executable-map.md`). AmigaDOS picks them when the program loads, so another boot may
 /// differ; there a wrong base shows as a comparison failing on its first change.
-pub const HUNK_BASES: [u32; 5] = [0xc0_77d8, 0x1_0178, 0x1_1400, 0x1_2c38, 0x4_d668];
+pub const HUNK_BASES: [u32; 5] = fd_core::HUNK_BASES;
 
 /// The display window a level case compares, in DIWSTRT/DIWSTOP's encoding: the play area's top
 /// (line 47), the status bar's left, right and bottom (lores 129..449, to line 297). The copper
@@ -137,7 +137,13 @@ pub fn game_data() -> Result<Arc<GameData>, String> {
 /// [`game_data`] from the zips in `dir`.
 pub fn game_data_in(dir: &Path) -> Result<Arc<GameData>, String> {
     let files = |name: &str| {
-        fd_tools::game_file(dir, &format!("disk2/{name}"))
+        // The main program is disk 1's; every level file is disk 2's.
+        let disk = if name == fd_core::program::PROGRAM_FILE {
+            1
+        } else {
+            2
+        };
+        fd_tools::game_file(dir, &format!("disk{disk}/{name}"))
             .map_err(|e| fd_assets::AssetError::missing(name, e))
     };
     GameData::read(&files)

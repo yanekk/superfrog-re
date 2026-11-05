@@ -78,7 +78,14 @@ impl State {
             // Idle: play's first pass read no direction and appended its one byte, 0.
             joy: JoyFlags::default(),
             input_log: InputLog::at(1),
-            motion: Motion::default(),
+            // Measured at the sync point (`level_entry.rs`). `char_update_t` is 3 there, not the 0
+            // a whole `char_update` leaves: why is not known. `char_unhurt_t` is counted by a routine
+            // another task ports (T59: contact hurts once it wraps to 0). The rest are 0.
+            motion: Motion {
+                update_t: 3,
+                unhurt_t: 0x9c,
+                ..Motion::default()
+            },
         }
     }
 
