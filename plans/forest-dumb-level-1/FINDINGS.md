@@ -6,6 +6,7 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-11-05 | 📌 | T58 added by T35 with the owner's yes: fix `flow_text` following `btst` as a branch before T40 (`blocks T40`), fix commit with `Escape: forest-dumb-level-1 T33`. |
 | 2026-11-05 | 🐞 | T35: `translate.py` `flow_text` follows `btst.b #n,<label>` as a branch (opcode starts with `b`), runs into data at `h0+$4ed2` and `char_probe`: `h0_3ea8`, `h0_4718`, `h0_48be`, `h0_4b0e` size 295-371, so T40 gets `too-big`. |
 | 2026-11-05 | 📌 | T35 live call, worker action: `translate.py 'h0+$4274' --gen h0_4274` passed on try 1, 1 482 tokens in, 4 299 out, $0.0010, 6 paths. |
 | 2026-11-05 | 📌 | T33 live call, worker action: `translate.py 'h0+$5462' --gen char_sprite_position` passed on try 1: 1 629 tokens in, 7 897 out (7 131 reasoning), $0.0017, 67 s, 4 paths. |

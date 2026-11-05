@@ -74,6 +74,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T54 | gen-objects-2 | T33, T34; blocks T40 | ⬜ | |
 | T55 | edge-redraw | T09; blocks T10, T41, T42, T43 | ⬜ | |
 | T56 | gen-edge-redraw | T33, T34; blocks T40 | ⬜ | |
+| T58 | translate-btst-fix | T33; blocks T40 | ⬜ | |
 
 **Review queue:** T35
 
