@@ -19,7 +19,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 |---|---|---|---|---|
 | T00 | measure-play | — | ⬜ | |
 | T01 | smoke-room | — | ⬜ | |
-| T02 | route-pin | — | 🔍 | `sf-plan/tests/route_pin.rs`, 4 tests, pins in `tests/pins/routes.txt`. Short pins: 6 rounds, straight and walk compass, W1-1 seeds 1-2 and W2-1; W1-1 exit pin `#[ignore]`d. Smoke, 21-23 s, own `[[area]]`. Deviation: route hash includes rounds, cells, frames and reason, not inputs only. Smoke near 900 s; T01 makes room. |
+| T02 | route-pin | — | ✅ | Review clean, no fix commit. Ran the short pins (21 s dev) and the ignored W1-1 exit pin (release, holds); swapping DOWN and FIRE in ACTS moved all three short pins; smoke label check green. Pins hash rounds, cells and frames too, so a counting change re-pins. Smoke near 900 s until T01. |
 | T31 | code-ran-counter | — | ⬜ | |
 | T32 | routine-rig | — | ⬜ | |
 | T03 | level-sync | T00 | ⬜ | |
@@ -68,7 +68,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T28 | finish-end-to-end | T16, T48 | ⬜ | |
 | T29 | level-drill | T15, T28 | ⬜ | |
 
-**Review queue:** T02
+**Review queue:** *(empty)*
 
 ## Blocked on the user
 
