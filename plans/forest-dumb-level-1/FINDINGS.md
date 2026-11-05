@@ -10,6 +10,7 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 | 2026-11-05 | 📌 | T37 live call, worker action: `translate.py 'h0+$9754' --gen h0_9754` passed on try 1: 2 177 tokens in, 8 052 out, $0.0018, 81 s, 2 paths. |
 | 2026-11-05 | 🐞 | T39: `translate.py 'game_frame'` exits 2: `flow_text` cuts at listing labels and split callee `h0+$2c7e` has none (T34's lost-step sweep). T40 needs a label there or `call_tree.py`'s decoding. |
 | 2026-11-05 | 📌 | T39 live call, worker action: `translate.py play_keys --gen play_keys` passed on try 1, 1 716 tokens in, 4 349 out, $0.0010, 43 s, 5 paths. |
+| 2026-11-05 | 📌 | T53: a `Bcc.b`, or a `Bcc.w` beyond a `bra.w` of free memory (past about `h0+$6800`), is detoured by moving the instruction before it into the stub behind a `jmp`; `tests/gen_character_anim.rs` has the helper and its check. |
 | 2026-11-05 | 📌 | T38: the rig's VHPOSR steps every read, so raster-wait `beq`s (`h0+$265e`, `$3af2`) never go taken; BLTBUSY set hangs `h0+$2a1c`. Write-only cells (`h0+$4710`, slot flags in `h0_2e0e`) are not poked, so an omitted clear passes where the program's byte is already 0. |
 | 2026-11-05 | 📌 | T58 added by T35 with the owner's yes: fix `flow_text` following `btst` as a branch before T40 (`blocks T40`), fix commit with `Escape: forest-dumb-level-1 T33`. |
 | 2026-11-05 | 🐞 | T35: `translate.py` `flow_text` follows `btst.b #n,<label>` as a branch (opcode starts with `b`), runs into data at `h0+$4ed2` and `char_probe`: `h0_3ea8`, `h0_4718`, `h0_48be`, `h0_4b0e` size 295-371, so T40 gets `too-big`. |
