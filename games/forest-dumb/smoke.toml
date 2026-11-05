@@ -20,6 +20,7 @@ workspace = "engine"
 "crates/fd-tools/tests/exe_map_claims.rs" = "smoke"
 "crates/fd-tools/tests/locate.rs" = "smoke"
 "crates/fd-tools/tests/real_disks.rs" = "smoke"
+"crates/fd-tools/tests/unpack.rs" = "smoke"
 
 [python]
 "tools/test_find_file_names.py" = "smoke"
@@ -34,3 +35,7 @@ covers = ["crates/fd-tools/tests/real_disks.rs"]
 [[area]]
 name = "its first comparison with the original"
 covers = ["crates/fd-conform/tests/first_case.rs::the_idle_title_matches_the_original_on_every_pass"]
+
+[[area]]
+name = "unpacking its packed files in Rust"
+covers = ["crates/fd-tools/tests/unpack.rs::every_esl_file_unpacks_to_the_sha1_in_the_doc"]

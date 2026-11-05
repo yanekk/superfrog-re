@@ -18,13 +18,13 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | # | Task | Depends on | State | Notes |
 |---|---|---|---|---|
 | T00 | measure-play | — | ✅ | Review: one fix, the timing test's comment named `h0+$20b0` for `countdown_tick` (`$20ac`). Ran the 3 tests (green); fire moved to 6302 turns the sync test red; own probe confirmed lives 32, countdown 999, items 282, `char_screen_x`, P pause freezing play; routine addresses checked on the listing. Owner's Esc decision `read-only`. |
-| T01 | smoke-room | — | ⬜ | |
-| T02 | route-pin | — | ⬜ | |
+| T01 | smoke-room | — | ✅ | |
+| T02 | route-pin | — | ✅ | |
 | T31 | code-ran-counter | — | ⬜ | |
 | T32 | routine-rig | — | ⬜ | |
 | T03 | level-sync | T00 | ⬜ | |
 | T04 | picture-in-play | T00 | ⬜ | |
-| T30 | unpack-in-rust | — | ⬜ | |
+| T30 | unpack-in-rust | — | ✅ | |
 | T05 | level-readers | T03, T04, T30 | ⬜ | |
 | T06 | level-runner | T03, T04, T31, T32 | ⬜ | |
 | T33 | translate-service | T32 | ⬜ | |
