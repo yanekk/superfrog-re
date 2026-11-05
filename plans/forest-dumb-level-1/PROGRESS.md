@@ -9,7 +9,7 @@
 
 **Status:** Amendment read back and its 4 decisions settled; ready to build. Nothing built.
 **Last updated:** 2026-11-05
-**Next `pir-work` will:** review T32 (🔍); then T33, which rests on its rig and generators.
+**Next `pir-work` will:** T33, which rests on T32's rig and generators.
 
 ## Tasks
 
@@ -21,7 +21,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T01 | smoke-room | — | ✅ | |
 | T02 | route-pin | — | ✅ | |
 | T31 | code-ran-counter | — | ⬜ | |
-| T32 | routine-rig | — | 🔍 | Rig, 11 spike generators, empty `PORTED`; 16 tests. Deviations: module `generators` over `src/gen/` (`gen` reserved in Rust 2024); added `RigReport.faults`, `Setup.beam`, `Rig::survey`, `memory_for`, `from_memory`; `Gen` moved to amiga-oracle, sf-conform re-exports it, sequence pinned; `h0+$774` hand port in tests/rig.rs, not `PORTED` (no symbol). |
+| T32 | routine-rig | — | ✅ | Review clean, no fix commit. Probed the port's `Setup.beam` against real VHPOSR byte and word reads; mutated hardware-write order and path counting, both caught. Spike generators diffed against the judge, unchanged; `Gen` byte-identical in the toolkit, sequence pinned. Deviations held (see review commit). |
 | T03 | level-sync | T00 | ✅ | |
 | T04 | picture-in-play | T00 | ⬜ | |
 | T30 | unpack-in-rust | — | ✅ | |
