@@ -441,6 +441,13 @@ mod tests {
     use super::*;
     use amiga_input::{Joy, KeySet};
 
+    /// Cached traces on disk carry this number; `Amiga::picture_in` was added without changing
+    /// what a trace holds, so it stays 2 and no game's cache rebuilds for it.
+    #[test]
+    fn the_trace_format_is_unchanged() {
+        assert_eq!(TRACE_FORMAT, 2);
+    }
+
     #[test]
     fn a_script_holds_each_input_until_the_next() {
         let fire = FrameInput::joy(Joy::FIRE);

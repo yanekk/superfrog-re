@@ -23,7 +23,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T31 | code-ran-counter | — | ⬜ | |
 | T32 | routine-rig | — | ✅ | Review clean, no fix commit. Probed the port's `Setup.beam` against real VHPOSR byte and word reads; mutated hardware-write order and path counting, both caught. Spike generators diffed against the judge, unchanged; `Gen` byte-identical in the toolkit, sequence pinned. Deviations held (see review commit). |
 | T03 | level-sync | T00 | ✅ | |
-| T04 | picture-in-play | T00 | ⬜ | |
+| T04 | picture-in-play | T00 | ✅ | |
 | T30 | unpack-in-rust | — | ✅ | |
 | T05 | level-readers | T03, T04, T30 | ⬜ | |
 | T06 | level-runner | T03, T04, T31, T32 | ⬜ | |

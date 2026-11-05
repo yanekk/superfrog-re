@@ -717,14 +717,25 @@ impl Amiga {
     }
 
     fn picture(&self) -> Rgb12Frame {
-        let (mut stride, mut rows) = (0usize, 0usize);
         let (mut strt, mut stop) = (0u16, 0u16);
+        unsafe { ffi::amiga_diw(self.raw, &mut strt, &mut stop) };
+        self.picture_in(strt, stop)
+    }
+
+    /// The last frame's picture inside a window the caller names, in DIWSTRT/DIWSTOP's OCS
+    /// encoding, rather than the one the registers hold at the end of the frame. A game that
+    /// reloads DIW mid-frame (a play area over a status bar, from the copper) leaves only the
+    /// last window in the registers, so the whole picture needs a window spanning both. Parts
+    /// outside the core's texture are cut off; a window that is empty or inverted gives an empty
+    /// frame, never a panic. learned on: Forest Dumb, whose play shows only its 320 x 56 status
+    /// bar through the frame-end window.
+    pub fn picture_in(&self, diwstrt: u16, diwstop: u16) -> Rgb12Frame {
+        let (mut stride, mut rows) = (0usize, 0usize);
         let tex = unsafe {
-            ffi::amiga_diw(self.raw, &mut strt, &mut stop);
             let p = ffi::amiga_texture(self.raw, &mut stride, &mut rows);
             std::slice::from_raw_parts(p, stride * rows)
         };
-        crop(tex, stride, rows, strt, stop)
+        crop(tex, stride, rows, diwstrt, diwstop)
     }
 }
 
@@ -808,6 +819,45 @@ mod tests {
         let big = vec![0u32; 1824 * 313];
         let f = crop(&big, 1824, 313, 0x2C81, 0x2CC1);
         assert_eq!((f.left, f.top, f.width, f.height), (0x81, 0x2C, 320, 256));
+    }
+
+    #[test]
+    fn odd_and_empty_windows_crop_to_empty_frames_without_panicking() {
+        let (stride, rows) = (1824, 313);
+        let tex = vec![0xFF00_0000u32; stride * rows];
+        // inverted, zero-height, start past the texture's last line and column, all bits set
+        for (strt, stop) in [
+            (0xF081, 0x80C1),
+            (0x2C81, 0x2CC1),
+            (0x2C81, 0x2C81),
+            (0xFFFF, 0x0000),
+            (0x0000, 0x0000),
+            (0xFFFF, 0xFFFF),
+            (0xF1FF, 0x29C1),
+        ] {
+            let f = crop(&tex, stride, rows, strt, stop);
+            assert_eq!(f.pixels.len(), f.width as usize * f.height as usize);
+        }
+        // stop's V8 is NOT V7, so 0xFFFF..0x0000 is the single pixel (0xFF, 0xFF); 0xFF00 empties it
+        let f = crop(&tex, stride, rows, 0xFFFF, 0x0000);
+        assert_eq!((f.left, f.top, f.width, f.height), (0xFF, 0xFF, 1, 1));
+        assert_eq!(crop(&tex, stride, rows, 0xFFFF, 0xFF00).pixels.len(), 0);
+        // stop H8 is always set, so only the lines can invert: V 0xF0 down to 0x80
+        assert_eq!(crop(&tex, stride, rows, 0xF081, 0x80C1).pixels.len(), 0);
+        // a sweep of the high and low bytes: every window stays inside the texture
+        for strt in (0..=0xFFFFu16).step_by(0x0F0F) {
+            for stop in (0..=0xFFFFu16).step_by(0x0F0F) {
+                let f = crop(&tex, stride, rows, strt, stop);
+                assert!(f.top as usize + f.height as usize <= rows);
+                assert!(f.left as usize + f.width as usize <= stride / PER_LORES + FIRST_H);
+            }
+        }
+        // a window spanning a play area over a status bar, lines 0x2F to 0x129
+        let f = crop(&tex, stride, rows, 0x2F81, 0x29C1);
+        assert_eq!(
+            (f.left, f.top, f.width, f.height),
+            (0x81, 0x2F, 320, 0x129 - 0x2F)
+        );
     }
 
     #[test]
