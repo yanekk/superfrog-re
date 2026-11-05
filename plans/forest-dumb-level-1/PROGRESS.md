@@ -9,7 +9,7 @@
 
 **Status:** Amendment read back and its 4 decisions settled; ready to build. Nothing built.
 **Last updated:** 2026-11-05
-**Next `pir-work` will:** review T39; T40 waits on T37, T38, T53, T54, T56 and T58.
+**Next `pir-work` will:** T40 waits on T37, T38, T53, T54, T56 and T58.
 
 ## Tasks
 
@@ -33,7 +33,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T36 | gen-camera | T33, T34 | ✅ | |
 | T37 | gen-drawing | T33, T34 | ⬜ | |
 | T38 | gen-objects | T33, T34 | ⬜ | |
-| T39 | gen-rest | T33, T34 | 🔍 | 6 generators in `gen/rest.rs`, 4 tests in `gen_rest.rs` (smoke, 2 s); every branch both ways; `play_keys` passed `translate.py` try 1. Deviations: `game_frame`'s base is the sync point's whole RAM, the play state its split callees read; its one branch is trapped in place, not detoured, since no free memory near it is known. |
+| T39 | gen-rest | T33, T34 | ✅ | Review clean, no fix commit. Branch lists checked against the listing, all six match; mutations (never paused, BCD never zero, index poke shifted) each went red. Reran `fd-judge` surveys and `translate.py esc_key` (pass, try 1). Rig's `sr = $2700` read-only. |
 | T40 | batch-translate | T35, T36, T37, T38, T39 | ⬜ | |
 | T07 | level-entry | T05, T06, T32 | ✅ | |
 | T08 | character-movement | T07, T40 | ⬜ | |
@@ -77,7 +77,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T57 | sf-scale-fullscreen-os-test | — | ⬜ | |
 | T58 | translate-btst-fix | T33; blocks T40 | ⬜ | |
 
-**Review queue:** T39
+**Review queue:** empty
 
 ## Blocked on the user
 
