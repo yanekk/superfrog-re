@@ -45,3 +45,7 @@ opt-level = 2
 # The route planner (fd-plan, from T20): its explorer steps the engine every frame of every burst.
 [profile.dev.package.amiga-plan]
 opt-level = 2
+
+# The route page writer (the map page, from T19): it writes a whole level's tiles and track.
+[profile.dev.package.amiga-routeview]
+opt-level = 2
