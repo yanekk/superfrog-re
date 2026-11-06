@@ -6,6 +6,7 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-11-06 | 📌 | T14 review: fake unverified against real. `ScriptedUi` stands in for the native Start Level, "Recording in progress" and save windows; no test drives the real ones (OS layer, `FD_E2E_OS=1`). T16's drill covers them. |
 | 2026-11-06 | 📌 | T14: `fd-conform bug replay` refuses a zip from another engine build (DESIGN §2.12), so after an engine fix the owner's zip no longer replays on the fixed build. T15's BUG-FIX procedure must say how a fix is checked. |
 | 2026-11-06 | 📌 | T13 review, worker-driven: debug `fd-app` keeps the 50 Hz pace (500 frames 10.3 s) but falls behind with `--capture` (15.6 s); the pacer catches up, so hashes are unaffected. T16 judges pacing without capture or in release. |
 | 2026-11-06 | 📌 | T44 review sweep: `drawing_routines.rs` `after_a_transplant_the_picture_is_the_originals_still_and_scrolled` still bounds frame 6640 at 1 211 differing pixels, calling it T44's; T44 fixed the pairing in the runner, not that transplant check. Left. |
