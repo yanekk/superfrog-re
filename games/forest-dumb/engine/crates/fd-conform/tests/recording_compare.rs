@@ -187,5 +187,23 @@ fn the_command_compares_a_zip_and_writes_both_pictures() {
         let (w, h, _) = amiga_conform::screenshot::decode_png(&bytes).unwrap();
         assert_eq!((w, h), (last.width as u32, last.height as u32), "{png}");
     }
+    let text = std::fs::read_to_string(out.join("original-inputs.txt")).unwrap();
+    assert!(text.starts_with("# jumps by command: "), "{text}");
+    let script = script::parse(&text).unwrap_or_else(|e| panic!("{e}"));
+    assert_eq!(script.input_at(0), FrameInput::NONE);
+    assert!(script.lines.len() > 2, "{text}");
+    // The case it writes, run on the script it writes, is the same: a fix is checked by it.
+    let toml = std::fs::read_to_string(out.join("bug-case.toml")).unwrap();
+    let case = fd_conform::Case::parse("bug-NAME", &toml).unwrap_or_else(|e| panic!("{e}\n{toml}"));
+    assert_eq!(case.input.as_deref(), Some("bug-NAME"));
+    // Run on the script in memory: the way to the sync point reads no `input` file.
+    let mut case = case;
+    case.input = None;
+    let inputs = fd_conform::Inputs::with_after(&case, script).unwrap();
+    let data = fd_conform::game_data().unwrap_or_else(|e| panic!("{e}"));
+    let mut game = Game::new(data, Start::Level1);
+    let v = fd_conform::run_inputs(&case, &inputs, &mut game, &Default::default())
+        .unwrap_or_else(|e| panic!("{e}"));
+    assert!(v.passed(), "{v}\n{toml}");
     std::fs::remove_dir_all(&dir).unwrap();
 }

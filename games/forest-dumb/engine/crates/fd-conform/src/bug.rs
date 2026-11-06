@@ -155,6 +155,8 @@ pub struct Retimed {
     pub stop: Rgb12Frame,
     /// `irq_count` at the first pass end after the sync point: the case runner's pass 0.
     pub first_end: u32,
+    /// The original's `char_x` and `char_y` at the last pass end judged: a bug case's goal.
+    pub end: (u32, u32),
 }
 
 impl Retimed {
@@ -199,6 +201,8 @@ pub fn retime(rec: &Recording) -> Result<Retimed, String> {
     let mut judged = 0usize;
     let mut since_read = 0u32;
     let mut left = None;
+    let mut end = (0, 0);
+    let (char_x, char_y) = (var("char_x")?, var("char_y")?);
     let out_of_play = |frame: u32, pass: u32, what: String| {
         Some(Left {
             frame,
@@ -264,6 +268,7 @@ pub fn retime(rec: &Recording) -> Result<Retimed, String> {
                 break;
             }
             judged = fed.len();
+            end = (m.value(char_x), m.value(char_y));
             if ended >= last_pass {
                 break;
             }
@@ -291,6 +296,7 @@ pub fn retime(rec: &Recording) -> Result<Retimed, String> {
         left,
         stop: am.picture_in(PLAY_WINDOW.0, PLAY_WINDOW.1),
         first_end: first_end.unwrap_or(START_PASS + 1),
+        end,
     })
 }
 
@@ -571,6 +577,57 @@ pub fn compare_with(
         engine_stop,
         start_differs,
     })
+}
+
+impl Compared {
+    /// The level case that runs what this compare judged (`conform/cases/<name>.toml`, its
+    /// `input` the script `<name>`, which is [`Retimed::script`]): unfrozen, every compared
+    /// variable and the picture, the known gaps that differed here excluded (one that hid nothing
+    /// would fail the case), its goal the original character's place at the last pass end judged. The engine side is fd-core's `Game` transplanted at the first pass
+    /// end, as in the compare, but stepped on the inputs the original read: the same as the
+    /// recording's except at [`Retimed::lagged`] passes.
+    pub fn case_text(&self, name: &str, note: &str) -> String {
+        let quoted = |v: &[String]| {
+            v.iter()
+                .map(|n| format!("\"{n}\""))
+                .collect::<Vec<_>>()
+                .join(", ")
+        };
+        let gaps: Vec<String> = self
+            .verdict
+            .iter()
+            .flat_map(|v| &v.excluded)
+            .filter(|(_, n)| *n > 0)
+            .map(|(e, _)| {
+                let what = e.what.split(" (").next().unwrap_or(&e.what);
+                format!("{{ what = \"{what}\", task = \"{}\" }}", e.task)
+            })
+            .collect();
+        let mut text = format!(
+            "# {note}\n\
+             # From a bug zip (`fd-conform bug compare`, games/forest-dumb/docs/BUG-FIX.md): the\n\
+             # recording's inputs on the original's frames from the level sync point, unfrozen.\n\
+             sync = {{ script = \"{}\", frame = {} }}\n\
+             input = \"{name}\"\n\
+             frames = {}\n\
+             compare = [\"vars\", \"picture\"]\n\
+             vars = [{}]\n\
+             # Where the original's character is at the last pass end judged.\n\
+             goal = {{ all = [{{ var = \"char_x\", value = {:#x} }}, {{ var = \"char_y\", value = {:#x} }}], \
+             by_frame = {} }}\n",
+            sync::LEVEL_1_SCRIPT,
+            sync::LEVEL_1_SYNC,
+            self.retimed.frames,
+            quoted(&compared_vars()),
+            self.retimed.end.0,
+            self.retimed.end.1,
+            sync::LEVEL_1_SYNC + self.retimed.frames,
+        );
+        if !gaps.is_empty() {
+            text += &format!("exclude = [{}]\n", gaps.join(", "));
+        }
+        text
+    }
 }
 
 /// Where `bug compare` writes its pictures for `zip` unless told: the game's `build/bugs/<zip
