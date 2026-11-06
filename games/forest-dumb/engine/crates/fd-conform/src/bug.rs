@@ -537,6 +537,7 @@ pub fn compare_with(
         goal: None,
         exclude: known_gaps(),
         freeze: false,
+        set: Vec::new(),
     };
     let mut start_differs = Vec::new();
     let verdict = if retimed.frames == 0 {

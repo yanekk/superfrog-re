@@ -90,10 +90,10 @@ impl PlanGame for PlanState {
         HITS_PER_LIFE.saturating_sub(self.0.state().hits_taken)
     }
 
-    /// `world_index` is 0 while W1-1 is played; `next_world` sets it to 1 at the level's end (the
-    /// comparison's end, docs/09 "Level end"). The game over screen is not play (T23).
+    /// Play in W1-1: not the game over screen (T23), and not finished (`Game::finished`, T26:
+    /// `next_world` has run, `world_index` 1, the comparison's end, docs/09 "Level end").
     fn playing(&self) -> bool {
-        self.0.state().world_index == 0 && *self.0.scene() == Scene::Level
+        !self.0.finished() && *self.0.scene() == Scene::Level
     }
 
     fn collectibles_left(&self) -> u16 {

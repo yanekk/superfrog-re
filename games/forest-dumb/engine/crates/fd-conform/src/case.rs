@@ -44,6 +44,10 @@ pub enum Goal {
     /// original enters its high scores and the engine restarts the level (T23, DESIGN §2.4), at or
     /// before oracle frame `by_frame`. The comparison ends there.
     GameOver { by_frame: u32 },
+    /// Both sides find the level's end together: the original runs `next_world` in the step the
+    /// engine enters [`fd_core::Scene::LevelEnd`], `world_index` 1 on both (T26), at or before
+    /// oracle frame `by_frame`. The comparison ends there (`crate::AFTER_NEXT_WORLD`).
+    LevelEnd { by_frame: u32 },
 }
 
 /// Picture rows, a box of them, or a variable, whose differences a case does not fail on, and the
@@ -81,6 +85,10 @@ pub struct Case {
     pub exclude: Vec<Exclusion>,
     /// Freeze what `freeze.rs` lists in the original at the sync point.
     pub freeze: bool,
+    /// `LAYOUT` variables written into the original at the sync point, before the engine takes its
+    /// memory: what no input can reach in play, as `cheat_flag`, which only the title's code sets
+    /// (T26). `set = [{ var = "cheat_flag", value = 1 }]`.
+    pub set: Vec<(String, u32)>,
 }
 
 impl Case {
@@ -170,6 +178,10 @@ impl Case {
                 .collect::<Result<_, _>>()?,
             None => Vec::new(),
         };
+        let set = match get("set") {
+            Some(v) => var_values(v, "set")?,
+            None => Vec::new(),
+        };
         let freeze = match get("freeze") {
             Some(Value::Bool(b)) => *b,
             Some(other) => return Err(format!("freeze = {other:?}: expected true or false")),
@@ -223,8 +235,9 @@ impl Case {
             }
             if goal.is_none() {
                 return Err("a level case states its `goal` (porting-routines §4): \
-                            `{ all = [...], by_frame = N }`, `{ idle = true }` or \
-                            `{ game_over = true, by_frame = N }`"
+                            `{ all = [...], by_frame = N }`, `{ idle = true }`, \
+                            `{ game_over = true, by_frame = N }` or \
+                            `{ level_end = true, by_frame = N }`"
                     .to_string());
             }
         } else {
@@ -233,6 +246,7 @@ impl Case {
                 (goal.is_some(), "goal"),
                 (compare.picture, "compare = [\"picture\"]"),
                 (freeze, "freeze"),
+                (!set.is_empty(), "set"),
             ] {
                 if taken {
                     return Err(format!(
@@ -259,12 +273,13 @@ impl Case {
             goal,
             exclude,
             freeze,
+            set,
         })
     }
 }
 
-const KEYS: [&str; 9] = [
-    "sync", "swap", "frames", "input", "compare", "vars", "goal", "exclude", "freeze",
+const KEYS: [&str; 10] = [
+    "sync", "swap", "frames", "input", "compare", "vars", "goal", "exclude", "freeze", "set",
 ];
 
 fn known(var: &str) -> Result<(), String> {
@@ -529,7 +544,10 @@ fn compare_list(v: &Value) -> Result<Compare, String> {
 }
 
 fn goal(v: &Value, sync_frame: u32, frames: u32) -> Result<Goal, String> {
-    let t = v.table("goal", &["all", "by_frame", "idle", "game_over"])?;
+    let t = v.table(
+        "goal",
+        &["all", "by_frame", "idle", "game_over", "level_end"],
+    )?;
     if let Some((_, idle)) = t.iter().find(|(k, _)| k == "idle") {
         if t.len() != 1 || *idle != Value::Bool(true) {
             return Err("goal: `idle = true` stands alone".to_string());
@@ -547,21 +565,24 @@ fn goal(v: &Value, sync_frame: u32, frames: u32) -> Result<Goal, String> {
         }
         Ok(by_frame)
     };
-    if let Some((_, over)) = t.iter().find(|(k, _)| k == "game_over") {
-        if *over != Value::Bool(true) || t.iter().any(|(k, _)| k == "all") {
-            return Err("goal: `game_over = true` takes a `by_frame` and nothing else".to_string());
+    for (key, scene) in [
+        ("game_over", Goal::GameOver { by_frame: 0 }),
+        ("level_end", Goal::LevelEnd { by_frame: 0 }),
+    ] {
+        if let Some((_, on)) = t.iter().find(|(k, _)| k == key) {
+            if *on != Value::Bool(true) || t.iter().any(|(k, _)| k != key && k != "by_frame") {
+                return Err(format!(
+                    "goal: `{key} = true` takes a `by_frame` and nothing else"
+                ));
+            }
+            let by_frame = by_frame(t)?;
+            return Ok(match scene {
+                Goal::GameOver { .. } => Goal::GameOver { by_frame },
+                _ => Goal::LevelEnd { by_frame },
+            });
         }
-        return Ok(Goal::GameOver {
-            by_frame: by_frame(t)?,
-        });
     }
-    let mut all = Vec::new();
-    for item in field(t, "all", "goal")?.list("goal.all")? {
-        let p = item.table("goal.all", &["var", "value"])?;
-        let var = field(p, "var", "goal.all")?.string("var")?;
-        known(&var)?;
-        all.push((var, field(p, "value", "goal.all")?.int("value")?));
-    }
+    let all = var_values(field(t, "all", "goal")?, "goal.all")?;
     if all.is_empty() {
         return Err("goal.all is empty: a goal with nothing to reach".to_string());
     }
@@ -569,6 +590,19 @@ fn goal(v: &Value, sync_frame: u32, frames: u32) -> Result<Goal, String> {
         all,
         by_frame: by_frame(t)?,
     })
+}
+
+/// `[{ var = "NAME", value = N }, ...]`, each a `LAYOUT` variable.
+fn var_values(v: &Value, what: &str) -> Result<Vec<(String, u32)>, String> {
+    v.list(what)?
+        .iter()
+        .map(|item| {
+            let p = item.table(what, &["var", "value"])?;
+            let var = field(p, "var", what)?.string("var")?;
+            known(&var)?;
+            Ok((var, field(p, "value", what)?.int("value")?))
+        })
+        .collect()
 }
 
 fn exclusion(v: &Value) -> Result<Exclusion, String> {
@@ -653,6 +687,7 @@ mod tests {
                 goal: None,
                 exclude: vec![],
                 freeze: false,
+                set: vec![],
             }
         );
     }
@@ -699,10 +734,25 @@ mod tests {
             Case::parse("l", &over).unwrap().goal,
             Some(Goal::GameOver { by_frame: 6400 })
         );
+        let end = LEVEL.replace(
+            "goal = { all = [{ var = \"char_x\", value = 0x80 }], by_frame = 6400 }",
+            "goal = { level_end = true, by_frame = 6400 }\nset = [{ var = \"cheat_flag\", value = 1 }]",
+        );
+        let end = Case::parse("l", &end).unwrap();
+        assert_eq!(end.goal, Some(Goal::LevelEnd { by_frame: 6400 }));
+        assert_eq!(end.set, [("cheat_flag".to_string(), 1)]);
         for (goal, says) in [
             (
                 "goal = { game_over = false, by_frame = 6400 }",
                 "game_over = true",
+            ),
+            (
+                "goal = { level_end = true, game_over = true, by_frame = 6400 }",
+                "and nothing else",
+            ),
+            (
+                "goal = { level_end = true, by_frame = 6400 }\nset = [{ var = \"nope\", value = 1 }]",
+                "not in fd-core's LAYOUT",
             ),
             ("goal = { game_over = true }", "no `by_frame`"),
             ("goal = { game_over = true, by_frame = 6402 }", "at most"),

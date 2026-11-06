@@ -48,8 +48,11 @@ pub enum Event {
     /// `main_loop` found the game over: the game over screen shows from this step (T23).
     GameOver,
     /// The game over screen ended where the original enters its high scores; the level restarted
-    /// as at its start (T23, DESIGN §2.4).
+    /// as at its start (T23, DESIGN §2.4); or fire ended "Level 1 complete" (T26, DESIGN §2.5).
     Restart,
+    /// `main_loop` found the level's end and ran `next_world` in this step (T26); "Level 1
+    /// complete" shows from the next.
+    LevelEnd,
 }
 
 /// One object in play.

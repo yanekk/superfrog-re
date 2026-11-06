@@ -12,6 +12,7 @@
 //! [`Colours`]) and the sprite composition (`amiga_chips::sprite`, moved there from the first game's
 //! renderer by this task). Agreement with the original's picture is T44's.
 
+pub mod message;
 pub mod objects;
 pub mod palette;
 pub mod playfield;
