@@ -43,7 +43,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T41 | case-run-jump | T08, T09 | ✅ | |
 | T42 | case-walls-pits | T08, T09, T41 | ⬜ | |
 | T43 | case-scroll | T08, T09 | ✅ | |
-| T44 | case-picture | T10 | 🔍 | Cases picture-first-frame, picture-scroll (four directions, frozen); 6 tests plus a full-set boot. Deviations: runner pairs each frame with the pass it shows (coordinator's yes, Escape T06); exclusions take a box (countdown, T23); Game's Engine::picture wired; Game::picture draws the bar's pending redraw; h0_3ab4's hits deferred to T46/T47 (coordinator). |
+| T44 | case-picture | T10 | ✅ | Review clean, no fix commit. Probed the CLI run (214 passes, box hid 157 frames) and the ignored start-up boot; mutations of the pairing, the bar's pending redraw and the box each went red. Deviations held; h0_3ab4 carried by T48's every-routine check. Worker-driven frame opening is read-only. Swept: drawing_routines' 1 211 bound logged. |
 | T11 | character-cases | T01, T41, T42, T43, T44 | ⬜ | |
 | T12 | app-toolkit-move | — | ✅ | |
 | T13 | forest-dumb-app | T01, T10, T12 | ⬜ | |
@@ -87,7 +87,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T65 | level-start-draw | T55; blocks T13, T20 | ⬜ | |
 | T67 | pass-input-read | T06; blocks T42, T43, T44, T15 | ✅ | |
 
-**Review queue:** T44
+**Review queue:** none
 
 ## Blocked on the user
 
