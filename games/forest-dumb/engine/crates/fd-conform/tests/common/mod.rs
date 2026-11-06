@@ -91,7 +91,6 @@ impl StandIn {
     fn ended(&mut self, n: u32) -> bool {
         match self.am.watched_memory() {
             Some(m) if OracleMem(&m).value(irq()) == n => {
-                self.pic = Some(self.am.picture_in(PLAY_WINDOW.0, PLAY_WINDOW.1));
                 self.mem = Some(m);
                 true
             }
@@ -115,6 +114,13 @@ impl Transplant for StandIn {
             p0,
             "the stand-in passed the transplant"
         );
+        // The frame showing the transplanted pass is the next step's.
+        let snap = self.am.snapshot();
+        let f = self.am.frame();
+        self.am.step(self.inputs.at(f)).unwrap();
+        self.pic = Some(self.am.picture_in(PLAY_WINDOW.0, PLAY_WINDOW.1));
+        self.am.restore(&snap);
+        self.am.watch_write(Some(PASS_END));
         self.passes = 0;
     }
 
@@ -129,29 +135,28 @@ impl Transplant for StandIn {
 }
 
 impl Engine for StandIn {
-    /// One step starts the next pass; its end is in this step or the next, which is run on a
-    /// snapshot and taken back.
+    /// One step starts the next pass; its end is in this step or the next, and the frame showing
+    /// it is the next step's (the runner's pairing, T44), both run on a snapshot and taken back.
     fn pass(&mut self, given: FrameInput) {
         let f = self.am.frame();
         let input = self.input(f, given);
         self.am.step(input).unwrap();
         self.passes += 1;
         let n = Live(&self.am).value(irq());
-        if !self.ended(n) {
-            let snap = self.am.snapshot();
-            let next = self.inputs.at(f + 1);
-            let next = self.input(f + 1, next);
-            self.am.step(next).unwrap();
-            let seen = self.ended(n);
-            self.am.restore(&snap);
-            if !seen {
-                // A step ended two passes and showed the first: the runner cannot see this end
-                // either, so never compares it. Any state will do; take the step's end.
-                self.mem = Some(self.am.memory());
-                self.pic = Some(self.am.picture_in(PLAY_WINDOW.0, PLAY_WINDOW.1));
-            }
-            self.am.watch_write(Some(PASS_END));
+        let seen = self.ended(n);
+        let snap = self.am.snapshot();
+        let next = self.inputs.at(f + 1);
+        let next = self.input(f + 1, next);
+        self.am.step(next).unwrap();
+        let seen = seen || self.ended(n);
+        self.pic = Some(self.am.picture_in(PLAY_WINDOW.0, PLAY_WINDOW.1));
+        self.am.restore(&snap);
+        if !seen {
+            // A step ended two passes and showed the first: the runner cannot see this end
+            // either, so never compares it. Any state will do; take the step's end.
+            self.mem = Some(self.am.memory());
         }
+        self.am.watch_write(Some(PASS_END));
         if self.event == Some(self.passes) {
             self.events.push(Event::Unported(0xee));
         }
