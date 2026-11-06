@@ -6,6 +6,7 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-11-06 | 📌 | T70 added by T23 with the owner's yes: a life is lost only in `char_hit_check` (T24's), through CLXDAT, which the engine does not model. T70 models it and takes T23's pit test; blocks T24, T46. |
 | 2026-11-06 | 📌 | T20, measured: 100 rounds (0.8 s) plan W1-1 to the exit's cell `W1-1:208,91` in 984 frames; the frozen original agrees 952 passes, then counts a contact (`hits_taken`, T24). `fd-core` dev opt-level 2: unoptimised, 8 000 frames/s a thread. |
 | 2026-11-06 | 📌 | T19, worker-driven: `fd-routeview`'s page from disk, headless Chrome 1280×800: map, track, 332 coins, 282 needed, no page request. Toolkit `page.html` loads Google Fonts and calls clean routes "reaches the exit"; `fd-routeview` strips and overrides both. |
 | 2026-11-06 | 📌 | T11, measured: six W1-1 stretches match on variables and picture together. The spike pit's lost life shows a hurt frame (T24), so `stretch-pit` stops at 6522. Score, items and lives digits never redraw on stretches. |
