@@ -39,7 +39,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T07 | level-entry | T05, T06, T32 | ✅ | |
 | T08 | character-movement | T07, T40 | ✅ | |
 | T09 | camera-scroll | T07, T40 | ✅ | |
-| T10 | level-drawing | T08, T09, T40 | 🔍 | 16 ports in `render/`, rig-proven (10 000 states), 9 tests in drawing_routines.rs plus unit tests. Deviations: status bar's 7 routines and start-up's 2 not in translate.toml, ported with own generators (DESIGN §2.6); sprite composition moved to `amiga-chips::sprite`; extra `render/palette.rs`; play screen empty until T65. |
+| T10 | level-drawing | T08, T09, T40 | ✅ | Review: one fix, a missing test. `foreground`'s status redraw and play screen blits were never checked against the original; mutating the 32-pass gate or a tile source stayed green. New test compares 520 passes, bar and 307 345 screen bytes. Ran all 16 ports' 10 000-state rig, mutated picture window, Superfrog picture green. Deviations held. |
 | T41 | case-run-jump | T08, T09 | ⬜ | |
 | T42 | case-walls-pits | T08, T09, T41 | ⬜ | |
 | T43 | case-scroll | T08, T09 | ⬜ | |
