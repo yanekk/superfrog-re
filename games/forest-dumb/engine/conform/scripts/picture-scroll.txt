@@ -1,0 +1,13 @@
+# T44: the view scrolling right, up, down and left on W1-1's upper route. From the level sync point:
+# stand 30 frames, walk right 20, then right with a running jump (camera_x 0 to $92, camera_y between
+# $26 and $75), then left with a jump to the left wall (char_x $1b, camera $0,$35), and stand. It turns
+# before frame 6397, where the first bonus enters the view: the engine draws bonuses (T55) and a frozen
+# original does not (T22's freeze entry). Every object frozen. Measured 2026-11-06.
+0: -
+30: R
+50: R U
+62: R
+80: L
+104: L U
+116: L
+190: -

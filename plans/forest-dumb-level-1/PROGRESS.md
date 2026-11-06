@@ -43,7 +43,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T41 | case-run-jump | T08, T09 | ✅ | |
 | T42 | case-walls-pits | T08, T09, T41 | ⬜ | |
 | T43 | case-scroll | T08, T09 | ✅ | |
-| T44 | case-picture | T10 | ⬜ | |
+| T44 | case-picture | T10 | 🔍 | Cases picture-first-frame, picture-scroll (four directions, frozen); 6 tests plus a full-set boot. Deviations: runner pairs each frame with the pass it shows (coordinator's yes, Escape T06); exclusions take a box (countdown, T23); Game's Engine::picture wired; Game::picture draws the bar's pending redraw; h0_3ab4's hits deferred to T46/T47 (coordinator). |
 | T11 | character-cases | T01, T41, T42, T43, T44 | ⬜ | |
 | T12 | app-toolkit-move | — | ✅ | |
 | T13 | forest-dumb-app | T01, T10, T12 | ⬜ | |
@@ -87,7 +87,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T65 | level-start-draw | T55; blocks T13, T20 | ⬜ | |
 | T67 | pass-input-read | T06; blocks T42, T43, T44, T15 | ✅ | |
 
-**Review queue:** *(empty)*
+**Review queue:** T44
 
 ## Blocked on the user
 

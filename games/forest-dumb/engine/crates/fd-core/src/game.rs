@@ -149,19 +149,16 @@ impl Game {
     pub fn foreground(&mut self) {
         match self.scene {
             Scene::Level => {
-                let s = &self.state;
-                if s.irq_count & 0x1f == 0 {
-                    let data = &self.data.display;
-                    let h4 = |o: u32| data.h4(o);
-                    let src = render::status::Sources {
-                        h4: &h4,
-                        program: &self.data.program,
-                    };
-                    let countdown = (s.countdown >> 16) as u16;
-                    self.display
-                        .status
-                        .update(countdown, s.lives, s.score, s.items_left, &src);
-                }
+                let shown = self.display.status.shown;
+                let mut status = std::mem::replace(
+                    &mut self.display.status,
+                    render::status::Status {
+                        bytes: Vec::new(),
+                        shown,
+                    },
+                );
+                self.status_redraw(&mut status);
+                self.display.status = status;
                 let from = self.blits.len();
                 level::main_loop_redraws(
                     &mut self.state,
@@ -177,16 +174,42 @@ impl Game {
         }
     }
 
+    /// `main_loop`'s status bar redraw (`h0_6a96`) as the foreground runs it after a pass: every
+    /// 32 interrupts, the numbers that changed.
+    fn status_redraw(&self, status: &mut render::status::Status) {
+        let s = &self.state;
+        if s.irq_count & 0x1f == 0 {
+            let data = &self.data.display;
+            let h4 = |o: u32| data.h4(o);
+            let src = render::status::Sources {
+                h4: &h4,
+                program: &self.data.program,
+            };
+            let countdown = (s.countdown >> 16) as u16;
+            status.update(countdown, s.lives, s.score, s.items_left, &src);
+        }
+    }
+
     /// The frame the original shows after this step, in the play area and status bar's window
     /// (`render::WINDOW`), drawn as Denise would from the display's memory (T10).
+    ///
+    /// The status bar is drawn as `main_loop`'s redraw after this pass leaves it: the original's
+    /// foreground redraws it once the pass has ended, before the beam reaches the bar at line 241,
+    /// so the frame showing pass `32k` already shows its numbers (measured, T44:
+    /// `picture_cases.rs`, idle and scrolling alike). The engine runs that redraw at its next step.
     pub fn picture(&self) -> Picture {
         let c = &self.state.camera;
-        render::picture(
-            &self.data.display,
-            &self.display,
-            (c.x, c.y),
-            &self.data.program,
-        )
+        let draw =
+            |d: &Display| render::picture(&self.data.display, d, (c.x, c.y), &self.data.program);
+        if self.state.irq_count & 0x1f != 0 {
+            return draw(&self.display);
+        }
+        let mut status = self.display.status.clone();
+        self.status_redraw(&mut status);
+        draw(&Display {
+            status,
+            ..self.display.clone()
+        })
     }
 
     /// [`Game::picture`] as RGBA, 8 bits a channel, row-major: `out` holds width × height × 4 bytes.
