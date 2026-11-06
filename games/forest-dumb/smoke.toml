@@ -156,6 +156,9 @@ workspace = "engine"
 # seconds of steps for a resize to land under load (a debug build capturing every frame): 75 to 115 s, full.
 "crates/fd-e2e/tests/drill.rs" = "smoke"
 "crates/fd-e2e/tests/drill_sizes.rs" = "full"
+# T68, the app drill's real-window half: every test is OS layer (`FD_E2E_OS=1`, unlocked screen),
+# seven in about 40 s in release, as Superfrog's recorder_drill.rs.
+"crates/fd-e2e/tests/drill_os.rs" = "full"
 
 [python]
 "tools/test_call_tree.py" = "smoke"

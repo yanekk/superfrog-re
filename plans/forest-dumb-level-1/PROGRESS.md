@@ -12,7 +12,7 @@
 
 **Status:** Building; 51 of 70 tasks ✅. Pending tasks start from their pack (`tools/task_pack.py`).
 **Last updated:** 2026-11-06
-**Next `pir-work` will:** T42 and T68 (resumed), then T11 and T22 as their dependencies finish. Start the run with `ENABLE_CLAUDEAI_MCP_SERVERS=false pir start forest-dumb-level-1`.
+**Next `pir-work` will:** T42, review T68, then T11 and T22 as their dependencies finish. Start the run with `ENABLE_CLAUDEAI_MCP_SERVERS=false pir start forest-dumb-level-1`.
 
 ## Tasks
 
@@ -89,9 +89,9 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T65 | level-start-draw | T55; blocks T13, T20 | ✅ | |
 | T67 | pass-input-read | T06; blocks T42, T43, T44, T15 | ✅ | |
 | T69 | level-start-state | T07, T65; blocks T20, T28 | ✅ | |
-| T68 | app-drill-os-half | T16; blocks T28 | ⬜ | |
+| T68 | app-drill-os-half | T16; blocks T28 | 🔍 | drill_os.rs: 7 OS-layer tests, green unlocked (owner, 2026-11-06), captures judged at 1× and 2×; label full. Fixed two `amiga-e2e` driver defects with a unit test and Start Level window-count assert; Superfrog's 15 OS tests green after. Deviation: fixes in the toolkit, the task's "fixes where they fall"; one test waits for the question's window to close. |
 
-**Review queue:** *(empty)*
+**Review queue:** T68
 
 ## Blocked on the user
 

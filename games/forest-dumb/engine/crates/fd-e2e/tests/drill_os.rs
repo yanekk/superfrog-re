@@ -61,6 +61,31 @@ fn until(what: &str, mut f: impl FnMut() -> bool) {
     }
 }
 
+/// Wait for the field `id` to read `want`; on timeout say what it read instead, where it first
+/// differs, so a long note's failure names its cause.
+fn until_text(app: &App, id: &str, want: &str) {
+    let t = Instant::now();
+    let mut last;
+    loop {
+        last = app.os_text_id(id);
+        if last == want || t.elapsed() > Duration::from_secs(30) {
+            break;
+        }
+        std::thread::sleep(Duration::from_millis(100));
+    }
+    if last != want {
+        let at = last.chars().zip(want.chars()).take_while(|(a, b)| a == b).count();
+        let near = |s: &str| s.chars().skip(at.saturating_sub(10)).take(30).collect::<String>();
+        panic!(
+            "field {id:?}: {} characters, wanted {}; first differs at {at}: {:?} against {:?}",
+            last.chars().count(),
+            want.chars().count(),
+            near(&last),
+            near(want)
+        );
+    }
+}
+
 fn pause(ms: u64) {
     std::thread::sleep(Duration::from_millis(ms));
 }
@@ -255,6 +280,8 @@ fn os_layer_start_level_offers_w1_1_esc_cancels_return_records_unticked_does_not
     app.os_menu(&["Game", "Start Level…"]);
     until("the window", || start_level_open(&app));
     capture(&app, "start-level");
+    // The modal window is on layer 8, above the game's: listed, so captured with it.
+    assert_eq!(app.os_windows().len(), 2, "the game and Start Level windows");
     assert_eq!(app.os_popup_titles("level"), ["W1-1"]);
     assert!(app.os_checked_id("record"), "the recorder is ticked by default");
     app.os_activate();
@@ -317,6 +344,9 @@ fn os_layer_recording_in_progress_cancel_discard_and_save() {
     until("Esc: the question gone", || !has(&app, "Save…"));
     assert!(recording(&app));
 
+    // The question's buttons go before its window does: a menu click while the window is still
+    // closing is lost, so wait for the game's window alone.
+    until("the question's window closed", || app.os_windows().len() == 1);
     app.os_menu(&["Game", "Start Level…"]);
     until("Start Level: the question", || has(&app, "Save…"));
     app.os_press_button("Save…");
@@ -382,12 +412,12 @@ fn os_layer_save_window_keeps_on_esc_and_saves_a_long_pasted_note_whole() {
     app.os_key_with(Mods::COMMAND, Key::Char('a'));
     app.os_key_with(Mods::COMMAND, Key::Char('v'));
     let one_line = pasted.replace('\n', " ");
-    until("the note pasted, one line", || app.os_text_id("note") == one_line);
+    until_text(&app, "note", &one_line);
     for k in [Key::Space, Key::Char('e'), Key::Char('n'), Key::Char('d')] {
         app.os_key(k);
     }
     let want = format!("{one_line} end");
-    until("the word typed", || app.os_text_id("note") == want);
+    until_text(&app, "note", &want);
     capture(&app, "save-window-note");
     app.os_key(Key::Return);
     until("the saved notice", || has(&app, "OK"));
@@ -480,6 +510,8 @@ fn os_layer_every_window_at_the_default_scale_is_on_screen_and_captured() {
     app.os_menu(&["Game", "Start Level…"]);
     until("the window", || start_level_open(&app));
     capture(&app, "start-level-2x");
+    // The modal window is on layer 8, above the game's: listed, so captured with it.
+    assert_eq!(app.os_windows().len(), 2, "the game and Start Level windows");
     app.os_key(Key::Return);
     until("recording", || recording(&app));
     pause(500);
