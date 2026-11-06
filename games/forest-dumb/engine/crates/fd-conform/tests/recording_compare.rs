@@ -116,9 +116,9 @@ fn lagged_input_is_measured() {
 }
 
 /// Esc (key `$45`, press and release) gives up on the original: `main_loop` goes to game over and
-/// then the high scores, where no pass reads the joystick. The engine does not run `play_keys` yet
-/// (T23), so it plays on. The comparison ends where the original left play and says so; it is not
-/// a difference.
+/// then the high scores, where no pass reads the joystick; the engine goes to its game over screen
+/// too (T23). The comparison ends where the original left play and says so; it is not a
+/// difference.
 #[test]
 fn a_recording_past_game_over_reports_where_judging_ended() {
     let mut inputs = vec![FrameInput::NONE; 300];

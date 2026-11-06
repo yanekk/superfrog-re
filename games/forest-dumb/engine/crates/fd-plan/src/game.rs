@@ -4,13 +4,13 @@
 //!
 //! Each reading is the state's own variable (docs/09-play-measured.md, "Variables"). Where the engine
 //! does not model a rule yet the reading still comes from the variable the original keeps, so it
-//! starts to count the moment a later task ports the rule: lives and `hits_taken` (T23, T24), the
-//! dying fall (T24), the items (T22) and the level's end (T26).
+//! starts to count the moment a later task ports the rule: a life lost and `hits_taken` (T70), the
+//! items (T22) and the level's end (T26). The countdown and the game over screen are T23's.
 
 use amiga_input::{FrameInput, Joy};
 use amiga_plan::{Cell, Facts, PlanGame};
-use fd_core::Game;
 use fd_core::recording::{LevelId, Location};
+use fd_core::{Game, Scene};
 
 use crate::facts::{COLS, ROWS, is_item, solid};
 
@@ -79,7 +79,7 @@ impl PlanGame for PlanState {
     }
 
     fn lives(&self) -> i16 {
-        bcd(self.0.state().lives) as i16
+        self.0.lives()
     }
 
     fn dying(&self) -> bool {
@@ -91,9 +91,9 @@ impl PlanGame for PlanState {
     }
 
     /// `world_index` is 0 while W1-1 is played; `next_world` sets it to 1 at the level's end (the
-    /// comparison's end, docs/09 "Level end").
+    /// comparison's end, docs/09 "Level end"). The game over screen is not play (T23).
     fn playing(&self) -> bool {
-        self.0.state().world_index == 0
+        self.0.state().world_index == 0 && *self.0.scene() == Scene::Level
     }
 
     fn collectibles_left(&self) -> u16 {
