@@ -91,6 +91,25 @@ Measured from the copper list of play (`h1+$d4`, read back at frames 6500 and 70
 - `Rgb12Frame` crops to the frame-end DIW, the status bar's, so `picture()` shows only the 320 x 56
   bar (measured: every play frame). T04 adds `picture_in`.
 
+### The status bar's redraw and the next pass (T71, measured 2026-11-06)
+
+`main_loop` calls `h0_6a96` while `irq_count & 31` is 0, not once: after pass `32k` it redraws what
+changed, runs the edge redraws, then spins through `main_loop` and `h0_6a96`'s four compares until the
+level-3 interrupt at line 233 starts pass `32k + 1`. `h0_6a96` reads `countdown` (`h0+$6a96`), `lives`
+(`$6aaa`), `score` (`$6abe`) and `items_left` (`$6ad2`); a number whose read comes after the
+interrupt is drawn as pass `32k + 1` left it, and stays so until the next redraw.
+
+Where the interrupt lands, read off line samples (the exception frame's PC under `level3_handler`'s
+`movem`; `fd_conform::interrupted_pc`), varies from redraw to redraw: about 20 different PCs over 220
+redraws, idle, `death-spikes`, `collect-return`, `contact-route`, `stretch-scroll`. Idle, mostly between
+the score's and the items' reads or after all four; on the spikes, 38 of 50 in `main_loop` before any
+read (pass 1441, the life lost at frame 7742, among them); moving, about half before any read and half
+after all. It depends on the cycles every pass took, so the engine cannot know it: it redraws before
+pass `32k + 1` and offers the other versions (`Game::cut_redraw`), and a case accepts the version the
+cut it measured gives, on the bar only (owner, 2026-11-06; `engine/conform/README.md`). Never seen: a
+cut inside a draw routine, where `h0_6c80` would draw lives' digits and icons from two reads and
+`h0_6bc0` would store the new value as drawn after drawing the old. `tests/status_race.rs` holds it.
+
 ## Sprites, bobs, playfields
 
 Measured:

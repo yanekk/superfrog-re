@@ -6,10 +6,10 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
-| 2026-11-06 | 🔄 | Owner, T70: a `freeze = true` case dropped the engine's bonus bobs (`Game::freeze_as_a_case`); removed at T70's merge, since T22 unfroze the bonus blits and T45's collect cases failed with it. T71 added: the lives redraw races a pass; blocks T27. |
+| 2026-11-06 | 🔄 | Owner, T71: pass `32k+1` cuts the bar redraw at no fixed read (cycle-dependent, docs/09), outside the faithful bar (DESIGN §2.1); the runner accepts `Game::cut_redraw` at the measured cut, bar only (README). `set_profile(false)` clears the frame just drawn. |
+| 2026-11-06 | 🔄 | Owner, T70: a `freeze = true` case dropped the engine's bonus bobs (`Game::freeze_as_a_case`); removed at T70's merge (T22 unfroze the bonus blits). Review: T72 water-contact added; water is unshown: `h0_62b6` (T25) draws it, frozen cases stop it. |
 | 2026-11-06 | 📌 | T70, measured: vAmiga compares the odd planes only where the even match (single playfield), so contact is colour 29 alone. The status bar sets CLXDAT bit 0 every frame; pass 1 reads `$f1ff`. Level-3 comes at line 233. |
 | 2026-11-06 | 📌 | T70: contact costs about 25 µs a step in release (was about 3 µs a whole step; `fd-core` dev opt-level 2); `fd-plan` `route.rs` went from about 7 s to 60 s warm under load. |
-| 2026-11-06 | 🔄 | Owner, T70 review: T72 water-contact added (T25, T70; blocks T47, T27). Water is unshown: `h0_62b6` (T25, not T22) draws it, frozen cases stop it. |
 | 2026-11-06 | 📌 | T45 (coordinator): `countdown_plus_100` (time bonus `$4c`) is proven on the rig only, W1-1 holding no `$4c`; T48's coverage lists it as a named exception. `h0_2e0e` waits for T46. |
 | 2026-11-06 | 📌 | T22 review: case comments still call taking and bonus blits frozen: `stretch-scroll.toml:4` ("T22's freeze entry"), `camera-right-left.toml:2`, `camera-bottom-right.toml:2` ("every object frozen"). Cases themselves pass. Left. |
 | 2026-11-06 | 🔄 | T22 (owner): freeze.rs lost T22's five entries; frozen cases take items both sides and the planner chases coins. Since T70 its short route stalls at `W1-1:198,92` (6236 frames, 158 coins left), agreeing on every pass (`route.rs`). |

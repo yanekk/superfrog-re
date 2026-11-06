@@ -117,6 +117,16 @@ because a script holds only what the player holds (`amiga-conform`'s `script` mo
   run made with `Options { mode: Mode::Strict, .. }` fails on any pixel; a case cannot choose its bar.
   `Options::diff_dir` writes a diff PNG beside a picture failure; it shows the original, so it goes
   under `build/`, never into git.
+- **A redraw cut short** (T71, owner 2026-11-06). `main_loop`'s status bar redraw after pass `32k` is
+  cut by pass `32k + 1` at a point that varies with the cycles each pass took (docs/09, "The status
+  bar's redraw and the next pass"), which sub-frame timing the engine does not model (DESIGN §2.1). The
+  runner samples the original's lines in the step starting pass `32k + 1`, reads the PC the interrupt
+  took (`interrupted_pc`) and how many of `h0_6a96`'s reads came before it (`redraw_cut`). Only when
+  the redraw was cut, on the frames of passes `32k + 1` to `32k + 31`, a frame failing as the engine
+  draws it passes if the bar equals `Engine::cut_redraw` at that count: the bar redrawn from the old
+  and new numbers, never listed per case, the play area unchanged. `Verdict::cut_redraws` counts them;
+  a bar matching neither fails (`tests/death.rs`). Line sampling leaves the run unchanged, but turning
+  it off clears the frame just drawn, so the runner turns it off before the next step.
 - **A new variable** needs a `LAYOUT` row matching `re/symbols.toml` (a test holds them together), and
   the engine's `Transplant::probe` arm for it.
 
