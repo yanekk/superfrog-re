@@ -53,3 +53,8 @@ opt-level = 2
 # The route page writer (the map page, from T19): it writes a whole level's tiles and track.
 [profile.dev.package.amiga-routeview]
 opt-level = 2
+
+# The engine, stepped by the planner (fd-plan, T20) about a million frames a search: unoptimised it
+# steps ~8 000 frames a second a thread, too slow for a smoke-sized plan.
+[profile.dev.package.fd-core]
+opt-level = 2

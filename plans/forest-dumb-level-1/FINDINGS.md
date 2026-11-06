@@ -6,6 +6,7 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-11-06 | 📌 | T20, measured: 100 rounds (0.8 s) plan W1-1 to the exit's cell `W1-1:208,91` in 984 frames; the frozen original agrees 952 passes, then counts a contact (`hits_taken`, T24). `fd-core` dev opt-level 2: unoptimised, 8 000 frames/s a thread. |
 | 2026-11-06 | 📌 | T19, worker-driven: `fd-routeview`'s page from disk, headless Chrome 1280×800: map, track, 332 coins, 282 needed, no page request. Toolkit `page.html` loads Google Fonts and calls clean routes "reaches the exit"; `fd-routeview` strips and overrides both. |
 | 2026-11-06 | 📌 | T11, measured: six W1-1 stretches match on variables and picture together. The spike pit's lost life shows a hurt frame (T24), so `stretch-pit` stops at 6522. Score, items and lives digits never redraw on stretches. |
 | 2026-11-06 | 📌 | T42, measured: a life lost on W1-1's spikes holds the character about 30 passes (`char_dying`, `char_dying_t`, its hurt frame), input ignored, no respawn; another every ~135 passes standing. Unported (T24). |
@@ -50,7 +51,7 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 | 2026-11-05 | 📌 | T06: a step ending two passes hides the second (`watch_write` copies the first): 7 in the stub case's first 130 frames, 2 in 3 000 later moving frames. An `idle` case spanning one fails. |
 | 2026-11-05 | 📌 | T36: the rig has no instruction trace, so `gen_camera.rs` shows branch coverage with literal witness models that must match the original on every state. `h0_513c` clamps `camera_y` `$8000..$853e` to `$53f`, not 0 (`cmpi.w` overflow). |
 | 2026-11-05 | 📌 | T33: `char_hit_check` (183 instructions) answers `too-big` though the spike passed it. The routine oracle skips line-mode blits and has no fill mode; `RigReport::unmodelled_blits` counts them and `translate.py` answers `no-oracle`. |
-| 2026-11-05 | 📌 | T18, worker-driven: old and new route page in headless Chrome gave byte-identical PNGs; with the heat layer on, each page alternates between two images per run. page.html still keys on names `tile coin`, `level exit`, `wN ` prefix. |
+| 2026-11-05 | 📌 | T18, worker-driven: old and new route page gave identical PNGs in headless Chrome; the heat layer alternates two images a run. page.html keys on `tile coin`, `level exit`, `wN `. |
 | 2026-11-05 | 🐞 | T34: `re_listing.py`'s linear sweep loses step after data in code; `tools/call_tree.py` decodes from each reached address. `char_probe` (199), `h0_5e44` (200), `h0_62b6` (224), `redraw_edge_c` (181) are over 180, translated by hand. |
 | 2026-11-05 | 📌 | T31: oracle hash `c453a4b584dc`, both games' oracle smoke green; `level_entry` 523 s cold, 15 s warm. Kickstart idle, load 6 to 13: 611 frames/s before patch 0006, 562 with 200 watched addresses (owner accepted). |
 | 2026-11-05 | 📌 | T17: every Superfrog map cache key changed, maps rebuild once; pin bench 38.9 s before, 33.5 to 35.4 s after, load 6-10. Under load wall time swings 20-38 s; A/B timing uses user CPU time (`/usr/bin/time -p`). |
@@ -59,8 +60,8 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 | 2026-11-05 | 📌 | T03: sync snapshots end in a SHA-1 (`.sync2`); Superfrog sync points rebuilt once, `level_entry.rs` 597 s cold. A cached reach leaves `Amiga::df0()` `None` (a boot `Some(1)`): do not trust it after `reach_level_1`. |
 | 2026-11-05 | 📌 | T12, worker-driven: OS layer of controls, recorder_start_level, recorder_save_window, recorder_bar, persist green on the moved windows. `recorder_bar` OS test failed once at load 15 ("second recording's bar: not within 30 s"), passed on rerun. |
 | 2026-11-05 | 🔄 | Owner kept DESIGN §2.7: Esc quits, no pause key, though the original's play acts on P (pause) and Esc (give up, game over). The engine models both for cases (T00). |
-| 2026-11-05 | 📌 | T30 review, read-only: `game_file` treats any `read_file` error as absent, so a damaged file block reads as "no such file" rather than its read error. Left; only a damaged zip reaches it. |
-| 2026-11-05 | 📌 | T01 smoke after the move: 761 s, cold, load 9 on 10 cores; before 887 s warm, 904 s fresh (budget 900 s). Cold compile about 8 GB. Plan review: Accessibility, Screen Recording granted, headless Chrome runs. |
+| 2026-11-05 | 📌 | T30 review: `game_file` reads any `read_file` error as "no such file"; only a damaged zip reaches it. Left. |
+| 2026-11-05 | 📌 | T01 smoke after the move: 761 s cold, load 9; before 887 s warm, 904 s fresh (budget 900 s). Cold compile about 8 GB. Accessibility, Screen Recording granted; headless Chrome runs. |
 | 2026-11-05 | 🔄 | Read-back decisions (owner): finisher copies conversation logs (`.pir/rules/on-finish.md` step 1); T49 translates T21's object routines before T22; generator tasks share the porting size limit; T23, T26 keep the split-by-case escape line. |
 | 2026-11-05 | 🔄 | Owner adopted translation by Muse and small sessions: T32 rig split from T06, T33-T40 translation, T41-T48 per case; every Muse call `worker` (caps $0.10 a routine, $5 a batch). pir deletes `.parallel/control/conversations/` only on Remove; DESIGN §5.3 copies them first. |
 | 2026-11-03 | 🔄 | Owner approved the first game's lessons before the build: `toolkit/docs/porting-routines.md`, DESIGN §4.1 and §4.2, two T00 questions, and T31, a sixth vAmiga patch counting executed addresses. Every sync cache rebuilds once after T31. |

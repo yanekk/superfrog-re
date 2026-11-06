@@ -70,6 +70,15 @@ elsewhere). Its flags and seatbelts (`--script`, `--capture`, `--max-frames`, `-
 to `games/forest-dumb/build/route-viz/index.html` (`--out DIR` elsewhere), which opens from disk. It
 holds disk graphics: keep it under `build/`.
 
+## Planning a route
+
+`cargo run --release -p fd-plan -- level W1-1` in `engine/` plans W1-1 on the engine (`--rounds N`,
+`--budget-mins N`, `--guide waypoints.txt`), writes the route as an input script to
+`build/routes/W1-1.txt` (`--out`), draws it on the map page as `fd-routeview` does (`--page`), and plays
+it on the original with every object frozen, saying for how many passes the two agree. Until the items,
+contact and the level's end are ported (T22, T24, T26) the level never ends, so a route stops at the
+exit's cells and exits 1.
+
 ## Bug-fix procedure
 
 A bug zip the owner recorded in the app: [docs/BUG-FIX.md](docs/BUG-FIX.md). Replay it

@@ -167,6 +167,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "amiga-plan"
+version = "0.1.0"
+dependencies = [
+ "amiga-input",
+ "libc",
+ "serde",
+]
+
+[[package]]
 name = "amiga-record"
 version = "0.1.0"
 dependencies = [
@@ -971,6 +980,19 @@ dependencies = [
  "fd-core",
  "fd-tools",
  "libc",
+]
+
+[[package]]
+name = "fd-plan"
+version = "0.1.0"
+dependencies = [
+ "amiga-conform",
+ "amiga-input",
+ "amiga-plan",
+ "fd-assets",
+ "fd-conform",
+ "fd-core",
+ "fd-routeview",
 ]
 
 [[package]]
