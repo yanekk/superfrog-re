@@ -72,10 +72,10 @@ const T10: [&str; 16] = [
 ];
 
 /// T10's routines no stretch can reach, each with the task whose cases do. The status bar redraws
-/// a number only when it changes, and on a stretch with nothing to collect or lose only the
-/// countdown does (measured 2026-11-06: 0 hits over every stretch). `picture_cases.rs` shows all of
+/// a number only when it changes, and on a stretch with nothing to collect only the countdown and,
+/// on the pit's (T70), the lives do (measured 2026-11-06: 0 hits over every stretch). `picture_cases.rs` shows all of
 /// them on the original but `h0_3ab4`.
-const NOT_IN_A_STRETCH: [(&str, &str); 7] = [
+const NOT_IN_A_STRETCH: [(&str, &str); 6] = [
     // The blitter wait, called only by the spring's, the creatures' and the animated cells' blits.
     ("h0_3ab4", "T46, T47"),
     // The score and its digits: a coin or bonus taken.
@@ -83,8 +83,6 @@ const NOT_IN_A_STRETCH: [(&str, &str); 7] = [
     ("h0_6b70", "T22"),
     // The items left: an item taken.
     ("h0_6c20", "T22"),
-    // The lives: a life lost (T42's pit stretch loses one, on the spikes: char_hit_check, T70).
-    ("h0_6c80", "T70"),
     // The copper list's sprite and status pointers, set at start-up before the sync point
     // (`picture_cases.rs`, the boot from power-on).
     ("h0_9a34", "T44"),
@@ -146,6 +144,8 @@ fn every_stretch_matches_the_original_on_variables_and_picture_together() {
         assert!(v.passes + v.unseen + 1 >= case.frames - 5, "{name}: {v}");
         assert!(v.pictures + 3 >= case.frames, "{name}: {v}");
         assert_eq!(v.tolerated, [0, 0, 0], "{name}: {v}");
+        // Nor a bar accepted as a cut redraw draws it (T71).
+        assert_eq!(v.cut_redraws, 0, "{name}: {v}");
         // Every exclusion names its task (the parser requires one) and hid something.
         for (e, n) in &v.excluded {
             assert!(*n > 0, "{name}: {} hid nothing", e.what);

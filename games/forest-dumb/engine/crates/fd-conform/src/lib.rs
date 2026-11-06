@@ -66,6 +66,62 @@ pub const HIGH_SCORES: (u8, u32) = (0, 0x89d0);
 /// to `world_index` (T26).
 pub const NEXT_WORLD: (u8, u32) = (0, 0x1ba);
 
+/// The rows of [`PLAY_WINDOW`] the status bar fills (lines 241 to 296).
+pub const STATUS_ROWS: Range<u16> = 194..250;
+
+/// `level3_handler`'s `bsr.w game_frame` returns here (`h0+$1efa`): a line sample with it on the stack
+/// is inside a pass, the handler's frame above it.
+const AFTER_GAME_FRAME: u32 = 0x1efa;
+
+/// The foreground's PC (a hunk 0 offset) where the level-3 interrupt of the last step took it: the
+/// return address of the exception frame below `level3_handler`'s `movem.l d0-d7/a0-a6` (15 longs,
+/// then SR and PC), read off the first line sample from line 233, where the interrupt comes, that
+/// holds [`AFTER_GAME_FRAME`]. Needs [`Amiga::set_profile`] on for the step; `None` without samples.
+pub fn interrupted_pc(am: &Amiga) -> Option<u32> {
+    let ret = HUNK_BASES[0] + AFTER_GAME_FRAME;
+    am.line_samples()
+        .iter()
+        .filter(|s| s.vpos >= 233)
+        .find_map(|s| {
+            let i = s.stack.iter().position(|&l| l == ret)?;
+            let word = |b: usize| -> Option<u32> {
+                let l = *s.stack.get(b / 4)?;
+                Some(if b % 4 == 0 { l >> 16 } else { l & 0xffff })
+            };
+            let at = 4 * (i + 1) + 15 * 4 + 2;
+            let pc = (word(at)? << 16) | word(at + 2)?;
+            Some(pc.wrapping_sub(HUNK_BASES[0]))
+        })
+}
+
+/// How many of `h0_6a96`'s four reads (countdown at `h0+$6a96`, lives `$6aaa`, score `$6abe`, items
+/// `$6ad2`) `main_loop`'s redraw made before the interrupt that took the foreground at hunk 0 offset
+/// `pc` (T71). `None` when the redraw was not cut: `main_loop` had not read `irq_count` yet
+/// (`h0+$252`), or `h0_6a96` had read all four. A cut between a compare and its draw routine's own
+/// read may show either value of that number, so both counts on its sides are given; one inside a
+/// draw routine (`h0_6ae8` to `h0_6c80`'s end) gives every count, never measured (docs/09).
+pub fn redraw_cut(pc: u32) -> Option<Range<u8>> {
+    const READS: [u32; 4] = [0x6a96, 0x6aaa, 0x6abe, 0x6ad2];
+    match pc {
+        // After `move.w irq_count, d0`, up to the `bsr.w h0_6a96`: nothing read yet.
+        0x258..=0x29c => Some(0..1),
+        // Up to `bsr.w h0_6c20`, the items' draw: `rts` at `h0+$6ae6` has read all four.
+        0x6a96..=0x6ae2 => {
+            let done = READS.iter().filter(|&&r| r < pc).count() as u8;
+            // Exactly at a read: nothing between it and the last; else the number just compared
+            // may be drawn with the value its routine reads after.
+            if READS.contains(&pc) {
+                Some(done..done + 1)
+            } else {
+                Some(done - 1..done + 1)
+            }
+        }
+        // The draw routines, up to the lives' icon table.
+        0x6ae8..0x6da0 => Some(0..5),
+        _ => None,
+    }
+}
+
 /// What a level case never compares, by name: the original after `next_world`. A level case's
 /// comparison ends in the step the original runs it, holding `world_index` (DESIGN §2.5); world 2
 /// is no task of this plan, so the exclusion stays until world 2 is built.
@@ -137,6 +193,11 @@ pub trait Engine: Transplant {
     fn level_end(&self) -> bool {
         false
     }
+    /// The picture after the last pass with `main_loop`'s last status bar redraw cut short by pass
+    /// `32k + 1` after `cut` of its four reads ([`redraw_cut`], T71); `None` if it draws the same.
+    fn cut_redraw(&self, _cut: u8) -> Option<Picture> {
+        None
+    }
 }
 
 /// The level engine, fd-core's [`Game`], as a case runs it: one [`Game::step`] a pass, and its
@@ -164,6 +225,10 @@ impl Engine for Game {
 
     fn level_end(&self) -> bool {
         self.finished()
+    }
+
+    fn cut_redraw(&self, cut: u8) -> Option<Picture> {
+        Game::cut_redraw(self, cut)
     }
 }
 
@@ -255,6 +320,9 @@ pub struct Verdict {
     pub unseen: u32,
     /// Frames tolerated as a colour step, as a few pixels, as a short glitch.
     pub tolerated: [u32; 3],
+    /// Frames whose status bar matched the engine's [`Engine::cut_redraw`] at the cut measured on
+    /// the original, not its own redraw (T71).
+    pub cut_redraws: u32,
     /// Each exclusion and the frames on which its rows differed, or the passes on which its
     /// variable did.
     pub excluded: Vec<(Exclusion, u32)>,
@@ -280,6 +348,7 @@ impl Verdict {
             pictures: 0,
             unseen: 0,
             tolerated: [0; 3],
+            cut_redraws: 0,
             excluded: Vec::new(),
             events: Vec::new(),
             goal_met: None,
@@ -352,6 +421,13 @@ impl fmt::Display for Verdict {
             write!(
                 f,
                 "\ntolerated: {c} frames a colour step off, {p} a few pixels, {g} glitches"
+            )?;
+        }
+        if self.cut_redraws > 0 {
+            write!(
+                f,
+                "\n{} frames' status bar as main_loop's redraw cut short by the next pass shows it",
+                self.cut_redraws
             )?;
         }
         for (e, n) in &self.excluded {
@@ -821,14 +897,34 @@ pub fn run_inputs(
     let mut at: Option<(u32, u32)> = None;
     let mut passes_run = 0u32;
 
-    // The engine's picture after each pass it has run, until the frame showing it is drawn.
+    // The engine's picture after each pass it has run, until the frame showing it is drawn, and its
+    // pictures with the status bar as a cut redraw leaves it, if the original's was cut (T71).
     let mut drawn: Vec<(u32, Picture)> = Vec::new();
+    let mut cut_drawn: Vec<(u32, Vec<Picture>)> = Vec::new();
+    // Pass `32k + 1` and how many of `h0_6a96`'s reads the redraw it cut made before it.
+    let mut cut: Option<(u32, Range<u8>)> = None;
+    let mut profiling = false;
     // The last pass whose picture was compared.
     let mut shown_last: Option<u32> = None;
 
     for step in 0..case.frames {
         let input = inputs.at(case.sync_frame + step);
+        // A step starts one pass, at line 233. The one starting pass `32k + 1` is sampled line by
+        // line to find where it took the foreground (T71); sampling leaves the run unchanged.
+        // Turning it off clears the frame just drawn, so it goes off before the next step instead.
+        let started = Live(&am).value(irq);
+        let sample = case.compare.picture && started.wrapping_add(1) & 31 == 1;
+        if sample != profiling {
+            am.set_profile(sample);
+            profiling = sample;
+        }
         am.step(input).map_err(|e| e.to_string())?;
+        if sample {
+            let now = Live(&am).value(irq);
+            if now == started.wrapping_add(1) {
+                cut = interrupted_pc(&am).and_then(redraw_cut).map(|r| (now, r));
+            }
+        }
         let frame = am.frame();
         verdict.coverage.add(opts.register, am.pc_hits());
         read.step(&am, input)?;
@@ -860,6 +956,15 @@ pub fn run_inputs(
                         }
                         if case.compare.picture {
                             drawn.push((n, engine.picture().ok_or(NO_PICTURE)?));
+                            if let Some((from, r)) = cut.as_ref()
+                                && (*from..from + 31).contains(&n)
+                            {
+                                let pics: Vec<Picture> =
+                                    r.clone().filter_map(|c| engine.cut_redraw(c)).collect();
+                                if !pics.is_empty() {
+                                    cut_drawn.push((n, pics));
+                                }
+                            }
                         }
                         for e in engine.events() {
                             verdict.events.push((n - first, e));
@@ -1026,6 +1131,12 @@ pub fn run_inputs(
         shown_last = Some(shown);
         let ours = drawn.swap_remove(k).1;
         drawn.retain(|(n, _)| *n > shown);
+        let cut_ours = cut_drawn
+            .iter()
+            .position(|(n, _)| *n == shown)
+            .map(|k| cut_drawn.swap_remove(k).1)
+            .unwrap_or_default();
+        cut_drawn.retain(|(n, _)| *n > shown);
         let pass = shown - first;
         let pic = am.picture_in(PLAY_WINDOW.0, PLAY_WINDOW.1);
         let colours = to_rgb12(&ours);
@@ -1036,8 +1147,22 @@ pub fn run_inputs(
         }
         let theirs = with_boxes_ours(&pic, &colours, ours.width, &case.exclude);
         let class = classify(&ours, &theirs, &rows, &tol);
+        // The original's redraw was cut short: its bar may show what the engine's cut redraw draws,
+        // and only the bar may differ (owner, 2026-11-06, T71).
+        let bar_only = |alt: &Picture| {
+            let n = STATUS_ROWS.start as usize * ours.width as usize;
+            to_rgb12(alt)[..n] == colours[..n]
+        };
+        let cut_shows = class != PictureClass::Same
+            && cut_ours.iter().any(|alt| {
+                bar_only(alt) && classify(alt, &theirs, &rows, &tol) == PictureClass::Same
+            });
+        if cut_shows {
+            verdict.cut_redraws += 1;
+        }
         let failed = match (opts.mode, class) {
             (_, PictureClass::Same) => None,
+            _ if cut_shows => None,
             (Mode::Strict, other) => Some(format!("{other:?}, strict")),
             (Mode::Faithful, other) => judge.frame(frame, other).err(),
         };
@@ -1171,6 +1296,26 @@ mod tests {
         ] {
             assert!(text.contains(part), "{text}");
         }
+    }
+
+    #[test]
+    fn a_cut_counts_the_reads_h0_6a96_made_before_the_pass() {
+        // `main_loop` before its `irq_count` read, or after `h0_6a96` returned: not cut.
+        for pc in [0x252, 0x2a0, 0x2aa, 0x6ae6, 0x1eda] {
+            assert_eq!(redraw_cut(pc), None, "h0+${pc:x}");
+        }
+        // Between the `irq_count` read and the `bsr`, or at `h0_6a96`'s first read: none made.
+        for pc in [0x258, 0x282, 0x29c, 0x6a96] {
+            assert_eq!(redraw_cut(pc), Some(0..1), "h0+${pc:x}");
+        }
+        // At a read: those before it; after a read, its number may be drawn either way.
+        assert_eq!(redraw_cut(0x6aaa), Some(1..2));
+        assert_eq!(redraw_cut(0x6ad2), Some(3..4));
+        assert_eq!(redraw_cut(0x6a9c), Some(0..2));
+        assert_eq!(redraw_cut(0x6ac4), Some(2..4));
+        assert_eq!(redraw_cut(0x6ae2), Some(3..5));
+        // Inside a draw routine: any.
+        assert_eq!(redraw_cut(0x6b82), Some(0..5));
     }
 
     #[test]

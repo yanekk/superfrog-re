@@ -819,6 +819,13 @@ What each porting task did with its share of the table above, and which routines
   written by hand in `fd_core::level_end`, so no `[T26]` table in `re/reshape.toml`; $0 spent. They
   are proven by the `level-end` case (`tests/level_end.rs`), not the rig: `main_loop` is foreground
   code no rig unit holds.
+- **T70** (2026-11-06): `char_hit_check`'s contact half, as `fd_core::character::Play::char_hit_check`
+  (`tests/death_routines.rs`, 10 000 states of T38's generator with every creature slot inactive; 12
+  paths). The creature half, `h0_3dd8`'s stomp loop while falling, is left to **T24**: the port calls
+  `Play::stomp`, which stomps nothing until T24 fills it in, and `PORTED` names the routine once.
+  Muse wrote it (`reshape.py --task T70 --all`, first try, one tidy round, no quality issue, $0.0054),
+  shown T23's `esc_key` and `lives_minus_one`; fitted: `CONTACT`, the hurt sound's writes as one list,
+  the `bmi` as a signed compare. Its input, CLXDAT, comes from the engine's frame (`render::contact`).
 
 ## The engine-shape trial: `tools/reshape.py` (T62)
 

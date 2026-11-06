@@ -13,6 +13,7 @@ use crate::level::redraw::{Blit, LevelImage, PlayIo};
 use crate::level::{self, Dispatch, DrawList, Event, LevelCtx, Object};
 use crate::level_end::{self, Complete, LevelEnd};
 use crate::program::{HUNK_BASES, PROGRAM_FILE, Program, Scratch};
+use crate::render::status::Shown;
 use crate::render::{self, Display, DisplayData};
 use crate::{Mem, Scene, State, Transplant, Var};
 use amiga_chips::Picture;
@@ -103,6 +104,10 @@ pub struct Game {
     blits: Vec<Blit>,
     /// What the display shows (T10): picture state, left out of equality.
     display: Display,
+    /// The numbers pass `32k + 1` left, from that pass until the next redraw: what `main_loop`'s
+    /// redraw after pass `32k` reads when that pass cuts it short ([`Game::cut_redraw`], T71).
+    /// Picture state, left out of equality.
+    late: Option<Shown>,
 }
 
 impl Game {
@@ -152,6 +157,7 @@ impl Game {
                     dispatch: Dispatch::level_1(),
                     events: Vec::new(),
                     blits,
+                    late: None,
                 }
             }
         }
@@ -192,6 +198,9 @@ impl Game {
                 self.events.push(Event::LevelEnd);
             }
             Scene::Level => {
+                // CLXDAT gathers the frame shown since the last pass, which is the picture the last
+                // step left: taken before the foreground, whose edge redraws land outside the view.
+                let clxdat = self.contact();
                 self.foreground();
                 // `level3_handler`: `addi.w #1, irq_count`, then `game_frame` while the game runs.
                 self.state.irq_count = self.state.irq_count.wrapping_add(1);
@@ -204,6 +213,7 @@ impl Game {
                     image: &self.image,
                     display: &mut self.display,
                     display_data: &self.data.display,
+                    clxdat,
                 };
                 level::game_frame(
                     &mut ctx,
@@ -214,6 +224,11 @@ impl Game {
                 );
                 // `level3_handler` after `game_frame`: `move.w #$ffff, frame_flag`.
                 self.state.frame_flag = 0xffff;
+                match self.state.irq_count & 0x1f {
+                    1 => self.late = Some(self.numbers()),
+                    0 => self.late = None,
+                    _ => {}
+                }
             }
             Scene::GameOver(mut screen) => {
                 if screen.step(i.joy.contains(Joy::FIRE)) {
@@ -318,6 +333,67 @@ impl Game {
         }
     }
 
+    /// The four numbers `h0_6a96` reads, as they are now.
+    fn numbers(&self) -> Shown {
+        let s = &self.state;
+        Shown {
+            countdown: (s.countdown >> 16) as u16,
+            lives: s.lives,
+            items: s.items_left,
+            score: s.score,
+        }
+    }
+
+    /// [`Game::picture`] as the original shows it when pass `32k + 1` cut `main_loop`'s redraw after
+    /// pass `32k` short, `cut` of `h0_6a96`'s four reads (countdown, lives, score, items, in that
+    /// order) made before it: the rest read what pass `32k + 1` left, and the bar keeps that drawing
+    /// until the next redraw. `None` outside passes `32k + 1` to `32k + 31`, before a pass `32k + 1`
+    /// has run, or when it draws what [`Game::picture`] draws.
+    ///
+    /// The engine cannot know `cut`: `main_loop` calls `h0_6a96` over and over while `irq_count & 31`
+    /// is 0, and where in that loop the interrupt lands depends on the cycles every pass took, which
+    /// nothing here counts (measured, T71: docs/09, "The status bar's redraw and the next pass"). A
+    /// case reads it off the original and accepts this picture for the bar (`fd-conform`).
+    pub fn cut_redraw(&self, cut: u8) -> Option<Picture> {
+        let late = self.late?;
+        if self.scene != Scene::Level || self.state.irq_count & 0x1f == 0 {
+            return None;
+        }
+        let old = self.display.status.shown;
+        let pick = |i: u8| i >= cut;
+        let mut status = self.display.status.clone();
+        let data = &self.data.display;
+        let h4 = |o: u32| data.h4(o);
+        let src = render::status::Sources {
+            h4: &h4,
+            program: &self.data.program,
+        };
+        status.update(
+            if pick(0) {
+                late.countdown
+            } else {
+                old.countdown
+            },
+            if pick(1) { late.lives } else { old.lives },
+            if pick(2) { late.score } else { old.score },
+            if pick(3) { late.items } else { old.items },
+            &src,
+        );
+        if status.bytes == self.display.status.bytes {
+            return None;
+        }
+        let c = &self.state.camera;
+        Some(render::picture(
+            data,
+            &Display {
+                status,
+                ..self.display.clone()
+            },
+            (c.x, c.y),
+            &self.data.program,
+        ))
+    }
+
     /// The frame the original shows after this step, in the play area and status bar's window
     /// (`render::WINDOW`), drawn as Denise would from the display's memory (T10).
     ///
@@ -353,6 +429,24 @@ impl Game {
         let mut status = self.display.status.clone();
         self.status_redraw(&mut status);
         draw(&Display {
+            status,
+            ..self.display.clone()
+        })
+    }
+
+    /// CLXDAT as the frame [`Game::picture`] draws in play sets it: the character's sprites against
+    /// the playfield (`render::contact`, T70).
+    pub fn contact(&self) -> u16 {
+        let c = &self.state.camera;
+        let (data, program) = (&self.data.display, &self.data.program);
+        let clx = |d: &Display| render::contact::clxdat(data, d, (c.x, c.y), program);
+        // As `picture`: the status bar `main_loop` redraws after a pass `32k` shows in its frame.
+        if self.state.irq_count & 0x1f != 0 || game_over::game_is_over(&self.state) {
+            return clx(&self.display);
+        }
+        let mut status = self.display.status.clone();
+        self.status_redraw(&mut status);
+        clx(&Display {
             status,
             ..self.display.clone()
         })
@@ -528,6 +622,7 @@ impl Transplant for Game {
         }
         self.transplant_play(mem);
         self.transplant_display(mem);
+        self.late = None;
     }
 
     fn probe(&self, v: &Var) -> u32 {

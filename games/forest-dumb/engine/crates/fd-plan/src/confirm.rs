@@ -4,8 +4,8 @@
 //! sides (T22). The case compares the character's, the camera's and the status variables on every
 //! pass, and its goal is where the engine ends.
 //!
-//! Where the two first differ is where the modelled part of the route ends: a contact pass
-//! (`hits_taken`, T70, T24) is the original's and not yet the engine's.
+//! Where the two first differ is where the modelled part of the route ends: contact with the
+//! playfield and the lives it costs are modelled since T70, a creature's (T24) not yet.
 
 use std::sync::Arc;
 

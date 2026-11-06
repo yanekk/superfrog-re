@@ -148,6 +148,13 @@ pub const PORTED: &[Ported] = &[
         0x69d6,
         "character::Play::lives_minus_one",
     ),
+    // T70: contact and the life it costs. The creature stomp inside it (`h0_3dd8`'s loop,
+    // `character::Play::stomp`) is T24's to port.
+    port(
+        "char_hit_check",
+        0x3b2a,
+        "character::Play::char_hit_check",
+    ),
     // T52: the creatures restored and cut (render/objects.rs).
     port("h0_2c7e", 0x2c7e, "render::objects::Creatures::restore_all"),
     port("h0_2d4c", 0x2d4c, "render::objects::Creatures::cut_all"),

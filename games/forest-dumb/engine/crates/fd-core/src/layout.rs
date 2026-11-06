@@ -122,6 +122,8 @@ pub const LAYOUT: &[Var] = &[
     var("pause_key_down", 0, 0x2102, Width::Word),
     var("esc_down", 0, 0x21b0, Width::Word),
     var("cheat_flag", 0, 0x780c, Width::Word),
+    // CLXDAT as `char_hit_check` copied it (T70).
+    var("clxdat_copy", 0, 0x1fe6, Width::Word),
 ];
 
 /// The variable called `name`.
