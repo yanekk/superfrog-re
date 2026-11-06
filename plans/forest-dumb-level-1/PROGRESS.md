@@ -10,7 +10,7 @@
 
 **Status:** Amendment read back and its 4 decisions settled; ready to build. Nothing built.
 **Last updated:** 2026-11-05
-**Next `pir-work` will:** T00 and T32, because every level task rests on T00's measurements and every port on T32's rig.
+**Next `pir-work` will:** review T16; T68 waits for the owner to unlock the screen.
 
 ## Tasks
 
@@ -49,7 +49,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T13 | forest-dumb-app | T01, T10, T12 | ✅ | |
 | T14 | recorder | T12, T13 | ✅ | |
 | T15 | recording-compare | T03, T14 | ⬜ | |
-| T16 | app-drill | T13, T14 | ⬜ | |
+| T16 | app-drill | T13, T14 | 🔍 | Script-layer half driven: `drill.rs` 8 tests (smoke), `drill_sizes.rs` 2 (full). No decidable defect found. Real-window half not yet driven, owned by T68 (screen locked; coordinator's yes). Deviation: `amiga-e2e` gains `Key::Tab`, `Key::OptionLeft`. |
 | T17 | planner-toolkit-move | T02 | ✅ | |
 | T18 | map-page-toolkit-move | T17 | ✅ | |
 | T19 | map-page | T11, T18 | ⬜ | |
@@ -86,8 +86,9 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T66 | reshape-decision | T62; blocks T22 | ⬜ | |
 | T65 | level-start-draw | T55; blocks T13, T20 | ✅ | |
 | T67 | pass-input-read | T06; blocks T42, T43, T44, T15 | ✅ | |
+| T68 | app-drill-os-half | T16; blocks T28 | ⬜ | |
 
-**Review queue:** *(empty)*
+**Review queue:** T16
 
 ## Blocked on the user
 
