@@ -8,7 +8,7 @@ use std::path::Path;
 use std::thread;
 
 use fd_conform::{Case, Goal, Outcome, Verdict, run};
-use fd_core::PORTED;
+use fd_core::{LAYOUT, PORTED};
 
 const CASES: [&str; 5] = [
     "character-edge-wall",
@@ -90,6 +90,21 @@ fn every_edge_case_matches_the_original_and_reaches_its_goal_and_every_character
             "camera_y",
         ] {
             assert!(case.vars.iter().any(|v| v == var), "{}: {var}", case.name);
+        }
+        // Every character variable LAYOUT holds is compared or excluded with its task, so one a
+        // later task appends is not silently left out (T42 review: char_unhurt_t was).
+        for var in LAYOUT.iter().filter(|v| v.name.starts_with("char_")) {
+            let compared = case.vars.iter().any(|v| v == var.name);
+            let excluded = case
+                .exclude
+                .iter()
+                .any(|e| e.var.as_deref() == Some(var.name));
+            assert!(
+                compared || excluded,
+                "{}: {} not compared",
+                case.name,
+                var.name
+            );
         }
     }
 
