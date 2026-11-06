@@ -47,7 +47,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T11 | character-cases | T01, T41, T42, T43, T44 | ⬜ | |
 | T12 | app-toolkit-move | — | ✅ | |
 | T13 | forest-dumb-app | T01, T10, T12 | ✅ | |
-| T14 | recorder | T12, T13 | ⬜ | |
+| T14 | recorder | T12, T13 | 🔍 | Recorder, Start Level, Stop, bar, `fd-conform bug replay`; 16 unit, 10 e2e tests. Deviations: build stamp in `fd-tools/build.rs` (purity bars one in fd-core); no seed line, engine has no random state; spot is `((char_x+$e)/16, (char_y+9)/16)`; no clipboard or `native-ui`: native windows not OS-driven (T16). |
 | T15 | recording-compare | T03, T14 | ⬜ | |
 | T16 | app-drill | T13, T14 | ⬜ | |
 | T17 | planner-toolkit-move | T02 | ✅ | |
