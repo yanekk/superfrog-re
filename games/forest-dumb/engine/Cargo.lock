@@ -176,6 +176,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "amiga-routeview"
+version = "0.1.0"
+
+[[package]]
 name = "android-activity"
 version = "0.6.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -967,6 +971,18 @@ dependencies = [
  "fd-core",
  "fd-tools",
  "libc",
+]
+
+[[package]]
+name = "fd-routeview"
+version = "0.1.0"
+dependencies = [
+ "amiga-conform",
+ "amiga-input",
+ "amiga-routeview",
+ "fd-assets",
+ "fd-conform",
+ "fd-core",
 ]
 
 [[package]]
