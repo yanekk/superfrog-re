@@ -3,8 +3,10 @@
 //!
 //! A creature is not a [`crate::Object`]: the edge redraws (T55) start one from its object map value
 //! (1 to 6) into a free slot of `CreatureSlots` as kind `value - 1`, and from then on it lives in the
-//! slot. Each pass `h0_2fae` moves every active slot by its kind (`h0_2fea`): kind 0 flies at the
-//! character on a 32-step path, kinds 1 to 5 walk, turning where the collision map's probes find a
+//! slot. Each pass `h0_2fae` moves every active slot by its kind (`h0_2fea`): kind 0 turns to face
+//! the character and steps by its 32-entry path, whose entries are all 0 in the program (`h0+$30fe`
+//! to `$311d`, `$313e` to `$315d`, read off the original's memory in play by the T24 review), so it
+//! stays where it started; kinds 1 to 5 walk, turning where the collision map's probes find a
 //! wall or a ledge, kind 7 is a stomped creature counting out its last 32 passes. Kind 6 and any
 //! other do nothing. After the write-back (T22) `h0_3698` sorts the slots by y for drawing (T52). The
 //! stomp itself is `char_hit_check`'s ([`crate::character::Play::stomp`]).
@@ -64,7 +66,8 @@ pub const LEFT: u8 = 0xff;
 pub const RIGHT_FROM_PROBE: u8 = 0;
 /// Kind 0's facing right, which it sets itself.
 pub const FLY_RIGHT: u8 = 1;
-/// Kind 0's flying path: signed x and y steps, hunk 0 offsets.
+/// Kind 0's flying path: signed x and y steps, hunk 0 offsets. The 32 entries a phase reaches are 0
+/// in both tables; the non-zero bytes between them (`$311e` on) are never indexed.
 pub const FLY_X: u32 = 0x30fe;
 pub const FLY_Y: u32 = 0x313e;
 /// Kind 2's walk: unsigned x steps left and right.
