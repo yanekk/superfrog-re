@@ -644,6 +644,13 @@ mod tests {
     use super::*;
     use fd_core::recording::{LevelId, recorder};
 
+    /// BUG-FIX.md runs `cargo run -p fd-conform -- bug ...`; with `fd-judge` beside it cargo
+    /// refuses to pick a binary unless the manifest names one.
+    #[test]
+    fn cargo_run_picks_the_runner() {
+        assert!(include_str!("../Cargo.toml").contains("default-run = \"fd-conform\""));
+    }
+
     #[test]
     fn the_bug_compare_judges_every_play_variable_but_the_gaps() {
         let vars = compared_vars();
