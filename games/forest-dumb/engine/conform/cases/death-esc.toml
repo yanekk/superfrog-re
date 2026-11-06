@@ -1,0 +1,10 @@
+# T23: pausing, giving up and the game over screen (scripts/death-esc.txt), from frame 6400 standing.
+# P pauses and unpauses (play_keys in the paused branch), Esc gives up, main_loop's next 32-pass check
+# shows the game over screen, whose picture is compared frame by frame; fire ends it where the original
+# enters its high scores and the engine restarts the level, which ends the comparison (DESIGN §2.4).
+sync = { script = "boot-to-level1", frame = 6400 }
+input = "death-esc"
+frames = 160
+compare = ["vars", "picture"]
+vars = ["char_x", "char_y", "camera_x", "camera_y", "lives", "countdown", "countdown_tick", "items_left", "score", "irq_count", "paused", "give_up", "last_key_byte", "pause_key_down", "esc_down", "cheat_flag", "level_exit_touched", "joy_left", "joy_right", "joy_up", "joy_down", "input_log_index", "char_anim_ptr", "char_unhurt_t", "char_update_t"]
+goal = { game_over = true, by_frame = 6560 }

@@ -335,7 +335,10 @@ pub fn game_over_picture(data: &DisplayData, display: &Display, program: &Progra
     let mut chip = Chip::new(data, display, (0, 0), program);
     for k in 0..5 {
         for (off, b) in pointer(GAME_OVER_PLANES + 8 * k, h(4, GAME_OVER_PICTURE + 0x28 * k)) {
-            chip.h1[off as usize..off as usize + b.len()].copy_from_slice(&b);
+            // Data read without the program has no hunk 1: nothing to write into.
+            for (x, &v) in chip.h1.iter_mut().skip(off as usize).zip(&b) {
+                *x = v;
+            }
         }
     }
     run_list(&chip, h(1, GAME_OVER_COPPER))

@@ -40,6 +40,10 @@ pub enum Goal {
     /// A stretch where only state is expected to stay in step: the run reaches its last frame with
     /// no engine event, and every listed variable is compared on every pass.
     Idle,
+    /// Both sides go to the game over screen together and leave it in the same step, where the
+    /// original enters its high scores and the engine restarts the level (T23, DESIGN §2.4), at or
+    /// before oracle frame `by_frame`. The comparison ends there.
+    GameOver { by_frame: u32 },
 }
 
 /// Picture rows, a box of them, or a variable, whose differences a case does not fail on, and the
@@ -219,7 +223,8 @@ impl Case {
             }
             if goal.is_none() {
                 return Err("a level case states its `goal` (porting-routines §4): \
-                            `{ all = [...], by_frame = N }` or `{ idle = true }`"
+                            `{ all = [...], by_frame = N }`, `{ idle = true }` or \
+                            `{ game_over = true, by_frame = N }`"
                     .to_string());
             }
         } else {
@@ -524,12 +529,31 @@ fn compare_list(v: &Value) -> Result<Compare, String> {
 }
 
 fn goal(v: &Value, sync_frame: u32, frames: u32) -> Result<Goal, String> {
-    let t = v.table("goal", &["all", "by_frame", "idle"])?;
+    let t = v.table("goal", &["all", "by_frame", "idle", "game_over"])?;
     if let Some((_, idle)) = t.iter().find(|(k, _)| k == "idle") {
         if t.len() != 1 || *idle != Value::Bool(true) {
             return Err("goal: `idle = true` stands alone".to_string());
         }
         return Ok(Goal::Idle);
+    }
+    let by_frame = |t: &[(String, Value)]| {
+        let by_frame = field(t, "by_frame", "goal")?.int("by_frame")?;
+        let end = sync_frame.saturating_add(frames);
+        if by_frame <= sync_frame || by_frame > end {
+            return Err(format!(
+                "goal by_frame {by_frame}: must be after the sync frame {sync_frame} and at most \
+                 its last frame {end}"
+            ));
+        }
+        Ok(by_frame)
+    };
+    if let Some((_, over)) = t.iter().find(|(k, _)| k == "game_over") {
+        if *over != Value::Bool(true) || t.iter().any(|(k, _)| k == "all") {
+            return Err("goal: `game_over = true` takes a `by_frame` and nothing else".to_string());
+        }
+        return Ok(Goal::GameOver {
+            by_frame: by_frame(t)?,
+        });
     }
     let mut all = Vec::new();
     for item in field(t, "all", "goal")?.list("goal.all")? {
@@ -541,15 +565,10 @@ fn goal(v: &Value, sync_frame: u32, frames: u32) -> Result<Goal, String> {
     if all.is_empty() {
         return Err("goal.all is empty: a goal with nothing to reach".to_string());
     }
-    let by_frame = field(t, "by_frame", "goal")?.int("by_frame")?;
-    let end = sync_frame.saturating_add(frames);
-    if by_frame <= sync_frame || by_frame > end {
-        return Err(format!(
-            "goal by_frame {by_frame}: must be after the sync frame {sync_frame} and at most \
-             its last frame {end}"
-        ));
-    }
-    Ok(Goal::All { all, by_frame })
+    Ok(Goal::All {
+        all,
+        by_frame: by_frame(t)?,
+    })
 }
 
 fn exclusion(v: &Value) -> Result<Exclusion, String> {
@@ -672,6 +691,29 @@ mod tests {
             "goal = { idle = true }",
         );
         assert_eq!(Case::parse("l", &idle).unwrap().goal, Some(Goal::Idle));
+        let over = LEVEL.replace(
+            "goal = { all = [{ var = \"char_x\", value = 0x80 }], by_frame = 6400 }",
+            "goal = { game_over = true, by_frame = 6400 }",
+        );
+        assert_eq!(
+            Case::parse("l", &over).unwrap().goal,
+            Some(Goal::GameOver { by_frame: 6400 })
+        );
+        for (goal, says) in [
+            (
+                "goal = { game_over = false, by_frame = 6400 }",
+                "game_over = true",
+            ),
+            ("goal = { game_over = true }", "no `by_frame`"),
+            ("goal = { game_over = true, by_frame = 6402 }", "at most"),
+        ] {
+            let text = LEVEL.replace(
+                "goal = { all = [{ var = \"char_x\", value = 0x80 }], by_frame = 6400 }",
+                goal,
+            );
+            let err = Case::parse("l", &text).unwrap_err();
+            assert!(err.contains(says), "{goal}: {err}");
+        }
     }
 
     fn refused(base: &str, from: &str, to: &str, says: &str) {

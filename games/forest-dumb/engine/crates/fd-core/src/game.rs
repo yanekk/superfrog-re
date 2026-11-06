@@ -657,6 +657,55 @@ mod tests {
     }
 
     #[test]
+    fn the_game_over_check_shows_the_screen_and_fire_restarts_the_level() {
+        let mut g = Game::new(data(), Start::Level1);
+        // Esc pressed, then let go: `play_keys` gives up at the pass's end (T23).
+        g.step(FrameInput::key(0x45));
+        assert_eq!(g.state().keys.esc_down, 1);
+        g.step(FrameInput::NONE);
+        assert_eq!(g.state().give_up, 1);
+        // Passes run on until `main_loop`'s check after pass 32; the step after shows the screen
+        // and runs no pass.
+        while g.state().irq_count != 32 {
+            assert_eq!(*g.scene(), Scene::Level);
+            g.step(FrameInput::NONE);
+        }
+        assert!(g.take_events().is_empty());
+        g.state.score = 0x1234;
+        let before = g.state().clone();
+        g.step(FrameInput::NONE);
+        assert_eq!(g.take_events(), [Event::GameOver]);
+        assert!(matches!(g.scene(), Scene::GameOver(_)));
+        assert_eq!(*g.state(), before, "no pass ran");
+        // Fire before the wait's end is ignored; pressed after it, its release restarts.
+        for _ in 0..20 {
+            g.step(FrameInput::joy(Joy::FIRE));
+        }
+        g.step(FrameInput::NONE);
+        assert!(matches!(g.scene(), Scene::GameOver(_)));
+        g.step(FrameInput::joy(Joy::FIRE));
+        assert!(g.take_events().is_empty());
+        g.step(FrameInput::NONE);
+        assert_eq!(g.take_events(), [Event::Restart]);
+        let fresh = Game::new(data(), Start::Level1);
+        assert_eq!(
+            g, fresh,
+            "the level as at its start: lives full, score zero"
+        );
+        assert_eq!((g.lives(), g.energy(), g.state().score), (32, 999, 0));
+    }
+
+    #[test]
+    fn the_game_over_screen_draws_its_own_picture() {
+        let mut g = Game::new(data(), Start::Level1);
+        let play = g.picture();
+        g.scene = Scene::GameOver(GameOver::default());
+        let over = g.picture();
+        assert_eq!((over.width, over.height), (play.width, play.height));
+        // Equal to the oracle's frame on every pixel: `fd-conform/tests/death.rs`.
+    }
+
+    #[test]
     fn an_unregistered_value_raises_unported_once_and_is_left_out() {
         let mut g = Game::new(data(), Start::Level1);
         g.spawn(Object::at_cell(0x42, 0, 5));
