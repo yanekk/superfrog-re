@@ -148,6 +148,10 @@ pub const PORTED: &[Ported] = &[
         0x69d6,
         "character::Play::lives_minus_one",
     ),
+    // T25: springs (objects/spring.rs) and the animated cells (objects/animated.rs).
+    port("h0_21c0", 0x21c0, "objects::MapObjects::spring_redraw"),
+    port("h0_24ce", 0x24ce, "objects::MapObjects::spring_trigger"),
+    port("h0_62b6", 0x62b6, "objects::MapObjects::animate"),
     // T70: contact and the life it costs. The creature stomp inside it (`h0_3dd8`'s loop,
     // `character::Play::stomp`) is T24's to port.
     port(

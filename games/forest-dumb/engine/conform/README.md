@@ -74,7 +74,8 @@ swap = { frame = 3600, disk = 2 }                   # title cases only: this dis
   needs `compare = ["vars"]` and is not also in `vars`. An exclusion that hid no difference over the
   whole run fails the case: it is no longer needed.
 - **`freeze`.** Patches the routines `fd-conform/src/freeze.rs` lists to return at once in the
-  original at the sync point. The list is empty until T21 measures the object entry points, so
+  original at the sync point, and has the engine leave out the ones it ports
+  (`fd_core::level::FROZEN_IN_A_CASE`, T25's springs and animated cells, through `Engine::freeze`). The list is empty until T21 measures the object entry points, so
   `freeze = true` is an error until then.
 - **`set`.** `LAYOUT` variables written into the original at the sync point, before the engine takes
   its memory: what no input reaches in play. `level-end` sets `cheat_flag`, which only the title's code

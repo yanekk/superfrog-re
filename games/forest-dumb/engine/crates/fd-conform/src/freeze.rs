@@ -25,7 +25,12 @@ pub struct Frozen {
 
 /// Every routine a `freeze = true` case returns from at once. T22 removed its five (the bonus blits
 /// `h0_a06`, `h0_ce4`, `h0_104c`, `h0_1390`, which T55 ported, and `h0_26ec`, taking): the engine takes
-/// items, bonuses and the exit as the original does, so a frozen case lets both.
+/// items, bonuses and the exit as the original does, so a frozen case lets both. T25 ported its two
+/// (springs, the animated cells) but keeps them (owner, 2026-11-06): unfrozen, the original's pass runs
+/// late and `main_loop`'s redraws are cut short, which the engine does not model, so three frozen cases
+/// would fail (plans/forest-dumb-level-1 FINDINGS). A frozen case's engine leaves the same two out
+/// (`fd_core::level::FROZEN_IN_A_CASE`, entry for entry). T47's unfrozen cases remove both lists' T25
+/// entries.
 pub const FROZEN: &[Frozen] = &[
     Frozen {
         hunk: 0,
@@ -59,8 +64,8 @@ pub struct Skipped {
     pub mirrors: u32,
 }
 
-/// Every engine skip of a frozen case: `fd_core::Game`'s transplant finds the patch below in the
-/// original and skips them (`Game::freeze_creature_drawing`).
+/// Every engine skip of a frozen case beyond `fd_core::level::FROZEN_IN_A_CASE`'s: a frozen case's
+/// engine (`Game::freeze_as_a_case`, set by the case runner) leaves these out of `game_frame`.
 pub const ENGINE_SKIPS: &[Skipped] = &[Skipped {
     what: "T52's creature drawing (h0_2c7e, h0_2d4c): the frozen h0_681c starts no creature in the \
            original, the engine's redraws still start them, so the engine draws none",

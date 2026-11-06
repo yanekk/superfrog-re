@@ -190,6 +190,9 @@ impl Transplant for ShortClamp {
 }
 
 impl Engine for ShortClamp {
+    fn freeze(&mut self) {
+        Engine::freeze(&mut self.0);
+    }
     fn pass(&mut self, input: FrameInput) {
         self.0.pass(input);
     }

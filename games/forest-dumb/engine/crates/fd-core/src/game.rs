@@ -85,11 +85,6 @@ fn bcd(w: u16) -> u16 {
     (0..4).rev().fold(0, |v, k| v * 10 + (w >> (4 * k) & 0xf))
 }
 
-/// `h0_681c`, the creature start a case with `freeze = true` patches to [`RTS`] (fd-conform's
-/// `freeze.rs`, T24's entry).
-const FROZEN_CREATURE_START: u32 = 0x681c;
-const RTS: [u8; 2] = [0x4e, 0x75];
-
 /// The whole game.
 #[derive(Debug, Clone)]
 pub struct Game {
@@ -113,9 +108,10 @@ pub struct Game {
     /// redraw after pass `32k` reads when that pass cuts it short ([`Game::cut_redraw`], T71).
     /// Picture state, left out of equality.
     late: Option<Shown>,
-    /// Set only by a conformance case that freezes creatures in the original
-    /// ([`Game::freeze_creature_drawing`]); left out of equality.
-    creatures_frozen: bool,
+    /// A conformance case froze the original: the engine leaves out what `level::FROZEN_IN_A_CASE`
+    /// names. Set only by [`Game::freeze_as_a_case`]; the app and the planner never do
+    /// (`fd-conform/tests/mechanic_routines.rs`).
+    frozen: bool,
 }
 
 impl Game {
@@ -166,7 +162,7 @@ impl Game {
                     events: Vec::new(),
                     blits,
                     late: None,
-                    creatures_frozen: false,
+                    frozen: false,
                 }
             }
         }
@@ -218,12 +214,12 @@ impl Game {
                     level: &self.data.level,
                     program: &self.data.program,
                     anim: &self.data.anim,
-                    plane: &self.plane,
+                    plane: &mut self.plane,
                     image: &self.image,
                     display: &mut self.display,
                     display_data: &self.data.display,
                     clxdat,
-                    draw_creatures: !self.creatures_frozen,
+                    frozen: self.frozen,
                 };
                 level::game_frame(
                     &mut ctx,
@@ -275,24 +271,20 @@ impl Game {
         self.state.keys.cheat = on as u16;
     }
 
-    /// For a conformance case with `freeze = true` only, found by [`Transplant::transplant`] from the
-    /// patch it leaves in the original (the app and the planner never call it): the frozen original's `h0_681c` returns at once, so it never starts a creature
-    /// and draws none, while the engine's edge redraws still start them (T55). So the pass skips T52's
-    /// creature drawing (`h0_2c7e`, `h0_2d4c`) and the pictures compare. An exclusion naming T24,
-    /// listed in fd-conform's `freeze::ENGINE_SKIPS`, removed with `h0_681c`'s freeze entry (owner,
-    /// 2026-11-06).
-    pub fn freeze_creature_drawing(&mut self) {
-        self.creatures_frozen = true;
-    }
-
     /// Where the original enters its high scores, or fire ends "Level 1 complete": the level again
     /// from its start, lives full and score zero (DESIGN §2.4, §2.5). Events not yet taken are kept.
+    /// For a conformance case that freezes the original (`fd-conform`'s `Engine::freeze`, and
+    /// nothing else): from now on the engine leaves out what `level::FROZEN_IN_A_CASE` names, as the
+    /// frozen original does. A restart keeps it.
+    pub fn freeze_as_a_case(&mut self) {
+        self.frozen = true;
+    }
+
     fn restart(&mut self) {
-        let events = std::mem::take(&mut self.events);
-        let frozen = self.creatures_frozen;
+        let (events, frozen) = (std::mem::take(&mut self.events), self.frozen);
         *self = Game::new(self.data.clone(), Start::Level1);
-        self.creatures_frozen = frozen;
         self.events = events;
+        self.frozen = frozen;
         self.events.push(Event::Restart);
     }
 
@@ -645,11 +637,6 @@ impl Transplant for Game {
         self.transplant_play(mem);
         self.transplant_display(mem);
         self.late = None;
-        // A case with `freeze = true` patched `h0_681c` to `rts` in the original (fd-conform's
-        // `freeze.rs`): nothing else puts one there.
-        if mem.read(0, FROZEN_CREATURE_START, 2) == RTS {
-            self.freeze_creature_drawing();
-        }
     }
 
     fn probe(&self, v: &Var) -> u32 {

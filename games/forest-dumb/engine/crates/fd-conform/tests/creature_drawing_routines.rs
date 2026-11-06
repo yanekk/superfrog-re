@@ -526,7 +526,7 @@ fn game_frame_restores_and_cuts_the_creatures() {
     for f in 0..PASSES {
         am.step(input(f)).unwrap_or_else(|e| panic!("{e}"));
         let mut g = Game::new(data.clone(), Start::Level1);
-        g.transplant(&Live(&am));
+        g.transplant(&Masked(Live(&am), MECHANICS.to_vec()));
         let creatures = g.state().edges.creatures.clone();
         let items = g.state().items_left;
         if creatures.active.iter().all(|&f| f == 0) {
@@ -538,15 +538,20 @@ fn game_frame_restores_and_cuts_the_creatures() {
         want.foreground();
         let undrawn = want.display().screen.clone();
         let (want, _) = drawn(&want, &creatures, &creatures);
-        // A case freezing creatures in the original skips the drawing, and only that (owner,
-        // 2026-11-06): its step leaves the screen as the foreground does.
+        // A case freezing creatures in the original skips the drawing (owner, 2026-11-06): its step
+        // leaves the screen as the foreground does.
         let mut frozen = g.clone();
-        frozen.freeze_creature_drawing();
+        frozen.freeze_as_a_case();
         frozen.step(amiga_oracle::FrameInput::NONE);
         g.step(amiga_oracle::FrameInput::NONE);
         let s = g.state();
-        // A creature written back (T22) or an item taken redraws more than this test models.
-        if s.edges.creatures.active != creatures.active || s.items_left != items {
+        // A creature written back (T22), an item taken, or a spring or an animated cell the pass
+        // itself started (T25) redraws more than this test models.
+        if s.edges.creatures.active != creatures.active
+            || s.items_left != items
+            || s.spring.timer != 0
+            || s.edges.cells.used.iter().flatten().any(|&u| u != 0)
+        {
             continue;
         }
         assert_eq!(s.creature_draw.drawn, s.edges.creatures.active, "pass {f}");
@@ -562,10 +567,13 @@ fn game_frame_restores_and_cuts_the_creatures() {
             frozen.display().screen.bytes == undrawn.bytes,
             "pass {f}: a frozen case drew the creatures"
         );
-        // Beyond the drawing's own variables, which it leaves as they were.
+        // Beyond the drawing's own variables, which it leaves as they were, and what T25's frozen
+        // routines keep (`level::FROZEN_IN_A_CASE`).
         let mut fs = frozen.state().clone();
         fs.creature_draw = s.creature_draw;
         fs.edges.creatures.current = s.edges.creatures.current;
+        fs.edges.cells = s.edges.cells.clone();
+        fs.spring = s.spring;
         assert!(
             &fs == s,
             "pass {f}: the skip changed more than the drawing's state"
@@ -575,53 +583,26 @@ fn game_frame_restores_and_cuts_the_creatures() {
     assert!(checked > 50, "{checked} passes with a creature checked");
 }
 
-#[test]
-fn only_a_frozen_case_skips_the_creature_drawing() {
-    // The skip is a conformance case's exclusion (T24's), never play's: only the transplant from an
-    // original whose `h0_681c` a frozen case patched sets it, a frozen case's engine-alone run
-    // (collect_cases.rs) and this test.
-    let engine = concat!(env!("CARGO_MANIFEST_DIR"), "/..");
-    let mut callers = Vec::new();
-    let mut stack = vec![std::path::PathBuf::from(engine)];
-    while let Some(d) = stack.pop() {
-        for e in std::fs::read_dir(&d).unwrap() {
-            let p = e.unwrap().path();
-            if p.is_dir() {
-                stack.push(p);
-            } else if p.extension().is_some_and(|x| x == "rs")
-                && std::fs::read_to_string(&p)
-                    .unwrap()
-                    .contains("freeze_creature_drawing()")
-            {
-                callers.push(p.strip_prefix(engine).unwrap().display().to_string());
-            }
-        }
-    }
-    callers.sort();
-    assert_eq!(
-        callers,
-        [
-            "fd-conform/tests/collect_cases.rs",
-            "fd-conform/tests/creature_drawing_routines.rs",
-            "fd-core/src/game.rs"
-        ]
-    );
-}
+/// The original's memory with each (hunk, offset, length) of `.1` read as 0.
+struct Masked<'a>(fd_conform::Live<'a>, Vec<(u8, u32, u32)>);
 
-/// The original's memory with one creature's live flag cleared: a creature the last pass drew
-/// (`creature_active+$c` set) that is no longer active.
-struct Gone<'a>(fd_conform::Live<'a>, u32);
-
-impl fd_core::Mem for Gone<'_> {
+impl fd_core::Mem for Masked<'_> {
     fn read(&self, hunk: u8, offset: u32, len: usize) -> Vec<u8> {
         let mut v = self.0.read(hunk, offset, len);
-        let at = (ACTIVE + self.1).wrapping_sub(offset) as usize;
-        if let (0, Some(b)) = (hunk, v.get_mut(at)) {
-            *b = 0;
+        for &(h, at, n) in &self.1 {
+            for a in at..at + n {
+                if let (true, Some(b)) = (h == hunk, v.get_mut(a.wrapping_sub(offset) as usize)) {
+                    *b = 0;
+                }
+            }
         }
         v
     }
 }
+
+/// What T25's mechanics draw in a pass, left out so the screen shows the creatures' drawing alone:
+/// the animated cells' lists (`anim_cell_used`, `h2+$1680`) and the spring (`spring_timer`).
+const MECHANICS: [(u8, u32, u32); 2] = [(2, 0x1680, 48), (0, 0x21bc, 2)];
 
 #[test]
 fn game_frame_restores_the_creatures_the_last_pass_drew() {
@@ -641,7 +622,9 @@ fn game_frame_restores_the_creatures_the_last_pass_drew() {
             continue;
         };
         let mut g = Game::new(data.clone(), Start::Level1);
-        g.transplant(&Gone(Live(&am), k as u32));
+        let mut zeroed = MECHANICS.to_vec();
+        zeroed.push((0, ACTIVE + k as u32, 1));
+        g.transplant(&Masked(Live(&am), zeroed));
         let creatures = g.state().edges.creatures.clone();
         let items = g.state().items_left;
         if g.state().creature_draw.drawn[k] == 0 {
@@ -653,7 +636,11 @@ fn game_frame_restores_the_creatures_the_last_pass_drew() {
         let (want, _) = drawn(&want, &creatures, &creatures);
         g.step(amiga_oracle::FrameInput::NONE);
         let s = g.state();
-        if s.edges.creatures.active != creatures.active || s.items_left != items {
+        if s.edges.creatures.active != creatures.active
+            || s.items_left != items
+            || s.spring.timer != 0
+            || s.edges.cells.used.iter().flatten().any(|&u| u != 0)
+        {
             continue;
         }
         assert!(

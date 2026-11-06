@@ -73,6 +73,9 @@ impl Transplant for Watched {
 }
 
 impl Engine for Watched {
+    fn freeze(&mut self) {
+        Engine::freeze(&mut self.game);
+    }
     fn pass(&mut self, input: FrameInput) {
         self.game.pass(input);
         self.frames.push(self.game.display().sprite.frame);

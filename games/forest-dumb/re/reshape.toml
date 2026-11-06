@@ -124,6 +124,33 @@ units = [
   { fn = "lives_minus_one", routines = [["lives_minus_one", 0x69d6]] },
 ]
 
+[T25]
+src = "crates/fd-core/src/objects/spring.rs"
+impl = "impl MapObjects<'_>"
+test = "crates/fd-conform/tests/mechanic_routines.rs"
+test_fn = "every_t25_routine_matches_the_original"
+loop = "for (name, off, port) in routines() {"
+state = ["crates/fd-core/src/objects/spring.rs", "crates/fd-core/src/objects/mod.rs",
+         "crates/fd-core/src/objects/collectible.rs", "crates/fd-core/src/state.rs",
+         "crates/fd-core/src/level/redraw.rs"]
+layout = true
+harness = ["CHAR_X", "CHAR_Y", "JUMP_41B6", "DYING", "RISING", "FALLING", "SPRING_X", "SPRING_Y",
+           "SPRING_TIMER", "SPRING_KIND", "SCREEN", "TILES", "SPRING_SAMPLE", "h0", "CpuIo", "load", "store",
+           "on_mechanics"]
+adapter_fn = true
+examples = ["spring_trigger"]
+compared = """The rig loads the State fields the mechanics use from memory (char_x, char_y, the camera, the \
+character's falling, dying, rising and jump_41b6 flags, `spring`, `animation`, the animated cells), runs your \
+function with `self.io` over that memory, stores what changed and compares every byte the original writes and \
+every custom-chip write in order: a blit through `self.io.blit` (`Blit::Cell` for a tile from the tile table's \
+offset, `Blit::Picture` for a 32 x 16 picture of hunk 4; the adapter writes the blitter's modulos and masks for \
+the routine's first cell blit only, as the original does), a sound through `self.io.sound`. Map and tile map \
+cells are read through `self.io` at hunk 0 offsets. No register is compared."""
+units = [
+  { fn = "spring_trigger", routines = [["h0_24ce", 0x24ce]] },
+  { fn = "spring_redraw", routines = [["h0_21c0", 0x21c0]] },
+]
+
 [T70]
 src = "crates/fd-core/src/character/death.rs"
 impl = "impl Play<'_>"

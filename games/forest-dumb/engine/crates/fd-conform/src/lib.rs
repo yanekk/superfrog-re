@@ -182,6 +182,10 @@ pub trait Engine: Transplant {
     fn events(&mut self) -> Vec<Event> {
         Vec::new()
     }
+    /// The case freezes the original (`freeze = true`, DESIGN §2.2): the engine leaves out the same
+    /// routines (`fd_core::level::FROZEN_IN_A_CASE`, T25). Called once, before the transplant; the
+    /// only way the engine's freeze is ever set. A wrapper of [`Game`] forwards it.
+    fn freeze(&mut self) {}
     /// A step the original spends on the game over screen, where no pass runs: the engine steps on
     /// the step's input (T23). An engine without the screen does nothing.
     fn off_play(&mut self, _input: FrameInput) {}
@@ -200,11 +204,26 @@ pub trait Engine: Transplant {
     }
 }
 
+/// A new game at level 1 as `case` runs it: frozen ([`Engine::freeze`]) when the case freezes the
+/// original, and only then. What a caller that plays the case's inputs ahead of it uses (the planner's
+/// confirmation, for its goal), so the case's `freeze` alone decides.
+pub fn engine_for(case: &Case, data: Arc<GameData>) -> Game {
+    let mut g = Game::new(data, Start::Level1);
+    if case.freeze {
+        Engine::freeze(&mut g);
+    }
+    g
+}
+
 /// The level engine, fd-core's [`Game`], as a case runs it: one [`Game::step`] a pass, and its
 /// picture ([`Game::picture`], T10) as the pass leaves the display.
 impl Engine for Game {
     fn pass(&mut self, input: FrameInput) {
         self.step(input);
+    }
+
+    fn freeze(&mut self) {
+        self.freeze_as_a_case();
     }
 
     fn picture(&self) -> Option<Picture> {
@@ -933,6 +952,9 @@ pub fn run_inputs(
             let ended = theirs.value(irq);
             match at {
                 None => {
+                    if case.freeze {
+                        engine.freeze();
+                    }
                     engine.transplant(&theirs);
                     at = Some((ended, ended));
                     read.drop_through(ended);

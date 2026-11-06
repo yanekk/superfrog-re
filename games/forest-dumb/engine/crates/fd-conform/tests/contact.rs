@@ -38,6 +38,9 @@ impl Transplant for Copies {
 }
 
 impl Engine for Copies {
+    fn freeze(&mut self) {
+        Engine::freeze(&mut self.game);
+    }
     fn pass(&mut self, input: FrameInput) {
         self.game.step(input);
         self.seen.push(self.game.state().clxdat_copy);

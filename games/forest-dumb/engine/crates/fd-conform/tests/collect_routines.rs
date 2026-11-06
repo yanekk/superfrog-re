@@ -75,6 +75,7 @@ impl Io for CpuIo<'_> {
         let (ch, sample, len, period) = match s {
             Sound::Item => (2u32, ITEM_SAMPLE, 0x7cb, 0x165),
             Sound::Time => (3, TIME_SAMPLE, 0x1c4f, 0x1ff),
+            Sound::Spring => unreachable!("only h0_21c0 starts the spring's sound (T25)"),
         };
         let m = &mut self.0.mem;
         let aud = 0xdf_f0a0 + 0x10 * ch;
@@ -84,6 +85,9 @@ impl Io for CpuIo<'_> {
         m.ww(aud + 6, period);
         m.ww(aud + 8, 0x3f);
         m.ww(0xdf_f096, 0x8200 | 1 << ch);
+    }
+    fn collision(&mut self, at: u32, v: u32) {
+        self.0.mem.wl(h(3, 0xfa50).wrapping_add(at), v);
     }
 }
 

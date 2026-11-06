@@ -24,14 +24,15 @@ const BIN: &str = env!("CARGO_BIN_EXE_fd-plan");
 
 /// The short search: seed 1, 100 rounds, ~0.8 s on 10 threads.
 const ROUNDS: u64 = 100;
-/// Where it ends on the engine (measured 2026-11-06 with T22's items and T70's contact): stalled with
-/// 158 of 282 coins still to take, 6 236 frames in, no life lost.
-const END: &str = "W1-1:198,92";
-const FRAMES: usize = 6236;
-const COINS_LEFT: u16 = 158;
-/// The passes the original and the engine are compared on, all agreeing (T70); the rest of the
-/// route's frames and the idle slack the original ended unseen, two in one step.
-const AGREED: u32 = 6032;
+/// Where it ends on the engine (measured 2026-11-06 with T22's items, T70's contact and T25's springs
+/// and vanishing blocks): stalled with 149 of 282 coins still to take, 6 980 frames in, no life lost.
+const END: &str = "W1-1:189,90";
+const FRAMES: usize = 6980;
+const COINS_LEFT: u16 = 149;
+/// The passes the original and the engine are compared on, all agreeing (T70; T25's route, both sides
+/// frozen as the case says); the rest of the route's frames and the idle slack the original ended
+/// unseen, two in one step.
+const AGREED: u32 = 6821;
 
 fn data() -> Arc<GameData> {
     static D: OnceLock<Arc<GameData>> = OnceLock::new();
@@ -109,6 +110,27 @@ fn the_facts_match_the_levels_readings() {
     // Shape 0 is solid in every level, shape 2 empty in W1 (docs/05).
     assert!(!s.open((0, 95)) || d.level.shape(0, 95) != 0);
     assert!(s.open((7, 7)));
+}
+
+/// The mechanics (T25) are not switches, so they add no gates; every cell of theirs is open, read from
+/// the level's file. A vanishing block's cell is solid in play only while it shows: its 28-pixel top is
+/// written into `collision_map` by the animated cells, and cleared at its empty frame.
+#[test]
+fn the_mechanics_open_no_gate_and_their_cells_are_open() {
+    use fd_plan::facts::is_mechanic;
+    let d = data();
+    let f = facts(&d.level);
+    assert!(f.gates.is_empty());
+    let cells: Vec<_> = (0..f.cols)
+        .flat_map(|c| (0..f.rows).map(move |r| (c, r)))
+        .filter(|&(c, r)| is_mechanic(d.level.object(c, r)))
+        .collect();
+    // docs/10: three spring cells, 26 vanishing blocks, 11 water cells.
+    assert_eq!(cells.len(), 3 + 26 + 11);
+    let s = start(&d);
+    for c in &cells {
+        assert!(s.open(*c), "{c:?} is a wall");
+    }
 }
 
 #[test]

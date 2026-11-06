@@ -91,8 +91,8 @@ pub struct LevelCtx<'a> {
     /// The main program's hunk 0 as loaded: the tables the original's routines read (T08).
     pub program: &'a Program,
     pub anim: &'a AnimTables,
-    /// The collision plane, play state (T08; T55 draws it, T25 changes it).
-    pub plane: &'a CollisionPlane,
+    /// The collision plane, play state (T08; T55 draws it, T25's vanishing blocks change it).
+    pub plane: &'a mut CollisionPlane,
     /// The level's buffers as the original lays them out in hunk 0 (T55): the tile map a taken
     /// cell is redrawn from (T22).
     pub image: &'a redraw::LevelImage,
@@ -103,9 +103,39 @@ pub struct LevelCtx<'a> {
     /// CLXDAT as this pass's `char_hit_check` reads it: the collisions of the frame the display
     /// showed since the last pass (`render::contact`, T70).
     pub clxdat: u16,
-    /// Whether the pass draws the creatures (T52): always, but in a conformance case that freezes
-    /// them in the original (`Game::freeze_creature_drawing`).
-    pub draw_creatures: bool,
+    /// A conformance case froze the original (`Game::freeze_as_a_case`): the routines
+    /// [`FROZEN_IN_A_CASE`] names are left out here too. Never set in play.
+    pub frozen: bool,
+}
+
+/// What the engine leaves out while a conformance case freezes the original (`freeze = true`,
+/// DESIGN §2.2), as `fd-conform`'s `freeze.rs` patches the same routines to return at once, each
+/// with the task whose freeze it mirrors. An exclusion: it goes when that task's `freeze.rs` entry
+/// goes (T47 for T25's), which `fd-conform/tests/mechanic_routines.rs` holds.
+pub struct FrozenInACase {
+    pub name: &'static str,
+    pub offset: u32,
+    pub task: &'static str,
+}
+
+pub const FROZEN_IN_A_CASE: &[FrozenInACase] = &[
+    // `h0_6882` saves and restores every register, so returning at once only leaves the animated
+    // cells' lists empty: `h0_62b6` still steps `anim_tick` and draws nothing.
+    FrozenInACase {
+        name: "h0_6882",
+        offset: 0x6882,
+        task: "T25",
+    },
+    FrozenInACase {
+        name: "h0_24ce",
+        offset: 0x24ce,
+        task: "T25",
+    },
+];
+
+/// Whether this pass leaves out the routine at hunk 0 `offset` ([`FROZEN_IN_A_CASE`]).
+fn frozen(l: &LevelCtx, offset: u32) -> bool {
+    l.frozen && FROZEN_IN_A_CASE.iter().any(|f| f.offset == offset)
 }
 
 /// One thing an object shows: an image at a place in level pixels. T10 and the kinds' tasks
@@ -216,20 +246,28 @@ pub fn game_frame(
     let s = &mut *l.state;
     s.creature_draw.saved = s.edges.creatures.active;
     s.edges.creatures.active = s.creature_draw.drawn;
-    if l.draw_creatures {
+    // A frozen case's original starts no creature (T52's `freeze.rs` `ENGINE_SKIPS`, T24).
+    if !l.frozen {
         crate::render::objects::in_play(l, |c| c.restore_all());
     }
     let s = &mut *l.state;
     s.edges.creatures.active = s.creature_draw.saved;
-    // h0+$2fae .. h0+$62b6: the objects (T24, T25); until they are ported, the dispatch's kinds run
+    // h0+$2fae: the creatures (T24); until they are ported, the dispatch's kinds run
     // here.
     update_objects(l, objects, dispatch, events);
+    // h0+$21c0: the spring's picture; h0+$62b6: the animated cells (T25). A frozen case's `h0_6882`
+    // never fills the lists the edge redraws add to, so they are emptied before they are run.
+    crate::objects::in_play(l, |o| o.spring_redraw());
+    if frozen(l, 0x6882) {
+        l.state.edges.cells = redraw::AnimatedCells::default();
+    }
+    crate::objects::in_play(l, |o| o.animate());
     // h0+$2dd6: creatures out of view written back into the object map (T22).
     crate::objects::in_play(l, |o| o.write_back());
     // h0+$3698 (T24).
     // h0+$2d4c: the active creatures cut onto the screen, and their flags kept for the next pass's
     // restore (T52).
-    if l.draw_creatures {
+    if !l.frozen {
         crate::render::objects::in_play(l, |c| c.cut_all());
     }
     let s = &mut *l.state;
@@ -239,12 +277,15 @@ pub fn game_frame(
     let mut play = Play { state: l.state };
     play.char_hit_check(l.clxdat, &mut Scratch::default());
     play.countdown_step();
-    // h0+$24ce (T25).
+    // h0+$24ce: a spring under the feet (T25).
+    if !frozen(l, 0x24ce) {
+        crate::objects::in_play(l, |o| o.spring_trigger());
+    }
     Character {
         state: l.state,
         program: l.program,
         anim: l.anim,
-        plane: l.plane,
+        plane: &*l.plane,
         scratch: &mut Scratch::default(),
     }
     .update();
