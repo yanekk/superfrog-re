@@ -185,10 +185,13 @@ impl MapObjects<'_> {
             modulo: VANISH_MODULO,
             dst: col + line * SCREEN_LINE,
         });
-        let v = if offset as u8 == VANISH_EMPTY { 0 } else { SOLID };
+        let v = if offset as u8 == VANISH_EMPTY {
+            0
+        } else {
+            SOLID
+        };
         for k in 0..SOLID_LINES {
-            self.io
-                .collision(col + (line + k) * COLLISION_LINE, v);
+            self.io.collision(col + (line + k) * COLLISION_LINE, v);
         }
     }
 

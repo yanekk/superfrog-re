@@ -172,7 +172,10 @@ impl Screen {
                 let tile = h(3, 0x1_3540).wrapping_add(tile);
                 let dst = h(3, SCREEN).wrapping_add(dst);
                 for r in 0..80 {
-                    let (a, b) = (word(mask.wrapping_add(0x28 * r)), word(pic.wrapping_add(0x28 * r)));
+                    let (a, b) = (
+                        word(mask.wrapping_add(0x28 * r)),
+                        word(pic.wrapping_add(0x28 * r)),
+                    );
                     let c = word(tile.wrapping_add(2 * r));
                     self.set_word(dst.wrapping_add(r * PLANE_BYTES), a & b | !a & c);
                 }
