@@ -43,7 +43,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T41 | case-run-jump | T08, T09 | ✅ | |
 | T42 | case-walls-pits | T08, T09, T41 | ⬜ | |
 | T43 | case-scroll | T08, T09 | ✅ | |
-| T44 | case-picture | T10 | ⬜ | |
+| T44 | case-picture | T10 | ✅ | |
 | T11 | character-cases | T01, T41, T42, T43, T44 | ⬜ | |
 | T12 | app-toolkit-move | — | ✅ | |
 | T13 | forest-dumb-app | T01, T10, T12 | ⬜ | |
