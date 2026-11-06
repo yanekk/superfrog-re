@@ -10,9 +10,9 @@
 
 **Amended mid-run:** 2026-11-06 — cost per step (DESIGN §4.4): task packs first in every pending task, a smaller start for workers, Muse writes porting tasks' engine code with a quality loop; T66 answered (owner). Run stopped for the edit.
 
-**Status:** Building; 51 of 70 tasks ✅. Pending tasks start from their pack (`tools/task_pack.py`).
+**Status:** Building; 52 of 70 tasks ✅. Pending tasks start from their pack (`tools/task_pack.py`).
 **Last updated:** 2026-11-06
-**Next `pir-work` will:** T42 and T68 (resumed), then T11 and T22 as their dependencies finish. Start the run with `ENABLE_CLAUDEAI_MCP_SERVERS=false pir start forest-dumb-level-1`.
+**Next `pir-work` will:** T24, T25 and T72 as their dependencies finish; T46 once T24 is ✅. Start the run with `ENABLE_CLAUDEAI_MCP_SERVERS=false pir start forest-dumb-level-1`.
 
 ## Tasks
 
@@ -72,7 +72,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T29 | level-drill | T15, T28 | ⬜ | |
 | T50 | sf-menus-os-test-stale | — | ✅ | |
 | T51 | character-anim-input | T07, T40; blocks T08 | ✅ | |
-| T52 | creature-drawing | T10, T22; blocks T46 | 🔍 | Four routines pass the rig, 10 000 states (paths 456, 21, 254, 9); 922 cuts equal the original's screen at pass ends; 8 tests. Muse wrote `cut` ($0.019); `restore`, `restore_all`, `cut_all` by hand (no literal port). Deviations: one example, not two; frozen cases skip drawing (owner); `character-run-slide` compares `hits_taken`; picture compared over 520 passes. |
+| T52 | creature-drawing | T10, T22; blocks T46 | ✅ | Review: one fix, game_frame's restore by last-drawn flags was untested (mutation survived; test added). Rig file run, 10 000 states each; regression set green. Mutated kind 7 sheet, cut drawing, restore rows, flag swap: all red. Missed bytes near creatures: 0. Third-row restore unreached in play, rig only. Points listed before porting: read-only. |
 | T53 | gen-character-2 | T33, T34; blocks T40 | ✅ | |
 | T54 | gen-objects-2 | T33, T34; blocks T40 | ✅ | |
 | T55 | edge-redraw | T09; blocks T10, T41, T42, T43 | ✅ | |
@@ -94,7 +94,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T71 | status-redraw-race | T70; blocks T27 | ✅ | |
 | T72 | water-contact | T25, T70; blocks T47, T27 | ⬜ | |
 
-**Review queue:** T52
+**Review queue:** *(empty)*
 
 ## Blocked on the user
 

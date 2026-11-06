@@ -7,7 +7,7 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 | Date | | Finding |
 |---|---|---|
 | 2026-11-06 | 🔄 | Owner, T52: frozen cases skip the engine's creature drawing: `Game::transplant` sees `h0_681c` patched to `rts` (`freeze.rs` `ENGINE_SKIPS`, T24); `collect_cases.rs`'s engine-alone run sets it from `case.freeze`. Never reachable from app or planner. |
-| 2026-11-06 | 📌 | T52, measured: moving, a step ends before `game_frame`'s cuts; at pass ends (`watch_write`) 922 cuts over 520 passes equal the original's screen bytes. Drawn creatures now count contact: `character-run-slide` compares `hits_taken`. |
+| 2026-11-06 | 📌 | T52, measured: moving, a step ends before the cuts; at pass ends (`watch_write`) 922 cuts over 520 passes equal the original's screen; the third-row restore never ran there (rig only). Drawn creatures count contact: `character-run-slide` compares `hits_taken`. |
 | 2026-11-06 | 🔄 | Owner, T71: pass `32k+1` cuts the bar redraw at no fixed read (cycle-dependent, docs/09), outside the faithful bar (DESIGN §2.1); the runner accepts `Game::cut_redraw` at the measured cut, bar only (README). `set_profile(false)` clears the frame just drawn. |
 | 2026-11-06 | 🔄 | Owner, T70: a `freeze = true` case dropped the engine's bonus bobs (`Game::freeze_as_a_case`); removed at T70's merge (T22 unfroze the bonus blits). Review: T72 water-contact added; water is unshown: `h0_62b6` (T25) draws it, frozen cases stop it. |
 | 2026-11-06 | 📌 | T70, measured: vAmiga compares the odd planes only where the even match (single playfield), so contact is colour 29 alone. The status bar sets CLXDAT bit 0 every frame; pass 1 reads `$f1ff`. Level-3 comes at line 233. |
