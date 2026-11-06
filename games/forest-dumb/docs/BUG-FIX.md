@@ -74,9 +74,9 @@ Read the rest of the report before trusting the first line:
   runs from `Game::new`, as the app starts it, and since T69 the report says the start equals the
   original's. If it ever says it differs, a difference in the first few frames may be the start's,
   not the recording's: say so in the report.
-- **`not judged yet: ... (T23)`, `(T24)`**: what the engine does not model yet (the countdown and
-  its digits, Esc and P, `hits_taken`). A bug in one of these is a missing feature, not a quirk:
-  name its task.
+- **`not judged yet: ... (T70)`**: what the engine does not model yet (`hits_taken`, contact). A
+  bug in one of these is a missing feature, not a quirk: name its task. The countdown, its digits,
+  Esc and P are judged since T23.
 - **The original is not frozen.** Its creatures and collectibles are there; the engine has none
   until T22 and T24. A difference where one comes into view is the missing feature.
 

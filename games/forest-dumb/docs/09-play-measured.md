@@ -147,7 +147,7 @@ event not in the probe (an enemy type not met) is not ruled out; T21 meets every
 | `score` | `h0+$2a66` | BCD long | `score_add` added by `score_add_routine` | measured |
 | `world_index` | `h0+$6dfe` | long | 0 for world 1 | measured |
 
-Whether the player sees `countdown` as time or as energy is not known yet (T21, T23).
+Whether the player sees `countdown` as time or as energy is not known; `Game::energy` reads it (T23).
 
 ## Level end and game over
 
@@ -161,8 +161,14 @@ Whether the player sees `countdown` as time or as energy is not known yet (T21, 
   does nothing (read). So the comparison's end is `world_index` becoming 1.
 - **Game over** goes to `h0+$1aa`: `game_over_screen` (waits for fire), then the high scores (`h0+$89d0`),
   then `session_loop` and the title. Measured: Esc (`give_up`) and `countdown` reaching 0 (poked to 1 at
-  frame 6500: 0 at 6526, game over screen by 6560). Read: `lives` 0 does the same. Nothing was measured
-  after fire on the game over screen.
+  frame 6500: 0 at 6526, game over screen by 6560). Read: `lives` 0 does the same.
+- **The game over screen, measured (T23, `fd-conform/tests/death.rs`).** Esc held in the step a pass
+  starts sets `esc_down` in that pass, its release `give_up`. `main_loop`'s check after pass `32k`
+  enters `game_over_screen` in the next step, and no pass runs again (`irq_count` stays; its copper
+  list `h1+$810` raises no interrupt). Fire held in the 21st step after that one or later counts as
+  pressed (`h0+$8a78`'s 21 frames); the step it is no longer held in enters the high scores. The
+  countdown run out from frame 6400 shows the screen at frame 69245. The engine skips the high scores
+  and restarts the level (DESIGN §2.4).
 
 ## The character's update
 
